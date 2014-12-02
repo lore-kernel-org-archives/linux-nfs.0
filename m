@@ -1,217 +1,136 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f50.google.com ([209.85.192.50]:34658 "EHLO
-	mail-qg0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754687AbaLBSYb (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 2 Dec 2014 13:24:31 -0500
-Received: by mail-qg0-f50.google.com with SMTP id i50so9616036qgf.37
-        for <linux-nfs@vger.kernel.org>; Tue, 02 Dec 2014 10:24:30 -0800 (PST)
+Received: from mail-qg0-f43.google.com ([209.85.192.43]:36149 "EHLO
+	mail-qg0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754703AbaLBSYc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 2 Dec 2014 13:24:32 -0500
+Received: by mail-qg0-f43.google.com with SMTP id q108so9867942qgd.30
+        for <linux-nfs@vger.kernel.org>; Tue, 02 Dec 2014 10:24:31 -0800 (PST)
 From: Jeff Layton <jlayton@primarydata.com>
 To: linux-nfs@vger.kernel.org
 Cc: linux-kernel@vger.kernel.org, Tejun Heo <tj@kernel.org>,
         Al Viro <viro@zeniv.linux.org.uk>
-Subject: [RFC PATCH 01/14] sunrpc: add a new svc_serv_ops struct and move sv_shutdown into it
-Date: Tue,  2 Dec 2014 13:24:10 -0500
-Message-Id: <1417544663-13299-2-git-send-email-jlayton@primarydata.com>
+Subject: [RFC PATCH 02/14] sunrpc: move sv_function into sv_ops
+Date: Tue,  2 Dec 2014 13:24:11 -0500
+Message-Id: <1417544663-13299-3-git-send-email-jlayton@primarydata.com>
 In-Reply-To: <1417544663-13299-1-git-send-email-jlayton@primarydata.com>
 References: <1417544663-13299-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In later patches we'll need to abstract out more operations on a
-per-service level, besides sv_shutdown and sv_function.
-
-Declare a new svc_serv_ops struct to hold these operations, and move
-sv_shutdown into this struct.
+Since we now have a container for holding svc_serv operations, move the
+sv_function into it as well.
 
 Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
- fs/lockd/svc.c             |  6 +++++-
- fs/nfs/callback.c          |  5 ++++-
- fs/nfsd/nfssvc.c           |  6 +++++-
- include/linux/sunrpc/svc.h | 20 ++++++++++----------
- net/sunrpc/svc.c           | 18 +++++++++---------
- 5 files changed, 33 insertions(+), 22 deletions(-)
+ fs/nfsd/nfssvc.c           |  3 ++-
+ include/linux/sunrpc/svc.h | 11 +++--------
+ net/sunrpc/svc.c           |  8 +++-----
+ 3 files changed, 8 insertions(+), 14 deletions(-)
 
-diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-index e94c887da2d7..d93a8d0a04bb 100644
---- a/fs/lockd/svc.c
-+++ b/fs/lockd/svc.c
-@@ -326,6 +326,10 @@ out_rqst:
- 	return error;
- }
- 
-+static struct svc_serv_ops lockd_sv_ops = {
-+	.svo_shutdown	= svc_rpcb_cleanup,
-+};
-+
- static struct svc_serv *lockd_create_svc(void)
- {
- 	struct svc_serv *serv;
-@@ -350,7 +354,7 @@ static struct svc_serv *lockd_create_svc(void)
- 		printk(KERN_WARNING
- 			"lockd_up: no pid, %d users??\n", nlmsvc_users);
- 
--	serv = svc_create(&nlmsvc_program, LOCKD_BUFSIZE, svc_rpcb_cleanup);
-+	serv = svc_create(&nlmsvc_program, LOCKD_BUFSIZE, &lockd_sv_ops);
- 	if (!serv) {
- 		printk(KERN_WARNING "lockd_up: create service failed\n");
- 		return ERR_PTR(-ENOMEM);
-diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-index b8fb3a4ef649..ace6c70f807b 100644
---- a/fs/nfs/callback.c
-+++ b/fs/nfs/callback.c
-@@ -306,6 +306,9 @@ err_bind:
- 	return ret;
- }
- 
-+static struct svc_serv_ops nfs_cb_sv_ops = {
-+};
-+
- static struct svc_serv *nfs_callback_create_svc(int minorversion)
- {
- 	struct nfs_callback_data *cb_info = &nfs_callback_info[minorversion];
-@@ -331,7 +334,7 @@ static struct svc_serv *nfs_callback_create_svc(int minorversion)
- 		printk(KERN_WARNING "nfs_callback_create_svc: no kthread, %d users??\n",
- 			cb_info->users);
- 
--	serv = svc_create(&nfs4_callback_program, NFS4_CALLBACK_BUFSIZE, NULL);
-+	serv = svc_create(&nfs4_callback_program, NFS4_CALLBACK_BUFSIZE, &nfs_cb_sv_ops);
- 	if (!serv) {
- 		printk(KERN_ERR "nfs_callback_create_svc: create service failed\n");
- 		return ERR_PTR(-ENOMEM);
 diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index 314f5c8f8f1a..cc5dd1227732 100644
+index cc5dd1227732..5017af3fe882 100644
 --- a/fs/nfsd/nfssvc.c
 +++ b/fs/nfsd/nfssvc.c
-@@ -390,6 +390,10 @@ static int nfsd_get_default_max_blksize(void)
- 	return ret;
- }
+@@ -392,6 +392,7 @@ static int nfsd_get_default_max_blksize(void)
  
-+static struct svc_serv_ops nfsd_sv_ops = {
-+	.svo_shutdown = nfsd_last_thread,
-+};
-+
+ static struct svc_serv_ops nfsd_sv_ops = {
+ 	.svo_shutdown = nfsd_last_thread,
++	.svo_function = nfsd,
+ };
+ 
  int nfsd_create_serv(struct net *net)
- {
- 	int error;
-@@ -404,7 +408,7 @@ int nfsd_create_serv(struct net *net)
+@@ -408,7 +409,7 @@ int nfsd_create_serv(struct net *net)
  		nfsd_max_blksize = nfsd_get_default_max_blksize();
  	nfsd_reset_versions();
  	nn->nfsd_serv = svc_create_pooled(&nfsd_program, nfsd_max_blksize,
--				      nfsd_last_thread, nfsd, THIS_MODULE);
-+				      &nfsd_sv_ops, nfsd, THIS_MODULE);
+-				      &nfsd_sv_ops, nfsd, THIS_MODULE);
++				      &nfsd_sv_ops, THIS_MODULE);
  	if (nn->nfsd_serv == NULL)
  		return -ENOMEM;
  
 diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index 6f22cfeef5e3..35faea625d9f 100644
+index 35faea625d9f..7e27894bc065 100644
 --- a/include/linux/sunrpc/svc.h
 +++ b/include/linux/sunrpc/svc.h
-@@ -54,6 +54,13 @@ struct svc_pool {
- 	unsigned long		sp_flags;
- } ____cacheline_aligned_in_smp;
+@@ -19,11 +19,6 @@
+ #include <linux/wait.h>
+ #include <linux/mm.h>
  
-+struct svc_serv;
-+
-+struct svc_serv_ops {
-+	/* Callback to use when last thread exits. */
-+	void	(*svo_shutdown)(struct svc_serv *serv, struct net *net);
-+};
-+
+-/*
+- * This is the RPC server thread function prototype
+- */
+-typedef int		(*svc_thread_fn)(void *);
+-
+ /* statistics for svc_pool structures */
+ struct svc_pool_stats {
+ 	atomic_long_t	packets;
+@@ -58,7 +53,8 @@ struct svc_serv;
+ 
+ struct svc_serv_ops {
+ 	/* Callback to use when last thread exits. */
+-	void	(*svo_shutdown)(struct svc_serv *serv, struct net *net);
++	void		(*svo_shutdown)(struct svc_serv *, struct net *);
++	int		(*svo_function)(void *);
+ };
+ 
  /*
-  * RPC service.
-  *
-@@ -85,13 +92,7 @@ struct svc_serv {
- 
- 	unsigned int		sv_nrpools;	/* number of thread pools */
- 	struct svc_pool *	sv_pools;	/* array of thread pools */
--
--	void			(*sv_shutdown)(struct svc_serv *serv,
--					       struct net *net);
--						/* Callback to use when last thread
--						 * exits.
--						 */
--
-+	struct svc_serv_ops *	sv_ops;		/* server operations */
+@@ -95,7 +91,6 @@ struct svc_serv {
+ 	struct svc_serv_ops *	sv_ops;		/* server operations */
  	struct module *		sv_module;	/* optional module to count when
  						 * adding threads */
- 	svc_thread_fn		sv_function;	/* main function for threads */
-@@ -429,13 +430,12 @@ int svc_rpcb_setup(struct svc_serv *serv, struct net *net);
- void svc_rpcb_cleanup(struct svc_serv *serv, struct net *net);
- int svc_bind(struct svc_serv *serv, struct net *net);
- struct svc_serv *svc_create(struct svc_program *, unsigned int,
--			    void (*shutdown)(struct svc_serv *, struct net *net));
-+			    struct svc_serv_ops *);
- struct svc_rqst *svc_prepare_thread(struct svc_serv *serv,
+-	svc_thread_fn		sv_function;	/* main function for threads */
+ #if defined(CONFIG_SUNRPC_BACKCHANNEL)
+ 	struct list_head	sv_cb_list;	/* queue for callback requests
+ 						 * that arrive over the same
+@@ -435,7 +430,7 @@ struct svc_rqst *svc_prepare_thread(struct svc_serv *serv,
  					struct svc_pool *pool, int node);
  void		   svc_exit_thread(struct svc_rqst *);
  struct svc_serv *  svc_create_pooled(struct svc_program *, unsigned int,
--			void (*shutdown)(struct svc_serv *, struct net *net),
--			svc_thread_fn, struct module *);
-+			struct svc_serv_ops *, svc_thread_fn, struct module *);
+-			struct svc_serv_ops *, svc_thread_fn, struct module *);
++			struct svc_serv_ops *, struct module *);
  int		   svc_set_num_threads(struct svc_serv *, struct svc_pool *, int);
  int		   svc_pool_stats_open(struct svc_serv *serv, struct file *file);
  void		   svc_destroy(struct svc_serv *);
 diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index 4308881d9d0a..057185e11261 100644
+index 057185e11261..897c755c6186 100644
 --- a/net/sunrpc/svc.c
 +++ b/net/sunrpc/svc.c
-@@ -423,7 +423,7 @@ EXPORT_SYMBOL_GPL(svc_bind);
-  */
- static struct svc_serv *
- __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
--	     void (*shutdown)(struct svc_serv *serv, struct net *net))
-+	     struct svc_serv_ops *ops)
- {
- 	struct svc_serv	*serv;
- 	unsigned int vers;
-@@ -440,7 +440,7 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
- 		bufsize = RPCSVC_MAXPAYLOAD;
- 	serv->sv_max_payload = bufsize? bufsize : 4096;
- 	serv->sv_max_mesg  = roundup(serv->sv_max_payload + PAGE_SIZE, PAGE_SIZE);
--	serv->sv_shutdown  = shutdown;
-+	serv->sv_ops = ops;
- 	xdrsize = 0;
- 	while (prog) {
- 		prog->pg_lovers = prog->pg_nvers-1;
-@@ -486,21 +486,21 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
+@@ -34,7 +34,7 @@
  
- struct svc_serv *
- svc_create(struct svc_program *prog, unsigned int bufsize,
--	   void (*shutdown)(struct svc_serv *serv, struct net *net))
-+	   struct svc_serv_ops *ops)
- {
--	return __svc_create(prog, bufsize, /*npools*/1, shutdown);
-+	return __svc_create(prog, bufsize, /*npools*/1, ops);
- }
- EXPORT_SYMBOL_GPL(svc_create);
+ static void svc_unregister(const struct svc_serv *serv, struct net *net);
+ 
+-#define svc_serv_is_pooled(serv)    ((serv)->sv_function)
++#define svc_serv_is_pooled(serv)    ((serv)->sv_ops->svo_function)
+ 
+ /*
+  * Mode for mapping cpus to pools.
+@@ -494,8 +494,7 @@ EXPORT_SYMBOL_GPL(svc_create);
  
  struct svc_serv *
  svc_create_pooled(struct svc_program *prog, unsigned int bufsize,
--		  void (*shutdown)(struct svc_serv *serv, struct net *net),
--		  svc_thread_fn func, struct module *mod)
-+		  struct svc_serv_ops *ops, svc_thread_fn func,
-+		  struct module *mod)
+-		  struct svc_serv_ops *ops, svc_thread_fn func,
+-		  struct module *mod)
++		  struct svc_serv_ops *ops, struct module *mod)
  {
  	struct svc_serv *serv;
  	unsigned int npools = svc_pool_map_get();
- 
--	serv = __svc_create(prog, bufsize, npools, shutdown);
-+	serv = __svc_create(prog, bufsize, npools, ops);
+@@ -504,7 +503,6 @@ svc_create_pooled(struct svc_program *prog, unsigned int bufsize,
  	if (!serv)
  		goto out_err;
  
-@@ -517,8 +517,8 @@ void svc_shutdown_net(struct svc_serv *serv, struct net *net)
- {
- 	svc_close_net(serv, net);
+-	serv->sv_function = func;
+ 	serv->sv_module = mod;
+ 	return serv;
+ out_err:
+@@ -740,7 +738,7 @@ svc_set_num_threads(struct svc_serv *serv, struct svc_pool *pool, int nrservs)
+ 		}
  
--	if (serv->sv_shutdown)
--		serv->sv_shutdown(serv, net);
-+	if (serv->sv_ops->svo_shutdown)
-+		serv->sv_ops->svo_shutdown(serv, net);
- }
- EXPORT_SYMBOL_GPL(svc_shutdown_net);
- 
+ 		__module_get(serv->sv_module);
+-		task = kthread_create_on_node(serv->sv_function, rqstp,
++		task = kthread_create_on_node(serv->sv_ops->svo_function, rqstp,
+ 					      node, "%s", serv->sv_name);
+ 		if (IS_ERR(task)) {
+ 			error = PTR_ERR(task);
 -- 
 2.1.0
 
