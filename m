@@ -1,65 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:45714 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:37705 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932582AbaLAXQy convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Dec 2014 18:16:54 -0500
-From: David Howells <dhowells@redhat.com>
-To: jmorris@namei.org
-cc: dhowells@redhat.com, linux-nfs@vger.kernel.org,
-        linux-security-module@vger.kernel.org, keyrings@linux-nfs.org,
-        linux-kernel@vger.kernel.org
-Subject: [GIT PULL] Keyrings (& NFS) fixes
-MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Date: Mon, 01 Dec 2014 23:16:44 +0000
-Message-ID: <5000.1417475804@warthog.procyon.org.uk>
+	id S1752342AbaLBEce (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 1 Dec 2014 23:32:34 -0500
+From: Eryu Guan <eguan@redhat.com>
+To: fstests@vger.kernel.org
+Cc: linux-nfs@vger.kernel.org, Anna.Schumaker@netapp.com,
+        Eryu Guan <eguan@redhat.com>
+Subject: [PATCH] common: recognise NFS export over IPv6 in _require_scratch_nocheck()
+Date: Tue,  2 Dec 2014 12:31:53 +0800
+Message-Id: <1417494713-25937-1-git-send-email-eguan@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi James,
+This commit
 
-Can you pass these patches on to Linus please?
+73dfa4a common: Fixes for testing NFS over IPv6
 
-The first one fixes the handling of maximum buffer size for key descriptions,
-fixing the size at 4095 + NUL char rather than whatever PAGE_SIZE happens to
-be and permits you to read back the full description without it getting
-clipped because some extra information got prepended.
+adds NFS over IPv6 support, and commit
 
-The second and third fix a bug in NFS idmapper handling whereby a key
-representing a mapping between an id and a name expires and causing
-EKEYEXPIRED to be seen internally in NFS (which prevents the mapping from
-happening) rather than re-looking up the mapping.
+76c5f3c common: re-enable tests that require scratch dev on NFS
 
-Thanks,
-David
+enables NFS tests on scratch device.
+
+Now do the same updates to _require_scratch_nocheck() to enable NFS over
+IPv6 support on scratch device.
+
+Signed-off-by: Eryu Guan <eguan@redhat.com>
 ---
-The following changes since commit 009d0431c3914de64666bec0d350e54fdd59df6a:
+ common/rc | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
 
-  Linux 3.18-rc7 (2014-11-30 16:42:27 -0800)
+diff --git a/common/rc b/common/rc
+index d5e3aff..525d9d4 100644
+--- a/common/rc
++++ b/common/rc
+@@ -1078,10 +1078,12 @@ _require_scratch_nocheck()
+     esac
+ 
+     # mounted?
+-    if _mount | grep -q $SCRATCH_DEV
++    # Note that we use -F here so grep doesn't try to interpret an NFS over
++    # IPv6 server as a regular expression.
++    if _mount | grep -F -q $SCRATCH_DEV
+     then
+         # if it's mounted, make sure its on $SCRATCH_MNT
+-        if ! _mount | grep $SCRATCH_DEV | grep -q $SCRATCH_MNT
++        if ! _mount | grep -F $SCRATCH_DEV | grep -q $SCRATCH_MNT
+         then
+             echo "\$SCRATCH_DEV is mounted but not on \$SCRATCH_MNT - aborting"
+             exit 1
+-- 
+1.9.3
 
-are available in the git repository at:
-
-  git://git.kernel.org/pub/scm/linux/kernel/git/dhowells/linux-fs.git tags/keys-fixes-20141201
-
-for you to fetch changes up to 0b0a84154eff56913e91df29de5c3a03a0029e38:
-
-  KEYS: request_key() should reget expired keys rather than give EKEYEXPIRED (2014-12-01 22:52:53 +0000)
-
-----------------------------------------------------------------
-(from the branch description for keys-fixes local branch)
-
-Keyrings fixes
-Keyrings fixes
-
-----------------------------------------------------------------
-David Howells (3):
-      KEYS: Fix the size of the key description passed to/from userspace
-      KEYS: Simplify KEYRING_SEARCH_{NO,DO}_STATE_CHECK flags
-      KEYS: request_key() should reget expired keys rather than give EKEYEXPIRED
-
- security/keys/internal.h         |  1 +
- security/keys/keyctl.c           | 56 +++++++++++++++++++---------------------
- security/keys/keyring.c          | 10 ++++---
- security/keys/request_key.c      |  2 ++
- security/keys/request_key_auth.c |  1 +
- 5 files changed, 36 insertions(+), 34 deletions(-)
