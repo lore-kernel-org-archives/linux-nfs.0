@@ -1,34 +1,47 @@
-Return-Path: keyrings-bounces@linux-nfs.org
-From: David Howells <dhowells@redhat.com>
-In-Reply-To: <BBF8B74B-AECA-4984-81A0-408ED5F8F8C8@oracle.com>
-References: <BBF8B74B-AECA-4984-81A0-408ED5F8F8C8@oracle.com>
-	<20141119122238.26494.23666.stgit@warthog.procyon.org.uk>
-	<20141119122249.26494.25661.stgit@warthog.procyon.org.uk>
-To: Chuck Lever <chuck.lever@oracle.com>
+Return-Path: linux-nfs-owner@vger.kernel.org
+Received: from mail-ie0-f169.google.com ([209.85.223.169]:34258 "EHLO
+	mail-ie0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750798AbaLCTy7 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 3 Dec 2014 14:54:59 -0500
+Received: by mail-ie0-f169.google.com with SMTP id y20so14446909ier.14
+        for <linux-nfs@vger.kernel.org>; Wed, 03 Dec 2014 11:54:59 -0800 (PST)
 MIME-Version: 1.0
-Date: Wed, 03 Dec 2014 22:31:58 +0000
-Message-ID: <15841.1417645918@warthog.procyon.org.uk>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Carl Hetherington <cth@carlh.net>, Neil Brown <neilb@suse.de>,
-        keyrings@linux-nfs.org, linux-kernel@vger.kernel.org
-Subject: Re: [Keyrings] [PATCH 2/2] KEYS: request_key() should reget expired
-	keys rather than give EKEYEXPIRED
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/keyrings>,
-	<mailto:keyrings-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/keyrings>
-List-Post: <mailto:keyrings@linux-nfs.org>
-List-Help: <mailto:keyrings-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/keyrings>,
-	<mailto:keyrings-request@linux-nfs.org?subject=subscribe>
-Content-Type: text/plain; charset="us-ascii"
-Sender: keyrings-bounces@linux-nfs.org
-Errors-To: keyrings-bounces@linux-nfs.org
+Date: Wed, 3 Dec 2014 14:54:59 -0500
+Message-ID: <CAN-5tyFpbM5GE2fAcx8uMG6MO2JC-R4ASN_jrnmYH8idie_H+w@mail.gmail.com>
+Subject: not picking a delegation stateid for IO when delegation stateid is
+ being returned
+From: Olga Kornievskaia <aglo@umich.edu>
+To: linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-These patches are now upstream.
+Hi folks,
 
-David
-_______________________________________________
-Keyrings mailing list
-Keyrings@linux-nfs.org
-To change your subscription to this list, please see http://linux-nfs.org/cgi-bin/mailman/listinfo/keyrings
+I would like an opinion about changing code in such as way that we
+don't select a delegation stateid for an IO operation when this
+particular delegation is being returned.
+
+The reason it's some what problematic is that we send out a
+DELEG_RETURN and then we don't remove the stateid until we receive a
+reply. In the mean while, an IO operation can be happening and in
+nfs4_select_rw_stateid() it sees a delegation stateid and uses it.
+Well, at the server, it finishes processing DELEG_RETURN before
+getting an IO op and by that time the server is finished with the
+stateid and can error an IO operation with BAD_STATEID.
+
+diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
+index 7f3f606..4f6f6c9 100644
+--- a/fs/nfs/delegation.c
++++ b/fs/nfs/delegation.c
+@@ -854,7 +854,8 @@ bool nfs4_copy_delegation_stateid(nfs4_stateid
+*dst, struct inode *in
+        flags &= FMODE_READ|FMODE_WRITE;
+        rcu_read_lock();
+        delegation = rcu_dereference(nfsi->delegation);
+-       ret = (delegation != NULL && (delegation->type & flags) == flags);
++       ret = (delegation != NULL && (delegation->type & flags) == flags &&
++               !test_bit(NFS_DELEGATION_RETURNING, &delegation->flags));
+        if (ret) {
+                nfs4_stateid_copy(dst, &delegation->stateid);
+                nfs_mark_delegation_referenced(delegation);
