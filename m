@@ -1,451 +1,76 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wi0-f170.google.com ([209.85.212.170]:38100 "EHLO
-	mail-wi0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932655AbaLDRvy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Dec 2014 12:51:54 -0500
-From: Pieter Smith <pieter@boesman.nl>
-To: linux-kernel@vger.kernel.org
-Cc: Josh Triplett <josh@joshtriplett.org>, Pieter Smith <pieter@boesman.nl>,
-        Alexander Duyck <alexander.h.duyck@intel.com>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Alexei Starovoitov <ast@plumgrid.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Bertrand Jacquin <beber@meleeweb.net>,
-        Catalina Mocanu <catalina.mocanu@gmail.com>,
-        Daniel Borkmann <dborkman@redhat.com>,
-        "David S. Miller" <davem@davemloft.net>,
-        Eric Dumazet <edumazet@google.com>,
-        "Eric W. Biederman" <ebiederm@xmission.com>,
-        Fabian Frederick <fabf@skynet.be>,
-        fuse-devel@lists.sourceforge.net (open list:FUSE: FILESYSTEM...),
-        Geert Uytterhoeven <geert@linux-m68k.org>,
-        Hugh Dickins <hughd@google.com>, Iulia Manda <iulia.manda21@gmail.com>,
-        Jan Beulich <JBeulich@suse.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@poochiereds.net>,
-        linux-api@vger.kernel.org (open list:ABI/API),
-        linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org (open list:KERNEL NFSD, SUNR...),
-        "Luis R. Rodriguez" <mcgrof@suse.com>,
-        Matt Turner <mattst88@gmail.com>, Mel Gorman <mgorman@suse.de>,
-        "Michael S. Tsirkin" <mst@redhat.com>,
-        Miklos Szeredi <miklos@szeredi.hu>,
-        netdev@vger.kernel.org (open list:NETWORKING [GENERAL]),
-        Oleg Nesterov <oleg@redhat.com>,
-        Paul Durrant <Paul.Durrant@citrix.com>,
-        "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
-        Peter Foley <pefoley2@pefoley.com>, Thomas Graf <tgraf@suug.ch>,
-        Tom Herbert <therbert@google.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Willem de Bruijn <willemb@google.com>,
-        Xiao Guangrong <xiaoguangrong@linux.vnet.ibm.com>,
-        =?UTF-8?q?=E8=94=A1=E6=AD=A3=E9=BE=99?= <zhenglong.cai@cs2c.com.cn>
-Subject: [PATCH v6 1/7] fs: move sendfile syscall into fs/splice
-Date: Thu,  4 Dec 2014 18:50:49 +0100
-Message-Id: <1417715473-24110-2-git-send-email-pieter@boesman.nl>
-In-Reply-To: <1417715473-24110-1-git-send-email-pieter@boesman.nl>
-References: <1417715473-24110-1-git-send-email-pieter@boesman.nl>
+Received: from mx1.redhat.com ([209.132.183.28]:37386 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752326AbaLCNzY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 3 Dec 2014 08:55:24 -0500
+Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id sB3DtNqk030072
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
+	for <linux-nfs@vger.kernel.org>; Wed, 3 Dec 2014 08:55:24 -0500
+Received: from smallhat.boston.devel.redhat.com (vpn-56-57.rdu2.redhat.com [10.10.56.57])
+	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id sB3DtM9a019298
+	for <linux-nfs@vger.kernel.org>; Wed, 3 Dec 2014 08:55:23 -0500
+Message-ID: <547F164A.5000503@RedHat.com>
+Date: Wed, 03 Dec 2014 08:55:22 -0500
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: "nfs >> Linux NFS Mailing list" <linux-nfs@vger.kernel.org>
+Subject: Fwd: [RHEL7.1 PATCH 0/5][BZ1166845] NFSv4.x: Delegation return causes
+ infinite loop and hung
+References: <1417544515-7381-1-git-send-email-steved@redhat.com>
+In-Reply-To: <1417544515-7381-1-git-send-email-steved@redhat.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-sendfile functionally forms part of the splice group of syscalls (splice,
-vmsplice and tee). Grouping sendfile with splice paves the way to compiling out
-the splice group of syscalls for embedded systems that do not need these.
+Hello,
 
-add/remove: 0/0 grow/shrink: 7/2 up/down: 86/-61 (25)
-function                                     old     new   delta
-file_start_write                              34      68     +34
-file_end_write                                29      58     +29
-sys_pwritev                                  115     122      +7
-sys_preadv                                   115     122      +7
-fdput_pos                                     29      36      +7
-sys_pwrite64                                 115     116      +1
-sys_pread64                                  115     116      +1
-sys_tee                                      497     491      -6
-sys_splice                                  1075    1020     -55
+Would it be possible to get these review and (hopefully) acked 
+relatively soon?  I'm trying to get them into the rhel7-fs 
+and they need to be acked up ;-) 
 
-Signed-off-by: Pieter Smith <pieter@boesman.nl>
----
- fs/read_write.c | 175 -------------------------------------------------------
- fs/splice.c     | 178 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 178 insertions(+), 175 deletions(-)
+tia,
 
-diff --git a/fs/read_write.c b/fs/read_write.c
-index 7d9318c..d9451ba 100644
---- a/fs/read_write.c
-+++ b/fs/read_write.c
-@@ -1191,178 +1191,3 @@ COMPAT_SYSCALL_DEFINE5(pwritev, compat_ulong_t, fd,
- }
- #endif
- 
--static ssize_t do_sendfile(int out_fd, int in_fd, loff_t *ppos,
--		  	   size_t count, loff_t max)
--{
--	struct fd in, out;
--	struct inode *in_inode, *out_inode;
--	loff_t pos;
--	loff_t out_pos;
--	ssize_t retval;
--	int fl;
--
--	/*
--	 * Get input file, and verify that it is ok..
--	 */
--	retval = -EBADF;
--	in = fdget(in_fd);
--	if (!in.file)
--		goto out;
--	if (!(in.file->f_mode & FMODE_READ))
--		goto fput_in;
--	retval = -ESPIPE;
--	if (!ppos) {
--		pos = in.file->f_pos;
--	} else {
--		pos = *ppos;
--		if (!(in.file->f_mode & FMODE_PREAD))
--			goto fput_in;
--	}
--	retval = rw_verify_area(READ, in.file, &pos, count);
--	if (retval < 0)
--		goto fput_in;
--	count = retval;
--
--	/*
--	 * Get output file, and verify that it is ok..
--	 */
--	retval = -EBADF;
--	out = fdget(out_fd);
--	if (!out.file)
--		goto fput_in;
--	if (!(out.file->f_mode & FMODE_WRITE))
--		goto fput_out;
--	retval = -EINVAL;
--	in_inode = file_inode(in.file);
--	out_inode = file_inode(out.file);
--	out_pos = out.file->f_pos;
--	retval = rw_verify_area(WRITE, out.file, &out_pos, count);
--	if (retval < 0)
--		goto fput_out;
--	count = retval;
--
--	if (!max)
--		max = min(in_inode->i_sb->s_maxbytes, out_inode->i_sb->s_maxbytes);
--
--	if (unlikely(pos + count > max)) {
--		retval = -EOVERFLOW;
--		if (pos >= max)
--			goto fput_out;
--		count = max - pos;
--	}
--
--	fl = 0;
--#if 0
--	/*
--	 * We need to debate whether we can enable this or not. The
--	 * man page documents EAGAIN return for the output at least,
--	 * and the application is arguably buggy if it doesn't expect
--	 * EAGAIN on a non-blocking file descriptor.
--	 */
--	if (in.file->f_flags & O_NONBLOCK)
--		fl = SPLICE_F_NONBLOCK;
--#endif
--	file_start_write(out.file);
--	retval = do_splice_direct(in.file, &pos, out.file, &out_pos, count, fl);
--	file_end_write(out.file);
--
--	if (retval > 0) {
--		add_rchar(current, retval);
--		add_wchar(current, retval);
--		fsnotify_access(in.file);
--		fsnotify_modify(out.file);
--		out.file->f_pos = out_pos;
--		if (ppos)
--			*ppos = pos;
--		else
--			in.file->f_pos = pos;
--	}
--
--	inc_syscr(current);
--	inc_syscw(current);
--	if (pos > max)
--		retval = -EOVERFLOW;
--
--fput_out:
--	fdput(out);
--fput_in:
--	fdput(in);
--out:
--	return retval;
--}
--
--SYSCALL_DEFINE4(sendfile, int, out_fd, int, in_fd, off_t __user *, offset, size_t, count)
--{
--	loff_t pos;
--	off_t off;
--	ssize_t ret;
--
--	if (offset) {
--		if (unlikely(get_user(off, offset)))
--			return -EFAULT;
--		pos = off;
--		ret = do_sendfile(out_fd, in_fd, &pos, count, MAX_NON_LFS);
--		if (unlikely(put_user(pos, offset)))
--			return -EFAULT;
--		return ret;
--	}
--
--	return do_sendfile(out_fd, in_fd, NULL, count, 0);
--}
--
--SYSCALL_DEFINE4(sendfile64, int, out_fd, int, in_fd, loff_t __user *, offset, size_t, count)
--{
--	loff_t pos;
--	ssize_t ret;
--
--	if (offset) {
--		if (unlikely(copy_from_user(&pos, offset, sizeof(loff_t))))
--			return -EFAULT;
--		ret = do_sendfile(out_fd, in_fd, &pos, count, 0);
--		if (unlikely(put_user(pos, offset)))
--			return -EFAULT;
--		return ret;
--	}
--
--	return do_sendfile(out_fd, in_fd, NULL, count, 0);
--}
--
--#ifdef CONFIG_COMPAT
--COMPAT_SYSCALL_DEFINE4(sendfile, int, out_fd, int, in_fd,
--		compat_off_t __user *, offset, compat_size_t, count)
--{
--	loff_t pos;
--	off_t off;
--	ssize_t ret;
--
--	if (offset) {
--		if (unlikely(get_user(off, offset)))
--			return -EFAULT;
--		pos = off;
--		ret = do_sendfile(out_fd, in_fd, &pos, count, MAX_NON_LFS);
--		if (unlikely(put_user(pos, offset)))
--			return -EFAULT;
--		return ret;
--	}
--
--	return do_sendfile(out_fd, in_fd, NULL, count, 0);
--}
--
--COMPAT_SYSCALL_DEFINE4(sendfile64, int, out_fd, int, in_fd,
--		compat_loff_t __user *, offset, compat_size_t, count)
--{
--	loff_t pos;
--	ssize_t ret;
--
--	if (offset) {
--		if (unlikely(copy_from_user(&pos, offset, sizeof(loff_t))))
--			return -EFAULT;
--		ret = do_sendfile(out_fd, in_fd, &pos, count, 0);
--		if (unlikely(put_user(pos, offset)))
--			return -EFAULT;
--		return ret;
--	}
--
--	return do_sendfile(out_fd, in_fd, NULL, count, 0);
--}
--#endif
-diff --git a/fs/splice.c b/fs/splice.c
-index f5cb9ba..c1a2861 100644
---- a/fs/splice.c
-+++ b/fs/splice.c
-@@ -28,6 +28,7 @@
- #include <linux/export.h>
- #include <linux/syscalls.h>
- #include <linux/uio.h>
-+#include <linux/fsnotify.h>
- #include <linux/security.h>
- #include <linux/gfp.h>
- #include <linux/socket.h>
-@@ -2039,3 +2040,180 @@ SYSCALL_DEFINE4(tee, int, fdin, int, fdout, size_t, len, unsigned int, flags)
- 
- 	return error;
- }
-+
-+static ssize_t do_sendfile(int out_fd, int in_fd, loff_t *ppos,
-+			   size_t count, loff_t max)
-+{
-+	struct fd in, out;
-+	struct inode *in_inode, *out_inode;
-+	loff_t pos;
-+	loff_t out_pos;
-+	ssize_t retval;
-+	int fl;
-+
-+	/*
-+	 * Get input file, and verify that it is ok..
-+	 */
-+	retval = -EBADF;
-+	in = fdget(in_fd);
-+	if (!in.file)
-+		goto out;
-+	if (!(in.file->f_mode & FMODE_READ))
-+		goto fput_in;
-+	retval = -ESPIPE;
-+	if (!ppos) {
-+		pos = in.file->f_pos;
-+	} else {
-+		pos = *ppos;
-+		if (!(in.file->f_mode & FMODE_PREAD))
-+			goto fput_in;
-+	}
-+	retval = rw_verify_area(READ, in.file, &pos, count);
-+	if (retval < 0)
-+		goto fput_in;
-+	count = retval;
-+
-+	/*
-+	 * Get output file, and verify that it is ok..
-+	 */
-+	retval = -EBADF;
-+	out = fdget(out_fd);
-+	if (!out.file)
-+		goto fput_in;
-+	if (!(out.file->f_mode & FMODE_WRITE))
-+		goto fput_out;
-+	retval = -EINVAL;
-+	in_inode = file_inode(in.file);
-+	out_inode = file_inode(out.file);
-+	out_pos = out.file->f_pos;
-+	retval = rw_verify_area(WRITE, out.file, &out_pos, count);
-+	if (retval < 0)
-+		goto fput_out;
-+	count = retval;
-+
-+	if (!max)
-+		max = min(in_inode->i_sb->s_maxbytes, out_inode->i_sb->s_maxbytes);
-+
-+	if (unlikely(pos + count > max)) {
-+		retval = -EOVERFLOW;
-+		if (pos >= max)
-+			goto fput_out;
-+		count = max - pos;
-+	}
-+
-+	fl = 0;
-+#if 0
-+	/*
-+	 * We need to debate whether we can enable this or not. The
-+	 * man page documents EAGAIN return for the output at least,
-+	 * and the application is arguably buggy if it doesn't expect
-+	 * EAGAIN on a non-blocking file descriptor.
-+	 */
-+	if (in.file->f_flags & O_NONBLOCK)
-+		fl = SPLICE_F_NONBLOCK;
-+#endif
-+	file_start_write(out.file);
-+	retval = do_splice_direct(in.file, &pos, out.file, &out_pos, count, fl);
-+	file_end_write(out.file);
-+
-+	if (retval > 0) {
-+		add_rchar(current, retval);
-+		add_wchar(current, retval);
-+		fsnotify_access(in.file);
-+		fsnotify_modify(out.file);
-+		out.file->f_pos = out_pos;
-+		if (ppos)
-+			*ppos = pos;
-+		else
-+			in.file->f_pos = pos;
-+	}
-+
-+	inc_syscr(current);
-+	inc_syscw(current);
-+	if (pos > max)
-+		retval = -EOVERFLOW;
-+
-+fput_out:
-+	fdput(out);
-+fput_in:
-+	fdput(in);
-+out:
-+	return retval;
-+}
-+
-+SYSCALL_DEFINE4(sendfile, int, out_fd, int, in_fd, off_t __user *, offset, size_t, count)
-+{
-+	loff_t pos;
-+	off_t off;
-+	ssize_t ret;
-+
-+	if (offset) {
-+		if (unlikely(get_user(off, offset)))
-+			return -EFAULT;
-+		pos = off;
-+		ret = do_sendfile(out_fd, in_fd, &pos, count, MAX_NON_LFS);
-+		if (unlikely(put_user(pos, offset)))
-+			return -EFAULT;
-+		return ret;
-+	}
-+
-+	return do_sendfile(out_fd, in_fd, NULL, count, 0);
-+}
-+
-+SYSCALL_DEFINE4(sendfile64, int, out_fd, int, in_fd, loff_t __user *, offset, size_t, count)
-+{
-+	loff_t pos;
-+	ssize_t ret;
-+
-+	if (offset) {
-+		if (unlikely(copy_from_user(&pos, offset, sizeof(loff_t))))
-+			return -EFAULT;
-+		ret = do_sendfile(out_fd, in_fd, &pos, count, 0);
-+		if (unlikely(put_user(pos, offset)))
-+			return -EFAULT;
-+		return ret;
-+	}
-+
-+	return do_sendfile(out_fd, in_fd, NULL, count, 0);
-+}
-+
-+#ifdef CONFIG_COMPAT
-+COMPAT_SYSCALL_DEFINE4(sendfile, int, out_fd, int, in_fd,
-+		compat_off_t __user *, offset, compat_size_t, count)
-+{
-+	loff_t pos;
-+	off_t off;
-+	ssize_t ret;
-+
-+	if (offset) {
-+		if (unlikely(get_user(off, offset)))
-+			return -EFAULT;
-+		pos = off;
-+		ret = do_sendfile(out_fd, in_fd, &pos, count, MAX_NON_LFS);
-+		if (unlikely(put_user(pos, offset)))
-+			return -EFAULT;
-+		return ret;
-+	}
-+
-+	return do_sendfile(out_fd, in_fd, NULL, count, 0);
-+}
-+
-+COMPAT_SYSCALL_DEFINE4(sendfile64, int, out_fd, int, in_fd,
-+		compat_loff_t __user *, offset, compat_size_t, count)
-+{
-+	loff_t pos;
-+	ssize_t ret;
-+
-+	if (offset) {
-+		if (unlikely(copy_from_user(&pos, offset, sizeof(loff_t))))
-+			return -EFAULT;
-+		ret = do_sendfile(out_fd, in_fd, &pos, count, 0);
-+		if (unlikely(put_user(pos, offset)))
-+			return -EFAULT;
-+		return ret;
-+	}
-+
-+	return do_sendfile(out_fd, in_fd, NULL, count, 0);
-+}
-+#endif
-+
+steved.
+
+
+-------- Forwarded Message --------
+Subject: [RHEL7.1 PATCH 0/5][BZ1166845] NFSv4.x: Delegation return causes infinite loop and hung
+Date: Tue,  2 Dec 2014 13:21:50 -0500
+From: Steve Dickson <steved@redhat.com>
+To: Red Hat Kernel List <rhkernel-list@redhat.com>
+CC: Red Hat NFS Team <nfs-team@redhat.com>
+
+Here is a late breaking bug that was found by the Netapp QA people
+
+Description of problem:
+  When an NFS client receives an error while trying to return a delegation, it 
+  leads to infinite state recovery (and hung machine).
+
+As usual, as soon as this hits one of our kernel, they will
+be more than willing to help out with testing.
+
+bz: https://bugzilla.redhat.com/show_bug.cgi?id=1166845
+
+Trond Myklebust (5):
+  NFSv4: Ensure that we remove NFSv4.0 delegations when state has
+    expired
+  NFSv4: Ensure that we call FREE_STATEID when NFSv4.x stateids are
+    revoked
+  NFS: Don't try to reclaim delegation open state if recovery failed
+  NFSv4: Fix races between nfs_remove_bad_delegation() and delegation
+    return
+  NFSv4.1: nfs41_clear_delegation_stateid shouldn't trust
+    NFS_DELEGATED_STATE
+
+ fs/nfs/delegation.c            | 25 ++++++++++++--
+ fs/nfs/delegation.h            |  1 +
+ fs/nfs/filelayout/filelayout.c |  3 --
+ fs/nfs/nfs4proc.c              | 76 +++++++++++++++++++++++-------------------
+ 4 files changed, 65 insertions(+), 40 deletions(-)
+
 -- 
-2.1.0
+1.8.3.1
+
+
 
