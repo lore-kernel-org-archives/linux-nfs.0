@@ -1,109 +1,175 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f44.google.com ([209.85.216.44]:49485 "EHLO
-	mail-qa0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754441AbaLBSY3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 2 Dec 2014 13:24:29 -0500
-Received: by mail-qa0-f44.google.com with SMTP id i13so9270775qae.31
-        for <linux-nfs@vger.kernel.org>; Tue, 02 Dec 2014 10:24:28 -0800 (PST)
-From: Jeff Layton <jlayton@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org, Tejun Heo <tj@kernel.org>,
-        Al Viro <viro@zeniv.linux.org.uk>
-Subject: [RFC PATCH 00/14] nfsd/sunrpc: add support for a workqueue-based nfsd
-Date: Tue,  2 Dec 2014 13:24:09 -0500
-Message-Id: <1417544663-13299-1-git-send-email-jlayton@primarydata.com>
+Received: from mx1.redhat.com ([209.132.183.28]:54305 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750991AbaLCWQN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 3 Dec 2014 17:16:13 -0500
+Received: from int-mx13.intmail.prod.int.phx2.redhat.com (int-mx13.intmail.prod.int.phx2.redhat.com [10.5.11.26])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id sB3MGDxk012260
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
+	for <linux-nfs@vger.kernel.org>; Wed, 3 Dec 2014 17:16:13 -0500
+Message-ID: <547F8BAC.7060705@RedHat.com>
+Date: Wed, 03 Dec 2014 17:16:12 -0500
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: Pavel Raiskup <praiskup@redhat.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] exportfs: warn when really nothing is exported
+References: <1416589975-11372-1-git-send-email-praiskup@redhat.com>
+In-Reply-To: <1416589975-11372-1-git-send-email-praiskup@redhat.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-tl;dr: this code works and is much simpler than the dedicated thread
-       pool, but there are some latencies in the workqueue code that
-       seem to keep it from being as fast as it could be.
 
-This patchset is a little skunkworks project that I've been poking at
-for the last few weeks. Currently nfsd uses a dedicated thread pool to
-handle RPCs, but that requires maintaining a rather large swath of
-"fiddly" code to handle the threads and transports.
 
-This patchset represents an alternative approach, which makes nfsd use
-workqueues to do its bidding rather than a dedicated thread pool. When a
-transport needs to do work, we simply queue it to the workqueue in
-softirq context and let it service the transport.
+On 11/21/2014 12:12 PM, Pavel Raiskup wrote:
+> Throw 'No file systems exported!' iff no volume is exported rather
+> then if some exports file is empty.  Typically this can happen if
+> the default /etc/exports file is empty and admin installed
+> configuration into /etc/exports.d directory.
+> 
+> This is follow-up for e725def62c73b4 commit.
+> 
+> Signed-off-by: Pavel Raiskup <praiskup@redhat.com>
+Committed... 
 
-The current draft is runtime-switchable via a new sunrpc pool_mode
-module parameter setting. When that's set to "workqueue", nfsd will use
-a workqueue-based service. One of the goals of this patchset was to
-*not* need to change any userland code, so starting it up using rpc.nfsd
-still works as expected. The only real difference is that the nfsdfs
-"threads" file is reinterpreted as the "max_active" value for the
-workqueue.
+steved.
 
-This code has a lot of potential to simplify nfsd significantly and I
-think it may also scale better on larger machines. When testing with an
-exported tmpfs on my craptacular test machine, the workqueue based code
-seems to be a little faster than a dedicated thread pool.
-
-Currently though, performance takes a nose dive (~%40) when I'm writing
-to (relatively slow) SATA disks. With the help of some tracepoints, I
-think this is mostly due to some significant latency in the workqueue
-code.
-
-When I queue a thread using the legacy dedicated thread pool, I see
-~.2ms of latency between the softirq function queueing it to a given
-thread and the thread picking that work up. When I queue it to a
-workqueue however, that latency jumps to ~30ms (average).
-
-My current theory is that this latency interferes with the ability to
-batch up requests to the disks and that is what accounts for the massive
-slowdown.
-
-So, I have several goals here in posting this:
-
-1) to get some early feedback on this code. Does this seem reasonable,
-assuming that we can address the workqueue latency problems?
-
-2) get some insight about the latency from those with a better
-understanding of the CMWQ code. Any thoughts as to why we might be
-seeing such high latency here? Any ideas of what we can do about it?
-
-3) I'm also cc'ing Al due to some changes in patch #10 to allow nfsd
-to manage its fs_structs a little differently. Does that approach seem
-reasonable?
-
-Jeff Layton (14):
-  sunrpc: add a new svc_serv_ops struct and move sv_shutdown into it
-  sunrpc: move sv_function into sv_ops
-  sunrpc: move sv_module parm into sv_ops
-  sunrpc: turn enqueueing a svc_xprt into a svc_serv operation
-  sunrpc: abstract out svc_set_num_threads to sv_ops
-  sunrpc: move pool_mode definitions into svc.h
-  sunrpc: factor svc_rqst allocation and freeing from sv_nrthreads
-    refcounting
-  sunrpc: set up workqueue function in svc_xprt
-  sunrpc: add basic support for workqueue-based services
-  nfsd: keep a reference to the fs_struct in svc_rqst
-  nfsd: add support for workqueue based service processing
-  sunrpc: keep a cache of svc_rqsts for each NUMA node
-  sunrpc: add more tracepoints around svc_xprt handling
-  sunrpc: add tracepoints around svc_sock handling
-
- fs/fs_struct.c                  |  60 +++++++--
- fs/lockd/svc.c                  |   7 +-
- fs/nfs/callback.c               |   6 +-
- fs/nfsd/nfssvc.c                | 107 ++++++++++++---
- include/linux/fs_struct.h       |   4 +
- include/linux/sunrpc/svc.h      |  97 +++++++++++---
- include/linux/sunrpc/svc_xprt.h |   3 +
- include/linux/sunrpc/svcsock.h  |   1 +
- include/trace/events/sunrpc.h   |  60 ++++++++-
- net/sunrpc/Kconfig              |  10 ++
- net/sunrpc/Makefile             |   1 +
- net/sunrpc/svc.c                | 141 +++++++++++---------
- net/sunrpc/svc_wq.c             | 281 ++++++++++++++++++++++++++++++++++++++++
- net/sunrpc/svc_xprt.c           |  66 +++++++++-
- net/sunrpc/svcsock.c            |   6 +
- 15 files changed, 737 insertions(+), 113 deletions(-)
- create mode 100644 net/sunrpc/svc_wq.c
-
--- 
-2.1.0
-
+> ---
+>  support/export/export.c    | 20 +++++++-------------
+>  support/include/exportfs.h |  2 +-
+>  utils/exportfs/exportfs.c  | 22 +++++++++++++---------
+>  3 files changed, 21 insertions(+), 23 deletions(-)
+> 
+> diff --git a/support/export/export.c b/support/export/export.c
+> index 30a5b4a..e1bebce 100644
+> --- a/support/export/export.c
+> +++ b/support/export/export.c
+> @@ -69,36 +69,30 @@ static void warn_duplicated_exports(nfs_export *exp, struct exportent *eep)
+>   * export_read - read entries from /etc/exports
+>   * @fname: name of file to read from
+>   *
+> + * Returns number of read entries.
+>   */
+> -void
+> -export_read(char *fname, int verbose)
+> +int
+> +export_read(char *fname)
+>  {
+>  	struct exportent	*eep;
+>  	nfs_export		*exp;
+>  
+>  	int volumes = 0;
+> -	int bad_entry = 0;
+>  
+>  	setexportent(fname, "r");
+>  	while ((eep = getexportent(0,1)) != NULL) {
+>  		exp = export_lookup(eep->e_hostname, eep->e_path, 0);
+>  		if (!exp) {
+> -			exp = export_create(eep, 0);
+> -			if (exp)
+> +			if (export_create(eep, 0))
+> +				/* possible complaints already logged */
+>  				volumes++;
+> -			else 
+> -				bad_entry++;
+>  		}
+>  		else
+>  			warn_duplicated_exports(exp, eep);
+>  	}
+>  	endexportent();
+> -	if (volumes == 0) {
+> -		if (bad_entry > 0)
+> -			xlog(L_ERROR, "No file systems exported!");
+> -		else if (verbose)
+> -			xlog(L_WARNING, "No file systems exported!");
+> -	}
+> +
+> +	return volumes;
+>  }
+>  
+>  /**
+> diff --git a/support/include/exportfs.h b/support/include/exportfs.h
+> index 3d89f12..3b92f04 100644
+> --- a/support/include/exportfs.h
+> +++ b/support/include/exportfs.h
+> @@ -133,7 +133,7 @@ struct addrinfo *		client_resolve(const struct sockaddr *sap);
+>  int 				client_member(const char *client,
+>  						const char *name);
+>  
+> -void				export_read(char *fname, int verbose);
+> +int				export_read(char *fname);
+>  void				export_reset(nfs_export *);
+>  nfs_export *			export_lookup(char *hname, char *path, int caconical);
+>  nfs_export *			export_find(const struct addrinfo *ai,
+> diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
+> index 92fb9eb..48eac00 100644
+> --- a/utils/exportfs/exportfs.c
+> +++ b/utils/exportfs/exportfs.c
+> @@ -47,7 +47,7 @@ static void	error(nfs_export *exp, int err);
+>  static void	usage(const char *progname, int n);
+>  static void	validate_export(nfs_export *exp);
+>  static int	matchhostname(const char *hostname1, const char *hostname2);
+> -static void	export_d_read(const char *dname, int verbose);
+> +static int	export_d_read(const char *dname);
+>  static void grab_lockfile(void);
+>  static void release_lockfile(void);
+>  
+> @@ -182,8 +182,11 @@ main(int argc, char **argv)
+>  	atexit(release_lockfile);
+>  
+>  	if (f_export && ! f_ignore) {
+> -		export_read(_PATH_EXPORTS, f_verbose);
+> -		export_d_read(_PATH_EXPORTS_D, f_verbose);
+> +		if (! (export_read(_PATH_EXPORTS) +
+> +		       export_d_read(_PATH_EXPORTS_D))) {
+> +			if (f_verbose)
+> +				xlog(L_WARNING, "No file systems exported!");
+> +		}
+>  	}
+>  	if (f_export) {
+>  		if (f_all)
+> @@ -685,21 +688,22 @@ out:
+>  
+>  /* Based on mnt_table_parse_dir() in
+>     util-linux-ng/shlibs/mount/src/tab_parse.c */
+> -static void
+> -export_d_read(const char *dname, int verbose)
+> +static int
+> +export_d_read(const char *dname)
+>  {
+>  	int n = 0, i;
+>  	struct dirent **namelist = NULL;
+> +	int volumes = 0;
+>  
+>  
+>  	n = scandir(dname, &namelist, NULL, versionsort);
+>  	if (n < 0) {
+>  		if (errno == ENOENT)
+>  			/* Silently return */
+> -			return;
+> +			return volumes;
+>  		xlog(L_NOTICE, "scandir %s: %s", dname, strerror(errno));
+>  	} else if (n == 0)
+> -		return;
+> +		return volumes;
+>  
+>  	for (i = 0; i < n; i++) {
+>  		struct dirent *d = namelist[i];
+> @@ -729,14 +733,14 @@ export_d_read(const char *dname, int verbose)
+>  			continue;
+>  		}
+>  
+> -		export_read(fname, verbose);
+> +		volumes += export_read(fname);
+>  	}
+>  
+>  	for (i = 0; i < n; i++)
+>  		free(namelist[i]);
+>  	free(namelist);
+>  
+> -	return;
+> +	return volumes;
+>  }
+>  
+>  static char
+> 
