@@ -1,47 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:28905 "EHLO
+Received: from userp1040.oracle.com ([156.151.31.81]:41824 "EHLO
 	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932632AbaLDRoq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Dec 2014 12:44:46 -0500
-Message-ID: <54809D7F.4020901@oracle.com>
-Date: Thu, 04 Dec 2014 09:44:31 -0800
-From: Shirley Ma <shirley.ma@oracle.com>
-MIME-Version: 1.0
-To: Jeff Layton <jeff.layton@primarydata.com>
-CC: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Tejun Heo <tj@kernel.org>, NeilBrown <neilb@suse.de>,
+	with ESMTP id S1750855AbaLCQup convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 3 Dec 2014 11:50:45 -0500
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
+Subject: Re: [RFC PATCH 00/14] nfsd/sunrpc: add support for a workqueue-based nfsd
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20141203155649.GB5013@htj.dyndns.org>
+Date: Wed, 3 Dec 2014 11:50:32 -0500
+Cc: Jeff Layton <jeff.layton@primarydata.com>, Neil Brown <neilb@suse.de>,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Linux Kernel mailing list <linux-kernel@vger.kernel.org>,
+        LKML Kernel <linux-kernel@vger.kernel.org>,
         Al Viro <viro@zeniv.linux.org.uk>
-Subject: Re: [RFC PATCH 00/14] nfsd/sunrpc: add support for a workqueue-based
- nfsd
-References: <1417544663-13299-1-git-send-email-jlayton@primarydata.com>	<20141203121118.21a32fe1@notabene.brown>	<20141202202946.1e0f399b@tlielax.poochiereds.net>	<20141203155649.GB5013@htj.dyndns.org>	<20141203110405.5ecc85df@tlielax.poochiereds.net>	<20141203140202.7865bedb@tlielax.poochiereds.net>	<CAHQdGtQzth78BzBo9Gsz8LKe4ippJv6VYtjGCDmES7viByG_gA@mail.gmail.com>	<20141203142034.5c14529d@tlielax.poochiereds.net>	<CAHQdGtSoep_F82tDUoxKar+QvmL1tdHsYgYSrYtktndYJP8g5A@mail.gmail.com>	<20141203152147.2ca6c6fd@tlielax.poochiereds.net>	<CAHQdGtSbkvkGnDykEn0RnDJ5infX39N8cQObhDod+Vy4KX3Gnw@mail.gmail.com>	<20141204064711.72d48317@tlielax.poochiereds.net>	<5480971D.9010102@oracle.com> <20141204122845.3f9e3a04@tlielax.poochiereds.net>
-In-Reply-To: <20141204122845.3f9e3a04@tlielax.poochiereds.net>
-Content-Type: text/plain; charset=ISO-8859-1
+Message-Id: <D84C9E44-84EC-426D-95D7-4A7B2F5663AA@oracle.com>
+References: <1417544663-13299-1-git-send-email-jlayton@primarydata.com> <20141203121118.21a32fe1@notabene.brown> <20141202202946.1e0f399b@tlielax.poochiereds.net> <20141203155649.GB5013@htj.dyndns.org>
+To: Tejun Heo <tj@kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 12/04/2014 09:28 AM, Jeff Layton wrote:
-> On Thu, 04 Dec 2014 09:17:17 -0800
-> Shirley Ma <shirley.ma@oracle.com> wrote:
-> 
->> > I am looking at how to reduce total RPC execution time in NFS/RDMA. mountstats output shows that RPC backlog wait is too long, but increasing the credit limit doesn't seem help. Would this patchset help reducing total RPC execution time? 
->> > 
->> > Shirley
->> > 
-> I'm not sure. It depends on why you're seeing a backlog.
 
-What's the major factors contributing RPC backlog wait time? I guess I need to probe the backlog wait path to display fine-grained latency cost.
- 
-> So far, my testing still shows this to be slightly (~2%) slower than the
-> same setup running a threaded nfsd, but that could be different with a
-> NUMA server or faster disks.
+On Dec 3, 2014, at 10:56 AM, Tejun Heo <tj@kernel.org> wrote:
+
+> Hello, Neil, Jeff.
 > 
-> Probably there is some more tuning to do here before this is quite
-> ready for prime-time. It may be worth testing in your environment
-> though if you have the time and ability to do so.
+> On Tue, Dec 02, 2014 at 08:29:46PM -0500, Jeff Layton wrote:
+>> That's a good point. I had originally thought that max_active on an
+>> unbound workqueue would be the number of concurrent jobs that could run
+>> across all the CPUs, but now that I look I'm not sure that's really
+>> the case.
 > 
->> > On 12/04/2014 03:47 AM, Jeff Layton wrote:
->>> > > I was using ftrace with the sunrpc:* and workqueue:* tracepoints, and
->>> > > had a simple perl script to postprocess the trace info to figure out
->>> > > average/min/max latency.
+> @max_active is a per-pool number.  By default, unbound wqs use
+> per-node pools, so @max_active would be per-node.  Currently,
+> @max_active is mostly meant as a protection against run-away
+> workqueues creating crazy number of workers, which has been enough for
+> the existing wq users.  *Maybe* it makes sense to make it actually
+> mean maximum concurrency which would prolly involve aggregated per-cpu
+> distribution mechanism so that we don't end up inc'ing and dec'ing the
+> same counter from all CPUs on each work item execution.
+> 
+> However, I do agree with Neil that making it user configurable is
+> almost always painful.  It's usually a question without a good answer
+> and the same value may behave differently depending on a lot of
+> implementation details and a better approach, probably, is to use
+> @max_active as the last resort protection mechanism while providing
+> automatic throttling of in-flight work items which is meaningful for
+> the specific use cases.
+> 
+>> I've heard random grumblings from various people in the past that
+>> workqueues have significant latency, but this is the first time I've
+>> really hit it in practice. If we can get this fixed, then that may be a
+>> significant perf win for all workqueue users. For instance, rpciod in
+>> the NFS client is all workqueue-based. Getting that latency down could
+>> really help things.
+>> 
+>> I'm currently trying to roll up a kernel module for benchmarking the
+>> workqueue dispatching code in the hopes that we can use that to help
+>> nail it down.
+> 
+> Definitely, there were some reportings but nothing really got tracked
+> down properly.  It'd be awesome to actually find out where the latency
+> is coming from.
+
+I’ve measured some long (>10usec) latencies for queue_workqueue()
+and wake_up_bit() calls with CPU-intensive workloads.
+
+Often these APIs are invoked while one or more spinlocks are
+held. That makes it easy to back up a lot of work if one of
+these calls is slow for any reason.
+
+For wake_up_bit(), this doesn’t include how long it takes before
+the awoken process is run. With CPU-intensive workloads, it’s
+often the case that hundreds of usecs elapse, and the awoken
+process is migrated to another CPU (observed via ftrace).
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
