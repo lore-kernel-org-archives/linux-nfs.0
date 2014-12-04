@@ -1,94 +1,184 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:33883 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751837AbaLONIW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 15 Dec 2014 08:08:22 -0500
-Date: Mon, 15 Dec 2014 08:08:18 -0500 (EST)
-From: Benjamin Coddington <bcodding@redhat.com>
-To: Pablo Silva <psilvao@gmail.com>
-cc: linux-nfs@vger.kernel.org
-Subject: Re: Fwd: NFS and Memory Buffers
-In-Reply-To: <CAF1in6QpHmj6Y3UurtZvjsvX2se3DqTWqNxVmYtd2i+xUnEVug@mail.gmail.com>
-Message-ID: <alpine.OSX.2.19.9992.1412150803320.1119@planck.local>
-References: <CAF1in6QVkgyuC7VQ5QdYnYtPRJgArDwg5sXtKiAvyszCcQoZ-g@mail.gmail.com> <CAF1in6RCyK4VMM3j1ZD=1D25+cFU9YGg-UhR-kuYcNWNk+Stzg@mail.gmail.com> <alpine.OSX.2.19.9992.1412150749290.1119@planck.local>
- <CAF1in6QpHmj6Y3UurtZvjsvX2se3DqTWqNxVmYtd2i+xUnEVug@mail.gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail-wg0-f41.google.com ([74.125.82.41]:52416 "EHLO
+	mail-wg0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932854AbaLDRvo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Dec 2014 12:51:44 -0500
+From: Pieter Smith <pieter@boesman.nl>
+To: linux-kernel@vger.kernel.org
+Cc: Josh Triplett <josh@joshtriplett.org>, Pieter Smith <pieter@boesman.nl>,
+        Alexander Duyck <alexander.h.duyck@intel.com>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        Alexei Starovoitov <ast@plumgrid.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Bertrand Jacquin <beber@meleeweb.net>,
+        Catalina Mocanu <catalina.mocanu@gmail.com>,
+        Daniel Borkmann <dborkman@redhat.com>,
+        "David S. Miller" <davem@davemloft.net>,
+        Eric Dumazet <edumazet@google.com>,
+        "Eric W. Biederman" <ebiederm@xmission.com>,
+        Fabian Frederick <fabf@skynet.be>,
+        fuse-devel@lists.sourceforge.net (open list:FUSE: FILESYSTEM...),
+        Geert Uytterhoeven <geert@linux-m68k.org>,
+        Hugh Dickins <hughd@google.com>, Iulia Manda <iulia.manda21@gmail.com>,
+        Jan Beulich <JBeulich@suse.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        linux-api@vger.kernel.org (open list:ABI/API),
+        linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org (open list:KERNEL NFSD, SUNR...),
+        "Luis R. Rodriguez" <mcgrof@suse.com>,
+        Matt Turner <mattst88@gmail.com>, Mel Gorman <mgorman@suse.de>,
+        "Michael S. Tsirkin" <mst@redhat.com>,
+        Miklos Szeredi <miklos@szeredi.hu>,
+        netdev@vger.kernel.org (open list:NETWORKING [GENERAL]),
+        Oleg Nesterov <oleg@redhat.com>,
+        Paul Durrant <Paul.Durrant@citrix.com>,
+        "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
+        Peter Foley <pefoley2@pefoley.com>, Thomas Graf <tgraf@suug.ch>,
+        Tom Herbert <therbert@google.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Willem de Bruijn <willemb@google.com>,
+        Xiao Guangrong <xiaoguangrong@linux.vnet.ibm.com>,
+        =?UTF-8?q?=E8=94=A1=E6=AD=A3=E9=BE=99?= <zhenglong.cai@cs2c.com.cn>
+Subject: [PATCH v6 0/7] kernel tinification: optionally compile out splice family of syscalls (splice, vmsplice, tee and sendfile)
+Date: Thu,  4 Dec 2014 18:50:48 +0100
+Message-Id: <1417715473-24110-1-git-send-email-pieter@boesman.nl>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-What you're doing does result in the cache being flushed, only to
-immediately start to fill again.
+REPO: https://github.com/smipi1/linux-tinification.git
 
-I should have replied more to the point as Trond did: this is normal, do
-not worry.  Your memory is not being "used up", as the cache memory is given
-back to the system if it is needed for other use.
+BRANCH: tiny/config-syscall-splice
 
-Ben
+BACKGROUND: This patch-set forms part of the Linux Kernel Tinification effort (
+  https://tiny.wiki.kernel.org/).
 
-On Mon, 15 Dec 2014, Pablo Silva wrote:
+GOAL: Support compiling out the splice family of syscalls (splice, vmsplice,
+  tee and sendfile) along with all supporting infrastructure if not needed.
+  Many embedded systems will not need the splice-family syscalls. Omitting them
+  saves space.
 
-> Dear Benajmin;
->
->      A colleague sent me this information as is, but the curious thing
-> which does not release the memory buffer, except using the commands
-> that you can appreciate.
->
-> I am investigating if possible "know" that information is being stored
-> there, and from what I see there is a command linux-fTools that could
-> help me descubir the information being stored there, do not know if I
-> bring in my analysis but it is my first step, I do not know if you
-> have any other suggestions.
->
-> grateful
->
-> - Pablo
->
-> On Mon, Dec 15, 2014 at 9:52 AM, Benjamin Coddington
-> <bcodding@redhat.com> wrote:
-> > Dear Pablo,
-> >
-> >         Why are you restarting snmpd between flushing cache and reading
-> > memory values?  On a running system you can probably expect the
-> > cache to immediately start to fill after a flush anyway.
-> > y
-> > Ben
-> >
-> > On Mon, 15 Dec 2014, Pablo Silva wrote:
-> >
-> >> Dear Readers:
-> >>
-> >>      My boss has entrusted me to analyze why the memory buffers are
-> >> not released a Linux server with Centos 6.4.?
-> >>
-> >>     As informs me, the current reading is:
-> >>
-> >>
-> >> [root@bck ~]# free -m
-> >>              total       used       free     shared    buffers     cached
-> >> Mem:         15936      15788        147          0       6746        438
-> >> -/+ buffers/cache:       8604       7332
-> >> Swap:         2047          0       2047
-> >> [root@bck ~]#
-> >> [root@bck ~]#
-> >> [root@bck ~]# echo 3 > /proc/sys/vm/drop_caches && service snmpd
-> >> restart && free -m
-> >> Stopping snmpd:                                            [  OK  ]
-> >> Starting snmpd:                                            [  OK  ]
-> >>              total       used       free     shared    buffers     cached
-> >> Mem:         15936        509      15426          0         93         16
-> >> -/+ buffers/cache:        400      15536
-> >> Swap:         2047          0       2047
-> >> [root@bck ~]#
-> >>
-> >>    I can not find the solution to release the memory buffer and cache
-> >> memory so grateful for any hint for finding the solution to this
-> >> "problem".
-> >>
-> >> -Paul
-> >> --
-> >> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> >> the body of a message to majordomo@vger.kernel.org
-> >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> >>
->
+HISTORY:
+  PATCH v6:
+    - Removed unnecessary addition of __maybe_unused in fs/fuse
+
+  PATCH v5:
+    - Fix up commit log still referring to dropped __splice_p()
+
+  PATCH v4:
+    - Drops __splice_p()
+    - Let nfsd fall back to non-splice support when splice is compiled out
+    - Style fixes
+  
+  PATCH v3:
+    - Fixup commit logs so that they are consistent with patch strategy
+    - Style fixes
+  
+  PATCH v2:
+    - Avoid the ifdef mess introduced in PATCH v1 by mocking out exported splice
+      functions.
+
+STRATEGY:
+a. With the goal of eventually compiling out fs/splice.c, several functions
+   that are only used in support of the the splice family of syscalls are moved
+   into fs/splice.c from fs/read_write.c. The kernel_write function that is not
+   used to support the splice syscalls is moved to fs/read_write.c.
+
+b. Introduce an EXPERT kernel configuration option; CONFIG_SYSCALL_SPLICE; to
+   compile out the splice family of syscalls. This removes all userspace uses
+   of the splice infrastructure.
+
+c. Splice exports an operations struct, nosteal_pipe_buf_ops. Eliminate the 
+   uses of this struct when CONFIG_SYSCALL_SPLICE is undefined, so that splice
+   can later be compiled out.
+
+d. Let nfsd fall back to non-splice support when splice is compiled out.
+
+e. Compile out fs/splice.c. Functions exported by fs/splice are mocked out with
+   failing static inlines. This is done so as to all but eliminate the
+   maintenance burden on file-system drivers.
+
+RESULTS: A tinyconfig bloat-o-meter score for the entire patch-set:
+
+add/remove: 0/41 grow/shrink: 5/7 up/down: 23/-8422 (-8399)
+function                                     old     new   delta
+sys_pwritev                                  115     122      +7
+sys_preadv                                   115     122      +7
+fdput_pos                                     29      36      +7
+sys_pwrite64                                 115     116      +1
+sys_pread64                                  115     116      +1
+pipe_to_null                                   4       -      -4
+generic_pipe_buf_nosteal                       6       -      -6
+spd_release_page                              10       -     -10
+fdput                                         11       -     -11
+PageUptodate                                  22      11     -11
+lock_page                                     36      24     -12
+signal_pending                                39      26     -13
+fdget                                         56      42     -14
+page_cache_pipe_buf_release                   16       -     -16
+user_page_pipe_buf_ops                        20       -     -20
+splice_write_null                             24       4     -20
+page_cache_pipe_buf_ops                       20       -     -20
+nosteal_pipe_buf_ops                          20       -     -20
+default_pipe_buf_ops                          20       -     -20
+generic_splice_sendpage                       24       -     -24
+user_page_pipe_buf_steal                      25       -     -25
+splice_shrink_spd                             27       -     -27
+pipe_to_user                                  43       -     -43
+direct_splice_actor                           47       -     -47
+default_file_splice_write                     49       -     -49
+wakeup_pipe_writers                           54       -     -54
+wakeup_pipe_readers                           54       -     -54
+write_pipe_buf                                71       -     -71
+page_cache_pipe_buf_confirm                   80       -     -80
+splice_grow_spd                               87       -     -87
+do_splice_to                                  87       -     -87
+ipipe_prep.part                               92       -     -92
+splice_from_pipe                              93       -     -93
+splice_from_pipe_next                        107       -    -107
+pipe_to_sendpage                             109       -    -109
+page_cache_pipe_buf_steal                    114       -    -114
+opipe_prep.part                              119       -    -119
+sys_sendfile                                 122       -    -122
+generic_file_splice_read                     131       8    -123
+sys_sendfile64                               126       -    -126
+sys_vmsplice                                 137       -    -137
+do_splice_direct                             148       -    -148
+vmsplice_to_user                             205       -    -205
+__splice_from_pipe                           246       -    -246
+splice_direct_to_actor                       348       -    -348
+splice_to_pipe                               371       -    -371
+do_sendfile                                  492       -    -492
+sys_tee                                      497       -    -497
+vmsplice_to_pipe                             558       -    -558
+default_file_splice_read                     688       -    -688
+iter_file_splice_write                       702       4    -698
+sys_splice                                  1075       -   -1075
+__generic_file_splice_read                  1109       -   -1109
+
+
+Pieter Smith (7):
+  fs: move sendfile syscall into fs/splice
+  fs: moved kernel_write to fs/read_write
+  fs/splice: support compiling out splice-family syscalls
+  fs/fuse: support compiling out splice
+  net/core: support compiling out splice
+  fs/nfsd: support compiling out splice
+  fs/splice: full support for compiling out splice
+
+ fs/Makefile            |   3 +-
+ fs/fuse/dev.c          |   4 +
+ fs/read_write.c        | 181 +++------------------------------------------
+ fs/splice.c            | 194 +++++++++++++++++++++++++++++++++++++++++++++----
+ include/linux/fs.h     |  26 +++++++
+ include/linux/skbuff.h |  10 +++
+ include/linux/splice.h |  42 +++++++++++
+ init/Kconfig           |  10 +++
+ kernel/sys_ni.c        |   8 ++
+ net/core/skbuff.c      |  11 ++-
+ net/sunrpc/svc.c       |   2 +-
+ 11 files changed, 299 insertions(+), 192 deletions(-)
+
+-- 
+2.1.0
+
