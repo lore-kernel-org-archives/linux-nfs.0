@@ -1,64 +1,177 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f179.google.com ([209.85.220.179]:57268 "EHLO
-	mail-vc0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751359AbaL0SeT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 27 Dec 2014 13:34:19 -0500
-Received: by mail-vc0-f179.google.com with SMTP id le20so4265498vcb.24
-        for <linux-nfs@vger.kernel.org>; Sat, 27 Dec 2014 10:34:17 -0800 (PST)
+Received: from mx1.redhat.com ([209.132.183.28]:33149 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751026AbaLEPUQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 5 Dec 2014 10:20:16 -0500
+Received: from int-mx14.intmail.prod.int.phx2.redhat.com (int-mx14.intmail.prod.int.phx2.redhat.com [10.5.11.27])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id sB5FKGNE022315
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
+	for <linux-nfs@vger.kernel.org>; Fri, 5 Dec 2014 10:20:16 -0500
+Message-ID: <5481CD2F.4060607@redhat.com>
+Date: Fri, 05 Dec 2014 10:20:15 -0500
+From: Dave Sullivan <dsulliva@redhat.com>
 MIME-Version: 1.0
-In-Reply-To: <1419679857-16626-1-git-send-email-koshygp@gmail.com>
-References: <1419679857-16626-1-git-send-email-koshygp@gmail.com>
-Date: Sat, 27 Dec 2014 13:34:17 -0500
-Message-ID: <CAHQdGtS4iq2d-g-EKu9k_-Kv5pwW-rHkUxQFSCCV5iiB=52vug@mail.gmail.com>
-Subject: Re: [PATCH] NFS: nfs4_fs.h: Fix for checkpatch warnings
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Koshy George <koshygp@gmail.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Linux Kernel mailing list <linux-kernel@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+To: linux-nfs@vger.kernel.org
+CC: David Swegen <dswegen@redhat.com>, Steve Dickson <steved@redhat.com>
+Subject: possible better error handling for nfsv4 and localhost maps
+Content-Type: text/plain; charset=windows-1252; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Dec 27, 2014 at 6:30 AM, Koshy George <koshygp@gmail.com> wrote:
-> This patch fix checkpatch warning for nfs4_fs.h
->
-> fs/nfs/nfs4_fs.h:134: ERROR: "foo *     bar" should be "foo *bar"
-> fs/nfs/nfs4_fs.h:416: ERROR: "foo * bar" should be "foo *bar"
->
-> Signed-off-by: Koshy George <koshygp@gmail.com>
-> [Being first patch, need some assistance]
-> ---
->  fs/nfs/nfs4_fs.h | 4 ++--
->  1 file changed, 2 insertions(+), 2 deletions(-)
->
-> diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-> index a081787..ae336c7 100644
-> --- a/fs/nfs/nfs4_fs.h
-> +++ b/fs/nfs/nfs4_fs.h
-> @@ -131,7 +131,7 @@ enum {
->
->  struct nfs4_lock_state {
->         struct list_head        ls_locks;       /* Other lock stateids */
-> -       struct nfs4_state *     ls_state;       /* Pointer to open state */
-> +       struct nfs4_state       *ls_state;      /* Pointer to open state */
->  #define NFS_LOCK_INITIALIZED 0
->  #define NFS_LOCK_LOST        1
->         unsigned long           ls_flags;
-> @@ -413,7 +413,7 @@ static inline void nfs4_schedule_session_recovery(struct nfs4_session *session,
->  extern struct nfs4_state_owner *nfs4_get_state_owner(struct nfs_server *, struct rpc_cred *, gfp_t);
->  extern void nfs4_put_state_owner(struct nfs4_state_owner *);
->  extern void nfs4_purge_state_owners(struct nfs_server *);
-> -extern struct nfs4_state * nfs4_get_open_state(struct inode *, struct nfs4_state_owner *);
-> +extern struct nfs4_state *nfs4_get_open_state(struct inode *, struct nfs4_state_owner *);
->  extern void nfs4_put_open_state(struct nfs4_state *);
->  extern void nfs4_close_state(struct nfs4_state *, fmode_t);
->  extern void nfs4_close_sync(struct nfs4_state *, fmode_t);
-> --
-> 1.9.1
+Hi All,
 
-Sorry, but I'm not applying this kind of patch.
+Recently we had a customer with some legacy maps using localhost run 
+into a problem with NFSv4.
 
+They are not quite ready to get rid of those localhost maps.
+
+There is a fairly straight forward workaround/solution to get around 
+this issue by modifying /etc/nfsmount.conf with
+
+[ Server "localhost" ]
+    Nfsvers=3
+
+What we are asking for is better error handling so users can figure out 
+what the problem is without having to debug as much.
+
+i.e. Have the code not retry and have the code send a notification to 
+syslog saying something like "nfsv4 does not support localhost maps, man 
+nfsmount.conf, use [ Server "localhost" ] with Nfsvers=3 mount option to 
+restrict localhost maps to NFSv3"
+
+Here's an example of effort required to debug
+
+Description of problem:
+
+The RHEL automounter does try to do what’s inferred in the above 
+notation, ie, make a bind mount.  What happens next, when the local 
+filesystem doesn’t exist, is what’s causing us a problem.  It next 
+spawns a mount request to an NFS service on localhost for the mount, 
+either via IPV6, or via IPV4;  end-user hosts don’t serve NFS, so the 
+problem arises due to how this is handled.
+
+On RHEL5, the mount request contacts the portmapper, which reports there 
+is no program registered for NFS service, and the mount fails straight away.
+
+On RHEL6, if /etc/hosts has an entry for the IPV6 localhost address, an 
+NFS mount from IPV6 localhost gets tried first, which fails immediately 
+as expected, as IPV6 is not enabled, and no NFS service is registered on 
+the host.  Automount reports the mount failure straight away.
+Hi All,
+
+Recently we had a customer with some legacy maps using localhost run 
+into a problem with NFSv4.
+
+They are not quite ready to get rid of those localhost maps.
+
+There is a fairly straight forward workaround/solution to get around 
+this issue by modifying /etc/nfsmount.conf with
+
+[ Server "localhost" ]
+    Nfsvers=3
+
+What we are asking for is better error handling so users can figure out 
+what the problem is without having to debug as much.
+
+i.e. Have the code not retry and have the code send a notification to 
+syslog saying something like "nfsv4 does not support localhost maps, man 
+nfsmount.conf, use [ Server "localhost" ] with Nfsvers=3 mount option to 
+restrict localhost maps to NFSv3"
+
+Here's an example of effort required to debug
+
+Description of problem:
+
+The RHEL automounter does try to do what’s inferred in the above 
+notation, ie, make a bind mount.  What happens next, when the local 
+filesystem doesn’t exist, is what’s causing us a problem.  It next 
+spawns a mount request to an NFS service on localhost for the mount, 
+either via IPV6, or via IPV4;  end-user hosts don’t serve NFS, so the 
+problem arises due to how this is handled.
+
+On RHEL5, the mount request contacts the portmapper, which reports there 
+is no program registered for NFS service, and the mount fails straight away.
+
+On RHEL6, if /etc/hosts has an entry for the IPV6 localhost address, an 
+NFS mount from IPV6 localhost gets tried first, which fails immediately 
+as expected, as IPV6 is not enabled, and no NFS service is registered on 
+the host.  Automount reports the mount failure straight away.
+
+On RHEL6 however, if /etc/hosts does not have an entry for the IPV6 
+localhost address, automount tries the IPV4 localhost address; when the 
+mount is requested using NFSv4, the RPC request seem to get localhost 
+port 0 returned for NFS service, instead of being told there is no 
+program registered for NFS service (if I’m reading this strace correctly):
+
+1657  1416223283.572722 socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP) = 3
+1657  1416223283.572764 bind(3, {sa_family=AF_INET, sin_port=htons(0), 
+sin_addr=inet_addr("0.0.0.0")}, 16) = 0
+1657  1416223283.572811 connect(3, {sa_family=AF_INET, 
+sin_port=htons(0), sin_addr=inet_addr("127.0.0.1")}, 16) = 0
+1657  1416223283.572849 getsockname(3, {sa_family=AF_INET, 
+sin_port=htons(40477), sin_addr=inet_addr("127.0.0.1")}, [16]) = 0
+1657  1416223283.572896 mount("localhost:/local/0/blah", "/mnt/test", 
+"nfs", 0, "vers=4,addr=127.0.0.1,clientaddr"...) = -1 ECONNREFUSED 
+(Connection refused)
+
+The mount continues to pause and retry, until it reaches the retry 
+limit, and then eventually fails.  Here’s what the bare mount command shows:
+
+[root@lonlx8001b13 bevaja]# mount -vvv -t nfs -o nfsvers=4 
+localhost:/local/0/blah /mnt/test
+mount: fstab path: "/etc/fstab"
+mount: mtab path:  "/etc/mtab"
+mount: lock path:  "/etc/mtab~"
+mount: temp path:  "/etc/mtab.tmp"
+mount: UID:        0
+mount: eUID:       0
+mount: spec:  "localhost:/local/0/blah"
+mount: node:  "/mnt/test"
+mount: types: "nfs"
+mount: opts:  "nfsvers=4"
+final mount options: 'nfsvers=4'
+mount: external mount: argv[0] = "/sbin/mount.nfs"
+mount: external mount: argv[1] = "localhost:/local/0/blah"
+mount: external mount: argv[2] = "/mnt/test"
+mount: external mount: argv[3] = "-v"
+mount: external mount: argv[4] = "-o"
+mount: external mount: argv[5] = "rw,nfsvers=4"
+mount.nfs: timeout set for Mon Nov 17 14:42:17 2014
+mount.nfs: trying text-based options 
+'nfsvers=4,addr=127.0.0.1,clientaddr=127.0.0.1'
+mount.nfs: mount(2): Connection refused
+mount.nfs: trying text-based options 
+'nfsvers=4,addr=127.0.0.1,clientaddr=127.0.0.1'
+mount.nfs: mount(2): Connection refused
+mount.nfs: trying text-based options 
+'nfsvers=4,addr=127.0.0.1,clientaddr=127.0.0.1'
+mount.nfs: mount(2): Connection refused
+mount.nfs: trying text-based options 
+'nfsvers=4,addr=127.0.0.1,clientaddr=127.0.0.1'
+mount.nfs: mount(2): Connection refused
+mount.nfs: trying text-based options 
+'nfsvers=4,addr=127.0.0.1,clientaddr=127.0.0.1'
+mount.nfs: mount(2): Connection refused
+
+
+Thoughts?
+
+Thanks,
+
+Dave
 -- 
-Trond Myklebust
-Linux NFS client maintainer, PrimaryData
-trond.myklebust@primarydata.com
+
+===================================================================
+Dave Sullivan RHCE 			Email: dsulliva@redhat.com
+Sr. Technical Account Manager 	
+
++1 312 660 3525 (Office)
++1 989 750 8385 (Cell)
+===================================================================
+Red Hat, Inc. | 100 East Davie St | Raleigh, NC | 27601
+
+---
+Learn. Network. Experience open source.
+http://www.redhat.com
+http://access.redhat.com
+http://www.opensource.com
