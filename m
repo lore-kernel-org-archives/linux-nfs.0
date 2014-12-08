@@ -1,248 +1,107 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:34400 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:48879 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753971AbaLHUwd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 8 Dec 2014 15:52:33 -0500
+	id S1754277AbaLHUwb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 8 Dec 2014 15:52:31 -0500
 Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id sB8KqUF7007635
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id sB8KqSoG017481
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
-	for <linux-nfs@vger.kernel.org>; Mon, 8 Dec 2014 15:52:32 -0500
+	for <linux-nfs@vger.kernel.org>; Mon, 8 Dec 2014 15:52:31 -0500
 Received: from tonberry.usersys.redhat.com (dhcp145-188.rdu.redhat.com [10.13.145.188])
-	by int-mx11.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id sB8KF9IQ018387
+	by int-mx11.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id sB8KF9I1018387
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NO)
-	for <linux-nfs@vger.kernel.org>; Mon, 8 Dec 2014 15:17:39 -0500
+	for <linux-nfs@vger.kernel.org>; Mon, 8 Dec 2014 15:17:34 -0500
 Received: from tonberry.usersys.redhat.com (localhost [127.0.0.1])
-	by tonberry.usersys.redhat.com (8.14.8/8.14.5) with ESMTP id sB8JvVOZ010223
-	for <linux-nfs@vger.kernel.org>; Mon, 8 Dec 2014 14:57:31 -0500
+	by tonberry.usersys.redhat.com (8.14.8/8.14.5) with ESMTP id sB8JvW70010227
+	for <linux-nfs@vger.kernel.org>; Mon, 8 Dec 2014 14:57:32 -0500
 Received: (from smayhew@localhost)
-	by tonberry.usersys.redhat.com (8.14.8/8.14.8/Submit) id sB8JvV77010222
+	by tonberry.usersys.redhat.com (8.14.8/8.14.8/Submit) id sB8JvVPc010226
 	for linux-nfs@vger.kernel.org; Mon, 8 Dec 2014 14:57:31 -0500
 From: Scott Mayhew <smayhew@redhat.com>
 To: linux-nfs@vger.kernel.org
-Subject: [nfs-utils PATCH v3 13/17] mountstats: Implement nfsstat_command
-Date: Mon,  8 Dec 2014 14:57:21 -0500
-Message-Id: <1418068645-10134-14-git-send-email-smayhew@redhat.com>
+Subject: [nfs-utils PATCH v3 14/17] mountstats: Updated the mountstats(8) man page.
+Date: Mon,  8 Dec 2014 14:57:22 -0500
+Message-Id: <1418068645-10134-15-git-send-email-smayhew@redhat.com>
 In-Reply-To: <1418068645-10134-1-git-send-email-smayhew@redhat.com>
 References: <1418068645-10134-1-git-send-email-smayhew@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Displays nfssstat-like statistics (client statistics only).
+Updated the mounstats(8) man page to match the --help output.
 
 Signed-off-by: Scott Mayhew <smayhew@redhat.com>
 ---
- tools/mountstats/mountstats.py | 154 +++++++++++++++++++++++++++++++++++++++--
- 1 file changed, 150 insertions(+), 4 deletions(-)
+ tools/mountstats/mountstats.man | 44 +++++++++++++++++++++++++++++------------
+ 1 file changed, 31 insertions(+), 13 deletions(-)
 
-diff --git a/tools/mountstats/mountstats.py b/tools/mountstats/mountstats.py
-index aa93c76..02db3e2 100644
---- a/tools/mountstats/mountstats.py
-+++ b/tools/mountstats/mountstats.py
-@@ -24,7 +24,7 @@ MA 02110-1301 USA
- """
- 
- import sys, os, time
--from operator import itemgetter
-+from operator import itemgetter, add
- try:
-     import argparse
- except ImportError:
-@@ -32,7 +32,7 @@ except ImportError:
-         % sys.argv[0])
-     sys.exit(1)
- 
--Mountstats_version = '0.2'
-+Mountstats_version = '0.3'
- 
- def difference(x, y):
-     """Used for a map() function
-@@ -311,6 +311,11 @@ class DeviceData:
-             return True
-         return False
- 
-+    def nfs_version(self):
-+        if self.is_nfs_mountpoint():
-+            prog, vers = self.__rpc_data['programversion'].split('/')
-+            return int(vers)
-+
-     def display_raw_stats(self):
-         """Prints out stats in the same format as /proc/self/mountstats
-         """
-@@ -456,6 +461,50 @@ class DeviceData:
-                 print('\ttotal execute time: %f (milliseconds)' % \
-                     (float(stats[8]) / count))
- 
-+    def client_rpc_stats(self):
-+        """Tally high-level rpc stats for the nfsstat command
-+        """
-+        sends = 0
-+        trans = 0
-+        authrefrsh = 0
-+        for op in self.__rpc_data['ops']:
-+            sends += self.__rpc_data[op][0]
-+            trans += self.__rpc_data[op][1]
-+        retrans = trans - sends
-+        # authrefresh stats don't actually get captured in
-+        # /proc/self/mountstats, so we fudge it here
-+        authrefrsh = sends
-+        return (sends, trans, authrefrsh)
-+
-+    def display_nfsstat_stats(self):
-+        """Pretty-print nfsstat-style stats
-+        """
-+        sends = 0
-+        for op in self.__rpc_data['ops']:
-+            sends += self.__rpc_data[op][0]
-+        if sends == 0:
-+            return
-+        print()
-+        vers = self.nfs_version()
-+        print('Client nfs v%d' % vers)
-+        info = []
-+        for op in self.__rpc_data['ops']:
-+            print('%-13s' % str.lower(op)[:12], end='')
-+            count = self.__rpc_data[op][0]
-+            pct = (count * 100) / sends
-+            info.append((count, pct))
-+            if (self.__rpc_data['ops'].index(op) + 1) % 6 == 0:
-+                print()
-+                for (count, pct) in info:
-+                    print('%-8u%3u%% ' % (count, pct), end='')
-+                print()
-+                info = []
-+        print()
-+        if len(info) > 0:
-+            for (count, pct) in info:
-+                print('%-8u%3u%% ' % (count, pct), end='')
-+            print()
-+
-     def compare_iostats(self, old_stats):
-         """Return the difference between two sets of stats
-         """
-@@ -495,6 +544,27 @@ class DeviceData:
-             result.__nfs_data[key] -= old_stats.__nfs_data[key]
-         return result
- 
-+    def setup_accumulator(self, ops):
-+        """Initialize a DeviceData instance to tally stats for all mountpoints
-+        with the same major version. This is for the nfsstat command.
-+        """
-+        if ops == Nfsv3ops:
-+            self.__rpc_data['programversion'] = '100003/3'
-+            self.__nfs_data['fstype'] = 'nfs'
-+        elif ops == Nfsv4ops:
-+            self.__rpc_data['programversion'] = '100003/4'
-+            self.__nfs_data['fstype'] = 'nfs4'
-+        self.__rpc_data['ops'] = ops
-+        for op in ops:
-+            self.__rpc_data[op] = [0 for i in range(8)]
-+
-+    def accumulate_iostats(self, new_stats):
-+        """Accumulate counters from all RPC op buckets in new_stats.  This is
-+        for the nfsstat command.
-+        """
-+        for op in new_stats.__rpc_data['ops']:
-+            self.__rpc_data[op] = list(map(add, self.__rpc_data[op], new_stats.__rpc_data[op]))
-+
-     def __print_rpc_op_stats(self, op, sample_time):
-         """Print generic stats for one RPC op
-         """
-@@ -661,7 +731,78 @@ def mountstats_command(args):
-         args.since.close()
- 
- def nfsstat_command(args):
--    return
-+    """nfsstat-like command for NFS mount points
-+    """
-+    mountstats = parse_stats_file(args.infile)
-+    mountpoints = args.mountpoints
-+    v3stats = DeviceData()
-+    v3stats.setup_accumulator(Nfsv3ops)
-+    v4stats = DeviceData()
-+    v4stats.setup_accumulator(Nfsv4ops)
-+
-+    # ensure stats get printed if neither v3 nor v4 was specified
-+    if args.show_v3 or args.show_v4:
-+        show_both = False
-+    else:
-+        show_both = True
-+
-+    # make certain devices contains only NFS mount points
-+    if len(mountpoints) > 0:
-+        check = []
-+        for device in mountpoints:
-+            stats = DeviceData()
-+            try:
-+                stats.parse_stats(mountstats[device])
-+                if stats.is_nfs_mountpoint():
-+                    check += [device]
-+            except KeyError:
-+                continue
-+        mountpoints = check
-+    else:
-+        for device, descr in mountstats.items():
-+            stats = DeviceData()
-+            stats.parse_stats(descr)
-+            if stats.is_nfs_mountpoint():
-+                mountpoints += [device]
-+    if len(mountpoints) == 0:
-+        print('No NFS mount points were found')
-+        return
-+
-+    if args.since:
-+        old_mountstats = parse_stats_file(args.since)
-+
-+    for mp in mountpoints:
-+        stats = DeviceData()
-+        stats.parse_stats(mountstats[mp])
-+        vers = stats.nfs_version()
-+
-+        if not args.since:
-+            acc_stats = stats
-+        elif args.since and mp not in old_mountstats:
-+            acc_stats = stats
-+        else:
-+            old_stats = DeviceData()
-+            old_stats.parse_stats(old_mountstats[mp])
-+            acc_stats = stats.compare_iostats(old_stats)
-+
-+        if vers == 3 and (show_both or args.show_v3):
-+           v3stats.accumulate_iostats(acc_stats)
-+        elif vers == 4 and (show_both or args.show_v4):
-+           v4stats.accumulate_iostats(acc_stats)
-+
-+    sends, retrans, authrefrsh = map(add, v3stats.client_rpc_stats(), v4stats.client_rpc_stats())
-+    print('Client rpc stats:')
-+    print('calls      retrans    authrefrsh')
-+    print('%-11u%-11u%-11u' % (sends, retrans, authrefrsh))
-+
-+    if show_both or args.show_v3:
-+        v3stats.display_nfsstat_stats()
-+    if show_both or args.show_v4:
-+        v4stats.display_nfsstat_stats()
-+
-+    args.infile.close()
-+    if args.since:
-+        args.since.close()
- 
- def print_iostat_summary(old, new, devices, time):
-     for device in devices:
-@@ -798,9 +939,14 @@ def main():
-         nfsstat_parser = argparse.ArgumentParser(
-             description='nfsstat-like program that uses NFS client per-mount statistics.',
-             parents=[parser])
-+        nfsstat_parser.add_argument('-3', action='store_true', dest='show_v3',
-+            help='Show NFS version 3 statistics')
-+        nfsstat_parser.add_argument('-4', action='store_true', dest='show_v4',
-+            help='Show NFS version 4 statistics')
-+        nfsstat_parser.add_argument('mountpoints', nargs='*', metavar='mountpoint',
-+            help='Display statistics for this mountpoint')
-         nfsstat_parser.set_defaults(func=nfsstat_command)
-         args = nfsstat_parser.parse_args()
--        nfsstat_parser.print_help()
- 
-     elif prog == 'ms-iostat':
-         iostat_parser = argparse.ArgumentParser(
+diff --git a/tools/mountstats/mountstats.man b/tools/mountstats/mountstats.man
+index 0de31b7..50b3860 100644
+--- a/tools/mountstats/mountstats.man
++++ b/tools/mountstats/mountstats.man
+@@ -1,32 +1,50 @@
+ .\"
+ .\" mountstats(8)
+ .\"
+-.TH mountstats 8 "15 Apr 2010"
++.TH mountstats 8 "25 Nov 2014"
+ .SH NAME
+ mountstats \- Displays NFS client per-mount statistics
+ .SH SYNOPSIS
+-.BI "mountstats ["<options> "] " <mount_point> " [ " <mount_point> "]" 
++\fBmountstats [\fIOPTION\fB]\fR... \fB[\fImountpoint\fB]\fR...
+ .SH DESCRIPTION
+-The
+-.B mountstats
+-command displays NFS client statisitics on each given
+-.I <mount_point>
++.RB "The " mountstats " command displays NFS client statisitics on each given"
++.IR mountpoint .
++.P
++.RI "If no " mountpoint " is given, statistics will be displayed for all NFS mountpoints on the client."
+ .SH OPTIONS
+ .TP
+-.B " \-\-nfs
+-display only the NFS statistics
++.B \-h, \-\-help
++show the help message and exit
+ .TP
+-.B " \-\-rpc 
+-display only the RPC statistics
++.B \-v, \-\-version
++show program's version number and exit
+ .TP
+-.B " \-\-version 
+-display the version of this command
++\fB\-f \fIINFILE\fR, \fB\-\-file \fIINFILE
++.RI "Read stats from " INFILE " instead of " /proc/self/mountstats ".  "
++.TP
++\fB\-S \fISINCE\fR, \fB\-\-since \fISINCE
++.RI "Show difference between current stats and those in " SINCE ".  "
++.TP
++.B \-n, \-\-nfs
++Display only the NFS statistics
++.TP
++.B \-r, \-\-rpc
++Display only the RPC statistics
++.TP
++.B \-R, \-\-raw
++Display only the raw statistics.  This is intended for use with the
++.B \-f/\-\-file
++and
++.B \-S/\-\-since
++options.
+ .SH FILES
+ .TP
+ .B /proc/self/mountstats
+ .SH SEE ALSO
+ .BR iostat (8),
+ .BR nfsiostat (8),
+-.BR nfsstat(8)
++.BR nfsstat (8),
++.BR ms-iostat (8),
++.BR ms-nfsstat (8)
+ .SH AUTHOR
+ Chuck Lever <chuck.lever@oracle.com>
 -- 
 1.9.3
 
