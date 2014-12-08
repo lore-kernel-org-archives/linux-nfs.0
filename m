@@ -1,82 +1,98 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:41824 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750855AbaLCQup convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 3 Dec 2014 11:50:45 -0500
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
-Subject: Re: [RFC PATCH 00/14] nfsd/sunrpc: add support for a workqueue-based nfsd
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20141203155649.GB5013@htj.dyndns.org>
-Date: Wed, 3 Dec 2014 11:50:32 -0500
-Cc: Jeff Layton <jeff.layton@primarydata.com>, Neil Brown <neilb@suse.de>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        LKML Kernel <linux-kernel@vger.kernel.org>,
-        Al Viro <viro@zeniv.linux.org.uk>
-Message-Id: <D84C9E44-84EC-426D-95D7-4A7B2F5663AA@oracle.com>
-References: <1417544663-13299-1-git-send-email-jlayton@primarydata.com> <20141203121118.21a32fe1@notabene.brown> <20141202202946.1e0f399b@tlielax.poochiereds.net> <20141203155649.GB5013@htj.dyndns.org>
-To: Tejun Heo <tj@kernel.org>
+Received: from fieldses.org ([174.143.236.118]:50444 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751967AbaLHWix (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 8 Dec 2014 17:38:53 -0500
+Date: Mon, 8 Dec 2014 17:38:52 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
+Cc: linux-nfs@vger.kernel.org, "David S. Miller" <davem@davemloft.net>
+Subject: Re: [PATCH v1] sunrpc/cache: convert to use string_escape_str()
+Message-ID: <20141208223852.GA20526@fieldses.org>
+References: <1417189828-25688-1-git-send-email-andriy.shevchenko@linux.intel.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1417189828-25688-1-git-send-email-andriy.shevchenko@linux.intel.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Fri, Nov 28, 2014 at 05:50:28PM +0200, Andy Shevchenko wrote:
+> There is nice kernel helper to escape a given strings by provided rules. Let's
+> use it instead of custom approach.
 
-On Dec 3, 2014, at 10:56 AM, Tejun Heo <tj@kernel.org> wrote:
+Looks good, but it broke nfsd.
 
-> Hello, Neil, Jeff.
+After staring at the patch for a while:
+
+> Signed-off-by: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
+> ---
+>  net/sunrpc/cache.c | 27 ++++++---------------------
+>  1 file changed, 6 insertions(+), 21 deletions(-)
 > 
-> On Tue, Dec 02, 2014 at 08:29:46PM -0500, Jeff Layton wrote:
->> That's a good point. I had originally thought that max_active on an
->> unbound workqueue would be the number of concurrent jobs that could run
->> across all the CPUs, but now that I look I'm not sure that's really
->> the case.
+> diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
+> index 0663621..5cf60a4 100644
+> --- a/net/sunrpc/cache.c
+> +++ b/net/sunrpc/cache.c
+> @@ -20,6 +20,7 @@
+>  #include <linux/list.h>
+>  #include <linux/module.h>
+>  #include <linux/ctype.h>
+> +#include <linux/string_helpers.h>
+>  #include <asm/uaccess.h>
+>  #include <linux/poll.h>
+>  #include <linux/seq_file.h>
+> @@ -1067,32 +1068,16 @@ void qword_add(char **bpp, int *lp, char *str)
+>  {
+>  	char *bp = *bpp;
+>  	int len = *lp;
+> -	char c;
+> +	int ret;
+>  
+>  	if (len < 0) return;
+>  
+> -	while ((c=*str++) && len)
+> -		switch(c) {
+> -		case ' ':
+> -		case '\t':
+> -		case '\n':
+> -		case '\\':
+> -			if (len >= 4) {
+> -				*bp++ = '\\';
+> -				*bp++ = '0' + ((c & 0300)>>6);
+> -				*bp++ = '0' + ((c & 0070)>>3);
+> -				*bp++ = '0' + ((c & 0007)>>0);
+> -			}
+> -			len -= 4;
+> -			break;
+> -		default:
+> -			*bp++ = c;
+> -			len--;
+> -		}
+> -	if (c || len <1) len = -1;
+> +	ret = string_escape_str(str, &bp, len, ESCAPE_OCTAL, "\\ \n\t");
+> +	if (ret < 0 || ret == len)
+> +		len = -1;
+>  	else {
+>  		*bp++ = ' ';
+> -		len--;
+> +		len -= ret - 1;
+
+Looks like that should be ret + 1, not ret - 1.  With that change,
+things work.
+
+Inclined to actually commit that as:
+
+	len -= ret;
+	*bp++ = ' ';
+	len--;
+
+just to make the arithmetic really obvious.
+
+--b.
+
+>  	}
+>  	*bpp = bp;
+>  	*lp = len;
+> -- 
+> 2.1.3
 > 
-> @max_active is a per-pool number.  By default, unbound wqs use
-> per-node pools, so @max_active would be per-node.  Currently,
-> @max_active is mostly meant as a protection against run-away
-> workqueues creating crazy number of workers, which has been enough for
-> the existing wq users.  *Maybe* it makes sense to make it actually
-> mean maximum concurrency which would prolly involve aggregated per-cpu
-> distribution mechanism so that we don't end up inc'ing and dec'ing the
-> same counter from all CPUs on each work item execution.
-> 
-> However, I do agree with Neil that making it user configurable is
-> almost always painful.  It's usually a question without a good answer
-> and the same value may behave differently depending on a lot of
-> implementation details and a better approach, probably, is to use
-> @max_active as the last resort protection mechanism while providing
-> automatic throttling of in-flight work items which is meaningful for
-> the specific use cases.
-> 
->> I've heard random grumblings from various people in the past that
->> workqueues have significant latency, but this is the first time I've
->> really hit it in practice. If we can get this fixed, then that may be a
->> significant perf win for all workqueue users. For instance, rpciod in
->> the NFS client is all workqueue-based. Getting that latency down could
->> really help things.
->> 
->> I'm currently trying to roll up a kernel module for benchmarking the
->> workqueue dispatching code in the hopes that we can use that to help
->> nail it down.
-> 
-> Definitely, there were some reportings but nothing really got tracked
-> down properly.  It'd be awesome to actually find out where the latency
-> is coming from.
-
-I’ve measured some long (>10usec) latencies for queue_workqueue()
-and wake_up_bit() calls with CPU-intensive workloads.
-
-Often these APIs are invoked while one or more spinlocks are
-held. That makes it easy to back up a lot of work if one of
-these calls is slow for any reason.
-
-For wake_up_bit(), this doesn’t include how long it takes before
-the awoken process is run. With CPU-intensive workloads, it’s
-often the case that hundreds of usecs elapse, and the awoken
-process is migrated to another CPU (observed via ftrace).
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
