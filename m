@@ -1,179 +1,91 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from vader.hardeman.nu ([95.142.160.32]:51296 "EHLO hardeman.nu"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752655AbaLIFmZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 9 Dec 2014 00:42:25 -0500
-Subject: [PATCH 19/19] nfs-utils: gssd - simplify handle_gssd_upcall
-From: David =?utf-8?b?SMOkcmRlbWFu?= <david@hardeman.nu>
-To: linux-nfs@vger.kernel.org
-Cc: SteveD@redhat.com
-Date: Tue, 09 Dec 2014 06:42:16 +0100
-Message-ID: <20141209054216.24756.44477.stgit@zeus.muc.hardeman.nu>
+Received: from mail-qg0-f41.google.com ([209.85.192.41]:40207 "EHLO
+	mail-qg0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755234AbaLINJ0 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Dec 2014 08:09:26 -0500
+Received: by mail-qg0-f41.google.com with SMTP id j5so341817qga.28
+        for <linux-nfs@vger.kernel.org>; Tue, 09 Dec 2014 05:09:25 -0800 (PST)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Tue, 9 Dec 2014 08:09:23 -0500
+To: David =?UTF-8?B?SMOkcmRlbWFu?= <david@hardeman.nu>
+Cc: linux-nfs@vger.kernel.org, SteveD@redhat.com
+Subject: Re: [PATCH 00/19] gssd improvements
+Message-ID: <20141209080923.2708eb4f@tlielax.poochiereds.net>
 In-Reply-To: <20141209053828.24756.89941.stgit@zeus.muc.hardeman.nu>
 References: <20141209053828.24756.89941.stgit@zeus.muc.hardeman.nu>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Stumbled across this function, just had to simplify it. No mallocs
-necessary, one quick loop to find the parameters. Much simpler.
+On Tue, 09 Dec 2014 06:40:40 +0100
+David Härdeman <david@hardeman.nu> wrote:
 
-Signed-off-by: David Härdeman <david@hardeman.nu>
----
- utils/gssd/gssd_proc.c |  106 +++++++++++++++++-------------------------------
- 1 file changed, 38 insertions(+), 68 deletions(-)
+> The following series converts gssd to use libevent and inotify instead
+> of a handrolled event loop and dnotify. Lots of cleanups in the process
+> (e.g. removing a lot of arbitrary limitations and fixed size buffers).
+> 
+> All in all a nice reduction in code size (what can I say, I was bored).
+> 
+> I've even managed to mount NFS shares with the patched server :)
+> 
+> ---
+> 
+> David Härdeman (19):
+>       nfs-utils: cleanup daemonization code
+>       nfs-utils: gssd - merge gssd_main_loop.c and gssd.c
+>       nfs-utils: gssd - simplify some option handling
+>       nfs-utils: gssd - remove arbitrary GSSD_MAX_CCACHE_SEARCH limitation
+>       nfs-utils: gssd - simplify topdirs path
+>       nfs-utils: gssd - move over pipfs scanning code
+>       nfs-utils: gssd - simplify client dir scanning code
+>       nfs-utils: gssd - use libevent
+>       nfs-utils: gssd - remove "close me" code
+>       nfs-utils: gssd - make the client lists per-topdir
+>       nfs-utils: gssd - keep the rpc_pipefs dir open
+>       nfs-utils: gssd - use more relative paths
+>       nfs-utils: gssd - simplify topdir scanning
+>       nfs-utils: gssd - simplify client scanning
+>       nfs-utils: gssd - cleanup read_service_info
+>       nfs-utils: gssd - change dnotify to inotify
+>       nfs-utils: gssd - further shorten some pathnames
+>       nfs-utils: gssd - improve inotify
+>       nfs-utils: gssd - simplify handle_gssd_upcall
+> 
+> 
+>  support/include/nfslib.h    |    5 
+>  support/nfs/mydaemon.c      |   92 +++--
+>  utils/gssd/Makefile.am      |   24 +
+>  utils/gssd/gss_util.h       |    2 
+>  utils/gssd/gssd.c           |  785 +++++++++++++++++++++++++++++++++++++++++--
+>  utils/gssd/gssd.h           |   46 +--
+>  utils/gssd/gssd_main_loop.c |  263 --------------
+>  utils/gssd/gssd_proc.c      |  654 ++----------------------------------
+>  utils/gssd/svcgssd.c        |    8 
+>  utils/idmapd/idmapd.c       |    6 
+>  utils/statd/statd.c         |   66 +---
+>  11 files changed, 878 insertions(+), 1073 deletions(-)
+>  delete mode 100644 utils/gssd/gssd_main_loop.c
+> 
+> --
+> David Härdeman
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
-index a5a46ef..d733339 100644
---- a/utils/gssd/gssd_proc.c
-+++ b/utils/gssd/gssd_proc.c
-@@ -713,6 +713,7 @@ handle_gssd_upcall(struct clnt_info *clp)
- 	int			lbuflen = 0;
- 	char			*p;
- 	char			*mech = NULL;
-+	char			*uidstr = NULL;
- 	char			*target = NULL;
- 	char			*service = NULL;
- 	char			*enctypes = NULL;
-@@ -729,72 +730,53 @@ handle_gssd_upcall(struct clnt_info *clp)
- 
- 	printerr(2, "%s: '%s'\n", __func__, lbuf);
- 
--	/* find the mechanism name */
--	if ((p = strstr(lbuf, "mech=")) != NULL) {
--		mech = malloc(lbuflen);
--		if (!mech)
--			goto out;
--		if (sscanf(p, "mech=%s", mech) != 1) {
--			printerr(0, "WARNING: handle_gssd_upcall: "
--				    "failed to parse gss mechanism name "
--				    "in upcall string '%s'\n", lbuf);
--			goto out;
--		}
--	} else {
-+	for (p = strtok(lbuf, " "); p; p = strtok(NULL, " ")) {
-+		if (!strncmp(p, "mech=", strlen("mech=")))
-+			mech = p + strlen("mech=");
-+		else if (!strncmp(p, "uid=", strlen("uid=")))
-+			uidstr = p + strlen("uid=");
-+		else if (!strncmp(p, "enctypes=", strlen("enctypes=")))
-+			enctypes = p + strlen("enctypes=");
-+		else if (!strncmp(p, "target=", strlen("target=")))
-+			target = p + strlen("target=");
-+		else if (!strncmp(p, "service=", strlen("service=")))
-+			service = p + strlen("service=");
-+	}
-+
-+	if (!mech || strlen(mech) < 1) {
- 		printerr(0, "WARNING: handle_gssd_upcall: "
- 			    "failed to find gss mechanism name "
- 			    "in upcall string '%s'\n", lbuf);
--		goto out;
-+		return;
- 	}
- 
--	/* read uid */
--	if ((p = strstr(lbuf, "uid=")) != NULL) {
--		if (sscanf(p, "uid=%d", &uid) != 1) {
--			printerr(0, "WARNING: handle_gssd_upcall: "
--				    "failed to parse uid "
--				    "in upcall string '%s'\n", lbuf);
--			goto out;
--		}
--	} else {
-+	if (uidstr) {
-+		uid = (uid_t)strtol(uidstr, &p, 10);
-+		if (p == uidstr || *p != '\0')
-+			uidstr = NULL;
-+	}
-+
-+	if (!uidstr) {
- 		printerr(0, "WARNING: handle_gssd_upcall: "
- 			    "failed to find uid "
- 			    "in upcall string '%s'\n", lbuf);
--		goto out;
-+		return;
- 	}
- 
--	/* read supported encryption types if supplied */
--	if ((p = strstr(lbuf, "enctypes=")) != NULL) {
--		enctypes = malloc(lbuflen);
--		if (!enctypes)
--			goto out;
--		if (sscanf(p, "enctypes=%s", enctypes) != 1) {
--			printerr(0, "WARNING: handle_gssd_upcall: "
--				    "failed to parse encryption types "
--				    "in upcall string '%s'\n", lbuf);
--			goto out;
--		}
--		if (parse_enctypes(enctypes) != 0) {
--			printerr(0, "WARNING: handle_gssd_upcall: "
--				"parsing encryption types failed: errno %d\n", errno);
--		}
-+	if (enctypes && parse_enctypes(enctypes) != 0) {
-+		printerr(0, "WARNING: handle_gssd_upcall: "
-+			 "parsing encryption types failed: errno %d\n", errno);
-+		return;
- 	}
- 
--	/* read target name */
--	if ((p = strstr(lbuf, "target=")) != NULL) {
--		target = malloc(lbuflen);
--		if (!target)
--			goto out;
--		if (sscanf(p, "target=%s", target) != 1) {
--			printerr(0, "WARNING: handle_gssd_upcall: "
--				    "failed to parse target name "
--				    "in upcall string '%s'\n", lbuf);
--			goto out;
--		}
-+	if (target && strlen(target) < 1) {
-+		printerr(0, "WARNING: handle_gssd_upcall: "
-+			 "failed to parse target name "
-+			 "in upcall string '%s'\n", lbuf);
-+		return;
- 	}
- 
- 	/*
--	 * read the service name
--	 *
- 	 * The presence of attribute "service=" indicates that machine
- 	 * credentials should be used for this request.  If the value
- 	 * is "*", then any machine credentials available can be used.
-@@ -802,16 +784,11 @@ handle_gssd_upcall(struct clnt_info *clp)
- 	 * the specified service name (always "nfs" for now) should be
- 	 * used.
- 	 */
--	if ((p = strstr(lbuf, "service=")) != NULL) {
--		service = malloc(lbuflen);
--		if (!service)
--			goto out;
--		if (sscanf(p, "service=%s", service) != 1) {
--			printerr(0, "WARNING: handle_gssd_upcall: "
--				    "failed to parse service type "
--				    "in upcall string '%s'\n", lbuf);
--			goto out;
--		}
-+	if (service && strlen(service) < 1) {
-+		printerr(0, "WARNING: handle_gssd_upcall: "
-+			 "failed to parse service type "
-+			 "in upcall string '%s'\n", lbuf);
-+		return;
- 	}
- 
- 	if (strcmp(mech, "krb5") == 0 && clp->servername)
-@@ -822,12 +799,5 @@ handle_gssd_upcall(struct clnt_info *clp)
- 				 "received unknown gss mech '%s'\n", mech);
- 		do_error_downcall(clp->gssd_fd, uid, -EACCES);
- 	}
--
--out:
--	free(mech);
--	free(enctypes);
--	free(target);
--	free(service);
--	return;
- }
- 
+Looks like a nice cleanup at first glance, but I haven't gone over it
+in detail.
 
+One thing that _would_ be nice while you're in here though would be to
+help parallelize more of process_krb5_upcall. Currently it forks before
+changing its identity and then the parent waits on that to exit which
+keeps everything serialized.
+
+I did it that way so that we didn't need change how we close the fds
+afterward. Now that you're already doing some surgery there, that might
+be easier to do and may help performance.
+
+-- 
+Jeff Layton <jlayton@primarydata.com>
