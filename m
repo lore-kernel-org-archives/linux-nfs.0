@@ -1,69 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:57863 "EHLO mx1.redhat.com"
+Received: from vader.hardeman.nu ([95.142.160.32]:51256 "EHLO hardeman.nu"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752127AbaLWVoy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 23 Dec 2014 16:44:54 -0500
-Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id sBNListD014801
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
-	for <linux-nfs@vger.kernel.org>; Tue, 23 Dec 2014 16:44:54 -0500
-Received: from tonberry.usersys.redhat.com (dhcp145-188.rdu.redhat.com [10.13.145.188])
-	by int-mx11.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id sBNLira4025074
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NO)
-	for <linux-nfs@vger.kernel.org>; Tue, 23 Dec 2014 16:44:53 -0500
-Received: from tonberry.usersys.redhat.com (localhost [127.0.0.1])
-	by tonberry.usersys.redhat.com (8.14.8/8.14.5) with ESMTP id sBNLirFT018073
-	for <linux-nfs@vger.kernel.org>; Tue, 23 Dec 2014 16:44:53 -0500
-Received: (from smayhew@localhost)
-	by tonberry.usersys.redhat.com (8.14.8/8.14.8/Submit) id sBNLiqIx018072
-	for linux-nfs@vger.kernel.org; Tue, 23 Dec 2014 16:44:52 -0500
-From: Scott Mayhew <smayhew@redhat.com>
+	id S1750998AbaLIFkw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 9 Dec 2014 00:40:52 -0500
+Subject: [PATCH 00/19] gssd improvements
+From: David =?utf-8?b?SMOkcmRlbWFu?= <david@hardeman.nu>
 To: linux-nfs@vger.kernel.org
-Subject: [nfs-utils PATCH] rpc.idmapd: Add a reference to nfsidmap(8) on the man page
-Date: Tue, 23 Dec 2014 16:44:52 -0500
-Message-Id: <1419371092-18037-1-git-send-email-smayhew@redhat.com>
+Cc: SteveD@redhat.com
+Date: Tue, 09 Dec 2014 06:40:40 +0100
+Message-ID: <20141209053828.24756.89941.stgit@zeus.muc.hardeman.nu>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Even though the 'new' idmapper used by the client has been around for
-several years, a lot of users seem to be unaware of its existence.
+The following series converts gssd to use libevent and inotify instead
+of a handrolled event loop and dnotify. Lots of cleanups in the process
+(e.g. removing a lot of arbitrary limitations and fixed size buffers).
 
-Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+All in all a nice reduction in code size (what can I say, I was bored).
+
+I've even managed to mount NFS shares with the patched server :)
+
 ---
- utils/idmapd/idmapd.man | 13 ++++++++++++-
- 1 file changed, 12 insertions(+), 1 deletion(-)
 
-diff --git a/utils/idmapd/idmapd.man b/utils/idmapd/idmapd.man
-index 185cd1b..c809f78 100644
---- a/utils/idmapd/idmapd.man
-+++ b/utils/idmapd/idmapd.man
-@@ -20,6 +20,16 @@ is the NFSv4 ID <-> name mapping daemon.  It provides functionality to
- the NFSv4 kernel client and server, to which it communicates via
- upcalls, by translating user and group IDs to names, and vice versa.
- .Pp
-+Note that on more recent kernels only the NFSv4 server uses
-+.Nm .
-+The NFSv4 client instead uses
-+.Xr nfsidmap 8 ,
-+and only falls back to 
-+.Nm 
-+if there was a problem running the
-+.Xr nfsidmap 8
-+program.
-+.Pp
- The options are as follows:
- .Bl -tag -width Ds_imagedir
- .It Fl v
-@@ -58,7 +68,8 @@ messages to console, and with a verbosity level of 3.
- .Sh FILES
- .Pa /etc/idmapd.conf
- .Sh SEE ALSO
--.Xr idmapd.conf 5
-+.Xr idmapd.conf 5 ,
-+.Xr nfsidmap 8
- .\".Sh SEE ALSO
- .\".Xr nylon.conf 4
- .\" .Sh COMPATIBILITY
--- 
-1.9.3
+David Härdeman (19):
+      nfs-utils: cleanup daemonization code
+      nfs-utils: gssd - merge gssd_main_loop.c and gssd.c
+      nfs-utils: gssd - simplify some option handling
+      nfs-utils: gssd - remove arbitrary GSSD_MAX_CCACHE_SEARCH limitation
+      nfs-utils: gssd - simplify topdirs path
+      nfs-utils: gssd - move over pipfs scanning code
+      nfs-utils: gssd - simplify client dir scanning code
+      nfs-utils: gssd - use libevent
+      nfs-utils: gssd - remove "close me" code
+      nfs-utils: gssd - make the client lists per-topdir
+      nfs-utils: gssd - keep the rpc_pipefs dir open
+      nfs-utils: gssd - use more relative paths
+      nfs-utils: gssd - simplify topdir scanning
+      nfs-utils: gssd - simplify client scanning
+      nfs-utils: gssd - cleanup read_service_info
+      nfs-utils: gssd - change dnotify to inotify
+      nfs-utils: gssd - further shorten some pathnames
+      nfs-utils: gssd - improve inotify
+      nfs-utils: gssd - simplify handle_gssd_upcall
+
+
+ support/include/nfslib.h    |    5 
+ support/nfs/mydaemon.c      |   92 +++--
+ utils/gssd/Makefile.am      |   24 +
+ utils/gssd/gss_util.h       |    2 
+ utils/gssd/gssd.c           |  785 +++++++++++++++++++++++++++++++++++++++++--
+ utils/gssd/gssd.h           |   46 +--
+ utils/gssd/gssd_main_loop.c |  263 --------------
+ utils/gssd/gssd_proc.c      |  654 ++----------------------------------
+ utils/gssd/svcgssd.c        |    8 
+ utils/idmapd/idmapd.c       |    6 
+ utils/statd/statd.c         |   66 +---
+ 11 files changed, 878 insertions(+), 1073 deletions(-)
+ delete mode 100644 utils/gssd/gssd_main_loop.c
+
+--
+David Härdeman
 
