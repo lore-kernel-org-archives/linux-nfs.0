@@ -1,82 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:41109 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:35186 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932691AbaLJVHY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 10 Dec 2014 16:07:24 -0500
-Date: Wed, 10 Dec 2014 16:07:23 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: David =?utf-8?B?SMOkcmRlbWFu?= <david@hardeman.nu>
-Cc: linux-nfs@vger.kernel.org, SteveD@redhat.com
-Subject: Re: [PATCH 00/19] gssd improvements
-Message-ID: <20141210210723.GG20235@fieldses.org>
-References: <20141209053828.24756.89941.stgit@zeus.muc.hardeman.nu>
- <20141210203511.GF20235@fieldses.org>
- <20141210204917.GA11396@hardeman.nu>
+	id S1751362AbaLITYK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 9 Dec 2014 14:24:10 -0500
+Date: Tue, 9 Dec 2014 14:24:07 -0500
+To: Benjamin Coddington <bcodding@redhat.com>
+Cc: linux-nfs@vger.kernel.org, dros@netapp.com
+Subject: Re: [PATCH 1/2] nfsd4: fix xdr4 inclusion of escaped char
+Message-ID: <20141209192406.GN20526@fieldses.org>
+References: <cover.1417985975.git.bcodding@redhat.com>
+ <8ec7a52c7b6b5287e8bd87503834bae46377f3ef.1417985975.git.bcodding@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <20141210204917.GA11396@hardeman.nu>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <8ec7a52c7b6b5287e8bd87503834bae46377f3ef.1417985975.git.bcodding@redhat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Dec 10, 2014 at 09:49:17PM +0100, David Härdeman wrote:
-> On Wed, Dec 10, 2014 at 03:35:11PM -0500, J. Bruce Fields wrote:
-> >On Tue, Dec 09, 2014 at 06:40:40AM +0100, David Härdeman wrote:
-> >> The following series converts gssd to use libevent and inotify instead
-> >> of a handrolled event loop and dnotify. Lots of cleanups in the process
-> >> (e.g. removing a lot of arbitrary limitations and fixed size buffers).
-> >> 
-> >> All in all a nice reduction in code size (what can I say, I was bored).
-> >
-> >This code has been crying out for help for a while, thanks for taking a
-> >look!
-> 
-> :)
-> 
-> >On dnotify/inotify: if I remember correctly, this was written before
-> >inotify existed.  So you're probably breaking compatibility with older
-> >kernels, which we normally try not to do.
-> 
-> Fair enough...but...there has to be some kind of reasonable limit to
-> that. Like...unmaintained kernel versions with known CVEs...if an
-> organization is *that* conservative...I kinda doubt they'd update
-> nfs-utils either?
+On Sun, Dec 07, 2014 at 04:05:47PM -0500, Benjamin Coddington wrote:
+> Fix a bug where nfsd4_encode_components_esc() includes the esc_end char as
+> an additional string encoding.
 
-Personally I worry more about troubleshooting: RHEL4 user runs into nfs
-problem that looks like something we fixed in recent nfs-utils, we might
-like to be able to tell them just to try latest nfs-utils....
+Has it had this problem since the escaping was added by e7a0444aef4a
+"mfsd" add addr escaping to fs_location hosts"?  I wonder why it wasn't
+noticed then.  Maybe the client always just chooses the first entry and
+doesn't care if there's a second entry for a host named "]".
 
-But at this point I think that's unlikely.
+--b.
 
-> >According to inotify(7):
-> >
-> >	Inotify  was merged into the 2.6.13 Linux kernel.  The required
-> >	library interfaces were  added  to  glibc  in  version  2.4.
-> >	(IN_DONT_FOLLOW, IN_MASK_ADD, and IN_ONLYDIR were added in
-> >	version 2.5.)
-> >
-> >So that's almost 10 years.  In RHEL terms I think RHEL4 would be the
-> >latest without inotify support.
-> >
-> >OK, maybe that's long enough.
 > 
-> I should add that krb5 support was added on 13 January 2003,
-> (commit e0594725b51b5253237ed11b8bf3cf9ab87d9d48)
-> which corresponds to kernel version 2.5.57 or .58.
+> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+> ---
+>  fs/nfsd/nfs4xdr.c |    3 +++
+>  1 files changed, 3 insertions(+), 0 deletions(-)
 > 
-> 2.6.13 is from 29 August, 2005....so we'd kill support for that time
-> span...
+> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> index eeea7a9..6c92a53 100644
+> --- a/fs/nfsd/nfs4xdr.c
+> +++ b/fs/nfsd/nfs4xdr.c
+> @@ -1795,6 +1795,9 @@ static __be32 nfsd4_encode_components_esc(struct xdr_stream *xdr, char sep,
+>  		}
+>  		else
+>  			end++;
+> +		if (found_esc)
+> +			end = next;
+> +
+>  		str = end;
+>  	}
+>  	pathlen = htonl(xdr->buf->len - pathlen_offset);
+> -- 
+> 1.7.1
 > 
-> >If there's an easy way to provide a fallback to dnotify, that would be
-> >nice
-> 
-> I think you and I have different ideas of the definition of the word
-> "nice" :)
->
-> >otherwise would you mind just adding a note about this somewhere?
-> >(Maybe the gssd man page should say something like "this version of gssd
-> >depends on inotify, introduced in kernel version 2.6.13...".)
-> 
-> I could add that in a separate patch...both to the changelog and the man
-> page. 
-
-That'd be fine, thanks.--b.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
