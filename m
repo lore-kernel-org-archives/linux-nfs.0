@@ -1,15 +1,14 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from vader.hardeman.nu ([95.142.160.32]:51265 "EHLO hardeman.nu"
+Received: from vader.hardeman.nu ([95.142.160.32]:51266 "EHLO hardeman.nu"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753576AbaLIFlK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 9 Dec 2014 00:41:10 -0500
-Subject: [PATCH 04/19] nfs-utils: gssd - remove arbitrary
- GSSD_MAX_CCACHE_SEARCH limitation
+	id S1753576AbaLIFlP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 9 Dec 2014 00:41:15 -0500
+Subject: [PATCH 05/19] nfs-utils: gssd - simplify topdirs path
 From: David =?utf-8?b?SMOkcmRlbWFu?= <david@hardeman.nu>
 To: linux-nfs@vger.kernel.org
 Cc: SteveD@redhat.com
-Date: Tue, 09 Dec 2014 06:41:00 +0100
-Message-ID: <20141209054100.24756.28340.stgit@zeus.muc.hardeman.nu>
+Date: Tue, 09 Dec 2014 06:41:05 +0100
+Message-ID: <20141209054105.24756.4022.stgit@zeus.muc.hardeman.nu>
 In-Reply-To: <20141209053828.24756.89941.stgit@zeus.muc.hardeman.nu>
 References: <20141209053828.24756.89941.stgit@zeus.muc.hardeman.nu>
 MIME-Version: 1.0
@@ -17,111 +16,184 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Get rid of another arbitrary limitation and PATH_MAX array.
+By chdir():ing to the root of the rpc_pipefs dir and making paths
+relative from there (gssd already keeps a number of files open
+in rpc_pipefs so chdir doesn't suddenly make it impossible to
+umount rpc_pipefs because of this patch).
 
 Signed-off-by: David Härdeman <david@hardeman.nu>
 ---
- utils/gssd/gssd.c |   45 ++++++++++++++++++++++++++++++++++-----------
- utils/gssd/gssd.h |    3 +--
- 2 files changed, 35 insertions(+), 13 deletions(-)
+ utils/gssd/gssd.c |   93 +++++++++++++++++++++--------------------------------
+ utils/gssd/gssd.h |    6 ++-
+ 2 files changed, 40 insertions(+), 59 deletions(-)
 
 diff --git a/utils/gssd/gssd.c b/utils/gssd/gssd.c
-index 6147d30..60e753c 100644
+index 60e753c..716a387 100644
 --- a/utils/gssd/gssd.c
 +++ b/utils/gssd/gssd.c
-@@ -69,8 +69,7 @@
+@@ -125,28 +125,26 @@ scan_poll_results(int ret)
+ }
  
- static char *pipefs_dir = GSSD_PIPEFS_DIR;
- char *keytabfile = GSSD_DEFAULT_KEYTAB_FILE;
--char ccachedir[PATH_MAX] = GSSD_DEFAULT_CRED_DIR ":" GSSD_USER_CRED_DIR;
--char *ccachesearch[GSSD_MAX_CCACHE_SEARCH + 1];
-+char **ccachesearch;
- int  use_memcache = 0;
- int  root_uses_machine_creds = 1;
- unsigned int  context_timeout = 0;
-@@ -318,8 +317,8 @@ main(int argc, char *argv[])
- 	int i;
- 	extern char *optarg;
- 	char *progname;
-+	char *ccachedir = NULL;
+ static int
+-topdirs_add_entry(struct dirent *dent)
++topdirs_add_entry(int pfd, const char *name)
+ {
+ 	struct topdirs_info *tdi;
  
--	memset(ccachesearch, 0, sizeof(ccachesearch));
- 	while ((opt = getopt(argc, argv, "DfvrlmnMp:k:d:t:T:R:")) != -1) {
- 		switch (opt) {
- 			case 'f':
-@@ -347,9 +346,7 @@ main(int argc, char *argv[])
- 				keytabfile = optarg;
- 				break;
- 			case 'd':
--				strncpy(ccachedir, optarg, sizeof(ccachedir));
--				if (ccachedir[sizeof(ccachedir)-1] != '\0')
--					errx(1, "ccachedir path name too long");
-+				ccachedir = optarg;
- 				break;
- 			case 't':
- 				context_timeout = atoi(optarg);
-@@ -388,11 +385,37 @@ main(int argc, char *argv[])
- 		exit(1);
+-	tdi = calloc(sizeof(struct topdirs_info), 1);
+-	if (tdi == NULL) {
++	tdi = malloc(sizeof(*tdi) + strlen(pipefs_dir) + strlen(name) + 2);
++	if (!tdi) {
+ 		printerr(0, "ERROR: Couldn't allocate struct topdirs_info\n");
+ 		return -1;
  	}
+-	tdi->dirname = malloc(PATH_MAX);
+-	if (tdi->dirname == NULL) {
+-		printerr(0, "ERROR: Couldn't allocate directory name\n");
+-		free(tdi);
+-		return -1;
+-	}
+-	snprintf(tdi->dirname, PATH_MAX, "%s/%s", pipefs_dir, dent->d_name);
+-	tdi->fd = open(tdi->dirname, O_RDONLY);
+-	if (tdi->fd == -1) {
+-		printerr(0, "ERROR: failed to open %s\n", tdi->dirname);
++
++	sprintf(tdi->dirname, "%s/%s", pipefs_dir, name);
++
++	tdi->fd = openat(pfd, name, O_RDONLY);
++	if (tdi->fd < 0) {
++		printerr(0, "ERROR: failed to open %s: %s\n",
++			 tdi->dirname, strerror(errno));
+ 		free(tdi);
+ 		return -1;
+ 	}
++
+ 	fcntl(tdi->fd, F_SETSIG, DNOTIFY_SIGNAL);
+ 	fcntl(tdi->fd, F_NOTIFY, DN_CREATE|DN_DELETE|DN_MODIFY|DN_MULTISHOT);
  
--	i = 0;
--	ccachesearch[i++] = strtok(ccachedir, ":");
--	do {
--		ccachesearch[i++] = strtok(NULL, ":");
--	} while (ccachesearch[i-1] != NULL && i < GSSD_MAX_CCACHE_SEARCH);
-+	if (ccachedir) {
-+		char *ccachedir_copy;
-+		char *ptr;
+@@ -155,53 +153,37 @@ topdirs_add_entry(struct dirent *dent)
+ }
+ 
+ static void
+-topdirs_free_list(void)
+-{
+-	struct topdirs_info *tdi;
+-
+-	TAILQ_FOREACH(tdi, &topdirs_list, list) {
+-		free(tdi->dirname);
+-		if (tdi->fd != -1)
+-			close(tdi->fd);
+-		TAILQ_REMOVE(&topdirs_list, tdi, list);
+-		free(tdi);
+-	}
+-}
+-
+-static int
+ topdirs_init_list(void)
+ {
+-	DIR		*pipedir;
+-	struct dirent	*dent;
+-	int		ret;
++	DIR *pipedir;
++	struct dirent *dent;
+ 
+ 	TAILQ_INIT(&topdirs_list);
+ 
+-	pipedir = opendir(pipefs_dir);
+-	if (pipedir == NULL) {
+-		printerr(0, "ERROR: could not open rpc_pipefs directory '%s': "
+-			 "%s\n", pipefs_dir, strerror(errno));
+-		return -1;
++	pipedir = opendir(".");
++	if (!pipedir) {
++		printerr(0, "ERROR: could not open rpc_pipefs directory: '%s'\n",
++			 strerror(errno));
++		exit(EXIT_FAILURE);
+ 	}
+-	for (dent = readdir(pipedir); dent != NULL; dent = readdir(pipedir)) {
+-		if (dent->d_type != DT_DIR ||
+-		    strcmp(dent->d_name, ".") == 0  ||
+-		    strcmp(dent->d_name, "..") == 0) {
 +
-+		for (ptr = ccachedir, i = 2; *ptr; ptr++)
-+			if (*ptr == ':')
-+				i++;
++	while ((dent = readdir(pipedir))) {
++		if (dent->d_type != DT_DIR)
+ 			continue;
+-		}
+-		ret = topdirs_add_entry(dent);
+-		if (ret)
+-			goto out_err;
 +
-+		ccachesearch = malloc(i * sizeof(char *));
-+	       	ccachedir_copy = strdup(ccachedir);
-+		if (!ccachedir_copy || !ccachesearch) {
-+			printerr(0, "malloc failure\n");
++		if (dent->d_name[0] == '.')
++			continue;
++
++		if (topdirs_add_entry(dirfd(pipedir), dent->d_name))
 +			exit(EXIT_FAILURE);
-+		}
+ 	}
 +
-+		i = 0;
-+		ccachesearch[i++] = strtok(ccachedir, ":");
-+		while(ccachesearch[i - 1])
-+			ccachesearch[i++] = strtok(NULL, ":");
+ 	if (TAILQ_EMPTY(&topdirs_list)) {
+-		printerr(0, "ERROR: rpc_pipefs directory '%s' is empty!\n", pipefs_dir);
+-		return -1;
++		printerr(0, "ERROR: the rpc_pipefs directory is empty!\n");
++		exit(EXIT_FAILURE);
+ 	}
 +
-+	} else {
-+		ccachesearch = malloc(3 * sizeof(char *));
-+		if (!ccachesearch) {
-+			printerr(0, "malloc failure\n");
-+			exit(EXIT_FAILURE);
-+		}
-+
-+		ccachesearch[0] = GSSD_DEFAULT_CRED_DIR;
-+		ccachesearch[1] = GSSD_USER_CRED_DIR;
-+		ccachesearch[2] = NULL;
+ 	closedir(pipedir);
+-	return 0;
+-out_err:
+-	topdirs_free_list();
+-	return -1;
+ }
+ 
+ #ifdef HAVE_PPOLL
+@@ -257,10 +239,7 @@ gssd_run(void)
+ 	sigaddset(&set, DNOTIFY_SIGNAL);
+ 	sigprocmask(SIG_UNBLOCK, &set, NULL);
+ 
+-	if (topdirs_init_list() != 0) {
+-		/* Error msg is already printed */
+-		exit(1);
+-	}
++	topdirs_init_list();
+ 	init_client_list();
+ 
+ 	printerr(1, "beginning poll\n");
+@@ -276,9 +255,6 @@ gssd_run(void)
+ 		}
+ 		gssd_poll(pollarray, pollsize);
+ 	}
+-	topdirs_free_list();
+-
+-	return;
+ }
+ 
+ static void
+@@ -441,6 +417,11 @@ main(int argc, char *argv[])
+ 
+ 	daemon_init(fg);
+ 
++	if (chdir(pipefs_dir)) {
++		printerr(1, "ERROR: chdir(%s) failed: %s\n", pipefs_dir, strerror(errno));
++		exit(EXIT_FAILURE);
 +	}
- 
- 	if (preferred_realm == NULL)
- 		gssd_k5_get_default_realm(&preferred_realm);
++
+ 	signal(SIGINT, sig_die);
+ 	signal(SIGTERM, sig_die);
+ 	signal(SIGHUP, sig_hup);
 diff --git a/utils/gssd/gssd.h b/utils/gssd/gssd.h
-index 4059544..3320d5e 100644
+index 3320d5e..91be83b 100644
 --- a/utils/gssd/gssd.h
 +++ b/utils/gssd/gssd.h
-@@ -51,7 +51,6 @@
- #define GSSD_DEFAULT_KEYTAB_FILE		"/etc/krb5.keytab"
- #define GSSD_SERVICE_NAME			"nfs"
- #define GSSD_SERVICE_NAME_LEN			3
--#define GSSD_MAX_CCACHE_SEARCH			16
+@@ -89,9 +89,9 @@ struct clnt_info {
+ TAILQ_HEAD(topdirs_list_head, topdirs_info) topdirs_list;
  
- /*
-  * The gss mechanisms that we can handle
-@@ -59,7 +58,7 @@
- enum {AUTHTYPE_KRB5, AUTHTYPE_LIPKEY};
+ struct topdirs_info {
+-	TAILQ_ENTRY(topdirs_info)   list;
+-	char			*dirname;
+-	int			fd;
++	TAILQ_ENTRY(topdirs_info)	list;
++	int				fd;
++	char				dirname[];
+ };
  
- extern char		       *keytabfile;
--extern char		       *ccachesearch[];
-+extern char		      **ccachesearch;
- extern int			use_memcache;
- extern int			root_uses_machine_creds;
- extern unsigned int 		context_timeout;
+ void init_client_list(void);
 
