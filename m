@@ -1,4 +1,10 @@
-Return-Path: linux-kernel-owner@vger.kernel.org
+Return-Path: linux-nfs-owner@vger.kernel.org
+Received: from mail-pa0-f53.google.com ([209.85.220.53]:50212 "EHLO
+	mail-pa0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754062AbaLJBqm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Dec 2014 20:46:42 -0500
+Received: by mail-pa0-f53.google.com with SMTP id kq14so1733320pab.12
+        for <linux-nfs@vger.kernel.org>; Tue, 09 Dec 2014 17:46:41 -0800 (PST)
 From: Omar Sandoval <osandov@osandov.com>
 To: Alexander Viro <viro@zeniv.linux.org.uk>,
         Andrew Morton <akpm@linux-foundation.org>, Chris Mason <clm@fb.com>,
@@ -8,55 +14,82 @@ To: Alexander Viro <viro@zeniv.linux.org.uk>,
         linux-btrfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-mm@kvack.org, linux-nfs@vger.kernel.org,
         linux-kernel@vger.kernel.org
-Cc: Omar Sandoval <osandov@osandov.com>
-Subject: [RFC PATCH v3 2/7] nfs: don't dirty ITER_BVEC pages read through direct I/O
-Date: Tue,  9 Dec 2014 17:45:43 -0800
-Message-Id: <55ee5dcf11066baf17b5d8aa485fdcd7be78dec0.1418173063.git.osandov@osandov.com>
+Cc: Omar Sandoval <osandov@osandov.com>, Mel Gorman <mgorman@suse.de>
+Subject: [RFC PATCH v3 3/7] swap: use direct I/O for SWP_FILE swap_readpage
+Date: Tue,  9 Dec 2014 17:45:44 -0800
+Message-Id: <9c1d4746d1e7e41114496be8912cb74e36d5df48.1418173063.git.osandov@osandov.com>
 In-Reply-To: <cover.1418173063.git.osandov@osandov.com>
 References: <cover.1418173063.git.osandov@osandov.com>
 In-Reply-To: <cover.1418173063.git.osandov@osandov.com>
 References: <cover.1418173063.git.osandov@osandov.com>
-Sender: linux-kernel-owner@vger.kernel.org
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-As with the generic blockdev code, kernel pages shouldn't be dirtied by
-the direct I/O path.
+On Mon, Nov 17, 2014 at 07:48:17AM -0800, Christoph Hellwig wrote:
+> With the new iov_iter infrastructure that supprots direct I/O to kernel
+> pages please get rid of the ->readpage hack first.  I'm still utterly
+> disapoined that this crap ever got merged.
 
+Cc: Mel Gorman <mgorman@suse.de>
 Signed-off-by: Omar Sandoval <osandov@osandov.com>
 ---
- fs/nfs/direct.c | 5 ++++-
- 1 file changed, 4 insertions(+), 1 deletion(-)
+ mm/page_io.c | 32 ++++++++++++++++++++++++++++----
+ 1 file changed, 28 insertions(+), 4 deletions(-)
 
-diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index 10bf072..a67fa2c 100644
---- a/fs/nfs/direct.c
-+++ b/fs/nfs/direct.c
-@@ -88,6 +88,7 @@ struct nfs_direct_req {
- 	struct pnfs_ds_commit_info ds_cinfo;	/* Storage for cinfo */
- 	struct work_struct	work;
- 	int			flags;
-+	int			should_dirty;	/* should we mark read pages dirty? */
- #define NFS_ODIRECT_DO_COMMIT		(1)	/* an unstable reply was received */
- #define NFS_ODIRECT_RESCHED_WRITES	(2)	/* write verification failed */
- 	struct nfs_writeverf	verf;		/* unstable write verifier */
-@@ -370,7 +371,8 @@ static void nfs_direct_read_completion(struct nfs_pgio_header *hdr)
- 		struct nfs_page *req = nfs_list_entry(hdr->pages.next);
- 		struct page *page = req->wb_page;
+diff --git a/mm/page_io.c b/mm/page_io.c
+index 955db8b..10715e0 100644
+--- a/mm/page_io.c
++++ b/mm/page_io.c
+@@ -283,8 +283,7 @@ int __swap_writepage(struct page *page, struct writeback_control *wbc,
  
--		if (!PageCompound(page) && bytes < hdr->good_bytes)
-+		if (!PageCompound(page) && bytes < hdr->good_bytes &&
-+		    dreq->should_dirty)
- 			set_page_dirty(page);
- 		bytes += req->wb_bytes;
- 		nfs_list_remove_request(req);
-@@ -542,6 +544,7 @@ ssize_t nfs_file_direct_read(struct kiocb *iocb, struct iov_iter *iter,
- 	dreq->inode = inode;
- 	dreq->bytes_left = count;
- 	dreq->ctx = get_nfs_open_context(nfs_file_open_context(iocb->ki_filp));
-+	dreq->should_dirty = !(iter->type & ITER_BVEC);
- 	l_ctx = nfs_get_lock_context(dreq->ctx);
- 	if (IS_ERR(l_ctx)) {
- 		result = PTR_ERR(l_ctx);
+ 		set_page_writeback(page);
+ 		unlock_page(page);
+-		ret = mapping->a_ops->direct_IO(ITER_BVEC | WRITE,
+-						&kiocb, &from,
++		ret = mapping->a_ops->direct_IO(WRITE, &kiocb, &from,
+ 						kiocb.ki_pos);
+ 		if (ret == PAGE_SIZE) {
+ 			count_vm_event(PSWPOUT);
+@@ -348,12 +347,37 @@ int swap_readpage(struct page *page)
+ 	}
+ 
+ 	if (sis->flags & SWP_FILE) {
++		struct kiocb kiocb;
+ 		struct file *swap_file = sis->swap_file;
+ 		struct address_space *mapping = swap_file->f_mapping;
++		struct bio_vec bv = {
++			.bv_page = page,
++			.bv_len = PAGE_SIZE,
++			.bv_offset = 0,
++		};
++		struct iov_iter to = {
++			.type = ITER_BVEC | READ,
++			.count = PAGE_SIZE,
++			.iov_offset = 0,
++			.nr_segs = 1,
++		};
++		to.bvec = &bv;	/* older gcc versions are broken */
++
++		init_sync_kiocb(&kiocb, swap_file);
++		kiocb.ki_pos = page_file_offset(page);
++		kiocb.ki_nbytes = PAGE_SIZE;
+ 
+-		ret = mapping->a_ops->readpage(swap_file, page);
+-		if (!ret)
++		ret = mapping->a_ops->direct_IO(READ, &kiocb, &to,
++						kiocb.ki_pos);
++		if (ret == PAGE_SIZE) {
++			SetPageUptodate(page);
+ 			count_vm_event(PSWPIN);
++			ret = 0;
++		} else {
++			ClearPageUptodate(page);
++			SetPageError(page);
++		}
++		unlock_page(page);
+ 		return ret;
+ 	}
+ 
 -- 
 2.1.3
 
