@@ -1,66 +1,91 @@
-Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yk0-f182.google.com ([209.85.160.182]:64707 "EHLO
-	mail-yk0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753793AbaLIW5z (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Dec 2014 17:57:55 -0500
-Received: by mail-yk0-f182.google.com with SMTP id 131so724967ykp.13
-        for <linux-nfs@vger.kernel.org>; Tue, 09 Dec 2014 14:57:54 -0800 (PST)
-MIME-Version: 1.0
-In-Reply-To: <CAHQdGtSvofjOr2spSJZLMtjLgQt-BvOdxsewC8q-tVgvvRMGmQ@mail.gmail.com>
-References: <1418159956-10853-1-git-send-email-Anna.Schumaker@Netapp.com> <CAHQdGtSvofjOr2spSJZLMtjLgQt-BvOdxsewC8q-tVgvvRMGmQ@mail.gmail.com>
-From: Anna Schumaker <anna.schumaker@netapp.com>
-Date: Tue, 9 Dec 2014 17:57:34 -0500
-Message-ID: <CAFX2JfkL20odHMQBLA4q09ds6fjJmDE-EU9PEvOAHy2tbySW7A@mail.gmail.com>
-Subject: Re: [PATCH] NFS: Fix use of nfs_attr_use_mounted_on_fileid()
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
-Sender: linux-nfs-owner@vger.kernel.org
+Return-Path: linux-kernel-owner@vger.kernel.org
+From: Omar Sandoval <osandov@osandov.com>
+To: Alexander Viro <viro@zeniv.linux.org.uk>,
+        Andrew Morton <akpm@linux-foundation.org>, Chris Mason <clm@fb.com>,
+        Josef Bacik <jbacik@fb.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Christoph Hellwig <hch@infradead.org>, David Sterba <dsterba@suse.cz>,
+        linux-btrfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-mm@kvack.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Cc: Omar Sandoval <osandov@osandov.com>
+Subject: [RFC PATCH v3 0/7] btrfs: implement swap file support
+Date: Tue,  9 Dec 2014 17:45:41 -0800
+Message-Id: <cover.1418173063.git.osandov@osandov.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Dec 9, 2014 at 5:01 PM, Trond Myklebust
-<trond.myklebust@primarydata.com> wrote:
->
-> On Tue, Dec 9, 2014 at 4:19 PM, Anna Schumaker
-> <Anna.Schumaker@netapp.com> wrote:
-> > This function call was being optimized out during nfs_fhget(), leading
-> > to situations where we have a valid fileid but still want to use the
-> > mounted_on_fileid.  For example, imagine we have our server configured
-> > like this:
-> >
-> > server % df
-> > Filesystem      Size  Used Avail Use% Mounted on
-> > /dev/vda1       9.1G  6.5G  1.9G  78% /
-> > /dev/vdb1       487M  2.3M  456M   1% /exports
-> > /dev/vdc1       487M  2.3M  456M   1% /exports/vol1
-> > /dev/vdd1       487M  2.3M  456M   1% /exports/vol2
-> >
-> > If our client mounts /exports and tries to do a "chown -R" across the
-> > entire mountpoint, we will get a nasty message warning us about a circular
-> > directory structure.  Running chown with strace tells me that each directory
-> > has the same device and inode number:
-> >
-> > newfstatat(AT_FDCWD, "/nfs/", {st_dev=makedev(0, 38), st_ino=2, ...}) = 0
-> > newfstatat(4, "vol1", {st_dev=makedev(0, 38), st_ino=2, ...}) = 0
-> > newfstatat(4, "vol2", {st_dev=makedev(0, 38), st_ino=2, ...}) = 0
->
-> So is the problem here that these are inodes that actually represent
-> mountpoints? I.e. we've mounted /exports, but have not yet deferenced
-> /exports/vol1 and /exports/vol2, but those will be automounted if we
-> do something like a 'ls /exports/vol1/'?
+Hi, everyone,
 
-Yes, the chown will work after automounting each directory.
+This patch series, based on v3.18, implements support for swap files on BTRFS.
+Patches 1, 3, and 4 are for the VFS folks, patch 2 is for NFS, and the rest is
+all BTRFS.
 
-Anna
->
->
-> --
-> Trond Myklebust
->
-> Linux NFS client maintainer, PrimaryData
->
-> trond.myklebust@primarydata.com
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+The standard swap file implementation uses bmap() to get a list of physical
+blocks to do I/O on. This doesn't work for BTRFS, which moves disk blocks around
+as part of normal operation (COW, defragmentation, etc.).
+
+Swap-over-NFS introduced an interface through which a filesystem can arbitrate
+swap I/O through address space operations:
+
+- swap_activate() is called by swapon() and informs the address space that the
+  given file is going to be used for swap, so it should take adequate measures
+  like reserving space on disk and pinning block lookup information in memory
+- swap_deactivate() is used to clean up on swapoff()
+- direct_IO() is used to page in and out (this no longer uses readpage as part
+  of this patch series)
+
+Patches 1-4 clean up the necessary infrastructure. There's more that can make
+this better (like resurrecting kernel AIO), but that can be done as a follow-up
+to the work here.
+
+Patches 5 and 6 lay the groundwork needed for using a swap file on BTRFS, and
+patch 7 implements the actual aops.
+
+Version 3 incorporates a bunch of David Sterba's feedback, both style and design
+issues. We now audit various ioctls to prevent them from interfering with swap
+file operation and handle extents which can't be nocow'd.
+
+After some discussion on the mailing list, I decided that for simplicity and
+reliability, it's best to simply disallow COW files and files with shared
+extents (like files with extents shared with a snapshot). From a user's
+perspective, this means that a snapshotted subvolume cannot be used for a swap
+file, but keeping the swap file in a separate subvolume that is never
+snapshotted seems entirely reasonable to me. An alternative suggestion was to
+allow swap files to be snapshotted and to do an implied COW on swap file
+activation, which I was ready to implement until I realized that we can't permit
+snapshotting a subvolume with an active swap file, so this creates a surprising
+inconsistency for users (in my opinion).
+
+As with before, this functionality is tenuously tested in a virtual machine with
+some artificial workloads, but it "works for me". I'm pretty happy with the
+results on my end, so please comment away.
+
+Thanks!
+
+Omar Sandoval (7):
+  direct-io: don't dirty ITER_BVEC pages on read
+  nfs: don't dirty ITER_BVEC pages read through direct I/O
+  swap: use direct I/O for SWP_FILE swap_readpage
+  vfs: update swap_{,de}activate documentation
+  btrfs: prevent ioctls from interfering with a swap file
+  btrfs: add EXTENT_FLAG_SWAPFILE
+  btrfs: enable swap file support
+
+ Documentation/filesystems/Locking |   7 +-
+ Documentation/filesystems/vfs.txt |   7 +-
+ fs/btrfs/ctree.h                  |   3 +
+ fs/btrfs/disk-io.c                |   1 +
+ fs/btrfs/extent_io.c              |   1 +
+ fs/btrfs/extent_map.h             |   1 +
+ fs/btrfs/inode.c                  | 132 ++++++++++++++++++++++++++++++++++++++
+ fs/btrfs/ioctl.c                  |  35 ++++++++--
+ fs/direct-io.c                    |   8 ++-
+ fs/nfs/direct.c                   |   5 +-
+ include/trace/events/btrfs.h      |   3 +-
+ mm/page_io.c                      |  32 +++++++--
+ 12 files changed, 216 insertions(+), 19 deletions(-)
+
+-- 
+2.1.3
+
