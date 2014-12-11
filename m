@@ -1,34 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:43918 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:40936 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750854AbaLKRUK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 11 Dec 2014 12:20:10 -0500
-Received: from int-mx14.intmail.prod.int.phx2.redhat.com (int-mx14.intmail.prod.int.phx2.redhat.com [10.5.11.27])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id sBBHK9wm030509
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
-	for <linux-nfs@vger.kernel.org>; Thu, 11 Dec 2014 12:20:10 -0500
-Received: from smallhat.boston.devel.redhat.com (smallhat.boston.devel.redhat.com [10.19.60.65])
-	by int-mx14.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id sBBHK8vU023569
-	for <linux-nfs@vger.kernel.org>; Thu, 11 Dec 2014 12:20:09 -0500
-Message-ID: <5489D248.3070403@RedHat.com>
-Date: Thu, 11 Dec 2014 12:20:08 -0500
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Today's Linux NFS town hall  meeting 12/11/14 (Canceled)
-Content-Type: text/plain; charset=windows-1252
+	id S932975AbaLKUfJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 11 Dec 2014 15:35:09 -0500
+From: Benjamin Coddington <bcodding@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: Jeff Layton <jeff.layton@primarydata.com>
+Subject: [PATCH] nfs: verify open flags before allowing open
+Date: Thu, 11 Dec 2014 15:30:29 -0500
+Message-Id: <f2d48b67e911de7a8b89025b25d3ab97f397ba8f.1418329650.git.bcodding@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
+Fix another path for:
+9597c13b nfs: verify open flags before allowing an atomic open
 
-Not much is going on so lets cancel today meeting...
-also the meeting on Dec 25th is cancelled for 
-obvious reasons... ;-)  
+which forbade the NFSv4 open for O_DIRECT|O_APPEND in nfs_atomic_open().
+That code path is missed when a cached positive dentry exists;
+nfs4_file_open() is used instead.  Duplicate the forbid in nfs4_file_open().
 
-Sorry for the late notice.... 
+Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+Cc: Jeff Layton <jeff.layton@primarydata.com>
+---
+ fs/nfs/nfs4file.c |    4 ++++
+ 1 files changed, 4 insertions(+), 0 deletions(-)
 
-Yea next Year!! 
-
-steved.
+diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
+index c51fb4d..c2e4767 100644
+--- a/fs/nfs/nfs4file.c
++++ b/fs/nfs/nfs4file.c
+@@ -37,6 +37,10 @@ nfs4_file_open(struct inode *inode, struct file *filp)
+ 
+ 	dprintk("NFS: open file(%pd2)\n", dentry);
+ 
++	err = nfs_check_flags(openflags);
++	if (err)
++		return err;
++
+ 	if ((openflags & O_ACCMODE) == 3)
+ 		openflags--;
+ 
+-- 
+1.7.1
 
