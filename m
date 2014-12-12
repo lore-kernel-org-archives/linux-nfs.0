@@ -1,184 +1,120 @@
-Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pd0-f169.google.com ([209.85.192.169]:38473 "EHLO
-	mail-pd0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757042AbaLLUAv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Dec 2014 15:00:51 -0500
-Received: by mail-pd0-f169.google.com with SMTP id z10so7829353pdj.0
-        for <linux-nfs@vger.kernel.org>; Fri, 12 Dec 2014 12:00:51 -0800 (PST)
-Date: Fri, 12 Dec 2014 12:00:48 -0800
-From: Omar Sandoval <osandov@osandov.com>
-To: David Sterba <dsterba@suse.cz>
+Return-Path: linux-kernel-owner@vger.kernel.org
+Date: Fri, 12 Dec 2014 11:32:13 +0100
+From: David Sterba <dsterba@suse.cz>
+To: Omar Sandoval <osandov@osandov.com>
 Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
         Andrew Morton <akpm@linux-foundation.org>, Chris Mason <clm@fb.com>,
         Josef Bacik <jbacik@fb.com>,
         Trond Myklebust <trond.myklebust@primarydata.com>,
-        Christoph Hellwig <hch@infradead.org>, linux-btrfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [RFC PATCH v3 7/7] btrfs: enable swap file support
-Message-ID: <20141212200048.GA20971@mew>
+        Christoph Hellwig <hch@infradead.org>, David Sterba <dsterba@suse.cz>,
+        linux-btrfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-mm@kvack.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [RFC PATCH v3 0/7] btrfs: implement swap file support
+Message-ID: <20141212103213.GL27601@twin.jikos.cz>
+Reply-To: dsterba@suse.cz
 References: <cover.1418173063.git.osandov@osandov.com>
- <0f9937165d8fc1b8b6332ac97e59593022e9fa5b.1418173063.git.osandov@osandov.com>
- <20141212105122.GN27601@twin.jikos.cz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20141212105122.GN27601@twin.jikos.cz>
-Sender: linux-nfs-owner@vger.kernel.org
+In-Reply-To: <cover.1418173063.git.osandov@osandov.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Dec 12, 2014 at 11:51:22AM +0100, David Sterba wrote:
-> On Tue, Dec 09, 2014 at 05:45:48PM -0800, Omar Sandoval wrote:
-> > +static void __clear_swapfile_extents(struct inode *inode)
-> > +{
-> > +	u64 isize = inode->i_size;
-> > +	struct extent_map *em;
-> > +	u64 start, len;
-> > +
-> > +	start = 0;
-> > +	while (start < isize) {
-> > +		len = isize - start;
-> > +		em = btrfs_get_extent(inode, NULL, 0, start, len, 0);
-> > +		if (IS_ERR(em))
-> > +			return;
-> 
-> This could transiently fail if there's no memory to allocate the em, and
-> would leak the following extents.
-> 
-This leak I was aware of, and at the time I didn't see a good way to get
-around it. After all, if we can't get the current extent, there's no way
-to iterate through the rest of them. Now I see that instead of doing
-this at the btrfs_get_extent level, I can just go through all of the
-extent_maps in the extent_map_tree.
+On Tue, Dec 09, 2014 at 05:45:41PM -0800, Omar Sandoval wrote:
+> After some discussion on the mailing list, I decided that for simplicity and
+> reliability, it's best to simply disallow COW files and files with shared
+> extents (like files with extents shared with a snapshot). From a user's
+> perspective, this means that a snapshotted subvolume cannot be used for a swap
+> file, but keeping the swap file in a separate subvolume that is never
+> snapshotted seems entirely reasonable to me.
 
-> > +
-> > +		clear_bit(EXTENT_FLAG_SWAPFILE, &em->flags);
-> > +
-> > +		start = extent_map_end(em);
-> > +		free_extent_map(em);
-> > +	}
-> > +}
-> > +
-> > +static int btrfs_swap_activate(struct swap_info_struct *sis, struct file *file,
-> > +			       sector_t *span)
-> > +{
-> > +	struct inode *inode = file_inode(file);
-> > +	struct btrfs_fs_info *fs_info = BTRFS_I(inode)->root->fs_info;
-> > +	struct extent_io_tree *io_tree = &BTRFS_I(inode)->io_tree;
-> > +	int ret = 0;
-> > +	u64 isize = inode->i_size;
-> > +	struct extent_state *cached_state = NULL;
-> > +	struct extent_map *em;
-> > +	u64 start, len;
-> > +
-> > +	if (BTRFS_I(inode)->flags & BTRFS_INODE_COMPRESS) {
-> > +		/* Can't do direct I/O on a compressed file. */
-> > +		btrfs_err(fs_info, "swapfile is compressed");
-> > +		return -EINVAL;
-> > +	}
-> > +	if (!(BTRFS_I(inode)->flags & BTRFS_INODE_NODATACOW)) {
-> > +		/*
-> > +		 * Going through the copy-on-write path while swapping pages
-> > +		 * in/out and doing a bunch of allocations could stress the
-> > +		 * memory management code that got us there in the first place,
-> > +		 * and that's sure to be a bad time.
-> > +		 */
-> > +		btrfs_err(fs_info, "swapfile is copy-on-write");
-> > +		return -EINVAL;
-> > +	}
-> > +
-> > +	lock_extent_bits(io_tree, 0, isize - 1, 0, &cached_state);
-> > +
-> > +	/*
-> > +	 * All of the extents must be allocated and support direct I/O. Inline
-> > +	 * extents and compressed extents fall back to buffered I/O, so those
-> > +	 * are no good. Additionally, all of the extents must be safe for nocow.
-> > +	 */
-> > +	atomic_inc(&BTRFS_I(inode)->root->nr_swapfiles);
-> > +	start = 0;
-> > +	while (start < isize) {
-> > +		len = isize - start;
-> > +		em = btrfs_get_extent(inode, NULL, 0, start, len, 0);
-> > +		if (IS_ERR(em)) {
-> 
-> 		IS_ERR_OR_NULL(em)
-> 
-> From now on the em is valid and has to be free_extent_map()ed ...
-> 
-> > +			ret = PTR_ERR(em);
-> > +			goto out;
-> > +		}
-> > +
-> > +		if (test_bit(EXTENT_FLAG_VACANCY, &em->flags) ||
-> > +		    em->block_start == EXTENT_MAP_HOLE) {
-> > +			btrfs_err(fs_info, "swapfile has holes");
-> > +			ret = -EINVAL;
-> 
-> ... and all the error branches would miss it.
-> 
-> > +			goto out;
-> > +		}
-> > +		if (em->block_start == EXTENT_MAP_INLINE) {
-> > +			/*
-> > +			 * It's unlikely we'll ever actually find ourselves
-> > +			 * here, as a file small enough to fit inline won't be
-> > +			 * big enough to store more than the swap header, but in
-> > +			 * case something changes in the future, let's catch it
-> > +			 * here rather than later.
-> > +			 */
-> > +			btrfs_err(fs_info, "swapfile is inline");
-> > +			ret = -EINVAL;
-> 
-> here
-> 
-> > +			goto out;
-> > +		}
-> > +		if (test_bit(EXTENT_FLAG_COMPRESSED, &em->flags)) {
-> > +			btrfs_err(fs_info, "swapfile is compresed");
-> > +			ret = -EINVAL;
-> 
-> here
-> 
-> > +			goto out;
-> > +		}
-> > +		ret = can_nocow_extent(inode, start, &len, NULL, NULL, NULL);
-> > +		if (ret < 0) {
-> 
-> here
-> 
-> > +			goto out;
-> > +		} else if (ret == 1) {
-> > +			ret = 0;
-> > +		} else {
-> > +			btrfs_err(fs_info, "swapfile has extent requiring COW (%llu-%llu)",
-> > +				  start, start + len - 1);
-> > +			ret = -EINVAL;
-> 
-> here
-> 
-> > +			goto out;
-> > +		}
-> > +
-> > +		set_bit(EXTENT_FLAG_SWAPFILE, &em->flags);
-> > +
-> > +		start = extent_map_end(em);
-> > +		free_extent_map(em);
-> > +	}
-> > +
-> > +out:
-> > +	if (ret) {
-> 
-> should be fixed by:
-> 
-> 		if (!IS_ERR_OR_NULL(em))
-> 			free_extent_map(em);
-> 
-> > +		__clear_swapfile_extents(inode);
-> > +		atomic_dec(&BTRFS_I(inode)->root->nr_swapfiles);
-> > +	}
-> > +	unlock_extent_cached(io_tree, 0, isize - 1, &cached_state, GFP_NOFS);
-> > +	return ret;
-> > +}
-This leak I completely missed. Thanks.
+Well, there are enough special cases how to do things on btrfs and I'd
+like to avoid introducing another one.
 
--- 
-Omar
+> An alternative suggestion was to
+> allow swap files to be snapshotted and to do an implied COW on swap file
+> activation, which I was ready to implement until I realized that we can't permit
+> snapshotting a subvolume with an active swap file, so this creates a surprising
+> inconsistency for users (in my opinion).
+
+I still don't see why it's not possible to do the snapshot with an
+active swapfile.
+
+> As with before, this functionality is tenuously tested in a virtual machine with
+> some artificial workloads, but it "works for me". I'm pretty happy with the
+> results on my end, so please comment away.
+
+The non-btrfs changes can go independently and do not have to wait until
+we resolve the swap vs snapshot problem.
+
+I did a simple test and it crashed instantly, lockep complains:
+
+memory: 2G
+swap file: 1G
+kernel: 3.17 + v3
+
+[  739.790731] Adding 1054716k swap on /mnt/test-swap/mnt/swapfile.  Priority:-1 extents:1 across:1054716k
+[  751.848607]
+[  751.851852] =====================================
+[  751.852161] [ BUG: bad unlock balance detected! ]
+[  751.852161] 3.17.0-default+ #199 Not tainted
+[  751.852161] -------------------------------------
+[  751.852161] heavy_swap/4119 is trying to release lock (&sb->s_type->i_mutex_key) at:
+[  751.852161] [<ffffffff81a4f0ce>] mutex_unlock+0xe/0x10
+[  751.852161] but there are no more locks to release!
+[  751.852161]
+[  751.852161] other info that might help us debug this:
+[  751.852161] 1 lock held by heavy_swap/4119:
+[  751.852161]  #0:  (&mm->mmap_sem){++++++}, at: [<ffffffff81043ba9>] __do_page_fault+0x149/0x560
+[  751.852161]
+[  751.852161] stack backtrace:
+[  751.852161] CPU: 1 PID: 4119 Comm: heavy_swap Not tainted 3.17.0-default+ #199
+[  751.852161] Hardware name: Intel Corporation Santa Rosa platform/Matanzas, BIOS TSRSCRB1.86C.0047.B00.0610170821 10/17/06
+[  751.852161]  ffffffff81a4f0ce ffff880075dbb3d8 ffffffff81a4b268 0000000000000001
+[  751.852161]  ffff8800775e0000 ffff880075dbb408 ffffffff810b51a9 0000000000000000
+[  751.852161]  ffff8800775e0000 00000000ffffffff ffff8800763c9d00 ffff880075dbb4a8
+[  751.852161] Call Trace:
+[  751.852161]  [<ffffffff81a4f0ce>] ? mutex_unlock+0xe/0x10
+[  751.852161]  [<ffffffff81a4b268>] dump_stack+0x51/0x71
+[  751.852161]  [<ffffffff810b51a9>] print_unlock_imbalance_bug+0xf9/0x100
+[  751.852161]  [<ffffffff810b8bcf>] lock_release_non_nested+0x2cf/0x3e0
+[  751.852161]  [<ffffffff81a541ed>] ? ftrace_call+0x5/0x2f
+[  751.852161]  [<ffffffff81a4f0ce>] ? mutex_unlock+0xe/0x10
+[  751.852161]  [<ffffffff81a4f0ce>] ? mutex_unlock+0xe/0x10
+[  751.852161]  [<ffffffff810b8da9>] lock_release+0xc9/0x240
+[  751.852161]  [<ffffffff81a4eef0>] __mutex_unlock_slowpath+0x80/0x190
+[  751.852161]  [<ffffffff81a4f0c9>] ? mutex_unlock+0x9/0x10
+[  751.852161]  [<ffffffff81a4f0ce>] mutex_unlock+0xe/0x10
+[  751.852161]  [<ffffffffa0037c88>] btrfs_direct_IO+0x2b8/0x310 [btrfs]
+[  751.852161]  [<ffffffff810acf4d>] ? __wake_up_bit+0xd/0x50
+[  751.852161]  [<ffffffff8117e03b>] __swap_writepage+0x10b/0x270
+[  751.852161]  [<ffffffff81180723>] ? page_swapcount+0x53/0x70
+[  751.852161]  [<ffffffff8117e1d7>] swap_writepage+0x37/0x60
+[  751.852161]  [<ffffffff8115a072>] shmem_writepage+0x2a2/0x2e0
+[  751.852161]  [<ffffffff811554ae>] shrink_page_list+0x44e/0x9d0
+[  751.852161]  [<ffffffff81a51b50>] ? _raw_spin_unlock_irq+0x30/0x40
+[  751.852161]  [<ffffffff811560cd>] shrink_inactive_list+0x26d/0x4f0
+[  751.852161]  [<ffffffff813adcc9>] ? blk_start_plug+0x9/0x50
+[  751.852161]  [<ffffffff81156918>] shrink_lruvec+0x5c8/0x6c0
+[  751.852161]  [<ffffffff81165f09>] ? compaction_suitable+0x19/0xc0
+[  751.852161]  [<ffffffff81165f09>] ? compaction_suitable+0x19/0xc0
+[  751.852161]  [<ffffffff81156a5d>] shrink_zone+0x4d/0x120
+[  751.852161]  [<ffffffff811577ea>] do_try_to_free_pages+0x19a/0x3a0
+[  751.852161]  [<ffffffff81152a7d>] ? pfmemalloc_watermark_ok+0xd/0xc0
+[  751.852161]  [<ffffffff81157b42>] try_to_free_pages+0xb2/0x160
+[  751.852161]  [<ffffffff81a4bb79>] ? _cond_resched+0x9/0x30
+[  751.852161]  [<ffffffff8114adfb>] __alloc_pages_nodemask+0x5eb/0xa90
+[  751.852161]  [<ffffffff81a541ed>] ? ftrace_call+0x5/0x2f
+[  751.852161]  [<ffffffff811784f1>] ? anon_vma_prepare+0x21/0x190
+[  751.852161]  [<ffffffff811916a8>] do_huge_pmd_anonymous_page+0xe8/0x330
+[  751.852161]  [<ffffffff811783c9>] ? is_vma_temporary_stack+0x9/0x30
+[  751.852161]  [<ffffffff8116edd5>] handle_mm_fault+0x135/0xb60
+[  751.852161]  [<ffffffff81172015>] ? find_vma+0x15/0x80
+[  751.852161]  [<ffffffff81166c6d>] ? vmacache_find+0xd/0xd0
+[  751.852161]  [<ffffffff81097c2e>] ? __might_sleep+0xe/0x110
+[  751.852161]  [<ffffffff81043c0d>] __do_page_fault+0x1ad/0x560
+[  751.852161]  [<ffffffff81073000>] ? do_fork+0xe0/0x420
+[  751.852161]  [<ffffffff81a53f43>] ? error_sti+0x5/0x6
+[  751.852161]  [<ffffffff813e660d>] ? trace_hardirqs_off_thunk+0x3a/0x3c
+[  751.852161]  [<ffffffff810440cc>] do_page_fault+0xc/0x10
+[  751.852161]  [<ffffffff81a53d42>] page_fault+0x22/0x30
