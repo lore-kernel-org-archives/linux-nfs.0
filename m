@@ -1,283 +1,277 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f41.google.com ([209.85.192.41]:32806 "EHLO
-	mail-qg0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756847AbaLJXN4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Dec 2014 18:13:56 -0500
-Received: by mail-qg0-f41.google.com with SMTP id j5so2984779qga.14
-        for <linux-nfs@vger.kernel.org>; Wed, 10 Dec 2014 15:13:55 -0800 (PST)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Wed, 10 Dec 2014 18:13:53 -0500
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-kernel@vger.kernel.org,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Tejun Heo <tj@kernel.org>, Al Viro <viro@zeniv.linux.org.uk>,
-        Neil Brown <neilb@suse.de>
+Received: from zeniv.linux.org.uk ([195.92.253.2]:48315 "EHLO
+	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754105AbaLLCMs (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Dec 2014 21:12:48 -0500
+Date: Fri, 12 Dec 2014 02:12:41 +0000
+From: Al Viro <viro@ZenIV.linux.org.uk>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Jeff Layton <jlayton@primarydata.com>, bfields@fieldses.org,
+        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        Tejun Heo <tj@kernel.org>, NeilBrown <neilb@suse.de>
 Subject: Re: [PATCH v2 00/16] nfsd/sunrpc: add support for a workqueue-based
  nfsd
-Message-ID: <20141210181353.5a017d26@tlielax.poochiereds.net>
-In-Reply-To: <AF4C9367-72BD-46F2-BAB2-5C583B01C3F6@oracle.com>
+Message-ID: <20141212021241.GA5944@ZenIV.linux.org.uk>
 References: <1418238480-18857-1-git-send-email-jlayton@primarydata.com>
-	<AF4C9367-72BD-46F2-BAB2-5C583B01C3F6@oracle.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1418238480-18857-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 10 Dec 2014 14:31:55 -0800
-Chuck Lever <chuck.lever@oracle.com> wrote:
+On Wed, Dec 10, 2014 at 02:07:44PM -0500, Jeff Layton wrote:
 
-> Hi Jeff-
-> 
-> On Dec 10, 2014, at 11:07 AM, Jeff Layton <jlayton@primarydata.com> wrote:
-> 
-> > This is the second revision of the workqueue-based nfsd. Changes from
-> > the RFC version I posted earlier:
-> > 
-> > v2:
-> > - found and fixed problem causing the delays between work. It was a bug
-> >  in the design of the new code. I was queueing the svc_xprt's work to
-> >  do everything and that necessarily serialized that work. This version
-> >  adds a work_struct to the svc_rqst as well, and that's where the
-> >  bulk of the work.
-> > 
-> > - no longer tries to use the thread count as a max_active setting for
-> >  the workqueue. The workqueue max_active settings are left to the
-> >  default. This means that /proc/fs/nfsd/threads is basically a binary
-> >  switch that's either zero (not running) or non-zero (running). The
-> >  actual value has no meaning.
-> > 
-> > - the handling of the fs_struct has been reworked. It's now allocated
-> >  as part of the struct svc_rqst. Each svc_rqst has its own fs_struct
-> >  now.
-> > 
-> > - CONFIG_SUNRPC_SVC_WORKQUEUE has been removed. Since the code must
-> >  be enabled at runtime anyway, we don't need a switch to disable this
-> >  code at build time.
-> > 
-> > - the new tracepoints have been reworked.
-> > 
-> > This new code is still a little slower (2-3%) than the older, thread
-> > based code in my testing, though my hope is that it may perform better
-> > than the older code on a NUMA machine. I don't have one at the moment
-> > to verify that, however.
-> > 
-> > For background, here's an excerpt from the original posting:
-> > 
-> > This patchset is a little skunkworks project that I've been poking at
-> > for the last few weeks. Currently nfsd uses a dedicated thread pool to
-> > handle RPCs, but that requires maintaining a rather large swath of
-> > "fiddly" code to handle the threads and transports.
-> > 
-> > This patchset represents an alternative approach, which makes nfsd use
-> > workqueues to do its bidding rather than a dedicated thread pool. When a
-> > transport needs to do work, we simply queue it to the workqueue in
-> > softirq context and let it service the transport.
-> > 
-> > Performance:
-> > ------------
-> > As far as numbers go, I ran a modified version of the fio
-> > tiobench-example.fio test that just reduces the file size to 128M:
-> > 
-> > threads:
-> > ----------------------------------------------------------------------
-> > Run status group 0 (all jobs):
-> >  WRITE: io=13740KB, aggrb=228KB/s, minb=57KB/s, maxb=57KB/s,
-> > mint=60034msec, maxt=60049msec
-> > 
-> > Run status group 1 (all jobs):
-> >  WRITE: io=14652KB, aggrb=244KB/s, minb=60KB/s, maxb=61KB/s,
-> > mint=60002msec, maxt=60028msec
-> > 
-> > Run status group 2 (all jobs):
-> >   READ: io=524288KB, aggrb=49639KB/s, minb=12409KB/s, maxb=12433KB/s,
-> > mint=10542msec, maxt=10562msec
-> > 
-> > Run status group 3 (all jobs):
-> >   READ: io=524288KB, aggrb=50670KB/s, minb=12667KB/s, maxb=12687KB/s,
-> > mint=10331msec, maxt=10347msec
-> > 
-> > workqueue:
-> > ----------------------------------------------------------------------
-> > Run status group 0 (all jobs):
-> >  WRITE: io=13632KB, aggrb=226KB/s, minb=56KB/s, maxb=56KB/s,
-> > mint=60010msec, maxt=60061msec
-> > 
-> > Run status group 1 (all jobs):
-> >  WRITE: io=14328KB, aggrb=238KB/s, minb=59KB/s, maxb=59KB/s,
-> > mint=60023msec, maxt=60033msec
-> > 
-> > Run status group 2 (all jobs):
-> >   READ: io=524288KB, aggrb=47779KB/s, minb=11944KB/s, maxb=11955KB/s,
-> > mint=10963msec, maxt=10973msec
-> > 
-> > Run status group 3 (all jobs):
-> >   READ: io=524288KB, aggrb=48379KB/s, minb=12094KB/s, maxb=12114KB/s,
-> > mint=10819msec, maxt=10837msec
-> > 
-> > ...a small performance decrease using workqueues (about 5% in the worst
-> > case). It varies a little between runs but the results over several runs
-> > are fairly consistent in showing a small perf decrease.
-> > 
-> > In an attempt to ascertain where that comes from, I added some
-> > tracepoints and wrote a perl script to scrape the results and figure out
-> > where the latency comes from. The numbers here are from the ones that
-> > produced the above results:
-> > 
-> > [jlayton@palma nfsd-wq]$ ./analyze.pl < threads.txt 
-> > -------------------------------------------------------------
-> > rpcs=272437
-> > queue=3.79952429455322
-> > queued=10.0558330900775
-> > receive=10.6196625266701
-> > process=2325.8173229043
-> > total=2350.2923428156
-> > 
-> > [jlayton@palma nfsd-wq]$ ./analyze.pl < workqueue.txt 
-> > -------------------------------------------------------------
-> > rpcs=272329
-> > queue=4.41979737859012
-> > queued=8.124893049967
-> > receive=11.3421082590608
-> > process=2310.15945786277
-> > total=2334.04625655039
-> > 
-> > Here's a legend, the numbers represent a delta between two
-> > tracepoints for a particular xprt or rqst. I can provide the script if
-> > it's helpful but it's definitely hacked together:
-> > 
-> > rpcs: total number of rpcs processed (just a count)
-> > queue: time it took to queue the xprt.xi
-> >       trace_svc_xprt_enqueued - trace_svc_xprt_enqueue (in usecs)
-> > 
-> > queued: time between being queued and going "active"
-> >        trace_svc_xprt_active - trace_svc_xprt_enqueued (in usecs)
-> > 
-> > receive: time between going "active" and completing the receive
-> >         trace_svc_xprt_received - trace_svc_xprt_active (in usecs)
-> > 
-> > process: time between completing the receive and finishing processing
-> >         trace_svc_process - trace_svc_xprt_recevied (in usecs)
-> > 
-> > total: total time from enqueueing to finishing the processing
-> >       trace_svc_process - trace_svc_xprt_enqueued (in usecs)
-> > 
-> > The interesting bit is that according to these numbers, the workqueue
-> > RPCs ran more quickly on average (though most of that is in svc_process,
-> > for which I have zero explanation). So, why are we getting slower
-> > results?
-> > 
-> > One theory is that it's getting bitten by the fact that the workqueue
-> > queueing/dequeueing code uses spinlocks that disable bottom halves.
-> > Perhaps that adds up and causes more latency to softirq processing? I'm
-> > not sure how best to nail that down...
-> > 
-> > It's probably worth it to start considering this for v3.20, but I'd like
-> > to get some time on a larger scale test rig to see how it does first.
-> 
-> I think there needs to be a guarantee that this does not break
-> badly with NFS/RDMA, with xfs / btrfs / ext4, or with 40 and
-> 56GbE. (Yes, we are volunteering to help with some of that).
-> 
+> We'll also need Al's ACK on the fs_struct stuff.
 
-That would be helpful. I wouldn't expect any breakage with any of that
-given where I added the operations, but you never know.
+... and I'm not happy with it.  First of all, ditch those EXPORT_SYMBOL_GPL();
+if it's too low-level for general export (and many of those are), tacking
+_GPL on it doesn't make it any better.  unshare_fs_struct() misbegotten export
+is a historical accident - somebody (agruen, perhaps?) slapped a _GPL export
+on its precursors and I had taken a lazy approach back then.  Shouldn't have
+done that...  Please, don't add more of that shit.
 
-> How does it scale in number of individual transport sockets?
-> 
+More to the point, though, it *is* far too low-level, and for no visible
+reason.  AFAICS, what you want to achieve is zero umask in that fucker.
+TBH, I really wonder if any of that is needed at all.  Why do we want kernel
+threads to get umask shared with init(8), anyway?  It's very easy to change -
+all it takes is
+	* make init_fs.umask zero
+	* make kernel_init cloned without CLONE_FS and have it immediately
+set its ->fs->umask to 0022
+	* make ____call_usermodehelper() (always called very early in the
+life of a thread that had been cloned without CLONE_FS) do the same thing.
+Voila - all kernel threads have umask 0 and it's not affected by whatever
+init(8) might be pulling off.  And that includes all worqueue workers, etc.
 
-I'd expect that it'll do well given that we use RCU when searching for
-a svc_rqst, but I don't have a test rig that has a ton of clients so I
-can't guarantee that.
+With that I'm not sure we need to have unshare_fs_struct() at all; at least
+not unless some thread wants to play with chdir() and chroot() and
+I don't see anything of that sort in nfsd and lustre (the only callers of
+unshare_fs_struct() in the tree).  Note that set_fs_pwd() and set_fs_root()
+are *not* exported, and neither are sys_{chdir,fchdir,chroot}, so nfsd and
+lustre would have a hard time trying to do something of that sort anyway.
+There is open-coded crap trying to implement chdir in lustre_compat25.h, but
+it has no callers...
 
-> Does the new scheduling model use more or less CPU per byte
-> and per RPC?
-> 
+Linus, do you see any problems with the following patch (against the mainline)?
+If not, I'll put it into the next vfs.git pull request, along with removal of
+all mentionings of ->fs-> in lustre (aside of aforementioned dead code,
+there's open-coded current_umask() in one place and broken attempt to
+reimplement dentry_path() in another).
 
-Good question. My expectation would be that it wouldn't make much
-difference, but again I don't know for sure.
-
-I'd also like very much to account for the drop in throughput I'm seeing
-with this code, but I'm unclear on the best method to chase that down
-as of yet.
-
-> Also, running these performance tests with a CPU soaker running
-> on the NFS server might be interesting. Something like a large
-> software build. That could better expose issues with workqueue
-> scheduling.
-> 
-> That feels like more work than any of us can do before 3.20.
-> 
-
-Quite likely.
-
-v3.20 isn't a firm goal. Heck I may drop this altogether if it turns
-out to be slower and we can't figure out any way to make it better.
-
-A primary goal here is to avoid breaking the existing code (of course).
-One thing I'm really trying to do is avoid substantially altering the
-code in the case where you don't opt to use workqueues.
-
-I'm adding some function pointers that will need to be chased, of course
-but I don't think that'll add much overhead in the context of all of
-the other stuff you have to do to handle an RPC.
-
-> 
-> > We'll also need Al's ACK on the fs_struct stuff.
-> > 
-> > Thoughts or comments are welcome.
-> > 
-> > Jeff Layton (16):
-> >  sunrpc: add a new svc_serv_ops struct and move sv_shutdown into it
-> >  sunrpc: move sv_function into sv_ops
-> >  sunrpc: move sv_module parm into sv_ops
-> >  sunrpc: turn enqueueing a svc_xprt into a svc_serv operation
-> >  sunrpc: abstract out svc_set_num_threads to sv_ops
-> >  sunrpc: move pool_mode definitions into svc.h
-> >  sunrpc: factor svc_rqst allocation and freeing from sv_nrthreads
-> >    refcounting
-> >  sunrpc: set up workqueue function in svc_xprt
-> >  sunrpc: set up svc_rqst work if it's defined
-> >  sunrpc: add basic support for workqueue-based services
-> >  nfsd: keep a reference to the fs_struct in svc_rqst
-> >  nfsd: add support for workqueue based service processing
-> >  sunrpc: keep a cache of svc_rqsts for each NUMA node
-> >  sunrpc: add more tracepoints around svc_xprt handling
-> >  sunrpc: print the svc_rqst pointer value in svc_process tracepoint
-> >  sunrpc: add tracepoints around svc_sock handling
-> > 
-> > fs/fs_struct.c                  |  60 ++++++--
-> > fs/lockd/svc.c                  |   7 +-
-> > fs/nfs/callback.c               |   6 +-
-> > fs/nfsd/nfssvc.c                | 100 +++++++++++--
-> > include/linux/fs_struct.h       |   4 +
-> > include/linux/sunrpc/svc.h      |  93 ++++++++++---
-> > include/linux/sunrpc/svc_xprt.h |   3 +
-> > include/linux/sunrpc/svcsock.h  |   1 +
-> > include/trace/events/sunrpc.h   |  88 ++++++++++--
-> > net/sunrpc/Makefile             |   2 +-
-> > net/sunrpc/svc.c                | 141 +++++++++++--------
-> > net/sunrpc/svc_wq.c             | 302
-> > ++++++++++++++++++++++++++++++++++++++++
-> > net/sunrpc/svc_xprt.c           |  68 ++++++++-
-> > net/sunrpc/svcsock.c            |   6 + 14 files changed, 758
-> > insertions(+), 123 deletions(-) create mode 100644
-> > net/sunrpc/svc_wq.c
-> > 
-> > -- 
-> > 2.1.0
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe
-> > linux-nfs" in the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> --
-> Chuck Lever
-> chuck[dot]lever[at]oracle[dot]com
-> 
-> 
-> 
-
-
--- 
-Jeff Layton <jlayton@primarydata.com>
+Signed-off-by: Al Viro <viro@zeniv.linux.org.uk>
+---
+diff --git a/drivers/staging/lustre/include/linux/libcfs/libcfs.h b/drivers/staging/lustre/include/linux/libcfs/libcfs.h
+index a6b2f90..e097489 100644
+--- a/drivers/staging/lustre/include/linux/libcfs/libcfs.h
++++ b/drivers/staging/lustre/include/linux/libcfs/libcfs.h
+@@ -136,7 +136,6 @@ void cfs_enter_debugger(void);
+ /*
+  * Defined by platform
+  */
+-int unshare_fs_struct(void);
+ sigset_t cfs_get_blocked_sigs(void);
+ sigset_t cfs_block_allsigs(void);
+ sigset_t cfs_block_sigs(unsigned long sigs);
+diff --git a/drivers/staging/lustre/lustre/obdclass/genops.c b/drivers/staging/lustre/lustre/obdclass/genops.c
+index c314e9c..53876f9 100644
+--- a/drivers/staging/lustre/lustre/obdclass/genops.c
++++ b/drivers/staging/lustre/lustre/obdclass/genops.c
+@@ -1713,7 +1713,6 @@ EXPORT_SYMBOL(obd_zombie_barrier);
+  */
+ static int obd_zombie_impexp_thread(void *unused)
+ {
+-	unshare_fs_struct();
+ 	complete(&obd_zombie_start);
+ 
+ 	obd_zombie_pid = current_pid();
+diff --git a/drivers/staging/lustre/lustre/obdclass/llog.c b/drivers/staging/lustre/lustre/obdclass/llog.c
+index 3ab0529..6130b23 100644
+--- a/drivers/staging/lustre/lustre/obdclass/llog.c
++++ b/drivers/staging/lustre/lustre/obdclass/llog.c
+@@ -411,8 +411,6 @@ static int llog_process_thread_daemonize(void *arg)
+ 	struct lu_env			 env;
+ 	int				 rc;
+ 
+-	unshare_fs_struct();
+-
+ 	/* client env has no keys, tags is just 0 */
+ 	rc = lu_env_init(&env, LCT_LOCAL | LCT_MG_THREAD);
+ 	if (rc)
+diff --git a/drivers/staging/lustre/lustre/ptlrpc/import.c b/drivers/staging/lustre/lustre/ptlrpc/import.c
+index 2e7e717..d395e06 100644
+--- a/drivers/staging/lustre/lustre/ptlrpc/import.c
++++ b/drivers/staging/lustre/lustre/ptlrpc/import.c
+@@ -1290,8 +1290,6 @@ static int ptlrpc_invalidate_import_thread(void *data)
+ {
+ 	struct obd_import *imp = data;
+ 
+-	unshare_fs_struct();
+-
+ 	CDEBUG(D_HA, "thread invalidate import %s to %s@%s\n",
+ 	       imp->imp_obd->obd_name, obd2cli_tgt(imp->imp_obd),
+ 	       imp->imp_connection->c_remote_uuid.uuid);
+diff --git a/drivers/staging/lustre/lustre/ptlrpc/pinger.c b/drivers/staging/lustre/lustre/ptlrpc/pinger.c
+index 20341b2..9f426ea 100644
+--- a/drivers/staging/lustre/lustre/ptlrpc/pinger.c
++++ b/drivers/staging/lustre/lustre/ptlrpc/pinger.c
+@@ -586,8 +586,6 @@ static int ping_evictor_main(void *arg)
+ 	struct l_wait_info lwi = { 0 };
+ 	time_t expire_time;
+ 
+-	unshare_fs_struct();
+-
+ 	CDEBUG(D_HA, "Starting Ping Evictor\n");
+ 	pet_state = PET_READY;
+ 	while (1) {
+diff --git a/drivers/staging/lustre/lustre/ptlrpc/ptlrpcd.c b/drivers/staging/lustre/lustre/ptlrpc/ptlrpcd.c
+index 357ea9f..a2a1574 100644
+--- a/drivers/staging/lustre/lustre/ptlrpc/ptlrpcd.c
++++ b/drivers/staging/lustre/lustre/ptlrpc/ptlrpcd.c
+@@ -382,7 +382,6 @@ static int ptlrpcd(void *arg)
+ 	struct lu_env env = { .le_ses = NULL };
+ 	int rc, exit = 0;
+ 
+-	unshare_fs_struct();
+ #if defined(CONFIG_SMP)
+ 	if (test_bit(LIOD_BIND, &pc->pc_flags)) {
+ 		int index = pc->pc_index;
+diff --git a/drivers/staging/lustre/lustre/ptlrpc/sec_gc.c b/drivers/staging/lustre/lustre/ptlrpc/sec_gc.c
+index c500aff..9e33781 100644
+--- a/drivers/staging/lustre/lustre/ptlrpc/sec_gc.c
++++ b/drivers/staging/lustre/lustre/ptlrpc/sec_gc.c
+@@ -164,8 +164,6 @@ static int sec_gc_main(void *arg)
+ 	struct ptlrpc_thread *thread = (struct ptlrpc_thread *) arg;
+ 	struct l_wait_info    lwi;
+ 
+-	unshare_fs_struct();
+-
+ 	/* Record that the thread is running */
+ 	thread_set_flags(thread, SVC_RUNNING);
+ 	wake_up(&thread->t_ctl_waitq);
+diff --git a/drivers/staging/lustre/lustre/ptlrpc/service.c b/drivers/staging/lustre/lustre/ptlrpc/service.c
+index a8df8a7..149c65c 100644
+--- a/drivers/staging/lustre/lustre/ptlrpc/service.c
++++ b/drivers/staging/lustre/lustre/ptlrpc/service.c
+@@ -2277,7 +2277,6 @@ static int ptlrpc_main(void *arg)
+ 	int counter = 0, rc = 0;
+ 
+ 	thread->t_pid = current_pid();
+-	unshare_fs_struct();
+ 
+ 	/* NB: we will call cfs_cpt_bind() for all threads, because we
+ 	 * might want to run lustre server only on a subset of system CPUs,
+@@ -2478,7 +2477,6 @@ static int ptlrpc_hr_main(void *arg)
+ 
+ 	snprintf(threadname, sizeof(threadname), "ptlrpc_hr%02d_%03d",
+ 		 hrp->hrp_cpt, hrt->hrt_id);
+-	unshare_fs_struct();
+ 
+ 	rc = cfs_cpt_bind(ptlrpc_hr.hr_cpt_table, hrp->hrp_cpt);
+ 	if (rc != 0) {
+diff --git a/fs/fs_struct.c b/fs/fs_struct.c
+index 7dca743..401fd2e 100644
+--- a/fs/fs_struct.c
++++ b/fs/fs_struct.c
+@@ -128,29 +128,6 @@ struct fs_struct *copy_fs_struct(struct fs_struct *old)
+ 	return fs;
+ }
+ 
+-int unshare_fs_struct(void)
+-{
+-	struct fs_struct *fs = current->fs;
+-	struct fs_struct *new_fs = copy_fs_struct(fs);
+-	int kill;
+-
+-	if (!new_fs)
+-		return -ENOMEM;
+-
+-	task_lock(current);
+-	spin_lock(&fs->lock);
+-	kill = !--fs->users;
+-	current->fs = new_fs;
+-	spin_unlock(&fs->lock);
+-	task_unlock(current);
+-
+-	if (kill)
+-		free_fs_struct(fs);
+-
+-	return 0;
+-}
+-EXPORT_SYMBOL_GPL(unshare_fs_struct);
+-
+ int current_umask(void)
+ {
+ 	return current->fs->umask;
+@@ -162,5 +139,5 @@ struct fs_struct init_fs = {
+ 	.users		= 1,
+ 	.lock		= __SPIN_LOCK_UNLOCKED(init_fs.lock),
+ 	.seq		= SEQCNT_ZERO(init_fs.seq),
+-	.umask		= 0022,
++	.umask		= 0,
+ };
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index 752d56b..5c03928 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -573,16 +573,6 @@ nfsd(void *vrqstp)
+ 	/* Lock module and set up kernel thread */
+ 	mutex_lock(&nfsd_mutex);
+ 
+-	/* At this point, the thread shares current->fs
+-	 * with the init process. We need to create files with a
+-	 * umask of 0 instead of init's umask. */
+-	if (unshare_fs_struct() < 0) {
+-		printk("Unable to start nfsd thread: out of memory\n");
+-		goto out;
+-	}
+-
+-	current->fs->umask = 0;
+-
+ 	/*
+ 	 * thread is spawned with all signals set to SIG_IGN, re-enable
+ 	 * the ones that will bring down the thread
+diff --git a/include/linux/fs_struct.h b/include/linux/fs_struct.h
+index 0efc3e6..18d369c 100644
+--- a/include/linux/fs_struct.h
++++ b/include/linux/fs_struct.h
+@@ -21,7 +21,6 @@ extern void set_fs_root(struct fs_struct *, const struct path *);
+ extern void set_fs_pwd(struct fs_struct *, const struct path *);
+ extern struct fs_struct *copy_fs_struct(struct fs_struct *);
+ extern void free_fs_struct(struct fs_struct *);
+-extern int unshare_fs_struct(void);
+ 
+ static inline void get_fs_root(struct fs_struct *fs, struct path *root)
+ {
+diff --git a/init/main.c b/init/main.c
+index ca380ec..d1a4acf 100644
+--- a/init/main.c
++++ b/init/main.c
+@@ -399,7 +399,7 @@ static noinline void __init_refok rest_init(void)
+ 	 * the init task will end up wanting to create kthreads, which, if
+ 	 * we schedule it before we create kthreadd, will OOPS.
+ 	 */
+-	kernel_thread(kernel_init, NULL, CLONE_FS);
++	kernel_thread(kernel_init, NULL, 0);
+ 	numa_default_policy();
+ 	pid = kernel_thread(kthreadd, NULL, CLONE_FS | CLONE_FILES);
+ 	rcu_read_lock();
+@@ -924,6 +924,7 @@ static int __ref kernel_init(void *unused)
+ {
+ 	int ret;
+ 
++	current->fs->umask = 0022;
+ 	kernel_init_freeable();
+ 	/* need to finish all async __init code before freeing the memory */
+ 	async_synchronize_full();
+diff --git a/kernel/kmod.c b/kernel/kmod.c
+index 2777f40..0686840 100644
+--- a/kernel/kmod.c
++++ b/kernel/kmod.c
+@@ -219,6 +219,7 @@ static int ____call_usermodehelper(void *data)
+ 	struct cred *new;
+ 	int retval;
+ 
++	current->fs->umask = 0022;
+ 	spin_lock_irq(&current->sighand->siglock);
+ 	flush_signal_handlers(current, 1);
+ 	spin_unlock_irq(&current->sighand->siglock);
