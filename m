@@ -1,83 +1,141 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pa0-f52.google.com ([209.85.220.52]:39926 "EHLO
-	mail-pa0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750949AbaLLUPM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Dec 2014 15:15:12 -0500
-Received: by mail-pa0-f52.google.com with SMTP id eu11so7901615pac.39
-        for <linux-nfs@vger.kernel.org>; Fri, 12 Dec 2014 12:15:12 -0800 (PST)
-Date: Fri, 12 Dec 2014 12:15:09 -0800
-From: Omar Sandoval <osandov@osandov.com>
-To: David Sterba <dsterba@suse.cz>
-Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
-        Andrew Morton <akpm@linux-foundation.org>, Chris Mason <clm@fb.com>,
-        Josef Bacik <jbacik@fb.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Christoph Hellwig <hch@infradead.org>, linux-btrfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [RFC PATCH v3 0/7] btrfs: implement swap file support
-Message-ID: <20141212201509.GB20971@mew>
-References: <cover.1418173063.git.osandov@osandov.com>
- <20141212103213.GL27601@twin.jikos.cz>
+Received: from mx12.netapp.com ([216.240.18.77]:25922 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751266AbaLLWh6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 12 Dec 2014 17:37:58 -0500
+From: <andros@netapp.com>
+To: <steved@redhat.com>
+CC: <linux-nfs@vger.kernel.org>, Andy Adamson <andros@netapp.com>
+Subject: [PATCH 1/1] GSSD add rpc_gss_svc_t to the gssd upcall
+Date: Fri, 12 Dec 2014 17:37:54 -0500
+Message-ID: <1418423874-1370-1-git-send-email-andros@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20141212103213.GL27601@twin.jikos.cz>
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Dec 12, 2014 at 11:32:13AM +0100, David Sterba wrote:
-> On Tue, Dec 09, 2014 at 05:45:41PM -0800, Omar Sandoval wrote:
-> > After some discussion on the mailing list, I decided that for simplicity and
-> > reliability, it's best to simply disallow COW files and files with shared
-> > extents (like files with extents shared with a snapshot). From a user's
-> > perspective, this means that a snapshotted subvolume cannot be used for a swap
-> > file, but keeping the swap file in a separate subvolume that is never
-> > snapshotted seems entirely reasonable to me.
-> 
-> Well, there are enough special cases how to do things on btrfs and I'd
-> like to avoid introducing another one.
-> 
-> > An alternative suggestion was to
-> > allow swap files to be snapshotted and to do an implied COW on swap file
-> > activation, which I was ready to implement until I realized that we can't permit
-> > snapshotting a subvolume with an active swap file, so this creates a surprising
-> > inconsistency for users (in my opinion).
-> 
-> I still don't see why it's not possible to do the snapshot with an
-> active swapfile.
-> 
-Creating a snapshot of an active swapfile would create shared extents,
-so the next time we have to swap out a page, we'd have to do a COW,
-which we're already trying pretty hard to avoid. We could allow it, but
-it might lead to some unreliable behavior and unhappy emails to the
-mailing list. However, I do see your point about wanting to avoid
-special cases, so I'd like to get some more input from others on this as
-well.
+From: Andy Adamson <andros@netapp.com>
 
-> > As with before, this functionality is tenuously tested in a virtual machine with
-> > some artificial workloads, but it "works for me". I'm pretty happy with the
-> > results on my end, so please comment away.
-> 
-> The non-btrfs changes can go independently and do not have to wait until
-> we resolve the swap vs snapshot problem.
-> 
-> I did a simple test and it crashed instantly, lockep complains:
-> 
-> memory: 2G
-> swap file: 1G
-> kernel: 3.17 + v3
-> 
-[snip]
+Otherwise rpc.gssd will send a V4 NULL RPCSEC_GSS_INIT call with an RPCSEC_GSS
+service of rpc_gss_svc_none for rpc_sec_gss_svc_integrity/privacy requests
+from the kernel.
 
-That's my fault for not running with lockdep enabled. The problem here
-is that swap-over-NFS is the only caller of nfs_direct_IO, so
-nfs_direct_IO doesn't observe the normal direct_IO locking conventions
-and neither does swap_writepage. I'll have to shuffle around some code
-on the NFS side to fix that.
+Companion patch to kernel patch SUNRPC add rpc_gss_svc_t to gssd upcall
 
-It looks like the non-btrfs parts of this might get a bit bigger, so
-I'll look into getting that in separately.
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ utils/gssd/gssd_proc.c | 35 +++++++++++++++++++++++++++--------
+ 1 file changed, 27 insertions(+), 8 deletions(-)
 
-Thanks!
+diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
+index 121feb1..022cac3 100644
+--- a/utils/gssd/gssd_proc.c
++++ b/utils/gssd/gssd_proc.c
+@@ -841,7 +841,8 @@ create_auth_rpc_client(struct clnt_info *clp,
+ 		       AUTH **auth_return,
+ 		       uid_t uid,
+ 		       int authtype,
+-		       gss_cred_id_t cred)
++		       gss_cred_id_t cred,
++		       int svc /* rpc_gss_svc_t */ )
+ {
+ 	CLIENT			*rpc_clnt = NULL;
+ 	struct rpc_gss_sec	sec;
+@@ -855,7 +856,7 @@ create_auth_rpc_client(struct clnt_info *clp,
+ 	socklen_t		salen;
+ 
+ 	sec.qop = GSS_C_QOP_DEFAULT;
+-	sec.svc = RPCSEC_GSS_SVC_NONE;
++	sec.svc = svc;
+ 	sec.cred = cred;
+ 	sec.req_flags = 0;
+ 	if (authtype == AUTHTYPE_KRB5) {
+@@ -1029,7 +1030,7 @@ change_identity(uid_t uid)
+  */
+ static void
+ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *tgtname,
+-		    char *service)
++		    char *service, int svc)
+ {
+ 	CLIENT			*rpc_clnt = NULL;
+ 	AUTH			*auth = NULL;
+@@ -1113,7 +1114,7 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *tgtname,
+ 		err = gssd_acquire_user_cred(&gss_cred);
+ 		if (!err)
+ 			create_resp = create_auth_rpc_client(clp, tgtname, &rpc_clnt, &auth, uid,
+-							     AUTHTYPE_KRB5, gss_cred);
++							     AUTHTYPE_KRB5, gss_cred, svc);
+ 		/* if create_auth_rplc_client fails try the traditional method of
+ 		 * trolling for credentials */
+ 		for (dirname = ccachesearch; create_resp != 0 && *dirname != NULL; dirname++) {
+@@ -1122,7 +1123,7 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *tgtname,
+ 				downcall_err = -EKEYEXPIRED;
+ 			else if (!err)
+ 				create_resp = create_auth_rpc_client(clp, tgtname, &rpc_clnt, &auth, uid,
+-							     AUTHTYPE_KRB5, GSS_C_NO_CREDENTIAL);
++							     AUTHTYPE_KRB5, GSS_C_NO_CREDENTIAL, svc);
+ 		}
+ 	}
+ 	if (create_resp != 0) {
+@@ -1148,7 +1149,7 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *tgtname,
+ 					if ((create_auth_rpc_client(clp, tgtname, &rpc_clnt,
+ 								    &auth, uid,
+ 								    AUTHTYPE_KRB5,
+-								    GSS_C_NO_CREDENTIAL)) == 0) {
++								    GSS_C_NO_CREDENTIAL, svc)) == 0) {
+ 						/* Success! */
+ 						success++;
+ 						break;
+@@ -1243,7 +1244,8 @@ handle_krb5_upcall(struct clnt_info *clp)
+ 		return;
+ 	}
+ 
+-	process_krb5_upcall(clp, uid, clp->krb5_fd, NULL, NULL);
++	process_krb5_upcall(clp, uid, clp->krb5_fd, NULL, NULL,
++			    RPCSEC_GSS_SVC_NONE);
+ }
+ 
+ void
+@@ -1251,6 +1253,7 @@ handle_gssd_upcall(struct clnt_info *clp)
+ {
+ 	uid_t			uid;
+ 	char			*lbuf = NULL;
++	int			svc = 0; /* rpc_gss_service_t */
+ 	int			lbuflen = 0;
+ 	char			*p;
+ 	char			*mech = NULL;
+@@ -1300,6 +1303,21 @@ handle_gssd_upcall(struct clnt_info *clp)
+ 		goto out;
+ 	}
+ 
++	/* read rpc_gss_service_t */
++	if ((p = strstr(lbuf, "svc=")) != NULL) {
++		if (sscanf(p, "svc=%d", &svc) != 1) {
++			printerr(0, "WARNING: handle_gssd_upcall: "
++				    "failed to parse svc "
++				    "in upcall string '%s'\n", lbuf);
++			goto out;
++		}
++	} else {
++		printerr(0, "WARNING: handle_gssd_upcall: "
++			    "failed to find svc "
++			    "in upcall string '%s'\n", lbuf);
++		goto out;
++	}
++
+ 	/* read supported encryption types if supplied */
+ 	if ((p = strstr(lbuf, "enctypes=")) != NULL) {
+ 		enctypes = malloc(lbuflen);
+@@ -1353,7 +1371,8 @@ handle_gssd_upcall(struct clnt_info *clp)
+ 	}
+ 
+ 	if (strcmp(mech, "krb5") == 0 && clp->servername)
+-		process_krb5_upcall(clp, uid, clp->gssd_fd, target, service);
++		process_krb5_upcall(clp, uid, clp->gssd_fd, target, service,
++				    svc);
+ 	else {
+ 		if (clp->servername)
+ 			printerr(0, "WARNING: handle_gssd_upcall: "
 -- 
-Omar
+1.9.3 (Apple Git-50)
+
