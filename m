@@ -1,45 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:40936 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932975AbaLKUfJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 11 Dec 2014 15:35:09 -0500
-From: Benjamin Coddington <bcodding@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: Jeff Layton <jeff.layton@primarydata.com>
-Subject: [PATCH] nfs: verify open flags before allowing open
-Date: Thu, 11 Dec 2014 15:30:29 -0500
-Message-Id: <f2d48b67e911de7a8b89025b25d3ab97f397ba8f.1418329650.git.bcodding@redhat.com>
+Received: from mail-qg0-f44.google.com ([209.85.192.44]:56962 "EHLO
+	mail-qg0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S967761AbaLLOu3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Dec 2014 09:50:29 -0500
+Received: by mail-qg0-f44.google.com with SMTP id q107so3496410qgd.3
+        for <linux-nfs@vger.kernel.org>; Fri, 12 Dec 2014 06:50:28 -0800 (PST)
+From: Jeff Layton <jlayton@primarydata.com>
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org, Thomas Haynes <thomas.haynes@primarydata.com>
+Subject: [PATCH] nfs: guard fs/nfs/internal.h against multiple inclusion
+Date: Fri, 12 Dec 2014 09:50:18 -0500
+Message-Id: <1418395818-22062-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Fix another path for:
-9597c13b nfs: verify open flags before allowing an atomic open
-
-which forbade the NFSv4 open for O_DIRECT|O_APPEND in nfs_atomic_open().
-That code path is missed when a cached positive dentry exists;
-nfs4_file_open() is used instead.  Duplicate the forbid in nfs4_file_open().
-
-Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
-Cc: Jeff Layton <jeff.layton@primarydata.com>
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+Cc: Thomas Haynes <thomas.haynes@primarydata.com>
 ---
- fs/nfs/nfs4file.c |    4 ++++
- 1 files changed, 4 insertions(+), 0 deletions(-)
+ fs/nfs/internal.h | 4 ++++
+ 1 file changed, 4 insertions(+)
 
-diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
-index c51fb4d..c2e4767 100644
---- a/fs/nfs/nfs4file.c
-+++ b/fs/nfs/nfs4file.c
-@@ -37,6 +37,10 @@ nfs4_file_open(struct inode *inode, struct file *filp)
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index efaa31c70fbe..ffef459f0b4f 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -1,6 +1,8 @@
+ /*
+  * NFS internal definitions
+  */
++#ifndef	__FS_NFS_INTERNAL_H
++#define __FS_NFS_INTERNAL_H
  
- 	dprintk("NFS: open file(%pd2)\n", dentry);
- 
-+	err = nfs_check_flags(openflags);
-+	if (err)
-+		return err;
+ #include "nfs4_fs.h"
+ #include <linux/mount.h>
+@@ -629,3 +631,5 @@ static inline u32 nfs_fhandle_hash(const struct nfs_fh *fh)
+ 	return 0;
+ }
+ #endif
 +
- 	if ((openflags & O_ACCMODE) == 3)
- 		openflags--;
- 
++#endif	/* __FS_NFS_INTERNAL_H */
 -- 
-1.7.1
+2.1.0
 
