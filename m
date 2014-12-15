@@ -1,42 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:60201 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755190AbaLWJhQ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Dec 2014 04:37:16 -0500
-Date: Tue, 23 Dec 2014 01:37:10 -0800
-From: Christoph Hellwig <hch@infradead.org>
-To: Al Viro <viro@ZenIV.linux.org.uk>
-Cc: Jan Kara <jack@suse.cz>, Omar Sandoval <osandov@osandov.com>,
+Received: from mail-pd0-f169.google.com ([209.85.192.169]:59381 "EHLO
+	mail-pd0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751246AbaLOF1a (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Dec 2014 00:27:30 -0500
+Received: by mail-pd0-f169.google.com with SMTP id z10so11037200pdj.0
+        for <linux-nfs@vger.kernel.org>; Sun, 14 Dec 2014 21:27:29 -0800 (PST)
+From: Omar Sandoval <osandov@osandov.com>
+To: Alexander Viro <viro@zeniv.linux.org.uk>,
         Andrew Morton <akpm@linux-foundation.org>,
         Trond Myklebust <trond.myklebust@primarydata.com>,
-        David Sterba <dsterba@suse.cz>, linux-fsdevel@vger.kernel.org,
-        linux-mm@kvack.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH 2/8] swap: lock i_mutex for swap_writepage direct_IO
-Message-ID: <20141223093710.GA29096@infradead.org>
+        Christoph Hellwig <hch@infradead.org>, David Sterba <dsterba@suse.cz>,
+        linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Cc: Omar Sandoval <osandov@osandov.com>
+Subject: [PATCH 3/8] swap: don't add ITER_BVEC flag to direct_IO rw
+Date: Sun, 14 Dec 2014 21:26:57 -0800
+Message-Id: <5f9e8a7dcdf08bd2dd433f1a42690ab8e67e7915.1418618044.git.osandov@osandov.com>
+In-Reply-To: <cover.1418618044.git.osandov@osandov.com>
 References: <cover.1418618044.git.osandov@osandov.com>
- <a59510f4552a5d3557958cdb0ce1b23b3abfc75b.1418618044.git.osandov@osandov.com>
- <20141215162705.GA23887@quack.suse.cz>
- <20141215165615.GA19041@infradead.org>
- <20141220065133.GC22149@ZenIV.linux.org.uk>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20141220065133.GC22149@ZenIV.linux.org.uk>
+In-Reply-To: <cover.1418618044.git.osandov@osandov.com>
+References: <cover.1418618044.git.osandov@osandov.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Dec 20, 2014 at 06:51:33AM +0000, Al Viro wrote:
-> > The problem is that the use of ->direct_IO by the swap code is a gross
-> > layering violation.  ->direct_IO is a callback for the filesystem, and
-> > the swap code need to call ->read_iter instead of ->readpage and
-> > ->write_tier instead of ->direct_IO, and leave the locking to the
-> > filesystem.
-> 
-> The thing is, ->read_iter() and ->write_iter() might decide to fall back to 
-> buffered IO path.  XFS is unusual in that respect - there O_DIRECT ends up
-> with short write in such case.  Other filesystems, OTOH...
+The rw argument to direct_IO has some ill-defined semantics. Some
+filesystems (e.g., ext4, FAT) decide whether they're doing a write with
+rw == WRITE, but others (e.g., XFS) check rw & WRITE. Let's set a good
+example in the swap file code and say ITER_BVEC belongs in
+iov_iter->flags but not in rw. This caters to the least common
+denominator and avoids a sweeping change of every direct_IO
+implementation for now.
 
-We'll just need a ->swap_activate method that makes sure we really do
-direct I/O.  For all filesystems currently suporting swap just checking
-that all blocks are allocated (as the ->bmap path already does) should
-be enough.
+Signed-off-by: Omar Sandoval <osandov@osandov.com>
+---
+ mm/page_io.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+diff --git a/mm/page_io.c b/mm/page_io.c
+index 1630ac0..c229f88 100644
+--- a/mm/page_io.c
++++ b/mm/page_io.c
+@@ -285,8 +285,7 @@ int __swap_writepage(struct page *page, struct writeback_control *wbc,
+ 		set_page_writeback(page);
+ 		unlock_page(page);
+ 		mutex_lock(&inode->i_mutex);
+-		ret = mapping->a_ops->direct_IO(ITER_BVEC | WRITE,
+-						&kiocb, &from,
++		ret = mapping->a_ops->direct_IO(WRITE, &kiocb, &from,
+ 						kiocb.ki_pos);
+ 		mutex_unlock(&inode->i_mutex);
+ 		if (ret == PAGE_SIZE) {
+-- 
+2.1.3
+
