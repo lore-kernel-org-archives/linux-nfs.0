@@ -1,88 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wi0-f177.google.com ([209.85.212.177]:57967 "EHLO
-	mail-wi0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933032AbaLDRwO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Dec 2014 12:52:14 -0500
-From: Pieter Smith <pieter@boesman.nl>
-To: linux-kernel@vger.kernel.org
-Cc: Josh Triplett <josh@joshtriplett.org>, Pieter Smith <pieter@boesman.nl>,
-        Alexander Duyck <alexander.h.duyck@intel.com>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Alexei Starovoitov <ast@plumgrid.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Bertrand Jacquin <beber@meleeweb.net>,
-        Catalina Mocanu <catalina.mocanu@gmail.com>,
-        Daniel Borkmann <dborkman@redhat.com>,
-        "David S. Miller" <davem@davemloft.net>,
-        Eric Dumazet <edumazet@google.com>,
-        "Eric W. Biederman" <ebiederm@xmission.com>,
-        Fabian Frederick <fabf@skynet.be>,
-        fuse-devel@lists.sourceforge.net (open list:FUSE: FILESYSTEM...),
-        Geert Uytterhoeven <geert@linux-m68k.org>,
-        Hugh Dickins <hughd@google.com>, Iulia Manda <iulia.manda21@gmail.com>,
-        Jan Beulich <JBeulich@suse.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@poochiereds.net>,
-        linux-api@vger.kernel.org (open list:ABI/API),
-        linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org (open list:KERNEL NFSD, SUNR...),
-        "Luis R. Rodriguez" <mcgrof@suse.com>,
-        Matt Turner <mattst88@gmail.com>, Mel Gorman <mgorman@suse.de>,
-        "Michael S. Tsirkin" <mst@redhat.com>,
-        Miklos Szeredi <miklos@szeredi.hu>,
-        netdev@vger.kernel.org (open list:NETWORKING [GENERAL]),
-        Oleg Nesterov <oleg@redhat.com>,
-        Paul Durrant <Paul.Durrant@citrix.com>,
-        "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
-        Peter Foley <pefoley2@pefoley.com>, Thomas Graf <tgraf@suug.ch>,
-        Tom Herbert <therbert@google.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Willem de Bruijn <willemb@google.com>,
-        Xiao Guangrong <xiaoguangrong@linux.vnet.ibm.com>,
-        =?UTF-8?q?=E8=94=A1=E6=AD=A3=E9=BE=99?= <zhenglong.cai@cs2c.com.cn>
-Subject: [PATCH v6 4/7] fs/fuse: support compiling out splice
-Date: Thu,  4 Dec 2014 18:50:52 +0100
-Message-Id: <1417715473-24110-5-git-send-email-pieter@boesman.nl>
-In-Reply-To: <1417715473-24110-1-git-send-email-pieter@boesman.nl>
-References: <1417715473-24110-1-git-send-email-pieter@boesman.nl>
+Received: from mx1.redhat.com ([209.132.183.28]:58835 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751136AbaLOMwX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 15 Dec 2014 07:52:23 -0500
+Date: Mon, 15 Dec 2014 07:52:19 -0500 (EST)
+From: Benjamin Coddington <bcodding@redhat.com>
+To: Pablo Silva <psilvao@gmail.com>
+cc: linux-nfs@vger.kernel.org
+Subject: Re: Fwd: NFS and Memory Buffers
+In-Reply-To: <CAF1in6RCyK4VMM3j1ZD=1D25+cFU9YGg-UhR-kuYcNWNk+Stzg@mail.gmail.com>
+Message-ID: <alpine.OSX.2.19.9992.1412150749290.1119@planck.local>
+References: <CAF1in6QVkgyuC7VQ5QdYnYtPRJgArDwg5sXtKiAvyszCcQoZ-g@mail.gmail.com> <CAF1in6RCyK4VMM3j1ZD=1D25+cFU9YGg-UhR-kuYcNWNk+Stzg@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-To implement splice support, fs/fuse makes use of nosteal_pipe_buf_ops. This
-struct is exported by fs/splice. The goal of the larger patch set is to
-completely compile out fs/splice, so uses of the exported struct need to be
-compiled out along with fs/splice.
+Dear Pablo,
 
-This patch therefore compiles out splice support in fs/fuse when
-CONFIG_SYSCALL_SPLICE is undefined.
+	Why are you restarting snmpd between flushing cache and reading
+memory values?  On a running system you can probably expect the
+cache to immediately start to fill after a flush anyway.
+y
+Ben
 
-Signed-off-by: Pieter Smith <pieter@boesman.nl>
----
- fs/fuse/dev.c | 4 ++++
- 1 file changed, 4 insertions(+)
+On Mon, 15 Dec 2014, Pablo Silva wrote:
 
-diff --git a/fs/fuse/dev.c b/fs/fuse/dev.c
-index ca88731..99f1ff4 100644
---- a/fs/fuse/dev.c
-+++ b/fs/fuse/dev.c
-@@ -1291,6 +1291,7 @@ static ssize_t fuse_dev_read(struct kiocb *iocb, const struct iovec *iov,
- 	return fuse_dev_do_read(fc, file, &cs, iov_length(iov, nr_segs));
- }
- 
-+#ifdef CONFIG_SYSCALL_SPLICE
- static ssize_t fuse_dev_splice_read(struct file *in, loff_t *ppos,
- 				    struct pipe_inode_info *pipe,
- 				    size_t len, unsigned int flags)
-@@ -1368,6 +1369,9 @@ out:
- 	kfree(bufs);
- 	return ret;
- }
-+#else /* CONFIG_SYSCALL_SPLICE */
-+#define fuse_dev_splice_read NULL
-+#endif
- 
- static int fuse_notify_poll(struct fuse_conn *fc, unsigned int size,
- 			    struct fuse_copy_state *cs)
--- 
-2.1.0
-
+> Dear Readers:
+>
+>      My boss has entrusted me to analyze why the memory buffers are
+> not released a Linux server with Centos 6.4.?
+>
+>     As informs me, the current reading is:
+>
+>
+> [root@bck ~]# free -m
+>              total       used       free     shared    buffers     cached
+> Mem:         15936      15788        147          0       6746        438
+> -/+ buffers/cache:       8604       7332
+> Swap:         2047          0       2047
+> [root@bck ~]#
+> [root@bck ~]#
+> [root@bck ~]# echo 3 > /proc/sys/vm/drop_caches && service snmpd
+> restart && free -m
+> Stopping snmpd:                                            [  OK  ]
+> Starting snmpd:                                            [  OK  ]
+>              total       used       free     shared    buffers     cached
+> Mem:         15936        509      15426          0         93         16
+> -/+ buffers/cache:        400      15536
+> Swap:         2047          0       2047
+> [root@bck ~]#
+>
+>    I can not find the solution to release the memory buffer and cache
+> memory so grateful for any hint for finding the solution to this
+> "problem".
+>
+> -Paul
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
