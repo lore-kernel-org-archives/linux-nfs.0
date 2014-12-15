@@ -1,57 +1,94 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:35186 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:33883 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751362AbaLITYK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 9 Dec 2014 14:24:10 -0500
-Date: Tue, 9 Dec 2014 14:24:07 -0500
-To: Benjamin Coddington <bcodding@redhat.com>
-Cc: linux-nfs@vger.kernel.org, dros@netapp.com
-Subject: Re: [PATCH 1/2] nfsd4: fix xdr4 inclusion of escaped char
-Message-ID: <20141209192406.GN20526@fieldses.org>
-References: <cover.1417985975.git.bcodding@redhat.com>
- <8ec7a52c7b6b5287e8bd87503834bae46377f3ef.1417985975.git.bcodding@redhat.com>
+	id S1751837AbaLONIW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 15 Dec 2014 08:08:22 -0500
+Date: Mon, 15 Dec 2014 08:08:18 -0500 (EST)
+From: Benjamin Coddington <bcodding@redhat.com>
+To: Pablo Silva <psilvao@gmail.com>
+cc: linux-nfs@vger.kernel.org
+Subject: Re: Fwd: NFS and Memory Buffers
+In-Reply-To: <CAF1in6QpHmj6Y3UurtZvjsvX2se3DqTWqNxVmYtd2i+xUnEVug@mail.gmail.com>
+Message-ID: <alpine.OSX.2.19.9992.1412150803320.1119@planck.local>
+References: <CAF1in6QVkgyuC7VQ5QdYnYtPRJgArDwg5sXtKiAvyszCcQoZ-g@mail.gmail.com> <CAF1in6RCyK4VMM3j1ZD=1D25+cFU9YGg-UhR-kuYcNWNk+Stzg@mail.gmail.com> <alpine.OSX.2.19.9992.1412150749290.1119@planck.local>
+ <CAF1in6QpHmj6Y3UurtZvjsvX2se3DqTWqNxVmYtd2i+xUnEVug@mail.gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <8ec7a52c7b6b5287e8bd87503834bae46377f3ef.1417985975.git.bcodding@redhat.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Dec 07, 2014 at 04:05:47PM -0500, Benjamin Coddington wrote:
-> Fix a bug where nfsd4_encode_components_esc() includes the esc_end char as
-> an additional string encoding.
+What you're doing does result in the cache being flushed, only to
+immediately start to fill again.
 
-Has it had this problem since the escaping was added by e7a0444aef4a
-"mfsd" add addr escaping to fs_location hosts"?  I wonder why it wasn't
-noticed then.  Maybe the client always just chooses the first entry and
-doesn't care if there's a second entry for a host named "]".
+I should have replied more to the point as Trond did: this is normal, do
+not worry.  Your memory is not being "used up", as the cache memory is given
+back to the system if it is needed for other use.
 
---b.
+Ben
 
-> 
-> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
-> ---
->  fs/nfsd/nfs4xdr.c |    3 +++
->  1 files changed, 3 insertions(+), 0 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-> index eeea7a9..6c92a53 100644
-> --- a/fs/nfsd/nfs4xdr.c
-> +++ b/fs/nfsd/nfs4xdr.c
-> @@ -1795,6 +1795,9 @@ static __be32 nfsd4_encode_components_esc(struct xdr_stream *xdr, char sep,
->  		}
->  		else
->  			end++;
-> +		if (found_esc)
-> +			end = next;
-> +
->  		str = end;
->  	}
->  	pathlen = htonl(xdr->buf->len - pathlen_offset);
-> -- 
-> 1.7.1
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+On Mon, 15 Dec 2014, Pablo Silva wrote:
+
+> Dear Benajmin;
+>
+>      A colleague sent me this information as is, but the curious thing
+> which does not release the memory buffer, except using the commands
+> that you can appreciate.
+>
+> I am investigating if possible "know" that information is being stored
+> there, and from what I see there is a command linux-fTools that could
+> help me descubir the information being stored there, do not know if I
+> bring in my analysis but it is my first step, I do not know if you
+> have any other suggestions.
+>
+> grateful
+>
+> - Pablo
+>
+> On Mon, Dec 15, 2014 at 9:52 AM, Benjamin Coddington
+> <bcodding@redhat.com> wrote:
+> > Dear Pablo,
+> >
+> >         Why are you restarting snmpd between flushing cache and reading
+> > memory values?  On a running system you can probably expect the
+> > cache to immediately start to fill after a flush anyway.
+> > y
+> > Ben
+> >
+> > On Mon, 15 Dec 2014, Pablo Silva wrote:
+> >
+> >> Dear Readers:
+> >>
+> >>      My boss has entrusted me to analyze why the memory buffers are
+> >> not released a Linux server with Centos 6.4.?
+> >>
+> >>     As informs me, the current reading is:
+> >>
+> >>
+> >> [root@bck ~]# free -m
+> >>              total       used       free     shared    buffers     cached
+> >> Mem:         15936      15788        147          0       6746        438
+> >> -/+ buffers/cache:       8604       7332
+> >> Swap:         2047          0       2047
+> >> [root@bck ~]#
+> >> [root@bck ~]#
+> >> [root@bck ~]# echo 3 > /proc/sys/vm/drop_caches && service snmpd
+> >> restart && free -m
+> >> Stopping snmpd:                                            [  OK  ]
+> >> Starting snmpd:                                            [  OK  ]
+> >>              total       used       free     shared    buffers     cached
+> >> Mem:         15936        509      15426          0         93         16
+> >> -/+ buffers/cache:        400      15536
+> >> Swap:         2047          0       2047
+> >> [root@bck ~]#
+> >>
+> >>    I can not find the solution to release the memory buffer and cache
+> >> memory so grateful for any hint for finding the solution to this
+> >> "problem".
+> >>
+> >> -Paul
+> >> --
+> >> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> >> the body of a message to majordomo@vger.kernel.org
+> >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> >>
+>
