@@ -1,85 +1,113 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pd0-f171.google.com ([209.85.192.171]:40743 "EHLO
-	mail-pd0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750781AbaLOF1Y (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Dec 2014 00:27:24 -0500
-Received: by mail-pd0-f171.google.com with SMTP id y13so10994925pdi.30
-        for <linux-nfs@vger.kernel.org>; Sun, 14 Dec 2014 21:27:23 -0800 (PST)
-From: Omar Sandoval <osandov@osandov.com>
-To: Alexander Viro <viro@zeniv.linux.org.uk>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Christoph Hellwig <hch@infradead.org>, David Sterba <dsterba@suse.cz>,
-        linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Cc: Omar Sandoval <osandov@osandov.com>
-Subject: [PATCH 0/8] clean up and generalize swap-over-NFS
-Date: Sun, 14 Dec 2014 21:26:54 -0800
-Message-Id: <cover.1418618044.git.osandov@osandov.com>
+Received: from fieldses.org ([174.143.236.118]:47411 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750819AbaLORNo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 15 Dec 2014 12:13:44 -0500
+Date: Mon, 15 Dec 2014 12:13:42 -0500
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: [GIT PULL] nfsd changes for 3.19
+Message-ID: <20141215171342.GD20089@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi, everyone,
+Please pull nfsd changes for 3.19 from
 
-This patch series contains all of the non-BTRFS changes that I've made
-as a part of implementing swap file support on BTRFS. The BTRFS parts of
-that series (https://lkml.org/lkml/2014/12/9/718) are still undergoing
-development, and the non-BTRFS changes now outnumber those within BTRFS,
-so it'll probably work best to get these in separately.
+  git://linux-nfs.org/~bfields/linux.git for-3.19
 
-Long story short, the generic swap file infrastructure introduced for
-swap-over-NFS isn't quite ready for other clients without making some
-changes.
+A comparatively quieter cycle for nfsd this time, but still with two
+larger changes:
 
-Before I forget, this patch series was built against cbfe0de in Linus'
-tree (to avoid conflicts with the recent iov_iter work).
+	- RPC server scalability improvements from Jeff Layton (using
+	  RCU instead of a spinlock to find idle threads).
+	- server-side NFSv4.2 ALLOCATE/DEALLOCATE support from Anna
+	  Schumaker, enabling fallocate on new clients
 
-Patches 1 and 2 fix an issue with NFS and the swap file infrastructure
-not following the direct_IO locking conventions, leading to locking
-issues for anyone else trying to use the interface (discussed here:
-https://lkml.org/lkml/2014/12/12/677).
+--b.
 
-Patch 3 removes the ITER_BVEC flag from the rw argument passed to
-direct_IO, as many, but not all, direct_IO implementations expect either
-rw == READ or rw == WRITE. The lack of documentation about what's
-correct here is probably going to break something at some point, but
-that's another conversation.
+----------------------------------------------------------------
+Andy Shevchenko (1):
+      sunrpc/cache: convert to use string_escape_str()
 
-Patch 4 adds iov_iter_bvec for swap_writepage, the upcoming
-swap_readpage change, and splice.
+Anna Schumaker (3):
+      VFS: Rename do_fallocate() to vfs_fallocate()
+      nfsd: Add ALLOCATE support
+      nfsd: Add DEALLOCATE support
 
-Patches 5 and 6 are preparation for patch 7, teaching the VFS and NFS to
-handle ITER_BVEC reads.
+Benjamin Coddington (2):
+      nfsd4: fix xdr4 inclusion of escaped char
+      nfsd4: fix xdr4 count of server in fs_location4
 
-Patch 7 is the biggest change in the series: it changes swap_readpage to
-proxy through ->direct_IO rather than ->readpage. Using readpage for a
-swapcache page requires all sorts of messy workarounds (see here for
-context: https://lkml.org/lkml/2014/11/19/46). Patch 8 updates the
-documentation accordingly.
+Chuck Lever (1):
+      NFSD: Always initialize cl_cb_addr
 
-Thanks!
+Dan Carpenter (2):
+      SUNRPC: off by one in BUG_ON()
+      nfsd: minor off by one checks in __write_versions()
 
-Omar Sandoval (8):
-  nfs: follow direct I/O write locking convention
-  swap: lock i_mutex for swap_writepage direct_IO
-  swap: don't add ITER_BVEC flag to direct_IO rw
-  iov_iter: add iov_iter_bvec and convert callers
-  direct-io: don't dirty ITER_BVEC pages on read
-  nfs: don't dirty ITER_BVEC pages read through direct I/O
-  swap: use direct I/O for SWP_FILE swap_readpage
-  vfs: update swap_{,de}activate documentation
+J. Bruce Fields (4):
+      RPC: remove unneeded checks from xdr_truncate_encode()
+      rpc: change comments to assertions
+      merge nfs bugfixes into nfsd for-3.19 branch
+      Merge tag 'nfs-for-3.19-1' into nfsd for-3.19 branch
 
- Documentation/filesystems/Locking |  7 +++---
- Documentation/filesystems/vfs.txt |  7 +++---
- fs/direct-io.c                    |  8 ++++---
- fs/nfs/direct.c                   | 17 ++++++++-------
- fs/nfs/file.c                     |  8 +++++--
- fs/splice.c                       |  7 ++----
- include/linux/uio.h               |  2 ++
- mm/iov_iter.c                     | 12 +++++++++++
- mm/page_io.c                      | 45 ++++++++++++++++++++++++++++-----------
- 9 files changed, 76 insertions(+), 37 deletions(-)
+Jeff Layton (19):
+      nfsd: clean up comments over nfs4_file definition
+      lockd: ratelimit "lockd: cannot monitor" messages
+      nfsd: convert nfs4_file searches to use RCU
+      sunrpc: eliminate the XPT_DETACHED flag
+      sunrpc: release svc_pool_map reference when serv allocation fails
+      sunrpc: add a generic rq_flags field to svc_rqst and move rq_secure to it
+      sunrpc: move rq_local field to rq_flags
+      sunrpc: move rq_usedeferral flag to rq_flags
+      sunrpc: move rq_dropme flag into rq_flags
+      sunrpc: move rq_splice_ok flag into rq_flags
+      sunrpc: move rq_cachetype field to better optimize space
+      sunrpc: convert sp_task_pending flag to use atomic bitops
+      sunrpc: have svc_wake_up only deal with pool 0
+      sunrpc: require svc_create callers to pass in meaningful shutdown routine
+      sunrpc: add a rcu_head to svc_rqst and use kfree_rcu to free it
+      sunrpc: fix potential races in pool_stats collection
+      sunrpc: convert to lockless lookup of queued server threads
+      sunrpc: add some tracepoints around enqueue and dequeue of svc_xprt
+      sunrpc: only call test_bit once in svc_xprt_received
 
--- 
-2.1.3
+Rasmus Villemoes (1):
+      fs: nfsd: Fix signedness bug in compare_blob
 
+Zach Brown (1):
+      nfsd: fix inclusive vfs_fsync_range() end
+
+ drivers/staging/android/ashmem.c  |   2 +-
+ fs/ioctl.c                        |   2 +-
+ fs/lockd/mon.c                    |   2 +-
+ fs/lockd/svc.c                    |   2 +-
+ fs/nfsd/nfs4proc.c                |  57 +++++++-
+ fs/nfsd/nfs4state.c               |  68 +++++----
+ fs/nfsd/nfs4xdr.c                 |  34 ++++-
+ fs/nfsd/nfscache.c                |   4 +-
+ fs/nfsd/nfsctl.c                  |   6 +-
+ fs/nfsd/nfsd.h                    |   9 +-
+ fs/nfsd/nfsfh.c                   |   2 +-
+ fs/nfsd/nfssvc.c                  |   2 +-
+ fs/nfsd/state.h                   |  19 ++-
+ fs/nfsd/vfs.c                     |  37 ++++-
+ fs/nfsd/vfs.h                     |   2 +
+ fs/nfsd/xdr4.h                    |   9 ++
+ fs/open.c                         |   5 +-
+ include/linux/fs.h                |   2 +-
+ include/linux/sunrpc/svc.h        |  34 +++--
+ include/linux/sunrpc/svc_xprt.h   |   7 +-
+ include/trace/events/sunrpc.h     | 120 +++++++++++++++-
+ mm/madvise.c                      |   2 +-
+ net/sunrpc/auth_gss/svcauth_gss.c |   2 +-
+ net/sunrpc/cache.c                |  26 +---
+ net/sunrpc/svc.c                  |  42 +++---
+ net/sunrpc/svc_xprt.c             | 292 +++++++++++++++++++++-----------------
+ net/sunrpc/svcsock.c              |  32 +++--
+ net/sunrpc/xdr.c                  |   9 +-
+ 28 files changed, 547 insertions(+), 283 deletions(-)
