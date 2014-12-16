@@ -1,38 +1,108 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:43433 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750892AbaLPIzi (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Dec 2014 03:55:38 -0500
-Date: Tue, 16 Dec 2014 00:55:32 -0800
-From: Christoph Hellwig <hch@infradead.org>
-To: Natanael Copa <ncopa@alpinelinux.org>
-Cc: libtirpc-devel@lists.sourceforge.net, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 3/9] Avoid use of internal glibc sys/cdefs.h header
-Message-ID: <20141216085532.GA4003@infradead.org>
+Received: from mail.alpinelinux.org ([74.117.189.114]:48725 "EHLO
+	mail.alpinelinux.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751101AbaLPIiu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Dec 2014 03:38:50 -0500
+From: Natanael Copa <ncopa@alpinelinux.org>
+To: libtirpc-devel@lists.sourceforge.net
+Cc: linux-nfs@vger.kernel.org, Natanael Copa <ncopa@alpinelinux.org>
+Subject: [PATCH 4/9] Add configure option to disable DES authentication
+Date: Tue, 16 Dec 2014 09:28:55 +0100
+Message-Id: <1418718540-13667-5-git-send-email-ncopa@alpinelinux.org>
+In-Reply-To: <1418718540-13667-1-git-send-email-ncopa@alpinelinux.org>
 References: <1418718540-13667-1-git-send-email-ncopa@alpinelinux.org>
- <1418718540-13667-4-git-send-email-ncopa@alpinelinux.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1418718540-13667-4-git-send-email-ncopa@alpinelinux.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Dec 16, 2014 at 09:28:54AM +0100, Natanael Copa wrote:
-> This header was never intended to be used by programs.
-> 
-> Expand the macros used, __BEGIN_CDECLS, __END_CDECLS
+DES is not good for encryption anymore and some C libraries does not
+even implement it. We add a --disable-authdes to optionally disable
+it, but let it be enabled by default for compatibility.
 
-Keeping __BEGIN_DECLS/__END_DECLS instead of the ifdef hell sounds
-sensible, I'd suggest to just provide them if they don't exist.
+This is needed for musl libc.
 
-Note that these are BSDishms, and not glibcisms, and used fairly widely,
-so adding them to musl might be a good idea.
+Signed-off-by: Natanael Copa <ncopa@alpinelinux.org>
+---
+ configure.ac    |  6 ++++++
+ src/Makefile.am | 12 ++++++++++--
+ src/rpc_soc.c   |  2 ++
+ 3 files changed, 18 insertions(+), 2 deletions(-)
 
-> The __THROW macro is a non-portable hint for optimization so we simply
-> remove those.
-
-These are important for C++, so please provide a defintion if not
-present.
-
-Against it would be useful if musl provided it.
+diff --git a/configure.ac b/configure.ac
+index 0180801..e6d3df5 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -15,6 +15,12 @@ if test x$enable_gssapi = xyes; then
+ 	AC_SUBST([GSSAPI_CFLAGS])
+ 	AC_SUBST([GSSAPI_LIBS])
+ fi
++
++AC_ARG_ENABLE(authdes,
++	[AC_HELP_STRING([--disable-authdes], [Disable DES authentication @<:@default=no@:>@])],
++      [],[enable_authdes=yes])
++AM_CONDITIONAL(AUTHDES, test x$enable_authdes = xyes)
++
+ AC_ARG_ENABLE(ipv6,
+ 	[AC_HELP_STRING([--disable-ipv6], [Disable IPv6 support @<:@default=no@:>@])],
+ 	[],[enable_ipv6=yes])
+diff --git a/src/Makefile.am b/src/Makefile.am
+index de57c8f..26ccbdf 100644
+--- a/src/Makefile.am
++++ b/src/Makefile.am
+@@ -42,6 +42,7 @@ lib_LTLIBRARIES = libtirpc.la
+ # misunderstanding of the purpose of library versions."
+ #
+ libtirpc_la_LDFLAGS = -lpthread -version-info 1:10:0
++libtirpc_la_CFLAGS =
+ 
+ libtirpc_la_SOURCES = auth_none.c auth_unix.c authunix_prot.c bindresvport.c clnt_bcast.c \
+         clnt_dg.c clnt_generic.c clnt_perror.c clnt_raw.c clnt_simple.c \
+@@ -51,7 +52,7 @@ libtirpc_la_SOURCES = auth_none.c auth_unix.c authunix_prot.c bindresvport.c cln
+         rpc_callmsg.c rpc_generic.c rpc_soc.c rpcb_clnt.c rpcb_prot.c \
+         rpcb_st_xdr.c svc.c svc_auth.c svc_dg.c svc_auth_unix.c svc_auth_none.c \
+         svc_generic.c svc_raw.c svc_run.c svc_simple.c svc_vc.c getpeereid.c \
+-        auth_time.c auth_des.c authdes_prot.c debug.c
++        auth_time.c debug.c
+ 
+ ## XDR
+ libtirpc_la_SOURCES += xdr.c xdr_rec.c xdr_array.c xdr_float.c xdr_mem.c xdr_reference.c xdr_stdio.c
+@@ -60,9 +61,16 @@ libtirpc_la_SOURCES += xdr.c xdr_rec.c xdr_array.c xdr_float.c xdr_mem.c xdr_ref
+ if GSS
+     libtirpc_la_SOURCES += auth_gss.c authgss_prot.c svc_auth_gss.c
+     libtirpc_la_LDFLAGS += $(GSSAPI_LIBS)
+-    libtirpc_la_CFLAGS = -DHAVE_RPCSEC_GSS $(GSSAPI_CFLAGS)
++    libtirpc_la_CFLAGS += -DHAVE_RPCSEC_GSS $(GSSAPI_CFLAGS)
+ endif
+ 
++## DES authentication
++if AUTHDES
++    libtirpc_la_SOURCES += auth_des.c authdes_prot.c
++    libtirpc_la_CFLAGS += -DHAVE_AUTHDES
++endif
++
++
+ ## libtirpc_a_SOURCES += key_call.c key_prot_xdr.c getpublickey.c
+ ## libtirpc_a_SOURCES += netname.c netnamer.c rpcdname.c \
+ ## libtirpc_a_SOURCES += rtime.c \
+diff --git a/src/rpc_soc.c b/src/rpc_soc.c
+index 338edbb..b12b116 100644
+--- a/src/rpc_soc.c
++++ b/src/rpc_soc.c
+@@ -520,6 +520,7 @@ clnt_broadcast(prog, vers, proc, xargs, argsp, xresults, resultsp, eachresult)
+ 	    (resultproc_t) rpc_wrap_bcast, "udp");
+ }
+ 
++#if HAVE_AUTHDES
+ /*
+  * Create the client des authentication object. Obsoleted by
+  * authdes_seccreate().
+@@ -551,6 +552,7 @@ fallback:
+ 	dummy = authdes_seccreate(servername, window, NULL, ckey);
+ 	return (dummy);
+ }
++#endif
+ 
+ /*
+  * Create a client handle for a unix connection. Obsoleted by clnt_vc_create()
+-- 
+2.2.0
 
