@@ -1,113 +1,105 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:47411 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750819AbaLORNo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 15 Dec 2014 12:13:44 -0500
-Date: Mon, 15 Dec 2014 12:13:42 -0500
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: [GIT PULL] nfsd changes for 3.19
-Message-ID: <20141215171342.GD20089@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from mail.alpinelinux.org ([74.117.189.114]:48722 "EHLO
+	mail.alpinelinux.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751427AbaLPIit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Dec 2014 03:38:49 -0500
+From: Natanael Copa <ncopa@alpinelinux.org>
+To: libtirpc-devel@lists.sourceforge.net
+Cc: linux-nfs@vger.kernel.org, Natanael Copa <ncopa@alpinelinux.org>
+Subject: [PATCH 0/9] Cleanups and fixes for musl libc
+Date: Tue, 16 Dec 2014 09:28:51 +0100
+Message-Id: <1418718540-13667-1-git-send-email-ncopa@alpinelinux.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Please pull nfsd changes for 3.19 from
+Various fixes for making libtirpc build and run with musl libc.
 
-  git://linux-nfs.org/~bfields/linux.git for-3.19
+I have also included some cleanups that I did while at it.
 
-A comparatively quieter cycle for nfsd this time, but still with two
-larger changes:
+Natanael Copa (9):
+  Replace INSTALL symlink with a copy of the file
+  Provide getrpcbynumber and getrpcbyname if those are missing
+  Avoid use of internal glibc sys/cdefs.h header
+  Add configure option to disable DES authentication
+  Fix compile error: 'IPPORT_RESERVED' undeclared
+  Define struct rpcent on non GNU libc
+  Include string.h for memset
+  Fix location of various standard header includes
+  Add a HACKING file which tells where to send patches
 
-	- RPC server scalability improvements from Jeff Layton (using
-	  RCU instead of a spinlock to find idle threads).
-	- server-side NFSv4.2 ALLOCATE/DEALLOCATE support from Anna
-	  Schumaker, enabling fallocate on new clients
+ HACKING               |   2 +
+ INSTALL               | 371 +++++++++++++++++++++++++++++++++++++++++++++++++-
+ configure.ac          |  12 +-
+ src/Makefile.am       |  12 +-
+ src/auth_des.c        |   2 -
+ src/auth_none.c       |   1 -
+ src/auth_time.c       |   5 +-
+ src/auth_unix.c       |   1 -
+ src/authdes_prot.c    |   1 -
+ src/authgss_prot.c    |   1 +
+ src/authunix_prot.c   |   1 -
+ src/bindresvport.c    |   2 +-
+ src/clnt_bcast.c      |   3 +-
+ src/clnt_dg.c         |   2 +-
+ src/clnt_generic.c    |   2 +-
+ src/clnt_perror.c     |   3 -
+ src/clnt_simple.c     |   1 -
+ src/clnt_vc.c         |   2 +-
+ src/crypt_client.c    |   1 -
+ src/des_crypt.c       |   1 -
+ src/getnetconfig.c    |   1 -
+ src/getnetpath.c      |   2 -
+ src/getpeereid.c      |   1 -
+ src/getpublickey.c    |   3 -
+ src/getrpcent.c       |  10 +-
+ src/key_call.c        |   3 +-
+ src/key_prot_xdr.c    |   1 -
+ src/mt_misc.c         |   1 -
+ src/pmap_clnt.c       |   1 -
+ src/pmap_getmaps.c    |   1 -
+ src/pmap_rmt.c        |   2 +-
+ src/rpc_com.h         |   9 +-
+ src/rpc_generic.c     |   1 -
+ src/rpc_soc.c         |   2 +
+ src/rpcb_st_xdr.c     |   1 -
+ src/rpcdname.c        |   1 -
+ src/svc.c             |   2 +-
+ src/svc_dg.c          |   1 -
+ src/svc_simple.c      |   1 -
+ src/svc_vc.c          |   3 +-
+ src/xdr.c             |   1 -
+ src/xdr_array.c       |   1 -
+ src/xdr_float.c       |   1 -
+ src/xdr_mem.c         |   1 -
+ src/xdr_rec.c         |   2 -
+ src/xdr_reference.c   |   2 -
+ src/xdr_sizeof.c      |   1 -
+ src/xdr_stdio.c       |   1 -
+ tirpc/netconfig.h     |   8 +-
+ tirpc/rpc/auth.h      |  89 ++++++++----
+ tirpc/rpc/auth_des.h  |  16 ++-
+ tirpc/rpc/auth_gss.h  |  47 +++----
+ tirpc/rpc/auth_unix.h |   9 +-
+ tirpc/rpc/clnt.h      |  57 ++++++--
+ tirpc/rpc/clnt_soc.h  |  33 +++--
+ tirpc/rpc/des_crypt.h |  25 +++-
+ tirpc/rpc/nettype.h   |   8 +-
+ tirpc/rpc/pmap_clnt.h |   9 +-
+ tirpc/rpc/pmap_prot.h |   9 +-
+ tirpc/rpc/pmap_rmt.h  |   9 +-
+ tirpc/rpc/rpc.h       |  18 ++-
+ tirpc/rpc/rpc_com.h   |   9 +-
+ tirpc/rpc/rpc_msg.h   |   8 +-
+ tirpc/rpc/rpcb_clnt.h |   8 +-
+ tirpc/rpc/rpcent.h    |  14 +-
+ tirpc/rpc/svc.h       |  65 ++++++---
+ tirpc/rpc/svc_auth.h  |   8 +-
+ tirpc/rpc/svc_soc.h   |  49 +++++--
+ tirpc/rpc/xdr.h       |  17 ++-
+ 69 files changed, 784 insertions(+), 214 deletions(-)
+ create mode 100644 HACKING
+ mode change 120000 => 100644 INSTALL
 
---b.
+-- 
+2.2.0
 
-----------------------------------------------------------------
-Andy Shevchenko (1):
-      sunrpc/cache: convert to use string_escape_str()
-
-Anna Schumaker (3):
-      VFS: Rename do_fallocate() to vfs_fallocate()
-      nfsd: Add ALLOCATE support
-      nfsd: Add DEALLOCATE support
-
-Benjamin Coddington (2):
-      nfsd4: fix xdr4 inclusion of escaped char
-      nfsd4: fix xdr4 count of server in fs_location4
-
-Chuck Lever (1):
-      NFSD: Always initialize cl_cb_addr
-
-Dan Carpenter (2):
-      SUNRPC: off by one in BUG_ON()
-      nfsd: minor off by one checks in __write_versions()
-
-J. Bruce Fields (4):
-      RPC: remove unneeded checks from xdr_truncate_encode()
-      rpc: change comments to assertions
-      merge nfs bugfixes into nfsd for-3.19 branch
-      Merge tag 'nfs-for-3.19-1' into nfsd for-3.19 branch
-
-Jeff Layton (19):
-      nfsd: clean up comments over nfs4_file definition
-      lockd: ratelimit "lockd: cannot monitor" messages
-      nfsd: convert nfs4_file searches to use RCU
-      sunrpc: eliminate the XPT_DETACHED flag
-      sunrpc: release svc_pool_map reference when serv allocation fails
-      sunrpc: add a generic rq_flags field to svc_rqst and move rq_secure to it
-      sunrpc: move rq_local field to rq_flags
-      sunrpc: move rq_usedeferral flag to rq_flags
-      sunrpc: move rq_dropme flag into rq_flags
-      sunrpc: move rq_splice_ok flag into rq_flags
-      sunrpc: move rq_cachetype field to better optimize space
-      sunrpc: convert sp_task_pending flag to use atomic bitops
-      sunrpc: have svc_wake_up only deal with pool 0
-      sunrpc: require svc_create callers to pass in meaningful shutdown routine
-      sunrpc: add a rcu_head to svc_rqst and use kfree_rcu to free it
-      sunrpc: fix potential races in pool_stats collection
-      sunrpc: convert to lockless lookup of queued server threads
-      sunrpc: add some tracepoints around enqueue and dequeue of svc_xprt
-      sunrpc: only call test_bit once in svc_xprt_received
-
-Rasmus Villemoes (1):
-      fs: nfsd: Fix signedness bug in compare_blob
-
-Zach Brown (1):
-      nfsd: fix inclusive vfs_fsync_range() end
-
- drivers/staging/android/ashmem.c  |   2 +-
- fs/ioctl.c                        |   2 +-
- fs/lockd/mon.c                    |   2 +-
- fs/lockd/svc.c                    |   2 +-
- fs/nfsd/nfs4proc.c                |  57 +++++++-
- fs/nfsd/nfs4state.c               |  68 +++++----
- fs/nfsd/nfs4xdr.c                 |  34 ++++-
- fs/nfsd/nfscache.c                |   4 +-
- fs/nfsd/nfsctl.c                  |   6 +-
- fs/nfsd/nfsd.h                    |   9 +-
- fs/nfsd/nfsfh.c                   |   2 +-
- fs/nfsd/nfssvc.c                  |   2 +-
- fs/nfsd/state.h                   |  19 ++-
- fs/nfsd/vfs.c                     |  37 ++++-
- fs/nfsd/vfs.h                     |   2 +
- fs/nfsd/xdr4.h                    |   9 ++
- fs/open.c                         |   5 +-
- include/linux/fs.h                |   2 +-
- include/linux/sunrpc/svc.h        |  34 +++--
- include/linux/sunrpc/svc_xprt.h   |   7 +-
- include/trace/events/sunrpc.h     | 120 +++++++++++++++-
- mm/madvise.c                      |   2 +-
- net/sunrpc/auth_gss/svcauth_gss.c |   2 +-
- net/sunrpc/cache.c                |  26 +---
- net/sunrpc/svc.c                  |  42 +++---
- net/sunrpc/svc_xprt.c             | 292 +++++++++++++++++++++-----------------
- net/sunrpc/svcsock.c              |  32 +++--
- net/sunrpc/xdr.c                  |   9 +-
- 28 files changed, 547 insertions(+), 283 deletions(-)
