@@ -1,70 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f175.google.com ([209.85.223.175]:47619 "EHLO
-	mail-ie0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753759AbaLVCHS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 21 Dec 2014 21:07:18 -0500
-Received: by mail-ie0-f175.google.com with SMTP id x19so3624053ier.20
-        for <linux-nfs@vger.kernel.org>; Sun, 21 Dec 2014 18:07:17 -0800 (PST)
-MIME-Version: 1.0
-In-Reply-To: <54909E1B.4000005@Netapp.com>
+Received: from mail-pa0-f50.google.com ([209.85.220.50]:52168 "EHLO
+	mail-pa0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751312AbaLPTDS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Dec 2014 14:03:18 -0500
+Received: by mail-pa0-f50.google.com with SMTP id bj1so14658485pad.37
+        for <linux-nfs@vger.kernel.org>; Tue, 16 Dec 2014 11:03:18 -0800 (PST)
+From: Tom Haynes <thomas.haynes@primarydata.com>
+To: Trond Myklebust <Trond.Myklebust@primarydata.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: [PATCH 39/50] nfs/flexfiles: send layoutreturn before freeing lseg
+Date: Tue, 16 Dec 2014 11:01:42 -0800
+Message-Id: <1418756513-95187-40-git-send-email-loghyr@primarydata.com>
+In-Reply-To: <1418756513-95187-1-git-send-email-loghyr@primarydata.com>
 References: <1418756513-95187-1-git-send-email-loghyr@primarydata.com>
- <1418756513-95187-39-git-send-email-loghyr@primarydata.com> <54909E1B.4000005@Netapp.com>
-From: Peng Tao <bergwolf@gmail.com>
-Date: Mon, 22 Dec 2014 10:06:57 +0800
-Message-ID: <CA+a=Yy44H40uk6RdHyRrftEZs0X=io2p7tVqRpLMqjvDFmZkLw@mail.gmail.com>
-Subject: Re: [PATCH 38/50] nfs41: add a debug warning if we destroy an unempty layout
-To: Anna Schumaker <Anna.Schumaker@netapp.com>
-Cc: Tom Haynes <thomas.haynes@primarydata.com>,
-        Trond Myklebust <Trond.Myklebust@primarydata.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Dec 17, 2014 at 5:03 AM, Anna Schumaker
-<Anna.Schumaker@netapp.com> wrote:
-> On 12/16/2014 02:01 PM, Tom Haynes wrote:
->> From: Peng Tao <tao.peng@primarydata.com>
->>
->> So that we can detect the case if some layout segments are still
->> pinned which is surely a bug that we need to fix.
->
-> How often is this hit?  A patch fixing the bug would be better than a patch just to detect it :).
->
-Never yet :)
+From: Peng Tao <tao.peng@primarydata.com>
 
-I was suspecting a bug in segment reference counting and thus added
-the patch. That bug turns out to be somewhere else but I thought the
-WARN makes sense in general sense because without it we silently
-ignores unfreed reference counts.
+Otherwise we'll lose error tracking information when
+encoding layoutreturn.
 
-Cheers,
-Tao
+Signed-off-by: Peng Tao <tao.peng@primarydata.com>
+Signed-off-by: Tom Haynes <loghyr@primarydata.com>
+---
+ fs/nfs/pnfs.c | 19 +++++++++++++------
+ 1 file changed, 13 insertions(+), 6 deletions(-)
 
-> Anna
->
->>
->> Signed-off-by: Peng Tao <tao.peng@primarydata.com>
->> ---
->>  fs/nfs/pnfs.c | 2 ++
->>  1 file changed, 2 insertions(+)
->>
->> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
->> index 5f7c422..e123cfc 100644
->> --- a/fs/nfs/pnfs.c
->> +++ b/fs/nfs/pnfs.c
->> @@ -242,6 +242,8 @@ pnfs_put_layout_hdr(struct pnfs_layout_hdr *lo)
->>       struct inode *inode = lo->plh_inode;
->>
->>       if (atomic_dec_and_lock(&lo->plh_refcount, &inode->i_lock)) {
->> +             if (!list_empty(&lo->plh_segs))
->> +                     WARN_ONCE(1, "NFS: BUG unfreed layout segments.\n");
->>               pnfs_detach_layout_hdr(lo);
->>               spin_unlock(&inode->i_lock);
->>               pnfs_free_layout_hdr(lo);
->>
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index e123cfc..35465cb 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -355,7 +355,7 @@ pnfs_layout_need_return(struct pnfs_layout_hdr *lo,
+ 		return false;
+ 
+ 	list_for_each_entry(s, &lo->plh_segs, pls_list)
+-		if (test_bit(NFS_LSEG_LAYOUTRETURN, &lseg->pls_flags))
++		if (s != lseg && test_bit(NFS_LSEG_LAYOUTRETURN, &s->pls_flags))
+ 			return false;
+ 
+ 	*stateid = lo->plh_stateid;
+@@ -386,15 +386,22 @@ pnfs_put_lseg(struct pnfs_layout_segment *lseg)
+ 		enum pnfs_iomode iomode;
+ 
+ 		pnfs_get_layout_hdr(lo);
+-		pnfs_layout_remove_lseg(lo, lseg);
+ 		need_return = pnfs_layout_need_return(lo, lseg,
+ 						      &stateid, &iomode);
+-		spin_unlock(&inode->i_lock);
+-		pnfs_free_lseg(lseg);
+-		if (need_return)
++		if (need_return) {
++			spin_unlock(&inode->i_lock);
++			/* hdr reference dropped in nfs4_layoutreturn_release */
+ 			pnfs_send_layoutreturn(lo, stateid, iomode);
+-		else
++			spin_lock(&inode->i_lock);
++			pnfs_layout_remove_lseg(lo, lseg);
++			spin_unlock(&inode->i_lock);
++			pnfs_free_lseg(lseg);
++		} else {
++			pnfs_layout_remove_lseg(lo, lseg);
++			spin_unlock(&inode->i_lock);
++			pnfs_free_lseg(lseg);
+ 			pnfs_put_layout_hdr(lo);
++		}
+ 	}
+ }
+ EXPORT_SYMBOL_GPL(pnfs_put_lseg);
+-- 
+1.9.3
+
