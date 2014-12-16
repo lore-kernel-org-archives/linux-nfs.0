@@ -1,56 +1,138 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pd0-f179.google.com ([209.85.192.179]:40385 "EHLO
-	mail-pd0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751830AbaLTDSl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Dec 2014 22:18:41 -0500
-Received: by mail-pd0-f179.google.com with SMTP id fp1so2348948pdb.38
-        for <linux-nfs@vger.kernel.org>; Fri, 19 Dec 2014 19:18:41 -0800 (PST)
-From: Omar Sandoval <osandov@osandov.com>
-To: Alexander Viro <viro@zeniv.linux.org.uk>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Christoph Hellwig <hch@infradead.org>, linux-fsdevel@vger.kernel.org,
-        linux-mm@kvack.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Cc: Omar Sandoval <osandov@osandov.com>
-Subject: [PATCH v2 0/5] clean up and generalize swap-over-NFS
-Date: Fri, 19 Dec 2014 19:18:24 -0800
-Message-Id: <cover.1419044605.git.osandov@osandov.com>
+Received: from mail-pa0-f42.google.com ([209.85.220.42]:63506 "EHLO
+	mail-pa0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750976AbaLPTCG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Dec 2014 14:02:06 -0500
+Received: by mail-pa0-f42.google.com with SMTP id et14so14696310pad.1
+        for <linux-nfs@vger.kernel.org>; Tue, 16 Dec 2014 11:02:05 -0800 (PST)
+From: Tom Haynes <thomas.haynes@primarydata.com>
+To: Trond Myklebust <Trond.Myklebust@primarydata.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: [PATCH 00/50] *** Add Flexfile Layout Module ***
+Date: Tue, 16 Dec 2014 11:01:03 -0800
+Message-Id: <1418756513-95187-1-git-send-email-loghyr@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 Hi,
 
-This patch series (based on ecb5ec0 in Linus' tree) contains all of the
-non-BTRFS work that I've done to implement swapfiles on BTRFS. The BTRFS
-portion is still undergoing development and is now outweighed by the
-non-BTRFS changes, so I want to get these in separately.
+This patchset introduces the Flexfile Layout Module for the
+client.
 
-Version 2 changes the generic swapfile interface to use ->read_iter and
-->write_iter instead of using ->direct_IO directly in response to
-discussion on the previous submission. It also adds the iov_iter_is_bvec
-helper to factor out some common checks.
+It corresponds to draft 2
+(http://tools.ietf.org/id/draft-ietf-nfsv4-flex-files-02.txt)
+of the Parallel NFS (pNFS) Flexible File Layout
+(https://datatracker.ietf.org/doc/draft-ietf-nfsv4-flex-files/).
 
-Version 1 can be found here: https://lkml.org/lkml/2014/12/15/7
+There are some XDR changes that occur by draft 4, but as there
+will be changes for draft 5, I decided to go with the slightly
+older version of the draft.
 
-Omar Sandoval (5):
-  iov_iter: add ITER_BVEC helpers
-  direct-io: don't dirty ITER_BVEC pages on read
-  nfs: don't dirty ITER_BVEC pages read through direct I/O
-  swapfile: use ->read_iter and ->write_iter
-  vfs: update swap_{,de}activate documentation
+I'm _not_ looking at this for the 3.19 merge window, but rather
+the 3.20.
 
- Documentation/filesystems/Locking |  7 ++++---
- Documentation/filesystems/vfs.txt |  7 ++++---
- fs/direct-io.c                    |  8 ++++---
- fs/nfs/direct.c                   |  5 ++++-
- fs/splice.c                       |  7 ++-----
- include/linux/uio.h               |  7 +++++++
- mm/iov_iter.c                     | 12 +++++++++++
- mm/page_io.c                      | 44 +++++++++++++++++++++++++--------------
- mm/swapfile.c                     | 11 +++++++++-
- 9 files changed, 76 insertions(+), 32 deletions(-)
+Enjoy,
+Tom
+
+Peng Tao (36):
+  nfs41: pull data server cache from file layout to generic pnfs
+  nfs41: pull nfs4_ds_connect from file layout to generic pnfs
+  nfs41: pull decode_ds_addr from file layout to generic pnfs
+  nfs41: allow LD to choose DS connection auth flavor
+  nfs41: move file layout macros to generic pnfs
+  nfsv3: introduce nfs3_set_ds_client
+  nfs41: allow LD to choose DS connection version/minor_version
+  nfs41: create NFSv3 DS connection if specified
+  nfs: allow different protocol in nfs_initiate_commit
+  nfs4: pass slot table to nfs40_setup_sequence
+  nfs4: export nfs4_sequence_done
+  nfs: allow to specify cred in nfs_initiate_pgio
+  nfs: set hostname when creating nfsv3 ds connection
+  nfs/flexclient: export pnfs_layoutcommit_inode
+  nfs41: close a small race window when adding new layout to global list
+  nfs41: serialize first layoutget of a file
+  nfs: save server READ/WRITE/COMMIT status
+  nfs41: pass iomode through layoutreturn args
+  nfs41: make a helper function to send layoutreturn
+  nfs41: add a helper to mark layout for return
+  nfs41: don't use a layout if it is marked for returning
+  nfs41: send layoutreturn in last put_lseg
+  nfs41: clear NFS_LAYOUT_RETURN if layoutreturn is sent or failed to
+    send
+  nfs/filelayout: use pnfs_error_mark_layout_for_return
+  nfs41: add a debug warning if we destroy an unempty layout
+  nfs/flexfiles: send layoutreturn before freeing lseg
+  nfs: only reset desc->pg_mirror_idx when mirroring is supported
+  nfs: add nfs_pgio_current_mirror helper
+  pnfs: allow LD to ask to resend read through pnfs
+  nfs41: add range to layoutreturn args
+  nfs41: allow async version layoutreturn
+  nfs41: introduce NFS_LAYOUT_RETURN_BEFORE_CLOSE
+  nfs/flexfiles: defer sending layoutreturn in pnfs_put_lseg
+  nfs41: add NFS_LAYOUT_RETRY_LAYOUTGET to layout header flags
+  nfs: add a helper to set NFS_ODIRECT_RESCHED_WRITES to direct writes
+  nfs41: wait for LAYOUTRETURN before retrying LAYOUTGET
+
+Tom Haynes (4):
+  pnfs: Prepare for flexfiles by pulling out common code
+  pnfs: Do not grab the commit_info lock twice when rescheduling writes
+  pnfs: Add nfs_rpc_ops in calls to nfs_initiate_pgio
+  pnfs/flexfiles: Add the FlexFile Layout Driver
+
+Trond Myklebust (1):
+  NFSv4.1/NFSv3: Add pNFS callbacks for nfs3_(read|write|commit)_done()
+
+Weston Andros Adamson (9):
+  sunrpc: add rpc_count_iostats_idx
+  nfs: introduce pg_cleanup op for pgio descriptors
+  pnfs: release lseg in pnfs_generic_pg_cleanup
+  nfs: handle overlapping reqs in lock_and_join
+  nfs: rename pgio header ds_idx to ds_commit_idx
+  pnfs: pass ds_commit_idx through the commit path
+  nfs: add mirroring support to pgio layer
+  nfs: mirroring support for direct io
+  pnfs: fail comparison when bucket verifier not set
+
+ fs/nfs/Kconfig                            |    5 +
+ fs/nfs/Makefile                           |    3 +-
+ fs/nfs/blocklayout/blocklayout.c          |    2 +
+ fs/nfs/direct.c                           |  108 +-
+ fs/nfs/filelayout/filelayout.c            |  315 +-----
+ fs/nfs/filelayout/filelayout.h            |   40 -
+ fs/nfs/filelayout/filelayoutdev.c         |  469 +--------
+ fs/nfs/flexfilelayout/Makefile            |    5 +
+ fs/nfs/flexfilelayout/flexfilelayout.c    | 1575 +++++++++++++++++++++++++++++
+ fs/nfs/flexfilelayout/flexfilelayout.h    |  152 +++
+ fs/nfs/flexfilelayout/flexfilelayoutdev.c |  519 ++++++++++
+ fs/nfs/internal.h                         |   34 +-
+ fs/nfs/nfs3client.c                       |   41 +
+ fs/nfs/nfs3proc.c                         |    9 +
+ fs/nfs/nfs3super.c                        |    2 +-
+ fs/nfs/nfs3xdr.c                          |    3 +
+ fs/nfs/nfs4_fs.h                          |    6 +
+ fs/nfs/nfs4client.c                       |    7 +-
+ fs/nfs/nfs4proc.c                         |   45 +-
+ fs/nfs/nfs4xdr.c                          |    9 +-
+ fs/nfs/objlayout/objio_osd.c              |    5 +-
+ fs/nfs/pagelist.c                         |  294 +++++-
+ fs/nfs/pnfs.c                             |  407 ++++++--
+ fs/nfs/pnfs.h                             |  119 ++-
+ fs/nfs/pnfs_dev.c                         |  522 ++++++++++
+ fs/nfs/pnfs_nfsio.c                       |  283 ++++++
+ fs/nfs/read.c                             |   33 +-
+ fs/nfs/write.c                            |   49 +-
+ include/linux/nfs4.h                      |    1 +
+ include/linux/nfs_page.h                  |   22 +-
+ include/linux/nfs_xdr.h                   |    6 +-
+ include/linux/sunrpc/metrics.h            |    2 +
+ net/sunrpc/stats.c                        |   26 +-
+ 33 files changed, 4119 insertions(+), 999 deletions(-)
+ create mode 100644 fs/nfs/flexfilelayout/Makefile
+ create mode 100644 fs/nfs/flexfilelayout/flexfilelayout.c
+ create mode 100644 fs/nfs/flexfilelayout/flexfilelayout.h
+ create mode 100644 fs/nfs/flexfilelayout/flexfilelayoutdev.c
+ create mode 100644 fs/nfs/pnfs_nfsio.c
 
 -- 
-2.2.1
+1.9.3
 
