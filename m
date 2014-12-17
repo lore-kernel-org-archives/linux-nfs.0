@@ -1,57 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.netapp.com ([216.240.18.38]:15030 "EHLO mx1.netapp.com"
+Received: from mx11.netapp.com ([216.240.18.76]:7211 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751428AbaLQSrc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 17 Dec 2014 13:47:32 -0500
-From: <andros@netapp.com>
-To: <trond.myklebust@primarydata.com>
-CC: <linux-nfs@vger.kernel.org>, Andy Adamson <andros@netapp.com>
-Subject: [PATCH 1/1] NFS: try RPC_AUTH_GSS_KRB5 after RPC_AUTH_GSS_KRB5I for cl_rpcclient
-Date: Wed, 17 Dec 2014 13:47:23 -0500
-Message-ID: <1418842043-15074-2-git-send-email-andros@netapp.com>
-In-Reply-To: <1418842043-15074-1-git-send-email-andros@netapp.com>
-References: <1418842043-15074-1-git-send-email-andros@netapp.com>
+	id S1750949AbaLQWfI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 17 Dec 2014 17:35:08 -0500
+From: <Anna.Schumaker@netapp.com>
+To: <bfields@fieldses.org>
+CC: <linux-nfs@vger.kernel.org>
+Subject: [PATCH 0/4] NFS: Add READ_PLUS support
+Date: Wed, 17 Dec 2014 17:35:00 -0500
+Message-ID: <1418855704-14127-1-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
 Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-Some servers implement KRB5 but not KRB5I. With out this patch, said servers
-will use AUTH_UNIX for state creation, even when exporting a volume with krb5.
+These patches add server support for the NFS v4.2 operation READ_PLUS.
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/nfs4state.c | 15 +++++++++++++++
- 1 file changed, 15 insertions(+)
+I noticed a race condition in the 3rd patch when I start needing vfs_llseek()
+to determine if I should encode the next segment as either data or a hole.  It
+is possible that the file could change on us between each of the seek calls,
+so we don't know if we are actually at a hole or data segment.  I don't want to
+add new locks to the NFS server for this case, so instead I've decided to
+encode any "quantum data" segments as if they were actually data.
 
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 5194933..a56ad3f 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -2063,6 +2063,21 @@ again:
- 			nfs4_root_machine_cred(clp);
- 			goto again;
- 		}
-+		if (clnt->cl_auth->au_flavor == RPC_AUTH_GSS_KRB5I) {
-+			clnt = rpc_clone_client_set_auth(clnt, RPC_AUTH_GSS_KRB5);
-+			if (IS_ERR(clnt)) {
-+				status = PTR_ERR(clnt);
-+				break;
-+			}
-+			/* Note: this is safe because we haven't yet marked the
-+			 * client as ready, so we are the only user of
-+			 * clp->cl_rpcclient
-+			 */
-+			clnt = xchg(&clp->cl_rpcclient, clnt);
-+			rpc_shutdown_client(clnt);
-+			clnt = clp->cl_rpcclient;
-+			goto again;
-+		}
- 		if (clnt->cl_auth->au_flavor == RPC_AUTH_UNIX)
- 			break;
- 	case -NFS4ERR_CLID_INUSE:
+I tested these patches using xfstests, specificially generic/075, generic/091,
+generic/112, generic/127, generic/210, and generic/263.  Additionally, three
+new tests are run once READ_PLUS support has been added: generic/213,
+generic/214, and generic/228.
+
+These patches and the corresponding client changes are available in the
+[read_plus] branch of
+
+	git://git.linux-nfs.org/projects/anna/linux-nfs.git
+
+Questions?  Comments?  Thoughts?
+
+Anna
+
+
+Anna Schumaker (4):
+  NFSD: nfsd4_encode_read() should encode eof and maxcount
+  NFSD: Add READ_PLUS support for data segments
+  NFSD: Add support for encoding holes in files
+  NFSD: Add support for encoding multiple segments
+
+ fs/nfsd/nfs4proc.c |  16 +++++
+ fs/nfsd/nfs4xdr.c  | 174 +++++++++++++++++++++++++++++++++++++++++------------
+ 2 files changed, 152 insertions(+), 38 deletions(-)
+
 -- 
-1.8.3.1
+2.1.3
 
