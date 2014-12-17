@@ -1,13 +1,13 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
 Received: from mx11.netapp.com ([216.240.18.76]:31011 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751624AbaLQWfb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 17 Dec 2014 17:35:31 -0500
+	id S1751620AbaLQWfc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 17 Dec 2014 17:35:32 -0500
 From: Anna Schumaker <Anna.Schumaker@netapp.com>
 To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
-Subject: [PATCH 2/3] SUNRPC: Add the ability to zero out data pages
-Date: Wed, 17 Dec 2014 17:35:25 -0500
-Message-ID: <1418855726-14262-3-git-send-email-Anna.Schumaker@Netapp.com>
+Subject: [PATCH 3/3] NFS: Add support for reading NFS4_CONTENT_HOLE segments
+Date: Wed, 17 Dec 2014 17:35:26 -0500
+Message-ID: <1418855726-14262-4-git-send-email-Anna.Schumaker@Netapp.com>
 In-Reply-To: <1418855726-14262-1-git-send-email-Anna.Schumaker@Netapp.com>
 References: <1418855726-14262-1-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
@@ -15,90 +15,53 @@ Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch adds the ability to "read a hole" into a set of XDR data
-pages attached to a specific request.
+This patch adds support for decoding a single hole segment returned by
+the server.
 
 Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 ---
- include/linux/sunrpc/xdr.h |  1 +
- net/sunrpc/xdr.c           | 45 +++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 46 insertions(+)
+ fs/nfs/nfs42xdr.c | 21 ++++++++++++++++++++-
+ 1 file changed, 20 insertions(+), 1 deletion(-)
 
-diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
-index 70c6b92..3ec52d2 100644
---- a/include/linux/sunrpc/xdr.h
-+++ b/include/linux/sunrpc/xdr.h
-@@ -229,6 +229,7 @@ extern __be32 *xdr_inline_decode(struct xdr_stream *xdr, size_t nbytes);
- extern unsigned int xdr_read_pages(struct xdr_stream *xdr, unsigned int len);
- extern void xdr_enter_page(struct xdr_stream *xdr, unsigned int len);
- extern int xdr_process_buf(struct xdr_buf *buf, unsigned int offset, unsigned int len, int (*actor)(struct scatterlist *, void *), void *data);
-+extern uint64_t xdr_read_hole(struct xdr_stream *, uint64_t);
- 
- #endif /* __KERNEL__ */
- 
-diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
-index 290af97..722f526 100644
---- a/net/sunrpc/xdr.c
-+++ b/net/sunrpc/xdr.c
-@@ -220,6 +220,38 @@ _shift_data_right_pages(struct page **pages, size_t pgto_base,
+diff --git a/fs/nfs/nfs42xdr.c b/fs/nfs/nfs42xdr.c
+index c0d266d..ced0d8c 100644
+--- a/fs/nfs/nfs42xdr.c
++++ b/fs/nfs/nfs42xdr.c
+@@ -216,6 +216,25 @@ out_overflow:
+ 	return -EIO;
  }
  
- /**
-+ * _zero_data_pages
-+ * @pages: array of pages
-+ * @pgbase: beginning page vector address
-+ * @len: length
-+ */
-+static void
-+_zero_data_pages(struct page **pages, size_t pgbase, size_t len)
++static int decode_read_plus_hole(struct xdr_stream *xdr, struct nfs_pgio_res *res)
 +{
-+	struct page **page;
-+	char *vpage;
-+	size_t zero;
++	__be32 *p;
++	uint64_t offset, length;
 +
-+	page = pages + (pgbase >> PAGE_CACHE_SHIFT);
-+	pgbase &= ~PAGE_CACHE_MASK;
++	p = xdr_inline_decode(xdr, 8 + 8);
++	if (unlikely(!p))
++		goto out_overflow;
 +
-+	do {
-+		zero = len;
-+		if (pgbase + zero > PAGE_SIZE)
-+			zero = PAGE_SIZE - pgbase;
++	p = xdr_decode_hyper(p, &offset);
++	p = xdr_decode_hyper(p, &length);
 +
-+		vpage = kmap_atomic(*page);
-+		memset(vpage + pgbase, 0, zero);
-+		flush_dcache_page(*page);
-+		kunmap_atomic(vpage);
-+
-+		page++;
-+		pgbase = 0;
-+
-+	} while ((len -= zero) != 0);
++	res->count = xdr_read_hole(xdr, length);
++	return 0;
++out_overflow:
++	print_overflow_msg(__func__, xdr);
++	return -EIO;
 +}
 +
-+/**
-  * _copy_to_pages
-  * @pages: array of pages
-  * @pgbase: page vector address of destination
-@@ -970,6 +1002,19 @@ unsigned int xdr_read_pages(struct xdr_stream *xdr, unsigned int len)
- }
- EXPORT_SYMBOL_GPL(xdr_read_pages);
+ static int decode_read_plus(struct xdr_stream *xdr, struct nfs_pgio_res *res)
+ {
+ 	__be32 *p;
+@@ -245,7 +264,7 @@ static int decode_read_plus(struct xdr_stream *xdr, struct nfs_pgio_res *res)
+ 	if (type == NFS4_CONTENT_DATA)
+ 		status = decode_read_plus_data(xdr, res);
+ 	else
+-		status = -ENOTSUPP;
++		status = decode_read_plus_hole(xdr, res);
  
-+uint64_t xdr_read_hole(struct xdr_stream *xdr, uint64_t length)
-+{
-+	struct xdr_buf *buf = xdr->buf;
-+
-+	if (length > buf->page_len)
-+		length = buf->page_len;
-+
-+	xdr_align_pages(xdr, length);
-+	_zero_data_pages(buf->pages, buf->page_base, length);
-+	return length;
-+}
-+EXPORT_SYMBOL_GPL(xdr_read_hole);
-+
- /**
-  * xdr_enter_page - decode data from the XDR page
-  * @xdr: pointer to xdr_stream struct
+ 	if (segments > 1)
+ 		res->eof = 0;
 -- 
 2.1.3
 
