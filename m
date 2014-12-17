@@ -1,39 +1,30 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:35354 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751181AbaLPXxD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Dec 2014 18:53:03 -0500
-Date: Wed, 17 Dec 2014 02:52:26 +0300
-From: Dan Carpenter <dan.carpenter@oracle.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: linux-nfs@vger.kernel.org, kernel-janitors@vger.kernel.org
-Subject: [patch] NFS: a couple off by ones
-Message-ID: <20141216235225.GB31467@mwanda>
+Received: from mx1.netapp.com ([216.240.18.38]:15030 "EHLO mx1.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750951AbaLQSrb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 17 Dec 2014 13:47:31 -0500
+From: <andros@netapp.com>
+To: <trond.myklebust@primarydata.com>
+CC: <linux-nfs@vger.kernel.org>, Andy Adamson <andros@netapp.com>
+Subject: [PATCH 0/1] NFS: try RPC_AUTH_GSS_KRB5 after RPC_AUTH_GSS_KRB5I for cl_rpcclient
+Date: Wed, 17 Dec 2014 13:47:22 -0500
+Message-ID: <1418842043-15074-1-git-send-email-andros@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-These tests are off by one because if len == sizeof(nfs_export_path)
-then we have truncated the name.
+From: Andy Adamson <andros@netapp.com>
 
-Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
+I'm not sure why in the -EACCES case for nfs4_discover_server_trunking,
+nfs4_root_machine_cred(clp) is called, and then retry the detect_trunking call.
 
-diff --git a/fs/nfs/nfsroot.c b/fs/nfs/nfsroot.c
-index cd3c910..9bc9f04 100644
---- a/fs/nfs/nfsroot.c
-+++ b/fs/nfs/nfsroot.c
-@@ -261,11 +261,11 @@ static int __init root_nfs_data(char *cmdline)
- 	 */
- 	len = snprintf(nfs_export_path, sizeof(nfs_export_path),
- 				tmp, utsname()->nodename);
--	if (len > (int)sizeof(nfs_export_path))
-+	if (len >= (int)sizeof(nfs_export_path))
- 		goto out_devnametoolong;
- 	len = snprintf(nfs_root_device, sizeof(nfs_root_device),
- 				"%pI4:%s", &servaddr, nfs_export_path);
--	if (len > (int)sizeof(nfs_root_device))
-+	if (len >= (int)sizeof(nfs_root_device))
- 		goto out_devnametoolong;
- 
- 	retval = 0;
+Andy Adamson (1):
+  NFS: try RPC_AUTH_GSS_KRB5 after RPC_AUTH_GSS_KRB5I for cl_rpcclient
+
+ fs/nfs/nfs4state.c | 15 +++++++++++++++
+ 1 file changed, 15 insertions(+)
+
+-- 
+1.8.3.1
+
