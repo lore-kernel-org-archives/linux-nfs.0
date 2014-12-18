@@ -1,29 +1,45 @@
-Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from static.68.134.40.188.clients.your-server.de ([188.40.134.68]:54681
-	"EHLO mail02.iobjects.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750973AbaLTSuc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 20 Dec 2014 13:50:32 -0500
-Message-ID: <5495C4F3.6000901@googlemail.com>
-Date: Sat, 20 Dec 2014 19:50:27 +0100
-From: =?UTF-8?B?SG9sZ2VyIEhvZmZzdMOkdHRl?=
-	<holger.hoffstaette@googlemail.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Return-Path: bfields@fieldses.org
+Date: Thu, 18 Dec 2014 12:18:52 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Benjamin Coddington <bcodding@redhat.com>
+Cc: Holger =?utf-8?Q?Hoffst=C3=A4tte?= <holger.hoffstaette@googlemail.com>,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
 Subject: Re: 3.18.1: broken directory with one file too many
-References: <20141217212159.GA11517@fieldses.org> <5492C710.20104@googlemail.com> <20141218144856.GA18179@fieldses.org> <alpine.OSX.2.19.9992.1412180955000.62182@planck.local> <20141218151914.GB18179@fieldses.org> <pan.2014.12.18.15.42.53@googlemail.com> <20141218163254.GF18179@fieldses.org> <549303FC.9090604@googlemail.com> <20141218170653.GG18179@fieldses.org> <54932EA5.9090803@googlemail.com> <20141220180243.GA10273@fieldses.org>
-In-Reply-To: <20141220180243.GA10273@fieldses.org>
-Content-Type: text/plain; charset=utf-8
-Sender: linux-nfs-owner@vger.kernel.org
+Message-ID: <20141218171852.GH18179@fieldses.org>
+References: <pan.2014.12.16.22.19.18@googlemail.com>
+ <20141217212159.GA11517@fieldses.org>
+ <5492C710.20104@googlemail.com>
+ <20141218144856.GA18179@fieldses.org>
+ <alpine.OSX.2.19.9992.1412180955000.62182@planck.local>
+ <20141218151914.GB18179@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20141218151914.GB18179@fieldses.org>
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 12/20/14 19:02, J. Bruce Fields wrote:
-> Gah.  Does this fix it?
+On Thu, Dec 18, 2014 at 10:19:14AM -0500, J. Bruce Fields wrote:
+> On Thu, Dec 18, 2014 at 09:58:06AM -0500, Benjamin Coddington wrote:
+> > Frame 36 of nfs-client.pcap has this interesting string:
+> > 
+> > 0ff0  00 01 3b f6 fb b6 26 16 8f 7c 00 00 00 41 62 74   ..;...&..|...Abt
+> > 1000  72 66 73 2d 32 30 00 00 00 00 00 00 00 00 30 36   rfs-20........06
+> > 1010  2d 66 69 78 2d 64 65 61 64 6c 6f 63 6b 2d 77 68   -fix-deadlock-wh
+> > 1020  65 6e 2d 6d 6f 75 6e 74 69 6e 67 2d 61 2d 64 65   en-mounting-a-de
+> > 1030  67 72 61 64 65 64 2d 66 73 2e 70 61 74 63 68 00   graded-fs.patch.
+> 
+> Yes, that looks like the server messing up the encoding of the reply.
 
-It does! Well done. :)
+And indeed looking at the git repo that matches up with the entry:
 
-Reported-by: Holger Hoffstätte <holger.hoffstaette@googlemail.com>
-Tested-by: Holger Hoffstätte <holger.hoffstaette@googlemail.com>
+	btrfs-20........06-fix-deadlock-when-mounting-a-degraded-fs.patch.
+	btrfs-20140619-006-fix-deadlock-when-mounting-a-degraded-fs.patch
 
-Thanks!
-Holger
+So a stray 8 bytes of zeroes got written there.
+
+And the reply also ends with 000000017fffffff when I believe it should
+end with two 4-byte 0's (no value follows, not EOF).
+
+So I think those 0's got written to the wrong offset.  That should be
+enough information to find the bug....
+
+--b.
