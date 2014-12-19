@@ -1,96 +1,47 @@
-Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:7211 "EHLO mx11.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750949AbaLQWfL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 17 Dec 2014 17:35:11 -0500
-From: <Anna.Schumaker@netapp.com>
-To: <bfields@fieldses.org>
-CC: <linux-nfs@vger.kernel.org>
-Subject: [PATCH 4/4] NFSD: Add support for encoding multiple segments
-Date: Wed, 17 Dec 2014 17:35:04 -0500
-Message-ID: <1418855704-14127-5-git-send-email-Anna.Schumaker@Netapp.com>
-In-Reply-To: <1418855704-14127-1-git-send-email-Anna.Schumaker@Netapp.com>
-References: <1418855704-14127-1-git-send-email-Anna.Schumaker@Netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain
-Sender: linux-nfs-owner@vger.kernel.org
+Return-Path: linux-kernel-owner@vger.kernel.org
+From: Omar Sandoval <osandov@osandov.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Cc: Al Viro <viro@ZenIV.linux.org.uk>, linux-fsdevel@vger.kernel.org,
+        Omar Sandoval <osandov@osandov.com>
+Subject: [PATCH] nfs: prevent truncate on active swapfile
+Date: Thu, 18 Dec 2014 22:29:18 -0800
+Message-Id: <13e8abe52a18c4e46ce497ff299774700cd7e1d0.1418970310.git.osandov@osandov.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Most filesystems prevent truncation of an active swapfile by way of
+inode_newsize_ok, called from inode_change_ok. NFS doesn't call either
+from nfs_setattr, presumably because most of these checks are expected
+to be done server-side. However, the IS_SWAPFILE check can only be done
+client-side, and not doing so is dangerous.
 
-This patch lets us send an array of segments back to the client.  In
-theory this will make v4.2 reads more efficient, but only if the client
-is equipped to handle multiple segment reads.
-
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Signed-off-by: Omar Sandoval <osandov@osandov.com>
 ---
- fs/nfsd/nfs4xdr.c | 36 ++++++++++++++++++++++--------------
- 1 file changed, 22 insertions(+), 14 deletions(-)
+ fs/nfs/inode.c | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 2ec9860..b678016 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -3823,6 +3823,7 @@ nfsd4_encode_read_plus_data(struct nfsd4_compoundres *resp, struct nfsd4_read *r
- 	*p++ = cpu_to_be32(maxcount);
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 4bffe63..9205513 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -506,10 +506,15 @@ nfs_setattr(struct dentry *dentry, struct iattr *attr)
+ 		attr->ia_valid &= ~ATTR_MODE;
  
- 	read->rd_offset += maxcount;
-+	read->rd_length -= maxcount;
- 	return err;
- }
+ 	if (attr->ia_valid & ATTR_SIZE) {
++		loff_t i_size;
++
+ 		BUG_ON(!S_ISREG(inode->i_mode));
  
-@@ -3839,6 +3840,10 @@ nfsd4_encode_read_plus_hole(struct nfsd4_compoundres *resp, struct nfsd4_read *r
- 	p = xdr_encode_hyper(p, maxcount);
- 
- 	read->rd_offset += maxcount;
-+	if (maxcount > read->rd_length)
-+		read->rd_length = 0;
-+	else
-+		read->rd_length -= maxcount;
- 	return nfs_ok;
- }
- 
-@@ -3871,23 +3876,26 @@ nfsd4_encode_read_plus(struct nfsd4_compoundres *resp, __be32 nfserr,
- 			goto err_truncate;
+-		if (attr->ia_size == i_size_read(inode))
++		i_size = i_size_read(inode);
++		if (attr->ia_size == i_size)
+ 			attr->ia_valid &= ~ATTR_SIZE;
++		else if (attr->ia_size < i_size && IS_SWAPFILE(inode))
++			return -ETXTBSY;
  	}
  
--	hole_pos = vfs_llseek(read->rd_filp, read->rd_offset, SEEK_HOLE);
--	if (hole_pos == -ENXIO)
--		goto out_encode;
-+	do {
-+		hole_pos = vfs_llseek(read->rd_filp, read->rd_offset, SEEK_HOLE);
-+		if (hole_pos == -ENXIO)
-+			break;
- 
--	data_pos = vfs_llseek(read->rd_filp, read->rd_offset, SEEK_DATA);
--	if (data_pos == -ENXIO)
--		data_pos = i_size_read(file_inode(file));
-+		data_pos = vfs_llseek(read->rd_filp, read->rd_offset, SEEK_DATA);
-+		if (data_pos == -ENXIO)
-+			data_pos = i_size_read(file_inode(file));
- 
--	if ((data_pos == read->rd_offset) && (hole_pos > data_pos))
--		err = nfsd4_encode_read_plus_data(resp, read, file, hole_pos);
--	else if ((hole_pos == read->rd_offset) && (data_pos > hole_pos))
--		err = nfsd4_encode_read_plus_hole(resp, read, file, data_pos);
--	else /* The file probably changed on us between seeks. */
--		err = nfsd4_encode_read_plus_data(resp, read, file, i_size_read(file_inode(file)));
--	segments++;
-+		if ((data_pos == read->rd_offset) && (hole_pos > data_pos))
-+			err = nfsd4_encode_read_plus_data(resp, read, file, hole_pos);
-+		else if ((hole_pos == read->rd_offset) && (data_pos > hole_pos))
-+			err = nfsd4_encode_read_plus_hole(resp, read, file, data_pos);
-+		else /* The file probably changed on us between seeks. */
-+			err = nfsd4_encode_read_plus_data(resp, read, file, i_size_read(file_inode(file)));
-+		if (err)
-+			break;
-+		segments++;
-+	} while (read->rd_length > 0);
- 
--out_encode:
- 	eof = (read->rd_offset >= i_size_read(file_inode(file)));
- 	*p++ = cpu_to_be32(eof);
- 	*p++ = cpu_to_be32(segments);
+ 	/* Optimization: if the end result is no change, don't RPC */
 -- 
-2.1.3
+2.2.0
 
