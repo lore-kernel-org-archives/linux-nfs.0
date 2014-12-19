@@ -1,26 +1,23 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f182.google.com ([209.85.223.182]:33711 "EHLO
-	mail-ie0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752011AbaLSUQp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Dec 2014 15:16:45 -0500
-Received: by mail-ie0-f182.google.com with SMTP id x19so1386535ier.27
-        for <linux-nfs@vger.kernel.org>; Fri, 19 Dec 2014 12:16:44 -0800 (PST)
+Received: from mail-vc0-f172.google.com ([209.85.220.172]:41594 "EHLO
+	mail-vc0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751469AbaLSUbz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Dec 2014 15:31:55 -0500
+Received: by mail-vc0-f172.google.com with SMTP id hq11so618178vcb.3
+        for <linux-nfs@vger.kernel.org>; Fri, 19 Dec 2014 12:31:54 -0800 (PST)
 MIME-Version: 1.0
 In-Reply-To: <1419015154-91037-1-git-send-email-trond.myklebust@primarydata.com>
 References: <CAHQdGtQ_aHRknHzebarn8NUos_wBf4BZOCeg627FsLzcK3erOA@mail.gmail.com>
 	<1419015154-91037-1-git-send-email-trond.myklebust@primarydata.com>
-Date: Fri, 19 Dec 2014 15:16:43 -0500
-Message-ID: <CAN-5tyGfa6zHPDTF=UQOV8JF44bXnBinOg=NcvYL7kc69x=qUg@mail.gmail.com>
+Date: Fri, 19 Dec 2014 15:31:54 -0500
+Message-ID: <CAHQdGtTqO02BWwTOsXn2s641_KBdawBexG5+kGwmJKWaAmewtA@mail.gmail.com>
 Subject: Re: [PATCH v2 1/2] NFSv4: Deal with atomic upgrades of an existing delegation
-From: Olga Kornievskaia <aglo@umich.edu>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Olga Kornievskaia <aglo@umich.edu>
 Cc: linux-nfs <linux-nfs@vger.kernel.org>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-
-Aha, yes yes yes, that would make sense how it is still returned if
-seq ids are different. I'll have this tested asap.
 
 On Fri, Dec 19, 2014 at 1:52 PM, Trond Myklebust
 <trond.myklebust@primarydata.com> wrote:
@@ -48,6 +45,9 @@ On Fri, Dec 19, 2014 at 1:52 PM, Trond Myklebust
 > +               struct nfs_delegation *update)
 > +{
 > +       if (nfs4_stateid_is_newer(&update->stateid, &delegation->stateid))
+
+...and the above comparison should be reversed.
+
 > +               return;
 > +       delegation->stateid.seqid = update->stateid.seqid;
 > +       smp_wmb();
@@ -76,3 +76,12 @@ On Fri, Dec 19, 2014 at 1:52 PM, Trond Myklebust
 > --
 > 2.1.0
 >
+
+
+
+-- 
+Trond Myklebust
+
+Linux NFS client maintainer, PrimaryData
+
+trond.myklebust@primarydata.com
