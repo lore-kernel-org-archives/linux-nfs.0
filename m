@@ -1,70 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f179.google.com ([209.85.223.179]:33981 "EHLO
-	mail-ie0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751529AbaLSSwr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Dec 2014 13:52:47 -0500
-Received: by mail-ie0-f179.google.com with SMTP id rp18so1259438iec.10
-        for <linux-nfs@vger.kernel.org>; Fri, 19 Dec 2014 10:52:46 -0800 (PST)
+Received: from mail-ig0-f169.google.com ([209.85.213.169]:52245 "EHLO
+	mail-ig0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751529AbaLSSwy (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Dec 2014 13:52:54 -0500
+Received: by mail-ig0-f169.google.com with SMTP id hl2so2537740igb.4
+        for <linux-nfs@vger.kernel.org>; Fri, 19 Dec 2014 10:52:53 -0800 (PST)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: Olga Kornievskaia <aglo@umich.edu>
 Cc: linux-nfs <linux-nfs@vger.kernel.org>
-Subject: [PATCH v2 1/2] NFSv4: Deal with atomic upgrades of an existing delegation
-Date: Fri, 19 Dec 2014 13:52:33 -0500
-Message-Id: <1419015154-91037-1-git-send-email-trond.myklebust@primarydata.com>
+Subject: [PATCH v2 2/2] NFSv4: Remove incorrect check in can_open_delegated()
+Date: Fri, 19 Dec 2014 13:52:34 -0500
+Message-Id: <1419015154-91037-2-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1419015154-91037-1-git-send-email-trond.myklebust@primarydata.com>
+References: <1419015154-91037-1-git-send-email-trond.myklebust@primarydata.com>
 In-Reply-To: <CAHQdGtQ_aHRknHzebarn8NUos_wBf4BZOCeg627FsLzcK3erOA@mail.gmail.com>
 References: <CAHQdGtQ_aHRknHzebarn8NUos_wBf4BZOCeg627FsLzcK3erOA@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Ensure that we deal correctly with the case where the server sends us a
-newer instance of the same delegation. If the stateids match, but the
-sequence numbers differ, then treat the new delegation as if it were
-an atomic upgrade.
+Remove an incorrect check for NFS_DELEGATION_NEED_RECLAIM in
+can_open_delegated(). We are allowed to cache opens even in
+a situation where we're doing reboot recovery.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@primarydata.com>
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/delegation.c | 21 ++++++++++++++++++---
- 1 file changed, 18 insertions(+), 3 deletions(-)
+ fs/nfs/nfs4proc.c | 2 --
+ 1 file changed, 2 deletions(-)
 
-diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
-index 7f3f60641344..02b5b2a6d557 100644
---- a/fs/nfs/delegation.c
-+++ b/fs/nfs/delegation.c
-@@ -301,6 +301,19 @@ nfs_inode_detach_delegation(struct inode *inode)
- 	return nfs_detach_delegation(nfsi, delegation, server);
- }
- 
-+static void
-+nfs_update_inplace_delegation(struct nfs_inode *nfsi,
-+		struct nfs_delegation *delegation,
-+		struct nfs_delegation *update)
-+{
-+	if (nfs4_stateid_is_newer(&update->stateid, &delegation->stateid))
-+		return;
-+	delegation->stateid.seqid = update->stateid.seqid;
-+	smp_wmb();
-+	delegation->type = update->type;
-+	nfsi->delegation_state = update->type;
-+}
-+
- /**
-  * nfs_inode_set_delegation - set up a delegation on an inode
-  * @inode: inode to which delegation applies
-@@ -334,9 +347,11 @@ int nfs_inode_set_delegation(struct inode *inode, struct rpc_cred *cred, struct
- 	old_delegation = rcu_dereference_protected(nfsi->delegation,
- 					lockdep_is_held(&clp->cl_lock));
- 	if (old_delegation != NULL) {
--		if (nfs4_stateid_match(&delegation->stateid,
--					&old_delegation->stateid) &&
--				delegation->type == old_delegation->type) {
-+		/* Is this an update of the existing delegation? */
-+		if (nfs4_stateid_match_other(&old_delegation->stateid,
-+					&delegation->stateid)) {
-+			nfs_update_inplace_delegation(nfsi, old_delegation,
-+					delegation);
- 			goto out;
- 		}
- 		/*
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 8514b59a8c30..002c7dfedb08 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -1119,8 +1119,6 @@ static int can_open_delegated(struct nfs_delegation *delegation, fmode_t fmode)
+ 		return 0;
+ 	if ((delegation->type & fmode) != fmode)
+ 		return 0;
+-	if (test_bit(NFS_DELEGATION_NEED_RECLAIM, &delegation->flags))
+-		return 0;
+ 	if (test_bit(NFS_DELEGATION_RETURNING, &delegation->flags))
+ 		return 0;
+ 	nfs_mark_delegation_referenced(delegation);
 -- 
 2.1.0
 
