@@ -1,37 +1,47 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from zeniv.linux.org.uk ([195.92.253.2]:58033 "EHLO
+Received: from zeniv.linux.org.uk ([195.92.253.2]:60815 "EHLO
 	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751732AbaLSG2e (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Dec 2014 01:28:34 -0500
-Date: Fri, 19 Dec 2014 06:28:27 +0000
+	with ESMTP id S1751005AbaLTGvm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 20 Dec 2014 01:51:42 -0500
+Date: Sat, 20 Dec 2014 06:51:33 +0000
 From: Al Viro <viro@ZenIV.linux.org.uk>
-To: Omar Sandoval <osandov@osandov.com>
-Cc: Christoph Hellwig <hch@infradead.org>, Jan Kara <jack@suse.cz>,
+To: Christoph Hellwig <hch@infradead.org>
+Cc: Jan Kara <jack@suse.cz>, Omar Sandoval <osandov@osandov.com>,
         Andrew Morton <akpm@linux-foundation.org>,
         Trond Myklebust <trond.myklebust@primarydata.com>,
         David Sterba <dsterba@suse.cz>, linux-fsdevel@vger.kernel.org,
         linux-mm@kvack.org, linux-nfs@vger.kernel.org,
         linux-kernel@vger.kernel.org
 Subject: Re: [PATCH 2/8] swap: lock i_mutex for swap_writepage direct_IO
-Message-ID: <20141219062827.GV22149@ZenIV.linux.org.uk>
-References: <20141215221100.GA4637@mew>
- <20141216083543.GA32425@infradead.org>
- <20141216085624.GA25256@mew>
- <20141217080610.GA20335@infradead.org>
- <20141217082020.GH22149@ZenIV.linux.org.uk>
- <20141217082437.GA9301@infradead.org>
- <20141217145832.GA3497@mew>
- <20141217185256.GA5657@infradead.org>
- <20141217220313.GK22149@ZenIV.linux.org.uk>
- <20141219062405.GA11486@mew>
+Message-ID: <20141220065133.GC22149@ZenIV.linux.org.uk>
+References: <cover.1418618044.git.osandov@osandov.com>
+ <a59510f4552a5d3557958cdb0ce1b23b3abfc75b.1418618044.git.osandov@osandov.com>
+ <20141215162705.GA23887@quack.suse.cz>
+ <20141215165615.GA19041@infradead.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20141219062405.GA11486@mew>
+In-Reply-To: <20141215165615.GA19041@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Dec 18, 2014 at 10:24:05PM -0800, Omar Sandoval wrote:
-> +       swap_file = file_open_name(name, O_RDWR | O_LARGEFILE | O_DIRECT, 0);
-> +       if (IS_ERR(swap_file) && PTR_ERR(swap_file) == -EINVAL)
+On Mon, Dec 15, 2014 at 08:56:15AM -0800, Christoph Hellwig wrote:
+> On Mon, Dec 15, 2014 at 05:27:05PM +0100, Jan Kara wrote:
+> > On Sun 14-12-14 21:26:56, Omar Sandoval wrote:
+> > > The generic write code locks i_mutex for a direct_IO. Swap-over-NFS
+> > > doesn't grab the mutex because nfs_direct_IO doesn't expect i_mutex to
+> > > be held, but most direct_IO implementations do.
+> >   I think you are speaking about direct IO writes only, aren't you? For DIO
+> > reads we don't hold i_mutex AFAICS. And also for DIO writes we don't
+> > necessarily hold i_mutex - see for example XFS which doesn't take i_mutex
+> > for direct IO writes. It uses it's internal rwlock for this (see
+> > xfs_file_dio_aio_write()). So I think this is just wrong.
+> 
+> The problem is that the use of ->direct_IO by the swap code is a gross
+> layering violation.  ->direct_IO is a callback for the filesystem, and
+> the swap code need to call ->read_iter instead of ->readpage and
+> ->write_tier instead of ->direct_IO, and leave the locking to the
+> filesystem.
 
-ITYM if (swap_file == ERR_PTR(-EINVAL)) here...
+The thing is, ->read_iter() and ->write_iter() might decide to fall back to 
+buffered IO path.  XFS is unusual in that respect - there O_DIRECT ends up
+with short write in such case.  Other filesystems, OTOH...
