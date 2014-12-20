@@ -1,49 +1,84 @@
-Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pa0-f42.google.com ([209.85.220.42]:57808 "EHLO
-	mail-pa0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753602AbaLVHci (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 22 Dec 2014 02:32:38 -0500
-Received: by mail-pa0-f42.google.com with SMTP id et14so5435839pad.1
-        for <linux-nfs@vger.kernel.org>; Sun, 21 Dec 2014 23:32:38 -0800 (PST)
-Date: Sun, 21 Dec 2014 23:32:34 -0800
+Return-Path: linux-kernel-owner@vger.kernel.org
 From: Omar Sandoval <osandov@osandov.com>
-To: Al Viro <viro@ZenIV.linux.org.uk>
-Cc: Andrew Morton <akpm@linux-foundation.org>,
+To: Alexander Viro <viro@zeniv.linux.org.uk>,
+        Andrew Morton <akpm@linux-foundation.org>,
         Trond Myklebust <trond.myklebust@primarydata.com>,
         Christoph Hellwig <hch@infradead.org>, linux-fsdevel@vger.kernel.org,
         linux-mm@kvack.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, Mel Gorman <mgorman@suse.de>
-Subject: Re: [PATCH v2 4/5] swapfile: use ->read_iter and ->write_iter
-Message-ID: <20141222073234.GA14207@mew>
+        linux-kernel@vger.kernel.org
+Cc: Omar Sandoval <osandov@osandov.com>
+Subject: [PATCH v2 5/5] vfs: update swap_{,de}activate documentation
+Date: Fri, 19 Dec 2014 19:18:29 -0800
+Message-Id: <5bb833720e5f14f077e824c19d1213dd57a282c6.1419044605.git.osandov@osandov.com>
+In-Reply-To: <cover.1419044605.git.osandov@osandov.com>
 References: <cover.1419044605.git.osandov@osandov.com>
- <d8819b57849221b3db7c479f070067808912f0d5.1419044605.git.osandov@osandov.com>
- <20141220061337.GB22149@ZenIV.linux.org.uk>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20141220061337.GB22149@ZenIV.linux.org.uk>
-Sender: linux-nfs-owner@vger.kernel.org
+In-Reply-To: <cover.1419044605.git.osandov@osandov.com>
+References: <cover.1419044605.git.osandov@osandov.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Dec 20, 2014 at 06:13:37AM +0000, Al Viro wrote:
-> On Fri, Dec 19, 2014 at 07:18:28PM -0800, Omar Sandoval wrote:
-> 
-> > +		ret = swap_file->f_op->read_iter(&kiocb, &to);
-> > +		if (ret == PAGE_SIZE) {
-> > +			SetPageUptodate(page);
-> >  			count_vm_event(PSWPIN);
-> > +			ret = 0;
-> > +		} else {
-> > +			ClearPageUptodate(page);
-> > +			SetPageError(page);
-> > +		}
-> > +		unlock_page(page);
-> 
-> Umm...  What's to guarantee that ->read_iter() won't try lock_page() on what
-> turns out to be equal to page?
+Parameters were added to swap_activate in the same patch series that
+introduced it without updating the documentation. Additionally, the
+documentation claims that non-existent address space operations
+->swap_{in,out} are used for swap I/O, but now we use
+->{read,write}_iter.
 
-Ergh. I don't see why ->read_iter would be screwing around in the swap
-cache or with the pages in the iterator, anything in particular you can
-see happening?
+Signed-off-by: Omar Sandoval <osandov@osandov.com>
+---
+ Documentation/filesystems/Locking | 7 ++++---
+ Documentation/filesystems/vfs.txt | 7 ++++---
+ 2 files changed, 8 insertions(+), 6 deletions(-)
 
+diff --git a/Documentation/filesystems/Locking b/Documentation/filesystems/Locking
+index b30753c..e72b4c3 100644
+--- a/Documentation/filesystems/Locking
++++ b/Documentation/filesystems/Locking
+@@ -205,7 +205,8 @@ prototypes:
+ 	int (*launder_page)(struct page *);
+ 	int (*is_partially_uptodate)(struct page *, unsigned long, unsigned long);
+ 	int (*error_remove_page)(struct address_space *, struct page *);
+-	int (*swap_activate)(struct file *);
++	int (*swap_activate)(struct swap_info_struct *, struct file *,
++			     sector_t *);
+ 	int (*swap_deactivate)(struct file *);
+ 
+ locking rules:
+@@ -230,8 +231,8 @@ migratepage:		yes (both)
+ launder_page:		yes
+ is_partially_uptodate:	yes
+ error_remove_page:	yes
+-swap_activate:		no
+-swap_deactivate:	no
++swap_activate:					yes
++swap_deactivate:				no
+ 
+ 	->write_begin(), ->write_end(), ->sync_page() and ->readpage()
+ may be called from the request handler (/dev/loop).
+diff --git a/Documentation/filesystems/vfs.txt b/Documentation/filesystems/vfs.txt
+index 43ce050..9c793a7 100644
+--- a/Documentation/filesystems/vfs.txt
++++ b/Documentation/filesystems/vfs.txt
+@@ -600,8 +600,9 @@ struct address_space_operations {
+ 					unsigned long);
+ 	void (*is_dirty_writeback) (struct page *, bool *, bool *);
+ 	int (*error_remove_page) (struct mapping *mapping, struct page *page);
+-	int (*swap_activate)(struct file *);
+-	int (*swap_deactivate)(struct file *);
++	int (*swap_activate)(struct swap_info_struct *, struct file *,
++			     sector_t *);
++	void (*swap_deactivate)(struct file *);
+ };
+ 
+   writepage: called by the VM to write a dirty page to backing store.
+@@ -788,7 +789,7 @@ struct address_space_operations {
+ 	memory. A return value of zero indicates success,
+ 	in which case this file can be used to back swapspace. The
+ 	swapspace operations will be proxied to this address space's
+-	->swap_{out,in} methods.
++	->{read,write}_iter methods with O_DIRECT.
+ 
+   swap_deactivate: Called during swapoff on files where swap_activate
+ 	was successful.
 -- 
-Omar
+2.2.1
+
