@@ -1,48 +1,60 @@
-Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pd0-f171.google.com ([209.85.192.171]:39684 "EHLO
-	mail-pd0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754041AbaLVHMU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 22 Dec 2014 02:12:20 -0500
-Received: by mail-pd0-f171.google.com with SMTP id y13so5326448pdi.30
-        for <linux-nfs@vger.kernel.org>; Sun, 21 Dec 2014 23:12:20 -0800 (PST)
-Date: Sun, 21 Dec 2014 23:12:16 -0800
+Return-Path: linux-kernel-owner@vger.kernel.org
 From: Omar Sandoval <osandov@osandov.com>
-To: Al Viro <viro@ZenIV.linux.org.uk>
-Cc: Andrew Morton <akpm@linux-foundation.org>,
+To: Alexander Viro <viro@zeniv.linux.org.uk>,
+        Andrew Morton <akpm@linux-foundation.org>,
         Trond Myklebust <trond.myklebust@primarydata.com>,
         Christoph Hellwig <hch@infradead.org>, linux-fsdevel@vger.kernel.org,
         linux-mm@kvack.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, Ming Lei <ming.lei@canonical.com>
-Subject: Re: [PATCH v2 2/5] direct-io: don't dirty ITER_BVEC pages on read
-Message-ID: <20141222071216.GA24722@mew>
+        linux-kernel@vger.kernel.org
+Cc: Omar Sandoval <osandov@osandov.com>
+Subject: [PATCH v2 3/5] nfs: don't dirty ITER_BVEC pages read through direct I/O
+Date: Fri, 19 Dec 2014 19:18:27 -0800
+Message-Id: <b42b9a61d22260ee44b312d0119f1856e8f5840d.1419044605.git.osandov@osandov.com>
+In-Reply-To: <cover.1419044605.git.osandov@osandov.com>
 References: <cover.1419044605.git.osandov@osandov.com>
- <f9b69250ba0598807d96857e9b736d57e6841ba3.1419044605.git.osandov@osandov.com>
- <20141220060130.GA22149@ZenIV.linux.org.uk>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20141220060130.GA22149@ZenIV.linux.org.uk>
-Sender: linux-nfs-owner@vger.kernel.org
+In-Reply-To: <cover.1419044605.git.osandov@osandov.com>
+References: <cover.1419044605.git.osandov@osandov.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Dec 20, 2014 at 06:01:30AM +0000, Al Viro wrote:
-> On Fri, Dec 19, 2014 at 07:18:26PM -0800, Omar Sandoval wrote:
-> > Reads through the iov_iter infrastructure for kernel pages shouldn't be
-> > dirtied by the direct I/O code.
-> > 
-> > This is based on Dave Kleikamp's and Ming Lei's previously posted
-> > patches.
-> 
-> Umm...  
-> 
-> > +	dio->should_dirty = !iov_iter_is_bvec(iter);
-> 
-> 	dio->should_dirty = iter_is_iovec(iter);
-> 
-> perhaps?
+As with the generic blockdev code, kernel pages shouldn't be dirtied by
+the direct I/O path.
 
-Mm, yeah, I'll do that. That helper snuck in without me noticing it... I
-see that we can't do iov_iter_get_pages on an ITER_KVEC, so a kvec
-doesn't work for blockdev_direct_IO anyways, right?
+Signed-off-by: Omar Sandoval <osandov@osandov.com>
+---
+ fs/nfs/direct.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
 
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index 10bf072..b6ca65c 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -88,6 +88,7 @@ struct nfs_direct_req {
+ 	struct pnfs_ds_commit_info ds_cinfo;	/* Storage for cinfo */
+ 	struct work_struct	work;
+ 	int			flags;
++	int			should_dirty;	/* should we mark read pages dirty? */
+ #define NFS_ODIRECT_DO_COMMIT		(1)	/* an unstable reply was received */
+ #define NFS_ODIRECT_RESCHED_WRITES	(2)	/* write verification failed */
+ 	struct nfs_writeverf	verf;		/* unstable write verifier */
+@@ -370,7 +371,8 @@ static void nfs_direct_read_completion(struct nfs_pgio_header *hdr)
+ 		struct nfs_page *req = nfs_list_entry(hdr->pages.next);
+ 		struct page *page = req->wb_page;
+ 
+-		if (!PageCompound(page) && bytes < hdr->good_bytes)
++		if (!PageCompound(page) && bytes < hdr->good_bytes &&
++		    dreq->should_dirty)
+ 			set_page_dirty(page);
+ 		bytes += req->wb_bytes;
+ 		nfs_list_remove_request(req);
+@@ -542,6 +544,7 @@ ssize_t nfs_file_direct_read(struct kiocb *iocb, struct iov_iter *iter,
+ 	dreq->inode = inode;
+ 	dreq->bytes_left = count;
+ 	dreq->ctx = get_nfs_open_context(nfs_file_open_context(iocb->ki_filp));
++	dreq->should_dirty = !iov_iter_is_bvec(iter);
+ 	l_ctx = nfs_get_lock_context(dreq->ctx);
+ 	if (IS_ERR(l_ctx)) {
+ 		result = PTR_ERR(l_ctx);
 -- 
-Omar
+2.2.1
+
