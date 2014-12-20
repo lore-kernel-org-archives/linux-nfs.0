@@ -1,45 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f176.google.com ([209.85.213.176]:43676 "EHLO
-	mail-ig0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751762AbaLSUoV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Dec 2014 15:44:21 -0500
-Received: by mail-ig0-f176.google.com with SMTP id l13so1379444iga.9
-        for <linux-nfs@vger.kernel.org>; Fri, 19 Dec 2014 12:44:21 -0800 (PST)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Olga Kornievskaia <aglo@umich.edu>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-Subject: [PATCH v3 2/2] NFSv4: Remove incorrect check in can_open_delegated()
-Date: Fri, 19 Dec 2014 15:44:05 -0500
-Message-Id: <1419021845-96747-2-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1419021845-96747-1-git-send-email-trond.myklebust@primarydata.com>
-References: <1419021845-96747-1-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <CAHQdGtTqO02BWwTOsXn2s641_KBdawBexG5+kGwmJKWaAmewtA@mail.gmail.com>
-References: <CAHQdGtTqO02BWwTOsXn2s641_KBdawBexG5+kGwmJKWaAmewtA@mail.gmail.com>
+Received: from mail-pd0-f179.google.com ([209.85.192.179]:40385 "EHLO
+	mail-pd0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751830AbaLTDSl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Dec 2014 22:18:41 -0500
+Received: by mail-pd0-f179.google.com with SMTP id fp1so2348948pdb.38
+        for <linux-nfs@vger.kernel.org>; Fri, 19 Dec 2014 19:18:41 -0800 (PST)
+From: Omar Sandoval <osandov@osandov.com>
+To: Alexander Viro <viro@zeniv.linux.org.uk>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Christoph Hellwig <hch@infradead.org>, linux-fsdevel@vger.kernel.org,
+        linux-mm@kvack.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Cc: Omar Sandoval <osandov@osandov.com>
+Subject: [PATCH v2 0/5] clean up and generalize swap-over-NFS
+Date: Fri, 19 Dec 2014 19:18:24 -0800
+Message-Id: <cover.1419044605.git.osandov@osandov.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Remove an incorrect check for NFS_DELEGATION_NEED_RECLAIM in
-can_open_delegated(). We are allowed to cache opens even in
-a situation where we're doing reboot recovery.
+Hi,
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/nfs4proc.c | 2 --
- 1 file changed, 2 deletions(-)
+This patch series (based on ecb5ec0 in Linus' tree) contains all of the
+non-BTRFS work that I've done to implement swapfiles on BTRFS. The BTRFS
+portion is still undergoing development and is now outweighed by the
+non-BTRFS changes, so I want to get these in separately.
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 8514b59a8c30..002c7dfedb08 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -1119,8 +1119,6 @@ static int can_open_delegated(struct nfs_delegation *delegation, fmode_t fmode)
- 		return 0;
- 	if ((delegation->type & fmode) != fmode)
- 		return 0;
--	if (test_bit(NFS_DELEGATION_NEED_RECLAIM, &delegation->flags))
--		return 0;
- 	if (test_bit(NFS_DELEGATION_RETURNING, &delegation->flags))
- 		return 0;
- 	nfs_mark_delegation_referenced(delegation);
+Version 2 changes the generic swapfile interface to use ->read_iter and
+->write_iter instead of using ->direct_IO directly in response to
+discussion on the previous submission. It also adds the iov_iter_is_bvec
+helper to factor out some common checks.
+
+Version 1 can be found here: https://lkml.org/lkml/2014/12/15/7
+
+Omar Sandoval (5):
+  iov_iter: add ITER_BVEC helpers
+  direct-io: don't dirty ITER_BVEC pages on read
+  nfs: don't dirty ITER_BVEC pages read through direct I/O
+  swapfile: use ->read_iter and ->write_iter
+  vfs: update swap_{,de}activate documentation
+
+ Documentation/filesystems/Locking |  7 ++++---
+ Documentation/filesystems/vfs.txt |  7 ++++---
+ fs/direct-io.c                    |  8 ++++---
+ fs/nfs/direct.c                   |  5 ++++-
+ fs/splice.c                       |  7 ++-----
+ include/linux/uio.h               |  7 +++++++
+ mm/iov_iter.c                     | 12 +++++++++++
+ mm/page_io.c                      | 44 +++++++++++++++++++++++++--------------
+ mm/swapfile.c                     | 11 +++++++++-
+ 9 files changed, 76 insertions(+), 32 deletions(-)
+
 -- 
-2.1.0
+2.2.1
 
