@@ -1,4 +1,10 @@
-Return-Path: linux-kernel-owner@vger.kernel.org
+Return-Path: linux-nfs-owner@vger.kernel.org
+Received: from mail-pa0-f46.google.com ([209.85.220.46]:37140 "EHLO
+	mail-pa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752757AbaLTDSt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Dec 2014 22:18:49 -0500
+Received: by mail-pa0-f46.google.com with SMTP id lf10so2364942pab.19
+        for <linux-nfs@vger.kernel.org>; Fri, 19 Dec 2014 19:18:49 -0800 (PST)
 From: Omar Sandoval <osandov@osandov.com>
 To: Alexander Viro <viro@zeniv.linux.org.uk>,
         Andrew Morton <akpm@linux-foundation.org>,
@@ -6,55 +12,112 @@ To: Alexander Viro <viro@zeniv.linux.org.uk>,
         Christoph Hellwig <hch@infradead.org>, linux-fsdevel@vger.kernel.org,
         linux-mm@kvack.org, linux-nfs@vger.kernel.org,
         linux-kernel@vger.kernel.org
-Cc: Omar Sandoval <osandov@osandov.com>
-Subject: [PATCH v2 3/5] nfs: don't dirty ITER_BVEC pages read through direct I/O
-Date: Fri, 19 Dec 2014 19:18:27 -0800
-Message-Id: <b42b9a61d22260ee44b312d0119f1856e8f5840d.1419044605.git.osandov@osandov.com>
+Cc: Omar Sandoval <osandov@osandov.com>, Mel Gorman <mgorman@suse.de>
+Subject: [PATCH v2 4/5] swapfile: use ->read_iter and ->write_iter
+Date: Fri, 19 Dec 2014 19:18:28 -0800
+Message-Id: <d8819b57849221b3db7c479f070067808912f0d5.1419044605.git.osandov@osandov.com>
 In-Reply-To: <cover.1419044605.git.osandov@osandov.com>
 References: <cover.1419044605.git.osandov@osandov.com>
 In-Reply-To: <cover.1419044605.git.osandov@osandov.com>
 References: <cover.1419044605.git.osandov@osandov.com>
-Sender: linux-kernel-owner@vger.kernel.org
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-As with the generic blockdev code, kernel pages shouldn't be dirtied by
-the direct I/O path.
+Using ->direct_IO and ->readpage for the generic swap file
+infrastructure requires all sorts of nasty workarounds. ->readpage
+implementations don't play nicely with swap cache pages, and ->direct_IO
+implementations have different locking conventions for every filesystem.
+Instead, use ->read_iter/->write_iter with an ITER_BVEC and let the
+filesystem take care of it. This will also allow us to easily transition
+to kernel AIO if that gets merged in the future.
 
+Cc: Mel Gorman <mgorman@suse.de>
 Signed-off-by: Omar Sandoval <osandov@osandov.com>
 ---
- fs/nfs/direct.c | 5 ++++-
- 1 file changed, 4 insertions(+), 1 deletion(-)
+ mm/page_io.c  | 30 +++++++++++++++++++++++-------
+ mm/swapfile.c | 11 ++++++++++-
+ 2 files changed, 33 insertions(+), 8 deletions(-)
 
-diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index 10bf072..b6ca65c 100644
---- a/fs/nfs/direct.c
-+++ b/fs/nfs/direct.c
-@@ -88,6 +88,7 @@ struct nfs_direct_req {
- 	struct pnfs_ds_commit_info ds_cinfo;	/* Storage for cinfo */
- 	struct work_struct	work;
- 	int			flags;
-+	int			should_dirty;	/* should we mark read pages dirty? */
- #define NFS_ODIRECT_DO_COMMIT		(1)	/* an unstable reply was received */
- #define NFS_ODIRECT_RESCHED_WRITES	(2)	/* write verification failed */
- 	struct nfs_writeverf	verf;		/* unstable write verifier */
-@@ -370,7 +371,8 @@ static void nfs_direct_read_completion(struct nfs_pgio_header *hdr)
- 		struct nfs_page *req = nfs_list_entry(hdr->pages.next);
- 		struct page *page = req->wb_page;
+diff --git a/mm/page_io.c b/mm/page_io.c
+index 532a39b..61165b0 100644
+--- a/mm/page_io.c
++++ b/mm/page_io.c
+@@ -263,7 +263,6 @@ int __swap_writepage(struct page *page, struct writeback_control *wbc,
+ 	if (sis->flags & SWP_FILE) {
+ 		struct kiocb kiocb;
+ 		struct file *swap_file = sis->swap_file;
+-		struct address_space *mapping = swap_file->f_mapping;
+ 		struct iov_iter from;
+ 		struct bio_vec bv = {
+ 			.bv_page = page,
+@@ -279,9 +278,7 @@ int __swap_writepage(struct page *page, struct writeback_control *wbc,
  
--		if (!PageCompound(page) && bytes < hdr->good_bytes)
-+		if (!PageCompound(page) && bytes < hdr->good_bytes &&
-+		    dreq->should_dirty)
- 			set_page_dirty(page);
- 		bytes += req->wb_bytes;
- 		nfs_list_remove_request(req);
-@@ -542,6 +544,7 @@ ssize_t nfs_file_direct_read(struct kiocb *iocb, struct iov_iter *iter,
- 	dreq->inode = inode;
- 	dreq->bytes_left = count;
- 	dreq->ctx = get_nfs_open_context(nfs_file_open_context(iocb->ki_filp));
-+	dreq->should_dirty = !iov_iter_is_bvec(iter);
- 	l_ctx = nfs_get_lock_context(dreq->ctx);
- 	if (IS_ERR(l_ctx)) {
- 		result = PTR_ERR(l_ctx);
+ 		set_page_writeback(page);
+ 		unlock_page(page);
+-		ret = mapping->a_ops->direct_IO(ITER_BVEC | WRITE,
+-						&kiocb, &from,
+-						kiocb.ki_pos);
++		ret = swap_file->f_op->write_iter(&kiocb, &from);
+ 		if (ret == PAGE_SIZE) {
+ 			count_vm_event(PSWPOUT);
+ 			ret = 0;
+@@ -344,12 +341,31 @@ int swap_readpage(struct page *page)
+ 	}
+ 
+ 	if (sis->flags & SWP_FILE) {
++		struct kiocb kiocb;
+ 		struct file *swap_file = sis->swap_file;
+-		struct address_space *mapping = swap_file->f_mapping;
++		struct iov_iter to;
++		struct bio_vec bv = {
++			.bv_page = page,
++			.bv_len = PAGE_SIZE,
++			.bv_offset = 0,
++		};
++
++		iov_iter_bvec(&to, ITER_BVEC | READ, &bv, 1, PAGE_SIZE);
++
++		init_sync_kiocb(&kiocb, swap_file);
++		kiocb.ki_pos = page_file_offset(page);
++		kiocb.ki_nbytes = PAGE_SIZE;
+ 
+-		ret = mapping->a_ops->readpage(swap_file, page);
+-		if (!ret)
++		ret = swap_file->f_op->read_iter(&kiocb, &to);
++		if (ret == PAGE_SIZE) {
++			SetPageUptodate(page);
+ 			count_vm_event(PSWPIN);
++			ret = 0;
++		} else {
++			ClearPageUptodate(page);
++			SetPageError(page);
++		}
++		unlock_page(page);
+ 		return ret;
+ 	}
+ 
+diff --git a/mm/swapfile.c b/mm/swapfile.c
+index 63f55cc..4e14122 100644
+--- a/mm/swapfile.c
++++ b/mm/swapfile.c
+@@ -2379,7 +2379,16 @@ SYSCALL_DEFINE2(swapon, const char __user *, specialfile, int, swap_flags)
+ 		name = NULL;
+ 		goto bad_swap;
+ 	}
+-	swap_file = file_open_name(name, O_RDWR|O_LARGEFILE, 0);
++	swap_file = file_open_name(name, O_RDWR | O_LARGEFILE | O_DIRECT, 0);
++	if (swap_file == ERR_PTR(-EINVAL)) {
++		/*
++		 * XXX: there are several filesystems that implement ->bmap but
++		 * not ->direct_IO. It's unlikely that anyone is using a
++		 * swapfile on, e.g., the MINIX fs, but this kludge will keep us
++		 * from getting a complaint from the one person who does.
++		 */
++		swap_file = file_open_name(name, O_RDWR | O_LARGEFILE, 0);
++	}
+ 	if (IS_ERR(swap_file)) {
+ 		error = PTR_ERR(swap_file);
+ 		swap_file = NULL;
 -- 
 2.2.1
 
