@@ -1,84 +1,69 @@
-Return-Path: linux-kernel-owner@vger.kernel.org
-From: Omar Sandoval <osandov@osandov.com>
-To: Alexander Viro <viro@zeniv.linux.org.uk>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Christoph Hellwig <hch@infradead.org>, linux-fsdevel@vger.kernel.org,
-        linux-mm@kvack.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Cc: Omar Sandoval <osandov@osandov.com>
-Subject: [PATCH v2 5/5] vfs: update swap_{,de}activate documentation
-Date: Fri, 19 Dec 2014 19:18:29 -0800
-Message-Id: <5bb833720e5f14f077e824c19d1213dd57a282c6.1419044605.git.osandov@osandov.com>
-In-Reply-To: <cover.1419044605.git.osandov@osandov.com>
-References: <cover.1419044605.git.osandov@osandov.com>
-In-Reply-To: <cover.1419044605.git.osandov@osandov.com>
-References: <cover.1419044605.git.osandov@osandov.com>
-Sender: linux-kernel-owner@vger.kernel.org
+Return-Path: linux-nfs-owner@vger.kernel.org
+Received: from mx1.redhat.com ([209.132.183.28]:57863 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752127AbaLWVoy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 23 Dec 2014 16:44:54 -0500
+Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id sBNListD014801
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
+	for <linux-nfs@vger.kernel.org>; Tue, 23 Dec 2014 16:44:54 -0500
+Received: from tonberry.usersys.redhat.com (dhcp145-188.rdu.redhat.com [10.13.145.188])
+	by int-mx11.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id sBNLira4025074
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NO)
+	for <linux-nfs@vger.kernel.org>; Tue, 23 Dec 2014 16:44:53 -0500
+Received: from tonberry.usersys.redhat.com (localhost [127.0.0.1])
+	by tonberry.usersys.redhat.com (8.14.8/8.14.5) with ESMTP id sBNLirFT018073
+	for <linux-nfs@vger.kernel.org>; Tue, 23 Dec 2014 16:44:53 -0500
+Received: (from smayhew@localhost)
+	by tonberry.usersys.redhat.com (8.14.8/8.14.8/Submit) id sBNLiqIx018072
+	for linux-nfs@vger.kernel.org; Tue, 23 Dec 2014 16:44:52 -0500
+From: Scott Mayhew <smayhew@redhat.com>
+To: linux-nfs@vger.kernel.org
+Subject: [nfs-utils PATCH] rpc.idmapd: Add a reference to nfsidmap(8) on the man page
+Date: Tue, 23 Dec 2014 16:44:52 -0500
+Message-Id: <1419371092-18037-1-git-send-email-smayhew@redhat.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Parameters were added to swap_activate in the same patch series that
-introduced it without updating the documentation. Additionally, the
-documentation claims that non-existent address space operations
-->swap_{in,out} are used for swap I/O, but now we use
-->{read,write}_iter.
+Even though the 'new' idmapper used by the client has been around for
+several years, a lot of users seem to be unaware of its existence.
 
-Signed-off-by: Omar Sandoval <osandov@osandov.com>
+Signed-off-by: Scott Mayhew <smayhew@redhat.com>
 ---
- Documentation/filesystems/Locking | 7 ++++---
- Documentation/filesystems/vfs.txt | 7 ++++---
- 2 files changed, 8 insertions(+), 6 deletions(-)
+ utils/idmapd/idmapd.man | 13 ++++++++++++-
+ 1 file changed, 12 insertions(+), 1 deletion(-)
 
-diff --git a/Documentation/filesystems/Locking b/Documentation/filesystems/Locking
-index b30753c..e72b4c3 100644
---- a/Documentation/filesystems/Locking
-+++ b/Documentation/filesystems/Locking
-@@ -205,7 +205,8 @@ prototypes:
- 	int (*launder_page)(struct page *);
- 	int (*is_partially_uptodate)(struct page *, unsigned long, unsigned long);
- 	int (*error_remove_page)(struct address_space *, struct page *);
--	int (*swap_activate)(struct file *);
-+	int (*swap_activate)(struct swap_info_struct *, struct file *,
-+			     sector_t *);
- 	int (*swap_deactivate)(struct file *);
- 
- locking rules:
-@@ -230,8 +231,8 @@ migratepage:		yes (both)
- launder_page:		yes
- is_partially_uptodate:	yes
- error_remove_page:	yes
--swap_activate:		no
--swap_deactivate:	no
-+swap_activate:					yes
-+swap_deactivate:				no
- 
- 	->write_begin(), ->write_end(), ->sync_page() and ->readpage()
- may be called from the request handler (/dev/loop).
-diff --git a/Documentation/filesystems/vfs.txt b/Documentation/filesystems/vfs.txt
-index 43ce050..9c793a7 100644
---- a/Documentation/filesystems/vfs.txt
-+++ b/Documentation/filesystems/vfs.txt
-@@ -600,8 +600,9 @@ struct address_space_operations {
- 					unsigned long);
- 	void (*is_dirty_writeback) (struct page *, bool *, bool *);
- 	int (*error_remove_page) (struct mapping *mapping, struct page *page);
--	int (*swap_activate)(struct file *);
--	int (*swap_deactivate)(struct file *);
-+	int (*swap_activate)(struct swap_info_struct *, struct file *,
-+			     sector_t *);
-+	void (*swap_deactivate)(struct file *);
- };
- 
-   writepage: called by the VM to write a dirty page to backing store.
-@@ -788,7 +789,7 @@ struct address_space_operations {
- 	memory. A return value of zero indicates success,
- 	in which case this file can be used to back swapspace. The
- 	swapspace operations will be proxied to this address space's
--	->swap_{out,in} methods.
-+	->{read,write}_iter methods with O_DIRECT.
- 
-   swap_deactivate: Called during swapoff on files where swap_activate
- 	was successful.
+diff --git a/utils/idmapd/idmapd.man b/utils/idmapd/idmapd.man
+index 185cd1b..c809f78 100644
+--- a/utils/idmapd/idmapd.man
++++ b/utils/idmapd/idmapd.man
+@@ -20,6 +20,16 @@ is the NFSv4 ID <-> name mapping daemon.  It provides functionality to
+ the NFSv4 kernel client and server, to which it communicates via
+ upcalls, by translating user and group IDs to names, and vice versa.
+ .Pp
++Note that on more recent kernels only the NFSv4 server uses
++.Nm .
++The NFSv4 client instead uses
++.Xr nfsidmap 8 ,
++and only falls back to 
++.Nm 
++if there was a problem running the
++.Xr nfsidmap 8
++program.
++.Pp
+ The options are as follows:
+ .Bl -tag -width Ds_imagedir
+ .It Fl v
+@@ -58,7 +68,8 @@ messages to console, and with a verbosity level of 3.
+ .Sh FILES
+ .Pa /etc/idmapd.conf
+ .Sh SEE ALSO
+-.Xr idmapd.conf 5
++.Xr idmapd.conf 5 ,
++.Xr nfsidmap 8
+ .\".Sh SEE ALSO
+ .\".Xr nylon.conf 4
+ .\" .Sh COMPATIBILITY
 -- 
-2.2.1
+1.9.3
 
