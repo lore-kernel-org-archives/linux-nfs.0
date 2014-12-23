@@ -1,59 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from ironport01-1.csupomona.edu ([134.71.187.41]:13238 "EHLO
-	ironport01-1.csupomona.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751547AbaLSDeD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Dec 2014 22:34:03 -0500
-Received: from localhost (localhost [127.0.0.1])
-	by tweak.unx.csupomona.edu (Postfix) with ESMTP id 6F06113405D
-	for <linux-nfs@vger.kernel.org>; Thu, 18 Dec 2014 19:24:23 -0800 (PST)
-Received: from tweak.unx.csupomona.edu ([127.0.0.1])
-	by localhost (tweak.unx.csupomona.edu [127.0.0.1]) (amavisd-new, port 10024)
-	with ESMTP id Sl6LDD7hqDyY for <linux-nfs@vger.kernel.org>;
-	Thu, 18 Dec 2014 19:24:23 -0800 (PST)
-Received: from localhost.localdomain (woof.iitsystems.csupomona.edu [134.71.248.29])
-	(using SSLv3 with cipher ECDHE-RSA-AES128-SHA (128/128 bits))
-	(No client certificate requested)
-	(Authenticated sender: bldewolf)
-	by tweak.unx.csupomona.edu (Postfix) with ESMTPSA id 5E274134034
-	for <linux-nfs@vger.kernel.org>; Thu, 18 Dec 2014 19:24:22 -0800 (PST)
-Date: Thu, 18 Dec 2014 19:24:21 -0800
+Received: from ironport02-1.csupomona.edu ([134.71.187.45]:9705 "EHLO
+	ironport02-1.csupomona.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1756128AbaLWX2q (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Dec 2014 18:28:46 -0500
+Date: Tue, 23 Dec 2014 15:28:44 -0800
 From: Brian De Wolf <bldewolf@cpp.edu>
-To: linux-nfs@vger.kernel.org
-Subject: 3.14.27 client hang on specific file
-Message-ID: <20141218192421.03a66cac@cpp.edu>
+To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: 3.14.27 client hang on specific file
+Message-ID: <20141223152844.58514ad5@cpp.edu>
+In-Reply-To: <20141218192421.03a66cac@cpp.edu>
+References: <20141218192421.03a66cac@cpp.edu>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
+On Thu, 18 Dec 2014 19:24:21 -0800
+Brian De Wolf <bldewolf@cpp.edu> wrote:
 
-After updating our kernel from 3.4.x to 3.14.27 (along with nfs-utils
-1.2.9), we've had a strange issue with our sec=krb5p NFSv4 mounts.
-My initial light testing went fine, but sometimes, on any given host, a
-specific file will no longer be accessible.  Any attempt to access it
-causes the process to go into uninterruptible sleep.
+> After updating our kernel from 3.4.x to 3.14.27 (along with nfs-utils
+> 1.2.9), we've had a strange issue with our sec=krb5p NFSv4 mounts.
+> My initial light testing went fine, but sometimes, on any given host,
+> a specific file will no longer be accessible.  Any attempt to access
+> it causes the process to go into uninterruptible sleep.
 
-Reproducing this on another host was fairly quick by dd'ing 30MB
-from /dev/zero into a file repeatedly.  Eventually the dd hangs instead
-of completing.  Once broken, the simplest test I could think of was
-"stat testfile".  tcpdump shows no traffic when I run it.  Turning
-rpcdebug all the way up produces:
+In case anyone else sees a similar issue, this is what I found.
 
-	kernel: RPC:       looking up Generic cred
-	kernel: NFS: permission(0:28/3), mask=0x1, res=0
-	kernel: NFS: nfs_lookup_revalidate(/testfile) is valid
+3.4, 3.12 and 3.14 see stalls when accessing a Solaris 10 server.  3.4
+and 3.12 recover by reconnecting after a 60 second timeout, but 3.14
+hangs forever. It seems like the 3.14 timeout is broken, which is
+pretty painful.  It can be recovered by resetting the TCP connection
+(yay iptables), but will eventually stall again.
 
-Around the time that it breaks, it also prints
+3.16 doesn't stall, so I assume something was fixed between 3.14 and
+3.16 to handle whatever problems occur with the Solaris 10 server.
+3.12 and 3.14 also don't see stalls when accessing an OmniOS server,
+which makes me think the bug is on the Solaris side but triggers poor
+error handling on the Linux side (that was fixed in 3.16).
 
-	kernel: nfs: server servername not responding, still trying
-
-several times, but I couldn't find a way to get it to print it again.
-It doesn't look like it follows up with more timeouts or an "OK", so
-that seems pretty odd.
-
-Anyone have any ideas?  I'm happy to provide more debug info.
-
-
-Thanks,
-Brian
+So the end result is pretty obvious:  it's time to upgrade.
