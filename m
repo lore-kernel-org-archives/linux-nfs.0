@@ -1,16 +1,16 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f176.google.com ([209.85.213.176]:57957 "EHLO
-	mail-ig0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751821AbaLXHN6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Dec 2014 02:13:58 -0500
-Received: by mail-ig0-f176.google.com with SMTP id l13so7038572iga.3
+Received: from mail-ig0-f180.google.com ([209.85.213.180]:44408 "EHLO
+	mail-ig0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751723AbaLXHN7 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Dec 2014 02:13:59 -0500
+Received: by mail-ig0-f180.google.com with SMTP id h15so6651655igd.7
         for <linux-nfs@vger.kernel.org>; Tue, 23 Dec 2014 23:13:58 -0800 (PST)
 From: Tom Haynes <thomas.haynes@primarydata.com>
 To: Trond Myklebust <Trond.Myklebust@primarydata.com>
 Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: [PATCH v2 22/49] nfs: save server READ/WRITE/COMMIT status
-Date: Tue, 23 Dec 2014 23:13:01 -0800
-Message-Id: <1419405208-25975-23-git-send-email-loghyr@primarydata.com>
+Subject: [PATCH v2 23/49] nfs41: pass iomode through layoutreturn args
+Date: Tue, 23 Dec 2014 23:13:02 -0800
+Message-Id: <1419405208-25975-24-git-send-email-loghyr@primarydata.com>
 In-Reply-To: <1419405208-25975-1-git-send-email-loghyr@primarydata.com>
 References: <1419405208-25975-1-git-send-email-loghyr@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -18,92 +18,53 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: Peng Tao <tao.peng@primarydata.com>
 
-Flexfiles layout would want to use them to report DS IO status.
+So that it is possible to return a specific iomode layouts.
 
 Signed-off-by: Peng Tao <tao.peng@primarydata.com>
 Signed-off-by: Tom Haynes <Thomas.Haynes@primarydata.com>
 ---
- fs/nfs/nfs3xdr.c        | 3 +++
- fs/nfs/nfs4xdr.c        | 3 +++
- include/linux/nfs_xdr.h | 2 ++
- 3 files changed, 8 insertions(+)
+ fs/nfs/nfs4xdr.c        | 2 +-
+ fs/nfs/pnfs.c           | 1 +
+ include/linux/nfs_xdr.h | 1 +
+ 3 files changed, 3 insertions(+), 1 deletion(-)
 
-diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
-index 8f4cbe7..2a932fd 100644
---- a/fs/nfs/nfs3xdr.c
-+++ b/fs/nfs/nfs3xdr.c
-@@ -1636,6 +1636,7 @@ static int nfs3_xdr_dec_read3res(struct rpc_rqst *req, struct xdr_stream *xdr,
- 	error = decode_post_op_attr(xdr, result->fattr);
- 	if (unlikely(error))
- 		goto out;
-+	result->op_status = status;
- 	if (status != NFS3_OK)
- 		goto out_status;
- 	error = decode_read3resok(xdr, result);
-@@ -1708,6 +1709,7 @@ static int nfs3_xdr_dec_write3res(struct rpc_rqst *req, struct xdr_stream *xdr,
- 	error = decode_wcc_data(xdr, result->fattr);
- 	if (unlikely(error))
- 		goto out;
-+	result->op_status = status;
- 	if (status != NFS3_OK)
- 		goto out_status;
- 	error = decode_write3resok(xdr, result);
-@@ -2323,6 +2325,7 @@ static int nfs3_xdr_dec_commit3res(struct rpc_rqst *req,
- 	error = decode_wcc_data(xdr, result->fattr);
- 	if (unlikely(error))
- 		goto out;
-+	result->op_status = status;
- 	if (status != NFS3_OK)
- 		goto out_status;
- 	error = decode_writeverf3(xdr, &result->verf->verifier);
 diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index cb4376b..7d8d7a4 100644
+index 7d8d7a4..3c3ff63 100644
 --- a/fs/nfs/nfs4xdr.c
 +++ b/fs/nfs/nfs4xdr.c
-@@ -6567,6 +6567,7 @@ static int nfs4_xdr_dec_read(struct rpc_rqst *rqstp, struct xdr_stream *xdr,
- 	int status;
- 
- 	status = decode_compound_hdr(xdr, &hdr);
-+	res->op_status = hdr.status;
- 	if (status)
- 		goto out;
- 	status = decode_sequence(xdr, &res->seq_res, rqstp);
-@@ -6592,6 +6593,7 @@ static int nfs4_xdr_dec_write(struct rpc_rqst *rqstp, struct xdr_stream *xdr,
- 	int status;
- 
- 	status = decode_compound_hdr(xdr, &hdr);
-+	res->op_status = hdr.status;
- 	if (status)
- 		goto out;
- 	status = decode_sequence(xdr, &res->seq_res, rqstp);
-@@ -6621,6 +6623,7 @@ static int nfs4_xdr_dec_commit(struct rpc_rqst *rqstp, struct xdr_stream *xdr,
- 	int status;
- 
- 	status = decode_compound_hdr(xdr, &hdr);
-+	res->op_status = hdr.status;
- 	if (status)
- 		goto out;
- 	status = decode_sequence(xdr, &res->seq_res, rqstp);
+@@ -2012,7 +2012,7 @@ encode_layoutreturn(struct xdr_stream *xdr,
+ 	p = reserve_space(xdr, 16);
+ 	*p++ = cpu_to_be32(0);		/* reclaim. always 0 for now */
+ 	*p++ = cpu_to_be32(args->layout_type);
+-	*p++ = cpu_to_be32(IOMODE_ANY);
++	*p++ = cpu_to_be32(args->iomode);
+ 	*p = cpu_to_be32(RETURN_FILE);
+ 	p = reserve_space(xdr, 16);
+ 	p = xdr_encode_hyper(p, 0);
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 7e1bac1..1b544c1 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -914,6 +914,7 @@ _pnfs_return_layout(struct inode *ino)
+ 	lrp->args.stateid = stateid;
+ 	lrp->args.layout_type = NFS_SERVER(ino)->pnfs_curr_ld->id;
+ 	lrp->args.inode = ino;
++	lrp->args.iomode = IOMODE_ANY;
+ 	lrp->args.layout = lo;
+ 	lrp->clp = NFS_SERVER(ino)->nfs_client;
+ 	lrp->cred = lo->plh_lc_cred;
 diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 467c84e..962f461 100644
+index 962f461..4fd7793 100644
 --- a/include/linux/nfs_xdr.h
 +++ b/include/linux/nfs_xdr.h
-@@ -513,6 +513,7 @@ struct nfs_pgio_res {
- 	struct nfs4_sequence_res	seq_res;
- 	struct nfs_fattr *	fattr;
- 	__u32			count;
-+	__u32			op_status;
- 	int			eof;		/* used by read */
- 	struct nfs_writeverf *	verf;		/* used by write */
- 	const struct nfs_server *server;	/* used by write */
-@@ -532,6 +533,7 @@ struct nfs_commitargs {
- 
- struct nfs_commitres {
- 	struct nfs4_sequence_res	seq_res;
-+	__u32			op_status;
- 	struct nfs_fattr	*fattr;
- 	struct nfs_writeverf	*verf;
- 	const struct nfs_server *server;
+@@ -293,6 +293,7 @@ struct nfs4_layoutreturn_args {
+ 	struct nfs4_sequence_args seq_args;
+ 	struct pnfs_layout_hdr *layout;
+ 	struct inode *inode;
++	enum pnfs_iomode iomode;
+ 	nfs4_stateid stateid;
+ 	__u32   layout_type;
+ };
 -- 
 1.9.3
 
