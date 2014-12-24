@@ -1,170 +1,141 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:41546 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757944AbaLJPdp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 10 Dec 2014 10:33:45 -0500
-Received: from int-mx13.intmail.prod.int.phx2.redhat.com (int-mx13.intmail.prod.int.phx2.redhat.com [10.5.11.26])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id sBAFXid5012903
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
-	for <linux-nfs@vger.kernel.org>; Wed, 10 Dec 2014 10:33:45 -0500
-Message-ID: <548867D6.5050703@redhat.com>
-Date: Wed, 10 Dec 2014 10:33:42 -0500
-From: Dave Sullivan <dsulliva@redhat.com>
-MIME-Version: 1.0
-To: Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org
-CC: David Swegen <dswegen@redhat.com>
-Subject: Re: possible better error handling for nfsv4 and localhost maps
-References: <5481CD2F.4060607@redhat.com> <54833114.3090708@RedHat.com>
-In-Reply-To: <54833114.3090708@RedHat.com>
-Content-Type: text/plain; charset=windows-1252; format=flowed
+Received: from mail-ig0-f176.google.com ([209.85.213.176]:52427 "EHLO
+	mail-ig0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751441AbaLXHNi (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Dec 2014 02:13:38 -0500
+Received: by mail-ig0-f176.google.com with SMTP id l13so7023624iga.15
+        for <linux-nfs@vger.kernel.org>; Tue, 23 Dec 2014 23:13:38 -0800 (PST)
+From: Tom Haynes <thomas.haynes@primarydata.com>
+To: Trond Myklebust <Trond.Myklebust@primarydata.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: [PATCH v2 00/49] *** Add Flexfile Layout Module ***
+Date: Tue, 23 Dec 2014 23:12:39 -0800
+Message-Id: <1419405208-25975-1-git-send-email-loghyr@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 12/06/2014 11:38 AM, Steve Dickson wrote:
->
->
-> On 12/05/2014 10:20 AM, Dave Sullivan wrote:
->> Hi All,
->>
->> Recently we had a customer with some legacy maps using localhost run into a problem with NFSv4.
->>
->> They are not quite ready to get rid of those localhost maps.
->>
->> There is a fairly straight forward workaround/solution to get around this issue by modifying /etc/nfsmount.conf with
->>
->> [ Server "localhost" ]
->>     Nfsvers=3
->>
->> What we are asking for is better error handling so users can figure out what the problem is without having to debug as much.
->>
->> i.e. Have the code not retry and have the code send a notification to syslog saying something like "nfsv4 does not support localhost maps, man nfsmount.conf, use [ Server "localhost" ] with Nfsvers=3 mount option to restrict localhost maps to NFSv3"
->>
->> Here's an example of effort required to debug
->>
->> Description of problem:
->>
->> The RHEL automounter does try to do what’s inferred in the above notation, ie, make a bind mount.  What happens next, when the local filesystem doesn’t exist, is what’s causing us a problem.  It next spawns a mount request to an NFS service on localhost for the mount, either via IPV6, or via IPV4;  end-user hosts don’t serve NFS, so the problem arises due to how this is handled.
->>
->> On RHEL5, the mount request contacts the portmapper, which reports there is no program registered for NFS service, and the mount fails straight away.
->>
->> On RHEL6, if /etc/hosts has an entry for the IPV6 localhost address, an NFS mount from IPV6 localhost gets tried first, which fails immediately as expected, as IPV6 is not enabled, and no NFS service is registered on the host.  Automount reports the mount failure straight away.
->> Hi All,
->>
->> Recently we had a customer with some legacy maps using localhost run into a problem with NFSv4.
->>
->> They are not quite ready to get rid of those localhost maps.
->>
->> There is a fairly straight forward workaround/solution to get around this issue by modifying /etc/nfsmount.conf with
->>
->> [ Server "localhost" ]
->>     Nfsvers=3
->>
->> What we are asking for is better error handling so users can figure out what the problem is without having to debug as much.
->>
->> i.e. Have the code not retry and have the code send a notification to syslog saying something like "nfsv4 does not support localhost maps, man nfsmount.conf, use [ Server "localhost" ] with Nfsvers=3 mount option to restrict localhost maps to NFSv3"
->>
->> Here's an example of effort required to debug
->>
->> Description of problem:
->>
->> The RHEL automounter does try to do what’s inferred in the above notation, ie, make a bind mount.  What happens next, when the local filesystem doesn’t exist, is what’s causing us a problem.  It next spawns a mount request to an NFS service on localhost for the mount, either via IPV6, or via IPV4;  end-user hosts don’t serve NFS, so the problem arises due to how this is handled.
->>
->> On RHEL5, the mount request contacts the portmapper, which reports there is no program registered for NFS service, and the mount fails straight away.
->>
->> On RHEL6, if /etc/hosts has an entry for the IPV6 localhost address, an NFS mount from IPV6 localhost gets tried first, which fails immediately as expected, as IPV6 is not enabled, and no NFS service is registered on the host.  Automount reports the mount failure straight away.
->>
->> On RHEL6 however, if /etc/hosts does not have an entry for the IPV6 localhost address, automount tries the IPV4 localhost address; when the mount is requested using NFSv4, the RPC request seem to get localhost port 0 returned for NFS service, instead of being told there is no program registered for NFS service (if I’m reading this strace correctly):
->>
->> 1657  1416223283.572722 socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP) = 3
->> 1657  1416223283.572764 bind(3, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("0.0.0.0")}, 16) = 0
->> 1657  1416223283.572811 connect(3, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("127.0.0.1")}, 16) = 0
->> 1657  1416223283.572849 getsockname(3, {sa_family=AF_INET, sin_port=htons(40477), sin_addr=inet_addr("127.0.0.1")}, [16]) = 0
->> 1657  1416223283.572896 mount("localhost:/local/0/blah", "/mnt/test", "nfs", 0, "vers=4,addr=127.0.0.1,clientaddr"...) = -1 ECONNREFUSED (Connection refused)
->>
->> The mount continues to pause and retry, until it reaches the retry limit, and then eventually fails.  Here’s what the bare mount command shows:
->>
->> [root@lonlx8001b13 bevaja]# mount -vvv -t nfs -o nfsvers=4 localhost:/local/0/blah /mnt/test
->> mount: fstab path: "/etc/fstab"
->> mount: mtab path:  "/etc/mtab"
->> mount: lock path:  "/etc/mtab~"
->> mount: temp path:  "/etc/mtab.tmp"
->> mount: UID:        0
->> mount: eUID:       0
->> mount: spec:  "localhost:/local/0/blah"
->> mount: node:  "/mnt/test"
->> mount: types: "nfs"
->> mount: opts:  "nfsvers=4"
->> final mount options: 'nfsvers=4'
->> mount: external mount: argv[0] = "/sbin/mount.nfs"
->> mount: external mount: argv[1] = "localhost:/local/0/blah"
->> mount: external mount: argv[2] = "/mnt/test"
->> mount: external mount: argv[3] = "-v"
->> mount: external mount: argv[4] = "-o"
->> mount: external mount: argv[5] = "rw,nfsvers=4"
->> mount.nfs: timeout set for Mon Nov 17 14:42:17 2014
->> mount.nfs: trying text-based options 'nfsvers=4,addr=127.0.0.1,clientaddr=127.0.0.1'
->> mount.nfs: mount(2): Connection refused
->> mount.nfs: trying text-based options 'nfsvers=4,addr=127.0.0.1,clientaddr=127.0.0.1'
->> mount.nfs: mount(2): Connection refused
->> mount.nfs: trying text-based options 'nfsvers=4,addr=127.0.0.1,clientaddr=127.0.0.1'
->> mount.nfs: mount(2): Connection refused
->> mount.nfs: trying text-based options 'nfsvers=4,addr=127.0.0.1,clientaddr=127.0.0.1'
->> mount.nfs: mount(2): Connection refused
->> mount.nfs: trying text-based options 'nfsvers=4,addr=127.0.0.1,clientaddr=127.0.0.1'
->> mount.nfs: mount(2): Connection refused
->>
->>
->> Thoughts?
-> Have you tried using the -o timeo=1,retry=0 mount options? They might help...
->
-But do you really want to have all your other mounts doing this too?
+Hi,
 
-I don't think so, its less resilient right.
+This patchset introduces the Flexfile Layout Module for the
+client.
 
-I think the /etc/nfsmount.conf fix
+It corresponds to draft 4
+(http://tools.ietf.org/id/draft-ietf-nfsv4-flex-files-02.txt)
+of the Parallel NFS (pNFS) Flexible File Layout
+(https://datatracker.ietf.org/doc/draft-ietf-nfsv4-flex-files/).
 
-[ Server "localhost" ]
-     Nfsvers=3
+This version fixes the following review comments:
 
+1) XDR should be for Draft 4 and not Draft 2.
+2) Can you use get_nfs_version() / put_nfs_version() here rather than
+   exposing nfs_v3 to the entire client?  If this *has* to be
+   global then please put it in nfs3_fs.h.
+3) Can we consolidate "nfs/flexfiles: send layoutreturn before freeing lseg"
+   and "nfs/flexfiles: defer sending layoutreturn in pnfs_put_lseg"
+   to remove some temporary hard to read code?
 
-Is 100% sufficient, but it still would be nice to have this brought up 
-to your attention easier through error handling/logging.
+Thanks,
+Tom
 
-Unless in automount configuration you could force nfsv4 to do -o 
-timeo=1,retry=0 just for localhost then fallback to nfsv3 with different 
-set of options.
+Peng Tao (35):
+  nfs41: pull data server cache from file layout to generic pnfs
+  nfs41: pull nfs4_ds_connect from file layout to generic pnfs
+  nfs41: pull decode_ds_addr from file layout to generic pnfs
+  nfs41: allow LD to choose DS connection auth flavor
+  nfs41: move file layout macros to generic pnfs
+  nfsv3: introduce nfs3_set_ds_client
+  nfs41: allow LD to choose DS connection version/minor_version
+  nfs41: create NFSv3 DS connection if specified
+  nfs: allow different protocol in nfs_initiate_commit
+  nfs4: pass slot table to nfs40_setup_sequence
+  nfs4: export nfs4_sequence_done
+  nfs: allow to specify cred in nfs_initiate_pgio
+  nfs: set hostname when creating nfsv3 ds connection
+  nfs/flexclient: export pnfs_layoutcommit_inode
+  nfs41: close a small race window when adding new layout to global list
+  nfs41: serialize first layoutget of a file
+  nfs: save server READ/WRITE/COMMIT status
+  nfs41: pass iomode through layoutreturn args
+  nfs41: make a helper function to send layoutreturn
+  nfs41: add a helper to mark layout for return
+  nfs41: don't use a layout if it is marked for returning
+  nfs41: send layoutreturn in last put_lseg
+  nfs41: clear NFS_LAYOUT_RETURN if layoutreturn is sent or failed to
+    send
+  nfs/filelayout: use pnfs_error_mark_layout_for_return
+  nfs41: add a debug warning if we destroy an unempty layout
+  nfs: only reset desc->pg_mirror_idx when mirroring is supported
+  nfs: add nfs_pgio_current_mirror helper
+  pnfs: allow LD to ask to resend read through pnfs
+  nfs41: add range to layoutreturn args
+  nfs41: allow async version layoutreturn
+  nfs41: introduce NFS_LAYOUT_RETURN_BEFORE_CLOSE
+  nfs/flexfiles: send layoutreturn before freeing lseg
+  nfs41: add NFS_LAYOUT_RETRY_LAYOUTGET to layout header flags
+  nfs: add a helper to set NFS_ODIRECT_RESCHED_WRITES to direct writes
+  nfs41: wait for LAYOUTRETURN before retrying LAYOUTGET
 
-But I believe you would then globally being setting nfsv4 to use the 
-same -o timeo=1,retry=0 options and I don't think there is fallback 
-mechanism either.
+Tom Haynes (4):
+  pnfs: Prepare for flexfiles by pulling out common code
+  pnfs: Do not grab the commit_info lock twice when rescheduling writes
+  pnfs: Add nfs_rpc_ops in calls to nfs_initiate_pgio
+  pnfs/flexfiles: Add the FlexFile Layout Driver
 
-So basically I still think to have these mounts land you still want the 
-previously document solution.
+Trond Myklebust (1):
+  NFSv4.1/NFSv3: Add pNFS callbacks for nfs3_(read|write|commit)_done()
 
-/etc/nfsmount.conf fix
+Weston Andros Adamson (9):
+  sunrpc: add rpc_count_iostats_idx
+  nfs: introduce pg_cleanup op for pgio descriptors
+  pnfs: release lseg in pnfs_generic_pg_cleanup
+  nfs: handle overlapping reqs in lock_and_join
+  nfs: rename pgio header ds_idx to ds_commit_idx
+  pnfs: pass ds_commit_idx through the commit path
+  nfs: add mirroring support to pgio layer
+  nfs: mirroring support for direct io
+  pnfs: fail comparison when bucket verifier not set
 
-[ Server "localhost" ]
-     Nfsvers=3
-
-Thoughts?
-
-> steved.
->
-
+ fs/nfs/Kconfig                            |    5 +
+ fs/nfs/Makefile                           |    3 +-
+ fs/nfs/blocklayout/blocklayout.c          |    2 +
+ fs/nfs/direct.c                           |  108 +-
+ fs/nfs/filelayout/filelayout.c            |  315 +-----
+ fs/nfs/filelayout/filelayout.h            |   40 -
+ fs/nfs/filelayout/filelayoutdev.c         |  469 +--------
+ fs/nfs/flexfilelayout/Makefile            |    5 +
+ fs/nfs/flexfilelayout/flexfilelayout.c    | 1600 +++++++++++++++++++++++++++++
+ fs/nfs/flexfilelayout/flexfilelayout.h    |  158 +++
+ fs/nfs/flexfilelayout/flexfilelayoutdev.c |  552 ++++++++++
+ fs/nfs/internal.h                         |   31 +-
+ fs/nfs/nfs3_fs.h                          |    3 +-
+ fs/nfs/nfs3client.c                       |   41 +
+ fs/nfs/nfs3proc.c                         |    9 +
+ fs/nfs/nfs3super.c                        |    2 +-
+ fs/nfs/nfs3xdr.c                          |    3 +
+ fs/nfs/nfs4_fs.h                          |    6 +
+ fs/nfs/nfs4client.c                       |    7 +-
+ fs/nfs/nfs4proc.c                         |   45 +-
+ fs/nfs/nfs4xdr.c                          |    9 +-
+ fs/nfs/objlayout/objio_osd.c              |    5 +-
+ fs/nfs/pagelist.c                         |  294 +++++-
+ fs/nfs/pnfs.c                             |  407 ++++++--
+ fs/nfs/pnfs.h                             |  119 ++-
+ fs/nfs/pnfs_dev.c                         |  522 ++++++++++
+ fs/nfs/pnfs_nfsio.c                       |  283 +++++
+ fs/nfs/read.c                             |   33 +-
+ fs/nfs/write.c                            |   49 +-
+ include/linux/nfs4.h                      |    1 +
+ include/linux/nfs_page.h                  |   22 +-
+ include/linux/nfs_xdr.h                   |    6 +-
+ include/linux/sunrpc/metrics.h            |    2 +
+ net/sunrpc/stats.c                        |   26 +-
+ 34 files changed, 4182 insertions(+), 1000 deletions(-)
+ create mode 100644 fs/nfs/flexfilelayout/Makefile
+ create mode 100644 fs/nfs/flexfilelayout/flexfilelayout.c
+ create mode 100644 fs/nfs/flexfilelayout/flexfilelayout.h
+ create mode 100644 fs/nfs/flexfilelayout/flexfilelayoutdev.c
+ create mode 100644 fs/nfs/pnfs_nfsio.c
 
 -- 
+1.9.3
 
-===================================================================
-Dave Sullivan RHCE 			Email: dsulliva@redhat.com
-Sr. Technical Account Manager 	
-
-+1 312 660 3525 (Office)
-+1 989 750 8385 (Cell)
-===================================================================
-Red Hat, Inc. | 100 East Davie St | Raleigh, NC | 27601
-
----
-Learn. Network. Experience open source.
-http://www.redhat.com
-http://access.redhat.com
-http://www.opensource.com
