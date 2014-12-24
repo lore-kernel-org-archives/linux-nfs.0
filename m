@@ -1,16 +1,16 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f170.google.com ([209.85.223.170]:63263 "EHLO
-	mail-ie0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751861AbaLXHOA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Dec 2014 02:14:00 -0500
-Received: by mail-ie0-f170.google.com with SMTP id rd18so7270062iec.15
-        for <linux-nfs@vger.kernel.org>; Tue, 23 Dec 2014 23:13:59 -0800 (PST)
+Received: from mail-ie0-f177.google.com ([209.85.223.177]:35037 "EHLO
+	mail-ie0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751866AbaLXHOB (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Dec 2014 02:14:01 -0500
+Received: by mail-ie0-f177.google.com with SMTP id rd18so7177920iec.22
+        for <linux-nfs@vger.kernel.org>; Tue, 23 Dec 2014 23:14:00 -0800 (PST)
 From: Tom Haynes <thomas.haynes@primarydata.com>
 To: Trond Myklebust <Trond.Myklebust@primarydata.com>
 Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: [PATCH v2 24/49] nfs41: make a helper function to send layoutreturn
-Date: Tue, 23 Dec 2014 23:13:03 -0800
-Message-Id: <1419405208-25975-25-git-send-email-loghyr@primarydata.com>
+Subject: [PATCH v2 25/49] nfs41: add a helper to mark layout for return
+Date: Tue, 23 Dec 2014 23:13:04 -0800
+Message-Id: <1419405208-25975-26-git-send-email-loghyr@primarydata.com>
 In-Reply-To: <1419405208-25975-1-git-send-email-loghyr@primarydata.com>
 References: <1419405208-25975-1-git-send-email-loghyr@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -18,92 +18,116 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: Peng Tao <tao.peng@primarydata.com>
 
-It allows to specify different iomode to return.
+It marks all matching layout segments as NFS_LSEG_LAYOUTRETURN,
+which is an indicator for pnfs_put_lseg() to send layoutreturn,
+and also prevents pnfs_update_layout() from using the returning
+segments. Once it is set, it never gets cleared.
+
+It also sets proper io failure bit so that pnfs path can be retried
+after PNFS_LAYOUTGET_RETRY_TIMEOUT second.
 
 Signed-off-by: Peng Tao <tao.peng@primarydata.com>
 Signed-off-by: Tom Haynes <Thomas.Haynes@primarydata.com>
 ---
- fs/nfs/pnfs.c | 53 +++++++++++++++++++++++++++++++++--------------------
- 1 file changed, 33 insertions(+), 20 deletions(-)
+ fs/nfs/pnfs.c | 55 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/nfs/pnfs.h |  4 ++++
+ 2 files changed, 59 insertions(+)
 
 diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 1b544c1..1b97209 100644
+index 1b97209..0bd149b 100644
 --- a/fs/nfs/pnfs.c
 +++ b/fs/nfs/pnfs.c
-@@ -845,6 +845,38 @@ static void pnfs_clear_layoutcommit(struct inode *inode,
- 	}
+@@ -1479,6 +1479,61 @@ out_forget_reply:
+ 	goto out;
  }
  
-+static int
-+pnfs_send_layoutreturn(struct pnfs_layout_hdr *lo, nfs4_stateid stateid,
-+		       enum pnfs_iomode iomode)
++static void
++pnfs_mark_matching_lsegs_return(struct pnfs_layout_hdr *lo,
++				struct list_head *tmp_list,
++				struct pnfs_layout_range *return_range)
 +{
-+	struct inode *ino = lo->plh_inode;
-+	struct nfs4_layoutreturn *lrp;
-+	int status = 0;
++	struct pnfs_layout_segment *lseg, *next;
 +
-+	lrp = kzalloc(sizeof(*lrp), GFP_KERNEL);
-+	if (unlikely(lrp == NULL)) {
-+		status = -ENOMEM;
-+		spin_lock(&ino->i_lock);
-+		lo->plh_block_lgets--;
-+		spin_unlock(&ino->i_lock);
-+		pnfs_put_layout_hdr(lo);
-+		goto out;
-+	}
++	dprintk("%s:Begin lo %p\n", __func__, lo);
 +
-+	lrp->args.stateid = stateid;
-+	lrp->args.layout_type = NFS_SERVER(ino)->pnfs_curr_ld->id;
-+	lrp->args.inode = ino;
-+	lrp->args.iomode = iomode;
-+	lrp->args.layout = lo;
-+	lrp->clp = NFS_SERVER(ino)->nfs_client;
-+	lrp->cred = lo->plh_lc_cred;
++	if (list_empty(&lo->plh_segs))
++		return;
 +
-+	status = nfs4_proc_layoutreturn(lrp);
-+out:
-+	dprintk("<-- %s status: %d\n", __func__, status);
-+	return status;
++	list_for_each_entry_safe(lseg, next, &lo->plh_segs, pls_list)
++		if (should_free_lseg(&lseg->pls_range, return_range)) {
++			dprintk("%s: marking lseg %p iomode %d "
++				"offset %llu length %llu\n", __func__,
++				lseg, lseg->pls_range.iomode,
++				lseg->pls_range.offset,
++				lseg->pls_range.length);
++			set_bit(NFS_LSEG_LAYOUTRETURN, &lseg->pls_flags);
++			mark_lseg_invalid(lseg, tmp_list);
++		}
 +}
 +
- /*
-  * Initiates a LAYOUTRETURN(FILE), and removes the pnfs_layout_hdr
-  * when the layout segment list is empty.
-@@ -859,7 +891,6 @@ _pnfs_return_layout(struct inode *ino)
- 	struct pnfs_layout_hdr *lo = NULL;
- 	struct nfs_inode *nfsi = NFS_I(ino);
- 	LIST_HEAD(tmp_list);
--	struct nfs4_layoutreturn *lrp;
- 	nfs4_stateid stateid;
- 	int status = 0, empty;
++void pnfs_error_mark_layout_for_return(struct inode *inode,
++				       struct pnfs_layout_segment *lseg)
++{
++	struct pnfs_layout_hdr *lo = NFS_I(inode)->layout;
++	int iomode = pnfs_iomode_to_fail_bit(lseg->pls_range.iomode);
++	struct pnfs_layout_range range = {
++		.iomode = lseg->pls_range.iomode,
++		.offset = 0,
++		.length = NFS4_MAX_UINT64,
++	};
++	LIST_HEAD(free_me);
++
++	spin_lock(&inode->i_lock);
++	/* set failure bit so that pnfs path will be retried later */
++	pnfs_layout_set_fail_bit(lo, iomode);
++	set_bit(NFS_LAYOUT_RETURN, &lo->plh_flags);
++	if (lo->plh_return_iomode == 0)
++		lo->plh_return_iomode = range.iomode;
++	else if (lo->plh_return_iomode != range.iomode)
++		lo->plh_return_iomode = IOMODE_ANY;
++	/*
++	 * mark all matching lsegs so that we are sure to have no live
++	 * segments at hand when sending layoutreturn. See pnfs_put_lseg()
++	 * for how it works.
++	 */
++	pnfs_mark_matching_lsegs_return(lo, &free_me, &range);
++	spin_unlock(&inode->i_lock);
++	pnfs_free_lseg_list(&free_me);
++}
++EXPORT_SYMBOL_GPL(pnfs_error_mark_layout_for_return);
++
+ void
+ pnfs_generic_pg_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
+ {
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 6594429..3ce292e 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -38,6 +38,7 @@ enum {
+ 	NFS_LSEG_VALID = 0,	/* cleared when lseg is recalled/returned */
+ 	NFS_LSEG_ROC,		/* roc bit received from server */
+ 	NFS_LSEG_LAYOUTCOMMIT,	/* layoutcommit bit set for layoutcommit */
++	NFS_LSEG_LAYOUTRETURN,	/* layoutreturn bit set for layoutreturn */
+ };
  
-@@ -901,25 +932,7 @@ _pnfs_return_layout(struct inode *ino)
- 	spin_unlock(&ino->i_lock);
- 	pnfs_free_lseg_list(&tmp_list);
+ /* Individual ip address */
+@@ -184,6 +185,7 @@ struct pnfs_layout_hdr {
+ 	u32			plh_barrier; /* ignore lower seqids */
+ 	unsigned long		plh_retry_timestamp;
+ 	unsigned long		plh_flags;
++	enum pnfs_iomode	plh_return_iomode;
+ 	loff_t			plh_lwb; /* last write byte for layoutcommit */
+ 	struct rpc_cred		*plh_lc_cred; /* layoutcommit cred */
+ 	struct inode		*plh_inode;
+@@ -274,6 +276,8 @@ void nfs4_deviceid_mark_client_invalid(struct nfs_client *clp);
+ int pnfs_read_done_resend_to_mds(struct nfs_pgio_header *);
+ int pnfs_write_done_resend_to_mds(struct nfs_pgio_header *);
+ struct nfs4_threshold *pnfs_mdsthreshold_alloc(void);
++void pnfs_error_mark_layout_for_return(struct inode *inode,
++				       struct pnfs_layout_segment *lseg);
  
--	lrp = kzalloc(sizeof(*lrp), GFP_KERNEL);
--	if (unlikely(lrp == NULL)) {
--		status = -ENOMEM;
--		spin_lock(&ino->i_lock);
--		lo->plh_block_lgets--;
--		spin_unlock(&ino->i_lock);
--		pnfs_put_layout_hdr(lo);
--		goto out;
--	}
--
--	lrp->args.stateid = stateid;
--	lrp->args.layout_type = NFS_SERVER(ino)->pnfs_curr_ld->id;
--	lrp->args.inode = ino;
--	lrp->args.iomode = IOMODE_ANY;
--	lrp->args.layout = lo;
--	lrp->clp = NFS_SERVER(ino)->nfs_client;
--	lrp->cred = lo->plh_lc_cred;
--
--	status = nfs4_proc_layoutreturn(lrp);
-+	status = pnfs_send_layoutreturn(lo, stateid, IOMODE_ANY);
- out:
- 	dprintk("<-- %s status: %d\n", __func__, status);
- 	return status;
+ /* nfs4_deviceid_flags */
+ enum {
 -- 
 1.9.3
 
