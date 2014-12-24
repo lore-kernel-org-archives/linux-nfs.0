@@ -1,16 +1,16 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f182.google.com ([209.85.213.182]:42147 "EHLO
-	mail-ig0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751821AbaLXHOJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Dec 2014 02:14:09 -0500
-Received: by mail-ig0-f182.google.com with SMTP id hn15so6646808igb.3
-        for <linux-nfs@vger.kernel.org>; Tue, 23 Dec 2014 23:14:08 -0800 (PST)
+Received: from mail-ig0-f181.google.com ([209.85.213.181]:35616 "EHLO
+	mail-ig0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751866AbaLXHOK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Dec 2014 02:14:10 -0500
+Received: by mail-ig0-f181.google.com with SMTP id l13so7102558iga.8
+        for <linux-nfs@vger.kernel.org>; Tue, 23 Dec 2014 23:14:09 -0800 (PST)
 From: Tom Haynes <thomas.haynes@primarydata.com>
 To: Trond Myklebust <Trond.Myklebust@primarydata.com>
 Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: [PATCH v2 35/49] nfs: add mirroring support to pgio layer
-Date: Tue, 23 Dec 2014 23:13:14 -0800
-Message-Id: <1419405208-25975-36-git-send-email-loghyr@primarydata.com>
+Subject: [PATCH v2 36/49] nfs: mirroring support for direct io
+Date: Tue, 23 Dec 2014 23:13:15 -0800
+Message-Id: <1419405208-25975-37-git-send-email-loghyr@primarydata.com>
 In-Reply-To: <1419405208-25975-1-git-send-email-loghyr@primarydata.com>
 References: <1419405208-25975-1-git-send-email-loghyr@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -18,812 +18,164 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: Weston Andros Adamson <dros@primarydata.com>
 
-This patch adds mirrored write support to the pgio layer. The default
-is to use one mirror, but pgio callers may define callbacks to change
-this to any value up to the (arbitrarily selected) limit of 16.
-
-The basic idea is to break out members of nfs_pageio_descriptor that cannot
-be shared between mirrored DSes and put them in a new structure.
+The current mirroring code only notices short writes to the first
+mirror. This patch keeps per-mirror byte counts and only considers
+a byte to be written once all mirrors report so.
 
 Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
 ---
- fs/nfs/direct.c              |  17 ++-
- fs/nfs/internal.h            |   1 +
- fs/nfs/objlayout/objio_osd.c |   3 +-
- fs/nfs/pagelist.c            | 270 +++++++++++++++++++++++++++++++++++--------
- fs/nfs/pnfs.c                |  26 +++--
- fs/nfs/read.c                |  30 ++++-
- fs/nfs/write.c               |  10 +-
- include/linux/nfs_page.h     |  20 +++-
- include/linux/nfs_xdr.h      |   1 +
- 9 files changed, 311 insertions(+), 67 deletions(-)
+ fs/nfs/direct.c | 71 +++++++++++++++++++++++++++++++++++++++++++++------------
+ 1 file changed, 57 insertions(+), 14 deletions(-)
 
 diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index 1ee41d7..0178d4f 100644
+index 0178d4f..651387b 100644
 --- a/fs/nfs/direct.c
 +++ b/fs/nfs/direct.c
-@@ -360,8 +360,14 @@ static void nfs_direct_read_completion(struct nfs_pgio_header *hdr)
- 	spin_lock(&dreq->lock);
- 	if (test_bit(NFS_IOHDR_ERROR, &hdr->flags) && (hdr->good_bytes == 0))
- 		dreq->error = hdr->error;
--	else
--		dreq->count += hdr->good_bytes;
-+	else {
-+		/*
-+		 * FIXME: right now this only accounts for bytes written
-+		 *        to the first mirror
-+		 */
-+		if (hdr->pgio_mirror_idx == 0)
-+			dreq->count += hdr->good_bytes;
-+	}
- 	spin_unlock(&dreq->lock);
- 
- 	while (!list_empty(&hdr->pages)) {
-@@ -724,7 +730,12 @@ static void nfs_direct_write_completion(struct nfs_pgio_header *hdr)
- 		dreq->error = hdr->error;
- 	}
- 	if (dreq->error == 0) {
--		dreq->count += hdr->good_bytes;
-+		/*
-+		 * FIXME: right now this only accounts for bytes written
-+		 *        to the first mirror
-+		 */
-+		if (hdr->pgio_mirror_idx == 0)
-+			dreq->count += hdr->good_bytes;
- 		if (nfs_write_need_commit(hdr)) {
- 			if (dreq->flags == NFS_ODIRECT_RESCHED_WRITES)
- 				request_commit = true;
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 05f9a87..ef1c703 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -469,6 +469,7 @@ void nfs_init_cinfo(struct nfs_commit_info *cinfo,
- 		    struct nfs_direct_req *dreq);
- int nfs_key_timeout_notify(struct file *filp, struct inode *inode);
- bool nfs_ctx_key_to_expire(struct nfs_open_context *ctx);
-+void nfs_pageio_stop_mirroring(struct nfs_pageio_descriptor *pgio);
- 
- #ifdef CONFIG_MIGRATION
- extern int nfs_migrate_page(struct address_space *,
-diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
-index d007780..9a5f2ee 100644
---- a/fs/nfs/objlayout/objio_osd.c
-+++ b/fs/nfs/objlayout/objio_osd.c
-@@ -537,11 +537,12 @@ int objio_write_pagelist(struct nfs_pgio_header *hdr, int how)
- static size_t objio_pg_test(struct nfs_pageio_descriptor *pgio,
- 			  struct nfs_page *prev, struct nfs_page *req)
- {
-+	struct nfs_pgio_mirror *mirror = &pgio->pg_mirrors[pgio->pg_mirror_idx];
- 	unsigned int size;
- 
- 	size = pnfs_generic_pg_test(pgio, prev, req);
- 
--	if (!size || pgio->pg_count + req->wb_bytes >
-+	if (!size || mirror->pg_count + req->wb_bytes >
- 	    (unsigned long)pgio->pg_layout_private)
- 		return 0;
- 
-diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index 1c03187..eec12b7 100644
---- a/fs/nfs/pagelist.c
-+++ b/fs/nfs/pagelist.c
-@@ -46,17 +46,22 @@ void nfs_pgheader_init(struct nfs_pageio_descriptor *desc,
- 		       struct nfs_pgio_header *hdr,
- 		       void (*release)(struct nfs_pgio_header *hdr))
- {
--	hdr->req = nfs_list_entry(desc->pg_list.next);
-+	struct nfs_pgio_mirror *mirror = &desc->pg_mirrors[desc->pg_mirror_idx];
-+
-+
-+	hdr->req = nfs_list_entry(mirror->pg_list.next);
- 	hdr->inode = desc->pg_inode;
- 	hdr->cred = hdr->req->wb_context->cred;
- 	hdr->io_start = req_offset(hdr->req);
--	hdr->good_bytes = desc->pg_count;
-+	hdr->good_bytes = mirror->pg_count;
- 	hdr->dreq = desc->pg_dreq;
- 	hdr->layout_private = desc->pg_layout_private;
- 	hdr->release = release;
- 	hdr->completion_ops = desc->pg_completion_ops;
- 	if (hdr->completion_ops->init_hdr)
- 		hdr->completion_ops->init_hdr(hdr);
-+
-+	hdr->pgio_mirror_idx = desc->pg_mirror_idx;
- }
- EXPORT_SYMBOL_GPL(nfs_pgheader_init);
- 
-@@ -480,7 +485,10 @@ nfs_wait_on_request(struct nfs_page *req)
- size_t nfs_generic_pg_test(struct nfs_pageio_descriptor *desc,
- 			   struct nfs_page *prev, struct nfs_page *req)
- {
--	if (desc->pg_count > desc->pg_bsize) {
-+	struct nfs_pgio_mirror *mirror = &desc->pg_mirrors[desc->pg_mirror_idx];
-+
-+
-+	if (mirror->pg_count > mirror->pg_bsize) {
- 		/* should never happen */
- 		WARN_ON_ONCE(1);
- 		return 0;
-@@ -490,11 +498,11 @@ size_t nfs_generic_pg_test(struct nfs_pageio_descriptor *desc,
- 	 * Limit the request size so that we can still allocate a page array
- 	 * for it without upsetting the slab allocator.
- 	 */
--	if (((desc->pg_count + req->wb_bytes) >> PAGE_SHIFT) *
-+	if (((mirror->pg_count + req->wb_bytes) >> PAGE_SHIFT) *
- 			sizeof(struct page) > PAGE_SIZE)
- 		return 0;
- 
--	return min(desc->pg_bsize - desc->pg_count, (size_t)req->wb_bytes);
-+	return min(mirror->pg_bsize - mirror->pg_count, (size_t)req->wb_bytes);
- }
- EXPORT_SYMBOL_GPL(nfs_generic_pg_test);
- 
-@@ -651,10 +659,18 @@ EXPORT_SYMBOL_GPL(nfs_initiate_pgio);
- static int nfs_pgio_error(struct nfs_pageio_descriptor *desc,
- 			  struct nfs_pgio_header *hdr)
- {
-+	struct nfs_pgio_mirror *mirror;
-+	u32 midx;
-+
- 	set_bit(NFS_IOHDR_REDO, &hdr->flags);
- 	nfs_pgio_data_destroy(hdr);
- 	hdr->completion_ops->completion(hdr);
--	desc->pg_completion_ops->error_cleanup(&desc->pg_list);
-+	/* TODO: Make sure it's right to clean up all mirrors here
-+	 *       and not just hdr->pgio_mirror_idx */
-+	for (midx = 0; midx < desc->pg_mirror_count; midx++) {
-+		mirror = &desc->pg_mirrors[midx];
-+		desc->pg_completion_ops->error_cleanup(&mirror->pg_list);
-+	}
- 	return -ENOMEM;
- }
- 
-@@ -671,6 +687,17 @@ static void nfs_pgio_release(void *calldata)
- 	hdr->completion_ops->completion(hdr);
- }
- 
-+static void nfs_pageio_mirror_init(struct nfs_pgio_mirror *mirror,
-+				   unsigned int bsize)
-+{
-+	INIT_LIST_HEAD(&mirror->pg_list);
-+	mirror->pg_bytes_written = 0;
-+	mirror->pg_count = 0;
-+	mirror->pg_bsize = bsize;
-+	mirror->pg_base = 0;
-+	mirror->pg_recoalesce = 0;
-+}
-+
- /**
-  * nfs_pageio_init - initialise a page io descriptor
-  * @desc: pointer to descriptor
-@@ -687,13 +714,10 @@ void nfs_pageio_init(struct nfs_pageio_descriptor *desc,
- 		     size_t bsize,
- 		     int io_flags)
- {
--	INIT_LIST_HEAD(&desc->pg_list);
--	desc->pg_bytes_written = 0;
--	desc->pg_count = 0;
--	desc->pg_bsize = bsize;
--	desc->pg_base = 0;
-+	struct nfs_pgio_mirror *new;
-+	int i;
-+
- 	desc->pg_moreio = 0;
--	desc->pg_recoalesce = 0;
- 	desc->pg_inode = inode;
- 	desc->pg_ops = pg_ops;
- 	desc->pg_completion_ops = compl_ops;
-@@ -703,6 +727,26 @@ void nfs_pageio_init(struct nfs_pageio_descriptor *desc,
- 	desc->pg_lseg = NULL;
- 	desc->pg_dreq = NULL;
- 	desc->pg_layout_private = NULL;
-+	desc->pg_bsize = bsize;
-+
-+	desc->pg_mirror_count = 1;
-+	desc->pg_mirror_idx = 0;
-+
-+	if (pg_ops->pg_get_mirror_count) {
-+		/* until we have a request, we don't have an lseg and no
-+		 * idea how many mirrors there will be */
-+		new = kcalloc(NFS_PAGEIO_DESCRIPTOR_MIRROR_MAX,
-+			      sizeof(struct nfs_pgio_mirror), GFP_KERNEL);
-+		desc->pg_mirrors_dynamic = new;
-+		desc->pg_mirrors = new;
-+
-+		for (i = 0; i < NFS_PAGEIO_DESCRIPTOR_MIRROR_MAX; i++)
-+			nfs_pageio_mirror_init(&desc->pg_mirrors[i], bsize);
-+	} else {
-+		desc->pg_mirrors_dynamic = NULL;
-+		desc->pg_mirrors = desc->pg_mirrors_static;
-+		nfs_pageio_mirror_init(&desc->pg_mirrors[0], bsize);
-+	}
- }
- EXPORT_SYMBOL_GPL(nfs_pageio_init);
- 
-@@ -738,14 +782,16 @@ static void nfs_pgio_result(struct rpc_task *task, void *calldata)
- int nfs_generic_pgio(struct nfs_pageio_descriptor *desc,
- 		     struct nfs_pgio_header *hdr)
- {
-+	struct nfs_pgio_mirror *mirror = &desc->pg_mirrors[desc->pg_mirror_idx];
-+
- 	struct nfs_page		*req;
- 	struct page		**pages,
- 				*last_page;
--	struct list_head *head = &desc->pg_list;
-+	struct list_head *head = &mirror->pg_list;
- 	struct nfs_commit_info cinfo;
- 	unsigned int pagecount, pageused;
- 
--	pagecount = nfs_page_array_len(desc->pg_base, desc->pg_count);
-+	pagecount = nfs_page_array_len(mirror->pg_base, mirror->pg_count);
- 	if (!nfs_pgarray_set(&hdr->page_array, pagecount))
- 		return nfs_pgio_error(desc, hdr);
- 
-@@ -773,7 +819,7 @@ int nfs_generic_pgio(struct nfs_pageio_descriptor *desc,
- 		desc->pg_ioflags &= ~FLUSH_COND_STABLE;
- 
- 	/* Set up the argument struct */
--	nfs_pgio_rpcsetup(hdr, desc->pg_count, 0, desc->pg_ioflags, &cinfo);
-+	nfs_pgio_rpcsetup(hdr, mirror->pg_count, 0, desc->pg_ioflags, &cinfo);
- 	desc->pg_rpc_callops = &nfs_pgio_common_ops;
- 	return 0;
- }
-@@ -781,12 +827,17 @@ EXPORT_SYMBOL_GPL(nfs_generic_pgio);
- 
- static int nfs_generic_pg_pgios(struct nfs_pageio_descriptor *desc)
- {
-+	struct nfs_pgio_mirror *mirror;
- 	struct nfs_pgio_header *hdr;
- 	int ret;
- 
-+	mirror = &desc->pg_mirrors[desc->pg_mirror_idx];
-+
- 	hdr = nfs_pgio_header_alloc(desc->pg_rw_ops);
- 	if (!hdr) {
--		desc->pg_completion_ops->error_cleanup(&desc->pg_list);
-+		/* TODO: make sure this is right with mirroring - or
-+		 *       should it back out all mirrors? */
-+		desc->pg_completion_ops->error_cleanup(&mirror->pg_list);
- 		return -ENOMEM;
- 	}
- 	nfs_pgheader_init(desc, hdr, nfs_pgio_header_free);
-@@ -801,6 +852,49 @@ static int nfs_generic_pg_pgios(struct nfs_pageio_descriptor *desc)
- 	return ret;
- }
- 
-+/*
-+ * nfs_pageio_setup_mirroring - determine if mirroring is to be used
-+ *				by calling the pg_get_mirror_count op
-+ */
-+static int nfs_pageio_setup_mirroring(struct nfs_pageio_descriptor *pgio,
-+				       struct nfs_page *req)
-+{
-+	int mirror_count = 1;
-+
-+	if (!pgio->pg_ops->pg_get_mirror_count)
-+		return 0;
-+
-+	mirror_count = pgio->pg_ops->pg_get_mirror_count(pgio, req);
-+
-+	if (!mirror_count || mirror_count > NFS_PAGEIO_DESCRIPTOR_MIRROR_MAX)
-+		return -EINVAL;
-+
-+	if (WARN_ON_ONCE(!pgio->pg_mirrors_dynamic))
-+		return -EINVAL;
-+
-+	pgio->pg_mirror_count = mirror_count;
-+
-+	return 0;
-+}
-+
-+/*
-+ * nfs_pageio_stop_mirroring - stop using mirroring (set mirror count to 1)
-+ */
-+void nfs_pageio_stop_mirroring(struct nfs_pageio_descriptor *pgio)
-+{
-+	pgio->pg_mirror_count = 1;
-+	pgio->pg_mirror_idx = 0;
-+}
-+
-+static void nfs_pageio_cleanup_mirroring(struct nfs_pageio_descriptor *pgio)
-+{
-+	pgio->pg_mirror_count = 1;
-+	pgio->pg_mirror_idx = 0;
-+	pgio->pg_mirrors = pgio->pg_mirrors_static;
-+	kfree(pgio->pg_mirrors_dynamic);
-+	pgio->pg_mirrors_dynamic = NULL;
-+}
-+
- static bool nfs_match_open_context(const struct nfs_open_context *ctx1,
- 		const struct nfs_open_context *ctx2)
- {
-@@ -867,19 +961,22 @@ static bool nfs_can_coalesce_requests(struct nfs_page *prev,
- static int nfs_pageio_do_add_request(struct nfs_pageio_descriptor *desc,
- 				     struct nfs_page *req)
- {
-+	struct nfs_pgio_mirror *mirror = &desc->pg_mirrors[desc->pg_mirror_idx];
-+
- 	struct nfs_page *prev = NULL;
--	if (desc->pg_count != 0) {
--		prev = nfs_list_entry(desc->pg_list.prev);
-+
-+	if (mirror->pg_count != 0) {
-+		prev = nfs_list_entry(mirror->pg_list.prev);
- 	} else {
- 		if (desc->pg_ops->pg_init)
- 			desc->pg_ops->pg_init(desc, req);
--		desc->pg_base = req->wb_pgbase;
-+		mirror->pg_base = req->wb_pgbase;
- 	}
- 	if (!nfs_can_coalesce_requests(prev, req, desc))
- 		return 0;
- 	nfs_list_remove_request(req);
--	nfs_list_add_request(req, &desc->pg_list);
--	desc->pg_count += req->wb_bytes;
-+	nfs_list_add_request(req, &mirror->pg_list);
-+	mirror->pg_count += req->wb_bytes;
- 	return 1;
- }
- 
-@@ -888,16 +985,19 @@ static int nfs_pageio_do_add_request(struct nfs_pageio_descriptor *desc,
+@@ -66,6 +66,10 @@ static struct kmem_cache *nfs_direct_cachep;
+ /*
+  * This represents a set of asynchronous requests that we're waiting on
   */
- static void nfs_pageio_doio(struct nfs_pageio_descriptor *desc)
- {
--	if (!list_empty(&desc->pg_list)) {
-+	struct nfs_pgio_mirror *mirror = &desc->pg_mirrors[desc->pg_mirror_idx];
++struct nfs_direct_mirror {
++	ssize_t count;
++};
 +
+ struct nfs_direct_req {
+ 	struct kref		kref;		/* release manager */
+ 
+@@ -78,6 +82,10 @@ struct nfs_direct_req {
+ 	/* completion state */
+ 	atomic_t		io_count;	/* i/os we're waiting for */
+ 	spinlock_t		lock;		/* protect completion state */
 +
-+	if (!list_empty(&mirror->pg_list)) {
- 		int error = desc->pg_ops->pg_doio(desc);
- 		if (error < 0)
- 			desc->pg_error = error;
- 		else
--			desc->pg_bytes_written += desc->pg_count;
-+			mirror->pg_bytes_written += mirror->pg_count;
- 	}
--	if (list_empty(&desc->pg_list)) {
--		desc->pg_count = 0;
--		desc->pg_base = 0;
-+	if (list_empty(&mirror->pg_list)) {
-+		mirror->pg_count = 0;
-+		mirror->pg_base = 0;
- 	}
++	struct nfs_direct_mirror mirrors[NFS_PAGEIO_DESCRIPTOR_MIRROR_MAX];
++	int			mirror_count;
++
+ 	ssize_t			count,		/* bytes actually processed */
+ 				bytes_left,	/* bytes left to be sent */
+ 				error;		/* any reported error */
+@@ -108,6 +116,29 @@ static inline int put_dreq(struct nfs_direct_req *dreq)
+ 	return atomic_dec_and_test(&dreq->io_count);
  }
  
-@@ -915,10 +1015,14 @@ static void nfs_pageio_doio(struct nfs_pageio_descriptor *desc)
- static int __nfs_pageio_add_request(struct nfs_pageio_descriptor *desc,
- 			   struct nfs_page *req)
- {
-+	struct nfs_pgio_mirror *mirror = &desc->pg_mirrors[desc->pg_mirror_idx];
-+
- 	struct nfs_page *subreq;
- 	unsigned int bytes_left = 0;
- 	unsigned int offset, pgbase;
- 
-+	WARN_ON_ONCE(desc->pg_mirror_idx >= desc->pg_mirror_count);
-+
- 	nfs_page_group_lock(req, false);
- 
- 	subreq = req;
-@@ -938,7 +1042,7 @@ static int __nfs_pageio_add_request(struct nfs_pageio_descriptor *desc,
- 			nfs_pageio_doio(desc);
- 			if (desc->pg_error < 0)
- 				return 0;
--			if (desc->pg_recoalesce)
-+			if (mirror->pg_recoalesce)
- 				return 0;
- 			/* retry add_request for this subreq */
- 			nfs_page_group_lock(req, false);
-@@ -976,14 +1080,16 @@ err_ptr:
- 
- static int nfs_do_recoalesce(struct nfs_pageio_descriptor *desc)
- {
-+	struct nfs_pgio_mirror *mirror = &desc->pg_mirrors[desc->pg_mirror_idx];
- 	LIST_HEAD(head);
- 
- 	do {
--		list_splice_init(&desc->pg_list, &head);
--		desc->pg_bytes_written -= desc->pg_count;
--		desc->pg_count = 0;
--		desc->pg_base = 0;
--		desc->pg_recoalesce = 0;
-+		list_splice_init(&mirror->pg_list, &head);
-+		mirror->pg_bytes_written -= mirror->pg_count;
-+		mirror->pg_count = 0;
-+		mirror->pg_base = 0;
-+		mirror->pg_recoalesce = 0;
-+
- 		desc->pg_moreio = 0;
- 
- 		while (!list_empty(&head)) {
-@@ -997,11 +1103,11 @@ static int nfs_do_recoalesce(struct nfs_pageio_descriptor *desc)
- 				return 0;
- 			break;
- 		}
--	} while (desc->pg_recoalesce);
-+	} while (mirror->pg_recoalesce);
- 	return 1;
- }
- 
--int nfs_pageio_add_request(struct nfs_pageio_descriptor *desc,
-+static int nfs_pageio_add_request_mirror(struct nfs_pageio_descriptor *desc,
- 		struct nfs_page *req)
- {
- 	int ret;
-@@ -1014,9 +1120,78 @@ int nfs_pageio_add_request(struct nfs_pageio_descriptor *desc,
- 			break;
- 		ret = nfs_do_recoalesce(desc);
- 	} while (ret);
-+
- 	return ret;
- }
- 
-+int nfs_pageio_add_request(struct nfs_pageio_descriptor *desc,
-+			   struct nfs_page *req)
++static void
++nfs_direct_good_bytes(struct nfs_direct_req *dreq, struct nfs_pgio_header *hdr)
 +{
-+	u32 midx;
-+	unsigned int pgbase, offset, bytes;
-+	struct nfs_page *dupreq, *lastreq;
++	int i;
++	ssize_t count;
 +
-+	pgbase = req->wb_pgbase;
-+	offset = req->wb_offset;
-+	bytes = req->wb_bytes;
++	WARN_ON_ONCE(hdr->pgio_mirror_idx >= dreq->mirror_count);
 +
-+	nfs_pageio_setup_mirroring(desc, req);
++	dreq->mirrors[hdr->pgio_mirror_idx].count += hdr->good_bytes;
 +
-+	for (midx = 0; midx < desc->pg_mirror_count; midx++) {
-+		if (midx) {
-+			nfs_page_group_lock(req, false);
++	if (hdr->pgio_mirror_idx == 0)
++		dreq->count += hdr->good_bytes;
 +
-+			/* find the last request */
-+			for (lastreq = req->wb_head;
-+			     lastreq->wb_this_page != req->wb_head;
-+			     lastreq = lastreq->wb_this_page)
-+				;
++	/* update the dreq->count by finding the minimum agreed count from all
++	 * mirrors */
++	count = dreq->mirrors[0].count;
 +
-+			dupreq = nfs_create_request(req->wb_context,
-+					req->wb_page, lastreq, pgbase, bytes);
++	for (i = 1; i < dreq->mirror_count; i++)
++		count = min(count, dreq->mirrors[i].count);
 +
-+			if (IS_ERR(dupreq)) {
-+				nfs_page_group_unlock(req);
-+				return 0;
-+			}
-+
-+			nfs_lock_request(dupreq);
-+			nfs_page_group_unlock(req);
-+			dupreq->wb_offset = offset;
-+			dupreq->wb_index = req->wb_index;
-+		} else
-+			dupreq = req;
-+
-+		desc->pg_mirror_idx = midx;
-+		if (!nfs_pageio_add_request_mirror(desc, dupreq))
-+			return 0;
-+	}
-+
-+	return 1;
-+}
-+
-+/*
-+ * nfs_pageio_complete_mirror - Complete I/O on the current mirror of an
-+ *				nfs_pageio_descriptor
-+ * @desc: pointer to io descriptor
-+ */
-+static void nfs_pageio_complete_mirror(struct nfs_pageio_descriptor *desc,
-+				       u32 mirror_idx)
-+{
-+	struct nfs_pgio_mirror *mirror = &desc->pg_mirrors[mirror_idx];
-+	u32 restore_idx = desc->pg_mirror_idx;
-+
-+	desc->pg_mirror_idx = mirror_idx;
-+	for (;;) {
-+		nfs_pageio_doio(desc);
-+		if (!mirror->pg_recoalesce)
-+			break;
-+		if (!nfs_do_recoalesce(desc))
-+			break;
-+	}
-+	desc->pg_mirror_idx = restore_idx;
++	dreq->count = count;
 +}
 +
  /*
-  * nfs_pageio_resend - Transfer requests to new descriptor and resend
-  * @hdr - the pgio header to move request from
-@@ -1055,16 +1230,14 @@ EXPORT_SYMBOL_GPL(nfs_pageio_resend);
-  */
- void nfs_pageio_complete(struct nfs_pageio_descriptor *desc)
+  * nfs_direct_select_verf - select the right verifier
+  * @dreq - direct request possibly spanning multiple servers
+@@ -241,6 +272,18 @@ void nfs_init_cinfo_from_dreq(struct nfs_commit_info *cinfo,
+ 	cinfo->completion_ops = &nfs_direct_commit_completion_ops;
+ }
+ 
++static inline void nfs_direct_setup_mirroring(struct nfs_direct_req *dreq,
++					     struct nfs_pageio_descriptor *pgio,
++					     struct nfs_page *req)
++{
++	int mirror_count = 1;
++
++	if (pgio->pg_ops->pg_get_mirror_count)
++		mirror_count = pgio->pg_ops->pg_get_mirror_count(pgio, req);
++
++	dreq->mirror_count = mirror_count;
++}
++
+ static inline struct nfs_direct_req *nfs_direct_req_alloc(void)
  {
--	for (;;) {
--		nfs_pageio_doio(desc);
--		if (!desc->pg_recoalesce)
--			break;
--		if (!nfs_do_recoalesce(desc))
--			break;
+ 	struct nfs_direct_req *dreq;
+@@ -255,6 +298,7 @@ static inline struct nfs_direct_req *nfs_direct_req_alloc(void)
+ 	INIT_LIST_HEAD(&dreq->mds_cinfo.list);
+ 	dreq->verf.committed = NFS_INVALID_STABLE_HOW;	/* not set yet */
+ 	INIT_WORK(&dreq->work, nfs_direct_write_schedule_work);
++	dreq->mirror_count = 1;
+ 	spin_lock_init(&dreq->lock);
+ 
+ 	return dreq;
+@@ -360,14 +404,9 @@ static void nfs_direct_read_completion(struct nfs_pgio_header *hdr)
+ 	spin_lock(&dreq->lock);
+ 	if (test_bit(NFS_IOHDR_ERROR, &hdr->flags) && (hdr->good_bytes == 0))
+ 		dreq->error = hdr->error;
+-	else {
+-		/*
+-		 * FIXME: right now this only accounts for bytes written
+-		 *        to the first mirror
+-		 */
+-		if (hdr->pgio_mirror_idx == 0)
+-			dreq->count += hdr->good_bytes;
 -	}
-+	u32 midx;
++	else
++		nfs_direct_good_bytes(dreq, hdr);
 +
-+	for (midx = 0; midx < desc->pg_mirror_count; midx++)
-+		nfs_pageio_complete_mirror(desc, midx);
+ 	spin_unlock(&dreq->lock);
  
- 	if (desc->pg_ops->pg_cleanup)
- 		desc->pg_ops->pg_cleanup(desc);
-+	nfs_pageio_cleanup_mirroring(desc);
- }
+ 	while (!list_empty(&hdr->pages)) {
+@@ -598,17 +637,23 @@ static void nfs_direct_write_reschedule(struct nfs_direct_req *dreq)
+ 	LIST_HEAD(reqs);
+ 	struct nfs_commit_info cinfo;
+ 	LIST_HEAD(failed);
++	int i;
  
- /**
-@@ -1080,10 +1253,17 @@ void nfs_pageio_complete(struct nfs_pageio_descriptor *desc)
-  */
- void nfs_pageio_cond_complete(struct nfs_pageio_descriptor *desc, pgoff_t index)
- {
--	if (!list_empty(&desc->pg_list)) {
--		struct nfs_page *prev = nfs_list_entry(desc->pg_list.prev);
--		if (index != prev->wb_index + 1)
--			nfs_pageio_complete(desc);
-+	struct nfs_pgio_mirror *mirror;
-+	struct nfs_page *prev;
-+	u32 midx;
+ 	nfs_init_cinfo_from_dreq(&cinfo, dreq);
+ 	nfs_direct_write_scan_commit_list(dreq->inode, &reqs, &cinfo);
+ 
+ 	dreq->count = 0;
++	for (i = 0; i < dreq->mirror_count; i++)
++		dreq->mirrors[i].count = 0;
+ 	get_dreq(dreq);
+ 
+ 	nfs_pageio_init_write(&desc, dreq->inode, FLUSH_STABLE, false,
+ 			      &nfs_direct_write_completion_ops);
+ 	desc.pg_dreq = dreq;
+ 
++	req = nfs_list_entry(reqs.next);
++	nfs_direct_setup_mirroring(dreq, &desc, req);
 +
-+	for (midx = 0; midx < desc->pg_mirror_count; midx++) {
-+		mirror = &desc->pg_mirrors[midx];
-+		if (!list_empty(&mirror->pg_list)) {
-+			prev = nfs_list_entry(mirror->pg_list.prev);
-+			if (index != prev->wb_index + 1)
-+				nfs_pageio_complete_mirror(desc, midx);
-+		}
+ 	list_for_each_entry_safe(req, tmp, &reqs, wb_list) {
+ 		if (!nfs_pageio_add_request(&desc, req)) {
+ 			nfs_list_remove_request(req);
+@@ -730,12 +775,7 @@ static void nfs_direct_write_completion(struct nfs_pgio_header *hdr)
+ 		dreq->error = hdr->error;
  	}
- }
- 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 2da2e77..5f7c422 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1646,8 +1646,8 @@ EXPORT_SYMBOL_GPL(pnfs_generic_pg_cleanup);
-  * of bytes (maximum @req->wb_bytes) that can be coalesced.
-  */
- size_t
--pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
--		     struct nfs_page *req)
-+pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio,
-+		     struct nfs_page *prev, struct nfs_page *req)
- {
- 	unsigned int size;
- 	u64 seg_end, req_start, seg_left;
-@@ -1729,10 +1729,12 @@ static void
- pnfs_write_through_mds(struct nfs_pageio_descriptor *desc,
- 		struct nfs_pgio_header *hdr)
- {
-+	struct nfs_pgio_mirror *mirror = &desc->pg_mirrors[desc->pg_mirror_idx];
-+
- 	if (!test_and_set_bit(NFS_IOHDR_REDO, &hdr->flags)) {
--		list_splice_tail_init(&hdr->pages, &desc->pg_list);
-+		list_splice_tail_init(&hdr->pages, &mirror->pg_list);
- 		nfs_pageio_reset_write_mds(desc);
--		desc->pg_recoalesce = 1;
-+		mirror->pg_recoalesce = 1;
- 	}
- 	nfs_pgio_data_destroy(hdr);
- }
-@@ -1781,12 +1783,14 @@ EXPORT_SYMBOL_GPL(pnfs_writehdr_free);
- int
- pnfs_generic_pg_writepages(struct nfs_pageio_descriptor *desc)
- {
-+	struct nfs_pgio_mirror *mirror = &desc->pg_mirrors[desc->pg_mirror_idx];
-+
- 	struct nfs_pgio_header *hdr;
- 	int ret;
- 
- 	hdr = nfs_pgio_header_alloc(desc->pg_rw_ops);
- 	if (!hdr) {
--		desc->pg_completion_ops->error_cleanup(&desc->pg_list);
-+		desc->pg_completion_ops->error_cleanup(&mirror->pg_list);
- 		return -ENOMEM;
- 	}
- 	nfs_pgheader_init(desc, hdr, pnfs_writehdr_free);
-@@ -1795,6 +1799,7 @@ pnfs_generic_pg_writepages(struct nfs_pageio_descriptor *desc)
- 	ret = nfs_generic_pgio(desc, hdr);
- 	if (!ret)
- 		pnfs_do_write(desc, hdr, desc->pg_ioflags);
-+
- 	return ret;
- }
- EXPORT_SYMBOL_GPL(pnfs_generic_pg_writepages);
-@@ -1839,10 +1844,13 @@ static void
- pnfs_read_through_mds(struct nfs_pageio_descriptor *desc,
- 		struct nfs_pgio_header *hdr)
- {
-+	struct nfs_pgio_mirror *mirror = &desc->pg_mirrors[desc->pg_mirror_idx];
-+
-+
- 	if (!test_and_set_bit(NFS_IOHDR_REDO, &hdr->flags)) {
--		list_splice_tail_init(&hdr->pages, &desc->pg_list);
-+		list_splice_tail_init(&hdr->pages, &mirror->pg_list);
- 		nfs_pageio_reset_read_mds(desc);
--		desc->pg_recoalesce = 1;
-+		mirror->pg_recoalesce = 1;
- 	}
- 	nfs_pgio_data_destroy(hdr);
- }
-@@ -1893,12 +1901,14 @@ EXPORT_SYMBOL_GPL(pnfs_readhdr_free);
- int
- pnfs_generic_pg_readpages(struct nfs_pageio_descriptor *desc)
- {
-+	struct nfs_pgio_mirror *mirror = &desc->pg_mirrors[desc->pg_mirror_idx];
-+
- 	struct nfs_pgio_header *hdr;
- 	int ret;
- 
- 	hdr = nfs_pgio_header_alloc(desc->pg_rw_ops);
- 	if (!hdr) {
--		desc->pg_completion_ops->error_cleanup(&desc->pg_list);
-+		desc->pg_completion_ops->error_cleanup(&mirror->pg_list);
- 		return -ENOMEM;
- 	}
- 	nfs_pgheader_init(desc, hdr, pnfs_readhdr_free);
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index 092ab49..568ecf0 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -70,8 +70,15 @@ EXPORT_SYMBOL_GPL(nfs_pageio_init_read);
- 
- void nfs_pageio_reset_read_mds(struct nfs_pageio_descriptor *pgio)
- {
-+	struct nfs_pgio_mirror *mirror;
-+
- 	pgio->pg_ops = &nfs_pgio_rw_ops;
--	pgio->pg_bsize = NFS_SERVER(pgio->pg_inode)->rsize;
-+
-+	/* read path should never have more than one mirror */
-+	WARN_ON_ONCE(pgio->pg_mirror_count != 1);
-+
-+	mirror = &pgio->pg_mirrors[0];
-+	mirror->pg_bsize = NFS_SERVER(pgio->pg_inode)->rsize;
- }
- EXPORT_SYMBOL_GPL(nfs_pageio_reset_read_mds);
- 
-@@ -81,6 +88,7 @@ int nfs_readpage_async(struct nfs_open_context *ctx, struct inode *inode,
- 	struct nfs_page	*new;
- 	unsigned int len;
- 	struct nfs_pageio_descriptor pgio;
-+	struct nfs_pgio_mirror *pgm;
- 
- 	len = nfs_page_length(page);
- 	if (len == 0)
-@@ -97,7 +105,13 @@ int nfs_readpage_async(struct nfs_open_context *ctx, struct inode *inode,
- 			     &nfs_async_read_completion_ops);
- 	nfs_pageio_add_request(&pgio, new);
- 	nfs_pageio_complete(&pgio);
--	NFS_I(inode)->read_io += pgio.pg_bytes_written;
-+
-+	/* It doesn't make sense to do mirrored reads! */
-+	WARN_ON_ONCE(pgio.pg_mirror_count != 1);
-+
-+	pgm = &pgio.pg_mirrors[0];
-+	NFS_I(inode)->read_io += pgm->pg_bytes_written;
-+
- 	return 0;
- }
- 
-@@ -352,6 +366,7 @@ int nfs_readpages(struct file *filp, struct address_space *mapping,
- 		struct list_head *pages, unsigned nr_pages)
- {
- 	struct nfs_pageio_descriptor pgio;
-+	struct nfs_pgio_mirror *pgm;
- 	struct nfs_readdesc desc = {
- 		.pgio = &pgio,
- 	};
-@@ -387,10 +402,15 @@ int nfs_readpages(struct file *filp, struct address_space *mapping,
- 			     &nfs_async_read_completion_ops);
- 
- 	ret = read_cache_pages(mapping, pages, readpage_async_filler, &desc);
--
- 	nfs_pageio_complete(&pgio);
--	NFS_I(inode)->read_io += pgio.pg_bytes_written;
--	npages = (pgio.pg_bytes_written + PAGE_CACHE_SIZE - 1) >> PAGE_CACHE_SHIFT;
-+
-+	/* It doesn't make sense to do mirrored reads! */
-+	WARN_ON_ONCE(pgio.pg_mirror_count != 1);
-+
-+	pgm = &pgio.pg_mirrors[0];
-+	NFS_I(inode)->read_io += pgm->pg_bytes_written;
-+	npages = (pgm->pg_bytes_written + PAGE_CACHE_SIZE - 1) >>
-+		 PAGE_CACHE_SHIFT;
- 	nfs_add_stats(inode, NFSIOS_READPAGES, npages);
- read_complete:
- 	put_nfs_open_context(desc.ctx);
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index db802d9..2f6ee8e 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -906,7 +906,7 @@ static void nfs_write_completion(struct nfs_pgio_header *hdr)
+ 	if (dreq->error == 0) {
+-		/*
+-		 * FIXME: right now this only accounts for bytes written
+-		 *        to the first mirror
+-		 */
+-		if (hdr->pgio_mirror_idx == 0)
+-			dreq->count += hdr->good_bytes;
++		nfs_direct_good_bytes(dreq, hdr);
  		if (nfs_write_need_commit(hdr)) {
- 			memcpy(&req->wb_verf, &hdr->verf.verifier, sizeof(req->wb_verf));
- 			nfs_mark_request_commit(req, hdr->lseg, &cinfo,
--				0);
-+				hdr->pgio_mirror_idx);
- 			goto next;
- 		}
- remove_req:
-@@ -1305,8 +1305,14 @@ EXPORT_SYMBOL_GPL(nfs_pageio_init_write);
- 
- void nfs_pageio_reset_write_mds(struct nfs_pageio_descriptor *pgio)
- {
-+	struct nfs_pgio_mirror *mirror;
+ 			if (dreq->flags == NFS_ODIRECT_RESCHED_WRITES)
+ 				request_commit = true;
+@@ -841,6 +881,9 @@ static ssize_t nfs_direct_write_schedule_iovec(struct nfs_direct_req *dreq,
+ 				result = PTR_ERR(req);
+ 				break;
+ 			}
 +
- 	pgio->pg_ops = &nfs_pgio_rw_ops;
--	pgio->pg_bsize = NFS_SERVER(pgio->pg_inode)->wsize;
++			nfs_direct_setup_mirroring(dreq, &desc, req);
 +
-+	nfs_pageio_stop_mirroring(pgio);
-+
-+	mirror = &pgio->pg_mirrors[0];
-+	mirror->pg_bsize = NFS_SERVER(pgio->pg_inode)->wsize;
- }
- EXPORT_SYMBOL_GPL(nfs_pageio_reset_write_mds);
- 
-diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
-index 479c566..3eb072d 100644
---- a/include/linux/nfs_page.h
-+++ b/include/linux/nfs_page.h
-@@ -58,6 +58,8 @@ struct nfs_pageio_ops {
- 	size_t	(*pg_test)(struct nfs_pageio_descriptor *, struct nfs_page *,
- 			   struct nfs_page *);
- 	int	(*pg_doio)(struct nfs_pageio_descriptor *);
-+	unsigned int	(*pg_get_mirror_count)(struct nfs_pageio_descriptor *,
-+				       struct nfs_page *);
- 	void	(*pg_cleanup)(struct nfs_pageio_descriptor *);
- };
- 
-@@ -74,15 +76,17 @@ struct nfs_rw_ops {
- 			    struct rpc_task_setup *, int);
- };
- 
--struct nfs_pageio_descriptor {
-+struct nfs_pgio_mirror {
- 	struct list_head	pg_list;
- 	unsigned long		pg_bytes_written;
- 	size_t			pg_count;
- 	size_t			pg_bsize;
- 	unsigned int		pg_base;
--	unsigned char		pg_moreio : 1,
--				pg_recoalesce : 1;
-+	unsigned char		pg_recoalesce : 1;
-+};
- 
-+struct nfs_pageio_descriptor {
-+	unsigned char		pg_moreio : 1;
- 	struct inode		*pg_inode;
- 	const struct nfs_pageio_ops *pg_ops;
- 	const struct nfs_rw_ops *pg_rw_ops;
-@@ -93,8 +97,18 @@ struct nfs_pageio_descriptor {
- 	struct pnfs_layout_segment *pg_lseg;
- 	struct nfs_direct_req	*pg_dreq;
- 	void			*pg_layout_private;
-+	unsigned int		pg_bsize;	/* default bsize for mirrors */
-+
-+	u32			pg_mirror_count;
-+	struct nfs_pgio_mirror	*pg_mirrors;
-+	struct nfs_pgio_mirror	pg_mirrors_static[1];
-+	struct nfs_pgio_mirror	*pg_mirrors_dynamic;
-+	u32			pg_mirror_idx;	/* current mirror */
- };
- 
-+/* arbitrarily selected limit to number of mirrors */
-+#define NFS_PAGEIO_DESCRIPTOR_MIRROR_MAX 16
-+
- #define NFS_WBACK_BUSY(req)	(test_bit(PG_BUSY,&(req)->wb_flags))
- 
- extern	struct nfs_page *nfs_create_request(struct nfs_open_context *ctx,
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 5bc99f0..6400a1e 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1329,6 +1329,7 @@ struct nfs_pgio_header {
- 	struct nfs_page_array	page_array;
- 	struct nfs_client	*ds_clp;	/* pNFS data server */
- 	int			ds_commit_idx;	/* ds index if ds_clp is set */
-+	int			pgio_mirror_idx;/* mirror index in pgio layer */
- };
- 
- struct nfs_mds_commit_info {
+ 			nfs_lock_request(req);
+ 			req->wb_index = pos >> PAGE_SHIFT;
+ 			req->wb_offset = pos & ~PAGE_MASK;
 -- 
 1.9.3
 
