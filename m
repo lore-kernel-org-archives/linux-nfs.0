@@ -1,41 +1,47 @@
-Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from ironport02-1.csupomona.edu ([134.71.187.45]:9705 "EHLO
-	ironport02-1.csupomona.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1756128AbaLWX2q (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Dec 2014 18:28:46 -0500
-Date: Tue, 23 Dec 2014 15:28:44 -0800
-From: Brian De Wolf <bldewolf@cpp.edu>
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: 3.14.27 client hang on specific file
-Message-ID: <20141223152844.58514ad5@cpp.edu>
-In-Reply-To: <20141218192421.03a66cac@cpp.edu>
-References: <20141218192421.03a66cac@cpp.edu>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Sender: linux-nfs-owner@vger.kernel.org
+Return-Path: linux-kernel-owner@vger.kernel.org
+From: Koshy George <koshygp@gmail.com>
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Koshy George <koshygp@gmail.com>
+Subject: [PATCH] NFS: nfs4_fs.h: Fix for checkpatch warnings
+Date: Sat, 27 Dec 2014 04:30:57 -0700
+Message-Id: <1419679857-16626-1-git-send-email-koshygp@gmail.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 18 Dec 2014 19:24:21 -0800
-Brian De Wolf <bldewolf@cpp.edu> wrote:
+This patch fix checkpatch warning for nfs4_fs.h
 
-> After updating our kernel from 3.4.x to 3.14.27 (along with nfs-utils
-> 1.2.9), we've had a strange issue with our sec=krb5p NFSv4 mounts.
-> My initial light testing went fine, but sometimes, on any given host,
-> a specific file will no longer be accessible.  Any attempt to access
-> it causes the process to go into uninterruptible sleep.
+fs/nfs/nfs4_fs.h:134: ERROR: "foo *	bar" should be "foo *bar"
+fs/nfs/nfs4_fs.h:416: ERROR: "foo * bar" should be "foo *bar"
 
-In case anyone else sees a similar issue, this is what I found.
+Signed-off-by: Koshy George <koshygp@gmail.com>
+[Being first patch, need some assistance]
+---
+ fs/nfs/nfs4_fs.h | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-3.4, 3.12 and 3.14 see stalls when accessing a Solaris 10 server.  3.4
-and 3.12 recover by reconnecting after a 60 second timeout, but 3.14
-hangs forever. It seems like the 3.14 timeout is broken, which is
-pretty painful.  It can be recovered by resetting the TCP connection
-(yay iptables), but will eventually stall again.
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index a081787..ae336c7 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -131,7 +131,7 @@ enum {
+ 
+ struct nfs4_lock_state {
+ 	struct list_head	ls_locks;	/* Other lock stateids */
+-	struct nfs4_state *	ls_state;	/* Pointer to open state */
++	struct nfs4_state	*ls_state;	/* Pointer to open state */
+ #define NFS_LOCK_INITIALIZED 0
+ #define NFS_LOCK_LOST        1
+ 	unsigned long		ls_flags;
+@@ -413,7 +413,7 @@ static inline void nfs4_schedule_session_recovery(struct nfs4_session *session,
+ extern struct nfs4_state_owner *nfs4_get_state_owner(struct nfs_server *, struct rpc_cred *, gfp_t);
+ extern void nfs4_put_state_owner(struct nfs4_state_owner *);
+ extern void nfs4_purge_state_owners(struct nfs_server *);
+-extern struct nfs4_state * nfs4_get_open_state(struct inode *, struct nfs4_state_owner *);
++extern struct nfs4_state *nfs4_get_open_state(struct inode *, struct nfs4_state_owner *);
+ extern void nfs4_put_open_state(struct nfs4_state *);
+ extern void nfs4_close_state(struct nfs4_state *, fmode_t);
+ extern void nfs4_close_sync(struct nfs4_state *, fmode_t);
+-- 
+1.9.1
 
-3.16 doesn't stall, so I assume something was fixed between 3.14 and
-3.16 to handle whatever problems occur with the Solaris 10 server.
-3.12 and 3.14 also don't see stalls when accessing an OmniOS server,
-which makes me think the bug is on the Solaris side but triggers poor
-error handling on the Linux side (that was fixed in 3.16).
-
-So the end result is pretty obvious:  it's time to upgrade.
