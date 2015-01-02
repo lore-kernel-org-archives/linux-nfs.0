@@ -1,32 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:57508 "EHLO fieldses.org"
+Received: from plane.gmane.org ([80.91.229.3]:57702 "EHLO plane.gmane.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751973AbbAHT3T (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 8 Jan 2015 14:29:19 -0500
-Date: Thu, 8 Jan 2015 14:29:18 -0500
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: nfsd bugfixes for 3.19
-Message-ID: <20150108192918.GD14674@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1751815AbbABSkG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 2 Jan 2015 13:40:06 -0500
+Received: from list by plane.gmane.org with local (Exim 4.69)
+	(envelope-from <glN-linux-nfs@m.gmane.org>)
+	id 1Y778l-0001H4-2p
+	for linux-nfs@vger.kernel.org; Fri, 02 Jan 2015 19:40:03 +0100
+Received: from barriere.frankfurter-softwarefabrik.de ([217.11.197.1])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Fri, 02 Jan 2015 19:40:03 +0100
+Received: from lvml by barriere.frankfurter-softwarefabrik.de with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Fri, 02 Jan 2015 19:40:03 +0100
+To: linux-nfs@vger.kernel.org
+From: Lutz Vieweg <lvml@5t9.de>
+Subject: Re: xprt_adjust_timeout followed by lockd: server not responding
+ / server OK
+Date: Fri, 02 Jan 2015 18:52:30 +0100
+Message-ID: <m86lsu$4l9$1@ger.gmane.org>
+References: <1416877610.325.37.camel@abezella-laptop.us.archive.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=utf-8; format=flowed
+In-Reply-To: <1416877610.325.37.camel@abezella-laptop.us.archive.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Please pull two nfsd bugfixes from
+On 11/25/2014 02:06 AM, andrew bezella wrote:
+> [ 3809.070778] xprt_adjust_timeout: rq_timeout = 0!
+> [ 3809.070784] lockd: server nfs-home not responding, still trying
+> [ 3809.332988] lockd: server nfs-home OK
 
-  git://linux-nfs.org/~bfields/linux.git for-3.19
+I'm seeing the very same annoying symptom every few minutes on a
+CentOS 7 client with kernel 3.17.1 (server also running CentOS 7
+with the same kernel).
 
---b.
+Both servers are connected to the same 10GBit/s switch and don't
+currently have much load...
 
-----------------------------------------------------------------
-J. Bruce Fields (1):
-      rpc: fix xdr_truncate_encode to handle buffer ending on page boundary
+Regards,
 
-Jeff Layton (1):
-      nfsd: fix fi_delegees leak when fi_had_conflict returns true
+Lutz Vieweg
 
- fs/nfsd/nfs4state.c | 2 +-
- net/sunrpc/xdr.c    | 6 +++---
- 2 files changed, 4 insertions(+), 4 deletions(-)
