@@ -1,87 +1,169 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wi0-f178.google.com ([209.85.212.178]:53286 "EHLO
-	mail-wi0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751159AbbAFTFc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Jan 2015 14:05:32 -0500
-Received: by mail-wi0-f178.google.com with SMTP id em10so109979wid.5
-        for <linux-nfs@vger.kernel.org>; Tue, 06 Jan 2015 11:05:30 -0800 (PST)
-Date: Tue, 6 Jan 2015 20:05:26 +0100
-From: "Yann E. MORIN" <yann.morin.1998@free.fr>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH nfs-utils] configure: use pkg-config to find libtirpc
-Message-ID: <20150106190526.GA17878@free.fr>
-References: <1416755357-12228-1-git-send-email-yann.morin.1998@free.fr>
- <54AA8E4A.6060705@RedHat.com>
- <20150105182322.GB5077@free.fr>
- <54AC2D52.8030203@RedHat.com>
+Received: from mx12.netapp.com ([216.240.18.77]:44185 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753882AbbAEPvt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 5 Jan 2015 10:51:49 -0500
+Message-ID: <54AAB312.40104@Netapp.com>
+Date: Mon, 5 Jan 2015 10:51:46 -0500
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <54AC2D52.8030203@RedHat.com>
+To: Tom Haynes <thomas.haynes@primarydata.com>,
+        Trond Myklebust <Trond.Myklebust@primarydata.com>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v2 04/49] nfs41: pull nfs4_ds_connect from file layout
+ to generic pnfs
+References: <1419405208-25975-1-git-send-email-loghyr@primarydata.com> <1419405208-25975-5-git-send-email-loghyr@primarydata.com>
+In-Reply-To: <1419405208-25975-5-git-send-email-loghyr@primarydata.com>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Steve, All,
+Hey Tom and Peng,
 
-On 2015-01-06 13:45 -0500, Steve Dickson spake thusly:
-> On 01/05/2015 01:23 PM, Yann E. MORIN wrote:
-> > 
-> > What are those "legacy OSs"? Can I help in finding an adequate solution?
-> > (note: any Linux distro I can install without problem, I could try to
-> > give a spin to a *BSD one if really needed, but other "OSes" not so
-> > much...)
-> The problem is here... 
->     http://www.spinics.net/lists/linux-nfs/msg48570.html
+On 12/24/2014 02:12 AM, Tom Haynes wrote:
+> From: Peng Tao <tao.peng@primarydata.com>
+> 
+> It can be reused by flexfiles layout client.
+> 
+> Reviewed-by: Jeff Layton <jlayton@primarydata.com>
+> Signed-off-by: Peng Tao <tao.peng@primarydata.com>
+> Signed-off-by: Tom Haynes <Thomas.Haynes@primarydata.com>
+> ---
+>  fs/nfs/filelayout/filelayoutdev.c | 78 +++------------------------------------
+>  fs/nfs/pnfs.h                     |  3 ++
+>  2 files changed, 8 insertions(+), 73 deletions(-)
+> 
+> diff --git a/fs/nfs/filelayout/filelayoutdev.c b/fs/nfs/filelayout/filelayoutdev.c
+> index fbfbb70..eb2e93b 100644
+> --- a/fs/nfs/filelayout/filelayoutdev.c
+> +++ b/fs/nfs/filelayout/filelayoutdev.c
+> @@ -42,51 +42,6 @@
+>  static unsigned int dataserver_timeo = NFS4_DEF_DS_TIMEO;
+>  static unsigned int dataserver_retrans = NFS4_DEF_DS_RETRANS;
+>  
+> -/*
+> - * Create an rpc connection to the nfs4_pnfs_ds data server
+> - * Currently only supports IPv4 and IPv6 addresses
+> - */
+> -static int
+> -nfs4_ds_connect(struct nfs_server *mds_srv, struct nfs4_pnfs_ds *ds)
+> -{
+> -	struct nfs_client *clp = ERR_PTR(-EIO);
+> -	struct nfs4_pnfs_ds_addr *da;
+> -	int status = 0;
+> -
+> -	dprintk("--> %s DS %s au_flavor %d\n", __func__, ds->ds_remotestr,
+> -		mds_srv->nfs_client->cl_rpcclient->cl_auth->au_flavor);
+> -
+> -	list_for_each_entry(da, &ds->ds_addrs, da_node) {
+> -		dprintk("%s: DS %s: trying address %s\n",
+> -			__func__, ds->ds_remotestr, da->da_remotestr);
+> -
+> -		clp = nfs4_set_ds_client(mds_srv->nfs_client,
+> -					(struct sockaddr *)&da->da_addr,
+> -					da->da_addrlen, IPPROTO_TCP,
+> -					dataserver_timeo, dataserver_retrans);
+> -		if (!IS_ERR(clp))
+> -			break;
+> -	}
+> -
+> -	if (IS_ERR(clp)) {
+> -		status = PTR_ERR(clp);
+> -		goto out;
+> -	}
+> -
+> -	status = nfs4_init_ds_session(clp, mds_srv->nfs_client->cl_lease_time);
+> -	if (status)
+> -		goto out_put;
+> -
+> -	smp_wmb();
+> -	ds->ds_clp = clp;
+> -	dprintk("%s [new] addr: %s\n", __func__, ds->ds_remotestr);
+> -out:
+> -	return status;
+> -out_put:
+> -	nfs_put_client(clp);
+> -	goto out;
+> -}
+> -
+>  void
+>  nfs4_fl_free_deviceid(struct nfs4_file_layout_dsaddr *dsaddr)
+>  {
+> @@ -450,22 +405,7 @@ nfs4_fl_select_ds_fh(struct pnfs_layout_segment *lseg, u32 j)
+>  	return flseg->fh_array[i];
+>  }
+>  
+> -static void nfs4_wait_ds_connect(struct nfs4_pnfs_ds *ds)
+> -{
+> -	might_sleep();
+> -	wait_on_bit_action(&ds->ds_state, NFS4DS_CONNECTING,
+> -			   nfs_wait_bit_killable, TASK_KILLABLE);
+> -}
+> -
+> -static void nfs4_clear_ds_conn_bit(struct nfs4_pnfs_ds *ds)
+> -{
+> -	smp_mb__before_atomic();
+> -	clear_bit(NFS4DS_CONNECTING, &ds->ds_state);
+> -	smp_mb__after_atomic();
+> -	wake_up_bit(&ds->ds_state, NFS4DS_CONNECTING);
+> -}
+> -
+> -
+> +/* Upon return, either ds is connected, or ds is NULL */
+>  struct nfs4_pnfs_ds *
+>  nfs4_fl_prepare_ds(struct pnfs_layout_segment *lseg, u32 ds_idx)
+>  {
+> @@ -473,6 +413,7 @@ nfs4_fl_prepare_ds(struct pnfs_layout_segment *lseg, u32 ds_idx)
+>  	struct nfs4_pnfs_ds *ds = dsaddr->ds_list[ds_idx];
+>  	struct nfs4_deviceid_node *devid = FILELAYOUT_DEVID_NODE(lseg);
+>  	struct nfs4_pnfs_ds *ret = ds;
+> +	struct nfs_server *s = NFS_SERVER(lseg->pls_layout->plh_inode);
+>  
+>  	if (ds == NULL) {
+>  		printk(KERN_ERR "NFS: %s: No data server for offset index %d\n",
+> @@ -484,18 +425,9 @@ nfs4_fl_prepare_ds(struct pnfs_layout_segment *lseg, u32 ds_idx)
+>  	if (ds->ds_clp)
+>  		goto out_test_devid;
+>  
+> -	if (test_and_set_bit(NFS4DS_CONNECTING, &ds->ds_state) == 0) {
+> -		struct nfs_server *s = NFS_SERVER(lseg->pls_layout->plh_inode);
+> -		int err;
+> -
+> -		err = nfs4_ds_connect(s, ds);
+> -		if (err)
+> -			nfs4_mark_deviceid_unavailable(devid);
+> -		nfs4_clear_ds_conn_bit(ds);
+> -	} else {
+> -		/* Either ds is connected, or ds is NULL */
+> -		nfs4_wait_ds_connect(ds);
+> -	}
+> +	nfs4_pnfs_ds_connect(s, ds, devid, dataserver_timeo,
+> +			     dataserver_retrans);
+> +
 
-Ah, OK! That's because the check I implemented requires libtirpc 0.2.4.
-I choose to require that version because it was the one I tested
-against.
+When I compile this patch I get:
+	ERROR: "nfs4_pnfs_ds_connect" [fs/nfs/filelayout/nfs_layout_nfsv41_files.ko] undefined!
 
-But if older versions are allowed, or even any other, it is simple to
-change the required version string:
+It looks like this function doesn't exist until patch 5.
 
-    -PKG_CHECK_MODULES([TIRPC], [libtirpc >= 0.2.4],
-    +PKG_CHECK_MODULES([TIRPC], [libtirpc >= 0.2.1],
+Anna
 
-Or for accepting any version:
+>  out_test_devid:
+>  	if (filelayout_test_devid_unavailable(devid))
+>  		ret = NULL;
+> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+> index d0b8e0c..a213c2d 100644
+> --- a/fs/nfs/pnfs.h
+> +++ b/fs/nfs/pnfs.h
+> @@ -295,6 +295,9 @@ void nfs4_deviceid_purge_client(const struct nfs_client *);
+>  void nfs4_pnfs_ds_put(struct nfs4_pnfs_ds *ds);
+>  struct nfs4_pnfs_ds *nfs4_pnfs_ds_add(struct list_head *dsaddrs,
+>  				      gfp_t gfp_flags);
+> +void nfs4_pnfs_ds_connect(struct nfs_server *mds_srv, struct nfs4_pnfs_ds *ds,
+> +			  struct nfs4_deviceid_node *devid, unsigned int timeo,
+> +			  unsigned int retrans);
+>  
+>  /* pnfs_nfsio.c */
+>  void pnfs_generic_clear_request_commit(struct nfs_page *req,
+> 
 
-    -PKG_CHECK_MODULES([TIRPC], [libtirpc >= 0.2.4],
-    +PKG_CHECK_MODULES([TIRPC], [libtirpc],
-
-> > If at all possible, I would like to keep pkg-config as the default, and
-> > use the old (or another) method only as a fallback, because pkg-config
-> > is so much nicer to deal with than trying to cope for all cases
-> > ourselves. Would that be an acceptable solution for you?
-> Yes.. I would be more than willing to work out something that works in
-> both cases.... 
-
-Yes, I checked the old code, and it does not require any version for
-libtirpc, just that it exists.
-
-The old code also checks for authgss_free_private_data, that was
-introduced in libtirpc between 0.2.2 and 0.2.3, and the change I
-proposed did not handle that. It completely slipped by.
-
-So, to propose a fix, I need to know what the oldest libtirpc version
-should be supported. From the mesage pointed to above, it seems we
-should support at least back to libtirpc 0.2.1. Do we have to support
-yet older versions, or even any version?
-
-Second, I'll also work on providing a way to restore detection and use
-of authgss_free_private_data.
-
-Note: I'll hopefuly have time to work on this tonight, and send a fix
-before midnight UTC.
-
-Sorry for the mishap... :-(
-
-Regards,
-Yann E. MORIN.
-
--- 
-.-----------------.--------------------.------------------.--------------------.
-|  Yann E. MORIN  | Real-Time Embedded | /"\ ASCII RIBBON | Erics' conspiracy: |
-| +33 662 376 056 | Software  Designer | \ / CAMPAIGN     |  ___               |
-| +33 223 225 172 `------------.-------:  X  AGAINST      |  \e/  There is no  |
-| http://ymorin.is-a-geek.org/ | _/*\_ | / \ HTML MAIL    |   v   conspiracy.  |
-'------------------------------^-------^------------------^--------------------'
