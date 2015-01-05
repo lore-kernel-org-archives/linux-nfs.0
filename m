@@ -1,172 +1,69 @@
-Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f174.google.com ([209.85.223.174]:45222 "EHLO
-	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750868AbbAUPUZ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Jan 2015 10:20:25 -0500
-Received: by mail-ie0-f174.google.com with SMTP id at20so40688482iec.5
-        for <linux-nfs@vger.kernel.org>; Wed, 21 Jan 2015 07:20:24 -0800 (PST)
-Content-Type: text/plain; charset=utf-8
-Mime-Version: 1.0 (Mac OS X Mail 8.1 \(1993\))
-Subject: Re: kernel crashes on commit
-From: Weston Andros Adamson <dros@primarydata.com>
-In-Reply-To: <1146517369.143121.1421834654084.JavaMail.zimbra@desy.de>
-Date: Wed, 21 Jan 2015 10:20:22 -0500
-Cc: linux-nfs list <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Message-Id: <95DFF80D-B655-479B-AE2F-B95B5540B743@primarydata.com>
-References: <1660711949.102565.1421790322927.JavaMail.zimbra@z-mbx-2.desy.de> <1146517369.143121.1421834654084.JavaMail.zimbra@desy.de>
-To: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>,
-        Steve Dickson <SteveD@redhat.com>
-Sender: linux-nfs-owner@vger.kernel.org
+Return-Path: linux-kernel-owner@vger.kernel.org
+Message-ID: <54AAA27C.6040906@Netapp.com>
+Date: Mon, 5 Jan 2015 09:41:00 -0500
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+MIME-Version: 1.0
+To: Omar Sandoval <osandov@osandov.com>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Christoph Hellwig <hch@infradead.org>, <linux-fsdevel@vger.kernel.org>,
+        <linux-mm@kvack.org>, <linux-nfs@vger.kernel.org>,
+        <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH v2 3/5] nfs: don't dirty ITER_BVEC pages read through
+ direct I/O
+References: <cover.1419044605.git.osandov@osandov.com> <b42b9a61d22260ee44b312d0119f1856e8f5840d.1419044605.git.osandov@osandov.com>
+In-Reply-To: <b42b9a61d22260ee44b312d0119f1856e8f5840d.1419044605.git.osandov@osandov.com>
+Content-Type: text/plain; charset="utf-8"
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hi Omar,
 
-> On Jan 21, 2015, at 5:04 AM, Mkrtchyan, Tigran <tigran.mkrtchyan@desy.de> wrote:
+On 12/19/2014 10:18 PM, Omar Sandoval wrote:
+> As with the generic blockdev code, kernel pages shouldn't be dirtied by
+> the direct I/O path.
 > 
-> Hi Dros,
+> Signed-off-by: Omar Sandoval <osandov@osandov.com>
+> ---
+>  fs/nfs/direct.c | 5 ++++-
+>  1 file changed, 4 insertions(+), 1 deletion(-)
 > 
-> after adopting patch for RHEL6 kernel, it works.
+> diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+> index 10bf072..b6ca65c 100644
+> --- a/fs/nfs/direct.c
+> +++ b/fs/nfs/direct.c
+> @@ -88,6 +88,7 @@ struct nfs_direct_req {
+>  	struct pnfs_ds_commit_info ds_cinfo;	/* Storage for cinfo */
+>  	struct work_struct	work;
+>  	int			flags;
+> +	int			should_dirty;	/* should we mark read pages dirty? */
+>  #define NFS_ODIRECT_DO_COMMIT		(1)	/* an unstable reply was received */
+>  #define NFS_ODIRECT_RESCHED_WRITES	(2)	/* write verification failed */
+>  	struct nfs_writeverf	verf;		/* unstable write verifier */
 
-Great!
+Can you add should_dirty after the NFS_ODIRECT_* flags?
 
-> We have to push it into stable fixes. Do you know
-> the procedure?
+Thanks,
+Anna
 
-I normally bug Steve D ;)
-
--dros
-
-
-> ----- Original Message -----
->> From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
->> To: "Weston Andros Adamson" <dros@primarydata.com>
->> Cc: "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>
->> Sent: Tuesday, January 20, 2015 10:45:22 PM
->> Subject: Re: kernel crashes on commit
+> @@ -370,7 +371,8 @@ static void nfs_direct_read_completion(struct nfs_pgio_header *hdr)
+>  		struct nfs_page *req = nfs_list_entry(hdr->pages.next);
+>  		struct page *page = req->wb_page;
+>  
+> -		if (!PageCompound(page) && bytes < hdr->good_bytes)
+> +		if (!PageCompound(page) && bytes < hdr->good_bytes &&
+> +		    dreq->should_dirty)
+>  			set_page_dirty(page);
+>  		bytes += req->wb_bytes;
+>  		nfs_list_remove_request(req);
+> @@ -542,6 +544,7 @@ ssize_t nfs_file_direct_read(struct kiocb *iocb, struct iov_iter *iter,
+>  	dreq->inode = inode;
+>  	dreq->bytes_left = count;
+>  	dreq->ctx = get_nfs_open_context(nfs_file_open_context(iocb->ki_filp));
+> +	dreq->should_dirty = !iov_iter_is_bvec(iter);
+>  	l_ctx = nfs_get_lock_context(dreq->ctx);
+>  	if (IS_ERR(l_ctx)) {
+>  		result = PTR_ERR(l_ctx);
 > 
->> I will check tomorrow with RHEL 6 kernel and let you known.
->> 
->> Thanks,
->> TigranOn Jan 20, 2015 9:43 PM, Weston Andros Adamson <dros@primarydata.com>
->> wrote:
->>> 
->>> 
->>>> On Jan 20, 2015, at 2:22 PM, Mkrtchyan, Tigran <tigran.mkrtchyan@desy.de> wrote:
->>>> 
->>>> Hi Dros,
->>>> 
->>>> do you refer to this commit
->>>> 
->>>> http://git.linux-nfs.org/?p=dros/linux-nfs.git;a=commit;h=d201c4de518c1d617aa216664869fa329d562d7d
->>>> ?
->>> 
->>> Yes, that’s the patch I was talking about. Good find, I was about to go looking
->>> for it.
->>> 
->>> Is that patch in the kernels you’re testing?
->>> 
->>> -dros
->>> 
->>>> ----- Original Message -----
->>>>> From: "Weston Andros Adamson" <dros@primarydata.com>
->>>>> To: "Tigran Mkrtchyan" <tigran.mkrtchyan@desy.de>
->>>>> Cc: "linux-nfs list" <linux-nfs@vger.kernel.org>
->>>>> Sent: Tuesday, January 20, 2015 3:37:49 PM
->>>>> Subject: Re: kernel crashes on commit
->>>> 
->>>>>> On Jan 20, 2015, at 9:00 AM, Mkrtchyan, Tigran <tigran.mkrtchyan@desy.de> wrote:
->>>>>> 
->>>>>> 
->>>>>> 
->>>>>> Dear fellows,
->>>>>> 
->>>>>> since we have enabled commit through DS code we
->>>>>> permanently observe kernel crashes with RHEL6/7 and ubuntu 14.04:
->>>>>> 
->>>>>> 
->>>>>> <1>BUG: unable to handle kernel paging request at 00000000dc364913
->>>>>> <1>IP: [<ffffffffa02b45df>] nfs_init_commit+0x1f/0xf0 [nfs]
->>>>>> <4>PGD 6393ae067 PUD 0
->>>>>> <4>Oops: 0000 [#1] SMP
->>>>>> <4>last sysfs file: /sys/devices/system/cpu/online
->>>>>> <4>CPU 1
->>>>>> <4>Modules linked in: vfat fat usb_storage mpt3sas mpt2sas raid_class mptctl
->>>>>> ipmi_devintf dell_rbu openafs(P)(U) autof
->>>>>> s4 nfs_layout_nfsv41_files nfs lockd fscache auth_rpcgss nfs_acl sunrpc bonding
->>>>>> 8021q garp stp llc ipv6 power_meter ac
->>>>>> pi_ipmi ipmi_si ipmi_msghandler iTCO_wdt iTCO_vendor_support microcode dcdbas sg
->>>>>> bnx2 lpc_ich mfd_core i7core_edac eda
->>>>>> c_core ext4 jbd2 mbcache sd_mod crc_t10dif wmi pata_acpi ata_generic ata_piix
->>>>>> mptsas mptscsih mptbase scsi_transport_s
->>>>>> as dm_mirror dm_region_hash dm_log dm_mod [last unloaded: scsi_wait_scan]
->>>>>> <4>
->>>>>> <4>Pid: 18209, comm: flush-0:19 Tainted: P           ---------------
->>>>>> 2.6.32-504.3.3.el6.x86_64 #1 Dell Inc. PowerEdge M610/0N582M
->>>>>> <4>RIP: 0010:[<ffffffffa02b45df>]  [<ffffffffa02b45df>]
->>>>>> nfs_init_commit+0x1f/0xf0 [nfs]
->>>>>> <4>RSP: 0018:ffff88063988da30  EFLAGS: 00010246
->>>>>> <4>RAX: ffff88063988db60 RBX: ffff88009c492040 RCX: ffff88063988db30
->>>>>> <4>RDX: 0000000000000000 RSI: ffff88063988db60 RDI: 00000000dc364903
->>>>>> <4>RBP: ffff88063988da40 R08: ffff88063988da90 R09: f9aa37faa254d404
->>>>>> <4>R10: 0000000000000010 R11: 0000000000000000 R12: 0000000000000001
->>>>>> <4>R13: ffff880339f33a00 R14: ffff88063988db30 R15: ffff88063988d8c8
->>>>>> <4>FS:  0000000000000000(0000) GS:ffff880028200000(0000) knlGS:0000000000000000
->>>>>> <4>CS:  0010 DS: 0018 ES: 0018 CR0: 000000008005003b
->>>>>> <4>CR2: 00000000dc364913 CR3: 0000000639fbb000 CR4: 00000000000007e0
->>>>>> <4>DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
->>>>>> <4>DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
->>>>>> <4>Process flush-0:19 (pid: 18209, threadinfo ffff88063988c000, task
->>>>>> ffff88063837c040)
->>>>>> <4>Stack:
->>>>>> <4> 0000000000000000 ffff88009c492040 ffff88063988dad0 ffffffffa031fdb7
->>>>>> <4><d> ffff88063837c5f8 ffff88063988da90 ffff8800a6e34600 ffff880337f2a950
->>>>>> <4><d> ffff880637c99488 0000000037f2a940 ffff88063988db60 0000000000000000
->>>>>> <4>Call Trace:
->>>>>> <4> [<ffffffffa031fdb7>] filelayout_commit_pagelist+0x277/0x3c0
->>>>>> [nfs_layout_nfsv41_files]
->>>>>> <4> [<ffffffffa02b613b>] nfs_generic_commit_list+0xab/0x100 [nfs]
->>>>>> <4> [<ffffffffa02b627c>] nfs_commit_inode+0xec/0x150 [nfs]
->>>>>> <4> [<ffffffffa02b6aab>] nfs_write_inode+0xab/0x100 [nfs]
->>>>>> <4> [<ffffffff811baedc>] writeback_single_inode+0x20c/0x290
->>>>>> <4> [<ffffffff811bb1ad>] writeback_sb_inodes+0xbd/0x170
->>>>>> <4> [<ffffffff811bb30b>] writeback_inodes_wb+0xab/0x1b0
->>>>>> <4> [<ffffffff811bb703>] wb_writeback+0x2f3/0x410
->>>>>> <4> [<ffffffff8100b9ce>] ? common_interrupt+0xe/0x13
->>>>>> <4> [<ffffffff81088062>] ? del_timer_sync+0x22/0x30
->>>>>> <4> [<ffffffff811bb9c5>] wb_do_writeback+0x1a5/0x240
->>>>>> <4> [<ffffffff811bbac3>] bdi_writeback_task+0x63/0x1b0
->>>>>> <4> [<ffffffff8109e987>] ? bit_waitqueue+0x17/0xd0
->>>>>> <4> [<ffffffff81148360>] ? bdi_start_fn+0x0/0x100
->>>>>> <4> [<ffffffff811483e6>] bdi_start_fn+0x86/0x100
->>>>>> <4> [<ffffffff81148360>] ? bdi_start_fn+0x0/0x100
->>>>>> <4> [<ffffffff8109e66e>] kthread+0x9e/0xc0
->>>>>> <4> [<ffffffff8100c20a>] child_rip+0xa/0x20
->>>>>> <4> [<ffffffff8109e5d0>] ? kthread+0x0/0xc0
->>>>>> <4> [<ffffffff8100c200>] ? child_rip+0x0/0x20
->>>>>> <4>Code: c3 66 66 2e 0f 1f 84 00 00 00 00 00 55 48 89 e5 53 48 83 ec 08 0f 1f 44
->>>>>> 00 00 48 8b 06 48 89 fb 48 8b 78 18 48 39 c6 48 8b 7f 40 <48> 8b 7f 10 74 2b 4c
->>>>>> 8b 83 c8 01 00 00 4c 8b 4e 08 4c 8d 93 c8
->>>>>> <1>RIP  [<ffffffffa02b45df>] nfs_init_commit+0x1f/0xf0 [nfs]
->>>>>> <4> RSP <ffff88063988da30>
->>>>>> <4>CR2: 00000000dc364913
->>>>>> 
->>>>>> 
->>>>>> I have vmcore file as well, so let me know if you need some more information.
->>>>>> 
->>>>> 
->>>>> Hi Tigran!
->>>>> 
->>>>> Have you tried a recent upstream kernel? IIRC I fixed a seeming similar
->>>>> filelayout
->>>>> commit issue not too long ago.
->>>>> 
->>>>> The filelayout commit path seems to have been broken for a while - mostly
->>>>> because
->>>>> all the filelayout servers (that I know of) use stable writes, so that code path
->>>>> went
->>>>> untested...
->>>>> 
->>>>> -dros
->>> 
->> N�����r��y���b�X��ǧv�^�)޺{.n�+����{���"��^n�r���z���h����&���G���h�(�階�ݢj"���m�����z�ޖ���f���h���~�m�
 
