@@ -1,65 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from verein.lst.de ([213.95.11.211]:41065 "EHLO newverein.lst.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752107AbbALMqi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 12 Jan 2015 07:46:38 -0500
-Date: Mon, 12 Jan 2015 13:46:35 +0100
+Received: from casper.infradead.org ([85.118.1.10]:55253 "EHLO
+	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751873AbbAFQ3u (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Jan 2015 11:29:50 -0500
 From: Christoph Hellwig <hch@lst.de>
-To: Tom Haynes <thomas.haynes@primarydata.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@primarydata.com>, linux-nfs@vger.kernel.org,
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Jeff Layton <jlayton@primarydata.com>, linux-nfs@vger.kernel.org,
         linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com
-Subject: Re: [PATCH 14/18] nfsd: pNFS block layout driver
-Message-ID: <20150112124635.GB29681@lst.de>
-References: <1420561721-9150-1-git-send-email-hch@lst.de> <1420561721-9150-15-git-send-email-hch@lst.de> <20150112061419.GB107426@slacker.internal.excfb.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20150112061419.GB107426@slacker.internal.excfb.com>
+Subject: [PATCH 15/18] xfs: pass a 64-bit count argument to xfs_iomap_write_unwritten
+Date: Tue,  6 Jan 2015 17:28:38 +0100
+Message-Id: <1420561721-9150-16-git-send-email-hch@lst.de>
+In-Reply-To: <1420561721-9150-1-git-send-email-hch@lst.de>
+References: <1420561721-9150-1-git-send-email-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jan 12, 2015 at 01:14:19AM -0500, Tom Haynes wrote:
-> 
-> > +file system must sit on shared storage (typically iSCSI) that is accessible
-> > +to the clients as well as the server.  The file system needs to either sit
-> > +directly on the exported volume, or on a RAID 0 using the MD software RAID
-> 
-> a RAID 0 what?
+The code is already ready for it, and the pnfs layout commit code expects
+to be able to pass a larger than 32-bit argument.
 
-I don't quite understand that comment.  But I'll have to revise that
-text anyway as the RAID0/1 support isn't part of this submission yet,
-as it needs a little more work and involves two more subsystems.
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+---
+ fs/xfs/xfs_iomap.c | 2 +-
+ fs/xfs/xfs_iomap.h | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
-For those who are curious about the md support, it is available at:
+diff --git a/fs/xfs/xfs_iomap.c b/fs/xfs/xfs_iomap.c
+index c980e2a..ccb1dd0 100644
+--- a/fs/xfs/xfs_iomap.c
++++ b/fs/xfs/xfs_iomap.c
+@@ -802,7 +802,7 @@ int
+ xfs_iomap_write_unwritten(
+ 	xfs_inode_t	*ip,
+ 	xfs_off_t	offset,
+-	size_t		count)
++	xfs_off_t	count)
+ {
+ 	xfs_mount_t	*mp = ip->i_mount;
+ 	xfs_fileoff_t	offset_fsb;
+diff --git a/fs/xfs/xfs_iomap.h b/fs/xfs/xfs_iomap.h
+index 411fbb8..8688e66 100644
+--- a/fs/xfs/xfs_iomap.h
++++ b/fs/xfs/xfs_iomap.h
+@@ -27,6 +27,6 @@ int xfs_iomap_write_delay(struct xfs_inode *, xfs_off_t, size_t,
+ 			struct xfs_bmbt_irec *);
+ int xfs_iomap_write_allocate(struct xfs_inode *, xfs_off_t,
+ 			struct xfs_bmbt_irec *);
+-int xfs_iomap_write_unwritten(struct xfs_inode *, xfs_off_t, size_t);
++int xfs_iomap_write_unwritten(struct xfs_inode *, xfs_off_t, xfs_off_t);
+ 
+ #endif /* __XFS_IOMAP_H__*/
+-- 
+1.9.1
 
-	git://git.infradead.org/users/hch/pnfs.git pnfsd-block-md-support
-
-
-> What reclaims bex in both error cases??
-> 
-> The call flow seems to be:
-> 
-> nfsd4_proc_compound -> nfsd4_layoutget -> nfsd4_block_proc_layoutget
-> 
-> lg_content gets freed in nfsd4_encode_layoutget() in all paths.
-> 
-> nfsd4_encode_operation() calls nfsd4_encode_layoutget().
-> 
-> But nfsd4_encode_layoutget() is not called in all paths:
-> 
->         p = xdr_reserve_space(xdr, 8);
->         if (!p) {
->                 WARN_ON_ONCE(1);
->                 return;  // leak
->         }
-> ...
->         if (op->opnum == OP_ILLEGAL)
->                 goto status;  // Not really a leak, if we hit this, bigger issues apply.
-> 
-> So bex is correctly accounted for, but in general
-> nfsd4_encode_operation() can leak any operation
-> specific memory.
-
-I guess we need to fix properly in the nfsd core eventually.  For
-example by adding a new method called for successful and error completions
-that can free all ressources.
