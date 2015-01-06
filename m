@@ -1,38 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from casper.infradead.org ([85.118.1.10]:55197 "EHLO
+Received: from casper.infradead.org ([85.118.1.10]:55200 "EHLO
 	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752076AbbAFQ3a (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Jan 2015 11:29:30 -0500
+	with ESMTP id S1755559AbbAFQ3b (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Jan 2015 11:29:31 -0500
 From: Christoph Hellwig <hch@lst.de>
 To: "J. Bruce Fields" <bfields@fieldses.org>
 Cc: Jeff Layton <jlayton@primarydata.com>, linux-nfs@vger.kernel.org,
         linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com
-Subject: a simple and scalable pNFS block layout server
-Date: Tue,  6 Jan 2015 17:28:23 +0100
-Message-Id: <1420561721-9150-1-git-send-email-hch@lst.de>
+Subject: [PATCH 01/18] nfs: add LAYOUT_TYPE_MAX enum value
+Date: Tue,  6 Jan 2015 17:28:24 +0100
+Message-Id: <1420561721-9150-2-git-send-email-hch@lst.de>
+In-Reply-To: <1420561721-9150-1-git-send-email-hch@lst.de>
+References: <1420561721-9150-1-git-send-email-hch@lst.de>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This series adds support for the pNFS operations in NFS v4.1, as well
-as a block layout driver that can export block based filesystems that
-implement a few additional export operations.  Support for XFS is
-provided in this series, but other filesystems could be added easily.
+This gives us a nice upper bound for later use in nfѕd.
 
-The core pNFS code of course owns its heritage to the existing Linux
-pNFS server prototype, but except for a few bits and pieces in the
-XDR path nothing is left from it.
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+---
+ include/linux/nfs4.h | 1 +
+ 1 file changed, 1 insertion(+)
 
-The design of this new pNFS server is fairly different from the old
-one - while the old one implemented very little semantics in nfsd
-and left almost everything to filesystems my implementation implements
-as much as possible in common nfsd code, then dispatches to a layout
-driver that still is part of nfsd and only then calls into the
-filesystem, thus keeping it free from intimate pNFS knowledge.
-
-More details are document in the individual patch descriptions and
-code comments.
-
-This code is also available from:
-
-	git://git.infradead.org/users/hch/pnfs.git pnfsd-for-3.20
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index 022b761..8a3589c 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -516,6 +516,7 @@ enum pnfs_layouttype {
+ 	LAYOUT_NFSV4_1_FILES  = 1,
+ 	LAYOUT_OSD2_OBJECTS = 2,
+ 	LAYOUT_BLOCK_VOLUME = 3,
++	LAYOUT_TYPE_MAX
+ };
+ 
+ /* used for both layout return and recall */
+-- 
+1.9.1
 
