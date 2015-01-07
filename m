@@ -1,21 +1,20 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f176.google.com ([209.85.223.176]:43243 "EHLO
-	mail-ie0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754406AbbAGXM3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Jan 2015 18:12:29 -0500
-Received: by mail-ie0-f176.google.com with SMTP id tr6so6672382ieb.7
-        for <linux-nfs@vger.kernel.org>; Wed, 07 Jan 2015 15:12:29 -0800 (PST)
+Received: from mail-ig0-f180.google.com ([209.85.213.180]:55688 "EHLO
+	mail-ig0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755244AbbAGXMj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Jan 2015 18:12:39 -0500
+Received: by mail-ig0-f180.google.com with SMTP id h15so111715igd.1
+        for <linux-nfs@vger.kernel.org>; Wed, 07 Jan 2015 15:12:38 -0800 (PST)
 Received: from manet.1015granger.net ([2604:8800:100:81fc:82ee:73ff:fe43:d64f])
-        by mx.google.com with ESMTPSA id qa8sm1684242igb.13.2015.01.07.15.12.28
+        by mx.google.com with ESMTPSA id p198sm1429167iop.36.2015.01.07.15.12.36
         for <linux-nfs@vger.kernel.org>
         (version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Wed, 07 Jan 2015 15:12:28 -0800 (PST)
-Subject: [PATCH v1 05/20] xprtrdma: Rename "xprt" and "rdma_connect" fields
- in struct rpcrdma_xprt
+        Wed, 07 Jan 2015 15:12:36 -0800 (PST)
+Subject: [PATCH v1 06/20] xprtrdma: Remove rpcrdma_ep::rep_ia
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-nfs@vger.kernel.org
-Date: Wed, 07 Jan 2015 18:12:28 -0500
-Message-ID: <20150107231228.13466.43543.stgit@manet.1015granger.net>
+Date: Wed, 07 Jan 2015 18:12:36 -0500
+Message-ID: <20150107231236.13466.77800.stgit@manet.1015granger.net>
 In-Reply-To: <20150107230859.13466.67723.stgit@manet.1015granger.net>
 References: <20150107230859.13466.67723.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -23,94 +22,36 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: Use consistent field names in struct rpcrdma_xprt.
+Clean up: This field is not used.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/transport.c |   19 ++++++++++---------
- net/sunrpc/xprtrdma/xprt_rdma.h |    6 +++---
- 2 files changed, 13 insertions(+), 12 deletions(-)
+ net/sunrpc/xprtrdma/verbs.c     |    1 -
+ net/sunrpc/xprtrdma/xprt_rdma.h |    1 -
+ 2 files changed, 2 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index bbd6155..ee57513 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -200,9 +200,9 @@ xprt_rdma_free_addresses(struct rpc_xprt *xprt)
- static void
- xprt_rdma_connect_worker(struct work_struct *work)
- {
--	struct rpcrdma_xprt *r_xprt =
--		container_of(work, struct rpcrdma_xprt, rdma_connect.work);
--	struct rpc_xprt *xprt = &r_xprt->xprt;
-+	struct rpcrdma_xprt *r_xprt = container_of(work, struct rpcrdma_xprt,
-+						   rx_connect_worker.work);
-+	struct rpc_xprt *xprt = &r_xprt->rx_xprt;
- 	int rc = 0;
- 
- 	xprt_clear_connected(xprt);
-@@ -235,7 +235,7 @@ xprt_rdma_destroy(struct rpc_xprt *xprt)
- 
- 	dprintk("RPC:       %s: called\n", __func__);
- 
--	cancel_delayed_work_sync(&r_xprt->rdma_connect);
-+	cancel_delayed_work_sync(&r_xprt->rx_connect_worker);
- 
- 	xprt_clear_connected(xprt);
- 
-@@ -374,7 +374,8 @@ xprt_setup_rdma(struct xprt_create *args)
- 	 * connection loss notification is async. We also catch connection loss
- 	 * when reaping receives.
- 	 */
--	INIT_DELAYED_WORK(&new_xprt->rdma_connect, xprt_rdma_connect_worker);
-+	INIT_DELAYED_WORK(&new_xprt->rx_connect_worker,
-+			  xprt_rdma_connect_worker);
- 	new_ep->rep_func = rpcrdma_conn_func;
- 	new_ep->rep_xprt = xprt;
- 
-@@ -434,17 +435,17 @@ xprt_rdma_connect(struct rpc_xprt *xprt, struct rpc_task *task)
- 
- 	if (r_xprt->rx_ep.rep_connected != 0) {
- 		/* Reconnect */
--		schedule_delayed_work(&r_xprt->rdma_connect,
--			xprt->reestablish_timeout);
-+		schedule_delayed_work(&r_xprt->rx_connect_worker,
-+				      xprt->reestablish_timeout);
- 		xprt->reestablish_timeout <<= 1;
- 		if (xprt->reestablish_timeout > RPCRDMA_MAX_REEST_TO)
- 			xprt->reestablish_timeout = RPCRDMA_MAX_REEST_TO;
- 		else if (xprt->reestablish_timeout < RPCRDMA_INIT_REEST_TO)
- 			xprt->reestablish_timeout = RPCRDMA_INIT_REEST_TO;
- 	} else {
--		schedule_delayed_work(&r_xprt->rdma_connect, 0);
-+		schedule_delayed_work(&r_xprt->rx_connect_worker, 0);
- 		if (!RPC_IS_ASYNC(task))
--			flush_delayed_work(&r_xprt->rdma_connect);
-+			flush_delayed_work(&r_xprt->rx_connect_worker);
- 	}
- }
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 56f705d..56e14b3 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -825,7 +825,6 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
+ 	else if (ep->rep_cqinit <= 2)
+ 		ep->rep_cqinit = 0;
+ 	INIT_CQCOUNT(ep);
+-	ep->rep_ia = ia;
+ 	init_waitqueue_head(&ep->rep_connect_wait);
+ 	INIT_DELAYED_WORK(&ep->rep_connect_worker, rpcrdma_connect_worker);
  
 diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index b799041..9a7aab3 100644
+index 9a7aab3..5160a84 100644
 --- a/net/sunrpc/xprtrdma/xprt_rdma.h
 +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -318,16 +318,16 @@ struct rpcrdma_stats {
-  * during unmount.
-  */
- struct rpcrdma_xprt {
--	struct rpc_xprt		xprt;
-+	struct rpc_xprt		rx_xprt;
- 	struct rpcrdma_ia	rx_ia;
- 	struct rpcrdma_ep	rx_ep;
- 	struct rpcrdma_buffer	rx_buf;
- 	struct rpcrdma_create_data_internal rx_data;
--	struct delayed_work	rdma_connect;
-+	struct delayed_work	rx_connect_worker;
- 	struct rpcrdma_stats	rx_stats;
- };
- 
--#define rpcx_to_rdmax(x) container_of(x, struct rpcrdma_xprt, xprt)
-+#define rpcx_to_rdmax(x) container_of(x, struct rpcrdma_xprt, rx_xprt)
- #define rpcx_to_rdmad(x) (rpcx_to_rdmax(x)->rx_data)
- 
- /* Setting this to 0 ensures interoperability with early servers.
+@@ -83,7 +83,6 @@ struct rpcrdma_ep {
+ 	atomic_t		rep_cqcount;
+ 	int			rep_cqinit;
+ 	int			rep_connected;
+-	struct rpcrdma_ia	*rep_ia;
+ 	struct ib_qp_init_attr	rep_attr;
+ 	wait_queue_head_t 	rep_connect_wait;
+ 	struct ib_sge		rep_pad;	/* holds zeroed pad */
 
