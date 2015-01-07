@@ -1,16 +1,16 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pd0-f171.google.com ([209.85.192.171]:42132 "EHLO
-	mail-pd0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756223AbbAGA3y (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Jan 2015 19:29:54 -0500
-Received: by mail-pd0-f171.google.com with SMTP id y13so1068943pdi.2
-        for <linux-nfs@vger.kernel.org>; Tue, 06 Jan 2015 16:29:54 -0800 (PST)
+Received: from mail-pa0-f53.google.com ([209.85.220.53]:40613 "EHLO
+	mail-pa0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756239AbbAGA3z (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Jan 2015 19:29:55 -0500
+Received: by mail-pa0-f53.google.com with SMTP id kq14so1046188pab.12
+        for <linux-nfs@vger.kernel.org>; Tue, 06 Jan 2015 16:29:55 -0800 (PST)
 From: Tom Haynes <thomas.haynes@primarydata.com>
 To: Trond Myklebust <trond.myklebust@primarydata.com>
 Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH v3 41/49] pnfs: allow LD to ask to resend read through pnfs
-Date: Tue,  6 Jan 2015 16:28:46 -0800
-Message-Id: <1420590534-84063-42-git-send-email-loghyr@primarydata.com>
+Subject: [PATCH v3 42/49] nfs41: add range to layoutreturn args
+Date: Tue,  6 Jan 2015 16:28:47 -0800
+Message-Id: <1420590534-84063-43-git-send-email-loghyr@primarydata.com>
 In-Reply-To: <1420590534-84063-1-git-send-email-loghyr@primarydata.com>
 References: <1420590534-84063-1-git-send-email-loghyr@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -18,71 +18,101 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: Peng Tao <tao.peng@primarydata.com>
 
-If current IO cannot be completed due to some transient errors,
-LD may want to ask generic layer to resend the request through
-pnfs again.
+So that callers can specify which range to return.
 
 Signed-off-by: Peng Tao <tao.peng@primarydata.com>
 Signed-off-by: Tom Haynes <loghyr@primarydata.com>
 ---
- fs/nfs/pnfs.c | 15 ++++++++++++++-
- fs/nfs/pnfs.h |  2 ++
- 2 files changed, 16 insertions(+), 1 deletion(-)
+ fs/nfs/nfs4xdr.c        |  6 +++---
+ fs/nfs/pnfs.c           | 14 +++++++++-----
+ include/linux/nfs_xdr.h |  2 +-
+ 3 files changed, 13 insertions(+), 9 deletions(-)
 
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 3c3ff63..56d4c91 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -2012,11 +2012,11 @@ encode_layoutreturn(struct xdr_stream *xdr,
+ 	p = reserve_space(xdr, 16);
+ 	*p++ = cpu_to_be32(0);		/* reclaim. always 0 for now */
+ 	*p++ = cpu_to_be32(args->layout_type);
+-	*p++ = cpu_to_be32(args->iomode);
++	*p++ = cpu_to_be32(args->range.iomode);
+ 	*p = cpu_to_be32(RETURN_FILE);
+ 	p = reserve_space(xdr, 16);
+-	p = xdr_encode_hyper(p, 0);
+-	p = xdr_encode_hyper(p, NFS4_MAX_UINT64);
++	p = xdr_encode_hyper(p, args->range.offset);
++	p = xdr_encode_hyper(p, args->range.length);
+ 	spin_lock(&args->inode->i_lock);
+ 	encode_nfs4_stateid(xdr, &args->stateid);
+ 	spin_unlock(&args->inode->i_lock);
 diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index b822b17..685af4f 100644
+index 685af4f..63beace 100644
 --- a/fs/nfs/pnfs.c
 +++ b/fs/nfs/pnfs.c
-@@ -1880,15 +1880,28 @@ pnfs_try_to_read_data(struct nfs_pgio_header *hdr,
- 	return trypnfs;
- }
+@@ -52,7 +52,7 @@ static LIST_HEAD(pnfs_modules_tbl);
  
-+/* Resend all requests through pnfs. */
-+int pnfs_read_resend_pnfs(struct nfs_pgio_header *hdr)
-+{
-+	struct nfs_pageio_descriptor pgio;
-+
-+	nfs_pageio_init_read(&pgio, hdr->inode, false, hdr->completion_ops);
-+	return nfs_pageio_resend(&pgio, hdr);
-+}
-+EXPORT_SYMBOL_GPL(pnfs_read_resend_pnfs);
-+
- static void
- pnfs_do_read(struct nfs_pageio_descriptor *desc, struct nfs_pgio_header *hdr)
+ static int
+ pnfs_send_layoutreturn(struct pnfs_layout_hdr *lo, nfs4_stateid stateid,
+-		       enum pnfs_iomode iomode);
++		       enum pnfs_iomode iomode, u64 offset, u64 length);
+ 
+ /* Return the registered pnfs layout driver module matching given id */
+ static struct pnfs_layoutdriver_type *
+@@ -392,7 +392,8 @@ pnfs_put_lseg(struct pnfs_layout_segment *lseg)
+ 		spin_unlock(&inode->i_lock);
+ 		pnfs_free_lseg(lseg);
+ 		if (need_return)
+-			pnfs_send_layoutreturn(lo, stateid, iomode);
++			pnfs_send_layoutreturn(lo, stateid, iomode, 0,
++					       NFS4_MAX_UINT64);
+ 		else
+ 			pnfs_put_layout_hdr(lo);
+ 	}
+@@ -897,7 +898,7 @@ static void pnfs_clear_layoutcommit(struct inode *inode,
+ 
+ static int
+ pnfs_send_layoutreturn(struct pnfs_layout_hdr *lo, nfs4_stateid stateid,
+-		       enum pnfs_iomode iomode)
++		       enum pnfs_iomode iomode, u64 offset, u64 length)
  {
- 	const struct rpc_call_ops *call_ops = desc->pg_rpc_callops;
- 	struct pnfs_layout_segment *lseg = desc->pg_lseg;
- 	enum pnfs_try_status trypnfs;
-+	int err = 0;
+ 	struct inode *ino = lo->plh_inode;
+ 	struct nfs4_layoutreturn *lrp;
+@@ -916,7 +917,9 @@ pnfs_send_layoutreturn(struct pnfs_layout_hdr *lo, nfs4_stateid stateid,
+ 	lrp->args.stateid = stateid;
+ 	lrp->args.layout_type = NFS_SERVER(ino)->pnfs_curr_ld->id;
+ 	lrp->args.inode = ino;
+-	lrp->args.iomode = iomode;
++	lrp->args.range.iomode = iomode;
++	lrp->args.range.offset = offset;
++	lrp->args.range.length = length;
+ 	lrp->args.layout = lo;
+ 	lrp->clp = NFS_SERVER(ino)->nfs_client;
+ 	lrp->cred = lo->plh_lc_cred;
+@@ -987,7 +990,8 @@ _pnfs_return_layout(struct inode *ino)
+ 	spin_unlock(&ino->i_lock);
+ 	pnfs_free_lseg_list(&tmp_list);
  
- 	trypnfs = pnfs_try_to_read_data(hdr, call_ops, lseg);
--	if (trypnfs == PNFS_NOT_ATTEMPTED)
-+	if (trypnfs == PNFS_TRY_AGAIN)
-+		err = pnfs_read_resend_pnfs(hdr);
-+	if (trypnfs == PNFS_NOT_ATTEMPTED || err)
- 		pnfs_read_through_mds(desc, hdr);
- }
- 
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index ebb4e82..26e7cd8 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -72,6 +72,7 @@ struct pnfs_layout_segment {
- enum pnfs_try_status {
- 	PNFS_ATTEMPTED     = 0,
- 	PNFS_NOT_ATTEMPTED = 1,
-+	PNFS_TRY_AGAIN     = 2,
+-	status = pnfs_send_layoutreturn(lo, stateid, IOMODE_ANY);
++	status = pnfs_send_layoutreturn(lo, stateid, IOMODE_ANY, 0,
++					NFS4_MAX_UINT64);
+ out:
+ 	dprintk("<-- %s status: %d\n", __func__, status);
+ 	return status;
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 6400a1e..3637923 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -293,7 +293,7 @@ struct nfs4_layoutreturn_args {
+ 	struct nfs4_sequence_args seq_args;
+ 	struct pnfs_layout_hdr *layout;
+ 	struct inode *inode;
+-	enum pnfs_iomode iomode;
++	struct pnfs_layout_range range;
+ 	nfs4_stateid stateid;
+ 	__u32   layout_type;
  };
- 
- #ifdef CONFIG_NFS_V4_1
-@@ -268,6 +269,7 @@ int _pnfs_return_layout(struct inode *);
- int pnfs_commit_and_return_layout(struct inode *);
- void pnfs_ld_write_done(struct nfs_pgio_header *);
- void pnfs_ld_read_done(struct nfs_pgio_header *);
-+int pnfs_read_resend_pnfs(struct nfs_pgio_header *);
- struct pnfs_layout_segment *pnfs_update_layout(struct inode *ino,
- 					       struct nfs_open_context *ctx,
- 					       loff_t pos,
 -- 
 1.9.3
 
