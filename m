@@ -1,28 +1,22 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:55689 "EHLO mx11.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:47384 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752112AbbAGP20 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 7 Jan 2015 10:28:26 -0500
-Message-ID: <54AD5098.9000905@Netapp.com>
-Date: Wed, 7 Jan 2015 10:28:24 -0500
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-MIME-Version: 1.0
-To: Anna Schumaker <Anna.Schumaker@netapp.com>,
-        <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
+	id S1753718AbbAGSYP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 7 Jan 2015 13:24:15 -0500
+Date: Wed, 7 Jan 2015 13:24:12 -0500
+To: Anna Schumaker <Anna.Schumaker@netapp.com>
+Cc: Trond.Myklebust@primarydata.com, linux-nfs@vger.kernel.org
 Subject: Re: [PATCH 0/3] NFS: Add READ_PLUS support
+Message-ID: <20150107182412.GB7066@fieldses.org>
 References: <1418855726-14262-1-git-send-email-Anna.Schumaker@Netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
 In-Reply-To: <1418855726-14262-1-git-send-email-Anna.Schumaker@Netapp.com>
-Content-Type: text/plain; charset="utf-8"
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-*bump*
-
-Has anybody had a chance to look at these patches?
-
-Anna
-
-On 12/17/2014 05:35 PM, Anna Schumaker wrote:
+On Wed, Dec 17, 2014 at 05:35:23PM -0500, Anna Schumaker wrote:
 > These patches add client support for the NFS v4.2 operation READ_PLUS.  This
 > operation is triggered by doing any kind of read on a NFS v4.2 mounted
 > filesystem.  `
@@ -31,6 +25,24 @@ On 12/17/2014 05:35 PM, Anna Schumaker wrote:
 > reading a file.  Supporting this would requre a tedious amount of shifiting
 > to make sure data is aligned properly, so I'm skipping this feature until I
 > figure out a clean way of coding it.
+
+So, what happens?  If that means we use just the first segment, and then
+send another rpc for the rest, then this could lead to significant
+performance regressions, couldn't it?
+
+For example, if we synchronously read a 1-megabyte file consists of data
+and holes alternating every 4k, then we've gone from waiting for a
+single 1M read to waiting for 256 round trips.
+
+I doubt that's a realistic example, but I don't know what is.  How do we
+assure ourselves that this is an improvement?
+
+Also, do we have good evidence that this does actually help
+significantly when reading typical sparse files?  (Where I'm  not sure
+how to define "typical"....)
+
+--b.
+
 > 
 > These patches and the corresponding server changes are available in the
 > [read_plus] branch of
@@ -57,4 +69,10 @@ On 12/17/2014 05:35 PM, Anna Schumaker wrote:
 >  net/sunrpc/xdr.c           |  45 +++++++++++++
 >  8 files changed, 237 insertions(+), 3 deletions(-)
 > 
-
+> -- 
+> 2.1.3
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
