@@ -1,16 +1,12 @@
-Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:47380 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754344AbbAGSVm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 7 Jan 2015 13:21:42 -0500
-Date: Wed, 7 Jan 2015 13:21:41 -0500
+Return-Path: linux-kernel-owner@vger.kernel.org
+Date: Wed, 7 Jan 2015 15:06:24 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
 To: Holger =?utf-8?Q?Hoffst=C3=A4tte?=
 	<holger.hoffstaette@googlemail.com>
 Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: 3.18.1: broken directory with one file too many
-Message-ID: <20150107182141.GA7066@fieldses.org>
-References: <20141218144856.GA18179@fieldses.org>
- <alpine.OSX.2.19.9992.1412180955000.62182@planck.local>
+Subject: [PATCH] nfsd4: tweak rd_dircount accounting
+Message-ID: <20150107200624.GA8119@fieldses.org>
+References: <alpine.OSX.2.19.9992.1412180955000.62182@planck.local>
  <20141218151914.GB18179@fieldses.org>
  <pan.2014.12.18.15.42.53@googlemail.com>
  <20141218163254.GF18179@fieldses.org>
@@ -19,145 +15,66 @@ References: <20141218144856.GA18179@fieldses.org>
  <54932EA5.9090803@googlemail.com>
  <20141220180243.GA10273@fieldses.org>
  <pan.2015.01.07.00.25.06@googlemail.com>
+ <20150107182141.GA7066@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <pan.2015.01.07.00.25.06@googlemail.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20150107182141.GA7066@fieldses.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jan 07, 2015 at 12:25:06AM +0000, Holger Hoffstätte wrote:
-> On Sat, 20 Dec 2014 13:02:43 -0500, J. Bruce Fields wrote:
-> 
-> > On Thu, Dec 18, 2014 at 08:44:37PM +0100, Holger Hoffstätte wrote:
-> >> On 12/18/14 18:06, J. Bruce Fields wrote:
-> >> > Whoops, now I see, the server-side trace has the same problem, I just
-> >> > overlooked it the first time.
-> >> 
-> >> Excellent, so we know it's the server's fault. Really would have been
-> >> odd to not have it in the server trace.
-> >> 
-> >> >> ..in order to rule out a mistake on my part with the two separate
-> >> >> runs (which prevents correlated analysis) I was just about to boot
-> >> >> the server back into 3.18.1 and re-run both client- and server-side
-> >> >> traces simultaneously. However I have to head out for a bit first;
-> >> >> will post that later today.
-> >> > 
-> >> > So this might still be interesting, but it's not a high priority.
-> >> 
-> >> Then I guess I'll better keep my feet still and don't muddle the waters
-> >> further, looks like you found what you need. If you still need it just
-> >> holler.
-> >> 
-> >> Let me know if there's anything I can do to help/patch/test!
-> > 
-> > Gah.  Does this fix it?
-> > 
-> > A struct xdr_stream at a page boundary might point to the end of one
-> > page or the beginning of the next, and I'm guessing xdr_truncate_encode
-> > wasn't prepared to handle the former.
-> > 
-> > This happens if the readdir entry that would have exceeded the client's
-> > dircount/maxcount limit would have ended exactly on a 4k page boundary,
-> > and inspection of the trace shows you're hitting exactly that case.
-> > 
-> > If this does the job then I'll go figure out how to make this logic less
-> > ugly....
-> > 
-> > --b.
-> > 
-> > diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c index
-> > 1cb61242e55e..32910b91d17c 100644 --- a/net/sunrpc/xdr.c +++
-> > b/net/sunrpc/xdr.c @@ -630,6 +630,9 @@ void xdr_truncate_encode(struct
-> > xdr_stream *xdr, size_t len)
-> >  
-> >  	new = buf->page_base + buf->page_len;
-> >  	old = new + fraglen;
-> > +	/* XXX: HACK: */
-> > +	if (xdr->p == page_address(*xdr->page_ptr) + PAGE_SIZE)
-> > +		xdr->page_ptr++;
-> >  	xdr->page_ptr -= (old >> PAGE_SHIFT) - (new >> PAGE_SHIFT);
-> >  
-> >  	if (buf->page_len) {
-> 
-> Any news on getting this upstream and into -stables? I ack'ed it on Dec. 
-> 20 and have been running it 24/7 since then with no problems.
-> 
-> Just making sure it doesn't disappear into the post-holiday couch 
-> crack.. :)
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Yeah, understood, thanks for the reminder.  I took another look and
-found a simpler fix and wanted to reproduce.  Unfortunately the
-reproducer depends on a lot of details (your git directory won't
-necessarily work on somebody else's setup) so all I found was a brute
-force attempt to create directories which lots of various-sized entries
-(excuse the sloppy shell):
+RFC 3530 14.2.24 says
 
-	j=74
-	k=100
-	while true; do 
-		ssh root@f20-3 '
-			cd /exports/xfs/DIR
-			rm -f 00*
-			for ((i=0; i<'$k'; i++)); do
-				touch $(printf "%0'$j'.0f" $i); done
-			for ((i='$k'; i<100; i++));
-				do touch $(printf "%0'$((j+1))'.0f" $i); done
-		'
-		if ! diff <(ssh root@f20-3 ls /exports/xfs/DIR/) <(ls DIR); then
-			echo "diff found at $j, $k"
-			break
-		fi
-		echo $j, $((k--))
-		if [ $k -eq 0 ]; then
-			echo ---
-			echo $((j+=4)), $((k=100))
-		fi
-	done
+	This value represents the length of the names of the directory
+	entries and the cookie value for these entries.  This length
+	represents the XDR encoding of the data (names and cookies)...
 
-Now that I think of it there might be other operations (read, readlink)
-that could trigger the same problem more easily.
+The "xdr encoding" of the name should probably include the 4 bytes for
+the length.
 
-But anyway that reproducer worked and confirmed the following which I'll
-probably pass along upstream today or tomorrow....
+But this is all just a hint so not worth e.g. backporting to stable.
 
---b.
+Also reshuffle some lines to more clearly group together the
+dircount-related code.
 
-commit 9f5b5c33b2ee
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Mon Dec 22 16:14:51 2014 -0500
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4xdr.c | 7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
 
-    rpc: fix xdr_truncate_encode to handle buffer ending on page boundary
-    
-    A struct xdr_stream at a page boundary might point to the end of one
-    page or the beginning of the next, but xdr_truncate_encode isn't
-    prepared to handle the former.
-    
-    This can cause corruption of NFSv4 READDIR replies in the case that a
-    readdir entry that would have exceeded the client's dircount/maxcount
-    limit would have ended exactly on a 4k page boundary.  You're more
-    likely to hit this case on large directories.
-    
-    Other xdr_truncate_encode callers are probably also affected.
-    
-    Reported-by: Holger Hoffstätte <holger.hoffstaette@googlemail.com>
-    Tested-by: Holger Hoffstätte <holger.hoffstaette@googlemail.com>
-    Fixes: 3e19ce762b53 "rpc: xdr_truncate_encode"
-    Cc: stable@vger.kernel.org
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+On Wed, Jan 07, 2015 at 01:21:41PM -0500, bfields wrote:
+> But anyway that reproducer worked and confirmed the following which I'll
+> probably pass along upstream today or tomorrow....
 
-diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
-index 1cb61242e55e..862307ac341f 100644
---- a/net/sunrpc/xdr.c
-+++ b/net/sunrpc/xdr.c
-@@ -629,8 +629,8 @@ void xdr_truncate_encode(struct xdr_stream *xdr, size_t len)
- 	buf->len -= fraglen;
- 
- 	new = buf->page_base + buf->page_len;
--	old = new + fraglen;
--	xdr->page_ptr -= (old >> PAGE_SHIFT) - (new >> PAGE_SHIFT);
+I also noticed this nit while I was there.  I'm planning to queue this
+up for 3.20.--b.
+
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 15f7b73e0c0f..91f7a3644ffb 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -2768,16 +2768,17 @@ nfsd4_encode_dirent(void *ccdv, const char *name, int namlen,
+ 	if (entry_bytes > cd->rd_maxcount)
+ 		goto fail;
+ 	cd->rd_maxcount -= entry_bytes;
+-	if (!cd->rd_dircount)
+-		goto fail;
+ 	/*
+ 	 * RFC 3530 14.2.24 describes rd_dircount as only a "hint", so
+ 	 * let's always let through the first entry, at least:
+ 	 */
+-	name_and_cookie = 4 * XDR_QUADLEN(namlen) + 8;
++	if (!cd->rd_dircount)
++		goto fail;
++	name_and_cookie = 4 + 4 * XDR_QUADLEN(namlen) + 8;
+ 	if (name_and_cookie > cd->rd_dircount && cd->cookie_offset)
+ 		goto fail;
+ 	cd->rd_dircount -= min(cd->rd_dircount, name_and_cookie);
 +
-+	xdr->page_ptr = buf->pages + (new >> PAGE_SHIFT);
- 
- 	if (buf->page_len) {
- 		xdr->p = page_address(*xdr->page_ptr);
+ 	cd->cookie_offset = cookie_offset;
+ skip_entry:
+ 	cd->common.err = nfs_ok;
+-- 
+1.9.3
+
