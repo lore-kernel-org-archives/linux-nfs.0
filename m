@@ -1,16 +1,16 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pd0-f171.google.com ([209.85.192.171]:56655 "EHLO
-	mail-pd0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754624AbbAGA3b (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Jan 2015 19:29:31 -0500
-Received: by mail-pd0-f171.google.com with SMTP id y13so1067436pdi.2
-        for <linux-nfs@vger.kernel.org>; Tue, 06 Jan 2015 16:29:31 -0800 (PST)
+Received: from mail-pa0-f51.google.com ([209.85.220.51]:62939 "EHLO
+	mail-pa0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754584AbbAGA3c (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Jan 2015 19:29:32 -0500
+Received: by mail-pa0-f51.google.com with SMTP id ey11so1059836pad.10
+        for <linux-nfs@vger.kernel.org>; Tue, 06 Jan 2015 16:29:32 -0800 (PST)
 From: Tom Haynes <thomas.haynes@primarydata.com>
 To: Trond Myklebust <trond.myklebust@primarydata.com>
 Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH v3 19/49] nfs/flexclient: export pnfs_layoutcommit_inode
-Date: Tue,  6 Jan 2015 16:28:24 -0800
-Message-Id: <1420590534-84063-20-git-send-email-loghyr@primarydata.com>
+Subject: [PATCH v3 20/49] nfs41: close a small race window when adding new layout to global list
+Date: Tue,  6 Jan 2015 16:28:25 -0800
+Message-Id: <1420590534-84063-21-git-send-email-loghyr@primarydata.com>
 In-Reply-To: <1420590534-84063-1-git-send-email-loghyr@primarydata.com>
 References: <1420590534-84063-1-git-send-email-loghyr@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -18,25 +18,44 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: Peng Tao <tao.peng@primarydata.com>
 
-flexfiles needs to start layoutcommit when necessary
-
 Signed-off-by: Peng Tao <tao.peng@primarydata.com>
+Signed-off-by: Tom Haynes <Thomas.Haynes@primarydata.com>
 ---
- fs/nfs/pnfs.c | 1 +
- 1 file changed, 1 insertion(+)
+ fs/nfs/pnfs.c | 8 +++-----
+ 1 file changed, 3 insertions(+), 5 deletions(-)
 
 diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 0a5dda4..2d25670 100644
+index 2d25670..fa00b56 100644
 --- a/fs/nfs/pnfs.c
 +++ b/fs/nfs/pnfs.c
-@@ -1966,6 +1966,7 @@ clear_layoutcommitting:
- 	pnfs_clear_layoutcommitting(inode);
- 	goto out;
- }
-+EXPORT_SYMBOL_GPL(pnfs_layoutcommit_inode);
+@@ -1288,7 +1288,6 @@ pnfs_update_layout(struct inode *ino,
+ 	struct nfs_client *clp = server->nfs_client;
+ 	struct pnfs_layout_hdr *lo;
+ 	struct pnfs_layout_segment *lseg = NULL;
+-	bool first;
  
- struct nfs4_threshold *pnfs_mdsthreshold_alloc(void)
- {
+ 	if (!pnfs_enabled_sb(NFS_SERVER(ino)))
+ 		goto out;
+@@ -1321,16 +1320,15 @@ pnfs_update_layout(struct inode *ino,
+ 	if (pnfs_layoutgets_blocked(lo, 0))
+ 		goto out_unlock;
+ 	atomic_inc(&lo->plh_outstanding);
+-
+-	first = list_empty(&lo->plh_layouts) ? true : false;
+ 	spin_unlock(&ino->i_lock);
+ 
+-	if (first) {
++	if (list_empty(&lo->plh_layouts)) {
+ 		/* The lo must be on the clp list if there is any
+ 		 * chance of a CB_LAYOUTRECALL(FILE) coming in.
+ 		 */
+ 		spin_lock(&clp->cl_lock);
+-		list_add_tail(&lo->plh_layouts, &server->layouts);
++		if (list_empty(&lo->plh_layouts))
++			list_add_tail(&lo->plh_layouts, &server->layouts);
+ 		spin_unlock(&clp->cl_lock);
+ 	}
+ 
 -- 
 1.9.3
 
