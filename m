@@ -1,51 +1,98 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:43154 "EHLO fieldses.org"
+Received: from plane.gmane.org ([80.91.229.3]:44381 "EHLO plane.gmane.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754442AbbAGS5f (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 7 Jan 2015 13:57:35 -0500
-Date: Wed, 7 Jan 2015 13:57:32 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Weston Andros Adamson <dros@primarydata.com>
-Cc: Anna Schumaker <Anna.Schumaker@netapp.com>,
-        Trond Myklebust <Trond.Myklebust@primarydata.com>,
-        linux-nfs list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 0/3] Remove function macros from nfs4_fs.h
-Message-ID: <20150107185732.GD7066@fieldses.org>
-References: <1420485444-20101-1-git-send-email-Anna.Schumaker@Netapp.com>
- <1C602278-4A23-4975-8339-7AFF0606B154@primarydata.com>
- <20150106190800.GB28003@fieldses.org>
- <2705333F-CCAE-44E2-BD42-76FEB452B764@primarydata.com>
- <20150107185525.GC7066@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <20150107185525.GC7066@fieldses.org>
+	id S1752259AbbAGA0m (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 6 Jan 2015 19:26:42 -0500
+Received: from list by plane.gmane.org with local (Exim 4.69)
+	(envelope-from <glN-linux-nfs@m.gmane.org>)
+	id 1Y8eRX-0005NE-Pn
+	for linux-nfs@vger.kernel.org; Wed, 07 Jan 2015 01:25:47 +0100
+Received: from p4ff586e1.dip0.t-ipconnect.de ([79.245.134.225])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Wed, 07 Jan 2015 01:25:47 +0100
+Received: from holger.hoffstaette by p4ff586e1.dip0.t-ipconnect.de with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Wed, 07 Jan 2015 01:25:47 +0100
+To: linux-nfs@vger.kernel.org
+From: Holger =?iso-8859-1?q?Hoffst=E4tte?=
+	<holger.hoffstaette@googlemail.com>
+Subject: Re: 3.18.1: broken directory with one file too many
+Date: Wed, 7 Jan 2015 00:25:06 +0000 (UTC)
+Message-ID: <pan.2015.01.07.00.25.06@googlemail.com>
+References: <20141217212159.GA11517@fieldses.org>
+	<5492C710.20104@googlemail.com> <20141218144856.GA18179@fieldses.org>
+	<alpine.OSX.2.19.9992.1412180955000.62182@planck.local>
+	<20141218151914.GB18179@fieldses.org>
+	<pan.2014.12.18.15.42.53@googlemail.com>
+	<20141218163254.GF18179@fieldses.org> <549303FC.9090604@googlemail.com>
+	<20141218170653.GG18179@fieldses.org> <54932EA5.9090803@googlemail.com>
+	<20141220180243.GA10273@fieldses.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Cc: linux-kernel@vger.kernel.org
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jan 07, 2015 at 01:55:25PM -0500, J. Bruce Fields wrote:
-> On Wed, Jan 07, 2015 at 01:47:53PM -0500, Weston Andros Adamson wrote:
-> > Ah, right, but only for state operations that don’t touch the filesystem:
-> > 
-> > OP_BIND_CONN_TO_SESSION
-> > OP_EXCHANGE_ID
-> > OP_CREATE_SESSION
-> > OP_DESTROY_SESSION
-> > OP_DESTROY_CLIENTID
-> > 
-> > Which is not that interesting, since the client should already be using the machine cred
-> > with these operations.
-> > 
-> > What is interesting is supporting write and commit (and associated ops, i.e. sequence).
-> > That way when a client is doing buffered writes and the user cred expires, it can flush the
-> > locally cached data. This is what the linux client SP4_MACH_CRED feature focused on.
-> > 
-> > I think implementing SP4_MACH_CRED for these operations has the issue I mentioned
-> > earlier: the fh_verify path will have to check credentials against some cached credential
-> > (tied to the stateid), because request will contain the machine credential and not the user
-> > credential that previous writes (before cred expiration) used.
+On Sat, 20 Dec 2014 13:02:43 -0500, J. Bruce Fields wrote:
+
+> On Thu, Dec 18, 2014 at 08:44:37PM +0100, Holger Hoffstätte wrote:
+>> On 12/18/14 18:06, J. Bruce Fields wrote:
+>> > Whoops, now I see, the server-side trace has the same problem, I just
+>> > overlooked it the first time.
+>> 
+>> Excellent, so we know it's the server's fault. Really would have been
+>> odd to not have it in the server trace.
+>> 
+>> >> ..in order to rule out a mistake on my part with the two separate
+>> >> runs (which prevents correlated analysis) I was just about to boot
+>> >> the server back into 3.18.1 and re-run both client- and server-side
+>> >> traces simultaneously. However I have to head out for a bit first;
+>> >> will post that later today.
+>> > 
+>> > So this might still be interesting, but it's not a high priority.
+>> 
+>> Then I guess I'll better keep my feet still and don't muddle the waters
+>> further, looks like you found what you need. If you still need it just
+>> holler.
+>> 
+>> Let me know if there's anything I can do to help/patch/test!
 > 
-> Oh, I see.  Yeah, that sounds like a bigger project.
+> Gah.  Does this fix it?
+> 
+> A struct xdr_stream at a page boundary might point to the end of one
+> page or the beginning of the next, and I'm guessing xdr_truncate_encode
+> wasn't prepared to handle the former.
+> 
+> This happens if the readdir entry that would have exceeded the client's
+> dircount/maxcount limit would have ended exactly on a 4k page boundary,
+> and inspection of the trace shows you're hitting exactly that case.
+> 
+> If this does the job then I'll go figure out how to make this logic less
+> ugly....
+> 
+> --b.
+> 
+> diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c index
+> 1cb61242e55e..32910b91d17c 100644 --- a/net/sunrpc/xdr.c +++
+> b/net/sunrpc/xdr.c @@ -630,6 +630,9 @@ void xdr_truncate_encode(struct
+> xdr_stream *xdr, size_t len)
+>  
+>  	new = buf->page_base + buf->page_len;
+>  	old = new + fraglen;
+> +	/* XXX: HACK: */
+> +	if (xdr->p == page_address(*xdr->page_ptr) + PAGE_SIZE)
+> +		xdr->page_ptr++;
+>  	xdr->page_ptr -= (old >> PAGE_SHIFT) - (new >> PAGE_SHIFT);
+>  
+>  	if (buf->page_len) {
 
-(And I'd be curious what the security model is.)
+Any news on getting this upstream and into -stables? I ack'ed it on Dec. 
+20 and have been running it 24/7 since then with no problems.
 
---b.
+Just making sure it doesn't disappear into the post-holiday couch 
+crack.. :)
+
+thanks,
+Holger
+
