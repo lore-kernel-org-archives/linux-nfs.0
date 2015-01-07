@@ -1,16 +1,16 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pa0-f51.google.com ([209.85.220.51]:62939 "EHLO
-	mail-pa0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754584AbbAGA3c (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Jan 2015 19:29:32 -0500
-Received: by mail-pa0-f51.google.com with SMTP id ey11so1059836pad.10
-        for <linux-nfs@vger.kernel.org>; Tue, 06 Jan 2015 16:29:32 -0800 (PST)
+Received: from mail-pa0-f44.google.com ([209.85.220.44]:46266 "EHLO
+	mail-pa0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754724AbbAGA3d (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Jan 2015 19:29:33 -0500
+Received: by mail-pa0-f44.google.com with SMTP id et14so1105739pad.3
+        for <linux-nfs@vger.kernel.org>; Tue, 06 Jan 2015 16:29:33 -0800 (PST)
 From: Tom Haynes <thomas.haynes@primarydata.com>
 To: Trond Myklebust <trond.myklebust@primarydata.com>
 Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH v3 20/49] nfs41: close a small race window when adding new layout to global list
-Date: Tue,  6 Jan 2015 16:28:25 -0800
-Message-Id: <1420590534-84063-21-git-send-email-loghyr@primarydata.com>
+Subject: [PATCH v3 21/49] nfs41: serialize first layoutget of a file
+Date: Tue,  6 Jan 2015 16:28:26 -0800
+Message-Id: <1420590534-84063-22-git-send-email-loghyr@primarydata.com>
 In-Reply-To: <1420590534-84063-1-git-send-email-loghyr@primarydata.com>
 References: <1420590534-84063-1-git-send-email-loghyr@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -18,44 +18,104 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: Peng Tao <tao.peng@primarydata.com>
 
+Per RFC 5661 Errata 3208:
+| A client MAY always forget its layout state and associated
+| layout stateid at any time (See also section 12.5.5.1).
+| In such case, the client MUST use a non-layout stateid for the next
+| LAYOUTGET operation. This will signal the server that the client has
+| no more layouts on the file and its respective layout state can be
+| released before issuing a new layout in response to LAYOUTGET.
+
+In order to make such a signal unique to server, client needs to serialize
+all layoutgets using non-layout stateid. We implement this by serializing
+layoutgets when client has no layout segments at hand.
+
 Signed-off-by: Peng Tao <tao.peng@primarydata.com>
 Signed-off-by: Tom Haynes <Thomas.Haynes@primarydata.com>
 ---
- fs/nfs/pnfs.c | 8 +++-----
- 1 file changed, 3 insertions(+), 5 deletions(-)
+ fs/nfs/pnfs.c | 35 +++++++++++++++++++++++++++++++----
+ fs/nfs/pnfs.h |  1 +
+ 2 files changed, 32 insertions(+), 4 deletions(-)
 
 diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 2d25670..fa00b56 100644
+index fa00b56..7e1bac1 100644
 --- a/fs/nfs/pnfs.c
 +++ b/fs/nfs/pnfs.c
-@@ -1288,7 +1288,6 @@ pnfs_update_layout(struct inode *ino,
+@@ -1288,6 +1288,7 @@ pnfs_update_layout(struct inode *ino,
  	struct nfs_client *clp = server->nfs_client;
  	struct pnfs_layout_hdr *lo;
  	struct pnfs_layout_segment *lseg = NULL;
--	bool first;
++	bool first;
  
  	if (!pnfs_enabled_sb(NFS_SERVER(ino)))
  		goto out;
-@@ -1321,16 +1320,15 @@ pnfs_update_layout(struct inode *ino,
+@@ -1295,6 +1296,8 @@ pnfs_update_layout(struct inode *ino,
+ 	if (pnfs_within_mdsthreshold(ctx, ino, iomode))
+ 		goto out;
+ 
++lookup_again:
++	first = false;
+ 	spin_lock(&ino->i_lock);
+ 	lo = pnfs_find_alloc_layout(ino, ctx, gfp_flags);
+ 	if (lo == NULL) {
+@@ -1312,10 +1315,27 @@ pnfs_update_layout(struct inode *ino,
+ 	if (pnfs_layout_io_test_failed(lo, iomode))
+ 		goto out_unlock;
+ 
+-	/* Check to see if the layout for the given range already exists */
+-	lseg = pnfs_find_lseg(lo, &arg);
+-	if (lseg)
+-		goto out_unlock;
++	first = list_empty(&lo->plh_segs);
++	if (first) {
++		/* The first layoutget for the file. Need to serialize per
++		 * RFC 5661 Errata 3208.
++		 */
++		if (test_and_set_bit(NFS_LAYOUT_FIRST_LAYOUTGET,
++				     &lo->plh_flags)) {
++			spin_unlock(&ino->i_lock);
++			wait_on_bit(&lo->plh_flags, NFS_LAYOUT_FIRST_LAYOUTGET,
++				    TASK_UNINTERRUPTIBLE);
++			pnfs_put_layout_hdr(lo);
++			goto lookup_again;
++		}
++	} else {
++		/* Check to see if the layout for the given range
++		 * already exists
++		 */
++		lseg = pnfs_find_lseg(lo, &arg);
++		if (lseg)
++			goto out_unlock;
++	}
+ 
  	if (pnfs_layoutgets_blocked(lo, 0))
  		goto out_unlock;
- 	atomic_inc(&lo->plh_outstanding);
--
--	first = list_empty(&lo->plh_layouts) ? true : false;
- 	spin_unlock(&ino->i_lock);
+@@ -1343,6 +1363,13 @@ pnfs_update_layout(struct inode *ino,
+ 	lseg = send_layoutget(lo, ctx, &arg, gfp_flags);
+ 	atomic_dec(&lo->plh_outstanding);
+ out_put_layout_hdr:
++	if (first) {
++		unsigned long *bitlock = &lo->plh_flags;
++
++		clear_bit_unlock(NFS_LAYOUT_FIRST_LAYOUTGET, bitlock);
++		smp_mb__after_atomic();
++		wake_up_bit(bitlock, NFS_LAYOUT_FIRST_LAYOUTGET);
++	}
+ 	pnfs_put_layout_hdr(lo);
+ out:
+ 	dprintk("%s: inode %s/%llu pNFS layout segment %s for "
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index a5b168c..6594429 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -95,6 +95,7 @@ enum {
+ 	NFS_LAYOUT_ROC,			/* some lseg had roc bit set */
+ 	NFS_LAYOUT_RETURN,		/* Return this layout ASAP */
+ 	NFS_LAYOUT_INVALID_STID,	/* layout stateid id is invalid */
++	NFS_LAYOUT_FIRST_LAYOUTGET,	/* Serialize first layoutget */
+ };
  
--	if (first) {
-+	if (list_empty(&lo->plh_layouts)) {
- 		/* The lo must be on the clp list if there is any
- 		 * chance of a CB_LAYOUTRECALL(FILE) coming in.
- 		 */
- 		spin_lock(&clp->cl_lock);
--		list_add_tail(&lo->plh_layouts, &server->layouts);
-+		if (list_empty(&lo->plh_layouts))
-+			list_add_tail(&lo->plh_layouts, &server->layouts);
- 		spin_unlock(&clp->cl_lock);
- 	}
- 
+ enum layoutdriver_policy_flags {
 -- 
 1.9.3
 
