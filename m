@@ -1,21 +1,21 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f174.google.com ([209.85.223.174]:39724 "EHLO
-	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751808AbbAGXNf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Jan 2015 18:13:35 -0500
-Received: by mail-ie0-f174.google.com with SMTP id at20so6680107iec.5
-        for <linux-nfs@vger.kernel.org>; Wed, 07 Jan 2015 15:13:34 -0800 (PST)
+Received: from mail-ig0-f172.google.com ([209.85.213.172]:39242 "EHLO
+	mail-ig0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755244AbbAGXNn (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Jan 2015 18:13:43 -0500
+Received: by mail-ig0-f172.google.com with SMTP id hl2so113151igb.5
+        for <linux-nfs@vger.kernel.org>; Wed, 07 Jan 2015 15:13:42 -0800 (PST)
 Received: from manet.1015granger.net ([2604:8800:100:81fc:82ee:73ff:fe43:d64f])
-        by mx.google.com with ESMTPSA id e63sm1443062ioe.15.2015.01.07.15.13.33
+        by mx.google.com with ESMTPSA id qr1sm7137924igb.18.2015.01.07.15.13.41
         for <linux-nfs@vger.kernel.org>
         (version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Wed, 07 Jan 2015 15:13:34 -0800 (PST)
-Subject: [PATCH v1 13/20] xprtrdma: Simplify synopsis of
- rpcrdma_buffer_create()
+        Wed, 07 Jan 2015 15:13:42 -0800 (PST)
+Subject: [PATCH v1 14/20] xprtrdma: Refactor rpcrdma_buffer_create() and
+ rpcrdma_buffer_destroy()
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-nfs@vger.kernel.org
-Date: Wed, 07 Jan 2015 18:13:33 -0500
-Message-ID: <20150107231333.13466.7599.stgit@manet.1015granger.net>
+Date: Wed, 07 Jan 2015 18:13:41 -0500
+Message-ID: <20150107231341.13466.55315.stgit@manet.1015granger.net>
 In-Reply-To: <20150107230859.13466.67723.stgit@manet.1015granger.net>
 References: <20150107230859.13466.67723.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -23,69 +23,215 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: There is one call site for rpcrdma_buffer_create(). All of
-the arguments there are fields of an rpcrdma_xprt.
+Move the details of how to create and destroy rpcrdma_req and
+rpcrdma_rep structures into helper functions.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/transport.c |    3 +--
- net/sunrpc/xprtrdma/verbs.c     |    7 +++++--
- net/sunrpc/xprtrdma/xprt_rdma.h |    4 +---
- 3 files changed, 7 insertions(+), 7 deletions(-)
+ net/sunrpc/xprtrdma/verbs.c |  148 ++++++++++++++++++++++++++++---------------
+ 1 file changed, 95 insertions(+), 53 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index a487bde..808b3c5 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -364,8 +364,7 @@ xprt_setup_rdma(struct xprt_create *args)
- 	 * any inline data. Also specify any padding which will be provided
- 	 * from a preregistered zero buffer.
- 	 */
--	rc = rpcrdma_buffer_create(&new_xprt->rx_buf, new_ep, &new_xprt->rx_ia,
--				&new_xprt->rx_data);
-+	rc = rpcrdma_buffer_create(new_xprt);
- 	if (rc)
- 		goto out3;
- 
 diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 958b372..fd71501 100644
+index fd71501..24ea6dd 100644
 --- a/net/sunrpc/xprtrdma/verbs.c
 +++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -1161,9 +1161,11 @@ out_free:
+@@ -1075,6 +1075,69 @@ rpcrdma_ep_disconnect(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
+ 	}
  }
  
- int
--rpcrdma_buffer_create(struct rpcrdma_buffer *buf, struct rpcrdma_ep *ep,
--	struct rpcrdma_ia *ia, struct rpcrdma_create_data_internal *cdata)
-+rpcrdma_buffer_create(struct rpcrdma_xprt *r_xprt)
- {
-+	struct rpcrdma_buffer *buf = &r_xprt->rx_buf;
-+	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
++static struct rpcrdma_req *
++rpcrdma_create_req(struct rpcrdma_xprt *r_xprt)
++{
 +	struct rpcrdma_create_data_internal *cdata = &r_xprt->rx_data;
++	size_t wlen = 1 << fls(cdata->inline_wsize +
++			       sizeof(struct rpcrdma_req));
++	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
++	struct rpcrdma_req *req;
++	int rc;
++
++	rc = -ENOMEM;
++	req = kmalloc(wlen, GFP_KERNEL);
++	if (req == NULL)
++		goto out;
++	memset(req, 0, sizeof(struct rpcrdma_req));
++
++	rc = rpcrdma_register_internal(ia, req->rl_base, wlen -
++				       offsetof(struct rpcrdma_req, rl_base),
++				       &req->rl_handle, &req->rl_iov);
++	if (rc)
++		goto out_free;
++
++	req->rl_size = wlen - sizeof(struct rpcrdma_req);
++	req->rl_buffer = &r_xprt->rx_buf;
++	return req;
++
++out_free:
++	kfree(req);
++out:
++	return ERR_PTR(rc);
++}
++
++static struct rpcrdma_rep *
++rpcrdma_create_rep(struct rpcrdma_xprt *r_xprt)
++{
++	struct rpcrdma_create_data_internal *cdata = &r_xprt->rx_data;
++	size_t rlen = 1 << fls(cdata->inline_rsize +
++			       sizeof(struct rpcrdma_rep));
++	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
++	struct rpcrdma_rep *rep;
++	int rc;
++
++	rc = -ENOMEM;
++	rep = kmalloc(rlen, GFP_KERNEL);
++	if (rep == NULL)
++		goto out;
++	memset(rep, 0, sizeof(struct rpcrdma_rep));
++
++	rc = rpcrdma_register_internal(ia, rep->rr_base, rlen -
++				       offsetof(struct rpcrdma_rep, rr_base),
++				       &rep->rr_handle, &rep->rr_iov);
++	if (rc)
++		goto out_free;
++
++	rep->rr_buffer = &r_xprt->rx_buf;
++	return rep;
++
++out_free:
++	kfree(rep);
++out:
++	return ERR_PTR(rc);
++}
++
+ static int
+ rpcrdma_init_fmrs(struct rpcrdma_ia *ia, struct rpcrdma_buffer *buf)
+ {
+@@ -1167,7 +1230,7 @@ rpcrdma_buffer_create(struct rpcrdma_xprt *r_xprt)
+ 	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
+ 	struct rpcrdma_create_data_internal *cdata = &r_xprt->rx_data;
  	char *p;
- 	size_t len, rlen, wlen;
+-	size_t len, rlen, wlen;
++	size_t len;
  	int i, rc;
-@@ -1200,6 +1202,7 @@ rpcrdma_buffer_create(struct rpcrdma_buffer *buf, struct rpcrdma_ep *ep,
- 	 * Register the zeroed pad buffer, if any.
- 	 */
- 	if (cdata->padding) {
-+		struct rpcrdma_ep *ep = &r_xprt->rx_ep;
- 		rc = rpcrdma_register_internal(ia, p, cdata->padding,
- 					    &ep->rep_pad_mr, &ep->rep_pad);
- 		if (rc)
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index 2b4e778..5c2fac3 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -354,9 +354,7 @@ int rpcrdma_ep_post_recv(struct rpcrdma_ia *, struct rpcrdma_ep *,
- /*
-  * Buffer calls - xprtrdma/verbs.c
-  */
--int rpcrdma_buffer_create(struct rpcrdma_buffer *, struct rpcrdma_ep *,
--				struct rpcrdma_ia *,
--				struct rpcrdma_create_data_internal *);
-+int rpcrdma_buffer_create(struct rpcrdma_xprt *);
- void rpcrdma_buffer_destroy(struct rpcrdma_buffer *);
  
- struct rpcrdma_req *rpcrdma_buffer_get(struct rpcrdma_buffer *);
+ 	buf->rb_max_requests = cdata->max_requests;
+@@ -1227,62 +1290,29 @@ rpcrdma_buffer_create(struct rpcrdma_xprt *r_xprt)
+ 		break;
+ 	}
+ 
+-	/*
+-	 * Allocate/init the request/reply buffers. Doing this
+-	 * using kmalloc for now -- one for each buf.
+-	 */
+-	wlen = 1 << fls(cdata->inline_wsize + sizeof(struct rpcrdma_req));
+-	rlen = 1 << fls(cdata->inline_rsize + sizeof(struct rpcrdma_rep));
+-	dprintk("RPC:       %s: wlen = %zu, rlen = %zu\n",
+-		__func__, wlen, rlen);
+-
+ 	for (i = 0; i < buf->rb_max_requests; i++) {
+ 		struct rpcrdma_req *req;
+ 		struct rpcrdma_rep *rep;
+ 
+-		req = kmalloc(wlen, GFP_KERNEL);
+-		if (req == NULL) {
++		req = rpcrdma_create_req(r_xprt);
++		if (IS_ERR(req)) {
+ 			dprintk("RPC:       %s: request buffer %d alloc"
+ 				" failed\n", __func__, i);
+-			rc = -ENOMEM;
++			rc = PTR_ERR(req);
+ 			goto out;
+ 		}
+-		memset(req, 0, sizeof(struct rpcrdma_req));
+ 		buf->rb_send_bufs[i] = req;
+-		buf->rb_send_bufs[i]->rl_buffer = buf;
+-
+-		rc = rpcrdma_register_internal(ia, req->rl_base,
+-				wlen - offsetof(struct rpcrdma_req, rl_base),
+-				&buf->rb_send_bufs[i]->rl_handle,
+-				&buf->rb_send_bufs[i]->rl_iov);
+-		if (rc)
+-			goto out;
+ 
+-		buf->rb_send_bufs[i]->rl_size = wlen -
+-						sizeof(struct rpcrdma_req);
+-
+-		rep = kmalloc(rlen, GFP_KERNEL);
+-		if (rep == NULL) {
++		rep = rpcrdma_create_rep(r_xprt);
++		if (IS_ERR(rep)) {
+ 			dprintk("RPC:       %s: reply buffer %d alloc failed\n",
+ 				__func__, i);
+-			rc = -ENOMEM;
++			rc = PTR_ERR(rep);
+ 			goto out;
+ 		}
+-		memset(rep, 0, sizeof(struct rpcrdma_rep));
+ 		buf->rb_recv_bufs[i] = rep;
+-		buf->rb_recv_bufs[i]->rr_buffer = buf;
+-
+-		rc = rpcrdma_register_internal(ia, rep->rr_base,
+-				rlen - offsetof(struct rpcrdma_rep, rr_base),
+-				&buf->rb_recv_bufs[i]->rr_handle,
+-				&buf->rb_recv_bufs[i]->rr_iov);
+-		if (rc)
+-			goto out;
+-
+ 	}
+-	dprintk("RPC:       %s: max_requests %d\n",
+-		__func__, buf->rb_max_requests);
+-	/* done */
++
+ 	return 0;
+ out:
+ 	rpcrdma_buffer_destroy(buf);
+@@ -1290,6 +1320,26 @@ out:
+ }
+ 
+ static void
++rpcrdma_destroy_rep(struct rpcrdma_ia *ia, struct rpcrdma_rep *rep)
++{
++	if (!rep)
++		return;
++
++	rpcrdma_deregister_internal(ia, rep->rr_handle, &rep->rr_iov);
++	kfree(rep);
++}
++
++static void
++rpcrdma_destroy_req(struct rpcrdma_ia *ia, struct rpcrdma_req *req)
++{
++	if (!req)
++		return;
++
++	rpcrdma_deregister_internal(ia, req->rl_handle, &req->rl_iov);
++	kfree(req);
++}
++
++static void
+ rpcrdma_destroy_fmrs(struct rpcrdma_buffer *buf)
+ {
+ 	struct rpcrdma_mw *r;
+@@ -1344,18 +1394,10 @@ rpcrdma_buffer_destroy(struct rpcrdma_buffer *buf)
+ 	dprintk("RPC:       %s: entering\n", __func__);
+ 
+ 	for (i = 0; i < buf->rb_max_requests; i++) {
+-		if (buf->rb_recv_bufs && buf->rb_recv_bufs[i]) {
+-			rpcrdma_deregister_internal(ia,
+-					buf->rb_recv_bufs[i]->rr_handle,
+-					&buf->rb_recv_bufs[i]->rr_iov);
+-			kfree(buf->rb_recv_bufs[i]);
+-		}
+-		if (buf->rb_send_bufs && buf->rb_send_bufs[i]) {
+-			rpcrdma_deregister_internal(ia,
+-					buf->rb_send_bufs[i]->rl_handle,
+-					&buf->rb_send_bufs[i]->rl_iov);
+-			kfree(buf->rb_send_bufs[i]);
+-		}
++		if (buf->rb_recv_bufs)
++			rpcrdma_destroy_rep(ia, buf->rb_recv_bufs[i]);
++		if (buf->rb_send_bufs)
++			rpcrdma_destroy_req(ia, buf->rb_send_bufs[i]);
+ 	}
+ 
+ 	switch (ia->ri_memreg_strategy) {
 
