@@ -1,80 +1,60 @@
-Return-Path: linux-kernel-owner@vger.kernel.org
-Date: Wed, 7 Jan 2015 15:06:24 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Holger =?utf-8?Q?Hoffst=C3=A4tte?=
-	<holger.hoffstaette@googlemail.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH] nfsd4: tweak rd_dircount accounting
-Message-ID: <20150107200624.GA8119@fieldses.org>
-References: <alpine.OSX.2.19.9992.1412180955000.62182@planck.local>
- <20141218151914.GB18179@fieldses.org>
- <pan.2014.12.18.15.42.53@googlemail.com>
- <20141218163254.GF18179@fieldses.org>
- <549303FC.9090604@googlemail.com>
- <20141218170653.GG18179@fieldses.org>
- <54932EA5.9090803@googlemail.com>
- <20141220180243.GA10273@fieldses.org>
- <pan.2015.01.07.00.25.06@googlemail.com>
- <20150107182141.GA7066@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20150107182141.GA7066@fieldses.org>
-Sender: linux-kernel-owner@vger.kernel.org
+Return-Path: linux-nfs-owner@vger.kernel.org
+Received: from mail-pa0-f49.google.com ([209.85.220.49]:64893 "EHLO
+	mail-pa0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753247AbbAHJS5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Jan 2015 04:18:57 -0500
+Received: by mail-pa0-f49.google.com with SMTP id eu11so10603343pac.8
+        for <linux-nfs@vger.kernel.org>; Thu, 08 Jan 2015 01:18:56 -0800 (PST)
+From: Omar Sandoval <osandov@osandov.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Cc: Al Viro <viro@ZenIV.linux.org.uk>, linux-fsdevel@vger.kernel.org,
+        Omar Sandoval <osandov@osandov.com>
+Subject: [PATCH RESEND] nfs: prevent truncate on active swapfile
+Date: Thu,  8 Jan 2015 01:18:30 -0800
+Message-Id: <fdc56e2887c3ed93f4e6a6e784ee0748c2d13295.1420708562.git.osandov@osandov.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+Most filesystems prevent truncation of an active swapfile by way of
+inode_newsize_ok, called from inode_change_ok. NFS doesn't call either
+from nfs_setattr, presumably because most of these checks are expected
+to be done server-side. However, the IS_SWAPFILE check can only be done
+client-side, and truncating a swapfile can't possibly be good.
 
-RFC 3530 14.2.24 says
-
-	This value represents the length of the names of the directory
-	entries and the cookie value for these entries.  This length
-	represents the XDR encoding of the data (names and cookies)...
-
-The "xdr encoding" of the name should probably include the 4 bytes for
-the length.
-
-But this is all just a hint so not worth e.g. backporting to stable.
-
-Also reshuffle some lines to more clearly group together the
-dircount-related code.
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Omar Sandoval <osandov@osandov.com>
 ---
- fs/nfsd/nfs4xdr.c | 7 ++++---
- 1 file changed, 4 insertions(+), 3 deletions(-)
+Hi, Trond,
 
-On Wed, Jan 07, 2015 at 01:21:41PM -0500, bfields wrote:
-> But anyway that reproducer worked and confirmed the following which I'll
-> probably pass along upstream today or tomorrow....
+Now that the holidays are over, could you take a look at this? It was
+generated against v3.19-rc3.
 
-I also noticed this nit while I was there.  I'm planning to queue this
-up for 3.20.--b.
+Thanks!
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 15f7b73e0c0f..91f7a3644ffb 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -2768,16 +2768,17 @@ nfsd4_encode_dirent(void *ccdv, const char *name, int namlen,
- 	if (entry_bytes > cd->rd_maxcount)
- 		goto fail;
- 	cd->rd_maxcount -= entry_bytes;
--	if (!cd->rd_dircount)
--		goto fail;
- 	/*
- 	 * RFC 3530 14.2.24 describes rd_dircount as only a "hint", so
- 	 * let's always let through the first entry, at least:
- 	 */
--	name_and_cookie = 4 * XDR_QUADLEN(namlen) + 8;
-+	if (!cd->rd_dircount)
-+		goto fail;
-+	name_and_cookie = 4 + 4 * XDR_QUADLEN(namlen) + 8;
- 	if (name_and_cookie > cd->rd_dircount && cd->cookie_offset)
- 		goto fail;
- 	cd->rd_dircount -= min(cd->rd_dircount, name_and_cookie);
+ fs/nfs/inode.c | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 4bffe63..9205513 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -506,10 +506,15 @@ nfs_setattr(struct dentry *dentry, struct iattr *attr)
+ 		attr->ia_valid &= ~ATTR_MODE;
+ 
+ 	if (attr->ia_valid & ATTR_SIZE) {
++		loff_t i_size;
 +
- 	cd->cookie_offset = cookie_offset;
- skip_entry:
- 	cd->common.err = nfs_ok;
+ 		BUG_ON(!S_ISREG(inode->i_mode));
+ 
+-		if (attr->ia_size == i_size_read(inode))
++		i_size = i_size_read(inode);
++		if (attr->ia_size == i_size)
+ 			attr->ia_valid &= ~ATTR_SIZE;
++		else if (attr->ia_size < i_size && IS_SWAPFILE(inode))
++			return -ETXTBSY;
+ 	}
+ 
+ 	/* Optimization: if the end result is no change, don't RPC */
 -- 
-1.9.3
+2.2.1
 
