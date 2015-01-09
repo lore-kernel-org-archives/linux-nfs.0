@@ -1,13 +1,13 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f175.google.com ([209.85.213.175]:36368 "EHLO
-	mail-ig0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751191AbbAITWO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Jan 2015 14:22:14 -0500
+Received: from mail-ig0-f169.google.com ([209.85.213.169]:52188 "EHLO
+	mail-ig0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752143AbbAITWW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Jan 2015 14:22:22 -0500
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH v1 02/10] svcrdma: Remove unused variable
+Subject: [PATCH v1 03/10] svcrdma: Clean up read chunk counting
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Fri, 09 Jan 2015 14:22:12 -0500
-Message-ID: <20150109192211.4901.80811.stgit@klimt.1015granger.net>
+Date: Fri, 09 Jan 2015 14:22:20 -0500
+Message-ID: <20150109192220.4901.49642.stgit@klimt.1015granger.net>
 In-Reply-To: <20150109191910.4901.29548.stgit@klimt.1015granger.net>
 References: <20150109191910.4901.29548.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
@@ -15,32 +15,93 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Nit: remove an unused variable to squelch a compiler warning.
+The byte_count argument is not used, and the function is called
+only from one place.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- net/sunrpc/xprtrdma/svc_rdma_transport.c |    2 --
- 1 files changed, 0 insertions(+), 2 deletions(-)
+ include/linux/sunrpc/svc_rdma.h         |    2 --
+ net/sunrpc/xprtrdma/svc_rdma_marshal.c  |   16 ----------------
+ net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |   15 ++++++++++++---
+ 3 files changed, 12 insertions(+), 21 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-index 4e61880..4ba11d0 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-@@ -687,7 +687,6 @@ static struct svc_xprt *svc_rdma_create(struct svc_serv *serv,
+diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
+index 975da75..2280325 100644
+--- a/include/linux/sunrpc/svc_rdma.h
++++ b/include/linux/sunrpc/svc_rdma.h
+@@ -178,8 +178,6 @@ struct svcxprt_rdma {
+ #define RPCRDMA_MAX_REQ_SIZE    4096
+ 
+ /* svc_rdma_marshal.c */
+-extern void svc_rdma_rcl_chunk_counts(struct rpcrdma_read_chunk *,
+-				      int *, int *);
+ extern int svc_rdma_xdr_decode_req(struct rpcrdma_msg **, struct svc_rqst *);
+ extern int svc_rdma_xdr_decode_deferred_req(struct svc_rqst *);
+ extern int svc_rdma_xdr_encode_error(struct svcxprt_rdma *,
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_marshal.c b/net/sunrpc/xprtrdma/svc_rdma_marshal.c
+index 65b1462..b681855 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_marshal.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_marshal.c
+@@ -71,22 +71,6 @@ static u32 *decode_read_list(u32 *va, u32 *vaend)
+ }
+ 
+ /*
+- * Determine number of chunks and total bytes in chunk list. The chunk
+- * list has already been verified to fit within the RPCRDMA header.
+- */
+-void svc_rdma_rcl_chunk_counts(struct rpcrdma_read_chunk *ch,
+-			       int *ch_count, int *byte_count)
+-{
+-	/* compute the number of bytes represented by read chunks */
+-	*byte_count = 0;
+-	*ch_count = 0;
+-	for (; ch->rc_discrim != 0; ch++) {
+-		*byte_count = *byte_count + ntohl(ch->rc_target.rs_length);
+-		*ch_count = *ch_count + 1;
+-	}
+-}
+-
+-/*
+  * Decodes a write chunk list. The expected format is as follows:
+  *    descrim  : xdr_one
+  *    nchunks  : <count>
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+index 2c67de0..b3b7bb8 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+@@ -365,12 +365,22 @@ static int rdma_read_chunk_frmr(struct svcxprt_rdma *xprt,
+ 	return ret;
+ }
+ 
++static unsigned int
++rdma_rcl_chunk_count(struct rpcrdma_read_chunk *ch)
++{
++	unsigned int count;
++
++	for (count = 0; ch->rc_discrim != xdr_zero; ch++)
++		count++;
++	return count;
++}
++
+ static int rdma_read_chunks(struct svcxprt_rdma *xprt,
+ 			    struct rpcrdma_msg *rmsgp,
+ 			    struct svc_rqst *rqstp,
+ 			    struct svc_rdma_op_ctxt *head)
  {
- 	struct rdma_cm_id *listen_id;
- 	struct svcxprt_rdma *cma_xprt;
--	struct svc_xprt *xprt;
- 	int ret;
+-	int page_no, ch_count, ret;
++	int page_no, ret;
+ 	struct rpcrdma_read_chunk *ch;
+ 	u32 page_offset, byte_count;
+ 	u64 rs_offset;
+@@ -381,8 +391,7 @@ static int rdma_read_chunks(struct svcxprt_rdma *xprt,
+ 	if (!ch)
+ 		return 0;
  
- 	dprintk("svcrdma: Creating RDMA socket\n");
-@@ -698,7 +697,6 @@ static struct svc_xprt *svc_rdma_create(struct svc_serv *serv,
- 	cma_xprt = rdma_create_xprt(serv, 1);
- 	if (!cma_xprt)
- 		return ERR_PTR(-ENOMEM);
--	xprt = &cma_xprt->sc_xprt;
+-	svc_rdma_rcl_chunk_counts(ch, &ch_count, &byte_count);
+-	if (ch_count > RPCSVC_MAXPAGES)
++	if (rdma_rcl_chunk_count(ch) > RPCSVC_MAXPAGES)
+ 		return -EINVAL;
  
- 	listen_id = rdma_create_id(rdma_listen_handler, cma_xprt, RDMA_PS_TCP,
- 				   IB_QPT_RC);
+ 	/* The request is completed when the RDMA_READs complete. The
 
