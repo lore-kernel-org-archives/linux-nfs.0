@@ -1,100 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f180.google.com ([209.85.220.180]:37364 "EHLO
-	mail-vc0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756592AbbAIRnm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Jan 2015 12:43:42 -0500
-Received: by mail-vc0-f180.google.com with SMTP id im6so3608971vcb.11
-        for <linux-nfs@vger.kernel.org>; Fri, 09 Jan 2015 09:43:41 -0800 (PST)
-MIME-Version: 1.0
-In-Reply-To: <20150109093353.31a2e425@synchrony.poochiereds.net>
-References: <1420561721-9150-1-git-send-email-hch@lst.de>
-	<1420561721-9150-10-git-send-email-hch@lst.de>
-	<20150108164851.03b64e16@synchrony.poochiereds.net>
-	<20150109100551.GA23173@lst.de>
-	<20150109085130.0f862d24@synchrony.poochiereds.net>
-	<20150109171641.GA17464@lst.de>
-	<20150109092835.5fdbac5d@synchrony.poochiereds.net>
-	<20150109093353.31a2e425@synchrony.poochiereds.net>
-Date: Fri, 9 Jan 2015 09:43:41 -0800
-Message-ID: <CAHQdGtQDK9bfgutRg4vqvRhdr8ewxFDy5a6bD_aVrqr6oH8Riw@mail.gmail.com>
-Subject: Re: [PATCH 09/18] nfsd: implement pNFS operations
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Jeff Layton <jeff.layton@primarydata.com>
-Cc: Christoph Hellwig <hch@lst.de>, "J. Bruce Fields" <bfields@fieldses.org>,
+Received: from verein.lst.de ([213.95.11.211]:37202 "EHLO newverein.lst.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751107AbbAIStr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 9 Jan 2015 13:49:47 -0500
+Date: Fri, 9 Jan 2015 19:49:43 +0100
+From: Christoph Hellwig <hch@lst.de>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Jeff Layton <jeff.layton@primarydata.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Devel FS Linux <linux-fsdevel@vger.kernel.org>, xfs@oss.sgi.com,
         Thomas D Haynes <thomas.haynes@primarydata.com>,
-        Sachin Bhamare <sachin.bhamare@primarydata.com>
-Content-Type: text/plain; charset=UTF-8
+        Sachin Bhamare <sachin.bhamare@primarydata.com>, nfsv4@ietf.org
+Subject: rfc5661 errata 3901, was: Re: [PATCH 09/18] nfsd: implement pNFS
+	operations
+Message-ID: <20150109184943.GA18955@lst.de>
+References: <1420561721-9150-1-git-send-email-hch@lst.de> <1420561721-9150-10-git-send-email-hch@lst.de> <20150108164851.03b64e16@synchrony.poochiereds.net> <20150109100551.GA23173@lst.de> <20150109085130.0f862d24@synchrony.poochiereds.net> <20150109171641.GA17464@lst.de> <20150109092835.5fdbac5d@synchrony.poochiereds.net> <20150109093353.31a2e425@synchrony.poochiereds.net> <CAHQdGtQDK9bfgutRg4vqvRhdr8ewxFDy5a6bD_aVrqr6oH8Riw@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAHQdGtQDK9bfgutRg4vqvRhdr8ewxFDy5a6bD_aVrqr6oH8Riw@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jan 9, 2015 at 9:33 AM, Jeff Layton <jeff.layton@primarydata.com> wrote:
-> On Fri, 9 Jan 2015 09:28:35 -0800
-> Jeff Layton <jlayton@primarydata.com> wrote:
->
->>  On Fri, 9 Jan 2015 18:16:41 +0100
->> Christoph Hellwig <hch@lst.de> wrote:
->>
->> > On Fri, Jan 09, 2015 at 08:51:30AM -0800, Jeff Layton wrote:
->> > > Ok, it'd be good to document that in some comments then for the sake of
->> > > posterity (maybe it is later in the set -- I haven't gotten to the end
->> > > yet).
->> >
->> > What kinds of comments do you expect?  Not implementing unused features
->> > of a protocol should be the default for anything in Linux.
->> >
->>
->> I was thinking just a comment saying that ROC is always true in this
->> implementation, or maybe consider eliminating the lg_roc field in
->> struct nfsd4_layoutget altogether since it's currently always "1".
->>
->> It's a little confusing now since the encoder can handle the case where
->> lg_roc is 0, but the rest of the code can't.
->>
->> > > Now, that said...I think that your ROC semantics are wrong here. You
->> > > also have to take delegations into account. [1]
->> > >
->> > > Basically the semantics that you want are that nfsd should do all of
->> > > the ROC stuff on last close iff there are no outstanding delegations or
->> > > on delegreturn iff there are no opens.
->> > >
->> > > What we ended up doing in the unreleased code we have was to create a
->> > > new per-client and per-file object (that we creatively called an
->> > > "odstate"). An open stateid and a delegation stateid would hold a
->> > > reference to this object which is put when those stateids are freed.
->> > > When its refcount goes to zero, then we'd free any outstanding layouts
->> > > on the file for that client and free the object.
->> > >
->> > > You probably want to do something similar here.
->> > >
->> > > [1]: Tom and Trond mentioned that there's a RFC5661 errata pending for
->> > >      this, but I don't see it right offhand.
->> >
->> > It would be good to look at the errata.  While the idea of keeping
->> > layouts around longer makes sense, I would only expect to do this
->> > if they layout state was created based on a delegation stateid, not
->> > a lock or open stateid.  In that case having the layouts hang off
->> > the "parent" stateid might be another option.
->>
->> I found it:
->>
->>     http://www.rfc-editor.org/errata_search.php?rfc=5661&eid=3226
->>
->
-> Oh, hmm...except that doesn't seem to have been updated according to
-> the discussion from around a year ago. See the thread entitled:
->
->     [nfsv4] NFSv4.1 errata id 3226 (the return of return-on-close layouts)
->
-> ...on thee nfsv4@ietf.org mailing list. Trond mentions it there.
-> Perhaps we need to revise that errata?
->
+On Fri, Jan 09, 2015 at 09:43:41AM -0800, Trond Myklebust wrote:
+> >     [nfsv4] NFSv4.1 errata id 3226 (the return of return-on-close layouts)
+> >
+> > ...on thee nfsv4@ietf.org mailing list. Trond mentions it there.
+> > Perhaps we need to revise that errata?
+> >
+> 
+> Please see:
+>      http://www.rfc-editor.org/errata_search.php?eid=3901
 
-Please see:
-     http://www.rfc-editor.org/errata_search.php?eid=3901
+I think the language in this errata is very confusing, especially:
 
--- 
-Trond Myklebust
-Linux NFS client maintainer, PrimaryData
-trond.myklebust@primarydata.com
+"After the client has closed all open stateids and returned the
+delegation stateids for a file for which logr_return_on_close
+was set to TRUE, the server MUST  invalidate all layout segments
+that were  issued to the client for that file."
+
+While the idea that return on close layouts should be valid as
+long as the "parent" stateid is around make a lot of sense, this
+requirement to track all open / delegation stateids per file/client
+combination seems insane.
+
+The only logical way to extend the original text is to require
+layouts to be implicitly returned when:
+
+ - the file is close for a layout stateid that is created based on
+   the open or lock stateid
+ - the delegation is returned for a layout stateid that is created
+   based on the delegation stateid.
+
+That is, only keep layouts opened based on the delegation stateid
+alive over a close if they are hanging off that delegation stateid.
