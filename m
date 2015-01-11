@@ -1,52 +1,35 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from casper.infradead.org ([85.118.1.10]:44341 "EHLO
-	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751866AbbAHRqd (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Jan 2015 12:46:33 -0500
-From: Christoph Hellwig <hch@lst.de>
-To: Jens Axboe <axboe@fb.com>
-Cc: David Howells <dhowells@redhat.com>, Tejun Heo <tj@kernel.org>,
+Received: from mail-qg0-f42.google.com ([209.85.192.42]:54313 "EHLO
+	mail-qg0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750872AbbAKRlI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 11 Jan 2015 12:41:08 -0500
+Date: Sun, 11 Jan 2015 12:41:03 -0500
+From: Tejun Heo <tj@kernel.org>
+To: Christoph Hellwig <hch@lst.de>
+Cc: Jens Axboe <axboe@fb.com>, David Howells <dhowells@redhat.com>,
         linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
         linux-mtd@lists.infradead.org, linux-nfs@vger.kernel.org,
         ceph-devel@vger.kernel.org
-Subject: [PATCH 06/12] nilfs2: set up s_bdi like the generic mount_bdev code
-Date: Thu,  8 Jan 2015 18:45:27 +0100
-Message-Id: <1420739133-27514-7-git-send-email-hch@lst.de>
-In-Reply-To: <1420739133-27514-1-git-send-email-hch@lst.de>
+Subject: Re: [PATCH 06/12] nilfs2: set up s_bdi like the generic mount_bdev
+ code
+Message-ID: <20150111174103.GM25319@htj.dyndns.org>
 References: <1420739133-27514-1-git-send-email-hch@lst.de>
+ <1420739133-27514-7-git-send-email-hch@lst.de>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1420739133-27514-7-git-send-email-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-mapping->backing_dev_info will go away, so don't rely on it.
+On Thu, Jan 08, 2015 at 06:45:27PM +0100, Christoph Hellwig wrote:
+> mapping->backing_dev_info will go away, so don't rely on it.
+> 
+> Signed-off-by: Christoph Hellwig <hch@lst.de>
+> Acked-by: Ryusuke Konishi <konishi.ryusuke@lab.ntt.co.jp>
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
-Acked-by: Ryusuke Konishi <konishi.ryusuke@lab.ntt.co.jp>
----
- fs/nilfs2/super.c | 4 +---
- 1 file changed, 1 insertion(+), 3 deletions(-)
+Reviewed-by: Tejun Heo <tj@kernel.org>
 
-diff --git a/fs/nilfs2/super.c b/fs/nilfs2/super.c
-index 2e5b3ec..3d4bbac 100644
---- a/fs/nilfs2/super.c
-+++ b/fs/nilfs2/super.c
-@@ -1057,7 +1057,6 @@ nilfs_fill_super(struct super_block *sb, void *data, int silent)
- {
- 	struct the_nilfs *nilfs;
- 	struct nilfs_root *fsroot;
--	struct backing_dev_info *bdi;
- 	__u64 cno;
- 	int err;
- 
-@@ -1077,8 +1076,7 @@ nilfs_fill_super(struct super_block *sb, void *data, int silent)
- 	sb->s_time_gran = 1;
- 	sb->s_max_links = NILFS_LINK_MAX;
- 
--	bdi = sb->s_bdev->bd_inode->i_mapping->backing_dev_info;
--	sb->s_bdi = bdi ? : &default_backing_dev_info;
-+	sb->s_bdi = &bdev_get_queue(sb->s_bdev)->backing_dev_info;
- 
- 	err = load_nilfs(nilfs, sb);
- 	if (err)
+Thanks.
+
 -- 
-1.9.1
-
+tejun
