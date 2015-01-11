@@ -1,113 +1,80 @@
-Return-Path: linux-kernel-owner@vger.kernel.org
-From: Rickard Strandqvist <rickard_strandqvist@spectrumdigital.se>
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Weston Andros Adamson <dros@primarydata.com>
-Cc: Rickard Strandqvist <rickard_strandqvist@spectrumdigital.se>,
-        Christoph Hellwig <hch@lst.de>,
-        Anna Schumaker <Anna.Schumaker@netapp.com>,
-        Boaz Harrosh <ooo@electrozaur.com>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: [PATCH] nfs: objlayout: objio_osd: Remove unused function
-Date: Sun, 11 Jan 2015 19:24:54 +0100
-Message-Id: <1421000694-22451-1-git-send-email-rickard_strandqvist@spectrumdigital.se>
-Sender: linux-kernel-owner@vger.kernel.org
+Return-Path: linux-nfs-owner@vger.kernel.org
+Received: from mx1.redhat.com ([209.132.183.28]:43429 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750783AbbAKPYn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 11 Jan 2015 10:24:43 -0500
+Message-ID: <54B295B7.9070509@RedHat.com>
+Date: Sun, 11 Jan 2015 10:24:39 -0500
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: Neil Brown <neilb@suse.de>
+CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: A couple systemd questions
+Content-Type: text/plain; charset=utf-8
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Remove the function objio_alloc_deviceid_node() that is not used anywhere.
+Hey Neil,
 
-This was partially found by using a static code analysis program called cppcheck.
+You being the architect of the systemd scribes ;-)  I have a 
+couple questions. 
 
-Signed-off-by: Rickard Strandqvist <rickard_strandqvist@spectrumdigital.se>
----
- fs/nfs/objlayout/objio_osd.c |   75 ------------------------------------------
- 1 file changed, 75 deletions(-)
+The nfs-server service brings both the rpc.mountd and rpc.idmapd 
+daemons up when the service is started, but only 
+brings rpc.mountd down when the service is stopped. 
 
-diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
-index 9e5bc42..0c7c94f 100644
---- a/fs/nfs/objlayout/objio_osd.c
-+++ b/fs/nfs/objlayout/objio_osd.c
-@@ -82,81 +82,6 @@ struct objio_state {
- 	struct ore_io_state *ios;
- };
- 
--/* Send and wait for a get_device_info of devices in the layout,
--   then look them up with the osd_initiator library */
--struct nfs4_deviceid_node *
--objio_alloc_deviceid_node(struct nfs_server *server, struct pnfs_device *pdev,
--			gfp_t gfp_flags)
--{
--	struct pnfs_osd_deviceaddr *deviceaddr;
--	struct objio_dev_ent *ode = NULL;
--	struct osd_dev *od;
--	struct osd_dev_info odi;
--	bool retry_flag = true;
--	__be32 *p;
--	int err;
--
--	deviceaddr = kzalloc(sizeof(*deviceaddr), gfp_flags);
--	if (!deviceaddr)
--		return NULL;
--
--	p = page_address(pdev->pages[0]);
--	pnfs_osd_xdr_decode_deviceaddr(deviceaddr, p);
--
--	odi.systemid_len = deviceaddr->oda_systemid.len;
--	if (odi.systemid_len > sizeof(odi.systemid)) {
--		dprintk("%s: odi.systemid_len > sizeof(systemid=%zd)\n",
--			__func__, sizeof(odi.systemid));
--		err = -EINVAL;
--		goto out;
--	} else if (odi.systemid_len)
--		memcpy(odi.systemid, deviceaddr->oda_systemid.data,
--		       odi.systemid_len);
--	odi.osdname_len	 = deviceaddr->oda_osdname.len;
--	odi.osdname	 = (u8 *)deviceaddr->oda_osdname.data;
--
--	if (!odi.osdname_len && !odi.systemid_len) {
--		dprintk("%s: !odi.osdname_len && !odi.systemid_len\n",
--			__func__);
--		err = -ENODEV;
--		goto out;
--	}
--
--retry_lookup:
--	od = osduld_info_lookup(&odi);
--	if (unlikely(IS_ERR(od))) {
--		err = PTR_ERR(od);
--		dprintk("%s: osduld_info_lookup => %d\n", __func__, err);
--		if (err == -ENODEV && retry_flag) {
--			err = objlayout_autologin(deviceaddr);
--			if (likely(!err)) {
--				retry_flag = false;
--				goto retry_lookup;
--			}
--		}
--		goto out;
--	}
--
--	dprintk("Adding new dev_id(%llx:%llx)\n",
--		_DEVID_LO(&pdev->dev_id), _DEVID_HI(&pdev->dev_id));
--
--	ode = kzalloc(sizeof(*ode), gfp_flags);
--	if (!ode) {
--		dprintk("%s: -ENOMEM od=%p\n", __func__, od);
--		goto out;
--	}
--
--	nfs4_init_deviceid_node(&ode->id_node, server, &pdev->dev_id);
--	kfree(deviceaddr);
--
--	ode->od.od = od;
--	return &ode->id_node;
--
--out:
--	kfree(deviceaddr);
--	return NULL;
--}
--
- static void copy_single_comp(struct ore_components *oc, unsigned c,
- 			     struct pnfs_osd_object_cred *src_comp)
- {
--- 
-1.7.10.4
+I'm assuming that was done because the client was 
+using  rpc.idmapd to do its id mapping, but that is no 
+longer the case with some clients. They use the 
+key rings via nfsidmap command to do the id mapping
 
+So I'm thinking the nfs-server service should bring 
+both daemons up and down when the server is started 
+and stopped since the server is the only service using 
+the rpc.idmapd.
+
+My attempted at doing this is to change the 
+nfs-idmap service to do the following:
+
+[Unit]
+Description=NFSv4 ID-name mapping service
+Requires=var-lib-nfs-rpc_pipefs.mount
+After=var-lib-nfs-rpc_pipefs.mount
+After=network.target
+PartOf=nfs-server.service
+PartOf=nfs-utils.service
+
+Wants=nfs-config.service
+After=nfs-config.service
+
+[Service]
+EnvironmentFile=-/run/sysconfig/nfs-utils
+Type=forking
+ExecStart=/usr/sbin/rpc.idmapd $RPCIDMAPDARGS
+
+Almost exactly what the  rpc-mountd service does. 
+
+Now I thought the "PartOf=nfs-server.service" would cause
+rpc.idmapd to come down when the server came down, but that 
+does not seem to be the case... The only way I can get 
+nfs-idmap service to come down is to explicitly stop it... 
+What am I missing?
+
+Secondly, in all of the services where rpcbind is needed you 
+reference the rpcbind.target instead of the rpcbind.service. 
+Why is that?
+
+The reason I'm ask is,  I'm seeing a problem  where rpc.statd fails 
+to start because nfs_svc_create() fails. Meaning it was unable to
+either create UPD/TCP sockets or the registrations to rpcbind fails.
+
+I'm thinking its the later due a race between rpcbind and statd 
+starting. I've seen races like before in with systemd services... 
+
+So I'm thinking that race would not exist if the rpc-statd service
+would use rpcbind.service in the "Requires=" and "After=" 
+statements instead of rpcbind.target. Right?? 
+
+tia,
+
+steved.
