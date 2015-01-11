@@ -1,48 +1,35 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from casper.infradead.org ([85.118.1.10]:44337 "EHLO
-	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756900AbbAHRqc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Jan 2015 12:46:32 -0500
-From: Christoph Hellwig <hch@lst.de>
-To: Jens Axboe <axboe@fb.com>
-Cc: David Howells <dhowells@redhat.com>, Tejun Heo <tj@kernel.org>,
+Received: from mail-qa0-f48.google.com ([209.85.216.48]:44270 "EHLO
+	mail-qa0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750872AbbAKRkR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 11 Jan 2015 12:40:17 -0500
+Date: Sun, 11 Jan 2015 12:40:13 -0500
+From: Tejun Heo <tj@kernel.org>
+To: Christoph Hellwig <hch@lst.de>
+Cc: Jens Axboe <axboe@fb.com>, David Howells <dhowells@redhat.com>,
         linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
         linux-mtd@lists.infradead.org, linux-nfs@vger.kernel.org,
         ceph-devel@vger.kernel.org
-Subject: [PATCH 05/12] block_dev: get bdev inode bdi directly from the block device
-Date: Thu,  8 Jan 2015 18:45:26 +0100
-Message-Id: <1420739133-27514-6-git-send-email-hch@lst.de>
-In-Reply-To: <1420739133-27514-1-git-send-email-hch@lst.de>
+Subject: Re: [PATCH 05/12] block_dev: get bdev inode bdi directly from the
+ block device
+Message-ID: <20150111174013.GL25319@htj.dyndns.org>
 References: <1420739133-27514-1-git-send-email-hch@lst.de>
+ <1420739133-27514-6-git-send-email-hch@lst.de>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1420739133-27514-6-git-send-email-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Directly grab the backing_dev_info from the request_queue instead of
-detouring through the address_space.
+On Thu, Jan 08, 2015 at 06:45:26PM +0100, Christoph Hellwig wrote:
+> Directly grab the backing_dev_info from the request_queue instead of
+> detouring through the address_space.
+> 
+> Signed-off-by: Christoph Hellwig <hch@lst.de>
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
----
- fs/fs-writeback.c | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+Reviewed-by: Tejun Heo <tj@kernel.org>
 
-diff --git a/fs/fs-writeback.c b/fs/fs-writeback.c
-index 2d609a5..e8116a4 100644
---- a/fs/fs-writeback.c
-+++ b/fs/fs-writeback.c
-@@ -69,10 +69,10 @@ EXPORT_SYMBOL(writeback_in_progress);
- static inline struct backing_dev_info *inode_to_bdi(struct inode *inode)
- {
- 	struct super_block *sb = inode->i_sb;
--
-+#ifdef CONFIG_BLOCK
- 	if (sb_is_blkdev_sb(sb))
--		return inode->i_mapping->backing_dev_info;
--
-+		return blk_get_backing_dev_info(I_BDEV(inode));
-+#endif
- 	return sb->s_bdi;
- }
- 
+Thanks.
+
 -- 
-1.9.1
-
+tejun
