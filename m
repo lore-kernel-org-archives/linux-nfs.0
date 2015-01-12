@@ -1,37 +1,20 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from sender1.zohomail.com ([72.5.230.103]:38628 "EHLO
-	sender1.zohomail.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751260AbbANXSt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Jan 2015 18:18:49 -0500
-Message-ID: <54B6F7C1.5040208@zoho.com>
-Date: Thu, 15 Jan 2015 00:12:01 +0100
-From: Ralph Zack <ralphz@zoho.com>
-MIME-Version: 1.0
-To: linux-nfs@vger.kernel.org
-Subject: Secure NFSv4 mounts and daemons
-Content-Type: text/plain; charset=utf-8
+Received: from agrinetmail20.outgw.tn ([196.203.250.26]:46735 "EHLO
+	agrinetmail20.outgw.tn" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751938AbbAMAlY convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Jan 2015 19:41:24 -0500
+Content-Type: text/plain; charset=US-ASCII
+Subject: Re:Investment
+To: Recipients <chaibi.medthameur@iresa.agrinet.tn>
+From: "Suklee Peck" <chaibi.medthameur@iresa.agrinet.tn>
+Date: Mon, 12 Jan 2015 10:32:57 -0800
+Reply-To: saitt1@qq.com
+Message-Id: <20150112222840.89502249A8@mta.agrinet.tn>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+MIME-Version: 1.0
 
-Hi all,
+I'm contacting you on behalf of an investment placed under management 5 years ago by Shui bian. He needs assistance in investing these funds. If you are interested, you can write to his private email ( saitt1@qq.com ) for further details.
 
-I have a number of NFSv4 shares which should only be accessible after
-successful authentication, for which reason they are exported with
-sec=krb5p. However, this method requires the user to obtain a kerberos
-ticket to access files on the share, which is fine for regular users but
-causes issues for daemons which are not kerberos-aware.
-
-What is the common way to handle this problem? It can hardly be the only
-solution to patch each service to obtain a ticket at startup. Please
-correct me if I'm wrong, but I could not find any mechanism besides
-kerberos that provides encryption and authentication for NFS shares. I'd
-be fine with authentication on a host level, I mainly want to ensure
-that only trusted machines can accesses these shares and that all
-traffic is encrypted. Without the overhead of establishing a VPN
-connection between client and server, in case anyone was going to
-suggest that ;)
-
-Cheers,
-
-Ralph
-
+Best Regards,
+Suklee Peck
