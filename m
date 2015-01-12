@@ -1,42 +1,25 @@
-Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f177.google.com ([209.85.216.177]:51098 "EHLO
-	mail-qc0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751044AbbAKSj2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 11 Jan 2015 13:39:28 -0500
-Date: Sun, 11 Jan 2015 13:39:24 -0500
-From: Tejun Heo <tj@kernel.org>
-To: Christoph Hellwig <hch@lst.de>
-Cc: Jens Axboe <axboe@fb.com>, David Howells <dhowells@redhat.com>,
-        linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
-        linux-mtd@lists.infradead.org, linux-nfs@vger.kernel.org,
-        ceph-devel@vger.kernel.org
-Subject: Re: [PATCH 12/12] fs: remove default_backing_dev_info
-Message-ID: <20150111183924.GQ25319@htj.dyndns.org>
-References: <1420739133-27514-1-git-send-email-hch@lst.de>
- <1420739133-27514-13-git-send-email-hch@lst.de>
+Return-Path: linux-kernel-owner@vger.kernel.org
+Date: Mon, 12 Jan 2015 13:37:18 +0100
+From: Christoph Hellwig <hch@lst.de>
+To: Rickard Strandqvist <rickard_strandqvist@spectrumdigital.se>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Weston Andros Adamson <dros@primarydata.com>,
+        Anna Schumaker <Anna.Schumaker@netapp.com>,
+        Boaz Harrosh <ooo@electrozaur.com>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] nfs: objlayout: objio_osd: Remove unused function
+Message-ID: <20150112123718.GC29325@lst.de>
+References: <1421000694-22451-1-git-send-email-rickard_strandqvist@spectrumdigital.se>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1420739133-27514-13-git-send-email-hch@lst.de>
-Sender: linux-nfs-owner@vger.kernel.org
+In-Reply-To: <1421000694-22451-1-git-send-email-rickard_strandqvist@spectrumdigital.se>
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jan 08, 2015 at 06:45:33PM +0100, Christoph Hellwig wrote:
-> Now that default_backing_dev_info is not used for writeback purposes we can
-> git rid of it easily:
+On Sun, Jan 11, 2015 at 07:24:54PM +0100, Rickard Strandqvist wrote:
+> Remove the function objio_alloc_deviceid_node() that is not used anywhere.
 > 
->  - instead of using it's name for tracing unregistered bdi we just use
->    "unknown"
->  - btrfs and ceph can just assign the default read ahead window themselves
->    like several other filesystems already do.
->  - we can assign noop_backing_dev_info as the default one in alloc_super.
->    All filesystems already either assigned their own or
->    noop_backing_dev_info.
-> 
-> Signed-off-by: Christoph Hellwig <hch@lst.de>
+> This was partially found by using a static code analysis program called cppcheck.
 
-Reviewed-by: Tejun Heo <tj@kernel.org>
-
-Thanks.
-
--- 
-tejun
+It needs to be wire up, just like the alloc_deviceid_node instances in
+other layout drivers.  I'll send a proper fix.
