@@ -1,67 +1,104 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f181.google.com ([209.85.223.181]:32837 "EHLO
-	mail-ie0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753539AbbAOQaP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Jan 2015 11:30:15 -0500
-Received: by mail-ie0-f181.google.com with SMTP id rl12so15760934iec.12
-        for <linux-nfs@vger.kernel.org>; Thu, 15 Jan 2015 08:30:14 -0800 (PST)
-MIME-Version: 1.0
-In-Reply-To: <20150115162618.GA14681@lst.de>
-References: <1420561721-9150-10-git-send-email-hch@lst.de>
-	<20150108164851.03b64e16@synchrony.poochiereds.net>
-	<20150109100551.GA23173@lst.de>
-	<20150109085130.0f862d24@synchrony.poochiereds.net>
-	<20150109171641.GA17464@lst.de>
-	<20150109092835.5fdbac5d@synchrony.poochiereds.net>
-	<20150109093353.31a2e425@synchrony.poochiereds.net>
-	<CAHQdGtQDK9bfgutRg4vqvRhdr8ewxFDy5a6bD_aVrqr6oH8Riw@mail.gmail.com>
-	<20150109184943.GA18955@lst.de>
-	<20150114191627.GA76105@kitty>
-	<20150115162618.GA14681@lst.de>
-Date: Thu, 15 Jan 2015 11:30:14 -0500
-Message-ID: <CAABAsM4s4WA1oJD-Rz_xGRHfCQ49i0NvptDL_1taeXX7erPavw@mail.gmail.com>
-Subject: Re: [nfsv4] rfc5661 errata 3901, was: Re: [PATCH 09/18] nfsd:
- implement pNFS operations
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+Received: from mail-yh0-f47.google.com ([209.85.213.47]:63187 "EHLO
+	mail-yh0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751322AbbALRyP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Jan 2015 12:54:15 -0500
+Received: by mail-yh0-f47.google.com with SMTP id f73so10267529yha.6
+        for <linux-nfs@vger.kernel.org>; Mon, 12 Jan 2015 09:54:15 -0800 (PST)
+Date: Mon, 12 Jan 2015 09:54:11 -0800
+From: Tom Haynes <thomas.haynes@primarydata.com>
 To: Christoph Hellwig <hch@lst.de>
-Cc: Tom Haynes <thomas.haynes@primarydata.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Sachin Bhamare <sachin.bhamare@primarydata.com>,
-        "nfsv4@ietf.org" <nfsv4@ietf.org>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jeff.layton@primarydata.com>
-Content-Type: text/plain; charset=UTF-8
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@primarydata.com>, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com
+Subject: Re: [PATCH 09/18] nfsd: implement pNFS operations
+Message-ID: <20150112175411.GA10611@jhereg.localdomain>
+References: <1420561721-9150-1-git-send-email-hch@lst.de>
+ <1420561721-9150-10-git-send-email-hch@lst.de>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1420561721-9150-10-git-send-email-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jan 15, 2015 at 11:26 AM, Christoph Hellwig <hch@lst.de> wrote:
-> On Wed, Jan 14, 2015 at 11:16:27AM -0800, Tom Haynes wrote:
->> Christoph,
->>
->> I don't understand this concern. Section 8.2.1:
->>
->> open stateids: OPEN state for a given client ID/open-owner/filehandle triple
->>
->> delegation stateids: A stateid represents a single delegation held by a client for a
->>       particular filehandle.
->>
->> By definition, open/delegation stateids are tracked per
->> file/client combination.
->
-> My concern is that the language in errata 3901 says the server should
-> invalidate all layouts after all open stateids are closed, and all
-> delegation stateids are returned for a given file, which means the
-> server needs to add another object just to track the layouts.  If
-> on the other hand we say the lifetime of the layouts is tied to
-> the open stateid or the delegation stateid used to create the
-> layout stateid we can track the outstanding layouts in those
-> open/delegation stateid (and the lock stateid as well).
->
+On Tue, Jan 06, 2015 at 05:28:32PM +0100, Christoph Hellwig wrote:
 
-The problem, in my mind, is that defeats the main purpose of
-return-on-close, which is to reduce the on-the-wire chattiness of the
-protocol. How one implements that internally on the server is not
-really a concern that should be reflected in the protocol.
+> +#ifdef CONFIG_NFSD_PNFS
+> +static __be32
+> +nfsd4_encode_getdeviceinfo(struct nfsd4_compoundres *resp, __be32 nfserr,
+> +		struct nfsd4_getdeviceinfo *gdev)
+> +{
+> +	struct xdr_stream *xdr = &resp->xdr;
+> +	const struct nfsd4_layout_ops *ops =
+> +		nfsd4_layout_ops[gdev->gd_layout_type];
+> +	u32 starting_len = xdr->buf->len, needed_len;
+> +	__be32 *p;
+> +
+> +	dprintk("%s: err %d\n", __func__, nfserr);
+> +	if (nfserr)
+> +		goto out;
 
-Cheers
-  Trond
+In nfsd4_block_get_device_info_simple(), gdp->gd_device might have
+been allocated, but sb->s_export_op->get_uuid() might have returned
+an error, which would cause a leak here.
+
+> +
+> +	p = xdr_reserve_space(xdr, 4);
+> +	if (!p)
+> +		return nfserr_resource;
+
+gdp->gd_device can be leaked here.
+
+> +	*p++ = cpu_to_be32(gdev->gd_layout_type);
+> +
+> +	/* If maxcount is 0 then just update notifications */
+> +	if (gdev->gd_maxcount != 0) {
+> +		nfserr = ops->encode_getdeviceinfo(xdr, gdev);
+> +		if (nfserr) {
+> +			/*
+> +			 * We don't bother to burden the layout drivers with
+> +			 * enforcing gd_maxcount, just tell the client to
+> +			 * come back with a bigger buffer if it's not enough.
+> +			 */
+> +			if (xdr->buf->len + 4 > gdev->gd_maxcount)
+> +				goto toosmall;
+> +			goto out;
+> +		}
+> +	}
+> +
+> +	if (gdev->gd_notify_types) {
+> +		p = xdr_reserve_space(xdr, 4 + 4);
+> +		if (!p)
+> +			return nfserr_resource;
+
+gdp->gd_device can be leaked here.
+
+> +		*p++ = cpu_to_be32(1);			/* bitmap length */
+> +		*p++ = cpu_to_be32(gdev->gd_notify_types);
+> +	} else {
+> +		p = xdr_reserve_space(xdr, 4);
+> +		if (!p)
+> +			return nfserr_resource;
+
+gdp->gd_device can be leaked here.
+
+> +		*p++ = 0;
+> +	}
+> +
+> +out:
+> +	kfree(gdev->gd_device);
+> +	dprintk("%s: done: %d\n", __func__, be32_to_cpu(nfserr));
+> +	return nfserr;
+> +
+> +toosmall:
+> +	dprintk("%s: maxcount too small\n", __func__);
+> +	needed_len = xdr->buf->len + 4 /* notifications */;
+> +	xdr_truncate_encode(xdr, starting_len);
+> +	p = xdr_reserve_space(xdr, 4);
+> +	if (!p)
+> +		return nfserr_resource;
+> +	*p++ = cpu_to_be32(needed_len);
+> +	nfserr = nfserr_toosmall;
+> +	goto out;
+> +}
+> +
