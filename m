@@ -1,127 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx144.netapp.com ([216.240.21.25]:38175 "EHLO mx144.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753712AbbAMTPH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 13 Jan 2015 14:15:07 -0500
-Message-ID: <54B56EB8.2060703@Netapp.com>
-Date: Tue, 13 Jan 2015 14:15:04 -0500
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-MIME-Version: 1.0
-To: Tom Haynes <thomas.haynes@primarydata.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Received: from mail-yh0-f49.google.com ([209.85.213.49]:59071 "EHLO
+	mail-yh0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751049AbbAMTmt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Jan 2015 14:42:49 -0500
+Received: by mail-yh0-f49.google.com with SMTP id f10so2472921yha.8
+        for <linux-nfs@vger.kernel.org>; Tue, 13 Jan 2015 11:42:49 -0800 (PST)
+Date: Tue, 13 Jan 2015 11:42:45 -0800
+From: Tom Haynes <thomas.haynes@primarydata.com>
+To: Anna Schumaker <Anna.Schumaker@netapp.com>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
 Subject: Re: [PATCH v3 42/49] nfs41: add range to layoutreturn args
-References: <1420590534-84063-1-git-send-email-loghyr@primarydata.com> <1420590534-84063-43-git-send-email-loghyr@primarydata.com>
-In-Reply-To: <1420590534-84063-43-git-send-email-loghyr@primarydata.com>
-Content-Type: text/plain; charset="utf-8"
+Message-ID: <20150113194245.GB90833@kitty>
+References: <1420590534-84063-1-git-send-email-loghyr@primarydata.com>
+ <1420590534-84063-43-git-send-email-loghyr@primarydata.com>
+ <54B56EB8.2060703@Netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <54B56EB8.2060703@Netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Tao,
+On Tue, Jan 13, 2015 at 02:15:04PM -0500, Anna Schumaker wrote:
+> Hi Tao,
+> 
+> On 01/06/2015 07:28 PM, Tom Haynes wrote:
+> > From: Peng Tao <tao.peng@primarydata.com>
+> > 
+> > -	lrp->args.iomode = iomode;
+> > +	lrp->args.range.iomode = iomode;
+> > +	lrp->args.range.offset = offset;
+> > +	lrp->args.range.length = length;
+> 
+> Callers of pnfs_send_layoutreturn() are always passing offset = 0 and length = NFS4_MAX_UINT64.  Can we have pnfs_send_layoutreturn() always set these values, rather than passing them as function parameters?
+> 
 
-On 01/06/2015 07:28 PM, Tom Haynes wrote:
-> From: Peng Tao <tao.peng@primarydata.com>
-> 
-> So that callers can specify which range to return.
-> 
-> Signed-off-by: Peng Tao <tao.peng@primarydata.com>
-> Signed-off-by: Tom Haynes <loghyr@primarydata.com>
-> ---
->  fs/nfs/nfs4xdr.c        |  6 +++---
->  fs/nfs/pnfs.c           | 14 +++++++++-----
->  include/linux/nfs_xdr.h |  2 +-
->  3 files changed, 13 insertions(+), 9 deletions(-)
-> 
-> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-> index 3c3ff63..56d4c91 100644
-> --- a/fs/nfs/nfs4xdr.c
-> +++ b/fs/nfs/nfs4xdr.c
-> @@ -2012,11 +2012,11 @@ encode_layoutreturn(struct xdr_stream *xdr,
->  	p = reserve_space(xdr, 16);
->  	*p++ = cpu_to_be32(0);		/* reclaim. always 0 for now */
->  	*p++ = cpu_to_be32(args->layout_type);
-> -	*p++ = cpu_to_be32(args->iomode);
-> +	*p++ = cpu_to_be32(args->range.iomode);
->  	*p = cpu_to_be32(RETURN_FILE);
->  	p = reserve_space(xdr, 16);
-> -	p = xdr_encode_hyper(p, 0);
-> -	p = xdr_encode_hyper(p, NFS4_MAX_UINT64);
-> +	p = xdr_encode_hyper(p, args->range.offset);
-> +	p = xdr_encode_hyper(p, args->range.length);
->  	spin_lock(&args->inode->i_lock);
->  	encode_nfs4_stateid(xdr, &args->stateid);
->  	spin_unlock(&args->inode->i_lock);
-> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-> index 685af4f..63beace 100644
-> --- a/fs/nfs/pnfs.c
-> +++ b/fs/nfs/pnfs.c
-> @@ -52,7 +52,7 @@ static LIST_HEAD(pnfs_modules_tbl);
->  
->  static int
->  pnfs_send_layoutreturn(struct pnfs_layout_hdr *lo, nfs4_stateid stateid,
-> -		       enum pnfs_iomode iomode);
-> +		       enum pnfs_iomode iomode, u64 offset, u64 length);
->  
->  /* Return the registered pnfs layout driver module matching given id */
->  static struct pnfs_layoutdriver_type *
-> @@ -392,7 +392,8 @@ pnfs_put_lseg(struct pnfs_layout_segment *lseg)
->  		spin_unlock(&inode->i_lock);
->  		pnfs_free_lseg(lseg);
->  		if (need_return)
-> -			pnfs_send_layoutreturn(lo, stateid, iomode);
-> +			pnfs_send_layoutreturn(lo, stateid, iomode, 0,
-> +					       NFS4_MAX_UINT64);
->  		else
->  			pnfs_put_layout_hdr(lo);
->  	}
-> @@ -897,7 +898,7 @@ static void pnfs_clear_layoutcommit(struct inode *inode,
->  
->  static int
->  pnfs_send_layoutreturn(struct pnfs_layout_hdr *lo, nfs4_stateid stateid,
-> -		       enum pnfs_iomode iomode)
-> +		       enum pnfs_iomode iomode, u64 offset, u64 length)
->  {
->  	struct inode *ino = lo->plh_inode;
->  	struct nfs4_layoutreturn *lrp;
-> @@ -916,7 +917,9 @@ pnfs_send_layoutreturn(struct pnfs_layout_hdr *lo, nfs4_stateid stateid,
->  	lrp->args.stateid = stateid;
->  	lrp->args.layout_type = NFS_SERVER(ino)->pnfs_curr_ld->id;
->  	lrp->args.inode = ino;
-> -	lrp->args.iomode = iomode;
-> +	lrp->args.range.iomode = iomode;
-> +	lrp->args.range.offset = offset;
-> +	lrp->args.range.length = length;
+Hi Anna,
 
-Callers of pnfs_send_layoutreturn() are always passing offset = 0 and length = NFS4_MAX_UINT64.  Can we have pnfs_send_layoutreturn() always set these values, rather than passing them as function parameters?
+This is future-proofing - i.e., add the parameters such
+that when we allow only returning part of the file we
+already have the support in place.
 
 Thanks,
-Anna
-
->  	lrp->args.layout = lo;
->  	lrp->clp = NFS_SERVER(ino)->nfs_client;
->  	lrp->cred = lo->plh_lc_cred;
-> @@ -987,7 +990,8 @@ _pnfs_return_layout(struct inode *ino)
->  	spin_unlock(&ino->i_lock);
->  	pnfs_free_lseg_list(&tmp_list);
->  
-> -	status = pnfs_send_layoutreturn(lo, stateid, IOMODE_ANY);
-> +	status = pnfs_send_layoutreturn(lo, stateid, IOMODE_ANY, 0,
-> +					NFS4_MAX_UINT64);
->  out:
->  	dprintk("<-- %s status: %d\n", __func__, status);
->  	return status;
-> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-> index 6400a1e..3637923 100644
-> --- a/include/linux/nfs_xdr.h
-> +++ b/include/linux/nfs_xdr.h
-> @@ -293,7 +293,7 @@ struct nfs4_layoutreturn_args {
->  	struct nfs4_sequence_args seq_args;
->  	struct pnfs_layout_hdr *layout;
->  	struct inode *inode;
-> -	enum pnfs_iomode iomode;
-> +	struct pnfs_layout_range range;
->  	nfs4_stateid stateid;
->  	__u32   layout_type;
->  };
-> 
-
+Tom
