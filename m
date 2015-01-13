@@ -1,59 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:43925 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751284AbbAFTRe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 6 Jan 2015 14:17:34 -0500
-Date: Tue, 6 Jan 2015 14:17:32 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Christoph Hellwig <hch@lst.de>
-Cc: Jeff Layton <jlayton@primarydata.com>, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com
-Subject: Re: a simple and scalable pNFS block layout server
-Message-ID: <20150106191731.GC28003@fieldses.org>
-References: <1420561721-9150-1-git-send-email-hch@lst.de>
- <20150106173222.GF12067@fieldses.org>
- <20150106175611.GA16413@lst.de>
+Received: from mail-ie0-f174.google.com ([209.85.223.174]:43124 "EHLO
+	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751323AbbAMQCa (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Jan 2015 11:02:30 -0500
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH v2 00/10] NFS/RDMA server for 3.20
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
+Date: Tue, 13 Jan 2015 11:02:28 -0500
+Message-ID: <20150113155904.8118.57718.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <20150106175611.GA16413@lst.de>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jan 06, 2015 at 06:56:11PM +0100, Christoph Hellwig wrote:
-> On Tue, Jan 06, 2015 at 12:32:22PM -0500, J. Bruce Fields wrote:
-> > 	- do we have evidence that this is useful in its current form?
-> 
-> What is your threshold for usefulness?  It passes xfstests fine, and
-> shows linear scalability with multiple clients that each have 10GB
-> links. 
+In addition to miscellaneous clean up, the following series of
+patches for the Linux NFS server introduces support in the
+server’s RPC/RDMA transport implementation for RDMA_NOMSG type
+messages, and fixes a bug that prevents the server from handling
+RPC/RDMA messages with inline content following the read list.
 
-Sounds good.  It'd be interesting to see details if they can be posted.
+These patches are contained in the topic branch "nfsd-rdma-for-3.20"
+at:
 
---b.
+ git://git.linux-nfs.org/projects/cel/cel-2.6.git
 
-> > 	- any advice on testing?  Is there was some simple virtual setup
-> > 	  that would allow any loser with no special hardware (e.g., me)
-> > 	  to check whether they've broken the block server?
-> 
-> Run two kvm VMs that share the same disk.  Create an XFS filesystem
-> on the MDS, and export it.  If the client has blkmapd running (on Debian
-> it needs to be started manually) it will use pNFS for accessing the
-> filesystem.  Verify that using the per-operation counters in
-> /proc/self/mounstats.  Repeat with additional clients as nessecary.
-> 
-> Alternatively set up a simple iSCSI target using tgt or lio and
-> connect to it from multiple clients.
-> 
-> > 	- any debugging advice?  E.g., have you checked if current
-> > 	  wireshark can handle the MDS traffic?
-> 
-> The wireshare version I've used decoded the generic pNFS operations
-> fine, but just dumps the layout specifics as hex data.
-> 
-> Enable the trace points added in this series, they track all stateid
-> interactions in the server.  Additіonally the pnfs debug printks on
-> client and server dump a lot of information.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Changes since v1:
+ - Rebased on 3.19-rc4
+ - Patch descriptions clarified
+ - Bug addressed in "svcrdma: Handle additional inline content"
+
+---
+
+Chuck Lever (10):
+      svcrdma: Handle additional inline content
+      svcrdma: Move read list XDR round-up logic
+      svcrdma: Support RDMA_NOMSG requests
+      svcrdma: rc_position sanity checking
+      svcrdma: Plant reader function in struct svcxprt_rdma
+      svcrdma: Find rmsgp more reliably
+      svcrdma: Scrub BUG_ON() and WARN_ON() call sites
+      svcrdma: Clean up read chunk counting
+      svcrdma: Remove unused variable
+      svcrdma: Clean up dprintk
+
+
+ include/linux/sunrpc/svc_rdma.h          |   13 +-
+ net/sunrpc/xprtrdma/svc_rdma_marshal.c   |   16 --
+ net/sunrpc/xprtrdma/svc_rdma_recvfrom.c  |  244 +++++++++++++++++++-----------
+ net/sunrpc/xprtrdma/svc_rdma_sendto.c    |   46 +++---
+ net/sunrpc/xprtrdma/svc_rdma_transport.c |   47 ++++--
+ 5 files changed, 217 insertions(+), 149 deletions(-)
+
+-- 
+Chuck Lever
