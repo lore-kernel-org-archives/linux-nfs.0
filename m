@@ -1,14 +1,14 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f177.google.com ([209.85.213.177]:64399 "EHLO
-	mail-ig0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751176AbbAMQDr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Jan 2015 11:03:47 -0500
+Received: from mail-ig0-f171.google.com ([209.85.213.171]:53212 "EHLO
+	mail-ig0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753131AbbAMQDz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Jan 2015 11:03:55 -0500
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH v2 09/10] svcrdma: Move read list XDR round-up logic
+Subject: [PATCH v2 10/10] svcrdma: Handle additional inline content
 To: bfields@fieldses.org
 Cc: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Date: Tue, 13 Jan 2015 11:03:45 -0500
-Message-ID: <20150113160345.8118.69576.stgit@klimt.1015granger.net>
+Date: Tue, 13 Jan 2015 11:03:53 -0500
+Message-ID: <20150113160353.8118.98740.stgit@klimt.1015granger.net>
 In-Reply-To: <20150113155904.8118.57718.stgit@klimt.1015granger.net>
 References: <20150113155904.8118.57718.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
@@ -16,86 +16,122 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is a pre-requisite for a subsequent patch.
+Most NFS RPCs place their large payload argument at the end of the
+RPC header (eg, NFSv3 WRITE). For NFSv3 WRITE and SYMLINK, RPC/RDMA
+sends the complete RPC header inline, and the payload argument in
+the read list. Data in the read list is the last part of the XDR
+stream.
 
-Read list XDR round-up needs to be done _before_ additional inline
-content is copied to the end of the XDR buffer's page list. Move
-the logic added by commit e560e3b510d2 ("svcrdma: Add zero padding
-if the client doesn't send it").
+One important case is not like this, however. NFSv4 COMPOUND is a
+counted array of operations. A WRITE operation, with its large data
+payload, can appear in the middle of the compound's operations
+array. Thus NFSv4 WRITE compounds can have header content after the
+WRITE payload.
+
+The Linux client, for example, performs an NFSv4 WRITE like this:
+
+  { PUTFH, WRITE, GETATTR }
+
+Though RFC 5667 is not precise about this, the proper way to convey
+this compound is to place the GETATTR inline, _after_ the front of
+the RPC header. The receiver inserts the read list payload into the
+XDR stream after the initial WRITE arguments, and before the GETATTR
+operation, thanks to the value of the read list "position" field.
+
+The Linux client currently sends the GETATTR at the end of the
+RPC/RDMA read list, which is incorrect. It will be corrected in the
+future.
+
+The Linux server currently rejects NFSv4 compounds with inline
+content after the read list. For the above NFSv4 WRITE compound, the
+NFS compound header indicates there are three operations, but the
+server finds nonsense when it looks in the XDR stream for the third
+operation, and the compound fails with OP_ILLEGAL.
+
+Move trailing inline content to the end of the XDR buffer's page
+list. This presents incoming NFSv4 WRITE compounds to NFSD in the
+same way the socket transport does.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |   37 ++++++++-----------------------
- 1 files changed, 9 insertions(+), 28 deletions(-)
+ net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |   55 +++++++++++++++++++++++++++++++
+ 1 files changed, 55 insertions(+), 0 deletions(-)
 
 diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-index 36cf51a..a345cad 100644
+index a345cad..f9f13a3 100644
 --- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
 +++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-@@ -43,7 +43,6 @@
- #include <linux/sunrpc/debug.h>
- #include <linux/sunrpc/rpc_rdma.h>
- #include <linux/spinlock.h>
--#include <linux/highmem.h>
- #include <asm/unaligned.h>
- #include <rdma/ib_verbs.h>
- #include <rdma/rdma_cm.h>
-@@ -434,6 +433,15 @@ static int rdma_read_chunks(struct svcxprt_rdma *xprt,
- 		}
- 	}
- 
-+	/* Read list may need XDR round-up (see RFC 5666, s. 3.7) */
-+	if (page_offset & 3) {
-+		u32 pad = 4 - (page_offset & 3);
-+
-+		head->arg.page_len += pad;
-+		head->arg.len += pad;
-+		head->arg.buflen += pad;
-+	}
-+
- 	ret = 1;
- 	head->position = position;
- 
-@@ -446,32 +454,6 @@ static int rdma_read_chunks(struct svcxprt_rdma *xprt,
- 	return ret;
+@@ -364,6 +364,56 @@ rdma_rcl_chunk_count(struct rpcrdma_read_chunk *ch)
+ 	return count;
  }
  
--/*
-- * To avoid a separate RDMA READ just for a handful of zero bytes,
-- * RFC 5666 section 3.7 allows the client to omit the XDR zero pad
-- * in chunk lists.
-- */
--static void
--rdma_fix_xdr_pad(struct xdr_buf *buf)
--{
--	unsigned int page_len = buf->page_len;
--	unsigned int size = (XDR_QUADLEN(page_len) << 2) - page_len;
--	unsigned int offset, pg_no;
--	char *p;
--
--	if (size == 0)
--		return;
--
--	pg_no = page_len >> PAGE_SHIFT;
--	offset = page_len & ~PAGE_MASK;
--	p = page_address(buf->pages[pg_no]);
--	memset(p + offset, 0, size);
--
--	buf->page_len += size;
--	buf->buflen += size;
--	buf->len += size;
--}
--
- static int rdma_read_complete(struct svc_rqst *rqstp,
- 			      struct svc_rdma_op_ctxt *head)
- {
-@@ -499,7 +481,6 @@ static int rdma_read_complete(struct svc_rqst *rqstp,
++/* If there was additional inline content, append it to the end of arg.pages.
++ * Tail copy has to be done after the reader function has determined how many
++ * pages are needed for RDMA READ.
++ */
++static int
++rdma_copy_tail(struct svc_rqst *rqstp, struct svc_rdma_op_ctxt *head,
++	       u32 position, u32 byte_count, u32 page_offset, int page_no)
++{
++	char *srcp, *destp;
++	int ret;
++
++	ret = 0;
++	srcp = head->arg.head[0].iov_base + position;
++	byte_count = head->arg.head[0].iov_len - position;
++	if (byte_count > PAGE_SIZE) {
++		dprintk("svcrdma: large tail unsupported\n");
++		return 0;
++	}
++
++	/* Fit as much of the tail on the current page as possible */
++	if (page_offset != PAGE_SIZE) {
++		destp = page_address(rqstp->rq_arg.pages[page_no]);
++		destp += page_offset;
++		while (byte_count--) {
++			*destp++ = *srcp++;
++			page_offset++;
++			if (page_offset == PAGE_SIZE && byte_count)
++				goto more;
++		}
++		goto done;
++	}
++
++more:
++	/* Fit the rest on the next page */
++	page_no++;
++	destp = page_address(rqstp->rq_arg.pages[page_no]);
++	while (byte_count--)
++		*destp++ = *srcp++;
++
++	rqstp->rq_respages = &rqstp->rq_arg.pages[page_no+1];
++	rqstp->rq_next_page = rqstp->rq_respages + 1;
++
++done:
++	byte_count = head->arg.head[0].iov_len - position;
++	head->arg.page_len += byte_count;
++	head->arg.len += byte_count;
++	head->arg.buflen += byte_count;
++	return 1;
++}
++
+ static int rdma_read_chunks(struct svcxprt_rdma *xprt,
+ 			    struct rpcrdma_msg *rmsgp,
+ 			    struct svc_rqst *rqstp,
+@@ -440,9 +490,14 @@ static int rdma_read_chunks(struct svcxprt_rdma *xprt,
+ 		head->arg.page_len += pad;
+ 		head->arg.len += pad;
+ 		head->arg.buflen += pad;
++		page_offset += pad;
  	}
  
- 	/* Point rq_arg.pages past header */
--	rdma_fix_xdr_pad(&head->arg);
- 	rqstp->rq_arg.pages = &rqstp->rq_pages[head->hdr_count];
- 	rqstp->rq_arg.page_len = head->arg.page_len;
- 	rqstp->rq_arg.page_base = head->arg.page_base;
+ 	ret = 1;
++	if (position && position < head->arg.head[0].iov_len)
++		ret = rdma_copy_tail(rqstp, head, position,
++				     byte_count, page_offset, page_no);
++	head->arg.head[0].iov_len = position;
+ 	head->position = position;
+ 
+  err:
 
