@@ -1,14 +1,14 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f174.google.com ([209.85.223.174]:47554 "EHLO
-	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751659AbbAMQ1G (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Jan 2015 11:27:06 -0500
-Subject: [PATCH v2 17/20] xprtrdma: Allocate RPC/RDMA send buffer separately
- from struct rpcrdma_req
+Received: from mail-ie0-f182.google.com ([209.85.223.182]:54293 "EHLO
+	mail-ie0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751955AbbAMQ1O (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Jan 2015 11:27:14 -0500
+Subject: [PATCH v2 18/20] xprtrdma: Allocate RPC/RDMA receive buffer
+ separately from struct rpcrdma_rep
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Tue, 13 Jan 2015 11:27:04 -0500
-Message-ID: <20150113162704.14086.80839.stgit@manet.1015granger.net>
+Date: Tue, 13 Jan 2015 11:27:12 -0500
+Message-ID: <20150113162712.14086.19421.stgit@manet.1015granger.net>
 In-Reply-To: <20150113161440.14086.24801.stgit@manet.1015granger.net>
 References: <20150113161440.14086.24801.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -16,171 +16,168 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The rl_base field is the buffer where each RPC/RDMA send header is
-built.
+The rr_base field is the buffer where each RPC/RDMA reply header
+lands.
 
-Pre-posted send buffers are supposed to be the same size on the
-client and server. For Solaris and Linux, that size is currently
-1024 bytes, the inline threshold.
+In some cases the RPC reply header also lands in this buffer, just
+after the RPC/RDMA header.
 
-The size of the rl_base buffer is currently dependent on
-RPCRDMA_MAX_DATA_SEGS. When the client constructs a chunk list in
+The pre-posted receive buffers are supposed to be the same size
+on the client and server. For Solaris and Linux, that size is
+supposed to be 1024 bytes, the inline threshold.
+
+The size of the rr_base buffer is currently dependent on
+RPCRDMA_MAX_DATA_SEGS. When the server constructs a chunk list in
 the RPC/RDMA header, each segment in the list takes up a little
 room in the buffer.
 
 If we want a large r/wsize maximum, MAX_SEGS will grow
-significantly, but notice that the inline threshold size is not
-supposed to change (since it should match on the client and server).
+significantly, but notice that the inline threshold size won't
+change.
 
 Therefore the inline size is the real limit on the size of the
-RPC/RDMA send header.
+RPC/RDMA header. The largest RPC reply the client can receive via
+RDMA SEND is also no bigger than the inline size.
 
-No longer use RPCRDMA_MAX_DATA_SEGS to determine the size or
-placement of the RPC/RDMA header send buffer. The buffer size should
-always be the same as the inline threshold size.
+Thus the size of the pre-posted receive buffer should be exactly the
+inline size * 2. The MAX_RPCRDMAHDR term should be replaced, and
+rounding up ( 1 << fls(yada) ) is not necessary.
+
+RPC replies received via RDMA WRITE (long replies) are caught in
+rq_rcv_buf, which is the second half of the RPC send buffer. Ie,
+such replies are not involved in any way with rr_base.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/rpc_rdma.c  |   11 +++++------
- net/sunrpc/xprtrdma/transport.c |    9 +++++++++
- net/sunrpc/xprtrdma/verbs.c     |   22 +++-------------------
- net/sunrpc/xprtrdma/xprt_rdma.h |    6 ++----
- 4 files changed, 19 insertions(+), 29 deletions(-)
+ net/sunrpc/xprtrdma/rpc_rdma.c  |    5 +++--
+ net/sunrpc/xprtrdma/verbs.c     |   27 ++++++++++++++-------------
+ net/sunrpc/xprtrdma/xprt_rdma.h |   14 ++++++--------
+ 3 files changed, 23 insertions(+), 23 deletions(-)
 
 diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index 8a6bdbd..c1d4a09 100644
+index c1d4a09..02efcaa 100644
 --- a/net/sunrpc/xprtrdma/rpc_rdma.c
 +++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -294,7 +294,7 @@ ssize_t
- rpcrdma_marshal_chunks(struct rpc_rqst *rqst, ssize_t result)
+@@ -572,6 +572,7 @@ rpcrdma_count_chunks(struct rpcrdma_rep *rep, unsigned int max, int wrchunk, __b
  {
- 	struct rpcrdma_req *req = rpcr_to_rdmar(rqst);
--	struct rpcrdma_msg *headerp = (struct rpcrdma_msg *)req->rl_base;
-+	struct rpcrdma_msg *headerp = rdmab_to_msg(req->rl_rdmabuf);
+ 	unsigned int i, total_len;
+ 	struct rpcrdma_write_chunk *cur_wchunk;
++	char *base = (char *)rdmab_to_msg(rep->rr_rdmabuf);
  
- 	if (req->rl_rtype != rpcrdma_noch)
- 		result = rpcrdma_create_chunks(rqst, &rqst->rq_snd_buf,
-@@ -406,8 +406,7 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
- 	base = rqst->rq_svec[0].iov_base;
- 	rpclen = rqst->rq_svec[0].iov_len;
+ 	i = be32_to_cpu(**iptrp);
+ 	if (i > max)
+@@ -599,7 +600,7 @@ rpcrdma_count_chunks(struct rpcrdma_rep *rep, unsigned int max, int wrchunk, __b
+ 			return -1;
+ 		cur_wchunk = (struct rpcrdma_write_chunk *) w;
+ 	}
+-	if ((char *) cur_wchunk > rep->rr_base + rep->rr_len)
++	if ((char *)cur_wchunk > base + rep->rr_len)
+ 		return -1;
  
--	/* build RDMA header in private area at front */
--	headerp = (struct rpcrdma_msg *) req->rl_base;
-+	headerp = rdmab_to_msg(req->rl_rdmabuf);
- 	/* don't byte-swap XID, it's already done in request */
- 	headerp->rm_xid = rqst->rq_xid;
- 	headerp->rm_vers = rpcrdma_version;
-@@ -528,7 +527,7 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
- 	dprintk("RPC:       %s: %s: hdrlen %zd rpclen %zd padlen %zd"
- 		" headerp 0x%p base 0x%p lkey 0x%x\n",
- 		__func__, transfertypes[req->rl_wtype], hdrlen, rpclen, padlen,
--		headerp, base, req->rl_iov.lkey);
-+		headerp, base, rdmab_lkey(req->rl_rdmabuf));
- 
- 	/*
- 	 * initialize send_iov's - normally only two: rdma chunk header and
-@@ -537,9 +536,9 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
- 	 * header and any write data. In all non-rdma cases, any following
- 	 * data has been copied into the RPC header buffer.
- 	 */
--	req->rl_send_iov[0].addr = req->rl_iov.addr;
-+	req->rl_send_iov[0].addr = rdmab_addr(req->rl_rdmabuf);
- 	req->rl_send_iov[0].length = hdrlen;
--	req->rl_send_iov[0].lkey = req->rl_iov.lkey;
-+	req->rl_send_iov[0].lkey = rdmab_lkey(req->rl_rdmabuf);
- 
- 	req->rl_send_iov[1].addr = rdmab_addr(req->rl_sendbuf);
- 	req->rl_send_iov[1].length = rpclen;
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index a9d5662..2c2fabe 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -470,6 +470,8 @@ xprt_rdma_allocate(struct rpc_task *task, size_t size)
- 	if (req == NULL)
- 		return NULL;
- 
-+	if (req->rl_rdmabuf == NULL)
-+		goto out_rdmabuf;
- 	if (req->rl_sendbuf == NULL)
- 		goto out_sendbuf;
- 	if (size > req->rl_sendbuf->rg_size)
-@@ -480,6 +482,13 @@ out:
- 	req->rl_connect_cookie = 0;	/* our reserved value */
- 	return req->rl_sendbuf->rg_base;
- 
-+out_rdmabuf:
-+	min_size = RPCRDMA_INLINE_WRITE_THRESHOLD(task->tk_rqstp);
-+	rb = rpcrdma_alloc_regbuf(&r_xprt->rx_ia, min_size, flags);
-+	if (IS_ERR(rb))
-+		goto out_fail;
-+	req->rl_rdmabuf = rb;
-+
- out_sendbuf:
- 	/* XDR encoding and RPC/RDMA marshaling of this request has not
- 	 * yet occurred. Thus a lower bound is needed to prevent buffer
+ 	*iptrp = (__be32 *) cur_wchunk;
+@@ -753,7 +754,7 @@ rpcrdma_reply_handler(struct rpcrdma_rep *rep)
+ 		dprintk("RPC:       %s: short/invalid reply\n", __func__);
+ 		goto repost;
+ 	}
+-	headerp = (struct rpcrdma_msg *) rep->rr_base;
++	headerp = rdmab_to_msg(rep->rr_rdmabuf);
+ 	if (headerp->rm_vers != rpcrdma_version) {
+ 		dprintk("RPC:       %s: invalid version %d\n",
+ 			__func__, be32_to_cpu(headerp->rm_vers));
 diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 4089440..c81749b 100644
+index c81749b..7aac422 100644
 --- a/net/sunrpc/xprtrdma/verbs.c
 +++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -1078,30 +1078,14 @@ rpcrdma_ep_disconnect(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
- static struct rpcrdma_req *
- rpcrdma_create_req(struct rpcrdma_xprt *r_xprt)
+@@ -298,8 +298,9 @@ rpcrdma_recvcq_process_wc(struct ib_wc *wc, struct list_head *sched_list)
+ 
+ 	rep->rr_len = wc->byte_len;
+ 	ib_dma_sync_single_for_cpu(rdmab_to_ia(rep->rr_buffer)->ri_id->device,
+-			rep->rr_iov.addr, rep->rr_len, DMA_FROM_DEVICE);
+-	prefetch(rep->rr_base);
++				   rdmab_addr(rep->rr_rdmabuf),
++				   rep->rr_len, DMA_FROM_DEVICE);
++	prefetch(rdmab_to_msg(rep->rr_rdmabuf));
+ 
+ out_schedule:
+ 	list_add_tail(&rep->rr_list, sched_list);
+@@ -1092,23 +1093,21 @@ static struct rpcrdma_rep *
+ rpcrdma_create_rep(struct rpcrdma_xprt *r_xprt)
  {
--	struct rpcrdma_create_data_internal *cdata = &r_xprt->rx_data;
--	size_t wlen = cdata->inline_wsize;
--	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
- 	struct rpcrdma_req *req;
--	int rc;
+ 	struct rpcrdma_create_data_internal *cdata = &r_xprt->rx_data;
+-	size_t rlen = 1 << fls(cdata->inline_rsize +
+-			       sizeof(struct rpcrdma_rep));
++	size_t rlen = cdata->inline_rsize << 1;
+ 	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
+ 	struct rpcrdma_rep *rep;
+ 	int rc;
  
--	rc = -ENOMEM;
--	req = kmalloc(sizeof(*req) + wlen, GFP_KERNEL);
-+	req = kzalloc(sizeof(*req), GFP_KERNEL);
- 	if (req == NULL)
--		goto out;
--	memset(req, 0, sizeof(*req));
--
--	rc = rpcrdma_register_internal(ia, req->rl_base, wlen,
--				       &req->rl_handle, &req->rl_iov);
+ 	rc = -ENOMEM;
+-	rep = kmalloc(rlen, GFP_KERNEL);
++	rep = kzalloc(sizeof(*rep), GFP_KERNEL);
+ 	if (rep == NULL)
+ 		goto out;
+-	memset(rep, 0, sizeof(*rep));
+ 
+-	rc = rpcrdma_register_internal(ia, rep->rr_base, rlen -
+-				       offsetof(struct rpcrdma_rep, rr_base),
+-				       &rep->rr_handle, &rep->rr_iov);
 -	if (rc)
--		goto out_free;
-+		return ERR_PTR(-ENOMEM);
++	rep->rr_rdmabuf = rpcrdma_alloc_regbuf(ia, rlen, GFP_KERNEL);
++	if (IS_ERR(rep->rr_rdmabuf)) {
++		rc = PTR_ERR(rep->rr_rdmabuf);
+ 		goto out_free;
++	}
  
- 	req->rl_buffer = &r_xprt->rx_buf;
- 	return req;
--
--out_free:
--	kfree(req);
--out:
--	return ERR_PTR(rc);
- }
- 
- static struct rpcrdma_rep *
-@@ -1333,7 +1317,7 @@ rpcrdma_destroy_req(struct rpcrdma_ia *ia, struct rpcrdma_req *req)
+ 	rep->rr_buffer = &r_xprt->rx_buf;
+ 	return rep;
+@@ -1306,7 +1305,7 @@ rpcrdma_destroy_rep(struct rpcrdma_ia *ia, struct rpcrdma_rep *rep)
+ 	if (!rep)
  		return;
  
- 	rpcrdma_free_regbuf(ia, req->rl_sendbuf);
--	rpcrdma_deregister_internal(ia, req->rl_handle, &req->rl_iov);
-+	rpcrdma_free_regbuf(ia, req->rl_rdmabuf);
- 	kfree(req);
+-	rpcrdma_deregister_internal(ia, rep->rr_handle, &rep->rr_iov);
++	rpcrdma_free_regbuf(ia, rep->rr_rdmabuf);
+ 	kfree(rep);
  }
  
+@@ -2209,11 +2208,13 @@ rpcrdma_ep_post_recv(struct rpcrdma_ia *ia,
+ 
+ 	recv_wr.next = NULL;
+ 	recv_wr.wr_id = (u64) (unsigned long) rep;
+-	recv_wr.sg_list = &rep->rr_iov;
++	recv_wr.sg_list = &rep->rr_rdmabuf->rg_iov;
+ 	recv_wr.num_sge = 1;
+ 
+ 	ib_dma_sync_single_for_cpu(ia->ri_id->device,
+-		rep->rr_iov.addr, rep->rr_iov.length, DMA_BIDIRECTIONAL);
++				   rdmab_addr(rep->rr_rdmabuf),
++				   rdmab_length(rep->rr_rdmabuf),
++				   DMA_BIDIRECTIONAL);
+ 
+ 	rc = ib_post_recv(ia->ri_id->qp, &recv_wr, &recv_wr_fail);
+ 
 diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index aa82f8d..84ad863 100644
+index 84ad863..2b69316 100644
 --- a/net/sunrpc/xprtrdma/xprt_rdma.h
 +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -268,12 +268,10 @@ struct rpcrdma_req {
- 	enum rpcrdma_chunktype	rl_rtype, rl_wtype;
- 	struct rpcrdma_buffer *rl_buffer; /* home base for this structure */
- 	struct rpcrdma_rep	*rl_reply;/* holder for reply buffer */
--	struct rpcrdma_mr_seg rl_segments[RPCRDMA_MAX_SEGS];/* chunk segments */
- 	struct ib_sge	rl_send_iov[4];	/* for active requests */
-+	struct rpcrdma_regbuf *rl_rdmabuf;
- 	struct rpcrdma_regbuf *rl_sendbuf;
--	struct ib_sge	rl_iov;		/* for posting */
--	struct ib_mr	*rl_handle;	/* handle for mem in rl_iov */
--	char		rl_base[MAX_RPCRDMAHDR]; /* start of actual buffer */
-+	struct rpcrdma_mr_seg rl_segments[RPCRDMA_MAX_SEGS];
+@@ -180,14 +180,12 @@ enum rpcrdma_chunktype {
+ struct rpcrdma_buffer;
+ 
+ struct rpcrdma_rep {
+-	unsigned int	rr_len;		/* actual received reply length */
+-	struct rpcrdma_buffer *rr_buffer; /* home base for this structure */
+-	struct rpc_xprt	*rr_xprt;	/* needed for request/reply matching */
+-	void (*rr_func)(struct rpcrdma_rep *);/* called by tasklet in softint */
+-	struct list_head rr_list;	/* tasklet list */
+-	struct ib_sge	rr_iov;		/* for posting */
+-	struct ib_mr	*rr_handle;	/* handle for mem in rr_iov */
+-	char	rr_base[MAX_RPCRDMAHDR]; /* minimal inline receive buffer */
++	unsigned int		rr_len;
++	struct rpcrdma_buffer	*rr_buffer;
++	struct rpc_xprt		*rr_xprt;
++	void			(*rr_func)(struct rpcrdma_rep *);
++	struct list_head	rr_list;
++	struct rpcrdma_regbuf	*rr_rdmabuf;
  };
  
- static inline struct rpcrdma_req *
+ /*
 
