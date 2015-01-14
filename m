@@ -1,49 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pd0-f173.google.com ([209.85.192.173]:49842 "EHLO
-	mail-pd0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753239AbbANQqE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Jan 2015 11:46:04 -0500
-Received: by mail-pd0-f173.google.com with SMTP id ft15so10726042pdb.4
-        for <linux-nfs@vger.kernel.org>; Wed, 14 Jan 2015 08:46:04 -0800 (PST)
+Received: from mail-pd0-f169.google.com ([209.85.192.169]:42907 "EHLO
+	mail-pd0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753678AbbANQqF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Jan 2015 11:46:05 -0500
+Received: by mail-pd0-f169.google.com with SMTP id z10so10749325pdj.0
+        for <linux-nfs@vger.kernel.org>; Wed, 14 Jan 2015 08:46:05 -0800 (PST)
 From: Tom Haynes <thomas.haynes@primarydata.com>
 To: Trond Myklebust <trond.myklebust@primarydata.com>
 Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH v4 37/50] pnfs: fail comparison when bucket verifier not set
-Date: Wed, 14 Jan 2015 08:44:43 -0800
-Message-Id: <1421253896-73106-38-git-send-email-loghyr@primarydata.com>
+Subject: [PATCH v4 38/50] nfs41: add a debug warning if we destroy an unempty layout
+Date: Wed, 14 Jan 2015 08:44:44 -0800
+Message-Id: <1421253896-73106-39-git-send-email-loghyr@primarydata.com>
 In-Reply-To: <1421253896-73106-1-git-send-email-loghyr@primarydata.com>
 References: <1421253896-73106-1-git-send-email-loghyr@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Weston Andros Adamson <dros@primarydata.com>
+From: Peng Tao <tao.peng@primarydata.com>
 
-This skips the WARN_ON_ONCE, but doesnt change behavior (the memcmp would
-fail).
+So that we can detect the case if some layout segments are still
+pinned which is surely a bug that we need to fix.
 
-Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
-Signed-off-by: Tom Haynes <Thomas.Haynes@primarydata.com>
+Signed-off-by: Peng Tao <tao.peng@primarydata.com>
 ---
- fs/nfs/direct.c | 6 +++++-
- 1 file changed, 5 insertions(+), 1 deletion(-)
+ fs/nfs/pnfs.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index 651387b..eb81478 100644
---- a/fs/nfs/direct.c
-+++ b/fs/nfs/direct.c
-@@ -222,7 +222,11 @@ static int nfs_direct_cmp_commit_data_verf(struct nfs_direct_req *dreq,
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 5f7c422..e123cfc 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -242,6 +242,8 @@ pnfs_put_layout_hdr(struct pnfs_layout_hdr *lo)
+ 	struct inode *inode = lo->plh_inode;
  
- 	verfp = nfs_direct_select_verf(dreq, data->ds_clp,
- 					 data->ds_commit_index);
--	WARN_ON_ONCE(verfp->committed < 0);
-+
-+	/* verifier not set so always fail */
-+	if (verfp->committed < 0)
-+		return 1;
-+
- 	return memcmp(verfp, &data->verf, sizeof(struct nfs_writeverf));
- }
- 
+ 	if (atomic_dec_and_lock(&lo->plh_refcount, &inode->i_lock)) {
++		if (!list_empty(&lo->plh_segs))
++			WARN_ONCE(1, "NFS: BUG unfreed layout segments.\n");
+ 		pnfs_detach_layout_hdr(lo);
+ 		spin_unlock(&inode->i_lock);
+ 		pnfs_free_layout_hdr(lo);
 -- 
 1.9.3
 
