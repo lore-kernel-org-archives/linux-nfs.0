@@ -1,51 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from evbyminsa0101.epam.com ([217.21.63.36]:57923 "EHLO
-	EVBYMINSA0101.epam.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754278AbbAWNcM convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Jan 2015 08:32:12 -0500
-From: Pavel Karneliuk <Pavel_Karneliuk@epam.com>
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: nfstrace - sniffer of NFS statistics for 1+Gbps traffic
-Date: Fri, 23 Jan 2015 13:17:03 +0000
-Message-ID: <d210b8c7bfcf429b852e186fe10a6918@EPBYMINSA0001.epam.com>
-Content-Type: text/plain; charset="us-ascii"
+Received: from mail-vc0-f171.google.com ([209.85.220.171]:54569 "EHLO
+	mail-vc0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751261AbbANQvi (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Jan 2015 11:51:38 -0500
+Received: by mail-vc0-f171.google.com with SMTP id hy4so3207101vcb.2
+        for <linux-nfs@vger.kernel.org>; Wed, 14 Jan 2015 08:51:37 -0800 (PST)
 MIME-Version: 1.0
+Date: Wed, 14 Jan 2015 11:51:37 -0500
+Message-ID: <CAHQdGtTqYi0krW6b9w0Bxe-UJkP1nPZEJdCEMYb5XTA91rBtLw@mail.gmail.com>
+Subject: Race in bl_resolve_deviceid?
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Christoph Hellwig <hch@lst.de>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi folks,
+Hi Christoph,
 
-I would like to present the nfstrace utility - it is a tool for collecting NFS statistics in LAN.
-Nfstrace captures a raw network traffic, performs payload filtration and performs full analysis and tracing of NFSv3/v4 procedures(operations).
-The key feature of nfstrace is that it is designed and implemented for online analysis of 1-10Gbps traffic in LAN.
+bl_resolve_deviceid() has:
 
-At this moment, the utility supports next protocols:
-- Ethernet;
-- IPv4, v6;
-- UDP, TCP;
-- NFSv3, NFSv4 (4.1 and CIFS are coming).
+        add_wait_queue(&nn->bl_wq, &wq);
+        rc = rpc_queue_upcall(nn->bl_device_pipe, msg);
+        if (rc < 0) {
+                remove_wait_queue(&nn->bl_wq, &wq);
+                goto out_free_data;
+        }
 
-The nfstrace is user-space utility and performs interactions with NIC via libpcap (similar to wireshark/tcpdump). 
-Therefore, it could be ported to many POSIX platforms.
+        set_current_state(TASK_UNINTERRUPTIBLE);
+        schedule();
+        remove_wait_queue(&nn->bl_wq, &wq);
 
-Now it is available in:
-Debian:     https://packages.debian.org/unstable/main/nfstrace
-Ubuntu:    http://packages.ubuntu.com/vivid/net/nfstrace
-ALT Linux: http://www.sisyphus.ru/en/srpm/Sisyphus/nfstrace
 
-The key feature is reliable statistics on high traffic speed.
-Nfstrace cuts-off payload on earlier stages of filtration and stays focused on headers of NFSv3/v4 procedures and operations.
-The analysis is performed on the fly, without storing huge amount of network packets to memory/disk.
-So, it is faster that Wireshark/Tshark.
-Nfstrace provides API for custom plug-ins. It is easy to sharp its functionality for special purposes and metrics.
-There are set of standard plugins in sources tree. For example, the watch plug-in - it is clone of old and famous nfswatch tool (but with Ipv6, NFSv4 and TCP stream reassembling).
+Doesn't that call to 'set_current_state()' need to come before the
+rpc_queue_upcall() if you want the wait for the downcall to be
+race-free? It looks to me as if the right thing to do here is to
+replace the above with a prepare_to_wait()/finish_wait() pair...
 
-Take a look, please:
- https://github.com/epam/nfstrace
-
-It would be nice to get feedback and some opinions from community.
-Feature requests are welcome!
-
-Thanks!
-Pavel K
-
+-- 
+Trond Myklebust
+Linux NFS client maintainer, PrimaryData
+trond.myklebust@primarydata.com
