@@ -1,16 +1,16 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pd0-f174.google.com ([209.85.192.174]:50540 "EHLO
-	mail-pd0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753703AbbANQpn (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Jan 2015 11:45:43 -0500
-Received: by mail-pd0-f174.google.com with SMTP id fp1so10717654pdb.5
-        for <linux-nfs@vger.kernel.org>; Wed, 14 Jan 2015 08:45:43 -0800 (PST)
+Received: from mail-pa0-f45.google.com ([209.85.220.45]:35540 "EHLO
+	mail-pa0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753840AbbANQpo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Jan 2015 11:45:44 -0500
+Received: by mail-pa0-f45.google.com with SMTP id lf10so11533249pab.4
+        for <linux-nfs@vger.kernel.org>; Wed, 14 Jan 2015 08:45:44 -0800 (PST)
 From: Tom Haynes <thomas.haynes@primarydata.com>
 To: Trond Myklebust <trond.myklebust@primarydata.com>
 Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH v4 25/50] nfs41: add a helper to mark layout for return
-Date: Wed, 14 Jan 2015 08:44:31 -0800
-Message-Id: <1421253896-73106-26-git-send-email-loghyr@primarydata.com>
+Subject: [PATCH v4 26/50] nfs41: don't use a layout if it is marked for returning
+Date: Wed, 14 Jan 2015 08:44:32 -0800
+Message-Id: <1421253896-73106-27-git-send-email-loghyr@primarydata.com>
 In-Reply-To: <1421253896-73106-1-git-send-email-loghyr@primarydata.com>
 References: <1421253896-73106-1-git-send-email-loghyr@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -18,116 +18,112 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: Peng Tao <tao.peng@primarydata.com>
 
-It marks all matching layout segments as NFS_LSEG_LAYOUTRETURN,
-which is an indicator for pnfs_put_lseg() to send layoutreturn,
-and also prevents pnfs_update_layout() from using the returning
-segments. Once it is set, it never gets cleared.
-
-It also sets proper io failure bit so that pnfs path can be retried
-after PNFS_LAYOUTGET_RETRY_TIMEOUT second.
+And if we are to return the same type of layouts, don't bother
+sending more layoutgets.
 
 Signed-off-by: Peng Tao <tao.peng@primarydata.com>
 Signed-off-by: Tom Haynes <Thomas.Haynes@primarydata.com>
 ---
- fs/nfs/pnfs.c | 55 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
- fs/nfs/pnfs.h |  4 ++++
- 2 files changed, 59 insertions(+)
+ fs/nfs/nfs4proc.c |  1 +
+ fs/nfs/pnfs.c     | 23 ++++++++++++++++++-----
+ fs/nfs/pnfs.h     |  1 +
+ 3 files changed, 20 insertions(+), 5 deletions(-)
 
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 1dff02a..617ca2e 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -7531,6 +7531,7 @@ nfs4_layoutget_prepare(struct rpc_task *task, void *calldata)
+ 		return;
+ 	if (pnfs_choose_layoutget_stateid(&lgp->args.stateid,
+ 					  NFS_I(lgp->args.inode)->layout,
++					  &lgp->args.range,
+ 					  lgp->args.ctx->state)) {
+ 		rpc_exit(task, NFS4_OK);
+ 	}
 diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 1b97209..0bd149b 100644
+index 0bd149b..853b544 100644
 --- a/fs/nfs/pnfs.c
 +++ b/fs/nfs/pnfs.c
-@@ -1479,6 +1479,61 @@ out_forget_reply:
- 	goto out;
+@@ -740,25 +740,37 @@ pnfs_layout_stateid_blocked(const struct pnfs_layout_hdr *lo,
+ 	return !pnfs_seqid_is_newer(seqid, lo->plh_barrier);
  }
  
-+static void
-+pnfs_mark_matching_lsegs_return(struct pnfs_layout_hdr *lo,
-+				struct list_head *tmp_list,
-+				struct pnfs_layout_range *return_range)
++static bool
++pnfs_layout_returning(const struct pnfs_layout_hdr *lo,
++		      struct pnfs_layout_range *range)
 +{
-+	struct pnfs_layout_segment *lseg, *next;
-+
-+	dprintk("%s:Begin lo %p\n", __func__, lo);
-+
-+	if (list_empty(&lo->plh_segs))
-+		return;
-+
-+	list_for_each_entry_safe(lseg, next, &lo->plh_segs, pls_list)
-+		if (should_free_lseg(&lseg->pls_range, return_range)) {
-+			dprintk("%s: marking lseg %p iomode %d "
-+				"offset %llu length %llu\n", __func__,
-+				lseg, lseg->pls_range.iomode,
-+				lseg->pls_range.offset,
-+				lseg->pls_range.length);
-+			set_bit(NFS_LSEG_LAYOUTRETURN, &lseg->pls_flags);
-+			mark_lseg_invalid(lseg, tmp_list);
-+		}
++	return test_bit(NFS_LAYOUT_RETURN, &lo->plh_flags) &&
++		(lo->plh_return_iomode == IOMODE_ANY ||
++		 lo->plh_return_iomode == range->iomode);
 +}
 +
-+void pnfs_error_mark_layout_for_return(struct inode *inode,
-+				       struct pnfs_layout_segment *lseg)
-+{
-+	struct pnfs_layout_hdr *lo = NFS_I(inode)->layout;
-+	int iomode = pnfs_iomode_to_fail_bit(lseg->pls_range.iomode);
-+	struct pnfs_layout_range range = {
-+		.iomode = lseg->pls_range.iomode,
-+		.offset = 0,
-+		.length = NFS4_MAX_UINT64,
-+	};
-+	LIST_HEAD(free_me);
-+
-+	spin_lock(&inode->i_lock);
-+	/* set failure bit so that pnfs path will be retried later */
-+	pnfs_layout_set_fail_bit(lo, iomode);
-+	set_bit(NFS_LAYOUT_RETURN, &lo->plh_flags);
-+	if (lo->plh_return_iomode == 0)
-+		lo->plh_return_iomode = range.iomode;
-+	else if (lo->plh_return_iomode != range.iomode)
-+		lo->plh_return_iomode = IOMODE_ANY;
-+	/*
-+	 * mark all matching lsegs so that we are sure to have no live
-+	 * segments at hand when sending layoutreturn. See pnfs_put_lseg()
-+	 * for how it works.
-+	 */
-+	pnfs_mark_matching_lsegs_return(lo, &free_me, &range);
-+	spin_unlock(&inode->i_lock);
-+	pnfs_free_lseg_list(&free_me);
-+}
-+EXPORT_SYMBOL_GPL(pnfs_error_mark_layout_for_return);
-+
- void
- pnfs_generic_pg_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
+ /* lget is set to 1 if called from inside send_layoutget call chain */
+ static bool
+-pnfs_layoutgets_blocked(const struct pnfs_layout_hdr *lo, int lget)
++pnfs_layoutgets_blocked(const struct pnfs_layout_hdr *lo,
++			struct pnfs_layout_range *range, int lget)
  {
+ 	return lo->plh_block_lgets ||
+ 		test_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags) ||
+ 		(list_empty(&lo->plh_segs) &&
+-		 (atomic_read(&lo->plh_outstanding) > lget));
++		 (atomic_read(&lo->plh_outstanding) > lget)) ||
++		pnfs_layout_returning(lo, range);
+ }
+ 
+ int
+ pnfs_choose_layoutget_stateid(nfs4_stateid *dst, struct pnfs_layout_hdr *lo,
++			      struct pnfs_layout_range *range,
+ 			      struct nfs4_state *open_state)
+ {
+ 	int status = 0;
+ 
+ 	dprintk("--> %s\n", __func__);
+ 	spin_lock(&lo->plh_inode->i_lock);
+-	if (pnfs_layoutgets_blocked(lo, 1)) {
++	if (pnfs_layoutgets_blocked(lo, range, 1)) {
+ 		status = -EAGAIN;
+ 	} else if (!nfs4_valid_open_stateid(open_state)) {
+ 		status = -EBADF;
+@@ -1192,6 +1204,7 @@ pnfs_find_lseg(struct pnfs_layout_hdr *lo,
+ 
+ 	list_for_each_entry(lseg, &lo->plh_segs, pls_list) {
+ 		if (test_bit(NFS_LSEG_VALID, &lseg->pls_flags) &&
++		    !test_bit(NFS_LSEG_LAYOUTRETURN, &lseg->pls_flags) &&
+ 		    pnfs_lseg_range_match(&lseg->pls_range, range)) {
+ 			ret = pnfs_get_lseg(lseg);
+ 			break;
+@@ -1351,7 +1364,7 @@ lookup_again:
+ 			goto out_unlock;
+ 	}
+ 
+-	if (pnfs_layoutgets_blocked(lo, 0))
++	if (pnfs_layoutgets_blocked(lo, &arg, 0))
+ 		goto out_unlock;
+ 	atomic_inc(&lo->plh_outstanding);
+ 	spin_unlock(&ino->i_lock);
+@@ -1432,7 +1445,7 @@ pnfs_layout_process(struct nfs4_layoutget *lgp)
+ 		goto out_forget_reply;
+ 	}
+ 
+-	if (pnfs_layoutgets_blocked(lo, 1)) {
++	if (pnfs_layoutgets_blocked(lo, &lgp->args.range, 1)) {
+ 		dprintk("%s forget reply due to state\n", __func__);
+ 		goto out_forget_reply;
+ 	}
 diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index a9a7b26..28856f1 100644
+index 28856f1..7ffadd8 100644
 --- a/fs/nfs/pnfs.h
 +++ b/fs/nfs/pnfs.h
-@@ -38,6 +38,7 @@ enum {
- 	NFS_LSEG_VALID = 0,	/* cleared when lseg is recalled/returned */
- 	NFS_LSEG_ROC,		/* roc bit received from server */
- 	NFS_LSEG_LAYOUTCOMMIT,	/* layoutcommit bit set for layoutcommit */
-+	NFS_LSEG_LAYOUTRETURN,	/* layoutreturn bit set for layoutreturn */
- };
- 
- /* Individual ip address */
-@@ -184,6 +185,7 @@ struct pnfs_layout_hdr {
- 	u32			plh_barrier; /* ignore lower seqids */
- 	unsigned long		plh_retry_timestamp;
- 	unsigned long		plh_flags;
-+	enum pnfs_iomode	plh_return_iomode;
- 	loff_t			plh_lwb; /* last write byte for layoutcommit */
- 	struct rpc_cred		*plh_lc_cred; /* layoutcommit cred */
- 	struct inode		*plh_inode;
-@@ -274,6 +276,8 @@ void nfs4_deviceid_mark_client_invalid(struct nfs_client *clp);
- int pnfs_read_done_resend_to_mds(struct nfs_pgio_header *);
- int pnfs_write_done_resend_to_mds(struct nfs_pgio_header *);
- struct nfs4_threshold *pnfs_mdsthreshold_alloc(void);
-+void pnfs_error_mark_layout_for_return(struct inode *inode,
-+				       struct pnfs_layout_segment *lseg);
- 
- /* nfs4_deviceid_flags */
- enum {
+@@ -249,6 +249,7 @@ void pnfs_set_layout_stateid(struct pnfs_layout_hdr *lo,
+ 			     bool update_barrier);
+ int pnfs_choose_layoutget_stateid(nfs4_stateid *dst,
+ 				  struct pnfs_layout_hdr *lo,
++				  struct pnfs_layout_range *range,
+ 				  struct nfs4_state *open_state);
+ int pnfs_mark_matching_lsegs_invalid(struct pnfs_layout_hdr *lo,
+ 				struct list_head *tmp_list,
 -- 
 1.9.3
 
