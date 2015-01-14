@@ -1,16 +1,16 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pa0-f44.google.com ([209.85.220.44]:42342 "EHLO
-	mail-pa0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752572AbbANQpU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Jan 2015 11:45:20 -0500
-Received: by mail-pa0-f44.google.com with SMTP id et14so11528293pad.3
-        for <linux-nfs@vger.kernel.org>; Wed, 14 Jan 2015 08:45:19 -0800 (PST)
+Received: from mail-pd0-f180.google.com ([209.85.192.180]:58872 "EHLO
+	mail-pd0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753213AbbANQpV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Jan 2015 11:45:21 -0500
+Received: by mail-pd0-f180.google.com with SMTP id fl12so10697342pdb.11
+        for <linux-nfs@vger.kernel.org>; Wed, 14 Jan 2015 08:45:20 -0800 (PST)
 From: Tom Haynes <thomas.haynes@primarydata.com>
 To: Trond Myklebust <trond.myklebust@primarydata.com>
 Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH v4 07/50] nfs41: move file layout macros to generic pnfs
-Date: Wed, 14 Jan 2015 08:44:13 -0800
-Message-Id: <1421253896-73106-8-git-send-email-loghyr@primarydata.com>
+Subject: [PATCH v4 08/50] nfsv3: introduce nfs3_set_ds_client
+Date: Wed, 14 Jan 2015 08:44:14 -0800
+Message-Id: <1421253896-73106-9-git-send-email-loghyr@primarydata.com>
 In-Reply-To: <1421253896-73106-1-git-send-email-loghyr@primarydata.com>
 References: <1421253896-73106-1-git-send-email-loghyr@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -18,71 +18,128 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: Peng Tao <tao.peng@primarydata.com>
 
-They can be reused by flexfile layout as well.
+The flexfiles layout wants to create DS connection over NFSv3.
+Add nfs3_set_ds_client to allow that to happen.
 
-Also add a code such that if read fails on one DS and
-there are other DSes available to use, don't resend
-through MDS but through pNFS so that client can read
-from other DSes.
-
-Reviewed-by: Jeff Layton <jlayton@primarydata.com>
 Signed-off-by: Peng Tao <tao.peng@primarydata.com>
 Signed-off-by: Tom Haynes <Thomas.Haynes@primarydata.com>
 ---
- fs/nfs/filelayout/filelayout.h | 10 ----------
- fs/nfs/pnfs.h                  | 11 +++++++++++
- 2 files changed, 11 insertions(+), 10 deletions(-)
+ fs/nfs/internal.h         |  4 ++++
+ fs/nfs/nfs3_fs.h          |  2 ++
+ fs/nfs/nfs3client.c       | 34 ++++++++++++++++++++++++++++++++++
+ fs/nfs/nfs3super.c        |  2 +-
+ include/linux/nfs_fs_sb.h |  9 +++++----
+ 5 files changed, 46 insertions(+), 5 deletions(-)
 
-diff --git a/fs/nfs/filelayout/filelayout.h b/fs/nfs/filelayout/filelayout.h
-index f97eea6..2896cb8 100644
---- a/fs/nfs/filelayout/filelayout.h
-+++ b/fs/nfs/filelayout/filelayout.h
-@@ -33,13 +33,6 @@
- #include "../pnfs.h"
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 7d7c36f..7332ba1 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -193,6 +193,10 @@ extern struct nfs_client *nfs4_set_ds_client(struct nfs_client* mds_clp,
+ 					     rpc_authflavor_t au_flavor);
+ extern struct rpc_clnt *nfs4_find_or_create_ds_client(struct nfs_client *,
+ 						struct inode *);
++extern struct nfs_client *nfs3_set_ds_client(struct nfs_client *mds_clp,
++			const struct sockaddr *ds_addr, int ds_addrlen,
++			int ds_proto, unsigned int ds_timeo,
++			unsigned int ds_retrans, rpc_authflavor_t au_flavor);
+ #ifdef CONFIG_PROC_FS
+ extern int __init nfs_fs_proc_init(void);
+ extern void nfs_fs_proc_exit(void);
+diff --git a/fs/nfs/nfs3_fs.h b/fs/nfs/nfs3_fs.h
+index 333ae40..e134d65 100644
+--- a/fs/nfs/nfs3_fs.h
++++ b/fs/nfs/nfs3_fs.h
+@@ -30,5 +30,7 @@ struct nfs_server *nfs3_create_server(struct nfs_mount_info *, struct nfs_subver
+ struct nfs_server *nfs3_clone_server(struct nfs_server *, struct nfs_fh *,
+ 				     struct nfs_fattr *, rpc_authflavor_t);
  
- /*
-- * Default data server connection timeout and retrans vaules.
-- * Set by module paramters dataserver_timeo and dataserver_retrans.
-- */
--#define NFS4_DEF_DS_TIMEO   600 /* in tenths of a second */
--#define NFS4_DEF_DS_RETRANS 5
--
--/*
-  * Field testing shows we need to support up to 4096 stripe indices.
-  * We store each index as a u8 (u32 on the wire) to keep the memory footprint
-  * reasonable. This in turn means we support a maximum of 256
-@@ -48,9 +41,6 @@
- #define NFS4_PNFS_MAX_STRIPE_CNT 4096
- #define NFS4_PNFS_MAX_MULTI_CNT  256 /* 256 fit into a u8 stripe_index */
++/* nfs3super.c */
++extern struct nfs_subversion nfs_v3;
  
--/* error codes for internal use */
--#define NFS4ERR_RESET_TO_MDS   12001
--
- enum stripetype4 {
- 	STRIPE_SPARSE = 1,
- 	STRIPE_DENSE = 2
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 2ea9e9a..aef89b3 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -77,6 +77,17 @@ enum pnfs_try_status {
- 
- #define LAYOUT_NFSV4_1_MODULE_PREFIX "nfs-layouttype4"
- 
+ #endif /* __LINUX_FS_NFS_NFS3_FS_H */
+diff --git a/fs/nfs/nfs3client.c b/fs/nfs/nfs3client.c
+index 8c1b437..52e2344 100644
+--- a/fs/nfs/nfs3client.c
++++ b/fs/nfs/nfs3client.c
+@@ -64,3 +64,37 @@ struct nfs_server *nfs3_clone_server(struct nfs_server *source,
+ 		nfs_init_server_aclclient(server);
+ 	return server;
+ }
++
 +/*
-+ * Default data server connection timeout and retrans vaules.
-+ * Set by module parameters dataserver_timeo and dataserver_retrans.
++ * Set up a pNFS Data Server client over NFSv3.
++ *
++ * Return any existing nfs_client that matches server address,port,version
++ * and minorversion.
++ *
++ * For a new nfs_client, use a soft mount (default), a low retrans and a
++ * low timeout interval so that if a connection is lost, we retry through
++ * the MDS.
 + */
-+#define NFS4_DEF_DS_TIMEO   600 /* in tenths of a second */
-+#define NFS4_DEF_DS_RETRANS 5
++struct nfs_client *nfs3_set_ds_client(struct nfs_client *mds_clp,
++		const struct sockaddr *ds_addr, int ds_addrlen,
++		int ds_proto, unsigned int ds_timeo, unsigned int ds_retrans,
++		rpc_authflavor_t au_flavor)
++{
++	struct nfs_client_initdata cl_init = {
++		.addr = ds_addr,
++		.addrlen = ds_addrlen,
++		.nfs_mod = &nfs_v3,
++		.proto = ds_proto,
++		.net = mds_clp->cl_net,
++	};
++	struct rpc_timeout ds_timeout;
++	struct nfs_client *clp;
 +
-+/* error codes for internal use */
-+#define NFS4ERR_RESET_TO_MDS   12001
-+#define NFS4ERR_RESET_TO_PNFS  12002
++	/* Use the MDS nfs_client cl_ipaddr. */
++	nfs_init_timeout_values(&ds_timeout, ds_proto, ds_timeo, ds_retrans);
++	clp = nfs_get_client(&cl_init, &ds_timeout, mds_clp->cl_ipaddr,
++			     au_flavor);
 +
- enum {
- 	NFS_LAYOUT_RO_FAILED = 0,	/* get ro layout failed stop trying */
- 	NFS_LAYOUT_RW_FAILED,		/* get rw layout failed stop trying */
++	return clp;
++}
++EXPORT_SYMBOL_GPL(nfs3_set_ds_client);
+diff --git a/fs/nfs/nfs3super.c b/fs/nfs/nfs3super.c
+index 6af29c2..5c4394e 100644
+--- a/fs/nfs/nfs3super.c
++++ b/fs/nfs/nfs3super.c
+@@ -7,7 +7,7 @@
+ #include "nfs3_fs.h"
+ #include "nfs.h"
+ 
+-static struct nfs_subversion nfs_v3 = {
++struct nfs_subversion nfs_v3 = {
+ 	.owner = THIS_MODULE,
+ 	.nfs_fs   = &nfs_fs_type,
+ 	.rpc_vers = &nfs_version3,
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index 1e37fbb..38a3c5e 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -74,10 +74,6 @@ struct nfs_client {
+ 	/* idmapper */
+ 	struct idmap *		cl_idmap;
+ 
+-	/* Our own IP address, as a null-terminated string.
+-	 * This is used to generate the mv0 callback address.
+-	 */
+-	char			cl_ipaddr[48];
+ 	u32			cl_cb_ident;	/* v4.0 callback identifier */
+ 	const struct nfs4_minor_version_ops *cl_mvops;
+ 	unsigned long		cl_mig_gen;
+@@ -105,6 +101,11 @@ struct nfs_client {
+ #define NFS_SP4_MACH_CRED_COMMIT   6	/* COMMIT */
+ #endif /* CONFIG_NFS_V4 */
+ 
++	/* Our own IP address, as a null-terminated string.
++	 * This is used to generate the mv0 callback address.
++	 */
++	char			cl_ipaddr[48];
++
+ #ifdef CONFIG_NFS_FSCACHE
+ 	struct fscache_cookie	*fscache;	/* client index cache cookie */
+ #endif
 -- 
 1.9.3
 
