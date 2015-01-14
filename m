@@ -1,49 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:60112 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:36291 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753343AbbANPqz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 14 Jan 2015 10:46:55 -0500
+	id S1753942AbbANPq4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 14 Jan 2015 10:46:56 -0500
 From: Steve Dickson <steved@redhat.com>
 To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
 Cc: Systemd Mailing List <systemd-devel@lists.freedesktop.org>
-Subject: [PATCH 2/3] systemd: Bind the nfs-mountd service to the nfs-server service
-Date: Wed, 14 Jan 2015 10:46:49 -0500
-Message-Id: <1421250410-7246-3-git-send-email-steved@redhat.com>
+Subject: [PATCH 3/3] start-statd: Use the canonical to check if systemd is running.
+Date: Wed, 14 Jan 2015 10:46:50 -0500
+Message-Id: <1421250410-7246-4-git-send-email-steved@redhat.com>
 In-Reply-To: <1421250410-7246-1-git-send-email-steved@redhat.com>
 References: <1421250410-7246-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Use BindsTo, instead of PartOf, to bind the rpc-mountd
-service to the nfs-server service. Its a much tighter
-bind than PartOf.
+Use the approved way, define in
+   http://www.freedesktop.org/software/systemd/man/sd_booted.html
 
-The Partof=nfs-utils.service was not needed.
-
-One side effect of this tighter bond is when rpc.mountd
-is stop, that will also bring the nfs server down
-as well, due to the Requires=nfs-mountd.service in
-the nfs-server service
+to check if systemd is installed and running
 
 Signed-off-by: Steve Dickson <steved@redhat.com>
 ---
- systemd/nfs-mountd.service | 3 +--
- 1 file changed, 1 insertion(+), 2 deletions(-)
+ utils/statd/start-statd | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/systemd/nfs-mountd.service b/systemd/nfs-mountd.service
-index 7ccc0f7..d908afe 100644
---- a/systemd/nfs-mountd.service
-+++ b/systemd/nfs-mountd.service
-@@ -3,8 +3,7 @@ Description=NFS Mount Daemon
- Requires=proc-fs-nfsd.mount
- After=proc-fs-nfsd.mount
- After=network.target
--PartOf=nfs-server.service
--PartOf=nfs-utils.service
-+BindsTo=nfs-server.service
+diff --git a/utils/statd/start-statd b/utils/statd/start-statd
+index ec9383b..b32b3a5 100755
+--- a/utils/statd/start-statd
++++ b/utils/statd/start-statd
+@@ -7,7 +7,7 @@
+ PATH="/sbin:/usr/sbin:/bin:/usr/bin"
  
- Wants=nfs-config.service
- After=nfs-config.service
+ # First try systemd if it's installed.
+-if systemctl --help >/dev/null 2>&1; then
++if test -d /run/systemd/system; then
+     # Quit only if the call worked.
+     systemctl start rpc-statd.service && exit
+ fi
 -- 
 2.1.0
 
