@@ -1,53 +1,97 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pd0-f181.google.com ([209.85.192.181]:55812 "EHLO
-	mail-pd0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753465AbbANQqX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Jan 2015 11:46:23 -0500
-Received: by mail-pd0-f181.google.com with SMTP id v10so10668097pde.12
-        for <linux-nfs@vger.kernel.org>; Wed, 14 Jan 2015 08:46:23 -0800 (PST)
-From: Tom Haynes <thomas.haynes@primarydata.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH v4 50/50] pnfs: Update documentation on the Layout Drivers
-Date: Wed, 14 Jan 2015 08:44:56 -0800
-Message-Id: <1421253896-73106-51-git-send-email-loghyr@primarydata.com>
-In-Reply-To: <1421253896-73106-1-git-send-email-loghyr@primarydata.com>
-References: <1421253896-73106-1-git-send-email-loghyr@primarydata.com>
+Received: from mail-qa0-f41.google.com ([209.85.216.41]:42482 "EHLO
+	mail-qa0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751332AbbANPc7 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Jan 2015 10:32:59 -0500
+Received: by mail-qa0-f41.google.com with SMTP id bm13so7093412qab.0
+        for <linux-nfs@vger.kernel.org>; Wed, 14 Jan 2015 07:32:58 -0800 (PST)
+From: Jeff Layton <jlayton@primarydata.com>
+To: trond.myklebust@primarydata.com
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
+Subject: [PATCH] nfs: don't call blocking operations while !TASK_RUNNING
+Date: Wed, 14 Jan 2015 10:32:52 -0500
+Message-Id: <1421249572-12038-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Tom Haynes <loghyr@primarydata.com>
----
- Documentation/filesystems/nfs/pnfs.txt | 13 +++++++------
- 1 file changed, 7 insertions(+), 6 deletions(-)
+Bruce reported seeing this warning pop when mounting using v4.1:
 
-diff --git a/Documentation/filesystems/nfs/pnfs.txt b/Documentation/filesystems/nfs/pnfs.txt
-index adc81a3..44a9f24 100644
---- a/Documentation/filesystems/nfs/pnfs.txt
-+++ b/Documentation/filesystems/nfs/pnfs.txt
-@@ -57,15 +57,16 @@ bit is set, preventing any new lsegs from being added.
- layout drivers
- --------------
+     ------------[ cut here ]------------
+     WARNING: CPU: 1 PID: 1121 at kernel/sched/core.c:7300 __might_sleep+0xbd/0xd0()
+    do not call blocking ops when !TASK_RUNNING; state=1 set at [<ffffffff810ff58f>] prepare_to_wait+0x2f/0x90
+    Modules linked in: rpcsec_gss_krb5 auth_rpcgss nfsv4 dns_resolver nfs lockd grace sunrpc fscache ip6t_rpfilter ip6t_REJECT nf_reject_ipv6 xt_conntrack ebtable_nat ebtable_broute bridge stp llc ebtable_filter ebtables ip6table_nat nf_conntrack_ipv6 nf_defrag_ipv6 nf_nat_ipv6 ip6table_mangle ip6table_security ip6table_raw ip6table_filter ip6_tables iptable_nat nf_conntrack_ipv4 nf_defrag_ipv4 nf_nat_ipv4 nf_nat nf_conntrack iptable_mangle iptable_security iptable_raw snd_hda_codec_generic snd_hda_intel snd_hda_controller snd_hda_codec snd_hwdep snd_pcm snd_timer ppdev joydev snd virtio_console virtio_balloon pcspkr serio_raw parport_pc parport pvpanic floppy soundcore i2c_piix4 virtio_blk virtio_net qxl drm_kms_helper ttm drm virtio_pci virtio_ring ata_generic virtio pata_acpi
+    CPU: 1 PID: 1121 Comm: nfsv4.1-svc Not tainted 3.19.0-rc4+ #25
+    Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS 1.7.5-20140709_153950- 04/01/2014
+     0000000000000000 000000004e5e3f73 ffff8800b998fb48 ffffffff8186ac78
+     0000000000000000 ffff8800b998fba0 ffff8800b998fb88 ffffffff810ac9da
+     ffff8800b998fb68 ffffffff81c923e7 00000000000004d9 0000000000000000
+    Call Trace:
+     [<ffffffff8186ac78>] dump_stack+0x4c/0x65
+     [<ffffffff810ac9da>] warn_slowpath_common+0x8a/0xc0
+     [<ffffffff810aca65>] warn_slowpath_fmt+0x55/0x70
+     [<ffffffff810ff58f>] ? prepare_to_wait+0x2f/0x90
+     [<ffffffff810ff58f>] ? prepare_to_wait+0x2f/0x90
+     [<ffffffff810dd2ad>] __might_sleep+0xbd/0xd0
+     [<ffffffff8124c973>] kmem_cache_alloc_trace+0x243/0x430
+     [<ffffffff810d941e>] ? groups_alloc+0x3e/0x130
+     [<ffffffff810d941e>] groups_alloc+0x3e/0x130
+     [<ffffffffa0301b1e>] svcauth_unix_accept+0x16e/0x290 [sunrpc]
+     [<ffffffffa0300571>] svc_authenticate+0xe1/0xf0 [sunrpc]
+     [<ffffffffa02fc564>] svc_process_common+0x244/0x6a0 [sunrpc]
+     [<ffffffffa02fd044>] bc_svc_process+0x1c4/0x260 [sunrpc]
+     [<ffffffffa03d5478>] nfs41_callback_svc+0x128/0x1f0 [nfsv4]
+     [<ffffffff810ff970>] ? wait_woken+0xc0/0xc0
+     [<ffffffffa03d5350>] ? nfs4_callback_svc+0x60/0x60 [nfsv4]
+     [<ffffffff810d45bf>] kthread+0x11f/0x140
+     [<ffffffff810ea815>] ? local_clock+0x15/0x30
+     [<ffffffff810d44a0>] ? kthread_create_on_node+0x250/0x250
+     [<ffffffff81874bfc>] ret_from_fork+0x7c/0xb0
+     [<ffffffff810d44a0>] ? kthread_create_on_node+0x250/0x250
+    ---[ end trace 675220a11e30f4f2 ]---
+
+nfs41_callback_svc does most of its work while in TASK_INTERRUPTIBLE,
+which is just wrong. Fix that by finishing the wait immediately if we've
+found that the list has something on it.
+
+Also, we don't expect this kthread to accept signals, so we should be
+using a TASK_UNINTERRUPTIBLE sleep instead.
+
+Reported-by: "J. Bruce Fields" <bfields@fieldses.org>
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ fs/nfs/callback.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+index b8fb3a4ef649..ebba958e084c 100644
+--- a/fs/nfs/callback.c
++++ b/fs/nfs/callback.c
+@@ -128,13 +128,14 @@ nfs41_callback_svc(void *vrqstp)
+ 		if (try_to_freeze())
+ 			continue;
  
--PNFS utilizes what is called layout drivers. The STD defines 3 basic
--layout types: "files" "objects" and "blocks". For each of these types
--there is a layout-driver with a common function-vectors table which
--are called by the nfs-client pnfs-core to implement the different layout
--types.
-+PNFS utilizes what is called layout drivers. The STD defines 4 basic
-+layout types: "files", "objects", "blocks", and "flexfiles". For each
-+of these types there is a layout-driver with a common function-vectors
-+table which are called by the nfs-client pnfs-core to implement the
-+different layout types.
- 
--Files-layout-driver code is in: fs/nfs/nfs4filelayout.c && nfs4filelayoutdev.c
-+Files-layout-driver code is in: fs/nfs/filelayout/.. directory
- Objects-layout-deriver code is in: fs/nfs/objlayout/.. directory
- Blocks-layout-deriver code is in: fs/nfs/blocklayout/.. directory
-+Flexfiles-layout-driver code is in: fs/nfs/flexfilelayout/.. directory
- 
- objects-layout setup
- --------------------
+-		prepare_to_wait(&serv->sv_cb_waitq, &wq, TASK_INTERRUPTIBLE);
++		prepare_to_wait(&serv->sv_cb_waitq, &wq, TASK_UNINTERRUPTIBLE);
+ 		spin_lock_bh(&serv->sv_cb_lock);
+ 		if (!list_empty(&serv->sv_cb_list)) {
+ 			req = list_first_entry(&serv->sv_cb_list,
+ 					struct rpc_rqst, rq_bc_list);
+ 			list_del(&req->rq_bc_list);
+ 			spin_unlock_bh(&serv->sv_cb_lock);
++			finish_wait(&serv->sv_cb_waitq, &wq);
+ 			dprintk("Invoking bc_svc_process()\n");
+ 			error = bc_svc_process(serv, req, rqstp);
+ 			dprintk("bc_svc_process() returned w/ error code= %d\n",
+@@ -142,8 +143,8 @@ nfs41_callback_svc(void *vrqstp)
+ 		} else {
+ 			spin_unlock_bh(&serv->sv_cb_lock);
+ 			schedule();
++			finish_wait(&serv->sv_cb_waitq, &wq);
+ 		}
+-		finish_wait(&serv->sv_cb_waitq, &wq);
+ 	}
+ 	return 0;
+ }
 -- 
-1.9.3
+2.1.0
 
