@@ -1,42 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from plane.gmane.org ([80.91.229.3]:40726 "EHLO plane.gmane.org"
+Received: from mx1.redhat.com ([209.132.183.28]:43094 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751959AbbAOMFH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 15 Jan 2015 07:05:07 -0500
-Received: from list by plane.gmane.org with local (Exim 4.69)
-	(envelope-from <glN-linux-nfs@m.gmane.org>)
-	id 1YBjAe-0005jf-Iz
-	for linux-nfs@vger.kernel.org; Thu, 15 Jan 2015 13:05:04 +0100
-Received: from server.vandervlis.nl ([82.95.148.152])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Thu, 15 Jan 2015 13:05:04 +0100
-Received: from paul by server.vandervlis.nl with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Thu, 15 Jan 2015 13:05:04 +0100
-To: linux-nfs@vger.kernel.org
-From: Paul van der Vlis <paul@vandervlis.nl>
-Subject: Max. open files?
-Date: Thu, 15 Jan 2015 13:02:40 +0100
-Message-ID: <m98a90$bh8$1@ger.gmane.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+	id S1754311AbbAONNc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 15 Jan 2015 08:13:32 -0500
+Date: Thu, 15 Jan 2015 08:13:23 -0500 (EST)
+From: Benjamin Coddington <bcodding@redhat.com>
+To: Paul van der Vlis <paul@vandervlis.nl>
+cc: linux-nfs@vger.kernel.org
+Subject: Re: Max. open files?
+In-Reply-To: <m98a90$bh8$1@ger.gmane.org>
+Message-ID: <alpine.OSX.2.19.9992.1501150805380.27935@planck.local>
+References: <m98a90$bh8$1@ger.gmane.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
+Hi Paul van der Vlis,
 
-Is there in nfs-kernel-server a maximum on the open files?
+I don't think there's a NFSD limit on open files, but you'd be subject to
+VFS' file-max.
 
-If yes, what's the correct way to change that maximum?
+http://lxr.free-electrons.com/source/Documentation/sysctl/fs.txt#L91
 
-Do I get errors in the logs when the maximum is reached?
+Ben
 
-With regards,
-Paul van der Vlis.
+On Thu, 15 Jan 2015, Paul van der Vlis wrote:
 
-
--- 
-Paul van der Vlis Linux systeembeheer, Groningen
-http://www.vandervlis.nl/
-
+> Hello,
+>
+> Is there in nfs-kernel-server a maximum on the open files?
+>
+> If yes, what's the correct way to change that maximum?
+>
+> Do I get errors in the logs when the maximum is reached?
+>
+> With regards,
+> Paul van der Vlis.
+>
+>
+> --
+> Paul van der Vlis Linux systeembeheer, Groningen
+> http://www.vandervlis.nl/
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
