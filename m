@@ -1,44 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:44202 "EHLO mx1.redhat.com"
+Received: from plane.gmane.org ([80.91.229.3]:40726 "EHLO plane.gmane.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752594AbbAOLUq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 15 Jan 2015 06:20:46 -0500
-Message-ID: <54B7A28C.9030201@RedHat.com>
-Date: Thu, 15 Jan 2015 06:20:44 -0500
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-CC: Systemd Mailing List <systemd-devel@lists.freedesktop.org>
-Subject: Re: [systemd-devel] [PATCH 0/3] Miscellaneous systemd changes (v2)
-References: <1421250410-7246-1-git-send-email-steved@redhat.com>
-In-Reply-To: <1421250410-7246-1-git-send-email-steved@redhat.com>
+	id S1751959AbbAOMFH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 15 Jan 2015 07:05:07 -0500
+Received: from list by plane.gmane.org with local (Exim 4.69)
+	(envelope-from <glN-linux-nfs@m.gmane.org>)
+	id 1YBjAe-0005jf-Iz
+	for linux-nfs@vger.kernel.org; Thu, 15 Jan 2015 13:05:04 +0100
+Received: from server.vandervlis.nl ([82.95.148.152])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Thu, 15 Jan 2015 13:05:04 +0100
+Received: from paul by server.vandervlis.nl with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Thu, 15 Jan 2015 13:05:04 +0100
+To: linux-nfs@vger.kernel.org
+From: Paul van der Vlis <paul@vandervlis.nl>
+Subject: Max. open files?
+Date: Thu, 15 Jan 2015 13:02:40 +0100
+Message-ID: <m98a90$bh8$1@ger.gmane.org>
+Mime-Version: 1.0
 Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hello,
+
+Is there in nfs-kernel-server a maximum on the open files?
+
+If yes, what's the correct way to change that maximum?
+
+Do I get errors in the logs when the maximum is reached?
+
+With regards,
+Paul van der Vlis.
 
 
-On 01/14/2015 10:46 AM, Steve Dickson wrote:
-> v2:
->   * Corrected the numerous BindTo typos 
-> 
-> Here are a few systemd changes that were suggested
-> by the systemd folks:
-> 
->    * Bind the nfs-idmap service to the nfs server.
->    * Correctly bind nfs-mountd service to the nfs server.
->    * Used approved way to check if systemd is install and running
-> 
-> Steve Dickson (3):
->   systemd: Bind rpc.idmapd to the nfs-server service
->   systemd: Bind the nfs-mountd service to the nfs-server service
->   start-statd: Use the canonical to check if systemd is running.
-> 
->  systemd/nfs-idmapd.service | 2 +-
->  systemd/nfs-mountd.service | 3 +--
->  utils/statd/start-statd    | 2 +-
->  3 files changed, 3 insertions(+), 4 deletions(-)
-> 
-All three committed.... 
+-- 
+Paul van der Vlis Linux systeembeheer, Groningen
+http://www.vandervlis.nl/
 
-steved.
