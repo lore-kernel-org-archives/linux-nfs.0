@@ -1,107 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:34117 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751581AbbAPVEG convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Jan 2015 16:04:06 -0500
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
-Subject: Re: [PATCH v2 00/20] NFS/RDMA client for 3.20
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <54B97C73.9000602@Netapp.com>
-Date: Fri, 16 Jan 2015 16:04:01 -0500
-Cc: linux-rdma <linux-rdma@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <59D943E3-C7F8-48C4-BDB6-8309E74D4EDB@oracle.com>
-References: <20150113161440.14086.24801.stgit@manet.1015granger.net> <54B97C73.9000602@Netapp.com>
-To: Anna Schumaker <Anna.Schumaker@netapp.com>
+Received: from chicago.messinet.com ([50.196.241.75]:50388 "EHLO
+	chicago.messinet.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752334AbbAPXRJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Jan 2015 18:17:09 -0500
+Received: from localhost (localhost [127.0.0.1])
+	by chicago.messinet.com (Postfix) with ESMTP id 4705A67B424F
+	for <linux-nfs@vger.kernel.org>; Fri, 16 Jan 2015 17:11:12 -0600 (CST)
+Received: from chicago.messinet.com ([127.0.0.1])
+	by localhost (chicago.messinet.com [127.0.0.1]) (amavisd-new, port 10024)
+	with ESMTP id lCGFhPYgBNOd for <linux-nfs@vger.kernel.org>;
+	Fri, 16 Jan 2015 17:11:11 -0600 (CST)
+Received: from linux-ws1.messinet.com (linux-ws1.messinet.com [IPv6:2001:55c:dc00:0:d6be:d9ff:fe8d:7c1e])
+	(using TLSv1 with cipher ECDHE-RSA-AES256-SHA (256/256 bits))
+	(Client did not present a certificate)
+	by chicago.messinet.com (Postfix) with ESMTPSA id 633E767B3CCD
+	for <linux-nfs@vger.kernel.org>; Fri, 16 Jan 2015 17:11:11 -0600 (CST)
+From: Anthony Messina <amessina@messinet.com>
+To: linux-nfs@vger.kernel.org
+Subject: Re: Secure NFSv4 mounts and daemons
+Date: Fri, 16 Jan 2015 17:11:06 -0600
+Message-ID: <7292044.Frj4BhIHUy@linux-ws1.messinet.com>
+In-Reply-To: <54B6F7C1.5040208@zoho.com>
+References: <54B6F7C1.5040208@zoho.com>
+MIME-Version: 1.0
+Content-Type: multipart/signed; boundary="nextPart1672886.4pOkCUsTVe"; micalg="pgp-sha1"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-On Jan 16, 2015, at 4:02 PM, Anna Schumaker <Anna.Schumaker@netapp.com> wrote:
+--nextPart1672886.4pOkCUsTVe
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain; charset="us-ascii"
 
-> Hi Chuck,
-> 
-> You already answered my one question for this patch series, and I don't have any other comments.  Are these ready for me to take now?  Are you planning a v3?
+On Thursday, January 15, 2015 12:12:01 AM Ralph Zack wrote:
+> I have a number of NFSv4 shares which should only be accessible after=
 
-Yes, one or two minor changes. I’ll post late next week (after MLK day).
+> successful authentication, for which reason they are exported with
+> sec=3Dkrb5p. However, this method requires the user to obtain a kerbe=
+ros
+> ticket to access files on the share, which is fine for regular users =
+but
+> causes issues for daemons which are not kerberos-aware.
+>=20
+> What is the common way to handle this problem? It can hardly be the o=
+nly
+> solution to patch each service to obtain a ticket at startup. Please
+> correct me if I'm wrong, but I could not find any mechanism besides
+> kerberos that provides encryption and authentication for NFS shares. =
+I'd
+> be fine with authentication on a host level, I mainly want to ensure
+> that only trusted machines can accesses these shares and that all
+> traffic is encrypted. Without the overhead of establishing a VPN
+> connection between client and server, in case anyone was going to
+> suggest that
 
-> 
-> Thanks,
-> Anna
-> 
-> On 01/13/2015 11:24 AM, Chuck Lever wrote:
->> The following series of patches for the Linux NFS client breaks up
->> the per-transport buffer pool data structures to help them scale
->> better with the size of SEND/RECV buffers (the inline threshold),
->> the maximum NFS r/wsize, and the number of RDMA credits (concurrent
->> RPC requests).
->> 
->> The primary change is that the header send buffers have been split
->> from struct rpcrdma_req. Specific benefits are outlined in the patch
->> descriptions.
->> 
->> More pre-requisites are required. Changes to raise the maximum
->> r/wsize and other limits are left for a future merge window.
->> 
->> See the topic branch "nfs-rdma-for-3.20" at:
->> 
->>  git://git.linux-nfs.org/projects/cel/cel-2.6.git
->> 
->> Changes since v1:
->> - Rebased on v3.19-rc4
->> - One short description fixed
->> - linux-rdma included this time (sorry for the noise)
->> 
->> ---
->> 
->> Chuck Lever (20):
->>      xprtrdma: human-readable completion status
->>      xprtrdma: Modernize htonl and ntohl
->>      xprtrdma: Display XIDs in host byte order
->>      xprtrdma: Clean up hdrlen
->>      xprtrdma: Rename "xprt" and "rdma_connect" fields in struct rpcrdma_xprt
->>      xprtrdma: Remove rpcrdma_ep::rep_ia
->>      xprtrdma: Remove rl_mr field, and the mr_chunk union
->>      xprtrdma: Move credit update to RPC reply handler
->>      xprtrdma: Remove rpcrdma_ep::rep_func and ::rep_xprt
->>      xprtrdma: Free the pd if ib_query_qp() fails
->>      xprtrdma: Take struct ib_device_attr off the stack
->>      xprtrdma: Take struct ib_qp_attr and ib_qp_init_attr off the stack
->>      xprtrdma: Simplify synopsis of rpcrdma_buffer_create()
->>      xprtrdma: Refactor rpcrdma_buffer_create() and rpcrdma_buffer_destroy()
->>      xprtrdma: Add struct rpcrdma_regbuf and helpers
->>      xprtrdma: Allocate RPC send buffer separately from struct rpcrdma_req
->>      xprtrdma: Allocate RPC/RDMA send buffer separately from struct rpcrdma_req
->>      xprtrdma: Allocate RPC/RDMA receive buffer separately from struct rpcrdma_rep
->>      xprtrdma: Allocate zero pad separately from rpcrdma_buffer
->>      xprtrdma: Clean up after adding regbuf management
->> 
->> 
->> include/linux/sunrpc/rpc_rdma.h |   14 +
->> include/linux/sunrpc/svc_rdma.h |    2 
->> net/sunrpc/xprtrdma/rpc_rdma.c  |  108 ++++++----
->> net/sunrpc/xprtrdma/transport.c |  179 +++++++----------
->> net/sunrpc/xprtrdma/verbs.c     |  411 ++++++++++++++++++++++++---------------
->> net/sunrpc/xprtrdma/xprt_rdma.h |  111 +++++++----
->> 6 files changed, 478 insertions(+), 347 deletions(-)
->> 
->> --
->> Chuck Lever
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+I use GSS-Proxy for this:
+https://fedorahosted.org/gss-proxy/
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+=2DA
 
+=2D-=20
+Anthony - https://messinet.com/ - https://messinet.com/~amessina/galler=
+y
+8F89 5E72 8DF0 BCF0 10BE 9967 92DC 35DC B001 4A4E
 
+--nextPart1672886.4pOkCUsTVe
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: This is a digitally signed message part.
+Content-Transfer-Encoding: 7Bit
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2
+
+iEYEABECAAYFAlS5mo4ACgkQktw13LABSk6p2ACgsGdClba9fmLbsfVUTpjZ/nBV
+2lsAn2bpCRy0jdO0U2vzvsSNkdEXlPpL
+=vEGC
+-----END PGP SIGNATURE-----
+
+--nextPart1672886.4pOkCUsTVe--
 
