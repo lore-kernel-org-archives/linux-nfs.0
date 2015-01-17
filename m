@@ -1,27 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from verein.lst.de ([213.95.11.211]:51275 "EHLO newverein.lst.de"
+Received: from plane.gmane.org ([80.91.229.3]:52179 "EHLO plane.gmane.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754267AbbAWNlx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 23 Jan 2015 08:41:53 -0500
-Date: Fri, 23 Jan 2015 14:41:50 +0100
-From: Christoph Hellwig <hch@lst.de>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: Race in bl_resolve_deviceid?
-Message-ID: <20150123134150.GA28155@lst.de>
-References: <CAHQdGtTqYi0krW6b9w0Bxe-UJkP1nPZEJdCEMYb5XTA91rBtLw@mail.gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAHQdGtTqYi0krW6b9w0Bxe-UJkP1nPZEJdCEMYb5XTA91rBtLw@mail.gmail.com>
+	id S1751399AbbAQSZ2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 17 Jan 2015 13:25:28 -0500
+Received: from list by plane.gmane.org with local (Exim 4.69)
+	(envelope-from <glN-linux-nfs@m.gmane.org>)
+	id 1YCY3m-000618-K6
+	for linux-nfs@vger.kernel.org; Sat, 17 Jan 2015 19:25:22 +0100
+Received: from p4ff586bf.dip0.t-ipconnect.de ([79.245.134.191])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Sat, 17 Jan 2015 19:25:22 +0100
+Received: from holger.hoffstaette by p4ff586bf.dip0.t-ipconnect.de with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Sat, 17 Jan 2015 19:25:22 +0100
+To: linux-nfs@vger.kernel.org
+From: Holger =?iso-8859-1?q?Hoffst=E4tte?=
+	<holger.hoffstaette@googlemail.com>
+Subject: nfs-utils/idmapd: use of private define breaks with libevent-2.1.x
+Date: Sat, 17 Jan 2015 18:25:17 +0000 (UTC)
+Message-ID: <pan.2015.01.17.18.25.17@googlemail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jan 14, 2015 at 11:51:37AM -0500, Trond Myklebust wrote:
-> Doesn't that call to 'set_current_state()' need to come before the
-> rpc_queue_upcall() if you want the wait for the downcall to be
-> race-free? It looks to me as if the right thing to do here is to
-> replace the above with a prepare_to_wait()/finish_wait() pair...
 
-After the trivial switch to prepare_to_wait()/finish_wait() the
-thread asking for the deviceid never gets woken.  I'll need more
-time to understand all the code around the rpc_pipefs upcalls.
+Hello,
+
+The Gentoo community has found a problem with the current release of
+nfs-utils, where idmapd uses a not strictly private, yet strongly
+discouraged #define.
+
+Bug description with proposed patch:
+https://bugs.gentoo.org/show_bug.cgi?id=446374
+
+The code in question:
+http://git.linux-nfs.org/?p=steved/nfs-utils.git;a=blob;f=utils/idmapd/idmapd.c;hb=HEAD#l719 
+
+According to:
+https://github.com/libevent/libevent/blob/master/include/event2/event_struct.h
+
+which says:
+"No field declared in this file should be used directly in user code."
+
+using EVLIST_INIT directly is bound to break. This seems to be a leftover
+from legacy code.
+
+A simple fix is attached to the bugzilla above and just calls the
+proper public API, which is functionally equivalent to the bit check.
+
+Would be nice to see this in 1.3.2. :)
+
+Thanks!
+
+Holger
+
