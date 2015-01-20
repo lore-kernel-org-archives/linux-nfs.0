@@ -1,19 +1,19 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp-o-3.desy.de ([131.169.56.156]:60278 "EHLO smtp-o-3.desy.de"
+Received: from smtp-o-3.desy.de ([131.169.56.156]:60738 "EHLO smtp-o-3.desy.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751924AbbATQNI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 20 Jan 2015 11:13:08 -0500
+	id S1753243AbbATTXB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 20 Jan 2015 14:23:01 -0500
 Received: from smtp-map-1.desy.de (smtp-map-1.desy.de [131.169.56.66])
-	by smtp-o-3.desy.de (DESY-O-3) with ESMTP id 0C2AD280895
-	for <linux-nfs@vger.kernel.org>; Tue, 20 Jan 2015 17:13:07 +0100 (CET)
-Received: from ZITSWEEP2.win.desy.de (zitsweep2.win.desy.de [131.169.97.96])
-	by smtp-map-1.desy.de (DESY_MAP_1) with ESMTP id EF1AA13E8B
-	for <linux-nfs@vger.kernel.org>; Tue, 20 Jan 2015 17:13:05 +0100 (MET)
-Date: Tue, 20 Jan 2015 17:13:05 +0100 (CET)
+	by smtp-o-3.desy.de (DESY-O-3) with ESMTP id 976C72803A5
+	for <linux-nfs@vger.kernel.org>; Tue, 20 Jan 2015 20:22:59 +0100 (CET)
+Received: from ZITSWEEP1.win.desy.de (zitsweep1.win.desy.de [131.169.97.95])
+	by smtp-map-1.desy.de (DESY_MAP_1) with ESMTP id 8391313E8B
+	for <linux-nfs@vger.kernel.org>; Tue, 20 Jan 2015 20:22:59 +0100 (MET)
+Date: Tue, 20 Jan 2015 20:22:59 +0100 (CET)
 From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
 To: Weston Andros Adamson <dros@primarydata.com>
 Cc: linux-nfs list <linux-nfs@vger.kernel.org>
-Message-ID: <1776747101.99742.1421770385372.JavaMail.zimbra@desy.de>
+Message-ID: <1656565122.101630.1421781779058.JavaMail.zimbra@desy.de>
 In-Reply-To: <546F7F83-9DDE-4F7C-B706-32B45DD197FD@primarydata.com>
 References: <1063664421.96812.1421762446484.JavaMail.zimbra@desy.de> <546F7F83-9DDE-4F7C-B706-32B45DD197FD@primarydata.com>
 Subject: Re: kernel crashes on commit
@@ -22,6 +22,13 @@ Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hi Dros,
+
+do you refer to this commit
+
+http://git.linux-nfs.org/?p=dros/linux-nfs.git;a=commit;h=d201c4de518c1d617aa216664869fa329d562d7d ?
+
+Tigran.
 
 
 ----- Original Message -----
@@ -112,32 +119,15 @@ List-ID: <linux-nfs.vger.kernel.org>
 >> 
 > 
 > Hi Tigran!
-
-Hi Dros,
-
 > 
 > Have you tried a recent upstream kernel? IIRC I fixed a seeming similar
 > filelayout
 > commit issue not too long ago.
-
-In did, looks like my fedora-21 desktop survives massive writes, when other hosts
-crashing.
-
-Now I recall seeing you mail, but can't find it any more. Could you please point to it?
-
-
 > 
 > The filelayout commit path seems to have been broken for a while - mostly
 > because
 > all the filelayout servers (that I know of) use stable writes, so that code path
 > went
 > untested...
-
-We have enabled unstable write in December.
-
-Tigran.
-
-
- 
 > 
 > -dros
