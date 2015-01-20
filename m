@@ -1,42 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail1.trendhosting.net ([195.8.117.5]:43464 "EHLO
-	mail1.trendhosting.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751225AbbASV3V (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 Jan 2015 16:29:21 -0500
-Received: from localhost (localhost [127.0.0.1])
-	by mail1.trendhosting.net (Postfix) with ESMTP id 84C44156B0
-	for <linux-nfs@vger.kernel.org>; Mon, 19 Jan 2015 21:23:46 +0000 (GMT)
-Received: from mail1.trendhosting.net ([127.0.0.1])
-	by localhost (thp003.trendhosting.net [127.0.0.1]) (amavisd-new, port 10024)
-	with LMTP id x8aN5JVH7ZRQ for <linux-nfs@vger.kernel.org>;
-	Mon, 19 Jan 2015 21:23:44 +0000 (GMT)
-Message-ID: <54BD75DF.9010702@pocock.pro>
-Date: Mon, 19 Jan 2015 22:23:43 +0100
-From: Daniel Pocock <daniel@pocock.pro>
+Received: from mx1.redhat.com ([209.132.183.28]:41005 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752371AbbATNZk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 20 Jan 2015 08:25:40 -0500
+Date: Tue, 20 Jan 2015 08:25:31 -0500 (EST)
+From: Benjamin Coddington <bcodding@redhat.com>
+To: Daniel Pocock <daniel@pocock.pro>
+cc: linux-nfs@vger.kernel.org
+Subject: Re: storage controllers for use with NFS+BtrFs
+In-Reply-To: <54BD75DF.9010702@pocock.pro>
+Message-ID: <alpine.OSX.2.19.9992.1501200805110.498@planck.local>
+References: <54BD75DF.9010702@pocock.pro>
 MIME-Version: 1.0
-To: linux-nfs@vger.kernel.org
-Subject: storage controllers for use with NFS+BtrFs
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hi Daniel,
 
+On Mon, 19 Jan 2015, Daniel Pocock wrote:
+> I've been looking into the issue of which storage controllers are
+> suitable for use with NFS + BtrFs (or NFS + ZFS) and put some comments
+> about it on my blog[1] today.
+>
+> I understand that for NFS it is generally desirable to have non-volatile
+> write cache if you want good write performance.
+>
+> On the other hand, self-healing file systems (BtrFs and ZFS) like having
+> direct access to disks and those RAID cards with caches don't always
+> give the same level of access to the volume.
+>
+> Can anybody give any practical suggestions about how to reconcile these
+> requirements and experience good NFS write performance onto these
+> filesystems given the type of HBA and RAID cards available?
 
-I've been looking into the issue of which storage controllers are
-suitable for use with NFS + BtrFs (or NFS + ZFS) and put some comments
-about it on my blog[1] today.
+I don't think that reconciling these requirements is going to necessarily
+equal good NFS write performance.  You've got to define what good means.
+It sounds like you want fast commits, but how fast, how many, what size?
 
-I understand that for NFS it is generally desirable to have non-volatile
-write cache if you want good write performance.
+If you're building on ZFS, best thing would be to find a very fast ZIL
+device, but if you're already building pools on SSD to get any gain you'd
+need something really fast like DDR.  A ramdrive ZIL might be a nice way to
+test that on your setup before spending anything.
 
-On the other hand, self-healing file systems (BtrFs and ZFS) like having
-direct access to disks and those RAID cards with caches don't always
-give the same level of access to the volume.
+Many BBU-d RAID controllers allow JBOD modes that still slice up their
+cache for writes to disk, for example check out megacli's
+"-CfgEachDskRaid0".
 
-Can anybody give any practical suggestions about how to reconcile these
-requirements and experience good NFS write performance onto these
-filesystems given the type of HBA and RAID cards available?
+Ben
 
-
-
-1. http://danielpocock.com/storage-controllers-for-small-linux-nfs-networks
+>
+> 1. http://danielpocock.com/storage-controllers-for-small-linux-nfs-networks
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
