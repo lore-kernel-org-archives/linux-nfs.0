@@ -1,32 +1,26 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-la0-f43.google.com ([209.85.215.43]:45598 "EHLO
-	mail-la0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752275AbbAUS0Z convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Jan 2015 13:26:25 -0500
-Received: by mail-la0-f43.google.com with SMTP id q1so26568255lam.2
-        for <linux-nfs@vger.kernel.org>; Wed, 21 Jan 2015 10:26:23 -0800 (PST)
+Received: from mail-vc0-f171.google.com ([209.85.220.171]:50011 "EHLO
+	mail-vc0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752277AbbAUSlC convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Jan 2015 13:41:02 -0500
+Received: by mail-vc0-f171.google.com with SMTP id hq11so5441015vcb.2
+        for <linux-nfs@vger.kernel.org>; Wed, 21 Jan 2015 10:41:00 -0800 (PST)
 MIME-Version: 1.0
 In-Reply-To: <130621862.279655.1421851650684.JavaMail.zimbra@desy.de>
 References: <130621862.279655.1421851650684.JavaMail.zimbra@desy.de>
-Date: Wed, 21 Jan 2015 13:26:23 -0500
-Message-ID: <CAN-5tyHwWoFb=XKkakhYSXA805XBb6-Kp2R3oMutUkvXxbPS5w@mail.gmail.com>
+Date: Wed, 21 Jan 2015 13:41:00 -0500
+Message-ID: <CAHQdGtRXRVz-NMtKUDxowkYMrYs0R2D6U1b6=WDnzBUBvbHY3A@mail.gmail.com>
 Subject: Re: Yet another kernel crash in NFS4 state recovery
-From: Olga Kornievskaia <aglo@umich.edu>
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
 Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hey Tigran,
-
-We've seen this trace (at NetApp QA), but unable to reproduce it in
-our own setups. How easily/consistently do you hit it?
-
-Thanks.
-
 On Wed, Jan 21, 2015 at 9:47 AM, Mkrtchyan, Tigran
 <tigran.mkrtchyan@desy.de> wrote:
+>
 >
 > Now with RHEL7.
 >
@@ -96,8 +90,12 @@ On Wed, Jan 21, 2015 at 9:47 AM, Mkrtchyan, Tigran
 >
 > Looks like clp->cl_rpcclient point to nowhere when nfs4_schedule_state_manager is called.
 >
-> Tigran.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+I'm guessing
+
+https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?id=080af20cc945d110f9912d01cf6b66f94a375b8d
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer, PrimaryData
+trond.myklebust@primarydata.com
