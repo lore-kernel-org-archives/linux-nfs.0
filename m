@@ -1,15 +1,14 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f175.google.com ([209.85.223.175]:38633 "EHLO
-	mail-ie0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754207AbbAUQDy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Jan 2015 11:03:54 -0500
-Subject: [PATCH v3 14/20] xprtrdma: Refactor rpcrdma_buffer_create() and
- rpcrdma_buffer_destroy()
+Received: from mail-ie0-f177.google.com ([209.85.223.177]:37385 "EHLO
+	mail-ie0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753295AbbAUQEC (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Jan 2015 11:04:02 -0500
+Subject: [PATCH v3 15/20] xprtrdma: Add struct rpcrdma_regbuf and helpers
 From: Chuck Lever <chuck.lever@oracle.com>
 To: Anna.Schumaker@netapp.com
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Wed, 21 Jan 2015 11:03:52 -0500
-Message-ID: <20150121160352.17297.1773.stgit@manet.1015granger.net>
+Date: Wed, 21 Jan 2015 11:04:00 -0500
+Message-ID: <20150121160400.17297.38698.stgit@manet.1015granger.net>
 In-Reply-To: <20150121155303.17297.47423.stgit@manet.1015granger.net>
 References: <20150121155303.17297.47423.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -17,216 +16,147 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Move the details of how to create and destroy rpcrdma_req and
-rpcrdma_rep structures into helper functions.
+There are several spots that allocate a buffer via kmalloc (usually
+contiguously with another data structure) and then register that
+buffer internally. I'd like to split the buffers out of these data
+structures to allow the data structures to scale.
+
+Start by adding functions that can kmalloc and register a buffer,
+and can manage/preserve the buffer's associated ib_sge and ib_mr
+fields.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 Reviewed-by: Steve Wise <swise@opengridcomputing.com>
 ---
- net/sunrpc/xprtrdma/verbs.c |  148 ++++++++++++++++++++++++++++---------------
- 1 file changed, 95 insertions(+), 53 deletions(-)
+ net/sunrpc/xprtrdma/verbs.c     |   55 +++++++++++++++++++++++++++++++++++++++
+ net/sunrpc/xprtrdma/xprt_rdma.h |   43 ++++++++++++++++++++++++++++++
+ 2 files changed, 98 insertions(+)
 
 diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index fd71501..24ea6dd 100644
+index 24ea6dd..cdd6aac 100644
 --- a/net/sunrpc/xprtrdma/verbs.c
 +++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -1075,6 +1075,69 @@ rpcrdma_ep_disconnect(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
- 	}
+@@ -1828,6 +1828,61 @@ rpcrdma_deregister_internal(struct rpcrdma_ia *ia,
+ 	return rc;
  }
  
-+static struct rpcrdma_req *
-+rpcrdma_create_req(struct rpcrdma_xprt *r_xprt)
++/**
++ * rpcrdma_alloc_regbuf - kmalloc and register memory for SEND/RECV buffers
++ * @ia: controlling rpcrdma_ia
++ * @size: size of buffer to be allocated, in bytes
++ * @flags: GFP flags
++ *
++ * Returns pointer to private header of an area of internally
++ * registered memory, or an ERR_PTR. The registered buffer follows
++ * the end of the private header.
++ *
++ * xprtrdma uses a regbuf for posting an outgoing RDMA SEND, or for
++ * receiving the payload of RDMA RECV operations. regbufs are not
++ * used for RDMA READ/WRITE operations, thus are registered only for
++ * LOCAL access.
++ */
++struct rpcrdma_regbuf *
++rpcrdma_alloc_regbuf(struct rpcrdma_ia *ia, size_t size, gfp_t flags)
 +{
-+	struct rpcrdma_create_data_internal *cdata = &r_xprt->rx_data;
-+	size_t wlen = 1 << fls(cdata->inline_wsize +
-+			       sizeof(struct rpcrdma_req));
-+	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
-+	struct rpcrdma_req *req;
++	struct rpcrdma_regbuf *rb;
 +	int rc;
 +
 +	rc = -ENOMEM;
-+	req = kmalloc(wlen, GFP_KERNEL);
-+	if (req == NULL)
++	rb = kmalloc(sizeof(*rb) + size, flags);
++	if (rb == NULL)
 +		goto out;
-+	memset(req, 0, sizeof(struct rpcrdma_req));
 +
-+	rc = rpcrdma_register_internal(ia, req->rl_base, wlen -
-+				       offsetof(struct rpcrdma_req, rl_base),
-+				       &req->rl_handle, &req->rl_iov);
++	rb->rg_size = size;
++	rb->rg_owner = NULL;
++	rc = rpcrdma_register_internal(ia, rb->rg_base, size,
++				       &rb->rg_mr, &rb->rg_iov);
 +	if (rc)
 +		goto out_free;
 +
-+	req->rl_size = wlen - sizeof(struct rpcrdma_req);
-+	req->rl_buffer = &r_xprt->rx_buf;
-+	return req;
++	return rb;
 +
 +out_free:
-+	kfree(req);
++	kfree(rb);
 +out:
 +	return ERR_PTR(rc);
 +}
 +
-+static struct rpcrdma_rep *
-+rpcrdma_create_rep(struct rpcrdma_xprt *r_xprt)
++/**
++ * rpcrdma_free_regbuf - deregister and free registered buffer
++ * @ia: controlling rpcrdma_ia
++ * @rb: regbuf to be deregistered and freed
++ */
++void
++rpcrdma_free_regbuf(struct rpcrdma_ia *ia, struct rpcrdma_regbuf *rb)
 +{
-+	struct rpcrdma_create_data_internal *cdata = &r_xprt->rx_data;
-+	size_t rlen = 1 << fls(cdata->inline_rsize +
-+			       sizeof(struct rpcrdma_rep));
-+	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
-+	struct rpcrdma_rep *rep;
-+	int rc;
-+
-+	rc = -ENOMEM;
-+	rep = kmalloc(rlen, GFP_KERNEL);
-+	if (rep == NULL)
-+		goto out;
-+	memset(rep, 0, sizeof(struct rpcrdma_rep));
-+
-+	rc = rpcrdma_register_internal(ia, rep->rr_base, rlen -
-+				       offsetof(struct rpcrdma_rep, rr_base),
-+				       &rep->rr_handle, &rep->rr_iov);
-+	if (rc)
-+		goto out_free;
-+
-+	rep->rr_buffer = &r_xprt->rx_buf;
-+	return rep;
-+
-+out_free:
-+	kfree(rep);
-+out:
-+	return ERR_PTR(rc);
++	if (rb) {
++		rpcrdma_deregister_internal(ia, rb->rg_mr, &rb->rg_iov);
++		kfree(rb);
++	}
 +}
 +
- static int
- rpcrdma_init_fmrs(struct rpcrdma_ia *ia, struct rpcrdma_buffer *buf)
- {
-@@ -1167,7 +1230,7 @@ rpcrdma_buffer_create(struct rpcrdma_xprt *r_xprt)
- 	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
- 	struct rpcrdma_create_data_internal *cdata = &r_xprt->rx_data;
- 	char *p;
--	size_t len, rlen, wlen;
-+	size_t len;
- 	int i, rc;
+ /*
+  * Wrappers for chunk registration, shared by read/write chunk code.
+  */
+diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+index 5c2fac3..36c37c6 100644
+--- a/net/sunrpc/xprtrdma/xprt_rdma.h
++++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+@@ -106,6 +106,44 @@ struct rpcrdma_ep {
+ #define INIT_CQCOUNT(ep) atomic_set(&(ep)->rep_cqcount, (ep)->rep_cqinit)
+ #define DECR_CQCOUNT(ep) atomic_sub_return(1, &(ep)->rep_cqcount)
  
- 	buf->rb_max_requests = cdata->max_requests;
-@@ -1227,62 +1290,29 @@ rpcrdma_buffer_create(struct rpcrdma_xprt *r_xprt)
- 		break;
- 	}
- 
--	/*
--	 * Allocate/init the request/reply buffers. Doing this
--	 * using kmalloc for now -- one for each buf.
--	 */
--	wlen = 1 << fls(cdata->inline_wsize + sizeof(struct rpcrdma_req));
--	rlen = 1 << fls(cdata->inline_rsize + sizeof(struct rpcrdma_rep));
--	dprintk("RPC:       %s: wlen = %zu, rlen = %zu\n",
--		__func__, wlen, rlen);
--
- 	for (i = 0; i < buf->rb_max_requests; i++) {
- 		struct rpcrdma_req *req;
- 		struct rpcrdma_rep *rep;
- 
--		req = kmalloc(wlen, GFP_KERNEL);
--		if (req == NULL) {
-+		req = rpcrdma_create_req(r_xprt);
-+		if (IS_ERR(req)) {
- 			dprintk("RPC:       %s: request buffer %d alloc"
- 				" failed\n", __func__, i);
--			rc = -ENOMEM;
-+			rc = PTR_ERR(req);
- 			goto out;
- 		}
--		memset(req, 0, sizeof(struct rpcrdma_req));
- 		buf->rb_send_bufs[i] = req;
--		buf->rb_send_bufs[i]->rl_buffer = buf;
--
--		rc = rpcrdma_register_internal(ia, req->rl_base,
--				wlen - offsetof(struct rpcrdma_req, rl_base),
--				&buf->rb_send_bufs[i]->rl_handle,
--				&buf->rb_send_bufs[i]->rl_iov);
--		if (rc)
--			goto out;
- 
--		buf->rb_send_bufs[i]->rl_size = wlen -
--						sizeof(struct rpcrdma_req);
--
--		rep = kmalloc(rlen, GFP_KERNEL);
--		if (rep == NULL) {
-+		rep = rpcrdma_create_rep(r_xprt);
-+		if (IS_ERR(rep)) {
- 			dprintk("RPC:       %s: reply buffer %d alloc failed\n",
- 				__func__, i);
--			rc = -ENOMEM;
-+			rc = PTR_ERR(rep);
- 			goto out;
- 		}
--		memset(rep, 0, sizeof(struct rpcrdma_rep));
- 		buf->rb_recv_bufs[i] = rep;
--		buf->rb_recv_bufs[i]->rr_buffer = buf;
--
--		rc = rpcrdma_register_internal(ia, rep->rr_base,
--				rlen - offsetof(struct rpcrdma_rep, rr_base),
--				&buf->rb_recv_bufs[i]->rr_handle,
--				&buf->rb_recv_bufs[i]->rr_iov);
--		if (rc)
--			goto out;
--
- 	}
--	dprintk("RPC:       %s: max_requests %d\n",
--		__func__, buf->rb_max_requests);
--	/* done */
++/* Registered buffer -- registered kmalloc'd memory for RDMA SEND/RECV
++ *
++ * The below structure appears at the front of a large region of kmalloc'd
++ * memory, which always starts on a good alignment boundary.
++ */
 +
- 	return 0;
- out:
- 	rpcrdma_buffer_destroy(buf);
-@@ -1290,6 +1320,26 @@ out:
- }
- 
- static void
-+rpcrdma_destroy_rep(struct rpcrdma_ia *ia, struct rpcrdma_rep *rep)
++struct rpcrdma_regbuf {
++	size_t			rg_size;
++	struct rpcrdma_req	*rg_owner;
++	struct ib_mr		*rg_mr;
++	struct ib_sge		rg_iov;
++	__be32			rg_base[0] __attribute__ ((aligned(256)));
++};
++
++static inline u64
++rdmab_addr(struct rpcrdma_regbuf *rb)
 +{
-+	if (!rep)
-+		return;
-+
-+	rpcrdma_deregister_internal(ia, rep->rr_handle, &rep->rr_iov);
-+	kfree(rep);
++	return rb->rg_iov.addr;
 +}
 +
-+static void
-+rpcrdma_destroy_req(struct rpcrdma_ia *ia, struct rpcrdma_req *req)
++static inline u32
++rdmab_length(struct rpcrdma_regbuf *rb)
 +{
-+	if (!req)
-+		return;
-+
-+	rpcrdma_deregister_internal(ia, req->rl_handle, &req->rl_iov);
-+	kfree(req);
++	return rb->rg_iov.length;
 +}
 +
-+static void
- rpcrdma_destroy_fmrs(struct rpcrdma_buffer *buf)
- {
- 	struct rpcrdma_mw *r;
-@@ -1344,18 +1394,10 @@ rpcrdma_buffer_destroy(struct rpcrdma_buffer *buf)
- 	dprintk("RPC:       %s: entering\n", __func__);
++static inline u32
++rdmab_lkey(struct rpcrdma_regbuf *rb)
++{
++	return rb->rg_iov.lkey;
++}
++
++static inline struct rpcrdma_msg *
++rdmab_to_msg(struct rpcrdma_regbuf *rb)
++{
++	return (struct rpcrdma_msg *)rb->rg_base;
++}
++
+ enum rpcrdma_chunktype {
+ 	rpcrdma_noch = 0,
+ 	rpcrdma_readch,
+@@ -372,6 +410,11 @@ int rpcrdma_register_external(struct rpcrdma_mr_seg *,
+ int rpcrdma_deregister_external(struct rpcrdma_mr_seg *,
+ 				struct rpcrdma_xprt *);
  
- 	for (i = 0; i < buf->rb_max_requests; i++) {
--		if (buf->rb_recv_bufs && buf->rb_recv_bufs[i]) {
--			rpcrdma_deregister_internal(ia,
--					buf->rb_recv_bufs[i]->rr_handle,
--					&buf->rb_recv_bufs[i]->rr_iov);
--			kfree(buf->rb_recv_bufs[i]);
--		}
--		if (buf->rb_send_bufs && buf->rb_send_bufs[i]) {
--			rpcrdma_deregister_internal(ia,
--					buf->rb_send_bufs[i]->rl_handle,
--					&buf->rb_send_bufs[i]->rl_iov);
--			kfree(buf->rb_send_bufs[i]);
--		}
-+		if (buf->rb_recv_bufs)
-+			rpcrdma_destroy_rep(ia, buf->rb_recv_bufs[i]);
-+		if (buf->rb_send_bufs)
-+			rpcrdma_destroy_req(ia, buf->rb_send_bufs[i]);
- 	}
- 
- 	switch (ia->ri_memreg_strategy) {
++struct rpcrdma_regbuf *rpcrdma_alloc_regbuf(struct rpcrdma_ia *,
++					    size_t, gfp_t);
++void rpcrdma_free_regbuf(struct rpcrdma_ia *,
++			 struct rpcrdma_regbuf *);
++
+ /*
+  * RPC/RDMA connection management calls - xprtrdma/rpc_rdma.c
+  */
 
