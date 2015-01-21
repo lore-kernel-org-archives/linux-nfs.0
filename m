@@ -1,15 +1,15 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f178.google.com ([209.85.223.178]:53887 "EHLO
-	mail-ie0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754188AbbAUQDh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Jan 2015 11:03:37 -0500
-Subject: [PATCH v3 12/20] xprtrdma: Take struct ib_qp_attr and
- ib_qp_init_attr off the stack
+Received: from mail-ie0-f182.google.com ([209.85.223.182]:44456 "EHLO
+	mail-ie0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752015AbbAUQDp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Jan 2015 11:03:45 -0500
+Subject: [PATCH v3 13/20] xprtrdma: Simplify synopsis of
+ rpcrdma_buffer_create()
 From: Chuck Lever <chuck.lever@oracle.com>
 To: Anna.Schumaker@netapp.com
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Wed, 21 Jan 2015 11:03:35 -0500
-Message-ID: <20150121160335.17297.28399.stgit@manet.1015granger.net>
+Date: Wed, 21 Jan 2015 11:03:44 -0500
+Message-ID: <20150121160344.17297.87699.stgit@manet.1015granger.net>
 In-Reply-To: <20150121155303.17297.47423.stgit@manet.1015granger.net>
 References: <20150121155303.17297.47423.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -17,68 +17,70 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Reduce stack footprint of the connection upcall handler function.
+Clean up: There is one call site for rpcrdma_buffer_create(). All of
+the arguments there are fields of an rpcrdma_xprt.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 Reviewed-by: Steve Wise <swise@opengridcomputing.com>
 ---
- net/sunrpc/xprtrdma/verbs.c     |   15 ++++++++-------
- net/sunrpc/xprtrdma/xprt_rdma.h |    2 ++
- 2 files changed, 10 insertions(+), 7 deletions(-)
+ net/sunrpc/xprtrdma/transport.c |    3 +--
+ net/sunrpc/xprtrdma/verbs.c     |    7 +++++--
+ net/sunrpc/xprtrdma/xprt_rdma.h |    4 +---
+ 3 files changed, 7 insertions(+), 7 deletions(-)
 
+diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+index a487bde..808b3c5 100644
+--- a/net/sunrpc/xprtrdma/transport.c
++++ b/net/sunrpc/xprtrdma/transport.c
+@@ -364,8 +364,7 @@ xprt_setup_rdma(struct xprt_create *args)
+ 	 * any inline data. Also specify any padding which will be provided
+ 	 * from a preregistered zero buffer.
+ 	 */
+-	rc = rpcrdma_buffer_create(&new_xprt->rx_buf, new_ep, &new_xprt->rx_ia,
+-				&new_xprt->rx_data);
++	rc = rpcrdma_buffer_create(new_xprt);
+ 	if (rc)
+ 		goto out3;
+ 
 diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 123bb04..958b372 100644
+index 958b372..fd71501 100644
 --- a/net/sunrpc/xprtrdma/verbs.c
 +++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -425,8 +425,8 @@ rpcrdma_conn_upcall(struct rdma_cm_id *id, struct rdma_cm_event *event)
- #if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
- 	struct sockaddr_in *addr = (struct sockaddr_in *) &ep->rep_remote_addr;
- #endif
--	struct ib_qp_attr attr;
--	struct ib_qp_init_attr iattr;
-+	struct ib_qp_attr *attr = &ia->ri_qp_attr;
-+	struct ib_qp_init_attr *iattr = &ia->ri_qp_init_attr;
- 	int connstate = 0;
+@@ -1161,9 +1161,11 @@ out_free:
+ }
  
- 	switch (event->event) {
-@@ -449,12 +449,13 @@ rpcrdma_conn_upcall(struct rdma_cm_id *id, struct rdma_cm_event *event)
- 		break;
- 	case RDMA_CM_EVENT_ESTABLISHED:
- 		connstate = 1;
--		ib_query_qp(ia->ri_id->qp, &attr,
--			IB_QP_MAX_QP_RD_ATOMIC | IB_QP_MAX_DEST_RD_ATOMIC,
--			&iattr);
-+		ib_query_qp(ia->ri_id->qp, attr,
-+			    IB_QP_MAX_QP_RD_ATOMIC | IB_QP_MAX_DEST_RD_ATOMIC,
-+			    iattr);
- 		dprintk("RPC:       %s: %d responder resources"
- 			" (%d initiator)\n",
--			__func__, attr.max_dest_rd_atomic, attr.max_rd_atomic);
-+			__func__, attr->max_dest_rd_atomic,
-+			attr->max_rd_atomic);
- 		goto connected;
- 	case RDMA_CM_EVENT_CONNECT_ERROR:
- 		connstate = -ENOTCONN;
-@@ -487,7 +488,7 @@ connected:
- 
- #if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
- 	if (connstate == 1) {
--		int ird = attr.max_dest_rd_atomic;
-+		int ird = attr->max_dest_rd_atomic;
- 		int tird = ep->rep_remote_cma.responder_resources;
- 		printk(KERN_INFO "rpcrdma: connection to %pI4:%u "
- 			"on %s, memreg %d slots %d ird %d%s\n",
+ int
+-rpcrdma_buffer_create(struct rpcrdma_buffer *buf, struct rpcrdma_ep *ep,
+-	struct rpcrdma_ia *ia, struct rpcrdma_create_data_internal *cdata)
++rpcrdma_buffer_create(struct rpcrdma_xprt *r_xprt)
+ {
++	struct rpcrdma_buffer *buf = &r_xprt->rx_buf;
++	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
++	struct rpcrdma_create_data_internal *cdata = &r_xprt->rx_data;
+ 	char *p;
+ 	size_t len, rlen, wlen;
+ 	int i, rc;
+@@ -1200,6 +1202,7 @@ rpcrdma_buffer_create(struct rpcrdma_buffer *buf, struct rpcrdma_ep *ep,
+ 	 * Register the zeroed pad buffer, if any.
+ 	 */
+ 	if (cdata->padding) {
++		struct rpcrdma_ep *ep = &r_xprt->rx_ep;
+ 		rc = rpcrdma_register_internal(ia, p, cdata->padding,
+ 					    &ep->rep_pad_mr, &ep->rep_pad);
+ 		if (rc)
 diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index ec596ce..2b4e778 100644
+index 2b4e778..5c2fac3 100644
 --- a/net/sunrpc/xprtrdma/xprt_rdma.h
 +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -71,6 +71,8 @@ struct rpcrdma_ia {
- 	enum rpcrdma_memreg	ri_memreg_strategy;
- 	unsigned int		ri_max_frmr_depth;
- 	struct ib_device_attr	ri_devattr;
-+	struct ib_qp_attr	ri_qp_attr;
-+	struct ib_qp_init_attr	ri_qp_init_attr;
- };
- 
+@@ -354,9 +354,7 @@ int rpcrdma_ep_post_recv(struct rpcrdma_ia *, struct rpcrdma_ep *,
  /*
+  * Buffer calls - xprtrdma/verbs.c
+  */
+-int rpcrdma_buffer_create(struct rpcrdma_buffer *, struct rpcrdma_ep *,
+-				struct rpcrdma_ia *,
+-				struct rpcrdma_create_data_internal *);
++int rpcrdma_buffer_create(struct rpcrdma_xprt *);
+ void rpcrdma_buffer_destroy(struct rpcrdma_buffer *);
+ 
+ struct rpcrdma_req *rpcrdma_buffer_get(struct rpcrdma_buffer *);
 
