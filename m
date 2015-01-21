@@ -1,58 +1,80 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pa0-f45.google.com ([209.85.220.45]:33624 "EHLO
-	mail-pa0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754292AbbA2ViC (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Jan 2015 16:38:02 -0500
-Received: by mail-pa0-f45.google.com with SMTP id et14so43704997pad.4
-        for <linux-nfs@vger.kernel.org>; Thu, 29 Jan 2015 13:38:01 -0800 (PST)
-Message-ID: <1422567477.6784.1.camel@primarydata.com>
-Subject: [GIT PULL] Please pull NFS client bugfixes
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
-Date: Thu, 29 Jan 2015 16:37:57 -0500
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from mail-ig0-f173.google.com ([209.85.213.173]:49370 "EHLO
+	mail-ig0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752449AbbAUQB6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Jan 2015 11:01:58 -0500
+Subject: [PATCH v3 00/20] NFS/RDMA client for 3.20
+From: Chuck Lever <chuck.lever@oracle.com>
+To: Anna.Schumaker@netapp.com
+Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Wed, 21 Jan 2015 11:01:56 -0500
+Message-ID: <20150121155303.17297.47423.stgit@manet.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Linus,
+The following series of patches for the Linux NFS client breaks up
+the per-transport buffer pool data structures. The goal is to allow
+transport operation to scale better as the size of SEND/RECV buffers
+(the inline thresholds), the maximum NFS r/wsize, and the number of
+RDMA credits (concurrent RPC requests) is increased.
 
-The following changes since commit ec6f34e5b552fb0a52e6aae1a5afbbb1605cc6cc:
+The primary change is that the header send buffers have been split
+from struct rpcrdma_req. Specific benefits are outlined in the patch
+descriptions.
 
-  Linux 3.19-rc5 (2015-01-18 18:02:20 +1200)
+More pre-requisites are required. Changes to raise the maximum
+r/wsize and other limits are left for a future merge window.
 
-are available in the git repository at:
+See the topic branch "nfs-rdma-for-3.20" at:
 
-  git://git.linux-nfs.org/projects/trondmy/linux-nfs.git tags/nfs-for-3.19-3
+ git://git.linux-nfs.org/projects/cel/cel-2.6.git
 
-for you to fetch changes up to 2ef47eb1aee171ecf1d83311b9f7fae80f330181:
+Anna, I think these are ready for you to merge.
 
-  NFS: Fix use of nfs_attr_use_mounted_on_fileid() (2015-01-21 17:15:41 -0500)
+Changes since v2:
+- Rebased on v3.19-rc5
+- Several patch descriptions clarified, based on review comments
+- New size of client receive buffers was needlessly large
 
-----------------------------------------------------------------
-NFS client bugfixes for Linux 3.19
+Changes since v1:
+- Rebased on v3.19-rc4
+- One short description fixed
+- linux-rdma included this time (sorry for the noise)
 
-Highlights include:
-- Stable fix for a NFSv4.1 Oops on mount
-- Stable fix for an O_DIRECT deadlock condition
-- Fix an issue with submounted volumes and fake duplicate inode numbers
+---
 
-----------------------------------------------------------------
-Anna Schumaker (1):
-      NFS: Fix use of nfs_attr_use_mounted_on_fileid()
+Chuck Lever (20):
+      xprtrdma: human-readable completion status
+      xprtrdma: Modernize htonl and ntohl
+      xprtrdma: Display XIDs in host byte order
+      xprtrdma: Clean up hdrlen
+      xprtrdma: Rename "xprt" and "rdma_connect" fields in struct rpcrdma_xprt
+      xprtrdma: Remove rpcrdma_ep::rep_ia
+      xprtrdma: Remove rl_mr field, and the mr_chunk union
+      xprtrdma: Move credit update to RPC reply handler
+      xprtrdma: Remove rpcrdma_ep::rep_func and ::rep_xprt
+      xprtrdma: Free the pd if ib_query_qp() fails
+      xprtrdma: Take struct ib_device_attr off the stack
+      xprtrdma: Take struct ib_qp_attr and ib_qp_init_attr off the stack
+      xprtrdma: Simplify synopsis of rpcrdma_buffer_create()
+      xprtrdma: Refactor rpcrdma_buffer_create() and rpcrdma_buffer_destroy()
+      xprtrdma: Add struct rpcrdma_regbuf and helpers
+      xprtrdma: Allocate RPC send buffer separately from struct rpcrdma_req
+      xprtrdma: Allocate RPC/RDMA send buffer separately from struct rpcrdma_req
+      xprtrdma: Allocate RPC/RDMA receive buffer separately from struct rpcrdma_rep
+      xprtrdma: Allocate zero pad separately from rpcrdma_buffer
+      xprtrdma: Clean up after adding regbuf management
 
-Peng Tao (1):
-      nfs: fix dio deadlock when O_DIRECT flag is flipped
 
-Trond Myklebust (1):
-      NFSv4.1: Fix an Oops in nfs41_walk_client_list
+ include/linux/sunrpc/rpc_rdma.h |   14 +
+ include/linux/sunrpc/svc_rdma.h |    2 
+ net/sunrpc/xprtrdma/rpc_rdma.c  |  108 ++++++----
+ net/sunrpc/xprtrdma/transport.c |  179 +++++++----------
+ net/sunrpc/xprtrdma/verbs.c     |  411 ++++++++++++++++++++++++---------------
+ net/sunrpc/xprtrdma/xprt_rdma.h |  111 +++++++----
+ 6 files changed, 478 insertions(+), 347 deletions(-)
 
- fs/nfs/direct.c     | 6 ++++++
- fs/nfs/inode.c      | 5 +++--
- fs/nfs/internal.h   | 2 --
- fs/nfs/nfs4client.c | 2 +-
- 4 files changed, 10 insertions(+), 5 deletions(-)
-
-
+--
+Chuck Lever
