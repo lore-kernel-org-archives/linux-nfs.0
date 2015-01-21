@@ -1,19 +1,19 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f181.google.com ([209.85.220.181]:55899 "EHLO
-	mail-vc0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753369AbbAUXAX convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Jan 2015 18:00:23 -0500
-Received: by mail-vc0-f181.google.com with SMTP id id10so3501286vcb.12
-        for <linux-nfs@vger.kernel.org>; Wed, 21 Jan 2015 15:00:22 -0800 (PST)
+Received: from mail-lb0-f178.google.com ([209.85.217.178]:47767 "EHLO
+	mail-lb0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752521AbbAUXws convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Jan 2015 18:52:48 -0500
+Received: by mail-lb0-f178.google.com with SMTP id u10so11543151lbd.9
+        for <linux-nfs@vger.kernel.org>; Wed, 21 Jan 2015 15:52:46 -0800 (PST)
 MIME-Version: 1.0
 In-Reply-To: <CAHQdGtRZx+JhZLUi0JdmB0afO7wkhXHMUK_FFD0G5frdiWHSPQ@mail.gmail.com>
 References: <CAN-5tyFX02eAzoO3NeRgBuyr8Hp0_xzaLNJ8BMJZ99gJqJmPMQ@mail.gmail.com>
 	<CAHQdGtRZx+JhZLUi0JdmB0afO7wkhXHMUK_FFD0G5frdiWHSPQ@mail.gmail.com>
-Date: Wed, 21 Jan 2015 18:00:22 -0500
-Message-ID: <CAHQdGtQcpGW4q+XM6ePbQZ48mmB4WqW86nD79pw18BHLkP0ZSA@mail.gmail.com>
+Date: Wed, 21 Jan 2015 18:52:46 -0500
+Message-ID: <CAN-5tyGPhTzNfdnbpNOpebb6H34FGu3HUWiJ=mGQmFi31RHiiQ@mail.gmail.com>
 Subject: Re: race between inode eviction with delegation and opening same file
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Olga Kornievskaia <aglo@umich.edu>
+From: Olga Kornievskaia <aglo@umich.edu>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
 Cc: linux-nfs <linux-nfs@vger.kernel.org>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
@@ -79,17 +79,21 @@ On Wed, Jan 21, 2015 at 5:48 PM, Trond Myklebust
 > and increment so that when the seqid wraps around, it skips over the
 > value '0'.
 
-BTW: We should probably add in a check to protect against servers that
-return seqid == 0. I suspect that could cause some really nasty
-behaviour if/when the client is trying to close a file or delegreturn
-while there is an on-the-wire OPEN.
+I wrongly assumed that first seq num is 0 because I've been seeing
+seqid of 1 being returned in this case. So if we assume the server is
+acting properly and returning the next up (so patch would check that >
+1). What do you think about that solution?
 
+>
 > Also, please note that nfs_do_return_delegation() may sleep, so you
-> cannot call it while holding a spinlock.
+> cannot call it while holding a spin lock.
 
+Yes, that's why I couldn't think of solution where we guarantee
+atomicity of detaching the delegation and making sure it's returned
+before servicing an open for the same file.
 
-
--- 
-Trond Myklebust
-Linux NFS client maintainer, PrimaryData
-trond.myklebust@primarydata.com
+>
+> --
+> Trond Myklebust
+> Linux NFS client maintainer, PrimaryData
+> trond.myklebust@primarydata.com
