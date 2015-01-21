@@ -1,14 +1,14 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f169.google.com ([209.85.213.169]:40753 "EHLO
-	mail-ig0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753480AbbAUQDV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Jan 2015 11:03:21 -0500
-Subject: [PATCH v3 10/20] xprtrdma: Free the pd if ib_query_qp() fails
+Received: from mail-ie0-f179.google.com ([209.85.223.179]:64985 "EHLO
+	mail-ie0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754532AbbAUQD3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Jan 2015 11:03:29 -0500
+Subject: [PATCH v3 11/20] xprtrdma: Take struct ib_device_attr off the stack
 From: Chuck Lever <chuck.lever@oracle.com>
 To: Anna.Schumaker@netapp.com
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Wed, 21 Jan 2015 11:03:19 -0500
-Message-ID: <20150121160319.17297.74647.stgit@manet.1015granger.net>
+Date: Wed, 21 Jan 2015 11:03:27 -0500
+Message-ID: <20150121160327.17297.29317.stgit@manet.1015granger.net>
 In-Reply-To: <20150121155303.17297.47423.stgit@manet.1015granger.net>
 References: <20150121155303.17297.47423.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -16,56 +16,128 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If ib_query_qp() fails or the memory registration mode isn't
-supported, don't leak the PD. An orphaned IB/core resource will
-cause IB module removal to hang.
+Device attributes are large, and are used in more than one place.
+Stash a copy in dynamically allocated memory.
 
-Fixes: bd7ed1d13304 ("RPC/RDMA: check selected memory registration ...")
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 Reviewed-by: Steve Wise <swise@opengridcomputing.com>
 ---
- net/sunrpc/xprtrdma/verbs.c |   10 +++++++---
- 1 file changed, 7 insertions(+), 3 deletions(-)
+ net/sunrpc/xprtrdma/verbs.c     |   37 +++++++++++++------------------------
+ net/sunrpc/xprtrdma/xprt_rdma.h |    1 +
+ 2 files changed, 14 insertions(+), 24 deletions(-)
 
 diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index c61bb61..aa012a3 100644
+index aa012a3..123bb04 100644
 --- a/net/sunrpc/xprtrdma/verbs.c
 +++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -614,7 +614,7 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
+@@ -588,8 +588,8 @@ int
+ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
+ {
+ 	int rc, mem_priv;
+-	struct ib_device_attr devattr;
+ 	struct rpcrdma_ia *ia = &xprt->rx_ia;
++	struct ib_device_attr *devattr = &ia->ri_devattr;
+ 
+ 	ia->ri_id = rpcrdma_create_id(xprt, ia, addr);
+ 	if (IS_ERR(ia->ri_id)) {
+@@ -605,26 +605,21 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
+ 		goto out2;
+ 	}
+ 
+-	/*
+-	 * Query the device to determine if the requested memory
+-	 * registration strategy is supported. If it isn't, set the
+-	 * strategy to a globally supported model.
+-	 */
+-	rc = ib_query_device(ia->ri_id->device, &devattr);
++	rc = ib_query_device(ia->ri_id->device, devattr);
  	if (rc) {
  		dprintk("RPC:       %s: ib_query_device failed %d\n",
  			__func__, rc);
--		goto out2;
-+		goto out3;
+ 		goto out3;
  	}
  
- 	if (devattr.device_cap_flags & IB_DEVICE_LOCAL_DMA_LKEY) {
-@@ -672,14 +672,14 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
- 				"phys register failed with %lX\n",
- 				__func__, PTR_ERR(ia->ri_bind_mem));
- 			rc = -ENOMEM;
--			goto out2;
-+			goto out3;
+-	if (devattr.device_cap_flags & IB_DEVICE_LOCAL_DMA_LKEY) {
++	if (devattr->device_cap_flags & IB_DEVICE_LOCAL_DMA_LKEY) {
+ 		ia->ri_have_dma_lkey = 1;
+ 		ia->ri_dma_lkey = ia->ri_id->device->local_dma_lkey;
+ 	}
+ 
+ 	if (memreg == RPCRDMA_FRMR) {
+ 		/* Requires both frmr reg and local dma lkey */
+-		if ((devattr.device_cap_flags &
++		if ((devattr->device_cap_flags &
+ 		     (IB_DEVICE_MEM_MGT_EXTENSIONS|IB_DEVICE_LOCAL_DMA_LKEY)) !=
+ 		    (IB_DEVICE_MEM_MGT_EXTENSIONS|IB_DEVICE_LOCAL_DMA_LKEY)) {
+ 			dprintk("RPC:       %s: FRMR registration "
+@@ -634,7 +629,7 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
+ 			/* Mind the ia limit on FRMR page list depth */
+ 			ia->ri_max_frmr_depth = min_t(unsigned int,
+ 				RPCRDMA_MAX_DATA_SEGS,
+-				devattr.max_fast_reg_page_list_len);
++				devattr->max_fast_reg_page_list_len);
  		}
- 		break;
- 	default:
- 		printk(KERN_ERR "RPC: Unsupported memory "
- 				"registration mode: %d\n", memreg);
- 		rc = -ENOMEM;
--		goto out2;
-+		goto out3;
  	}
- 	dprintk("RPC:       %s: memory registration strategy is %d\n",
- 		__func__, memreg);
-@@ -689,6 +689,10 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
+ 	if (memreg == RPCRDMA_MTHCAFMR) {
+@@ -736,20 +731,13 @@ int
+ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
+ 				struct rpcrdma_create_data_internal *cdata)
+ {
+-	struct ib_device_attr devattr;
++	struct ib_device_attr *devattr = &ia->ri_devattr;
+ 	struct ib_cq *sendcq, *recvcq;
+ 	int rc, err;
  
- 	rwlock_init(&ia->ri_qplock);
- 	return 0;
-+
-+out3:
-+	ib_dealloc_pd(ia->ri_pd);
-+	ia->ri_pd = NULL;
- out2:
- 	rdma_destroy_id(ia->ri_id);
- 	ia->ri_id = NULL;
+-	rc = ib_query_device(ia->ri_id->device, &devattr);
+-	if (rc) {
+-		dprintk("RPC:       %s: ib_query_device failed %d\n",
+-			__func__, rc);
+-		return rc;
+-	}
+-
+ 	/* check provider's send/recv wr limits */
+-	if (cdata->max_requests > devattr.max_qp_wr)
+-		cdata->max_requests = devattr.max_qp_wr;
++	if (cdata->max_requests > devattr->max_qp_wr)
++		cdata->max_requests = devattr->max_qp_wr;
+ 
+ 	ep->rep_attr.event_handler = rpcrdma_qp_async_error_upcall;
+ 	ep->rep_attr.qp_context = ep;
+@@ -784,8 +772,8 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
+ 
+ 		}
+ 		ep->rep_attr.cap.max_send_wr *= depth;
+-		if (ep->rep_attr.cap.max_send_wr > devattr.max_qp_wr) {
+-			cdata->max_requests = devattr.max_qp_wr / depth;
++		if (ep->rep_attr.cap.max_send_wr > devattr->max_qp_wr) {
++			cdata->max_requests = devattr->max_qp_wr / depth;
+ 			if (!cdata->max_requests)
+ 				return -EINVAL;
+ 			ep->rep_attr.cap.max_send_wr = cdata->max_requests *
+@@ -868,10 +856,11 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
+ 
+ 	/* Client offers RDMA Read but does not initiate */
+ 	ep->rep_remote_cma.initiator_depth = 0;
+-	if (devattr.max_qp_rd_atom > 32)	/* arbitrary but <= 255 */
++	if (devattr->max_qp_rd_atom > 32)	/* arbitrary but <= 255 */
+ 		ep->rep_remote_cma.responder_resources = 32;
+ 	else
+-		ep->rep_remote_cma.responder_resources = devattr.max_qp_rd_atom;
++		ep->rep_remote_cma.responder_resources =
++						devattr->max_qp_rd_atom;
+ 
+ 	ep->rep_remote_cma.retry_count = 7;
+ 	ep->rep_remote_cma.flow_control = 0;
+diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+index 657c370..ec596ce 100644
+--- a/net/sunrpc/xprtrdma/xprt_rdma.h
++++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+@@ -70,6 +70,7 @@ struct rpcrdma_ia {
+ 	int			ri_async_rc;
+ 	enum rpcrdma_memreg	ri_memreg_strategy;
+ 	unsigned int		ri_max_frmr_depth;
++	struct ib_device_attr	ri_devattr;
+ };
+ 
+ /*
 
