@@ -1,14 +1,15 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f179.google.com ([209.85.223.179]:64985 "EHLO
-	mail-ie0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754532AbbAUQD3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Jan 2015 11:03:29 -0500
-Subject: [PATCH v3 11/20] xprtrdma: Take struct ib_device_attr off the stack
+Received: from mail-ie0-f178.google.com ([209.85.223.178]:53887 "EHLO
+	mail-ie0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754188AbbAUQDh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Jan 2015 11:03:37 -0500
+Subject: [PATCH v3 12/20] xprtrdma: Take struct ib_qp_attr and
+ ib_qp_init_attr off the stack
 From: Chuck Lever <chuck.lever@oracle.com>
 To: Anna.Schumaker@netapp.com
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Wed, 21 Jan 2015 11:03:27 -0500
-Message-ID: <20150121160327.17297.29317.stgit@manet.1015granger.net>
+Date: Wed, 21 Jan 2015 11:03:35 -0500
+Message-ID: <20150121160335.17297.28399.stgit@manet.1015granger.net>
 In-Reply-To: <20150121155303.17297.47423.stgit@manet.1015granger.net>
 References: <20150121155303.17297.47423.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -16,127 +17,67 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Device attributes are large, and are used in more than one place.
-Stash a copy in dynamically allocated memory.
+Reduce stack footprint of the connection upcall handler function.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 Reviewed-by: Steve Wise <swise@opengridcomputing.com>
 ---
- net/sunrpc/xprtrdma/verbs.c     |   37 +++++++++++++------------------------
- net/sunrpc/xprtrdma/xprt_rdma.h |    1 +
- 2 files changed, 14 insertions(+), 24 deletions(-)
+ net/sunrpc/xprtrdma/verbs.c     |   15 ++++++++-------
+ net/sunrpc/xprtrdma/xprt_rdma.h |    2 ++
+ 2 files changed, 10 insertions(+), 7 deletions(-)
 
 diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index aa012a3..123bb04 100644
+index 123bb04..958b372 100644
 --- a/net/sunrpc/xprtrdma/verbs.c
 +++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -588,8 +588,8 @@ int
- rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
- {
- 	int rc, mem_priv;
--	struct ib_device_attr devattr;
- 	struct rpcrdma_ia *ia = &xprt->rx_ia;
-+	struct ib_device_attr *devattr = &ia->ri_devattr;
+@@ -425,8 +425,8 @@ rpcrdma_conn_upcall(struct rdma_cm_id *id, struct rdma_cm_event *event)
+ #if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
+ 	struct sockaddr_in *addr = (struct sockaddr_in *) &ep->rep_remote_addr;
+ #endif
+-	struct ib_qp_attr attr;
+-	struct ib_qp_init_attr iattr;
++	struct ib_qp_attr *attr = &ia->ri_qp_attr;
++	struct ib_qp_init_attr *iattr = &ia->ri_qp_init_attr;
+ 	int connstate = 0;
  
- 	ia->ri_id = rpcrdma_create_id(xprt, ia, addr);
- 	if (IS_ERR(ia->ri_id)) {
-@@ -605,26 +605,21 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
- 		goto out2;
- 	}
+ 	switch (event->event) {
+@@ -449,12 +449,13 @@ rpcrdma_conn_upcall(struct rdma_cm_id *id, struct rdma_cm_event *event)
+ 		break;
+ 	case RDMA_CM_EVENT_ESTABLISHED:
+ 		connstate = 1;
+-		ib_query_qp(ia->ri_id->qp, &attr,
+-			IB_QP_MAX_QP_RD_ATOMIC | IB_QP_MAX_DEST_RD_ATOMIC,
+-			&iattr);
++		ib_query_qp(ia->ri_id->qp, attr,
++			    IB_QP_MAX_QP_RD_ATOMIC | IB_QP_MAX_DEST_RD_ATOMIC,
++			    iattr);
+ 		dprintk("RPC:       %s: %d responder resources"
+ 			" (%d initiator)\n",
+-			__func__, attr.max_dest_rd_atomic, attr.max_rd_atomic);
++			__func__, attr->max_dest_rd_atomic,
++			attr->max_rd_atomic);
+ 		goto connected;
+ 	case RDMA_CM_EVENT_CONNECT_ERROR:
+ 		connstate = -ENOTCONN;
+@@ -487,7 +488,7 @@ connected:
  
--	/*
--	 * Query the device to determine if the requested memory
--	 * registration strategy is supported. If it isn't, set the
--	 * strategy to a globally supported model.
--	 */
--	rc = ib_query_device(ia->ri_id->device, &devattr);
-+	rc = ib_query_device(ia->ri_id->device, devattr);
- 	if (rc) {
- 		dprintk("RPC:       %s: ib_query_device failed %d\n",
- 			__func__, rc);
- 		goto out3;
- 	}
- 
--	if (devattr.device_cap_flags & IB_DEVICE_LOCAL_DMA_LKEY) {
-+	if (devattr->device_cap_flags & IB_DEVICE_LOCAL_DMA_LKEY) {
- 		ia->ri_have_dma_lkey = 1;
- 		ia->ri_dma_lkey = ia->ri_id->device->local_dma_lkey;
- 	}
- 
- 	if (memreg == RPCRDMA_FRMR) {
- 		/* Requires both frmr reg and local dma lkey */
--		if ((devattr.device_cap_flags &
-+		if ((devattr->device_cap_flags &
- 		     (IB_DEVICE_MEM_MGT_EXTENSIONS|IB_DEVICE_LOCAL_DMA_LKEY)) !=
- 		    (IB_DEVICE_MEM_MGT_EXTENSIONS|IB_DEVICE_LOCAL_DMA_LKEY)) {
- 			dprintk("RPC:       %s: FRMR registration "
-@@ -634,7 +629,7 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
- 			/* Mind the ia limit on FRMR page list depth */
- 			ia->ri_max_frmr_depth = min_t(unsigned int,
- 				RPCRDMA_MAX_DATA_SEGS,
--				devattr.max_fast_reg_page_list_len);
-+				devattr->max_fast_reg_page_list_len);
- 		}
- 	}
- 	if (memreg == RPCRDMA_MTHCAFMR) {
-@@ -736,20 +731,13 @@ int
- rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
- 				struct rpcrdma_create_data_internal *cdata)
- {
--	struct ib_device_attr devattr;
-+	struct ib_device_attr *devattr = &ia->ri_devattr;
- 	struct ib_cq *sendcq, *recvcq;
- 	int rc, err;
- 
--	rc = ib_query_device(ia->ri_id->device, &devattr);
--	if (rc) {
--		dprintk("RPC:       %s: ib_query_device failed %d\n",
--			__func__, rc);
--		return rc;
--	}
--
- 	/* check provider's send/recv wr limits */
--	if (cdata->max_requests > devattr.max_qp_wr)
--		cdata->max_requests = devattr.max_qp_wr;
-+	if (cdata->max_requests > devattr->max_qp_wr)
-+		cdata->max_requests = devattr->max_qp_wr;
- 
- 	ep->rep_attr.event_handler = rpcrdma_qp_async_error_upcall;
- 	ep->rep_attr.qp_context = ep;
-@@ -784,8 +772,8 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
- 
- 		}
- 		ep->rep_attr.cap.max_send_wr *= depth;
--		if (ep->rep_attr.cap.max_send_wr > devattr.max_qp_wr) {
--			cdata->max_requests = devattr.max_qp_wr / depth;
-+		if (ep->rep_attr.cap.max_send_wr > devattr->max_qp_wr) {
-+			cdata->max_requests = devattr->max_qp_wr / depth;
- 			if (!cdata->max_requests)
- 				return -EINVAL;
- 			ep->rep_attr.cap.max_send_wr = cdata->max_requests *
-@@ -868,10 +856,11 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
- 
- 	/* Client offers RDMA Read but does not initiate */
- 	ep->rep_remote_cma.initiator_depth = 0;
--	if (devattr.max_qp_rd_atom > 32)	/* arbitrary but <= 255 */
-+	if (devattr->max_qp_rd_atom > 32)	/* arbitrary but <= 255 */
- 		ep->rep_remote_cma.responder_resources = 32;
- 	else
--		ep->rep_remote_cma.responder_resources = devattr.max_qp_rd_atom;
-+		ep->rep_remote_cma.responder_resources =
-+						devattr->max_qp_rd_atom;
- 
- 	ep->rep_remote_cma.retry_count = 7;
- 	ep->rep_remote_cma.flow_control = 0;
+ #if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
+ 	if (connstate == 1) {
+-		int ird = attr.max_dest_rd_atomic;
++		int ird = attr->max_dest_rd_atomic;
+ 		int tird = ep->rep_remote_cma.responder_resources;
+ 		printk(KERN_INFO "rpcrdma: connection to %pI4:%u "
+ 			"on %s, memreg %d slots %d ird %d%s\n",
 diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index 657c370..ec596ce 100644
+index ec596ce..2b4e778 100644
 --- a/net/sunrpc/xprtrdma/xprt_rdma.h
 +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -70,6 +70,7 @@ struct rpcrdma_ia {
- 	int			ri_async_rc;
+@@ -71,6 +71,8 @@ struct rpcrdma_ia {
  	enum rpcrdma_memreg	ri_memreg_strategy;
  	unsigned int		ri_max_frmr_depth;
-+	struct ib_device_attr	ri_devattr;
+ 	struct ib_device_attr	ri_devattr;
++	struct ib_qp_attr	ri_qp_attr;
++	struct ib_qp_init_attr	ri_qp_init_attr;
  };
  
  /*
