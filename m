@@ -1,45 +1,102 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from verein.lst.de ([213.95.11.211]:49631 "EHLO newverein.lst.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751780AbbAVUTA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 Jan 2015 15:19:00 -0500
-Date: Thu, 22 Jan 2015 21:18:57 +0100
+Received: from casper.infradead.org ([85.118.1.10]:41392 "EHLO
+	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751460AbbAVLLO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Jan 2015 06:11:14 -0500
 From: Christoph Hellwig <hch@lst.de>
 To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Christoph Hellwig <hch@lst.de>, Jeff Layton <jlayton@primarydata.com>,
-        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        xfs@oss.sgi.com
-Subject: Re: [PATCH 03/20] fs: add FL_LAYOUT lease type
-Message-ID: <20150122201857.GA14577@lst.de>
-References: <1421925006-24231-1-git-send-email-hch@lst.de> <1421925006-24231-4-git-send-email-hch@lst.de> <20150122201442.GJ898@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20150122201442.GJ898@fieldses.org>
+Cc: Jeff Layton <jlayton@primarydata.com>, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com
+Subject: [PATCH 04/20] nfsd: factor out a helper to decode nfstime4 values
+Date: Thu, 22 Jan 2015 12:09:50 +0100
+Message-Id: <1421925006-24231-5-git-send-email-hch@lst.de>
+In-Reply-To: <1421925006-24231-1-git-send-email-hch@lst.de>
+References: <1421925006-24231-1-git-send-email-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jan 22, 2015 at 03:14:42PM -0500, J. Bruce Fields wrote:
-> On Thu, Jan 22, 2015 at 12:09:49PM +0100, Christoph Hellwig wrote:
-> > This (ab-)uses the file locking code to allow filesystems to recall
-> > outstanding pNFS layouts on a file.  This new lease type is similar but
-> > not quite the same as FL_DELEG.  A FL_LAYOUT lease can always be granted,
-> > an a per-filesystem lock (XFS iolock for the initial implementation)
-> > ensures not FL_LAYOUT leases granted when we would need to recall them.
-> 
-> So when there's a conflicting operation it's xfs's responsibility to
-> call break_layout and wait for the recall?
-> 
-> (And what roughly is the set of conflicting operations?)
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+---
+ fs/nfsd/nfs4xdr.c | 43 ++++++++++++++++++++++++++-----------------
+ 1 file changed, 26 insertions(+), 17 deletions(-)
 
-The last patch in the series has a comment explaining this.
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 15f7b73..884ffa3 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -234,6 +234,26 @@ static char *savemem(struct nfsd4_compoundargs *argp, __be32 *p, int nbytes)
+ 	return ret;
+ }
+ 
++/*
++ * We require the high 32 bits of 'seconds' to be 0, and
++ * we ignore all 32 bits of 'nseconds'.
++ */
++static __be32
++nfsd4_decode_time(struct nfsd4_compoundargs *argp, struct timespec *tv)
++{
++	DECODE_HEAD;
++	u64 sec;
++
++	READ_BUF(12);
++	p = xdr_decode_hyper(p, &sec);
++	tv->tv_sec = sec;
++	tv->tv_nsec = be32_to_cpup(p++);
++	if (tv->tv_nsec >= (u32)1000000000)
++		return nfserr_inval;
++
++	DECODE_TAIL;
++}
++
+ static __be32
+ nfsd4_decode_bitmap(struct nfsd4_compoundargs *argp, u32 *bmval)
+ {
+@@ -267,7 +287,6 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
+ {
+ 	int expected_len, len = 0;
+ 	u32 dummy32;
+-	u64 sec;
+ 	char *buf;
+ 
+ 	DECODE_HEAD;
+@@ -358,15 +377,10 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
+ 		dummy32 = be32_to_cpup(p++);
+ 		switch (dummy32) {
+ 		case NFS4_SET_TO_CLIENT_TIME:
+-			/* We require the high 32 bits of 'seconds' to be 0, and we ignore
+-			   all 32 bits of 'nseconds'. */
+-			READ_BUF(12);
+ 			len += 12;
+-			p = xdr_decode_hyper(p, &sec);
+-			iattr->ia_atime.tv_sec = (time_t)sec;
+-			iattr->ia_atime.tv_nsec = be32_to_cpup(p++);
+-			if (iattr->ia_atime.tv_nsec >= (u32)1000000000)
+-				return nfserr_inval;
++			status = nfsd4_decode_time(argp, &iattr->ia_atime);
++			if (status)
++				return status;
+ 			iattr->ia_valid |= (ATTR_ATIME | ATTR_ATIME_SET);
+ 			break;
+ 		case NFS4_SET_TO_SERVER_TIME:
+@@ -382,15 +396,10 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
+ 		dummy32 = be32_to_cpup(p++);
+ 		switch (dummy32) {
+ 		case NFS4_SET_TO_CLIENT_TIME:
+-			/* We require the high 32 bits of 'seconds' to be 0, and we ignore
+-			   all 32 bits of 'nseconds'. */
+-			READ_BUF(12);
+ 			len += 12;
+-			p = xdr_decode_hyper(p, &sec);
+-			iattr->ia_mtime.tv_sec = sec;
+-			iattr->ia_mtime.tv_nsec = be32_to_cpup(p++);
+-			if (iattr->ia_mtime.tv_nsec >= (u32)1000000000)
+-				return nfserr_inval;
++			status = nfsd4_decode_time(argp, &iattr->ia_mtime);
++			if (status)
++				return status;
+ 			iattr->ia_valid |= (ATTR_MTIME | ATTR_MTIME_SET);
+ 			break;
+ 		case NFS4_SET_TO_SERVER_TIME:
+-- 
+1.9.1
 
-There's two categories:
-
- a) operations that need to be protected to maintain filesystem integrity:
-    truncate, hole punch, collapse range, a well as any new operation
-    that can deallocate blocks.
- b) operations that write data locally, and we want to provide a best
-    effort attempt at data cohrency between local use and pFNS clients.
-    This covers writes in all variants, and should apply to shared mmap
-    writes, but sleeping in the page fault handler is too hard to bother
-    with for this sort of best effort coherency.
