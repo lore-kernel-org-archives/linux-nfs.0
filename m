@@ -1,16 +1,16 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pd0-f180.google.com ([209.85.192.180]:53098 "EHLO
-	mail-pd0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753695AbbAVXgm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Jan 2015 18:36:42 -0500
-Received: by mail-pd0-f180.google.com with SMTP id ft15so4570094pdb.11
-        for <linux-nfs@vger.kernel.org>; Thu, 22 Jan 2015 15:36:42 -0800 (PST)
+Received: from mail-pa0-f48.google.com ([209.85.220.48]:53528 "EHLO
+	mail-pa0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753695AbbAVXgq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Jan 2015 18:36:46 -0500
+Received: by mail-pa0-f48.google.com with SMTP id ey11so4870327pad.7
+        for <linux-nfs@vger.kernel.org>; Thu, 22 Jan 2015 15:36:45 -0800 (PST)
 From: Tom Haynes <thomas.haynes@primarydata.com>
 To: Trond Myklebust <trond.myklebust@primarydata.com>
 Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH v5 04/51] nfs41: pull decode_ds_addr from file layout to generic pnfs
-Date: Thu, 22 Jan 2015 15:35:36 -0800
-Message-Id: <1421969783-92997-5-git-send-email-loghyr@primarydata.com>
+Subject: [PATCH v5 05/51] nfs41: pull nfs4_ds_connect from file layout to generic pnfs
+Date: Thu, 22 Jan 2015 15:35:37 -0800
+Message-Id: <1421969783-92997-6-git-send-email-loghyr@primarydata.com>
 In-Reply-To: <1421969783-92997-1-git-send-email-loghyr@primarydata.com>
 References: <1421969783-92997-1-git-send-email-loghyr@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -18,372 +18,240 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: Peng Tao <tao.peng@primarydata.com>
 
-It can be reused by flexfile layout.
+It can be reused by flexfiles layout client.
 
 Reviewed-by: Jeff Layton <jlayton@primarydata.com>
 Signed-off-by: Peng Tao <tao.peng@primarydata.com>
 Signed-off-by: Tom Haynes <Thomas.Haynes@primarydata.com>
 ---
- fs/nfs/filelayout/filelayoutdev.c | 152 +-------------------------------------
- fs/nfs/pnfs.h                     |   3 +
- fs/nfs/pnfs_nfs.c                 | 149 +++++++++++++++++++++++++++++++++++++
- 3 files changed, 154 insertions(+), 150 deletions(-)
+ fs/nfs/filelayout/filelayoutdev.c | 78 +++----------------------------------
+ fs/nfs/pnfs.h                     |  3 ++
+ fs/nfs/pnfs_nfs.c                 | 81 +++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 89 insertions(+), 73 deletions(-)
 
 diff --git a/fs/nfs/filelayout/filelayoutdev.c b/fs/nfs/filelayout/filelayoutdev.c
-index fbfbb70..c7f6041 100644
+index c7f6041..27bdd8c 100644
 --- a/fs/nfs/filelayout/filelayoutdev.c
 +++ b/fs/nfs/filelayout/filelayoutdev.c
-@@ -31,7 +31,6 @@
- #include <linux/nfs_fs.h>
- #include <linux/vmalloc.h>
- #include <linux/module.h>
--#include <linux/sunrpc/addr.h>
- 
- #include "../internal.h"
- #include "../nfs4session.h"
-@@ -104,153 +103,6 @@ nfs4_fl_free_deviceid(struct nfs4_file_layout_dsaddr *dsaddr)
- 	kfree(dsaddr);
- }
+@@ -41,51 +41,6 @@
+ static unsigned int dataserver_timeo = NFS4_DEF_DS_TIMEO;
+ static unsigned int dataserver_retrans = NFS4_DEF_DS_RETRANS;
  
 -/*
-- * Currently only supports ipv4, ipv6 and one multi-path address.
+- * Create an rpc connection to the nfs4_pnfs_ds data server
+- * Currently only supports IPv4 and IPv6 addresses
 - */
--static struct nfs4_pnfs_ds_addr *
--decode_ds_addr(struct net *net, struct xdr_stream *streamp, gfp_t gfp_flags)
+-static int
+-nfs4_ds_connect(struct nfs_server *mds_srv, struct nfs4_pnfs_ds *ds)
 -{
--	struct nfs4_pnfs_ds_addr *da = NULL;
--	char *buf, *portstr;
--	__be16 port;
--	int nlen, rlen;
--	int tmp[2];
--	__be32 *p;
--	char *netid, *match_netid;
--	size_t len, match_netid_len;
--	char *startsep = "";
--	char *endsep = "";
+-	struct nfs_client *clp = ERR_PTR(-EIO);
+-	struct nfs4_pnfs_ds_addr *da;
+-	int status = 0;
 -
+-	dprintk("--> %s DS %s au_flavor %d\n", __func__, ds->ds_remotestr,
+-		mds_srv->nfs_client->cl_rpcclient->cl_auth->au_flavor);
 -
--	/* r_netid */
--	p = xdr_inline_decode(streamp, 4);
--	if (unlikely(!p))
--		goto out_err;
--	nlen = be32_to_cpup(p++);
+-	list_for_each_entry(da, &ds->ds_addrs, da_node) {
+-		dprintk("%s: DS %s: trying address %s\n",
+-			__func__, ds->ds_remotestr, da->da_remotestr);
 -
--	p = xdr_inline_decode(streamp, nlen);
--	if (unlikely(!p))
--		goto out_err;
--
--	netid = kmalloc(nlen+1, gfp_flags);
--	if (unlikely(!netid))
--		goto out_err;
--
--	netid[nlen] = '\0';
--	memcpy(netid, p, nlen);
--
--	/* r_addr: ip/ip6addr with port in dec octets - see RFC 5665 */
--	p = xdr_inline_decode(streamp, 4);
--	if (unlikely(!p))
--		goto out_free_netid;
--	rlen = be32_to_cpup(p);
--
--	p = xdr_inline_decode(streamp, rlen);
--	if (unlikely(!p))
--		goto out_free_netid;
--
--	/* port is ".ABC.DEF", 8 chars max */
--	if (rlen > INET6_ADDRSTRLEN + IPV6_SCOPE_ID_LEN + 8) {
--		dprintk("%s: Invalid address, length %d\n", __func__,
--			rlen);
--		goto out_free_netid;
--	}
--	buf = kmalloc(rlen + 1, gfp_flags);
--	if (!buf) {
--		dprintk("%s: Not enough memory\n", __func__);
--		goto out_free_netid;
--	}
--	buf[rlen] = '\0';
--	memcpy(buf, p, rlen);
--
--	/* replace port '.' with '-' */
--	portstr = strrchr(buf, '.');
--	if (!portstr) {
--		dprintk("%s: Failed finding expected dot in port\n",
--			__func__);
--		goto out_free_buf;
--	}
--	*portstr = '-';
--
--	/* find '.' between address and port */
--	portstr = strrchr(buf, '.');
--	if (!portstr) {
--		dprintk("%s: Failed finding expected dot between address and "
--			"port\n", __func__);
--		goto out_free_buf;
--	}
--	*portstr = '\0';
--
--	da = kzalloc(sizeof(*da), gfp_flags);
--	if (unlikely(!da))
--		goto out_free_buf;
--
--	INIT_LIST_HEAD(&da->da_node);
--
--	if (!rpc_pton(net, buf, portstr-buf, (struct sockaddr *)&da->da_addr,
--		      sizeof(da->da_addr))) {
--		dprintk("%s: error parsing address %s\n", __func__, buf);
--		goto out_free_da;
+-		clp = nfs4_set_ds_client(mds_srv->nfs_client,
+-					(struct sockaddr *)&da->da_addr,
+-					da->da_addrlen, IPPROTO_TCP,
+-					dataserver_timeo, dataserver_retrans);
+-		if (!IS_ERR(clp))
+-			break;
 -	}
 -
--	portstr++;
--	sscanf(portstr, "%d-%d", &tmp[0], &tmp[1]);
--	port = htons((tmp[0] << 8) | (tmp[1]));
--
--	switch (da->da_addr.ss_family) {
--	case AF_INET:
--		((struct sockaddr_in *)&da->da_addr)->sin_port = port;
--		da->da_addrlen = sizeof(struct sockaddr_in);
--		match_netid = "tcp";
--		match_netid_len = 3;
--		break;
--
--	case AF_INET6:
--		((struct sockaddr_in6 *)&da->da_addr)->sin6_port = port;
--		da->da_addrlen = sizeof(struct sockaddr_in6);
--		match_netid = "tcp6";
--		match_netid_len = 4;
--		startsep = "[";
--		endsep = "]";
--		break;
--
--	default:
--		dprintk("%s: unsupported address family: %u\n",
--			__func__, da->da_addr.ss_family);
--		goto out_free_da;
+-	if (IS_ERR(clp)) {
+-		status = PTR_ERR(clp);
+-		goto out;
 -	}
 -
--	if (nlen != match_netid_len || strncmp(netid, match_netid, nlen)) {
--		dprintk("%s: ERROR: r_netid \"%s\" != \"%s\"\n",
--			__func__, netid, match_netid);
--		goto out_free_da;
--	}
+-	status = nfs4_init_ds_session(clp, mds_srv->nfs_client->cl_lease_time);
+-	if (status)
+-		goto out_put;
 -
--	/* save human readable address */
--	len = strlen(startsep) + strlen(buf) + strlen(endsep) + 7;
--	da->da_remotestr = kzalloc(len, gfp_flags);
--
--	/* NULL is ok, only used for dprintk */
--	if (da->da_remotestr)
--		snprintf(da->da_remotestr, len, "%s%s%s:%u", startsep,
--			 buf, endsep, ntohs(port));
--
--	dprintk("%s: Parsed DS addr %s\n", __func__, da->da_remotestr);
--	kfree(buf);
--	kfree(netid);
--	return da;
--
--out_free_da:
--	kfree(da);
--out_free_buf:
--	dprintk("%s: Error parsing DS addr: %s\n", __func__, buf);
--	kfree(buf);
--out_free_netid:
--	kfree(netid);
--out_err:
--	return NULL;
+-	smp_wmb();
+-	ds->ds_clp = clp;
+-	dprintk("%s [new] addr: %s\n", __func__, ds->ds_remotestr);
+-out:
+-	return status;
+-out_put:
+-	nfs_put_client(clp);
+-	goto out;
 -}
 -
- /* Decode opaque device data and return the result */
- struct nfs4_file_layout_dsaddr *
- nfs4_fl_alloc_deviceid_node(struct nfs_server *server, struct pnfs_device *pdev,
-@@ -353,8 +205,8 @@ nfs4_fl_alloc_deviceid_node(struct nfs_server *server, struct pnfs_device *pdev,
+ void
+ nfs4_fl_free_deviceid(struct nfs4_file_layout_dsaddr *dsaddr)
+ {
+@@ -302,22 +257,7 @@ nfs4_fl_select_ds_fh(struct pnfs_layout_segment *lseg, u32 j)
+ 	return flseg->fh_array[i];
+ }
  
- 		mp_count = be32_to_cpup(p); /* multipath count */
- 		for (j = 0; j < mp_count; j++) {
--			da = decode_ds_addr(server->nfs_client->cl_net,
--					    &stream, gfp_flags);
-+			da = nfs4_decode_mp_ds_addr(server->nfs_client->cl_net,
-+						    &stream, gfp_flags);
- 			if (da)
- 				list_add_tail(&da->da_node, &dsaddrs);
- 		}
+-static void nfs4_wait_ds_connect(struct nfs4_pnfs_ds *ds)
+-{
+-	might_sleep();
+-	wait_on_bit_action(&ds->ds_state, NFS4DS_CONNECTING,
+-			   nfs_wait_bit_killable, TASK_KILLABLE);
+-}
+-
+-static void nfs4_clear_ds_conn_bit(struct nfs4_pnfs_ds *ds)
+-{
+-	smp_mb__before_atomic();
+-	clear_bit(NFS4DS_CONNECTING, &ds->ds_state);
+-	smp_mb__after_atomic();
+-	wake_up_bit(&ds->ds_state, NFS4DS_CONNECTING);
+-}
+-
+-
++/* Upon return, either ds is connected, or ds is NULL */
+ struct nfs4_pnfs_ds *
+ nfs4_fl_prepare_ds(struct pnfs_layout_segment *lseg, u32 ds_idx)
+ {
+@@ -325,6 +265,7 @@ nfs4_fl_prepare_ds(struct pnfs_layout_segment *lseg, u32 ds_idx)
+ 	struct nfs4_pnfs_ds *ds = dsaddr->ds_list[ds_idx];
+ 	struct nfs4_deviceid_node *devid = FILELAYOUT_DEVID_NODE(lseg);
+ 	struct nfs4_pnfs_ds *ret = ds;
++	struct nfs_server *s = NFS_SERVER(lseg->pls_layout->plh_inode);
+ 
+ 	if (ds == NULL) {
+ 		printk(KERN_ERR "NFS: %s: No data server for offset index %d\n",
+@@ -336,18 +277,9 @@ nfs4_fl_prepare_ds(struct pnfs_layout_segment *lseg, u32 ds_idx)
+ 	if (ds->ds_clp)
+ 		goto out_test_devid;
+ 
+-	if (test_and_set_bit(NFS4DS_CONNECTING, &ds->ds_state) == 0) {
+-		struct nfs_server *s = NFS_SERVER(lseg->pls_layout->plh_inode);
+-		int err;
+-
+-		err = nfs4_ds_connect(s, ds);
+-		if (err)
+-			nfs4_mark_deviceid_unavailable(devid);
+-		nfs4_clear_ds_conn_bit(ds);
+-	} else {
+-		/* Either ds is connected, or ds is NULL */
+-		nfs4_wait_ds_connect(ds);
+-	}
++	nfs4_pnfs_ds_connect(s, ds, devid, dataserver_timeo,
++			     dataserver_retrans);
++
+ out_test_devid:
+ 	if (filelayout_test_devid_unavailable(devid))
+ 		ret = NULL;
 diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index b0168f1..403d7bb 100644
+index 403d7bb..9a8937c 100644
 --- a/fs/nfs/pnfs.h
 +++ b/fs/nfs/pnfs.h
 @@ -312,6 +312,9 @@ void pnfs_generic_write_commit_done(struct rpc_task *task, void *data);
  void nfs4_pnfs_ds_put(struct nfs4_pnfs_ds *ds);
  struct nfs4_pnfs_ds *nfs4_pnfs_ds_add(struct list_head *dsaddrs,
  				      gfp_t gfp_flags);
-+struct nfs4_pnfs_ds_addr *nfs4_decode_mp_ds_addr(struct net *net,
-+						 struct xdr_stream *xdr,
-+						 gfp_t gfp_flags);
- 
- static inline struct nfs4_deviceid_node *
- nfs4_get_deviceid(struct nfs4_deviceid_node *d)
++void nfs4_pnfs_ds_connect(struct nfs_server *mds_srv, struct nfs4_pnfs_ds *ds,
++			  struct nfs4_deviceid_node *devid, unsigned int timeo,
++			  unsigned int retrans);
+ struct nfs4_pnfs_ds_addr *nfs4_decode_mp_ds_addr(struct net *net,
+ 						 struct xdr_stream *xdr,
+ 						 gfp_t gfp_flags);
 diff --git a/fs/nfs/pnfs_nfs.c b/fs/nfs/pnfs_nfs.c
-index 3bb2b74..81ec449 100644
+index 81ec449..5a92e76 100644
 --- a/fs/nfs/pnfs_nfs.c
 +++ b/fs/nfs/pnfs_nfs.c
-@@ -9,6 +9,7 @@
- 
- #include <linux/nfs_fs.h>
+@@ -11,6 +11,7 @@
  #include <linux/nfs_page.h>
-+#include <linux/sunrpc/addr.h>
+ #include <linux/sunrpc/addr.h>
  
++#include "nfs4session.h"
  #include "internal.h"
  #include "pnfs.h"
-@@ -532,3 +533,151 @@ out:
- 	return ds;
+ 
+@@ -534,6 +535,86 @@ out:
  }
  EXPORT_SYMBOL_GPL(nfs4_pnfs_ds_add);
+ 
++static void nfs4_wait_ds_connect(struct nfs4_pnfs_ds *ds)
++{
++	might_sleep();
++	wait_on_bit(&ds->ds_state, NFS4DS_CONNECTING,
++			TASK_KILLABLE);
++}
++
++static void nfs4_clear_ds_conn_bit(struct nfs4_pnfs_ds *ds)
++{
++	smp_mb__before_atomic();
++	clear_bit(NFS4DS_CONNECTING, &ds->ds_state);
++	smp_mb__after_atomic();
++	wake_up_bit(&ds->ds_state, NFS4DS_CONNECTING);
++}
++
++static int _nfs4_pnfs_ds_connect(struct nfs_server *mds_srv,
++				 struct nfs4_pnfs_ds *ds,
++				 unsigned int timeo,
++				 unsigned int retrans)
++{
++	struct nfs_client *clp = ERR_PTR(-EIO);
++	struct nfs4_pnfs_ds_addr *da;
++	int status = 0;
++
++	dprintk("--> %s DS %s au_flavor %d\n", __func__, ds->ds_remotestr,
++		mds_srv->nfs_client->cl_rpcclient->cl_auth->au_flavor);
++
++	list_for_each_entry(da, &ds->ds_addrs, da_node) {
++		dprintk("%s: DS %s: trying address %s\n",
++			__func__, ds->ds_remotestr, da->da_remotestr);
++
++		clp = nfs4_set_ds_client(mds_srv->nfs_client,
++					(struct sockaddr *)&da->da_addr,
++					da->da_addrlen, IPPROTO_TCP,
++					timeo, retrans);
++		if (!IS_ERR(clp))
++			break;
++	}
++
++	if (IS_ERR(clp)) {
++		status = PTR_ERR(clp);
++		goto out;
++	}
++
++	status = nfs4_init_ds_session(clp, mds_srv->nfs_client->cl_lease_time);
++	if (status)
++		goto out_put;
++
++	smp_wmb();
++	ds->ds_clp = clp;
++	dprintk("%s [new] addr: %s\n", __func__, ds->ds_remotestr);
++out:
++	return status;
++out_put:
++	nfs_put_client(clp);
++	goto out;
++}
 +
 +/*
-+ * Currently only supports ipv4, ipv6 and one multi-path address.
++ * Create an rpc connection to the nfs4_pnfs_ds data server.
++ * Currently only supports IPv4 and IPv6 addresses.
++ * If connection fails, make devid unavailable.
 + */
-+struct nfs4_pnfs_ds_addr *
-+nfs4_decode_mp_ds_addr(struct net *net, struct xdr_stream *xdr, gfp_t gfp_flags)
++void nfs4_pnfs_ds_connect(struct nfs_server *mds_srv, struct nfs4_pnfs_ds *ds,
++			  struct nfs4_deviceid_node *devid, unsigned int timeo,
++			  unsigned int retrans)
 +{
-+	struct nfs4_pnfs_ds_addr *da = NULL;
-+	char *buf, *portstr;
-+	__be16 port;
-+	int nlen, rlen;
-+	int tmp[2];
-+	__be32 *p;
-+	char *netid, *match_netid;
-+	size_t len, match_netid_len;
-+	char *startsep = "";
-+	char *endsep = "";
++	if (test_and_set_bit(NFS4DS_CONNECTING, &ds->ds_state) == 0) {
++		int err = 0;
 +
-+
-+	/* r_netid */
-+	p = xdr_inline_decode(xdr, 4);
-+	if (unlikely(!p))
-+		goto out_err;
-+	nlen = be32_to_cpup(p++);
-+
-+	p = xdr_inline_decode(xdr, nlen);
-+	if (unlikely(!p))
-+		goto out_err;
-+
-+	netid = kmalloc(nlen+1, gfp_flags);
-+	if (unlikely(!netid))
-+		goto out_err;
-+
-+	netid[nlen] = '\0';
-+	memcpy(netid, p, nlen);
-+
-+	/* r_addr: ip/ip6addr with port in dec octets - see RFC 5665 */
-+	p = xdr_inline_decode(xdr, 4);
-+	if (unlikely(!p))
-+		goto out_free_netid;
-+	rlen = be32_to_cpup(p);
-+
-+	p = xdr_inline_decode(xdr, rlen);
-+	if (unlikely(!p))
-+		goto out_free_netid;
-+
-+	/* port is ".ABC.DEF", 8 chars max */
-+	if (rlen > INET6_ADDRSTRLEN + IPV6_SCOPE_ID_LEN + 8) {
-+		dprintk("%s: Invalid address, length %d\n", __func__,
-+			rlen);
-+		goto out_free_netid;
++		err = _nfs4_pnfs_ds_connect(mds_srv, ds, timeo, retrans);
++		if (err)
++			nfs4_mark_deviceid_unavailable(devid);
++		nfs4_clear_ds_conn_bit(ds);
++	} else {
++		nfs4_wait_ds_connect(ds);
 +	}
-+	buf = kmalloc(rlen + 1, gfp_flags);
-+	if (!buf) {
-+		dprintk("%s: Not enough memory\n", __func__);
-+		goto out_free_netid;
-+	}
-+	buf[rlen] = '\0';
-+	memcpy(buf, p, rlen);
-+
-+	/* replace port '.' with '-' */
-+	portstr = strrchr(buf, '.');
-+	if (!portstr) {
-+		dprintk("%s: Failed finding expected dot in port\n",
-+			__func__);
-+		goto out_free_buf;
-+	}
-+	*portstr = '-';
-+
-+	/* find '.' between address and port */
-+	portstr = strrchr(buf, '.');
-+	if (!portstr) {
-+		dprintk("%s: Failed finding expected dot between address and "
-+			"port\n", __func__);
-+		goto out_free_buf;
-+	}
-+	*portstr = '\0';
-+
-+	da = kzalloc(sizeof(*da), gfp_flags);
-+	if (unlikely(!da))
-+		goto out_free_buf;
-+
-+	INIT_LIST_HEAD(&da->da_node);
-+
-+	if (!rpc_pton(net, buf, portstr-buf, (struct sockaddr *)&da->da_addr,
-+		      sizeof(da->da_addr))) {
-+		dprintk("%s: error parsing address %s\n", __func__, buf);
-+		goto out_free_da;
-+	}
-+
-+	portstr++;
-+	sscanf(portstr, "%d-%d", &tmp[0], &tmp[1]);
-+	port = htons((tmp[0] << 8) | (tmp[1]));
-+
-+	switch (da->da_addr.ss_family) {
-+	case AF_INET:
-+		((struct sockaddr_in *)&da->da_addr)->sin_port = port;
-+		da->da_addrlen = sizeof(struct sockaddr_in);
-+		match_netid = "tcp";
-+		match_netid_len = 3;
-+		break;
-+
-+	case AF_INET6:
-+		((struct sockaddr_in6 *)&da->da_addr)->sin6_port = port;
-+		da->da_addrlen = sizeof(struct sockaddr_in6);
-+		match_netid = "tcp6";
-+		match_netid_len = 4;
-+		startsep = "[";
-+		endsep = "]";
-+		break;
-+
-+	default:
-+		dprintk("%s: unsupported address family: %u\n",
-+			__func__, da->da_addr.ss_family);
-+		goto out_free_da;
-+	}
-+
-+	if (nlen != match_netid_len || strncmp(netid, match_netid, nlen)) {
-+		dprintk("%s: ERROR: r_netid \"%s\" != \"%s\"\n",
-+			__func__, netid, match_netid);
-+		goto out_free_da;
-+	}
-+
-+	/* save human readable address */
-+	len = strlen(startsep) + strlen(buf) + strlen(endsep) + 7;
-+	da->da_remotestr = kzalloc(len, gfp_flags);
-+
-+	/* NULL is ok, only used for dprintk */
-+	if (da->da_remotestr)
-+		snprintf(da->da_remotestr, len, "%s%s%s:%u", startsep,
-+			 buf, endsep, ntohs(port));
-+
-+	dprintk("%s: Parsed DS addr %s\n", __func__, da->da_remotestr);
-+	kfree(buf);
-+	kfree(netid);
-+	return da;
-+
-+out_free_da:
-+	kfree(da);
-+out_free_buf:
-+	dprintk("%s: Error parsing DS addr: %s\n", __func__, buf);
-+	kfree(buf);
-+out_free_netid:
-+	kfree(netid);
-+out_err:
-+	return NULL;
 +}
-+EXPORT_SYMBOL_GPL(nfs4_decode_mp_ds_addr);
++EXPORT_SYMBOL_GPL(nfs4_pnfs_ds_connect);
++
+ /*
+  * Currently only supports ipv4, ipv6 and one multi-path address.
+  */
 -- 
 1.9.3
 
