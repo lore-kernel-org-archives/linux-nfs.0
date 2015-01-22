@@ -1,16 +1,16 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pa0-f43.google.com ([209.85.220.43]:62098 "EHLO
-	mail-pa0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753860AbbAVXij (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Jan 2015 18:38:39 -0500
-Received: by mail-pa0-f43.google.com with SMTP id eu11so4906943pac.2
-        for <linux-nfs@vger.kernel.org>; Thu, 22 Jan 2015 15:38:39 -0800 (PST)
+Received: from mail-pd0-f179.google.com ([209.85.192.179]:55737 "EHLO
+	mail-pd0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753860AbbAVXim (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Jan 2015 18:38:42 -0500
+Received: by mail-pd0-f179.google.com with SMTP id v10so4590306pde.10
+        for <linux-nfs@vger.kernel.org>; Thu, 22 Jan 2015 15:38:41 -0800 (PST)
 From: Tom Haynes <thomas.haynes@primarydata.com>
 To: Trond Myklebust <trond.myklebust@primarydata.com>
 Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH v5 48/51] nfs41: wait for LAYOUTRETURN before retrying LAYOUTGET
-Date: Thu, 22 Jan 2015 15:36:20 -0800
-Message-Id: <1421969783-92997-49-git-send-email-loghyr@primarydata.com>
+Subject: [PATCH v5 49/51] nfs: count DIO good bytes correctly with mirroring
+Date: Thu, 22 Jan 2015 15:36:21 -0800
+Message-Id: <1421969783-92997-50-git-send-email-loghyr@primarydata.com>
 In-Reply-To: <1421969783-92997-1-git-send-email-loghyr@primarydata.com>
 References: <1421969783-92997-1-git-send-email-loghyr@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -18,111 +18,64 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: Peng Tao <tao.peng@primarydata.com>
 
-Also take care to stop waiting if someone clears retry bit.
+When resending to MDS, we might resend multiple mirroring
+requests to MDS. As a result, nfs_direct_good_bytes() ends
+up counting bytes multiple times, causing application to
+get wrong return results in read/write syscalls.
 
+Fix it by tracking start of a dreq and checking the range of
+pgio header.
+
+Cc: Weston Andros Adamson <dros@primarydata.com>
 Signed-off-by: Peng Tao <tao.peng@primarydata.com>
 ---
- fs/nfs/nfs4proc.c |  4 +++-
- fs/nfs/pnfs.c     | 39 ++++++++++++++++++++++++++++++++++++++-
- fs/nfs/pnfs.h     |  5 ++++-
- 3 files changed, 45 insertions(+), 3 deletions(-)
+ fs/nfs/direct.c | 12 ++++++++----
+ 1 file changed, 8 insertions(+), 4 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 7e1a97a..44c600a 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -7796,7 +7796,9 @@ static void nfs4_layoutreturn_release(void *calldata)
- 	spin_lock(&lo->plh_inode->i_lock);
- 	if (lrp->res.lrs_present)
- 		pnfs_set_layout_stateid(lo, &lrp->res.stateid, true);
--	clear_bit(NFS_LAYOUT_RETURN, &lo->plh_flags);
-+	clear_bit_unlock(NFS_LAYOUT_RETURN, &lo->plh_flags);
-+	smp_mb__after_atomic();
-+	wake_up_bit(&lo->plh_flags, NFS_LAYOUT_RETURN);
- 	clear_bit(NFS_LAYOUT_RETURN_BEFORE_CLOSE, &lo->plh_flags);
- 	rpc_wake_up(&NFS_SERVER(lo->plh_inode)->roc_rpcwaitq);
- 	lo->plh_block_lgets--;
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 893f6b5..c4c9fe6 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1398,6 +1398,26 @@ static bool pnfs_within_mdsthreshold(struct nfs_open_context *ctx,
- 	return ret;
- }
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index 4fad6b7..3715b49 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -88,6 +88,7 @@ struct nfs_direct_req {
  
-+/* stop waiting if someone clears NFS_LAYOUT_RETRY_LAYOUTGET bit. */
-+static int pnfs_layoutget_retry_bit_wait(struct wait_bit_key *key)
-+{
-+	if (!test_bit(NFS_LAYOUT_RETRY_LAYOUTGET, key->flags))
-+		return 1;
-+	return nfs_wait_bit_killable(key);
-+}
-+
-+static bool pnfs_prepare_to_retry_layoutget(struct pnfs_layout_hdr *lo)
-+{
-+	/*
-+	 * send layoutcommit as it can hold up layoutreturn due to lseg
-+	 * reference
-+	 */
-+	pnfs_layoutcommit_inode(lo->plh_inode, false);
-+	return !wait_on_bit_action(&lo->plh_flags, NFS_LAYOUT_RETURN,
-+				   pnfs_layoutget_retry_bit_wait,
-+				   TASK_UNINTERRUPTIBLE);
-+}
-+
- /*
-  * Layout segment is retreived from the server if not cached.
-  * The appropriate layout segment is referenced and returned to the caller.
-@@ -1444,7 +1464,8 @@ lookup_again:
- 	}
+ 	ssize_t			count,		/* bytes actually processed */
+ 				bytes_left,	/* bytes left to be sent */
++				io_start,	/* start of IO */
+ 				error;		/* any reported error */
+ 	struct completion	completion;	/* wait for i/o completion */
  
- 	/* if LAYOUTGET already failed once we don't try again */
--	if (pnfs_layout_io_test_failed(lo, iomode))
-+	if (pnfs_layout_io_test_failed(lo, iomode) &&
-+	    !pnfs_should_retry_layoutget(lo))
- 		goto out_unlock;
+@@ -130,10 +131,11 @@ nfs_direct_good_bytes(struct nfs_direct_req *dreq, struct nfs_pgio_header *hdr)
  
- 	first = list_empty(&lo->plh_segs);
-@@ -1469,6 +1490,22 @@ lookup_again:
- 			goto out_unlock;
- 	}
+ 	WARN_ON_ONCE(hdr->pgio_mirror_idx >= dreq->mirror_count);
  
-+	/*
-+	 * Because we free lsegs before sending LAYOUTRETURN, we need to wait
-+	 * for LAYOUTRETURN even if first is true.
-+	 */
-+	if (!lseg && pnfs_should_retry_layoutget(lo) &&
-+	    test_bit(NFS_LAYOUT_RETURN, &lo->plh_flags)) {
-+		spin_unlock(&ino->i_lock);
-+		dprintk("%s wait for layoutreturn\n", __func__);
-+		if (pnfs_prepare_to_retry_layoutget(lo)) {
-+			pnfs_put_layout_hdr(lo);
-+			dprintk("%s retrying\n", __func__);
-+			goto lookup_again;
-+		}
-+		goto out_put_layout_hdr;
+-	dreq->mirrors[hdr->pgio_mirror_idx].count += hdr->good_bytes;
+-
+-	if (hdr->pgio_mirror_idx == 0)
+-		dreq->count += hdr->good_bytes;
++	count = dreq->mirrors[hdr->pgio_mirror_idx].count;
++	if (count + dreq->io_start < hdr->io_start + hdr->good_bytes) {
++		count = hdr->io_start + hdr->good_bytes - dreq->io_start;
++		dreq->mirrors[hdr->pgio_mirror_idx].count = count;
 +	}
-+
- 	if (pnfs_layoutgets_blocked(lo, &arg, 0))
- 		goto out_unlock;
- 	atomic_inc(&lo->plh_outstanding);
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 665692e..5643a07 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -358,8 +358,11 @@ static inline void pnfs_set_retry_layoutget(struct pnfs_layout_hdr *lo)
  
- static inline void pnfs_clear_retry_layoutget(struct pnfs_layout_hdr *lo)
- {
--	if (test_and_clear_bit(NFS_LAYOUT_RETRY_LAYOUTGET, &lo->plh_flags))
-+	if (test_and_clear_bit(NFS_LAYOUT_RETRY_LAYOUTGET, &lo->plh_flags)) {
- 		atomic_dec(&lo->plh_refcount);
-+		/* wake up waiters for LAYOUTRETURN as that is not needed */
-+		wake_up_bit(&lo->plh_flags, NFS_LAYOUT_RETURN);
-+	}
- }
+ 	/* update the dreq->count by finding the minimum agreed count from all
+ 	 * mirrors */
+@@ -594,6 +596,7 @@ ssize_t nfs_file_direct_read(struct kiocb *iocb, struct iov_iter *iter,
  
- static inline bool pnfs_should_retry_layoutget(struct pnfs_layout_hdr *lo)
+ 	dreq->inode = inode;
+ 	dreq->bytes_left = count;
++	dreq->io_start = pos;
+ 	dreq->ctx = get_nfs_open_context(nfs_file_open_context(iocb->ki_filp));
+ 	l_ctx = nfs_get_lock_context(dreq->ctx);
+ 	if (IS_ERR(l_ctx)) {
+@@ -1002,6 +1005,7 @@ ssize_t nfs_file_direct_write(struct kiocb *iocb, struct iov_iter *iter,
+ 
+ 	dreq->inode = inode;
+ 	dreq->bytes_left = count;
++	dreq->io_start = pos;
+ 	dreq->ctx = get_nfs_open_context(nfs_file_open_context(iocb->ki_filp));
+ 	l_ctx = nfs_get_lock_context(dreq->ctx);
+ 	if (IS_ERR(l_ctx)) {
 -- 
 1.9.3
 
