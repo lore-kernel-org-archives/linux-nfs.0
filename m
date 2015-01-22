@@ -1,58 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx142.netapp.com ([216.240.21.19]:17354 "EHLO mx142.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752524AbbA2Qtm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 29 Jan 2015 11:49:42 -0500
-Message-ID: <54CA64A3.5000105@Netapp.com>
-Date: Thu, 29 Jan 2015 11:49:39 -0500
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-MIME-Version: 1.0
-To: Anna Schumaker <Anna.Schumaker@netapp.com>,
-        Christoph Hellwig <hch@infradead.org>
-CC: <bfields@fieldses.org>, <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v2 0/4] NFSD: Add READ_PLUS support
-References: <1422477777-27933-1-git-send-email-Anna.Schumaker@Netapp.com> <20150128213832.GA24389@infradead.org> <54C95860.3060109@Netapp.com>
-In-Reply-To: <54C95860.3060109@Netapp.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from casper.infradead.org ([85.118.1.10]:41378 "EHLO
+	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750875AbbAVLLM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Jan 2015 06:11:12 -0500
+From: Christoph Hellwig <hch@lst.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Jeff Layton <jlayton@primarydata.com>, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com
+Subject: a simple and scalable pNFS block layout server V2
+Date: Thu, 22 Jan 2015 12:09:46 +0100
+Message-Id: <1421925006-24231-1-git-send-email-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 01/28/2015 04:45 PM, Anna Schumaker wrote:
-> On 01/28/2015 04:38 PM, Christoph Hellwig wrote:
->> On Wed, Jan 28, 2015 at 03:42:53PM -0500, Anna.Schumaker@netapp.com wrote:
->>> From: Anna Schumaker <Anna.Schumaker@Netapp.com>
->>>
->>> These patches add server support for the NFS v4.2 operation READ_PLUS.
->>>
->>> I noticed a race condition in the 3rd patch when I start needing vfs_llseek()
->>> to determine if I should encode the next segment as either data or a hole.  It
->>> is possible that the file could change on us between each of the seek calls,
->>> so we don't know if we are actually at a hole or data segment.  I don't want to
->>> add new locks to the NFS server for this case, so instead I've decided to
->>> encode any "quantum data" segments as if they were actually data.
->>>
->>> I tested these patches using xfstests, specificially generic/075, generic/091,
->>> generic/112, generic/127, generic/210, and generic/263.  Additionally, three
->>> new tests are run once READ_PLUS support has been added: generic/213,
->>> generic/214, and generic/228.
->>
->> Why do theses test start working when you use READ_PLUS?  They should
->> only depend on ALLOCATE support, and maybe SEEK if we're trying to
->> figure out information about mappings somehow.
-> 
-> I'm not sure.  I'll rerun the tests to make sure I wasn't just confused when I typed that!
+This series adds support for the pNFS operations in NFS v4.1, as well
+as a block layout driver that can export block based filesystems that
+implement a few additional export operations.  Support for XFS is
+provided in this series, but other filesystems could be added easily.
 
-I must have been comparing v4.1 to v4.2 when I wrote that, because those tests still run without the READ_PLUS patches.  Thanks for catching that!
+The core pNFS code of course owns its heritage to the existing Linux
+pNFS server prototype, but except for a few bits and pieces in the
+XDR path nothing is left from it.
 
-Anna
+The design of this new pNFS server is fairly different from the old
+one - while the old one implemented very little semantics in nfsd
+and left almost everything to filesystems my implementation implements
+as much as possible in common nfsd code, then dispatches to a layout
+driver that still is part of nfsd and only then calls into the
+filesystem, thus keeping it free from intimate pNFS knowledge.
 
-> 
-> Anna
->>
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+This version of the code has been rebased to the locks-for-3.20
+tree which adds a new lock context structure to the inode.  For now
+we still (ab)use the lease list like in the last version.  Adding
+a pNFS-specific list would duplicate a lot of code without much
+benefit.  But during this research I came up with way to associate
+a nfs4_file with a struct file at open time which should allow
+to greatly simplify the pNFS and delegation code.  So stay tuned
+for some patches in this area!
+
+For now this also doesn't take errata 3901 for rfc 5661 into account
+yet and sticks to the verified errata.  The changes in 3901 seem
+useful in the longer run one verified and will be implemented
+eventually. Note that the only existing pNFS block client (Linux)
+would not benefit from the longer layout lifetimes anyway.
+
+More details are document in the individual patch descriptions and
+code comments.
+
+This code is also available from:
+
+	git://git.infradead.org/users/hch/pnfs.git pnfsd-for-3.20-2
+
+Changes since V1:
+	- rebased to the locks-for-3.20 tree
+	- fixed a memory leak in the nfsd4_encode_getdeviceinfo error path
+	- removed the always one lg_roc field
+	- added a nopnfs export option
+	- use a synchronous transaction in layoutget to simplify recovery
+	- various XFS fixes pointed out by Dave
+	- various documentation typo fixes
 
