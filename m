@@ -1,33 +1,37 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f179.google.com ([209.85.216.179]:50134 "EHLO
-	mail-qc0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751188AbbAVPpd (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Jan 2015 10:45:33 -0500
-Received: by mail-qc0-f179.google.com with SMTP id w7so1791494qcr.10
-        for <linux-nfs@vger.kernel.org>; Thu, 22 Jan 2015 07:45:33 -0800 (PST)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Thu, 22 Jan 2015 10:45:30 -0500
+Received: from li207-46.members.linode.com ([173.255.197.46]:55561 "EHLO
+	fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753313AbbAVUOn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 Jan 2015 15:14:43 -0500
+Date: Thu, 22 Jan 2015 15:14:42 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
 To: Christoph Hellwig <hch@lst.de>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
+Cc: Jeff Layton <jlayton@primarydata.com>, linux-nfs@vger.kernel.org,
         linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com
 Subject: Re: [PATCH 03/20] fs: add FL_LAYOUT lease type
-Message-ID: <20150122104530.44297670@tlielax.poochiereds.net>
-In-Reply-To: <1421925006-24231-4-git-send-email-hch@lst.de>
+Message-ID: <20150122201442.GJ898@fieldses.org>
 References: <1421925006-24231-1-git-send-email-hch@lst.de>
-	<1421925006-24231-4-git-send-email-hch@lst.de>
+ <1421925006-24231-4-git-send-email-hch@lst.de>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1421925006-24231-4-git-send-email-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 22 Jan 2015 12:09:49 +0100
-Christoph Hellwig <hch@lst.de> wrote:
-
+On Thu, Jan 22, 2015 at 12:09:49PM +0100, Christoph Hellwig wrote:
 > This (ab-)uses the file locking code to allow filesystems to recall
 > outstanding pNFS layouts on a file.  This new lease type is similar but
 > not quite the same as FL_DELEG.  A FL_LAYOUT lease can always be granted,
 > an a per-filesystem lock (XFS iolock for the initial implementation)
 > ensures not FL_LAYOUT leases granted when we would need to recall them.
+
+So when there's a conflicting operation it's xfs's responsibility to
+call break_layout and wait for the recall?
+
+(And what roughly is the set of conflicting operations?)
+
+--b.
+
 > 
 > Also included are changes that allow multiple outstanding read
 > leases of different types on the same file as long as they have a
@@ -41,14 +45,110 @@ Christoph Hellwig <hch@lst.de> wrote:
 >  include/linux/fs.h | 16 ++++++++++++++++
 >  2 files changed, 26 insertions(+), 4 deletions(-)
 > 
-
-Abuse indeed. :)
-
-I'd probably prefer to move this to a separate list within the i_flctx
-instead of overloading the lease stuff, but I'm not religious about it.
-
-I can live with this for now, and if and when we get around to
-representing different types of file locks with different types of
-structures, we can do that conversion then.
-
-Acked-by: Jeff Layton <jlayton@primarydata.com>
+> diff --git a/fs/locks.c b/fs/locks.c
+> index 65350a23..6b9772d1 100644
+> --- a/fs/locks.c
+> +++ b/fs/locks.c
+> @@ -137,7 +137,7 @@
+>  
+>  #define IS_POSIX(fl)	(fl->fl_flags & FL_POSIX)
+>  #define IS_FLOCK(fl)	(fl->fl_flags & FL_FLOCK)
+> -#define IS_LEASE(fl)	(fl->fl_flags & (FL_LEASE|FL_DELEG))
+> +#define IS_LEASE(fl)	(fl->fl_flags & (FL_LEASE|FL_DELEG|FL_LAYOUT))
+>  #define IS_OFDLCK(fl)	(fl->fl_flags & FL_OFDLCK)
+>  
+>  static bool lease_breaking(struct file_lock *fl)
+> @@ -1371,6 +1371,8 @@ static void time_out_leases(struct inode *inode, struct list_head *dispose)
+>  
+>  static bool leases_conflict(struct file_lock *lease, struct file_lock *breaker)
+>  {
+> +	if ((breaker->fl_flags & FL_LAYOUT) != (lease->fl_flags & FL_LAYOUT))
+> +		return false;
+>  	if ((breaker->fl_flags & FL_DELEG) && (lease->fl_flags & FL_LEASE))
+>  		return false;
+>  	return locks_conflict(breaker, lease);
+> @@ -1594,11 +1596,14 @@ int fcntl_getlease(struct file *filp)
+>   * conflict with the lease we're trying to set.
+>   */
+>  static int
+> -check_conflicting_open(const struct dentry *dentry, const long arg)
+> +check_conflicting_open(const struct dentry *dentry, const long arg, int flags)
+>  {
+>  	int ret = 0;
+>  	struct inode *inode = dentry->d_inode;
+>  
+> +	if (flags & FL_LAYOUT)
+> +		return 0;
+> +
+>  	if ((arg == F_RDLCK) && (atomic_read(&inode->i_writecount) > 0))
+>  		return -EAGAIN;
+>  
+> @@ -1647,7 +1652,7 @@ generic_add_lease(struct file *filp, long arg, struct file_lock **flp, void **pr
+>  
+>  	spin_lock(&ctx->flc_lock);
+>  	time_out_leases(inode, &dispose);
+> -	error = check_conflicting_open(dentry, arg);
+> +	error = check_conflicting_open(dentry, arg, lease->fl_flags);
+>  	if (error)
+>  		goto out;
+>  
+> @@ -1703,7 +1708,7 @@ generic_add_lease(struct file *filp, long arg, struct file_lock **flp, void **pr
+>  	 * precedes these checks.
+>  	 */
+>  	smp_mb();
+> -	error = check_conflicting_open(dentry, arg);
+> +	error = check_conflicting_open(dentry, arg, lease->fl_flags);
+>  	if (error) {
+>  		locks_unlink_lock_ctx(lease, &ctx->flc_lease_cnt);
+>  		goto out;
+> @@ -1787,6 +1792,7 @@ int generic_setlease(struct file *filp, long arg, struct file_lock **flp,
+>  			WARN_ON_ONCE(1);
+>  			return -ENOLCK;
+>  		}
+> +
+>  		return generic_add_lease(filp, arg, flp, priv);
+>  	default:
+>  		return -EINVAL;
+> diff --git a/include/linux/fs.h b/include/linux/fs.h
+> index f87cb2f..d5658f4 100644
+> --- a/include/linux/fs.h
+> +++ b/include/linux/fs.h
+> @@ -875,6 +875,7 @@ static inline struct file *get_file(struct file *f)
+>  #define FL_DOWNGRADE_PENDING	256 /* Lease is being downgraded */
+>  #define FL_UNLOCK_PENDING	512 /* Lease is being broken */
+>  #define FL_OFDLCK	1024	/* lock is "owned" by struct file */
+> +#define FL_LAYOUT	2048	/* outstanding pNFS layout */
+>  
+>  /*
+>   * Special return value from posix_lock_file() and vfs_lock_file() for
+> @@ -2036,6 +2037,16 @@ static inline int break_deleg_wait(struct inode **delegated_inode)
+>  	return ret;
+>  }
+>  
+> +static inline int break_layout(struct inode *inode, bool wait)
+> +{
+> +	smp_mb();
+> +	if (inode->i_flctx && !list_empty_careful(&inode->i_flctx->flc_lease))
+> +		return __break_lease(inode,
+> +				wait ? O_WRONLY : O_WRONLY | O_NONBLOCK,
+> +				FL_LAYOUT);
+> +	return 0;
+> +}
+> +
+>  #else /* !CONFIG_FILE_LOCKING */
+>  static inline int locks_mandatory_locked(struct file *file)
+>  {
+> @@ -2091,6 +2102,11 @@ static inline int break_deleg_wait(struct inode **delegated_inode)
+>  	return 0;
+>  }
+>  
+> +static inline int break_layout(struct inode *inode, bool wait)
+> +{
+> +	return 0;
+> +}
+> +
+>  #endif /* CONFIG_FILE_LOCKING */
+>  
+>  /* fs/open.c */
+> -- 
+> 1.9.1
