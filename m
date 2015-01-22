@@ -1,8 +1,8 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cdptpa-outbound-snat.email.rr.com ([107.14.166.230]:25231 "EHLO
+Received: from cdptpa-outbound-snat.email.rr.com ([107.14.166.231]:16302 "EHLO
 	cdptpa-oedge-vip.email.rr.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1752008AbbAVObb (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Jan 2015 09:31:31 -0500
+	by vger.kernel.org with ESMTP id S1753061AbbAVO2B (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Jan 2015 09:28:01 -0500
 From: Jeff Layton <jeff.layton@primarydata.com>
 To: linux-fsdevel@vger.kernel.org
 Cc: Christoph Hellwig <hch@infradead.org>,
@@ -10,9 +10,9 @@ Cc: Christoph Hellwig <hch@infradead.org>,
         David Howells <dhowells@redhat.com>, linux-kernel@vger.kernel.org,
         linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
         ceph-devel@vger.kernel.org
-Subject: [PATCH v3 01/13] locks: add new struct list_head to struct file_lock
-Date: Thu, 22 Jan 2015 09:27:45 -0500
-Message-Id: <1421936877-27529-2-git-send-email-jeff.layton@primarydata.com>
+Subject: [PATCH v3 02/13] locks: have locks_release_file use flock_lock_file to release generic flock locks
+Date: Thu, 22 Jan 2015 09:27:46 -0500
+Message-Id: <1421936877-27529-3-git-send-email-jeff.layton@primarydata.com>
 In-Reply-To: <1421936877-27529-1-git-send-email-jeff.layton@primarydata.com>
 References: <1421936877-27529-1-git-send-email-jeff.layton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -20,69 +20,90 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: Jeff Layton <jlayton@primarydata.com>
 
-...that we can use to queue file_locks to per-ctx list_heads. Go ahead
-and convert locks_delete_lock and locks_dispose_list to use it instead
-of the fl_block list.
+...instead of open-coding it and removing flock locks directly. This
+helps consolidate the flock lock removal logic into a single spot.
 
 Signed-off-by: Jeff Layton <jlayton@primarydata.com>
-Acked-by: Christoph Hellwig <hch@lst.de>
 ---
- fs/locks.c         | 8 +++++---
- include/linux/fs.h | 1 +
- 2 files changed, 6 insertions(+), 3 deletions(-)
+ fs/locks.c | 49 +++++++++++++++++++++++++++++++------------------
+ 1 file changed, 31 insertions(+), 18 deletions(-)
 
 diff --git a/fs/locks.c b/fs/locks.c
-index 59e2f905e4ff..bfe5f17401de 100644
+index bfe5f17401de..ae1e7cf721d6 100644
 --- a/fs/locks.c
 +++ b/fs/locks.c
-@@ -207,6 +207,7 @@ static struct kmem_cache *filelock_cache __read_mostly;
- static void locks_init_lock_heads(struct file_lock *fl)
- {
- 	INIT_HLIST_NODE(&fl->fl_link);
-+	INIT_LIST_HEAD(&fl->fl_list);
- 	INIT_LIST_HEAD(&fl->fl_block);
- 	init_waitqueue_head(&fl->fl_wait);
- }
-@@ -243,6 +244,7 @@ EXPORT_SYMBOL_GPL(locks_release_private);
- void locks_free_lock(struct file_lock *fl)
- {
- 	BUG_ON(waitqueue_active(&fl->fl_wait));
-+	BUG_ON(!list_empty(&fl->fl_list));
- 	BUG_ON(!list_empty(&fl->fl_block));
- 	BUG_ON(!hlist_unhashed(&fl->fl_link));
+@@ -2360,6 +2360,30 @@ void locks_remove_posix(struct file *filp, fl_owner_t owner)
  
-@@ -257,8 +259,8 @@ locks_dispose_list(struct list_head *dispose)
- 	struct file_lock *fl;
+ EXPORT_SYMBOL(locks_remove_posix);
  
- 	while (!list_empty(dispose)) {
--		fl = list_first_entry(dispose, struct file_lock, fl_block);
--		list_del_init(&fl->fl_block);
-+		fl = list_first_entry(dispose, struct file_lock, fl_list);
-+		list_del_init(&fl->fl_list);
- 		locks_free_lock(fl);
- 	}
- }
-@@ -691,7 +693,7 @@ static void locks_delete_lock(struct file_lock **thisfl_p,
- 
- 	locks_unlink_lock(thisfl_p);
- 	if (dispose)
--		list_add(&fl->fl_block, dispose);
-+		list_add(&fl->fl_list, dispose);
- 	else
- 		locks_free_lock(fl);
- }
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 42efe13077b6..cd6818115162 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -934,6 +934,7 @@ int locks_in_grace(struct net *);
++static void
++locks_remove_flock(struct file *filp)
++{
++	struct file_lock fl = {
++		.fl_owner = filp,
++		.fl_pid = current->tgid,
++		.fl_file = filp,
++		.fl_flags = FL_FLOCK,
++		.fl_type = F_UNLCK,
++		.fl_end = OFFSET_MAX,
++	};
++
++	if (!file_inode(filp)->i_flock)
++		return;
++
++	if (filp->f_op->flock)
++		filp->f_op->flock(filp, F_SETLKW, &fl);
++	else
++		flock_lock_file(filp, &fl);
++
++	if (fl.fl_ops && fl.fl_ops->fl_release_private)
++		fl.fl_ops->fl_release_private(&fl);
++}
++
+ /*
+  * This function is called on the last close of an open file.
   */
- struct file_lock {
- 	struct file_lock *fl_next;	/* singly linked list for this inode  */
-+	struct list_head fl_list;	/* link into file_lock_context */
- 	struct hlist_node fl_link;	/* node in global lists */
- 	struct list_head fl_block;	/* circular list of blocked processes */
- 	fl_owner_t fl_owner;
+@@ -2370,24 +2394,14 @@ void locks_remove_file(struct file *filp)
+ 	struct file_lock **before;
+ 	LIST_HEAD(dispose);
+ 
+-	if (!inode->i_flock)
+-		return;
+-
++	/* remove any OFD locks */
+ 	locks_remove_posix(filp, filp);
+ 
+-	if (filp->f_op->flock) {
+-		struct file_lock fl = {
+-			.fl_owner = filp,
+-			.fl_pid = current->tgid,
+-			.fl_file = filp,
+-			.fl_flags = FL_FLOCK,
+-			.fl_type = F_UNLCK,
+-			.fl_end = OFFSET_MAX,
+-		};
+-		filp->f_op->flock(filp, F_SETLKW, &fl);
+-		if (fl.fl_ops && fl.fl_ops->fl_release_private)
+-			fl.fl_ops->fl_release_private(&fl);
+-	}
++	/* remove flock locks */
++	locks_remove_flock(filp);
++
++	if (!inode->i_flock)
++		return;
+ 
+ 	spin_lock(&inode->i_lock);
+ 	before = &inode->i_flock;
+@@ -2407,8 +2421,7 @@ void locks_remove_file(struct file *filp)
+ 			 * some info about it and then just remove it from
+ 			 * the list.
+ 			 */
+-			WARN(!IS_FLOCK(fl),
+-				"leftover lock: dev=%u:%u ino=%lu type=%hhd flags=0x%x start=%lld end=%lld\n",
++			WARN(1, "leftover lock: dev=%u:%u ino=%lu type=%hhd flags=0x%x start=%lld end=%lld\n",
+ 				MAJOR(inode->i_sb->s_dev),
+ 				MINOR(inode->i_sb->s_dev), inode->i_ino,
+ 				fl->fl_type, fl->fl_flags,
 -- 
 2.1.0
 
