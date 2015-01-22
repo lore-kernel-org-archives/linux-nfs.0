@@ -1,16 +1,16 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pd0-f175.google.com ([209.85.192.175]:62588 "EHLO
-	mail-pd0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753858AbbAVXhN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Jan 2015 18:37:13 -0500
-Received: by mail-pd0-f175.google.com with SMTP id fl12so4611297pdb.6
-        for <linux-nfs@vger.kernel.org>; Thu, 22 Jan 2015 15:37:12 -0800 (PST)
+Received: from mail-pd0-f169.google.com ([209.85.192.169]:48512 "EHLO
+	mail-pd0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754290AbbAVXhQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Jan 2015 18:37:16 -0500
+Received: by mail-pd0-f169.google.com with SMTP id g10so1983360pdj.0
+        for <linux-nfs@vger.kernel.org>; Thu, 22 Jan 2015 15:37:15 -0800 (PST)
 From: Tom Haynes <thomas.haynes@primarydata.com>
 To: Trond Myklebust <trond.myklebust@primarydata.com>
 Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH v5 18/51] nfs: set hostname when creating nfsv3 ds connection
-Date: Thu, 22 Jan 2015 15:35:50 -0800
-Message-Id: <1421969783-92997-19-git-send-email-loghyr@primarydata.com>
+Subject: [PATCH v5 19/51] nfs/flexclient: export pnfs_layoutcommit_inode
+Date: Thu, 22 Jan 2015 15:35:51 -0800
+Message-Id: <1421969783-92997-20-git-send-email-loghyr@primarydata.com>
 In-Reply-To: <1421969783-92997-1-git-send-email-loghyr@primarydata.com>
 References: <1421969783-92997-1-git-send-email-loghyr@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -18,84 +18,25 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: Peng Tao <tao.peng@primarydata.com>
 
-lockd assumes hostname exists otherwise kernel oops.
-It can be reproduced by following steps:
-1. mount flexfile MDS
-2. write some files
-3. mount DS via nfsv3
-
-BUG: unable to handle kernel NULL pointer dereference at           (null)
- IP: [<ffffffff8134f332>] strlen+0x2/0x20
- PGD 0
- Oops: 0000 [#1] SMP
- Modules linked in: nfsd(F) nfs_layout_flexfiles(F) rpcsec_gss_krb5(F) auth_rpcgss(F) nfsv4(F) dns_resolver(F) nfsv3(F) nfs_acl(F) nfs(F) lockd(F) sunrpc(F) fscache(F) ebtable_nat(F) nf_conntrack_netbios_ns(F) nf_conntrack_broadcast(F) ipt_MASQUERADE(F) ip6table_nat(F) nf_nat_ipv6(F) ip6table_mangle(F) ip6t_REJECT(F) nf_conntrack_ipv6(F) nf_defrag_ipv6(F) iptable_nat(F) nf_nat_ipv4(F) nf_nat(F) iptable_mangle(F) nf_conntrack_ipv4(F) nf_defrag_ipv4(F) xt_conntrack(F) nf_conntrack(F) ebtable_filter(F) ebtables(F) ip6table_filter(F) ip6_tables(F) bnep(F) snd_ens1371(F) snd_rawmidi(F) snd_ac97_codec(F) btusb(F) ac97_bus(F) snd_seq(F) snd_seq_device(F) snd_pcm(F) ppdev(F) bluetooth(F) 6lowpan_iphc(F) rfkill(F) vmw_balloon(F) snd_timer(F) snd(F) soundcore(F) gameport(F) i2c_piix4(F) e1000(F) vmw_vmci(F) parport_pc(F) parport(F) shpchp(F) uinput(F) xfs(F) libcrc32c(F) vmwgfx(F) ttm(F) drm(F) mptspi(F) scsi_transport_spi(F) mptscsih(F) mptbase(F) i2c_core(F)
- CPU: 0 PID: 10397 Comm: mount.nfs Tainted: GF            3.14.7-100.pd_client.001.fc16.x86_64 #1
- Hardware name: VMware, Inc. VMware Virtual Platform/440BX Desktop Reference Platform, BIOS 6.00 07/31/2013
- task: ffff880008942600 ti: ffff880007990000 task.ti: ffff880007990000
- RIP: 0010:[<ffffffff8134f332>]  [<ffffffff8134f332>] strlen+0x2/0x20
- RSP: 0018:ffff880007991aa0  EFLAGS: 00010246
- RAX: 0000000000000000 RBX: ffff880038d39c20 RCX: 0000000000000004
- RDX: 0000000000000006 RSI: 0000000000000010 RDI: 0000000000000000
- RBP: ffff880007991b38 R08: 0000000000000000 R09: 0000000000000000
- R10: 0000000000014600 R11: 0000000000000400 R12: ffffffff81cc8580
- R13: 0000000000000000 R14: 0000000000000000 R15: 0000000000000004
- FS:  00007f90cd2ef880(0000) GS:ffff88003f600000(0000) knlGS:0000000000000000
- CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
- CR2: 0000000000000000 CR3: 0000000001710000 CR4: 00000000001407f0
- Stack:
-  ffffffffa045f52c ffff880001782230 ffff880004141e28 0006880007991ac8
-  ffffffff816dc14b ffff880000000000 ffff880038d39c20 0000000000000010
-  0000000481cc0006 0000000000000000 ffffffffa0410be8 000000000000c014
- Call Trace:
-  [<ffffffffa045f52c>] ? nlmclnt_lookup_host+0x4c/0x2c0 [lockd]
-  [<ffffffff816dc14b>] ? _raw_spin_unlock_bh+0x1b/0x20
-  [<ffffffffa0410be8>] ? svc_destroy+0xb8/0x140 [sunrpc]
-  [<ffffffffa045c323>] nlmclnt_init+0x53/0xc0 [lockd]
-  [<ffffffffa047d2dc>] ? nfs_get_client+0x1cc/0x340 [nfs]
-  [<ffffffffa047c2e7>] nfs_start_lockd+0xa7/0xd0 [nfs]
-  [<ffffffffa047df71>] nfs_create_server+0x181/0x5c0 [nfs]
-  [<ffffffffa04460f3>] nfs3_create_server+0x13/0x30 [nfsv3]
-  [<ffffffffa048a0bc>] nfs_try_mount+0x21c/0x300 [nfs]
-  [<ffffffff811ca32d>] ? __kmalloc_track_caller+0x1ad/0x240
-  [<ffffffffa048b677>] ? nfs_fs_mount+0xc37/0xd80 [nfs]
-  [<ffffffffa048ad05>] nfs_fs_mount+0x2c5/0xd80 [nfs]
-  [<ffffffffa048a830>] ? nfs_clone_super+0x140/0x140 [nfs]
-  [<ffffffffa048a240>] ? nfs_clone_sb_security+0x40/0x40 [nfs]
-  [<ffffffff811e7e43>] mount_fs+0x43/0x1b0
-  [<ffffffff81193100>] ? __alloc_percpu+0x10/0x20
-  [<ffffffff812026e6>] vfs_kern_mount+0x76/0x120
-  [<ffffffff81204917>] do_mount+0x237/0xa80
+flexfiles needs to start layoutcommit when necessary
 
 Signed-off-by: Peng Tao <tao.peng@primarydata.com>
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/nfs3client.c | 7 +++++++
- 1 file changed, 7 insertions(+)
+ fs/nfs/pnfs.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/fs/nfs/nfs3client.c b/fs/nfs/nfs3client.c
-index 52e2344..9e9fa34 100644
---- a/fs/nfs/nfs3client.c
-+++ b/fs/nfs/nfs3client.c
-@@ -1,5 +1,6 @@
- #include <linux/nfs_fs.h>
- #include <linux/nfs_mount.h>
-+#include <linux/sunrpc/addr.h>
- #include "internal.h"
- #include "nfs3_fs.h"
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 0a5dda4..2d25670 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1966,6 +1966,7 @@ clear_layoutcommitting:
+ 	pnfs_clear_layoutcommitting(inode);
+ 	goto out;
+ }
++EXPORT_SYMBOL_GPL(pnfs_layoutcommit_inode);
  
-@@ -89,6 +90,12 @@ struct nfs_client *nfs3_set_ds_client(struct nfs_client *mds_clp,
- 	};
- 	struct rpc_timeout ds_timeout;
- 	struct nfs_client *clp;
-+	char buf[INET6_ADDRSTRLEN + 1];
-+
-+	/* fake a hostname because lockd wants it */
-+	if (rpc_ntop(ds_addr, buf, sizeof(buf)) <= 0)
-+		return ERR_PTR(-EINVAL);
-+	cl_init.hostname = buf;
- 
- 	/* Use the MDS nfs_client cl_ipaddr. */
- 	nfs_init_timeout_values(&ds_timeout, ds_proto, ds_timeo, ds_retrans);
+ struct nfs4_threshold *pnfs_mdsthreshold_alloc(void)
+ {
 -- 
 1.9.3
 
