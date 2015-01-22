@@ -1,16 +1,16 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pd0-f179.google.com ([209.85.192.179]:56994 "EHLO
-	mail-pd0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753860AbbAVXi1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Jan 2015 18:38:27 -0500
-Received: by mail-pd0-f179.google.com with SMTP id v10so4589349pde.10
-        for <linux-nfs@vger.kernel.org>; Thu, 22 Jan 2015 15:38:26 -0800 (PST)
+Received: from mail-pa0-f41.google.com ([209.85.220.41]:51656 "EHLO
+	mail-pa0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753860AbbAVXic (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Jan 2015 18:38:32 -0500
+Received: by mail-pa0-f41.google.com with SMTP id kq14so2271592pab.0
+        for <linux-nfs@vger.kernel.org>; Thu, 22 Jan 2015 15:38:32 -0800 (PST)
 From: Tom Haynes <thomas.haynes@primarydata.com>
 To: Trond Myklebust <trond.myklebust@primarydata.com>
 Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH v5 45/51] nfs/flexfiles: send layoutreturn before freeing lseg
-Date: Thu, 22 Jan 2015 15:36:17 -0800
-Message-Id: <1421969783-92997-46-git-send-email-loghyr@primarydata.com>
+Subject: [PATCH v5 46/51] nfs41: add NFS_LAYOUT_RETRY_LAYOUTGET to layout header flags
+Date: Thu, 22 Jan 2015 15:36:18 -0800
+Message-Id: <1421969783-92997-47-git-send-email-loghyr@primarydata.com>
 In-Reply-To: <1421969783-92997-1-git-send-email-loghyr@primarydata.com>
 References: <1421969783-92997-1-git-send-email-loghyr@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -18,146 +18,84 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: Peng Tao <tao.peng@primarydata.com>
 
-Otherwise we'll lose error tracking information when
-encoding layoutreturn.
+Use it to indicate that LD wants to retry layoutget. LD can set
+it whenever it wants the common pnfs code to return and retry
+pnfs path through a new layout.
 
-pnfs_put_lseg may be called from rpc callbacks. So we should not
-call pnfs_send_layoutreturn directly because it can deadlock in
-the rpc layer.
+The bit gets cleared when client does a new layoutget, when client
+closes the file (ROC case), or when kernel needs to evict the inode
+(non-ROC case).
 
 Signed-off-by: Peng Tao <tao.peng@primarydata.com>
-Signed-off-by: Tom Haynes <loghyr@primarydata.com>
 ---
- fs/nfs/pnfs.c | 81 +++++++++++++++++++++++++++++++++++++++++------------------
- 1 file changed, 56 insertions(+), 25 deletions(-)
+ fs/nfs/pnfs.c |  3 +++
+ fs/nfs/pnfs.h | 18 ++++++++++++++++++
+ 2 files changed, 21 insertions(+)
 
 diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index d3c2ca7..108a619 100644
+index 108a619..893f6b5 100644
 --- a/fs/nfs/pnfs.c
 +++ b/fs/nfs/pnfs.c
-@@ -346,8 +346,7 @@ pnfs_layout_remove_lseg(struct pnfs_layout_hdr *lo,
- /* Return true if layoutreturn is needed */
- static bool
- pnfs_layout_need_return(struct pnfs_layout_hdr *lo,
--			struct pnfs_layout_segment *lseg,
--			nfs4_stateid *stateid, enum pnfs_iomode *iomode)
-+			struct pnfs_layout_segment *lseg)
- {
- 	struct pnfs_layout_segment *s;
- 
-@@ -355,17 +354,54 @@ pnfs_layout_need_return(struct pnfs_layout_hdr *lo,
- 		return false;
- 
- 	list_for_each_entry(s, &lo->plh_segs, pls_list)
--		if (test_bit(NFS_LSEG_LAYOUTRETURN, &lseg->pls_flags))
-+		if (s != lseg && test_bit(NFS_LSEG_LAYOUTRETURN, &s->pls_flags))
- 			return false;
- 
--	*stateid = lo->plh_stateid;
--	*iomode = lo->plh_return_iomode;
--	/* decreased in pnfs_send_layoutreturn() */
--	lo->plh_block_lgets++;
--	lo->plh_return_iomode = 0;
- 	return true;
- }
- 
-+static void pnfs_layoutreturn_free_lseg(struct work_struct *work)
-+{
-+	struct pnfs_layout_segment *lseg;
-+	struct pnfs_layout_hdr *lo;
-+	struct inode *inode;
-+
-+	lseg = container_of(work, struct pnfs_layout_segment, pls_work);
-+	WARN_ON(atomic_read(&lseg->pls_refcount));
-+	lo = lseg->pls_layout;
-+	inode = lo->plh_inode;
-+
-+	spin_lock(&inode->i_lock);
-+	if (pnfs_layout_need_return(lo, lseg)) {
-+		nfs4_stateid stateid;
-+		enum pnfs_iomode iomode;
-+
-+		stateid = lo->plh_stateid;
-+		iomode = lo->plh_return_iomode;
-+		/* decreased in pnfs_send_layoutreturn() */
-+		lo->plh_block_lgets++;
-+		lo->plh_return_iomode = 0;
-+		spin_unlock(&inode->i_lock);
-+
-+		pnfs_send_layoutreturn(lo, stateid, iomode, true);
-+		spin_lock(&inode->i_lock);
-+	} else
-+		/* match pnfs_get_layout_hdr #2 in pnfs_put_lseg */
-+		pnfs_put_layout_hdr(lo);
-+	pnfs_layout_remove_lseg(lo, lseg);
-+	spin_unlock(&inode->i_lock);
-+	pnfs_free_lseg(lseg);
-+	/* match pnfs_get_layout_hdr #1 in pnfs_put_lseg */
-+	pnfs_put_layout_hdr(lo);
-+}
-+
-+static void
-+pnfs_layoutreturn_free_lseg_async(struct pnfs_layout_segment *lseg)
-+{
-+	INIT_WORK(&lseg->pls_work, pnfs_layoutreturn_free_lseg);
-+	queue_work(nfsiod_workqueue, &lseg->pls_work);
-+}
-+
- void
- pnfs_put_lseg(struct pnfs_layout_segment *lseg)
- {
-@@ -381,21 +417,18 @@ pnfs_put_lseg(struct pnfs_layout_segment *lseg)
- 	lo = lseg->pls_layout;
- 	inode = lo->plh_inode;
- 	if (atomic_dec_and_lock(&lseg->pls_refcount, &inode->i_lock)) {
--		bool need_return;
--		nfs4_stateid stateid;
--		enum pnfs_iomode iomode;
--
+@@ -615,6 +615,7 @@ pnfs_destroy_layout(struct nfs_inode *nfsi)
  		pnfs_get_layout_hdr(lo);
--		pnfs_layout_remove_lseg(lo, lseg);
--		need_return = pnfs_layout_need_return(lo, lseg,
--						      &stateid, &iomode);
--		spin_unlock(&inode->i_lock);
--		pnfs_free_lseg(lseg);
--		if (need_return)
--			pnfs_send_layoutreturn(lo, stateid, iomode,
--					       true);
--		else
-+		if (pnfs_layout_need_return(lo, lseg)) {
-+			spin_unlock(&inode->i_lock);
-+			/* hdr reference dropped in nfs4_layoutreturn_release */
-+			pnfs_get_layout_hdr(lo);
-+			pnfs_layoutreturn_free_lseg_async(lseg);
-+		} else {
-+			pnfs_layout_remove_lseg(lo, lseg);
-+			spin_unlock(&inode->i_lock);
-+			pnfs_free_lseg(lseg);
- 			pnfs_put_layout_hdr(lo);
-+		}
- 	}
- }
- EXPORT_SYMBOL_GPL(pnfs_put_lseg);
-@@ -1059,8 +1092,7 @@ out_nolayout:
- 	}
- 	spin_unlock(&ino->i_lock);
- 	if (layoutreturn)
--		pnfs_send_layoutreturn(lo, stateid, IOMODE_ANY, 0,
--				       NFS4_MAX_UINT64, true);
-+		pnfs_send_layoutreturn(lo, stateid, IOMODE_ANY, true);
- 	return false;
+ 		pnfs_layout_clear_fail_bit(lo, NFS_LAYOUT_RO_FAILED);
+ 		pnfs_layout_clear_fail_bit(lo, NFS_LAYOUT_RW_FAILED);
++		pnfs_clear_retry_layoutget(lo);
+ 		spin_unlock(&nfsi->vfs_inode.i_lock);
+ 		pnfs_free_lseg_list(&tmp_list);
+ 		pnfs_put_layout_hdr(lo);
+@@ -1066,6 +1067,7 @@ bool pnfs_roc(struct inode *ino)
+ 	if (!lo || !test_and_clear_bit(NFS_LAYOUT_ROC, &lo->plh_flags) ||
+ 	    test_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags))
+ 		goto out_nolayout;
++	pnfs_clear_retry_layoutget(lo);
+ 	list_for_each_entry_safe(lseg, tmp, &lo->plh_segs, pls_list)
+ 		if (test_bit(NFS_LSEG_ROC, &lseg->pls_flags)) {
+ 			mark_lseg_invalid(lseg, &tmp_list);
+@@ -1491,6 +1493,7 @@ lookup_again:
+ 		arg.length = PAGE_CACHE_ALIGN(arg.length);
+ 
+ 	lseg = send_layoutget(lo, ctx, &arg, gfp_flags);
++	pnfs_clear_retry_layoutget(lo);
+ 	atomic_dec(&lo->plh_outstanding);
+ out_put_layout_hdr:
+ 	if (first) {
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index ec81767..665692e 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -99,6 +99,7 @@ enum {
+ 	NFS_LAYOUT_RETURN_BEFORE_CLOSE,	/* Return this layout before close */
+ 	NFS_LAYOUT_INVALID_STID,	/* layout stateid id is invalid */
+ 	NFS_LAYOUT_FIRST_LAYOUTGET,	/* Serialize first layoutget */
++	NFS_LAYOUT_RETRY_LAYOUTGET,	/* Retry layoutget */
+ };
+ 
+ enum layoutdriver_policy_flags {
+@@ -349,6 +350,23 @@ nfs4_get_deviceid(struct nfs4_deviceid_node *d)
+ 	return d;
  }
  
-@@ -1127,8 +1159,7 @@ out:
- 	spin_unlock(&ino->i_lock);
- 	if (layoutreturn) {
- 		rpc_sleep_on(&NFS_SERVER(ino)->roc_rpcwaitq, task, NULL);
--		pnfs_send_layoutreturn(lo, stateid, IOMODE_ANY, 0,
--				       NFS4_MAX_UINT64, false);
-+		pnfs_send_layoutreturn(lo, stateid, IOMODE_ANY, false);
- 	}
- 	return found;
- }
++static inline void pnfs_set_retry_layoutget(struct pnfs_layout_hdr *lo)
++{
++	if (!test_and_set_bit(NFS_LAYOUT_RETRY_LAYOUTGET, &lo->plh_flags))
++		atomic_inc(&lo->plh_refcount);
++}
++
++static inline void pnfs_clear_retry_layoutget(struct pnfs_layout_hdr *lo)
++{
++	if (test_and_clear_bit(NFS_LAYOUT_RETRY_LAYOUTGET, &lo->plh_flags))
++		atomic_dec(&lo->plh_refcount);
++}
++
++static inline bool pnfs_should_retry_layoutget(struct pnfs_layout_hdr *lo)
++{
++	return test_bit(NFS_LAYOUT_RETRY_LAYOUTGET, &lo->plh_flags);
++}
++
+ static inline struct pnfs_layout_segment *
+ pnfs_get_lseg(struct pnfs_layout_segment *lseg)
+ {
 -- 
 1.9.3
 
