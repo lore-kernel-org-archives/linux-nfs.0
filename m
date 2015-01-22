@@ -1,8 +1,8 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cdptpa-outbound-snat.email.rr.com ([107.14.166.226]:12592 "EHLO
+Received: from cdptpa-outbound-snat.email.rr.com ([107.14.166.231]:16302 "EHLO
 	cdptpa-oedge-vip.email.rr.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1753123AbbAVO2G (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Jan 2015 09:28:06 -0500
+	by vger.kernel.org with ESMTP id S1753128AbbAVO2H (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Jan 2015 09:28:07 -0500
 From: Jeff Layton <jeff.layton@primarydata.com>
 To: linux-fsdevel@vger.kernel.org
 Cc: Christoph Hellwig <hch@infradead.org>,
@@ -10,71 +10,78 @@ Cc: Christoph Hellwig <hch@infradead.org>,
         David Howells <dhowells@redhat.com>, linux-kernel@vger.kernel.org,
         linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
         ceph-devel@vger.kernel.org
-Subject: [PATCH v3 12/13] locks: consolidate NULL i_flctx checks in locks_remove_file
-Date: Thu, 22 Jan 2015 09:27:56 -0500
-Message-Id: <1421936877-27529-13-git-send-email-jeff.layton@primarydata.com>
+Subject: [PATCH v3 13/13] locks: update comments that refer to inode->i_flock
+Date: Thu, 22 Jan 2015 09:27:57 -0500
+Message-Id: <1421936877-27529-14-git-send-email-jeff.layton@primarydata.com>
 In-Reply-To: <1421936877-27529-1-git-send-email-jeff.layton@primarydata.com>
 References: <1421936877-27529-1-git-send-email-jeff.layton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We have each of the locks_remove_* variants doing this individually.
-Have the caller do it instead, and have locks_remove_flock and
-locks_remove_lease just assume that it's a valid pointer.
-
 Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
- fs/locks.c | 9 +++++++--
- 1 file changed, 7 insertions(+), 2 deletions(-)
+ fs/locks.c         |  2 +-
+ include/linux/fs.h | 19 ++++++++++---------
+ 2 files changed, 11 insertions(+), 10 deletions(-)
 
 diff --git a/fs/locks.c b/fs/locks.c
-index bd578700342d..2fc36b3772a0 100644
+index 2fc36b3772a0..4d0d41163a50 100644
 --- a/fs/locks.c
 +++ b/fs/locks.c
-@@ -2400,6 +2400,7 @@ void locks_remove_posix(struct file *filp, fl_owner_t owner)
- 
- EXPORT_SYMBOL(locks_remove_posix);
- 
-+/* The i_flctx must be valid when calling into here */
- static void
- locks_remove_flock(struct file *filp)
- {
-@@ -2413,7 +2414,7 @@ locks_remove_flock(struct file *filp)
- 	};
- 	struct file_lock_context *flctx = file_inode(filp)->i_flctx;
- 
--	if (!flctx || list_empty(&flctx->flc_flock))
-+	if (list_empty(&flctx->flc_flock))
- 		return;
- 
- 	if (filp->f_op->flock)
-@@ -2425,6 +2426,7 @@ locks_remove_flock(struct file *filp)
- 		fl.fl_ops->fl_release_private(&fl);
- }
- 
-+/* The i_flctx must be valid when calling into here */
- static void
- locks_remove_lease(struct file *filp)
- {
-@@ -2433,7 +2435,7 @@ locks_remove_lease(struct file *filp)
- 	struct file_lock *fl, *tmp;
- 	LIST_HEAD(dispose);
- 
--	if (!ctx || list_empty(&ctx->flc_lease))
-+	if (list_empty(&ctx->flc_lease))
- 		return;
- 
- 	spin_lock(&ctx->flc_lock);
-@@ -2448,6 +2450,9 @@ locks_remove_lease(struct file *filp)
+@@ -2212,7 +2212,7 @@ again:
+ 	 */
+ 	/*
+ 	 * we need that spin_lock here - it prevents reordering between
+-	 * update of inode->i_flock and check for it done in close().
++	 * update of i_flctx->flc_posix and check for it done in close().
+ 	 * rcu_read_lock() wouldn't do.
+ 	 */
+ 	spin_lock(&current->files->file_lock);
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index f87cb2f03103..ddd2fa7cefd3 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -925,12 +925,11 @@ int locks_in_grace(struct net *);
+  * FIXME: should we create a separate "struct lock_request" to help distinguish
+  * these two uses?
+  *
+- * The i_flock list is ordered by:
++ * The varous i_flctx lists are ordered by:
+  *
+- * 1) lock type -- FL_LEASEs first, then FL_FLOCK, and finally FL_POSIX
+- * 2) lock owner
+- * 3) lock range start
+- * 4) lock range end
++ * 1) lock owner
++ * 2) lock range start
++ * 3) lock range end
+  *
+  * Obviously, the last two criteria only matter for POSIX locks.
   */
- void locks_remove_file(struct file *filp)
+@@ -1992,8 +1991,9 @@ static inline int break_lease(struct inode *inode, unsigned int mode)
  {
-+	if (!file_inode(filp)->i_flctx)
-+		return;
-+
- 	/* remove any OFD locks */
- 	locks_remove_posix(filp, filp);
- 
+ 	/*
+ 	 * Since this check is lockless, we must ensure that any refcounts
+-	 * taken are done before checking inode->i_flock. Otherwise, we could
+-	 * end up racing with tasks trying to set a new lease on this file.
++	 * taken are done before checking i_flctx->flc_lease. Otherwise, we
++	 * could end up racing with tasks trying to set a new lease on this
++	 * file.
+ 	 */
+ 	smp_mb();
+ 	if (inode->i_flctx && !list_empty_careful(&inode->i_flctx->flc_lease))
+@@ -2005,8 +2005,9 @@ static inline int break_deleg(struct inode *inode, unsigned int mode)
+ {
+ 	/*
+ 	 * Since this check is lockless, we must ensure that any refcounts
+-	 * taken are done before checking inode->i_flock. Otherwise, we could
+-	 * end up racing with tasks trying to set a new lease on this file.
++	 * taken are done before checking i_flctx->flc_lease. Otherwise, we
++	 * could end up racing with tasks trying to set a new lease on this
++	 * file.
+ 	 */
+ 	smp_mb();
+ 	if (inode->i_flctx && !list_empty_careful(&inode->i_flctx->flc_lease))
 -- 
 2.1.0
 
