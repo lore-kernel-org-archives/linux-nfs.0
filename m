@@ -1,79 +1,40 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from casper.infradead.org ([85.118.1.10]:41396 "EHLO
+Received: from casper.infradead.org ([85.118.1.10]:41399 "EHLO
 	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751553AbbAVLLP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Jan 2015 06:11:15 -0500
+	with ESMTP id S1750915AbbAVLLQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Jan 2015 06:11:16 -0500
 From: Christoph Hellwig <hch@lst.de>
 To: "J. Bruce Fields" <bfields@fieldses.org>
 Cc: Jeff Layton <jlayton@primarydata.com>, linux-nfs@vger.kernel.org,
         linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com
-Subject: [PATCH 05/20] nfsd: move nfsd_fh_match to nfsfh.h
-Date: Thu, 22 Jan 2015 12:09:51 +0100
-Message-Id: <1421925006-24231-6-git-send-email-hch@lst.de>
+Subject: [PATCH 06/20] nfsd: add fh_fsid_match helper
+Date: Thu, 22 Jan 2015 12:09:52 +0100
+Message-Id: <1421925006-24231-7-git-send-email-hch@lst.de>
 In-Reply-To: <1421925006-24231-1-git-send-email-hch@lst.de>
 References: <1421925006-24231-1-git-send-email-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The pnfs code will need it too.  Also remove the nfsd_ prefix to match the
-other filehandle helpers in that file.
+Add a helper to check that the fsid parts of two file handles match.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- fs/nfsd/nfs4state.c | 12 ++----------
- fs/nfsd/nfsfh.h     |  9 +++++++++
- 2 files changed, 11 insertions(+), 10 deletions(-)
+ fs/nfsd/nfsfh.h | 9 +++++++++
+ 1 file changed, 9 insertions(+)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 30ff0d4..b4f86f8 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -408,14 +408,6 @@ static unsigned int file_hashval(struct knfsd_fh *fh)
- 	return nfsd_fh_hashval(fh) & (FILE_HASH_SIZE - 1);
- }
- 
--static bool nfsd_fh_match(struct knfsd_fh *fh1, struct knfsd_fh *fh2)
--{
--	return fh1->fh_size == fh2->fh_size &&
--		!memcmp(fh1->fh_base.fh_pad,
--				fh2->fh_base.fh_pad,
--				fh1->fh_size);
--}
--
- static struct hlist_head file_hashtbl[FILE_HASH_SIZE];
- 
- static void
-@@ -3300,7 +3292,7 @@ find_file_locked(struct knfsd_fh *fh, unsigned int hashval)
- 	struct nfs4_file *fp;
- 
- 	hlist_for_each_entry_rcu(fp, &file_hashtbl[hashval], fi_hash) {
--		if (nfsd_fh_match(&fp->fi_fhandle, fh)) {
-+		if (fh_match(&fp->fi_fhandle, fh)) {
- 			if (atomic_inc_not_zero(&fp->fi_ref))
- 				return fp;
- 		}
-@@ -4295,7 +4287,7 @@ laundromat_main(struct work_struct *laundry)
- 
- static inline __be32 nfs4_check_fh(struct svc_fh *fhp, struct nfs4_ol_stateid *stp)
- {
--	if (!nfsd_fh_match(&fhp->fh_handle, &stp->st_stid.sc_file->fi_fhandle))
-+	if (!fh_match(&fhp->fh_handle, &stp->st_stid.sc_file->fi_fhandle))
- 		return nfserr_bad_stateid;
- 	return nfs_ok;
- }
 diff --git a/fs/nfsd/nfsfh.h b/fs/nfsd/nfsfh.h
-index 08236d7..e24d954 100644
+index e24d954..84cae20 100644
 --- a/fs/nfsd/nfsfh.h
 +++ b/fs/nfsd/nfsfh.h
-@@ -187,6 +187,15 @@ fh_init(struct svc_fh *fhp, int maxsize)
- 	return fhp;
+@@ -196,6 +196,15 @@ static inline bool fh_match(struct knfsd_fh *fh1, struct knfsd_fh *fh2)
+ 	return true;
  }
  
-+static inline bool fh_match(struct knfsd_fh *fh1, struct knfsd_fh *fh2)
++static inline bool fh_fsid_match(struct knfsd_fh *fh1, struct knfsd_fh *fh2)
 +{
-+	if (fh1->fh_size != fh2->fh_size)
++	if (fh1->fh_fsid_type != fh2->fh_fsid_type)
 +		return false;
-+	if (memcmp(fh1->fh_base.fh_pad, fh2->fh_base.fh_pad, fh1->fh_size) != 0)
++	if (memcmp(fh1->fh_fsid, fh2->fh_fsid, key_len(fh1->fh_fsid_type) != 0))
 +		return false;
 +	return true;
 +}
