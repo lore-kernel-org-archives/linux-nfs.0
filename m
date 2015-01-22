@@ -1,7 +1,7 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cdptpa-outbound-snat.email.rr.com ([107.14.166.230]:58186 "EHLO
+Received: from cdptpa-outbound-snat.email.rr.com ([107.14.166.226]:17865 "EHLO
 	cdptpa-oedge-vip.email.rr.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1753054AbbAVO2C (ORCPT
+	by vger.kernel.org with ESMTP id S1752011AbbAVO2C (ORCPT
 	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Jan 2015 09:28:02 -0500
 From: Jeff Layton <jeff.layton@primarydata.com>
 To: linux-fsdevel@vger.kernel.org
@@ -10,9 +10,9 @@ Cc: Christoph Hellwig <hch@infradead.org>,
         David Howells <dhowells@redhat.com>, linux-kernel@vger.kernel.org,
         linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
         ceph-devel@vger.kernel.org
-Subject: [PATCH v3 03/13] locks: add a new struct file_locking_context pointer to struct inode
-Date: Thu, 22 Jan 2015 09:27:47 -0500
-Message-Id: <1421936877-27529-4-git-send-email-jeff.layton@primarydata.com>
+Subject: [PATCH v3 04/13] ceph: move spinlocking into ceph_encode_locks_to_buffer and ceph_count_locks
+Date: Thu, 22 Jan 2015 09:27:48 -0500
+Message-Id: <1421936877-27529-5-git-send-email-jeff.layton@primarydata.com>
 In-Reply-To: <1421936877-27529-1-git-send-email-jeff.layton@primarydata.com>
 References: <1421936877-27529-1-git-send-email-jeff.layton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -20,159 +20,77 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: Jeff Layton <jlayton@primarydata.com>
 
-The current scheme of using the i_flock list is really difficult to
-manage. There is also a legitimate desire for a per-inode spinlock to
-manage these lists that isn't the i_lock.
-
-Start conversion to a new scheme to eventually replace the old i_flock
-list with a new "file_lock_context" object.
-
-We start by adding a new i_flctx to struct inode. For now, it lives in
-parallel with i_flock list, but will eventually replace it. The idea is
-to allocate a structure to sit in that pointer and act as a locus for
-all things file locking.
-
-We allocate a file_lock_context for an inode when the first lock is
-added to it, and it's only freed when the inode is freed. We use the
-i_lock to protect the assignment, but afterward it should mostly be
-accessed locklessly.
+There is only a single call site for each of these functions, and the
+caller takes the i_lock prior to calling them and drops it just
+afterward. Move the spinlocking into the functions instead.
 
 Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 Acked-by: Christoph Hellwig <hch@lst.de>
 ---
- fs/inode.c         |  3 ++-
- fs/locks.c         | 44 ++++++++++++++++++++++++++++++++++++++++++++
- include/linux/fs.h | 11 +++++++++++
- 3 files changed, 57 insertions(+), 1 deletion(-)
+ fs/ceph/locks.c      | 4 ++++
+ fs/ceph/mds_client.c | 4 ----
+ 2 files changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/fs/inode.c b/fs/inode.c
-index aa149e7262ac..f30872ade6d7 100644
---- a/fs/inode.c
-+++ b/fs/inode.c
-@@ -194,7 +194,7 @@ int inode_init_always(struct super_block *sb, struct inode *inode)
- #ifdef CONFIG_FSNOTIFY
- 	inode->i_fsnotify_mask = 0;
- #endif
--
-+	inode->i_flctx = NULL;
- 	this_cpu_inc(nr_inodes);
+diff --git a/fs/ceph/locks.c b/fs/ceph/locks.c
+index c35c5c614e38..366dc2412605 100644
+--- a/fs/ceph/locks.c
++++ b/fs/ceph/locks.c
+@@ -251,12 +251,14 @@ void ceph_count_locks(struct inode *inode, int *fcntl_count, int *flock_count)
+ 	*fcntl_count = 0;
+ 	*flock_count = 0;
  
- 	return 0;
-@@ -237,6 +237,7 @@ void __destroy_inode(struct inode *inode)
- 	BUG_ON(inode_has_buffers(inode));
- 	security_inode_free(inode);
- 	fsnotify_inode_delete(inode);
-+	locks_free_lock_context(inode->i_flctx);
- 	if (!inode->i_nlink) {
- 		WARN_ON(atomic_long_read(&inode->i_sb->s_remove_count) == 0);
- 		atomic_long_dec(&inode->i_sb->s_remove_count);
-diff --git a/fs/locks.c b/fs/locks.c
-index ae1e7cf721d6..526d5fca67c8 100644
---- a/fs/locks.c
-+++ b/fs/locks.c
-@@ -202,8 +202,49 @@ static DEFINE_HASHTABLE(blocked_hash, BLOCKED_HASH_BITS);
-  */
- static DEFINE_SPINLOCK(blocked_lock_lock);
- 
-+static struct kmem_cache *flctx_cache __read_mostly;
- static struct kmem_cache *filelock_cache __read_mostly;
- 
-+static struct file_lock_context *
-+locks_get_lock_context(struct inode *inode)
-+{
-+	struct file_lock_context *new;
-+
-+	if (likely(inode->i_flctx))
-+		goto out;
-+
-+	new = kmem_cache_alloc(flctx_cache, GFP_KERNEL);
-+	if (!new)
-+		goto out;
-+
-+	INIT_LIST_HEAD(&new->flc_flock);
-+
-+	/*
-+	 * Assign the pointer if it's not already assigned. If it is, then
-+	 * free the context we just allocated.
-+	 */
 +	spin_lock(&inode->i_lock);
-+	if (likely(!inode->i_flctx)) {
-+		inode->i_flctx = new;
-+		new = NULL;
-+	}
+ 	for (lock = inode->i_flock; lock != NULL; lock = lock->fl_next) {
+ 		if (lock->fl_flags & FL_POSIX)
+ 			++(*fcntl_count);
+ 		else if (lock->fl_flags & FL_FLOCK)
+ 			++(*flock_count);
+ 	}
 +	spin_unlock(&inode->i_lock);
-+
-+	if (new)
-+		kmem_cache_free(flctx_cache, new);
-+out:
-+	return inode->i_flctx;
-+}
-+
-+void
-+locks_free_lock_context(struct file_lock_context *ctx)
-+{
-+	if (ctx) {
-+		WARN_ON_ONCE(!list_empty(&ctx->flc_flock));
-+		kmem_cache_free(flctx_cache, ctx);
-+	}
-+}
-+
- static void locks_init_lock_heads(struct file_lock *fl)
- {
- 	INIT_HLIST_NODE(&fl->fl_link);
-@@ -2636,6 +2677,9 @@ static int __init filelock_init(void)
- {
- 	int i;
+ 	dout("counted %d flock locks and %d fcntl locks",
+ 	     *flock_count, *fcntl_count);
+ }
+@@ -279,6 +281,7 @@ int ceph_encode_locks_to_buffer(struct inode *inode,
+ 	dout("encoding %d flock and %d fcntl locks", num_flock_locks,
+ 	     num_fcntl_locks);
  
-+	flctx_cache = kmem_cache_create("file_lock_ctx",
-+			sizeof(struct file_lock_context), 0, SLAB_PANIC, NULL);
-+
- 	filelock_cache = kmem_cache_create("file_lock_cache",
- 			sizeof(struct file_lock), 0, SLAB_PANIC, NULL);
- 
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index cd6818115162..dec0d38b05de 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -626,6 +626,7 @@ struct inode {
- #endif
- 	const struct file_operations	*i_fop;	/* former ->i_op->default_file_ops */
- 	struct file_lock	*i_flock;
-+	struct file_lock_context	*i_flctx;
- 	struct address_space	i_data;
- 	struct list_head	i_devices;
- 	union {
-@@ -965,6 +966,10 @@ struct file_lock {
- 	} fl_u;
- };
- 
-+struct file_lock_context {
-+	struct list_head	flc_flock;
-+};
-+
- /* The following constant reflects the upper bound of the file/locking space */
- #ifndef OFFSET_MAX
- #define INT_LIMIT(x)	(~((x)1 << (sizeof(x)*8 - 1)))
-@@ -991,6 +996,7 @@ extern int fcntl_setlease(unsigned int fd, struct file *filp, long arg);
- extern int fcntl_getlease(struct file *filp);
- 
- /* fs/locks.c */
-+void locks_free_lock_context(struct file_lock_context *ctx);
- void locks_free_lock(struct file_lock *fl);
- extern void locks_init_lock(struct file_lock *);
- extern struct file_lock * locks_alloc_lock(void);
-@@ -1048,6 +1054,11 @@ static inline int fcntl_getlease(struct file *filp)
- 	return F_UNLCK;
++	spin_lock(&inode->i_lock);
+ 	for (lock = inode->i_flock; lock != NULL; lock = lock->fl_next) {
+ 		if (lock->fl_flags & FL_POSIX) {
+ 			++seen_fcntl;
+@@ -306,6 +309,7 @@ int ceph_encode_locks_to_buffer(struct inode *inode,
+ 		}
+ 	}
+ fail:
++	spin_unlock(&inode->i_lock);
+ 	return err;
  }
  
-+static inline void
-+locks_free_lock_context(struct file_lock_context *ctx)
-+{
-+}
-+
- static inline void locks_init_lock(struct file_lock *fl)
- {
- 	return;
+diff --git a/fs/ceph/mds_client.c b/fs/ceph/mds_client.c
+index d2171f4a6980..5f62fb7a5d0a 100644
+--- a/fs/ceph/mds_client.c
++++ b/fs/ceph/mds_client.c
+@@ -2700,20 +2700,16 @@ static int encode_caps_cb(struct inode *inode, struct ceph_cap *cap,
+ 		struct ceph_filelock *flocks;
+ 
+ encode_again:
+-		spin_lock(&inode->i_lock);
+ 		ceph_count_locks(inode, &num_fcntl_locks, &num_flock_locks);
+-		spin_unlock(&inode->i_lock);
+ 		flocks = kmalloc((num_fcntl_locks+num_flock_locks) *
+ 				 sizeof(struct ceph_filelock), GFP_NOFS);
+ 		if (!flocks) {
+ 			err = -ENOMEM;
+ 			goto out_free;
+ 		}
+-		spin_lock(&inode->i_lock);
+ 		err = ceph_encode_locks_to_buffer(inode, flocks,
+ 						  num_fcntl_locks,
+ 						  num_flock_locks);
+-		spin_unlock(&inode->i_lock);
+ 		if (err) {
+ 			kfree(flocks);
+ 			if (err == -ENOSPC)
 -- 
 2.1.0
 
