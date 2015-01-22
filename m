@@ -1,107 +1,86 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from li207-46.members.linode.com ([173.255.197.46]:55565 "EHLO
-	fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752473AbbAVUPt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 Jan 2015 15:15:49 -0500
-Date: Thu, 22 Jan 2015 15:15:49 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Christoph Hellwig <hch@lst.de>
+Received: from casper.infradead.org ([85.118.1.10]:41396 "EHLO
+	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751553AbbAVLLP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Jan 2015 06:11:15 -0500
+From: Christoph Hellwig <hch@lst.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Cc: Jeff Layton <jlayton@primarydata.com>, linux-nfs@vger.kernel.org,
         linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com
-Subject: Re: [PATCH 04/20] nfsd: factor out a helper to decode nfstime4 values
-Message-ID: <20150122201549.GK898@fieldses.org>
+Subject: [PATCH 05/20] nfsd: move nfsd_fh_match to nfsfh.h
+Date: Thu, 22 Jan 2015 12:09:51 +0100
+Message-Id: <1421925006-24231-6-git-send-email-hch@lst.de>
+In-Reply-To: <1421925006-24231-1-git-send-email-hch@lst.de>
 References: <1421925006-24231-1-git-send-email-hch@lst.de>
- <1421925006-24231-5-git-send-email-hch@lst.de>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1421925006-24231-5-git-send-email-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I'll go ahead and take this one.--b.
+The pnfs code will need it too.  Also remove the nfsd_ prefix to match the
+other filehandle helpers in that file.
 
-On Thu, Jan 22, 2015 at 12:09:50PM +0100, Christoph Hellwig wrote:
-> Signed-off-by: Christoph Hellwig <hch@lst.de>
-> ---
->  fs/nfsd/nfs4xdr.c | 43 ++++++++++++++++++++++++++-----------------
->  1 file changed, 26 insertions(+), 17 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-> index 15f7b73..884ffa3 100644
-> --- a/fs/nfsd/nfs4xdr.c
-> +++ b/fs/nfsd/nfs4xdr.c
-> @@ -234,6 +234,26 @@ static char *savemem(struct nfsd4_compoundargs *argp, __be32 *p, int nbytes)
->  	return ret;
->  }
->  
-> +/*
-> + * We require the high 32 bits of 'seconds' to be 0, and
-> + * we ignore all 32 bits of 'nseconds'.
-> + */
-> +static __be32
-> +nfsd4_decode_time(struct nfsd4_compoundargs *argp, struct timespec *tv)
-> +{
-> +	DECODE_HEAD;
-> +	u64 sec;
-> +
-> +	READ_BUF(12);
-> +	p = xdr_decode_hyper(p, &sec);
-> +	tv->tv_sec = sec;
-> +	tv->tv_nsec = be32_to_cpup(p++);
-> +	if (tv->tv_nsec >= (u32)1000000000)
-> +		return nfserr_inval;
-> +
-> +	DECODE_TAIL;
-> +}
-> +
->  static __be32
->  nfsd4_decode_bitmap(struct nfsd4_compoundargs *argp, u32 *bmval)
->  {
-> @@ -267,7 +287,6 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
->  {
->  	int expected_len, len = 0;
->  	u32 dummy32;
-> -	u64 sec;
->  	char *buf;
->  
->  	DECODE_HEAD;
-> @@ -358,15 +377,10 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
->  		dummy32 = be32_to_cpup(p++);
->  		switch (dummy32) {
->  		case NFS4_SET_TO_CLIENT_TIME:
-> -			/* We require the high 32 bits of 'seconds' to be 0, and we ignore
-> -			   all 32 bits of 'nseconds'. */
-> -			READ_BUF(12);
->  			len += 12;
-> -			p = xdr_decode_hyper(p, &sec);
-> -			iattr->ia_atime.tv_sec = (time_t)sec;
-> -			iattr->ia_atime.tv_nsec = be32_to_cpup(p++);
-> -			if (iattr->ia_atime.tv_nsec >= (u32)1000000000)
-> -				return nfserr_inval;
-> +			status = nfsd4_decode_time(argp, &iattr->ia_atime);
-> +			if (status)
-> +				return status;
->  			iattr->ia_valid |= (ATTR_ATIME | ATTR_ATIME_SET);
->  			break;
->  		case NFS4_SET_TO_SERVER_TIME:
-> @@ -382,15 +396,10 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
->  		dummy32 = be32_to_cpup(p++);
->  		switch (dummy32) {
->  		case NFS4_SET_TO_CLIENT_TIME:
-> -			/* We require the high 32 bits of 'seconds' to be 0, and we ignore
-> -			   all 32 bits of 'nseconds'. */
-> -			READ_BUF(12);
->  			len += 12;
-> -			p = xdr_decode_hyper(p, &sec);
-> -			iattr->ia_mtime.tv_sec = sec;
-> -			iattr->ia_mtime.tv_nsec = be32_to_cpup(p++);
-> -			if (iattr->ia_mtime.tv_nsec >= (u32)1000000000)
-> -				return nfserr_inval;
-> +			status = nfsd4_decode_time(argp, &iattr->ia_mtime);
-> +			if (status)
-> +				return status;
->  			iattr->ia_valid |= (ATTR_MTIME | ATTR_MTIME_SET);
->  			break;
->  		case NFS4_SET_TO_SERVER_TIME:
-> -- 
-> 1.9.1
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+---
+ fs/nfsd/nfs4state.c | 12 ++----------
+ fs/nfsd/nfsfh.h     |  9 +++++++++
+ 2 files changed, 11 insertions(+), 10 deletions(-)
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 30ff0d4..b4f86f8 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -408,14 +408,6 @@ static unsigned int file_hashval(struct knfsd_fh *fh)
+ 	return nfsd_fh_hashval(fh) & (FILE_HASH_SIZE - 1);
+ }
+ 
+-static bool nfsd_fh_match(struct knfsd_fh *fh1, struct knfsd_fh *fh2)
+-{
+-	return fh1->fh_size == fh2->fh_size &&
+-		!memcmp(fh1->fh_base.fh_pad,
+-				fh2->fh_base.fh_pad,
+-				fh1->fh_size);
+-}
+-
+ static struct hlist_head file_hashtbl[FILE_HASH_SIZE];
+ 
+ static void
+@@ -3300,7 +3292,7 @@ find_file_locked(struct knfsd_fh *fh, unsigned int hashval)
+ 	struct nfs4_file *fp;
+ 
+ 	hlist_for_each_entry_rcu(fp, &file_hashtbl[hashval], fi_hash) {
+-		if (nfsd_fh_match(&fp->fi_fhandle, fh)) {
++		if (fh_match(&fp->fi_fhandle, fh)) {
+ 			if (atomic_inc_not_zero(&fp->fi_ref))
+ 				return fp;
+ 		}
+@@ -4295,7 +4287,7 @@ laundromat_main(struct work_struct *laundry)
+ 
+ static inline __be32 nfs4_check_fh(struct svc_fh *fhp, struct nfs4_ol_stateid *stp)
+ {
+-	if (!nfsd_fh_match(&fhp->fh_handle, &stp->st_stid.sc_file->fi_fhandle))
++	if (!fh_match(&fhp->fh_handle, &stp->st_stid.sc_file->fi_fhandle))
+ 		return nfserr_bad_stateid;
+ 	return nfs_ok;
+ }
+diff --git a/fs/nfsd/nfsfh.h b/fs/nfsd/nfsfh.h
+index 08236d7..e24d954 100644
+--- a/fs/nfsd/nfsfh.h
++++ b/fs/nfsd/nfsfh.h
+@@ -187,6 +187,15 @@ fh_init(struct svc_fh *fhp, int maxsize)
+ 	return fhp;
+ }
+ 
++static inline bool fh_match(struct knfsd_fh *fh1, struct knfsd_fh *fh2)
++{
++	if (fh1->fh_size != fh2->fh_size)
++		return false;
++	if (memcmp(fh1->fh_base.fh_pad, fh2->fh_base.fh_pad, fh1->fh_size) != 0)
++		return false;
++	return true;
++}
++
+ #ifdef CONFIG_NFSD_V3
+ /*
+  * The wcc data stored in current_fh should be cleared
+-- 
+1.9.1
+
