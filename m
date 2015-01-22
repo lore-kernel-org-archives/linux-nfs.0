@@ -1,63 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([173.255.197.46]:32975 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750749AbbA2Uwd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 29 Jan 2015 15:52:33 -0500
-Date: Thu, 29 Jan 2015 15:52:32 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Christoph Hellwig <hch@lst.de>
+Received: from casper.infradead.org ([85.118.1.10]:41443 "EHLO
+	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751979AbbAVLL1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Jan 2015 06:11:27 -0500
+From: Christoph Hellwig <hch@lst.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Cc: Jeff Layton <jlayton@primarydata.com>, linux-nfs@vger.kernel.org,
         linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com
-Subject: Re: [PATCH 16/20] xfs: pass a 64-bit count argument to
- xfs_iomap_write_unwritten
-Message-ID: <20150129205232.GB11064@fieldses.org>
+Subject: [PATCH 17/20] xfs: update the superblock using a synchronous transaction in growfs
+Date: Thu, 22 Jan 2015 12:10:03 +0100
+Message-Id: <1421925006-24231-18-git-send-email-hch@lst.de>
+In-Reply-To: <1421925006-24231-1-git-send-email-hch@lst.de>
 References: <1421925006-24231-1-git-send-email-hch@lst.de>
- <1421925006-24231-17-git-send-email-hch@lst.de>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1421925006-24231-17-git-send-email-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Who can give us ACKs on these last five fs/xfs patches?  (And is it
-going to cause trouble if they go in through the nfsd tree?)
+Growfs updates the secondary superblocks using synchronous unlogged
+buffer writes after committing the updates to the primary superblock.
 
---b.
+Mark the transaction to the primary superblock as synchronous so that
+we guarantee it is committed to disk before we update the secondary
+superblocks.
 
-On Thu, Jan 22, 2015 at 12:10:02PM +0100, Christoph Hellwig wrote:
-> The code is already ready for it, and the pnfs layout commit code expects
-> to be able to pass a larger than 32-bit argument.
-> 
-> Signed-off-by: Christoph Hellwig <hch@lst.de>
-> ---
->  fs/xfs/xfs_iomap.c | 2 +-
->  fs/xfs/xfs_iomap.h | 2 +-
->  2 files changed, 2 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/xfs/xfs_iomap.c b/fs/xfs/xfs_iomap.c
-> index c980e2a..ccb1dd0 100644
-> --- a/fs/xfs/xfs_iomap.c
-> +++ b/fs/xfs/xfs_iomap.c
-> @@ -802,7 +802,7 @@ int
->  xfs_iomap_write_unwritten(
->  	xfs_inode_t	*ip,
->  	xfs_off_t	offset,
-> -	size_t		count)
-> +	xfs_off_t	count)
->  {
->  	xfs_mount_t	*mp = ip->i_mount;
->  	xfs_fileoff_t	offset_fsb;
-> diff --git a/fs/xfs/xfs_iomap.h b/fs/xfs/xfs_iomap.h
-> index 411fbb8..8688e66 100644
-> --- a/fs/xfs/xfs_iomap.h
-> +++ b/fs/xfs/xfs_iomap.h
-> @@ -27,6 +27,6 @@ int xfs_iomap_write_delay(struct xfs_inode *, xfs_off_t, size_t,
->  			struct xfs_bmbt_irec *);
->  int xfs_iomap_write_allocate(struct xfs_inode *, xfs_off_t,
->  			struct xfs_bmbt_irec *);
-> -int xfs_iomap_write_unwritten(struct xfs_inode *, xfs_off_t, size_t);
-> +int xfs_iomap_write_unwritten(struct xfs_inode *, xfs_off_t, xfs_off_t);
->  
->  #endif /* __XFS_IOMAP_H__*/
-> -- 
-> 1.9.1
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+---
+ fs/xfs/xfs_fsops.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/fs/xfs/xfs_fsops.c b/fs/xfs/xfs_fsops.c
+index fdc6422..74c6211 100644
+--- a/fs/xfs/xfs_fsops.c
++++ b/fs/xfs/xfs_fsops.c
+@@ -488,6 +488,7 @@ xfs_growfs_data_private(
+ 		xfs_trans_mod_sb(tp, XFS_TRANS_SB_FDBLOCKS, nfree);
+ 	if (dpct)
+ 		xfs_trans_mod_sb(tp, XFS_TRANS_SB_IMAXPCT, dpct);
++	xfs_trans_set_sync(tp);
+ 	error = xfs_trans_commit(tp, 0);
+ 	if (error)
+ 		return error;
+-- 
+1.9.1
+
