@@ -1,21 +1,21 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f181.google.com ([209.85.223.181]:62250 "EHLO
-	mail-ie0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751236AbbAVONF convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Jan 2015 09:13:05 -0500
-Received: by mail-ie0-f181.google.com with SMTP id rp18so1477777iec.12
-        for <linux-nfs@vger.kernel.org>; Thu, 22 Jan 2015 06:13:04 -0800 (PST)
+Received: from mail-lb0-f181.google.com ([209.85.217.181]:35367 "EHLO
+	mail-lb0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752568AbbAVXZ0 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Jan 2015 18:25:26 -0500
+Received: by mail-lb0-f181.google.com with SMTP id u10so4291246lbd.12
+        for <linux-nfs@vger.kernel.org>; Thu, 22 Jan 2015 15:25:24 -0800 (PST)
 MIME-Version: 1.0
 In-Reply-To: <CAHQdGtTXdrrmfD5s9QDQOo=m7kxAsEMuNscx4zbv2k3NcXKWDw@mail.gmail.com>
 References: <CAN-5tyFX02eAzoO3NeRgBuyr8Hp0_xzaLNJ8BMJZ99gJqJmPMQ@mail.gmail.com>
 	<CAHQdGtRZx+JhZLUi0JdmB0afO7wkhXHMUK_FFD0G5frdiWHSPQ@mail.gmail.com>
 	<CAN-5tyGPhTzNfdnbpNOpebb6H34FGu3HUWiJ=mGQmFi31RHiiQ@mail.gmail.com>
 	<CAHQdGtTXdrrmfD5s9QDQOo=m7kxAsEMuNscx4zbv2k3NcXKWDw@mail.gmail.com>
-Date: Thu, 22 Jan 2015 09:13:03 -0500
-Message-ID: <CAABAsM5GnXHQVKWmYLMa_VDJ6FF6YpQsQguL7f_xYAJWKuqWcw@mail.gmail.com>
+Date: Thu, 22 Jan 2015 18:25:24 -0500
+Message-ID: <CAN-5tyFo-sVc5cZ2SNFktYRVZ1cZMEZ8ydDGhZUORtfNNQxq7Q@mail.gmail.com>
 Subject: Re: race between inode eviction with delegation and opening same file
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Olga Kornievskaia <aglo@umich.edu>
+From: Olga Kornievskaia <aglo@umich.edu>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
 Cc: linux-nfs <linux-nfs@vger.kernel.org>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
@@ -93,6 +93,15 @@ On Thu, Jan 22, 2015 at 8:55 AM, Trond Myklebust
 > I'd expect the in-flight delegreturn for the old delegation to return
 > NFS4ERR_OLD_STATEID anyway. I don't see why the client needs to throw
 > away the new delegation.
+
+Thanks for the explanation. It make sense. I believe the server is
+erroneously sending the exact "same" delegation back and the racing
+delegreturn is then indistinguishable from the "new" delegation. It
+then can't distinguish between the "old" delegation that's being
+returned in this resource constraining scenario and the "new" one it
+gave out.
+
+
 >
 > If, on the other hand, the seqid is the same, and my client is already
 > holding a delegation, and it sends an OPEN, why does it make sense for
@@ -102,11 +111,6 @@ On Thu, Jan 22, 2015 at 8:55 AM, Trond Myklebust
 > deliberately not using it, or it has forgotten (and has forgotten to
 > send a delegreturn) in which case why would the server want to trust
 > it with another delegation?
-
-should read: "....it with another delegation for that same file?"
-Obviously, you don't want races such as the above to turn off
-delegations altogether; it is just about choosing a strategy to reduce
-the consequences of such races.
 
 >>> Also, please note that nfs_do_return_delegation() may sleep, so you
 >>> cannot call it while holding a spin lock.
@@ -120,7 +124,3 @@ the consequences of such races.
 > Trond Myklebust
 > Linux NFS client maintainer, PrimaryData
 > trond.myklebust@primarydata.com
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
