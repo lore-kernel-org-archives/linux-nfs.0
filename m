@@ -1,32 +1,24 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wi0-f178.google.com ([209.85.212.178]:60238 "EHLO
-	mail-wi0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752468AbbAFXVW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Jan 2015 18:21:22 -0500
-Received: by mail-wi0-f178.google.com with SMTP id em10so472752wid.17
-        for <linux-nfs@vger.kernel.org>; Tue, 06 Jan 2015 15:21:20 -0800 (PST)
-Date: Wed, 7 Jan 2015 00:21:17 +0100
-From: "Yann E. MORIN" <yann.morin.1998@free.fr>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: linux-nfs@vger.kernel.org, Steve Dickson <SteveD@redhat.com>
-Subject: Re: [pull request] nfs-utils: fixup detection of libtirpc
-Message-ID: <20150106232117.GC17878@free.fr>
-References: <cover.1420585444.git.yann.morin.1998@free.fr>
+Received: from mx1.redhat.com ([209.132.183.28]:26257 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753112AbbAWPL6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 23 Jan 2015 10:11:58 -0500
+Message-ID: <54C264BA.30201@RedHat.com>
+Date: Fri, 23 Jan 2015 10:11:54 -0500
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+To: "Yann E. MORIN" <yann.morin.1998@free.fr>, linux-nfs@vger.kernel.org
+CC: Chuck Lever <check.lever@oracle.com>
+Subject: Re: [pull request] nfs-utils: fixup detection of libtirpc
+References: <cover.1420585444.git.yann.morin.1998@free.fr>
 In-Reply-To: <cover.1420585444.git.yann.morin.1998@free.fr>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Chuck, All,
 
-Chuck, apologies: I mispelled your email when copying from the mail
-archives. Sorry... :-(
 
-Hopefuly, the committer can fix the 'Cc:' and 'Reported-by:' fields when
-applying that series? If not, I'll respin...
-
-On 2015-01-07 00:07 +0100, Yann E. MORIN spake thusly:
+On 01/06/2015 06:07 PM, Yann E. MORIN wrote:
 > Hello All!
 > 
 > This series is an ateempt to fix up the detection of libtirpc.
@@ -66,14 +58,8 @@ On 2015-01-07 00:07 +0100, Yann E. MORIN spake thusly:
 > 
 >  aclocal/libtirpc.m4 | 44 +++++++++++++++++++++++++++++++++++++++++---
 >  1 file changed, 41 insertions(+), 3 deletions(-)
+> 
+Committed... This restore the ability to compile the upstream nfs-utils
+on legacy OSes by using the --disable-nfsv41 config flag
 
-Regards,
-Yann E. MORIN.
-
--- 
-.-----------------.--------------------.------------------.--------------------.
-|  Yann E. MORIN  | Real-Time Embedded | /"\ ASCII RIBBON | Erics' conspiracy: |
-| +33 662 376 056 | Software  Designer | \ / CAMPAIGN     |  ___               |
-| +33 223 225 172 `------------.-------:  X  AGAINST      |  \e/  There is no  |
-| http://ymorin.is-a-geek.org/ | _/*\_ | / \ HTML MAIL    |   v   conspiracy.  |
-'------------------------------^-------^------------------^--------------------'
+steved.
