@@ -1,65 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:26257 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:51224 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753112AbbAWPL6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 23 Jan 2015 10:11:58 -0500
-Message-ID: <54C264BA.30201@RedHat.com>
-Date: Fri, 23 Jan 2015 10:11:54 -0500
+	id S1751464AbbAWPb2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 23 Jan 2015 10:31:28 -0500
+Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id t0NFVRk8018446
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
+	for <linux-nfs@vger.kernel.org>; Fri, 23 Jan 2015 10:31:27 -0500
+Message-ID: <54C2694E.6020108@RedHat.com>
+Date: Fri, 23 Jan 2015 10:31:26 -0500
 From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-To: "Yann E. MORIN" <yann.morin.1998@free.fr>, linux-nfs@vger.kernel.org
-CC: Chuck Lever <check.lever@oracle.com>
-Subject: Re: [pull request] nfs-utils: fixup detection of libtirpc
-References: <cover.1420585444.git.yann.morin.1998@free.fr>
-In-Reply-To: <cover.1420585444.git.yann.morin.1998@free.fr>
+To: Scott Mayhew <smayhew@redhat.com>, linux-nfs@vger.kernel.org
+Subject: Re: [nfs-utils PATCH] rpc.idmapd: Add a reference to nfsidmap(8)
+ on the man page
+References: <1419371092-18037-1-git-send-email-smayhew@redhat.com>
+In-Reply-To: <1419371092-18037-1-git-send-email-smayhew@redhat.com>
 Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
 
-On 01/06/2015 06:07 PM, Yann E. MORIN wrote:
-> Hello All!
+On 12/23/2014 04:44 PM, Scott Mayhew wrote:
+> Even though the 'new' idmapper used by the client has been around for
+> several years, a lot of users seem to be unaware of its existence.
 > 
-> This series is an ateempt to fix up the detection of libtirpc.
-> 
-> Since commit 8534063 (configure: use pkg-config to find libtirpc) (by me),
-> some users are reporting that they can no longer build nfs-utils on older
-> libtirpc versions.
-> 
-> Furthermore, after inspecting my own change, I saw thatI borked some of
-> the tests: incorrect test when libtirpc is not required, and dropped
-> check for authgss_free_private_data.
-> 
-> This series attempts to fix all those issues. Sorry for the mishap...
-> 
-> Regards,
-> Yann E. MORIN.
-> 
-> 
-> The following changes since commit fac4b7d30aafb6a02f66f29f0680db7b4894db79:
-> 
->   mountstats: Updated the mountstats(8) man page. (2014-12-13 10:40:28 -0500)
-> 
-> are available in the git repository at:
-> 
->   https://github.com/yann-morin-1998/nfs-utils.git yem/libtirpc-pkg-config
-> 
-> for you to fetch changes up to f3aaa3c4f47cd75629b60b913d97ef9d7dfd19ea:
-> 
->   configure: restore checking for authgss_free_private_data in libtirpc (2015-01-06 23:58:22 +0100)
-> 
-> ----------------------------------------------------------------
-> Yann E. MORIN (4):
->       configure: do not fail if libtirpc is missing but not requested
->       configure: be more laxist on the required libtirpc version
->       configure:restore the old way of checking for libtirpc
->       configure: restore checking for authgss_free_private_data in libtirpc
-> 
->  aclocal/libtirpc.m4 | 44 +++++++++++++++++++++++++++++++++++++++++---
->  1 file changed, 41 insertions(+), 3 deletions(-)
-> 
-Committed... This restore the ability to compile the upstream nfs-utils
-on legacy OSes by using the --disable-nfsv41 config flag
+> Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+Committed...
 
 steved.
+
+> ---
+>  utils/idmapd/idmapd.man | 13 ++++++++++++-
+>  1 file changed, 12 insertions(+), 1 deletion(-)
+> 
+> diff --git a/utils/idmapd/idmapd.man b/utils/idmapd/idmapd.man
+> index 185cd1b..c809f78 100644
+> --- a/utils/idmapd/idmapd.man
+> +++ b/utils/idmapd/idmapd.man
+> @@ -20,6 +20,16 @@ is the NFSv4 ID <-> name mapping daemon.  It provides functionality to
+>  the NFSv4 kernel client and server, to which it communicates via
+>  upcalls, by translating user and group IDs to names, and vice versa.
+>  .Pp
+> +Note that on more recent kernels only the NFSv4 server uses
+> +.Nm .
+> +The NFSv4 client instead uses
+> +.Xr nfsidmap 8 ,
+> +and only falls back to 
+> +.Nm 
+> +if there was a problem running the
+> +.Xr nfsidmap 8
+> +program.
+> +.Pp
+>  The options are as follows:
+>  .Bl -tag -width Ds_imagedir
+>  .It Fl v
+> @@ -58,7 +68,8 @@ messages to console, and with a verbosity level of 3.
+>  .Sh FILES
+>  .Pa /etc/idmapd.conf
+>  .Sh SEE ALSO
+> -.Xr idmapd.conf 5
+> +.Xr idmapd.conf 5 ,
+> +.Xr nfsidmap 8
+>  .\".Sh SEE ALSO
+>  .\".Xr nylon.conf 4
+>  .\" .Sh COMPATIBILITY
+> 
