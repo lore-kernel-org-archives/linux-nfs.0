@@ -1,87 +1,117 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from sandeen.net ([63.231.237.45]:51755 "EHLO sandeen.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755381AbbAWUZU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 23 Jan 2015 15:25:20 -0500
-Message-ID: <54C2AE2E.2040906@sandeen.net>
-Date: Fri, 23 Jan 2015 14:25:18 -0600
-From: Eric Sandeen <sandeen@sandeen.net>
-MIME-Version: 1.0
-To: Steve French <smfrench@gmail.com>
-CC: fstests@vger.kernel.org,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: xfstest generic/299
-References: <CAH2r5mvSUc0-Z1Kn3NfowUzH1Jw4x_8UF46+uXKBPshuFkb1dw@mail.gmail.com> <54C1DDA8.5040103@sandeen.net> <CAH2r5mtL52=MYu225w5G-D8X9kAb1w0Zi-GhvOfyBzm-WVT0pQ@mail.gmail.com>
-In-Reply-To: <CAH2r5mtL52=MYu225w5G-D8X9kAb1w0Zi-GhvOfyBzm-WVT0pQ@mail.gmail.com>
-Content-Type: text/plain; charset=utf-8
+Received: from aserp1040.oracle.com ([141.146.126.69]:49124 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752728AbbAWVAQ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Jan 2015 16:00:16 -0500
+Received: from acsinet21.oracle.com (acsinet21.oracle.com [141.146.126.237])
+	by aserp1040.oracle.com (Sentrion-MTA-4.3.2/Sentrion-MTA-4.3.2) with ESMTP id t0NL0F6K031551
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Fri, 23 Jan 2015 21:00:15 GMT
+Received: from aserz7022.oracle.com (aserz7022.oracle.com [141.146.126.231])
+	by acsinet21.oracle.com (8.14.4+Sun/8.14.4) with ESMTP id t0NL0E6e004605
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=FAIL)
+	for <linux-nfs@vger.kernel.org>; Fri, 23 Jan 2015 21:00:15 GMT
+Received: from abhmp0019.oracle.com (abhmp0019.oracle.com [141.146.116.25])
+	by aserz7022.oracle.com (8.14.4+Sun/8.14.4) with ESMTP id t0NL0EZg008394
+	for <linux-nfs@vger.kernel.org>; Fri, 23 Jan 2015 21:00:14 GMT
+From: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=windows-1252
+Subject: NFSv4.1 backchannel for RDMA
+Message-Id: <E4A8B62E-BCFC-497F-B134-ECD90F232804@oracle.com>
+Date: Fri, 23 Jan 2015 16:00:13 -0500
+To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 1/23/15 2:09 PM, Steve French wrote:
-> On Thu, Jan 22, 2015 at 11:35 PM, Eric Sandeen <sandeen@sandeen.net> wrote:
->> On 1/22/15 11:23 PM, Steve French wrote:
->>> Noticed test generic/299 failing over NFS (v4.1 dialect) with the error
->>>
->>> "[not run] /usr/bin/fio too old"
->>>
->>> fio-2.1.11 version (which is what is installed on current Ubuntu) is
->>> presumably not too old
->>
->> Well, 2.1.11 was released 16-Jul-2014
->>
->> fio is up to 2.2.5 now, so it sure could be.
-> 
-> I updated to 2.2.5-3 (cloning and building from the repository on
-> git.kernel.org) which did not seem to change the results.
-> 
->> The test sets up a config file, and tries to run fio against it;
->> if it fails, it's deemed "too old"
->>
->> And _require_fio dumps to $seqres.full,
->>
->>         $FIO_PROG --warnings-fatal --showcmd $job >> $seqres.full 2>&1
->>         [ $? -eq 0 ] || _notrun "$FIO_PROG too old, see $seqres.full"
->>
->> so what does 299.full look like?
+Hi-
 
-so it's telling you:
+I’d like to restart the discussion in this thread:
 
-> min value out of range: 0 (1 min)
-> fio: failed parsing filesize=0
-                      ^^^^^^^^^^
+  http://marc.info/?l=linux-nfs&m=141348840527766&w=2
 
-and if we read the test:
+It seems to me there are two main points:
 
-BLK_DEV_SIZE=`blockdev --getsz $SCRATCH_DEV`
-FILE_SIZE=$((BLK_DEV_SIZE * 512))
+1.  Is bi-directional RPC on RPC/RDMA transports desirable?
 
-cat >$fio_config <<EOF
-###########
-# $seq test fio activity
-# Filenames derived from jobsname and jobid like follows:
-# ${JOB_NAME}.${JOB_ID}.${ITERATION_ID}
-[global]
-ioengine=libaio
-bs=128k
-directory=${SCRATCH_MNT}
-filesize=${FILE_SIZE}
-^^^^^^^^^^^^^^^^^^^^^
-...
+2.  Is a secondary backchannel-only transport adequate and reliable?
 
-since you have no block device for NFS, blockdev will fail,
-and you won't get a block dev size, so you won't get a file size,
-and the fio test won't work.
+I’ll try to summarize the current thinking.
 
-The script not catching this looks like a bug.
 
-fio saying "too old" looks inaccurate.
+Question 1:
 
-You could fix it to DTRT on NFS somehow, or catch the fact that
-the blockdev command fails (probably because $SCRATCH_DEV isn't
-set?) and _notrun the test.
+The main reason to plumb bi-RPC into RPC/RDMA is that no changes to
+the NFSv4.1 client upper layers would be needed. I think we also
+agree that:
 
-I imagine it could be fixed, though; df total space available on
-$SCRATCH_MNT might do as well as blockdev --getsz, though I'm not
-100% sure.
+ - There is no performance benefit. CB operations typically lack
+   significant payload, are infrequent, and can be long-running.
 
--Eric
+ - There is no need to penetrate firewalls. Firewall compatibility
+   was the original motivation for single-transport NFSv4.1
+   operation. Firewalls are not typically found in RDMA-native
+   environments.
+
+ - There is no requirement in RFC 5661 for the forward channel
+   transport to support bi-directional RPC. Backchannel capability
+   is detected via the CREATE_SESSION operation.
+
+ - TCP connectivity will always be available wherever NFS/RDMA is
+   deployed. For NFS/RDMA operation, IP address to GUID mapping must
+   be provided by the transport layer, below RPC/RDMA.
+
+ - To handle large payloads (possibly required by certain pNFS
+   CB operations), an NFSv4.1 client would need to handle
+   RDMA_NOMSG type calls over the backchannel. This would require
+   the client to perform RDMA READ and WRITE operations against the
+   server (the opposite of what happens in the forward channel).
+
+There is some interest in prototyping an RPC/RDMA transport that is
+capable of bi-directional RPC. A prototype would help us determine
+whether there are subtle problems that make bi-RPC impossible for
+RPC/RDMA, and identify any spec gaps that need to be addressed.
+Because of the development cost and lack of perceptible benefits, a
+prototype has not been attempted so far.
+
+Would it be productive for a bi-capable RPC/RDMA transport prototype
+to be pursued in Linux?
+
+
+Question 2:
+
+The Solaris client and server already implement a sidecar TCP
+backchannel for NFSv4.1. This is something that can be tested.
+Further, I think we agree that:
+
+ - Servers are required to support a separate backchannel and
+   forward channel transport, and both sides can detect what is
+   supported with CREATE_SESSION. However, there are no existing
+   implementations that have deployed this kind of logic widely.
+ 
+ - The addition of a separate backchannel-only connection is
+   considered session trunking, which is regarded as potentially
+   hazardous. We haven’t identified exactly what the  hazards might
+   be when the second connection handles only backchannel activity.
+
+ - Although there are few or no server changes required to support
+   a secondary backchannel, clients would have to be modified to
+   establish this connection when one or both sides do not support
+   a backchannel on the main transport and the server asserts the
+   SEQ4_STATUS_CB_PATH_DOWN flag.
+
+ - We have some confidence that creation of the second backchannel-
+   only connection followed by BIND_CONN_TO_SESSION appears to be
+   adequate and robust. However, the salient recovery edge conditions
+   when a secondary backchannel transport is being used still need to
+   be identified.
+
+What further investigation is needed to be confident that the sidecar
+solution is adequate and appropriate?
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
