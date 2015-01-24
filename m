@@ -1,98 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f174.google.com ([209.85.213.174]:62491 "EHLO
-	mail-ig0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751070AbbAXFje (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 24 Jan 2015 00:39:34 -0500
-Received: by mail-ig0-f174.google.com with SMTP id b16so1042458igk.1
-        for <linux-nfs@vger.kernel.org>; Fri, 23 Jan 2015 21:39:33 -0800 (PST)
+Received: from mail-ie0-f173.google.com ([209.85.223.173]:50956 "EHLO
+	mail-ie0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751279AbbAXFjf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 24 Jan 2015 00:39:35 -0500
+Received: by mail-ie0-f173.google.com with SMTP id tr6so1071885ieb.4
+        for <linux-nfs@vger.kernel.org>; Fri, 23 Jan 2015 21:39:34 -0800 (PST)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH 1/5] NFSv4: Fix an atomicity problem in CLOSE
-Date: Sat, 24 Jan 2015 00:39:24 -0500
-Message-Id: <1422077968-116473-2-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1422077968-116473-1-git-send-email-trond.myklebust@primarydata.com>
+Subject: [PATCH 2/5] NFSv4: More CLOSE/OPEN races
+Date: Sat, 24 Jan 2015 00:39:25 -0500
+Message-Id: <1422077968-116473-3-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1422077968-116473-2-git-send-email-trond.myklebust@primarydata.com>
 References: <1422077968-116473-1-git-send-email-trond.myklebust@primarydata.com>
+ <1422077968-116473-2-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If we are to remove the serialisation of OPEN/CLOSE, then we need to
-ensure that the stateid sent as part of a CLOSE operation does not
-change after we test the state in nfs4_close_prepare.
+If an OPEN RPC call races with a CLOSE or OPEN_DOWNGRADE so that it
+updates the nfs_state structure before the CLOSE/OPEN_DOWNGRADE has
+a chance to do so, then we know that the state->flags need to be
+recalculated from scratch.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/nfs4proc.c       | 7 ++++++-
- fs/nfs/nfs4xdr.c        | 4 ++--
- include/linux/nfs_xdr.h | 2 +-
- 3 files changed, 9 insertions(+), 4 deletions(-)
+ fs/nfs/nfs4proc.c | 16 +++++++++++++++-
+ 1 file changed, 15 insertions(+), 1 deletion(-)
 
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index c347705b0161..4863dec10865 100644
+index 4863dec10865..a6c04a5812d0 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -2587,6 +2587,11 @@ static void nfs4_close_done(struct rpc_task *task, void *data)
- 		case -NFS4ERR_OLD_STATEID:
- 		case -NFS4ERR_BAD_STATEID:
- 		case -NFS4ERR_EXPIRED:
-+			if (!nfs4_stateid_match(&calldata->arg.stateid,
-+						&state->stateid)) {
-+				rpc_restart_call_prepare(task);
-+				goto out_release;
-+			}
- 			if (calldata->arg.fmode == 0)
- 				break;
- 		default:
-@@ -2619,6 +2624,7 @@ static void nfs4_close_prepare(struct rpc_task *task, void *data)
- 	is_rdwr = test_bit(NFS_O_RDWR_STATE, &state->flags);
- 	is_rdonly = test_bit(NFS_O_RDONLY_STATE, &state->flags);
- 	is_wronly = test_bit(NFS_O_WRONLY_STATE, &state->flags);
-+	nfs4_stateid_copy(&calldata->arg.stateid, &state->stateid);
- 	/* Calculate the change in open mode */
- 	calldata->arg.fmode = 0;
- 	if (state->n_rdwr == 0) {
-@@ -2757,7 +2763,6 @@ int nfs4_do_close(struct nfs4_state *state, gfp_t gfp_mask, int wait)
- 	calldata->inode = state->inode;
- 	calldata->state = state;
- 	calldata->arg.fh = NFS_FH(state->inode);
--	calldata->arg.stateid = &state->open_stateid;
- 	/* Serialization for the sequence id */
- 	calldata->arg.seqid = nfs_alloc_seqid(&state->owner->so_seqid, gfp_mask);
- 	if (calldata->arg.seqid == NULL)
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index cb4376b78ed9..7e7be5ab70bb 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -1125,7 +1125,7 @@ static void encode_close(struct xdr_stream *xdr, const struct nfs_closeargs *arg
- {
- 	encode_op_hdr(xdr, OP_CLOSE, decode_close_maxsz, hdr);
- 	encode_nfs4_seqid(xdr, arg->seqid);
--	encode_nfs4_stateid(xdr, arg->stateid);
-+	encode_nfs4_stateid(xdr, &arg->stateid);
+@@ -1167,6 +1167,16 @@ static bool nfs_need_update_open_stateid(struct nfs4_state *state,
+ 	return false;
  }
  
- static void encode_commit(struct xdr_stream *xdr, const struct nfs_commitargs *args, struct compound_hdr *hdr)
-@@ -1530,7 +1530,7 @@ static void encode_open_confirm(struct xdr_stream *xdr, const struct nfs_open_co
- static void encode_open_downgrade(struct xdr_stream *xdr, const struct nfs_closeargs *arg, struct compound_hdr *hdr)
++static void nfs_resync_open_stateid_locked(struct nfs4_state *state)
++{
++	if (state->n_wronly)
++		set_bit(NFS_O_WRONLY_STATE, &state->flags);
++	if (state->n_rdonly)
++		set_bit(NFS_O_RDONLY_STATE, &state->flags);
++	if (state->n_rdwr)
++		set_bit(NFS_O_RDWR_STATE, &state->flags);
++}
++
+ static void nfs_clear_open_stateid_locked(struct nfs4_state *state,
+ 		nfs4_stateid *stateid, fmode_t fmode)
  {
- 	encode_op_hdr(xdr, OP_OPEN_DOWNGRADE, decode_open_downgrade_maxsz, hdr);
--	encode_nfs4_stateid(xdr, arg->stateid);
-+	encode_nfs4_stateid(xdr, &arg->stateid);
- 	encode_nfs4_seqid(xdr, arg->seqid);
- 	encode_share_access(xdr, arg->fmode);
- }
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 467c84efb596..7e38d641236e 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -389,7 +389,7 @@ struct nfs_open_confirmres {
- struct nfs_closeargs {
- 	struct nfs4_sequence_args	seq_args;
- 	struct nfs_fh *         fh;
--	nfs4_stateid *		stateid;
-+	nfs4_stateid 		stateid;
- 	struct nfs_seqid *	seqid;
- 	fmode_t			fmode;
- 	const u32 *		bitmask;
+@@ -1185,8 +1195,12 @@ static void nfs_clear_open_stateid_locked(struct nfs4_state *state,
+ 	}
+ 	if (stateid == NULL)
+ 		return;
+-	if (!nfs_need_update_open_stateid(state, stateid))
++	/* Handle races with OPEN */
++	if (!nfs4_stateid_match_other(stateid, &state->open_stateid) ||
++	    !nfs4_stateid_is_newer(stateid, &state->open_stateid)) {
++		nfs_resync_open_stateid_locked(state);
+ 		return;
++	}
+ 	if (test_bit(NFS_DELEGATED_STATE, &state->flags) == 0)
+ 		nfs4_stateid_copy(&state->stateid, stateid);
+ 	nfs4_stateid_copy(&state->open_stateid, stateid);
 -- 
 2.1.0
 
