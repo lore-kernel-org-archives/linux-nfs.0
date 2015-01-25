@@ -1,61 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f175.google.com ([209.85.213.175]:53926 "EHLO
-	mail-ig0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752749AbbAZWLt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 26 Jan 2015 17:11:49 -0500
-Received: by mail-ig0-f175.google.com with SMTP id hn18so959187igb.2
-        for <linux-nfs@vger.kernel.org>; Mon, 26 Jan 2015 14:11:49 -0800 (PST)
-Subject: [PATCH] xprtrdma: Update the GFP flags used in xprt_rdma_allocate()
-From: Chuck Lever <chuck.lever@oracle.com>
-To: Anna.Schumaker@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Mon, 26 Jan 2015 17:11:47 -0500
-Message-ID: <20150126220921.29131.70826.stgit@manet.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-ig0-f181.google.com ([209.85.213.181]:55553 "EHLO
+	mail-ig0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750959AbbAYASu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 24 Jan 2015 19:18:50 -0500
+Received: by mail-ig0-f181.google.com with SMTP id hn18so3209380igb.2
+        for <linux-nfs@vger.kernel.org>; Sat, 24 Jan 2015 16:18:49 -0800 (PST)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 1/2] SUNRPC: Adjust rpciod workqueue parameters
+Date: Sat, 24 Jan 2015 19:18:46 -0500
+Message-Id: <1422145127-81838-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Reflect the more conservative approach used in the socket transport's
-version of this transport method. An RPC buffer allocation should
-avoid forcing not just FS activity, but any I/O.
+Increase the concurrency level for rpciod threads to allow for allocations
+etc that happen in the RPCSEC_GSS layer. Also note that the NFSv4 byte range
+locks may now need to allocate memory from inside rpciod.
 
-In particular, two recent changes missed updating xprtrdma:
+Add the WQ_HIGHPRI flag to improve latency guarantees while we're at it.
 
- - Commit c6c8fe79a83e ("net, sunrpc: suppress allocation warning ...")
- - Commit a564b8f03986 ("nfs: enable swap on NFS")
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- net/sunrpc/xprtrdma/transport.c |    7 +++++--
- 1 file changed, 5 insertions(+), 2 deletions(-)
+ net/sunrpc/sched.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-Hi Anna-
-
-Could you append this after my recent NFS/RDMA client patches for 3.20 ?
-Thanks!
-
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index 2c2fabe..2e192ba 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -463,13 +463,16 @@ xprt_rdma_allocate(struct rpc_task *task, size_t size)
- 	struct rpcrdma_regbuf *rb;
- 	struct rpcrdma_req *req;
- 	size_t min_size;
--	gfp_t flags = task->tk_flags & RPC_TASK_SWAPPER ?
--						GFP_ATOMIC : GFP_NOFS;
-+	gfp_t flags;
- 
- 	req = rpcrdma_buffer_get(&r_xprt->rx_buf);
- 	if (req == NULL)
- 		return NULL;
- 
-+	flags = GFP_NOIO | __GFP_NOWARN;
-+	if (RPC_IS_SWAPPER(task))
-+		flags = __GFP_MEMALLOC | GFP_NOWAIT | __GFP_NOWARN;
-+
- 	if (req->rl_rdmabuf == NULL)
- 		goto out_rdmabuf;
- 	if (req->rl_sendbuf == NULL)
+diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
+index d20f2329eea3..4f65ec28d2b4 100644
+--- a/net/sunrpc/sched.c
++++ b/net/sunrpc/sched.c
+@@ -1069,7 +1069,8 @@ static int rpciod_start(void)
+ 	 * Create the rpciod thread and wait for it to start.
+ 	 */
+ 	dprintk("RPC:       creating workqueue rpciod\n");
+-	wq = alloc_workqueue("rpciod", WQ_MEM_RECLAIM, 1);
++	/* Note: highpri because network receive is latency sensitive */
++	wq = alloc_workqueue("rpciod", WQ_MEM_RECLAIM | WQ_HIGHPRI, 0);
+ 	rpciod_workqueue = wq;
+ 	return rpciod_workqueue != NULL;
+ }
+-- 
+2.1.0
 
