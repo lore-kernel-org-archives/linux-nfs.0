@@ -1,17 +1,17 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f171.google.com ([209.85.216.171]:63110 "EHLO
-	mail-qc0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753162AbbAXL6D (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 24 Jan 2015 06:58:03 -0500
-Received: by mail-qc0-f171.google.com with SMTP id s11so1474141qcv.2
-        for <linux-nfs@vger.kernel.org>; Sat, 24 Jan 2015 03:58:02 -0800 (PST)
-Date: Sat, 24 Jan 2015 06:58:00 -0500
+Received: from mail-qc0-f175.google.com ([209.85.216.175]:50172 "EHLO
+	mail-qc0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753110AbbAYNTp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 25 Jan 2015 08:19:45 -0500
+Received: by mail-qc0-f175.google.com with SMTP id c9so3795454qcz.6
+        for <linux-nfs@vger.kernel.org>; Sun, 25 Jan 2015 05:19:44 -0800 (PST)
+Date: Sun, 25 Jan 2015 08:19:41 -0500
 From: Jeff Layton <jeff.layton@primarydata.com>
 To: Trond Myklebust <trond.myklebust@primarydata.com>
 Cc: linux-nfs@vger.kernel.org
 Subject: Re: [PATCH 0/5] Parallelise OPEN/OPEN_DOWNGRADE/CLOSE in NFSv4.x
  (x>0)
-Message-ID: <20150124065800.4e1900a1@tlielax.poochiereds.net>
+Message-ID: <20150125081941.6982ff61@tlielax.poochiereds.net>
 In-Reply-To: <1422077968-116473-1-git-send-email-trond.myklebust@primarydata.com>
 References: <1422077968-116473-1-git-send-email-trond.myklebust@primarydata.com>
 MIME-Version: 1.0
@@ -55,8 +55,26 @@ Trond Myklebust <trond.myklebust@primarydata.com> wrote:
 >  5 files changed, 70 insertions(+), 25 deletions(-)
 > 
 
-Nice work! I gave it a once-over and it looks pretty sound. I'll plan
-to give it a good thrashing soon.
+FWIW, I checked out your devel branch and built a kernel with it. I
+then ran a test that forks off a bunch of processes and has them create
+and close a number of files as rapidly as possible:
 
+Stock fedora 3.19.0-0.rc5.git2.1.fc22.x86_64:
+$ time ./opentest01 /mnt/rawhide/opentest/
+
+real	1m46.203s
+user	0m0.745s
+sys	0m15.713s
+
+Trond's devel branch:
+$ time ./opentest01 /mnt/rawhide/opentest/
+
+real	0m58.994s
+user	0m0.721s
+sys	0m19.578s
+
+(60+46)/59 == 1.79661016949152542372
+
+So ~80% improvement in that test -- nice!
 -- 
 Jeff Layton <jeff.layton@primarydata.com>
