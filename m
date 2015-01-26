@@ -1,50 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f180.google.com ([209.85.220.180]:43233 "EHLO
-	mail-vc0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750789AbbAYV3l (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 25 Jan 2015 16:29:41 -0500
-Received: by mail-vc0-f180.google.com with SMTP id hy10so1779596vcb.11
-        for <linux-nfs@vger.kernel.org>; Sun, 25 Jan 2015 13:29:40 -0800 (PST)
+Received: from aserp1040.oracle.com ([141.146.126.69]:45080 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753431AbbAZXdx (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 26 Jan 2015 18:33:53 -0500
+Message-ID: <54C6CEDD.40808@oracle.com>
+Date: Mon, 26 Jan 2015 15:33:49 -0800
+From: Shirley Ma <shirley.ma@oracle.com>
 MIME-Version: 1.0
-In-Reply-To: <1282FA7B-EE04-4EDE-A659-0697490CB9ED@oracle.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/2] SUNRPC: Adjust rpciod workqueue parameters
 References: <1422145127-81838-1-git-send-email-trond.myklebust@primarydata.com>
-	<1422145127-81838-2-git-send-email-trond.myklebust@primarydata.com>
-	<1282FA7B-EE04-4EDE-A659-0697490CB9ED@oracle.com>
-Date: Sun, 25 Jan 2015 16:29:40 -0500
-Message-ID: <CAHQdGtTHhP3M6b3u3uCofcF4g2nGdOKUyMe92EZ5BFCoFFEUgA@mail.gmail.com>
-Subject: Re: [PATCH 2/2] SUNRPC: Allow waiting on memory allocation
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+In-Reply-To: <1422145127-81838-1-git-send-email-trond.myklebust@primarydata.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Jan 25, 2015 at 3:11 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
->
->
-> On Jan 24, 2015, at 7:18 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
->
-> > We should be safe now, as long as we don't do GFP_IO or higher allocations
->
-> Should the GFP flags in xprt_rdma_allocate() reflect this change
-> as well? The non-swap case uses GFP_NOFS currently, and the
+Hello Trond,
 
-GFP_NOFS or GFP_NOWAIT? If the former, then that would be yet further
-justification for PATCH 1/2.
+workqueue WQ_UNBOUND flag is also needed. Some customer hit a problem, RT thread caused rpciod starvation. It is easy to reproduce it with running a cpu intensive workload with lower nice value than rpciod workqueue on the cpu the network interrupt is received.
 
-> swap case does not include GFP_MEMALLOC. These choices might be
-> out of date.
->
-> If so I can submit a patch on top of my existing for-3.20 series
-> that changes xprt_rdma_allocate() to use the same flags as
-> rpc_malloc().
+I've also tested iozone and fio test with WQ_UNBOUND|WQ_SYSFS flag on for NFS/RDMA, NFS/IPoIB. The results are better than BOUND.
 
-Yes. I think GFP_NOIO is the more conservative (and correct) approach
-here, rather than GFP_NOFS. In particular it means that we won't
-trigger any new swap-over-nfs activity.
+Thanks,
+Shirley
 
--- 
-Trond Myklebust
-Linux NFS client maintainer, PrimaryData
-trond.myklebust@primarydata.com
+On 01/24/2015 04:18 PM, Trond Myklebust wrote:
+> Increase the concurrency level for rpciod threads to allow for allocations
+> etc that happen in the RPCSEC_GSS layer. Also note that the NFSv4 byte range
+> locks may now need to allocate memory from inside rpciod.
+> 
+> Add the WQ_HIGHPRI flag to improve latency guarantees while we're at it.
+> 
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> ---
+>  net/sunrpc/sched.c | 3 ++-
+>  1 file changed, 2 insertions(+), 1 deletion(-)
+> 
+> diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
+> index d20f2329eea3..4f65ec28d2b4 100644
+> --- a/net/sunrpc/sched.c
+> +++ b/net/sunrpc/sched.c
+> @@ -1069,7 +1069,8 @@ static int rpciod_start(void)
+>  	 * Create the rpciod thread and wait for it to start.
+>  	 */
+>  	dprintk("RPC:       creating workqueue rpciod\n");
+> -	wq = alloc_workqueue("rpciod", WQ_MEM_RECLAIM, 1);
+> +	/* Note: highpri because network receive is latency sensitive */
+> +	wq = alloc_workqueue("rpciod", WQ_MEM_RECLAIM | WQ_HIGHPRI, 0);
+>  	rpciod_workqueue = wq;
+>  	return rpciod_workqueue != NULL;
+>  }
+> 
