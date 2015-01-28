@@ -1,20 +1,30 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from agrinetmail20.outgw.tn ([196.203.249.26]:49701 "EHLO
-	agrinetmail20.outgw.tn" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751997AbbANWmF convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Jan 2015 17:42:05 -0500
+Received: from 185-25-150-218.greendata.pl ([185.25.150.218]:58207 "EHLO
+	stronylekarzy.eu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753726AbbA2FET convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Jan 2015 00:04:19 -0500
+From: "Paul" <gulp@emailn.de>
+Reply-To: gulp@emailn.de
+To: linux-nfs@vger.kernel.org
+Subject: LOL
 Content-Type: text/plain; charset=US-ASCII
-Subject: Re: Investment
-To: Recipients <chaibi.medthameur@iresa.agrinet.tn>
-From: "Suklee Peck" <chaibi.medthameur@iresa.agrinet.tn>
-Date: Tue, 13 Jan 2015 11:57:34 -0800
-Reply-To: saitt01@qq.com
-Message-Id: <20150113235305.024EB28C6E@mta.agrinet.tn>
+Date: Wed, 28 Jan 2015 12:21:22 -0800
+Message-ID: <39202371715441004120872@WIN-6L6G26B063Q>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-I'm contacting you on behalf of an investment placed under management 5 years ago by Shui bian. He needs assistance in investing these funds. If you are interested, you can write to his private email ( saitt01@qq.com ) for further details.
-gesalpe
-Best Regards,
-Suklee Peck
+Hahahaha! Is that you on that pic???? :)
+
+
+
+http://tinyurl.com/nv3udu4
+
+
+
+
+
+
+
+
+No more such info? Simply answer <NO>
