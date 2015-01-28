@@ -1,107 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx143.netapp.com ([216.240.21.24]:49184 "EHLO mx143.netapp.com"
+Received: from mx143.netapp.com ([216.240.21.24]:47457 "EHLO mx143.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1761534AbbA1UoD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 28 Jan 2015 15:44:03 -0500
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
-Subject: [PATCH v2 6/6] NFS: Add support for decoding multiple segments
-Date: Wed, 28 Jan 2015 15:43:50 -0500
-Message-ID: <1422477830-28090-7-git-send-email-Anna.Schumaker@Netapp.com>
-In-Reply-To: <1422477830-28090-1-git-send-email-Anna.Schumaker@Netapp.com>
-References: <1422477830-28090-1-git-send-email-Anna.Schumaker@Netapp.com>
+	id S1759226AbbA1UnA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 28 Jan 2015 15:43:00 -0500
+From: <Anna.Schumaker@netapp.com>
+To: <bfields@fieldses.org>
+CC: <linux-nfs@vger.kernel.org>
+Subject: [PATCH v2 0/4] NFSD: Add READ_PLUS support
+Date: Wed, 28 Jan 2015 15:42:53 -0500
+Message-ID: <1422477777-27933-1-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
 Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We now have everything we need to read holes and then shift data to
-where it's supposed to be.
+From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
----
- fs/nfs/nfs42xdr.c | 40 ++++++++++++++++++++++------------------
- 1 file changed, 22 insertions(+), 18 deletions(-)
+These patches add server support for the NFS v4.2 operation READ_PLUS.
 
-diff --git a/fs/nfs/nfs42xdr.c b/fs/nfs/nfs42xdr.c
-index 17126e8..010af55 100644
---- a/fs/nfs/nfs42xdr.c
-+++ b/fs/nfs/nfs42xdr.c
-@@ -201,11 +201,11 @@ static int decode_read_plus_data(struct xdr_stream *xdr, struct nfs_pgio_res *re
- 	p = xdr_decode_hyper(p, &offset);
- 	count = be32_to_cpup(p);
- 
--	recvd = xdr_read_pages(xdr, count);
-+	recvd = xdr_align_data(xdr, res->count, count);
- 	if (recvd < count)
- 		res->eof = 0;
- 
--	res->count = recvd;
-+	res->count += recvd;
- 	return 0;
- out_overflow:
- 	print_overflow_msg(__func__, xdr);
-@@ -225,11 +225,11 @@ static int decode_read_plus_hole(struct xdr_stream *xdr, struct nfs_pgio_res *re
- 	p = xdr_decode_hyper(p, &offset);
- 	p = xdr_decode_hyper(p, &length);
- 
--	recvd = xdr_expand_hole(xdr, 0, length);
-+	recvd = xdr_expand_hole(xdr, res->count, length);
- 	if (recvd < length)
- 		res->eof = 0;
- 
--	res->count = recvd;
-+	res->count += recvd;
- 	return 0;
- out_overflow:
- 	print_overflow_msg(__func__, xdr);
-@@ -240,7 +240,7 @@ static int decode_read_plus(struct xdr_stream *xdr, struct nfs_pgio_res *res)
- {
- 	__be32 *p;
- 	int status, type;
--	uint32_t segments;
-+	uint32_t i, segments;
- 
- 	status = decode_op_hdr(xdr, OP_READ_PLUS);
- 	if (status)
-@@ -253,20 +253,24 @@ static int decode_read_plus(struct xdr_stream *xdr, struct nfs_pgio_res *res)
- 	res->count = 0;
- 	res->eof = be32_to_cpup(p++);
- 	segments = be32_to_cpup(p++);
--	if (segments == 0)
--		return 0;
- 
--	p = xdr_inline_decode(xdr, 4);
--	if (unlikely(!p))
--		goto out_overflow;
--
--	type = be32_to_cpup(p++);
--	if (type == NFS4_CONTENT_DATA)
--		status = decode_read_plus_data(xdr, res);
--	else
--		status = decode_read_plus_hole(xdr, res);
--
--	if (segments > 1)
-+	for (i = 0; i < segments; i++) {
-+		p = xdr_inline_decode(xdr, 4);
-+		if (unlikely(!p))
-+			goto out_overflow;
-+
-+		type = be32_to_cpup(p);
-+		if (type == NFS4_CONTENT_DATA)
-+			status = decode_read_plus_data(xdr, res);
-+		else
-+			status = decode_read_plus_hole(xdr, res);
-+		if (status)
-+			break;
-+		if (res->count == xdr->buf->page_len)
-+			break;
-+	}
-+
-+	if (i < segments)
- 		res->eof = 0;
- 	return status;
- out_overflow:
+I noticed a race condition in the 3rd patch when I start needing vfs_llseek()
+to determine if I should encode the next segment as either data or a hole.  It
+is possible that the file could change on us between each of the seek calls,
+so we don't know if we are actually at a hole or data segment.  I don't want to
+add new locks to the NFS server for this case, so instead I've decided to
+encode any "quantum data" segments as if they were actually data.
+
+I tested these patches using xfstests, specificially generic/075, generic/091,
+generic/112, generic/127, generic/210, and generic/263.  Additionally, three
+new tests are run once READ_PLUS support has been added: generic/213,
+generic/214, and generic/228.
+
+Changes since v1:
+- Set correct read_rsize to suppress a buffer overflow warning.
+
+These patches and the corresponding client changes are available in the
+[read_plus] branch of
+
+	git://git.linux-nfs.org/projects/anna/linux-nfs.git
+
+Questions?  Comments?  Thoughts?
+
+Anna
+
+
+Anna Schumaker (4):
+  NFSD: nfsd4_encode_read() should encode eof and maxcount
+  NFSD: Add READ_PLUS support for data segments
+  NFSD: Add READ_PLUS support for hole segments
+  NFSD: Add support for encoding multiple segments
+
+ fs/nfsd/nfs4proc.c |  16 +++++
+ fs/nfsd/nfs4xdr.c  | 174 +++++++++++++++++++++++++++++++++++++++++------------
+ 2 files changed, 152 insertions(+), 38 deletions(-)
+
 -- 
 2.2.2
 
