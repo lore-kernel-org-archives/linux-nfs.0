@@ -1,73 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx142.netapp.com ([216.240.21.19]:60044 "EHLO mx142.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:52828 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750876AbbA3WHj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 30 Jan 2015 17:07:39 -0500
-Message-ID: <54CC00A8.1000808@Netapp.com>
-Date: Fri, 30 Jan 2015 17:07:36 -0500
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
+	id S1751700AbbA3WgN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 30 Jan 2015 17:36:13 -0500
+Message-ID: <54CC075C.9000301@RedHat.com>
+Date: Fri, 30 Jan 2015 17:36:12 -0500
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: [GIT PULL] Please pull NFSoRDMA client changes
-Content-Type: text/plain; charset="utf-8"
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+CC: "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+Subject: ANNOUNCE: nfs-utils-1.3.2 released.
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Trond,
+Hello,
 
-The following changes since commit ec6f34e5b552fb0a52e6aae1a5afbbb1605cc6cc:
+As promised a new release of nfs-utils, just in time for this year's Connectathon.
 
-  Linux 3.19-rc5 (2015-01-18 18:02:20 +1200)
+Some of the highlights:
 
-are available in the git repository at:
+* mount.nfs will start the mount negations at with the V4.2. 
+* rpc.gssd was basically reinvented and now uses libevent.
+* Supported defaults have changed: IPv6 is on, rpc.svcgssd is off. 
+* The mountstats command had been improved.
+* Improvements in the systemd scripts.
 
-  git://git.linux-nfs.org/projects/anna/nfs-rdma.git tags/nfs-rdma-for-3.20
+As well as the numerous bug fixes.
 
-for you to fetch changes up to a0a1d50cd1e80652142af5cddcde500d06c71bdd:
+The tarballs can be found in
+  http://kernel.org/pub/linux/utils/nfs-utils/1.3.2/
+or
+  http://sourceforge.net/projects/nfs/files/nfs-utils/1.3.2
 
-  xprtrdma: Update the GFP flags used in xprt_rdma_allocate() (2015-01-30 12:18:48 -0500)
+The change log is in
+   http://kernel.org/pub/linux/utils/nfs-utils/1.3.2/1.3.2-ChangeLog
+or
+   http://sourceforge.net/projects/nfs/files/nfs-utils/1.3.2/
 
-Thanks,
-Anna
+The git tree is at:
+   git://linux-nfs.org/nfs-utils
 
-----------------------------------------------------------------
-NFS: Client side changes for RDMA
+Please send comments/bugs to linux-nfs@vger.kernel.org
 
-These patches improve the scalability of the NFSoRDMA client and take large
-variables off of the stack.  Additionally, the GFP_* flags are updated to
-match what TCP uses.
-
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
-
-----------------------------------------------------------------
-Chuck Lever (21):
-      xprtrdma: human-readable completion status
-      xprtrdma: Modernize htonl and ntohl
-      xprtrdma: Display XIDs in host byte order
-      xprtrdma: Clean up hdrlen
-      xprtrdma: Rename "xprt" and "rdma_connect" fields in struct rpcrdma_xprt
-      xprtrdma: Remove rpcrdma_ep::rep_ia
-      xprtrdma: Remove rl_mr field, and the mr_chunk union
-      xprtrdma: Move credit update to RPC reply handler
-      xprtrdma: Remove rpcrdma_ep::rep_func and ::rep_xprt
-      xprtrdma: Free the pd if ib_query_qp() fails
-      xprtrdma: Take struct ib_device_attr off the stack
-      xprtrdma: Take struct ib_qp_attr and ib_qp_init_attr off the stack
-      xprtrdma: Simplify synopsis of rpcrdma_buffer_create()
-      xprtrdma: Refactor rpcrdma_buffer_create() and rpcrdma_buffer_destroy()
-      xprtrdma: Add struct rpcrdma_regbuf and helpers
-      xprtrdma: Allocate RPC send buffer separately from struct rpcrdma_req
-      xprtrdma: Allocate RPC/RDMA send buffer separately from struct rpcrdma_req
-      xprtrdma: Allocate RPC/RDMA receive buffer separately from struct rpcrdma_rep
-      xprtrdma: Allocate zero pad separately from rpcrdma_buffer
-      xprtrdma: Clean up after adding regbuf management
-      xprtrdma: Update the GFP flags used in xprt_rdma_allocate()
-
- include/linux/sunrpc/rpc_rdma.h |  14 +++-
- include/linux/sunrpc/svc_rdma.h |   2 -
- net/sunrpc/xprtrdma/rpc_rdma.c  | 108 +++++++++++++++------------
- net/sunrpc/xprtrdma/transport.c | 182 ++++++++++++++++++++-------------------------
- net/sunrpc/xprtrdma/verbs.c     | 411 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------------------------------------
- net/sunrpc/xprtrdma/xprt_rdma.h | 111 ++++++++++++++++++----------
- 6 files changed, 481 insertions(+), 347 deletions(-)
+steved.
