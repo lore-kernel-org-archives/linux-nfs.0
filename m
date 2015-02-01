@@ -1,50 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:59684 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753205AbbBARtr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 1 Feb 2015 12:49:47 -0500
-Message-ID: <54CE6738.3090100@RedHat.com>
-Date: Sun, 01 Feb 2015 12:49:44 -0500
-From: Steve Dickson <SteveD@redhat.com>
+Received: from zeniv.linux.org.uk ([195.92.253.2]:58581 "EHLO
+	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751016AbbBAGb0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 1 Feb 2015 01:31:26 -0500
+Date: Sun, 1 Feb 2015 06:31:16 +0000
+From: Al Viro <viro@ZenIV.linux.org.uk>
+To: Jens Axboe <axboe@fb.com>
+Cc: Christoph Hellwig <hch@lst.de>, David Howells <dhowells@redhat.com>,
+        Tejun Heo <tj@kernel.org>, linux-fsdevel@vger.kernel.org,
+        linux-mm@kvack.org, linux-mtd@lists.infradead.org,
+        linux-nfs@vger.kernel.org, ceph-devel@vger.kernel.org
+Subject: Re: backing_dev_info cleanups & lifetime rule fixes V2
+Message-ID: <20150201063116.GP29656@ZenIV.linux.org.uk>
+References: <1421228561-16857-1-git-send-email-hch@lst.de>
+ <54BEC3C2.7080906@fb.com>
 MIME-Version: 1.0
-To: Chris Mayo <aklhfex@gmail.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] statd: Fix test for foreground mode
-References: <54CE322D.50402@gmail.com>
-In-Reply-To: <54CE322D.50402@gmail.com>
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <54BEC3C2.7080906@fb.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 02/01/2015 09:03 AM, Chris Mayo wrote:
-> daemon_init parameter has the opposite sense to code removed in commit 7addf9d
+On Tue, Jan 20, 2015 at 02:08:18PM -0700, Jens Axboe wrote:
+> On 01/14/2015 02:42 AM, Christoph Hellwig wrote:
+> >The first 8 patches are unchanged from the series posted a week ago and
+> >cleans up how we use the backing_dev_info structure in preparation for
+> >fixing the life time rules for it.  The most important change is to
+> >split the unrelated nommu mmap flags from it, but it also remove a
+> >backing_dev_info pointer from the address_space (and thus the inode)
+> >and cleans up various other minor bits.
+> >
+> >The remaining patches sort out the issues around bdi_unlink and now
+> >let the bdi life until it's embedding structure is freed, which must
+> >be equal or longer than the superblock using the bdi for writeback,
+> >and thus gets rid of the whole mess around reassining inodes to new
+> >bdis.
+> >
+> >Changes since V1:
+> >  - various minor documentation updates based on Feedback from Tejun
 > 
-> Signed-off-by: Chris Mayo <aklhfex@gmail.com>
-> ---
->  utils/statd/statd.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-Committed... 
+> I applied this to for-3.20/bdi, only making the change (noticed by
+> Jan) to kill the extra WARN_ON() in patch #11.
 
-Hmm.. I didn't see this because I did all my testing with
-systemd starting/stopping the daemons... I looks like
-I'm going to have to rejigger my tests a bit... 
+And at that point we finally can make sb_lock and super_blocks static in
+fs/super.c.  Do you want that in your tree, or would you rather have it
+done via vfs.git during the merge window after your tree goes in?  It's
+as trivial as this:
 
-What distros/worlds don't systemd? I'll try to bring up
-a VM to do some testing in those worlds... 
+Make super_blocks and sb_lock static
 
-steved.
+The only user outside of fs/super.c is gone now
 
-> 
-> diff --git a/utils/statd/statd.c b/utils/statd/statd.c
-> index 60ce6d1..6ff28f4 100644
-> --- a/utils/statd/statd.c
-> +++ b/utils/statd/statd.c
-> @@ -393,7 +393,7 @@ int main (int argc, char **argv)
->  		simulator (--argc, ++argv);	/* simulator() does exit() */
->  #endif
->  
-> -	daemon_init(!(run_mode & MODE_NODAEMON));
-> +	daemon_init(run_mode & MODE_NODAEMON);
->  
->  	if (run_mode & MODE_LOG_STDERR) {
->  		xlog_syslog(0);
-> 
+Signed-off-by: Al Viro <viro@zeniv.linux.org.uk>
+---
+diff --git a/fs/super.c b/fs/super.c
+index eae088f..91badbb 100644
+--- a/fs/super.c
++++ b/fs/super.c
+@@ -36,8 +36,8 @@
+ #include "internal.h"
+ 
+ 
+-LIST_HEAD(super_blocks);
+-DEFINE_SPINLOCK(sb_lock);
++static LIST_HEAD(super_blocks);
++static DEFINE_SPINLOCK(sb_lock);
+ 
+ static char *sb_writers_name[SB_FREEZE_LEVELS] = {
+ 	"sb_writers",
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 1f3c439..efc384e 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1184,8 +1184,6 @@ struct mm_struct;
+ #define UMOUNT_NOFOLLOW	0x00000008	/* Don't follow symlink on umount */
+ #define UMOUNT_UNUSED	0x80000000	/* Flag guaranteed to be unused */
+ 
+-extern struct list_head super_blocks;
+-extern spinlock_t sb_lock;
+ 
+ /* Possible states of 'frozen' field */
+ enum {
