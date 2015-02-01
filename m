@@ -1,90 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx144.netapp.com ([216.240.21.25]:27682 "EHLO mx144.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751554AbbA3RVU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 30 Jan 2015 12:21:20 -0500
-Message-ID: <54CBBD8C.7090400@Netapp.com>
-Date: Fri, 30 Jan 2015 12:21:16 -0500
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
+Received: from mail-wi0-f175.google.com ([209.85.212.175]:46769 "EHLO
+	mail-wi0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751933AbbBAODd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 1 Feb 2015 09:03:33 -0500
+Received: by mail-wi0-f175.google.com with SMTP id fb4so11662221wid.2
+        for <linux-nfs@vger.kernel.org>; Sun, 01 Feb 2015 06:03:32 -0800 (PST)
+Received: from [192.168.1.1] ([87.112.17.102])
+        by mx.google.com with ESMTPSA id hm6sm12709595wjb.32.2015.02.01.06.03.31
+        for <linux-nfs@vger.kernel.org>
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Sun, 01 Feb 2015 06:03:31 -0800 (PST)
+Message-ID: <54CE322D.50402@gmail.com>
+Date: Sun, 01 Feb 2015 14:03:25 +0000
+From: Chris Mayo <aklhfex@gmail.com>
 MIME-Version: 1.0
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: <linux-rdma@vger.kernel.org>, <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v3 00/20] NFS/RDMA client for 3.20
-References: <20150121155303.17297.47423.stgit@manet.1015granger.net>
-In-Reply-To: <20150121155303.17297.47423.stgit@manet.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] statd: Fix test for foreground mode
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Chuck,
+daemon_init parameter has the opposite sense to code removed in commit 7addf9d
 
-I've applied these patches and the GPF flags patch for 3.20.  Let me know if you need anything else!
+Signed-off-by: Chris Mayo <aklhfex@gmail.com>
+---
+ utils/statd/statd.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-Anna
-On 01/21/2015 11:01 AM, Chuck Lever wrote:
-> The following series of patches for the Linux NFS client breaks up
-> the per-transport buffer pool data structures. The goal is to allow
-> transport operation to scale better as the size of SEND/RECV buffers
-> (the inline thresholds), the maximum NFS r/wsize, and the number of
-> RDMA credits (concurrent RPC requests) is increased.
-> 
-> The primary change is that the header send buffers have been split
-> from struct rpcrdma_req. Specific benefits are outlined in the patch
-> descriptions.
-> 
-> More pre-requisites are required. Changes to raise the maximum
-> r/wsize and other limits are left for a future merge window.
-> 
-> See the topic branch "nfs-rdma-for-3.20" at:
-> 
->  git://git.linux-nfs.org/projects/cel/cel-2.6.git
-> 
-> Anna, I think these are ready for you to merge.
-> 
-> Changes since v2:
-> - Rebased on v3.19-rc5
-> - Several patch descriptions clarified, based on review comments
-> - New size of client receive buffers was needlessly large
-> 
-> Changes since v1:
-> - Rebased on v3.19-rc4
-> - One short description fixed
-> - linux-rdma included this time (sorry for the noise)
-> 
-> ---
-> 
-> Chuck Lever (20):
->       xprtrdma: human-readable completion status
->       xprtrdma: Modernize htonl and ntohl
->       xprtrdma: Display XIDs in host byte order
->       xprtrdma: Clean up hdrlen
->       xprtrdma: Rename "xprt" and "rdma_connect" fields in struct rpcrdma_xprt
->       xprtrdma: Remove rpcrdma_ep::rep_ia
->       xprtrdma: Remove rl_mr field, and the mr_chunk union
->       xprtrdma: Move credit update to RPC reply handler
->       xprtrdma: Remove rpcrdma_ep::rep_func and ::rep_xprt
->       xprtrdma: Free the pd if ib_query_qp() fails
->       xprtrdma: Take struct ib_device_attr off the stack
->       xprtrdma: Take struct ib_qp_attr and ib_qp_init_attr off the stack
->       xprtrdma: Simplify synopsis of rpcrdma_buffer_create()
->       xprtrdma: Refactor rpcrdma_buffer_create() and rpcrdma_buffer_destroy()
->       xprtrdma: Add struct rpcrdma_regbuf and helpers
->       xprtrdma: Allocate RPC send buffer separately from struct rpcrdma_req
->       xprtrdma: Allocate RPC/RDMA send buffer separately from struct rpcrdma_req
->       xprtrdma: Allocate RPC/RDMA receive buffer separately from struct rpcrdma_rep
->       xprtrdma: Allocate zero pad separately from rpcrdma_buffer
->       xprtrdma: Clean up after adding regbuf management
-> 
-> 
->  include/linux/sunrpc/rpc_rdma.h |   14 +
->  include/linux/sunrpc/svc_rdma.h |    2 
->  net/sunrpc/xprtrdma/rpc_rdma.c  |  108 ++++++----
->  net/sunrpc/xprtrdma/transport.c |  179 +++++++----------
->  net/sunrpc/xprtrdma/verbs.c     |  411 ++++++++++++++++++++++++---------------
->  net/sunrpc/xprtrdma/xprt_rdma.h |  111 +++++++----
->  6 files changed, 478 insertions(+), 347 deletions(-)
-> 
-> --
-> Chuck Lever
-> 
+diff --git a/utils/statd/statd.c b/utils/statd/statd.c
+index 60ce6d1..6ff28f4 100644
+--- a/utils/statd/statd.c
++++ b/utils/statd/statd.c
+@@ -393,7 +393,7 @@ int main (int argc, char **argv)
+ 		simulator (--argc, ++argv);	/* simulator() does exit() */
+ #endif
+ 
+-	daemon_init(!(run_mode & MODE_NODAEMON));
++	daemon_init(run_mode & MODE_NODAEMON);
+ 
+ 	if (run_mode & MODE_LOG_STDERR) {
+ 		xlog_syslog(0);
+-- 
+2.0.5
 
