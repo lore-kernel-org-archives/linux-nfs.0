@@ -1,53 +1,93 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pa0-f42.google.com ([209.85.220.42]:52384 "EHLO
-	mail-pa0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S965279AbbBBWli (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Feb 2015 17:41:38 -0500
-Received: by mail-pa0-f42.google.com with SMTP id bj1so88041107pad.1
-        for <linux-nfs@vger.kernel.org>; Mon, 02 Feb 2015 14:41:38 -0800 (PST)
+Received: from mail-pa0-f43.google.com ([209.85.220.43]:34991 "EHLO
+	mail-pa0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S965375AbbBBWll (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Feb 2015 17:41:41 -0500
+Received: by mail-pa0-f43.google.com with SMTP id eu11so87915128pac.2
+        for <linux-nfs@vger.kernel.org>; Mon, 02 Feb 2015 14:41:41 -0800 (PST)
 From: Tom Haynes <thomas.haynes@primarydata.com>
 To: Trond Myklebust <trond.myklebust@primarydata.com>
 Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH v6 51/53] pnfs: Update documentation on the Layout Drivers
-Date: Mon,  2 Feb 2015 14:39:05 -0800
-Message-Id: <1422916747-86649-52-git-send-email-loghyr@primarydata.com>
+Subject: [PATCH v6 52/53] nfs41: .init_read and .init_write can be called with valid pg_lseg
+Date: Mon,  2 Feb 2015 14:39:06 -0800
+Message-Id: <1422916747-86649-53-git-send-email-loghyr@primarydata.com>
 In-Reply-To: <1422916747-86649-1-git-send-email-loghyr@primarydata.com>
 References: <1422916747-86649-1-git-send-email-loghyr@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Tom Haynes <loghyr@primarydata.com>
----
- Documentation/filesystems/nfs/pnfs.txt | 13 +++++++------
- 1 file changed, 7 insertions(+), 6 deletions(-)
+From: Peng Tao <tao.peng@primarydata.com>
 
-diff --git a/Documentation/filesystems/nfs/pnfs.txt b/Documentation/filesystems/nfs/pnfs.txt
-index adc81a3..44a9f24 100644
---- a/Documentation/filesystems/nfs/pnfs.txt
-+++ b/Documentation/filesystems/nfs/pnfs.txt
-@@ -57,15 +57,16 @@ bit is set, preventing any new lsegs from being added.
- layout drivers
- --------------
+With pgio refactoring in v3.15, .init_read and .init_write can be
+called with valid pgio->pg_lseg. file layout was fixed at that time
+by commit c6194271f (pnfs: filelayout: support non page aligned
+layouts). But the generic helper still needs to be fixed.
+
+Cc: stable@vger.kernel.org # 3.15+
+Signed-off-by: Peng Tao <tao.peng@primarydata.com>
+---
+ fs/nfs/pnfs.c | 41 ++++++++++++++++++++---------------------
+ 1 file changed, 20 insertions(+), 21 deletions(-)
+
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 0fb0f19..c7be9b9 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1711,19 +1711,19 @@ pnfs_generic_pg_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *r
+ {
+ 	u64 rd_size = req->wb_bytes;
  
--PNFS utilizes what is called layout drivers. The STD defines 3 basic
--layout types: "files" "objects" and "blocks". For each of these types
--there is a layout-driver with a common function-vectors table which
--are called by the nfs-client pnfs-core to implement the different layout
--types.
-+PNFS utilizes what is called layout drivers. The STD defines 4 basic
-+layout types: "files", "objects", "blocks", and "flexfiles". For each
-+of these types there is a layout-driver with a common function-vectors
-+table which are called by the nfs-client pnfs-core to implement the
-+different layout types.
- 
--Files-layout-driver code is in: fs/nfs/nfs4filelayout.c && nfs4filelayoutdev.c
-+Files-layout-driver code is in: fs/nfs/filelayout/.. directory
- Objects-layout-deriver code is in: fs/nfs/objlayout/.. directory
- Blocks-layout-deriver code is in: fs/nfs/blocklayout/.. directory
-+Flexfiles-layout-driver code is in: fs/nfs/flexfilelayout/.. directory
- 
- objects-layout setup
- --------------------
+-	WARN_ON_ONCE(pgio->pg_lseg != NULL);
+-
+-	if (pgio->pg_dreq == NULL)
+-		rd_size = i_size_read(pgio->pg_inode) - req_offset(req);
+-	else
+-		rd_size = nfs_dreq_bytes_left(pgio->pg_dreq);
+-
+-	pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
+-					   req->wb_context,
+-					   req_offset(req),
+-					   rd_size,
+-					   IOMODE_READ,
+-					   GFP_KERNEL);
++	if (pgio->pg_lseg == NULL) {
++		if (pgio->pg_dreq == NULL)
++			rd_size = i_size_read(pgio->pg_inode) - req_offset(req);
++		else
++			rd_size = nfs_dreq_bytes_left(pgio->pg_dreq);
++
++		pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
++						   req->wb_context,
++						   req_offset(req),
++						   rd_size,
++						   IOMODE_READ,
++						   GFP_KERNEL);
++	}
+ 	/* If no lseg, fall back to read through mds */
+ 	if (pgio->pg_lseg == NULL)
+ 		nfs_pageio_reset_read_mds(pgio);
+@@ -1735,14 +1735,13 @@ void
+ pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *pgio,
+ 			   struct nfs_page *req, u64 wb_size)
+ {
+-	WARN_ON_ONCE(pgio->pg_lseg != NULL);
+-
+-	pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
+-					   req->wb_context,
+-					   req_offset(req),
+-					   wb_size,
+-					   IOMODE_RW,
+-					   GFP_NOFS);
++	if (pgio->pg_lseg == NULL)
++		pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
++						   req->wb_context,
++						   req_offset(req),
++						   wb_size,
++						   IOMODE_RW,
++						   GFP_NOFS);
+ 	/* If no lseg, fall back to write through mds */
+ 	if (pgio->pg_lseg == NULL)
+ 		nfs_pageio_reset_write_mds(pgio);
 -- 
 1.9.3
 
