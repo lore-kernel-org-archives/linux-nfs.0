@@ -1,16 +1,16 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pa0-f46.google.com ([209.85.220.46]:55004 "EHLO
-	mail-pa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S965042AbbBBWjl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Feb 2015 17:39:41 -0500
-Received: by mail-pa0-f46.google.com with SMTP id lj1so87877553pab.5
-        for <linux-nfs@vger.kernel.org>; Mon, 02 Feb 2015 14:39:40 -0800 (PST)
+Received: from mail-pa0-f48.google.com ([209.85.220.48]:54729 "EHLO
+	mail-pa0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S965042AbbBBWjo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Feb 2015 17:39:44 -0500
+Received: by mail-pa0-f48.google.com with SMTP id ey11so88011038pad.7
+        for <linux-nfs@vger.kernel.org>; Mon, 02 Feb 2015 14:39:43 -0800 (PST)
 From: Tom Haynes <thomas.haynes@primarydata.com>
 To: Trond Myklebust <trond.myklebust@primarydata.com>
 Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH v6 08/53] nfsv3: introduce nfs3_set_ds_client
-Date: Mon,  2 Feb 2015 14:38:22 -0800
-Message-Id: <1422916747-86649-9-git-send-email-loghyr@primarydata.com>
+Subject: [PATCH v6 09/53] nfs41: allow LD to choose DS connection version/minor_version
+Date: Mon,  2 Feb 2015 14:38:23 -0800
+Message-Id: <1422916747-86649-10-git-send-email-loghyr@primarydata.com>
 In-Reply-To: <1422916747-86649-1-git-send-email-loghyr@primarydata.com>
 References: <1422916747-86649-1-git-send-email-loghyr@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -18,128 +18,119 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: Peng Tao <tao.peng@primarydata.com>
 
-The flexfiles layout wants to create DS connection over NFSv3.
-Add nfs3_set_ds_client to allow that to happen.
+flexfile layout may need to set such when making DS connections.
 
 Signed-off-by: Peng Tao <tao.peng@primarydata.com>
 Signed-off-by: Tom Haynes <Thomas.Haynes@primarydata.com>
 ---
- fs/nfs/internal.h         |  4 ++++
- fs/nfs/nfs3_fs.h          |  2 ++
- fs/nfs/nfs3client.c       | 34 ++++++++++++++++++++++++++++++++++
- fs/nfs/nfs3super.c        |  2 +-
- include/linux/nfs_fs_sb.h |  9 +++++----
- 5 files changed, 46 insertions(+), 5 deletions(-)
+ fs/nfs/filelayout/filelayoutdev.c |  3 ++-
+ fs/nfs/internal.h                 |  1 +
+ fs/nfs/nfs4client.c               |  4 ++--
+ fs/nfs/pnfs.h                     |  3 ++-
+ fs/nfs/pnfs_nfs.c                 | 11 +++++++----
+ 5 files changed, 14 insertions(+), 8 deletions(-)
 
+diff --git a/fs/nfs/filelayout/filelayoutdev.c b/fs/nfs/filelayout/filelayoutdev.c
+index 5e4b0ce..4f372e2 100644
+--- a/fs/nfs/filelayout/filelayoutdev.c
++++ b/fs/nfs/filelayout/filelayoutdev.c
+@@ -278,7 +278,8 @@ nfs4_fl_prepare_ds(struct pnfs_layout_segment *lseg, u32 ds_idx)
+ 		goto out_test_devid;
+ 
+ 	nfs4_pnfs_ds_connect(s, ds, devid, dataserver_timeo,
+-			     dataserver_retrans,
++			     dataserver_retrans, 4,
++			     s->nfs_client->cl_minorversion,
+ 			     s->nfs_client->cl_rpcclient->cl_auth->au_flavor);
+ 
+ out_test_devid:
 diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 1c366cd..5467a08 100644
+index 5467a08..9eebd93 100644
 --- a/fs/nfs/internal.h
 +++ b/fs/nfs/internal.h
-@@ -191,6 +191,10 @@ extern struct nfs_client *nfs4_set_ds_client(struct nfs_client* mds_clp,
+@@ -188,6 +188,7 @@ extern struct nfs_client *nfs4_set_ds_client(struct nfs_client* mds_clp,
+ 					     int ds_addrlen, int ds_proto,
+ 					     unsigned int ds_timeo,
+ 					     unsigned int ds_retrans,
++					     u32 minor_version,
  					     rpc_authflavor_t au_flavor);
  extern struct rpc_clnt *nfs4_find_or_create_ds_client(struct nfs_client *,
  						struct inode *);
-+extern struct nfs_client *nfs3_set_ds_client(struct nfs_client *mds_clp,
-+			const struct sockaddr *ds_addr, int ds_addrlen,
-+			int ds_proto, unsigned int ds_timeo,
-+			unsigned int ds_retrans, rpc_authflavor_t au_flavor);
- #ifdef CONFIG_PROC_FS
- extern int __init nfs_fs_proc_init(void);
- extern void nfs_fs_proc_exit(void);
-diff --git a/fs/nfs/nfs3_fs.h b/fs/nfs/nfs3_fs.h
-index 333ae40..e134d65 100644
---- a/fs/nfs/nfs3_fs.h
-+++ b/fs/nfs/nfs3_fs.h
-@@ -30,5 +30,7 @@ struct nfs_server *nfs3_create_server(struct nfs_mount_info *, struct nfs_subver
- struct nfs_server *nfs3_clone_server(struct nfs_server *, struct nfs_fh *,
- 				     struct nfs_fattr *, rpc_authflavor_t);
+diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+index 49a5202..8646af9 100644
+--- a/fs/nfs/nfs4client.c
++++ b/fs/nfs/nfs4client.c
+@@ -850,14 +850,14 @@ error:
+ struct nfs_client *nfs4_set_ds_client(struct nfs_client* mds_clp,
+ 		const struct sockaddr *ds_addr, int ds_addrlen,
+ 		int ds_proto, unsigned int ds_timeo, unsigned int ds_retrans,
+-		rpc_authflavor_t au_flavor)
++		u32 minor_version, rpc_authflavor_t au_flavor)
+ {
+ 	struct nfs_client_initdata cl_init = {
+ 		.addr = ds_addr,
+ 		.addrlen = ds_addrlen,
+ 		.nfs_mod = &nfs_v4,
+ 		.proto = ds_proto,
+-		.minorversion = mds_clp->cl_minorversion,
++		.minorversion = minor_version,
+ 		.net = mds_clp->cl_net,
+ 	};
+ 	struct rpc_timeout ds_timeout;
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index aef89b3..70ffec1 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -325,7 +325,8 @@ struct nfs4_pnfs_ds *nfs4_pnfs_ds_add(struct list_head *dsaddrs,
+ 				      gfp_t gfp_flags);
+ void nfs4_pnfs_ds_connect(struct nfs_server *mds_srv, struct nfs4_pnfs_ds *ds,
+ 			  struct nfs4_deviceid_node *devid, unsigned int timeo,
+-			  unsigned int retrans, rpc_authflavor_t au_flavor);
++			  unsigned int retrans, u32 versoin, u32 minor_version,
++			  rpc_authflavor_t au_flavor);
+ struct nfs4_pnfs_ds_addr *nfs4_decode_mp_ds_addr(struct net *net,
+ 						 struct xdr_stream *xdr,
+ 						 gfp_t gfp_flags);
+diff --git a/fs/nfs/pnfs_nfs.c b/fs/nfs/pnfs_nfs.c
+index 106ee08..ad211a4 100644
+--- a/fs/nfs/pnfs_nfs.c
++++ b/fs/nfs/pnfs_nfs.c
+@@ -554,6 +554,7 @@ static int _nfs4_pnfs_ds_connect(struct nfs_server *mds_srv,
+ 				 struct nfs4_pnfs_ds *ds,
+ 				 unsigned int timeo,
+ 				 unsigned int retrans,
++				 u32 minor_version,
+ 				 rpc_authflavor_t au_flavor)
+ {
+ 	struct nfs_client *clp = ERR_PTR(-EIO);
+@@ -570,7 +571,8 @@ static int _nfs4_pnfs_ds_connect(struct nfs_server *mds_srv,
+ 		clp = nfs4_set_ds_client(mds_srv->nfs_client,
+ 					(struct sockaddr *)&da->da_addr,
+ 					da->da_addrlen, IPPROTO_TCP,
+-					timeo, retrans, au_flavor);
++					timeo, retrans, minor_version,
++					au_flavor);
+ 		if (!IS_ERR(clp))
+ 			break;
+ 	}
+@@ -601,13 +603,14 @@ out_put:
+  */
+ void nfs4_pnfs_ds_connect(struct nfs_server *mds_srv, struct nfs4_pnfs_ds *ds,
+ 			  struct nfs4_deviceid_node *devid, unsigned int timeo,
+-			  unsigned int retrans, rpc_authflavor_t au_flavor)
++			  unsigned int retrans, u32 version,
++			  u32 minor_version, rpc_authflavor_t au_flavor)
+ {
+ 	if (test_and_set_bit(NFS4DS_CONNECTING, &ds->ds_state) == 0) {
+ 		int err = 0;
  
-+/* nfs3super.c */
-+extern struct nfs_subversion nfs_v3;
- 
- #endif /* __LINUX_FS_NFS_NFS3_FS_H */
-diff --git a/fs/nfs/nfs3client.c b/fs/nfs/nfs3client.c
-index 8c1b437..52e2344 100644
---- a/fs/nfs/nfs3client.c
-+++ b/fs/nfs/nfs3client.c
-@@ -64,3 +64,37 @@ struct nfs_server *nfs3_clone_server(struct nfs_server *source,
- 		nfs_init_server_aclclient(server);
- 	return server;
- }
-+
-+/*
-+ * Set up a pNFS Data Server client over NFSv3.
-+ *
-+ * Return any existing nfs_client that matches server address,port,version
-+ * and minorversion.
-+ *
-+ * For a new nfs_client, use a soft mount (default), a low retrans and a
-+ * low timeout interval so that if a connection is lost, we retry through
-+ * the MDS.
-+ */
-+struct nfs_client *nfs3_set_ds_client(struct nfs_client *mds_clp,
-+		const struct sockaddr *ds_addr, int ds_addrlen,
-+		int ds_proto, unsigned int ds_timeo, unsigned int ds_retrans,
-+		rpc_authflavor_t au_flavor)
-+{
-+	struct nfs_client_initdata cl_init = {
-+		.addr = ds_addr,
-+		.addrlen = ds_addrlen,
-+		.nfs_mod = &nfs_v3,
-+		.proto = ds_proto,
-+		.net = mds_clp->cl_net,
-+	};
-+	struct rpc_timeout ds_timeout;
-+	struct nfs_client *clp;
-+
-+	/* Use the MDS nfs_client cl_ipaddr. */
-+	nfs_init_timeout_values(&ds_timeout, ds_proto, ds_timeo, ds_retrans);
-+	clp = nfs_get_client(&cl_init, &ds_timeout, mds_clp->cl_ipaddr,
-+			     au_flavor);
-+
-+	return clp;
-+}
-+EXPORT_SYMBOL_GPL(nfs3_set_ds_client);
-diff --git a/fs/nfs/nfs3super.c b/fs/nfs/nfs3super.c
-index 6af29c2..5c4394e 100644
---- a/fs/nfs/nfs3super.c
-+++ b/fs/nfs/nfs3super.c
-@@ -7,7 +7,7 @@
- #include "nfs3_fs.h"
- #include "nfs.h"
- 
--static struct nfs_subversion nfs_v3 = {
-+struct nfs_subversion nfs_v3 = {
- 	.owner = THIS_MODULE,
- 	.nfs_fs   = &nfs_fs_type,
- 	.rpc_vers = &nfs_version3,
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index ddea982..5e1273d 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -77,10 +77,6 @@ struct nfs_client {
- 	/* Client owner identifier */
- 	const char *		cl_owner_id;
- 
--	/* Our own IP address, as a null-terminated string.
--	 * This is used to generate the mv0 callback address.
--	 */
--	char			cl_ipaddr[48];
- 	u32			cl_cb_ident;	/* v4.0 callback identifier */
- 	const struct nfs4_minor_version_ops *cl_mvops;
- 	unsigned long		cl_mig_gen;
-@@ -108,6 +104,11 @@ struct nfs_client {
- #define NFS_SP4_MACH_CRED_COMMIT   6	/* COMMIT */
- #endif /* CONFIG_NFS_V4 */
- 
-+	/* Our own IP address, as a null-terminated string.
-+	 * This is used to generate the mv0 callback address.
-+	 */
-+	char			cl_ipaddr[48];
-+
- #ifdef CONFIG_NFS_FSCACHE
- 	struct fscache_cookie	*fscache;	/* client index cache cookie */
- #endif
+-		err = _nfs4_pnfs_ds_connect(mds_srv, ds, timeo,
+-					    retrans, au_flavor);
++		err = _nfs4_pnfs_ds_connect(mds_srv, ds, timeo, retrans,
++					    minor_version, au_flavor);
+ 		if (err)
+ 			nfs4_mark_deviceid_unavailable(devid);
+ 		nfs4_clear_ds_conn_bit(ds);
 -- 
 1.9.3
 
