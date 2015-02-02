@@ -1,48 +1,32 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([173.255.197.46]:35892 "EHLO fieldses.org"
+Received: from verein.lst.de ([213.95.11.211]:43130 "EHLO newverein.lst.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933938AbbBCQIr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 3 Feb 2015 11:08:47 -0500
-Date: Tue, 3 Feb 2015 11:08:45 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Christoph Hellwig <hch@lst.de>
+	id S932594AbbBBHa3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 2 Feb 2015 02:30:29 -0500
+Date: Mon, 2 Feb 2015 08:30:24 +0100
+From: Christoph Hellwig <hch@lst.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Cc: Jeff Layton <jlayton@primarydata.com>, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com
-Subject: Re: [PATCH 10/20] nfsd: implement pNFS operations
-Message-ID: <20150203160845.GO22301@fieldses.org>
-References: <1421925006-24231-1-git-send-email-hch@lst.de>
- <1421925006-24231-11-git-send-email-hch@lst.de>
- <20150129203346.GA11064@fieldses.org>
- <20150202124349.GA15598@lst.de>
- <20150202142832.GC22301@fieldses.org>
- <20150202145619.GA18387@lst.de>
- <20150202150032.GD22301@fieldses.org>
- <20150202185638.GB23319@lst.de>
+        linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com,
+        Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH 16/20] xfs: pass a 64-bit count argument to
+	xfs_iomap_write_unwritten
+Message-ID: <20150202073024.GA9399@lst.de>
+References: <1421925006-24231-1-git-send-email-hch@lst.de> <1421925006-24231-17-git-send-email-hch@lst.de> <20150129205232.GB11064@fieldses.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20150202185638.GB23319@lst.de>
+In-Reply-To: <20150129205232.GB11064@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Feb 02, 2015 at 07:56:38PM +0100, Christoph Hellwig wrote:
-> On Mon, Feb 02, 2015 at 10:00:32AM -0500, J. Bruce Fields wrote:
-> > I'm planning to pull Jeff's tree and then apply these on top.  (Even if
-> > the conflict's fairly trivial I'm just happier being able to test the
-> > combination exactly as they're commited.)
-> > 
-> > I'll do that now, should be pushed out in an hour or two.
-> 
-> I've pushed out a pnfsd-for-3.20-3 branch to
-> git://git.infradead.org/users/hch/pnfs.git
-> 
-> Or do you want me to resend the whole thing?
+On Thu, Jan 29, 2015 at 03:52:32PM -0500, J. Bruce Fields wrote:
+> Who can give us ACKs on these last five fs/xfs patches?  (And is it
+> going to cause trouble if they go in through the nfsd tree?)
 
-No, looks fine to me as is.  Thanks!  I'll play around with it a little
-more and then push it out.
 
-GETLAYOUT is going to be annoying if we need big layouts.  We'll have to
-figure out what to do with that reply size estimation, and clients will
-have to figure out how to get the maxresponsesized_cached right, I
-guess?  Oh well.
-
---b.
+We'd need ACKs from Dave.  He already has pulled in two patches so
+we might run into some conflicts.  Maybe the best idea is to add the
+exportfs patch to both the XFS and nfsd trees, so each of them can
+pull in the rest?  Or we could commit the two XFS preparation patches
+to both tree and get something that compiles and works in the nfsd
+tree.
