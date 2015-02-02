@@ -1,16 +1,16 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pa0-f52.google.com ([209.85.220.52]:57539 "EHLO
-	mail-pa0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S965219AbbBBWkX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Feb 2015 17:40:23 -0500
-Received: by mail-pa0-f52.google.com with SMTP id kx10so87838566pab.11
-        for <linux-nfs@vger.kernel.org>; Mon, 02 Feb 2015 14:40:23 -0800 (PST)
+Received: from mail-pa0-f51.google.com ([209.85.220.51]:47074 "EHLO
+	mail-pa0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S965219AbbBBWk0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Feb 2015 17:40:26 -0500
+Received: by mail-pa0-f51.google.com with SMTP id fb1so88094884pad.10
+        for <linux-nfs@vger.kernel.org>; Mon, 02 Feb 2015 14:40:25 -0800 (PST)
 From: Tom Haynes <thomas.haynes@primarydata.com>
 To: Trond Myklebust <trond.myklebust@primarydata.com>
 Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH v6 23/53] nfs41: pass iomode through layoutreturn args
-Date: Mon,  2 Feb 2015 14:38:37 -0800
-Message-Id: <1422916747-86649-24-git-send-email-loghyr@primarydata.com>
+Subject: [PATCH v6 24/53] nfs41: make a helper function to send layoutreturn
+Date: Mon,  2 Feb 2015 14:38:38 -0800
+Message-Id: <1422916747-86649-25-git-send-email-loghyr@primarydata.com>
 In-Reply-To: <1422916747-86649-1-git-send-email-loghyr@primarydata.com>
 References: <1422916747-86649-1-git-send-email-loghyr@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -18,53 +18,92 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: Peng Tao <tao.peng@primarydata.com>
 
-So that it is possible to return a specific iomode layouts.
+It allows to specify different iomode to return.
 
 Signed-off-by: Peng Tao <tao.peng@primarydata.com>
 Signed-off-by: Tom Haynes <Thomas.Haynes@primarydata.com>
 ---
- fs/nfs/nfs4xdr.c        | 2 +-
- fs/nfs/pnfs.c           | 1 +
- include/linux/nfs_xdr.h | 1 +
- 3 files changed, 3 insertions(+), 1 deletion(-)
+ fs/nfs/pnfs.c | 53 +++++++++++++++++++++++++++++++++--------------------
+ 1 file changed, 33 insertions(+), 20 deletions(-)
 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 7d8d7a4..3c3ff63 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -2012,7 +2012,7 @@ encode_layoutreturn(struct xdr_stream *xdr,
- 	p = reserve_space(xdr, 16);
- 	*p++ = cpu_to_be32(0);		/* reclaim. always 0 for now */
- 	*p++ = cpu_to_be32(args->layout_type);
--	*p++ = cpu_to_be32(IOMODE_ANY);
-+	*p++ = cpu_to_be32(args->iomode);
- 	*p = cpu_to_be32(RETURN_FILE);
- 	p = reserve_space(xdr, 16);
- 	p = xdr_encode_hyper(p, 0);
 diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 7e1bac1..1b544c1 100644
+index 1b544c1..1b97209 100644
 --- a/fs/nfs/pnfs.c
 +++ b/fs/nfs/pnfs.c
-@@ -914,6 +914,7 @@ _pnfs_return_layout(struct inode *ino)
- 	lrp->args.stateid = stateid;
- 	lrp->args.layout_type = NFS_SERVER(ino)->pnfs_curr_ld->id;
- 	lrp->args.inode = ino;
-+	lrp->args.iomode = IOMODE_ANY;
- 	lrp->args.layout = lo;
- 	lrp->clp = NFS_SERVER(ino)->nfs_client;
- 	lrp->cred = lo->plh_lc_cred;
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 962f461..4fd7793 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -293,6 +293,7 @@ struct nfs4_layoutreturn_args {
- 	struct nfs4_sequence_args seq_args;
- 	struct pnfs_layout_hdr *layout;
- 	struct inode *inode;
-+	enum pnfs_iomode iomode;
+@@ -845,6 +845,38 @@ static void pnfs_clear_layoutcommit(struct inode *inode,
+ 	}
+ }
+ 
++static int
++pnfs_send_layoutreturn(struct pnfs_layout_hdr *lo, nfs4_stateid stateid,
++		       enum pnfs_iomode iomode)
++{
++	struct inode *ino = lo->plh_inode;
++	struct nfs4_layoutreturn *lrp;
++	int status = 0;
++
++	lrp = kzalloc(sizeof(*lrp), GFP_KERNEL);
++	if (unlikely(lrp == NULL)) {
++		status = -ENOMEM;
++		spin_lock(&ino->i_lock);
++		lo->plh_block_lgets--;
++		spin_unlock(&ino->i_lock);
++		pnfs_put_layout_hdr(lo);
++		goto out;
++	}
++
++	lrp->args.stateid = stateid;
++	lrp->args.layout_type = NFS_SERVER(ino)->pnfs_curr_ld->id;
++	lrp->args.inode = ino;
++	lrp->args.iomode = iomode;
++	lrp->args.layout = lo;
++	lrp->clp = NFS_SERVER(ino)->nfs_client;
++	lrp->cred = lo->plh_lc_cred;
++
++	status = nfs4_proc_layoutreturn(lrp);
++out:
++	dprintk("<-- %s status: %d\n", __func__, status);
++	return status;
++}
++
+ /*
+  * Initiates a LAYOUTRETURN(FILE), and removes the pnfs_layout_hdr
+  * when the layout segment list is empty.
+@@ -859,7 +891,6 @@ _pnfs_return_layout(struct inode *ino)
+ 	struct pnfs_layout_hdr *lo = NULL;
+ 	struct nfs_inode *nfsi = NFS_I(ino);
+ 	LIST_HEAD(tmp_list);
+-	struct nfs4_layoutreturn *lrp;
  	nfs4_stateid stateid;
- 	__u32   layout_type;
- };
+ 	int status = 0, empty;
+ 
+@@ -901,25 +932,7 @@ _pnfs_return_layout(struct inode *ino)
+ 	spin_unlock(&ino->i_lock);
+ 	pnfs_free_lseg_list(&tmp_list);
+ 
+-	lrp = kzalloc(sizeof(*lrp), GFP_KERNEL);
+-	if (unlikely(lrp == NULL)) {
+-		status = -ENOMEM;
+-		spin_lock(&ino->i_lock);
+-		lo->plh_block_lgets--;
+-		spin_unlock(&ino->i_lock);
+-		pnfs_put_layout_hdr(lo);
+-		goto out;
+-	}
+-
+-	lrp->args.stateid = stateid;
+-	lrp->args.layout_type = NFS_SERVER(ino)->pnfs_curr_ld->id;
+-	lrp->args.inode = ino;
+-	lrp->args.iomode = IOMODE_ANY;
+-	lrp->args.layout = lo;
+-	lrp->clp = NFS_SERVER(ino)->nfs_client;
+-	lrp->cred = lo->plh_lc_cred;
+-
+-	status = nfs4_proc_layoutreturn(lrp);
++	status = pnfs_send_layoutreturn(lo, stateid, IOMODE_ANY);
+ out:
+ 	dprintk("<-- %s status: %d\n", __func__, status);
+ 	return status;
 -- 
 1.9.3
 
