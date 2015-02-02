@@ -1,57 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f176.google.com ([209.85.213.176]:38085 "EHLO
-	mail-ig0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753496AbbBNCyT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Feb 2015 21:54:19 -0500
-Received: by mail-ig0-f176.google.com with SMTP id hl2so14332396igb.3
-        for <linux-nfs@vger.kernel.org>; Fri, 13 Feb 2015 18:54:18 -0800 (PST)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: linux-nfs@vger.kernel.org, dros@primarydata.com
-Subject: [PATCH] NFS: struct nfs_commit_info.lock must always point to inode->i_lock
-Date: Fri, 13 Feb 2015 21:54:16 -0500
-Message-Id: <1423882456-37662-1-git-send-email-trond.myklebust@primarydata.com>
+Received: from verein.lst.de ([213.95.11.211]:43938 "EHLO newverein.lst.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753790AbbBBMnx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 2 Feb 2015 07:43:53 -0500
+Date: Mon, 2 Feb 2015 13:43:49 +0100
+From: Christoph Hellwig <hch@lst.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Jeff Layton <jlayton@primarydata.com>, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com
+Subject: Re: [PATCH 10/20] nfsd: implement pNFS operations
+Message-ID: <20150202124349.GA15598@lst.de>
+References: <1421925006-24231-1-git-send-email-hch@lst.de> <1421925006-24231-11-git-send-email-hch@lst.de> <20150129203346.GA11064@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20150129203346.GA11064@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Commit 411a99adffb4f (nfs: clear_request_commit while holding i_lock)
-assumes that the nfs_commit_info always points to the inode->i_lock.
-For historical reasons, that is not the case for O_DIRECT writes.
+On Thu, Jan 29, 2015 at 03:33:46PM -0500, J. Bruce Fields wrote:
+> Is there no old_stateid case for layout stateids?  And is there any
+> chance of wraparound?  (I was comparing to check_stateid_generation and
+> expecting the only difference to be the handling of the generation-zero
+> case.)
 
-Cc: Weston Andros Adamson <dros@primarydata.com>
-Fixes: 411a99adffb4f ("nfs: clear_request_commit while holding i_lock")
-Cc: stable@vger.kernel.org # 3.17.x
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/direct.c         | 2 +-
- include/linux/nfs_xdr.h | 2 +-
- 2 files changed, 2 insertions(+), 2 deletions(-)
+12.5.3. explicitly mentions that LAYOUTGET and LAYOUTRETURN might be
+outstading and processed in parallel, and sais that pNFS operations
+use special stateid rules.  It does not explicitly say that old stateids
+are ok, but the model described in there very much requires the server
+to not reject them.
 
-diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index 7077521acdf4..e907c8cf732e 100644
---- a/fs/nfs/direct.c
-+++ b/fs/nfs/direct.c
-@@ -283,7 +283,7 @@ static void nfs_direct_release_pages(struct page **pages, unsigned int npages)
- void nfs_init_cinfo_from_dreq(struct nfs_commit_info *cinfo,
- 			      struct nfs_direct_req *dreq)
- {
--	cinfo->lock = &dreq->lock;
-+	cinfo->lock = &dreq->inode->i_lock;
- 	cinfo->mds = &dreq->mds_cinfo;
- 	cinfo->ds = &dreq->ds_cinfo;
- 	cinfo->dreq = dreq;
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 38d96ba935c2..9a39132fda49 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1351,7 +1351,7 @@ struct nfs_commit_completion_ops {
- };
- 
- struct nfs_commit_info {
--	spinlock_t			*lock;
-+	spinlock_t			*lock;	/* inode->i_lock */
- 	struct nfs_mds_commit_info	*mds;
- 	struct pnfs_ds_commit_info	*ds;
- 	struct nfs_direct_req		*dreq;	/* O_DIRECT request */
--- 
-2.1.0
+> > +static inline u64
+> > +layout_end(struct nfsd4_layout_seg *seg)
+> > +{
+> > +	u64 end = seg->offset + seg->length;
+> > +	return end >= seg->offset ? seg->length : NFS4_MAX_UINT64;
+> 
+> Shouldn't that be
+> 
+> 	return end >= seg->offset ? end : NFS_MAX_UINT64;
+> 
+> ?
 
+Yes.  This is an interesting one that sneaked in, and it turns out
+besides dislabling layout merging it didn't have adverse effects.
+
+> > +}
+> > +
+> > +static void
+> > +layout_update_len(struct nfsd4_layout_seg *lo, u64 end)
+> > +{
+> > +	if (end == NFS4_MAX_UINT64)
+> > +		lo->length = NFS4_MAX_UINT64;
+> 
+> Is this case necessary?
+> 
+> > +	else
+> > +		lo->length = end - lo->offset;
+
+
+We use NFS4_MAX_UINT64 as a magic value for layouts until the
+field end, as specified in the standard.  But because we do all
+kinds of calculations using the end value we need to propagate
+that magic from and to it.
+
+> Should any of these have OP_MODIFIES_SOMETHING set?  (Basically: would
+> we be in trouble if we succesfully completed one of these operations and
+> then weren't able to encode the result?)
+
+All but GETDEVICEINFO should get it.
+
+I've implemented all your suggested changes and will send out and update
+after doing a little more testing.
