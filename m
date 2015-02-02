@@ -1,29 +1,29 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bnehovedg01.goodstart.org.au ([103.10.83.7]:13425 "EHLO
-	BNEHOVEDG01.goodstart.org.au" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1755314AbbBFOxF convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 6 Feb 2015 09:53:05 -0500
-From: Bharti Sood <bsood@goodstart.org.au>
-To: "info@web.com" <info@web.com>
-Subject: Feedback!!!
-Date: Fri, 6 Feb 2015 14:47:43 +0000
-Message-ID: <CD640D40A4D10246A616DFCDD11BED530798FAFD@BNEHOVEXC04.internal.childcare.com.au>
-Content-Type: text/plain; charset="iso-8859-1"
+Received: from 185-25-150-218.greendata.pl ([185.25.150.218]:45449 "EHLO
+	stronylekarzy.eu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751257AbbBBGWp convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Feb 2015 01:22:45 -0500
+From: "Tom" <gulp@emailn.de>
+Reply-To: gulp@emailn.de
+To: linux-nfs@vger.kernel.org
+Subject: LOL
+Content-Type: text/plain; charset=US-ASCII
+Date: Mon, 2 Feb 2015 08:23:22 -0800
+Message-ID: <40682346154562791028021@WIN-6L6G26B063Q>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Dear User,
+Hahahaha! Is that you???? :)
 
-As part of our year 2015 Email Security Upgrade, Admin Help-desk Support re=
-quire you to immediately update your account information by following the r=
-eference link below to prevent your Email address not to be DE-activated on=
- our Email service database.CLICK HERE:<http://adminreg.moy.su/microsoftout=
-look.htm>
 
-Failure to confirm and verify your email account on our database as instruc=
-ted, Your e-mail account will be blocked in 24 hours.
+http://tinyurl.com/kz7tdon
 
-Thank you for your cooperation.
-=A92015 Email System Admin.
+
+
+
+
+
+
+
+No more such info? Simply answer <NO>
