@@ -1,124 +1,190 @@
-Return-Path: linux-kernel-owner@vger.kernel.org
-MIME-Version: 1.0
-In-Reply-To: <CA+5PVA7pUf630zF0Kqog+s6tZh=e+fiAbx-7m02n3zDmNYj+0Q@mail.gmail.com>
-References: <20150201031917.GA18622@wfg-t540p.sh.intel.com>
-	<20150202073334.GB9399@lst.de>
-	<CAHQdGtTmm2u07h2V1vddBosogAjZ1qRfmfr+3Ej65pL79iaQAQ@mail.gmail.com>
-	<CA+5PVA44Xq2_J2JANvT7K50yipOv4NV595b2WSnJK77j8PpKDA@mail.gmail.com>
-	<CAHQdGtQHZMuqWcF7gHKa8T+muYcsvMoqc4FPkyZehbLUQJjxBQ@mail.gmail.com>
-	<CA+5PVA7pUf630zF0Kqog+s6tZh=e+fiAbx-7m02n3zDmNYj+0Q@mail.gmail.com>
-Date: Tue, 3 Feb 2015 13:25:20 -0500
-Message-ID: <CAHQdGtQp1U93fUddH+s5J=uOY6xGSs0f_24F5vNjin+byFGSXA@mail.gmail.com>
-Subject: Re: [nfs] WARNING: CPU: 1 PID: 1392 at kernel/sched/core.c:7300 __might_sleep+0xbd/0xd0()
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Josh Boyer <jwboyer@fedoraproject.org>
-Cc: Christoph Hellwig <hch@lst.de>, Fengguang Wu <fengguang.wu@intel.com>,
-        LKML <linux-kernel@vger.kernel.org>, LKP <lkp@01.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
-Sender: linux-kernel-owner@vger.kernel.org
+Return-Path: linux-nfs-owner@vger.kernel.org
+Received: from mail-pa0-f48.google.com ([209.85.220.48]:60690 "EHLO
+	mail-pa0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753118AbbBCSpr (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Feb 2015 13:45:47 -0500
+Received: by mail-pa0-f48.google.com with SMTP id ey11so99633466pad.7
+        for <linux-nfs@vger.kernel.org>; Tue, 03 Feb 2015 10:45:47 -0800 (PST)
+From: Tom Haynes <thomas.haynes@primarydata.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH v6a 10/53] nfs41: create NFSv3 DS connection if specified
+Date: Tue,  3 Feb 2015 10:45:37 -0800
+Message-Id: <1422989137-14153-1-git-send-email-loghyr@primarydata.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Feb 3, 2015 at 1:06 PM, Josh Boyer <jwboyer@fedoraproject.org> wrote:
-> On Tue, Feb 3, 2015 at 1:02 PM, Trond Myklebust
-> <trond.myklebust@primarydata.com> wrote:
->> On Tue, Feb 3, 2015 at 12:40 PM, Josh Boyer <jwboyer@fedoraproject.org> wrote:
->>> On Mon, Feb 2, 2015 at 8:43 AM, Trond Myklebust
->>> <trond.myklebust@primarydata.com> wrote:
->>>> On Mon, Feb 2, 2015 at 2:33 AM, Christoph Hellwig <hch@lst.de> wrote:
->>>>>
->>>>> On Sat, Jan 31, 2015 at 07:19:17PM -0800, Fengguang Wu wrote:
->>>>> > Hi Christoph,
->>>>> >
->>>>> > FYI, this patch discloses an 100% reproducible boot warning.
->>>>> >
->>>>> > git://git.infradead.org/users/hch/pnfs.git flexfiles+pnfsd
->>>>> > commit 34c311faa8dcd323907c6075ab24b4d9e3c6dcb0 ("nfs: force version 4.1")
->>>>>
->>>>> The branch is just test branch for some new pnfs patches.  But the fact
->>>>> that forcing the protocol version to 4.1 makes your boot fail still seems
->>>>> like an interesting observation.
->>>>>
->>>>> >
->>>>> > +------------------------------------------------------------------+------------+------------+
->>>>> > |                                                                  | 457be31a00 | 34c311faa8 |
->>>>> > +------------------------------------------------------------------+------------+------------+
->>>>> > | boot_successes                                                   | 20         | 10         |
->>>>> > | early-boot-hang                                                  | 1          |            |
->>>>> > | boot_failures                                                    | 0          | 12         |
->>>>> > | Kernel_panic-not_syncing:Out_of_memory_and_no_killable_processes | 0          | 2          |
->>>>> > | backtrace:vfs_write                                              | 0          | 2          |
->>>>> > | backtrace:SyS_write                                              | 0          | 2          |
->>>>> > | backtrace:populate_rootfs                                        | 0          | 2          |
->>>>> > | backtrace:kernel_init_freeable                                   | 0          | 2          |
->>>>> > | WARNING:at_kernel/sched/core.c:#__might_sleep()                  | 0          | 10         |
->>>>> > | backtrace:nfs41_callback_svc                                     | 0          | 10         |
->>>>> > +------------------------------------------------------------------+------------+------------+
->>>>> >
->>>>> >
->>>>> > [   12.520894] Key type id_resolver registered
->>>>> > [   12.522364] Key type id_legacy registered
->>>>> > [   12.530530] ------------[ cut here ]------------
->>>>> > [   12.532061] WARNING: CPU: 1 PID: 1392 at kernel/sched/core.c:7300 __might_sleep+0xbd/0xd0()
->>>>> > [   12.534114] do not call blocking ops when !TASK_RUNNING; state=1 set at [<ffffffff810b63af>] prepare_to_wait+0x2f/0x90
->>>>> > [   12.536264] Modules linked in: rpcsec_gss_krb5 auth_rpcgss nfsv4 dns_resolver sg sr_mod cdrom ata_generic pata_acpi parport_pc floppy parport cirrus syscopyarea snd_pcm sysfillrect sysimgblt snd_timer ttm snd drm_kms_helper ata_piix soundcore libata drm pcspkr i2c_piix4
->>>>> > [   12.542569] CPU: 1 PID: 1392 Comm: nfsv4.1-svc Not tainted 3.19.0-rc5-wl-ga224126 #1
->>>>> > [   12.544509] Hardware name: Bochs Bochs, BIOS Bochs 01/01/2011
->>>>> > [   12.546252]  ffffffff81b7a3c0 ffff88007f627bd8 ffffffff818a735f 0000000000003658
->>>>> > [   12.548252]  ffff88007f627c28 ffff88007f627c18 ffffffff810725ea ffff88007f627bf8
->>>>> > [   12.550261]  ffffffff81b90e59 00000000000004d9 0000000000000000 0000000000000001
->>>>> > [   12.552359] Call Trace:
->>>>> > [   12.553868]  [<ffffffff818a735f>] dump_stack+0x4c/0x65
->>>>> > [   12.555666]  [<ffffffff810725ea>] warn_slowpath_common+0x8a/0xc0
->>>>> > [   12.557512]  [<ffffffff81072666>] warn_slowpath_fmt+0x46/0x50
->>>>> > [   12.559338]  [<ffffffff810a0104>] ? try_to_wake_up+0x1f4/0x380
->>>>> > [   12.561154]  [<ffffffff810b63af>] ? prepare_to_wait+0x2f/0x90
->>>>> > [   12.562993]  [<ffffffff810b63af>] ? prepare_to_wait+0x2f/0x90
->>>>> > [   12.564793]  [<ffffffff810986fd>] __might_sleep+0xbd/0xd0
->>>>> > [   12.566553]  [<ffffffff811c81e7>] kmem_cache_alloc_trace+0x1d7/0x250
->>>>> > [   12.568383]  [<ffffffff81095b0e>] ? groups_alloc+0x3e/0x130
->>>>> > [   12.570159]  [<ffffffff81095b0e>] groups_alloc+0x3e/0x130
->>>>> > [   12.571878]  [<ffffffff818781be>] svcauth_unix_accept+0x16e/0x290
->>>>> > [   12.573677]  [<ffffffff81876f11>] svc_authenticate+0xe1/0xf0
->>>>> > [   12.575405]  [<ffffffff818738f4>] svc_process_common+0x224/0x680
->>>>> > [   12.577184]  [<ffffffff818740d4>] bc_svc_process+0x1c4/0x260
->>>>> > [   12.578904]  [<ffffffffa01c3b64>] nfs41_callback_svc+0x104/0x1b0 [nfsv4]
->>>>> > [   12.580752]  [<ffffffff810b6790>] ? wait_woken+0xc0/0xc0
->>>>> > [   12.582441]  [<ffffffffa01c3a60>] ? nfs4_callback_svc+0x60/0x60 [nfsv4]
->>>>> > [   12.584268]  [<ffffffff81091fcf>] kthread+0xef/0x110
->>>>> > [   12.585859]  [<ffffffff81091ee0>] ? kthread_create_on_node+0x180/0x180
->>>>> > [   12.587572]  [<ffffffff818af9fc>] ret_from_fork+0x7c/0xb0
->>>>> > [   12.589175]  [<ffffffff81091ee0>] ? kthread_create_on_node+0x180/0x180
->>>>> > [   12.590895] ---[ end trace 7b39108134f7677c ]---
->>>>> > RESULT_ROOT=/result/vm-vp-2G/boot/1/debian-x86_64-2015-01-13.cgz/x86_64-rhel/a224126be542547c3d3040d2b4c145c0c024cc04/0
->>>>>
->>>> <snip away the looong .config>
->>>>
->>>> That warning should hopefully be fixed by the following commit by Jeff:
->>>>   http://git.linux-nfs.org/?p=trondmy/linux-nfs.git;a=commitdiff;h=6ffa30d3f734d4f6b478081dfc09592021028f90
->>>>
->>>> I've already pulled it into my linux-next branch.
->>>
->>> If that's marked for stable, why wouldn't it go to Linus to get into
->>> the final 3.19 release?
->>
->> Even stable patches need soak time. This is something that came up as
->> a result of a new sleep test that was added to 3.19-rc, so we've lived
->> with the problem for a while. It is a real bug, so it does need to be
->> solved, however we can afford to give ourselves an extra week to make
->> sure that the timeout we're now introducing is not a problem.
->
-> OK, that's totally fair.
->
-> To help, I've added the patch to Fedora's rawhide builds.  We got a
-> bug report with this exact issue, so hopefully we'll get a bit more
-> testing coverage that way too.
->
+From: Peng Tao <tao.peng@primarydata.com>
 
-Thanks! I very much appreciate that.
+Signed-off-by: Peng Tao <tao.peng@primarydata.com>
+Signed-off-by: Tom Haynes <Thomas.Haynes@primarydata.com>
+---
+ fs/nfs/nfs4super.c |  3 ++
+ fs/nfs/pnfs.h      |  7 ++++-
+ fs/nfs/pnfs_nfs.c  | 88 +++++++++++++++++++++++++++++++++++++++++++++++++++---
+ 3 files changed, 93 insertions(+), 5 deletions(-)
 
-
+diff --git a/fs/nfs/nfs4super.c b/fs/nfs/nfs4super.c
+index 6f340f0..48cea3c 100644
+--- a/fs/nfs/nfs4super.c
++++ b/fs/nfs/nfs4super.c
+@@ -346,6 +346,9 @@ out:
+ 
+ static void __exit exit_nfs_v4(void)
+ {
++	/* Not called in the _init(), conditionally loaded */
++	nfs4_pnfs_v3_ds_connect_unload();
++
+ 	unregister_nfs_version(&nfs_v4);
+ 	nfs4_unregister_sysctl();
+ 	nfs_idmap_quit();
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 70ffec1..c398821 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -323,9 +323,10 @@ void pnfs_generic_write_commit_done(struct rpc_task *task, void *data);
+ void nfs4_pnfs_ds_put(struct nfs4_pnfs_ds *ds);
+ struct nfs4_pnfs_ds *nfs4_pnfs_ds_add(struct list_head *dsaddrs,
+ 				      gfp_t gfp_flags);
++void nfs4_pnfs_v3_ds_connect_unload(void);
+ void nfs4_pnfs_ds_connect(struct nfs_server *mds_srv, struct nfs4_pnfs_ds *ds,
+ 			  struct nfs4_deviceid_node *devid, unsigned int timeo,
+-			  unsigned int retrans, u32 versoin, u32 minor_version,
++			  unsigned int retrans, u32 version, u32 minor_version,
+ 			  rpc_authflavor_t au_flavor);
+ struct nfs4_pnfs_ds_addr *nfs4_decode_mp_ds_addr(struct net *net,
+ 						 struct xdr_stream *xdr,
+@@ -615,6 +616,10 @@ static inline struct nfs4_threshold *pnfs_mdsthreshold_alloc(void)
+ 	return NULL;
+ }
+ 
++static inline void nfs4_pnfs_v3_ds_connect_unload(void)
++{
++}
++
+ #endif /* CONFIG_NFS_V4_1 */
+ 
+ #endif /* FS_NFS_PNFS_H */
+diff --git a/fs/nfs/pnfs_nfs.c b/fs/nfs/pnfs_nfs.c
+index ad211a4..23c851d 100644
+--- a/fs/nfs/pnfs_nfs.c
++++ b/fs/nfs/pnfs_nfs.c
+@@ -10,6 +10,7 @@
+ #include <linux/nfs_fs.h>
+ #include <linux/nfs_page.h>
+ #include <linux/sunrpc/addr.h>
++#include <linux/module.h>
+ 
+ #include "nfs4session.h"
+ #include "internal.h"
+@@ -550,7 +551,75 @@ static void nfs4_clear_ds_conn_bit(struct nfs4_pnfs_ds *ds)
+ 	wake_up_bit(&ds->ds_state, NFS4DS_CONNECTING);
+ }
+ 
+-static int _nfs4_pnfs_ds_connect(struct nfs_server *mds_srv,
++static struct nfs_client *(*get_v3_ds_connect)(
++			struct nfs_client *mds_clp,
++			const struct sockaddr *ds_addr,
++			int ds_addrlen,
++			int ds_proto,
++			unsigned int ds_timeo,
++			unsigned int ds_retrans,
++			rpc_authflavor_t au_flavor);
++
++static bool load_v3_ds_connect(void)
++{
++	if (!get_v3_ds_connect) {
++		get_v3_ds_connect = symbol_request(nfs3_set_ds_client);
++		WARN_ON_ONCE(!get_v3_ds_connect);
++	}
++
++	return(get_v3_ds_connect != NULL);
++}
++
++void __exit nfs4_pnfs_v3_ds_connect_unload(void)
++{
++	if (get_v3_ds_connect) {
++		symbol_put(nfs3_set_ds_client);
++		get_v3_ds_connect = NULL;
++	}
++}
++EXPORT_SYMBOL_GPL(nfs4_pnfs_v3_ds_connect_unload);
++
++static int _nfs4_pnfs_v3_ds_connect(struct nfs_server *mds_srv,
++				 struct nfs4_pnfs_ds *ds,
++				 unsigned int timeo,
++				 unsigned int retrans,
++				 rpc_authflavor_t au_flavor)
++{
++	struct nfs_client *clp = ERR_PTR(-EIO);
++	struct nfs4_pnfs_ds_addr *da;
++	int status = 0;
++
++	dprintk("--> %s DS %s au_flavor %d\n", __func__,
++		ds->ds_remotestr, au_flavor);
++
++	if (!load_v3_ds_connect())
++		goto out;
++
++	list_for_each_entry(da, &ds->ds_addrs, da_node) {
++		dprintk("%s: DS %s: trying address %s\n",
++			__func__, ds->ds_remotestr, da->da_remotestr);
++
++		clp = get_v3_ds_connect(mds_srv->nfs_client,
++					(struct sockaddr *)&da->da_addr,
++					da->da_addrlen, IPPROTO_TCP,
++					timeo, retrans, au_flavor);
++		if (!IS_ERR(clp))
++			break;
++	}
++
++	if (IS_ERR(clp)) {
++		status = PTR_ERR(clp);
++		goto out;
++	}
++
++	smp_wmb();
++	ds->ds_clp = clp;
++	dprintk("%s [new] addr: %s\n", __func__, ds->ds_remotestr);
++out:
++	return status;
++}
++
++static int _nfs4_pnfs_v4_ds_connect(struct nfs_server *mds_srv,
+ 				 struct nfs4_pnfs_ds *ds,
+ 				 unsigned int timeo,
+ 				 unsigned int retrans,
+@@ -562,7 +631,7 @@ static int _nfs4_pnfs_ds_connect(struct nfs_server *mds_srv,
+ 	int status = 0;
+ 
+ 	dprintk("--> %s DS %s au_flavor %d\n", __func__, ds->ds_remotestr,
+-		mds_srv->nfs_client->cl_rpcclient->cl_auth->au_flavor);
++		au_flavor);
+ 
+ 	list_for_each_entry(da, &ds->ds_addrs, da_node) {
+ 		dprintk("%s: DS %s: trying address %s\n",
+@@ -609,8 +678,19 @@ void nfs4_pnfs_ds_connect(struct nfs_server *mds_srv, struct nfs4_pnfs_ds *ds,
+ 	if (test_and_set_bit(NFS4DS_CONNECTING, &ds->ds_state) == 0) {
+ 		int err = 0;
+ 
+-		err = _nfs4_pnfs_ds_connect(mds_srv, ds, timeo, retrans,
+-					    minor_version, au_flavor);
++		if (version == 3) {
++			err = _nfs4_pnfs_v3_ds_connect(mds_srv, ds, timeo,
++						       retrans, au_flavor);
++		} else if (version == 4) {
++			err = _nfs4_pnfs_v4_ds_connect(mds_srv, ds, timeo,
++						       retrans, minor_version,
++						       au_flavor);
++		} else {
++			dprintk("%s: unsupported DS version %d\n", __func__,
++				version);
++			err = -EPROTONOSUPPORT;
++		}
++
+ 		if (err)
+ 			nfs4_mark_deviceid_unavailable(devid);
+ 		nfs4_clear_ds_conn_bit(ds);
 -- 
-Trond Myklebust
-Linux NFS client maintainer, PrimaryData
-trond.myklebust@primarydata.com
+1.9.3
+
