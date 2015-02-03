@@ -1,57 +1,105 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp-o-3.desy.de ([131.169.56.156]:38560 "EHLO smtp-o-3.desy.de"
+Received: from mx143.netapp.com ([216.240.21.24]:27293 "EHLO mx143.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750710AbbBEHba (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 5 Feb 2015 02:31:30 -0500
-Received: from smtp-map-1.desy.de (smtp-map-1.desy.de [131.169.56.66])
-	by smtp-o-3.desy.de (DESY-O-3) with ESMTP id 9E629280207
-	for <linux-nfs@vger.kernel.org>; Thu,  5 Feb 2015 08:31:28 +0100 (CET)
-Received: from ZITSWEEP4.win.desy.de (zitsweep4.win.desy.de [131.169.97.98])
-	by smtp-map-1.desy.de (DESY_MAP_1) with ESMTP id 9139B13E8E
-	for <linux-nfs@vger.kernel.org>; Thu,  5 Feb 2015 08:31:28 +0100 (MET)
-Date: Thu, 5 Feb 2015 08:31:27 +0100 (CET)
-From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
-To: dE <de.techno@gmail.com>
-Cc: linux-nfs@vger.kernel.org
-Message-ID: <1196552310.744640.1423121487541.JavaMail.zimbra@desy.de>
-In-Reply-To: <54D237A5.1050302@gmail.com>
-References: <54D237A5.1050302@gmail.com>
-Subject: Re: Cant get to export this particular directory.
+	id S966485AbbBCVJu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 3 Feb 2015 16:09:50 -0500
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+To: <fstests@vger.kernel.org>, <linux-nfs@vger.kernel.org>,
+        <hch@infradead.org>
+Subject: [PATCH] fsx: check for filesystem support of FALLOCATE_FL_KEEP_SIZE
+Date: Tue, 3 Feb 2015 16:09:43 -0500
+Message-ID: <1422997783-22484-1-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
+The NFS implementation of fallocate() does not support passing the
+KEEP_SIZE flag by itself, causing tests to randomly fail.
 
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+---
+ ltp/fsx.c | 18 +++++++++++++-----
+ 1 file changed, 13 insertions(+), 5 deletions(-)
 
-are you sure that your clients mount with ipv6 (as your export ipv6 only)?
+diff --git a/ltp/fsx.c b/ltp/fsx.c
+index 3709419..0bb8ae8 100644
+--- a/ltp/fsx.c
++++ b/ltp/fsx.c
+@@ -142,6 +142,7 @@ int	randomoplen = 1;		/* -O flag disables it */
+ int	seed = 1;			/* -S flag */
+ int     mapped_writes = 1;              /* -W flag disables */
+ int     fallocate_calls = 1;            /* -F flag disables */
++int     keep_size_calls = 1;            /* -K flag disables */
+ int     punch_hole_calls = 1;           /* -H flag disables */
+ int     zero_range_calls = 1;           /* -z flag disables */
+ int	collapse_range_calls = 1;	/* -C flag disables */
+@@ -907,7 +908,7 @@ do_zero_range(unsigned offset, unsigned length)
+ {
+ 	unsigned end_offset;
+ 	int mode = FALLOC_FL_ZERO_RANGE;
+-	int keep_size;
++	int keep_size = 0;
+ 
+ 	if (length == 0) {
+ 		if (!quiet && testcalls > simulatedopcount)
+@@ -916,7 +917,8 @@ do_zero_range(unsigned offset, unsigned length)
+ 		return;
+ 	}
+ 
+-	keep_size = random() % 2;
++	if (keep_size_calls)
++		keep_size = random() % 2;
+ 
+ 	end_offset = keep_size ? 0 : offset + length;
+ 
+@@ -1018,7 +1020,7 @@ void
+ do_preallocate(unsigned offset, unsigned length)
+ {
+ 	unsigned end_offset;
+-	int keep_size;
++	int keep_size = 0;
+ 
+         if (length == 0) {
+                 if (!quiet && testcalls > simulatedopcount)
+@@ -1027,7 +1029,8 @@ do_preallocate(unsigned offset, unsigned length)
+                 return;
+         }
+ 
+-	keep_size = random() % 2;
++	if (keep_size_calls)
++		keep_size = random() % 2;
+ 
+ 	end_offset = keep_size ? 0 : offset + length;
+ 
+@@ -1493,7 +1496,7 @@ main(int argc, char **argv)
+ 
+ 	setvbuf(stdout, (char *)0, _IOLBF, 0); /* line buffered stdout */
+ 
+-	while ((ch = getopt(argc, argv, "b:c:dfl:m:no:p:qr:s:t:w:xyAD:FHzCLN:OP:RS:WZ"))
++	while ((ch = getopt(argc, argv, "b:c:dfl:m:no:p:qr:s:t:w:xyAD:FKHzCLN:OP:RS:WZ"))
+ 	       != EOF)
+ 		switch (ch) {
+ 		case 'b':
+@@ -1590,6 +1593,9 @@ main(int argc, char **argv)
+ 		case 'F':
+ 			fallocate_calls = 0;
+ 			break;
++		case 'K':
++			keep_size_calls = 0;
++			break;
+ 		case 'H':
+ 			punch_hole_calls = 0;
+ 			break;
+@@ -1751,6 +1757,8 @@ main(int argc, char **argv)
+ 
+ 	if (fallocate_calls)
+ 		fallocate_calls = test_fallocate(0);
++	if (keep_size_calls)
++		keep_size_calls = test_fallocate(FALLOC_FL_KEEP_SIZE);
+ 	if (punch_hole_calls)
+ 		punch_hole_calls = test_fallocate(FALLOC_FL_PUNCH_HOLE |
+ 						  FALLOC_FL_KEEP_SIZE);
+-- 
+2.2.2
 
-Tigran.
-
------ Original Message -----
-> From: "dE" <de.techno@gmail.com>
-> To: linux-nfs@vger.kernel.org
-> Sent: Wednesday, February 4, 2015 4:15:49 PM
-> Subject: Cant get to export this particular directory.
-
-> Hi.
-> 
-> I'm trying to export a particular directory with these parameters --
-> 
-> /home/test/huge/temp_small/subdir
-> fc00::5000/124(ro,anonuid=1000,anongid=1000,subtree_check)
-> 
-> For all subdirectories in temp_small, the client fails to mount saying
-> permission denied.
-> 
-> mount.nfs: access denied by server while mounting.....
-> 
-> For any other place it works.
-> 
-> And because rpc.mountd has no logging features, I got no idea what's
-> happening.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
