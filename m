@@ -1,73 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([173.255.197.46]:35248 "EHLO fieldses.org"
+Received: from verein.lst.de ([213.95.11.211]:47469 "EHLO newverein.lst.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933306AbbBBTs1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 2 Feb 2015 14:48:27 -0500
-Date: Mon, 2 Feb 2015 14:48:26 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Dave Chinner <david@fromorbit.com>
-Cc: Christoph Hellwig <hch@lst.de>, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, Jeff Layton <jlayton@primarydata.com>,
-        xfs@oss.sgi.com
+	id S1756108AbbBCSfi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 3 Feb 2015 13:35:38 -0500
+Date: Tue, 3 Feb 2015 19:35:33 +0100
+From: Christoph Hellwig <hch@lst.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Dave Chinner <david@fromorbit.com>, Christoph Hellwig <hch@lst.de>,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        Jeff Layton <jlayton@primarydata.com>, xfs@oss.sgi.com
 Subject: Re: [PATCH 16/20] xfs: pass a 64-bit count argument to
- xfs_iomap_write_unwritten
-Message-ID: <20150202194826.GG22301@fieldses.org>
-References: <1421925006-24231-1-git-send-email-hch@lst.de>
- <1421925006-24231-17-git-send-email-hch@lst.de>
- <20150129205232.GB11064@fieldses.org>
- <20150202073024.GA9399@lst.de>
- <20150202192404.GI6282@dastard>
- <20150202194300.GN6282@dastard>
+	xfs_iomap_write_unwritten
+Message-ID: <20150203183533.GA16929@lst.de>
+References: <1421925006-24231-1-git-send-email-hch@lst.de> <1421925006-24231-17-git-send-email-hch@lst.de> <20150129205232.GB11064@fieldses.org> <20150202073024.GA9399@lst.de> <20150202192404.GI6282@dastard> <20150202194300.GN6282@dastard> <20150202194826.GG22301@fieldses.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20150202194300.GN6282@dastard>
+In-Reply-To: <20150202194826.GG22301@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Feb 03, 2015 at 06:43:00AM +1100, Dave Chinner wrote:
-> On Tue, Feb 03, 2015 at 06:24:04AM +1100, Dave Chinner wrote:
-> > On Mon, Feb 02, 2015 at 08:30:24AM +0100, Christoph Hellwig wrote:
-> > > On Thu, Jan 29, 2015 at 03:52:32PM -0500, J. Bruce Fields wrote:
-> > > > Who can give us ACKs on these last five fs/xfs patches?  (And is it
-> > > > going to cause trouble if they go in through the nfsd tree?)
-> > > 
-> > > 
-> > > We'd need ACKs from Dave.  He already has pulled in two patches so
-> > > we might run into some conflicts.  Maybe the best idea is to add the
-> > > exportfs patch to both the XFS and nfsd trees, so each of them can
-> > > pull in the rest?  Or we could commit the two XFS preparation patches
-> > > to both tree and get something that compiles and works in the nfsd
-> > > tree.
-> > 
-> > This patch has already been committed to the XFS repo.
+On Mon, Feb 02, 2015 at 02:48:26PM -0500, J. Bruce Fields wrote:
+> Previously: http://lkml.kernel.org/r/20150106175611.GA16413@lst.de
 > 
-> And it looks like I missed the sync transaction on growfs patch,
-> too, so I'll commit that one later today.
+> 	>       - any advice on testing?  Is there was some simple
+> 	>       virtual setup that would allow any loser with no special
+> 	>       hardware (e.g., me) to check whether they've broken the
+> 	>       block server?
 > 
-> As to the pNFSD specific changes, I haven't really looked them over
-> in any great detail yet. My main concern is that there are no
-> specific regression tests for this yet, I'm not sure how we go about
-> verifying it actually works properly and we don't inadvertantly
-> break it in the future. Christoph?
+> 	Run two kvm VMs that share the same disk.  Create an XFS
+> 	filesystem on the MDS, and export it.  If the client has blkmapd
+> 	running (on Debian it needs to be started manually) it will use
+> 	pNFS for accessing the filesystem.  Verify that using the
+> 	per-operation counters in /proc/self/mounstats.  Repeat with
+> 	additional clients as nessecary.
+> 
+> 	Alternatively set up a simple iSCSI target using tgt or lio and
+> 	connect to it from multiple clients.
+> 
+> Which sounds reasonable to me, but I haven't tried to incorporate this
+> into my regression testing yet.
 
-Previously: http://lkml.kernel.org/r/20150106175611.GA16413@lst.de
+Additionally I can offer the following script to generate recalls,
+which don't really happen during normal operation.  I don't
+really know how to write a proper testcase that coordinates access
+to the exported filesystem and nfs unless it runs locally on the same node,
+though.  It would need some higher level, network aware test harness:
 
-	>       - any advice on testing?  Is there was some simple
-	>       virtual setup that would allow any loser with no special
-	>       hardware (e.g., me) to check whether they've broken the
-	>       block server?
+----- snip -----
+#!/bin/sh
 
-	Run two kvm VMs that share the same disk.  Create an XFS
-	filesystem on the MDS, and export it.  If the client has blkmapd
-	running (on Debian it needs to be started manually) it will use
-	pNFS for accessing the filesystem.  Verify that using the
-	per-operation counters in /proc/self/mounstats.  Repeat with
-	additional clients as nessecary.
+set +x
 
-	Alternatively set up a simple iSCSI target using tgt or lio and
-	connect to it from multiple clients.
+# wait for grace period
+touch /mnt/nfs1/foo
 
-Which sounds reasonable to me, but I haven't tried to incorporate this
-into my regression testing yet.
+dd if=/dev/zero of=/mnt/nfs1/foo bs=128M count=32 conv=fdatasync oflag=direct &
 
---b.
+sleep 2
+
+echo "" > /mnt/test/foo && echo "recall done"
