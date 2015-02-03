@@ -1,85 +1,90 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:33953 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752281AbbBTVC6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 20 Feb 2015 16:02:58 -0500
-Date: Sat, 21 Feb 2015 08:02:48 +1100
-From: NeilBrown <neilb@suse.de>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: NFS <linux-nfs@vger.kernel.org>, Nix <nix@esperi.org.uk>,
-        "J. Bruce Fields" <bfields@fieldses.org>
-Subject: [PATCH] NFS: nfs_prime_dcache() needs fh to be set.
-Message-ID: <20150221080248.0a487903@notabene.brown>
+Received: from icebox.esperi.org.uk ([81.187.191.129]:35670 "EHLO
+	mail.esperi.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S965466AbbBCAZU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Feb 2015 19:25:20 -0500
+Received: from spindle.srvr.nix (nix@spindle.srvr.nix [192.168.14.15])
+	by mail.esperi.org.uk (8.14.9/8.14.8) with ESMTP id t130PIDj003980
+	for <linux-nfs@vger.kernel.org>; Tue, 3 Feb 2015 00:25:18 GMT
+From: Nix <nix@esperi.org.uk>
+To: NFS list <linux-nfs@vger.kernel.org>
+Subject: what on earth is going on here? paths above mountpoints turn into "(unreachable)"
+Date: Tue, 03 Feb 2015 00:25:18 +0000
+Message-ID: <87iofju9ht.fsf@spindle.srvr.nix>
 MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
- boundary="Sig_/gi2kl3hP=3_xYl.2a=V1hW4"; protocol="application/pgp-signature"
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/gi2kl3hP=3_xYl.2a=V1hW4
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+This is with client and server both running NFSv3 on 3.18.4 (an upgrade
+to .5 is on the cards soon). (This is *not* the same client I've been
+reporting the panic on, though the server is the same, and this client
+too has been seeing the panic. Not that that's relevant, since that's a
+bug on shutdown, and this isn't. Indeed this may not be a bug at all,
+but it's new behaviour with 3.18.x, and it breaks programs, and it's
+weird.)
 
+The server says (for this client):
 
-In some circumstances, READDIRPLUS does not return a filehandle.
-A particular example is that the Linux NFSv3 server does not return a
-filehandle for directories that are mounted on.
+/usr/archive -fsid=25,root_squash,async,subtree_check,crossmnt mutilate(rw,root_squash,insecure)
+/usr/archive/series -fsid=29,root_squash,async,subtree_check mutilate(rw,root_squash,insecure)
 
-When that happens, we mustn't call nfs_prime_cache, as it will assume
-that the filehandle has changed and will invalidate the dentry.  This
-will unmount any filesystem mounted at or below that point.
+The client says:
 
-This bug has been present since 2.6.37 when commit d39ab9de3b80da
-introduced nfs_prime_dcache.
-It has become easier to trigger since commit 311324ad17136
-in Linux 3.15 increased the usage of READDIRPLUS on directories that
-were already largely in cache.
+package.srvr.nix:/usr/archive /usr/archive nfs defaults,rw
 
-Note that if the server actually returns a different file handle
-for a mounted-on directory, that will still force an unmount.
-Possibly Linux should refuse to mount anything on a directory which
-has a 'FH_VOLATILE_ANY' file handle.
+(i.e. relying on the crossmnt, though I have just changed this to
+explicitly mount both mount points, while preserving the crossmnt on the
+parent for the sake of other clients that can't mount both because
+they're using libnfs and need to follow symlinks from other places under
+/usr/archive/ into /usr/archive/series, and the software is too stupid
+to understand that there might be more than one mount point involved.)
 
-Reported-and-tested-by: Nix <nix@esperi.org.uk>
-Signed-off-by: NeilBrown <neilb@suse.de>
-Fixes: d39ab9de3b80da5835049b1c3b49da4e84e01c07
-Cc: stable@vger.kernel.org (v2.6.27+)
+I'm seeing this bizarre output after a long delay (memory pressure not
+required: vapoursynth, which was running here, is using a couple of gig
+out of 16GiB, and the machine has 12GiB in buffers/cache):
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 9b0c55cb2a2e..43e29e3e3697 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -541,7 +541,7 @@ int nfs_readdir_page_filler(nfs_readdir_descriptor_t *d=
-esc, struct nfs_entry *en
-=20
- 		count++;
-=20
--		if (desc->plus !=3D 0)
-+		if (desc->plus !=3D 0 && entry->fh->size)
- 			nfs_prime_dcache(desc->file->f_path.dentry, entry);
-=20
- 		status =3D nfs_readdir_add_to_array(entry, page);
+FileNotFoundError: [Errno 2] No such file or directory: '(unreachable)/Orphan-Black/1'
+Failed to retrieve output node. Invalid index specified?
+pipe:: Invalid data found when processing input
+nix@mutilate 45 .../Orphan-Black/1% pwd -P
+/usr/archive/series/Orphan-Black/1
+# Well, doesn't this cwd look weird.
+nix@mutilate 46 ...//1% ls -l /proc/self/cwd
+lrwxrwxrwx 1 nix users 0 Feb  2 23:28 /proc/self/cwd -> /Orphan-Black/1
+nix@mutilate 49 .../Orphan-Black/1% ls -id .
+624194 .
+# Try going out of the directory and back into it again.
+nix@mutilate 50 .../Orphan-Black/1% cd -
+/tmp
+nix@mutilate 51 /tmp% cd -
+/usr/archive/series/Orphan-Black/1
+# Same inode, but now the cwd is valid!
+nix@mutilate 52 .../Orphan-Black/1% ls -id .
+624194 .
+nix@mutilate 54 .../Orphan-Black/1% ls -l /proc/self/cwd
+lrwxrwxrwx 1 nix users 0 Feb  2 23:28 /proc/self/cwd -> /usr/archive/series/Orphan-Black/1
 
---Sig_/gi2kl3hP=3_xYl.2a=V1hW4
-Content-Type: application/pgp-signature
-Content-Description: OpenPGP digital signature
+So something about the mountpoint is expiring away, as if it had been
+umount -l'ed. No automounter of any kind is running, and (obviously) it
+*wasn't* umount -l'ed.
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2
+I guess by tomorrow I'll know if this is crossmnt-related, at least... I
+know crossmnt is considered bad and evil: is this sort of thing why?
 
-iQIVAwUBVOeg+Dnsnt1WYoG5AQLn2w//XrCpID3cBy/OfgAZltvDOu9z5xh6OaDR
-WhjDykX5KkPp7gJ4abR3q3q+ejhl7quFRosW8DNZQod68GrnpgAG2T3TerHAKZIA
-YlHYKFqGBh4UR7ugfH3b4ZcKTtUveXp4wLhUomqgkWWAjOLk+VGv4KP4ICQdph2t
-1jvSG5GhJPqumA1ksquM7prHtCkM3dbPY1O6he1NQVZ7tV8xd2yd15sor2def3u2
-mjNM0WdSHNDj1cw8/zH4O/kCVkm9PgqQBqVB/3JBWFSYoIpFivkaMT1E9C2NUOfI
-zMmjxwxg8LFRi+3CsXDhHrO5R+DHJmAF7ZAf8FgSDiDQsnl1iyzjqzGw9B+kpCJH
-Xt9ItAUbdZ7qzS+HbGoHN+T3SYHz1PYt6C5Woie+7zaNrGGSAjZk5pzQN/gzjpcK
-R7DQEMFy3FByTMUAC8pKpC/VrBUs7yliOZWiNypjDdD6f96GmXg2ZSeLqRGuLY1R
-lfpexooj8SsxgvTqsQe47il1P2kEV2gcAKkvfUHSejE+iKEjF1uWV6TZnu7ZrH7w
-q7XbeFaCZL7R6cv7xWVfRsrWoK/9L5MIfspZ9249eMVfvWBvabWyNIkBe9kRp/5G
-XuedCa5AhVw0R97Qomar/h2IJ2JePczRB2b8Xknb1UUq+pZlsU2toTeVWNjrqvQg
-CKQKDPyfJ68=
-=XI28
------END PGP SIGNATURE-----
+The filesystem being NFS-exported is on a USB-attached disk that spins
+down when not in use, but I'd not expect that to do anything other than
+cause delays on first access (and indeed even if I turn off spindown
+this still happens, even though the filesystem is perfectly accessible,
+from the server and indeed from the client: it's just... disconnected,
+which seems to greatly annoy a lot of programs.)
 
---Sig_/gi2kl3hP=3_xYl.2a=V1hW4--
+If it happens again I'll see if I can arrange to have two processes, one
+with a cwd in the full path, one with a cwd in the truncated one. That
+at least will tell us whether this is some sort of expiry thing attached
+to one mountpoint, and going back into it is de-expiring it for all
+users under that mountpoint, or whether we really are seeing a new mount
+here, somehow (how, without mount(2) ever being called?!).
+
+-- 
+NULL && (void)
