@@ -1,83 +1,38 @@
-Return-Path: linux-kernel-owner@vger.kernel.org
+Return-Path: linux-nfs-owner@vger.kernel.org
+Received: from mail-wg0-f54.google.com ([74.125.82.54]:37433 "EHLO
+	mail-wg0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932877AbbBDPQK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Feb 2015 10:16:10 -0500
+Received: by mail-wg0-f54.google.com with SMTP id b13so2250476wgh.13
+        for <linux-nfs@vger.kernel.org>; Wed, 04 Feb 2015 07:16:09 -0800 (PST)
+Received: from [192.168.1.2] ([59.89.23.52])
+        by mx.google.com with ESMTPSA id pp10sm3134870wjc.31.2015.02.04.07.16.04
+        for <linux-nfs@vger.kernel.org>
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Wed, 04 Feb 2015 07:16:05 -0800 (PST)
+Message-ID: <54D237A5.1050302@gmail.com>
+Date: Wed, 04 Feb 2015 20:45:49 +0530
+From: dE <de.techno@gmail.com>
 MIME-Version: 1.0
-In-Reply-To: <20150204225230.2cc2749d@uranus>
-References: <20150125220604.090121ae@neptune.home>
-	<CAHQdGtSNmera4P6ocFGbLhjmESB8oV9zKE_x_zTm=5qUg7e7Ug@mail.gmail.com>
-	<1422661761.21259.5.camel@primarydata.com>
-	<20150204180833.4d4a22cf@neptune.home>
-	<CAHQdGtT8OKR2hbZzpTOAYbtW1V7J0cSctxVfYq8QqobLcvGyhQ@mail.gmail.com>
-	<20150204225230.2cc2749d@uranus>
-Date: Wed, 4 Feb 2015 17:29:53 -0500
-Message-ID: <CAHQdGtRB_edmLuxfxgVJRZ7yNB29Hq8arjmRXYzDoYF3tfQAyQ@mail.gmail.com>
-Subject: Re: [Patch] sunrpc: NULL utsname dereference on NFS umount during
- namespace cleanup
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: =?UTF-8?Q?Bruno_Pr=C3=A9mont?= <bonbons@linux-vserver.org>
-Cc: Nix <nix@esperi.org.uk>, "J. Bruce Fields" <bfields@fieldses.org>,
-        "Eric W. Biederman" <ebiederm@xmission.com>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
-Sender: linux-kernel-owner@vger.kernel.org
+To: linux-nfs@vger.kernel.org
+Subject: Cant get to export this particular directory.
+Content-Type: text/plain; charset=utf-8; format=flowed
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Feb 4, 2015 at 4:52 PM, Bruno Prémont <bonbons@linux-vserver.org> wrote:
-> On Wed, 4 Feb 2015 14:06:48 Trond Myklebust wrote:
->> On Wed, Feb 4, 2015 at 12:08 PM, Bruno Prémont wrote:
->> > On Fri, 30 January 2015 Trond Myklebust wrote:
->> > > On Sun, 2015-01-25 at 16:55 -0500, Trond Myklebust wrote:
->> > > > On Sun, Jan 25, 2015 at 4:06 PM, Bruno Prémont wrote:
->> > > > > On a system running home-brown container (mntns, utsns,
->> > > > > pidns, netns) with NFS mount-point bind-mounted into the
->> > > > > container I hit the following trace if nfs filesystem is
->> > > > > first umount()ed in init ns and then later umounted from
->> > > > > container when the container exists.
->> > > > >
->> > > > > <snip trace>
->> > > >
->> > > > We should rather change rpcb_create() to pass the nodename from
->> > > > the parent. The point is that the rpc_clnt->cl_nodename is used
->> > > > in various different contexts (for instance in the AUTH_SYS
->> > > > credential) where it isn't always appropriate to have it set to
->> > > > an empty string.
->> > >
->> > > I was rather hoping that Bruno would fix up his patch and resend,
->> > > but since other reports of the same bug are now surfacing...
->> > > Please could you all check if something like the following patch
->> > > fixes it.
->> >
->> > This patch works for me, so
->> >   Tested-by: Bruno Prémont <bonbons@linux-vserver.org>
->> >
->> > Now I get just the following complaint in dmesg on shutdown:
->> >   [ 1940.173201] lockd: cannot unmonitor nfs.home
->> >                                          ^^^^^^^^  name of NFS
->> > server
->> >
->> > This complaint did not happen with my "empty string" name
->> > patch.
->>
->> Are there any clues from rpc.statd in your syslog that might help to
->> explain the error?
->
-> I would say there is no more running rpc.statd at that time.
->
-> My shutdown process looks about as follows (it's not necessarily the
-> optimal ordering):
->
-> - umount nfs mountpoints from root mntns
-> - stop nfsclient
-> - stop rpc.statd
-> - stop rpcbind
-> - stop containers (with bind-mounted nfs mountpoints from root mntns
->     that get implicitly umounted on mntns release)
->
+Hi.
 
-In that case, the above message can be taken as a likely good
-indication that the kernel is working as expected. If there is no
-rpc.statd to talk to, then the unmonitor RPC call is expected to fail.
+I'm trying to export a particular directory with these parameters --
 
--- 
-Trond Myklebust
-Linux NFS client maintainer, PrimaryData
-trond.myklebust@primarydata.com
+/home/test/huge/temp_small/subdir 
+fc00::5000/124(ro,anonuid=1000,anongid=1000,subtree_check)
+
+For all subdirectories in temp_small, the client fails to mount saying 
+permission denied.
+
+mount.nfs: access denied by server while mounting.....
+
+For any other place it works.
+
+And because rpc.mountd has no logging features, I got no idea what's 
+happening.
