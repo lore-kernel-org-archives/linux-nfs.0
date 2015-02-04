@@ -1,77 +1,123 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx143.netapp.com ([216.240.21.24]:28016 "EHLO mx143.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753670AbbBCW5N (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 3 Feb 2015 17:57:13 -0500
-From: "Kornievskaia, Olga" <Olga.Kornievskaia@netapp.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Kornievskaia, Olga" <Olga.Kornievskaia@netapp.com>
+Received: from mail-vc0-f173.google.com ([209.85.220.173]:49392 "EHLO
+	mail-vc0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753091AbbBDBEh convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Feb 2015 20:04:37 -0500
+Received: by mail-vc0-f173.google.com with SMTP id id10so17950958vcb.4
+        for <linux-nfs@vger.kernel.org>; Tue, 03 Feb 2015 17:04:36 -0800 (PST)
+MIME-Version: 1.0
+In-Reply-To: <E706A147-93AB-46B8-B6C6-F52402A197E1@netapp.com>
+References: <1423000784-93180-1-git-send-email-trond.myklebust@primarydata.com>
+	<1423000784-93180-2-git-send-email-trond.myklebust@primarydata.com>
+	<E706A147-93AB-46B8-B6C6-F52402A197E1@netapp.com>
+Date: Tue, 3 Feb 2015 20:04:36 -0500
+Message-ID: <CAHQdGtS53vrHi4pOsta=a9LEeyOePyEioodP-ouuvZ3fNENnfw@mail.gmail.com>
 Subject: Re: [PATCH 2/2] NFSv4.1: Ask for no delegation on OPEN if already
  holding one
-Date: Tue, 3 Feb 2015 22:47:43 +0000
-Message-ID: <E706A147-93AB-46B8-B6C6-F52402A197E1@netapp.com>
-References: <1423000784-93180-1-git-send-email-trond.myklebust@primarydata.com>
- <1423000784-93180-2-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1423000784-93180-2-git-send-email-trond.myklebust@primarydata.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: "Kornievskaia, Olga" <Olga.Kornievskaia@netapp.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQo+IE9uIEZlYiAzLCAyMDE1LCBhdCA0OjU5IFBNLCBUcm9uZCBNeWtsZWJ1c3QgPHRyb25kLm15
-a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20+IHdyb3RlOg0KPiANCj4gSWYgd2UgYWxyZWFkeSBob2xk
-IGEgZGVsZWdhdGlvbiwgdGhlcmUgc2hvdWxkIGJlIG5vIHJlYXNvbiBmb3IgdGhlDQo+IHNlcnZl
-ciB0byBpc3N1ZSBpdCB0byB1cyBhZ2Fpbi4gVW5mb3J0dW5hdGVseSwgdGhlcmUgYXBwZWFyIHRv
-IGJlDQo+IHNlcnZlcnMgb3V0IHRoZXJlIHRoYXQgZW5nYWdlIGluIHRoaXMgcHJhY3RpY2UuIFdo
-aWxlIGl0IGlzIG9mdGVuDQo+IGhhcm1sZXNzIHRvIGRvIHNvLCB0aGVyZSBpcyBvbmUgY2FzZSB3
-aGVyZSB0aGlzIGNyZWF0ZXMgYSBwcm9ibGVtDQo+IGFuZCB0aGF0IGlzIHdoZW4gdGhlIGNsaWVu
-dCBpcyBpbiB0aGUgcHJvY2VzcyBvZiByZXR1cm5pbmcgdGhhdA0KPiBkZWxlZ2F0aW9uLg0KPiBU
-aGlzIHBhdGNoIHVzZXMgdGhlIE5GU3Y0LjEgTkZTNF9TSEFSRV9XQU5UX05PX0RFTEVHIGZsYWcg
-dG8gaW5mb3JtDQo+IHRoZSBzZXJ2ZXIgbm90IHRvIHJldHVybiBhIGRlbGVnYXRpb24gaW4gdGhl
-c2UgY2FzZXMuDQo+IA0KPiBTaWduZWQtb2ZmLWJ5OiBUcm9uZCBNeWtsZWJ1c3QgPHRyb25kLm15
-a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20+DQo+IC0tLQ0KPiBmcy9uZnMvbmZzNHByb2MuYyB8IDI1
-ICsrKysrKysrKysrKysrKysrKysrKystLS0NCj4gMSBmaWxlIGNoYW5nZWQsIDIyIGluc2VydGlv
-bnMoKyksIDMgZGVsZXRpb25zKC0pDQo+IA0KPiBkaWZmIC0tZ2l0IGEvZnMvbmZzL25mczRwcm9j
-LmMgYi9mcy9uZnMvbmZzNHByb2MuYw0KPiBpbmRleCBjZDQyOTVkODRkNTQuLmZiNDE2MjRiYWZj
-OSAxMDA2NDQNCj4gLS0tIGEvZnMvbmZzL25mczRwcm9jLmMNCj4gKysrIGIvZnMvbmZzL25mczRw
-cm9jLmMNCj4gQEAgLTk0Miw4ICs5NDIsMTAgQEAgc3RhdGljIGJvb2wgbmZzNF9jbGVhcl9jYXBf
-YXRvbWljX29wZW5fdjEoc3RydWN0IG5mc19zZXJ2ZXIgKnNlcnZlciwNCj4gDQo+IHN0YXRpYyB1
-MzINCj4gbmZzNF9tYXBfYXRvbWljX29wZW5fc2hhcmUoc3RydWN0IG5mc19zZXJ2ZXIgKnNlcnZl
-ciwNCj4gKwkJc3RydWN0IGlub2RlICppbm9kZSwNCj4gCQlmbW9kZV90IGZtb2RlLCBpbnQgb3Bl
-bmZsYWdzKQ0KPiB7DQo+ICsJc3RydWN0IG5mc19kZWxlZ2F0aW9uICpkZWxlZ2F0aW9uOw0KPiAJ
-dTMyIHJlcyA9IDA7DQo+IA0KPiAJc3dpdGNoIChmbW9kZSAmIChGTU9ERV9SRUFEIHwgRk1PREVf
-V1JJVEUpKSB7DQo+IEBAIC05NTksOCArOTYxLDI1IEBAIG5mczRfbWFwX2F0b21pY19vcGVuX3No
-YXJlKHN0cnVjdCBuZnNfc2VydmVyICpzZXJ2ZXIsDQo+IAlpZiAoIShzZXJ2ZXItPmNhcHMgJiBO
-RlNfQ0FQX0FUT01JQ19PUEVOX1YxKSkNCj4gCQlnb3RvIG91dDsNCj4gCS8qIFdhbnQgbm8gZGVs
-ZWdhdGlvbiBpZiB3ZSdyZSB1c2luZyBPX0RJUkVDVCAqLw0KPiAtCWlmIChvcGVuZmxhZ3MgJiBP
-X0RJUkVDVCkNCj4gKwlpZiAob3BlbmZsYWdzICYgT19ESVJFQ1QpIHsNCj4gCQlyZXMgfD0gTkZT
-NF9TSEFSRV9XQU5UX05PX0RFTEVHOw0KPiArCQlnb3RvIG91dDsNCj4gKwl9DQo+ICsJaWYgKGlu
-b2RlID09IE5VTEwpDQo+ICsJCWdvdG8gb3V0Ow0KPiArCXJjdV9yZWFkX2xvY2soKTsNCj4gKwlk
-ZWxlZ2F0aW9uID0gcmN1X2RlcmVmZXJlbmNlKE5GU19JKGlub2RlKS0+ZGVsZWdhdGlvbik7DQo+
-ICsJLyoNCj4gKwkgKiBJZiB3ZSBoYXZlIGEgZGVsZWdhdGlvbiwgZWl0aGVyIGFzayBmb3IgYW4g
-dXBncmFkZSBvciBhc2sgZm9yDQo+ICsJICogbm8gZGVsZWdhdGlvbg0KPiArCSAqLw0KPiArCWlm
-IChkZWxlZ2F0aW9uKSB7DQo+ICsJCWlmICgoZm1vZGUgJiBGTU9ERV9XUklURSkgJiYgIShkZWxl
-Z2F0aW9uLT50eXBlICYgRk1PREVfV1JJVEUpKQ0KPiArCQkJcmVzIHw9IE5GUzRfU0hBUkVfV0FO
-VF9XUklURV9ERUxFRzsNCj4gKwkJZWxzZQ0KPiArCQkJcmVzIHw9IE5GUzRfU0hBUkVfV0FOVF9O
-T19ERUxFRzsNCj4gKwl9DQo+ICsJcmN1X3JlYWRfdW5sb2NrKCk7DQo+IG91dDoNCj4gCXJldHVy
-biByZXM7DQo+IH0NCj4gQEAgLTEwMjgsNyArMTA0Nyw3IEBAIHN0YXRpYyBzdHJ1Y3QgbmZzNF9v
-cGVuZGF0YSAqbmZzNF9vcGVuZGF0YV9hbGxvYyhzdHJ1Y3QgZGVudHJ5ICpkZW50cnksDQo+IAlw
-LT5vX2FyZy5vcGVuX2ZsYWdzID0gZmxhZ3M7DQo+IAlwLT5vX2FyZy5mbW9kZSA9IGZtb2RlICYg
-KEZNT0RFX1JFQUR8Rk1PREVfV1JJVEUpOw0KPiAJcC0+b19hcmcuc2hhcmVfYWNjZXNzID0gbmZz
-NF9tYXBfYXRvbWljX29wZW5fc2hhcmUoc2VydmVyLA0KPiAtCQkJZm1vZGUsIGZsYWdzKTsNCj4g
-KwkJCWRlbnRyeS0+ZF9pbm9kZSwgZm1vZGUsIGZsYWdzKTsNCj4gCS8qIGRvbid0IHB1dCBhbiBB
-Q0NFU1Mgb3AgaW4gT1BFTiBjb21wb3VuZCBpZiBPX0VYQ0wsIGJlY2F1c2UgQUNDRVNTDQo+IAkg
-KiB3aWxsIHJldHVybiBwZXJtaXNzaW9uIGRlbmllZCBmb3IgYWxsIGJpdHMgdW50aWwgY2xvc2Ug
-Ki8NCj4gCWlmICghKGZsYWdzICYgT19FWENMKSkgew0KPiBAQCAtMjcyNCw3ICsyNzQzLDcgQEAg
-c3RhdGljIHZvaWQgbmZzNF9jbG9zZV9wcmVwYXJlKHN0cnVjdCBycGNfdGFzayAqdGFzaywgdm9p
-ZCAqZGF0YSkNCj4gCX0NCj4gCWNhbGxkYXRhLT5hcmcuc2hhcmVfYWNjZXNzID0NCj4gCQluZnM0
-X21hcF9hdG9taWNfb3Blbl9zaGFyZShORlNfU0VSVkVSKGlub2RlKSwNCj4gLQkJCQljYWxsZGF0
-YS0+YXJnLmZtb2RlLCAwKTsNCj4gKwkJCQlOVUxMLCBjYWxsZGF0YS0+YXJnLmZtb2RlLCAwKTsN
-Cj4gDQo+IAluZnNfZmF0dHJfaW5pdChjYWxsZGF0YS0+cmVzLmZhdHRyKTsNCj4gCWNhbGxkYXRh
-LT50aW1lc3RhbXAgPSBqaWZmaWVzOw0KPiAtLSANCj4gMi4xLjANCj4gDQoNCg0KSGkgVHJvbmQs
-DQoNCkRvIHlvdSBzZWUgdGhpcyBvZiBoZWxwaW5nIHdpdGggdGhlIHJhY2U/IFdlIHdvbuKAmXQg
-ZmluZCBhIGRlbGVnYXRpb24gb24gdGhlIHJhY2luZyBvcGVuIGFzIGl0IGhhcyBiZWVuIGRldGFj
-aGVkIGZyb20gdGhlIGlub2RlLiBGb3IgdGhlIG90aGVyIHBhdGNoLCBhcmVu4oCZdCB3ZSBhbHJl
-YWR5IGNoZWNraW5nIGlmIHdlIGNhbiBkbyBhIGxvY2FsIG9wZW4gYnkgY2hlY2tpbmcgZm9yIHRo
-ZSBkZWxlZ2F0aW9uIChjYW5fb3Blbl9kZWxlZ2F0ZWQoKSk/DQoNClRoYW5rcy4NCg0K
+On Tue, Feb 3, 2015 at 5:47 PM, Kornievskaia, Olga
+<Olga.Kornievskaia@netapp.com> wrote:
+>
+>> On Feb 3, 2015, at 4:59 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+>>
+>> If we already hold a delegation, there should be no reason for the
+>> server to issue it to us again. Unfortunately, there appear to be
+>> servers out there that engage in this practice. While it is often
+>> harmless to do so, there is one case where this creates a problem
+>> and that is when the client is in the process of returning that
+>> delegation.
+>> This patch uses the NFSv4.1 NFS4_SHARE_WANT_NO_DELEG flag to inform
+>> the server not to return a delegation in these cases.
+>>
+>> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+>> ---
+>> fs/nfs/nfs4proc.c | 25 ++++++++++++++++++++++---
+>> 1 file changed, 22 insertions(+), 3 deletions(-)
+>>
+>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+>> index cd4295d84d54..fb41624bafc9 100644
+>> --- a/fs/nfs/nfs4proc.c
+>> +++ b/fs/nfs/nfs4proc.c
+>> @@ -942,8 +942,10 @@ static bool nfs4_clear_cap_atomic_open_v1(struct nfs_server *server,
+>>
+>> static u32
+>> nfs4_map_atomic_open_share(struct nfs_server *server,
+>> +             struct inode *inode,
+>>               fmode_t fmode, int openflags)
+>> {
+>> +     struct nfs_delegation *delegation;
+>>       u32 res = 0;
+>>
+>>       switch (fmode & (FMODE_READ | FMODE_WRITE)) {
+>> @@ -959,8 +961,25 @@ nfs4_map_atomic_open_share(struct nfs_server *server,
+>>       if (!(server->caps & NFS_CAP_ATOMIC_OPEN_V1))
+>>               goto out;
+>>       /* Want no delegation if we're using O_DIRECT */
+>> -     if (openflags & O_DIRECT)
+>> +     if (openflags & O_DIRECT) {
+>>               res |= NFS4_SHARE_WANT_NO_DELEG;
+>> +             goto out;
+>> +     }
+>> +     if (inode == NULL)
+>> +             goto out;
+>> +     rcu_read_lock();
+>> +     delegation = rcu_dereference(NFS_I(inode)->delegation);
+>> +     /*
+>> +      * If we have a delegation, either ask for an upgrade or ask for
+>> +      * no delegation
+>> +      */
+>> +     if (delegation) {
+>> +             if ((fmode & FMODE_WRITE) && !(delegation->type & FMODE_WRITE))
+>> +                     res |= NFS4_SHARE_WANT_WRITE_DELEG;
+>> +             else
+>> +                     res |= NFS4_SHARE_WANT_NO_DELEG;
+>> +     }
+>> +     rcu_read_unlock();
+>> out:
+>>       return res;
+>> }
+>> @@ -1028,7 +1047,7 @@ static struct nfs4_opendata *nfs4_opendata_alloc(struct dentry *dentry,
+>>       p->o_arg.open_flags = flags;
+>>       p->o_arg.fmode = fmode & (FMODE_READ|FMODE_WRITE);
+>>       p->o_arg.share_access = nfs4_map_atomic_open_share(server,
+>> -                     fmode, flags);
+>> +                     dentry->d_inode, fmode, flags);
+>>       /* don't put an ACCESS op in OPEN compound if O_EXCL, because ACCESS
+>>        * will return permission denied for all bits until close */
+>>       if (!(flags & O_EXCL)) {
+>> @@ -2724,7 +2743,7 @@ static void nfs4_close_prepare(struct rpc_task *task, void *data)
+>>       }
+>>       calldata->arg.share_access =
+>>               nfs4_map_atomic_open_share(NFS_SERVER(inode),
+>> -                             calldata->arg.fmode, 0);
+>> +                             NULL, calldata->arg.fmode, 0);
+>>
+>>       nfs_fattr_init(calldata->res.fattr);
+>>       calldata->timestamp = jiffies;
+>> --
+>> 2.1.0
+>>
+>
+>
+> Hi Trond,
+>
+> Do you see this of helping with the race? We won’t find a delegation on the racing open as it has been detached from the inode. For the other patch, aren’t we already checking if we can do a local open by checking for the delegation (can_open_delegated())?
+>
+
+Argh. You're 100% right in that it won't completely close the race.
+However it narrows the race to the delegreturn itself, whereas
+currently we also have a race while in the process of reclaiming opens
++ locks.
+
+As for patch 1/2, I believe that O_DIRECT opens are still a valid case.
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer, PrimaryData
+trond.myklebust@primarydata.com
