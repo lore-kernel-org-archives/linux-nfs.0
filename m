@@ -1,34 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx141.netapp.com ([216.240.21.12]:35918 "EHLO mx141.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:58860 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755960AbbBEQGl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 5 Feb 2015 11:06:41 -0500
-Message-ID: <54D3950A.5050906@Netapp.com>
-Date: Thu, 5 Feb 2015 11:06:34 -0500
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
+	id S1757757AbbBEOiD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 5 Feb 2015 09:38:03 -0500
+Received: from int-mx13.intmail.prod.int.phx2.redhat.com (int-mx13.intmail.prod.int.phx2.redhat.com [10.5.11.26])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id t15Ec1jh020220
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
+	for <linux-nfs@vger.kernel.org>; Thu, 5 Feb 2015 09:38:02 -0500
+Received: from smallhat.boston.devel.redhat.com (vpn-62-136.rdu2.redhat.com [10.10.62.136])
+	by int-mx13.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id t15Ec19q027794
+	for <linux-nfs@vger.kernel.org>; Thu, 5 Feb 2015 09:38:01 -0500
+Message-ID: <54D38048.6080504@RedHat.com>
+Date: Thu, 05 Feb 2015 09:38:00 -0500
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-To: Christoph Hellwig <hch@infradead.org>
-CC: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v2 1/6] NFS: Add READ_PLUS support for data segments
-References: <1422477830-28090-1-git-send-email-Anna.Schumaker@Netapp.com> <1422477830-28090-2-git-send-email-Anna.Schumaker@Netapp.com> <20150205141007.GA4522@infradead.org>
-In-Reply-To: <20150205141007.GA4522@infradead.org>
-Content-Type: text/plain; charset="utf-8"
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Linux NFS Town Hall  meeting: Today - Thur 02/05/15
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 02/05/2015 09:10 AM, Christoph Hellwig wrote:
-> On Wed, Jan 28, 2015 at 03:43:45PM -0500, Anna Schumaker wrote:
->> +	if (type == NFS4_CONTENT_DATA)
->> +		status = decode_read_plus_data(xdr, res);
->> +	else
->> +		status = -ENOTSUPP;
->> +
->> +	if (segments > 1)
->> +		res->eof = 0;
-> 
-> Given that the server can return any amount of data and hole
-> segments it doesn't make any sense to separate this patch from patches 4
-> and 6.
-> 
+Hello,
 
-I had them split up to make development easier, but I can squash them together if that would make more sense.
+The Linux NFS town hall meeting is Today
+   *Thur Feb 8 at 01:00 pm EST (10:00am PST)*
+
+Not sure that much is going on... although Connecatathon 
+is coming up... but the meeting should be quick...
+
+The usual agenda will apply. The maintainers will give
+a quick status of what is happening in their worlds.
+
+Next we'll get updates from major contributors on what
+they have been doing and are planing on doing.
+  
+Finally, we'll open the floor to questions, comments, 
+concerns from the community.  
+
+Generally the meeting lasts between 30 to 45 mins, with 
+a very hard stop at 60mins. 
+
+Please feel to attend and participate!
+
+Time: 10:00 am PST (01:00 pm EST)
+
+The call in numbers are:
+
+U.S. and Canada: (800) 451-8679
+World wide toll free numbers
+   https://www.intercallonline.com/listNumbersByCode.action?confCode=5642721552
+
+Conference code: 564.272.1552
+
+
+steved.
+
