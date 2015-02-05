@@ -1,90 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f180.google.com ([209.85.213.180]:57941 "EHLO
-	mail-ig0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751270AbbBEWhR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Feb 2015 17:37:17 -0500
-Received: by mail-ig0-f180.google.com with SMTP id b16so2410456igk.1
-        for <linux-nfs@vger.kernel.org>; Thu, 05 Feb 2015 14:37:16 -0800 (PST)
+Received: from mail-ig0-f174.google.com ([209.85.213.174]:34349 "EHLO
+	mail-ig0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751219AbbBEWhS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Feb 2015 17:37:18 -0500
+Received: by mail-ig0-f174.google.com with SMTP id b16so2353691igk.1
+        for <linux-nfs@vger.kernel.org>; Thu, 05 Feb 2015 14:37:18 -0800 (PST)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: linux-nfs@vger.kernel.org
 Cc: Peng Tao <tao.peng@primarydata.com>
-Subject: [PATCH 3/5] NFSv4.1: Pin the inode and super block in asynchronous layoutreturns
-Date: Thu,  5 Feb 2015 17:37:09 -0500
-Message-Id: <1423175831-54558-3-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1423175831-54558-2-git-send-email-trond.myklebust@primarydata.com>
+Subject: [PATCH 4/5] NFSv4.1: pnfs_send_layoutreturn should use GFP_NOFS
+Date: Thu,  5 Feb 2015 17:37:10 -0500
+Message-Id: <1423175831-54558-4-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1423175831-54558-3-git-send-email-trond.myklebust@primarydata.com>
 References: <1423175831-54558-1-git-send-email-trond.myklebust@primarydata.com>
  <1423175831-54558-2-git-send-email-trond.myklebust@primarydata.com>
+ <1423175831-54558-3-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If we're sending an asynchronous layoutreturn, then we need to ensure
-that the inode and the super block remain pinned.
+In we want to be able to call pnfs_send_layoutreturn() from within the
+writeback path, we really want it to use GFP_NOFS in order to prevent
+recursion.
 
-Cc: Peng Tao <tao.peng@primarydata.com>
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/nfs4proc.c       | 19 +++++++++++--------
- include/linux/nfs_xdr.h |  1 +
- 2 files changed, 12 insertions(+), 8 deletions(-)
+ fs/nfs/pnfs.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 770495bcd525..3e1ff2bb547d 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -7861,6 +7861,7 @@ static void nfs4_layoutreturn_release(void *calldata)
- 	lo->plh_block_lgets--;
- 	spin_unlock(&lo->plh_inode->i_lock);
- 	pnfs_put_layout_hdr(lrp->args.layout);
-+	nfs_iput_and_deactive(lrp->inode);
- 	kfree(calldata);
- 	dprintk("<-- %s\n", __func__);
- }
-@@ -7885,23 +7886,25 @@ int nfs4_proc_layoutreturn(struct nfs4_layoutreturn *lrp, bool sync)
- 		.rpc_message = &msg,
- 		.callback_ops = &nfs4_layoutreturn_call_ops,
- 		.callback_data = lrp,
--		.flags = RPC_TASK_ASYNC,
- 	};
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 703501d3ed19..a1d8620e8cb7 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -948,7 +948,7 @@ pnfs_send_layoutreturn(struct pnfs_layout_hdr *lo, nfs4_stateid stateid,
+ 	struct nfs4_layoutreturn *lrp;
  	int status = 0;
  
- 	dprintk("--> %s\n", __func__);
-+	if (!sync) {
-+		lrp->inode = nfs_igrab_and_active(lrp->args.inode);
-+		if (!lrp->inode) {
-+			nfs4_layoutreturn_release(lrp);
-+			return -EAGAIN;
-+		}
-+		task_setup_data.flags |= RPC_TASK_ASYNC;
-+	}
- 	nfs4_init_sequence(&lrp->args.seq_args, &lrp->res.seq_res, 1);
- 	task = rpc_run_task(&task_setup_data);
- 	if (IS_ERR(task))
- 		return PTR_ERR(task);
--	if (sync == false)
--		goto out;
--	status = nfs4_wait_for_completion_rpc_task(task);
--	if (status != 0)
--		goto out;
--	status = task->tk_status;
-+	if (sync)
-+		status = task->tk_status;
- 	trace_nfs4_layoutreturn(lrp->args.inode, status);
--out:
- 	dprintk("<-- %s status=%d\n", __func__, status);
- 	rpc_put_task(task);
- 	return status;
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index bb0d56f737e0..38d96ba935c2 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -310,6 +310,7 @@ struct nfs4_layoutreturn {
- 	struct nfs4_layoutreturn_res res;
- 	struct rpc_cred *cred;
- 	struct nfs_client *clp;
-+	struct inode *inode;
- 	int rpc_status;
- };
- 
+-	lrp = kzalloc(sizeof(*lrp), GFP_KERNEL);
++	lrp = kzalloc(sizeof(*lrp), GFP_NOFS);
+ 	if (unlikely(lrp == NULL)) {
+ 		status = -ENOMEM;
+ 		spin_lock(&ino->i_lock);
 -- 
 2.1.0
 
