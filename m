@@ -1,31 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:50512 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753111AbbBEOFa (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Feb 2015 09:05:30 -0500
-Date: Thu, 5 Feb 2015 06:05:26 -0800
-From: Christoph Hellwig <hch@infradead.org>
-To: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
-Cc: Boaz Harrosh <boaz@plexistor.com>, dE <de.techno@gmail.com>,
-        linux-nfs@vger.kernel.org
-Subject: Re: Cant get to export this particular directory.
-Message-ID: <20150205140526.GA28544@infradead.org>
+Received: from smtp-o-3.desy.de ([131.169.56.156]:38560 "EHLO smtp-o-3.desy.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750710AbbBEHba (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 5 Feb 2015 02:31:30 -0500
+Received: from smtp-map-1.desy.de (smtp-map-1.desy.de [131.169.56.66])
+	by smtp-o-3.desy.de (DESY-O-3) with ESMTP id 9E629280207
+	for <linux-nfs@vger.kernel.org>; Thu,  5 Feb 2015 08:31:28 +0100 (CET)
+Received: from ZITSWEEP4.win.desy.de (zitsweep4.win.desy.de [131.169.97.98])
+	by smtp-map-1.desy.de (DESY_MAP_1) with ESMTP id 9139B13E8E
+	for <linux-nfs@vger.kernel.org>; Thu,  5 Feb 2015 08:31:28 +0100 (MET)
+Date: Thu, 5 Feb 2015 08:31:27 +0100 (CET)
+From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+To: dE <de.techno@gmail.com>
+Cc: linux-nfs@vger.kernel.org
+Message-ID: <1196552310.744640.1423121487541.JavaMail.zimbra@desy.de>
+In-Reply-To: <54D237A5.1050302@gmail.com>
 References: <54D237A5.1050302@gmail.com>
- <20150204170356.14e1e381@harpe.intellique.com>
- <54D24403.2080403@gmail.com>
- <54D34CB8.1040008@plexistor.com>
- <1934902055.820990.1423137608454.JavaMail.zimbra@desy.de>
+Subject: Re: Cant get to export this particular directory.
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1934902055.820990.1423137608454.JavaMail.zimbra@desy.de>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Feb 05, 2015 at 01:00:08PM +0100, Mkrtchyan, Tigran wrote:
-> > Reason I'm asking is because it looks a little bit like when the FS does not
-> > support the export_operations vector. The Kernel nfsd is not very good
-> 
-> Then this does not explain why mounting on a local host works.
+Hi,
 
-Hard to guestimate over weird out of tree code.  If this is reproducible
-with an in tree filesystem someone might have a chance to understand it.
+
+are you sure that your clients mount with ipv6 (as your export ipv6 only)?
+
+Tigran.
+
+----- Original Message -----
+> From: "dE" <de.techno@gmail.com>
+> To: linux-nfs@vger.kernel.org
+> Sent: Wednesday, February 4, 2015 4:15:49 PM
+> Subject: Cant get to export this particular directory.
+
+> Hi.
+> 
+> I'm trying to export a particular directory with these parameters --
+> 
+> /home/test/huge/temp_small/subdir
+> fc00::5000/124(ro,anonuid=1000,anongid=1000,subtree_check)
+> 
+> For all subdirectories in temp_small, the client fails to mount saying
+> permission denied.
+> 
+> mount.nfs: access denied by server while mounting.....
+> 
+> For any other place it works.
+> 
+> And because rpc.mountd has no logging features, I got no idea what's
+> happening.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
