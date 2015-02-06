@@ -1,45 +1,117 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f180.google.com ([209.85.213.180]:65116 "EHLO
-	mail-ig0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751438AbbBFC7o (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Feb 2015 21:59:44 -0500
-Received: by mail-ig0-f180.google.com with SMTP id b16so4666000igk.1
-        for <linux-nfs@vger.kernel.org>; Thu, 05 Feb 2015 18:59:43 -0800 (PST)
+Received: from mail-ig0-f179.google.com ([209.85.213.179]:43878 "EHLO
+	mail-ig0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753627AbbBFC7p (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Feb 2015 21:59:45 -0500
+Received: by mail-ig0-f179.google.com with SMTP id l13so4630856iga.0
+        for <linux-nfs@vger.kernel.org>; Thu, 05 Feb 2015 18:59:45 -0800 (PST)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: linux-nfs@vger.kernel.org
 Cc: Peng Tao <tao.peng@primarydata.com>
-Subject: [PATCH v2 4/5] NFSv4.1: pnfs_send_layoutreturn should use GFP_NOFS
-Date: Thu,  5 Feb 2015 21:59:36 -0500
-Message-Id: <1423191577-72230-4-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1423191577-72230-3-git-send-email-trond.myklebust@primarydata.com>
+Subject: [PATCH v2 5/5] NFSv4.1: Fix pnfs_put_lseg races
+Date: Thu,  5 Feb 2015 21:59:37 -0500
+Message-Id: <1423191577-72230-5-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1423191577-72230-4-git-send-email-trond.myklebust@primarydata.com>
 References: <1423191577-72230-1-git-send-email-trond.myklebust@primarydata.com>
  <1423191577-72230-2-git-send-email-trond.myklebust@primarydata.com>
  <1423191577-72230-3-git-send-email-trond.myklebust@primarydata.com>
+ <1423191577-72230-4-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In we want to be able to call pnfs_send_layoutreturn() from within the
-writeback path, we really want it to use GFP_NOFS in order to prevent
-recursion.
+pnfs_layoutreturn_free_lseg_async() can also race with inode put in
+the general case. We can now fix this, and also simplify the code.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Peng Tao <tao.peng@primarydata.com>
 ---
- fs/nfs/pnfs.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/nfs/pnfs.c | 54 +++++++++++++++++++-----------------------------------
+ 1 file changed, 19 insertions(+), 35 deletions(-)
 
 diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 703501d3ed19..a1d8620e8cb7 100644
+index a1d8620e8cb7..79878611fdb0 100644
 --- a/fs/nfs/pnfs.c
 +++ b/fs/nfs/pnfs.c
-@@ -948,7 +948,7 @@ pnfs_send_layoutreturn(struct pnfs_layout_hdr *lo, nfs4_stateid stateid,
- 	struct nfs4_layoutreturn *lrp;
- 	int status = 0;
+@@ -361,14 +361,9 @@ pnfs_layout_need_return(struct pnfs_layout_hdr *lo,
+ 	return true;
+ }
  
--	lrp = kzalloc(sizeof(*lrp), GFP_KERNEL);
-+	lrp = kzalloc(sizeof(*lrp), GFP_NOFS);
- 	if (unlikely(lrp == NULL)) {
- 		status = -ENOMEM;
- 		spin_lock(&ino->i_lock);
+-static void pnfs_layoutreturn_free_lseg(struct work_struct *work)
++static void pnfs_layoutreturn_before_put_lseg(struct pnfs_layout_segment *lseg,
++		struct pnfs_layout_hdr *lo, struct inode *inode)
+ {
+-	struct pnfs_layout_segment *lseg;
+-	struct pnfs_layout_hdr *lo;
+-	struct inode *inode;
+-
+-	lseg = container_of(work, struct pnfs_layout_segment, pls_work);
+-	WARN_ON(atomic_read(&lseg->pls_refcount));
+ 	lo = lseg->pls_layout;
+ 	inode = lo->plh_inode;
+ 
+@@ -383,24 +378,11 @@ static void pnfs_layoutreturn_free_lseg(struct work_struct *work)
+ 		lo->plh_block_lgets++;
+ 		lo->plh_return_iomode = 0;
+ 		spin_unlock(&inode->i_lock);
++		pnfs_get_layout_hdr(lo);
+ 
+-		pnfs_send_layoutreturn(lo, stateid, iomode, true);
+-		spin_lock(&inode->i_lock);
+-	} else
+-		/* match pnfs_get_layout_hdr #2 in pnfs_put_lseg */
+-		pnfs_put_layout_hdr(lo);
+-	pnfs_layout_remove_lseg(lo, lseg);
+-	spin_unlock(&inode->i_lock);
+-	pnfs_free_lseg(lseg);
+-	/* match pnfs_get_layout_hdr #1 in pnfs_put_lseg */
+-	pnfs_put_layout_hdr(lo);
+-}
+-
+-static void
+-pnfs_layoutreturn_free_lseg_async(struct pnfs_layout_segment *lseg)
+-{
+-	INIT_WORK(&lseg->pls_work, pnfs_layoutreturn_free_lseg);
+-	queue_work(nfsiod_workqueue, &lseg->pls_work);
++		/* Send an async layoutreturn so we dont deadlock */
++		pnfs_send_layoutreturn(lo, stateid, iomode, false);
++	}
+ }
+ 
+ void
+@@ -415,21 +397,23 @@ pnfs_put_lseg(struct pnfs_layout_segment *lseg)
+ 	dprintk("%s: lseg %p ref %d valid %d\n", __func__, lseg,
+ 		atomic_read(&lseg->pls_refcount),
+ 		test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
++
++	/* Handle the case where refcount != 1 */
++	if (atomic_add_unless(&lseg->pls_refcount, -1, 1))
++		return;
++
+ 	lo = lseg->pls_layout;
+ 	inode = lo->plh_inode;
++	/* Do we need a layoutreturn? */
++	if (pnfs_layout_need_return(lo, lseg))
++		pnfs_layoutreturn_before_put_lseg(lseg, lo, inode);
++
+ 	if (atomic_dec_and_lock(&lseg->pls_refcount, &inode->i_lock)) {
+ 		pnfs_get_layout_hdr(lo);
+-		if (pnfs_layout_need_return(lo, lseg)) {
+-			spin_unlock(&inode->i_lock);
+-			/* hdr reference dropped in nfs4_layoutreturn_release */
+-			pnfs_get_layout_hdr(lo);
+-			pnfs_layoutreturn_free_lseg_async(lseg);
+-		} else {
+-			pnfs_layout_remove_lseg(lo, lseg);
+-			spin_unlock(&inode->i_lock);
+-			pnfs_free_lseg(lseg);
+-			pnfs_put_layout_hdr(lo);
+-		}
++		pnfs_layout_remove_lseg(lo, lseg);
++		spin_unlock(&inode->i_lock);
++		pnfs_free_lseg(lseg);
++		pnfs_put_layout_hdr(lo);
+ 	}
+ }
+ EXPORT_SYMBOL_GPL(pnfs_put_lseg);
 -- 
 2.1.0
 
