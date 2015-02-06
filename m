@@ -1,10 +1,10 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx142.netapp.com ([216.240.21.19]:3904 "EHLO mx142.netapp.com"
+Received: from mx143.netapp.com ([216.240.21.24]:58777 "EHLO mx143.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754193AbbBEQxn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 5 Feb 2015 11:53:43 -0500
-Message-ID: <54D3A015.7040207@Netapp.com>
-Date: Thu, 5 Feb 2015 11:53:41 -0500
+	id S1752664AbbBFWAM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 6 Feb 2015 17:00:12 -0500
+Message-ID: <54D53969.8080405@Netapp.com>
+Date: Fri, 6 Feb 2015 17:00:09 -0500
 From: Anna Schumaker <Anna.Schumaker@netapp.com>
 MIME-Version: 1.0
 To: "J. Bruce Fields" <bfields@fieldses.org>
@@ -40,24 +40,9 @@ On 02/05/2015 11:48 AM, J. Bruce Fields wrote:
 > 
 > But I still wish he had more evidence here.
 
-I'm planning to do some performance testing with this change:
+I switched to using splice and fixed a few other bugs that happened to pop up.  xfstests definitely runs faster compared to the old code, but I haven't had a chance to compare against other NFS versions yet.
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index e2a4702..f516694 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -3876,7 +3876,10 @@ nfsd4_encode_read_plus_data(struct nfsd4_compoundres *resp, struct nfsd4_read *r
-        maxcount = min_t(unsigned long, maxcount, read->rd_length);
-        maxcount = min_t(unsigned long, maxcount, hole_pos - read->rd_offset);
- 
--       err = nfsd4_encode_readv(resp, read, file, &maxcount);
-+       if ((read->rd_offset == 0) && (read->rd_length == maxcount))
-+               err = nfsd4_encode_splice_read(resp, read, file, &maxcount);
-+       else
-+               err = nfsd4_encode_readv(resp, read, file, &maxcount);
- 
-        *p++ = cpu_to_be32(NFS4_CONTENT_DATA);
-        p = xdr_encode_hyper(p, read->rd_offset);
+Anna
 
 > 
 > --b.
