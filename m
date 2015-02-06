@@ -1,142 +1,146 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f53.google.com ([209.85.192.53]:43704 "EHLO
-	mail-qg0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750880AbbBFHCt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Feb 2015 02:02:49 -0500
-Received: by mail-qg0-f53.google.com with SMTP id f51so9910155qge.12
-        for <linux-nfs@vger.kernel.org>; Thu, 05 Feb 2015 23:02:48 -0800 (PST)
-MIME-Version: 1.0
-In-Reply-To: <CAKVebiXJ3n2wh3mq732QvMt+_BFL-VDNbg-jDmxB9H3o1-yz7Q@mail.gmail.com>
-References: <1423197907-75541-1-git-send-email-trond.myklebust@primarydata.com>
- <1423197907-75541-2-git-send-email-trond.myklebust@primarydata.com>
- <1423197907-75541-3-git-send-email-trond.myklebust@primarydata.com>
- <1423197907-75541-4-git-send-email-trond.myklebust@primarydata.com>
- <1423197907-75541-5-git-send-email-trond.myklebust@primarydata.com> <CAKVebiXJ3n2wh3mq732QvMt+_BFL-VDNbg-jDmxB9H3o1-yz7Q@mail.gmail.com>
-From: Peng Tao <tao.peng@primarydata.com>
-Date: Fri, 6 Feb 2015 15:02:27 +0800
-Message-ID: <CAKVebiWGj4=kY-tcJ+BjnkunqRYYi4wGsM_=rgAtYkJ98kq1dw@mail.gmail.com>
-Subject: Re: [PATCH v3 5/5] NFSv4.1: Fix pnfs_put_lseg races
+Received: from mail-qg0-f46.google.com ([209.85.192.46]:39774 "EHLO
+	mail-qg0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756383AbbBFM0k (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Feb 2015 07:26:40 -0500
+Received: by mail-qg0-f46.google.com with SMTP id j5so10824181qga.5
+        for <linux-nfs@vger.kernel.org>; Fri, 06 Feb 2015 04:26:40 -0800 (PST)
+Date: Fri, 6 Feb 2015 07:26:37 -0500
+From: Jeff Layton <jeff.layton@primarydata.com>
 To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Cc: linux-nfs@vger.kernel.org, Peng Tao <tao.peng@primarydata.com>
+Subject: Re: [PATCH v3 1/5] NFSv4: Ensure we reference the inode for
+ return-on-close in delegreturn
+Message-ID: <20150206072637.2cf6597f@tlielax.poochiereds.net>
+In-Reply-To: <1423197907-75541-1-git-send-email-trond.myklebust@primarydata.com>
+References: <1423197907-75541-1-git-send-email-trond.myklebust@primarydata.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Feb 6, 2015 at 2:53 PM, Peng Tao <tao.peng@primarydata.com> wrote:
-> On Fri, Feb 6, 2015 at 12:45 PM, Trond Myklebust
-> <trond.myklebust@primarydata.com> wrote:
->> pnfs_layoutreturn_free_lseg_async() can also race with inode put in
->> the general case. We can now fix this, and also simplify the code.
->>
->> Cc: Peng Tao <tao.peng@primarydata.com>
->> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
->> ---
->>  fs/nfs/pnfs.c | 53 +++++++++++++++++++----------------------------------
->>  1 file changed, 19 insertions(+), 34 deletions(-)
->>
->> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
->> index a1d8620e8cb7..107b321be7d4 100644
->> --- a/fs/nfs/pnfs.c
->> +++ b/fs/nfs/pnfs.c
->> @@ -361,14 +361,9 @@ pnfs_layout_need_return(struct pnfs_layout_hdr *lo,
->>         return true;
->>  }
->>
->> -static void pnfs_layoutreturn_free_lseg(struct work_struct *work)
->> +static void pnfs_layoutreturn_before_put_lseg(struct pnfs_layout_segment *lseg,
->> +               struct pnfs_layout_hdr *lo, struct inode *inode)
->>  {
->> -       struct pnfs_layout_segment *lseg;
->> -       struct pnfs_layout_hdr *lo;
->> -       struct inode *inode;
->> -
->> -       lseg = container_of(work, struct pnfs_layout_segment, pls_work);
->> -       WARN_ON(atomic_read(&lseg->pls_refcount));
->>         lo = lseg->pls_layout;
->>         inode = lo->plh_inode;
->>
->> @@ -383,24 +378,12 @@ static void pnfs_layoutreturn_free_lseg(struct work_struct *work)
->>                 lo->plh_block_lgets++;
->>                 lo->plh_return_iomode = 0;
->>                 spin_unlock(&inode->i_lock);
->> +               pnfs_get_layout_hdr(lo);
->>
->> -               pnfs_send_layoutreturn(lo, stateid, iomode, true);
->> -               spin_lock(&inode->i_lock);
->> +               /* Send an async layoutreturn so we dont deadlock */
->> +               pnfs_send_layoutreturn(lo, stateid, iomode, false);
->>         } else
->> -               /* match pnfs_get_layout_hdr #2 in pnfs_put_lseg */
->> -               pnfs_put_layout_hdr(lo);
->> -       pnfs_layout_remove_lseg(lo, lseg);
->> -       spin_unlock(&inode->i_lock);
->> -       pnfs_free_lseg(lseg);
->> -       /* match pnfs_get_layout_hdr #1 in pnfs_put_lseg */
->> -       pnfs_put_layout_hdr(lo);
->> -}
->> -
->> -static void
->> -pnfs_layoutreturn_free_lseg_async(struct pnfs_layout_segment *lseg)
->> -{
->> -       INIT_WORK(&lseg->pls_work, pnfs_layoutreturn_free_lseg);
->> -       queue_work(nfsiod_workqueue, &lseg->pls_work);
->> +               spin_unlock(&inode->i_lock);
->>  }
->>
->>  void
->> @@ -415,21 +398,23 @@ pnfs_put_lseg(struct pnfs_layout_segment *lseg)
->>         dprintk("%s: lseg %p ref %d valid %d\n", __func__, lseg,
->>                 atomic_read(&lseg->pls_refcount),
->>                 test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
->> +
->> +       /* Handle the case where refcount != 1 */
->> +       if (atomic_add_unless(&lseg->pls_refcount, -1, 1))
->> +               return;
->> +
->>         lo = lseg->pls_layout;
->>         inode = lo->plh_inode;
->> +       /* Do we need a layoutreturn? */
->> +       if (test_bit(NFS_LSEG_LAYOUTRETURN, &lseg->pls_flags))
-> pnfs_layout_need_return() iterates through all layout segments to make
-> sure that if we have other segments that need to be returned, we do
-> not send layoutreturn for current lseg so that if they happen to
-> overlap, we don't return a layout while still holding one captive.
->
-This might not be a problem for files and flexfiles for now but block
-layout should be able to see it fairly easy if server is returning
-overlapping layout segments to client.
+On Thu,  5 Feb 2015 23:45:03 -0500
+Trond Myklebust <trond.myklebust@primarydata.com> wrote:
 
-Cheers,
-Tao
+> If we have to do a return-on-close in the delegreturn code, then
+> we must ensure that the inode and super block remain referenced.
+> 
+> Cc: Peng Tao <tao.peng@primarydata.com>
+> Cc: stable@vger.kernel.org # 3.17.x
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> Reviewed-by: Peng Tao <tao.peng@primarydata.com>
+> ---
+>  fs/nfs/internal.h | 22 +++++++++++++++++++++-
+>  fs/nfs/nfs4proc.c | 14 +++++++++-----
+>  fs/nfs/super.c    |  9 ++++++---
+>  3 files changed, 36 insertions(+), 9 deletions(-)
+> 
+> diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+> index a98cf2006179..21469e6e3834 100644
+> --- a/fs/nfs/internal.h
+> +++ b/fs/nfs/internal.h
+> @@ -391,7 +391,7 @@ extern struct rpc_stat nfs_rpcstat;
+>  
+>  extern int __init register_nfs_fs(void);
+>  extern void __exit unregister_nfs_fs(void);
+> -extern void nfs_sb_active(struct super_block *sb);
+> +extern bool nfs_sb_active(struct super_block *sb);
+>  extern void nfs_sb_deactive(struct super_block *sb);
+>  
+>  /* namespace.c */
+> @@ -514,6 +514,26 @@ extern int nfs41_walk_client_list(struct nfs_client *clp,
+>  				struct nfs_client **result,
+>  				struct rpc_cred *cred);
+>  
+> +static inline struct inode *nfs_igrab_and_active(struct inode *inode)
+> +{
+> +	inode = igrab(inode);
 
-> I guess the right thing to do is to move pnfs_layout_need_return() and
-> pnfs_layoutreturn_before_put_lseg() under atomic_dec_and_lock.
->
-> Cheers,
-> Tao
->
->> +               pnfs_layoutreturn_before_put_lseg(lseg, lo, inode);
->> +
->>         if (atomic_dec_and_lock(&lseg->pls_refcount, &inode->i_lock)) {
->>                 pnfs_get_layout_hdr(lo);
->> -               if (pnfs_layout_need_return(lo, lseg)) {
->> -                       spin_unlock(&inode->i_lock);
->> -                       /* hdr reference dropped in nfs4_layoutreturn_release */
->> -                       pnfs_get_layout_hdr(lo);
->> -                       pnfs_layoutreturn_free_lseg_async(lseg);
->> -               } else {
->> -                       pnfs_layout_remove_lseg(lo, lseg);
->> -                       spin_unlock(&inode->i_lock);
->> -                       pnfs_free_lseg(lseg);
->> -                       pnfs_put_layout_hdr(lo);
->> -               }
->> +               pnfs_layout_remove_lseg(lo, lseg);
->> +               spin_unlock(&inode->i_lock);
->> +               pnfs_free_lseg(lseg);
->> +               pnfs_put_layout_hdr(lo);
->>         }
->>  }
->>  EXPORT_SYMBOL_GPL(pnfs_put_lseg);
->> --
->> 2.1.0
->>
+I would expect that you already hold a reference to the inode so
+shouldn't that never return NULL? If so, then you could use ihold()
+instead and simplify this a little.
+
+> +	if (inode != NULL && !nfs_sb_active(inode->i_sb)) {
+> +		iput(inode);
+> +		inode = NULL;
+> +	}
+> +	return inode;
+> +}
+> +
+> +static inline void nfs_iput_and_deactive(struct inode *inode)
+> +{
+> +	if (inode != NULL) {
+> +		struct super_block *sb = inode->i_sb;
+> +
+> +		iput(inode);
+> +		nfs_sb_deactive(sb);
+> +	}
+> +}
+> +
+>  /*
+>   * Determine the device name as a string
+>   */
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index cd4295d84d54..dd892a4e7eb3 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -5175,9 +5175,13 @@ static void nfs4_delegreturn_done(struct rpc_task *task, void *calldata)
+>  static void nfs4_delegreturn_release(void *calldata)
+>  {
+>  	struct nfs4_delegreturndata *data = calldata;
+> +	struct inode *inode = data->inode;
+>  
+> -	if (data->roc)
+> -		pnfs_roc_release(data->inode);
+> +	if (inode) {
+> +		if (data->roc)
+> +			pnfs_roc_release(inode);
+> +		nfs_iput_and_deactive(inode);
+> +	}
+>  	kfree(calldata);
+>  }
+>  
+> @@ -5234,9 +5238,9 @@ static int _nfs4_proc_delegreturn(struct inode *inode, struct rpc_cred *cred, co
+>  	nfs_fattr_init(data->res.fattr);
+>  	data->timestamp = jiffies;
+>  	data->rpc_status = 0;
+> -	data->inode = inode;
+> -	data->roc = list_empty(&NFS_I(inode)->open_files) ?
+> -		    pnfs_roc(inode) : false;
+> +	data->inode = nfs_igrab_and_active(inode);
+> +	if (data->inode)
+> +		data->roc = nfs4_roc(inode);
+>  
+>  	task_setup_data.callback_data = data;
+>  	msg.rpc_argp = &data->args;
+> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+> index 31a11b0e885d..368d9395d2e7 100644
+> --- a/fs/nfs/super.c
+> +++ b/fs/nfs/super.c
+> @@ -405,12 +405,15 @@ void __exit unregister_nfs_fs(void)
+>  	unregister_filesystem(&nfs_fs_type);
+>  }
+>  
+> -void nfs_sb_active(struct super_block *sb)
+> +bool nfs_sb_active(struct super_block *sb)
+>  {
+>  	struct nfs_server *server = NFS_SB(sb);
+>  
+> -	if (atomic_inc_return(&server->active) == 1)
+> -		atomic_inc(&sb->s_active);
+> +	if (!atomic_inc_not_zero(&sb->s_active))
+> +		return false;
+> +	if (atomic_inc_return(&server->active) != 1)
+> +		atomic_dec(&sb->s_active);
+
+Could you end up doing a 1->0 s_active transition here? Shouldn't this
+be a deactivate_super instead?
+ 
+> +	return true;
+>  }
+>  EXPORT_SYMBOL_GPL(nfs_sb_active);
+>  
+
+
+-- 
+Jeff Layton <jeff.layton@primarydata.com>
