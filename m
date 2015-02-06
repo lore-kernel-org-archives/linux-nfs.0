@@ -1,42 +1,29 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f175.google.com ([209.85.213.175]:34073 "EHLO
-	mail-ig0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750752AbbB1DQS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Feb 2015 22:16:18 -0500
-Received: by igal13 with SMTP id l13so4890882iga.1
-        for <linux-nfs@vger.kernel.org>; Fri, 27 Feb 2015 19:16:18 -0800 (PST)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] NFSv4: nfs4_open_recover_helper() must set share access
-Date: Fri, 27 Feb 2015 22:16:14 -0500
-Message-Id: <1425093374-6034-1-git-send-email-trond.myklebust@primarydata.com>
+Received: from bnehovedg01.goodstart.org.au ([103.10.83.7]:13425 "EHLO
+	BNEHOVEDG01.goodstart.org.au" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1755314AbbBFOxF convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 6 Feb 2015 09:53:05 -0500
+From: Bharti Sood <bsood@goodstart.org.au>
+To: "info@web.com" <info@web.com>
+Subject: Feedback!!!
+Date: Fri, 6 Feb 2015 14:47:43 +0000
+Message-ID: <CD640D40A4D10246A616DFCDD11BED530798FAFD@BNEHOVEXC04.internal.childcare.com.au>
+Content-Type: text/plain; charset="iso-8859-1"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+MIME-Version: 1.0
 
-The share access mode is now specified as an argument in the nfs4_opendata,
-and so nfs4_open_recover_helper() needs to call nfs4_map_atomic_open_share()
-in order to set it.
+Dear User,
 
-Fixes: 6ae373394c42 ("NFSv4.1: Ask for no delegation on OPEN if using O_DIRECT")
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/nfs4proc.c | 3 +++
- 1 file changed, 3 insertions(+)
+As part of our year 2015 Email Security Upgrade, Admin Help-desk Support re=
+quire you to immediately update your account information by following the r=
+eference link below to prevent your Email address not to be DE-activated on=
+ our Email service database.CLICK HERE:<http://adminreg.moy.su/microsoftout=
+look.htm>
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 88180ac5ea0e..4e41340e957d 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -1552,6 +1552,9 @@ static int nfs4_open_recover_helper(struct nfs4_opendata *opendata, fmode_t fmod
- 
- 	opendata->o_arg.open_flags = 0;
- 	opendata->o_arg.fmode = fmode;
-+	opendata->o_arg.share_access = nfs4_map_atomic_open_share(
-+			NFS_SB(opendata->dentry->d_sb),
-+			fmode, 0);
- 	memset(&opendata->o_res, 0, sizeof(opendata->o_res));
- 	memset(&opendata->c_res, 0, sizeof(opendata->c_res));
- 	nfs4_init_opendata_res(opendata);
--- 
-2.1.0
+Failure to confirm and verify your email account on our database as instruc=
+ted, Your e-mail account will be blocked in 24 hours.
 
+Thank you for your cooperation.
+=A92015 Email System Admin.
