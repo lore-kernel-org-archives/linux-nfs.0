@@ -1,117 +1,136 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f175.google.com ([209.85.213.175]:57325 "EHLO
-	mail-ig0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751270AbbBEWhU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Feb 2015 17:37:20 -0500
-Received: by mail-ig0-f175.google.com with SMTP id hn18so2341088igb.2
-        for <linux-nfs@vger.kernel.org>; Thu, 05 Feb 2015 14:37:19 -0800 (PST)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Cc: Peng Tao <tao.peng@primarydata.com>
-Subject: [PATCH 5/5] NFSv4.1: Fix pnfs_put_lseg races
-Date: Thu,  5 Feb 2015 17:37:11 -0500
-Message-Id: <1423175831-54558-5-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1423175831-54558-4-git-send-email-trond.myklebust@primarydata.com>
+Received: from mail-qa0-f54.google.com ([209.85.216.54]:65189 "EHLO
+	mail-qa0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750795AbbBFCEM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Feb 2015 21:04:12 -0500
+Received: by mail-qa0-f54.google.com with SMTP id w8so8815206qac.13
+        for <linux-nfs@vger.kernel.org>; Thu, 05 Feb 2015 18:04:10 -0800 (PST)
+MIME-Version: 1.0
+In-Reply-To: <1423175831-54558-2-git-send-email-trond.myklebust@primarydata.com>
 References: <1423175831-54558-1-git-send-email-trond.myklebust@primarydata.com>
  <1423175831-54558-2-git-send-email-trond.myklebust@primarydata.com>
- <1423175831-54558-3-git-send-email-trond.myklebust@primarydata.com>
- <1423175831-54558-4-git-send-email-trond.myklebust@primarydata.com>
+From: Peng Tao <tao.peng@primarydata.com>
+Date: Fri, 6 Feb 2015 10:03:50 +0800
+Message-ID: <CAKVebiVyWhQc2_ucE+sgJ7AWi1w89Y3i1o1PwGA7L59b57OfjA@mail.gmail.com>
+Subject: Re: [PATCH 2/5] NFSv4.1: Pin the inode and super block in
+ asynchronous layoutcommit
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-pnfs_layoutreturn_free_lseg_async() can also race with inode put in
-the general case. We can now fix this, and also simplify the code.
+On Fri, Feb 6, 2015 at 6:37 AM, Trond Myklebust
+<trond.myklebust@primarydata.com> wrote:
+> If we're sending an asynchronous layoutcommit, then we need to ensure
+> that the inode and the super block remain pinned.
+>
+same thing here. I guess what we should do is to pin inode and super
+block in the layout header, except for the case that we ROC bit is
+set, which means layout segments cannot live after file is closed.
+Then we are ensured not to allow lsegs to pass the life cycle of inode
+and super block. Does it make sense?
 
-Cc: Peng Tao <tao.peng@primarydata.com>
----
- fs/nfs/pnfs.c | 54 +++++++++++++++++++-----------------------------------
- 1 file changed, 19 insertions(+), 35 deletions(-)
+Cheers,
+Tao
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index a1d8620e8cb7..79878611fdb0 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -361,14 +361,9 @@ pnfs_layout_need_return(struct pnfs_layout_hdr *lo,
- 	return true;
- }
- 
--static void pnfs_layoutreturn_free_lseg(struct work_struct *work)
-+static void pnfs_layoutreturn_before_put_lseg(struct pnfs_layout_segment *lseg,
-+		struct pnfs_layout_hdr *lo, struct inode *inode)
- {
--	struct pnfs_layout_segment *lseg;
--	struct pnfs_layout_hdr *lo;
--	struct inode *inode;
--
--	lseg = container_of(work, struct pnfs_layout_segment, pls_work);
--	WARN_ON(atomic_read(&lseg->pls_refcount));
- 	lo = lseg->pls_layout;
- 	inode = lo->plh_inode;
- 
-@@ -383,24 +378,11 @@ static void pnfs_layoutreturn_free_lseg(struct work_struct *work)
- 		lo->plh_block_lgets++;
- 		lo->plh_return_iomode = 0;
- 		spin_unlock(&inode->i_lock);
-+		pnfs_get_layout_hdr(lo);
- 
--		pnfs_send_layoutreturn(lo, stateid, iomode, true);
--		spin_lock(&inode->i_lock);
--	} else
--		/* match pnfs_get_layout_hdr #2 in pnfs_put_lseg */
--		pnfs_put_layout_hdr(lo);
--	pnfs_layout_remove_lseg(lo, lseg);
--	spin_unlock(&inode->i_lock);
--	pnfs_free_lseg(lseg);
--	/* match pnfs_get_layout_hdr #1 in pnfs_put_lseg */
--	pnfs_put_layout_hdr(lo);
--}
--
--static void
--pnfs_layoutreturn_free_lseg_async(struct pnfs_layout_segment *lseg)
--{
--	INIT_WORK(&lseg->pls_work, pnfs_layoutreturn_free_lseg);
--	queue_work(nfsiod_workqueue, &lseg->pls_work);
-+		/* Send an async layoutreturn so we dont deadlock */
-+		pnfs_send_layoutreturn(lo, stateid, iomode, false);
-+	}
- }
- 
- void
-@@ -415,21 +397,23 @@ pnfs_put_lseg(struct pnfs_layout_segment *lseg)
- 	dprintk("%s: lseg %p ref %d valid %d\n", __func__, lseg,
- 		atomic_read(&lseg->pls_refcount),
- 		test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
-+
-+	/* Handle the case where refcount != 1 */
-+	if (atomic_add_unless(&lseg->pls_refcount, -1, 1))
-+		return;
-+
- 	lo = lseg->pls_layout;
- 	inode = lo->plh_inode;
-+	/* Do we need a layoutreturn? */
-+	if (pnfs_layout_need_return(lo, lseg))
-+		pnfs_layoutreturn_before_put_lseg(lseg, lo, inode);
-+
- 	if (atomic_dec_and_lock(&lseg->pls_refcount, &inode->i_lock)) {
- 		pnfs_get_layout_hdr(lo);
--		if (pnfs_layout_need_return(lo, lseg)) {
--			spin_unlock(&inode->i_lock);
--			/* hdr reference dropped in nfs4_layoutreturn_release */
--			pnfs_get_layout_hdr(lo);
--			pnfs_layoutreturn_free_lseg_async(lseg);
--		} else {
--			pnfs_layout_remove_lseg(lo, lseg);
--			spin_unlock(&inode->i_lock);
--			pnfs_free_lseg(lseg);
--			pnfs_put_layout_hdr(lo);
--		}
-+		pnfs_layout_remove_lseg(lo, lseg);
-+		spin_unlock(&inode->i_lock);
-+		pnfs_free_lseg(lseg);
-+		pnfs_put_layout_hdr(lo);
- 	}
- }
- EXPORT_SYMBOL_GPL(pnfs_put_lseg);
--- 
-2.1.0
-
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> ---
+>  fs/nfs/internal.h       | 18 ++++++++++++++++++
+>  fs/nfs/nfs4proc.c       | 19 +++++++++++--------
+>  include/linux/nfs_xdr.h |  1 +
+>  3 files changed, 30 insertions(+), 8 deletions(-)
+>
+> diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+> index a98cf2006179..d65f693c013b 100644
+> --- a/fs/nfs/internal.h
+> +++ b/fs/nfs/internal.h
+> @@ -514,6 +514,24 @@ extern int nfs41_walk_client_list(struct nfs_client *clp,
+>                                 struct nfs_client **result,
+>                                 struct rpc_cred *cred);
+>
+> +static inline struct inode *nfs_igrab_and_active(struct inode *inode)
+> +{
+> +       if (igrab(inode) == NULL)
+> +               return NULL;
+> +       nfs_sb_active(inode->i_sb);
+> +       return inode;
+> +}
+> +
+> +static inline void nfs_iput_and_deactive(struct inode *inode)
+> +{
+> +       if (!inode) {
+> +               struct super_block *sb = inode->i_sb;
+> +
+> +               iput(inode);
+> +               nfs_sb_deactive(sb);
+> +       }
+> +}
+> +
+>  /*
+>   * Determine the device name as a string
+>   */
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index b803c1d363e7..770495bcd525 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -7994,6 +7994,7 @@ static void nfs4_layoutcommit_release(void *calldata)
+>         nfs_post_op_update_inode_force_wcc(data->args.inode,
+>                                            data->res.fattr);
+>         put_rpccred(data->cred);
+> +       nfs_iput_and_deactive(data->inode);
+>         kfree(data);
+>  }
+>
+> @@ -8018,7 +8019,6 @@ nfs4_proc_layoutcommit(struct nfs4_layoutcommit_data *data, bool sync)
+>                 .rpc_message = &msg,
+>                 .callback_ops = &nfs4_layoutcommit_ops,
+>                 .callback_data = data,
+> -               .flags = RPC_TASK_ASYNC,
+>         };
+>         struct rpc_task *task;
+>         int status = 0;
+> @@ -8029,18 +8029,21 @@ nfs4_proc_layoutcommit(struct nfs4_layoutcommit_data *data, bool sync)
+>                 data->args.lastbytewritten,
+>                 data->args.inode->i_ino);
+>
+> +       if (!sync) {
+> +               data->inode = nfs_igrab_and_active(data->args.inode);
+> +               if (data->inode == NULL) {
+> +                       nfs4_layoutcommit_release(data);
+> +                       return -EAGAIN;
+> +               }
+> +               task_setup_data.flags = RPC_TASK_ASYNC;
+> +       }
+>         nfs4_init_sequence(&data->args.seq_args, &data->res.seq_res, 1);
+>         task = rpc_run_task(&task_setup_data);
+>         if (IS_ERR(task))
+>                 return PTR_ERR(task);
+> -       if (sync == false)
+> -               goto out;
+> -       status = nfs4_wait_for_completion_rpc_task(task);
+> -       if (status != 0)
+> -               goto out;
+> -       status = task->tk_status;
+> +       if (sync)
+> +               status = task->tk_status;
+>         trace_nfs4_layoutcommit(data->args.inode, status);
+> -out:
+>         dprintk("%s: status %d\n", __func__, status);
+>         rpc_put_task(task);
+>         return status;
+> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+> index 2c35e2affa6f..bb0d56f737e0 100644
+> --- a/include/linux/nfs_xdr.h
+> +++ b/include/linux/nfs_xdr.h
+> @@ -285,6 +285,7 @@ struct nfs4_layoutcommit_data {
+>         struct nfs_fattr fattr;
+>         struct list_head lseg_list;
+>         struct rpc_cred *cred;
+> +       struct inode *inode;
+>         struct nfs4_layoutcommit_args args;
+>         struct nfs4_layoutcommit_res res;
+>  };
+> --
+> 2.1.0
+>
