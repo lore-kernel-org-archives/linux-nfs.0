@@ -1,84 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mga03.intel.com ([134.134.136.65]:32155 "EHLO mga03.intel.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S964777AbbBBK4j (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 2 Feb 2015 05:56:39 -0500
-Message-ID: <1422874597.31903.358.camel@linux.intel.com>
-Subject: Re: [PATCH v2 3/3] lib/string_helpers.c: Change semantics of
- string_escape_mem
-From: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
-To: Rasmus Villemoes <linux@rasmusvillemoes.dk>
-Cc: Andrew Morton <akpm@linux-foundation.org>,
+Received: from mail-lb0-f176.google.com ([209.85.217.176]:54901 "EHLO
+	mail-lb0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759672AbbBIXpM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Feb 2015 18:45:12 -0500
+Received: by mail-lb0-f176.google.com with SMTP id u10so19712610lbd.7
+        for <linux-nfs@vger.kernel.org>; Mon, 09 Feb 2015 15:45:10 -0800 (PST)
+From: Rasmus Villemoes <linux@rasmusvillemoes.dk>
+To: Andrew Morton <akpm@linux-foundation.org>,
+        Andy Shevchenko <andriy.shevchenko@linux.intel.com>,
         Trond Myklebust <trond.myklebust@primarydata.com>,
         "J. Bruce Fields" <bfields@fieldses.org>,
-        "David S. Miller" <davem@davemloft.net>, linux-kernel@vger.kernel.org,
+        "David S. Miller" <davem@davemloft.net>
+Cc: Rasmus Villemoes <linux@rasmusvillemoes.dk>, linux-kernel@vger.kernel.org,
         linux-nfs@vger.kernel.org, netdev@vger.kernel.org
-Date: Mon, 02 Feb 2015 12:56:37 +0200
-In-Reply-To: <87pp9vhm8l.fsf@rasmusvillemoes.dk>
-References: <1422451543-12401-1-git-send-email-linux@rasmusvillemoes.dk>
-	 <1422525801-26560-1-git-send-email-linux@rasmusvillemoes.dk>
-	 <1422525801-26560-4-git-send-email-linux@rasmusvillemoes.dk>
-	 <1422538178.31903.325.camel@linux.intel.com>
-	 <87oaphbqym.fsf@rasmusvillemoes.dk>
-	 <1422613655.31903.351.camel@linux.intel.com>
-	 <87pp9vhm8l.fsf@rasmusvillemoes.dk>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Subject: [PATCH v3 0/3] Two printf fixes
+Date: Tue, 10 Feb 2015 00:44:47 +0100
+Message-Id: <1423525491-12613-1-git-send-email-linux@rasmusvillemoes.dk>
+In-Reply-To: <1422525801-26560-1-git-send-email-linux@rasmusvillemoes.dk>
+References: <1422525801-26560-1-git-send-email-linux@rasmusvillemoes.dk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, 2015-01-31 at 00:39 +0100, Rasmus Villemoes wrote:
-> On Fri, Jan 30 2015, Andy Shevchenko <andriy.shevchenko@linux.intel.com> wrote:
-> >> >>   * Return:
-> >> >> - * The amount of the characters processed to the destination buffer, or
-> >> >> - * %-ENOMEM if the size of buffer is not enough to put an escaped character is
-> >> >> - * returned.
-> >> >> - *
-> >> >> - * Even in the case of error @dst pointer will be updated to point to the byte
-> >> >> - * after the last processed character.
-> >> >> + * The total size of the escaped output that would be generated for
-> >> >> + * the given input and flags. To check whether the output was
-> >> >> + * truncated, compare the return value to osz. There is room left in
-> >> >> + * dst for a '\0' terminator if and only if ret < osz.
-> >> >>   */
-> >> >> -int string_escape_mem(const char *src, size_t isz, char **dst, size_t osz,
-> >> >> -		      unsigned int flags, const char *esc)
-> >> >> +size_t string_escape_mem(const char *src, size_t isz, char *dst, size_t osz,
-> >> >> +			 unsigned int flags, const char *esc)
-> >> >
-> >> > I prefer to leave the prototype the same. int for return is okay. dst
-> >> > should be updated accordingly.
-> >> 
-> >> Please explain exactly what you think the return value should be, and
-> >> what *dst should be set to.
-> >
-> > Return value like you proposed, *dst is incremented by it.
-> 
-> The more I think about it, the less I like having dst being char**.
-> 
-> (1) It is unlike most other functions taking buffer+size arguments.
-> (2) It is inconvenient. Callers doing
-> 
->   char escaped[SOME_SIZE];
-> 
-> or
-> 
->   char *escaped = kmalloc(likely_big_enough);
-> 
-> can't just pass &escaped; they would need to use an extra dummy variable.
-> 
-> (3) With the return value telling the size of the would-be generated
-> output, it is redundant.
-> 
-> In fact, I dislike it so much that I'm not going to sign off on a patch
-> where dst is still char**.
+Both %pE and %ph are unusable in kasprintf(), since the occurrence of
+either will trigger an oops during the first vsnprintf call where
+kasprintf tries to find the correct size to allocate. These oopses
+could be papered over with somewhat smaller patches than these, but
+then the return value from vsnprintf would still not reflect the
+actual size needed. For %pE, this requires a change of semantics of
+string_escape_mem and hence an annoyingly large diffstat.
 
-Fair enough, though there usual case when temporary variable is already
-present (at least current users).
+Not changed in v3: The test_string_escape_nomem helper is still gone,
+and the overflow test done in test_string_escape. I also kept the "if
+(out + 1 < end)" conditionals that way.
 
-Let's proceed with char *dst.
+Changed in v3:
+
+* Add Andy's ack to 1/3.
+
+* Ensure that string_escape_mem doesn't output partial escape
+  sequences after 2/3, while still preparing for it to do exactly that
+  in 3/3.
+
+* Leave the return value of string_escape_mem as int.
+
+v2: Suggestions from Andy Shevchenko:
+
+* Simpler fix of hex_string().
+
+* The string_escape_mem change is split in two, 2/3 updating the
+  internal helpers and 3/3 then changing the external interface.
+
+
+Rasmus Villemoes (3):
+  lib/vsprintf.c: Fix potential NULL deref in hex_string
+  lib/string_helpers.c: Refactor string_escape_mem
+  lib/string_helpers.c: Change semantics of string_escape_mem
+
+ include/linux/string_helpers.h |   8 +-
+ lib/string_helpers.c           | 189 ++++++++++++++++-------------------------
+ lib/test-string_helpers.c      |  35 ++++----
+ lib/vsprintf.c                 |  24 ++++--
+ net/sunrpc/cache.c             |   8 +-
+ 5 files changed, 113 insertions(+), 151 deletions(-)
 
 -- 
-Andy Shevchenko <andriy.shevchenko@intel.com>
-Intel Finland Oy
+2.1.3
 
