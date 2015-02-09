@@ -1,16 +1,16 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f169.google.com ([209.85.223.169]:44416 "EHLO
-	mail-ie0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933756AbbBIWs2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Feb 2015 17:48:28 -0500
-Received: by iecrl12 with SMTP id rl12so20410317iec.11
-        for <linux-nfs@vger.kernel.org>; Mon, 09 Feb 2015 14:48:27 -0800 (PST)
+Received: from mail-ig0-f178.google.com ([209.85.213.178]:34817 "EHLO
+	mail-ig0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933766AbbBIWs3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Feb 2015 17:48:29 -0500
+Received: by mail-ig0-f178.google.com with SMTP id hl2so19833376igb.5
+        for <linux-nfs@vger.kernel.org>; Mon, 09 Feb 2015 14:48:28 -0800 (PST)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 11/15] SUNRPC: Make xs_tcp_close() do a socket shutdown rather than a sock_release
-Date: Mon,  9 Feb 2015 17:48:07 -0500
-Message-Id: <1423522091-35365-12-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1423522091-35365-11-git-send-email-trond.myklebust@primarydata.com>
+Subject: [PATCH v3 12/15] SUNRPC: Remove the redundant XPRT_CONNECTION_CLOSE flag
+Date: Mon,  9 Feb 2015 17:48:08 -0500
+Message-Id: <1423522091-35365-13-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1423522091-35365-12-git-send-email-trond.myklebust@primarydata.com>
 References: <1423522091-35365-1-git-send-email-trond.myklebust@primarydata.com>
  <1423522091-35365-2-git-send-email-trond.myklebust@primarydata.com>
  <1423522091-35365-3-git-send-email-trond.myklebust@primarydata.com>
@@ -22,42 +22,53 @@ References: <1423522091-35365-1-git-send-email-trond.myklebust@primarydata.com>
  <1423522091-35365-9-git-send-email-trond.myklebust@primarydata.com>
  <1423522091-35365-10-git-send-email-trond.myklebust@primarydata.com>
  <1423522091-35365-11-git-send-email-trond.myklebust@primarydata.com>
+ <1423522091-35365-12-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Use of socket shutdown() means that we monitor the shutdown process
-through the xs_tcp_state_change() callback, so it is preferable to
-a full close in all cases unless we're destroying the transport.
-
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- net/sunrpc/xprtsock.c | 6 +-----
- 1 file changed, 1 insertion(+), 5 deletions(-)
+ include/linux/sunrpc/xprt.h | 1 -
+ net/sunrpc/xprt.c           | 1 -
+ net/sunrpc/xprtsock.c       | 1 -
+ 3 files changed, 3 deletions(-)
 
+diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+index ae39d478a272..8b93ef53df3c 100644
+--- a/include/linux/sunrpc/xprt.h
++++ b/include/linux/sunrpc/xprt.h
+@@ -360,7 +360,6 @@ void			xprt_unlock_connect(struct rpc_xprt *, void *);
+ #define XPRT_BOUND		(4)
+ #define XPRT_BINDING		(5)
+ #define XPRT_CLOSING		(6)
+-#define XPRT_CONNECTION_CLOSE	(8)
+ #define XPRT_CONGESTED		(9)
+ 
+ static inline void xprt_set_connected(struct rpc_xprt *xprt)
+diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+index ff3574df8344..e3015aede0d9 100644
+--- a/net/sunrpc/xprt.c
++++ b/net/sunrpc/xprt.c
+@@ -683,7 +683,6 @@ xprt_init_autodisconnect(unsigned long data)
+ 	if (test_and_set_bit(XPRT_LOCKED, &xprt->state))
+ 		goto out_abort;
+ 	spin_unlock(&xprt->transport_lock);
+-	set_bit(XPRT_CONNECTION_CLOSE, &xprt->state);
+ 	queue_work(rpciod_workqueue, &xprt->task_cleanup);
+ 	return;
+ out_abort:
 diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 3d83cbd32ef2..0279e8ffb14a 100644
+index 0279e8ffb14a..c72b13e2bdf5 100644
 --- a/net/sunrpc/xprtsock.c
 +++ b/net/sunrpc/xprtsock.c
-@@ -857,10 +857,7 @@ static void xs_close(struct rpc_xprt *xprt)
- 
- static void xs_tcp_close(struct rpc_xprt *xprt)
+@@ -804,7 +804,6 @@ static void xs_error_report(struct sock *sk)
+ static void xs_sock_reset_connection_flags(struct rpc_xprt *xprt)
  {
--	if (test_and_clear_bit(XPRT_CONNECTION_CLOSE, &xprt->state))
--		xs_close(xprt);
--	else
--		xs_tcp_shutdown(xprt);
-+	xs_tcp_shutdown(xprt);
- }
- 
- static void xs_xprt_free(struct rpc_xprt *xprt)
-@@ -1033,7 +1030,6 @@ static void xs_udp_data_ready(struct sock *sk)
-  */
- static void xs_tcp_force_close(struct rpc_xprt *xprt)
- {
--	set_bit(XPRT_CONNECTION_CLOSE, &xprt->state);
- 	xprt_force_disconnect(xprt);
- }
- 
+ 	smp_mb__before_atomic();
+-	clear_bit(XPRT_CONNECTION_CLOSE, &xprt->state);
+ 	clear_bit(XPRT_CLOSE_WAIT, &xprt->state);
+ 	clear_bit(XPRT_CLOSING, &xprt->state);
+ 	smp_mb__after_atomic();
 -- 
 2.1.0
 
