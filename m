@@ -1,53 +1,83 @@
-Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f181.google.com ([209.85.223.181]:44769 "EHLO
-	mail-ie0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754543AbbBJNmj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Feb 2015 08:42:39 -0500
-Received: by iecar1 with SMTP id ar1so1753378iec.11
-        for <linux-nfs@vger.kernel.org>; Tue, 10 Feb 2015 05:42:39 -0800 (PST)
-Message-ID: <1423575756.4226.0.camel@primarydata.com>
-Subject: Re: [patch] pnfs: delete an unintended goto
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Dan Carpenter <dan.carpenter@oracle.com>
-Cc: Anna Schumaker <anna.schumaker@netapp.com>, linux-nfs@vger.kernel.org,
-        kernel-janitors@vger.kernel.org
-Date: Tue, 10 Feb 2015 08:42:36 -0500
-In-Reply-To: <20150210080322.GA8762@mwanda>
-References: <20150210080322.GA8762@mwanda>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
-Sender: linux-nfs-owner@vger.kernel.org
+Return-Path: linux-fsdevel-owner@vger.kernel.org
+Date: Tue, 10 Feb 2015 10:55:53 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Al Viro <viro@zeniv.linux.org.uk>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        Jeff Layton <jlayton@primarydata.com>
+Subject: [PATCH] dcache: return -ESTALE not -EBUSY on distributed fs race
+Message-ID: <20150210155553.GA11226@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2015-02-10 at 11:03 +0300, Dan Carpenter wrote:
-> There was an extra goto here where it shouldn't be, because of a merge
-> error.
-> 
-> Fixes: e2c63e091e29 ('Merge branch 'flexfiles'')
-> Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
-> 
-> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-> index 107b321..4f802b02 100644
-> --- a/fs/nfs/pnfs.c
-> +++ b/fs/nfs/pnfs.c
-> @@ -1078,7 +1078,6 @@ bool pnfs_roc(struct inode *ino)
->  			goto out_noroc;
->  	}
->  
-> -		goto out_noroc;
->  	pnfs_clear_retry_layoutget(lo);
->  	list_for_each_entry_safe(lseg, tmp, &lo->plh_segs, pls_list)
->  		if (test_bit(NFS_LSEG_ROC, &lseg->pls_flags)) {
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Thanks Dan! Applied to linux-next.
+On a distributed filesystem it's possible for lookup to discover that a
+directory it just found is already cached elsewhere in the directory
+heirarchy.  The dcache won't let us keep the directory in both places,
+so we have to move the dentry to the new location from the place we
+previously had it cached.
 
-Cheers
-  Trond
+If the parent has changed, then this requires all the same locks as we'd
+need to do a cross-directory rename.  But we're already in lookup
+holding one parent's i_mutex, so it's too late to acquire those locks in
+the right order.
+
+The (unreliable) solution in __d_unalias is to trylock() the required
+locks and return -EBUSY if it fails.
+
+I see no particular reason for returning -EBUSY, and -ESTALE is already
+the result of some other lookup races on NFS.  I think -ESTALE is the
+more helpful error return.  It also allows us to take advantage of the
+logic Jeff Layton added in c6a9428401c0 "vfs: fix renameat to retry on
+ESTALE errors" and ancestors, which hopefully resolves some of these
+errors before they're returned to userspace.
+
+I can reproduce these cases using NFS with:
+
+	ssh root@$client '
+		mount -olookupcache=pos '$server':'$export' /mnt/
+		mkdir /mnt/TO
+		mkdir /mnt/DIR
+		touch /mnt/DIR/test.txt
+		while true; do
+			strace -e open cat /mnt/DIR/test.txt 2>&1 | grep EBUSY
+		done
+	'
+	ssh root@$server '
+		while true; do
+			mv $export/DIR $export/TO/DIR
+			mv $export/TO/DIR $export/DIR
+		done
+	'
+
+It also helps to add some other concurrent use of the directory on the
+client (e.g., "ls /mnt/TO").  And you can replace the server-side mv's
+by client-side mv's that are repeatedly killed.  (If the client is
+interrupted while waiting for the RENAME response then it's left with a
+dentry that has to go under one parent or the other, but it doesn't yet
+know which.)
+
+Acked-by: Jeff Layton <jlayton@primarydata.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/dcache.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/fs/dcache.c b/fs/dcache.c
+index 5bc72b07fde2..b7de7f1ae38f 100644
+--- a/fs/dcache.c
++++ b/fs/dcache.c
+@@ -2612,7 +2612,7 @@ static struct dentry *__d_unalias(struct inode *inode,
+ 		struct dentry *dentry, struct dentry *alias)
+ {
+ 	struct mutex *m1 = NULL, *m2 = NULL;
+-	struct dentry *ret = ERR_PTR(-EBUSY);
++	struct dentry *ret = ERR_PTR(-ESTALE);
+ 
+ 	/* If alias and dentry share a parent, then no extra locks required */
+ 	if (alias->d_parent == dentry->d_parent)
 -- 
-Trond Myklebust
-Linux NFS client maintainer, PrimaryData
-trond.myklebust@primarydata.com
-
-
-
+1.9.3
 
