@@ -1,16 +1,16 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([173.255.197.46]:40782 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752734AbbBIUL4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 9 Feb 2015 15:11:56 -0500
-Date: Mon, 9 Feb 2015 15:11:54 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jeff.layton@primarydata.com>
-Cc: Christoph Hellwig <hch@lst.de>, Dave Chinner <david@fromorbit.com>,
+Received: from ipmail06.adl6.internode.on.net ([150.101.137.145]:38697 "EHLO
+	ipmail06.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1758615AbbBJAE1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Feb 2015 19:04:27 -0500
+Date: Tue, 10 Feb 2015 11:04:23 +1100
+From: Dave Chinner <david@fromorbit.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Jeff Layton <jeff.layton@primarydata.com>, Christoph Hellwig <hch@lst.de>,
         Jeff Layton <jlayton@primarydata.com>, linux-nfs@vger.kernel.org,
         linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com
 Subject: Re: [PATCH 19/20] xfs: implement pNFS export operations
-Message-ID: <20150209201154.GA27746@fieldses.org>
+Message-ID: <20150210000423.GY12722@dastard>
 References: <1421925006-24231-1-git-send-email-hch@lst.de>
  <1421925006-24231-20-git-send-email-hch@lst.de>
  <20150205004758.GO4251@dastard>
@@ -20,52 +20,60 @@ References: <1421925006-24231-1-git-send-email-hch@lst.de>
  <20150206224258.GJ29783@fieldses.org>
  <20150208133435.GA27081@lst.de>
  <20150208090942.51e99687@tlielax.poochiereds.net>
+ <20150209201154.GA27746@fieldses.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20150208090942.51e99687@tlielax.poochiereds.net>
+In-Reply-To: <20150209201154.GA27746@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Feb 08, 2015 at 09:09:42AM -0500, Jeff Layton wrote:
-> On Sun, 8 Feb 2015 14:34:35 +0100
-> Christoph Hellwig <hch@lst.de> wrote:
-> 
-> > On Fri, Feb 06, 2015 at 05:42:58PM -0500, J. Bruce Fields wrote:
-> > > You'd basically just be pulling my tree (Christoph's is just my nfsd
-> > > tree with his patches on top, and I've been testing with exactly that
-> > > locally, just putting off pushing it out till we decide this.)
-> > > 
-> > > So anyway, fine with me if you want to just pull that into the xfs tree.
-> > > Mine's ready whenever, so if I send my pull pretty soon after the merge
-> > > window and you send it a little later then we still keep the property
-> > > that Linus's merge still has a diffstat only in our respective areas.
-> > > 
-> > > (OK, it's a little more complicated because I've got the same
-> > > arrangement with jlayton, so the order is jlayton's lock pull, then my
-> > > nfsd pull, then your xfs pull.  Is this getting too complicated?
-> > > jlayton and I are both ready to so and I think it'd work.)
-> > > 
-> > > I'm also fine with duplicating those few patches, or whatever.
+On Mon, Feb 09, 2015 at 03:11:54PM -0500, J. Bruce Fields wrote:
+> On Sun, Feb 08, 2015 at 09:09:42AM -0500, Jeff Layton wrote:
+> > On Sun, 8 Feb 2015 14:34:35 +0100
+> > Christoph Hellwig <hch@lst.de> wrote:
 > > 
-> > Maybe the better idea is to pull the xfs tree in the nfsd tree, but
-> > that would require Dave sending an early pull request so that the
-> > nfsd pull doesn't get delayed.
+> > > On Fri, Feb 06, 2015 at 05:42:58PM -0500, J. Bruce Fields wrote:
+> > > > You'd basically just be pulling my tree (Christoph's is just my nfsd
+> > > > tree with his patches on top, and I've been testing with exactly that
+> > > > locally, just putting off pushing it out till we decide this.)
+> > > > 
+> > > > So anyway, fine with me if you want to just pull that into the xfs tree.
+> > > > Mine's ready whenever, so if I send my pull pretty soon after the merge
+> > > > window and you send it a little later then we still keep the property
+> > > > that Linus's merge still has a diffstat only in our respective areas.
+> > > > 
+> > > > (OK, it's a little more complicated because I've got the same
+> > > > arrangement with jlayton, so the order is jlayton's lock pull, then my
+> > > > nfsd pull, then your xfs pull.  Is this getting too complicated?
+> > > > jlayton and I are both ready to so and I think it'd work.)
+> > > > 
+> > > > I'm also fine with duplicating those few patches, or whatever.
+> > > 
+> > > Maybe the better idea is to pull the xfs tree in the nfsd tree, but
+> > > that would require Dave sending an early pull request so that the
+> > > nfsd pull doesn't get delayed.
+> > > 
+> > > Or we just defer the pnfsd merge.  While I tried to get it in in time
+> > > for 3.20 all the delays during review mean we're really late no and should
+> > > punt it to 3.21.
 > > 
-> > Or we just defer the pnfsd merge.  While I tried to get it in in time
-> > for 3.20 all the delays during review mean we're really late no and should
-> > punt it to 3.21.
+> > FWIW, I plan to send a pull request for the locking changes as soon as
+> > the merge window opens. Hopefully that won't be an issue for long...
 > 
-> FWIW, I plan to send a pull request for the locking changes as soon as
-> the merge window opens. Hopefully that won't be an issue for long...
+> This includes Christoph's branch (all but the final xfs commits):
+> 
+> 	git://linux-nfs.org/~bfields/linux.git for-3.20
+> 
+> That's what I intend to submit.  Hope that's OK.  Then it's up to Dave
+> whether he wants to pull that in and include the xfs patches.
 
-This includes Christoph's branch (all but the final xfs commits):
+I'm about to send a pull request to Linus for the current XFS tree.
+Once that is merged, I'll pull in the remaining xfs-pnfs patches
+and send another pull request to Linus after the NFS tree is merged.
 
-	git://linux-nfs.org/~bfields/linux.git for-3.20
+Cheers,
 
-That's what I intend to submit.  Hope that's OK.  Then it's up to Dave
-whether he wants to pull that in and include the xfs patches.
-
-Worst case we end up with not-yet-usable pnfs code in 3.20, which
-wouldn't be ideal but shouldn't cause any serious problem either.
-
---b.
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
