@@ -1,59 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f173.google.com ([209.85.220.173]:48767 "EHLO
-	mail-vc0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751310AbbB1PVu (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 28 Feb 2015 10:21:50 -0500
-Received: by mail-vc0-f173.google.com with SMTP id hy4so8351910vcb.4
-        for <linux-nfs@vger.kernel.org>; Sat, 28 Feb 2015 07:21:50 -0800 (PST)
+Received: from fieldses.org ([173.255.197.46]:41470 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751300AbbBJPnG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 10 Feb 2015 10:43:06 -0500
+Date: Tue, 10 Feb 2015 10:43:06 -0500
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <schumakeranna@gmail.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: hang on xfstests generic/074
+Message-ID: <20150210154306.GF28949@fieldses.org>
 MIME-Version: 1.0
-In-Reply-To: <1830.1424969974@warthog.procyon.org.uk>
-References: <1424964991.10136.8.camel@primarydata.com>
-	<1411654543.3044.24.camel@leira.trondhjem.org>
-	<28059.1411650278@warthog.procyon.org.uk>
-	<6150.1424947519@warthog.procyon.org.uk>
-	<1655.1424969471@warthog.procyon.org.uk>
-	<1830.1424969974@warthog.procyon.org.uk>
-Date: Sat, 28 Feb 2015 10:21:50 -0500
-Message-ID: <CAHQdGtT9GZpUw5T3zjmRMtO_e34CWy9ds14hB2CAGs8h9f2Jvw@mail.gmail.com>
-Subject: Re: NMI/soft lockup in nfs_delegation_need_return()
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: David Howells <dhowells@redhat.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Steve Dickson <steved@redhat.com>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Feb 26, 2015 at 11:59 AM, David Howells <dhowells@redhat.com> wrote:
-> David Howells <dhowells@redhat.com> wrote:
->
->> Trond Myklebust <trond.myklebust@primarydata.com> wrote:
->>
->> > This patch ensures that the superblock doesn't go ahead and disappear
->> > underneath us while the state manager thread is returning delegations.
->>
->> It doesn't help.  It seem likely that it would, though.  The superblock is
->
-> It doesn't seem likely, that is...
->
->> unlikely to disappear since there's an active tar running against it.
->
-> David
+I finally got around to running xfstests as part of my regular testing
+and ran across a reproduceable hang on generic/074:
 
-Hi David,
+[110040.300055] INFO: task fstest:22762 blocked for more than 120 seconds.
+[110040.300571]       Tainted: G        W      3.19.0-rc4-00206-g53ea83c #16
+[110040.301082] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+[110040.301656] fstest          D ffff88005246bc98 11320 22762  22761 0x00000000
+[110040.302334]  ffff88005246bc98 ffff88005246bc58 0000000000009000 ffff880057c4d7d0
+[110040.303185]  ffff88005246bfd8 ffff880052f84b90 ffff880057c4d7d0 0000000000000000
+[110040.304041]  0000000000000000 0000000000000001 0000000000000000 ffff88005246bc58
+[110040.305096] Call Trace:
+[110040.305331]  [<ffffffff810b0ed7>] ? prepare_to_wait+0x27/0x90
+[110040.305770]  [<ffffffffa000f492>] ? rpc_make_runnable+0xc2/0xd0 [sunrpc]
+[110040.306274]  [<ffffffff81a9550d>] ?  _raw_spin_unlock_irqrestore+0x5d/0x80
+[110040.306799]  [<ffffffff81a90910>] ? bit_wait+0x60/0x60
+[110040.307258]  [<ffffffff810bad1d>] ?  trace_hardirqs_on_caller+0x15d/0x200
+[110040.307798]  [<ffffffff810badcd>] ? trace_hardirqs_on+0xd/0x10
+[110040.308283]  [<ffffffff81a90910>] ? bit_wait+0x60/0x60
+[110040.308678]  [<ffffffff81a8ffc9>] schedule+0x29/0x70
+[110040.309054]  [<ffffffff81a90295>] io_schedule+0x55/0x80
+[110040.309510]  [<ffffffff81a90944>] bit_wait_io+0x34/0x60
+[110040.309909]  [<ffffffff81a905b7>] __wait_on_bit+0x67/0x90
+[110040.310313]  [<ffffffff8114e72d>] ? find_get_pages_tag+0xd/0x210
+[110040.310756]  [<ffffffff8114d2c6>] wait_on_page_bit+0xb6/0xc0
+[110040.311177]  [<ffffffff810b1410>] ?  autoremove_wake_function+0x40/0x40
+[110040.311654]  [<ffffffff8114d422>] filemap_fdatawait_range+0xf2/0x190
+[110040.312131]  [<ffffffff8114f062>] filemap_write_and_wait_range+0x42/0x70
+[110040.312627]  [<ffffffffa017866f>] nfs4_file_fsync+0x5f/0xb0 [nfsv4]
+[110040.313090]  [<ffffffffa0178905>] ?  nfs4_do_check_delegation+0x5/0xc0 [nfsv4]
+[110040.313616]  [<ffffffff811d05a9>] vfs_fsync+0x29/0x40
+[110040.313991]  [<ffffffffa010fdea>] nfs_file_flush+0x7a/0xb0 [nfs]
+[110040.314421]  [<ffffffff8119b093>] filp_close+0x33/0x80
+[110040.314801]  [<ffffffff811bce42>] __close_fd+0x82/0xa0
+[110040.315178]  [<ffffffff8119b103>] SyS_close+0x23/0x50
+[110040.315551]  [<ffffffff81a960d2>] system_call_fastpath+0x12/0x17
+[110040.316247] no locks held by fstest/22762.
+[110063.328025] nfs: server f21-1 not responding, still trying ...
 
-Could you please retest using the patches that are currently in my
-'devel' git branch?
+Is this anything known?
 
-git pull git://git.linux-nfs.org/projects/trondmy/linux-nfs.git devel
+Client and server were running some version of my tree, 19-rc4 based.
 
-They fix up a number of minor issues with the delegation code,
-specifically ones that might cause a delegation to be removed
-prematurely.
-
-Thanks!
-  Trond
--- 
-Trond Myklebust
-Linux NFS client maintainer, PrimaryData
-trond.myklebust@primarydata.com
+--b.
