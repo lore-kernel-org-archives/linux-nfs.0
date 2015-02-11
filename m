@@ -1,49 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:55959 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:37397 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753844AbbBZThi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 26 Feb 2015 14:37:38 -0500
-Message-ID: <54EF75FC.9070904@RedHat.com>
-Date: Thu, 26 Feb 2015 14:37:32 -0500
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: NeilBrown <neilb@suse.de>, NFS <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH - nfs-utils] mountd: fix next_mnt handling for "/"
-References: <20150216121856.7efe2237@notabene.brown>
-In-Reply-To: <20150216121856.7efe2237@notabene.brown>
-Content-Type: text/plain; charset=windows-1252
+	id S1752952AbbBKQnk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 11 Feb 2015 11:43:40 -0500
+Received: from int-mx13.intmail.prod.int.phx2.redhat.com (int-mx13.intmail.prod.int.phx2.redhat.com [10.5.11.26])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id t1BGhes0005456
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
+	for <linux-nfs@vger.kernel.org>; Wed, 11 Feb 2015 11:43:40 -0500
+From: Benjamin Coddington <bcodding@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: steved@redhat.com
+Subject: [PATCH] nfs-utils: Fix rpc.gssd and rpc.svcgssd args variable names
+Date: Wed, 11 Feb 2015 11:17:30 -0500
+Message-Id: <88e82aeaea947c3aa47f57dc5c02c5bdbe901961.1423671114.git.bcodding@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+This fixes mis-matched variable names from fedora's /etc/sysconfig/nfs.
 
+Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+---
+ systemd/rpc-gssd.service    |    2 +-
+ systemd/rpc-svcgssd.service |    2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
-On 02/15/2015 08:18 PM, NeilBrown wrote:
-> 
-> 
-> If the (exported) path passed to next_mnt() is simply "/", next_mnt()
-> will not report any children, as none start with "/" followed by
-> a '/'.
-> So make a special case for strlen(p)==1.  In that case, return all
-> children.
-> 
-> This gives correct handling if only "/" is exported.
-> 
-> Signed-off-by: NeilBrown <neilb@suse.de>
-Committed!
+diff --git a/systemd/rpc-gssd.service b/systemd/rpc-gssd.service
+index d4a3819..6e1af86 100644
+--- a/systemd/rpc-gssd.service
++++ b/systemd/rpc-gssd.service
+@@ -16,4 +16,4 @@ After=nfs-config.service
+ EnvironmentFile=-/run/sysconfig/nfs-utils
+ 
+ Type=forking
+-ExecStart=/usr/sbin/rpc.gssd $GSSDARGS
++ExecStart=/usr/sbin/rpc.gssd $RPCGSSDARGS
+diff --git a/systemd/rpc-svcgssd.service b/systemd/rpc-svcgssd.service
+index f7424b0..0aeaed9 100644
+--- a/systemd/rpc-svcgssd.service
++++ b/systemd/rpc-svcgssd.service
+@@ -16,4 +16,4 @@ After=nfs-config.service
+ [Service]
+ EnvironmentFile=-/run/sysconfig/nfs-utils
+ Type=forking
+-ExecStart=/usr/sbin/rpc.svcgssd $SVCGSSDARGS
++ExecStart=/usr/sbin/rpc.svcgssd $RPCSVCGSSDARGS
+-- 
+1.7.1
 
-steved.
-
-> 
-> diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-> index c23d384d24eb..ac36b6d9f21e 100644
-> --- a/utils/mountd/cache.c
-> +++ b/utils/mountd/cache.c
-> @@ -377,6 +377,7 @@ static char *next_mnt(void **v, char *p)
->  	} else
->  		f = *v;
->  	while ((me = getmntent(f)) != NULL &&
-> +	       l > 1 &&
->  	       (strncmp(me->mnt_dir, p, l) != 0 ||
->  		me->mnt_dir[l] != '/'))
->  		;
-> 
