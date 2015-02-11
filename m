@@ -1,59 +1,36 @@
-Return-Path: linux-kernel-owner@vger.kernel.org
+Return-Path: linux-nfs-owner@vger.kernel.org
+Received: from userp1040.oracle.com ([156.151.31.81]:48598 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752802AbbBKNHn (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Feb 2015 08:07:43 -0500
+Date: Wed, 11 Feb 2015 16:08:32 +0300
+From: Dan Carpenter <dan.carpenter@oracle.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>, Christoph Hellwig <hch@lst.de>
+Cc: linux-nfs@vger.kernel.org, kernel-janitors@vger.kernel.org
+Subject: [patch] nfsd: fix comparison in fh_fsid_match()
+Message-ID: <20150211130832.GA25573@mwanda>
 MIME-Version: 1.0
-In-Reply-To: <1423748102.4004.2.camel@primarydata.com>
-References: <CA+r1ZhinMg425ecr4F_XqhRUyCs1FOMDBjvVvf0jV_O-WmpcgA@mail.gmail.com>
-	<1423748102.4004.2.camel@primarydata.com>
-Date: Thu, 12 Feb 2015 15:21:03 +0100
-Message-ID: <CAMuHMdX+YTjnPaK8Vvjq3_92ieUw076tR7UHGAdecw-yRHj2Rg@mail.gmail.com>
-Subject: Re: randconfig build error with next-20150209, in fs/nfs/client.c
-From: Geert Uytterhoeven <geert@linux-m68k.org>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Jim Davis <jim.epost@gmail.com>,
-        Thomas D Haynes <thomas.haynes@primarydata.com>,
-        Stephen Rothwell <sfr@canb.auug.org.au>,
-        linux-next <linux-next@vger.kernel.org>,
-        linux-kernel <linux-kernel@vger.kernel.org>, anna.schumaker@netapp.com,
-        "open list:NFS, SUNRPC, AND..." <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Feb 12, 2015 at 2:35 PM, Trond Myklebust
-<trond.myklebust@primarydata.com> wrote:
->> include/linux/sunrpc/metrics.h:93:18: error: parameter name omitted
->>            struct rpc_iostats *) {}
->>                   ^
->>   CC      net/ipv4/ip_vti.o
->>   CC      net/ipv6/addrconf_core.o
->> make[2]: *** [fs/nfs/client.o] Error 1
->
-> Thanks for the report! I'm adding the following fix to my linux-next
-> branch and will push it to Linus before the merge window ends.
+We're supposed to be testing that the fh_fsid's match but because the
+parenthesis are in the wrong place, then we only check the first
+byte.
 
-Thanks! I was just gonna git-send-email a similar patch...
->
-> 8<------------------------------------------------------------------
-> From 54d7e72a758609da5936d7452320d799cfc6a25c Mon Sep 17 00:00:00 2001
-> From: Trond Myklebust <trond.myklebust@primarydata.com>
-> Date: Thu, 12 Feb 2015 08:28:12 -0500
-> Subject: [PATCH] SUNRPC: Fix a compile error when #undef CONFIG_PROC_FS
->
-> The definition of rpc_count_iostats_metrics() is borked.
->
-> Reported by: Jim Davis <jim.epost@gmail.com>
-> Fixes: d67ae825a59d6 ("pnfs/flexfiles: Add the FlexFile Layout Driver")
-> Cc: Tom Haynes <thomas.haynes@primarydata.com>
-> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Fixes: 9558f2500a20 ('nfsd: add fh_fsid_match helper')
+Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
 
-Acked-by: Geert Uytterhoeven <geert@linux-m68k.org>
-
-Gr{oetje,eeting}s,
-
-                        Geert
-
---
-Geert Uytterhoeven -- There's lots of Linux beyond ia32 -- geert@linux-m68k.org
-
-In personal conversations with technical people, I call myself a hacker. But
-when I'm talking to journalists I just say "programmer" or something like that.
-                                -- Linus Torvalds
+diff --git a/fs/nfsd/nfsfh.h b/fs/nfsd/nfsfh.h
+index 84cae20..f229204 100644
+--- a/fs/nfsd/nfsfh.h
++++ b/fs/nfsd/nfsfh.h
+@@ -200,7 +200,7 @@ static inline bool fh_fsid_match(struct knfsd_fh *fh1, struct knfsd_fh *fh2)
+ {
+ 	if (fh1->fh_fsid_type != fh2->fh_fsid_type)
+ 		return false;
+-	if (memcmp(fh1->fh_fsid, fh2->fh_fsid, key_len(fh1->fh_fsid_type) != 0))
++	if (memcmp(fh1->fh_fsid, fh2->fh_fsid, key_len(fh1->fh_fsid_type)) != 0)
+ 		return false;
+ 	return true;
+ }
