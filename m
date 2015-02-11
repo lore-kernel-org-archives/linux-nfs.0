@@ -1,60 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx62.netapp.com ([216.240.31.182]:52463 "EHLO mx62.netapp.com"
+Received: from mx142.netapp.com ([216.240.21.19]:28508 "EHLO mx142.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753283AbbBKTMT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 11 Feb 2015 14:12:19 -0500
-Message-ID: <54DBA70E.9030903@Netapp.com>
-Date: Wed, 11 Feb 2015 14:01:34 -0500
+	id S1753672AbbBKTWT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 11 Feb 2015 14:22:19 -0500
+Message-ID: <54DBABE7.9050403@Netapp.com>
+Date: Wed, 11 Feb 2015 14:22:15 -0500
 From: Anna Schumaker <Anna.Schumaker@netapp.com>
 MIME-Version: 1.0
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Tom Haynes <thomas.haynes@primarydata.com>
-CC: Marc Eshel <eshel@us.ibm.com>, Anna Schumaker <Anna.Schumaker@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Christoph Hellwig <hch@infradead.org>,
+To: "J. Bruce Fields" <bfields@fieldses.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+CC: Christoph Hellwig <hch@infradead.org>,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        <linux-nfs-owner@vger.kernel.org>
+        Thomas D Haynes <thomas.haynes@primarydata.com>
 Subject: Re: [PATCH v2 2/4] NFSD: Add READ_PLUS support for data segments
-References: <54D394EC.9030902@Netapp.com>	<20150205162326.GA18977@infradead.org>	<54D39DC2.9060808@Netapp.com>	<20150205164832.GB4289@fieldses.org>	<54DB7D72.5020001@Netapp.com>	<CAHQdGtTujOS5QZSaTbEy2sK0aZpoWmo-qmjgxb_iuue_5b=46A@mail.gmail.com>	<20150211162244.GH25696@fieldses.org>	<CAHQdGtTOdGh8pzseGdE6J8onoid-4ee4O=ra9sSS5aD_nWov+w@mail.gmail.com>	<OF7B254253.7A276767-ON88257DE9.005F1E53-88257DE9.0060F512@us.ibm.com>	<CAHQdGtSC-VRf=O6T175Li2Mvm7Zz9zY9RtCyaR-G=KSGAT8ppg@mail.gmail.com>	<20150211181750.GB80012@kitty.kitty> <CAABAsM47mWrYFtkudHyiUSs6Ft=SWJr97yzc3bP-tST7tQppuA@mail.gmail.com>
-In-Reply-To: <CAABAsM47mWrYFtkudHyiUSs6Ft=SWJr97yzc3bP-tST7tQppuA@mail.gmail.com>
+References: <1422477777-27933-1-git-send-email-Anna.Schumaker@Netapp.com> <1422477777-27933-3-git-send-email-Anna.Schumaker@Netapp.com> <20150205141325.GC4522@infradead.org> <54D394EC.9030902@Netapp.com> <20150205162326.GA18977@infradead.org> <54D39DC2.9060808@Netapp.com> <20150205164832.GB4289@fieldses.org> <54DB7D72.5020001@Netapp.com> <CAHQdGtTujOS5QZSaTbEy2sK0aZpoWmo-qmjgxb_iuue_5b=46A@mail.gmail.com> <20150211162244.GH25696@fieldses.org>
+In-Reply-To: <20150211162244.GH25696@fieldses.org>
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 02/11/2015 01:49 PM, Trond Myklebust wrote:
-> On Wed, Feb 11, 2015 at 1:17 PM, Tom Haynes
-> <thomas.haynes@primarydata.com> wrote:
->> On Wed, Feb 11, 2015 at 12:47:26PM -0500, Trond Myklebust wrote:
->>> On Wed, Feb 11, 2015 at 12:39 PM, Marc Eshel <eshel@us.ibm.com> wrote:
->>>>
->>>> A good hint that we are dealing with a sparse file is the the number of
->>>> blocks don't add up to the reported filesize
+On 02/11/2015 11:22 AM, J. Bruce Fields wrote:
+> On Wed, Feb 11, 2015 at 11:13:38AM -0500, Trond Myklebust wrote:
+>> On Wed, Feb 11, 2015 at 11:04 AM, Anna Schumaker
+>> <Anna.Schumaker@netapp.com> wrote:
+>>> I'm not seeing a huge performance increase with READ_PLUS compared to READ (in fact, it's often a bit slower compared to READ, even when using splice).  My guess is that the problem is mostly on the client's end since we have to do a memory shift on each segment to get everything lined up properly.  I'm playing around with code that cuts down the number of memory shifts, but I still have a few bugs to work out before I'll know if it actually helps.
 >>>
->>> Sure, but that still adds up to an unnecessary inefficiency on each
->>> READ_PLUS call to that file.
->>>
->>> My point is that the best way for the client to process this
->>> information (and for the server too) is to read the sparseness map in
->>> once as a bulk operation on a very large chunk of the file, and then
->>> to use that map as a guide for when it needs to call READ.
 >>
->> I thought we agreed that the sparseness map made no sense because
->> the information was immeadiately stale?
+>> I'm wondering if the right way to do READ_PLUS would have been to
+>> instead have a separate function READ_SPARSE, that will return a list
+>> of all sparse areas in the supplied range. We could even make that a
+>> READ_SAME, that can do the same for patterned data.
 > 
-> Right now, we're caching the zero reads, aren't we? What makes caching
-> hole information so special?
+> I worry about ending up with incoherent results, but perhaps it's no
+> different from the current behavior since we're already piecing together
+> our idea of the file content from multiple reads sent in parallel.
 > 
->> Anyway, the client could build that map if it wanted to using SEEK. I'm
->> not arguing that it would be efficient, but that it could be done
->> with a cycle of looking for holes.
+>> The thing is that READ works just fine for what we want it to do. The
+>> real win here would be if given a very large file, we could request a
+>> list of all the sparse areas in, say, a 100GB range, and then use that
+>> data to build up a bitmap of unallocated blocks for which we can skip
+>> the READ requests.
 > 
-> Sure, however that's not necessarily useful as an optimiser either.
+> Can we start by having the server return a single data extent covering
+> the whole read request, with the single exception of the case where the
+> read falls entirely within a hole?
 
-The vfs on Linux doesn't keep a sparse map either, so the server would be stuck doing seeks to build this up anyway.  I've already seen that this can be somewhat unreliable while working on READ_PLUS.
+I'm trying this and it's still giving me pretty bad performance.  I picked out 6 xfstests that read sparse files, and v4.2 takes almost a minute longer to run compared to v4.1.  (1:30 vs 2:22).
 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+I'm going to look into how I zero pages on the client - maybe that can be combined with the right-shift function so pages only need to be mapped into memory once.
+
+Anna
+
+> 
+> I think that should help in the case of large holes without interfering
+> with the client's zero-copy logic in the case there are no large holes.
+> 
+> --b.
 > 
 
