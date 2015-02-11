@@ -1,142 +1,122 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([173.255.197.46]:46229 "EHLO fieldses.org"
+Received: from cantor2.suse.de ([195.135.220.15]:42977 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753250AbbBPPnZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 16 Feb 2015 10:43:25 -0500
-Date: Mon, 16 Feb 2015 10:43:24 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1751914AbbBKDHY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 10 Feb 2015 22:07:24 -0500
+Date: Wed, 11 Feb 2015 14:07:14 +1100
+From: NeilBrown <neilb@suse.de>
 To: Nix <nix@esperi.org.uk>
-Cc: NeilBrown <neilb@suse.de>, NFS list <linux-nfs@vger.kernel.org>
+Cc: bfields@fieldses.org (J. Bruce Fields),
+        NFS list <linux-nfs@vger.kernel.org>
 Subject: Re: what on earth is going on here? paths above mountpoints turn
  into "(unreachable)"
-Message-ID: <20150216154324.GA15486@fieldses.org>
+Message-ID: <20150211140714.4da42a5b@notabene.brown>
+In-Reply-To: <87zj8l7j3z.fsf@spindle.srvr.nix>
 References: <87iofju9ht.fsf@spindle.srvr.nix>
- <20150203195333.GQ22301@fieldses.org>
- <87egq6lqdj.fsf@spindle.srvr.nix>
- <87r3u58df2.fsf@spindle.srvr.nix>
- <20150205112641.60340f71@notabene.brown>
- <87zj8l7j3z.fsf@spindle.srvr.nix>
- <20150210183200.GB11226@fieldses.org>
- <87vbj4ljjn.fsf@spindle.srvr.nix>
+	<20150203195333.GQ22301@fieldses.org>
+	<87egq6lqdj.fsf@spindle.srvr.nix>
+	<87r3u58df2.fsf@spindle.srvr.nix>
+	<20150205112641.60340f71@notabene.brown>
+	<87zj8l7j3z.fsf@spindle.srvr.nix>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <87vbj4ljjn.fsf@spindle.srvr.nix>
+Content-Type: multipart/signed; micalg=pgp-sha1;
+ boundary="Sig_/g.Y09H+IuqKUXSkdD6MaQSu"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Feb 14, 2015 at 01:17:00PM +0000, Nix wrote:
-> On 10 Feb 2015, J. Bruce Fields outgrape:
-> 
-> > It might be interesting to see output from
+--Sig_/g.Y09H+IuqKUXSkdD6MaQSu
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
+
+On Tue, 10 Feb 2015 17:48:48 +0000 Nix <nix@esperi.org.uk> wrote:
+
+> On 5 Feb 2015, NeilBrown spake thusly:
+>=20
+> > On Wed, 04 Feb 2015 23:28:17 +0000 Nix <nix@esperi.org.uk> wrote:
+> >> It doesn't. It still recurs.
 > >
-> > 	rpc.debug -m rpc -s cache
-> > 	cat /proc/net/rpc/nfsd.export/content
-> > 	cat /proc/net/rpc/nfsd.fh/content
+> > Is /usr/archive still exported to mutilate with crossmnt?
+> > If it is, can you change to not do that (it is quite possible to have
+> > different export options for different clients).
+>=20
+> OK. Adjusted.
+>=20
+> > I think that if crossmnt is enabled on the server, then explicitly
+> > mounting /usr/archive/series will have the same net effect as not doing=
+ so
+> > (though I'm not 100% certain).
 > >
-> > especially after the problem manifests.
-> 
-> So the mount has vanished again. I couldn't make it happen with
-> nordirplus in the mount options, so that might provide you with a clue.
-> 
-> Obviously, on the client, no useful output was seen (I learned to avoid
-> NFS cross-exports long ago, so the client doesn't normally NFS-export
-> anything).
+> > Also, can you try changing
+> >    /proc/sys/fs/nfs/nfs_mountpoint_timeout
+> >
+> > It defaults to 500 (seconds - time for light from Sun to reach Earth).
+> > If you make it smaller and the problem gets worse, or make it much bigg=
+er
+> > and the problem goes away, that would be interesting.
+> > If it makes no difference, that also would be interesting.
+>=20
+> Seems to make no difference, which is distinctly surprising. If
+> anything, it happens more often at the default value than at either the
+> high or low values. It's very erratic: it happened ten times in one day,
+> then three days passed and it didn't happen at all... system under
+> very similar load the whole time.
+>=20
+> >From other prompts, what I'm seeing now -- but wasn't then, before I
+> took the crossmnt out -- is an epidemic of spontaneous unmounting: i.e.,
+> /usr/archive/series suddenly vanishes until remounted.
+>=20
+> I might just reboot all systems involved in this mess and hope it goes
+> away. I have no *clue* what's going on, I've never seen it before, maybe
+> it'll stop if I no longer believe in it.
+>=20
 
-Nothing looks obviously wrong to me here.
+This all sounds remarkably similar to a problem that a customer reported
+recently.
+In that case the server was a NetApp and v4 was in use and the server seemed
+to suggest that it was using volatile file handles.
+If a filehandle for a mounted-on directory changes, then (I think) a new
+inode will be allocated and the mountpoint will effectively disappear
+(though I think it should remain in /proc/mounts).
 
-I'm not sure why you have nfsd.fh but but not nfsd.export entries for
-your two exports.  Might be worth reviewing the code to work out in
-which cases that happens.
+However your have a Linux server and v3, so if it is the same problem, then=
+ I
+completely mis-diagnosed it.
 
-Anyway Neil's probably right to suspect the client here....
+I wonder if something is going wrong in nfs_prime_dcache().  The code looks
+right, but it is a little complex...
 
---b.
+You could rule that out by disabling READDIRPLUS by using the nordirplus
+mount option.  If that makes the proble go away, it would be very
+interesting...
 
-> 
-> On the server:
-> 
-> # cat /proc/net/rpc/nfsd.export/content
-> #path domain(flags)
-> # expiry=1423920264 refcnt=1 flags=1
-> /usr/src        mutilate.wkstn.nix(rw,no_root_squash,async,wdelay,no_subtree_check,fsid=16,uuid=333950aa:8e3f440a:bc94d0cc:4adae198,sec=1)
-> # expiry=1423920746 refcnt=1 flags=1
-> /home/.spindle.srvr.nix mutilate.wkstn.nix(rw,no_root_squash,async,wdelay,no_subtree_check,fsid=1,uuid=95bd22c2:253c456f:8e36b6cf:b9ecd4ef,sec=1)
-> # expiry=1423920907 refcnt=1 flags=1
-> /usr/lib/X11/fonts      mutilate.wkstn.nix(ro,root_squash,async,wdelay,fsid=12,uuid=5cccc224:a92440ee:b4450447:3898c2ec,sec=1)
-> # expiry=1423920721 refcnt=1 flags=1
-> /home/.spindle.srvr.nix *.srvr.nix,fold.srvr.nix(rw,root_squash,async,wdelay,no_subtree_check,fsid=1,uuid=95bd22c2:253c456f:8e36b6cf:b9ecd4ef,sec=1)
-> 
-> # cat /proc/net/rpc/nfsd.fh/content
-> #domain fsidtype fsid [path]
-> # expiry=2147483647 refcnt=1 flags=1
-> *.vm.nix,192.168.20.0/24,owork.vm.nix 1 0x00000010 /usr/src
-> # expiry=2147483647 refcnt=1 flags=1
-> *.vm.nix,192.168.20.0/24,owork.vm.nix 1 0x00000016 /home/oranix/o
-> # expiry=2147483647 refcnt=1 flags=1
-> mutilate.wkstn.nix 1 0x00000018 /home/.spindle.srvr.nix/nix/Graphics/Private
-> # expiry=2147483647 refcnt=1 flags=1
-> mutilate.wkstn.nix 1 0x00000003 /home/.spindle.srvr.nix/nix/Graphics/Photos
-> # expiry=2147483647 refcnt=1 flags=1
-> mutilate.wkstn.nix 1 0x00000002 /home/.spindle.srvr.nix/nix/Mail/nnmh/spambox-verified
-> # expiry=2147483647 refcnt=1 flags=1
-> mutilate.wkstn.nix 1 0x00000013 /usr/share/clamav
-> # expiry=2147483647 refcnt=1 flags=1
-> mutilate.wkstn.nix 1 0x00000012 /usr/share/httpd/htdocs/munin
-> # expiry=2147483647 refcnt=1 flags=1
-> mutilate.wkstn.nix 1 0x00000011 /var/state/munin
-> # expiry=2147483647 refcnt=1 flags=1
-> mutilate.wkstn.nix 1 0x0000001d /usr/archive/series
-> # expiry=2147483647 refcnt=1 flags=1
-> mutilate.wkstn.nix 1 0x00000010 /usr/src
-> # expiry=2147483647 refcnt=1 flags=1
-> mutilate.wkstn.nix 1 0x0000000b /pkg/non-free
-> # expiry=2147483647 refcnt=1 flags=1
-> mutilate.wkstn.nix 1 0x00000015 /usr/share/flightgear
-> # expiry=2147483647 refcnt=1 flags=1
-> mutilate.wkstn.nix 1 0x00000007 /usr/share/texlive
-> # expiry=2147483647 refcnt=1 flags=1
-> mutilate.wkstn.nix 1 0x0000000a /usr/share/nethack
-> # expiry=2147483647 refcnt=1 flags=1
-> mutilate.wkstn.nix 1 0x00000009 /usr/share/xplanet
-> # expiry=2147483647 refcnt=1 flags=1
-> mutilate.wkstn.nix 1 0x00000016 /usr/share/emacs/site-lisp
-> # expiry=2147483647 refcnt=1 flags=1
-> mutilate.wkstn.nix 1 0x00000008 /usr/share/xemacs
-> # expiry=2147483647 refcnt=1 flags=1
-> mutilate.wkstn.nix 1 0x00000005 /usr/doc
-> # expiry=2147483647 refcnt=1 flags=1
-> mutilate.wkstn.nix 1 0x00000006 /usr/info
-> # expiry=2147483647 refcnt=1 flags=1
-> mutilate.wkstn.nix 1 0x0000000f /etc/shai-hulud
-> # expiry=2147483647 refcnt=1 flags=1
-> mutilate.wkstn.nix 1 0x0000000e /var/log.real
-> # expiry=2147483647 refcnt=1 flags=1
-> mutilate.wkstn.nix 1 0x0000000c /usr/lib/X11/fonts
-> # expiry=2147483647 refcnt=1 flags=1
-> mutilate.wkstn.nix 1 0x00000019 /usr/archive
-> # expiry=2147483647 refcnt=1 flags=1
-> mutilate.wkstn.nix 1 0x00000001 /home/.spindle.srvr.nix
-> # expiry=2147483647 refcnt=1 flags=1
-> *.vm.nix,192.168.20.0/24,linux-o.vm.nix 1 0x00000010 /usr/src
-> # expiry=2147483647 refcnt=1 flags=1
-> *.vm.nix,192.168.20.0/24,linux-o.vm.nix 1 0x00000016 /home/oranix/o
-> # expiry=2147483647 refcnt=1 flags=1
-> *.srvr.nix,fold.srvr.nix 1 0x00000001 /home/.spindle.srvr.nix
-> 
-> I remounted it, and nfsd.export/content gained a few lines:
-> 
-> # expiry=1423921406 refcnt=1 flags=1
-> /usr/archive/series     mutilate.wkstn.nix(rw,insecure,root_squash,async,wdelay,no_subtree_check,fsid=29,uuid=543a1ca9:d17246ca:b6c53092:5896549d,sec=1)
-> # expiry=1423921383 refcnt=1 flags=1
-> /usr/archive    mutilate.wkstn.nix(rw,insecure,root_squash,async,wdelay,fsid=25,uuid=d20e3edd:06a54a9b:85dcfa19:62975969,sec=1)
-> 
-> nfsd.fh/content is unchanged.
-> 
-> To me, this all looks completely normal: unused mounts *do* expire away.
-> The problem is that they're not coming back as they should (I guess
-> they're coming back with a different inode number?)
-> 
-> This is all with nfs-utils 1.3.0, btw.
-> 
-> -- 
-> NULL && (void)
+A more intrusive debugging approach would be to get d_drop() to scream if t=
+he
+dentry being dropped had DCACHE_MOUNTED set.
+
+Are you able to try either of those?
+
+NeilBrown
+
+--Sig_/g.Y09H+IuqKUXSkdD6MaQSu
+Content-Type: application/pgp-signature
+Content-Description: OpenPGP digital signature
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2
+
+iQIVAwUBVNrHYjnsnt1WYoG5AQLFXQ//TqXfEPJeLUQe0XOWmRr9bwAF8x2womXK
+8ae5yXqZBNfDbJSzTrJSpWL7R5bcKma3+JtkdMOzuCpZ9nOf2W1umSY/ccOXjfFr
+KsXIRSKLzv0ieZKhoUBYBpDXigEMF9PI92RaT91iNRwmrSJuhwWThPcOE8oMzjML
+Hi01YACEug9B6aEvDrlXkhB+gSoC1V4vMr00Asnx3zpnMyYKMRTNAPTW+h//PWP3
+NnCak2PNcUGgzZ3kF5pNUMrHSQeep+CaYr8m4Pkiou0AfQa3eYi18js5OnpwPgi5
+7ba9xsKaYU0d9duxmaS7EdOzLRU6ME/3oJPC8q/wg5WsgtxpIfNj/iLZtX5HiJ+q
+7OblGtIiXc6z3sWEsEfmwV3++uUz49ChP6sLY9uMc/XzXVewXjx+6ZdgMAH67cWw
+EXPw5+wYThUgd6/ptSRgbr2ciZmpUiVPinpz3NvRSE+Nr1tjunE+GgMRalUBNKeW
+N3CbgTCC9q3cmTOZQtNdEuuHnoZD+UeRopFMGILbMY8gNLPbWA7GFF0w1+fMuyY0
+eDKwylilSwdmcqN/E+k4f20y3ji84mZV/v+o6dlitbt0yfUmKbFmBJ8TsAJqIYhl
+ZVxC8mz1q+MqEugXSYZ5RdMwAxkNn9URFU6q1Or9YgI+2NuFOe7lPChfQH6Tz2rt
+9nzhrrDzlcU=
+=MZw1
+-----END PGP SIGNATURE-----
+
+--Sig_/g.Y09H+IuqKUXSkdD6MaQSu--
