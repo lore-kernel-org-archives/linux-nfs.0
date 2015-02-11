@@ -1,10 +1,10 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx143.netapp.com ([216.240.21.24]:58777 "EHLO mx143.netapp.com"
+Received: from mx141.netapp.com ([216.240.21.12]:43325 "EHLO mx141.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752664AbbBFWAM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 6 Feb 2015 17:00:12 -0500
-Message-ID: <54D53969.8080405@Netapp.com>
-Date: Fri, 6 Feb 2015 17:00:09 -0500
+	id S1753153AbbBKQEF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 11 Feb 2015 11:04:05 -0500
+Message-ID: <54DB7D72.5020001@Netapp.com>
+Date: Wed, 11 Feb 2015 11:04:02 -0500
 From: Anna Schumaker <Anna.Schumaker@netapp.com>
 MIME-Version: 1.0
 To: "J. Bruce Fields" <bfields@fieldses.org>
@@ -40,7 +40,7 @@ On 02/05/2015 11:48 AM, J. Bruce Fields wrote:
 > 
 > But I still wish he had more evidence here.
 
-I switched to using splice and fixed a few other bugs that happened to pop up.  xfstests definitely runs faster compared to the old code, but I haven't had a chance to compare against other NFS versions yet.
+I'm not seeing a huge performance increase with READ_PLUS compared to READ (in fact, it's often a bit slower compared to READ, even when using splice).  My guess is that the problem is mostly on the client's end since we have to do a memory shift on each segment to get everything lined up properly.  I'm playing around with code that cuts down the number of memory shifts, but I still have a few bugs to work out before I'll know if it actually helps.
 
 Anna
 
