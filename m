@@ -1,122 +1,46 @@
-Return-Path: linux-kernel-owner@vger.kernel.org
-Date: Wed, 11 Feb 2015 16:17:25 -0500
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: [GIT] nfsd changes for 3.20 merge window
-Message-ID: <20150211211725.GA28796@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-From: bfields@fieldses.org (J. Bruce Fields)
-Sender: linux-kernel-owner@vger.kernel.org
+Return-Path: linux-nfs-owner@vger.kernel.org
+Received: from smtp3.stanford.edu ([171.67.219.83]:58189 "EHLO
+	smtp.stanford.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1753447AbbBKVsI convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Feb 2015 16:48:08 -0500
+From: David Ramos <daramos@stanford.edu>
+Content-Type: text/plain; charset=utf-8
+Subject: Possible NFS 4.1 client vulnerability: uninitialized/garbage kfree() in decode_cb_sequence_args()
+Date: Wed, 11 Feb 2015 13:39:22 -0800
+Message-Id: <572E44F4-FA95-4D53-949F-B553974F2F2B@stanford.edu>
+Cc: linux-nfs@vger.kernel.org
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Mime-Version: 1.0 (Mac OS X Mail 8.1 \(1993\))
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Please pull nfsd changes for 3.20 from
+Hello,
 
-	git://linux-nfs.org/~bfields/linux.git for-3.20
+Our UC-KLEE tool found a kfree() of an uninitialized pointer in decode_cb_sequence_args (fs/nfs/callback_xdr.c) that may be remotely exploitable. The bug affects Linux kernel 3.16.3, but it appears to date back to commit 4aece6a19cf7f474f15eb861ba74db4479884ce3 (4/1/2009), which first implemented the CB_SEQUENCE operation from NFS 4.1.
 
-The main change is the pNFS block server support from Christoph, which
-allows an NFS client connected to shared disk to do block IO to the
-shared disk in place of NFS reads and writes.  This also requires xfs
-patches, which should arrive soon through the xfs tree, barring
-unexpected problems.  Support for other filesystems is also possible if
-there's interest.
+Here is some of the relevant code:
+ 458        if (args->csa_nrclists) {
+ 459                args->csa_rclists = kmalloc_array(args->csa_nrclists,
+ 460                                                  sizeof(*args->csa_rclists),
+ 461                                                  GFP_KERNEL);
+ ...
+ 465                for (i = 0; i < args->csa_nrclists; i++) {
+ 466                        status = decode_rc_list(xdr, &args->csa_rclists[i]);
+ 467                        if (status)
+ 468                                goto out_free;
+ 469                }
+ 470        }
+ …
+ 487out_free:
+ 488        for (i = 0; i < args->csa_nrclists; i++)
+ 489                kfree(args->csa_rclists[i].rcl_refcalls);
 
-Thanks also to Chuck Lever for continuing work to get NFS/RDMA into
-shape.
+If a call to decode_rc_list() on line 466 returns non-zero during iteration ‘i', the kfree() call at line 489 will attempt to free uninitialized (heap garbage) pointers for all indices in [i, args->csa_nrclists).
 
---b.
+I’m not familiar enough with the NFS internals to understand whether an attacker can cause decode_rc_list() to fail (i.e., by causing read_buf() to fail), but it seems plausible?
 
-----------------------------------------------------------------
-Christoph Hellwig (15):
-      nfsd: factor out a helper to decode nfstime4 values
-      nfs: add LAYOUT_TYPE_MAX enum value
-      fs: track fl_owner for leases
-      fs: add FL_LAYOUT lease type
-      nfsd: move nfsd_fh_match to nfsfh.h
-      nfsd: add fh_fsid_match helper
-      nfsd: make lookup/alloc/unhash_stid available outside nfs4state.c
-      nfsd: make find/get/put file available outside nfs4state.c
-      nfsd: make find_any_file available outside nfs4state.c
-      nfsd: implement pNFS operations
-      nfsd: implement pNFS layout recalls
-      nfsd: update documentation for pNFS support
-      nfsd: add trace events
-      exportfs: add methods for block layout exports
-      nfsd: pNFS block layout driver
+Thanks,
+-David
 
-Chuck Lever (10):
-      svcrdma: Clean up dprintk
-      svcrdma: Remove unused variable
-      svcrdma: Clean up read chunk counting
-      svcrdma: Scrub BUG_ON() and WARN_ON() call sites
-      svcrdma: Find rmsgp more reliably
-      svcrdma: Plant reader function in struct svcxprt_rdma
-      svcrdma: rc_position sanity checking
-      svcrdma: Support RDMA_NOMSG requests
-      svcrdma: Move read list XDR round-up logic
-      svcrdma: Handle additional inline content
 
-J. Bruce Fields (4):
-      nfsd4: tweak rd_dircount accounting
-      nfsd: fix year-2038 nfs4 state problem
-      Merge branch 'locks-3.20' of git://git.samba.org/jlayton/linux into for-3.20
-      nfsd: default NFSv4.2 to on
 
-Jeff Layton (2):
-      nfsd: fi_delegees doesn't need to be an atomic_t
-      sunrpc/lockd: fix references to the BKL
-
-Rickard Strandqvist (2):
-      lockd: xdr: Remove unused function
-      nfsd: nfs4state: Remove unused function
-
- Documentation/filesystems/nfs/nfs41-server.txt     |  23 +-
- .../filesystems/nfs/pnfs-block-server.txt          |  37 ++
- fs/lockd/svclock.c                                 |   4 +-
- fs/lockd/xdr.c                                     |   8 -
- fs/locks.c                                         |  26 +-
- fs/nfsd/Kconfig                                    |  10 +
- fs/nfsd/Makefile                                   |   8 +-
- fs/nfsd/blocklayout.c                              | 189 ++++++
- fs/nfsd/blocklayoutxdr.c                           | 157 +++++
- fs/nfsd/blocklayoutxdr.h                           |  62 ++
- fs/nfsd/export.c                                   |   8 +
- fs/nfsd/export.h                                   |   2 +
- fs/nfsd/nfs4callback.c                             |  99 +++
- fs/nfsd/nfs4layouts.c                              | 721 +++++++++++++++++++++
- fs/nfsd/nfs4proc.c                                 | 310 +++++++++
- fs/nfsd/nfs4state.c                                |  76 +--
- fs/nfsd/nfs4xdr.c                                  | 362 ++++++++++-
- fs/nfsd/nfsctl.c                                   |   9 +-
- fs/nfsd/nfsd.h                                     |  16 +-
- fs/nfsd/nfsfh.h                                    |  18 +
- fs/nfsd/nfssvc.c                                   |   1 +
- fs/nfsd/pnfs.h                                     |  81 +++
- fs/nfsd/state.h                                    |  43 +-
- fs/nfsd/trace.c                                    |   5 +
- fs/nfsd/trace.h                                    |  54 ++
- fs/nfsd/xdr4.h                                     |  59 ++
- fs/nfsd/xdr4cb.h                                   |   7 +
- include/linux/exportfs.h                           |  23 +
- include/linux/fs.h                                 |  16 +
- include/linux/nfs4.h                               |   2 +
- include/linux/sunrpc/svc.h                         |   2 +-
- include/linux/sunrpc/svc_rdma.h                    |  13 +-
- include/uapi/linux/nfsd/debug.h                    |   1 +
- include/uapi/linux/nfsd/export.h                   |   4 +-
- net/sunrpc/svc.c                                   |   4 +-
- net/sunrpc/svc_xprt.c                              |   3 +-
- net/sunrpc/xprtrdma/svc_rdma_marshal.c             |  16 -
- net/sunrpc/xprtrdma/svc_rdma_recvfrom.c            | 244 ++++---
- net/sunrpc/xprtrdma/svc_rdma_sendto.c              |  46 +-
- net/sunrpc/xprtrdma/svc_rdma_transport.c           |  47 +-
- 40 files changed, 2562 insertions(+), 254 deletions(-)
- create mode 100644 Documentation/filesystems/nfs/pnfs-block-server.txt
- create mode 100644 fs/nfsd/blocklayout.c
- create mode 100644 fs/nfsd/blocklayoutxdr.c
- create mode 100644 fs/nfsd/blocklayoutxdr.h
- create mode 100644 fs/nfsd/nfs4layouts.c
- create mode 100644 fs/nfsd/pnfs.h
- create mode 100644 fs/nfsd/trace.c
- create mode 100644 fs/nfsd/trace.h
