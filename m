@@ -1,148 +1,79 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from icebox.esperi.org.uk ([81.187.191.129]:47806 "EHLO
-	mail.esperi.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752614AbbBKXHt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Feb 2015 18:07:49 -0500
-From: Nix <nix@esperi.org.uk>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: NeilBrown <neilb@suse.de>, NFS list <linux-nfs@vger.kernel.org>
-Subject: Re: what on earth is going on here? paths above mountpoints turn into "(unreachable)"
+Received: from cantor2.suse.de ([195.135.220.15]:54649 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753020AbbBKXSV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 11 Feb 2015 18:18:21 -0500
+Date: Thu, 12 Feb 2015 10:18:12 +1100
+From: NeilBrown <neilb@suse.de>
+To: Nix <nix@esperi.org.uk>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        NFS list <linux-nfs@vger.kernel.org>
+Subject: Re: what on earth is going on here? paths above mountpoints turn
+ into "(unreachable)"
+Message-ID: <20150212101812.10967f11@notabene.brown>
+In-Reply-To: <87y4o4ujwh.fsf@spindle.srvr.nix>
 References: <87iofju9ht.fsf@spindle.srvr.nix>
 	<20150203195333.GQ22301@fieldses.org>
-	<87egq6lqdj.fsf@spindle.srvr.nix> <87r3u58df2.fsf@spindle.srvr.nix>
+	<87egq6lqdj.fsf@spindle.srvr.nix>
+	<87r3u58df2.fsf@spindle.srvr.nix>
 	<20150205112641.60340f71@notabene.brown>
 	<87zj8l7j3z.fsf@spindle.srvr.nix>
 	<20150210183200.GB11226@fieldses.org>
-Date: Wed, 11 Feb 2015 23:07:42 +0000
-In-Reply-To: <20150210183200.GB11226@fieldses.org> (J. Bruce Fields's message
-	of "Tue, 10 Feb 2015 13:32:00 -0500")
-Message-ID: <87y4o4ujwh.fsf@spindle.srvr.nix>
+	<87y4o4ujwh.fsf@spindle.srvr.nix>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: multipart/signed; micalg=pgp-sha1;
+ boundary="Sig_/z48nX/YyQbkSpERXgmJeZm1"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 10 Feb 2015, J. Bruce Fields said:
+--Sig_/z48nX/YyQbkSpERXgmJeZm1
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-> On Tue, Feb 10, 2015 at 05:48:48PM +0000, Nix wrote:
->> On 5 Feb 2015, NeilBrown spake thusly:
->> 
->> > On Wed, 04 Feb 2015 23:28:17 +0000 Nix <nix@esperi.org.uk> wrote:
->> >> It doesn't. It still recurs.
->> >
->> > Is /usr/archive still exported to mutilate with crossmnt?
->> > If it is, can you change to not do that (it is quite possible to have
->> > different export options for different clients).
->> 
->> OK. Adjusted.
->> 
->> > I think that if crossmnt is enabled on the server, then explicitly
->> > mounting /usr/archive/series will have the same net effect as not doing so
->> > (though I'm not 100% certain).
->> >
->> > Also, can you try changing
->> >    /proc/sys/fs/nfs/nfs_mountpoint_timeout
->> >
->> > It defaults to 500 (seconds - time for light from Sun to reach Earth).
->> > If you make it smaller and the problem gets worse, or make it much bigger
->> > and the problem goes away, that would be interesting.
->> > If it makes no difference, that also would be interesting.
->> 
->> Seems to make no difference, which is distinctly surprising. If
->> anything, it happens more often at the default value than at either the
->> high or low values. It's very erratic: it happened ten times in one day,
->> then three days passed and it didn't happen at all... system under
->> very similar load the whole time.
->> 
->> >From other prompts, what I'm seeing now -- but wasn't then, before I
->> took the crossmnt out -- is an epidemic of spontaneous unmounting: i.e.,
->> /usr/archive/series suddenly vanishes until remounted.
->> 
->> I might just reboot all systems involved in this mess and hope it goes
->> away. I have no *clue* what's going on, I've never seen it before, maybe
->> it'll stop if I no longer believe in it.
->
-> It might be interesting to see output from
->
-> 	rpc.debug -m rpc -s cache
-> 	cat /proc/net/rpc/nfsd.export/content
-> 	cat /proc/net/rpc/nfsd.fh/content
->
-> especially after the problem manifests.
 
-It's manifested right now, as a matter of fact.
+> > It might be interesting to see output from
+> >
+> > 	rpc.debug -m rpc -s cache
+> > 	cat /proc/net/rpc/nfsd.export/content
+> > 	cat /proc/net/rpc/nfsd.fh/content
+> >
+> > especially after the problem manifests.
+>=20
+> It's manifested right now, as a matter of fact.
+>=20
+> # cat /proc/net/rpc/nfsd.export/content
+> #path domain(flags)
+> /usr/src        mutilate.wkstn.nix(rw,no_root_squash,async,wdelay,no_subt=
+ree_check,fsid=3D16,uuid=3D333950aa:8e3f440a:bc94d0cc:4adae198,sec=3D1)
+> /usr/share/texlive      mutilate.wkstn.nix(rw,no_root_squash,async,wdelay=
+,fsid=3D7,uuid=3D5cccc224:a92440ee:b4450447:3898c2ec,sec=3D1)
 
-# cat /proc/net/rpc/nfsd.export/content
-#path domain(flags)
-/usr/src        mutilate.wkstn.nix(rw,no_root_squash,async,wdelay,no_subtree_check,fsid=16,uuid=333950aa:8e3f440a:bc94d0cc:4adae198,sec=1)
-/usr/share/texlive      mutilate.wkstn.nix(rw,no_root_squash,async,wdelay,fsid=7,uuid=5cccc224:a92440ee:b4450447:3898c2ec,sec=1)
-/home/.spindle.srvr.nix mutilate.wkstn.nix(rw,no_root_squash,async,wdelay,no_subtree_check,fsid=1,uuid=95bd22c2:253c456f:8e36b6cf:b9ecd4ef,sec=1)
-/usr/archive/series     *.srvr.nix,xios.srvr.nix(ro,insecure,root_squash,async,wdelay,no_subtree_check,fsid=29,uuid=543a1ca9:d17246ca:b6c53092:5896549d,sec=1)
-/usr/lib/X11/fonts      mutilate.wkstn.nix(ro,root_squash,async,wdelay,fsid=12,uuid=5cccc224:a92440ee:b4450447:3898c2ec,sec=1)
-/home/.spindle.srvr.nix *.srvr.nix,fold.srvr.nix(rw,root_squash,async,wdelay,no_subtree_check,fsid=1,uuid=95bd22c2:253c456f:8e36b6cf:b9ecd4ef,sec=1)
-/usr/archive    mutilate.wkstn.nix(rw,insecure,root_squash,async,wdelay,fsid=25,uuid=d20e3edd:06a54a9b:85dcfa19:62975969,sec=1)
+You didn't run the "rpcdebug" command first (there is no '.').
+That causes the 'content' files to contain extra information which might be
+useful.
 
-# note: no /usr/archive/series, though I mounted it on mutilate and did
-# not unmount it: however, it no longer appears in /proc/mounts on
-# mutilate and appears as an empty directory under /usr/archive.
-# However, it *does* appear here:
+NeilBrown
 
-# cat /proc/net/rpc/nfsd.fh/content
-#domain fsidtype fsid [path]
-*.srvr.nix,xios.srvr.nix 1 0x0000001d /usr/archive/series
-mutilate.wkstn.nix 1 0x0000000f /etc/shai-hulud
-mutilate.wkstn.nix 1 0x0000000b /pkg/non-free
-mutilate.wkstn.nix 1 0x00000016 /usr/share/emacs/site-lisp
-mutilate.wkstn.nix 1 0x00000012 /usr/share/httpd/htdocs/munin
-mutilate.wkstn.nix 1 0x00000013 /usr/share/clamav
-mutilate.wkstn.nix 1 0x0000000a /usr/share/nethack
-mutilate.wkstn.nix 1 0x00000009 /usr/share/xplanet
-mutilate.wkstn.nix 1 0x00000008 /usr/share/xemacs
-mutilate.wkstn.nix 1 0x00000015 /usr/share/flightgear
-mutilate.wkstn.nix 1 0x00000005 /usr/doc
-mutilate.wkstn.nix 1 0x00000006 /usr/info
-mutilate.wkstn.nix 1 0x00000011 /var/state/munin
-mutilate.wkstn.nix 1 0x0000000e /var/log.real
-mutilate.wkstn.nix 1 0x00000007 /usr/share/texlive
-mutilate.wkstn.nix 1 0x00000010 /usr/src
-mutilate.wkstn.nix 1 0x0000000c /usr/lib/X11/fonts
-mutilate.wkstn.nix 1 0x00000019 /usr/archive
-mutilate.wkstn.nix 1 0x0000001d /usr/archive/series
-mutilate.wkstn.nix 1 0x00000001 /home/.spindle.srvr.nix
-*.srvr.nix,fold.srvr.nix 1 0x00000001 /home/.spindle.srvr.nix
+--Sig_/z48nX/YyQbkSpERXgmJeZm1
+Content-Type: application/pgp-signature
+Content-Description: OpenPGP digital signature
 
-When this happens, I get an (unreachable) and broken symlink under /proc
-(not really surprising as the mountpoint has gone) -- but in this
-situation, cd'ing out and back in does not fix it, only a remount does.
-I'm not surprised by *those* symptoms at all.
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2
 
-> Also, /usr/archive/series is a separate filesystem from /usr/archive,
-> right?  (The output of "mount" run on the server might also be useful.)
+iQIVAwUBVNvjNDnsnt1WYoG5AQI58xAAgk8wutFHmlZ7uZry2iQT+VRXy9dld8IW
+vH35PHmDVPerPIGFHZoUS9YHmjVl6ydmFLRhL43y3nNUgRa7+WGno8wPR4f17xZu
+l7If3dBuCMXvUwJTTnnPOTQya+/miFOJV4pA2Jn86lEPobVSCtFWwwkjCnQcOp/h
+K072KRk63ZpeByxIsdCWNQ2c5+B06utaRqhIrT5WeWAWucH7qa6UZGMn+wMQEgyT
+ZVPL0SlilPAwRCxNMcmSAfn+KRVt+zPTvFl2WvDDqZ4MDm35DvpmyO7uoCasdznD
+aOgFfh2jTlXcaMMHb6Q7Co4OweTNVrP8TH1YL/BUnMOaUKLzQtDXeekxZI0nFSi/
+WXfA/Fjy/hyabwVwq4kkBTb7tmVJydpC58gUoHxwRSkH2CEOhHFccZ/exafVVJIe
+dUXfeQUvAIIZgyryblcQTwMLb2Ue94eX2iIFDPBq4SbSWkWpcg9XTTnuYt1bnL1Z
+32OK2SQKRZphm3vPIEIEuXR7QTUTQo4xX9FFWNdNn4caMdhgNlreAn6OdPINj/eb
+q6chLuuO6M+BEWGluQAYjejM7/KV5v6vZgkI/yL8esZHQ4u/G2B5JlcqVyDW9M9C
+EFdwgEWoWD8dPR7gOnFAFfUnVrUvReM5OVGR/LTBM9PjG1tJ1TY0v99iQkG8G+rH
+Vc3T+n115JE=
+=YOZI
+-----END PGP SIGNATURE-----
 
-They are separate server filesystems:
-
-/dev/mapper/main-archive /usr/archive ext4 rw,nosuid,nodev,relatime,nobarrier,commit=30,data=ordered 0 0
-/dev/sdc1 /usr/archive/series ext4 rw,nosuid,nodev,relatime,commit=30,data=ordered 0 0
-/dev/mapper/main-winbackup /usr/archive/winbackup ext4 rw,nosuid,nodev,relatime,nobarrier,commit=30,data=ordered 0 0
-
-> The reason crossmnt is considered "bad and evil" is that nfsv2 and v3
-> clients don't necessarily expect mountpoints within exports, and may be
-> get confused when (for example), they discover to files with the same
-> inode number that appear to be on the same filesystem.
-
-That I expected. NFS mounts within NFS mounts are presumably fine (I
-hope so, I've been using them extensively for decades).
-
-> I'm  not actually sure what the current linux client does--I think it
-> may be smart enough to use the fsid to avoid at least some of those
-> problems.  But NFSv4 clients are the only ones that should really be
-> counted on to get this right.
-
-I wish I could get NFSv4 to work. It's just screamed about a lack of
-adequate authentication every time I've tried it, and my network is so
-NFS-dependent that significant experimentation is difficult (getting
-anything wrong tends to cause my entire desktop to deadlock in seconds).
-I suppose I should set up some VMs and play in there :)
-
--- 
-NULL && (void)
+--Sig_/z48nX/YyQbkSpERXgmJeZm1--
