@@ -1,74 +1,52 @@
-Return-Path: linux-kernel-owner@vger.kernel.org
-Message-ID: <54DE4002.6050805@infradead.org>
-Date: Fri, 13 Feb 2015 10:18:42 -0800
-From: Randy Dunlap <rdunlap@infradead.org>
+Return-Path: linux-nfs-owner@vger.kernel.org
+Received: from mail-ig0-f175.google.com ([209.85.213.175]:41442 "EHLO
+	mail-ig0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751409AbbBMSI2 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Feb 2015 13:08:28 -0500
+Received: by mail-ig0-f175.google.com with SMTP id hn18so12189546igb.2
+        for <linux-nfs@vger.kernel.org>; Fri, 13 Feb 2015 10:08:27 -0800 (PST)
+Subject: [PATCH] SUNRPC: Always manipulate rpc_rqst::rq_bc_pa_list under
+ xprt->bc_pa_lock
+From: Chuck Lever <chuck.lever@oracle.com>
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org
+Date: Fri, 13 Feb 2015 13:08:25 -0500
+Message-ID: <20150213180513.10705.1546.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-To: Stephen Rothwell <sfr@canb.auug.org.au>, linux-next@vger.kernel.org
-CC: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: linux-next: Tree for Feb 13 (nfsd)
-References: <20150213165615.1ad43047@canb.auug.org.au>
-In-Reply-To: <20150213165615.1ad43047@canb.auug.org.au>
-Content-Type: text/plain; charset=utf-8
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset="utf-8"
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 02/12/15 21:56, Stephen Rothwell wrote:
-> Hi all,
-> 
-> Please do not add any material destined for v3.21 to your linux-next
-> included trees until after v3.20-rc1 has been released.
-> 
-> Changes since 20150212:
+Other code that accesses rq_bc_pa_list holds xprt->bc_pa_lock.
+xprt_complete_bc_request() should do the same.
 
-on x86_64, when
-# CONFIG_NFS_FS is not set
-CONFIG_NFSD=y
-# CONFIG_NFSD_V3 is not set
-# CONFIG_NFSD_V4 is not set
+Fixes: 2ea24497a1b3 ("SUNRPC: RPC callbacks may be split . . .")
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+How about this (compile-tested only)?
 
-In file included from ../include/linux/linkage.h:4:0,
-                 from ../include/linux/preempt.h:9,
-                 from ../include/linux/spinlock.h:50,
-                 from ../include/linux/mmzone.h:7,
-                 from ../include/linux/gfp.h:5,
-                 from ../include/linux/slab.h:14,
-                 from ../fs/nfsd/nfsctl.c:7:
-../fs/nfsd/xdr4.h: In function 'set_change_info':
-../fs/nfsd/xdr4.h:633:13: error: 'struct svc_fh' has no member named 'fh_pre_saved'
-  BUG_ON(!fhp->fh_pre_saved);
-             ^
-../include/linux/compiler.h:164:42: note: in definition of macro 'unlikely'
- # define unlikely(x) __builtin_expect(!!(x), 0)
-                                          ^
-../fs/nfsd/xdr4.h:633:2: note: in expansion of macro 'BUG_ON'
-  BUG_ON(!fhp->fh_pre_saved);
-  ^
-In file included from ../fs/nfsd/pnfs.h:8:0,
-                 from ../fs/nfsd/nfsctl.c:24:
-../fs/nfsd/xdr4.h:634:21: error: 'struct svc_fh' has no member named 'fh_post_saved'
-  cinfo->atomic = fhp->fh_post_saved;
-                     ^
-../fs/nfsd/xdr4.h:637:28: error: 'struct svc_fh' has no member named 'fh_pre_change'
-  cinfo->before_change = fhp->fh_pre_change;
-                            ^
-../fs/nfsd/xdr4.h:638:27: error: 'struct svc_fh' has no member named 'fh_post_change'
-  cinfo->after_change = fhp->fh_post_change;
-                           ^
-../fs/nfsd/xdr4.h:639:31: error: 'struct svc_fh' has no member named 'fh_pre_ctime'
-  cinfo->before_ctime_sec = fhp->fh_pre_ctime.tv_sec;
-                               ^
-../fs/nfsd/xdr4.h:640:32: error: 'struct svc_fh' has no member named 'fh_pre_ctime'
-  cinfo->before_ctime_nsec = fhp->fh_pre_ctime.tv_nsec;
-                                ^
-../fs/nfsd/xdr4.h:641:30: error: 'struct svc_fh' has no member named 'fh_post_attr'
-  cinfo->after_ctime_sec = fhp->fh_post_attr.ctime.tv_sec;
-                              ^
-../fs/nfsd/xdr4.h:642:31: error: 'struct svc_fh' has no member named 'fh_post_attr'
-  cinfo->after_ctime_nsec = fhp->fh_post_attr.ctime.tv_nsec;
-                               ^
+ net/sunrpc/backchannel_rqst.c |    5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
 
+diff --git a/net/sunrpc/backchannel_rqst.c b/net/sunrpc/backchannel_rqst.c
+index 651f49a..9dd0ea8d 100644
+--- a/net/sunrpc/backchannel_rqst.c
++++ b/net/sunrpc/backchannel_rqst.c
+@@ -309,12 +309,15 @@ void xprt_complete_bc_request(struct rpc_rqst *req, uint32_t copied)
+ 	struct rpc_xprt *xprt = req->rq_xprt;
+ 	struct svc_serv *bc_serv = xprt->bc_serv;
+ 
++	spin_lock(&xprt->bc_pa_lock);
++	list_del(&req->rq_bc_pa_list);
++	spin_unlock(&xprt->bc_pa_lock);
++
+ 	req->rq_private_buf.len = copied;
+ 	set_bit(RPC_BC_PA_IN_USE, &req->rq_bc_pa_state);
+ 
+ 	dprintk("RPC:       add callback request to list\n");
+ 	spin_lock(&bc_serv->sv_cb_lock);
+-	list_del(&req->rq_bc_pa_list);
+ 	list_add(&req->rq_bc_list, &bc_serv->sv_cb_list);
+ 	wake_up(&bc_serv->sv_cb_waitq);
+ 	spin_unlock(&bc_serv->sv_cb_lock);
 
-
--- 
-~Randy
