@@ -1,84 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pd0-f173.google.com ([209.85.192.173]:39100 "EHLO
-	mail-pd0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751468AbbBLXx7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Feb 2015 18:53:59 -0500
-Received: by pdjy10 with SMTP id y10so15323763pdj.6
-        for <linux-nfs@vger.kernel.org>; Thu, 12 Feb 2015 15:53:59 -0800 (PST)
-Date: Thu, 12 Feb 2015 15:53:55 -0800
-From: Tom Haynes <thomas.haynes@primarydata.com>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: Jens Axboe <axboe@fb.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [GIT PULL] Backing device changes for 3.20
-Message-ID: <20150212235355.GB38603@kitty.kitty>
-References: <20150212203832.GA24835@kernel.dk>
- <CA+55aFxnisiCLB0pHWU7dmzXWBG16gPB9cEycGRUgB+RcbJGnA@mail.gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CA+55aFxnisiCLB0pHWU7dmzXWBG16gPB9cEycGRUgB+RcbJGnA@mail.gmail.com>
+Received: from mail-pd0-f170.google.com ([209.85.192.170]:47028 "EHLO
+	mail-pd0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750872AbbBMA5K (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Feb 2015 19:57:10 -0500
+Received: by pdjy10 with SMTP id y10so15598936pdj.13
+        for <linux-nfs@vger.kernel.org>; Thu, 12 Feb 2015 16:57:10 -0800 (PST)
+From: Peng Tao <tao.peng@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Cc: Steve Dickson <steved@redhat.com>, Peng Tao <tao.peng@primarydata.com>,
+        Anna Schumaker <Anna.Schumaker@netapp.com>
+Subject: [PATCH v2] nfsstat: update client op to match latest kernel
+Date: Fri, 13 Feb 2015 08:56:39 +0800
+Message-Id: <1423788999-54229-1-git-send-email-tao.peng@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Feb 12, 2015 at 02:05:00PM -0800, Linus Torvalds wrote:
-> On Thu, Feb 12, 2015 at 12:38 PM, Jens Axboe <axboe@fb.com> wrote:
-> >
-> > This pull request contains a cleanup of how the backing device is
-> > handled, in preparation for a rework of the life time rules. In this
-> > part, the most important change is to split the unrelated nommu mmap
-> > flags from it, but also removing a backing_dev_info pointer from the
-> > address_space (and inode), and a cleanup of other various minor bits.
-> 
-> Ugh, so this has a semantic conflict with the NFS client, that has
-> this particular code:
-> 
->         if (!cinfo->dreq) {
->                 inc_zone_page_state(req->wb_page, NR_UNSTABLE_NFS);
-> -               inc_bdi_stat(page_file_mapping(req->wb_page)->backing_dev_info,
-> +
-> inc_bdi_stat(inode_to_bdi(page_file_mapping(req->wb_page)->host),
->                              BDI_RECLAIMABLE);
->                 __mark_inode_dirty(req->wb_context->dentry->d_inode,
->                                    I_DIRTY_DATASYNC);
->         }
-> 
-> duplicated several times, and now one more time in the new
-> fs/nfs/flexfilelayout/flexfilelayout.c file.
-> 
-> I fixed it the same way it was fixed everywhere else, but while fixing
-> and looking at the cases, I *really* feel like the nfs code needs some
-> cleaning up.
-> 
-> That insane complicated and unexplained code exists three times: in
-> filelayout/filelayout.c, flexfilelayout/flexfilelayout.c and in
-> write.c.
-> 
-> The "reverse" case (which does the decrements, and doesn't mark the
-> inode dirty) exists a few more times.
-> 
-> Could we make that a helper function, with a few comments.
+We've added a bunch of ops and removed getdevicelist.
 
-Yes, I'll make a helper function.
+Cc: Anna Schumaker <Anna.Schumaker@netapp.com>
+Signed-off-by: Peng Tao <tao.peng@primarydata.com>
+---
+ utils/nfsstat/nfsstat.c | 13 ++++++++++---
+ 1 file changed, 10 insertions(+), 3 deletions(-)
 
-And for the "reverse" case, the second instance can actually call
-nfs_clear_page_commit().
+diff --git a/utils/nfsstat/nfsstat.c b/utils/nfsstat/nfsstat.c
+index 9f481db..427c724 100644
+--- a/utils/nfsstat/nfsstat.c
++++ b/utils/nfsstat/nfsstat.c
+@@ -31,7 +31,7 @@ enum {
+ 	SRVPROC3_SZ = 22,
+ 	CLTPROC3_SZ = 22,
+ 	SRVPROC4_SZ = 2,
+-	CLTPROC4_SZ = 49,
++	CLTPROC4_SZ = 56,
+ 	SRVPROC4OPS_SZ = 59,
+ };
+ 
+@@ -127,7 +127,7 @@ static const char *	nfscltproc4name[CLTPROC4_SZ] = {
+ 	"remove",    "rename",    "link",    "symlink",     "create",      "pathconf",
+ 	"statfs",    "readlink",  "readdir", "server_caps", "delegreturn", "getacl",
+ 	"setacl",    "fs_locations",
+-	"rel_lkowner", "secinfo",
++	"rel_lkowner", "secinfo", "fsid_present",
+ 	/* nfsv4.1 client ops */
+ 	"exchange_id",
+ 	"create_ses",
+@@ -139,7 +139,14 @@ static const char *	nfscltproc4name[CLTPROC4_SZ] = {
+ 	"getdevinfo",
+ 	"layoutcommit",
+ 	"layoutreturn",
+-	"getdevlist",
++	"secinfo_no_n",
++	"test_stateid",
++	"free_stateid",
++	"bind_con_ses",
++	"destroy_clid",
++	"seek",
++	"allocate",
++	"deallocate",
+ };
+ 
+ static const char *     nfssrvproc4opname[SRVPROC4OPS_SZ] = {
+-- 
+1.9.1
 
-> For example, looking at it, I wonder if
-> 
->  - page_file_mapping(req->wb_page)->host
->  - req->wb_context->dentry->d_inode
-> 
-> are the same inode?
-
-Will resolve...
-
-> 
-> Hmm?
-> 
->                           Linus
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
