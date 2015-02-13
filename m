@@ -1,66 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([173.255.197.46]:37487 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753573AbbBEQrE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 5 Feb 2015 11:47:04 -0500
-Date: Thu, 5 Feb 2015 11:47:01 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Anna Schumaker <Anna.Schumaker@netapp.com>
-Cc: Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2 2/4] NFSD: Add READ_PLUS support for data segments
-Message-ID: <20150205164701.GA4289@fieldses.org>
-References: <1422477777-27933-1-git-send-email-Anna.Schumaker@Netapp.com>
- <1422477777-27933-3-git-send-email-Anna.Schumaker@Netapp.com>
- <20150205141325.GC4522@infradead.org>
- <54D394EC.9030902@Netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <54D394EC.9030902@Netapp.com>
+Received: from aserp1040.oracle.com ([141.146.126.69]:27768 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752023AbbBMQaK convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Feb 2015 11:30:10 -0500
+From: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=windows-1252
+Subject: rq_bc_pa_list manipulated under incorrect lock?
+Date: Fri, 13 Feb 2015 11:30:02 -0500
+Message-Id: <DB901924-FAA9-4A13-995D-9AB887756371@oracle.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Feb 05, 2015 at 11:06:04AM -0500, Anna Schumaker wrote:
-> On 02/05/2015 09:13 AM, Christoph Hellwig wrote:
-> >> +	p = xdr_reserve_space(xdr, 4 + 8 + 4); /* content type, offset, maxcount */
-> >> +	if (!p)
-> >> +		return nfserr_resource;
-> >> +	xdr_commit_encode(xdr);
-> >> +
-> >> +	maxcount = svc_max_payload(resp->rqstp);
-> >> +	maxcount = min_t(unsigned long, maxcount, (xdr->buf->buflen - xdr->buf->len));
-> >> +	maxcount = min_t(unsigned long, maxcount, read->rd_length);
-> >> +
-> >> +	err = nfsd4_encode_readv(resp, read, file, &maxcount);
-> > 
-> > If the READ_PLUS implementation can't use the splice read path it's
-> > probably a loss for most workloads.
-> > 
-> 
-> I'll play around with the splice path, but I don't think it was designed for encoding multiple read segments.
+Hi Trond-
 
-The advantage of splice is it can hand us references to page cache pages
-that already hold the read data, which we can in turn hand off to the
-network layer when we send the reply, minimizing copying.
+While reviewing xprt_complete_bc_request(), I noticed this:
 
-But then we need a data structure than can keep track of all the pieces
-of the resulting reply, which consists of that the read data plus any
-protocol xdr that surrounds the read data.  The xdr_buf represents this
-fine: head, (pages[], page_base, page_len), tail.
+326         spin_lock(&bc_serv->sv_cb_lock);
 
-If you want to do zero-copy READ_PLUS then you need a data structure
-that will represent a reply with multiple data segments.
+327         list_del(&req->rq_bc_pa_list);   <<<<<<<
 
-I guess you could add more fields to the xdr_buf, or leave it alone and
-keep a list of xdr_buf's instead.
+328         list_add(&req->rq_bc_list, &bc_serv->sv_cb_list);
+329         wake_up(&bc_serv->sv_cb_waitq);
+330         spin_unlock(&bc_serv->sv_cb_lock);
 
-The latter sounds better to me, and I imagine that would be doable but
-tedious--but I haven't honestly thought it through.
+Other places in the code hold xprt->bc_pa_lock when updating
+rq_bc_pa_list. Maybe not a big deal because xprt->transport_lock is
+held across the lookup and complete calls?
 
-There's also a tradeoff on the client side, isn't there?  Worst case if
-the data to be read is a small hole followed by a bunch of data, then a
-READ_PLUS would end up needing to copy all the data in return for only a
-small savings in data transferred.
+Introduced by commit 2ea24497a1b3 ("SUNRPC: RPC callbacks
+may be split across several TCP segments”).
 
-I feel like READ_PLUS needs more of an argument.
+Since I’m new to this code, maybe I misunderstood something.
 
---b.
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
