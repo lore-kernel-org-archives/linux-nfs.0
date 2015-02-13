@@ -1,52 +1,74 @@
-Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f169.google.com ([209.85.220.169]:46563 "EHLO
-	mail-vc0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753403AbbBMRYE convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Feb 2015 12:24:04 -0500
-Received: by mail-vc0-f169.google.com with SMTP id kv19so6607407vcb.0
-        for <linux-nfs@vger.kernel.org>; Fri, 13 Feb 2015 09:24:02 -0800 (PST)
+Return-Path: linux-kernel-owner@vger.kernel.org
+Message-ID: <54DE4002.6050805@infradead.org>
+Date: Fri, 13 Feb 2015 10:18:42 -0800
+From: Randy Dunlap <rdunlap@infradead.org>
 MIME-Version: 1.0
-In-Reply-To: <DB901924-FAA9-4A13-995D-9AB887756371@oracle.com>
-References: <DB901924-FAA9-4A13-995D-9AB887756371@oracle.com>
-Date: Fri, 13 Feb 2015 12:24:02 -0500
-Message-ID: <CAHQdGtQC6wxn=X-78GLwsEj6R-arz+tKK_CwmmK=9Ffn4-t_DA@mail.gmail.com>
-Subject: Re: rq_bc_pa_list manipulated under incorrect lock?
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
-Sender: linux-nfs-owner@vger.kernel.org
+To: Stephen Rothwell <sfr@canb.auug.org.au>, linux-next@vger.kernel.org
+CC: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: linux-next: Tree for Feb 13 (nfsd)
+References: <20150213165615.1ad43047@canb.auug.org.au>
+In-Reply-To: <20150213165615.1ad43047@canb.auug.org.au>
+Content-Type: text/plain; charset=utf-8
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Feb 13, 2015 at 11:30 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
->
-> Hi Trond-
->
-> While reviewing xprt_complete_bc_request(), I noticed this:
->
-> 326         spin_lock(&bc_serv->sv_cb_lock);
->
-> 327         list_del(&req->rq_bc_pa_list);   <<<<<<<
->
-> 328         list_add(&req->rq_bc_list, &bc_serv->sv_cb_list);
-> 329         wake_up(&bc_serv->sv_cb_waitq);
-> 330         spin_unlock(&bc_serv->sv_cb_lock);
->
-> Other places in the code hold xprt->bc_pa_lock when updating
-> rq_bc_pa_list. Maybe not a big deal because xprt->transport_lock is
-> held across the lookup and complete calls?
->
-> Introduced by commit 2ea24497a1b3 ("SUNRPC: RPC callbacks
-> may be split across several TCP segments”).
->
+On 02/12/15 21:56, Stephen Rothwell wrote:
+> Hi all,
+> 
+> Please do not add any material destined for v3.21 to your linux-next
+> included trees until after v3.20-rc1 has been released.
+> 
+> Changes since 20150212:
 
-Ack. That looks like a bug. It's not an actual problem as long as we
-only have 1 entry on that list, but it will bite us if we ever decide
-to grow the slot table...
+on x86_64, when
+# CONFIG_NFS_FS is not set
+CONFIG_NFSD=y
+# CONFIG_NFSD_V3 is not set
+# CONFIG_NFSD_V4 is not set
 
-Can you send a patch?
+In file included from ../include/linux/linkage.h:4:0,
+                 from ../include/linux/preempt.h:9,
+                 from ../include/linux/spinlock.h:50,
+                 from ../include/linux/mmzone.h:7,
+                 from ../include/linux/gfp.h:5,
+                 from ../include/linux/slab.h:14,
+                 from ../fs/nfsd/nfsctl.c:7:
+../fs/nfsd/xdr4.h: In function 'set_change_info':
+../fs/nfsd/xdr4.h:633:13: error: 'struct svc_fh' has no member named 'fh_pre_saved'
+  BUG_ON(!fhp->fh_pre_saved);
+             ^
+../include/linux/compiler.h:164:42: note: in definition of macro 'unlikely'
+ # define unlikely(x) __builtin_expect(!!(x), 0)
+                                          ^
+../fs/nfsd/xdr4.h:633:2: note: in expansion of macro 'BUG_ON'
+  BUG_ON(!fhp->fh_pre_saved);
+  ^
+In file included from ../fs/nfsd/pnfs.h:8:0,
+                 from ../fs/nfsd/nfsctl.c:24:
+../fs/nfsd/xdr4.h:634:21: error: 'struct svc_fh' has no member named 'fh_post_saved'
+  cinfo->atomic = fhp->fh_post_saved;
+                     ^
+../fs/nfsd/xdr4.h:637:28: error: 'struct svc_fh' has no member named 'fh_pre_change'
+  cinfo->before_change = fhp->fh_pre_change;
+                            ^
+../fs/nfsd/xdr4.h:638:27: error: 'struct svc_fh' has no member named 'fh_post_change'
+  cinfo->after_change = fhp->fh_post_change;
+                           ^
+../fs/nfsd/xdr4.h:639:31: error: 'struct svc_fh' has no member named 'fh_pre_ctime'
+  cinfo->before_ctime_sec = fhp->fh_pre_ctime.tv_sec;
+                               ^
+../fs/nfsd/xdr4.h:640:32: error: 'struct svc_fh' has no member named 'fh_pre_ctime'
+  cinfo->before_ctime_nsec = fhp->fh_pre_ctime.tv_nsec;
+                                ^
+../fs/nfsd/xdr4.h:641:30: error: 'struct svc_fh' has no member named 'fh_post_attr'
+  cinfo->after_ctime_sec = fhp->fh_post_attr.ctime.tv_sec;
+                              ^
+../fs/nfsd/xdr4.h:642:31: error: 'struct svc_fh' has no member named 'fh_post_attr'
+  cinfo->after_ctime_nsec = fhp->fh_post_attr.ctime.tv_nsec;
+                               ^
+
+
 
 -- 
-Trond Myklebust
-Linux NFS client maintainer, PrimaryData
-trond.myklebust@primarydata.com
+~Randy
