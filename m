@@ -1,69 +1,34 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wi0-f176.google.com ([209.85.212.176]:54587 "EHLO
-	mail-wi0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756908AbbBEN35 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Feb 2015 08:29:57 -0500
-Received: by mail-wi0-f176.google.com with SMTP id bs8so39003526wib.3
-        for <linux-nfs@vger.kernel.org>; Thu, 05 Feb 2015 05:29:55 -0800 (PST)
-Received: from [10.89.64.70] (p4FDBAFEF.dip0.t-ipconnect.de. [79.219.175.239])
-        by mx.google.com with ESMTPSA id x10sm7907747wif.15.2015.02.05.05.29.52
-        for <linux-nfs@vger.kernel.org>
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Thu, 05 Feb 2015 05:29:52 -0800 (PST)
-Message-ID: <54D3704C.6010305@googlemail.com>
-Date: Thu, 05 Feb 2015 14:29:48 +0100
-From: Tobias Powalowski <tobias.powalowski@googlemail.com>
+Received: from bombadil.infradead.org ([198.137.202.9]:41442 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752520AbbBMNYL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Feb 2015 08:24:11 -0500
+Date: Fri, 13 Feb 2015 05:24:04 -0800
+From: Christoph Hellwig <hch@infradead.org>
+To: Anna Schumaker <Anna.Schumaker@netapp.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Thomas D Haynes <thomas.haynes@primarydata.com>
+Subject: Re: [PATCH v2 2/4] NFSD: Add READ_PLUS support for data segments
+Message-ID: <20150213132404.GA18920@infradead.org>
+References: <20150205141325.GC4522@infradead.org>
+ <54D394EC.9030902@Netapp.com>
+ <20150205162326.GA18977@infradead.org>
+ <54D39DC2.9060808@Netapp.com>
+ <20150205164832.GB4289@fieldses.org>
+ <54DB7D72.5020001@Netapp.com>
+ <CAHQdGtTujOS5QZSaTbEy2sK0aZpoWmo-qmjgxb_iuue_5b=46A@mail.gmail.com>
+ <20150211162244.GH25696@fieldses.org>
+ <54DBABE7.9050403@Netapp.com>
+ <54DD0631.8040802@Netapp.com>
 MIME-Version: 1.0
-To: linux-nfs@vger.kernel.org
-Subject: rpc-statd won't start for user NFS mounts
-Content-Type: multipart/signed; micalg=pgp-sha256;
- protocol="application/pgp-signature";
- boundary="BqXd9fDkl1UMRr8vgPCJRCtnJQ7K9XBDu"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <54DD0631.8040802@Netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is an OpenPGP/MIME signed message (RFC 4880 and 3156)
---BqXd9fDkl1UMRr8vgPCJRCtnJQ7K9XBDu
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
+On Thu, Feb 12, 2015 at 02:59:45PM -0500, Anna Schumaker wrote:
+> Today I learned all about how to use operf to identify where the bottleneck is :).  It looks like the problem is in the hole zeroing code on the client side.  Is there a better way than memset() to mark a page as all zeros?
 
-Hi,
-https://bugs.archlinux.org/task/42491
-This one I can reproduce, doing NFS3 user,noauto setting in fstab makes
-it impossible to mount it as user.
-- The systemd service nfs-client.target is loaded.
-- rpcbind comes up by doing the mount
-- rpc-statd is not coming up because of authentification error.
-Failed to start rpc-statd.service: Interactive authentication required.
-What is the correct way to solve this?
-
-Thanks for your answer.
-greetings
-tpowa
-
---=20
-Tobias Powalowski
-Archlinux Developer & Package Maintainer (tpowa)
-http://www.archlinux.org
-tpowa@archlinux.org
-
-
-
---BqXd9fDkl1UMRr8vgPCJRCtnJQ7K9XBDu
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: OpenPGP digital signature
-Content-Disposition: attachment; filename="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2
-
-iQEcBAEBCAAGBQJU03BMAAoJEHcd9mJ+32gfAlUIAKDa1xyshvrvLSR2dKlxGbPU
-/Q+Z3XArNKdBydakTScT0wBoUwUzybXCQgY57ZKhGc1PymeBwvXOgmDNwbdSexAu
-zKx66ex2GqwBn/TaXodTRzRDPZFvWOOPWwNPz5dZ0A49vWsZ1os/HfgzS9Kpar8F
-Hab31JWyxsuo0pbitgj/4LNA8HUQIG85utlhkG3wrXtTYs3nKIQ3FUX7ivTJvvld
-ZD/N4896OT6X9ga2jYXTyONolL+PinMJxpzkoJo2UsXiaKKe2H3yw06WgtZURQ1y
-SbJWvY7SIniZN35/myjvMZN6g+jXe17CzvBqvZz0S+YzJtn0qBkZcwX0kp+DM80=
-=+SiR
------END PGP SIGNATURE-----
-
---BqXd9fDkl1UMRr8vgPCJRCtnJQ7K9XBDu--
+clear_highpage(), but I don't expect it to make a huge different.
