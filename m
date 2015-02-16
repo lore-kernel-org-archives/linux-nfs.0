@@ -1,18 +1,12 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:33994 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752376AbbBTVDa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 20 Feb 2015 16:03:30 -0500
-Date: Sat, 21 Feb 2015 08:03:21 +1100
-From: NeilBrown <neilb@suse.de>
-To: Nix <nix@esperi.org.uk>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        NFS list <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: Re: what on earth is going on here? paths above mountpoints turn
- into "(unreachable)"
-Message-ID: <20150221080321.0b2764c0@notabene.brown>
-In-Reply-To: <87h9ugqytn.fsf@spindle.srvr.nix>
+Received: from mail-vc0-f177.google.com ([209.85.220.177]:51103 "EHLO
+	mail-vc0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751600AbbBPE2N (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 15 Feb 2015 23:28:13 -0500
+Received: by mail-vc0-f177.google.com with SMTP id hy10so9806665vcb.8
+        for <linux-nfs@vger.kernel.org>; Sun, 15 Feb 2015 20:28:12 -0800 (PST)
+MIME-Version: 1.0
+In-Reply-To: <20150216134628.773e3347@notabene.brown>
 References: <87iofju9ht.fsf@spindle.srvr.nix>
 	<20150203195333.GQ22301@fieldses.org>
 	<87egq6lqdj.fsf@spindle.srvr.nix>
@@ -22,74 +16,80 @@ References: <87iofju9ht.fsf@spindle.srvr.nix>
 	<20150210183200.GB11226@fieldses.org>
 	<87vbj4ljjn.fsf@spindle.srvr.nix>
 	<20150216134628.773e3347@notabene.brown>
-	<20150216145746.68809c0f@notabene.brown>
-	<87h9ugqytn.fsf@spindle.srvr.nix>
-MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
- boundary="Sig_/d+V.m_+VLq+_FgcSseLfHCE"; protocol="application/pgp-signature"
+Date: Sun, 15 Feb 2015 23:28:12 -0500
+Message-ID: <CAHQdGtRZP2wYeLozY5pzrD-GALKqV8g1tjV2orotZuTcug2v3A@mail.gmail.com>
+Subject: Re: what on earth is going on here? paths above mountpoints turn into "(unreachable)"
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: NeilBrown <neilb@suse.de>
+Cc: Nix <nix@esperi.org.uk>, "J. Bruce Fields" <bfields@fieldses.org>,
+        NFS list <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/d+V.m_+VLq+_FgcSseLfHCE
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+On Sun, Feb 15, 2015 at 9:46 PM, NeilBrown <neilb@suse.de> wrote:
+> On Sat, 14 Feb 2015 13:17:00 +0000 Nix <nix@esperi.org.uk> wrote:
+>
+>> On 10 Feb 2015, J. Bruce Fields outgrape:
+>>
+>> > It might be interesting to see output from
+>> >
+>> >     rpc.debug -m rpc -s cache
+>> >     cat /proc/net/rpc/nfsd.export/content
+>> >     cat /proc/net/rpc/nfsd.fh/content
+>> >
+>> > especially after the problem manifests.
+>>
+>> So the mount has vanished again. I couldn't make it happen with
+>> nordirplus in the mount options, so that might provide you with a clue.
+>
+> Yup.  It does.
+>
+> There is definitely something wrong in nfs_prime_dcache.  I cannot quite
+> trace through from cause to effect, but maybe I don't need to.
+>
+> Can you try the following patch and see if that makes the problem disappear?
+>
+> When you perform a READDIRPLUS request on a directory that contains
+> mountpoints, the the Linux NFS server doesn't return a file-handle for
+> those names which are mountpoints (because doing so is a bit tricky).
+>
+> nfs3_decode_dirent notices and decodes as a filehandle with zero length.
+>
+> The "nfs_same_file()" check in nfs_prime_dcache() determines that isn't
+> the same as the filehandle it has, and tries to invalidate it and make a new
+> one.
+>
+> The invalidation should fail (probably does).
+> The creating of a new one ... might succeed.  Beyond that, it all gets a bit
+> hazy.
+>
+> Anyway, please try:
+>
+> diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+> index 9b0c55cb2a2e..a460669dc395 100644
+> --- a/fs/nfs/dir.c
+> +++ b/fs/nfs/dir.c
+> @@ -541,7 +541,7 @@ int nfs_readdir_page_filler(nfs_readdir_descriptor_t *desc, struct nfs_entry *en
+>
+>                 count++;
+>
+> -               if (desc->plus != 0)
+> +               if (desc->plus != 0 && entry->fh.size)
+>                         nfs_prime_dcache(desc->file->f_path.dentry, entry);
+>
+>                 status = nfs_readdir_add_to_array(entry, page);
+>
+>
+> which you might have to apply by hand.
 
-On Fri, 20 Feb 2015 17:26:12 +0000 Nix <nix@esperi.org.uk> wrote:
+Doesn't that check ultimately belong in nfs_fget()? It would seem to
+apply to all filehandles, irrespective of provenance.
 
-> On 16 Feb 2015, NeilBrown uttered the following:
->=20
-> > On Mon, 16 Feb 2015 13:46:28 +1100 NeilBrown <neilb@suse.de> wrote:
-> >
-> >> Anyway, please try:
-> >>=20
-> >> diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-> >> index 9b0c55cb2a2e..a460669dc395 100644
-> >> --- a/fs/nfs/dir.c
-> >> +++ b/fs/nfs/dir.c
-> >> @@ -541,7 +541,7 @@ int nfs_readdir_page_filler(nfs_readdir_descriptor=
-_t *desc, struct nfs_entry *en
-> >> =20
-> >>  		count++;
-> >> =20
-> >> -		if (desc->plus !=3D 0)
-> >> +		if (desc->plus !=3D 0 && entry->fh.size)
-> >>  			nfs_prime_dcache(desc->file->f_path.dentry, entry);
-> >> =20
-> >>  		status =3D nfs_readdir_add_to_array(entry, page);
-> >>=20
-> >>=20
-> >> which you might have to apply by hand.
-> >
-> > Make that "entry->fh->size", not "entry->fh.size" :-(
->=20
-> That looks to fix it (though my first day of testing was wasted because
-> I forgot nordirplus was in the mount options :/ ).
->=20
+Cheers
+  Trond
 
-Excellent.  Thanks for testing.
-
-NeilBrown
-
---Sig_/d+V.m_+VLq+_FgcSseLfHCE
-Content-Type: application/pgp-signature
-Content-Description: OpenPGP digital signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2
-
-iQIUAwUBVOehGTnsnt1WYoG5AQK6lg/3SnShCQXQoppRPxjcGLJIycYEXp6mk2vl
-KV+HrMr+jhvHNpZoZDjX4g6ZSrCdsZ2IM8M7kTRAyzVoGyCAdV9uoe5Sg+xNura8
-0MHZilVdP6rnPOLTHtNsWPJHSqwh140LoYbJUX9mh7gylyufo0MohEc5MNxAFjoa
-TEq4uTlfb4YpUAuL9NB1DL8U40gV+Kg1rXvZUE+2g/hAsOaHFRfsJ6N/MJUuhLAI
-F+3oDPeydyp2MHFqMBo8c+LTFqa4ie5TA2OdHyRVX37gYx4qwF2QldwZIupngTy0
-zaTZDDyf0tyV6/dZNJyzockpDfGvTDBPfGQXXl8RizwlI/GUh+MIxTymJx2nDY0N
-sl4eHokZ1FmUJ3GGrAkHKw3jC5xL+Sue82bRLCTNrx+FXPPdBq0dl05hTm9Fwmv+
-ZCIfMBRN6AbkczurycQX+wyf85Xyo1te7qQKmPtDZnHiwRvJho5tX+2tz/r2ELUR
-LhyRX3mPKNgkrv+wX0QnRkQ0j8pirle2qDzvxsg48KuZ3NAwj9N3iK6V11z6HVck
-rr9kPdkuJV4ij+ofsTK7D6Xb5uNnZLMnkUGw5NYV3cV5I88fJ6Q2+HUHJdYHdFsS
-Z4WiDof7Zakt7M0mAIUT/Y0d6NcK0H/9xnv0TEwYfKVbh4oD6vem3TZZbF9Ssv8Q
-qZwI2d8BkQ==
-=qohO
------END PGP SIGNATURE-----
-
---Sig_/d+V.m_+VLq+_FgcSseLfHCE--
+-- 
+Trond Myklebust
+Linux NFS client maintainer, PrimaryData
+trond.myklebust@primarydata.com
