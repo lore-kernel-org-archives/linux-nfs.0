@@ -1,103 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:42689 "EHLO mx1.redhat.com"
+Received: from cantor2.suse.de ([195.135.220.15]:57312 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932116AbbBZThO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 26 Feb 2015 14:37:14 -0500
-Message-ID: <54EF75E3.4050701@RedHat.com>
-Date: Thu, 26 Feb 2015 14:37:07 -0500
-From: Steve Dickson <SteveD@redhat.com>
+	id S1752022AbbBPBTE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 15 Feb 2015 20:19:04 -0500
+Date: Mon, 16 Feb 2015 12:18:56 +1100
+From: NeilBrown <neilb@suse.de>
+To: Steve Dickson <SteveD@redhat.com>, NFS <linux-nfs@vger.kernel.org>
+Subject: [PATCH - nfs-utils] mountd: fix next_mnt handling for "/"
+Message-ID: <20150216121856.7efe2237@notabene.brown>
 MIME-Version: 1.0
-To: NeilBrown <neilb@suse.de>
-CC: NFS <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH/RFC nfs-utils] exports.man: improve documentation of 'nohide'
- and 'crossmnt'
-References: <20150216122107.4bfd4225@notabene.brown>
-In-Reply-To: <20150216122107.4bfd4225@notabene.brown>
-Content-Type: text/plain; charset=windows-1252
+Content-Type: multipart/signed; micalg=pgp-sha1;
+ boundary="Sig_/d2LNGpbEp=zRLlJ2=pDdsqF"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+--Sig_/d2LNGpbEp=zRLlJ2=pDdsqF
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
 
-On 02/15/2015 08:21 PM, NeilBrown wrote:
-> 
-> 
-> - note that 'nohide' is irrelevant for NFSv4
-> - note that children on a 'crossmnt' filesystem cannot be unexported
-> - note that 'nocrossmnt' is a valid option, but probably not useful.
-> 
-> Signed-off-by: NeilBrown <neilb@suse.de>
-Committed!
 
-steved.
+If the (exported) path passed to next_mnt() is simply "/", next_mnt()
+will not report any children, as none start with "/" followed by
+a '/'.
+So make a special case for strlen(p)=3D=3D1.  In that case, return all
+children.
 
-> 
-> ---
-> 
-> I wonder if we should add a new option, e.g. "noaccess" so that children
-> of a "crossmnt" filesystem can be hidden.  The  kernel wouldn't need to
-> know about this.  It would just tell mountd to refuse to export that
-> filesystem even if the parent was "crossmnt".
-> ??
-> 
-> NeilBrown
-> 
-> 
-> diff --git a/utils/exportfs/exports.man b/utils/exportfs/exports.man
-> index 3d974d92a729..88d9fbebe386 100644
-> --- a/utils/exportfs/exports.man
-> +++ b/utils/exportfs/exports.man
-> @@ -218,16 +218,46 @@ This option can be very useful in some situations, but it should be
->  used with due care, and only after confirming that the client system
->  copes with the situation effectively.
->  
-> -The option can be explicitly disabled with
-> +The option can be explicitly disabled for NFSv2 and NFSv3 with
->  .IR hide .
-> +
-> +This option is not relevant when NFSv4 is use.  NFSv4 never hides
-> +subordinate filesystems.  Any filesystem that is exported will be
-> +visible where expected when using NFSv4.
->  .TP
-> -.IR crossmnt
-> +.I crossmnt
->  This option is similar to
->  .I nohide
-> -but it makes it possible for clients to move from the filesystem marked
-> -with crossmnt to exported filesystems mounted on it.  Thus when a child
-> -filesystem "B" is mounted on a parent "A", setting crossmnt on "A" has
-> -the same effect as setting "nohide" on B.
-> +but it makes it possible for clients to access all filesystems mounted
-> +on a filesystem marked with
-> +.IR crossmnt .
-> +Thus when a child filesystem "B" is mounted on a parent "A", setting
-> +crossmnt on "A" has a similar effect to setting "nohide" on B.
-> +
-> +With
-> +.I nohide
-> +the child filesystem needs to be explicitly exported.  With
-> +.I crossmnt
-> +it need not.  If a child of a
-> +.I crossmnt
-> +file is not explicitly exported, then it will be implicitly exported
-> +with the same export options as the parent, except for
-> +.IR fsid= .
-> +This makes it impossible to
-> +.B not
-> +export a child of a
-> +.I crossmnt
-> +filesystem.  If some but not all subordinate filesystems of a parent
-> +are to be exported, then they must be explicitly exported and the
-> +parent should not have
-> +.I crossmnt
-> +set.
-> +
-> +The
-> +.I nocrossmnt
-> +option can explictly disable
-> +.I crossmnt
-> +if it was previously set.  This is rarely useful.
->  .TP
->  .IR no_subtree_check
->  This option disables subtree checking, which has mild security
-> 
+This gives correct handling if only "/" is exported.
+
+Signed-off-by: NeilBrown <neilb@suse.de>
+
+diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
+index c23d384d24eb..ac36b6d9f21e 100644
+--- a/utils/mountd/cache.c
++++ b/utils/mountd/cache.c
+@@ -377,6 +377,7 @@ static char *next_mnt(void **v, char *p)
+ 	} else
+ 		f =3D *v;
+ 	while ((me =3D getmntent(f)) !=3D NULL &&
++	       l > 1 &&
+ 	       (strncmp(me->mnt_dir, p, l) !=3D 0 ||
+ 		me->mnt_dir[l] !=3D '/'))
+ 		;
+
+--Sig_/d2LNGpbEp=zRLlJ2=pDdsqF
+Content-Type: application/pgp-signature
+Content-Description: OpenPGP digital signature
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2
+
+iQIVAwUBVOFFgDnsnt1WYoG5AQI5YBAAkgn3aweMyJF/Jse4AbQjwEYLI0ZpXEWY
+H3IWFkkGgUPxjQYoZLYUlMBLsuaGBwN5IgIIXykY5podfrG5b9VWYK8GDW1t9Lr1
+DRcm2EaWb/oI+K8ZFqDPANlJ9liF1YmPFRWWyD2E/c0WpTfFGz6OJ/YeZXWC1zGV
+imMbwi1FeHKVSKoCV/6YWAc3F/XwWK+YrmY6t3tHgGeBdWxrWvRhk92iK0gov6kL
+x7Kmh2g09rgbLfrHlLxQTQ+3OU2L5KRW9+MMHNOZXsaw7vYOnBbYxhROlq1Z5b+b
+2tssSbAchX0PN1cJoGebVBBuo8ZW+Qnh7/PO0HfBdbRIqLRI4yFNetk7UyOEk6fx
+biYlZZCLjpGyRM5KbIRHz1i4PoQ9V7zsAD3Iz8HHD/n3GC3R6oAr7nSegGBjKtzQ
+Wi1jMVL5MUa/oODKLoIRr+3w2H/hQ0Nc98zeUUFNx8t76HXrbcYEjOWiA5egabAy
+mIjE+xKwAyQHvyNLw5lGN02Vchr+JGqgthQOQzH1cQ+KF81H1m04bEMPZ5Vpg/q4
+Pw9M8q0uptohaMd9HsiwzAe9xCDC6fEkLb9BDqe3uhZMiWqSjBU1iWCvMQaShvC5
+GKpGAYNwtY4Wico5q86jfj6DmnGRLfVbAncFg/qMZUJiTJ7Fsy3L95hMSTiy7r2s
+naXXNLFpyL4=
+=skMR
+-----END PGP SIGNATURE-----
+
+--Sig_/d2LNGpbEp=zRLlJ2=pDdsqF--
