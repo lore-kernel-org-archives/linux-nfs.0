@@ -1,128 +1,115 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from icebox.esperi.org.uk ([81.187.191.129]:48990 "EHLO
-	mail.esperi.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754024AbbBNNRH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 14 Feb 2015 08:17:07 -0500
-From: Nix <nix@esperi.org.uk>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: NeilBrown <neilb@suse.de>, NFS list <linux-nfs@vger.kernel.org>
-Subject: Re: what on earth is going on here? paths above mountpoints turn into "(unreachable)"
+Received: from cantor2.suse.de ([195.135.220.15]:34749 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751272AbbBPCqi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 15 Feb 2015 21:46:38 -0500
+Date: Mon, 16 Feb 2015 13:46:28 +1100
+From: NeilBrown <neilb@suse.de>
+To: Nix <nix@esperi.org.uk>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        NFS list <linux-nfs@vger.kernel.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: Re: what on earth is going on here? paths above mountpoints turn
+ into "(unreachable)"
+Message-ID: <20150216134628.773e3347@notabene.brown>
+In-Reply-To: <87vbj4ljjn.fsf@spindle.srvr.nix>
 References: <87iofju9ht.fsf@spindle.srvr.nix>
 	<20150203195333.GQ22301@fieldses.org>
-	<87egq6lqdj.fsf@spindle.srvr.nix> <87r3u58df2.fsf@spindle.srvr.nix>
+	<87egq6lqdj.fsf@spindle.srvr.nix>
+	<87r3u58df2.fsf@spindle.srvr.nix>
 	<20150205112641.60340f71@notabene.brown>
 	<87zj8l7j3z.fsf@spindle.srvr.nix>
 	<20150210183200.GB11226@fieldses.org>
-Date: Sat, 14 Feb 2015 13:17:00 +0000
-In-Reply-To: <20150210183200.GB11226@fieldses.org> (J. Bruce Fields's message
-	of "Tue, 10 Feb 2015 13:32:00 -0500")
-Message-ID: <87vbj4ljjn.fsf@spindle.srvr.nix>
+	<87vbj4ljjn.fsf@spindle.srvr.nix>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: multipart/signed; micalg=pgp-sha1;
+ boundary="Sig_/TaVIF_1=e1EG+1JIJP54K/3"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 10 Feb 2015, J. Bruce Fields outgrape:
+--Sig_/TaVIF_1=e1EG+1JIJP54K/3
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-> It might be interesting to see output from
->
-> 	rpc.debug -m rpc -s cache
-> 	cat /proc/net/rpc/nfsd.export/content
-> 	cat /proc/net/rpc/nfsd.fh/content
->
-> especially after the problem manifests.
+On Sat, 14 Feb 2015 13:17:00 +0000 Nix <nix@esperi.org.uk> wrote:
 
-So the mount has vanished again. I couldn't make it happen with
-nordirplus in the mount options, so that might provide you with a clue.
+> On 10 Feb 2015, J. Bruce Fields outgrape:
+>=20
+> > It might be interesting to see output from
+> >
+> > 	rpc.debug -m rpc -s cache
+> > 	cat /proc/net/rpc/nfsd.export/content
+> > 	cat /proc/net/rpc/nfsd.fh/content
+> >
+> > especially after the problem manifests.
+>=20
+> So the mount has vanished again. I couldn't make it happen with
+> nordirplus in the mount options, so that might provide you with a clue.
 
-Obviously, on the client, no useful output was seen (I learned to avoid
-NFS cross-exports long ago, so the client doesn't normally NFS-export
-anything).
+Yup.  It does.
 
-On the server:
+There is definitely something wrong in nfs_prime_dcache.  I cannot quite
+trace through from cause to effect, but maybe I don't need to.
 
-# cat /proc/net/rpc/nfsd.export/content
-#path domain(flags)
-# expiry=1423920264 refcnt=1 flags=1
-/usr/src        mutilate.wkstn.nix(rw,no_root_squash,async,wdelay,no_subtree_check,fsid=16,uuid=333950aa:8e3f440a:bc94d0cc:4adae198,sec=1)
-# expiry=1423920746 refcnt=1 flags=1
-/home/.spindle.srvr.nix mutilate.wkstn.nix(rw,no_root_squash,async,wdelay,no_subtree_check,fsid=1,uuid=95bd22c2:253c456f:8e36b6cf:b9ecd4ef,sec=1)
-# expiry=1423920907 refcnt=1 flags=1
-/usr/lib/X11/fonts      mutilate.wkstn.nix(ro,root_squash,async,wdelay,fsid=12,uuid=5cccc224:a92440ee:b4450447:3898c2ec,sec=1)
-# expiry=1423920721 refcnt=1 flags=1
-/home/.spindle.srvr.nix *.srvr.nix,fold.srvr.nix(rw,root_squash,async,wdelay,no_subtree_check,fsid=1,uuid=95bd22c2:253c456f:8e36b6cf:b9ecd4ef,sec=1)
+Can you try the following patch and see if that makes the problem disappear?
 
-# cat /proc/net/rpc/nfsd.fh/content
-#domain fsidtype fsid [path]
-# expiry=2147483647 refcnt=1 flags=1
-*.vm.nix,192.168.20.0/24,owork.vm.nix 1 0x00000010 /usr/src
-# expiry=2147483647 refcnt=1 flags=1
-*.vm.nix,192.168.20.0/24,owork.vm.nix 1 0x00000016 /home/oranix/o
-# expiry=2147483647 refcnt=1 flags=1
-mutilate.wkstn.nix 1 0x00000018 /home/.spindle.srvr.nix/nix/Graphics/Private
-# expiry=2147483647 refcnt=1 flags=1
-mutilate.wkstn.nix 1 0x00000003 /home/.spindle.srvr.nix/nix/Graphics/Photos
-# expiry=2147483647 refcnt=1 flags=1
-mutilate.wkstn.nix 1 0x00000002 /home/.spindle.srvr.nix/nix/Mail/nnmh/spambox-verified
-# expiry=2147483647 refcnt=1 flags=1
-mutilate.wkstn.nix 1 0x00000013 /usr/share/clamav
-# expiry=2147483647 refcnt=1 flags=1
-mutilate.wkstn.nix 1 0x00000012 /usr/share/httpd/htdocs/munin
-# expiry=2147483647 refcnt=1 flags=1
-mutilate.wkstn.nix 1 0x00000011 /var/state/munin
-# expiry=2147483647 refcnt=1 flags=1
-mutilate.wkstn.nix 1 0x0000001d /usr/archive/series
-# expiry=2147483647 refcnt=1 flags=1
-mutilate.wkstn.nix 1 0x00000010 /usr/src
-# expiry=2147483647 refcnt=1 flags=1
-mutilate.wkstn.nix 1 0x0000000b /pkg/non-free
-# expiry=2147483647 refcnt=1 flags=1
-mutilate.wkstn.nix 1 0x00000015 /usr/share/flightgear
-# expiry=2147483647 refcnt=1 flags=1
-mutilate.wkstn.nix 1 0x00000007 /usr/share/texlive
-# expiry=2147483647 refcnt=1 flags=1
-mutilate.wkstn.nix 1 0x0000000a /usr/share/nethack
-# expiry=2147483647 refcnt=1 flags=1
-mutilate.wkstn.nix 1 0x00000009 /usr/share/xplanet
-# expiry=2147483647 refcnt=1 flags=1
-mutilate.wkstn.nix 1 0x00000016 /usr/share/emacs/site-lisp
-# expiry=2147483647 refcnt=1 flags=1
-mutilate.wkstn.nix 1 0x00000008 /usr/share/xemacs
-# expiry=2147483647 refcnt=1 flags=1
-mutilate.wkstn.nix 1 0x00000005 /usr/doc
-# expiry=2147483647 refcnt=1 flags=1
-mutilate.wkstn.nix 1 0x00000006 /usr/info
-# expiry=2147483647 refcnt=1 flags=1
-mutilate.wkstn.nix 1 0x0000000f /etc/shai-hulud
-# expiry=2147483647 refcnt=1 flags=1
-mutilate.wkstn.nix 1 0x0000000e /var/log.real
-# expiry=2147483647 refcnt=1 flags=1
-mutilate.wkstn.nix 1 0x0000000c /usr/lib/X11/fonts
-# expiry=2147483647 refcnt=1 flags=1
-mutilate.wkstn.nix 1 0x00000019 /usr/archive
-# expiry=2147483647 refcnt=1 flags=1
-mutilate.wkstn.nix 1 0x00000001 /home/.spindle.srvr.nix
-# expiry=2147483647 refcnt=1 flags=1
-*.vm.nix,192.168.20.0/24,linux-o.vm.nix 1 0x00000010 /usr/src
-# expiry=2147483647 refcnt=1 flags=1
-*.vm.nix,192.168.20.0/24,linux-o.vm.nix 1 0x00000016 /home/oranix/o
-# expiry=2147483647 refcnt=1 flags=1
-*.srvr.nix,fold.srvr.nix 1 0x00000001 /home/.spindle.srvr.nix
+When you perform a READDIRPLUS request on a directory that contains
+mountpoints, the the Linux NFS server doesn't return a file-handle for
+those names which are mountpoints (because doing so is a bit tricky).
 
-I remounted it, and nfsd.export/content gained a few lines:
+nfs3_decode_dirent notices and decodes as a filehandle with zero length.
 
-# expiry=1423921406 refcnt=1 flags=1
-/usr/archive/series     mutilate.wkstn.nix(rw,insecure,root_squash,async,wdelay,no_subtree_check,fsid=29,uuid=543a1ca9:d17246ca:b6c53092:5896549d,sec=1)
-# expiry=1423921383 refcnt=1 flags=1
-/usr/archive    mutilate.wkstn.nix(rw,insecure,root_squash,async,wdelay,fsid=25,uuid=d20e3edd:06a54a9b:85dcfa19:62975969,sec=1)
+The "nfs_same_file()" check in nfs_prime_dcache() determines that isn't
+the same as the filehandle it has, and tries to invalidate it and make a new
+one.
 
-nfsd.fh/content is unchanged.
+The invalidation should fail (probably does).
+The creating of a new one ... might succeed.  Beyond that, it all gets a bit
+hazy.
 
-To me, this all looks completely normal: unused mounts *do* expire away.
-The problem is that they're not coming back as they should (I guess
-they're coming back with a different inode number?)
+Anyway, please try:
 
-This is all with nfs-utils 1.3.0, btw.
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 9b0c55cb2a2e..a460669dc395 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -541,7 +541,7 @@ int nfs_readdir_page_filler(nfs_readdir_descriptor_t *d=
+esc, struct nfs_entry *en
+=20
+ 		count++;
+=20
+-		if (desc->plus !=3D 0)
++		if (desc->plus !=3D 0 && entry->fh.size)
+ 			nfs_prime_dcache(desc->file->f_path.dentry, entry);
+=20
+ 		status =3D nfs_readdir_add_to_array(entry, page);
 
--- 
-NULL && (void)
+
+which you might have to apply by hand.
+
+Thanks,
+NeilBrown
+
+--Sig_/TaVIF_1=e1EG+1JIJP54K/3
+Content-Type: application/pgp-signature
+Content-Description: OpenPGP digital signature
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2
+
+iQIVAwUBVOFaBDnsnt1WYoG5AQIVUhAAgX+TFYwiKk0o84W6G11CBjfYO+8P/sAT
+v0amf3+4cRPPFHiKl0ISBWWoFKdkI45m8jxD85ipRjoT7SRNgGgnYCiIHoFeKcV7
+QEy3tw+UbZ7Ll64vIfZrIfqmYlgsG7ZwYyrTY27LQGNTmh9nQg26cGggEBEHySRI
+1YLedkCSx7T27b9z1VOgj+Kgd7yNE1EbHNMciGu3Q6/zZwUcG7P1MLj+iLC+2m4W
+6OxSys+a2k3eXLww4NC2lG2kUV9l7A0YhzmCEHRFYg9LUYtfI52sraQ8Esu8tENC
+ubY5BOv7xozsGHKoTrlRltRAGQ4JWFSO1HF4bQpXoTQJTA2LJvrKeHkSwrQ0dcJV
+zFGaruxoslv/8sSzhBMmVrxqUfAu+DWXKsXG7cKq0AaaN9w3KMG0zlJ9pQ/h4/ip
+Ttd24DpX4WkpejcFjoy+jjRlg08HhKpyKBg3uoKJ5q4y1klPV2ZV2ZWXhLnyKc13
+Jkl+tQ1HFlu91xY2hfx5E9SfLIa7Az7YT5r5xs5n5x5lNjCAAq8bjCrMxs5GvpgP
+1nnFcfPOMg7UhvoNcLsehW4rNY/INZup0KrLOPptQpXa4AyiKKIY1CZ7jpDzcXDc
+v0vCJ8nCqPboj2izSLszN/aPa6s04dfIwkn39FYT25h+yuaKA7nVRoh8otPtZBb+
+86U7fV+ZvPg=
+=tc8d
+-----END PGP SIGNATURE-----
+
+--Sig_/TaVIF_1=e1EG+1JIJP54K/3--
