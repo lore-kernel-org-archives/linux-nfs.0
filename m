@@ -1,36 +1,57 @@
-Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from ipmail07.adl2.internode.on.net ([150.101.137.131]:11140 "EHLO
-	ipmail07.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1755922AbbBEAvt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Feb 2015 19:51:49 -0500
-Date: Thu, 5 Feb 2015 11:51:05 +1100
-From: Dave Chinner <david@fromorbit.com>
+Return-Path: linux-kernel-owner@vger.kernel.org
+From: Daniel Thompson <daniel.thompson@linaro.org>
 To: Christoph Hellwig <hch@lst.de>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@primarydata.com>, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com
-Subject: Re: [PATCH 20/20] xfs: recall pNFS layouts on conflicting access
-Message-ID: <20150205005105.GP4251@dastard>
-References: <1421925006-24231-1-git-send-email-hch@lst.de>
- <1421925006-24231-21-git-send-email-hch@lst.de>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1421925006-24231-21-git-send-email-hch@lst.de>
-Sender: linux-nfs-owner@vger.kernel.org
+Cc: Daniel Thompson <daniel.thompson@linaro.org>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, patches@linaro.org,
+        linaro-kernel@lists.linaro.org, John Stultz <john.stultz@linaro.org>,
+        Sumit Semwal <sumit.semwal@linaro.org>,
+        "J. Bruce Fields" <bfields@fieldses.org>
+Subject: [PATCH] nfsd: Fix v2-only build regression
+Date: Mon, 16 Feb 2015 11:36:03 +0000
+Message-Id: <1424086563-25570-1-git-send-email-daniel.thompson@linaro.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jan 22, 2015 at 12:10:06PM +0100, Christoph Hellwig wrote:
-> Recall all outstanding pNFS layouts and truncates, writes and similar extent
-> list modifying operations.
-> 
-> Signed-off-by: Christoph Hellwig <hch@lst.de>
+Currently if nfsd is configured as v2 only then the kernel fails to build.
+This is a regression introduced by 9cf514ccfacb("nfsd: implement pNFS
+operations"). It occurs because inline code from the xdr4.h header is
+now included from generic nfsd code (via pnfs.h).
 
-This looks fine, assuming break_layout() doesn't require any other
-VFS inode locks to be held for serialisation.
+This patch takes the simplest route and makes conditional the problematic
+inline function.
 
-Cheers,
+Note: I also tried extending the #ifdef CONFIG_NFSD_PNFS to cover almost
+      all of the pnfs.h header file. That works great too but feels more
+      invasive. However I can dust this off if that were preferable for
+      any reason.
 
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+Signed-off-by: Daniel Thompson <daniel.thompson@linaro.org>
+Cc: Christoph Hellwig <hch@lst.de>
+Cc: J. Bruce Fields <bfields@fieldses.org>
+---
+ fs/nfsd/xdr4.h | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index 0bda93e58e1b..960a75d921c0 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -627,6 +627,7 @@ void warn_on_nonidempotent_op(struct nfsd4_op *op);
+
+ #define NFS4_SVC_XDRSIZE		sizeof(struct nfsd4_compoundargs)
+
++#ifdef CONFIG_NFSD_V3
+ static inline void
+ set_change_info(struct nfsd4_change_info *cinfo, struct svc_fh *fhp)
+ {
+@@ -642,6 +643,7 @@ set_change_info(struct nfsd4_change_info *cinfo, struct svc_fh *fhp)
+ 	cinfo->after_ctime_nsec = fhp->fh_post_attr.ctime.tv_nsec;
+
+ }
++#endif
+
+ int nfs4svc_encode_voidres(struct svc_rqst *, __be32 *, void *);
+ int nfs4svc_decode_compoundargs(struct svc_rqst *, __be32 *,
+--
+1.9.3
+
