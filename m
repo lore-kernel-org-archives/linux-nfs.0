@@ -1,74 +1,123 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:36295 "EHLO mx1.redhat.com"
+Received: from cantor2.suse.de ([195.135.220.15]:57451 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753844AbbBZTgr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 26 Feb 2015 14:36:47 -0500
-Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id t1QJalBM012576
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
-	for <linux-nfs@vger.kernel.org>; Thu, 26 Feb 2015 14:36:47 -0500
-Message-ID: <54EF75CD.2030805@RedHat.com>
-Date: Thu, 26 Feb 2015 14:36:45 -0500
-From: Steve Dickson <SteveD@redhat.com>
+	id S1752565AbbBPBVP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 15 Feb 2015 20:21:15 -0500
+Date: Mon, 16 Feb 2015 12:21:07 +1100
+From: NeilBrown <neilb@suse.de>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: NFS <linux-nfs@vger.kernel.org>
+Subject: [PATCH/RFC nfs-utils] exports.man: improve documentation of
+ 'nohide' and 'crossmnt'
+Message-ID: <20150216122107.4bfd4225@notabene.brown>
 MIME-Version: 1.0
-To: "Carlos O'Donell" <carlos@redhat.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] rpc.statd: Avoid passing unregistered socket to svc_getreqset.
-References: <54E60C41.3060001@redhat.com>
-In-Reply-To: <54E60C41.3060001@redhat.com>
-Content-Type: text/plain; charset=utf-8
+Content-Type: multipart/signed; micalg=pgp-sha1;
+ boundary="Sig_/Mwy5t=G/+Zr7N1=uoCyyTr5"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+--Sig_/Mwy5t=G/+Zr7N1=uoCyyTr5
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
 
-On 02/19/2015 11:16 AM, Carlos O'Donell wrote:
-> rpc.statd may crash if it receives both a notification reply and a client
-> connection at the same time. It crashes because it adds sockfd to SVC_FDSET
-> and that violates the API contract. The SVC_FDSET is to be considered read-only
-> and must not be modified by user code. The daemon modifies it for expediency
-> to avoid having to maintain two distinct fd lists and select on each one.
-> It is a practical choice that makes sense.
-> 
-> Thus, if a notification reply arrives by itself everything works, or if a
-> client connection arrives by itself everything works. Both must arrive at
-> the same time for sockfd to be set in SVC_FDSET and to be processed by
-> svc_getreqset because more than one of readfds is ready.
-> 
-> It is the processing by svc_getreqset that will crash when it finds an
-> unregistered fd in the list that doesn't correlate to any of the internal
-> book keeping done by the library. At present the glibc SunRPC library will
-> crash, but TIRPC does not (it is robust against invalid API usage in this
-> case). However, future RPC libraries may be implemented differently, and
-> the questionable API usage should be fixed.
-> 
-> The simplest fix is for process_reply to *clear* sockfd from the
-> ready-to-read fds, since it was never registered with xprt_register.
-> This works because the code always calls process_reply before handing the 
-> fd set to the RPC layer for processing.
-> 
-> Compile-tested on x86_64 against master.
-> 
-> Signed-off-by: Carlos O'Donell <carlos@redhat.com>
-Committed!
 
-steved.
+- note that 'nohide' is irrelevant for NFSv4
+- note that children on a 'crossmnt' filesystem cannot be unexported
+- note that 'nocrossmnt' is a valid option, but probably not useful.
 
-> ---
->  rmtcall.c |    3 +++
->  1 file changed, 3 insertions(+)
-> 
-> diff --git a/utils/statd/rmtcall.c b/utils/statd/rmtcall.c
-> index fd576d9..66a6eeb 100644
-> --- a/utils/statd/rmtcall.c
-> +++ b/utils/statd/rmtcall.c
-> @@ -221,6 +221,9 @@ process_reply(FD_SET_TYPE *rfds)
->  	if (sockfd == -1 || !FD_ISSET(sockfd, rfds))
->  		return 0;
->  
-> +	/* Should not be processed again. */
-> +	FD_CLR (sockfd, rfds);
-> +
->  	if (!(lp = recv_rply(&port)))
->  		return 1;
->  
-> 
+Signed-off-by: NeilBrown <neilb@suse.de>
+
+---
+
+I wonder if we should add a new option, e.g. "noaccess" so that children
+of a "crossmnt" filesystem can be hidden.  The  kernel wouldn't need to
+know about this.  It would just tell mountd to refuse to export that
+filesystem even if the parent was "crossmnt".
+??
+
+NeilBrown
+
+
+diff --git a/utils/exportfs/exports.man b/utils/exportfs/exports.man
+index 3d974d92a729..88d9fbebe386 100644
+--- a/utils/exportfs/exports.man
++++ b/utils/exportfs/exports.man
+@@ -218,16 +218,46 @@ This option can be very useful in some situations, bu=
+t it should be
+ used with due care, and only after confirming that the client system
+ copes with the situation effectively.
+=20
+-The option can be explicitly disabled with
++The option can be explicitly disabled for NFSv2 and NFSv3 with
+ .IR hide .
++
++This option is not relevant when NFSv4 is use.  NFSv4 never hides
++subordinate filesystems.  Any filesystem that is exported will be
++visible where expected when using NFSv4.
+ .TP
+-.IR crossmnt
++.I crossmnt
+ This option is similar to
+ .I nohide
+-but it makes it possible for clients to move from the filesystem marked
+-with crossmnt to exported filesystems mounted on it.  Thus when a child
+-filesystem "B" is mounted on a parent "A", setting crossmnt on "A" has
+-the same effect as setting "nohide" on B.
++but it makes it possible for clients to access all filesystems mounted
++on a filesystem marked with
++.IR crossmnt .
++Thus when a child filesystem "B" is mounted on a parent "A", setting
++crossmnt on "A" has a similar effect to setting "nohide" on B.
++
++With
++.I nohide
++the child filesystem needs to be explicitly exported.  With
++.I crossmnt
++it need not.  If a child of a
++.I crossmnt
++file is not explicitly exported, then it will be implicitly exported
++with the same export options as the parent, except for
++.IR fsid=3D .
++This makes it impossible to
++.B not
++export a child of a
++.I crossmnt
++filesystem.  If some but not all subordinate filesystems of a parent
++are to be exported, then they must be explicitly exported and the
++parent should not have
++.I crossmnt
++set.
++
++The
++.I nocrossmnt
++option can explictly disable
++.I crossmnt
++if it was previously set.  This is rarely useful.
+ .TP
+ .IR no_subtree_check
+ This option disables subtree checking, which has mild security
+
+--Sig_/Mwy5t=G/+Zr7N1=uoCyyTr5
+Content-Type: application/pgp-signature
+Content-Description: OpenPGP digital signature
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2
+
+iQIVAwUBVOFGAznsnt1WYoG5AQI/3g//e18kuZfD/OPv6TkG+TUnTko2JIH7MbTi
+H159aeCoExvL6L7+BAHM+F5cQtrFh2Ab40x9fRgMN+b9rudcY6gZ/xMVxa6R8C5u
+CK6+s3lOzlwRgcaYiyjbofiZt8Z1xAPV30Wkq2tqI0Brp9NNNQ8mkUx0uHX5hs7z
+rCE1UFUuSmDjHyRd1XZ5h5fVeI+r2b7vtr2vcdyQIpShW4p/unI2fECD3mBevQT7
+Ms3lJ9ESGxlDFhwfvOcKSOnTnARqZjxJ1u0XzoQdWFxZ9flMRBvAwf2JdAxkJVDt
+pCQupZMw+5hf2ZHUAYOFcvn09PmdL/U5fqPX2Hzg7lpxRUvGuXV6Gi5rwa51hzi3
+aBmAyT/GTgZQeOmqN0cCHWGSIgcIBZ10w+5egirfzTbMKjHrzXsvNcD5kH60+Qx+
+HHp/vWu6JhcYOiEYenG0wQW9a+Sd/VChVqL1KbQ3q2mbXd2GncwmTiazHqRFEuYU
+ydwWMRFi9NVX4yl0jPrpKg7hl4Gq4AfugRwxiPptUu5gSzzcc0RZBHxiJ2/dw/Fq
+cdWe2B4WqJK4fBYJAut53q2wnxYRcss+uUEoay9W065QsImq2qEWnppTbpOKHIpD
+b5SsxZETuQxxuYQlX2qtqEa3pQ8fEAgrkh8Z8aubFg4lW+lhfY1xa4i96Hw91lFE
+v9IOUUNP7Us=
+=E2oO
+-----END PGP SIGNATURE-----
+
+--Sig_/Mwy5t=G/+Zr7N1=uoCyyTr5--
