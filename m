@@ -1,75 +1,77 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aa.linuxbox.com ([69.128.83.226]:4247 "EHLO aa.linuxbox.com"
+Received: from fieldses.org ([173.255.197.46]:47372 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751467AbbBPVhA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 16 Feb 2015 16:37:00 -0500
-Date: Mon, 16 Feb 2015 16:35:29 -0500
-From: mdw@linuxbox.com
-To: Joschi Brauchle <joschi.brauchle@tum.de>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Fehenberger, Tobias" <tobias.fehenberger@tum.de>,
-        "Stinner, Markus" <markus.stinner@tum.de>,
-        Tasnad Kernetzky <tasnad.kernetzky@tum.de>
-Subject: Re: Question about NFS4 facls in combination with a GIT shared bare
- repo on NFSv4 share
-Message-ID: <20150216213528.GA27453@soma.private.linuxbox.com>
-References: <54E1F532.5030703@tum.de>
+	id S1754431AbbBQXMP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 17 Feb 2015 18:12:15 -0500
+Date: Tue, 17 Feb 2015 18:12:14 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: David Ramos <daramos@stanford.edu>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: Kernel memory leak in gssp_accept_sec_context_upcall()
+ (net/sunrpc/auth_gss/gss_rpc_upcall.c)
+Message-ID: <20150217231214.GC3667@fieldses.org>
+References: <D7D77294-A842-4E57-91EF-31EE1B58EDD2@stanford.edu>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <54E1F532.5030703@tum.de>
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <D7D77294-A842-4E57-91EF-31EE1B58EDD2@stanford.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Feb 16, 2015 at 02:48:34PM +0100, Joschi Brauchle wrote:
-...
-> Question 3:
-> ==================
-> Note that the problem is NOT solved with this ACL:
-> ---------------
-> /nfsv4/share # nfs4_getfacl repodir
-> A:fdg:GROUP@:rwaDxtTnNcCoy
-> ....
-> /nfsv4/share # ls -l repodir
-> drwxrwsr-x  7 myuser mygroup   4096 Feb 16 14:12 repodir/
-> ---------------
-...
+On Fri, Feb 13, 2015 at 01:11:51PM -0800, David Ramos wrote:
+> Our UC-KLEE tool found a kernel memory leak of 512 bytes (on x86_64) for each call to gssp_accept_sec_context_upcall() (net/sunrpc/auth_gss/gss_rpc_upcall.c). Since it appears that this call can be triggered by remote connections (at least, from a cursory a glance at the call chain), it may be exploitable to cause kernel memory exhaustion. We found the bug in kernel 3.16.3, but it appears to date back to commit 9dfd87da1aeb0fd364167ad199f40fe96a6a87be (2013-08-20).
+> 
+> The gssp_accept_sec_context_upcall() function performs a pair of calls to gssp_alloc_receive_pages() and gssp_free_receive_pages() (lines 282 and 290). The first function gssp_alloc_receive_pages() allocates memory for arg->pages:
+> 225:         arg->pages = kzalloc(arg->npages * sizeof(struct page *), GFP_KERNEL);
+> 
+> The second function gssp_free_receive_pages() then frees the pages pointed to by the arg->pages array, but not the array itself:
+> 218:         for (i = 0; i < arg->npages && arg->pages[i]; i++)
+> 219:                 __free_page(arg->pages[i]);
+> 
+> I’ve included a suggested patch below
 
-I fancy I know something about nfsv4 acls, and I have to confess I can't
-figure out what should be happening in your case, because you aren't
-including enough detail for me to decide.  Which means I also can't
-figure out where or what problem you're having, although I do agree
-getting an error on "close" suggests something made a pretty wonky
-decision.  I can't guarantee to be helpful in any case, but if you don't
-get a better answer from somebody who knows more about your setup,
-the following might help:
-	
-In order to figure out what "should" happen - complete acls, group membership, etc.
-Your "...." could hide an awful lot of surprises.
-You speak of "domains" - what sort are these and why do you think
-they be considered the same as "@GROUP"?
+Thanks, applying.
 
-Client & server identities and groups might map differently - is this the case here?
+> (apologies if the format isn’t quite right).
 
-what is the fileserver running?   netapp?  solaris?  linux nfsd??  something else?
+The whitespace is mangled (tabs replaced by spaces?), so I needed to
+apply it manually.
 
-Presumably your client is linux - what version?  If from a distribution
-which distro & package version?
+Also I copied most of your explanation above into the commit message,
+it's a little verbose but I'd rather err on the side of explaining stuff
+than not.
 
-Can you demonstrate your problem happen with dd or cp?  Or does it only
-happen with git?
+--b.
 
-Are you using gssapi?  (better for tracing purposes if you can do this without.)
-Can you record a network trace of the bad thing happening?  (this will
-point whether it's a client or server side problem.)
-
-Possibly helpful to know,:
-	unix mode permissions work differently than an acl,
-	with unix modes,
-		owner permissions eclipse group permissions.
-	with acls,
-		group permissions add to owner permissions.
-To accurately map unix mode bits into nfsv4 acls, you have to also
-include 'deny' entries to keep groups from adding permissions the user
-doen't have.
-
-					-Marcus Watts
+> 
+> Thanks,
+> -David
+> 
+> 8<------------------------------------------------------------
+> From 9baa9b3a8ba2efad2d63d735f3a7e718950c5068 Mon Sep 17 00:00:00 2001
+> From: David A. Ramos <daramos@stanford.edu>
+> Date: Fri, 13 Feb 2015 13:01:28 -0800
+> Subject: [PATCH] Fix memory leak in gssp_accept_sec_context_upcall().
+> 
+> Reported-by: David A. Ramos <daramos@stanford.edu>
+> Fixes: 9dfd87da1aeb ("rpc: fix huge kmalloc's in gss-proxy”)
+> Signed-off-by: David A. Ramos <daramos@stanford.edu>
+> ---
+>  net/sunrpc/auth_gss/gss_rpc_upcall.c |    2 ++
+>  1 files changed, 2 insertions(+), 0 deletions(-)
+> 
+> diff --git a/net/sunrpc/auth_gss/gss_rpc_upcall.c b/net/sunrpc/auth_gss/gss_rpc_upcall.c
+> index abbb7dc..59eeed4 100644
+> --- a/net/sunrpc/auth_gss/gss_rpc_upcall.c
+> +++ b/net/sunrpc/auth_gss/gss_rpc_upcall.c
+> @@ -217,6 +217,8 @@ static void gssp_free_receive_pages(struct gssx_arg_accept_sec_context *arg)
+>  
+>         for (i = 0; i < arg->npages && arg->pages[i]; i++)
+>                 __free_page(arg->pages[i]);
+> +
+> +       kfree(arg->pages);
+>  }
+>  
+>  static int gssp_alloc_receive_pages(struct gssx_arg_accept_sec_context *arg)
+> -- 
+> 1.7.4.4
+> 
