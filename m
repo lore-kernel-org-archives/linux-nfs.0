@@ -1,106 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:39327 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:46424 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753145AbbBXVoP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 24 Feb 2015 16:44:15 -0500
-Date: Wed, 25 Feb 2015 08:44:06 +1100
-From: NeilBrown <neilb@suse.de>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: linux-nfs@vger.kernel.org, Nix <nix@esperi.org.uk>
-Subject: Re: [PATCH 1/3] NFS: Don't invalidate a submounted dentry in
- nfs_prime_dcache()
-Message-ID: <20150225084406.6d27969b@notabene.brown>
-In-Reply-To: <1424736897-95767-1-git-send-email-trond.myklebust@primarydata.com>
-References: <1424736897-95767-1-git-send-email-trond.myklebust@primarydata.com>
+	id S1751901AbbBRQgH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 18 Feb 2015 11:36:07 -0500
+Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id t1IGa7QU027197
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
+	for <linux-nfs@vger.kernel.org>; Wed, 18 Feb 2015 11:36:07 -0500
+Received: from [10.10.61.122] (vpn-61-122.rdu2.redhat.com [10.10.61.122])
+	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id t1IGa62R007308
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NO)
+	for <linux-nfs@vger.kernel.org>; Wed, 18 Feb 2015 11:36:07 -0500
+Date: Wed, 18 Feb 2015 11:36:06 -0500 (EST)
+From: Benjamin Coddington <bcodding@redhat.com>
+To: linux-nfs@vger.kernel.org
+Subject: soft lockup in the laundromat
+Message-ID: <alpine.OSX.2.19.9992.1502181132520.80359@planck.local>
 MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
- boundary="Sig_/GBASwkpflLa3tto9=REtFub"; protocol="application/pgp-signature"
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/GBASwkpflLa3tto9=REtFub
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+While playing with callback channel failures, I ran into this on the
+server yesterday:
 
-On Mon, 23 Feb 2015 19:14:55 -0500 Trond Myklebust
-<trond.myklebust@primarydata.com> wrote:
-
-> If we're traversing a directory which contains a submounted filesystem,
-> or one that has a referral, the NFS server that is processing the READDIR
-> request will often return information for the underlying (mounted-on)
-> directory. It may, or may not, also return filehandle information.
->=20
-> If this happens, and the lookup in nfs_prime_dcache() returns the
-> dentry for the submounted directory, the filehandle comparison will
-> fail, and we call d_invalidate(). Post-commit 8ed936b5671bf
-> ("vfs: Lazily remove mounts on unlinked files and directories."), this
-> means the entire subtree is unmounted.
->=20
-> The following minimal patch addresses this problem by punting on
-> the invalidation if there is a submount.
->=20
-> Kudos to Neil Brown <neilb@suse.de> for having tracked down this
-> issue (see link).
->=20
-> Reported-by: Nix <nix@esperi.org.uk>
-> Link: http://lkml.kernel.org/r/87iofju9ht.fsf@spindle.srvr.nix
-> Cc: stable@vger.kernel.org # 3.18+
-> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-> ---
->  fs/nfs/dir.c | 4 ++++
->  1 file changed, 4 insertions(+)
->=20
-> diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-> index 9b0c55cb2a2e..0da617a61c0b 100644
-> --- a/fs/nfs/dir.c
-> +++ b/fs/nfs/dir.c
-> @@ -479,6 +479,10 @@ void nfs_prime_dcache(struct dentry *parent, struct =
-nfs_entry *entry)
-> =20
->  	dentry =3D d_lookup(parent, &filename);
->  	if (dentry !=3D NULL) {
-> +		/* Is there a mountpoint here? If so, just exit */
-> +		if (!nfs_fsid_equal(&NFS_SB(dentry->d_sb)->fsid,
-> +					&entry->fattr->fsid))
-> +			goto out;
-
-Surely we should  only consider fattr->fsid if NFS_ATTR_FATTR_FSID is set.
-In the case of the Linux NFSv3 server, if this were a mountpoint on the
-server, then NFS_ATTR_FATTR_FSID will not be set (as the server returns
-neither postop attrs nor filehandle).
-
-I realise that this issue is addressed in the subsequent patch (3/3), but
-that isn't tagged for -stable, and this is.
-
-NeilBrown
+[  372.020003] NMI watchdog: BUG: soft lockup - CPU#1 stuck for 22s! [kworker/u4:0:6]
+[  372.020003] Modules linked in: cts rpcsec_gss_krb5 nfnetlink_queue nfnetlink_log nfnetlink nf_conntrack_netbios_ns nf_conntrack_broadcast ip6t_rpfilter ip6t_REJECT xt_conntrack ebtable_nat ebtable_broute bridge stp llc ebtable_filter ebtables ip6table_nat nf_conntrack_ipv6 nf_defrag_ipv6 nf_nat_ipv6 ip6table_mangle ip6table_security ip6table_raw ip6table_filter ip6_tables iptable_nat nf_conntrack_ipv4 nf_defrag_ipv4 nf_nat_ipv4 nf_nat nf_conntrack iptable_mangle iptable_security iptable_raw ppdev crct10dif_pclmul crc32_pclmul crc32c_intel ghash_clmulni_intel serio_raw virtio_console virtio_balloon parport_pc pvpanic parport i2c_piix4 nfsd auth_rpcgss nfs_acl lockd sunrpc virtio_net virtio_blk cirrus drm_kms_helper ttm drm virtio_pci virtio_ring virtio ata_generic pata_acpi
+[  372.020003] CPU: 1 PID: 6 Comm: kworker/u4:0 Not tainted 3.17.4-301.fc21.x86_64 #1
+[  372.020003] Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS 1.7.5-20140709_153950- 04/01/2014
+[  372.020003] Workqueue: nfsd4 laundromat_main [nfsd]
+[  372.020003] task: ffff88007c7bb110 ti: ffff88007c04c000 task.ti: ffff88007c04c000
+[  372.020003] RIP: 0010:[<ffffffff81746162>]  [<ffffffff81746162>] _raw_spin_unlock_irqrestore+0x12/0x20
+[  372.020003] RSP: 0018:ffff88007c04fcd8  EFLAGS: 00000246
+[  372.020003] RAX: ffffffffa01876f0 RBX: 0000000000000000 RCX: 0000000000000000
+[  372.020003] RDX: ffffffffa0187708 RSI: 0000000000000246 RDI: 0000000000000246
+[  372.020003] RBP: ffff88007c04fcd8 R08: 0000000000000000 R09: 0000000000017a40
+[  372.020003] R10: ffffffffa017b4ed R11: 00000000000003a5 R12: ffffffffa01815ba
+[  372.020003] R13: ffff88007c04fc98 R14: ffffffff81f0cc80 R15: 0000000000000000
+[  372.020003] FS:  0000000000000000(0000) GS:ffff88007fd00000(0000) knlGS:0000000000000000
+[  372.020003] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+[  372.020003] CR2: 00007fccadbe03b8 CR3: 000000007b89e000 CR4: 00000000000406e0
+[  372.020003] Stack:
+[  372.020003]  ffff88007c04fd10 ffffffff810d6ac4 ffff88007c04fcf8 ffff88007c04fd38
+[  372.020003]  ffffffffa016f69d ffff88007a21a878 ffff88007a21a888 ffff88007c04fd38
+[  372.020003]  ffffffffa016f69d ffff88007c04fd48 ffff88007a21a800 ffff88007c04fcf8
+[  372.020003] Call Trace:
+[  372.020003]  [<ffffffff810d6ac4>] __wake_up+0x44/0x50
+[  372.020003]  [<ffffffffa016f69d>] ? nfs4_put_stid+0xcd/0xe0 [nfsd]
+[  372.020003]  [<ffffffffa016f69d>] nfs4_put_stid+0xcd/0xe0 [nfsd]
+[  372.020003]  [<ffffffffa016f93f>] __destroy_client+0xdf/0x160 [nfsd]
+[  372.020003]  [<ffffffffa016f9e2>] expire_client+0x22/0x30 [nfsd]
+[  372.020003]  [<ffffffffa016fd9e>] laundromat_main+0x18e/0x4d0 [nfsd]
+[  372.020003]  [<ffffffff810af88d>] process_one_work+0x14d/0x400
+[  372.020003]  [<ffffffff810b021b>] worker_thread+0x6b/0x4a0
+[  372.020003]  [<ffffffff810b01b0>] ? rescuer_thread+0x2a0/0x2a0
+[  372.020003]  [<ffffffff810b52fa>] kthread+0xea/0x100
+[  372.020003]  [<ffffffff810b5210>] ? kthread_create_on_node+0x1a0/0x1a0
+[  372.020003]  [<ffffffff81746a3c>] ret_from_fork+0x7c/0xb0
+[  372.020003]  [<ffffffff810b5210>] ? kthread_create_on_node+0x1a0/0x1a0
+[  372.020003] Code: c3 66 41 83 47 08 01 fb 66 66 90 66 66 90 eb ca 31 c0 eb ce e8 40 0d 95 ff 66 66 66 66 90 55 48 89 e5 66 83 07 01 48 89 f7 57 9d <66> 66 90 66 90 5d c3 0f 1f 80 00 00 00 00 66 66 66 66 90 55 48
 
 
+I'll see if I can reproduce on 3.18..
 
->  		if (nfs_same_file(dentry, entry)) {
->  			nfs_set_verifier(dentry, nfs_save_change_attribute(dir));
->  			status =3D nfs_refresh_inode(dentry->d_inode, entry->fattr);
-
-
---Sig_/GBASwkpflLa3tto9=REtFub
-Content-Type: application/pgp-signature
-Content-Description: OpenPGP digital signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2
-
-iQIVAwUBVOzwpjnsnt1WYoG5AQJ74RAAs8mdkGERDS77CskjSjTWrJsMQnL9s2Zr
-9Z1uZA3N/iBLbsXgnCKar/i3vFQlu316wi0AzT2M1xh0IlJ0zX2rzo6k1nuPcvFx
-VCRTxVJBCJc0EZh172aJVMiEzleuK0KE/LP+I+5U9Vaj6Gpb1UQJ3zJv+xe/ZjjU
-NXMGWRR+pXquP49KSCAYR/5ee29qzqPNWjLLcwsqZfHVt97IxyOb4TuJZTRzrhoY
-Y8WZzS3gmPwrC8RPIrDo3grfk8zokS+NW0Hv7JCIyZNhieQh6aVece2KNtxqzQ45
-J9eTy9PpxvSEDoWii7PK6e/X6DPhK39EVYEJBcOsttLjiwqa+fPAHs5hTNYKgkjK
-z/y+BH6MfeWQFClDkFk0FikklWkNXLhhWU/agxcKttpZjo/uOX9mbQfKLyVg/2nr
-GB+QX1ofYASb3F0TCUD+CUKkPuoSbQDsrqmgW7aYey8Al9k6WjMW9hT0tBG3IL65
-fr/PfolNAl4EBi65PTJ1sDhCKRRwsRDVuLhDcPh8NS+8gzSgIw8fobCQVXxs8Fqm
-45h43ECKx0p6fLQy0aAFWRnd1PQT21s9Twj4eSN9lmDSCuALfCSLRuc/HGTvBArd
-BWOPQhXvG6KTgXha8S4cWTIJIW93ZXk/v317/1jVBY5KpRP91YP9TaMpGdb6PaVz
-39nI7SeHZz0=
-=FqqI
------END PGP SIGNATURE-----
-
---Sig_/GBASwkpflLa3tto9=REtFub--
+Ben
