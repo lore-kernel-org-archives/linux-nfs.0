@@ -1,51 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([173.255.197.46]:53513 "EHLO fieldses.org"
+Received: from plane.gmane.org ([80.91.229.3]:41847 "EHLO plane.gmane.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752755AbbBYWxE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 25 Feb 2015 17:53:04 -0500
-Date: Wed, 25 Feb 2015 17:53:02 -0500
-To: Andrew Elble <aweits@rit.edu>
-Cc: linux-nfs@vger.kernel.org, Eric Meddaugh <etmsys@rit.edu>
-Subject: Re: [PATCH] NFS: fix clp->cl_revoked list deletion causing softlock
- in nfsd
-Message-ID: <20150225225302.GA20495@fieldses.org>
-Reply-To: 1424871775-98137-1-git-send-email-aweits@rit.edu
-MIME-Version: 1.0
+	id S1752453AbbBSKPG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 19 Feb 2015 05:15:06 -0500
+Received: from list by plane.gmane.org with local (Exim 4.69)
+	(envelope-from <glN-linux-nfs@m.gmane.org>)
+	id 1YOO8N-0001t4-Jz
+	for linux-nfs@vger.kernel.org; Thu, 19 Feb 2015 11:15:03 +0100
+Received: from 78-83-22-128.spectrumnet.bg ([78-83-22-128.spectrumnet.bg])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Thu, 19 Feb 2015 11:15:03 +0100
+Received: from az by 78-83-22-128.spectrumnet.bg with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Thu, 19 Feb 2015 11:15:03 +0100
+To: linux-nfs@vger.kernel.org
+From: svilen dobrev <az@svilendobrev.com>
+Subject: Re: rpc-statd won't start for user NFS mounts
+Date: Thu, 19 Feb 2015 10:09:08 +0000 (UTC)
+Message-ID: <loom.20150219T110245-75@post.gmane.org>
+References: <54D3704C.6010305@googlemail.com>
+Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Thanks, applying for 3.20.
+Tobias Powalowski <tobias.powalowski@...> writes:
 
---b.
+> 
+> Hi,
+> https://bugs.archlinux.org/task/42491
+> This one I can reproduce, doing NFS3 user,noauto setting in fstab makes
+> it impossible to mount it as user.
+> - The systemd service nfs-client.target is loaded.
+> - rpcbind comes up by doing the mount
+> - rpc-statd is not coming up because of authentification error.
+> Failed to start rpc-statd.service: Interactive authentication required.
+> What is the correct way to solve this?
+> 
+> Thanks for your answer.
+> greetings
+> tpowa
+ 
+i stepped on this after upgrade today.. (and it's nfs4).
+i get these in journalctl -xe:
+.. rpc.statd[686]: Opening /var/run/rpc.statd.pid failed: Permission denied
+then i tried $ sudo touch /var/run/rpc.statd.pid
+and then mount suddenly works.
 
-> commit 2d4a532d385f ("nfsd: ensure that clp->cl_revoked list is
-> protected by clp->cl_lock") removed the use of the reaplist to
-> clean out clp->cl_revoked. It failed to change list_entry() to
-> walk clp->cl_revoked.next instead of reaplist.next
-> 
-> Fixes: 2d4a532d385f ("nfsd: ensure that clp->cl_revoked list is protected by clp->cl_lock")
-> Cc: stable@vger.kernel.org
-> Reported-by: Eric Meddaugh <etmsys@rit.edu>
-> Tested-by: Eric Meddaugh <etmsys@rit.edu>
-> Signed-off-by: Andrew Elble <aweits@rit.edu>
-> ---
->  fs/nfsd/nfs4state.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index f6b2a09f793f..d2f2c37dc2db 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -1638,7 +1638,7 @@ __destroy_client(struct nfs4_client *clp)
->  		nfs4_put_stid(&dp->dl_stid);
->  	}
->  	while (!list_empty(&clp->cl_revoked)) {
-> -		dp = list_entry(reaplist.next, struct nfs4_delegation, dl_recall_lru);
-> +		dp = list_entry(clp->cl_revoked.next, struct nfs4_delegation, dl_recall_lru);
->  		list_del_init(&dp->dl_recall_lru);
->  		nfs4_put_stid(&dp->dl_stid);
->  	}
-> -- 
-> 2.2.1
+if that workaround gives any clue..
+
+
