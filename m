@@ -1,235 +1,212 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from postout2.mail.lrz.de ([129.187.255.138]:43500 "EHLO
-	postout2.mail.lrz.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756466AbbBQNnn (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 Feb 2015 08:43:43 -0500
-Message-ID: <54E3458B.4090102@tum.de>
-Date: Tue, 17 Feb 2015 14:43:39 +0100
-From: Joschi Brauchle <joschi.brauchle@tum.de>
-MIME-Version: 1.0
-To: mdw@linuxbox.com
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Fehenberger, Tobias" <tobias.fehenberger@tum.de>,
-        "Stinner, Markus" <markus.stinner@tum.de>,
-        Tasnad Kernetzky <tasnad.kernetzky@tum.de>
-Subject: Re: Question about NFS4 facls in combination with a GIT shared bare
- repo on NFSv4 share
-References: <54E1F532.5030703@tum.de> <20150216213528.GA27453@soma.private.linuxbox.com>
-In-Reply-To: <20150216213528.GA27453@soma.private.linuxbox.com>
-Content-Type: multipart/signed; protocol="application/pkcs7-signature"; micalg=sha1; boundary="------------ms010200000208020605030805"
+Received: from mail-pd0-f170.google.com ([209.85.192.170]:34606 "EHLO
+	mail-pd0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752943AbbBSTgR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Feb 2015 14:36:17 -0500
+Received: by pdjg10 with SMTP id g10so1988392pdj.1
+        for <linux-nfs@vger.kernel.org>; Thu, 19 Feb 2015 11:36:17 -0800 (PST)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 1/4] NFSv4.1: Clean up create_session
+Date: Thu, 19 Feb 2015 11:36:08 -0800
+Message-Id: <1424374571-4945-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is a cryptographically signed message in MIME format.
+Don't decode directly into the shared struct session
 
---------------ms010200000208020605030805
-Content-Type: text/plain; charset=windows-1252; format=flowed
-Content-Transfer-Encoding: quoted-printable
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfs/nfs4proc.c       | 42 +++++++++++++++++++++++++++++-------------
+ fs/nfs/nfs4session.h    |  6 ++++++
+ fs/nfs/nfs4xdr.c        | 16 +++++++---------
+ include/linux/nfs_xdr.h |  8 +++++++-
+ 4 files changed, 49 insertions(+), 23 deletions(-)
 
-Hi Marcus,
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 2e7c9f7a6f7c..006bfa3da55b 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -7166,10 +7166,11 @@ static void nfs4_init_channel_attrs(struct nfs41_create_session_args *args)
+ 		args->bc_attrs.max_reqs);
+ }
+ 
+-static int nfs4_verify_fore_channel_attrs(struct nfs41_create_session_args *args, struct nfs4_session *session)
++static int nfs4_verify_fore_channel_attrs(struct nfs41_create_session_args *args,
++		struct nfs41_create_session_res *res)
+ {
+ 	struct nfs4_channel_attrs *sent = &args->fc_attrs;
+-	struct nfs4_channel_attrs *rcvd = &session->fc_attrs;
++	struct nfs4_channel_attrs *rcvd = &res->fc_attrs;
+ 
+ 	if (rcvd->max_resp_sz > sent->max_resp_sz)
+ 		return -EINVAL;
+@@ -7188,10 +7189,11 @@ static int nfs4_verify_fore_channel_attrs(struct nfs41_create_session_args *args
+ 	return 0;
+ }
+ 
+-static int nfs4_verify_back_channel_attrs(struct nfs41_create_session_args *args, struct nfs4_session *session)
++static int nfs4_verify_back_channel_attrs(struct nfs41_create_session_args *args,
++		struct nfs41_create_session_res *res)
+ {
+ 	struct nfs4_channel_attrs *sent = &args->bc_attrs;
+-	struct nfs4_channel_attrs *rcvd = &session->bc_attrs;
++	struct nfs4_channel_attrs *rcvd = &res->bc_attrs;
+ 
+ 	if (rcvd->max_rqst_sz > sent->max_rqst_sz)
+ 		return -EINVAL;
+@@ -7208,14 +7210,23 @@ static int nfs4_verify_back_channel_attrs(struct nfs41_create_session_args *args
+ }
+ 
+ static int nfs4_verify_channel_attrs(struct nfs41_create_session_args *args,
+-				     struct nfs4_session *session)
++				     struct nfs41_create_session_res *res)
+ {
+ 	int ret;
+ 
+-	ret = nfs4_verify_fore_channel_attrs(args, session);
++	ret = nfs4_verify_fore_channel_attrs(args, res);
+ 	if (ret)
+ 		return ret;
+-	return nfs4_verify_back_channel_attrs(args, session);
++	return nfs4_verify_back_channel_attrs(args, res);
++}
++
++static void nfs4_update_session(struct nfs4_session *session,
++		struct nfs41_create_session_res *res)
++{
++	nfs4_copy_sessionid(&session->sess_id, &res->sessionid);
++	session->flags = res->flags;
++	memcpy(&session->fc_attrs, &res->fc_attrs, sizeof(session->fc_attrs));
++	memcpy(&session->bc_attrs, &res->bc_attrs, sizeof(session->bc_attrs));
+ }
+ 
+ static int _nfs4_proc_create_session(struct nfs_client *clp,
+@@ -7224,11 +7235,12 @@ static int _nfs4_proc_create_session(struct nfs_client *clp,
+ 	struct nfs4_session *session = clp->cl_session;
+ 	struct nfs41_create_session_args args = {
+ 		.client = clp,
++		.clientid = clp->cl_clientid,
++		.seqid = clp->cl_seqid,
+ 		.cb_program = NFS4_CALLBACK,
+ 	};
+-	struct nfs41_create_session_res res = {
+-		.client = clp,
+-	};
++	struct nfs41_create_session_res res;
++
+ 	struct rpc_message msg = {
+ 		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_CREATE_SESSION],
+ 		.rpc_argp = &args,
+@@ -7245,11 +7257,15 @@ static int _nfs4_proc_create_session(struct nfs_client *clp,
+ 
+ 	if (!status) {
+ 		/* Verify the session's negotiated channel_attrs values */
+-		status = nfs4_verify_channel_attrs(&args, session);
++		status = nfs4_verify_channel_attrs(&args, &res);
+ 		/* Increment the clientid slot sequence id */
+-		clp->cl_seqid++;
++		if (clp->cl_seqid == res.seqid)
++			clp->cl_seqid++;
++		if (status)
++			goto out;
++		nfs4_update_session(session, &res);
+ 	}
+-
++out:
+ 	return status;
+ }
+ 
+diff --git a/fs/nfs/nfs4session.h b/fs/nfs/nfs4session.h
+index b34ada9bc6a2..fc46c7455898 100644
+--- a/fs/nfs/nfs4session.h
++++ b/fs/nfs/nfs4session.h
+@@ -118,6 +118,12 @@ static inline int nfs4_has_persistent_session(const struct nfs_client *clp)
+ 	return 0;
+ }
+ 
++static inline void nfs4_copy_sessionid(struct nfs4_sessionid *dst,
++		const struct nfs4_sessionid *src)
++{
++	memcpy(dst->data, src->data, NFS4_MAX_SESSIONID_LEN);
++}
++
+ #ifdef CONFIG_CRC32
+ /*
+  * nfs_session_id_hash - calculate the crc32 hash for the session id
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index e23a0a664e12..248903b138a8 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -1806,8 +1806,8 @@ static void encode_create_session(struct xdr_stream *xdr,
+ 
+ 	encode_op_hdr(xdr, OP_CREATE_SESSION, decode_create_session_maxsz, hdr);
+ 	p = reserve_space(xdr, 16 + 2*28 + 20 + clnt->cl_nodelen + 12);
+-	p = xdr_encode_hyper(p, clp->cl_clientid);
+-	*p++ = cpu_to_be32(clp->cl_seqid);			/*Sequence id */
++	p = xdr_encode_hyper(p, args->clientid);
++	*p++ = cpu_to_be32(args->seqid);			/*Sequence id */
+ 	*p++ = cpu_to_be32(args->flags);			/*flags */
+ 
+ 	/* Fore Channel */
+@@ -5641,12 +5641,10 @@ static int decode_create_session(struct xdr_stream *xdr,
+ {
+ 	__be32 *p;
+ 	int status;
+-	struct nfs_client *clp = res->client;
+-	struct nfs4_session *session = clp->cl_session;
+ 
+ 	status = decode_op_hdr(xdr, OP_CREATE_SESSION);
+ 	if (!status)
+-		status = decode_sessionid(xdr, &session->sess_id);
++		status = decode_sessionid(xdr, &res->sessionid);
+ 	if (unlikely(status))
+ 		return status;
+ 
+@@ -5654,13 +5652,13 @@ static int decode_create_session(struct xdr_stream *xdr,
+ 	p = xdr_inline_decode(xdr, 8);
+ 	if (unlikely(!p))
+ 		goto out_overflow;
+-	clp->cl_seqid = be32_to_cpup(p++);
+-	session->flags = be32_to_cpup(p);
++	res->seqid = be32_to_cpup(p++);
++	res->flags = be32_to_cpup(p);
+ 
+ 	/* Channel attributes */
+-	status = decode_chan_attrs(xdr, &session->fc_attrs);
++	status = decode_chan_attrs(xdr, &res->fc_attrs);
+ 	if (!status)
+-		status = decode_chan_attrs(xdr, &session->bc_attrs);
++		status = decode_chan_attrs(xdr, &res->bc_attrs);
+ 	return status;
+ out_overflow:
+ 	print_overflow_msg(__func__, xdr);
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 9a39132fda49..1af12fc16e98 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1185,6 +1185,8 @@ struct nfs41_exchange_id_res {
+ 
+ struct nfs41_create_session_args {
+ 	struct nfs_client	       *client;
++	u64				clientid;
++	uint32_t			seqid;
+ 	uint32_t			flags;
+ 	uint32_t			cb_program;
+ 	struct nfs4_channel_attrs	fc_attrs;	/* Fore Channel */
+@@ -1192,7 +1194,11 @@ struct nfs41_create_session_args {
+ };
+ 
+ struct nfs41_create_session_res {
+-	struct nfs_client	       *client;
++	struct nfs4_sessionid		sessionid;
++	uint32_t			seqid;
++	uint32_t			flags;
++	struct nfs4_channel_attrs	fc_attrs;	/* Fore Channel */
++	struct nfs4_channel_attrs	bc_attrs;	/* Back Channel */
+ };
+ 
+ struct nfs41_reclaim_complete_args {
+-- 
+2.1.0
 
-thanks for your reply. I'll provide some more details belog
-
-Question 3:
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
-This is the complete *working* ACL:
----------------
-myuser@myhost:/nfsv4/share/> nfs4_getfacl repodir
-A:fdg:MYGROUP@mydomain.fqdn:rwaDxtTnNcCoy
-A:fd:OWNER@:rwaDdxtTnNcCoy
-A::EVERYONE@:rxtncy
-D::OWNER@:
-D::EVERYONE@:waDTC
----------------
-
-This is the complete non-working ACL:
----------------
-myuser@myhost:/nfsv4/share/> nfs4_getfacl repodir
-A:fdg:GROUP@:rwaDxtTnNcCoy
-A:fd:OWNER@:rwaDdxtTnNcCoy
-A::EVERYONE@:rxtncy
-D::OWNER@:
-D::EVERYONE@:waDTC
----------------
-
- > what is the fileserver running?   netapp?  solaris?  linux nfsd??=20
-something else?
-Server:	NetApp FAS 3140 mit ONTAP 8.1.4P1 7-mode
-
- > Presumably your client is linux - what version?  If from a=20
-distribution which distro & package version?
-Client: openSUSE 13.2, 3.16.7-7-desktop, nfs-client =3D 1.3.0
-
- > Are you using gssapi?  (better for tracing purposes if you can do=20
-this without.)
-We are using GSSAPI/Kerberos protected NFSv4 shares mounted like to:
-nfsv4_server.fqdn:/vol/myshare on /nfsv4/share type nfs4=20
-(rw,relatime,vers=3D4.0,rsize=3D65536,wsize=3D65536,namlen=3D255,soft,pro=
-to=3Dtcp,port=3D0,timeo=3D600,retrans=3D2,sec=3Dkrb5,local_lock=3Dnone)
-
-We have the user "myuser" a member of "mygroup" but not his primary=20
-group, i.e.
-# id myuser
-uid=3Dxxx(myuser) ... groups=3Dxxx(mygroup) ...
-
- > You speak of "domains" - what sort are these and why do you think
- > they be considered the same as "@GROUP"?
- >
-We have the following ID mapping on the Linux clients:
-# cat /etc/idmapd.conf
----------------
-[General]
-
-Verbosity =3D 0
-Pipefs-Directory =3D /var/lib/nfs/rpc_pipefs
-Domain =3D mydomain.fqdn
-
-[Mapping]
-
-Nobody-User =3D nobody
-Nobody-Group =3D nobody
----------------
-Note that in general, all POSIX ACLS based on user groups are working=20
-perfectly fine. So ID-mapping seems to be OK in general.
-
- > Client & server identities and groups might map differently - is this =
-
-the case here?
-I have no idea about the server side...
-
-> Can you demonstrate your problem happen with dd or cp?  Or does it only=
-
-> happen with git?
-Nope, only git so far.
-
- > Can you record a network trace of the bad thing happening?  (this will=
-
- > point whether it's a client or server side problem.)
-Please find a wireshark trace of the failed "git push" command here:
-http://wikisend.com/download/940986/wireshark_git.pcapng
-(7 days availability) where the problem seems to be
----------------
-148	0.070260000	192.168.109.118	10.162.229.2	NFS	438	V4 Call (Reply In=20
-149) WRITE StateID: 0xcded Offset: 0 Len: 156
-149	0.071190000	10.162.229.2	192.168.109.118	NFS	162	V4 Reply (Call In=20
-148) WRITE Status: NFS4ERR_ACCESS
----------------
-me =3D 192.168.109.118
-nfs4_server =3D 10.162.229.2
-Not much more that I can see here unfortunately...
-
-> Possibly helpful to know,:
-> 	unix mode permissions work differently than an acl,
-> 	with unix modes,
-> 		owner permissions eclipse group permissions.
-> 	with acls,
-> 		group permissions add to owner permissions.
-> To accurately map unix mode bits into nfsv4 acls, you have to also
-> include 'deny' entries to keep groups from adding permissions the user
-> doen't have.
-
-Thanks for the hints and for your help!
-I'll do some more thinking about the problem :)
-
-JB
-
-
---------------ms010200000208020605030805
-Content-Type: application/pkcs7-signature; name="smime.p7s"
-Content-Transfer-Encoding: base64
-Content-Disposition: attachment; filename="smime.p7s"
-Content-Description: S/MIME Cryptographic Signature
-
-MIAGCSqGSIb3DQEHAqCAMIACAQExCzAJBgUrDgMCGgUAMIAGCSqGSIb3DQEHAQAAoIIPnDCC
-BNUwggO9oAMCAQICCFBOxvU9EbRkMA0GCSqGSIb3DQEBCwUAMHExCzAJBgNVBAYTAkRFMRww
-GgYDVQQKExNEZXV0c2NoZSBUZWxla29tIEFHMR8wHQYDVQQLExZULVRlbGVTZWMgVHJ1c3Qg
-Q2VudGVyMSMwIQYDVQQDExpEZXV0c2NoZSBUZWxla29tIFJvb3QgQ0EgMjAeFw0xNDA3MjIx
-MjA4MjZaFw0xOTA3MDkyMzU5MDBaMFoxCzAJBgNVBAYTAkRFMRMwEQYDVQQKEwpERk4tVmVy
-ZWluMRAwDgYDVQQLEwdERk4tUEtJMSQwIgYDVQQDExtERk4tVmVyZWluIFBDQSBHbG9iYWwg
-LSBHMDEwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQDpm8NnhfkNrvWNVMOWUDU9
-YuluTO2U1wBblSJ01CDrNI/W7MAxBAuZgeKmFNJSoCgjhIt0iQReW+DieMF4yxbLKDU5ey2Q
-RdDtoAB6fL9KDhsAw4bpXCsxEXsM84IkQ4wcOItqaACa7txPeKvSxhObdq3u3ibo7wGvdA/B
-CaL2a869080UME/15eOkyGKbghoDJzANAmVgTe3RCSMqljVYJ9N2xnG2kB3E7f81hn1vM7Pb
-D8URwoqDoZRdQWvY0hD1TP3KUazZve+Sg7va64sWVlZDz+HVEz2mHycwzUlU28kTNJpxdcVs
-6qcLmPkhnSevPqM5OUhqjK3JmfvDEvK9AgMBAAGjggGGMIIBgjAOBgNVHQ8BAf8EBAMCAQYw
-HQYDVR0OBBYEFEm3xs/oPR9/6kR7Eyn38QpwPt5kMB8GA1UdIwQYMBaAFDHDeRu69VPXF+CJ
-ei0XbAqzK50zMBIGA1UdEwEB/wQIMAYBAf8CAQIwYgYDVR0gBFswWTARBg8rBgEEAYGtIYIs
-AQEEAgIwEQYPKwYBBAGBrSGCLAEBBAMAMBEGDysGAQQBga0hgiwBAQQDATAPBg0rBgEEAYGt
-IYIsAQEEMA0GCysGAQQBga0hgiweMD4GA1UdHwQ3MDUwM6AxoC+GLWh0dHA6Ly9wa2kwMzM2
-LnRlbGVzZWMuZGUvcmwvRFRfUk9PVF9DQV8yLmNybDB4BggrBgEFBQcBAQRsMGowLAYIKwYB
-BQUHMAGGIGh0dHA6Ly9vY3NwMDMzNi50ZWxlc2VjLmRlL29jc3ByMDoGCCsGAQUFBzAChi5o
-dHRwOi8vcGtpMDMzNi50ZWxlc2VjLmRlL2NydC9EVF9ST09UX0NBXzIuY2VyMA0GCSqGSIb3
-DQEBCwUAA4IBAQBjICj9nCGGcr45Rlk5MiW8qQGbDczKfUGchm0KbiyzE1l1sTOSG2EnFv/D
-stU1gvuEKgFJvWa7Zi+ywgZdbj9u4wFaW8pDY1yVtuExpx/VB19N5mWCTjL5w3x6S81NXHTu
-IfJ1AuxSPtLJatOQI25JZzW+f01WpOzML8+3oZeocj7JvEDWWqQIPda8gsO3tzKOsSyOam23
-NQIZz/U5RFhjpyQAELC7/E6vbi84u6VXST/YblBvLJeW3B1GmmWJz67M8uXZn1OzPqEvkqnY
-C8aEHwTG6x7on321e6UC8STFJGMRNMxakyAqeYg6JUKQqWU7fIbTEhUjKfws2sw5W1QXMIIF
-HTCCBAWgAwIBAgIHF5Bg3/QB2TANBgkqhkiG9w0BAQsFADBaMQswCQYDVQQGEwJERTETMBEG
-A1UEChMKREZOLVZlcmVpbjEQMA4GA1UECxMHREZOLVBLSTEkMCIGA1UEAxMbREZOLVZlcmVp
-biBQQ0EgR2xvYmFsIC0gRzAxMB4XDTE0MDUxMjE1MDU1MVoXDTE5MDcwOTIzNTkwMFowYDEL
-MAkGA1UEBhMCREUxKTAnBgNVBAoTIFRlY2huaXNjaGUgVW5pdmVyc2l0YWV0IE11ZW5jaGVu
-MSYwJAYDVQQDEx1aZXJ0aWZpemllcnVuZ3NzdGVsbGUgZGVyIFRVTTCCASIwDQYJKoZIhvcN
-AQEBBQADggEPADCCAQoCggEBAKjv6NPYBFzJ+ZELc6JfE/5aga/7K7LWMVBHZvohdJZGd31p
-N9QEfzQeph0kiqsm1X5kHraPtTc9jMH8SLASBI45JppNSSYRfw6j6RjKA7PUStRfV0dq5cBP
-Bl5FpxAY23lAzMzY+6EQEq3/hS8Ia3zG5Q5saJsc+9B2So8+gvaVwZhrWhe7NhyvVqYMiBpT
-E9fbViah3Ur5VdDpcGbsb/BqRDxRrOCjQdNQ6TCQHfIUEDTQMW/czj1wbgLxrp8sB5XlwMPX
-7c2Do+yByWbcrkitdGEeagcWqC1gc8pD/f8PJIoVeW4cy60PjHRIfYC0NBVvg9P0viuwFEyW
-M17brI8CAwEAAaOCAeAwggHcMBIGA1UdEwEB/wQIMAYBAf8CAQEwDgYDVR0PAQH/BAQDAgEG
-MBEGA1UdIAQKMAgwBgYEVR0gADAdBgNVHQ4EFgQUnZ8j8BkbfscjXScqzKU2OqZp5YkwHwYD
-VR0jBBgwFoAUSbfGz+g9H3/qRHsTKffxCnA+3mQwgYgGA1UdHwSBgDB+MD2gO6A5hjdodHRw
-Oi8vY2RwMS5wY2EuZGZuLmRlL2dsb2JhbC1yb290LWNhL3B1Yi9jcmwvY2FjcmwuY3JsMD2g
-O6A5hjdodHRwOi8vY2RwMi5wY2EuZGZuLmRlL2dsb2JhbC1yb290LWNhL3B1Yi9jcmwvY2Fj
-cmwuY3JsMIHXBggrBgEFBQcBAQSByjCBxzAzBggrBgEFBQcwAYYnaHR0cDovL29jc3AucGNh
-LmRmbi5kZS9PQ1NQLVNlcnZlci9PQ1NQMEcGCCsGAQUFBzAChjtodHRwOi8vY2RwMS5wY2Eu
-ZGZuLmRlL2dsb2JhbC1yb290LWNhL3B1Yi9jYWNlcnQvY2FjZXJ0LmNydDBHBggrBgEFBQcw
-AoY7aHR0cDovL2NkcDIucGNhLmRmbi5kZS9nbG9iYWwtcm9vdC1jYS9wdWIvY2FjZXJ0L2Nh
-Y2VydC5jcnQwDQYJKoZIhvcNAQELBQADggEBANaFYIHzwjpv6JVEdDhka/NaydcN/TSxDEYw
-I7YJ34SlUbk7FVykIRBWlTR8uEwUqhBgNtp1Rg+Kq8qSS9DtSnpOG5EqPvxJRN55x9zNCqZv
-WINnVU+p0V/yOTn+mYBBlgQhgixSxBkanY8VoPBcjr2/i6cck1Mc8co3bZa8i32qCrX0E0mO
-DGohpEVA6sllNkRU6NozLScnab7sibPN7K9w3gbCX61yCPfTvtmiWorJr/GgtLR4D7GczhoD
-ofrJpBzxSacgckbZPirIEgloRZL+1X9kAAjka/hEXh+KYd3qkCdNiMAM8+/Por4Kg8Y/l1k+
-CDudwzwDxAS9H0tcXl4wggWeMIIEhqADAgECAgcWcetffSz0MA0GCSqGSIb3DQEBBQUAMGAx
-CzAJBgNVBAYTAkRFMSkwJwYDVQQKEyBUZWNobmlzY2hlIFVuaXZlcnNpdGFldCBNdWVuY2hl
-bjEmMCQGA1UEAxMdWmVydGlmaXppZXJ1bmdzc3RlbGxlIGRlciBUVU0wHhcNMTMxMDA3MDgx
-NjE2WhcNMTYxMDA2MDgxNjE2WjCB3TELMAkGA1UEBhMCREUxDzANBgNVBAgTBkJheWVybjER
-MA8GA1UEBxMITXVlbmNoZW4xKTAnBgNVBAoTIFRlY2huaXNjaGUgVW5pdmVyc2l0YWV0IE11
-ZW5jaGVuMT4wPAYDVQQLEzVGYWt1bHRhZXQgZnVlciBFbGVrdHJvdGVjaG5payB1bmQgSW5m
-b3JtYXRpb25zdGVjaG5pazEYMBYGA1UEAxMPSm9zY2hpIEJyYXVjaGxlMSUwIwYJKoZIhvcN
-AQkBFhZqb3NjaGkuYnJhdWNobGVAdHVtLmRlMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIB
-CgKCAQEAw1E6N5L0RYJp0kT8TWRT0tGChhKQxR4/dC67zOPWXS/eWUVt8jO0w39YJo/mBi3n
-GyA7xwSgeLoODOkoo53afUxRRFqbPiSqSpHs0I0cePxzYVy+3ZcMg7J9RYsZESY1PrQMFmvh
-TJSxzAwN6waIRyjoVZoTVB4/UC/QhaFbl4WZcIyIqOLq0wlRsrPJuXJiNW8IRsY6xxf5uP4w
-2Foj9wPqoF4ssSaSHQzPVh2PaBoW5iCmHTV/iPaD9mjCGMSLbClIF7VYLMBMCSmfGgou0UlK
-LQ24twb94xkba0QKo8a1GMU00HowMEBb3pY8e4sjHM0hGVzPHfjKf7Z2n774vwIDAQABo4IB
-3TCCAdkwLwYDVR0gBCgwJjARBg8rBgEEAYGtIYIsAQEEAwAwEQYPKwYBBAGBrSGCLAIBBAMA
-MAkGA1UdEwQCMAAwCwYDVR0PBAQDAgXgMB0GA1UdJQQWMBQGCCsGAQUFBwMCBggrBgEFBQcD
-BDAdBgNVHQ4EFgQUSD2MWx96Lbrr7Vaeh3rAprAP4OswHwYDVR0jBBgwFoAUnZ8j8Bkbfscj
-XScqzKU2OqZp5YkwIQYDVR0RBBowGIEWam9zY2hpLmJyYXVjaGxlQHR1bS5kZTB3BgNVHR8E
-cDBuMDWgM6Axhi9odHRwOi8vY2RwMS5wY2EuZGZuLmRlL3R1bS1jYS9wdWIvY3JsL2NhY3Js
-LmNybDA1oDOgMYYvaHR0cDovL2NkcDIucGNhLmRmbi5kZS90dW0tY2EvcHViL2NybC9jYWNy
-bC5jcmwwgZIGCCsGAQUFBwEBBIGFMIGCMD8GCCsGAQUFBzAChjNodHRwOi8vY2RwMS5wY2Eu
-ZGZuLmRlL3R1bS1jYS9wdWIvY2FjZXJ0L2NhY2VydC5jcnQwPwYIKwYBBQUHMAKGM2h0dHA6
-Ly9jZHAyLnBjYS5kZm4uZGUvdHVtLWNhL3B1Yi9jYWNlcnQvY2FjZXJ0LmNydDANBgkqhkiG
-9w0BAQUFAAOCAQEAK98J5s+3aGhWqEPuUwxbm4jxMmLG+f6DbP5s/2AjHvWkGWwSgT9u503U
-EjqLP7otgr0AFYWArffwTWv2i6Preh1OfhDHkm051LrOtFj+/lBjN+CwuFojG213BKDOno39
-cARrIbSDqBdLpY11DJn7ejEchMj7xNqjt5TbMH40kUD6ApChMuJdilk4tEI/flkKbx4Eo8ba
-PxPivXjyEXIgNOSSsZLjEG+rO0R5mko62OshCS+e099Z7aLcjLE5pxrlZ6+8Xlf0hTJ5BLhT
-HJCCf5banfDrJK+MQzaMcEtfK5jKFhqxJK6gRomqlu7M3Ib1ApQ3u7WWZ1oug9zLE0ZzcDGC
-A1swggNXAgEBMGswYDELMAkGA1UEBhMCREUxKTAnBgNVBAoTIFRlY2huaXNjaGUgVW5pdmVy
-c2l0YWV0IE11ZW5jaGVuMSYwJAYDVQQDEx1aZXJ0aWZpemllcnVuZ3NzdGVsbGUgZGVyIFRV
-TQIHFnHrX30s9DAJBgUrDgMCGgUAoIIBxTAYBgkqhkiG9w0BCQMxCwYJKoZIhvcNAQcBMBwG
-CSqGSIb3DQEJBTEPFw0xNTAyMTcxMzQzMzlaMCMGCSqGSIb3DQEJBDEWBBQesRu5CHUCq7Ri
-aj+KdQAjRmeBsjBsBgkqhkiG9w0BCQ8xXzBdMAsGCWCGSAFlAwQBKjALBglghkgBZQMEAQIw
-CgYIKoZIhvcNAwcwDgYIKoZIhvcNAwICAgCAMA0GCCqGSIb3DQMCAgFAMAcGBSsOAwIHMA0G
-CCqGSIb3DQMCAgEoMHoGCSsGAQQBgjcQBDFtMGswYDELMAkGA1UEBhMCREUxKTAnBgNVBAoT
-IFRlY2huaXNjaGUgVW5pdmVyc2l0YWV0IE11ZW5jaGVuMSYwJAYDVQQDEx1aZXJ0aWZpemll
-cnVuZ3NzdGVsbGUgZGVyIFRVTQIHFnHrX30s9DB8BgsqhkiG9w0BCRACCzFtoGswYDELMAkG
-A1UEBhMCREUxKTAnBgNVBAoTIFRlY2huaXNjaGUgVW5pdmVyc2l0YWV0IE11ZW5jaGVuMSYw
-JAYDVQQDEx1aZXJ0aWZpemllcnVuZ3NzdGVsbGUgZGVyIFRVTQIHFnHrX30s9DANBgkqhkiG
-9w0BAQEFAASCAQCf37EOM3AGcxPs10c6elkIIQzxiNrmwogyszL4+2j7ex+8dgSvBJ9LdA13
-Ag1ZLJ2ck1mlXTYDEmBoZuLwaZ3xbS+a25E9sTrc4wffUy/xAKwiY3oguGf+sROJ8JR3vj1o
-n3o2EA+B2inyBygGoQsUVwNGWcej0SnXdI5o54HxrQ+C9x4ZLfMsf/f4VaroVGGOtJ3eNJ0C
-DKmykbxLxoLF4uSRlyravPQY1qPzXBJnT3XmMuRk27bmVfkKHtrl2X54hPKEdaILnDVKKj+N
-L7RIUxlZg8AFTN4cq8ex0H+v0sNNnVXH51nd/b3A98z6IKNLFlpVCoVs1O8ly8zJd9ujAAAA
-AAAA
---------------ms010200000208020605030805--
