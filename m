@@ -1,48 +1,42 @@
-Return-Path: SteveD@redhat.com
-Message-ID: <54EF762F.3030801@RedHat.com>
-Date: Thu, 26 Feb 2015 14:38:23 -0500
-From: Steve Dickson <SteveD@redhat.com>
+Return-Path: linux-nfs-owner@vger.kernel.org
+Received: from aserp1040.oracle.com ([141.146.126.69]:35725 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751591AbbBWPog (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Feb 2015 10:44:36 -0500
+Date: Mon, 23 Feb 2015 18:44:19 +0300
+From: Dan Carpenter <dan.carpenter@oracle.com>
+To: "Eric W. Biederman" <ebiederm@xmission.com>
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+        Andy Lutomirski <luto@amacapital.net>,
+        Wang YanQing <udknight@gmail.com>, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, kernel-janitors@vger.kernel.org
+Subject: [patch] groups: integer underflow in groups_alloc()
+Message-ID: <20150223154419.GA2542@mwanda>
 MIME-Version: 1.0
-To: Benjamin Coddington <bcodding@redhat.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfs-utils: Fix rpc.gssd and rpc.svcgssd args variable
- names
-References: <88e82aeaea947c3aa47f57dc5c02c5bdbe901961.1423671114.git.bcodding@redhat.com>
-In-Reply-To: <88e82aeaea947c3aa47f57dc5c02c5bdbe901961.1423671114.git.bcodding@redhat.com>
-Content-Type: text/plain; charset=windows-1252
+Content-Type: text/plain; charset=us-ascii
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+This is called from rsc_parse() with a use controlled value.  Say for
+example that "gidsetsize" is negative, then we could end up allocating
+less than sizeof(struct group_info) leading to memory corruption.
 
+Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
+---
+I copied the NGROUPS_MAX limit from the surrounding code, I'm not
+absolutely that it's the correct limit to use.
 
-On 02/11/2015 11:17 AM, Benjamin Coddington wrote:
-> This fixes mis-matched variable names from fedora's /etc/sysconfig/nfs.
-> 
-> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
-> ---
->  systemd/rpc-gssd.service    |    2 +-
->  systemd/rpc-svcgssd.service |    2 +-
->  2 files changed, 2 insertions(+), 2 deletions(-)
-> 
-> diff --git a/systemd/rpc-gssd.service b/systemd/rpc-gssd.service
-> index d4a3819..6e1af86 100644
-> --- a/systemd/rpc-gssd.service
-> +++ b/systemd/rpc-gssd.service
-> @@ -16,4 +16,4 @@ After=nfs-config.service
->  EnvironmentFile=-/run/sysconfig/nfs-utils
->  
->  Type=forking
-> -ExecStart=/usr/sbin/rpc.gssd $GSSDARGS
-> +ExecStart=/usr/sbin/rpc.gssd $RPCGSSDARGS
-> diff --git a/systemd/rpc-svcgssd.service b/systemd/rpc-svcgssd.service
-> index f7424b0..0aeaed9 100644
-> --- a/systemd/rpc-svcgssd.service
-> +++ b/systemd/rpc-svcgssd.service
-> @@ -16,4 +16,4 @@ After=nfs-config.service
->  [Service]
->  EnvironmentFile=-/run/sysconfig/nfs-utils
->  Type=forking
-> -ExecStart=/usr/sbin/rpc.svcgssd $SVCGSSDARGS
-> +ExecStart=/usr/sbin/rpc.svcgssd $RPCSVCGSSDARGS
-> 
-This is distro specific... So I'm going to leave as is... 
-
-steved.
+diff --git a/kernel/groups.c b/kernel/groups.c
+index 664411f..e9341b3 100644
+--- a/kernel/groups.c
++++ b/kernel/groups.c
+@@ -18,6 +18,9 @@ struct group_info *groups_alloc(int gidsetsize)
+ 	int nblocks;
+ 	int i;
+ 
++	if ((unsigned)gidsetsize > NGROUPS_MAX)
++		return NULL;
++
+ 	nblocks = (gidsetsize + NGROUPS_PER_BLOCK - 1) / NGROUPS_PER_BLOCK;
+ 	/* Make sure we always allocate at least one indirect block pointer */
+ 	nblocks = nblocks ? : 1;
