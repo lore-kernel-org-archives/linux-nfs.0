@@ -1,49 +1,24 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx144.netapp.com ([216.240.21.25]:42304 "EHLO mx144.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751249AbbBWWEL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 23 Feb 2015 17:04:11 -0500
-Message-ID: <54EBA3CC.7010403@Netapp.com>
-Date: Mon, 23 Feb 2015 17:03:56 -0500
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
+Received: from bombadil.infradead.org ([198.137.202.9]:41732 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752163AbbBWVJL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Feb 2015 16:09:11 -0500
+Received: from hch by bombadil.infradead.org with local (Exim 4.80.1 #2 (Red Hat Linux))
+	id 1YQ0Fa-0002rJ-QF
+	for linux-nfs@vger.kernel.org; Mon, 23 Feb 2015 21:09:10 +0000
+Date: Mon, 23 Feb 2015 13:09:10 -0800
+From: Christoph Hellwig <hch@infradead.org>
+To: linux-nfs@vger.kernel.org
+Subject: wiki.linux-nfs.org pNFS information
+Message-ID: <20150223210910.GA10109@infradead.org>
 MIME-Version: 1.0
-To: trond Myklebust <trond.myklebust@primarydata.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: [GIT PULL] Please pull NFS RDMA client updates
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Trond,
+I've tried to create an account to update the information, but the
+realname + bio are just a little too much work to bother.
 
-I'm sorry this took a week to send out...
-
-The following changes since commit b625a61698619c7af652de2701a2fb17c5c5d66e:
-
-  xprtrdma: Address sparse complaint in rpcr_to_rdmar() (2015-02-05 15:38:29 -0500)
-
-are available in the git repository at:
-
-  git://git.linux-nfs.org/projects/anna/nfs-rdma.git nfs-rdma-for-4.0-3
-
-for you to fetch changes up to 9b1dcbc8cf4679ecf090b343ac31bda6e55ddabe:
-
-  xprtrdma: Store RDMA credits in unsigned variables (2015-02-23 16:54:04 -0500)
-
-Thanks,
-Anna
-
-----------------------------------------------------------------
-NFS: RDMA Client Sparse Fix #2
-
-This patch fixes another sparse fix found by Dan Carpenter's tool.
-
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
-
-----------------------------------------------------------------
-Chuck Lever (1):
-      xprtrdma: Store RDMA credits in unsigned variables
-
- net/sunrpc/xprtrdma/rpc_rdma.c  | 3 ++-
- net/sunrpc/xprtrdma/xprt_rdma.h | 2 +-
- 2 files changed, 3 insertions(+), 2 deletions(-)
+But all the pNFS information is so outdated that it might be a good
+idea to simply delete all of it.  The bit of documentation we have
+in the kernel tree is much more useful as-is.
