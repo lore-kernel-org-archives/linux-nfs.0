@@ -1,59 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f178.google.com ([209.85.213.178]:64186 "EHLO
-	mail-ig0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751959AbbBXAPB (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Feb 2015 19:15:01 -0500
-Received: by mail-ig0-f178.google.com with SMTP id hl2so22855306igb.5
-        for <linux-nfs@vger.kernel.org>; Mon, 23 Feb 2015 16:15:00 -0800 (PST)
+Received: from mail-ie0-f172.google.com ([209.85.223.172]:42430 "EHLO
+	mail-ie0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752314AbbBXAPC (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Feb 2015 19:15:02 -0500
+Received: by iecrp18 with SMTP id rp18so27924187iec.9
+        for <linux-nfs@vger.kernel.org>; Mon, 23 Feb 2015 16:15:02 -0800 (PST)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: linux-nfs@vger.kernel.org
 Cc: Nix <nix@esperi.org.uk>, Neil Brown <neilb@suse.de>
-Subject: [PATCH 1/3] NFS: Don't invalidate a submounted dentry in nfs_prime_dcache()
-Date: Mon, 23 Feb 2015 19:14:55 -0500
-Message-Id: <1424736897-95767-1-git-send-email-trond.myklebust@primarydata.com>
+Subject: [PATCH 2/3] NFSv3: Use the readdir fileid as the mounted-on-fileid
+Date: Mon, 23 Feb 2015 19:14:56 -0500
+Message-Id: <1424736897-95767-2-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1424736897-95767-1-git-send-email-trond.myklebust@primarydata.com>
+References: <1424736897-95767-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If we're traversing a directory which contains a submounted filesystem,
-or one that has a referral, the NFS server that is processing the READDIR
-request will often return information for the underlying (mounted-on)
-directory. It may, or may not, also return filehandle information.
+When we call readdirplus, set the fileid normally returned by readdir
+as the mounted-on-fileid, since that is commonly the case if there is
+a mountpoint. To ensure that we get it right, we only set the flag if
+the readdir fileid differs from the one returned in the readdirplus
+attributes.
 
-If this happens, and the lookup in nfs_prime_dcache() returns the
-dentry for the submounted directory, the filehandle comparison will
-fail, and we call d_invalidate(). Post-commit 8ed936b5671bf
-("vfs: Lazily remove mounts on unlinked files and directories."), this
-means the entire subtree is unmounted.
+This again means that we can avoid the issues described in commit
+2ef47eb1aee17 ("NFS: Fix use of nfs_attr_use_mounted_on_fileid()"),
+which only fixed NFSv4.
 
-The following minimal patch addresses this problem by punting on
-the invalidation if there is a submount.
-
-Kudos to Neil Brown <neilb@suse.de> for having tracked down this
-issue (see link).
-
-Reported-by: Nix <nix@esperi.org.uk>
-Link: http://lkml.kernel.org/r/87iofju9ht.fsf@spindle.srvr.nix
-Cc: stable@vger.kernel.org # 3.18+
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/dir.c | 4 ++++
- 1 file changed, 4 insertions(+)
+ fs/nfs/nfs3xdr.c | 5 +++++
+ 1 file changed, 5 insertions(+)
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 9b0c55cb2a2e..0da617a61c0b 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -479,6 +479,10 @@ void nfs_prime_dcache(struct dentry *parent, struct nfs_entry *entry)
+diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
+index 2a932fdc57cb..53852a4bd88b 100644
+--- a/fs/nfs/nfs3xdr.c
++++ b/fs/nfs/nfs3xdr.c
+@@ -1987,6 +1987,11 @@ int nfs3_decode_dirent(struct xdr_stream *xdr, struct nfs_entry *entry,
+ 		if (entry->fattr->valid & NFS_ATTR_FATTR_V3)
+ 			entry->d_type = nfs_umode_to_dtype(entry->fattr->mode);
  
- 	dentry = d_lookup(parent, &filename);
- 	if (dentry != NULL) {
-+		/* Is there a mountpoint here? If so, just exit */
-+		if (!nfs_fsid_equal(&NFS_SB(dentry->d_sb)->fsid,
-+					&entry->fattr->fsid))
-+			goto out;
- 		if (nfs_same_file(dentry, entry)) {
- 			nfs_set_verifier(dentry, nfs_save_change_attribute(dir));
- 			status = nfs_refresh_inode(dentry->d_inode, entry->fattr);
++		if (entry->fattr->fileid != entry->ino) {
++			entry->fattr->mounted_on_fileid = entry->ino;
++			entry->fattr->valid |= NFS_ATTR_FATTR_MOUNTED_ON_FILEID;
++		}
++
+ 		/* In fact, a post_op_fh3: */
+ 		p = xdr_inline_decode(xdr, 4);
+ 		if (unlikely(p == NULL))
 -- 
 2.1.0
 
