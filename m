@@ -1,95 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:39412 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751840AbbBXVqc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 24 Feb 2015 16:46:32 -0500
-Date: Wed, 25 Feb 2015 08:46:23 +1100
-From: NeilBrown <neilb@suse.de>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: linux-nfs@vger.kernel.org, Nix <nix@esperi.org.uk>
-Subject: Re: [PATCH 2/3] NFSv3: Use the readdir fileid as the
- mounted-on-fileid
-Message-ID: <20150225084623.7f97e1b6@notabene.brown>
-In-Reply-To: <1424736897-95767-2-git-send-email-trond.myklebust@primarydata.com>
-References: <1424736897-95767-1-git-send-email-trond.myklebust@primarydata.com>
-	<1424736897-95767-2-git-send-email-trond.myklebust@primarydata.com>
+Received: from mail-vc0-f170.google.com ([209.85.220.170]:38026 "EHLO
+	mail-vc0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752121AbbBXDJL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Feb 2015 22:09:11 -0500
+Received: by mail-vc0-f170.google.com with SMTP id hq12so9086046vcb.1
+        for <linux-nfs@vger.kernel.org>; Mon, 23 Feb 2015 19:09:10 -0800 (PST)
 MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
- boundary="Sig_/03YvgNWfv0MVG492_gn8K.z"; protocol="application/pgp-signature"
+In-Reply-To: <1424736897-95767-1-git-send-email-trond.myklebust@primarydata.com>
+References: <1424736897-95767-1-git-send-email-trond.myklebust@primarydata.com>
+Date: Mon, 23 Feb 2015 22:09:09 -0500
+Message-ID: <CAHQdGtR1GawAD6yAidTZJM68TzaBrieX86C+eDE08HQF_0Jg4w@mail.gmail.com>
+Subject: Re: [PATCH 1/3] NFS: Don't invalidate a submounted dentry in nfs_prime_dcache()
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Cc: Nix <nix@esperi.org.uk>, Neil Brown <neilb@suse.de>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/03YvgNWfv0MVG492_gn8K.z
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
-
-On Mon, 23 Feb 2015 19:14:56 -0500 Trond Myklebust
+On Mon, Feb 23, 2015 at 7:14 PM, Trond Myklebust
 <trond.myklebust@primarydata.com> wrote:
-
-> When we call readdirplus, set the fileid normally returned by readdir
-> as the mounted-on-fileid, since that is commonly the case if there is
-> a mountpoint. To ensure that we get it right, we only set the flag if
-> the readdir fileid differs from the one returned in the readdirplus
-> attributes.
->=20
-> This again means that we can avoid the issues described in commit
-> 2ef47eb1aee17 ("NFS: Fix use of nfs_attr_use_mounted_on_fileid()"),
-> which only fixed NFSv4.
->=20
+> If we're traversing a directory which contains a submounted filesystem,
+> or one that has a referral, the NFS server that is processing the READDIR
+> request will often return information for the underlying (mounted-on)
+> directory. It may, or may not, also return filehandle information.
+>
+> If this happens, and the lookup in nfs_prime_dcache() returns the
+> dentry for the submounted directory, the filehandle comparison will
+> fail, and we call d_invalidate(). Post-commit 8ed936b5671bf
+> ("vfs: Lazily remove mounts on unlinked files and directories."), this
+> means the entire subtree is unmounted.
+>
+> The following minimal patch addresses this problem by punting on
+> the invalidation if there is a submount.
+>
+> Kudos to Neil Brown <neilb@suse.de> for having tracked down this
+> issue (see link).
+>
+> Reported-by: Nix <nix@esperi.org.uk>
+> Link: http://lkml.kernel.org/r/87iofju9ht.fsf@spindle.srvr.nix
+> Cc: stable@vger.kernel.org # 3.18+
 > Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 > ---
->  fs/nfs/nfs3xdr.c | 5 +++++
->  1 file changed, 5 insertions(+)
->=20
-> diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
-> index 2a932fdc57cb..53852a4bd88b 100644
-> --- a/fs/nfs/nfs3xdr.c
-> +++ b/fs/nfs/nfs3xdr.c
-> @@ -1987,6 +1987,11 @@ int nfs3_decode_dirent(struct xdr_stream *xdr, str=
-uct nfs_entry *entry,
->  		if (entry->fattr->valid & NFS_ATTR_FATTR_V3)
->  			entry->d_type =3D nfs_umode_to_dtype(entry->fattr->mode);
-> =20
-> +		if (entry->fattr->fileid !=3D entry->ino) {
-> +			entry->fattr->mounted_on_fileid =3D entry->ino;
-> +			entry->fattr->valid |=3D NFS_ATTR_FATTR_MOUNTED_ON_FILEID;
-> +		}
-> +
->  		/* In fact, a post_op_fh3: */
->  		p =3D xdr_inline_decode(xdr, 4);
->  		if (unlikely(p =3D=3D NULL))
+>  fs/nfs/dir.c | 4 ++++
+>  1 file changed, 4 insertions(+)
+>
+> diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+> index 9b0c55cb2a2e..0da617a61c0b 100644
+> --- a/fs/nfs/dir.c
+> +++ b/fs/nfs/dir.c
+> @@ -479,6 +479,10 @@ void nfs_prime_dcache(struct dentry *parent, struct nfs_entry *entry)
+>
+>         dentry = d_lookup(parent, &filename);
+>         if (dentry != NULL) {
+> +               /* Is there a mountpoint here? If so, just exit */
+> +               if (!nfs_fsid_equal(&NFS_SB(dentry->d_sb)->fsid,
+> +                                       &entry->fattr->fsid))
+> +                       goto out;
+>                 if (nfs_same_file(dentry, entry)) {
+>                         nfs_set_verifier(dentry, nfs_save_change_attribute(dir));
+>                         status = nfs_refresh_inode(dentry->d_inode, entry->fattr);
+> --
+
+...and this of course needs the test for NFS_ATTR_FATTR_FSID from
+3/3.... I've updated.
 
 
-I like this!
 
-  Reviewed-by: NeilBrown <neilb@suse.de>
-
-if you like.
-
-
-Thanks,
-NeilBrown
-
---Sig_/03YvgNWfv0MVG492_gn8K.z
-Content-Type: application/pgp-signature
-Content-Description: OpenPGP digital signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2
-
-iQIVAwUBVOzxMDnsnt1WYoG5AQIn7Q/9Hw4XaRl2lyS59ssEpvEd5SJxORJBqzUY
-V6hN5N1UwiNGEcyLoHJsNGg9zKuSgjWM6OvXV0P588VTv/CD9me3GCBIGseRN+R7
-+3OH5HF13umRdALIo56YiuGEzT8eCHrnSxbFwFtrsCkqxIDKHpFOc97aAhQ6tWNZ
-jSpuI+fyG3b4zq867kuacjsvMBx4jk/sZGvPkblsLeG82yypFLSlMc1jferQsZZ9
-B3hlhLjk7T3Y2kURusKPZxcQ3zT73FqmicjQdxJuK+RUlzMGlT8imV68dhC2aTXp
-TI3r6lmKfl8DPotpr9/aUrPjEw7WRs5XVPXJUczQWrg2+L6Q4OktK6SfGHpDr3TD
-xCvKjRb1GN989qmFzfw496H9r6MmD5em7jxDAqCjivKPXES5IlkA+YQCMT2ST2pF
-Xzes10ScOcGxHfdewW1lWqJfTWaoF7c4s4RWMIJcikTAA1Vbbbga+kmdvUhnA3Pr
-g7wJOySurlXQ+pAbrUe77pyRK5npY3jSoYRktGDp+7jBS/IJ0QPhRwuHSHM09yHT
-6Dw0VXj9fnpt96y5przKnNRC7IPH/3vmIfH6cX1f03+/sT0WHCOY0xrYzGfzlc9j
-BSwitVgHG44pdPjRn88qxSJ3uixogP84fOjCjF0XMYKiXFajZk0+52gpAtFkJatB
-YzdcaZf0Lrc=
-=VFhh
------END PGP SIGNATURE-----
-
---Sig_/03YvgNWfv0MVG492_gn8K.z--
+-- 
+Trond Myklebust
+Linux NFS client maintainer, PrimaryData
+trond.myklebust@primarydata.com
