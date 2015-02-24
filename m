@@ -1,94 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([173.255.197.46]:47887 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:52783 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751103AbbBRPDr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 18 Feb 2015 10:03:47 -0500
-Date: Wed, 18 Feb 2015 10:03:43 -0500
+	id S1751908AbbBXVWv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 24 Feb 2015 16:22:51 -0500
+Date: Tue, 24 Feb 2015 16:22:50 -0500
 From: "J. Bruce Fields" <bfields@fieldses.org>
 To: Al Viro <viro@zeniv.linux.org.uk>
 Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         Jeff Layton <jlayton@primarydata.com>
-Subject: Re: [PATCH] dcache: return -ESTALE not -EBUSY on distributed fs race
-Message-ID: <20150218150343.GF4148@fieldses.org>
+Subject: [PATCH] dcache: return -ESTALE not -EBUSY on distributed fs race
+Message-ID: <20150224212250.GB2415@fieldses.org>
 References: <20150210155553.GA11226@fieldses.org>
+ <20150218150343.GF4148@fieldses.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20150210155553.GA11226@fieldses.org>
+In-Reply-To: <20150218150343.GF4148@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Al, what's up with this patch?
+From: "J. Bruce Fields" <bfields@redhat.com>
 
---b.
+On a distributed filesystem it's possible for lookup to discover that a
+directory it just found is already cached elsewhere in the directory
+heirarchy.  The dcache won't let us keep the directory in both places,
+so we have to move the dentry to the new location from the place we
+previously had it cached.
 
-On Tue, Feb 10, 2015 at 10:55:53AM -0500, J. Bruce Fields wrote:
-> From: "J. Bruce Fields" <bfields@redhat.com>
-> 
-> On a distributed filesystem it's possible for lookup to discover that a
-> directory it just found is already cached elsewhere in the directory
-> heirarchy.  The dcache won't let us keep the directory in both places,
-> so we have to move the dentry to the new location from the place we
-> previously had it cached.
-> 
-> If the parent has changed, then this requires all the same locks as we'd
-> need to do a cross-directory rename.  But we're already in lookup
-> holding one parent's i_mutex, so it's too late to acquire those locks in
-> the right order.
-> 
-> The (unreliable) solution in __d_unalias is to trylock() the required
-> locks and return -EBUSY if it fails.
-> 
-> I see no particular reason for returning -EBUSY, and -ESTALE is already
-> the result of some other lookup races on NFS.  I think -ESTALE is the
-> more helpful error return.  It also allows us to take advantage of the
-> logic Jeff Layton added in c6a9428401c0 "vfs: fix renameat to retry on
-> ESTALE errors" and ancestors, which hopefully resolves some of these
-> errors before they're returned to userspace.
-> 
-> I can reproduce these cases using NFS with:
-> 
-> 	ssh root@$client '
-> 		mount -olookupcache=pos '$server':'$export' /mnt/
-> 		mkdir /mnt/TO
-> 		mkdir /mnt/DIR
-> 		touch /mnt/DIR/test.txt
-> 		while true; do
-> 			strace -e open cat /mnt/DIR/test.txt 2>&1 | grep EBUSY
-> 		done
-> 	'
-> 	ssh root@$server '
-> 		while true; do
-> 			mv $export/DIR $export/TO/DIR
-> 			mv $export/TO/DIR $export/DIR
-> 		done
-> 	'
-> 
-> It also helps to add some other concurrent use of the directory on the
-> client (e.g., "ls /mnt/TO").  And you can replace the server-side mv's
-> by client-side mv's that are repeatedly killed.  (If the client is
-> interrupted while waiting for the RENAME response then it's left with a
-> dentry that has to go under one parent or the other, but it doesn't yet
-> know which.)
-> 
-> Acked-by: Jeff Layton <jlayton@primarydata.com>
-> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> ---
->  fs/dcache.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/fs/dcache.c b/fs/dcache.c
-> index 5bc72b07fde2..b7de7f1ae38f 100644
-> --- a/fs/dcache.c
-> +++ b/fs/dcache.c
-> @@ -2612,7 +2612,7 @@ static struct dentry *__d_unalias(struct inode *inode,
->  		struct dentry *dentry, struct dentry *alias)
->  {
->  	struct mutex *m1 = NULL, *m2 = NULL;
-> -	struct dentry *ret = ERR_PTR(-EBUSY);
-> +	struct dentry *ret = ERR_PTR(-ESTALE);
->  
->  	/* If alias and dentry share a parent, then no extra locks required */
->  	if (alias->d_parent == dentry->d_parent)
-> -- 
-> 1.9.3
-> 
+If the parent has changed, then this requires all the same locks as we'd
+need to do a cross-directory rename.  But we're already in lookup
+holding one parent's i_mutex, so it's too late to acquire those locks in
+the right order.
+
+The (unreliable) solution in __d_unalias is to trylock() the required
+locks and return -EBUSY if it fails.
+
+I see no particular reason for returning -EBUSY, and -ESTALE is already
+the result of some other lookup races on NFS.  I think -ESTALE is the
+more helpful error return.  It also allows us to take advantage of the
+logic Jeff Layton added in c6a9428401c0 "vfs: fix renameat to retry on
+ESTALE errors" and ancestors, which hopefully resolves some of these
+errors before they're returned to userspace.
+
+I can reproduce these cases using NFS with:
+
+	ssh root@$client '
+		mount -olookupcache=pos '$server':'$export' /mnt/
+		mkdir /mnt/TO
+		mkdir /mnt/DIR
+		touch /mnt/DIR/test.txt
+		while true; do
+			strace -e open cat /mnt/DIR/test.txt 2>&1 | grep EBUSY
+		done
+	'
+	ssh root@$server '
+		while true; do
+			mv $export/DIR $export/TO/DIR
+			mv $export/TO/DIR $export/DIR
+		done
+	'
+
+It also helps to add some other concurrent use of the directory on the
+client (e.g., "ls /mnt/TO").  And you can replace the server-side mv's
+by client-side mv's that are repeatedly killed.  (If the client is
+interrupted while waiting for the RENAME response then it's left with a
+dentry that has to go under one parent or the other, but it doesn't yet
+know which.)
+
+Acked-by: Jeff Layton <jlayton@primarydata.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/dcache.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+Resending with minor conflict resolution needed due to b5ae6b15bd73
+"merge d_materialise_unique() into d_splice_alias()"
+
+diff --git a/fs/dcache.c b/fs/dcache.c
+index af8300b0b03d..95a45c563eed 100644
+--- a/fs/dcache.c
++++ b/fs/dcache.c
+@@ -2690,7 +2690,7 @@ static int __d_unalias(struct inode *inode,
+ 		struct dentry *dentry, struct dentry *alias)
+ {
+ 	struct mutex *m1 = NULL, *m2 = NULL;
+-	int ret = -EBUSY;
++	int ret = -ESTALE;
+ 
+ 	/* If alias and dentry share a parent, then no extra locks required */
+ 	if (alias->d_parent == dentry->d_parent)
+-- 
+1.9.3
