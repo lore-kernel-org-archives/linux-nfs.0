@@ -1,92 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([173.255.197.46]:52783 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751908AbbBXVWv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 24 Feb 2015 16:22:51 -0500
-Date: Tue, 24 Feb 2015 16:22:50 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        Jeff Layton <jlayton@primarydata.com>
-Subject: [PATCH] dcache: return -ESTALE not -EBUSY on distributed fs race
-Message-ID: <20150224212250.GB2415@fieldses.org>
-References: <20150210155553.GA11226@fieldses.org>
- <20150218150343.GF4148@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20150218150343.GF4148@fieldses.org>
+Received: from mail-ig0-f178.google.com ([209.85.213.178]:64186 "EHLO
+	mail-ig0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751959AbbBXAPB (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Feb 2015 19:15:01 -0500
+Received: by mail-ig0-f178.google.com with SMTP id hl2so22855306igb.5
+        for <linux-nfs@vger.kernel.org>; Mon, 23 Feb 2015 16:15:00 -0800 (PST)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Cc: Nix <nix@esperi.org.uk>, Neil Brown <neilb@suse.de>
+Subject: [PATCH 1/3] NFS: Don't invalidate a submounted dentry in nfs_prime_dcache()
+Date: Mon, 23 Feb 2015 19:14:55 -0500
+Message-Id: <1424736897-95767-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+If we're traversing a directory which contains a submounted filesystem,
+or one that has a referral, the NFS server that is processing the READDIR
+request will often return information for the underlying (mounted-on)
+directory. It may, or may not, also return filehandle information.
 
-On a distributed filesystem it's possible for lookup to discover that a
-directory it just found is already cached elsewhere in the directory
-heirarchy.  The dcache won't let us keep the directory in both places,
-so we have to move the dentry to the new location from the place we
-previously had it cached.
+If this happens, and the lookup in nfs_prime_dcache() returns the
+dentry for the submounted directory, the filehandle comparison will
+fail, and we call d_invalidate(). Post-commit 8ed936b5671bf
+("vfs: Lazily remove mounts on unlinked files and directories."), this
+means the entire subtree is unmounted.
 
-If the parent has changed, then this requires all the same locks as we'd
-need to do a cross-directory rename.  But we're already in lookup
-holding one parent's i_mutex, so it's too late to acquire those locks in
-the right order.
+The following minimal patch addresses this problem by punting on
+the invalidation if there is a submount.
 
-The (unreliable) solution in __d_unalias is to trylock() the required
-locks and return -EBUSY if it fails.
+Kudos to Neil Brown <neilb@suse.de> for having tracked down this
+issue (see link).
 
-I see no particular reason for returning -EBUSY, and -ESTALE is already
-the result of some other lookup races on NFS.  I think -ESTALE is the
-more helpful error return.  It also allows us to take advantage of the
-logic Jeff Layton added in c6a9428401c0 "vfs: fix renameat to retry on
-ESTALE errors" and ancestors, which hopefully resolves some of these
-errors before they're returned to userspace.
-
-I can reproduce these cases using NFS with:
-
-	ssh root@$client '
-		mount -olookupcache=pos '$server':'$export' /mnt/
-		mkdir /mnt/TO
-		mkdir /mnt/DIR
-		touch /mnt/DIR/test.txt
-		while true; do
-			strace -e open cat /mnt/DIR/test.txt 2>&1 | grep EBUSY
-		done
-	'
-	ssh root@$server '
-		while true; do
-			mv $export/DIR $export/TO/DIR
-			mv $export/TO/DIR $export/DIR
-		done
-	'
-
-It also helps to add some other concurrent use of the directory on the
-client (e.g., "ls /mnt/TO").  And you can replace the server-side mv's
-by client-side mv's that are repeatedly killed.  (If the client is
-interrupted while waiting for the RENAME response then it's left with a
-dentry that has to go under one parent or the other, but it doesn't yet
-know which.)
-
-Acked-by: Jeff Layton <jlayton@primarydata.com>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Reported-by: Nix <nix@esperi.org.uk>
+Link: http://lkml.kernel.org/r/87iofju9ht.fsf@spindle.srvr.nix
+Cc: stable@vger.kernel.org # 3.18+
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/dcache.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/nfs/dir.c | 4 ++++
+ 1 file changed, 4 insertions(+)
 
-Resending with minor conflict resolution needed due to b5ae6b15bd73
-"merge d_materialise_unique() into d_splice_alias()"
-
-diff --git a/fs/dcache.c b/fs/dcache.c
-index af8300b0b03d..95a45c563eed 100644
---- a/fs/dcache.c
-+++ b/fs/dcache.c
-@@ -2690,7 +2690,7 @@ static int __d_unalias(struct inode *inode,
- 		struct dentry *dentry, struct dentry *alias)
- {
- 	struct mutex *m1 = NULL, *m2 = NULL;
--	int ret = -EBUSY;
-+	int ret = -ESTALE;
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 9b0c55cb2a2e..0da617a61c0b 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -479,6 +479,10 @@ void nfs_prime_dcache(struct dentry *parent, struct nfs_entry *entry)
  
- 	/* If alias and dentry share a parent, then no extra locks required */
- 	if (alias->d_parent == dentry->d_parent)
+ 	dentry = d_lookup(parent, &filename);
+ 	if (dentry != NULL) {
++		/* Is there a mountpoint here? If so, just exit */
++		if (!nfs_fsid_equal(&NFS_SB(dentry->d_sb)->fsid,
++					&entry->fattr->fsid))
++			goto out;
+ 		if (nfs_same_file(dentry, entry)) {
+ 			nfs_set_verifier(dentry, nfs_save_change_attribute(dir));
+ 			status = nfs_refresh_inode(dentry->d_inode, entry->fattr);
 -- 
-1.9.3
+2.1.0
+
