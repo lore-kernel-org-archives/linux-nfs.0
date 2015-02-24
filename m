@@ -1,123 +1,95 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:39800 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:39412 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752450AbbBXVx0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 24 Feb 2015 16:53:26 -0500
-Date: Wed, 25 Feb 2015 08:53:18 +1100
+	id S1751840AbbBXVqc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 24 Feb 2015 16:46:32 -0500
+Date: Wed, 25 Feb 2015 08:46:23 +1100
 From: NeilBrown <neilb@suse.de>
 To: Trond Myklebust <trond.myklebust@primarydata.com>
 Cc: linux-nfs@vger.kernel.org, Nix <nix@esperi.org.uk>
-Subject: Re: [PATCH 3/3] NFS: Don't require a filehandle to refresh the
- inode in nfs_prime_dcache()
-Message-ID: <20150225085318.2a714592@notabene.brown>
-In-Reply-To: <1424736897-95767-3-git-send-email-trond.myklebust@primarydata.com>
+Subject: Re: [PATCH 2/3] NFSv3: Use the readdir fileid as the
+ mounted-on-fileid
+Message-ID: <20150225084623.7f97e1b6@notabene.brown>
+In-Reply-To: <1424736897-95767-2-git-send-email-trond.myklebust@primarydata.com>
 References: <1424736897-95767-1-git-send-email-trond.myklebust@primarydata.com>
 	<1424736897-95767-2-git-send-email-trond.myklebust@primarydata.com>
-	<1424736897-95767-3-git-send-email-trond.myklebust@primarydata.com>
 MIME-Version: 1.0
 Content-Type: multipart/signed; micalg=pgp-sha1;
- boundary="Sig_/MZp0ZSgIMCkIk_q/GqTBOLd"; protocol="application/pgp-signature"
+ boundary="Sig_/03YvgNWfv0MVG492_gn8K.z"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/MZp0ZSgIMCkIk_q/GqTBOLd
+--Sig_/03YvgNWfv0MVG492_gn8K.z
 Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: quoted-printable
 
-On Mon, 23 Feb 2015 19:14:57 -0500 Trond Myklebust
+On Mon, 23 Feb 2015 19:14:56 -0500 Trond Myklebust
 <trond.myklebust@primarydata.com> wrote:
 
-> If the server does not return a valid set of attributes that we can
-> use to either create a file or refresh the inode, then there is no
-> value in calling nfs_prime_dcache().
+> When we call readdirplus, set the fileid normally returned by readdir
+> as the mounted-on-fileid, since that is commonly the case if there is
+> a mountpoint. To ensure that we get it right, we only set the flag if
+> the readdir fileid differs from the one returned in the readdirplus
+> attributes.
 >=20
-> However if we're just refreshing the inode using the attributes that
-> the server returned, then it shouldn't matter whether or not we have
-> a filehandle, as long as we check the fsid+fileid combination.
+> This again means that we can avoid the issues described in commit
+> 2ef47eb1aee17 ("NFS: Fix use of nfs_attr_use_mounted_on_fileid()"),
+> which only fixed NFSv4.
 >=20
 > Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 > ---
->  fs/nfs/dir.c | 18 +++++++++++++++---
->  1 file changed, 15 insertions(+), 3 deletions(-)
+>  fs/nfs/nfs3xdr.c | 5 +++++
+>  1 file changed, 5 insertions(+)
 >=20
-> diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-> index 0da617a61c0b..c19e16f0b2d0 100644
-> --- a/fs/nfs/dir.c
-> +++ b/fs/nfs/dir.c
-> @@ -408,14 +408,22 @@ static int xdr_decode(nfs_readdir_descriptor_t *des=
-c,
->  	return 0;
->  }
+> diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
+> index 2a932fdc57cb..53852a4bd88b 100644
+> --- a/fs/nfs/nfs3xdr.c
+> +++ b/fs/nfs/nfs3xdr.c
+> @@ -1987,6 +1987,11 @@ int nfs3_decode_dirent(struct xdr_stream *xdr, str=
+uct nfs_entry *entry,
+>  		if (entry->fattr->valid & NFS_ATTR_FATTR_V3)
+>  			entry->d_type =3D nfs_umode_to_dtype(entry->fattr->mode);
 > =20
-> +/* Match file and dirent using either filehandle or fileid
-> + * Note: caller is responsible for checking the fsid
-> + */
->  static
->  int nfs_same_file(struct dentry *dentry, struct nfs_entry *entry)
->  {
-> +	struct nfs_inode *nfsi;
+> +		if (entry->fattr->fileid !=3D entry->ino) {
+> +			entry->fattr->mounted_on_fileid =3D entry->ino;
+> +			entry->fattr->valid |=3D NFS_ATTR_FATTR_MOUNTED_ON_FILEID;
+> +		}
 > +
->  	if (dentry->d_inode =3D=3D NULL)
->  		goto different;
-> -	if (nfs_compare_fh(entry->fh, NFS_FH(dentry->d_inode)) !=3D 0)
-> -		goto different;
-> -	return 1;
-> +
-> +	nfsi =3D NFS_I(dentry->d_inode);
-> +	if (entry->fattr->fileid =3D=3D nfsi->fileid)
-> +		return 1;
-> +	if (nfs_compare_fh(entry->fh, &nfsi->fh) =3D=3D 0)
-> +		return 1;
->  different:
->  	return 0;
->  }
-> @@ -469,6 +477,10 @@ void nfs_prime_dcache(struct dentry *parent, struct =
-nfs_entry *entry)
->  	struct inode *inode;
->  	int status;
-> =20
-> +	if (!(entry->fattr->valid & NFS_ATTR_FATTR_FILEID))
-> +		return;
-> +	if (!(entry->fattr->valid & NFS_ATTR_FATTR_FSID))
-> +		return;
->  	if (filename.name[0] =3D=3D '.') {
->  		if (filename.len =3D=3D 1)
->  			return;
+>  		/* In fact, a post_op_fh3: */
+>  		p =3D xdr_inline_decode(xdr, 4);
+>  		if (unlikely(p =3D=3D NULL))
 
 
-I believe this will fix the observed problem.  This is partly because the
-Linux NFSv3 server either returns both a filehandle and attributes, or
-neither.
+I like this!
 
-If a server happened to return postop attributes, but no filehandle, then t=
-he
-"nfs_compare_fh()" would be a meaningless test.
+  Reviewed-by: NeilBrown <neilb@suse.de>
 
-I think you should abort nfs_prime_dcache if entry->fh->size is zero for
-exactly the same reason that you abort if NFS_ATTR_FATTR_FSID is not set.
+if you like.
 
+
+Thanks,
 NeilBrown
 
---Sig_/MZp0ZSgIMCkIk_q/GqTBOLd
+--Sig_/03YvgNWfv0MVG492_gn8K.z
 Content-Type: application/pgp-signature
 Content-Description: OpenPGP digital signature
 
 -----BEGIN PGP SIGNATURE-----
 Version: GnuPG v2
 
-iQIVAwUBVOzyzjnsnt1WYoG5AQIILQ//TnjKksA1K2FjxeiJS/4XW+EUtfewGSyt
-FlvG3wGKoUdvZx31VNCbxdtk3o1SXY3jbYHyZsuN1xI58p2mRnIySyZTPgtS752b
-0+sw+aFtEk1EiZrLrnDYHLIpf8nZHfdBexrmnMfK6ERg2bT+pN7w9rQ/GvAE54Y5
-NqWgV9ooaY2/ozTSRBLRWT6/hrgKhPTLhWS+ttArVszDwgDB+fDn1BXliwrQIlU4
-Ze+Bc7GUoIkRso6bP+sIVBwTsHVtgO0iwl7vh3XfBBw0y5HEWCSAcc3Wnn8OMnpJ
-beEZ7/AqYxKDP8Ues5aMJnQGch3opOUjjyYn4K9zEZ8sycuj0WddkE0U92sr1cmT
-Neb7+ofssVC9104AK5r3oq7ZC6U80HKtwJA2hb7NqQhF7HAU8tXckI50ySl0zDx+
-qNUieQSPOBvc2zeaEVWGGngjNNjmAys2xf8dqaqoWoKjI3ntv1ZZJuPYVzjGMT95
-UKCG1a7QmhMprWY76SVOtT4v2WDIwd4BVfjMoHdpE3o5+XHBnI1QLfk2L9y8fLSK
-Doos0TQkkDB3HCBkHzAHda1PdW52HhYno/DEfmUWfU3aoRXk9NrY6UKvP+o/mBfM
-8yIJNbjk6rZr++7wocZC2RX7Fgeo5l2Tk0sGsqz/MQyJsNKQkU/jxGywqSIgpowd
-Une6eyGR0QA=
-=HKBy
+iQIVAwUBVOzxMDnsnt1WYoG5AQIn7Q/9Hw4XaRl2lyS59ssEpvEd5SJxORJBqzUY
+V6hN5N1UwiNGEcyLoHJsNGg9zKuSgjWM6OvXV0P588VTv/CD9me3GCBIGseRN+R7
++3OH5HF13umRdALIo56YiuGEzT8eCHrnSxbFwFtrsCkqxIDKHpFOc97aAhQ6tWNZ
+jSpuI+fyG3b4zq867kuacjsvMBx4jk/sZGvPkblsLeG82yypFLSlMc1jferQsZZ9
+B3hlhLjk7T3Y2kURusKPZxcQ3zT73FqmicjQdxJuK+RUlzMGlT8imV68dhC2aTXp
+TI3r6lmKfl8DPotpr9/aUrPjEw7WRs5XVPXJUczQWrg2+L6Q4OktK6SfGHpDr3TD
+xCvKjRb1GN989qmFzfw496H9r6MmD5em7jxDAqCjivKPXES5IlkA+YQCMT2ST2pF
+Xzes10ScOcGxHfdewW1lWqJfTWaoF7c4s4RWMIJcikTAA1Vbbbga+kmdvUhnA3Pr
+g7wJOySurlXQ+pAbrUe77pyRK5npY3jSoYRktGDp+7jBS/IJ0QPhRwuHSHM09yHT
+6Dw0VXj9fnpt96y5przKnNRC7IPH/3vmIfH6cX1f03+/sT0WHCOY0xrYzGfzlc9j
+BSwitVgHG44pdPjRn88qxSJ3uixogP84fOjCjF0XMYKiXFajZk0+52gpAtFkJatB
+YzdcaZf0Lrc=
+=VFhh
 -----END PGP SIGNATURE-----
 
---Sig_/MZp0ZSgIMCkIk_q/GqTBOLd--
+--Sig_/03YvgNWfv0MVG492_gn8K.z--
