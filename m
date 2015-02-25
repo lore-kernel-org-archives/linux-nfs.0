@@ -1,184 +1,235 @@
-Return-Path: linux-fsdevel-owner@vger.kernel.org
+Return-Path: linux-nfs-owner@vger.kernel.org
+Received: from mail-we0-f181.google.com ([74.125.82.181]:44035 "EHLO
+	mail-we0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932150AbbBYXmb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Feb 2015 18:42:31 -0500
 From: Andreas Gruenbacher <andreas.gruenbacher@gmail.com>
 To: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-nfs@vger.kernel.org
-Subject: [RFC 15/21] richacl: Automatic Inheritance
-Date: Thu, 26 Feb 2015 00:41:36 +0100
-Message-Id: <39c338514faf1b135b8515db11c58720f6897e9d.1424907511.git.agruenba@redhat.com>
+Subject: [RFC 16/21] richacl: xattr mapping functions
+Date: Thu, 26 Feb 2015 00:41:37 +0100
+Message-Id: <38f525822b15ec67c337cc90659fecb3737a0767.1424907511.git.agruenba@redhat.com>
 In-Reply-To: <cover.1424907511.git.agruenba@redhat.com>
 References: <cover.1424907511.git.agruenba@redhat.com>
 In-Reply-To: <cover.1424907511.git.agruenba@redhat.com>
 References: <cover.1424907511.git.agruenba@redhat.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Automatic Inheritance (AI) allows changes to the acl of a directory to
-recursively propagate down to files and directories in the directory.
-
-To implement this, the kernel keeps track of which permissions have been
-inherited, and makes sure that permission propagation is turned off when the
-file permission bits of a file are changed (upon create or chmod).
-
-The actual permission propagation is implemented in user space.
-
-Automatic Inheritance works as follows:
-
- - When the ACL4_AUTO_INHERIT flag in the acl of a file is not set, the
-   file is not affected by AI.
-
- - When the ACL4_AUTO_INHERIT flag in the acl of a directory is set and
-   a file or subdirectory is created in that directory, files created in
-   the directory will have the ACL4_AUTO_INHERIT flag set, and all
-   inherited aces will have the ACE4_INHERITED_ACE flag set.  This
-   allows user space to distinguish between aces which have been
-   inherited and aces which have been explicitly added.
-
- - When the ACL4_PROTECTED acl flag in the acl of a file is set, AI will
-   not modify the acl of the file.  This does not affect propagation of
-   permissions from the file to its children (if the file is a
-   directory).
-
-Linux does not have a way of creating files without setting the file permission
-bits, so all files created inside a directory with ACL4_AUTO_INHERIT set will
-also have the ACL4_PROTECTED flag set.  This effectively disables Automatic
-Inheritance.
-
-Protocols which support creating files without specifying permissions can
-explicitly clear the ACL4_PROTECTED flag after creating a file and reset the
-file masks to "undo" applying the create mode; see richacl_compute_max_masks().
-This is a workaround; a mechanism that would allow a process to indicate to the
-kernel to ignore the create mode when there are inherited permissions would fix
-this problem.
+Map between "system.richacl" xattrs and the in-kernel representation.
 
 Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
 ---
- fs/richacl_base.c       | 10 +++++++++-
- fs/richacl_inode.c      |  7 ++++++-
- include/linux/richacl.h | 24 +++++++++++++++++++++++-
- 3 files changed, 38 insertions(+), 3 deletions(-)
+ fs/Makefile                   |   2 +-
+ fs/richacl_xattr.c            | 131 ++++++++++++++++++++++++++++++++++++++++++
+ include/linux/richacl_xattr.h |  47 +++++++++++++++
+ 3 files changed, 179 insertions(+), 1 deletion(-)
+ create mode 100644 fs/richacl_xattr.c
+ create mode 100644 include/linux/richacl_xattr.h
 
-diff --git a/fs/richacl_base.c b/fs/richacl_base.c
-index c853f7e..ec570ef 100644
---- a/fs/richacl_base.c
-+++ b/fs/richacl_base.c
-@@ -324,7 +324,8 @@ richacl_chmod(struct richacl *acl, mode_t mode)
- 	if (acl->a_owner_mask == owner_mask &&
- 	    acl->a_group_mask == group_mask &&
- 	    acl->a_other_mask == other_mask &&
--	    (acl->a_flags & ACL4_MASKED))
-+	    (acl->a_flags & ACL4_MASKED) &&
-+	    (!richacl_is_auto_inherit(acl) || richacl_is_protected(acl)))
- 		return acl;
+diff --git a/fs/Makefile b/fs/Makefile
+index bb96ad7..6155cc4 100644
+--- a/fs/Makefile
++++ b/fs/Makefile
+@@ -48,7 +48,7 @@ obj-$(CONFIG_SYSCTL)		+= drop_caches.o
  
- 	clone = richacl_clone(acl);
-@@ -336,6 +337,8 @@ richacl_chmod(struct richacl *acl, mode_t mode)
- 	clone->a_owner_mask = owner_mask;
- 	clone->a_group_mask = group_mask;
- 	clone->a_other_mask = other_mask;
-+	if (richacl_is_auto_inherit(clone))
-+		clone->a_flags |= ACL4_PROTECTED;
+ obj-$(CONFIG_FHANDLE)		+= fhandle.o
+ obj-$(CONFIG_FS_RICHACL)	+= richacl.o
+-richacl-y			:= richacl_base.o richacl_inode.o
++richacl-y			:= richacl_base.o richacl_inode.o richacl_xattr.o
  
- 	return clone;
- }
-@@ -518,6 +521,11 @@ richacl_inherit(const struct richacl *dir_acl, int isdir)
- 			ace++;
- 		}
- 	}
-+	if (richacl_is_auto_inherit(dir_acl)) {
-+		acl->a_flags = ACL4_AUTO_INHERIT;
-+		richacl_for_each_entry(ace, acl)
-+			ace->e_flags |= ACE4_INHERITED_ACE;
+ obj-y				+= quota/
+ 
+diff --git a/fs/richacl_xattr.c b/fs/richacl_xattr.c
+new file mode 100644
+index 0000000..05e5e97
+--- /dev/null
++++ b/fs/richacl_xattr.c
+@@ -0,0 +1,131 @@
++/*
++ * Copyright (C) 2006, 2010  Novell, Inc.
++ * Copyright (C) 2015  Red Hat, Inc.
++ * Written by Andreas Gruenbacher <agruen@kernel.org>
++ *
++ * This program is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License as published by the
++ * Free Software Foundation; either version 2, or (at your option) any
++ * later version.
++ *
++ * This program is distributed in the hope that it will be useful, but
++ * WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * General Public License for more details.
++ */
++
++#include <linux/kernel.h>
++#include <linux/fs.h>
++#include <linux/slab.h>
++#include <linux/module.h>
++#include <linux/richacl_xattr.h>
++
++MODULE_LICENSE("GPL");
++
++/**
++ * richacl_from_xattr  -  convert a richacl xattr into the in-memory representation
++ */
++struct richacl *
++richacl_from_xattr(const void *value, size_t size)
++{
++	const struct richacl_xattr *xattr_acl = value;
++	const struct richace_xattr *xattr_ace = (void *)(xattr_acl + 1);
++	struct richacl *acl;
++	struct richace *ace;
++	int count;
++
++	if (size < sizeof(struct richacl_xattr) ||
++	    xattr_acl->a_version != ACL4_XATTR_VERSION ||
++	    (xattr_acl->a_flags & ~ACL4_VALID_FLAGS))
++		return ERR_PTR(-EINVAL);
++
++	count = le16_to_cpu(xattr_acl->a_count);
++	if (count > ACL4_XATTR_MAX_COUNT)
++		return ERR_PTR(-EINVAL);
++
++	acl = richacl_alloc(count);
++	if (!acl)
++		return ERR_PTR(-ENOMEM);
++
++	acl->a_flags = xattr_acl->a_flags;
++	acl->a_owner_mask = le32_to_cpu(xattr_acl->a_owner_mask);
++	if (acl->a_owner_mask & ~ACE4_VALID_MASK)
++		goto fail_einval;
++	acl->a_group_mask = le32_to_cpu(xattr_acl->a_group_mask);
++	if (acl->a_group_mask & ~ACE4_VALID_MASK)
++		goto fail_einval;
++	acl->a_other_mask = le32_to_cpu(xattr_acl->a_other_mask);
++	if (acl->a_other_mask & ~ACE4_VALID_MASK)
++		goto fail_einval;
++
++	if (((void *)xattr_ace + count * sizeof(*xattr_ace)) > (value + size))
++		goto fail_einval;
++
++	richacl_for_each_entry(ace, acl) {
++
++		ace->e_type  = le16_to_cpu(xattr_ace->e_type);
++		ace->e_flags = le16_to_cpu(xattr_ace->e_flags);
++		ace->e_mask  = le32_to_cpu(xattr_ace->e_mask);
++		ace->e_id    = le32_to_cpu(xattr_ace->e_id);
++
++		if (ace->e_flags & ~ACE4_VALID_FLAGS)
++			goto fail_einval;
++		if (ace->e_type > ACE4_ACCESS_DENIED_ACE_TYPE ||
++		    (ace->e_mask & ~ACE4_VALID_MASK))
++			goto fail_einval;
++
++		xattr_ace++;
 +	}
- 
- 	return acl;
- }
-diff --git a/fs/richacl_inode.c b/fs/richacl_inode.c
-index b95a584..9f96564 100644
---- a/fs/richacl_inode.c
-+++ b/fs/richacl_inode.c
-@@ -40,9 +40,14 @@ richacl_inherit_inode(const struct richacl *dir_acl, struct inode *inode)
- 
- 	acl = richacl_inherit(dir_acl, S_ISDIR(inode->i_mode));
- 	if (acl) {
-+		/*
-+		 * We need to set ACL4_PROTECTED because we are
-+		 * doing an implicit chmod
-+		 */
-+		if (richacl_is_auto_inherit(acl))
-+			acl->a_flags |= ACL4_PROTECTED;
- 
- 		richacl_compute_max_masks(acl);
--
- 		/*
- 		 * Ensure that the acl will not grant any permissions beyond
- 		 * the create mode.
-diff --git a/include/linux/richacl.h b/include/linux/richacl.h
-index 39072a0..a607d6f 100644
---- a/include/linux/richacl.h
-+++ b/include/linux/richacl.h
-@@ -49,10 +49,17 @@ struct richacl {
- 	     _ace != (_acl)->a_entries - 1; \
- 	     _ace--)
- 
-+/* a_flags values */
-+#define ACL4_AUTO_INHERIT		0x01
-+#define ACL4_PROTECTED			0x02
-+#define ACL4_DEFAULTED			0x04
- /* Flag values defined by richacls */
- #define ACL4_MASKED			0x80
- 
- #define ACL4_VALID_FLAGS (			\
-+		ACL4_AUTO_INHERIT |		\
-+		ACL4_PROTECTED |		\
-+		ACL4_DEFAULTED |		\
- 		ACL4_MASKED)
- 
- /* e_type values */
-@@ -69,6 +76,7 @@ struct richacl {
- /*#define ACE4_SUCCESSFUL_ACCESS_ACE_FLAG	0x0010*/
- /*#define ACE4_FAILED_ACCESS_ACE_FLAG	0x0020*/
- #define ACE4_IDENTIFIER_GROUP		0x0040
-+#define ACE4_INHERITED_ACE		0x0080
- /* richacl specific flag values */
- #define ACE4_SPECIAL_WHO		0x4000
- 
-@@ -78,6 +86,7 @@ struct richacl {
- 	ACE4_NO_PROPAGATE_INHERIT_ACE |		\
- 	ACE4_INHERIT_ONLY_ACE |			\
- 	ACE4_IDENTIFIER_GROUP |			\
-+	ACE4_INHERITED_ACE |			\
- 	ACE4_SPECIAL_WHO)
- 
- /* e_mask bitflags */
-@@ -184,6 +193,18 @@ richacl_put(struct richacl *acl)
- 		kfree(acl);
- }
- 
-+static inline int
-+richacl_is_auto_inherit(const struct richacl *acl)
-+{
-+	return acl->a_flags & ACL4_AUTO_INHERIT;
-+}
 +
-+static inline int
-+richacl_is_protected(const struct richacl *acl)
-+{
-+	return acl->a_flags & ACL4_PROTECTED;
-+}
++	return acl;
 +
- /**
-  * richace_is_owner  -  check if @ace is an OWNER@ entry
-  */
-@@ -254,7 +275,8 @@ richace_clear_inheritance_flags(struct richace *ace)
- 	ace->e_flags &= ~(ACE4_FILE_INHERIT_ACE |
- 			  ACE4_DIRECTORY_INHERIT_ACE |
- 			  ACE4_NO_PROPAGATE_INHERIT_ACE |
--			  ACE4_INHERIT_ONLY_ACE);
-+			  ACE4_INHERIT_ONLY_ACE |
-+			  ACE4_INHERITED_ACE);
- }
- 
- /**
++fail_einval:
++	richacl_put(acl);
++	return ERR_PTR(-EINVAL);
++}
++EXPORT_SYMBOL_GPL(richacl_from_xattr);
++
++/**
++ * richacl_xattr_size  -  compute the size of the xattr representation of @acl
++ */
++size_t
++richacl_xattr_size(const struct richacl *acl)
++{
++	size_t size = sizeof(struct richacl_xattr);
++
++	size += sizeof(struct richace_xattr) * acl->a_count;
++	return size;
++}
++EXPORT_SYMBOL_GPL(richacl_xattr_size);
++
++/**
++ * richacl_to_xattr  -  convert @acl into its xattr representation
++ * @acl:	the richacl to convert
++ * @buffer:	buffer of size richacl_xattr_size(@acl) for the result
++ */
++void
++richacl_to_xattr(const struct richacl *acl, void *buffer)
++{
++	struct richacl_xattr *xattr_acl = buffer;
++	struct richace_xattr *xattr_ace;
++	const struct richace *ace;
++
++	xattr_acl->a_version = ACL4_XATTR_VERSION;
++	xattr_acl->a_flags = acl->a_flags;
++	xattr_acl->a_count = cpu_to_le16(acl->a_count);
++
++	xattr_acl->a_owner_mask = cpu_to_le32(acl->a_owner_mask);
++	xattr_acl->a_group_mask = cpu_to_le32(acl->a_group_mask);
++	xattr_acl->a_other_mask = cpu_to_le32(acl->a_other_mask);
++
++	xattr_ace = (void *)(xattr_acl + 1);
++	richacl_for_each_entry(ace, acl) {
++		xattr_ace->e_type = cpu_to_le16(ace->e_type);
++		xattr_ace->e_flags = cpu_to_le16(ace->e_flags &
++						 ACE4_VALID_FLAGS);
++		xattr_ace->e_mask = cpu_to_le32(ace->e_mask);
++		xattr_ace->e_id = cpu_to_le32(ace->e_id);
++		xattr_ace++;
++	}
++}
++EXPORT_SYMBOL_GPL(richacl_to_xattr);
+diff --git a/include/linux/richacl_xattr.h b/include/linux/richacl_xattr.h
+new file mode 100644
+index 0000000..32ae512
+--- /dev/null
++++ b/include/linux/richacl_xattr.h
+@@ -0,0 +1,47 @@
++/*
++ * Copyright (C) 2006, 2010  Novell, Inc.
++ * Copyright (C) 2015  Red Hat, Inc.
++ * Written by Andreas Gruenbacher <agruen@kernel.org>
++ *
++ * This program is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License as published by the
++ * Free Software Foundation; either version 2, or (at your option) any
++ * later version.
++ *
++ * This program is distributed in the hope that it will be useful, but
++ * WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * General Public License for more details.
++ */
++
++#ifndef __RICHACL_XATTR_H
++#define __RICHACL_XATTR_H
++
++#include <linux/richacl.h>
++
++#define RICHACL_XATTR "system.richacl"
++
++struct richace_xattr {
++	__le16		e_type;
++	__le16		e_flags;
++	__le32		e_mask;
++	__le32		e_id;
++};
++
++struct richacl_xattr {
++	unsigned char	a_version;
++	unsigned char	a_flags;
++	__le16		a_count;
++	__le32		a_owner_mask;
++	__le32		a_group_mask;
++	__le32		a_other_mask;
++};
++
++#define ACL4_XATTR_VERSION	0
++#define ACL4_XATTR_MAX_COUNT	1024
++
++extern struct richacl *richacl_from_xattr(const void *, size_t);
++extern size_t richacl_xattr_size(const struct richacl *acl);
++extern void richacl_to_xattr(const struct richacl *, void *);
++
++#endif /* __RICHACL_XATTR_H */
 -- 
 2.1.0
 
