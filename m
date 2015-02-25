@@ -2,9 +2,9 @@ Return-Path: linux-kernel-owner@vger.kernel.org
 From: Andreas Gruenbacher <andreas.gruenbacher@gmail.com>
 To: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-nfs@vger.kernel.org
-Subject: [RFC 05/21] vfs: Add MAY_DELETE_SELF and MAY_DELETE_CHILD permission flags
-Date: Thu, 26 Feb 2015 00:41:26 +0100
-Message-Id: <a858d4a82fe74516f5036cb0b8ff8f177830025f.1424907511.git.agruenba@redhat.com>
+Subject: [RFC 06/21] vfs: Make the inode passed to inode_change_ok non-const
+Date: Thu, 26 Feb 2015 00:41:27 +0100
+Message-Id: <19510de7d710a34c47eadb9b8f71881b5621574a.1424907511.git.agruenba@redhat.com>
 In-Reply-To: <cover.1424907511.git.agruenba@redhat.com>
 References: <cover.1424907511.git.agruenba@redhat.com>
 In-Reply-To: <cover.1424907511.git.agruenba@redhat.com>
@@ -12,75 +12,42 @@ References: <cover.1424907511.git.agruenba@redhat.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Normally, deleting a file requires write and execute access to the parent
-directory.  With Richacls, a process with MAY_DELETE_SELF access to a file may
-delete the file even without write access to the parent directory.
-
-To support that, pass the MAY_DELETE_CHILD mask flag to inode_permission() when
-checking for delete access inside a directory, and MAY_DELETE_SELF when
-checking for delete access to a file itelf.
-
-The MAY_DELETE_SELF permission does not override the sticky directory check.
+We will need to call iop->permission and iop->get_acl from
+inode_change_ok() for additional permission checks, and both take a
+non-const inode.
 
 Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
 ---
- fs/namei.c         | 15 +++++++++++----
- include/linux/fs.h |  2 ++
- 2 files changed, 13 insertions(+), 4 deletions(-)
+ fs/attr.c          | 2 +-
+ include/linux/fs.h | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/fs/namei.c b/fs/namei.c
-index a8bc030..a8d1674 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -455,7 +455,7 @@ static int sb_permission(struct super_block *sb, struct inode *inode, int mask)
-  * changing the "normal" UIDs which are used for other things.
-  *
-  * When checking for MAY_APPEND, MAY_CREATE_FILE, MAY_CREATE_DIR,
-- * MAY_WRITE must also be set in @mask.
-+ * MAY_DELETE_CHILD, MAY_DELETE_SELF, MAY_WRITE must also be set in @mask.
+diff --git a/fs/attr.c b/fs/attr.c
+index 6530ced..328be71 100644
+--- a/fs/attr.c
++++ b/fs/attr.c
+@@ -28,7 +28,7 @@
+  * Should be called as the first thing in ->setattr implementations,
+  * possibly after taking additional locks.
   */
- int inode_permission(struct inode *inode, int mask)
+-int inode_change_ok(const struct inode *inode, struct iattr *attr)
++int inode_change_ok(struct inode *inode, struct iattr *attr)
  {
-@@ -2452,7 +2452,7 @@ static int may_delete(struct inode *dir, struct dentry *victim,
- 		      bool isdir, bool replace)
- {
- 	struct inode *inode = victim->d_inode;
--	int error, mask = MAY_WRITE | MAY_EXEC;
-+	int error, mask = MAY_EXEC;
+ 	unsigned int ia_valid = attr->ia_valid;
  
- 	if (d_is_negative(victim))
- 		return -ENOENT;
-@@ -2462,8 +2462,15 @@ static int may_delete(struct inode *dir, struct dentry *victim,
- 	audit_inode_child(dir, victim, AUDIT_TYPE_CHILD_DELETE);
- 
- 	if (replace)
--		mask |= isdir ? MAY_CREATE_DIR : MAY_CREATE_FILE;
--	error = inode_permission(dir, mask);
-+		mask |= MAY_WRITE | (isdir ? MAY_CREATE_DIR : MAY_CREATE_FILE);
-+	error = inode_permission(dir, mask | MAY_WRITE | MAY_DELETE_CHILD);
-+	if (error && IS_RICHACL(inode)) {
-+		/* Deleting is also permitted with MAY_EXEC on the directory
-+		 * and MAY_DELETE_SELF on the inode.  */
-+		if (!inode_permission(inode, MAY_DELETE_SELF) &&
-+		    !inode_permission(dir, mask))
-+			error = 0;
-+	}
- 	if (error)
- 		return error;
- 	if (IS_APPEND(dir))
 diff --git a/include/linux/fs.h b/include/linux/fs.h
-index bbe1d26..101abcf 100644
+index 101abcf..f688ea6 100644
 --- a/include/linux/fs.h
 +++ b/include/linux/fs.h
-@@ -82,6 +82,8 @@ typedef void (dio_iodone_t)(struct kiocb *iocb, loff_t offset,
- #define MAY_NOT_BLOCK		0x00000080
- #define MAY_CREATE_FILE		0x00000100
- #define MAY_CREATE_DIR		0x00000200
-+#define MAY_DELETE_CHILD	0x00000400
-+#define MAY_DELETE_SELF		0x00000800
+@@ -2760,7 +2760,7 @@ extern int buffer_migrate_page(struct address_space *,
+ #define buffer_migrate_page NULL
+ #endif
  
- /*
-  * flags in file.f_mode.  Note that FMODE_READ and FMODE_WRITE must correspond
+-extern int inode_change_ok(const struct inode *, struct iattr *);
++extern int inode_change_ok(struct inode *, struct iattr *);
+ extern int inode_newsize_ok(const struct inode *, loff_t offset);
+ extern void setattr_copy(struct inode *inode, const struct iattr *attr);
+ 
 -- 
 2.1.0
 
