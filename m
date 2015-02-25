@@ -1,572 +1,140 @@
-Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-we0-f172.google.com ([74.125.82.172]:37349 "EHLO
-	mail-we0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753962AbbBYXmg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Feb 2015 18:42:36 -0500
+Return-Path: linux-fsdevel-owner@vger.kernel.org
 From: Andreas Gruenbacher <andreas.gruenbacher@gmail.com>
 To: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-nfs@vger.kernel.org
 Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [RFC 20/21] ext4: Implement rich acl for ext4
-Date: Thu, 26 Feb 2015 00:41:41 +0100
-Message-Id: <c6043a752cec38940291b0caca452826afb1fa04.1424907511.git.agruenba@redhat.com>
+Subject: [RFC 21/21] ext4: Add richacl feature flag
+Date: Thu, 26 Feb 2015 00:41:42 +0100
+Message-Id: <2743598850b5ac481b91b7fea5f6f00a04e8beae.1424907511.git.agruenba@redhat.com>
 In-Reply-To: <cover.1424907511.git.agruenba@redhat.com>
 References: <cover.1424907511.git.agruenba@redhat.com>
 In-Reply-To: <cover.1424907511.git.agruenba@redhat.com>
 References: <cover.1424907511.git.agruenba@redhat.com>
-Sender: linux-nfs-owner@vger.kernel.org
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 
-Support the richacl permission model in ext4.  The richacls are stored in
-"system.richacl" xattrs.  Richacls need to be enabled by tune2fs or at file
-system create time.
+This feature flag selects richacl instead of posix acl support on the file
+system. In addition, the "acl" mount option is needed for enabling either of
+the two kinds of acls.
 
 Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
 ---
- fs/ext4/Kconfig   |  15 ++++
- fs/ext4/Makefile  |   1 +
- fs/ext4/acl.c     |   7 +-
- fs/ext4/acl.h     |  12 +--
- fs/ext4/file.c    |   6 +-
- fs/ext4/ialloc.c  |   7 +-
- fs/ext4/inode.c   |  10 ++-
- fs/ext4/namei.c   |  11 ++-
- fs/ext4/richacl.c | 229 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
- fs/ext4/richacl.h |  47 +++++++++++
- fs/ext4/xattr.c   |   6 ++
- fs/ext4/xattr.h   |   1 +
- 12 files changed, 332 insertions(+), 20 deletions(-)
- create mode 100644 fs/ext4/richacl.c
- create mode 100644 fs/ext4/richacl.h
+ fs/ext4/ext4.h  |  6 ++++--
+ fs/ext4/super.c | 41 ++++++++++++++++++++++++++++++++---------
+ 2 files changed, 36 insertions(+), 11 deletions(-)
 
-diff --git a/fs/ext4/Kconfig b/fs/ext4/Kconfig
-index efea5d5..8c821d2 100644
---- a/fs/ext4/Kconfig
-+++ b/fs/ext4/Kconfig
-@@ -73,3 +73,18 @@ config EXT4_DEBUG
- 	  If you select Y here, then you will be able to turn on debugging
- 	  with a command such as:
- 		echo 1 > /sys/module/ext4/parameters/mballoc_debug
-+
-+config EXT4_FS_RICHACL
-+	bool "Ext4 Rich Access Control Lists (EXPERIMENTAL)"
-+	depends on EXT4_FS
-+	select FS_RICHACL
-+	help
-+	  Rich ACLs are an implementation of NFSv4 ACLs, extended by file masks
-+	  to fit into the standard POSIX file permission model.  They are
-+	  designed to work seamlessly locally as well as across the NFSv4 and
-+	  CIFS/SMB2 network file system protocols.
-+
-+	  To learn more about Rich ACL, visit
-+	  http://acl.bestbits.at/richacl/
-+
-+	  If you don't know what Rich ACLs are, say N
-diff --git a/fs/ext4/Makefile b/fs/ext4/Makefile
-index 0310fec..b9a3e2e 100644
---- a/fs/ext4/Makefile
-+++ b/fs/ext4/Makefile
-@@ -12,3 +12,4 @@ ext4-y	:= balloc.o bitmap.o dir.o file.o fsync.o ialloc.o inode.o page-io.o \
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index f63c3d5..64187cd 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -978,7 +978,7 @@ struct ext4_inode_info {
+ #define EXT4_MOUNT_UPDATE_JOURNAL	0x01000	/* Update the journal format */
+ #define EXT4_MOUNT_NO_UID32		0x02000  /* Disable 32-bit UIDs */
+ #define EXT4_MOUNT_XATTR_USER		0x04000	/* Extended user attributes */
+-#define EXT4_MOUNT_POSIX_ACL		0x08000	/* POSIX Access Control Lists */
++#define EXT4_MOUNT_ACL			0x08000	/* Access Control Lists */
+ #define EXT4_MOUNT_NO_AUTO_DA_ALLOC	0x10000	/* No auto delalloc mapping */
+ #define EXT4_MOUNT_BARRIER		0x20000 /* Use block barriers */
+ #define EXT4_MOUNT_QUOTA		0x80000 /* Some quota option set */
+@@ -1552,6 +1552,7 @@ static inline void ext4_clear_state_flags(struct ext4_inode_info *ei)
+ #define EXT4_FEATURE_INCOMPAT_LARGEDIR		0x4000 /* >2GB or 3-lvl htree */
+ #define EXT4_FEATURE_INCOMPAT_INLINE_DATA	0x8000 /* data in inode */
+ #define EXT4_FEATURE_INCOMPAT_ENCRYPT		0x10000
++#define EXT4_FEATURE_INCOMPAT_RICHACL		0x20000
  
- ext4-$(CONFIG_EXT4_FS_POSIX_ACL)	+= acl.o
- ext4-$(CONFIG_EXT4_FS_SECURITY)		+= xattr_security.o
-+ext4-$(CONFIG_EXT4_FS_RICHACL) 		+= richacl.o
-diff --git a/fs/ext4/acl.c b/fs/ext4/acl.c
-index d40c8db..7c508f7 100644
---- a/fs/ext4/acl.c
-+++ b/fs/ext4/acl.c
-@@ -144,8 +144,7 @@ fail:
-  *
-  * inode->i_mutex: don't care
-  */
--struct posix_acl *
--ext4_get_acl(struct inode *inode, int type)
-+struct posix_acl *ext4_get_posix_acl(struct inode *inode, int type)
- {
- 	int name_index;
- 	char *value = NULL;
-@@ -239,7 +238,7 @@ __ext4_set_acl(handle_t *handle, struct inode *inode, int type,
+ #define EXT2_FEATURE_COMPAT_SUPP	EXT4_FEATURE_COMPAT_EXT_ATTR
+ #define EXT2_FEATURE_INCOMPAT_SUPP	(EXT4_FEATURE_INCOMPAT_FILETYPE| \
+@@ -1576,7 +1577,8 @@ static inline void ext4_clear_state_flags(struct ext4_inode_info *ei)
+ 					 EXT4_FEATURE_INCOMPAT_64BIT| \
+ 					 EXT4_FEATURE_INCOMPAT_FLEX_BG| \
+ 					 EXT4_FEATURE_INCOMPAT_MMP |	\
+-					 EXT4_FEATURE_INCOMPAT_INLINE_DATA)
++					 EXT4_FEATURE_INCOMPAT_INLINE_DATA | \
++					 EXT4_FEATURE_INCOMPAT_RICHACL)
+ #define EXT4_FEATURE_RO_COMPAT_SUPP	(EXT4_FEATURE_RO_COMPAT_SPARSE_SUPER| \
+ 					 EXT4_FEATURE_RO_COMPAT_LARGE_FILE| \
+ 					 EXT4_FEATURE_RO_COMPAT_GDT_CSUM| \
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index e061e66..4226898 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1242,6 +1242,27 @@ static ext4_fsblk_t get_sb_block(void **data)
+ 	return sb_block;
  }
  
- int
--ext4_set_acl(struct inode *inode, struct posix_acl *acl, int type)
-+ext4_set_posix_acl(struct inode *inode, struct posix_acl *acl, int type)
- {
- 	handle_t *handle;
- 	int error, retries = 0;
-@@ -264,7 +263,7 @@ retry:
-  * inode->i_mutex: up (access to inode is still exclusive)
-  */
- int
--ext4_init_acl(handle_t *handle, struct inode *inode, struct inode *dir)
-+ext4_init_posix_acl(handle_t *handle, struct inode *inode, struct inode *dir)
- {
- 	struct posix_acl *default_acl, *acl;
- 	int error;
-diff --git a/fs/ext4/acl.h b/fs/ext4/acl.h
-index da2c795..450b4d1 100644
---- a/fs/ext4/acl.h
-+++ b/fs/ext4/acl.h
-@@ -54,17 +54,17 @@ static inline int ext4_acl_count(size_t size)
- #ifdef CONFIG_EXT4_FS_POSIX_ACL
- 
- /* acl.c */
--struct posix_acl *ext4_get_acl(struct inode *inode, int type);
--int ext4_set_acl(struct inode *inode, struct posix_acl *acl, int type);
--extern int ext4_init_acl(handle_t *, struct inode *, struct inode *);
-+struct posix_acl *ext4_get_posix_acl(struct inode *inode, int type);
-+int ext4_set_posix_acl(struct inode *inode, struct posix_acl *acl, int type);
-+extern int ext4_init_posix_acl(handle_t *, struct inode *, struct inode *);
- 
- #else  /* CONFIG_EXT4_FS_POSIX_ACL */
- #include <linux/sched.h>
--#define ext4_get_acl NULL
--#define ext4_set_acl NULL
-+#define ext4_get_posix_acl NULL
-+#define ext4_set_posix_acl NULL
- 
- static inline int
--ext4_init_acl(handle_t *handle, struct inode *inode, struct inode *dir)
-+ext4_init_posix_acl(handle_t *handle, struct inode *inode, struct inode *dir)
- {
- 	return 0;
- }
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index 33a09da..be466f7 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -30,6 +30,7 @@
- #include "ext4_jbd2.h"
- #include "xattr.h"
- #include "acl.h"
-+#include "richacl.h"
- 
- /*
-  * Called when an inode is released. Note that this is different
-@@ -651,8 +652,9 @@ const struct inode_operations ext4_file_inode_operations = {
- 	.getxattr	= generic_getxattr,
- 	.listxattr	= ext4_listxattr,
- 	.removexattr	= generic_removexattr,
--	.get_acl	= ext4_get_acl,
--	.set_acl	= ext4_set_acl,
-+	.get_acl	= ext4_get_posix_acl,
-+	.set_acl	= ext4_set_posix_acl,
-+	.get_richacl	= ext4_get_richacl,
- 	.fiemap		= ext4_fiemap,
- };
- 
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index ac644c3..97d1c4b 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -28,6 +28,7 @@
- #include "ext4_jbd2.h"
- #include "xattr.h"
- #include "acl.h"
-+#include "richacl.h"
- 
- #include <trace/events/ext4.h>
- 
-@@ -1039,7 +1040,11 @@ got:
- 	if (err)
- 		goto fail_drop;
- 
--	err = ext4_init_acl(handle, inode, dir);
-+	if (EXT4_IS_RICHACL(dir))
-+		err = ext4_init_richacl(handle, inode, dir);
-+	else
-+		err = ext4_init_posix_acl(handle, inode, dir);
-+
- 	if (err)
- 		goto fail_free_drop;
- 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 5cb9a21..c379742 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -44,6 +44,7 @@
- #include "xattr.h"
- #include "acl.h"
- #include "truncate.h"
-+#include "richacl.h"
- 
- #include <trace/events/ext4.h>
- 
-@@ -4657,9 +4658,12 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
- 	if (orphan && inode->i_nlink)
- 		ext4_orphan_del(NULL, inode);
- 
--	if (!rc && (ia_valid & ATTR_MODE))
--		rc = posix_acl_chmod(inode, inode->i_mode);
--
-+	if (!rc && (ia_valid & ATTR_MODE)) {
-+		if (EXT4_IS_RICHACL(inode))
-+			rc = ext4_richacl_chmod(inode);
-+		else
-+			rc = posix_acl_chmod(inode, inode->i_mode);
-+	}
- err_out:
- 	ext4_std_error(inode->i_sb, error);
- 	if (!error)
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 28fe71a..da8f498 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -39,6 +39,7 @@
- 
- #include "xattr.h"
- #include "acl.h"
-+#include "richacl.h"
- 
- #include <trace/events/ext4.h>
- /*
-@@ -3541,8 +3542,9 @@ const struct inode_operations ext4_dir_inode_operations = {
- 	.getxattr	= generic_getxattr,
- 	.listxattr	= ext4_listxattr,
- 	.removexattr	= generic_removexattr,
--	.get_acl	= ext4_get_acl,
--	.set_acl	= ext4_set_acl,
-+	.get_acl	= ext4_get_posix_acl,
-+	.set_acl	= ext4_set_posix_acl,
-+	.get_richacl	= ext4_get_richacl,
- 	.fiemap         = ext4_fiemap,
- };
- 
-@@ -3552,6 +3554,7 @@ const struct inode_operations ext4_special_inode_operations = {
- 	.getxattr	= generic_getxattr,
- 	.listxattr	= ext4_listxattr,
- 	.removexattr	= generic_removexattr,
--	.get_acl	= ext4_get_acl,
--	.set_acl	= ext4_set_acl,
-+	.get_acl	= ext4_get_posix_acl,
-+	.set_acl	= ext4_set_posix_acl,
-+	.get_richacl	= ext4_get_richacl,
- };
-diff --git a/fs/ext4/richacl.c b/fs/ext4/richacl.c
-new file mode 100644
-index 0000000..89c10ab
---- /dev/null
-+++ b/fs/ext4/richacl.c
-@@ -0,0 +1,229 @@
-+/*
-+ * Copyright IBM Corporation, 2010
-+ * Copyright (C) 2015  Red Hat, Inc.
-+ * Author Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-+ *
-+ * This program is free software; you can redistribute it and/or modify it
-+ * under the terms of version 2.1 of the GNU Lesser General Public License
-+ * as published by the Free Software Foundation.
-+ *
-+ * This program is distributed in the hope that it would be useful, but
-+ * WITHOUT ANY WARRANTY; without even the implied warranty of
-+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-+ *
-+ */
-+
-+#include <linux/kernel.h>
-+#include <linux/fs.h>
-+#include <linux/richacl_xattr.h>
-+
-+#include "ext4.h"
-+#include "ext4_jbd2.h"
-+#include "xattr.h"
-+#include "acl.h"
-+#include "richacl.h"
-+
-+struct richacl *
-+ext4_get_richacl(struct inode *inode)
++static int enable_acl(struct super_block *sb)
 +{
-+	const int name_index = EXT4_XATTR_INDEX_RICHACL;
-+	void *value = NULL;
-+	struct richacl *acl;
-+	int retval;
-+
-+	if (!IS_RICHACL(inode))
-+		return ERR_PTR(-EOPNOTSUPP);
-+	acl = get_cached_richacl(inode);
-+	if (acl != ACL_NOT_CACHED)
-+		return acl;
-+	retval = ext4_xattr_get(inode, name_index, "", NULL, 0);
-+	if (retval > 0) {
-+		value = kmalloc(retval, GFP_KERNEL);
-+		if (!value)
-+			return ERR_PTR(-ENOMEM);
-+		retval = ext4_xattr_get(inode, name_index, "", value, retval);
-+	}
-+	if (retval > 0) {
-+		acl = richacl_from_xattr(value, retval);
-+		if (acl == ERR_PTR(-EINVAL))
-+			acl = ERR_PTR(-EIO);
-+	} else if (retval == -ENODATA || retval == -ENOSYS)
-+		acl = NULL;
-+	else
-+		acl = ERR_PTR(retval);
-+	kfree(value);
-+
-+	if (!IS_ERR_OR_NULL(acl))
-+		set_cached_richacl(inode, acl);
-+
-+	return acl;
-+}
-+
-+static int
-+ext4_set_richacl(handle_t *handle, struct inode *inode, struct richacl *acl)
-+{
-+	const int name_index = EXT4_XATTR_INDEX_RICHACL;
-+	size_t size = 0;
-+	void *value = NULL;
-+	int retval;
-+
-+	if (acl) {
-+		mode_t mode = inode->i_mode;
-+		if (richacl_equiv_mode(acl, &mode) == 0) {
-+			inode->i_mode = mode;
-+			ext4_mark_inode_dirty(handle, inode);
-+			acl = NULL;
-+		}
-+	}
-+	if (acl) {
-+		size = richacl_xattr_size(acl);
-+		value = kmalloc(size, GFP_KERNEL);
-+		if (!value)
-+			return -ENOMEM;
-+		richacl_to_xattr(acl, value);
-+	}
-+	if (handle)
-+		retval = ext4_xattr_set_handle(handle, inode, name_index, "",
-+					       value, size, 0);
-+	else
-+		retval = ext4_xattr_set(inode, name_index, "", value, size, 0);
-+	kfree(value);
-+	if (!retval)
-+		set_cached_richacl(inode, acl);
-+
-+	return retval;
-+}
-+
-+int
-+ext4_init_richacl(handle_t *handle, struct inode *inode, struct inode *dir)
-+{
-+	struct richacl *dir_acl = NULL;
-+
-+	if (!S_ISLNK(inode->i_mode)) {
-+		dir_acl = ext4_get_richacl(dir);
-+		if (IS_ERR(dir_acl))
-+			return PTR_ERR(dir_acl);
-+	}
-+	if (dir_acl) {
-+		struct richacl *acl;
-+		int retval;
-+
-+		acl = richacl_inherit_inode(dir_acl, inode);
-+		richacl_put(dir_acl);
-+
-+		retval = PTR_ERR(acl);
-+		if (acl && !IS_ERR(acl)) {
-+			retval = ext4_set_richacl(handle, inode, acl);
-+			richacl_put(acl);
-+		}
-+		return retval;
-+	} else {
-+		inode->i_mode &= ~current_umask();
-+		return 0;
-+	}
-+}
-+
-+int
-+ext4_richacl_chmod(struct inode *inode)
-+{
-+	struct richacl *acl;
-+	int retval;
-+
-+	if (S_ISLNK(inode->i_mode))
-+		return -EOPNOTSUPP;
-+	acl = ext4_get_richacl(inode);
-+	if (IS_ERR_OR_NULL(acl))
-+		return PTR_ERR(acl);
-+	acl = richacl_chmod(acl, inode->i_mode);
-+	if (IS_ERR(acl))
-+		return PTR_ERR(acl);
-+	retval = ext4_set_richacl(NULL, inode, acl);
-+	richacl_put(acl);
-+
-+	return retval;
-+}
-+
-+static size_t
-+ext4_xattr_list_richacl(struct dentry *dentry, char *list, size_t list_len,
-+			const char *name, size_t name_len, int type)
-+{
-+	const size_t size = sizeof(RICHACL_XATTR);
-+	if (!IS_RICHACL(dentry->d_inode))
-+		return 0;
-+	if (list && size <= list_len)
-+		memcpy(list, RICHACL_XATTR, size);
-+	return size;
-+}
-+
-+static int
-+ext4_xattr_get_richacl(struct dentry *dentry, const char *name, void *buffer,
-+		size_t buffer_size, int type)
-+{
-+	struct richacl *acl;
-+	size_t size;
-+
-+	if (strcmp(name, "") != 0)
-+		return -EINVAL;
-+	acl = ext4_get_richacl(dentry->d_inode);
-+	if (IS_ERR(acl))
-+		return PTR_ERR(acl);
-+	if (acl == NULL)
-+		return -ENODATA;
-+	size = richacl_xattr_size(acl);
-+	if (buffer) {
-+		if (size > buffer_size)
-+			return -ERANGE;
-+		richacl_to_xattr(acl, buffer);
-+	}
-+	richacl_put(acl);
-+
-+	return size;
-+}
-+
-+static int
-+ext4_xattr_set_richacl(struct dentry *dentry, const char *name,
-+		const void *value, size_t size, int flags, int type)
-+{
-+	handle_t *handle;
-+	struct richacl *acl = NULL;
-+	int retval, retries = 0;
-+	struct inode *inode = dentry->d_inode;
-+
-+	if (!IS_RICHACL(dentry->d_inode))
-+		return -EOPNOTSUPP;
-+	if (S_ISLNK(inode->i_mode))
-+		return -EOPNOTSUPP;
-+	if (strcmp(name, "") != 0)
-+		return -EINVAL;
-+	if (!uid_eq(current_fsuid(), inode->i_uid) &&
-+	    inode_permission(inode, MAY_CHMOD) &&
-+	    !capable(CAP_FOWNER))
-+		return -EPERM;
-+	if (value) {
-+		acl = richacl_from_xattr(value, size);
-+		if (IS_ERR(acl))
-+			return PTR_ERR(acl);
-+
-+		inode->i_mode &= ~S_IRWXUGO;
-+		inode->i_mode |= richacl_masks_to_mode(acl);
-+	}
-+
-+retry:
-+	handle = ext4_journal_start(inode, EXT4_HT_XATTR,
-+				    EXT4_DATA_TRANS_BLOCKS(inode->i_sb));
-+	if (IS_ERR(handle))
-+		return PTR_ERR(handle);
-+	retval = ext4_set_richacl(handle, inode, acl);
-+	ext4_journal_stop(handle);
-+	if (retval == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
-+		goto retry;
-+	richacl_put(acl);
-+	return retval;
-+}
-+
-+const struct xattr_handler ext4_richacl_xattr_handler = {
-+	.prefix	= RICHACL_XATTR,
-+	.list	= ext4_xattr_list_richacl,
-+	.get	= ext4_xattr_get_richacl,
-+	.set	= ext4_xattr_set_richacl,
-+};
-diff --git a/fs/ext4/richacl.h b/fs/ext4/richacl.h
-new file mode 100644
-index 0000000..09a5cad
---- /dev/null
-+++ b/fs/ext4/richacl.h
-@@ -0,0 +1,47 @@
-+/*
-+ * Copyright IBM Corporation, 2010
-+ * Copyright (C)  2015 Red Hat, Inc.
-+ * Author Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-+ *
-+ * This program is free software; you can redistribute it and/or modify it
-+ * under the terms of version 2.1 of the GNU Lesser General Public License
-+ * as published by the Free Software Foundation.
-+ *
-+ * This program is distributed in the hope that it would be useful, but
-+ * WITHOUT ANY WARRANTY; without even the implied warranty of
-+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-+ *
-+ */
-+
-+#ifndef __FS_EXT4_RICHACL_H
-+#define __FS_EXT4_RICHACL_H
-+
-+#include <linux/richacl.h>
-+
++	sb->s_flags &= ~(MS_POSIXACL | MS_RICHACL);
++	if (test_opt(sb, ACL)) {
++		if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RICHACL)) {
 +#ifdef CONFIG_EXT4_FS_RICHACL
-+
-+#define EXT4_IS_RICHACL(inode) IS_RICHACL(inode)
-+
-+extern struct richacl *ext4_get_richacl(struct inode *);
-+extern int ext4_init_richacl(handle_t *, struct inode *, struct inode *);
-+extern int ext4_richacl_chmod(struct inode *);
-+
-+#else  /* CONFIG_FS_EXT4_RICHACL */
-+
-+#define EXT4_IS_RICHACL(inode) (0)
-+#define ext4_get_richacl   NULL
-+
-+static inline int
-+ext4_init_richacl(handle_t *handle, struct inode *inode, struct inode *dir)
-+{
++			sb->s_flags |= MS_RICHACL;
++#else
++			return -EOPNOTSUPP;
++#endif
++		} else {
++#ifdef CONFIG_EXT4_FS_POSIX_ACL
++			sb->s_flags |= MS_POSIXACL;
++#else
++			return -EOPNOTSUPP;
++#endif
++		}
++	}
 +	return 0;
 +}
 +
-+static inline int
-+ext4_richacl_chmod(struct inode *inode)
-+{
-+	return 0;
-+}
-+
-+#endif  /* CONFIG_FS_EXT4_RICHACL */
-+#endif  /* __FS_EXT4_RICHACL_H */
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index 1e09fc7..815a306 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -100,6 +100,9 @@ static const struct xattr_handler *ext4_xattr_handler_map[] = {
- #ifdef CONFIG_EXT4_FS_SECURITY
- 	[EXT4_XATTR_INDEX_SECURITY]	     = &ext4_xattr_security_handler,
+ #define DEFAULT_JOURNAL_IOPRIO (IOPRIO_PRIO_VALUE(IOPRIO_CLASS_BE, 3))
+ static char deprecated_msg[] = "Mount option \"%s\" will be removed by %s\n"
+ 	"Contact linux-ext4@vger.kernel.org if you think we should keep it.\n";
+@@ -1388,9 +1409,9 @@ static const struct mount_opts {
+ 	 MOPT_NO_EXT2 | MOPT_DATAJ},
+ 	{Opt_user_xattr, EXT4_MOUNT_XATTR_USER, MOPT_SET},
+ 	{Opt_nouser_xattr, EXT4_MOUNT_XATTR_USER, MOPT_CLEAR},
+-#ifdef CONFIG_EXT4_FS_POSIX_ACL
+-	{Opt_acl, EXT4_MOUNT_POSIX_ACL, MOPT_SET},
+-	{Opt_noacl, EXT4_MOUNT_POSIX_ACL, MOPT_CLEAR},
++#if defined(CONFIG_EXT4_FS_POSIX_ACL) || defined(CONFIG_EXT4_FS_RICHACL)
++	{Opt_acl, EXT4_MOUNT_ACL, MOPT_SET},
++	{Opt_noacl, EXT4_MOUNT_ACL, MOPT_CLEAR},
+ #else
+ 	{Opt_acl, 0, MOPT_NOSUPPORT},
+ 	{Opt_noacl, 0, MOPT_NOSUPPORT},
+@@ -3538,8 +3559,8 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 		set_opt(sb, NO_UID32);
+ 	/* xattr user namespace & acls are now defaulted on */
+ 	set_opt(sb, XATTR_USER);
+-#ifdef CONFIG_EXT4_FS_POSIX_ACL
+-	set_opt(sb, POSIX_ACL);
++#if defined(CONFIG_EXT4_FS_POSIX_ACL) || defined(CONFIG_EXT4_FS_RICHACL)
++	set_opt(sb, ACL);
  #endif
-+#ifdef CONFIG_EXT4_FS_RICHACL
-+	[EXT4_XATTR_INDEX_RICHACL]           = &ext4_richacl_xattr_handler,
-+#endif
- };
+ 	/* don't forget to enable journal_csum when metadata_csum is enabled. */
+ 	if (ext4_has_metadata_csum(sb))
+@@ -3620,8 +3641,9 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 			clear_opt(sb, DELALLOC);
+ 	}
  
- const struct xattr_handler *ext4_xattr_handlers[] = {
-@@ -112,6 +115,9 @@ const struct xattr_handler *ext4_xattr_handlers[] = {
- #ifdef CONFIG_EXT4_FS_SECURITY
- 	&ext4_xattr_security_handler,
- #endif
-+#ifdef CONFIG_EXT4_FS_RICHACL
-+	&ext4_richacl_xattr_handler,
-+#endif
- 	NULL
- };
+-	sb->s_flags = (sb->s_flags & ~MS_POSIXACL) |
+-		(test_opt(sb, POSIX_ACL) ? MS_POSIXACL : 0);
++	err = enable_acl(sb);
++	if (err)
++		goto failed_mount;
  
-diff --git a/fs/ext4/xattr.h b/fs/ext4/xattr.h
-index 29bedf5..065821e 100644
---- a/fs/ext4/xattr.h
-+++ b/fs/ext4/xattr.h
-@@ -97,6 +97,7 @@ struct ext4_xattr_ibody_find {
- extern const struct xattr_handler ext4_xattr_user_handler;
- extern const struct xattr_handler ext4_xattr_trusted_handler;
- extern const struct xattr_handler ext4_xattr_security_handler;
-+extern const struct xattr_handler ext4_richacl_xattr_handler;
+ 	if (le32_to_cpu(es->s_rev_level) == EXT4_GOOD_OLD_REV &&
+ 	    (EXT4_HAS_COMPAT_FEATURE(sb, ~0U) ||
+@@ -4913,8 +4935,9 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
+ 	if (sbi->s_mount_flags & EXT4_MF_FS_ABORTED)
+ 		ext4_abort(sb, "Abort forced by user");
  
- extern ssize_t ext4_listxattr(struct dentry *, char *, size_t);
+-	sb->s_flags = (sb->s_flags & ~MS_POSIXACL) |
+-		(test_opt(sb, POSIX_ACL) ? MS_POSIXACL : 0);
++	err = enable_acl(sb);
++	if (err)
++		goto restore_opts;
+ 
+ 	es = sbi->s_es;
  
 -- 
 2.1.0
