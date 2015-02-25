@@ -2,9 +2,9 @@ Return-Path: linux-kernel-owner@vger.kernel.org
 From: Andreas Gruenbacher <andreas.gruenbacher@gmail.com>
 To: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-nfs@vger.kernel.org
-Subject: [RFC 04/21] vfs: Add MAY_CREATE_FILE and MAY_CREATE_DIR permission flags
-Date: Thu, 26 Feb 2015 00:41:25 +0100
-Message-Id: <f8b04df08a0dd950d47e17c901773258f0653eed.1424907511.git.agruenba@redhat.com>
+Subject: [RFC 05/21] vfs: Add MAY_DELETE_SELF and MAY_DELETE_CHILD permission flags
+Date: Thu, 26 Feb 2015 00:41:26 +0100
+Message-Id: <a858d4a82fe74516f5036cb0b8ff8f177830025f.1424907511.git.agruenba@redhat.com>
 In-Reply-To: <cover.1424907511.git.agruenba@redhat.com>
 References: <cover.1424907511.git.agruenba@redhat.com>
 In-Reply-To: <cover.1424907511.git.agruenba@redhat.com>
@@ -12,184 +12,72 @@ References: <cover.1424907511.git.agruenba@redhat.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Richacls distinguish between creating non-directories and directories. To
-support that, add an isdir parameter to may_create(). When checking
-inode_permission() for create permission, pass in an additional MAY_CREATE_FILE
-or MAY_CREATE_DIR mask flag.
+Normally, deleting a file requires write and execute access to the parent
+directory.  With Richacls, a process with MAY_DELETE_SELF access to a file may
+delete the file even without write access to the parent directory.
 
-To allow checking for delete *and* create access when replacing an existing
-file via vfs_rename(), add a replace parameter to may_delete().
+To support that, pass the MAY_DELETE_CHILD mask flag to inode_permission() when
+checking for delete access inside a directory, and MAY_DELETE_SELF when
+checking for delete access to a file itelf.
+
+The MAY_DELETE_SELF permission does not override the sticky directory check.
 
 Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
 ---
- fs/namei.c         | 42 ++++++++++++++++++++++++------------------
+ fs/namei.c         | 15 +++++++++++----
  include/linux/fs.h |  2 ++
- 2 files changed, 26 insertions(+), 18 deletions(-)
+ 2 files changed, 13 insertions(+), 4 deletions(-)
 
 diff --git a/fs/namei.c b/fs/namei.c
-index 0ba4bbc..a8bc030 100644
+index a8bc030..a8d1674 100644
 --- a/fs/namei.c
 +++ b/fs/namei.c
-@@ -454,7 +454,8 @@ static int sb_permission(struct super_block *sb, struct inode *inode, int mask)
-  * this, letting us set arbitrary permissions for filesystem access without
+@@ -455,7 +455,7 @@ static int sb_permission(struct super_block *sb, struct inode *inode, int mask)
   * changing the "normal" UIDs which are used for other things.
   *
-- * When checking for MAY_APPEND, MAY_WRITE must also be set in @mask.
-+ * When checking for MAY_APPEND, MAY_CREATE_FILE, MAY_CREATE_DIR,
-+ * MAY_WRITE must also be set in @mask.
+  * When checking for MAY_APPEND, MAY_CREATE_FILE, MAY_CREATE_DIR,
+- * MAY_WRITE must also be set in @mask.
++ * MAY_DELETE_CHILD, MAY_DELETE_SELF, MAY_WRITE must also be set in @mask.
   */
  int inode_permission(struct inode *inode, int mask)
  {
-@@ -2447,10 +2448,11 @@ EXPORT_SYMBOL(__check_sticky);
-  * 10. We don't allow removal of NFS sillyrenamed files; it's handled by
-  *     nfs_async_unlink().
-  */
--static int may_delete(struct inode *dir, struct dentry *victim, bool isdir)
-+static int may_delete(struct inode *dir, struct dentry *victim,
-+		      bool isdir, bool replace)
+@@ -2452,7 +2452,7 @@ static int may_delete(struct inode *dir, struct dentry *victim,
+ 		      bool isdir, bool replace)
  {
  	struct inode *inode = victim->d_inode;
--	int error;
-+	int error, mask = MAY_WRITE | MAY_EXEC;
+-	int error, mask = MAY_WRITE | MAY_EXEC;
++	int error, mask = MAY_EXEC;
  
  	if (d_is_negative(victim))
  		return -ENOENT;
-@@ -2459,7 +2461,9 @@ static int may_delete(struct inode *dir, struct dentry *victim, bool isdir)
- 	BUG_ON(victim->d_parent->d_inode != dir);
+@@ -2462,8 +2462,15 @@ static int may_delete(struct inode *dir, struct dentry *victim,
  	audit_inode_child(dir, victim, AUDIT_TYPE_CHILD_DELETE);
  
--	error = inode_permission(dir, MAY_WRITE | MAY_EXEC);
-+	if (replace)
-+		mask |= isdir ? MAY_CREATE_DIR : MAY_CREATE_FILE;
-+	error = inode_permission(dir, mask);
+ 	if (replace)
+-		mask |= isdir ? MAY_CREATE_DIR : MAY_CREATE_FILE;
+-	error = inode_permission(dir, mask);
++		mask |= MAY_WRITE | (isdir ? MAY_CREATE_DIR : MAY_CREATE_FILE);
++	error = inode_permission(dir, mask | MAY_WRITE | MAY_DELETE_CHILD);
++	if (error && IS_RICHACL(inode)) {
++		/* Deleting is also permitted with MAY_EXEC on the directory
++		 * and MAY_DELETE_SELF on the inode.  */
++		if (!inode_permission(inode, MAY_DELETE_SELF) &&
++		    !inode_permission(dir, mask))
++			error = 0;
++	}
  	if (error)
  		return error;
  	if (IS_APPEND(dir))
-@@ -2490,14 +2494,16 @@ static int may_delete(struct inode *dir, struct dentry *victim, bool isdir)
-  *  3. We should have write and exec permissions on dir
-  *  4. We can't do it if dir is immutable (done in permission())
-  */
--static inline int may_create(struct inode *dir, struct dentry *child)
-+static inline int may_create(struct inode *dir, struct dentry *child, bool isdir)
- {
-+	int mask = isdir ? MAY_CREATE_DIR : MAY_CREATE_FILE;
-+
- 	audit_inode_child(dir, child, AUDIT_TYPE_CHILD_CREATE);
- 	if (child->d_inode)
- 		return -EEXIST;
- 	if (IS_DEADDIR(dir))
- 		return -ENOENT;
--	return inode_permission(dir, MAY_WRITE | MAY_EXEC);
-+	return inode_permission(dir, MAY_WRITE | MAY_EXEC | mask);
- }
- 
- /*
-@@ -2547,7 +2553,7 @@ EXPORT_SYMBOL(unlock_rename);
- int vfs_create(struct inode *dir, struct dentry *dentry, umode_t mode,
- 		bool want_excl)
- {
--	int error = may_create(dir, dentry);
-+	int error = may_create(dir, dentry, false);
- 	if (error)
- 		return error;
- 
-@@ -3422,7 +3428,7 @@ EXPORT_SYMBOL(user_path_create);
- 
- int vfs_mknod(struct inode *dir, struct dentry *dentry, umode_t mode, dev_t dev)
- {
--	int error = may_create(dir, dentry);
-+	int error = may_create(dir, dentry, false);
- 
- 	if (error)
- 		return error;
-@@ -3514,7 +3520,7 @@ SYSCALL_DEFINE3(mknod, const char __user *, filename, umode_t, mode, unsigned, d
- 
- int vfs_mkdir(struct inode *dir, struct dentry *dentry, umode_t mode)
- {
--	int error = may_create(dir, dentry);
-+	int error = may_create(dir, dentry, true);
- 	unsigned max_links = dir->i_sb->s_max_links;
- 
- 	if (error)
-@@ -3595,7 +3601,7 @@ EXPORT_SYMBOL(dentry_unhash);
- 
- int vfs_rmdir(struct inode *dir, struct dentry *dentry)
- {
--	int error = may_delete(dir, dentry, 1);
-+	int error = may_delete(dir, dentry, true, false);
- 
- 	if (error)
- 		return error;
-@@ -3715,7 +3721,7 @@ SYSCALL_DEFINE1(rmdir, const char __user *, pathname)
- int vfs_unlink(struct inode *dir, struct dentry *dentry, struct inode **delegated_inode)
- {
- 	struct inode *target = dentry->d_inode;
--	int error = may_delete(dir, dentry, 0);
-+	int error = may_delete(dir, dentry, false, false);
- 
- 	if (error)
- 		return error;
-@@ -3847,7 +3853,7 @@ SYSCALL_DEFINE1(unlink, const char __user *, pathname)
- 
- int vfs_symlink(struct inode *dir, struct dentry *dentry, const char *oldname)
- {
--	int error = may_create(dir, dentry);
-+	int error = may_create(dir, dentry, false);
- 
- 	if (error)
- 		return error;
-@@ -3930,7 +3936,7 @@ int vfs_link(struct dentry *old_dentry, struct inode *dir, struct dentry *new_de
- 	if (!inode)
- 		return -ENOENT;
- 
--	error = may_create(dir, new_dentry);
-+	error = may_create(dir, new_dentry, false);
- 	if (error)
- 		return error;
- 
-@@ -4118,19 +4124,19 @@ int vfs_rename(struct inode *old_dir, struct dentry *old_dentry,
- 	if (source == target)
- 		return 0;
- 
--	error = may_delete(old_dir, old_dentry, is_dir);
-+	error = may_delete(old_dir, old_dentry, is_dir, false);
- 	if (error)
- 		return error;
- 
- 	if (!target) {
--		error = may_create(new_dir, new_dentry);
-+		error = may_create(new_dir, new_dentry, is_dir);
- 	} else {
- 		new_is_dir = d_is_dir(new_dentry);
- 
- 		if (!(flags & RENAME_EXCHANGE))
--			error = may_delete(new_dir, new_dentry, is_dir);
-+			error = may_delete(new_dir, new_dentry, is_dir, true);
- 		else
--			error = may_delete(new_dir, new_dentry, new_is_dir);
-+			error = may_delete(new_dir, new_dentry, new_is_dir, true);
- 	}
- 	if (error)
- 		return error;
-@@ -4394,7 +4400,7 @@ SYSCALL_DEFINE2(rename, const char __user *, oldname, const char __user *, newna
- 
- int vfs_whiteout(struct inode *dir, struct dentry *dentry)
- {
--	int error = may_create(dir, dentry);
-+	int error = may_create(dir, dentry, false);
- 	if (error)
- 		return error;
- 
 diff --git a/include/linux/fs.h b/include/linux/fs.h
-index f64eb45..bbe1d26 100644
+index bbe1d26..101abcf 100644
 --- a/include/linux/fs.h
 +++ b/include/linux/fs.h
-@@ -80,6 +80,8 @@ typedef void (dio_iodone_t)(struct kiocb *iocb, loff_t offset,
- #define MAY_CHDIR		0x00000040
- /* called from RCU mode, don't block */
+@@ -82,6 +82,8 @@ typedef void (dio_iodone_t)(struct kiocb *iocb, loff_t offset,
  #define MAY_NOT_BLOCK		0x00000080
-+#define MAY_CREATE_FILE		0x00000100
-+#define MAY_CREATE_DIR		0x00000200
+ #define MAY_CREATE_FILE		0x00000100
+ #define MAY_CREATE_DIR		0x00000200
++#define MAY_DELETE_CHILD	0x00000400
++#define MAY_DELETE_SELF		0x00000800
  
  /*
   * flags in file.f_mode.  Note that FMODE_READ and FMODE_WRITE must correspond
