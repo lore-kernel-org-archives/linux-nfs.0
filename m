@@ -1,61 +1,90 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mxout1.mail.janestreet.com ([38.105.200.112]:34778 "EHLO
-	mxout1.mail.janestreet.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753261AbbB0UOK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Feb 2015 15:14:10 -0500
-Received: from tot-qpr-mailcore1.delacy.com ([172.27.56.68] helo=tot-qpr-mailcore1)
-	by mxout1.mail.janestreet.com with smtp (Exim 4.82)
-	(envelope-from <cperl@janestreet.com>)
-	id 1YRRIX-0002qR-Ep
-	for linux-nfs@vger.kernel.org; Fri, 27 Feb 2015 15:14:09 -0500
-Received: from mail-yk0-f176.google.com ([209.85.160.176])
-	by mxgoog1.mail.janestreet.com with esmtps (UNKNOWN:AES128-GCM-SHA256:128)
-	(Exim 4.72)
-	(envelope-from <cperl@janestreet.com>)
-	id 1YRRIX-000517-9v
-	for linux-nfs@vger.kernel.org; Fri, 27 Feb 2015 15:14:09 -0500
-Received: by ykq19 with SMTP id 19so8216924ykq.9
-        for <linux-nfs@vger.kernel.org>; Fri, 27 Feb 2015 12:14:09 -0800 (PST)
-MIME-Version: 1.0
-In-Reply-To: <CAHHaOubVomDJ5uePb7DFGizZ0TBsyC-tJN5p6-RWOYKQC2oxvA@mail.gmail.com>
-References: <CAAih9mgvxu+L2Y7yxbHCOKX39Cm5U6ZCd5-HkJUUMFTL9moSwA@mail.gmail.com>
- <CAHQdGtSvwbVeTD-ALEU=6MJYts=61o1TaUVN6Vky1nwrKPTJXQ@mail.gmail.com>
- <CAAih9mhNUK6-eeAxM8VcdTCx3b59ztAVHSd37HiYaJr-AbX_1w@mail.gmail.com>
- <CAHQdGtS1b7Yjs4QozG1R+wxhxvRbCA85ZNCNQG6-ccyDeg+_gA@mail.gmail.com>
- <CAAih9mg1CkcTYGGZRwg8YPzEkZeqB686s+difvoBHFKfC=VD=g@mail.gmail.com>
- <CAHQdGtTUcP9b7YBk1Wu_HTO9z=TQF=Dfixig3_Cww=VSaxqGDw@mail.gmail.com>
- <CAAih9mijyXYSQ6=ckg3J-Kje1fhdjQFVTyB6KvoKYfFbW9cfLQ@mail.gmail.com>
- <CAHQdGtR7pZz2OsGbMi0cM9MoqmEFWtaStgWwBfSoSebkYmTcMg@mail.gmail.com>
- <CAAih9miZ8SA2EMz6OkAuLhDox8MLEKpXB7f75LJx5FO9zgm8Rg@mail.gmail.com> <CAHHaOubVomDJ5uePb7DFGizZ0TBsyC-tJN5p6-RWOYKQC2oxvA@mail.gmail.com>
-From: Chris Perl <cperl@janestreet.com>
-Date: Fri, 27 Feb 2015 15:13:48 -0500
-Message-ID: <CAAih9mjHzZeS17rKSG06pzCh7zCPFd=nG1=hMSU+T+GW5btPEA@mail.gmail.com>
+Received: from aserp1040.oracle.com ([141.146.126.69]:20774 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932222AbbBYWdE convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Feb 2015 17:33:04 -0500
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
 Subject: Re: File Read Returns Non-existent Null Bytes
-To: David Brodbeck <brodbd@uw.edu>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <CAHQdGtTUcP9b7YBk1Wu_HTO9z=TQF=Dfixig3_Cww=VSaxqGDw@mail.gmail.com>
+Date: Wed, 25 Feb 2015 17:32:49 -0500
+Cc: Chris Perl <cperl@janestreet.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Chris Perl <chris.perl@gmail.com>
+Message-Id: <E6147A6E-E0B4-4DB1-A35F-2EB4BC6910B0@oracle.com>
+References: <CAAih9mgvxu+L2Y7yxbHCOKX39Cm5U6ZCd5-HkJUUMFTL9moSwA@mail.gmail.com> <CAHQdGtSvwbVeTD-ALEU=6MJYts=61o1TaUVN6Vky1nwrKPTJXQ@mail.gmail.com> <CAAih9mhNUK6-eeAxM8VcdTCx3b59ztAVHSd37HiYaJr-AbX_1w@mail.gmail.com> <CAHQdGtS1b7Yjs4QozG1R+wxhxvRbCA85ZNCNQG6-ccyDeg+_gA@mail.gmail.com> <CAAih9mg1CkcTYGGZRwg8YPzEkZeqB686s+difvoBHFKfC=VD=g@mail.gmail.com> <CAHQdGtTUcP9b7YBk1Wu_HTO9z=TQF=Dfixig3_Cww=VSaxqGDw@mail.gmail.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> I *think* in the situation where the file is being appended to, you're not
-> likely to see anything but nulls.
 
-Agreed.
+On Feb 25, 2015, at 4:47 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
 
-> I'm not an expert but I think this occurs
-> when the read happens between the file size being extended and the new data
-> being written, effectively making a 'hole' at the end of the file.
+> On Wed, Feb 25, 2015 at 4:02 PM, Chris Perl <cperl@janestreet.com> wrote:
+>>> So imagine 2 WRITE calls that are being sent to an initially empty
+>>> file. One WRITE call is for offset 0, and length 4096 bytes. The
+>>> second call is for offset 4096 and length 4096 bytes.
+>>> Imagine now that the first WRITE gets delayed (either because the page
+>>> cache isn't flushing that part of the file yet or because it gets
+>>> re-ordered in the RPC layer or on the server), and the second WRITE is
+>>> received and processed by the server first.
+>>> Once the delayed WRITE is processed there will be data at offset 0,
+>>> but until that happens, anyone reading the file on the server will see
+>>> a hole of length 4096 bytes.
+>>> 
+>>> This kind of issue is why close-to-open cache consistency relies on
+>>> only one client accessing the file on the server when it is open for
+>>> writing.
+>> 
+>> Fair enough.  I am taking note of the fact that you said "This kind of
+>> issue" implying there are probably other subtle cases I'm not thinking
+>> about or that your example does not illustrate.
+>> 
+>> That said, in your example, there exists some moment in time when the
+>> file on the server actually does have a hole in it full of 0's.  In my
+>> case, the file never contains 0's.
+>> 
+>> To be fair, when testing with an Isilon, I can't actually inspect the
+>> state of the file on the server in any meaningful way, so I can't be
+>> certain that's true.  But, from the view point of the reading client
+>> at the NFS layer there are never 0's read back across the wire.  I've
+>> confirmed this by matching up wireshark traces while reproducing and
+>> the READ reply's never contain 0's.  The 0's manifest due to reading
+>> too far past where there is valid data in the page cache.
+> 
+> Then that could be a GETATTR or something similar extending the file
+> size outside the READ rpc call. Since the pagecache data is copied to
+> userspace without any locks being held, we cannot prevent that race.
 
-As said in other replies, its because the size is updated causing too
-much data to be read out of the page cache, effectively appending
-NULLs to the data.
+FWIW it’s easy to reproduce a similar race with fsx, and I encounter
+it frequently while running xfstests on fast NFS servers.
 
-> When you're reading a file that's been concurrently modified, you can get
-> corruption (a mix of new and old data) on pretty much any filesystem that
-> doesn't enforce mandatory locks.  It's just much less likely on a local
-> filesystem because the window is shorter and more operations are atomic.
+fsx invokes ftruncate following a set of asynchronous reads
+(generated possibly due to readahead). The reads are started first,
+then the SETATTR, but they complete out of order.
 
-If you're talking about a local filesystem and you have one process
-appending data (with O_APPEND) and another reading, I don't believe
-you'll see the same sort of issue (but, I could be wrong).
+The SETATTR changes the test file’s size, and the completion
+updates the file size in the client’s inode. Then the read requests
+complete on the client and set the file’s size back to its old value.
+
+All it takes is one late read completion, and the cached file size
+is corrupted. fsx detects the file size mismatch and terminates the
+test. The file size is corrected by a subsequent GETATTR (say, an
+“ls -l” to check it after fsx has terminated).
+
+While SETATTR blocks concurrent writes, there’s no serialization
+on either the client or server to help guarantee the ordering of
+SETATTR with read operations.
+
+I’ve found a successful workaround by forcing the client to ignore
+post-op attrs in read replies. A stronger solution might simply set
+the “file attributes need update” flag in the inode if any file
+attribute mutation is noticed during a read completion.
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
