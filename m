@@ -1,194 +1,155 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx143.netapp.com ([216.240.21.24]:25255 "EHLO mx143.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751479AbbBYUc4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 25 Feb 2015 15:32:56 -0500
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
-CC: <Anna.Schumaker@netapp.com>
-Subject: [PATCH v2] NFS: Don't zap caches on fallocate()
-Date: Wed, 25 Feb 2015 15:32:52 -0500
-Message-ID: <1424896372-20531-1-git-send-email-Anna.Schumaker@Netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+Received: from mail-wg0-f49.google.com ([74.125.82.49]:45251 "EHLO
+	mail-wg0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753038AbbBYXmD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Feb 2015 18:42:03 -0500
+From: Andreas Gruenbacher <andreas.gruenbacher@gmail.com>
+To: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org
+Subject: [RFC 00/21] Richacls
+Date: Thu, 26 Feb 2015 00:41:21 +0100
+Message-Id: <cover.1424907511.git.agruenba@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch adds a GETATTR to the end of ALLOCATE and DEALLOCATE
-operations so we can set the updated inode size and change attribute
-directly.  DEALLOCATE will still need to release pagecache pages, so
-nfs42_proc_deallocate() now calls truncate_pagecache_range() before
-contacting the server.
+Hello,
 
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
----
- fs/nfs/inode.c          |  1 -
- fs/nfs/nfs42proc.c      | 21 +++++++++++++++++----
- fs/nfs/nfs42xdr.c       | 20 ++++++++++++++++----
- fs/nfs/nfs4file.c       |  1 -
- include/linux/nfs_xdr.h |  4 ++++
- 5 files changed, 37 insertions(+), 10 deletions(-)
+here is an updated richacl patch queue, also available in git [1].  For those
+who might not know, richacls are an implementation of NFSv4 ACLs that cleanly
+integrates into the POSIX file permission model.  The goal is to improve
+interoperability between Linux and other systems, mainly across the NFSv4 and
+CIFS/SMB protocols.  A file system can either contain posix acls or richacls,
+but not both.
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 83107be..b39ae50 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -192,7 +192,6 @@ void nfs_zap_caches(struct inode *inode)
- 	nfs_zap_caches_locked(inode);
- 	spin_unlock(&inode->i_lock);
- }
--EXPORT_SYMBOL_GPL(nfs_zap_caches);
- 
- void nfs_zap_mapping(struct inode *inode, struct address_space *mapping)
- {
-diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
-index cb17072..cbae958 100644
---- a/fs/nfs/nfs42proc.c
-+++ b/fs/nfs/nfs42proc.c
-@@ -36,13 +36,16 @@ static int _nfs42_proc_fallocate(struct rpc_message *msg, struct file *filep,
- 				 loff_t offset, loff_t len)
- {
- 	struct inode *inode = file_inode(filep);
-+	struct nfs_server *server = NFS_SERVER(inode);
- 	struct nfs42_falloc_args args = {
- 		.falloc_fh	= NFS_FH(inode),
- 		.falloc_offset	= offset,
- 		.falloc_length	= len,
-+		.falloc_bitmask	= server->cache_consistency_bitmask,
-+	};
-+	struct nfs42_falloc_res res = {
-+		.falloc_server	= server,
- 	};
--	struct nfs42_falloc_res res;
--	struct nfs_server *server = NFS_SERVER(inode);
- 	int status;
- 
- 	msg->rpc_argp = &args;
-@@ -52,8 +55,17 @@ static int _nfs42_proc_fallocate(struct rpc_message *msg, struct file *filep,
- 	if (status)
- 		return status;
- 
--	return nfs4_call_sync(server->client, server, msg,
--			      &args.seq_args, &res.seq_res, 0);
-+	res.falloc_fattr = nfs_alloc_fattr();
-+	if (!res.falloc_fattr)
-+		return -ENOMEM;
-+
-+	status = nfs4_call_sync(server->client, server, msg,
-+				&args.seq_args, &res.seq_res, 0);
-+	if (status == 0)
-+		status = nfs_post_op_update_inode(inode, res.falloc_fattr);
-+
-+	kfree(res.falloc_fattr);
-+	return status;
- }
- 
- static int nfs42_proc_fallocate(struct rpc_message *msg, struct file *filep,
-@@ -101,6 +113,7 @@ int nfs42_proc_deallocate(struct file *filep, loff_t offset, loff_t len)
- 	if (!nfs_server_capable(inode, NFS_CAP_DEALLOCATE))
- 		return -EOPNOTSUPP;
- 
-+	truncate_pagecache_range(inode, offset, (offset + len) -1);
- 	err = nfs42_proc_fallocate(&msg, filep, offset, len);
- 	if (err == -EOPNOTSUPP)
- 		NFS_SERVER(inode)->caps &= ~NFS_CAP_DEALLOCATE;
-diff --git a/fs/nfs/nfs42xdr.c b/fs/nfs/nfs42xdr.c
-index 038a7e1..1a25b27 100644
---- a/fs/nfs/nfs42xdr.c
-+++ b/fs/nfs/nfs42xdr.c
-@@ -25,16 +25,20 @@
- 
- #define NFS4_enc_allocate_sz		(compound_encode_hdr_maxsz + \
- 					 encode_putfh_maxsz + \
--					 encode_allocate_maxsz)
-+					 encode_allocate_maxsz + \
-+					 encode_getattr_maxsz)
- #define NFS4_dec_allocate_sz		(compound_decode_hdr_maxsz + \
- 					 decode_putfh_maxsz + \
--					 decode_allocate_maxsz)
-+					 decode_allocate_maxsz + \
-+					 decode_getattr_maxsz)
- #define NFS4_enc_deallocate_sz		(compound_encode_hdr_maxsz + \
- 					 encode_putfh_maxsz + \
--					 encode_deallocate_maxsz)
-+					 encode_deallocate_maxsz + \
-+					 encode_getattr_maxsz)
- #define NFS4_dec_deallocate_sz		(compound_decode_hdr_maxsz + \
- 					 decode_putfh_maxsz + \
--					 decode_deallocate_maxsz)
-+					 decode_deallocate_maxsz + \
-+					 decode_getattr_maxsz)
- #define NFS4_enc_seek_sz		(compound_encode_hdr_maxsz + \
- 					 encode_putfh_maxsz + \
- 					 encode_seek_maxsz)
-@@ -92,6 +96,7 @@ static void nfs4_xdr_enc_allocate(struct rpc_rqst *req,
- 	encode_sequence(xdr, &args->seq_args, &hdr);
- 	encode_putfh(xdr, args->falloc_fh, &hdr);
- 	encode_allocate(xdr, args, &hdr);
-+	encode_getfattr(xdr, args->falloc_bitmask, &hdr);
- 	encode_nops(&hdr);
- }
- 
-@@ -110,6 +115,7 @@ static void nfs4_xdr_enc_deallocate(struct rpc_rqst *req,
- 	encode_sequence(xdr, &args->seq_args, &hdr);
- 	encode_putfh(xdr, args->falloc_fh, &hdr);
- 	encode_deallocate(xdr, args, &hdr);
-+	encode_getfattr(xdr, args->falloc_bitmask, &hdr);
- 	encode_nops(&hdr);
- }
- 
-@@ -183,6 +189,9 @@ static int nfs4_xdr_dec_allocate(struct rpc_rqst *rqstp,
- 	if (status)
- 		goto out;
- 	status = decode_allocate(xdr, res);
-+	if (status)
-+		goto out;
-+	decode_getfattr(xdr, res->falloc_fattr, res->falloc_server);
- out:
- 	return status;
- }
-@@ -207,6 +216,9 @@ static int nfs4_xdr_dec_deallocate(struct rpc_rqst *rqstp,
- 	if (status)
- 		goto out;
- 	status = decode_deallocate(xdr, res);
-+	if (status)
-+		goto out;
-+	decode_getfattr(xdr, res->falloc_fattr, res->falloc_server);
- out:
- 	return status;
- }
-diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
-index 8b46389..d09c689 100644
---- a/fs/nfs/nfs4file.c
-+++ b/fs/nfs/nfs4file.c
-@@ -159,7 +159,6 @@ static long nfs42_fallocate(struct file *filep, int mode, loff_t offset, loff_t
- 		ret = nfs42_proc_allocate(filep, offset, len);
- 	mutex_unlock(&inode->i_mutex);
- 
--	nfs_zap_caches(inode);
- 	return ret;
- }
- #endif /* CONFIG_NFS_V4_2 */
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 4cb3eaa..38346b6 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1271,11 +1271,15 @@ struct nfs42_falloc_args {
- 	nfs4_stateid			 falloc_stateid;
- 	u64				 falloc_offset;
- 	u64				 falloc_length;
-+	const u32			*falloc_bitmask;
- };
- 
- struct nfs42_falloc_res {
- 	struct nfs4_sequence_res	seq_res;
- 	unsigned int			status;
-+
-+	struct nfs_fattr		*falloc_fattr;
-+	const struct nfs_server		*falloc_server;
- };
- 
- struct nfs42_seek_args {
+This patch queue includes the vfs and ext4 changes needed for local richacl
+support.  A previous version of this patch queue was last posted about a year
+ago [2]; I have updated the patches to v4.0-rc1 and tried to incorporate the
+feedback from the previous discussion.  The changes include:
+
+ * Introduction of a base_acl object type so that an inode can either cache
+   a posix acl or a richacl largely without caring which of the two kinds
+   it is dealing with.
+
+ * RCU support as for posix acls.
+
+ * Various cleanups and more documentation.
+
+Things I'm not entirely happy with:
+
+ * A new get_richacl inode operation is introduced.  This is needed because
+   we need to perform permission checks in contexts where the dentry of the
+   inode to check is not available and we cannot use the getxattr inode
+   operation.  It would be nice if we could either convert the getxattr inode
+   operation to take an inode instead, or pass the dentries down to where
+   the get_richacl inode operation is currently used.
+
+ * The base_acl code is rather ugly; maybe the previous version which was
+   criticized wasn't so bad after all.
+
+ * It would be nice if the MAY_DELETE_SELF flag could override the sticky
+   directory check as it did in the previous version of this patch queue.  I
+   couldn't come up with a clean way of achieving that, though.
+
+Because the code has changed quite a bit since the last posting, I have removed
+the previous sign-offs.
+
+At this point, I would like to ask for your feedback as to what should be
+changed before these patches can be merged, even if merging these patches alone
+doesn't make a while lot of sense.  I will follow up with additional pieces to
+the puzzle like the nfsv4 support as I get them into shape again.
+
+--
+
+Which kind of acls an ext4 file system supports is determined by the "richacl"
+ext4 feature (mkfs.ext4 -O richacl or tune2fs -O richacl).  The file system
+also needs to be mounted with the "acl" mount option, which is the default
+nowadays.
+
+A version of e2fsprogs with support for the "richacl" feature can be found on
+github [3], but the feature can also be enabled "hard" in debugfs.  Note that
+unpatched versions of e2fsck will not check file systems with the feature
+enabled though.
+
+The acls themselves can be manipulated with the richacl command-line utility
+[4].  Some details on the permission model and examples of its use can be found
+at the richacl page, http://acl.bestbits.at/richacl/.
+
+ [1] git://git.kernel.org/pub/scm/linux/kernel/git/agruen/linux-richacl.git richacl
+ [2] http://lwn.net/Articles/596517/
+ [3] https://github.com/andreas-gruenbacher/e2fsprogs
+ [4] https://github.com/andreas-gruenbacher/richacl
+
+Thanks,
+Andreas
+
+--
+
+Andreas Gruenbacher (19):
+  vfs: Minor documentation fix
+  vfs: Shrink struct posix_acl
+  vfs: Add IS_ACL() and IS_RICHACL() tests
+  vfs: Add MAY_CREATE_FILE and MAY_CREATE_DIR permission flags
+  vfs: Add MAY_DELETE_SELF and MAY_DELETE_CHILD permission flags
+  vfs: Make the inode passed to inode_change_ok non-const
+  vfs: Add permission flags for setting file attributes
+  richacl: In-memory representation and helper functions
+  richacl: Permission mapping functions
+  richacl: Compute maximum file masks from an acl
+  richacl: Update the file masks in chmod()
+  richacl: Permission check algorithm
+  richacl: Create-time inheritance
+  richacl: Check if an acl is equivalent to a file mode
+  richacl: Automatic Inheritance
+  richacl: xattr mapping functions
+  vfs: Cache base_acl objects in inodes
+  vfs: Cache richacl in struct inode
+  vfs: Add richacl permission checking
+
+Aneesh Kumar K.V (2):
+  ext4: Implement rich acl for ext4
+  ext4: Add richacl feature flag
+
+ Documentation/filesystems/porting               |   8 +-
+ Documentation/filesystems/vfs.txt               |   3 +
+ drivers/staging/lustre/lustre/llite/llite_lib.c |   2 +-
+ fs/Kconfig                                      |   3 +
+ fs/Makefile                                     |   2 +
+ fs/attr.c                                       |  81 ++-
+ fs/ext4/Kconfig                                 |  15 +
+ fs/ext4/Makefile                                |   1 +
+ fs/ext4/acl.c                                   |   7 +-
+ fs/ext4/acl.h                                   |  12 +-
+ fs/ext4/ext4.h                                  |   6 +-
+ fs/ext4/file.c                                  |   6 +-
+ fs/ext4/ialloc.c                                |   7 +-
+ fs/ext4/inode.c                                 |  10 +-
+ fs/ext4/namei.c                                 |  11 +-
+ fs/ext4/richacl.c                               | 229 ++++++++
+ fs/ext4/richacl.h                               |  47 ++
+ fs/ext4/super.c                                 |  41 +-
+ fs/ext4/xattr.c                                 |   6 +
+ fs/ext4/xattr.h                                 |   1 +
+ fs/f2fs/acl.c                                   |   4 +-
+ fs/inode.c                                      |  15 +-
+ fs/namei.c                                      | 108 +++-
+ fs/posix_acl.c                                  |  31 +-
+ fs/richacl_base.c                               | 660 ++++++++++++++++++++++++
+ fs/richacl_inode.c                              |  67 +++
+ fs/richacl_xattr.c                              | 131 +++++
+ include/linux/fs.h                              |  47 +-
+ include/linux/posix_acl.h                       |  12 +-
+ include/linux/richacl.h                         | 329 ++++++++++++
+ include/linux/richacl_xattr.h                   |  47 ++
+ include/uapi/linux/fs.h                         |   3 +-
+ 32 files changed, 1844 insertions(+), 108 deletions(-)
+ create mode 100644 fs/ext4/richacl.c
+ create mode 100644 fs/ext4/richacl.h
+ create mode 100644 fs/richacl_base.c
+ create mode 100644 fs/richacl_inode.c
+ create mode 100644 fs/richacl_xattr.c
+ create mode 100644 include/linux/richacl.h
+ create mode 100644 include/linux/richacl_xattr.h
+
 -- 
-2.3.0
+2.1.0
 
