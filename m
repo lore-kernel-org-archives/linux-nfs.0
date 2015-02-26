@@ -1,26 +1,31 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:20921 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932176AbbBZPIq convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Feb 2015 10:08:46 -0500
+Received: from userp1040.oracle.com ([156.151.31.81]:34664 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753864AbbBZQ0U convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Feb 2015 11:26:20 -0500
 Content-Type: text/plain; charset=windows-1252
 Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
-Subject: Re: File Read Returns Non-existent Null Bytes
+Subject: fsx size error (was: File Read Returns Non-existent Null Bytes)
 From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1424914057.41161.8.camel@primarydata.com>
-Date: Thu, 26 Feb 2015 10:08:34 -0500
-Cc: Chris Perl <cperl@janestreet.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Chris Perl <chris.perl@gmail.com>
-Message-Id: <6DC0A7F3-F647-494F-9554-2C78067F5A39@oracle.com>
-References: <CAAih9mgvxu+L2Y7yxbHCOKX39Cm5U6ZCd5-HkJUUMFTL9moSwA@mail.gmail.com> <CAHQdGtSvwbVeTD-ALEU=6MJYts=61o1TaUVN6Vky1nwrKPTJXQ@mail.gmail.com> <CAAih9mhNUK6-eeAxM8VcdTCx3b59ztAVHSd37HiYaJr-AbX_1w@mail.gmail.com> <CAHQdGtS1b7Yjs4QozG1R+wxhxvRbCA85ZNCNQG6-ccyDeg+_gA@mail.gmail.com> <CAAih9mg1CkcTYGGZRwg8YPzEkZeqB686s+difvoBHFKfC=VD=g@mail.gmail.com> <CAHQdGtTUcP9b7YBk1Wu_HTO9z=TQF=Dfixig3_Cww=VSaxqGDw@mail.gmail.com> <E6147A6E-E0B4-4DB1-A35F-2EB4BC6910B0@oracle.com> <1424911067.41161.2.camel@primarydata.com> <1424911390.41161.4.camel@primarydata.com> <1424914057.41161.8.camel@primarydata.com>
+Date: Thu, 26 Feb 2015 11:26:16 -0500
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <1DA1252F-8D1D-4A77-BF8B-51B8AD30975A@oracle.com>
+References: <1424914057.41161.8.camel@primarydata.com>
 To: Trond Myklebust <trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+I’m breaking this into a separate thread, since you correctly
+pointed out that this is not the same problem that Chris sees.
 
-On Feb 25, 2015, at 8:27 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+Begin forwarded message:
 
+> From: Trond Myklebust <trond.myklebust@primarydata.com>
+> Subject: Re: File Read Returns Non-existent Null Bytes
+> Date: February 25, 2015 at 8:27:37 PM EST
+> To: Chuck Lever <chuck.lever@oracle.com>
+> Cc: Chris Perl <cperl@janestreet.com>, Linux NFS Mailing List <linux-nfs@vger.kernel.org>, Chris Perl <chris.perl@gmail.com>
+> 
 > On Wed, 2015-02-25 at 19:43 -0500, Trond Myklebust wrote:
 >> On Wed, 2015-02-25 at 19:37 -0500, Trond Myklebust wrote:
 >>> On Wed, 2015-02-25 at 17:32 -0500, Chuck Lever wrote:
@@ -61,7 +66,26 @@ On Feb 25, 2015, at 8:27 PM, Trond Myklebust <trond.myklebust@primarydata.com> w
 > the re-read of the last page in the file. Also a little more detail in
 > the changelog.
 
-Thanks, I’ll give this a shot, hopefully today.
+Test results:
+
+generic/127 74s ... - output mismatch (see /home/cel/src/xfstests/results//generic/127.out.bad)
+    --- tests/generic/127.out	2014-02-13 15:40:45.202103271 -0500
+    +++ /home/cel/src/xfstests/results//generic/127.out.bad	2015-02-26 10:46:24.284735977 -0500
+    @@ -4,7 +4,10011 @@
+     === FSX Light Mode, Memory Mapping ===
+     All operations completed A-OK!
+     === FSX Standard Mode, No Memory Mapping ===
+    -All operations completed A-OK!
+    +ltp/fsx -q -l 262144 -o 65536 -S 191110531 -N 100000 -R -W fsx_std_nommap
+    +Size error: expected 0x36f6f stat 0x3e67a seek 0x3e67a
+    +LOG DUMP (83542 total operations):
+    ...
+    (Run 'diff -u tests/generic/127.out /home/cel/src/xfstests/results//generic/127.out.bad'  to see the entire diff)
+
+This happens when the server exports a tmpfs, for example, which
+mimics the performance characteristics of an NVM-based filesystem.
+Otherwise, SETATTR will be slow and the race is typically avoided.
+Well, that’s my theory, anyway.
 
 
 > 8<--------------------------------------------------------------------
@@ -82,7 +106,23 @@ Thanks, I’ll give this a shot, hopefully today.
 > file boundaries is sufficient, since this means any attempt to read
 > the data in those areas will trigger a new RPC call, which will be
 > ordered w.r.t.  the size change on the server.
-> 
+
+Certainly reads outside the new file size have _data_ that can
+be discarded.
+
+But in this case: The server processes the operations in the order
+the client sent them. The READs first, then the SETATTR. That’s why
+the READ replies still have the old file size.
+
+But queuing on the server causes the replies to be returned to the
+client out of order. The client applies the post-op attributes in
+that order, and the old file size replaces the new size.
+
+Therefore I think _any_ READ that is performed on the server before
+the SETATTR, but completes on the client after the SETATTR, will
+poison the file’s attribute cache on the client.
+
+
 > 2) We do not move the call to truncate_pagecache(), since we want
 > to ensure that any partial page zeroing is ordered w.r.t. the
 > update of inode->i_size.
