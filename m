@@ -1,17 +1,17 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f43.google.com ([209.85.192.43]:52885 "EHLO
-	mail-qg0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752761AbbBZAar (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Feb 2015 19:30:47 -0500
-Received: by mail-qg0-f43.google.com with SMTP id i50so6173901qgf.2
-        for <linux-nfs@vger.kernel.org>; Wed, 25 Feb 2015 16:30:47 -0800 (PST)
-Date: Wed, 25 Feb 2015 19:30:34 -0500
-From: Jeff Layton <jlayton@poochiereds.net>
+Received: from mail-yk0-f171.google.com ([209.85.160.171]:44758 "EHLO
+	mail-yk0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753332AbbBZO2m (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Feb 2015 09:28:42 -0500
+Received: by ykp131 with SMTP id 131so4167110ykp.11
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Feb 2015 06:28:41 -0800 (PST)
+Date: Thu, 26 Feb 2015 09:28:37 -0500
+From: Jeff Layton <jeff.layton@primarydata.com>
 To: Andrew Elble <aweits@rit.edu>
 Cc: linux-nfs@vger.kernel.org, etmsys@rit.edu, stable@vger.kernel.org
 Subject: Re: [PATCH] NFS: fix clp->cl_revoked list deletion causing softlock
  in nfsd
-Message-ID: <20150225193034.512bd906@synchrony.poochiereds.net>
+Message-ID: <20150226092837.221bf8b2@tlielax.poochiereds.net>
 In-Reply-To: <1424871775-98137-1-git-send-email-aweits@rit.edu>
 References: <1424871775-98137-1-git-send-email-aweits@rit.edu>
 MIME-Version: 1.0
@@ -50,6 +50,4 @@ Andrew Elble <aweits@rit.edu> wrote:
 >  		nfs4_put_stid(&dp->dl_stid);
 >  	}
 
-Looks right.
-
-Reviewed-by: Jeff Layton <jlayton@poochiereds.net>
+Reviewed-by: Jeff Layton <jeff.layton@primarydata.com>
