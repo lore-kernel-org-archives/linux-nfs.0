@@ -1,12 +1,12 @@
 Return-Path: linux-kernel-owner@vger.kernel.org
-Subject: [PATCH 01/13] FS-Cache: Count culled objects and objects rejected
- due to lack of space
+Subject: [PATCH 02/13] FS-Cache: Move fscache_report_unexpected_submission()
+ to make it more available
 From: David Howells <dhowells@redhat.com>
 To: linux-cachefs@redhat.com
 Cc: dhowells@redhat.com, linux-fsdevel@vger.kernel.org,
         linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Date: Thu, 26 Feb 2015 14:02:02 +0000
-Message-ID: <20150226140202.2387.93636.stgit@warthog.procyon.org.uk>
+Date: Thu, 26 Feb 2015 14:02:09 +0000
+Message-ID: <20150226140209.2387.62527.stgit@warthog.procyon.org.uk>
 In-Reply-To: <20150226140155.2387.70579.stgit@warthog.procyon.org.uk>
 References: <20150226140155.2387.70579.stgit@warthog.procyon.org.uk>
 MIME-Version: 1.0
@@ -14,339 +14,105 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Count the number of objects that get culled by the cache backend and the
-number of objects that the cache backend declines to instantiate due to lack
-of space in the cache.
-
-These numbers are made available through /proc/fs/fscache/stats
+Move fscache_report_unexpected_submission() up within operation.c so that it
+can be called from fscache_submit_exclusive_op() too.
 
 Signed-off-by: David Howells <dhowells@redhat.com>
 ---
 
- Documentation/filesystems/caching/backend-api.txt |   23 ++++++++++
- Documentation/filesystems/caching/fscache.txt     |    4 ++
- fs/cachefiles/internal.h                          |    1 
- fs/cachefiles/namei.c                             |   33 +++++++++------
- fs/fscache/internal.h                             |    5 ++
- fs/fscache/object.c                               |   47 +++++++++++++++++++++
- fs/fscache/stats.c                                |   10 ++++
- include/linux/fscache-cache.h                     |   12 +++++
- 8 files changed, 122 insertions(+), 13 deletions(-)
+ fs/fscache/operation.c |   74 ++++++++++++++++++++++++------------------------
+ 1 file changed, 37 insertions(+), 37 deletions(-)
 
-diff --git a/Documentation/filesystems/caching/backend-api.txt b/Documentation/filesystems/caching/backend-api.txt
-index 277d1e810670..c0bd5677271b 100644
---- a/Documentation/filesystems/caching/backend-api.txt
-+++ b/Documentation/filesystems/caching/backend-api.txt
-@@ -676,6 +676,29 @@ FS-Cache provides some utilities that a cache backend may make use of:
-      as possible.
- 
- 
-+ (*) Indicate that a stale object was found and discarded:
-+
-+	void fscache_object_retrying_stale(struct fscache_object *object);
-+
-+     This is called to indicate that the lookup procedure found an object in
-+     the cache that the netfs decided was stale.  The object has been
-+     discarded from the cache and the lookup will be performed again.
-+
-+
-+ (*) Indicate that the caching backend killed an object:
-+
-+	void fscache_object_mark_killed(struct fscache_object *object,
-+					enum fscache_why_object_killed why);
-+
-+     This is called to indicate that the cache backend preemptively killed an
-+     object.  The why parameter should be set to indicate the reason:
-+
-+	FSCACHE_OBJECT_IS_STALE - the object was stale and needs discarding.
-+	FSCACHE_OBJECT_NO_SPACE - there was insufficient cache space
-+	FSCACHE_OBJECT_WAS_RETIRED - the object was retired when relinquished.
-+	FSCACHE_OBJECT_WAS_CULLED - the object was culled to make space.
-+
-+
-  (*) Get and release references on a retrieval record:
- 
- 	void fscache_get_retrieval(struct fscache_retrieval *op);
-diff --git a/Documentation/filesystems/caching/fscache.txt b/Documentation/filesystems/caching/fscache.txt
-index 770267af5b3e..66fa7fbccfa4 100644
---- a/Documentation/filesystems/caching/fscache.txt
-+++ b/Documentation/filesystems/caching/fscache.txt
-@@ -303,6 +303,10 @@ proc files.
- 		wrp=N	Number of in-progress write_page() cache ops
- 		ucp=N	Number of in-progress uncache_page() cache ops
- 		dsp=N	Number of in-progress dissociate_pages() cache ops
-+	CacheEv	nsp=N	Number of object lookups/creations rejected due to lack of space
-+		stl=N	Number of stale objects deleted
-+		rtr=N	Number of objects retired when relinquished
-+		cul=N	Number of objects culled
- 
- 
-  (*) /proc/fs/fscache/histogram
-diff --git a/fs/cachefiles/internal.h b/fs/cachefiles/internal.h
-index 8c52472d2efa..aecd0859eacb 100644
---- a/fs/cachefiles/internal.h
-+++ b/fs/cachefiles/internal.h
-@@ -43,7 +43,6 @@ struct cachefiles_object {
- 	loff_t				i_size;		/* object size */
- 	unsigned long			flags;
- #define CACHEFILES_OBJECT_ACTIVE	0		/* T if marked active */
--#define CACHEFILES_OBJECT_BURIED	1		/* T if preemptively buried */
- 	atomic_t			usage;		/* object usage count */
- 	uint8_t				type;		/* object type */
- 	uint8_t				new;		/* T if object new */
-diff --git a/fs/cachefiles/namei.c b/fs/cachefiles/namei.c
-index 7f8e83f9d74e..1d60195fc518 100644
---- a/fs/cachefiles/namei.c
-+++ b/fs/cachefiles/namei.c
-@@ -97,7 +97,8 @@ static noinline void cachefiles_printk_object(struct cachefiles_object *object,
-  *   call vfs_unlink(), vfs_rmdir() or vfs_rename()
-  */
- static void cachefiles_mark_object_buried(struct cachefiles_cache *cache,
--					  struct dentry *dentry)
-+					  struct dentry *dentry,
-+					  enum fscache_why_object_killed why)
- {
- 	struct cachefiles_object *object;
- 	struct rb_node *p;
-@@ -132,8 +133,9 @@ found_dentry:
- 		pr_err("\n");
- 		pr_err("Error: Can't preemptively bury live object\n");
- 		cachefiles_printk_object(object, NULL);
--	} else if (test_and_set_bit(CACHEFILES_OBJECT_BURIED, &object->flags)) {
--		pr_err("Error: Object already preemptively buried\n");
-+	} else {
-+		if (why != FSCACHE_OBJECT_IS_STALE)
-+			fscache_object_mark_killed(&object->fscache, why);
- 	}
- 
- 	write_unlock(&cache->active_lock);
-@@ -265,7 +267,8 @@ requeue:
- static int cachefiles_bury_object(struct cachefiles_cache *cache,
- 				  struct dentry *dir,
- 				  struct dentry *rep,
--				  bool preemptive)
-+				  bool preemptive,
-+				  enum fscache_why_object_killed why)
- {
- 	struct dentry *grave, *trap;
- 	struct path path, path_to_graveyard;
-@@ -289,7 +292,7 @@ static int cachefiles_bury_object(struct cachefiles_cache *cache,
- 			ret = vfs_unlink(dir->d_inode, rep, NULL);
- 
- 			if (preemptive)
--				cachefiles_mark_object_buried(cache, rep);
-+				cachefiles_mark_object_buried(cache, rep, why);
- 		}
- 
- 		mutex_unlock(&dir->d_inode->i_mutex);
-@@ -394,7 +397,7 @@ try_again:
- 					    "Rename failed with error %d", ret);
- 
- 		if (preemptive)
--			cachefiles_mark_object_buried(cache, rep);
-+			cachefiles_mark_object_buried(cache, rep, why);
- 	}
- 
- 	unlock_rename(cache->graveyard, dir);
-@@ -422,7 +425,7 @@ int cachefiles_delete_object(struct cachefiles_cache *cache,
- 
- 	mutex_lock_nested(&dir->d_inode->i_mutex, I_MUTEX_PARENT);
- 
--	if (test_bit(CACHEFILES_OBJECT_BURIED, &object->flags)) {
-+	if (test_bit(FSCACHE_OBJECT_KILLED_BY_CACHE, &object->fscache.flags)) {
- 		/* object allocation for the same key preemptively deleted this
- 		 * object's file so that it could create its own file */
- 		_debug("object preemptively buried");
-@@ -433,7 +436,8 @@ int cachefiles_delete_object(struct cachefiles_cache *cache,
- 		 * may have been renamed */
- 		if (dir == object->dentry->d_parent) {
- 			ret = cachefiles_bury_object(cache, dir,
--						     object->dentry, false);
-+						     object->dentry, false,
-+						     FSCACHE_OBJECT_WAS_RETIRED);
- 		} else {
- 			/* it got moved, presumably by cachefilesd culling it,
- 			 * so it's no longer in the key path and we can ignore
-@@ -522,7 +526,7 @@ lookup_again:
- 		if (!next->d_inode) {
- 			ret = cachefiles_has_space(cache, 1, 0);
- 			if (ret < 0)
--				goto create_error;
-+				goto no_space_error;
- 
- 			path.dentry = dir;
- 			ret = security_path_mkdir(&path, next, 0);
-@@ -551,7 +555,7 @@ lookup_again:
- 		if (!next->d_inode) {
- 			ret = cachefiles_has_space(cache, 1, 0);
- 			if (ret < 0)
--				goto create_error;
-+				goto no_space_error;
- 
- 			path.dentry = dir;
- 			ret = security_path_mknod(&path, next, S_IFREG, 0);
-@@ -602,7 +606,8 @@ lookup_again:
- 			 * mutex) */
- 			object->dentry = NULL;
- 
--			ret = cachefiles_bury_object(cache, dir, next, true);
-+			ret = cachefiles_bury_object(cache, dir, next, true,
-+						     FSCACHE_OBJECT_IS_STALE);
- 			dput(next);
- 			next = NULL;
- 
-@@ -610,6 +615,7 @@ lookup_again:
- 				goto delete_error;
- 
- 			_debug("redo lookup");
-+			fscache_object_retrying_stale(&object->fscache);
- 			goto lookup_again;
- 		}
- 	}
-@@ -662,6 +668,8 @@ lookup_again:
- 	_leave(" = 0 [%lu]", object->dentry->d_inode->i_ino);
- 	return 0;
- 
-+no_space_error:
-+	fscache_object_mark_killed(&object->fscache, FSCACHE_OBJECT_NO_SPACE);
- create_error:
- 	_debug("create error %d", ret);
- 	if (ret == -EIO)
-@@ -927,7 +935,8 @@ int cachefiles_cull(struct cachefiles_cache *cache, struct dentry *dir,
- 	/*  actually remove the victim (drops the dir mutex) */
- 	_debug("bury");
- 
--	ret = cachefiles_bury_object(cache, dir, victim, false);
-+	ret = cachefiles_bury_object(cache, dir, victim, false,
-+				     FSCACHE_OBJECT_WAS_CULLED);
- 	if (ret < 0)
- 		goto error;
- 
-diff --git a/fs/fscache/internal.h b/fs/fscache/internal.h
-index 7872a62ef30c..3063a58b7d3d 100644
---- a/fs/fscache/internal.h
-+++ b/fs/fscache/internal.h
-@@ -271,6 +271,11 @@ extern atomic_t fscache_n_cop_write_page;
- extern atomic_t fscache_n_cop_uncache_page;
- extern atomic_t fscache_n_cop_dissociate_pages;
- 
-+extern atomic_t fscache_n_cache_no_space_reject;
-+extern atomic_t fscache_n_cache_stale_objects;
-+extern atomic_t fscache_n_cache_retired_objects;
-+extern atomic_t fscache_n_cache_culled_objects;
-+
- static inline void fscache_stat(atomic_t *stat)
- {
- 	atomic_inc(stat);
-diff --git a/fs/fscache/object.c b/fs/fscache/object.c
-index da032daf0e0d..12bb468bf0ae 100644
---- a/fs/fscache/object.c
-+++ b/fs/fscache/object.c
-@@ -1016,3 +1016,50 @@ static const struct fscache_state *fscache_update_object(struct fscache_object *
- 	_leave("");
- 	return transit_to(WAIT_FOR_CMD);
+diff --git a/fs/fscache/operation.c b/fs/fscache/operation.c
+index e7b87a0e5185..68ead8482617 100644
+--- a/fs/fscache/operation.c
++++ b/fs/fscache/operation.c
+@@ -76,6 +76,43 @@ static void fscache_run_op(struct fscache_object *object,
  }
-+
-+/**
-+ * fscache_object_retrying_stale - Note retrying stale object
-+ * @object: The object that will be retried
-+ *
-+ * Note that an object lookup found an on-disk object that was adjudged to be
-+ * stale and has been deleted.  The lookup will be retried.
-+ */
-+void fscache_object_retrying_stale(struct fscache_object *object)
-+{
-+	fscache_stat(&fscache_n_cache_no_space_reject);
-+}
-+EXPORT_SYMBOL(fscache_object_retrying_stale);
-+
-+/**
-+ * fscache_object_mark_killed - Note that an object was killed
-+ * @object: The object that was culled
-+ * @why: The reason the object was killed.
-+ *
-+ * Note that an object was killed.  Returns true if the object was
-+ * already marked killed, false if it wasn't.
-+ */
-+void fscache_object_mark_killed(struct fscache_object *object,
-+				enum fscache_why_object_killed why)
-+{
-+	if (test_and_set_bit(FSCACHE_OBJECT_KILLED_BY_CACHE, &object->flags)) {
-+		pr_err("Error: Object already killed by cache [%s]\n",
-+		       object->cache->identifier);
-+		return;
-+	}
-+
-+	switch (why) {
-+	case FSCACHE_OBJECT_NO_SPACE:
-+		fscache_stat(&fscache_n_cache_no_space_reject);
-+		break;
-+	case FSCACHE_OBJECT_IS_STALE:
-+		fscache_stat(&fscache_n_cache_stale_objects);
-+		break;
-+	case FSCACHE_OBJECT_WAS_RETIRED:
-+		fscache_stat(&fscache_n_cache_retired_objects);
-+		break;
-+	case FSCACHE_OBJECT_WAS_CULLED:
-+		fscache_stat(&fscache_n_cache_culled_objects);
-+		break;
-+	}
-+}
-+EXPORT_SYMBOL(fscache_object_mark_killed);
-diff --git a/fs/fscache/stats.c b/fs/fscache/stats.c
-index 40d13c70ef51..3a722e8f2307 100644
---- a/fs/fscache/stats.c
-+++ b/fs/fscache/stats.c
-@@ -130,6 +130,11 @@ atomic_t fscache_n_cop_write_page;
- atomic_t fscache_n_cop_uncache_page;
- atomic_t fscache_n_cop_dissociate_pages;
  
-+atomic_t fscache_n_cache_no_space_reject;
-+atomic_t fscache_n_cache_stale_objects;
-+atomic_t fscache_n_cache_retired_objects;
-+atomic_t fscache_n_cache_culled_objects;
-+
  /*
-  * display the general statistics
-  */
-@@ -271,6 +276,11 @@ static int fscache_stats_show(struct seq_file *m, void *v)
- 		   atomic_read(&fscache_n_cop_write_page),
- 		   atomic_read(&fscache_n_cop_uncache_page),
- 		   atomic_read(&fscache_n_cop_dissociate_pages));
-+	seq_printf(m, "CacheEv: nsp=%d stl=%d rtr=%d cul=%d\n",
-+		   atomic_read(&fscache_n_cache_no_space_reject),
-+		   atomic_read(&fscache_n_cache_stale_objects),
-+		   atomic_read(&fscache_n_cache_retired_objects),
-+		   atomic_read(&fscache_n_cache_culled_objects));
- 	return 0;
++ * report an unexpected submission
++ */
++static void fscache_report_unexpected_submission(struct fscache_object *object,
++						 struct fscache_operation *op,
++						 const struct fscache_state *ostate)
++{
++	static bool once_only;
++	struct fscache_operation *p;
++	unsigned n;
++
++	if (once_only)
++		return;
++	once_only = true;
++
++	kdebug("unexpected submission OP%x [OBJ%x %s]",
++	       op->debug_id, object->debug_id, object->state->name);
++	kdebug("objstate=%s [%s]", object->state->name, ostate->name);
++	kdebug("objflags=%lx", object->flags);
++	kdebug("objevent=%lx [%lx]", object->events, object->event_mask);
++	kdebug("ops=%u inp=%u exc=%u",
++	       object->n_ops, object->n_in_progress, object->n_exclusive);
++
++	if (!list_empty(&object->pending_ops)) {
++		n = 0;
++		list_for_each_entry(p, &object->pending_ops, pend_link) {
++			ASSERTCMP(p->object, ==, object);
++			kdebug("%p %p", op->processor, op->release);
++			n++;
++		}
++
++		kdebug("n=%u", n);
++	}
++
++	dump_stack();
++}
++
++/*
+  * submit an exclusive operation for an object
+  * - other ops are excluded from running simultaneously with this one
+  * - this gets any extra refs it needs on an op
+@@ -139,43 +176,6 @@ int fscache_submit_exclusive_op(struct fscache_object *object,
  }
  
-diff --git a/include/linux/fscache-cache.h b/include/linux/fscache-cache.h
-index 771484993ca7..c9dafdaf3347 100644
---- a/include/linux/fscache-cache.h
-+++ b/include/linux/fscache-cache.h
-@@ -371,6 +371,7 @@ struct fscache_object {
- #define FSCACHE_OBJECT_IS_LOOKED_UP	4	/* T if object has been looked up */
- #define FSCACHE_OBJECT_IS_AVAILABLE	5	/* T if object has become active */
- #define FSCACHE_OBJECT_RETIRED		6	/* T if object was retired on relinquishment */
-+#define FSCACHE_OBJECT_KILLED_BY_CACHE	7	/* T if object was killed by the cache */
- 
- 	struct list_head	cache_link;	/* link in cache->object_list */
- 	struct hlist_node	cookie_link;	/* link in cookie->backing_objects */
-@@ -551,4 +552,15 @@ extern enum fscache_checkaux fscache_check_aux(struct fscache_object *object,
- 					       const void *data,
- 					       uint16_t datalen);
- 
-+extern void fscache_object_retrying_stale(struct fscache_object *object);
-+
-+enum fscache_why_object_killed {
-+	FSCACHE_OBJECT_IS_STALE,
-+	FSCACHE_OBJECT_NO_SPACE,
-+	FSCACHE_OBJECT_WAS_RETIRED,
-+	FSCACHE_OBJECT_WAS_CULLED,
-+};
-+extern void fscache_object_mark_killed(struct fscache_object *object,
-+				       enum fscache_why_object_killed why);
-+
- #endif /* _LINUX_FSCACHE_CACHE_H */
+ /*
+- * report an unexpected submission
+- */
+-static void fscache_report_unexpected_submission(struct fscache_object *object,
+-						 struct fscache_operation *op,
+-						 const struct fscache_state *ostate)
+-{
+-	static bool once_only;
+-	struct fscache_operation *p;
+-	unsigned n;
+-
+-	if (once_only)
+-		return;
+-	once_only = true;
+-
+-	kdebug("unexpected submission OP%x [OBJ%x %s]",
+-	       op->debug_id, object->debug_id, object->state->name);
+-	kdebug("objstate=%s [%s]", object->state->name, ostate->name);
+-	kdebug("objflags=%lx", object->flags);
+-	kdebug("objevent=%lx [%lx]", object->events, object->event_mask);
+-	kdebug("ops=%u inp=%u exc=%u",
+-	       object->n_ops, object->n_in_progress, object->n_exclusive);
+-
+-	if (!list_empty(&object->pending_ops)) {
+-		n = 0;
+-		list_for_each_entry(p, &object->pending_ops, pend_link) {
+-			ASSERTCMP(p->object, ==, object);
+-			kdebug("%p %p", op->processor, op->release);
+-			n++;
+-		}
+-
+-		kdebug("n=%u", n);
+-	}
+-
+-	dump_stack();
+-}
+-
+-/*
+  * submit an operation for an object
+  * - objects may be submitted only in the following states:
+  *   - during object creation (write ops may be submitted)
 
