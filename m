@@ -1,163 +1,83 @@
-Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:45490 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932254AbbBZOCc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 26 Feb 2015 09:02:32 -0500
-Subject: [PATCH 05/13] FS-Cache: Synchronise object death state change vs
- operation submission
+Return-Path: linux-fsdevel-owner@vger.kernel.org
+Subject: [PATCH 06/13] FS-Cache: fscache_object_is_dead() has wrong logic,
+ kill it
 From: David Howells <dhowells@redhat.com>
 To: linux-cachefs@redhat.com
 Cc: dhowells@redhat.com, linux-fsdevel@vger.kernel.org,
         linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Date: Thu, 26 Feb 2015 14:02:27 +0000
-Message-ID: <20150226140227.2387.72446.stgit@warthog.procyon.org.uk>
+Date: Thu, 26 Feb 2015 14:02:33 +0000
+Message-ID: <20150226140233.2387.40762.stgit@warthog.procyon.org.uk>
 In-Reply-To: <20150226140155.2387.70579.stgit@warthog.procyon.org.uk>
 References: <20150226140155.2387.70579.stgit@warthog.procyon.org.uk>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Sender: linux-nfs-owner@vger.kernel.org
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When an object is being marked as no longer live, do this under the object
-spinlock to prevent a race with operation submission targeted on that object.
-
-The problem occurs due to the following pair of intertwined sequences when the
-cache tries to create an object that would take it over the hard available
-space limit:
-
- NETFS INTERFACE
- ===============
- (A) The netfs calls fscache_acquire_cookie().  object creation is deferred to
-     the object state machine and the netfs is allowed to continue.
-
-	OBJECT STATE MACHINE KTHREAD
-	============================
-	(1) The object is looked up on disk by fscache_look_up_object()
-	    calling cachefiles_walk_to_object().  The latter finds that the
-	    object is not yet represented on disk and calls
-	    fscache_object_lookup_negative().
-
-	(2) fscache_object_lookup_negative() sets FSCACHE_COOKIE_NO_DATA_YET
-	    and clears FSCACHE_COOKIE_LOOKING_UP, thus allowing the netfs to
-	    start queuing read operations.
-
- (B) The netfs calls fscache_read_or_alloc_pages().  This calls
-     fscache_wait_for_deferred_lookup() which sees FSCACHE_COOKIE_LOOKING_UP
-     become clear, allowing the read to begin.
-
- (C) A read operation is set up and passed to fscache_submit_op() to deal
-     with.
-
-	(3) cachefiles_walk_to_object() calls cachefiles_has_space(), which
-	    fails (or one of the file operations to create stuff fails).
-	    cachefiles returns an error to fscache.
-
-	(4) fscache_look_up_object() transits to the LOOKUP_FAILURE state,
-
-	(5) fscache_lookup_failure() sets FSCACHE_OBJECT_LOOKED_UP and
-	    FSCACHE_COOKIE_UNAVAILABLE and clears FSCACHE_COOKIE_LOOKING_UP
-	    then transits to the KILL_OBJECT state.
-
-	(6) fscache_kill_object() clears FSCACHE_OBJECT_IS_LIVE in an attempt
-	    to reject any further requests from the netfs.
-
-	(7) object->n_ops is examined and found to be 0.
-	    fscache_kill_object() transits to the DROP_OBJECT state.
-
- (D) fscache_submit_op() locks the object spinlock, sees if it can dispatch
-     the op immediately by calling fscache_object_is_active() - which fails
-     since FSCACHE_OBJECT_IS_AVAILABLE has not yet been set.
-
- (E) fscache_submit_op() then tests FSCACHE_OBJECT_LOOKED_UP - which is set.
-     It then queues the object and increments object->n_ops.
-
-	(8) fscache_drop_object() releases the object and eventually
-	    fscache_put_object() calls cachefiles_put_object() which suffers
-	    an assertion failure here:
-
-		ASSERTCMP(object->fscache.n_ops, ==, 0);
-
-Locking the object spinlock in step (6) around the clearance of
-FSCACHE_OBJECT_IS_LIVE ensures that the the decision trees in
-fscache_submit_op() and fscache_submit_exclusive_op() don't see the IS_LIVE
-flag being cleared mid-decision: either the op is queued before step (7) - in
-which case fscache_kill_object() will see n_ops>0 and will deal with the op -
-or the op will be rejected.
-
-This, combined with rejecting op submission if the target object is dying, fix
-the problem.
-
-The problem shows up as the following oops:
-
-CacheFiles: Assertion failed
-CacheFiles: 1 == 0 is false
-------------[ cut here ]------------
-kernel BUG at ../fs/cachefiles/interface.c:339!
-...
-RIP: 0010:[<ffffffffa014fd9c>]  [<ffffffffa014fd9c>] cachefiles_put_object+0x2a4/0x301 [cachefiles]
-...
-Call Trace:
- [<ffffffffa008674b>] fscache_put_object+0x18/0x21 [fscache]
- [<ffffffffa00883e6>] fscache_object_work_func+0x3ba/0x3c9 [fscache]
- [<ffffffff81054dad>] process_one_work+0x226/0x441
- [<ffffffff81055d91>] worker_thread+0x273/0x36b
- [<ffffffff81055b1e>] ? rescuer_thread+0x2e1/0x2e1
- [<ffffffff81059b9d>] kthread+0x10e/0x116
- [<ffffffff81059a8f>] ? kthread_create_on_node+0x1bb/0x1bb
- [<ffffffff815579ac>] ret_from_fork+0x7c/0xb0
- [<ffffffff81059a8f>] ? kthread_create_on_node+0x1bb/0x1bb
+fscache_object_is_dead() returns true only if the object is marked dead and
+the cache got an I/O error.  This should be a logical OR instead.  Since two
+of the callers got split up into handling for separate subcases, expand the
+other callers and kill the function.  This is probably the right thing to do
+anyway since one of the subcases isn't about the object at all, but rather
+about the cache.
 
 Signed-off-by: David Howells <dhowells@redhat.com>
 ---
 
- fs/fscache/object.c |   17 ++++++++++++++---
- 1 file changed, 14 insertions(+), 3 deletions(-)
+ fs/fscache/cookie.c           |    3 ++-
+ fs/fscache/page.c             |    6 ++++--
+ include/linux/fscache-cache.h |    6 ------
+ 3 files changed, 6 insertions(+), 9 deletions(-)
 
-diff --git a/fs/fscache/object.c b/fs/fscache/object.c
-index 9b79fc9a1464..40049f7505f0 100644
---- a/fs/fscache/object.c
-+++ b/fs/fscache/object.c
-@@ -328,6 +328,17 @@ void fscache_object_init(struct fscache_object *object,
- EXPORT_SYMBOL(fscache_object_init);
+diff --git a/fs/fscache/cookie.c b/fs/fscache/cookie.c
+index 89acec742e0b..8de22164f5fb 100644
+--- a/fs/fscache/cookie.c
++++ b/fs/fscache/cookie.c
+@@ -327,7 +327,8 @@ static int fscache_alloc_object(struct fscache_cache *cache,
  
- /*
-+ * Mark the object as no longer being live, making sure that we synchronise
-+ * against op submission.
-+ */
-+static inline void fscache_mark_object_dead(struct fscache_object *object)
-+{
-+	spin_lock(&object->lock);
-+	clear_bit(FSCACHE_OBJECT_IS_LIVE, &object->flags);
-+	spin_unlock(&object->lock);
-+}
-+
-+/*
-  * Abort object initialisation before we start it.
-  */
- static const struct fscache_state *fscache_abort_initialisation(struct fscache_object *object,
-@@ -631,7 +642,7 @@ static const struct fscache_state *fscache_kill_object(struct fscache_object *ob
- 	_enter("{OBJ%x,%d,%d},%d",
- 	       object->debug_id, object->n_ops, object->n_children, event);
+ object_already_extant:
+ 	ret = -ENOBUFS;
+-	if (fscache_object_is_dead(object)) {
++	if (fscache_object_is_dying(object) ||
++	    fscache_cache_is_broken(object)) {
+ 		spin_unlock(&cookie->lock);
+ 		goto error;
+ 	}
+diff --git a/fs/fscache/page.c b/fs/fscache/page.c
+index de33b3fccca6..d0805e31361c 100644
+--- a/fs/fscache/page.c
++++ b/fs/fscache/page.c
+@@ -377,11 +377,13 @@ check_if_dead:
+ 		_leave(" = -ENOBUFS [cancelled]");
+ 		return -ENOBUFS;
+ 	}
+-	if (unlikely(fscache_object_is_dead(object))) {
+-		pr_err("%s() = -ENOBUFS [obj dead %d]\n", __func__, op->state);
++	if (unlikely(fscache_object_is_dying(object) ||
++		     fscache_cache_is_broken(object))) {
++		enum fscache_operation_state state = op->state;
+ 		fscache_cancel_op(op, do_cancel);
+ 		if (stat_object_dead)
+ 			fscache_stat(stat_object_dead);
++		_leave(" = -ENOBUFS [obj dead %d]", state);
+ 		return -ENOBUFS;
+ 	}
+ 	return 0;
+diff --git a/include/linux/fscache-cache.h b/include/linux/fscache-cache.h
+index 2e83a141e465..ca3d550da11e 100644
+--- a/include/linux/fscache-cache.h
++++ b/include/linux/fscache-cache.h
+@@ -423,12 +423,6 @@ static inline bool fscache_object_is_active(struct fscache_object *object)
+ 		!fscache_cache_is_broken(object);
+ }
  
--	clear_bit(FSCACHE_OBJECT_IS_LIVE, &object->flags);
-+	fscache_mark_object_dead(object);
- 	object->oob_event_mask = 0;
- 
- 	if (list_empty(&object->dependents) &&
-@@ -976,13 +987,13 @@ static const struct fscache_state *_fscache_invalidate_object(struct fscache_obj
- 	return transit_to(UPDATE_OBJECT);
- 
- nomem:
--	clear_bit(FSCACHE_OBJECT_IS_LIVE, &object->flags);
-+	fscache_mark_object_dead(object);
- 	fscache_unuse_cookie(object);
- 	_leave(" [ENOMEM]");
- 	return transit_to(KILL_OBJECT);
- 
- submit_op_failed:
--	clear_bit(FSCACHE_OBJECT_IS_LIVE, &object->flags);
-+	fscache_mark_object_dead(object);
- 	spin_unlock(&cookie->lock);
- 	fscache_unuse_cookie(object);
- 	kfree(op);
+-static inline bool fscache_object_is_dead(struct fscache_object *object)
+-{
+-	return fscache_object_is_dying(object) &&
+-		fscache_cache_is_broken(object);
+-}
+-
+ /**
+  * fscache_object_destroyed - Note destruction of an object in a cache
+  * @cache: The cache from which the object came
 
