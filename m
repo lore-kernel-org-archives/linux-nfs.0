@@ -1,155 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wg0-f49.google.com ([74.125.82.49]:45251 "EHLO
-	mail-wg0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753038AbbBYXmD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Feb 2015 18:42:03 -0500
-From: Andreas Gruenbacher <andreas.gruenbacher@gmail.com>
-To: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-Subject: [RFC 00/21] Richacls
-Date: Thu, 26 Feb 2015 00:41:21 +0100
-Message-Id: <cover.1424907511.git.agruenba@redhat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:54178 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753554AbbBZKpZ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Feb 2015 05:45:25 -0500
+From: David Howells <dhowells@redhat.com>
+In-Reply-To: <1411654543.3044.24.camel@leira.trondhjem.org>
+References: <1411654543.3044.24.camel@leira.trondhjem.org> <28059.1411650278@warthog.procyon.org.uk>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: dhowells@redhat.com, linux-nfs@vger.kernel.org, steved@redhat.com
+Subject: Re: NMI/soft lockup in nfs_delegation_need_return()
+MIME-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Date: Thu, 26 Feb 2015 10:45:19 +0000
+Message-ID: <6150.1424947519@warthog.procyon.org.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
+Seems I can still reproduce this (see below).  I don't suppose you've had any
+further insights since September?
 
-here is an updated richacl patch queue, also available in git [1].  For those
-who might not know, richacls are an implementation of NFSv4 ACLs that cleanly
-integrates into the POSIX file permission model.  The goal is to improve
-interoperability between Linux and other systems, mainly across the NFSv4 and
-CIFS/SMB protocols.  A file system can either contain posix acls or richacls,
-but not both.
-
-This patch queue includes the vfs and ext4 changes needed for local richacl
-support.  A previous version of this patch queue was last posted about a year
-ago [2]; I have updated the patches to v4.0-rc1 and tried to incorporate the
-feedback from the previous discussion.  The changes include:
-
- * Introduction of a base_acl object type so that an inode can either cache
-   a posix acl or a richacl largely without caring which of the two kinds
-   it is dealing with.
-
- * RCU support as for posix acls.
-
- * Various cleanups and more documentation.
-
-Things I'm not entirely happy with:
-
- * A new get_richacl inode operation is introduced.  This is needed because
-   we need to perform permission checks in contexts where the dentry of the
-   inode to check is not available and we cannot use the getxattr inode
-   operation.  It would be nice if we could either convert the getxattr inode
-   operation to take an inode instead, or pass the dentries down to where
-   the get_richacl inode operation is currently used.
-
- * The base_acl code is rather ugly; maybe the previous version which was
-   criticized wasn't so bad after all.
-
- * It would be nice if the MAY_DELETE_SELF flag could override the sticky
-   directory check as it did in the previous version of this patch queue.  I
-   couldn't come up with a clean way of achieving that, though.
-
-Because the code has changed quite a bit since the last posting, I have removed
-the previous sign-offs.
-
-At this point, I would like to ask for your feedback as to what should be
-changed before these patches can be merged, even if merging these patches alone
-doesn't make a while lot of sense.  I will follow up with additional pieces to
-the puzzle like the nfsv4 support as I get them into shape again.
-
---
-
-Which kind of acls an ext4 file system supports is determined by the "richacl"
-ext4 feature (mkfs.ext4 -O richacl or tune2fs -O richacl).  The file system
-also needs to be mounted with the "acl" mount option, which is the default
-nowadays.
-
-A version of e2fsprogs with support for the "richacl" feature can be found on
-github [3], but the feature can also be enabled "hard" in debugfs.  Note that
-unpatched versions of e2fsck will not check file systems with the feature
-enabled though.
-
-The acls themselves can be manipulated with the richacl command-line utility
-[4].  Some details on the permission model and examples of its use can be found
-at the richacl page, http://acl.bestbits.at/richacl/.
-
- [1] git://git.kernel.org/pub/scm/linux/kernel/git/agruen/linux-richacl.git richacl
- [2] http://lwn.net/Articles/596517/
- [3] https://github.com/andreas-gruenbacher/e2fsprogs
- [4] https://github.com/andreas-gruenbacher/richacl
-
-Thanks,
-Andreas
-
---
-
-Andreas Gruenbacher (19):
-  vfs: Minor documentation fix
-  vfs: Shrink struct posix_acl
-  vfs: Add IS_ACL() and IS_RICHACL() tests
-  vfs: Add MAY_CREATE_FILE and MAY_CREATE_DIR permission flags
-  vfs: Add MAY_DELETE_SELF and MAY_DELETE_CHILD permission flags
-  vfs: Make the inode passed to inode_change_ok non-const
-  vfs: Add permission flags for setting file attributes
-  richacl: In-memory representation and helper functions
-  richacl: Permission mapping functions
-  richacl: Compute maximum file masks from an acl
-  richacl: Update the file masks in chmod()
-  richacl: Permission check algorithm
-  richacl: Create-time inheritance
-  richacl: Check if an acl is equivalent to a file mode
-  richacl: Automatic Inheritance
-  richacl: xattr mapping functions
-  vfs: Cache base_acl objects in inodes
-  vfs: Cache richacl in struct inode
-  vfs: Add richacl permission checking
-
-Aneesh Kumar K.V (2):
-  ext4: Implement rich acl for ext4
-  ext4: Add richacl feature flag
-
- Documentation/filesystems/porting               |   8 +-
- Documentation/filesystems/vfs.txt               |   3 +
- drivers/staging/lustre/lustre/llite/llite_lib.c |   2 +-
- fs/Kconfig                                      |   3 +
- fs/Makefile                                     |   2 +
- fs/attr.c                                       |  81 ++-
- fs/ext4/Kconfig                                 |  15 +
- fs/ext4/Makefile                                |   1 +
- fs/ext4/acl.c                                   |   7 +-
- fs/ext4/acl.h                                   |  12 +-
- fs/ext4/ext4.h                                  |   6 +-
- fs/ext4/file.c                                  |   6 +-
- fs/ext4/ialloc.c                                |   7 +-
- fs/ext4/inode.c                                 |  10 +-
- fs/ext4/namei.c                                 |  11 +-
- fs/ext4/richacl.c                               | 229 ++++++++
- fs/ext4/richacl.h                               |  47 ++
- fs/ext4/super.c                                 |  41 +-
- fs/ext4/xattr.c                                 |   6 +
- fs/ext4/xattr.h                                 |   1 +
- fs/f2fs/acl.c                                   |   4 +-
- fs/inode.c                                      |  15 +-
- fs/namei.c                                      | 108 +++-
- fs/posix_acl.c                                  |  31 +-
- fs/richacl_base.c                               | 660 ++++++++++++++++++++++++
- fs/richacl_inode.c                              |  67 +++
- fs/richacl_xattr.c                              | 131 +++++
- include/linux/fs.h                              |  47 +-
- include/linux/posix_acl.h                       |  12 +-
- include/linux/richacl.h                         | 329 ++++++++++++
- include/linux/richacl_xattr.h                   |  47 ++
- include/uapi/linux/fs.h                         |   3 +-
- 32 files changed, 1844 insertions(+), 108 deletions(-)
- create mode 100644 fs/ext4/richacl.c
- create mode 100644 fs/ext4/richacl.h
- create mode 100644 fs/richacl_base.c
- create mode 100644 fs/richacl_inode.c
- create mode 100644 fs/richacl_xattr.c
- create mode 100644 include/linux/richacl.h
- create mode 100644 include/linux/richacl_xattr.h
-
--- 
-2.1.0
-
+David
+---
+NMI watchdog: BUG: soft lockup - CPU#1 stuck for 23s! [90.155.74.18-ma:2834]
+Modules linked in: cachefiles nfsv4 nfsv3 nfsv2 nfs fscache auth_rpcgss nfs_acl lockd grace sunrpc
+irq event stamp: 135774
+hardirqs last  enabled at (135773): [<ffffffff81091701>] __call_rcu+0x241/0x253
+hardirqs last disabled at (135774): [<ffffffff8155895a>] apic_timer_interrupt+0x6a/0x80
+softirqs last  enabled at (135762): [<ffffffff810439a8>] __do_softirq+0x25a/0x319
+softirqs last disabled at (135757): [<ffffffff81043c73>] irq_exit+0x5e/0xd6
+CPU: 1 PID: 2834 Comm: 90.155.74.18-ma Tainted: G        W       3.19.0-fsdevel+ #1143
+Hardware name:                  /DG965RY, BIOS MQ96510J.86A.0816.2006.0716.2308 07/16/2006
+task: ffff88000ab6a410 ti: ffff88001cab8000 task.ti: ffff88001cab8000
+RIP: 0010:[<ffffffffa010c418>]  [<ffffffffa010c418>] nfs_client_return_marked_delegations+0x9b/0x1a9 [nfsv4]
+RSP: 0018:ffff88001cabbdb8  EFLAGS: 00000292
+RAX: ffff880000e4b7c0 RBX: ffffffffa010c39c RCX: 0000000000000000
+RDX: ffff880000e4b808 RSI: ffff88000ab6a410 RDI: ffff88000ab6a410
+RBP: ffff88001cabbe08 R08: 0000000000000000 R09: 0000000000000000
+R10: 0000000000000000 R11: 0000000000000000 R12: 0000000000000296
+R13: ffff88001cabbd98 R14: 0000000000000002 R15: 0000000000000000
+FS:  0000000000000000(0000) GS:ffff88003db00000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+CR2: 00007f419ab7a000 CR3: 000000003a7fa000 CR4: 00000000000007e0
+Stack:
+ ffff880038dc9cc8 ffff880010e8d7f8 ffff88000ab6a410 ffff880000e4b7c0
+ ffff88001cabbe08 ffff880038dc9c00 ffff880038dc9c00 ffff880038dc9d30
+ 0000000000000000 0000000000000000 ffff88001cabbe58 ffffffffa010a54f
+Call Trace:
+ [<ffffffffa010a54f>] nfs4_run_state_manager+0x5da/0x5df [nfsv4]
+ [<ffffffffa0109f75>] ? nfs4_do_reclaim+0x55d/0x55d [nfsv4]
+ [<ffffffffa0109f75>] ? nfs4_do_reclaim+0x55d/0x55d [nfsv4]
+ [<ffffffff81059b9d>] kthread+0x10e/0x116
+ [<ffffffff81059a8f>] ? kthread_create_on_node+0x1bb/0x1bb
+ [<ffffffff815579ac>] ret_from_fork+0x7c/0xb0
+ [<ffffffff81059a8f>] ? kthread_create_on_node+0x1bb/0x1bb
+Code: 00 48 89 45 c8 4c 8b 65 c8 48 8d 83 f8 07 00 00 48 89 45 b8 4c 3b 65 b8 0f 84 d6 00 00 00 49 8d 54 24 48 f0 41 0f ba 74 24 48 01 <72> 05 45 31 f6 eb 03 41 b6 01 f0 0f ba 32 02 72 02 eb 36 45 84 
