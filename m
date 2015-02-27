@@ -1,16 +1,17 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:49915 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:37975 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752549AbbBZP4V (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 26 Feb 2015 10:56:21 -0500
-Message-ID: <1424966173.640.7.camel@willson.usersys.redhat.com>
+	id S1752001AbbB0BtM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 26 Feb 2015 20:49:12 -0500
+Message-ID: <1425001738.21632.45.camel@redhat.com>
 Subject: Re: File Read Returns Non-existent Null Bytes
-From: Simo Sorce <simo@redhat.com>
+From: Harshula <harshula@redhat.com>
 To: Chris Perl <cperl@janestreet.com>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+Cc: Simo Sorce <simo@redhat.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Chris Perl <chris.perl@gmail.com>
-Date: Thu, 26 Feb 2015 10:56:13 -0500
+        Chris Perl <chris.perl@gmail.com>, juzou@redhat.com
+Date: Fri, 27 Feb 2015 12:48:58 +1100
 In-Reply-To: <CAAih9mgZ5OwWr6Vw1UTGD=Fd6ASyhoifSOVjd7cDjwXxWbftTQ@mail.gmail.com>
 References: <CAAih9mgvxu+L2Y7yxbHCOKX39Cm5U6ZCd5-HkJUUMFTL9moSwA@mail.gmail.com>
 	 <CAHQdGtSvwbVeTD-ALEU=6MJYts=61o1TaUVN6Vky1nwrKPTJXQ@mail.gmail.com>
@@ -33,16 +34,28 @@ Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hi Chris,
+
 On Thu, 2015-02-26 at 10:45 -0500, Chris Perl wrote:
 > > Ok, I assume proper use of locking will address the situation and allow
 > > readers to get consistent data and not null bytes ?
 > 
 > Yes, trond said this explicitly in one of his earlier replies.
 
-Thank you, my confusion has been cleared.
+You may want to double check by modifying your reproducer to use
+locking.
 
-Simo.
+Just want to clarify that your example is of a writer appending to a
+file while a reader keeps trying to read upto the EOF. If so, what's
+happening is that the metadata (file size) becomes out of sync with
+actual file data requested from the NFS server due to post-op attr
+attached to the READ reply containing an updated (increased) file size.
+Then NULLs are introduced between the actual file data received and the
+new increased file size. This is then presented to user space.
 
--- 
-Simo Sorce * Red Hat, Inc * New York
+Before the synchronous READ path was removed from the NFS client code,
+this issue could be avoided by using the "sync" NFS mount option.
+
+cya,
+#
 
