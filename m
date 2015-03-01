@@ -1,51 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mxout1.mail.janestreet.com ([38.105.200.112]:41644 "EHLO
-	mxout1.mail.janestreet.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754611AbbCBPUR convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 2 Mar 2015 10:20:17 -0500
-Received: from tot-qpr-mailcore2.delacy.com ([172.27.56.106] helo=tot-qpr-mailcore2)
-	by mxout1.mail.janestreet.com with smtp (Exim 4.82)
-	(envelope-from <cperl@janestreet.com>)
-	id 1YSS8m-0006es-PU
-	for linux-nfs@vger.kernel.org; Mon, 02 Mar 2015 10:20:16 -0500
-Received: from mail-yk0-f169.google.com ([209.85.160.169])
-	by mxgoog1.mail.janestreet.com with esmtps (UNKNOWN:AES128-GCM-SHA256:128)
-	(Exim 4.72)
-	(envelope-from <cperl@janestreet.com>)
-	id 1YSS8m-00060w-Kc
-	for linux-nfs@vger.kernel.org; Mon, 02 Mar 2015 10:20:16 -0500
-Received: by ykbq200 with SMTP id q200so13648919ykb.6
-        for <linux-nfs@vger.kernel.org>; Mon, 02 Mar 2015 07:20:16 -0800 (PST)
+Received: from mail-vc0-f169.google.com ([209.85.220.169]:47786 "EHLO
+	mail-vc0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752185AbbCAP4v (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 1 Mar 2015 10:56:51 -0500
+Received: by mail-vc0-f169.google.com with SMTP id im6so1599052vcb.0
+        for <linux-nfs@vger.kernel.org>; Sun, 01 Mar 2015 07:56:51 -0800 (PST)
 MIME-Version: 1.0
-In-Reply-To: <0836BFA3-1F2D-4CD0-AB25-3DBA916D941C@oracle.com>
-References: <CAAih9mgvxu+L2Y7yxbHCOKX39Cm5U6ZCd5-HkJUUMFTL9moSwA@mail.gmail.com>
- <CAHQdGtSvwbVeTD-ALEU=6MJYts=61o1TaUVN6Vky1nwrKPTJXQ@mail.gmail.com>
- <CAAih9mhNUK6-eeAxM8VcdTCx3b59ztAVHSd37HiYaJr-AbX_1w@mail.gmail.com>
- <CAHQdGtS1b7Yjs4QozG1R+wxhxvRbCA85ZNCNQG6-ccyDeg+_gA@mail.gmail.com>
- <CAAih9mg1CkcTYGGZRwg8YPzEkZeqB686s+difvoBHFKfC=VD=g@mail.gmail.com>
- <CAHQdGtTUcP9b7YBk1Wu_HTO9z=TQF=Dfixig3_Cww=VSaxqGDw@mail.gmail.com>
- <CAAih9mijyXYSQ6=ckg3J-Kje1fhdjQFVTyB6KvoKYfFbW9cfLQ@mail.gmail.com>
- <CAHQdGtR7pZz2OsGbMi0cM9MoqmEFWtaStgWwBfSoSebkYmTcMg@mail.gmail.com>
- <CAAih9miZ8SA2EMz6OkAuLhDox8MLEKpXB7f75LJx5FO9zgm8Rg@mail.gmail.com>
- <CAHQdGtQyTfTVjHpW3DT6mu0Xk_BwGaFo9xFTbA6ZzeKVe6_HYQ@mail.gmail.com>
- <20150227224029.GA8750@fieldses.org> <0836BFA3-1F2D-4CD0-AB25-3DBA916D941C@oracle.com>
-From: Chris Perl <cperl@janestreet.com>
-Date: Mon, 2 Mar 2015 10:19:56 -0500
-Message-ID: <CAAih9mgZd=-L0Yj=4G4UmqW3fsGKiJtXsK8S8Steme4niguptQ@mail.gmail.com>
-Subject: Re: File Read Returns Non-existent Null Bytes
-To: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20150211123448.GA30174@infradead.org>
+References: <20150210154306.GF28949@fieldses.org>
+	<20150211123448.GA30174@infradead.org>
+Date: Sun, 1 Mar 2015 10:56:50 -0500
+Message-ID: <CAHQdGtS7A79fK_voy5D+Fpoki_WNtkP+t5-ox_VuzXOOtYbeoQ@mail.gmail.com>
+Subject: Re: hang on xfstests generic/074
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Christoph Hellwig <hch@infradead.org>
 Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Chris Perl <chris.perl@gmail.com>
+        Anna Schumaker <schumakeranna@gmail.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> I’m in favor of staying more hand-wavy. Otherwise you will end up
-> making promises you don’t intend to keep ;-)
+On Wed, Feb 11, 2015 at 7:34 AM, Christoph Hellwig <hch@infradead.org> wrote:
+> On Tue, Feb 10, 2015 at 10:43:06AM -0500, J. Bruce Fields wrote:
+>> I finally got around to running xfstests as part of my regular testing
+>> and ran across a reproduceable hang on generic/074:
+>
+> Yes, I reported this about half a year ago.  It was caused (or at least
+> unhidden) by commit 2aca5b869ace67a63aab895659e5dc14c33a4d6e ("SUNRPC:
+> Add missing support for RPC_CLNT_CREATE_NO_RETRANS_TIMEOUT"). Reverting
+> that commit fixes the issue for me.
+>
 
-FWIW, I'm in favor of at least some specifics.  Something stating that
-the results of reading from a file while another client holds it open
-for write are undefined (point 3 of what was already proposed).
+Can you please recheck with the new 'devel' branch on
+git://git.linux-nfs.org/projects/trondmy/linux-nfs.git ? That fixes
+the test for me.
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer, PrimaryData
+trond.myklebust@primarydata.com
