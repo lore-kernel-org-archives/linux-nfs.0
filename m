@@ -1,53 +1,38 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:41251 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([173.255.197.46]:57649 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757641AbbCCVo7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 3 Mar 2015 16:44:59 -0500
-Message-ID: <54F62B59.2060502@RedHat.com>
-Date: Tue, 03 Mar 2015 16:44:57 -0500
-From: Steve Dickson <SteveD@redhat.com>
+	id S932332AbbCCWKe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 3 Mar 2015 17:10:34 -0500
+Date: Tue, 3 Mar 2015 17:10:33 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Christoph Hellwig <hch@lst.de>
+Cc: Dave Chinner <david@fromorbit.com>, linux-nfs@vger.kernel.org,
+        xfs@oss.sgi.com
+Subject: panic on 4.20 server exporting xfs filesystem
+Message-ID: <20150303221033.GB19439@fieldses.org>
 MIME-Version: 1.0
-To: linux-nfs@vger.kernel.org, systemd-devel@lists.freedesktop.org
-Subject: Re: [systemd-devel] [PATCH 2/2] systemd: Relax dependencies of services
-References: <1425403690-23847-1-git-send-email-martin.pitt@ubuntu.com> <1425403690-23847-3-git-send-email-martin.pitt@ubuntu.com> <20150303180809.GJ3058@in.waw.pl> <20150303201214.GA3473@piware.de>
-In-Reply-To: <20150303201214.GA3473@piware.de>
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+I'm getting mysterious crashes on a server exporting an xfs filesystem.
 
+Strangely, I've reproduced this on
 
-On 03/03/2015 03:12 PM, Martin Pitt wrote:
-> Hello all,
-> 
-> Zbigniew Jędrzejewski-Szmek [2015-03-03 19:08 +0100]:
->> Are you sure that all of those nfs daemons do not require
->> sockets.target and other stuff provided by basic.target to be ready?
-> 
-> The corresponding upstart jobs trigger on virtual file systems (/sys,
-> etc.) and rpcbind, and we've used them for years. Also, NFS does not
-> yet use socket activation, or talks to other services on sockets
-> (except for rpcbind), so we don't need sockets.target either.  The
-> other dependencies (some network.target, some nss-lookup.target, etc.)
-> are already specified explicitly. So I'm quite sure.
-You are correct. rpcbind is the only service we have that uses socket
-activation, which I don't think works very well... 
+	93aaa830fc17 "Merge tag 'xfs-pnfs-for-linus-3.20-rc1' of git://git.kernel.org/pub/scm/linux/kernel/git/dgc/linux-xfs
 
-Just last week I notice if you reboot a vm and the first command 
-you type is rpcinfo -p. That command will time out trying to talk
-with rpcbind. After the timeout everything works fine... 
+but haven't yet managed to reproduce on either of its parents
+(24a52e412ef2 or 781355c6e5ae).  That might just be chance, I'll try
+again.
 
-I thought I opened a bz but I can't seem to find it.
+I can also try a serial console or something, but for now I'm not
+getting a lot of information about the crashes.
 
-steved.
+The filesystem in question isn't on a block device available to the
+client, but I'm still seeing occasional GETLAYOUT and GETDEVICEINFO
+calls; I suppose the client's getting that far, finding no devices it
+can use, and giving up?
 
-> 
-> That said, there's of course always a nonzero chance that this breaks
-> in a case which I haven't tested. In particular, I didn't test
-> kerberos/gssd, I'd appreciate if someone who has a real-world setup
-> with that could give this a spin.
-> 
-> Thanks,
-> 
-> Martin
-> 
+Sorry for the incomplete report, I'll pass along more when I have it.
+
+--b.
