@@ -1,39 +1,130 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.piware.de ([37.120.164.117]:44486 "EHLO mail.piware.de"
+Received: from mail.piware.de ([37.120.164.117]:44491 "EHLO mail.piware.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755990AbbCCR22 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 3 Mar 2015 12:28:28 -0500
+	id S1755990AbbCCR2c (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 3 Mar 2015 12:28:32 -0500
 From: Martin Pitt <martin.pitt@ubuntu.com>
 To: linux-nfs@vger.kernel.org
 Cc: systemd-devel@lists.freedesktop.org, Martin Pitt <martin.pitt@ubuntu.com>
-Subject: [PATCH 1/2] systemd: Order NFS server before client
-Date: Tue,  3 Mar 2015 18:28:09 +0100
-Message-Id: <1425403690-23847-2-git-send-email-martin.pitt@ubuntu.com>
+Subject: [PATCH 2/2] systemd: Relax dependencies of services
+Date: Tue,  3 Mar 2015 18:28:10 +0100
+Message-Id: <1425403690-23847-3-git-send-email-martin.pitt@ubuntu.com>
 In-Reply-To: <1425403690-23847-1-git-send-email-martin.pitt@ubuntu.com>
 References: <1425403690-23847-1-git-send-email-martin.pitt@ubuntu.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This makes mounting NFS shares from localhost work reliably, as you need to
-start the server before attempting (client) mounts, and conversely on shutdown
-need to unmount all shares before stopping the server to avoid hangs.
+Stop depending on basic.target in the daemons which still do; i. e. add
+DefaultDependencies=no. This makes it possible to run NFS during early boot,
+and helps if you e. g. have /var on NFS. We don't require much else than
+local-fs.
 ---
- systemd/nfs-server.service | 3 +++
- 1 file changed, 3 insertions(+)
+ systemd/auth-rpcgss-module.service | 1 +
+ systemd/nfs-config.service         | 2 ++
+ systemd/nfs-idmapd.service         | 3 ++-
+ systemd/nfs-mountd.service         | 3 ++-
+ systemd/nfs-server.service         | 2 ++
+ systemd/rpc-statd-notify.service   | 3 ++-
+ systemd/rpc-svcgssd.service        | 3 ++-
+ 7 files changed, 13 insertions(+), 4 deletions(-)
 
+diff --git a/systemd/auth-rpcgss-module.service b/systemd/auth-rpcgss-module.service
+index 0355e13..5241f7b 100644
+--- a/systemd/auth-rpcgss-module.service
++++ b/systemd/auth-rpcgss-module.service
+@@ -6,6 +6,7 @@
+ # unit will fail.  But that's OK.)
+ [Unit]
+ Description=Kernel Module supporting RPCSEC_GSS
++DefaultDependencies=no
+ Before=gssproxy.service rpc-svcgssd.service rpc-gssd.service
+ Wants=gssproxy.service rpc-svcgssd.service rpc-gssd.service
+ ConditionPathExists=/etc/krb5.keytab
+diff --git a/systemd/nfs-config.service b/systemd/nfs-config.service
+index 64010e6..7f65305 100644
+--- a/systemd/nfs-config.service
++++ b/systemd/nfs-config.service
+@@ -1,5 +1,7 @@
+ [Unit]
+ Description=Preprocess NFS configuration
++After=local-fs.target
++DefaultDependencies=no
+ 
+ [Service]
+ Type=oneshot
+diff --git a/systemd/nfs-idmapd.service b/systemd/nfs-idmapd.service
+index e84f8c8..df3dd9d 100644
+--- a/systemd/nfs-idmapd.service
++++ b/systemd/nfs-idmapd.service
+@@ -1,7 +1,8 @@
+ [Unit]
+ Description=NFSv4 ID-name mapping service
++DefaultDependencies=no
+ Requires=var-lib-nfs-rpc_pipefs.mount
+-After=var-lib-nfs-rpc_pipefs.mount
++After=var-lib-nfs-rpc_pipefs.mount local-fs.target
+ 
+ BindsTo=nfs-server.service
+ 
+diff --git a/systemd/nfs-mountd.service b/systemd/nfs-mountd.service
+index d908afe..8a39f3e 100644
+--- a/systemd/nfs-mountd.service
++++ b/systemd/nfs-mountd.service
+@@ -1,8 +1,9 @@
+ [Unit]
+ Description=NFS Mount Daemon
++DefaultDependencies=no
+ Requires=proc-fs-nfsd.mount
+ After=proc-fs-nfsd.mount
+-After=network.target
++After=network.target local-fs.target
+ BindsTo=nfs-server.service
+ 
+ Wants=nfs-config.service
 diff --git a/systemd/nfs-server.service b/systemd/nfs-server.service
-index 8010aad..b35e193 100644
+index b35e193..db801cb 100644
 --- a/systemd/nfs-server.service
 +++ b/systemd/nfs-server.service
-@@ -13,6 +13,9 @@ Before= rpc-statd-notify.service
- Wants=auth-rpcgss-module.service
- After=rpc-gssd.service gssproxy.service rpc-svcgssd.service
+@@ -1,10 +1,12 @@
+ [Unit]
+ Description=NFS server and services
++DefaultDependencies=no
+ Requires= network.target proc-fs-nfsd.mount rpcbind.target
+ Requires= nfs-mountd.service
+ Wants=rpc-statd.service nfs-idmapd.service
+ Wants=rpc-statd-notify.service
  
-+# start/stop server before/after client
-+Before=remote-fs-pre.target
-+
- Wants=nfs-config.service
- After=nfs-config.service
++After= local-fs.target
+ After= network.target proc-fs-nfsd.mount rpcbind.target nfs-mountd.service
+ After= nfs-idmapd.service rpc-statd.service
+ Before= rpc-statd-notify.service
+diff --git a/systemd/rpc-statd-notify.service b/systemd/rpc-statd-notify.service
+index a655445..a7e2f8e 100644
+--- a/systemd/rpc-statd-notify.service
++++ b/systemd/rpc-statd-notify.service
+@@ -1,7 +1,8 @@
+ [Unit]
+ Description=Notify NFS peers of a restart
++DefaultDependencies=no
+ Requires=network-online.target
+-After=network.target nss-lookup.target
++After=local-fs.target network.target nss-lookup.target
+ 
+ # if we run an nfs server, it needs to be running before we
+ # tell clients that it has restarted.
+diff --git a/systemd/rpc-svcgssd.service b/systemd/rpc-svcgssd.service
+index f7424b0..41177b6 100644
+--- a/systemd/rpc-svcgssd.service
++++ b/systemd/rpc-svcgssd.service
+@@ -1,7 +1,8 @@
+ [Unit]
+ Description=RPC security service for NFS server
++DefaultDependencies=no
+ Requires=var-lib-nfs-rpc_pipefs.mount
+-After=var-lib-nfs-rpc_pipefs.mount
++After=var-lib-nfs-rpc_pipefs.mount local-fs.target
+ PartOf=nfs-server.service
+ PartOf=nfs-utils.service
  
 -- 
 2.1.4
