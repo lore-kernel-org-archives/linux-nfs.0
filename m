@@ -1,114 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mga01.intel.com ([192.55.52.88]:21572 "EHLO mga01.intel.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752328AbbCCK0u (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 3 Mar 2015 05:26:50 -0500
-Message-ID: <1425378405.14897.139.camel@linux.intel.com>
-Subject: Re: [PATCH v3 3/3] lib/string_helpers.c: Change semantics of
- string_escape_mem
-From: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
-To: Rasmus Villemoes <linux@rasmusvillemoes.dk>
-Cc: Andrew Morton <akpm@linux-foundation.org>,
+Received: from mxout1.mail.janestreet.com ([38.105.200.112]:40716 "EHLO
+	mxout1.mail.janestreet.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752490AbbCCN32 convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 3 Mar 2015 08:29:28 -0500
+Received: from tot-qpr-mailcore1.delacy.com ([172.27.56.68] helo=tot-qpr-mailcore1)
+	by mxout1.mail.janestreet.com with smtp (Exim 4.82)
+	(envelope-from <cperl@janestreet.com>)
+	id 1YSmt6-0004Sr-AN
+	for linux-nfs@vger.kernel.org; Tue, 03 Mar 2015 08:29:28 -0500
+Received: from mail-yk0-f177.google.com ([209.85.160.177])
+	by mxgoog1.mail.janestreet.com with esmtps (UNKNOWN:AES128-GCM-SHA256:128)
+	(Exim 4.72)
+	(envelope-from <cperl@janestreet.com>)
+	id 1YSmsz-0000FC-W5
+	for linux-nfs@vger.kernel.org; Tue, 03 Mar 2015 08:29:22 -0500
+Received: by ykp9 with SMTP id 9so16596013ykp.10
+        for <linux-nfs@vger.kernel.org>; Tue, 03 Mar 2015 05:29:21 -0800 (PST)
+MIME-Version: 1.0
+In-Reply-To: <3E668056-0C9D-440D-86E5-CCB5AF74D7A7@oracle.com>
+References: <CAAih9mg1CkcTYGGZRwg8YPzEkZeqB686s+difvoBHFKfC=VD=g@mail.gmail.com>
+ <CAHQdGtTUcP9b7YBk1Wu_HTO9z=TQF=Dfixig3_Cww=VSaxqGDw@mail.gmail.com>
+ <CAAih9mijyXYSQ6=ckg3J-Kje1fhdjQFVTyB6KvoKYfFbW9cfLQ@mail.gmail.com>
+ <CAHQdGtR7pZz2OsGbMi0cM9MoqmEFWtaStgWwBfSoSebkYmTcMg@mail.gmail.com>
+ <CAAih9miZ8SA2EMz6OkAuLhDox8MLEKpXB7f75LJx5FO9zgm8Rg@mail.gmail.com>
+ <CAHQdGtQyTfTVjHpW3DT6mu0Xk_BwGaFo9xFTbA6ZzeKVe6_HYQ@mail.gmail.com>
+ <20150227224029.GA8750@fieldses.org> <0836BFA3-1F2D-4CD0-AB25-3DBA916D941C@oracle.com>
+ <CAAih9mgZd=-L0Yj=4G4UmqW3fsGKiJtXsK8S8Steme4niguptQ@mail.gmail.com>
+ <DCF31069-FEF7-4DD8-9FD0-575262181A43@oracle.com> <20150302205850.GG8033@fieldses.org>
+ <3E668056-0C9D-440D-86E5-CCB5AF74D7A7@oracle.com>
+From: Chris Perl <cperl@janestreet.com>
+Date: Tue, 3 Mar 2015 08:29:00 -0500
+Message-ID: <CAAih9mieawzDqPU=6YEJAM=MbS-f3RdOckL_bSKG7fXDm2CSKQ@mail.gmail.com>
+Subject: Re: File Read Returns Non-existent Null Bytes
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
         Trond Myklebust <trond.myklebust@primarydata.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        "David S. Miller" <davem@davemloft.net>, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, netdev@vger.kernel.org
-Date: Tue, 03 Mar 2015 12:26:45 +0200
-In-Reply-To: <87a8zvovcj.fsf@rasmusvillemoes.dk>
-References: <1422525801-26560-1-git-send-email-linux@rasmusvillemoes.dk>
-	 <1423525491-12613-1-git-send-email-linux@rasmusvillemoes.dk>
-	 <1423525491-12613-4-git-send-email-linux@rasmusvillemoes.dk>
-	 <1423571552.31903.468.camel@linux.intel.com>
-	 <87386dj4x0.fsf@rasmusvillemoes.dk>
-	 <1423578150.31903.480.camel@linux.intel.com>
-	 <87oaoo59n2.fsf@rasmusvillemoes.dk>
-	 <1424695820.14897.10.camel@linux.intel.com>
-	 <87k2z86xvs.fsf@rasmusvillemoes.dk>
-	 <1425299846.14897.124.camel@linux.intel.com>
-	 <87a8zvovcj.fsf@rasmusvillemoes.dk>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Chris Perl <chris.perl@gmail.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2015-03-03 at 00:03 +0100, Rasmus Villemoes wrote:
-> On Mon, Mar 02 2015, Andy Shevchenko <andriy.shevchenko@linux.intel.com> wrote:
-> > On Mon, 2015-02-23 at 23:55 +0100, Rasmus Villemoes wrote:
-> >> On Mon, Feb 23 2015, Andy Shevchenko <andriy.shevchenko@linux.intel.com> wrote:
-> >
-> >> > What about to make it a separate function *and* call from inside of
-> >> > test_string_escape? Would it work for you?
-> >> 
-> >> See my earlier point about "quite a lot of state to pass". But if this
-> >> 
-> >> static __init void
-> >> test_string_escape_overflow(const char *in, int p, char *out_real, int out_size,
-> >> 			    unsigned int flags, const char *esc, int q_test,
-> >> 			    const char *name)
-> >> {
-> >> 	int q_real;
-> >> 
-> >> 	memset(out_real, 'Z', out_size);
-> >> 	q_real = string_escape_mem(in, p, out_real, 0, flags, esc);
-> >> 	if (q_real != q_test)
-> >> 		pr_warn("Test '%s' failed: flags = %u, osz = 0, expected %d, got %d\n",
-> >> 			name, flags, q_test, q_real);
-> >> 	if (memchr_inv(out_real, 'Z', out_size))
-> >> 		pr_warn("Test '%s' failed: osz = 0 but string_escape_mem wrote to the buffer\n",
-> >> 			name);
-> >> }
-> >> 
-> >> is what you want, sure, have it your way.
-> >
-> > Something like above, though might be few variables can be defined
-> > inside it, such as out_real, out_size.
-> 
-> Or maybe not at all: We could pass NULL, 0, which is what has to work
-> anyway for the kasprintf case - failure will then be detected through an
-> oops, but I think that should be ok. That would also remove the memset and
-> memchr_inv calls above.
-> 
-> I don't like the idea of just defining a small stack buffer (say
-> buf[16]) and passing that (still with a size of 0): It's better to
-> either detect writes directly (by passing a large enough buffer with
-> known contents), or indirectly through an oops, as opposed to having to
-> figure it out from random stack corruption. And kmalloc'ing+error
-> handling+kfree'ing a buffer inside the overflow check would just be
-> plain silly, when we have a large enough buffer already.
+Just to quickly answer the earlier question about whether I have
+received a good answer from this list:  Yes, I have, and I appreciate
+all the time and discussion spent helping me understand what I've been
+seeing.
 
-Come with v4, I think I have no big objections to the approach.
+> I read Chris’s e-mail as a request for more detail in the answer
+> I proposed before. Maybe I’m wrong.
+>
+> Is this not sufficient:
+>
+> “Because NFS is not a cluster or “single system image” filesystem,
+> applications must provide proper serialization of reads and writes
+> among multiple clients to ensure correct application behavior and
+> prevent corruption of file data. The close-to-open mechanism is not
+> adequate in the presence of concurrent opens for write when multiple
+> clients are involved.”
+>
+> Perhaps the “presence of concurrent opens for write” should be
+> replaced with “presence of concurrent writes.” But what else needs
+> to be said?
 
-> As I said, I do think that longer-term one shouldn't have to poke around
-> in the seq_file internals, but for now I'd like to make the patch minimal.
+I'm trying to decide if, having read the above in the FAQ, it would
+have been obvious to me that what I was seeing was expected.  I don't
+know that it would have been.  That paragraph seems to impart to me
+the idea that if you don't synchronize your readers and writers you
+might get weird results, much like a local file system.  However, I
+thought the way in which my updates were happening made this ok, as I
+was only ever appending data to a given file.
 
-Ok.
+I guess I was hoping for something more along the lines of (this would
+be meant to be inserted after paragraph 6 of A8 in the FAQ):
 
-> >> Another option is to do everything with a single seq_printf call,
-> >> something like
-> >> 
-> >> seq_printf(m, "Name:\t%*pEcs\n, (int)strlen(tcomm), tcomm)
-> >> 
-> >> That will escape more than just \ and \n, but that would IMO be an
-> >> improvement. But of course this is out of scope for this series.]
-> >
-> > It should be %pT and reconsider policy how we print task name in
-> > different cases (vsprintf.c::comm_name()).
-> 
-> Well, %pT is a completely new addition to vsprintf.c. Also, I don't
-> think that would be a very good match - not every user of %pT might want
-> escaping, so at the very least this would require implementing some
-> extra flags for %pT.
-
-Something like %pTe (for 'sanely Escaped' with flags you proposed
-earlier) ?
-
->  But if task_name would be the only user of those
-> flags, I think the escaping logic is better kept there. Anyway, this is
-> outside this series' scope.
-
-Yes.
-
--- 
-Andy Shevchenko <andriy.shevchenko@intel.com>
-Intel Finland Oy
-
+Furthermore, in the presence of multiple clients, at least one of
+which is writing to a given file, close-to-open cache consistency
+makes no guarantee's about the data that might be returned from the
+cache on a client issuing reads concurrent with those writes.  It may
+return stale data or it may return incorrect data.
