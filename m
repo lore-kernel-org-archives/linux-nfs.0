@@ -1,81 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mxout1.mail.janestreet.com ([38.105.200.112]:40716 "EHLO
-	mxout1.mail.janestreet.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752490AbbCCN32 convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 3 Mar 2015 08:29:28 -0500
-Received: from tot-qpr-mailcore1.delacy.com ([172.27.56.68] helo=tot-qpr-mailcore1)
-	by mxout1.mail.janestreet.com with smtp (Exim 4.82)
-	(envelope-from <cperl@janestreet.com>)
-	id 1YSmt6-0004Sr-AN
-	for linux-nfs@vger.kernel.org; Tue, 03 Mar 2015 08:29:28 -0500
-Received: from mail-yk0-f177.google.com ([209.85.160.177])
-	by mxgoog1.mail.janestreet.com with esmtps (UNKNOWN:AES128-GCM-SHA256:128)
-	(Exim 4.72)
-	(envelope-from <cperl@janestreet.com>)
-	id 1YSmsz-0000FC-W5
-	for linux-nfs@vger.kernel.org; Tue, 03 Mar 2015 08:29:22 -0500
-Received: by ykp9 with SMTP id 9so16596013ykp.10
-        for <linux-nfs@vger.kernel.org>; Tue, 03 Mar 2015 05:29:21 -0800 (PST)
+Received: from fieldses.org ([173.255.197.46]:57363 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754821AbbCCPSY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 3 Mar 2015 10:18:24 -0500
+Date: Tue, 3 Mar 2015 10:18:22 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Nicholas Mc Guire <hofrat@osadl.org>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        "David S. Miller" <davem@davemloft.net>, linux-nfs@vger.kernel.org,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] SUNRPC: use jiffies_to_msecs for converting jiffies
+Message-ID: <20150303151822.GA19439@fieldses.org>
+References: <1425374665-446-1-git-send-email-hofrat@osadl.org>
 MIME-Version: 1.0
-In-Reply-To: <3E668056-0C9D-440D-86E5-CCB5AF74D7A7@oracle.com>
-References: <CAAih9mg1CkcTYGGZRwg8YPzEkZeqB686s+difvoBHFKfC=VD=g@mail.gmail.com>
- <CAHQdGtTUcP9b7YBk1Wu_HTO9z=TQF=Dfixig3_Cww=VSaxqGDw@mail.gmail.com>
- <CAAih9mijyXYSQ6=ckg3J-Kje1fhdjQFVTyB6KvoKYfFbW9cfLQ@mail.gmail.com>
- <CAHQdGtR7pZz2OsGbMi0cM9MoqmEFWtaStgWwBfSoSebkYmTcMg@mail.gmail.com>
- <CAAih9miZ8SA2EMz6OkAuLhDox8MLEKpXB7f75LJx5FO9zgm8Rg@mail.gmail.com>
- <CAHQdGtQyTfTVjHpW3DT6mu0Xk_BwGaFo9xFTbA6ZzeKVe6_HYQ@mail.gmail.com>
- <20150227224029.GA8750@fieldses.org> <0836BFA3-1F2D-4CD0-AB25-3DBA916D941C@oracle.com>
- <CAAih9mgZd=-L0Yj=4G4UmqW3fsGKiJtXsK8S8Steme4niguptQ@mail.gmail.com>
- <DCF31069-FEF7-4DD8-9FD0-575262181A43@oracle.com> <20150302205850.GG8033@fieldses.org>
- <3E668056-0C9D-440D-86E5-CCB5AF74D7A7@oracle.com>
-From: Chris Perl <cperl@janestreet.com>
-Date: Tue, 3 Mar 2015 08:29:00 -0500
-Message-ID: <CAAih9mieawzDqPU=6YEJAM=MbS-f3RdOckL_bSKG7fXDm2CSKQ@mail.gmail.com>
-Subject: Re: File Read Returns Non-existent Null Bytes
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Chris Perl <chris.perl@gmail.com>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1425374665-446-1-git-send-email-hofrat@osadl.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Just to quickly answer the earlier question about whether I have
-received a good answer from this list:  Yes, I have, and I appreciate
-all the time and discussion spent helping me understand what I've been
-seeing.
+I'll assume Trond or Anna gets this one.--b.
 
-> I read Chris’s e-mail as a request for more detail in the answer
-> I proposed before. Maybe I’m wrong.
->
-> Is this not sufficient:
->
-> “Because NFS is not a cluster or “single system image” filesystem,
-> applications must provide proper serialization of reads and writes
-> among multiple clients to ensure correct application behavior and
-> prevent corruption of file data. The close-to-open mechanism is not
-> adequate in the presence of concurrent opens for write when multiple
-> clients are involved.”
->
-> Perhaps the “presence of concurrent opens for write” should be
-> replaced with “presence of concurrent writes.” But what else needs
-> to be said?
-
-I'm trying to decide if, having read the above in the FAQ, it would
-have been obvious to me that what I was seeing was expected.  I don't
-know that it would have been.  That paragraph seems to impart to me
-the idea that if you don't synchronize your readers and writers you
-might get weird results, much like a local file system.  However, I
-thought the way in which my updates were happening made this ok, as I
-was only ever appending data to a given file.
-
-I guess I was hoping for something more along the lines of (this would
-be meant to be inserted after paragraph 6 of A8 in the FAQ):
-
-Furthermore, in the presence of multiple clients, at least one of
-which is writing to a given file, close-to-open cache consistency
-makes no guarantee's about the data that might be returned from the
-cache on a client issuing reads concurrent with those writes.  It may
-return stale data or it may return incorrect data.
+On Tue, Mar 03, 2015 at 04:24:25AM -0500, Nicholas Mc Guire wrote:
+> Use jiffies_to_msecs for converting jiffies as it handles all of the corner
+> cases reliably and also helps readability.
+> 
+> Signed-off-by: Nicholas Mc Guire <hofrat@osadl.org>
+> ---
+> 
+> This was only compile tested for x86_64_defconfig (implies CONFIG_SUNRPC=y)
+> 
+> Patch is against 4.0-rc1 (localversion-next is -next-20150303)
+> 
+>  net/sunrpc/sched.c |    2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
+> index b91fd9c..c234e7f 100644
+> --- a/net/sunrpc/sched.c
+> +++ b/net/sunrpc/sched.c
+> @@ -90,7 +90,7 @@ __rpc_add_timer(struct rpc_wait_queue *queue, struct rpc_task *task)
+>  		return;
+>  
+>  	dprintk("RPC: %5u setting alarm for %lu ms\n",
+> -			task->tk_pid, task->tk_timeout * 1000 / HZ);
+> +			task->tk_pid, jiffies_to_msecs(task->tk_timeout));
+>  
+>  	task->u.tk_wait.expires = jiffies + task->tk_timeout;
+>  	if (list_empty(&queue->timer_list.list) || time_before(task->u.tk_wait.expires, queue->timer_list.expires))
+> -- 
+> 1.7.10.4
