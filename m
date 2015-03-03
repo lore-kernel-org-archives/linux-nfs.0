@@ -1,52 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([173.255.197.46]:57363 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754821AbbCCPSY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 3 Mar 2015 10:18:24 -0500
-Date: Tue, 3 Mar 2015 10:18:22 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Nicholas Mc Guire <hofrat@osadl.org>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        "David S. Miller" <davem@davemloft.net>, linux-nfs@vger.kernel.org,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] SUNRPC: use jiffies_to_msecs for converting jiffies
-Message-ID: <20150303151822.GA19439@fieldses.org>
-References: <1425374665-446-1-git-send-email-hofrat@osadl.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1425374665-446-1-git-send-email-hofrat@osadl.org>
+Received: from aserp1040.oracle.com ([141.146.126.69]:43974 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932224AbbCCPbL convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Mar 2015 10:31:11 -0500
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
+Subject: Re: File Read Returns Non-existent Null Bytes
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <CAAih9mieawzDqPU=6YEJAM=MbS-f3RdOckL_bSKG7fXDm2CSKQ@mail.gmail.com>
+Date: Tue, 3 Mar 2015 10:30:57 -0500
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Chris Perl <chris.perl@gmail.com>
+Message-Id: <A6E54346-E80D-48B4-B0DF-D646376B42E8@oracle.com>
+References: <CAAih9mg1CkcTYGGZRwg8YPzEkZeqB686s+difvoBHFKfC=VD=g@mail.gmail.com> <CAHQdGtTUcP9b7YBk1Wu_HTO9z=TQF=Dfixig3_Cww=VSaxqGDw@mail.gmail.com> <CAAih9mijyXYSQ6=ckg3J-Kje1fhdjQFVTyB6KvoKYfFbW9cfLQ@mail.gmail.com> <CAHQdGtR7pZz2OsGbMi0cM9MoqmEFWtaStgWwBfSoSebkYmTcMg@mail.gmail.com> <CAAih9miZ8SA2EMz6OkAuLhDox8MLEKpXB7f75LJx5FO9zgm8Rg@mail.gmail.com> <CAHQdGtQyTfTVjHpW3DT6mu0Xk_BwGaFo9xFTbA6ZzeKVe6_HYQ@mail.gmail.com> <20150227224029.GA8750@fieldses.org> <0836BFA3-1F2D-4CD0-AB25-3DBA916D941C@oracle.com> <CAAih9mgZd=-L0Yj=4G4UmqW3fsGKiJtXsK8S8Steme4niguptQ@mail.gmail.com> <DCF31069-FEF7-4DD8-9FD0-575262181A43@oracle.com> <20150302205850.GG8033@fieldses.org> <3E668056-0C9D-440D-86E5-CCB5AF74D7A7@oracle.com> <CAAih9mieawzDqPU=6YEJAM=MbS-f3RdOckL_bSKG7fXDm2CSKQ@mail.gmail.com>
+To: Chris Perl <cperl@janestreet.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I'll assume Trond or Anna gets this one.--b.
 
-On Tue, Mar 03, 2015 at 04:24:25AM -0500, Nicholas Mc Guire wrote:
-> Use jiffies_to_msecs for converting jiffies as it handles all of the corner
-> cases reliably and also helps readability.
+On Mar 3, 2015, at 8:29 AM, Chris Perl <cperl@janestreet.com> wrote:
+
+> Just to quickly answer the earlier question about whether I have
+> received a good answer from this list:  Yes, I have, and I appreciate
+> all the time and discussion spent helping me understand what I've been
+> seeing.
 > 
-> Signed-off-by: Nicholas Mc Guire <hofrat@osadl.org>
-> ---
+>> I read Chris’s e-mail as a request for more detail in the answer
+>> I proposed before. Maybe I’m wrong.
+>> 
+>> Is this not sufficient:
+>> 
+>> “Because NFS is not a cluster or “single system image” filesystem,
+>> applications must provide proper serialization of reads and writes
+>> among multiple clients to ensure correct application behavior and
+>> prevent corruption of file data. The close-to-open mechanism is not
+>> adequate in the presence of concurrent opens for write when multiple
+>> clients are involved.”
+>> 
+>> Perhaps the “presence of concurrent opens for write” should be
+>> replaced with “presence of concurrent writes.” But what else needs
+>> to be said?
 > 
-> This was only compile tested for x86_64_defconfig (implies CONFIG_SUNRPC=y)
+> I'm trying to decide if, having read the above in the FAQ, it would
+> have been obvious to me that what I was seeing was expected.
+
+That’s exactly the right question to ask.
+
+> I don't
+> know that it would have been.  That paragraph seems to impart to me
+> the idea that if you don't synchronize your readers and writers you
+> might get weird results, much like a local file system.  However, I
+> thought the way in which my updates were happening made this ok, as I
+> was only ever appending data to a given file.
 > 
-> Patch is against 4.0-rc1 (localversion-next is -next-20150303)
+> I guess I was hoping for something more along the lines of (this would
+> be meant to be inserted after paragraph 6 of A8 in the FAQ):
 > 
->  net/sunrpc/sched.c |    2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
-> index b91fd9c..c234e7f 100644
-> --- a/net/sunrpc/sched.c
-> +++ b/net/sunrpc/sched.c
-> @@ -90,7 +90,7 @@ __rpc_add_timer(struct rpc_wait_queue *queue, struct rpc_task *task)
->  		return;
->  
->  	dprintk("RPC: %5u setting alarm for %lu ms\n",
-> -			task->tk_pid, task->tk_timeout * 1000 / HZ);
-> +			task->tk_pid, jiffies_to_msecs(task->tk_timeout));
->  
->  	task->u.tk_wait.expires = jiffies + task->tk_timeout;
->  	if (list_empty(&queue->timer_list.list) || time_before(task->u.tk_wait.expires, queue->timer_list.expires))
-> -- 
-> 1.7.10.4
+> Furthermore, in the presence of multiple clients, at least one of
+> which is writing to a given file, close-to-open cache consistency
+> makes no guarantee's about the data that might be returned from the
+> cache on a client issuing reads concurrent with those writes.  It may
+> return stale data or it may return incorrect data.
+
+This works for me. Bruce, Trond, any thoughts?
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
