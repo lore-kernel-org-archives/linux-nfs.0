@@ -1,45 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.piware.de ([37.120.164.117]:44970 "EHLO mail.piware.de"
+Received: from mx1.redhat.com ([209.132.183.28]:15562 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751441AbbCCUMS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 3 Mar 2015 15:12:18 -0500
-Date: Tue, 3 Mar 2015 21:12:14 +0100
-From: Martin Pitt <martin.pitt@ubuntu.com>
-To: linux-nfs@vger.kernel.org
-Cc: systemd-devel@lists.freedesktop.org
-Subject: Re: [systemd-devel] [PATCH 2/2] systemd: Relax dependencies of
- services
-Message-ID: <20150303201214.GA3473@piware.de>
-References: <1425403690-23847-1-git-send-email-martin.pitt@ubuntu.com>
- <1425403690-23847-3-git-send-email-martin.pitt@ubuntu.com>
- <20150303180809.GJ3058@in.waw.pl>
+	id S1757166AbbCCVhg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 3 Mar 2015 16:37:36 -0500
+Message-ID: <54F62994.9020203@RedHat.com>
+Date: Tue, 03 Mar 2015 16:37:24 -0500
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
+To: =?UTF-8?B?WmJpZ25pZXcgSsSZZHJ6ZWpld3NraS1Tem1law==?=
+	<zbyszek@in.waw.pl>,
+        Andrei Borzenkov <arvidjaar@gmail.com>
+CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
+        Systemd Mailing List <systemd-devel@lists.freedesktop.org>
+Subject: Re: [systemd-devel] [PATCH] systemd: Have rpc-statd-notify.service
+ Require network.target
+References: <1425407803-5278-1-git-send-email-steved@redhat.com> <20150303220657.6ba6011b@opensuse.site> <20150303191803.GK3058@in.waw.pl>
+In-Reply-To: <20150303191803.GK3058@in.waw.pl>
 Content-Type: text/plain; charset=utf-8
-In-Reply-To: <20150303180809.GJ3058@in.waw.pl>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello all,
 
-Zbigniew Jędrzejewski-Szmek [2015-03-03 19:08 +0100]:
-> Are you sure that all of those nfs daemons do not require
-> sockets.target and other stuff provided by basic.target to be ready?
 
-The corresponding upstart jobs trigger on virtual file systems (/sys,
-etc.) and rpcbind, and we've used them for years. Also, NFS does not
-yet use socket activation, or talks to other services on sockets
-(except for rpcbind), so we don't need sockets.target either.  The
-other dependencies (some network.target, some nss-lookup.target, etc.)
-are already specified explicitly. So I'm quite sure.
+On 03/03/2015 02:18 PM, Zbigniew Jędrzejewski-Szmek wrote:
+> On Tue, Mar 03, 2015 at 10:06:57PM +0300, Andrei Borzenkov wrote:
+> Indeed. From the man page:
+> -m retry-time
+>     Specifies the length of time, in minutes, to continue retry‐
+>     ing  notifications to unresponsive hosts.  If this option is
+>     not specified, sm-notify attempts to send notifications  for
+>     15  minutes.   Specifying  a  value of 0 causes sm-notify to
+>     continue sending notifications to unresponsive  peers  until
+>     it is manually killed.
+> 
+>     Notifications  are retried if sending fails, the remote does
+>     not respond, the remote's NSM service is not registered,  or
+>     if  there  is  a  DNS  failure  which  prevents the remote's
+>     mon_name from being resolved to an address.
+> 
+> So rpc-statd-notify.service should be fine with being started before
+> the network is up at all.
+Right... that's the point... we want the service to fork and keep trying
+in the background.... 
 
-That said, there's of course always a nonzero chance that this breaks
-in a case which I haven't tested. In particular, I didn't test
-kerberos/gssd, I'd appreciate if someone who has a real-world setup
-with that could give this a spin.
+Thanks for the cycles! 
 
-Thanks,
-
-Martin
--- 
-Martin Pitt                        | http://www.piware.de
-Ubuntu Developer (www.ubuntu.com)  | Debian Developer  (www.debian.org)
+steved.
