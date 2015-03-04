@@ -1,104 +1,113 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:58626 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932807AbbCDPyW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 4 Mar 2015 10:54:22 -0500
-Date: Wed, 4 Mar 2015 10:54:21 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Dave Chinner <david@fromorbit.com>
-Cc: Christoph Hellwig <hch@lst.de>, linux-nfs@vger.kernel.org, xfs@oss.sgi.com
-Subject: Re: panic on 4.20 server exporting xfs filesystem
-Message-ID: <20150304155421.GE1627@fieldses.org>
-References: <20150303221033.GB19439@fieldses.org>
- <20150303224456.GV4251@dastard>
- <20150304020826.GD19439@fieldses.org>
+Received: from mail-ob0-f171.google.com ([209.85.214.171]:38453 "EHLO
+	mail-ob0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752172AbbCDWAa (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Mar 2015 17:00:30 -0500
+Date: Wed, 4 Mar 2015 16:00:27 -0600
+From: Shawn Bohrer <shawn.bohrer@gmail.com>
+To: linux-nfs@vger.kernel.org
+Cc: linux-pm@vger.kernel.org, linux-kernel@vger.kernel.org,
+        mayoff@rgmadvisors.com
+Subject: NFS Freezer and stuck tasks
+Message-ID: <20150304220027.GB20242@sbohrermbp13-local.rgmadvisors.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20150304020826.GD19439@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Mar 03, 2015 at 09:08:26PM -0500, J. Bruce Fields wrote:
-> On Wed, Mar 04, 2015 at 09:44:56AM +1100, Dave Chinner wrote:
-> > On Tue, Mar 03, 2015 at 05:10:33PM -0500, J. Bruce Fields wrote:
-> > > I'm getting mysterious crashes on a server exporting an xfs filesystem.
-> > > 
-> > > Strangely, I've reproduced this on
-> > > 
-> > > 	93aaa830fc17 "Merge tag 'xfs-pnfs-for-linus-3.20-rc1' of git://git.kernel.org/pub/scm/linux/kernel/git/dgc/linux-xfs
-> > > 
-> > > but haven't yet managed to reproduce on either of its parents
-> > > (24a52e412ef2 or 781355c6e5ae).  That might just be chance, I'll try
-> > > again.
-> > 
-> > I think you'll find that the bug is only triggered after that XFS
-> > merge because it's what enabled block layout support in the server,
-> > i.e.  nfsd4_setup_layout_type() is now setting the export type to
-> > LAYOUT_BLOCK_VOLUME because XFS has added the necessary functions to
-> > it's export ops.
-> 
-> Doh--after all the discussion I didn't actually pay attention to what
-> happened in the end.  OK, I see, you're right, it's all more-or-less
-> dead code till that merge.
-> 
-> Christoph's code was passing all my tests before that, so maybe we
-> broke something in the merge process.
-> 
-> Alternatively, it could be because I've added more tests--I'll rerun my
-> current tests on his original branch....
+Hello,
 
-The below is on Christoph's pnfsd-for-3.20-4 (at cd4b02e).  Doesn't look
-very informative.  I'm running xfstests over NFSv4.1 with client and
-server running the same kernel, the filesystem in question is xfs, but
-isn't otherwise available to the client (so the client shouldn't be
-doing pnfs).
+We're using the Linux cgroup Freezer on some machines that use NFS and
+have run into what appears to be a bug where frozen tasks are blocking
+running tasks and preventing them from completing.  On one of our
+machines which happens to be running an older 3.10.46 kernel we have
+frozen some of the tasks on the system using the cgroup Freezer.  We
+also have a separate set of tasks which are NOT frozen which are stuck
+trying to open some files on NFS.
 
---b.
+Looking at the frozen tasks there are several that have the following
+stack:
 
-BUG: unable to handle kernel paging request at 00000000757d4900
-IP: [<ffffffff810b59af>] cpuacct_charge+0x5f/0xa0
-PGD 0 
-Thread overran stack, or stack corrupted
-Oops: 0000 [#1] PREEMPT SMP DEBUG_PAGEALLOC
-Modules linked in: rpcsec_gss_krb5 nfsd auth_rpcgss oid_registry nfs_acl lockd grace sunrpc
-CPU: 1 PID: 18130 Comm: kworker/1:0 Not tainted 3.19.0-rc4-00205-gcd4b02e #79
-Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS 1.7.5-20140709_153950- 04/01/2014
-Workqueue: rpciod rpc_async_schedule [sunrpc]
-task: ffff880030639710 ti: ffff88001e698000 task.ti: ffff88001e698000
-RIP: 0010:[<ffffffff810b59af>]  [<ffffffff810b59af>] cpuacct_charge+0x5f/0xa0
-RSP: 0018:ffff88007f903e08  EFLAGS: 00010092
-RAX: 000000000000d4e8 RBX: 000000001e698038 RCX: 000000001e698038
-RDX: ffffffff822377c0 RSI: 0000000000000003 RDI: ffff880030639f78
-RBP: ffff88007f903e38 R08: 0000000000000000 R09: 0000000000000001
-R10: 000000000000001b R11: ffffffff82238fc0 R12: 00000000003b4c1b
-R13: ffff880030639710 R14: ffff880030639710 R15: 0000001536dbb554
-FS:  0000000000000000(0000) GS:ffff88007f900000(0000) knlGS:0000000000000000
-CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-CR2: 00000000757d4900 CR3: 000000006d8e2000 CR4: 00000000000406e0
-Stack:
- ffffffff810b5955 0000000000000000 ffff88007f903e98 ffff880030639778
- ffff88007f913698 00000000003b4c1b ffff88007f903e78 ffffffff810a47d0
- ffff88007f903e78 ffff880030639778 ffff88007f913698 ffff88007f913600
-Call Trace:
- <IRQ> 
- [<ffffffff810b5955>] ? cpuacct_charge+0x5/0xa0
- [<ffffffff810a47d0>] update_curr+0xd0/0x190
- [<ffffffff810a767f>] task_tick_fair+0x1df/0x4f0
- [<ffffffff8109e147>] scheduler_tick+0x57/0xd0
- [<ffffffff810d7e11>] update_process_times+0x51/0x60
- [<ffffffff810e43df>] tick_periodic+0x2f/0xc0
- [<ffffffff8165b517>] ? debug_smp_processor_id+0x17/0x20
- [<ffffffff810e4599>] tick_handle_periodic+0x29/0x70
- [<ffffffff81033e6a>] local_apic_timer_interrupt+0x3a/0x70
- [<ffffffff81a8fb81>] smp_apic_timer_interrupt+0x41/0x60
- [<ffffffff81a8df1f>] apic_timer_interrupt+0x6f/0x80
- <EOI> 
-Code: 31 c9 45 31 c0 31 f6 48 c7 c7 c0 8f 23 82 e8 a9 71 00 00 49 8b 85 c0 0f 00 00 48 63 cb 48 8b 50 58 0f 1f 00 48 8b 82 d0 00 00 00 <48> 03 04 cd 40 47 31 82 4c 01 20 48 8b 52 48 48 85 d2 75 e5 48 
-RIP  [<ffffffff810b59af>] cpuacct_charge+0x5f/0xa0
- RSP <ffff88007f903e08>
-CR2: 00000000757d4900
----[ end trace fa7901843d14b3ab ]---
-Kernel panic - not syncing: Fatal exception in interrupt
-Kernel Offset: 0x0 from 0xffffffff81000000 (relocation range: 0xffffffff80000000-0xffffffff9fffffff)
----[ end Kernel panic - not syncing: Fatal exception in interrupt
+[<ffffffff814fd055>] rpc_wait_bit_killable+0x35/0x80
+[<ffffffff814fd01d>] __rpc_wait_for_completion_task+0x2d/0x30
+[<ffffffff811dce5d>] nfs4_run_open_task+0x11d/0x170
+[<ffffffff811de7a3>] _nfs4_open_and_get_state+0x53/0x260
+[<ffffffff811e12d1>] nfs4_do_open+0x121/0x400
+[<ffffffff811e15e1>] nfs4_atomic_open+0x31/0x50
+[<ffffffff811f02dc>] nfs4_file_open+0xac/0x180
+[<ffffffff811479be>] do_dentry_open.isra.19+0x1ee/0x280
+[<ffffffff81147b3e>] finish_open+0x1e/0x30
+[<ffffffff811578d2>] do_last.isra.64+0x2c2/0xc40
+[<ffffffff81158519>] path_openat.isra.65+0x2c9/0x490
+[<ffffffff81158c38>] do_filp_open+0x38/0x80
+[<ffffffff81148cd4>] do_sys_open+0xe4/0x1c0
+[<ffffffff81148dce>] SyS_open+0x1e/0x20
+[<ffffffff8153e719>] system_call_fastpath+0x16/0x1b
+[<ffffffffffffffff>] 0xffffffffffffffff
 
+Here it looks like we are waiting in a wait queue inside
+rpc_wait_bit_killable() for RPC_TASK_ACTIVE.
+
+And there is a single task with a stack that looks like the following:
+
+[<ffffffff8107dc05>] __refrigerator+0x55/0x150
+[<ffffffff814fd086>] rpc_wait_bit_killable+0x66/0x80
+[<ffffffff814fd01d>] __rpc_wait_for_completion_task+0x2d/0x30
+[<ffffffff811dce5d>] nfs4_run_open_task+0x11d/0x170
+[<ffffffff811de7a3>] _nfs4_open_and_get_state+0x53/0x260
+[<ffffffff811e12d1>] nfs4_do_open+0x121/0x400
+[<ffffffff811e15e1>] nfs4_atomic_open+0x31/0x50
+[<ffffffff811f02dc>] nfs4_file_open+0xac/0x180
+[<ffffffff811479be>] do_dentry_open.isra.19+0x1ee/0x280
+[<ffffffff81147b3e>] finish_open+0x1e/0x30
+[<ffffffff811578d2>] do_last.isra.64+0x2c2/0xc40
+[<ffffffff81158519>] path_openat.isra.65+0x2c9/0x490
+[<ffffffff81158c38>] do_filp_open+0x38/0x80
+[<ffffffff81148cd4>] do_sys_open+0xe4/0x1c0
+[<ffffffff81148dce>] SyS_open+0x1e/0x20
+[<ffffffff8153e719>] system_call_fastpath+0x16/0x1b
+[<ffffffffffffffff>] 0xffffffffffffffff
+
+This looks similar but the different offset into
+rpc_wait_bit_killable() shows that we have returned from the
+schedule() call in freezable_schedule() and are now blocked in
+__refrigerator() inside freezer_count()
+
+Similarly if you look at the tasks that are NOT frozen but are stuck
+opening a NFS file, they also have the following stack showing they are
+waiting in the wait queue for RPC_TASK_ACTIVE.
+
+[<ffffffff814fd055>] rpc_wait_bit_killable+0x35/0x80
+[<ffffffff814fd01d>] __rpc_wait_for_completion_task+0x2d/0x30
+[<ffffffff811dce5d>] nfs4_run_open_task+0x11d/0x170
+[<ffffffff811de7a3>] _nfs4_open_and_get_state+0x53/0x260
+[<ffffffff811e12d1>] nfs4_do_open+0x121/0x400
+[<ffffffff811e15e1>] nfs4_atomic_open+0x31/0x50
+[<ffffffff811f02dc>] nfs4_file_open+0xac/0x180
+[<ffffffff811479be>] do_dentry_open.isra.19+0x1ee/0x280
+[<ffffffff81147b3e>] finish_open+0x1e/0x30
+[<ffffffff811578d2>] do_last.isra.64+0x2c2/0xc40
+[<ffffffff81158519>] path_openat.isra.65+0x2c9/0x490
+[<ffffffff81158c38>] do_filp_open+0x38/0x80
+[<ffffffff81148cd4>] do_sys_open+0xe4/0x1c0
+[<ffffffff81148dce>] SyS_open+0x1e/0x20
+[<ffffffff8153e719>] system_call_fastpath+0x16/0x1b
+[<ffffffffffffffff>] 0xffffffffffffffff
+
+We have hit this a couple of times now and know that if we THAW all of
+the frozen tasks that running tasks will unwedge and finish.
+
+Additionally we have also tried thawing the single task that is frozen
+in __refrigerator() inside rpc_wait_bit_killable().  This usually
+results in different frozen task entering the __refrigerator() state
+inside rpc_wait_bit_killable().  It looks like each one of those tasks
+must wake up another letting it progress.  Again if you thaw enough of
+the frozen tasks eventually everything unwedges and everything
+completes.
+
+I've looked through the 3.10 stable patches since 3.10.46 and don't
+see anything that looks like it addresses this.  Does anyone have any
+idea what might be going on here, and what the fix might be?
+
+Thanks,
+Shawn
