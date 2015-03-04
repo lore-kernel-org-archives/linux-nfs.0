@@ -1,113 +1,78 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ob0-f171.google.com ([209.85.214.171]:38453 "EHLO
-	mail-ob0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752172AbbCDWAa (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Mar 2015 17:00:30 -0500
-Date: Wed, 4 Mar 2015 16:00:27 -0600
-From: Shawn Bohrer <shawn.bohrer@gmail.com>
-To: linux-nfs@vger.kernel.org
-Cc: linux-pm@vger.kernel.org, linux-kernel@vger.kernel.org,
-        mayoff@rgmadvisors.com
-Subject: NFS Freezer and stuck tasks
-Message-ID: <20150304220027.GB20242@sbohrermbp13-local.rgmadvisors.com>
+Received: from ipmail05.adl6.internode.on.net ([150.101.137.143]:42189 "EHLO
+	ipmail05.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751899AbbCDWJC (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Mar 2015 17:09:02 -0500
+Date: Thu, 5 Mar 2015 09:09:00 +1100
+From: Dave Chinner <david@fromorbit.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Christoph Hellwig <hch@lst.de>, linux-nfs@vger.kernel.org, xfs@oss.sgi.com
+Subject: Re: panic on 4.20 server exporting xfs filesystem
+Message-ID: <20150304220900.GX18360@dastard>
+References: <20150303221033.GB19439@fieldses.org>
+ <20150303224456.GV4251@dastard>
+ <20150304020826.GD19439@fieldses.org>
+ <20150304155421.GE1627@fieldses.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20150304155421.GE1627@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
+On Wed, Mar 04, 2015 at 10:54:21AM -0500, J. Bruce Fields wrote:
+> On Tue, Mar 03, 2015 at 09:08:26PM -0500, J. Bruce Fields wrote:
+> > On Wed, Mar 04, 2015 at 09:44:56AM +1100, Dave Chinner wrote:
+> > > On Tue, Mar 03, 2015 at 05:10:33PM -0500, J. Bruce Fields wrote:
+> > > > I'm getting mysterious crashes on a server exporting an xfs filesystem.
+> > > > 
+> > > > Strangely, I've reproduced this on
+> > > > 
+> > > > 	93aaa830fc17 "Merge tag 'xfs-pnfs-for-linus-3.20-rc1' of git://git.kernel.org/pub/scm/linux/kernel/git/dgc/linux-xfs
+> > > > 
+> > > > but haven't yet managed to reproduce on either of its parents
+> > > > (24a52e412ef2 or 781355c6e5ae).  That might just be chance, I'll try
+> > > > again.
+> > > 
+> > > I think you'll find that the bug is only triggered after that XFS
+> > > merge because it's what enabled block layout support in the server,
+> > > i.e.  nfsd4_setup_layout_type() is now setting the export type to
+> > > LAYOUT_BLOCK_VOLUME because XFS has added the necessary functions to
+> > > it's export ops.
+> > 
+> > Doh--after all the discussion I didn't actually pay attention to what
+> > happened in the end.  OK, I see, you're right, it's all more-or-less
+> > dead code till that merge.
+> > 
+> > Christoph's code was passing all my tests before that, so maybe we
+> > broke something in the merge process.
+> > 
+> > Alternatively, it could be because I've added more tests--I'll rerun my
+> > current tests on his original branch....
+> 
+> The below is on Christoph's pnfsd-for-3.20-4 (at cd4b02e).  Doesn't look
+> very informative.  I'm running xfstests over NFSv4.1 with client and
+> server running the same kernel, the filesystem in question is xfs, but
+> isn't otherwise available to the client (so the client shouldn't be
+> doing pnfs).
+> 
+> --b.
+> 
+> BUG: unable to handle kernel paging request at 00000000757d4900
+> IP: [<ffffffff810b59af>] cpuacct_charge+0x5f/0xa0
+> PGD 0 
+> Thread overran stack, or stack corrupted
 
-We're using the Linux cgroup Freezer on some machines that use NFS and
-have run into what appears to be a bug where frozen tasks are blocking
-running tasks and preventing them from completing.  On one of our
-machines which happens to be running an older 3.10.46 kernel we have
-frozen some of the tasks on the system using the cgroup Freezer.  We
-also have a separate set of tasks which are NOT frozen which are stuck
-trying to open some files on NFS.
+Hmmmm. That is not at all informative, especially as it's only
+dumped the interrupt stack and not the stack or the task that it
+has detected as overrun or corrupted.
 
-Looking at the frozen tasks there are several that have the following
-stack:
+Can you turn on all the stack overrun debug options? Maybe even
+turn on the stack tracer to get an idea of whether we are recursing
+deeply somewhere we shouldn't be?
 
-[<ffffffff814fd055>] rpc_wait_bit_killable+0x35/0x80
-[<ffffffff814fd01d>] __rpc_wait_for_completion_task+0x2d/0x30
-[<ffffffff811dce5d>] nfs4_run_open_task+0x11d/0x170
-[<ffffffff811de7a3>] _nfs4_open_and_get_state+0x53/0x260
-[<ffffffff811e12d1>] nfs4_do_open+0x121/0x400
-[<ffffffff811e15e1>] nfs4_atomic_open+0x31/0x50
-[<ffffffff811f02dc>] nfs4_file_open+0xac/0x180
-[<ffffffff811479be>] do_dentry_open.isra.19+0x1ee/0x280
-[<ffffffff81147b3e>] finish_open+0x1e/0x30
-[<ffffffff811578d2>] do_last.isra.64+0x2c2/0xc40
-[<ffffffff81158519>] path_openat.isra.65+0x2c9/0x490
-[<ffffffff81158c38>] do_filp_open+0x38/0x80
-[<ffffffff81148cd4>] do_sys_open+0xe4/0x1c0
-[<ffffffff81148dce>] SyS_open+0x1e/0x20
-[<ffffffff8153e719>] system_call_fastpath+0x16/0x1b
-[<ffffffffffffffff>] 0xffffffffffffffff
+Cheers,
 
-Here it looks like we are waiting in a wait queue inside
-rpc_wait_bit_killable() for RPC_TASK_ACTIVE.
-
-And there is a single task with a stack that looks like the following:
-
-[<ffffffff8107dc05>] __refrigerator+0x55/0x150
-[<ffffffff814fd086>] rpc_wait_bit_killable+0x66/0x80
-[<ffffffff814fd01d>] __rpc_wait_for_completion_task+0x2d/0x30
-[<ffffffff811dce5d>] nfs4_run_open_task+0x11d/0x170
-[<ffffffff811de7a3>] _nfs4_open_and_get_state+0x53/0x260
-[<ffffffff811e12d1>] nfs4_do_open+0x121/0x400
-[<ffffffff811e15e1>] nfs4_atomic_open+0x31/0x50
-[<ffffffff811f02dc>] nfs4_file_open+0xac/0x180
-[<ffffffff811479be>] do_dentry_open.isra.19+0x1ee/0x280
-[<ffffffff81147b3e>] finish_open+0x1e/0x30
-[<ffffffff811578d2>] do_last.isra.64+0x2c2/0xc40
-[<ffffffff81158519>] path_openat.isra.65+0x2c9/0x490
-[<ffffffff81158c38>] do_filp_open+0x38/0x80
-[<ffffffff81148cd4>] do_sys_open+0xe4/0x1c0
-[<ffffffff81148dce>] SyS_open+0x1e/0x20
-[<ffffffff8153e719>] system_call_fastpath+0x16/0x1b
-[<ffffffffffffffff>] 0xffffffffffffffff
-
-This looks similar but the different offset into
-rpc_wait_bit_killable() shows that we have returned from the
-schedule() call in freezable_schedule() and are now blocked in
-__refrigerator() inside freezer_count()
-
-Similarly if you look at the tasks that are NOT frozen but are stuck
-opening a NFS file, they also have the following stack showing they are
-waiting in the wait queue for RPC_TASK_ACTIVE.
-
-[<ffffffff814fd055>] rpc_wait_bit_killable+0x35/0x80
-[<ffffffff814fd01d>] __rpc_wait_for_completion_task+0x2d/0x30
-[<ffffffff811dce5d>] nfs4_run_open_task+0x11d/0x170
-[<ffffffff811de7a3>] _nfs4_open_and_get_state+0x53/0x260
-[<ffffffff811e12d1>] nfs4_do_open+0x121/0x400
-[<ffffffff811e15e1>] nfs4_atomic_open+0x31/0x50
-[<ffffffff811f02dc>] nfs4_file_open+0xac/0x180
-[<ffffffff811479be>] do_dentry_open.isra.19+0x1ee/0x280
-[<ffffffff81147b3e>] finish_open+0x1e/0x30
-[<ffffffff811578d2>] do_last.isra.64+0x2c2/0xc40
-[<ffffffff81158519>] path_openat.isra.65+0x2c9/0x490
-[<ffffffff81158c38>] do_filp_open+0x38/0x80
-[<ffffffff81148cd4>] do_sys_open+0xe4/0x1c0
-[<ffffffff81148dce>] SyS_open+0x1e/0x20
-[<ffffffff8153e719>] system_call_fastpath+0x16/0x1b
-[<ffffffffffffffff>] 0xffffffffffffffff
-
-We have hit this a couple of times now and know that if we THAW all of
-the frozen tasks that running tasks will unwedge and finish.
-
-Additionally we have also tried thawing the single task that is frozen
-in __refrigerator() inside rpc_wait_bit_killable().  This usually
-results in different frozen task entering the __refrigerator() state
-inside rpc_wait_bit_killable().  It looks like each one of those tasks
-must wake up another letting it progress.  Again if you thaw enough of
-the frozen tasks eventually everything unwedges and everything
-completes.
-
-I've looked through the 3.10 stable patches since 3.10.46 and don't
-see anything that looks like it addresses this.  Does anyone have any
-idea what might be going on here, and what the fix might be?
-
-Thanks,
-Shawn
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
