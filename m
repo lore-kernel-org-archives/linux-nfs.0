@@ -1,123 +1,104 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:53721 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([173.255.197.46]:58626 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758391AbbCDOp4 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Mar 2015 09:45:56 -0500
-From: David Howells <dhowells@redhat.com>
-In-Reply-To: <CAHQdGtT9GZpUw5T3zjmRMtO_e34CWy9ds14hB2CAGs8h9f2Jvw@mail.gmail.com>
-References: <CAHQdGtT9GZpUw5T3zjmRMtO_e34CWy9ds14hB2CAGs8h9f2Jvw@mail.gmail.com> <1424964991.10136.8.camel@primarydata.com> <1411654543.3044.24.camel@leira.trondhjem.org> <28059.1411650278@warthog.procyon.org.uk> <6150.1424947519@warthog.procyon.org.uk> <1655.1424969471@warthog.procyon.org.uk> <1830.1424969974@warthog.procyon.org.uk>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: dhowells@redhat.com, Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Steve Dickson <steved@redhat.com>
-Subject: Re: NMI/soft lockup in nfs_delegation_need_return()
+	id S932807AbbCDPyW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 4 Mar 2015 10:54:22 -0500
+Date: Wed, 4 Mar 2015 10:54:21 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Dave Chinner <david@fromorbit.com>
+Cc: Christoph Hellwig <hch@lst.de>, linux-nfs@vger.kernel.org, xfs@oss.sgi.com
+Subject: Re: panic on 4.20 server exporting xfs filesystem
+Message-ID: <20150304155421.GE1627@fieldses.org>
+References: <20150303221033.GB19439@fieldses.org>
+ <20150303224456.GV4251@dastard>
+ <20150304020826.GD19439@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Date: Wed, 04 Mar 2015 14:45:48 +0000
-Message-ID: <18314.1425480348@warthog.procyon.org.uk>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20150304020826.GD19439@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Tue, Mar 03, 2015 at 09:08:26PM -0500, J. Bruce Fields wrote:
+> On Wed, Mar 04, 2015 at 09:44:56AM +1100, Dave Chinner wrote:
+> > On Tue, Mar 03, 2015 at 05:10:33PM -0500, J. Bruce Fields wrote:
+> > > I'm getting mysterious crashes on a server exporting an xfs filesystem.
+> > > 
+> > > Strangely, I've reproduced this on
+> > > 
+> > > 	93aaa830fc17 "Merge tag 'xfs-pnfs-for-linus-3.20-rc1' of git://git.kernel.org/pub/scm/linux/kernel/git/dgc/linux-xfs
+> > > 
+> > > but haven't yet managed to reproduce on either of its parents
+> > > (24a52e412ef2 or 781355c6e5ae).  That might just be chance, I'll try
+> > > again.
+> > 
+> > I think you'll find that the bug is only triggered after that XFS
+> > merge because it's what enabled block layout support in the server,
+> > i.e.  nfsd4_setup_layout_type() is now setting the export type to
+> > LAYOUT_BLOCK_VOLUME because XFS has added the necessary functions to
+> > it's export ops.
+> 
+> Doh--after all the discussion I didn't actually pay attention to what
+> happened in the end.  OK, I see, you're right, it's all more-or-less
+> dead code till that merge.
+> 
+> Christoph's code was passing all my tests before that, so maybe we
+> broke something in the merge process.
+> 
+> Alternatively, it could be because I've added more tests--I'll rerun my
+> current tests on his original branch....
 
-Here's tshark output from around the dodgy point.  There's a huge gap from
-23.440722 to 60.461998 which is devoid of NFS ops.  I've inserted a couple of
-blank lines to delineate the section.  At this point, the NFS client starts
-churning out a huge slew of DELEGRETURN ops.
+The below is on Christoph's pnfsd-for-3.20-4 (at cd4b02e).  Doesn't look
+very informative.  I'm running xfstests over NFSv4.1 with client and
+server running the same kernel, the filesystem in question is xfs, but
+isn't otherwise available to the client (so the client shouldn't be
+doing pnfs).
 
-My test case is just tar'ing up a compiled kernel tree over NFS.  The output
-of tar goes through a throughtput monitor and thence to /dev/null:
+--b.
 
-  nice -n 30 tar cf - /warthog/fs/linux-2.6-fscache | /tmp/progress >/dev/null
+BUG: unable to handle kernel paging request at 00000000757d4900
+IP: [<ffffffff810b59af>] cpuacct_charge+0x5f/0xa0
+PGD 0 
+Thread overran stack, or stack corrupted
+Oops: 0000 [#1] PREEMPT SMP DEBUG_PAGEALLOC
+Modules linked in: rpcsec_gss_krb5 nfsd auth_rpcgss oid_registry nfs_acl lockd grace sunrpc
+CPU: 1 PID: 18130 Comm: kworker/1:0 Not tainted 3.19.0-rc4-00205-gcd4b02e #79
+Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS 1.7.5-20140709_153950- 04/01/2014
+Workqueue: rpciod rpc_async_schedule [sunrpc]
+task: ffff880030639710 ti: ffff88001e698000 task.ti: ffff88001e698000
+RIP: 0010:[<ffffffff810b59af>]  [<ffffffff810b59af>] cpuacct_charge+0x5f/0xa0
+RSP: 0018:ffff88007f903e08  EFLAGS: 00010092
+RAX: 000000000000d4e8 RBX: 000000001e698038 RCX: 000000001e698038
+RDX: ffffffff822377c0 RSI: 0000000000000003 RDI: ffff880030639f78
+RBP: ffff88007f903e38 R08: 0000000000000000 R09: 0000000000000001
+R10: 000000000000001b R11: ffffffff82238fc0 R12: 00000000003b4c1b
+R13: ffff880030639710 R14: ffff880030639710 R15: 0000001536dbb554
+FS:  0000000000000000(0000) GS:ffff88007f900000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+CR2: 00000000757d4900 CR3: 000000006d8e2000 CR4: 00000000000406e0
+Stack:
+ ffffffff810b5955 0000000000000000 ffff88007f903e98 ffff880030639778
+ ffff88007f913698 00000000003b4c1b ffff88007f903e78 ffffffff810a47d0
+ ffff88007f903e78 ffff880030639778 ffff88007f913698 ffff88007f913600
+Call Trace:
+ <IRQ> 
+ [<ffffffff810b5955>] ? cpuacct_charge+0x5/0xa0
+ [<ffffffff810a47d0>] update_curr+0xd0/0x190
+ [<ffffffff810a767f>] task_tick_fair+0x1df/0x4f0
+ [<ffffffff8109e147>] scheduler_tick+0x57/0xd0
+ [<ffffffff810d7e11>] update_process_times+0x51/0x60
+ [<ffffffff810e43df>] tick_periodic+0x2f/0xc0
+ [<ffffffff8165b517>] ? debug_smp_processor_id+0x17/0x20
+ [<ffffffff810e4599>] tick_handle_periodic+0x29/0x70
+ [<ffffffff81033e6a>] local_apic_timer_interrupt+0x3a/0x70
+ [<ffffffff81a8fb81>] smp_apic_timer_interrupt+0x41/0x60
+ [<ffffffff81a8df1f>] apic_timer_interrupt+0x6f/0x80
+ <EOI> 
+Code: 31 c9 45 31 c0 31 f6 48 c7 c7 c0 8f 23 82 e8 a9 71 00 00 49 8b 85 c0 0f 00 00 48 63 cb 48 8b 50 58 0f 1f 00 48 8b 82 d0 00 00 00 <48> 03 04 cd 40 47 31 82 4c 01 20 48 8b 52 48 48 85 d2 75 e5 48 
+RIP  [<ffffffff810b59af>] cpuacct_charge+0x5f/0xa0
+ RSP <ffff88007f903e08>
+CR2: 00000000757d4900
+---[ end trace fa7901843d14b3ab ]---
+Kernel panic - not syncing: Fatal exception in interrupt
+Kernel Offset: 0x0 from 0xffffffff81000000 (relocation range: 0xffffffff80000000-0xffffffff9fffffff)
+---[ end Kernel panic - not syncing: Fatal exception in interrupt
 
-Note that the tshark command excluded ssh traffic from the client.
-
-I wonder, is it spending this time scanning the delegations to decide what to
-return?
-
-David
----
-103565  23.392234 90.155.74.21 -> 90.155.74.18 NFS 330 V4 Call OPEN DH: 0xe7d8aba6/bottom
-103566  23.392318 90.155.74.18 -> 90.155.74.21 NFS 414 V4 Reply (Call In 103565) OPEN StateID: 0x8d1c
-103567  23.392862 90.155.74.21 -> 90.155.74.18 NFS 262 V4 Call READ StateID: 0x8d1c Offset: 0 Len: 41
-103568  23.392908 90.155.74.18 -> 90.155.74.21 NFS 174 V4 Reply (Call In 103567) READ
-103569  23.400370 90.155.74.21 -> 90.155.74.18 NFS 178 V4 Call RENEW CID: 0x21ff
-103570  23.400402 90.155.74.18 -> 90.155.74.21 NFS 114 V4 Reply (Call In 103569) RENEW
-103571  23.400610 90.155.74.21 -> 90.155.74.18 NFS 246 V4 Call GETATTR FH: 0xe7d8aba6
-103572  23.400644 90.155.74.18 -> 90.155.74.21 NFS 258 V4 Reply (Call In 103571) GETATTR
-103573  23.400859 90.155.74.21 -> 90.155.74.18 TCP 66 803→2049 [ACK] Seq=8062089 Ack=47346145 Win=11449 Len=0 TSval=2028290 TSecr=781547240
-103574  23.401176 90.155.74.21 -> 90.155.74.18 NFS 270 V4 Call CLOSE StateID: 0x8d1c
-103575  23.401212 90.155.74.18 -> 90.155.74.21 NFS 202 V4 Reply (Call In 103574) CLOSE
-103576  23.401852 90.155.74.21 -> 90.155.74.18 NFS 254 V4 Call ACCESS FH: 0xe7d8aba6, [Check: RD MD XT XE]
-103577  23.401888 90.155.74.18 -> 90.155.74.21 NFS 194 V4 Reply (Call In 103576) ACCESS, [Access Denied: XE], [Allowed: RD MD XT]
-103578  23.440722 90.155.74.21 -> 90.155.74.18 TCP 66 803→2049 [ACK] Seq=8062481 Ack=47346409 Win=11449 Len=0 TSval=2028300 TSecr=781547242
-
-103579  33.775771 fe80::96de:80ff:feb4:ecc3 -> 2001:8b0:194:0:216:76ff:fece:3a3c ICMPv6 86 Neighbor Solicitation for 2001:8b0:194:0:216:76ff:fece:3a3c from 94:de:80:b4:ec:c3
-103580  33.776256 2001:8b0:194:0:216:76ff:fece:3a3c -> fe80::96de:80ff:feb4:ecc3 ICMPv6 78 Neighbor Advertisement 2001:8b0:194:0:216:76ff:fece:3a3c (sol)
-103581  59.679778 fe80::96de:80ff:feb4:ecc3 -> 2001:8b0:194:0:216:76ff:fece:3a3c ICMPv6 86 Neighbor Solicitation for 2001:8b0:194:0:216:76ff:fece:3a3c from 94:de:80:b4:ec:c3
-103582  59.680047 2001:8b0:194:0:216:76ff:fece:3a3c -> fe80::96de:80ff:feb4:ecc3 ICMPv6 78 Neighbor Advertisement 2001:8b0:194:0:216:76ff:fece:3a3c (sol)
-
-103583  60.461998 90.155.74.21 -> 90.155.74.18 NFS 266 V4 Call DELEGRETURN StateID: 0x5e92
-103584  60.462196 90.155.74.18 -> 90.155.74.21 NFS 186 V4 Reply (Call In 103583) DELEGRETURN
-103585  60.462415 90.155.74.21 -> 90.155.74.18 TCP 66 803→2049 [ACK] Seq=8062681 Ack=47346529 Win=11449 Len=0 TSval=2037555 TSecr=781584302
-103586  60.529223 90.155.74.21 -> 90.155.74.18 NFS 334 V4 Call OPEN DH: 0xe7d8aba6/authemail
-103587  60.529266 90.155.74.21 -> 90.155.74.18 NFS 266 V4 Call DELEGRETURN StateID: 0x0a42
-103588  60.529276 90.155.74.21 -> 90.155.74.18 NFS 266 V4 Call DELEGRETURN StateID: 0x39f2
-103589  60.529395 90.155.74.21 -> 90.155.74.18 NFS 266 V4 Call DELEGRETURN StateID: 0x1540
-103590  60.529418 90.155.74.21 -> 90.155.74.18 NFS 266 V4 Call DELEGRETURN StateID: 0x26f0
-103591  60.529442 90.155.74.18 -> 90.155.74.21 TCP 66 2049→803 [ACK] Seq=47346529 Ack=8063349 Win=32885 Len=0 TSval=781584369 TSecr=2037572
-103592  60.529500 90.155.74.18 -> 90.155.74.21 NFS 186 V4 Reply (Call In 103587) DELEGRETURN
-103593  60.529593 90.155.74.21 -> 90.155.74.18 NFS 266 V4 Call DELEGRETURN StateID: 0x7220
-103594  60.529614 90.155.74.21 -> 90.155.74.18 NFS 266 V4 Call DELEGRETURN StateID: 0x4190
-103595  60.529621 90.155.74.21 -> 90.155.74.18 NFS 266 V4 Call DELEGRETURN StateID: 0xdb80
-103596  60.529650 90.155.74.18 -> 90.155.74.21 NFS 654 V4 Reply (Call In 103588) DELEGRETURN  ; V4 Reply (Call In 103586) OPEN StateID: 0x8d1c  ; V4 Reply (Call In 103589) DELEGRETURN
-103597  60.529676 90.155.74.21 -> 90.155.74.18 NFS 266 V4 Call DELEGRETURN StateID: 0xe830
-103598  60.529685 90.155.74.21 -> 90.155.74.18 TCP 66 803→2049 [ACK] Seq=8064549 Ack=47346649 Win=11449 Len=0 TSval=2037572 TSecr=781584369
-103599  60.529700 90.155.74.18 -> 90.155.74.21 NFS 306 V4 Reply (Call In 103593) DELEGRETURN  ; V4 Reply (Call In 103590) DELEGRETURN
-103600  60.529839 90.155.74.18 -> 90.155.74.21 NFS 426 V4 Reply (Call In 103594) DELEGRETURN  ; V4 Reply (Call In 103595) DELEGRETURN  ; V4 Reply (Call In 103597) DELEGRETURN
-103601  60.529993 90.155.74.21 -> 90.155.74.18 NFS 266 V4 Call DELEGRETURN StateID: 0xbce0
-103602  60.530022 90.155.74.21 -> 90.155.74.18 NFS 266 V4 Call DELEGRETURN StateID: 0x8f50
-103603  60.530065 90.155.74.21 -> 90.155.74.18 TCP 66 803→2049 [ACK] Seq=8064949 Ack=47347837 Win=11449 Len=0 TSval=2037572 TSecr=781584369
-103604  60.530109 90.155.74.18 -> 90.155.74.21 TCP 66 2049→803 [ACK] Seq=47347837 Ack=8064949 Win=32885 Len=0 TSval=781584370 TSecr=2037572
-103605  60.530146 90.155.74.18 -> 90.155.74.21 NFS 186 V4 Reply (Call In 103601) DELEGRETURN
-103606  60.530256 90.155.74.21 -> 90.155.74.18 NFS 266 V4 Call DELEGRETURN StateID: 0x80d1
-103607  60.530271 90.155.74.21 -> 90.155.74.18 NFS 266 V4 Call DELEGRETURN StateID: 0xb361
-103608  60.530277 90.155.74.21 -> 90.155.74.18 NFS 266 V4 Call DELEGRETURN StateID: 0xe7b1
-103609  60.530305 90.155.74.18 -> 90.155.74.21 NFS 186 V4 Reply (Call In 103602) DELEGRETURN
-103610  60.530442 90.155.74.21 -> 90.155.74.18 NFS 266 V4 Call DELEGRETURN StateID: 0xd401
-103611  60.530453 90.155.74.21 -> 90.155.74.18 NFS 266 V4 Call DELEGRETURN StateID: 0x4e11
-103612  60.530463 90.155.74.18 -> 90.155.74.21 NFS 426 V4 Reply (Call In 103607) DELEGRETURN  ; V4 Reply (Call In 103606) DELEGRETURN  ; V4 Reply (Call In 103608) DELEGRETURN
-103613  60.530509 90.155.74.18 -> 90.155.74.21 NFS 186 V4 Reply (Call In 103610) DELEGRETURN
-103614  60.530639 90.155.74.21 -> 90.155.74.18 NFS 266 V4 Call DELEGRETURN StateID: 0x7da1
-103615  60.530651 90.155.74.21 -> 90.155.74.18 NFS 266 V4 Call DELEGRETURN StateID: 0x2971
-103616  60.530664 90.155.74.18 -> 90.155.74.21 NFS 186 V4 Reply (Call In 103611) DELEGRETURN
-103617  60.530669 90.155.74.21 -> 90.155.74.18 NFS 266 V4 Call DELEGRETURN StateID: 0x1ac1
-103618  60.530717 90.155.74.21 -> 90.155.74.18 TCP 66 803→2049 [ACK] Seq=8066549 Ack=47348557 Win=11449 Len=0 TSval=2037572 TSecr=781584370
-103619  60.530731 90.155.74.18 -> 90.155.74.21 NFS 186 V4 Reply (Call In 103615) DELEGRETURN
-103620  60.530910 90.155.74.18 -> 90.155.74.21 NFS 306 V4 Reply (Call In 103617) DELEGRETURN  ; V4 Reply (Call In 103614) DELEGRETURN
-103621  60.531059 90.155.74.21 -> 90.155.74.18 NFS 266 V4 Call DELEGRETURN StateID: 0x7015
-103622  60.531092 90.155.74.21 -> 90.155.74.18 NFS 266 V4 Call DELEGRETURN StateID: 0x43a5
-103623  60.531100 90.155.74.21 -> 90.155.74.18 NFS 266 V4 Call DELEGRETURN StateID: 0x1775
-103624  60.531159 90.155.74.18 -> 90.155.74.21 NFS 186 V4 Reply (Call In 103622) DELEGRETURN
-103625  60.531314 90.155.74.21 -> 90.155.74.18 NFS 266 V4 Call DELEGRETURN StateID: 0x24c5
-103626  60.531342 90.155.74.21 -> 90.155.74.18 NFS 266 V4 Call DELEGRETURN StateID: 0xbed5
-103627  60.531362 90.155.74.18 -> 90.155.74.21 NFS 306 V4 Reply (Call In 103621) DELEGRETURN  ; V4 Reply (Call In 103623) DELEGRETURN
-103628  60.531368 90.155.74.21 -> 90.155.74.18 NFS 266 V4 Call DELEGRETURN StateID: 0x8d65
-103629  60.531408 90.155.74.18 -> 90.155.74.21 NFS 186 V4 Reply (Call In 103625) DELEGRETURN
-103630  60.531512 90.155.74.21 -> 90.155.74.18 NFS 266 V4 Call DELEGRETURN StateID: 0xd9b5
-103631  60.531543 90.155.74.21 -> 90.155.74.18 NFS 266 V4 Call DELEGRETURN StateID: 0xea05
-103632  60.531549 90.155.74.21 -> 90.155.74.18 NFS 262 V4 Call READ StateID: 0x8d1c Offset: 0 Len: 19
-103633  60.531570 90.155.74.21 -> 90.155.74.18 TCP 66 803→2049 [ACK] Seq=8068345 Ack=47349517 Win=11449 Len=0 TSval=2037572 TSecr=781584371
-103634  60.531589 90.155.74.18 -> 90.155.74.21 NFS 426 V4 Reply (Call In 103626) DELEGRETURN  ; V4 Reply (Call In 103628) DELEGRETURN  ; V4 Reply (Call In 103630) DELEGRETURN
-103635  60.531636 90.155.74.18 -> 90.155.74.21 NFS 150 V4 Reply (Call In 103632) READ
-103636  60.531832 90.155.74.21 -> 90.155.74.18 NFS 266 V4 Call DELEGRETURN StateID: 0xe584
-103637  60.531862 90.155.74.21 -> 90.155.74.18 NFS 266 V4 Call DELEGRETURN StateID: 0xd634
-103638  60.531868 90.155.74.21 -> 90.155.74.18 TCP 66 803→2049 [ACK] Seq=8068745 Ack=47349961 Win=11449 Len=0 TSval=2037572 TSecr=781584371
-103639  60.531886 90.155.74.18 -> 90.155.74.21 NFS 186 V4 Reply (Call In 103631) DELEGRETURN
-103640  60.532083 90.155.74.18 -> 90.155.74.21 NFS 306 V4 Reply (Call In 103637) DELEGRETURN  ; V4 Reply (Call In 103636) DELEGRETURN
-103641  60.532098 90.155.74.21 -> 90.155.74.18 NFS 266 V4 Call DELEGRETURN StateID: 0x82e4
-103642  60.532108 90.155.74.21 -> 90.155.74.18 NFS 266 V4 Call DELEGRETURN StateID: 0xb154
-103643  60.532114 90.155.74.21 -> 90.155.74.18 NFS 266 V4 Call DELEGRETURN StateID: 0x2b44
-103644  60.532174 90.155.74.18 -> 90.155.74.21 TCP 66 2049→803 [ACK] Seq=47350321 Ack=8069345 Win=32885 Len=0 TSval=781584372 TSecr=2037572
-103645  60.532259 90.155.74.18 -> 90.155.74.21 NFS 426 V4 Reply (Call In 103641) DELEGRETURN  ; V4 Reply (Call In 103642) DELEGRETURN  ; V4 Reply (Call In 103643) DELEGRETURN
-103646  60.532343 90.155.74.21 -> 90.155.74.18 NFS 266 V4 Call DELEGRETURN StateID: 0x18f4
-103647  60.532358 90.155.74.21 -> 90.155.74.18 NFS 266 V4 Call DELEGRETURN StateID: 0x4c24
-103648  60.532400 90.155.74.18 -> 90.155.74.21 TCP 66 2049→803 [ACK] Seq=47350681 Ack=8069745 Win=32885 Len=0 TSval=781584372 TSecr=2037572
