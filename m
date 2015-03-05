@@ -1,202 +1,120 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx142.netapp.com ([216.240.21.19]:26110 "EHLO mx142.netapp.com"
+Received: from fieldses.org ([173.255.197.46]:59705 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757178AbbCEQGK convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Mar 2015 11:06:10 -0500
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
-CC: <Anna.Schumaker@netapp.com>
-Subject: [PATCH v3] NFS: Don't zap caches on fallocate()
-Date: Thu, 5 Mar 2015 11:06:06 -0500
-Message-ID: <1425571566-3117-1-git-send-email-Anna.Schumaker@Netapp.com>
+	id S1751321AbbCESmj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 5 Mar 2015 13:42:39 -0500
+Date: Thu, 5 Mar 2015 13:42:38 -0500
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfs(5): Update close-to-open discussion in DATA AND
+ METADATA COHERENCY
+Message-ID: <20150305184238.GD15674@fieldses.org>
+References: <20150305155511.26051.93398.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20150305155511.26051.93398.stgit@manet.1015granger.net>
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch adds a GETATTR to the end of ALLOCATE and DEALLOCATE
-operations so we can set the updated inode size and change attribute
-directly.  DEALLOCATE will still need to release pagecache pages, so
-nfs42_proc_deallocate() now calls truncate_pagecache_range() before
-contacting the server.
+On Thu, Mar 05, 2015 at 11:06:37AM -0500, Chuck Lever wrote:
+> The discussion of close-to-open describes the GETATTR and data flush
+> behavior implemented on the Linux client, but does not describe what
+> happens between open() and close(). The lack of strict cache
+> coherency surprises users who expect single-system behavior
+> similar to local file systems.
+> 
+> An explicit description of this behavior is inserted.  Additional
+> clarifications are made of the surrounding text.
+> 
+> Text contributed by Trond, Bruce, Chuck, and Chris Perl.
+> 
+> Link: http://marc.info/?l=linux-nfs&m=142472673425307&w=2
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+> Hi-
+> 
+> TBH I'm more concerned about nfs(5) than I am about the antique NFS
+> FAQ. Besides, my sf.net login expired long ago, after I retired from
+> FAQ maintenance.
 
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
----
- fs/nfs/inode.c          |  1 -
- fs/nfs/nfs42proc.c      | 23 +++++++++++++++++++----
- fs/nfs/nfs42xdr.c       | 20 ++++++++++++++++----
- fs/nfs/nfs4file.c       |  1 -
- include/linux/nfs_xdr.h |  4 ++++
- 5 files changed, 39 insertions(+), 10 deletions(-)
+If someone wanted to just copy the whole thing over to the linux-nfs.org
+wiki, I'd support that.
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index d42dff6..e92386f 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -192,7 +192,6 @@ void nfs_zap_caches(struct inode *inode)
-        nfs_zap_caches_locked(inode);
-        spin_unlock(&inode->i_lock);
- }
--EXPORT_SYMBOL_GPL(nfs_zap_caches);
+> Thus I'm proposing this change to nfs(5). Then I'd like to suggest
+> eventually replacing the bulk of FAQ A8 with a pointer to the DATA
+> AND METADATA COHERENCE section of nfs(5).
 
- void nfs_zap_mapping(struct inode *inode, struct address_space *mapping)
- {
-diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
-index cb17072..b9aa6bb 100644
---- a/fs/nfs/nfs42proc.c
-+++ b/fs/nfs/nfs42proc.c
-@@ -36,13 +36,16 @@ static int _nfs42_proc_fallocate(struct rpc_message *msg, struct file *filep,
-                                 loff_t offset, loff_t len)
- {
-        struct inode *inode = file_inode(filep);
-+       struct nfs_server *server = NFS_SERVER(inode);
-        struct nfs42_falloc_args args = {
-                .falloc_fh      = NFS_FH(inode),
-                .falloc_offset  = offset,
-                .falloc_length  = len,
-+               .falloc_bitmask = server->cache_consistency_bitmask,
-+       };
-+       struct nfs42_falloc_res res = {
-+               .falloc_server  = server,
-        };
--       struct nfs42_falloc_res res;
--       struct nfs_server *server = NFS_SERVER(inode);
-        int status;
+Moving it to the man pages sounds fine to me too, though.
 
-        msg->rpc_argp = &args;
-@@ -52,8 +55,17 @@ static int _nfs42_proc_fallocate(struct rpc_message *msg, struct file *filep,
-        if (status)
-                return status;
+> Comments?
 
--       return nfs4_call_sync(server->client, server, msg,
--                             &args.seq_args, &res.seq_res, 0);
-+       res.falloc_fattr = nfs_alloc_fattr();
-+       if (!res.falloc_fattr)
-+               return -ENOMEM;
-+
-+       status = nfs4_call_sync(server->client, server, msg,
-+                               &args.seq_args, &res.seq_res, 0);
-+       if (status == 0)
-+               status = nfs_post_op_update_inode(inode, res.falloc_fattr);
-+
-+       kfree(res.falloc_fattr);
-+       return status;
- }
+We're leading with the mechanism (flushing and attribute checking),
+which I think encourages people to reason starting from the
+implementation.  We know that's difficult.
 
- static int nfs42_proc_fallocate(struct rpc_message *msg, struct file *filep,
-@@ -101,7 +113,10 @@ int nfs42_proc_deallocate(struct file *filep, loff_t offset, loff_t len)
-        if (!nfs_server_capable(inode, NFS_CAP_DEALLOCATE))
-                return -EOPNOTSUPP;
+I'd rather lead with a conservative black-box explanation of what
+applications can and cannot depend on.
 
-+       nfs_wb_all(inode);
-        err = nfs42_proc_fallocate(&msg, filep, offset, len);
-+       if (err == 0)
-+               truncate_pagecache_range(inode, offset, (offset + len) -1);
-        if (err == -EOPNOTSUPP)
-                NFS_SERVER(inode)->caps &= ~NFS_CAP_DEALLOCATE;
-        return err;
-diff --git a/fs/nfs/nfs42xdr.c b/fs/nfs/nfs42xdr.c
-index 038a7e1..1a25b27 100644
---- a/fs/nfs/nfs42xdr.c
-+++ b/fs/nfs/nfs42xdr.c
-@@ -25,16 +25,20 @@
+--b.
 
- #define NFS4_enc_allocate_sz           (compound_encode_hdr_maxsz + \
-                                         encode_putfh_maxsz + \
--                                        encode_allocate_maxsz)
-+                                        encode_allocate_maxsz + \
-+                                        encode_getattr_maxsz)
- #define NFS4_dec_allocate_sz           (compound_decode_hdr_maxsz + \
-                                         decode_putfh_maxsz + \
--                                        decode_allocate_maxsz)
-+                                        decode_allocate_maxsz + \
-+                                        decode_getattr_maxsz)
- #define NFS4_enc_deallocate_sz         (compound_encode_hdr_maxsz + \
-                                         encode_putfh_maxsz + \
--                                        encode_deallocate_maxsz)
-+                                        encode_deallocate_maxsz + \
-+                                        encode_getattr_maxsz)
- #define NFS4_dec_deallocate_sz         (compound_decode_hdr_maxsz + \
-                                         decode_putfh_maxsz + \
--                                        decode_deallocate_maxsz)
-+                                        decode_deallocate_maxsz + \
-+                                        decode_getattr_maxsz)
- #define NFS4_enc_seek_sz               (compound_encode_hdr_maxsz + \
-                                         encode_putfh_maxsz + \
-                                         encode_seek_maxsz)
-@@ -92,6 +96,7 @@ static void nfs4_xdr_enc_allocate(struct rpc_rqst *req,
-        encode_sequence(xdr, &args->seq_args, &hdr);
-        encode_putfh(xdr, args->falloc_fh, &hdr);
-        encode_allocate(xdr, args, &hdr);
-+       encode_getfattr(xdr, args->falloc_bitmask, &hdr);
-        encode_nops(&hdr);
- }
-
-@@ -110,6 +115,7 @@ static void nfs4_xdr_enc_deallocate(struct rpc_rqst *req,
-        encode_sequence(xdr, &args->seq_args, &hdr);
-        encode_putfh(xdr, args->falloc_fh, &hdr);
-        encode_deallocate(xdr, args, &hdr);
-+       encode_getfattr(xdr, args->falloc_bitmask, &hdr);
-        encode_nops(&hdr);
- }
-
-@@ -183,6 +189,9 @@ static int nfs4_xdr_dec_allocate(struct rpc_rqst *rqstp,
-        if (status)
-                goto out;
-        status = decode_allocate(xdr, res);
-+       if (status)
-+               goto out;
-+       decode_getfattr(xdr, res->falloc_fattr, res->falloc_server);
- out:
-        return status;
- }
-@@ -207,6 +216,9 @@ static int nfs4_xdr_dec_deallocate(struct rpc_rqst *rqstp,
-        if (status)
-                goto out;
-        status = decode_deallocate(xdr, res);
-+       if (status)
-+               goto out;
-+       decode_getfattr(xdr, res->falloc_fattr, res->falloc_server);
- out:
-        return status;
- }
-diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
-index 8b46389..d09c689 100644
---- a/fs/nfs/nfs4file.c
-+++ b/fs/nfs/nfs4file.c
-@@ -159,7 +159,6 @@ static long nfs42_fallocate(struct file *filep, int mode, loff_t offset, loff_t
-                ret = nfs42_proc_allocate(filep, offset, len);
-        mutex_unlock(&inode->i_mutex);
-
--       nfs_zap_caches(inode);
-        return ret;
- }
- #endif /* CONFIG_NFS_V4_2 */
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 4cb3eaa..38346b6 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1271,11 +1271,15 @@ struct nfs42_falloc_args {
-        nfs4_stateid                     falloc_stateid;
-        u64                              falloc_offset;
-        u64                              falloc_length;
-+       const u32                       *falloc_bitmask;
- };
-
- struct nfs42_falloc_res {
-        struct nfs4_sequence_res        seq_res;
-        unsigned int                    status;
-+
-+       struct nfs_fattr                *falloc_fattr;
-+       const struct nfs_server         *falloc_server;
- };
-
- struct nfs42_seek_args {
---
-2.3.1
-
-
-
-The information contained in this message and in any attachments is privileged and confidential, and may contain personal data. It is intended only for the use of the addressee. You should not read, copy, use, or disclose this information without authorisation. If you are not the intended recipient of this message, please e-mail the sender immediately and delete this message. Any unauthorised dissemination, disclosure, copying or use of the contents of this message is strictly prohibited and may result in legal action, including civil or criminal proceedings.
-
-NetApp-Disclaimer-v1.1
+> 
+>  utils/mount/nfs.man |   29 ++++++++++++++++++++++-------
+>  1 file changed, 22 insertions(+), 7 deletions(-)
+> 
+> diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
+> index fe4f9b1..4df8a16 100644
+> --- a/utils/mount/nfs.man
+> +++ b/utils/mount/nfs.man
+> @@ -1148,9 +1148,11 @@ is expensive to achieve, especially on wide area networks.
+>  As such, NFS settles for weaker cache coherence that
+>  satisfies the requirements of most file sharing types.
+>  .SS "Close-to-open cache consistency"
+> -Typically file sharing is completely sequential.
+> -First client A opens a file, writes something to it, then closes it.
+> -Then client B opens the same file, and reads the changes.
+> +Typically applications share files in a sequential manner.
+> +First application A opens a file, writes something to it, then closes it.
+> +Then application B opens the same file, and reads the changes.
+> +This typical sharing behavior is leveraged to keep NFS operations
+> +from multiple clients fast.
+>  .P
+>  When an application opens a file stored on an NFS version 3 server,
+>  the NFS client checks that the file exists on the server
+> @@ -1165,14 +1167,27 @@ This also gives the NFS client an opportunity to report
+>  write errors to the application via the return code from
+>  .BR close (2).
+>  .P
+> -The behavior of checking at open time and flushing at close time
+> -is referred to as
+> +To maintain good performance, the NFS client only occasionally checks
+> +whether its cache remains valid between open() and close().
+> +.P
+> +The behavior of checking a file at open time and flushing at close time,
+> +with relaxed consistency checking in between, is referred to as
+>  .IR "close-to-open cache consistency" ,
+>  or
+>  .IR CTO .
+> -It can be disabled for an entire mount point using the
+> +.P
+> +Note that applications cannot rely on implicit cache revalidation
+> +while a file is held open.
+> +If an open file changes on the NFS server, read() on clients may return
+> +stale data or holes, unless the application explicitly serializes
+> +file changes with reads using file locking or some other technique.
+> +.P
+> +In rare cases, sending a GETATTR on every open()
+> +may still be too much overhead.
+> +Close-to-open can be relaxed further
+> +for an entire NFS version 3 mount point using the
+>  .B nocto
+> -mount option.
+> +mount option, at the cost of even weaker client cache coherence.
+>  .SS "Weak cache consistency"
+>  There are still opportunities for a client's data cache
+>  to contain stale data.
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
