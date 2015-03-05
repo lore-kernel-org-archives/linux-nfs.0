@@ -1,31 +1,32 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from verein.lst.de ([213.95.11.211]:52199 "EHLO newverein.lst.de"
+Received: from mx1.redhat.com ([209.132.183.28]:47791 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753621AbbCENTD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 5 Mar 2015 08:19:03 -0500
-Date: Thu, 5 Mar 2015 14:19:01 +0100
-From: Christoph Hellwig <hch@lst.de>
-To: Dave Chinner <david@fromorbit.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, Christoph Hellwig <hch@lst.de>,
-        linux-nfs@vger.kernel.org, xfs@oss.sgi.com
-Subject: Re: panic on 4.20 server exporting xfs filesystem
-Message-ID: <20150305131901.GB16235@lst.de>
-References: <20150303221033.GB19439@fieldses.org> <20150303224456.GV4251@dastard> <20150304020826.GD19439@fieldses.org> <20150304044141.GQ18360@dastard>
+	id S1755495AbbCENza (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 5 Mar 2015 08:55:30 -0500
+Received: from int-mx13.intmail.prod.int.phx2.redhat.com (int-mx13.intmail.prod.int.phx2.redhat.com [10.5.11.26])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id t25DtTql015725
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
+	for <linux-nfs@vger.kernel.org>; Thu, 5 Mar 2015 08:55:30 -0500
+Received: from smallhat.boston.devel.redhat.com (smallhat.boston.devel.redhat.com [10.19.60.65])
+	by int-mx13.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id t25DtSba023641
+	for <linux-nfs@vger.kernel.org>; Thu, 5 Mar 2015 08:55:29 -0500
+Message-ID: <54F86050.5050708@RedHat.com>
+Date: Thu, 05 Mar 2015 08:55:28 -0500
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20150304044141.GQ18360@dastard>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Linux NFS town hall  meeting  Today  (Cancelled)
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Mar 04, 2015 at 03:41:41PM +1100, Dave Chinner wrote:
-> As I understand it, nothing will prevent this - if you don't change
-> the UUID on the filesystem when you clone it, then the UUID will
-> still match and writes can be directed to any block deice with a
-> matching offset/UUID pair.
+Hello,
 
-Unfortunately that's the case indeed.  The whole discovery part of
-the block layout protocol is fundamentally flawed, as is the recall
-part.  This is my attempt to fix it, but I have no idea how to proceed
-from posting my draft to the IETF to actually making it a standard:
+Sorry for the late notice I'm unable to host 
+today's meeting plus most of us will see each
+other at next week's LSF/Vault summit... 
 
-http://tools.ietf.org/html/draft-hellwig-nfsv4-scsi-layout-00
+See ya in a couple of weeks...   
+
+steved.
+
