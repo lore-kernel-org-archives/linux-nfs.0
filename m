@@ -1,113 +1,42 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:59154 "EHLO fieldses.org"
+Received: from verein.lst.de ([213.95.11.211]:52190 "EHLO newverein.lst.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750738AbbCEEIu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 4 Mar 2015 23:08:50 -0500
-Date: Wed, 4 Mar 2015 23:08:49 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Dave Chinner <david@fromorbit.com>
-Cc: Eric Sandeen <sandeen@sandeen.net>, linux-nfs@vger.kernel.org,
-        Christoph Hellwig <hch@lst.de>, xfs@oss.sgi.com
+	id S1751516AbbCENRf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 5 Mar 2015 08:17:35 -0500
+Date: Thu, 5 Mar 2015 14:17:31 +0100
+From: Christoph Hellwig <hch@lst.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Dave Chinner <david@fromorbit.com>, Eric Sandeen <sandeen@sandeen.net>,
+        linux-nfs@vger.kernel.org, Christoph Hellwig <hch@lst.de>,
+        xfs@oss.sgi.com
 Subject: Re: panic on 4.20 server exporting xfs filesystem
-Message-ID: <20150305040849.GJ1627@fieldses.org>
-References: <20150303221033.GB19439@fieldses.org>
- <20150303224456.GV4251@dastard>
- <20150304020826.GD19439@fieldses.org>
- <20150304155421.GE1627@fieldses.org>
- <20150304220900.GX18360@dastard>
- <20150304222709.GI1627@fieldses.org>
- <20150304224557.GY4251@dastard>
- <54F78BE5.1020608@sandeen.net>
- <20150304225623.GZ4251@dastard>
+Message-ID: <20150305131731.GA16235@lst.de>
+References: <20150303221033.GB19439@fieldses.org> <20150303224456.GV4251@dastard> <20150304020826.GD19439@fieldses.org> <20150304155421.GE1627@fieldses.org> <20150304220900.GX18360@dastard> <20150304222709.GI1627@fieldses.org> <20150304224557.GY4251@dastard> <54F78BE5.1020608@sandeen.net> <20150304225623.GZ4251@dastard> <20150305040849.GJ1627@fieldses.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20150304225623.GZ4251@dastard>
+In-Reply-To: <20150305040849.GJ1627@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Mar 05, 2015 at 09:56:23AM +1100, Dave Chinner wrote:
-> On Wed, Mar 04, 2015 at 04:49:09PM -0600, Eric Sandeen wrote:
-> > On 3/4/15 4:45 PM, Dave Chinner wrote:
-> > > On Wed, Mar 04, 2015 at 05:27:09PM -0500, J. Bruce Fields wrote:
-> > >> On Thu, Mar 05, 2015 at 09:09:00AM +1100, Dave Chinner wrote:
-> > >>> On Wed, Mar 04, 2015 at 10:54:21AM -0500, J. Bruce Fields wrote:
-> > >>>> On Tue, Mar 03, 2015 at 09:08:26PM -0500, J. Bruce Fields wrote:
-> > >>>>> On Wed, Mar 04, 2015 at 09:44:56AM +1100, Dave Chinner wrote:
-> > >>>>>> On Tue, Mar 03, 2015 at 05:10:33PM -0500, J. Bruce Fields wrote:
-> > >>>>>>> I'm getting mysterious crashes on a server exporting an xfs filesystem.
-> > >>>>>>>
-> > >>>>>>> Strangely, I've reproduced this on
-> > >>>>>>>
-> > >>>>>>> 	93aaa830fc17 "Merge tag 'xfs-pnfs-for-linus-3.20-rc1' of git://git.kernel.org/pub/scm/linux/kernel/git/dgc/linux-xfs
-> > >>>>>>>
-> > >>>>>>> but haven't yet managed to reproduce on either of its parents
-> > >>>>>>> (24a52e412ef2 or 781355c6e5ae).  That might just be chance, I'll try
-> > >>>>>>> again.
-> > >>>>>>
-> > >>>>>> I think you'll find that the bug is only triggered after that XFS
-> > >>>>>> merge because it's what enabled block layout support in the server,
-> > >>>>>> i.e.  nfsd4_setup_layout_type() is now setting the export type to
-> > >>>>>> LAYOUT_BLOCK_VOLUME because XFS has added the necessary functions to
-> > >>>>>> it's export ops.
-> > >>>>>
-> > >>>>> Doh--after all the discussion I didn't actually pay attention to what
-> > >>>>> happened in the end.  OK, I see, you're right, it's all more-or-less
-> > >>>>> dead code till that merge.
-> > >>>>>
-> > >>>>> Christoph's code was passing all my tests before that, so maybe we
-> > >>>>> broke something in the merge process.
-> > >>>>>
-> > >>>>> Alternatively, it could be because I've added more tests--I'll rerun my
-> > >>>>> current tests on his original branch....
-> > >>>>
-> > >>>> The below is on Christoph's pnfsd-for-3.20-4 (at cd4b02e).  Doesn't look
-> > >>>> very informative.  I'm running xfstests over NFSv4.1 with client and
-> > >>>> server running the same kernel, the filesystem in question is xfs, but
-> > >>>> isn't otherwise available to the client (so the client shouldn't be
-> > >>>> doing pnfs).
-> > >>>>
-> > >>>> --b.
-> > >>>>
-> > >>>> BUG: unable to handle kernel paging request at 00000000757d4900
-> > >>>> IP: [<ffffffff810b59af>] cpuacct_charge+0x5f/0xa0
-> > >>>> PGD 0 
-> > >>>> Thread overran stack, or stack corrupted
-> > >>>
-> > >>> Hmmmm. That is not at all informative, especially as it's only
-> > >>> dumped the interrupt stack and not the stack or the task that it
-> > >>> has detected as overrun or corrupted.
-> > >>>
-> > >>> Can you turn on all the stack overrun debug options? Maybe even
-> > >>> turn on the stack tracer to get an idea of whether we are recursing
-> > >>> deeply somewhere we shouldn't be?
-> > >>
-> > >> Digging around under "Kernel hacking".... I already have
-> > >> DEBUG_STACK_USAGE, DEBUG_STACKOVERFLOW, and STACK_TRACER, and I can try
-> > >> turning on the latter.  (Will I be able to get information out of it
-> > >> before the panic?)
-> > > 
-> > > just keep taking samples of the worst case stack usage as the test
-> > > runs. If there's anything unusual before the failure then it will
-> > > show up, otherwise I'm not sure how to track this down...
-> > 
-> > I think it should print "maximum stack depth" messages whenever a stack
-> > reaches a new max excursion...
+On Wed, Mar 04, 2015 at 11:08:49PM -0500, J. Bruce Fields wrote:
+> Ah-hah:
 > 
-> That gets printed only when the process exits, IIRC.
+> 	static void
+> 	nfsd4_cb_layout_fail(struct nfs4_layout_stateid *ls)
+> 	{
+> 		...
+> 		nfsd4_cb_layout_fail(ls);
+> 
+> That'd do it!
+> 
+> Haven't tried to figure out why exactly that's getting called, and why
+> only rarely.  Some intermittent problem with the callback path, I guess.
+> 
+> Anyway, I think that solves most of the mystery....
 
-Ah-hah:
+Ooops, that was a nasty git merge error in the last rebase, see the fix
+below.  But I really wonder if we need to make the usage of pnfs explicit
+after all, othterwise we'll always hand out layouts on any XFS-exported
+filesystems, which can't be used and will eventually need to be recalled.
 
-	static void
-	nfsd4_cb_layout_fail(struct nfs4_layout_stateid *ls)
-	{
-		...
-		nfsd4_cb_layout_fail(ls);
-
-That'd do it!
-
-Haven't tried to figure out why exactly that's getting called, and why
-only rarely.  Some intermittent problem with the callback path, I guess.
-
-Anyway, I think that solves most of the mystery....
-
---b.
+---
