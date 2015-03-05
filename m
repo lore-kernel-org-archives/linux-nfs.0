@@ -1,42 +1,31 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from verein.lst.de ([213.95.11.211]:52190 "EHLO newverein.lst.de"
+Received: from verein.lst.de ([213.95.11.211]:52199 "EHLO newverein.lst.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751516AbbCENRf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 5 Mar 2015 08:17:35 -0500
-Date: Thu, 5 Mar 2015 14:17:31 +0100
+	id S1753621AbbCENTD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 5 Mar 2015 08:19:03 -0500
+Date: Thu, 5 Mar 2015 14:19:01 +0100
 From: Christoph Hellwig <hch@lst.de>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Dave Chinner <david@fromorbit.com>, Eric Sandeen <sandeen@sandeen.net>,
-        linux-nfs@vger.kernel.org, Christoph Hellwig <hch@lst.de>,
-        xfs@oss.sgi.com
+To: Dave Chinner <david@fromorbit.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, Christoph Hellwig <hch@lst.de>,
+        linux-nfs@vger.kernel.org, xfs@oss.sgi.com
 Subject: Re: panic on 4.20 server exporting xfs filesystem
-Message-ID: <20150305131731.GA16235@lst.de>
-References: <20150303221033.GB19439@fieldses.org> <20150303224456.GV4251@dastard> <20150304020826.GD19439@fieldses.org> <20150304155421.GE1627@fieldses.org> <20150304220900.GX18360@dastard> <20150304222709.GI1627@fieldses.org> <20150304224557.GY4251@dastard> <54F78BE5.1020608@sandeen.net> <20150304225623.GZ4251@dastard> <20150305040849.GJ1627@fieldses.org>
+Message-ID: <20150305131901.GB16235@lst.de>
+References: <20150303221033.GB19439@fieldses.org> <20150303224456.GV4251@dastard> <20150304020826.GD19439@fieldses.org> <20150304044141.GQ18360@dastard>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20150305040849.GJ1627@fieldses.org>
+In-Reply-To: <20150304044141.GQ18360@dastard>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Mar 04, 2015 at 11:08:49PM -0500, J. Bruce Fields wrote:
-> Ah-hah:
-> 
-> 	static void
-> 	nfsd4_cb_layout_fail(struct nfs4_layout_stateid *ls)
-> 	{
-> 		...
-> 		nfsd4_cb_layout_fail(ls);
-> 
-> That'd do it!
-> 
-> Haven't tried to figure out why exactly that's getting called, and why
-> only rarely.  Some intermittent problem with the callback path, I guess.
-> 
-> Anyway, I think that solves most of the mystery....
+On Wed, Mar 04, 2015 at 03:41:41PM +1100, Dave Chinner wrote:
+> As I understand it, nothing will prevent this - if you don't change
+> the UUID on the filesystem when you clone it, then the UUID will
+> still match and writes can be directed to any block deice with a
+> matching offset/UUID pair.
 
-Ooops, that was a nasty git merge error in the last rebase, see the fix
-below.  But I really wonder if we need to make the usage of pnfs explicit
-after all, othterwise we'll always hand out layouts on any XFS-exported
-filesystems, which can't be used and will eventually need to be recalled.
+Unfortunately that's the case indeed.  The whole discovery part of
+the block layout protocol is fundamentally flawed, as is the recall
+part.  This is my attempt to fix it, but I have no idea how to proceed
+from posting my draft to the IETF to actually making it a standard:
 
----
+http://tools.ietf.org/html/draft-hellwig-nfsv4-scsi-layout-00
