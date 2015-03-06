@@ -1,79 +1,153 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from becquer.dodds.net ([207.224.24.209]:39961 "EHLO
-	becquer.dodds.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752521AbbCFS3t (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Mar 2015 13:29:49 -0500
-Date: Fri, 6 Mar 2015 10:20:31 -0800
-From: Steve Langasek <steve.langasek@ubuntu.com>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: Martin Pitt <martin.pitt@ubuntu.com>, linux-nfs@vger.kernel.org,
-        systemd-devel@lists.freedesktop.org
-Subject: Re: [PATCH 0/1] details for starting nfs-idmapd also on clients
-Message-ID: <20150306182031.GA6228@virgil.dodds.net>
-References: <1425640544-24230-1-git-send-email-martin.pitt@ubuntu.com>
- <54F9DA9D.8010106@RedHat.com>
+Received: from fieldses.org ([173.255.197.46]:60730 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750789AbbCFUrQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 6 Mar 2015 15:47:16 -0500
+Date: Fri, 6 Mar 2015 15:47:15 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Dave Chinner <david@fromorbit.com>
+Cc: Christoph Hellwig <hch@lst.de>, Eric Sandeen <sandeen@sandeen.net>,
+        linux-nfs@vger.kernel.org, xfs@oss.sgi.com
+Subject: Re: panic on 4.20 server exporting xfs filesystem
+Message-ID: <20150306204715.GA27257@fieldses.org>
+References: <20150304222709.GI1627@fieldses.org>
+ <20150304224557.GY4251@dastard>
+ <54F78BE5.1020608@sandeen.net>
+ <20150304225623.GZ4251@dastard>
+ <20150305040849.GJ1627@fieldses.org>
+ <20150305131731.GA16235@lst.de>
+ <20150305150138.GA15674@fieldses.org>
+ <20150305170217.GC15674@fieldses.org>
+ <20150305204749.GA17934@fieldses.org>
+ <20150305205922.GF18360@dastard>
 MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha256;
-	protocol="application/pgp-signature"; boundary="mYCpIKhGyMATD0i+"
-In-Reply-To: <54F9DA9D.8010106@RedHat.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20150305205922.GF18360@dastard>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Fri, Mar 06, 2015 at 07:59:22AM +1100, Dave Chinner wrote:
+> On Thu, Mar 05, 2015 at 03:47:49PM -0500, J. Bruce Fields wrote:
+> > On Thu, Mar 05, 2015 at 12:02:17PM -0500, J. Bruce Fields wrote:
+> > > On Thu, Mar 05, 2015 at 10:01:38AM -0500, J. Bruce Fields wrote:
+> > > > On Thu, Mar 05, 2015 at 02:17:31PM +0100, Christoph Hellwig wrote:
+> > > > > On Wed, Mar 04, 2015 at 11:08:49PM -0500, J. Bruce Fields wrote:
+> > > > > > Ah-hah:
+> > > > > > 
+> > > > > > 	static void
+> > > > > > 	nfsd4_cb_layout_fail(struct nfs4_layout_stateid *ls)
+> > > > > > 	{
+> > > > > > 		...
+> > > > > > 		nfsd4_cb_layout_fail(ls);
+> > > > > > 
+> > > > > > That'd do it!
+> > > > > > 
+> > > > > > Haven't tried to figure out why exactly that's getting called, and why
+> > > > > > only rarely.  Some intermittent problem with the callback path, I guess.
+> > > > > > 
+> > > > > > Anyway, I think that solves most of the mystery....
+> > > > > 
+> > > > > Ooops, that was a nasty git merge error in the last rebase, see the fix
+> > > > > below.
+> > > > 
+> > > > Thanks!
+> > > 
+> > > And with that fix things look good.
+> > > 
+> > > I'm still curious why the callbacks are failling.  It's also logging
+> > > "nfsd: client 192.168.122.32 failed to respond to layout recall".
+> > 
+> > I spoke too soon, I'm still not getting through my usual test run--the most
+> > recent run is hanging in generic/247 with the following in the server logs.
+> > 
+> > But I probably still won't get a chance to look at this any closer till after
+> > vault.
+> > 
+> > --b.
+> > 
+> > nfsd: client 192.168.122.32 failed to respond to layout recall.   Fencing..
+> > nfsd: fence failed for client 192.168.122.32: -2!
+> > nfsd: client 192.168.122.32 failed to respond to layout recall.   Fencing..
+> > nfsd: fence failed for client 192.168.122.32: -2!
+> > receive_cb_reply: Got unrecognized reply: calldir 0x1 xpt_bc_xprt ffff88005639a000 xid c21abd62
+> > kswapd0: page allocation failure: order:0, mode:0x120
+> 
+> [snip network driver memory allocation failure]
+> 
+> > active_anon:7053 inactive_anon:2435 isolated_anon:0
+> >  active_file:88743 inactive_file:89505 isolated_file:32
+> >  unevictable:0 dirty:9786 writeback:0 unstable:0
+> >  free:3571 slab_reclaimable:227807 slab_unreclaimable:75772
+> >  mapped:21010 shmem:380 pagetables:1567 bounce:0
+> >  free_cma:0
+> 
+> Looks like there should be heaps of reclaimable memory...
+> 
+> > nfsd: client 192.168.122.32 failed to respond to layout recall.   Fencing..
+> 
+> So there's a layout recall pending...
+> 
+> > nfsd: fence failed for client 192.168.122.32: -2!
+> > receive_cb_reply: Got unrecognized reply: calldir 0x1 xpt_bc_xprt ffff880051dfc000 xid 8ff02aaf
+> > INFO: task nfsd:17653 blocked for more than 120 seconds.
+> >       Not tainted 4.0.0-rc2-09922-g26cbcc7 #89
+> > "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+> > nfsd            D ffff8800753a7848 11720 17653      2 0x00000000
+> >  ffff8800753a7848 0000000000000001 0000000000000001 ffffffff82210580
+> >  ffff88004e9bcb50 0000000000000006 ffffffff8119d9f0 ffff8800753a7848
+> >  ffff8800753a7fd8 ffff88002e5e3d70 0000000000000246 ffff88004e9bcb50
+> > Call Trace:
+> >  [<ffffffff8119d9f0>] ? new_sync_read+0xb0/0xb0
+> >  [<ffffffff8119d9f0>] ? new_sync_read+0xb0/0xb0
+> >  [<ffffffff81a95737>] schedule+0x37/0x90
+> >  [<ffffffff81a95ac8>] schedule_preempt_disabled+0x18/0x30
+> >  [<ffffffff81a97756>] mutex_lock_nested+0x156/0x400
+> >  [<ffffffff813a0d5a>] ? xfs_file_buffered_aio_write.isra.9+0x6a/0x2a0
+> >  [<ffffffff8119d9f0>] ? new_sync_read+0xb0/0xb0
+> >  [<ffffffff813a0d5a>] xfs_file_buffered_aio_write.isra.9+0x6a/0x2a0
+> >  [<ffffffff8119d9f0>] ? new_sync_read+0xb0/0xb0
+> >  [<ffffffff813a1016>] xfs_file_write_iter+0x86/0x130
+> >  [<ffffffff8119db05>] do_iter_readv_writev+0x65/0xa0
+> 
+> and the nfsd got hung up on the inode mutex during  a write.
+> 
+> Which means there's some other process blocked holding the i_mutex.
+> sysrq-w and sysrq-t is probably going to tell us more here.
+> 
+> I suspect we'll have another write stuck in break_layout().....
 
---mYCpIKhGyMATD0i+
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+Yup!  There's a bunch of threads similarly stuck in write, and then:
 
-On Fri, Mar 06, 2015 at 11:49:33AM -0500, Steve Dickson wrote:
-> On 03/06/2015 06:15 AM, Martin Pitt wrote:
-> > Hello all,
+# cat /proc/17765/stack 
+[<ffffffff811edb18>] __break_lease+0x278/0x510
+[<ffffffff813cd4d4>] xfs_break_layouts+0x94/0xf0
+[<ffffffff813a0903>] xfs_file_aio_write_checks+0x53/0x100
+[<ffffffff813a0d7b>] xfs_file_buffered_aio_write.isra.9+0x8b/0x2a0
+[<ffffffff813a1016>] xfs_file_write_iter+0x86/0x130
+[<ffffffff8119db05>] do_iter_readv_writev+0x65/0xa0
+[<ffffffff8119f0b2>] do_readv_writev+0xe2/0x280
+[<ffffffff8119f2d9>] vfs_writev+0x39/0x50
+[<ffffffffa00ab861>] nfsd_vfs_write.isra.11+0xa1/0x350 [nfsd]
+[<ffffffffa00aecee>] nfsd_write+0x8e/0x100 [nfsd]
+[<ffffffffa00b97f5>] nfsd4_write+0x185/0x1e0 [nfsd]
+[<ffffffffa00bbe37>] nfsd4_proc_compound+0x3c7/0x6f0 [nfsd]
+[<ffffffffa00a7463>] nfsd_dispatch+0xc3/0x220 [nfsd]
+[<ffffffffa001314f>] svc_process_common+0x43f/0x650 [sunrpc]
+[<ffffffffa00134a3>] svc_process+0x143/0x260 [sunrpc]
+[<ffffffffa00a6cc7>] nfsd+0x167/0x1e0 [nfsd]
+[<ffffffff81093a2f>] kthread+0xef/0x110
+[<ffffffff81a9b5ac>] ret_from_fork+0x7c/0xb0
+[<ffffffffffffffff>] 0xffffffffffffffff
 
-> > Steve Langasek pointed out in [1] that idmapd is also necessary on the =
-client
-> > side. It isn't for my very simple NFSv4 test, but then again I don't kn=
-ow that
-> > much about the various other modes of operation.
+I'm worried by the blocking break_lease in xfs_break_layouts.  There's a
+circular dependency: blocking in break_lease ties up an nfsd thread, but
+we'll need an nfsd thread to process the client's layout return.
 
-> > This patch starts nfs-idmapd.service on clients too.
-> This is distro specific... Other distros use the=20
-> key ring based nfsidmap(5) command to do the id mapping.
+But in the worst case I'd still expect that to be cleaned up if the
+client doesn't return the layout within a lease period (20 seconds on my
+server).
 
-> Make note, with new kernels the default upcall is to the
-> nfsdimap command, if that fails then the rpc.idmapd daemon=20
-> is tried. Meaning there are two upcalls for every id map
-> when rpc.idmapd is used. This was the reason for the switch.
+In addition to fencing the client, surely we should be forcibly revoking
+the layout at that point?
 
-Ah, thanks for the feedback.  We do have nfsidmapd enabled, I had overlooked
-that rpc.idmapd was no longer being used on the client.  We'll stick with
-just using nfsidmap then.
-
---=20
-Steve Langasek                   Give me a lever long enough and a Free OS
-Debian Developer                   to set it on, and I can move the world.
-Ubuntu Developer                                    http://www.debian.org/
-slangasek@ubuntu.com                                     vorlon@debian.org
-
---mYCpIKhGyMATD0i+
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: Digital signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1
-
-iQIcBAEBCAAGBQJU+e/vAAoJEFaNMPMhshM9Y9UQAJQaHzuVa0QBO2gGcRkfguwU
-1uFDFS2WVQun34aeZgdhfyaVCT/iliO1TlanZxwakI++uT0XvTgkTmFvCCxLB265
-W3X2EGsSJeeElHe6gCQxKv/ILoQcqKmtXXJ9NQW+TW7mSHNHXVSEeuAJOgM2ZrEd
-Jry3y/KXwrNi3Kmv1oA/ZW2s3/iH/SNXbS0sjiWnWBm55cGYjokkM2LA0UYYrTfr
-EH2mzz2eqc/Z9P7hEmAh8Bo2Jp2sM+rxxwAgW1K9794sn4L8WHAU7C9ouAqjsxdE
-LetRizQYQQCkJy/8yFyGG7bH39fUUlGauja9ImHcd2UFUGruaOPN04twGTr9z5h8
-xJ4SlhhZceZRYF4VHw/RpxR985z11TAoBP5ZkX/l01rv+yHpmTv0g3DJXkKcL5SC
-6c4Up9B8o1GUZTfjVnu3aQBjeeI1DMoMuqz51gDEveNdYd1IRaw4s+4fIHXw5KLk
-N39RGs4y499Ti09J4uuUtSjXODC/CLOUUWgrMPolD4w+LtjCGAsPqqYDPLQwPU3l
-HdgqfvNVwl+RwKBCCYBB2XzWGbgUtBrBAXzH+jAl2Jg/deewtvIc+Fhy5XGnEmea
-CIyCuXm1FKYsBE8TXTpp24tQ66dYZjjbfIk+xc3YCQOKzY9l+VCtiDC162Z4wMQm
-IKRTr0kPOdJ2qvG0yCFi
-=JHQq
------END PGP SIGNATURE-----
-
---mYCpIKhGyMATD0i+--
+-b.
