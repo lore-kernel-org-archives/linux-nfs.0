@@ -1,123 +1,109 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from ipmail04.adl6.internode.on.net ([150.101.137.141]:46483 "EHLO
-	ipmail04.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1758809AbbCEU7Z (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Mar 2015 15:59:25 -0500
-Date: Fri, 6 Mar 2015 07:59:22 +1100
-From: Dave Chinner <david@fromorbit.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Christoph Hellwig <hch@lst.de>, Eric Sandeen <sandeen@sandeen.net>,
-        linux-nfs@vger.kernel.org, xfs@oss.sgi.com
-Subject: Re: panic on 4.20 server exporting xfs filesystem
-Message-ID: <20150305205922.GF18360@dastard>
-References: <20150304220900.GX18360@dastard>
- <20150304222709.GI1627@fieldses.org>
- <20150304224557.GY4251@dastard>
- <54F78BE5.1020608@sandeen.net>
- <20150304225623.GZ4251@dastard>
- <20150305040849.GJ1627@fieldses.org>
- <20150305131731.GA16235@lst.de>
- <20150305150138.GA15674@fieldses.org>
- <20150305170217.GC15674@fieldses.org>
- <20150305204749.GA17934@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20150305204749.GA17934@fieldses.org>
+Received: from mail-qc0-f180.google.com ([209.85.216.180]:39385 "EHLO
+	mail-qc0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754408AbbCFDqh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Mar 2015 22:46:37 -0500
+Received: by qcvs11 with SMTP id s11so13885739qcv.6
+        for <linux-nfs@vger.kernel.org>; Thu, 05 Mar 2015 19:46:36 -0800 (PST)
+Message-ID: <1425613593.12704.0.camel@primarydata.com>
+Subject: [GIT PULL] Please pull NFS client bugfixes
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
+Date: Thu, 05 Mar 2015 22:46:33 -0500
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Mar 05, 2015 at 03:47:49PM -0500, J. Bruce Fields wrote:
-> On Thu, Mar 05, 2015 at 12:02:17PM -0500, J. Bruce Fields wrote:
-> > On Thu, Mar 05, 2015 at 10:01:38AM -0500, J. Bruce Fields wrote:
-> > > On Thu, Mar 05, 2015 at 02:17:31PM +0100, Christoph Hellwig wrote:
-> > > > On Wed, Mar 04, 2015 at 11:08:49PM -0500, J. Bruce Fields wrote:
-> > > > > Ah-hah:
-> > > > > 
-> > > > > 	static void
-> > > > > 	nfsd4_cb_layout_fail(struct nfs4_layout_stateid *ls)
-> > > > > 	{
-> > > > > 		...
-> > > > > 		nfsd4_cb_layout_fail(ls);
-> > > > > 
-> > > > > That'd do it!
-> > > > > 
-> > > > > Haven't tried to figure out why exactly that's getting called, and why
-> > > > > only rarely.  Some intermittent problem with the callback path, I guess.
-> > > > > 
-> > > > > Anyway, I think that solves most of the mystery....
-> > > > 
-> > > > Ooops, that was a nasty git merge error in the last rebase, see the fix
-> > > > below.
-> > > 
-> > > Thanks!
-> > 
-> > And with that fix things look good.
-> > 
-> > I'm still curious why the callbacks are failling.  It's also logging
-> > "nfsd: client 192.168.122.32 failed to respond to layout recall".
-> 
-> I spoke too soon, I'm still not getting through my usual test run--the most
-> recent run is hanging in generic/247 with the following in the server logs.
-> 
-> But I probably still won't get a chance to look at this any closer till after
-> vault.
-> 
-> --b.
-> 
-> nfsd: client 192.168.122.32 failed to respond to layout recall.   Fencing..
-> nfsd: fence failed for client 192.168.122.32: -2!
-> nfsd: client 192.168.122.32 failed to respond to layout recall.   Fencing..
-> nfsd: fence failed for client 192.168.122.32: -2!
-> receive_cb_reply: Got unrecognized reply: calldir 0x1 xpt_bc_xprt ffff88005639a000 xid c21abd62
-> kswapd0: page allocation failure: order:0, mode:0x120
+Hi Linus,
 
-[snip network driver memory allocation failure]
+The following changes since commit c517d838eb7d07bbe9507871fab3931deccff539:
 
-> active_anon:7053 inactive_anon:2435 isolated_anon:0
->  active_file:88743 inactive_file:89505 isolated_file:32
->  unevictable:0 dirty:9786 writeback:0 unstable:0
->  free:3571 slab_reclaimable:227807 slab_unreclaimable:75772
->  mapped:21010 shmem:380 pagetables:1567 bounce:0
->  free_cma:0
+  Linux 4.0-rc1 (2015-02-22 18:21:14 -0800)
 
-Looks like there should be heaps of reclaimable memory...
+are available in the git repository at:
 
-> nfsd: client 192.168.122.32 failed to respond to layout recall.   Fencing..
+  git://git.linux-nfs.org/projects/trondmy/linux-nfs.git tags/nfs-for-4.0-3
 
-So there's a layout recall pending...
+for you to fetch changes up to e11259f920d8cb3550e0f311c064bdabe1bc3aaf:
 
-> nfsd: fence failed for client 192.168.122.32: -2!
-> receive_cb_reply: Got unrecognized reply: calldir 0x1 xpt_bc_xprt ffff880051dfc000 xid 8ff02aaf
-> INFO: task nfsd:17653 blocked for more than 120 seconds.
->       Not tainted 4.0.0-rc2-09922-g26cbcc7 #89
-> "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
-> nfsd            D ffff8800753a7848 11720 17653      2 0x00000000
->  ffff8800753a7848 0000000000000001 0000000000000001 ffffffff82210580
->  ffff88004e9bcb50 0000000000000006 ffffffff8119d9f0 ffff8800753a7848
->  ffff8800753a7fd8 ffff88002e5e3d70 0000000000000246 ffff88004e9bcb50
-> Call Trace:
->  [<ffffffff8119d9f0>] ? new_sync_read+0xb0/0xb0
->  [<ffffffff8119d9f0>] ? new_sync_read+0xb0/0xb0
->  [<ffffffff81a95737>] schedule+0x37/0x90
->  [<ffffffff81a95ac8>] schedule_preempt_disabled+0x18/0x30
->  [<ffffffff81a97756>] mutex_lock_nested+0x156/0x400
->  [<ffffffff813a0d5a>] ? xfs_file_buffered_aio_write.isra.9+0x6a/0x2a0
->  [<ffffffff8119d9f0>] ? new_sync_read+0xb0/0xb0
->  [<ffffffff813a0d5a>] xfs_file_buffered_aio_write.isra.9+0x6a/0x2a0
->  [<ffffffff8119d9f0>] ? new_sync_read+0xb0/0xb0
->  [<ffffffff813a1016>] xfs_file_write_iter+0x86/0x130
->  [<ffffffff8119db05>] do_iter_readv_writev+0x65/0xa0
+  NFSv4.1: Clear the old state by our client id before establishing a new lease (2015-03-03 21:52:30 -0500)
 
-and the nfsd got hung up on the inode mutex during  a write.
+----------------------------------------------------------------
+NFS client bugfixes for Linux 4.0
 
-Which means there's some other process blocked holding the i_mutex.
-sysrq-w and sysrq-t is probably going to tell us more here.
+Highlights include:
 
-I suspect we'll have another write stuck in break_layout().....
+- Fix a regression in the NFSv4 open state recovery code
+- Fix a regression in the NFSv4 close code
+- Fix regressions and side-effects of the loop-back mounted NFS fixes
+  in 3.18, that cause the NFS read() syscall to return EBUSY.
+- Fix regressions around the readdirplus code and how it interacts with
+  the VFS lazy unmount changes that went into v3.18.
+- Fix issues with out-of-order RPC call replies replacing updated
+  attributes with stale ones (particularly after a truncate()).
+- Fix an underflow checking issue with RPC/RDMA credits
+- Fix a number of issues with the NFSv4 delegation return/free code.
+- Fix issues around stale NFSv4.1 leases when doing a mount
 
-Cheers,
+----------------------------------------------------------------
+Anna Schumaker (1):
+      NFS: Fix stateid used for NFS v4 closes
 
-Dave.
+Chuck Lever (1):
+      xprtrdma: Store RDMA credits in unsigned variables
+
+Trond Myklebust (23):
+      Merge tag 'nfs-rdma-for-4.0-3' of git://git.linux-nfs.org/projects/anna/nfs-rdma
+      NFSv4: nfs4_open_recover_helper() must set share access
+      NFS: Ensure that buffered writes wait for O_DIRECT writes to complete
+      NFS: Add a helper to set attribute barriers
+      NFS: Add attribute update barriers to nfs_setattr_update_inode()
+      NFS: Set an attribute barrier on all updates
+      NFS: Add attribute update barriers to NFS writebacks
+      NFSv4: Add attribute update barriers to delegreturn and pNFS layoutcommit
+      NFS: Remove size hack in nfs_inode_attrs_need_update()
+      NFS: Fix nfs_post_op_update_inode() to set an attribute barrier
+      NFSv4: Set a barrier in the update_changeattr() helper
+      NFS: Don't invalidate a submounted dentry in nfs_prime_dcache()
+      NFSv3: Use the readdir fileid as the mounted-on-fileid
+      NFS: Don't require a filehandle to refresh the inode in nfs_prime_dcache()
+      NFSv4: Don't call put_rpccred() under the rcu_read_lock()
+      NFSv4: Ensure that we don't reap a delegation that is being returned
+      NFSv4: Ensure we honour NFS_DELEGATION_RETURNING in nfs_inode_set_delegation()
+      NFSv4: Pin the superblock while we're returning the delegation
+      NFSv4: Ensure we skip delegations that are already being returned
+      NFS: Fix a regression in the read() syscall
+      NFS: Don't write enable new pages while an invalidation is proceeding
+      NFSv4: Fix a race in NFSv4.1 server trunking discovery
+      NFSv4.1: Clear the old state by our client id before establishing a new lease
+
+ fs/nfs/client.c                 |   2 +-
+ fs/nfs/delegation.c             |  45 ++++++++++++----
+ fs/nfs/dir.c                    |  22 ++++++--
+ fs/nfs/file.c                   |  11 +++-
+ fs/nfs/inode.c                  | 111 +++++++++++++++++++++++++++++++++-------
+ fs/nfs/internal.h               |   1 +
+ fs/nfs/nfs3proc.c               |   4 +-
+ fs/nfs/nfs3xdr.c                |   5 ++
+ fs/nfs/nfs4client.c             |   9 ++--
+ fs/nfs/nfs4proc.c               |  31 +++++++----
+ fs/nfs/nfs4session.h            |   1 +
+ fs/nfs/nfs4state.c              |  18 ++++++-
+ fs/nfs/proc.c                   |   6 +--
+ fs/nfs/write.c                  |  30 +++++++++++
+ include/linux/nfs_fs.h          |   5 +-
+ net/sunrpc/xprtrdma/rpc_rdma.c  |   3 +-
+ net/sunrpc/xprtrdma/xprt_rdma.h |   2 +-
+ 17 files changed, 244 insertions(+), 62 deletions(-)
+
 -- 
-Dave Chinner
-david@fromorbit.com
+Trond Myklebust
+Linux NFS client maintainer, PrimaryData
+trond.myklebust@primarydata.com
+
+
+
+
