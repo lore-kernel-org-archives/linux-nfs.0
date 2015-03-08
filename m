@@ -1,42 +1,43 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx02.posteo.de ([89.146.194.165]:60011 "EHLO mx02.posteo.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751963AbbCHLnK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 8 Mar 2015 07:43:10 -0400
-Received: from dovecot03.posteo.de (unknown [185.67.36.28])
-	by mx02.posteo.de (Postfix) with ESMTPS id 0979B25A3DF2
-	for <linux-nfs@vger.kernel.org>; Sun,  8 Mar 2015 12:43:08 +0100 (CET)
-Received: from mail.posteo.de (localhost [127.0.0.1])
-	by dovecot03.posteo.de (Postfix) with ESMTPSA id 3l0LR04dCfz5vN4
-	for <linux-nfs@vger.kernel.org>; Sun,  8 Mar 2015 12:43:08 +0100 (CET)
-Date: Sun, 8 Mar 2015 12:39:31 +0100
-From: Felix Janda <felix.janda@posteo.de>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH libnfsidmap] cfg.h: Include <sys/types.h> for u_int*_t
-Message-ID: <20150308113931.GA9713@euler>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Received: from mail-pd0-f175.google.com ([209.85.192.175]:44258 "EHLO
+	mail-pd0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752487AbbCHNJB (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 8 Mar 2015 09:09:01 -0400
+Received: by pdjz10 with SMTP id z10so37173965pdj.11
+        for <linux-nfs@vger.kernel.org>; Sun, 08 Mar 2015 06:09:00 -0700 (PDT)
+References: <20150303221033.GB19439@fieldses.org> <20150303224456.GV4251@dastard> <20150304020826.GD19439@fieldses.org> <20150304044141.GQ18360@dastard> <20150305131901.GB16235@lst.de>
+Mime-Version: 1.0 (1.0)
+In-Reply-To: <20150305131901.GB16235@lst.de>
+Content-Type: text/plain;
+	charset=us-ascii
+Message-Id: <07736642-EBA0-4F6B-B6BD-C7C5725A2DC6@primarydata.com>
+Cc: Dave Chinner <david@fromorbit.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "xfs@oss.sgi.com" <xfs@oss.sgi.com>
+From: Tom Haynes <thomas.haynes@primarydata.com>
+Subject: Re: panic on 4.20 server exporting xfs filesystem
+Date: Sun, 8 Mar 2015 06:08:57 -0700
+To: Christoph Hellwig <hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Felix Janda <felix.janda@posteo.de>
----
-It would also be nice to iconv -f iso-8859-1
 
- cfg.h | 1 +
- 1 file changed, 1 insertion(+)
 
-diff --git a/cfg.h b/cfg.h
-index d4d4cab..fe49e8f 100644
---- a/cfg.h
-+++ b/cfg.h
-@@ -33,6 +33,7 @@
- #ifndef _CONF_H_
- #define _CONF_H_
- 
-+#include <sys/types.h>
- #include "queue.h"
- 
- struct conf_list_node {
--- 
-2.0.5
+
+> On Mar 5, 2015, at 5:19 AM, Christoph Hellwig <hch@lst.de> wrote:
+> 
+>> On Wed, Mar 04, 2015 at 03:41:41PM +1100, Dave Chinner wrote:
+>> As I understand it, nothing will prevent this - if you don't change
+>> the UUID on the filesystem when you clone it, then the UUID will
+>> still match and writes can be directed to any block deice with a
+>> matching offset/UUID pair.
+> 
+> Unfortunately that's the case indeed.  The whole discovery part of
+> the block layout protocol is fundamentally flawed, as is the recall
+> part.  This is my attempt to fix it, but I have no idea how to proceed
+> from posting my draft to the IETF to actually making it a standard:
+> 
+> http://tools.ietf.org/html/draft-hellwig-nfsv4-scsi-layout-00
+
+Let's be sure to talk about this at LSF...
