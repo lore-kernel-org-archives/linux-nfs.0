@@ -1,64 +1,43 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from barracuda.gccsda.com ([66.110.220.202]:52964 "EHLO
-	barracuda.gccsda.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751207AbbCKOjk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Mar 2015 10:39:40 -0400
-Received: from mail-qc0-f176.google.com (mail-qc0-f176.google.com [209.85.216.176]) by barracuda.gccsda.com with ESMTP id nQeT6mzsddPLfVjN (version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128 verify=NO) for <linux-nfs@vger.kernel.org>; Wed, 11 Mar 2015 10:39:40 -0400 (EDT)
-Received: by qcxr5 with SMTP id r5so10676144qcx.4
-        for <linux-nfs@vger.kernel.org>; Wed, 11 Mar 2015 07:39:40 -0700 (PDT)
+Received: from guitar.tcltek.co.il ([192.115.133.116]:56354 "EHLO
+	mx.tkos.co.il" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752009AbbCKOw4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 11 Mar 2015 10:52:56 -0400
+Date: Wed, 11 Mar 2015 16:52:49 +0200
+From: Baruch Siach <baruch@tkos.co.il>
+To: Arnd Bergmann <arnd@arndb.de>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Peng Tao <tao.peng@primarydata.com>,
+        Tom Haynes <Thomas.Haynes@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        linux-arm-kernel@lists.infradead.org
+Subject: Re: [PATCH] nfs: do not export discarded symbols
+Message-ID: <20150311145249.GH2177@tarshish>
+References: <3173686.FPJdK9jLbA@wuerfel>
 MIME-Version: 1.0
-From: Andrew LaPierre <alapierre@gccsda.com>
-Date: Wed, 11 Mar 2015 10:39:19 -0400
-Message-ID: <CAGM=iFHupH6xQmPZzysfkWL2bSFEAax-cjYyzjzKsNsox-J0kg@mail.gmail.com>
-Subject: rsync ACLs over NFSv4 - rsync_xal_set: lsetxattr - Operation not supported
-To: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <3173686.FPJdK9jLbA@wuerfel>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I'm hopeful somebody can give me direction on this, I've been
-searching for over a week for a solution and have turned up nil.
-Thanks for looking!
+Hi Arnd,
 
-I'm trying to rsync with options --acls --xattrs over an NFSv4 mount
-TO an ext4 drive FROM an ext4 drive and both have acl and user_xattr
-enabled. The command:
+On Wed, Mar 11, 2015 at 02:37:25PM +0100, Arnd Bergmann wrote:
+> The function nfs4_pnfs_v3_ds_connect_unload is exported so it can be
+> used by other modules, but is also marked '__exit' and will be
+> discarded when built into the kernel, as pointed out by this
+> linker error:
+> 
+> `nfs4_pnfs_v3_ds_connect_unload' referenced in section `___ksymtab_gpl+nfs4_pnfs_v3_ds_connect_unload' of fs/built-in.o: defined in discarded section `.exit.text' of fs/built-in.o
+> 
+> This removes the __exit annotation to make it safe to call this function.
 
-    rsync -aAX /data/ /mnt/back/data
+Should be "do not discard exported symbols" in subject then?
 
-results in:
+baruch
 
-    rsync: rsync_xal_set:
-lsetxattr(""/mnt/back/data/Users/user/Documents/Desktop"","security.NTACL")
-failed: Operation not supported (95)
-
-along with all the other files.
-
-Running the same command to a local folder works perfect so I'm
-assuming it has something to do with NFS4 or EXT4 on the Server side.
-
-My fstab mount:
-
-    UUID=732683f0-e6ac-42d6-a492-e07643d7719c /media/back   ext4
-defaults,acl,user_xattr,barrier=1       0       0
-
-My nfs exports file:
-
-    /media/back  10.111.106.3(fsid=0,rw,async,no_root_squash,no_subtree_check)
-
-My mount command:
-
-    mount -t nfs4 -o proto=tcp,port=2049 10.111.106.12:/ /mnt/back
-
-Version info:
-
-Server
-
-    Ubuntu 14.04.2
-
-Client
-
-    Ubuntu 14.04.2
-    rsync 3.1.0
-
-Thanks for any suggestions!
+-- 
+     http://baruch.siach.name/blog/                  ~. .~   Tk Open Systems
+=}------------------------------------------------ooO--U--Ooo------------{=
+   - baruch@tkos.co.il - tel: +972.2.679.5364, http://www.tkos.co.il -
