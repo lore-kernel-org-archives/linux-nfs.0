@@ -1,112 +1,70 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from chicago.messinet.com ([50.196.241.75]:43580 "EHLO
-	chicago.messinet.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751710AbbCKB3w (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Mar 2015 21:29:52 -0400
-Received: from localhost (localhost [127.0.0.1])
-	by chicago.messinet.com (Postfix) with ESMTP id 56C5B67B4807
-	for <linux-nfs@vger.kernel.org>; Tue, 10 Mar 2015 20:29:49 -0500 (CDT)
-Received: from chicago.messinet.com ([127.0.0.1])
-	by localhost (chicago.messinet.com [127.0.0.1]) (amavisd-new, port 10024)
-	with ESMTP id IHVS3x48NL3F for <linux-nfs@vger.kernel.org>;
-	Tue, 10 Mar 2015 20:29:48 -0500 (CDT)
-Received: from linux-ws1.messinet.com (unknown [IPv6:2001:55c:dc00:0:cf56:dd2e:206a:3ebf])
-	(using TLSv1 with cipher ECDHE-RSA-AES128-SHA (128/128 bits))
-	(Client did not present a certificate)
-	by chicago.messinet.com (Postfix) with ESMTPSA id 3F57467B3DEC
-	for <linux-nfs@vger.kernel.org>; Tue, 10 Mar 2015 20:29:48 -0500 (CDT)
-From: Anthony Messina <amessina@messinet.com>
-To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Kernel warning: net/sunrpc/clnt.c:2161 call_decode+0x269/0x8a0 [sunrpc]()
-Date: Tue, 10 Mar 2015 20:29:49 -0500
-Message-ID: <2905412.OH09VlPNMp@linux-ws1.messinet.com>
-MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="nextPart1621954.XS1oHKu296"; micalg="pgp-sha1"; protocol="application/pgp-signature"
+Received: from plane.gmane.org ([80.91.229.3]:57353 "EHLO plane.gmane.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750774AbbCKLuY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 11 Mar 2015 07:50:24 -0400
+Received: from list by plane.gmane.org with local (Exim 4.69)
+	(envelope-from <glN-linux-nfs@m.gmane.org>)
+	id 1YVf9Z-0002ah-WB
+	for linux-nfs@vger.kernel.org; Wed, 11 Mar 2015 12:50:22 +0100
+Received: from pd953ef04.dip0.t-ipconnect.de ([217.83.239.4])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Wed, 11 Mar 2015 12:50:21 +0100
+Received: from holger.hoffstaette by pd953ef04.dip0.t-ipconnect.de with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Wed, 11 Mar 2015 12:50:21 +0100
+To: linux-nfs@vger.kernel.org
+From: Holger =?iso-8859-1?q?Hoffst=E4tte?=
+	<holger.hoffstaette@googlemail.com>
+Subject: Broken suspend since 3.18.9
+Date: Wed, 11 Mar 2015 11:50:02 +0000 (UTC)
+Message-ID: <pan.2015.03.11.11.50.02@googlemail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
---nextPart1621954.XS1oHKu296
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain; charset="us-ascii"
+Since 3.18.9 suspend no longer works reliably (only ~10% of the time), unlike 3.18.8;
+the suspend sequence starts, but after a few seconds the machine just returns to
+wakeup state.
 
-While this may be unrelated, it is one of the errors that seems to occu=
-r=20
-around the same time as the issues detailed in "soft lockup in the laun=
-dromat"=20
-[1] and "NMI/soft lockup in nfs_delegation_need_return()" [2].  This is=
- on an=20
-NFSv4.2/KRB5 client using kernel-3.18.9-200.fc21.x86_64 with the patch =
-from=20
-thread "[PATCH] NFS: fix clp->cl_revoked list deletion causing softlock=
- in=20
-nfsd" applied at the Fedora kernel packaging level.
+The following log spew points the finger at NFS-related changes:
 
-=2D-----------[ cut here ]------------
-WARNING: CPU: 0 PID: 6545 at net/sunrpc/clnt.c:2161 call_decode+0x269/0=
-x8a0=20
-[sunrpc]()
-Modules linked in: dm_crypt bnep bluetooth rfkill veth cts rpcsec_gss_k=
-rb5=20
-nfsv4 dns_resolver nfs fscache ip6t_rpfilter ip6t_REJECT nf_reject_ipv6=
-=20
-xt_conntrack ebtable_nat ebtable_broute bridge stp llc ebtable_filter e=
-btables=20
-ip6table_na
- shpchp i2c_i801 crc32c_intel serio_raw dcdbas ghash_clmulni_intel nfsd=
-=20
-auth_rpcgss nfs_acl lockd grace sunrpc uas usb_storage nouveau video mx=
-m_wmi=20
-broadcom wmi i2c_algo_bit drm_kms_helper ttm drm tg3 ptp pps_core
-CPU: 0 PID: 6545 Comm: kworker/0:1 Not tainted 3.18.9-200.fc21.x86_64 #=
-1
-Hardware name: Dell Inc. XPS 8300  /0Y2MRG, BIOS A06 10/17/2011
-Workqueue: rpciod rpc_async_schedule [sunrpc]
- 0000000000000000 0000000089b51bad ffff88015d23fcc8 ffffffff8175b71c
- 0000000000000000 0000000000000000 ffff88015d23fd08 ffffffff81098eb1
- 0000000000000000 ffff8801572f1218 ffff880017369000 ffff8802060f1000
-Call Trace:
- [<ffffffff8175b71c>] dump_stack+0x46/0x58
- [<ffffffff81098eb1>] warn_slowpath_common+0x81/0xa0
- [<ffffffffa0641810>] ? nfs4_xdr_dec_readdir+0xf0/0xf0 [nfsv4]
- [<ffffffff81098fca>] warn_slowpath_null+0x1a/0x20
- [<ffffffffa02810a9>] call_decode+0x269/0x8a0 [sunrpc]
- [<ffffffffa0280e40>] ? call_refreshresult+0x150/0x150 [sunrpc]
- [<ffffffffa0280e40>] ? call_refreshresult+0x150/0x150 [sunrpc]
- [<ffffffffa028b6e4>] __rpc_execute+0x94/0x450 [sunrpc]
- [<ffffffffa028bab5>] rpc_async_schedule+0x15/0x20 [sunrpc]
- [<ffffffff810b1a6d>] process_one_work+0x14d/0x3f0
- [<ffffffff810b23c3>] worker_thread+0x53/0x470
- [<ffffffff810b2370>] ? rescuer_thread+0x290/0x290
- [<ffffffff810b75b8>] kthread+0xd8/0xf0
- [<ffffffff810b74e0>] ? kthread_create_on_node+0x1b0/0x1b0
- [<ffffffff8176207c>] ret_from_fork+0x7c/0xb0
- [<ffffffff810b74e0>] ? kthread_create_on_node+0x1b0/0x1b0
-=2D--[ end trace aa1a2fd825fce8b1 ]---
+Mar 11 00:54:45 ragnarok kernel: PM: Syncing filesystems ... done.
+Mar 11 00:55:05 ragnarok kernel: Freezing user space processes ... (elapsed 0.001 seconds) done.
+Mar 11 00:55:05 ragnarok kernel: Freezing remaining freezable tasks ... 
+Mar 11 00:55:05 ragnarok kernel: nfsv4.1-svc     D ffff88061f411740     0 22942      2 0x00000000
+Mar 11 00:55:05 ragnarok kernel:  ffff8800d63cfd98 0000000000000046 ffff8800d63cfc78 0000000000009000
+Mar 11 00:55:05 ragnarok kernel:  ffff88059b582ca0 ffff8800d63cffd8 ffff88059b583020 01ffffffa07c0798
+Mar 11 00:55:05 ragnarok kernel:  0000000000011740 ffffffff81816500 ffff88061f411740 ffff88055cc48ee0
+Mar 11 00:55:05 ragnarok kernel: Call Trace:
+Mar 11 00:55:05 ragnarok kernel:  [<ffffffffa07c57e4>] ? rpc_release_resources_task+0x34/0x40 [sunrpc]
+Mar 11 00:55:05 ragnarok kernel:  [<ffffffffa07c64de>] ? __rpc_execute+0x18e/0x360 [sunrpc]
+Mar 11 00:55:05 ragnarok kernel:  [<ffffffff8108ad4b>] ? lock_timer_base.isra.36+0x2b/0x50
+Mar 11 00:55:05 ragnarok kernel:  [<ffffffff8108ae1f>] ? try_to_del_timer_sync+0x4f/0x70
+Mar 11 00:55:05 ragnarok kernel:  [<ffffffff81535c02>] schedule_timeout+0x102/0x1f0
+Mar 11 00:55:05 ragnarok kernel:  [<ffffffffa07c67b0>] ? rpc_do_put_task+0x80/0x90 [sunrpc]
+Mar 11 00:55:05 ragnarok kernel:  [<ffffffff8108a7b0>] ? migrate_timer_list+0xb0/0xb0
+Mar 11 00:55:05 ragnarok kernel:  [<ffffffffa03c1f7a>] nfs41_callback_svc+0x16a/0x180 [nfsv4]
+Mar 11 00:55:05 ragnarok kernel:  [<ffffffff81074710>] ? __wake_up_sync+0x20/0x20
+Mar 11 00:55:05 ragnarok kernel:  [<ffffffffa03c1e10>] ? nfs4_callback_svc+0x60/0x60 [nfsv4]
+Mar 11 00:55:05 ragnarok kernel:  [<ffffffff81067c2b>] kthread+0xdb/0x100
+Mar 11 00:55:05 ragnarok kernel:  [<ffffffff81067b50>] ? kthread_create_on_node+0x180/0x180
+Mar 11 00:55:05 ragnarok kernel:  [<ffffffff81536d2c>] ret_from_fork+0x7c/0xb0
+Mar 11 00:55:05 ragnarok kernel:  [<ffffffff81067b50>] ? kthread_create_on_node+0x180/0x180
+Mar 11 00:55:05 ragnarok kernel: 
+Mar 11 00:55:05 ragnarok kernel: Restarting kernel threads ... done.
+Mar 11 00:55:05 ragnarok kernel: Restarting tasks ... done.
 
+I found that shutting down the automount service (thus killing all NFS mounts)
+makes things work immediately. The same symptom can be seen in 3.19.1, which
+- as far as I can tell - got the same commits recently.
 
-[1] http://www.spinics.net/lists/linux-nfs/msg49735.html
-[2] http://www.spinics.net/lists/linux-nfs/msg47059.html
-[3] http://www.spinics.net/lists/linux-nfs/msg49798.html
+Any ideas? I can gladly test patches.
 
+Thanks!
 
-=2D-=20
-Anthony - https://messinet.com/ - https://messinet.com/~amessina/galler=
-y
-8F89 5E72 8DF0 BCF0 10BE 9967 92DC 35DC B001 4A4E
-
---nextPart1621954.XS1oHKu296
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: This is a digitally signed message part.
-Content-Transfer-Encoding: 7Bit
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2
-
-iEYEABECAAYFAlT/mo0ACgkQktw13LABSk4NoACgg0ZRlYmEsD499rtwrzjo5z4E
-oNYAoMYJYmgCnj8VXQAOtyiG+lqF1EhP
-=dgff
------END PGP SIGNATURE-----
-
---nextPart1621954.XS1oHKu296--
+Holger
 
