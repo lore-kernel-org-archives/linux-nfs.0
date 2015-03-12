@@ -1,37 +1,29 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:33273 "EHLO fieldses.org"
+Received: from smtp3.ono.com ([62.42.230.163]:11389 "EHLO smtp3.ono.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752541AbbCKUfx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 11 Mar 2015 16:35:53 -0400
-Date: Wed, 11 Mar 2015 16:35:52 -0400
-To: "Benoit L'hoest" <b.lhoest@gmail.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: Session Trunking
-Message-ID: <20150311203552.GA25425@fieldses.org>
-References: <CAF6uixBtLUm_Fv+iS8khL8UxfPwtYG1zqEyN9kUOSYgU-hHZ_g@mail.gmail.com>
+	id S1751762AbbCLMGE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 12 Mar 2015 08:06:04 -0400
+Message-ID: <13666170.126121426160977904.JavaMail.defaultUser@defaultHost>
+Date: Thu, 12 Mar 2015 12:49:37 +0100 (CET)
+From: "pepa6.es@ono.com" <pepa6.es@ono.com>
+Reply-To: pepa6.es@ono.com
+Subject: 
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAF6uixBtLUm_Fv+iS8khL8UxfPwtYG1zqEyN9kUOSYgU-hHZ_g@mail.gmail.com>
-From: bfields@fieldses.org (J. Bruce Fields)
+Content-Type: text/plain;charset="UTF-8"
+To: unlisted-recipients:; (no To-header on input)@mail.corp.redhat.com
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Mar 10, 2015 at 02:18:01PM +0100, Benoit L'hoest wrote:
-> Hello,
-> 
-> I'm a student in computer science and i'd like to make a review of nfs 4.1.
-> I have a nfs server and a nfs client with 2 network interfaces and i'd
-> like to use session trunking in order to improve the bandwith of my
-> connection to the server.
-> 
-> How can i do it ?
-> (i've seen it working with esxi 6.0 bu ti couldn't find a way to do it
-> with nfs client in linux)
+Proposal,
 
-The linux client doesn't currently do trunking, so you'd have to add
-support.  I don't know how big a project that would be....
+Respond to my personal email;  mrs.zhangxiao1962@outlook.
+com 
 
-The server does support trunking, though it's not gotten a lot of
-testing (since the client doesn't use it).
 
---b.
+Yours Sincerely.
+Mrs. Zhang Xiao (Accounts book Keeper)
+Angang 
+Steel Company Limited
+396 Nan Zhong Hua Lu, Tie Dong District Anshan, 
+Liaoning 114021, China.
+
