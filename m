@@ -1,77 +1,57 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ie0-f178.google.com ([209.85.223.178]:35210 "EHLO
-	mail-ie0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932113AbbCLP7q (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Mar 2015 11:59:46 -0400
-Received: by ieclw3 with SMTP id lw3so46756728iec.2
-        for <linux-nfs@vger.kernel.org>; Thu, 12 Mar 2015 08:59:45 -0700 (PDT)
-Message-ID: <1426175970.15787.4.camel@primarydata.com>
-Subject: Re: [PATCH 1/15] NFSv4.1: don't export static symbol
+Received: from mail-ie0-f169.google.com ([209.85.223.169]:36599 "EHLO
+	mail-ie0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751563AbbCLQAb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Mar 2015 12:00:31 -0400
+Received: by iegc3 with SMTP id c3so47940317ieg.3
+        for <linux-nfs@vger.kernel.org>; Thu, 12 Mar 2015 09:00:30 -0700 (PDT)
+Message-ID: <1426176012.15787.5.camel@primarydata.com>
+Subject: Re: [PATCH] NFS: remount with security change should return EINVAL
 From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Julia Lawall <Julia.Lawall@lip6.fr>
-Cc: kernel-janitors@vger.kernel.org,
-        Anna Schumaker <anna.schumaker@netapp.com>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, daniel@iogearbox.net
-Date: Thu, 12 Mar 2015 11:59:30 -0400
-In-Reply-To: <1426092997-30605-2-git-send-email-Julia.Lawall@lip6.fr>
-References: <1426092997-30605-1-git-send-email-Julia.Lawall@lip6.fr>
-	 <1426092997-30605-2-git-send-email-Julia.Lawall@lip6.fr>
+To: Benjamin Coddington <bcodding@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Date: Thu, 12 Mar 2015 12:00:12 -0400
+In-Reply-To: <e4fb183aaa5faf4fac14e0f81ad3a40f604f68d4.1417834215.git.bcodding@redhat.com>
+References: <e4fb183aaa5faf4fac14e0f81ad3a40f604f68d4.1417834215.git.bcodding@redhat.com>
 Content-Type: text/plain; charset="UTF-8"
 Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2015-03-11 at 17:56 +0100, Julia Lawall wrote:
-> From: Julia Lawall <Julia.Lawall@lip6.fr>
+On Fri, 2014-12-05 at 21:52 -0500, Benjamin Coddington wrote:
+> A remount that alters security flavors can appear to succeed when it should
+> instead return -EINVAL.  Check to see if the current security flavor exists
+> within the flavors specified in the remount options, and if not fail the
+> remount.
 > 
-> The semantic patch that fixes this problem is as follows:
-> (http://coccinelle.lip6.fr/)
-> 
-> // <smpl>
-> @r@
-> type T;
-> identifier f;
-> @@
-> 
-> static T f (...) { ... }
-> 
-> @@
-> identifier r.f;
-> declarer name EXPORT_SYMBOL_GPL;
-> @@
-> 
-> -EXPORT_SYMBOL_GPL(f);
-> // </smpl>
-> 
-> Signed-off-by: Julia Lawall <Julia.Lawall@lip6.fr>
-> 
+> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
 > ---
->  fs/nfs/pnfs.c |    2 --
->  1 file changed, 2 deletions(-)
+>  fs/nfs/super.c |    3 +--
+>  1 files changed, 1 insertions(+), 2 deletions(-)
 > 
-> diff -u -p a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-> --- a/fs/nfs/pnfs.c
-> +++ b/fs/nfs/pnfs.c
-> @@ -1902,7 +1902,6 @@ static void pnfs_writehdr_free(struct nf
->  	pnfs_put_lseg(hdr->lseg);
->  	nfs_pgio_header_free(hdr);
->  }
-> -EXPORT_SYMBOL_GPL(pnfs_writehdr_free);
->  
->  int
->  pnfs_generic_pg_writepages(struct nfs_pageio_descriptor *desc)
-> @@ -2032,7 +2031,6 @@ static void pnfs_readhdr_free(struct nfs
->  	pnfs_put_lseg(hdr->lseg);
->  	nfs_pgio_header_free(hdr);
->  }
-> -EXPORT_SYMBOL_GPL(pnfs_readhdr_free);
->  
->  int
->  pnfs_generic_pg_readpages(struct nfs_pageio_descriptor *desc)
-> 
+> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+> index 31a11b0..e6275e0 100644
+> --- a/fs/nfs/super.c
+> +++ b/fs/nfs/super.c
+> @@ -2191,7 +2191,7 @@ nfs_compare_remount_data(struct nfs_server *nfss,
+>  	    data->version != nfss->nfs_client->rpc_ops->version ||
+>  	    data->minorversion != nfss->nfs_client->cl_minorversion ||
+>  	    data->retrans != nfss->client->cl_timeout->to_retries ||
+> -	    data->selected_flavor != nfss->client->cl_auth->au_flavor ||
+> +	    !nfs_auth_info_match(&data->auth_info, nfss->client->cl_auth->au_flavor) ||
+>  	    data->acregmin != nfss->acregmin / HZ ||
+>  	    data->acregmax != nfss->acregmax / HZ ||
+>  	    data->acdirmin != nfss->acdirmin / HZ ||
+> @@ -2239,7 +2239,6 @@ nfs_remount(struct super_block *sb, int *flags, char *raw_data)
+>  	data->wsize = nfss->wsize;
+>  	data->retrans = nfss->client->cl_timeout->to_retries;
+>  	data->selected_flavor = nfss->client->cl_auth->au_flavor;
+> -	data->auth_info = nfss->auth_info;
+>  	data->acregmin = nfss->acregmin / HZ;
+>  	data->acregmax = nfss->acregmax / HZ;
+>  	data->acdirmin = nfss->acdirmin / HZ;
 
-Thanks Julia! Applied....
-
+Thanks Ben. Applied...
 -- 
 Trond Myklebust
 Linux NFS client maintainer, PrimaryData
