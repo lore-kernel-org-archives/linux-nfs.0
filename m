@@ -1,35 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from icebox.esperi.org.uk ([81.187.191.129]:51616 "EHLO
-	mail.esperi.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750849AbbCLXPO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Mar 2015 19:15:14 -0400
-From: Nix <nix@esperi.org.uk>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: linux-nfs@vger.kernel.org, Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH 1/3] NFS: Don't invalidate a submounted dentry in nfs_prime_dcache()
-References: <1424736897-95767-1-git-send-email-trond.myklebust@primarydata.com>
-Date: Thu, 12 Mar 2015 23:15:10 +0000
-In-Reply-To: <1424736897-95767-1-git-send-email-trond.myklebust@primarydata.com>
-	(Trond Myklebust's message of "Mon, 23 Feb 2015 19:14:55 -0500")
-Message-ID: <87wq2llse9.fsf@spindle.srvr.nix>
-MIME-Version: 1.0
-Content-Type: text/plain
+Received: from www.osadl.org ([62.245.132.105]:53610 "EHLO www.osadl.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751230AbbCMIaL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 13 Mar 2015 04:30:11 -0400
+From: Nicholas Mc Guire <hofrat@osadl.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        "David S. Miller" <davem@davemloft.net>,
+        kbuild test robot <fengguang.wu@intel.com>, linux-nfs@vger.kernel.org,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Nicholas Mc Guire <hofrat@osadl.org>
+Subject: [PATCH] SUNRPC: fix build-warning due to format missmatch
+Date: Fri, 13 Mar 2015 04:25:34 -0400
+Message-Id: <1426235134-14349-1-git-send-email-hofrat@osadl.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 24 Feb 2015, Trond Myklebust stated:
+fix build-warning introduced by commit: f0eede10fd4 ("SUNRPC: use
+jiffies_to_msecs for converting jiffies") which did not fixup
+the format properly (my bad).
 
-> If we're traversing a directory which contains a submounted filesystem,
-> or one that has a referral, the NFS server that is processing the READDIR
-> request will often return information for the underlying (mounted-on)
-> directory. It may, or may not, also return filehandle information.
+Signed-off-by: Nicholas Mc Guire <hofrat@osadl.org>
+---
 
-FWIW, this never seems to have made it into 3.19.x, nor is it in the
-stable queue. Was this intentional?
+This fixes the build warning reported by kbuild test robot
+<fengguang.wu@intel.com> - thanks !
+>    net/sunrpc/sched.c: In function '__rpc_add_timer':
+> >> net/sunrpc/sched.c:92:2: warning: format '%lu' expects argument of type 'long unsigned int', but argument 3 has type 'unsigned int' [-Wformat=]
+>      dprintk("RPC: %5u setting alarm for %lu ms\n",
+>      ^
 
-> Cc: stable@vger.kernel.org # 3.18+
+While at it this also fixes the checkpatch alignment warning.
 
-(... hm, I guess so...)
+Patch was compile tested with x86_64_defconfig and xtensa_defconfig
+(implies CONFIG_SUNRPC=y/m)
 
+Patch is against 4.0-rc3 (localversion-next is -next-20150312)
+with commit: f0eede10fd4 ("SUNRPC: use jiffies_to_msecs for converting
+jiffies") applied.
+
+ net/sunrpc/sched.c |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
+index c234e7f..337ca85 100644
+--- a/net/sunrpc/sched.c
++++ b/net/sunrpc/sched.c
+@@ -89,8 +89,8 @@ __rpc_add_timer(struct rpc_wait_queue *queue, struct rpc_task *task)
+ 	if (!task->tk_timeout)
+ 		return;
+ 
+-	dprintk("RPC: %5u setting alarm for %lu ms\n",
+-			task->tk_pid, jiffies_to_msecs(task->tk_timeout));
++	dprintk("RPC: %5u setting alarm for %u ms\n",
++		task->tk_pid, jiffies_to_msecs(task->tk_timeout));
+ 
+ 	task->u.tk_wait.expires = jiffies + task->tk_timeout;
+ 	if (list_empty(&queue->timer_list.list) || time_before(task->u.tk_wait.expires, queue->timer_list.expires))
 -- 
-NULL && (void)
+1.7.10.4
+
