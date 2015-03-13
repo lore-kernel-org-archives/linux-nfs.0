@@ -1,21 +1,21 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ie0-f177.google.com ([209.85.223.177]:36809 "EHLO
-	mail-ie0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753406AbbCMVWM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Mar 2015 17:22:12 -0400
-Received: by iegc3 with SMTP id c3so130649912ieg.3
-        for <linux-nfs@vger.kernel.org>; Fri, 13 Mar 2015 14:22:11 -0700 (PDT)
+Received: from mail-ie0-f169.google.com ([209.85.223.169]:33809 "EHLO
+	mail-ie0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752663AbbCMVWX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Mar 2015 17:22:23 -0400
+Received: by iecsl2 with SMTP id sl2so126640904iec.1
+        for <linux-nfs@vger.kernel.org>; Fri, 13 Mar 2015 14:22:22 -0700 (PDT)
 Received: from manet.1015granger.net ([2604:8800:100:81fc:82ee:73ff:fe43:d64f])
-        by mx.google.com with ESMTPSA id i1sm2023574igh.5.2015.03.13.14.22.05
+        by mx.google.com with ESMTPSA id s17sm2028049igr.2.2015.03.13.14.22.14
         for <linux-nfs@vger.kernel.org>
         (version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Fri, 13 Mar 2015 14:22:06 -0700 (PDT)
-Subject: [PATCH v1 05/16] xprtrdma: Add a "register_external" op for each
+        Fri, 13 Mar 2015 14:22:15 -0700 (PDT)
+Subject: [PATCH v1 06/16] xprtrdma: Add a "deregister_external" op for each
  memreg mode
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-nfs@vger.kernel.org
-Date: Fri, 13 Mar 2015 17:22:05 -0400
-Message-ID: <20150313212205.22471.86911.stgit@manet.1015granger.net>
+Date: Fri, 13 Mar 2015 17:22:14 -0400
+Message-ID: <20150313212214.22471.33013.stgit@manet.1015granger.net>
 In-Reply-To: <20150313211124.22471.14517.stgit@manet.1015granger.net>
 References: <20150313211124.22471.14517.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -24,476 +24,336 @@ Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 There is very little common processing among the different external
-memory registration functions. Have rpcrdma_create_chunks() call
-the registration method directly. This removes a stack frame and a
-switch statement from the external registration path.
+memory deregistration functions.
+
+In addition, instead of calling the deregistration function for each
+segment, have one call release all segments for a request. This makes
+the API a little asymmetrical, but a hair faster.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/fmr_ops.c      |   51 +++++++++++
- net/sunrpc/xprtrdma/frwr_ops.c     |   88 ++++++++++++++++++
- net/sunrpc/xprtrdma/physical_ops.c |   17 ++++
- net/sunrpc/xprtrdma/rpc_rdma.c     |    5 +
- net/sunrpc/xprtrdma/verbs.c        |  172 +-----------------------------------
- net/sunrpc/xprtrdma/xprt_rdma.h    |    6 +
- 6 files changed, 166 insertions(+), 173 deletions(-)
+ net/sunrpc/xprtrdma/fmr_ops.c      |   37 ++++++++++++++++
+ net/sunrpc/xprtrdma/frwr_ops.c     |   46 ++++++++++++++++++++
+ net/sunrpc/xprtrdma/physical_ops.c |   13 ++++++
+ net/sunrpc/xprtrdma/rpc_rdma.c     |    7 +--
+ net/sunrpc/xprtrdma/transport.c    |    8 +---
+ net/sunrpc/xprtrdma/verbs.c        |   81 ------------------------------------
+ net/sunrpc/xprtrdma/xprt_rdma.h    |    5 +-
+ 7 files changed, 103 insertions(+), 94 deletions(-)
 
 diff --git a/net/sunrpc/xprtrdma/fmr_ops.c b/net/sunrpc/xprtrdma/fmr_ops.c
-index eec2660..45fb646 100644
+index 45fb646..9b983b4 100644
 --- a/net/sunrpc/xprtrdma/fmr_ops.c
 +++ b/net/sunrpc/xprtrdma/fmr_ops.c
-@@ -29,7 +29,58 @@ fmr_op_maxpages(struct rpcrdma_xprt *r_xprt)
- 		     rpcrdma_max_segments(r_xprt) * RPCRDMA_MAX_FMR_SGES);
- }
+@@ -20,6 +20,32 @@
+ /* Maximum scatter/gather per FMR */
+ #define RPCRDMA_MAX_FMR_SGES	(64)
  
-+/* Use the ib_map_phys_fmr() verb to register a memory region
-+ * for remote access via RDMA READ or RDMA WRITE.
++/* Use the ib_unmap_fmr() verb to prevent further remote
++ * access via RDMA READ or RDMA WRITE.
 + */
 +static int
-+fmr_op_map(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
-+	   int nsegs, bool writing)
++__fmr_unmap(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg)
 +{
 +	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
 +	struct rpcrdma_mr_seg *seg1 = seg;
-+	struct rpcrdma_mw *mw = seg1->rl_mw;
-+	u64 physaddrs[RPCRDMA_MAX_DATA_SEGS];
-+	int len, pageoff, i, rc;
++	int rc, nsegs = seg->mr_nsegs;
++	LIST_HEAD(l);
 +
-+	pageoff = offset_in_page(seg1->mr_offset);
-+	seg1->mr_offset -= pageoff;	/* start of page */
-+	seg1->mr_len += pageoff;
-+	len = -pageoff;
-+	if (nsegs > RPCRDMA_MAX_FMR_SGES)
-+		nsegs = RPCRDMA_MAX_FMR_SGES;
-+	for (i = 0; i < nsegs;) {
-+		rpcrdma_map_one(ia, seg, writing);
-+		physaddrs[i] = seg->mr_dma;
-+		len += seg->mr_len;
-+		++seg;
-+		++i;
-+		/* Check for holes */
-+		if ((i < nsegs && offset_in_page(seg->mr_offset)) ||
-+		    offset_in_page((seg-1)->mr_offset + (seg-1)->mr_len))
-+			break;
-+	}
-+
-+	rc = ib_map_phys_fmr(mw->r.fmr, physaddrs, i, seg1->mr_dma);
++	list_add(&seg1->rl_mw->r.fmr->list, &l);
++	rc = ib_unmap_fmr(&l);
++	read_lock(&ia->ri_qplock);
++	while (seg1->mr_nsegs--)
++		rpcrdma_unmap_one(ia, seg++);
++	read_unlock(&ia->ri_qplock);
 +	if (rc)
-+		goto out_maperr;
++		goto out_err;
++	return nsegs;
 +
-+	seg1->mr_rkey = mw->r.fmr->rkey;
-+	seg1->mr_base = seg1->mr_dma + pageoff;
-+	seg1->mr_nsegs = i;
-+	seg1->mr_len = len;
-+	return i;
++out_err:
++	dprintk("RPC:       %s: ib_unmap_fmr status %i\n", __func__, rc);
++	return nsegs;
++}
 +
-+out_maperr:
-+	dprintk("RPC:       %s: ib_map_phys_fmr %u@0x%llx+%i (%d) status %i\n",
-+		__func__, len, (unsigned long long)seg1->mr_dma,
-+		pageoff, i, rc);
-+	while (i--)
-+		rpcrdma_unmap_one(ia, --seg);
-+	return rc;
+ /* FMR mode conveys up to 64 pages of payload per chunk segment.
+  */
+ static size_t
+@@ -79,8 +105,19 @@ out_maperr:
+ 	return rc;
+ }
+ 
++static void
++fmr_op_unmap(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req,
++	     unsigned int count)
++{
++	unsigned int i;
++
++	for (i = 0; count--;)
++		i += __fmr_unmap(r_xprt, &req->rl_segments[i]);
 +}
 +
  const struct rpcrdma_memreg_ops rpcrdma_fmr_memreg_ops = {
-+	.ro_map				= fmr_op_map,
+ 	.ro_map				= fmr_op_map,
++	.ro_unmap			= fmr_op_unmap,
  	.ro_maxpages			= fmr_op_maxpages,
  	.ro_displayname			= "fmr",
  };
 diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
-index 73a5ac8..2b5ccb0 100644
+index 2b5ccb0..05b5761 100644
 --- a/net/sunrpc/xprtrdma/frwr_ops.c
 +++ b/net/sunrpc/xprtrdma/frwr_ops.c
-@@ -29,7 +29,95 @@ frwr_op_maxpages(struct rpcrdma_xprt *r_xprt)
- 		     rpcrdma_max_segments(r_xprt) * ia->ri_max_frmr_depth);
- }
+@@ -17,6 +17,41 @@
+ # define RPCDBG_FACILITY	RPCDBG_TRANS
+ #endif
  
-+/* Post a FAST_REG Work Request to register a memory region
-+ * for remote access via RDMA READ or RDMA WRITE.
++/* Post a LOCAL_INV Work Request to prevent further remote access
++ * via RDMA READ or RDMA WRITE.
 + */
 +static int
-+frwr_op_map(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
-+	    int nsegs, bool writing)
++__frwr_unmap(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg)
 +{
-+	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
 +	struct rpcrdma_mr_seg *seg1 = seg;
-+	struct rpcrdma_mw *mw = seg1->rl_mw;
-+	struct rpcrdma_frmr *frmr = &mw->r.frmr;
-+	struct ib_mr *mr = frmr->fr_mr;
-+	struct ib_send_wr fastreg_wr, *bad_wr;
-+	u8 key;
-+	int len, pageoff;
-+	int i, rc;
-+	int seg_len;
-+	u64 pa;
-+	int page_no;
++	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
++	struct ib_send_wr invalidate_wr, *bad_wr;
++	int rc, nsegs = seg->mr_nsegs;
 +
-+	pageoff = offset_in_page(seg1->mr_offset);
-+	seg1->mr_offset -= pageoff;	/* start of page */
-+	seg1->mr_len += pageoff;
-+	len = -pageoff;
-+	if (nsegs > ia->ri_max_frmr_depth)
-+		nsegs = ia->ri_max_frmr_depth;
-+	for (page_no = i = 0; i < nsegs;) {
-+		rpcrdma_map_one(ia, seg, writing);
-+		pa = seg->mr_dma;
-+		for (seg_len = seg->mr_len; seg_len > 0; seg_len -= PAGE_SIZE) {
-+			frmr->fr_pgl->page_list[page_no++] = pa;
-+			pa += PAGE_SIZE;
-+		}
-+		len += seg->mr_len;
-+		++seg;
-+		++i;
-+		/* Check for holes */
-+		if ((i < nsegs && offset_in_page(seg->mr_offset)) ||
-+		    offset_in_page((seg-1)->mr_offset + (seg-1)->mr_len))
-+			break;
-+	}
-+	dprintk("RPC:       %s: Using frmr %p to map %d segments\n",
-+		__func__, mw, i);
++	seg1->rl_mw->r.frmr.fr_state = FRMR_IS_INVALID;
 +
-+	frmr->fr_state = FRMR_IS_VALID;
-+
-+	memset(&fastreg_wr, 0, sizeof(fastreg_wr));
-+	fastreg_wr.wr_id = (unsigned long)(void *)mw;
-+	fastreg_wr.opcode = IB_WR_FAST_REG_MR;
-+	fastreg_wr.wr.fast_reg.iova_start = seg1->mr_dma;
-+	fastreg_wr.wr.fast_reg.page_list = frmr->fr_pgl;
-+	fastreg_wr.wr.fast_reg.page_shift = PAGE_SHIFT;
-+	fastreg_wr.wr.fast_reg.page_list_len = page_no;
-+	fastreg_wr.wr.fast_reg.length = page_no << PAGE_SHIFT;
-+	if (fastreg_wr.wr.fast_reg.length < len) {
-+		rc = -EIO;
-+		goto out_err;
-+	}
-+	fastreg_wr.wr.fast_reg.access_flags = writing ?
-+				IB_ACCESS_REMOTE_WRITE | IB_ACCESS_LOCAL_WRITE :
-+				IB_ACCESS_REMOTE_READ;
-+	key = (u8)(mr->rkey & 0x000000FF);
-+	ib_update_fast_reg_key(mr, ++key);
-+	fastreg_wr.wr.fast_reg.rkey = mr->rkey;
-+
++	memset(&invalidate_wr, 0, sizeof(invalidate_wr));
++	invalidate_wr.wr_id = (unsigned long)(void *)seg1->rl_mw;
++	invalidate_wr.opcode = IB_WR_LOCAL_INV;
++	invalidate_wr.ex.invalidate_rkey = seg1->rl_mw->r.frmr.fr_mr->rkey;
 +	DECR_CQCOUNT(&r_xprt->rx_ep);
-+	rc = ib_post_send(ia->ri_id->qp, &fastreg_wr, &bad_wr);
++
++	read_lock(&ia->ri_qplock);
++	while (seg1->mr_nsegs--)
++		rpcrdma_unmap_one(ia, seg++);
++	rc = ib_post_send(ia->ri_id->qp, &invalidate_wr, &bad_wr);
++	read_unlock(&ia->ri_qplock);
 +	if (rc)
-+		goto out_senderr;
-+
-+	seg1->mr_rkey = mr->rkey;
-+	seg1->mr_base = seg1->mr_dma + pageoff;
-+	seg1->mr_nsegs = i;
-+	seg1->mr_len = len;
-+	return i;
-+
-+out_senderr:
-+	dprintk("RPC:       %s: ib_post_send status %i\n", __func__, rc);
-+	ib_update_fast_reg_key(mr, --key);
++		goto out_err;
++	return nsegs;
 +
 +out_err:
-+	frmr->fr_state = FRMR_IS_INVALID;
-+	while (i--)
-+		rpcrdma_unmap_one(ia, --seg);
-+	return rc;
++	/* Force rpcrdma_buffer_get() to retry */
++	seg1->rl_mw->r.frmr.fr_state = FRMR_IS_STALE;
++	dprintk("RPC:       %s: ib_post_send status %i\n", __func__, rc);
++	return nsegs;
++}
++
+ /* FRWR mode conveys a list of pages per chunk segment. The
+  * maximum length of that list is the FRWR page list depth.
+  */
+@@ -116,8 +151,19 @@ out_err:
+ 	return rc;
+ }
+ 
++static void
++frwr_op_unmap(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req,
++	      unsigned int count)
++{
++	unsigned int i;
++
++	for (i = 0; count--;)
++		i += __frwr_unmap(r_xprt, &req->rl_segments[i]);
 +}
 +
  const struct rpcrdma_memreg_ops rpcrdma_frwr_memreg_ops = {
-+	.ro_map				= frwr_op_map,
+ 	.ro_map				= frwr_op_map,
++	.ro_unmap			= frwr_op_unmap,
  	.ro_maxpages			= frwr_op_maxpages,
  	.ro_displayname			= "frwr",
  };
 diff --git a/net/sunrpc/xprtrdma/physical_ops.c b/net/sunrpc/xprtrdma/physical_ops.c
-index 28ade19..5a284ee 100644
+index 5a284ee..f2c15be 100644
 --- a/net/sunrpc/xprtrdma/physical_ops.c
 +++ b/net/sunrpc/xprtrdma/physical_ops.c
-@@ -28,7 +28,24 @@ physical_op_maxpages(struct rpcrdma_xprt *r_xprt)
- 		     rpcrdma_max_segments(r_xprt));
+@@ -44,8 +44,21 @@ physical_op_map(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
+ 	return 1;
  }
  
-+/* The client's physical memory is already exposed for
-+ * remote access via RDMA READ or RDMA WRITE.
++/* Unmap a memory region, but leave it registered.
 + */
-+static int
-+physical_op_map(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
-+		int nsegs, bool writing)
++static void
++physical_op_unmap(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req,
++		  unsigned int count)
 +{
-+	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
++	unsigned int i;
 +
-+	rpcrdma_map_one(ia, seg, writing);
-+	seg->mr_rkey = ia->ri_bind_mem->rkey;
-+	seg->mr_base = seg->mr_dma;
-+	seg->mr_nsegs = 1;
-+	return 1;
++	for (i = 0; i < count; i++)
++		rpcrdma_unmap_one(&r_xprt->rx_ia, &req->rl_segments[i]);
 +}
 +
  const struct rpcrdma_memreg_ops rpcrdma_physical_memreg_ops = {
-+	.ro_map				= physical_op_map,
+ 	.ro_map				= physical_op_map,
++	.ro_unmap			= physical_op_unmap,
  	.ro_maxpages			= physical_op_maxpages,
  	.ro_displayname			= "physical",
  };
 diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index 41456d9..6ab1d03 100644
+index 6ab1d03..7b51d9d 100644
 --- a/net/sunrpc/xprtrdma/rpc_rdma.c
 +++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -187,6 +187,7 @@ rpcrdma_create_chunks(struct rpc_rqst *rqst, struct xdr_buf *target,
- 	struct rpcrdma_write_array *warray = NULL;
- 	struct rpcrdma_write_chunk *cur_wchunk = NULL;
- 	__be32 *iptr = headerp->rm_body.rm_chunks;
-+	int (*map)(struct rpcrdma_xprt *, struct rpcrdma_mr_seg *, int, bool);
+@@ -284,11 +284,8 @@ rpcrdma_create_chunks(struct rpc_rqst *rqst, struct xdr_buf *target,
+ 	return (unsigned char *)iptr - (unsigned char *)headerp;
  
- 	if (type == rpcrdma_readch || type == rpcrdma_areadch) {
- 		/* a read chunk - server will RDMA Read our memory */
-@@ -209,9 +210,9 @@ rpcrdma_create_chunks(struct rpc_rqst *rqst, struct xdr_buf *target,
- 	if (nsegs < 0)
- 		return nsegs;
+ out:
+-	if (r_xprt->rx_ia.ri_memreg_strategy != RPCRDMA_FRMR) {
+-		for (pos = 0; nchunks--;)
+-			pos += rpcrdma_deregister_external(
+-					&req->rl_segments[pos], r_xprt);
+-	}
++	if (r_xprt->rx_ia.ri_memreg_strategy != RPCRDMA_FRMR)
++		r_xprt->rx_ia.ri_ops->ro_unmap(r_xprt, req, nchunks);
+ 	return n;
+ }
  
-+	map = r_xprt->rx_ia.ri_ops->ro_map;
- 	do {
--		n = rpcrdma_register_external(seg, nsegs,
--						cur_wchunk != NULL, r_xprt);
-+		n = map(r_xprt, seg, nsegs, cur_wchunk != NULL);
- 		if (n <= 0)
- 			goto out;
- 		if (cur_rchunk) {	/* read */
+diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+index 9a9da40..c484671 100644
+--- a/net/sunrpc/xprtrdma/transport.c
++++ b/net/sunrpc/xprtrdma/transport.c
+@@ -571,7 +571,6 @@ xprt_rdma_free(void *buffer)
+ 	struct rpcrdma_req *req;
+ 	struct rpcrdma_xprt *r_xprt;
+ 	struct rpcrdma_regbuf *rb;
+-	int i;
+ 
+ 	if (buffer == NULL)
+ 		return;
+@@ -582,11 +581,8 @@ xprt_rdma_free(void *buffer)
+ 
+ 	dprintk("RPC:       %s: called on 0x%p\n", __func__, req->rl_reply);
+ 
+-	for (i = 0; req->rl_nchunks;) {
+-		--req->rl_nchunks;
+-		i += rpcrdma_deregister_external(
+-			&req->rl_segments[i], r_xprt);
+-	}
++	r_xprt->rx_ia.ri_ops->ro_unmap(r_xprt, req, req->rl_nchunks);
++	req->rl_nchunks = 0;
+ 
+ 	rpcrdma_buffer_put(req);
+ }
 diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 837d4ea..851ed97 100644
+index 851ed97..a1621fd 100644
 --- a/net/sunrpc/xprtrdma/verbs.c
 +++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -1857,8 +1857,8 @@ rpcrdma_free_regbuf(struct rpcrdma_ia *ia, struct rpcrdma_regbuf *rb)
-  * Wrappers for chunk registration, shared by read/write chunk code.
-  */
- 
--static void
--rpcrdma_map_one(struct rpcrdma_ia *ia, struct rpcrdma_mr_seg *seg, int writing)
-+void
-+rpcrdma_map_one(struct rpcrdma_ia *ia, struct rpcrdma_mr_seg *seg, bool writing)
- {
- 	seg->mr_dir = writing ? DMA_FROM_DEVICE : DMA_TO_DEVICE;
- 	seg->mr_dmalen = seg->mr_len;
-@@ -1878,7 +1878,7 @@ rpcrdma_map_one(struct rpcrdma_ia *ia, struct rpcrdma_mr_seg *seg, int writing)
+@@ -1509,7 +1509,7 @@ rpcrdma_buffer_put_sendbuf(struct rpcrdma_req *req, struct rpcrdma_buffer *buf)
  	}
  }
  
--static void
-+void
- rpcrdma_unmap_one(struct rpcrdma_ia *ia, struct rpcrdma_mr_seg *seg)
- {
- 	if (seg->mr_page)
-@@ -1890,93 +1890,6 @@ rpcrdma_unmap_one(struct rpcrdma_ia *ia, struct rpcrdma_mr_seg *seg)
+-/* rpcrdma_unmap_one() was already done by rpcrdma_deregister_frmr_external().
++/* rpcrdma_unmap_one() was already done during deregistration.
+  * Redo only the ib_post_send().
+  */
+ static void
+@@ -1889,85 +1889,6 @@ rpcrdma_unmap_one(struct rpcrdma_ia *ia, struct rpcrdma_mr_seg *seg)
+ 				seg->mr_dma, seg->mr_dmalen, seg->mr_dir);
  }
  
- static int
--rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
--			int *nsegs, int writing, struct rpcrdma_ia *ia,
--			struct rpcrdma_xprt *r_xprt)
+-static int
+-rpcrdma_deregister_frmr_external(struct rpcrdma_mr_seg *seg,
+-			struct rpcrdma_ia *ia, struct rpcrdma_xprt *r_xprt)
 -{
 -	struct rpcrdma_mr_seg *seg1 = seg;
--	struct rpcrdma_mw *mw = seg1->rl_mw;
--	struct rpcrdma_frmr *frmr = &mw->r.frmr;
--	struct ib_mr *mr = frmr->fr_mr;
--	struct ib_send_wr fastreg_wr, *bad_wr;
--	u8 key;
--	int len, pageoff;
--	int i, rc;
--	int seg_len;
--	u64 pa;
--	int page_no;
+-	struct ib_send_wr invalidate_wr, *bad_wr;
+-	int rc;
 -
--	pageoff = offset_in_page(seg1->mr_offset);
--	seg1->mr_offset -= pageoff;	/* start of page */
--	seg1->mr_len += pageoff;
--	len = -pageoff;
--	if (*nsegs > ia->ri_max_frmr_depth)
--		*nsegs = ia->ri_max_frmr_depth;
--	for (page_no = i = 0; i < *nsegs;) {
--		rpcrdma_map_one(ia, seg, writing);
--		pa = seg->mr_dma;
--		for (seg_len = seg->mr_len; seg_len > 0; seg_len -= PAGE_SIZE) {
--			frmr->fr_pgl->page_list[page_no++] = pa;
--			pa += PAGE_SIZE;
--		}
--		len += seg->mr_len;
--		++seg;
--		++i;
--		/* Check for holes */
--		if ((i < *nsegs && offset_in_page(seg->mr_offset)) ||
--		    offset_in_page((seg-1)->mr_offset + (seg-1)->mr_len))
--			break;
--	}
--	dprintk("RPC:       %s: Using frmr %p to map %d segments\n",
--		__func__, mw, i);
+-	seg1->rl_mw->r.frmr.fr_state = FRMR_IS_INVALID;
 -
--	frmr->fr_state = FRMR_IS_VALID;
--
--	memset(&fastreg_wr, 0, sizeof(fastreg_wr));
--	fastreg_wr.wr_id = (unsigned long)(void *)mw;
--	fastreg_wr.opcode = IB_WR_FAST_REG_MR;
--	fastreg_wr.wr.fast_reg.iova_start = seg1->mr_dma;
--	fastreg_wr.wr.fast_reg.page_list = frmr->fr_pgl;
--	fastreg_wr.wr.fast_reg.page_list_len = page_no;
--	fastreg_wr.wr.fast_reg.page_shift = PAGE_SHIFT;
--	fastreg_wr.wr.fast_reg.length = page_no << PAGE_SHIFT;
--	if (fastreg_wr.wr.fast_reg.length < len) {
--		rc = -EIO;
--		goto out_err;
--	}
--
--	/* Bump the key */
--	key = (u8)(mr->rkey & 0x000000FF);
--	ib_update_fast_reg_key(mr, ++key);
--
--	fastreg_wr.wr.fast_reg.access_flags = (writing ?
--				IB_ACCESS_REMOTE_WRITE | IB_ACCESS_LOCAL_WRITE :
--				IB_ACCESS_REMOTE_READ);
--	fastreg_wr.wr.fast_reg.rkey = mr->rkey;
+-	memset(&invalidate_wr, 0, sizeof invalidate_wr);
+-	invalidate_wr.wr_id = (unsigned long)(void *)seg1->rl_mw;
+-	invalidate_wr.opcode = IB_WR_LOCAL_INV;
+-	invalidate_wr.ex.invalidate_rkey = seg1->rl_mw->r.frmr.fr_mr->rkey;
 -	DECR_CQCOUNT(&r_xprt->rx_ep);
 -
--	rc = ib_post_send(ia->ri_id->qp, &fastreg_wr, &bad_wr);
+-	read_lock(&ia->ri_qplock);
+-	while (seg1->mr_nsegs--)
+-		rpcrdma_unmap_one(ia, seg++);
+-	rc = ib_post_send(ia->ri_id->qp, &invalidate_wr, &bad_wr);
+-	read_unlock(&ia->ri_qplock);
 -	if (rc) {
--		dprintk("RPC:       %s: failed ib_post_send for register,"
+-		/* Force rpcrdma_buffer_get() to retry */
+-		seg1->rl_mw->r.frmr.fr_state = FRMR_IS_STALE;
+-		dprintk("RPC:       %s: failed ib_post_send for invalidate,"
 -			" status %i\n", __func__, rc);
--		ib_update_fast_reg_key(mr, --key);
--		goto out_err;
--	} else {
--		seg1->mr_rkey = mr->rkey;
--		seg1->mr_base = seg1->mr_dma + pageoff;
--		seg1->mr_nsegs = i;
--		seg1->mr_len = len;
 -	}
--	*nsegs = i;
--	return 0;
--out_err:
--	frmr->fr_state = FRMR_IS_INVALID;
--	while (i--)
--		rpcrdma_unmap_one(ia, --seg);
 -	return rc;
 -}
 -
 -static int
- rpcrdma_deregister_frmr_external(struct rpcrdma_mr_seg *seg,
- 			struct rpcrdma_ia *ia, struct rpcrdma_xprt *r_xprt)
- {
-@@ -2007,49 +1920,6 @@ rpcrdma_deregister_frmr_external(struct rpcrdma_mr_seg *seg,
- }
- 
- static int
--rpcrdma_register_fmr_external(struct rpcrdma_mr_seg *seg,
--			int *nsegs, int writing, struct rpcrdma_ia *ia)
+-rpcrdma_deregister_fmr_external(struct rpcrdma_mr_seg *seg,
+-			struct rpcrdma_ia *ia)
 -{
 -	struct rpcrdma_mr_seg *seg1 = seg;
--	u64 physaddrs[RPCRDMA_MAX_DATA_SEGS];
--	int len, pageoff, i, rc;
+-	LIST_HEAD(l);
+-	int rc;
 -
--	pageoff = offset_in_page(seg1->mr_offset);
--	seg1->mr_offset -= pageoff;	/* start of page */
--	seg1->mr_len += pageoff;
--	len = -pageoff;
--	if (*nsegs > RPCRDMA_MAX_DATA_SEGS)
--		*nsegs = RPCRDMA_MAX_DATA_SEGS;
--	for (i = 0; i < *nsegs;) {
--		rpcrdma_map_one(ia, seg, writing);
--		physaddrs[i] = seg->mr_dma;
--		len += seg->mr_len;
--		++seg;
--		++i;
--		/* Check for holes */
--		if ((i < *nsegs && offset_in_page(seg->mr_offset)) ||
--		    offset_in_page((seg-1)->mr_offset + (seg-1)->mr_len))
--			break;
--	}
--	rc = ib_map_phys_fmr(seg1->rl_mw->r.fmr, physaddrs, i, seg1->mr_dma);
--	if (rc) {
--		dprintk("RPC:       %s: failed ib_map_phys_fmr "
--			"%u@0x%llx+%i (%d)... status %i\n", __func__,
--			len, (unsigned long long)seg1->mr_dma,
--			pageoff, i, rc);
--		while (i--)
--			rpcrdma_unmap_one(ia, --seg);
--	} else {
--		seg1->mr_rkey = seg1->rl_mw->r.fmr->rkey;
--		seg1->mr_base = seg1->mr_dma + pageoff;
--		seg1->mr_nsegs = i;
--		seg1->mr_len = len;
--	}
--	*nsegs = i;
+-	list_add(&seg1->rl_mw->r.fmr->list, &l);
+-	rc = ib_unmap_fmr(&l);
+-	read_lock(&ia->ri_qplock);
+-	while (seg1->mr_nsegs--)
+-		rpcrdma_unmap_one(ia, seg++);
+-	read_unlock(&ia->ri_qplock);
+-	if (rc)
+-		dprintk("RPC:       %s: failed ib_unmap_fmr,"
+-			" status %i\n", __func__, rc);
 -	return rc;
 -}
 -
--static int
- rpcrdma_deregister_fmr_external(struct rpcrdma_mr_seg *seg,
- 			struct rpcrdma_ia *ia)
- {
-@@ -2070,42 +1940,6 @@ rpcrdma_deregister_fmr_external(struct rpcrdma_mr_seg *seg,
- }
- 
- int
--rpcrdma_register_external(struct rpcrdma_mr_seg *seg,
--			int nsegs, int writing, struct rpcrdma_xprt *r_xprt)
+-int
+-rpcrdma_deregister_external(struct rpcrdma_mr_seg *seg,
+-		struct rpcrdma_xprt *r_xprt)
 -{
 -	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
--	int rc = 0;
+-	int nsegs = seg->mr_nsegs, rc;
 -
 -	switch (ia->ri_memreg_strategy) {
 -
 -	case RPCRDMA_ALLPHYSICAL:
--		rpcrdma_map_one(ia, seg, writing);
--		seg->mr_rkey = ia->ri_bind_mem->rkey;
--		seg->mr_base = seg->mr_dma;
--		seg->mr_nsegs = 1;
--		nsegs = 1;
+-		read_lock(&ia->ri_qplock);
+-		rpcrdma_unmap_one(ia, seg);
+-		read_unlock(&ia->ri_qplock);
 -		break;
 -
--	/* Registration using frmr registration */
 -	case RPCRDMA_FRMR:
--		rc = rpcrdma_register_frmr_external(seg, &nsegs, writing, ia, r_xprt);
+-		rc = rpcrdma_deregister_frmr_external(seg, ia, r_xprt);
 -		break;
 -
--	/* Registration using fmr memory registration */
 -	case RPCRDMA_MTHCAFMR:
--		rc = rpcrdma_register_fmr_external(seg, &nsegs, writing, ia);
+-		rc = rpcrdma_deregister_fmr_external(seg, ia);
 -		break;
 -
 -	default:
--		return -EIO;
+-		break;
 -	}
--	if (rc)
--		return rc;
--
 -	return nsegs;
 -}
 -
--int
- rpcrdma_deregister_external(struct rpcrdma_mr_seg *seg,
- 		struct rpcrdma_xprt *r_xprt)
- {
+ /*
+  * Prepost any receive buffer, then post send.
+  *
 diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index 59e627e..7bf077b 100644
+index 7bf077b..3aabbb2 100644
 --- a/net/sunrpc/xprtrdma/xprt_rdma.h
 +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -336,6 +336,8 @@ struct rpcrdma_stats {
-  */
- struct rpcrdma_xprt;
+@@ -338,6 +338,8 @@ struct rpcrdma_xprt;
  struct rpcrdma_memreg_ops {
-+	int		(*ro_map)(struct rpcrdma_xprt *,
-+				  struct rpcrdma_mr_seg *, int, bool);
+ 	int		(*ro_map)(struct rpcrdma_xprt *,
+ 				  struct rpcrdma_mr_seg *, int, bool);
++	void		(*ro_unmap)(struct rpcrdma_xprt *,
++				    struct rpcrdma_req *, unsigned int);
  	size_t		(*ro_maxpages)(struct rpcrdma_xprt *);
  	const char	*ro_displayname;
  };
-@@ -403,8 +405,6 @@ void rpcrdma_buffer_put(struct rpcrdma_req *);
+@@ -405,9 +407,6 @@ void rpcrdma_buffer_put(struct rpcrdma_req *);
  void rpcrdma_recv_buffer_get(struct rpcrdma_req *);
  void rpcrdma_recv_buffer_put(struct rpcrdma_rep *);
  
--int rpcrdma_register_external(struct rpcrdma_mr_seg *,
--				int, int, struct rpcrdma_xprt *);
- int rpcrdma_deregister_external(struct rpcrdma_mr_seg *,
- 				struct rpcrdma_xprt *);
- 
-@@ -414,6 +414,8 @@ void rpcrdma_free_regbuf(struct rpcrdma_ia *,
- 			 struct rpcrdma_regbuf *);
- 
- unsigned int rpcrdma_max_segments(struct rpcrdma_xprt *);
-+void rpcrdma_map_one(struct rpcrdma_ia *, struct rpcrdma_mr_seg *, bool);
-+void rpcrdma_unmap_one(struct rpcrdma_ia *, struct rpcrdma_mr_seg *);
- 
- /*
-  * RPC/RDMA connection management calls - xprtrdma/rpc_rdma.c
+-int rpcrdma_deregister_external(struct rpcrdma_mr_seg *,
+-				struct rpcrdma_xprt *);
+-
+ struct rpcrdma_regbuf *rpcrdma_alloc_regbuf(struct rpcrdma_ia *,
+ 					    size_t, gfp_t);
+ void rpcrdma_free_regbuf(struct rpcrdma_ia *,
 
