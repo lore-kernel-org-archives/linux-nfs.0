@@ -1,21 +1,20 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ie0-f176.google.com ([209.85.223.176]:34035 "EHLO
-	mail-ie0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750887AbbCMVXk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Mar 2015 17:23:40 -0400
-Received: by iecsl2 with SMTP id sl2so126698174iec.1
-        for <linux-nfs@vger.kernel.org>; Fri, 13 Mar 2015 14:23:39 -0700 (PDT)
+Received: from mail-ie0-f172.google.com ([209.85.223.172]:35494 "EHLO
+	mail-ie0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752539AbbCMVXt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Mar 2015 17:23:49 -0400
+Received: by ieclw3 with SMTP id lw3so127745614iec.2
+        for <linux-nfs@vger.kernel.org>; Fri, 13 Mar 2015 14:23:49 -0700 (PDT)
 Received: from manet.1015granger.net ([2604:8800:100:81fc:82ee:73ff:fe43:d64f])
-        by mx.google.com with ESMTPSA id b137sm1994506ioe.36.2015.03.13.14.23.38
+        by mx.google.com with ESMTPSA id h19sm2020260igq.10.2015.03.13.14.23.47
         for <linux-nfs@vger.kernel.org>
         (version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Fri, 13 Mar 2015 14:23:38 -0700 (PDT)
-Subject: [PATCH v1 15/16] xprtrdma: Make rpcrdma_{un}map_one() into inline
- functions
+        Fri, 13 Mar 2015 14:23:48 -0700 (PDT)
+Subject: [PATCH v1 16/16] xprtrdma: Split rb_lock
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-nfs@vger.kernel.org
-Date: Fri, 13 Mar 2015 17:23:37 -0400
-Message-ID: <20150313212337.22471.30456.stgit@manet.1015granger.net>
+Date: Fri, 13 Mar 2015 17:23:46 -0400
+Message-ID: <20150313212346.22471.72828.stgit@manet.1015granger.net>
 In-Reply-To: <20150313211124.22471.14517.stgit@manet.1015granger.net>
 References: <20150313211124.22471.14517.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -23,268 +22,197 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-These functions are called in a loop for each page transferred via
-RDMA READ or WRITE. Extract loop invariants and inline them to
-reduce CPU overhead.
+/proc/lock_stat showed contention between rpcrdma_buffer_get/put
+and the MR allocation functions during I/O intensive workloads.
+
+Now that MRs are no longer allocated in rpcrdma_buffer_get(),
+there's no reason the rb_mws list has to be managed using the
+same lock as the send/receive buffers. Split that lock. The
+new lock does not need to disable interrupts because buffer
+get/put is never called in an interrupt context.
+
+struct rpcrdma_buffer is re-arranged to ensure rb_mwlock and
+rb_mws is always in a different cacheline than rb_lock and the
+buffer pointers.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/fmr_ops.c      |   10 ++++++--
- net/sunrpc/xprtrdma/frwr_ops.c     |   10 ++++++--
- net/sunrpc/xprtrdma/physical_ops.c |   11 ++++++---
- net/sunrpc/xprtrdma/verbs.c        |   44 ++++++-----------------------------
- net/sunrpc/xprtrdma/xprt_rdma.h    |   45 ++++++++++++++++++++++++++++++++++--
- 5 files changed, 73 insertions(+), 47 deletions(-)
+ net/sunrpc/xprtrdma/fmr_ops.c   |    6 +++---
+ net/sunrpc/xprtrdma/frwr_ops.c  |   28 ++++++++++++----------------
+ net/sunrpc/xprtrdma/verbs.c     |    5 ++---
+ net/sunrpc/xprtrdma/xprt_rdma.h |   16 +++++++++-------
+ 4 files changed, 26 insertions(+), 29 deletions(-)
 
 diff --git a/net/sunrpc/xprtrdma/fmr_ops.c b/net/sunrpc/xprtrdma/fmr_ops.c
-index 9c6c2e8..1404f20 100644
+index 1404f20..00d362d 100644
 --- a/net/sunrpc/xprtrdma/fmr_ops.c
 +++ b/net/sunrpc/xprtrdma/fmr_ops.c
-@@ -29,14 +29,16 @@ __fmr_unmap(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg)
- 	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
- 	struct rpcrdma_mr_seg *seg1 = seg;
- 	struct rpcrdma_mw *mw = seg1->rl_mw;
-+	struct ib_device *device;
- 	int rc, nsegs = seg->mr_nsegs;
- 	LIST_HEAD(l);
+@@ -96,6 +96,7 @@ fmr_op_init(struct rpcrdma_xprt *r_xprt)
+ 	struct rpcrdma_mw *r;
+ 	int i, rc;
  
- 	list_add(&mw->r.fmr->list, &l);
- 	rc = ib_unmap_fmr(&l);
- 	read_lock(&ia->ri_qplock);
-+	device = ia->ri_id->device;
- 	while (seg1->mr_nsegs--)
--		rpcrdma_unmap_one(ia, seg++);
-+		rpcrdma_unmap_one(device, seg++);
- 	read_unlock(&ia->ri_qplock);
- 	if (rc)
- 		goto out_err;
-@@ -150,6 +152,8 @@ fmr_op_map(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
- 	   int nsegs, bool writing)
++	spin_lock_init(&buf->rb_mwlock);
+ 	INIT_LIST_HEAD(&buf->rb_mws);
+ 	INIT_LIST_HEAD(&buf->rb_all);
+ 
+@@ -128,9 +129,8 @@ __fmr_get_mw(struct rpcrdma_xprt *r_xprt)
  {
- 	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
-+	struct ib_device *device = ia->ri_id->device;
-+	enum dma_data_direction direction = rpcrdma_data_dir(writing);
- 	struct rpcrdma_mr_seg *seg1 = seg;
- 	struct rpcrdma_mw *mw;
- 	u64 physaddrs[RPCRDMA_MAX_DATA_SEGS];
-@@ -170,7 +174,7 @@ fmr_op_map(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
- 	if (nsegs > RPCRDMA_MAX_FMR_SGES)
- 		nsegs = RPCRDMA_MAX_FMR_SGES;
- 	for (i = 0; i < nsegs;) {
--		rpcrdma_map_one(ia, seg, writing);
-+		rpcrdma_map_one(device, seg, direction);
- 		physaddrs[i] = seg->mr_dma;
- 		len += seg->mr_len;
- 		++seg;
-@@ -197,7 +201,7 @@ out_maperr:
- 		__func__, len, (unsigned long long)seg1->mr_dma,
- 		pageoff, i, rc);
- 	while (i--)
--		rpcrdma_unmap_one(ia, --seg);
-+		rpcrdma_unmap_one(device, --seg);
- 	rpcrdma_put_mw(r_xprt, mw);
- 	return rc;
+ 	struct rpcrdma_buffer *buf = &r_xprt->rx_buf;
+ 	struct rpcrdma_mw *mw = NULL;
+-	unsigned long flags;
+ 
+-	spin_lock_irqsave(&buf->rb_lock, flags);
++	spin_lock(&buf->rb_mwlock);
+ 
+ 	if (!list_empty(&buf->rb_mws)) {
+ 		mw = list_entry(buf->rb_mws.next,
+@@ -140,7 +140,7 @@ __fmr_get_mw(struct rpcrdma_xprt *r_xprt)
+ 		pr_err("RPC:       %s: no MWs available\n", __func__);
+ 	}
+ 
+-	spin_unlock_irqrestore(&buf->rb_lock, flags);
++	spin_unlock(&buf->rb_mwlock);
+ 	return mw;
  }
+ 
 diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
-index d23e064..4494668 100644
+index 4494668..7973b94 100644
 --- a/net/sunrpc/xprtrdma/frwr_ops.c
 +++ b/net/sunrpc/xprtrdma/frwr_ops.c
-@@ -55,6 +55,7 @@ __frwr_unmap(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg)
- 	struct rpcrdma_mr_seg *seg1 = seg;
- 	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
- 	struct rpcrdma_mw *mw = seg1->rl_mw;
-+	struct ib_device *device;
- 	struct ib_send_wr invalidate_wr, *bad_wr;
- 	int rc, nsegs = seg->mr_nsegs;
+@@ -196,6 +196,7 @@ frwr_op_init(struct rpcrdma_xprt *r_xprt)
+ 	struct ib_pd *pd = r_xprt->rx_ia.ri_pd;
+ 	int i;
  
-@@ -67,8 +68,9 @@ __frwr_unmap(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg)
- 	DECR_CQCOUNT(&r_xprt->rx_ep);
++	spin_lock_init(&buf->rb_mwlock);
+ 	INIT_LIST_HEAD(&buf->rb_mws);
+ 	INIT_LIST_HEAD(&buf->rb_all);
  
- 	read_lock(&ia->ri_qplock);
-+	device = ia->ri_id->device;
- 	while (seg1->mr_nsegs--)
--		rpcrdma_unmap_one(ia, seg++);
-+		rpcrdma_unmap_one(device, seg++);
- 	rc = ib_post_send(ia->ri_id->qp, &invalidate_wr, &bad_wr);
- 	read_unlock(&ia->ri_qplock);
- 	if (rc)
-@@ -323,6 +325,8 @@ frwr_op_map(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
- 	    int nsegs, bool writing)
+@@ -228,10 +229,9 @@ frwr_op_init(struct rpcrdma_xprt *r_xprt)
+  * Redo only the ib_post_send().
+  */
+ static void
+-__retry_local_inv(struct rpcrdma_ia *ia, struct rpcrdma_mw *r)
++__retry_local_inv(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mw *r)
  {
- 	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
-+	struct ib_device *device = ia->ri_id->device;
-+	enum dma_data_direction direction = rpcrdma_data_dir(writing);
- 	struct rpcrdma_mr_seg *seg1 = seg;
- 	struct rpcrdma_frmr *frmr;
- 	struct rpcrdma_mw *mw;
-@@ -351,7 +355,7 @@ frwr_op_map(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
- 		nsegs = ia->ri_max_frmr_depth;
- 	frmr = &mw->r.frmr;
- 	for (page_no = i = 0; i < nsegs;) {
--		rpcrdma_map_one(ia, seg, writing);
-+		rpcrdma_map_one(device, seg, direction);
- 		pa = seg->mr_dma;
- 		for (seg_len = seg->mr_len; seg_len > 0; seg_len -= PAGE_SIZE) {
- 			frmr->fr_pgl->page_list[page_no++] = pa;
-@@ -409,7 +413,7 @@ out_senderr:
- out_err:
- 	frmr->fr_state = FRMR_IS_INVALID;
- 	while (i--)
--		rpcrdma_unmap_one(ia, --seg);
-+		rpcrdma_unmap_one(device, --seg);
- 	rpcrdma_put_mw(r_xprt, mw);
- 	return rc;
- }
-diff --git a/net/sunrpc/xprtrdma/physical_ops.c b/net/sunrpc/xprtrdma/physical_ops.c
-index 0998f4f..9ce7dfc 100644
---- a/net/sunrpc/xprtrdma/physical_ops.c
-+++ b/net/sunrpc/xprtrdma/physical_ops.c
-@@ -64,7 +64,8 @@ physical_op_map(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
- {
- 	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
- 
--	rpcrdma_map_one(ia, seg, writing);
-+	rpcrdma_map_one(ia->ri_id->device, seg,
-+			rpcrdma_data_dir(writing));
- 	seg->mr_rkey = ia->ri_bind_mem->rkey;
- 	seg->mr_base = seg->mr_dma;
- 	seg->mr_nsegs = 1;
-@@ -77,10 +78,14 @@ static void
- physical_op_unmap(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req,
- 		  unsigned int count)
- {
+-	struct rpcrdma_xprt *r_xprt =
+-				container_of(ia, struct rpcrdma_xprt, rx_ia);
 +	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
- 	unsigned int i;
+ 	struct ib_send_wr invalidate_wr, *bad_wr;
+ 	int rc;
  
--	for (i = 0; i < count; i++)
--		rpcrdma_unmap_one(&r_xprt->rx_ia, &req->rl_segments[i]);
-+	for (i = 0; i < count; i++) {
-+		read_lock(&ia->ri_qplock);
-+		rpcrdma_unmap_one(ia->ri_id->device, &req->rl_segments[i]);
-+		read_unlock(&ia->ri_qplock);
-+	}
+@@ -258,30 +258,27 @@ __retry_local_inv(struct rpcrdma_ia *ia, struct rpcrdma_mw *r)
+ 		dprintk("RPC:       %s: ib_post_send status %i\n",
+ 			__func__, rc);
+ 	}
++
++	rpcrdma_put_mw(r_xprt, r);
  }
  
  static void
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 21b63fe..460c917 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -1288,6 +1288,14 @@ rpcrdma_recv_buffer_put(struct rpcrdma_rep *rep)
-  * Wrappers for internal-use kmalloc memory registration, used by buffer code.
-  */
+-__retry_flushed_linv(struct rpcrdma_buffer *buf, struct list_head *stale)
++__retry_flushed_linv(struct rpcrdma_xprt *r_xprt, struct list_head *stale)
+ {
+-	struct rpcrdma_ia *ia = rdmab_to_ia(buf);
+ 	struct list_head *pos;
+ 	struct rpcrdma_mw *r;
+-	unsigned long flags;
+ 	unsigned count;
  
-+void
-+rpcrdma_mapping_error(struct rpcrdma_mr_seg *seg)
-+{
-+	dprintk("RPC:       map_one: offset %p iova %llx len %zu\n",
-+		seg->mr_offset,
-+		(unsigned long long)seg->mr_dma, seg->mr_dmalen);
-+}
-+
- static int
- rpcrdma_register_internal(struct rpcrdma_ia *ia, void *va, int len,
- 				struct ib_mr **mrp, struct ib_sge *iov)
-@@ -1413,42 +1421,6 @@ rpcrdma_free_regbuf(struct rpcrdma_ia *ia, struct rpcrdma_regbuf *rb)
+ 	count = 0;
+ 	list_for_each(pos, stale) {
+ 		r = list_entry(pos, struct rpcrdma_mw, mw_list);
+-		__retry_local_inv(ia, r);
++		list_del_init(&r->mw_list);
++		__retry_local_inv(r_xprt, r);
+ 		++count;
+ 	}
+ 
+-	pr_warn("RPC:       %s: adding %u MRs to rb_mws\n",
++	pr_warn("RPC:       %s: added %u MRs to rb_mws\n",
+ 		__func__, count);
+-
+-	spin_lock_irqsave(&buf->rb_lock, flags);
+-	list_splice_tail(stale, &buf->rb_mws);
+-	spin_unlock_irqrestore(&buf->rb_lock, flags);
  }
  
- /*
-- * Wrappers for chunk registration, shared by read/write chunk code.
-- */
--
--void
--rpcrdma_map_one(struct rpcrdma_ia *ia, struct rpcrdma_mr_seg *seg, bool writing)
--{
--	seg->mr_dir = writing ? DMA_FROM_DEVICE : DMA_TO_DEVICE;
--	seg->mr_dmalen = seg->mr_len;
--	if (seg->mr_page)
--		seg->mr_dma = ib_dma_map_page(ia->ri_id->device,
--				seg->mr_page, offset_in_page(seg->mr_offset),
--				seg->mr_dmalen, seg->mr_dir);
--	else
--		seg->mr_dma = ib_dma_map_single(ia->ri_id->device,
--				seg->mr_offset,
--				seg->mr_dmalen, seg->mr_dir);
--	if (ib_dma_mapping_error(ia->ri_id->device, seg->mr_dma)) {
--		dprintk("RPC:       %s: mr_dma %llx mr_offset %p mr_dma_len %zu\n",
--			__func__,
--			(unsigned long long)seg->mr_dma,
--			seg->mr_offset, seg->mr_dmalen);
--	}
--}
--
--void
--rpcrdma_unmap_one(struct rpcrdma_ia *ia, struct rpcrdma_mr_seg *seg)
--{
--	if (seg->mr_page)
--		ib_dma_unmap_page(ia->ri_id->device,
--				seg->mr_dma, seg->mr_dmalen, seg->mr_dir);
--	else
--		ib_dma_unmap_single(ia->ri_id->device,
--				seg->mr_dma, seg->mr_dmalen, seg->mr_dir);
--}
--
--/*
-  * Prepost any receive buffer, then post send.
-  *
-  * Receive buffer is donated to hardware, reclaimed upon recv completion.
+ static struct rpcrdma_mw *
+@@ -289,11 +286,10 @@ __frwr_get_mw(struct rpcrdma_xprt *r_xprt)
+ {
+ 	struct rpcrdma_buffer *buf = &r_xprt->rx_buf;
+ 	struct rpcrdma_mw *mw;
+-	unsigned long flags;
+ 	LIST_HEAD(stale);
+ 	int count;
+ 
+-	spin_lock_irqsave(&buf->rb_lock, flags);
++	spin_lock(&buf->rb_mwlock);
+ 	count = 0;
+ 	while (!list_empty(&buf->rb_mws)) {
+ 		mw = list_entry(buf->rb_mws.next, struct rpcrdma_mw, mw_list);
+@@ -308,11 +304,11 @@ __frwr_get_mw(struct rpcrdma_xprt *r_xprt)
+ 	mw = NULL;
+ 
+ out_unlock:
+-	spin_unlock_irqrestore(&buf->rb_lock, flags);
++	spin_unlock(&buf->rb_mwlock);
+ 	if (!list_empty(&stale)) {
+ 		dprintk("RPC:       %s: found %d unsuitable MWs\n",
+ 			__func__, count);
+-		__retry_flushed_linv(buf, &stale);
++		__retry_flushed_linv(r_xprt, &stale);
+ 	}
+ 	return mw;
+ }
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 460c917..d4de417 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -1172,15 +1172,14 @@ void
+ rpcrdma_put_mw(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mw *mw)
+ {
+ 	struct rpcrdma_buffer *buf = &r_xprt->rx_buf;
+-	unsigned long flags;
+ 
+ 	if (!list_empty(&mw->mw_list))
+ 		pr_warn("RPC:       %s: mw %p still on a list!\n",
+ 			__func__, mw);
+ 
+-	spin_lock_irqsave(&buf->rb_lock, flags);
++	spin_lock(&buf->rb_mwlock);
+ 	list_add_tail(&mw->mw_list, &buf->rb_mws);
+-	spin_unlock_irqrestore(&buf->rb_lock, flags);
++	spin_unlock(&buf->rb_mwlock);
+ }
+ 
+ static void
 diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index b167e44..10c4fa5 100644
+index 10c4fa5..998f188 100644
 --- a/net/sunrpc/xprtrdma/xprt_rdma.h
 +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -423,11 +423,52 @@ void rpcrdma_free_regbuf(struct rpcrdma_ia *,
- 			 struct rpcrdma_regbuf *);
- 
- unsigned int rpcrdma_max_segments(struct rpcrdma_xprt *);
--void rpcrdma_map_one(struct rpcrdma_ia *, struct rpcrdma_mr_seg *, bool);
--void rpcrdma_unmap_one(struct rpcrdma_ia *, struct rpcrdma_mr_seg *);
- void rpcrdma_put_mw(struct rpcrdma_xprt *, struct rpcrdma_mw *);
- 
- /*
-+ * Wrappers for chunk registration, shared by read/write chunk code.
-+ */
-+
-+void rpcrdma_mapping_error(struct rpcrdma_mr_seg *);
-+
-+static inline enum dma_data_direction
-+rpcrdma_data_dir(bool writing)
-+{
-+	return writing ? DMA_FROM_DEVICE : DMA_TO_DEVICE;
-+}
-+
-+static inline void
-+rpcrdma_map_one(struct ib_device *device, struct rpcrdma_mr_seg *seg,
-+		enum dma_data_direction direction)
-+{
-+	seg->mr_dir = direction;
-+	seg->mr_dmalen = seg->mr_len;
-+
-+	if (seg->mr_page)
-+		seg->mr_dma = ib_dma_map_page(device,
-+				seg->mr_page, offset_in_page(seg->mr_offset),
-+				seg->mr_dmalen, seg->mr_dir);
-+	else
-+		seg->mr_dma = ib_dma_map_single(device,
-+				seg->mr_offset,
-+				seg->mr_dmalen, seg->mr_dir);
-+
-+	if (ib_dma_mapping_error(device, seg->mr_dma))
-+		rpcrdma_mapping_error(seg);
-+}
-+
-+static inline void
-+rpcrdma_unmap_one(struct ib_device *device, struct rpcrdma_mr_seg *seg)
-+{
-+	if (seg->mr_page)
-+		ib_dma_unmap_page(device,
-+				  seg->mr_dma, seg->mr_dmalen, seg->mr_dir);
-+	else
-+		ib_dma_unmap_single(device,
-+				    seg->mr_dma, seg->mr_dmalen, seg->mr_dir);
-+}
-+
-+/*
-  * RPC/RDMA connection management calls - xprtrdma/rpc_rdma.c
+@@ -280,15 +280,17 @@ rpcr_to_rdmar(struct rpc_rqst *rqst)
+  * One of these is associated with a transport instance
   */
- void rpcrdma_connect_worker(struct work_struct *);
+ struct rpcrdma_buffer {
+-	spinlock_t	rb_lock;	/* protects indexes */
+-	u32		rb_max_requests;/* client max requests */
+-	struct list_head rb_mws;	/* optional memory windows/fmrs/frmrs */
+-	struct list_head rb_all;
+-	int		rb_send_index;
++	spinlock_t		rb_mwlock;
++	struct list_head	rb_mws;
++	struct list_head	rb_all;
++	char			*rb_pool;
++
++	spinlock_t		rb_lock;
++	u32			rb_max_requests;
++	int			rb_send_index;
++	int			rb_recv_index;
+ 	struct rpcrdma_req	**rb_send_bufs;
+-	int		rb_recv_index;
+ 	struct rpcrdma_rep	**rb_recv_bufs;
+-	char		*rb_pool;
+ };
+ #define rdmab_to_ia(b) (&container_of((b), struct rpcrdma_xprt, rx_buf)->rx_ia)
+ 
 
