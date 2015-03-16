@@ -1,83 +1,56 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx143.netapp.com ([216.240.21.24]:44129 "EHLO mx143.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932738AbbCPVRy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 16 Mar 2015 17:17:54 -0400
+	id S932768AbbCPVRz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 16 Mar 2015 17:17:55 -0400
 From: Anna Schumaker <Anna.Schumaker@netapp.com>
 To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
 CC: <Anna.Schumaker@netapp.com>
-Subject: [PATCH v3 0/5] NFS: Add READ_PLUS support
-Date: Mon, 16 Mar 2015 17:17:41 -0400
-Message-ID: <1426540666-31896-1-git-send-email-Anna.Schumaker@Netapp.com>
+Subject: [PATCH v3 1/5] SUNRPC: Split out a function for setting current page
+Date: Mon, 16 Mar 2015 17:17:42 -0400
+Message-ID: <1426540666-31896-2-git-send-email-Anna.Schumaker@Netapp.com>
+In-Reply-To: <1426540666-31896-1-git-send-email-Anna.Schumaker@Netapp.com>
+References: <1426540666-31896-1-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
 Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-These patches add client support for the NFS v4.2 operation READ_PLUS.  This
-operation is triggered by doing any kind of read on a NFS v4.2 mounted
-filesystem.  `
+I'm going to need this bit of code in a few places for READ_PLUS
+decoding, so let's make it a helper function.
 
-I tested these patches using xfstests and compared the runtime between NFS
-v4.1, NFS v4.2 without READ_PLUS, and NFS v4.2 with READ_PLUS.  Here are
-the results:
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+---
+ net/sunrpc/xdr.c | 9 +++++++--
+ 1 file changed, 7 insertions(+), 2 deletions(-)
 
-
-   Test     |   v4.1    | no READ_PLUS |  READ_PLUS
----------------------------------------------------
-generic/013 | 135s      |    143s      |    123s
-generic/075 |   4s      |     11s      |      4s
-generic/091 |   9s      |     16s      |     15s
-generic/112 |   4s      |      7s      |      6s
-generic/127 |  62s      |    117s      |    114s
-generic/213 | [not run] |      1s      |      1s
-generic/214 | [not run] |      0s      |      0s
-generic/228 | [not run] |      1s      |      2s
-generic/236 |   1s      |      1s      |      1s
-generic/263 |   4s      |      6s      |      8s
-generic/285 |   0s      |      1s      |      3s
-generic/315 | [not run] |      2s      |      1s
----------------------------------------------------
-Total       |  3:47.47  |    5:11.85   |  4:43.77
-
-
-Using the READ_PLUS operation does have an impact on reading sparse
-files over the network.  There is still a big difference between v4.1
-and v4.2 runtimes, but this looks to be a result of fallocate() tests
-that only run over v4.2.
-
-
-Changes since v2:
-- Merge together patches adding DATA and HOLE segment support.
-- Simplify hole zeroing code by using the zero_user_segment() function.
-
-These patches and the corresponding server changes are available in the
-[read_plus] branch of
-
-	git://git.linux-nfs.org/projects/anna/linux-nfs.git
-
-Questions?  Comments?  Thoughts?
-
-Anna
-
-
-Anna Schumaker (5):
-  SUNRPC: Split out a function for setting current page
-  SUNRPC: Add the ability to expand holes in data pages
-  NFS: Add basic READ_PLUS support
-  SUNRPC: Add the ability to shift data to a specific offset
-  NFS: Add support for decoding multiple segments
-
- fs/nfs/nfs42xdr.c          | 162 ++++++++++++++++++++++++++++++
- fs/nfs/nfs4proc.c          |  30 +++++-
- fs/nfs/nfs4xdr.c           |   1 +
- include/linux/nfs4.h       |   1 +
- include/linux/nfs_fs_sb.h  |   1 +
- include/linux/nfs_xdr.h    |   2 +-
- include/linux/sunrpc/xdr.h |   2 +
- net/sunrpc/xdr.c           | 240 ++++++++++++++++++++++++++++++++++++++++++++-
- 8 files changed, 434 insertions(+), 5 deletions(-)
-
+diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
+index 4439ac4..b1c4ffb 100644
+--- a/net/sunrpc/xdr.c
++++ b/net/sunrpc/xdr.c
+@@ -759,6 +759,12 @@ static int xdr_set_page_base(struct xdr_stream *xdr,
+ 	return 0;
+ }
+ 
++static void xdr_set_page(struct xdr_stream *xdr, unsigned int base)
++{
++	if (xdr_set_page_base(xdr, base, PAGE_SIZE) < 0)
++		xdr_set_iov(xdr, xdr->buf->tail, xdr->buf->len);
++}
++
+ static void xdr_set_next_page(struct xdr_stream *xdr)
+ {
+ 	unsigned int newbase;
+@@ -766,8 +772,7 @@ static void xdr_set_next_page(struct xdr_stream *xdr)
+ 	newbase = (1 + xdr->page_ptr - xdr->buf->pages) << PAGE_SHIFT;
+ 	newbase -= xdr->buf->page_base;
+ 
+-	if (xdr_set_page_base(xdr, newbase, PAGE_SIZE) < 0)
+-		xdr_set_iov(xdr, xdr->buf->tail, xdr->buf->len);
++	xdr_set_page(xdr, newbase);
+ }
+ 
+ static bool xdr_set_next_buffer(struct xdr_stream *xdr)
 -- 
 2.3.3
 
