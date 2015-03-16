@@ -1,86 +1,96 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx141.netapp.com ([216.240.21.12]:61872 "EHLO mx141.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933346AbbCPSGc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 16 Mar 2015 14:06:32 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
-CC: <Anna.Schumaker@netapp.com>
-Subject: [PATCH v4 2/2] NFS: Reduce time spent holding the i_mutex during fallocate()
-Date: Mon, 16 Mar 2015 14:06:24 -0400
-Message-ID: <1426529184-8794-3-git-send-email-Anna.Schumaker@Netapp.com>
-In-Reply-To: <1426529184-8794-1-git-send-email-Anna.Schumaker@Netapp.com>
-References: <1426529184-8794-1-git-send-email-Anna.Schumaker@Netapp.com>
+Received: from zeniv.linux.org.uk ([195.92.253.2]:33973 "EHLO
+	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932261AbbCPSPf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 Mar 2015 14:15:35 -0400
+Date: Mon, 16 Mar 2015 18:15:21 +0000
+From: Al Viro <viro@ZenIV.linux.org.uk>
+To: Omar Sandoval <osandov@osandov.com>
+Cc: linux-fsdevel@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        ceph-devel@vger.kernel.org, linux-cifs@vger.kernel.org,
+        osd-dev@open-osd.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net,
+        fuse-devel@lists.sourceforge.net, cluster-devel@redhat.com,
+        jfs-discussion@lists.sourceforge.net, HPDD-discuss@ml01.01.org,
+        linux-nfs@vger.kernel.org, linux-nilfs@vger.kernel.org,
+        ocfs2-devel@oss.oracle.com, reiserfs-devel@vger.kernel.org,
+        v9fs-developer@lists.sourceforge.net, xfs@oss.sgi.com,
+        linux-kernel@vger.kernel.org, Chris Mason <clm@fb.com>,
+        Josef Bacik <jbacik@fb.com>, David Sterba <dsterba@suse.cz>,
+        Yan Zheng <zyan@redhat.com>, Sage Weil <sage@redhat.com>,
+        Steve French <sfrench@samba.org>, Boaz Harrosh <ooo@electrozaur.com>,
+        Benny Halevy <bhalevy@primarydata.com>, Jan Kara <jack@suse.cz>,
+        "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Jaegeuk Kim <jaegeuk@kernel.org>, Changman Lee <cm224.lee@samsung.com>,
+        Miklos Szeredi <miklos@szeredi.hu>,
+        Steven Whitehouse <swhiteho@redhat.com>,
+        Dave Kleikamp <shaggy@kernel.org>, Oleg Drokin <oleg.drokin@intel.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Ryusuke Konishi <konishi.ryusuke@lab.ntt.co.jp>,
+        Mark Fasheh <mfasheh@suse.com>, Joel Becker <jlbec@evilplan.org>,
+        Eric Van Hensbergen <ericvh@gmail.com>,
+        Ron Minnich <rminnich@sandia.gov>, Latchesar Ionkov <lucho@ionkov.net>,
+        Dave Chinner <david@fromorbit.com>
+Subject: Re: [RFC PATCH 0/5] Remove rw parameter from direct_IO()
+Message-ID: <20150316181521.GY29656@ZenIV.linux.org.uk>
+References: <cover.1426502566.git.osandov@osandov.com>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <cover.1426502566.git.osandov@osandov.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-At the very least, we should not be taking the i_mutex until after
-checking if the server even supports ALLOCATE or DEALLOCATE, allowing
-v4.0 or v4.1 to exit without potentially waiting on a lock.
+On Mon, Mar 16, 2015 at 04:33:48AM -0700, Omar Sandoval wrote:
+> Hi,
+> 
+> Al, here's some cleanup that you mentioned back in December that I got
+> around to (https://lkml.org/lkml/2014/12/15/28).
+> 
+> In summary, the rw parameter to a_ops->direct_IO() is redundant with
+> .type in struct iov_iter. Additionally, rw is inconsistently checked for
+> being a WRITE; some filesystems do rw == WRITE, others do rw & WRITE,
+> and others do both within the same function :) The distinction is that
+> swapout may OR in the ITER_BVEC flag in the rw passed to ->direct_IO(),
+> so the two are not equivalent (although this really only happens for
+> swap-over-NFS, but it's scary nonetheless). After looking through all of
+> these, it definitely looks like every check means for ANY write, not
+> just non-kernel writes.
+> 
+> So, the solution presented here is:
+> 
+> - Add a helper, iov_iter_rw(), which always returns either READ or
+>   WRITE, no ITER_.* or REQ_.* nonsense mixed in. For consistency, the
+>   return value is always checked for equality
 
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
----
- fs/nfs/nfs42proc.c | 8 ++++++++
- fs/nfs/nfs4file.c  | 9 ++-------
- 2 files changed, 10 insertions(+), 7 deletions(-)
+TBH, I'm not sure I like such calling conventions, but I guess we can
+live with that.
 
-diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
-index b9aa6bb..3a9e752 100644
---- a/fs/nfs/nfs42proc.c
-+++ b/fs/nfs/nfs42proc.c
-@@ -96,9 +96,13 @@ int nfs42_proc_allocate(struct file *filep, loff_t offset, loff_t len)
- 	if (!nfs_server_capable(inode, NFS_CAP_ALLOCATE))
- 		return -EOPNOTSUPP;
- 
-+	mutex_lock(&inode->i_mutex);
-+
- 	err = nfs42_proc_fallocate(&msg, filep, offset, len);
- 	if (err == -EOPNOTSUPP)
- 		NFS_SERVER(inode)->caps &= ~NFS_CAP_ALLOCATE;
-+
-+	mutex_unlock(&inode->i_mutex);
- 	return err;
- }
- 
-@@ -114,11 +118,15 @@ int nfs42_proc_deallocate(struct file *filep, loff_t offset, loff_t len)
- 		return -EOPNOTSUPP;
- 
- 	nfs_wb_all(inode);
-+	mutex_lock(&inode->i_mutex);
-+
- 	err = nfs42_proc_fallocate(&msg, filep, offset, len);
- 	if (err == 0)
- 		truncate_pagecache_range(inode, offset, (offset + len) -1);
- 	if (err == -EOPNOTSUPP)
- 		NFS_SERVER(inode)->caps &= ~NFS_CAP_DEALLOCATE;
-+
-+	mutex_unlock(&inode->i_mutex);
- 	return err;
- }
- 
-diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
-index d09c689..1d1848e 100644
---- a/fs/nfs/nfs4file.c
-+++ b/fs/nfs/nfs4file.c
-@@ -152,14 +152,9 @@ static long nfs42_fallocate(struct file *filep, int mode, loff_t offset, loff_t
- 	if (ret < 0)
- 		return ret;
- 
--	mutex_lock(&inode->i_mutex);
- 	if (mode & FALLOC_FL_PUNCH_HOLE)
--		ret = nfs42_proc_deallocate(filep, offset, len);
--	else
--		ret = nfs42_proc_allocate(filep, offset, len);
--	mutex_unlock(&inode->i_mutex);
--
--	return ret;
-+		return nfs42_proc_deallocate(filep, offset, len);
-+	return nfs42_proc_allocate(filep, offset, len);
- }
- #endif /* CONFIG_NFS_V4_2 */
- 
--- 
-2.3.3
+> I decided to squish all of the filesystems together in patch 4 to avoid
+> inundating the mailing lists with 20+ mostly two-line patches, but I can
+> split those out if that's any better. Additionally, patch 1 pulls fs.h
+> into uio.h, which seems undesirable.
 
+... and easily avoided if you use a macro instead of inline, without losing
+type safety or getting double evaluation, etc.
+
+Look: 0 ? (struct T *)0 : (x) always evaluates to x.  Now look at 6.5.15p3 in
+C99: the second and the third arguments are both pointers, so we are left with
+p3.4 (both arguments are pointers to qualified or unqualified versions of
+compatible types), p3.5 (one operand is a pointer and another null pointer
+constant) and p3.6 (one operand is a pointer to an object or incomplete type,
+and the other is a pointer to qualified or unqualied version of void.
+
+The first variant means that x is a pointer to qualified or unqualified
+struct T; the type of result is, per 6.5.15p6, the same as that of x.
+
+The second variant means that x is a null pointer constant ((struct T *)0 isn't
+one) and result is a null pointer to T.
+
+The third one means that x is a pointer to qualified or unqualified void.
+The type of result is the same as that of x.
+
+Now note that your variant is no better wrt type safety; worse, actually, since
+it does accept any pointer to void.  (0 ? (struct iov_iter *)0 : (x))->type
+will reject those.  And we obviously don't have double evaluation here either.
