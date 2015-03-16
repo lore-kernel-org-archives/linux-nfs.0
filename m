@@ -1,106 +1,126 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yh0-f45.google.com ([209.85.213.45]:34499 "EHLO
-	mail-yh0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751360AbbCOWIP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 15 Mar 2015 18:08:15 -0400
-Received: by yhch68 with SMTP id h68so11717815yhc.1
-        for <linux-nfs@vger.kernel.org>; Sun, 15 Mar 2015 15:08:14 -0700 (PDT)
-Date: Sun, 15 Mar 2015 18:08:11 -0400
-From: Jeff Layton <jeff.layton@primarydata.com>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: nfsd use after free in 4.0-rc
-Message-ID: <20150315180811.02847842@tlielax.poochiereds.net>
-In-Reply-To: <20150315125614.GA766@infradead.org>
-References: <20150315125614.GA766@infradead.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail-pd0-f182.google.com ([209.85.192.182]:34706 "EHLO
+	mail-pd0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752887AbbCPLfG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 Mar 2015 07:35:06 -0400
+Received: by pdbni2 with SMTP id ni2so56099286pdb.1
+        for <linux-nfs@vger.kernel.org>; Mon, 16 Mar 2015 04:35:04 -0700 (PDT)
+From: Omar Sandoval <osandov@osandov.com>
+To: Alexander Viro <viro@zeniv.linux.org.uk>, linux-fsdevel@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, ceph-devel@vger.kernel.org,
+        linux-cifs@vger.kernel.org, osd-dev@open-osd.org,
+        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        fuse-devel@lists.sourceforge.net, cluster-devel@redhat.com,
+        jfs-discussion@lists.sourceforge.net, HPDD-discuss@ml01.01.org,
+        linux-nfs@vger.kernel.org, linux-nilfs@vger.kernel.org,
+        ocfs2-devel@oss.oracle.com, reiserfs-devel@vger.kernel.org,
+        v9fs-developer@lists.sourceforge.net, xfs@oss.sgi.com
+Cc: linux-kernel@vger.kernel.org, Chris Mason <clm@fb.com>,
+        Josef Bacik <jbacik@fb.com>, David Sterba <dsterba@suse.cz>,
+        "Yan Zheng" <zyan@redhat.com>, Sage Weil <sage@redhat.com>,
+        Steve French <sfrench@samba.org>, Boaz Harrosh <ooo@electrozaur.com>,
+        Benny Halevy <bhalevy@primarydata.com>, Jan Kara <jack@suse.cz>,
+        "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Jaegeuk Kim <jaegeuk@kernel.org>, Changman Lee <cm224.lee@samsung.com>,
+        Miklos Szeredi <miklos@szeredi.hu>,
+        Steven Whitehouse <swhiteho@redhat.com>,
+        Dave Kleikamp <shaggy@kernel.org>, Oleg Drokin <oleg.drokin@intel.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Ryusuke Konishi <konishi.ryusuke@lab.ntt.co.jp>,
+        Mark Fasheh <mfasheh@suse.com>, Joel Becker <jlbec@evilplan.org>,
+        Eric Van Hensbergen <ericvh@gmail.com>,
+        Ron Minnich <rminnich@sandia.gov>, Latchesar Ionkov <lucho@ionkov.net>,
+        Dave Chinner <david@fromorbit.com>,
+        Omar Sandoval <osandov@osandov.com>
+Subject: [RFC PATCH 0/5] Remove rw parameter from direct_IO()
+Date: Mon, 16 Mar 2015 04:33:48 -0700
+Message-Id: <cover.1426502566.git.osandov@osandov.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, 15 Mar 2015 05:56:14 -0700
-Christoph Hellwig <hch@infradead.org> wrote:
+Hi,
 
-> generic/011 1s ...[  154.375068] general protection fault: 0000 [#1] SMP 
-> [  154.376050] Modules linked in:
-> [  154.376785] CPU: 2 PID: 3818 Comm: nfsd Not tainted 4.0.0-rc3+ #150
-> [  154.377891] Hardware name: Bochs Bochs, BIOS Bochs 01/01/2007
-> [  154.377891] task: ffff88007b294410 ti: ffff88007a910000 task.ti: ffff88007a910000
-> [  154.377891] RIP: 0010:[<ffffffff81102050>]  [<ffffffff81102050>] __lock_acquire+0x140/0x1e20
-> [  154.377891] RSP: 0018:ffff88007a9139e8  EFLAGS: 00010002
-> [  154.377891] RAX: 0000000000000046 RBX: 6b6b6b6b6b6b6f03 RCX: 0000000000000000
-> [  154.377891] RDX: 0000000000000000 RSI: 0000000000000000 RDI: 6b6b6b6b6b6b6f1b
-> [  154.377891] RBP: ffff88007a913ac8 R08: 0000000000000001 R09: 0000000000000000
-> [  154.377891] R10: 0000000000000000 R11: 0000000000000001 R12: ffff88007b294410
-> [  154.377891] R13: 6b6b6b6b6b6b6f1b R14: 0000000000000000 R15: 0000000000000000
-> [  154.377891] FS:  0000000000000000(0000) GS:ffff88007fd00000(0000) knlGS:0000000000000000
-> [  154.377891] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-> [  154.377891] CR2: 00007ffff85d1fec CR3: 0000000076ebb000 CR4: 00000000000007e0
-> [  154.377891] Stack:
-> [  154.377891]  ffff88007b294410 ffffffff824c0a20 ffff88007b294c08 0000000000000002
-> [  154.377891]  ffff88007a913af8 ffffffff0000032c ffff880000000000 0000000000000000
-> [  154.377891]  ffff88007a913b18 0000000000000046 ffff88007b294c00 ffffffff0000001a
-> [  154.377891] Call Trace:
-> [  154.377891]  [<ffffffff811042ff>] lock_acquire+0x9f/0x120
-> [  154.377891]  [<ffffffff813c603e>] ? nfsd4_process_open2+0x1de/0x1010
-> [  154.377891]  [<ffffffff810fff5c>] ? lockdep_init_map+0xbc/0x520
-> [  154.397191]  [<ffffffff81e3fcec>] _raw_spin_lock+0x2c/0x40
-> [  154.397191]  [<ffffffff813c603e>] ? nfsd4_process_open2+0x1de/0x1010
-> [  154.397191]  [<ffffffff81e40446>] ? _raw_spin_unlock+0x26/0x30
-> [  154.397191]  [<ffffffff813c603e>] nfsd4_process_open2+0x1de/0x1010
+Al, here's some cleanup that you mentioned back in December that I got
+around to (https://lkml.org/lkml/2014/12/15/28).
 
-Could you run gdb against nfsd.ko and do a:
+In summary, the rw parameter to a_ops->direct_IO() is redundant with
+.type in struct iov_iter. Additionally, rw is inconsistently checked for
+being a WRITE; some filesystems do rw == WRITE, others do rw & WRITE,
+and others do both within the same function :) The distinction is that
+swapout may OR in the ITER_BVEC flag in the rw passed to ->direct_IO(),
+so the two are not equivalent (although this really only happens for
+swap-over-NFS, but it's scary nonetheless). After looking through all of
+these, it definitely looks like every check means for ANY write, not
+just non-kernel writes.
 
-    list *(nfsd4_process_open2+0x1de)
+So, the solution presented here is:
 
-I'd be interesting to see where it crashed. My suspicion would be
-trying to lock the cl->cl_lock, but I can't tell for sure (and from
-where).
+- Add a helper, iov_iter_rw(), which always returns either READ or
+  WRITE, no ITER_.* or REQ_.* nonsense mixed in. For consistency, the
+  return value is always checked for equality
+- Get rid of all uses of rw in any implementations of direct_IO,
+  starting with the generic code
+- Nuke the actual parameter and update the documentation
 
-> [  154.397191]  [<ffffffff813c5e60>] ? nfsd4_process_open1+0x3d0/0x3d0
-> [  154.397191]  [<ffffffff811d79f3>] ? inode_permission+0x13/0x50
-> [  154.397191]  [<ffffffff813aa462>] ? nfsd_permission+0x72/0x130
-> [  154.397191]  [<ffffffff813a744a>] ? fh_verify+0x14a/0x540
-> [  154.397191]  [<ffffffff813b6fa0>] nfsd4_open+0x370/0x780
-> [  154.397191]  [<ffffffff813b6c30>] ? nfsd4_link+0xf0/0xf0
-> [  154.397191]  [<ffffffff813b782c>] nfsd4_proc_compound+0x47c/0x680
-> [  154.397191]  [<ffffffff813a4711>] nfsd_dispatch+0xa1/0x1b0
-> [  154.397191]  [<ffffffff81d5864a>] svc_process_common+0x2da/0x570
-> [  154.397191]  [<ffffffff81d58ca6>] svc_process+0x176/0x1e0
-> [  154.397191]  [<ffffffff813a3fe7>] nfsd+0x157/0x1d0
-> [  154.397191]  [<ffffffff813a3e90>] ? nfsd_destroy+0xc0/0xc0
-> [  154.397191]  [<ffffffff813a3e90>] ? nfsd_destroy+0xc0/0xc0
-> [  154.397191]  [<ffffffff810dda0f>] kthread+0xdf/0x100
-> [  154.397191]  [<ffffffff810dd930>] ? __init_kthread_worker+0x70/0x70
-> [  154.397191]  [<ffffffff81e40918>] ret_from_fork+0x58/0x90
-> [  154.397191]  [<ffffffff810dd930>] ? __init_kthread_worker+0x70/0x70
-> [  154.397191] Code: 85 db 75 53 0f 1f 80 00 00 00 00 31 c0 48 8b 5d d8 4c 8b 65 e0 4c 8b 6d e8 4c 8b 75 f0 4c 8b 7d f8 c9 c3 0f 1f 84 00 00 00 00 00 <49> 81 7d 00 c0 58 75 82 b8 00 00 00 00 44 0f 44 c0 41 83 fe 01 
-> [  154.397191] RIP  [<ffffffff81102050>] __lock_acquire+0x140/0x1e20
-> [  154.397191]  RSP <ffff88007a9139e8>
-> [  154.397191] ---[ end trace ce8f0fa2103c18f2 ]---
-> [  165.320204] Slab corruption (Tainted: G      D        ): nfsd4_openowners start=ffff88007b3fa8b0, len=528
-> [  165.321157] Redzone: 0x9f911029d74e35b/0x9f911029d74e35b.
-> [  165.321660] Last user: [<ffffffff813c0a43>](nfs4_free_openowner+0x13/0x20)
-> [  165.322281] 030: 6c 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b lkkkkkkkkkkkkkkk
+I decided to squish all of the filesystems together in patch 4 to avoid
+inundating the mailing lists with 20+ mostly two-line patches, but I can
+split those out if that's any better. Additionally, patch 1 pulls fs.h
+into uio.h, which seems undesirable.
 
-Certainly looks like a use-after-free.
+These were mostly just compile tested, with a couple of direct I/O
+xfstests run on btrfs as quick sanity check, so getting some more eyes
+on is probably a good thing. They should apply on top of v4.0-rc4.
+Please comment away.
 
-> [  165.323172] Prev obj: start=ffff88007b3fa688, len=528
-> [  165.323743] Redzone: 0x9f911029d74e35b/0x9f911029d74e35b.
-> [  165.324365] Last user: [<ffffffff813c0a43>](nfs4_free_openowner+0x13/0x20)
-> [  165.325035] 000: 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b kkkkkkkkkkkkkkkk
-> [  165.325925] 010: 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b kkkkkkkkkkkkkkkk
-> [  165.326809] Next obj: start=ffff88007b3faad8, len=528
-> [  165.327366] Redzone: 0x9f911029d74e35b/0x9f911029d74e35b.
-> [  165.327916] Last user:
-> [<ffffffff813c0a43>](nfs4_free_openowner+0x13/0x20)
-> [  165.328572] 000: 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b kkkkkkkkkkkkkkkk
-> [  165.329439] 010: 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b kkkkkkkkkkkkkkkk
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Thank you,
 
+Omar Sandoval (5):
+  new helper: iov_iter_rw()
+  Remove rw from {,__,do_}blockdev_direct_IO()
+  Remove rw from dax_{do_,}io()
+  direct_IO: use iov_iter_rw() instead of rw everywhere
+  direct_IO: remove rw from a_ops->direct_IO()
+
+ Documentation/filesystems/Locking          |  2 +-
+ Documentation/filesystems/vfs.txt          |  2 +-
+ drivers/staging/lustre/lustre/llite/rw26.c | 22 ++++++++---------
+ fs/9p/vfs_addr.c                           |  2 +-
+ fs/affs/file.c                             |  9 +++----
+ fs/block_dev.c                             |  8 +++---
+ fs/btrfs/inode.c                           | 24 +++++++++---------
+ fs/ceph/addr.c                             |  3 +--
+ fs/cifs/file.c                             |  3 +--
+ fs/dax.c                                   | 27 ++++++++++-----------
+ fs/direct-io.c                             | 39 ++++++++++++++----------------
+ fs/exofs/inode.c                           |  4 +--
+ fs/ext2/inode.c                            | 11 ++++-----
+ fs/ext3/inode.c                            | 14 +++++------
+ fs/ext4/ext4.h                             |  4 +--
+ fs/ext4/indirect.c                         | 25 ++++++++++---------
+ fs/ext4/inode.c                            | 28 ++++++++++-----------
+ fs/f2fs/data.c                             | 22 ++++++++---------
+ fs/fat/inode.c                             |  9 +++----
+ fs/fuse/file.c                             | 16 ++++++------
+ fs/gfs2/aops.c                             | 16 ++++++------
+ fs/hfs/inode.c                             |  8 +++---
+ fs/hfsplus/inode.c                         |  9 +++----
+ fs/jfs/inode.c                             |  8 +++---
+ fs/nfs/direct.c                            |  4 +--
+ fs/nilfs2/inode.c                          | 10 +++-----
+ fs/ocfs2/aops.c                            | 22 +++++++----------
+ fs/reiserfs/inode.c                        |  8 +++---
+ fs/udf/file.c                              |  3 +--
+ fs/udf/inode.c                             |  7 +++---
+ fs/xfs/xfs_aops.c                          | 12 ++++-----
+ include/linux/fs.h                         | 24 +++++++++---------
+ include/linux/nfs_fs.h                     |  2 +-
+ include/linux/uio.h                        | 10 ++++++++
+ mm/filemap.c                               |  4 +--
+ mm/page_io.c                               |  4 +--
+ 36 files changed, 206 insertions(+), 219 deletions(-)
 
 -- 
-Jeff Layton <jeff.layton@primarydata.com>
+2.3.3
+
