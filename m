@@ -1,108 +1,74 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx142.netapp.com ([216.240.21.19]:11291 "EHLO mx142.netapp.com"
+Received: from mx143.netapp.com ([216.240.21.24]:44147 "EHLO mx143.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932768AbbCPVR7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 16 Mar 2015 17:17:59 -0400
+	id S1752711AbbCPVSL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 16 Mar 2015 17:18:11 -0400
 From: Anna Schumaker <Anna.Schumaker@netapp.com>
-To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
-CC: <Anna.Schumaker@netapp.com>
-Subject: [PATCH v3 5/5] NFS: Add support for decoding multiple segments
-Date: Mon, 16 Mar 2015 17:17:46 -0400
-Message-ID: <1426540666-31896-6-git-send-email-Anna.Schumaker@Netapp.com>
-In-Reply-To: <1426540666-31896-1-git-send-email-Anna.Schumaker@Netapp.com>
-References: <1426540666-31896-1-git-send-email-Anna.Schumaker@Netapp.com>
+To: <bfields@fieldses.org>
+CC: <linux-nfs@vger.kernel.org>
+Subject: [PATCH v3 0/3] NFSD: Add READ_PLUS support
+Date: Mon, 16 Mar 2015 17:18:05 -0400
+Message-ID: <1426540688-32095-1-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
 Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We now have everything we need to read holes and then shift data to
-where it's supposed to be.
+These patches add server support for the NFS v4.2 operation READ_PLUS.
 
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
----
- fs/nfs/nfs42xdr.c | 40 ++++++++++++++++++++++------------------
- 1 file changed, 22 insertions(+), 18 deletions(-)
+I tested these patches using xfstests and compared the runtime between NFS
+v4.1, NFS v4.2 without READ_PLUS, and NFS v4.2 with READ_PLUS.  Here are
+the results:
 
-diff --git a/fs/nfs/nfs42xdr.c b/fs/nfs/nfs42xdr.c
-index 4d7bd89..2a93abc 100644
---- a/fs/nfs/nfs42xdr.c
-+++ b/fs/nfs/nfs42xdr.c
-@@ -206,11 +206,11 @@ static int decode_read_plus_data(struct xdr_stream *xdr, struct nfs_pgio_res *re
- 	p = xdr_decode_hyper(p, &offset);
- 	count = be32_to_cpup(p);
- 
--	recvd = xdr_read_pages(xdr, count);
-+	recvd = xdr_align_data(xdr, res->count, count);
- 	if (recvd < count)
- 		res->eof = 0;
- 
--	res->count = recvd;
-+	res->count += recvd;
- 	return 0;
- out_overflow:
- 	print_overflow_msg(__func__, xdr);
-@@ -230,11 +230,11 @@ static int decode_read_plus_hole(struct xdr_stream *xdr, struct nfs_pgio_res *re
- 	p = xdr_decode_hyper(p, &offset);
- 	p = xdr_decode_hyper(p, &length);
- 
--	recvd = xdr_expand_hole(xdr, 0, length);
-+	recvd = xdr_expand_hole(xdr, res->count, length);
- 	if (recvd < length)
- 		res->eof = 0;
- 
--	res->count = recvd;
-+	res->count += recvd;
- 	return 0;
- out_overflow:
- 	print_overflow_msg(__func__, xdr);
-@@ -245,7 +245,7 @@ static int decode_read_plus(struct xdr_stream *xdr, struct nfs_pgio_res *res)
- {
- 	__be32 *p;
- 	int status, type;
--	uint32_t segments;
-+	uint32_t i, segments;
- 
- 	status = decode_op_hdr(xdr, OP_READ_PLUS);
- 	if (status)
-@@ -258,20 +258,24 @@ static int decode_read_plus(struct xdr_stream *xdr, struct nfs_pgio_res *res)
- 	res->count = 0;
- 	res->eof = be32_to_cpup(p++);
- 	segments = be32_to_cpup(p++);
--	if (segments == 0)
--		return 0;
- 
--	p = xdr_inline_decode(xdr, 4);
--	if (unlikely(!p))
--		goto out_overflow;
--
--	type = be32_to_cpup(p++);
--	if (type == NFS4_CONTENT_DATA)
--		status = decode_read_plus_data(xdr, res);
--	else
--		status = decode_read_plus_hole(xdr, res);
--
--	if (segments > 1)
-+	for (i = 0; i < segments; i++) {
-+		p = xdr_inline_decode(xdr, 4);
-+		if (unlikely(!p))
-+			goto out_overflow;
-+
-+		type = be32_to_cpup(p);
-+		if (type == NFS4_CONTENT_DATA)
-+			status = decode_read_plus_data(xdr, res);
-+		else
-+			status = decode_read_plus_hole(xdr, res);
-+		if (status)
-+			break;
-+		if (res->count == xdr->buf->page_len)
-+			break;
-+	}
-+
-+	if (i < segments)
- 		res->eof = 0;
- 	return status;
- out_overflow:
+
+   Test     |   v4.1    | no READ_PLUS |  READ_PLUS
+---------------------------------------------------
+generic/013 | 135s      |    143s      |    123s
+generic/075 |   4s      |     11s      |      4s
+generic/091 |   9s      |     16s      |     15s
+generic/112 |   4s      |      7s      |      6s
+generic/127 |  62s      |    117s      |    114s
+generic/213 | [not run] |      1s      |      1s
+generic/214 | [not run] |      0s      |      0s
+generic/228 | [not run] |      1s      |      2s
+generic/236 |   1s      |      1s      |      1s
+generic/263 |   4s      |      6s      |      8s
+generic/285 |   0s      |      1s      |      3s
+generic/315 | [not run] |      2s      |      1s
+---------------------------------------------------
+Total       |  3:47.47  |    5:11.85   |  4:43.77
+
+
+Using the READ_PLUS operation does have an impact on reading sparse
+files over the network.  There is still a big difference between v4.1
+and v4.2 runtimes, but this looks to be a result of fallocate() tests
+that only run over v4.2.
+
+
+Changes since v2:
+- Encode data segments using splice reads whenever possible.
+- Combine patches for adding HOLE and DATA segment support.
+
+
+These patches and the corresponding client changes are available in the
+[read_plus] branch of
+
+	git://git.linux-nfs.org/projects/anna/linux-nfs.git
+
+Questions?  Comments?  Thoughts?
+
+Anna
+
+
+Anna Schumaker (3):
+  NFSD: nfsd4_encode_read{v}() should encode eof and maxcount
+  NFSD: Add basic READ_PLUS support
+  NFSD: Add support for encoding multiple segments
+
+ fs/nfsd/nfs4proc.c |  16 +++++
+ fs/nfsd/nfs4xdr.c  | 182 ++++++++++++++++++++++++++++++++++++++++++-----------
+ 2 files changed, 160 insertions(+), 38 deletions(-)
+
 -- 
 2.3.3
 
