@@ -1,10 +1,10 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pd0-f182.google.com ([209.85.192.182]:34706 "EHLO
-	mail-pd0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752887AbbCPLfG (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 Mar 2015 07:35:06 -0400
-Received: by pdbni2 with SMTP id ni2so56099286pdb.1
-        for <linux-nfs@vger.kernel.org>; Mon, 16 Mar 2015 04:35:04 -0700 (PDT)
+Received: from mail-pa0-f44.google.com ([209.85.220.44]:33307 "EHLO
+	mail-pa0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753688AbbCPLfN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 Mar 2015 07:35:13 -0400
+Received: by pagr17 with SMTP id r17so62569913pag.0
+        for <linux-nfs@vger.kernel.org>; Mon, 16 Mar 2015 04:35:12 -0700 (PDT)
 From: Omar Sandoval <osandov@osandov.com>
 To: Alexander Viro <viro@zeniv.linux.org.uk>, linux-fsdevel@vger.kernel.org,
         linux-btrfs@vger.kernel.org, ceph-devel@vger.kernel.org,
@@ -34,93 +34,51 @@ Cc: linux-kernel@vger.kernel.org, Chris Mason <clm@fb.com>,
         Ron Minnich <rminnich@sandia.gov>, Latchesar Ionkov <lucho@ionkov.net>,
         Dave Chinner <david@fromorbit.com>,
         Omar Sandoval <osandov@osandov.com>
-Subject: [RFC PATCH 0/5] Remove rw parameter from direct_IO()
-Date: Mon, 16 Mar 2015 04:33:48 -0700
-Message-Id: <cover.1426502566.git.osandov@osandov.com>
+Subject: [RFC PATCH 1/5] new helper: iov_iter_rw()
+Date: Mon, 16 Mar 2015 04:33:49 -0700
+Message-Id: <34dc78b262546e9343e0ed872232a97f5eaa5f15.1426502566.git.osandov@osandov.com>
+In-Reply-To: <cover.1426502566.git.osandov@osandov.com>
+References: <cover.1426502566.git.osandov@osandov.com>
+In-Reply-To: <cover.1426502566.git.osandov@osandov.com>
+References: <cover.1426502566.git.osandov@osandov.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
+Get either READ or WRITE out of iter->type.
 
-Al, here's some cleanup that you mentioned back in December that I got
-around to (https://lkml.org/lkml/2014/12/15/28).
+Signed-off-by: Omar Sandoval <osandov@osandov.com>
+---
+ include/linux/uio.h | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
 
-In summary, the rw parameter to a_ops->direct_IO() is redundant with
-.type in struct iov_iter. Additionally, rw is inconsistently checked for
-being a WRITE; some filesystems do rw == WRITE, others do rw & WRITE,
-and others do both within the same function :) The distinction is that
-swapout may OR in the ITER_BVEC flag in the rw passed to ->direct_IO(),
-so the two are not equivalent (although this really only happens for
-swap-over-NFS, but it's scary nonetheless). After looking through all of
-these, it definitely looks like every check means for ANY write, not
-just non-kernel writes.
-
-So, the solution presented here is:
-
-- Add a helper, iov_iter_rw(), which always returns either READ or
-  WRITE, no ITER_.* or REQ_.* nonsense mixed in. For consistency, the
-  return value is always checked for equality
-- Get rid of all uses of rw in any implementations of direct_IO,
-  starting with the generic code
-- Nuke the actual parameter and update the documentation
-
-I decided to squish all of the filesystems together in patch 4 to avoid
-inundating the mailing lists with 20+ mostly two-line patches, but I can
-split those out if that's any better. Additionally, patch 1 pulls fs.h
-into uio.h, which seems undesirable.
-
-These were mostly just compile tested, with a couple of direct I/O
-xfstests run on btrfs as quick sanity check, so getting some more eyes
-on is probably a good thing. They should apply on top of v4.0-rc4.
-Please comment away.
-
-Thank you,
-
-Omar Sandoval (5):
-  new helper: iov_iter_rw()
-  Remove rw from {,__,do_}blockdev_direct_IO()
-  Remove rw from dax_{do_,}io()
-  direct_IO: use iov_iter_rw() instead of rw everywhere
-  direct_IO: remove rw from a_ops->direct_IO()
-
- Documentation/filesystems/Locking          |  2 +-
- Documentation/filesystems/vfs.txt          |  2 +-
- drivers/staging/lustre/lustre/llite/rw26.c | 22 ++++++++---------
- fs/9p/vfs_addr.c                           |  2 +-
- fs/affs/file.c                             |  9 +++----
- fs/block_dev.c                             |  8 +++---
- fs/btrfs/inode.c                           | 24 +++++++++---------
- fs/ceph/addr.c                             |  3 +--
- fs/cifs/file.c                             |  3 +--
- fs/dax.c                                   | 27 ++++++++++-----------
- fs/direct-io.c                             | 39 ++++++++++++++----------------
- fs/exofs/inode.c                           |  4 +--
- fs/ext2/inode.c                            | 11 ++++-----
- fs/ext3/inode.c                            | 14 +++++------
- fs/ext4/ext4.h                             |  4 +--
- fs/ext4/indirect.c                         | 25 ++++++++++---------
- fs/ext4/inode.c                            | 28 ++++++++++-----------
- fs/f2fs/data.c                             | 22 ++++++++---------
- fs/fat/inode.c                             |  9 +++----
- fs/fuse/file.c                             | 16 ++++++------
- fs/gfs2/aops.c                             | 16 ++++++------
- fs/hfs/inode.c                             |  8 +++---
- fs/hfsplus/inode.c                         |  9 +++----
- fs/jfs/inode.c                             |  8 +++---
- fs/nfs/direct.c                            |  4 +--
- fs/nilfs2/inode.c                          | 10 +++-----
- fs/ocfs2/aops.c                            | 22 +++++++----------
- fs/reiserfs/inode.c                        |  8 +++---
- fs/udf/file.c                              |  3 +--
- fs/udf/inode.c                             |  7 +++---
- fs/xfs/xfs_aops.c                          | 12 ++++-----
- include/linux/fs.h                         | 24 +++++++++---------
- include/linux/nfs_fs.h                     |  2 +-
- include/linux/uio.h                        | 10 ++++++++
- mm/filemap.c                               |  4 +--
- mm/page_io.c                               |  4 +--
- 36 files changed, 206 insertions(+), 219 deletions(-)
-
+diff --git a/include/linux/uio.h b/include/linux/uio.h
+index 7188029..87a47b3 100644
+--- a/include/linux/uio.h
++++ b/include/linux/uio.h
+@@ -10,6 +10,7 @@
+ #define __LINUX_UIO_H
+ 
+ #include <linux/kernel.h>
++#include <linux/fs.h>
+ #include <uapi/linux/uio.h>
+ 
+ struct page;
+@@ -111,6 +112,15 @@ static inline bool iter_is_iovec(struct iov_iter *i)
+ }
+ 
+ /*
++ * Get one of READ or WRITE out of iter->type without any other flags OR'd in
++ * with it.
++ */
++static inline int iov_iter_rw(const struct iov_iter *i)
++{
++	return i->type & RW_MASK;
++}
++
++/*
+  * Cap the iov_iter by given limit; note that the second argument is
+  * *not* the new size - it's upper limit for such.  Passing it a value
+  * greater than the amount of data in iov_iter is fine - it'll just do
 -- 
 2.3.3
 
