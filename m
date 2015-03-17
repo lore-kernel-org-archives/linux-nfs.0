@@ -1,137 +1,117 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx143.netapp.com ([216.240.21.24]:44147 "EHLO mx143.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932714AbbCPVSN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 16 Mar 2015 17:18:13 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-To: <bfields@fieldses.org>
-CC: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v3 3/3] NFSD: Add support for encoding multiple segments
-Date: Mon, 16 Mar 2015 17:18:08 -0400
-Message-ID: <1426540688-32095-4-git-send-email-Anna.Schumaker@Netapp.com>
-In-Reply-To: <1426540688-32095-1-git-send-email-Anna.Schumaker@Netapp.com>
-References: <1426540688-32095-1-git-send-email-Anna.Schumaker@Netapp.com>
+Received: from chicago.messinet.com ([50.196.241.75]:59058 "EHLO
+	chicago.messinet.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750746AbbCQDDi (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 Mar 2015 23:03:38 -0400
+Received: from localhost (localhost [127.0.0.1])
+	by chicago.messinet.com (Postfix) with ESMTP id CFD6C67B46A0
+	for <linux-nfs@vger.kernel.org>; Mon, 16 Mar 2015 22:03:37 -0500 (CDT)
+Received: from chicago.messinet.com ([127.0.0.1])
+	by localhost (chicago.messinet.com [127.0.0.1]) (amavisd-new, port 10024)
+	with ESMTP id 9ZVLwANjmLzR for <linux-nfs@vger.kernel.org>;
+	Mon, 16 Mar 2015 22:03:37 -0500 (CDT)
+Received: from ws1.m.messinet.com (unknown [IPv6:2001:55c:dc00:0:b85f:74ad:4cc7:d82])
+	(using TLSv1 with cipher ECDHE-RSA-AES256-SHA (256/256 bits))
+	(Client did not present a certificate)
+	by chicago.messinet.com (Postfix) with ESMTPSA id 03D0767B3F3F
+	for <linux-nfs@vger.kernel.org>; Mon, 16 Mar 2015 22:03:36 -0500 (CDT)
+From: Anthony Messina <amessina@messinet.com>
+To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: Kernel warning: net/sunrpc/clnt.c:2161 call_decode+0x269/0x8a0 [sunrpc]()
+Date: Mon, 16 Mar 2015 22:03:33 -0500
+Message-ID: <2141452.7322dZjThQ@ws1.m.messinet.com>
+In-Reply-To: <2905412.OH09VlPNMp@linux-ws1.messinet.com>
+References: <2905412.OH09VlPNMp@linux-ws1.messinet.com>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: multipart/signed; boundary="nextPart7318379.NBaXt2gAkH"; micalg="pgp-sha1"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch implements sending an array of segments back to the client.
-Clients should be prepared to handle multiple segment reads to make this
-useful.  We try to splice the first data segment into the XDR result,
-and remaining segments are encoded directly.
 
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
----
- fs/nfsd/nfs4proc.c |  4 ++--
- fs/nfsd/nfs4xdr.c  | 35 ++++++++++++++++++++++++-----------
- 2 files changed, 26 insertions(+), 13 deletions(-)
+--nextPart7318379.NBaXt2gAkH
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain; charset="us-ascii"
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index e9f4d8f..6801973 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1862,8 +1862,8 @@ static inline u32 nfsd4_read_plus_rsize(struct svc_rqst *rqstp, struct nfsd4_op
- {
- 	u32 maxcount = svc_max_payload(rqstp);
- 	u32 rlen = min(op->u.read.rd_length, maxcount);
--	/* enough extra xdr space for encoding either a hole or data segment. */
--	u32 xdr  = 5;
-+	/* Extra xdr padding for encoding multiple segments. */
-+	u32 xdr  = 20;
- 
- 	return (op_encode_hdr_size + 2 + xdr + XDR_QUADLEN(rlen)) * sizeof(__be32);
- }
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 799d52c..5eaecd2 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -4117,7 +4117,7 @@ nfsd4_encode_layoutreturn(struct nfsd4_compoundres *resp, __be32 nfserr,
- 
- static __be32
- nfsd4_encode_read_plus_data(struct nfsd4_compoundres *resp, struct nfsd4_read *read,
--			    struct file *file)
-+			    struct file *file, loff_t hole_pos)
- {
- 	__be32 *p, err;
- 	unsigned long maxcount;
-@@ -4128,20 +4128,26 @@ nfsd4_encode_read_plus_data(struct nfsd4_compoundres *resp, struct nfsd4_read *r
- 		return nfserr_resource;
- 	xdr_commit_encode(xdr);
- 
-+	if (hole_pos <= read->rd_offset)
-+		hole_pos = i_size_read(file_inode(file));
-+
- 	maxcount = svc_max_payload(resp->rqstp);
- 	maxcount = min_t(unsigned long, maxcount, (xdr->buf->buflen - xdr->buf->len));
- 	maxcount = min_t(unsigned long, maxcount, read->rd_length);
-+	maxcount = min_t(unsigned long, maxcount, hole_pos - read->rd_offset);
- 
- 	if (file->f_op->splice_read && test_bit(RQ_SPLICE_OK, &resp->rqstp->rq_flags))
- 		err = nfsd4_encode_splice_read(resp, read, file, &maxcount);
- 	else
- 		err = nfsd4_encode_readv(resp, read, file, &maxcount);
-+	clear_bit(RQ_SPLICE_OK, &resp->rqstp->rq_flags);
- 
- 	*p++ = cpu_to_be32(NFS4_CONTENT_DATA);
- 	p = xdr_encode_hyper(p, read->rd_offset);
- 	*p++ = cpu_to_be32(maxcount);
- 
- 	read->rd_offset += maxcount;
-+	read->rd_length -= maxcount;
- 	return err;
- }
- 
-@@ -4156,7 +4162,7 @@ nfsd4_encode_read_plus_hole(struct nfsd4_compoundres *resp, struct nfsd4_read *r
- 	if (data_pos == -ENXIO)
- 		data_pos = i_size_read(file_inode(file));
- 	if (data_pos <= read->rd_offset)
--		return nfsd4_encode_read_plus_data(resp, read, file);
-+		return nfsd4_encode_read_plus_data(resp, read, file, 0);
- 
- 	maxcount = data_pos - read->rd_offset;
- 	p = xdr_reserve_space(&resp->xdr, 4 + 8 + 8);
-@@ -4165,6 +4171,10 @@ nfsd4_encode_read_plus_hole(struct nfsd4_compoundres *resp, struct nfsd4_read *r
- 	p = xdr_encode_hyper(p, maxcount);
- 
- 	read->rd_offset += maxcount;
-+	if (maxcount > read->rd_length)
-+		read->rd_length = 0;
-+	else
-+		read->rd_length -= maxcount;
- 	return nfs_ok;
- }
- 
-@@ -4197,17 +4207,20 @@ nfsd4_encode_read_plus(struct nfsd4_compoundres *resp, __be32 nfserr,
- 			goto err_truncate;
- 	}
- 
--	hole_pos = vfs_llseek(file, read->rd_offset, SEEK_HOLE);
--	if (hole_pos == -ENXIO)
--		goto out_encode;
-+	do {
-+		hole_pos = vfs_llseek(file, read->rd_offset, SEEK_HOLE);
-+		if (hole_pos == -ENXIO)
-+			break;
- 
--	if (hole_pos == read->rd_offset)
--		err = nfsd4_encode_read_plus_hole(resp, read, file);
--	else
--		err = nfsd4_encode_read_plus_data(resp, read, file);
--	segments++;
-+		if (hole_pos == read->rd_offset)
-+			err = nfsd4_encode_read_plus_hole(resp, read, file);
-+		else
-+			err = nfsd4_encode_read_plus_data(resp, read, file, hole_pos);
-+		if (err)
-+			break;
-+		segments++;
-+	} while (read->rd_length > 0);
- 
--out_encode:
- 	eof = (read->rd_offset >= i_size_read(file_inode(file)));
- 	*p++ = cpu_to_be32(eof);
- 	*p++ = cpu_to_be32(segments);
--- 
-2.3.3
+On Tuesday, March 10, 2015 20:29:49 you wrote:
+> While this may be unrelated, it is one of the errors that seems to oc=
+cur
+> around the same time as the issues detailed in "soft lockup in the
+> laundromat" [1] and "NMI/soft lockup in nfs_delegation_need_return()"=
+ [2].=20
+> This is on an NFSv4.2/KRB5 client using kernel-3.18.9-200.fc21.x86_64=
+ with
+> the patch from thread "[PATCH] NFS: fix clp->cl_revoked list deletion=
+
+> causing softlock in nfsd" applied at the Fedora kernel packaging leve=
+l.
+>=20
+> ------------[ cut here ]------------
+> WARNING: CPU: 0 PID: 6545 at net/sunrpc/clnt.c:2161 call_decode+0x269=
+/0x8a0
+> [sunrpc]()
+> Modules linked in: dm_crypt bnep bluetooth rfkill veth cts rpcsec_gss=
+_krb5
+> nfsv4 dns_resolver nfs fscache ip6t_rpfilter ip6t_REJECT nf_reject_ip=
+v6
+> xt_conntrack ebtable_nat ebtable_broute bridge stp llc ebtable_filter=
+
+> ebtables ip6table_na
+>  shpchp i2c_i801 crc32c_intel serio_raw dcdbas ghash_clmulni_intel nf=
+sd
+> auth_rpcgss nfs_acl lockd grace sunrpc uas usb_storage nouveau video =
+mxm_wmi
+> broadcom wmi i2c_algo_bit drm_kms_helper ttm drm tg3 ptp pps_core
+> CPU: 0 PID: 6545 Comm: kworker/0:1 Not tainted 3.18.9-200.fc21.x86_64=
+ #1
+> Hardware name: Dell Inc. XPS 8300  /0Y2MRG, BIOS A06 10/17/2011
+> Workqueue: rpciod rpc_async_schedule [sunrpc]
+>  0000000000000000 0000000089b51bad ffff88015d23fcc8 ffffffff8175b71c
+>  0000000000000000 0000000000000000 ffff88015d23fd08 ffffffff81098eb1
+>  0000000000000000 ffff8801572f1218 ffff880017369000 ffff8802060f1000
+> Call Trace:
+>  [<ffffffff8175b71c>] dump_stack+0x46/0x58
+>  [<ffffffff81098eb1>] warn_slowpath_common+0x81/0xa0
+>  [<ffffffffa0641810>] ? nfs4_xdr_dec_readdir+0xf0/0xf0 [nfsv4]
+>  [<ffffffff81098fca>] warn_slowpath_null+0x1a/0x20
+>  [<ffffffffa02810a9>] call_decode+0x269/0x8a0 [sunrpc]
+>  [<ffffffffa0280e40>] ? call_refreshresult+0x150/0x150 [sunrpc]
+>  [<ffffffffa0280e40>] ? call_refreshresult+0x150/0x150 [sunrpc]
+>  [<ffffffffa028b6e4>] __rpc_execute+0x94/0x450 [sunrpc]
+>  [<ffffffffa028bab5>] rpc_async_schedule+0x15/0x20 [sunrpc]
+>  [<ffffffff810b1a6d>] process_one_work+0x14d/0x3f0
+>  [<ffffffff810b23c3>] worker_thread+0x53/0x470
+>  [<ffffffff810b2370>] ? rescuer_thread+0x290/0x290
+>  [<ffffffff810b75b8>] kthread+0xd8/0xf0
+>  [<ffffffff810b74e0>] ? kthread_create_on_node+0x1b0/0x1b0
+>  [<ffffffff8176207c>] ret_from_fork+0x7c/0xb0
+>  [<ffffffff810b74e0>] ? kthread_create_on_node+0x1b0/0x1b0
+> ---[ end trace aa1a2fd825fce8b1 ]---
+>=20
+>=20
+> [1] http://www.spinics.net/lists/linux-nfs/msg49735.html
+> [2] http://www.spinics.net/lists/linux-nfs/msg47059.html
+> [3] http://www.spinics.net/lists/linux-nfs/msg49798.html
+
+I forgot to include the Fedora bug report:=20
+https://bugzilla.redhat.com/show_bug.cgi?id=3D1200619
+
+=2D-=20
+Anthony - https://messinet.com/ - https://messinet.com/~amessina/galler=
+y
+8F89 5E72 8DF0 BCF0 10BE 9967 92DC 35DC B001 4A4E
+
+--nextPart7318379.NBaXt2gAkH
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: This is a digitally signed message part.
+Content-Transfer-Encoding: 7Bit
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2
+
+iEYEABECAAYFAlUHmYgACgkQktw13LABSk66yQCgiiaIS6FoDJno1t1ZlnuhDZ/Y
+PZgAn0vjx3yvzjQ1qbdNSCCKJ+pKGumJ
+=l4pQ
+-----END PGP SIGNATURE-----
+
+--nextPart7318379.NBaXt2gAkH--
 
