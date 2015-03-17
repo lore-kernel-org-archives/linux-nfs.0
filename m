@@ -1,76 +1,27 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pa0-f41.google.com ([209.85.220.41]:35707 "EHLO
-	mail-pa0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754020AbbCQKSi (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 Mar 2015 06:18:38 -0400
-Received: by pabyw6 with SMTP id yw6so5773074pab.2
-        for <linux-nfs@vger.kernel.org>; Tue, 17 Mar 2015 03:18:37 -0700 (PDT)
-Date: Tue, 17 Mar 2015 03:18:35 -0700
-From: Omar Sandoval <osandov@osandov.com>
-To: David Sterba <dsterba@suse.cz>
-Cc: Al Viro <viro@ZenIV.linux.org.uk>, linux-fsdevel@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, ceph-devel@vger.kernel.org,
-        linux-cifs@vger.kernel.org, osd-dev@open-osd.org,
-        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        fuse-devel@lists.sourceforge.net, cluster-devel@redhat.com,
-        jfs-discussion@lists.sourceforge.net, HPDD-discuss@ml01.01.org,
-        linux-nfs@vger.kernel.org, linux-nilfs@vger.kernel.org,
-        ocfs2-devel@oss.oracle.com, reiserfs-devel@vger.kernel.org,
-        v9fs-developer@lists.sourceforge.net, xfs@oss.sgi.com,
-        linux-kernel@vger.kernel.org
-Subject: Re: [RFC PATCH 1/5] new helper: iov_iter_rw()
-Message-ID: <20150317101835.GA31649@mew>
-References: <cover.1426502566.git.osandov@osandov.com>
- <34dc78b262546e9343e0ed872232a97f5eaa5f15.1426502566.git.osandov@osandov.com>
- <20150316173605.GX29656@ZenIV.linux.org.uk>
- <20150317093151.GS20767@twin.jikos.cz>
+Received: from verein.lst.de ([213.95.11.211]:45255 "EHLO newverein.lst.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753260AbbCQKag (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 17 Mar 2015 06:30:36 -0400
+Date: Tue, 17 Mar 2015 11:30:33 +0100
+From: Christoph Hellwig <hch@lst.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Christoph Hellwig <hch@lst.de>, Dave Chinner <david@fromorbit.com>,
+        linux-nfs@vger.kernel.org, xfs@oss.sgi.com
+Subject: Re: panic on 4.20 server exporting xfs filesystem
+Message-ID: <20150317103033.GA22472@lst.de>
+References: <20150303221033.GB19439@fieldses.org> <20150315125821.GA10655@lst.de> <20150316142721.GA12231@fieldses.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20150317093151.GS20767@twin.jikos.cz>
+In-Reply-To: <20150316142721.GA12231@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Mar 17, 2015 at 10:31:51AM +0100, David Sterba wrote:
-> On Mon, Mar 16, 2015 at 05:36:05PM +0000, Al Viro wrote:
-> > On Mon, Mar 16, 2015 at 04:33:49AM -0700, Omar Sandoval wrote:
-> > > Get either READ or WRITE out of iter->type.
-> > 
-> > Umm...  
-> > 
-> > > + * Get one of READ or WRITE out of iter->type without any other flags OR'd in
-> > > + * with it.
-> > > + */
-> > > +static inline int iov_iter_rw(const struct iov_iter *i)
-> > > +{
-> > > +	return i->type & RW_MASK;
-> > > +}
-> > 
-> > TBH, I would turn that into a macro.  Reason: indirect includes.
+On Mon, Mar 16, 2015 at 10:27:21AM -0400, J. Bruce Fields wrote:
+> > I've been trying ot get a baseline, but even withotu CONFIG_NFSD_PNFS set
+> > I start to run into other prolems early on, so I suspect the reproducer might
+> > be something else?
 > 
-> Agreed, but the proposed define is rather cryptic and I was not able to
-> understand the meaning on the first glance.
-> 
-> > #define iov_iter_rw(i) ((0 ? (struct iov_iter *)0 : (i))->type & RW_MASK)
-> 
-> This worked for me, does not compile with anything else than
-> 'struct iov_iter*' as i:
-> 
-> #define iov_iter_rw(i)	({			\
-> 	struct iov_iter __iter = *(i);		\
-> 	(i)->type & RW_MASK;			\
-> 	})
-> 
-> The assignment is optimized out.
+> What other problems?
 
-[-cc individual fs maintainers to avoid all of these email bounces,
-should've looked a bit closer at that get_maintainer.pl output...]
-
-I agree that this is a bit more readable, but it evaluates i twice.
-That's an easy fix, just do __iter.type instead of (i)->type, but
-there's still the possibility of someone passing in something called
-__iter as i, and the fix for that tends to be "add more underscores". At
-the very least, Al's macro could probably use a comment explaining
-what's going on there, though.
-
--- 
-Omar
+See the "nfsd use after free in 4.0-rc" thread on linux-nfs.
