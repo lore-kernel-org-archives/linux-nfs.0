@@ -1,73 +1,115 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from zeniv.linux.org.uk ([195.92.253.2]:39303 "EHLO
-	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752044AbbCQSVo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 Mar 2015 14:21:44 -0400
-Date: Tue, 17 Mar 2015 18:19:15 +0000
-From: Al Viro <viro@ZenIV.linux.org.uk>
-To: dsterba@suse.cz, Omar Sandoval <osandov@osandov.com>,
-        linux-fsdevel@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        ceph-devel@vger.kernel.org, linux-cifs@vger.kernel.org,
-        osd-dev@open-osd.org, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net,
-        fuse-devel@lists.sourceforge.net, cluster-devel@redhat.com,
-        jfs-discussion@lists.sourceforge.net, HPDD-discuss@ml01.01.org,
-        linux-nfs@vger.kernel.org, linux-nilfs@vger.kernel.org,
-        ocfs2-devel@oss.oracle.com, reiserfs-devel@vger.kernel.org,
-        v9fs-developer@lists.sourceforge.net, xfs@oss.sgi.com,
-        linux-kernel@vger.kernel.org, Chris Mason <clm@fb.com>,
-        Josef Bacik <jbacik@fb.com>, Yan Zheng <zyan@redhat.com>,
-        Sage Weil <sage@redhat.com>, Steve French <sfrench@samba.org>,
-        Boaz Harrosh <ooo@electrozaur.com>,
-        Benny Halevy <bhalevy@primarydata.com>, Jan Kara <jack@suse.cz>,
-        "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Jaegeuk Kim <jaegeuk@kernel.org>, Changman Lee <cm224.lee@samsung.com>,
-        Miklos Szeredi <miklos@szeredi.hu>,
-        Steven Whitehouse <swhiteho@redhat.com>,
-        Dave Kleikamp <shaggy@kernel.org>, Oleg Drokin <oleg.drokin@intel.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Ryusuke Konishi <konishi.ryusuke@lab.ntt.co.jp>,
-        Mark Fasheh <mfasheh@suse.com>, Joel Becker <jlbec@evilplan.org>,
-        Eric Van Hensbergen <ericvh@gmail.com>,
-        Ron Minnich <rminnich@sandia.gov>, Latchesar Ionkov <lucho@ionkov.net>,
-        Dave Chinner <david@fromorbit.com>
-Subject: Re: [RFC PATCH 1/5] new helper: iov_iter_rw()
-Message-ID: <20150317181910.GK29656@ZenIV.linux.org.uk>
-References: <cover.1426502566.git.osandov@osandov.com>
- <34dc78b262546e9343e0ed872232a97f5eaa5f15.1426502566.git.osandov@osandov.com>
- <20150316173605.GX29656@ZenIV.linux.org.uk>
- <20150317093151.GS20767@twin.jikos.cz>
+Received: from fieldses.org ([173.255.197.46]:38451 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753314AbbCQTIo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 17 Mar 2015 15:08:44 -0400
+Date: Tue, 17 Mar 2015 15:08:44 -0400
+To: Anna Schumaker <Anna.Schumaker@netapp.com>
+Cc: Trond.Myklebust@primarydata.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v3 0/5] NFS: Add READ_PLUS support
+Message-ID: <20150317190844.GA29843@fieldses.org>
+References: <1426540666-31896-1-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20150317093151.GS20767@twin.jikos.cz>
+In-Reply-To: <1426540666-31896-1-git-send-email-Anna.Schumaker@Netapp.com>
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Mar 17, 2015 at 10:31:51AM +0100, David Sterba wrote:
+On Mon, Mar 16, 2015 at 05:17:41PM -0400, Anna Schumaker wrote:
+> These patches add client support for the NFS v4.2 operation READ_PLUS.  This
+> operation is triggered by doing any kind of read on a NFS v4.2 mounted
+> filesystem.  `
+> 
+> I tested these patches using xfstests and compared the runtime between NFS
+> v4.1, NFS v4.2 without READ_PLUS, and NFS v4.2 with READ_PLUS.  Here are
+> the results:
 
-> Agreed, but the proposed define is rather cryptic and I was not able to
-> understand the meaning on the first glance.
-> 
-> > #define iov_iter_rw(i) ((0 ? (struct iov_iter *)0 : (i))->type & RW_MASK)
-> 
-> This worked for me, does not compile with anything else than
-> 'struct iov_iter*' as i:
-> 
-> #define iov_iter_rw(i)	({			\
-> 	struct iov_iter __iter = *(i);		\
-> 	(i)->type & RW_MASK;			\
-> 	})
-> 
-> The assignment is optimized out.
+These are interesting but don't tell us much on their own.  As far as I
+know xfstests isn't really intended to be used for performance
+comparisons, and there are some mysteries here:
 
-... and you are getting
-	a) use of rather lousy gccism when plain C would do
-	b) double evaluation since you've got it wrong (should've been
-__iter.type & RW_MASK, if you do it that way).  As it is, if argument has
-any side effects, your variant will trigger those twice - even if the
-destination of the assignment is never used, the side effects remain.
+>    Test     |   v4.1    | no READ_PLUS |  READ_PLUS
+> ---------------------------------------------------
+> generic/013 | 135s      |    143s      |    123s
 
-I agree that it could use /* use ?: for typechecking */, but let's not go into
-({...}) land unless we absolutely have to.
+This is an fsstress run.  Looking quickly at ltp/fsstress.c, I see it
+can do fallocate calls, so presumably that explains the difference.
+
+> generic/075 |   4s      |     11s      |      4s
+
+Ditto for fsx.
+
+> generic/091 |   9s      |     16s      |     15s
+> generic/112 |   4s      |      7s      |      6s
+> generic/127 |  62s      |    117s      |    114s
+
+fsx again; this one must really have a ton of fallocate calls?  Might be
+interesting to look at strace or /proc/self/mountstats to confirm that.
+
+> generic/213 | [not run] |      1s      |      1s
+> generic/214 | [not run] |      0s      |      0s
+> generic/228 | [not run] |      1s      |      2s
+> generic/236 |   1s      |      1s      |      1s
+> generic/263 |   4s      |      6s      |      8s
+> generic/285 |   0s      |      1s      |      3s
+> generic/315 | [not run] |      2s      |      1s
+> ---------------------------------------------------
+> Total       |  3:47.47  |    5:11.85   |  4:43.77
+
+I'm already inclined to believe that the bandwidth savings are more
+important than zero-copy in the bad cases.  And the xfstests timings
+count for something.  But I'd still rather see more of an argument.
+
+It'd be interesting to see the best possible case (reading a large file
+that's all one hole), and the worst (reading a file with alternating 4K
+data and holes?).
+
+--b.
+
+> 
+> 
+> Using the READ_PLUS operation does have an impact on reading sparse
+> files over the network.  There is still a big difference between v4.1
+> and v4.2 runtimes, but this looks to be a result of fallocate() tests
+> that only run over v4.2.
+> 
+> 
+> Changes since v2:
+> - Merge together patches adding DATA and HOLE segment support.
+> - Simplify hole zeroing code by using the zero_user_segment() function.
+> 
+> These patches and the corresponding server changes are available in the
+> [read_plus] branch of
+> 
+> 	git://git.linux-nfs.org/projects/anna/linux-nfs.git
+> 
+> Questions?  Comments?  Thoughts?
+> 
+> Anna
+> 
+> 
+> Anna Schumaker (5):
+>   SUNRPC: Split out a function for setting current page
+>   SUNRPC: Add the ability to expand holes in data pages
+>   NFS: Add basic READ_PLUS support
+>   SUNRPC: Add the ability to shift data to a specific offset
+>   NFS: Add support for decoding multiple segments
+> 
+>  fs/nfs/nfs42xdr.c          | 162 ++++++++++++++++++++++++++++++
+>  fs/nfs/nfs4proc.c          |  30 +++++-
+>  fs/nfs/nfs4xdr.c           |   1 +
+>  include/linux/nfs4.h       |   1 +
+>  include/linux/nfs_fs_sb.h  |   1 +
+>  include/linux/nfs_xdr.h    |   2 +-
+>  include/linux/sunrpc/xdr.h |   2 +
+>  net/sunrpc/xdr.c           | 240 ++++++++++++++++++++++++++++++++++++++++++++-
+>  8 files changed, 434 insertions(+), 5 deletions(-)
+> 
+> -- 
+> 2.3.3
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
