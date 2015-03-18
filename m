@@ -1,36 +1,37 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:47046 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:41429 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750729AbbCRQem (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 18 Mar 2015 12:34:42 -0400
-Date: Wed, 18 Mar 2015 12:34:40 -0400 (EDT)
+	id S1756376AbbCRRLM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 18 Mar 2015 13:11:12 -0400
+Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id t2IHBBfc027299
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
+	for <linux-nfs@vger.kernel.org>; Wed, 18 Mar 2015 13:11:12 -0400
+Received: from [10.10.53.118] (vpn-53-118.rdu2.redhat.com [10.10.53.118])
+	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id t2IHBAaH031352
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NO)
+	for <linux-nfs@vger.kernel.org>; Wed, 18 Mar 2015 13:11:11 -0400
+Date: Wed, 18 Mar 2015 13:11:10 -0400 (EDT)
 From: Benjamin Coddington <bcodding@redhat.com>
-To: Peng Yu <pengyu.ut@gmail.com>
-cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: NFS hang after concurrent writes
-In-Reply-To: <CABrM6wkK1=Pr6ys3TxC-Xxaa9YYLT4oEvi0ZR-VOrv-61dpp3g@mail.gmail.com>
-Message-ID: <alpine.OSX.2.19.9992.1503181232120.947@planck.local>
-References: <CABrM6wnked-ZShCTC2cT-UNA+wrLPA5hmCJNhbXi-hirbE5RMw@mail.gmail.com> <alpine.OSX.2.19.9992.1503100423290.456@planck.local> <CABrM6w=PoXHM9d6oSwsBK0ea7jxoyJ29TV0M_q-71qr_RykCKQ@mail.gmail.com> <alpine.OSX.2.19.9992.1503100735000.456@planck.local>
- <CABrM6w=YWhEHfJmhVxwS3bEGn3vFjysxkay1dXS=iZVumUcpAA@mail.gmail.com> <alpine.OSX.2.19.9992.1503111012530.947@planck.local> <CABrM6wmcSE_iZ1tjdYO9716aoxprP+06UcaDL759S1ATsNjDjA@mail.gmail.com> <alpine.OSX.2.19.9992.1503181117010.947@planck.local>
- <CABrM6wnv10Yr48U_1sfWosR7Rzc3bOq2Jc2XZJfGh1qdgb+ZQg@mail.gmail.com> <alpine.OSX.2.19.9992.1503181130100.947@planck.local> <CABrM6wkK1=Pr6ys3TxC-Xxaa9YYLT4oEvi0ZR-VOrv-61dpp3g@mail.gmail.com>
+To: linux-nfs@vger.kernel.org
+Subject: BAD_SEQID drops state_owner, but lock stateid can still be found
+Message-ID: <alpine.OSX.2.19.9992.1503181243090.947@planck.local>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> >> ~/.nfs000000160000351200000001 in the first account home, I am able to
-> >> login using the first account.
->
-> OK. I understand that  the content of ~/.nfs000000160000351200000001
-> should be basically the same as the original ~/.bash_history which has
-> been deleted in the NFS server via the second server. Right?
->
-> The strange thing is:  when I try to login the first sever with a
-> different login session, why the login session still hangs on this
-> nonexistent ~/.bash_history. Is it that NFS remembers ~/.bash_history
-> as just ~/.nfs000000160000351200000001. Unless the last program that
-> uses ~/.bash_history quit, all subsequent programs trying to access
-> ~/.bash_history will actually get to ~/.nfs000000160000351200000001?
+I'm working on a RHEL6 bug where the client gets stuck in a
+WRITE,BAD_STATEID loop forever, and it looks like what happens is the write
+continually picks a delegated write lock stateid in nfs4_select_rw_stateid()
+for the write which never gets cleaned up in the state machine because a
+previous OPEN during recovery had a BAD_SEQID come in which dropped the
+state_owner.
 
-No, after the file has been moved, if you open ~/.bash_history, that open
-will be for a new separate file.
+Does it make sense to try to find lock stateids and set NFS_LOCK_LOST if
+we're going to drop the state_owner?
+
+It may be entirely impossible to reproduce the problem upstream, but I
+figured I'd ask while I try..
+
+Ben
