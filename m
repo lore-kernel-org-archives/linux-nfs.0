@@ -1,137 +1,93 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:39503 "EHLO fieldses.org"
+Received: from mail.kammerl.de ([176.28.8.19]:45590 "EHLO mail.kammerl.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753067AbbCRVLp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 18 Mar 2015 17:11:45 -0400
-Date: Wed, 18 Mar 2015 17:11:44 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Anna Schumaker <Anna.Schumaker@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v3 3/3] NFSD: Add support for encoding multiple segments
-Message-ID: <20150318211144.GB10716@fieldses.org>
-References: <1426540688-32095-1-git-send-email-Anna.Schumaker@Netapp.com>
- <1426540688-32095-4-git-send-email-Anna.Schumaker@Netapp.com>
- <20150317195633.GC29843@fieldses.org>
- <20150317200738.GD29843@fieldses.org>
- <20150317213654.GE29843@fieldses.org>
- <5509C0FD.70309@Netapp.com>
- <20150318185545.GF8818@fieldses.org>
- <5509E27C.3080004@Netapp.com>
- <20150318205554.GA10716@fieldses.org>
- <5509E824.6070006@Netapp.com>
+	id S1752041AbbCRWaM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 18 Mar 2015 18:30:12 -0400
+Received: from [192.168.42.36] (ppp-88-217-0-163.dynamic.mnet-online.de [88.217.0.163])
+	(using TLSv1 with cipher ECDHE-RSA-AES128-SHA (128/128 bits))
+	(No client certificate requested)
+	(Authenticated sender: robert@huitl.de)
+	by mail.kammerl.de (Postfix) with ESMTPSA id 26EE4A033F
+	for <linux-nfs@vger.kernel.org>; Wed, 18 Mar 2015 23:21:22 +0100 (CET)
+Message-ID: <5509FA61.2060401@huitl.de>
+Date: Wed, 18 Mar 2015 23:21:21 +0100
+From: Robert Huitl <linux-nfs@huitl.de>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <5509E824.6070006@Netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: rpc.gssd picks wrong credential cache file in multi-realm setup
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Mar 18, 2015 at 05:03:32PM -0400, Anna Schumaker wrote:
-> On 03/18/2015 04:55 PM, J. Bruce Fields wrote:
-> > On Wed, Mar 18, 2015 at 04:39:24PM -0400, Anna Schumaker wrote:
-> >> On 03/18/2015 02:55 PM, J. Bruce Fields wrote:
-> >>> On Wed, Mar 18, 2015 at 02:16:29PM -0400, Anna Schumaker wrote:
-> >>>> On 03/17/2015 05:36 PM, J. Bruce Fields wrote:
-> >>>>> On Tue, Mar 17, 2015 at 04:07:38PM -0400, J. Bruce Fields wrote:
-> >>>>>> On Tue, Mar 17, 2015 at 03:56:33PM -0400, J. Bruce Fields wrote:
-> >>>>>>> On Mon, Mar 16, 2015 at 05:18:08PM -0400, Anna Schumaker wrote:
-> >>>>>>>> This patch implements sending an array of segments back to the client.
-> >>>>>>>> Clients should be prepared to handle multiple segment reads to make this
-> >>>>>>>> useful.  We try to splice the first data segment into the XDR result,
-> >>>>>>>> and remaining segments are encoded directly.
-> >>>>>>>
-> >>>>>>> I'm still interested in what would happen if we started with an
-> >>>>>>> implementation like:
-> >>>>>>>
-> >>>>>>> 	- if the entire requested range falls within a hole, return that
-> >>>>>>> 	  single hole.
-> >>>>>>> 	- otherwise, just treat the thing as one big data segment.
-> >>>>>>>
-> >>>>>>> That would provide a benefit in the case there are large-ish holes
-> >>>>>>> with minimal impact otherwise.
-> >>>>>>>
-> >>>>>>> (Though patches for full support are still useful even if only for
-> >>>>>>> client-testing purposes.)
-> >>>>>>
-> >>>>>> Also, looks like
-> >>>>>>
-> >>>>>> 	xvs_io -c "fiemap -v" <file>
-> >>>>>>
-> >>>>>> will give hole sizes for a given <file>.  (Thanks, esandeen.)  Running
-> >>>>>> that on a few of my test vm images shows a fair number of large
-> >>>>>> (hundreds of megs) files, which suggests identifying only >=rwsize holes
-> >>>>>> might still be useful.
-> >>>>>
-> >>>>> Just for fun.... I wrote the following test program and ran it on my
-> >>>>> collection of testing vm's.  Some looked like this:
-> >>>>>
-> >>>>> 	f21-1.qcow2
-> >>>>> 	144784 -rw-------. 1 qemu qemu 8591507456 Mar 16 10:13 f21-1.qcow2
-> >>>>> 	total hole bytes:      8443252736 (98%)
-> >>>>> 	in aligned 1MB chunks: 8428453888 (98%)
-> >>>>>
-> >>>>> So, basically, read_plus would save transferring most of the data even
-> >>>>> when only handling 1MB holes.
-> >>>>>
-> >>>>> But some looked like this:
-> >>>>>
-> >>>>> 	501524 -rw-------. 1 qemu qemu 8589934592 May 20  2014 rhel6-1-1.img
-> >>>>> 	total hole bytes:      8077516800 (94%)
-> >>>>> 	in aligned 1MB chunks: 0 (0%)
-> >>>>>
-> >>>>> So the READ_PLUS that caught every hole might save a lot, the one that
-> >>>>> only caught 1MB holes wouldn't help at all.
-> >>>>>
-> >>>>> And there were lots of examples in between those two extremes.
-> >>>>
-> >>>> I tested with three different 512 MB files:  100% data, 100% hole, and alternating every megabyte.  The results were surprising:
-> >>>>
-> >>>>       |  v4.1  |  v4.2
-> >>>> -----------------------
-> >>>> data  | 0.685s |  0.714s
-> >>>> hole  | 0.485s | 15.547s
-> >>>> mixed |	1.283s |  0.448
-> >>>>
-> >>>> >From what I can tell, the 100% hole case takes so long because of the
-> >>>>> SEEK_DATA call in nfsd4_encode_read_plus_hole().  I took this out to
-> >>>>> trick the function into thinking that the entire file was already a
-> >>>>> hole, and runtime dropped to the levels of v4.1 and v4.2.
-> >>>
-> >>> Wait, that 15s is due to just one SEEK_DATA?
-> >>
-> >> The server is returning a larger hole than the client can read at once, so there are several SEEK_DATA calls made to verify that there are no data segments before the end of the file.
-> >>
-> >>>
-> >>>> I wonder
-> >>>>> if this is filesystem dependent?  My server is exporting ext4.
-> >>>
-> >>> Sounds like just a bug.  I've been doing lots of lseek(.,.,SEEK_DATA) on
-> >>> both ext4 and xfs without seeing anything that weird.
-> >>
-> >> It looks like something weird on ext4.  I switched my exported filesystem to xfs:
-> > 
-> > Huh.  Maybe we should report a bug....
-> > 
-> >>
-> >>       |  v4.1  |  v4.2
-> >> ------+--------+-------
-> >> data  | 0.764s | 1.343s
-> > 
-> > That's too bad.  Non-sparse files are surely still a common case and
-> > we'd like to not see a slowdown there....  I wonder if we can figure out
-> > where it's coming from?
-> 
-> That's a good question, especially since the 1G file didn't double this time.  Maybe a VM quirk?
+I have the following krb5.conf setup with two realms and an NFS4 server
+at fileserver.ads.other.com@ADS.OTHER.COM:
 
-We definitely need to figure it out, I think.  If we can't make
-READ_PLUS perform as well as READ (or very close to it) in the
-non-sparse case then I don't think we'll want it, and as Trond suggested
-we may want to consider something more fiemap-like instead.
+[libdefaults]
+        default_realm = ADS.DEFAULT.COM
 
-I don't know, maybe the client could try to be clever and only use
-READ_PLUS if the space_used/size ratio is lower than some threshhold,
-but it could get a little complicated to tune.
+[domain_realm]
+        .ads.other.com = ADS.OTHER.COM
 
-It's annoying that asking "does this range contain zeroes" is actually
-taking longer than just reading the whole range....
 
---b.
+The two realms do not know of each other. Mounting the share works fine,
+but the user is denied access if there are ticket caches for *both*
+ADS.DEFAULT.COM and ADS.OTHER.COM:
+
+
+handling gssd upcall (/run/rpc_pipefs/nfs/clnt19c)
+handle_gssd_upcall: 'mech=krb5 uid=1000000 enctypes=18,17,16,23,3,1,2 '
+handling krb5 upcall (/run/rpc_pipefs/nfs/clnt19c)
+process_krb5_upcall: service is '<null>'
+creating context using fsuid 1000000 (save_uid 0)
+creating tcp client for server fileserver.ads.other.com
+DEBUG: port already set to 2049
+creating context with server nfs@fileserver.ads.other.com
+WARNING: Failed to create krb5 context for user with uid 1000000 for
+server fileserver.ads.other.com
+getting credentials for client with uid 1000000 for server
+fileserver.ads.other.com
+CC '/tmp/krb5cc_1000000' being considered, with preferred realm
+'ADS.DEFAULT.COM'
+CC 'FILE:/tmp/krb5cc_1000000'(user@ADS.OTHER.COM) passed all checks and
+has mtime of 1425824566
+CC '/tmp/krb5cc_1000000_vg0rFX' being considered, with preferred realm
+'ADS.DEFAULT.COM'
+CC 'FILE:/tmp/krb5cc_1000000_vg0rFX'(user@ADS.DEFAULT.COM) passed all
+checks and has mtime of 1425822978
+CC '��@:/tmp/krb5cc_1000000_vg0rFX' is our current best match with mtime
+of 1425822978
+using FILE:/tmp/krb5cc_1000000_vg0rFX as credentials cache for client
+with uid 1000000 for server fileserver.ads.other.com
+using environment variable to select krb5 ccache
+FILE:/tmp/krb5cc_1000000_vg0rFX
+creating context using fsuid 1000000 (save_uid 0)
+creating tcp client for server fileserver.ads.other.com
+DEBUG: port already set to 2049
+creating context with server nfs@fileserver.ads.other.com
+WARNING: Failed to create krb5 context for user with uid 1000000 for
+server fileserver.ads.other.com
+getting credentials for client with uid 1000000 for server
+fileserver.ads.other.com
+WARNING: Failed to create krb5 context for user with uid 1000000 for
+server fileserver.ads.other.com
+doing error downcall
+
+
+The problem is caused by gssd_setup_krb5_user_gss_ccache(uid,
+servername, dirpattern) calling gssd_find_existing_krb5_ccache(uid,
+dirname, &cctype, &d) which picks the wrong cache as it does not take
+into account servername and will always pick the cache for preferred_realm.
+
+My understanding of the code is limited, but it looks like caches for
+the realm configured in [domain_realm] section of krb5.conf should take
+precedence over preferred_realm. Other parts of the code like
+find_keytab_entry() seem to be multi-realm-aware and use
+krb5_get_host_realm() to locate a ticket.
+
+As a workaround, running rpc.gssd -R ADS.OTHER.COM forces gssd to pick
+the right cache, but that breaks access to ADS.DEFAULT.COM.
+
+Note: this bug is also tracked as #94541 on Bugzilla.
+
+Robert
+
