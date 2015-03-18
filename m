@@ -1,163 +1,55 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx141.netapp.com ([216.240.21.12]:46881 "EHLO mx141.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:47150 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755685AbbCRSQb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 18 Mar 2015 14:16:31 -0400
-Message-ID: <5509C0FD.70309@Netapp.com>
-Date: Wed, 18 Mar 2015 14:16:29 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
+	id S1755401AbbCRSmr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 18 Mar 2015 14:42:47 -0400
+Received: from int-mx14.intmail.prod.int.phx2.redhat.com (int-mx14.intmail.prod.int.phx2.redhat.com [10.5.11.27])
+	by mx1.redhat.com (Postfix) with ESMTPS id C235EB5E77
+	for <linux-nfs@vger.kernel.org>; Wed, 18 Mar 2015 18:42:47 +0000 (UTC)
+Received: from smallhat.boston.devel.redhat.com (unused [10.10.51.221] (may be forged))
+	by int-mx14.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id t2IIglhF000888
+	for <linux-nfs@vger.kernel.org>; Wed, 18 Mar 2015 14:42:47 -0400
+Message-ID: <5509C726.6050103@RedHat.com>
+Date: Wed, 18 Mar 2015 14:42:46 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v3 3/3] NFSD: Add support for encoding multiple segments
-References: <1426540688-32095-1-git-send-email-Anna.Schumaker@Netapp.com> <1426540688-32095-4-git-send-email-Anna.Schumaker@Netapp.com> <20150317195633.GC29843@fieldses.org> <20150317200738.GD29843@fieldses.org> <20150317213654.GE29843@fieldses.org>
-In-Reply-To: <20150317213654.GE29843@fieldses.org>
-Content-Type: text/plain; charset="utf-8"
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Linux NFS Town Hall  meeting: Tomorrow - Thur 03/19/15
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 03/17/2015 05:36 PM, J. Bruce Fields wrote:
-> On Tue, Mar 17, 2015 at 04:07:38PM -0400, J. Bruce Fields wrote:
->> On Tue, Mar 17, 2015 at 03:56:33PM -0400, J. Bruce Fields wrote:
->>> On Mon, Mar 16, 2015 at 05:18:08PM -0400, Anna Schumaker wrote:
->>>> This patch implements sending an array of segments back to the client.
->>>> Clients should be prepared to handle multiple segment reads to make this
->>>> useful.  We try to splice the first data segment into the XDR result,
->>>> and remaining segments are encoded directly.
->>>
->>> I'm still interested in what would happen if we started with an
->>> implementation like:
->>>
->>> 	- if the entire requested range falls within a hole, return that
->>> 	  single hole.
->>> 	- otherwise, just treat the thing as one big data segment.
->>>
->>> That would provide a benefit in the case there are large-ish holes
->>> with minimal impact otherwise.
->>>
->>> (Though patches for full support are still useful even if only for
->>> client-testing purposes.)
->>
->> Also, looks like
->>
->> 	xvs_io -c "fiemap -v" <file>
->>
->> will give hole sizes for a given <file>.  (Thanks, esandeen.)  Running
->> that on a few of my test vm images shows a fair number of large
->> (hundreds of megs) files, which suggests identifying only >=rwsize holes
->> might still be useful.
-> 
-> Just for fun.... I wrote the following test program and ran it on my
-> collection of testing vm's.  Some looked like this:
-> 
-> 	f21-1.qcow2
-> 	144784 -rw-------. 1 qemu qemu 8591507456 Mar 16 10:13 f21-1.qcow2
-> 	total hole bytes:      8443252736 (98%)
-> 	in aligned 1MB chunks: 8428453888 (98%)
-> 
-> So, basically, read_plus would save transferring most of the data even
-> when only handling 1MB holes.
-> 
-> But some looked like this:
-> 
-> 	501524 -rw-------. 1 qemu qemu 8589934592 May 20  2014 rhel6-1-1.img
-> 	total hole bytes:      8077516800 (94%)
-> 	in aligned 1MB chunks: 0 (0%)
-> 
-> So the READ_PLUS that caught every hole might save a lot, the one that
-> only caught 1MB holes wouldn't help at all.
-> 
-> And there were lots of examples in between those two extremes.
+Hello,
 
-I tested with three different 512 MB files:  100% data, 100% hole, and alternating every megabyte.  The results were surprising:
+Its been a while... Let's see what everyone is up to... 
 
-      |  v4.1  |  v4.2
------------------------
-data  | 0.685s |  0.714s
-hole  | 0.485s | 15.547s
-mixed |	1.283s |  0.448
+A Linux NFS town hall will be held tomorrow
+   *Thur Mar 19 at 01:00 pm EST (10:00am PST)*
 
->From what I can tell, the 100% hole case takes so long because of the SEEK_DATA call in nfsd4_encode_read_plus_hole().  I took this out to trick the function into thinking that the entire file was already a hole, and runtime dropped to the levels of v4.1 and v4.2.  I wonder if this is filesystem dependent?  My server is exporting ext4.
+The usual agenda will apply. The maintainers will give
+a quick status of what is happening in their worlds.
 
-Anna
-> 
-> (But, check my math, I haven't tested this carefully.)
-> 
-> --b.
-> 
-> #define _GNU_SOURCE
-> #include <stdio.h>
-> #include <sys/types.h>
-> #include <sys/stat.h>
-> #include <fcntl.h>
-> #include <unistd.h> 
-> #include <errno.h>
-> #include <err.h>
-> 
-> long round_up(long n, long b)
-> {
-> 	return ((n + b - 1)/b) * b;
-> }
-> 
-> long round_down(long n, long b)
-> {
-> 	return (n/b) * b;
-> }
-> 
-> long hbytes = 0;
-> long rplusbytes = 0;
-> 
-> do_stats(off_t hole_start, off_t hole_end)
-> {
-> 	off_t hole_start_up, hole_end_down;
-> 
-> 	hole_start_up = round_up(hole_start, 1024*1024);
-> 	hole_end_down = round_down(hole_end, 1024*1024);
-> 
-> 	hbytes += hole_end - hole_start;
-> 	if (hole_start_up < hole_end_down)
-> 		rplusbytes += hole_end_down - hole_start_up;
-> }
-> 
-> int main(int argc, char *argv[])
-> {
-> 	off_t hole_start, hole_end;
-> 	int fd;
-> 	char *name;
-> 
-> 	/* Map out holes with SEEK_HOLE, SEEK_DATA */
-> 	/* Useful statistics:
-> 	 * 	- what percentage of file is in holes?
-> 	 * 	- what percentage of file would be skipped if we read it
-> 	 * 	  sequentially in 1MB chunks?
-> 	 */
-> 
-> 	if (argc != 2)
-> 		errx(1, "usage: %s <filename>\n", argv[0]);
-> 	name = argv[1];
-> 	fd = open(name, O_RDONLY);
-> 	if (fd == -1)
-> 		err(1, "open");
-> 
-> 	hole_end = 0;
-> 	while (1) {
-> 		hole_start = lseek(fd, hole_end, SEEK_HOLE);
-> 		if (hole_start == -1)
-> 			err(1, "lseek");
-> 		hole_end = lseek(fd, hole_start, SEEK_DATA);
-> 		if (hole_end == -1) {
-> 			if (errno == ENXIO)
-> 				break;
-> 			err(1, "lseek");
-> 		}
-> 		do_stats(hole_start, hole_end);
-> 	}
-> 	hole_end = lseek(fd, 0, SEEK_END);
-> 	do_stats(hole_start, hole_end);
-> 	printf("total hole bytes:      %ld (%.0f%)\n", hbytes,
-> 				100 * (float)hbytes/hole_end);
-> 	printf("in aligned 1MB chunks: %ld (%.0f%)\n", rplusbytes,
-> 				100 * (float)rplusbytes/hole_end);
-> }
-> 
+Next we'll get updates from major contributors on what
+they have been doing and are planing on doing.
+  
+Finally, we'll open the floor to questions, comments, 
+concerns from the community.  
+
+Generally the meeting lasts between 30 to 45 mins, with 
+a very hard stop at 60mins. 
+
+Please feel to attend and participate!
+
+Time: 10:00 am PST (01:00 pm EST)
+
+The call in numbers are:
+
+U.S. and Canada: (800) 451-8679
+World wide toll free numbers
+   https://www.intercallonline.com/listNumbersByCode.action?confCode=5642721552
+
+Conference code: 564.272.1552
+
+
+steved.
 
