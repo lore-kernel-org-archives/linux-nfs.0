@@ -1,43 +1,34 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from elasmtp-curtail.atl.sa.earthlink.net ([209.86.89.64]:48666 "EHLO
-	elasmtp-curtail.atl.sa.earthlink.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S932214AbbCRBlv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 Mar 2015 21:41:51 -0400
-References: <009501d060e6$b54c3780$1fe4a680$@soft-forge.com> <5508AC34.3030508@RedHat.com>
-In-Reply-To: <5508AC34.3030508@RedHat.com>
-Mime-Version: 1.0 (iPhone Mail 8J2)
-Content-Type: text/plain;
-	charset=us-ascii
-Message-Id: <64DCD95C-CD5C-4A16-B6EC-49661576C466@mindspring.com>
-Cc: Rupert Dance <rsdance@soft-forge.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-From: Frank Filz <ffilzlnx@mindspring.com>
-Subject: Re: Connectathon Issues
-Date: Tue, 17 Mar 2015 18:26:14 -0700
-To: Steve Dickson <SteveD@redhat.com>
+Received: from verein.lst.de ([213.95.11.211]:49409 "EHLO newverein.lst.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755514AbbCRKue (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 18 Mar 2015 06:50:34 -0400
+Date: Wed, 18 Mar 2015 11:50:30 +0100
+From: Christoph Hellwig <hch@lst.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Christoph Hellwig <hch@lst.de>, Dave Chinner <david@fromorbit.com>,
+        linux-nfs@vger.kernel.org, xfs@oss.sgi.com
+Subject: Re: panic on 4.20 server exporting xfs filesystem
+Message-ID: <20150318105030.GA21390@lst.de>
+References: <20150303221033.GB19439@fieldses.org> <20150315125821.GA10655@lst.de> <20150316142721.GA12231@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20150316142721.GA12231@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-There is a patched cthon04 out there. I think from Jeff Layton. 
-
-Frank
-
-Sent from my iPhone
-
-On Mar 17, 2015, at 3:35 PM, Steve Dickson <SteveD@redhat.com> wrote:
-
-> On 03/17/2015 03:15 PM, Rupert Dance wrote:
->> Nroff
->> 
->> ./stat: no data in nroff.time
-> I believe this has to do with the format of time 'time' command.
-> stat.c expects a particular date format that changes whether 
-> /usr/bin/time is used or the shell version of data. 
+On Mon, Mar 16, 2015 at 10:27:21AM -0400, J. Bruce Fields wrote:
+> 	NFS_MOUNT_OPTIONS="-overs=4.1"
+> 	EOF
+> 	./check -nfs -g auto -E ~/xfstests-skip
 > 
-> try adding TIME=/usr/bin/time to the top of general/runtests.wrk
-> 
-> steved.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> where xfs-tests-skip is:
+
+Seems like you're excluding a lot of tests.
+
+Either way, both generic/011 and generic/013 cause the bug I reported earlier,
+so at least on 4.0-rc I don't really get close to running into these
+pnfs issues.
+
+Do you have a commit you're runing on that's before the nfs client merge
+and somewhat stable?
