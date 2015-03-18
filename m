@@ -1,115 +1,103 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:39394 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:39396 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754906AbbCRSvl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 18 Mar 2015 14:51:41 -0400
-Date: Wed, 18 Mar 2015 14:51:41 -0400
+	id S1754887AbbCRSzp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 18 Mar 2015 14:55:45 -0400
+Date: Wed, 18 Mar 2015 14:55:45 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: andros@netapp.com
-Cc: trond.myklebust@primarydata.com, anna.schumaker@netapp.com,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH RFC 00/10] NFSv4.2 Inter server to server copy RFC
-Message-ID: <20150318185141.GE8818@fieldses.org>
-References: <1426631498-14772-1-git-send-email-andros@netapp.com>
+To: Anna Schumaker <Anna.Schumaker@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v3 3/3] NFSD: Add support for encoding multiple segments
+Message-ID: <20150318185545.GF8818@fieldses.org>
+References: <1426540688-32095-1-git-send-email-Anna.Schumaker@Netapp.com>
+ <1426540688-32095-4-git-send-email-Anna.Schumaker@Netapp.com>
+ <20150317195633.GC29843@fieldses.org>
+ <20150317200738.GD29843@fieldses.org>
+ <20150317213654.GE29843@fieldses.org>
+ <5509C0FD.70309@Netapp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1426631498-14772-1-git-send-email-andros@netapp.com>
+In-Reply-To: <5509C0FD.70309@Netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Mar 17, 2015 at 06:31:28PM -0400, andros@netapp.com wrote:
-> From: Andy Adamson <andros@netapp.com>
+On Wed, Mar 18, 2015 at 02:16:29PM -0400, Anna Schumaker wrote:
+> On 03/17/2015 05:36 PM, J. Bruce Fields wrote:
+> > On Tue, Mar 17, 2015 at 04:07:38PM -0400, J. Bruce Fields wrote:
+> >> On Tue, Mar 17, 2015 at 03:56:33PM -0400, J. Bruce Fields wrote:
+> >>> On Mon, Mar 16, 2015 at 05:18:08PM -0400, Anna Schumaker wrote:
+> >>>> This patch implements sending an array of segments back to the client.
+> >>>> Clients should be prepared to handle multiple segment reads to make this
+> >>>> useful.  We try to splice the first data segment into the XDR result,
+> >>>> and remaining segments are encoded directly.
+> >>>
+> >>> I'm still interested in what would happen if we started with an
+> >>> implementation like:
+> >>>
+> >>> 	- if the entire requested range falls within a hole, return that
+> >>> 	  single hole.
+> >>> 	- otherwise, just treat the thing as one big data segment.
+> >>>
+> >>> That would provide a benefit in the case there are large-ish holes
+> >>> with minimal impact otherwise.
+> >>>
+> >>> (Though patches for full support are still useful even if only for
+> >>> client-testing purposes.)
+> >>
+> >> Also, looks like
+> >>
+> >> 	xvs_io -c "fiemap -v" <file>
+> >>
+> >> will give hole sizes for a given <file>.  (Thanks, esandeen.)  Running
+> >> that on a few of my test vm images shows a fair number of large
+> >> (hundreds of megs) files, which suggests identifying only >=rwsize holes
+> >> might still be useful.
+> > 
+> > Just for fun.... I wrote the following test program and ran it on my
+> > collection of testing vm's.  Some looked like this:
+> > 
+> > 	f21-1.qcow2
+> > 	144784 -rw-------. 1 qemu qemu 8591507456 Mar 16 10:13 f21-1.qcow2
+> > 	total hole bytes:      8443252736 (98%)
+> > 	in aligned 1MB chunks: 8428453888 (98%)
+> > 
+> > So, basically, read_plus would save transferring most of the data even
+> > when only handling 1MB holes.
+> > 
+> > But some looked like this:
+> > 
+> > 	501524 -rw-------. 1 qemu qemu 8589934592 May 20  2014 rhel6-1-1.img
+> > 	total hole bytes:      8077516800 (94%)
+> > 	in aligned 1MB chunks: 0 (0%)
+> > 
+> > So the READ_PLUS that caught every hole might save a lot, the one that
+> > only caught 1MB holes wouldn't help at all.
+> > 
+> > And there were lots of examples in between those two extremes.
 > 
-> Disclaimer: this code is in early development. Please excuse printk's etc.
+> I tested with three different 512 MB files:  100% data, 100% hole, and alternating every megabyte.  The results were surprising:
 > 
-> This RFC is for us to determine if there are objections, suggestions, or comments on our approach.  This code builds on top of Anna's intra-server copy patch set which uses the new vfs_copy_file_range call. This code can perform an inter-ssc copy using NFSv4.1 as the copy protocol; the destination server loads the nfs42-interserver-copy module, mounts the source server, sets up an NFS filep to pass to vfs_copy_file_range which READs the file to be copied over NFSv4.1. The destination server then cleans up. Multiple copies do not currently work.
+>       |  v4.1  |  v4.2
+> -----------------------
+> data  | 0.685s |  0.714s
+> hole  | 0.485s | 15.547s
+> mixed |	1.283s |  0.448
 > 
-> Objectives:
-> -----------
-> 
-> - Use NFSv4.1 for the copy protocol betweent the source and destination servers to READ the data to be copied.
-> - Call the new vfs_copy_file_range function.
-> - Do not call NFSv4.1 OPEN from the destination server. Instead, use the COPY ca_src_stateid and the COPY SAVE_FH filehandle, which are the file handle and stateid from the OPEN on the client by the user.
-> 
-> Some questions
-> --------------
-> 1) NFS interserver copy module
-> 
-> The basic design is for the destination server to load a new nfs42-interserver-copy NFS kernel module to setup the struct filp for vfs_copy_file_range to use.
-> - We prefer the 'load NFS module' design to other designs such as an upcall to a userland daemon. Comments?
+> >From what I can tell, the 100% hole case takes so long because of the
+> >SEEK_DATA call in nfsd4_encode_read_plus_hole().  I took this out to
+> >trick the function into thinking that the entire file was already a
+> >hole, and runtime dropped to the levels of v4.1 and v4.2.
 
-I'm fine with doing it in the kernel.  I don't think it's especially
-important that it be its own module.  You do need an upcall for the name
-resolution, though--the referral code does this already, doesn't it?  In
-which case, copy whatever it does....
+Wait, that 15s is due to just one SEEK_DATA?
 
-Or maybe consider dropping those cases from the protocol--why do we need
-the NL4_NAME case?  And NL4_URL is even more cases to handle.  In
-practice the implementations are all going to settle on one protocol if
-they want to interoperate anyway.
+> I wonder
+> >if this is filesystem dependent?  My server is exporting ext4.
 
-If we really want to be able to handle http, ftp, or any other random
-protocol, then that would be an argument for doing more in userspace,
-but it would be simpler just to pick one.
+Sounds like just a bug.  I've been doing lots of lseek(.,.,SEEK_DATA) on
+both ext4 and xfs without seeing anything that weird.
+
+I believe it does return -ENXIO in the case SEEK_DATA is called at an
+offset beyond which there's no more data.  At least that's what I saw in
+userspace.  So maybe your code just isn't handling that case correctly?
 
 --b.
-
-> 2) NFS module connecting to the source server.
-> 
-> The module calls nfs_fs_mount using the NL4_NETADDR address in string form concatenated with ":/".
-> We need to end up with a struct file that represents an NFSv4.1 open file to use for the READ. The alloc_file function requires a vfsmount struct in the struct path argument.
-> Patch "NFS return the root_mnt via the raw data in nfs_fs_mount" makes the vfsmount struct from nfs_fs_mount available.
-> 
-> Comments on this approach?
-> 
-> Thanks
-> 
-> Andy Adamson
-> 
-> 
-> Andy Adamson (10):
->   NFS return the root_mnt via the raw data in nfs_fs_mount
->   NFS interserver ssc module
->   NFS add COPY_NOTIFY operation
->   NFSD add ca_source_server<> to COPY
->   NFSD add COPY_NOTIFY operation
->   NFS add ca_source_server<> to COPY
->   NFSD generalize nfsd4_compound_state flag names
->   NFSD: allow inter server COPY to have a STALE source server fh
->   NFSD: add nfs4interssc.c
->   NFSD nfs4 inter ssc copy
-> 
->  fs/nfs/Kconfig                  |  10 +
->  fs/nfs/Makefile                 |   3 +
->  fs/nfs/internal.h               |  16 ++
->  fs/nfs/nfs42.h                  |   5 +-
->  fs/nfs/nfs42proc.c              |  77 +++++++-
->  fs/nfs/nfs42xdr.c               | 196 ++++++++++++++++++-
->  fs/nfs/nfs4_fs.h                |   1 +
->  fs/nfs/nfs4client.c             |  30 +++
->  fs/nfs/nfs4file.c               |  32 ++-
->  fs/nfs/nfs4intercopy.c          | 419 ++++++++++++++++++++++++++++++++++++++++
->  fs/nfs/nfs4proc.c               |   8 +-
->  fs/nfs/nfs4state.c              |   3 +
->  fs/nfs/nfs4super.c              |   2 +
->  fs/nfs/nfs4xdr.c                |   1 +
->  fs/nfs/super.c                  |  27 +++
->  fs/nfsd/Makefile                |   2 +-
->  fs/nfsd/nfs4interssc.c          | 110 +++++++++++
->  fs/nfsd/nfs4proc.c              | 307 ++++++++++++++++++++++++++++-
->  fs/nfsd/nfs4state.c             |   6 +-
->  fs/nfsd/nfs4xdr.c               | 180 ++++++++++++++++-
->  fs/nfsd/nfsd.h                  |   2 +
->  fs/nfsd/xdr4.h                  |  40 +++-
->  include/linux/nfs4.h            |   7 +
->  include/linux/nfs4intercopy.h   |  44 +++++
->  include/linux/nfs_fs_sb.h       |   1 +
->  include/linux/nfs_xdr.h         |  54 ++++++
->  include/uapi/linux/nfs4_mount.h |   1 +
->  27 files changed, 1548 insertions(+), 36 deletions(-)
->  create mode 100644 fs/nfs/nfs4intercopy.c
->  create mode 100644 fs/nfsd/nfs4interssc.c
->  create mode 100644 include/linux/nfs4intercopy.h
-> 
-> -- 
-> 1.8.3.1
