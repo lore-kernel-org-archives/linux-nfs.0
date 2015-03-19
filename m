@@ -1,26 +1,60 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from verein.lst.de ([213.95.11.211]:55332 "EHLO newverein.lst.de"
+Received: from mx1.redhat.com ([209.132.183.28]:44868 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S964962AbbCSR1e (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 19 Mar 2015 13:27:34 -0400
-Date: Thu, 19 Mar 2015 18:27:31 +0100
-From: Christoph Hellwig <hch@lst.de>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Dave Chinner <david@fromorbit.com>, Eric Sandeen <sandeen@sandeen.net>,
-        linux-nfs@vger.kernel.org, xfs@oss.sgi.com
-Subject: Re: panic on 4.20 server exporting xfs filesystem
-Message-ID: <20150319172731.GA16329@lst.de>
-References: <20150304224557.GY4251@dastard> <54F78BE5.1020608@sandeen.net> <20150304225623.GZ4251@dastard> <20150305040849.GJ1627@fieldses.org> <20150305131731.GA16235@lst.de> <20150305150138.GA15674@fieldses.org> <20150305170217.GC15674@fieldses.org> <20150305204749.GA17934@fieldses.org> <20150305205922.GF18360@dastard> <20150306204715.GA27257@fieldses.org>
+	id S1754053AbbCSSUD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 19 Mar 2015 14:20:03 -0400
+Message-ID: <550B1351.7080802@RedHat.com>
+Date: Thu, 19 Mar 2015 14:20:01 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20150306204715.GA27257@fieldses.org>
+To: Martin Pitt <martin.pitt@ubuntu.com>, linux-nfs@vger.kernel.org
+CC: systemd-devel@lists.freedesktop.org
+Subject: Re: [systemd-devel] [PATCH 0/2] some systemd unit changes
+References: <1425403690-23847-1-git-send-email-martin.pitt@ubuntu.com>
+In-Reply-To: <1425403690-23847-1-git-send-email-martin.pitt@ubuntu.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-FYI, I've now managed to reproduce the issue.  I haven't had time
-to dig deeper, but it smells a lot like a callback path issue.
 
-Can you send the recursion fix to Linus ASAP and I'll send you a patch
-to turn the nopnfs option into a pnfs one, so we're at least doing
-fine for 4.0 in any case.  I hope to debug this and may even have
-a real fix soon, but so far I don't know how long it will take.
+
+On 03/03/2015 12:28 PM, Martin Pitt wrote:
+> Hello NFS developers,
+> 
+> reposting the two patches inline as requested by Steve.
+> 
+> I'm currently systemd-ifying our nfs-utils Ubuntu package. For testing I put
+> the NFS server and client (i. e. localhost:/foo/bar mounts) on the same
+> machine. With that I get long hangs during shutdown on stopping the NFS .mount
+> units, as when that happens the NFS server is already shut down.
+> 
+> This is certainly a corner case as you'd usually not NFS-mount a share from
+> localhost; but fixing it is relatively simple with the first patch, which makes
+> sure that if NFS server and client are installed, the server starts before the
+> client, and the client stops before the server.
+> 
+> For a client without installed server this is harmless as Before= does not
+> imply a dependency. Likewise, for an NFS server which does not mount shares by
+> itself, it's also a no-op as remote-fs.target is empty. This would only
+> slightly reorder the boot sequence for machines which both are an NFS server
+> and have some remote NFS mounts, but I don't see an issue with that.
+> 
+> The second patch make NFS start earlier in the boot (i. e. before
+> basic.target), so that you can do things like put /var/ on NFS, or have rcS
+> SysV init scripts which depend on $remote_fs work. I tested this on both a
+> server and a client. This is certainly a bit more intrusive, but could be
+> worthwhile; what do you think?
+> 
+> Thanks for considering,
+Committed....
+
+steved.
+
+> 
+> Martin
+> 
+> _______________________________________________
+> systemd-devel mailing list
+> systemd-devel@lists.freedesktop.org
+> http://lists.freedesktop.org/mailman/listinfo/systemd-devel
+> 
