@@ -1,44 +1,51 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:44990 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750852AbbCSKss (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 19 Mar 2015 06:48:48 -0400
-Received: from int-mx13.intmail.prod.int.phx2.redhat.com (int-mx13.intmail.prod.int.phx2.redhat.com [10.5.11.26])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id t2JAmmjj026104
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
-	for <linux-nfs@vger.kernel.org>; Thu, 19 Mar 2015 06:48:48 -0400
-Received: from [10.10.54.212] (vpn-54-212.rdu2.redhat.com [10.10.54.212])
-	by int-mx13.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id t2JAmldF028997
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NO)
-	for <linux-nfs@vger.kernel.org>; Thu, 19 Mar 2015 06:48:48 -0400
-Date: Thu, 19 Mar 2015 06:48:47 -0400 (EDT)
-From: Benjamin Coddington <bcodding@redhat.com>
-To: linux-nfs@vger.kernel.org
-Subject: Recovery after BAD_SEQID
-Message-ID: <alpine.OSX.2.19.9992.1503190633310.947@planck.local>
+Received: from mail-pa0-f46.google.com ([209.85.220.46]:36290 "EHLO
+	mail-pa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751799AbbCSLEZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Mar 2015 07:04:25 -0400
+Received: by padcy3 with SMTP id cy3so72532370pad.3
+        for <linux-nfs@vger.kernel.org>; Thu, 19 Mar 2015 04:04:24 -0700 (PDT)
+Message-ID: <550AAD2E.6040607@gmail.com>
+Date: Thu, 19 Mar 2015 19:04:14 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Christoph Hellwig <hch@lst.de>
+Subject: [PATCH] NFSD: Check layout type when returning client layouts
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I wrote yesterday about a RHEL6 bug, but I'd gotten some details wrong about
-the problem, so I'm starting new thread.
+According to RFC5661:
+" When lr_returntype is LAYOUTRETURN4_FSID, the current filehandle is used
+   to identify the file system and all layouts matching the client ID,
+   the fsid of the file system, lora_layout_type, and lora_iomode are
+   returned.  When lr_returntype is LAYOUTRETURN4_ALL, all layouts
+   matching the client ID, lora_layout_type, and lora_iomode are
+   returned and the current filehandle is not used. "
 
-It looks like getting BAD_SEQID back from an OPEN operation drops the state_owner
-which means that the state machine can't find or recover any other objects
-for that state_owner.  That can get the client into unrecoverable loops.  I
-can produce one of them with:
+When returning client layouts, always check layout type.
 
-1) OPEN file1, OPEN file2
-2) break the network for longer than the lease period
-3) during recovery, have the server return BAD_SEQID for one of the OPENS
-4) break the network again for longer than the lease period
-5) WRITE to the file that recovered properly in #3
+Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+---
+ fs/nfsd/nfs4layouts.c | 3 +++
+ 1 file changed, 3 insertions(+)
 
-This gets stuck in WRITE,NFS4ERR_EXPIRED.
+diff --git a/fs/nfsd/nfs4layouts.c b/fs/nfsd/nfs4layouts.c
+index 3c1bfa1..44341d6 100644
+--- a/fs/nfsd/nfs4layouts.c
++++ b/fs/nfsd/nfs4layouts.c
+@@ -513,6 +513,9 @@ nfsd4_return_client_layouts(struct svc_rqst *rqstp,
+ 
+ 	spin_lock(&clp->cl_lock);
+ 	list_for_each_entry_safe(ls, n, &clp->cl_lo_states, ls_perclnt) {
++		if (ls->ls_layout_type != lrp->lr_layout_type)
++			continue;
++
+ 		if (lrp->lr_return_type == RETURN_FSID &&
+ 		    !fh_fsid_match(&ls->ls_stid.sc_file->fi_fhandle,
+ 				   &cstate->current_fh.fh_handle))
+-- 
+2.3.3
 
-It looks like some cleanup is needed if we have to drop the whole
-state_owner.  Alternatively, does it make sense to just drop the objects in
-that sequence?
-
-Ben
