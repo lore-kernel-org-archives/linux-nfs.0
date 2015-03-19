@@ -1,93 +1,49 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.kammerl.de ([176.28.8.19]:45590 "EHLO mail.kammerl.de"
+Received: from mx1.redhat.com ([209.132.183.28]:57379 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752041AbbCRWaM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 18 Mar 2015 18:30:12 -0400
-Received: from [192.168.42.36] (ppp-88-217-0-163.dynamic.mnet-online.de [88.217.0.163])
-	(using TLSv1 with cipher ECDHE-RSA-AES128-SHA (128/128 bits))
-	(No client certificate requested)
-	(Authenticated sender: robert@huitl.de)
-	by mail.kammerl.de (Postfix) with ESMTPSA id 26EE4A033F
-	for <linux-nfs@vger.kernel.org>; Wed, 18 Mar 2015 23:21:22 +0100 (CET)
-Message-ID: <5509FA61.2060401@huitl.de>
-Date: Wed, 18 Mar 2015 23:21:21 +0100
-From: Robert Huitl <linux-nfs@huitl.de>
-MIME-Version: 1.0
+	id S1755091AbbCSKNG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 19 Mar 2015 06:13:06 -0400
+Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id t2JAD5f6006667
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
+	for <linux-nfs@vger.kernel.org>; Thu, 19 Mar 2015 06:13:06 -0400
+Received: from [10.10.54.212] (vpn-54-212.rdu2.redhat.com [10.10.54.212])
+	by int-mx11.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id t2JAD493024349
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NO)
+	for <linux-nfs@vger.kernel.org>; Thu, 19 Mar 2015 06:13:05 -0400
+Date: Thu, 19 Mar 2015 06:13:04 -0400 (EDT)
+From: Benjamin Coddington <bcodding@redhat.com>
 To: linux-nfs@vger.kernel.org
-Subject: rpc.gssd picks wrong credential cache file in multi-realm setup
-Content-Type: text/plain; charset=utf-8
+Subject: Re: BAD_SEQID drops state_owner, but lock stateid can still be
+ found
+In-Reply-To: <alpine.OSX.2.19.9992.1503181243090.947@planck.local>
+Message-ID: <alpine.OSX.2.19.9992.1503190559290.947@planck.local>
+References: <alpine.OSX.2.19.9992.1503181243090.947@planck.local>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I have the following krb5.conf setup with two realms and an NFS4 server
-at fileserver.ads.other.com@ADS.OTHER.COM:
+On Wed, 18 Mar 2015, Benjamin Coddington wrote:
 
-[libdefaults]
-        default_realm = ADS.DEFAULT.COM
+> I'm working on a RHEL6 bug where the client gets stuck in a
+> WRITE,BAD_STATEID loop forever, and it looks like what happens is the write
+> continually picks a delegated write lock stateid in nfs4_select_rw_stateid()
+> for the write which never gets cleaned up in the state machine because a
+> previous OPEN during recovery had a BAD_SEQID come in which dropped the
+> state_owner.
+>
+> Does it make sense to try to find lock stateids and set NFS_LOCK_LOST if
+> we're going to drop the state_owner?
+>
+> It may be entirely impossible to reproduce the problem upstream, but I
+> figured I'd ask while I try..
 
-[domain_realm]
-        .ads.other.com = ADS.OTHER.COM
+So, I'm wrong about what's actually happening here -- so please ignore me
+for the time being.  I didn't see that a local lock on a write delegation
+doesn't have a ls_stateid - which makes perfect sense.  I still think
+there's a problem, but this description of it is inaccurate..
 
+TL;DR - Ben bashes head against state machine, gets it wrong.
 
-The two realms do not know of each other. Mounting the share works fine,
-but the user is denied access if there are ticket caches for *both*
-ADS.DEFAULT.COM and ADS.OTHER.COM:
-
-
-handling gssd upcall (/run/rpc_pipefs/nfs/clnt19c)
-handle_gssd_upcall: 'mech=krb5 uid=1000000 enctypes=18,17,16,23,3,1,2 '
-handling krb5 upcall (/run/rpc_pipefs/nfs/clnt19c)
-process_krb5_upcall: service is '<null>'
-creating context using fsuid 1000000 (save_uid 0)
-creating tcp client for server fileserver.ads.other.com
-DEBUG: port already set to 2049
-creating context with server nfs@fileserver.ads.other.com
-WARNING: Failed to create krb5 context for user with uid 1000000 for
-server fileserver.ads.other.com
-getting credentials for client with uid 1000000 for server
-fileserver.ads.other.com
-CC '/tmp/krb5cc_1000000' being considered, with preferred realm
-'ADS.DEFAULT.COM'
-CC 'FILE:/tmp/krb5cc_1000000'(user@ADS.OTHER.COM) passed all checks and
-has mtime of 1425824566
-CC '/tmp/krb5cc_1000000_vg0rFX' being considered, with preferred realm
-'ADS.DEFAULT.COM'
-CC 'FILE:/tmp/krb5cc_1000000_vg0rFX'(user@ADS.DEFAULT.COM) passed all
-checks and has mtime of 1425822978
-CC '��@:/tmp/krb5cc_1000000_vg0rFX' is our current best match with mtime
-of 1425822978
-using FILE:/tmp/krb5cc_1000000_vg0rFX as credentials cache for client
-with uid 1000000 for server fileserver.ads.other.com
-using environment variable to select krb5 ccache
-FILE:/tmp/krb5cc_1000000_vg0rFX
-creating context using fsuid 1000000 (save_uid 0)
-creating tcp client for server fileserver.ads.other.com
-DEBUG: port already set to 2049
-creating context with server nfs@fileserver.ads.other.com
-WARNING: Failed to create krb5 context for user with uid 1000000 for
-server fileserver.ads.other.com
-getting credentials for client with uid 1000000 for server
-fileserver.ads.other.com
-WARNING: Failed to create krb5 context for user with uid 1000000 for
-server fileserver.ads.other.com
-doing error downcall
-
-
-The problem is caused by gssd_setup_krb5_user_gss_ccache(uid,
-servername, dirpattern) calling gssd_find_existing_krb5_ccache(uid,
-dirname, &cctype, &d) which picks the wrong cache as it does not take
-into account servername and will always pick the cache for preferred_realm.
-
-My understanding of the code is limited, but it looks like caches for
-the realm configured in [domain_realm] section of krb5.conf should take
-precedence over preferred_realm. Other parts of the code like
-find_keytab_entry() seem to be multi-realm-aware and use
-krb5_get_host_realm() to locate a ticket.
-
-As a workaround, running rpc.gssd -R ADS.OTHER.COM forces gssd to pick
-the right cache, but that breaks access to ADS.DEFAULT.COM.
-
-Note: this bug is also tracked as #94541 on Bugzilla.
-
-Robert
-
+Ben
