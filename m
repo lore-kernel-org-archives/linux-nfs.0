@@ -1,52 +1,49 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:44942 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:54782 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753401AbbCSSUo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 19 Mar 2015 14:20:44 -0400
-Message-ID: <550B137C.5040509@RedHat.com>
-Date: Thu, 19 Mar 2015 14:20:44 -0400
+	id S1753384AbbCSSVI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 19 Mar 2015 14:21:08 -0400
+Received: from int-mx13.intmail.prod.int.phx2.redhat.com (int-mx13.intmail.prod.int.phx2.redhat.com [10.5.11.26])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id t2JIL8vU009557
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
+	for <linux-nfs@vger.kernel.org>; Thu, 19 Mar 2015 14:21:08 -0400
+Received: from smallhat.boston.devel.redhat.com (smallhat.boston.devel.redhat.com [10.19.60.65])
+	by int-mx13.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id t2JIL8Ax031920
+	for <linux-nfs@vger.kernel.org>; Thu, 19 Mar 2015 14:21:08 -0400
+Message-ID: <550B1394.6040400@RedHat.com>
+Date: Thu, 19 Mar 2015 14:21:08 -0400
 From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
 To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-CC: Systemd Mailing List <systemd-devel@lists.freedesktop.org>,
-        Eric Work <work.eric@gmail.com>
-Subject: Re: [PATCH] systemd: Have rpc-statd-notify.service Require network.target
-References: <1425407803-5278-1-git-send-email-steved@redhat.com>
-In-Reply-To: <1425407803-5278-1-git-send-email-steved@redhat.com>
+Subject: Re: [PATCH] nfs-blkmap.service: add EnvironmentFile directive
+References: <1425756514-22118-1-git-send-email-steved@redhat.com>
+In-Reply-To: <1425756514-22118-1-git-send-email-steved@redhat.com>
 Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
 
-On 03/03/2015 01:36 PM, Steve Dickson wrote:
-> Its been reported that having the rpc-statd-notify service
-> depend on network.target instead network-online.target
-> decrease boot times as much as 10 seconds on some
-> installs
-> 
-> Fixes: https://bugzilla.redhat.com/show_bug.cgi?id=1183293
+On 03/07/2015 02:28 PM, Steve Dickson wrote:
+> Fixes: https://bugzilla.linux-nfs.org/show_bug.cgi?id=281
 > 
 > Signed-off-by: Steve Dickson <steved@redhat.com>
-> Reported-by: Eric Work <work.eric@gmail.com>
 Committed...
 
 steved.
 
 > ---
->  systemd/rpc-statd-notify.service |    2 +-
->  1 files changed, 1 insertions(+), 1 deletions(-)
+>  systemd/nfs-blkmap.service | 1 +
+>  1 file changed, 1 insertion(+)
 > 
-> diff --git a/systemd/rpc-statd-notify.service b/systemd/rpc-statd-notify.service
-> index a655445..b608a14 100644
-> --- a/systemd/rpc-statd-notify.service
-> +++ b/systemd/rpc-statd-notify.service
-> @@ -1,6 +1,6 @@
->  [Unit]
->  Description=Notify NFS peers of a restart
-> -Requires=network-online.target
-> +Requires=network.target
->  After=network.target nss-lookup.target
->  
->  # if we run an nfs server, it needs to be running before we
+> diff --git a/systemd/nfs-blkmap.service b/systemd/nfs-blkmap.service
+> index f470e3d..8ad3b03 100644
+> --- a/systemd/nfs-blkmap.service
+> +++ b/systemd/nfs-blkmap.service
+> @@ -13,4 +13,5 @@ PartOf=nfs-utils.service
+>  [Service]
+>  Type=forking
+>  PIDFile=/var/run/blkmapd.pid
+> +EnvironmentFile=-/run/sysconfig/nfs-utils
+>  ExecStart=/usr/sbin/blkmapd $BLKMAPDARGS
 > 
