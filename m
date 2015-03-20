@@ -1,30 +1,95 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from plane.gmane.org ([80.91.229.3]:36674 "EHLO plane.gmane.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750734AbbCTCzV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 19 Mar 2015 22:55:21 -0400
-Received: from list by plane.gmane.org with local (Exim 4.69)
-	(envelope-from <glN-linux-nfs@m.gmane.org>)
-	id 1YYn5T-0003Ti-5D
-	for linux-nfs@vger.kernel.org; Fri, 20 Mar 2015 03:55:13 +0100
-Received: from 137.69.117.61 ([137.69.117.61])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Fri, 20 Mar 2015 03:55:03 +0100
-Received: from naveenkothamasu by 137.69.117.61 with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Fri, 20 Mar 2015 03:55:03 +0100
-To: linux-nfs@vger.kernel.org
-From: Naveen <naveenkothamasu@gmail.com>
-Subject: Re: krb5 failures with recent nfs-utils
-Date: Fri, 20 Mar 2015 01:27:01 +0000 (UTC)
-Message-ID: <loom.20150320T021906-500@post.gmane.org>
-References: <20110713225939.GA13000@fieldses.org> <4E1E9725.5020707@desy.de> <20110714131647.GC13000@fieldses.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Received: from mail-wi0-f173.google.com ([209.85.212.173]:37701 "EHLO
+	mail-wi0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751164AbbCTEGU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 20 Mar 2015 00:06:20 -0400
+Received: by wixw10 with SMTP id w10so8347969wix.0
+        for <linux-nfs@vger.kernel.org>; Thu, 19 Mar 2015 21:06:19 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <20150305131731.GA16235@lst.de>
+References: <20150303221033.GB19439@fieldses.org>
+	<20150303224456.GV4251@dastard>
+	<20150304020826.GD19439@fieldses.org>
+	<20150304155421.GE1627@fieldses.org>
+	<20150304220900.GX18360@dastard>
+	<20150304222709.GI1627@fieldses.org>
+	<20150304224557.GY4251@dastard>
+	<54F78BE5.1020608@sandeen.net>
+	<20150304225623.GZ4251@dastard>
+	<20150305040849.GJ1627@fieldses.org>
+	<20150305131731.GA16235@lst.de>
+Date: Fri, 20 Mar 2015 12:06:18 +0800
+Message-ID: <CAB6yy341fvF8Bsg0_hViQm+zRLVdJ2WOE9duDwdU+S0CkOEpbg@mail.gmail.com>
+Subject: Re: panic on 4.20 server exporting xfs filesystem
+From: Kinglong Mee <kinglongmee@gmail.com>
+To: Christoph Hellwig <hch@lst.de>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Dave Chinner <david@fromorbit.com>, Eric Sandeen <sandeen@sandeen.net>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>, xfs@oss.sgi.com
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I still face this issue in SuSe 11.3 x86_64. 
-Don't see any updates in the bug. Any help, tx
+On Thu, Mar 5, 2015 at 9:17 PM, Christoph Hellwig <hch@lst.de> wrote:
+> On Wed, Mar 04, 2015 at 11:08:49PM -0500, J. Bruce Fields wrote:
+>> Ah-hah:
+>>
+>>       static void
+>>       nfsd4_cb_layout_fail(struct nfs4_layout_stateid *ls)
+>>       {
+>>               ...
+>>               nfsd4_cb_layout_fail(ls);
+>>
+>> That'd do it!
+>>
+>> Haven't tried to figure out why exactly that's getting called, and why
+>> only rarely.  Some intermittent problem with the callback path, I guess.
+>>
+>> Anyway, I think that solves most of the mystery....
+>
+> Ooops, that was a nasty git merge error in the last rebase, see the fix
+> below.  But I really wonder if we need to make the usage of pnfs explicit
+> after all, othterwise we'll always hand out layouts on any XFS-exported
+> filesystems, which can't be used and will eventually need to be recalled.
+>
+> ---
+> From ad592590cce9f7441c3cd21d030f3a986d8759d7 Mon Sep 17 00:00:00 2001
+> From: Christoph Hellwig <hch@lst.de>
+> Date: Thu, 5 Mar 2015 06:12:29 -0700
+> Subject: nfsd: don't recursively call nfsd4_cb_layout_fail
+>
+> Due to a merge error when creating c5c707f9 ("nfsd: implement pNFS
+> layout recalls"), we recursivelt call nfsd4_cb_layout_fail from itself,
+> leading to stack overflows.
+>
+> Signed-off-by: Christoph Hellwig <hch@lst.de>
+> ---
+>  fs/nfsd/nfs4layouts.c | 2 --
+>  1 file changed, 2 deletions(-)
+>
+> diff --git a/fs/nfsd/nfs4layouts.c b/fs/nfsd/nfs4layouts.c
+> index 3c1bfa1..1028a06 100644
+> --- a/fs/nfsd/nfs4layouts.c
+> +++ b/fs/nfsd/nfs4layouts.c
+> @@ -587,8 +587,6 @@ nfsd4_cb_layout_fail(struct nfs4_layout_stateid *ls)
+>
+>         rpc_ntop((struct sockaddr *)&clp->cl_addr, addr_str, sizeof(addr_str));
+>
+> -       nfsd4_cb_layout_fail(ls);
+> -
 
+Maybe you want adding "trace_layout_recall_fail(&ls->ls_stid.sc_stateid);" here?
+I think the following is better,
+
+@@ -587,7 +587,7 @@ nfsd4_cb_layout_fail(struct nfs4_layout_stateid *ls)
+
+        rpc_ntop((struct sockaddr *)&clp->cl_addr, addr_str, sizeof(addr_str));
+
+-       nfsd4_cb_layout_fail(ls);
++       trace_layout_recall_fail(&ls->ls_stid.sc_stateid);
+
+        printk(KERN_WARNING
+                "nfsd: client %s failed to respond to layout recall. "
+
+thanks,
+Kinglong Mee
