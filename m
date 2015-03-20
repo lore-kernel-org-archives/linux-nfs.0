@@ -1,104 +1,102 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pa0-f43.google.com ([209.85.220.43]:35579 "EHLO
-	mail-pa0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751132AbbCTIbm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 20 Mar 2015 04:31:42 -0400
-Received: by pagj4 with SMTP id j4so11099203pag.2
-        for <linux-nfs@vger.kernel.org>; Fri, 20 Mar 2015 01:31:41 -0700 (PDT)
-Message-ID: <550BDAE0.2070409@gmail.com>
-Date: Fri, 20 Mar 2015 16:31:28 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
+Received: from discipline.rit.edu ([129.21.6.207]:48545 "HELO
+	discipline.rit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1752062AbbCTO2c (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 20 Mar 2015 10:28:32 -0400
+From: Andrew W Elble <aweits@rit.edu>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: <linux-nfs@vger.kernel.org>, <etmsys@rit.edu>,
+        Al Viro <viro@zeniv.linux.org.uk>, <linux-fsdevel@vger.kernel.org>
+Subject: Re: [PATCH] NFS: fix BUG() crash in notify_change() with patch to chown_common()
+References: <1424699484-74025-1-git-send-email-aweits@rit.edu>
+	<20150223205435.GA28635@fieldses.org>
+Date: Fri, 20 Mar 2015 10:28:31 -0400
+In-Reply-To: <20150223205435.GA28635@fieldses.org> (J. Bruce Fields's message
+	of "Mon, 23 Feb 2015 15:54:35 -0500")
+Message-ID: <m2iodvivzk.fsf@discipline.rit.edu>
 MIME-Version: 1.0
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: [PATCH] NFS4: Retry destroy session when getting -NFS4ERR_DELAY
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When umounting a client, it cost near ten seconds.
-Dump the request, got
-   client                     server
-DELEGRETURN              ---->
-DESTROY_SESSION          ----> 
-          NFS4ERR_DELAY  <----  DESTROY_SESSION reply
-                NFS4_OK  <----  DELEGRETURN reply
-DESTROY_CLIENTID          ---->
-  NFS4ERR_CLIENTID_BUSY  <----  DESTROY_CLIENTID reply
-DESTROY_CLIENTID          ---->
-  NFS4ERR_CLIENTID_BUSY  <----  DESTROY_CLIENTID reply
-         ... ....                  ... ... 
-There are ten DESTROY_CLIENTID requests.
-This patch retry DESTROY_SESSION when getting NFS4ERR_DELAY,
-try the best to destroy the session as destroy clientid.
 
-With this patch, only cost more than 1 seconds, as,
-   client                     server
-DELEGRETURN          ---->
-DESTROY_SESSION      ----> 
-     NFS4ERR_DELAY  <----  DESTROY_SESSION reply
-           NFS4_OK  <----  DELEGRETURN reply
-DESTROY_SESSION      ----> 
-           NFS4_OK  <----  DESTROY_SESSION reply
-DESTROY_CLIENTID     ---->
-           NFS4_OK  <----  DESTROY_CLIENTID reply
+Any update/feedback?
 
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
----
- fs/nfs/nfs4proc.c | 26 +++++++++++++++++++++-----
- 1 file changed, 21 insertions(+), 5 deletions(-)
+"J. Bruce Fields" <bfields@fieldses.org> writes:
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 627f37c..2631dc2 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -7320,7 +7320,7 @@ out:
-  * Issue the over-the-wire RPC DESTROY_SESSION.
-  * The caller must serialize access to this routine.
-  */
--int nfs4_proc_destroy_session(struct nfs4_session *session,
-+static int _nfs4_proc_destroy_session(struct nfs4_session *session,
- 		struct rpc_cred *cred)
- {
- 	struct rpc_message msg = {
-@@ -7332,10 +7332,6 @@ int nfs4_proc_destroy_session(struct nfs4_session *session,
- 
- 	dprintk("--> nfs4_proc_destroy_session\n");
- 
--	/* session is still being setup */
--	if (!test_and_clear_bit(NFS4_SESSION_ESTABLISHED, &session->session_state))
--		return 0;
--
- 	status = rpc_call_sync(session->clp->cl_rpcclient, &msg, RPC_TASK_TIMEOUT);
- 	trace_nfs4_destroy_session(session->clp, status);
- 
-@@ -7347,6 +7343,26 @@ int nfs4_proc_destroy_session(struct nfs4_session *session,
- 	return status;
- }
- 
-+int nfs4_proc_destroy_session(struct nfs4_session *session,
-+		struct rpc_cred *cred)
-+{
-+	unsigned int loop;
-+	int ret;
-+
-+	/* session is still being setup */
-+	if (!test_and_clear_bit(NFS4_SESSION_ESTABLISHED, &session->session_state))
-+		return 0;
-+
-+	for (loop = NFS4_MAX_LOOP_ON_RECOVER; loop != 0; loop--) {
-+		ret = _nfs4_proc_destroy_session(session, cred);
-+		if (ret != -NFS4ERR_DELAY)
-+			break;
-+		ssleep(1);
-+	}
-+
-+	return ret;
-+}
-+
- /*
-  * Renew the cl_session lease.
-  */
+> Looks OK to me.  I think it would go through Al.--b.
+>
+> Acked-by: J. Bruce Fields <bfields@redhat.com>
+>
+> On Mon, Feb 23, 2015 at 08:51:24AM -0500, Andrew Elble wrote:
+>> We have observed a BUG() crash in fs/attr.c:notify_change(). The crash
+>> occurs during an rsync into a filesystem that is exported via NFS.
+>> 
+>> 1.) fs/attr.c:notify_change() modifies the caller's version of attr.
+>> 2.) 6de0ec00ba8d ("VFS: make notify_change pass ATTR_KILL_S*ID to
+>>     setattr operations") introduced a BUG() restriction such that "no
+>>     function will ever call notify_change() with both ATTR_MODE and
+>>     ATTR_KILL_S*ID set". Under some circumstances though, it will have
+>>     assisted in setting the caller's version of attr to this very
+>>     combination.
+>> 3.) 27ac0ffeac80 ("locks: break delegations on any attribute
+>>     modification") introduced code to handle breaking
+>>     delegations. This can result in notify_change() being re-called. attr
+>>     _must_ be explicitly reset to avoid triggering the BUG() established
+>>     in #2.
+>> 4.) The path that that triggers this is via fs/open.c:chmod_common().
+>>     The combination of attr flags set here and in the first call to
+>>     notify_change() along with a later failed break_deleg_wait()
+>>     results in notify_change() being called again via retry_deleg
+>>     without resetting attr.
+>> 
+>> Solution is to move retry_deleg in chmod_common() a bit further up to
+>> ensure attr is completely reset.
+>> 
+>> There are other places where this seemingly could occur, such as
+>> fs/utimes.c:utimes_common(), but the attr flags are not initially
+>> set in such a way to trigger this.
+>> 
+>> Fixes: 27ac0ffeac80 ("locks: break delegations on any attribute modification")
+>> Reported-by: Eric Meddaugh <etmsys@rit.edu>
+>> Tested-by: Eric Meddaugh <etmsys@rit.edu>
+>> Signed-off-by: Andrew Elble <aweits@rit.edu>
+>> ---
+>>  fs/open.c | 2 +-
+>>  1 file changed, 1 insertion(+), 1 deletion(-)
+>> 
+>> diff --git a/fs/open.c b/fs/open.c
+>> index 33f9cbf2610b..44a3be145bfe 100644
+>> --- a/fs/open.c
+>> +++ b/fs/open.c
+>> @@ -570,6 +570,7 @@ static int chown_common(struct path *path, uid_t user, gid_t group)
+>>  	uid = make_kuid(current_user_ns(), user);
+>>  	gid = make_kgid(current_user_ns(), group);
+>>  
+>> +retry_deleg:
+>>  	newattrs.ia_valid =  ATTR_CTIME;
+>>  	if (user != (uid_t) -1) {
+>>  		if (!uid_valid(uid))
+>> @@ -586,7 +587,6 @@ static int chown_common(struct path *path, uid_t user, gid_t group)
+>>  	if (!S_ISDIR(inode->i_mode))
+>>  		newattrs.ia_valid |=
+>>  			ATTR_KILL_SUID | ATTR_KILL_SGID | ATTR_KILL_PRIV;
+>> -retry_deleg:
+>>  	mutex_lock(&inode->i_mutex);
+>>  	error = security_path_chown(path, uid, gid);
+>>  	if (!error)
+>> -- 
+>> 1.9.2
+>> 
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+
 -- 
-2.3.3
-
+Andrew W. Elble
+aweits@discipline.rit.edu
+Infrastructure Engineer, Communications Technical Lead
+Rochester Institute of Technology
+PGP: BFAD 8461 4CCF DC95 DA2C B0EB 965B 082E 863E C912
