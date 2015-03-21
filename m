@@ -1,57 +1,93 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:41167 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751198AbbCTUYx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 20 Mar 2015 16:24:53 -0400
-Date: Fri, 20 Mar 2015 16:24:53 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: Anna.Schumaker@netapp.com,
+Received: from aserp1040.oracle.com ([141.146.126.69]:45631 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752501AbbCUAsu convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 20 Mar 2015 20:48:50 -0400
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
+Subject: Re: [PATCH] nfs: fix high load average due to callback thread sleeping
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1426878914-15088-1-git-send-email-jeff.layton@primarydata.com>
+Date: Fri, 20 Mar 2015 17:48:46 -0700
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna.Schumaker@netapp.com,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFSD: Use correct reply size calculating function
-Message-ID: <20150320202453.GC5955@fieldses.org>
-References: <5505A6AF.7040608@gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <5505A6AF.7040608@gmail.com>
+Message-Id: <B81BC8FF-0305-4E1C-9E23-549E6FDD6624@oracle.com>
+References: <1426878914-15088-1-git-send-email-jeff.layton@primarydata.com>
+To: Jeff Layton <jlayton@poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Mar 15, 2015 at 11:35:11PM +0800, Kinglong Mee wrote:
-> ALLOCATE/DEALLOCATE only reply one status value to client,
-> so, using nfsd4_only_status_rsize for reply size calculating.
 
-Thanks!  Applying for 4.1.  (It's a bug, but I don't see an obvious
-serious impact, so I'm assuming it doesn't need to go to 4.0 and stable.
-Tell me if I've overlooked something.)
+On Mar 20, 2015, at 12:15 PM, Jeff Layton <jlayton@poochiereds.net> wrote:
 
---b.
-
+> Chuck pointed out a problem that crept in with commit 6ffa30d3f734 (nfs:
+> don't call blocking operations while !TASK_RUNNING). Linux counts tasks
+> in uninterruptible sleep against the load average, so this caused the
+> system's load average to be pinned at at least 1 when there was a
+> NFSv4.1+ mount active.
 > 
-> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+> Not a huge problem, but it's probably worth fixing before we get too
+> many complaints about it. This patch converts the code back to use
+> TASK_INTERRUPTIBLE sleep, simply has it flush any signals on each loop
+> iteration. In practice no one should really be signalling this thread at
+> all, so I think this is reasonably safe.
+> 
+> With this change, there's also no need to game the hung task watchdog so
+> we can also convert the schedule_timeout call back to a normal schedule.
+> 
+> Cc: <stable@vger.kernel.org>
+> Reported-by: Chuck Lever <chuck.lever@oracle.com>
+> Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
+
+Thanks for the quick response, Jeff.
+
+I applied this on top of the first patch, mounted a test filesystem
+with NFSv4.1, and confirmed that the backchannel service is responsive.
+Load average on the client at idle is now 0.01.
+
+Tested-by: Chuck Lever <chuck.lever@oracle.com>
+
+Nit: I’d add a Fixes: commit 6ffa30d3f734 (“nfs: don't call blocking . . .”)
+tag.
+
 > ---
->  fs/nfsd/nfs4proc.c | 4 ++--
->  1 file changed, 2 insertions(+), 2 deletions(-)
+> fs/nfs/callback.c | 6 +++---
+> 1 file changed, 3 insertions(+), 3 deletions(-)
 > 
-> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> index 92b9d97..4449359 100644
-> --- a/fs/nfsd/nfs4proc.c
-> +++ b/fs/nfsd/nfs4proc.c
-> @@ -2282,13 +2282,13 @@ static struct nfsd4_operation nfsd4_ops[] = {
->  		.op_func = (nfsd4op_func)nfsd4_allocate,
->  		.op_flags = OP_MODIFIES_SOMETHING | OP_CACHEME,
->  		.op_name = "OP_ALLOCATE",
-> -		.op_rsize_bop = (nfsd4op_rsize)nfsd4_write_rsize,
-> +		.op_rsize_bop = (nfsd4op_rsize)nfsd4_only_status_rsize,
->  	},
->  	[OP_DEALLOCATE] = {
->  		.op_func = (nfsd4op_func)nfsd4_deallocate,
->  		.op_flags = OP_MODIFIES_SOMETHING | OP_CACHEME,
->  		.op_name = "OP_DEALLOCATE",
-> -		.op_rsize_bop = (nfsd4op_rsize)nfsd4_write_rsize,
-> +		.op_rsize_bop = (nfsd4op_rsize)nfsd4_only_status_rsize,
->  	},
->  	[OP_SEEK] = {
->  		.op_func = (nfsd4op_func)nfsd4_seek,
+> diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+> index 351be9205bf8..8d129bb7355a 100644
+> --- a/fs/nfs/callback.c
+> +++ b/fs/nfs/callback.c
+> @@ -128,7 +128,7 @@ nfs41_callback_svc(void *vrqstp)
+> 		if (try_to_freeze())
+> 			continue;
+> 
+> -		prepare_to_wait(&serv->sv_cb_waitq, &wq, TASK_UNINTERRUPTIBLE);
+> +		prepare_to_wait(&serv->sv_cb_waitq, &wq, TASK_INTERRUPTIBLE);
+> 		spin_lock_bh(&serv->sv_cb_lock);
+> 		if (!list_empty(&serv->sv_cb_list)) {
+> 			req = list_first_entry(&serv->sv_cb_list,
+> @@ -142,10 +142,10 @@ nfs41_callback_svc(void *vrqstp)
+> 				error);
+> 		} else {
+> 			spin_unlock_bh(&serv->sv_cb_lock);
+> -			/* schedule_timeout to game the hung task watchdog */
+> -			schedule_timeout(60 * HZ);
+> +			schedule();
+> 			finish_wait(&serv->sv_cb_waitq, &wq);
+> 		}
+> +		flush_signals(current);
+> 	}
+> 	return 0;
+> }
 > -- 
-> 2.3.1
+> 2.1.0
+> 
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
