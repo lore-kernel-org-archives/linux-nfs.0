@@ -1,33 +1,31 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f178.google.com ([209.85.213.178]:35129 "EHLO
-	mail-ig0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751420AbbCURmN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 21 Mar 2015 13:42:13 -0400
+Received: from bombadil.infradead.org ([198.137.202.9]:43269 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751637AbbCUSCD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 21 Mar 2015 14:02:03 -0400
+Date: Sat, 21 Mar 2015 11:01:54 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Taesoo Kim <tsgatesv@gmail.com>
+Cc: trond.myklebust@primarydata.com, anna.schumaker@netapp.com,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        taesoo@gatech.edu, changwoo@gatech.edu, sanidhya@gatech.edu,
+        blee@gatech.edu, csong84@gatech.edu,
+        Byoungyoung Lee <lifeasageek@gmail.com>
+Subject: Re: [PATCH] NFS: fix potential NULL deref in nfs_closedir()
+Message-ID: <20150321180154.GA4916@infradead.org>
+References: <1426911678-25306-1-git-send-email-tsgatesv@gmail.com>
 MIME-Version: 1.0
-In-Reply-To: <20150320164130.GG2036@fieldses.org>
-References: <20150320162147.GF2036@fieldses.org>
-	<20150320162430.GB18786@infradead.org>
-	<20150320164130.GG2036@fieldses.org>
-Date: Sat, 21 Mar 2015 10:42:12 -0700
-Message-ID: <CA+55aFxYSgcaigCswbVbePsCrOgyAgRb0v4fDwooGN8K4qmUiw@mail.gmail.com>
-Subject: Re: [GIT] nfsd bugfix for 4.0
-From: Linus Torvalds <torvalds@linux-foundation.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Christoph Hellwig <hch@infradead.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1426911678-25306-1-git-send-email-tsgatesv@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Mar 20, 2015 at 9:41 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
->
-> I've got Kinglong Mee's patch queued up as incremental patch on top of
-> this pull request.  I think it's not that critical.
->
-> (But Linus if you want to drop this I can submit the revised patch with
-> other stuff next week, I don't care much either way.)
+On Sat, Mar 21, 2015 at 12:21:18AM -0400, Taesoo Kim wrote:
+> From: Byoungyoung Lee <lifeasageek@gmail.com>
+> 
+> When filp->private_data is NULL, put_nfs_open_dir_context()
+> deferences its pointer (fi->list, fi->cred), similar to what
+> other file systems handle '.release' api (9p, cifs, btrfs, 
+> ext4, ocfs2).
 
-I took it, can get the cleanup later.
-
-                      Linus
+Why woud filp->private_data ever be NULL here?
