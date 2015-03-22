@@ -1,41 +1,64 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qg0-f51.google.com ([209.85.192.51]:35182 "EHLO
-	mail-qg0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751605AbbCUSrg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 21 Mar 2015 14:47:36 -0400
-Date: Sat, 21 Mar 2015 14:47:32 -0400
-From: Taesoo Kim <taesoo@gatech.edu>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: Taesoo Kim <tsgatesv@gmail.com>, trond.myklebust@primarydata.com,
-        anna.schumaker@netapp.com, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, changwoo@gatech.edu, sanidhya@gatech.edu,
-        blee@gatech.edu, csong84@gatech.edu,
-        Byoungyoung Lee <lifeasageek@gmail.com>
-Subject: Re: [PATCH] NFS: fix potential NULL deref in nfs_closedir()
-Message-ID: <20150321184732.GA5170@taesoo.org>
-References: <1426911678-25306-1-git-send-email-tsgatesv@gmail.com>
- <20150321180154.GA4916@infradead.org>
+Received: from mail-pd0-f173.google.com ([209.85.192.173]:33173 "EHLO
+	mail-pd0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751685AbbCVNXJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 22 Mar 2015 09:23:09 -0400
+Received: by pdnc3 with SMTP id c3so158875777pdn.0
+        for <linux-nfs@vger.kernel.org>; Sun, 22 Mar 2015 06:23:09 -0700 (PDT)
+Message-ID: <550EC233.9090908@gmail.com>
+Date: Sun, 22 Mar 2015 21:22:59 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20150321180154.GA4916@infradead.org>
+To: Steve Dickson <SteveD@redhat.com>
+CC: rees@umich.edu, Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: [PATCH] blkmapd: Make sure device root contains valid device id
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Ops. After reading nfs code, we also find out that nfs_opendir()
-always allocates ctx obj (for private_data), unlike other fs allocate
-private_data right before seeking dentries.
+When testing pnfs in virtual linux based on VirtualBox,
+blkmapd gets dev_root->len == 0, which causes it Segmentation fault.
 
-Sorry for the false alarm.
+Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+---
+ utils/blkmapd/device-inq.c | 10 +++++++---
+ 1 file changed, 7 insertions(+), 3 deletions(-)
 
-Taesoo
+diff --git a/utils/blkmapd/device-inq.c b/utils/blkmapd/device-inq.c
+index eabc70c..c5bf71f 100644
+--- a/utils/blkmapd/device-inq.c
++++ b/utils/blkmapd/device-inq.c
+@@ -179,6 +179,7 @@ struct bl_serial *bldev_read_serial(int fd, const char *filename)
+ 	char *buffer;
+ 	struct bl_dev_id *dev_root, *dev_id;
+ 	unsigned int pos, len, current_id = 0;
++	size_t devid_len = sizeof(struct bl_dev_id) - sizeof(unsigned char);
+ 
+ 	status = bldev_inquire_pages(fd, 0x83, &buffer);
+ 	if (status)
+@@ -189,7 +190,11 @@ struct bl_serial *bldev_read_serial(int fd, const char *filename)
+ 	pos = 0;
+ 	current_id = 0;
+ 	len = dev_root->len;
+-	while (pos < (len - sizeof(struct bl_dev_id) + sizeof(unsigned char))) {
++
++	if (len < devid_len)
++		goto out;
++
++	while (pos < (len - devid_len)) {
+ 		dev_id = (struct bl_dev_id *)&(dev_root->data[pos]);
+ 		if ((dev_id->ids & 0xf) < current_id)
+ 			continue;
+@@ -221,8 +226,7 @@ struct bl_serial *bldev_read_serial(int fd, const char *filename)
+ 		}
+ 		if (current_id == 3)
+ 			break;
+-		pos += (dev_id->len + sizeof(struct bl_dev_id) -
+-			sizeof(unsigned char));
++		pos += (dev_id->len + devid_len);
+ 	}
+  out:
+ 	if (!serial_out)
+-- 
+2.3.3
 
-On 03/21/15 at 11:01am, Christoph Hellwig wrote:
-> On Sat, Mar 21, 2015 at 12:21:18AM -0400, Taesoo Kim wrote:
-> > From: Byoungyoung Lee <lifeasageek@gmail.com>
-> > 
-> > When filp->private_data is NULL, put_nfs_open_dir_context()
-> > deferences its pointer (fi->list, fi->cred), similar to what
-> > other file systems handle '.release' api (9p, cifs, btrfs, 
-> > ext4, ocfs2).
-> 
-> Why woud filp->private_data ever be NULL here?
