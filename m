@@ -1,64 +1,72 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pd0-f173.google.com ([209.85.192.173]:33173 "EHLO
-	mail-pd0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751685AbbCVNXJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 22 Mar 2015 09:23:09 -0400
-Received: by pdnc3 with SMTP id c3so158875777pdn.0
-        for <linux-nfs@vger.kernel.org>; Sun, 22 Mar 2015 06:23:09 -0700 (PDT)
-Message-ID: <550EC233.9090908@gmail.com>
-Date: Sun, 22 Mar 2015 21:22:59 +0800
+Received: from mail-pa0-f49.google.com ([209.85.220.49]:35275 "EHLO
+	mail-pa0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751768AbbCVOQu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 22 Mar 2015 10:16:50 -0400
+Received: by pagj4 with SMTP id j4so71746989pag.2
+        for <linux-nfs@vger.kernel.org>; Sun, 22 Mar 2015 07:16:50 -0700 (PDT)
+Message-ID: <550ECEC8.5040406@gmail.com>
+Date: Sun, 22 Mar 2015 22:16:40 +0800
 From: Kinglong Mee <kinglongmee@gmail.com>
 MIME-Version: 1.0
-To: Steve Dickson <SteveD@redhat.com>
-CC: rees@umich.edu, Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: [PATCH] blkmapd: Make sure device root contains valid device id
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Christoph Hellwig <hch@lst.de>
+Subject: [PATCH] NFSD: Printk blocklayout length and offset as format 0x%llx
 Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When testing pnfs in virtual linux based on VirtualBox,
-blkmapd gets dev_root->len == 0, which causes it Segmentation fault.
+When testing pnfs with nfsd_debug on, nfsd print a negative number
+of layout length and foff in nfsd4_block_proc_layoutget as, 
+"GET: -xxxx:-xxx 2"
 
 Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
 ---
- utils/blkmapd/device-inq.c | 10 +++++++---
- 1 file changed, 7 insertions(+), 3 deletions(-)
+ fs/nfsd/blocklayout.c    | 2 +-
+ fs/nfsd/blocklayoutxdr.c | 6 +++---
+ 2 files changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/utils/blkmapd/device-inq.c b/utils/blkmapd/device-inq.c
-index eabc70c..c5bf71f 100644
---- a/utils/blkmapd/device-inq.c
-+++ b/utils/blkmapd/device-inq.c
-@@ -179,6 +179,7 @@ struct bl_serial *bldev_read_serial(int fd, const char *filename)
- 	char *buffer;
- 	struct bl_dev_id *dev_root, *dev_id;
- 	unsigned int pos, len, current_id = 0;
-+	size_t devid_len = sizeof(struct bl_dev_id) - sizeof(unsigned char);
+diff --git a/fs/nfsd/blocklayout.c b/fs/nfsd/blocklayout.c
+index cdbc78c..03d647b 100644
+--- a/fs/nfsd/blocklayout.c
++++ b/fs/nfsd/blocklayout.c
+@@ -137,7 +137,7 @@ nfsd4_block_proc_layoutget(struct inode *inode, const struct svc_fh *fhp,
+ 	seg->offset = iomap.offset;
+ 	seg->length = iomap.length;
  
- 	status = bldev_inquire_pages(fd, 0x83, &buffer);
- 	if (status)
-@@ -189,7 +190,11 @@ struct bl_serial *bldev_read_serial(int fd, const char *filename)
- 	pos = 0;
- 	current_id = 0;
- 	len = dev_root->len;
--	while (pos < (len - sizeof(struct bl_dev_id) + sizeof(unsigned char))) {
-+
-+	if (len < devid_len)
-+		goto out;
-+
-+	while (pos < (len - devid_len)) {
- 		dev_id = (struct bl_dev_id *)&(dev_root->data[pos]);
- 		if ((dev_id->ids & 0xf) < current_id)
- 			continue;
-@@ -221,8 +226,7 @@ struct bl_serial *bldev_read_serial(int fd, const char *filename)
+-	dprintk("GET: %lld:%lld %d\n", bex->foff, bex->len, bex->es);
++	dprintk("GET: 0x%llx:0x%llx %d\n", bex->foff, bex->len, bex->es);
+ 	return 0;
+ 
+ out_error:
+diff --git a/fs/nfsd/blocklayoutxdr.c b/fs/nfsd/blocklayoutxdr.c
+index 9da89fd..9aa2796 100644
+--- a/fs/nfsd/blocklayoutxdr.c
++++ b/fs/nfsd/blocklayoutxdr.c
+@@ -122,19 +122,19 @@ nfsd4_block_decode_layoutupdate(__be32 *p, u32 len, struct iomap **iomapp,
+ 
+ 		p = xdr_decode_hyper(p, &bex.foff);
+ 		if (bex.foff & (block_size - 1)) {
+-			dprintk("%s: unaligned offset %lld\n",
++			dprintk("%s: unaligned offset 0x%llx\n",
+ 				__func__, bex.foff);
+ 			goto fail;
  		}
- 		if (current_id == 3)
- 			break;
--		pos += (dev_id->len + sizeof(struct bl_dev_id) -
--			sizeof(unsigned char));
-+		pos += (dev_id->len + devid_len);
- 	}
-  out:
- 	if (!serial_out)
+ 		p = xdr_decode_hyper(p, &bex.len);
+ 		if (bex.len & (block_size - 1)) {
+-			dprintk("%s: unaligned length %lld\n",
++			dprintk("%s: unaligned length 0x%llx\n",
+ 				__func__, bex.foff);
+ 			goto fail;
+ 		}
+ 		p = xdr_decode_hyper(p, &bex.soff);
+ 		if (bex.soff & (block_size - 1)) {
+-			dprintk("%s: unaligned disk offset %lld\n",
++			dprintk("%s: unaligned disk offset 0x%llx\n",
+ 				__func__, bex.soff);
+ 			goto fail;
+ 		}
 -- 
 2.3.3
 
