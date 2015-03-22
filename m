@@ -1,114 +1,44 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yh0-f41.google.com ([209.85.213.41]:34035 "EHLO
-	mail-yh0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751742AbbCVTOw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 22 Mar 2015 15:14:52 -0400
-Received: by yhch68 with SMTP id h68so59837041yhc.1
-        for <linux-nfs@vger.kernel.org>; Sun, 22 Mar 2015 12:14:51 -0700 (PDT)
+Return-Path: <trond.myklebust@primarydata.com>
 MIME-Version: 1.0
-In-Reply-To: <550BDAE0.2070409@gmail.com>
-References: <550BDAE0.2070409@gmail.com>
-Date: Sun, 22 Mar 2015 15:14:51 -0400
-Message-ID: <CAHQdGtSJ8GtC5DL2wh5BjyBBEEV_53pjvX-_CD4vCGkzHWY=2g@mail.gmail.com>
-Subject: Re: [PATCH] NFS4: Retry destroy session when getting -NFS4ERR_DELAY
+In-Reply-To: <alpine.OSX.2.19.9992.1503190633310.947@planck.local>
+References: <alpine.OSX.2.19.9992.1503190633310.947@planck.local>
+Date: Sun, 22 Mar 2015 15:20:05 -0400
+Message-ID: <CAHQdGtSRUdNmx8dhDJ0gPbBuukX4ggUQJ638NMMqjN32Y3uXJg@mail.gmail.com>
+Subject: Re: Recovery after BAD_SEQID
 From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Kinglong Mee <kinglongmee@gmail.com>
+To: Benjamin Coddington <bcodding@redhat.com>
 Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
 Content-Type: text/plain; charset=UTF-8
-Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Mar 20, 2015 at 4:31 AM, Kinglong Mee <kinglongmee@gmail.com> wrote:
-> When umounting a client, it cost near ten seconds.
-> Dump the request, got
->    client                     server
-> DELEGRETURN              ---->
-> DESTROY_SESSION          ---->
->           NFS4ERR_DELAY  <----  DESTROY_SESSION reply
->                 NFS4_OK  <----  DELEGRETURN reply
-> DESTROY_CLIENTID          ---->
->   NFS4ERR_CLIENTID_BUSY  <----  DESTROY_CLIENTID reply
-> DESTROY_CLIENTID          ---->
->   NFS4ERR_CLIENTID_BUSY  <----  DESTROY_CLIENTID reply
->          ... ....                  ... ...
-> There are ten DESTROY_CLIENTID requests.
-> This patch retry DESTROY_SESSION when getting NFS4ERR_DELAY,
-> try the best to destroy the session as destroy clientid.
+On Thu, Mar 19, 2015 at 6:48 AM, Benjamin Coddington
+<bcodding@redhat.com> wrote:
+> I wrote yesterday about a RHEL6 bug, but I'd gotten some details wrong about
+> the problem, so I'm starting new thread.
 >
-> With this patch, only cost more than 1 seconds, as,
->    client                     server
-> DELEGRETURN          ---->
-> DESTROY_SESSION      ---->
->      NFS4ERR_DELAY  <----  DESTROY_SESSION reply
->            NFS4_OK  <----  DELEGRETURN reply
-> DESTROY_SESSION      ---->
->            NFS4_OK  <----  DESTROY_SESSION reply
-> DESTROY_CLIENTID     ---->
->            NFS4_OK  <----  DESTROY_CLIENTID reply
+> It looks like getting BAD_SEQID back from an OPEN operation drops the state_owner
+> which means that the state machine can't find or recover any other objects
+> for that state_owner.  That can get the client into unrecoverable loops.  I
+> can produce one of them with:
 >
-> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
-> ---
->  fs/nfs/nfs4proc.c | 26 +++++++++++++++++++++-----
->  1 file changed, 21 insertions(+), 5 deletions(-)
+> 1) OPEN file1, OPEN file2
+> 2) break the network for longer than the lease period
+> 3) during recovery, have the server return BAD_SEQID for one of the OPENS
+> 4) break the network again for longer than the lease period
+> 5) WRITE to the file that recovered properly in #3
 >
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index 627f37c..2631dc2 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -7320,7 +7320,7 @@ out:
->   * Issue the over-the-wire RPC DESTROY_SESSION.
->   * The caller must serialize access to this routine.
->   */
-> -int nfs4_proc_destroy_session(struct nfs4_session *session,
-> +static int _nfs4_proc_destroy_session(struct nfs4_session *session,
->                 struct rpc_cred *cred)
->  {
->         struct rpc_message msg = {
-> @@ -7332,10 +7332,6 @@ int nfs4_proc_destroy_session(struct nfs4_session *session,
+> This gets stuck in WRITE,NFS4ERR_EXPIRED.
 >
->         dprintk("--> nfs4_proc_destroy_session\n");
+> It looks like some cleanup is needed if we have to drop the whole
+> state_owner.  Alternatively, does it make sense to just drop the objects in
+> that sequence?
 >
-> -       /* session is still being setup */
-> -       if (!test_and_clear_bit(NFS4_SESSION_ESTABLISHED, &session->session_state))
-> -               return 0;
-> -
->         status = rpc_call_sync(session->clp->cl_rpcclient, &msg, RPC_TASK_TIMEOUT);
->         trace_nfs4_destroy_session(session->clp, status);
->
-> @@ -7347,6 +7343,26 @@ int nfs4_proc_destroy_session(struct nfs4_session *session,
->         return status;
->  }
->
-> +int nfs4_proc_destroy_session(struct nfs4_session *session,
-> +               struct rpc_cred *cred)
-> +{
-> +       unsigned int loop;
-> +       int ret;
-> +
-> +       /* session is still being setup */
-> +       if (!test_and_clear_bit(NFS4_SESSION_ESTABLISHED, &session->session_state))
-> +               return 0;
-> +
-> +       for (loop = NFS4_MAX_LOOP_ON_RECOVER; loop != 0; loop--) {
-> +               ret = _nfs4_proc_destroy_session(session, cred);
-> +               if (ret != -NFS4ERR_DELAY)
-> +                       break;
-> +               ssleep(1);
-> +       }
-> +
-> +       return ret;
-> +}
-> +
->  /*
->   * Renew the cl_session lease.
->   */
-> --
-> 2.3.3
 >
 
-I don't understand. All you've done is paper over the problem AFAICS.
-How is that useful?
-
+Ummm... Why are you seeing BAD_SEQID in the first place? That specific
+error means that the client and server disagree on the sequencing of
+the OPENs, which means there is a bug either on the client or on the
+server.
 
 -- 
 Trond Myklebust
