@@ -1,94 +1,180 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f171.google.com ([209.85.213.171]:37165 "EHLO
-	mail-ig0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752120AbbCWUQE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Mar 2015 16:16:04 -0400
-Received: by igcqo1 with SMTP id qo1so49323418igc.0
-        for <linux-nfs@vger.kernel.org>; Mon, 23 Mar 2015 13:16:04 -0700 (PDT)
-Message-ID: <1427141761.16955.7.camel@primarydata.com>
-Subject: Re: client oops in xdr_reserve_space in 4.0.0-rc4
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Jeff Layton <jeff.layton@primarydata.com>
+Received: from mail-qg0-f52.google.com ([209.85.192.52]:35781 "EHLO
+	mail-qg0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752221AbbCWUT5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Mar 2015 16:19:57 -0400
+Received: by qgf74 with SMTP id 74so37487969qgf.2
+        for <linux-nfs@vger.kernel.org>; Mon, 23 Mar 2015 13:19:56 -0700 (PDT)
+Date: Mon, 23 Mar 2015 16:19:48 -0400
+From: Jeff Layton <jeff.layton@primarydata.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
 Cc: linux-nfs@vger.kernel.org
-Date: Mon, 23 Mar 2015 16:16:01 -0400
-In-Reply-To: <20150322112749.2e2286d3@tlielax.poochiereds.net>
+Subject: Re: client oops in xdr_reserve_space in 4.0.0-rc4
+Message-ID: <20150323161948.7c67feb2@tlielax.poochiereds.net>
+In-Reply-To: <1427141761.16955.7.camel@primarydata.com>
 References: <20150322112749.2e2286d3@tlielax.poochiereds.net>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+	<1427141761.16955.7.camel@primarydata.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Jeff,
+On Mon, 23 Mar 2015 16:16:01 -0400
+Trond Myklebust <trond.myklebust@primarydata.com> wrote:
 
-On Sun, 2015-03-22 at 11:27 -0400, Jeff Layton wrote:
-> While trying to track down the use-after-free in nfsd in v4.0-rc
-> kernels, I hit this oops on the client. At the time, I had just
-> rebooted the server while xfstests generic/011 was running against it.
-> It oopsed just after the server came back up.
+> Hi Jeff,
 > 
-> Kernel is a stock fedora kernel. Looks like xdr_reserve_space failed,
-> which triggered a BUG:
+> On Sun, 2015-03-22 at 11:27 -0400, Jeff Layton wrote:
+> > While trying to track down the use-after-free in nfsd in v4.0-rc
+> > kernels, I hit this oops on the client. At the time, I had just
+> > rebooted the server while xfstests generic/011 was running against it.
+> > It oopsed just after the server came back up.
+> > 
+> > Kernel is a stock fedora kernel. Looks like xdr_reserve_space failed,
+> > which triggered a BUG:
+> > 
+> > [ 9410.321698] run fstests generic/011 at 2015-03-22 11:13:50
+> > [ 9737.567073] nfs: server rawhide not responding, still trying
+> > [ 9839.007187] ------------[ cut here ]------------
+> > [ 9839.007923] kernel BUG at fs/nfs/nfs4xdr.c:910!
+> > [ 9839.008069] invalid opcode: 0000 [#1] SMP 
+> > [ 9839.008069] Modules linked in: blocklayoutdriver rpcsec_gss_krb5 nfsv4 dns_resolver nfs fscache snd_hda_codec_generic snd_hda_intel snd_hda_controller snd_hda_codec snd_hwdep snd_seq snd_seq_device snd_pcm joydev iosf_mbi crct10dif_pclmul snd_timer crc32_pclmul crc32c_intel ghash_clmulni_intel snd soundcore ppdev pvpanic parport_pc i2c_piix4 serio_raw virtio_balloon parport acpi_cpufreq nfsd nfs_acl lockd grace auth_rpcgss sunrpc qxl drm_kms_helper virtio_net virtio_console virtio_blk ttm drm virtio_pci virtio_ring virtio ata_generic pata_acpi
+> > [ 9839.008069] CPU: 0 PID: 308 Comm: kworker/0:1H Not tainted 4.0.0-0.rc4.git1.3.fc23.x86_64 #1
+> > [ 9839.008069] Hardware name: Bochs Bochs, BIOS Bochs 01/01/2011
+> > [ 9839.008069] Workqueue: rpciod rpc_async_schedule [sunrpc]
+> > [ 9839.008069] task: ffff8800d8b4d8e0 ti: ffff880036678000 task.ti: ffff880036678000
+> > [ 9839.008069] RIP: 0010:[<ffffffffa0339cc9>]  [<ffffffffa0339cc9>] reserve_space.part.73+0x9/0x10 [nfsv4]
+> > [ 9839.008069] RSP: 0018:ffff88003667ba58  EFLAGS: 00010246
+> > [ 9839.008069] RAX: 0000000000000000 RBX: 000000001fc15e18 RCX: ffff8800c0193800
+> > [ 9839.008069] RDX: ffff8800e4ae3f24 RSI: 000000001fc15e2c RDI: ffff88003667bcd0
+> > [ 9839.008069] RBP: ffff88003667ba58 R08: ffff8800d9173008 R09: 0000000000000003
+> > [ 9839.008069] R10: ffff88003667bcd0 R11: 000000000000000c R12: 0000000000010000
+> > [ 9839.008069] R13: ffff8800d9173350 R14: 0000000000000000 R15: ffff8800c0067b98
+> > [ 9839.008069] FS:  0000000000000000(0000) GS:ffff88011fc00000(0000) knlGS:0000000000000000
+> > [ 9839.008069] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+> > [ 9839.008069] CR2: 00007f988c9c8bb0 CR3: 00000000d99b6000 CR4: 00000000000407f0
+> > [ 9839.008069] Stack:
+> > [ 9839.008069]  ffff88003667bbc8 ffffffffa03412c5 00000000c6c55680 ffff880000000003
+> > [ 9839.008069]  0000000000000088 00000010c6c55680 0001000000000002 ffffffff816e87e9
+> > [ 9839.008069]  0000000000000000 00000000477290e2 ffff88003667bab8 ffffffff81327ba3
+> > [ 9839.008069] Call Trace:
+> > [ 9839.008069]  [<ffffffffa03412c5>] encode_attrs+0x435/0x530 [nfsv4]
+> > [ 9839.008069]  [<ffffffff816e87e9>] ? inet_sendmsg+0x69/0xb0
+> > [ 9839.008069]  [<ffffffff81327ba3>] ? selinux_socket_sendmsg+0x23/0x30
+> > [ 9839.008069]  [<ffffffff8164c1df>] ? do_sock_sendmsg+0x9f/0xc0
+> > [ 9839.008069]  [<ffffffff8164c278>] ? kernel_sendmsg+0x58/0x70
+> > [ 9839.008069]  [<ffffffffa011acc0>] ? xdr_reserve_space+0x20/0x170 [sunrpc]
+> > [ 9839.008069]  [<ffffffffa011acc0>] ? xdr_reserve_space+0x20/0x170 [sunrpc]
+> > [ 9839.008069]  [<ffffffffa0341b40>] ? nfs4_xdr_enc_open_noattr+0x130/0x130 [nfsv4]
+> > [ 9839.008069]  [<ffffffffa03419a5>] encode_open+0x2d5/0x340 [nfsv4]
+> > [ 9839.008069]  [<ffffffffa0341b40>] ? nfs4_xdr_enc_open_noattr+0x130/0x130 [nfsv4]
+> > [ 9839.008069]  [<ffffffffa011ab89>] ? xdr_encode_opaque+0x19/0x20 [sunrpc]
+> > [ 9839.008069]  [<ffffffffa0339cfb>] ? encode_string+0x2b/0x40 [nfsv4]
+> > [ 9839.008069]  [<ffffffffa0341bf3>] nfs4_xdr_enc_open+0xb3/0x140 [nfsv4]
+> > [ 9839.008069]  [<ffffffffa0110a4c>] rpcauth_wrap_req+0xac/0xf0 [sunrpc]
+> > [ 9839.008069]  [<ffffffffa01017db>] call_transmit+0x18b/0x2d0 [sunrpc]
+> > [ 9839.008069]  [<ffffffffa0101650>] ? call_decode+0x860/0x860 [sunrpc]
+> > [ 9839.008069]  [<ffffffffa0101650>] ? call_decode+0x860/0x860 [sunrpc]
+> > [ 9839.008069]  [<ffffffffa010caa0>] __rpc_execute+0x90/0x460 [sunrpc]
+> > [ 9839.008069]  [<ffffffffa010ce85>] rpc_async_schedule+0x15/0x20 [sunrpc]
+> > [ 9839.008069]  [<ffffffff810b452b>] process_one_work+0x1bb/0x410
+> > [ 9839.008069]  [<ffffffff810b47d3>] worker_thread+0x53/0x470
+> > [ 9839.008069]  [<ffffffff810b4780>] ? process_one_work+0x410/0x410
+> > [ 9839.008069]  [<ffffffff810b4780>] ? process_one_work+0x410/0x410
+> > [ 9839.008069]  [<ffffffff810ba7b8>] kthread+0xd8/0xf0
+> > [ 9839.008069]  [<ffffffff810ba6e0>] ? kthread_worker_fn+0x180/0x180
+> > [ 9839.008069]  [<ffffffff81786418>] ret_from_fork+0x58/0x90
+> > [ 9839.008069]  [<ffffffff810ba6e0>] ? kthread_worker_fn+0x180/0x180
+> > [ 9839.008069] Code: 00 00 48 c7 c7 21 fa 37 a0 e8 94 1c d6 e0 c6 05 d2 17 05 00 01 8b 03 eb d7 66 0f 1f 84 00 00 00 00 00 66 66 66 66 90 55 48 89 e5 <0f> 0b 0f 1f 44 00 00 66 66 66 66 90 55 48 89 e5 41 54 53 89 f3 
+> > [ 9839.008069] RIP  [<ffffffffa0339cc9>] reserve_space.part.73+0x9/0x10 [nfsv4]
+> > [ 9839.008069]  RSP <ffff88003667ba58>
+> > [ 9839.071114] ---[ end trace cc14c03adb522e94 ]---
+> > 
 > 
-> [ 9410.321698] run fstests generic/011 at 2015-03-22 11:13:50
-> [ 9737.567073] nfs: server rawhide not responding, still trying
-> [ 9839.007187] ------------[ cut here ]------------
-> [ 9839.007923] kernel BUG at fs/nfs/nfs4xdr.c:910!
-> [ 9839.008069] invalid opcode: 0000 [#1] SMP 
-> [ 9839.008069] Modules linked in: blocklayoutdriver rpcsec_gss_krb5 nfsv4 dns_resolver nfs fscache snd_hda_codec_generic snd_hda_intel snd_hda_controller snd_hda_codec snd_hwdep snd_seq snd_seq_device snd_pcm joydev iosf_mbi crct10dif_pclmul snd_timer crc32_pclmul crc32c_intel ghash_clmulni_intel snd soundcore ppdev pvpanic parport_pc i2c_piix4 serio_raw virtio_balloon parport acpi_cpufreq nfsd nfs_acl lockd grace auth_rpcgss sunrpc qxl drm_kms_helper virtio_net virtio_console virtio_blk ttm drm virtio_pci virtio_ring virtio ata_generic pata_acpi
-> [ 9839.008069] CPU: 0 PID: 308 Comm: kworker/0:1H Not tainted 4.0.0-0.rc4.git1.3.fc23.x86_64 #1
-> [ 9839.008069] Hardware name: Bochs Bochs, BIOS Bochs 01/01/2011
-> [ 9839.008069] Workqueue: rpciod rpc_async_schedule [sunrpc]
-> [ 9839.008069] task: ffff8800d8b4d8e0 ti: ffff880036678000 task.ti: ffff880036678000
-> [ 9839.008069] RIP: 0010:[<ffffffffa0339cc9>]  [<ffffffffa0339cc9>] reserve_space.part.73+0x9/0x10 [nfsv4]
-> [ 9839.008069] RSP: 0018:ffff88003667ba58  EFLAGS: 00010246
-> [ 9839.008069] RAX: 0000000000000000 RBX: 000000001fc15e18 RCX: ffff8800c0193800
-> [ 9839.008069] RDX: ffff8800e4ae3f24 RSI: 000000001fc15e2c RDI: ffff88003667bcd0
-> [ 9839.008069] RBP: ffff88003667ba58 R08: ffff8800d9173008 R09: 0000000000000003
-> [ 9839.008069] R10: ffff88003667bcd0 R11: 000000000000000c R12: 0000000000010000
-> [ 9839.008069] R13: ffff8800d9173350 R14: 0000000000000000 R15: ffff8800c0067b98
-> [ 9839.008069] FS:  0000000000000000(0000) GS:ffff88011fc00000(0000) knlGS:0000000000000000
-> [ 9839.008069] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-> [ 9839.008069] CR2: 00007f988c9c8bb0 CR3: 00000000d99b6000 CR4: 00000000000407f0
-> [ 9839.008069] Stack:
-> [ 9839.008069]  ffff88003667bbc8 ffffffffa03412c5 00000000c6c55680 ffff880000000003
-> [ 9839.008069]  0000000000000088 00000010c6c55680 0001000000000002 ffffffff816e87e9
-> [ 9839.008069]  0000000000000000 00000000477290e2 ffff88003667bab8 ffffffff81327ba3
-> [ 9839.008069] Call Trace:
-> [ 9839.008069]  [<ffffffffa03412c5>] encode_attrs+0x435/0x530 [nfsv4]
-> [ 9839.008069]  [<ffffffff816e87e9>] ? inet_sendmsg+0x69/0xb0
-> [ 9839.008069]  [<ffffffff81327ba3>] ? selinux_socket_sendmsg+0x23/0x30
-> [ 9839.008069]  [<ffffffff8164c1df>] ? do_sock_sendmsg+0x9f/0xc0
-> [ 9839.008069]  [<ffffffff8164c278>] ? kernel_sendmsg+0x58/0x70
-> [ 9839.008069]  [<ffffffffa011acc0>] ? xdr_reserve_space+0x20/0x170 [sunrpc]
-> [ 9839.008069]  [<ffffffffa011acc0>] ? xdr_reserve_space+0x20/0x170 [sunrpc]
-> [ 9839.008069]  [<ffffffffa0341b40>] ? nfs4_xdr_enc_open_noattr+0x130/0x130 [nfsv4]
-> [ 9839.008069]  [<ffffffffa03419a5>] encode_open+0x2d5/0x340 [nfsv4]
-> [ 9839.008069]  [<ffffffffa0341b40>] ? nfs4_xdr_enc_open_noattr+0x130/0x130 [nfsv4]
-> [ 9839.008069]  [<ffffffffa011ab89>] ? xdr_encode_opaque+0x19/0x20 [sunrpc]
-> [ 9839.008069]  [<ffffffffa0339cfb>] ? encode_string+0x2b/0x40 [nfsv4]
-> [ 9839.008069]  [<ffffffffa0341bf3>] nfs4_xdr_enc_open+0xb3/0x140 [nfsv4]
-> [ 9839.008069]  [<ffffffffa0110a4c>] rpcauth_wrap_req+0xac/0xf0 [sunrpc]
-> [ 9839.008069]  [<ffffffffa01017db>] call_transmit+0x18b/0x2d0 [sunrpc]
-> [ 9839.008069]  [<ffffffffa0101650>] ? call_decode+0x860/0x860 [sunrpc]
-> [ 9839.008069]  [<ffffffffa0101650>] ? call_decode+0x860/0x860 [sunrpc]
-> [ 9839.008069]  [<ffffffffa010caa0>] __rpc_execute+0x90/0x460 [sunrpc]
-> [ 9839.008069]  [<ffffffffa010ce85>] rpc_async_schedule+0x15/0x20 [sunrpc]
-> [ 9839.008069]  [<ffffffff810b452b>] process_one_work+0x1bb/0x410
-> [ 9839.008069]  [<ffffffff810b47d3>] worker_thread+0x53/0x470
-> [ 9839.008069]  [<ffffffff810b4780>] ? process_one_work+0x410/0x410
-> [ 9839.008069]  [<ffffffff810b4780>] ? process_one_work+0x410/0x410
-> [ 9839.008069]  [<ffffffff810ba7b8>] kthread+0xd8/0xf0
-> [ 9839.008069]  [<ffffffff810ba6e0>] ? kthread_worker_fn+0x180/0x180
-> [ 9839.008069]  [<ffffffff81786418>] ret_from_fork+0x58/0x90
-> [ 9839.008069]  [<ffffffff810ba6e0>] ? kthread_worker_fn+0x180/0x180
-> [ 9839.008069] Code: 00 00 48 c7 c7 21 fa 37 a0 e8 94 1c d6 e0 c6 05 d2 17 05 00 01 8b 03 eb d7 66 0f 1f 84 00 00 00 00 00 66 66 66 66 90 55 48 89 e5 <0f> 0b 0f 1f 44 00 00 66 66 66 66 90 55 48 89 e5 41 54 53 89 f3 
-> [ 9839.008069] RIP  [<ffffffffa0339cc9>] reserve_space.part.73+0x9/0x10 [nfsv4]
-> [ 9839.008069]  RSP <ffff88003667ba58>
-> [ 9839.071114] ---[ end trace cc14c03adb522e94 ]---
+> Could you please check if the following fixes it for you?
 > 
+> Cheers
+>   Trond
 
-Could you please check if the following fixes it for you?
+Sure, I'll test it when I get some time. Unfortunately, I don't have a
+way to reproduce this reliably. I just had it pop up a couple of times,
+mostly when the server crashed and came back up.
 
-Cheers
-  Trond
-8<-------------------------------------------------------
+The fix looks plausible though...
+
+-- Jeff
+
+> 8<-------------------------------------------------------
+> From 03e4412b0168c1f4c089ad564c0e3cf91b297596 Mon Sep 17 00:00:00 2001
+> From: Trond Myklebust <trond.myklebust@primarydata.com>
+> Date: Mon, 23 Mar 2015 16:10:00 -0400
+> Subject: [PATCH] SUNRPC: Fix a regression when reconnecting
+> 
+> If the task needs to give up the socket lock in order to allow a
+> reconnect to occur, then it must also clear the 'rq_bytes_sent' field
+> so that when it retransmits, it knows to start from the beginning.
+> 
+> Fixes: 718ba5b87343 ("SUNRPC: Add helpers to prevent socket create from racing")
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> ---
+>  net/sunrpc/xprt.c | 22 ++++++++++++----------
+>  1 file changed, 12 insertions(+), 10 deletions(-)
+> 
+> diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+> index e3015aede0d9..ed4aa786c240 100644
+> --- a/net/sunrpc/xprt.c
+> +++ b/net/sunrpc/xprt.c
+> @@ -326,6 +326,15 @@ out_unlock:
+>  	xprt_clear_locked(xprt);
+>  }
+>  
+> +static void xprt_task_clear_bytes_sent(struct rpc_task *task)
+> +{
+> +	if (task != NULL) {
+> +		struct rpc_rqst *req = task->tk_rqstp;
+> +		if (req != NULL)
+> +			req->rq_bytes_sent = 0;
+> +	}
+> +}
+> +
+>  /**
+>   * xprt_release_xprt - allow other requests to use a transport
+>   * @xprt: transport with other tasks potentially waiting
+> @@ -336,11 +345,7 @@ out_unlock:
+>  void xprt_release_xprt(struct rpc_xprt *xprt, struct rpc_task *task)
+>  {
+>  	if (xprt->snd_task == task) {
+> -		if (task != NULL) {
+> -			struct rpc_rqst *req = task->tk_rqstp;
+> -			if (req != NULL)
+> -				req->rq_bytes_sent = 0;
+> -		}
+> +		xprt_task_clear_bytes_sent(task);
+>  		xprt_clear_locked(xprt);
+>  		__xprt_lock_write_next(xprt);
+>  	}
+> @@ -358,11 +363,7 @@ EXPORT_SYMBOL_GPL(xprt_release_xprt);
+>  void xprt_release_xprt_cong(struct rpc_xprt *xprt, struct rpc_task *task)
+>  {
+>  	if (xprt->snd_task == task) {
+> -		if (task != NULL) {
+> -			struct rpc_rqst *req = task->tk_rqstp;
+> -			if (req != NULL)
+> -				req->rq_bytes_sent = 0;
+> -		}
+> +		xprt_task_clear_bytes_sent(task);
+>  		xprt_clear_locked(xprt);
+>  		__xprt_lock_write_next_cong(xprt);
+>  	}
+> @@ -700,6 +701,7 @@ bool xprt_lock_connect(struct rpc_xprt *xprt,
+>  		goto out;
+>  	if (xprt->snd_task != task)
+>  		goto out;
+> +	xprt_task_clear_bytes_sent(task);
+>  	xprt->snd_task = cookie;
+>  	ret = true;
+>  out:
+
+
+-- 
+Jeff Layton <jeff.layton@primarydata.com>
