@@ -1,147 +1,95 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yk0-f177.google.com ([209.85.160.177]:35739 "EHLO
-	mail-yk0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752120AbbCWQJ0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Mar 2015 12:09:26 -0400
-Received: by ykfs63 with SMTP id s63so74930131ykf.2
-        for <linux-nfs@vger.kernel.org>; Mon, 23 Mar 2015 09:09:25 -0700 (PDT)
+Received: from mx1.redhat.com ([209.132.183.28]:56566 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753065AbbCWQ4m convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Mar 2015 12:56:42 -0400
+From: David Howells <dhowells@redhat.com>
+To: torvalds@linux-foundation.org
+cc: dhowells@redhat.com, linux-cachefs@redhat.com,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: [GIT PULL] FS-Cache: Fixes for dead objects handling and operation cancellation
 MIME-Version: 1.0
-In-Reply-To: <1427119769.16955.6.camel@primarydata.com>
-References: <550BDAE0.2070409@gmail.com>
-	<CAHQdGtSJ8GtC5DL2wh5BjyBBEEV_53pjvX-_CD4vCGkzHWY=2g@mail.gmail.com>
-	<550F6964.4030005@gmail.com>
-	<1427119769.16955.6.camel@primarydata.com>
-Date: Mon, 23 Mar 2015 12:09:25 -0400
-Message-ID: <CAHQdGtTn5me9ZBfv9D8qZOmp6MFc29ppn4DqD8hOuMqRgRY8Rg@mail.gmail.com>
-Subject: Re: [PATCH] NFS4: Retry destroy session when getting -NFS4ERR_DELAY
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset="us-ascii"
+Date: Mon, 23 Mar 2015 16:56:37 +0000
+Message-ID: <16262.1427129797@warthog.procyon.org.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Mar 23, 2015 at 10:09 AM, Trond Myklebust
-<trond.myklebust@primarydata.com> wrote:
-> 8<---------------------------------------------------------------
-> From 21fb62639ad69ecc5c443dba5b41ad2bd64c6e76 Mon Sep 17 00:00:00 2001
-> From: Trond Myklebust <trond.myklebust@primarydata.com>
-> Date: Mon, 23 Mar 2015 09:51:41 -0400
-> Subject: [PATCH] NFSv4: Ensure that we drain the session before shutting it
->  down
->
-> Kinglong Mee reports that the call to DESTROY_SESSION in NFSv4.1
-> are racing with the asynchronous DELEGRETURN calls that precede it.
-> This points to the root cause being that we're not waiting for the
-> session to drain before we destroy it.
->
-> This patch ensures that we do so for both NFSv4 and NFSv4.1.
->
-> Reported-by: Kinglong Mee <kinglongmee@gmail.com>
-> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-> ---
->  fs/nfs/nfs4_fs.h    |  3 +++
->  fs/nfs/nfs4client.c |  7 ++-----
->  fs/nfs/nfs4state.c  | 18 ++++++++++++++++++
->  3 files changed, 23 insertions(+), 5 deletions(-)
->
-> diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-> index fdef424b0cd3..594f53c3aee5 100644
-> --- a/fs/nfs/nfs4_fs.h
-> +++ b/fs/nfs/nfs4_fs.h
-> @@ -257,6 +257,8 @@ extern int nfs4_set_rw_stateid(nfs4_stateid *stateid,
->                 const struct nfs_lock_context *l_ctx,
->                 fmode_t fmode);
->
-> +extern void nfs40_shutdown_session(struct nfs_client *clp);
-> +
->  #if defined(CONFIG_NFS_V4_1)
->  static inline struct nfs4_session *nfs4_get_session(const struct nfs_server *server)
->  {
-> @@ -269,6 +271,7 @@ extern int nfs41_setup_sequence(struct nfs4_session *session,
->  extern int nfs41_sequence_done(struct rpc_task *, struct nfs4_sequence_res *);
->  extern int nfs4_proc_create_session(struct nfs_client *, struct rpc_cred *);
->  extern int nfs4_proc_destroy_session(struct nfs4_session *, struct rpc_cred *);
-> +extern void nfs41_shutdown_session(struct nfs_client *clp, struct nfs4_session *session);
->  extern int nfs4_proc_get_lease_time(struct nfs_client *clp,
->                 struct nfs_fsinfo *fsinfo);
->  extern int nfs4_proc_layoutcommit(struct nfs4_layoutcommit_data *data,
-> diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
-> index 86d6214ea022..bdabbf9b6322 100644
-> --- a/fs/nfs/nfs4client.c
-> +++ b/fs/nfs/nfs4client.c
-> @@ -160,7 +160,7 @@ void nfs41_shutdown_client(struct nfs_client *clp)
->  {
->         if (nfs4_has_session(clp)) {
->                 nfs4_shutdown_ds_clients(clp);
-> -               nfs4_destroy_session(clp->cl_session);
-> +               nfs41_shutdown_session(clp, clp->cl_session);
->                 nfs4_destroy_clientid(clp);
->         }
->
-> @@ -169,10 +169,7 @@ void nfs41_shutdown_client(struct nfs_client *clp)
->
->  void nfs40_shutdown_client(struct nfs_client *clp)
->  {
-> -       if (clp->cl_slot_tbl) {
-> -               nfs4_shutdown_slot_table(clp->cl_slot_tbl);
-> -               kfree(clp->cl_slot_tbl);
-> -       }
-> +       nfs40_shutdown_session(clp);
->  }
->
->  struct nfs_client *nfs4_alloc_client(const struct nfs_client_initdata *cl_init)
-> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-> index f95e3b58bbc3..54fa7e2bc3e3 100644
-> --- a/fs/nfs/nfs4state.c
-> +++ b/fs/nfs/nfs4state.c
-> @@ -2134,6 +2134,18 @@ out_unlock:
->         return status;
->  }
->
-> +void nfs40_shutdown_session(struct nfs_client *clp)
-> +{
-> +       struct nfs4_slot_table  *tbl = clp->cl_slot_tbl;
-> +
-> +       if (tbl) {
-> +               nfs4_drain_slot_tbl(tbl);
-> +               nfs4_shutdown_slot_table(tbl);
-> +               clp->cl_slot_tbl = NULL;
-> +               kfree(tbl);
-> +       }
-> +}
-> +
->  #ifdef CONFIG_NFS_V4_1
->  void nfs4_schedule_session_recovery(struct nfs4_session *session, int err)
->  {
-> @@ -2314,6 +2326,12 @@ static int nfs4_bind_conn_to_session(struct nfs_client *clp)
->         }
->         return 0;
->  }
-> +
-> +void nfs41_shutdown_session(struct nfs_client *clp, struct nfs4_session *session)
-> +{
-> +       nfs4_begin_drain_session(clp);
+Hi Linus,
 
-Argh. We can't quite do this, because we do want all outstanding RPC
-calls to complete, not just the ones that have already been allocated
-slots. Let me respin.
+Could you pull these FS-Cache fixes please?
 
-> +       nfs4_destroy_session(session);
-> +}
->  #else /* CONFIG_NFS_V4_1 */
->  static int nfs4_reset_session(struct nfs_client *clp) { return 0; }
->
-> --
-> 2.1.0
->
->
->
->
+The main thrust of the fixes are:
 
+ (1) Handle a race between operation submission on an object (eg. reading data
+     from that object) and the object transitioning to the dead state.  The
+     race shows up as an assertion at fs/cachefiles/interface.c:339 indicating
+     that the dead object still has operations queued against it.
 
+ (2) Permit in-progress operations to be cancelled under some circumstances,
+     otherwise we can unexpectedly see operations in progress on a killed
+     object.  This shows up as an assertion on fs/fscache/operation.c:432.
 
--- 
-Trond Myklebust
-Linux NFS client maintainer, PrimaryData
-trond.myklebust@primarydata.com
+ (3) Pass initialised ops through fscache_put_operation() rather than freeing
+     them directly.  This allows better cleanup handling.
+
+ (4) The cancellation method for an operation wasn't being called everwhere
+     that was necessary, leaving the operation in an unclean state.  This
+     shows up as an assertion at fs/fscache/page.c:261.
+
+To help find and monitor these the patches also added better accounting for
+operations and objects through /proc/fs/fscache/stats.  Are you okay with
+these being left intertwined with the patches?
+
+Also, do you want me to add these to the patches?
+
+	Reviewed-by: Steve Dickson <steved@redhat.com>
+	Acked-by: Jeff Layton <jeff.layton@primarydata.com>
+
+Thanks,
+David
+---
+The following changes since commit b2b89ebfc0f0287e20516a5443d93af309b800cf:
+
+  Merge tag 'locks-v3.20-2' of git://git.samba.org/jlayton/linux (2015-02-18 10:21:47 -0800)
+
+are available in the git repository at:
+
+  git://git.kernel.org/pub/scm/linux/kernel/git/dhowells/linux-fs.git tags/fscache-fixes-20150226
+
+for you to fetch changes up to bab9a8e45f7b5e917a8e976c37b23b46774e3642:
+
+  FS-Cache: Retain the netfs context in the retrieval op earlier (2015-02-26 13:54:28 +0000)
+
+----------------------------------------------------------------
+FS-Cache fixes
+
+----------------------------------------------------------------
+David Howells (13):
+      FS-Cache: Count culled objects and objects rejected due to lack of space
+      FS-Cache: Move fscache_report_unexpected_submission() to make it more available
+      FS-Cache: When submitting an op, cancel it if the target object is dying
+      FS-Cache: Handle a new operation submitted against a killed object
+      FS-Cache: Synchronise object death state change vs operation submission
+      FS-Cache: fscache_object_is_dead() has wrong logic, kill it
+      FS-Cache: Permit fscache_cancel_op() to cancel in-progress operations too
+      FS-Cache: Out of line fscache_operation_init()
+      FS-Cache: Count the number of initialised operations
+      FS-Cache: Fix cancellation of in-progress operation
+      FS-Cache: Put an aborted initialised op so that it is accounted correctly
+      FS-Cache: The operation cancellation method needs calling in more places
+      FS-Cache: Retain the netfs context in the retrieval op earlier
+
+ Documentation/filesystems/caching/backend-api.txt |  23 ++
+ Documentation/filesystems/caching/fscache.txt     |   7 +-
+ fs/cachefiles/internal.h                          |   1 -
+ fs/cachefiles/namei.c                             |  33 ++-
+ fs/fscache/cookie.c                               |   8 +-
+ fs/fscache/internal.h                             |  12 +-
+ fs/fscache/object.c                               |  69 +++++-
+ fs/fscache/operation.c                            | 254 ++++++++++++++--------
+ fs/fscache/page.c                                 |  86 ++++----
+ fs/fscache/stats.c                                |  14 +-
+ include/linux/fscache-cache.h                     |  55 +++--
+ 11 files changed, 378 insertions(+), 184 deletions(-)
