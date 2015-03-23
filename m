@@ -1,149 +1,88 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f176.google.com ([209.85.213.176]:37537 "EHLO
-	mail-ig0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752221AbbCWUVx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Mar 2015 16:21:53 -0400
-Received: by igcqo1 with SMTP id qo1so49459750igc.0
-        for <linux-nfs@vger.kernel.org>; Mon, 23 Mar 2015 13:21:53 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 2/2] NFSv4: Cleanup - move slot_table drain functions into fs/nfs/nfs4session.c
-Date: Mon, 23 Mar 2015 16:21:49 -0400
-Message-Id: <1427142109-91216-2-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1427142109-91216-1-git-send-email-trond.myklebust@primarydata.com>
-References: <CAHQdGtTn5me9ZBfv9D8qZOmp6MFc29ppn4DqD8hOuMqRgRY8Rg@mail.gmail.com>
- <1427142109-91216-1-git-send-email-trond.myklebust@primarydata.com>
+Received: from fieldses.org ([173.255.197.46]:43084 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752619AbbCWVzC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 23 Mar 2015 17:55:02 -0400
+Date: Mon, 23 Mar 2015 17:55:01 -0400
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Christoph Hellwig <hch@infradead.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: long stall in xfstests generic/075
+Message-ID: <20150323215501.GE15183@fieldses.org>
+References: <20150318110628.GA22522@infradead.org>
+ <CAHQdGtQTVFYqXGZ3oAjsWQqSoPYNis9FmH=K+MVnGPJDva+njg@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAHQdGtQTVFYqXGZ3oAjsWQqSoPYNis9FmH=K+MVnGPJDva+njg@mail.gmail.com>
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Also make nfs4_shutdown_slot_table() static now that it is no longer used
-outside nfs4session.c.
+On Sun, Mar 22, 2015 at 03:25:11PM -0400, Trond Myklebust wrote:
+> On Wed, Mar 18, 2015 at 7:06 AM, Christoph Hellwig <hch@infradead.org> wrote:
+> > I'm running 4.0-rc against a local xfs server.  I have a few commits
+> > reverted to get over the nfsd use after free bugs:
+> >
+> > b4019c0e219bb1301865f8b2efedb4773526ed91
+> > c69899a17ca4836230720e65493942d9582a0424
+> > 425c1d4e5b6d4bd700eb94ad8318bdb05431fdc7
+> > 6b447539aa9aaac0a0215f3e28a0839553210e7e
+> > 39071e6fff7d7e11a5993afd67240ef04a4d05a0
+> > 63f5f796af613898669b23ccfc091ec77de7591c
+> >
+> > but now I'm running into the following hang:
+> >
+> > generic/075 22s ...[  360.216954] INFO: task fsx:17125 blocked for more than 120 seconds.
+> > [  360.218762]       Not tainted 4.0.0-rc3+ #151
+> > [  360.220034] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+> > [  360.222310] fsx             D ffff88007af37a18     0 17125  16912 0x00000000
+> > [  360.224732]  ffff88007af37a18 ffff88007a0e5d90 0000000000000002 ffffffff8249b500
+> > [  360.227590]  ffff88007a0e5550 ffff88007af37ad8 ffff88007af37fd8 0000000000000000
+> > [  360.230711]  7fffffffffffffff 0000000000000002 ffffffff81e3b5f0 ffff88007af37a38
+> > [  360.233162] Call Trace:
+> > [  360.233953]  [<ffffffff81e3b5f0>] ? yield+0x30/0x30
+> > [  360.235368]  [<ffffffff81e3b2e2>] schedule+0x32/0x80
+> > [  360.236719]  [<ffffffff81e3ef0c>] schedule_timeout+0x19c/0x210
+> > [  360.238638]  [<ffffffff8112bcd5>] ? ktime_get+0x105/0x140
+> > [  360.240380]  [<ffffffff8108c13e>] ? kvm_clock_read+0x1e/0x20
+> > [  360.242259]  [<ffffffff8108c149>] ? kvm_clock_get_cycles+0x9/0x10
+> > [  360.244046]  [<ffffffff8112bc75>] ? ktime_get+0xa5/0x140
+> > [  360.245694]  [<ffffffff8114d87e>] ? __delayacct_blkio_start+0x1e/0x30
+> > [  360.247201]  [<ffffffff81104ccd>] ? trace_hardirqs_on_caller+0x10d/0x1d0
+> > [  360.248567]  [<ffffffff81e3a638>] io_schedule_timeout+0xa8/0x130
+> > [  360.249752]  [<ffffffff810f9676>] ? prepare_to_wait_exclusive+0x56/0x90
+> > [  360.251075]  [<ffffffff81e3b620>] bit_wait_io+0x30/0x50
+> > [  360.252222]  [<ffffffff81e3b7ce>] __wait_on_bit_lock+0x6e/0xb0
+> > [  360.253432]  [<ffffffff81184302>] ? find_get_entries+0x22/0x160
+> > [  360.254719]  [<ffffffff81181a4c>] ? find_get_entry+0x8c/0xc0
+> > [  360.255799]  [<ffffffff811819c0>] ? find_get_pages_contig+0x1a0/0x1a0
+> > [  360.257058]  [<ffffffff81181c65>] __lock_page+0x95/0xa0
+> > [  360.258175]  [<ffffffff810f9ae0>] ? wake_atomic_t_function+0x30/0x30
+> > [  360.259369]  [<ffffffff81190646>] truncate_inode_pages_range+0x3c6/0x710
+> > [  360.260627]  [<ffffffff81190a10>] truncate_inode_pages+0x10/0x20
+> > [  360.261849]  [<ffffffff81190a66>] truncate_pagecache+0x46/0x70
+> > [  360.262960]  [<ffffffff81357fcf>] nfs_setattr_update_inode+0x12f/0x140
+> > [  360.264192]  [<ffffffff8137832b>] nfs4_proc_setattr+0xbb/0x100
+> > [  360.265366]  [<ffffffff81358162>] nfs_setattr+0xe2/0x200
+> > [  360.266410]  [<ffffffff811e8f90>] notify_change+0x170/0x3f0
+> > [  360.267447]  [<ffffffff811ca581>] do_truncate+0x61/0xa0
+> > [  360.268476]  [<ffffffff811ca924>] do_sys_ftruncate.constprop.18+0x104/0x160
+> > [  360.269678]  [<ffffffff81797b2e>] ? trace_hardirqs_on_thunk+0x3a/0x3f
+> > [  360.270836]  [<ffffffff811ca9a9>] SyS_ftruncate+0x9/0x10
+> > [  360.271880]  [<ffffffff81e40849>] system_call_fastpath+0x12/0x17
+> > [  360.272940] 2 locks held by fsx/17125:
+> > [  360.273719]  #0:  (sb_writers#9){.+.+.+}, at: [<ffffffff811ca8ef>] do_sys_ftruncate.constprop.18+0xcf/0x160
+> > [  360.276008]  #1:  (&sb->s_type->i_mutex_key#11){+.+.+.}, at: [<ffffffff811ca573>] do_truncate+0x53/0xa0
+> > [  385.757079] nfs: server 127.0.0.1 not responding, still trying
+> > [  445.919739] nfs: server 127.0.0.1 OK
+> >
+> > from which the run eventually recovers after a few minutes
+> >
+> 
+> Looks very similar to the problem I reported a few weeks ago. Just
+> disable splice reads by commenting out the RQ_SPLICE_OK line in
+> svc_process_common(), and Bob's your uncle...
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/nfs4session.c | 33 ++++++++++++++++++++++++++++++++-
- fs/nfs/nfs4session.h |  4 ++--
- fs/nfs/nfs4state.c   | 31 -------------------------------
- 3 files changed, 34 insertions(+), 34 deletions(-)
+Argh, sorry, did I drop that report?  I can't find it now.
 
-diff --git a/fs/nfs/nfs4session.c b/fs/nfs/nfs4session.c
-index 67c002a24d8f..ee8a8ee7c27d 100644
---- a/fs/nfs/nfs4session.c
-+++ b/fs/nfs/nfs4session.c
-@@ -69,6 +69,37 @@ void nfs4_slot_tbl_drain_complete(struct nfs4_slot_table *tbl)
- 	}
- }
- 
-+static int nfs4_wait_empty_slot_tbl(struct nfs4_slot_table *tbl)
-+{
-+	spin_lock(&tbl->slot_tbl_lock);
-+	if (tbl->highest_used_slotid != NFS4_NO_SLOT) {
-+		if (!test_and_set_bit(NFS4_SLOT_TBL_WAIT_EMPTY,
-+					&tbl->slot_tbl_state))
-+			reinit_completion(&tbl->complete);
-+		spin_unlock(&tbl->slot_tbl_lock);
-+		return wait_for_completion_interruptible(&tbl->complete);
-+	}
-+	spin_unlock(&tbl->slot_tbl_lock);
-+	return 0;
-+}
-+
-+int nfs4_drain_slot_tbl(struct nfs4_slot_table *tbl)
-+{
-+	/* Block new RPC calls */
-+	set_bit(NFS4_SLOT_TBL_DRAINING, &tbl->slot_tbl_state);
-+	/* Wait on outstanding RPC calls to complete */
-+	return nfs4_wait_empty_slot_tbl(tbl);
-+}
-+
-+void nfs4_end_drain_slot_table(struct nfs4_slot_table *tbl)
-+{
-+	if (test_and_clear_bit(NFS4_SLOT_TBL_DRAINING, &tbl->slot_tbl_state)) {
-+		spin_lock(&tbl->slot_tbl_lock);
-+		nfs41_wake_slot_table(tbl);
-+		spin_unlock(&tbl->slot_tbl_lock);
-+	}
-+}
-+
- /*
-  * nfs4_free_slot - free a slot and efficiently update slot table.
-  *
-@@ -250,7 +281,7 @@ static void nfs4_release_slot_table(struct nfs4_slot_table *tbl)
-  * @tbl: slot table to shut down
-  *
-  */
--void nfs4_shutdown_slot_table(struct nfs4_slot_table *tbl)
-+static void nfs4_shutdown_slot_table(struct nfs4_slot_table *tbl)
- {
- 	nfs4_release_slot_table(tbl);
- 	rpc_destroy_wait_queue(&tbl->slot_tbl_waitq);
-diff --git a/fs/nfs/nfs4session.h b/fs/nfs/nfs4session.h
-index 1912b250fcab..9181f7e1374a 100644
---- a/fs/nfs/nfs4session.h
-+++ b/fs/nfs/nfs4session.h
-@@ -76,10 +76,10 @@ enum nfs4_session_state {
- 
- extern int nfs4_setup_slot_table(struct nfs4_slot_table *tbl,
- 		unsigned int max_reqs, const char *queue);
--extern void nfs4_shutdown_slot_table(struct nfs4_slot_table *tbl);
- extern struct nfs4_slot *nfs4_alloc_slot(struct nfs4_slot_table *tbl);
- extern void nfs4_free_slot(struct nfs4_slot_table *tbl, struct nfs4_slot *slot);
--extern int nfs4_wait_empty_slot_tbl(struct nfs4_slot_table *tbl);
-+extern int nfs4_drain_slot_tbl(struct nfs4_slot_table *tbl);
-+extern void nfs4_end_drain_slot_table(struct nfs4_slot_table *tbl);
- extern void nfs4_slot_tbl_drain_complete(struct nfs4_slot_table *tbl);
- bool nfs41_wake_and_assign_slot(struct nfs4_slot_table *tbl,
- 		struct nfs4_slot *slot);
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index bd5293db4e5b..8fbf770d27ac 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -215,15 +215,6 @@ out:
- 	return cred;
- }
- 
--static void nfs4_end_drain_slot_table(struct nfs4_slot_table *tbl)
--{
--	if (test_and_clear_bit(NFS4_SLOT_TBL_DRAINING, &tbl->slot_tbl_state)) {
--		spin_lock(&tbl->slot_tbl_lock);
--		nfs41_wake_slot_table(tbl);
--		spin_unlock(&tbl->slot_tbl_lock);
--	}
--}
--
- static void nfs4_end_drain_session(struct nfs_client *clp)
- {
- 	struct nfs4_session *ses = clp->cl_session;
-@@ -239,28 +230,6 @@ static void nfs4_end_drain_session(struct nfs_client *clp)
- 	}
- }
- 
--int nfs4_wait_empty_slot_tbl(struct nfs4_slot_table *tbl)
--{
--	spin_lock(&tbl->slot_tbl_lock);
--	if (tbl->highest_used_slotid != NFS4_NO_SLOT) {
--		if (!test_and_set_bit(NFS4_SLOT_TBL_WAIT_EMPTY,
--					&tbl->slot_tbl_state))
--			reinit_completion(&tbl->complete);
--		spin_unlock(&tbl->slot_tbl_lock);
--		return wait_for_completion_interruptible(&tbl->complete);
--	}
--	spin_unlock(&tbl->slot_tbl_lock);
--	return 0;
--}
--
--int nfs4_drain_slot_tbl(struct nfs4_slot_table *tbl)
--{
--	/* Block new RPC calls */
--	set_bit(NFS4_SLOT_TBL_DRAINING, &tbl->slot_tbl_state);
--	/* Wait on outstanding RPC calls to complete */
--	return nfs4_wait_empty_slot_tbl(tbl);
--}
--
- static int nfs4_begin_drain_session(struct nfs_client *clp)
- {
- 	struct nfs4_session *ses = clp->cl_session;
--- 
-2.1.0
-
+--b.
