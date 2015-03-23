@@ -1,68 +1,50 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yk0-f179.google.com ([209.85.160.179]:33869 "EHLO
-	mail-yk0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752144AbbCWOx7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Mar 2015 10:53:59 -0400
-Received: by ykfc206 with SMTP id c206so72977013ykf.1
-        for <linux-nfs@vger.kernel.org>; Mon, 23 Mar 2015 07:53:58 -0700 (PDT)
-From: Jeff Layton <jlayton@poochiereds.net>
-To: bfields@fieldses.org
+Received: from fieldses.org ([173.255.197.46]:42809 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752106AbbCWPM6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 23 Mar 2015 11:12:58 -0400
+Date: Mon, 23 Mar 2015 11:12:57 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@poochiereds.net>
 Cc: trond.myklebust@primarydata.com, hch@infradead.org,
         linux-nfs@vger.kernel.org
-Subject: [PATCH 3/3] nfsd: remove unused status arg to nfsd4_cleanup_open_state
-Date: Mon, 23 Mar 2015 10:53:44 -0400
-Message-Id: <1427122424-8078-4-git-send-email-jeff.layton@primarydata.com>
-In-Reply-To: <1427122424-8078-1-git-send-email-jeff.layton@primarydata.com>
+Subject: Re: [PATCH 0/3] nfsd: fix use-after-free oops in v4.0 (and some
+ other minor cleanups)
+Message-ID: <20150323151257.GA15183@fieldses.org>
 References: <1427122424-8078-1-git-send-email-jeff.layton@primarydata.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1427122424-8078-1-git-send-email-jeff.layton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
----
- fs/nfsd/nfs4proc.c  | 2 +-
- fs/nfsd/nfs4state.c | 2 +-
- fs/nfsd/xdr4.h      | 2 +-
- 3 files changed, 3 insertions(+), 3 deletions(-)
+On Mon, Mar 23, 2015 at 10:53:41AM -0400, Jeff Layton wrote:
+> After staring at this code for a _long_ time, I think I've finally found
+> the source of the use-after-free oops that HCH spotted. The first patch
+> in this series should fix that.  The other two patches are just cleanups
+> that I generated while staring at the code.
+> 
+> The first one obviously needs to go into v4.0 (and stable) ASAP. The
+> other two can wait for v4.1.
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index d30bea8d0277..e54f18ae5b2e 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -470,7 +470,7 @@ out:
- 		fh_put(resfh);
- 		kfree(resfh);
- 	}
--	nfsd4_cleanup_open_state(cstate, open, status);
-+	nfsd4_cleanup_open_state(cstate, open);
- 	nfsd4_bump_seqid(cstate, status);
- 	return status;
- }
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index a66e297dc01c..3d9b0b9b1e2c 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4117,7 +4117,7 @@ out:
- }
- 
- void nfsd4_cleanup_open_state(struct nfsd4_compound_state *cstate,
--			      struct nfsd4_open *open, __be32 status)
-+			      struct nfsd4_open *open)
- {
- 	if (open->op_openowner) {
- 		struct nfs4_stateowner *so = &open->op_openowner->oo_owner;
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index 0bda93e58e1b..83e80d6d94a6 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -683,7 +683,7 @@ extern __be32 nfsd4_process_open2(struct svc_rqst *rqstp,
- 		struct svc_fh *current_fh, struct nfsd4_open *open);
- extern void nfsd4_cstate_clear_replay(struct nfsd4_compound_state *cstate);
- extern void nfsd4_cleanup_open_state(struct nfsd4_compound_state *cstate,
--		struct nfsd4_open *open, __be32 status);
-+		struct nfsd4_open *open);
- extern __be32 nfsd4_open_confirm(struct svc_rqst *rqstp,
- 		struct nfsd4_compound_state *, struct nfsd4_open_confirm *oc);
- extern __be32 nfsd4_close(struct svc_rqst *rqstp,
--- 
-2.1.0
+Zowie, thanks!  It's a relief to have this one found....--b.
 
+> 
+> Jeff Layton (3):
+>   nfsd: return correct openowner when there is a race to put one in the
+>     hash
+>   nfsd: remove bogus setting of status in nfsd4_process_open2
+>   nfsd: remove unused status arg to nfsd4_cleanup_open_state
+> 
+>  fs/nfsd/nfs4proc.c  | 2 +-
+>  fs/nfsd/nfs4state.c | 5 ++---
+>  fs/nfsd/xdr4.h      | 2 +-
+>  3 files changed, 4 insertions(+), 5 deletions(-)
+> 
+> -- 
+> 2.1.0
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
