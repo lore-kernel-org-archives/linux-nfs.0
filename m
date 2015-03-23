@@ -1,184 +1,54 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f180.google.com ([209.85.213.180]:34878 "EHLO
-	mail-ig0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753188AbbCWUVw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Mar 2015 16:21:52 -0400
-Received: by igcau2 with SMTP id au2so53506605igc.0
-        for <linux-nfs@vger.kernel.org>; Mon, 23 Mar 2015 13:21:52 -0700 (PDT)
+Received: from mail-ig0-f176.google.com ([209.85.213.176]:37537 "EHLO
+	mail-ig0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752221AbbCWUVx (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Mar 2015 16:21:53 -0400
+Received: by igcqo1 with SMTP id qo1so49459750igc.0
+        for <linux-nfs@vger.kernel.org>; Mon, 23 Mar 2015 13:21:53 -0700 (PDT)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: Kinglong Mee <kinglongmee@gmail.com>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 1/2] NFSv4: Ensure that we drain the session before shutting it down
-Date: Mon, 23 Mar 2015 16:21:48 -0400
-Message-Id: <1427142109-91216-1-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <CAHQdGtTn5me9ZBfv9D8qZOmp6MFc29ppn4DqD8hOuMqRgRY8Rg@mail.gmail.com>
+Subject: [PATCH v2 2/2] NFSv4: Cleanup - move slot_table drain functions into fs/nfs/nfs4session.c
+Date: Mon, 23 Mar 2015 16:21:49 -0400
+Message-Id: <1427142109-91216-2-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1427142109-91216-1-git-send-email-trond.myklebust@primarydata.com>
 References: <CAHQdGtTn5me9ZBfv9D8qZOmp6MFc29ppn4DqD8hOuMqRgRY8Rg@mail.gmail.com>
+ <1427142109-91216-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Kinglong Mee reports that the call to DESTROY_SESSION in NFSv4.1
-are racing with the asynchronous DELEGRETURN calls that precede it.
-This points to the root cause being that we're not waiting for the
-session to drain before we destroy it.
+Also make nfs4_shutdown_slot_table() static now that it is no longer used
+outside nfs4session.c.
 
-This patch ensures that we do so for both NFSv4 and NFSv4.1.
-
-Reported-by: Kinglong Mee <kinglongmee@gmail.com>
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/nfs4client.c  |  7 ++-----
- fs/nfs/nfs4session.c | 45 +++++++++++++++++++++++++++++++++++++++++++--
- fs/nfs/nfs4session.h |  4 ++++
- fs/nfs/nfs4state.c   | 15 ++++++++++++---
- 4 files changed, 61 insertions(+), 10 deletions(-)
+ fs/nfs/nfs4session.c | 33 ++++++++++++++++++++++++++++++++-
+ fs/nfs/nfs4session.h |  4 ++--
+ fs/nfs/nfs4state.c   | 31 -------------------------------
+ 3 files changed, 34 insertions(+), 34 deletions(-)
 
-diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
-index 86d6214ea022..ffb12efb1596 100644
---- a/fs/nfs/nfs4client.c
-+++ b/fs/nfs/nfs4client.c
-@@ -160,7 +160,7 @@ void nfs41_shutdown_client(struct nfs_client *clp)
- {
- 	if (nfs4_has_session(clp)) {
- 		nfs4_shutdown_ds_clients(clp);
--		nfs4_destroy_session(clp->cl_session);
-+		nfs41_shutdown_session(clp->cl_session);
- 		nfs4_destroy_clientid(clp);
- 	}
- 
-@@ -169,10 +169,7 @@ void nfs41_shutdown_client(struct nfs_client *clp)
- 
- void nfs40_shutdown_client(struct nfs_client *clp)
- {
--	if (clp->cl_slot_tbl) {
--		nfs4_shutdown_slot_table(clp->cl_slot_tbl);
--		kfree(clp->cl_slot_tbl);
--	}
-+	nfs40_shutdown_session(clp);
- }
- 
- struct nfs_client *nfs4_alloc_client(const struct nfs_client_initdata *cl_init)
 diff --git a/fs/nfs/nfs4session.c b/fs/nfs/nfs4session.c
-index e23366effcfb..67c002a24d8f 100644
+index 67c002a24d8f..ee8a8ee7c27d 100644
 --- a/fs/nfs/nfs4session.c
 +++ b/fs/nfs/nfs4session.c
-@@ -59,8 +59,14 @@ static void nfs4_shrink_slot_table(struct nfs4_slot_table  *tbl, u32 newsize)
-  */
- void nfs4_slot_tbl_drain_complete(struct nfs4_slot_table *tbl)
- {
--	if (nfs4_slot_tbl_draining(tbl))
--		complete(&tbl->complete);
-+	/* Note: no need for atomicity between test and clear, so we can
-+	 * optimise for the read-only case where NFS4_SLOT_TBL_WAIT_EMPTY
-+	 * is not set.
-+	 */
-+	if (test_bit(NFS4_SLOT_TBL_WAIT_EMPTY, &tbl->slot_tbl_state)) {
-+		clear_bit(NFS4_SLOT_TBL_WAIT_EMPTY, &tbl->slot_tbl_state);
-+		complete_all(&tbl->complete);
-+	}
- }
- 
- /*
-@@ -319,7 +325,42 @@ void nfs41_wake_slot_table(struct nfs4_slot_table *tbl)
+@@ -69,6 +69,37 @@ void nfs4_slot_tbl_drain_complete(struct nfs4_slot_table *tbl)
  	}
  }
  
-+void nfs40_shutdown_session(struct nfs_client *clp)
++static int nfs4_wait_empty_slot_tbl(struct nfs4_slot_table *tbl)
 +{
-+	struct nfs4_slot_table  *tbl = clp->cl_slot_tbl;
-+
-+	if (tbl) {
-+		nfs4_wait_empty_slot_tbl(tbl);
-+		nfs4_shutdown_slot_table(tbl);
-+		clp->cl_slot_tbl = NULL;
-+		kfree(tbl);
-+	}
-+}
-+
- #if defined(CONFIG_NFS_V4_1)
-+static void nfs41_shutdown_session_bc(struct nfs4_session *session)
-+{
-+	if (session->flags & SESSION4_BACK_CHAN) {
-+		session->flags &= ~SESSION4_BACK_CHAN;
-+		/* wait for back channel to drain */
-+		nfs4_wait_empty_slot_tbl(&session->bc_slot_table);
-+	}
-+}
-+
-+static void nfs41_shutdown_session_fc(struct nfs4_session *session)
-+{
-+	/* just wait for forward channel to drain */
-+	nfs4_wait_empty_slot_tbl(&session->bc_slot_table);
-+}
-+
-+void nfs41_shutdown_session(struct nfs4_session *session)
-+{
-+	if (!test_bit(NFS4_SESSION_ESTABLISHED, &session->session_state))
-+		return;
-+	nfs41_shutdown_session_bc(session);
-+	nfs41_shutdown_session_fc(session);
-+	nfs4_destroy_session(session);
-+}
- 
- static void nfs41_set_max_slotid_locked(struct nfs4_slot_table *tbl,
- 		u32 target_highest_slotid)
-diff --git a/fs/nfs/nfs4session.h b/fs/nfs/nfs4session.h
-index e3ea2c5324d6..1912b250fcab 100644
---- a/fs/nfs/nfs4session.h
-+++ b/fs/nfs/nfs4session.h
-@@ -27,6 +27,7 @@ struct nfs4_slot {
- /* Sessions */
- enum nfs4_slot_tbl_state {
- 	NFS4_SLOT_TBL_DRAINING,
-+	NFS4_SLOT_TBL_WAIT_EMPTY,
- };
- 
- #define SLOT_TABLE_SZ DIV_ROUND_UP(NFS4_MAX_SLOT_TABLE, 8*sizeof(long))
-@@ -78,10 +79,12 @@ extern int nfs4_setup_slot_table(struct nfs4_slot_table *tbl,
- extern void nfs4_shutdown_slot_table(struct nfs4_slot_table *tbl);
- extern struct nfs4_slot *nfs4_alloc_slot(struct nfs4_slot_table *tbl);
- extern void nfs4_free_slot(struct nfs4_slot_table *tbl, struct nfs4_slot *slot);
-+extern int nfs4_wait_empty_slot_tbl(struct nfs4_slot_table *tbl);
- extern void nfs4_slot_tbl_drain_complete(struct nfs4_slot_table *tbl);
- bool nfs41_wake_and_assign_slot(struct nfs4_slot_table *tbl,
- 		struct nfs4_slot *slot);
- void nfs41_wake_slot_table(struct nfs4_slot_table *tbl);
-+extern void nfs40_shutdown_session(struct nfs_client *clp);
- 
- static inline bool nfs4_slot_tbl_draining(struct nfs4_slot_table *tbl)
- {
-@@ -101,6 +104,7 @@ extern struct nfs4_session *nfs4_alloc_session(struct nfs_client *clp);
- extern void nfs4_destroy_session(struct nfs4_session *session);
- extern int nfs4_init_session(struct nfs_client *clp);
- extern int nfs4_init_ds_session(struct nfs_client *, unsigned long);
-+extern void nfs41_shutdown_session(struct nfs4_session *session);
- 
- /*
-  * Determine if sessions are in use.
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index f95e3b58bbc3..bd5293db4e5b 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -239,12 +239,13 @@ static void nfs4_end_drain_session(struct nfs_client *clp)
- 	}
- }
- 
--static int nfs4_drain_slot_tbl(struct nfs4_slot_table *tbl)
-+int nfs4_wait_empty_slot_tbl(struct nfs4_slot_table *tbl)
- {
--	set_bit(NFS4_SLOT_TBL_DRAINING, &tbl->slot_tbl_state);
- 	spin_lock(&tbl->slot_tbl_lock);
- 	if (tbl->highest_used_slotid != NFS4_NO_SLOT) {
--		reinit_completion(&tbl->complete);
++	spin_lock(&tbl->slot_tbl_lock);
++	if (tbl->highest_used_slotid != NFS4_NO_SLOT) {
 +		if (!test_and_set_bit(NFS4_SLOT_TBL_WAIT_EMPTY,
 +					&tbl->slot_tbl_state))
 +			reinit_completion(&tbl->complete);
- 		spin_unlock(&tbl->slot_tbl_lock);
- 		return wait_for_completion_interruptible(&tbl->complete);
- 	}
-@@ -252,6 +253,14 @@ static int nfs4_drain_slot_tbl(struct nfs4_slot_table *tbl)
- 	return 0;
- }
- 
++		spin_unlock(&tbl->slot_tbl_lock);
++		return wait_for_completion_interruptible(&tbl->complete);
++	}
++	spin_unlock(&tbl->slot_tbl_lock);
++	return 0;
++}
++
 +int nfs4_drain_slot_tbl(struct nfs4_slot_table *tbl)
 +{
 +	/* Block new RPC calls */
@@ -187,6 +57,90 @@ index f95e3b58bbc3..bd5293db4e5b 100644
 +	return nfs4_wait_empty_slot_tbl(tbl);
 +}
 +
++void nfs4_end_drain_slot_table(struct nfs4_slot_table *tbl)
++{
++	if (test_and_clear_bit(NFS4_SLOT_TBL_DRAINING, &tbl->slot_tbl_state)) {
++		spin_lock(&tbl->slot_tbl_lock);
++		nfs41_wake_slot_table(tbl);
++		spin_unlock(&tbl->slot_tbl_lock);
++	}
++}
++
+ /*
+  * nfs4_free_slot - free a slot and efficiently update slot table.
+  *
+@@ -250,7 +281,7 @@ static void nfs4_release_slot_table(struct nfs4_slot_table *tbl)
+  * @tbl: slot table to shut down
+  *
+  */
+-void nfs4_shutdown_slot_table(struct nfs4_slot_table *tbl)
++static void nfs4_shutdown_slot_table(struct nfs4_slot_table *tbl)
+ {
+ 	nfs4_release_slot_table(tbl);
+ 	rpc_destroy_wait_queue(&tbl->slot_tbl_waitq);
+diff --git a/fs/nfs/nfs4session.h b/fs/nfs/nfs4session.h
+index 1912b250fcab..9181f7e1374a 100644
+--- a/fs/nfs/nfs4session.h
++++ b/fs/nfs/nfs4session.h
+@@ -76,10 +76,10 @@ enum nfs4_session_state {
+ 
+ extern int nfs4_setup_slot_table(struct nfs4_slot_table *tbl,
+ 		unsigned int max_reqs, const char *queue);
+-extern void nfs4_shutdown_slot_table(struct nfs4_slot_table *tbl);
+ extern struct nfs4_slot *nfs4_alloc_slot(struct nfs4_slot_table *tbl);
+ extern void nfs4_free_slot(struct nfs4_slot_table *tbl, struct nfs4_slot *slot);
+-extern int nfs4_wait_empty_slot_tbl(struct nfs4_slot_table *tbl);
++extern int nfs4_drain_slot_tbl(struct nfs4_slot_table *tbl);
++extern void nfs4_end_drain_slot_table(struct nfs4_slot_table *tbl);
+ extern void nfs4_slot_tbl_drain_complete(struct nfs4_slot_table *tbl);
+ bool nfs41_wake_and_assign_slot(struct nfs4_slot_table *tbl,
+ 		struct nfs4_slot *slot);
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index bd5293db4e5b..8fbf770d27ac 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -215,15 +215,6 @@ out:
+ 	return cred;
+ }
+ 
+-static void nfs4_end_drain_slot_table(struct nfs4_slot_table *tbl)
+-{
+-	if (test_and_clear_bit(NFS4_SLOT_TBL_DRAINING, &tbl->slot_tbl_state)) {
+-		spin_lock(&tbl->slot_tbl_lock);
+-		nfs41_wake_slot_table(tbl);
+-		spin_unlock(&tbl->slot_tbl_lock);
+-	}
+-}
+-
+ static void nfs4_end_drain_session(struct nfs_client *clp)
+ {
+ 	struct nfs4_session *ses = clp->cl_session;
+@@ -239,28 +230,6 @@ static void nfs4_end_drain_session(struct nfs_client *clp)
+ 	}
+ }
+ 
+-int nfs4_wait_empty_slot_tbl(struct nfs4_slot_table *tbl)
+-{
+-	spin_lock(&tbl->slot_tbl_lock);
+-	if (tbl->highest_used_slotid != NFS4_NO_SLOT) {
+-		if (!test_and_set_bit(NFS4_SLOT_TBL_WAIT_EMPTY,
+-					&tbl->slot_tbl_state))
+-			reinit_completion(&tbl->complete);
+-		spin_unlock(&tbl->slot_tbl_lock);
+-		return wait_for_completion_interruptible(&tbl->complete);
+-	}
+-	spin_unlock(&tbl->slot_tbl_lock);
+-	return 0;
+-}
+-
+-int nfs4_drain_slot_tbl(struct nfs4_slot_table *tbl)
+-{
+-	/* Block new RPC calls */
+-	set_bit(NFS4_SLOT_TBL_DRAINING, &tbl->slot_tbl_state);
+-	/* Wait on outstanding RPC calls to complete */
+-	return nfs4_wait_empty_slot_tbl(tbl);
+-}
+-
  static int nfs4_begin_drain_session(struct nfs_client *clp)
  {
  	struct nfs4_session *ses = clp->cl_session;
