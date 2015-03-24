@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ie0-f171.google.com ([209.85.223.171]:35911 "EHLO
-	mail-ie0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751754AbbCXUb1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Mar 2015 16:31:27 -0400
-Subject: [PATCH v2 06/15] xprtrdma: Add vector of ops for each memory
- registration strategy
+Received: from mail-ig0-f177.google.com ([209.85.213.177]:37975 "EHLO
+	mail-ig0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751754AbbCXUbg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Mar 2015 16:31:36 -0400
+Subject: [PATCH v2 07/15] xprtrdma: Add a "max_payload" op for each memreg
+ mode
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Tue, 24 Mar 2015 16:31:24 -0400
-Message-ID: <20150324203124.2311.39720.stgit@manet.1015granger.net>
+Date: Tue, 24 Mar 2015 16:31:33 -0400
+Message-ID: <20150324203133.2311.92561.stgit@manet.1015granger.net>
 In-Reply-To: <20150324201849.2311.53599.stgit@manet.1015granger.net>
 References: <20150324201849.2311.53599.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -16,199 +16,198 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Instead of employing switch() statements, let's use the typical
-Linux kernel idiom for handling behavioral variation: virtual
-functions.
-
-Start by defining a vector of operations for each supported memory
-registration mode, and by adding a source file for each mode.
+The max_payload computation is generalized to ensure that the
+payload maximum is the lesser of RPC_MAX_DATA_SEGS and the number of
+data segments that can be transmitted in an inline buffer.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 Reviewed-by: Sagi Grimberg <sagig@mellanox.com>
 ---
- net/sunrpc/xprtrdma/Makefile       |    3 ++-
- net/sunrpc/xprtrdma/fmr_ops.c      |   22 ++++++++++++++++++++++
- net/sunrpc/xprtrdma/frwr_ops.c     |   22 ++++++++++++++++++++++
- net/sunrpc/xprtrdma/physical_ops.c |   24 ++++++++++++++++++++++++
- net/sunrpc/xprtrdma/verbs.c        |   11 +++++++----
- net/sunrpc/xprtrdma/xprt_rdma.h    |   12 ++++++++++++
- 6 files changed, 89 insertions(+), 5 deletions(-)
- create mode 100644 net/sunrpc/xprtrdma/fmr_ops.c
- create mode 100644 net/sunrpc/xprtrdma/frwr_ops.c
- create mode 100644 net/sunrpc/xprtrdma/physical_ops.c
+ net/sunrpc/xprtrdma/fmr_ops.c      |   13 ++++++++++
+ net/sunrpc/xprtrdma/frwr_ops.c     |   13 ++++++++++
+ net/sunrpc/xprtrdma/physical_ops.c |   10 +++++++
+ net/sunrpc/xprtrdma/transport.c    |    5 +++-
+ net/sunrpc/xprtrdma/verbs.c        |   49 +++++++++++-------------------------
+ net/sunrpc/xprtrdma/xprt_rdma.h    |    5 +++-
+ 6 files changed, 59 insertions(+), 36 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/Makefile b/net/sunrpc/xprtrdma/Makefile
-index da5136f..579f72b 100644
---- a/net/sunrpc/xprtrdma/Makefile
-+++ b/net/sunrpc/xprtrdma/Makefile
-@@ -1,6 +1,7 @@
- obj-$(CONFIG_SUNRPC_XPRT_RDMA_CLIENT) += xprtrdma.o
- 
--xprtrdma-y := transport.o rpc_rdma.o verbs.o
-+xprtrdma-y := transport.o rpc_rdma.o verbs.o \
-+	fmr_ops.o frwr_ops.o physical_ops.o
- 
- obj-$(CONFIG_SUNRPC_XPRT_RDMA_SERVER) += svcrdma.o
- 
 diff --git a/net/sunrpc/xprtrdma/fmr_ops.c b/net/sunrpc/xprtrdma/fmr_ops.c
-new file mode 100644
-index 0000000..ffb7d93
---- /dev/null
+index ffb7d93..eec2660 100644
+--- a/net/sunrpc/xprtrdma/fmr_ops.c
 +++ b/net/sunrpc/xprtrdma/fmr_ops.c
-@@ -0,0 +1,22 @@
-+/*
-+ * Copyright (c) 2015 Oracle.  All rights reserved.
-+ * Copyright (c) 2003-2007 Network Appliance, Inc. All rights reserved.
+@@ -17,6 +17,19 @@
+ # define RPCDBG_FACILITY	RPCDBG_TRANS
+ #endif
+ 
++/* Maximum scatter/gather per FMR */
++#define RPCRDMA_MAX_FMR_SGES	(64)
++
++/* FMR mode conveys up to 64 pages of payload per chunk segment.
 + */
++static size_t
++fmr_op_maxpages(struct rpcrdma_xprt *r_xprt)
++{
++	return min_t(unsigned int, RPCRDMA_MAX_DATA_SEGS,
++		     rpcrdma_max_segments(r_xprt) * RPCRDMA_MAX_FMR_SGES);
++}
 +
-+/* Lightweight memory registration using Fast Memory Regions (FMR).
-+ * Referred to sometimes as MTHCAFMR mode.
-+ *
-+ * FMR uses synchronous memory registration and deregistration.
-+ * FMR registration is known to be fast, but FMR deregistration
-+ * can take tens of usecs to complete.
-+ */
-+
-+#include "xprt_rdma.h"
-+
-+#if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
-+# define RPCDBG_FACILITY	RPCDBG_TRANS
-+#endif
-+
-+const struct rpcrdma_memreg_ops rpcrdma_fmr_memreg_ops = {
-+	.ro_displayname			= "fmr",
-+};
+ const struct rpcrdma_memreg_ops rpcrdma_fmr_memreg_ops = {
++	.ro_maxpages			= fmr_op_maxpages,
+ 	.ro_displayname			= "fmr",
+ };
 diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
-new file mode 100644
-index 0000000..79173f9
---- /dev/null
+index 79173f9..73a5ac8 100644
+--- a/net/sunrpc/xprtrdma/frwr_ops.c
 +++ b/net/sunrpc/xprtrdma/frwr_ops.c
-@@ -0,0 +1,22 @@
-+/*
-+ * Copyright (c) 2015 Oracle.  All rights reserved.
-+ * Copyright (c) 2003-2007 Network Appliance, Inc. All rights reserved.
+@@ -17,6 +17,19 @@
+ # define RPCDBG_FACILITY	RPCDBG_TRANS
+ #endif
+ 
++/* FRWR mode conveys a list of pages per chunk segment. The
++ * maximum length of that list is the FRWR page list depth.
 + */
++static size_t
++frwr_op_maxpages(struct rpcrdma_xprt *r_xprt)
++{
++	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
 +
-+/* Lightweight memory registration using Fast Registration Work
-+ * Requests (FRWR). Also referred to sometimes as FRMR mode.
-+ *
-+ * FRWR features ordered asynchronous registration and deregistration
-+ * of arbitrarily sized memory regions. This is the fastest and safest
-+ * but most complex memory registration mode.
-+ */
++	return min_t(unsigned int, RPCRDMA_MAX_DATA_SEGS,
++		     rpcrdma_max_segments(r_xprt) * ia->ri_max_frmr_depth);
++}
 +
-+#include "xprt_rdma.h"
-+
-+#if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
-+# define RPCDBG_FACILITY	RPCDBG_TRANS
-+#endif
-+
-+const struct rpcrdma_memreg_ops rpcrdma_frwr_memreg_ops = {
-+	.ro_displayname			= "frwr",
-+};
+ const struct rpcrdma_memreg_ops rpcrdma_frwr_memreg_ops = {
++	.ro_maxpages			= frwr_op_maxpages,
+ 	.ro_displayname			= "frwr",
+ };
 diff --git a/net/sunrpc/xprtrdma/physical_ops.c b/net/sunrpc/xprtrdma/physical_ops.c
-new file mode 100644
-index 0000000..b0922ac
---- /dev/null
+index b0922ac..28ade19 100644
+--- a/net/sunrpc/xprtrdma/physical_ops.c
 +++ b/net/sunrpc/xprtrdma/physical_ops.c
-@@ -0,0 +1,24 @@
-+/*
-+ * Copyright (c) 2015 Oracle.  All rights reserved.
-+ * Copyright (c) 2003-2007 Network Appliance, Inc. All rights reserved.
+@@ -19,6 +19,16 @@
+ # define RPCDBG_FACILITY	RPCDBG_TRANS
+ #endif
+ 
++/* PHYSICAL memory registration conveys one page per chunk segment.
 + */
++static size_t
++physical_op_maxpages(struct rpcrdma_xprt *r_xprt)
++{
++	return min_t(unsigned int, RPCRDMA_MAX_DATA_SEGS,
++		     rpcrdma_max_segments(r_xprt));
++}
 +
-+/* No-op chunk preparation. All client memory is pre-registered.
-+ * Sometimes referred to as ALLPHYSICAL mode.
-+ *
-+ * Physical registration is simple because all client memory is
-+ * pre-registered and never deregistered. This mode is good for
-+ * adapter bring up, but is considered not safe: the server is
-+ * trusted not to abuse its access to client memory not involved
-+ * in RDMA I/O.
-+ */
-+
-+#include "xprt_rdma.h"
-+
-+#if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
-+# define RPCDBG_FACILITY	RPCDBG_TRANS
-+#endif
-+
-+const struct rpcrdma_memreg_ops rpcrdma_physical_memreg_ops = {
-+	.ro_displayname			= "physical",
-+};
+ const struct rpcrdma_memreg_ops rpcrdma_physical_memreg_ops = {
++	.ro_maxpages			= physical_op_maxpages,
+ 	.ro_displayname			= "physical",
+ };
+diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+index 97f6562..da71a24 100644
+--- a/net/sunrpc/xprtrdma/transport.c
++++ b/net/sunrpc/xprtrdma/transport.c
+@@ -406,7 +406,10 @@ xprt_setup_rdma(struct xprt_create *args)
+ 			  xprt_rdma_connect_worker);
+ 
+ 	xprt_rdma_format_addresses(xprt);
+-	xprt->max_payload = rpcrdma_max_payload(new_xprt);
++	xprt->max_payload = new_xprt->rx_ia.ri_ops->ro_maxpages(new_xprt);
++	if (xprt->max_payload == 0)
++		goto out4;
++	xprt->max_payload <<= PAGE_SHIFT;
+ 	dprintk("RPC:       %s: transport data payload maximum: %zu bytes\n",
+ 		__func__, xprt->max_payload);
+ 
 diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 99752b5..c3319e1 100644
+index c3319e1..da55cda 100644
 --- a/net/sunrpc/xprtrdma/verbs.c
 +++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -492,10 +492,10 @@ connected:
- 		int ird = attr->max_dest_rd_atomic;
- 		int tird = ep->rep_remote_cma.responder_resources;
+@@ -2212,43 +2212,24 @@ rpcrdma_ep_post_recv(struct rpcrdma_ia *ia,
+ 	return rc;
+ }
  
--		pr_info("rpcrdma: connection to %pIS:%u on %s, memreg %d slots %d ird %d%s\n",
-+		pr_info("rpcrdma: connection to %pIS:%u on %s, memreg '%s', %d credits, %d responders%s\n",
- 			sap, rpc_get_port(sap),
- 			ia->ri_id->device->name,
--			ia->ri_memreg_strategy,
-+			ia->ri_ops->ro_displayname,
- 			xprt->rx_buf.rb_max_requests,
- 			ird, ird < 4 && ird < tird / 2 ? " (low!)" : "");
- 	} else if (connstate < 0) {
-@@ -650,13 +650,16 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
- 	 */
- 	switch (memreg) {
- 	case RPCRDMA_FRMR:
-+		ia->ri_ops = &rpcrdma_frwr_memreg_ops;
- 		break;
- 	case RPCRDMA_ALLPHYSICAL:
-+		ia->ri_ops = &rpcrdma_physical_memreg_ops;
- 		mem_priv = IB_ACCESS_LOCAL_WRITE |
- 				IB_ACCESS_REMOTE_WRITE |
- 				IB_ACCESS_REMOTE_READ;
- 		goto register_setup;
- 	case RPCRDMA_MTHCAFMR:
-+		ia->ri_ops = &rpcrdma_fmr_memreg_ops;
- 		if (ia->ri_have_dma_lkey)
- 			break;
- 		mem_priv = IB_ACCESS_LOCAL_WRITE;
-@@ -676,8 +679,8 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
- 		rc = -ENOMEM;
- 		goto out3;
+-/* Physical mapping means one Read/Write list entry per-page.
+- * All list entries must fit within an inline buffer
+- *
+- * NB: The server must return a Write list for NFS READ,
+- *     which has the same constraint. Factor in the inline
+- *     rsize as well.
++/* How many chunk list items fit within our inline buffers?
+  */
+-static size_t
+-rpcrdma_physical_max_payload(struct rpcrdma_xprt *r_xprt)
++unsigned int
++rpcrdma_max_segments(struct rpcrdma_xprt *r_xprt)
+ {
+ 	struct rpcrdma_create_data_internal *cdata = &r_xprt->rx_data;
+-	unsigned int inline_size, pages;
+-
+-	inline_size = min_t(unsigned int,
+-			    cdata->inline_wsize, cdata->inline_rsize);
+-	inline_size -= RPCRDMA_HDRLEN_MIN;
+-	pages = inline_size / sizeof(struct rpcrdma_segment);
+-	return pages << PAGE_SHIFT;
+-}
++	int bytes, segments;
+ 
+-static size_t
+-rpcrdma_mr_max_payload(struct rpcrdma_xprt *r_xprt)
+-{
+-	return RPCRDMA_MAX_DATA_SEGS << PAGE_SHIFT;
+-}
+-
+-size_t
+-rpcrdma_max_payload(struct rpcrdma_xprt *r_xprt)
+-{
+-	size_t result;
+-
+-	switch (r_xprt->rx_ia.ri_memreg_strategy) {
+-	case RPCRDMA_ALLPHYSICAL:
+-		result = rpcrdma_physical_max_payload(r_xprt);
+-		break;
+-	default:
+-		result = rpcrdma_mr_max_payload(r_xprt);
++	bytes = min_t(unsigned int, cdata->inline_wsize, cdata->inline_rsize);
++	bytes -= RPCRDMA_HDRLEN_MIN;
++	if (bytes < sizeof(struct rpcrdma_segment) * 2) {
++		pr_warn("RPC:       %s: inline threshold too small\n",
++			__func__);
++		return 0;
  	}
--	dprintk("RPC:       %s: memory registration strategy is %d\n",
--		__func__, memreg);
-+	dprintk("RPC:       %s: memory registration strategy is '%s'\n",
-+		__func__, ia->ri_ops->ro_displayname);
- 
- 	/* Else will do memory reg/dereg for each chunk */
- 	ia->ri_memreg_strategy = memreg;
+-	return result;
++
++	segments = 1 << (fls(bytes / sizeof(struct rpcrdma_segment)) - 1);
++	dprintk("RPC:       %s: max chunk list size = %d segments\n",
++		__func__, segments);
++	return segments;
+ }
 diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index c8afd83..ef3cf4a 100644
+index ef3cf4a..59e627e 100644
 --- a/net/sunrpc/xprtrdma/xprt_rdma.h
 +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -60,6 +60,7 @@
-  * Interface Adapter -- one per transport instance
+@@ -334,7 +334,9 @@ struct rpcrdma_stats {
+ /*
+  * Per-registration mode operations
   */
- struct rpcrdma_ia {
-+	const struct rpcrdma_memreg_ops	*ri_ops;
- 	rwlock_t		ri_qplock;
- 	struct rdma_cm_id 	*ri_id;
- 	struct ib_pd		*ri_pd;
-@@ -331,6 +332,17 @@ struct rpcrdma_stats {
++struct rpcrdma_xprt;
+ struct rpcrdma_memreg_ops {
++	size_t		(*ro_maxpages)(struct rpcrdma_xprt *);
+ 	const char	*ro_displayname;
  };
  
+@@ -411,6 +413,8 @@ struct rpcrdma_regbuf *rpcrdma_alloc_regbuf(struct rpcrdma_ia *,
+ void rpcrdma_free_regbuf(struct rpcrdma_ia *,
+ 			 struct rpcrdma_regbuf *);
+ 
++unsigned int rpcrdma_max_segments(struct rpcrdma_xprt *);
++
  /*
-+ * Per-registration mode operations
-+ */
-+struct rpcrdma_memreg_ops {
-+	const char	*ro_displayname;
-+};
-+
-+extern const struct rpcrdma_memreg_ops rpcrdma_fmr_memreg_ops;
-+extern const struct rpcrdma_memreg_ops rpcrdma_frwr_memreg_ops;
-+extern const struct rpcrdma_memreg_ops rpcrdma_physical_memreg_ops;
-+
-+/*
-  * RPCRDMA transport -- encapsulates the structures above for
-  * integration with RPC.
-  *
+  * RPC/RDMA connection management calls - xprtrdma/rpc_rdma.c
+  */
+@@ -422,7 +426,6 @@ void rpcrdma_reply_handler(struct rpcrdma_rep *);
+  * RPC/RDMA protocol calls - xprtrdma/rpc_rdma.c
+  */
+ int rpcrdma_marshal_req(struct rpc_rqst *);
+-size_t rpcrdma_max_payload(struct rpcrdma_xprt *);
+ 
+ /* Temporary NFS request map cache. Created in svc_rdma.c  */
+ extern struct kmem_cache *svc_rdma_map_cachep;
 
