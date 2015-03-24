@@ -1,75 +1,47 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f179.google.com ([209.85.213.179]:36147 "EHLO
-	mail-ig0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751754AbbCXUac (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Mar 2015 16:30:32 -0400
-Subject: [PATCH v2 00/15] NFS/RDMA patches proposed for 4.1
+Received: from mail-ig0-f171.google.com ([209.85.213.171]:36295 "EHLO
+	mail-ig0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751754AbbCXUal (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Mar 2015 16:30:41 -0400
+Subject: [PATCH v2 01/15] SUNRPC: Introduce missing well-known netids
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Tue, 24 Mar 2015 16:30:28 -0400
-Message-ID: <20150324201849.2311.53599.stgit@manet.1015granger.net>
+Date: Tue, 24 Mar 2015 16:30:38 -0400
+Message-ID: <20150324203038.2311.6629.stgit@manet.1015granger.net>
+In-Reply-To: <20150324201849.2311.53599.stgit@manet.1015granger.net>
+References: <20150324201849.2311.53599.stgit@manet.1015granger.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is a series of client-side patches for NFS/RDMA. In preparation
-for increasing the transport credit limit and maximum rsize/wsize,
-I've re-factored the memory registration logic into separate files,
-invoked via a method API.
-
-The two main optimizations in v1 of this series have been dropped.
-Sagi Grimberg didn't like the complexity of the solution, and there
-isn't enough time to rework it, test the new version, and get it
-reviewed before the 4.1 merge window opens. I'm going to prepare
-these for 4.2.
-
-Fixes suggested by reviewers have been included before the
-refactoring patches to make it easier to backport them to previous
-kernels.
-
-The series is available in the nfs-rdma-for-4.1 topic branch at
-
-git://linux-nfs.org/projects/cel/cel-2.6.git
-
-Changes since v1:
-- Rebased on 4.0-rc5
-- Main optimizations postponed to 4.2
-- Addressed review comments from Anna, Sagi, and Devesh
-
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
+ include/linux/sunrpc/msg_prot.h |    8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
 
-Chuck Lever (15):
-      SUNRPC: Introduce missing well-known netids
-      xprtrdma: Display IPv6 addresses and port numbers correctly
-      xprtrdma: Perform a full marshal on retransmit
-      xprtrdma: Byte-align FRWR registration
-      xprtrdma: Prevent infinite loop in rpcrdma_ep_create()
-      xprtrdma: Add vector of ops for each memory registration strategy
-      xprtrdma: Add a "max_payload" op for each memreg mode
-      xprtrdma: Add a "register_external" op for each memreg mode
-      xprtrdma: Add a "deregister_external" op for each memreg mode
-      xprtrdma: Add "init MRs" memreg op
-      xprtrdma: Add "reset MRs" memreg op
-      xprtrdma: Add "destroy MRs" memreg op
-      xprtrdma: Add "open" memreg op
-      xprtrdma: Handle non-SEND completions via a callout
-      xprtrdma: Make rpcrdma_{un}map_one() into inline functions
+diff --git a/include/linux/sunrpc/msg_prot.h b/include/linux/sunrpc/msg_prot.h
+index aadc6a0..8073713 100644
+--- a/include/linux/sunrpc/msg_prot.h
++++ b/include/linux/sunrpc/msg_prot.h
+@@ -142,12 +142,18 @@ typedef __be32	rpc_fraghdr;
+ 	(RPC_REPHDRSIZE + (2 + RPC_MAX_AUTH_SIZE/4))
+ 
+ /*
+- * RFC1833/RFC3530 rpcbind (v3+) well-known netid's.
++ * Well-known netids. See:
++ *
++ *   http://www.iana.org/assignments/rpc-netids/rpc-netids.xhtml
+  */
+ #define RPCBIND_NETID_UDP	"udp"
+ #define RPCBIND_NETID_TCP	"tcp"
++#define RPCBIND_NETID_RDMA	"rdma"
++#define RPCBIND_NETID_SCTP	"sctp"
+ #define RPCBIND_NETID_UDP6	"udp6"
+ #define RPCBIND_NETID_TCP6	"tcp6"
++#define RPCBIND_NETID_RDMA6	"rdma6"
++#define RPCBIND_NETID_SCTP6	"sctp6"
+ #define RPCBIND_NETID_LOCAL	"local"
+ 
+ /*
 
-
- include/linux/sunrpc/msg_prot.h    |    8 
- net/sunrpc/xprtrdma/Makefile       |    3 
- net/sunrpc/xprtrdma/fmr_ops.c      |  208 +++++++++++
- net/sunrpc/xprtrdma/frwr_ops.c     |  353 ++++++++++++++++++
- net/sunrpc/xprtrdma/physical_ops.c |   94 +++++
- net/sunrpc/xprtrdma/rpc_rdma.c     |   87 ++--
- net/sunrpc/xprtrdma/transport.c    |   61 ++-
- net/sunrpc/xprtrdma/verbs.c        |  699 +++---------------------------------
- net/sunrpc/xprtrdma/xprt_rdma.h    |   90 ++++-
- 9 files changed, 882 insertions(+), 721 deletions(-)
- create mode 100644 net/sunrpc/xprtrdma/fmr_ops.c
- create mode 100644 net/sunrpc/xprtrdma/frwr_ops.c
- create mode 100644 net/sunrpc/xprtrdma/physical_ops.c
-
---
-Chuck Lever
