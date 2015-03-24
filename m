@@ -1,85 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qg0-f44.google.com ([209.85.192.44]:36781 "EHLO
-	mail-qg0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751917AbbCXMnx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Mar 2015 08:43:53 -0400
+Received: from mail-pa0-f51.google.com ([209.85.220.51]:33656 "EHLO
+	mail-pa0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751997AbbCXMxU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Mar 2015 08:53:20 -0400
+Message-ID: <55115E3C.2030104@m4x.org>
+Date: Tue, 24 Mar 2015 20:53:16 +0800
+From: Nicolas Iooss <nicolas.iooss_linux@m4x.org>
 MIME-Version: 1.0
-In-Reply-To: <20150320182621.GH2036@fieldses.org>
-References: <20150318185545.GF8818@fieldses.org> <5509E27C.3080004@Netapp.com>
- <20150318205554.GA10716@fieldses.org> <5509E824.6070006@Netapp.com>
- <20150318211144.GB10716@fieldses.org> <OFB111A6D8.016B8BD5-ON88257E0D.001D174D-88257E0D.005268D6@us.ibm.com>
- <20150319153627.GA20852@fieldses.org> <OF38D4D18B.19055EC2-ON88257E0D.0059BA03-88257E0D.005A781F@us.ibm.com>
- <20150320151718.GD2036@fieldses.org> <20150320162303.GA18786@infradead.org> <20150320182621.GH2036@fieldses.org>
-From: Anna Schumaker <anna.schumaker@netapp.com>
-Date: Tue, 24 Mar 2015 08:43:31 -0400
-Message-ID: <CAFX2JfkybBPcqD6A8r-jOkPnkL26=NEuK3zhA6TLn-DVam+kfQ@mail.gmail.com>
-Subject: Re: [PATCH v3 3/3] NFSD: Add support for encoding multiple segments
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Christoph Hellwig <hch@infradead.org>, Marc Eshel <eshel@us.ibm.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        linux-nfs-owner@vger.kernel.org, xfs@oss.sgi.com
-Content-Type: text/plain; charset=UTF-8
+To: Li RongQing <roy.qing.li@gmail.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>
+CC: linux-nfs@vger.kernel.org,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Subject: nfs: wrong function to increment NFSIOS_READPAGES/WRITEPAGES stat
+ counters?
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Mar 20, 2015 at 2:26 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> On Fri, Mar 20, 2015 at 09:23:03AM -0700, Christoph Hellwig wrote:
->> On Fri, Mar 20, 2015 at 11:17:18AM -0400, J. Bruce Fields wrote:
->> > Maybe this is a question for xfs developers.
->> >
->> > So, we have a new READ_PLUS call that's basically just a version of READ
->> > optimized for sparse files:
->> >
->> >     http://tools.ietf.org/html/draft-ietf-nfsv4-minorversion2-33#section-15.10
->> >
->> > It allows an NFS server to return either file data (like a normal READ
->> > call) or, at the server's discretion, records saying "this range of the
->> > data is all zeroes".
->> >
->> > Anna tried implementing READ_PLUS for knfsd using
->> > vfs_llseek(.,.,SEEK_HOLE) followed by an ordinary read if that
->> > determines we're not at a hole.
->> >
->> > (Very) preliminary results suggest that's slower than a plain READ for
->> > an xfs file with no holes.  (And *much* slower in the ext4 case for some
->> > reason.)
->>
->> It should be a fairly cheap operastion, and does extent tree operations
->> that are pretty similar to an (uncached) read.  Do you have profiles?
->>
->> > Is that expected, and should we be doing this some other way instead?
->>
->> Are the read cached or uncached?
->
-> I don't know, and don't have profiles.  I'll either try to reproduce or
-> wait till Anna's back from vacation.
+Hello,
 
-I'm using whatever functions NFSD already uses for reading files,
-which I expect go through the VFS.  Is there a flag that controls
-cache behavior?
+Since commit 5a254d08b086 ("nfs: replace nfs_add_stats with
+nfs_inc_stats when add one") [1], nfs_readpage and nfs_do_writepage  use
+nfs_inc_stats to increment NFSIOS_READPAGES and NFSIOS_WRITEPAGES
+instead of nfs_add_stats.
 
->
->> If they are from pagecache just copying the zeroes is pretty much
->> unbeatable compared to extent tree lookups, so we'd need a new page
->> flag (difficult..) to see that a page is a hole (and then it would
->> only work for the whole page), but for uncached reads an optimization
->> would be to tell a read that it's an NFS READ_PLUS so that it could
->> just read until it reach a hole, and then we'd need some way to
->> communicate the hole size (or just fall back to SEEK_HOLE for that
->> case).
->
-> Ugh, OK.  We'll do some more tests before coming back to ask about
-> that....
+However nfs_inc_stats is not similar as nfs_add_stats with parameter 1
+because these functions work on distinct stats:
+nfs_inc_stats increments stats from "enum nfs_stat_eventcounters" (in
+server->io_stats->events) and nfs_add_stats those from "enum
+nfs_stat_bytecounters" (in server->io_stats->bytes), according to their
+implementations in fs/nfs/iostat.h [2].
 
-I only had time for the one run, so I'll do more trials and see if
-that one read is always so long.  I'm still hoping it was something in
-the way my VM was scheduling its tasks!
+If I understand the code correctly, "nfs_inc_stats(inode,
+NFSIOS_READPAGES);" is in fact executed as "nfs_inc_stats(inode,
+NFSIOS_VFSACCESS);" and "nfs_inc_stats(inode, NFSIOS_WRITEPAGES);" as
+"nfs_inc_stats(inode, NFSIOS_VFSUPDATEPAGE);".
 
-Anna
+As this looks like a bug to me, I am reporting it in hope it could be
+fixed, for example by reverting 5a254d08b086.  Of course, I may be
+wrong, in which case an explanation about what I missed in my analysis
+would be appreciated.
 
->
-> --b.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+By the way, I found this while trying to compile LLVMLinux on current
+master branch of Linux.  clang reported the following warnings:
+
+fs/nfs/read.c:287:23: warning: implicit conversion from enumeration type
+'enum nfs_stat_bytecounters' to different enumeration type 'enum
+nfs_stat_eventcounters' [-Wenum-conversion]
+            nfs_inc_stats(inode, NFSIOS_READPAGES);
+            ~~~~~~~~~~~~~        ^~~~~~~~~~~~~~~~
+
+fs/nfs/write.c:583:23: warning: implicit conversion from enumeration
+type 'enum nfs_stat_bytecounters' to different enumeration type 'enum
+nfs_stat_eventcounters' [-Wenum-conversion]
+            nfs_inc_stats(inode, NFSIOS_WRITEPAGES);
+            ~~~~~~~~~~~~~        ^~~~~~~~~~~~~~~~~
+
+Thanks,
+
+Nicolas
+
+[1]
+https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?id=5a254d08b086d80cbead2ebcee6d2a4b3a15587a
+[2]
+https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/tree/fs/nfs/iostat.h?id=90a5a895cc8b284ac522757a01de15e36710c2b9
