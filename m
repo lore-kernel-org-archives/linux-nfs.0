@@ -1,14 +1,13 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f181.google.com ([209.85.213.181]:36476 "EHLO
-	mail-ig0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752243AbbCXUbz (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Mar 2015 16:31:55 -0400
-Subject: [PATCH v2 09/15] xprtrdma: Add a "deregister_external" op for each
- memreg mode
+Received: from mail-ig0-f182.google.com ([209.85.213.182]:34873 "EHLO
+	mail-ig0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752580AbbCXUcc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Mar 2015 16:32:32 -0400
+Subject: [PATCH v2 13/15] xprtrdma: Add "open" memreg op
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Tue, 24 Mar 2015 16:31:52 -0400
-Message-ID: <20150324203152.2311.90491.stgit@manet.1015granger.net>
+Date: Tue, 24 Mar 2015 16:32:29 -0400
+Message-ID: <20150324203229.2311.49207.stgit@manet.1015granger.net>
 In-Reply-To: <20150324201849.2311.53599.stgit@manet.1015granger.net>
 References: <20150324201849.2311.53599.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -16,289 +15,217 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-There is very little common processing among the different external
-memory deregistration functions.
+The open op determines the size of various transport data structures
+based on device capabilities and memory registration mode.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/fmr_ops.c      |   27 ++++++++++++
- net/sunrpc/xprtrdma/frwr_ops.c     |   36 ++++++++++++++++
- net/sunrpc/xprtrdma/physical_ops.c |   10 ++++
- net/sunrpc/xprtrdma/rpc_rdma.c     |   11 +++--
- net/sunrpc/xprtrdma/transport.c    |    4 +-
- net/sunrpc/xprtrdma/verbs.c        |   81 ------------------------------------
- net/sunrpc/xprtrdma/xprt_rdma.h    |    5 +-
- 7 files changed, 84 insertions(+), 90 deletions(-)
+ net/sunrpc/xprtrdma/fmr_ops.c      |    8 ++++++
+ net/sunrpc/xprtrdma/frwr_ops.c     |   48 +++++++++++++++++++++++++++++++++++
+ net/sunrpc/xprtrdma/physical_ops.c |    8 ++++++
+ net/sunrpc/xprtrdma/verbs.c        |   49 ++----------------------------------
+ net/sunrpc/xprtrdma/xprt_rdma.h    |    3 ++
+ 5 files changed, 70 insertions(+), 46 deletions(-)
 
 diff --git a/net/sunrpc/xprtrdma/fmr_ops.c b/net/sunrpc/xprtrdma/fmr_ops.c
-index 45fb646..888aa10 100644
+index e9ca594..e8a9837 100644
 --- a/net/sunrpc/xprtrdma/fmr_ops.c
 +++ b/net/sunrpc/xprtrdma/fmr_ops.c
-@@ -79,8 +79,35 @@ out_maperr:
- 	return rc;
- }
+@@ -20,6 +20,13 @@
+ /* Maximum scatter/gather per FMR */
+ #define RPCRDMA_MAX_FMR_SGES	(64)
  
-+/* Use the ib_unmap_fmr() verb to prevent further remote
-+ * access via RDMA READ or RDMA WRITE.
-+ */
 +static int
-+fmr_op_unmap(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg)
++fmr_op_open(struct rpcrdma_ia *ia, struct rpcrdma_ep *ep,
++	    struct rpcrdma_create_data_internal *cdata)
 +{
-+	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
-+	struct rpcrdma_mr_seg *seg1 = seg;
-+	int rc, nsegs = seg->mr_nsegs;
-+	LIST_HEAD(l);
-+
-+	list_add(&seg1->rl_mw->r.fmr->list, &l);
-+	rc = ib_unmap_fmr(&l);
-+	read_lock(&ia->ri_qplock);
-+	while (seg1->mr_nsegs--)
-+		rpcrdma_unmap_one(ia, seg++);
-+	read_unlock(&ia->ri_qplock);
-+	if (rc)
-+		goto out_err;
-+	return nsegs;
-+
-+out_err:
-+	dprintk("RPC:       %s: ib_unmap_fmr status %i\n", __func__, rc);
-+	return nsegs;
++	return 0;
 +}
 +
+ /* FMR mode conveys up to 64 pages of payload per chunk segment.
+  */
+ static size_t
+@@ -188,6 +195,7 @@ fmr_op_destroy(struct rpcrdma_buffer *buf)
  const struct rpcrdma_memreg_ops rpcrdma_fmr_memreg_ops = {
  	.ro_map				= fmr_op_map,
-+	.ro_unmap			= fmr_op_unmap,
+ 	.ro_unmap			= fmr_op_unmap,
++	.ro_open			= fmr_op_open,
  	.ro_maxpages			= fmr_op_maxpages,
- 	.ro_displayname			= "fmr",
- };
+ 	.ro_init			= fmr_op_init,
+ 	.ro_reset			= fmr_op_reset,
 diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
-index 23e4d99..35b725b 100644
+index 121e400..e17d54d 100644
 --- a/net/sunrpc/xprtrdma/frwr_ops.c
 +++ b/net/sunrpc/xprtrdma/frwr_ops.c
-@@ -110,8 +110,44 @@ out_senderr:
- 	return rc;
+@@ -58,6 +58,53 @@ __frwr_release(struct rpcrdma_mw *r)
+ 	ib_free_fast_reg_page_list(r->r.frmr.fr_pgl);
  }
  
-+/* Post a LOCAL_INV Work Request to prevent further remote access
-+ * via RDMA READ or RDMA WRITE.
-+ */
 +static int
-+frwr_op_unmap(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg)
++frwr_op_open(struct rpcrdma_ia *ia, struct rpcrdma_ep *ep,
++	     struct rpcrdma_create_data_internal *cdata)
 +{
-+	struct rpcrdma_mr_seg *seg1 = seg;
-+	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
-+	struct ib_send_wr invalidate_wr, *bad_wr;
-+	int rc, nsegs = seg->mr_nsegs;
++	struct ib_device_attr *devattr = &ia->ri_devattr;
++	int depth, delta;
 +
-+	seg1->rl_mw->r.frmr.fr_state = FRMR_IS_INVALID;
++	ia->ri_max_frmr_depth =
++			min_t(unsigned int, RPCRDMA_MAX_DATA_SEGS,
++			      devattr->max_fast_reg_page_list_len);
++	dprintk("RPC:       %s: device's max FR page list len = %u\n",
++		__func__, ia->ri_max_frmr_depth);
 +
-+	memset(&invalidate_wr, 0, sizeof(invalidate_wr));
-+	invalidate_wr.wr_id = (unsigned long)(void *)seg1->rl_mw;
-+	invalidate_wr.opcode = IB_WR_LOCAL_INV;
-+	invalidate_wr.ex.invalidate_rkey = seg1->rl_mw->r.frmr.fr_mr->rkey;
-+	DECR_CQCOUNT(&r_xprt->rx_ep);
++	/* Add room for frmr register and invalidate WRs.
++	 * 1. FRMR reg WR for head
++	 * 2. FRMR invalidate WR for head
++	 * 3. N FRMR reg WRs for pagelist
++	 * 4. N FRMR invalidate WRs for pagelist
++	 * 5. FRMR reg WR for tail
++	 * 6. FRMR invalidate WR for tail
++	 * 7. The RDMA_SEND WR
++	 */
++	depth = 7;
 +
-+	read_lock(&ia->ri_qplock);
-+	while (seg1->mr_nsegs--)
-+		rpcrdma_unmap_one(ia, seg++);
-+	rc = ib_post_send(ia->ri_id->qp, &invalidate_wr, &bad_wr);
-+	read_unlock(&ia->ri_qplock);
-+	if (rc)
-+		goto out_err;
-+	return nsegs;
++	/* Calculate N if the device max FRMR depth is smaller than
++	 * RPCRDMA_MAX_DATA_SEGS.
++	 */
++	if (ia->ri_max_frmr_depth < RPCRDMA_MAX_DATA_SEGS) {
++		delta = RPCRDMA_MAX_DATA_SEGS - ia->ri_max_frmr_depth;
++		do {
++			depth += 2; /* FRMR reg + invalidate */
++			delta -= ia->ri_max_frmr_depth;
++		} while (delta > 0);
++	}
 +
-+out_err:
-+	/* Force rpcrdma_buffer_get() to retry */
-+	seg1->rl_mw->r.frmr.fr_state = FRMR_IS_STALE;
-+	dprintk("RPC:       %s: ib_post_send status %i\n", __func__, rc);
-+	return nsegs;
++	ep->rep_attr.cap.max_send_wr *= depth;
++	if (ep->rep_attr.cap.max_send_wr > devattr->max_qp_wr) {
++		cdata->max_requests = devattr->max_qp_wr / depth;
++		if (!cdata->max_requests)
++			return -EINVAL;
++		ep->rep_attr.cap.max_send_wr = cdata->max_requests *
++					       depth;
++	}
++
++	return 0;
 +}
 +
+ /* FRWR mode conveys a list of pages per chunk segment. The
+  * maximum length of that list is the FRWR page list depth.
+  */
+@@ -276,6 +323,7 @@ frwr_op_destroy(struct rpcrdma_buffer *buf)
  const struct rpcrdma_memreg_ops rpcrdma_frwr_memreg_ops = {
  	.ro_map				= frwr_op_map,
-+	.ro_unmap			= frwr_op_unmap,
+ 	.ro_unmap			= frwr_op_unmap,
++	.ro_open			= frwr_op_open,
  	.ro_maxpages			= frwr_op_maxpages,
- 	.ro_displayname			= "frwr",
- };
+ 	.ro_init			= frwr_op_init,
+ 	.ro_reset			= frwr_op_reset,
 diff --git a/net/sunrpc/xprtrdma/physical_ops.c b/net/sunrpc/xprtrdma/physical_ops.c
-index 5a284ee..5b5a63a 100644
+index eb39011..0ba130b 100644
 --- a/net/sunrpc/xprtrdma/physical_ops.c
 +++ b/net/sunrpc/xprtrdma/physical_ops.c
-@@ -44,8 +44,18 @@ physical_op_map(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
- 	return 1;
- }
+@@ -19,6 +19,13 @@
+ # define RPCDBG_FACILITY	RPCDBG_TRANS
+ #endif
  
-+/* Unmap a memory region, but leave it registered.
-+ */
 +static int
-+physical_op_unmap(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg)
++physical_op_open(struct rpcrdma_ia *ia, struct rpcrdma_ep *ep,
++		 struct rpcrdma_create_data_internal *cdata)
 +{
-+	rpcrdma_unmap_one(&r_xprt->rx_ia, seg);
-+	return 1;
++	return 0;
 +}
 +
+ /* PHYSICAL memory registration conveys one page per chunk segment.
+  */
+ static size_t
+@@ -72,6 +79,7 @@ physical_op_destroy(struct rpcrdma_buffer *buf)
  const struct rpcrdma_memreg_ops rpcrdma_physical_memreg_ops = {
  	.ro_map				= physical_op_map,
-+	.ro_unmap			= physical_op_unmap,
+ 	.ro_unmap			= physical_op_unmap,
++	.ro_open			= physical_op_open,
  	.ro_maxpages			= physical_op_maxpages,
- 	.ro_displayname			= "physical",
- };
-diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index 6ab1d03..2c53ea9 100644
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -284,11 +284,12 @@ rpcrdma_create_chunks(struct rpc_rqst *rqst, struct xdr_buf *target,
- 	return (unsigned char *)iptr - (unsigned char *)headerp;
- 
- out:
--	if (r_xprt->rx_ia.ri_memreg_strategy != RPCRDMA_FRMR) {
--		for (pos = 0; nchunks--;)
--			pos += rpcrdma_deregister_external(
--					&req->rl_segments[pos], r_xprt);
--	}
-+	if (r_xprt->rx_ia.ri_memreg_strategy == RPCRDMA_FRMR)
-+		return n;
-+
-+	for (pos = 0; nchunks--;)
-+		pos += r_xprt->rx_ia.ri_ops->ro_unmap(r_xprt,
-+						      &req->rl_segments[pos]);
- 	return n;
- }
- 
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index da71a24..54f23b1 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -584,8 +584,8 @@ xprt_rdma_free(void *buffer)
- 
- 	for (i = 0; req->rl_nchunks;) {
- 		--req->rl_nchunks;
--		i += rpcrdma_deregister_external(
--			&req->rl_segments[i], r_xprt);
-+		i += r_xprt->rx_ia.ri_ops->ro_unmap(r_xprt,
-+						    &req->rl_segments[i]);
- 	}
- 
- 	rpcrdma_buffer_put(req);
+ 	.ro_init			= physical_op_init,
+ 	.ro_reset			= physical_op_reset,
 diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 4318c04..b167c99 100644
+index a7fb314..b697b3e 100644
 --- a/net/sunrpc/xprtrdma/verbs.c
 +++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -1510,7 +1510,7 @@ rpcrdma_buffer_put_sendbuf(struct rpcrdma_req *req, struct rpcrdma_buffer *buf)
+@@ -622,11 +622,6 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
+ 			dprintk("RPC:       %s: FRMR registration "
+ 				"not supported by HCA\n", __func__);
+ 			memreg = RPCRDMA_MTHCAFMR;
+-		} else {
+-			/* Mind the ia limit on FRMR page list depth */
+-			ia->ri_max_frmr_depth = min_t(unsigned int,
+-				RPCRDMA_MAX_DATA_SEGS,
+-				devattr->max_fast_reg_page_list_len);
+ 		}
  	}
- }
+ 	if (memreg == RPCRDMA_MTHCAFMR) {
+@@ -741,49 +736,11 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
  
--/* rpcrdma_unmap_one() was already done by rpcrdma_deregister_frmr_external().
-+/* rpcrdma_unmap_one() was already done during deregistration.
-  * Redo only the ib_post_send().
-  */
- static void
-@@ -1890,85 +1890,6 @@ rpcrdma_unmap_one(struct rpcrdma_ia *ia, struct rpcrdma_mr_seg *seg)
- 				seg->mr_dma, seg->mr_dmalen, seg->mr_dir);
- }
- 
--static int
--rpcrdma_deregister_frmr_external(struct rpcrdma_mr_seg *seg,
--			struct rpcrdma_ia *ia, struct rpcrdma_xprt *r_xprt)
--{
--	struct rpcrdma_mr_seg *seg1 = seg;
--	struct ib_send_wr invalidate_wr, *bad_wr;
--	int rc;
--
--	seg1->rl_mw->r.frmr.fr_state = FRMR_IS_INVALID;
--
--	memset(&invalidate_wr, 0, sizeof invalidate_wr);
--	invalidate_wr.wr_id = (unsigned long)(void *)seg1->rl_mw;
--	invalidate_wr.opcode = IB_WR_LOCAL_INV;
--	invalidate_wr.ex.invalidate_rkey = seg1->rl_mw->r.frmr.fr_mr->rkey;
--	DECR_CQCOUNT(&r_xprt->rx_ep);
--
--	read_lock(&ia->ri_qplock);
--	while (seg1->mr_nsegs--)
--		rpcrdma_unmap_one(ia, seg++);
--	rc = ib_post_send(ia->ri_id->qp, &invalidate_wr, &bad_wr);
--	read_unlock(&ia->ri_qplock);
--	if (rc) {
--		/* Force rpcrdma_buffer_get() to retry */
--		seg1->rl_mw->r.frmr.fr_state = FRMR_IS_STALE;
--		dprintk("RPC:       %s: failed ib_post_send for invalidate,"
--			" status %i\n", __func__, rc);
--	}
--	return rc;
--}
--
--static int
--rpcrdma_deregister_fmr_external(struct rpcrdma_mr_seg *seg,
--			struct rpcrdma_ia *ia)
--{
--	struct rpcrdma_mr_seg *seg1 = seg;
--	LIST_HEAD(l);
--	int rc;
--
--	list_add(&seg1->rl_mw->r.fmr->list, &l);
--	rc = ib_unmap_fmr(&l);
--	read_lock(&ia->ri_qplock);
--	while (seg1->mr_nsegs--)
--		rpcrdma_unmap_one(ia, seg++);
--	read_unlock(&ia->ri_qplock);
--	if (rc)
--		dprintk("RPC:       %s: failed ib_unmap_fmr,"
--			" status %i\n", __func__, rc);
--	return rc;
--}
--
--int
--rpcrdma_deregister_external(struct rpcrdma_mr_seg *seg,
--		struct rpcrdma_xprt *r_xprt)
--{
--	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
--	int nsegs = seg->mr_nsegs, rc;
--
+ 	ep->rep_attr.event_handler = rpcrdma_qp_async_error_upcall;
+ 	ep->rep_attr.qp_context = ep;
+-	/* send_cq and recv_cq initialized below */
+ 	ep->rep_attr.srq = NULL;
+ 	ep->rep_attr.cap.max_send_wr = cdata->max_requests;
 -	switch (ia->ri_memreg_strategy) {
+-	case RPCRDMA_FRMR: {
+-		int depth = 7;
 -
--	case RPCRDMA_ALLPHYSICAL:
--		read_lock(&ia->ri_qplock);
--		rpcrdma_unmap_one(ia, seg);
--		read_unlock(&ia->ri_qplock);
+-		/* Add room for frmr register and invalidate WRs.
+-		 * 1. FRMR reg WR for head
+-		 * 2. FRMR invalidate WR for head
+-		 * 3. N FRMR reg WRs for pagelist
+-		 * 4. N FRMR invalidate WRs for pagelist
+-		 * 5. FRMR reg WR for tail
+-		 * 6. FRMR invalidate WR for tail
+-		 * 7. The RDMA_SEND WR
+-		 */
+-
+-		/* Calculate N if the device max FRMR depth is smaller than
+-		 * RPCRDMA_MAX_DATA_SEGS.
+-		 */
+-		if (ia->ri_max_frmr_depth < RPCRDMA_MAX_DATA_SEGS) {
+-			int delta = RPCRDMA_MAX_DATA_SEGS -
+-				    ia->ri_max_frmr_depth;
+-
+-			do {
+-				depth += 2; /* FRMR reg + invalidate */
+-				delta -= ia->ri_max_frmr_depth;
+-			} while (delta > 0);
+-
+-		}
+-		ep->rep_attr.cap.max_send_wr *= depth;
+-		if (ep->rep_attr.cap.max_send_wr > devattr->max_qp_wr) {
+-			cdata->max_requests = devattr->max_qp_wr / depth;
+-			if (!cdata->max_requests)
+-				return -EINVAL;
+-			ep->rep_attr.cap.max_send_wr = cdata->max_requests *
+-						       depth;
+-		}
 -		break;
--
--	case RPCRDMA_FRMR:
--		rc = rpcrdma_deregister_frmr_external(seg, ia, r_xprt);
--		break;
--
--	case RPCRDMA_MTHCAFMR:
--		rc = rpcrdma_deregister_fmr_external(seg, ia);
--		break;
--
+-	}
 -	default:
 -		break;
 -	}
--	return nsegs;
--}
--
- /*
-  * Prepost any receive buffer, then post send.
-  *
++	rc = ia->ri_ops->ro_open(ia, ep, cdata);
++	if (rc)
++		return rc;
+ 	ep->rep_attr.cap.max_recv_wr = cdata->max_requests;
+ 	ep->rep_attr.cap.max_send_sge = (cdata->padding ? 4 : 2);
+ 	ep->rep_attr.cap.max_recv_sge = 1;
 diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index 7bf077b..9a727f9 100644
+index b95e223..9036fb4 100644
 --- a/net/sunrpc/xprtrdma/xprt_rdma.h
 +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -338,6 +338,8 @@ struct rpcrdma_xprt;
- struct rpcrdma_memreg_ops {
- 	int		(*ro_map)(struct rpcrdma_xprt *,
+@@ -340,6 +340,9 @@ struct rpcrdma_memreg_ops {
  				  struct rpcrdma_mr_seg *, int, bool);
-+	int		(*ro_unmap)(struct rpcrdma_xprt *,
-+				    struct rpcrdma_mr_seg *);
+ 	int		(*ro_unmap)(struct rpcrdma_xprt *,
+ 				    struct rpcrdma_mr_seg *);
++	int		(*ro_open)(struct rpcrdma_ia *,
++				   struct rpcrdma_ep *,
++				   struct rpcrdma_create_data_internal *);
  	size_t		(*ro_maxpages)(struct rpcrdma_xprt *);
- 	const char	*ro_displayname;
- };
-@@ -405,9 +407,6 @@ void rpcrdma_buffer_put(struct rpcrdma_req *);
- void rpcrdma_recv_buffer_get(struct rpcrdma_req *);
- void rpcrdma_recv_buffer_put(struct rpcrdma_rep *);
- 
--int rpcrdma_deregister_external(struct rpcrdma_mr_seg *,
--				struct rpcrdma_xprt *);
--
- struct rpcrdma_regbuf *rpcrdma_alloc_regbuf(struct rpcrdma_ia *,
- 					    size_t, gfp_t);
- void rpcrdma_free_regbuf(struct rpcrdma_ia *,
+ 	int		(*ro_init)(struct rpcrdma_xprt *);
+ 	void		(*ro_reset)(struct rpcrdma_xprt *);
 
