@@ -1,43 +1,43 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ob0-f178.google.com ([209.85.214.178]:35702 "EHLO
-	mail-ob0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750881AbbCYMtU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Mar 2015 08:49:20 -0400
-Received: by obcjt1 with SMTP id jt1so18197716obc.2
-        for <linux-nfs@vger.kernel.org>; Wed, 25 Mar 2015 05:49:19 -0700 (PDT)
-MIME-Version: 1.0
-Date: Wed, 25 Mar 2015 08:49:19 -0400
-Message-ID: <CAABAsM5qmPK0WgED0FkfHCt0E_r9BYq1VftC8Kxhfw77X52+9g@mail.gmail.com>
-Subject: Re: [PATCH 4/4] NFSv4.1: Don't cache deviceids that have no notifications
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Christoph Hellwig <hch@infradead.org>
+Received: from bombadil.infradead.org ([198.137.202.9]:35397 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752337AbbCYNpd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Mar 2015 09:45:33 -0400
+Date: Wed, 25 Mar 2015 06:45:31 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
 Cc: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Subject: Re: [PATCH 4/4] NFSv4.1: Don't cache deviceids that have no
+ notifications
+Message-ID: <20150325134531.GA25051@infradead.org>
+References: <CAABAsM5qmPK0WgED0FkfHCt0E_r9BYq1VftC8Kxhfw77X52+9g@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAABAsM5qmPK0WgED0FkfHCt0E_r9BYq1VftC8Kxhfw77X52+9g@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Mar 25, 2015 at 4:55 AM, Christoph Hellwig <hch@infradead.org> wrote:
-> On Sun, Mar 22, 2015 at 03:27:32PM -0400, Trond Myklebust wrote:
->> No. The right fix is to make the server support device notifications.
->
-> And you instantly thrash performane on any server that doesn't, which
-> is why I sent out the errata that no one objected out.  I'm happy to
-> open this again on the WG list, but the notification scheme is such a
-> big hammer that it absolutely isn't worth implementing.  Given how
-> GETDEVICELIST is specified in 4.1 the original RFC language also is
-> inconsistent with itself, so that's not an argument for the old
-> behavior.
+On Wed, Mar 25, 2015 at 08:49:19AM -0400, Trond Myklebust wrote:
+> The reason for the GETDEVICEINFO description in RFC5661 is that you
+> need some mechanism to allow clients to know when a deviceid is
+> retired. There is no reasonable alternative to notification that
+> doesn't cause problems on either the client or the server.
+> 
+> That said, do note that one valid solution here is to have deviceids
+> that never expire (i.e. if you need to retire them, then you allocate
+> a new one). Given that the deviceid is a 128-bit field, such a
+> solution is 100% practical. That would allow you to say you support
+> notification, but not have to implement it.
 
-The reason for the GETDEVICEINFO description in RFC5661 is that you
-need some mechanism to allow clients to know when a deviceid is
-retired. There is no reasonable alternative to notification that
-doesn't cause problems on either the client or the server.
+Deviceid must never be retired and reused, to quote from 12.2.10.:
 
-That said, do note that one valid solution here is to have deviceids
-that never expire (i.e. if you need to retire them, then you allocate
-a new one). Given that the deviceid is a 128-bit field, such a
-solution is 100% practical. That would allow you to say you support
-notification, but not have to implement it.
-
-Trond
+Once a device ID is
+deleted by the server, the server MUST NOT reuse the device ID for
+the same layout type and client ID again.  This requirement is
+feasible because the device ID is 16 bytes long, leaving sufficient
+room to store a generation number if the server's implementation
+requires most of the rest of the device ID's content to	be reused.
+This requirement is necessary because otherwise the race conditions
+between asynchronous notification of device ID addition and deletion
+would be too difficult to sort out.
