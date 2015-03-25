@@ -1,79 +1,100 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:44424 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933193AbbCYPI4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 25 Mar 2015 11:08:56 -0400
-Date: Wed, 25 Mar 2015 11:08:56 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jeff.layton@primarydata.com>
-Cc: Chengyu Song <csong84@gatech.edu>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, taesoo@gatech.edu, changwoo@gatech.edu,
-        sanidhya@gatech.edu, blee@gatech.edu
-Subject: Re: [PATCH 1/1] nfsd: incorrect check for debugfs returns
-Message-ID: <20150325150856.GB13764@fieldses.org>
-References: <1427165885-20823-1-git-send-email-csong84@gatech.edu>
- <20150324064420.515096c7@tlielax.poochiereds.net>
+Received: from mail-wi0-f179.google.com ([209.85.212.179]:37576 "EHLO
+	mail-wi0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S964809AbbCYPOe (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Mar 2015 11:14:34 -0400
+Received: by wixw10 with SMTP id w10so43237469wix.0
+        for <linux-nfs@vger.kernel.org>; Wed, 25 Mar 2015 08:14:32 -0700 (PDT)
+Message-ID: <5512D0D5.6010807@profitbricks.com>
+Date: Wed, 25 Mar 2015 16:14:29 +0100
+From: Michael Wang <yun.wang@profitbricks.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20150324064420.515096c7@tlielax.poochiereds.net>
+To: linux-rdma@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
+        Roland Dreier <roland@kernel.org>, Sean Hefty <sean.hefty@intel.com>,
+        Hal Rosenstock <hal.rosenstock@gmail.com>,
+        Ira Weiny <ira.weiny@intel.com>
+CC: Trond Myklebust <trond.myklebust@primarydata.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        "David S. Miller" <davem@davemloft.net>,
+        Moni Shoua <monis@mellanox.com>, Or Gerlitz <ogerlitz@mellanox.com>,
+        Tatyana Nikolova <Tatyana.E.Nikolova@intel.com>,
+        Steve Wise <swise@opengridcomputing.com>,
+        Yan Burman <yanb@mellanox.com>,
+        Jack Morgenstein <jackm@dev.mellanox.co.il>,
+        Bart Van Assche <bvanassche@acm.org>,
+        Yann Droneaud <ydroneaud@opteya.com>,
+        Colin Ian King <colin.king@canonical.com>,
+        Jiri Kosina <jkosina@suse.cz>, Matan Barak <matanb@mellanox.com>,
+        Majd Dibbiny <majd@mellanox.com>,
+        Dan Carpenter <dan.carpenter@oracle.com>, Mel Gorman <mgorman@suse.de>,
+        Alex Estrin <alex.estrin@intel.com>,
+        Doug Ledford <dledford@redhat.com>, Eric Dumazet <edumazet@google.com>,
+        Erez Shitrit <erezsh@mellanox.com>, Sagi Grimberg <sagig@mellanox.com>,
+        Haggai Eran <haggaie@mellanox.com>,
+        Shachar Raindel <raindel@mellanox.com>,
+        Mike Marciniszyn <mike.marciniszyn@intel.com>, Tom Tucker <tom@ogc.us>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        Michael Wang <yun.wang@profitbricks.com>
+Subject: [PATCH 2/2 RESEND] IB/Verbs: Use helpers to check IBoE technology
+References: <5512CFB0.1050108@profitbricks.com>
+In-Reply-To: <5512CFB0.1050108@profitbricks.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Mar 24, 2015 at 06:44:20AM -0400, Jeff Layton wrote:
-> On Mon, 23 Mar 2015 22:58:05 -0400
-> Chengyu Song <csong84@gatech.edu> wrote:
-> 
-> > debugfs_create_dir and debugfs_create_file may return -ENODEV when debugfs
-> > is not configured, so the return value should be checked against ERROR_VALUE
-> > as well, otherwise the later dereference of the dentry pointer would crash
-> > the kernel.
-> > 
-> > Signed-off-by: Chengyu Song <csong84@gatech.edu>
-> > ---
-> >  fs/nfsd/fault_inject.c | 12 ++++++++----
-> >  1 file changed, 8 insertions(+), 4 deletions(-)
-> > 
-> > diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
-> > index c16bf5a..621d065 100644
-> > --- a/fs/nfsd/fault_inject.c
-> > +++ b/fs/nfsd/fault_inject.c
-> > @@ -132,19 +132,23 @@ int nfsd_fault_inject_init(void)
-> >  	unsigned int i;
-> >  	struct nfsd_fault_inject_op *op;
-> >  	umode_t mode = S_IFREG | S_IRUSR | S_IWUSR;
-> > +	struct dentry *dent;
-> >  
-> > -	debug_dir = debugfs_create_dir("nfsd", NULL);
-> > -	if (!debug_dir)
-> > +	dent = debugfs_create_dir("nfsd", NULL);
-> > +	if (IS_ERR_OR_NULL(dent))
-> >  		goto fail;
-> > +	debug_dir = dent;
-> >  
-> >  	for (i = 0; i < NUM_INJECT_OPS; i++) {
-> >  		op = &inject_ops[i];
-> > -		if (!debugfs_create_file(op->file, mode, debug_dir, op, &fops_nfsd))
-> > +		dent = debugfs_create_file(op->file, mode, debug_dir, op, &fops_nfsd);
-> > +		if (IS_ERR_OR_NULL(dent))
-> >  			goto fail;
-> > +
-> >  	}
-> >  	return 0;
-> >  
-> >  fail:
-> >  	nfsd_fault_inject_cleanup();
-> > -	return -ENOMEM;
-> > +	return dent ? PTR_ERR(dent) : -ENOMEM;
-> >  }
-> 
-> No objection to taking this patch in the near term if it helps, but we
-> had discussed over the summer just removing the NFS fault injection
-> framework.
-> 
-> Bruce, any objections to making that happen for v4.1?
 
-I was prepared to, but I think Redhat QA people told me that they do use
-it--which means other people may too, so I'm sort of reluctant to tear
-it out even if it's imperfect.
+This patch will introduce rdma_tech_is_iboe() and use it to save some code.
 
---b.
+Cc: Ira Weiny <ira.weiny@intel.com>
+Cc: Sean Hefty <sean.hefty@intel.com>
+Signed-off-by: Michael Wang <yun.wang@profitbricks.com>
+---
+ drivers/infiniband/core/cma.c | 6 ++----
+ include/rdma/ib_verbs.h       | 6 ++++++
+ 2 files changed, 8 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/infiniband/core/cma.c b/drivers/infiniband/core/cma.c
+index 668e955..d354857 100644
+--- a/drivers/infiniband/core/cma.c
++++ b/drivers/infiniband/core/cma.c
+@@ -375,8 +375,7 @@ static int cma_acquire_dev(struct rdma_id_private *id_priv,
+                      listen_id_priv->id.port_num) == dev_ll) {
+         cma_dev = listen_id_priv->cma_dev;
+         port = listen_id_priv->id.port_num;
+-        if (rdma_transport_is_ib(cma_dev->device) &&
+-            rdma_port_ll_is_eth(cma_dev->device, port))
++        if (rdma_tech_is_iboe(cma_dev->device, port))
+             ret = ib_find_cached_gid(cma_dev->device, &iboe_gid,
+                          &found_port, NULL);
+         else
+@@ -395,8 +394,7 @@ static int cma_acquire_dev(struct rdma_id_private *id_priv,
+                 listen_id_priv->id.port_num == port)
+                 continue;
+             if (rdma_port_get_link_layer(cma_dev->device, port) == dev_ll) {
+-                if (rdma_transport_is_ib(cma_dev->device) &&
+-                    rdma_port_ll_is_eth(cma_dev->device, port))
++                if (rdma_tech_is_iboe(cma_dev->device, port))
+                     ret = ib_find_cached_gid(cma_dev->device, &iboe_gid, &found_port, NULL);
+                 else
+                     ret = ib_find_cached_gid(cma_dev->device, &gid, &found_port, NULL);
+diff --git a/include/rdma/ib_verbs.h b/include/rdma/ib_verbs.h
+index 2bf9094..9a811f8 100644
+--- a/include/rdma/ib_verbs.h
++++ b/include/rdma/ib_verbs.h
+@@ -1767,6 +1767,12 @@ static inline int rdma_port_ll_is_eth(struct ib_device *device, u8 port_num)
+             == IB_LINK_LAYER_ETHERNET;
+ }
+
++static inline int rdma_tech_is_iboe(struct ib_device *device, u8 port_num)
++{
++    return rdma_transport_is_ib(device) &&
++            rdma_port_ll_is_eth(device, port_num);
++}
++
+ int ib_query_gid(struct ib_device *device,
+          u8 port_num, int index, union ib_gid *gid);
+
+-- 
+2.1.0
+
