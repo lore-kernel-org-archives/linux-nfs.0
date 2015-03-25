@@ -1,36 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([198.137.202.9]:54117 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752383AbbCYIzw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Mar 2015 04:55:52 -0400
-Date: Wed, 25 Mar 2015 01:55:50 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 4/4] NFSv4.1: Don't cache deviceids that have no
- notifications
-Message-ID: <20150325085550.GA23258@infradead.org>
-References: <1425931503-37261-1-git-send-email-trond.myklebust@primarydata.com>
- <1425931503-37261-2-git-send-email-trond.myklebust@primarydata.com>
- <1425931503-37261-3-git-send-email-trond.myklebust@primarydata.com>
- <1425931503-37261-4-git-send-email-trond.myklebust@primarydata.com>
- <1425931503-37261-5-git-send-email-trond.myklebust@primarydata.com>
- <20150317103736.GA31940@infradead.org>
- <CAHQdGtS4UU=ArTeLBWKaRzEj=j2dWmqhU+z61RLnzU1=Gp5aLw@mail.gmail.com>
+Received: from dot.freshdot.net ([213.154.236.176]:55431 "EHLO
+	dot.freshdot.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750819AbbCYJ73 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Mar 2015 05:59:29 -0400
+Date: Wed, 25 Mar 2015 10:37:07 +0100
+From: Sander Smeenk <ssmeenk@freshdot.net>
+To: linux-nfs@vger.kernel.org
+Subject: rpc.mountd reads /etc/mtab 17028 times, 100% CPU.
+Message-ID: <20150325093707.GC26088@dot.freshdot.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAHQdGtS4UU=ArTeLBWKaRzEj=j2dWmqhU+z61RLnzU1=Gp5aLw@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Mar 22, 2015 at 03:27:32PM -0400, Trond Myklebust wrote:
-> No. The right fix is to make the server support device notifications.
+Hi,
 
-And you instantly thrash performane on any server that doesn't, which
-is why I sent out the errata that no one objected out.  I'm happy to
-open this again on the WG list, but the notification scheme is such a
-big hammer that it absolutely isn't worth implementing.  Given how
-GETDEVICELIST is specified in 4.1 the original RFC language also is
-inconsistent with itself, so that's not an argument for the old
-behavior.
+I'm running a server that has 1500+ mounted local filesystems.
+All of these local filesystems are exported through NFS by this server.
+
+When an NFS-client tries to access one of these exported filesystems,
+for example doing a simple 'ls' in a mounted NFS, rpc.mountd on the
+server takes 100% CPU and starts to spin over reading /etc/mtab which is
+linked to /proc/mounts and totals to about 200KB in size. The client
+stalls all the while rpc.mountd is busy reading /etc/mtab for every
+filesystem mounted, and then some more.
+
+I made a strace of rpc.mountd during such a run to gather some stats:
+
+# cut -d'(' -f1 straceout.25103 | sort | uniq -c | sort -n
+      3 fadvise64
+      6 ioctl
+     11 lseek
+     33 readlink
+     43 select
+     53 write
+    809 statfs
+    814 lstat
+   1282 stat
+  17043 mmap
+  17043 munmap
+  17088 fstat
+  17895 open
+  21728 openat
+  37295 close
+  40352 getdents
+ 458616 newfstatat
+3763233 read
+
+# grep -c "open.*mtab" straceout.25103 
+17028
+ 
+This entire process of reading /etc/mtab 17028 times takes a lot of time
+during which the client stalls, but in the end 'it just works fine'.
+It just takes ages when you try to tab-complete on a client.
+
+What would be needed to debug and optimise this?
+Could someone point me to the code that is involved in doing this?
+I'm not a good C-coder but perhaps i can debug more...
+
+Any insights appreciated!
+
+With regards,
+-Sander.
+-- 
+| Happiness isn't enough for me. I demand EUPHORIA!
+| 4096R/20CC6CD2 - 6D40 1A20 B9AA 87D4 84C7  FBD6 F3A9 9442 20CC 6CD2
