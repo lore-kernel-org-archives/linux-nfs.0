@@ -1,92 +1,79 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wg0-f44.google.com ([74.125.82.44]:32852 "EHLO
-	mail-wg0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933258AbbCYPJl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Mar 2015 11:09:41 -0400
-Received: by wgbcc7 with SMTP id cc7so30833492wgb.0
-        for <linux-nfs@vger.kernel.org>; Wed, 25 Mar 2015 08:09:39 -0700 (PDT)
-Message-ID: <5512CFB0.1050108@profitbricks.com>
-Date: Wed, 25 Mar 2015 16:09:36 +0100
-From: Michael Wang <yun.wang@profitbricks.com>
+Received: from fieldses.org ([173.255.197.46]:44424 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933193AbbCYPI4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 25 Mar 2015 11:08:56 -0400
+Date: Wed, 25 Mar 2015 11:08:56 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jeff.layton@primarydata.com>
+Cc: Chengyu Song <csong84@gatech.edu>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, taesoo@gatech.edu, changwoo@gatech.edu,
+        sanidhya@gatech.edu, blee@gatech.edu
+Subject: Re: [PATCH 1/1] nfsd: incorrect check for debugfs returns
+Message-ID: <20150325150856.GB13764@fieldses.org>
+References: <1427165885-20823-1-git-send-email-csong84@gatech.edu>
+ <20150324064420.515096c7@tlielax.poochiereds.net>
 MIME-Version: 1.0
-To: linux-rdma@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
-        Roland Dreier <roland@kernel.org>, Sean Hefty <sean.hefty@intel.com>,
-        Hal Rosenstock <hal.rosenstock@gmail.com>,
-        Ira Weiny <ira.weiny@intel.com>
-CC: Trond Myklebust <trond.myklebust@primarydata.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        "David S. Miller" <davem@davemloft.net>,
-        Moni Shoua <monis@mellanox.com>, Or Gerlitz <ogerlitz@mellanox.com>,
-        Tatyana Nikolova <Tatyana.E.Nikolova@intel.com>,
-        Steve Wise <swise@opengridcomputing.com>,
-        Yan Burman <yanb@mellanox.com>,
-        Jack Morgenstein <jackm@dev.mellanox.co.il>,
-        Bart Van Assche <bvanassche@acm.org>,
-        Yann Droneaud <ydroneaud@opteya.com>,
-        Colin Ian King <colin.king@canonical.com>,
-        Jiri Kosina <jkosina@suse.cz>, Matan Barak <matanb@mellanox.com>,
-        Majd Dibbiny <majd@mellanox.com>,
-        Dan Carpenter <dan.carpenter@oracle.com>, Mel Gorman <mgorman@suse.de>,
-        Alex Estrin <alex.estrin@intel.com>,
-        Doug Ledford <dledford@redhat.com>, Eric Dumazet <edumazet@google.com>,
-        Erez Shitrit <erezsh@mellanox.com>, Sagi Grimberg <sagig@mellanox.com>,
-        Haggai Eran <haggaie@mellanox.com>,
-        Shachar Raindel <raindel@mellanox.com>,
-        Mike Marciniszyn <mike.marciniszyn@intel.com>, Tom Tucker <tom@ogc.us>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        Michael Wang <yun.wang@profitbricks.com>
-Subject: [PATCH 0/2 RESEND] IB/Verbs: Use helpers to refine the checking on
- transport and link layer
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20150324064420.515096c7@tlielax.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Tue, Mar 24, 2015 at 06:44:20AM -0400, Jeff Layton wrote:
+> On Mon, 23 Mar 2015 22:58:05 -0400
+> Chengyu Song <csong84@gatech.edu> wrote:
+> 
+> > debugfs_create_dir and debugfs_create_file may return -ENODEV when debugfs
+> > is not configured, so the return value should be checked against ERROR_VALUE
+> > as well, otherwise the later dereference of the dentry pointer would crash
+> > the kernel.
+> > 
+> > Signed-off-by: Chengyu Song <csong84@gatech.edu>
+> > ---
+> >  fs/nfsd/fault_inject.c | 12 ++++++++----
+> >  1 file changed, 8 insertions(+), 4 deletions(-)
+> > 
+> > diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
+> > index c16bf5a..621d065 100644
+> > --- a/fs/nfsd/fault_inject.c
+> > +++ b/fs/nfsd/fault_inject.c
+> > @@ -132,19 +132,23 @@ int nfsd_fault_inject_init(void)
+> >  	unsigned int i;
+> >  	struct nfsd_fault_inject_op *op;
+> >  	umode_t mode = S_IFREG | S_IRUSR | S_IWUSR;
+> > +	struct dentry *dent;
+> >  
+> > -	debug_dir = debugfs_create_dir("nfsd", NULL);
+> > -	if (!debug_dir)
+> > +	dent = debugfs_create_dir("nfsd", NULL);
+> > +	if (IS_ERR_OR_NULL(dent))
+> >  		goto fail;
+> > +	debug_dir = dent;
+> >  
+> >  	for (i = 0; i < NUM_INJECT_OPS; i++) {
+> >  		op = &inject_ops[i];
+> > -		if (!debugfs_create_file(op->file, mode, debug_dir, op, &fops_nfsd))
+> > +		dent = debugfs_create_file(op->file, mode, debug_dir, op, &fops_nfsd);
+> > +		if (IS_ERR_OR_NULL(dent))
+> >  			goto fail;
+> > +
+> >  	}
+> >  	return 0;
+> >  
+> >  fail:
+> >  	nfsd_fault_inject_cleanup();
+> > -	return -ENOMEM;
+> > +	return dent ? PTR_ERR(dent) : -ENOMEM;
+> >  }
+> 
+> No objection to taking this patch in the near term if it helps, but we
+> had discussed over the summer just removing the NFS fault injection
+> framework.
+> 
+> Bruce, any objections to making that happen for v4.1?
 
-My sincerely apologies for the corrupted mails, and thanks for Dan's kindly
-remind :-)
+I was prepared to, but I think Redhat QA people told me that they do use
+it--which means other people may too, so I'm sort of reluctant to tear
+it out even if it's imperfect.
 
-There are too many lengthy code to check the transport type of IB device,
-or the link layer type of it's port, this patch set try to use some helper to
-refine and save us some code.
-
-TODO:
-    Currently we inferred from the transport type and link layer type to identify
-    the way of management, it will be better if we can directly get the indicator
-    from vendor.
-
-    Sean proposed one suggestion:
-        https://www.mail-archive.com/linux-rdma@vger.kernel.org/msg23339.html
-
-    It may need a big work to adapt current implementation to utilize
-    these flags elegantly.
-
-    Also the performance concern on query_port() need to be addressed, may be
-    some new callback like query_mgmt() could works.
-
-Michael Wang (2):
-    [PATCH 1/2] IB/Verbs: Use helpers to check transport and link layer
-    [PATCH 2/2] IB/Verbs: Use helpers to check IBoE technology
-
----
- drivers/infiniband/core/agent.c           |    2 -
- drivers/infiniband/core/cm.c              |    2 -
- drivers/infiniband/core/cma.c             |   33 ++++++++++++------------------
- drivers/infiniband/core/mad.c             |    6 ++---
- drivers/infiniband/core/multicast.c       |   11 +++-------
- drivers/infiniband/core/sa_query.c        |   14 ++++++------
- drivers/infiniband/core/ucm.c             |    3 --
- drivers/infiniband/core/user_mad.c        |    2 -
- drivers/infiniband/core/verbs.c           |    5 +---
- drivers/infiniband/hw/mlx4/ah.c           |    2 -
- drivers/infiniband/hw/mlx4/cq.c           |    4 ---
- drivers/infiniband/hw/mlx4/mad.c          |   14 +++---------
- drivers/infiniband/hw/mlx4/main.c         |    8 ++-----
- drivers/infiniband/hw/mlx4/mlx4_ib.h      |    2 -
- drivers/infiniband/hw/mlx4/qp.c           |   21 ++++++-------------
- drivers/infiniband/hw/mlx4/sysfs.c        |    6 +----
- drivers/infiniband/ulp/ipoib/ipoib_main.c |    6 ++---
- include/rdma/ib_verbs.h                   |   30 +++++++++++++++++++++++++++
- net/sunrpc/xprtrdma/svc_rdma_recvfrom.c   |    3 --
- 19 files changed, 87 insertions(+), 87 deletions(-)
-
+--b.
