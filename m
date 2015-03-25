@@ -1,62 +1,95 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yk0-f170.google.com ([209.85.160.170]:36333 "EHLO
-	mail-yk0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751852AbbCYK2i (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Mar 2015 06:28:38 -0400
-Received: by ykcn8 with SMTP id n8so10086383ykc.3
-        for <linux-nfs@vger.kernel.org>; Wed, 25 Mar 2015 03:28:37 -0700 (PDT)
-Date: Wed, 25 Mar 2015 06:28:33 -0400
-From: Jeff Layton <jlayton@poochiereds.net>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: bfields@fieldses.org, trond.myklebust@primarydata.com,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/3] nfsd: return correct openowner when there is a race
- to put one in the hash
-Message-ID: <20150325062833.1f5ad592@tlielax.poochiereds.net>
-In-Reply-To: <20150325084516.GC25682@infradead.org>
-References: <1427122424-8078-1-git-send-email-jeff.layton@primarydata.com>
-	<1427122424-8078-2-git-send-email-jeff.layton@primarydata.com>
-	<20150325084516.GC25682@infradead.org>
+Received: from mail-wi0-f176.google.com ([209.85.212.176]:34875 "EHLO
+	mail-wi0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752230AbbCYLMz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Mar 2015 07:12:55 -0400
+Received: by wibbg6 with SMTP id bg6so19061431wib.0
+        for <linux-nfs@vger.kernel.org>; Wed, 25 Mar 2015 04:12:54 -0700 (PDT)
+Message-ID: <55129832.2070707@profitbricks.com>
+Date: Wed, 25 Mar 2015 12:12:50 +0100
+From: Michael Wang <yun.wang@profitbricks.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+To: Roland Dreier <roland@kernel.org>, Sean Hefty <sean.hefty@intel.com>,
+        Hal Rosenstock <hal.rosenstock@gmail.com>, linux-rdma@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        netdev@vger.kernel.org, Ira Weiny <ira.weiny@intel.com>
+CC: "J. Bruce Fields" <bfields@fieldses.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        "David S. Miller" <davem@davemloft.net>,
+        Moni Shoua <monis@mellanox.com>,
+        PJ Waskiewicz <pj.waskiewicz@solidfire.com>,
+        Steve Wise <swise@opengridcomputing.com>,
+        Tatyana Nikolova <Tatyana.E.Nikolova@intel.com>,
+        Yan Burman <yanb@mellanox.com>,
+        Jack Morgenstein <jackm@dev.mellanox.co.il>,
+        Yann Droneaud <ydroneaud@opteya.com>,
+        Bart Van Assche <bvanassche@acm.org>,
+        Colin Ian King <colin.king@canonical.com>,
+        Mel Gorman <mgorman@suse.de>, Majd Dibbiny <majd@mellanox.com>,
+        Jiri Kosina <jkosina@suse.cz>, Matan Barak <matanb@mellanox.com>,
+        Dan Carpenter <dan.carpenter@oracle.com>,
+        Eugenia Emantayev <eugenia@mellanox.co.il>,
+        Doug Ledford <dledford@redhat.com>,
+        Alex Estrin <alex.estrin@intel.com>,
+        Erez Shitrit <erezsh@mellanox.com>, Eric Dumazet <edumazet@google.com>,
+        Tom Gundersen <teg@jklm.no>, Sagi Grimberg <sagig@mellanox.com>,
+        Haggai Eran <haggaie@mellanox.com>,
+        Shachar Raindel <raindel@mellanox.com>,
+        Mike Marciniszyn <mike.marciniszyn@intel.com>, Tom Tucker <tom@ogc.us>,
+        Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 1/2] IB/Verbs: Use helpers to refine the checking on transport
+ and link layer
+Content-Type: text/plain; charset=utf-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 25 Mar 2015 01:45:16 -0700
-Christoph Hellwig <hch@infradead.org> wrote:
 
-> Good catch!
-> 
-> Reviewed-by: Christoph Hellwig <hch@lst.de>
-> 
-> But maybe it's better to write the code so that the intent is obvious:
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index f6b2a09..3c4c3d2 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -3215,11 +3215,13 @@ alloc_init_open_stateowner(unsigned int strhashval, struct nfsd4_open *open,
->  	INIT_LIST_HEAD(&oo->oo_close_lru);
->  	spin_lock(&clp->cl_lock);
->  	ret = find_openstateowner_str_locked(strhashval, open, clp);
-> -	if (ret == NULL) {
-> -		hash_openowner(oo, clp, strhashval);
-> -		ret = oo;
-> -	} else
-> +	if (ret) {
->  		nfs4_free_openowner(&oo->oo_owner);
-> +		spin_unlock(&clp->cl_lock);
-> +		return ret;
-> +	}
-> +
-> +	hash_openowner(oo, clp, strhashval);
->  	spin_unlock(&clp->cl_lock);
->  	return oo;
->  }
+There are too many lengthy code to check the transport type of IB device,
+or the link layer type of it's port, this patch set try to use some 
+helper to
+refine and save us some code.
 
-Sure, that'd be fine too. Care to write up a changelog entry and send
-it to Bruce? I think that would likely apply just fine to stable
-kernels. 
+TODO:
+     Currently we inferred from the transport type and link layer type 
+to identify
+     the way of management, it will be better if we can directly get the 
+indicator
+     from vendor.
 
--- 
-Jeff Layton <jlayton@poochiereds.net>
+     Sean proposed one suggestion:
+  https://www.mail-archive.com/linux-rdma@vger.kernel.org/msg23339.html
+
+     It may need a big work to adapt current implementation to utilize
+     these flags elegantly.
+
+     Also the performance concern on query_port() need to be addressed, 
+may be
+     some new callback like query_mgmt() could works.
+
+Michael Wang (2):
+     [PATCH 1/2] IB/Verbs: Use helpers to check transport and link layer
+     [PATCH 2/2] IB/Verbs: Use helpers to check IBoE technology
+
+---
+  drivers/infiniband/core/agent.c           |    2 -
+  drivers/infiniband/core/cm.c              |    2 -
+  drivers/infiniband/core/cma.c             |   33 
+++++++++++++------------------
+  drivers/infiniband/core/mad.c             |    6 ++---
+  drivers/infiniband/core/multicast.c       |   11 +++-------
+  drivers/infiniband/core/sa_query.c        |   14 ++++++------
+  drivers/infiniband/core/ucm.c             |    3 --
+  drivers/infiniband/core/user_mad.c        |    2 -
+  drivers/infiniband/core/verbs.c           |    5 +---
+  drivers/infiniband/hw/mlx4/ah.c           |    2 -
+  drivers/infiniband/hw/mlx4/cq.c           |    4 ---
+  drivers/infiniband/hw/mlx4/mad.c          |   14 +++---------
+  drivers/infiniband/hw/mlx4/main.c         |    8 ++-----
+  drivers/infiniband/hw/mlx4/mlx4_ib.h      |    2 -
+  drivers/infiniband/hw/mlx4/qp.c           |   21 ++++++-------------
+  drivers/infiniband/hw/mlx4/sysfs.c        |    6 +----
+  drivers/infiniband/ulp/ipoib/ipoib_main.c |    6 ++---
+  include/rdma/ib_verbs.h                   |   30 
++++++++++++++++++++++++++++
+  net/sunrpc/xprtrdma/svc_rdma_recvfrom.c   |    3 --
+  19 files changed, 87 insertions(+), 87 deletions(-)
