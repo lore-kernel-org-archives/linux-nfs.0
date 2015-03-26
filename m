@@ -1,228 +1,220 @@
-Return-Path: <tigran.mkrtchyan@desy.de>
-Date: Thu, 26 Mar 2015 11:11:13 +0100 (CET)
-From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
-To: Benjamin Coddington <bcodding@redhat.com>
-Cc: Weston Andros Adamson <dros@primarydata.com>,
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:51717 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752321AbbCZMAe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 26 Mar 2015 08:00:34 -0400
+Date: Thu, 26 Mar 2015 08:00:27 -0400 (EDT)
+From: Benjamin Coddington <bcodding@redhat.com>
+To: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+cc: Weston Andros Adamson <dros@primarydata.com>,
         Steve Dickson <SteveD@redhat.com>,
         linux-nfs list <linux-nfs@vger.kernel.org>,
         Trond Myklebust <trond.myklebust@primarydata.com>
-Message-ID: <2022578981.176508.1427364673091.JavaMail.zimbra@desy.de>
-In-Reply-To: <alpine.OSX.2.19.9992.1503260526420.5422@planck.local>
-References: <1660711949.102565.1421790322927.JavaMail.zimbra@z-mbx-2.desy.de> <1146517369.143121.1421834654084.JavaMail.zimbra@desy.de> <95DFF80D-B655-479B-AE2F-B95B5540B743@primarydata.com> <alpine.OSX.2.19.9992.1503260526420.5422@planck.local>
 Subject: Re: kernel crashes on commit
+In-Reply-To: <2022578981.176508.1427364673091.JavaMail.zimbra@desy.de>
+Message-ID: <alpine.OSX.2.19.9992.1503260754260.965@planck.local>
+References: <1660711949.102565.1421790322927.JavaMail.zimbra@z-mbx-2.desy.de> <1146517369.143121.1421834654084.JavaMail.zimbra@desy.de> <95DFF80D-B655-479B-AE2F-B95B5540B743@primarydata.com> <alpine.OSX.2.19.9992.1503260526420.5422@planck.local>
+ <2022578981.176508.1427364673091.JavaMail.zimbra@desy.de>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: multipart/mixed; BOUNDARY="0-2073896797-1427371229=:965"
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-the bug was submitted and fixed in rhel 6.7
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
 
-https://bugzilla.redhat.com/show_bug.cgi?id=3D1184394
+--0-2073896797-1427371229=:965
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8BIT
 
-I don't know about rhel7, which is affected as well.
+On Thu, 26 Mar 2015, Mkrtchyan, Tigran wrote:
 
-Tigran.
+> the bug was submitted and fixed in rhel 6.7
+>
+> https://bugzilla.redhat.com/show_bug.cgi?id=1184394
+>
+> I don't know about rhel7, which is affected as well.
 
------ Original Message -----
-> From: "Benjamin Coddington" <bcodding@redhat.com>
-> To: "Weston Andros Adamson" <dros@primarydata.com>
-> Cc: "Tigran Mkrtchyan" <tigran.mkrtchyan@desy.de>, "Steve Dickson" <Steve=
-D@redhat.com>, "linux-nfs list"
-> <linux-nfs@vger.kernel.org>, "Trond Myklebust" <trond.myklebust@primaryda=
-ta.com>
-> Sent: Thursday, March 26, 2015 10:28:59 AM
-> Subject: Re: kernel crashes on commit
+Ah! Thanks for pointing that out. RHEL7 is missing
+d201c4d pnfs: fix race in filelayout commit path
 
-> On Wed, 21 Jan 2015, Weston Andros Adamson wrote:
->=20
->>
->> > On Jan 21, 2015, at 5:04 AM, Mkrtchyan, Tigran <tigran.mkrtchyan@desy.=
-de> wrote:
->> >
->> > Hi Dros,
->> >
->> > after adopting patch for RHEL6 kernel, it works.
->>
->> Great!
->>
->> > We have to push it into stable fixes. Do you know
->> > the procedure?
->>
->> I normally bug Steve D ;)
->=20
-> Or you can open a bug against RHEL6; it should get picked up quickly, now
-> that you've done all the work.
->=20
-> Ben
->=20
->>
->> > ----- Original Message -----
->> >> From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
->> >> To: "Weston Andros Adamson" <dros@primarydata.com>
->> >> Cc: "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>
->> >> Sent: Tuesday, January 20, 2015 10:45:22 PM
->> >> Subject: Re: kernel crashes on commit
->> >
->> >> I will check tomorrow with RHEL 6 kernel and let you known.
->> >>
->> >> Thanks,
->> >> TigranOn Jan 20, 2015 9:43 PM, Weston Andros Adamson <dros@primarydat=
-a.com>
->> >> wrote:
->> >>>
->> >>>
->> >>>> On Jan 20, 2015, at 2:22 PM, Mkrtchyan, Tigran <tigran.mkrtchyan@de=
-sy.de> wrote:
->> >>>>
->> >>>> Hi Dros,
->> >>>>
->> >>>> do you refer to this commit
->> >>>>
->> >>>> http://git.linux-nfs.org/?p=3Ddros/linux-nfs.git;a=3Dcommit;h=3Dd20=
-1c4de518c1d617aa216664869fa329d562d7d
->> >>>> ?
->> >>>
->> >>> Yes, that=E2=80=99s the patch I was talking about. Good find, I was =
-about to go looking
->> >>> for it.
->> >>>
->> >>> Is that patch in the kernels you=E2=80=99re testing?
->> >>>
->> >>> -dros
->> >>>
->> >>>> ----- Original Message -----
->> >>>>> From: "Weston Andros Adamson" <dros@primarydata.com>
->> >>>>> To: "Tigran Mkrtchyan" <tigran.mkrtchyan@desy.de>
->> >>>>> Cc: "linux-nfs list" <linux-nfs@vger.kernel.org>
->> >>>>> Sent: Tuesday, January 20, 2015 3:37:49 PM
->> >>>>> Subject: Re: kernel crashes on commit
->> >>>>
->> >>>>>> On Jan 20, 2015, at 9:00 AM, Mkrtchyan, Tigran <tigran.mkrtchyan@=
-desy.de> wrote:
->> >>>>>>
->> >>>>>>
->> >>>>>>
->> >>>>>> Dear fellows,
->> >>>>>>
->> >>>>>> since we have enabled commit through DS code we
->> >>>>>> permanently observe kernel crashes with RHEL6/7 and ubuntu 14.04:
->> >>>>>>
->> >>>>>>
->> >>>>>> <1>BUG: unable to handle kernel paging request at 00000000dc36491=
-3
->> >>>>>> <1>IP: [<ffffffffa02b45df>] nfs_init_commit+0x1f/0xf0 [nfs]
->> >>>>>> <4>PGD 6393ae067 PUD 0
->> >>>>>> <4>Oops: 0000 [#1] SMP
->> >>>>>> <4>last sysfs file: /sys/devices/system/cpu/online
->> >>>>>> <4>CPU 1
->> >>>>>> <4>Modules linked in: vfat fat usb_storage mpt3sas mpt2sas raid_c=
-lass mptctl
->> >>>>>> ipmi_devintf dell_rbu openafs(P)(U) autof
->> >>>>>> s4 nfs_layout_nfsv41_files nfs lockd fscache auth_rpcgss nfs_acl =
-sunrpc bonding
->> >>>>>> 8021q garp stp llc ipv6 power_meter ac
->> >>>>>> pi_ipmi ipmi_si ipmi_msghandler iTCO_wdt iTCO_vendor_support micr=
-ocode dcdbas sg
->> >>>>>> bnx2 lpc_ich mfd_core i7core_edac eda
->> >>>>>> c_core ext4 jbd2 mbcache sd_mod crc_t10dif wmi pata_acpi ata_gene=
-ric ata_piix
->> >>>>>> mptsas mptscsih mptbase scsi_transport_s
->> >>>>>> as dm_mirror dm_region_hash dm_log dm_mod [last unloaded: scsi_wa=
-it_scan]
->> >>>>>> <4>
->> >>>>>> <4>Pid: 18209, comm: flush-0:19 Tainted: P           ------------=
----
->> >>>>>> 2.6.32-504.3.3.el6.x86_64 #1 Dell Inc. PowerEdge M610/0N582M
->> >>>>>> <4>RIP: 0010:[<ffffffffa02b45df>]  [<ffffffffa02b45df>]
->> >>>>>> nfs_init_commit+0x1f/0xf0 [nfs]
->> >>>>>> <4>RSP: 0018:ffff88063988da30  EFLAGS: 00010246
->> >>>>>> <4>RAX: ffff88063988db60 RBX: ffff88009c492040 RCX: ffff88063988d=
-b30
->> >>>>>> <4>RDX: 0000000000000000 RSI: ffff88063988db60 RDI: 00000000dc364=
-903
->> >>>>>> <4>RBP: ffff88063988da40 R08: ffff88063988da90 R09: f9aa37faa254d=
-404
->> >>>>>> <4>R10: 0000000000000010 R11: 0000000000000000 R12: 0000000000000=
-001
->> >>>>>> <4>R13: ffff880339f33a00 R14: ffff88063988db30 R15: ffff88063988d=
-8c8
->> >>>>>> <4>FS:  0000000000000000(0000) GS:ffff880028200000(0000) knlGS:00=
-00000000000000
->> >>>>>> <4>CS:  0010 DS: 0018 ES: 0018 CR0: 000000008005003b
->> >>>>>> <4>CR2: 00000000dc364913 CR3: 0000000639fbb000 CR4: 0000000000000=
-7e0
->> >>>>>> <4>DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000=
-000
->> >>>>>> <4>DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000=
-400
->> >>>>>> <4>Process flush-0:19 (pid: 18209, threadinfo ffff88063988c000, t=
-ask
->> >>>>>> ffff88063837c040)
->> >>>>>> <4>Stack:
->> >>>>>> <4> 0000000000000000 ffff88009c492040 ffff88063988dad0 ffffffffa0=
-31fdb7
->> >>>>>> <4><d> ffff88063837c5f8 ffff88063988da90 ffff8800a6e34600 ffff880=
-337f2a950
->> >>>>>> <4><d> ffff880637c99488 0000000037f2a940 ffff88063988db60 0000000=
-000000000
->> >>>>>> <4>Call Trace:
->> >>>>>> <4> [<ffffffffa031fdb7>] filelayout_commit_pagelist+0x277/0x3c0
->> >>>>>> [nfs_layout_nfsv41_files]
->> >>>>>> <4> [<ffffffffa02b613b>] nfs_generic_commit_list+0xab/0x100 [nfs]
->> >>>>>> <4> [<ffffffffa02b627c>] nfs_commit_inode+0xec/0x150 [nfs]
->> >>>>>> <4> [<ffffffffa02b6aab>] nfs_write_inode+0xab/0x100 [nfs]
->> >>>>>> <4> [<ffffffff811baedc>] writeback_single_inode+0x20c/0x290
->> >>>>>> <4> [<ffffffff811bb1ad>] writeback_sb_inodes+0xbd/0x170
->> >>>>>> <4> [<ffffffff811bb30b>] writeback_inodes_wb+0xab/0x1b0
->> >>>>>> <4> [<ffffffff811bb703>] wb_writeback+0x2f3/0x410
->> >>>>>> <4> [<ffffffff8100b9ce>] ? common_interrupt+0xe/0x13
->> >>>>>> <4> [<ffffffff81088062>] ? del_timer_sync+0x22/0x30
->> >>>>>> <4> [<ffffffff811bb9c5>] wb_do_writeback+0x1a5/0x240
->> >>>>>> <4> [<ffffffff811bbac3>] bdi_writeback_task+0x63/0x1b0
->> >>>>>> <4> [<ffffffff8109e987>] ? bit_waitqueue+0x17/0xd0
->> >>>>>> <4> [<ffffffff81148360>] ? bdi_start_fn+0x0/0x100
->> >>>>>> <4> [<ffffffff811483e6>] bdi_start_fn+0x86/0x100
->> >>>>>> <4> [<ffffffff81148360>] ? bdi_start_fn+0x0/0x100
->> >>>>>> <4> [<ffffffff8109e66e>] kthread+0x9e/0xc0
->> >>>>>> <4> [<ffffffff8100c20a>] child_rip+0xa/0x20
->> >>>>>> <4> [<ffffffff8109e5d0>] ? kthread+0x0/0xc0
->> >>>>>> <4> [<ffffffff8100c200>] ? child_rip+0x0/0x20
->> >>>>>> <4>Code: c3 66 66 2e 0f 1f 84 00 00 00 00 00 55 48 89 e5 53 48 83=
- ec 08 0f 1f 44
->> >>>>>> 00 00 48 8b 06 48 89 fb 48 8b 78 18 48 39 c6 48 8b 7f 40 <48> 8b =
-7f 10 74 2b 4c
->> >>>>>> 8b 83 c8 01 00 00 4c 8b 4e 08 4c 8d 93 c8
->> >>>>>> <1>RIP  [<ffffffffa02b45df>] nfs_init_commit+0x1f/0xf0 [nfs]
->> >>>>>> <4> RSP <ffff88063988da30>
->> >>>>>> <4>CR2: 00000000dc364913
->> >>>>>>
->> >>>>>>
->> >>>>>> I have vmcore file as well, so let me know if you need some more =
-information.
->> >>>>>>
->> >>>>>
->> >>>>> Hi Tigran!
->> >>>>>
->> >>>>> Have you tried a recent upstream kernel? IIRC I fixed a seeming si=
-milar
->> >>>>> filelayout
->> >>>>> commit issue not too long ago.
->> >>>>>
->> >>>>> The filelayout commit path seems to have been broken for a while -=
- mostly
->> >>>>> because
->> >>>>> all the filelayout servers (that I know of) use stable writes, so =
-that code path
->> >>>>> went
->> >>>>> untested...
->> >>>>>
->> >>>>> -dros
->> >>>
->> >> N???????????????r??????y?????????b???X??????=C7=A7v???^???)=DE=BA{.n?=
-??+????????????{?????????"??????^n???r?????????z?????????h????????????&????=
-?????G?????????h???(???=E9=9A=8E???=DD=A2j"?????????m???????????????z???=DE=
-=96?????????f?????????h?????????~???m???
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Which will hopefully make it into 7.2; working on it here:
+https://bugzilla.redhat.com/show_bug.cgi?id=1111712
+
+We probably want it in earlier RHEL7 too.. I'll see about that.
+
+Ben
+
+> ----- Original Message -----
+> > From: "Benjamin Coddington" <bcodding@redhat.com>
+> > To: "Weston Andros Adamson" <dros@primarydata.com>
+> > Cc: "Tigran Mkrtchyan" <tigran.mkrtchyan@desy.de>, "Steve Dickson" <SteveD@redhat.com>, "linux-nfs list"
+> > <linux-nfs@vger.kernel.org>, "Trond Myklebust" <trond.myklebust@primarydata.com>
+> > Sent: Thursday, March 26, 2015 10:28:59 AM
+> > Subject: Re: kernel crashes on commit
+>
+> > On Wed, 21 Jan 2015, Weston Andros Adamson wrote:
+> >
+> >>
+> >> > On Jan 21, 2015, at 5:04 AM, Mkrtchyan, Tigran <tigran.mkrtchyan@desy.de> wrote:
+> >> >
+> >> > Hi Dros,
+> >> >
+> >> > after adopting patch for RHEL6 kernel, it works.
+> >>
+> >> Great!
+> >>
+> >> > We have to push it into stable fixes. Do you know
+> >> > the procedure?
+> >>
+> >> I normally bug Steve D ;)
+> >
+> > Or you can open a bug against RHEL6; it should get picked up quickly, now
+> > that you've done all the work.
+> >
+> > Ben
+> >
+> >>
+> >> > ----- Original Message -----
+> >> >> From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+> >> >> To: "Weston Andros Adamson" <dros@primarydata.com>
+> >> >> Cc: "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>
+> >> >> Sent: Tuesday, January 20, 2015 10:45:22 PM
+> >> >> Subject: Re: kernel crashes on commit
+> >> >
+> >> >> I will check tomorrow with RHEL 6 kernel and let you known.
+> >> >>
+> >> >> Thanks,
+> >> >> TigranOn Jan 20, 2015 9:43 PM, Weston Andros Adamson <dros@primarydata.com>
+> >> >> wrote:
+> >> >>>
+> >> >>>
+> >> >>>> On Jan 20, 2015, at 2:22 PM, Mkrtchyan, Tigran <tigran.mkrtchyan@desy.de> wrote:
+> >> >>>>
+> >> >>>> Hi Dros,
+> >> >>>>
+> >> >>>> do you refer to this commit
+> >> >>>>
+> >> >>>> http://git.linux-nfs.org/?p=dros/linux-nfs.git;a=commit;h=d201c4de518c1d617aa216664869fa329d562d7d
+> >> >>>> ?
+> >> >>>
+> >> >>> Yes, that’s the patch I was talking about. Good find, I was about to go looking
+> >> >>> for it.
+> >> >>>
+> >> >>> Is that patch in the kernels you’re testing?
+> >> >>>
+> >> >>> -dros
+> >> >>>
+> >> >>>> ----- Original Message -----
+> >> >>>>> From: "Weston Andros Adamson" <dros@primarydata.com>
+> >> >>>>> To: "Tigran Mkrtchyan" <tigran.mkrtchyan@desy.de>
+> >> >>>>> Cc: "linux-nfs list" <linux-nfs@vger.kernel.org>
+> >> >>>>> Sent: Tuesday, January 20, 2015 3:37:49 PM
+> >> >>>>> Subject: Re: kernel crashes on commit
+> >> >>>>
+> >> >>>>>> On Jan 20, 2015, at 9:00 AM, Mkrtchyan, Tigran <tigran.mkrtchyan@desy.de> wrote:
+> >> >>>>>>
+> >> >>>>>>
+> >> >>>>>>
+> >> >>>>>> Dear fellows,
+> >> >>>>>>
+> >> >>>>>> since we have enabled commit through DS code we
+> >> >>>>>> permanently observe kernel crashes with RHEL6/7 and ubuntu 14.04:
+> >> >>>>>>
+> >> >>>>>>
+> >> >>>>>> <1>BUG: unable to handle kernel paging request at 00000000dc364913
+> >> >>>>>> <1>IP: [<ffffffffa02b45df>] nfs_init_commit+0x1f/0xf0 [nfs]
+> >> >>>>>> <4>PGD 6393ae067 PUD 0
+> >> >>>>>> <4>Oops: 0000 [#1] SMP
+> >> >>>>>> <4>last sysfs file: /sys/devices/system/cpu/online
+> >> >>>>>> <4>CPU 1
+> >> >>>>>> <4>Modules linked in: vfat fat usb_storage mpt3sas mpt2sas raid_class mptctl
+> >> >>>>>> ipmi_devintf dell_rbu openafs(P)(U) autof
+> >> >>>>>> s4 nfs_layout_nfsv41_files nfs lockd fscache auth_rpcgss nfs_acl sunrpc bonding
+> >> >>>>>> 8021q garp stp llc ipv6 power_meter ac
+> >> >>>>>> pi_ipmi ipmi_si ipmi_msghandler iTCO_wdt iTCO_vendor_support microcode dcdbas sg
+> >> >>>>>> bnx2 lpc_ich mfd_core i7core_edac eda
+> >> >>>>>> c_core ext4 jbd2 mbcache sd_mod crc_t10dif wmi pata_acpi ata_generic ata_piix
+> >> >>>>>> mptsas mptscsih mptbase scsi_transport_s
+> >> >>>>>> as dm_mirror dm_region_hash dm_log dm_mod [last unloaded: scsi_wait_scan]
+> >> >>>>>> <4>
+> >> >>>>>> <4>Pid: 18209, comm: flush-0:19 Tainted: P           ---------------
+> >> >>>>>> 2.6.32-504.3.3.el6.x86_64 #1 Dell Inc. PowerEdge M610/0N582M
+> >> >>>>>> <4>RIP: 0010:[<ffffffffa02b45df>]  [<ffffffffa02b45df>]
+> >> >>>>>> nfs_init_commit+0x1f/0xf0 [nfs]
+> >> >>>>>> <4>RSP: 0018:ffff88063988da30  EFLAGS: 00010246
+> >> >>>>>> <4>RAX: ffff88063988db60 RBX: ffff88009c492040 RCX: ffff88063988db30
+> >> >>>>>> <4>RDX: 0000000000000000 RSI: ffff88063988db60 RDI: 00000000dc364903
+> >> >>>>>> <4>RBP: ffff88063988da40 R08: ffff88063988da90 R09: f9aa37faa254d404
+> >> >>>>>> <4>R10: 0000000000000010 R11: 0000000000000000 R12: 0000000000000001
+> >> >>>>>> <4>R13: ffff880339f33a00 R14: ffff88063988db30 R15: ffff88063988d8c8
+> >> >>>>>> <4>FS:  0000000000000000(0000) GS:ffff880028200000(0000) knlGS:0000000000000000
+> >> >>>>>> <4>CS:  0010 DS: 0018 ES: 0018 CR0: 000000008005003b
+> >> >>>>>> <4>CR2: 00000000dc364913 CR3: 0000000639fbb000 CR4: 00000000000007e0
+> >> >>>>>> <4>DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+> >> >>>>>> <4>DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+> >> >>>>>> <4>Process flush-0:19 (pid: 18209, threadinfo ffff88063988c000, task
+> >> >>>>>> ffff88063837c040)
+> >> >>>>>> <4>Stack:
+> >> >>>>>> <4> 0000000000000000 ffff88009c492040 ffff88063988dad0 ffffffffa031fdb7
+> >> >>>>>> <4><d> ffff88063837c5f8 ffff88063988da90 ffff8800a6e34600 ffff880337f2a950
+> >> >>>>>> <4><d> ffff880637c99488 0000000037f2a940 ffff88063988db60 0000000000000000
+> >> >>>>>> <4>Call Trace:
+> >> >>>>>> <4> [<ffffffffa031fdb7>] filelayout_commit_pagelist+0x277/0x3c0
+> >> >>>>>> [nfs_layout_nfsv41_files]
+> >> >>>>>> <4> [<ffffffffa02b613b>] nfs_generic_commit_list+0xab/0x100 [nfs]
+> >> >>>>>> <4> [<ffffffffa02b627c>] nfs_commit_inode+0xec/0x150 [nfs]
+> >> >>>>>> <4> [<ffffffffa02b6aab>] nfs_write_inode+0xab/0x100 [nfs]
+> >> >>>>>> <4> [<ffffffff811baedc>] writeback_single_inode+0x20c/0x290
+> >> >>>>>> <4> [<ffffffff811bb1ad>] writeback_sb_inodes+0xbd/0x170
+> >> >>>>>> <4> [<ffffffff811bb30b>] writeback_inodes_wb+0xab/0x1b0
+> >> >>>>>> <4> [<ffffffff811bb703>] wb_writeback+0x2f3/0x410
+> >> >>>>>> <4> [<ffffffff8100b9ce>] ? common_interrupt+0xe/0x13
+> >> >>>>>> <4> [<ffffffff81088062>] ? del_timer_sync+0x22/0x30
+> >> >>>>>> <4> [<ffffffff811bb9c5>] wb_do_writeback+0x1a5/0x240
+> >> >>>>>> <4> [<ffffffff811bbac3>] bdi_writeback_task+0x63/0x1b0
+> >> >>>>>> <4> [<ffffffff8109e987>] ? bit_waitqueue+0x17/0xd0
+> >> >>>>>> <4> [<ffffffff81148360>] ? bdi_start_fn+0x0/0x100
+> >> >>>>>> <4> [<ffffffff811483e6>] bdi_start_fn+0x86/0x100
+> >> >>>>>> <4> [<ffffffff81148360>] ? bdi_start_fn+0x0/0x100
+> >> >>>>>> <4> [<ffffffff8109e66e>] kthread+0x9e/0xc0
+> >> >>>>>> <4> [<ffffffff8100c20a>] child_rip+0xa/0x20
+> >> >>>>>> <4> [<ffffffff8109e5d0>] ? kthread+0x0/0xc0
+> >> >>>>>> <4> [<ffffffff8100c200>] ? child_rip+0x0/0x20
+> >> >>>>>> <4>Code: c3 66 66 2e 0f 1f 84 00 00 00 00 00 55 48 89 e5 53 48 83 ec 08 0f 1f 44
+> >> >>>>>> 00 00 48 8b 06 48 89 fb 48 8b 78 18 48 39 c6 48 8b 7f 40 <48> 8b 7f 10 74 2b 4c
+> >> >>>>>> 8b 83 c8 01 00 00 4c 8b 4e 08 4c 8d 93 c8
+> >> >>>>>> <1>RIP  [<ffffffffa02b45df>] nfs_init_commit+0x1f/0xf0 [nfs]
+> >> >>>>>> <4> RSP <ffff88063988da30>
+> >> >>>>>> <4>CR2: 00000000dc364913
+> >> >>>>>>
+> >> >>>>>>
+> >> >>>>>> I have vmcore file as well, so let me know if you need some more information.
+> >> >>>>>>
+> >> >>>>>
+> >> >>>>> Hi Tigran!
+> >> >>>>>
+> >> >>>>> Have you tried a recent upstream kernel? IIRC I fixed a seeming similar
+> >> >>>>> filelayout
+> >> >>>>> commit issue not too long ago.
+> >> >>>>>
+> >> >>>>> The filelayout commit path seems to have been broken for a while - mostly
+> >> >>>>> because
+> >> >>>>> all the filelayout servers (that I know of) use stable writes, so that code path
+> >> >>>>> went
+> >> >>>>> untested...
+> >> >>>>>
+> >> >>>>> -dros
+> >> >>>
+> >> >> N???????????????r??????y?????????b???X??????ǧv???^???)޺{.n???+????????????{?????????"??????^n???r?????????z?????????h????????????&?????????G?????????h???(???階???ݢj"?????????m???????????????z???ޖ?????????f?????????h?????????~???m???
+> >>
+> >> --
+> >> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> >> the body of a message to majordomo@vger.kernel.org
+> >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+--0-2073896797-1427371229=:965--
