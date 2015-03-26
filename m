@@ -1,46 +1,36 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:44776 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:44801 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751500AbbCZBCp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 25 Mar 2015 21:02:45 -0400
-Date: Wed, 25 Mar 2015 21:02:43 -0400
+	id S1751347AbbCZBPU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 25 Mar 2015 21:15:20 -0400
+Date: Wed, 25 Mar 2015 21:15:19 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Chengyu Song <csong84@gatech.edu>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, taesoo@gatech.edu,
-        changwoo@gatech.edu, sanidhya@gatech.edu, blee@gatech.edu
-Subject: Re: [PATCH 1/1] nfsd: NFSD_FAULT_INJECTION depends on DEBUG_FS
-Message-ID: <20150326010243.GB20086@fieldses.org>
-References: <1427315827-6323-1-git-send-email-csong84@gatech.edu>
+To: Christoph Hellwig <hch@lst.de>
+Cc: Kinglong Mee <kinglongmee@gmail.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFSD: Fix bad update of layout in
+ nfsd4_return_file_layout
+Message-ID: <20150326011519.GC20086@fieldses.org>
+References: <550ECEF0.6030505@gmail.com>
+ <20150325083445.GA3044@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1427315827-6323-1-git-send-email-csong84@gatech.edu>
+In-Reply-To: <20150325083445.GA3044@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Mar 25, 2015 at 04:37:07PM -0400, Chengyu Song wrote:
-> NFSD_FAULT_INJECTION depends on DEBUG_FS, otherwise the debugfs_create_*
-> interface may return unexpected error -ENODEV, and cause system crash.
-
-Thanks, applying for 4.1.--b.
-
+On Wed, Mar 25, 2015 at 09:34:45AM +0100, Christoph Hellwig wrote:
+> Looks good,
 > 
-> Signed-off-by: Chengyu Song <csong84@gatech.edu>
-> ---
->  fs/nfsd/Kconfig | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
+> Reviewed-by: Christoph Hellwig <hch@lst.de>
 > 
-> diff --git a/fs/nfsd/Kconfig b/fs/nfsd/Kconfig
-> index 683bf71..8b87b7a 100644
-> --- a/fs/nfsd/Kconfig
-> +++ b/fs/nfsd/Kconfig
-> @@ -107,7 +107,7 @@ config NFSD_V4_SECURITY_LABEL
->  
->  config NFSD_FAULT_INJECTION
->  	bool "NFS server manual fault injection"
-> -	depends on NFSD_V4 && DEBUG_KERNEL
-> +	depends on NFSD_V4 && DEBUG_KERNEL && DEBUG_FS
->  	help
->  	  This option enables support for manually injecting faults
->  	  into the NFS server.  This is intended to be used for
-> -- 
-> 2.1.0
+> Guess we need some good testcase for these artifical partial segment
+> returns that don't happen with the real client..
+
+pynfs might do it?  But I'm not volunteering.
+
+Anyway, applying these three for 4.0. (NFSD: Printk blocklayout length
+a.., NFSD: Take care the return value.., NFSD: Fix bad update of layout
+in...).
+
+--b.
