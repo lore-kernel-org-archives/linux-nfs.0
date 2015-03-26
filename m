@@ -1,59 +1,78 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f178.google.com ([209.85.213.178]:37993 "EHLO
-	mail-ig0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752144AbbCZUNa (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Mar 2015 16:13:30 -0400
-Received: by igbqf9 with SMTP id qf9so2445770igb.1
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Mar 2015 13:13:30 -0700 (PDT)
+Received: from quartz.orcorp.ca ([184.70.90.242]:48851 "EHLO quartz.orcorp.ca"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753111AbbCZVN4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 26 Mar 2015 17:13:56 -0400
+Date: Thu, 26 Mar 2015 15:13:34 -0600
+From: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
+To: Michael Wang <yun.wang@profitbricks.com>
+Cc: Doug Ledford <dledford@redhat.com>, linux-rdma@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        netdev@vger.kernel.org, Roland Dreier <roland@kernel.org>,
+        Sean Hefty <sean.hefty@intel.com>,
+        Hal Rosenstock <hal.rosenstock@gmail.com>,
+        Ira Weiny <ira.weiny@intel.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        "David S. Miller" <davem@davemloft.net>,
+        Moni Shoua <monis@mellanox.com>, Or Gerlitz <ogerlitz@mellanox.com>,
+        Tatyana Nikolova <Tatyana.E.Nikolova@intel.com>,
+        Steve Wise <swise@opengridcomputing.com>,
+        Yan Burman <yanb@mellanox.com>,
+        Jack Morgenstein <jackm@dev.mellanox.co.il>,
+        Bart Van Assche <bvanassche@acm.org>,
+        Yann Droneaud <ydroneaud@opteya.com>,
+        Colin Ian King <colin.king@canonical.com>,
+        Jiri Kosina <jkosina@suse.cz>, Matan Barak <matanb@mellanox.com>,
+        Majd Dibbiny <majd@mellanox.com>,
+        Dan Carpenter <dan.carpenter@oracle.com>, Mel Gorman <mgorman@suse.de>,
+        Alex Estrin <alex.estrin@intel.com>,
+        Eric Dumazet <edumazet@google.com>, Erez Shitrit <erezsh@mellanox.com>,
+        Sagi Grimberg <sagig@mellanox.com>, Haggai Eran <haggaie@mellanox.com>,
+        Shachar Raindel <raindel@mellanox.com>,
+        Mike Marciniszyn <mike.marciniszyn@intel.com>, Tom Tucker <tom@ogc.us>,
+        Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH 0/2 RESEND] IB/Verbs: Use helpers to refine the checking
+ on transport and link layer
+Message-ID: <20150326211334.GA3359@obsidianresearch.com>
+References: <5512CFB0.1050108@profitbricks.com>
+ <1427378940.21101.100.camel@redhat.com>
+ <55142DFD.2060100@profitbricks.com>
+ <1427387258.21101.124.camel@redhat.com>
+ <55143AAC.8040206@profitbricks.com>
 MIME-Version: 1.0
-In-Reply-To: <55143D14.4020701@RedHat.com>
-References: <CAL8eLxVyJYiSmVL1FP6eFNmMQCQZRHO+rYP5Wvv9cyZ+DU_jiQ@mail.gmail.com>
-	<CAL8eLxW7_B=_B-h2Ph_dgWf4nmcNmG8DZoi7BqPYc3y95EcMTg@mail.gmail.com>
-	<55143D14.4020701@RedHat.com>
-Date: Fri, 27 Mar 2015 01:43:29 +0530
-Message-ID: <CAL8eLxXajyuPpeZSQsvU8+5ukjcxs=0wvZBByhb2p2DtLWja2A@mail.gmail.com>
-Subject: Re: Fwd: nfs.5: Add addr mount option for all nfs versions
-From: Abhijit Pal <21.abhijit@gmail.com>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <55143AAC.8040206@profitbricks.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello Steve,
+On Thu, Mar 26, 2015 at 05:58:20PM +0100, Michael Wang wrote:
 
-Thanks for your reply. I was wondering if the fix is required in the
-man page by just adding this option for nfs mount, or there is a need
-to fix the mount system call.
+> The questions is just wondering how the transition method could be, but
+> if we have to do the changes for vendor, that sounds like a tough job...
 
-In either case I can send the patch. Please advise which would be appropriate.
+I would see changing how the information is represented in the struct
+as a follow on issue. The first patch should go through and replace
+all direct access to the link layer/transport/etc with an
+appropriately narrow is_XX() test like Doug was suggesting.
 
-Thanks
-Abhijit
+That means looking at each code site and determining what it needs,
+making a is_XX for it and a kdoc describing exactly what is needed for
+the test to return true.
 
-On Thu, Mar 26, 2015 at 10:38 PM, Steve Dickson <SteveD@redhat.com> wrote:
->
->
-> On 03/24/2015 08:19 AM, Abhijit Pal wrote:
->> Hello linux-nfs team,
->>
->> Thank you for giving your attention and time to my query.
->>
->> Wanted to get an insight about a problem regarding nfs mount using the
->> system call mount(2) which was reported by one of the user in
->> "StackOverflow".
->>
->> The URL for the problem statement and the accepted solution is:
->> http://stackoverflow.com/questions/28350912/nfs-mount-system-call-in-linux
->>
->> After going through the kernel code(v 3.18.6), I have posted an answer
->> which worked for the user and was accepted. Was thinking if you can
->> guide me if the accepted solution is indeed a bug or not. And if the
->> solution is acceptable would request you to kindly let me know the
->> process, so that I can send a patch for updating the nfs(5) man page.
->>
-> Mail the patch to this list following these guidelines
->    https://www.kernel.org/doc/Documentation/SubmittingPatches
->
-> steved.
->
+The follow on patch can then rework the is_XX and drop the link
+layer/transport stuff..
+
+Some ideas for is_XX:
+  IB compatible SA
+  QP0 SMP mechanism
+  IB SMP format
+  OPA SMP format
+  QP1 GMP mechanism
+  IB compatible CM
+  GID addressing
+  IP/IPv6 addressing
+  Ethernet VLAN
+  ...
+
+Jason
