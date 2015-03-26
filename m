@@ -1,45 +1,91 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:19030 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751339AbbCZR6L convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Mar 2015 13:58:11 -0400
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
-Subject: Re: Connectathon Issues
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <55143FAF.7090200@RedHat.com>
-Date: Thu, 26 Mar 2015 12:57:56 -0500
-Cc: Rupert Dance <rsdance@soft-forge.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <02E76CFB-C575-4267-83A9-448CB69AC8C6@oracle.com>
-References: <009501d060e6$b54c3780$1fe4a680$@soft-forge.com> <5508AC34.3030508@RedHat.com> <64DCD95C-CD5C-4A16-B6EC-49661576C466@mindspring.com> <550AE575.4000104@RedHat.com> <003701d06265$b85ce8e0$2916baa0$@soft-forge.com> <55143FAF.7090200@RedHat.com>
-To: Steve Dickson <SteveD@redhat.com>
+Received: from mx144.netapp.com ([216.240.21.25]:21873 "EHLO mx144.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751552AbbCZSju (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 26 Mar 2015 14:39:50 -0400
+Message-ID: <55145274.203@Netapp.com>
+Date: Thu, 26 Mar 2015 14:39:48 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+MIME-Version: 1.0
+To: Chuck Lever <chuck.lever@oracle.com>, <linux-rdma@vger.kernel.org>,
+        <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v2 00/15] NFS/RDMA patches proposed for 4.1
+References: <20150324201849.2311.53599.stgit@manet.1015granger.net>
+In-Reply-To: <20150324201849.2311.53599.stgit@manet.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hey Chuck,
 
-On Mar 26, 2015, at 12:19 PM, Steve Dickson <SteveD@redhat.com> wrote:
+I didn't see anything that needs to be fixed up in these patches.  Are they ready for me?
 
->> There are several other combinations that cause other errors:
->> 
->> 1. The test hangs and no error is reported.  In these cases the client
->> system MUST be restarted before it becomes usable again. The server system
->> is restarted to get back to a known good state and clear the exports before
->> restarting testing
->> 
->> 2. Connectathon Basic test hangs with the client system displaying: ./test5:
->> read and write
-> Is it really hung or is it just slow? On the client, use tshark host <server> 
-> to see if there is anything going over the wire…
+Anna
 
-I’m guessing Rupert is using NFS/RDMA. If true, tshark is not going to
-be helpful.
-
-Rupert, what is the output of “uname -a” on your systems?
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
+On 03/24/2015 04:30 PM, Chuck Lever wrote:
+> This is a series of client-side patches for NFS/RDMA. In preparation
+> for increasing the transport credit limit and maximum rsize/wsize,
+> I've re-factored the memory registration logic into separate files,
+> invoked via a method API.
+> 
+> The two main optimizations in v1 of this series have been dropped.
+> Sagi Grimberg didn't like the complexity of the solution, and there
+> isn't enough time to rework it, test the new version, and get it
+> reviewed before the 4.1 merge window opens. I'm going to prepare
+> these for 4.2.
+> 
+> Fixes suggested by reviewers have been included before the
+> refactoring patches to make it easier to backport them to previous
+> kernels.
+> 
+> The series is available in the nfs-rdma-for-4.1 topic branch at
+> 
+> git://linux-nfs.org/projects/cel/cel-2.6.git
+> 
+> Changes since v1:
+> - Rebased on 4.0-rc5
+> - Main optimizations postponed to 4.2
+> - Addressed review comments from Anna, Sagi, and Devesh
+> 
+> ---
+> 
+> Chuck Lever (15):
+>       SUNRPC: Introduce missing well-known netids
+>       xprtrdma: Display IPv6 addresses and port numbers correctly
+>       xprtrdma: Perform a full marshal on retransmit
+>       xprtrdma: Byte-align FRWR registration
+>       xprtrdma: Prevent infinite loop in rpcrdma_ep_create()
+>       xprtrdma: Add vector of ops for each memory registration strategy
+>       xprtrdma: Add a "max_payload" op for each memreg mode
+>       xprtrdma: Add a "register_external" op for each memreg mode
+>       xprtrdma: Add a "deregister_external" op for each memreg mode
+>       xprtrdma: Add "init MRs" memreg op
+>       xprtrdma: Add "reset MRs" memreg op
+>       xprtrdma: Add "destroy MRs" memreg op
+>       xprtrdma: Add "open" memreg op
+>       xprtrdma: Handle non-SEND completions via a callout
+>       xprtrdma: Make rpcrdma_{un}map_one() into inline functions
+> 
+> 
+>  include/linux/sunrpc/msg_prot.h    |    8 
+>  net/sunrpc/xprtrdma/Makefile       |    3 
+>  net/sunrpc/xprtrdma/fmr_ops.c      |  208 +++++++++++
+>  net/sunrpc/xprtrdma/frwr_ops.c     |  353 ++++++++++++++++++
+>  net/sunrpc/xprtrdma/physical_ops.c |   94 +++++
+>  net/sunrpc/xprtrdma/rpc_rdma.c     |   87 ++--
+>  net/sunrpc/xprtrdma/transport.c    |   61 ++-
+>  net/sunrpc/xprtrdma/verbs.c        |  699 +++---------------------------------
+>  net/sunrpc/xprtrdma/xprt_rdma.h    |   90 ++++-
+>  9 files changed, 882 insertions(+), 721 deletions(-)
+>  create mode 100644 net/sunrpc/xprtrdma/fmr_ops.c
+>  create mode 100644 net/sunrpc/xprtrdma/frwr_ops.c
+>  create mode 100644 net/sunrpc/xprtrdma/physical_ops.c
+> 
+> --
+> Chuck Lever
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
 
