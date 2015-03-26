@@ -1,42 +1,42 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:36626 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:34714 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751930AbbCZRIh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 26 Mar 2015 13:08:37 -0400
-Message-ID: <55143D14.4020701@RedHat.com>
-Date: Thu, 26 Mar 2015 13:08:36 -0400
+	id S1751339AbbCZRTq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 26 Mar 2015 13:19:46 -0400
+Message-ID: <55143FAF.7090200@RedHat.com>
+Date: Thu, 26 Mar 2015 13:19:43 -0400
 From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-To: Abhijit Pal <21.abhijit@gmail.com>, linux-nfs <linux-nfs@vger.kernel.org>
-Subject: Re: Fwd: nfs.5: Add addr mount option for all nfs versions
-References: <CAL8eLxVyJYiSmVL1FP6eFNmMQCQZRHO+rYP5Wvv9cyZ+DU_jiQ@mail.gmail.com> <CAL8eLxW7_B=_B-h2Ph_dgWf4nmcNmG8DZoi7BqPYc3y95EcMTg@mail.gmail.com>
-In-Reply-To: <CAL8eLxW7_B=_B-h2Ph_dgWf4nmcNmG8DZoi7BqPYc3y95EcMTg@mail.gmail.com>
-Content-Type: text/plain; charset=utf-8
+To: Rupert Dance <rsdance@soft-forge.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: Connectathon Issues
+References: <009501d060e6$b54c3780$1fe4a680$@soft-forge.com> <5508AC34.3030508@RedHat.com> <64DCD95C-CD5C-4A16-B6EC-49661576C466@mindspring.com> <550AE575.4000104@RedHat.com> <003701d06265$b85ce8e0$2916baa0$@soft-forge.com>
+In-Reply-To: <003701d06265$b85ce8e0$2916baa0$@soft-forge.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Sorry for the delayed response 
 
+On 03/19/2015 12:57 PM, Rupert Dance wrote:
+> We tried uncommenting the code but we are still seeing failures. We are
+> running Connectathon on a variety of systems pairs testing both Mellanox and
+> Intel Hardware. Most of the combinations pass the Connectathon Basic,
+> Locking and Special tests but fail the General tests with the error message
+> "Nroff ./stat: no data in nroff.time" 
+What does output from the time command look like?
 
-On 03/24/2015 08:19 AM, Abhijit Pal wrote:
-> Hello linux-nfs team,
 > 
-> Thank you for giving your attention and time to my query.
+> There are several other combinations that cause other errors:
 > 
-> Wanted to get an insight about a problem regarding nfs mount using the
-> system call mount(2) which was reported by one of the user in
-> "StackOverflow".
+> 1. The test hangs and no error is reported.  In these cases the client
+> system MUST be restarted before it becomes usable again. The server system
+> is restarted to get back to a known good state and clear the exports before
+> restarting testing
 > 
-> The URL for the problem statement and the accepted solution is:
-> http://stackoverflow.com/questions/28350912/nfs-mount-system-call-in-linux
-> 
-> After going through the kernel code(v 3.18.6), I have posted an answer
-> which worked for the user and was accepted. Was thinking if you can
-> guide me if the accepted solution is indeed a bug or not. And if the
-> solution is acceptable would request you to kindly let me know the
-> process, so that I can send a patch for updating the nfs(5) man page.
-> 
-Mail the patch to this list following these guidelines 
-   https://www.kernel.org/doc/Documentation/SubmittingPatches
+> 2. Connectathon Basic test hangs with the client system displaying: ./test5:
+> read and write
+Is it really hung or is it just slow? On the client, use tshark host <server> 
+to see if there is anything going over the wire...
 
 steved.
-
