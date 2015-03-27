@@ -1,16 +1,12 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wi0-f179.google.com ([209.85.212.179]:38301 "EHLO
-	mail-wi0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752683AbbC0QRp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Mar 2015 12:17:45 -0400
-Received: by wibgn9 with SMTP id gn9so37944442wib.1
-        for <linux-nfs@vger.kernel.org>; Fri, 27 Mar 2015 09:17:43 -0700 (PDT)
-Message-ID: <551582A4.3000501@profitbricks.com>
-Date: Fri, 27 Mar 2015 17:17:40 +0100
-From: Michael Wang <yun.wang@profitbricks.com>
-MIME-Version: 1.0
-To: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
-CC: Roland Dreier <roland@kernel.org>, Sean Hefty <sean.hefty@intel.com>,
+Received: from quartz.orcorp.ca ([184.70.90.242]:37439 "EHLO quartz.orcorp.ca"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753228AbbC0Q2a (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 27 Mar 2015 12:28:30 -0400
+Date: Fri, 27 Mar 2015 10:28:20 -0600
+From: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
+To: Michael Wang <yun.wang@profitbricks.com>
+Cc: Roland Dreier <roland@kernel.org>, Sean Hefty <sean.hefty@intel.com>,
         Hal Rosenstock <hal.rosenstock@gmail.com>,
         Ira Weiny <ira.weiny@intel.com>, linux-rdma@vger.kernel.org,
         linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
@@ -34,27 +30,83 @@ CC: Roland Dreier <roland@kernel.org>, Sean Hefty <sean.hefty@intel.com>,
         Mike Marciniszyn <mike.marciniszyn@intel.com>,
         Steve Wise <swise@opengridcomputing.com>, Tom Tucker <tom@ogc.us>,
         Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [RFC PATCH 08/11] IB/Verbs: Use management helper has_iwarp()
- for, iwarp-check
-References: <551579CA.4030901@profitbricks.com> <55157B98.1060103@profitbricks.com> <20150327161319.GB28412@obsidianresearch.com>
-In-Reply-To: <20150327161319.GB28412@obsidianresearch.com>
-Content-Type: text/plain; charset=windows-1252
+Subject: Re: [RFC PATCH 07/11] IB/Verbs: Use management helper has_mcast()
+ and, cap_mcast() for mcast-check
+Message-ID: <20150327162820.GC28412@obsidianresearch.com>
+References: <551579CA.4030901@profitbricks.com>
+ <55157B71.6040505@profitbricks.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <55157B71.6040505@profitbricks.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 03/27/2015 05:13 PM, Jason Gunthorpe wrote:
-> On Fri, Mar 27, 2015 at 04:47:36PM +0100, Michael Wang wrote:
->> Introduce helper has_iwarp() to help us check if an IB device
->> support IWARP protocol.
-> Should probably be !has_rdma_read_sges()
->
-> True if the device can handle more than one SGE entry on a RDMA READ
-> work request.
-Sounds better :-) will change it in next version.
+On Fri, Mar 27, 2015 at 04:46:57PM +0100, Michael Wang wrote:
+> 
+> Introduce helper has_mcast() and cap_mcast() to help us check if an
+> IB device or it's port support Multicast.
+> 
+> Cc: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
+> Cc: Doug Ledford <dledford@redhat.com>
+> Cc: Ira Weiny <ira.weiny@intel.com>
+> Cc: Sean Hefty <sean.hefty@intel.com>
+> Signed-off-by: Michael Wang <yun.wang@profitbricks.com>
+>  drivers/infiniband/core/cma.c       |  2 +-
+>  drivers/infiniband/core/multicast.c |  8 ++++----
+>  include/rdma/ib_verbs.h             | 28 ++++++++++++++++++++++++++++
+>  3 files changed, 33 insertions(+), 5 deletions(-)
+> 
+> diff --git a/drivers/infiniband/core/cma.c b/drivers/infiniband/core/cma.c
+> index 276fb76..cbbc85b 100644
+> +++ b/drivers/infiniband/core/cma.c
+> @@ -3398,7 +3398,7 @@ void rdma_leave_multicast(struct rdma_cm_id *id, struct sockaddr *addr)
+>                  ib_detach_mcast(id->qp,
+>                          &mc->multicast.ib->rec.mgid,
+>                          be16_to_cpu(mc->multicast.ib->rec.mlid));
+> -            if (rdma_transport_is_ib(id_priv->cma_dev->device)) {
+> +            if (has_mcast(id_priv->cma_dev->device)) {
 
-Regards,
-Michael Wang
+This might make more sense as cap_ib_multicast / cap_ip_multicast
 
->
-> Jason
+>                  switch (rdma_port_get_link_layer(id->device, id->port_num)) {
+>                  case IB_LINK_LAYER_INFINIBAND:
+>                      ib_sa_free_multicast(mc->multicast.ib);
 
+> diff --git a/drivers/infiniband/core/multicast.c b/drivers/infiniband/core/multicast.c
+> index 17573ff..ffeaf27 100644
+> +++ b/drivers/infiniband/core/multicast.c
+> @@ -780,7 +780,7 @@ static void mcast_event_handler(struct ib_event_handler *handler,
+>      int index;
+>  
+>      dev = container_of(handler, struct mcast_device, event_handler);
+> -    if (!rdma_port_ll_is_ib(dev->device, event->element.port_num))
+> +    if (!cap_mcast(dev->device, event->element.port_num))
+>          return;
+
+These should probably be cap_ib_sa - that is what they are guarding
+against.
+
+But it seems redudent, since mcast_add_one will already not add a port that is
+not IB, so mcast_event_handler is not callable. Something to do with
+rocee/ib switching?
+
+>      index = event->element.port_num - dev->start_port;
+> @@ -807,7 +807,7 @@ static void mcast_add_one(struct ib_device *device)
+>      int i;
+>      int count = 0;
+>  
+> -    if (!rdma_transport_is_ib(device))
+> +    if (!has_mcast(device))
+>          return;
+
+Again, this seems redundant, every port is tested directly below, why
+is this check needed?
+
+Looking at this, I do wonder how a port can dynamically change between
+rocee and IB.. If the link value changes then mcast_remove_one will
+not be a perfect reversal of mcast_add_one. Bug?
+
+It feels necessary to understand what happens when a port dynamically
+switches to ethernet on mlx hardware to validate these patches :(
+
+Jason
