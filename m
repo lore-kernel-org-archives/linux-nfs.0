@@ -1,9 +1,9 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from quartz.orcorp.ca ([184.70.90.242]:58024 "EHLO quartz.orcorp.ca"
+Received: from quartz.orcorp.ca ([184.70.90.242]:57405 "EHLO quartz.orcorp.ca"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932083AbbC0QcY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 27 Mar 2015 12:32:24 -0400
-Date: Fri, 27 Mar 2015 10:32:19 -0600
+	id S1753181AbbC0QjJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 27 Mar 2015 12:39:09 -0400
+Date: Fri, 27 Mar 2015 10:38:57 -0600
 From: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
 To: Michael Wang <yun.wang@profitbricks.com>
 Cc: Roland Dreier <roland@kernel.org>, Sean Hefty <sean.hefty@intel.com>,
@@ -30,23 +30,25 @@ Cc: Roland Dreier <roland@kernel.org>, Sean Hefty <sean.hefty@intel.com>,
         Mike Marciniszyn <mike.marciniszyn@intel.com>,
         Steve Wise <swise@opengridcomputing.com>, Tom Tucker <tom@ogc.us>,
         Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [RFC PATCH 04/11] IB/Verbs: Use management helper cap_smi() for
- smi-check
-Message-ID: <20150327163219.GD28412@obsidianresearch.com>
+Subject: Re: [RFC PATCH 09/11] IB/Verbs: Use management helper has_ipoib()
+ and, cap_ipoib() for ipoib-check
+Message-ID: <20150327163857.GE28412@obsidianresearch.com>
 References: <551579CA.4030901@profitbricks.com>
- <55157AEB.7020705@profitbricks.com>
+ <55157BC6.70400@profitbricks.com>
+ <20150327160616.GA28412@obsidianresearch.com>
+ <5515822E.2020207@profitbricks.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <55157AEB.7020705@profitbricks.com>
+In-Reply-To: <5515822E.2020207@profitbricks.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Mar 27, 2015 at 04:44:43PM +0100, Michael Wang wrote:
-> 
-> Introduce helper cap_smi() to help us check if the port of an
-> IB device support Subnet Management Interface.
+On Fri, Mar 27, 2015 at 05:15:42PM +0100, Michael Wang wrote:
 
-This and most of the others should be qualified with 'cap_ib_smi'
-since we already know we will need 'cap_opa_smi' someday
+> I'm not sure if it's a good idea, but seems like the idea is use twice
+> check on different level to save some cycles?
+
+That is what it looks like to me, right now. Which is why I'd drop
+it. This isn't performance sensitive, make it simple.
 
 Jason
