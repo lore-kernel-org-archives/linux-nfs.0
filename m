@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wg0-f47.google.com ([74.125.82.47]:35997 "EHLO
-	mail-wg0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753453AbbC0Qv5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Mar 2015 12:51:57 -0400
+Received: from mail-wi0-f179.google.com ([209.85.212.179]:33959 "EHLO
+	mail-wi0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752680AbbC0Qvu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Mar 2015 12:51:50 -0400
 From: Andreas Gruenbacher <andreas.gruenbacher@gmail.com>
 To: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-nfs@vger.kernel.org
-Subject: [RFC 13/39] richacl: Permission check algorithm
-Date: Fri, 27 Mar 2015 17:50:11 +0100
-Message-Id: <c1304dbca1c4afb8b3aa5467a366c6a944cbacaf.1427471526.git.agruenba@redhat.com>
+Subject: [RFC 08/39] vfs: Add permission flags for setting file attributes
+Date: Fri, 27 Mar 2015 17:50:06 +0100
+Message-Id: <2ed2ada5af6062823abb4aba60539a4e3d6d22a5.1427471526.git.agruenba@redhat.com>
 In-Reply-To: <cover.1427471526.git.agruenba@redhat.com>
 References: <cover.1427471526.git.agruenba@redhat.com>
 In-Reply-To: <cover.1427471526.git.agruenba@redhat.com>
@@ -16,179 +16,140 @@ References: <cover.1427471526.git.agruenba@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-A richacl grants a requested access if the NFSv4 acl in the richacl grants the
-requested permissions (according to the NFSv4 permission check algorithm) and
-the file mask that applies to the process includes the requested permissions.
+Richacls support permissions that allow to take ownership of a file, change the
+file permissions, and set the file timestamps.  Support that by introducing new
+permission mask flags and by checking for those mask flags in
+inode_change_ok().
 
 Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
 ---
- fs/Makefile             |   2 +-
- fs/richacl_inode.c      | 130 ++++++++++++++++++++++++++++++++++++++++++++++++
- include/linux/richacl.h |   3 ++
- 3 files changed, 134 insertions(+), 1 deletion(-)
- create mode 100644 fs/richacl_inode.c
+ fs/attr.c          | 79 +++++++++++++++++++++++++++++++++++++++++++++---------
+ include/linux/fs.h |  3 +++
+ 2 files changed, 70 insertions(+), 12 deletions(-)
 
-diff --git a/fs/Makefile b/fs/Makefile
-index 8f0a59c..bb96ad7 100644
---- a/fs/Makefile
-+++ b/fs/Makefile
-@@ -48,7 +48,7 @@ obj-$(CONFIG_SYSCTL)		+= drop_caches.o
+diff --git a/fs/attr.c b/fs/attr.c
+index 328be71..85483e0 100644
+--- a/fs/attr.c
++++ b/fs/attr.c
+@@ -17,6 +17,65 @@
+ #include <linux/ima.h>
  
- obj-$(CONFIG_FHANDLE)		+= fhandle.o
- obj-$(CONFIG_FS_RICHACL)	+= richacl.o
--richacl-y			:= richacl_base.o
-+richacl-y			:= richacl_base.o richacl_inode.o
- 
- obj-y				+= quota/
- 
-diff --git a/fs/richacl_inode.c b/fs/richacl_inode.c
-new file mode 100644
-index 0000000..33e591a
---- /dev/null
-+++ b/fs/richacl_inode.c
-@@ -0,0 +1,130 @@
-+/*
-+ * Copyright (C) 2010  Novell, Inc.
-+ * Copyright (C) 2015  Red Hat, Inc.
-+ * Written by Andreas Gruenbacher <agruen@kernel.org>
+ /**
++ * inode_extended_permission  -  permissions beyond read/write/execute
 + *
-+ * This program is free software; you can redistribute it and/or modify it
-+ * under the terms of the GNU General Public License as published by the
-+ * Free Software Foundation; either version 2, or (at your option) any
-+ * later version.
-+ *
-+ * This program is distributed in the hope that it will be useful, but
-+ * WITHOUT ANY WARRANTY; without even the implied warranty of
-+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-+ * General Public License for more details.
++ * Check for permissions that only richacls can currently grant.
 + */
++static int inode_extended_permission(struct inode *inode, int mask)
++{
++	if (!IS_RICHACL(inode))
++		return -EPERM;
++	return inode_permission(inode, mask);
++}
 +
-+#include <linux/sched.h>
-+#include <linux/module.h>
-+#include <linux/fs.h>
-+#include <linux/slab.h>
-+#include <linux/richacl.h>
++static bool inode_uid_change_ok(struct inode *inode, kuid_t ia_uid)
++{
++	if (uid_eq(current_fsuid(), inode->i_uid) &&
++	    uid_eq(ia_uid, inode->i_uid))
++		return true;
++	if (uid_eq(current_fsuid(), ia_uid) &&
++	    inode_extended_permission(inode, MAY_TAKE_OWNERSHIP) == 0)
++		return true;
++	if (capable_wrt_inode_uidgid(inode, CAP_CHOWN))
++		return true;
++	return false;
++}
++
++static bool inode_gid_change_ok(struct inode *inode, kgid_t ia_gid)
++{
++	int in_group = in_group_p(ia_gid);
++	if (uid_eq(current_fsuid(), inode->i_uid) &&
++	    (in_group || gid_eq(ia_gid, inode->i_gid)))
++		return true;
++	if (in_group && inode_extended_permission(inode, MAY_TAKE_OWNERSHIP) == 0)
++		return true;
++	if (capable_wrt_inode_uidgid(inode, CAP_CHOWN))
++		return true;
++	return false;
++}
 +
 +/**
-+ * richacl_permission  -  richacl permission check algorithm
-+ * @inode:	inode to check
-+ * @acl:	rich acl of the inode
-+ * @want:	requested access (MAY_* flags)
++ * inode_owner_permitted_or_capable
 + *
-+ * Checks if the current process is granted @mask flags in @acl.
++ * Check for permissions implicitly granted to the owner, like MAY_CHMOD or
++ * MAY_SET_TIMES.  Equivalent to inode_owner_or_capable for file systems
++ * without support for those permissions.
 + */
-+int
-+richacl_permission(struct inode *inode, const struct richacl *acl,
-+		   int want)
++static bool inode_owner_permitted_or_capable(struct inode *inode, int mask)
 +{
-+	const struct richace *ace;
-+	unsigned int mask = richacl_want_to_mask(want);
-+	unsigned int requested = mask, denied = 0;
-+	int in_owning_group = in_group_p(inode->i_gid);
-+	int in_owner_or_group_class = in_owning_group;
++	struct user_namespace *ns;
 +
-+	/*
-+	 * We don't need to know which class the process is in when the acl is
-+	 * not masked.
-+	 */
-+	if (!(acl->a_flags & RICHACL_MASKED))
-+		in_owner_or_group_class = 1;
-+
-+	/*
-+	 * A process is
-+	 *   - in the owner file class if it owns the file,
-+	 *   - in the group file class if it is in the file's owning group or
-+	 *     it matches any of the user or group entries, and
-+	 *   - in the other file class otherwise.
-+	 */
-+
-+	/*
-+	 * Check if the acl grants the requested access and determine which
-+	 * file class the process is in.
-+	 */
-+	richacl_for_each_entry(ace, acl) {
-+		unsigned int ace_mask = ace->e_mask;
-+
-+		if (richace_is_inherit_only(ace))
-+			continue;
-+		if (richace_is_owner(ace)) {
-+			if (!uid_eq(current_fsuid(), inode->i_uid))
-+				continue;
-+			goto is_owner;
-+		} else if (richace_is_group(ace)) {
-+			if (!in_owning_group)
-+				continue;
-+		} else if (richace_is_unix_id(ace)) {
-+			if (ace->e_flags & RICHACE_IDENTIFIER_GROUP) {
-+				if (!in_group_p(ace->e_id.gid))
-+					continue;
-+			} else {
-+				if (!uid_eq(current_fsuid(), ace->e_id.uid))
-+					continue;
-+			}
-+		} else
-+			goto is_everyone;
-+
-+		/*
-+		 * Apply the group file mask to entries other than OWNER@ and
-+		 * EVERYONE@. This is not required for correct access checking
-+		 * but ensures that we grant the same permissions as the acl
-+		 * computed by richacl_apply_masks() would grant.
-+		 */
-+		if ((acl->a_flags & RICHACL_MASKED) && richace_is_allow(ace))
-+			ace_mask &= acl->a_group_mask;
-+
-+is_owner:
-+		/* The process is in the owner or group file class. */
-+		in_owner_or_group_class = 1;
-+
-+is_everyone:
-+		/* Check which mask flags the ACE allows or denies. */
-+		if (richace_is_deny(ace))
-+			denied |= ace_mask & mask;
-+		mask &= ~ace_mask;
-+
-+		/*
-+		 * Keep going until we know which file class
-+		 * the process is in.
-+		 */
-+		if (!mask && in_owner_or_group_class)
-+			break;
-+	}
-+	denied |= mask;
-+
-+	if (acl->a_flags & RICHACL_MASKED) {
-+		unsigned int file_mask;
-+
-+		/*
-+		 * The file class a process is in determines which file mask
-+		 * applies.  Check if that file mask also grants the requested
-+		 * access.
-+		 */
-+		if (uid_eq(current_fsuid(), inode->i_uid))
-+			file_mask = acl->a_owner_mask;
-+		else if (in_owner_or_group_class)
-+			file_mask = acl->a_group_mask;
-+		else
-+			file_mask = acl->a_other_mask;
-+		denied |= requested & ~file_mask;
-+	}
-+
-+	return denied ? -EACCES : 0;
++	if (uid_eq(current_fsuid(), inode->i_uid))
++		return true;
++	if (inode_extended_permission(inode, mask) == 0)
++		return true;
++	ns = current_user_ns();
++	if (ns_capable(ns, CAP_FOWNER) && kuid_has_mapping(ns, inode->i_uid))
++		return true;
++	return false;
 +}
-+EXPORT_SYMBOL_GPL(richacl_permission);
-diff --git a/include/linux/richacl.h b/include/linux/richacl.h
-index 5f5ac81..997b885 100644
---- a/include/linux/richacl.h
-+++ b/include/linux/richacl.h
-@@ -291,4 +291,7 @@ extern unsigned int richacl_want_to_mask(unsigned int);
- extern void richacl_compute_max_masks(struct richacl *);
- extern struct richacl *richacl_chmod(struct richacl *, mode_t);
- 
-+/* richacl_inode.c */
-+extern int richacl_permission(struct inode *, const struct richacl *, int);
 +
- #endif /* __RICHACL_H */
++/**
+  * inode_change_ok - check if attribute changes to an inode are allowed
+  * @inode:	inode to check
+  * @attr:	attributes to change
+@@ -47,22 +106,18 @@ int inode_change_ok(struct inode *inode, struct iattr *attr)
+ 		return 0;
+ 
+ 	/* Make sure a caller can chown. */
+-	if ((ia_valid & ATTR_UID) &&
+-	    (!uid_eq(current_fsuid(), inode->i_uid) ||
+-	     !uid_eq(attr->ia_uid, inode->i_uid)) &&
+-	    !capable_wrt_inode_uidgid(inode, CAP_CHOWN))
+-		return -EPERM;
++	if (ia_valid & ATTR_UID)
++		if (!inode_uid_change_ok(inode, attr->ia_uid))
++			return -EPERM;
+ 
+ 	/* Make sure caller can chgrp. */
+-	if ((ia_valid & ATTR_GID) &&
+-	    (!uid_eq(current_fsuid(), inode->i_uid) ||
+-	    (!in_group_p(attr->ia_gid) && !gid_eq(attr->ia_gid, inode->i_gid))) &&
+-	    !capable_wrt_inode_uidgid(inode, CAP_CHOWN))
+-		return -EPERM;
++	if (ia_valid & ATTR_GID)
++		if (!inode_gid_change_ok(inode, attr->ia_gid))
++			return -EPERM;
+ 
+ 	/* Make sure a caller can chmod. */
+ 	if (ia_valid & ATTR_MODE) {
+-		if (!inode_owner_or_capable(inode))
++		if (!inode_owner_permitted_or_capable(inode, MAY_CHMOD))
+ 			return -EPERM;
+ 		/* Also check the setgid bit! */
+ 		if (!in_group_p((ia_valid & ATTR_GID) ? attr->ia_gid :
+@@ -73,7 +128,7 @@ int inode_change_ok(struct inode *inode, struct iattr *attr)
+ 
+ 	/* Check for setting the inode time. */
+ 	if (ia_valid & (ATTR_MTIME_SET | ATTR_ATIME_SET | ATTR_TIMES_SET)) {
+-		if (!inode_owner_or_capable(inode))
++		if (!inode_owner_permitted_or_capable(inode, MAY_SET_TIMES))
+ 			return -EPERM;
+ 	}
+ 
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index f688ea6..e3e1e42 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -84,6 +84,9 @@ typedef void (dio_iodone_t)(struct kiocb *iocb, loff_t offset,
+ #define MAY_CREATE_DIR		0x00000200
+ #define MAY_DELETE_CHILD	0x00000400
+ #define MAY_DELETE_SELF		0x00000800
++#define MAY_TAKE_OWNERSHIP	0x00001000
++#define MAY_CHMOD		0x00002000
++#define MAY_SET_TIMES		0x00004000
+ 
+ /*
+  * flags in file.f_mode.  Note that FMODE_READ and FMODE_WRITE must correspond
 -- 
 2.1.0
 
