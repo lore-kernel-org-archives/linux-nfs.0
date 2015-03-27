@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wi0-f173.google.com ([209.85.212.173]:36969 "EHLO
-	mail-wi0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752572AbbC0Qvk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Mar 2015 12:51:40 -0400
+Received: from mail-wg0-f51.google.com ([74.125.82.51]:34344 "EHLO
+	mail-wg0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752855AbbC0Qvl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Mar 2015 12:51:41 -0400
 From: Andreas Gruenbacher <andreas.gruenbacher@gmail.com>
-To: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-Subject: [RFC 01/39] vfs: Minor documentation fix
-Date: Fri, 27 Mar 2015 17:49:59 +0100
-Message-Id: <ad8bf7f14aa624e9391f5ead887efe4d8e66df16.1427471526.git.agruenba@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>, linux-kernel@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: [RFC 02/39] uapi: Remove kernel internal declaration
+Date: Fri, 27 Mar 2015 17:50:00 +0100
+Message-Id: <063d443cc0ddc5db271cdaa6649443eb699736d0.1427471526.git.agruenba@redhat.com>
 In-Reply-To: <cover.1427471526.git.agruenba@redhat.com>
 References: <cover.1427471526.git.agruenba@redhat.com>
 In-Reply-To: <cover.1427471526.git.agruenba@redhat.com>
@@ -16,48 +16,51 @@ References: <cover.1427471526.git.agruenba@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The check_acl inode operation and the IPERM_FLAG_RCU are long gone.
-Document what get_acl does instead.
+The enum nfs4_acl_whotype is only used in nfs4d's internal nfs4 acl
+representation. No longer expose it to user space.
 
 Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
 ---
- Documentation/filesystems/porting | 8 ++++----
- Documentation/filesystems/vfs.txt | 3 +++
- 2 files changed, 7 insertions(+), 4 deletions(-)
+ include/linux/nfs4.h      | 7 +++++++
+ include/uapi/linux/nfs4.h | 7 -------
+ 2 files changed, 7 insertions(+), 7 deletions(-)
 
-diff --git a/Documentation/filesystems/porting b/Documentation/filesystems/porting
-index fa2db08..d6f9ab4 100644
---- a/Documentation/filesystems/porting
-+++ b/Documentation/filesystems/porting
-@@ -379,10 +379,10 @@ may now be called in rcu-walk mode (nd->flags & LOOKUP_RCU). -ECHILD should be
- returned if the filesystem cannot handle rcu-walk. See
- Documentation/filesystems/vfs.txt for more details.
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index ed43cb7..32201c2 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -16,6 +16,13 @@
+ #include <linux/uidgid.h>
+ #include <uapi/linux/nfs4.h>
  
--	permission and check_acl are inode permission checks that are called
--on many or all directory inodes on the way down a path walk (to check for
--exec permission). These must now be rcu-walk aware (flags & IPERM_FLAG_RCU).
--See Documentation/filesystems/vfs.txt for more details.
-+	permission is an inode permission check that is called on many or all
-+directory inodes on the way down a path walk (to check for exec permission). It
-+must now be rcu-walk aware (mask & MAY_NOT_BLOCK).  See
-+Documentation/filesystems/vfs.txt for more details.
-  
- --
- [mandatory]
-diff --git a/Documentation/filesystems/vfs.txt b/Documentation/filesystems/vfs.txt
-index 966b228..700cdf6 100644
---- a/Documentation/filesystems/vfs.txt
-+++ b/Documentation/filesystems/vfs.txt
-@@ -457,6 +457,9 @@ otherwise noted.
- 	If a situation is encountered that rcu-walk cannot handle, return
- 	-ECHILD and it will be called again in ref-walk mode.
- 
-+  get_acl: called by the VFS to get the posix acl of an inode. Called during
-+	permission checks. The returned acl is cached in the inode.
++enum nfs4_acl_whotype {
++	NFS4_ACL_WHO_NAMED = 0,
++	NFS4_ACL_WHO_OWNER,
++	NFS4_ACL_WHO_GROUP,
++	NFS4_ACL_WHO_EVERYONE,
++};
 +
-   setattr: called by the VFS to set attributes for a file. This method
-   	is called by chmod(2) and related system calls.
+ struct nfs4_ace {
+ 	uint32_t	type;
+ 	uint32_t	flag;
+diff --git a/include/uapi/linux/nfs4.h b/include/uapi/linux/nfs4.h
+index 35f5f4c..adc0aff 100644
+--- a/include/uapi/linux/nfs4.h
++++ b/include/uapi/linux/nfs4.h
+@@ -162,13 +162,6 @@
+  */
+ #define NFS4_MAX_BACK_CHANNEL_OPS 2
  
+-enum nfs4_acl_whotype {
+-	NFS4_ACL_WHO_NAMED = 0,
+-	NFS4_ACL_WHO_OWNER,
+-	NFS4_ACL_WHO_GROUP,
+-	NFS4_ACL_WHO_EVERYONE,
+-};
+-
+ #endif /* _UAPI_LINUX_NFS4_H */
+ 
+ /*
 -- 
 2.1.0
 
