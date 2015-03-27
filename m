@@ -1,12 +1,12 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wi0-f172.google.com ([209.85.212.172]:38005 "EHLO
-	mail-wi0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752966AbbC0PnO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Mar 2015 11:43:14 -0400
-Received: by wibgn9 with SMTP id gn9so36616494wib.1
-        for <linux-nfs@vger.kernel.org>; Fri, 27 Mar 2015 08:43:13 -0700 (PDT)
-Message-ID: <55157A8D.8080907@profitbricks.com>
-Date: Fri, 27 Mar 2015 16:43:09 +0100
+Received: from mail-wg0-f50.google.com ([74.125.82.50]:36382 "EHLO
+	mail-wg0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753109AbbC0Pos (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Mar 2015 11:44:48 -0400
+Received: by wgra20 with SMTP id a20so103286723wgr.3
+        for <linux-nfs@vger.kernel.org>; Fri, 27 Mar 2015 08:44:46 -0700 (PDT)
+Message-ID: <55157AEB.7020705@profitbricks.com>
+Date: Fri, 27 Mar 2015 16:44:43 +0100
 From: Michael Wang <yun.wang@profitbricks.com>
 MIME-Version: 1.0
 To: Roland Dreier <roland@kernel.org>, Sean Hefty <sean.hefty@intel.com>,
@@ -35,7 +35,7 @@ CC: "J. Bruce Fields" <bfields@fieldses.org>,
         Steve Wise <swise@opengridcomputing.com>, Tom Tucker <tom@ogc.us>,
         Chuck Lever <chuck.lever@oracle.com>,
         Michael Wang <yun.wang@profitbricks.com>
-Subject: [RFC PATCH 03/11] IB/Verbs: Use management helper has_mad() for mad-check
+Subject: [RFC PATCH 04/11] IB/Verbs: Use management helper cap_smi() for smi-check
 References: <551579CA.4030901@profitbricks.com>
 In-Reply-To: <551579CA.4030901@profitbricks.com>
 Content-Type: text/plain; charset=utf-8
@@ -43,8 +43,8 @@ Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-Introduce helper has_mad() to help us check if an IB device support
-Management Datagrams.
+Introduce helper cap_smi() to help us check if the port of an
+IB device support Subnet Management Interface.
 
 Cc: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
 Cc: Doug Ledford <dledford@redhat.com>
@@ -52,65 +52,72 @@ Cc: Ira Weiny <ira.weiny@intel.com>
 Cc: Sean Hefty <sean.hefty@intel.com>
 Signed-off-by: Michael Wang <yun.wang@profitbricks.com>
 ---
- drivers/infiniband/core/mad.c      |  4 ++--
- drivers/infiniband/core/user_mad.c |  2 +-
- include/rdma/ib_verbs.h            | 13 +++++++++++++
- 3 files changed, 16 insertions(+), 3 deletions(-)
+ drivers/infiniband/core/agent.c  |  2 +-
+ drivers/infiniband/core/mad.c    |  2 +-
+ drivers/infiniband/hw/mlx4/mad.c |  2 +-
+ include/rdma/ib_verbs.h          | 15 +++++++++++++++
+ 4 files changed, 18 insertions(+), 3 deletions(-)
 
+diff --git a/drivers/infiniband/core/agent.c b/drivers/infiniband/core/agent.c
+index 27f1bec..187514a 100644
+--- a/drivers/infiniband/core/agent.c
++++ b/drivers/infiniband/core/agent.c
+@@ -156,7 +156,7 @@ int ib_agent_port_open(struct ib_device *device, int port_num)
+         goto error1;
+     }
+ 
+-    if (rdma_port_ll_is_ib(device, port_num)) {
++    if (cap_smi(device, port_num)) {
+         /* Obtain send only MAD agent for SMI QP */
+         port_priv->agent[0] = ib_register_mad_agent(device, port_num,
+                                 IB_QPT_SMI, NULL, 0,
 diff --git a/drivers/infiniband/core/mad.c b/drivers/infiniband/core/mad.c
-index 23cf9e8..896b749 100644
+index 896b749..c5d1ebb5b 100644
 --- a/drivers/infiniband/core/mad.c
 +++ b/drivers/infiniband/core/mad.c
-@@ -3057,7 +3057,7 @@ static void ib_mad_init_device(struct ib_device *device)
- {
-     int start, end, i;
+@@ -2938,7 +2938,7 @@ static int ib_mad_port_open(struct ib_device *device,
+     init_mad_qp(port_priv, &port_priv->qp_info[1]);
  
--    if (!rdma_transport_is_ib(device))
-+    if (!has_mad(device))
-         return;
+     cq_size = mad_sendq_size + mad_recvq_size;
+-    has_smi = rdma_port_ll_is_ib(device, port_num);
++    has_smi = cap_smi(device, port_num);
+     if (has_smi)
+         cq_size *= 2;
  
-     if (device->node_type == RDMA_NODE_IB_SWITCH) {
-@@ -3102,7 +3102,7 @@ static void ib_mad_remove_device(struct ib_device *device)
- {
-     int i, num_ports, cur_port;
+diff --git a/drivers/infiniband/hw/mlx4/mad.c b/drivers/infiniband/hw/mlx4/mad.c
+index 4736fc7..09874d0 100644
+--- a/drivers/infiniband/hw/mlx4/mad.c
++++ b/drivers/infiniband/hw/mlx4/mad.c
+@@ -1753,7 +1753,7 @@ static int create_pv_resources(struct ib_device *ibdev, int slave, int port,
  
--    if (!rdma_transport_is_ib(device))
-+    if (!has_mad(device))
-         return;
+     ctx->state = DEMUX_PV_STATE_STARTING;
+     /* have QP0 only if link layer is IB */
+-    if (rdma_port_ll_is_ib(ibdev, ctx->port))
++    if (cap_smi(ibdev, ctx->port))
+         ctx->has_smi = 1;
  
-     if (device->node_type == RDMA_NODE_IB_SWITCH) {
-diff --git a/drivers/infiniband/core/user_mad.c b/drivers/infiniband/core/user_mad.c
-index 28a8b30..31feec3 100644
---- a/drivers/infiniband/core/user_mad.c
-+++ b/drivers/infiniband/core/user_mad.c
-@@ -1274,7 +1274,7 @@ static void ib_umad_add_one(struct ib_device *device)
-     struct ib_umad_device *umad_dev;
-     int s, e, i;
- 
--    if (!rdma_transport_is_ib(device))
-+    if (!has_mad(device))
-         return;
- 
-     if (device->node_type == RDMA_NODE_IB_SWITCH)
+     if (ctx->has_smi) {
 diff --git a/include/rdma/ib_verbs.h b/include/rdma/ib_verbs.h
-index ca6d6bc..7b2bfe8 100644
+index 7b2bfe8..3d06178 100644
 --- a/include/rdma/ib_verbs.h
 +++ b/include/rdma/ib_verbs.h
-@@ -1783,6 +1783,19 @@ static inline int tech_iboe(struct ib_device *device, u8 port_num)
-             rdma_port_ll_is_eth(device, port_num);
+@@ -1796,6 +1796,21 @@ static inline int has_mad(struct ib_device *device)
+     return rdma_transport_is_ib(device);
  }
  
 +/**
-+ * has_mad - Check if a device support Management Datagrams.
++ * cap_smi - Check if the port of device has the capability
++ * Subnet Management Interface.
 + *
 + * @device: Device to be checked
++ * @port_num: Port number of the device
 + *
-+ * Return 0 when a device has none port to support
-+ * Management Datagrams.
++ * Return 0 when port of the device don't support
++ * Subnet Management Interface.
 + */
-+static inline int has_mad(struct ib_device *device)
++static inline int cap_smi(struct ib_device *device, u8 port_num)
 +{
-+    return rdma_transport_is_ib(device);
++    return rdma_port_ll_is_ib(device, port_num);
 +}
 +
  int ib_query_gid(struct ib_device *device,
