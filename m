@@ -1,12 +1,16 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from quartz.orcorp.ca ([184.70.90.242]:52541 "EHLO quartz.orcorp.ca"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751284AbbC0QN1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 27 Mar 2015 12:13:27 -0400
-Date: Fri, 27 Mar 2015 10:13:19 -0600
-From: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
-To: Michael Wang <yun.wang@profitbricks.com>
-Cc: Roland Dreier <roland@kernel.org>, Sean Hefty <sean.hefty@intel.com>,
+Received: from mail-wi0-f169.google.com ([209.85.212.169]:34092 "EHLO
+	mail-wi0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751325AbbC0QPq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Mar 2015 12:15:46 -0400
+Received: by wibg7 with SMTP id g7so42899714wib.1
+        for <linux-nfs@vger.kernel.org>; Fri, 27 Mar 2015 09:15:45 -0700 (PDT)
+Message-ID: <5515822E.2020207@profitbricks.com>
+Date: Fri, 27 Mar 2015 17:15:42 +0100
+From: Michael Wang <yun.wang@profitbricks.com>
+MIME-Version: 1.0
+To: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
+CC: Roland Dreier <roland@kernel.org>, Sean Hefty <sean.hefty@intel.com>,
         Hal Rosenstock <hal.rosenstock@gmail.com>,
         Ira Weiny <ira.weiny@intel.com>, linux-rdma@vger.kernel.org,
         linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
@@ -30,25 +34,69 @@ Cc: Roland Dreier <roland@kernel.org>, Sean Hefty <sean.hefty@intel.com>,
         Mike Marciniszyn <mike.marciniszyn@intel.com>,
         Steve Wise <swise@opengridcomputing.com>, Tom Tucker <tom@ogc.us>,
         Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [RFC PATCH 08/11] IB/Verbs: Use management helper has_iwarp()
- for, iwarp-check
-Message-ID: <20150327161319.GB28412@obsidianresearch.com>
-References: <551579CA.4030901@profitbricks.com>
- <55157B98.1060103@profitbricks.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <55157B98.1060103@profitbricks.com>
+Subject: Re: [RFC PATCH 09/11] IB/Verbs: Use management helper has_ipoib()
+ and, cap_ipoib() for ipoib-check
+References: <551579CA.4030901@profitbricks.com> <55157BC6.70400@profitbricks.com> <20150327160616.GA28412@obsidianresearch.com>
+In-Reply-To: <20150327160616.GA28412@obsidianresearch.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Mar 27, 2015 at 04:47:36PM +0100, Michael Wang wrote:
-> 
-> Introduce helper has_iwarp() to help us check if an IB device
-> support IWARP protocol.
+On 03/27/2015 05:06 PM, Jason Gunthorpe wrote:
+> On Fri, Mar 27, 2015 at 04:48:22PM +0100, Michael Wang wrote:
+>
+>> diff --git a/drivers/infiniband/ulp/ipoib/ipoib_main.c b/drivers/infiniband/ulp/ipoib/ipoib_main.c
+>> index 3341754..fcd7558 100644
+>> +++ b/drivers/infiniband/ulp/ipoib/ipoib_main.c
+>> @@ -1655,7 +1655,7 @@ static void ipoib_add_one(struct ib_device *device)
+>>      struct ipoib_dev_priv *priv;
+>>      int s, e, p;
+>>  
+>> -    if (!rdma_transport_is_ib(device))
+>> +    if (!has_ipoib(device))
+>>          return;
+> This is a good example of a test that doesn't really make sense, IPoIB
+> is certainly a port specific attribute.
+According to my understanding, seems like the logical is:
 
-Should probably be !has_rdma_read_sges()
+    if 'device have no port need ipoib initialization'
+            return
+>
+>>      dev_list = kmalloc(sizeof *dev_list, GFP_KERNEL);
+>> @@ -1673,7 +1673,7 @@ static void ipoib_add_one(struct ib_device *device)
+>>      }
+>>  
+>>      for (p = s; p <= e; ++p) {
+>> -        if (!rdma_port_ll_is_ib(device, p))
+>> +        if (!cap_ipoib(device, p))
+>>              continue;
+> And down here we test every port.
+>
+> The routine should just test every port and do nothing if no ports
+> need IPoIB.
+And here since there are some initial work to do, it iterate all the
+port to find out which one need to be initialized.
 
-True if the device can handle more than one SGE entry on a RDMA READ
-work request.
+>
+>>          dev = ipoib_add_port("ib%d", device, p);
+>>          if (!IS_ERR(dev)) {
+>> @@ -1690,7 +1690,7 @@ static void ipoib_remove_one(struct ib_device *device)
+>>      struct ipoib_dev_priv *priv, *tmp;
+>>      struct list_head *dev_list;
+>>  
+>> -    if (!rdma_transport_is_ib(device))
+>> +    if (!has_ipoib(device))
+>>          return;
+> This test should be made redundant by having ib_get_client_data return
+> null if ipoib_add_one didn't do anything. Maybe that already happens?
+Here if we have done nothing when add a device, then nothing
+need to be cleanup when remove it.
 
-Jason
+I'm not sure if it's a good idea, but seems like the idea is use twice
+check on different level to save some cycles?
+
+Regards,
+Michael Wang
+>
+> Jason
+
