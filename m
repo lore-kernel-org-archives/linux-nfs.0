@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wi0-f171.google.com ([209.85.212.171]:37323 "EHLO
-	mail-wi0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753856AbbC0Qvx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Mar 2015 12:51:53 -0400
+Received: from mail-wg0-f47.google.com ([74.125.82.47]:35997 "EHLO
+	mail-wg0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753453AbbC0Qv5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Mar 2015 12:51:57 -0400
 From: Andreas Gruenbacher <andreas.gruenbacher@gmail.com>
 To: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-nfs@vger.kernel.org
-Subject: [RFC 10/39] richacl: Permission mapping functions
-Date: Fri, 27 Mar 2015 17:50:08 +0100
-Message-Id: <eb20efee14b2914dc1cb5a9f3371dca2dd2189ea.1427471526.git.agruenba@redhat.com>
+Subject: [RFC 13/39] richacl: Permission check algorithm
+Date: Fri, 27 Mar 2015 17:50:11 +0100
+Message-Id: <c1304dbca1c4afb8b3aa5467a366c6a944cbacaf.1427471526.git.agruenba@redhat.com>
 In-Reply-To: <cover.1427471526.git.agruenba@redhat.com>
 References: <cover.1427471526.git.agruenba@redhat.com>
 In-Reply-To: <cover.1427471526.git.agruenba@redhat.com>
@@ -16,205 +16,178 @@ References: <cover.1427471526.git.agruenba@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We need to map from POSIX permissions to NFSv4 permissions when a
-chmod() is done, from NFSv4 permissions to POSIX permissions when an acl
-is set (which implicitly sets the file permission bits), and from the
-MAY_READ/MAY_WRITE/MAY_EXEC/MAY_APPEND flags to NFSv4 permissions when
-doing an access check in a richacl.
+A richacl grants a requested access if the NFSv4 acl in the richacl grants the
+requested permissions (according to the NFSv4 permission check algorithm) and
+the file mask that applies to the process includes the requested permissions.
 
 Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
 ---
- fs/richacl_base.c       | 117 ++++++++++++++++++++++++++++++++++++++++++++++++
- include/linux/richacl.h |  46 +++++++++++++++++++
- 2 files changed, 163 insertions(+)
+ fs/Makefile             |   2 +-
+ fs/richacl_inode.c      | 130 ++++++++++++++++++++++++++++++++++++++++++++++++
+ include/linux/richacl.h |   3 ++
+ 3 files changed, 134 insertions(+), 1 deletion(-)
+ create mode 100644 fs/richacl_inode.c
 
-diff --git a/fs/richacl_base.c b/fs/richacl_base.c
-index 9439cc4..9cd15ca 100644
---- a/fs/richacl_base.c
-+++ b/fs/richacl_base.c
-@@ -56,3 +56,120 @@ richacl_clone(const struct richacl *acl, gfp_t gfp)
- 	}
- 	return dup;
- }
-+
-+/**
-+ * richacl_mask_to_mode  -  compute the file permission bits which correspond to @mask
-+ * @mask:	%RICHACE_* permission mask
+diff --git a/fs/Makefile b/fs/Makefile
+index 8f0a59c..bb96ad7 100644
+--- a/fs/Makefile
++++ b/fs/Makefile
+@@ -48,7 +48,7 @@ obj-$(CONFIG_SYSCTL)		+= drop_caches.o
+ 
+ obj-$(CONFIG_FHANDLE)		+= fhandle.o
+ obj-$(CONFIG_FS_RICHACL)	+= richacl.o
+-richacl-y			:= richacl_base.o
++richacl-y			:= richacl_base.o richacl_inode.o
+ 
+ obj-y				+= quota/
+ 
+diff --git a/fs/richacl_inode.c b/fs/richacl_inode.c
+new file mode 100644
+index 0000000..33e591a
+--- /dev/null
++++ b/fs/richacl_inode.c
+@@ -0,0 +1,130 @@
++/*
++ * Copyright (C) 2010  Novell, Inc.
++ * Copyright (C) 2015  Red Hat, Inc.
++ * Written by Andreas Gruenbacher <agruen@kernel.org>
 + *
-+ * See richacl_masks_to_mode().
++ * This program is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License as published by the
++ * Free Software Foundation; either version 2, or (at your option) any
++ * later version.
++ *
++ * This program is distributed in the hope that it will be useful, but
++ * WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * General Public License for more details.
 + */
-+static int
-+richacl_mask_to_mode(unsigned int mask)
-+{
-+	int mode = 0;
 +
-+	if (mask & RICHACE_POSIX_MODE_READ)
-+		mode |= S_IROTH;
-+	if (mask & RICHACE_POSIX_MODE_WRITE)
-+		mode |= S_IWOTH;
-+	if (mask & RICHACE_POSIX_MODE_EXEC)
-+		mode |= S_IXOTH;
-+
-+	return mode;
-+}
++#include <linux/sched.h>
++#include <linux/module.h>
++#include <linux/fs.h>
++#include <linux/slab.h>
++#include <linux/richacl.h>
 +
 +/**
-+ * richacl_masks_to_mode  -  compute the file permission bits from the file masks
++ * richacl_permission  -  richacl permission check algorithm
++ * @inode:	inode to check
++ * @acl:	rich acl of the inode
++ * @want:	requested access (MAY_* flags)
 + *
-+ * When setting a richacl, we set the file permission bits to indicate maximum
-+ * permissions: for example, we set the Write permission when a mask contains
-+ * RICHACE_APPEND_DATA even if it does not also contain RICHACE_WRITE_DATA.
-+ *
-+ * Permissions which are not in RICHACE_POSIX_MODE_READ, RICHACE_POSIX_MODE_WRITE, or
-+ * RICHACE_POSIX_MODE_EXEC cannot be represented in the file permission bits.
-+ * Such permissions can still be effective, but not for new files or after a
-+ * chmod(), and only if they were set explicitly, for example, by setting a
-+ * richacl.
++ * Checks if the current process is granted @mask flags in @acl.
 + */
 +int
-+richacl_masks_to_mode(const struct richacl *acl)
++richacl_permission(struct inode *inode, const struct richacl *acl,
++		   int want)
 +{
-+	return richacl_mask_to_mode(acl->a_owner_mask) << 6 |
-+	       richacl_mask_to_mode(acl->a_group_mask) << 3 |
-+	       richacl_mask_to_mode(acl->a_other_mask);
-+}
-+EXPORT_SYMBOL_GPL(richacl_masks_to_mode);
++	const struct richace *ace;
++	unsigned int mask = richacl_want_to_mask(want);
++	unsigned int requested = mask, denied = 0;
++	int in_owning_group = in_group_p(inode->i_gid);
++	int in_owner_or_group_class = in_owning_group;
 +
-+/**
-+ * richacl_mode_to_mask  - compute a file mask from the lowest three mode bits
-+ *
-+ * When the file permission bits of a file are set with chmod(), this specifies
-+ * the maximum permissions that processes will get.  All permissions beyond
-+ * that will be removed from the file masks, and become ineffective.
-+ *
-+ * We also add in the permissions which are always allowed no matter what the
-+ * acl says.
-+ */
-+unsigned int
-+richacl_mode_to_mask(mode_t mode)
-+{
-+	unsigned int mask = RICHACE_POSIX_ALWAYS_ALLOWED;
-+
-+	if (mode & S_IROTH)
-+		mask |= RICHACE_POSIX_MODE_READ;
-+	if (mode & S_IWOTH)
-+		mask |= RICHACE_POSIX_MODE_WRITE;
-+	if (mode & S_IXOTH)
-+		mask |= RICHACE_POSIX_MODE_EXEC;
-+
-+	return mask;
-+}
-+
-+/**
-+ * richacl_want_to_mask  - convert the iop->permission want argument to a mask
-+ * @want:	@want argument of the permission inode operation
-+ *
-+ * When checking for append, @want is (MAY_WRITE | MAY_APPEND).
-+ *
-+ * Richacls use the iop->may_create and iop->may_delete hooks which are
-+ * used for checking if creating and deleting files is allowed.  These hooks do
-+ * not use richacl_want_to_mask(), so we do not have to deal with mapping
-+ * MAY_WRITE to RICHACE_ADD_FILE, RICHACE_ADD_SUBDIRECTORY, and RICHACE_DELETE_CHILD
-+ * here.
-+ */
-+unsigned int
-+richacl_want_to_mask(unsigned int want)
-+{
-+	unsigned int mask = 0;
-+
-+	if (want & MAY_READ)
-+		mask |= RICHACE_READ_DATA;
-+	if (want & MAY_DELETE_SELF)
-+		mask |= RICHACE_DELETE;
-+	if (want & MAY_TAKE_OWNERSHIP)
-+		mask |= RICHACE_WRITE_OWNER;
-+	if (want & MAY_CHMOD)
-+		mask |= RICHACE_WRITE_ACL;
-+	if (want & MAY_SET_TIMES)
-+		mask |= RICHACE_WRITE_ATTRIBUTES;
-+	if (want & MAY_EXEC)
-+		mask |= RICHACE_EXECUTE;
 +	/*
-+	 * differentiate MAY_WRITE from these request
++	 * We don't need to know which class the process is in when the acl is
++	 * not masked.
 +	 */
-+	if (want & (MAY_APPEND |
-+		    MAY_CREATE_FILE | MAY_CREATE_DIR |
-+		    MAY_DELETE_CHILD)) {
-+		if (want & MAY_APPEND)
-+			mask |= RICHACE_APPEND_DATA;
-+		if (want & MAY_CREATE_FILE)
-+			mask |= RICHACE_ADD_FILE;
-+		if (want & MAY_CREATE_DIR)
-+			mask |= RICHACE_ADD_SUBDIRECTORY;
-+		if (want & MAY_DELETE_CHILD)
-+			mask |= RICHACE_DELETE_CHILD;
-+	} else if (want & MAY_WRITE)
-+		mask |= RICHACE_WRITE_DATA;
-+	return mask;
++	if (!(acl->a_flags & RICHACL_MASKED))
++		in_owner_or_group_class = 1;
++
++	/*
++	 * A process is
++	 *   - in the owner file class if it owns the file,
++	 *   - in the group file class if it is in the file's owning group or
++	 *     it matches any of the user or group entries, and
++	 *   - in the other file class otherwise.
++	 */
++
++	/*
++	 * Check if the acl grants the requested access and determine which
++	 * file class the process is in.
++	 */
++	richacl_for_each_entry(ace, acl) {
++		unsigned int ace_mask = ace->e_mask;
++
++		if (richace_is_inherit_only(ace))
++			continue;
++		if (richace_is_owner(ace)) {
++			if (!uid_eq(current_fsuid(), inode->i_uid))
++				continue;
++			goto is_owner;
++		} else if (richace_is_group(ace)) {
++			if (!in_owning_group)
++				continue;
++		} else if (richace_is_unix_id(ace)) {
++			if (ace->e_flags & RICHACE_IDENTIFIER_GROUP) {
++				if (!in_group_p(ace->e_id.gid))
++					continue;
++			} else {
++				if (!uid_eq(current_fsuid(), ace->e_id.uid))
++					continue;
++			}
++		} else
++			goto is_everyone;
++
++		/*
++		 * Apply the group file mask to entries other than OWNER@ and
++		 * EVERYONE@. This is not required for correct access checking
++		 * but ensures that we grant the same permissions as the acl
++		 * computed by richacl_apply_masks() would grant.
++		 */
++		if ((acl->a_flags & RICHACL_MASKED) && richace_is_allow(ace))
++			ace_mask &= acl->a_group_mask;
++
++is_owner:
++		/* The process is in the owner or group file class. */
++		in_owner_or_group_class = 1;
++
++is_everyone:
++		/* Check which mask flags the ACE allows or denies. */
++		if (richace_is_deny(ace))
++			denied |= ace_mask & mask;
++		mask &= ~ace_mask;
++
++		/*
++		 * Keep going until we know which file class
++		 * the process is in.
++		 */
++		if (!mask && in_owner_or_group_class)
++			break;
++	}
++	denied |= mask;
++
++	if (acl->a_flags & RICHACL_MASKED) {
++		unsigned int file_mask;
++
++		/*
++		 * The file class a process is in determines which file mask
++		 * applies.  Check if that file mask also grants the requested
++		 * access.
++		 */
++		if (uid_eq(current_fsuid(), inode->i_uid))
++			file_mask = acl->a_owner_mask;
++		else if (in_owner_or_group_class)
++			file_mask = acl->a_group_mask;
++		else
++			file_mask = acl->a_other_mask;
++		denied |= requested & ~file_mask;
++	}
++
++	return denied ? -EACCES : 0;
 +}
-+EXPORT_SYMBOL_GPL(richacl_want_to_mask);
++EXPORT_SYMBOL_GPL(richacl_permission);
 diff --git a/include/linux/richacl.h b/include/linux/richacl.h
-index d19edd9..2120aa6 100644
+index 5f5ac81..997b885 100644
 --- a/include/linux/richacl.h
 +++ b/include/linux/richacl.h
-@@ -118,6 +118,49 @@ struct richacl {
- 	RICHACE_WRITE_OWNER |					\
- 	RICHACE_SYNCHRONIZE)
+@@ -291,4 +291,7 @@ extern unsigned int richacl_want_to_mask(unsigned int);
+ extern void richacl_compute_max_masks(struct richacl *);
+ extern struct richacl *richacl_chmod(struct richacl *, mode_t);
  
-+/*
-+ * The POSIX permissions are supersets of the following NFSv4 permissions:
-+ *
-+ *  - MAY_READ maps to READ_DATA or LIST_DIRECTORY, depending on the type
-+ *    of the file system object.
-+ *
-+ *  - MAY_WRITE maps to WRITE_DATA or RICHACE_APPEND_DATA for files, and to
-+ *    ADD_FILE, RICHACE_ADD_SUBDIRECTORY, or RICHACE_DELETE_CHILD for directories.
-+ *
-+ *  - MAY_EXECUTE maps to RICHACE_EXECUTE.
-+ *
-+ *  (Some of these NFSv4 permissions have the same bit values.)
-+ */
-+#define RICHACE_POSIX_MODE_READ (			\
-+		RICHACE_READ_DATA |		\
-+		RICHACE_LIST_DIRECTORY)
-+#define RICHACE_POSIX_MODE_WRITE (			\
-+		RICHACE_WRITE_DATA |		\
-+		RICHACE_ADD_FILE |			\
-+		RICHACE_APPEND_DATA |		\
-+		RICHACE_ADD_SUBDIRECTORY |		\
-+		RICHACE_DELETE_CHILD)
-+#define RICHACE_POSIX_MODE_EXEC RICHACE_EXECUTE
-+#define RICHACE_POSIX_MODE_ALL (			\
-+		RICHACE_POSIX_MODE_READ |		\
-+		RICHACE_POSIX_MODE_WRITE |		\
-+		RICHACE_POSIX_MODE_EXEC)
-+/*
-+ * These permissions are always allowed
-+ * no matter what the acl says.
-+ */
-+#define RICHACE_POSIX_ALWAYS_ALLOWED (	\
-+		RICHACE_SYNCHRONIZE |	\
-+		RICHACE_READ_ATTRIBUTES |	\
-+		RICHACE_READ_ACL)
-+/*
-+ * The owner is implicitly granted
-+ * these permissions under POSIX.
-+ */
-+#define RICHACE_POSIX_OWNER_ALLOWED (		\
-+		RICHACE_WRITE_ATTRIBUTES |		\
-+		RICHACE_WRITE_OWNER |		\
-+		RICHACE_WRITE_ACL)
- /**
-  * richacl_get  -  grab another reference to a richacl handle
-  */
-@@ -242,5 +285,8 @@ richace_is_same_identifier(const struct richace *a, const struct richace *b)
- }
- 
- extern struct richacl *richacl_alloc(int, gfp_t);
-+extern int richacl_masks_to_mode(const struct richacl *);
-+extern unsigned int richacl_mode_to_mask(mode_t);
-+extern unsigned int richacl_want_to_mask(unsigned int);
- 
++/* richacl_inode.c */
++extern int richacl_permission(struct inode *, const struct richacl *, int);
++
  #endif /* __RICHACL_H */
 -- 
 2.1.0
