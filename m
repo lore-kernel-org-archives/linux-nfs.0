@@ -1,35 +1,69 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qg0-f53.google.com ([209.85.192.53]:33762 "EHLO
-	mail-qg0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751325AbbC0Oug convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Mar 2015 10:50:36 -0400
-Received: by qgfa8 with SMTP id a8so128239261qgf.0
-        for <linux-nfs@vger.kernel.org>; Fri, 27 Mar 2015 07:50:36 -0700 (PDT)
-Date: Fri, 27 Mar 2015 10:50:29 -0400
-From: Jeff Layton <jlayton@poochiereds.net>
-To: Christoph Hellwig <hch@lst.de>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-Subject: Re: panic on 4.20 server exporting xfs filesystem
-Message-ID: <20150327105029.615354f3@tlielax.poochiereds.net>
-In-Reply-To: <20150327104135.GA15651@lst.de>
-References: <20150303221033.GB19439@fieldses.org>
-	<20150327104135.GA15651@lst.de>
+Received: from mail-yh0-f43.google.com ([209.85.213.43]:34262 "EHLO
+	mail-yh0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1030276AbbC0PB6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Mar 2015 11:01:58 -0400
+Received: by yhch68 with SMTP id h68so39598285yhc.1
+        for <linux-nfs@vger.kernel.org>; Fri, 27 Mar 2015 08:01:57 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+In-Reply-To: <2000185644.567074.1427466785581.JavaMail.zimbra@desy.de>
+References: <CAABAsM4jh3+S0YjNiSf8xdru0at5vUkvJRsTUDuoVupZNp+JUA@mail.gmail.com>
+	<2000185644.567074.1427466785581.JavaMail.zimbra@desy.de>
+Date: Fri, 27 Mar 2015 11:01:57 -0400
+Message-ID: <CAHQdGtRONXHKKC+c6FhDg2=Yxws0-c2g2PYe4OXyQz+jsZcnwQ@mail.gmail.com>
+Subject: Re: pNFS layout, ROC and multiple opens
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+Cc: linux-nfs list <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 27 Mar 2015 11:41:35 +0100
-Christoph Hellwig <hch@lst.de> wrote:
+On Fri, Mar 27, 2015 at 10:33 AM, Mkrtchyan, Tigran
+<tigran.mkrtchyan@desy.de> wrote:
+> which means that even I I set roc flag, I still need to recall layout.
 
-> FYI, I small update on tracking down the recall issue:  this seems to
-> be very much something in the callback channel on the server.  When tracing
-> the client all the recalls it gets they are handled fine, but we do get
-> error back in the layout recall ->done handler, which most of the time
-> but not always are local Linux errnos and not nfs error numbers, indicating
-> something went wrong, probably in the RPC code.
+No. It means that the layout is automatically returned on last close
+and/or delegreturn. If you want it returned earlier then you need to
+send a cb_layoutrecall.
 
-Taking a quick look, the ->done routines look a little suspicious to me
-anyway. AFAICT, the pc_decode routines for the callbacks always return
-a Linux errno, not a nfsstat4, and that's what should end up in
-tk_status.
+> ----- Original Message -----
+>> From: "Trond Myklebust" <trond.myklebust@primarydata.com>
+>> To: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+>> Cc: "linux-nfs list" <linux-nfs@vger.kernel.org>
+>> Sent: Friday, March 27, 2015 3:08:39 PM
+>> Subject: Re: pNFS layout, ROC and multiple opens
+>
+>> On Fri, Mar 27, 2015 at 7:24 AM, Mkrtchyan, Tigran
+>> <tigran.mkrtchyan@desy.de> wrote:
+>>>
+>>>
+>>> Hi folks,
+>>>
+>>> we run into following issue:
+>>>
+>>> on a client host we have two processes - A and B.
+>>> Process A opens a file and reads some data:
+>>>
+>>> OPEN -> LAYOUTGET -> READ.
+>>> Notice, that layout has a roc set to true.
+>>>
+>>> Process B opens the same file:
+>>>
+>>> OPEN -> READ.
+>>>
+>>> Client obviously re-used layout information.
+>>> Now, process A closes the file and as a result,
+>>> layout becomes invalid.
+>>
+>> No it doesn't. See the errata.
+>>
+>> Cheers
+>>   Trond
+
+
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer, PrimaryData
+trond.myklebust@primarydata.com
