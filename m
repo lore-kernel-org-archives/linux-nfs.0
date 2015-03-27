@@ -1,81 +1,87 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wi0-f169.google.com ([209.85.212.169]:37929 "EHLO
-	mail-wi0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932552AbbC0QDS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Mar 2015 12:03:18 -0400
-Received: by wibgn9 with SMTP id gn9so37390075wib.1
-        for <linux-nfs@vger.kernel.org>; Fri, 27 Mar 2015 09:03:17 -0700 (PDT)
-Message-ID: <55157F42.1070303@profitbricks.com>
-Date: Fri, 27 Mar 2015 17:03:14 +0100
-From: Michael Wang <yun.wang@profitbricks.com>
-MIME-Version: 1.0
-To: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
-CC: Doug Ledford <dledford@redhat.com>, linux-rdma@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        netdev@vger.kernel.org, Roland Dreier <roland@kernel.org>,
-        Sean Hefty <sean.hefty@intel.com>,
+Received: from quartz.orcorp.ca ([184.70.90.242]:50938 "EHLO quartz.orcorp.ca"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752581AbbC0QGY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 27 Mar 2015 12:06:24 -0400
+Date: Fri, 27 Mar 2015 10:06:16 -0600
+From: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
+To: Michael Wang <yun.wang@profitbricks.com>
+Cc: Roland Dreier <roland@kernel.org>, Sean Hefty <sean.hefty@intel.com>,
         Hal Rosenstock <hal.rosenstock@gmail.com>,
-        Ira Weiny <ira.weiny@intel.com>,
+        Ira Weiny <ira.weiny@intel.com>, linux-rdma@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        netdev@vger.kernel.org, "J. Bruce Fields" <bfields@fieldses.org>,
         Trond Myklebust <trond.myklebust@primarydata.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
         "David S. Miller" <davem@davemloft.net>,
-        Moni Shoua <monis@mellanox.com>, Or Gerlitz <ogerlitz@mellanox.com>,
+        Or Gerlitz <ogerlitz@mellanox.com>, Moni Shoua <monis@mellanox.com>,
+        PJ Waskiewicz <pj.waskiewicz@solidfire.com>,
         Tatyana Nikolova <Tatyana.E.Nikolova@intel.com>,
-        Steve Wise <swise@opengridcomputing.com>,
         Yan Burman <yanb@mellanox.com>,
         Jack Morgenstein <jackm@dev.mellanox.co.il>,
         Bart Van Assche <bvanassche@acm.org>,
         Yann Droneaud <ydroneaud@opteya.com>,
         Colin Ian King <colin.king@canonical.com>,
-        Jiri Kosina <jkosina@suse.cz>, Matan Barak <matanb@mellanox.com>,
-        Majd Dibbiny <majd@mellanox.com>,
-        Dan Carpenter <dan.carpenter@oracle.com>, Mel Gorman <mgorman@suse.de>,
-        Alex Estrin <alex.estrin@intel.com>,
-        Eric Dumazet <edumazet@google.com>, Erez Shitrit <erezsh@mellanox.com>,
-        Sagi Grimberg <sagig@mellanox.com>, Haggai Eran <haggaie@mellanox.com>,
+        Majd Dibbiny <majd@mellanox.com>, Jiri Kosina <jkosina@suse.cz>,
+        Matan Barak <matanb@mellanox.com>, Alex Estrin <alex.estrin@intel.com>,
+        Doug Ledford <dledford@redhat.com>, Eric Dumazet <edumazet@google.com>,
+        Erez Shitrit <erezsh@mellanox.com>, Sagi Grimberg <sagig@mellanox.com>,
+        Haggai Eran <haggaie@mellanox.com>,
         Shachar Raindel <raindel@mellanox.com>,
-        Mike Marciniszyn <mike.marciniszyn@intel.com>, Tom Tucker <tom@ogc.us>,
+        Mike Marciniszyn <mike.marciniszyn@intel.com>,
+        Steve Wise <swise@opengridcomputing.com>, Tom Tucker <tom@ogc.us>,
         Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 0/2 RESEND] IB/Verbs: Use helpers to refine the checking
- on transport and link layer
-References: <5512CFB0.1050108@profitbricks.com> <1427378940.21101.100.camel@redhat.com> <55142DFD.2060100@profitbricks.com> <1427387258.21101.124.camel@redhat.com> <55143AAC.8040206@profitbricks.com> <20150326211334.GA3359@obsidianresearch.com> <5515284A.3030106@profitbricks.com> <20150327155530.GA21778@obsidianresearch.com>
-In-Reply-To: <20150327155530.GA21778@obsidianresearch.com>
-Content-Type: text/plain; charset=windows-1252
+Subject: Re: [RFC PATCH 09/11] IB/Verbs: Use management helper has_ipoib()
+ and, cap_ipoib() for ipoib-check
+Message-ID: <20150327160616.GA28412@obsidianresearch.com>
+References: <551579CA.4030901@profitbricks.com>
+ <55157BC6.70400@profitbricks.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <55157BC6.70400@profitbricks.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Fri, Mar 27, 2015 at 04:48:22PM +0100, Michael Wang wrote:
 
-On 03/27/2015 04:55 PM, Jason Gunthorpe wrote:
-> On Fri, Mar 27, 2015 at 10:52:10AM +0100, Michael Wang wrote:
->> [snip]
-> So, in principle, testing the device should almost make sense. The
-> device is the container for things like PD's MR's and QP's and those
-> things can migrate between the ports freely, so all post must share
-> the same attributes for those items.
->
-> However.. AFAIK, we can have RoCEE and IB ports on the same device -
-> which makes that whole concept seem sort of like nonsense..
->
-> Anyhow, I would discourage testing the device. Each site has to be
-> examined and determine if it working with a single port and really
-> needs a port attribute (which may be a device attribute today) or if
-> it is doing something device wide and is checking if all ports support
-> X.
-I prefer Doug's proposal that these attributes should be setup
-by vendor at very beginning, unless the attributes keep changing...
+> diff --git a/drivers/infiniband/ulp/ipoib/ipoib_main.c b/drivers/infiniband/ulp/ipoib/ipoib_main.c
+> index 3341754..fcd7558 100644
+> +++ b/drivers/infiniband/ulp/ipoib/ipoib_main.c
+> @@ -1655,7 +1655,7 @@ static void ipoib_add_one(struct ib_device *device)
+>      struct ipoib_dev_priv *priv;
+>      int s, e, p;
+>  
+> -    if (!rdma_transport_is_ib(device))
+> +    if (!has_ipoib(device))
+>          return;
 
->
->> Let's discuss and figure out the right name in the thread of
->> v2 patch set, I guess there will be a lot to be correct :-P
-> Well, this is actually a hard job. This isn't a mechanical clean up,
-> each site has to be inspected and understood before it can be
-> migrated to the correct API.
-I've send out the RFC patch set, let's see if it is possible to settle
-some thing done ;-)
+This is a good example of a test that doesn't really make sense, IPoIB
+is certainly a port specific attribute.
 
-Regards,
-Michael Wang
+>      dev_list = kmalloc(sizeof *dev_list, GFP_KERNEL);
+> @@ -1673,7 +1673,7 @@ static void ipoib_add_one(struct ib_device *device)
+>      }
+>  
+>      for (p = s; p <= e; ++p) {
+> -        if (!rdma_port_ll_is_ib(device, p))
+> +        if (!cap_ipoib(device, p))
+>              continue;
 
->
-> Jason
+And down here we test every port.
 
+The routine should just test every port and do nothing if no ports
+need IPoIB.
+
+>          dev = ipoib_add_port("ib%d", device, p);
+>          if (!IS_ERR(dev)) {
+> @@ -1690,7 +1690,7 @@ static void ipoib_remove_one(struct ib_device *device)
+>      struct ipoib_dev_priv *priv, *tmp;
+>      struct list_head *dev_list;
+>  
+> -    if (!rdma_transport_is_ib(device))
+> +    if (!has_ipoib(device))
+>          return;
+
+This test should be made redundant by having ib_get_client_data return
+null if ipoib_add_one didn't do anything. Maybe that already happens?
+
+Jason
