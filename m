@@ -1,130 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wi0-f169.google.com ([209.85.212.169]:38464 "EHLO
-	mail-wi0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753969AbbC0QwH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Mar 2015 12:52:07 -0400
-From: Andreas Gruenbacher <andreas.gruenbacher@gmail.com>
-To: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-Subject: [RFC 20/39] vfs: Add richacl permission checking
-Date: Fri, 27 Mar 2015 17:50:18 +0100
-Message-Id: <d4d7f007d82a515aa761d3d8fa2f8d600a7ee4f1.1427471526.git.agruenba@redhat.com>
-In-Reply-To: <cover.1427471526.git.agruenba@redhat.com>
-References: <cover.1427471526.git.agruenba@redhat.com>
-In-Reply-To: <cover.1427471526.git.agruenba@redhat.com>
-References: <cover.1427471526.git.agruenba@redhat.com>
+Received: from mail-ob0-f181.google.com ([209.85.214.181]:32897 "EHLO
+	mail-ob0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752778AbbC0Q7b (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Mar 2015 12:59:31 -0400
+Received: by obvd1 with SMTP id d1so11939276obv.0
+        for <linux-nfs@vger.kernel.org>; Fri, 27 Mar 2015 09:59:30 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <20150327163219.GD28412@obsidianresearch.com>
+References: <551579CA.4030901@profitbricks.com>
+	<55157AEB.7020705@profitbricks.com>
+	<20150327163219.GD28412@obsidianresearch.com>
+Date: Fri, 27 Mar 2015 17:59:30 +0100
+Message-ID: <CAJuTgQUGJnbU4k86eQ8G51qr9V5PC9NzQZXf0AbOSdSpVoCFFA@mail.gmail.com>
+Subject: Re: [RFC PATCH 04/11] IB/Verbs: Use management helper cap_smi() for smi-check
+From: Yun Wang <yun.wang@profitbricks.com>
+To: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
+Cc: Roland Dreier <roland@kernel.org>, Sean Hefty <sean.hefty@intel.com>,
+        Hal Rosenstock <hal.rosenstock@gmail.com>,
+        Ira Weiny <ira.weiny@intel.com>,
+        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
+        linux-kernel <linux-kernel@vger.kernel.org>, linux-nfs@vger.kernel.org,
+        netdev@vger.kernel.org, "J. Bruce Fields" <bfields@fieldses.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        "David S. Miller" <davem@davemloft.net>,
+        Or Gerlitz <ogerlitz@mellanox.com>, Moni Shoua <monis@mellanox.com>,
+        PJ Waskiewicz <pj.waskiewicz@solidfire.com>,
+        Tatyana Nikolova <Tatyana.E.Nikolova@intel.com>,
+        Yan Burman <yanb@mellanox.com>,
+        Jack Morgenstein <jackm@dev.mellanox.co.il>,
+        Bart Van Assche <bvanassche@acm.org>,
+        Yann Droneaud <ydroneaud@opteya.com>,
+        Colin Ian King <colin.king@canonical.com>,
+        Majd Dibbiny <majd@mellanox.com>, Jiri Kosina <jkosina@suse.cz>,
+        Matan Barak <matanb@mellanox.com>, Alex Estrin <alex.estrin@intel.com>,
+        Doug Ledford <dledford@redhat.com>, Eric Dumazet <edumazet@google.com>,
+        Erez Shitrit <erezsh@mellanox.com>, Sagi Grimberg <sagig@mellanox.com>,
+        Haggai Eran <haggaie@mellanox.com>,
+        Shachar Raindel <raindel@mellanox.com>,
+        Mike Marciniszyn <mike.marciniszyn@intel.com>,
+        Steve Wise <swise@opengridcomputing.com>, Tom Tucker <tom@ogc.us>,
+        Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hook the richacl permission checking function into the vfs.
+Make sense to me if opa smi will be handled differently, will be
+changed in next version :-)
 
-Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
----
- fs/namei.c     | 51 +++++++++++++++++++++++++++++++++++++++++++++++++--
- fs/posix_acl.c |  6 +++---
- 2 files changed, 52 insertions(+), 5 deletions(-)
+Regards,
+Michael Wang
 
-diff --git a/fs/namei.c b/fs/namei.c
-index a8d1674..d5b4fcd 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -35,6 +35,7 @@
- #include <linux/fs_struct.h>
- #include <linux/posix_acl.h>
- #include <linux/hash.h>
-+#include <linux/richacl.h>
- #include <asm/uaccess.h>
- 
- #include "internal.h"
-@@ -256,7 +257,40 @@ void putname(struct filename *name)
- 		__putname(name);
- }
- 
--static int check_acl(struct inode *inode, int mask)
-+static int check_richacl(struct inode *inode, int mask)
-+{
-+#ifdef CONFIG_FS_RICHACL
-+	struct richacl *acl;
-+
-+	if (mask & MAY_NOT_BLOCK) {
-+		acl = get_cached_richacl_rcu(inode);
-+		if (!acl)
-+			goto no_acl;
-+		/* no ->get_richacl() calls in RCU mode... */
-+		if (acl == ACL_NOT_CACHED)
-+			return -ECHILD;
-+		return richacl_permission(inode, acl, mask & ~MAY_NOT_BLOCK);
-+	}
-+
-+	acl = get_richacl(inode);
-+	if (IS_ERR(acl))
-+		return PTR_ERR(acl);
-+	if (acl) {
-+		int error = richacl_permission(inode, acl, mask);
-+		richacl_put(acl);
-+		return error;
-+	}
-+no_acl:
-+#endif
-+	if (mask & (MAY_DELETE_SELF | MAY_TAKE_OWNERSHIP |
-+		    MAY_CHMOD | MAY_SET_TIMES)) {
-+		/* File permission bits cannot grant this. */
-+		return -EACCES;
-+	}
-+	return -EAGAIN;
-+}
-+
-+static int check_posix_acl(struct inode *inode, int mask)
- {
- #ifdef CONFIG_FS_POSIX_ACL
- 	struct posix_acl *acl;
-@@ -291,11 +325,24 @@ static int acl_permission_check(struct inode *inode, int mask)
- {
- 	unsigned int mode = inode->i_mode;
- 
-+	/*
-+	 * With POSIX ACLs, the (mode & S_IRWXU) bits exactly match the owner
-+	 * permissions, and we can skip checking posix acls for the owner.
-+	 * With richacls, the owner may be granted fewer permissions than the
-+	 * mode bits seem to suggest (for example, append but not write), and
-+	 * we always need to check the richacl.
-+	 */
-+
-+	if (IS_RICHACL(inode)) {
-+		int error = check_richacl(inode, mask);
-+		if (error != -EAGAIN)
-+			return error;
-+	}
- 	if (likely(uid_eq(current_fsuid(), inode->i_uid)))
- 		mode >>= 6;
- 	else {
- 		if (IS_POSIXACL(inode) && (mode & S_IRWXG)) {
--			int error = check_acl(inode, mask);
-+			int error = check_posix_acl(inode, mask);
- 			if (error != -EAGAIN)
- 				return error;
- 		}
-diff --git a/fs/posix_acl.c b/fs/posix_acl.c
-index ebf96b2..16464f0 100644
---- a/fs/posix_acl.c
-+++ b/fs/posix_acl.c
-@@ -100,13 +100,13 @@ struct posix_acl *get_acl(struct inode *inode, int type)
- {
- 	struct posix_acl *acl;
- 
-+	if (!IS_POSIXACL(inode))
-+		return NULL;
-+
- 	acl = get_cached_acl(inode, type);
- 	if (acl != ACL_NOT_CACHED)
- 		return acl;
- 
--	if (!IS_POSIXACL(inode))
--		return NULL;
--
- 	/*
- 	 * A filesystem can force a ACL callback by just never filling the
- 	 * ACL cache. But normally you'd fill the cache either at inode
--- 
-2.1.0
-
+On Fri, Mar 27, 2015 at 5:32 PM, Jason Gunthorpe
+<jgunthorpe@obsidianresearch.com> wrote:
+> On Fri, Mar 27, 2015 at 04:44:43PM +0100, Michael Wang wrote:
+>>
+>> Introduce helper cap_smi() to help us check if the port of an
+>> IB device support Subnet Management Interface.
+>
+> This and most of the others should be qualified with 'cap_ib_smi'
+> since we already know we will need 'cap_opa_smi' someday
+>
+> Jason
