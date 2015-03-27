@@ -1,89 +1,118 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from quartz.orcorp.ca ([184.70.90.242]:55623 "EHLO quartz.orcorp.ca"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752731AbbC0Pzt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 27 Mar 2015 11:55:49 -0400
-Date: Fri, 27 Mar 2015 09:55:30 -0600
-From: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
-To: Michael Wang <yun.wang@profitbricks.com>
-Cc: Doug Ledford <dledford@redhat.com>, linux-rdma@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        netdev@vger.kernel.org, Roland Dreier <roland@kernel.org>,
-        Sean Hefty <sean.hefty@intel.com>,
-        Hal Rosenstock <hal.rosenstock@gmail.com>,
-        Ira Weiny <ira.weiny@intel.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        "David S. Miller" <davem@davemloft.net>,
-        Moni Shoua <monis@mellanox.com>, Or Gerlitz <ogerlitz@mellanox.com>,
-        Tatyana Nikolova <Tatyana.E.Nikolova@intel.com>,
-        Steve Wise <swise@opengridcomputing.com>,
-        Yan Burman <yanb@mellanox.com>,
-        Jack Morgenstein <jackm@dev.mellanox.co.il>,
-        Bart Van Assche <bvanassche@acm.org>,
-        Yann Droneaud <ydroneaud@opteya.com>,
-        Colin Ian King <colin.king@canonical.com>,
-        Jiri Kosina <jkosina@suse.cz>, Matan Barak <matanb@mellanox.com>,
-        Majd Dibbiny <majd@mellanox.com>,
-        Dan Carpenter <dan.carpenter@oracle.com>, Mel Gorman <mgorman@suse.de>,
-        Alex Estrin <alex.estrin@intel.com>,
-        Eric Dumazet <edumazet@google.com>, Erez Shitrit <erezsh@mellanox.com>,
-        Sagi Grimberg <sagig@mellanox.com>, Haggai Eran <haggaie@mellanox.com>,
-        Shachar Raindel <raindel@mellanox.com>,
-        Mike Marciniszyn <mike.marciniszyn@intel.com>, Tom Tucker <tom@ogc.us>,
-        Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 0/2 RESEND] IB/Verbs: Use helpers to refine the checking
- on transport and link layer
-Message-ID: <20150327155530.GA21778@obsidianresearch.com>
-References: <5512CFB0.1050108@profitbricks.com>
- <1427378940.21101.100.camel@redhat.com>
- <55142DFD.2060100@profitbricks.com>
- <1427387258.21101.124.camel@redhat.com>
- <55143AAC.8040206@profitbricks.com>
- <20150326211334.GA3359@obsidianresearch.com>
- <5515284A.3030106@profitbricks.com>
+Received: from cmexedge1.emulex.com ([138.239.224.99]:50162 "EHLO
+	CMEXEDGE1.ext.emulex.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932170AbbC0QCs (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Mar 2015 12:02:48 -0400
+From: Devesh Sharma <Devesh.Sharma@Emulex.Com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: Anna Schumaker <Anna.Schumaker@netapp.com>,
+        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Meghana Cheripady <Meghana.Cheripady@Emulex.Com>
+Subject: RE: [PATCH v2 00/15] NFS/RDMA patches proposed for 4.1
+Date: Fri, 27 Mar 2015 15:59:36 +0000
+Message-ID: <1de2ef38-18af-4bda-ac91-409a95e9fa2f@CMEXHTCAS1.ad.emulex.com>
+References: <20150324201849.2311.53599.stgit@manet.1015granger.net>
+ <55145274.203@Netapp.com>
+ <EE7902D3F51F404C82415C4803930ACD5DC3B914@CMEXMB1.ad.emulex.com>
+ <c541888a-6b49-4b9f-98ba-a1d77df1d071@CMEXHTCAS2.ad.emulex.com>
+ <AFCD874E-D85C-4788-A409-17906D841C5B@oracle.com>
+In-Reply-To: <AFCD874E-D85C-4788-A409-17906D841C5B@oracle.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <5515284A.3030106@profitbricks.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Mar 27, 2015 at 10:52:10AM +0100, Michael Wang wrote:
-> Basically I found there are three kind of check in current
-> implementation:
-> 
-> 1. check transport type of device only
->     I'd like to use helper has_XX(device)
->     which means some port of the device has XX capability.
-> 
-> 2. check link layer of device's port only
->     I'd like to use helper cap_XX(device, port)
->     which means the port has XX capability
-> 
-> 3. check both the transport type and link layer
->     I'd like to use helper tech_XX(device, port)
->     which means the port of that device using technology
->     ib, iwrap, iboe(roce) ...
-
-So, in principle, testing the device should almost make sense. The
-device is the container for things like PD's MR's and QP's and those
-things can migrate between the ports freely, so all post must share
-the same attributes for those items.
-
-However.. AFAIK, we can have RoCEE and IB ports on the same device -
-which makes that whole concept seem sort of like nonsense..
-
-Anyhow, I would discourage testing the device. Each site has to be
-examined and determine if it working with a single port and really
-needs a port attribute (which may be a device attribute today) or if
-it is doing something device wide and is checking if all ports support
-X.
-
-> Let's discuss and figure out the right name in the thread of
-> v2 patch set, I guess there will be a lot to be correct :-P
-
-Well, this is actually a hard job. This isn't a mechanical clean up,
-each site has to be inspected and understood before it can be
-migrated to the correct API.
-
-Jason
+WWVzLCBZb3UgY2FuIGFkZCBNeSBhbmQgTWVnaG5hJ3MgbmFtZSBpbiB0ZXN0ZWQtYnkgdGFnDQoN
+Ci1UaGFua3MNCg0KPiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBDaHVjayBM
+ZXZlciBbbWFpbHRvOmNodWNrLmxldmVyQG9yYWNsZS5jb21dDQo+IFNlbnQ6IEZyaWRheSwgTWFy
+Y2ggMjcsIDIwMTUgNzo0OCBQTQ0KPiBUbzogRGV2ZXNoIFNoYXJtYQ0KPiBDYzogQW5uYSBTY2h1
+bWFrZXI7IGxpbnV4LXJkbWFAdmdlci5rZXJuZWwub3JnOyBMaW51eCBORlMgTWFpbGluZyBMaXN0
+Ow0KPiBNZWdoYW5hIENoZXJpcGFkeQ0KPiBTdWJqZWN0OiBSZTogW1BBVENIIHYyIDAwLzE1XSBO
+RlMvUkRNQSBwYXRjaGVzIHByb3Bvc2VkIGZvciA0LjENCj4gDQo+IA0KPiBPbiBNYXIgMjcsIDIw
+MTUsIGF0IDEyOjQ0IEFNLCBEZXZlc2ggU2hhcm1hDQo+IDxEZXZlc2guU2hhcm1hQEVtdWxleC5D
+b20+IHdyb3RlOg0KPiANCj4gPj4gLS0tLS1PcmlnaW5hbCBNZXNzYWdlLS0tLS0NCj4gPj4gRnJv
+bTogbGludXgtcmRtYS1vd25lckB2Z2VyLmtlcm5lbC5vcmcgW21haWx0bzpsaW51eC1yZG1hLQ0K
+PiA+PiBvd25lckB2Z2VyLmtlcm5lbC5vcmddIE9uIEJlaGFsZiBPZiBEZXZlc2ggU2hhcm1hDQo+
+ID4+IFNlbnQ6IEZyaWRheSwgTWFyY2ggMjcsIDIwMTUgMTE6MTMgQU0NCj4gPj4gVG86IEFubmEg
+U2NodW1ha2VyOyBDaHVjayBMZXZlcjsgbGludXgtcmRtYUB2Z2VyLmtlcm5lbC5vcmc7IGxpbnV4
+LQ0KPiA+PiBuZnNAdmdlci5rZXJuZWwub3JnDQo+ID4+IFN1YmplY3Q6IFJFOiBbUEFUQ0ggdjIg
+MDAvMTVdIE5GUy9SRE1BIHBhdGNoZXMgcHJvcG9zZWQgZm9yIDQuMQ0KPiA+Pg0KPiA+PiBIaSBD
+aHVjaywNCj4gPj4NCj4gPj4gSSBoYXZlIHZhbGlkYXRlZCB0aGVzZSBzZXQgb2YgcGF0Y2hlcyB3
+aXRoIG9jcmRtYSBkZXZpY2UsIGlvem9uZQ0KPiA+PiBwYXNzZXMgd2l0aCB0aGVzZS4NCj4gPg0K
+PiA+DQo+ID4gVGhhbmtzIHRvIE1lZ2huYS4NCj4gDQo+IEhpIERldmVzaC0NCj4gDQo+IElzIHRo
+ZXJlIGEgVGVzdGVkLWJ5IHRhZyB0aGF0IEFubmEgY2FuIGFkZCB0byB0aGVzZSBwYXRjaGVzPw0K
+PiANCj4gDQo+ID4+DQo+ID4+IC1SZWdhcmRzDQo+ID4+IERldmVzaA0KPiA+Pg0KPiA+Pj4gLS0t
+LS1PcmlnaW5hbCBNZXNzYWdlLS0tLS0NCj4gPj4+IEZyb206IGxpbnV4LXJkbWEtb3duZXJAdmdl
+ci5rZXJuZWwub3JnIFttYWlsdG86bGludXgtcmRtYS0NCj4gPj4+IG93bmVyQHZnZXIua2VybmVs
+Lm9yZ10gT24gQmVoYWxmIE9mIEFubmEgU2NodW1ha2VyDQo+ID4+PiBTZW50OiBGcmlkYXksIE1h
+cmNoIDI3LCAyMDE1IDEyOjEwIEFNDQo+ID4+PiBUbzogQ2h1Y2sgTGV2ZXI7IGxpbnV4LXJkbWFA
+dmdlci5rZXJuZWwub3JnOw0KPiA+Pj4gbGludXgtbmZzQHZnZXIua2VybmVsLm9yZw0KPiA+Pj4g
+U3ViamVjdDogUmU6IFtQQVRDSCB2MiAwMC8xNV0gTkZTL1JETUEgcGF0Y2hlcyBwcm9wb3NlZCBm
+b3IgNC4xDQo+ID4+Pg0KPiA+Pj4gSGV5IENodWNrLA0KPiA+Pj4NCj4gPj4+IEkgZGlkbid0IHNl
+ZSBhbnl0aGluZyB0aGF0IG5lZWRzIHRvIGJlIGZpeGVkIHVwIGluIHRoZXNlIHBhdGNoZXMuDQo+
+ID4+PiBBcmUgdGhleSByZWFkeSBmb3IgbWU/DQo+ID4+Pg0KPiA+Pj4gQW5uYQ0KPiA+Pj4NCj4g
+Pj4+IE9uIDAzLzI0LzIwMTUgMDQ6MzAgUE0sIENodWNrIExldmVyIHdyb3RlOg0KPiA+Pj4+IFRo
+aXMgaXMgYSBzZXJpZXMgb2YgY2xpZW50LXNpZGUgcGF0Y2hlcyBmb3IgTkZTL1JETUEuIEluDQo+
+ID4+Pj4gcHJlcGFyYXRpb24gZm9yIGluY3JlYXNpbmcgdGhlIHRyYW5zcG9ydCBjcmVkaXQgbGlt
+aXQgYW5kIG1heGltdW0NCj4gPj4+PiByc2l6ZS93c2l6ZSwgSSd2ZSByZS1mYWN0b3JlZCB0aGUg
+bWVtb3J5IHJlZ2lzdHJhdGlvbiBsb2dpYyBpbnRvDQo+ID4+Pj4gc2VwYXJhdGUgZmlsZXMsIGlu
+dm9rZWQgdmlhIGEgbWV0aG9kIEFQSS4NCj4gPj4+Pg0KPiA+Pj4+IFRoZSB0d28gbWFpbiBvcHRp
+bWl6YXRpb25zIGluIHYxIG9mIHRoaXMgc2VyaWVzIGhhdmUgYmVlbiBkcm9wcGVkLg0KPiA+Pj4+
+IFNhZ2kgR3JpbWJlcmcgZGlkbid0IGxpa2UgdGhlIGNvbXBsZXhpdHkgb2YgdGhlIHNvbHV0aW9u
+LCBhbmQgdGhlcmUNCj4gPj4+PiBpc24ndCBlbm91Z2ggdGltZSB0byByZXdvcmsgaXQsIHRlc3Qg
+dGhlIG5ldyB2ZXJzaW9uLCBhbmQgZ2V0IGl0DQo+ID4+Pj4gcmV2aWV3ZWQgYmVmb3JlIHRoZSA0
+LjEgbWVyZ2Ugd2luZG93IG9wZW5zLiBJJ20gZ29pbmcgdG8gcHJlcGFyZQ0KPiA+Pj4+IHRoZXNl
+IGZvciA0LjIuDQo+ID4+Pj4NCj4gPj4+PiBGaXhlcyBzdWdnZXN0ZWQgYnkgcmV2aWV3ZXJzIGhh
+dmUgYmVlbiBpbmNsdWRlZCBiZWZvcmUgdGhlDQo+ID4+Pj4gcmVmYWN0b3JpbmcgcGF0Y2hlcyB0
+byBtYWtlIGl0IGVhc2llciB0byBiYWNrcG9ydCB0aGVtIHRvIHByZXZpb3VzDQo+IGtlcm5lbHMu
+DQo+ID4+Pj4NCj4gPj4+PiBUaGUgc2VyaWVzIGlzIGF2YWlsYWJsZSBpbiB0aGUgbmZzLXJkbWEt
+Zm9yLTQuMSB0b3BpYyBicmFuY2ggYXQNCj4gPj4+Pg0KPiA+Pj4+IGdpdDovL2xpbnV4LW5mcy5v
+cmcvcHJvamVjdHMvY2VsL2NlbC0yLjYuZ2l0DQo+ID4+Pj4NCj4gPj4+PiBDaGFuZ2VzIHNpbmNl
+IHYxOg0KPiA+Pj4+IC0gUmViYXNlZCBvbiA0LjAtcmM1DQo+ID4+Pj4gLSBNYWluIG9wdGltaXph
+dGlvbnMgcG9zdHBvbmVkIHRvIDQuMg0KPiA+Pj4+IC0gQWRkcmVzc2VkIHJldmlldyBjb21tZW50
+cyBmcm9tIEFubmEsIFNhZ2ksIGFuZCBEZXZlc2gNCj4gPj4+Pg0KPiA+Pj4+IC0tLQ0KPiA+Pj4+
+DQo+ID4+Pj4gQ2h1Y2sgTGV2ZXIgKDE1KToNCj4gPj4+PiAgICAgIFNVTlJQQzogSW50cm9kdWNl
+IG1pc3Npbmcgd2VsbC1rbm93biBuZXRpZHMNCj4gPj4+PiAgICAgIHhwcnRyZG1hOiBEaXNwbGF5
+IElQdjYgYWRkcmVzc2VzIGFuZCBwb3J0IG51bWJlcnMgY29ycmVjdGx5DQo+ID4+Pj4gICAgICB4
+cHJ0cmRtYTogUGVyZm9ybSBhIGZ1bGwgbWFyc2hhbCBvbiByZXRyYW5zbWl0DQo+ID4+Pj4gICAg
+ICB4cHJ0cmRtYTogQnl0ZS1hbGlnbiBGUldSIHJlZ2lzdHJhdGlvbg0KPiA+Pj4+ICAgICAgeHBy
+dHJkbWE6IFByZXZlbnQgaW5maW5pdGUgbG9vcCBpbiBycGNyZG1hX2VwX2NyZWF0ZSgpDQo+ID4+
+Pj4gICAgICB4cHJ0cmRtYTogQWRkIHZlY3RvciBvZiBvcHMgZm9yIGVhY2ggbWVtb3J5IHJlZ2lz
+dHJhdGlvbiBzdHJhdGVneQ0KPiA+Pj4+ICAgICAgeHBydHJkbWE6IEFkZCBhICJtYXhfcGF5bG9h
+ZCIgb3AgZm9yIGVhY2ggbWVtcmVnIG1vZGUNCj4gPj4+PiAgICAgIHhwcnRyZG1hOiBBZGQgYSAi
+cmVnaXN0ZXJfZXh0ZXJuYWwiIG9wIGZvciBlYWNoIG1lbXJlZyBtb2RlDQo+ID4+Pj4gICAgICB4
+cHJ0cmRtYTogQWRkIGEgImRlcmVnaXN0ZXJfZXh0ZXJuYWwiIG9wIGZvciBlYWNoIG1lbXJlZyBt
+b2RlDQo+ID4+Pj4gICAgICB4cHJ0cmRtYTogQWRkICJpbml0IE1ScyIgbWVtcmVnIG9wDQo+ID4+
+Pj4gICAgICB4cHJ0cmRtYTogQWRkICJyZXNldCBNUnMiIG1lbXJlZyBvcA0KPiA+Pj4+ICAgICAg
+eHBydHJkbWE6IEFkZCAiZGVzdHJveSBNUnMiIG1lbXJlZyBvcA0KPiA+Pj4+ICAgICAgeHBydHJk
+bWE6IEFkZCAib3BlbiIgbWVtcmVnIG9wDQo+ID4+Pj4gICAgICB4cHJ0cmRtYTogSGFuZGxlIG5v
+bi1TRU5EIGNvbXBsZXRpb25zIHZpYSBhIGNhbGxvdXQNCj4gPj4+PiAgICAgIHhwcnRyZG1hOiBN
+YWtlIHJwY3JkbWFfe3VufW1hcF9vbmUoKSBpbnRvIGlubGluZSBmdW5jdGlvbnMNCj4gPj4+Pg0K
+PiA+Pj4+DQo+ID4+Pj4gaW5jbHVkZS9saW51eC9zdW5ycGMvbXNnX3Byb3QuaCAgICB8ICAgIDgN
+Cj4gPj4+PiBuZXQvc3VucnBjL3hwcnRyZG1hL01ha2VmaWxlICAgICAgIHwgICAgMw0KPiA+Pj4+
+IG5ldC9zdW5ycGMveHBydHJkbWEvZm1yX29wcy5jICAgICAgfCAgMjA4ICsrKysrKysrKysrDQo+
+ID4+Pj4gbmV0L3N1bnJwYy94cHJ0cmRtYS9mcndyX29wcy5jICAgICB8ICAzNTMgKysrKysrKysr
+KysrKysrKysrDQo+ID4+Pj4gbmV0L3N1bnJwYy94cHJ0cmRtYS9waHlzaWNhbF9vcHMuYyB8ICAg
+OTQgKysrKysNCj4gPj4+PiBuZXQvc3VucnBjL3hwcnRyZG1hL3JwY19yZG1hLmMgICAgIHwgICA4
+NyArKy0tDQo+ID4+Pj4gbmV0L3N1bnJwYy94cHJ0cmRtYS90cmFuc3BvcnQuYyAgICB8ICAgNjEg
+KystDQo+ID4+Pj4gbmV0L3N1bnJwYy94cHJ0cmRtYS92ZXJicy5jICAgICAgICB8ICA2OTkgKysr
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tDQo+ID4+Pj4gbmV0L3N1bnJwYy94cHJ0
+cmRtYS94cHJ0X3JkbWEuaCAgICB8ICAgOTAgKysrKy0NCj4gPj4+PiA5IGZpbGVzIGNoYW5nZWQs
+IDg4MiBpbnNlcnRpb25zKCspLCA3MjEgZGVsZXRpb25zKC0pICBjcmVhdGUgbW9kZQ0KPiA+Pj4+
+IDEwMDY0NCBuZXQvc3VucnBjL3hwcnRyZG1hL2Ztcl9vcHMuYyAgY3JlYXRlIG1vZGUgMTAwNjQ0
+DQo+ID4+Pj4gbmV0L3N1bnJwYy94cHJ0cmRtYS9mcndyX29wcy5jICBjcmVhdGUgbW9kZSAxMDA2
+NDQNCj4gPj4+PiBuZXQvc3VucnBjL3hwcnRyZG1hL3BoeXNpY2FsX29wcy5jDQo+ID4+Pj4NCj4g
+Pj4+PiAtLQ0KPiA+Pj4+IENodWNrIExldmVyDQo+ID4+Pj4gLS0NCj4gPj4+PiBUbyB1bnN1YnNj
+cmliZSBmcm9tIHRoaXMgbGlzdDogc2VuZCB0aGUgbGluZSAidW5zdWJzY3JpYmUgbGludXgtbmZz
+Ig0KPiA+Pj4+IGluIHRoZSBib2R5IG9mIGEgbWVzc2FnZSB0byBtYWpvcmRvbW9Admdlci5rZXJu
+ZWwub3JnIE1vcmUNCj4gPj4+PiBtYWpvcmRvbW8gaW5mbyBhdCAgaHR0cDovL3ZnZXIua2VybmVs
+Lm9yZy9tYWpvcmRvbW8taW5mby5odG1sDQo+ID4+Pj4NCj4gPj4+DQo+ID4+PiAtLQ0KPiA+Pj4g
+VG8gdW5zdWJzY3JpYmUgZnJvbSB0aGlzIGxpc3Q6IHNlbmQgdGhlIGxpbmUgInVuc3Vic2NyaWJl
+IGxpbnV4LXJkbWEiDQo+ID4+PiBpbiB0aGUgYm9keSBvZiBhIG1lc3NhZ2UgdG8gbWFqb3Jkb21v
+QHZnZXIua2VybmVsLm9yZyBNb3JlDQo+IG1ham9yZG9tbw0KPiA+Pj4gaW5mbyBhdCBodHRwOi8v
+dmdlci5rZXJuZWwub3JnL21ham9yZG9tby1pbmZvLmh0bWwNCj4gPj4gEyAg7Lm7HCAmIH4gJiAY
+ICArLSAg3bYXICB3ICDLmyAgIG0gYiAga3ZmICAgXm4gciAgIHogGiAgaCAgICAmICAeIEcgICBo
+IAMoIOmajiDdomoiICAaIBttDQo+IHoNCj4gPj4g3pYgICBmICAgaCAgIH4gbQ0KPiANCj4gLS0N
+Cj4gQ2h1Y2sgTGV2ZXINCj4gY2h1Y2tbZG90XWxldmVyW2F0XW9yYWNsZVtkb3RdY29tDQo+IA0K
+PiANCg0K
