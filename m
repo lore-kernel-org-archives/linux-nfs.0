@@ -1,44 +1,180 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from dot.freshdot.net ([213.154.236.176]:35166 "EHLO
-	dot.freshdot.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752618AbbC0Qoe (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Mar 2015 12:44:34 -0400
-Date: Fri, 27 Mar 2015 17:08:25 +0100
-From: Sander Smeenk <ssmeenk@freshdot.net>
-To: linux-nfs@vger.kernel.org
-Subject: Re: rpc.mountd reads /etc/mtab 17028 times, 100% CPU.
-Message-ID: <20150327160825.GE26088@dot.freshdot.net>
-References: <20150325093707.GC26088@dot.freshdot.net>
- <55143B19.3090003@RedHat.com>
-MIME-Version: 1.0
+Received: from mga09.intel.com ([134.134.136.24]:22572 "EHLO mga09.intel.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752396AbbC0QsH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 27 Mar 2015 12:48:07 -0400
+Date: Fri, 27 Mar 2015 12:47:56 -0400
+From: "ira.weiny" <ira.weiny@intel.com>
+To: Michael Wang <yun.wang@profitbricks.com>
+Cc: Roland Dreier <roland@kernel.org>, Sean Hefty <sean.hefty@intel.com>,
+        Hal Rosenstock <hal.rosenstock@gmail.com>, linux-rdma@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        netdev@vger.kernel.org, "J. Bruce Fields" <bfields@fieldses.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        "David S. Miller" <davem@davemloft.net>,
+        Or Gerlitz <ogerlitz@mellanox.com>, Moni Shoua <monis@mellanox.com>,
+        PJ Waskiewicz <pj.waskiewicz@solidfire.com>,
+        Tatyana Nikolova <Tatyana.E.Nikolova@intel.com>,
+        Yan Burman <yanb@mellanox.com>,
+        Jack Morgenstein <jackm@dev.mellanox.co.il>,
+        Bart Van Assche <bvanassche@acm.org>,
+        Yann Droneaud <ydroneaud@opteya.com>,
+        Colin Ian King <colin.king@canonical.com>,
+        Majd Dibbiny <majd@mellanox.com>, Jiri Kosina <jkosina@suse.cz>,
+        Matan Barak <matanb@mellanox.com>, Alex Estrin <alex.estrin@intel.com>,
+        Doug Ledford <dledford@redhat.com>, Eric Dumazet <edumazet@google.com>,
+        Erez Shitrit <erezsh@mellanox.com>, Sagi Grimberg <sagig@mellanox.com>,
+        Haggai Eran <haggaie@mellanox.com>,
+        Shachar Raindel <raindel@mellanox.com>,
+        Mike Marciniszyn <mike.marciniszyn@intel.com>,
+        Steve Wise <swise@opengridcomputing.com>, Tom Tucker <tom@ogc.us>,
+        Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [RFC PATCH 06/11] IB/Verbs: Use management helper has_sa() and cap_sa(), for sa-check
+Message-ID: <20150327164756.GA27862@phlsvsds.ph.intel.com>
+References: <551579CA.4030901@profitbricks.com> <55157B43.6060507@profitbricks.com>
+Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <55143B19.3090003@RedHat.com>
+In-Reply-To: <55157B43.6060507@profitbricks.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Quoting Steve Dickson (SteveD@redhat.com):
+On Fri, Mar 27, 2015 at 04:46:11PM +0100, Michael Wang wrote:
+> 
+> Introduce helper has_sa() and cap_sa() to help us check if an IB device
+> or it's port support Subnet Administrator.
 
-> > This entire process of reading /etc/mtab 17028 times takes a lot of
-> > time during which the client stalls, but in the end 'it just works
-> > fine'. It just takes ages when you try to tab-complete on a client.
-> Taking a quick look... it appears the only way rpc.mountd will read
-> /etc/mtab is if the 'crossmnt' export flag is set. Is this the case?
+I think these 2 should be combined.  The question is if a port requires the use
+of the SA depending on the network it is connected to.
 
-Yes.
+Aren't some dual port Mellanox cards capable of doing IB on 1 port and Eth on
+the other?  Do they show up as 2 devices?
 
-IIRC this was necessary for this situation:
-Server has filesytems mounted on /mnt/pt1 and /mnt/pt1/foo.
-Both /mnt/pt1 and /mnt/pt1/foo are exported with 'crossmnt'.
-Clients that mount just /mnt/pt1 can also reach /mnt/pt1/foo.
+Regardless I think we should define the SA access on a per port basis.
 
+> 
+> Cc: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
+> Cc: Doug Ledford <dledford@redhat.com>
+> Cc: Ira Weiny <ira.weiny@intel.com>
+> Cc: Sean Hefty <sean.hefty@intel.com>
+> Signed-off-by: Michael Wang <yun.wang@profitbricks.com>
+> ---
+>  drivers/infiniband/core/sa_query.c | 12 ++++++------
+>  include/rdma/ib_verbs.h            | 28 ++++++++++++++++++++++++++++
+>  2 files changed, 34 insertions(+), 6 deletions(-)
+> 
+> diff --git a/drivers/infiniband/core/sa_query.c b/drivers/infiniband/core/sa_query.c
+> index d95d25f..89c27da 100644
+> --- a/drivers/infiniband/core/sa_query.c
+> +++ b/drivers/infiniband/core/sa_query.c
+> @@ -450,7 +450,7 @@ static void ib_sa_event(struct ib_event_handler *handler, struct ib_event *event
+>          struct ib_sa_port *port =
+>              &sa_dev->port[event->element.port_num - sa_dev->start_port];
+>  
+> -        if (!rdma_port_ll_is_ib(handler->device, port->port_num))
+> +        if (!cap_sa(handler->device, port->port_num))
+>              return;
+>  
+>          spin_lock_irqsave(&port->ah_lock, flags);
+> @@ -1154,7 +1154,7 @@ static void ib_sa_add_one(struct ib_device *device)
+>      struct ib_sa_device *sa_dev;
+>      int s, e, i;
+>  
+> -    if (!rdma_transport_is_ib(device))
+> +    if (!has_sa(device))
 
-> > Could someone point me to the code that is involved in doing this?
-> utils/mountd/cache.c:nfsd_fh():path = next_mnt(&mnt, exp->m_export.e_path);
+The logic here should be:
 
-Thanks. I'll dig around some more and see what i can find.
+if (no ports of this device need sa access)
+	return;
 
+So why not eliminate this check and allow the cap_sa(s) to handle the support?
 
--Sndr.
--- 
-| What are the little plastic endings on your shoelaces called?
-| 4096R/20CC6CD2 - 6D40 1A20 B9AA 87D4 84C7  FBD6 F3A9 9442 20CC 6CD2
+-- Ira
+
+>          return;
+>  
+>      if (device->node_type == RDMA_NODE_IB_SWITCH)
+> @@ -1175,7 +1175,7 @@ static void ib_sa_add_one(struct ib_device *device)
+>  
+>      for (i = 0; i <= e - s; ++i) {
+>          spin_lock_init(&sa_dev->port[i].ah_lock);
+> -        if (!rdma_port_ll_is_ib(device, i + 1))
+> +        if (!cap_sa(device, i + 1))
+>              continue;
+>  
+>          sa_dev->port[i].sm_ah    = NULL;
+> @@ -1205,14 +1205,14 @@ static void ib_sa_add_one(struct ib_device *device)
+>          goto err;
+>  
+>      for (i = 0; i <= e - s; ++i)
+> -        if (rdma_port_ll_is_ib(device, i + 1))
+> +        if (cap_sa(device, i + 1))
+>              update_sm_ah(&sa_dev->port[i].update_task);
+>  
+>      return;
+>  
+>  err:
+>      while (--i >= 0)
+> -        if (rdma_port_ll_is_ib(device, i + 1))
+> +        if (cap_sa(device, i + 1))
+>              ib_unregister_mad_agent(sa_dev->port[i].agent);
+>  
+>      kfree(sa_dev);
+> @@ -1233,7 +1233,7 @@ static void ib_sa_remove_one(struct ib_device *device)
+>      flush_workqueue(ib_wq);
+>  
+>      for (i = 0; i <= sa_dev->end_port - sa_dev->start_port; ++i) {
+> -        if (rdma_port_ll_is_ib(device, i + 1)) {
+> +        if (cap_sa(device, i + 1)) {
+>              ib_unregister_mad_agent(sa_dev->port[i].agent);
+>              if (sa_dev->port[i].sm_ah)
+>                  kref_put(&sa_dev->port[i].sm_ah->ref, free_sm_ah);
+> diff --git a/include/rdma/ib_verbs.h b/include/rdma/ib_verbs.h
+> index c0a63f8..fa8ffa3 100644
+> --- a/include/rdma/ib_verbs.h
+> +++ b/include/rdma/ib_verbs.h
+> @@ -1810,6 +1810,19 @@ static inline int has_cm(struct ib_device *device)
+>  }
+>  
+>  /**
+> + * has_sa - Check if a device support Subnet Administrator.
+> + *
+> + * @device: Device to be checked
+> + *
+> + * Return 0 when a device has none port to support
+> + * Subnet Administrator.
+> + */
+> +static inline int has_sa(struct ib_device *device)
+> +{
+> +    return rdma_transport_is_ib(device);
+> +}
+> +
+> +/**
+>   * cap_smi - Check if the port of device has the capability
+>   * Subnet Management Interface.
+>   *
+> @@ -1824,6 +1837,21 @@ static inline int cap_smi(struct ib_device *device, u8 port_num)
+>      return rdma_port_ll_is_ib(device, port_num);
+>  }
+>  
+> +/**
+> + * cap_sa - Check if the port of device has the capability
+> + * Subnet Administrator.
+> + *
+> + * @device: Device to be checked
+> + * @port_num: Port number of the device
+> + *
+> + * Return 0 when port of the device don't support
+> + * Subnet Administrator.
+> + */
+> +static inline int cap_sa(struct ib_device *device, u8 port_num)
+> +{
+> +    return rdma_port_ll_is_ib(device, port_num);
+> +}
+> +
+>  int ib_query_gid(struct ib_device *device,
+>           u8 port_num, int index, union ib_gid *gid);
+>  
+> -- 
+> 2.1.0
+> 
