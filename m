@@ -1,11 +1,24 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from quartz.orcorp.ca ([184.70.90.242]:36668 "EHLO quartz.orcorp.ca"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752706AbbC0Rto (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 27 Mar 2015 13:49:44 -0400
-Date: Fri, 27 Mar 2015 11:49:41 -0600
-From: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
-To: Yun Wang <yun.wang@profitbricks.com>
+Received: from mail-oi0-f42.google.com ([209.85.218.42]:35152 "EHLO
+	mail-oi0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753555AbbC0SJ1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Mar 2015 14:09:27 -0400
+Received: by oiag65 with SMTP id g65so82697843oia.2
+        for <linux-nfs@vger.kernel.org>; Fri, 27 Mar 2015 11:09:27 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <20150327174941.GC28901@obsidianresearch.com>
+References: <551579CA.4030901@profitbricks.com>
+	<55157B71.6040505@profitbricks.com>
+	<20150327162820.GC28412@obsidianresearch.com>
+	<20150327170508.GB27862@phlsvsds.ph.intel.com>
+	<CAJuTgQUSm0pM8pqLiivTrKbhtXkKYZaZbBxYFTog0JatzQm3=g@mail.gmail.com>
+	<20150327174941.GC28901@obsidianresearch.com>
+Date: Fri, 27 Mar 2015 19:09:27 +0100
+Message-ID: <CAJuTgQUKMYOE7XBxUPG=amYi1zSJ-7FVk92uf4pVbGimtymXMw@mail.gmail.com>
+Subject: Re: [RFC PATCH 07/11] IB/Verbs: Use management helper has_mcast()
+ and, cap_mcast() for mcast-check
+From: Yun Wang <yun.wang@profitbricks.com>
+To: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
 Cc: "ira.weiny" <ira.weiny@intel.com>, Roland Dreier <roland@kernel.org>,
         Sean Hefty <sean.hefty@intel.com>,
         Hal Rosenstock <hal.rosenstock@gmail.com>,
@@ -31,31 +44,46 @@ Cc: "ira.weiny" <ira.weiny@intel.com>, Roland Dreier <roland@kernel.org>,
         Mike Marciniszyn <mike.marciniszyn@intel.com>,
         Steve Wise <swise@opengridcomputing.com>, Tom Tucker <tom@ogc.us>,
         Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [RFC PATCH 07/11] IB/Verbs: Use management helper has_mcast()
- and, cap_mcast() for mcast-check
-Message-ID: <20150327174941.GC28901@obsidianresearch.com>
-References: <551579CA.4030901@profitbricks.com>
- <55157B71.6040505@profitbricks.com>
- <20150327162820.GC28412@obsidianresearch.com>
- <20150327170508.GB27862@phlsvsds.ph.intel.com>
- <CAJuTgQUSm0pM8pqLiivTrKbhtXkKYZaZbBxYFTog0JatzQm3=g@mail.gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAJuTgQUSm0pM8pqLiivTrKbhtXkKYZaZbBxYFTog0JatzQm3=g@mail.gmail.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Mar 27, 2015 at 06:31:26PM +0100, Yun Wang wrote:
+On Fri, Mar 27, 2015 at 6:49 PM, Jason Gunthorpe
+<jgunthorpe@obsidianresearch.com> wrote:
+> On Fri, Mar 27, 2015 at 06:31:26PM +0100, Yun Wang wrote:
+>
+>> Maybe we can temporarily reserve the old logical, and gradually solve
+>> these problems?
+>
+> It is best to make behavioral changes in small patches, yes.
+>
+> I think it is best to address these sorts of problems before trying to
+> tackle the driver interface side - that will avoid complexity.
+>
+> ie how does a driver set has_ipoib? It isn't even a sensible question
+> when it is a per port capability.
 
-> Maybe we can temporarily reserve the old logical, and gradually solve
-> these problems?
+I used to imaging it would like:
 
-It is best to make behavioral changes in small patches, yes.
+init_device_mgmt_attributs(device)
+{
+    for_each_port(device)
+        if (port support XX) {
+            port.mgmt_attribute |= CAP_XX
+             if !(device.mgmt_attribute & HAS_XX)
+                 device.mgmt_attribute |= HAS_XX
+        }
+}
 
-I think it is best to address these sorts of problems before trying to
-tackle the driver interface side - that will avoid complexity.
+That is incase if a device got one port have some capability, the
+device have it too, so has_XX() will check on device level that if it
+has any port support XX, and cap_XX() to check on port level.
 
-ie how does a driver set has_ipoib? It isn't even a sensible question
-when it is a per port capability.
+But if has_XX() is only for optimizing the init/exit path, then it
+doesn't make sense to me any more...
 
-Jason
+Regards,
+Michael Wang
+
+>
+> Jason
