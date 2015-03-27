@@ -1,59 +1,35 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp-o-3.desy.de ([131.169.56.156]:37954 "EHLO smtp-o-3.desy.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752539AbbC0OdI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 27 Mar 2015 10:33:08 -0400
-Received: from smtp-map-3.desy.de (smtp-map-3.desy.de [131.169.56.68])
-	by smtp-o-3.desy.de (DESY-O-3) with ESMTP id 98973280AEE
-	for <linux-nfs@vger.kernel.org>; Fri, 27 Mar 2015 15:33:06 +0100 (CET)
-Received: from ZITSWEEP4.win.desy.de (zitsweep4.win.desy.de [131.169.97.98])
-	by smtp-map-3.desy.de (DESY_MAP_3) with ESMTP id 8C78A15EC
-	for <linux-nfs@vger.kernel.org>; Fri, 27 Mar 2015 15:33:06 +0100 (MET)
-Date: Fri, 27 Mar 2015 15:33:05 +0100 (CET)
-From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: linux-nfs list <linux-nfs@vger.kernel.org>
-Message-ID: <2000185644.567074.1427466785581.JavaMail.zimbra@desy.de>
-In-Reply-To: <CAABAsM4jh3+S0YjNiSf8xdru0at5vUkvJRsTUDuoVupZNp+JUA@mail.gmail.com>
-References: <CAABAsM4jh3+S0YjNiSf8xdru0at5vUkvJRsTUDuoVupZNp+JUA@mail.gmail.com>
-Subject: Re: pNFS layout, ROC and multiple opens
+Received: from mail-qg0-f53.google.com ([209.85.192.53]:33762 "EHLO
+	mail-qg0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751325AbbC0Oug convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Mar 2015 10:50:36 -0400
+Received: by qgfa8 with SMTP id a8so128239261qgf.0
+        for <linux-nfs@vger.kernel.org>; Fri, 27 Mar 2015 07:50:36 -0700 (PDT)
+Date: Fri, 27 Mar 2015 10:50:29 -0400
+From: Jeff Layton <jlayton@poochiereds.net>
+To: Christoph Hellwig <hch@lst.de>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+Subject: Re: panic on 4.20 server exporting xfs filesystem
+Message-ID: <20150327105029.615354f3@tlielax.poochiereds.net>
+In-Reply-To: <20150327104135.GA15651@lst.de>
+References: <20150303221033.GB19439@fieldses.org>
+	<20150327104135.GA15651@lst.de>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-which means that even I I set roc flag, I still need to recall layout.
+On Fri, 27 Mar 2015 11:41:35 +0100
+Christoph Hellwig <hch@lst.de> wrote:
 
------ Original Message -----
-> From: "Trond Myklebust" <trond.myklebust@primarydata.com>
-> To: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
-> Cc: "linux-nfs list" <linux-nfs@vger.kernel.org>
-> Sent: Friday, March 27, 2015 3:08:39 PM
-> Subject: Re: pNFS layout, ROC and multiple opens
+> FYI, I small update on tracking down the recall issue:  this seems to
+> be very much something in the callback channel on the server.  When tracing
+> the client all the recalls it gets they are handled fine, but we do get
+> error back in the layout recall ->done handler, which most of the time
+> but not always are local Linux errnos and not nfs error numbers, indicating
+> something went wrong, probably in the RPC code.
 
-> On Fri, Mar 27, 2015 at 7:24 AM, Mkrtchyan, Tigran
-> <tigran.mkrtchyan@desy.de> wrote:
->>
->>
->> Hi folks,
->>
->> we run into following issue:
->>
->> on a client host we have two processes - A and B.
->> Process A opens a file and reads some data:
->>
->> OPEN -> LAYOUTGET -> READ.
->> Notice, that layout has a roc set to true.
->>
->> Process B opens the same file:
->>
->> OPEN -> READ.
->>
->> Client obviously re-used layout information.
->> Now, process A closes the file and as a result,
->> layout becomes invalid.
-> 
-> No it doesn't. See the errata.
-> 
-> Cheers
->   Trond
+Taking a quick look, the ->done routines look a little suspicious to me
+anyway. AFAICT, the pc_decode routines for the callbacks always return
+a Linux errno, not a nfsstat4, and that's what should end up in
+tk_status.
