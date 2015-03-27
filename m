@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wi0-f170.google.com ([209.85.212.170]:36721 "EHLO
-	mail-wi0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753000AbbC0Qvv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Mar 2015 12:51:51 -0400
+Received: from mail-wg0-f43.google.com ([74.125.82.43]:35460 "EHLO
+	mail-wg0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753910AbbC0Qv6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Mar 2015 12:51:58 -0400
 From: Andreas Gruenbacher <andreas.gruenbacher@gmail.com>
 To: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-nfs@vger.kernel.org
-Subject: [RFC 09/39] richacl: In-memory representation and helper functions
-Date: Fri, 27 Mar 2015 17:50:07 +0100
-Message-Id: <52e1ed67e14f1e41c66b9acbe9f235e602d84bbc.1427471526.git.agruenba@redhat.com>
+Subject: [RFC 14/39] vfs: Cache base_acl objects in inodes
+Date: Fri, 27 Mar 2015 17:50:12 +0100
+Message-Id: <b38dbab4015c9581560aee8b8c25efc0a44b5670.1427471526.git.agruenba@redhat.com>
 In-Reply-To: <cover.1427471526.git.agruenba@redhat.com>
 References: <cover.1427471526.git.agruenba@redhat.com>
 In-Reply-To: <cover.1427471526.git.agruenba@redhat.com>
@@ -16,358 +16,240 @@ References: <cover.1427471526.git.agruenba@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-A richacl consists of an NFSv4 acl and an owner, group, and other mask.
-These three masks correspond to the owner, group, and other file
-permission bits, but they contain NFSv4 permissions instead of POSIX
-permissions.
-
-Each entry in the NFSv4 acl applies to the file owner (OWNER@), the owning
-group (GROUP@), everyone (EVERYONE@), or to a specific uid or gid.
-
-As in the standard POSIX file permission model, each process is the
-owner, group, or other file class.  A richacl grants a requested access
-only if the NFSv4 acl in the richacl grants the access (according to the
-NFSv4 permission check algorithm), and the file mask that applies to the
-process includes the requested permissions.
+POSIX ACLs and richacls are both objects allocated by kmalloc() with a
+reference count which are freed by kfree_rcu().  An inode can either cache an
+access and a default POSIX ACL, or a richacl.  (Richacls do not have default
+acls).  To allow an inode to cache either of the two kinds of acls, introduce a
+new base_acl type and convert i_acl and i_default_acl to that type. In most
+cases, the vfs then doesn't have to care which kind of acl an inode caches (if
+any).
 
 Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
 ---
- fs/Makefile             |   2 +
- fs/richacl_base.c       |  58 ++++++++++++
- include/linux/richacl.h | 246 ++++++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 306 insertions(+)
- create mode 100644 fs/richacl_base.c
- create mode 100644 include/linux/richacl.h
+ drivers/staging/lustre/lustre/llite/llite_lib.c |  2 +-
+ fs/f2fs/acl.c                                   |  4 ++--
+ fs/inode.c                                      |  4 ++--
+ fs/posix_acl.c                                  | 18 +++++++++---------
+ include/linux/fs.h                              | 22 +++++++++++++++++++---
+ include/linux/posix_acl.h                       |  9 ++++-----
+ include/linux/richacl.h                         |  2 +-
+ 7 files changed, 38 insertions(+), 23 deletions(-)
 
-diff --git a/fs/Makefile b/fs/Makefile
-index a88ac48..8f0a59c 100644
---- a/fs/Makefile
-+++ b/fs/Makefile
-@@ -47,6 +47,8 @@ obj-$(CONFIG_COREDUMP)		+= coredump.o
- obj-$(CONFIG_SYSCTL)		+= drop_caches.o
+diff --git a/drivers/staging/lustre/lustre/llite/llite_lib.c b/drivers/staging/lustre/lustre/llite/llite_lib.c
+index 0c1b583..c8cae33 100644
+--- a/drivers/staging/lustre/lustre/llite/llite_lib.c
++++ b/drivers/staging/lustre/lustre/llite/llite_lib.c
+@@ -1145,7 +1145,7 @@ void ll_clear_inode(struct inode *inode)
+ 	}
+ #ifdef CONFIG_FS_POSIX_ACL
+ 	else if (lli->lli_posix_acl) {
+-		LASSERT(atomic_read(&lli->lli_posix_acl->a_refcount) == 1);
++		LASSERT(atomic_read(&lli->lli_posix_acl->a_base.ba_refcount) == 1);
+ 		LASSERT(lli->lli_remote_perms == NULL);
+ 		posix_acl_release(lli->lli_posix_acl);
+ 		lli->lli_posix_acl = NULL;
+diff --git a/fs/f2fs/acl.c b/fs/f2fs/acl.c
+index 7422027..ccb2c7c 100644
+--- a/fs/f2fs/acl.c
++++ b/fs/f2fs/acl.c
+@@ -270,7 +270,7 @@ static struct posix_acl *f2fs_acl_clone(const struct posix_acl *acl,
+ 				sizeof(struct posix_acl_entry);
+ 		clone = kmemdup(acl, size, flags);
+ 		if (clone)
+-			atomic_set(&clone->a_refcount, 1);
++			atomic_set(&clone->a_base.ba_refcount, 1);
+ 	}
+ 	return clone;
+ }
+@@ -282,7 +282,7 @@ static int f2fs_acl_create_masq(struct posix_acl *acl, umode_t *mode_p)
+ 	umode_t mode = *mode_p;
+ 	int not_equiv = 0;
  
- obj-$(CONFIG_FHANDLE)		+= fhandle.o
-+obj-$(CONFIG_FS_RICHACL)	+= richacl.o
-+richacl-y			:= richacl_base.o
+-	/* assert(atomic_read(acl->a_refcount) == 1); */
++	/* assert(atomic_read(acl->a_base.ba_refcount) == 1); */
  
- obj-y				+= quota/
+ 	FOREACH_ACL_ENTRY(pa, acl, pe) {
+ 		switch(pa->e_tag) {
+diff --git a/fs/inode.c b/fs/inode.c
+index f00b16f..555fe9c 100644
+--- a/fs/inode.c
++++ b/fs/inode.c
+@@ -233,9 +233,9 @@ void __destroy_inode(struct inode *inode)
  
-diff --git a/fs/richacl_base.c b/fs/richacl_base.c
-new file mode 100644
-index 0000000..9439cc4
---- /dev/null
-+++ b/fs/richacl_base.c
-@@ -0,0 +1,58 @@
-+/*
-+ * Copyright (C) 2006, 2010  Novell, Inc.
-+ * Copyright (C) 2015  Red Hat, Inc.
-+ * Written by Andreas Gruenbacher <agruen@kernel.org>
-+ *
-+ * This program is free software; you can redistribute it and/or modify it
-+ * under the terms of the GNU General Public License as published by the
-+ * Free Software Foundation; either version 2, or (at your option) any
-+ * later version.
-+ *
-+ * This program is distributed in the hope that it will be useful, but
-+ * WITHOUT ANY WARRANTY; without even the implied warranty of
-+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-+ * General Public License for more details.
-+ */
-+
-+#include <linux/sched.h>
-+#include <linux/module.h>
-+#include <linux/fs.h>
-+#include <linux/slab.h>
-+#include <linux/richacl.h>
-+
-+MODULE_LICENSE("GPL");
-+
-+/**
-+ * richacl_alloc  -  allocate a richacl
-+ * @count:	number of entries
-+ */
-+struct richacl *
-+richacl_alloc(int count, gfp_t gfp)
-+{
-+	size_t size = sizeof(struct richacl) + count * sizeof(struct richace);
-+	struct richacl *acl = kzalloc(size, gfp);
-+
-+	if (acl) {
-+		atomic_set(&acl->a_refcount, 1);
-+		acl->a_count = count;
-+	}
-+	return acl;
-+}
-+EXPORT_SYMBOL_GPL(richacl_alloc);
-+
-+/**
-+ * richacl_clone  -  create a copy of a richacl
-+ */
-+static struct richacl *
-+richacl_clone(const struct richacl *acl, gfp_t gfp)
-+{
-+	int count = acl->a_count;
-+	size_t size = sizeof(struct richacl) + count * sizeof(struct richace);
-+	struct richacl *dup = kmalloc(size, gfp);
-+
-+	if (dup) {
-+		memcpy(dup, acl, size);
-+		atomic_set(&dup->a_refcount, 1);
-+	}
-+	return dup;
-+}
-diff --git a/include/linux/richacl.h b/include/linux/richacl.h
-new file mode 100644
-index 0000000..d19edd9
---- /dev/null
-+++ b/include/linux/richacl.h
-@@ -0,0 +1,246 @@
-+/*
-+ * Copyright (C) 2006, 2010  Novell, Inc.
-+ * Copyright (C) 2015  Red Hat, Inc.
-+ * Written by Andreas Gruenbacher <agruen@kernel.org>
-+ *
-+ * This program is free software; you can redistribute it and/or modify it
-+ * under the terms of the GNU General Public License as published by the
-+ * Free Software Foundation; either version 2, or (at your option) any
-+ * later version.
-+ *
-+ * This program is distributed in the hope that it will be useful, but
-+ * WITHOUT ANY WARRANTY; without even the implied warranty of
-+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-+ * General Public License for more details.
-+ */
-+
-+#ifndef __RICHACL_H
-+#define __RICHACL_H
-+
-+#define RICHACE_OWNER_SPECIAL_ID	0
-+#define RICHACE_GROUP_SPECIAL_ID	1
-+#define RICHACE_EVERYONE_SPECIAL_ID	2
-+
-+struct richace {
-+	unsigned short	e_type;
-+	unsigned short	e_flags;
-+	unsigned int	e_mask;
-+	union {
-+		kuid_t		uid;
-+		kgid_t		gid;
-+		unsigned int	special;
-+	} e_id;
+ #ifdef CONFIG_FS_POSIX_ACL
+ 	if (inode->i_acl && inode->i_acl != ACL_NOT_CACHED)
+-		posix_acl_release(inode->i_acl);
++		put_base_acl(inode->i_acl);
+ 	if (inode->i_default_acl && inode->i_default_acl != ACL_NOT_CACHED)
+-		posix_acl_release(inode->i_default_acl);
++		put_base_acl(inode->i_default_acl);
+ #endif
+ 	this_cpu_dec(nr_inodes);
+ }
+diff --git a/fs/posix_acl.c b/fs/posix_acl.c
+index efe983e..2fbfec8 100644
+--- a/fs/posix_acl.c
++++ b/fs/posix_acl.c
+@@ -25,9 +25,9 @@ struct posix_acl **acl_by_type(struct inode *inode, int type)
+ {
+ 	switch (type) {
+ 	case ACL_TYPE_ACCESS:
+-		return &inode->i_acl;
++		return (struct posix_acl **)&inode->i_acl;
+ 	case ACL_TYPE_DEFAULT:
+-		return &inode->i_default_acl;
++		return (struct posix_acl **)&inode->i_default_acl;
+ 	default:
+ 		BUG();
+ 	}
+@@ -83,16 +83,16 @@ EXPORT_SYMBOL(forget_cached_acl);
+ 
+ void forget_all_cached_acls(struct inode *inode)
+ {
+-	struct posix_acl *old_access, *old_default;
++	struct base_acl *old_access, *old_default;
+ 	spin_lock(&inode->i_lock);
+ 	old_access = inode->i_acl;
+ 	old_default = inode->i_default_acl;
+ 	inode->i_acl = inode->i_default_acl = ACL_NOT_CACHED;
+ 	spin_unlock(&inode->i_lock);
+ 	if (old_access != ACL_NOT_CACHED)
+-		posix_acl_release(old_access);
++		put_base_acl(old_access);
+ 	if (old_default != ACL_NOT_CACHED)
+-		posix_acl_release(old_default);
++		put_base_acl(old_default);
+ }
+ EXPORT_SYMBOL(forget_all_cached_acls);
+ 
+@@ -129,7 +129,7 @@ EXPORT_SYMBOL(get_acl);
+ void
+ posix_acl_init(struct posix_acl *acl, int count)
+ {
+-	atomic_set(&acl->a_refcount, 1);
++	atomic_set(&acl->a_base.ba_refcount, 1);
+ 	acl->a_count = count;
+ }
+ EXPORT_SYMBOL(posix_acl_init);
+@@ -163,7 +163,7 @@ posix_acl_clone(const struct posix_acl *acl, gfp_t flags)
+ 		           sizeof(struct posix_acl_entry);
+ 		clone = kmemdup(acl, size, flags);
+ 		if (clone)
+-			atomic_set(&clone->a_refcount, 1);
++			atomic_set(&clone->a_base.ba_refcount, 1);
+ 	}
+ 	return clone;
+ }
+@@ -385,7 +385,7 @@ static int posix_acl_create_masq(struct posix_acl *acl, umode_t *mode_p)
+ 	umode_t mode = *mode_p;
+ 	int not_equiv = 0;
+ 
+-	/* assert(atomic_read(acl->a_refcount) == 1); */
++	/* assert(atomic_read(acl->a_base.ba_refcount) == 1); */
+ 
+ 	FOREACH_ACL_ENTRY(pa, acl, pe) {
+                 switch(pa->e_tag) {
+@@ -440,7 +440,7 @@ static int __posix_acl_chmod_masq(struct posix_acl *acl, umode_t mode)
+ 	struct posix_acl_entry *group_obj = NULL, *mask_obj = NULL;
+ 	struct posix_acl_entry *pa, *pe;
+ 
+-	/* assert(atomic_read(acl->a_refcount) == 1); */
++	/* assert(atomic_read(acl->a_base.ba_refcount) == 1); */
+ 
+ 	FOREACH_ACL_ENTRY(pa, acl, pe) {
+ 		switch(pa->e_tag) {
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index e3e1e42..518b990 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -547,6 +547,9 @@ static inline void mapping_allow_writable(struct address_space *mapping)
+ #define i_size_ordered_init(inode) do { } while (0)
+ #endif
+ 
++struct base_acl {
++	atomic_t ba_refcount;
 +};
-+
-+struct richacl {
-+	atomic_t	a_refcount;
-+	unsigned int	a_owner_mask;
-+	unsigned int	a_group_mask;
-+	unsigned int	a_other_mask;
-+	unsigned short	a_count;
-+	unsigned short	a_flags;
-+	struct richace	a_entries[0];
-+};
-+
-+#define richacl_for_each_entry(_ace, _acl) \
-+	for (_ace = (_acl)->a_entries; \
-+	     _ace != (_acl)->a_entries + (_acl)->a_count; \
-+	     _ace++)
-+
-+#define richacl_for_each_entry_reverse(_ace, _acl) \
-+	for (_ace = (_acl)->a_entries + (_acl)->a_count - 1; \
-+	     _ace != (_acl)->a_entries - 1; \
-+	     _ace--)
-+
-+/* a_flag values */
-+#define RICHACL_MASKED				0x80
-+
-+#define RICHACL_VALID_FLAGS (					\
-+		RICHACL_MASKED)
-+
-+/* e_type values */
-+#define RICHACE_ACCESS_ALLOWED_ACE_TYPE		0x0000
-+#define RICHACE_ACCESS_DENIED_ACE_TYPE		0x0001
-+
-+/* e_flags bitflags */
-+#define RICHACE_FILE_INHERIT_ACE		0x0001
-+#define RICHACE_DIRECTORY_INHERIT_ACE		0x0002
-+#define RICHACE_NO_PROPAGATE_INHERIT_ACE	0x0004
-+#define RICHACE_INHERIT_ONLY_ACE		0x0008
-+#define RICHACE_IDENTIFIER_GROUP		0x0040
-+#define RICHACE_SPECIAL_WHO			0x4000
-+
-+#define RICHACE_VALID_FLAGS (					\
-+	RICHACE_FILE_INHERIT_ACE |				\
-+	RICHACE_DIRECTORY_INHERIT_ACE |				\
-+	RICHACE_NO_PROPAGATE_INHERIT_ACE |			\
-+	RICHACE_INHERIT_ONLY_ACE |				\
-+	RICHACE_IDENTIFIER_GROUP |				\
-+	RICHACE_SPECIAL_WHO)
-+
-+/* e_mask bitflags */
-+#define RICHACE_READ_DATA			0x00000001
-+#define RICHACE_LIST_DIRECTORY			0x00000001
-+#define RICHACE_WRITE_DATA			0x00000002
-+#define RICHACE_ADD_FILE			0x00000002
-+#define RICHACE_APPEND_DATA			0x00000004
-+#define RICHACE_ADD_SUBDIRECTORY		0x00000004
-+#define RICHACE_READ_NAMED_ATTRS		0x00000008
-+#define RICHACE_WRITE_NAMED_ATTRS		0x00000010
-+#define RICHACE_EXECUTE				0x00000020
-+#define RICHACE_DELETE_CHILD			0x00000040
-+#define RICHACE_READ_ATTRIBUTES			0x00000080
-+#define RICHACE_WRITE_ATTRIBUTES		0x00000100
-+#define RICHACE_WRITE_RETENTION			0x00000200
-+#define RICHACE_WRITE_RETENTION_HOLD		0x00000400
-+#define RICHACE_DELETE				0x00010000
-+#define RICHACE_READ_ACL			0x00020000
-+#define RICHACE_WRITE_ACL			0x00040000
-+#define RICHACE_WRITE_OWNER			0x00080000
-+#define RICHACE_SYNCHRONIZE			0x00100000
-+
-+/* Valid RICHACE_* flags for directories and non-directories */
-+#define RICHACE_VALID_MASK (					\
-+	RICHACE_READ_DATA | RICHACE_LIST_DIRECTORY |		\
-+	RICHACE_WRITE_DATA | RICHACE_ADD_FILE |			\
-+	RICHACE_APPEND_DATA | RICHACE_ADD_SUBDIRECTORY |	\
-+	RICHACE_READ_NAMED_ATTRS |				\
-+	RICHACE_WRITE_NAMED_ATTRS |				\
-+	RICHACE_EXECUTE |					\
-+	RICHACE_DELETE_CHILD |					\
-+	RICHACE_READ_ATTRIBUTES |				\
-+	RICHACE_WRITE_ATTRIBUTES |				\
-+	RICHACE_WRITE_RETENTION |				\
-+	RICHACE_WRITE_RETENTION_HOLD |				\
-+	RICHACE_DELETE |					\
-+	RICHACE_READ_ACL |					\
-+	RICHACE_WRITE_ACL |					\
-+	RICHACE_WRITE_OWNER |					\
-+	RICHACE_SYNCHRONIZE)
-+
-+/**
-+ * richacl_get  -  grab another reference to a richacl handle
-+ */
-+static inline struct richacl *
-+richacl_get(struct richacl *acl)
+ struct posix_acl;
+ #define ACL_NOT_CACHED ((void *)(-1))
+ 
+@@ -566,9 +569,9 @@ struct inode {
+ 	kgid_t			i_gid;
+ 	unsigned int		i_flags;
+ 
+-#ifdef CONFIG_FS_POSIX_ACL
+-	struct posix_acl	*i_acl;
+-	struct posix_acl	*i_default_acl;
++#if defined(CONFIG_FS_POSIX_ACL)
++	struct base_acl *i_acl;
++	struct base_acl *i_default_acl;
+ #endif
+ 
+ 	const struct inode_operations	*i_op;
+@@ -2936,4 +2939,17 @@ static inline bool dir_relax(struct inode *inode)
+ 	return !IS_DEADDIR(inode);
+ }
+ 
++static inline struct base_acl *get_base_acl(struct base_acl *acl)
 +{
 +	if (acl)
-+		atomic_inc(&acl->a_refcount);
++		atomic_inc(&acl->ba_refcount);
 +	return acl;
 +}
 +
-+/**
-+ * richacl_put  -  free a richacl handle
-+ */
-+static inline void
-+richacl_put(struct richacl *acl)
++static inline void put_base_acl(struct base_acl *acl)
 +{
-+	if (acl && atomic_dec_and_test(&acl->a_refcount))
-+		kfree(acl);
++	if (acl && atomic_dec_and_test(&acl->ba_refcount))
++		__kfree_rcu((struct rcu_head *)acl, 0);
 +}
 +
-+/**
-+ * richace_is_owner  -  check if @ace is an OWNER@ entry
-+ */
-+static inline bool
-+richace_is_owner(const struct richace *ace)
-+{
-+	return (ace->e_flags & RICHACE_SPECIAL_WHO) &&
-+	       ace->e_id.special == RICHACE_OWNER_SPECIAL_ID;
-+}
-+
-+/**
-+ * richace_is_group  -  check if @ace is a GROUP@ entry
-+ */
-+static inline bool
-+richace_is_group(const struct richace *ace)
-+{
-+	return (ace->e_flags & RICHACE_SPECIAL_WHO) &&
-+	       ace->e_id.special == RICHACE_GROUP_SPECIAL_ID;
-+}
-+
-+/**
-+ * richace_is_everyone  -  check if @ace is an EVERYONE@ entry
-+ */
-+static inline bool
-+richace_is_everyone(const struct richace *ace)
-+{
-+	return (ace->e_flags & RICHACE_SPECIAL_WHO) &&
-+	       ace->e_id.special == RICHACE_EVERYONE_SPECIAL_ID;
-+}
-+
-+/**
-+ * richace_is_unix_id  -  check if @ace applies to a specific uid or gid
-+ */
-+static inline bool
-+richace_is_unix_id(const struct richace *ace)
-+{
-+	return !(ace->e_flags & RICHACE_SPECIAL_WHO);
-+}
-+
-+/**
-+ * richace_is_inherit_only  -  check if @ace is for inheritance only
-+ *
-+ * ACEs with the %RICHACE_INHERIT_ONLY_ACE flag set have no effect during
-+ * permission checking.
-+ */
-+static inline bool
-+richace_is_inherit_only(const struct richace *ace)
-+{
-+	return ace->e_flags & RICHACE_INHERIT_ONLY_ACE;
-+}
-+
-+/**
-+ * richace_is_inheritable  -  check if @ace is inheritable
-+ */
-+static inline bool
-+richace_is_inheritable(const struct richace *ace)
-+{
-+	return ace->e_flags & (RICHACE_FILE_INHERIT_ACE |
-+			       RICHACE_DIRECTORY_INHERIT_ACE);
-+}
-+
-+/**
-+ * richace_clear_inheritance_flags  - clear all inheritance flags in @ace
-+ */
-+static inline void
-+richace_clear_inheritance_flags(struct richace *ace)
-+{
-+	ace->e_flags &= ~(RICHACE_FILE_INHERIT_ACE |
-+			  RICHACE_DIRECTORY_INHERIT_ACE |
-+			  RICHACE_NO_PROPAGATE_INHERIT_ACE |
-+			  RICHACE_INHERIT_ONLY_ACE);
-+}
-+
-+/**
-+ * richace_is_allow  -  check if @ace is an %ALLOW type entry
-+ */
-+static inline bool
-+richace_is_allow(const struct richace *ace)
-+{
-+	return ace->e_type == RICHACE_ACCESS_ALLOWED_ACE_TYPE;
-+}
-+
-+/**
-+ * richace_is_deny  -  check if @ace is a %DENY type entry
-+ */
-+static inline bool
-+richace_is_deny(const struct richace *ace)
-+{
-+	return ace->e_type == RICHACE_ACCESS_DENIED_ACE_TYPE;
-+}
-+
-+/**
-+ * richace_is_same_identifier  -  are both identifiers the same?
-+ */
-+static inline bool
-+richace_is_same_identifier(const struct richace *a, const struct richace *b)
-+{
-+	return !((a->e_flags ^ b->e_flags) &
-+		 (RICHACE_SPECIAL_WHO | RICHACE_IDENTIFIER_GROUP)) &&
-+	       !memcmp(&a->e_id, &b->e_id, sizeof(a->e_id));
-+}
-+
-+extern struct richacl *richacl_alloc(int, gfp_t);
-+
-+#endif /* __RICHACL_H */
+ #endif /* _LINUX_FS_H */
+diff --git a/include/linux/posix_acl.h b/include/linux/posix_acl.h
+index 66cf477..2c46441 100644
+--- a/include/linux/posix_acl.h
++++ b/include/linux/posix_acl.h
+@@ -43,7 +43,7 @@ struct posix_acl_entry {
+ };
+ 
+ struct posix_acl {
+-	atomic_t		a_refcount;
++	struct base_acl		a_base;
+ 	unsigned int		a_count;
+ 	struct posix_acl_entry	a_entries[0];
+ };
+@@ -58,8 +58,7 @@ struct posix_acl {
+ static inline struct posix_acl *
+ posix_acl_dup(struct posix_acl *acl)
+ {
+-	if (acl)
+-		atomic_inc(&acl->a_refcount);
++	get_base_acl(&acl->a_base);
+ 	return acl;
+ }
+ 
+@@ -69,8 +68,8 @@ posix_acl_dup(struct posix_acl *acl)
+ static inline void
+ posix_acl_release(struct posix_acl *acl)
+ {
+-	if (acl && atomic_dec_and_test(&acl->a_refcount))
+-		__kfree_rcu((struct rcu_head *)acl, 0);
++	BUILD_BUG_ON(offsetof(struct posix_acl, a_base) != 0);
++	put_base_acl(&acl->a_base);
+ }
+ 
+ 
+diff --git a/include/linux/richacl.h b/include/linux/richacl.h
+index 997b885..0611160 100644
+--- a/include/linux/richacl.h
++++ b/include/linux/richacl.h
+@@ -168,7 +168,7 @@ static inline struct richacl *
+ richacl_get(struct richacl *acl)
+ {
+ 	if (acl)
+-		atomic_inc(&acl->a_refcount);
++		atomic_inc(&acl->a_base.ba_refcount);
+ 	return acl;
+ }
+ 
 -- 
 2.1.0
 
