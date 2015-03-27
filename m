@@ -1,12 +1,12 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wg0-f52.google.com ([74.125.82.52]:33838 "EHLO
-	mail-wg0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752892AbbC0PqP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Mar 2015 11:46:15 -0400
-Received: by wgs2 with SMTP id 2so103847227wgs.1
-        for <linux-nfs@vger.kernel.org>; Fri, 27 Mar 2015 08:46:14 -0700 (PDT)
-Message-ID: <55157B43.6060507@profitbricks.com>
-Date: Fri, 27 Mar 2015 16:46:11 +0100
+Received: from mail-wi0-f178.google.com ([209.85.212.178]:37613 "EHLO
+	mail-wi0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932262AbbC0PrB (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Mar 2015 11:47:01 -0400
+Received: by wiaa2 with SMTP id a2so36751109wia.0
+        for <linux-nfs@vger.kernel.org>; Fri, 27 Mar 2015 08:46:59 -0700 (PDT)
+Message-ID: <55157B71.6040505@profitbricks.com>
+Date: Fri, 27 Mar 2015 16:46:57 +0100
 From: Michael Wang <yun.wang@profitbricks.com>
 MIME-Version: 1.0
 To: Roland Dreier <roland@kernel.org>, Sean Hefty <sean.hefty@intel.com>,
@@ -35,8 +35,8 @@ CC: "J. Bruce Fields" <bfields@fieldses.org>,
         Steve Wise <swise@opengridcomputing.com>, Tom Tucker <tom@ogc.us>,
         Chuck Lever <chuck.lever@oracle.com>,
         Michael Wang <yun.wang@profitbricks.com>
-Subject: [RFC PATCH 06/11] IB/Verbs: Use management helper has_sa() and cap_sa(),
- for sa-check
+Subject: [RFC PATCH 07/11] IB/Verbs: Use management helper has_mcast() and,
+ cap_mcast() for mcast-check
 References: <551579CA.4030901@profitbricks.com>
 In-Reply-To: <551579CA.4030901@profitbricks.com>
 Content-Type: text/plain; charset=utf-8
@@ -44,8 +44,8 @@ Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-Introduce helper has_sa() and cap_sa() to help us check if an IB device
-or it's port support Subnet Administrator.
+Introduce helper has_mcast() and cap_mcast() to help us check if an
+IB device or it's port support Multicast.
 
 Cc: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
 Cc: Doug Ledford <dledford@redhat.com>
@@ -53,83 +53,80 @@ Cc: Ira Weiny <ira.weiny@intel.com>
 Cc: Sean Hefty <sean.hefty@intel.com>
 Signed-off-by: Michael Wang <yun.wang@profitbricks.com>
 ---
- drivers/infiniband/core/sa_query.c | 12 ++++++------
- include/rdma/ib_verbs.h            | 28 ++++++++++++++++++++++++++++
- 2 files changed, 34 insertions(+), 6 deletions(-)
+ drivers/infiniband/core/cma.c       |  2 +-
+ drivers/infiniband/core/multicast.c |  8 ++++----
+ include/rdma/ib_verbs.h             | 28 ++++++++++++++++++++++++++++
+ 3 files changed, 33 insertions(+), 5 deletions(-)
 
-diff --git a/drivers/infiniband/core/sa_query.c b/drivers/infiniband/core/sa_query.c
-index d95d25f..89c27da 100644
---- a/drivers/infiniband/core/sa_query.c
-+++ b/drivers/infiniband/core/sa_query.c
-@@ -450,7 +450,7 @@ static void ib_sa_event(struct ib_event_handler *handler, struct ib_event *event
-         struct ib_sa_port *port =
-             &sa_dev->port[event->element.port_num - sa_dev->start_port];
+diff --git a/drivers/infiniband/core/cma.c b/drivers/infiniband/core/cma.c
+index 276fb76..cbbc85b 100644
+--- a/drivers/infiniband/core/cma.c
++++ b/drivers/infiniband/core/cma.c
+@@ -3398,7 +3398,7 @@ void rdma_leave_multicast(struct rdma_cm_id *id, struct sockaddr *addr)
+                 ib_detach_mcast(id->qp,
+                         &mc->multicast.ib->rec.mgid,
+                         be16_to_cpu(mc->multicast.ib->rec.mlid));
+-            if (rdma_transport_is_ib(id_priv->cma_dev->device)) {
++            if (has_mcast(id_priv->cma_dev->device)) {
+                 switch (rdma_port_get_link_layer(id->device, id->port_num)) {
+                 case IB_LINK_LAYER_INFINIBAND:
+                     ib_sa_free_multicast(mc->multicast.ib);
+diff --git a/drivers/infiniband/core/multicast.c b/drivers/infiniband/core/multicast.c
+index 17573ff..ffeaf27 100644
+--- a/drivers/infiniband/core/multicast.c
++++ b/drivers/infiniband/core/multicast.c
+@@ -780,7 +780,7 @@ static void mcast_event_handler(struct ib_event_handler *handler,
+     int index;
  
--        if (!rdma_port_ll_is_ib(handler->device, port->port_num))
-+        if (!cap_sa(handler->device, port->port_num))
-             return;
- 
-         spin_lock_irqsave(&port->ah_lock, flags);
-@@ -1154,7 +1154,7 @@ static void ib_sa_add_one(struct ib_device *device)
-     struct ib_sa_device *sa_dev;
-     int s, e, i;
- 
--    if (!rdma_transport_is_ib(device))
-+    if (!has_sa(device))
+     dev = container_of(handler, struct mcast_device, event_handler);
+-    if (!rdma_port_ll_is_ib(dev->device, event->element.port_num))
++    if (!cap_mcast(dev->device, event->element.port_num))
          return;
  
-     if (device->node_type == RDMA_NODE_IB_SWITCH)
-@@ -1175,7 +1175,7 @@ static void ib_sa_add_one(struct ib_device *device)
+     index = event->element.port_num - dev->start_port;
+@@ -807,7 +807,7 @@ static void mcast_add_one(struct ib_device *device)
+     int i;
+     int count = 0;
  
-     for (i = 0; i <= e - s; ++i) {
-         spin_lock_init(&sa_dev->port[i].ah_lock);
--        if (!rdma_port_ll_is_ib(device, i + 1))
-+        if (!cap_sa(device, i + 1))
+-    if (!rdma_transport_is_ib(device))
++    if (!has_mcast(device))
+         return;
+ 
+     dev = kmalloc(sizeof *dev + device->phys_port_cnt * sizeof *port,
+@@ -823,7 +823,7 @@ static void mcast_add_one(struct ib_device *device)
+     }
+ 
+     for (i = 0; i <= dev->end_port - dev->start_port; i++) {
+-        if (!rdma_port_ll_is_ib(device, dev->start_port + i))
++        if (!cap_mcast(device, dev->start_port + i))
              continue;
+         port = &dev->port[i];
+         port->dev = dev;
+@@ -861,7 +861,7 @@ static void mcast_remove_one(struct ib_device *device)
+     flush_workqueue(mcast_wq);
  
-         sa_dev->port[i].sm_ah    = NULL;
-@@ -1205,14 +1205,14 @@ static void ib_sa_add_one(struct ib_device *device)
-         goto err;
- 
-     for (i = 0; i <= e - s; ++i)
--        if (rdma_port_ll_is_ib(device, i + 1))
-+        if (cap_sa(device, i + 1))
-             update_sm_ah(&sa_dev->port[i].update_task);
- 
-     return;
- 
- err:
-     while (--i >= 0)
--        if (rdma_port_ll_is_ib(device, i + 1))
-+        if (cap_sa(device, i + 1))
-             ib_unregister_mad_agent(sa_dev->port[i].agent);
- 
-     kfree(sa_dev);
-@@ -1233,7 +1233,7 @@ static void ib_sa_remove_one(struct ib_device *device)
-     flush_workqueue(ib_wq);
- 
-     for (i = 0; i <= sa_dev->end_port - sa_dev->start_port; ++i) {
--        if (rdma_port_ll_is_ib(device, i + 1)) {
-+        if (cap_sa(device, i + 1)) {
-             ib_unregister_mad_agent(sa_dev->port[i].agent);
-             if (sa_dev->port[i].sm_ah)
-                 kref_put(&sa_dev->port[i].sm_ah->ref, free_sm_ah);
+     for (i = 0; i <= dev->end_port - dev->start_port; i++) {
+-        if (rdma_port_ll_is_ib(device, dev->start_port + i)) {
++        if (cap_mcast(device, dev->start_port + i)) {
+             port = &dev->port[i];
+             deref_port(port);
+             wait_for_completion(&port->comp);
 diff --git a/include/rdma/ib_verbs.h b/include/rdma/ib_verbs.h
-index c0a63f8..fa8ffa3 100644
+index fa8ffa3..e796104 100644
 --- a/include/rdma/ib_verbs.h
 +++ b/include/rdma/ib_verbs.h
-@@ -1810,6 +1810,19 @@ static inline int has_cm(struct ib_device *device)
+@@ -1823,6 +1823,19 @@ static inline int has_sa(struct ib_device *device)
  }
  
  /**
-+ * has_sa - Check if a device support Subnet Administrator.
++ * has_mcast - Check if a device support Multicast.
 + *
 + * @device: Device to be checked
 + *
 + * Return 0 when a device has none port to support
-+ * Subnet Administrator.
++ * Multicast.
 + */
-+static inline int has_sa(struct ib_device *device)
++static inline int has_mcast(struct ib_device *device)
 +{
 +    return rdma_transport_is_ib(device);
 +}
@@ -138,21 +135,21 @@ index c0a63f8..fa8ffa3 100644
   * cap_smi - Check if the port of device has the capability
   * Subnet Management Interface.
   *
-@@ -1824,6 +1837,21 @@ static inline int cap_smi(struct ib_device *device, u8 port_num)
+@@ -1852,6 +1865,21 @@ static inline int cap_sa(struct ib_device *device, u8 port_num)
      return rdma_port_ll_is_ib(device, port_num);
  }
  
 +/**
-+ * cap_sa - Check if the port of device has the capability
-+ * Subnet Administrator.
++ * cap_mcast - Check if the port of device has the capability
++ * Multicast.
 + *
 + * @device: Device to be checked
 + * @port_num: Port number of the device
 + *
 + * Return 0 when port of the device don't support
-+ * Subnet Administrator.
++ * Multicast.
 + */
-+static inline int cap_sa(struct ib_device *device, u8 port_num)
++static inline int cap_mcast(struct ib_device *device, u8 port_num)
 +{
 +    return rdma_port_ll_is_ib(device, port_num);
 +}
