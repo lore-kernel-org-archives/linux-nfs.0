@@ -1,78 +1,88 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from quartz.orcorp.ca ([184.70.90.242]:48851 "EHLO quartz.orcorp.ca"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753111AbbCZVN4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 26 Mar 2015 17:13:56 -0400
-Date: Thu, 26 Mar 2015 15:13:34 -0600
-From: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
-To: Michael Wang <yun.wang@profitbricks.com>
-Cc: Doug Ledford <dledford@redhat.com>, linux-rdma@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        netdev@vger.kernel.org, Roland Dreier <roland@kernel.org>,
-        Sean Hefty <sean.hefty@intel.com>,
-        Hal Rosenstock <hal.rosenstock@gmail.com>,
-        Ira Weiny <ira.weiny@intel.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        "David S. Miller" <davem@davemloft.net>,
-        Moni Shoua <monis@mellanox.com>, Or Gerlitz <ogerlitz@mellanox.com>,
-        Tatyana Nikolova <Tatyana.E.Nikolova@intel.com>,
-        Steve Wise <swise@opengridcomputing.com>,
-        Yan Burman <yanb@mellanox.com>,
-        Jack Morgenstein <jackm@dev.mellanox.co.il>,
-        Bart Van Assche <bvanassche@acm.org>,
-        Yann Droneaud <ydroneaud@opteya.com>,
-        Colin Ian King <colin.king@canonical.com>,
-        Jiri Kosina <jkosina@suse.cz>, Matan Barak <matanb@mellanox.com>,
-        Majd Dibbiny <majd@mellanox.com>,
-        Dan Carpenter <dan.carpenter@oracle.com>, Mel Gorman <mgorman@suse.de>,
-        Alex Estrin <alex.estrin@intel.com>,
-        Eric Dumazet <edumazet@google.com>, Erez Shitrit <erezsh@mellanox.com>,
-        Sagi Grimberg <sagig@mellanox.com>, Haggai Eran <haggaie@mellanox.com>,
-        Shachar Raindel <raindel@mellanox.com>,
-        Mike Marciniszyn <mike.marciniszyn@intel.com>, Tom Tucker <tom@ogc.us>,
-        Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 0/2 RESEND] IB/Verbs: Use helpers to refine the checking
- on transport and link layer
-Message-ID: <20150326211334.GA3359@obsidianresearch.com>
-References: <5512CFB0.1050108@profitbricks.com>
- <1427378940.21101.100.camel@redhat.com>
- <55142DFD.2060100@profitbricks.com>
- <1427387258.21101.124.camel@redhat.com>
- <55143AAC.8040206@profitbricks.com>
+Received: from cmexedge2.emulex.com ([138.239.224.100]:25876 "EHLO
+	CMEXEDGE2.ext.emulex.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751105AbbC0FnI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Mar 2015 01:43:08 -0400
+From: Devesh Sharma <Devesh.Sharma@Emulex.Com>
+To: Anna Schumaker <Anna.Schumaker@netapp.com>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: RE: [PATCH v2 00/15] NFS/RDMA patches proposed for 4.1
+Date: Fri, 27 Mar 2015 05:42:40 +0000
+Message-ID: <EE7902D3F51F404C82415C4803930ACD5DC3B914@CMEXMB1.ad.emulex.com>
+References: <20150324201849.2311.53599.stgit@manet.1015granger.net>
+ <55145274.203@Netapp.com>
+In-Reply-To: <55145274.203@Netapp.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <55143AAC.8040206@profitbricks.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Mar 26, 2015 at 05:58:20PM +0100, Michael Wang wrote:
-
-> The questions is just wondering how the transition method could be, but
-> if we have to do the changes for vendor, that sounds like a tough job...
-
-I would see changing how the information is represented in the struct
-as a follow on issue. The first patch should go through and replace
-all direct access to the link layer/transport/etc with an
-appropriately narrow is_XX() test like Doug was suggesting.
-
-That means looking at each code site and determining what it needs,
-making a is_XX for it and a kdoc describing exactly what is needed for
-the test to return true.
-
-The follow on patch can then rework the is_XX and drop the link
-layer/transport stuff..
-
-Some ideas for is_XX:
-  IB compatible SA
-  QP0 SMP mechanism
-  IB SMP format
-  OPA SMP format
-  QP1 GMP mechanism
-  IB compatible CM
-  GID addressing
-  IP/IPv6 addressing
-  Ethernet VLAN
-  ...
-
-Jason
+SGkgQ2h1Y2ssDQoNCkkgaGF2ZSB2YWxpZGF0ZWQgdGhlc2Ugc2V0IG9mIHBhdGNoZXMgd2l0aCBv
+Y3JkbWEgZGV2aWNlLCBpb3pvbmUgcGFzc2VzIHdpdGggdGhlc2UuDQoNCi1SZWdhcmRzDQpEZXZl
+c2gNCg0KPiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBsaW51eC1yZG1hLW93
+bmVyQHZnZXIua2VybmVsLm9yZyBbbWFpbHRvOmxpbnV4LXJkbWEtDQo+IG93bmVyQHZnZXIua2Vy
+bmVsLm9yZ10gT24gQmVoYWxmIE9mIEFubmEgU2NodW1ha2VyDQo+IFNlbnQ6IEZyaWRheSwgTWFy
+Y2ggMjcsIDIwMTUgMTI6MTAgQU0NCj4gVG86IENodWNrIExldmVyOyBsaW51eC1yZG1hQHZnZXIu
+a2VybmVsLm9yZzsgbGludXgtbmZzQHZnZXIua2VybmVsLm9yZw0KPiBTdWJqZWN0OiBSZTogW1BB
+VENIIHYyIDAwLzE1XSBORlMvUkRNQSBwYXRjaGVzIHByb3Bvc2VkIGZvciA0LjENCj4gDQo+IEhl
+eSBDaHVjaywNCj4gDQo+IEkgZGlkbid0IHNlZSBhbnl0aGluZyB0aGF0IG5lZWRzIHRvIGJlIGZp
+eGVkIHVwIGluIHRoZXNlIHBhdGNoZXMuICBBcmUgdGhleSByZWFkeQ0KPiBmb3IgbWU/DQo+IA0K
+PiBBbm5hDQo+IA0KPiBPbiAwMy8yNC8yMDE1IDA0OjMwIFBNLCBDaHVjayBMZXZlciB3cm90ZToN
+Cj4gPiBUaGlzIGlzIGEgc2VyaWVzIG9mIGNsaWVudC1zaWRlIHBhdGNoZXMgZm9yIE5GUy9SRE1B
+LiBJbiBwcmVwYXJhdGlvbg0KPiA+IGZvciBpbmNyZWFzaW5nIHRoZSB0cmFuc3BvcnQgY3JlZGl0
+IGxpbWl0IGFuZCBtYXhpbXVtIHJzaXplL3dzaXplLA0KPiA+IEkndmUgcmUtZmFjdG9yZWQgdGhl
+IG1lbW9yeSByZWdpc3RyYXRpb24gbG9naWMgaW50byBzZXBhcmF0ZSBmaWxlcywNCj4gPiBpbnZv
+a2VkIHZpYSBhIG1ldGhvZCBBUEkuDQo+ID4NCj4gPiBUaGUgdHdvIG1haW4gb3B0aW1pemF0aW9u
+cyBpbiB2MSBvZiB0aGlzIHNlcmllcyBoYXZlIGJlZW4gZHJvcHBlZC4NCj4gPiBTYWdpIEdyaW1i
+ZXJnIGRpZG4ndCBsaWtlIHRoZSBjb21wbGV4aXR5IG9mIHRoZSBzb2x1dGlvbiwgYW5kIHRoZXJl
+DQo+ID4gaXNuJ3QgZW5vdWdoIHRpbWUgdG8gcmV3b3JrIGl0LCB0ZXN0IHRoZSBuZXcgdmVyc2lv
+biwgYW5kIGdldCBpdA0KPiA+IHJldmlld2VkIGJlZm9yZSB0aGUgNC4xIG1lcmdlIHdpbmRvdyBv
+cGVucy4gSSdtIGdvaW5nIHRvIHByZXBhcmUgdGhlc2UNCj4gPiBmb3IgNC4yLg0KPiA+DQo+ID4g
+Rml4ZXMgc3VnZ2VzdGVkIGJ5IHJldmlld2VycyBoYXZlIGJlZW4gaW5jbHVkZWQgYmVmb3JlIHRo
+ZSByZWZhY3RvcmluZw0KPiA+IHBhdGNoZXMgdG8gbWFrZSBpdCBlYXNpZXIgdG8gYmFja3BvcnQg
+dGhlbSB0byBwcmV2aW91cyBrZXJuZWxzLg0KPiA+DQo+ID4gVGhlIHNlcmllcyBpcyBhdmFpbGFi
+bGUgaW4gdGhlIG5mcy1yZG1hLWZvci00LjEgdG9waWMgYnJhbmNoIGF0DQo+ID4NCj4gPiBnaXQ6
+Ly9saW51eC1uZnMub3JnL3Byb2plY3RzL2NlbC9jZWwtMi42LmdpdA0KPiA+DQo+ID4gQ2hhbmdl
+cyBzaW5jZSB2MToNCj4gPiAtIFJlYmFzZWQgb24gNC4wLXJjNQ0KPiA+IC0gTWFpbiBvcHRpbWl6
+YXRpb25zIHBvc3Rwb25lZCB0byA0LjINCj4gPiAtIEFkZHJlc3NlZCByZXZpZXcgY29tbWVudHMg
+ZnJvbSBBbm5hLCBTYWdpLCBhbmQgRGV2ZXNoDQo+ID4NCj4gPiAtLS0NCj4gPg0KPiA+IENodWNr
+IExldmVyICgxNSk6DQo+ID4gICAgICAgU1VOUlBDOiBJbnRyb2R1Y2UgbWlzc2luZyB3ZWxsLWtu
+b3duIG5ldGlkcw0KPiA+ICAgICAgIHhwcnRyZG1hOiBEaXNwbGF5IElQdjYgYWRkcmVzc2VzIGFu
+ZCBwb3J0IG51bWJlcnMgY29ycmVjdGx5DQo+ID4gICAgICAgeHBydHJkbWE6IFBlcmZvcm0gYSBm
+dWxsIG1hcnNoYWwgb24gcmV0cmFuc21pdA0KPiA+ICAgICAgIHhwcnRyZG1hOiBCeXRlLWFsaWdu
+IEZSV1IgcmVnaXN0cmF0aW9uDQo+ID4gICAgICAgeHBydHJkbWE6IFByZXZlbnQgaW5maW5pdGUg
+bG9vcCBpbiBycGNyZG1hX2VwX2NyZWF0ZSgpDQo+ID4gICAgICAgeHBydHJkbWE6IEFkZCB2ZWN0
+b3Igb2Ygb3BzIGZvciBlYWNoIG1lbW9yeSByZWdpc3RyYXRpb24gc3RyYXRlZ3kNCj4gPiAgICAg
+ICB4cHJ0cmRtYTogQWRkIGEgIm1heF9wYXlsb2FkIiBvcCBmb3IgZWFjaCBtZW1yZWcgbW9kZQ0K
+PiA+ICAgICAgIHhwcnRyZG1hOiBBZGQgYSAicmVnaXN0ZXJfZXh0ZXJuYWwiIG9wIGZvciBlYWNo
+IG1lbXJlZyBtb2RlDQo+ID4gICAgICAgeHBydHJkbWE6IEFkZCBhICJkZXJlZ2lzdGVyX2V4dGVy
+bmFsIiBvcCBmb3IgZWFjaCBtZW1yZWcgbW9kZQ0KPiA+ICAgICAgIHhwcnRyZG1hOiBBZGQgImlu
+aXQgTVJzIiBtZW1yZWcgb3ANCj4gPiAgICAgICB4cHJ0cmRtYTogQWRkICJyZXNldCBNUnMiIG1l
+bXJlZyBvcA0KPiA+ICAgICAgIHhwcnRyZG1hOiBBZGQgImRlc3Ryb3kgTVJzIiBtZW1yZWcgb3AN
+Cj4gPiAgICAgICB4cHJ0cmRtYTogQWRkICJvcGVuIiBtZW1yZWcgb3ANCj4gPiAgICAgICB4cHJ0
+cmRtYTogSGFuZGxlIG5vbi1TRU5EIGNvbXBsZXRpb25zIHZpYSBhIGNhbGxvdXQNCj4gPiAgICAg
+ICB4cHJ0cmRtYTogTWFrZSBycGNyZG1hX3t1bn1tYXBfb25lKCkgaW50byBpbmxpbmUgZnVuY3Rp
+b25zDQo+ID4NCj4gPg0KPiA+ICBpbmNsdWRlL2xpbnV4L3N1bnJwYy9tc2dfcHJvdC5oICAgIHwg
+ICAgOA0KPiA+ICBuZXQvc3VucnBjL3hwcnRyZG1hL01ha2VmaWxlICAgICAgIHwgICAgMw0KPiA+
+ICBuZXQvc3VucnBjL3hwcnRyZG1hL2Ztcl9vcHMuYyAgICAgIHwgIDIwOCArKysrKysrKysrKw0K
+PiA+ICBuZXQvc3VucnBjL3hwcnRyZG1hL2Zyd3Jfb3BzLmMgICAgIHwgIDM1MyArKysrKysrKysr
+KysrKysrKysNCj4gPiAgbmV0L3N1bnJwYy94cHJ0cmRtYS9waHlzaWNhbF9vcHMuYyB8ICAgOTQg
+KysrKysNCj4gPiAgbmV0L3N1bnJwYy94cHJ0cmRtYS9ycGNfcmRtYS5jICAgICB8ICAgODcgKyst
+LQ0KPiA+ICBuZXQvc3VucnBjL3hwcnRyZG1hL3RyYW5zcG9ydC5jICAgIHwgICA2MSArKy0NCj4g
+PiAgbmV0L3N1bnJwYy94cHJ0cmRtYS92ZXJicy5jICAgICAgICB8ICA2OTkgKysrLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tDQo+ID4gIG5ldC9zdW5ycGMveHBydHJkbWEveHBydF9y
+ZG1hLmggICAgfCAgIDkwICsrKystDQo+ID4gIDkgZmlsZXMgY2hhbmdlZCwgODgyIGluc2VydGlv
+bnMoKyksIDcyMSBkZWxldGlvbnMoLSkgIGNyZWF0ZSBtb2RlDQo+ID4gMTAwNjQ0IG5ldC9zdW5y
+cGMveHBydHJkbWEvZm1yX29wcy5jICBjcmVhdGUgbW9kZSAxMDA2NDQNCj4gPiBuZXQvc3VucnBj
+L3hwcnRyZG1hL2Zyd3Jfb3BzLmMgIGNyZWF0ZSBtb2RlIDEwMDY0NA0KPiA+IG5ldC9zdW5ycGMv
+eHBydHJkbWEvcGh5c2ljYWxfb3BzLmMNCj4gPg0KPiA+IC0tDQo+ID4gQ2h1Y2sgTGV2ZXINCj4g
+PiAtLQ0KPiA+IFRvIHVuc3Vic2NyaWJlIGZyb20gdGhpcyBsaXN0OiBzZW5kIHRoZSBsaW5lICJ1
+bnN1YnNjcmliZSBsaW51eC1uZnMiDQo+ID4gaW4gdGhlIGJvZHkgb2YgYSBtZXNzYWdlIHRvIG1h
+am9yZG9tb0B2Z2VyLmtlcm5lbC5vcmcgTW9yZSBtYWpvcmRvbW8NCj4gPiBpbmZvIGF0ICBodHRw
+Oi8vdmdlci5rZXJuZWwub3JnL21ham9yZG9tby1pbmZvLmh0bWwNCj4gPg0KPiANCj4gLS0NCj4g
+VG8gdW5zdWJzY3JpYmUgZnJvbSB0aGlzIGxpc3Q6IHNlbmQgdGhlIGxpbmUgInVuc3Vic2NyaWJl
+IGxpbnV4LXJkbWEiIGluIHRoZSBib2R5DQo+IG9mIGEgbWVzc2FnZSB0byBtYWpvcmRvbW9Admdl
+ci5rZXJuZWwub3JnIE1vcmUgbWFqb3Jkb21vIGluZm8gYXQNCj4gaHR0cDovL3ZnZXIua2VybmVs
+Lm9yZy9tYWpvcmRvbW8taW5mby5odG1sDQo=
