@@ -1,12 +1,12 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wg0-f50.google.com ([74.125.82.50]:36382 "EHLO
-	mail-wg0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753109AbbC0Pos (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Mar 2015 11:44:48 -0400
-Received: by wgra20 with SMTP id a20so103286723wgr.3
-        for <linux-nfs@vger.kernel.org>; Fri, 27 Mar 2015 08:44:46 -0700 (PDT)
-Message-ID: <55157AEB.7020705@profitbricks.com>
-Date: Fri, 27 Mar 2015 16:44:43 +0100
+Received: from mail-wi0-f175.google.com ([209.85.212.175]:38590 "EHLO
+	mail-wi0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752581AbbC0Pp3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Mar 2015 11:45:29 -0400
+Received: by wibgn9 with SMTP id gn9so36700367wib.1
+        for <linux-nfs@vger.kernel.org>; Fri, 27 Mar 2015 08:45:28 -0700 (PDT)
+Message-ID: <55157B15.3040400@profitbricks.com>
+Date: Fri, 27 Mar 2015 16:45:25 +0100
 From: Michael Wang <yun.wang@profitbricks.com>
 MIME-Version: 1.0
 To: Roland Dreier <roland@kernel.org>, Sean Hefty <sean.hefty@intel.com>,
@@ -35,7 +35,7 @@ CC: "J. Bruce Fields" <bfields@fieldses.org>,
         Steve Wise <swise@opengridcomputing.com>, Tom Tucker <tom@ogc.us>,
         Chuck Lever <chuck.lever@oracle.com>,
         Michael Wang <yun.wang@profitbricks.com>
-Subject: [RFC PATCH 04/11] IB/Verbs: Use management helper cap_smi() for smi-check
+Subject: [RFC PATCH 05/11] IB/Verbs: Use management helper has_cm() for cm-check
 References: <551579CA.4030901@profitbricks.com>
 In-Reply-To: <551579CA.4030901@profitbricks.com>
 Content-Type: text/plain; charset=utf-8
@@ -43,8 +43,8 @@ Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-Introduce helper cap_smi() to help us check if the port of an
-IB device support Subnet Management Interface.
+Introduce helper has_cm() to help us check if an IB device
+support Communication Manager.
 
 Cc: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
 Cc: Doug Ledford <dledford@redhat.com>
@@ -52,77 +52,104 @@ Cc: Ira Weiny <ira.weiny@intel.com>
 Cc: Sean Hefty <sean.hefty@intel.com>
 Signed-off-by: Michael Wang <yun.wang@profitbricks.com>
 ---
- drivers/infiniband/core/agent.c  |  2 +-
- drivers/infiniband/core/mad.c    |  2 +-
- drivers/infiniband/hw/mlx4/mad.c |  2 +-
- include/rdma/ib_verbs.h          | 15 +++++++++++++++
- 4 files changed, 18 insertions(+), 3 deletions(-)
+ drivers/infiniband/core/cm.c  |  2 +-
+ drivers/infiniband/core/cma.c | 10 ++++------
+ drivers/infiniband/core/ucm.c |  2 +-
+ include/rdma/ib_verbs.h       | 13 +++++++++++++
+ 4 files changed, 19 insertions(+), 8 deletions(-)
 
-diff --git a/drivers/infiniband/core/agent.c b/drivers/infiniband/core/agent.c
-index 27f1bec..187514a 100644
---- a/drivers/infiniband/core/agent.c
-+++ b/drivers/infiniband/core/agent.c
-@@ -156,7 +156,7 @@ int ib_agent_port_open(struct ib_device *device, int port_num)
-         goto error1;
-     }
+diff --git a/drivers/infiniband/core/cm.c b/drivers/infiniband/core/cm.c
+index 2c72e9e..5c1f01b 100644
+--- a/drivers/infiniband/core/cm.c
++++ b/drivers/infiniband/core/cm.c
+@@ -3762,7 +3762,7 @@ static void cm_add_one(struct ib_device *ib_device)
+     int ret;
+     u8 i;
  
--    if (rdma_port_ll_is_ib(device, port_num)) {
-+    if (cap_smi(device, port_num)) {
-         /* Obtain send only MAD agent for SMI QP */
-         port_priv->agent[0] = ib_register_mad_agent(device, port_num,
-                                 IB_QPT_SMI, NULL, 0,
-diff --git a/drivers/infiniband/core/mad.c b/drivers/infiniband/core/mad.c
-index 896b749..c5d1ebb5b 100644
---- a/drivers/infiniband/core/mad.c
-+++ b/drivers/infiniband/core/mad.c
-@@ -2938,7 +2938,7 @@ static int ib_mad_port_open(struct ib_device *device,
-     init_mad_qp(port_priv, &port_priv->qp_info[1]);
+-    if (!rdma_transport_is_ib(ib_device))
++    if (!has_cm(ib_device))
+         return;
  
-     cq_size = mad_sendq_size + mad_recvq_size;
--    has_smi = rdma_port_ll_is_ib(device, port_num);
-+    has_smi = cap_smi(device, port_num);
-     if (has_smi)
-         cq_size *= 2;
+     cm_dev = kzalloc(sizeof(*cm_dev) + sizeof(*port) *
+diff --git a/drivers/infiniband/core/cma.c b/drivers/infiniband/core/cma.c
+index 280cfe3..276fb76 100644
+--- a/drivers/infiniband/core/cma.c
++++ b/drivers/infiniband/core/cma.c
+@@ -433,7 +433,7 @@ static int cma_resolve_ib_dev(struct rdma_id_private *id_priv)
+     pkey = ntohs(addr->sib_pkey);
  
-diff --git a/drivers/infiniband/hw/mlx4/mad.c b/drivers/infiniband/hw/mlx4/mad.c
-index 4736fc7..09874d0 100644
---- a/drivers/infiniband/hw/mlx4/mad.c
-+++ b/drivers/infiniband/hw/mlx4/mad.c
-@@ -1753,7 +1753,7 @@ static int create_pv_resources(struct ib_device *ibdev, int slave, int port,
+     list_for_each_entry(cur_dev, &dev_list, list) {
+-        if (!rdma_transport_is_ib(cur_dev->device))
++        if (!has_cm(cur_dev->device))
+             continue;
  
-     ctx->state = DEMUX_PV_STATE_STARTING;
-     /* have QP0 only if link layer is IB */
--    if (rdma_port_ll_is_ib(ibdev, ctx->port))
-+    if (cap_smi(ibdev, ctx->port))
-         ctx->has_smi = 1;
+         for (p = 1; p <= cur_dev->device->phys_port_cnt; ++p) {
+@@ -631,7 +631,7 @@ static int cma_modify_qp_rtr(struct rdma_id_private *id_priv,
+     if (ret)
+         goto out;
  
-     if (ctx->has_smi) {
+-    if (rdma_transport_is_ib(id_priv->cma_dev->device) &&
++    if (has_cm(id_priv->cma_dev->device) &&
+         rdma_port_ll_is_eth(id_priv->id.device, id_priv->id.port_num)) {
+         ret = rdma_addr_find_smac_by_sgid(&sgid, qp_attr.smac, NULL);
+ 
+@@ -1620,8 +1620,7 @@ static void cma_listen_on_dev(struct rdma_id_private *id_priv,
+     struct rdma_cm_id *id;
+     int ret;
+ 
+-    if (cma_family(id_priv) == AF_IB &&
+-        !rdma_transport_is_ib(cma_dev->device))
++    if (cma_family(id_priv) == AF_IB && !has_cm(cma_dev->device))
+         return;
+ 
+     id = rdma_create_id(cma_listen_handler, id_priv, id_priv->id.ps,
+@@ -2022,8 +2021,7 @@ static int cma_bind_loopback(struct rdma_id_private *id_priv)
+     cma_dev = NULL;
+     mutex_lock(&lock);
+     list_for_each_entry(cur_dev, &dev_list, list) {
+-        if (cma_family(id_priv) == AF_IB &&
+-            !rdma_transport_is_ib(cur_dev->device))
++        if (cma_family(id_priv) == AF_IB && !has_cm(cur_dev->device))
+             continue;
+ 
+         if (!cma_dev)
+diff --git a/drivers/infiniband/core/ucm.c b/drivers/infiniband/core/ucm.c
+index ddbe0b4..7084181 100644
+--- a/drivers/infiniband/core/ucm.c
++++ b/drivers/infiniband/core/ucm.c
+@@ -1253,7 +1253,7 @@ static void ib_ucm_add_one(struct ib_device *device)
+     dev_t base;
+     struct ib_ucm_device *ucm_dev;
+ 
+-    if (!device->alloc_ucontext || !rdma_transport_is_ib(device))
++    if (!device->alloc_ucontext || !has_cm(device))
+         return;
+ 
+     ucm_dev = kzalloc(sizeof *ucm_dev, GFP_KERNEL);
 diff --git a/include/rdma/ib_verbs.h b/include/rdma/ib_verbs.h
-index 7b2bfe8..3d06178 100644
+index 3d06178..c0a63f8 100644
 --- a/include/rdma/ib_verbs.h
 +++ b/include/rdma/ib_verbs.h
-@@ -1796,6 +1796,21 @@ static inline int has_mad(struct ib_device *device)
-     return rdma_transport_is_ib(device);
+@@ -1797,6 +1797,19 @@ static inline int has_mad(struct ib_device *device)
  }
  
-+/**
-+ * cap_smi - Check if the port of device has the capability
-+ * Subnet Management Interface.
+ /**
++ * has_cm - Check if a device support Communication Manager.
 + *
 + * @device: Device to be checked
-+ * @port_num: Port number of the device
 + *
-+ * Return 0 when port of the device don't support
-+ * Subnet Management Interface.
++ * Return 0 when a device has none port to support Communication
++ * Manager.
 + */
-+static inline int cap_smi(struct ib_device *device, u8 port_num)
++static inline int has_cm(struct ib_device *device)
 +{
-+    return rdma_port_ll_is_ib(device, port_num);
++    return rdma_transport_is_ib(device);
 +}
 +
- int ib_query_gid(struct ib_device *device,
-          u8 port_num, int index, union ib_gid *gid);
- 
++/**
+  * cap_smi - Check if the port of device has the capability
+  * Subnet Management Interface.
+  *
 -- 
 2.1.0
 
