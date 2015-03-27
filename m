@@ -1,16 +1,16 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wi0-f177.google.com ([209.85.212.177]:34567 "EHLO
-	mail-wi0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753969AbbC0Qwd (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Mar 2015 12:52:33 -0400
+Received: from mail-wi0-f173.google.com ([209.85.212.173]:38071 "EHLO
+	mail-wi0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754076AbbC0Qwb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Mar 2015 12:52:31 -0400
 From: Andreas Gruenbacher <andreas.gruenbacher@gmail.com>
 To: Trond Myklebust <trond.myklebust@primarydata.com>,
         Anna Schumaker <anna.schumaker@netapp.com>,
         linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-nfs@vger.kernel.org
-Subject: [RFC 37/39] nfs: Remove unused xdr page offsets in getacl/setacl arguments
-Date: Fri, 27 Mar 2015 17:50:35 +0100
-Message-Id: <bcf29860331e9de07b7a90f7d5c6ceba5dc8aa9c.1427471526.git.agruenba@redhat.com>
+Subject: [RFC 36/39] nfs3: Return posix acl encode errors
+Date: Fri, 27 Mar 2015 17:50:34 +0100
+Message-Id: <9c3090e1997518306025ddd0c55dccbc8d97c130.1427471526.git.agruenba@redhat.com>
 In-Reply-To: <cover.1427471526.git.agruenba@redhat.com>
 References: <cover.1427471526.git.agruenba@redhat.com>
 In-Reply-To: <cover.1427471526.git.agruenba@redhat.com>
@@ -18,89 +18,35 @@ References: <cover.1427471526.git.agruenba@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The arguments passed around for getacl and setacl xdr encoding, struct
-nfs_setaclargs and struct nfs_getaclargs, both contain an array of pages, an
-offset into the first page, and the length of the page data. The offset is
-unused as it is always zero; remove it.
+When an error occurs when encoding a posix acl, return the error instead of
+causing a BUG().
 
 Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
 ---
- fs/nfs/nfs4proc.c       | 5 ++---
- fs/nfs/nfs4xdr.c        | 4 ++--
- include/linux/nfs_xdr.h | 2 --
- 3 files changed, 4 insertions(+), 7 deletions(-)
+ fs/nfs/nfs3xdr.c | 7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 627f37c..8c50670 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -4440,7 +4440,7 @@ static inline int nfs4_server_supports_acls(struct nfs_server *server)
- #define NFS4ACL_MAXPAGES DIV_ROUND_UP(XATTR_SIZE_MAX, PAGE_SIZE)
- 
- static int buf_to_pages_noslab(const void *buf, size_t buflen,
--		struct page **pages, unsigned int *pgbase)
-+		struct page **pages)
- {
- 	struct page *newpage, **spages;
- 	int rc = 0;
-@@ -4584,7 +4584,6 @@ static ssize_t __nfs4_get_acl_uncached(struct inode *inode, void *buf, size_t bu
- 		goto out_free;
- 
- 	args.acl_len = npages * PAGE_SIZE;
--	args.acl_pgbase = 0;
- 
- 	dprintk("%s  buf %p buflen %zu npages %d args.acl_len %zu\n",
- 		__func__, buf, buflen, npages, args.acl_len);
-@@ -4676,7 +4675,7 @@ static int __nfs4_proc_set_acl(struct inode *inode, const void *buf, size_t bufl
- 		return -EOPNOTSUPP;
- 	if (npages > ARRAY_SIZE(pages))
- 		return -ERANGE;
--	i = buf_to_pages_noslab(buf, buflen, arg.acl_pages, &arg.acl_pgbase);
-+	i = buf_to_pages_noslab(buf, buflen, arg.acl_pages);
- 	if (i < 0)
- 		return i;
- 	nfs4_inode_return_delegation(inode);
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index ba9a6b8..5accaf5 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -1644,7 +1644,7 @@ encode_setacl(struct xdr_stream *xdr, struct nfs_setaclargs *arg, struct compoun
- 	*p = cpu_to_be32(FATTR4_WORD0_ACL);
- 	p = reserve_space(xdr, 4);
- 	*p = cpu_to_be32(arg->acl_len);
--	xdr_write_pages(xdr, arg->acl_pages, arg->acl_pgbase, arg->acl_len);
-+	xdr_write_pages(xdr, arg->acl_pages, 0, arg->acl_len);
- }
- 
- static void
-@@ -2517,7 +2517,7 @@ static int nfs4_xdr_enc_getacl(struct rpc_rqst *req, struct xdr_stream *xdr,
- 	encode_getattr_two(xdr, FATTR4_WORD0_ACL, 0, &hdr);
- 
- 	xdr_inline_pages(&req->rq_rcv_buf, replen << 2,
--		args->acl_pages, args->acl_pgbase, args->acl_len);
-+		args->acl_pages, 0, args->acl_len);
- 
- 	encode_nops(&hdr);
+diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
+index 8b880f7..de6f12c 100644
+--- a/fs/nfs/nfs3xdr.c
++++ b/fs/nfs/nfs3xdr.c
+@@ -1384,13 +1384,14 @@ static int nfs3_xdr_enc_setacl3args(struct rpc_rqst *req,
+ 	error = nfsacl_encode(xdr->buf, base, args->inode,
+ 			    (args->mask & NFS_ACL) ?
+ 			    args->acl_access : NULL, 1, 0);
+-	/* FIXME: this is just broken */
+-	BUG_ON(error < 0);
++	if (error < 0)
++		return error;
+ 	error = nfsacl_encode(xdr->buf, base + error, args->inode,
+ 			    (args->mask & NFS_DFACL) ?
+ 			    args->acl_default : NULL, 1,
+ 			    NFS_ACL_DEFAULT);
+-	BUG_ON(error < 0);
++	if (error < 0)
++		return error;
  	return 0;
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 4cb3eaa..92134cf 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -640,7 +640,6 @@ struct nfs_setaclargs {
- 	struct nfs4_sequence_args	seq_args;
- 	struct nfs_fh *			fh;
- 	size_t				acl_len;
--	unsigned int			acl_pgbase;
- 	struct page **			acl_pages;
- };
- 
-@@ -652,7 +651,6 @@ struct nfs_getaclargs {
- 	struct nfs4_sequence_args 	seq_args;
- 	struct nfs_fh *			fh;
- 	size_t				acl_len;
--	unsigned int			acl_pgbase;
- 	struct page **			acl_pages;
- };
+ }
  
 -- 
 2.1.0
