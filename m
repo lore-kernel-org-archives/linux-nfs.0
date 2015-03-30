@@ -1,42 +1,113 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtprelay0024.hostedemail.com ([216.40.44.24]:45758 "EHLO
+Received: from smtprelay0072.hostedemail.com ([216.40.44.72]:45884 "EHLO
 	smtprelay.hostedemail.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1753362AbbC3Xx6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Mar 2015 19:53:58 -0400
-Received: from smtprelay.hostedemail.com (10.5.19.251.rfc1918.com [10.5.19.251])
-	by smtpgrave04.hostedemail.com (Postfix) with ESMTP id 182BEB1DC0
-	for <linux-nfs@vger.kernel.org>; Mon, 30 Mar 2015 23:47:45 +0000 (UTC)
+	by vger.kernel.org with ESMTP id S1753581AbbC3XyF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Mar 2015 19:54:05 -0400
 From: Joe Perches <joe@perches.com>
-To: linux-kernel@vger.kernel.org, "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 15/25] nfsd: nfs4state: Use bool function return values of true/false not 1/0
-Date: Mon, 30 Mar 2015 16:46:13 -0700
-Message-Id: <e4691019bb72de53b949ea8784da676c95478b55.1427759009.git.joe@perches.com>
-In-Reply-To: <cover.1427759009.git.joe@perches.com>
-References: <cover.1427759009.git.joe@perches.com>
+To: linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
+        kvmarm@lists.cs.columbia.edu, kvm@vger.kernel.org,
+        linux-omap@vger.kernel.org, kvm-ppc@vger.kernel.org,
+        virtualization@lists.linux-foundation.org,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-ide@vger.kernel.org, kgdb-bugreport@lists.sourceforge.net,
+        linux-mm@kvack.org, linux-pm@vger.kernel.org, netdev@vger.kernel.org,
+        alsa-devel@alsa-project.org, bridge@lists.linux-foundation.org,
+        netfilter-devel@vger.kernel.org, coreteam@netfilter.org,
+        patches@opensource.wolfsonmicro.com
+Cc: linux-hexagon@vger.kernel.org, linux-ia64@vger.kernel.org,
+        linux-mips@linux-mips.org, linuxppc-dev@lists.ozlabs.org,
+        linux-s390@vger.kernel.org, sparclinux@vger.kernel.org,
+        linux-scsi@vger.kernel.org, linux-security-module@vger.kernel.org
+Subject: [PATCH 00/25] treewide: Use bool function return values of true/false not 1/0
+Date: Mon, 30 Mar 2015 16:45:58 -0700
+Message-Id: <cover.1427759009.git.joe@perches.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Use the normal return values for bool functions
+Joe Perches (25):
+  arm: Use bool function return values of true/false not 1/0
+  arm64: Use bool function return values of true/false not 1/0
+  hexagon: Use bool function return values of true/false not 1/0
+  ia64: Use bool function return values of true/false not 1/0
+  mips: Use bool function return values of true/false not 1/0
+  powerpc: Use bool function return values of true/false not 1/0
+  s390: Use bool function return values of true/false not 1/0
+  sparc: Use bool function return values of true/false not 1/0
+  tile: Use bool function return values of true/false not 1/0
+  unicore32: Use bool function return values of true/false not 1/0
+  x86: Use bool function return values of true/false not 1/0
+  virtio_console: Use bool function return values of true/false not 1/0
+  csiostor: Use bool function return values of true/false not 1/0
+  dcache: Use bool function return values of true/false not 1/0
+  nfsd: nfs4state: Use bool function return values of true/false not 1/0
+  include/linux: Use bool function return values of true/false not 1/0
+  sound: Use bool function return values of true/false not 1/0
+  rcu: tree_plugin: Use bool function return values of true/false not 1/0
+  sched: Use bool function return values of true/false not 1/0
+  ftrace: Use bool function return values of true/false not 1/0
+  slub: Use bool function return values of true/false not 1/0
+  bridge: Use bool function return values of true/false not 1/0
+  netfilter: Use bool function return values of true/false not 1/0
+  security: Use bool function return values of true/false not 1/0
+  sound: wm5100-tables: Use bool function return values of true/false not 1/0
 
-Signed-off-by: Joe Perches <joe@perches.com>
----
- fs/nfsd/nfs4state.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ arch/arm/include/asm/dma-mapping.h           |  8 ++--
+ arch/arm/include/asm/kvm_emulate.h           |  2 +-
+ arch/arm/mach-omap2/powerdomain.c            | 14 +++---
+ arch/arm64/include/asm/dma-mapping.h         |  2 +-
+ arch/hexagon/include/asm/dma-mapping.h       |  2 +-
+ arch/ia64/include/asm/dma-mapping.h          |  2 +-
+ arch/mips/include/asm/dma-mapping.h          |  2 +-
+ arch/powerpc/include/asm/dcr-native.h        |  2 +-
+ arch/powerpc/include/asm/dma-mapping.h       |  4 +-
+ arch/powerpc/include/asm/kvm_book3s_64.h     |  4 +-
+ arch/powerpc/sysdev/dcr.c                    |  2 +-
+ arch/s390/include/asm/dma-mapping.h          |  2 +-
+ arch/sparc/mm/init_64.c                      |  8 ++--
+ arch/tile/include/asm/dma-mapping.h          |  2 +-
+ arch/unicore32/include/asm/dma-mapping.h     |  2 +-
+ arch/x86/include/asm/archrandom.h            |  2 +-
+ arch/x86/include/asm/dma-mapping.h           |  2 +-
+ arch/x86/include/asm/kvm_para.h              |  2 +-
+ arch/x86/kvm/cpuid.h                         |  2 +-
+ arch/x86/kvm/vmx.c                           | 72 ++++++++++++++--------------
+ drivers/char/virtio_console.c                |  2 +-
+ drivers/scsi/csiostor/csio_scsi.c            |  4 +-
+ fs/dcache.c                                  | 12 ++---
+ fs/nfsd/nfs4state.c                          |  2 +-
+ include/linux/blkdev.h                       |  2 +-
+ include/linux/ide.h                          |  2 +-
+ include/linux/kgdb.h                         |  2 +-
+ include/linux/mfd/db8500-prcmu.h             |  2 +-
+ include/linux/mm.h                           |  2 +-
+ include/linux/power_supply.h                 |  8 ++--
+ include/linux/ssb/ssb_driver_extif.h         |  2 +-
+ include/linux/ssb/ssb_driver_gige.h          | 16 +++----
+ include/sound/soc.h                          |  4 +-
+ kernel/rcu/tree_plugin.h                     |  4 +-
+ kernel/sched/auto_group.h                    |  2 +-
+ kernel/sched/completion.c                    | 16 ++++---
+ kernel/trace/ftrace.c                        | 10 ++--
+ mm/slub.c                                    | 12 ++---
+ net/bridge/br_private.h                      |  2 +-
+ net/ipv4/netfilter/ipt_ah.c                  |  2 +-
+ net/netfilter/ipset/ip_set_hash_ip.c         |  8 ++--
+ net/netfilter/ipset/ip_set_hash_ipmark.c     |  8 ++--
+ net/netfilter/ipset/ip_set_hash_ipport.c     |  8 ++--
+ net/netfilter/ipset/ip_set_hash_ipportip.c   |  8 ++--
+ net/netfilter/ipset/ip_set_hash_ipportnet.c  |  8 ++--
+ net/netfilter/ipset/ip_set_hash_net.c        |  8 ++--
+ net/netfilter/ipset/ip_set_hash_netiface.c   |  8 ++--
+ net/netfilter/ipset/ip_set_hash_netport.c    |  8 ++--
+ net/netfilter/ipset/ip_set_hash_netportnet.c |  8 ++--
+ net/netfilter/xt_connlimit.c                 |  2 +-
+ net/netfilter/xt_hashlimit.c                 |  2 +-
+ net/netfilter/xt_ipcomp.c                    |  2 +-
+ security/apparmor/file.c                     |  8 ++--
+ security/apparmor/policy.c                   | 10 ++--
+ sound/soc/codecs/wm5100-tables.c             | 12 ++---
+ 55 files changed, 178 insertions(+), 176 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 26e9baa..fbb8dcb 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -2603,7 +2603,7 @@ out_no_session:
- static bool nfsd4_compound_in_session(struct nfsd4_session *session, struct nfs4_sessionid *sid)
- {
- 	if (!session)
--		return 0;
-+		return false;
- 	return !memcmp(sid, &session->se_sessionid, sizeof(*sid));
- }
- 
 -- 
 2.1.2
 
