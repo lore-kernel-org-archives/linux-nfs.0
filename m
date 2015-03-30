@@ -1,138 +1,72 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f178.google.com ([209.85.213.178]:36625 "EHLO
-	mail-ig0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752933AbbC3Sfi (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Mar 2015 14:35:38 -0400
-Subject: [PATCH v3 14/15] xprtrdma: Handle non-SEND completions via a callout
-From: Chuck Lever <chuck.lever@oracle.com>
-To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 30 Mar 2015 14:35:35 -0400
-Message-ID: <20150330183535.7856.6413.stgit@manet.1015granger.net>
-In-Reply-To: <20150330182615.7856.61170.stgit@manet.1015granger.net>
-References: <20150330182615.7856.61170.stgit@manet.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mailrelay107.isp.belgacom.be ([195.238.20.134]:48291 "EHLO
+	mailrelay107.isp.belgacom.be" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753645AbbC3VNs (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Mar 2015 17:13:48 -0400
+From: Fabian Frederick <fabf@skynet.be>
+To: linux-kernel@vger.kernel.org
+Cc: Fabian Frederick <fabf@skynet.be>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        "David S. Miller" <davem@davemloft.net>, linux-nfs@vger.kernel.org,
+        netdev@vger.kernel.org
+Subject: [PATCH 7/9 net-next] sunrpc: replace if/BUG by BUG_ON
+Date: Mon, 30 Mar 2015 23:13:15 +0200
+Message-Id: <1427749998-28464-7-git-send-email-fabf@skynet.be>
+In-Reply-To: <1427749998-28464-1-git-send-email-fabf@skynet.be>
+References: <1427749998-28464-1-git-send-email-fabf@skynet.be>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Allow each memory registration mode to plug in a callout that handles
-the completion of a memory registration operation.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Reviewed-by: Sagi Grimberg <sagig@mellanox.com>
-Tested-by: Devesh Sharma <Devesh.Sharma@Emulex.Com>
-Tested-by: Meghana Cheripady <Meghana.Cheripady@Emulex.Com>
-Tested-by: Veeresh U. Kokatnur <veereshuk@chelsio.com>
+Signed-off-by: Fabian Frederick <fabf@skynet.be>
 ---
- net/sunrpc/xprtrdma/frwr_ops.c  |   17 +++++++++++++++++
- net/sunrpc/xprtrdma/verbs.c     |   16 ++++++----------
- net/sunrpc/xprtrdma/xprt_rdma.h |    5 +++++
- 3 files changed, 28 insertions(+), 10 deletions(-)
+ net/sunrpc/auth_gss/svcauth_gss.c | 9 +++------
+ net/sunrpc/svc_xprt.c             | 3 +--
+ 2 files changed, 4 insertions(+), 8 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
-index e17d54d..ea59c1b 100644
---- a/net/sunrpc/xprtrdma/frwr_ops.c
-+++ b/net/sunrpc/xprtrdma/frwr_ops.c
-@@ -117,6 +117,22 @@ frwr_op_maxpages(struct rpcrdma_xprt *r_xprt)
- 		     rpcrdma_max_segments(r_xprt) * ia->ri_max_frmr_depth);
- }
+diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
+index 1095be9..09f8a1c6 100644
+--- a/net/sunrpc/auth_gss/svcauth_gss.c
++++ b/net/sunrpc/auth_gss/svcauth_gss.c
+@@ -840,11 +840,9 @@ unwrap_integ_data(struct svc_rqst *rqstp, struct xdr_buf *buf, u32 seq, struct g
+ 		return stat;
+ 	if (integ_len > buf->len)
+ 		return stat;
+-	if (xdr_buf_subsegment(buf, &integ_buf, 0, integ_len))
+-		BUG();
++	BUG_ON(xdr_buf_subsegment(buf, &integ_buf, 0, integ_len));
+ 	/* copy out mic... */
+-	if (read_u32_from_xdr_buf(buf, integ_len, &mic.len))
+-		BUG();
++	BUG_ON(read_u32_from_xdr_buf(buf, integ_len, &mic.len));
+ 	if (mic.len > RPC_MAX_AUTH_SIZE)
+ 		return stat;
+ 	mic.data = kmalloc(mic.len, GFP_KERNEL);
+@@ -1595,8 +1593,7 @@ svcauth_gss_wrap_resp_integ(struct svc_rqst *rqstp)
+ 	BUG_ON(integ_len % 4);
+ 	*p++ = htonl(integ_len);
+ 	*p++ = htonl(gc->gc_seq);
+-	if (xdr_buf_subsegment(resbuf, &integ_buf, integ_offset, integ_len))
+-		BUG();
++	BUG_ON(xdr_buf_subsegment(resbuf, &integ_buf, integ_offset, integ_len));
+ 	if (resbuf->tail[0].iov_base == NULL) {
+ 		if (resbuf->head[0].iov_len + RPC_MAX_AUTH_SIZE > PAGE_SIZE)
+ 			goto out_err;
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index 163ac45..2f82e8b 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -960,8 +960,7 @@ static void svc_delete_xprt(struct svc_xprt *xprt)
+ 	struct svc_deferred_req *dr;
  
-+/* If FAST_REG or LOCAL_INV failed, indicate the frmr needs to be reset. */
-+static void
-+frwr_sendcompletion(struct ib_wc *wc)
-+{
-+	struct rpcrdma_mw *r;
-+
-+	if (likely(wc->status == IB_WC_SUCCESS))
-+		return;
-+
-+	/* WARNING: Only wr_id and status are reliable at this point */
-+	r = (struct rpcrdma_mw *)(unsigned long)wc->wr_id;
-+	dprintk("RPC:       %s: frmr %p (stale), status %d\n",
-+		__func__, r, wc->status);
-+	r->r.frmr.fr_state = FRMR_IS_STALE;
-+}
-+
- static int
- frwr_op_init(struct rpcrdma_xprt *r_xprt)
- {
-@@ -148,6 +164,7 @@ frwr_op_init(struct rpcrdma_xprt *r_xprt)
+ 	/* Only do this once */
+-	if (test_and_set_bit(XPT_DEAD, &xprt->xpt_flags))
+-		BUG();
++	BUG_ON(test_and_set_bit(XPT_DEAD, &xprt->xpt_flags));
  
- 		list_add(&r->mw_list, &buf->rb_mws);
- 		list_add(&r->mw_all, &buf->rb_all);
-+		r->mw_sendcompletion = frwr_sendcompletion;
- 	}
- 
- 	return 0;
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index b697b3e..cac06f2 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -186,7 +186,7 @@ static const char * const wc_status[] = {
- 	"remote access error",
- 	"remote operation error",
- 	"transport retry counter exceeded",
--	"RNR retrycounter exceeded",
-+	"RNR retry counter exceeded",
- 	"local RDD violation error",
- 	"remove invalid RD request",
- 	"operation aborted",
-@@ -204,21 +204,17 @@ static const char * const wc_status[] = {
- static void
- rpcrdma_sendcq_process_wc(struct ib_wc *wc)
- {
--	if (likely(wc->status == IB_WC_SUCCESS))
--		return;
--
- 	/* WARNING: Only wr_id and status are reliable at this point */
--	if (wc->wr_id == 0ULL) {
--		if (wc->status != IB_WC_WR_FLUSH_ERR)
-+	if (wc->wr_id == RPCRDMA_IGNORE_COMPLETION) {
-+		if (wc->status != IB_WC_SUCCESS &&
-+		    wc->status != IB_WC_WR_FLUSH_ERR)
- 			pr_err("RPC:       %s: SEND: %s\n",
- 			       __func__, COMPLETION_MSG(wc->status));
- 	} else {
- 		struct rpcrdma_mw *r;
- 
- 		r = (struct rpcrdma_mw *)(unsigned long)wc->wr_id;
--		r->r.frmr.fr_state = FRMR_IS_STALE;
--		pr_err("RPC:       %s: frmr %p (stale): %s\n",
--		       __func__, r, COMPLETION_MSG(wc->status));
-+		r->mw_sendcompletion(wc);
- 	}
- }
- 
-@@ -1622,7 +1618,7 @@ rpcrdma_ep_post(struct rpcrdma_ia *ia,
- 	}
- 
- 	send_wr.next = NULL;
--	send_wr.wr_id = 0ULL;	/* no send cookie */
-+	send_wr.wr_id = RPCRDMA_IGNORE_COMPLETION;
- 	send_wr.sg_list = req->rl_send_iov;
- 	send_wr.num_sge = req->rl_niovs;
- 	send_wr.opcode = IB_WR_SEND;
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index 9036fb4..54bcbe4 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -106,6 +106,10 @@ struct rpcrdma_ep {
- #define INIT_CQCOUNT(ep) atomic_set(&(ep)->rep_cqcount, (ep)->rep_cqinit)
- #define DECR_CQCOUNT(ep) atomic_sub_return(1, &(ep)->rep_cqcount)
- 
-+/* Force completion handler to ignore the signal
-+ */
-+#define RPCRDMA_IGNORE_COMPLETION	(0ULL)
-+
- /* Registered buffer -- registered kmalloc'd memory for RDMA SEND/RECV
-  *
-  * The below structure appears at the front of a large region of kmalloc'd
-@@ -206,6 +210,7 @@ struct rpcrdma_mw {
- 		struct ib_fmr		*fmr;
- 		struct rpcrdma_frmr	frmr;
- 	} r;
-+	void			(*mw_sendcompletion)(struct ib_wc *);
- 	struct list_head	mw_list;
- 	struct list_head	mw_all;
- };
+ 	dprintk("svc: svc_delete_xprt(%p)\n", xprt);
+ 	xprt->xpt_ops->xpo_detach(xprt);
+-- 
+1.9.1
 
