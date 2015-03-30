@@ -1,89 +1,73 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.linuxfoundation.org ([140.211.169.12]:46143 "EHLO
-	mail.linuxfoundation.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752701AbbC3Oi2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Mar 2015 10:38:28 -0400
-Date: Mon, 30 Mar 2015 16:38:23 +0200
-From: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] debugfs: debugfs_create_* shouldn't be checking
- permissions
-Message-ID: <20150330143823.GA10992@kroah.com>
-References: <20150330142310.GB6901@fieldses.org>
+Received: from mail-wg0-f49.google.com ([74.125.82.49]:36306 "EHLO
+	mail-wg0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752736AbbC3PKQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Mar 2015 11:10:16 -0400
+Received: by wgra20 with SMTP id a20so177890551wgr.3
+        for <linux-nfs@vger.kernel.org>; Mon, 30 Mar 2015 08:10:15 -0700 (PDT)
+Message-ID: <55196754.5010600@profitbricks.com>
+Date: Mon, 30 Mar 2015 17:10:12 +0200
+From: Michael Wang <yun.wang@profitbricks.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20150330142310.GB6901@fieldses.org>
+To: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>,
+        "ira.weiny" <ira.weiny@intel.com>
+CC: Roland Dreier <roland@kernel.org>, Sean Hefty <sean.hefty@intel.com>,
+        Hal Rosenstock <hal.rosenstock@gmail.com>, linux-rdma@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        netdev@vger.kernel.org, "J. Bruce Fields" <bfields@fieldses.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        "David S. Miller" <davem@davemloft.net>,
+        Or Gerlitz <ogerlitz@mellanox.com>, Moni Shoua <monis@mellanox.com>,
+        PJ Waskiewicz <pj.waskiewicz@solidfire.com>,
+        Tatyana Nikolova <Tatyana.E.Nikolova@intel.com>,
+        Yan Burman <yanb@mellanox.com>,
+        Jack Morgenstein <jackm@dev.mellanox.co.il>,
+        Bart Van Assche <bvanassche@acm.org>,
+        Yann Droneaud <ydroneaud@opteya.com>,
+        Colin Ian King <colin.king@canonical.com>,
+        Majd Dibbiny <majd@mellanox.com>, Jiri Kosina <jkosina@suse.cz>,
+        Matan Barak <matanb@mellanox.com>, Alex Estrin <alex.estrin@intel.com>,
+        Doug Ledford <dledford@redhat.com>, Eric Dumazet <edumazet@google.com>,
+        Erez Shitrit <erezsh@mellanox.com>, Sagi Grimberg <sagig@mellanox.com>,
+        Haggai Eran <haggaie@mellanox.com>,
+        Shachar Raindel <raindel@mellanox.com>,
+        Mike Marciniszyn <mike.marciniszyn@intel.com>,
+        Steve Wise <swise@opengridcomputing.com>, Tom Tucker <tom@ogc.us>,
+        Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [RFC PATCH 08/11] IB/Verbs: Use management helper has_iwarp()
+ for, iwarp-check
+References: <551579CA.4030901@profitbricks.com> <55157B98.1060103@profitbricks.com> <20150327161319.GB28412@obsidianresearch.com> <20150327171631.GC27862@phlsvsds.ph.intel.com> <20150327172912.GA28901@obsidianresearch.com>
+In-Reply-To: <20150327172912.GA28901@obsidianresearch.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Mar 30, 2015 at 10:23:10AM -0400, J. Bruce Fields wrote:
-> From: "J. Bruce Fields" <bfields@redhat.com>
-> 
-> Subject: [PATCH] debugfs: debugfs_create_* shouldn't be checking permissions
-> 
-> Debugfs files and and directories are created by kernel subsystems not
-> directly by users, so we shouldn't be using lookup_one_len, which checks
-> permissions.
-> 
-> This was causing krb5 mounts to fail to Fedora servers using gss-proxy
-> if selinux was enabled, on kernels since 388f0c776781 "sunrpc: add a
-> debugfs rpc_xprt directory with an info file in it", which creates a new
-> debugfs directory for each new rpc client.
+On 03/27/2015 06:29 PM, Jason Gunthorpe wrote:
+> On Fri, Mar 27, 2015 at 01:16:31PM -0400, ira.weiny wrote:
+>> [snip]
+> http://www.spinics.net/lists/linux-rdma/msg22565.html
+>
+> ''Unlike IB, the iWARP protocol only allows 1 target/sink SGE in an
+> rdma read''
+>
+> It is one of those annoying verbs is different on iWarp things.
+>
+> So the max sge in the query_verbs must only apply to send/rdma write
+> on iWarp?
+I found that actually we don't have to touch this one which
+only used by HW driver currently.
 
-No kernel code should care / fail if a debugfs function fails, so please
-fix up the sunrpc code first.
+I think we can leave these scenes there in device driver, since
+vendor could have different way to classify the usage of transfer
+and link layer.
 
+Our purpose is to introduce IB core management approach, which
+may not be applicable on device level, maybe we can just pass them :-)
 
-
-> 
-> Reported-by: Anthony Messina <amessina@messinet.com>
-> Reported-by: Jason Tibbits <tibbs@math.uh.edu>
-> Cc: Jeff Layton <jlayton@primarydata.com>
-> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> ---
->  fs/debugfs/inode.c | 17 +++++++++++++----
->  1 file changed, 13 insertions(+), 4 deletions(-)
-> 
-> I swiped this code fragment from net/sunrpc/rpc_pipe.c, and it's gotten
-> only minimal testing.  (It does fix krb5 mounts, though.)
-> 
-> diff --git a/fs/debugfs/inode.c b/fs/debugfs/inode.c
-> index 96400ab42d13..75e5daa6a63f 100644
-> --- a/fs/debugfs/inode.c
-> +++ b/fs/debugfs/inode.c
-> @@ -251,6 +251,7 @@ static struct dentry *start_creating(const char *name, struct dentry *parent)
->  {
->  	struct dentry *dentry;
->  	int error;
-> +	struct qstr q = QSTR_INIT(name, strlen(name));
->  
->  	pr_debug("debugfs: creating file '%s'\n",name);
->  
-> @@ -268,11 +269,19 @@ static struct dentry *start_creating(const char *name, struct dentry *parent)
->  		parent = debugfs_mount->mnt_root;
->  
->  	mutex_lock(&parent->d_inode->i_mutex);
-> -	dentry = lookup_one_len(name, parent, strlen(name));
-> -	if (!IS_ERR(dentry) && dentry->d_inode) {
-> +	dentry = d_hash_and_lookup(parent, &q);
-> +	if (!dentry) {
-> +		dentry = d_alloc(parent, &q);
-> +		if (!dentry) {
-> +			dentry = ERR_PTR(-ENOMEM);
-> +			goto out;
-> +		}
-> +	}
-> +	if (dentry->d_inode) {
+Regards,
+Michael Wang
 
 
-No, I'd rather not "open code" lookup_one_len() if at all possible
-please.
+>
+> Jason
 
-What exactly is the problem here that the sunrpc code is failing from?
-Is it just interacting with selinux?  How is the debugfs code to blame
-here?
-
-thanks,
-
-greg k-h
