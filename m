@@ -1,11 +1,11 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:45786 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:53064 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752860AbbC3QQf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 30 Mar 2015 12:16:35 -0400
-Message-ID: <1427732191.21101.201.camel@redhat.com>
-Subject: Re: [RFC PATCH 06/11] IB/Verbs: Use management helper has_sa() and
- cap_sa(), for sa-check
+	id S1752767AbbC3QRe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 30 Mar 2015 12:17:34 -0400
+Message-ID: <1427732250.21101.202.camel@redhat.com>
+Subject: Re: [RFC PATCH 02/11] IB/Verbs: Use management helper tech_iboe()
+ for iboe-check
 From: Doug Ledford <dledford@redhat.com>
 To: Michael Wang <yun.wang@profitbricks.com>
 Cc: Roland Dreier <roland@kernel.org>, Sean Hefty <sean.hefty@intel.com>,
@@ -31,28 +31,26 @@ Cc: Roland Dreier <roland@kernel.org>, Sean Hefty <sean.hefty@intel.com>,
         Mike Marciniszyn <mike.marciniszyn@intel.com>,
         Steve Wise <swise@opengridcomputing.com>, Tom Tucker <tom@ogc.us>,
         Chuck Lever <chuck.lever@oracle.com>
-Date: Mon, 30 Mar 2015 12:16:31 -0400
-In-Reply-To: <55157B43.6060507@profitbricks.com>
+Date: Mon, 30 Mar 2015 12:17:30 -0400
+In-Reply-To: <55157A4F.1090301@profitbricks.com>
 References: <551579CA.4030901@profitbricks.com>
-	 <55157B43.6060507@profitbricks.com>
+	 <55157A4F.1090301@profitbricks.com>
 Content-Type: multipart/signed; micalg="pgp-sha1"; protocol="application/pgp-signature";
-	boundary="=-5ADd0vGoGV4ieV93aC5H"
+	boundary="=-/0N6b25DvOTNJA4/Cn5h"
 Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
---=-5ADd0vGoGV4ieV93aC5H
+--=-/0N6b25DvOTNJA4/Cn5h
 Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: quoted-printable
 
-On Fri, 2015-03-27 at 16:46 +0100, Michael Wang wrote:
-> Introduce helper has_sa() and cap_sa() to help us check if an IB device
-> or it's port support Subnet Administrator.
+On Fri, 2015-03-27 at 16:42 +0100, Michael Wang wrote:
+> Introduce helper tech_iboe() to help us check if the port of an IB
+> device is using RoCE/IBoE technology.
 
-There's no functional reason to have both rdma_transport_is_ib and
-rdma_port_ll_is_ib, just use one.  Then there is also no reason for both
-has_sa and cap_sa.  Just use one.
+Just use rdma_transport_is_roce() instead.
 
 > Cc: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
 > Cc: Doug Ledford <dledford@redhat.com>
@@ -60,113 +58,63 @@ has_sa and cap_sa.  Just use one.
 > Cc: Sean Hefty <sean.hefty@intel.com>
 > Signed-off-by: Michael Wang <yun.wang@profitbricks.com>
 > ---
->  drivers/infiniband/core/sa_query.c | 12 ++++++------
->  include/rdma/ib_verbs.h            | 28 ++++++++++++++++++++++++++++
->  2 files changed, 34 insertions(+), 6 deletions(-)
+>  drivers/infiniband/core/cma.c |  6 ++----
+>  include/rdma/ib_verbs.h       | 16 ++++++++++++++++
+>  2 files changed, 18 insertions(+), 4 deletions(-)
 >=20
-> diff --git a/drivers/infiniband/core/sa_query.c b/drivers/infiniband/core=
-/sa_query.c
-> index d95d25f..89c27da 100644
-> --- a/drivers/infiniband/core/sa_query.c
-> +++ b/drivers/infiniband/core/sa_query.c
-> @@ -450,7 +450,7 @@ static void ib_sa_event(struct ib_event_handler *hand=
-ler, struct ib_event *event
->          struct ib_sa_port *port =3D
->              &sa_dev->port[event->element.port_num - sa_dev->start_port];
-> =20
-> -        if (!rdma_port_ll_is_ib(handler->device, port->port_num))
-> +        if (!cap_sa(handler->device, port->port_num))
->              return;
-> =20
->          spin_lock_irqsave(&port->ah_lock, flags);
-> @@ -1154,7 +1154,7 @@ static void ib_sa_add_one(struct ib_device *device)
->      struct ib_sa_device *sa_dev;
->      int s, e, i;
-> =20
-> -    if (!rdma_transport_is_ib(device))
-> +    if (!has_sa(device))
->          return;
-> =20
->      if (device->node_type =3D=3D RDMA_NODE_IB_SWITCH)
-> @@ -1175,7 +1175,7 @@ static void ib_sa_add_one(struct ib_device *device)
-> =20
->      for (i =3D 0; i <=3D e - s; ++i) {
->          spin_lock_init(&sa_dev->port[i].ah_lock);
-> -        if (!rdma_port_ll_is_ib(device, i + 1))
-> +        if (!cap_sa(device, i + 1))
->              continue;
-> =20
->          sa_dev->port[i].sm_ah    =3D NULL;
-> @@ -1205,14 +1205,14 @@ static void ib_sa_add_one(struct ib_device *devic=
-e)
->          goto err;
-> =20
->      for (i =3D 0; i <=3D e - s; ++i)
-> -        if (rdma_port_ll_is_ib(device, i + 1))
-> +        if (cap_sa(device, i + 1))
->              update_sm_ah(&sa_dev->port[i].update_task);
-> =20
->      return;
-> =20
->  err:
->      while (--i >=3D 0)
-> -        if (rdma_port_ll_is_ib(device, i + 1))
-> +        if (cap_sa(device, i + 1))
->              ib_unregister_mad_agent(sa_dev->port[i].agent);
-> =20
->      kfree(sa_dev);
-> @@ -1233,7 +1233,7 @@ static void ib_sa_remove_one(struct ib_device *devi=
-ce)
->      flush_workqueue(ib_wq);
-> =20
->      for (i =3D 0; i <=3D sa_dev->end_port - sa_dev->start_port; ++i) {
-> -        if (rdma_port_ll_is_ib(device, i + 1)) {
-> +        if (cap_sa(device, i + 1)) {
->              ib_unregister_mad_agent(sa_dev->port[i].agent);
->              if (sa_dev->port[i].sm_ah)
->                  kref_put(&sa_dev->port[i].sm_ah->ref, free_sm_ah);
+> diff --git a/drivers/infiniband/core/cma.c b/drivers/infiniband/core/cma.=
+c
+> index 668e955..280cfe3 100644
+> --- a/drivers/infiniband/core/cma.c
+> +++ b/drivers/infiniband/core/cma.c
+> @@ -375,8 +375,7 @@ static int cma_acquire_dev(struct rdma_id_private *id=
+_priv,
+>                       listen_id_priv->id.port_num) =3D=3D dev_ll) {
+>          cma_dev =3D listen_id_priv->cma_dev;
+>          port =3D listen_id_priv->id.port_num;
+> -        if (rdma_transport_is_ib(cma_dev->device) &&
+> -            rdma_port_ll_is_eth(cma_dev->device, port))
+> +        if (tech_iboe(cma_dev->device, port))
+>              ret =3D ib_find_cached_gid(cma_dev->device, &iboe_gid,
+>                           &found_port, NULL);
+>          else
+> @@ -395,8 +394,7 @@ static int cma_acquire_dev(struct rdma_id_private *id=
+_priv,
+>                  listen_id_priv->id.port_num =3D=3D port)
+>                  continue;
+>              if (rdma_port_get_link_layer(cma_dev->device, port) =3D=3D d=
+ev_ll) {
+> -                if (rdma_transport_is_ib(cma_dev->device) &&
+> -                    rdma_port_ll_is_eth(cma_dev->device, port))
+> +                if (tech_iboe(cma_dev->device, port))
+>                      ret =3D ib_find_cached_gid(cma_dev->device, &iboe_gi=
+d, &found_port, NULL);
+>                  else
+>                      ret =3D ib_find_cached_gid(cma_dev->device, &gid, &f=
+ound_port, NULL);
 > diff --git a/include/rdma/ib_verbs.h b/include/rdma/ib_verbs.h
-> index c0a63f8..fa8ffa3 100644
+> index 2bf9094..ca6d6bc 100644
 > --- a/include/rdma/ib_verbs.h
 > +++ b/include/rdma/ib_verbs.h
-> @@ -1810,6 +1810,19 @@ static inline int has_cm(struct ib_device *device)
->  }
-> =20
->  /**
-> + * has_sa - Check if a device support Subnet Administrator.
-> + *
-> + * @device: Device to be checked
-> + *
-> + * Return 0 when a device has none port to support
-> + * Subnet Administrator.
-> + */
-> +static inline int has_sa(struct ib_device *device)
-> +{
-> +    return rdma_transport_is_ib(device);
-> +}
-> +
-> +/**
->   * cap_smi - Check if the port of device has the capability
->   * Subnet Management Interface.
->   *
-> @@ -1824,6 +1837,21 @@ static inline int cap_smi(struct ib_device *device=
-, u8 port_num)
->      return rdma_port_ll_is_ib(device, port_num);
+> @@ -1767,6 +1767,22 @@ static inline int rdma_port_ll_is_eth(struct ib_de=
+vice *device, u8 port_num)
+>              =3D=3D IB_LINK_LAYER_ETHERNET;
 >  }
 > =20
 > +/**
-> + * cap_sa - Check if the port of device has the capability
-> + * Subnet Administrator.
+> + * tech_iboe - Check if the port of device using technology
+> + * RoCE/IBoE.
 > + *
 > + * @device: Device to be checked
 > + * @port_num: Port number of the device
 > + *
-> + * Return 0 when port of the device don't support
-> + * Subnet Administrator.
+> + * Return 0 when port of the device is not using technology
+> + * RoCE/IBoE.
 > + */
-> +static inline int cap_sa(struct ib_device *device, u8 port_num)
+> +static inline int tech_iboe(struct ib_device *device, u8 port_num)
 > +{
-> +    return rdma_port_ll_is_ib(device, port_num);
+> +    return rdma_transport_is_ib(device) &&
+> +            rdma_port_ll_is_eth(device, port_num);
 > +}
 > +
 >  int ib_query_gid(struct ib_device *device,
@@ -180,7 +128,7 @@ Doug Ledford <dledford@redhat.com>
 
 
 
---=-5ADd0vGoGV4ieV93aC5H
+--=-/0N6b25DvOTNJA4/Cn5h
 Content-Type: application/pgp-signature; name="signature.asc"
 Content-Description: This is a digitally signed message part
 Content-Transfer-Encoding: 7bit
@@ -188,20 +136,20 @@ Content-Transfer-Encoding: 7bit
 -----BEGIN PGP SIGNATURE-----
 Version: GnuPG v2
 
-iQIcBAABAgAGBQJVGXbfAAoJELgmozMOVy/dAgAP/1iMoOpy0bgbs5+3lbDuZmdD
-w78Ilt3a4lmtxBLeUiSol0+EeCYwMD7grc0ynQkeYZ4Yj8ll69vJwZ27RvaE8XLl
-Ivgaq8IfgugYICH5VBpAks7aFuBIuCIO5RSKu58D5B3CjSxl+H1X3taSCHSJhl9Y
-Jqdep8JZSCQVhcvirJz03zmAv0Zr4LvXH0py6evGKA/b5wEmtTQHr5Z+Rs1K21CQ
-OdTpRa/YC1VBAJVz8H8Y6ufssvVgRKGjuGB0rBabWY17We3VuQMLol4UOIE4wnhi
-j07II8zZtlRchlRbtGpXs3FMKomsncMcY2ecg6ZZO7PomgNIjmsnCVKiSVHshiXz
-BY2XQt1AOVqTH0Sp5LgOjTrjVGMT3E0FQ/dN2DVq86InJARiGcSCInJPxgg8EgT5
-3md3H/qnXU4yTBAZTOLQI05ztgYSHigyH7O4xRaHtOpDydoa/xu7Sm3wo0GopU4r
-y9g3/wPPCrGO/S76Zd39nC0JyYYxaid0bkSOXzEXoE5gRVVD7Pv70QHZxJs5Zimm
-pLRYaDO58rHw8itwm6CBeSBWxT5topNTOMO3n+JXxlWhyy9oo5zIzI1pyc57folp
-OsKPSeOJHJ3TKw96hAd0RlK1Cju4mcUsEr7wKDmYYhtvRUvkmVbagyN211NsiqII
-viCxFvKGS9XcZCrxWpjv
-=1wC6
+iQIcBAABAgAGBQJVGXcaAAoJELgmozMOVy/dfOsP/1qrdA8/BgOwJ1r5SBQCRsPE
+KVMzguH1Mbg6r/0xy2mx5JPDTdkZcaHtDg9dq/ZXu+cmBPNhgxsgZcktGc+2U364
+2WEFSioUSHBQ61WVTNLLOXACgqdG3ZVSNSwU8u1MuMqTO0vgUQWIEbY56U6nfgSw
+VEtZ/jINz7Uh29xFyzrgG+saG9x5NKzThi9OuP7p8mebvvemF0dheogB0hMko9xq
+w8gcn0c0j0QQ9Y/Excbre1Tq7RvnsfY2Akk6G2IFjuOPsjmWo29DtztTahQQH399
+ov+JKCa674jJpowbXSzL7sqfuB/oBTWgvh3vmr9EcCPLqulKP9FPuz9gjGZGBFxS
+B4Zl2ENfu1t3Ji6wC+VXXza3eh+948DRUSqn0+YzOj9R3opLrDq7w+qmxvXH26Kj
+W8YNaBebUsT6/3JM4/v5vxuGgDrmckVpgTBaEpt7YBMuhFgT/gdcfKhqxSt5erOl
+LPJ73tYohejnjqS1L0jVnbPbNNXLTbfZXKgtCQZ+WwrEaxVpJUjDFUxbKy4hTwVE
+wUdeGI9HSA9NEHx+0HYGC19fkBOToHCNQiVNkge7rc0v9tAVH+LboyqPooLIy8+w
+iSAnNg+HzpH4+klD6eW0wO7ogt54Kacf+6p1NmNOZB/dp2qqdqVuvxC+fGsmGbfS
+NxjfJ5ezm+Nv0fp42r+G
+=oiy4
 -----END PGP SIGNATURE-----
 
---=-5ADd0vGoGV4ieV93aC5H--
+--=-/0N6b25DvOTNJA4/Cn5h--
 
