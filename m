@@ -1,83 +1,66 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wi0-f179.google.com ([209.85.212.179]:36424 "EHLO
-	mail-wi0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753293AbbCaN65 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 31 Mar 2015 09:58:57 -0400
-Received: by wixo5 with SMTP id o5so14816122wix.1
-        for <linux-nfs@vger.kernel.org>; Tue, 31 Mar 2015 06:58:56 -0700 (PDT)
-Message-ID: <551AA81C.30701@profitbricks.com>
-Date: Tue, 31 Mar 2015 15:58:52 +0200
-From: Michael Wang <yun.wang@profitbricks.com>
+Received: from mail-qg0-f52.google.com ([209.85.192.52]:33143 "EHLO
+	mail-qg0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752677AbbCaODF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 31 Mar 2015 10:03:05 -0400
+Received: by qgfa8 with SMTP id a8so15026890qgf.0
+        for <linux-nfs@vger.kernel.org>; Tue, 31 Mar 2015 07:03:03 -0700 (PDT)
+Date: Tue, 31 Mar 2015 10:02:51 -0400
+From: Jeff Layton <jeff.layton@primarydata.com>
+To: Christoph Hellwig <hch@lst.de>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfsd: require an explicit option to enable pNFS
+Message-ID: <20150331100251.3108467f@tlielax.poochiereds.net>
+In-Reply-To: <1427733989-30051-1-git-send-email-hch@lst.de>
+References: <1427733989-30051-1-git-send-email-hch@lst.de>
 MIME-Version: 1.0
-To: Tom Talpey <tom@talpey.com>,
-        Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
-CC: "ira.weiny" <ira.weiny@intel.com>, Roland Dreier <roland@kernel.org>,
-        Sean Hefty <sean.hefty@intel.com>,
-        Hal Rosenstock <hal.rosenstock@gmail.com>, linux-rdma@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        netdev@vger.kernel.org, "J. Bruce Fields" <bfields@fieldses.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        "David S. Miller" <davem@davemloft.net>,
-        Or Gerlitz <ogerlitz@mellanox.com>, Moni Shoua <monis@mellanox.com>,
-        PJ Waskiewicz <pj.waskiewicz@solidfire.com>,
-        Tatyana Nikolova <Tatyana.E.Nikolova@intel.com>,
-        Yan Burman <yanb@mellanox.com>,
-        Jack Morgenstein <jackm@dev.mellanox.co.il>,
-        Bart Van Assche <bvanassche@acm.org>,
-        Yann Droneaud <ydroneaud@opteya.com>,
-        Colin Ian King <colin.king@canonical.com>,
-        Majd Dibbiny <majd@mellanox.com>, Jiri Kosina <jkosina@suse.cz>,
-        Matan Barak <matanb@mellanox.com>, Alex Estrin <alex.estrin@intel.com>,
-        Doug Ledford <dledford@redhat.com>, Eric Dumazet <edumazet@google.com>,
-        Erez Shitrit <erezsh@mellanox.com>, Sagi Grimberg <sagig@mellanox.com>,
-        Haggai Eran <haggaie@mellanox.com>,
-        Shachar Raindel <raindel@mellanox.com>,
-        Mike Marciniszyn <mike.marciniszyn@intel.com>,
-        Steve Wise <swise@opengridcomputing.com>, Tom Tucker <tom@ogc.us>,
-        Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [RFC PATCH 08/11] IB/Verbs: Use management helper has_iwarp()
- for, iwarp-check
-References: <551579CA.4030901@profitbricks.com> <55157B98.1060103@profitbricks.com> <20150327161319.GB28412@obsidianresearch.com> <20150327171631.GC27862@phlsvsds.ph.intel.com> <20150327172912.GA28901@obsidianresearch.com> <55196754.5010600@profitbricks.com> <20150330223528.GB27728@obsidianresearch.com> <551A4F24.6090405@profitbricks.com> <551A82D3.70806@talpey.com> <551A87D3.2070306@profitbricks.com> <551AA78D.4040502@talpey.com>
-In-Reply-To: <551AA78D.4040502@talpey.com>
-Content-Type: text/plain; charset=windows-1252
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 03/31/2015 03:42 PM, Tom Talpey wrote:
+On Mon, 30 Mar 2015 18:46:29 +0200
+Christoph Hellwig <hch@lst.de> wrote:
 
-> On 3/31/2015 7:41 AM, Michael Wang wrote:
->> [snip]
-> Yes, in fact the iWARP protocol does not preclude multiple read SGEs,
-> even though most iWARP implementations have chosen to support just one.
->
-> Even for multi-SGE-capable adapters, there is a limit of SGL size, based
-> on the adapter's work request format and other factors. So my argument
-> is that upper layers can and should query that, not make a blanket
-> decision based on protocol type.
+> Turns out sending out layouts to any client is a bad idea if they
+> can't get at the storage device, so require explicit admin action
+> to enable pNFS.
+> 
+> Signed-off-by: Christoph Hellwig <hch@lst.de>
+> ---
+>  fs/nfsd/nfs4layouts.c            | 2 +-
+>  include/uapi/linux/nfsd/export.h | 2 +-
+>  2 files changed, 2 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4layouts.c b/fs/nfsd/nfs4layouts.c
+> index f4e8da2..9a8254b 100644
+> --- a/fs/nfsd/nfs4layouts.c
+> +++ b/fs/nfsd/nfs4layouts.c
+> @@ -118,7 +118,7 @@ void nfsd4_setup_layout_type(struct svc_export *exp)
+>  {
+>  	struct super_block *sb = exp->ex_path.mnt->mnt_sb;
+>  
+> -	if (exp->ex_flags & NFSEXP_NOPNFS)
+> +	if (!(exp->ex_flags & NFSEXP_PNFS))
+>  		return;
+>  
+>  	if (sb->s_export_op->get_uuid &&
+> diff --git a/include/uapi/linux/nfsd/export.h b/include/uapi/linux/nfsd/export.h
+> index 4742f2c..d3bd6ffe 100644
+> --- a/include/uapi/linux/nfsd/export.h
+> +++ b/include/uapi/linux/nfsd/export.h
+> @@ -47,7 +47,7 @@
+>   * exported filesystem.
+>   */
+>  #define	NFSEXP_V4ROOT		0x10000
+> -#define NFSEXP_NOPNFS		0x20000
+> +#define NFSEXP_PNFS		0x20000
+>  
+>  /* All flags that we claim to support.  (Note we don't support NOACL.) */
+>  #define NFSEXP_ALLFLAGS		0x3FE7F
 
-Thanks for the explanation  Sounds like some new callback on device level
-like query_device() to acquire the right info.
+Don't you also need to update the expflags array in fs/nfsd/export.c?
+You won't see this flag reported in nfsd.export otherwise. Not sure how
+big a problem that is however...
 
->> I currently only find this one place where infer max-read-sges from
->> transport type, it looks more like a special case to me rather than a generic
->> method we could exposed... and also  not very related with IB management
->> helper concept IMHO.
-> It is most certainly not a special case, but you could decide to
-> introduce it in many ways. I'm not commenting on that.
->
-> My main concern is that you do not introduce a new and clumsy "is iWARP"
-> rule as an adapter-specific API requirement to expose the RDMA Read SGE
-> behavior. That's what your initial message seemed to imply?
-
-Yeah I planed to just use rdma_transport_iwarp() to replace the check, it's
-actually meaningless but just refine, frankly speaking I would prefer some
-driver developer to work on that part, at this point I prefer to focus on
-introducing the management helpers firstly 
-
-Maybe we could mark it as a TODO temporarily, if later we found more
-scenes using similar logical, we can collect them and do some reform 
-
-Regards,
-Michael Wang
-
-
+-- 
+Jeff Layton <jeff.layton@primarydata.com>
