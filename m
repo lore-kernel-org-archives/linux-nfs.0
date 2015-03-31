@@ -1,72 +1,118 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:49667 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:47529 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751030AbbCaUrC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 31 Mar 2015 16:47:02 -0400
-Date: Tue, 31 Mar 2015 16:47:01 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfsd: Remove duplicate macro define for max sec label
- length
-Message-ID: <20150331204701.GR6901@fieldses.org>
-References: <5516CCC1.2090608@gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <5516CCC1.2090608@gmail.com>
+	id S1752458AbbCaUsk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 31 Mar 2015 16:48:40 -0400
+Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id t2VKmeHh003800
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
+	for <linux-nfs@vger.kernel.org>; Tue, 31 Mar 2015 16:48:40 -0400
+From: Scott Mayhew <smayhew@redhat.com>
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [nfs-utils PATCH] mountd: Enable all auth flavors on pseudofs exports
+Date: Tue, 31 Mar 2015 16:48:39 -0400
+Message-Id: <1427834919-46591-1-git-send-email-smayhew@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Mar 28, 2015 at 11:46:09PM +0800, Kinglong Mee wrote:
-> NFS4_MAXLABELLEN has defined for sec label max length, use it directly.
+With the current mountd code it's possible to craft exports in such a
+manner that clients will be unable to mount exports that they *should*
+be able to mount.
 
-Thanks, applying for 4.1--b.
+Consider the following example:
 
-> 
-> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
-> ---
->  fs/nfsd/nfs4proc.c | 2 +-
->  fs/nfsd/nfs4xdr.c  | 2 +-
->  fs/nfsd/xdr4.h     | 1 -
->  3 files changed, 2 insertions(+), 3 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> index d30bea8..6bd4391 100644
-> --- a/fs/nfsd/nfs4proc.c
-> +++ b/fs/nfsd/nfs4proc.c
-> @@ -1815,7 +1815,7 @@ static inline u32 nfsd4_getattr_rsize(struct svc_rqst *rqstp,
->  		bmap0 &= ~FATTR4_WORD0_FILEHANDLE;
->  	}
->  	if (bmap2 & FATTR4_WORD2_SECURITY_LABEL) {
-> -		ret += NFSD4_MAX_SEC_LABEL_LEN + 12;
-> +		ret += NFS4_MAXLABELLEN + 12;
->  		bmap2 &= ~FATTR4_WORD2_SECURITY_LABEL;
->  	}
->  	/*
-> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-> index df5e66c..eff0a94 100644
-> --- a/fs/nfsd/nfs4xdr.c
-> +++ b/fs/nfsd/nfs4xdr.c
-> @@ -424,7 +424,7 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
->  		len += 4;
->  		dummy32 = be32_to_cpup(p++);
->  		READ_BUF(dummy32);
-> -		if (dummy32 > NFSD4_MAX_SEC_LABEL_LEN)
-> +		if (dummy32 > NFS4_MAXLABELLEN)
->  			return nfserr_badlabel;
->  		len += (XDR_QUADLEN(dummy32) << 2);
->  		READMEM(buf, dummy32);
-> diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-> index 0bda93e..8bae5d8 100644
-> --- a/fs/nfsd/xdr4.h
-> +++ b/fs/nfsd/xdr4.h
-> @@ -40,7 +40,6 @@
->  #include "state.h"
->  #include "nfsd.h"
->  
-> -#define NFSD4_MAX_SEC_LABEL_LEN	2048
->  #define NFSD4_MAX_TAGLEN	128
->  #define XDR_LEN(n)                     (((n) + 3) & ~3)
->  
-> -- 
-> 2.3.4
+/foo	*(rw,insecure,no_root_squash,sec=krb5p)
+/bar	client.example.com(rw,insecure,no_root_squash)
+
+Initially, client.example.com will be able to mount the /foo export
+using sec=krb5p, but attempts to mount /bar using sec=sys will return
+EPERM.  Once the nfsd.export cache entry expires, client.example.com
+will then be able to mount /bar using sec=sys but attempts to mount /foo
+using sec=krb5p will return EPERM.
+
+The reason this happens is because the initial nfsd.export cache entry
+is actually pre-populated by nfsd_fh(), which is the handler for the
+nfsd.fh cache, while later cache requests (once the initial entry
+expires) are handled by nfsd_export().  These functions have slightly
+different logic in how they select a v4root export from the cache --
+nfsd_fh() takes last matching v4root export it finds, while
+nfsd_export() (actually lookup_export()) takes the first.  Either way
+it's wrong because the client should be able to mount both exports.
+
+Both rfc3503bis and rfc5661 say:
+
+   A common and convenient practice, unless strong security requirements
+   dictate otherwise, is to make the entire pseudo file system
+   accessible by all of the valid security mechanisms.
+
+...so lets do that.
+
+Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+---
+ utils/mountd/v4root.c | 19 ++++++++++---------
+ 1 file changed, 10 insertions(+), 9 deletions(-)
+
+diff --git a/utils/mountd/v4root.c b/utils/mountd/v4root.c
+index 34d098a..0f60efc 100644
+--- a/utils/mountd/v4root.c
++++ b/utils/mountd/v4root.c
+@@ -26,6 +26,7 @@
+ #include "nfslib.h"
+ #include "misc.h"
+ #include "v4root.h"
++#include "pseudoflavors.h"
+ 
+ int v4root_needed;
+ 
+@@ -56,22 +57,22 @@ static nfs_export pseudo_root = {
+ };
+ 
+ static void
+-set_pseudofs_security(struct exportent *pseudo, struct exportent *source)
++set_pseudofs_security(struct exportent *pseudo, int flags)
+ {
+-	struct sec_entry *se;
++	struct flav_info *flav;
+ 	int i;
+ 
+-	if (source->e_flags & NFSEXP_INSECURE_PORT)
++	if (flags & NFSEXP_INSECURE_PORT)
+ 		pseudo->e_flags |= NFSEXP_INSECURE_PORT;
+-	if ((source->e_flags & NFSEXP_ROOTSQUASH) == 0)
++	if ((flags & NFSEXP_ROOTSQUASH) == 0)
+ 		pseudo->e_flags &= ~NFSEXP_ROOTSQUASH;
+-	for (se = source->e_secinfo; se->flav; se++) {
++	for (flav = flav_map; flav < flav_map + flav_map_size; flav++) {
+ 		struct sec_entry *new;
+ 
+-		i = secinfo_addflavor(se->flav, pseudo);
++		i = secinfo_addflavor(flav, pseudo);
+ 		new = &pseudo->e_secinfo[i];
+ 
+-		if (se->flags & NFSEXP_INSECURE_PORT)
++		if (flags & NFSEXP_INSECURE_PORT)
+ 			new->flags |= NFSEXP_INSECURE_PORT;
+ 	}
+ }
+@@ -91,7 +92,7 @@ v4root_create(char *path, nfs_export *export)
+ 	strncpy(eep.e_path, path, sizeof(eep.e_path));
+ 	if (strcmp(path, "/") != 0)
+ 		eep.e_flags &= ~NFSEXP_FSID;
+-	set_pseudofs_security(&eep, curexp);
++	set_pseudofs_security(&eep, curexp->e_flags);
+ 	exp = export_create(&eep, 0);
+ 	if (exp == NULL)
+ 		return NULL;
+@@ -139,7 +140,7 @@ pseudofs_update(char *hostname, char *path, nfs_export *source)
+ 		return 0;
+ 	}
+ 	/* Update an existing V4ROOT export: */
+-	set_pseudofs_security(&exp->m_export, &source->m_export);
++	set_pseudofs_security(&exp->m_export, &source->m_export.e_flags);
+ 	return 0;
+ }
+ 
+-- 
+1.9.3
+
