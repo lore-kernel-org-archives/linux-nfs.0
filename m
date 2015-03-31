@@ -1,330 +1,98 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yh0-f49.google.com ([209.85.213.49]:36152 "EHLO
-	mail-yh0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752657AbbCaRVN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 31 Mar 2015 13:21:13 -0400
-Received: by yhjf44 with SMTP id f44so5486493yhj.3
-        for <linux-nfs@vger.kernel.org>; Tue, 31 Mar 2015 10:21:12 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <20150331171219.GM6901@fieldses.org>
-References: <1427817808-21732-1-git-send-email-jeff.layton@primarydata.com>
-	<20150331171219.GM6901@fieldses.org>
-Date: Tue, 31 Mar 2015 13:21:12 -0400
-Message-ID: <CAHQdGtROxsV5Hhzk8SaCL-EM5MuS_o0sSbm9cx3fG6manZ+4zQ@mail.gmail.com>
-Subject: Re: [PATCH v2] sunrpc: make debugfs file creation failure non-fatal
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+Received: from mailsec110.isp.belgacom.be ([195.238.20.106]:43070 "EHLO
+	mailsec110.isp.belgacom.be" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1750898AbbCaTAm convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 31 Mar 2015 15:00:42 -0400
+Date: Tue, 31 Mar 2015 21:00:41 +0200 (CEST)
+From: Fabian Frederick <fabf@skynet.be>
+Reply-To: Fabian Frederick <fabf@skynet.be>
 To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Jeff Layton <jlayton@poochiereds.net>,
-        Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
-        Linux FS-devel Mailing List <linux-fsdevel@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
+        linux-kernel@vger.kernel.org, "David S. Miller" <davem@davemloft.net>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Julia Lawall <Julia.Lawall@lip6.fr>
+Message-ID: <256862218.214616.1427828441666.open-xchange@webmail.nmp.proximus.be>
+In-Reply-To: <20150330212520.GF6901@fieldses.org>
+References: <1427749998-28464-1-git-send-email-fabf@skynet.be> <1427749998-28464-7-git-send-email-fabf@skynet.be> <20150330212520.GF6901@fieldses.org>
+Subject: Re: [PATCH 7/9 net-next] sunrpc: replace if/BUG by BUG_ON
+MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Mar 31, 2015 at 1:12 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> Trond, this is kind of your baliwick, but do you mind if I take it
-> instead?  It's kind of a pain for my testing currently.
 
-That's fine with me. I don't foresee any other changes to that code
-for this next merge window, so no conflicts are expected.
 
+> On 30 March 2015 at 23:25 "J. Bruce Fields" <bfields@fieldses.org> wrote:
+>
+>
+> Huh, I thought this wasn't recommended:
+>
+>       http://lkml.kernel.org/r/20040828125816.206ef7fa.akpm@osdl.org
+>
+>       "I'd prefer that we not move code which has side-effects into
+>       BUG_ONs"
+
+Thanks for the link, I wasn't aware of that problem. Maybe we should add some
+documentation and fix coccinelle detection then ?
+
+Regards,
+Fabian
+
+>
 > --b.
 >
-> On Tue, Mar 31, 2015 at 12:03:28PM -0400, Jeff Layton wrote:
->> v2: gracefully handle the case where some dentry pointers end up NULL
->>     and be more dilligent about zeroing out dentry pointers
->>
->> We currently have a problem that SELinux policy is being enforced when
->> creating debugfs files. If a debugfs file is created as a side effect of
->> doing some syscall, then that creation can fail if the SELinux policy
->> for that process prevents it.
->>
->> This seems wrong. We don't do that for files under /proc, for instance,
->> so Bruce has proposed a patch to fix that.
->>
->> While discussing that patch however, Greg K.H. stated:
->>
->>     "No kernel code should care / fail if a debugfs function fails, so
->>      please fix up the sunrpc code first."
->>
->> This patch converts all of the sunrpc debugfs setup code to be void
->> return functins, and the callers to not look for errors from those
->> functions.
->>
->> This should allow rpc_clnt and rpc_xprt creation to work, even if the
->> kernel fails to create debugfs files for some reason.
->>
->> Cc: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
->> Acked-by: "J. Bruce Fields" <bfields@fieldses.org>
->> Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
->> ---
->>  include/linux/sunrpc/debug.h | 18 +++++++--------
->>  net/sunrpc/clnt.c            |  4 +---
->>  net/sunrpc/debugfs.c         | 52 ++++++++++++++++++++++++--------------------
->>  net/sunrpc/sunrpc_syms.c     |  7 +-----
->>  net/sunrpc/xprt.c            |  7 +-----
->>  5 files changed, 41 insertions(+), 47 deletions(-)
->>
->> diff --git a/include/linux/sunrpc/debug.h b/include/linux/sunrpc/debug.h
->> index c57d8ea0716c..59a7889e15db 100644
->> --- a/include/linux/sunrpc/debug.h
->> +++ b/include/linux/sunrpc/debug.h
->> @@ -60,17 +60,17 @@ struct rpc_xprt;
->>  #if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
->>  void         rpc_register_sysctl(void);
->>  void         rpc_unregister_sysctl(void);
->> -int          sunrpc_debugfs_init(void);
->> +void         sunrpc_debugfs_init(void);
->>  void         sunrpc_debugfs_exit(void);
->> -int          rpc_clnt_debugfs_register(struct rpc_clnt *);
->> +void         rpc_clnt_debugfs_register(struct rpc_clnt *);
->>  void         rpc_clnt_debugfs_unregister(struct rpc_clnt *);
->> -int          rpc_xprt_debugfs_register(struct rpc_xprt *);
->> +void         rpc_xprt_debugfs_register(struct rpc_xprt *);
->>  void         rpc_xprt_debugfs_unregister(struct rpc_xprt *);
->>  #else
->> -static inline int
->> +static inline void
->>  sunrpc_debugfs_init(void)
->>  {
->> -     return 0;
->> +     return;
->>  }
->>
->>  static inline void
->> @@ -79,10 +79,10 @@ sunrpc_debugfs_exit(void)
->>       return;
->>  }
->>
->> -static inline int
->> +static inline void
->>  rpc_clnt_debugfs_register(struct rpc_clnt *clnt)
->>  {
->> -     return 0;
->> +     return;
->>  }
->>
->>  static inline void
->> @@ -91,10 +91,10 @@ rpc_clnt_debugfs_unregister(struct rpc_clnt *clnt)
->>       return;
->>  }
->>
->> -static inline int
->> +static inline void
->>  rpc_xprt_debugfs_register(struct rpc_xprt *xprt)
->>  {
->> -     return 0;
->> +     return;
->>  }
->>
->>  static inline void
->> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
->> index 612aa73bbc60..e6ce1517367f 100644
->> --- a/net/sunrpc/clnt.c
->> +++ b/net/sunrpc/clnt.c
->> @@ -303,9 +303,7 @@ static int rpc_client_register(struct rpc_clnt *clnt,
->>       struct super_block *pipefs_sb;
->>       int err;
->>
->> -     err = rpc_clnt_debugfs_register(clnt);
->> -     if (err)
->> -             return err;
->> +     rpc_clnt_debugfs_register(clnt);
->>
->>       pipefs_sb = rpc_get_sb_net(net);
->>       if (pipefs_sb) {
->> diff --git a/net/sunrpc/debugfs.c b/net/sunrpc/debugfs.c
->> index e811f390f9f6..82962f7e6e88 100644
->> --- a/net/sunrpc/debugfs.c
->> +++ b/net/sunrpc/debugfs.c
->> @@ -129,48 +129,52 @@ static const struct file_operations tasks_fops = {
->>       .release        = tasks_release,
->>  };
->>
->> -int
->> +void
->>  rpc_clnt_debugfs_register(struct rpc_clnt *clnt)
->>  {
->> -     int len, err;
->> +     int len;
->>       char name[24]; /* enough for "../../rpc_xprt/ + 8 hex digits + NULL */
->> +     struct rpc_xprt *xprt;
->>
->>       /* Already registered? */
->> -     if (clnt->cl_debugfs)
->> -             return 0;
->> +     if (clnt->cl_debugfs || !rpc_clnt_dir)
->> +             return;
->>
->>       len = snprintf(name, sizeof(name), "%x", clnt->cl_clid);
->>       if (len >= sizeof(name))
->> -             return -EINVAL;
->> +             return;
->>
->>       /* make the per-client dir */
->>       clnt->cl_debugfs = debugfs_create_dir(name, rpc_clnt_dir);
->>       if (!clnt->cl_debugfs)
->> -             return -ENOMEM;
->> +             return;
->>
->>       /* make tasks file */
->> -     err = -ENOMEM;
->>       if (!debugfs_create_file("tasks", S_IFREG | S_IRUSR, clnt->cl_debugfs,
->>                                clnt, &tasks_fops))
->>               goto out_err;
->>
->> -     err = -EINVAL;
->>       rcu_read_lock();
->> +     xprt = rcu_dereference(clnt->cl_xprt);
->> +     /* no "debugfs" dentry? Don't bother with the symlink. */
->> +     if (!xprt->debugfs) {
->> +             rcu_read_unlock();
->> +             return;
->> +     }
->>       len = snprintf(name, sizeof(name), "../../rpc_xprt/%s",
->> -                     rcu_dereference(clnt->cl_xprt)->debugfs->d_name.name);
->> +                     xprt->debugfs->d_name.name);
->>       rcu_read_unlock();
->> +
->>       if (len >= sizeof(name))
->>               goto out_err;
->>
->> -     err = -ENOMEM;
->>       if (!debugfs_create_symlink("xprt", clnt->cl_debugfs, name))
->>               goto out_err;
->>
->> -     return 0;
->> +     return;
->>  out_err:
->>       debugfs_remove_recursive(clnt->cl_debugfs);
->>       clnt->cl_debugfs = NULL;
->> -     return err;
->>  }
->>
->>  void
->> @@ -226,33 +230,33 @@ static const struct file_operations xprt_info_fops = {
->>       .release        = xprt_info_release,
->>  };
->>
->> -int
->> +void
->>  rpc_xprt_debugfs_register(struct rpc_xprt *xprt)
->>  {
->>       int len, id;
->>       static atomic_t cur_id;
->>       char            name[9]; /* 8 hex digits + NULL term */
->>
->> +     if (!rpc_xprt_dir)
->> +             return;
->> +
->>       id = (unsigned int)atomic_inc_return(&cur_id);
->>
->>       len = snprintf(name, sizeof(name), "%x", id);
->>       if (len >= sizeof(name))
->> -             return -EINVAL;
->> +             return;
->>
->>       /* make the per-client dir */
->>       xprt->debugfs = debugfs_create_dir(name, rpc_xprt_dir);
->>       if (!xprt->debugfs)
->> -             return -ENOMEM;
->> +             return;
->>
->>       /* make tasks file */
->>       if (!debugfs_create_file("info", S_IFREG | S_IRUSR, xprt->debugfs,
->>                                xprt, &xprt_info_fops)) {
->>               debugfs_remove_recursive(xprt->debugfs);
->>               xprt->debugfs = NULL;
->> -             return -ENOMEM;
->>       }
->> -
->> -     return 0;
->>  }
->>
->>  void
->> @@ -266,14 +270,17 @@ void __exit
->>  sunrpc_debugfs_exit(void)
->>  {
->>       debugfs_remove_recursive(topdir);
->> +     topdir = NULL;
->> +     rpc_clnt_dir = NULL;
->> +     rpc_xprt_dir = NULL;
->>  }
->>
->> -int __init
->> +void __init
->>  sunrpc_debugfs_init(void)
->>  {
->>       topdir = debugfs_create_dir("sunrpc", NULL);
->>       if (!topdir)
->> -             goto out;
->> +             return;
->>
->>       rpc_clnt_dir = debugfs_create_dir("rpc_clnt", topdir);
->>       if (!rpc_clnt_dir)
->> @@ -283,10 +290,9 @@ sunrpc_debugfs_init(void)
->>       if (!rpc_xprt_dir)
->>               goto out_remove;
->>
->> -     return 0;
->> +     return;
->>  out_remove:
->>       debugfs_remove_recursive(topdir);
->>       topdir = NULL;
->> -out:
->> -     return -ENOMEM;
->> +     rpc_clnt_dir = NULL;
->>  }
->> diff --git a/net/sunrpc/sunrpc_syms.c b/net/sunrpc/sunrpc_syms.c
->> index e37fbed87956..ee5d3d253102 100644
->> --- a/net/sunrpc/sunrpc_syms.c
->> +++ b/net/sunrpc/sunrpc_syms.c
->> @@ -98,10 +98,7 @@ init_sunrpc(void)
->>       if (err)
->>               goto out4;
->>
->> -     err = sunrpc_debugfs_init();
->> -     if (err)
->> -             goto out5;
->> -
->> +     sunrpc_debugfs_init();
->>  #if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
->>       rpc_register_sysctl();
->>  #endif
->> @@ -109,8 +106,6 @@ init_sunrpc(void)
->>       init_socket_xprt();     /* clnt sock transport */
->>       return 0;
->>
->> -out5:
->> -     unregister_rpc_pipefs();
->>  out4:
->>       unregister_pernet_subsys(&sunrpc_net_ops);
->>  out3:
->> diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
->> index e3015aede0d9..9949722d99ce 100644
->> --- a/net/sunrpc/xprt.c
->> +++ b/net/sunrpc/xprt.c
->> @@ -1331,7 +1331,6 @@ static void xprt_init(struct rpc_xprt *xprt, struct net *net)
->>   */
->>  struct rpc_xprt *xprt_create_transport(struct xprt_create *args)
->>  {
->> -     int err;
->>       struct rpc_xprt *xprt;
->>       struct xprt_class *t;
->>
->> @@ -1372,11 +1371,7 @@ found:
->>               return ERR_PTR(-ENOMEM);
->>       }
->>
->> -     err = rpc_xprt_debugfs_register(xprt);
->> -     if (err) {
->> -             xprt_destroy(xprt);
->> -             return ERR_PTR(err);
->> -     }
->> +     rpc_xprt_debugfs_register(xprt);
->>
->>       dprintk("RPC:       created transport %p with %u slots\n", xprt,
->>                       xprt->max_reqs);
->> --
->> 2.1.0
+> On Mon, Mar 30, 2015 at 11:13:15PM +0200, Fabian Frederick wrote:
+> > Signed-off-by: Fabian Frederick <fabf@skynet.be>
+> > ---
+> >  net/sunrpc/auth_gss/svcauth_gss.c | 9 +++------
+> >  net/sunrpc/svc_xprt.c             | 3 +--
+> >  2 files changed, 4 insertions(+), 8 deletions(-)
+> >
+> > diff --git a/net/sunrpc/auth_gss/svcauth_gss.c
+> > b/net/sunrpc/auth_gss/svcauth_gss.c
+> > index 1095be9..09f8a1c6 100644
+> > --- a/net/sunrpc/auth_gss/svcauth_gss.c
+> > +++ b/net/sunrpc/auth_gss/svcauth_gss.c
+> > @@ -840,11 +840,9 @@ unwrap_integ_data(struct svc_rqst *rqstp, struct
+> > xdr_buf *buf, u32 seq, struct g
+> >             return stat;
+> >     if (integ_len > buf->len)
+> >             return stat;
+> > -   if (xdr_buf_subsegment(buf, &integ_buf, 0, integ_len))
+> > -           BUG();
+> > +   BUG_ON(xdr_buf_subsegment(buf, &integ_buf, 0, integ_len));
+> >     /* copy out mic... */
+> > -   if (read_u32_from_xdr_buf(buf, integ_len, &mic.len))
+> > -           BUG();
+> > +   BUG_ON(read_u32_from_xdr_buf(buf, integ_len, &mic.len));
+> >     if (mic.len > RPC_MAX_AUTH_SIZE)
+> >             return stat;
+> >     mic.data = kmalloc(mic.len, GFP_KERNEL);
+> > @@ -1595,8 +1593,7 @@ svcauth_gss_wrap_resp_integ(struct svc_rqst *rqstp)
+> >     BUG_ON(integ_len % 4);
+> >     *p++ = htonl(integ_len);
+> >     *p++ = htonl(gc->gc_seq);
+> > -   if (xdr_buf_subsegment(resbuf, &integ_buf, integ_offset, integ_len))
+> > -           BUG();
+> > +   BUG_ON(xdr_buf_subsegment(resbuf, &integ_buf, integ_offset, integ_len));
+> >     if (resbuf->tail[0].iov_base == NULL) {
+> >             if (resbuf->head[0].iov_len + RPC_MAX_AUTH_SIZE > PAGE_SIZE)
+> >                     goto out_err;
+> > diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+> > index 163ac45..2f82e8b 100644
+> > --- a/net/sunrpc/svc_xprt.c
+> > +++ b/net/sunrpc/svc_xprt.c
+> > @@ -960,8 +960,7 @@ static void svc_delete_xprt(struct svc_xprt *xprt)
+> >     struct svc_deferred_req *dr;
+> > 
+> >     /* Only do this once */
+> > -   if (test_and_set_bit(XPT_DEAD, &xprt->xpt_flags))
+> > -           BUG();
+> > +   BUG_ON(test_and_set_bit(XPT_DEAD, &xprt->xpt_flags));
+> > 
+> >     dprintk("svc: svc_delete_xprt(%p)\n", xprt);
+> >     xprt->xpt_ops->xpo_detach(xprt);
+> > --
+> > 1.9.1
