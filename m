@@ -1,49 +1,38 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.tv2.hu ([91.82.156.6]:54013 "EHLO mail.tv2.hu"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752213AbbCaPra convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 31 Mar 2015 11:47:30 -0400
-Received: from autodiscover.intra.tv2.hu ([10.4.1.26] helo=ex-5.intra.tv2.hu)
-	by mail.tv2.hu with esmtp (Exim 4.71)
-	(envelope-from <balazs.gal@tv2.hu>)
-	id 1YcxuJ-00018D-LA
-	for linux-nfs@vger.kernel.org; Tue, 31 Mar 2015 17:16:47 +0200
-From: =?iso-8859-2?Q?G=E1l=2C_Bal=E1zs?= <balazs.gal@tv2.hu>
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Linux kernel 3.18+ blocklayout driver support only 4k pNFS block size
-Date: Tue, 31 Mar 2015 15:16:41 +0000
-Message-ID: <DB3PR03MB0891F4C3C510AB5C7565A4D0BAF40@DB3PR03MB0891.eurprd03.prod.outlook.com>
-Content-Type: text/plain; charset="iso-8859-2"
+Received: from mail-wg0-f54.google.com ([74.125.82.54]:35728 "EHLO
+	mail-wg0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753468AbbCaPsN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 31 Mar 2015 11:48:13 -0400
+Received: by wgdm6 with SMTP id m6so24087216wgd.2
+        for <linux-nfs@vger.kernel.org>; Tue, 31 Mar 2015 08:48:11 -0700 (PDT)
+Message-ID: <551AC1B9.60205@plexistor.com>
+Date: Tue, 31 Mar 2015 18:48:09 +0300
+From: Boaz Harrosh <boaz@plexistor.com>
 MIME-Version: 1.0
+To: Jeff Layton <jlayton@poochiereds.net>,
+        Greg KH <gregkh@linuxfoundation.org>
+CC: "J. Bruce Fields" <bfields@fieldses.org>, trond.myklebust@primarydata.com,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] sunrpc: make debugfs file creation failure non-fatal
+References: <1427752698-32431-1-git-send-email-jeff.layton@primarydata.com>	<20150330234753.GG6901@fieldses.org>	<20150331140916.GJ6901@fieldses.org>	<20150331142641.GA9961@kroah.com> <20150331111146.5b71b395@synchrony.poochiereds.net>
+In-Reply-To: <20150331111146.5b71b395@synchrony.poochiereds.net>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi all!
+On 03/31/2015 06:11 PM, Jeff Layton wrote:
+> On Tue, 31 Mar 2015 16:26:41 +0200
+> Greg KH <gregkh@linuxfoundation.org> wrote:
+> 
+<>
+> We certainly can update the selinux policy to allow gssproxy to do
+> this, but:
+> 
 
-Started with version 3.18 the Linux kernel blocklayout driver will support pNFS servers with pnfs_block_size <= PAGE_SIZE only.
+Or can we update the selinux policy to allow any user access to
+debugfs, since as you said it is always Kernel created ?
 
-You can find this restriction in the fs/nfs/blocklayout/blocklayout.c at the bl_set_layoutdriver function:
 
-	if (server->pnfs_blksize > PAGE_SIZE) {
-		printk(KERN_ERR "%s: pNFS blksize %d not supported.\n",
-			__func__, server->pnfs_blksize);
-		return -EINVAL;
-	}
-
-The page size is 4k on x64, but we use an EMC VNX5300 storage as a pNFS server, which use a hardcoded 8k file system block size.
-So I'm not able to use the VNX pNFS functionality with the current kernel anymore.
-
-As I know, EMC is not the only one solution with the 8k block size, so this can brake lot of product on the market.
-
-There is another issue with the client layout get requests implementation, what will limit the pNFS max file size in 524MB with the maximum 4k layout length in the request.
-This is a normal limitation with other block layout pNFS servers also?
-
-I'm just a dummy user from the broadcast Industry, and I want report it only, but it would be great if this problem can be handled by someone/somehow.
-
-Thanks for your help!
-
-Best regards
-
-BALÁZS GÁL
-
+Thanks
+Boaz
 
