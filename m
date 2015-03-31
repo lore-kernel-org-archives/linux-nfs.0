@@ -1,70 +1,72 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:49656 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:49667 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752095AbbCaUj2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 31 Mar 2015 16:39:28 -0400
-Date: Tue, 31 Mar 2015 16:39:26 -0400
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: nfsd bugfixes for 4.0
-Message-ID: <20150331203926.GO6901@fieldses.org>
+	id S1751030AbbCaUrC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 31 Mar 2015 16:47:02 -0400
+Date: Tue, 31 Mar 2015 16:47:01 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Kinglong Mee <kinglongmee@gmail.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] nfsd: Remove duplicate macro define for max sec label
+ length
+Message-ID: <20150331204701.GR6901@fieldses.org>
+References: <5516CCC1.2090608@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-From: bfields@fieldses.org (J. Bruce Fields)
+In-Reply-To: <5516CCC1.2090608@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Please pull nfsd bugfixes from
+On Sat, Mar 28, 2015 at 11:46:09PM +0800, Kinglong Mee wrote:
+> NFS4_MAXLABELLEN has defined for sec label max length, use it directly.
 
-	git://linux-nfs.org/~bfields/linux.git for-4.0
+Thanks, applying for 4.1--b.
 
-Two main issues:
-
-	- We found that turning on pNFS by default (when it's configured
-	  at build time) was too aggressive, so we want to switch the
-	  default before the 4.0 release.
-
-	- Recent client changes to increase open parallelism uncovered a
-	  serious bug lurking in the server's open code.
-
-Also fix a krb5/selinux regression.
-
-The rest is mainly smaller pNFS fixes.
-
--b.
-
-----------------------------------------------------------------
-Christoph Hellwig (1):
-      nfsd: require an explicit option to enable pNFS
-
-J. Bruce Fields (1):
-      nfsd: return correct lockowner when there is a race on hash insert
-
-Jeff Layton (2):
-      nfsd: return correct openowner when there is a race to put one in the hash
-      sunrpc: make debugfs file creation failure non-fatal
-
-Kinglong Mee (8):
-      NFSD: restore trace event lost in mismerge
-      NFSD: Check layout type when returning client layouts
-      NFSD: Take care the return value from nfsd4_decode_stateid
-      NFSD: Error out when register_shrinker() fail
-      NFSD: Put exports after nfsd4_layout_verify fail
-      NFSD: Printk blocklayout length and offset as format 0x%llx
-      NFSD: Take care the return value from nfsd4_encode_stateid
-      NFSD: Fix bad update of layout in nfsd4_return_file_layout
-
- fs/nfsd/blocklayout.c            |  2 +-
- fs/nfsd/blocklayoutxdr.c         |  6 ++---
- fs/nfsd/nfs4layouts.c            | 12 ++++++----
- fs/nfsd/nfs4proc.c               |  2 +-
- fs/nfsd/nfs4state.c              |  4 ++--
- fs/nfsd/nfs4xdr.c                | 20 ++++++++++++----
- fs/nfsd/nfscache.c               |  6 ++++-
- include/linux/sunrpc/debug.h     | 18 +++++++-------
- include/uapi/linux/nfsd/export.h |  2 +-
- net/sunrpc/clnt.c                |  4 +---
- net/sunrpc/debugfs.c             | 52 ++++++++++++++++++++++------------------
- net/sunrpc/sunrpc_syms.c         |  7 +-----
- net/sunrpc/xprt.c                |  7 +-----
- 13 files changed, 78 insertions(+), 64 deletions(-)
+> 
+> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+> ---
+>  fs/nfsd/nfs4proc.c | 2 +-
+>  fs/nfsd/nfs4xdr.c  | 2 +-
+>  fs/nfsd/xdr4.h     | 1 -
+>  3 files changed, 2 insertions(+), 3 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> index d30bea8..6bd4391 100644
+> --- a/fs/nfsd/nfs4proc.c
+> +++ b/fs/nfsd/nfs4proc.c
+> @@ -1815,7 +1815,7 @@ static inline u32 nfsd4_getattr_rsize(struct svc_rqst *rqstp,
+>  		bmap0 &= ~FATTR4_WORD0_FILEHANDLE;
+>  	}
+>  	if (bmap2 & FATTR4_WORD2_SECURITY_LABEL) {
+> -		ret += NFSD4_MAX_SEC_LABEL_LEN + 12;
+> +		ret += NFS4_MAXLABELLEN + 12;
+>  		bmap2 &= ~FATTR4_WORD2_SECURITY_LABEL;
+>  	}
+>  	/*
+> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> index df5e66c..eff0a94 100644
+> --- a/fs/nfsd/nfs4xdr.c
+> +++ b/fs/nfsd/nfs4xdr.c
+> @@ -424,7 +424,7 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
+>  		len += 4;
+>  		dummy32 = be32_to_cpup(p++);
+>  		READ_BUF(dummy32);
+> -		if (dummy32 > NFSD4_MAX_SEC_LABEL_LEN)
+> +		if (dummy32 > NFS4_MAXLABELLEN)
+>  			return nfserr_badlabel;
+>  		len += (XDR_QUADLEN(dummy32) << 2);
+>  		READMEM(buf, dummy32);
+> diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+> index 0bda93e..8bae5d8 100644
+> --- a/fs/nfsd/xdr4.h
+> +++ b/fs/nfsd/xdr4.h
+> @@ -40,7 +40,6 @@
+>  #include "state.h"
+>  #include "nfsd.h"
+>  
+> -#define NFSD4_MAX_SEC_LABEL_LEN	2048
+>  #define NFSD4_MAX_TAGLEN	128
+>  #define XDR_LEN(n)                     (((n) + 3) & ~3)
+>  
+> -- 
+> 2.3.4
