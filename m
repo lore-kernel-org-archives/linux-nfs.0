@@ -1,74 +1,126 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.tv2.hu ([91.82.156.6]:50337 "EHLO mail.tv2.hu"
+Received: from fieldses.org ([173.255.197.46]:51366 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751298AbbDAQVi convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Apr 2015 12:21:38 -0400
-From: =?iso-8859-2?Q?G=E1l=2C_Bal=E1zs?= <balazs.gal@tv2.hu>
-To: Christoph Hellwig <hch@infradead.org>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: RE: Linux kernel 3.18+ blocklayout driver support only 4k pNFS block
- size
-Date: Wed, 1 Apr 2015 16:21:31 +0000
-Message-ID: <AM3PR03MB0885CFC7D549D892D8FCF002BAF30@AM3PR03MB0885.eurprd03.prod.outlook.com>
-References: <DB3PR03MB0891F4C3C510AB5C7565A4D0BAF40@DB3PR03MB0891.eurprd03.prod.outlook.com>
- <20150401084702.GA21858@infradead.org>
-In-Reply-To: <20150401084702.GA21858@infradead.org>
-Content-Type: text/plain; charset="iso-8859-2"
+	id S1752940AbbDARqr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 1 Apr 2015 13:46:47 -0400
+Date: Wed, 1 Apr 2015 13:46:46 -0400
+To: Scott Mayhew <smayhew@redhat.com>
+Cc: steved@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: [nfs-utils PATCH] mountd: Enable all auth flavors on pseudofs
+ exports
+Message-ID: <20150401174646.GA3040@fieldses.org>
+References: <1427834919-46591-1-git-send-email-smayhew@redhat.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1427834919-46591-1-git-send-email-smayhew@redhat.com>
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> There is no concept of a max pNFS file size.  Do you mean a maximum layout size?  There is no real delibrate limit.
+ACK.--b.
 
-This is the maximum file size, what can be handled by the block layout driver, because of the maximum layout size limit (at least with EMC).
-Every file what is bigger than this, will be handled over the IP network.
-I'm not familiar with the layout, maybe an offset can be used, but seems this is not the case.
-
-The client layout request:
-layout type: LAYOUT4_BLOCK_VOLUME
-IO mode: IOMODE_RW
-offset: 0 !!!
-length: 524288000 !!!
-min length: 4096
-stateid.maxount: 4096 !!!
-
-The server will respond with NFS4ERR_TOOSMALL Status to indicate the layout can't be fit in 4k, what seems is an acceptable behavior.
-
-> Do you mean a maximum layout size?  
-
-Yes. (The stateid.maxcount)
-
-> Linux can't handle writeback in guaranteed bigger than 4k sizes.  The old code tried to work around this deep down in the stack in an extremely dead-lock prone way.  We could do this less
-> dead lock prone but also a lot less performant when reading in data.  Either way we'd need some deeply technical resource with access to the 8k servers to help to test and debug the support.
-
-This would be great. Maybe EMC can support this with a test environment. We are in contact with EMC, we can push them to provide one.
-
-Our pNFS story started at EMC in 01/22/2015, we are still waiting for a patch. Currently we will not use pNFS, because seems it's not production ready.
-
-Thx
-
-Balazs
-
-
------Original Message-----
-From: Christoph Hellwig [mailto:hch@infradead.org] 
-Sent: Wednesday, April 01, 2015 10:47 AM
-To: Gál, Balázs
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: Linux kernel 3.18+ blocklayout driver support only 4k pNFS block size
-
-On Tue, Mar 31, 2015 at 03:16:41PM +0000, G?l, Bal?zs wrote:
-> The page size is 4k on x64, but we use an EMC VNX5300 storage as a pNFS server, which use a hardcoded 8k file system block size.
-> So I'm not able to use the VNX pNFS functionality with the current kernel anymore.
+On Tue, Mar 31, 2015 at 04:48:39PM -0400, Scott Mayhew wrote:
+> With the current mountd code it's possible to craft exports in such a
+> manner that clients will be unable to mount exports that they *should*
+> be able to mount.
 > 
-> As I know, EMC is not the only one solution with the 8k block size, so this can brake lot of product on the market.
-
-Which others pNFS block server is around?
-
-> There is another issue with the client layout get requests implementation, what will limit the pNFS max file size in 524MB with the maximum 4k layout length in the request.
-
-There is no concept of a max pNFS file size.  Do you mean a maximum layout size?  There is no real delibrate limit.
-
-> I'm just a dummy user from the broadcast Industry, and I want report it only, but it would be great if this problem can be handled by someone/somehow.
-
-Linux can't handle writeback in guaranteed bigger than 4k sizes.  The old code tried to work around this deep down in the stack in an extremely dead-lock prone way.  We could do this less dead lock prone but also a lot less performant when reading in data.  Either way we'd need some deeply technical resource with access to the 8k servers to help to test and debug the support.
+> Consider the following example:
+> 
+> /foo	*(rw,insecure,no_root_squash,sec=krb5p)
+> /bar	client.example.com(rw,insecure,no_root_squash)
+> 
+> Initially, client.example.com will be able to mount the /foo export
+> using sec=krb5p, but attempts to mount /bar using sec=sys will return
+> EPERM.  Once the nfsd.export cache entry expires, client.example.com
+> will then be able to mount /bar using sec=sys but attempts to mount /foo
+> using sec=krb5p will return EPERM.
+> 
+> The reason this happens is because the initial nfsd.export cache entry
+> is actually pre-populated by nfsd_fh(), which is the handler for the
+> nfsd.fh cache, while later cache requests (once the initial entry
+> expires) are handled by nfsd_export().  These functions have slightly
+> different logic in how they select a v4root export from the cache --
+> nfsd_fh() takes last matching v4root export it finds, while
+> nfsd_export() (actually lookup_export()) takes the first.  Either way
+> it's wrong because the client should be able to mount both exports.
+> 
+> Both rfc3503bis and rfc5661 say:
+> 
+>    A common and convenient practice, unless strong security requirements
+>    dictate otherwise, is to make the entire pseudo file system
+>    accessible by all of the valid security mechanisms.
+> 
+> ...so lets do that.
+> 
+> Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+> ---
+>  utils/mountd/v4root.c | 19 ++++++++++---------
+>  1 file changed, 10 insertions(+), 9 deletions(-)
+> 
+> diff --git a/utils/mountd/v4root.c b/utils/mountd/v4root.c
+> index 34d098a..0f60efc 100644
+> --- a/utils/mountd/v4root.c
+> +++ b/utils/mountd/v4root.c
+> @@ -26,6 +26,7 @@
+>  #include "nfslib.h"
+>  #include "misc.h"
+>  #include "v4root.h"
+> +#include "pseudoflavors.h"
+>  
+>  int v4root_needed;
+>  
+> @@ -56,22 +57,22 @@ static nfs_export pseudo_root = {
+>  };
+>  
+>  static void
+> -set_pseudofs_security(struct exportent *pseudo, struct exportent *source)
+> +set_pseudofs_security(struct exportent *pseudo, int flags)
+>  {
+> -	struct sec_entry *se;
+> +	struct flav_info *flav;
+>  	int i;
+>  
+> -	if (source->e_flags & NFSEXP_INSECURE_PORT)
+> +	if (flags & NFSEXP_INSECURE_PORT)
+>  		pseudo->e_flags |= NFSEXP_INSECURE_PORT;
+> -	if ((source->e_flags & NFSEXP_ROOTSQUASH) == 0)
+> +	if ((flags & NFSEXP_ROOTSQUASH) == 0)
+>  		pseudo->e_flags &= ~NFSEXP_ROOTSQUASH;
+> -	for (se = source->e_secinfo; se->flav; se++) {
+> +	for (flav = flav_map; flav < flav_map + flav_map_size; flav++) {
+>  		struct sec_entry *new;
+>  
+> -		i = secinfo_addflavor(se->flav, pseudo);
+> +		i = secinfo_addflavor(flav, pseudo);
+>  		new = &pseudo->e_secinfo[i];
+>  
+> -		if (se->flags & NFSEXP_INSECURE_PORT)
+> +		if (flags & NFSEXP_INSECURE_PORT)
+>  			new->flags |= NFSEXP_INSECURE_PORT;
+>  	}
+>  }
+> @@ -91,7 +92,7 @@ v4root_create(char *path, nfs_export *export)
+>  	strncpy(eep.e_path, path, sizeof(eep.e_path));
+>  	if (strcmp(path, "/") != 0)
+>  		eep.e_flags &= ~NFSEXP_FSID;
+> -	set_pseudofs_security(&eep, curexp);
+> +	set_pseudofs_security(&eep, curexp->e_flags);
+>  	exp = export_create(&eep, 0);
+>  	if (exp == NULL)
+>  		return NULL;
+> @@ -139,7 +140,7 @@ pseudofs_update(char *hostname, char *path, nfs_export *source)
+>  		return 0;
+>  	}
+>  	/* Update an existing V4ROOT export: */
+> -	set_pseudofs_security(&exp->m_export, &source->m_export);
+> +	set_pseudofs_security(&exp->m_export, &source->m_export.e_flags);
+>  	return 0;
+>  }
+>  
+> -- 
+> 1.9.3
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
