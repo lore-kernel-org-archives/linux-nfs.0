@@ -1,75 +1,82 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:51372 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:51383 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751136AbbDARuX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 1 Apr 2015 13:50:23 -0400
-Date: Wed, 1 Apr 2015 13:50:21 -0400
-To: Christoph Hellwig <hch@infradead.org>
-Cc: Christoph Hellwig <hch@lst.de>, Steve Dickson <SteveD@redhat.com>,
-        linux-nfs@vger.kernel.org, Ben Hutchings <ben@decadent.org.uk>,
-        Cyril Brulebois <kibi@debian.org>
-Subject: Re: [PATCH 1/2] nfs-utils: cross-reference nfsd.7 from nfsd.8 and
- vice versa
-Message-ID: <20150401175021.GC3040@fieldses.org>
-References: <1427876624-28066-1-git-send-email-hch@lst.de>
- <20150401082453.GA7000@infradead.org>
+	id S1751863AbbDARyh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 1 Apr 2015 13:54:37 -0400
+Date: Wed, 1 Apr 2015 13:54:37 -0400
+To: lyndat3@your-mail.com
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: file xfer over NFSv4 with 'sync' ~300X slower than with 'async' ?
+Message-ID: <20150401175437.GD3040@fieldses.org>
+References: <1427751843.1013981.247256753.2BA43388@webmail.messagingengine.com>
+ <1427811676.1314276.247565589.4E14003B@webmail.messagingengine.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20150401082453.GA7000@infradead.org>
+In-Reply-To: <1427811676.1314276.247565589.4E14003B@webmail.messagingengine.com>
 From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Apr 01, 2015 at 01:24:53AM -0700, Christoph Hellwig wrote:
-> Ooops, forgot to add the intro mail - this is a resync of the man page
-> updates in the Debian package with mainline nfs-utils.
+On Tue, Mar 31, 2015 at 07:21:16AM -0700, lyndat3@your-mail.com wrote:
+> Narrowing doen the issue, NFSv4 file xfer with 'sync' appears, here, to be ~ 300X slower than with 'async'.
+> 
+> (1) for NFSv4 mount with 'sync'
+> 
+> 	grep NAS1 /etc/auto.nfs4 
+> 		NAS1   -fstype=nfs4,_netdev,rw,proto=tcp,sync,...  xen01.loc:/
+> 
+> a 100MB file xfer takes ~8 minutes
+> 
+> 	rm -f /mnt/NFS4/NAS1/file.out && \
+> 	 time dd if=/dev/zero of=/mnt/NFS4/NAS1/file.out  bs=32K count=3K
+> 		3072+0 records in
+> 		3072+0 records out
+> 		100663296 bytes (101 MB) copied, 485.721 s, 207 kB/s
+> 
+> 		real    8m5.861s
+> 		user    0m0.012s
+> 		sys     0m0.250s
+> 
+> (2) Change mount 'sync' -> 'async',
+> 
+> 	vi /etc/auto.nfs4 
+> 	-	NAS1   -fstype=nfs4,_netdev,rw,proto=tcp,sync,...  xen01.loc:/
+> 	+	NAS1   -fstype=nfs4,_netdev,rw,proto=tcp,async,...  xen01.loc:/
+> 	systemctl restart autofs
+> 
+> the same 100MB file xfer takes ~ 2 seconds
+> 
+> 	rm -f /mnt/NFS4/NAS1/file.out && \
+> 	 time dd if=/dev/zero of=/mnt/NFS4/NAS1/file.out  bs=32K count=3K
+> 		3072+0 records in
+> 		3072+0 records out
+> 		100663296 bytes (101 MB) copied, 1.65577 s, 60.8 MB/s
+> 
+> 		real    0m1.658s
+> 		user    0m0.000s
+> 		sys     0m0.089s
+> 
+> 
+> I'd expect 'sync' to be slower than 'async', but 300X ?
 
-both look good to me.--b.
+There's no maximum sync/async ratio.  You could make that ratio lower or
+higher by varying dd's block size, for example.
+
+The way I'd look at it, your dd of a 100MB file above is doing 3072
+writes, and taking about 8*60/3072 =~ .16 seconds per write.
+
+That does sound high.  Things to look at to understand why might include
+the round-trip ping time to the server, and the time for the server's
+disk to do a synchronous write.
+
+--b.
 
 > 
-> On Wed, Apr 01, 2015 at 10:23:43AM +0200, Christoph Hellwig wrote:
-> > From: Cyril Brulebois <kibi@debian.org>
-> > 
-> > It'd be nice if one could notice nfsd(7) when reading nfsd(8) and the
-> > other way round, without having to have to resort to ???dpkg -L $pkg??? to
-> > figure out what documentation is available.
-> > ---
-> >  utils/exportfs/nfsd.man | 1 +
-> >  utils/nfsd/nfsd.man     | 1 +
-> >  2 files changed, 2 insertions(+)
-> > 
-> > diff --git a/utils/exportfs/nfsd.man b/utils/exportfs/nfsd.man
-> > index 47b73be..0c516fa 100644
-> > --- a/utils/exportfs/nfsd.man
-> > +++ b/utils/exportfs/nfsd.man
-> > @@ -196,6 +196,7 @@ classes of tracing to be enabled.  Consult the kernel header files to
-> >  find out what number correspond to what tracing.
-> >  
-> >  .SH SEE ALSO
-> > +.BR nfsd (8),
-> >  .BR rpc.nfsd (8),
-> >  .BR exports (5),
-> >  .BR nfsstat (8),
-> > diff --git a/utils/nfsd/nfsd.man b/utils/nfsd/nfsd.man
-> > index be21ed4..3ba847e 100644
-> > --- a/utils/nfsd/nfsd.man
-> > +++ b/utils/nfsd/nfsd.man
-> > @@ -121,6 +121,7 @@ address family combinations that are marked visible in the
-> >  database.
-> >  
-> >  .SH SEE ALSO
-> > +.BR nfsd (7),
-> >  .BR rpc.mountd (8),
-> >  .BR exports (5),
-> >  .BR exportfs (8),
-> > -- 
-> > 1.9.1
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> ---end quoted text---
+> Is there additional config that cures, or at least drastically improves, this slow down?
+> 
+> Some very old (10+ years) posts suggested kernel bugs, but those were fixed ages ago.  Maybe reemerged?
+> 
+> LT
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 > the body of a message to majordomo@vger.kernel.org
