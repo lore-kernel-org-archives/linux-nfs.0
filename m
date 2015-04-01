@@ -1,52 +1,74 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp2-g21.free.fr ([212.27.42.2]:40822 "EHLO smtp2-g21.free.fr"
+Received: from mail.tv2.hu ([91.82.156.6]:50337 "EHLO mail.tv2.hu"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752117AbbDAJzK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 1 Apr 2015 05:55:10 -0400
-Message-ID: <551BC077.1030402@free.fr>
-Date: Wed, 01 Apr 2015 11:55:03 +0200
-From: Mason <slash.tmp@free.fr>
+	id S1751298AbbDAQVi convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Apr 2015 12:21:38 -0400
+From: =?iso-8859-2?Q?G=E1l=2C_Bal=E1zs?= <balazs.gal@tv2.hu>
+To: Christoph Hellwig <hch@infradead.org>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: RE: Linux kernel 3.18+ blocklayout driver support only 4k pNFS block
+ size
+Date: Wed, 1 Apr 2015 16:21:31 +0000
+Message-ID: <AM3PR03MB0885CFC7D549D892D8FCF002BAF30@AM3PR03MB0885.eurprd03.prod.outlook.com>
+References: <DB3PR03MB0891F4C3C510AB5C7565A4D0BAF40@DB3PR03MB0891.eurprd03.prod.outlook.com>
+ <20150401084702.GA21858@infradead.org>
+In-Reply-To: <20150401084702.GA21858@infradead.org>
+Content-Type: text/plain; charset="iso-8859-2"
 MIME-Version: 1.0
-To: linux-nfs@vger.kernel.org
-CC: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>
-Subject: nfsroot protocol version
-Content-Type: text/plain; charset=ISO-8859-15; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello everyone,
+> There is no concept of a max pNFS file size.  Do you mean a maximum layout size?  There is no real delibrate limit.
 
-My embedded system is supposed to mount the rootfs via NFS.
-https://www.kernel.org/doc/Documentation/filesystems/nfs/nfsroot.txt
+This is the maximum file size, what can be handled by the block layout driver, because of the maximum layout size limit (at least with EMC).
+Every file what is bigger than this, will be handled over the IP network.
+I'm not familiar with the layout, maybe an offset can be used, but seems this is not the case.
 
-So I set these options in my kernel .config
+The client layout request:
+layout type: LAYOUT4_BLOCK_VOLUME
+IO mode: IOMODE_RW
+offset: 0 !!!
+length: 524288000 !!!
+min length: 4096
+stateid.maxount: 4096 !!!
 
-CONFIG_IP_PNP=y
-CONFIG_IP_PNP_DHCP=y
-CONFIG_ROOT_NFS=y
-CONFIG_NFS_V4=y
+The server will respond with NFS4ERR_TOOSMALL Status to indicate the layout can't be fit in 4k, what seems is an acceptable behavior.
 
-But it didn't work, the system would panic after a long time out
-(around 95 seconds)
+> Do you mean a maximum layout size?  
 
-[   98.567037] VFS: Unable to mount root fs via NFS, trying floppy.
-[   98.573238] Freeing unused kernel memory: 144K (c0332000 - c0356000)
-[   98.579698] Kernel panic - not syncing: No working init found.
-	Try passing init= option to kernel. See Linux Documentation/init.txt for guidance.
+Yes. (The stateid.maxcount)
 
-I then enabled NFSv2 and NFSv3, and then it worked.
+> Linux can't handle writeback in guaranteed bigger than 4k sizes.  The old code tried to work around this deep down in the stack in an extremely dead-lock prone way.  We could do this less
+> dead lock prone but also a lot less performant when reading in data.  Either way we'd need some deeply technical resource with access to the 8k servers to help to test and debug the support.
 
-When I was debugging the problem, I ran across NFS_DEF_OPTIONS
-in fs/nfs/nfsroot.c
+This would be great. Maybe EMC can support this with a test environment. We are in contact with EMC, we can push them to provide one.
 
-#define NFS_DEF_OPTIONS		"vers=2,udp,rsize=4096,wsize=4096"
+Our pNFS story started at EMC in 01/22/2015, we are still waiting for a patch. Currently we will not use pNFS, because seems it's not production ready.
 
-IIUC, we are explicitly requesting NFSv2?
+Thx
 
-Would that explain why it fails when NFSv2 support is not compiled in?
+Balazs
 
-Would it make sense to use version 3?
-(So NFSv2 is not needed just to load the rootfs.)
 
-Regards.
+-----Original Message-----
+From: Christoph Hellwig [mailto:hch@infradead.org] 
+Sent: Wednesday, April 01, 2015 10:47 AM
+To: Gál, Balázs
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: Linux kernel 3.18+ blocklayout driver support only 4k pNFS block size
+
+On Tue, Mar 31, 2015 at 03:16:41PM +0000, G?l, Bal?zs wrote:
+> The page size is 4k on x64, but we use an EMC VNX5300 storage as a pNFS server, which use a hardcoded 8k file system block size.
+> So I'm not able to use the VNX pNFS functionality with the current kernel anymore.
+> 
+> As I know, EMC is not the only one solution with the 8k block size, so this can brake lot of product on the market.
+
+Which others pNFS block server is around?
+
+> There is another issue with the client layout get requests implementation, what will limit the pNFS max file size in 524MB with the maximum 4k layout length in the request.
+
+There is no concept of a max pNFS file size.  Do you mean a maximum layout size?  There is no real delibrate limit.
+
+> I'm just a dummy user from the broadcast Industry, and I want report it only, but it would be great if this problem can be handled by someone/somehow.
+
+Linux can't handle writeback in guaranteed bigger than 4k sizes.  The old code tried to work around this deep down in the stack in an extremely dead-lock prone way.  We could do this less dead lock prone but also a lot less performant when reading in data.  Either way we'd need some deeply technical resource with access to the 8k servers to help to test and debug the support.
