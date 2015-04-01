@@ -1,83 +1,49 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:51383 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751863AbbDARyh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 1 Apr 2015 13:54:37 -0400
-Date: Wed, 1 Apr 2015 13:54:37 -0400
-To: lyndat3@your-mail.com
+Received: from out5-smtp.messagingengine.com ([66.111.4.29]:33819 "EHLO
+	out5-smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752223AbbDASIE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Apr 2015 14:08:04 -0400
+Received: from compute4.internal (compute4.nyi.internal [10.202.2.44])
+	by mailout.nyi.internal (Postfix) with ESMTP id 7735120B2F
+	for <linux-nfs@vger.kernel.org>; Wed,  1 Apr 2015 14:02:14 -0400 (EDT)
+Message-Id: <1427911337.1794160.248190485.1F161545@webmail.messagingengine.com>
+From: lyndat3@your-mail.com
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Cc: linux-nfs@vger.kernel.org
-Subject: Re: file xfer over NFSv4 with 'sync' ~300X slower than with 'async' ?
-Message-ID: <20150401175437.GD3040@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain
+In-Reply-To: <20150401175437.GD3040@fieldses.org>
 References: <1427751843.1013981.247256753.2BA43388@webmail.messagingengine.com>
  <1427811676.1314276.247565589.4E14003B@webmail.messagingengine.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1427811676.1314276.247565589.4E14003B@webmail.messagingengine.com>
-From: bfields@fieldses.org (J. Bruce Fields)
+ <20150401175437.GD3040@fieldses.org>
+Subject: Re: file xfer over NFSv4 with 'sync' ~300X slower than with 'async' ?
+Date: Wed, 01 Apr 2015 11:02:17 -0700
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Mar 31, 2015 at 07:21:16AM -0700, lyndat3@your-mail.com wrote:
-> Narrowing doen the issue, NFSv4 file xfer with 'sync' appears, here, to be ~ 300X slower than with 'async'.
+> There's no maximum sync/async ratio.  You could make that ratio lower or
+> higher by varying dd's block size, for example.
 > 
-> (1) for NFSv4 mount with 'sync'
+> The way I'd look at it, your dd of a 100MB file above is doing 3072
+> writes, and taking about 8*60/3072 =~ .16 seconds per write.
 > 
-> 	grep NAS1 /etc/auto.nfs4 
-> 		NAS1   -fstype=nfs4,_netdev,rw,proto=tcp,sync,...  xen01.loc:/
+> That does sound high.  Things to look at to understand why might include
+> the round-trip ping time to the server, and the time for the server's
+> disk to do a synchronous write.
 > 
-> a 100MB file xfer takes ~8 minutes
-> 
-> 	rm -f /mnt/NFS4/NAS1/file.out && \
-> 	 time dd if=/dev/zero of=/mnt/NFS4/NAS1/file.out  bs=32K count=3K
-> 		3072+0 records in
-> 		3072+0 records out
-> 		100663296 bytes (101 MB) copied, 485.721 s, 207 kB/s
-> 
-> 		real    8m5.861s
-> 		user    0m0.012s
-> 		sys     0m0.250s
-> 
-> (2) Change mount 'sync' -> 'async',
-> 
-> 	vi /etc/auto.nfs4 
-> 	-	NAS1   -fstype=nfs4,_netdev,rw,proto=tcp,sync,...  xen01.loc:/
-> 	+	NAS1   -fstype=nfs4,_netdev,rw,proto=tcp,async,...  xen01.loc:/
-> 	systemctl restart autofs
-> 
-> the same 100MB file xfer takes ~ 2 seconds
-> 
-> 	rm -f /mnt/NFS4/NAS1/file.out && \
-> 	 time dd if=/dev/zero of=/mnt/NFS4/NAS1/file.out  bs=32K count=3K
-> 		3072+0 records in
-> 		3072+0 records out
-> 		100663296 bytes (101 MB) copied, 1.65577 s, 60.8 MB/s
-> 
-> 		real    0m1.658s
-> 		user    0m0.000s
-> 		sys     0m0.089s
-> 
-> 
-> I'd expect 'sync' to be slower than 'async', but 300X ?
 
-There's no maximum sync/async ratio.  You could make that ratio lower or
-higher by varying dd's block size, for example.
+After comments from one of the nfs client maintainers, it turns out the slowness issue is simply one of not-quite-MIS-configuration.
 
-The way I'd look at it, your dd of a 100MB file above is doing 3072
-writes, and taking about 8*60/3072 =~ .16 seconds per write.
+As helpfully commented here
 
-That does sound high.  Things to look at to understand why might include
-the round-trip ping time to the server, and the time for the server's
-disk to do a synchronous write.
+  http://serverfault.com/questions/499174/etc-exports-mount-option/500553#500553
 
---b.
+, IIUC there are two *separate* syncs to consider -- at the server, and at the client.
 
-> 
-> Is there additional config that cures, or at least drastically improves, this slow down?
-> 
-> Some very old (10+ years) posts suggested kernel bugs, but those were fixed ages ago.  Maybe reemerged?
-> 
-> LT
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+'sync' on the EXPORT, and 'async' on the MOUNT is the sane approach; That config also appears to return the performance.
+
+The many recommendations online to use 'sync' for data integrity are IIUC for sync on the server.
+
+With 'async' set on the moount, and 'sync' on the exports, It appears integrity of writes is properly assured and I've got rsync-over-NFSv4 performance back in the ~30-60 MB/s range.
+
+LT 
