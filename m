@@ -1,88 +1,73 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from quartz.orcorp.ca ([184.70.90.242]:57882 "EHLO quartz.orcorp.ca"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750797AbbDABbu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 31 Mar 2015 21:31:50 -0400
-Date: Tue, 31 Mar 2015 19:31:35 -0600
-From: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
-To: "ira.weiny" <ira.weiny@intel.com>
-Cc: Doug Ledford <dledford@redhat.com>,
-        Michael Wang <yun.wang@profitbricks.com>,
-        Roland Dreier <roland@kernel.org>, Sean Hefty <sean.hefty@intel.com>,
-        Hal Rosenstock <hal.rosenstock@gmail.com>, linux-rdma@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        netdev@vger.kernel.org, "J. Bruce Fields" <bfields@fieldses.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        "David S. Miller" <davem@davemloft.net>,
-        Or Gerlitz <ogerlitz@mellanox.com>, Moni Shoua <monis@mellanox.com>,
-        PJ Waskiewicz <pj.waskiewicz@solidfire.com>,
-        Tatyana Nikolova <Tatyana.E.Nikolova@intel.com>,
-        Yan Burman <yanb@mellanox.com>,
-        Jack Morgenstein <jackm@dev.mellanox.co.il>,
-        Bart Van Assche <bvanassche@acm.org>,
-        Yann Droneaud <ydroneaud@opteya.com>,
-        Colin Ian King <colin.king@canonical.com>,
-        Majd Dibbiny <majd@mellanox.com>, Jiri Kosina <jkosina@suse.cz>,
-        Matan Barak <matanb@mellanox.com>, Alex Estrin <alex.estrin@intel.com>,
-        Eric Dumazet <edumazet@google.com>, Erez Shitrit <erezsh@mellanox.com>,
-        Sagi Grimberg <sagig@mellanox.com>, Haggai Eran <haggaie@mellanox.com>,
-        Shachar Raindel <raindel@mellanox.com>,
-        Mike Marciniszyn <mike.marciniszyn@intel.com>,
-        Steve Wise <swise@opengridcomputing.com>, Tom Tucker <tom@ogc.us>,
-        Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [RFC PATCH 06/11] IB/Verbs: Use management helper has_sa() and
- cap_sa(), for sa-check
-Message-ID: <20150401013135.GA29331@obsidianresearch.com>
-References: <551579CA.4030901@profitbricks.com>
- <55157B43.6060507@profitbricks.com>
- <1427732191.21101.201.camel@redhat.com>
- <55197CDB.3040105@profitbricks.com>
- <1427734923.21101.227.camel@redhat.com>
- <20150331231202.GA20094@obsidianresearch.com>
- <20150401005113.GA15327@phlsvsds.ph.intel.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20150401005113.GA15327@phlsvsds.ph.intel.com>
+Received: from bombadil.infradead.org ([198.137.202.9]:38626 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750701AbbDAIPs (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Apr 2015 04:15:48 -0400
+From: Christoph Hellwig <hch@lst.de>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] nfs-utils: add support for the "pnfs" export option
+Date: Wed,  1 Apr 2015 10:15:13 +0200
+Message-Id: <1427876113-27004-1-git-send-email-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Mar 31, 2015 at 08:51:13PM -0400, ira.weiny wrote:
+This goes along with the patch just sent to Bruce to make pnfs
+support conditional.
 
-> > Going forward we want to NAK stuff like this:
-> > 
-> >   if (rdma_ib_mgmt() || rdma_opa_mgmt())
-> >   if (has_sa() || has_opa_foobar())
-> 
-> I'm confused.
-> 
-> Is the idea that you would NAK has_sa but be in favor of has_ib_sa?
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+---
+ support/include/nfs/export.h | 1 +
+ support/nfs/exports.c        | 3 +++
+ utils/exportfs/exportfs.c    | 2 ++
+ 3 files changed, 6 insertions(+)
 
-It is the || I don't want to see. Feature tests should be one thing.
+diff --git a/support/include/nfs/export.h b/support/include/nfs/export.h
+index 2f59e6a..1194255 100644
+--- a/support/include/nfs/export.h
++++ b/support/include/nfs/export.h
+@@ -26,6 +26,7 @@
+ #define	NFSEXP_CROSSMOUNT	0x4000
+ #define NFSEXP_NOACL		0x8000 /* reserved for possible ACL related use */
+ #define NFSEXP_V4ROOT		0x10000
++#define NFSEXP_PNFS            0x20000
+ /*
+  * All flags supported by the kernel before addition of the
+  * export_features interface:
+diff --git a/support/nfs/exports.c b/support/nfs/exports.c
+index 4b17d3c..97f9e67 100644
+--- a/support/nfs/exports.c
++++ b/support/nfs/exports.c
+@@ -275,6 +275,7 @@ putexportent(struct exportent *ep)
+ 		"no_" : "");
+ 	if (ep->e_flags & NFSEXP_NOREADDIRPLUS)
+ 		fprintf(fp, "nordirplus,");
++	fprintf(fp, "%s", (ep->e_flags & NFSEXP_PNFS)? "pnfs," : "");
+ 	if (ep->e_flags & NFSEXP_FSID) {
+ 		fprintf(fp, "fsid=%d,", ep->e_fsid);
+ 	}
+@@ -581,6 +582,8 @@ parseopts(char *cp, struct exportent *ep, int warn, int *had_subtree_opt_ptr)
+ 			clearflags(NFSEXP_NOACL, active, ep);
+ 		else if (strcmp(opt, "no_acl") == 0)
+ 			setflags(NFSEXP_NOACL, active, ep);
++		else if (!strcmp(opt, "pnfs"))
++			setflags(NFSEXP_PNFS, active, ep);
+ 		else if (strncmp(opt, "anonuid=", 8) == 0) {
+ 			char *oe;
+ 			ep->e_anonuid = strtol(opt+8, &oe, 10);
+diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
+index 48eac00..8758231 100644
+--- a/utils/exportfs/exportfs.c
++++ b/utils/exportfs/exportfs.c
+@@ -821,6 +821,8 @@ dump(int verbose, int export_format)
+ 				c = dumpopt(c, "nordirplus");
+ 			if (ep->e_flags & NFSEXP_NOACL)
+ 				c = dumpopt(c, "no_acl");
++			if (ep->e_flags & NFSEXP_PNFS)
++				c = dumpopt(c, "pnfs");
+ 			if (ep->e_flags & NFSEXP_FSID)
+ 				c = dumpopt(c, "fsid=%d", ep->e_fsid);
+ 			if (ep->e_uuid)
+-- 
+1.9.1
 
-> I believe it is reasonable to flag OPA MAD support as a feature set through a
-> single bit.  From this the MAD stack can know if OPA MAD base/class versions
-> are allowed (or treated differently from future IB versions) and if it should
-> processing OPA SM Class DR MADs differently.  I don't want devices to be
-> required to supply a list of MAD Base/Class Versions they support.
-
-That seems reasonable, but we'd gain a is_ib_smp and is_opa_smp test
-to do that.
-
-> For example, the MAD size is more generally (and perhaps better) communicated
-> via an actual mad_size attribute rather than as part of the OPA MAD feature
-> set.
-
-Start with a bit and change when that makes no sense, MTUs as ints
-make sense.
-
-> Another example is the question of is it appropriate to wrap up the single READ
-> SGL entry support within the "is iwarp" flag?
-
-Again, stick with a single bit test until a HW vendors needs more,
-then someone can clean it. At least they now know what to clean and
-why.
-
-Remember, this is in the kernel, we can change it when it outlives its
-life.
-
-Jason
