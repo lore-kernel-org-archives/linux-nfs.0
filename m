@@ -1,55 +1,66 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([198.137.202.9]:50790 "EHLO
+Received: from bombadil.infradead.org ([198.137.202.9]:51542 "EHLO
 	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752107AbbDAIYV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Apr 2015 04:24:21 -0400
-From: Christoph Hellwig <hch@lst.de>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: linux-nfs@vger.kernel.org, Ben Hutchings <ben@decadent.org.uk>,
-        Cyril Brulebois <kibi@debian.org>
-Subject: [PATCH 2/2] mount.nfs.man, nfs.man: Update distinction between fstypes
-Date: Wed,  1 Apr 2015 10:23:44 +0200
-Message-Id: <1427876624-28066-2-git-send-email-hch@lst.de>
-In-Reply-To: <1427876624-28066-1-git-send-email-hch@lst.de>
+	with ESMTP id S1750784AbbDAIYz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Apr 2015 04:24:55 -0400
+Date: Wed, 1 Apr 2015 01:24:53 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Christoph Hellwig <hch@lst.de>
+Cc: Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org,
+        Ben Hutchings <ben@decadent.org.uk>, Cyril Brulebois <kibi@debian.org>
+Subject: Re: [PATCH 1/2] nfs-utils: cross-reference nfsd.7 from nfsd.8 and
+ vice versa
+Message-ID: <20150401082453.GA7000@infradead.org>
 References: <1427876624-28066-1-git-send-email-hch@lst.de>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1427876624-28066-1-git-send-email-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Ben Hutchings <ben@decadent.org.uk>
+Ooops, forgot to add the intro mail - this is a resync of the man page
+updates in the Debian package with mainline nfs-utils.
 
----
- utils/mount/mount.nfs.man | 12 ++++++++----
- 1 file changed, 8 insertions(+), 4 deletions(-)
-
-diff --git a/utils/mount/mount.nfs.man b/utils/mount/mount.nfs.man
-index 1a4561b..15a82d5 100644
---- a/utils/mount/mount.nfs.man
-+++ b/utils/mount/mount.nfs.man
-@@ -15,16 +15,20 @@ is meant to be used by the
- .BR mount (8)
- command for mounting NFS shares. This subcommand, however, can also be used as a standalone command with limited functionality.
- 
--.BR mount.nfs4 
--is used for mounting NFSv4 file system, while 
--.BR mount.nfs 
--is used to mount NFS file systems versions 3 or 2.
- .I remotetarget 
- is a server share usually in the form of 
- .BR servername:/path/to/share.
- .I dir 
- is the directory on which the file system is to be mounted.
- 
-+Under Linux 2.6.32 and later kernel versions,
-+.BR mount.nfs
-+can mount all NFS file system versions.  Under earlier Linux kernel versions,
-+.BR mount.nfs4
-+must be used for mounting NFSv4 file systems while
-+.BR mount.nfs
-+must be used for NFSv3 and v2.
-+
- .SH OPTIONS
- .TP
- .BI "\-r"
--- 
-1.9.1
-
+On Wed, Apr 01, 2015 at 10:23:43AM +0200, Christoph Hellwig wrote:
+> From: Cyril Brulebois <kibi@debian.org>
+> 
+> It'd be nice if one could notice nfsd(7) when reading nfsd(8) and the
+> other way round, without having to have to resort to ???dpkg -L $pkg??? to
+> figure out what documentation is available.
+> ---
+>  utils/exportfs/nfsd.man | 1 +
+>  utils/nfsd/nfsd.man     | 1 +
+>  2 files changed, 2 insertions(+)
+> 
+> diff --git a/utils/exportfs/nfsd.man b/utils/exportfs/nfsd.man
+> index 47b73be..0c516fa 100644
+> --- a/utils/exportfs/nfsd.man
+> +++ b/utils/exportfs/nfsd.man
+> @@ -196,6 +196,7 @@ classes of tracing to be enabled.  Consult the kernel header files to
+>  find out what number correspond to what tracing.
+>  
+>  .SH SEE ALSO
+> +.BR nfsd (8),
+>  .BR rpc.nfsd (8),
+>  .BR exports (5),
+>  .BR nfsstat (8),
+> diff --git a/utils/nfsd/nfsd.man b/utils/nfsd/nfsd.man
+> index be21ed4..3ba847e 100644
+> --- a/utils/nfsd/nfsd.man
+> +++ b/utils/nfsd/nfsd.man
+> @@ -121,6 +121,7 @@ address family combinations that are marked visible in the
+>  database.
+>  
+>  .SH SEE ALSO
+> +.BR nfsd (7),
+>  .BR rpc.mountd (8),
+>  .BR exports (5),
+>  .BR exportfs (8),
+> -- 
+> 1.9.1
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+---end quoted text---
