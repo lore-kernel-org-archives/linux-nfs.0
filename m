@@ -1,124 +1,85 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:51366 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:51368 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752940AbbDARqr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 1 Apr 2015 13:46:47 -0400
-Date: Wed, 1 Apr 2015 13:46:46 -0400
-To: Scott Mayhew <smayhew@redhat.com>
-Cc: steved@redhat.com, linux-nfs@vger.kernel.org
-Subject: Re: [nfs-utils PATCH] mountd: Enable all auth flavors on pseudofs
- exports
-Message-ID: <20150401174646.GA3040@fieldses.org>
-References: <1427834919-46591-1-git-send-email-smayhew@redhat.com>
+	id S1751158AbbDARsJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 1 Apr 2015 13:48:09 -0400
+Date: Wed, 1 Apr 2015 13:48:09 -0400
+To: Christoph Hellwig <hch@lst.de>
+Cc: Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfs-utils: add support for the "pnfs" export option
+Message-ID: <20150401174808.GB3040@fieldses.org>
+References: <1427876113-27004-1-git-send-email-hch@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1427834919-46591-1-git-send-email-smayhew@redhat.com>
+In-Reply-To: <1427876113-27004-1-git-send-email-hch@lst.de>
 From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-ACK.--b.
+On Wed, Apr 01, 2015 at 10:15:13AM +0200, Christoph Hellwig wrote:
+> This goes along with the patch just sent to Bruce to make pnfs
+> support conditional.
 
-On Tue, Mar 31, 2015 at 04:48:39PM -0400, Scott Mayhew wrote:
-> With the current mountd code it's possible to craft exports in such a
-> manner that clients will be unable to mount exports that they *should*
-> be able to mount.
+Could we get an update of utils/exportfs/exports.man too?
+
+--b.
+
 > 
-> Consider the following example:
-> 
-> /foo	*(rw,insecure,no_root_squash,sec=krb5p)
-> /bar	client.example.com(rw,insecure,no_root_squash)
-> 
-> Initially, client.example.com will be able to mount the /foo export
-> using sec=krb5p, but attempts to mount /bar using sec=sys will return
-> EPERM.  Once the nfsd.export cache entry expires, client.example.com
-> will then be able to mount /bar using sec=sys but attempts to mount /foo
-> using sec=krb5p will return EPERM.
-> 
-> The reason this happens is because the initial nfsd.export cache entry
-> is actually pre-populated by nfsd_fh(), which is the handler for the
-> nfsd.fh cache, while later cache requests (once the initial entry
-> expires) are handled by nfsd_export().  These functions have slightly
-> different logic in how they select a v4root export from the cache --
-> nfsd_fh() takes last matching v4root export it finds, while
-> nfsd_export() (actually lookup_export()) takes the first.  Either way
-> it's wrong because the client should be able to mount both exports.
-> 
-> Both rfc3503bis and rfc5661 say:
-> 
->    A common and convenient practice, unless strong security requirements
->    dictate otherwise, is to make the entire pseudo file system
->    accessible by all of the valid security mechanisms.
-> 
-> ...so lets do that.
-> 
-> Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+> Signed-off-by: Christoph Hellwig <hch@lst.de>
 > ---
->  utils/mountd/v4root.c | 19 ++++++++++---------
->  1 file changed, 10 insertions(+), 9 deletions(-)
+>  support/include/nfs/export.h | 1 +
+>  support/nfs/exports.c        | 3 +++
+>  utils/exportfs/exportfs.c    | 2 ++
+>  3 files changed, 6 insertions(+)
 > 
-> diff --git a/utils/mountd/v4root.c b/utils/mountd/v4root.c
-> index 34d098a..0f60efc 100644
-> --- a/utils/mountd/v4root.c
-> +++ b/utils/mountd/v4root.c
+> diff --git a/support/include/nfs/export.h b/support/include/nfs/export.h
+> index 2f59e6a..1194255 100644
+> --- a/support/include/nfs/export.h
+> +++ b/support/include/nfs/export.h
 > @@ -26,6 +26,7 @@
->  #include "nfslib.h"
->  #include "misc.h"
->  #include "v4root.h"
-> +#include "pseudoflavors.h"
->  
->  int v4root_needed;
->  
-> @@ -56,22 +57,22 @@ static nfs_export pseudo_root = {
->  };
->  
->  static void
-> -set_pseudofs_security(struct exportent *pseudo, struct exportent *source)
-> +set_pseudofs_security(struct exportent *pseudo, int flags)
->  {
-> -	struct sec_entry *se;
-> +	struct flav_info *flav;
->  	int i;
->  
-> -	if (source->e_flags & NFSEXP_INSECURE_PORT)
-> +	if (flags & NFSEXP_INSECURE_PORT)
->  		pseudo->e_flags |= NFSEXP_INSECURE_PORT;
-> -	if ((source->e_flags & NFSEXP_ROOTSQUASH) == 0)
-> +	if ((flags & NFSEXP_ROOTSQUASH) == 0)
->  		pseudo->e_flags &= ~NFSEXP_ROOTSQUASH;
-> -	for (se = source->e_secinfo; se->flav; se++) {
-> +	for (flav = flav_map; flav < flav_map + flav_map_size; flav++) {
->  		struct sec_entry *new;
->  
-> -		i = secinfo_addflavor(se->flav, pseudo);
-> +		i = secinfo_addflavor(flav, pseudo);
->  		new = &pseudo->e_secinfo[i];
->  
-> -		if (se->flags & NFSEXP_INSECURE_PORT)
-> +		if (flags & NFSEXP_INSECURE_PORT)
->  			new->flags |= NFSEXP_INSECURE_PORT;
+>  #define	NFSEXP_CROSSMOUNT	0x4000
+>  #define NFSEXP_NOACL		0x8000 /* reserved for possible ACL related use */
+>  #define NFSEXP_V4ROOT		0x10000
+> +#define NFSEXP_PNFS            0x20000
+>  /*
+>   * All flags supported by the kernel before addition of the
+>   * export_features interface:
+> diff --git a/support/nfs/exports.c b/support/nfs/exports.c
+> index 4b17d3c..97f9e67 100644
+> --- a/support/nfs/exports.c
+> +++ b/support/nfs/exports.c
+> @@ -275,6 +275,7 @@ putexportent(struct exportent *ep)
+>  		"no_" : "");
+>  	if (ep->e_flags & NFSEXP_NOREADDIRPLUS)
+>  		fprintf(fp, "nordirplus,");
+> +	fprintf(fp, "%s", (ep->e_flags & NFSEXP_PNFS)? "pnfs," : "");
+>  	if (ep->e_flags & NFSEXP_FSID) {
+>  		fprintf(fp, "fsid=%d,", ep->e_fsid);
 >  	}
->  }
-> @@ -91,7 +92,7 @@ v4root_create(char *path, nfs_export *export)
->  	strncpy(eep.e_path, path, sizeof(eep.e_path));
->  	if (strcmp(path, "/") != 0)
->  		eep.e_flags &= ~NFSEXP_FSID;
-> -	set_pseudofs_security(&eep, curexp);
-> +	set_pseudofs_security(&eep, curexp->e_flags);
->  	exp = export_create(&eep, 0);
->  	if (exp == NULL)
->  		return NULL;
-> @@ -139,7 +140,7 @@ pseudofs_update(char *hostname, char *path, nfs_export *source)
->  		return 0;
->  	}
->  	/* Update an existing V4ROOT export: */
-> -	set_pseudofs_security(&exp->m_export, &source->m_export);
-> +	set_pseudofs_security(&exp->m_export, &source->m_export.e_flags);
->  	return 0;
->  }
->  
+> @@ -581,6 +582,8 @@ parseopts(char *cp, struct exportent *ep, int warn, int *had_subtree_opt_ptr)
+>  			clearflags(NFSEXP_NOACL, active, ep);
+>  		else if (strcmp(opt, "no_acl") == 0)
+>  			setflags(NFSEXP_NOACL, active, ep);
+> +		else if (!strcmp(opt, "pnfs"))
+> +			setflags(NFSEXP_PNFS, active, ep);
+>  		else if (strncmp(opt, "anonuid=", 8) == 0) {
+>  			char *oe;
+>  			ep->e_anonuid = strtol(opt+8, &oe, 10);
+> diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
+> index 48eac00..8758231 100644
+> --- a/utils/exportfs/exportfs.c
+> +++ b/utils/exportfs/exportfs.c
+> @@ -821,6 +821,8 @@ dump(int verbose, int export_format)
+>  				c = dumpopt(c, "nordirplus");
+>  			if (ep->e_flags & NFSEXP_NOACL)
+>  				c = dumpopt(c, "no_acl");
+> +			if (ep->e_flags & NFSEXP_PNFS)
+> +				c = dumpopt(c, "pnfs");
+>  			if (ep->e_flags & NFSEXP_FSID)
+>  				c = dumpopt(c, "fsid=%d", ep->e_fsid);
+>  			if (ep->e_uuid)
 > -- 
-> 1.9.3
+> 1.9.1
 > 
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
