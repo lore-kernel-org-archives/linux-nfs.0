@@ -1,102 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp-o-3.desy.de ([131.169.56.156]:56223 "EHLO smtp-o-3.desy.de"
+Received: from smtp2-g21.free.fr ([212.27.42.2]:40822 "EHLO smtp2-g21.free.fr"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751459AbbDAItk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 1 Apr 2015 04:49:40 -0400
-Received: from smtp-map-1.desy.de (smtp-map-1.desy.de [131.169.56.66])
-	by smtp-o-3.desy.de (DESY-O-3) with ESMTP id 3E37E280738
-	for <linux-nfs@vger.kernel.org>; Wed,  1 Apr 2015 10:49:38 +0200 (CEST)
-Received: from ZITSWEEP2.win.desy.de (zitsweep2.win.desy.de [131.169.97.96])
-	by smtp-map-1.desy.de (DESY_MAP_1) with ESMTP id 315DC13E9B
-	for <linux-nfs@vger.kernel.org>; Wed,  1 Apr 2015 10:49:38 +0200 (MEST)
-Date: Wed, 1 Apr 2015 10:49:37 +0200 (CEST)
-From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
-To: Christoph Hellwig <hch@lst.de>
-Cc: Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org
-Message-ID: <186656243.1028813.1427878177493.JavaMail.zimbra@desy.de>
-In-Reply-To: <1427876113-27004-1-git-send-email-hch@lst.de>
-References: <1427876113-27004-1-git-send-email-hch@lst.de>
-Subject: Re: [PATCH] nfs-utils: add support for the "pnfs" export option
+	id S1752117AbbDAJzK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 1 Apr 2015 05:55:10 -0400
+Message-ID: <551BC077.1030402@free.fr>
+Date: Wed, 01 Apr 2015 11:55:03 +0200
+From: Mason <slash.tmp@free.fr>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+To: linux-nfs@vger.kernel.org
+CC: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>
+Subject: nfsroot protocol version
+Content-Type: text/plain; charset=ISO-8859-15; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hello everyone,
 
+My embedded system is supposed to mount the rootfs via NFS.
+https://www.kernel.org/doc/Documentation/filesystems/nfs/nfsroot.txt
 
------ Original Message -----
-> From: "Christoph Hellwig" <hch@lst.de>
-> To: "Steve Dickson" <SteveD@redhat.com>
-> Cc: linux-nfs@vger.kernel.org
-> Sent: Wednesday, April 1, 2015 10:15:13 AM
-> Subject: [PATCH] nfs-utils: add support for the "pnfs" export option
+So I set these options in my kernel .config
 
-> This goes along with the patch just sent to Bruce to make pnfs
-> support conditional.
-> 
-> Signed-off-by: Christoph Hellwig <hch@lst.de>
-> ---
-> support/include/nfs/export.h | 1 +
-> support/nfs/exports.c        | 3 +++
-> utils/exportfs/exportfs.c    | 2 ++
-> 3 files changed, 6 insertions(+)
-> 
-> diff --git a/support/include/nfs/export.h b/support/include/nfs/export.h
-> index 2f59e6a..1194255 100644
-> --- a/support/include/nfs/export.h
-> +++ b/support/include/nfs/export.h
-> @@ -26,6 +26,7 @@
-> #define	NFSEXP_CROSSMOUNT	0x4000
-> #define NFSEXP_NOACL		0x8000 /* reserved for possible ACL related use */
-> #define NFSEXP_V4ROOT		0x10000
-> +#define NFSEXP_PNFS            0x20000
-> /*
->  * All flags supported by the kernel before addition of the
->  * export_features interface:
-> diff --git a/support/nfs/exports.c b/support/nfs/exports.c
-> index 4b17d3c..97f9e67 100644
-> --- a/support/nfs/exports.c
-> +++ b/support/nfs/exports.c
-> @@ -275,6 +275,7 @@ putexportent(struct exportent *ep)
-> 		"no_" : "");
-> 	if (ep->e_flags & NFSEXP_NOREADDIRPLUS)
-> 		fprintf(fp, "nordirplus,");
-> +	fprintf(fp, "%s", (ep->e_flags & NFSEXP_PNFS)? "pnfs," : "");
-> 	if (ep->e_flags & NFSEXP_FSID) {
-> 		fprintf(fp, "fsid=%d,", ep->e_fsid);
-> 	}
-> @@ -581,6 +582,8 @@ parseopts(char *cp, struct exportent *ep, int warn, int
-> *had_subtree_opt_ptr)
-> 			clearflags(NFSEXP_NOACL, active, ep);
-> 		else if (strcmp(opt, "no_acl") == 0)
-> 			setflags(NFSEXP_NOACL, active, ep);
-> +		else if (!strcmp(opt, "pnfs"))
-> +			setflags(NFSEXP_PNFS, active, ep);
+CONFIG_IP_PNP=y
+CONFIG_IP_PNP_DHCP=y
+CONFIG_ROOT_NFS=y
+CONFIG_NFS_V4=y
 
-and no_pnfs as well to match other options.
+But it didn't work, the system would panic after a long time out
+(around 95 seconds)
 
-Tigran.
+[   98.567037] VFS: Unable to mount root fs via NFS, trying floppy.
+[   98.573238] Freeing unused kernel memory: 144K (c0332000 - c0356000)
+[   98.579698] Kernel panic - not syncing: No working init found.
+	Try passing init= option to kernel. See Linux Documentation/init.txt for guidance.
 
-> 		else if (strncmp(opt, "anonuid=", 8) == 0) {
-> 			char *oe;
-> 			ep->e_anonuid = strtol(opt+8, &oe, 10);
-> diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
-> index 48eac00..8758231 100644
-> --- a/utils/exportfs/exportfs.c
-> +++ b/utils/exportfs/exportfs.c
-> @@ -821,6 +821,8 @@ dump(int verbose, int export_format)
-> 				c = dumpopt(c, "nordirplus");
-> 			if (ep->e_flags & NFSEXP_NOACL)
-> 				c = dumpopt(c, "no_acl");
-> +			if (ep->e_flags & NFSEXP_PNFS)
-> +				c = dumpopt(c, "pnfs");
-> 			if (ep->e_flags & NFSEXP_FSID)
-> 				c = dumpopt(c, "fsid=%d", ep->e_fsid);
-> 			if (ep->e_uuid)
-> --
-> 1.9.1
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+I then enabled NFSv2 and NFSv3, and then it worked.
+
+When I was debugging the problem, I ran across NFS_DEF_OPTIONS
+in fs/nfs/nfsroot.c
+
+#define NFS_DEF_OPTIONS		"vers=2,udp,rsize=4096,wsize=4096"
+
+IIUC, we are explicitly requesting NFSv2?
+
+Would that explain why it fails when NFSv2 support is not compiled in?
+
+Would it make sense to use version 3?
+(So NFSv2 is not needed just to load the rootfs.)
+
+Regards.
