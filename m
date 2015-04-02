@@ -1,28 +1,96 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from verein.lst.de ([213.95.11.211]:34769 "EHLO newverein.lst.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753172AbbDBIhK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 2 Apr 2015 04:37:10 -0400
-Date: Thu, 2 Apr 2015 10:37:07 +0200
+Received: from bombadil.infradead.org ([198.137.202.9]:47951 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752559AbbDBInq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Apr 2015 04:43:46 -0400
 From: Christoph Hellwig <hch@lst.de>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Christoph Hellwig <hch@lst.de>, Steve Dickson <SteveD@redhat.com>,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfs-utils: add support for the "pnfs" export option
-Message-ID: <20150402083707.GA12653@lst.de>
-References: <1427876113-27004-1-git-send-email-hch@lst.de> <20150401174808.GB3040@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20150401174808.GB3040@fieldses.org>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v3] nfs-utils: add support for the "pnfs" export option
+Date: Thu,  2 Apr 2015 10:43:05 +0200
+Message-Id: <1427964185-24123-1-git-send-email-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Apr 01, 2015 at 01:48:09PM -0400, J. Bruce Fields wrote:
-> On Wed, Apr 01, 2015 at 10:15:13AM +0200, Christoph Hellwig wrote:
-> > This goes along with the patch just sent to Bruce to make pnfs
-> > support conditional.
-> 
-> Could we get an update of utils/exportfs/exports.man too?
+This goes along with the patch just sent to Bruce to make pnfs
+support conditional.
 
-Yes, v3 will follow ASAP.  Should have read my whole inbox before starting to
-update the patch..
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+---
+ support/include/nfs/export.h | 1 +
+ support/nfs/exports.c        | 5 +++++
+ utils/exportfs/exportfs.c    | 2 ++
+ utils/exportfs/exports.man   | 9 +++++++++
+ 4 files changed, 17 insertions(+)
+
+diff --git a/support/include/nfs/export.h b/support/include/nfs/export.h
+index 2f59e6a..1194255 100644
+--- a/support/include/nfs/export.h
++++ b/support/include/nfs/export.h
+@@ -26,6 +26,7 @@
+ #define	NFSEXP_CROSSMOUNT	0x4000
+ #define NFSEXP_NOACL		0x8000 /* reserved for possible ACL related use */
+ #define NFSEXP_V4ROOT		0x10000
++#define NFSEXP_PNFS            0x20000
+ /*
+  * All flags supported by the kernel before addition of the
+  * export_features interface:
+diff --git a/support/nfs/exports.c b/support/nfs/exports.c
+index 4b17d3c..9b325b9 100644
+--- a/support/nfs/exports.c
++++ b/support/nfs/exports.c
+@@ -275,6 +275,7 @@ putexportent(struct exportent *ep)
+ 		"no_" : "");
+ 	if (ep->e_flags & NFSEXP_NOREADDIRPLUS)
+ 		fprintf(fp, "nordirplus,");
++	fprintf(fp, "%spnfs", (ep->e_flags & NFSEXP_PNFS)? "" : "no_");
+ 	if (ep->e_flags & NFSEXP_FSID) {
+ 		fprintf(fp, "fsid=%d,", ep->e_fsid);
+ 	}
+@@ -581,6 +582,10 @@ parseopts(char *cp, struct exportent *ep, int warn, int *had_subtree_opt_ptr)
+ 			clearflags(NFSEXP_NOACL, active, ep);
+ 		else if (strcmp(opt, "no_acl") == 0)
+ 			setflags(NFSEXP_NOACL, active, ep);
++		else if (!strcmp(opt, "pnfs"))
++			setflags(NFSEXP_PNFS, active, ep);
++		else if (!strcmp(opt, "no_pnfs"))
++			clearflags(NFSEXP_PNFS, active, ep);
+ 		else if (strncmp(opt, "anonuid=", 8) == 0) {
+ 			char *oe;
+ 			ep->e_anonuid = strtol(opt+8, &oe, 10);
+diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
+index 48eac00..8758231 100644
+--- a/utils/exportfs/exportfs.c
++++ b/utils/exportfs/exportfs.c
+@@ -821,6 +821,8 @@ dump(int verbose, int export_format)
+ 				c = dumpopt(c, "nordirplus");
+ 			if (ep->e_flags & NFSEXP_NOACL)
+ 				c = dumpopt(c, "no_acl");
++			if (ep->e_flags & NFSEXP_PNFS)
++				c = dumpopt(c, "pnfs");
+ 			if (ep->e_flags & NFSEXP_FSID)
+ 				c = dumpopt(c, "fsid=%d", ep->e_fsid);
+ 			if (ep->e_uuid)
+diff --git a/utils/exportfs/exports.man b/utils/exportfs/exports.man
+index 88d9fbe..9309246 100644
+--- a/utils/exportfs/exports.man
++++ b/utils/exportfs/exports.man
+@@ -408,6 +408,15 @@ If the client asks for alternative locations for the export point, it
+ will be given this list of alternatives. (Note that actual replication
+ of the filesystem must be handled elsewhere.)
+ 
++.TP
++.IR pnfs
++This option allows enables the use of pNFS extension if protocol level
++is NFSv4.1 or higher, and the filesystem supports pNFS exports.  With
++pNFS clients can bypass the server and perform I/O directly to storage
++devices. The default can be explicitly requested with the
++.I no_pnfs
++option.
++
+ .SS User ID Mapping
+ .PP
+ .B nfsd
+-- 
+1.9.1
+
