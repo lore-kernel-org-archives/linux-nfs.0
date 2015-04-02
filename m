@@ -1,31 +1,25 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ie0-f170.google.com ([209.85.223.170]:36348 "EHLO
-	mail-ie0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750747AbbDBRiT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Apr 2015 13:38:19 -0400
+Received: from mx143.netapp.com ([216.240.21.24]:6378 "EHLO mx143.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753068AbbDBRkw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 2 Apr 2015 13:40:52 -0400
+From: "Adamson, Andy" <William.Adamson@netapp.com>
+To: NFSv4 <nfsv4@ietf.org>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Tom Haynes <thomas.haynes@primarydata.com>
+Subject: Announcing the June 2015 NFSv4 BAT in Ann Arbor
+Date: Thu, 2 Apr 2015 17:40:50 +0000
+Message-ID: <E8A57FDF-C51F-4D7D-8E4C-0902E9DF72AB@netapp.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-In-Reply-To: <21857.1427983172@warthog.procyon.org.uk>
-References: <21857.1427983172@warthog.procyon.org.uk>
-Date: Thu, 2 Apr 2015 10:38:18 -0700
-Message-ID: <CA+55aFx0oT8hPvZMQkTSufK4yNUC+Oo3wU17fM3ETO=6NnwOSw@mail.gmail.com>
-Subject: Re: [GIT PULL] FS-Cache: Fixes for dead objects handling and
- operation cancellation
-From: Linus Torvalds <torvalds@linux-foundation.org>
-To: David Howells <dhowells@redhat.com>
-Cc: linux-cachefs@redhat.com, linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Apr 2, 2015 at 6:59 AM, David Howells <dhowells@redhat.com> wrote:
->
-> Could you pull these FS-Cache fixes please?
-
-I really think this is out of the merge window, and not at all appropriate.
-
-There have been no fscache changes since September of last year, it
-can't suddenly be so urgent that you need to get things into -rc7.
-
-                         Linus
+TmV0QXBwIGFuZCBQcmltYXJ5ZGF0YSBhcmUgY28taG9zdGluZyB0aGUgSnVuZSBORlN2NCBiYWtl
+YXRob24gb25jZSBhZ2FpbiBpbiBBbm4gQXJib3IgdGhlIGZpcnN0IHdlZWsgaW4gSnVuZS4gKDYv
+MSB0aHJvdWdoIDYvNSkNCg0KRm9yIHJlZ2lzdHJhdGlvbiBhbmQgb3RoZXIgZGV0YWlscywgcGxl
+YXNlIHNlZToNCg0KaHR0cDovL3d3dy5uZnN2NGJhdC5vcmcvRXZlbnRzLzIwMTUvSnVuZS9CQVQv
+aW5kZXguaHRtbA0KDQpJ4oCZdmUgY29udGFjdGVkIFdlYmVyJ3MgSW5uLCB0aGUgcm9vbS1ibG9j
+ayBob3RlbCBmcm9tIGxhc3QgeWVhciwgYW5kIHdlIHNob3VsZCBoYXZlIGRldGFpbHMgb24gcm9v
+bSByZXNlcnZhdGlvbnMgYnkgZWFybHkgbmV4dCB3ZWVrIGF0IHRoZSBsYXRlc3QuDQoNCuKAlD5B
+bmR5
