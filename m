@@ -1,82 +1,79 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qc0-f182.google.com ([209.85.216.182]:36362 "EHLO
-	mail-qc0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752726AbbDBRx1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Apr 2015 13:53:27 -0400
-Received: by qcgx3 with SMTP id x3so73246952qcg.3
-        for <linux-nfs@vger.kernel.org>; Thu, 02 Apr 2015 10:53:26 -0700 (PDT)
-Date: Thu, 2 Apr 2015 13:53:23 -0400
-From: Jeff Layton <jeff.layton@primarydata.com>
-To: Mark Salter <msalter@redhat.com>
-Cc: Jeff Layton <jlayton@primarydata.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: userspace breakage in linux/nfsd/debug.h
-Message-ID: <20150402135323.18416d48@tlielax.poochiereds.net>
-In-Reply-To: <20150402115813.6abf5596@tlielax.poochiereds.net>
-References: <1427985766.2973.11.camel@deneb.redhat.com>
-	<20150402115813.6abf5596@tlielax.poochiereds.net>
+Received: from userp1040.oracle.com ([156.151.31.81]:35717 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753306AbbDBRyE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Apr 2015 13:54:04 -0400
+Message-ID: <551D821F.5080006@oracle.com>
+Date: Thu, 02 Apr 2015 10:53:35 -0700
+From: Shirley Ma <shirley.ma@oracle.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+To: Charles EDWARD Lever <chuck.lever@oracle.com>,
+        "Anna.Schumaker@netapp.com" <Anna.Schumaker@netapp.com>,
+        "Devesh.Sharma@emulex.com" <Devesh.Sharma@emulex.com>,
+        "dledford@redhat.com" <dledford@redhat.com>,
+        "dominique.martinet@cea.fr" <dominique.martinet@cea.fr>,
+        "jeffrey.c.becker@nasa.gov" <jeffrey.c.becker@nasa.gov>,
+        "rsdance@soft-forge.com" <rsdance@soft-forge.com>,
+        "skc@lanl.gov" <skc@lanl.gov>,
+        "sprabhu@redhat.com" <sprabhu@redhat.com>,
+        "SteveD@redhat.com" <SteveD@redhat.com>,
+        "swise@opengridcomputing.com" <swise@opengridcomputing.com>,
+        "wendy.cheng@intel.com" <wendy.cheng@intel.com>,
+        "yanb@mellanox.com" <yanb@mellanox.com>,
+        linux-rdma <linux-rdma@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: NFSoRDMA bi-weekly developers meeting minutes (4/2)
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2 Apr 2015 11:58:13 -0400
-Jeff Layton <jeff.layton@primarydata.com> wrote:
+Attendees:
 
-> On Thu, 02 Apr 2015 10:42:46 -0400
-> Mark Salter <msalter@redhat.com> wrote:
-> 
-> > This patch:
-> > 
-> >   commit f895b252d4edf66b2895fb5a7b17a638665f3e1f
-> >   Author: Jeff Layton <jlayton@primarydata.com>
-> >   Date:   Mon Nov 17 16:58:04 2014 -0500
-> > 
-> >     sunrpc: eliminate RPC_DEBUG
-> >     
-> >     It's always set to whatever CONFIG_SUNRPC_DEBUG is, so just use that.
-> >     
-> >     Signed-off-by: Jeff Layton <jlayton@primarydata.com>
-> >     Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-> > 
-> > breaks userspace use of linux/nfsd/debug.h because of:
-> > 
-> >   diff --git a/include/uapi/linux/nfsd/debug.h b/include/uapi/linux/nfsd/debug.h
-> >   index a6f453c..1fdc95b 100644
-> >   --- a/include/uapi/linux/nfsd/debug.h
-> >   +++ b/include/uapi/linux/nfsd/debug.h
-> >   @@ -15,7 +15,7 @@
-> >     * Enable debugging for nfsd.
-> >     * Requires RPC_DEBUG.
-> >     */
-> >   -#ifdef RPC_DEBUG
-> >   +#if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
-> >    # define NFSD_DEBUG		1
-> >    #endif
-> >  
-> > IS_ENABLED() is not available outside the kernel and causes a compile
-> > time failure:
-> > 
-> >   /usr/include/linux/nfsd/debug.h:18:15: error: missing binary operator before token "("
-> >  #if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
-> > 
-> > 
-> > 
-> 
-> Huh, ok. Probably the right solution is to just get rid of NFSD_DEBUG
-> and convert all of the "#ifdef NFSD_DEBUG" statements into 
-> "#if IS_ENABLED(CONFIG_SUNRPC_DEBUG)".
-> 
-> Then we can just remove that whole block from nfsd/debug.h altogether. Mike,
-> care to spin up a patch for that or shall I?
-> 
+Yan Burman (Mellanox)
+Steve Dickson (Red Hat)
+Chuck Lever (Oracle)
+Shirley Ma (Oracle)
+Sachin Prabhu (RedHat)
+Devesh Sharma (Emulex)
+Anna Schumaker (Net App)
+Steve Wise (OpenGridComputing, Chelsio)
 
-Uhh, sorry...I meant to say "Mark" there.
+Moderator:
+Shirley Ma (Oracle)
 
-Mark, would you mind spinning up a patch for this or would you rather I
-do it?
+Today's meeting notes:
+Sorry for the late start, it has changed from 7:30am PST time to 8:30am PST time but I didn't notice the change wasn't sent out. :( Thanks for your patient to join the call one hour later.
 
-Thanks,
--- 
-Jeff Layton <jeff.layton@primarydata.com>
+1. NFSoRDMA deployment:
+NFSoRDMA has much better performance than NFSoIPoIB-CM in general. People are looking for both Linux NFSoRDMA client and Server support for deployment, however distros only support NFSoRDMA client at this moment. Developers have been fixing bugs on server side, more dedicated resources on NFSoRDMA server development are needed for stability and performance work. We will continue to improve NFSoRDMA performance and try to find more resources on server side.
+
+2. NFSoRDMA performance
+After experimenting performance with different approaches (multiple QPs, different completion vector per QP), we think we should focus on single QP scalability first. Right now small I/O single QP IOPS is around 100K, large I/O single QP NFS READ can reach 3.6GB/s (which almost reaches link speed in the fabric). To identify single QP scalability, here are list of things we can try:
+-- Generic RPC dispatching: identify serialized operations to make them paralleled
+-- scheduling mechanism: wait_on_bit latency, queue work latency
+-- RDMA transport layer: hack poll_cq on both client and server to make pulling longer, like wait for RPC RTT time, wait for more WCs to process more completions to reduce interrupts/wait overheads to see any better results
+
+3. We will cover iSCSI/iSER/SRP in the future discussions.
+
+10/23/2014
+@8:30am PT DST
+@9:30am MT DST
+@10:30am CT DST
+@11:30am ET DST
+@Bangalore @9:00pm
+@Israel @6:30pm
+
+Duration: 1 hour
+
+Call-in number:
+Israel: +972 37219638
+Bangalore: +91 8039890080 (180030109800)
+France  Colombes +33 1 5760 2222    +33 176728936
+US: 8666824770,  408-7744073
+
+Conference Code: 2308833
+Passcode: 63767362 (it's NFSoRDMA, in case you couldn't remember)
+
+Thanks everyone for joining the call and providing valuable inputs/work to the community to make NFSoRDMA better.
+
+Shirley
