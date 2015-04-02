@@ -1,85 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:53441 "EHLO mx1.redhat.com"
+Received: from mx2.math.uh.edu ([129.7.128.33]:46417 "EHLO mx2.math.uh.edu"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752762AbbDBSyg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 2 Apr 2015 14:54:36 -0400
-Message-ID: <1428000873.2973.12.camel@deneb.redhat.com>
-Subject: Re: userspace breakage in linux/nfsd/debug.h
-From: Mark Salter <msalter@redhat.com>
-To: Jeff Layton <jeff.layton@primarydata.com>
-Cc: Jeff Layton <jlayton@primarydata.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Date: Thu, 02 Apr 2015 14:54:33 -0400
-In-Reply-To: <20150402135323.18416d48@tlielax.poochiereds.net>
-References: <1427985766.2973.11.camel@deneb.redhat.com>
-	 <20150402115813.6abf5596@tlielax.poochiereds.net>
-	 <20150402135323.18416d48@tlielax.poochiereds.net>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+	id S1751249AbbDBTEv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 2 Apr 2015 15:04:51 -0400
+Received: from epithumia.math.uh.edu ([129.7.128.2])
+	by mx2.math.uh.edu with esmtp (Exim 4.84)
+	(envelope-from <tibbs@math.uh.edu>)
+	id 1YdjNs-0001R1-5y
+	for linux-nfs@vger.kernel.org; Thu, 02 Apr 2015 12:58:28 -0500
+From: Jason L Tibbitts III <tibbs@math.uh.edu>
+To: linux-nfs@vger.kernel.org
+Subject: All access to NFS4 krb5p server hanging when one user has an expired ticket
+Date: Thu, 02 Apr 2015 12:58:28 -0500
+Message-ID: <ufamw2qfm4b.fsf@epithumia.math.uh.edu>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2015-04-02 at 13:53 -0400, Jeff Layton wrote:
-> On Thu, 2 Apr 2015 11:58:13 -0400
-> Jeff Layton <jeff.layton@primarydata.com> wrote:
-> 
-> > On Thu, 02 Apr 2015 10:42:46 -0400
-> > Mark Salter <msalter@redhat.com> wrote:
-> > 
-> > > This patch:
-> > > 
-> > >   commit f895b252d4edf66b2895fb5a7b17a638665f3e1f
-> > >   Author: Jeff Layton <jlayton@primarydata.com>
-> > >   Date:   Mon Nov 17 16:58:04 2014 -0500
-> > > 
-> > >     sunrpc: eliminate RPC_DEBUG
-> > >     
-> > >     It's always set to whatever CONFIG_SUNRPC_DEBUG is, so just use that.
-> > >     
-> > >     Signed-off-by: Jeff Layton <jlayton@primarydata.com>
-> > >     Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-> > > 
-> > > breaks userspace use of linux/nfsd/debug.h because of:
-> > > 
-> > >   diff --git a/include/uapi/linux/nfsd/debug.h b/include/uapi/linux/nfsd/debug.h
-> > >   index a6f453c..1fdc95b 100644
-> > >   --- a/include/uapi/linux/nfsd/debug.h
-> > >   +++ b/include/uapi/linux/nfsd/debug.h
-> > >   @@ -15,7 +15,7 @@
-> > >     * Enable debugging for nfsd.
-> > >     * Requires RPC_DEBUG.
-> > >     */
-> > >   -#ifdef RPC_DEBUG
-> > >   +#if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
-> > >    # define NFSD_DEBUG		1
-> > >    #endif
-> > >  
-> > > IS_ENABLED() is not available outside the kernel and causes a compile
-> > > time failure:
-> > > 
-> > >   /usr/include/linux/nfsd/debug.h:18:15: error: missing binary operator before token "("
-> > >  #if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
-> > > 
-> > > 
-> > > 
-> > 
-> > Huh, ok. Probably the right solution is to just get rid of NFSD_DEBUG
-> > and convert all of the "#ifdef NFSD_DEBUG" statements into 
-> > "#if IS_ENABLED(CONFIG_SUNRPC_DEBUG)".
-> > 
-> > Then we can just remove that whole block from nfsd/debug.h altogether. Mike,
-> > care to spin up a patch for that or shall I?
-> > 
-> 
-> Uhh, sorry...I meant to say "Mark" there.
-> 
-> Mark, would you mind spinning up a patch for this or would you rather I
-> do it?
-> 
-> Thanks,
+I'm running into an odd issue that I haven't been able to figure out.  I
+have four identical NFS servers running the current Centos 7 release and
+currently have their 3.10.0-123.20.1.el7.x86_64 kernel booted.  (Yeah, I
+know, Centos/EL have outdated kernel bits, but I don't have anough info
+to make a good bug report at this point.)  My clients are all Fedora 21
+running 3.19.1.
 
-I was wondering who Mike was. :)
-Yeah, I can put a patch together.
+Two of the servers have a single filesystem exported with either
+sec=krb5p:krb5i:krb5 or sec=krb5p:krb5i:krb5:sys.  This filesystem has
+no data and is not accessed by clients.  The other filesystems are
+exported without any sec= option.
 
+After a while, client access to all filesystems on one of the servers
+will begin to hang uninterruptibly; the following appears repeatedly,
+once a second, in the kernel log:
 
+NFS: state manager: check lease failed on NFSv4 server nas01 with error 13
+
+There are no problems accessing filesystems on the other servers during
+this time.
+
+If I kill all user processes that have any filesystems from that one
+server and umount all of the relevant filesystems, things start working
+and fresh mounts from that server can be accessed.  However, things
+begin failing again after what appears to be very close to 24 hours.
+That happens to be the default kerberos ticket expiration time.  (I did
+not have sssd auto ticket renewal enabled on the client.)
+
+I think this is quite similar to what was reported here several years
+ago in
+   http://www.spinics.net/lists/linux-nfs/msg22430.html
+except that it appears to be even worse; even if users aren't using the
+kerberized filesystem and the filesystems are all mounted sec=sys,
+things still eventually hang for everyone when a ticket expires.  I am
+assuming that a kerberos ticket exchange still happens because the
+server has one kerberized export, even if the requested filesystem isn't
+kerberized.  But that's all really just conjecture.
+
+Some relevant software versions:
+
+Server:
+kernel-3.10.0-123.20.1.el7.x86_64
+nfs-utils-1.3.0-0.8.el7.x86_64
+gssproxy-0.3.0-10.el7.x86_64
+krb5-libs-1.12.2-14.el7.x86_64
+
+Client:
+kernel-3.19.1-201.fc21.x86_64
+nfs-utils-1.3.1-6.2.fc21.x86_64
+gssproxy-0.3.1-4.fc21.x86_64
+krb5-libs-1.12.2-14.fc21.x86_64
+
+And just in case, the KDC:
+krb5-server-1.12.2-14.fc21.x86_64
+krb5-libs-1.12.2-14.fc21.x86_64
+
+ - J<
