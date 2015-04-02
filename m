@@ -1,36 +1,75 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([198.137.202.9]:45966 "EHLO
+Received: from bombadil.infradead.org ([198.137.202.9]:33242 "EHLO
 	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750771AbbDBI1m (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Apr 2015 04:27:42 -0400
-Date: Thu, 2 Apr 2015 01:27:41 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: "G?l, Bal?zs" <balazs.gal@tv2.hu>
-Cc: Christoph Hellwig <hch@infradead.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Linux kernel 3.18+ blocklayout driver support only 4k pNFS block
- size
-Message-ID: <20150402082741.GA1202@infradead.org>
-References: <DB3PR03MB0891F4C3C510AB5C7565A4D0BAF40@DB3PR03MB0891.eurprd03.prod.outlook.com>
- <20150401084702.GA21858@infradead.org>
- <AM3PR03MB0885CFC7D549D892D8FCF002BAF30@AM3PR03MB0885.eurprd03.prod.outlook.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <AM3PR03MB0885CFC7D549D892D8FCF002BAF30@AM3PR03MB0885.eurprd03.prod.outlook.com>
+	with ESMTP id S1752463AbbDBIgj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Apr 2015 04:36:39 -0400
+From: Christoph Hellwig <hch@lst.de>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v2] nfs-utils: add support for the "pnfs" export option
+Date: Thu,  2 Apr 2015 10:36:00 +0200
+Message-Id: <1427963760-23995-1-git-send-email-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Apr 01, 2015 at 04:21:31PM +0000, G?l, Bal?zs wrote:
-> > There is no concept of a max pNFS file size.  Do you mean a maximum layout size?  There is no real delibrate limit.
-> 
-> This is the maximum file size, what can be handled by the block layout driver, because of the maximum layout size limit (at least with EMC).
+This goes along with the patch just sent to Bruce to make pnfs
+support conditional.
 
-So it's a server side limitation.  That also explains why no EMC user
-ever saw the instant crash with > 2TB volumes in the old driver..
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+---
+ support/include/nfs/export.h | 1 +
+ support/nfs/exports.c        | 5 +++++
+ utils/exportfs/exportfs.c    | 2 ++
+ 3 files changed, 8 insertions(+)
 
-> Our pNFS story started at EMC in 01/22/2015, we are still waiting for a patch. Currently we will not use pNFS, because seems it's not production ready.
+diff --git a/support/include/nfs/export.h b/support/include/nfs/export.h
+index 2f59e6a..1194255 100644
+--- a/support/include/nfs/export.h
++++ b/support/include/nfs/export.h
+@@ -26,6 +26,7 @@
+ #define	NFSEXP_CROSSMOUNT	0x4000
+ #define NFSEXP_NOACL		0x8000 /* reserved for possible ACL related use */
+ #define NFSEXP_V4ROOT		0x10000
++#define NFSEXP_PNFS            0x20000
+ /*
+  * All flags supported by the kernel before addition of the
+  * export_features interface:
+diff --git a/support/nfs/exports.c b/support/nfs/exports.c
+index 4b17d3c..9b325b9 100644
+--- a/support/nfs/exports.c
++++ b/support/nfs/exports.c
+@@ -275,6 +275,7 @@ putexportent(struct exportent *ep)
+ 		"no_" : "");
+ 	if (ep->e_flags & NFSEXP_NOREADDIRPLUS)
+ 		fprintf(fp, "nordirplus,");
++	fprintf(fp, "%spnfs", (ep->e_flags & NFSEXP_PNFS)? "" : "no_");
+ 	if (ep->e_flags & NFSEXP_FSID) {
+ 		fprintf(fp, "fsid=%d,", ep->e_fsid);
+ 	}
+@@ -581,6 +582,10 @@ parseopts(char *cp, struct exportent *ep, int warn, int *had_subtree_opt_ptr)
+ 			clearflags(NFSEXP_NOACL, active, ep);
+ 		else if (strcmp(opt, "no_acl") == 0)
+ 			setflags(NFSEXP_NOACL, active, ep);
++		else if (!strcmp(opt, "pnfs"))
++			setflags(NFSEXP_PNFS, active, ep);
++		else if (!strcmp(opt, "no_pnfs"))
++			clearflags(NFSEXP_PNFS, active, ep);
+ 		else if (strncmp(opt, "anonuid=", 8) == 0) {
+ 			char *oe;
+ 			ep->e_anonuid = strtol(opt+8, &oe, 10);
+diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
+index 48eac00..8758231 100644
+--- a/utils/exportfs/exportfs.c
++++ b/utils/exportfs/exportfs.c
+@@ -821,6 +821,8 @@ dump(int verbose, int export_format)
+ 				c = dumpopt(c, "nordirplus");
+ 			if (ep->e_flags & NFSEXP_NOACL)
+ 				c = dumpopt(c, "no_acl");
++			if (ep->e_flags & NFSEXP_PNFS)
++				c = dumpopt(c, "pnfs");
+ 			if (ep->e_flags & NFSEXP_FSID)
+ 				c = dumpopt(c, "fsid=%d", ep->e_fsid);
+ 			if (ep->e_uuid)
+-- 
+1.9.1
 
-The NFS client driver has been in a very bad shape when I started
-testing it against my new server, including crashed, lockups and lots of
-data corruption.  This is why I ended up rewriting it entirely for Linux
-3.18.  I would not recommend to use the older one at all.
