@@ -1,48 +1,36 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from out5-smtp.messagingengine.com ([66.111.4.29]:53234 "EHLO
-	out5-smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750924AbbDAUYd (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Apr 2015 16:24:33 -0400
-Received: from compute4.internal (compute4.nyi.internal [10.202.2.44])
-	by mailout.nyi.internal (Postfix) with ESMTP id ABA29209C0
-	for <linux-nfs@vger.kernel.org>; Wed,  1 Apr 2015 16:24:29 -0400 (EDT)
-Message-Id: <1427919872.1831768.248246417.7CA8045D@webmail.messagingengine.com>
-From: lyndat3@your-mail.com
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Received: from bombadil.infradead.org ([198.137.202.9]:45966 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750771AbbDBI1m (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Apr 2015 04:27:42 -0400
+Date: Thu, 2 Apr 2015 01:27:41 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: "G?l, Bal?zs" <balazs.gal@tv2.hu>
+Cc: Christoph Hellwig <hch@infradead.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: Linux kernel 3.18+ blocklayout driver support only 4k pNFS block
+ size
+Message-ID: <20150402082741.GA1202@infradead.org>
+References: <DB3PR03MB0891F4C3C510AB5C7565A4D0BAF40@DB3PR03MB0891.eurprd03.prod.outlook.com>
+ <20150401084702.GA21858@infradead.org>
+ <AM3PR03MB0885CFC7D549D892D8FCF002BAF30@AM3PR03MB0885.eurprd03.prod.outlook.com>
 MIME-Version: 1.0
-Content-Type: text/plain
-Subject: Re: file xfer over NFSv4 with 'sync' ~300X slower than with 'async' ?
-Date: Wed, 01 Apr 2015 13:24:32 -0700
-In-Reply-To: <20150401195603.GG3040@fieldses.org>
-References: <1427751843.1013981.247256753.2BA43388@webmail.messagingengine.com>
- <1427811676.1314276.247565589.4E14003B@webmail.messagingengine.com>
- <20150401175437.GD3040@fieldses.org>
- <1427911337.1794160.248190485.1F161545@webmail.messagingengine.com>
- <20150401185146.GE3040@fieldses.org>
- <CAHQdGtT2ved_4xRQMyxuWfHAr8mci+unxfXsgv3YX7cJ4NCRBQ@mail.gmail.com>
- <1427915047.1810469.248215805.54189CB6@webmail.messagingengine.com>
- <20150401195603.GG3040@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <AM3PR03MB0885CFC7D549D892D8FCF002BAF30@AM3PR03MB0885.eurprd03.prod.outlook.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> Yeah, understood, I just meant that if we'd originally named that export
-> option, I don't know, "trash_me_on_reboot", then you wouldn't have
-> gotten the "don't use async, it's unsafe" idea, and wouldn't have gotten
-> into this mess.  But, too late to do anything about that, I guess.
+On Wed, Apr 01, 2015 at 04:21:31PM +0000, G?l, Bal?zs wrote:
+> > There is no concept of a max pNFS file size.  Do you mean a maximum layout size?  There is no real delibrate limit.
+> 
+> This is the maximum file size, what can be handled by the block layout driver, because of the maximum layout size limit (at least with EMC).
 
+So it's a server side limitation.  That also explains why no EMC user
+ever saw the instant crash with > 2TB volumes in the old driver..
 
-I'm surprised at how ineffective I was at finding & understanding the whole business to begin with.
+> Our pNFS story started at EMC in 01/22/2015, we are still waiting for a patch. Currently we will not use pNFS, because seems it's not production ready.
 
-If not for Trond's comments and stumbling on that reference re: NFS sync/async issues on "not-my-distro", I'd still be thrashing around.
-
-A bunch of other people responding on the issue weren't clear about, or aware of, the issue.  At least not that I was hearing.  Entirely possible that I was asking the wrong question the wrong way, so I'll take my share of it.
-
-Just looking at the decade+ of "my NFS is slow. why?" posts & comments  I found & read, having this async/sync biz documented & easy to find for normal humans might be helpful.  If it's there I sure as heck missed it.
-
-My two cents.
-
-Thanks again!
-
-LT
+The NFS client driver has been in a very bad shape when I started
+testing it against my new server, including crashed, lockups and lots of
+data corruption.  This is why I ended up rewriting it entirely for Linux
+3.18.  I would not recommend to use the older one at all.
