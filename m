@@ -1,41 +1,107 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:37445 "EHLO mx1.redhat.com"
+Received: from mx144.netapp.com ([216.240.21.25]:26295 "EHLO mx144.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751389AbbDBTu7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 2 Apr 2015 15:50:59 -0400
-Date: Thu, 2 Apr 2015 15:50:54 -0400 (EDT)
-From: Benjamin Coddington <bcodding@redhat.com>
-To: Sean Brisbane <sean.brisbane@physics.ox.ac.uk>
-cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Per process accounting for nfs
-In-Reply-To: <C6A70F0B3785A04BA88C056A0B39627C21A1BAB4@EXCHNG15.physics.ox.ac.uk>
-Message-ID: <alpine.OSX.2.19.9992.1504021537360.710@planck.local>
-References: <C6A70F0B3785A04BA88C056A0B39627C21A1BAB4@EXCHNG15.physics.ox.ac.uk>
+	id S1751495AbbDCSgE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 3 Apr 2015 14:36:04 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
+CC: <Anna.Schumaker@netapp.com>
+Subject: [PATCH] nfs: Fetch MOUNTED_ON_FILEID when updating an inode
+Date: Fri, 3 Apr 2015 14:35:59 -0400
+Message-ID: <1428086159-4762-1-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
-Content-Type: multipart/mixed; BOUNDARY="0-446203518-1428004256=:710"
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
+2ef47eb1 (NFS: Fix use of nfs_attr_use_mounted_on_fileid()) was a good
+start to fixing a circular directory structure warning for NFS v4
+"junctioned" mountpoints.  Unfortunately, further testing continued to
+generate this error.
 
---0-446203518-1428004256=:710
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8BIT
+My server is configured like this:
 
-On Thu, 2 Apr 2015, Sean Brisbane wrote:
+anna@nfsd ~ % df
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/vda1       9.1G  2.0G  6.5G  24% /
+/dev/vdc1      1014M   33M  982M   4% /exports
+/dev/vdc2      1014M   33M  982M   4% /exports/vol1
+/dev/vdc3      1014M   33M  982M   4% /exports/vol1/vol2
 
-> Dear All,
->
-> I'm currently trying to identify a mechanism to measure NFS I/o per process on a multi user NFS client machine. Lots of googling tells me this is not straight forward. Installing a kernel or module is an option if necessary, though we are also supporting afs and lustre on the same kernel (RHEL 6 based). The purpose of this is to gather accurate metrics on the workload types we run to feed into what hardware we need to buy. Can anyone give me any pointers as to how to proceed?
->
-> Thanks,
-> SeanN?????r??y??????X??ǧv???)޺{.n??????{???????n?r??????????????&????G?????(?階?ݢj"????m????????ޖ???f???h???~?m?
+anna@nfsd ~ % cat /etc/exports
+/exports/          *(rw,async,no_subtree_check,no_root_squash)
+/exports/vol1/     *(rw,async,no_subtree_check,no_root_squash)
+/exports/vol1/vol2 *(rw,async,no_subtree_check,no_root_squash)
 
-Hi Sean,
+I've been running chown across the entire mountpoint twice in a row to
+hit this problem.  The first run succeeds, but the second one fails with
+the circular directory warning along with:
 
-Systemtap can do that.. and ftrace might also work for that.  Check those
-out.
+anna@client ~ % dmesg
+[Apr 3 14:28] NFS: server 192.168.100.204 error: fileid changed
+              fsid 0:39: expected fileid 0x100080, got 0x80
 
-Ben
---0-446203518-1428004256=:710--
+WHere 0x80 is the mountpoint's fileid and 0x100080 is the mounted-on
+fileid.
+
+This patch fixes the issue by requesting an updated mounted-on fileid
+from the server during nfs_update_inode(), and then checking that the
+fileid stored in the nfs_inode matches either the fileid or mounted-on
+fileid returned by the server.
+
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+---
+ fs/nfs/inode.c    | 15 ++++++++++++++-
+ fs/nfs/nfs4proc.c |  3 ++-
+ 2 files changed, 16 insertions(+), 2 deletions(-)
+
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index d42dff6..0d1deb0 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -1588,6 +1588,19 @@ int nfs_post_op_update_inode_force_wcc(struct inode *inode, struct nfs_fattr *fa
+ }
+ EXPORT_SYMBOL_GPL(nfs_post_op_update_inode_force_wcc);
+ 
++
++static inline bool nfs_fileid_valid(struct nfs_inode *nfsi,
++				    struct nfs_fattr *fattr)
++{
++	bool ret1 = true, ret2 = true;
++
++	if (fattr->valid & NFS_ATTR_FATTR_FILEID)
++		ret1 = (nfsi->fileid == fattr->fileid);
++	if (fattr->valid & NFS_ATTR_FATTR_MOUNTED_ON_FILEID)
++		ret2 = (nfsi->fileid == fattr->mounted_on_fileid);
++	return ret1 || ret2;
++}
++
+ /*
+  * Many nfs protocol calls return the new file attributes after
+  * an operation.  Here we update the inode to reflect the state
+@@ -1614,7 +1627,7 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
+ 			nfs_display_fhandle_hash(NFS_FH(inode)),
+ 			atomic_read(&inode->i_count), fattr->valid);
+ 
+-	if ((fattr->valid & NFS_ATTR_FATTR_FILEID) && nfsi->fileid != fattr->fileid) {
++	if (!nfs_fileid_valid(nfsi, fattr)) {
+ 		printk(KERN_ERR "NFS: server %s error: fileid changed\n"
+ 			"fsid %s: expected fileid 0x%Lx, got 0x%Lx\n",
+ 			NFS_SERVER(inode)->nfs_client->cl_hostname,
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 9ff8c63..6d48f37 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -185,7 +185,8 @@ const u32 nfs4_fattr_bitmap[3] = {
+ 	| FATTR4_WORD1_SPACE_USED
+ 	| FATTR4_WORD1_TIME_ACCESS
+ 	| FATTR4_WORD1_TIME_METADATA
+-	| FATTR4_WORD1_TIME_MODIFY,
++	| FATTR4_WORD1_TIME_MODIFY
++	| FATTR4_WORD1_MOUNTED_ON_FILEID,
+ #ifdef CONFIG_NFS_V4_SECURITY_LABEL
+ 	FATTR4_WORD2_SECURITY_LABEL
+ #endif
+-- 
+2.3.5
+
