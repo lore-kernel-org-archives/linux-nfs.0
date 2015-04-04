@@ -1,107 +1,84 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx144.netapp.com ([216.240.21.25]:26295 "EHLO mx144.netapp.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:6393 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751495AbbDCSgE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 3 Apr 2015 14:36:04 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
-CC: <Anna.Schumaker@netapp.com>
-Subject: [PATCH] nfs: Fetch MOUNTED_ON_FILEID when updating an inode
-Date: Fri, 3 Apr 2015 14:35:59 -0400
-Message-ID: <1428086159-4762-1-git-send-email-Anna.Schumaker@Netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+	id S1753063AbbDDTNw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 4 Apr 2015 15:13:52 -0400
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+To: linux-kernel@vger.kernel.org
+Cc: linux-fsdevel@vger.kernel.org, viro@zeniv.linux.org.uk,
+        Dmitry Monakhov <dmonakhov@openvz.org>, linux-nfs@vger.kernel.org
+Subject: [PATCH 09/16] nfs: use is_xxx_kiocb instead of filp->fl_flags
+Date: Sat,  4 Apr 2015 23:13:18 +0400
+Message-Id: <1428174805-853-10-git-send-email-dmonakhov@openvz.org>
+In-Reply-To: <1428174805-853-1-git-send-email-dmonakhov@openvz.org>
+References: <1428174805-853-1-git-send-email-dmonakhov@openvz.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-2ef47eb1 (NFS: Fix use of nfs_attr_use_mounted_on_fileid()) was a good
-start to fixing a circular directory structure warning for NFS v4
-"junctioned" mountpoints.  Unfortunately, further testing continued to
-generate this error.
-
-My server is configured like this:
-
-anna@nfsd ~ % df
-Filesystem      Size  Used Avail Use% Mounted on
-/dev/vda1       9.1G  2.0G  6.5G  24% /
-/dev/vdc1      1014M   33M  982M   4% /exports
-/dev/vdc2      1014M   33M  982M   4% /exports/vol1
-/dev/vdc3      1014M   33M  982M   4% /exports/vol1/vol2
-
-anna@nfsd ~ % cat /etc/exports
-/exports/          *(rw,async,no_subtree_check,no_root_squash)
-/exports/vol1/     *(rw,async,no_subtree_check,no_root_squash)
-/exports/vol1/vol2 *(rw,async,no_subtree_check,no_root_squash)
-
-I've been running chown across the entire mountpoint twice in a row to
-hit this problem.  The first run succeeds, but the second one fails with
-the circular directory warning along with:
-
-anna@client ~ % dmesg
-[Apr 3 14:28] NFS: server 192.168.100.204 error: fileid changed
-              fsid 0:39: expected fileid 0x100080, got 0x80
-
-WHere 0x80 is the mountpoint's fileid and 0x100080 is the mounted-on
-fileid.
-
-This patch fixes the issue by requesting an updated mounted-on fileid
-from the server during nfs_update_inode(), and then checking that the
-fileid stored in the nfs_inode matches either the fileid or mounted-on
-fileid returned by the server.
-
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
 ---
- fs/nfs/inode.c    | 15 ++++++++++++++-
- fs/nfs/nfs4proc.c |  3 ++-
- 2 files changed, 16 insertions(+), 2 deletions(-)
+ fs/nfs/direct.c |    7 +++----
+ fs/nfs/file.c   |    6 +++---
+ 2 files changed, 6 insertions(+), 7 deletions(-)
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index d42dff6..0d1deb0 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -1588,6 +1588,19 @@ int nfs_post_op_update_inode_force_wcc(struct inode *inode, struct nfs_fattr *fa
- }
- EXPORT_SYMBOL_GPL(nfs_post_op_update_inode_force_wcc);
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index c3929fb..76950c6 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -964,8 +964,7 @@ ssize_t nfs_file_direct_write(struct kiocb *iocb, struct iov_iter *iter,
+ 				loff_t pos)
+ {
+ 	ssize_t result = -EINVAL;
+-	struct file *file = iocb->ki_filp;
+-	struct address_space *mapping = file->f_mapping;
++	struct address_space *mapping = iocb->ki_filp->f_mapping;
+ 	struct inode *inode = mapping->host;
+ 	struct nfs_direct_req *dreq;
+ 	struct nfs_lock_context *l_ctx;
+@@ -976,9 +975,9 @@ ssize_t nfs_file_direct_write(struct kiocb *iocb, struct iov_iter *iter,
+ 	nfs_add_stats(mapping->host, NFSIOS_DIRECTWRITTENBYTES, count);
  
-+
-+static inline bool nfs_fileid_valid(struct nfs_inode *nfsi,
-+				    struct nfs_fattr *fattr)
-+{
-+	bool ret1 = true, ret2 = true;
-+
-+	if (fattr->valid & NFS_ATTR_FATTR_FILEID)
-+		ret1 = (nfsi->fileid == fattr->fileid);
-+	if (fattr->valid & NFS_ATTR_FATTR_MOUNTED_ON_FILEID)
-+		ret2 = (nfsi->fileid == fattr->mounted_on_fileid);
-+	return ret1 || ret2;
-+}
-+
- /*
-  * Many nfs protocol calls return the new file attributes after
-  * an operation.  Here we update the inode to reflect the state
-@@ -1614,7 +1627,7 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
- 			nfs_display_fhandle_hash(NFS_FH(inode)),
- 			atomic_read(&inode->i_count), fattr->valid);
+ 	dfprintk(FILE, "NFS: direct write(%pD2, %zd@%Ld)\n",
+-		file, count, (long long) pos);
++		iocb->ki_filp, count, (long long) pos);
  
--	if ((fattr->valid & NFS_ATTR_FATTR_FILEID) && nfsi->fileid != fattr->fileid) {
-+	if (!nfs_fileid_valid(nfsi, fattr)) {
- 		printk(KERN_ERR "NFS: server %s error: fileid changed\n"
- 			"fsid %s: expected fileid 0x%Lx, got 0x%Lx\n",
- 			NFS_SERVER(inode)->nfs_client->cl_hostname,
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 9ff8c63..6d48f37 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -185,7 +185,8 @@ const u32 nfs4_fattr_bitmap[3] = {
- 	| FATTR4_WORD1_SPACE_USED
- 	| FATTR4_WORD1_TIME_ACCESS
- 	| FATTR4_WORD1_TIME_METADATA
--	| FATTR4_WORD1_TIME_MODIFY,
-+	| FATTR4_WORD1_TIME_MODIFY
-+	| FATTR4_WORD1_MOUNTED_ON_FILEID,
- #ifdef CONFIG_NFS_V4_SECURITY_LABEL
- 	FATTR4_WORD2_SECURITY_LABEL
- #endif
+-	result = generic_write_checks(file, &pos, &count, 0);
++	result = generic_write_checks(iocb, &pos, &count, 0);
+ 	if (result)
+ 		goto out;
+ 
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index 37b1558..709cb7f 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -170,7 +170,7 @@ nfs_file_read(struct kiocb *iocb, struct iov_iter *to)
+ 	struct inode *inode = file_inode(iocb->ki_filp);
+ 	ssize_t result;
+ 
+-	if (iocb->ki_filp->f_flags & O_DIRECT)
++	if (is_direct_kiocb(iocb))
+ 		return nfs_file_direct_read(iocb, to, iocb->ki_pos);
+ 
+ 	dprintk("NFS: read(%pD2, %zu@%lu)\n",
+@@ -680,7 +680,7 @@ ssize_t nfs_file_write(struct kiocb *iocb, struct iov_iter *from)
+ 	if (result)
+ 		return result;
+ 
+-	if (file->f_flags & O_DIRECT)
++	if (is_direct_kiocb(iocb))
+ 		return nfs_file_direct_write(iocb, from, pos);
+ 
+ 	dprintk("NFS: write(%pD2, %zu@%Ld)\n",
+@@ -692,7 +692,7 @@ ssize_t nfs_file_write(struct kiocb *iocb, struct iov_iter *from)
+ 	/*
+ 	 * O_APPEND implies that we must revalidate the file length.
+ 	 */
+-	if (file->f_flags & O_APPEND) {
++	if (is_append_kiocb(iocb)) {
+ 		result = nfs_revalidate_file_size(inode, file);
+ 		if (result)
+ 			goto out;
 -- 
-2.3.5
+1.7.1
 
