@@ -1,49 +1,51 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pd0-f170.google.com ([209.85.192.170]:33987 "EHLO
-	mail-pd0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752050AbbDEPNf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 5 Apr 2015 11:13:35 -0400
-Received: by pdbni2 with SMTP id ni2so19063371pdb.1
-        for <linux-nfs@vger.kernel.org>; Sun, 05 Apr 2015 08:13:34 -0700 (PDT)
-Message-ID: <55215117.2050504@gmail.com>
-Date: Sun, 05 Apr 2015 23:13:27 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
+Received: from zeniv.linux.org.uk ([195.92.253.2]:39974 "EHLO
+	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752080AbbDEQ3G (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 5 Apr 2015 12:29:06 -0400
+Date: Sun, 5 Apr 2015 17:27:59 +0100
+From: Al Viro <viro@ZenIV.linux.org.uk>
+To: Omar Sandoval <osandov@osandov.com>
+Cc: linux-fsdevel@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        ceph-devel@vger.kernel.org, linux-cifs@vger.kernel.org,
+        osd-dev@open-osd.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net,
+        fuse-devel@lists.sourceforge.net, cluster-devel@redhat.com,
+        jfs-discussion@lists.sourceforge.net, HPDD-discuss@ml01.01.org,
+        linux-nfs@vger.kernel.org, linux-nilfs@vger.kernel.org,
+        ocfs2-devel@oss.oracle.com, reiserfs-devel@vger.kernel.org,
+        v9fs-developer@lists.sourceforge.net, xfs@oss.sgi.com,
+        linux-kernel@vger.kernel.org, Chris Mason <clm@fb.com>,
+        Josef Bacik <jbacik@fb.com>, David Sterba <dsterba@suse.cz>,
+        Yan Zheng <zyan@redhat.com>, Sage Weil <sage@redhat.com>,
+        Steve French <sfrench@samba.org>, Boaz Harrosh <ooo@electrozaur.com>,
+        Benny Halevy <bhalevy@primarydata.com>, Jan Kara <jack@suse.cz>,
+        "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Jaegeuk Kim <jaegeuk@kernel.org>, Changman Lee <cm224.lee@samsung.com>,
+        Miklos Szeredi <miklos@szeredi.hu>,
+        Steven Whitehouse <swhiteho@redhat.com>,
+        Dave Kleikamp <shaggy@kernel.org>, Oleg Drokin <oleg.drokin@intel.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Ryusuke Konishi <konishi.ryusuke@lab.ntt.co.jp>,
+        Mark Fasheh <mfasheh@suse.com>, Joel Becker <jlbec@evilplan.org>,
+        Eric Van Hensbergen <ericvh@gmail.com>,
+        Ron Minnich <rminnich@sandia.gov>, Latchesar Ionkov <lucho@ionkov.net>,
+        Dave Chinner <david@fromorbit.com>
+Subject: Re: [RFC PATCH 0/5] Remove rw parameter from direct_IO()
+Message-ID: <20150405162758.GI889@ZenIV.linux.org.uk>
+References: <cover.1426502566.git.osandov@osandov.com>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Christoph Hellwig <hch@infradead.org>, kinglongmee@gmail.com
-Subject: [PATCH] nfsd: clear NFSEXP_PNFS flags if not supports pnfs in kernel
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <cover.1426502566.git.osandov@osandov.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-nfsd should not show "pnfs" flag in proc file if the filesystem
-does not support pnfs.
+On Mon, Mar 16, 2015 at 04:33:48AM -0700, Omar Sandoval wrote:
+> Hi,
+> 
+> Al, here's some cleanup that you mentioned back in December that I got
+> around to (https://lkml.org/lkml/2014/12/15/28).
 
-# cat /proc/fs/nfsd/exports
-# Version 1.1
-# Path Client(Flags) # IPs
-/testfs    *(rw,insecure,no_root_squash,sync,wdelay,no_subtree_check,pnfs,fsid=0,uuid=37b07525:dc5e4203:99cc71b0:3df9dfa5,sec=1)
-
-
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
----
- fs/nfsd/nfs4layouts.c | 2 ++
- 1 file changed, 2 insertions(+)
-
-diff --git a/fs/nfsd/nfs4layouts.c b/fs/nfsd/nfs4layouts.c
-index 6904213..f4c9bf3 100644
---- a/fs/nfsd/nfs4layouts.c
-+++ b/fs/nfsd/nfs4layouts.c
-@@ -125,6 +125,8 @@ void nfsd4_setup_layout_type(struct svc_export *exp)
- 	    sb->s_export_op->map_blocks &&
- 	    sb->s_export_op->commit_blocks)
- 		exp->ex_layout_type = LAYOUT_BLOCK_VOLUME;
-+	else
-+		exp->ex_flags &= ~NFSEXP_PNFS;
- }
- 
- static void
--- 
-2.3.4
-
+Applied.  See #for-next
