@@ -1,58 +1,50 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f182.google.com ([209.85.220.182]:34381 "EHLO
-	mail-qk0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752809AbbDFOpj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Apr 2015 10:45:39 -0400
-Received: by qkgx75 with SMTP id x75so25835351qkg.1
-        for <linux-nfs@vger.kernel.org>; Mon, 06 Apr 2015 07:45:39 -0700 (PDT)
-Date: Mon, 6 Apr 2015 10:45:36 -0400
-From: Jeff Layton <jeff.layton@primarydata.com>
-To: Arnd Bergmann <arnd@arndb.de>
-Cc: Mark Salter <msalter@redhat.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-api@vger.kernel.org
-Subject: Re: [PATCH] sunrpc: eliminate RPC_DEBUG
-Message-ID: <20150406104536.63b01b09@synchrony.poochiereds.net>
-In-Reply-To: <4110847.o7VvYRDU5Z@wuerfel>
-References: <1428327960-22213-1-git-send-email-msalter@redhat.com>
-	<20150406100452.402754a6@tlielax.poochiereds.net>
-	<4110847.o7VvYRDU5Z@wuerfel>
+Return-Path: <sean.brisbane@physics.ox.ac.uk>
+From: Sean Brisbane <sean.brisbane@physics.ox.ac.uk>
+To: Benjamin Coddington <bcodding@redhat.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: RE: Per process accounting for nfs
+Date: Mon, 6 Apr 2015 16:51:13 +0000
+Message-ID: <C6A70F0B3785A04BA88C056A0B39627C21A2023C@EXCHNG15.physics.ox.ac.uk>
+References: <C6A70F0B3785A04BA88C056A0B39627C21A1BAB4@EXCHNG15.physics.ox.ac.uk>,<alpine.OSX.2.19.9992.1504021537360.710@planck.local>
+In-Reply-To: <alpine.OSX.2.19.9992.1504021537360.710@planck.local>
+Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 06 Apr 2015 16:38:09 +0200
-Arnd Bergmann <arnd@arndb.de> wrote:
-
-> On Monday 06 April 2015 10:04:52 Jeff Layton wrote:
-> > > diff --git a/fs/lockd/svcsubs.c b/fs/lockd/svcsubs.c
-> > > index 665ef5a..a563ddb 100644
-> > > --- a/fs/lockd/svcsubs.c
-> > > +++ b/fs/lockd/svcsubs.c
-> > > @@ -31,7 +31,7 @@
-> > >  static struct hlist_head     nlm_files[FILE_NRHASH];
-> > >  static DEFINE_MUTEX(nlm_file_mutex);
-> > >  
-> > > -#ifdef NFSD_DEBUG
-> > > +#ifdef CONFIG_SUNRPC_DEBUG
-> > 
-> > Technically, you should use #if IS_ENABLED(CONFIG_SUNRPC_DEBUG). That's
-> > supposed to help the compiler do checking of the code inside the block
-> > even when it's not defined.
-> 
-> You probably meant the right thing and wrote something else: you should use
-> 'if (IS_ENABLED(CONFIG_SUNRPC_DEBUG)) { ... }' to get that effect, but that
-> only works within a function. '#if IS_ENABLED(CONFIG_SUNRPC_DEBUG)' is just
-> a nicer way to write '#if defined(CONFIG_SUNRPC_DEBUG) || 
-> defined(CONFIG_SUNRPC_DEBUG_MODULE)', which is harmless but pointless here
-> as the symbol would never be set to 'm'.
-> 
-> 	Arnd
-
-Ahh ok, good to know. Then this patch is fine as-is then.
-
-Thanks,
--- 
-Jeff Layton <jlayton@primarydata.com>
+Dear Ben,=0A=
+=0A=
+System tap is exactly what I was looking for, and more.  Ftrace looks promi=
+sing too, but systemtap has an example script that nearly matches the use c=
+ase.=0A=
+=0A=
+Thank you for your help.=0A=
+Sean=0A=
+________________________________________=0A=
+From: Benjamin Coddington [bcodding@redhat.com]=0A=
+Sent: 02 April 2015 20:50=0A=
+To: Sean Brisbane=0A=
+Cc: linux-nfs@vger.kernel.org=0A=
+Subject: Re: Per process accounting for nfs=0A=
+=0A=
+On Thu, 2 Apr 2015, Sean Brisbane wrote:=0A=
+=0A=
+> Dear All,=0A=
+>=0A=
+> I'm currently trying to identify a mechanism to measure NFS I/o per proce=
+ss on a multi user NFS client machine. Lots of googling tells me this is no=
+t straight forward. Installing a kernel or module is an option if necessary=
+, though we are also supporting afs and lustre on the same kernel (RHEL 6 b=
+ased). The purpose of this is to gather accurate metrics on the workload ty=
+pes we run to feed into what hardware we need to buy. Can anyone give me an=
+y pointers as to how to proceed?=0A=
+>=0A=
+> Thanks,=0A=
+=0A=
+=0A=
+Hi Sean,=0A=
+=0A=
+Systemtap can do that.. and ftrace might also work for that.  Check those=
+=0A=
+out.=0A=
+=0A=
+Ben=0A=
