@@ -1,32 +1,58 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from teosat.pl ([31.41.176.3]:44086 "EHLO teosat.pl"
+Received: from fieldses.org ([173.255.197.46]:55157 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751829AbbDFR3v convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Apr 2015 13:29:51 -0400
-Received: from [113.175.100.17] (helo=teosat.pl)
-	by service with esmtpa (Exim 4.69)
-	(envelope-from <franki@teosat.pl>)
-	id 1Yf8Q0-0006k8-Ag
-	for linux-nfs@vger.kernel.org; Mon, 06 Apr 2015 16:54:30 +0200
-From: "hongpo gao" <gaohhpp@hotmail.com>
-Content-Type: text/plain;
-	charset="us-ascii"
-Mime-Version: 1.0 (1.0)
-Subject: From: hongpo gao
-Message-Id: <EDB7CE29-9887-4591-EA41-EFDC0F23F7E7@teosat.pl>
-Date: Mon, 6 Apr 2015 17:29:09 +0200
-To: "nfs linux" <linux-nfs@vger.kernel.org>
+	id S1752677AbbDFSTC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 6 Apr 2015 14:19:02 -0400
+Date: Mon, 6 Apr 2015 14:18:58 -0400
+To: Jeff Layton <jeff.layton@primarydata.com>
+Cc: Arnd Bergmann <arnd@arndb.de>, Mark Salter <msalter@redhat.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-api@vger.kernel.org
+Subject: Re: [PATCH] sunrpc: eliminate RPC_DEBUG
+Message-ID: <20150406181858.GB3363@fieldses.org>
+References: <1428327960-22213-1-git-send-email-msalter@redhat.com>
+ <20150406100452.402754a6@tlielax.poochiereds.net>
+ <4110847.o7VvYRDU5Z@wuerfel>
+ <20150406104536.63b01b09@synchrony.poochiereds.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20150406104536.63b01b09@synchrony.poochiereds.net>
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Sup nfs
+On Mon, Apr 06, 2015 at 10:45:36AM -0400, Jeff Layton wrote:
+> On Mon, 06 Apr 2015 16:38:09 +0200
+> Arnd Bergmann <arnd@arndb.de> wrote:
+> 
+> > On Monday 06 April 2015 10:04:52 Jeff Layton wrote:
+> > > > diff --git a/fs/lockd/svcsubs.c b/fs/lockd/svcsubs.c
+> > > > index 665ef5a..a563ddb 100644
+> > > > --- a/fs/lockd/svcsubs.c
+> > > > +++ b/fs/lockd/svcsubs.c
+> > > > @@ -31,7 +31,7 @@
+> > > >  static struct hlist_head     nlm_files[FILE_NRHASH];
+> > > >  static DEFINE_MUTEX(nlm_file_mutex);
+> > > >  
+> > > > -#ifdef NFSD_DEBUG
+> > > > +#ifdef CONFIG_SUNRPC_DEBUG
+> > > 
+> > > Technically, you should use #if IS_ENABLED(CONFIG_SUNRPC_DEBUG). That's
+> > > supposed to help the compiler do checking of the code inside the block
+> > > even when it's not defined.
+> > 
+> > You probably meant the right thing and wrote something else: you should use
+> > 'if (IS_ENABLED(CONFIG_SUNRPC_DEBUG)) { ... }' to get that effect, but that
+> > only works within a function. '#if IS_ENABLED(CONFIG_SUNRPC_DEBUG)' is just
+> > a nicer way to write '#if defined(CONFIG_SUNRPC_DEBUG) || 
+> > defined(CONFIG_SUNRPC_DEBUG_MODULE)', which is harmless but pointless here
+> > as the symbol would never be set to 'm'.
+> > 
+> > 	Arnd
+> 
+> Ahh ok, good to know. Then this patch is fine as-is then.
 
+Thanks, queueing up for 4.1 and stable.
 
-
-http://disenoeterno.com/score.php?period=71udrn0mmadu0azbymbz
-
-
-hongpo gao
-
-
-Sent from my iPhone
+--b.
