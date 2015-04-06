@@ -1,46 +1,45 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:51598 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752807AbbDFOeb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 6 Apr 2015 10:34:31 -0400
-Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id t36EYUk8014509
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
-	for <linux-nfs@vger.kernel.org>; Mon, 6 Apr 2015 10:34:30 -0400
-Received: from smallhat.boston.devel.redhat.com (vpn-53-4.rdu2.redhat.com [10.10.53.4])
-	by int-mx11.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id t36EYTZD029999
-	for <linux-nfs@vger.kernel.org>; Mon, 6 Apr 2015 10:34:30 -0400
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH] exportfs: Missing comma in pnfs options
-Date: Mon,  6 Apr 2015 10:34:27 -0400
-Message-Id: <1428330867-10655-1-git-send-email-steved@redhat.com>
+Received: from mout.kundenserver.de ([212.227.126.131]:56689 "EHLO
+	mout.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751486AbbDFOiY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Apr 2015 10:38:24 -0400
+From: Arnd Bergmann <arnd@arndb.de>
+To: Jeff Layton <jeff.layton@primarydata.com>
+Cc: Mark Salter <msalter@redhat.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-api@vger.kernel.org
+Subject: Re: [PATCH] sunrpc: eliminate RPC_DEBUG
+Date: Mon, 06 Apr 2015 16:38:09 +0200
+Message-ID: <4110847.o7VvYRDU5Z@wuerfel>
+In-Reply-To: <20150406100452.402754a6@tlielax.poochiereds.net>
+References: <1428327960-22213-1-git-send-email-msalter@redhat.com> <20150406100452.402754a6@tlielax.poochiereds.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Kelly Anderson <kelly@xilka.com>
+On Monday 06 April 2015 10:04:52 Jeff Layton wrote:
+> > diff --git a/fs/lockd/svcsubs.c b/fs/lockd/svcsubs.c
+> > index 665ef5a..a563ddb 100644
+> > --- a/fs/lockd/svcsubs.c
+> > +++ b/fs/lockd/svcsubs.c
+> > @@ -31,7 +31,7 @@
+> >  static struct hlist_head     nlm_files[FILE_NRHASH];
+> >  static DEFINE_MUTEX(nlm_file_mutex);
+> >  
+> > -#ifdef NFSD_DEBUG
+> > +#ifdef CONFIG_SUNRPC_DEBUG
+> 
+> Technically, you should use #if IS_ENABLED(CONFIG_SUNRPC_DEBUG). That's
+> supposed to help the compiler do checking of the code inside the block
+> even when it's not defined.
 
-Fix a missing comma in pnfs which get's written to etab,
-and then nfs-mountd sees an invalid option.
+You probably meant the right thing and wrote something else: you should use
+'if (IS_ENABLED(CONFIG_SUNRPC_DEBUG)) { ... }' to get that effect, but that
+only works within a function. '#if IS_ENABLED(CONFIG_SUNRPC_DEBUG)' is just
+a nicer way to write '#if defined(CONFIG_SUNRPC_DEBUG) || 
+defined(CONFIG_SUNRPC_DEBUG_MODULE)', which is harmless but pointless here
+as the symbol would never be set to 'm'.
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- support/nfs/exports.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/support/nfs/exports.c b/support/nfs/exports.c
-index 9b325b9..761a046 100644
---- a/support/nfs/exports.c
-+++ b/support/nfs/exports.c
-@@ -275,7 +275,7 @@ putexportent(struct exportent *ep)
- 		"no_" : "");
- 	if (ep->e_flags & NFSEXP_NOREADDIRPLUS)
- 		fprintf(fp, "nordirplus,");
--	fprintf(fp, "%spnfs", (ep->e_flags & NFSEXP_PNFS)? "" : "no_");
-+	fprintf(fp, "%spnfs,", (ep->e_flags & NFSEXP_PNFS)? "" : "no_");
- 	if (ep->e_flags & NFSEXP_FSID) {
- 		fprintf(fp, "fsid=%d,", ep->e_fsid);
- 	}
--- 
-2.1.0
-
+	Arnd
