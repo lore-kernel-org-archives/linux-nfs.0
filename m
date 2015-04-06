@@ -1,58 +1,40 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:55157 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:55189 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752677AbbDFSTC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 6 Apr 2015 14:19:02 -0400
-Date: Mon, 6 Apr 2015 14:18:58 -0400
-To: Jeff Layton <jeff.layton@primarydata.com>
-Cc: Arnd Bergmann <arnd@arndb.de>, Mark Salter <msalter@redhat.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-api@vger.kernel.org
-Subject: Re: [PATCH] sunrpc: eliminate RPC_DEBUG
-Message-ID: <20150406181858.GB3363@fieldses.org>
-References: <1428327960-22213-1-git-send-email-msalter@redhat.com>
- <20150406100452.402754a6@tlielax.poochiereds.net>
- <4110847.o7VvYRDU5Z@wuerfel>
- <20150406104536.63b01b09@synchrony.poochiereds.net>
+	id S1752688AbbDFTvy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 6 Apr 2015 15:51:54 -0400
+Date: Mon, 6 Apr 2015 15:51:54 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: Kinglong Mee <kinglongmee@gmail.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] nfsd: clear NFSEXP_PNFS flags if not supports pnfs in
+ kernel
+Message-ID: <20150406195154.GC3363@fieldses.org>
+References: <55215117.2050504@gmail.com>
+ <20150406120247.GB13634@infradead.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20150406104536.63b01b09@synchrony.poochiereds.net>
-From: bfields@fieldses.org (J. Bruce Fields)
+In-Reply-To: <20150406120247.GB13634@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Apr 06, 2015 at 10:45:36AM -0400, Jeff Layton wrote:
-> On Mon, 06 Apr 2015 16:38:09 +0200
-> Arnd Bergmann <arnd@arndb.de> wrote:
+On Mon, Apr 06, 2015 at 05:02:47AM -0700, Christoph Hellwig wrote:
+> On Sun, Apr 05, 2015 at 11:13:27PM +0800, Kinglong Mee wrote:
+> > nfsd should not show "pnfs" flag in proc file if the filesystem
+> > does not support pnfs.
 > 
-> > On Monday 06 April 2015 10:04:52 Jeff Layton wrote:
-> > > > diff --git a/fs/lockd/svcsubs.c b/fs/lockd/svcsubs.c
-> > > > index 665ef5a..a563ddb 100644
-> > > > --- a/fs/lockd/svcsubs.c
-> > > > +++ b/fs/lockd/svcsubs.c
-> > > > @@ -31,7 +31,7 @@
-> > > >  static struct hlist_head     nlm_files[FILE_NRHASH];
-> > > >  static DEFINE_MUTEX(nlm_file_mutex);
-> > > >  
-> > > > -#ifdef NFSD_DEBUG
-> > > > +#ifdef CONFIG_SUNRPC_DEBUG
-> > > 
-> > > Technically, you should use #if IS_ENABLED(CONFIG_SUNRPC_DEBUG). That's
-> > > supposed to help the compiler do checking of the code inside the block
-> > > even when it's not defined.
-> > 
-> > You probably meant the right thing and wrote something else: you should use
-> > 'if (IS_ENABLED(CONFIG_SUNRPC_DEBUG)) { ... }' to get that effect, but that
-> > only works within a function. '#if IS_ENABLED(CONFIG_SUNRPC_DEBUG)' is just
-> > a nicer way to write '#if defined(CONFIG_SUNRPC_DEBUG) || 
-> > defined(CONFIG_SUNRPC_DEBUG_MODULE)', which is harmless but pointless here
-> > as the symbol would never be set to 'm'.
-> > 
-> > 	Arnd
-> 
-> Ahh ok, good to know. Then this patch is fine as-is then.
+> Hmm, do we want to silently clear or reject it?  Either way the
+> !CONFIG_NFSD_PNFS stub needs to do the same.
 
-Thanks, queueing up for 4.1 and stable.
+There's a note:
+
+	/* quietly ignore unknown words and anything
+	 * following. Newer user-space can try to set
+	 * new values, then see what the result was.
+	 */
+
+Not sure if that's the best approach, but I guess we should stick with
+it.
 
 --b.
