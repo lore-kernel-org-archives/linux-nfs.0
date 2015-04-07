@@ -1,12 +1,12 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wi0-f178.google.com ([209.85.212.178]:37727 "EHLO
-	mail-wi0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753681AbbDGMf0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Apr 2015 08:35:26 -0400
-Received: by wiaa2 with SMTP id a2so16785894wia.0
-        for <linux-nfs@vger.kernel.org>; Tue, 07 Apr 2015 05:35:25 -0700 (PDT)
-Message-ID: <5523CF0A.5090206@profitbricks.com>
-Date: Tue, 07 Apr 2015 14:35:22 +0200
+Received: from mail-wi0-f177.google.com ([209.85.212.177]:38650 "EHLO
+	mail-wi0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753110AbbDGMgE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Apr 2015 08:36:04 -0400
+Received: by wiun10 with SMTP id n10so16779177wiu.1
+        for <linux-nfs@vger.kernel.org>; Tue, 07 Apr 2015 05:36:03 -0700 (PDT)
+Message-ID: <5523CF30.7000608@profitbricks.com>
+Date: Tue, 07 Apr 2015 14:36:00 +0200
 From: Michael Wang <yun.wang@profitbricks.com>
 MIME-Version: 1.0
 To: Roland Dreier <roland@kernel.org>, Sean Hefty <sean.hefty@intel.com>,
@@ -46,7 +46,7 @@ CC: Hal Rosenstock <hal.rosenstock@gmail.com>,
         Erez Shitrit <erezsh@mellanox.com>, Tom Gundersen <teg@jklm.no>,
         Chuck Lever <chuck.lever@oracle.com>,
         Michael Wang <yun.wang@profitbricks.com>
-Subject: [PATCH v2 10/17] IB/Verbs: Adopt management helpers for IB helpers
+Subject: [PATCH v2 11/17] IB/Verbs: Reform link_layer_show() and ib_uverbs_query_port()
 References: <5523CCD5.6030401@profitbricks.com>
 In-Reply-To: <5523CCD5.6030401@profitbricks.com>
 Content-Type: text/plain; charset=utf-8
@@ -54,10 +54,7 @@ Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-Adopt management helpers for:
-	ib_init_ah_from_path()
-	ib_init_ah_from_wc()
-	ib_resolve_eth_l2_attrs()
+Reform link_layer_show() and ib_uverbs_query_port() with management helpers.
 
 Cc: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
 Cc: Doug Ledford <dledford@redhat.com>
@@ -65,48 +62,47 @@ Cc: Ira Weiny <ira.weiny@intel.com>
 Cc: Sean Hefty <sean.hefty@intel.com>
 Signed-off-by: Michael Wang <yun.wang@profitbricks.com>
 ---
- drivers/infiniband/core/sa_query.c | 2 +-
- drivers/infiniband/core/verbs.c    | 6 ++----
- 2 files changed, 3 insertions(+), 5 deletions(-)
+ drivers/infiniband/core/sysfs.c      | 8 ++------
+ drivers/infiniband/core/uverbs_cmd.c | 6 ++++--
+ 2 files changed, 6 insertions(+), 8 deletions(-)
 
-diff --git a/drivers/infiniband/core/sa_query.c b/drivers/infiniband/core/sa_query.c
-index f704254..4e61104 100644
---- a/drivers/infiniband/core/sa_query.c
-+++ b/drivers/infiniband/core/sa_query.c
-@@ -540,7 +540,7 @@ int ib_init_ah_from_path(struct ib_device *device, u8 port_num,
- 	ah_attr->port_num = port_num;
- 	ah_attr->static_rate = rec->rate;
+diff --git a/drivers/infiniband/core/sysfs.c b/drivers/infiniband/core/sysfs.c
+index cbd0383..aa53e40 100644
+--- a/drivers/infiniband/core/sysfs.c
++++ b/drivers/infiniband/core/sysfs.c
+@@ -248,14 +248,10 @@ static ssize_t phys_state_show(struct ib_port *p, struct port_attribute *unused,
+ static ssize_t link_layer_show(struct ib_port *p, struct port_attribute *unused,
+ 			       char *buf)
+ {
+-	switch (rdma_port_get_link_layer(p->ibdev, p->port_num)) {
+-	case IB_LINK_LAYER_INFINIBAND:
++	if (rdma_transport_ib(p->ibdev, p->port_num))
+ 		return sprintf(buf, "%s\n", "InfiniBand");
+-	case IB_LINK_LAYER_ETHERNET:
++	else
+ 		return sprintf(buf, "%s\n", "Ethernet");
+-	default:
+-		return sprintf(buf, "%s\n", "Unknown");
+-	}
+ }
  
--	force_grh = rdma_port_get_link_layer(device, port_num) == IB_LINK_LAYER_ETHERNET;
-+	force_grh = !rdma_transport_ib(device, port_num);
+ static PORT_ATTR_RO(state);
+diff --git a/drivers/infiniband/core/uverbs_cmd.c b/drivers/infiniband/core/uverbs_cmd.c
+index a9f0489..3eb6eb5 100644
+--- a/drivers/infiniband/core/uverbs_cmd.c
++++ b/drivers/infiniband/core/uverbs_cmd.c
+@@ -515,8 +515,10 @@ ssize_t ib_uverbs_query_port(struct ib_uverbs_file *file,
+ 	resp.active_width    = attr.active_width;
+ 	resp.active_speed    = attr.active_speed;
+ 	resp.phys_state      = attr.phys_state;
+-	resp.link_layer      = rdma_port_get_link_layer(file->device->ib_dev,
+-							cmd.port_num);
++	resp.link_layer      = rdma_transport_ib(file->device->ib_dev,
++							cmd.port_num) ?
++			       IB_LINK_LAYER_INFINIBAND :
++			       IB_LINK_LAYER_ETHERNET;
  
- 	if (rec->hop_limit > 1 || force_grh) {
- 		ah_attr->ah_flags = IB_AH_GRH;
-diff --git a/drivers/infiniband/core/verbs.c b/drivers/infiniband/core/verbs.c
-index 83370de..ca06f76 100644
---- a/drivers/infiniband/core/verbs.c
-+++ b/drivers/infiniband/core/verbs.c
-@@ -200,11 +200,9 @@ int ib_init_ah_from_wc(struct ib_device *device, u8 port_num, struct ib_wc *wc,
- 	u32 flow_class;
- 	u16 gid_index;
- 	int ret;
--	int is_eth = (rdma_port_get_link_layer(device, port_num) ==
--			IB_LINK_LAYER_ETHERNET);
- 
- 	memset(ah_attr, 0, sizeof *ah_attr);
--	if (is_eth) {
-+	if (!rdma_transport_ib(device, port_num)) {
- 		if (!(wc->wc_flags & IB_WC_GRH))
- 			return -EPROTOTYPE;
- 
-@@ -873,7 +871,7 @@ int ib_resolve_eth_l2_attrs(struct ib_qp *qp,
- 	union ib_gid  sgid;
- 
- 	if ((*qp_attr_mask & IB_QP_AV)  &&
--	    (rdma_port_get_link_layer(qp->device, qp_attr->ah_attr.port_num) == IB_LINK_LAYER_ETHERNET)) {
-+	    (!rdma_transport_ib(qp->device, qp_attr->ah_attr.port_num))) {
- 		ret = ib_query_gid(qp->device, qp_attr->ah_attr.port_num,
- 				   qp_attr->ah_attr.grh.sgid_index, &sgid);
- 		if (ret)
+ 	if (copy_to_user((void __user *) (unsigned long) cmd.response,
+ 			 &resp, sizeof resp))
 -- 
 2.1.0
