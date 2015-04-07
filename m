@@ -1,12 +1,12 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wg0-f41.google.com ([74.125.82.41]:36328 "EHLO
-	mail-wg0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751033AbbDGMet (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Apr 2015 08:34:49 -0400
-Received: by wgsk9 with SMTP id k9so31870830wgs.3
-        for <linux-nfs@vger.kernel.org>; Tue, 07 Apr 2015 05:34:47 -0700 (PDT)
-Message-ID: <5523CEE4.5060901@profitbricks.com>
-Date: Tue, 07 Apr 2015 14:34:44 +0200
+Received: from mail-wi0-f178.google.com ([209.85.212.178]:37727 "EHLO
+	mail-wi0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753681AbbDGMf0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Apr 2015 08:35:26 -0400
+Received: by wiaa2 with SMTP id a2so16785894wia.0
+        for <linux-nfs@vger.kernel.org>; Tue, 07 Apr 2015 05:35:25 -0700 (PDT)
+Message-ID: <5523CF0A.5090206@profitbricks.com>
+Date: Tue, 07 Apr 2015 14:35:22 +0200
 From: Michael Wang <yun.wang@profitbricks.com>
 MIME-Version: 1.0
 To: Roland Dreier <roland@kernel.org>, Sean Hefty <sean.hefty@intel.com>,
@@ -46,8 +46,7 @@ CC: Hal Rosenstock <hal.rosenstock@gmail.com>,
         Erez Shitrit <erezsh@mellanox.com>, Tom Gundersen <teg@jklm.no>,
         Chuck Lever <chuck.lever@oracle.com>,
         Michael Wang <yun.wang@profitbricks.com>
-Subject: [PATCH v2 09/17] IB/Verbs: Use helper cap_read_multi_sge() and reform
- svc_rdma_accept()
+Subject: [PATCH v2 10/17] IB/Verbs: Adopt management helpers for IB helpers
 References: <5523CCD5.6030401@profitbricks.com>
 In-Reply-To: <5523CCD5.6030401@profitbricks.com>
 Content-Type: text/plain; charset=utf-8
@@ -55,101 +54,59 @@ Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-Introduce helper cap_read_multi_sge() to help us check if the port of an
-IB device support RDMA Read Multiple Scatter-Gather Entries.
+Adopt management helpers for:
+	ib_init_ah_from_path()
+	ib_init_ah_from_wc()
+	ib_resolve_eth_l2_attrs()
 
-Reform svc_rdma_accept() to adopt management helpers.
-
-Cc: Tom Talpey <tom@talpey.com>
 Cc: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
 Cc: Doug Ledford <dledford@redhat.com>
 Cc: Ira Weiny <ira.weiny@intel.com>
 Cc: Sean Hefty <sean.hefty@intel.com>
 Signed-off-by: Michael Wang <yun.wang@profitbricks.com>
 ---
- include/rdma/ib_verbs.h                  | 15 +++++++++++++++
- net/sunrpc/xprtrdma/svc_rdma_recvfrom.c  |  4 ++--
- net/sunrpc/xprtrdma/svc_rdma_transport.c | 12 +++++-------
- 3 files changed, 22 insertions(+), 9 deletions(-)
+ drivers/infiniband/core/sa_query.c | 2 +-
+ drivers/infiniband/core/verbs.c    | 6 ++----
+ 2 files changed, 3 insertions(+), 5 deletions(-)
 
-diff --git a/include/rdma/ib_verbs.h b/include/rdma/ib_verbs.h
-index 9db8966..cae6f2d 100644
---- a/include/rdma/ib_verbs.h
-+++ b/include/rdma/ib_verbs.h
-@@ -1849,6 +1849,21 @@ static inline int cap_ib_mcast(struct ib_device *device, u8 port_num)
- }
+diff --git a/drivers/infiniband/core/sa_query.c b/drivers/infiniband/core/sa_query.c
+index f704254..4e61104 100644
+--- a/drivers/infiniband/core/sa_query.c
++++ b/drivers/infiniband/core/sa_query.c
+@@ -540,7 +540,7 @@ int ib_init_ah_from_path(struct ib_device *device, u8 port_num,
+ 	ah_attr->port_num = port_num;
+ 	ah_attr->static_rate = rec->rate;
  
- /**
-+ * cap_read_multi_sge - Check if the port of device has the capability
-+ * RDMA Read Multiple Scatter-Gather Entries.
-+ *
-+ * @device: Device to be checked
-+ * @port_num: Port number of the device
-+ *
-+ * Return 0 when port of the device don't support
-+ * RDMA Read Multiple Scatter-Gather Entries.
-+ */
-+static inline int cap_read_multi_sge(struct ib_device *device, u8 port_num)
-+{
-+	return !rdma_transport_iwarp(device, port_num);
-+}
-+
-+/**
-  * cap_ipoib - Check if the port of device has the capability
-  * IP over Infiniband.
-  *
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-index e011027..604d035 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-@@ -118,8 +118,8 @@ static void rdma_build_arg_xdr(struct svc_rqst *rqstp,
+-	force_grh = rdma_port_get_link_layer(device, port_num) == IB_LINK_LAYER_ETHERNET;
++	force_grh = !rdma_transport_ib(device, port_num);
  
- static int rdma_read_max_sge(struct svcxprt_rdma *xprt, int sge_count)
- {
--	if (rdma_node_get_transport(xprt->sc_cm_id->device->node_type) ==
--	     RDMA_TRANSPORT_IWARP)
-+	if (!cap_read_multi_sge(xprt->sc_cm_id->device,
-+				xprt->sc_cm_id->port_num))
- 		return 1;
- 	else
- 		return min_t(int, sge_count, xprt->sc_max_sge);
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-index 4e61880..e75175d 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-@@ -979,8 +979,8 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
- 	/*
- 	 * Determine if a DMA MR is required and if so, what privs are required
- 	 */
--	switch (rdma_node_get_transport(newxprt->sc_cm_id->device->node_type)) {
--	case RDMA_TRANSPORT_IWARP:
-+	if (rdma_transport_iwarp(newxprt->sc_cm_id->device,
-+				 newxprt->sc_cm_id->port_num)) {
- 		newxprt->sc_dev_caps |= SVCRDMA_DEVCAP_READ_W_INV;
- 		if (!(newxprt->sc_dev_caps & SVCRDMA_DEVCAP_FAST_REG)) {
- 			need_dma_mr = 1;
-@@ -992,8 +992,8 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
- 			dma_mr_acc = IB_ACCESS_LOCAL_WRITE;
- 		} else
- 			need_dma_mr = 0;
--		break;
--	case RDMA_TRANSPORT_IB:
-+	} else if (rdma_ib_mgmt(newxprt->sc_cm_id->device,
-+				newxprt->sc_cm_id->port_num)) {
- 		if (!(newxprt->sc_dev_caps & SVCRDMA_DEVCAP_FAST_REG)) {
- 			need_dma_mr = 1;
- 			dma_mr_acc = IB_ACCESS_LOCAL_WRITE;
-@@ -1003,10 +1003,8 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
- 			dma_mr_acc = IB_ACCESS_LOCAL_WRITE;
- 		} else
- 			need_dma_mr = 0;
--		break;
--	default:
-+	} else
- 		goto errout;
--	}
+ 	if (rec->hop_limit > 1 || force_grh) {
+ 		ah_attr->ah_flags = IB_AH_GRH;
+diff --git a/drivers/infiniband/core/verbs.c b/drivers/infiniband/core/verbs.c
+index 83370de..ca06f76 100644
+--- a/drivers/infiniband/core/verbs.c
++++ b/drivers/infiniband/core/verbs.c
+@@ -200,11 +200,9 @@ int ib_init_ah_from_wc(struct ib_device *device, u8 port_num, struct ib_wc *wc,
+ 	u32 flow_class;
+ 	u16 gid_index;
+ 	int ret;
+-	int is_eth = (rdma_port_get_link_layer(device, port_num) ==
+-			IB_LINK_LAYER_ETHERNET);
  
- 	/* Create the DMA MR if needed, otherwise, use the DMA LKEY */
- 	if (need_dma_mr) {
+ 	memset(ah_attr, 0, sizeof *ah_attr);
+-	if (is_eth) {
++	if (!rdma_transport_ib(device, port_num)) {
+ 		if (!(wc->wc_flags & IB_WC_GRH))
+ 			return -EPROTOTYPE;
+ 
+@@ -873,7 +871,7 @@ int ib_resolve_eth_l2_attrs(struct ib_qp *qp,
+ 	union ib_gid  sgid;
+ 
+ 	if ((*qp_attr_mask & IB_QP_AV)  &&
+-	    (rdma_port_get_link_layer(qp->device, qp_attr->ah_attr.port_num) == IB_LINK_LAYER_ETHERNET)) {
++	    (!rdma_transport_ib(qp->device, qp_attr->ah_attr.port_num))) {
+ 		ret = ib_query_gid(qp->device, qp_attr->ah_attr.port_num,
+ 				   qp_attr->ah_attr.grh.sgid_index, &sgid);
+ 		if (ret)
 -- 
 2.1.0
