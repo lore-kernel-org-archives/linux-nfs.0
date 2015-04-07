@@ -1,19 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wg0-f49.google.com ([74.125.82.49]:36425 "EHLO
-	mail-wg0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753796AbbDGQFW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Apr 2015 12:05:22 -0400
-Received: by wgsk9 with SMTP id k9so38548007wgs.3
-        for <linux-nfs@vger.kernel.org>; Tue, 07 Apr 2015 09:05:21 -0700 (PDT)
-Message-ID: <5524003E.8060500@profitbricks.com>
-Date: Tue, 07 Apr 2015 18:05:18 +0200
-From: Michael Wang <yun.wang@profitbricks.com>
-MIME-Version: 1.0
-To: Tom Talpey <tom@talpey.com>, Roland Dreier <roland@kernel.org>,
-        Sean Hefty <sean.hefty@intel.com>, linux-rdma@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        netdev@vger.kernel.org
-CC: Hal Rosenstock <hal.rosenstock@gmail.com>,
+Received: from quartz.orcorp.ca ([184.70.90.242]:49082 "EHLO quartz.orcorp.ca"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753012AbbDGR0b (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 Apr 2015 13:26:31 -0400
+Date: Tue, 7 Apr 2015 11:26:12 -0600
+From: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
+To: Michael Wang <yun.wang@profitbricks.com>
+Cc: Roland Dreier <roland@kernel.org>, Sean Hefty <sean.hefty@intel.com>,
+        linux-rdma@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
+        Hal Rosenstock <hal.rosenstock@gmail.com>,
         Tom Tucker <tom@opengridcomputing.com>,
         Steve Wise <swise@opengridcomputing.com>,
         Hoang-Nam Nguyen <hnguyen@de.ibm.com>,
@@ -46,132 +42,39 @@ CC: Hal Rosenstock <hal.rosenstock@gmail.com>,
         Doug Ledford <dledford@redhat.com>, Eric Dumazet <edumazet@google.com>,
         Erez Shitrit <erezsh@mellanox.com>, Tom Gundersen <teg@jklm.no>,
         Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH v2 09/17] IB/Verbs: Use helper cap_read_multi_sge() and
- reform svc_rdma_accept()
-References: <5523CCD5.6030401@profitbricks.com> <5523CEE4.5060901@profitbricks.com> <5523FBF1.80304@talpey.com>
-In-Reply-To: <5523FBF1.80304@talpey.com>
-Content-Type: text/plain; charset=utf-8
+Subject: Re: [PATCH v2 03/17] IB/Verbs: Use management helper cap_ib_mad()
+ for mad-check
+Message-ID: <20150407172612.GA15704@obsidianresearch.com>
+References: <5523CCD5.6030401@profitbricks.com>
+ <5523CDDE.4050209@profitbricks.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <5523CDDE.4050209@profitbricks.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi, Tom
+On Tue, Apr 07, 2015 at 02:30:22PM +0200, Michael Wang wrote:
 
-Thanks for the comments :-)
+> -	if (rdma_node_get_transport(device->node_type) != RDMA_TRANSPORT_IB)
+> -		return;
+> -
+>  	if (device->node_type == RDMA_NODE_IB_SWITCH) {
+>  		start = 0;
+>  		end   = 0;
+> @@ -3069,6 +3066,9 @@ static void ib_mad_init_device(struct ib_device *device)
+>  	}
+>  
+>  	for (i = start; i <= end; i++) {
+> +		if (!cap_ib_mad(device, i))
+> +			continue;
+> +
 
-On 04/07/2015 05:46 PM, Tom Talpey wrote:
-> On 4/7/2015 8:34 AM, Michael Wang wrote:
->>   /**
->> + * cap_read_multi_sge - Check if the port of device has the capability
->> + * RDMA Read Multiple Scatter-Gather Entries.
->> + *
->> + * @device: Device to be checked
->> + * @port_num: Port number of the device
->> + *
->> + * Return 0 when port of the device don't support
->> + * RDMA Read Multiple Scatter-Gather Entries.
->> + */
->> +static inline int cap_read_multi_sge(struct ib_device *device, u8 port_num)
->> +{
->> +    return !rdma_transport_iwarp(device, port_num);
->> +}
-> 
-> This just papers over the issue we discussed earlier. How *many*
-> entries does the device support? If a device supports one, or two,
-> is that enough? How does the upper layer know the limit?
-> 
-> This needs an explicit device attribute, to be fixed properly.
+I would prefer to see these changes in control flow as dedicated
+patches, at the top of your patch stack.
 
-This is the prototype to expose the problem we have in here, I
-would prefer some one good at this part to extending the API in
-future, basing on the right logical.
+For this kind of work a patch should be mechanical changes only, it is
+easier to review that way.
 
-Currently this just inherit from the legacy, it implemented
-in order to be compatible with the current code.
+Same comment applies throughout.
 
-> 
->> +
->> +/**
->>    * cap_ipoib - Check if the port of device has the capability
->>    * IP over Infiniband.
->>    *
->> diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
->> index e011027..604d035 100644
->> --- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
->> +++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
->> @@ -118,8 +118,8 @@ static void rdma_build_arg_xdr(struct svc_rqst *rqstp,
->>
->>   static int rdma_read_max_sge(struct svcxprt_rdma *xprt, int sge_count)
->>   {
->> -    if (rdma_node_get_transport(xprt->sc_cm_id->device->node_type) ==
->> -         RDMA_TRANSPORT_IWARP)
->> +    if (!cap_read_multi_sge(xprt->sc_cm_id->device,
->> +                xprt->sc_cm_id->port_num))
->>           return 1;
->>       else
->>           return min_t(int, sge_count, xprt->sc_max_sge);
-> 
-> This is incorrect. The RDMA Read max is not at all the same as the
-> max_sge. It is a different operation, with a different set of work
-> request parameters.
-> 
-> In other words, the above same comment applies.
-
-Any idea on how to improve this part?
-
-Again, all these helpers just inherit the old logical, if
-it's wrong, let's correct it ;-)
-
-And if we don't know how to correct, we can leave this as a
-signpost and waiting for someone good at this particular part
-to fix it.
-
-> 
-> 
->> diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
->> index 4e61880..e75175d 100644
->> --- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
->> +++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
->> @@ -979,8 +979,8 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
->>       /*
->>        * Determine if a DMA MR is required and if so, what privs are required
->>        */
->> -    switch (rdma_node_get_transport(newxprt->sc_cm_id->device->node_type)) {
->> -    case RDMA_TRANSPORT_IWARP:
->> +    if (rdma_transport_iwarp(newxprt->sc_cm_id->device,
->> +                 newxprt->sc_cm_id->port_num)) {
->>           newxprt->sc_dev_caps |= SVCRDMA_DEVCAP_READ_W_INV;
-> 
-> Do I read this correctly that it is forcing the "read with invalidate"
-> capability to "on" for all iWARP devices? I don't think that is correct,
-> for the legacy devices you're also supporting.
-
-Hmm.. but that's exactly same as the old logical, correct?
-Or do you mean the old logical is wrong?
-
-> 
-> 
->> @@ -992,8 +992,8 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
->>               dma_mr_acc = IB_ACCESS_LOCAL_WRITE;
->>           } else
->>               need_dma_mr = 0;
->> -        break;
->> -    case RDMA_TRANSPORT_IB:
->> +    } else if (rdma_ib_mgmt(newxprt->sc_cm_id->device,
->> +                newxprt->sc_cm_id->port_num)) {
->>           if (!(newxprt->sc_dev_caps & SVCRDMA_DEVCAP_FAST_REG)) {
->>               need_dma_mr = 1;
->>               dma_mr_acc = IB_ACCESS_LOCAL_WRITE;
-> 
-> Now I'm even more confused. How is the presence of IB management
-> related to needing a privileged lmr?
-
-I think you actually mean we need some more wrapper here
-with the right name, correct?
-
-I'm not good at this part, any suggestions?
-
-Regards,
-Michael Wang
-
-> 
-> 
+Jason
