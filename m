@@ -1,34 +1,34 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from quartz.orcorp.ca ([184.70.90.242]:37014 "EHLO quartz.orcorp.ca"
+Received: from mga01.intel.com ([192.55.52.88]:9242 "EHLO mga01.intel.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750983AbbDGRmi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 7 Apr 2015 13:42:38 -0400
-Date: Tue, 7 Apr 2015 11:42:23 -0600
-From: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
-To: Tom Talpey <tom@talpey.com>
-Cc: Michael Wang <yun.wang@profitbricks.com>,
-        Roland Dreier <roland@kernel.org>, Sean Hefty <sean.hefty@intel.com>,
-        linux-rdma@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
-        Hal Rosenstock <hal.rosenstock@gmail.com>,
+	id S1751651AbbDGSkU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 Apr 2015 14:40:20 -0400
+From: "Hefty, Sean" <sean.hefty@intel.com>
+To: Michael Wang <yun.wang@profitbricks.com>,
+        Roland Dreier <roland@kernel.org>,
+        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>
+CC: Hal Rosenstock <hal.rosenstock@gmail.com>,
         Tom Tucker <tom@opengridcomputing.com>,
         Steve Wise <swise@opengridcomputing.com>,
         Hoang-Nam Nguyen <hnguyen@de.ibm.com>,
         Christoph Raisch <raisch@de.ibm.com>,
-        Mike Marciniszyn <infinipath@intel.com>, Eli Cohen <eli@mellanox.com>,
-        Faisal Latif <faisal.latif@intel.com>,
+        infinipath <infinipath@intel.com>, Eli Cohen <eli@mellanox.com>,
+        "Latif, Faisal" <faisal.latif@intel.com>,
         Upinder Malhi <umalhi@cisco.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
+        "Trond Myklebust" <trond.myklebust@primarydata.com>,
         "J. Bruce Fields" <bfields@fieldses.org>,
         "David S. Miller" <davem@davemloft.net>,
-        Ira Weiny <ira.weiny@intel.com>,
+        "Weiny, Ira" <ira.weiny@intel.com>,
         PJ Waskiewicz <pj.waskiewicz@solidfire.com>,
-        Tatyana Nikolova <Tatyana.E.Nikolova@intel.com>,
+        "Nikolova, Tatyana E" <tatyana.e.nikolova@intel.com>,
         Or Gerlitz <ogerlitz@mellanox.com>,
         Jack Morgenstein <jackm@dev.mellanox.co.il>,
-        Haggai Eran <haggaie@mellanox.com>,
+        "Haggai Eran" <haggaie@mellanox.com>,
         Ilya Nelkenbaum <ilyan@mellanox.com>,
-        Yann Droneaud <ydroneaud@opteya.com>,
+        "Yann Droneaud" <ydroneaud@opteya.com>,
         Bart Van Assche <bvanassche@acm.org>,
         Shachar Raindel <raindel@mellanox.com>,
         Sagi Grimberg <sagig@mellanox.com>,
@@ -37,140 +37,54 @@ Cc: Michael Wang <yun.wang@profitbricks.com>,
         Jiri Kosina <jkosina@suse.cz>,
         Selvin Xavier <selvin.xavier@emulex.com>,
         Mitesh Ahuja <mitesh.ahuja@emulex.com>,
-        Li RongQing <roy.qing.li@gmail.com>,
+        "Li RongQing" <roy.qing.li@gmail.com>,
         Rasmus Villemoes <linux@rasmusvillemoes.dk>,
-        Alex Estrin <alex.estrin@intel.com>,
-        Doug Ledford <dledford@redhat.com>, Eric Dumazet <edumazet@google.com>,
-        Erez Shitrit <erezsh@mellanox.com>, Tom Gundersen <teg@jklm.no>,
+        "Estrin, Alex" <alex.estrin@intel.com>,
+        "Doug Ledford" <dledford@redhat.com>,
+        Eric Dumazet <edumazet@google.com>,
+        "Erez Shitrit" <erezsh@mellanox.com>, Tom Gundersen <teg@jklm.no>,
         Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH v2 09/17] IB/Verbs: Use helper cap_read_multi_sge() and
- reform svc_rdma_accept()
-Message-ID: <20150407174223.GB15704@obsidianresearch.com>
+Subject: RE: [PATCH v2 10/17] IB/Verbs: Adopt management helpers for IB
+ helpers
+Date: Tue, 7 Apr 2015 18:40:14 +0000
+Message-ID: <1828884A29C6694DAF28B7E6B8A82373A8FBE2A5@ORSMSX109.amr.corp.intel.com>
 References: <5523CCD5.6030401@profitbricks.com>
- <5523CEE4.5060901@profitbricks.com>
- <5523FBF1.80304@talpey.com>
+ <5523CF0A.5090206@profitbricks.com>
+In-Reply-To: <5523CF0A.5090206@profitbricks.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <5523FBF1.80304@talpey.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Apr 07, 2015 at 11:46:57AM -0400, Tom Talpey wrote:
-> On 4/7/2015 8:34 AM, Michael Wang wrote:
-> >  /**
-> >+ * cap_read_multi_sge - Check if the port of device has the capability
-> >+ * RDMA Read Multiple Scatter-Gather Entries.
-> >+ *
-> >+ * @device: Device to be checked
-> >+ * @port_num: Port number of the device
-> >+ *
-> >+ * Return 0 when port of the device don't support
-> >+ * RDMA Read Multiple Scatter-Gather Entries.
-> >+ */
-> >+static inline int cap_read_multi_sge(struct ib_device *device, u8 port_num)
-> >+{
-> >+	return !rdma_transport_iwarp(device, port_num);
-> >+}
-> 
-> This just papers over the issue we discussed earlier. How *many*
-> entries does the device support? If a device supports one, or two,
-> is that enough? How does the upper layer know the limit?
-
-I think Michael is fine to just make this one mechanical change.
-
-The kernel only supports two kinds of devices today, ones with 1 read
-SGE and ones where READ SGE == WRITE SGE == SEND SGE.
-
-If someone makes another variation then it is up to them to propose a
-better fix.
-
-
-> >  static int rdma_read_max_sge(struct svcxprt_rdma *xprt, int sge_count)
-> >  {
-> >-	if (rdma_node_get_transport(xprt->sc_cm_id->device->node_type) ==
-> >-	     RDMA_TRANSPORT_IWARP)
-> >+	if (!cap_read_multi_sge(xprt->sc_cm_id->device,
-> >+				xprt->sc_cm_id->port_num))
-> >  		return 1;
-> >  	else
-> >  		return min_t(int, sge_count, xprt->sc_max_sge);
-> 
-> This is incorrect. The RDMA Read max is not at all the same as the
-> max_sge. It is a different operation, with a different set of work
-> request parameters.
-
-The algorithm looks OK to me,
-
-        newxprt->sc_max_sge = min((size_t)devattr.max_sge,
-                                  (size_t)RPCSVC_MAXPAGES);
-
-So it returns 1 or the number of sge entries per WR, and max_sge is
-for READ/WRITE/SEND in every case except when cap_read_multi_sge == 1
-
-> >  	/*
-> >  	 * Determine if a DMA MR is required and if so, what privs are required
-> >  	 */
-> >-	switch (rdma_node_get_transport(newxprt->sc_cm_id->device->node_type)) {
-> >-	case RDMA_TRANSPORT_IWARP:
-> >+	if (rdma_transport_iwarp(newxprt->sc_cm_id->device,
-> >+				 newxprt->sc_cm_id->port_num)) {
-> >  		newxprt->sc_dev_caps |= SVCRDMA_DEVCAP_READ_W_INV;
-> 
-> Do I read this correctly that it is forcing the "read with invalidate"
-> capability to "on" for all iWARP devices? I don't think that is correct,
-> for the legacy devices you're also supporting.
-
-No idea here, this logic was added in:
-
-commit 3a5c63803d0552a3ad93b85c262f12cd86471443
-Author: Tom Tucker <tom@opengridcomputing.com>
-Date:   Tue Sep 30 13:46:13 2008 -0500
-
-    svcrdma: Query device for Fast Reg support during connection setup
-    
-    Query the device capabilities in the svc_rdma_accept function to determine
-    what advanced memory management capabilities are supported by the device.
-    Based on the query, select the most secure model available given the
-    requirements of the transport and capabilities of the adapter.
-    
-    Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
-
-> >@@ -992,8 +992,8 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
-> >  			dma_mr_acc = IB_ACCESS_LOCAL_WRITE;
-> >  		} else
-> >  			need_dma_mr = 0;
-> >-		break;
-> >-	case RDMA_TRANSPORT_IB:
-> >+	} else if (rdma_ib_mgmt(newxprt->sc_cm_id->device,
-> >+				newxprt->sc_cm_id->port_num)) {
-> >  		if (!(newxprt->sc_dev_caps & SVCRDMA_DEVCAP_FAST_REG)) {
-> >  			need_dma_mr = 1;
-> >  			dma_mr_acc = IB_ACCESS_LOCAL_WRITE;
-> 
-> Now I'm even more confused. How is the presence of IB management
-> related to needing a privileged lmr?
-
-Agree, this needs to be someone else. 
-
-I think the test is probably based on this comment:
-
-        * NB:  iWARP requires remote write access for the data sink
-        *      of an RDMA_READ. IB does not.
-
-So the if should be:
-
-          if (cap_rdma_read_needs_write(..) && 
-	  !(newxprt->sc_dev_caps & SVCRDMA_DEVCAP_FAST_REG)) {
-                       need_dma_mr = 1;
-                       dma_mr_acc =
-                               (IB_ACCESS_LOCAL_WRITE |
-                                IB_ACCESS_REMOTE_WRITE);
-
-And the identical if blocks merged.
-
-Plus the
-	if (rdma_transport_iwarp(newxprt->sc_cm_id->device,
-				 newxprt->sc_cm_id->port_num))
-  		newxprt->sc_dev_caps |= SVCRDMA_DEVCAP_READ_W_INV
-
-Jason
+PiBkaWZmIC0tZ2l0IGEvZHJpdmVycy9pbmZpbmliYW5kL2NvcmUvc2FfcXVlcnkuYw0KPiBiL2Ry
+aXZlcnMvaW5maW5pYmFuZC9jb3JlL3NhX3F1ZXJ5LmMNCj4gaW5kZXggZjcwNDI1NC4uNGU2MTEw
+NCAxMDA2NDQNCj4gLS0tIGEvZHJpdmVycy9pbmZpbmliYW5kL2NvcmUvc2FfcXVlcnkuYw0KPiAr
+KysgYi9kcml2ZXJzL2luZmluaWJhbmQvY29yZS9zYV9xdWVyeS5jDQo+IEBAIC01NDAsNyArNTQw
+LDcgQEAgaW50IGliX2luaXRfYWhfZnJvbV9wYXRoKHN0cnVjdCBpYl9kZXZpY2UgKmRldmljZSwg
+dTgNCj4gcG9ydF9udW0sDQo+ICAJYWhfYXR0ci0+cG9ydF9udW0gPSBwb3J0X251bTsNCj4gIAlh
+aF9hdHRyLT5zdGF0aWNfcmF0ZSA9IHJlYy0+cmF0ZTsNCj4gDQo+IC0JZm9yY2VfZ3JoID0gcmRt
+YV9wb3J0X2dldF9saW5rX2xheWVyKGRldmljZSwgcG9ydF9udW0pID09DQo+IElCX0xJTktfTEFZ
+RVJfRVRIRVJORVQ7DQo+ICsJZm9yY2VfZ3JoID0gIXJkbWFfdHJhbnNwb3J0X2liKGRldmljZSwg
+cG9ydF9udW0pOw0KPiANCj4gIAlpZiAocmVjLT5ob3BfbGltaXQgPiAxIHx8IGZvcmNlX2dyaCkg
+ew0KPiAgCQlhaF9hdHRyLT5haF9mbGFncyA9IElCX0FIX0dSSDsNCj4gZGlmZiAtLWdpdCBhL2Ry
+aXZlcnMvaW5maW5pYmFuZC9jb3JlL3ZlcmJzLmMNCj4gYi9kcml2ZXJzL2luZmluaWJhbmQvY29y
+ZS92ZXJicy5jDQo+IGluZGV4IDgzMzcwZGUuLmNhMDZmNzYgMTAwNjQ0DQo+IC0tLSBhL2RyaXZl
+cnMvaW5maW5pYmFuZC9jb3JlL3ZlcmJzLmMNCj4gKysrIGIvZHJpdmVycy9pbmZpbmliYW5kL2Nv
+cmUvdmVyYnMuYw0KPiBAQCAtMjAwLDExICsyMDAsOSBAQCBpbnQgaWJfaW5pdF9haF9mcm9tX3dj
+KHN0cnVjdCBpYl9kZXZpY2UgKmRldmljZSwgdTgNCj4gcG9ydF9udW0sIHN0cnVjdCBpYl93YyAq
+d2MsDQo+ICAJdTMyIGZsb3dfY2xhc3M7DQo+ICAJdTE2IGdpZF9pbmRleDsNCj4gIAlpbnQgcmV0
+Ow0KPiAtCWludCBpc19ldGggPSAocmRtYV9wb3J0X2dldF9saW5rX2xheWVyKGRldmljZSwgcG9y
+dF9udW0pID09DQo+IC0JCQlJQl9MSU5LX0xBWUVSX0VUSEVSTkVUKTsNCj4gDQo+ICAJbWVtc2V0
+KGFoX2F0dHIsIDAsIHNpemVvZiAqYWhfYXR0cik7DQo+IC0JaWYgKGlzX2V0aCkgew0KPiArCWlm
+ICghcmRtYV90cmFuc3BvcnRfaWIoZGV2aWNlLCBwb3J0X251bSkpIHsNCj4gIAkJaWYgKCEod2Mt
+PndjX2ZsYWdzICYgSUJfV0NfR1JIKSkNCj4gIAkJCXJldHVybiAtRVBST1RPVFlQRTsNCj4gDQo+
+IEBAIC04NzMsNyArODcxLDcgQEAgaW50IGliX3Jlc29sdmVfZXRoX2wyX2F0dHJzKHN0cnVjdCBp
+Yl9xcCAqcXAsDQo+ICAJdW5pb24gaWJfZ2lkICBzZ2lkOw0KPiANCj4gIAlpZiAoKCpxcF9hdHRy
+X21hc2sgJiBJQl9RUF9BVikgICYmDQo+IC0JICAgIChyZG1hX3BvcnRfZ2V0X2xpbmtfbGF5ZXIo
+cXAtPmRldmljZSwgcXBfYXR0ci0+YWhfYXR0ci5wb3J0X251bSkNCj4gPT0gSUJfTElOS19MQVlF
+Ul9FVEhFUk5FVCkpIHsNCj4gKwkgICAgKCFyZG1hX3RyYW5zcG9ydF9pYihxcC0+ZGV2aWNlLCBx
+cF9hdHRyLT5haF9hdHRyLnBvcnRfbnVtKSkpIHsNCj4gIAkJcmV0ID0gaWJfcXVlcnlfZ2lkKHFw
+LT5kZXZpY2UsIHFwX2F0dHItPmFoX2F0dHIucG9ydF9udW0sDQo+ICAJCQkJICAgcXBfYXR0ci0+
+YWhfYXR0ci5ncmguc2dpZF9pbmRleCwgJnNnaWQpOw0KPiAgCQlpZiAocmV0KQ0KDQpUaGUgYWJv
+dmUgY2hlY2tzIHdvdWxkIGJlIGJldHRlciBhczoNCg0KCWZvcmNlX2dyaCA9IHJkbWFfdHJhbnNw
+b3J0X2lib2UoLi4uKQ0KDQpUaGV5IGFyZSBSb0NFL0lCb0Ugc3BlY2lmaWMgY2hlY2tzLg0K
