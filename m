@@ -1,75 +1,133 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga02.intel.com ([134.134.136.20]:15685 "EHLO mga02.intel.com"
+Received: from fieldses.org ([173.255.197.46]:55976 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753828AbbDGUSD convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Apr 2015 16:18:03 -0400
-From: "Hefty, Sean" <sean.hefty@intel.com>
-To: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>,
-        Michael Wang <yun.wang@profitbricks.com>
-CC: Roland Dreier <roland@kernel.org>,
-        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        Hal Rosenstock <hal.rosenstock@gmail.com>,
-        "Tom Tucker" <tom@opengridcomputing.com>,
-        Steve Wise <swise@opengridcomputing.com>,
-        Hoang-Nam Nguyen <hnguyen@de.ibm.com>,
-        Christoph Raisch <raisch@de.ibm.com>,
-        infinipath <infinipath@intel.com>, Eli Cohen <eli@mellanox.com>,
-        "Latif, Faisal" <faisal.latif@intel.com>,
-        Upinder Malhi <umalhi@cisco.com>,
-        "Trond Myklebust" <trond.myklebust@primarydata.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        "David S. Miller" <davem@davemloft.net>,
-        "Weiny, Ira" <ira.weiny@intel.com>,
-        PJ Waskiewicz <pj.waskiewicz@solidfire.com>,
-        "Nikolova, Tatyana E" <tatyana.e.nikolova@intel.com>,
-        Or Gerlitz <ogerlitz@mellanox.com>,
-        Jack Morgenstein <jackm@dev.mellanox.co.il>,
-        "Haggai Eran" <haggaie@mellanox.com>,
-        Ilya Nelkenbaum <ilyan@mellanox.com>,
-        "Yann Droneaud" <ydroneaud@opteya.com>,
-        Bart Van Assche <bvanassche@acm.org>,
-        Shachar Raindel <raindel@mellanox.com>,
-        Sagi Grimberg <sagig@mellanox.com>,
-        Devesh Sharma <devesh.sharma@emulex.com>,
-        Matan Barak <matanb@mellanox.com>, Moni Shoua <monis@mellanox.com>,
-        Jiri Kosina <jkosina@suse.cz>,
-        Selvin Xavier <selvin.xavier@emulex.com>,
-        Mitesh Ahuja <mitesh.ahuja@emulex.com>,
-        "Li RongQing" <roy.qing.li@gmail.com>,
-        Rasmus Villemoes <linux@rasmusvillemoes.dk>,
-        "Estrin, Alex" <alex.estrin@intel.com>,
-        "Doug Ledford" <dledford@redhat.com>,
-        Eric Dumazet <edumazet@google.com>,
-        "Erez Shitrit" <erezsh@mellanox.com>, Tom Gundersen <teg@jklm.no>,
-        Chuck Lever <chuck.lever@oracle.com>
-Subject: RE: [PATCH v2 10/17] IB/Verbs: Adopt management helpers for IB
- helpers
-Date: Tue, 7 Apr 2015 20:18:00 +0000
-Message-ID: <1828884A29C6694DAF28B7E6B8A82373A8FBE3B0@ORSMSX109.amr.corp.intel.com>
-References: <5523CCD5.6030401@profitbricks.com>
- <5523CF0A.5090206@profitbricks.com>
- <20150407201259.GA17147@obsidianresearch.com>
-In-Reply-To: <20150407201259.GA17147@obsidianresearch.com>
-Content-Type: text/plain; charset="us-ascii"
+	id S1750862AbbDGVHt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 Apr 2015 17:07:49 -0400
+Date: Tue, 7 Apr 2015 17:07:47 -0400
+To: Christoph Hellwig <hch@lst.de>
+Cc: xfs@oss.sgi.com, viro@zeniv.linux.org.uk, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] xfs: unlock i_mutex in xfs_break_layouts
+Message-ID: <20150407210747.GD3363@fieldses.org>
+References: <1428420944-20965-1-git-send-email-hch@lst.de>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1428420944-20965-1-git-send-email-hch@lst.de>
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> > index f704254..4e61104 100644
-> > +++ b/drivers/infiniband/core/sa_query.c
-> > @@ -540,7 +540,7 @@ int ib_init_ah_from_path(struct ib_device *device,
-> u8 port_num,
-> >  	ah_attr->port_num = port_num;
-> >  	ah_attr->static_rate = rec->rate;
-> >
-> > -	force_grh = rdma_port_get_link_layer(device, port_num) ==
-> IB_LINK_LAYER_ETHERNET;
-> > +	force_grh = !rdma_transport_ib(device, port_num);
-> 
-> Maybe these tests should be called cap_mandatory_grh - but I'm not
-> really sure how iWarp uses the GRH fields in the AH...
+On Tue, Apr 07, 2015 at 05:35:44PM +0200, Christoph Hellwig wrote:
+> We want to drop all I/O path locks when recalling layouts, and that includes
+> i_mutex for the write path.  Without this we get stuck processe when recalls
+> take too long.
 
-AH are used with unconnected endpoints, which iWarp doesn't currently support.
+Also if the writer is an nfsd thread than we'd rather just error out
+than wait.
+
+--b.
+
+> 
+> Signed-off-by: Christoph Hellwig <hch@lst.de>
+> ---
+>  fs/xfs/xfs_file.c  | 4 ++--
+>  fs/xfs/xfs_ioctl.c | 2 +-
+>  fs/xfs/xfs_iops.c  | 2 +-
+>  fs/xfs/xfs_pnfs.c  | 7 ++++++-
+>  fs/xfs/xfs_pnfs.h  | 2 +-
+>  5 files changed, 11 insertions(+), 6 deletions(-)
+> 
+> diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
+> index a2e1cb8..963dfb2 100644
+> --- a/fs/xfs/xfs_file.c
+> +++ b/fs/xfs/xfs_file.c
+> @@ -559,7 +559,7 @@ restart:
+>  	if (error)
+>  		return error;
+>  
+> -	error = xfs_break_layouts(inode, iolock);
+> +	error = xfs_break_layouts(inode, iolock, true);
+>  	if (error)
+>  		return error;
+>  
+> @@ -843,7 +843,7 @@ xfs_file_fallocate(
+>  		return -EOPNOTSUPP;
+>  
+>  	xfs_ilock(ip, iolock);
+> -	error = xfs_break_layouts(inode, &iolock);
+> +	error = xfs_break_layouts(inode, &iolock, false);
+>  	if (error)
+>  		goto out_unlock;
+>  
+> diff --git a/fs/xfs/xfs_ioctl.c b/fs/xfs/xfs_ioctl.c
+> index ac4feae..3a21cc7 100644
+> --- a/fs/xfs/xfs_ioctl.c
+> +++ b/fs/xfs/xfs_ioctl.c
+> @@ -639,7 +639,7 @@ xfs_ioc_space(
+>  		return error;
+>  
+>  	xfs_ilock(ip, iolock);
+> -	error = xfs_break_layouts(inode, &iolock);
+> +	error = xfs_break_layouts(inode, &iolock, false);
+>  	if (error)
+>  		goto out_unlock;
+>  
+> diff --git a/fs/xfs/xfs_iops.c b/fs/xfs/xfs_iops.c
+> index e53a903..79520c7 100644
+> --- a/fs/xfs/xfs_iops.c
+> +++ b/fs/xfs/xfs_iops.c
+> @@ -975,7 +975,7 @@ xfs_vn_setattr(
+>  		uint		iolock = XFS_IOLOCK_EXCL;
+>  
+>  		xfs_ilock(ip, iolock);
+> -		error = xfs_break_layouts(dentry->d_inode, &iolock);
+> +		error = xfs_break_layouts(dentry->d_inode, &iolock, true);
+>  		if (!error)
+>  			error = xfs_setattr_size(ip, iattr);
+>  		xfs_iunlock(ip, iolock);
+> diff --git a/fs/xfs/xfs_pnfs.c b/fs/xfs/xfs_pnfs.c
+> index 365dd57..981a657 100644
+> --- a/fs/xfs/xfs_pnfs.c
+> +++ b/fs/xfs/xfs_pnfs.c
+> @@ -31,7 +31,8 @@
+>  int
+>  xfs_break_layouts(
+>  	struct inode		*inode,
+> -	uint			*iolock)
+> +	uint			*iolock,
+> +	bool			with_imutex)
+>  {
+>  	struct xfs_inode	*ip = XFS_I(inode);
+>  	int			error;
+> @@ -40,8 +41,12 @@ xfs_break_layouts(
+>  
+>  	while ((error = break_layout(inode, false) == -EWOULDBLOCK)) {
+>  		xfs_iunlock(ip, *iolock);
+> +		if (with_imutex && (*iolock & XFS_IOLOCK_EXCL))
+> +			mutex_unlock(&inode->i_mutex);
+>  		error = break_layout(inode, true);
+>  		*iolock = XFS_IOLOCK_EXCL;
+> +		if (with_imutex)
+> +			mutex_lock(&inode->i_mutex);
+>  		xfs_ilock(ip, *iolock);
+>  	}
+>  
+> diff --git a/fs/xfs/xfs_pnfs.h b/fs/xfs/xfs_pnfs.h
+> index b7fbfce..f749475 100644
+> --- a/fs/xfs/xfs_pnfs.h
+> +++ b/fs/xfs/xfs_pnfs.h
+> @@ -8,7 +8,7 @@ int xfs_fs_map_blocks(struct inode *inode, loff_t offset, u64 length,
+>  int xfs_fs_commit_blocks(struct inode *inode, struct iomap *maps, int nr_maps,
+>  		struct iattr *iattr);
+>  
+> -int xfs_break_layouts(struct inode *inode, uint *iolock);
+> +int xfs_break_layouts(struct inode *inode, uint *iolock, bool with_imutex);
+>  #else
+>  static inline int xfs_break_layouts(struct inode *inode, uint *iolock)
+>  {
+> -- 
+> 1.9.1
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
