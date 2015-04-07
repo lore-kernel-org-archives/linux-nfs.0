@@ -1,12 +1,12 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wg0-f45.google.com ([74.125.82.45]:32791 "EHLO
-	mail-wg0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752709AbbDGMbe (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Apr 2015 08:31:34 -0400
-Received: by wgin8 with SMTP id n8so54361867wgi.0
-        for <linux-nfs@vger.kernel.org>; Tue, 07 Apr 2015 05:31:33 -0700 (PDT)
-Message-ID: <5523CE21.5090703@profitbricks.com>
-Date: Tue, 07 Apr 2015 14:31:29 +0200
+Received: from mail-wg0-f49.google.com ([74.125.82.49]:34085 "EHLO
+	mail-wg0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753386AbbDGMcK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Apr 2015 08:32:10 -0400
+Received: by wgbdm7 with SMTP id dm7so54398549wgb.1
+        for <linux-nfs@vger.kernel.org>; Tue, 07 Apr 2015 05:32:09 -0700 (PDT)
+Message-ID: <5523CE45.4080606@profitbricks.com>
+Date: Tue, 07 Apr 2015 14:32:05 +0200
 From: Michael Wang <yun.wang@profitbricks.com>
 MIME-Version: 1.0
 To: Roland Dreier <roland@kernel.org>, Sean Hefty <sean.hefty@intel.com>,
@@ -46,8 +46,8 @@ CC: Hal Rosenstock <hal.rosenstock@gmail.com>,
         Erez Shitrit <erezsh@mellanox.com>, Tom Gundersen <teg@jklm.no>,
         Chuck Lever <chuck.lever@oracle.com>,
         Michael Wang <yun.wang@profitbricks.com>
-Subject: [PATCH v2 04/17] IB/Verbs: Use management helper cap_ib_smi() for
- smi-check
+Subject: [PATCH v2 05/17] IB/Verbs: Use management helper cap_ib_cm() for
+ cm-check
 References: <5523CCD5.6030401@profitbricks.com>
 In-Reply-To: <5523CCD5.6030401@profitbricks.com>
 Content-Type: text/plain; charset=utf-8
@@ -55,8 +55,10 @@ Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-Introduce helper cap_ib_smi() to help us check if the port of an
-IB device support Infiniband Subnet Management Interface.
+Introduce helper cap_ib_cm() to help us check if the port of an
+IB device support Infiniband Communication Manager.
+
+Reform cm_add_one() to fit per-port-check method better.
 
 Cc: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
 Cc: Doug Ledford <dledford@redhat.com>
@@ -64,58 +66,93 @@ Cc: Ira Weiny <ira.weiny@intel.com>
 Cc: Sean Hefty <sean.hefty@intel.com>
 Signed-off-by: Michael Wang <yun.wang@profitbricks.com>
 ---
- drivers/infiniband/core/agent.c |  2 +-
- drivers/infiniband/core/mad.c   |  2 +-
- include/rdma/ib_verbs.h         | 15 +++++++++++++++
- 3 files changed, 17 insertions(+), 2 deletions(-)
+ drivers/infiniband/core/cm.c | 22 +++++++++++++++++++---
+ include/rdma/ib_verbs.h      | 15 +++++++++++++++
+ 2 files changed, 34 insertions(+), 3 deletions(-)
 
-diff --git a/drivers/infiniband/core/agent.c b/drivers/infiniband/core/agent.c
-index f6d2961..61471ee 100644
---- a/drivers/infiniband/core/agent.c
-+++ b/drivers/infiniband/core/agent.c
-@@ -156,7 +156,7 @@ int ib_agent_port_open(struct ib_device *device, int port_num)
- 		goto error1;
+diff --git a/drivers/infiniband/core/cm.c b/drivers/infiniband/core/cm.c
+index e28a494..63418ee 100644
+--- a/drivers/infiniband/core/cm.c
++++ b/drivers/infiniband/core/cm.c
+@@ -3761,9 +3761,7 @@ static void cm_add_one(struct ib_device *ib_device)
+ 	unsigned long flags;
+ 	int ret;
+ 	u8 i;
+-
+-	if (rdma_node_get_transport(ib_device->node_type) != RDMA_TRANSPORT_IB)
+-		return;
++	int count = 0;
+ 
+ 	cm_dev = kzalloc(sizeof(*cm_dev) + sizeof(*port) *
+ 			 ib_device->phys_port_cnt, GFP_KERNEL);
+@@ -3783,6 +3781,9 @@ static void cm_add_one(struct ib_device *ib_device)
+ 
+ 	set_bit(IB_MGMT_METHOD_SEND, reg_req.method_mask);
+ 	for (i = 1; i <= ib_device->phys_port_cnt; i++) {
++		if (!cap_ib_cm(ib_device, i))
++			continue;
++
+ 		port = kzalloc(sizeof *port, GFP_KERNEL);
+ 		if (!port)
+ 			goto error1;
+@@ -3809,7 +3810,16 @@ static void cm_add_one(struct ib_device *ib_device)
+ 		ret = ib_modify_port(ib_device, i, 0, &port_modify);
+ 		if (ret)
+ 			goto error3;
++
++		count++;
  	}
++
++	if (!count) {
++		device_unregister(cm_dev->device);
++		kfree(cm_dev);
++		return;
++	}
++
+ 	ib_set_client_data(ib_device, &cm_client, cm_dev);
  
--	if (rdma_port_get_link_layer(device, port_num) == IB_LINK_LAYER_INFINIBAND) {
-+	if (cap_ib_smi(device, port_num)) {
- 		/* Obtain send only MAD agent for SMI QP */
- 		port_priv->agent[0] = ib_register_mad_agent(device, port_num,
- 							    IB_QPT_SMI, NULL, 0,
-diff --git a/drivers/infiniband/core/mad.c b/drivers/infiniband/core/mad.c
-index ef0c0c5..2668d4e 100644
---- a/drivers/infiniband/core/mad.c
-+++ b/drivers/infiniband/core/mad.c
-@@ -2938,7 +2938,7 @@ static int ib_mad_port_open(struct ib_device *device,
- 	init_mad_qp(port_priv, &port_priv->qp_info[1]);
+ 	write_lock_irqsave(&cm.device_lock, flags);
+@@ -3825,6 +3835,9 @@ error1:
+ 	port_modify.set_port_cap_mask = 0;
+ 	port_modify.clr_port_cap_mask = IB_PORT_CM_SUP;
+ 	while (--i) {
++		if (!cap_ib_cm(ib_device, i))
++			continue;
++
+ 		port = cm_dev->port[i-1];
+ 		ib_modify_port(ib_device, port->port_num, 0, &port_modify);
+ 		ib_unregister_mad_agent(port->mad_agent);
+@@ -3853,6 +3866,9 @@ static void cm_remove_one(struct ib_device *ib_device)
+ 	write_unlock_irqrestore(&cm.device_lock, flags);
  
- 	cq_size = mad_sendq_size + mad_recvq_size;
--	has_smi = rdma_port_get_link_layer(device, port_num) == IB_LINK_LAYER_INFINIBAND;
-+	has_smi = cap_ib_smi(device, port_num);
- 	if (has_smi)
- 		cq_size *= 2;
- 
+ 	for (i = 1; i <= ib_device->phys_port_cnt; i++) {
++		if (!cap_ib_cm(ib_device, i))
++			continue;
++
+ 		port = cm_dev->port[i-1];
+ 		ib_modify_port(ib_device, port->port_num, 0, &port_modify);
+ 		ib_unregister_mad_agent(port->mad_agent);
 diff --git a/include/rdma/ib_verbs.h b/include/rdma/ib_verbs.h
-index 4013933..ee76010 100644
+index ee76010..3ba963f 100644
 --- a/include/rdma/ib_verbs.h
 +++ b/include/rdma/ib_verbs.h
-@@ -1788,6 +1788,21 @@ static inline int cap_ib_mad(struct ib_device *device, u8 port_num)
- 	return rdma_ib_mgmt(device, port_num);
+@@ -1803,6 +1803,21 @@ static inline int cap_ib_smi(struct ib_device *device, u8 port_num)
+ 	return rdma_transport_ib(device, port_num);
  }
  
 +/**
-+ * cap_ib_smi - Check if the port of device has the capability Infiniband
-+ * Subnet Management Interface.
++ * cap_ib_cm - Check if the port of device has the capability Infiniband
++ * Communication Manager.
 + *
 + * @device: Device to be checked
 + * @port_num: Port number of the device
 + *
 + * Return 0 when port of the device don't support Infiniband
-+ * Subnet Management Interface.
++ * Communication Manager.
 + */
-+static inline int cap_ib_smi(struct ib_device *device, u8 port_num)
++static inline int cap_ib_cm(struct ib_device *device, u8 port_num)
 +{
-+	return rdma_transport_ib(device, port_num);
++	return rdma_ib_mgmt(device, port_num);
 +}
 +
  int ib_query_gid(struct ib_device *device,
