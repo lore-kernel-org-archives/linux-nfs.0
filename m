@@ -1,12 +1,12 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wg0-f42.google.com ([74.125.82.42]:32980 "EHLO
-	mail-wg0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753160AbbDGMd2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Apr 2015 08:33:28 -0400
-Received: by wgin8 with SMTP id n8so54416025wgi.0
-        for <linux-nfs@vger.kernel.org>; Tue, 07 Apr 2015 05:33:26 -0700 (PDT)
-Message-ID: <5523CE93.8080809@profitbricks.com>
-Date: Tue, 07 Apr 2015 14:33:23 +0200
+Received: from mail-wi0-f174.google.com ([209.85.212.174]:33568 "EHLO
+	mail-wi0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753173AbbDGMeH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Apr 2015 08:34:07 -0400
+Received: by wiax7 with SMTP id x7so9725157wia.0
+        for <linux-nfs@vger.kernel.org>; Tue, 07 Apr 2015 05:34:06 -0700 (PDT)
+Message-ID: <5523CEBA.7010808@profitbricks.com>
+Date: Tue, 07 Apr 2015 14:34:02 +0200
 From: Michael Wang <yun.wang@profitbricks.com>
 MIME-Version: 1.0
 To: Roland Dreier <roland@kernel.org>, Sean Hefty <sean.hefty@intel.com>,
@@ -46,8 +46,8 @@ CC: Hal Rosenstock <hal.rosenstock@gmail.com>,
         Erez Shitrit <erezsh@mellanox.com>, Tom Gundersen <teg@jklm.no>,
         Chuck Lever <chuck.lever@oracle.com>,
         Michael Wang <yun.wang@profitbricks.com>
-Subject: [PATCH v2 07/17] IB/Verbs: Use management helper cap_ib_mcast() for
- mcast-check
+Subject: [PATCH v2 08/17] IB/Verbs: Use management helper cap_ipoib() for
+ ipoib-check
 References: <5523CCD5.6030401@profitbricks.com>
 In-Reply-To: <5523CCD5.6030401@profitbricks.com>
 Content-Type: text/plain; charset=utf-8
@@ -55,8 +55,10 @@ Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-Introduce helper cap_ib_mcast() to help us check if the port of an
-IB device support Infiniband Multicast.
+Introduce helper cap_ipoib() to help us check if the port of an
+IB device support IP over Infiniband.
+
+Reform ipoib_add_one() to fit per-port-check method better.
 
 Cc: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
 Cc: Doug Ledford <dledford@redhat.com>
@@ -64,75 +66,79 @@ Cc: Ira Weiny <ira.weiny@intel.com>
 Cc: Sean Hefty <sean.hefty@intel.com>
 Signed-off-by: Michael Wang <yun.wang@profitbricks.com>
 ---
- drivers/infiniband/core/multicast.c | 12 +++---------
- include/rdma/ib_verbs.h             | 15 +++++++++++++++
- 2 files changed, 18 insertions(+), 9 deletions(-)
+ drivers/infiniband/ulp/ipoib/ipoib_main.c | 17 ++++++++++-------
+ include/rdma/ib_verbs.h                   | 15 +++++++++++++++
+ 2 files changed, 25 insertions(+), 7 deletions(-)
 
-diff --git a/drivers/infiniband/core/multicast.c b/drivers/infiniband/core/multicast.c
-index fa17b55..bdc1880 100644
---- a/drivers/infiniband/core/multicast.c
-+++ b/drivers/infiniband/core/multicast.c
-@@ -780,8 +780,7 @@ static void mcast_event_handler(struct ib_event_handler *handler,
- 	int index;
+diff --git a/drivers/infiniband/ulp/ipoib/ipoib_main.c b/drivers/infiniband/ulp/ipoib/ipoib_main.c
+index 58b5aa3..e36a926 100644
+--- a/drivers/infiniband/ulp/ipoib/ipoib_main.c
++++ b/drivers/infiniband/ulp/ipoib/ipoib_main.c
+@@ -1654,9 +1654,7 @@ static void ipoib_add_one(struct ib_device *device)
+ 	struct net_device *dev;
+ 	struct ipoib_dev_priv *priv;
+ 	int s, e, p;
+-
+-	if (rdma_node_get_transport(device->node_type) != RDMA_TRANSPORT_IB)
+-		return;
++	int count = 0;
  
- 	dev = container_of(handler, struct mcast_device, event_handler);
--	if (rdma_port_get_link_layer(dev->device, event->element.port_num) !=
--	    IB_LINK_LAYER_INFINIBAND)
-+	if (WARN_ON(!cap_ib_mcast(dev->device, event->element.port_num)))
- 		return;
+ 	dev_list = kmalloc(sizeof *dev_list, GFP_KERNEL);
+ 	if (!dev_list)
+@@ -1673,13 +1671,21 @@ static void ipoib_add_one(struct ib_device *device)
+ 	}
  
- 	index = event->element.port_num - dev->start_port;
-@@ -808,9 +807,6 @@ static void mcast_add_one(struct ib_device *device)
- 	int i;
- 	int count = 0;
+ 	for (p = s; p <= e; ++p) {
+-		if (rdma_port_get_link_layer(device, p) != IB_LINK_LAYER_INFINIBAND)
++		if (!cap_ipoib(device, p))
+ 			continue;
++
+ 		dev = ipoib_add_port("ib%d", device, p);
+ 		if (!IS_ERR(dev)) {
+ 			priv = netdev_priv(dev);
+ 			list_add_tail(&priv->list, dev_list);
+ 		}
++
++		count++;
++	}
++
++	if (!count) {
++		kfree(dev_list);
++		return;
+ 	}
+ 
+ 	ib_set_client_data(device, &ipoib_client, dev_list);
+@@ -1690,9 +1696,6 @@ static void ipoib_remove_one(struct ib_device *device)
+ 	struct ipoib_dev_priv *priv, *tmp;
+ 	struct list_head *dev_list;
  
 -	if (rdma_node_get_transport(device->node_type) != RDMA_TRANSPORT_IB)
 -		return;
 -
- 	dev = kmalloc(sizeof *dev + device->phys_port_cnt * sizeof *port,
- 		      GFP_KERNEL);
- 	if (!dev)
-@@ -824,8 +820,7 @@ static void mcast_add_one(struct ib_device *device)
- 	}
- 
- 	for (i = 0; i <= dev->end_port - dev->start_port; i++) {
--		if (rdma_port_get_link_layer(device, dev->start_port + i) !=
--		    IB_LINK_LAYER_INFINIBAND)
-+		if (!cap_ib_mcast(device, dev->start_port + i))
- 			continue;
- 		port = &dev->port[i];
- 		port->dev = dev;
-@@ -863,8 +858,7 @@ static void mcast_remove_one(struct ib_device *device)
- 	flush_workqueue(mcast_wq);
- 
- 	for (i = 0; i <= dev->end_port - dev->start_port; i++) {
--		if (rdma_port_get_link_layer(device, dev->start_port + i) ==
--		    IB_LINK_LAYER_INFINIBAND) {
-+		if (cap_ib_mcast(device, dev->start_port + i)) {
- 			port = &dev->port[i];
- 			deref_port(port);
- 			wait_for_completion(&port->comp);
+ 	dev_list = ib_get_client_data(device, &ipoib_client);
+ 	if (!dev_list)
+ 		return;
 diff --git a/include/rdma/ib_verbs.h b/include/rdma/ib_verbs.h
-index c405e45..5a5f6d5 100644
+index 5a5f6d5..9db8966 100644
 --- a/include/rdma/ib_verbs.h
 +++ b/include/rdma/ib_verbs.h
-@@ -1833,6 +1833,21 @@ static inline int cap_ib_sa(struct ib_device *device, u8 port_num)
- 	return rdma_transport_ib(device, port_num);
+@@ -1848,6 +1848,21 @@ static inline int cap_ib_mcast(struct ib_device *device, u8 port_num)
+ 	return cap_ib_sa(device, port_num);
  }
  
 +/**
-+ * cap_ib_mcast - Check if the port of device has the capability Infiniband
-+ * Multicast.
++ * cap_ipoib - Check if the port of device has the capability
++ * IP over Infiniband.
 + *
 + * @device: Device to be checked
 + * @port_num: Port number of the device
 + *
-+ * Return 0 when port of the device don't support Infiniband
-+ * Multicast.
++ * Return 0 when port of the device don't support
++ * IP over Infiniband.
 + */
-+static inline int cap_ib_mcast(struct ib_device *device, u8 port_num)
++static inline int cap_ipoib(struct ib_device *device, u8 port_num)
 +{
-+	return cap_ib_sa(device, port_num);
++	return rdma_transport_ib(device, port_num);
 +}
 +
  int ib_query_gid(struct ib_device *device,
