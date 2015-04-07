@@ -1,41 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:56010 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752871AbbDGVkb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 7 Apr 2015 17:40:31 -0400
-Date: Tue, 7 Apr 2015 17:40:29 -0400
-To: Benjamin ESTRABAUD <be@mpstor.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: pNFS setup documentation.
-Message-ID: <20150407214029.GE3363@fieldses.org>
-References: <5523C695.3060805@mpstor.com>
+Received: from ipmail05.adl6.internode.on.net ([150.101.137.143]:29290 "EHLO
+	ipmail05.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751522AbbDGWUH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Apr 2015 18:20:07 -0400
+Date: Wed, 8 Apr 2015 08:19:27 +1000
+From: Dave Chinner <david@fromorbit.com>
+To: Christoph Hellwig <hch@lst.de>
+Cc: xfs@oss.sgi.com, linux-nfs@vger.kernel.org, viro@zeniv.linux.org.uk
+Subject: Re: [PATCH] xfs: unlock i_mutex in xfs_break_layouts
+Message-ID: <20150407221927.GD15810@dastard>
+References: <1428420944-20965-1-git-send-email-hch@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <5523C695.3060805@mpstor.com>
-From: bfields@fieldses.org (J. Bruce Fields)
+In-Reply-To: <1428420944-20965-1-git-send-email-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Apr 07, 2015 at 12:59:17PM +0100, Benjamin ESTRABAUD wrote:
-> I'm trying to setup a pNFS cluster, but I'm unable to find any
-> meaningful documentation about it.
+On Tue, Apr 07, 2015 at 05:35:44PM +0200, Christoph Hellwig wrote:
+> We want to drop all I/O path locks when recalling layouts, and that includes
+> i_mutex for the write path.  Without this we get stuck processe when recalls
+> take too long.
 > 
-> I understand I have to setup a bunch of NFSv4.1 enabled systems as
-> well as a Metadata service and a "layout agent" on the client nodes
-> but I'm not able to find any infos about setting up the Metadata
-> service or even the layout agent, nor am I able to find information
-> about what version of the nfsutils I should use.
-> 
-> Is there a nice documentation that I could use somewhere (Any
-> distribution is fine, I can adapt).
-> 
-> Thanks a lot in advance!
+> Signed-off-by: Christoph Hellwig <hch@lst.de>
+.....
+>  		xfs_iunlock(ip, iolock);
+> diff --git a/fs/xfs/xfs_pnfs.c b/fs/xfs/xfs_pnfs.c
+> index 365dd57..981a657 100644
+> --- a/fs/xfs/xfs_pnfs.c
+> +++ b/fs/xfs/xfs_pnfs.c
+> @@ -31,7 +31,8 @@
+>  int
+>  xfs_break_layouts(
+>  	struct inode		*inode,
+> -	uint			*iolock)
+> +	uint			*iolock,
+> +	bool			with_imutex)
+>  {
+>  	struct xfs_inode	*ip = XFS_I(inode);
+>  	int			error;
+> @@ -40,8 +41,12 @@ xfs_break_layouts(
+>  
+>  	while ((error = break_layout(inode, false) == -EWOULDBLOCK)) {
+>  		xfs_iunlock(ip, *iolock);
+> +		if (with_imutex && (*iolock & XFS_IOLOCK_EXCL))
+> +			mutex_unlock(&inode->i_mutex);
+>  		error = break_layout(inode, true);
+>  		*iolock = XFS_IOLOCK_EXCL;
+> +		if (with_imutex)
+> +			mutex_lock(&inode->i_mutex);
+>  		xfs_ilock(ip, *iolock);
+>  	}
 
-The only all-linux pNFS implementations have been out-of-tree
-prototypes.  The exception is Christoph's block server, just merged.
+That's kinda nasty, and it has no documentation explaining when or
+why we'd need to drop the i_mutex. How are we supposed to know if we
+need to drop the i_mutex or not? What happens if the upper VFS
+layers change or we have a multiple call paths that have different
+i_mutex contexts (i.e. one holds, another doesn't)?
 
-I put some very rough instructions (and warnings) here:
+Which makes me wonder - is this layout breaking stuff at the right
+layer?
 
-	http://wiki.linux-nfs.org/wiki/index.php/PNFS_block_server_setup
+Cheers,
 
---b.
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
