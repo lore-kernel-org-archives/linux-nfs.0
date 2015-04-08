@@ -1,12 +1,16 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from quartz.orcorp.ca ([184.70.90.242]:54733 "EHLO quartz.orcorp.ca"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753659AbbDHPwL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 8 Apr 2015 11:52:11 -0400
-Date: Wed, 8 Apr 2015 09:51:45 -0600
-From: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
-To: Michael Wang <yun.wang@profitbricks.com>
-Cc: Tom Talpey <tom@talpey.com>, Roland Dreier <roland@kernel.org>,
+Received: from mail-wi0-f172.google.com ([209.85.212.172]:35211 "EHLO
+	mail-wi0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754110AbbDHQFr (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Apr 2015 12:05:47 -0400
+Received: by widdi4 with SMTP id di4so60796055wid.0
+        for <linux-nfs@vger.kernel.org>; Wed, 08 Apr 2015 09:05:46 -0700 (PDT)
+Message-ID: <552551D7.80308@profitbricks.com>
+Date: Wed, 08 Apr 2015 18:05:43 +0200
+From: Michael Wang <yun.wang@profitbricks.com>
+MIME-Version: 1.0
+To: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
+CC: Tom Talpey <tom@talpey.com>, Roland Dreier <roland@kernel.org>,
         Sean Hefty <sean.hefty@intel.com>, linux-rdma@vger.kernel.org,
         linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
         netdev@vger.kernel.org, Hal Rosenstock <hal.rosenstock@gmail.com>,
@@ -43,31 +47,40 @@ Cc: Tom Talpey <tom@talpey.com>, Roland Dreier <roland@kernel.org>,
         Erez Shitrit <erezsh@mellanox.com>, Tom Gundersen <teg@jklm.no>,
         Chuck Lever <chuck.lever@oracle.com>
 Subject: Re: [PATCH v2 00/17] IB/Verbs: IB Management Helpers
-Message-ID: <20150408155145.GA25178@obsidianresearch.com>
-References: <5523CCD5.6030401@profitbricks.com>
- <5525132F.1020004@talpey.com>
- <552521EE.5060206@profitbricks.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <552521EE.5060206@profitbricks.com>
+References: <5523CCD5.6030401@profitbricks.com> <5525132F.1020004@talpey.com> <552521EE.5060206@profitbricks.com> <20150408155145.GA25178@obsidianresearch.com>
+In-Reply-To: <20150408155145.GA25178@obsidianresearch.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Apr 08, 2015 at 02:41:18PM +0200, Michael Wang wrote:
- 
-> I think no one can have the access to all these hardware, so we can
-> only depends on those who accidentally have one to help the testing,
-> but it's still far from that stage..
+On 04/08/2015 05:51 PM, Jason Gunthorpe wrote:
+> On Wed, Apr 08, 2015 at 02:41:18PM +0200, Michael Wang wrote:
+>  
+>> I think no one can have the access to all these hardware, so we can
+>> only depends on those who accidentally have one to help the testing,
+>> but it's still far from that stage..
+> 
+> I have seen other patches in this style use the compiler to do the
+> check, if the patch doesn't change the compiled output then it is
+> obviously OK.
+> 
+> Some careful use of macros might make that possible, but it is a fair
+> amount of work.
+> 
+> However, that may be the only way to get something this invasive
+> applied, especially since we've already seen mistakes in the manual
+> transforms :|
 
-I have seen other patches in this style use the compiler to do the
-check, if the patch doesn't change the compiled output then it is
-obviously OK.
+Make sense, I may be able to testing with mlx4 in our lab, but IMHO
+review carefully may be more reliable then incomplete testing in
+this case, if we have some tree or branch for next staging, that
+could be a good place for public testing, but it's haven't reached
+that stage yet ;-)
 
-Some careful use of macros might make that possible, but it is a fair
-amount of work.
+Regards,
+Michael Wang
 
-However, that may be the only way to get something this invasive
-applied, especially since we've already seen mistakes in the manual
-transforms :|
 
-Jason
+> 
+> Jason
+> 
