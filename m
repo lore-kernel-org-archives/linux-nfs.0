@@ -1,68 +1,89 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from ipmail05.adl6.internode.on.net ([150.101.137.143]:29290 "EHLO
-	ipmail05.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751522AbbDGWUH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Apr 2015 18:20:07 -0400
-Date: Wed, 8 Apr 2015 08:19:27 +1000
-From: Dave Chinner <david@fromorbit.com>
-To: Christoph Hellwig <hch@lst.de>
-Cc: xfs@oss.sgi.com, linux-nfs@vger.kernel.org, viro@zeniv.linux.org.uk
-Subject: Re: [PATCH] xfs: unlock i_mutex in xfs_break_layouts
-Message-ID: <20150407221927.GD15810@dastard>
-References: <1428420944-20965-1-git-send-email-hch@lst.de>
+Received: from mail-wi0-f175.google.com ([209.85.212.175]:34219 "EHLO
+	mail-wi0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751420AbbDHINw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Apr 2015 04:13:52 -0400
+Received: by widjs5 with SMTP id js5so27300453wid.1
+        for <linux-nfs@vger.kernel.org>; Wed, 08 Apr 2015 01:13:50 -0700 (PDT)
+Message-ID: <5524E33B.5050403@profitbricks.com>
+Date: Wed, 08 Apr 2015 10:13:47 +0200
+From: Michael Wang <yun.wang@profitbricks.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1428420944-20965-1-git-send-email-hch@lst.de>
+To: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
+CC: Roland Dreier <roland@kernel.org>, Sean Hefty <sean.hefty@intel.com>,
+        linux-rdma@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
+        Hal Rosenstock <hal.rosenstock@gmail.com>,
+        Tom Tucker <tom@opengridcomputing.com>,
+        Steve Wise <swise@opengridcomputing.com>,
+        Hoang-Nam Nguyen <hnguyen@de.ibm.com>,
+        Christoph Raisch <raisch@de.ibm.com>,
+        Mike Marciniszyn <infinipath@intel.com>, Eli Cohen <eli@mellanox.com>,
+        Faisal Latif <faisal.latif@intel.com>,
+        Upinder Malhi <umalhi@cisco.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        "David S. Miller" <davem@davemloft.net>,
+        Ira Weiny <ira.weiny@intel.com>,
+        PJ Waskiewicz <pj.waskiewicz@solidfire.com>,
+        Tatyana Nikolova <Tatyana.E.Nikolova@intel.com>,
+        Or Gerlitz <ogerlitz@mellanox.com>,
+        Jack Morgenstein <jackm@dev.mellanox.co.il>,
+        Haggai Eran <haggaie@mellanox.com>,
+        Ilya Nelkenbaum <ilyan@mellanox.com>,
+        Yann Droneaud <ydroneaud@opteya.com>,
+        Bart Van Assche <bvanassche@acm.org>,
+        Shachar Raindel <raindel@mellanox.com>,
+        Sagi Grimberg <sagig@mellanox.com>,
+        Devesh Sharma <devesh.sharma@emulex.com>,
+        Matan Barak <matanb@mellanox.com>, Moni Shoua <monis@mellanox.com>,
+        Jiri Kosina <jkosina@suse.cz>,
+        Selvin Xavier <selvin.xavier@emulex.com>,
+        Mitesh Ahuja <mitesh.ahuja@emulex.com>,
+        Li RongQing <roy.qing.li@gmail.com>,
+        Rasmus Villemoes <linux@rasmusvillemoes.dk>,
+        Alex Estrin <alex.estrin@intel.com>,
+        Doug Ledford <dledford@redhat.com>, Eric Dumazet <edumazet@google.com>,
+        Erez Shitrit <erezsh@mellanox.com>, Tom Gundersen <teg@jklm.no>,
+        Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH v2 03/17] IB/Verbs: Use management helper cap_ib_mad()
+ for mad-check
+References: <5523CCD5.6030401@profitbricks.com> <5523CDDE.4050209@profitbricks.com> <20150407172612.GA15704@obsidianresearch.com>
+In-Reply-To: <20150407172612.GA15704@obsidianresearch.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Apr 07, 2015 at 05:35:44PM +0200, Christoph Hellwig wrote:
-> We want to drop all I/O path locks when recalling layouts, and that includes
-> i_mutex for the write path.  Without this we get stuck processe when recalls
-> take too long.
+On 04/07/2015 07:26 PM, Jason Gunthorpe wrote:
+> On Tue, Apr 07, 2015 at 02:30:22PM +0200, Michael Wang wrote:
 > 
-> Signed-off-by: Christoph Hellwig <hch@lst.de>
-.....
->  		xfs_iunlock(ip, iolock);
-> diff --git a/fs/xfs/xfs_pnfs.c b/fs/xfs/xfs_pnfs.c
-> index 365dd57..981a657 100644
-> --- a/fs/xfs/xfs_pnfs.c
-> +++ b/fs/xfs/xfs_pnfs.c
-> @@ -31,7 +31,8 @@
->  int
->  xfs_break_layouts(
->  	struct inode		*inode,
-> -	uint			*iolock)
-> +	uint			*iolock,
-> +	bool			with_imutex)
->  {
->  	struct xfs_inode	*ip = XFS_I(inode);
->  	int			error;
-> @@ -40,8 +41,12 @@ xfs_break_layouts(
->  
->  	while ((error = break_layout(inode, false) == -EWOULDBLOCK)) {
->  		xfs_iunlock(ip, *iolock);
-> +		if (with_imutex && (*iolock & XFS_IOLOCK_EXCL))
-> +			mutex_unlock(&inode->i_mutex);
->  		error = break_layout(inode, true);
->  		*iolock = XFS_IOLOCK_EXCL;
-> +		if (with_imutex)
-> +			mutex_lock(&inode->i_mutex);
->  		xfs_ilock(ip, *iolock);
->  	}
+>> -	if (rdma_node_get_transport(device->node_type) != RDMA_TRANSPORT_IB)
+>> -		return;
+>> -
+>>  	if (device->node_type == RDMA_NODE_IB_SWITCH) {
+>>  		start = 0;
+>>  		end   = 0;
+>> @@ -3069,6 +3066,9 @@ static void ib_mad_init_device(struct ib_device *device)
+>>  	}
+>>  
+>>  	for (i = start; i <= end; i++) {
+>> +		if (!cap_ib_mad(device, i))
+>> +			continue;
+>> +
+> 
+> I would prefer to see these changes in control flow as dedicated
+> patches, at the top of your patch stack.
+> 
+> For this kind of work a patch should be mechanical changes only, it is
+> easier to review that way.
+> 
+> Same comment applies throughout.
 
-That's kinda nasty, and it has no documentation explaining when or
-why we'd need to drop the i_mutex. How are we supposed to know if we
-need to drop the i_mutex or not? What happens if the upper VFS
-layers change or we have a multiple call paths that have different
-i_mutex contexts (i.e. one holds, another doesn't)?
+Make sense :-) I will re-organize the sequence and put them at last.
 
-Which makes me wonder - is this layout breaking stuff at the right
-layer?
+Regards,
+Michael Wang
 
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+> 
+> Jason
+> 
