@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx142.netapp.com ([216.240.21.19]:38151 "EHLO mx142.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932547AbbDHQre (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 8 Apr 2015 12:47:34 -0400
+	id S932444AbbDHQrd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 8 Apr 2015 12:47:33 -0400
 From: Anna Schumaker <Anna.Schumaker@netapp.com>
 To: <steved@redhat.com>, <linux-nfs@vger.kernel.org>
 CC: <Anna.Schumaker@netapp.com>
-Subject: [PATCH 2/2] mountstats: Only count operations that have names
-Date: Wed, 8 Apr 2015 12:47:27 -0400
-Message-ID: <1428511647-14920-3-git-send-email-Anna.Schumaker@Netapp.com>
+Subject: [PATCH 1/2] mountstats: Resync NFSv4 Operations List
+Date: Wed, 8 Apr 2015 12:47:26 -0400
+Message-ID: <1428511647-14920-2-git-send-email-Anna.Schumaker@Netapp.com>
 In-Reply-To: <1428511647-14920-1-git-send-email-Anna.Schumaker@Netapp.com>
 References: <1428511647-14920-1-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
@@ -16,33 +16,40 @@ Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-GETDEVICELIST was removed from the kernel, but due to the way the client
-is coded it still shows up in /proc/self/mountstats as "51".  This
-causes mountstats to crash when asked to output "raw" statistics, so
-this patch teaches mountsats to ignore any operations that only have
-numeric names.
+We've added several operations and removed GETDEVICELIST,  Let's keep
+the Nfsv4ops list up to date with the kernel.
 
 Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 ---
- tools/mountstats/mountstats.py | 5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
+ tools/mountstats/mountstats.py | 8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
 
 diff --git a/tools/mountstats/mountstats.py b/tools/mountstats/mountstats.py
-index 8f2e26e..5f243ac 100644
+index 38943eb..8f2e26e 100644
 --- a/tools/mountstats/mountstats.py
 +++ b/tools/mountstats/mountstats.py
-@@ -284,8 +284,9 @@ class DeviceData:
-             self.__rpc_data['per-op'] = words
-         else:
-             op = words[0][:-1]
--            self.__rpc_data['ops'] += [op]
--            self.__rpc_data[op] = [int(word) for word in words[1:]]
-+            if not op.isnumeric():
-+                self.__rpc_data['ops'] += [op]
-+                self.__rpc_data[op] = [int(word) for word in words[1:]]
+@@ -195,16 +195,18 @@ Nfsv4ops = [
+     'SEQUENCE',
+     'GET_LEASE_TIME',
+     'RECLAIM_COMPLETE',
+-    'LAYOUTGET',
+     'GETDEVICEINFO',
++    'LAYOUTGET',
+     'LAYOUTCOMMIT',
+     'LAYOUTRETURN',
+     'SECINFO_NO_NAME',
+     'TEST_STATEID',
+     'FREE_STATEID',
+-    'GETDEVICELIST',
+     'BIND_CONN_TO_SESSION',
+-    'DESTROY_CLIENTID'
++    'DESTROY_CLIENTID',
++    'SEEK',
++    'ALLOCATE',
++    'DEALLOCATE',
+ ]
  
-     def parse_stats(self, lines):
-         """Turn a list of lines from a mount stat file into a 
+ class DeviceData:
 -- 
 2.3.5
 
