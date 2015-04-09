@@ -1,88 +1,94 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from p3plsmtpa09-09.prod.phx3.secureserver.net ([173.201.193.238]:57097
-	"EHLO p3plsmtpa09-09.prod.phx3.secureserver.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754071AbbDHUzl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Apr 2015 16:55:41 -0400
-Message-ID: <552595C3.8040506@talpey.com>
-Date: Wed, 08 Apr 2015 16:55:31 -0400
-From: Tom Talpey <tom@talpey.com>
+Received: from ipmail07.adl2.internode.on.net ([150.101.137.131]:59685 "EHLO
+	ipmail07.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753681AbbDIAyk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Apr 2015 20:54:40 -0400
+Date: Thu, 9 Apr 2015 10:54:23 +1000
+From: Dave Chinner <david@fromorbit.com>
+To: Jeff Moyer <jmoyer@redhat.com>
+Cc: linux-kernel@vger.kernel.org, dm-devel@redhat.com,
+        xen-devel@lists.xenproject.org, linux-raid@vger.kernel.org,
+        linux-scsi@vger.kernel.org, target-devel@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-aio@kvack.org,
+        linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net, cluster-devel@redhat.com,
+        linux-nfs@vger.kernel.org, linux-mm@kvack.org
+Subject: Re: [PATCH 2/2][v2] blk-plug: don't flush nested plug lists
+Message-ID: <20150409005423.GD13731@dastard>
+References: <1428347694-17704-1-git-send-email-jmoyer@redhat.com>
+ <1428347694-17704-2-git-send-email-jmoyer@redhat.com>
+ <x49wq1nrcoe.fsf_-_@segfault.boston.devel.redhat.com>
+ <20150408230203.GG15810@dastard>
 MIME-Version: 1.0
-To: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>,
-        Doug Ledford <dledford@redhat.com>
-CC: Michael Wang <yun.wang@profitbricks.com>,
-        Roland Dreier <roland@kernel.org>, Sean Hefty <sean.hefty@intel.com>,
-        linux-rdma@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
-        Hal Rosenstock <hal.rosenstock@gmail.com>,
-        Tom Tucker <tom@opengridcomputing.com>,
-        Steve Wise <swise@opengridcomputing.com>,
-        Hoang-Nam Nguyen <hnguyen@de.ibm.com>,
-        Christoph Raisch <raisch@de.ibm.com>,
-        Mike Marciniszyn <infinipath@intel.com>, Eli Cohen <eli@mellanox.com>,
-        Faisal Latif <faisal.latif@intel.com>,
-        Upinder Malhi <umalhi@cisco.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        "David S. Miller" <davem@davemloft.net>,
-        Ira Weiny <ira.weiny@intel.com>,
-        PJ Waskiewicz <pj.waskiewicz@solidfire.com>,
-        Tatyana Nikolova <Tatyana.E.Nikolova@intel.com>,
-        Or Gerlitz <ogerlitz@mellanox.com>,
-        Jack Morgenstein <jackm@dev.mellanox.co.il>,
-        Haggai Eran <haggaie@mellanox.com>,
-        Ilya Nelkenbaum <ilyan@mellanox.com>,
-        Yann Droneaud <ydroneaud@opteya.com>,
-        Bart Van Assche <bvanassche@acm.org>,
-        Shachar Raindel <raindel@mellanox.com>,
-        Sagi Grimberg <sagig@mellanox.com>,
-        Devesh Sharma <devesh.sharma@emulex.com>,
-        Matan Barak <matanb@mellanox.com>, Moni Shoua <monis@mellanox.com>,
-        Jiri Kosina <jkosina@suse.cz>,
-        Selvin Xavier <selvin.xavier@emulex.com>,
-        Mitesh Ahuja <mitesh.ahuja@emulex.com>,
-        Li RongQing <roy.qing.li@gmail.com>,
-        Rasmus Villemoes <linux@rasmusvillemoes.dk>,
-        Alex Estrin <alex.estrin@intel.com>,
-        Eric Dumazet <edumazet@google.com>, Erez Shitrit <erezsh@mellanox.com>,
-        Tom Gundersen <teg@jklm.no>, Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH v2 01/17] IB/Verbs: Implement new callback query_transport()
- for each HW
-References: <5523CCD5.6030401@profitbricks.com> <5523D098.3020007@profitbricks.com> <1428517786.2980.180.camel@redhat.com> <20150408201015.GB28666@obsidianresearch.com>
-In-Reply-To: <20150408201015.GB28666@obsidianresearch.com>
-Content-Type: text/plain; charset=windows-1252; format=flowed
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20150408230203.GG15810@dastard>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 4/8/2015 4:10 PM, Jason Gunthorpe wrote:
-> On Wed, Apr 08, 2015 at 02:29:46PM -0400, Doug Ledford wrote:
->
->...
->>
->> rdma_port_get_read_sge(dev, port)
->> {
->> 	if (rdma_transport_is_iwarp)
->> 		return 1;
->> 	return dev->port[port]->max_sge;
->> }
->
-> Hum, that is nice, but it doesn't quite fit with how the ULP needs to
-> work. The max limit when creating a WR is the value passed into the
-> qp_cap, not the device maximum limit.
+[ Sending again with a trimmed CC list to just the lists. Jeff - cc
+lists that large get blocked by mailing lists... ]
 
-Agreed, and I will again say that not all devices necessarily support
-the same max_sge for all WR types. The current one-size-fits-all API
-may make the upper layer think so, but it's possibly being lied to.
+On Tue, Apr 07, 2015 at 02:55:13PM -0400, Jeff Moyer wrote:
+> The way the on-stack plugging currently works, each nesting level
+> flushes its own list of I/Os.  This can be less than optimal (read
+> awful) for certain workloads.  For example, consider an application
+> that issues asynchronous O_DIRECT I/Os.  It can send down a bunch of
+> I/Os together in a single io_submit call, only to have each of them
+> dispatched individually down in the bowels of the dirct I/O code.
+> The reason is that there are blk_plug-s instantiated both at the upper
+> call site in do_io_submit and down in do_direct_IO.  The latter will
+> submit as little as 1 I/O at a time (if you have a small enough I/O
+> size) instead of performing the batching that the plugging
+> infrastructure is supposed to provide.
 
-> To do this properly we need to extend the qp_cap, and that is just too
-> big a change. A one bit iWarp quirk is OK for now.
+I'm wondering what impact this will have on filesystem metadata IO
+that needs to be issued immediately. e.g. we are doing writeback, so
+there is a high level plug in place and we need to page in btree
+blocks to do extent allocation. We do readahead at this point,
+but it looks like this change will prevent the readahead from being
+issued by the unplug in xfs_buf_iosubmit().
 
-Yes, it would be a large-ish change, and I like Doug's choice of word
-"quirk" to capture these as exceptions, until the means for addressing
-them is decided.
+So while I can see how this can make your single microbenchmark
+better (because it's only doing concurrent direct IO to the block
+device and hence there are no dependencies between individual IOs),
+I have significant reservations that it's actually a win for
+filesystem-based workloads where we need direct control of flushing
+to minimise IO latency due to IO dependencies...
 
-Overall, I like Doug's proposals, especially from an upper layer
-perspective. I might suggest further refining them into categories, 
-perhaps "management", primarily of interest to kernel and the
-plumbing of connections; and actual "RDMA semantics", of interest
-to RDMA consumers.
+Patches like this one:
 
+https://lkml.org/lkml/2015/3/20/442
+
+show similar real-world workload improvements to your patchset by
+being smarter about using high level plugging to enable cross-file
+merging of IO, but it still relies on the lower layers of plugging
+to resolve latency bubbles caused by IO dependencies in the
+filesystems.
+
+> NOTE TO SUBSYSTEM MAINTAINERS: Before this patch, blk_finish_plug
+> would always flush the plug list.  After this patch, this is only the
+> case for the outer-most plug.  If you require the plug list to be
+> flushed, you should be calling blk_flush_plug(current).  Btrfs and dm
+> maintainers should take a close look at this patch and ensure they get
+> the right behavior in the end.
+
+IOWs, you are saying we need to change all our current unplugs to
+blk_flush_plug(current) to *try* to maintain the same behaviour as
+we currently have? I say *try*, because no instead of just flushing
+the readahead IO on the plug, we'll also flush all the queued data
+writeback IO onthe high level plug. We don't actually want to do
+that; we only want to submit the readahead and not the bulk IO that
+will delay the latency sensitive dependent IOs....
+
+If that is the case, shouldn't you actually be trying to fix the
+specific plugging problem you've identified (i.e. do_direct_IO() is
+flushing far too frequently) rather than making a sweeping
+generalisation that the IO stack plugging infrastructure
+needs fundamental change?
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
