@@ -1,94 +1,113 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from ipmail07.adl2.internode.on.net ([150.101.137.131]:59685 "EHLO
-	ipmail07.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753681AbbDIAyk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Apr 2015 20:54:40 -0400
-Date: Thu, 9 Apr 2015 10:54:23 +1000
-From: Dave Chinner <david@fromorbit.com>
-To: Jeff Moyer <jmoyer@redhat.com>
-Cc: linux-kernel@vger.kernel.org, dm-devel@redhat.com,
-        xen-devel@lists.xenproject.org, linux-raid@vger.kernel.org,
-        linux-scsi@vger.kernel.org, target-devel@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-aio@kvack.org,
-        linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net, cluster-devel@redhat.com,
-        linux-nfs@vger.kernel.org, linux-mm@kvack.org
-Subject: Re: [PATCH 2/2][v2] blk-plug: don't flush nested plug lists
-Message-ID: <20150409005423.GD13731@dastard>
-References: <1428347694-17704-1-git-send-email-jmoyer@redhat.com>
- <1428347694-17704-2-git-send-email-jmoyer@redhat.com>
- <x49wq1nrcoe.fsf_-_@segfault.boston.devel.redhat.com>
- <20150408230203.GG15810@dastard>
-MIME-Version: 1.0
+Received: from mga01.intel.com ([192.55.52.88]:60384 "EHLO mga01.intel.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751258AbbDIFhH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 9 Apr 2015 01:37:07 -0400
+Date: Thu, 9 Apr 2015 01:36:51 -0400
+From: "ira.weiny" <ira.weiny@intel.com>
+To: Steve Wise <swise@opengridcomputing.com>
+Cc: "'Jason Gunthorpe'" <jgunthorpe@obsidianresearch.com>,
+        "'Michael Wang'" <yun.wang@profitbricks.com>,
+        "'Roland Dreier'" <roland@kernel.org>,
+        "'Sean Hefty'" <sean.hefty@intel.com>, linux-rdma@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        netdev@vger.kernel.org, "'Hal Rosenstock'" <hal.rosenstock@gmail.com>,
+        "'Tom Tucker'" <tom@opengridcomputing.com>,
+        "'Hoang-Nam Nguyen'" <hnguyen@de.ibm.com>,
+        "'Christoph Raisch'" <raisch@de.ibm.com>,
+        "'Mike Marciniszyn'" <infinipath@intel.com>,
+        "'Eli Cohen'" <eli@mellanox.com>,
+        "'Faisal Latif'" <faisal.latif@intel.com>,
+        "'Upinder Malhi'" <umalhi@cisco.com>,
+        "'Trond Myklebust'" <trond.myklebust@primarydata.com>,
+        "'J. Bruce Fields'" <bfields@fieldses.org>,
+        "'David S. Miller'" <davem@davemloft.net>,
+        "'PJ Waskiewicz'" <pj.waskiewicz@solidfire.com>,
+        "'Tatyana Nikolova'" <Tatyana.E.Nikolova@intel.com>,
+        "'Or Gerlitz'" <ogerlitz@mellanox.com>,
+        "'Jack Morgenstein'" <jackm@dev.mellanox.co.il>,
+        "'Haggai Eran'" <haggaie@mellanox.com>,
+        "'Ilya Nelkenbaum'" <ilyan@mellanox.com>,
+        "'Yann Droneaud'" <ydroneaud@opteya.com>,
+        "'Bart Van Assche'" <bvanassche@acm.org>,
+        "'Shachar Raindel'" <raindel@mellanox.com>,
+        "'Sagi Grimberg'" <sagig@mellanox.com>,
+        "'Devesh Sharma'" <devesh.sharma@emulex.com>,
+        "'Matan Barak'" <matanb@mellanox.com>,
+        "'Moni Shoua'" <monis@mellanox.com>, "'Jiri Kosina'" <jkosina@suse.cz>,
+        "'Selvin Xavier'" <selvin.xavier@emulex.com>,
+        "'Mitesh Ahuja'" <mitesh.ahuja@emulex.com>,
+        "'Li RongQing'" <roy.qing.li@gmail.com>,
+        "'Rasmus Villemoes'" <linux@rasmusvillemoes.dk>,
+        "'Alex Estrin'" <alex.estrin@intel.com>,
+        "'Doug Ledford'" <dledford@redhat.com>,
+        "'Eric Dumazet'" <edumazet@google.com>,
+        "'Erez Shitrit'" <erezsh@mellanox.com>,
+        "'Tom Gundersen'" <teg@jklm.no>,
+        "'Chuck Lever'" <chuck.lever@oracle.com>
+Subject: Re: [PATCH v2 10/17] IB/Verbs: Adopt management helpers for IB helpers
+Message-ID: <20150409053651.GB28926@phlsvsds.ph.intel.com>
+References: <5523CCD5.6030401@profitbricks.com> <5523CF0A.5090206@profitbricks.com> <20150407201259.GA17147@obsidianresearch.com> <008401d0716f$bc41c5c0$34c55140$@opengridcomputing.com>
+Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20150408230203.GG15810@dastard>
+In-Reply-To: <008401d0716f$bc41c5c0$34c55140$@opengridcomputing.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-[ Sending again with a trimmed CC list to just the lists. Jeff - cc
-lists that large get blocked by mailing lists... ]
+On Tue, Apr 07, 2015 at 03:16:30PM -0500, Steve Wise wrote:
+> 
+> 
+> > -----Original Message-----
+> > From: Jason Gunthorpe [mailto:jgunthorpe@obsidianresearch.com]
+> > Sent: Tuesday, April 07, 2015 3:13 PM
+> > To: Michael Wang
+> > Cc: Roland Dreier; Sean Hefty; linux-rdma@vger.kernel.org; linux-kernel@vger.kernel.org; linux-nfs@vger.kernel.org;
+> > netdev@vger.kernel.org; Hal Rosenstock; Tom Tucker; Steve Wise; Hoang-Nam Nguyen; Christoph Raisch; Mike Marciniszyn; Eli Cohen;
+> > Faisal Latif; Upinder Malhi; Trond Myklebust; J. Bruce Fields; David S. Miller; Ira Weiny; PJ Waskiewicz; Tatyana Nikolova; Or
+> Gerlitz; Jack
+> > Morgenstein; Haggai Eran; Ilya Nelkenbaum; Yann Droneaud; Bart Van Assche; Shachar Raindel; Sagi Grimberg; Devesh Sharma; Matan
+> > Barak; Moni Shoua; Jiri Kosina; Selvin Xavier; Mitesh Ahuja; Li RongQing; Rasmus Villemoes; Alex Estrin; Doug Ledford; Eric
+> Dumazet; Erez
+> > Shitrit; Tom Gundersen; Chuck Lever
+> > Subject: Re: [PATCH v2 10/17] IB/Verbs: Adopt management helpers for IB helpers
+> > 
+> > On Tue, Apr 07, 2015 at 02:35:22PM +0200, Michael Wang wrote:
+> > > index f704254..4e61104 100644
+> > > +++ b/drivers/infiniband/core/sa_query.c
+> > > @@ -540,7 +540,7 @@ int ib_init_ah_from_path(struct ib_device *device, u8 port_num,
+> > >  	ah_attr->port_num = port_num;
+> > >  	ah_attr->static_rate = rec->rate;
+> > >
+> > > -	force_grh = rdma_port_get_link_layer(device, port_num) == IB_LINK_LAYER_ETHERNET;
+> > > +	force_grh = !rdma_transport_ib(device, port_num);
+> > 
+> > Maybe these tests should be called cap_mandatory_grh - but I'm not
+> > really sure how iWarp uses the GRH fields in the AH...
+> > 
+> 
+> iWARP runs on top of TCP...this SA code is all IB-specific.  The reason it was checking for ETHERNET, I think, is for RoCE.    So
+> this change is totally incorrect,  I think,  because RoCE is an IB transport, but it runs on ETHERNET.
 
-On Tue, Apr 07, 2015 at 02:55:13PM -0400, Jeff Moyer wrote:
-> The way the on-stack plugging currently works, each nesting level
-> flushes its own list of I/Os.  This can be less than optimal (read
-> awful) for certain workloads.  For example, consider an application
-> that issues asynchronous O_DIRECT I/Os.  It can send down a bunch of
-> I/Os together in a single io_submit call, only to have each of them
-> dispatched individually down in the bowels of the dirct I/O code.
-> The reason is that there are blk_plug-s instantiated both at the upper
-> call site in do_io_submit and down in do_direct_IO.  The latter will
-> submit as little as 1 I/O at a time (if you have a small enough I/O
-> size) instead of performing the batching that the plugging
-> infrastructure is supposed to provide.
+But RoCE does not have an SA?
 
-I'm wondering what impact this will have on filesystem metadata IO
-that needs to be issued immediately. e.g. we are doing writeback, so
-there is a high level plug in place and we need to page in btree
-blocks to do extent allocation. We do readahead at this point,
-but it looks like this change will prevent the readahead from being
-issued by the unplug in xfs_buf_iosubmit().
+Looks like ib_init_ah_from_path was overloaded to handle non-standard "path
+records".
 
-So while I can see how this can make your single microbenchmark
-better (because it's only doing concurrent direct IO to the block
-device and hence there are no dependencies between individual IOs),
-I have significant reservations that it's actually a win for
-filesystem-based workloads where we need direct control of flushing
-to minimise IO latency due to IO dependencies...
+It seems like the correct functionality would be to use ib_init_ah_from_path()
+for true SA PathRecords and have another call iboe_init_ah() wrap
+ib_init_ah_from_path() when RoCE address information is needed in the AH.
 
-Patches like this one:
+For Michaels patches I think 
 
-https://lkml.org/lkml/2015/3/20/442
+	force_grh = rdma_device_is_iboe(...)
 
-show similar real-world workload improvements to your patchset by
-being smarter about using high level plugging to enable cross-file
-merging of IO, but it still relies on the lower layers of plugging
-to resolve latency bubbles caused by IO dependencies in the
-filesystems.
+is the logic we need here.
 
-> NOTE TO SUBSYSTEM MAINTAINERS: Before this patch, blk_finish_plug
-> would always flush the plug list.  After this patch, this is only the
-> case for the outer-most plug.  If you require the plug list to be
-> flushed, you should be calling blk_flush_plug(current).  Btrfs and dm
-> maintainers should take a close look at this patch and ensure they get
-> the right behavior in the end.
+Ira
 
-IOWs, you are saying we need to change all our current unplugs to
-blk_flush_plug(current) to *try* to maintain the same behaviour as
-we currently have? I say *try*, because no instead of just flushing
-the readahead IO on the plug, we'll also flush all the queued data
-writeback IO onthe high level plug. We don't actually want to do
-that; we only want to submit the readahead and not the bulk IO that
-will delay the latency sensitive dependent IOs....
 
-If that is the case, shouldn't you actually be trying to fix the
-specific plugging problem you've identified (i.e. do_direct_IO() is
-flushing far too frequently) rather than making a sweeping
-generalisation that the IO stack plugging infrastructure
-needs fundamental change?
-
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+> 
+> Steve.
+> 
+> 
+> 
