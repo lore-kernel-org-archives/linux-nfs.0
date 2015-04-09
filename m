@@ -1,113 +1,86 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga01.intel.com ([192.55.52.88]:60384 "EHLO mga01.intel.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751258AbbDIFhH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 9 Apr 2015 01:37:07 -0400
-Date: Thu, 9 Apr 2015 01:36:51 -0400
-From: "ira.weiny" <ira.weiny@intel.com>
-To: Steve Wise <swise@opengridcomputing.com>
-Cc: "'Jason Gunthorpe'" <jgunthorpe@obsidianresearch.com>,
-        "'Michael Wang'" <yun.wang@profitbricks.com>,
-        "'Roland Dreier'" <roland@kernel.org>,
-        "'Sean Hefty'" <sean.hefty@intel.com>, linux-rdma@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        netdev@vger.kernel.org, "'Hal Rosenstock'" <hal.rosenstock@gmail.com>,
-        "'Tom Tucker'" <tom@opengridcomputing.com>,
-        "'Hoang-Nam Nguyen'" <hnguyen@de.ibm.com>,
-        "'Christoph Raisch'" <raisch@de.ibm.com>,
-        "'Mike Marciniszyn'" <infinipath@intel.com>,
-        "'Eli Cohen'" <eli@mellanox.com>,
-        "'Faisal Latif'" <faisal.latif@intel.com>,
-        "'Upinder Malhi'" <umalhi@cisco.com>,
-        "'Trond Myklebust'" <trond.myklebust@primarydata.com>,
-        "'J. Bruce Fields'" <bfields@fieldses.org>,
-        "'David S. Miller'" <davem@davemloft.net>,
-        "'PJ Waskiewicz'" <pj.waskiewicz@solidfire.com>,
-        "'Tatyana Nikolova'" <Tatyana.E.Nikolova@intel.com>,
-        "'Or Gerlitz'" <ogerlitz@mellanox.com>,
-        "'Jack Morgenstein'" <jackm@dev.mellanox.co.il>,
-        "'Haggai Eran'" <haggaie@mellanox.com>,
-        "'Ilya Nelkenbaum'" <ilyan@mellanox.com>,
-        "'Yann Droneaud'" <ydroneaud@opteya.com>,
-        "'Bart Van Assche'" <bvanassche@acm.org>,
-        "'Shachar Raindel'" <raindel@mellanox.com>,
-        "'Sagi Grimberg'" <sagig@mellanox.com>,
-        "'Devesh Sharma'" <devesh.sharma@emulex.com>,
-        "'Matan Barak'" <matanb@mellanox.com>,
-        "'Moni Shoua'" <monis@mellanox.com>, "'Jiri Kosina'" <jkosina@suse.cz>,
-        "'Selvin Xavier'" <selvin.xavier@emulex.com>,
-        "'Mitesh Ahuja'" <mitesh.ahuja@emulex.com>,
-        "'Li RongQing'" <roy.qing.li@gmail.com>,
-        "'Rasmus Villemoes'" <linux@rasmusvillemoes.dk>,
-        "'Alex Estrin'" <alex.estrin@intel.com>,
-        "'Doug Ledford'" <dledford@redhat.com>,
-        "'Eric Dumazet'" <edumazet@google.com>,
-        "'Erez Shitrit'" <erezsh@mellanox.com>,
-        "'Tom Gundersen'" <teg@jklm.no>,
-        "'Chuck Lever'" <chuck.lever@oracle.com>
-Subject: Re: [PATCH v2 10/17] IB/Verbs: Adopt management helpers for IB helpers
-Message-ID: <20150409053651.GB28926@phlsvsds.ph.intel.com>
-References: <5523CCD5.6030401@profitbricks.com> <5523CF0A.5090206@profitbricks.com> <20150407201259.GA17147@obsidianresearch.com> <008401d0716f$bc41c5c0$34c55140$@opengridcomputing.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <008401d0716f$bc41c5c0$34c55140$@opengridcomputing.com>
+Received: from mail-wi0-f173.google.com ([209.85.212.173]:36499 "EHLO
+	mail-wi0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751767AbbDIIF3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Apr 2015 04:05:29 -0400
+Received: by wizk4 with SMTP id k4so82610670wiz.1
+        for <linux-nfs@vger.kernel.org>; Thu, 09 Apr 2015 01:05:27 -0700 (PDT)
+Message-ID: <552632C4.3070202@profitbricks.com>
+Date: Thu, 09 Apr 2015 10:05:24 +0200
+From: Michael Wang <yun.wang@profitbricks.com>
+MIME-Version: 1.0
+To: "Hefty, Sean" <sean.hefty@intel.com>, Roland Dreier <roland@kernel.org>,
+        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+CC: Hal Rosenstock <hal.rosenstock@gmail.com>,
+        Tom Tucker <tom@opengridcomputing.com>,
+        Steve Wise <swise@opengridcomputing.com>,
+        Hoang-Nam Nguyen <hnguyen@de.ibm.com>,
+        Christoph Raisch <raisch@de.ibm.com>,
+        infinipath <infinipath@intel.com>, Eli Cohen <eli@mellanox.com>,
+        "Latif, Faisal" <faisal.latif@intel.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        "Weiny, Ira" <ira.weiny@intel.com>,
+        PJ Waskiewicz <pj.waskiewicz@solidfire.com>,
+        "Nikolova, Tatyana E" <tatyana.e.nikolova@intel.com>,
+        Or Gerlitz <ogerlitz@mellanox.com>,
+        Jack Morgenstein <jackm@dev.mellanox.co.il>,
+        Haggai Eran <haggaie@mellanox.com>,
+        Ilya Nelkenbaum <ilyan@mellanox.com>,
+        Yann Droneaud <ydroneaud@opteya.com>,
+        Bart Van Assche <bvanassche@acm.org>,
+        Shachar Raindel <raindel@mellanox.com>,
+        Sagi Grimberg <sagig@mellanox.com>,
+        Devesh Sharma <devesh.sharma@emulex.com>,
+        Matan Barak <matanb@mellanox.com>, Moni Shoua <monis@mellanox.com>,
+        Jiri Kosina <jkosina@suse.cz>,
+        Selvin Xavier <selvin.xavier@emulex.com>,
+        Mitesh Ahuja <mitesh.ahuja@emulex.com>,
+        Li RongQing <roy.qing.li@gmail.com>,
+        Rasmus Villemoes <linux@rasmusvillemoes.dk>,
+        "Estrin, Alex" <alex.estrin@intel.com>,
+        Doug Ledford <dledford@redhat.com>, Eric Dumazet <edumazet@google.com>,
+        Erez Shitrit <erezsh@mellanox.com>, Tom Gundersen <teg@jklm.no>,
+        Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH v2 13/17] IB/Verbs: Reform cma/ucma with management helpers
+References: <5523CCD5.6030401@profitbricks.com> <5523CF74.8020004@profitbricks.com> <1828884A29C6694DAF28B7E6B8A82373A8FBE42B@ORSMSX109.amr.corp.intel.com> <5524F6BD.30105@profitbricks.com> <1828884A29C6694DAF28B7E6B8A82373A8FBF037@ORSMSX109.amr.corp.intel.com>
+In-Reply-To: <1828884A29C6694DAF28B7E6B8A82373A8FBF037@ORSMSX109.amr.corp.intel.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Apr 07, 2015 at 03:16:30PM -0500, Steve Wise wrote:
+On 04/08/2015 07:02 PM, Hefty, Sean wrote:
+[snip]
+>>
+>> The wrapper make sense, but do we have the guarantee that IBoE port won't
+>> be used for AF_IB address? I just can't locate the place we filtered it
+>> out...
 > 
-> 
-> > -----Original Message-----
-> > From: Jason Gunthorpe [mailto:jgunthorpe@obsidianresearch.com]
-> > Sent: Tuesday, April 07, 2015 3:13 PM
-> > To: Michael Wang
-> > Cc: Roland Dreier; Sean Hefty; linux-rdma@vger.kernel.org; linux-kernel@vger.kernel.org; linux-nfs@vger.kernel.org;
-> > netdev@vger.kernel.org; Hal Rosenstock; Tom Tucker; Steve Wise; Hoang-Nam Nguyen; Christoph Raisch; Mike Marciniszyn; Eli Cohen;
-> > Faisal Latif; Upinder Malhi; Trond Myklebust; J. Bruce Fields; David S. Miller; Ira Weiny; PJ Waskiewicz; Tatyana Nikolova; Or
-> Gerlitz; Jack
-> > Morgenstein; Haggai Eran; Ilya Nelkenbaum; Yann Droneaud; Bart Van Assche; Shachar Raindel; Sagi Grimberg; Devesh Sharma; Matan
-> > Barak; Moni Shoua; Jiri Kosina; Selvin Xavier; Mitesh Ahuja; Li RongQing; Rasmus Villemoes; Alex Estrin; Doug Ledford; Eric
-> Dumazet; Erez
-> > Shitrit; Tom Gundersen; Chuck Lever
-> > Subject: Re: [PATCH v2 10/17] IB/Verbs: Adopt management helpers for IB helpers
-> > 
-> > On Tue, Apr 07, 2015 at 02:35:22PM +0200, Michael Wang wrote:
-> > > index f704254..4e61104 100644
-> > > +++ b/drivers/infiniband/core/sa_query.c
-> > > @@ -540,7 +540,7 @@ int ib_init_ah_from_path(struct ib_device *device, u8 port_num,
-> > >  	ah_attr->port_num = port_num;
-> > >  	ah_attr->static_rate = rec->rate;
-> > >
-> > > -	force_grh = rdma_port_get_link_layer(device, port_num) == IB_LINK_LAYER_ETHERNET;
-> > > +	force_grh = !rdma_transport_ib(device, port_num);
-> > 
-> > Maybe these tests should be called cap_mandatory_grh - but I'm not
-> > really sure how iWarp uses the GRH fields in the AH...
-> > 
-> 
-> iWARP runs on top of TCP...this SA code is all IB-specific.  The reason it was checking for ETHERNET, I think, is for RoCE.    So
-> this change is totally incorrect,  I think,  because RoCE is an IB transport, but it runs on ETHERNET.
+> I can't think of a reason why IBoE wouldn't work with AF_IB, but I'm not sure if anyone has tested it.  The original check would have let IBoE through.  When I suggested checking for IB transport, I meant the actual transport protocol, which would have included both IB and IBoE.
 
-But RoCE does not have an SA?
-
-Looks like ib_init_ah_from_path was overloaded to handle non-standard "path
-records".
-
-It seems like the correct functionality would be to use ib_init_ah_from_path()
-for true SA PathRecords and have another call iboe_init_ah() wrap
-ib_init_ah_from_path() when RoCE address information is needed in the AH.
-
-For Michaels patches I think 
-
-	force_grh = rdma_device_is_iboe(...)
-
-is the logic we need here.
-
-Ira
-
+Got it :-)
 
 > 
-> Steve.
+>>>> @@ -700,8 +700,7 @@ static int cma_ib_init_qp_attr(struct
+[snip]
 > 
+>>>>  	id_priv->id.route.addr.dev_addr.dev_type =
+>>>> -		(rdma_port_get_link_layer(cma_dev->device, p) ==
+>>>> IB_LINK_LAYER_INFINIBAND) ?
+>>>> +		(rdma_transport_ib(cma_dev->device, p)) ?
+>>>>  		ARPHRD_INFINIBAND : ARPHRD_ETHER;
+>>>
+>>> This wants the link layer, or maybe use cap_ipoib.
+>>
+>> Is this related with ipoib only?
 > 
+> ARPHDR_INFINIBAND is related to ipoib.  In your next update, maybe go with tech_ib.  I don't know the status of ipoib over iboe.
+
+Will be in next version :-)
+
+Regards,
+Michael Wang
+
 > 
