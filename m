@@ -1,12 +1,12 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wi0-f182.google.com ([209.85.212.182]:36061 "EHLO
-	mail-wi0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S934203AbbDIJpU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Apr 2015 05:45:20 -0400
-Received: by wizk4 with SMTP id k4so85485509wiz.1
-        for <linux-nfs@vger.kernel.org>; Thu, 09 Apr 2015 02:45:18 -0700 (PDT)
-Message-ID: <55264A2B.5030504@profitbricks.com>
-Date: Thu, 09 Apr 2015 11:45:15 +0200
+Received: from mail-wi0-f180.google.com ([209.85.212.180]:38756 "EHLO
+	mail-wi0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753802AbbDIMm3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Apr 2015 08:42:29 -0400
+Received: by wiun10 with SMTP id n10so96405291wiu.1
+        for <linux-nfs@vger.kernel.org>; Thu, 09 Apr 2015 05:42:28 -0700 (PDT)
+Message-ID: <552673B0.7040500@profitbricks.com>
+Date: Thu, 09 Apr 2015 14:42:24 +0200
 From: Michael Wang <yun.wang@profitbricks.com>
 MIME-Version: 1.0
 To: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>,
@@ -57,20 +57,14 @@ List-ID: <linux-nfs.vger.kernel.org>
 On 04/08/2015 10:10 PM, Jason Gunthorpe wrote:
 [snip]
 > 
->> As Sean pointed out, force_grh should be rdma_dev_is_iboe().  The cm
-> 
-> I actually really prefer cap_mandatory_grh - that is what is going on
-> here. ie based on that name (as a reviewer) I'd expect to see the mad
-> layer check that the mandatory GRH is always present, or blow up.
+> Some of the other checks in this file revolve around pkey, I'm not
+> sure what rocee does there? cap_pkey_supported ?
 
-Sounds good, will be in next version :-)
+I'm not sure if this count in capability... how shall we describe it?
 
 Regards,
 Michael Wang
 
-> 
-> Some of the other checks in this file revolve around pkey, I'm not
-> sure what rocee does there? cap_pkey_supported ?
 > 
 > Jason
 > 
