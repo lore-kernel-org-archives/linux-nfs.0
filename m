@@ -1,66 +1,123 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail2.candelatech.com ([208.74.158.173]:48483 "EHLO
-	mail2.candelatech.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754151AbbDIVIj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Apr 2015 17:08:39 -0400
-Message-ID: <5526EA56.4080606@candelatech.com>
-Date: Thu, 09 Apr 2015 14:08:38 -0700
-From: Ben Greear <greearb@candelatech.com>
-MIME-Version: 1.0
-To: Gregory Boyce <gregory.boyce@gmail.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: Problems mounting via UDP from a netapp with multiple interfaces
-References: <CALs61ueTJ4_WT00Sqz5TKzhkbrS32UjcQ0zVw6B8ikahE4Rhcw@mail.gmail.com>
-In-Reply-To: <CALs61ueTJ4_WT00Sqz5TKzhkbrS32UjcQ0zVw6B8ikahE4Rhcw@mail.gmail.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from mx1.redhat.com ([209.132.183.28]:35598 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756333AbbDIVTR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 9 Apr 2015 17:19:17 -0400
+Message-ID: <1428614348.2980.287.camel@redhat.com>
+Subject: Re: [PATCH v2 01/17] IB/Verbs: Implement new callback
+ query_transport() for each HW
+From: Doug Ledford <dledford@redhat.com>
+To: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
+Cc: Michael Wang <yun.wang@profitbricks.com>,
+        Roland Dreier <roland@kernel.org>, Sean Hefty <sean.hefty@intel.com>,
+        linux-rdma@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
+        Hal Rosenstock <hal.rosenstock@gmail.com>,
+        Tom Tucker <tom@opengridcomputing.com>,
+        Steve Wise <swise@opengridcomputing.com>,
+        Hoang-Nam Nguyen <hnguyen@de.ibm.com>,
+        Christoph Raisch <raisch@de.ibm.com>,
+        Mike Marciniszyn <infinipath@intel.com>, Eli Cohen <eli@mellanox.com>,
+        Faisal Latif <faisal.latif@intel.com>,
+        Upinder Malhi <umalhi@cisco.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        "David S. Miller" <davem@davemloft.net>,
+        Ira Weiny <ira.weiny@intel.com>,
+        PJ Waskiewicz <pj.waskiewicz@solidfire.com>,
+        Tatyana Nikolova <Tatyana.E.Nikolova@intel.com>,
+        Or Gerlitz <ogerlitz@mellanox.com>,
+        Jack Morgenstein <jackm@dev.mellanox.co.il>,
+        Haggai Eran <haggaie@mellanox.com>,
+        Ilya Nelkenbaum <ilyan@mellanox.com>,
+        Yann Droneaud <ydroneaud@opteya.com>,
+        Bart Van Assche <bvanassche@acm.org>,
+        Shachar Raindel <raindel@mellanox.com>,
+        Sagi Grimberg <sagig@mellanox.com>,
+        Devesh Sharma <devesh.sharma@emulex.com>,
+        Matan Barak <matanb@mellanox.com>, Moni Shoua <monis@mellanox.com>,
+        Jiri Kosina <jkosina@suse.cz>,
+        Selvin Xavier <selvin.xavier@emulex.com>,
+        Mitesh Ahuja <mitesh.ahuja@emulex.com>,
+        Li RongQing <roy.qing.li@gmail.com>,
+        Rasmus Villemoes <linux@rasmusvillemoes.dk>,
+        Alex Estrin <alex.estrin@intel.com>,
+        Eric Dumazet <edumazet@google.com>, Erez Shitrit <erezsh@mellanox.com>,
+        Tom Gundersen <teg@jklm.no>, Chuck Lever <chuck.lever@oracle.com>
+Date: Thu, 09 Apr 2015 17:19:08 -0400
+In-Reply-To: <20150409160123.GA31353@obsidianresearch.com>
+References: <5523CCD5.6030401@profitbricks.com>
+	 <5523D098.3020007@profitbricks.com> <1428517786.2980.180.camel@redhat.com>
+	 <20150408201015.GB28666@obsidianresearch.com>
+	 <1428590070.2980.190.camel@redhat.com>
+	 <20150409160123.GA31353@obsidianresearch.com>
+Content-Type: multipart/signed; micalg="pgp-sha1"; protocol="application/pgp-signature";
+	boundary="=-F54YLA5QHQfaO4OMd8BL"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 04/09/2015 12:34 PM, Gregory Boyce wrote:
-> Folks,
-> 
-> I've been encountering a problem with NFS clients attempting to mount
-> from a netapp via UDP where the netapp is responding on the wrong
-> interface.  On some of our older systems, this mount worked properly,
-> while on newer systems nfs-utils ends up failing the mount.  Mounting
-> via TCP works fine.
-> 
-> It appears that there has been various related discussions over the
-> years, and a relevant Redhat bug opened back in 2006:
-> 
-> http://article.gmane.org/gmane.linux.nfs/22778/match=connect+udp
-> https://bugzilla.redhat.com/show_bug.cgi?id=208244
-> 
-> Is there a general recommendation for people in this sort of
-> situation?  I'm assuming the code is currently using connected UDP
-> sockets (I'm more of a sysadmin than a developer).  Is there an option
-> I'm missing to disable this?  Otherwise does anyone know of a patch to
-> change the behavior?
 
-I have some patches that allow binding an NFS client to a particular
-local IP.  You need modified mount.nfs tools as well.  These patches
-might fix your problem, but I am not certain about that.
+--=-F54YLA5QHQfaO4OMd8BL
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-My kernel trees have various other patches as well...you can pick out just
-the NFS stuff if you care to.  Otherwise, the kernel should generally build,
-install, and work the same as upstream kernels.
+On Thu, 2015-04-09 at 10:01 -0600, Jason Gunthorpe wrote:
+> On Thu, Apr 09, 2015 at 10:34:30AM -0400, Doug Ledford wrote:
+>=20
+> > These are exactly the tests I proposed Jason.  I'm not sure I see your
+> > point here.  I guess my point is that although the scenario of all the
+> > different items seems complex, it really does boil down to needing only
+> > exactly what I proposed earlier to fulfill the entire test matrix.
+>=20
+> I have no problem with minimizing a bitmap, but I want the accessors
+> to make sense first.
+>=20
+> My specific problem with your suggestion was combining cap_ib_mad,
+> cap_ib_sa, and cap_ib_smi into rdma_port_ib_fabric_mgmt.
+>=20
+> Not only do the three cap things not return the same value for all
+> situations, the documentary knowledge is lost by the reduction.
+>=20
+> I'd prefer we look at this from a 'what do the call sites need' view,
+> not a 'how do we minimize' view.
+>=20
+> I've written this before: The mess here is that it is too hard to know
+> what the call sites are actually checking for when it is some baroque
+> conditional.
 
-https://github.com/greearb/nfs-utils-ct
+The two goals: being specific about what the test is returning and
+minimizing the bitmap footprint; are not necessarily opposed.  One can
+do both at the same time.
 
-# This one has cleaner patch set, but not much testing.
-http://dmz2.candelatech.com/git/gitweb.cgi?p=linux-3.19.dev.y/.git;a=summary
-
-# This is lots of extraneous wifi patches, but has had good testing,
-# including the nfs bind-to-local-IP feature.
-
-http://dmz2.candelatech.com/git/gitweb.cgi?p=linux-3.17.dev.y/.git;a=summary
+--=20
+Doug Ledford <dledford@redhat.com>
+              GPG KeyID: 0E572FDD
 
 
-Thanks,
-Ben
 
+--=-F54YLA5QHQfaO4OMd8BL
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: This is a digitally signed message part
+Content-Transfer-Encoding: 7bit
 
--- 
-Ben Greear <greearb@candelatech.com>
-Candela Technologies Inc  http://www.candelatech.com
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2
+
+iQIcBAABAgAGBQJVJuzMAAoJELgmozMOVy/dnrwQAL/QOAmf0x/HpGD4S7csBX7p
+enjQRlFAedSrAXXEme14kP4gqJ44QGsdlzQCRwxGszc5hx+g/H8/LeAXTA0FokL1
+Cm3Zi80oN8Ru/Cctdz4+MSUQfTHKul59rZG1iwfvEXrY5wmM1CQsCCV6yixbu0lN
+jwonILGfwb+S6JFcFVchw92rYKItmCplKKw0CjQzqDyvHlP6iBbLXOz77jy2gIc+
+OWqaAw3hp4lmgcu1PEMQ9iRx6fICBagj98LiY7UmgvHXU2QWCTGjt3Zqww2U0ZSz
+Vxzlso6KnRZiwKZzxzYWR0HhdliBaV2tPGkt8DBmqb79czHEmkV/q3O/uzA8B53w
+ouKViWbv0QsIGUsu7ROcAcTO7ix4a2/YRCJAJNVOsX+i5g5Dg/KPjoReV7mD3LU3
+sMO6Tuk0tXp8RWQdF4DWrH1oqHN3XboZI0L3pyHJGn/XWFmiZGQQerec3+Z9gyGH
+iPW8Fs6BtPrSizPE63YtKRPmTHhXTmP/5TKkRzM23azUK6dpSw2+LKSrI4I6Z3bF
+1VRRffP6Rm89RRnmbs3S5/ca0yr13OQzoCe38k5dqh/tulkPPbk1+xmZ69YJluVs
+l4d+DHJ/UyAbdV1g3IzPCKDG7GdkwctrUbw1MVD7U9dFS4sGK8Yz9chk5oUKYnEF
+W7b512XsPvioVNfR0EBl
+=l7rL
+-----END PGP SIGNATURE-----
+
+--=-F54YLA5QHQfaO4OMd8BL--
 
