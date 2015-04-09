@@ -1,56 +1,56 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mout.kundenserver.de ([212.227.17.13]:65422 "EHLO
-	mout.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933344AbbDIJdk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Apr 2015 05:33:40 -0400
-From: Arnd Bergmann <arnd@arndb.de>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Peng Tao <tao.peng@primarydata.com>,
-        Tom Haynes <Thomas.Haynes@primarydata.com>, linux-nfs@vger.kernel.org,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] nfs: do not export discarded symbols
-Date: Thu, 09 Apr 2015 11:33:09 +0200
-Message-ID: <2350360.PssyUvDc2B@wuerfel>
-In-Reply-To: <1426175918.15787.3.camel@primarydata.com>
-References: <3173686.FPJdK9jLbA@wuerfel> <1426175918.15787.3.camel@primarydata.com>
+Received: from mail-qk0-f182.google.com ([209.85.220.182]:34921 "EHLO
+	mail-qk0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933653AbbDIJmW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Apr 2015 05:42:22 -0400
+Received: by qkhg7 with SMTP id g7so117596296qkh.2
+        for <linux-nfs@vger.kernel.org>; Thu, 09 Apr 2015 02:42:21 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+In-Reply-To: <1428495850-7136-1-git-send-email-tao.peng@primarydata.com>
+References: <1428495850-7136-1-git-send-email-tao.peng@primarydata.com>
+From: Peng Tao <tao.peng@primarydata.com>
+Date: Thu, 9 Apr 2015 17:42:01 +0800
+Message-ID: <CAKVebiU57DG0G0cY8+xKbHC+Bbopdp+QAu53U_wQnzrAO+F_VQ@mail.gmail.com>
+Subject: Re: [PATCH] nfs: fix DIO good bytes calculation
+To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Peng Tao <tao.peng@primarydata.com>, stable@vger.kernel.org,
+        Jean Spector <jean@primarydata.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thursday 12 March 2015 11:58:38 Trond Myklebust wrote:
-> On Wed, 2015-03-11 at 14:37 +0100, Arnd Bergmann wrote:
-> > The function nfs4_pnfs_v3_ds_connect_unload is exported so it can be
-> > used by other modules, but is also marked '__exit' and will be
-> > discarded when built into the kernel, as pointed out by this
-> > linker error:
-> > 
-> > `nfs4_pnfs_v3_ds_connect_unload' referenced in section `___ksymtab_gpl+nfs4_pnfs_v3_ds_connect_unload' of fs/built-in.o: defined in discarded section `.exit.text' of fs/built-in.o
-> > 
-> > This removes the __exit annotation to make it safe to call this function.
-> > 
-> > Signed-off-by: Arnd Bergmann <arnd@arndb.de>
-> > Fixes: 5f01d9539496 ("nfs41: create NFSv3 DS connection if specified")
-> > 
-> > diff --git a/fs/nfs/pnfs_nfs.c b/fs/nfs/pnfs_nfs.c
-> > index 54e36b38fb5f..8582dae5ae99 100644
-> > --- a/fs/nfs/pnfs_nfs.c
-> > +++ b/fs/nfs/pnfs_nfs.c
-> > @@ -561,7 +561,7 @@ static bool load_v3_ds_connect(void)
-> >       return(get_v3_ds_connect != NULL);
-> >  }
-> >  
-> > -void __exit nfs4_pnfs_v3_ds_connect_unload(void)
-> > +void nfs4_pnfs_v3_ds_connect_unload(void)
-> >  {
-> >       if (get_v3_ds_connect) {
-> >               symbol_put(nfs3_set_ds_client);
-> > 
-> 
-> Thanks! Applied...
-> 
+On Wed, Apr 8, 2015 at 8:24 PM, Peng Tao <tao.peng@primarydata.com> wrote:
+> When adding completed bytes, we should just use hdr->good_bytes.
+> Otherwise if we send multiple requests for one direct IO (due to
+> rsize/wsize limitation), we'll count completed bytes incorrectly.
+>
+> This fixes 5fadeb47("nfs: count DIO good bytes correctly with mirroring").
+>
+> Reported-by: Jean Spector <jean@primarydata.com>
+> Cc: <stable@vger.kernel.org> # v3.19+
+> Signed-off-by: Peng Tao <tao.peng@primarydata.com>
+> ---
+>  fs/nfs/direct.c | 6 ++----
+>  1 file changed, 2 insertions(+), 4 deletions(-)
+>
+> diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+> index e907c8c..645109e 100644
+> --- a/fs/nfs/direct.c
+> +++ b/fs/nfs/direct.c
+> @@ -132,10 +132,8 @@ nfs_direct_good_bytes(struct nfs_direct_req *dreq, struct nfs_pgio_header *hdr)
+>         WARN_ON_ONCE(hdr->pgio_mirror_idx >= dreq->mirror_count);
+>
+>         count = dreq->mirrors[hdr->pgio_mirror_idx].count;
+> -       if (count + dreq->io_start < hdr->io_start + hdr->good_bytes) {
+> -               count = hdr->io_start + hdr->good_bytes - dreq->io_start;
+> -               dreq->mirrors[hdr->pgio_mirror_idx].count = count;
+> -       }
+> +       if (count + dreq->io_start < hdr->io_start + hdr->good_bytes)
+> +               dreq->mirrors[hdr->pgio_mirror_idx].count += hdr->good_bytes;
+oh, speaking too soon. This would actually fail concurrent DIO writers
+if split requests complete randomly. Please don't merge it! I'll send
+a updated version. sorry for the noise!
 
-I don't see the patch in linux-next, did something go wrong here?
-
-	Arnd
+Thanks,
+Tao
