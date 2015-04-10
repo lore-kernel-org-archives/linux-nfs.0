@@ -1,12 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga11.intel.com ([192.55.52.93]:16743 "EHLO mga11.intel.com"
+Received: from mx1.redhat.com ([209.132.183.28]:53632 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756005AbbDJRiy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 10 Apr 2015 13:38:54 -0400
-Date: Fri, 10 Apr 2015 13:38:38 -0400
-From: "ira.weiny" <ira.weiny@intel.com>
-To: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
-Cc: Doug Ledford <dledford@redhat.com>,
+	id S1756313AbbDJRti (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 10 Apr 2015 13:49:38 -0400
+Message-ID: <1428688172.2980.372.camel@redhat.com>
+Subject: Re: [PATCH v2 01/17] IB/Verbs: Implement new callback
+ query_transport() for each HW
+From: Doug Ledford <dledford@redhat.com>
+To: "ira.weiny" <ira.weiny@intel.com>
+Cc: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>,
         Michael Wang <yun.wang@profitbricks.com>,
         Roland Dreier <roland@kernel.org>, Sean Hefty <sean.hefty@intel.com>,
         linux-rdma@vger.kernel.org, linux-kernel@vger.kernel.org,
@@ -42,181 +44,94 @@ Cc: Doug Ledford <dledford@redhat.com>,
         Alex Estrin <alex.estrin@intel.com>,
         Eric Dumazet <edumazet@google.com>, Erez Shitrit <erezsh@mellanox.com>,
         Tom Gundersen <teg@jklm.no>, Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH v2 01/17] IB/Verbs: Implement new callback query_transport() for each HW
-Message-ID: <20150410173836.GE10675@phlsvsds.ph.intel.com>
-References: <5523CCD5.6030401@profitbricks.com> <5523D098.3020007@profitbricks.com> <1428517786.2980.180.camel@redhat.com> <20150408201015.GB28666@obsidianresearch.com> <20150410061610.GA26288@phlsvsds.ph.intel.com> <20150410161551.GA26419@obsidianresearch.com>
+Date: Fri, 10 Apr 2015 13:49:32 -0400
+In-Reply-To: <20150410173836.GE10675@phlsvsds.ph.intel.com>
+References: <5523CCD5.6030401@profitbricks.com>
+	 <5523D098.3020007@profitbricks.com> <1428517786.2980.180.camel@redhat.com>
+	 <20150408201015.GB28666@obsidianresearch.com>
+	 <20150410061610.GA26288@phlsvsds.ph.intel.com>
+	 <20150410161551.GA26419@obsidianresearch.com>
+	 <20150410173836.GE10675@phlsvsds.ph.intel.com>
+Content-Type: multipart/signed; micalg="pgp-sha1"; protocol="application/pgp-signature";
+	boundary="=-FligigEY4GhT/2s4xGUs"
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20150410161551.GA26419@obsidianresearch.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Apr 10, 2015 at 10:15:51AM -0600, Jason Gunthorpe wrote:
-> On Fri, Apr 10, 2015 at 02:16:11AM -0400, ira.weiny wrote:
-> 
-> > >         IB ROCEE OPA
-> > > SMI     Y  N     Y    (though the OPA smi looked a bit different)
-> > 
-> > Yes OPA is different but it is based on the class version of the individual
-> > MADs not any particular device/port support.
-> 
-> > > OPA SMP N  N     Y
-> > 
-> > How is this different from the SMI?
-> 
-> Any code that generates SMPs and SMIs is going to need to know what
-> format to generate them in. It seems we have a sort of weird world
-> where IB SMPs are supported on OPA but not the IB SMI.
 
-My mistake it was late.  The MAD stack needs to know if it should implement the
-IB SMI or the IB & OPA SMI.  That also implies the use of QP0 or vise versa.
+--=-FligigEY4GhT/2s4xGUs
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-In my email to Doug I suggested "OPA MAD" which covers the need to implement
-the OPA SMI on that device for MADs which have that class version.
+On Fri, 2015-04-10 at 13:38 -0400, ira.weiny wrote:
 
-> 
-> Not sure any users exist though..
+> Isn't ocrdma an iWarp device?
 
-I think all the "users" are either userspace or the drivers themselves.  It is
-really just the common SMI processing which needs to be turned on/off.  Again I
-think this can be covered with the QP0 flag.
+No, it's roce.  It and mlx4 roce devices currently interoperate.
 
-RDMA_MGMT_QP0            = 0x00000200,
+> > I think if we look closely we'll find that IPoIB today has a hard
+> > requirement on cap_sa being true, so lets use that?
+>=20
+> I don't think that is appropriate.  You have been advocating that the che=
+cks
+> be clear as to what support we need.  While currently the IPoIB layer doe=
+s (for
+> IB and OPA) require an SA I think those checks are only appropriate when =
+it is
+> attempting an SA query.
+>=20
+> The choice to run IPoIB at all is a different matter.
 
-> 
-> > > Maybe the above set would make a lot more sense as:
-> > >   cap_ib_qp0
-> > >   cap_ib_qp1
-> > >   cap_opa_qp0
-> > 
-> > I disagree.
-> > 
-> > All we need right now is is cap_qp0.  All devices currently support QP1.
-> 
-> I didn't list iWarp in the table because everything is no, but it
-> doesn't support QP1.
+Appropriately named or not, Jason's choice of words "has a hard
+requirement" is correct ;-)  For IPoIB, the broadcast group of the fake
+Ethernet fabric is a very specific IB multicast group per the IPoIB
+spec.
 
-Isn't ocrdma an iWarp device?
+> >=20
+> > In fact any ULP that unconditionally uses the SA can use that.
+>=20
+> They _can_ use that but the point of this exercise (and additional checks=
+ going
+> forward) is that we don't "hide" meaning like this.
+>=20
+> IPoIB should restrict itself to running on IB link layers.  Should additi=
+onal
+> link layers be added which IPoIB works on then we add that check.
 
-int ocrdma_process_mad(struct ib_device *ibdev,
-                       int process_mad_flags,
-                       u8 port_num,
-                       struct ib_wc *in_wc,
-                       struct ib_grh *in_grh,
-                       struct ib_mad *in_mad, struct ib_mad *out_mad)
-{
-        int status;
-        struct ocrdma_dev *dev;
+I think your right that checking the link layer is the right thing, and
+for now, there is no need to check cap_sa because the link layer check
+enforces it.  In the future, if there is a new link layer we want to use
+this on, and it doesn't have an sa, then we have to enable sa checks and
+alternate methods at that time.
 
-        switch (in_mad->mad_hdr.mgmt_class) {
-        case IB_MGMT_CLASS_PERF_MGMT:
-                dev = get_ocrdma_dev(ibdev);
-                if (!ocrdma_pma_counters(dev, out_mad))
-                        status = IB_MAD_RESULT_SUCCESS | IB_MAD_RESULT_REPLY;
-                else
-                        status = IB_MAD_RESULT_SUCCESS;
-                break;
-        default:
-                status = IB_MAD_RESULT_SUCCESS;
-                break;
-        }
-        return status;
-}
+--=20
+Doug Ledford <dledford@redhat.com>
+              GPG KeyID: 0E572FDD
 
 
-Regardless I was wrong.  USNIC devices don't support MADs at all.  So we do
-need the "supports MADs at all flag".
 
-RDMA_MGMT_IB_MAD         = 0x00000100,
+--=-FligigEY4GhT/2s4xGUs
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: This is a digitally signed message part
+Content-Transfer-Encoding: 7bit
 
-> 
-> > > ib_sa means the IBA SA protocol is supported (Y Y Y)
-> > 
-> > I think this should be (Y N Y)
-> > 
-> > IBoE has no SA.  The IBoE code "fabricates" a Path Record it does not need to
-> > interact with the SA.
-> 
-> I was wondering why there are so many checks in the SA code, I know
-> RoCEE doesn't use it, but why are there there?
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2
 
-Which checks are you referring to?  I think there are separate calls to query
-the SA when running on IB for both the Route resolution and the Multicast join
-operations.  The choice of those calls could be made by a "cap_sa()" helper.
+iQIcBAABAgAGBQJVKA0sAAoJELgmozMOVy/dV1oQAJ+0Js2sblg3omRqPYWJjhfp
+8b0J50Jzf0+RdzEf9D79+cGhqu0WPPMi61sjh4RU0NjVQVO2/04gwqr3nq/TZnqd
+e/a/OOSARM9efLoHCRFAtZYCzqBFEQ6GribT2vJkQioK1D6pTt+qY+y3Zmt+K52S
+E5OGGHHwPcUcGvEc0rc/1oUN9qjXK9Zbff4c9Ek6OSPljfyFbJ511N64hzWSQDcD
+WgQo1N+aMD3/tGqHsHG/JV6StXQMpOSgt8Pl9TGT862dBQQWYgIDE+JjGnzDIFba
+Ag6EOzdSL6We4MaB3ExRVtv/ZKkyMKRyLcy/y9IQuN05Gt4ytEB2t8iGCxIBBTOK
+vmKB5nVBXqTHWn1AI49oOGIdhs2RL/MdQ1wWpyK6dOmr+mlziQesBAMgalBjn1sA
+J8lqkWYyeYVTr1g1JoWsHBFwMBv6yd/jIu0accMBe5+PP1sjFm6c6EpdRDsW+h5O
+JZS0WRKIwrWYU2oCcnFrbhVxIp0MrsNUqhzNVPsuMooLFox3e0J15ntAB2rxHnkR
+bo/422I9IzSOjORkCn4b5RZ8JMMiXODKmWh5PkZxTxxqE4/Ha+2qa9jWAxm1O4yd
+EKWgSwhZ6hH5Wjb71Tvi3/dyldRmr40a/0uyx912otSOHYdhHp1+BdD6PGBojMcE
+syZAMgVl3SMDtzCgV0wP
+=Pwp5
+-----END PGP SIGNATURE-----
 
->  
-> > > ib_mcast true if the IBA SA protocol is used for multicast GIDs (Y N
-> > > Y)
-> > 
-> > Given the above why can't we just have the "ib_sa" flag?
-> 
-> Maybe I got it wrong, but yes, if it really means 'IBA SA protocol for
-> multicast then it can just be cap_sa.
-> 
-> But there is also the idea that some devices can't do multicast at all
-> (iWarp), we must care about that at some point?
-
-I was not sure how to handle this either...  I guess you need a
-cap_multicast()???
-
-> 
-> > However, I think checking the link layer is more appropriate here.
-> > It does not make sense to do IP over IB over Eth.  Even though the
-> > IBoE can do the "IB" protocol.
-> 
-> Yes, it is ugly.
-> 
-> I think if we look closely we'll find that IPoIB today has a hard
-> requirement on cap_sa being true, so lets use that?
-
-I don't think that is appropriate.  You have been advocating that the checks
-be clear as to what support we need.  While currently the IPoIB layer does (for
-IB and OPA) require an SA I think those checks are only appropriate when it is
-attempting an SA query.
-
-The choice to run IPoIB at all is a different matter.
-
-> 
-> In fact any ULP that unconditionally uses the SA can use that.
-
-They _can_ use that but the point of this exercise (and additional checks going
-forward) is that we don't "hide" meaning like this.
-
-IPoIB should restrict itself to running on IB link layers.  Should additional
-link layers be added which IPoIB works on then we add that check.
-
-> 
-> > > I actually really prefer cap_mandatory_grh - that is what is going on
-> > > here. ie based on that name (as a reviewer) I'd expect to see the mad
-> > > layer check that the mandatory GRH is always present, or blow up.
-> > 
-> > While GRH mandatory (for the GMP) is what this is.  The function
-> > ib_init_ah_from_path generically is really handling an "IBoE address" to send
-> > to and therefore we need to force the GRH in the AH.
-> 
-> This make sense to me.
-> 
-> It appears we have at least rocee, rocee v2 (udp?), tcp, ib and opa
-> address and AH formats?
-
-Seems that way.  But has the rocee v2 been accepted?
-
-> opa would support ib addresses too I guess.
-
-Yes opa address == ib addresses.  So there is no need to distinguish them.
-
-> 
-> A 
->  bool rdma_port_addr_is_XXX()
-> 
-> along with a
-> 
->   enum AddrType rdma_port_addr_type()
-> 
-> Might be the thing? The latter should only be used with switch()
-
-Sounds good to me.  But Doug has a point that the address type and the "port"
-type go together.  So this could probably be the same call for both of those.
-
-Ira
+--=-FligigEY4GhT/2s4xGUs--
 
