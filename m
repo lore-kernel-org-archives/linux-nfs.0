@@ -1,13 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from quartz.orcorp.ca ([184.70.90.242]:59502 "EHLO quartz.orcorp.ca"
+Received: from mx1.redhat.com ([209.132.183.28]:49567 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751431AbbDJQQO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 10 Apr 2015 12:16:14 -0400
-Date: Fri, 10 Apr 2015 10:15:51 -0600
-From: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
-To: "ira.weiny" <ira.weiny@intel.com>
-Cc: Doug Ledford <dledford@redhat.com>,
-        Michael Wang <yun.wang@profitbricks.com>,
+	id S1754620AbbDJQsj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 10 Apr 2015 12:48:39 -0400
+Message-ID: <1428684512.2980.336.camel@redhat.com>
+Subject: Re: [PATCH v2 01/17] IB/Verbs: Implement new callback
+ query_transport() for each HW
+From: Doug Ledford <dledford@redhat.com>
+To: Michael Wang <yun.wang@profitbricks.com>
+Cc: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>,
         Roland Dreier <roland@kernel.org>, Sean Hefty <sean.hefty@intel.com>,
         linux-rdma@vger.kernel.org, linux-kernel@vger.kernel.org,
         linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
@@ -22,6 +23,7 @@ Cc: Doug Ledford <dledford@redhat.com>,
         Trond Myklebust <trond.myklebust@primarydata.com>,
         "J. Bruce Fields" <bfields@fieldses.org>,
         "David S. Miller" <davem@davemloft.net>,
+        Ira Weiny <ira.weiny@intel.com>,
         PJ Waskiewicz <pj.waskiewicz@solidfire.com>,
         Tatyana Nikolova <Tatyana.E.Nikolova@intel.com>,
         Or Gerlitz <ogerlitz@mellanox.com>,
@@ -42,102 +44,73 @@ Cc: Doug Ledford <dledford@redhat.com>,
         Alex Estrin <alex.estrin@intel.com>,
         Eric Dumazet <edumazet@google.com>, Erez Shitrit <erezsh@mellanox.com>,
         Tom Gundersen <teg@jklm.no>, Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH v2 01/17] IB/Verbs: Implement new callback
- query_transport() for each HW
-Message-ID: <20150410161551.GA26419@obsidianresearch.com>
+Date: Fri, 10 Apr 2015 12:48:32 -0400
+In-Reply-To: <55277FE8.50107@profitbricks.com>
 References: <5523CCD5.6030401@profitbricks.com>
- <5523D098.3020007@profitbricks.com>
- <1428517786.2980.180.camel@redhat.com>
- <20150408201015.GB28666@obsidianresearch.com>
- <20150410061610.GA26288@phlsvsds.ph.intel.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20150410061610.GA26288@phlsvsds.ph.intel.com>
+		 <5523D098.3020007@profitbricks.com> <1428517786.2980.180.camel@redhat.com>
+		 <20150408201015.GB28666@obsidianresearch.com>
+		 <1428590070.2980.190.camel@redhat.com>
+		 <20150409160123.GA31353@obsidianresearch.com>
+	 <1428614348.2980.287.camel@redhat.com> <55277FE8.50107@profitbricks.com>
+Content-Type: multipart/signed; micalg="pgp-sha1"; protocol="application/pgp-signature";
+	boundary="=-QuncKVKZ/VwFHW4+TW57"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Apr 10, 2015 at 02:16:11AM -0400, ira.weiny wrote:
 
-> >         IB ROCEE OPA
-> > SMI     Y  N     Y    (though the OPA smi looked a bit different)
-> 
-> Yes OPA is different but it is based on the class version of the individual
-> MADs not any particular device/port support.
+--=-QuncKVKZ/VwFHW4+TW57
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-> > OPA SMP N  N     Y
-> 
-> How is this different from the SMI?
+On Fri, 2015-04-10 at 09:46 +0200, Michael Wang wrote:
+> On 04/09/2015 11:19 PM, Doug Ledford wrote:
+> [snip]
+> >>
+> >> I've written this before: The mess here is that it is too hard to know
+> >> what the call sites are actually checking for when it is some baroque
+> >> conditional.
+> >=20
+> > The two goals: being specific about what the test is returning and
+> > minimizing the bitmap footprint; are not necessarily opposed.  One can
+> > do both at the same time.
+>=20
+> This could be internal reforming after the cap_XX() stuff works for core
+> layer, at that time we don't need to touch core layer anymore, just
+> introducing this bitmap stuff in verb layer, replacing the implementation
+> of these helpers with the bitmap check, and following the semantic (descr=
+iption).
 
-Any code that generates SMPs and SMIs is going to need to know what
-format to generate them in. It seems we have a sort of weird world
-where IB SMPs are supported on OPA but not the IB SMI.
+Agreed.
 
-Not sure any users exist though..
+--=20
+Doug Ledford <dledford@redhat.com>
+              GPG KeyID: 0E572FDD
 
-> > Maybe the above set would make a lot more sense as:
-> >   cap_ib_qp0
-> >   cap_ib_qp1
-> >   cap_opa_qp0
-> 
-> I disagree.
-> 
-> All we need right now is is cap_qp0.  All devices currently support QP1.
 
-I didn't list iWarp in the table because everything is no, but it
-doesn't support QP1.
 
-> > ib_sa means the IBA SA protocol is supported (Y Y Y)
-> 
-> I think this should be (Y N Y)
-> 
-> IBoE has no SA.  The IBoE code "fabricates" a Path Record it does not need to
-> interact with the SA.
+--=-QuncKVKZ/VwFHW4+TW57
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: This is a digitally signed message part
+Content-Transfer-Encoding: 7bit
 
-I was wondering why there are so many checks in the SA code, I know
-RoCEE doesn't use it, but why are there there?
- 
-> > ib_mcast true if the IBA SA protocol is used for multicast GIDs (Y N
-> > Y)
-> 
-> Given the above why can't we just have the "ib_sa" flag?
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2
 
-Maybe I got it wrong, but yes, if it really means 'IBA SA protocol for
-multicast then it can just be cap_sa.
+iQIcBAABAgAGBQJVJ/7gAAoJELgmozMOVy/dNs8P/iMI5mMLG7Tpr4qB4UWJfTXr
+AUsEynKowlf/xQtqU0kJn1jITyl3HttN7QJfrtx66PnJ0kj+Qg5WN17mVP36Vicu
+CJ6sxO9b5Rp1nwCTL5+OHdNVMeuxfrch7/pMb729PuRwpGrTzpUf7SDXI55zOVk1
+z55HmezbE82dUC7DpRx3+NE/BBX2V51/eCJpim6Cf6MMyPq4FkGfPNldvzaxnPb3
+HQ4ZGkA+JvtLLdNpqOb0dXZcTg0XMK0KmgAJrr9eEwkGu3c+noP3heYQE8ROHfw/
+IPLhTW7DOc8G8U1WoGWWKyYshpc3SlmvKuQUM362Jf9IyGY4Lv7DnOhnXdDjVEV4
+ew+CeluxoeXfJhynntrvaT87+I5aYEDYYglEkgrC4eSEzlaHwtX0KPC0E6Ck7inR
+aKr+YMaZMG5cB6tncdNoKPr7E3WlYwRiLmqTBVorFNwsqu4vYX9R9GZmfbWFv2/u
+6udLt76al7Kp1LbCb9u+e0H/g3Ld+OESwPhKG/vQCzbc9LqD/EybmReJoxyOmRJe
+lL8fMZ7IyXu8CTNkqo4YVKiIqXLAZAIZnx14AgxG697sU3BwNoh12bOpeJXKilxy
+597z2Y4XmL8TOvN66dMhdSku7KB8KGjqZDfPlBfcvnYRkHPDa3qcZgFQRPx2k1Bl
+8efZl6lKwCuPAFhv0dCN
+=F4q2
+-----END PGP SIGNATURE-----
 
-But there is also the idea that some devices can't do multicast at all
-(iWarp), we must care about that at some point?
+--=-QuncKVKZ/VwFHW4+TW57--
 
-> However, I think checking the link layer is more appropriate here.
-> It does not make sense to do IP over IB over Eth.  Even though the
-> IBoE can do the "IB" protocol.
-
-Yes, it is ugly.
-
-I think if we look closely we'll find that IPoIB today has a hard
-requirement on cap_sa being true, so lets use that?
-
-In fact any ULP that unconditionally uses the SA can use that.
-
-> > I actually really prefer cap_mandatory_grh - that is what is going on
-> > here. ie based on that name (as a reviewer) I'd expect to see the mad
-> > layer check that the mandatory GRH is always present, or blow up.
-> 
-> While GRH mandatory (for the GMP) is what this is.  The function
-> ib_init_ah_from_path generically is really handling an "IBoE address" to send
-> to and therefore we need to force the GRH in the AH.
-
-This make sense to me.
-
-It appears we have at least rocee, rocee v2 (udp?), tcp, ib and opa
-address and AH formats? opa would support ib addresses too I guess.
-
-A 
- bool rdma_port_addr_is_XXX()
-
-along with a
-
-  enum AddrType rdma_port_addr_type()
-
-Might be the thing? The latter should only be used with switch()
-
-Jason
