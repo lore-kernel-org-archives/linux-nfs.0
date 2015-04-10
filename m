@@ -1,14 +1,13 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from p3plsmtpa09-06.prod.phx3.secureserver.net ([173.201.193.235]:44972
-	"EHLO p3plsmtpa09-06.prod.phx3.secureserver.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1756159AbbDJRuT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Apr 2015 13:50:19 -0400
-Message-ID: <55280D51.20402@talpey.com>
-Date: Fri, 10 Apr 2015 13:50:09 -0400
-From: Tom Talpey <tom@talpey.com>
-MIME-Version: 1.0
-To: Doug Ledford <dledford@redhat.com>, "ira.weiny" <ira.weiny@intel.com>
-CC: Michael Wang <yun.wang@profitbricks.com>,
+Received: from quartz.orcorp.ca ([184.70.90.242]:41696 "EHLO quartz.orcorp.ca"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756013AbbDJSFK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 10 Apr 2015 14:05:10 -0400
+Date: Fri, 10 Apr 2015 12:04:55 -0600
+From: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
+To: "ira.weiny" <ira.weiny@intel.com>
+Cc: Doug Ledford <dledford@redhat.com>,
+        Michael Wang <yun.wang@profitbricks.com>,
         Roland Dreier <roland@kernel.org>, Sean Hefty <sean.hefty@intel.com>,
         linux-rdma@vger.kernel.org, linux-kernel@vger.kernel.org,
         linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
@@ -43,29 +42,93 @@ CC: Michael Wang <yun.wang@profitbricks.com>,
         Alex Estrin <alex.estrin@intel.com>,
         Eric Dumazet <edumazet@google.com>, Erez Shitrit <erezsh@mellanox.com>,
         Tom Gundersen <teg@jklm.no>, Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH v2 01/17] IB/Verbs: Implement new callback query_transport()
- for each HW
-References: <5523CCD5.6030401@profitbricks.com>	 <5523D098.3020007@profitbricks.com> <1428517786.2980.180.camel@redhat.com>	 <20150410074805.GA11855@phlsvsds.ph.intel.com> <1428685843.2980.353.camel@redhat.com>
-In-Reply-To: <1428685843.2980.353.camel@redhat.com>
-Content-Type: text/plain; charset=utf-8; format=flowed
+Subject: Re: [PATCH v2 01/17] IB/Verbs: Implement new callback
+ query_transport() for each HW
+Message-ID: <20150410180455.GA1277@obsidianresearch.com>
+References: <5523CCD5.6030401@profitbricks.com>
+ <5523D098.3020007@profitbricks.com>
+ <1428517786.2980.180.camel@redhat.com>
+ <20150408201015.GB28666@obsidianresearch.com>
+ <20150410061610.GA26288@phlsvsds.ph.intel.com>
+ <20150410161551.GA26419@obsidianresearch.com>
+ <20150410173836.GE10675@phlsvsds.ph.intel.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20150410173836.GE10675@phlsvsds.ph.intel.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 4/10/2015 1:10 PM, Doug Ledford wrote:
-> As per my above statement, rdma_transport* tests were testing the high
-> level transport type, rdma_port* types were testing link layers.  iWARP
-> has an Eth link layer, so technically port_is_iwarp makes no sense.  But
-> since all the other types had a check too, I included port_is_iwarp just
-> to be complete, and if you are going to ask if a specific port is iwarp
-> as a link layer, it makes sense to say yes if the transport is iwarp,
-> not if the link layer is eth.
+On Fri, Apr 10, 2015 at 01:38:38PM -0400, ira.weiny wrote:
+ 
+> Isn't ocrdma an iWarp device?
 
-Not wanting to split hairs, but I would not rule out the possibility
-of a future device supporting iWARP on one port and another RDMA
-protocol on another. One could also imagine softiWARP and softROCE
-co-existing atop a single ethernet NIC.
+No, it is RoCEE
 
-So, I disagree that port_is_iwarp() is a nonsequitur.
+> > I was wondering why there are so many checks in the SA code, I know
+> > RoCEE doesn't use it, but why are there there?
+> 
+> Which checks are you referring to?  I think there are separate calls to query
+> the SA when running on IB for both the Route resolution and the Multicast join
+> operations.  The choice of those calls could be made by a "cap_sa()" helper.
 
-Tom.
+I will point them out next time I look through the patches
 
+> > I think if we look closely we'll find that IPoIB today has a hard
+> > requirement on cap_sa being true, so lets use that?
+> 
+> I don't think that is appropriate.  You have been advocating that the checks
+> be clear as to what support we need. 
+
+Right, but this is narrow, and we are not hiding meaning.
+
+Look at the IPoIB ULP, and look at the hard requiments of the code,
+then translate those back to our new cap scheme. We see today's IPoIB
+will not run without:
+ - UD support
+ - IB addressing
+ - IB multicast
+ - IB SA
+ - CM (optional)
+
+It seems perfectly correct for a ULP to say at the very start, I need
+all these caps, or I will not run (how could it run?). This is true of
+any ULP that has a hard need to use those APIs.
+
+That would seem to be the very essance of the cap scheme. Declare what
+you need, not what standard you think you need.
+
+Hiding meaning is to say 'only run on IB or OPA': WHY are we limited
+to those two?
+
+> While currently the IPoIB layer does (for IB and OPA) require an SA
+> I think those checks are only appropriate when it is attempting an
+> SA query.
+
+That doesn't make any sense unless someone also adds support for
+handling the !SA case.
+
+> > It appears we have at least rocee, rocee v2 (udp?), tcp, ib and opa
+> > address and AH formats?
+> 
+> Seems that way.  But has the rocee v2 been accepted?
+
+Don't know much about it yet, patches exist, it seems to have a
+slightly different addressing format.
+
+> > opa would support ib addresses too I guess.
+> 
+> Yes opa address == ib addresses.  So there is no need to distinguish them.
+
+The patches you sent showed a different LRH format for OPA (eg 32 bit
+LID), so someday we will need to know that the full 32 bit LID is
+available.
+
+We can see how this might work in future, lets say OPAv2 *requires* the
+32 bit LID, for that case cap_ib_address = 0 cap_opa_address = 1. If
+we don't update IPoIB and it uses the tests from above then it
+immediately, and correctly, stops running on those OPAv2 devices.
+
+Once patched to support cap_op_address then it will begin working
+again. That seems very sane..
+
+Jason
