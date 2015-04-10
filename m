@@ -1,109 +1,120 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pd0-f177.google.com ([209.85.192.177]:33013 "EHLO
-	mail-pd0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S934287AbbDJNq3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Apr 2015 09:46:29 -0400
-Message-ID: <5527D42A.800@gmail.com>
-Date: Fri, 10 Apr 2015 21:46:18 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
-MIME-Version: 1.0
-To: David Howells <dhowells@redhat.com>
-CC: linux-fsdevel@vger.kernel.org,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        kinglongmee@gmail.com
-Subject: [PATCH] fscache: Don't override netfs->primary_index if register
- failed
-Content-Type: text/plain; charset=utf-8
+Received: from mga03.intel.com ([134.134.136.65]:7172 "EHLO mga03.intel.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933558AbbDJO5V (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 10 Apr 2015 10:57:21 -0400
+Date: Fri, 10 Apr 2015 10:56:52 -0400
+From: "ira.weiny" <ira.weiny@intel.com>
+To: Michael Wang <yun.wang@profitbricks.com>
+Cc: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>,
+        Doug Ledford <dledford@redhat.com>, Roland Dreier <roland@kernel.org>,
+        Sean Hefty <sean.hefty@intel.com>, linux-rdma@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        netdev@vger.kernel.org, Hal Rosenstock <hal.rosenstock@gmail.com>,
+        Tom Tucker <tom@opengridcomputing.com>,
+        Steve Wise <swise@opengridcomputing.com>,
+        Hoang-Nam Nguyen <hnguyen@de.ibm.com>,
+        Christoph Raisch <raisch@de.ibm.com>,
+        Mike Marciniszyn <infinipath@intel.com>, Eli Cohen <eli@mellanox.com>,
+        Faisal Latif <faisal.latif@intel.com>,
+        Upinder Malhi <umalhi@cisco.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        "David S. Miller" <davem@davemloft.net>,
+        PJ Waskiewicz <pj.waskiewicz@solidfire.com>,
+        Tatyana Nikolova <Tatyana.E.Nikolova@intel.com>,
+        Or Gerlitz <ogerlitz@mellanox.com>,
+        Jack Morgenstein <jackm@dev.mellanox.co.il>,
+        Haggai Eran <haggaie@mellanox.com>,
+        Ilya Nelkenbaum <ilyan@mellanox.com>,
+        Yann Droneaud <ydroneaud@opteya.com>,
+        Bart Van Assche <bvanassche@acm.org>,
+        Shachar Raindel <raindel@mellanox.com>,
+        Sagi Grimberg <sagig@mellanox.com>,
+        Devesh Sharma <devesh.sharma@emulex.com>,
+        Matan Barak <matanb@mellanox.com>, Moni Shoua <monis@mellanox.com>,
+        Jiri Kosina <jkosina@suse.cz>,
+        Selvin Xavier <selvin.xavier@emulex.com>,
+        Mitesh Ahuja <mitesh.ahuja@emulex.com>,
+        Li RongQing <roy.qing.li@gmail.com>,
+        Rasmus Villemoes <linux@rasmusvillemoes.dk>,
+        Alex Estrin <alex.estrin@intel.com>,
+        Eric Dumazet <edumazet@google.com>, Erez Shitrit <erezsh@mellanox.com>,
+        Tom Gundersen <teg@jklm.no>, Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH v2 01/17] IB/Verbs: Implement new callback query_transport() for each HW
+Message-ID: <20150410145651.GA10675@phlsvsds.ph.intel.com>
+References: <5523CCD5.6030401@profitbricks.com> <5523D098.3020007@profitbricks.com> <1428517786.2980.180.camel@redhat.com> <20150408201015.GB28666@obsidianresearch.com> <20150410061610.GA26288@phlsvsds.ph.intel.com> <552788F1.4070301@profitbricks.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <552788F1.4070301@profitbricks.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Only override netfs->primary_index when registering success.
+On Fri, Apr 10, 2015 at 10:25:21AM +0200, Michael Wang wrote:
+> On 04/10/2015 08:16 AM, ira.weiny wrote:
+> > First off there are 2 separate issues here:
+> > 
+> > 1) We need to communicate if a port supports or requires various management
+> >    support from the ib_mad, ib_cm, and/or ib_sa modules.
+> > 
+> > 2) We need to communicate how a addresses are formated and resolved for a
+> >    particular port
+> > 
+> > 
+> > In general I don't think we need to remove all uses of the Transport
+> > or Link Layer.
+> > 
+> > Although we may be able to remove most of the transport uses.
+> > 
+> > On Wed, Apr 08, 2015 at 02:10:15PM -0600, Jason Gunthorpe wrote:
+> [snip]
+> > 
+> >>
+> >> Some of the other checks in this file revolve around pkey, I'm not
+> >> sure what rocee does there? cap_pkey_supported ?
+> > 
+> > It seems IBoE just hardcodes the pkey to 0xffff.  I don't see it used anywhere.
+> > 
+> > Function where port requires "real" PKey
+> > 
+> > 	-- cma.c: cma_ib_init_qp_attr
+> > 
+> > Check rdma_port_req_pkey()?
+> 
+> What about cap_eth_ah() for all the cases need eth addressing handling?
 
-Note: this patch is made with,
-"[PATCH] fscache: put reference of parent's usage and n_children"
+That works.
 
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
----
- fs/fscache/netfs.c | 36 +++++++++++++++++-------------------
- 1 file changed, 17 insertions(+), 19 deletions(-)
+> 
+> > 
+> > 
+> > Over all for the addressing choices:
+> > 
+> > The "Transport" (or protocol, or whatever) is Verbs.  The Layer below Verbs
+> > (OPA/IB/Eth/TCP) defines how addressing, route, and connection information is
+> > generated, communicated, and used.
+> > 
+> > As Jason and Doug have been saying sometimes we want to know when that requires
+> > SA interaction or the use of the CM protocol (or neither).  Other times we just
+> > need to know what the Address format or Link Layer is.
+> 
+> Till now it seems like we could be able to eliminate the link layer helper in core
+> layer, but I'll reserve that helper in next version, if later we do not need it anymore,
+> let's erase it then ;-)
+ 
+Eliminating Link Layer is fine if we can do it, but I still think that
+something like IPoIB should check the link layer.
 
-diff --git a/fs/fscache/netfs.c b/fs/fscache/netfs.c
-index b16afba..b935250 100644
---- a/fs/fscache/netfs.c
-+++ b/fs/fscache/netfs.c
-@@ -22,6 +22,7 @@ static LIST_HEAD(fscache_netfs_list);
- int __fscache_register_netfs(struct fscache_netfs *netfs)
- {
- 	struct fscache_netfs *ptr;
-+	struct fscache_cookie *cookie;
- 	int ret;
- 
- 	_enter("{%s}", netfs->name);
-@@ -29,29 +30,28 @@ int __fscache_register_netfs(struct fscache_netfs *netfs)
- 	INIT_LIST_HEAD(&netfs->link);
- 
- 	/* allocate a cookie for the primary index */
--	netfs->primary_index =
--		kmem_cache_zalloc(fscache_cookie_jar, GFP_KERNEL);
-+	cookie = kmem_cache_zalloc(fscache_cookie_jar, GFP_KERNEL);
- 
--	if (!netfs->primary_index) {
-+	if (!cookie) {
- 		_leave(" = -ENOMEM");
- 		return -ENOMEM;
- 	}
- 
- 	/* initialise the primary index cookie */
--	atomic_set(&netfs->primary_index->usage, 1);
--	atomic_set(&netfs->primary_index->n_children, 0);
--	atomic_set(&netfs->primary_index->n_active, 1);
-+	atomic_set(&cookie->usage, 1);
-+	atomic_set(&cookie->n_children, 0);
-+	atomic_set(&cookie->n_active, 1);
- 
--	netfs->primary_index->def		= &fscache_fsdef_netfs_def;
--	netfs->primary_index->parent		= &fscache_fsdef_index;
--	netfs->primary_index->netfs_data	= netfs;
--	netfs->primary_index->flags		= 1 << FSCACHE_COOKIE_ENABLED;
-+	cookie->def		= &fscache_fsdef_netfs_def;
-+	cookie->parent		= &fscache_fsdef_index;
-+	cookie->netfs_data	= netfs;
-+	cookie->flags		= 1 << FSCACHE_COOKIE_ENABLED;
- 
--	atomic_inc(&netfs->primary_index->parent->usage);
--	atomic_inc(&netfs->primary_index->parent->n_children);
-+	atomic_inc(&cookie->parent->usage);
-+	atomic_inc(&cookie->parent->n_children);
- 
--	spin_lock_init(&netfs->primary_index->lock);
--	INIT_HLIST_HEAD(&netfs->primary_index->backing_objects);
-+	spin_lock_init(&cookie->lock);
-+	INIT_HLIST_HEAD(&cookie->backing_objects);
- 
- 	/* check the netfs type is not already present */
- 	down_write(&fscache_addremove_sem);
-@@ -62,6 +62,7 @@ int __fscache_register_netfs(struct fscache_netfs *netfs)
- 			goto already_registered;
- 	}
- 
-+	netfs->primary_index = cookie;
- 	list_add(&netfs->link, &fscache_netfs_list);
- 	ret = 0;
- 
-@@ -69,11 +70,8 @@ int __fscache_register_netfs(struct fscache_netfs *netfs)
- 
- already_registered:
- 	up_write(&fscache_addremove_sem);
--
--	if (ret < 0) {
--		fscache_relinquish_cookie(netfs->primary_index, 0);
--		netfs->primary_index = NULL;
--	}
-+	if (ret < 0)
-+		fscache_relinquish_cookie(cookie, 0);
- 
- 	_leave(" = %d", ret);
- 	return ret;
--- 
-2.3.5
+After sleeping on it the driver exporting cap_ipoib() does not seem _so_ bad
+but I still see a distinction between ULPs like IPoIB and the other modules we
+have been discussing.
 
+Ira
+
+> Regards,
+> Michael Wang
+> 
+> > 
+> > 
+> > Ira
+> > 
