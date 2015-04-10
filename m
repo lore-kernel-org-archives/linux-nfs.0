@@ -1,120 +1,106 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga03.intel.com ([134.134.136.65]:7172 "EHLO mga03.intel.com"
+Received: from mx143.netapp.com ([216.240.21.24]:7727 "EHLO mx143.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933558AbbDJO5V (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 10 Apr 2015 10:57:21 -0400
-Date: Fri, 10 Apr 2015 10:56:52 -0400
-From: "ira.weiny" <ira.weiny@intel.com>
-To: Michael Wang <yun.wang@profitbricks.com>
-Cc: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>,
-        Doug Ledford <dledford@redhat.com>, Roland Dreier <roland@kernel.org>,
-        Sean Hefty <sean.hefty@intel.com>, linux-rdma@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        netdev@vger.kernel.org, Hal Rosenstock <hal.rosenstock@gmail.com>,
-        Tom Tucker <tom@opengridcomputing.com>,
-        Steve Wise <swise@opengridcomputing.com>,
-        Hoang-Nam Nguyen <hnguyen@de.ibm.com>,
-        Christoph Raisch <raisch@de.ibm.com>,
-        Mike Marciniszyn <infinipath@intel.com>, Eli Cohen <eli@mellanox.com>,
-        Faisal Latif <faisal.latif@intel.com>,
-        Upinder Malhi <umalhi@cisco.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        "David S. Miller" <davem@davemloft.net>,
-        PJ Waskiewicz <pj.waskiewicz@solidfire.com>,
-        Tatyana Nikolova <Tatyana.E.Nikolova@intel.com>,
-        Or Gerlitz <ogerlitz@mellanox.com>,
-        Jack Morgenstein <jackm@dev.mellanox.co.il>,
-        Haggai Eran <haggaie@mellanox.com>,
-        Ilya Nelkenbaum <ilyan@mellanox.com>,
-        Yann Droneaud <ydroneaud@opteya.com>,
-        Bart Van Assche <bvanassche@acm.org>,
-        Shachar Raindel <raindel@mellanox.com>,
-        Sagi Grimberg <sagig@mellanox.com>,
-        Devesh Sharma <devesh.sharma@emulex.com>,
-        Matan Barak <matanb@mellanox.com>, Moni Shoua <monis@mellanox.com>,
-        Jiri Kosina <jkosina@suse.cz>,
-        Selvin Xavier <selvin.xavier@emulex.com>,
-        Mitesh Ahuja <mitesh.ahuja@emulex.com>,
-        Li RongQing <roy.qing.li@gmail.com>,
-        Rasmus Villemoes <linux@rasmusvillemoes.dk>,
-        Alex Estrin <alex.estrin@intel.com>,
-        Eric Dumazet <edumazet@google.com>, Erez Shitrit <erezsh@mellanox.com>,
-        Tom Gundersen <teg@jklm.no>, Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH v2 01/17] IB/Verbs: Implement new callback query_transport() for each HW
-Message-ID: <20150410145651.GA10675@phlsvsds.ph.intel.com>
-References: <5523CCD5.6030401@profitbricks.com> <5523D098.3020007@profitbricks.com> <1428517786.2980.180.camel@redhat.com> <20150408201015.GB28666@obsidianresearch.com> <20150410061610.GA26288@phlsvsds.ph.intel.com> <552788F1.4070301@profitbricks.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <552788F1.4070301@profitbricks.com>
+	id S932925AbbDJPKO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 10 Apr 2015 11:10:14 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
+CC: <Anna.Schumaker@netapp.com>
+Subject: [PATCH] NFS: Add stubs for GETDEVICELIST
+Date: Fri, 10 Apr 2015 11:10:09 -0400
+Message-ID: <1428678609-28156-1-git-send-email-Anna.Schumaker@Netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Apr 10, 2015 at 10:25:21AM +0200, Michael Wang wrote:
-> On 04/10/2015 08:16 AM, ira.weiny wrote:
-> > First off there are 2 separate issues here:
-> > 
-> > 1) We need to communicate if a port supports or requires various management
-> >    support from the ib_mad, ib_cm, and/or ib_sa modules.
-> > 
-> > 2) We need to communicate how a addresses are formated and resolved for a
-> >    particular port
-> > 
-> > 
-> > In general I don't think we need to remove all uses of the Transport
-> > or Link Layer.
-> > 
-> > Although we may be able to remove most of the transport uses.
-> > 
-> > On Wed, Apr 08, 2015 at 02:10:15PM -0600, Jason Gunthorpe wrote:
-> [snip]
-> > 
-> >>
-> >> Some of the other checks in this file revolve around pkey, I'm not
-> >> sure what rocee does there? cap_pkey_supported ?
-> > 
-> > It seems IBoE just hardcodes the pkey to 0xffff.  I don't see it used anywhere.
-> > 
-> > Function where port requires "real" PKey
-> > 
-> > 	-- cma.c: cma_ib_init_qp_attr
-> > 
-> > Check rdma_port_req_pkey()?
-> 
-> What about cap_eth_ah() for all the cases need eth addressing handling?
+d4b18c3e (pnfs: remove GETDEVICELIST implementation) removed the
+GETDEVICELIST operation from the NFS client, but left a "hole" in the
+nfs4_procedures array.  This caused /proc/self/mountstats to report an
+operation named "51" where GETDEVICELIST used to be.  This patch adds
+back stubs to fix mountstats.
 
-That works.
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+---
+ fs/nfs/nfs4xdr.c     | 26 ++++++++++++++++++++++++--
+ fs/nfs/nfs4xdr.c.rej | 10 ++++++++++
+ 2 files changed, 34 insertions(+), 2 deletions(-)
+ create mode 100644 fs/nfs/nfs4xdr.c.rej
 
-> 
-> > 
-> > 
-> > Over all for the addressing choices:
-> > 
-> > The "Transport" (or protocol, or whatever) is Verbs.  The Layer below Verbs
-> > (OPA/IB/Eth/TCP) defines how addressing, route, and connection information is
-> > generated, communicated, and used.
-> > 
-> > As Jason and Doug have been saying sometimes we want to know when that requires
-> > SA interaction or the use of the CM protocol (or neither).  Other times we just
-> > need to know what the Address format or Link Layer is.
-> 
-> Till now it seems like we could be able to eliminate the link layer helper in core
-> layer, but I'll reserve that helper in next version, if later we do not need it anymore,
-> let's erase it then ;-)
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 39e521a..aadcc91 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -860,6 +860,8 @@ static int nfs4_stat_to_errno(int);
+ #define NFS4_dec_free_stateid_sz	(compound_decode_hdr_maxsz + \
+ 					 decode_sequence_maxsz + \
+ 					 decode_free_stateid_maxsz)
++#define NFS4_enc_getdevicelist_sz	(0)
++#define NFS4_dec_getdevicelist_sz	(0)
  
-Eliminating Link Layer is fine if we can do it, but I still think that
-something like IPoIB should check the link layer.
+ const u32 nfs41_maxwrite_overhead = ((RPC_MAX_HEADER_WITH_AUTH +
+ 				      compound_encode_hdr_maxsz +
+@@ -2997,6 +2999,16 @@ static void nfs4_xdr_enc_free_stateid(struct rpc_rqst *req,
+ 	encode_free_stateid(xdr, args, &hdr);
+ 	encode_nops(&hdr);
+ }
++
++/*
++ *  Encode GEDEVICELIST request
++ */
++static void nfs4_xdr_enc_getdevicelist(struct rpc_rqst *req,
++				       struct xdr_stream *xdr,
++				       void *args)
++{
++}
++
+ #endif /* CONFIG_NFS_V4_1 */
+ 
+ static void print_overflow_msg(const char *func, const struct xdr_stream *xdr)
+@@ -7202,6 +7214,16 @@ static int nfs4_xdr_dec_free_stateid(struct rpc_rqst *rqstp,
+ out:
+ 	return status;
+ }
++
++/*
++ * Decide GETDEVICELIST response
++ */
++static int nfs4_xdr_dec_getdevicelist(struct rpc_rqst *rqstp,
++				      struct xdr_stream *xdr,
++				      void *res)
++{
++	return 0;
++}
+ #endif /* CONFIG_NFS_V4_1 */
+ 
+ /**
+@@ -7413,8 +7435,8 @@ struct rpc_procinfo	nfs4_procedures[] = {
+ 	PROC(SECINFO_NO_NAME,	enc_secinfo_no_name,	dec_secinfo_no_name),
+ 	PROC(TEST_STATEID,	enc_test_stateid,	dec_test_stateid),
+ 	PROC(FREE_STATEID,	enc_free_stateid,	dec_free_stateid),
+-	PROC(BIND_CONN_TO_SESSION,
+-			enc_bind_conn_to_session, dec_bind_conn_to_session),
++	PROC(GETDEVICELIST,	enc_getdevicelist,	dec_getdevicelist),
++	PROC(BIND_CONN_TO_SESSION, enc_bind_conn_to_session, dec_bind_conn_to_session),
+ 	PROC(DESTROY_CLIENTID,	enc_destroy_clientid,	dec_destroy_clientid),
+ #endif /* CONFIG_NFS_V4_1 */
+ #ifdef CONFIG_NFS_V4_2
+diff --git a/fs/nfs/nfs4xdr.c.rej b/fs/nfs/nfs4xdr.c.rej
+new file mode 100644
+index 0000000..5560fe6
+--- /dev/null
++++ b/fs/nfs/nfs4xdr.c.rej
+@@ -0,0 +1,10 @@
++--- fs/nfs/nfs4xdr.c
+++++ fs/nfs/nfs4xdr.c
++@@ -7435,6 +7457,7 @@ struct rpc_procinfo	nfs4_procedures[] = {
++ 	PROC(SECINFO_NO_NAME,	enc_secinfo_no_name,	dec_secinfo_no_name),
++ 	PROC(TEST_STATEID,	enc_test_stateid,	dec_test_stateid),
++ 	PROC(FREE_STATEID,	enc_free_stateid,	dec_free_stateid),
+++	PROC(GETDEVICELIST,	enc_getdevicelist,	dec_getdevicelist),
++ 	PROC(BIND_CONN_TO_SESSION,
++ 			enc_bind_conn_to_session, dec_bind_conn_to_session),
++ 	PROC(DESTROY_CLIENTID,	enc_destroy_clientid,	dec_destroy_clientid),
+-- 
+2.3.5
 
-After sleeping on it the driver exporting cap_ipoib() does not seem _so_ bad
-but I still see a distinction between ULPs like IPoIB and the other modules we
-have been discussing.
-
-Ira
-
-> Regards,
-> Michael Wang
-> 
-> > 
-> > 
-> > Ira
-> > 
