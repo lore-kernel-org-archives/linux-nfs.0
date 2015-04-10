@@ -1,69 +1,43 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail2.candelatech.com ([208.74.158.173]:37526 "EHLO
-	mail2.candelatech.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751544AbbDJSpi (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Apr 2015 14:45:38 -0400
-Message-ID: <55281A51.3030408@candelatech.com>
-Date: Fri, 10 Apr 2015 11:45:37 -0700
-From: Ben Greear <greearb@candelatech.com>
+Received: from mail-ie0-f180.google.com ([209.85.223.180]:34406 "EHLO
+	mail-ie0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751846AbbDJTEh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Apr 2015 15:04:37 -0400
+Received: by iedfl3 with SMTP id fl3so28100403ied.1
+        for <linux-nfs@vger.kernel.org>; Fri, 10 Apr 2015 12:04:36 -0700 (PDT)
 MIME-Version: 1.0
-To: Gregory Boyce <gregory.boyce@gmail.com>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+In-Reply-To: <CAHQdGtSZcNj40YFYbKVL7M5ZtBgD278e6ifqM1hpb6BadU4j5A@mail.gmail.com>
+References: <CALs61ueTJ4_WT00Sqz5TKzhkbrS32UjcQ0zVw6B8ikahE4Rhcw@mail.gmail.com>
+	<CAHQdGtSbn643SVAZ2Y_VzxmS_b-9=+pqPGWGoHtt25hpHpygLw@mail.gmail.com>
+	<CALs61uewbb28BcZ=d_qaYWtvUt5-xLGkn1uMXWhpjb_38f8ZtQ@mail.gmail.com>
+	<CAHQdGtSZcNj40YFYbKVL7M5ZtBgD278e6ifqM1hpb6BadU4j5A@mail.gmail.com>
+Date: Fri, 10 Apr 2015 15:04:36 -0400
+Message-ID: <CALs61udukSrCsDYTyohSQdwbtcvvW672=+Qyit56iTE3qViSSw@mail.gmail.com>
 Subject: Re: Problems mounting via UDP from a netapp with multiple interfaces
-References: <CALs61ueTJ4_WT00Sqz5TKzhkbrS32UjcQ0zVw6B8ikahE4Rhcw@mail.gmail.com> <5526EA56.4080606@candelatech.com> <CALs61ufjDihfRkuUM9Z1kspaKMRXfAeUpPQO8FkzmLFNg4dh6Q@mail.gmail.com>
-In-Reply-To: <CALs61ufjDihfRkuUM9Z1kspaKMRXfAeUpPQO8FkzmLFNg4dh6Q@mail.gmail.com>
+From: Gregory Boyce <gregory.boyce@gmail.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 04/10/2015 11:22 AM, Gregory Boyce wrote:
-> On Thu, Apr 9, 2015 at 5:08 PM, Ben Greear <greearb@candelatech.com> wrote:
->> On 04/09/2015 12:34 PM, Gregory Boyce wrote:
->>> Folks,
->>>
->>> I've been encountering a problem with NFS clients attempting to mount
->>> from a netapp via UDP where the netapp is responding on the wrong
->>> interface.  On some of our older systems, this mount worked properly,
->>> while on newer systems nfs-utils ends up failing the mount.  Mounting
->>> via TCP works fine.
->>>
->>> It appears that there has been various related discussions over the
->>> years, and a relevant Redhat bug opened back in 2006:
->>>
->>> http://article.gmane.org/gmane.linux.nfs/22778/match=connect+udp
->>> https://bugzilla.redhat.com/show_bug.cgi?id=208244
->>>
->>> Is there a general recommendation for people in this sort of
->>> situation?  I'm assuming the code is currently using connected UDP
->>> sockets (I'm more of a sysadmin than a developer).  Is there an option
->>> I'm missing to disable this?  Otherwise does anyone know of a patch to
->>> change the behavior?
->>
->> I have some patches that allow binding an NFS client to a particular
->> local IP.  You need modified mount.nfs tools as well.  These patches
->> might fix your problem, but I am not certain about that.
-> 
-> Re-reading your e-mail, I'm not sure this will help me.   The problem
-> I'm having is that the server sends responses from a different IP
-> address than I attempted to mount.  Your description there seems to be
-> talking about selecting a local IP address to do the mounting with
-> instead.
-> 
-> For what it's worth, nfs-utils 1.1.2 was the version that successfully
-> mounts while 1.2.5 is the one I'm currently struggling with.
+On Fri, Apr 10, 2015 at 2:45 PM, Trond Myklebust
+<trond.myklebust@primarydata.com> wrote:
 
+> No. You are not supposed to be able to work around security issues,
+> and it is indeed a security issue when a client gets a reply from an
+> IP address that it does not recognise as being the same as the one it
+> sent an RPC to.
 
-Ok, I thought maybe you were using two interfaces on your client and the
-request was coming down the wrong interface due to the client selecting
-the wrong source address when sending the original request.
+"Working around" security issues is a rather common and accepted
+practice when there are mitigating controls in place.  It's never a
+black and white world.
 
-But if it is purely server-side issue, then yes, my patches are unlikely
-to help anything.
+> NetApp is aware of this bug, and has had burts open for it for at
+> least a decade now. Have you tried contacting them for a fix?
 
-Thanks,
-Ben
+My team is entirely involved in the client side.  I'll see what
+options the team responsible for the filer have there.
 
 -- 
-Ben Greear <greearb@candelatech.com>
-Candela Technologies Inc  http://www.candelatech.com
-
+Greg
