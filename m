@@ -1,28 +1,26 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:36087 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932184AbbDMLgu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 13 Apr 2015 07:36:50 -0400
-From: David Howells <dhowells@redhat.com>
-In-Reply-To: <5527D42A.800@gmail.com>
-References: <5527D42A.800@gmail.com>
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: dhowells@redhat.com, linux-fsdevel@vger.kernel.org,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] fscache: Don't override netfs->primary_index if register failed
+Received: from mail-wg0-f50.google.com ([74.125.82.50]:32948 "EHLO
+	mail-wg0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750894AbbDMLoZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Apr 2015 07:44:25 -0400
+Received: by wgin8 with SMTP id n8so77534083wgi.0
+        for <linux-nfs@vger.kernel.org>; Mon, 13 Apr 2015 04:44:24 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Date: Mon, 13 Apr 2015 12:36:44 +0100
-Message-ID: <30686.1428925004@warthog.procyon.org.uk>
+Date: Mon, 13 Apr 2015 13:44:24 +0200
+Message-ID: <CAF6uixC-X=_WN+Vy5SOmLrxGVREFEAMhfkTPnAhPfJ1ciComaQ@mail.gmail.com>
+Subject: NFS Session Trunking
+From: "Benoit L'hoest" <b.lhoest@gmail.com>
+To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Kinglong Mee <kinglongmee@gmail.com> wrote:
+Hello !
+I'm student in computer science and i'm looking into session trunking.
+I would like to do session trunking with nfs-client to a NAS.
+Is that feature supported ?
+How can i achieve a mount with 2 dest addr?
 
-> Only override netfs->primary_index when registering success.
+Thanks in advance !
 
-It shouldn't matter since the fscache_netfs struct being registered should not
-be active when __fscache_register_netfs() is called upon it.  It does,
-however, make things a bit more readable, so I'll take it.
-
-David
+Benoit L'Hoest.
