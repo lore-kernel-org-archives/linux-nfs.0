@@ -1,103 +1,80 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:53683 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:45786 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750999AbbDMNiA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 13 Apr 2015 09:38:00 -0400
-Date: Mon, 13 Apr 2015 09:37:59 -0400 (EDT)
-From: Benjamin Coddington <bcodding@redhat.com>
-To: Prunk Dump <prunkdump@gmail.com>
-cc: linux-nfs@vger.kernel.org
-Subject: Re: Split NFS4 share on multiple servers
-In-Reply-To: <CALr0QzFXae_Hjki15o2gQoNDua0xWZjb3nDexBy-OFezK5-gXQ@mail.gmail.com>
-Message-ID: <alpine.OSX.2.19.9992.1504130858420.4187@planck.local>
-References: <CALr0QzFXae_Hjki15o2gQoNDua0xWZjb3nDexBy-OFezK5-gXQ@mail.gmail.com>
+	id S932455AbbDMQcS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 13 Apr 2015 12:32:18 -0400
+Date: Mon, 13 Apr 2015 09:32:11 -0700
+From: Zach Brown <zab@redhat.com>
+To: Jeff Layton <jlayton@poochiereds.net>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        Linux FS-devel Mailing List <linux-fsdevel@vger.kernel.org>,
+        linux-btrfs@vger.kernel.org,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        linux-scsi@vger.kernel.org
+Subject: Re: [PATCH RFC 1/3] vfs: add copy_file_range syscall and vfs helper
+Message-ID: <20150413163211.GA8500@lenny.home.zabbo.net>
+References: <1428703236-24735-1-git-send-email-zab@redhat.com>
+ <1428703236-24735-2-git-send-email-zab@redhat.com>
+ <CAHQdGtSwSf0j6ge7rCue48bZ08212Ny2Crz9WMadSno11N8z_g@mail.gmail.com>
+ <20150411000208.GA20949@lenny.home.zabbo.net>
+ <CAHQdGtSaaPHbvtBM3yVGtAFpEAP8ZquYvErknq_rCoCCK+W2bA@mail.gmail.com>
+ <20150411090402.67d22d02@tlielax.poochiereds.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20150411090402.67d22d02@tlielax.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Baptiste,
+> > >> Could we perhaps instead of a length, define a 'pos_in_start' and a
+> > >> 'pos_in_end' offset (with the latter being -1 for a full-file copy)
+> > >> and then return an 'loff_t' value stating where the copy ended?
+> > >
+> > > Well, the resulting offset will be set if the caller provided it.  So
+> > > they could already be getting the copied length from that.  But they
+> > > might not specify the offsets.  Maybe they're just using the results to
+> > > total up a completion indicator.
+> > >
+> > > Maybe we could make the length a pointer like the offsets that's set to
+> > > the copied length on return.
+> > 
+> > That works, but why do we care so much about the difference between a
+> > length and an offset as a return value?
+> > 
+> 
+> I think it just comes down to potential confusion for users. What's
+> more useful, the number of bytes actually copied, or the offset into the
+> file where the copy ended?
+> 
+> I tend to the think an offset is more useful for someone trying to
+> copy a file in chunks, particularly if the file is sparse. That gives
+> them a clear place to continue the copy.
+> 
+> So, I think I agree with Trond that phrasing this interface in terms of
+> file offsets seems like it might be more useful. That also neatly
+> sidesteps the size_t limitations on 32-bit platforms.
 
-On Sat, 11 Apr 2015, Prunk Dump wrote:
+Yeah, fair enough.  I'll rework it.
 
-> Hello NFS team,
->
-> On my network I share my users' home directories from a kerberized NFS4 server.
->
-> I would like to split this shared filesystem tree on 3 servers to
-> reduce server loading and increase storage capacity. I don't want file
-> replication, just distribution.
->
-> On this link :
->
-> http://www.ibm.com/developerworks/library/l-generic-nfs-mount/
->
-> I can read that "NFS version 4 provides a pseudo-tree mechanism that
-> enables a single mount of all NFSv4 exported entries"
->
-> I can't find documentation of this feature. Is it works on multiple
-> servers ? Is this possible to mount multiple NFS4 shares on a same
-> mount point without using a special file system like Unionfs or
-> Glusterfs ?
+> > To be fair, the NFS copy offload also allows the copy to proceed out
+> > of order, in which case the range of copied data could be
+> > non-contiguous in the case of a failure. However neither the length
+> > nor the offset case will give you the full story in that case. Any
+> > return value can at best be considered to define an offset range whose
+> > contents need to be checked for success/failure.
+> > 
+> 
+> Yuck! How the heck do you clean up the mess if that happens? I guess
+> you're just stuck redoing the copy with normal READ/WRITE?
 
-I believe they are talking about NFSv4 referrals, and it is possible
-provided your server supports the fs_locations attribute.
+I don't think anyone will worry about checking file contents.
 
-> What is the preferred way of network administrators to distribute
-> their users' home directories through NFS4 ?
+Yes, technically you can get fragmented completion past the initial
+contiguous region that the interface told you is done.   You can get
+that with O_DIRECT today.
 
-One method I've used for an installation with < 100k users was based on
-a simple automount map and using symlinks to hash out users' home
-directories on a "lookup" filesystem.
+But it's a rare case that is not worth worrying about.  You'll retry at
+the contiguous offset until it doesn't make progress and then fall back
+to read/write.
 
-There's a "lookup" filesystem automounted on every client here:
-
-/users
-
-with directories like /users/b/c/ and /users/f/o.  Each directory contains
-symlinks to users' real home directory location, for example:
-
-/users/b/c/bcodding -> /nfs/04/users/b/c/bcodding
-/users/f/o/foo      -> /nfs/f2/users/f/o/foo
-
-Users' pwnam home directories are of the predictable form:
-
-/users/b/c/bcodding
-/users/f/o/foo
-
-The main file servers themselves are automounted on each client at
-/nfs/<servername> as you can see in the symlink targets above.  Predictable
-naming conventions allow you to use autofs wildcarding for server name
-matches, so you don't need to update the maps to scale.
-
-The lookup filesystem becomes a single point of failure, but that can be
-mitigated in a few ways that are simplified by the fact that this data is
-almost always RO and is very small.
-
-A migration of a users' home dir can become an issue if you don't have full
-control of the clients, so you can avoid this by starting with a very wide
-distribution of file servers and growing the filesystems over time.  In this
-setup, there were only a few clients that could write, so migrations were
-eased by only migrating users if they didn't have open files on those
-client.
-
-If you're using shared storage, even better.  You can match server names to
-block devices and script-mount them in the file servers so that deploying a
-new fileserver can be done by allocating the block device and cloning the
-fileserver image.
-
-Shared storage also provides an HA or scriptable availability solution by
-allowing you to recover a file server from a known good image, or migrate
-the underlying block device to a known good server.
-
-HTH,
-Ben
-
->
-> Thanks,
-> Baptiste.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
+- z
