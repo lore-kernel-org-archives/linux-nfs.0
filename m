@@ -1,108 +1,103 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pd0-f182.google.com ([209.85.192.182]:33114 "EHLO
-	mail-pd0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754047AbbDMNf6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Apr 2015 09:35:58 -0400
-Message-ID: <552BC638.5040600@gmail.com>
-Date: Mon, 13 Apr 2015 21:35:52 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
+Received: from mx1.redhat.com ([209.132.183.28]:53683 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750999AbbDMNiA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 13 Apr 2015 09:38:00 -0400
+Date: Mon, 13 Apr 2015 09:37:59 -0400 (EDT)
+From: Benjamin Coddington <bcodding@redhat.com>
+To: Prunk Dump <prunkdump@gmail.com>
+cc: linux-nfs@vger.kernel.org
+Subject: Re: Split NFS4 share on multiple servers
+In-Reply-To: <CALr0QzFXae_Hjki15o2gQoNDua0xWZjb3nDexBy-OFezK5-gXQ@mail.gmail.com>
+Message-ID: <alpine.OSX.2.19.9992.1504130858420.4187@planck.local>
+References: <CALr0QzFXae_Hjki15o2gQoNDua0xWZjb3nDexBy-OFezK5-gXQ@mail.gmail.com>
 MIME-Version: 1.0
-To: David Howells <dhowells@redhat.com>
-CC: linux-fsdevel@vger.kernel.org,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: [PATCH v3 2/2] FSCACHE: Don't override netfs's primary_index if registering
- failed
-References: <552BBE2E.5050903@gmail.com> <552BB530.50405@gmail.com> <5527C9A0.6030502@gmail.com> <30571.1428924822@warthog.procyon.org.uk> <32264.1428929064@warthog.procyon.org.uk> <1961.1428930759@warthog.procyon.org.uk>
-In-Reply-To: <1961.1428930759@warthog.procyon.org.uk>
-Content-Type: text/plain; charset=windows-1252
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Only override netfs->primary_index when registering success.
+Hi Baptiste,
 
-v2,v3: according to the change of [PATH 1/2]
+On Sat, 11 Apr 2015, Prunk Dump wrote:
 
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
----
- fs/fscache/netfs.c | 35 +++++++++++++++++------------------
- 1 file changed, 17 insertions(+), 18 deletions(-)
+> Hello NFS team,
+>
+> On my network I share my users' home directories from a kerberized NFS4 server.
+>
+> I would like to split this shared filesystem tree on 3 servers to
+> reduce server loading and increase storage capacity. I don't want file
+> replication, just distribution.
+>
+> On this link :
+>
+> http://www.ibm.com/developerworks/library/l-generic-nfs-mount/
+>
+> I can read that "NFS version 4 provides a pseudo-tree mechanism that
+> enables a single mount of all NFSv4 exported entries"
+>
+> I can't find documentation of this feature. Is it works on multiple
+> servers ? Is this possible to mount multiple NFS4 shares on a same
+> mount point without using a special file system like Unionfs or
+> Glusterfs ?
 
-diff --git a/fs/fscache/netfs.c b/fs/fscache/netfs.c
-index 458cc96..9b28649 100644
---- a/fs/fscache/netfs.c
-+++ b/fs/fscache/netfs.c
-@@ -22,6 +22,7 @@ static LIST_HEAD(fscache_netfs_list);
- int __fscache_register_netfs(struct fscache_netfs *netfs)
- {
- 	struct fscache_netfs *ptr;
-+	struct fscache_cookie *cookie;
- 	int ret;
- 
- 	_enter("{%s}", netfs->name);
-@@ -29,26 +30,25 @@ int __fscache_register_netfs(struct fscache_netfs *netfs)
- 	INIT_LIST_HEAD(&netfs->link);
- 
- 	/* allocate a cookie for the primary index */
--	netfs->primary_index =
--		kmem_cache_zalloc(fscache_cookie_jar, GFP_KERNEL);
-+	cookie = kmem_cache_zalloc(fscache_cookie_jar, GFP_KERNEL);
- 
--	if (!netfs->primary_index) {
-+	if (!cookie) {
- 		_leave(" = -ENOMEM");
- 		return -ENOMEM;
- 	}
- 
- 	/* initialise the primary index cookie */
--	atomic_set(&netfs->primary_index->usage, 1);
--	atomic_set(&netfs->primary_index->n_children, 0);
--	atomic_set(&netfs->primary_index->n_active, 1);
-+	atomic_set(&cookie->usage, 1);
-+	atomic_set(&cookie->n_children, 0);
-+	atomic_set(&cookie->n_active, 1);
- 
--	netfs->primary_index->def		= &fscache_fsdef_netfs_def;
--	netfs->primary_index->parent		= &fscache_fsdef_index;
--	netfs->primary_index->netfs_data	= netfs;
--	netfs->primary_index->flags		= 1 << FSCACHE_COOKIE_ENABLED;
-+	cookie->def		= &fscache_fsdef_netfs_def;
-+	cookie->parent		= &fscache_fsdef_index;
-+	cookie->netfs_data	= netfs;
-+	cookie->flags		= 1 << FSCACHE_COOKIE_ENABLED;
- 
--	spin_lock_init(&netfs->primary_index->lock);
--	INIT_HLIST_HEAD(&netfs->primary_index->backing_objects);
-+	spin_lock_init(&cookie->lock);
-+	INIT_HLIST_HEAD(&cookie->backing_objects);
- 
- 	/* check the netfs type is not already present */
- 	down_write(&fscache_addremove_sem);
-@@ -59,9 +59,10 @@ int __fscache_register_netfs(struct fscache_netfs *netfs)
- 			goto already_registered;
- 	}
- 
--	atomic_inc(&netfs->primary_index->parent->usage);
--	atomic_inc(&netfs->primary_index->parent->n_children);
-+	atomic_inc(&cookie->parent->usage);
-+	atomic_inc(&cookie->parent->n_children);
- 
-+	netfs->primary_index = cookie;
- 	list_add(&netfs->link, &fscache_netfs_list);
- 	ret = 0;
- 
-@@ -70,10 +71,8 @@ int __fscache_register_netfs(struct fscache_netfs *netfs)
- already_registered:
- 	up_write(&fscache_addremove_sem);
- 
--	if (ret < 0) {
--		kmem_cache_free(fscache_cookie_jar, netfs->primary_index);
--		netfs->primary_index = NULL;
--	}
-+	if (ret < 0)
-+		kmem_cache_free(fscache_cookie_jar, cookie);
- 
- 	_leave(" = %d", ret);
- 	return ret;
--- 
-2.3.5
+I believe they are talking about NFSv4 referrals, and it is possible
+provided your server supports the fs_locations attribute.
 
+> What is the preferred way of network administrators to distribute
+> their users' home directories through NFS4 ?
+
+One method I've used for an installation with < 100k users was based on
+a simple automount map and using symlinks to hash out users' home
+directories on a "lookup" filesystem.
+
+There's a "lookup" filesystem automounted on every client here:
+
+/users
+
+with directories like /users/b/c/ and /users/f/o.  Each directory contains
+symlinks to users' real home directory location, for example:
+
+/users/b/c/bcodding -> /nfs/04/users/b/c/bcodding
+/users/f/o/foo      -> /nfs/f2/users/f/o/foo
+
+Users' pwnam home directories are of the predictable form:
+
+/users/b/c/bcodding
+/users/f/o/foo
+
+The main file servers themselves are automounted on each client at
+/nfs/<servername> as you can see in the symlink targets above.  Predictable
+naming conventions allow you to use autofs wildcarding for server name
+matches, so you don't need to update the maps to scale.
+
+The lookup filesystem becomes a single point of failure, but that can be
+mitigated in a few ways that are simplified by the fact that this data is
+almost always RO and is very small.
+
+A migration of a users' home dir can become an issue if you don't have full
+control of the clients, so you can avoid this by starting with a very wide
+distribution of file servers and growing the filesystems over time.  In this
+setup, there were only a few clients that could write, so migrations were
+eased by only migrating users if they didn't have open files on those
+client.
+
+If you're using shared storage, even better.  You can match server names to
+block devices and script-mount them in the file servers so that deploying a
+new fileserver can be done by allocating the block device and cloning the
+fileserver image.
+
+Shared storage also provides an HA or scriptable availability solution by
+allowing you to recover a file server from a known good image, or migrate
+the underlying block device to a known good server.
+
+HTH,
+Ben
+
+>
+> Thanks,
+> Baptiste.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
