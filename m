@@ -1,26 +1,53 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wg0-f50.google.com ([74.125.82.50]:32948 "EHLO
-	mail-wg0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750894AbbDMLoZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Apr 2015 07:44:25 -0400
-Received: by wgin8 with SMTP id n8so77534083wgi.0
-        for <linux-nfs@vger.kernel.org>; Mon, 13 Apr 2015 04:44:24 -0700 (PDT)
+Return-Path: <kinglongmee@gmail.com>
+Message-ID: <552BB264.8010104@gmail.com>
+Date: Mon, 13 Apr 2015 20:11:16 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
 MIME-Version: 1.0
-Date: Mon, 13 Apr 2015 13:44:24 +0200
-Message-ID: <CAF6uixC-X=_WN+Vy5SOmLrxGVREFEAMhfkTPnAhPfJ1ciComaQ@mail.gmail.com>
-Subject: NFS Session Trunking
-From: "Benoit L'hoest" <b.lhoest@gmail.com>
-To: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=UTF-8
-Sender: linux-nfs-owner@vger.kernel.org
+To: Steve Dickson <SteveD@redhat.com>
+CC: bcodding@redhat.com,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        kinglongmee@gmail.com
+Subject: [PATCH] mount: Writes signal number to kernel as command line
+Content-Type: text/plain; charset=utf-8
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello !
-I'm student in computer science and i'm looking into session trunking.
-I would like to do session trunking with nfs-client to a NAS.
-Is that feature supported ?
-How can i achieve a mount with 2 dest addr?
+When mounting nfs with -overs=4,minorversion=2, want getting
+nfs mounts with vers=4.2, but got vers=4.0 as,
 
-Thanks in advance !
+# mount -t nfs -onfsvers=4,minorversion=2 127.0.0.1:/ /mnt/
+# cat /proc/mounts | grep vers
+127.0.0.1:/ /mnt nfs4 rw,relatime,vers=4.0,rsize=262144,wsize=262144,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=sys,clientaddr=127.0.0.1,local_lock=none,addr=127.0.0.1 0 0
 
-Benoit L'Hoest.
+It's caused by mount.nfs writing bad vers to kernel. This patch
+lets mount.nfs writing signal number to kernel as command line.
+
+Note： This patch is based on my last patch,
+"mount: make sure mounting nfs with v4,vers=4 and nfsvers=4"
+
+Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+---
+ utils/mount/stropts.c | 9 +++++++--
+ 1 file changed, 7 insertions(+), 2 deletions(-)
+
+diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+index 2ae532e..c8f5a6d 100644
+--- a/utils/mount/stropts.c
++++ b/utils/mount/stropts.c
+@@ -737,8 +737,13 @@ static int nfs_do_mount_v4(struct nfsmount_info *mi,
+ 	}
+ 
+ 	if (mi->version.v_mode != V_SPECIFIC) {
+-		snprintf(version_opt, sizeof(version_opt) - 1,
+-			"vers=%lu.%lu", mi->version.major, mi->version.minor);
++		if (mi->version.v_mode == V_GENERAL)
++			snprintf(version_opt, sizeof(version_opt) - 1,
++				"vers=%lu", mi->version.major);
++		else
++			snprintf(version_opt, sizeof(version_opt) - 1,
++				"vers=%lu.%lu", mi->version.major,
++				mi->version.minor);
+ 
+ 		if (po_append(options, version_opt) == PO_FAILED) {
+ 			errno = EINVAL;
+-- 
+2.3.5
