@@ -1,80 +1,40 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:45786 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932455AbbDMQcS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 13 Apr 2015 12:32:18 -0400
-Date: Mon, 13 Apr 2015 09:32:11 -0700
-From: Zach Brown <zab@redhat.com>
-To: Jeff Layton <jlayton@poochiereds.net>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        Linux FS-devel Mailing List <linux-fsdevel@vger.kernel.org>,
-        linux-btrfs@vger.kernel.org,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-scsi@vger.kernel.org
-Subject: Re: [PATCH RFC 1/3] vfs: add copy_file_range syscall and vfs helper
-Message-ID: <20150413163211.GA8500@lenny.home.zabbo.net>
-References: <1428703236-24735-1-git-send-email-zab@redhat.com>
- <1428703236-24735-2-git-send-email-zab@redhat.com>
- <CAHQdGtSwSf0j6ge7rCue48bZ08212Ny2Crz9WMadSno11N8z_g@mail.gmail.com>
- <20150411000208.GA20949@lenny.home.zabbo.net>
- <CAHQdGtSaaPHbvtBM3yVGtAFpEAP8ZquYvErknq_rCoCCK+W2bA@mail.gmail.com>
- <20150411090402.67d22d02@tlielax.poochiereds.net>
+Received: from bombadil.infradead.org ([198.137.202.9]:41711 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932343AbbDMRam (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Apr 2015 13:30:42 -0400
+Date: Mon, 13 Apr 2015 10:30:40 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: David Howells <dhowells@redhat.com>
+Cc: Dave Chinner <david@fromorbit.com>, NeilBrown <neilb@suse.de>,
+        linux-btrfs@vger.kernel.org, linux-cachefs@redhat.com,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH/RFC] fscache/cachefiles versus btrfs
+Message-ID: <20150413173040.GA30623@infradead.org>
+References: <20150409235234.GJ13731@dastard>
+ <20150409174916.5a2efef5@notabene.brown>
+ <29536.1428571388@warthog.procyon.org.uk>
+ <9282.1428672496@warthog.procyon.org.uk>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20150411090402.67d22d02@tlielax.poochiereds.net>
+In-Reply-To: <9282.1428672496@warthog.procyon.org.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> > >> Could we perhaps instead of a length, define a 'pos_in_start' and a
-> > >> 'pos_in_end' offset (with the latter being -1 for a full-file copy)
-> > >> and then return an 'loff_t' value stating where the copy ended?
-> > >
-> > > Well, the resulting offset will be set if the caller provided it.  So
-> > > they could already be getting the copied length from that.  But they
-> > > might not specify the offsets.  Maybe they're just using the results to
-> > > total up a completion indicator.
-> > >
-> > > Maybe we could make the length a pointer like the offsets that's set to
-> > > the copied length on return.
-> > 
-> > That works, but why do we care so much about the difference between a
-> > length and an offset as a return value?
-> > 
+On Fri, Apr 10, 2015 at 02:28:16PM +0100, David Howells wrote:
+> Dave Chinner <david@fromorbit.com> wrote:
 > 
-> I think it just comes down to potential confusion for users. What's
-> more useful, the number of bytes actually copied, or the offset into the
-> file where the copy ended?
+> > SEEK_HOLE/SEEK_DATA is what you want, as they are page cache
+> > coherent, not extent based operations. And, really if you need it to
+> > really be able to find real holes, then a superblock flag might be a
+> > better way of marking filesystems with the required capability.
 > 
-> I tend to the think an offset is more useful for someone trying to
-> copy a file in chunks, particularly if the file is sparse. That gives
-> them a clear place to continue the copy.
-> 
-> So, I think I agree with Trond that phrasing this interface in terms of
-> file offsets seems like it might be more useful. That also neatly
-> sidesteps the size_t limitations on 32-bit platforms.
+> Actually, I wonder if what I want is a kernel_read() that returns ENODATA upon
+> encountering a hole at the beginning of the area to be read.
 
-Yeah, fair enough.  I'll rework it.
+NFS READ_PLUS could also make use of this, but someone needs to actually
+implement it.
 
-> > To be fair, the NFS copy offload also allows the copy to proceed out
-> > of order, in which case the range of copied data could be
-> > non-contiguous in the case of a failure. However neither the length
-> > nor the offset case will give you the full story in that case. Any
-> > return value can at best be considered to define an offset range whose
-> > contents need to be checked for success/failure.
-> > 
-> 
-> Yuck! How the heck do you clean up the mess if that happens? I guess
-> you're just stuck redoing the copy with normal READ/WRITE?
-
-I don't think anyone will worry about checking file contents.
-
-Yes, technically you can get fragmented completion past the initial
-contiguous region that the interface told you is done.   You can get
-that with O_DIRECT today.
-
-But it's a rare case that is not worth worrying about.  You'll retry at
-the contiguous offset until it doesn't make progress and then fall back
-to read/write.
-
-- z
+Until we have that lseek SEEK_HOLE/DATA is the way to go, and the
+horrible ->bmap hack needs to die ASAP, I can't believe you managed to
+sneak that in in the not too distant past.
