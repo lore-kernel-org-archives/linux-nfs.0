@@ -1,27 +1,30 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([198.137.202.9]:57741 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750935AbbDMRpt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Apr 2015 13:45:49 -0400
-Date: Mon, 13 Apr 2015 10:45:39 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Anna Schumaker <Anna.Schumaker@netapp.com>
-Cc: Trond.Myklebust@primarydata.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2] NFS: Add stubs for GETDEVICELIST
-Message-ID: <20150413174538.GA22583@infradead.org>
-References: <1428680559-26705-1-git-send-email-Anna.Schumaker@Netapp.com>
+Received: from fieldses.org ([173.255.197.46]:60163 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751675AbbDMTvD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 13 Apr 2015 15:51:03 -0400
+Date: Mon, 13 Apr 2015 15:51:00 -0400
+To: "Benoit L'hoest" <b.lhoest@gmail.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: NFS Session Trunking
+Message-ID: <20150413195100.GA24146@fieldses.org>
+References: <CAF6uixC-X=_WN+Vy5SOmLrxGVREFEAMhfkTPnAhPfJ1ciComaQ@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1428680559-26705-1-git-send-email-Anna.Schumaker@Netapp.com>
+In-Reply-To: <CAF6uixC-X=_WN+Vy5SOmLrxGVREFEAMhfkTPnAhPfJ1ciComaQ@mail.gmail.com>
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Apr 10, 2015 at 11:42:39AM -0400, Anna Schumaker wrote:
-> d4b18c3e (pnfs: remove GETDEVICELIST implementation) removed the
-> GETDEVICELIST operation from the NFS client, but left a "hole" in the
-> nfs4_procedures array.  This caused /proc/self/mountstats to report an
-> operation named "51" where GETDEVICELIST used to be.  This patch adds
-> back stubs to fix mountstats.
+On Mon, Apr 13, 2015 at 01:44:24PM +0200, Benoit L'hoest wrote:
+> Hello !
+> I'm student in computer science and i'm looking into session trunking.
+> I would like to do session trunking with nfs-client to a NAS.
+> Is that feature supported ?
+> How can i achieve a mount with 2 dest addr?
+> 
+> Thanks in advance !
 
-The only thing we need here is the name, right?  Why not add a STUB
-macro that just fills out the name field?
+You asked a similar question in March, did you see the response?
+
+--b.
