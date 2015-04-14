@@ -1,121 +1,70 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-oi0-f49.google.com ([209.85.218.49]:36242 "EHLO
-	mail-oi0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933056AbbDNRZy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Apr 2015 13:25:54 -0400
-Received: by oift201 with SMTP id t201so7162963oif.3
-        for <linux-nfs@vger.kernel.org>; Tue, 14 Apr 2015 10:25:53 -0700 (PDT)
+Received: from fieldses.org ([173.255.197.46]:34577 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753202AbbDNSTM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 14 Apr 2015 14:19:12 -0400
+Date: Tue, 14 Apr 2015 14:19:11 -0400
+To: Anna Schumaker <Anna.Schumaker@netapp.com>
+Cc: Christoph Hellwig <hch@infradead.org>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Zach Brown <zab@redhat.com>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        Linux FS-devel Mailing List <linux-fsdevel@vger.kernel.org>,
+        linux-btrfs@vger.kernel.org,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        linux-scsi@vger.kernel.org
+Subject: Re: [PATCH RFC 1/3] vfs: add copy_file_range syscall and vfs helper
+Message-ID: <20150414181911.GA2080@fieldses.org>
+References: <1428703236-24735-1-git-send-email-zab@redhat.com>
+ <1428703236-24735-2-git-send-email-zab@redhat.com>
+ <CAHQdGtSwSf0j6ge7rCue48bZ08212Ny2Crz9WMadSno11N8z_g@mail.gmail.com>
+ <20150411000208.GA20949@lenny.home.zabbo.net>
+ <CAHQdGtSaaPHbvtBM3yVGtAFpEAP8ZquYvErknq_rCoCCK+W2bA@mail.gmail.com>
+ <20150411090402.67d22d02@tlielax.poochiereds.net>
+ <20150414165344.GA21421@infradead.org>
+ <552D4B5D.3090904@Netapp.com>
 MIME-Version: 1.0
-In-Reply-To: <alpine.OSX.2.19.9992.1504130858420.4187@planck.local>
-References: <CALr0QzFXae_Hjki15o2gQoNDua0xWZjb3nDexBy-OFezK5-gXQ@mail.gmail.com>
-	<alpine.OSX.2.19.9992.1504130858420.4187@planck.local>
-Date: Tue, 14 Apr 2015 19:25:53 +0200
-Message-ID: <CALr0QzGjDJa5=DA-aoxhv9r+Y1AROrUoVCUhfCp=JXZoRMZn+g@mail.gmail.com>
-Subject: Re: Split NFS4 share on multiple servers
-From: Prunk Dump <prunkdump@gmail.com>
-To: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <552D4B5D.3090904@Netapp.com>
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-2015-04-13 15:37 GMT+02:00 Benjamin Coddington <bcodding@redhat.com>:
-> Hi Baptiste,
->
-> On Sat, 11 Apr 2015, Prunk Dump wrote:
->
->> Hello NFS team,
->>
->> On my network I share my users' home directories from a kerberized NFS4 server.
->>
->> I would like to split this shared filesystem tree on 3 servers to
->> reduce server loading and increase storage capacity. I don't want file
->> replication, just distribution.
->>
->> On this link :
->>
->> http://www.ibm.com/developerworks/library/l-generic-nfs-mount/
->>
->> I can read that "NFS version 4 provides a pseudo-tree mechanism that
->> enables a single mount of all NFSv4 exported entries"
->>
->> I can't find documentation of this feature. Is it works on multiple
->> servers ? Is this possible to mount multiple NFS4 shares on a same
->> mount point without using a special file system like Unionfs or
->> Glusterfs ?
->
-> I believe they are talking about NFSv4 referrals, and it is possible
-> provided your server supports the fs_locations attribute.
->
->> What is the preferred way of network administrators to distribute
->> their users' home directories through NFS4 ?
->
-> One method I've used for an installation with < 100k users was based on
-> a simple automount map and using symlinks to hash out users' home
-> directories on a "lookup" filesystem.
->
-> There's a "lookup" filesystem automounted on every client here:
->
-> /users
->
-> with directories like /users/b/c/ and /users/f/o.  Each directory contains
-> symlinks to users' real home directory location, for example:
->
-> /users/b/c/bcodding -> /nfs/04/users/b/c/bcodding
-> /users/f/o/foo      -> /nfs/f2/users/f/o/foo
->
-> Users' pwnam home directories are of the predictable form:
->
-> /users/b/c/bcodding
-> /users/f/o/foo
->
-> The main file servers themselves are automounted on each client at
-> /nfs/<servername> as you can see in the symlink targets above.  Predictable
-> naming conventions allow you to use autofs wildcarding for server name
-> matches, so you don't need to update the maps to scale.
->
-> The lookup filesystem becomes a single point of failure, but that can be
-> mitigated in a few ways that are simplified by the fact that this data is
-> almost always RO and is very small.
->
-> A migration of a users' home dir can become an issue if you don't have full
-> control of the clients, so you can avoid this by starting with a very wide
-> distribution of file servers and growing the filesystems over time.  In this
-> setup, there were only a few clients that could write, so migrations were
-> eased by only migrating users if they didn't have open files on those
-> client.
->
-> If you're using shared storage, even better.  You can match server names to
-> block devices and script-mount them in the file servers so that deploying a
-> new fileserver can be done by allocating the block device and cloning the
-> fileserver image.
->
-> Shared storage also provides an HA or scriptable availability solution by
-> allowing you to recover a file server from a known good image, or migrate
-> the underlying block device to a known good server.
->
-> HTH,
-> Ben
->
->>
->> Thanks,
->> Baptiste.
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
+On Tue, Apr 14, 2015 at 01:16:13PM -0400, Anna Schumaker wrote:
+> On 04/14/2015 12:53 PM, Christoph Hellwig wrote:
+> > On Sat, Apr 11, 2015 at 09:04:02AM -0400, Jeff Layton wrote:
+> >> Yuck! How the heck do you clean up the mess if that happens? I
+> >> guess you're just stuck redoing the copy with normal READ/WRITE?
+> >>
+> >> Maybe we need to have the interface return a hard error in that
+> >> case and not try to give back any sort of offset?
+> > 
+> > The NFSv4.2 COPY interface is a train wreck.  At least for Linux I'd
+> > expect us to simply ignore it and only implement my new CLONE
+> > operation with sane semantics.  That is unless someone can show some
+> > real life use case for the inter server copy, in which case we'll
+> > have to deal with that mess.  But getting that one right at the VFS
+> > level will be a nightmare anyway.
+> > 
+> > Make this a vote from me to not support partial copies and just
+> > return and error in that case.
+> 
+> Agreed.  Looking at the v4.2 spec, COPY does take ca_consecutive and a
+> ca_synchronous flags that let the client state if the copy should be
+> done consecutively or synchronously.  I expected to always set
+> consecutive to "true" for the Linux client.
 
+That's supposed to mean results are well-defined in the partial-copy
+case, but I think Christoph's suggesting eliminating the partial-copy
+case entirely?
 
-Thank you Benjamin ! You help me a lot !
+Which would be fine with me.
 
-NFSv4 referrals is exactly what I search for. I need to check if it is
-well supported on my Debian Wheezy servers and clients.
+It might actually have been me advocating for partial copies.  But that
+was only because a partial-copy-handling-loop seemed simpler to me than
+progress callbacks if we were going to support long-running copies.
 
-I have approximately 1100 users and 350 computers so I need to have
-the possibility to move the home folders easily between my servers.
+I'm happy enough not to have it at all.
 
-If I can't get the NFS referrals working I will try with you second solution.
-
-Thank you again !
-
-Baptiste.
+--b.
