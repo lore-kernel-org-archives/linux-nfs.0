@@ -1,51 +1,56 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:60204 "EHLO mx1.redhat.com"
+Received: from mail-out5.uio.no ([129.240.10.17]:59392 "EHLO mail-out5.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753202AbbDNUEV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 14 Apr 2015 16:04:21 -0400
-Date: Tue, 14 Apr 2015 13:04:18 -0700
-From: Zach Brown <zab@redhat.com>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Anna Schumaker <Anna.Schumaker@netapp.com>,
-        Jeff Layton <jlayton@poochiereds.net>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        Linux FS-devel Mailing List <linux-fsdevel@vger.kernel.org>,
-        linux-btrfs@vger.kernel.org,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-scsi@vger.kernel.org
-Subject: Re: [PATCH RFC 1/3] vfs: add copy_file_range syscall and vfs helper
-Message-ID: <20150414200418.GA24660@lenny.home.zabbo.net>
-References: <20150411000208.GA20949@lenny.home.zabbo.net>
- <CAHQdGtSaaPHbvtBM3yVGtAFpEAP8ZquYvErknq_rCoCCK+W2bA@mail.gmail.com>
- <20150411090402.67d22d02@tlielax.poochiereds.net>
- <20150414165344.GA21421@infradead.org>
- <552D4B5D.3090904@Netapp.com>
- <20150414181911.GA2080@fieldses.org>
- <20150414182241.GB23129@lenny.home.zabbo.net>
- <20150414182906.GB2080@fieldses.org>
- <20150414185408.GC23129@lenny.home.zabbo.net>
- <20150414192325.GB20599@infradead.org>
+	id S1751705AbbDOKGd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 15 Apr 2015 06:06:33 -0400
+Received: from mail-mx4.uio.no ([129.240.10.45])
+	by mail-out5.uio.no with esmtp (Exim 4.80.1)
+	(envelope-from <e.j.oltedal@fys.uio.no>)
+	id 1YiK0U-0007Xc-Ad
+	for linux-nfs@vger.kernel.org; Wed, 15 Apr 2015 11:53:18 +0200
+Received: from 1x-193-157-193-61.uio.no ([193.157.193.61])
+	by mail-mx4.uio.no with esmtpsa (TLSv1.2:DHE-RSA-AES128-SHA:128)
+	user einojo (Exim 4.80)
+	(envelope-from <e.j.oltedal@fys.uio.no>)
+	id 1YiK0T-0008JU-Sh
+	for linux-nfs@vger.kernel.org; Wed, 15 Apr 2015 11:53:18 +0200
+Message-ID: <552E3508.5000403@fys.uio.no>
+Date: Wed, 15 Apr 2015 11:53:12 +0200
+From: Eino Juhani Oltedal <e.j.oltedal@fys.uio.no>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20150414192325.GB20599@infradead.org>
+To: linux-nfs@vger.kernel.org
+Subject: Problem installing nfs-utils to non standard dir
+Content-Type: text/plain; charset=utf-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Apr 14, 2015 at 12:23:25PM -0700, Christoph Hellwig wrote:
-> On Tue, Apr 14, 2015 at 11:54:08AM -0700, Zach Brown wrote:
-> > Is this relying on btrfs range cloning being atomic?  It certainly
-> > doesn't look atomic.  It can modify items across an arbitrarily large
-> > number of leaf blocks.  It can make the changes across multiple
-> > transactions which could introduce partial modification on reboot after
-> > crashes.  It can fail (the dynamic duo: enomem, eio) and leave the
-> > desintation partially modified.
-> 
-> I didn't mean atomic in the failure atomic sense, but in the sense of
-> being atomic vs other writes, similar to how Posix specifies it for
-> writes vs other writes.  Guess I need to express this intent better.
+Hi!
 
-Ah, right, OK.
+I'm trying to build nfs from source. I'm using nfs-utils-1.3.2 from 
+http://sourceforge.net/projects/nfs/files/nfs-utils/1.3.2/.
+I configure using the following command
 
-- z
+     ./configure --prefix=/home/username/installs/tmp 
+--exec-prefix=/home/username/installs/tmp
+
+When i run "make install" most of the packages are put under 
+/home/username/installs/tmp, but for some reason the
+install script tries to put osd_login under /sbin, which results in an 
+error:
+
+     Making install in osd_login
+     make[2]: Entering directory 
+`/home/username/installs/nfs-utils-1.3.2/utils/osd_login'
+     make[3]: Entering directory 
+`/home/username/installs/nfs-utils-1.3.2/utils/osd_login'
+         /usr/bin/mkdir -p '/sbin'
+         /usr/bin/install -c osd_login '/sbin'
+         /usr/bin/install: cannot remove ‘/sbin/osd_login’: Permission 
+denied
+         make[3]: *** [install-dist_sbinSCRIPTS] Error 1
+
+This is not supposed to happen, is it? Is there an easy way to fix it? I 
+get the same error trying to build nfs-utils-1.3.1 as well.
+
+Cheers,
+Eino
