@@ -1,71 +1,102 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.polytechnique.org ([129.104.30.34]:49514 "EHLO
-	mx1.polytechnique.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933537AbbDPKuH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Apr 2015 06:50:07 -0400
-From: Nicolas Iooss <nicolas.iooss_linux@m4x.org>
-To: roy.qing.li@gmail.com, trond.myklebust@primarydata.com,
-        anna.schumaker@netapp.com, linux-nfs@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org, Nicolas Iooss <nicolas.iooss_linux@m4x.org>
-Subject: [PATCH] Revert "nfs: replace nfs_add_stats with nfs_inc_stats when add one"
-Date: Thu, 16 Apr 2015 18:48:39 +0800
-Message-Id: <1429181319-6163-1-git-send-email-nicolas.iooss_linux@m4x.org>
-In-Reply-To: <55115E3C.2030104@m4x.org>
-References: <55115E3C.2030104@m4x.org>
+Received: from mail-pd0-f172.google.com ([209.85.192.172]:36299 "EHLO
+	mail-pd0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757194AbbDPMpk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Apr 2015 08:45:40 -0400
+Received: by pdea3 with SMTP id a3so90936129pde.3
+        for <linux-nfs@vger.kernel.org>; Thu, 16 Apr 2015 05:45:40 -0700 (PDT)
+Message-ID: <552FAEEA.2090604@gmail.com>
+Date: Thu, 16 Apr 2015 20:45:30 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
+MIME-Version: 1.0
+To: Eino Juhani Oltedal <e.j.oltedal@fys.uio.no>, linux-nfs@vger.kernel.org
+Subject: Re: Problem installing nfs-utils to non standard dir
+References: <552E3508.5000403@fys.uio.no> <552E86A8.6080506@gmail.com> <552E9D80.1090003@fys.uio.no> <552F3DE2.4020603@gmail.com> <552F8394.4070701@fys.uio.no>
+In-Reply-To: <552F8394.4070701@fys.uio.no>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This reverts commit 5a254d08b086d80cbead2ebcee6d2a4b3a15587a.
+On 4/16/2015 5:40 PM, Eino Juhani Oltedal wrote:
+> The arm machine does not have rpcinfo.
+> On the server i get this:
+>  rpcinfo -p
+>    program vers proto   port  service
+>     100000    4   tcp    111  portmapper
+>     100000    3   tcp    111  portmapper
+>     100000    2   tcp    111  portmapper
+>     100000    4   udp    111  portmapper
+>     100000    3   udp    111  portmapper
+>     100000    2   udp    111  portmapper
+>     100024    1   udp  43663  status
+>     100005    1   udp  20048  mountd
+>     100024    1   tcp  39197  status
+>     100005    1   tcp  20048  mountd
+>     100005    2   udp  20048  mountd
+>     100005    2   tcp  20048  mountd
+>     100005    3   udp  20048  mountd
+>     100005    3   tcp  20048  mountd
+>     100003    3   tcp   2049  nfs
+>     100003    4   tcp   2049  nfs
+>     100227    3   tcp   2049  nfs_acl
+>     100003    3   udp   2049  nfs
+>     100003    4   udp   2049  nfs
+>     100227    3   udp   2049  nfs_acl
+>     100021    1   udp  55946  nlockmgr
+>     100021    3   udp  55946  nlockmgr
+>     100021    4   udp  55946  nlockmgr
+>     100021    1   tcp  57551  nlockmgr
+>     100021    3   tcp  57551  nlockmgr
+>     100021    4   tcp  57551  nlockmgr
+> 
+> My /etc/exports:
+>  /share/ 192.168.0.0/24(rw,fsid=0,no_subtree_check)
+>  /share/test 192.168.0.0/24(rw,no_subtree_check,nohide)
+> 
+> I am able to mount the nfs share on a third computer, but not on the arm computer that uses my build.
 
-Since commit 5a254d08b086 ("nfs: replace nfs_add_stats with
-nfs_inc_stats when add one"), nfs_readpage and nfs_do_writepage use
-nfs_inc_stats to increment NFSIOS_READPAGES and NFSIOS_WRITEPAGES
-instead of nfs_add_stats.
+It means it's not nfs server's problem.
 
-However nfs_inc_stats does not do the same thing as nfs_add_stats with
-value 1 because these functions work on distinct stats:
-nfs_inc_stats increments stats from "enum nfs_stat_eventcounters" (in
-server->io_stats->events) and nfs_add_stats those from "enum
-nfs_stat_bytecounters" (in server->io_stats->bytes).
+> On 04/16/2015 06:43 AM, Kinglong Mee wrote:
+>> On 4/16/2015 1:18 AM, Eino Juhani Oltedal wrote:
+>>> Thank you for the help. I was able to avoid the error by using make DESTDIR=${HOME}/installs/arm
+>>> instead of the prefix. Then i copied everything  under ${HOME}/installs/arm over to the root of the
+>>> ARM file-system.
+>>>
+>>> However when trying to use the newly built nfs I get some errors:
+>>>
+>>> mount -t nfs 192.168.0.104:/test /mnt
+>>>      mount.nfs: rpc.statd is not running but is required for remote locking.
+>>>      mount.nfs: Either use '-o nolock' to keep locks local, or start statd.
+>>>      mount.nfs: an incorrect mount option was specified
+>>>
+>>> mount -t nfs -o nolock 192.168.0.104:/test /mnt
+>>>      mount.nfs: Protocol not supported
+>>>
+>>>
+>>> showmount also gives an error:
+>>>      showmount -e 192.168.0.104
+>>>      clnt_create: RPC: Unknown protocol
 
-Signed-off-by: Nicolas Iooss <nicolas.iooss_linux@m4x.org>
----
+static CLIENT *nfs_get_mount_client(const char *hostname, rpcvers_t vers)
+{
+        rpcprog_t program = nfs_getrpcbyname(MOUNTPROG, mount_pgm_tbl);
+        CLIENT *client;
 
-As I haven't got any reply from the message I sent a few weeks ago, I
-am now sending a patch.
-More details about the reason of this revert can be found in my
-previous e-mail, https://lkml.org/lkml/2015/3/24/226.
+        client = clnt_create(hostname, program, vers, "tcp");
+        if (client)
+                return client;
+        client = clnt_create(hostname, program, vers, "udp");
+        if (client)
+                return client;
 
- fs/nfs/read.c  | 2 +-
- fs/nfs/write.c | 2 +-
- 2 files changed, 2 insertions(+), 2 deletions(-)
+        clnt_pcreateerror("clnt_create");
+        exit(1);
+}
 
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index 568ecf0a880f..848d8b1db4ce 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -284,7 +284,7 @@ int nfs_readpage(struct file *file, struct page *page)
- 	dprintk("NFS: nfs_readpage (%p %ld@%lu)\n",
- 		page, PAGE_CACHE_SIZE, page_file_index(page));
- 	nfs_inc_stats(inode, NFSIOS_VFSREADPAGE);
--	nfs_inc_stats(inode, NFSIOS_READPAGES);
-+	nfs_add_stats(inode, NFSIOS_READPAGES, 1);
- 
- 	/*
- 	 * Try to flush any pending writes to the file..
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 759931088094..fae7f97ad34d 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -580,7 +580,7 @@ static int nfs_do_writepage(struct page *page, struct writeback_control *wbc, st
- 	int ret;
- 
- 	nfs_inc_stats(inode, NFSIOS_VFSWRITEPAGE);
--	nfs_inc_stats(inode, NFSIOS_WRITEPAGES);
-+	nfs_add_stats(inode, NFSIOS_WRITEPAGES, 1);
- 
- 	nfs_pageio_cond_complete(pgio, page_file_index(page));
- 	ret = nfs_page_async_flush(pgio, page, wbc->sync_mode == WB_SYNC_NONE);
--- 
-2.3.5
+Showmount prints the error message only clnt_create both "tcp" and "udp" fail.
+Does your arm machine not support "tcp" and "udp"? or the firewalld is up?
+Can you check with firewalld stop?
 
+thanks,
+Kinglong Mee
