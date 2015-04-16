@@ -1,122 +1,58 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f182.google.com ([209.85.213.182]:34923 "EHLO
-	mail-ig0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752756AbbDPSHQ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Apr 2015 14:07:16 -0400
-Received: by igbyr2 with SMTP id yr2so84935401igb.0
-        for <linux-nfs@vger.kernel.org>; Thu, 16 Apr 2015 11:07:16 -0700 (PDT)
+Received: from userp1040.oracle.com ([156.151.31.81]:19413 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751207AbbDPTA6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Apr 2015 15:00:58 -0400
+Message-ID: <553006BF.6050306@oracle.com>
+Date: Thu, 16 Apr 2015 12:00:15 -0700
+From: Shirley Ma <shirley.ma@oracle.com>
 MIME-Version: 1.0
-In-Reply-To: <CAN-5tyEx_Pp0q58EiYSLLAZZ1cR4Tn9=gkD7b_pubsZdXymsFg@mail.gmail.com>
-References: <CAN-5tyE60A+2h6My0Ebb=5j4DbVifDBuG6CjymCRsRefNTMd=w@mail.gmail.com>
-	<CAHQdGtSTc-34R_C0TwYmwk8KdQFadxQbhgmoTxzhWKhsYjiFww@mail.gmail.com>
-	<CAN-5tyEx_Pp0q58EiYSLLAZZ1cR4Tn9=gkD7b_pubsZdXymsFg@mail.gmail.com>
-Date: Thu, 16 Apr 2015 14:07:15 -0400
-Message-ID: <CAN-5tyGSEURn62cawEbudhQ5gsEdRD+HB7qKjYRS-3L-OLsPrQ@mail.gmail.com>
-Subject: Re: is receiving BAD_STATEID during IO on delegated stateid unrecoverable?
-From: Olga Kornievskaia <aglo@umich.edu>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+To: Chuck Lever <chuck.lever@oracle.com>,
+        Jeff Becker <jeffrey.c.becker@nasa.gov>,
+        Steve Wise <swise@opengridcomputing.com>,
+        Steve Dickson <SteveD@redhat.com>,
+        "<Devesh.Sharma@emulex.com>" <Devesh.Sharma@emulex.com>,
+        Rupert Dance <rsdance@soft-forge.com>,
+        Doug Ledford <dledford@redhat.com>,
+        Anna Schumaker <Anna.Schumaker@netapp.com>,
+        "<yanb@mellanox.com>" <yanb@mellanox.com>,
+        "Coulter, Susan K" <skc@lanl.gov>, wendy.cheng@intel.com,
+        Dominique Martinet <dominique.martinet@cea.fr>, sprabhu@redhat.com
+CC: linux-rdma <linux-rdma@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: NFSoRDMA bi-weekly developers meeting minutes (4/16/15)
+References: <53BC2123.4070206@oracle.com> <54063CB7.6060503@oracle.com> <54C7D09D.3000600@oracle.com> <54C937BA.9020606@oracle.com> <552EE56E.5060705@oracle.com>
+In-Reply-To: <552EE56E.5060705@oracle.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Which of the two solutions would you prefer as fix?
+Attendees:
 
-Problem statement: SETATTR is sent with a delegation stateid after the
-original open was closed so we have no open state. When the server
-fails the SETATTR with stateid-type of error BAD_STATEID or
-ADMIN_REVOKED, client fails to recover because it has no open state to
-initiate recovery and instead fails with EIO.
 
-Solution #1: When we need to send a SETATTR and we have no state, use
-zero stateid instead. Disadvantage of this approach is that if the
-delegation state is actually valid, then it'll force a delegation to
-be recalled by the server.
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index ad7cf7e..4dda0f1 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2485,7 +2485,8 @@ static int _nfs4_do_setattr(struct inode *inode, struct rp
-        truncate = (sattr->ia_valid & ATTR_SIZE) ? true : false;
-        fmode = truncate ? FMODE_WRITE : FMODE_READ;
+Jeff Becker (NASA)
+Wendy Cheng (Intel)
+Chuck Lever (Oracle)
+Doug Ledford (RedHat)
+Shirley Ma (Oracle)
+Anna Schumaker (Net App)
+Steve Wise (OpenGridComputing, Chelsio)
 
--       if (nfs4_copy_delegation_stateid(&arg.stateid, inode, fmode)) {
-+       if (state != NULL &&
-+               nfs4_copy_delegation_stateid(&arg.stateid, inode, fmode)) {
-                /* Use that stateid */
-        } else if (truncate && state != NULL) {
+Today's meeting notes:
 
-Solution #2: If we get a stateid-like error on a SETATTR and we have
-no state, return/remove bad delegation and retry the call again which
-will have the code pick the zero stateid.
+NFSoRDMA server support:
+-----------------------
+NFSoRDMA Server is still technology preview in RHEL 7.2, since customers are looking for Linux NFSoRDMA server support, there is possible to open NFSoRDMA server support in the future. Jeff from NASA has some plan to deploy Linux NFSoRDMA, Mellanox OFED stack release might not support it, move to upstream OFED 3.18 is an option. Their fabrics is InfiniBand.
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index ad7cf7e..be16143 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2535,6 +2535,14 @@ static int nfs4_do_setattr(struct inode *inode, struct rp
-                                        err = -EACCES;
-                                goto out;
-                        }
-+               case -NFS4ERR_DELEG_REVOKED:
-+               case -NFS4ERR_ADMIN_REVOKED:
-+               case -NFS4ERR_BAD_STATEID:
-+                       if (state == NULL) {
-+                               nfs4_inode_return_delegation(inode);
-+                               exception.retry = 1;
-+                               continue;
-+                       }
-                }
-                err = nfs4_handle_exception(server, err, &exception);
-        } while (exception.retry);
+NFSoRDMA test plan (Doug, Wendy, Chuck)
+------------------
+Doug talked about future NFSoRDMA test infrastructure in RedHat. He has completed SCSI disk drivers characterization, the BW is around 3.9GB/s, next is file system, then NFSoRDMA and storage RDMA. Performance work will be investigated in both HW and software stack to see where to optimize it. He is open to take inputs on which particular file system to test, people can give suggests on which file systems they are interested. Chuck suggested NFSoRDMA performance work should include tempfs test since persistent disk is too slow for NFSoRDMA transport layer performance evaluation. The fabrics is mixed with DDR, QDR and EDR.
+  
+Wendy also talked about the possibility NFSoRDMA test in Intel. Currently they don't include NFSoRDMA in SPECNFS test, she asked whether it's possible to include it. Chuck replied the test client doesn't support NFSoRDMA client. He will talk to the maintainer to see whether NFSoRDMA can be supported, but needs to good reason to add it. Intel's test set up is RHEL 7.1, if enables NFSoRDMA test, the kernel should move to 3.18.
 
-On Wed, Apr 15, 2015 at 2:27 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
-> Hi Trond,
->
-> I'm resurrecting an old client received "BAD_STATEID" using delegation
-> stateid on some operation thread.... If client used a delegation
-> stateid on a SETATTR (i.e. for open truncate) and received this error,
-> does this also lead to unrecoverable state or do you think client
-> should try recover? I can see the same argument that if state was
-> revoked another client could have change the file already.
->
-> If you think it's recoverable, there is a bug in the client because it
-> doesn't recover. I can explain why but there is no need if this is an
-> acceptable behavior.
->
-> Thanks.
->
-> On Thu, Nov 20, 2014 at 4:14 PM, Trond Myklebust
-> <trond.myklebust@primarydata.com> wrote:
->> On Thu, Nov 20, 2014 at 12:57 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
->>> Hi folks,
->>>
->>> As far as I can tell, receiving a BAD_STATEID on an IO operation on a
->>> delegated stateid when there was a local lock acquired for this IO is
->>> unrecoverable — leads to EIO. Codewise, stateid recovery sees that it
->>> has a local lock and marks it lost and retry of the IO operation
->>> returns the EIO.
->>>
->>> Is the reason for seizing the IO is that if the server for some reason
->>> revoked this stateid then there is no guarantee about the locks and
->>> thus doing any IO.
->>>
->>> This also applies to both 4.0 and 4.1 code as far as I can tell.
->>>
->>> Can somebody confirm or tell me if this is wrong?
->>>
->>
->> Yes. If the server has lost the lock, then the application has lost
->> atomicity for the set of operations that were supposed to be protected
->> by that lock, and this is why we return the EIO. In older kernels we
->> did try to recover the lock, but that can lead to application-visible
->> corruption of data, and so we no longer do that unless you explicitly
->> set the nfs 'recover_lost_locks' module parameter - see
->> Documentation/kernel-parameters.txt.
->>
->> --
->> Trond Myklebust
->>
->> Linux NFS client maintainer, PrimaryData
->>
->> trond.myklebust@primarydata.com
+NFS bake-a-thon planning: (Doug, Chuck)
+-------------------------
+Chuck and Doug talked about incoming bake-a-thon plan, Doug has a small IB test et up, he can bring it to test. Solaris requires particular HCAs to work. They will talk to SteveD about several different possibilities to make it work.
+
+NFSoRDMA performance: (Shirley, Chuck, SteveW)
+---------------------
