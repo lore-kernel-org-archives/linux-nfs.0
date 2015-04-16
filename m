@@ -1,41 +1,122 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out4.uio.no ([129.240.10.15]:38197 "EHLO mail-out4.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753347AbbDPP7z (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 16 Apr 2015 11:59:55 -0400
-Message-ID: <552FDC79.8080606@fys.uio.no>
-Date: Thu, 16 Apr 2015 17:59:53 +0200
-From: Eino Juhani Oltedal <e.j.oltedal@fys.uio.no>
+Received: from mail-ig0-f182.google.com ([209.85.213.182]:34923 "EHLO
+	mail-ig0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752756AbbDPSHQ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Apr 2015 14:07:16 -0400
+Received: by igbyr2 with SMTP id yr2so84935401igb.0
+        for <linux-nfs@vger.kernel.org>; Thu, 16 Apr 2015 11:07:16 -0700 (PDT)
 MIME-Version: 1.0
-To: Kinglong Mee <kinglongmee@gmail.com>, linux-nfs@vger.kernel.org
-Subject: Re: Problem installing nfs-utils to non standard dir
-References: <552E3508.5000403@fys.uio.no> <552E86A8.6080506@gmail.com> <552E9D80.1090003@fys.uio.no> <552F3DE2.4020603@gmail.com> <552F8394.4070701@fys.uio.no> <552FAEEA.2090604@gmail.com> <552FC06E.2020204@fys.uio.no> <552FDAE8.9010208@gmail.com>
-In-Reply-To: <552FDAE8.9010208@gmail.com>
-Content-Type: text/plain; charset=utf-8; format=flowed
+In-Reply-To: <CAN-5tyEx_Pp0q58EiYSLLAZZ1cR4Tn9=gkD7b_pubsZdXymsFg@mail.gmail.com>
+References: <CAN-5tyE60A+2h6My0Ebb=5j4DbVifDBuG6CjymCRsRefNTMd=w@mail.gmail.com>
+	<CAHQdGtSTc-34R_C0TwYmwk8KdQFadxQbhgmoTxzhWKhsYjiFww@mail.gmail.com>
+	<CAN-5tyEx_Pp0q58EiYSLLAZZ1cR4Tn9=gkD7b_pubsZdXymsFg@mail.gmail.com>
+Date: Thu, 16 Apr 2015 14:07:15 -0400
+Message-ID: <CAN-5tyGSEURn62cawEbudhQ5gsEdRD+HB7qKjYRS-3L-OLsPrQ@mail.gmail.com>
+Subject: Re: is receiving BAD_STATEID during IO on delegated stateid unrecoverable?
+From: Olga Kornievskaia <aglo@umich.edu>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hm, it seems to be there. ps output:
+Which of the two solutions would you prefer as fix?
 
-    26 root         0 SW<  [nfsiod]
+Problem statement: SETATTR is sent with a delegation stateid after the
+original open was closed so we have no open state. When the server
+fails the SETATTR with stateid-type of error BAD_STATEID or
+ADMIN_REVOKED, client fails to recover because it has no open state to
+initiate recovery and instead fails with EIO.
 
-Thanks,
-Eino
+Solution #1: When we need to send a SETATTR and we have no state, use
+zero stateid instead. Disadvantage of this approach is that if the
+delegation state is actually valid, then it'll force a delegation to
+be recalled by the server.
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index ad7cf7e..4dda0f1 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2485,7 +2485,8 @@ static int _nfs4_do_setattr(struct inode *inode, struct rp
+        truncate = (sattr->ia_valid & ATTR_SIZE) ? true : false;
+        fmode = truncate ? FMODE_WRITE : FMODE_READ;
 
-On 04/16/2015 05:53 PM, Kinglong Mee wrote:
-> On 4/16/2015 10:00 PM, Eino Juhani Oltedal wrote:
->> This is a very minimal linux install, it does not have firewalld.
->>
->> I think that this error might be caused by the kernel being built
->> without nfs support. I'm unsure how to test this without rebuilding the kernel, as I did not build it myself.
->>
->> I will try rebuilding the kernel tonight, to see if that helps.
-> You can checking nfsiod process, "# ps -ajx | grep nfsiod",
-> If it is exist, nfs is OK.
+-       if (nfs4_copy_delegation_stateid(&arg.stateid, inode, fmode)) {
++       if (state != NULL &&
++               nfs4_copy_delegation_stateid(&arg.stateid, inode, fmode)) {
+                /* Use that stateid */
+        } else if (truncate && state != NULL) {
+
+Solution #2: If we get a stateid-like error on a SETATTR and we have
+no state, return/remove bad delegation and retry the call again which
+will have the code pick the zero stateid.
+
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index ad7cf7e..be16143 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2535,6 +2535,14 @@ static int nfs4_do_setattr(struct inode *inode, struct rp
+                                        err = -EACCES;
+                                goto out;
+                        }
++               case -NFS4ERR_DELEG_REVOKED:
++               case -NFS4ERR_ADMIN_REVOKED:
++               case -NFS4ERR_BAD_STATEID:
++                       if (state == NULL) {
++                               nfs4_inode_return_delegation(inode);
++                               exception.retry = 1;
++                               continue;
++                       }
+                }
+                err = nfs4_handle_exception(server, err, &exception);
+        } while (exception.retry);
+
+On Wed, Apr 15, 2015 at 2:27 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
+> Hi Trond,
 >
-> thanks,
-> Kinglong Mee
->   
+> I'm resurrecting an old client received "BAD_STATEID" using delegation
+> stateid on some operation thread.... If client used a delegation
+> stateid on a SETATTR (i.e. for open truncate) and received this error,
+> does this also lead to unrecoverable state or do you think client
+> should try recover? I can see the same argument that if state was
+> revoked another client could have change the file already.
 >
-
-
+> If you think it's recoverable, there is a bug in the client because it
+> doesn't recover. I can explain why but there is no need if this is an
+> acceptable behavior.
+>
+> Thanks.
+>
+> On Thu, Nov 20, 2014 at 4:14 PM, Trond Myklebust
+> <trond.myklebust@primarydata.com> wrote:
+>> On Thu, Nov 20, 2014 at 12:57 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
+>>> Hi folks,
+>>>
+>>> As far as I can tell, receiving a BAD_STATEID on an IO operation on a
+>>> delegated stateid when there was a local lock acquired for this IO is
+>>> unrecoverable — leads to EIO. Codewise, stateid recovery sees that it
+>>> has a local lock and marks it lost and retry of the IO operation
+>>> returns the EIO.
+>>>
+>>> Is the reason for seizing the IO is that if the server for some reason
+>>> revoked this stateid then there is no guarantee about the locks and
+>>> thus doing any IO.
+>>>
+>>> This also applies to both 4.0 and 4.1 code as far as I can tell.
+>>>
+>>> Can somebody confirm or tell me if this is wrong?
+>>>
+>>
+>> Yes. If the server has lost the lock, then the application has lost
+>> atomicity for the set of operations that were supposed to be protected
+>> by that lock, and this is why we return the EIO. In older kernels we
+>> did try to recover the lock, but that can lead to application-visible
+>> corruption of data, and so we no longer do that unless you explicitly
+>> set the nfs 'recover_lost_locks' module parameter - see
+>> Documentation/kernel-parameters.txt.
+>>
+>> --
+>> Trond Myklebust
+>>
+>> Linux NFS client maintainer, PrimaryData
+>>
+>> trond.myklebust@primarydata.com
