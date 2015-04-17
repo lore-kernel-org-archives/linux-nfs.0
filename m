@@ -1,51 +1,73 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:59340 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:51172 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751810AbbDQR40 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 17 Apr 2015 13:56:26 -0400
-Message-ID: <55314947.7040706@RedHat.com>
-Date: Fri, 17 Apr 2015 13:56:23 -0400
-From: Steve Dickson <SteveD@redhat.com>
+	id S1752325AbbDQSPH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 17 Apr 2015 14:15:07 -0400
+Date: Fri, 17 Apr 2015 14:15:03 -0400
+From: Scott Mayhew <smayhew@redhat.com>
+To: Kinglong Mee <kinglongmee@gmail.com>
+Cc: Steve Dickson <SteveD@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] rpc.mountd: Remove duplicate and invalid secinfo setting
+Message-ID: <20150417181503.GT63078@tonberry.usersys.redhat.com>
+References: <552FB045.80604@gmail.com>
 MIME-Version: 1.0
-To: Gregory Boyce <gregory.boyce@gmail.com>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: Problems mounting via UDP from a netapp with multiple interfaces
-References: <CALs61ueTJ4_WT00Sqz5TKzhkbrS32UjcQ0zVw6B8ikahE4Rhcw@mail.gmail.com>	<CAHQdGtSbn643SVAZ2Y_VzxmS_b-9=+pqPGWGoHtt25hpHpygLw@mail.gmail.com>	<CALs61uewbb28BcZ=d_qaYWtvUt5-xLGkn1uMXWhpjb_38f8ZtQ@mail.gmail.com>	<CAHQdGtSZcNj40YFYbKVL7M5ZtBgD278e6ifqM1hpb6BadU4j5A@mail.gmail.com>	<CALs61udukSrCsDYTyohSQdwbtcvvW672=+Qyit56iTE3qViSSw@mail.gmail.com>	<CALs61ue2HBxv6bJrGFoDj43vaYc_Jxf4-RJJ-vRBy9j2wn+tXA@mail.gmail.com> <CALs61ucnKU5J8NJ-unJNsYw_zsPb+_aYbLqndc0yEbtirixqhw@mail.gmail.com>
-In-Reply-To: <CALs61ucnKU5J8NJ-unJNsYw_zsPb+_aYbLqndc0yEbtirixqhw@mail.gmail.com>
-Content-Type: text/plain; charset=windows-1252
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <552FB045.80604@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Thu, 16 Apr 2015, Kinglong Mee wrote:
 
-
-On 04/14/2015 03:39 PM, Gregory Boyce wrote:
-> On Tue, Apr 14, 2015 at 3:37 PM, Gregory Boyce <gregory.boyce@gmail.com> wrote:
->> On Fri, Apr 10, 2015 at 3:04 PM Gregory Boyce <gregory.boyce@gmail.com>
->> wrote:
->>>
->>> On Fri, Apr 10, 2015 at 2:45 PM, Trond Myklebust
->>> <trond.myklebust@primarydata.com> wrote:
->>>
->>>> No. You are not supposed to be able to work around security issues,
->>>> and it is indeed a security issue when a client gets a reply from an
->>>> IP address that it does not recognise as being the same as the one it
->>>> sent an RPC to.
->>>
->>> "Working around" security issues is a rather common and accepted
->>> practice when there are mitigating controls in place.  It's never a
->>> black and white world.
->>>
->>
->>
->> The attached patch was able to work around the issue for us until we can get
->> the filers working in a more expected manner.  I'm sending it along in case
->> anyone else can find a use for it, or if you want to apply it in order to
->> give people an option for cases like this.
+> NFSD return reply of client's SECINFO_NO_NAME request with four
+> security information number as, 1 1 0 0
 > 
-> Re-sending since Google Inbox likes to default to HTML e-mail.
+> It's caused by commit 4a1ad4aa30,
+> "mountd: Enable all auth flavors on pseudofs exports"
 > 
-Could you please resend this patch using the proper Sign-off-by,
-subject and description formats as describe in 
-   https://www.kernel.org/doc/Documentation/SubmittingPatches
+> This patch removes duplicate secinfo and invalid secinfo (zero).
+> 
+> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
 
-steved.
+This is because flav_map has both AUTH_UNIX/AUTH_SYS and
+AUTH_NULL/AUTH_NONE.  I had discussed it with Steve, but since I didn't
+observe any problems caused by it in my testing I just left them in.
+
+Acked-by: Scott Mayhew <smayhew@redhat.com>
+
+> ---
+>  support/nfs/exports.c | 2 +-
+>  utils/mountd/v4root.c | 3 +++
+>  2 files changed, 4 insertions(+), 1 deletion(-)
+> 
+> diff --git a/support/nfs/exports.c b/support/nfs/exports.c
+> index 761a046..0aea6f1 100644
+> --- a/support/nfs/exports.c
+> +++ b/support/nfs/exports.c
+> @@ -408,7 +408,7 @@ int secinfo_addflavor(struct flav_info *flav, struct exportent *ep)
+>  	struct sec_entry *p;
+>  
+>  	for (p=ep->e_secinfo; p->flav; p++) {
+> -		if (p->flav == flav)
+> +		if (p->flav == flav || p->flav->fnum == flav->fnum)
+>  			return p - ep->e_secinfo;
+>  	}
+>  	if (p - ep->e_secinfo >= SECFLAVOR_COUNT) {
+> diff --git a/utils/mountd/v4root.c b/utils/mountd/v4root.c
+> index 429ebb8..d521725 100644
+> --- a/utils/mountd/v4root.c
+> +++ b/utils/mountd/v4root.c
+> @@ -69,6 +69,9 @@ set_pseudofs_security(struct exportent *pseudo, int flags)
+>  	for (flav = flav_map; flav < flav_map + flav_map_size; flav++) {
+>  		struct sec_entry *new;
+>  
+> +		if (!flav->fnum)
+> +			continue;
+> +
+>  		i = secinfo_addflavor(flav, pseudo);
+>  		new = &pseudo->e_secinfo[i];
+>  
+> -- 
+> 2.3.5
+> 
+
