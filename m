@@ -1,73 +1,108 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:51172 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([173.255.197.46]:36590 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752325AbbDQSPH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 17 Apr 2015 14:15:07 -0400
-Date: Fri, 17 Apr 2015 14:15:03 -0400
-From: Scott Mayhew <smayhew@redhat.com>
+	id S1751052AbbDQVWi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 17 Apr 2015 17:22:38 -0400
+Date: Fri, 17 Apr 2015 17:22:36 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
 To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: Steve Dickson <SteveD@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] rpc.mountd: Remove duplicate and invalid secinfo setting
-Message-ID: <20150417181503.GT63078@tonberry.usersys.redhat.com>
-References: <552FB045.80604@gmail.com>
+Cc: Giuseppe Cantavenera <giuseppe.cantavenera.ext@nokia.com>,
+        linux-nfs@vger.kernel.org, alexander.sverdlin@nokia.com,
+        Lorenzo Restelli <lorenzo.restelli.ext@nokia.com>
+Subject: Re: [PATCH] nfsd: fix: prevent BUG_ON registering rpc_pipefs_event
+ for notifications only after nfsd_net_id is valid
+Message-ID: <20150417212236.GA28426@fieldses.org>
+References: <1429266331-2408-1-git-send-email-giuseppe.cantavenera.ext@nokia.com>
+ <553113AD.6030702@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <552FB045.80604@gmail.com>
+In-Reply-To: <553113AD.6030702@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 16 Apr 2015, Kinglong Mee wrote:
-
-> NFSD return reply of client's SECINFO_NO_NAME request with four
-> security information number as, 1 1 0 0
+On Fri, Apr 17, 2015 at 10:07:41PM +0800, Kinglong Mee wrote:
+> On 4/17/2015 6:25 PM, Giuseppe Cantavenera wrote:
+> > nfsd triggered a BUG_ON in net_generic(...) when rpc_pipefs_event(...)
+> > in fs/nfsd/nfs4recover.c was called before assigning ntfsd_net_id.
+> > The following was observed on a MIPS 32-core processor:
+> > kernel: Call Trace:
+> > kernel: [<ffffffffc00bc5e4>] rpc_pipefs_event+0x7c/0x158 [nfsd]
+> > kernel: [<ffffffff8017a2a0>] notifier_call_chain+0x70/0xb8
+> > kernel: [<ffffffff8017a4e4>] __blocking_notifier_call_chain+0x4c/0x70
+> > kernel: [<ffffffff8053aff8>] rpc_fill_super+0xf8/0x1a0
+> > kernel: [<ffffffff8022204c>] mount_ns+0xb4/0xf0
+> > kernel: [<ffffffff80222b48>] mount_fs+0x50/0x1f8
+> > kernel: [<ffffffff8023dc00>] vfs_kern_mount+0x58/0xf0
+> > kernel: [<ffffffff802404ac>] do_mount+0x27c/0xa28
+> > kernel: [<ffffffff80240cf0>] SyS_mount+0x98/0xe8
+> > kernel: [<ffffffff80135d24>] handle_sys64+0x44/0x68
+> > kernel:
+> > kernel:
+> >         Code: 0040f809  00000000  2e020001 <00020336> 3c12c00d  3c02801a  de100000  6442eb98  0040f809
+> > kernel: ---[ end trace 7471374335809536 ]---
+> > 
+> > Fixed this behaviour by calling register_pernet_subsys(&nfsd_net_ops) before
+> > registering rpc_pipefs_event(...) with the notifier chain.
+> > 
+> > Signed-off-by: Giuseppe Cantavenera <giuseppe.cantavenera.ext@nokia.com>
+> > Signed-off-by: Lorenzo Restelli <lorenzo.restelli.ext@nokia.com>
 > 
-> It's caused by commit 4a1ad4aa30,
-> "mountd: Enable all auth flavors on pseudofs exports"
-> 
-> This patch removes duplicate secinfo and invalid secinfo (zero).
-> 
-> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+> Make sense,
+> Reviewed-by: Kinglong Mee <kinglongmee@gmail.com>
 
-This is because flav_map has both AUTH_UNIX/AUTH_SYS and
-AUTH_NULL/AUTH_NONE.  I had discussed it with Steve, but since I didn't
-observe any problems caused by it in my testing I just left them in.
+Thanks, applying.--b.
 
-Acked-by: Scott Mayhew <smayhew@redhat.com>
-
-> ---
->  support/nfs/exports.c | 2 +-
->  utils/mountd/v4root.c | 3 +++
->  2 files changed, 4 insertions(+), 1 deletion(-)
 > 
-> diff --git a/support/nfs/exports.c b/support/nfs/exports.c
-> index 761a046..0aea6f1 100644
-> --- a/support/nfs/exports.c
-> +++ b/support/nfs/exports.c
-> @@ -408,7 +408,7 @@ int secinfo_addflavor(struct flav_info *flav, struct exportent *ep)
->  	struct sec_entry *p;
->  
->  	for (p=ep->e_secinfo; p->flav; p++) {
-> -		if (p->flav == flav)
-> +		if (p->flav == flav || p->flav->fnum == flav->fnum)
->  			return p - ep->e_secinfo;
->  	}
->  	if (p - ep->e_secinfo >= SECFLAVOR_COUNT) {
-> diff --git a/utils/mountd/v4root.c b/utils/mountd/v4root.c
-> index 429ebb8..d521725 100644
-> --- a/utils/mountd/v4root.c
-> +++ b/utils/mountd/v4root.c
-> @@ -69,6 +69,9 @@ set_pseudofs_security(struct exportent *pseudo, int flags)
->  	for (flav = flav_map; flav < flav_map + flav_map_size; flav++) {
->  		struct sec_entry *new;
->  
-> +		if (!flav->fnum)
-> +			continue;
-> +
->  		i = secinfo_addflavor(flav, pseudo);
->  		new = &pseudo->e_secinfo[i];
->  
-> -- 
-> 2.3.5
-> 
-
+> > ---
+> >  fs/nfsd/nfsctl.c | 16 ++++++++--------
+> >  1 file changed, 8 insertions(+), 8 deletions(-)
+> > 
+> > diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+> > index f34d9de..3ee92a4 100644
+> > --- a/fs/nfsd/nfsctl.c
+> > +++ b/fs/nfsd/nfsctl.c
+> > @@ -1170,15 +1170,15 @@ static int __init init_nfsd(void)
+> >  	int retval;
+> >  	printk(KERN_INFO "Installing knfsd (copyright (C) 1996 okir@monad.swb.de).\n");
+> >  
+> > -	retval = register_cld_notifier();
+> > -	if (retval)
+> > -		return retval;
+> >  	retval = register_pernet_subsys(&nfsd_net_ops);
+> >  	if (retval < 0)
+> > -		goto out_unregister_notifier;
+> > -	retval = nfsd4_init_slabs();
+> > +		return retval;
+> > +	retval = register_cld_notifier();
+> >  	if (retval)
+> >  		goto out_unregister_pernet;
+> > +	retval = nfsd4_init_slabs();
+> > +	if (retval)
+> > +		goto out_unregister_notifier;
+> >  	nfs4_state_init();
+> >  	retval = nfsd_fault_inject_init(); /* nfsd fault injection controls */
+> >  	if (retval)
+> > @@ -1206,10 +1206,10 @@ out_free_stat:
+> >  	nfsd_fault_inject_cleanup();
+> >  out_free_slabs:
+> >  	nfsd4_free_slabs();
+> > -out_unregister_pernet:
+> > -	unregister_pernet_subsys(&nfsd_net_ops);
+> >  out_unregister_notifier:
+> >  	unregister_cld_notifier();
+> > +out_unregister_pernet:
+> > +	unregister_pernet_subsys(&nfsd_net_ops);
+> >  	return retval;
+> >  }
+> >  
+> > @@ -1223,8 +1223,8 @@ static void __exit exit_nfsd(void)
+> >  	nfsd4_free_slabs();
+> >  	nfsd_fault_inject_cleanup();
+> >  	unregister_filesystem(&nfsd_fs_type);
+> > -	unregister_pernet_subsys(&nfsd_net_ops);
+> >  	unregister_cld_notifier();
+> > +	unregister_pernet_subsys(&nfsd_net_ops);
+> >  }
+> >  
+> >  MODULE_AUTHOR("Olaf Kirch <okir@monad.swb.de>");
+> > 
