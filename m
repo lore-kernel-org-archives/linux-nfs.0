@@ -1,116 +1,107 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:36620 "EHLO fieldses.org"
+Received: from smtp02.icteam.com ([80.76.69.28]:47758 "EHLO smtp02.icteam.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752977AbbDQWHL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 17 Apr 2015 18:07:11 -0400
-Date: Fri, 17 Apr 2015 18:07:09 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Dave Chinner <david@fromorbit.com>
-Cc: Anna Schumaker <Anna.Schumaker@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Marc Eshel <eshel@us.ibm.com>, xfs@oss.sgi.com,
-        Christoph Hellwig <hch@infradead.org>, linux-nfs-owner@vger.kernel.org
-Subject: Re: [PATCH v3 3/3] NFSD: Add support for encoding multiple segments
-Message-ID: <20150417220709.GC28426@fieldses.org>
-References: <5515A9C8.6090400@Netapp.com>
- <CAHQdGtRaUYxU2JAAWErH7FT=Gy5JLzAKi-RtqqBSkNFZrhaB9Q@mail.gmail.com>
- <5515C1BF.8000907@Netapp.com>
- <20150327205414.GD27889@fieldses.org>
- <5515C3BE.3040807@Netapp.com>
- <20150327210839.GE27889@fieldses.org>
- <552EBCB2.1040609@Netapp.com>
- <20150415195614.GA31407@fieldses.org>
- <20150415200016.GB31407@fieldses.org>
- <20150415225002.GV13731@dastard>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20150415225002.GV13731@dastard>
+	id S1751449AbbDTQAd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 20 Apr 2015 12:00:33 -0400
+From: Giuseppe Cantavenera <giuseppe.cantavenera.ext@nokia.com>
+To: linux-nfs@vger.kernel.org
+Cc: alexander.sverdlin@nokia.com, bfields@fieldses.org,
+        Giuseppe Cantavenera <giuseppe.cantavenera.ext@nokia.com>,
+        stable@vger.kernel.org,
+        Lorenzo Restelli <lorenzo.restelli.ext@nokia.com>
+Subject: [PATCH v2] nfsd: fix: prevent BUG_ON by registering rpc_pipefs_event only after nfsd_net_id is valid
+Date: Mon, 20 Apr 2015 18:00:08 +0200
+Message-Id: <1429545608-9903-1-git-send-email-giuseppe.cantavenera.ext@nokia.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Apr 16, 2015 at 08:50:02AM +1000, Dave Chinner wrote:
-> On Wed, Apr 15, 2015 at 04:00:16PM -0400, J. Bruce Fields wrote:
-> > On Wed, Apr 15, 2015 at 03:56:14PM -0400, J. Bruce Fields wrote:
-> > > On Wed, Apr 15, 2015 at 03:32:02PM -0400, Anna Schumaker wrote:
-> > > > I just ran some more tests comparing the directio case across
-> > > > different filesystem types.  These tests used three 1G files:  100%
-> > > > data, 100% hole, and mixed file with alternating 4k data and hole
-> > > > segments.  The mixed case seems to be consistently slower compared to
-> > > > NFS v4.1, and I'm at a loss for anything I could do to make it faster.
-> > > > Here are my numbers:
-> > > 
-> > > Have you tried the implementation we discussed that always returns a
-> > > single segment covering the whole requested range, by treating holes as
-> > > data if necessary when they don't cover the whole range?
+nfsd triggered a BUG_ON in net_generic(...) when rpc_pipefs_event(...)
+in fs/nfsd/nfs4recover.c was called before assigning ntfsd_net_id.
+The following was observed on a MIPS 32-core processor:
+kernel: Call Trace:
+kernel: [<ffffffffc00bc5e4>] rpc_pipefs_event+0x7c/0x158 [nfsd]
+kernel: [<ffffffff8017a2a0>] notifier_call_chain+0x70/0xb8
+kernel: [<ffffffff8017a4e4>] __blocking_notifier_call_chain+0x4c/0x70
+kernel: [<ffffffff8053aff8>] rpc_fill_super+0xf8/0x1a0
+kernel: [<ffffffff8022204c>] mount_ns+0xb4/0xf0
+kernel: [<ffffffff80222b48>] mount_fs+0x50/0x1f8
+kernel: [<ffffffff8023dc00>] vfs_kern_mount+0x58/0xf0
+kernel: [<ffffffff802404ac>] do_mount+0x27c/0xa28
+kernel: [<ffffffff80240cf0>] SyS_mount+0x98/0xe8
+kernel: [<ffffffff80135d24>] handle_sys64+0x44/0x68
+kernel:
+kernel:
+        Code: 0040f809  00000000  2e020001 <00020336> 3c12c00d
+                3c02801a  de100000 6442eb98  0040f809
+kernel: ---[ end trace 7471374335809536 ]---
 
-Uh, sorry, I forgot, I think you're running with the patches that
-support full multi-segment READ_PLUS on both sides so there's not that
-issue with multiplying RPC's in this case.
+Fixed this behaviour by calling register_pernet_subsys(&nfsd_net_ops) before
+registering rpc_pipefs_event(...) with the notifier chain.
 
-Still, might be interesting to compare.  And wouldn't hurt to remind us
-of these details when you repost this stuff to help keep my forgetful
-self going in circles.
+Cc: stable@vger.kernel.org
+Signed-off-by: Giuseppe Cantavenera <giuseppe.cantavenera.ext@nokia.com>
+Signed-off-by: Lorenzo Restelli <lorenzo.restelli.ext@nokia.com>
+---
+ v2: Rebased, retested, added CC for the stable tree,
+     minor changes to the commit message
 
-> > > (Also: I assume it's the same as before, but: when you post test
-> > > results, could you repost if necessary:
-> > > 
-> > > 	- what the actual test is
-> > > 	- what the hardware/software setup is on client and server
-> > > 
-> > > so that we have reproduceable results for posterity's sake.)
-> > > 
-> > > Interesting that "Mixed" is a little slower even before READ_PLUS.
-> > > 
-> > > And I guess we should really report this to ext4 people, looks like they
-> > > may have a bug.
-> > 
-> > FWIW, this is what I was using to test SEEK_HOLE/SEEK_DATA and map out
-> > holes on files on my local disk.  Might be worth checking whether the
-> > ext4 slowdowns are reproduceable just with something like this, to rule
-> > out protocol problems.
-> 
-> Wheel reinvention. :)
+ The previous version was not from the mainline, 
+ sorry for that.
+ 
+ Regards,
+ Giuseppe
 
-xfs_io appears to have a lot of wheels.  OK, I'll go read that man page
-one of these days.
+ fs/nfsd/nfsctl.c | 16 ++++++++--------
+ 1 file changed, 8 insertions(+), 8 deletions(-)
 
---b.
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index aa47d75..9690cb4 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -1250,15 +1250,15 @@ static int __init init_nfsd(void)
+ 	int retval;
+ 	printk(KERN_INFO "Installing knfsd (copyright (C) 1996 okir@monad.swb.de).\n");
+ 
+-	retval = register_cld_notifier();
+-	if (retval)
+-		return retval;
+ 	retval = register_pernet_subsys(&nfsd_net_ops);
+ 	if (retval < 0)
+-		goto out_unregister_notifier;
+-	retval = nfsd4_init_slabs();
++		return retval;
++	retval = register_cld_notifier();
+ 	if (retval)
+ 		goto out_unregister_pernet;
++	retval = nfsd4_init_slabs();
++	if (retval)
++		goto out_unregister_notifier;
+ 	retval = nfsd4_init_pnfs();
+ 	if (retval)
+ 		goto out_free_slabs;
+@@ -1290,10 +1290,10 @@ out_exit_pnfs:
+ 	nfsd4_exit_pnfs();
+ out_free_slabs:
+ 	nfsd4_free_slabs();
+-out_unregister_pernet:
+-	unregister_pernet_subsys(&nfsd_net_ops);
+ out_unregister_notifier:
+ 	unregister_cld_notifier();
++out_unregister_pernet:
++	unregister_pernet_subsys(&nfsd_net_ops);
+ 	return retval;
+ }
+ 
+@@ -1308,8 +1308,8 @@ static void __exit exit_nfsd(void)
+ 	nfsd4_exit_pnfs();
+ 	nfsd_fault_inject_cleanup();
+ 	unregister_filesystem(&nfsd_fs_type);
+-	unregister_pernet_subsys(&nfsd_net_ops);
+ 	unregister_cld_notifier();
++	unregister_pernet_subsys(&nfsd_net_ops);
+ }
+ 
+ MODULE_AUTHOR("Olaf Kirch <okir@monad.swb.de>");
+-- 
+1.9.1
 
-> 
-> $ rm -f /mnt/scratch/bar
-> $ for i in `seq 20 -2 0`; do
-> > sudo xfs_io -f -c "pwrite $((i * 8192)) 4096" /mnt/scratch/bar
-> > done
-> .....
-> $ sync
-> $ sudo xfs_io -c "seek -ar 0" /mnt/scratch/bar
-> Whence  Result
-> DATA    0
-> HOLE    4096
-> DATA    16384
-> HOLE    20480
-> DATA    32768
-> HOLE    36864
-> DATA    49152
-> HOLE    53248
-> DATA    65536
-> HOLE    69632
-> DATA    81920
-> HOLE    86016
-> DATA    98304
-> HOLE    102400
-> DATA    114688
-> HOLE    118784
-> DATA    131072
-> HOLE    135168
-> DATA    147456
-> HOLE    151552
-> DATA    163840
-> HOLE    167936
-> $
-> 
-> -Dave.
-> -- 
-> Dave Chinner
-> david@fromorbit.com
