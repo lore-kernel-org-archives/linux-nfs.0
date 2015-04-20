@@ -1,23 +1,19 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qc0-f173.google.com ([209.85.216.173]:34947 "EHLO
-	mail-qc0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753241AbbDTSZf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Apr 2015 14:25:35 -0400
-Received: by qcbii10 with SMTP id ii10so63290388qcb.2
-        for <linux-nfs@vger.kernel.org>; Mon, 20 Apr 2015 11:25:34 -0700 (PDT)
-Received: from valhalla.home (pool-100-0-67-23.bstnma.fios.verizon.net. [100.0.67.23])
-        by mx.google.com with ESMTPSA id 18sm15096399qgh.40.2015.04.20.11.25.34
-        for <linux-nfs@vger.kernel.org>
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Mon, 20 Apr 2015 11:25:34 -0700 (PDT)
+Received: from mail-qk0-f175.google.com ([209.85.220.175]:35421 "EHLO
+	mail-qk0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752146AbbDTSeP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Apr 2015 14:34:15 -0400
+Received: by qkhg7 with SMTP id g7so195843790qkh.2
+        for <linux-nfs@vger.kernel.org>; Mon, 20 Apr 2015 11:34:14 -0700 (PDT)
 From: Gregory Boyce <gregory.boyce@gmail.com>
-Date: Mon, 20 Apr 2015 14:18:50 -0400 (EDT)
+Date: Mon, 20 Apr 2015 14:34:00 -0400 (EDT)
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH] nfs-utils: Allow users to disable mount option rewriting via
+cc: Gregory Boyce <gregory.boyce@gmail.com>
+Subject: nfs-utils: Allow users to disable mount option rewriting via
  norewriteopts mount option
-Message-ID: <alpine.DEB.2.10.1504201417410.5338@valhalla.home>
+Message-ID: <alpine.DEB.2.10.1504201432530.5987@valhalla.home>
 MIME-Version: 1.0
-Content-Type: TEXT/PLAIN; format=flowed; charset=US-ASCII
+Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
@@ -51,5 +47,4 @@ index df67fac..bbda754 100644
   	 */
 -- 
 2.3.2 (Apple Git-55)
-
 
