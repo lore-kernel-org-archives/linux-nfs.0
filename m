@@ -1,73 +1,114 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:45891 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([173.255.197.46]:38875 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753415AbbDUSXh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 21 Apr 2015 14:23:37 -0400
-Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
-	by mx1.redhat.com (Postfix) with ESMTPS id 1EEFEC1F10
-	for <linux-nfs@vger.kernel.org>; Tue, 21 Apr 2015 18:23:37 +0000 (UTC)
-Received: from bcodding-csb.redhat.com (unused [10.10.51.162] (may be forged))
-	by int-mx09.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id t3LINaZ4008807
-	for <linux-nfs@vger.kernel.org>; Tue, 21 Apr 2015 14:23:36 -0400
-From: Benjamin Coddington <bcodding@redhat.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] NFS: Don't attempt to decode missing directory entries
-Date: Tue, 21 Apr 2015 14:17:35 -0400
-Message-Id: <de9a3d24a08aabce5793b9a7d901a7fffa4ed206.1429639845.git.bcodding@redhat.com>
+	id S1755398AbbDUTYA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 21 Apr 2015 15:24:00 -0400
+Date: Tue, 21 Apr 2015 15:23:58 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Giuseppe Cantavenera <giuseppe.cantavenera.ext@nokia.com>
+Cc: linux-nfs@vger.kernel.org, alexander.sverdlin@nokia.com,
+        stable@vger.kernel.org,
+        Lorenzo Restelli <lorenzo.restelli.ext@nokia.com>
+Subject: Re: [PATCH v2] nfsd: fix: prevent BUG_ON by registering
+ rpc_pipefs_event only after nfsd_net_id is valid
+Message-ID: <20150421192358.GB13782@fieldses.org>
+References: <1429545608-9903-1-git-send-email-giuseppe.cantavenera.ext@nokia.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1429545608-9903-1-git-send-email-giuseppe.cantavenera.ext@nokia.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If a READDIR reply comes back without any page data, avoid a NULL pointer
-dereference in xdr_copy_to_scratch().
+On Mon, Apr 20, 2015 at 06:00:08PM +0200, Giuseppe Cantavenera wrote:
+> nfsd triggered a BUG_ON in net_generic(...) when rpc_pipefs_event(...)
+> in fs/nfsd/nfs4recover.c was called before assigning ntfsd_net_id.
+> The following was observed on a MIPS 32-core processor:
+> kernel: Call Trace:
+> kernel: [<ffffffffc00bc5e4>] rpc_pipefs_event+0x7c/0x158 [nfsd]
+> kernel: [<ffffffff8017a2a0>] notifier_call_chain+0x70/0xb8
+> kernel: [<ffffffff8017a4e4>] __blocking_notifier_call_chain+0x4c/0x70
+> kernel: [<ffffffff8053aff8>] rpc_fill_super+0xf8/0x1a0
+> kernel: [<ffffffff8022204c>] mount_ns+0xb4/0xf0
+> kernel: [<ffffffff80222b48>] mount_fs+0x50/0x1f8
+> kernel: [<ffffffff8023dc00>] vfs_kern_mount+0x58/0xf0
+> kernel: [<ffffffff802404ac>] do_mount+0x27c/0xa28
+> kernel: [<ffffffff80240cf0>] SyS_mount+0x98/0xe8
+> kernel: [<ffffffff80135d24>] handle_sys64+0x44/0x68
+> kernel:
+> kernel:
+>         Code: 0040f809  00000000  2e020001 <00020336> 3c12c00d
+>                 3c02801a  de100000 6442eb98  0040f809
+> kernel: ---[ end trace 7471374335809536 ]---
+> 
+> Fixed this behaviour by calling register_pernet_subsys(&nfsd_net_ops) before
+> registering rpc_pipefs_event(...) with the notifier chain.
+> 
+> Cc: stable@vger.kernel.org
+> Signed-off-by: Giuseppe Cantavenera <giuseppe.cantavenera.ext@nokia.com>
+> Signed-off-by: Lorenzo Restelli <lorenzo.restelli.ext@nokia.com>
+> ---
+>  v2: Rebased, retested, added CC for the stable tree,
+>      minor changes to the commit message
 
-BUG: unable to handle kernel NULL pointer dereference at 0000000000000001
-IP: [<ffffffff813a378d>] memcpy+0xd/0x110
-...
-Call Trace:
-	? xdr_inline_decode+0x7a/0xb0 [sunrpc]
-	nfs3_decode_dirent+0x73/0x320 [nfsv3]
-	nfs_readdir_page_filler+0xd5/0x4e0 [nfs]
-	? nfs3_rpc_wrapper.constprop.9+0x42/0xc0 [nfsv3]
-	nfs_readdir_xdr_to_array+0x1fa/0x330 [nfs]
-	? mem_cgroup_commit_charge+0xac/0x160
-	? nfs_readdir_xdr_to_array+0x330/0x330 [nfs]
-	nfs_readdir_filler+0x22/0x90 [nfs]
-	do_read_cache_page+0x7e/0x1a0
-	read_cache_page+0x1c/0x20
-	nfs_readdir+0x18e/0x660 [nfs]
-	? nfs3_xdr_dec_getattr3res+0x80/0x80 [nfsv3]
-	iterate_dir+0x97/0x130
-	SyS_getdents+0x94/0x120
-	? fillonedir+0xd0/0xd0
-	system_call_fastpath+0x12/0x17
+Got it, thanks.--b.
 
-Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
----
- fs/nfs/dir.c |    4 ++++
- 1 files changed, 4 insertions(+), 0 deletions(-)
-
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index c19e16f..a00ba92 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -544,6 +544,9 @@ int nfs_readdir_page_filler(nfs_readdir_descriptor_t *desc, struct nfs_entry *en
- 	if (scratch == NULL)
- 		return -ENOMEM;
- 
-+	if (buflen == 0)
-+		goto out_nopages;
-+
- 	xdr_init_decode_pages(&stream, &buf, xdr_pages, buflen);
- 	xdr_set_scratch_buffer(&stream, page_address(scratch), PAGE_SIZE);
- 
-@@ -565,6 +568,7 @@ int nfs_readdir_page_filler(nfs_readdir_descriptor_t *desc, struct nfs_entry *en
- 			break;
- 	} while (!entry->eof);
- 
-+out_nopages:
- 	if (count == 0 || (status == -EBADCOOKIE && entry->eof != 0)) {
- 		array = nfs_readdir_get_array(page);
- 		if (!IS_ERR(array)) {
--- 
-1.7.1
-
+> 
+>  The previous version was not from the mainline, 
+>  sorry for that.
+>  
+>  Regards,
+>  Giuseppe
+> 
+>  fs/nfsd/nfsctl.c | 16 ++++++++--------
+>  1 file changed, 8 insertions(+), 8 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+> index aa47d75..9690cb4 100644
+> --- a/fs/nfsd/nfsctl.c
+> +++ b/fs/nfsd/nfsctl.c
+> @@ -1250,15 +1250,15 @@ static int __init init_nfsd(void)
+>  	int retval;
+>  	printk(KERN_INFO "Installing knfsd (copyright (C) 1996 okir@monad.swb.de).\n");
+>  
+> -	retval = register_cld_notifier();
+> -	if (retval)
+> -		return retval;
+>  	retval = register_pernet_subsys(&nfsd_net_ops);
+>  	if (retval < 0)
+> -		goto out_unregister_notifier;
+> -	retval = nfsd4_init_slabs();
+> +		return retval;
+> +	retval = register_cld_notifier();
+>  	if (retval)
+>  		goto out_unregister_pernet;
+> +	retval = nfsd4_init_slabs();
+> +	if (retval)
+> +		goto out_unregister_notifier;
+>  	retval = nfsd4_init_pnfs();
+>  	if (retval)
+>  		goto out_free_slabs;
+> @@ -1290,10 +1290,10 @@ out_exit_pnfs:
+>  	nfsd4_exit_pnfs();
+>  out_free_slabs:
+>  	nfsd4_free_slabs();
+> -out_unregister_pernet:
+> -	unregister_pernet_subsys(&nfsd_net_ops);
+>  out_unregister_notifier:
+>  	unregister_cld_notifier();
+> +out_unregister_pernet:
+> +	unregister_pernet_subsys(&nfsd_net_ops);
+>  	return retval;
+>  }
+>  
+> @@ -1308,8 +1308,8 @@ static void __exit exit_nfsd(void)
+>  	nfsd4_exit_pnfs();
+>  	nfsd_fault_inject_cleanup();
+>  	unregister_filesystem(&nfsd_fs_type);
+> -	unregister_pernet_subsys(&nfsd_net_ops);
+>  	unregister_cld_notifier();
+> +	unregister_pernet_subsys(&nfsd_net_ops);
+>  }
+>  
+>  MODULE_AUTHOR("Olaf Kirch <okir@monad.swb.de>");
+> -- 
+> 1.9.1
