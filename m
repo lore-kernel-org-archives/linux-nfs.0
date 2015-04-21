@@ -1,243 +1,73 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ie0-f175.google.com ([209.85.223.175]:33834 "EHLO
-	mail-ie0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751968AbbDURns (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Apr 2015 13:43:48 -0400
-Received: by iedfl3 with SMTP id fl3so21855478ied.1
-        for <linux-nfs@vger.kernel.org>; Tue, 21 Apr 2015 10:43:48 -0700 (PDT)
-From: Calvin Walton <calvin.walton@kepstin.ca>
+Received: from mx1.redhat.com ([209.132.183.28]:45891 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753415AbbDUSXh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 21 Apr 2015 14:23:37 -0400
+Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+	by mx1.redhat.com (Postfix) with ESMTPS id 1EEFEC1F10
+	for <linux-nfs@vger.kernel.org>; Tue, 21 Apr 2015 18:23:37 +0000 (UTC)
+Received: from bcodding-csb.redhat.com (unused [10.10.51.162] (may be forged))
+	by int-mx09.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id t3LINaZ4008807
+	for <linux-nfs@vger.kernel.org>; Tue, 21 Apr 2015 14:23:36 -0400
+From: Benjamin Coddington <bcodding@redhat.com>
 To: linux-nfs@vger.kernel.org
-Cc: Calvin Walton <calvin.walton@kepstin.ca>
-Subject: [PATCH] nfs-utils: Substitute sbindir in systemd unit files.
-Date: Tue, 21 Apr 2015 13:43:43 -0400
-Message-Id: <1429638223-13852-1-git-send-email-calvin.walton@kepstin.ca>
-In-Reply-To: <1429638029-13637-1-git-send-email-calvin.walton@kepstin.ca>
-References: <1429638029-13637-1-git-send-email-calvin.walton@kepstin.ca>
+Subject: [PATCH] NFS: Don't attempt to decode missing directory entries
+Date: Tue, 21 Apr 2015 14:17:35 -0400
+Message-Id: <de9a3d24a08aabce5793b9a7d901a7fffa4ed206.1429639845.git.bcodding@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The systemd unit files now include the correct full paths to the
-executables when nfs-utils is configured with an alternate value
-for e.g. --prefix or --sbindir
+If a READDIR reply comes back without any page data, avoid a NULL pointer
+dereference in xdr_copy_to_scratch().
 
-Signed-off-by: Calvin Walton <calvin.walton@kepstin.ca>
+BUG: unable to handle kernel NULL pointer dereference at 0000000000000001
+IP: [<ffffffff813a378d>] memcpy+0xd/0x110
+...
+Call Trace:
+	? xdr_inline_decode+0x7a/0xb0 [sunrpc]
+	nfs3_decode_dirent+0x73/0x320 [nfsv3]
+	nfs_readdir_page_filler+0xd5/0x4e0 [nfs]
+	? nfs3_rpc_wrapper.constprop.9+0x42/0xc0 [nfsv3]
+	nfs_readdir_xdr_to_array+0x1fa/0x330 [nfs]
+	? mem_cgroup_commit_charge+0xac/0x160
+	? nfs_readdir_xdr_to_array+0x330/0x330 [nfs]
+	nfs_readdir_filler+0x22/0x90 [nfs]
+	do_read_cache_page+0x7e/0x1a0
+	read_cache_page+0x1c/0x20
+	nfs_readdir+0x18e/0x660 [nfs]
+	? nfs3_xdr_dec_getattr3res+0x80/0x80 [nfsv3]
+	iterate_dir+0x97/0x130
+	SyS_getdents+0x94/0x120
+	? fillonedir+0xd0/0xd0
+	system_call_fastpath+0x12/0x17
+
+Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
 ---
+ fs/nfs/dir.c |    4 ++++
+ 1 files changed, 4 insertions(+), 0 deletions(-)
 
-Resend of the same patch, but this time generated with -M so the diff
-includes file moves; this should make it a bit easier to review.
-
- .gitignore                                         |  8 ++++++
- systemd/Makefile.am                                | 31 ++++++++++++----------
- .../{nfs-blkmap.service => nfs-blkmap.service.in}  |  2 +-
- .../{nfs-idmapd.service => nfs-idmapd.service.in}  |  2 +-
- .../{nfs-mountd.service => nfs-mountd.service.in}  |  2 +-
- .../{nfs-server.service => nfs-server.service.in}  | 12 ++++-----
- systemd/{rpc-gssd.service => rpc-gssd.service.in}  |  2 +-
- ...-notify.service => rpc-statd-notify.service.in} |  2 +-
- .../{rpc-statd.service => rpc-statd.service.in}    |  2 +-
- ...{rpc-svcgssd.service => rpc-svcgssd.service.in} |  2 +-
- 10 files changed, 38 insertions(+), 27 deletions(-)
- rename systemd/{nfs-blkmap.service => nfs-blkmap.service.in} (88%)
- rename systemd/{nfs-idmapd.service => nfs-idmapd.service.in} (86%)
- rename systemd/{nfs-mountd.service => nfs-mountd.service.in} (86%)
- rename systemd/{nfs-server.service => nfs-server.service.in} (78%)
- rename systemd/{rpc-gssd.service => rpc-gssd.service.in} (90%)
- rename systemd/{rpc-statd-notify.service => rpc-statd-notify.service.in} (90%)
- rename systemd/{rpc-statd.service => rpc-statd.service.in} (87%)
- rename systemd/{rpc-svcgssd.service => rpc-svcgssd.service.in} (91%)
-
-diff --git a/.gitignore b/.gitignore
-index 5164637..4776b04 100644
---- a/.gitignore
-+++ b/.gitignore
-@@ -69,6 +69,14 @@ tests/nsm_client/nlm_sm_inter_clnt.c
- tests/nsm_client/nlm_sm_inter_svc.c
- tests/nsm_client/nlm_sm_inter_xdr.c
- utils/nfsidmap/nfsidmap
-+systemd/nfs-blkmap.service
-+systemd/nfs-idmapd.service
-+systemd/nfs-mountd.service
-+systemd/nfs-server.service
-+systemd/rpc-gssd.service
-+systemd/rpc-statd-notify.service
-+systemd/rpc-statd.service
-+systemd/rpc-svcgssd.service
- # cscope database files
- cscope.*
- # generic editor backup et al
-diff --git a/systemd/Makefile.am b/systemd/Makefile.am
-index fbcabb1..ec7e09b 100644
---- a/systemd/Makefile.am
-+++ b/systemd/Makefile.am
-@@ -2,30 +2,33 @@
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index c19e16f..a00ba92 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -544,6 +544,9 @@ int nfs_readdir_page_filler(nfs_readdir_descriptor_t *desc, struct nfs_entry *en
+ 	if (scratch == NULL)
+ 		return -ENOMEM;
  
- MAINTAINERCLEANFILES = Makefile.in
- 
--unit_files =  \
-+if INSTALL_SYSTEMD
-+dist_unit_DATA = \
-     nfs-client.target \
-     \
-     auth-rpcgss-module.service \
--    nfs-blkmap.service \
-     nfs-config.service \
-+    nfs-utils.service \
-+    \
-+    proc-fs-nfsd.mount \
-+    var-lib-nfs-rpc_pipefs.mount
++	if (buflen == 0)
++		goto out_nopages;
 +
-+unit_DATA = \
-+    nfs-blkmap.service \
-     nfs-idmapd.service \
-     nfs-mountd.service \
-     nfs-server.service \
--    nfs-utils.service \
-     rpc-gssd.service \
-     rpc-statd-notify.service \
-     rpc-statd.service \
--    rpc-svcgssd.service \
--    \
--    proc-fs-nfsd.mount \
--    var-lib-nfs-rpc_pipefs.mount
-+    rpc-svcgssd.service
+ 	xdr_init_decode_pages(&stream, &buf, xdr_pages, buflen);
+ 	xdr_set_scratch_buffer(&stream, page_address(scratch), PAGE_SIZE);
  
--EXTRA_DIST = $(unit_files)
-+CLEANFILES = $(unit_DATA)
+@@ -565,6 +568,7 @@ int nfs_readdir_page_filler(nfs_readdir_descriptor_t *desc, struct nfs_entry *en
+ 			break;
+ 	} while (!entry->eof);
  
--unit_dir = /usr/lib/systemd/system
--
--if INSTALL_SYSTEMD
--install-data-hook: $(unit_files)
--	mkdir -p $(DESTDIR)/$(unitdir)
--	cp $(unit_files) $(DESTDIR)/$(unitdir)
-+EXTRA_DIST = $(unit_DATA:service=.service.in)
- endif
-+
-+SUFFIXES = .service.in .service
-+.service.in.service:
-+	$(SED) -e 's,[@]sbindir[@],$(sbindir),g' \
-+		< $< > $@
-diff --git a/systemd/nfs-blkmap.service b/systemd/nfs-blkmap.service.in
-similarity index 88%
-rename from systemd/nfs-blkmap.service
-rename to systemd/nfs-blkmap.service.in
-index ddbf4e9..37e843d 100644
---- a/systemd/nfs-blkmap.service
-+++ b/systemd/nfs-blkmap.service.in
-@@ -11,7 +11,7 @@ PartOf=nfs-utils.service
- Type=forking
- PIDFile=/var/run/blkmapd.pid
- EnvironmentFile=-/run/sysconfig/nfs-utils
--ExecStart=/usr/sbin/blkmapd $BLKMAPDARGS
-+ExecStart=@sbindir@/blkmapd $BLKMAPDARGS
- 
- [Install]
- WantedBy=nfs-client.target
-diff --git a/systemd/nfs-idmapd.service b/systemd/nfs-idmapd.service.in
-similarity index 86%
-rename from systemd/nfs-idmapd.service
-rename to systemd/nfs-idmapd.service.in
-index df3dd9d..c081cc8 100644
---- a/systemd/nfs-idmapd.service
-+++ b/systemd/nfs-idmapd.service.in
-@@ -12,4 +12,4 @@ After=nfs-config.service
- [Service]
- EnvironmentFile=-/run/sysconfig/nfs-utils
- Type=forking
--ExecStart=/usr/sbin/rpc.idmapd $RPCIDMAPDARGS
-+ExecStart=@sbindir@/rpc.idmapd $RPCIDMAPDARGS
-diff --git a/systemd/nfs-mountd.service b/systemd/nfs-mountd.service.in
-similarity index 86%
-rename from systemd/nfs-mountd.service
-rename to systemd/nfs-mountd.service.in
-index 8a39f3e..9b210b4 100644
---- a/systemd/nfs-mountd.service
-+++ b/systemd/nfs-mountd.service.in
-@@ -12,4 +12,4 @@ After=nfs-config.service
- [Service]
- EnvironmentFile=-/run/sysconfig/nfs-utils
- Type=forking
--ExecStart=/usr/sbin/rpc.mountd $RPCMOUNTDARGS
-+ExecStart=@sbindir@/rpc.mountd $RPCMOUNTDARGS
-diff --git a/systemd/nfs-server.service b/systemd/nfs-server.service.in
-similarity index 78%
-rename from systemd/nfs-server.service
-rename to systemd/nfs-server.service.in
-index db801cb..24239ce 100644
---- a/systemd/nfs-server.service
-+++ b/systemd/nfs-server.service.in
-@@ -26,13 +26,13 @@ EnvironmentFile=-/run/sysconfig/nfs-utils
- 
- Type=oneshot
- RemainAfterExit=yes
--ExecStartPre=/usr/sbin/exportfs -r
--ExecStart=/usr/sbin/rpc.nfsd $RPCNFSDARGS
--ExecStop=/usr/sbin/rpc.nfsd 0
--ExecStopPost=/usr/sbin/exportfs -au
--ExecStopPost=/usr/sbin/exportfs -f
-+ExecStartPre=@sbindir@/exportfs -r
-+ExecStart=@sbindir@/rpc.nfsd $RPCNFSDARGS
-+ExecStop=@sbindir@/rpc.nfsd 0
-+ExecStopPost=@sbindir@/exportfs -au
-+ExecStopPost=@sbindir@/exportfs -f
- 
--ExecReload=/usr/sbin/exportfs -r
-+ExecReload=@sbindir@/exportfs -r
- 
- [Install]
- WantedBy=multi-user.target
-diff --git a/systemd/rpc-gssd.service b/systemd/rpc-gssd.service.in
-similarity index 90%
-rename from systemd/rpc-gssd.service
-rename to systemd/rpc-gssd.service.in
-index d4a3819..52b2ce9 100644
---- a/systemd/rpc-gssd.service
-+++ b/systemd/rpc-gssd.service.in
-@@ -16,4 +16,4 @@ After=nfs-config.service
- EnvironmentFile=-/run/sysconfig/nfs-utils
- 
- Type=forking
--ExecStart=/usr/sbin/rpc.gssd $GSSDARGS
-+ExecStart=@sbindir@/rpc.gssd $GSSDARGS
-diff --git a/systemd/rpc-statd-notify.service b/systemd/rpc-statd-notify.service.in
-similarity index 90%
-rename from systemd/rpc-statd-notify.service
-rename to systemd/rpc-statd-notify.service.in
-index 89ba36c..81003ec 100644
---- a/systemd/rpc-statd-notify.service
-+++ b/systemd/rpc-statd-notify.service.in
-@@ -16,4 +16,4 @@ After=nfs-config.service
- [Service]
- EnvironmentFile=-/run/sysconfig/nfs-utils
- Type=forking
--ExecStart=-/usr/sbin/sm-notify $SMNOTIFYARGS
-+ExecStart=-@sbindir@/sm-notify $SMNOTIFYARGS
-diff --git a/systemd/rpc-statd.service b/systemd/rpc-statd.service.in
-similarity index 87%
-rename from systemd/rpc-statd.service
-rename to systemd/rpc-statd.service.in
-index 14604d7..d76032e 100644
---- a/systemd/rpc-statd.service
-+++ b/systemd/rpc-statd.service.in
-@@ -14,4 +14,4 @@ After=nfs-config.service
- EnvironmentFile=-/run/sysconfig/nfs-utils
- Type=forking
- PIDFile=/var/run/rpc.statd.pid
--ExecStart=/usr/sbin/rpc.statd --no-notify $STATDARGS
-+ExecStart=@sbindir@/rpc.statd --no-notify $STATDARGS
-diff --git a/systemd/rpc-svcgssd.service b/systemd/rpc-svcgssd.service.in
-similarity index 91%
-rename from systemd/rpc-svcgssd.service
-rename to systemd/rpc-svcgssd.service.in
-index 41177b6..cbedc67 100644
---- a/systemd/rpc-svcgssd.service
-+++ b/systemd/rpc-svcgssd.service.in
-@@ -17,4 +17,4 @@ After=nfs-config.service
- [Service]
- EnvironmentFile=-/run/sysconfig/nfs-utils
- Type=forking
--ExecStart=/usr/sbin/rpc.svcgssd $SVCGSSDARGS
-+ExecStart=@sbindir@/rpc.svcgssd $SVCGSSDARGS
++out_nopages:
+ 	if (count == 0 || (status == -EBADCOOKIE && entry->eof != 0)) {
+ 		array = nfs_readdir_get_array(page);
+ 		if (!IS_ERR(array)) {
 -- 
-2.3.3
+1.7.1
 
