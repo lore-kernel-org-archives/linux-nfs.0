@@ -1,16 +1,18 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f179.google.com ([209.85.213.179]:36390 "EHLO
-	mail-ig0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753813AbbDURke (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Apr 2015 13:40:34 -0400
-Received: by igblo3 with SMTP id lo3so92870029igb.1
-        for <linux-nfs@vger.kernel.org>; Tue, 21 Apr 2015 10:40:33 -0700 (PDT)
+Received: from mail-ie0-f175.google.com ([209.85.223.175]:33834 "EHLO
+	mail-ie0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751968AbbDURns (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Apr 2015 13:43:48 -0400
+Received: by iedfl3 with SMTP id fl3so21855478ied.1
+        for <linux-nfs@vger.kernel.org>; Tue, 21 Apr 2015 10:43:48 -0700 (PDT)
 From: Calvin Walton <calvin.walton@kepstin.ca>
 To: linux-nfs@vger.kernel.org
 Cc: Calvin Walton <calvin.walton@kepstin.ca>
 Subject: [PATCH] nfs-utils: Substitute sbindir in systemd unit files.
-Date: Tue, 21 Apr 2015 13:40:29 -0400
-Message-Id: <1429638029-13637-1-git-send-email-calvin.walton@kepstin.ca>
+Date: Tue, 21 Apr 2015 13:43:43 -0400
+Message-Id: <1429638223-13852-1-git-send-email-calvin.walton@kepstin.ca>
+In-Reply-To: <1429638029-13637-1-git-send-email-calvin.walton@kepstin.ca>
+References: <1429638029-13637-1-git-send-email-calvin.walton@kepstin.ca>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
@@ -20,41 +22,29 @@ for e.g. --prefix or --sbindir
 
 Signed-off-by: Calvin Walton <calvin.walton@kepstin.ca>
 ---
- .gitignore                          |  8 ++++++++
- systemd/Makefile.am                 | 31 ++++++++++++++++--------------
- systemd/nfs-blkmap.service          | 17 -----------------
- systemd/nfs-blkmap.service.in       | 17 +++++++++++++++++
- systemd/nfs-idmapd.service          | 15 ---------------
- systemd/nfs-idmapd.service.in       | 15 +++++++++++++++
- systemd/nfs-mountd.service          | 15 ---------------
- systemd/nfs-mountd.service.in       | 15 +++++++++++++++
- systemd/nfs-server.service          | 38 -------------------------------------
- systemd/nfs-server.service.in       | 38 +++++++++++++++++++++++++++++++++++++
- systemd/rpc-gssd.service            | 19 -------------------
- systemd/rpc-gssd.service.in         | 19 +++++++++++++++++++
- systemd/rpc-statd-notify.service    | 19 -------------------
- systemd/rpc-statd-notify.service.in | 19 +++++++++++++++++++
- systemd/rpc-statd.service           | 17 -----------------
- systemd/rpc-statd.service.in        | 17 +++++++++++++++++
- systemd/rpc-svcgssd.service         | 20 -------------------
- systemd/rpc-svcgssd.service.in      | 20 +++++++++++++++++++
- 18 files changed, 185 insertions(+), 174 deletions(-)
- delete mode 100644 systemd/nfs-blkmap.service
- create mode 100644 systemd/nfs-blkmap.service.in
- delete mode 100644 systemd/nfs-idmapd.service
- create mode 100644 systemd/nfs-idmapd.service.in
- delete mode 100644 systemd/nfs-mountd.service
- create mode 100644 systemd/nfs-mountd.service.in
- delete mode 100644 systemd/nfs-server.service
- create mode 100644 systemd/nfs-server.service.in
- delete mode 100644 systemd/rpc-gssd.service
- create mode 100644 systemd/rpc-gssd.service.in
- delete mode 100644 systemd/rpc-statd-notify.service
- create mode 100644 systemd/rpc-statd-notify.service.in
- delete mode 100644 systemd/rpc-statd.service
- create mode 100644 systemd/rpc-statd.service.in
- delete mode 100644 systemd/rpc-svcgssd.service
- create mode 100644 systemd/rpc-svcgssd.service.in
+
+Resend of the same patch, but this time generated with -M so the diff
+includes file moves; this should make it a bit easier to review.
+
+ .gitignore                                         |  8 ++++++
+ systemd/Makefile.am                                | 31 ++++++++++++----------
+ .../{nfs-blkmap.service => nfs-blkmap.service.in}  |  2 +-
+ .../{nfs-idmapd.service => nfs-idmapd.service.in}  |  2 +-
+ .../{nfs-mountd.service => nfs-mountd.service.in}  |  2 +-
+ .../{nfs-server.service => nfs-server.service.in}  | 12 ++++-----
+ systemd/{rpc-gssd.service => rpc-gssd.service.in}  |  2 +-
+ ...-notify.service => rpc-statd-notify.service.in} |  2 +-
+ .../{rpc-statd.service => rpc-statd.service.in}    |  2 +-
+ ...{rpc-svcgssd.service => rpc-svcgssd.service.in} |  2 +-
+ 10 files changed, 38 insertions(+), 27 deletions(-)
+ rename systemd/{nfs-blkmap.service => nfs-blkmap.service.in} (88%)
+ rename systemd/{nfs-idmapd.service => nfs-idmapd.service.in} (86%)
+ rename systemd/{nfs-mountd.service => nfs-mountd.service.in} (86%)
+ rename systemd/{nfs-server.service => nfs-server.service.in} (78%)
+ rename systemd/{rpc-gssd.service => rpc-gssd.service.in} (90%)
+ rename systemd/{rpc-statd-notify.service => rpc-statd-notify.service.in} (90%)
+ rename systemd/{rpc-statd.service => rpc-statd.service.in} (87%)
+ rename systemd/{rpc-svcgssd.service => rpc-svcgssd.service.in} (91%)
 
 diff --git a/.gitignore b/.gitignore
 index 5164637..4776b04 100644
@@ -127,421 +117,126 @@ index fbcabb1..ec7e09b 100644
 +.service.in.service:
 +	$(SED) -e 's,[@]sbindir[@],$(sbindir),g' \
 +		< $< > $@
-diff --git a/systemd/nfs-blkmap.service b/systemd/nfs-blkmap.service
-deleted file mode 100644
-index ddbf4e9..0000000
+diff --git a/systemd/nfs-blkmap.service b/systemd/nfs-blkmap.service.in
+similarity index 88%
+rename from systemd/nfs-blkmap.service
+rename to systemd/nfs-blkmap.service.in
+index ddbf4e9..37e843d 100644
 --- a/systemd/nfs-blkmap.service
-+++ /dev/null
-@@ -1,17 +0,0 @@
--[Unit]
--Description=pNFS block layout mapping daemon
--DefaultDependencies=no
--Conflicts=umount.target
--After=var-lib-nfs-rpc_pipefs.mount
--Requires=var-lib-nfs-rpc_pipefs.mount
--
--PartOf=nfs-utils.service
--
--[Service]
--Type=forking
--PIDFile=/var/run/blkmapd.pid
--EnvironmentFile=-/run/sysconfig/nfs-utils
--ExecStart=/usr/sbin/blkmapd $BLKMAPDARGS
--
--[Install]
--WantedBy=nfs-client.target
-diff --git a/systemd/nfs-blkmap.service.in b/systemd/nfs-blkmap.service.in
-new file mode 100644
-index 0000000..37e843d
---- /dev/null
 +++ b/systemd/nfs-blkmap.service.in
-@@ -0,0 +1,17 @@
-+[Unit]
-+Description=pNFS block layout mapping daemon
-+DefaultDependencies=no
-+Conflicts=umount.target
-+After=var-lib-nfs-rpc_pipefs.mount
-+Requires=var-lib-nfs-rpc_pipefs.mount
-+
-+PartOf=nfs-utils.service
-+
-+[Service]
-+Type=forking
-+PIDFile=/var/run/blkmapd.pid
-+EnvironmentFile=-/run/sysconfig/nfs-utils
+@@ -11,7 +11,7 @@ PartOf=nfs-utils.service
+ Type=forking
+ PIDFile=/var/run/blkmapd.pid
+ EnvironmentFile=-/run/sysconfig/nfs-utils
+-ExecStart=/usr/sbin/blkmapd $BLKMAPDARGS
 +ExecStart=@sbindir@/blkmapd $BLKMAPDARGS
-+
-+[Install]
-+WantedBy=nfs-client.target
-diff --git a/systemd/nfs-idmapd.service b/systemd/nfs-idmapd.service
-deleted file mode 100644
-index df3dd9d..0000000
+ 
+ [Install]
+ WantedBy=nfs-client.target
+diff --git a/systemd/nfs-idmapd.service b/systemd/nfs-idmapd.service.in
+similarity index 86%
+rename from systemd/nfs-idmapd.service
+rename to systemd/nfs-idmapd.service.in
+index df3dd9d..c081cc8 100644
 --- a/systemd/nfs-idmapd.service
-+++ /dev/null
-@@ -1,15 +0,0 @@
--[Unit]
--Description=NFSv4 ID-name mapping service
--DefaultDependencies=no
--Requires=var-lib-nfs-rpc_pipefs.mount
--After=var-lib-nfs-rpc_pipefs.mount local-fs.target
--
--BindsTo=nfs-server.service
--
--Wants=nfs-config.service
--After=nfs-config.service
--
--[Service]
--EnvironmentFile=-/run/sysconfig/nfs-utils
--Type=forking
--ExecStart=/usr/sbin/rpc.idmapd $RPCIDMAPDARGS
-diff --git a/systemd/nfs-idmapd.service.in b/systemd/nfs-idmapd.service.in
-new file mode 100644
-index 0000000..c081cc8
---- /dev/null
 +++ b/systemd/nfs-idmapd.service.in
-@@ -0,0 +1,15 @@
-+[Unit]
-+Description=NFSv4 ID-name mapping service
-+DefaultDependencies=no
-+Requires=var-lib-nfs-rpc_pipefs.mount
-+After=var-lib-nfs-rpc_pipefs.mount local-fs.target
-+
-+BindsTo=nfs-server.service
-+
-+Wants=nfs-config.service
-+After=nfs-config.service
-+
-+[Service]
-+EnvironmentFile=-/run/sysconfig/nfs-utils
-+Type=forking
+@@ -12,4 +12,4 @@ After=nfs-config.service
+ [Service]
+ EnvironmentFile=-/run/sysconfig/nfs-utils
+ Type=forking
+-ExecStart=/usr/sbin/rpc.idmapd $RPCIDMAPDARGS
 +ExecStart=@sbindir@/rpc.idmapd $RPCIDMAPDARGS
-diff --git a/systemd/nfs-mountd.service b/systemd/nfs-mountd.service
-deleted file mode 100644
-index 8a39f3e..0000000
+diff --git a/systemd/nfs-mountd.service b/systemd/nfs-mountd.service.in
+similarity index 86%
+rename from systemd/nfs-mountd.service
+rename to systemd/nfs-mountd.service.in
+index 8a39f3e..9b210b4 100644
 --- a/systemd/nfs-mountd.service
-+++ /dev/null
-@@ -1,15 +0,0 @@
--[Unit]
--Description=NFS Mount Daemon
--DefaultDependencies=no
--Requires=proc-fs-nfsd.mount
--After=proc-fs-nfsd.mount
--After=network.target local-fs.target
--BindsTo=nfs-server.service
--
--Wants=nfs-config.service
--After=nfs-config.service
--
--[Service]
--EnvironmentFile=-/run/sysconfig/nfs-utils
--Type=forking
--ExecStart=/usr/sbin/rpc.mountd $RPCMOUNTDARGS
-diff --git a/systemd/nfs-mountd.service.in b/systemd/nfs-mountd.service.in
-new file mode 100644
-index 0000000..9b210b4
---- /dev/null
 +++ b/systemd/nfs-mountd.service.in
-@@ -0,0 +1,15 @@
-+[Unit]
-+Description=NFS Mount Daemon
-+DefaultDependencies=no
-+Requires=proc-fs-nfsd.mount
-+After=proc-fs-nfsd.mount
-+After=network.target local-fs.target
-+BindsTo=nfs-server.service
-+
-+Wants=nfs-config.service
-+After=nfs-config.service
-+
-+[Service]
-+EnvironmentFile=-/run/sysconfig/nfs-utils
-+Type=forking
+@@ -12,4 +12,4 @@ After=nfs-config.service
+ [Service]
+ EnvironmentFile=-/run/sysconfig/nfs-utils
+ Type=forking
+-ExecStart=/usr/sbin/rpc.mountd $RPCMOUNTDARGS
 +ExecStart=@sbindir@/rpc.mountd $RPCMOUNTDARGS
-diff --git a/systemd/nfs-server.service b/systemd/nfs-server.service
-deleted file mode 100644
-index db801cb..0000000
+diff --git a/systemd/nfs-server.service b/systemd/nfs-server.service.in
+similarity index 78%
+rename from systemd/nfs-server.service
+rename to systemd/nfs-server.service.in
+index db801cb..24239ce 100644
 --- a/systemd/nfs-server.service
-+++ /dev/null
-@@ -1,38 +0,0 @@
--[Unit]
--Description=NFS server and services
--DefaultDependencies=no
--Requires= network.target proc-fs-nfsd.mount rpcbind.target
--Requires= nfs-mountd.service
--Wants=rpc-statd.service nfs-idmapd.service
--Wants=rpc-statd-notify.service
--
--After= local-fs.target
--After= network.target proc-fs-nfsd.mount rpcbind.target nfs-mountd.service
--After= nfs-idmapd.service rpc-statd.service
--Before= rpc-statd-notify.service
--
--# GSS services dependencies and ordering
--Wants=auth-rpcgss-module.service
--After=rpc-gssd.service gssproxy.service rpc-svcgssd.service
--
--# start/stop server before/after client
--Before=remote-fs-pre.target
--
--Wants=nfs-config.service
--After=nfs-config.service
--
--[Service]
--EnvironmentFile=-/run/sysconfig/nfs-utils
--
--Type=oneshot
--RemainAfterExit=yes
++++ b/systemd/nfs-server.service.in
+@@ -26,13 +26,13 @@ EnvironmentFile=-/run/sysconfig/nfs-utils
+ 
+ Type=oneshot
+ RemainAfterExit=yes
 -ExecStartPre=/usr/sbin/exportfs -r
 -ExecStart=/usr/sbin/rpc.nfsd $RPCNFSDARGS
 -ExecStop=/usr/sbin/rpc.nfsd 0
 -ExecStopPost=/usr/sbin/exportfs -au
 -ExecStopPost=/usr/sbin/exportfs -f
--
--ExecReload=/usr/sbin/exportfs -r
--
--[Install]
--WantedBy=multi-user.target
-diff --git a/systemd/nfs-server.service.in b/systemd/nfs-server.service.in
-new file mode 100644
-index 0000000..24239ce
---- /dev/null
-+++ b/systemd/nfs-server.service.in
-@@ -0,0 +1,38 @@
-+[Unit]
-+Description=NFS server and services
-+DefaultDependencies=no
-+Requires= network.target proc-fs-nfsd.mount rpcbind.target
-+Requires= nfs-mountd.service
-+Wants=rpc-statd.service nfs-idmapd.service
-+Wants=rpc-statd-notify.service
-+
-+After= local-fs.target
-+After= network.target proc-fs-nfsd.mount rpcbind.target nfs-mountd.service
-+After= nfs-idmapd.service rpc-statd.service
-+Before= rpc-statd-notify.service
-+
-+# GSS services dependencies and ordering
-+Wants=auth-rpcgss-module.service
-+After=rpc-gssd.service gssproxy.service rpc-svcgssd.service
-+
-+# start/stop server before/after client
-+Before=remote-fs-pre.target
-+
-+Wants=nfs-config.service
-+After=nfs-config.service
-+
-+[Service]
-+EnvironmentFile=-/run/sysconfig/nfs-utils
-+
-+Type=oneshot
-+RemainAfterExit=yes
 +ExecStartPre=@sbindir@/exportfs -r
 +ExecStart=@sbindir@/rpc.nfsd $RPCNFSDARGS
 +ExecStop=@sbindir@/rpc.nfsd 0
 +ExecStopPost=@sbindir@/exportfs -au
 +ExecStopPost=@sbindir@/exportfs -f
-+
+ 
+-ExecReload=/usr/sbin/exportfs -r
 +ExecReload=@sbindir@/exportfs -r
-+
-+[Install]
-+WantedBy=multi-user.target
-diff --git a/systemd/rpc-gssd.service b/systemd/rpc-gssd.service
-deleted file mode 100644
-index d4a3819..0000000
+ 
+ [Install]
+ WantedBy=multi-user.target
+diff --git a/systemd/rpc-gssd.service b/systemd/rpc-gssd.service.in
+similarity index 90%
+rename from systemd/rpc-gssd.service
+rename to systemd/rpc-gssd.service.in
+index d4a3819..52b2ce9 100644
 --- a/systemd/rpc-gssd.service
-+++ /dev/null
-@@ -1,19 +0,0 @@
--[Unit]
--Description=RPC security service for NFS client and server
--DefaultDependencies=no
--Conflicts=umount.target
--Requires=var-lib-nfs-rpc_pipefs.mount
--After=var-lib-nfs-rpc_pipefs.mount
--
--ConditionPathExists=/etc/krb5.keytab
--
--PartOf=nfs-utils.service
--
--Wants=nfs-config.service
--After=nfs-config.service
--
--[Service]
--EnvironmentFile=-/run/sysconfig/nfs-utils
--
--Type=forking
--ExecStart=/usr/sbin/rpc.gssd $GSSDARGS
-diff --git a/systemd/rpc-gssd.service.in b/systemd/rpc-gssd.service.in
-new file mode 100644
-index 0000000..52b2ce9
---- /dev/null
 +++ b/systemd/rpc-gssd.service.in
-@@ -0,0 +1,19 @@
-+[Unit]
-+Description=RPC security service for NFS client and server
-+DefaultDependencies=no
-+Conflicts=umount.target
-+Requires=var-lib-nfs-rpc_pipefs.mount
-+After=var-lib-nfs-rpc_pipefs.mount
-+
-+ConditionPathExists=/etc/krb5.keytab
-+
-+PartOf=nfs-utils.service
-+
-+Wants=nfs-config.service
-+After=nfs-config.service
-+
-+[Service]
-+EnvironmentFile=-/run/sysconfig/nfs-utils
-+
-+Type=forking
+@@ -16,4 +16,4 @@ After=nfs-config.service
+ EnvironmentFile=-/run/sysconfig/nfs-utils
+ 
+ Type=forking
+-ExecStart=/usr/sbin/rpc.gssd $GSSDARGS
 +ExecStart=@sbindir@/rpc.gssd $GSSDARGS
-diff --git a/systemd/rpc-statd-notify.service b/systemd/rpc-statd-notify.service
-deleted file mode 100644
-index 89ba36c..0000000
+diff --git a/systemd/rpc-statd-notify.service b/systemd/rpc-statd-notify.service.in
+similarity index 90%
+rename from systemd/rpc-statd-notify.service
+rename to systemd/rpc-statd-notify.service.in
+index 89ba36c..81003ec 100644
 --- a/systemd/rpc-statd-notify.service
-+++ /dev/null
-@@ -1,19 +0,0 @@
--[Unit]
--Description=Notify NFS peers of a restart
--DefaultDependencies=no
--Requires=network.target
--After=local-fs.target network.target nss-lookup.target
--
--# if we run an nfs server, it needs to be running before we
--# tell clients that it has restarted.
--After=nfs-server.service
--
--PartOf=nfs-utils.service
--
--Wants=nfs-config.service
--After=nfs-config.service
--
--[Service]
--EnvironmentFile=-/run/sysconfig/nfs-utils
--Type=forking
--ExecStart=-/usr/sbin/sm-notify $SMNOTIFYARGS
-diff --git a/systemd/rpc-statd-notify.service.in b/systemd/rpc-statd-notify.service.in
-new file mode 100644
-index 0000000..81003ec
---- /dev/null
 +++ b/systemd/rpc-statd-notify.service.in
-@@ -0,0 +1,19 @@
-+[Unit]
-+Description=Notify NFS peers of a restart
-+DefaultDependencies=no
-+Requires=network.target
-+After=local-fs.target network.target nss-lookup.target
-+
-+# if we run an nfs server, it needs to be running before we
-+# tell clients that it has restarted.
-+After=nfs-server.service
-+
-+PartOf=nfs-utils.service
-+
-+Wants=nfs-config.service
-+After=nfs-config.service
-+
-+[Service]
-+EnvironmentFile=-/run/sysconfig/nfs-utils
-+Type=forking
+@@ -16,4 +16,4 @@ After=nfs-config.service
+ [Service]
+ EnvironmentFile=-/run/sysconfig/nfs-utils
+ Type=forking
+-ExecStart=-/usr/sbin/sm-notify $SMNOTIFYARGS
 +ExecStart=-@sbindir@/sm-notify $SMNOTIFYARGS
-diff --git a/systemd/rpc-statd.service b/systemd/rpc-statd.service
-deleted file mode 100644
-index 14604d7..0000000
+diff --git a/systemd/rpc-statd.service b/systemd/rpc-statd.service.in
+similarity index 87%
+rename from systemd/rpc-statd.service
+rename to systemd/rpc-statd.service.in
+index 14604d7..d76032e 100644
 --- a/systemd/rpc-statd.service
-+++ /dev/null
-@@ -1,17 +0,0 @@
--[Unit]
--Description=NFS status monitor for NFSv2/3 locking.
--DefaultDependencies=no
--Conflicts=umount.target
--Requires=nss-lookup.target rpcbind.target
--After=network.target nss-lookup.target rpcbind.target
--
--PartOf=nfs-utils.service
--
--Wants=nfs-config.service
--After=nfs-config.service
--
--[Service]
--EnvironmentFile=-/run/sysconfig/nfs-utils
--Type=forking
--PIDFile=/var/run/rpc.statd.pid
--ExecStart=/usr/sbin/rpc.statd --no-notify $STATDARGS
-diff --git a/systemd/rpc-statd.service.in b/systemd/rpc-statd.service.in
-new file mode 100644
-index 0000000..d76032e
---- /dev/null
 +++ b/systemd/rpc-statd.service.in
-@@ -0,0 +1,17 @@
-+[Unit]
-+Description=NFS status monitor for NFSv2/3 locking.
-+DefaultDependencies=no
-+Conflicts=umount.target
-+Requires=nss-lookup.target rpcbind.target
-+After=network.target nss-lookup.target rpcbind.target
-+
-+PartOf=nfs-utils.service
-+
-+Wants=nfs-config.service
-+After=nfs-config.service
-+
-+[Service]
-+EnvironmentFile=-/run/sysconfig/nfs-utils
-+Type=forking
-+PIDFile=/var/run/rpc.statd.pid
+@@ -14,4 +14,4 @@ After=nfs-config.service
+ EnvironmentFile=-/run/sysconfig/nfs-utils
+ Type=forking
+ PIDFile=/var/run/rpc.statd.pid
+-ExecStart=/usr/sbin/rpc.statd --no-notify $STATDARGS
 +ExecStart=@sbindir@/rpc.statd --no-notify $STATDARGS
-diff --git a/systemd/rpc-svcgssd.service b/systemd/rpc-svcgssd.service
-deleted file mode 100644
-index 41177b6..0000000
+diff --git a/systemd/rpc-svcgssd.service b/systemd/rpc-svcgssd.service.in
+similarity index 91%
+rename from systemd/rpc-svcgssd.service
+rename to systemd/rpc-svcgssd.service.in
+index 41177b6..cbedc67 100644
 --- a/systemd/rpc-svcgssd.service
-+++ /dev/null
-@@ -1,20 +0,0 @@
--[Unit]
--Description=RPC security service for NFS server
--DefaultDependencies=no
--Requires=var-lib-nfs-rpc_pipefs.mount
--After=var-lib-nfs-rpc_pipefs.mount local-fs.target
--PartOf=nfs-server.service
--PartOf=nfs-utils.service
--
--After=gssproxy.service
--ConditionPathExists=|!/run/gssproxy.pid
--ConditionPathExists=|!/proc/net/rpc/use-gss-proxy
--ConditionPathExists=/etc/krb5.keytab
--
--Wants=nfs-config.service
--After=nfs-config.service
--
--[Service]
--EnvironmentFile=-/run/sysconfig/nfs-utils
--Type=forking
--ExecStart=/usr/sbin/rpc.svcgssd $SVCGSSDARGS
-diff --git a/systemd/rpc-svcgssd.service.in b/systemd/rpc-svcgssd.service.in
-new file mode 100644
-index 0000000..cbedc67
---- /dev/null
 +++ b/systemd/rpc-svcgssd.service.in
-@@ -0,0 +1,20 @@
-+[Unit]
-+Description=RPC security service for NFS server
-+DefaultDependencies=no
-+Requires=var-lib-nfs-rpc_pipefs.mount
-+After=var-lib-nfs-rpc_pipefs.mount local-fs.target
-+PartOf=nfs-server.service
-+PartOf=nfs-utils.service
-+
-+After=gssproxy.service
-+ConditionPathExists=|!/run/gssproxy.pid
-+ConditionPathExists=|!/proc/net/rpc/use-gss-proxy
-+ConditionPathExists=/etc/krb5.keytab
-+
-+Wants=nfs-config.service
-+After=nfs-config.service
-+
-+[Service]
-+EnvironmentFile=-/run/sysconfig/nfs-utils
-+Type=forking
+@@ -17,4 +17,4 @@ After=nfs-config.service
+ [Service]
+ EnvironmentFile=-/run/sysconfig/nfs-utils
+ Type=forking
+-ExecStart=/usr/sbin/rpc.svcgssd $SVCGSSDARGS
 +ExecStart=@sbindir@/rpc.svcgssd $SVCGSSDARGS
 -- 
 2.3.3
