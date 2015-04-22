@@ -1,53 +1,66 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f174.google.com ([209.85.213.174]:35522 "EHLO
-	mail-ig0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753466AbbDUWgl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Apr 2015 18:36:41 -0400
-Received: by igbyr2 with SMTP id yr2so99670651igb.0
-        for <linux-nfs@vger.kernel.org>; Tue, 21 Apr 2015 15:36:41 -0700 (PDT)
+Received: from cantor2.suse.de ([195.135.220.15]:38412 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755742AbbDVFHZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 22 Apr 2015 01:07:25 -0400
+Date: Wed, 22 Apr 2015 15:07:14 +1000
+From: NeilBrown <neilb@suse.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Kinglong Mee <kinglongmee@gmail.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH RFC] NFSD: fix cannot umounting mount points under
+ pseudo root
+Message-ID: <20150422150714.657893e4@notabene.brown>
+In-Reply-To: <20150421215417.GE13782@fieldses.org>
+References: <553663B7.7030506@gmail.com>
+	<20150421215417.GE13782@fieldses.org>
 MIME-Version: 1.0
-Date: Tue, 21 Apr 2015 18:36:41 -0400
-Message-ID: <CAN-5tyHy+M4i2W+coBNXYxz-Ta3grYx=E+3vw7Y9=HE9heGjZQ@mail.gmail.com>
-Subject: [PATCH 1/1] Recover from stateid-type error on SETATTR
-From: Olga Kornievskaia <aglo@umich.edu>
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <Anna.Schumaker@netapp.com>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: multipart/signed; micalg=pgp-sha1;
+ boundary="Sig_/k.nhQCgFH3nP7kVqhUcMdbd"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Client can receives stateid-type error (eg., BAD_STATEID) on SETATTR
-when delegation stateid was used. When no open state exists, in case
-of application calling truncate() on the file, client has no state to
-recover and fails with EIO.
+--Sig_/k.nhQCgFH3nP7kVqhUcMdbd
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-Instead, upon such error, return the bad delegation and then resend the
-SETATTR with a zero stateid. In general, when something calls
-nfs4_handle_exception() with a null state, the operation should be
-retried after bad delegation is removed.
+On Tue, 21 Apr 2015 17:54:17 -0400 "J. Bruce Fields" <bfields@fieldses.org>
 
-Signed-off: Olga Kornievskaia <kolga@netapp.com>
----
- fs/nfs/nfs4proc.c | 5 ++++-
- 1 file changed, 4 insertions(+), 1 deletion(-)
+>=20
+> Unfortunately ex_path is part of the key--it's what we need to do
+> lookups in this cache.  I'm surprised something like ls /mnt/ still
+> works after this.
+>=20
+> I'm not sure what to do.  I wonder if we really need the struct path as
+> part of the key, or if we could get away with just a string path?
+> That's what we're actually passing to userspace, after all.
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index ad7cf7e..fbde292 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -360,8 +360,11 @@ static int nfs4_handle_exception(struct
-nfs_server *server, int errorcode, struc
-         case -NFS4ERR_DELEG_REVOKED:
-         case -NFS4ERR_ADMIN_REVOKED:
-         case -NFS4ERR_BAD_STATEID:
--            if (state == NULL)
-+            if (state == NULL) {
-+                nfs4_inode_return_delegation(inode);
-+                exception->retry = 1;
-                 break;
-+            }
-             ret = nfs4_schedule_stateid_recovery(server, state);
-             if (ret < 0)
-                 break;
---
+I wonder if we can use Al's new 'fs_pin' stuff, so that when the filesystem
+is unmounted we get a call-back and can release the filesystem...
+
+NeilBrown
+
+
+--Sig_/k.nhQCgFH3nP7kVqhUcMdbd
+Content-Type: application/pgp-signature
+Content-Description: OpenPGP digital signature
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2
+
+iQIVAwUBVTcsgznsnt1WYoG5AQIpJQ//YmeMzuM6LycUx1wrefyag4LeZEGLZnEB
+vhUHUclnyaNnSXI9zS0+BBpvFRKJo/VegrAhWSvcEg+uU1syEcNQBuUOhb3uJqY4
+7etBUSBOuCbRH4UJaWpNsDAUiVISbYoOEQRF79RZD8FpgZFoD7W7JKKRerru/kJx
+nc4Y0JAnYi/pGOUIKIMUEFP3ghJLjIK+NQcw6YbD0bH5TP5iO/6sN7qgNI7Jq33U
+463vuMTWO9mM3XjEcLs3hPFNxTzN399qEnpbOIWTjtk/oQAphMBZUN5fsJgKkmzK
+yAQfk5ep/OPv2rMaCfqMSeCJSRXJjNIz5je+0lN80R4F1q2eaFHEiOON70a1E8x4
+F4ItawaLnUBOY0XY0X2ys/3VoC52+9uO1Ibml1INVUVA2Xq897yxB7oIF6rthbiT
+HK0VGG3N3+LGPrM2AUm5I+NCbITN/emdiS6OPu6x3RToe8LnlW4NnB/lzoSXlfuk
+Ril3byEYY9fZXYidijjP0c3P9qPpYO4DFGjcCVTVs+/rLCNWEbbvwZd6r9Lm33+/
+D6Z7/8q9tbbainqTj2VF43WPuQTvFzZEiNORBK0Wh1SpiK/qN9lUAyf5WPZTq4vR
+iZ8DCI/0VInPBpD+H1ee5lnnMTvp8kvaDTynwRk5jK315OsMzmp2ImvQxJoAZopj
+hgY3jq1ghGo=
+=up2r
+-----END PGP SIGNATURE-----
+
+--Sig_/k.nhQCgFH3nP7kVqhUcMdbd--
