@@ -1,206 +1,192 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from postout1.mail.lrz.de ([129.187.255.137]:44236 "EHLO
-	postout1.mail.lrz.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932971AbbDWKWF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Apr 2015 06:22:05 -0400
-Received: from lxmhs51.srv.lrz.de (localhost [127.0.0.1])
-	by postout1.mail.lrz.de (Postfix) with ESMTP id 3lXZKS4YDPzySt
-	for <linux-nfs@vger.kernel.org>; Thu, 23 Apr 2015 12:16:12 +0200 (CEST)
-Received: from postout1.mail.lrz.de ([127.0.0.1])
-	by lxmhs51.srv.lrz.de (lxmhs51.srv.lrz.de [127.0.0.1]) (amavisd-new, port 20024)
-	with LMTP id XGPkxglCxfWg for <linux-nfs@vger.kernel.org>;
-	Thu, 23 Apr 2015 12:16:12 +0200 (CEST)
-Received: from [192.168.109.72] (zzz-dyn-nat-164.lnt.ei.tum.de [129.187.109.164])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
-	(No client certificate requested)
-	by postout1.mail.lrz.de (Postfix) with ESMTPSA id 3lXZKS00pjzyRh
-	for <linux-nfs@vger.kernel.org>; Thu, 23 Apr 2015 12:16:11 +0200 (CEST)
-Message-ID: <5538C66A.1020302@tum.de>
-Date: Thu, 23 Apr 2015 12:16:10 +0200
-From: Joschi Brauchle <joschi.brauchle@tum.de>
+Received: from mail-pd0-f174.google.com ([209.85.192.174]:33777 "EHLO
+	mail-pd0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S965609AbbDWMw4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Apr 2015 08:52:56 -0400
+Received: by pdbnk13 with SMTP id nk13so17801038pdb.0
+        for <linux-nfs@vger.kernel.org>; Thu, 23 Apr 2015 05:52:56 -0700 (PDT)
+Message-ID: <5538EB18.7080802@gmail.com>
+Date: Thu, 23 Apr 2015 20:52:40 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
 MIME-Version: 1.0
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: NFS Client looping with STALE_STATE_ID error - 100% load on one CPU
- core
-Content-Type: multipart/signed; protocol="application/pkcs7-signature"; micalg=sha1; boundary="------------ms030803040502000002060302"
+To: NeilBrown <neilb@suse.de>, "J. Bruce Fields" <bfields@fieldses.org>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        kinglongmee@gmail.com
+Subject: Re: [PATCH RFC] NFSD: fix cannot umounting mount points under pseudo
+ root
+References: <553663B7.7030506@gmail.com>	<20150421215417.GE13782@fieldses.org>	<553781E2.1000900@gmail.com>	<20150422150703.GA1247@fieldses.org> <20150423094431.1a8aa68b@notabene.brown>
+In-Reply-To: <20150423094431.1a8aa68b@notabene.brown>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is a cryptographically signed message in MIME format.
+On 4/23/2015 7:44 AM, NeilBrown wrote:
+> On Wed, 22 Apr 2015 11:07:03 -0400 "J. Bruce Fields" <bfields@fieldses.org>
+> wrote:
+>>> Reference of dentry/mnt is like a cache, avoids re-finding of them,
+>>> it is necessary to store them in svc_export.
+>>>
+>>> Neil points out another way of 'fs_pin', I will check that.
+>>
+>> Yes, that'd be interesting.  On a very quick look--I don't understand
+>> what it's meant to do at all.  But if it does provide a way to get a
+>> callback on umount, that'd certainly be interesting....
+> 
+> Yeah, on a quick look it isn't really obvious at all.
+> 
+> But I didn't read the code.  I read
+>  https://lwn.net/Articles/636730/
+> 
+> which says:
+> 
+>     In its place is a mechanism by which an object can be added to a vfsmount
+>     structure (which represents a mounted filesystem); that object supports 
+>     only one method: kill(). These "pin" objects hang around until the final
+>     reference to the vfsmount goes away, at which point each one's kill() function
+>     is called. It thus is a clean mechanism for performing cleanup when a filesystem
+>     goes away.
+> 
+> This is used to close "BSD process accounting" files on umount, and sound
+> like the perfect interface for flushing things from the sunrpc cache on
+> umount.
 
---------------ms030803040502000002060302
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Transfer-Encoding: quoted-printable
+I have review those codes in fs/fs_pin.c and kernel/acct.c.
+'fs_pin' is used to fix the race between file->f_path.mnt for acct
+and umount, file->f_path.mnt just holds the reference of vfsmount
+but not keep busy, umount will check the reference and return busy.
 
-Hello everyone,
+The logical is same as sunrpc cache for exports.
 
-I am posting to this list as suggested by Neil F Brown in this OpenSUSE=20
-bugzilla: https://bugzilla.novell.com/show_bug.cgi?id=3D909634
+Before commit 3064c3563b ("death to mnt_pinned"), acct uses a hack
+method, acct get a pin to vfsmount and then put the reference,
+so umount finds no other reference and callback those pins in vfsmount,
+at last umount success.
 
+After that commit, besides pin to original vfsmount and put the reference
+of the original vfsmount, acct clone the vfsmount storing in file->f_path.mnt.
 
-We are mounting user homes and other shares using 'sec=3Dkrb' and NFSv4. =
+The different between those two methods is the value of file->f_path.mnt,
+the first one, it contains the original vfsmnt without reference,
+the second one, contains a cloned vfsmnt with reference.
 
-With kernel 3.16.7+ (includes latest NFS patches, please see BZ link for =
+I have test the first method, pins to vfsmount for all exports cache,
+nfsd can work but sometimes will delay or hang at rpc.mountd's calling
+of name_to_handle_at, I can't find the reason.
 
-details) we are seeing 100% CPU core usage by a kernel process on some=20
-machine connected to a 'NetApp FAS 3140 with ONTAP 8.1.4P1 7-mode'=20
-NFSv3/4 Server. It looks like the problem is triggered when the NFS=20
-server is unavailable for a short period of time or was rebooted.
+Also test the second method, there are many problem caused by the cloned
+vfsmount, mnt_clone_internal() change mnt_root values to the path dentry.
 
-Neil F Brown has come to the following conclusion so far:
-------------- QUOTE -------------
-What I see happening here is that a WRITE or LOCK request gets=20
-NFS4ERR_STALE_STATEID, and then the client sends a "RENEW" request.
+Those cases are tested for all exports cache, but, I think nfsd should
+put the reference of vfsmount when finding exports upcall fail.
+The success exports cache should also take it.
 
-If the stateid is really stale, that should fail, but it doesn't. So the =
+The following is a draft of the first method.
 
-client assumes everything is OK and keeps sending requests .... which=20
-fail with NFS4ERR_STALE_STATEID.
+thanks,
+Kinglong Mee
 
-STALE_STATEID means:
+----------------------------------------------------------------------
+diff --git a/fs/fs_pin.c b/fs/fs_pin.c
+index 611b540..553e8b1 100644
+--- a/fs/fs_pin.c
++++ b/fs/fs_pin.c
+@@ -17,6 +17,7 @@ void pin_remove(struct fs_pin *pin)
+ 	wake_up_locked(&pin->wait);
+ 	spin_unlock_irq(&pin->wait.lock);
+ }
++EXPORT_SYMBOL(pin_remove);
+ 
+ void pin_insert_group(struct fs_pin *pin, struct vfsmount *m, struct hlist_head *p)
+ {
+@@ -26,11 +27,13 @@ void pin_insert_group(struct fs_pin *pin, struct vfsmount *m, struct hlist_head
+ 	hlist_add_head(&pin->m_list, &real_mount(m)->mnt_pins);
+ 	spin_unlock(&pin_lock);
+ }
++EXPORT_SYMBOL(pin_insert_group);
+ 
+ void pin_insert(struct fs_pin *pin, struct vfsmount *m)
+ {
+ 	pin_insert_group(pin, m, &m->mnt_sb->s_pins);
+ }
++EXPORT_SYMBOL(pin_insert);
+ 
+ void pin_kill(struct fs_pin *p)
+ {
+diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
+index c3e3b6e..3e3df8c 100644
+--- a/fs/nfsd/export.c
++++ b/fs/nfsd/export.c
+@@ -309,7 +309,7 @@ static void nfsd4_fslocs_free(struct nfsd4_fs_locations *fsloc)
+ static void svc_export_put(struct kref *ref)
+ {
+ 	struct svc_export *exp = container_of(ref, struct svc_export, h.ref);
+-	path_put(&exp->ex_path);
++	pin_remove(&exp->ex_pin);
+ 	auth_domain_put(exp->ex_client);
+ 	nfsd4_fslocs_free(&exp->ex_fslocs);
+ 	kfree(exp->ex_uuid);
+@@ -695,15 +695,26 @@ static int svc_export_match(struct cache_head *a, struct cache_head *b)
+ 		orig->ex_path.mnt == new->ex_path.mnt;
+ }
+ 
++static void export_pin_kill(struct fs_pin *pin)
++{
++	struct svc_export *exp = container_of(pin, struct svc_export, ex_pin);
++
++	write_lock(&exp->cd->hash_lock);
++	cache_mark_expired(&exp->h);
++	pin_remove(pin);
++	write_unlock(&exp->cd->hash_lock);
++}
++
+ static void svc_export_init(struct cache_head *cnew, struct cache_head *citem)
+ {
+ 	struct svc_export *new = container_of(cnew, struct svc_export, h);
+ 	struct svc_export *item = container_of(citem, struct svc_export, h);
+ 
++	init_fs_pin(&new->ex_pin, export_pin_kill);
+ 	kref_get(&item->ex_client->ref);
+ 	new->ex_client = item->ex_client;
+ 	new->ex_path = item->ex_path;
+-	path_get(&item->ex_path);
++	pin_insert_group(&new->ex_pin, new->ex_path.mnt, NULL);
+ 	new->ex_fslocs.locations = NULL;
+ 	new->ex_fslocs.locations_count = 0;
+ 	new->ex_fslocs.migrated = 0;
+diff --git a/fs/nfsd/export.h b/fs/nfsd/export.h
+index 1f52bfc..718a27e 100644
+--- a/fs/nfsd/export.h
++++ b/fs/nfsd/export.h
+@@ -4,6 +4,7 @@
+ #ifndef NFSD_EXPORT_H
+ #define NFSD_EXPORT_H
+ 
++#include <linux/fs_pin.h>
+ #include <linux/sunrpc/cache.h>
+ #include <uapi/linux/nfsd/export.h>
+ 
+@@ -49,6 +50,7 @@ struct svc_export {
+ 	struct auth_domain *	ex_client;
+ 	int			ex_flags;
+ 	struct path		ex_path;
++	struct fs_pin		ex_pin;
+ 	kuid_t			ex_anon_uid;
+ 	kgid_t			ex_anon_gid;
+ 	int			ex_fsid;
+diff --git a/include/linux/sunrpc/cache.h b/include/linux/sunrpc/cache.h
+index 437ddb6..6936684 100644
+--- a/include/linux/sunrpc/cache.h
++++ b/include/linux/sunrpc/cache.h
+@@ -206,6 +206,11 @@ static inline int cache_is_expired(struct cache_detail *detail, struct cache_hea
+ 		(detail->flush_time > h->last_refresh);
+ }
+ 
++static inline void cache_mark_expired(struct cache_head *h)
++{
++	h->expiry_time = seconds_since_boot() - 1;
++}
++
+ extern int cache_check(struct cache_detail *detail,
+ 		       struct cache_head *h, struct cache_req *rqstp);
+ extern void cache_flush(void);
 
-       A stateid generated by an earlier server instance was used.
-
-which means that the server must have restarted since that stateid was=20
-issued.
-
-So there seem to be two possible explanations:
-
-1/ The server is lying.  The stateid isn't really 'stale'.  Maybe it is=20
-'bad'.
-2/ The client has previously handled a STALE_STATEID error and created a =
-
-new "client" handle, but hasn't refreshed all of the stateids that it=20
-was holding. So it is trying to use old stateid even though it has=20
-established a new client.
-
-The client code looks OK, though it is sufficiently complex that I=20
-cannot be certain.  There are no patches in more recent versions.
--------------  END  -------------
-
-We have some RPC/NFS debug logs available here:
-https://bugzilla.novell.com/attachment.cgi?id=3D631962
-And a wireshark trace here:
-https://bugzilla.novell.com/attachment.cgi?id=3D632104
-
-
-What I cannot do:
-- Trigger or reproduce the problem reliably. It comes up every once in a =
-
-while. Around 2-3 times a month on a handful of ~50 machines.
-- Provide logs from with the latest kernel (because I cannot trigger the =
-
-problem by any means. Updating all ~50 machines is not an option)
-
-
-What I can do:
-- Provide logs from or possibly even access to the machine in the=20
-'broken' state for the next couple of days. I will have to reboot it at=20
-some time to take the load of the NFS server.
-
-
-
-I would be grateful for any help or comments.
-
--J Brauchle
-
-
---------------ms030803040502000002060302
-Content-Type: application/pkcs7-signature; name="smime.p7s"
-Content-Transfer-Encoding: base64
-Content-Disposition: attachment; filename="smime.p7s"
-Content-Description: S/MIME Cryptographic Signature
-
-MIAGCSqGSIb3DQEHAqCAMIACAQExCzAJBgUrDgMCGgUAMIAGCSqGSIb3DQEHAQAAoIIPnDCC
-BNUwggO9oAMCAQICCFBOxvU9EbRkMA0GCSqGSIb3DQEBCwUAMHExCzAJBgNVBAYTAkRFMRww
-GgYDVQQKExNEZXV0c2NoZSBUZWxla29tIEFHMR8wHQYDVQQLExZULVRlbGVTZWMgVHJ1c3Qg
-Q2VudGVyMSMwIQYDVQQDExpEZXV0c2NoZSBUZWxla29tIFJvb3QgQ0EgMjAeFw0xNDA3MjIx
-MjA4MjZaFw0xOTA3MDkyMzU5MDBaMFoxCzAJBgNVBAYTAkRFMRMwEQYDVQQKEwpERk4tVmVy
-ZWluMRAwDgYDVQQLEwdERk4tUEtJMSQwIgYDVQQDExtERk4tVmVyZWluIFBDQSBHbG9iYWwg
-LSBHMDEwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQDpm8NnhfkNrvWNVMOWUDU9
-YuluTO2U1wBblSJ01CDrNI/W7MAxBAuZgeKmFNJSoCgjhIt0iQReW+DieMF4yxbLKDU5ey2Q
-RdDtoAB6fL9KDhsAw4bpXCsxEXsM84IkQ4wcOItqaACa7txPeKvSxhObdq3u3ibo7wGvdA/B
-CaL2a869080UME/15eOkyGKbghoDJzANAmVgTe3RCSMqljVYJ9N2xnG2kB3E7f81hn1vM7Pb
-D8URwoqDoZRdQWvY0hD1TP3KUazZve+Sg7va64sWVlZDz+HVEz2mHycwzUlU28kTNJpxdcVs
-6qcLmPkhnSevPqM5OUhqjK3JmfvDEvK9AgMBAAGjggGGMIIBgjAOBgNVHQ8BAf8EBAMCAQYw
-HQYDVR0OBBYEFEm3xs/oPR9/6kR7Eyn38QpwPt5kMB8GA1UdIwQYMBaAFDHDeRu69VPXF+CJ
-ei0XbAqzK50zMBIGA1UdEwEB/wQIMAYBAf8CAQIwYgYDVR0gBFswWTARBg8rBgEEAYGtIYIs
-AQEEAgIwEQYPKwYBBAGBrSGCLAEBBAMAMBEGDysGAQQBga0hgiwBAQQDATAPBg0rBgEEAYGt
-IYIsAQEEMA0GCysGAQQBga0hgiweMD4GA1UdHwQ3MDUwM6AxoC+GLWh0dHA6Ly9wa2kwMzM2
-LnRlbGVzZWMuZGUvcmwvRFRfUk9PVF9DQV8yLmNybDB4BggrBgEFBQcBAQRsMGowLAYIKwYB
-BQUHMAGGIGh0dHA6Ly9vY3NwMDMzNi50ZWxlc2VjLmRlL29jc3ByMDoGCCsGAQUFBzAChi5o
-dHRwOi8vcGtpMDMzNi50ZWxlc2VjLmRlL2NydC9EVF9ST09UX0NBXzIuY2VyMA0GCSqGSIb3
-DQEBCwUAA4IBAQBjICj9nCGGcr45Rlk5MiW8qQGbDczKfUGchm0KbiyzE1l1sTOSG2EnFv/D
-stU1gvuEKgFJvWa7Zi+ywgZdbj9u4wFaW8pDY1yVtuExpx/VB19N5mWCTjL5w3x6S81NXHTu
-IfJ1AuxSPtLJatOQI25JZzW+f01WpOzML8+3oZeocj7JvEDWWqQIPda8gsO3tzKOsSyOam23
-NQIZz/U5RFhjpyQAELC7/E6vbi84u6VXST/YblBvLJeW3B1GmmWJz67M8uXZn1OzPqEvkqnY
-C8aEHwTG6x7on321e6UC8STFJGMRNMxakyAqeYg6JUKQqWU7fIbTEhUjKfws2sw5W1QXMIIF
-HTCCBAWgAwIBAgIHF5Bg3/QB2TANBgkqhkiG9w0BAQsFADBaMQswCQYDVQQGEwJERTETMBEG
-A1UEChMKREZOLVZlcmVpbjEQMA4GA1UECxMHREZOLVBLSTEkMCIGA1UEAxMbREZOLVZlcmVp
-biBQQ0EgR2xvYmFsIC0gRzAxMB4XDTE0MDUxMjE1MDU1MVoXDTE5MDcwOTIzNTkwMFowYDEL
-MAkGA1UEBhMCREUxKTAnBgNVBAoTIFRlY2huaXNjaGUgVW5pdmVyc2l0YWV0IE11ZW5jaGVu
-MSYwJAYDVQQDEx1aZXJ0aWZpemllcnVuZ3NzdGVsbGUgZGVyIFRVTTCCASIwDQYJKoZIhvcN
-AQEBBQADggEPADCCAQoCggEBAKjv6NPYBFzJ+ZELc6JfE/5aga/7K7LWMVBHZvohdJZGd31p
-N9QEfzQeph0kiqsm1X5kHraPtTc9jMH8SLASBI45JppNSSYRfw6j6RjKA7PUStRfV0dq5cBP
-Bl5FpxAY23lAzMzY+6EQEq3/hS8Ia3zG5Q5saJsc+9B2So8+gvaVwZhrWhe7NhyvVqYMiBpT
-E9fbViah3Ur5VdDpcGbsb/BqRDxRrOCjQdNQ6TCQHfIUEDTQMW/czj1wbgLxrp8sB5XlwMPX
-7c2Do+yByWbcrkitdGEeagcWqC1gc8pD/f8PJIoVeW4cy60PjHRIfYC0NBVvg9P0viuwFEyW
-M17brI8CAwEAAaOCAeAwggHcMBIGA1UdEwEB/wQIMAYBAf8CAQEwDgYDVR0PAQH/BAQDAgEG
-MBEGA1UdIAQKMAgwBgYEVR0gADAdBgNVHQ4EFgQUnZ8j8BkbfscjXScqzKU2OqZp5YkwHwYD
-VR0jBBgwFoAUSbfGz+g9H3/qRHsTKffxCnA+3mQwgYgGA1UdHwSBgDB+MD2gO6A5hjdodHRw
-Oi8vY2RwMS5wY2EuZGZuLmRlL2dsb2JhbC1yb290LWNhL3B1Yi9jcmwvY2FjcmwuY3JsMD2g
-O6A5hjdodHRwOi8vY2RwMi5wY2EuZGZuLmRlL2dsb2JhbC1yb290LWNhL3B1Yi9jcmwvY2Fj
-cmwuY3JsMIHXBggrBgEFBQcBAQSByjCBxzAzBggrBgEFBQcwAYYnaHR0cDovL29jc3AucGNh
-LmRmbi5kZS9PQ1NQLVNlcnZlci9PQ1NQMEcGCCsGAQUFBzAChjtodHRwOi8vY2RwMS5wY2Eu
-ZGZuLmRlL2dsb2JhbC1yb290LWNhL3B1Yi9jYWNlcnQvY2FjZXJ0LmNydDBHBggrBgEFBQcw
-AoY7aHR0cDovL2NkcDIucGNhLmRmbi5kZS9nbG9iYWwtcm9vdC1jYS9wdWIvY2FjZXJ0L2Nh
-Y2VydC5jcnQwDQYJKoZIhvcNAQELBQADggEBANaFYIHzwjpv6JVEdDhka/NaydcN/TSxDEYw
-I7YJ34SlUbk7FVykIRBWlTR8uEwUqhBgNtp1Rg+Kq8qSS9DtSnpOG5EqPvxJRN55x9zNCqZv
-WINnVU+p0V/yOTn+mYBBlgQhgixSxBkanY8VoPBcjr2/i6cck1Mc8co3bZa8i32qCrX0E0mO
-DGohpEVA6sllNkRU6NozLScnab7sibPN7K9w3gbCX61yCPfTvtmiWorJr/GgtLR4D7GczhoD
-ofrJpBzxSacgckbZPirIEgloRZL+1X9kAAjka/hEXh+KYd3qkCdNiMAM8+/Por4Kg8Y/l1k+
-CDudwzwDxAS9H0tcXl4wggWeMIIEhqADAgECAgcWcetffSz0MA0GCSqGSIb3DQEBBQUAMGAx
-CzAJBgNVBAYTAkRFMSkwJwYDVQQKEyBUZWNobmlzY2hlIFVuaXZlcnNpdGFldCBNdWVuY2hl
-bjEmMCQGA1UEAxMdWmVydGlmaXppZXJ1bmdzc3RlbGxlIGRlciBUVU0wHhcNMTMxMDA3MDgx
-NjE2WhcNMTYxMDA2MDgxNjE2WjCB3TELMAkGA1UEBhMCREUxDzANBgNVBAgTBkJheWVybjER
-MA8GA1UEBxMITXVlbmNoZW4xKTAnBgNVBAoTIFRlY2huaXNjaGUgVW5pdmVyc2l0YWV0IE11
-ZW5jaGVuMT4wPAYDVQQLEzVGYWt1bHRhZXQgZnVlciBFbGVrdHJvdGVjaG5payB1bmQgSW5m
-b3JtYXRpb25zdGVjaG5pazEYMBYGA1UEAxMPSm9zY2hpIEJyYXVjaGxlMSUwIwYJKoZIhvcN
-AQkBFhZqb3NjaGkuYnJhdWNobGVAdHVtLmRlMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIB
-CgKCAQEAw1E6N5L0RYJp0kT8TWRT0tGChhKQxR4/dC67zOPWXS/eWUVt8jO0w39YJo/mBi3n
-GyA7xwSgeLoODOkoo53afUxRRFqbPiSqSpHs0I0cePxzYVy+3ZcMg7J9RYsZESY1PrQMFmvh
-TJSxzAwN6waIRyjoVZoTVB4/UC/QhaFbl4WZcIyIqOLq0wlRsrPJuXJiNW8IRsY6xxf5uP4w
-2Foj9wPqoF4ssSaSHQzPVh2PaBoW5iCmHTV/iPaD9mjCGMSLbClIF7VYLMBMCSmfGgou0UlK
-LQ24twb94xkba0QKo8a1GMU00HowMEBb3pY8e4sjHM0hGVzPHfjKf7Z2n774vwIDAQABo4IB
-3TCCAdkwLwYDVR0gBCgwJjARBg8rBgEEAYGtIYIsAQEEAwAwEQYPKwYBBAGBrSGCLAIBBAMA
-MAkGA1UdEwQCMAAwCwYDVR0PBAQDAgXgMB0GA1UdJQQWMBQGCCsGAQUFBwMCBggrBgEFBQcD
-BDAdBgNVHQ4EFgQUSD2MWx96Lbrr7Vaeh3rAprAP4OswHwYDVR0jBBgwFoAUnZ8j8Bkbfscj
-XScqzKU2OqZp5YkwIQYDVR0RBBowGIEWam9zY2hpLmJyYXVjaGxlQHR1bS5kZTB3BgNVHR8E
-cDBuMDWgM6Axhi9odHRwOi8vY2RwMS5wY2EuZGZuLmRlL3R1bS1jYS9wdWIvY3JsL2NhY3Js
-LmNybDA1oDOgMYYvaHR0cDovL2NkcDIucGNhLmRmbi5kZS90dW0tY2EvcHViL2NybC9jYWNy
-bC5jcmwwgZIGCCsGAQUFBwEBBIGFMIGCMD8GCCsGAQUFBzAChjNodHRwOi8vY2RwMS5wY2Eu
-ZGZuLmRlL3R1bS1jYS9wdWIvY2FjZXJ0L2NhY2VydC5jcnQwPwYIKwYBBQUHMAKGM2h0dHA6
-Ly9jZHAyLnBjYS5kZm4uZGUvdHVtLWNhL3B1Yi9jYWNlcnQvY2FjZXJ0LmNydDANBgkqhkiG
-9w0BAQUFAAOCAQEAK98J5s+3aGhWqEPuUwxbm4jxMmLG+f6DbP5s/2AjHvWkGWwSgT9u503U
-EjqLP7otgr0AFYWArffwTWv2i6Preh1OfhDHkm051LrOtFj+/lBjN+CwuFojG213BKDOno39
-cARrIbSDqBdLpY11DJn7ejEchMj7xNqjt5TbMH40kUD6ApChMuJdilk4tEI/flkKbx4Eo8ba
-PxPivXjyEXIgNOSSsZLjEG+rO0R5mko62OshCS+e099Z7aLcjLE5pxrlZ6+8Xlf0hTJ5BLhT
-HJCCf5banfDrJK+MQzaMcEtfK5jKFhqxJK6gRomqlu7M3Ib1ApQ3u7WWZ1oug9zLE0ZzcDGC
-A1swggNXAgEBMGswYDELMAkGA1UEBhMCREUxKTAnBgNVBAoTIFRlY2huaXNjaGUgVW5pdmVy
-c2l0YWV0IE11ZW5jaGVuMSYwJAYDVQQDEx1aZXJ0aWZpemllcnVuZ3NzdGVsbGUgZGVyIFRV
-TQIHFnHrX30s9DAJBgUrDgMCGgUAoIIBxTAYBgkqhkiG9w0BCQMxCwYJKoZIhvcNAQcBMBwG
-CSqGSIb3DQEJBTEPFw0xNTA0MjMxMDE2MTBaMCMGCSqGSIb3DQEJBDEWBBTH22r9z4zCBXQg
-09F1LwhUs0nC/TBsBgkqhkiG9w0BCQ8xXzBdMAsGCWCGSAFlAwQBKjALBglghkgBZQMEAQIw
-CgYIKoZIhvcNAwcwDgYIKoZIhvcNAwICAgCAMA0GCCqGSIb3DQMCAgFAMAcGBSsOAwIHMA0G
-CCqGSIb3DQMCAgEoMHoGCSsGAQQBgjcQBDFtMGswYDELMAkGA1UEBhMCREUxKTAnBgNVBAoT
-IFRlY2huaXNjaGUgVW5pdmVyc2l0YWV0IE11ZW5jaGVuMSYwJAYDVQQDEx1aZXJ0aWZpemll
-cnVuZ3NzdGVsbGUgZGVyIFRVTQIHFnHrX30s9DB8BgsqhkiG9w0BCRACCzFtoGswYDELMAkG
-A1UEBhMCREUxKTAnBgNVBAoTIFRlY2huaXNjaGUgVW5pdmVyc2l0YWV0IE11ZW5jaGVuMSYw
-JAYDVQQDEx1aZXJ0aWZpemllcnVuZ3NzdGVsbGUgZGVyIFRVTQIHFnHrX30s9DANBgkqhkiG
-9w0BAQEFAASCAQCXYUv7/OhrZZjBF/5peV8JlQBHuSCE0Kica3ddEH9F9D7VZpRVggTKGXQz
-47Tk15jZNv4Rq+HbTfRsJyY501SJj5F2C+OUHCQmESIxhKn3WyQuB2/h0HxEbXSUWrtgNOCF
-ZksiG2jSb3m2LHSrIWB/oWmo9QhatR4u+fMtL6ezKegSyGgt6FbjR6NMYgJ3h0P45XWb0uZQ
-URDJ7qlYa1PYtRMu8pztGvPXCzNPezeB9qOZp0WjWKz0vKnZuJi5JzogB77woMSPD62Ln7Lc
-Dh/fyOfRADJ/dPL6q+U4XIPNWeuhm/m95VN02Rm3TmzA8WIZEsl3R+0e5W+rrGnJUCMrAAAA
-AAAA
---------------ms030803040502000002060302--
