@@ -1,72 +1,61 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:39955 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S966016AbbDWPMG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 23 Apr 2015 11:12:06 -0400
-Date: Thu, 23 Apr 2015 11:12:05 -0400
-To: Linus Torvalds <torvalds@linux-foundation.org>
+Received: from cam-admin0.cambridge.arm.com ([217.140.96.50]:61841 "EHLO
+	cam-admin0.cambridge.arm.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S966283AbbDWQRo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Apr 2015 12:17:44 -0400
+From: Andre Przywara <andre.przywara@arm.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>
 Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [GIT] nfsd changes for 4.0
-Message-ID: <20150423151205.GB22158@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-From: bfields@fieldses.org (J. Bruce Fields)
+Subject: [PATCH] fs/nfs: fix new compiler warning about boolean in switch
+Date: Thu, 23 Apr 2015 17:17:40 +0100
+Message-Id: <1429805860-19893-1-git-send-email-andre.przywara@arm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Please pull nfsd changes for 4.0 from:
+The brand new GCC 5.1.0 warns by default on using a boolean in the
+switch condition. This results in the following warning:
 
-  git://linux-nfs.org/~bfields/linux.git for-4.0
+fs/nfs/nfs4proc.c: In function 'nfs4_proc_get_rootfh':
+fs/nfs/nfs4proc.c:3100:10: warning: switch condition has boolean value [-Wswitch-bool]
+  switch (auth_probe) {
+          ^
 
-A quiet cycle this time; this is basically entirely bugfixes.  The few
-that aren't cc'd to stable are cleanup or seemed unlikely to affect
-anyone much.
+This code was obviously using switch to make use of the fall-through
+semantics (without the usual comment, though).
+Rewrite that code using if statements to avoid the warning and make
+the code a bit more readable on the way.
 
---b.
+Signed-off-by: Andre Przywara <andre.przywara@arm.com>
+---
+ fs/nfs/nfs4proc.c |   11 ++++-------
+ 1 file changed, 4 insertions(+), 7 deletions(-)
 
-----------------------------------------------------------------
-Andreas Gruenbacher (1):
-      uapi: Remove kernel internal declaration
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 627f37c..f7acfb6 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -3095,16 +3095,13 @@ int nfs4_proc_get_rootfh(struct nfs_server *server, struct nfs_fh *fhandle,
+ 			 struct nfs_fsinfo *info,
+ 			 bool auth_probe)
+ {
+-	int status;
++	int status = 0;
+ 
+-	switch (auth_probe) {
+-	case false:
++	if (!auth_probe)
+ 		status = nfs4_lookup_root(server, fhandle, info);
+-		if (status != -NFS4ERR_WRONGSEC)
+-			break;
+-	default:
++
++	if (auth_probe || status == NFS4ERR_WRONGSEC)
+ 		status = nfs4_do_find_root_sec(server, fhandle, info);
+-	}
+ 
+ 	if (status == 0)
+ 		status = nfs4_server_capabilities(server, fhandle);
+-- 
+1.7.10.4
 
-Chengyu Song (1):
-      nfsd: NFSD_FAULT_INJECTION depends on DEBUG_FS
-
-Christoph Hellwig (1):
-      nfsd: add NFSEXP_PNFS to the exflags array
-
-Giuseppe Cantavenera (1):
-      nfsd: fix nsfd startup race triggering BUG_ON
-
-J. Bruce Fields (4):
-      nfsd: allow setting acls with unenforceable DENYs
-      nfsd4: disallow ALLOCATE with special stateids
-      nfsd4: disallow SEEK with special stateids
-      nfsd4: fix READ permission checking
-
-Jeff Layton (2):
-      nfsd: remove bogus setting of status in nfsd4_process_open2
-      nfsd: remove unused status arg to nfsd4_cleanup_open_state
-
-Kinglong Mee (3):
-      NFSD: Using path_equal() for checking two paths
-      NFSD: Use correct reply size calculating function
-      nfsd: Remove duplicate macro define for max sec label length
-
-Mark Salter (1):
-      nfsd: eliminate NFSD_DEBUG
-
- fs/lockd/svcsubs.c               |  2 +-
- fs/nfsd/Kconfig                  |  2 +-
- fs/nfsd/export.c                 |  4 ++--
- fs/nfsd/nfs4acl.c                | 50 +---------------------------------------
- fs/nfsd/nfs4proc.c               | 12 ++++++----
- fs/nfsd/nfs4state.c              |  5 ++--
- fs/nfsd/nfs4xdr.c                | 16 ++++++++-----
- fs/nfsd/nfsctl.c                 | 16 ++++++-------
- fs/nfsd/nfsd.h                   |  2 +-
- fs/nfsd/xdr4.h                   |  3 +--
- include/linux/nfs4.h             |  7 ++++++
- include/uapi/linux/nfs4.h        |  7 ------
- include/uapi/linux/nfsd/debug.h  |  8 -------
- include/uapi/linux/nfsd/export.h |  3 +++
- 14 files changed, 45 insertions(+), 92 deletions(-)
