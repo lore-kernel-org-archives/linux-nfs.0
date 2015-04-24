@@ -1,36 +1,49 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-oi0-f45.google.com ([209.85.218.45]:36197 "EHLO
-	mail-oi0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754825AbbDXLHn (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Apr 2015 07:07:43 -0400
-MIME-Version: 1.0
-In-Reply-To: <20150420212810.GB27895@fieldses.org>
-References: <cover.1427471526.git.agruenba@redhat.com>
-	<75f97eb880b1bbb47b0aa146d3f528e32de06744.1427471526.git.agruenba@redhat.com>
-	<20150420212810.GB27895@fieldses.org>
-Date: Fri, 24 Apr 2015 13:07:42 +0200
-Message-ID: <CAHpGcML1gUTQkYzkyntG1Y89Nh1rVveATpXJgL-GvjRhXOhU0Q@mail.gmail.com>
-Subject: Re: [RFC 11/39] richacl: Compute maximum file masks from an acl
-From: =?UTF-8?Q?Andreas_Gr=C3=BCnbacher?= <andreas.gruenbacher@gmail.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+Received: from mail-wg0-f49.google.com ([74.125.82.49]:33818 "EHLO
+	mail-wg0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1030615AbbDXLFt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Apr 2015 07:05:49 -0400
+From: Andreas Gruenbacher <andreas.gruenbacher@gmail.com>
+To: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=UTF-8
+Subject: [RFC v3 41/45] rpc: Allow to demand-allocate pages to encode into
+Date: Fri, 24 Apr 2015 13:04:38 +0200
+Message-Id: <4bf77d045d2bd3494c695229cd0505b7002cc9a2.1429868795.git.agruenba@redhat.com>
+In-Reply-To: <cover.1429868795.git.agruenba@redhat.com>
+References: <cover.1429868795.git.agruenba@redhat.com>
+In-Reply-To: <cover.1429868795.git.agruenba@redhat.com>
+References: <cover.1429868795.git.agruenba@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-2015-04-20 23:28 GMT+02:00 J. Bruce Fields <bfields@fieldses.org>:
-> Cripes, by the time I got to this point I'd already written one response
-> where I complained this was wrong, another where I explained why it was
-> right, and gone back and forth a couple more times.
->
-> Feel free to add a
->
->         Reviewed-by: J. Bruce Fields <bfields@redhat.com>
->
-> but maybe we could use a couple more examples here.  Or a paper.
+When encoding large, variable-length objects such as acls into xdr_bufs, it is
+easier to allocate buffer pages on demand rather than computing the required
+buffer size beforehand.
 
-Thanks, I've tried to explain things a little better in the updated patch queue
-just pushed out.
+Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
+---
+ net/sunrpc/xdr.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
 
-Andreas
+diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
+index 4439ac4..062951b 100644
+--- a/net/sunrpc/xdr.c
++++ b/net/sunrpc/xdr.c
+@@ -537,6 +537,14 @@ static __be32 *xdr_get_next_encode_buffer(struct xdr_stream *xdr,
+ 	 */
+ 	xdr->scratch.iov_base = xdr->p;
+ 	xdr->scratch.iov_len = frag1bytes;
++
++	if (!*xdr->page_ptr) {
++		struct page *page = alloc_page(GFP_KERNEL);
++		if (!page)
++			return ERR_PTR(-ENOMEM);
++		*xdr->page_ptr = page;
++	}
++
+ 	p = page_address(*xdr->page_ptr);
+ 	/*
+ 	 * Note this is where the next encode will start after we've
+-- 
+2.1.0
+
