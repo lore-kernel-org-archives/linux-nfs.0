@@ -1,43 +1,53 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ob0-f176.google.com ([209.85.214.176]:33092 "EHLO
-	mail-ob0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754544AbbDXLZD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Apr 2015 07:25:03 -0400
+Received: from mx1.redhat.com ([209.132.183.28]:59728 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753760AbbDXNSr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 24 Apr 2015 09:18:47 -0400
+Message-ID: <553A42B4.5010101@RedHat.com>
+Date: Fri, 24 Apr 2015 09:18:44 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-In-Reply-To: <20150420185720.GA27895@fieldses.org>
-References: <cover.1427471526.git.agruenba@redhat.com>
-	<063d443cc0ddc5db271cdaa6649443eb699736d0.1427471526.git.agruenba@redhat.com>
-	<20150420185720.GA27895@fieldses.org>
-Date: Fri, 24 Apr 2015 13:25:02 +0200
-Message-ID: <CAHpGcMKF=RQ=zxqfr4hW=ky0tt4jV3qMEuNgc1W-oE3SNj1cEw@mail.gmail.com>
-Subject: Re: [RFC 02/39] uapi: Remove kernel internal declaration
-From: =?UTF-8?Q?Andreas_Gr=C3=BCnbacher?= <andreas.gruenbacher@gmail.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=UTF-8
+To: Gregory Boyce <gregory.boyce@gmail.com>, linux-nfs@vger.kernel.org
+Subject: Re: nfs-utils: Allow users to disable mount option rewriting via
+ norewriteopts mount option
+References: <alpine.DEB.2.10.1504201432530.5987@valhalla.home>
+In-Reply-To: <alpine.DEB.2.10.1504201432530.5987@valhalla.home>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-2015-04-20 20:57 GMT+02:00 J. Bruce Fields <bfields@fieldses.org>:
-> On Fri, Mar 27, 2015 at 05:50:00PM +0100, Andreas Gruenbacher wrote:
->> The enum nfs4_acl_whotype is only used in nfs4d's internal nfs4 acl
->> representation. No longer expose it to user space.
->
-> I'll go ahead and apply that now.
+Hello,
 
-There's other very low-hanging fruit for nfsd as well:
+On 04/20/2015 02:34 PM, Gregory Boyce wrote:
+> Allow users to disable mount option rewriting via norewriteopts mount option.
+> This was required in our case in order to allow mounting a filer 
+> which inappropriately responded via the wrong interface.
+Why are we adding a mount option to fix a broken server??
 
-nfsd: Checking for acl support does not require fetching any acls
-https://git.kernel.org/cgit/linux/kernel/git/agruen/linux-richacl.git/commit/?h=richacl-2015-04-24&id=b3a09e6f1071ea01de64aa3071cb533e79fb4b18
+steved.
 
-nfsd: Remove dead declarations
-https://git.kernel.org/cgit/linux/kernel/git/agruen/linux-richacl.git/commit/?h=richacl-2015-04-24&id=e6e2fa620584c6e2375572191fff7337a902805a
-
-And for nfs:
-
-nfs: Remove unused xdr page offsets in getacl/setacl arguments
-https://git.kernel.org/cgit/linux/kernel/git/agruen/linux-richacl.git/commit/?h=richacl-2015-04-24&id=082664972e957e6585c059865a397185ba7d5c88
-
-Thanks,
-Andreas
+> 
+> Signed-off-by: Gregory Boyce <gregory.boyce@gmail.com>
+> ---
+>  utils/mount/stropts.c | 8 ++++++++
+>  1 file changed, 8 insertions(+)
+> 
+> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+> index df67fac..bbda754 100644
+> --- a/utils/mount/stropts.c
+> +++ b/utils/mount/stropts.c
+> @@ -534,6 +534,14 @@ nfs_rewrite_pmap_mount_options(struct mount_options *options, int checkv4)
+>      struct pmap mnt_pmap;
+> 
+>      /*
+> +     * "norewriteopts" option bypasses the options rewriting
+> +     */
+> +    if (po_contains(options, "norewriteopts") == PO_FOUND) {
+> +        po_remove_all(options, "norewriteopts");
+> +        return 1;
+> +    }
+> +
+> +    /*
+>       * Version and transport negotiation is not required
+>       * and does not work for RDMA mounts.
+>       */
