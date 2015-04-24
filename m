@@ -1,15 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wg0-f53.google.com ([74.125.82.53]:34452 "EHLO
-	mail-wg0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932263AbbDXLF1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Apr 2015 07:05:27 -0400
+Received: from mail-wi0-f175.google.com ([209.85.212.175]:35962 "EHLO
+	mail-wi0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932263AbbDXLFP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Apr 2015 07:05:15 -0400
 From: Andreas Gruenbacher <andreas.gruenbacher@gmail.com>
 To: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-nfs@vger.kernel.org
-Cc: Andreas Gruenbacher <agruen@kernel.org>
-Subject: [RFC v3 25/45] richacl: acl editing helper functions
-Date: Fri, 24 Apr 2015 13:04:22 +0200
-Message-Id: <a74bc8fdb5d8ee5bdd5defad9729d17211266079.1429868795.git.agruenba@redhat.com>
+Subject: [RFC v3 17/45] richacl: Create-time inheritance
+Date: Fri, 24 Apr 2015 13:04:14 +0200
+Message-Id: <ef1593f2f86588d90f873fc3dbc29f2760fe1f22.1429868795.git.agruenba@redhat.com>
 In-Reply-To: <cover.1429868795.git.agruenba@redhat.com>
 References: <cover.1429868795.git.agruenba@redhat.com>
 In-Reply-To: <cover.1429868795.git.agruenba@redhat.com>
@@ -17,257 +16,182 @@ References: <cover.1429868795.git.agruenba@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The file masks in richacls make chmod and creating new files more
-efficient than having to apply file permission bits to the acl directly.
-They also allow us to regain permissions from an acl even after a
-restrictive chmod, because the permissions in the acl itself are not
-being destroyed.  In POSIX ACLs, the mask entry has a similar function.
+When a new file is created, it can inherit an acl from its parent
+directory; this is similar to how default acls work in POSIX (draft)
+ACLs.
 
-Protocols like nfsv4 do not understand file masks.  For those protocols,
-we need to compute nfs4 acls which represent the effective permissions
-granted by a richacl: we need to "apply" the file masks to the acl.
+As with POSIX ACLs, if a file inherits an acl from its parent directory,
+the intersection between the create mode and the permissions granted by
+the inherited acl determines the file masks and file permission bits,
+and the umask is ignored.
 
-This is the first in a series of richacl transformation patches; it
-implements basic richacl editing functions.  The following patches
-implement algorithms for transforming a richacl so that it can be
-evaluated as a plain nfs4 acl, with identical permission check results.
-
-Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
+Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
 ---
- fs/Makefile                    |   3 +-
- fs/richacl_compat.c            | 161 +++++++++++++++++++++++++++++++++++++++++
- include/linux/richacl_compat.h |  40 ++++++++++
- 3 files changed, 203 insertions(+), 1 deletion(-)
- create mode 100644 fs/richacl_compat.c
- create mode 100644 include/linux/richacl_compat.h
+ fs/richacl_base.c       | 69 +++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/richacl_inode.c      | 60 ++++++++++++++++++++++++++++++++++++++++++
+ include/linux/richacl.h |  2 ++
+ 3 files changed, 131 insertions(+)
 
-diff --git a/fs/Makefile b/fs/Makefile
-index 6155cc4..5983276 100644
---- a/fs/Makefile
-+++ b/fs/Makefile
-@@ -48,7 +48,8 @@ obj-$(CONFIG_SYSCTL)		+= drop_caches.o
- 
- obj-$(CONFIG_FHANDLE)		+= fhandle.o
- obj-$(CONFIG_FS_RICHACL)	+= richacl.o
--richacl-y			:= richacl_base.o richacl_inode.o richacl_xattr.o
-+richacl-y			:= richacl_base.o richacl_inode.o \
-+				   richacl_xattr.o richacl_compat.o
- 
- obj-y				+= quota/
- 
-diff --git a/fs/richacl_compat.c b/fs/richacl_compat.c
-new file mode 100644
-index 0000000..2ea6658
---- /dev/null
-+++ b/fs/richacl_compat.c
-@@ -0,0 +1,161 @@
-+/*
-+ * Copyright (C) 2006, 2010  Novell, Inc.
-+ * Copyright (C) 2015  Red Hat, Inc.
-+ * Written by Andreas Gruenbacher <agruen@kernel.org>
-+ *
-+ * This program is free software; you can redistribute it and/or modify it
-+ * under the terms of the GNU General Public License as published by the
-+ * Free Software Foundation; either version 2, or (at your option) any
-+ * later version.
-+ *
-+ * This program is distributed in the hope that it will be useful, but
-+ * WITHOUT ANY WARRANTY; without even the implied warranty of
-+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-+ * General Public License for more details.
-+ */
-+
-+#include <linux/module.h>
-+#include <linux/fs.h>
-+#include <linux/slab.h>
-+#include <linux/richacl_compat.h>
+diff --git a/fs/richacl_base.c b/fs/richacl_base.c
+index 5273ccb..5d45539 100644
+--- a/fs/richacl_base.c
++++ b/fs/richacl_base.c
+@@ -368,3 +368,72 @@ richacl_chmod(struct richacl *acl, mode_t mode)
+ 	return clone;
+ }
+ EXPORT_SYMBOL_GPL(richacl_chmod);
 +
 +/**
-+ * richacl_prepare  -  allocate richacl being constructed
++ * richacl_inherit  -  compute the inherited acl of a new file
++ * @dir_acl:	acl of the containing directory
++ * @isdir:	inherit by a directory or non-directory?
 + *
-+ * Allocate a richacl which can hold @count entries but which is initially
-+ * empty.
++ * A directory can have acl entries which files and/or directories created
++ * inside the directory will inherit.  This function computes the acl for such
++ * a new file.  If there is no inheritable acl, it will return %NULL.
 + */
-+struct richacl *richacl_prepare(struct richacl_alloc *x, unsigned int count)
++struct richacl *
++richacl_inherit(const struct richacl *dir_acl, int isdir)
 +{
-+	x->acl = richacl_alloc(count, GFP_KERNEL);
-+	if (!x->acl)
-+		return NULL;
-+	x->acl->a_count = 0;
-+	x->count = count;
-+	return x->acl;
-+}
-+EXPORT_SYMBOL_GPL(richacl_prepare);
++	const struct richace *dir_ace;
++	struct richacl *acl = NULL;
++	struct richace *ace;
++	int count = 0;
 +
-+/**
-+ * richacl_delete_entry  -  delete an entry in an acl
-+ * @x:		acl and number of allocated entries
-+ * @ace:	an entry in @x->acl
-+ *
-+ * Updates @ace so that it points to the entry before the deleted entry
-+ * on return. (When deleting the first entry, @ace will point to the
-+ * (non-existant) entry before the first entry). This behavior is the
-+ * expected behavior when deleting entries while forward iterating over
-+ * an acl.
-+ */
-+void
-+richacl_delete_entry(struct richacl_alloc *x, struct richace **ace)
-+{
-+	void *end = x->acl->a_entries + x->acl->a_count;
-+
-+	memmove(*ace, *ace + 1, end - (void *)(*ace + 1));
-+	(*ace)--;
-+	x->acl->a_count--;
-+}
-+EXPORT_SYMBOL_GPL(richacl_delete_entry);
-+
-+/**
-+ * richacl_insert_entry  -  insert an entry in an acl
-+ * @x:		acl and number of allocated entries
-+ * @ace:	entry before which the new entry shall be inserted
-+ *
-+ * Insert a new entry in @x->acl at position @ace and zero-initialize
-+ * it.  This may require reallocating @x->acl.
-+ */
-+int
-+richacl_insert_entry(struct richacl_alloc *x, struct richace **ace)
-+{
-+	if (x->count == x->acl->a_count) {
-+		int n = *ace - x->acl->a_entries;
-+		struct richacl *acl2;
-+
-+		acl2 = richacl_alloc(x->acl->a_count + 1, GFP_KERNEL);
-+		if (!acl2)
-+			return -1;
-+		acl2->a_flags = x->acl->a_flags;
-+		acl2->a_owner_mask = x->acl->a_owner_mask;
-+		acl2->a_group_mask = x->acl->a_group_mask;
-+		acl2->a_other_mask = x->acl->a_other_mask;
-+		memcpy(acl2->a_entries, x->acl->a_entries,
-+		       n * sizeof(struct richace));
-+		memcpy(acl2->a_entries + n + 1, *ace,
-+		       (x->acl->a_count - n) * sizeof(struct richace));
-+		kfree(x->acl);
-+		x->acl = acl2;
-+		x->count = acl2->a_count;
-+		*ace = acl2->a_entries + n;
-+	} else {
-+		void *end = x->acl->a_entries + x->acl->a_count;
-+
-+		memmove(*ace + 1, *ace, end - (void *)*ace);
-+		x->acl->a_count++;
-+	}
-+	memset(*ace, 0, sizeof(struct richace));
-+	return 0;
-+}
-+EXPORT_SYMBOL_GPL(richacl_insert_entry);
-+
-+/**
-+ * richacl_append_entry  -  append an entry to an acl
-+ * @x:		acl and number of allocated entries
-+ *
-+ * This may require reallocating @x->acl.
-+ */
-+struct richace *richacl_append_entry(struct richacl_alloc *x)
-+{
-+	struct richacl *acl = x->acl;
-+	struct richace *ace = acl->a_entries + acl->a_count;
-+
-+	if (x->count > x->acl->a_count) {
-+		acl->a_count++;
-+		return ace;
-+	}
-+	return richacl_insert_entry(x, &ace) ? NULL : ace;
-+}
-+EXPORT_SYMBOL_GPL(richacl_append_entry);
-+
-+/**
-+ * richace_change_mask  -  set the mask of @ace to @mask
-+ * @x:		acl and number of allocated entries
-+ * @ace:	entry to modify
-+ * @mask:	new mask for @ace
-+ *
-+ * If @ace is inheritable, a inherit-only ace is inserted before @ace which
-+ * includes the inheritable permissions of @ace and the inheritance flags of
-+ * @ace are cleared before changing the mask.
-+ *
-+ * If @mode is 0, the original ace is turned into an inherit-only entry if
-+ * there are any inheritable permissions, and removed otherwise.
-+ *
-+ * The returned @ace points to the modified or inserted effective-only acl
-+ * entry if that entry exists, to the entry that has become inheritable-only,
-+ * or else to the previous entry in the acl.
-+ */
-+static int
-+richace_change_mask(struct richacl_alloc *x, struct richace **ace,
-+			   unsigned int mask)
-+{
-+	if (mask && (*ace)->e_mask == mask)
-+		return 0;
-+	if (mask & ~RICHACE_POSIX_ALWAYS_ALLOWED) {
-+		if (richace_is_inheritable(*ace)) {
-+			if (richacl_insert_entry(x, ace))
-+				return -1;
-+			memcpy(*ace, *ace + 1, sizeof(struct richace));
-+			(*ace)->e_flags |= RICHACE_INHERIT_ONLY_ACE;
-+			(*ace)++;
-+			richace_clear_inheritance_flags(*ace);
++	if (isdir) {
++		richacl_for_each_entry(dir_ace, dir_acl) {
++			if (!richace_is_inheritable(dir_ace))
++				continue;
++			count++;
 +		}
-+		(*ace)->e_mask = mask;
++		if (!count)
++			return NULL;
++		acl = richacl_alloc(count, GFP_KERNEL);
++		if (!acl)
++			return ERR_PTR(-ENOMEM);
++		ace = acl->a_entries;
++		richacl_for_each_entry(dir_ace, dir_acl) {
++			if (!richace_is_inheritable(dir_ace))
++				continue;
++			memcpy(ace, dir_ace, sizeof(struct richace));
++			if (dir_ace->e_flags & RICHACE_NO_PROPAGATE_INHERIT_ACE)
++				richace_clear_inheritance_flags(ace);
++			if ((dir_ace->e_flags & RICHACE_FILE_INHERIT_ACE) &&
++			    !(dir_ace->e_flags & RICHACE_DIRECTORY_INHERIT_ACE))
++				ace->e_flags |= RICHACE_INHERIT_ONLY_ACE;
++			ace++;
++		}
 +	} else {
-+		if (richace_is_inheritable(*ace))
-+			(*ace)->e_flags |= RICHACE_INHERIT_ONLY_ACE;
-+		else
-+			richacl_delete_entry(x, ace);
++		richacl_for_each_entry(dir_ace, dir_acl) {
++			if (!(dir_ace->e_flags & RICHACE_FILE_INHERIT_ACE))
++				continue;
++			count++;
++		}
++		if (!count)
++			return NULL;
++		acl = richacl_alloc(count, GFP_KERNEL);
++		if (!acl)
++			return ERR_PTR(-ENOMEM);
++		ace = acl->a_entries;
++		richacl_for_each_entry(dir_ace, dir_acl) {
++			if (!(dir_ace->e_flags & RICHACE_FILE_INHERIT_ACE))
++				continue;
++			memcpy(ace, dir_ace, sizeof(struct richace));
++			richace_clear_inheritance_flags(ace);
++			/*
++			 * RICHACE_DELETE_CHILD is meaningless for
++			 * non-directories, so clear it.
++			 */
++			ace->e_mask &= ~RICHACE_DELETE_CHILD;
++			ace++;
++		}
 +	}
-+	return 0;
++
++	return acl;
 +}
-diff --git a/include/linux/richacl_compat.h b/include/linux/richacl_compat.h
-new file mode 100644
-index 0000000..a9ff630
---- /dev/null
-+++ b/include/linux/richacl_compat.h
-@@ -0,0 +1,40 @@
-+/*
-+ * Copyright (C) 2015  Red Hat, Inc.
-+ * Written by Andreas Gruenbacher <agruenba@redhat.com>
-+ *
-+ * This program is free software; you can redistribute it and/or modify it
-+ * under the terms of the GNU General Public License as published by the
-+ * Free Software Foundation; either version 2, or (at your option) any
-+ * later version.
-+ *
-+ * This program is distributed in the hope that it will be useful, but
-+ * WITHOUT ANY WARRANTY; without even the implied warranty of
-+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-+ * General Public License for more details.
-+ */
-+
-+#ifndef __RICHACL_COMPAT_H
-+#define __RICHACL_COMPAT_H
-+
-+#include <linux/richacl.h>
+diff --git a/fs/richacl_inode.c b/fs/richacl_inode.c
+index b421f68..1a5b868 100644
+--- a/fs/richacl_inode.c
++++ b/fs/richacl_inode.c
+@@ -201,3 +201,63 @@ is_everyone:
+ 	return denied ? -EACCES : 0;
+ }
+ EXPORT_SYMBOL_GPL(richacl_permission);
 +
 +/**
-+ * struct richacl_alloc  -  remember how many entries are actually allocated
-+ * @acl:	acl with a_count <= @count
-+ * @count:	the actual number of entries allocated in @acl
++ * richacl_inherit_inode  -  compute inherited acl and file mode
++ * @dir_acl:	acl of the containing directory
++ * @inode:	inode of the new file (create mode in i_mode)
 + *
-+ * We pass around this structure while modifying an acl so that we do
-+ * not have to reallocate when we remove existing entries followed by
-+ * adding new entries.
++ * The file permission bits in inode->i_mode must be set to the create mode by
++ * the caller.
++ *
++ * If there is an inheritable acl, the maximum permissions that the acl grants
++ * will be computed and permissions not granted by the acl will be removed from
++ * inode->i_mode.  If there is no inheritable acl, the umask will be applied
++ * instead.
 + */
-+struct richacl_alloc {
++static struct richacl *
++richacl_inherit_inode(const struct richacl *dir_acl, struct inode *inode)
++{
 +	struct richacl *acl;
-+	unsigned int count;
-+};
++	mode_t mask;
 +
-+struct richacl *richacl_prepare(struct richacl_alloc *, unsigned int);
-+struct richace *richacl_append_entry(struct richacl_alloc *);
-+int richacl_insert_entry(struct richacl_alloc *, struct richace **);
-+void richacl_delete_entry(struct richacl_alloc *, struct richace **);
++	acl = richacl_inherit(dir_acl, S_ISDIR(inode->i_mode));
++	if (acl) {
 +
-+#endif  /* __RICHACL_COMPAT_H */
++		richacl_compute_max_masks(acl);
++
++		/*
++		 * Ensure that the acl will not grant any permissions beyond
++		 * the create mode.
++		 */
++		acl->a_flags |= RICHACL_MASKED;
++		acl->a_owner_mask &= richacl_mode_to_mask(inode->i_mode >> 6) |
++				     RICHACE_POSIX_OWNER_ALLOWED;
++		acl->a_group_mask &= richacl_mode_to_mask(inode->i_mode >> 3);
++		acl->a_other_mask &= richacl_mode_to_mask(inode->i_mode);
++		mask = ~S_IRWXUGO | richacl_masks_to_mode(acl);
++	} else
++		mask = ~current_umask();
++
++	inode->i_mode &= mask;
++	return acl;
++}
++
++struct richacl *richacl_create(struct inode *inode, struct inode *dir)
++{
++	struct richacl *dir_acl, *acl = NULL;
++
++	if (S_ISLNK(inode->i_mode))
++		return NULL;
++	dir_acl = get_richacl(dir);
++	if (dir_acl) {
++		if (IS_ERR(dir_acl))
++			return dir_acl;
++		acl = richacl_inherit_inode(dir_acl, inode);
++		richacl_put(dir_acl);
++	}
++	if (!acl)
++		inode->i_mode &= ~current_umask();
++	return acl;
++}
++EXPORT_SYMBOL_GPL(richacl_create);
+diff --git a/include/linux/richacl.h b/include/linux/richacl.h
+index 6d88ee9..ab9fde1 100644
+--- a/include/linux/richacl.h
++++ b/include/linux/richacl.h
+@@ -296,8 +296,10 @@ extern unsigned int richacl_mode_to_mask(mode_t);
+ extern unsigned int richacl_want_to_mask(unsigned int);
+ extern void richacl_compute_max_masks(struct richacl *);
+ extern struct richacl *richacl_chmod(struct richacl *, mode_t);
++extern struct richacl *richacl_inherit(const struct richacl *, int);
+ 
+ /* richacl_inode.c */
+ extern int richacl_permission(struct inode *, const struct richacl *, int);
++extern struct richacl *richacl_create(struct inode *, struct inode *);
+ 
+ #endif /* __RICHACL_H */
 -- 
 2.1.0
 
