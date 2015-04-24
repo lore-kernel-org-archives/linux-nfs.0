@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wg0-f52.google.com ([74.125.82.52]:35159 "EHLO
-	mail-wg0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S965331AbbDXLFw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Apr 2015 07:05:52 -0400
+Received: from mail-wi0-f173.google.com ([209.85.212.173]:35120 "EHLO
+	mail-wi0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S964991AbbDXLFy (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Apr 2015 07:05:54 -0400
 From: Andreas Gruenbacher <andreas.gruenbacher@gmail.com>
 To: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-nfs@vger.kernel.org
-Subject: [RFC v3 43/45] uapi/nfs: Add NFSv4.1 ACL definitions
-Date: Fri, 24 Apr 2015 13:04:40 +0200
-Message-Id: <23f967e5728d254d218cc1134769864242988a08.1429868795.git.agruenba@redhat.com>
+Subject: [RFC v3 44/45] nfsd: Add support for the v4.1 dacl attribute
+Date: Fri, 24 Apr 2015 13:04:41 +0200
+Message-Id: <b1663c5178d3dee8f77250cfc05a1040a48c1854.1429868795.git.agruenba@redhat.com>
 In-Reply-To: <cover.1429868795.git.agruenba@redhat.com>
 References: <cover.1429868795.git.agruenba@redhat.com>
 In-Reply-To: <cover.1429868795.git.agruenba@redhat.com>
@@ -16,46 +16,370 @@ References: <cover.1429868795.git.agruenba@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Add the ACL related protocol definitions which were added in the NFSv4.1
-specifiction.
+Richacls support the Automatic Inheritance permission propagation mechanism as
+specified in NFSv4.1.  Over NFS, this requires support for the dacl attribute:
+compared to the acl attribute, the dacl attribute has an additional flags field
+which indicates when Automatic Inheritance is in use.
+
+The server will only indicate dacl attribute support in protocol version 4.1
+and later, on file systems with richacl support.
+
+This commit also adds support for the NFSv4.1 NFS4_ACE_WRITE_RETENTION and
+NFS4_ACE_WRITE_RETENTION_HOLD ACL permissions.
 
 Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
 ---
- include/uapi/linux/nfs4.h | 7 +++++++
- 1 file changed, 7 insertions(+)
+ fs/nfsd/nfs4xdr.c         | 219 ++++++++++++++++++++++++++++++----------------
+ fs/nfsd/nfsd.h            |   6 +-
+ include/linux/nfs4.h      |   1 +
+ include/uapi/linux/nfs4.h |   3 +-
+ 4 files changed, 153 insertions(+), 76 deletions(-)
 
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index c0e1b3c..772039e 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -300,6 +300,68 @@ nfsd4_decode_bitmap(struct nfsd4_compoundargs *argp, u32 *bmval)
+ 	DECODE_TAIL;
+ }
+ 
++static unsigned int
++nfsd4_ace_mask(int minorversion)
++{
++	return minorversion == 0 ?  NFS40_ACE_MASK_ALL : NFS4_ACE_MASK_ALL;
++}
++
++static __be32
++nfsd4_decode_acl_entries(struct nfsd4_compoundargs *argp, struct richacl **acl,
++			 unsigned short flags_mask, unsigned int ace_mask,
++			 int *plen)
++{
++	struct richace *ace;
++	u32 dummy32;
++	char *buf;
++	int len = 0;
++
++	DECODE_HEAD;
++
++	flags_mask &= RICHACE_VALID_FLAGS & ~RICHACE_SPECIAL_WHO;
++
++	READ_BUF(4); len += 4;
++	dummy32 = be32_to_cpup(p++);
++
++	if (dummy32 > NFSD4_ACL_MAX)
++		return nfserr_fbig;
++
++	*acl = svcxdr_alloc_richacl(argp, dummy32);
++	if (*acl == NULL)
++		return nfserr_jukebox;
++
++	richacl_for_each_entry(ace, *acl) {
++		READ_BUF(16); len += 16;
++
++		dummy32 = be32_to_cpup(p++);
++		if (dummy32 > RICHACE_ACCESS_DENIED_ACE_TYPE)
++			return nfserr_inval;
++		ace->e_type = dummy32;
++
++		dummy32 = be32_to_cpup(p++);
++		if (dummy32 & ~flags_mask)
++			return nfserr_inval;
++		ace->e_flags = dummy32;
++
++		dummy32 = be32_to_cpup(p++);
++		if (dummy32 & ~ace_mask)
++			return nfserr_inval;
++		ace->e_mask = dummy32;
++
++		dummy32 = be32_to_cpup(p++);
++		READ_BUF(dummy32);
++		len += XDR_QUADLEN(dummy32) << 2;
++		READMEM(buf, dummy32);
++		status = nfsd4_decode_ace_who(ace, argp->rqstp,
++					      buf, dummy32);
++		if (status)
++			return status;
++	}
++	*plen += len;
++
++	DECODE_TAIL;
++}
++
+ static __be32
+ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
+ 		   struct iattr *iattr, struct richacl **acl,
+@@ -311,6 +373,7 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
+ 
+ 	DECODE_HEAD;
+ 	iattr->ia_valid = 0;
++	*acl = NULL;
+ 	if ((status = nfsd4_decode_bitmap(argp, bmval)))
+ 		return status;
+ 
+@@ -324,50 +387,18 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
+ 		iattr->ia_valid |= ATTR_SIZE;
+ 	}
+ 	if (bmval[0] & FATTR4_WORD0_ACL) {
+-		u32 nace;
+-		struct richace *ace;
+-
+-		READ_BUF(4); len += 4;
+-		nace = be32_to_cpup(p++);
+-
+-		if (nace > NFSD4_ACL_MAX)
+-			return nfserr_fbig;
++		if (bmval[1] & FATTR4_WORD1_DACL)
++			return nfserr_inval;
+ 
+-		*acl = svcxdr_alloc_richacl(argp, nace);
+-		if (*acl == NULL)
++		status = nfsd4_decode_acl_entries(argp, acl,
++				~NFS4_ACE_INHERITED_ACE,
++				nfsd4_ace_mask(argp->minorversion),
++				&len);
++		if (status)
++			return status;
++		else if (*acl == NULL)
+ 			return nfserr_jukebox;
+-
+-		richacl_for_each_entry(ace, *acl) {
+-			READ_BUF(16); len += 16;
+-
+-			dummy32 = be32_to_cpup(p++);
+-			if (dummy32 > RICHACE_ACCESS_DENIED_ACE_TYPE)
+-				return nfserr_inval;
+-			ace->e_type = dummy32;
+-
+-			dummy32 = be32_to_cpup(p++);
+-			if (dummy32 & (~RICHACE_VALID_FLAGS |
+-				       RICHACE_INHERITED_ACE |
+-				       RICHACE_SPECIAL_WHO))
+-				return nfserr_inval;
+-			ace->e_flags = dummy32;
+-
+-			dummy32 = be32_to_cpup(p++);
+-			if (dummy32 & ~NFS4_ACE_MASK_ALL)
+-				return nfserr_inval;
+-			ace->e_mask = dummy32;
+-
+-			dummy32 = be32_to_cpup(p++);
+-			READ_BUF(dummy32);
+-			len += XDR_QUADLEN(dummy32) << 2;
+-			READMEM(buf, dummy32);
+-			status = nfsd4_decode_ace_who(ace, argp->rqstp,
+-						      buf, dummy32);
+-			if (status)
+-				return status;
+-		}
+-	} else
+-		*acl = NULL;
++	}
+ 	if (bmval[1] & FATTR4_WORD1_MODE) {
+ 		READ_BUF(4);
+ 		len += 4;
+@@ -435,6 +466,22 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
+ 			goto xdr_error;
+ 		}
+ 	}
++	if (bmval[1] & FATTR4_WORD1_DACL) {
++		READ_BUF(4);
++		len += 4;
++		dummy32 = be32_to_cpup(p++);
++		if (dummy32 & (~RICHACL_VALID_FLAGS | RICHACL_MASKED))
++			return nfserr_inval;
++		status = nfsd4_decode_acl_entries(argp, acl,
++				~0,
++				nfsd4_ace_mask(argp->minorversion),
++				&len);
++		if (status)
++			return status;
++		else if (*acl == NULL)
++			return nfserr_jukebox;
++		(*acl)->a_flags = dummy32;
++	}
+ 
+ 	label->len = 0;
+ #ifdef CONFIG_NFSD_V4_SECURITY_LABEL
+@@ -2215,6 +2262,42 @@ static int get_parent_attributes(struct svc_export *exp, struct kstat *stat)
+ 	return err;
+ }
+ 
++static __be32 nfsd4_encode_acl_entries(struct xdr_stream *xdr,
++		struct richacl *acl, struct svc_rqst *rqstp,
++		unsigned short flags_mask, unsigned int ace_mask)
++{
++	__be32 *p;
++
++	flags_mask &= ~RICHACE_SPECIAL_WHO;
++
++	p = xdr_reserve_space(xdr, 4);
++	if (!p)
++		return nfserr_resource;
++
++	if (acl == NULL) {
++		*p++ = cpu_to_be32(0);
++	} else {
++		struct richace *ace;
++
++		*p++ = cpu_to_be32(acl->a_count);
++
++		richacl_for_each_entry(ace, acl) {
++			__be32 status;
++
++			p = xdr_reserve_space(xdr, 4*3);
++			if (!p)
++				return nfserr_resource;
++			*p++ = cpu_to_be32(ace->e_type);
++			*p++ = cpu_to_be32(ace->e_flags & flags_mask);
++			*p++ = cpu_to_be32(ace->e_mask & ace_mask);
++			status = nfsd4_encode_ace_who(xdr, rqstp, ace);
++			if (status)
++				return status;
++		}
++	}
++	return 0;
++}
++
+ /*
+  * Note: @fhp can be NULL; in this case, we might have to compose the filehandle
+  * ourselves.
+@@ -2286,15 +2369,16 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
+ 			goto out;
+ 		fhp = tempfh;
+ 	}
+-	if (bmval0 & FATTR4_WORD0_ACL) {
++	if ((bmval0 & FATTR4_WORD0_ACL) || (bmval1 & FATTR4_WORD1_DACL)) {
+ 		acl = nfsd4_get_acl(rqstp, dentry);
+ 		if (IS_ERR(acl)) {
+ 			err = PTR_ERR(acl);
+ 			acl = NULL;
+ 		}
+-		if (err == -EOPNOTSUPP)
++		if (err == -EOPNOTSUPP) {
+ 			bmval0 &= ~FATTR4_WORD0_ACL;
+-		else if (err == -EINVAL) {
++			bmval1 &= ~FATTR4_WORD1_DACL;
++		} else if (err == -EINVAL) {
+ 			status = nfserr_attrnotsupp;
+ 			goto out;
+ 		} else if (err != 0)
+@@ -2352,6 +2436,8 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
+ 
+ 		if (!IS_ACL(dentry->d_inode))
+ 			word0 &= ~FATTR4_WORD0_ACL;
++		if (!IS_RICHACL(dentry->d_inode))
++			word1 &= ~FATTR4_WORD1_DACL;
+ 		if (!contextsupport)
+ 			word2 &= ~FATTR4_WORD2_SECURITY_LABEL;
+ 		if (!word2) {
+@@ -2465,35 +2551,12 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
+ 		*p++ = cpu_to_be32(rdattr_err);
+ 	}
+ 	if (bmval0 & FATTR4_WORD0_ACL) {
+-		struct richace *ace;
+-
+-		if (acl == NULL) {
+-			p = xdr_reserve_space(xdr, 4);
+-			if (!p)
+-				goto out_resource;
+-
+-			*p++ = cpu_to_be32(0);
+-			goto out_acl;
+-		}
+-		p = xdr_reserve_space(xdr, 4);
+-		if (!p)
+-			goto out_resource;
+-		*p++ = cpu_to_be32(acl->a_count);
+-
+-		richacl_for_each_entry(ace, acl) {
+-			p = xdr_reserve_space(xdr, 4*3);
+-			if (!p)
+-				goto out_resource;
+-			*p++ = cpu_to_be32(ace->e_type);
+-			*p++ = cpu_to_be32(ace->e_flags &
+-				~(RICHACE_SPECIAL_WHO | RICHACE_INHERITED_ACE));
+-			*p++ = cpu_to_be32(ace->e_mask & NFS4_ACE_MASK_ALL);
+-			status = nfsd4_encode_ace_who(xdr, rqstp, ace);
+-			if (status)
+-				goto out;
+-		}
++		status = nfsd4_encode_acl_entries(xdr, acl, rqstp,
++				~NFS4_ACE_INHERITED_ACE,
++				nfsd4_ace_mask(minorversion));
++		if (status)
++			goto out;
+ 	}
+-out_acl:
+ 	if (bmval0 & FATTR4_WORD0_ACLSUPPORT) {
+ 		p = xdr_reserve_space(xdr, 4);
+ 		if (!p)
+@@ -2702,6 +2765,16 @@ out_acl:
+ 			get_parent_attributes(exp, &stat);
+ 		p = xdr_encode_hyper(p, stat.ino);
+ 	}
++	if (bmval1 & FATTR4_WORD1_DACL) {
++		p = xdr_reserve_space(xdr, 4);
++		if (!p)
++			goto out_resource;
++		*p++ = cpu_to_be32(acl->a_flags);
++		status = nfsd4_encode_acl_entries(xdr, acl, rqstp,
++				~0, nfsd4_ace_mask(minorversion));
++		if (status)
++			goto out;
++	}
+ #ifdef CONFIG_NFSD_PNFS
+ 	if ((bmval1 & FATTR4_WORD1_FS_LAYOUT_TYPES) ||
+ 	    (bmval2 & FATTR4_WORD2_LAYOUT_TYPES)) {
+diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
+index 565c4da..474ff70 100644
+--- a/fs/nfsd/nfsd.h
++++ b/fs/nfsd/nfsd.h
+@@ -339,7 +339,8 @@ void		nfsd_lockd_shutdown(void);
+ 	NFSD4_SUPPORTED_ATTRS_WORD0
+ 
+ #define NFSD4_1_SUPPORTED_ATTRS_WORD1 \
+-	(NFSD4_SUPPORTED_ATTRS_WORD1	| PNFSD_SUPPORTED_ATTRS_WORD1)
++	(NFSD4_SUPPORTED_ATTRS_WORD1	| PNFSD_SUPPORTED_ATTRS_WORD1 | \
++	 FATTR4_WORD1_DACL)
+ 
+ #define NFSD4_1_SUPPORTED_ATTRS_WORD2 \
+ 	(NFSD4_SUPPORTED_ATTRS_WORD2	| PNFSD_SUPPORTED_ATTRS_WORD2 | \
+@@ -386,7 +387,8 @@ static inline u32 nfsd_suppattrs2(u32 minorversion)
+ 	(FATTR4_WORD0_SIZE | FATTR4_WORD0_ACL)
+ #define NFSD_WRITEABLE_ATTRS_WORD1 \
+ 	(FATTR4_WORD1_MODE | FATTR4_WORD1_OWNER | FATTR4_WORD1_OWNER_GROUP \
+-	| FATTR4_WORD1_TIME_ACCESS_SET | FATTR4_WORD1_TIME_MODIFY_SET)
++	| FATTR4_WORD1_TIME_ACCESS_SET | FATTR4_WORD1_TIME_MODIFY_SET \
++	| FATTR4_WORD1_DACL)
+ #ifdef CONFIG_NFSD_V4_SECURITY_LABEL
+ #define NFSD_WRITEABLE_ATTRS_WORD2 FATTR4_WORD2_SECURITY_LABEL
+ #else
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index 095854c..814ab60 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -394,6 +394,7 @@ enum lock_type4 {
+ #define FATTR4_WORD1_TIME_MODIFY        (1UL << 21)
+ #define FATTR4_WORD1_TIME_MODIFY_SET    (1UL << 22)
+ #define FATTR4_WORD1_MOUNTED_ON_FILEID  (1UL << 23)
++#define FATTR4_WORD1_DACL               (1UL << 26)
+ #define FATTR4_WORD1_FS_LAYOUT_TYPES    (1UL << 30)
+ #define FATTR4_WORD2_LAYOUT_TYPES       (1UL << 0)
+ #define FATTR4_WORD2_LAYOUT_BLKSIZE     (1UL << 1)
 diff --git a/include/uapi/linux/nfs4.h b/include/uapi/linux/nfs4.h
-index adc0aff..2119c7c 100644
+index 2119c7c..64e4c6c 100644
 --- a/include/uapi/linux/nfs4.h
 +++ b/include/uapi/linux/nfs4.h
-@@ -86,6 +86,10 @@
- #define ACL4_SUPPORT_AUDIT_ACL 0x04
- #define ACL4_SUPPORT_ALARM_ACL 0x08
+@@ -121,7 +121,8 @@
+ #define NFS4_ACE_GENERIC_READ                 0x00120081
+ #define NFS4_ACE_GENERIC_WRITE                0x00160106
+ #define NFS4_ACE_GENERIC_EXECUTE              0x001200A0
+-#define NFS4_ACE_MASK_ALL                     0x001F01FF
++#define NFS40_ACE_MASK_ALL                    0x001F01FF
++#define NFS4_ACE_MASK_ALL                     0x001F07FF
  
-+#define NFS4_ACL_AUTO_INHERIT 0x00000001
-+#define NFS4_ACL_PROTECTED    0x00000002
-+#define NFS4_ACL_DEFAULTED    0x00000004
-+
- #define NFS4_ACE_FILE_INHERIT_ACE             0x00000001
- #define NFS4_ACE_DIRECTORY_INHERIT_ACE        0x00000002
- #define NFS4_ACE_NO_PROPAGATE_INHERIT_ACE     0x00000004
-@@ -93,6 +97,7 @@
- #define NFS4_ACE_SUCCESSFUL_ACCESS_ACE_FLAG   0x00000010
- #define NFS4_ACE_FAILED_ACCESS_ACE_FLAG       0x00000020
- #define NFS4_ACE_IDENTIFIER_GROUP             0x00000040
-+#define NFS4_ACE_INHERITED_ACE                0x00000080
- 
- #define NFS4_ACE_READ_DATA                    0x00000001
- #define NFS4_ACE_LIST_DIRECTORY               0x00000001
-@@ -106,6 +111,8 @@
- #define NFS4_ACE_DELETE_CHILD                 0x00000040
- #define NFS4_ACE_READ_ATTRIBUTES              0x00000080
- #define NFS4_ACE_WRITE_ATTRIBUTES             0x00000100
-+#define NFS4_ACE_WRITE_RETENTION              0x00000200
-+#define NFS4_ACE_WRITE_RETENTION_HOLD         0x00000400
- #define NFS4_ACE_DELETE                       0x00010000
- #define NFS4_ACE_READ_ACL                     0x00020000
- #define NFS4_ACE_WRITE_ACL                    0x00040000
+ #define EXCHGID4_FLAG_SUPP_MOVED_REFER		0x00000001
+ #define EXCHGID4_FLAG_SUPP_MOVED_MIGR		0x00000002
 -- 
 2.1.0
 
