@@ -1,86 +1,87 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wg0-f45.google.com ([74.125.82.45]:34789 "EHLO
-	mail-wg0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S934196AbbDXA1s (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Apr 2015 20:27:48 -0400
-Received: by wgso17 with SMTP id o17so34829916wgs.1
-        for <linux-nfs@vger.kernel.org>; Thu, 23 Apr 2015 17:27:47 -0700 (PDT)
+Received: from mail-wi0-f172.google.com ([209.85.212.172]:33657 "EHLO
+	mail-wi0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S965716AbbDXA1v (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Apr 2015 20:27:51 -0400
+Received: by wiax7 with SMTP id x7so23748832wia.0
+        for <linux-nfs@vger.kernel.org>; Thu, 23 Apr 2015 17:27:50 -0700 (PDT)
 From: Bernhard Reutner-Fischer <rep.dot.nop@gmail.com>
 To: libtirpc-devel@lists.sourceforge.net
 Cc: Bernhard Reutner-Fischer <rep.dot.nop@gmail.com>,
         Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org
-Subject: [PATCH v2 3/7] Make sure to include config.h
-Date: Fri, 24 Apr 2015 02:27:38 +0200
-Message-Id: <1429835262-16861-4-git-send-email-rep.dot.nop@gmail.com>
+Subject: [PATCH v2 6/7] getrpcport: rephrase host lookup
+Date: Fri, 24 Apr 2015 02:27:41 +0200
+Message-Id: <1429835262-16861-7-git-send-email-rep.dot.nop@gmail.com>
 In-Reply-To: <1429835262-16861-1-git-send-email-rep.dot.nop@gmail.com>
 References: <1429835262-16861-1-git-send-email-rep.dot.nop@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I really think the -DINET6 is wrong.
+Most folks seem to copy this gentoo patch to silence an alleged
+_FORTIFY_SOURCE=2 warning:
+http://sources.gentoo.org/cgi-bin/viewvc.cgi/gentoo-x86/net-libs/libtirpc/files/libtirpc-0.2.1-fortify.patch?diff_format=s&revision=1.2&view=markup
+
+Given that gethostbyname is obsolescent, let's just use getaddrinfo
+instead (to silence warnings about the OB function).
+
+I am undecided if setting AI_V4MAPPED and AI_ADDRCONFIG is a good idea.
+Personally i would be inclined to s/if 0/if 1/ but i'll leave that up to
+you.
 
 Signed-off-by: Bernhard Reutner-Fischer <rep.dot.nop@gmail.com>
 ---
- src/Makefile.am | 4 ++--
- src/auth_time.c | 3 +++
- src/getrpcent.c | 8 ++++----
- 3 files changed, 9 insertions(+), 6 deletions(-)
+ src/getrpcport.c | 37 +++++++++++++++++++++++++------------
+ 1 file changed, 25 insertions(+), 12 deletions(-)
 
-diff --git a/src/Makefile.am b/src/Makefile.am
-index 26ccbdf..38d0c3d 100644
---- a/src/Makefile.am
-+++ b/src/Makefile.am
-@@ -7,8 +7,8 @@
+diff --git a/src/getrpcport.c b/src/getrpcport.c
+index b452c99..f36158d 100644
+--- a/src/getrpcport.c
++++ b/src/getrpcport.c
+@@ -48,19 +48,32 @@ getrpcport(host, prognum, versnum, proto)
+ 	int prognum, versnum, proto;
+ {
+ 	struct sockaddr_in addr;
+-	struct hostent *hp;
++	struct addrinfo hints, *result, *rp;
++	int ret = 0;
  
- noinst_HEADERS = rpc_com.h debug.h
- 
--AM_CPPFLAGS = -I$(top_srcdir)/tirpc -DPORTMAP -DINET6 \
--		-D_GNU_SOURCE -Wall -pipe  
-+AM_CPPFLAGS = -I$(top_srcdir)/tirpc -include config.h -DPORTMAP -DINET6 \
-+		-D_GNU_SOURCE -Wall -pipe
- 
- lib_LTLIBRARIES = libtirpc.la
- 
-diff --git a/src/auth_time.c b/src/auth_time.c
-index 13717ff..10e58eb 100644
---- a/src/auth_time.c
-+++ b/src/auth_time.c
-@@ -25,6 +25,9 @@
-  *	needed to deal with TCP connections.
-  */
- 
-+#ifdef HAVE_CONFIG_H
-+#include "config.h"
-+#endif
- #include <stdio.h>
- #include <syslog.h>
- #include <string.h>
-diff --git a/src/getrpcent.c b/src/getrpcent.c
-index fbb2da4..c374673 100644
---- a/src/getrpcent.c
-+++ b/src/getrpcent.c
-@@ -30,6 +30,10 @@
-  * Copyright (c) 1984 by Sun Microsystems, Inc.
-  */
- 
-+#ifdef HAVE_CONFIG_H
-+#include "config.h"
-+#endif
-+
- #include <sys/types.h>
- 
- #include <netinet/in.h>
-@@ -50,10 +54,6 @@
- #include <libc_private.h>
- #endif
- 
--#if HAVE_CONFIG_H
--#include "config.h"
--#endif
+ 	assert(host != NULL);
 -
- /*
-  * Internet version.
-  */
+-	if ((hp = gethostbyname(host)) == NULL)
++	memset(&hints, 0, sizeof(struct addrinfo));
++	hints.ai_family = AF_INET; /* ??? :-( */
++#if 0
++#ifdef AI_V4MAPPED
++	hints.ai_flags |= AI_V4MAPPED;
++#endif
++#ifdef AI_ADDRCONFIG
++	hints.ai_flags |= AI_ADDRCONFIG;
++#endif
++#endif
++	if (getaddrinfo(host, NULL, &hints, &result) != 0)
+ 		return (0);
+-	memset(&addr, 0, sizeof(addr));
+-	addr.sin_family = AF_INET;
+-	addr.sin_port =  0;
+-	if (hp->h_length > sizeof(addr))
+-	  hp->h_length = sizeof(addr);
+-	memcpy(&addr.sin_addr.s_addr, hp->h_addr, (size_t)hp->h_length);
+-	/* Inconsistent interfaces need casts! :-( */
+-	return (pmap_getport(&addr, (u_long)prognum, (u_long)versnum, 
+-	    (u_int)proto));
++	for (rp = result; rp != NULL; rp = rp->ai_next) {
++		assert (rp->ai_family == AF_INET && rp->ai_addrlen == 16);
++		memcpy(&addr, rp->ai_addr, rp->ai_addrlen);
++		assert (addr.sin_family == AF_INET && addr.sin_port == 0);
++		/* Inconsistent interfaces need casts! :-( */
++		ret = (pmap_getport(&addr, (u_long)prognum, (u_long)versnum,
++		    (u_int)proto));
++		if (ret)
++			break;
++	}
++	freeaddrinfo(result);
++	return (ret);
+ }
 -- 
 2.1.4
 
