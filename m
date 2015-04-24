@@ -1,53 +1,47 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-la0-f51.google.com ([209.85.215.51]:32809 "EHLO
-	mail-la0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1030702AbbDWVvK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Apr 2015 17:51:10 -0400
-Received: by layy10 with SMTP id y10so22511260lay.0
-        for <linux-nfs@vger.kernel.org>; Thu, 23 Apr 2015 14:51:08 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <5539240E.1060205@RedHat.com>
-References: <1418718540-13667-1-git-send-email-ncopa@alpinelinux.org>
-	<5539240E.1060205@RedHat.com>
-Date: Thu, 23 Apr 2015 23:51:08 +0200
-Message-ID: <CAC1BbcTb2jPuVDgAktkHeJDHVVSFaaZG=HrHeXP=m1iQ8Wm8FQ@mail.gmail.com>
-Subject: Re: [Libtirpc-devel] [PATCH 0/9] Cleanups and fixes for musl libc
+Received: from mail-wg0-f42.google.com ([74.125.82.42]:32998 "EHLO
+	mail-wg0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S934204AbbDXA1s (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Apr 2015 20:27:48 -0400
+Received: by wgin8 with SMTP id n8so34784698wgi.0
+        for <linux-nfs@vger.kernel.org>; Thu, 23 Apr 2015 17:27:46 -0700 (PDT)
 From: Bernhard Reutner-Fischer <rep.dot.nop@gmail.com>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: Natanael Copa <ncopa@alpinelinux.org>,
-        libtirpc-devel@lists.sourceforge.net, linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=UTF-8
+To: libtirpc-devel@lists.sourceforge.net
+Cc: Bernhard Reutner-Fischer <rep.dot.nop@gmail.com>,
+        Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org
+Subject: [PATCH v2 0/7] Rebase, resend.
+Date: Fri, 24 Apr 2015 02:27:35 +0200
+Message-Id: <1429835262-16861-1-git-send-email-rep.dot.nop@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 23 April 2015 at 18:55, Steve Dickson <SteveD@redhat.com> wrote:
->
->
-> On 12/16/2014 03:28 AM, Natanael Copa wrote:
->> Various fixes for making libtirpc build and run with musl libc.
->>
->> I have also included some cleanups that I did while at it.
->>
->> Natanael Copa (9):
->>   Replace INSTALL symlink with a copy of the file
->>   Provide getrpcbynumber and getrpcbyname if those are missing
->>   Avoid use of internal glibc sys/cdefs.h header
->>   Add configure option to disable DES authentication
->>   Fix compile error: 'IPPORT_RESERVED' undeclared
->>   Define struct rpcent on non GNU libc
->>   Include string.h for memset
->>   Fix location of various standard header includes
->>   Add a HACKING file which tells where to send patches
-> All 9 patches committed...
+Seems i forgot the config.h stuff last time, sorry for that..
 
-/HAVE_GETRPCBYNYMBER/s/BYNY/BYNU/
+Bernhard Reutner-Fischer (7):
+  delete src/config.h
+  getrpcent: Fix compilation on glibc
+  Make sure to include config.h
+  configure.ac: Allow for disabling NIS
+  configure.ac: Allow for disabling auth DES
+  getrpcport: rephrase host lookup
+  headers: if 0 out some unbuilt functions
 
-The hunk in tirpc/rpc/rpcent.h looks like it should have been guarded
-by HAVE_GETRPCBYNUMBER and HAVE_GETRPCBYNAME and not by !GLIBC.
-I'd have guarded the struct with !defined bynumber  || !defined byname
-but i assume conflicting declarations are hopefully rare.
-rpcent.c unconditionally compiles setrpcent(), endrpcent(),
-getrpcent() so these should likely be omitted if available in libc,
-too.
+ Makefile.am          |  12 ++++--
+ configure.ac         |  24 ++++++++++-
+ libtirpc.pc.in       |   2 +-
+ src/Makefile.am      |  10 +++--
+ src/auth_des.c       |  15 +++++++
+ src/auth_time.c      |   6 ++-
+ src/config.h         | 110 ---------------------------------------------------
+ src/getrpcent.c      |  16 ++++----
+ src/getrpcport.c     |  37 +++++++++++------
+ src/rpc_soc.c        |   2 +-
+ tirpc/rpc/auth.h     |  18 ++++++++-
+ tirpc/rpc/auth_des.h |   2 +
+ tirpc/rpc/rpc.h      |   2 +
+ 13 files changed, 113 insertions(+), 143 deletions(-)
+ delete mode 100644 src/config.h
 
-thanks,
+-- 
+2.1.4
+
