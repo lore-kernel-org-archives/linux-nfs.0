@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wg0-f42.google.com ([74.125.82.42]:36299 "EHLO
-	mail-wg0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932626AbbDXLFW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Apr 2015 07:05:22 -0400
+Received: from mail-wg0-f52.google.com ([74.125.82.52]:35159 "EHLO
+	mail-wg0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S965331AbbDXLFw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Apr 2015 07:05:52 -0400
 From: Andreas Gruenbacher <andreas.gruenbacher@gmail.com>
 To: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-nfs@vger.kernel.org
-Subject: [RFC v3 22/45] vfs: Add richacl permission checking
-Date: Fri, 24 Apr 2015 13:04:19 +0200
-Message-Id: <5b2624871e0ac5f1d0e5c5da6d99ca7dc93158e3.1429868795.git.agruenba@redhat.com>
+Subject: [RFC v3 43/45] uapi/nfs: Add NFSv4.1 ACL definitions
+Date: Fri, 24 Apr 2015 13:04:40 +0200
+Message-Id: <23f967e5728d254d218cc1134769864242988a08.1429868795.git.agruenba@redhat.com>
 In-Reply-To: <cover.1429868795.git.agruenba@redhat.com>
 References: <cover.1429868795.git.agruenba@redhat.com>
 In-Reply-To: <cover.1429868795.git.agruenba@redhat.com>
@@ -16,115 +16,46 @@ References: <cover.1429868795.git.agruenba@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hook the richacl permission checking function into the vfs.
+Add the ACL related protocol definitions which were added in the NFSv4.1
+specifiction.
 
 Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
 ---
- fs/namei.c     | 51 +++++++++++++++++++++++++++++++++++++++++++++++++--
- fs/posix_acl.c |  6 +++---
- 2 files changed, 52 insertions(+), 5 deletions(-)
+ include/uapi/linux/nfs4.h | 7 +++++++
+ 1 file changed, 7 insertions(+)
 
-diff --git a/fs/namei.c b/fs/namei.c
-index a8d1674..d5b4fcd 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -35,6 +35,7 @@
- #include <linux/fs_struct.h>
- #include <linux/posix_acl.h>
- #include <linux/hash.h>
-+#include <linux/richacl.h>
- #include <asm/uaccess.h>
+diff --git a/include/uapi/linux/nfs4.h b/include/uapi/linux/nfs4.h
+index adc0aff..2119c7c 100644
+--- a/include/uapi/linux/nfs4.h
++++ b/include/uapi/linux/nfs4.h
+@@ -86,6 +86,10 @@
+ #define ACL4_SUPPORT_AUDIT_ACL 0x04
+ #define ACL4_SUPPORT_ALARM_ACL 0x08
  
- #include "internal.h"
-@@ -256,7 +257,40 @@ void putname(struct filename *name)
- 		__putname(name);
- }
++#define NFS4_ACL_AUTO_INHERIT 0x00000001
++#define NFS4_ACL_PROTECTED    0x00000002
++#define NFS4_ACL_DEFAULTED    0x00000004
++
+ #define NFS4_ACE_FILE_INHERIT_ACE             0x00000001
+ #define NFS4_ACE_DIRECTORY_INHERIT_ACE        0x00000002
+ #define NFS4_ACE_NO_PROPAGATE_INHERIT_ACE     0x00000004
+@@ -93,6 +97,7 @@
+ #define NFS4_ACE_SUCCESSFUL_ACCESS_ACE_FLAG   0x00000010
+ #define NFS4_ACE_FAILED_ACCESS_ACE_FLAG       0x00000020
+ #define NFS4_ACE_IDENTIFIER_GROUP             0x00000040
++#define NFS4_ACE_INHERITED_ACE                0x00000080
  
--static int check_acl(struct inode *inode, int mask)
-+static int check_richacl(struct inode *inode, int mask)
-+{
-+#ifdef CONFIG_FS_RICHACL
-+	struct richacl *acl;
-+
-+	if (mask & MAY_NOT_BLOCK) {
-+		acl = get_cached_richacl_rcu(inode);
-+		if (!acl)
-+			goto no_acl;
-+		/* no ->get_richacl() calls in RCU mode... */
-+		if (acl == ACL_NOT_CACHED)
-+			return -ECHILD;
-+		return richacl_permission(inode, acl, mask & ~MAY_NOT_BLOCK);
-+	}
-+
-+	acl = get_richacl(inode);
-+	if (IS_ERR(acl))
-+		return PTR_ERR(acl);
-+	if (acl) {
-+		int error = richacl_permission(inode, acl, mask);
-+		richacl_put(acl);
-+		return error;
-+	}
-+no_acl:
-+#endif
-+	if (mask & (MAY_DELETE_SELF | MAY_TAKE_OWNERSHIP |
-+		    MAY_CHMOD | MAY_SET_TIMES)) {
-+		/* File permission bits cannot grant this. */
-+		return -EACCES;
-+	}
-+	return -EAGAIN;
-+}
-+
-+static int check_posix_acl(struct inode *inode, int mask)
- {
- #ifdef CONFIG_FS_POSIX_ACL
- 	struct posix_acl *acl;
-@@ -291,11 +325,24 @@ static int acl_permission_check(struct inode *inode, int mask)
- {
- 	unsigned int mode = inode->i_mode;
- 
-+	/*
-+	 * With POSIX ACLs, the (mode & S_IRWXU) bits exactly match the owner
-+	 * permissions, and we can skip checking posix acls for the owner.
-+	 * With richacls, the owner may be granted fewer permissions than the
-+	 * mode bits seem to suggest (for example, append but not write), and
-+	 * we always need to check the richacl.
-+	 */
-+
-+	if (IS_RICHACL(inode)) {
-+		int error = check_richacl(inode, mask);
-+		if (error != -EAGAIN)
-+			return error;
-+	}
- 	if (likely(uid_eq(current_fsuid(), inode->i_uid)))
- 		mode >>= 6;
- 	else {
- 		if (IS_POSIXACL(inode) && (mode & S_IRWXG)) {
--			int error = check_acl(inode, mask);
-+			int error = check_posix_acl(inode, mask);
- 			if (error != -EAGAIN)
- 				return error;
- 		}
-diff --git a/fs/posix_acl.c b/fs/posix_acl.c
-index ebf96b2..16464f0 100644
---- a/fs/posix_acl.c
-+++ b/fs/posix_acl.c
-@@ -100,13 +100,13 @@ struct posix_acl *get_acl(struct inode *inode, int type)
- {
- 	struct posix_acl *acl;
- 
-+	if (!IS_POSIXACL(inode))
-+		return NULL;
-+
- 	acl = get_cached_acl(inode, type);
- 	if (acl != ACL_NOT_CACHED)
- 		return acl;
- 
--	if (!IS_POSIXACL(inode))
--		return NULL;
--
- 	/*
- 	 * A filesystem can force a ACL callback by just never filling the
- 	 * ACL cache. But normally you'd fill the cache either at inode
+ #define NFS4_ACE_READ_DATA                    0x00000001
+ #define NFS4_ACE_LIST_DIRECTORY               0x00000001
+@@ -106,6 +111,8 @@
+ #define NFS4_ACE_DELETE_CHILD                 0x00000040
+ #define NFS4_ACE_READ_ATTRIBUTES              0x00000080
+ #define NFS4_ACE_WRITE_ATTRIBUTES             0x00000100
++#define NFS4_ACE_WRITE_RETENTION              0x00000200
++#define NFS4_ACE_WRITE_RETENTION_HOLD         0x00000400
+ #define NFS4_ACE_DELETE                       0x00010000
+ #define NFS4_ACE_READ_ACL                     0x00020000
+ #define NFS4_ACE_WRITE_ACL                    0x00040000
 -- 
 2.1.0
 
