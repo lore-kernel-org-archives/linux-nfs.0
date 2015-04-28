@@ -1,110 +1,107 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:36315 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([173.255.197.46]:43066 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1030931AbbD1VJ1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 28 Apr 2015 17:09:27 -0400
-Message-ID: <1430255365.13607.165.camel@willson.usersys.redhat.com>
-Subject: Re: [PATCH] svcrpc: fix potential GSSX_ACCEPT_SEC_CONTEXT decoding
- failures
-From: Simo Sorce <simo@redhat.com>
-To: Scott Mayhew <smayhew@redhat.com>
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
-Date: Tue, 28 Apr 2015 17:09:25 -0400
-In-Reply-To: <1430252993-20091-1-git-send-email-smayhew@redhat.com>
-References: <1430252993-20091-1-git-send-email-smayhew@redhat.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+	id S1030711AbbD1Vgq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 28 Apr 2015 17:36:46 -0400
+Date: Tue, 28 Apr 2015 17:36:44 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Kinglong Mee <kinglongmee@gmail.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH] NFSD: Avoid race of locking parent's mutex at cross mount
+Message-ID: <20150428213644.GE16090@fieldses.org>
+References: <553FB0E7.7070601@gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <553FB0E7.7070601@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Thanks Scott,
-I think this will help with older GSS-Proxy versions, in the newer
-versions we are simply suppressing the exported composite name as the
-kernel has no use for it.
+On Wed, Apr 29, 2015 at 12:10:15AM +0800, Kinglong Mee wrote:
+> When testing pseudo root, there is a mutex race between
+> nfsd and rpc.mountd for locking parent inode.
 
-Simo.
+Thanks for investigating this!
 
-On Tue, 2015-04-28 at 16:29 -0400, Scott Mayhew wrote:
-> In an environment where the KDC is running Active Directory, the
-> exported composite name field returned in the context could be large
-> enough to span a page boundary.  Attaching a scratch buffer to the
-> decoding xdr_stream helps deal with those cases.
+> nfs-utils commit 6091c0a4c4 
+> ("mountd: add support for case-insensitive file names")
+> adds using name_to_handle_at which will locking parent.
 > 
-> Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+
+My first impulse is to blame nfs-utils, if it was really that commit
+that introduced the problem....
+
+But waiting on mountd while holding this i_mutex does seem a little
+scary.  All it takes is an uncached lookup on the same directory, and a
+stat could do that, right?
+
+> 
+> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
 > ---
->  net/sunrpc/auth_gss/gss_rpc_xdr.c | 23 ++++++++++++++++-------
->  1 file changed, 16 insertions(+), 7 deletions(-)
+>  fs/nfsd/nfs4xdr.c | 12 +++++++-----
+>  fs/nfsd/vfs.c     |  5 ++++-
+>  2 files changed, 11 insertions(+), 6 deletions(-)
 > 
-> diff --git a/net/sunrpc/auth_gss/gss_rpc_xdr.c b/net/sunrpc/auth_gss/gss_rpc_xdr.c
-> index 1ec19f6..eeeba5a 100644
-> --- a/net/sunrpc/auth_gss/gss_rpc_xdr.c
-> +++ b/net/sunrpc/auth_gss/gss_rpc_xdr.c
-> @@ -793,20 +793,26 @@ int gssx_dec_accept_sec_context(struct rpc_rqst *rqstp,
+> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> index 158badf..b1aa934 100644
+> --- a/fs/nfsd/nfs4xdr.c
+> +++ b/fs/nfsd/nfs4xdr.c
+> @@ -2800,11 +2800,11 @@ nfsd4_encode_dirent_fattr(struct xdr_stream *xdr, struct nfsd4_readdir *cd,
+>  			const char *name, int namlen)
 >  {
->  	u32 value_follows;
->  	int err;
-> +	struct page *scratch;
-> +
-> +	scratch = alloc_page(GFP_KERNEL);
-> +	if (!scratch)
-> +		return -ENOMEM;
-> +	xdr_set_scratch_buffer(xdr, page_address(scratch), PAGE_SIZE);
+>  	struct svc_export *exp = cd->rd_fhp->fh_export;
+> -	struct dentry *dentry;
+> +	struct dentry *dentry, *parent = cd->rd_fhp->fh_dentry;
+>  	__be32 nfserr;
+>  	int ignore_crossmnt = 0;
 >  
->  	/* res->status */
->  	err = gssx_dec_status(xdr, &res->status);
->  	if (err)
-> -		return err;
-> +		goto out_free;
+> -	dentry = lookup_one_len(name, cd->rd_fhp->fh_dentry, namlen);
+> +	dentry = lookup_one_len(name, parent, namlen);
+>  	if (IS_ERR(dentry))
+>  		return nfserrno(PTR_ERR(dentry));
+>  	if (d_really_is_negative(dentry)) {
+> @@ -2826,7 +2826,7 @@ nfsd4_encode_dirent_fattr(struct xdr_stream *xdr, struct nfsd4_readdir *cd,
+>  	 * directly from the mountpoint dentry.
+>  	 */
+>  	if (nfsd_mountpoint(dentry, exp)) {
+> -		int err;
+> +		int err, lock_err;
 >  
->  	/* res->context_handle */
->  	err = gssx_dec_bool(xdr, &value_follows);
->  	if (err)
-> -		return err;
-> +		goto out_free;
->  	if (value_follows) {
->  		err = gssx_dec_ctx(xdr, res->context_handle);
->  		if (err)
-> -			return err;
-> +			goto out_free;
->  	} else {
->  		res->context_handle = NULL;
->  	}
-> @@ -814,11 +820,11 @@ int gssx_dec_accept_sec_context(struct rpc_rqst *rqstp,
->  	/* res->output_token */
->  	err = gssx_dec_bool(xdr, &value_follows);
->  	if (err)
-> -		return err;
-> +		goto out_free;
->  	if (value_follows) {
->  		err = gssx_dec_buffer(xdr, res->output_token);
->  		if (err)
-> -			return err;
-> +			goto out_free;
->  	} else {
->  		res->output_token = NULL;
->  	}
-> @@ -826,14 +832,17 @@ int gssx_dec_accept_sec_context(struct rpc_rqst *rqstp,
->  	/* res->delegated_cred_handle */
->  	err = gssx_dec_bool(xdr, &value_follows);
->  	if (err)
-> -		return err;
-> +		goto out_free;
->  	if (value_follows) {
->  		/* we do not support upcall servers sending this data. */
-> -		return -EINVAL;
-> +		err = -EINVAL;
-> +		goto out_free;
->  	}
->  
->  	/* res->options */
->  	err = gssx_dec_option_array(xdr, &res->options);
->  
-> +out_free:
-> +	__free_page(scratch);
->  	return err;
->  }
+>  		if (!(exp->ex_flags & NFSEXP_V4ROOT)
+>  				&& !attributes_need_mount(cd->rd_bmval)) {
+> @@ -2838,9 +2838,11 @@ nfsd4_encode_dirent_fattr(struct xdr_stream *xdr, struct nfsd4_readdir *cd,
+>  		 * Different "."/".." handling?  Something else?
+>  		 * At least, add a comment here to explain....
+>  		 */
+> +		mutex_unlock(&d_inode(parent)->i_mutex);
+>  		err = nfsd_cross_mnt(cd->rd_rqstp, &dentry, &exp);
+> -		if (err) {
+> -			nfserr = nfserrno(err);
+> +		lock_err = mutex_lock_killable(&d_inode(parent)->i_mutex);
 
+Whoever called us probably expected this lock to stay locked over the
+call.  Do we have any reason to believe unlocking here is safe?
 
--- 
-Simo Sorce * Red Hat, Inc * New York
-
+> +		if (err || lock_err) {
+> +			nfserr = nfserrno(err ? err : lock_err);
+>  			goto out_put;
+>  		}
+>  		nfserr = check_nfsd_access(exp, cd->rd_rqstp);
+> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+> index 84d770b..44420e4 100644
+> --- a/fs/nfsd/vfs.c
+> +++ b/fs/nfsd/vfs.c
+> @@ -221,7 +221,10 @@ nfsd_lookup_dentry(struct svc_rqst *rqstp, struct svc_fh *fhp,
+>  		 * check if we have crossed a mount point ...
+>  		 */
+>  		if (nfsd_mountpoint(dentry, exp)) {
+> -			if ((host_err = nfsd_cross_mnt(rqstp, &dentry, &exp))) {
+> +			mutex_unlock(&d_inode(dparent)->i_mutex);
+> +			host_err = nfsd_cross_mnt(rqstp, &dentry, &exp);
+> +			mutex_lock_nested(&d_inode(dparent)->i_mutex, I_MUTEX_PARENT);
+> +			if (host_err) {
+>  				dput(dentry);
+>  				goto out_nfserr;
+>  			}
+> -- 
+> 2.3.6
