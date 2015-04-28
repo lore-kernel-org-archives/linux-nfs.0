@@ -1,41 +1,19 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from verein.lst.de ([213.95.11.211]:39823 "EHLO newverein.lst.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932255AbbD1IO7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 28 Apr 2015 04:14:59 -0400
-Date: Tue, 28 Apr 2015 10:14:56 +0200
+Received: from bombadil.infradead.org ([198.137.202.9]:44449 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S965440AbbD1MBz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Apr 2015 08:01:55 -0400
 From: Christoph Hellwig <hch@lst.de>
-To: Jeff Layton <jeff.layton@primarydata.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, Christoph Hellwig <hch@lst.de>,
-        linux-nfs@vger.kernel.org,
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Jeff Layton <jlayton@primarydata.com>,
         Sachin Bhamare <sachin.bhamare@primarydata.com>,
-        Jeff Layton <jlayton@primarydata.com>
-Subject: Re: [PATCH 2/2] nfsd: fix pNFS return on close semantics
-Message-ID: <20150428081456.GA21413@lst.de>
-References: <1430139014-28013-1-git-send-email-hch@lst.de> <1430139014-28013-3-git-send-email-hch@lst.de> <20150427203943.GI4083@fieldses.org> <20150427193008.1195d7dd@tlielax.poochiereds.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20150427193008.1195d7dd@tlielax.poochiereds.net>
+        linux-nfs@vger.kernel.org
+Subject: two odstate optimizations
+Date: Tue, 28 Apr 2015 14:00:47 +0200
+Message-Id: <1430222449-3921-1-git-send-email-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Apr 27, 2015 at 07:30:08PM -0400, Jeff Layton wrote:
-> One thing that might be good to do though is to create a dedicated
-> slabcache for these objects. On a pnfs-enabled server, you might end up
-> with quite a few of them, so packing them efficiently is probably a good
-> thing to do. That's just a refinement though and could be done in a
-> later patch.
+Two small optimizations for the odstate handling.  Feel free to squash them
+into "nfsd: fix pNFS return on close semantics" if you need to rebase anyway.
 
-Also currently we allocate them for any 4.1 server.  Now that I think about
-it we should at least make it conditional on CONFIG_NFSD_PNFS, or even
-better find a runtime check.
-
-> > (Also: does this need to go to stable?  If we're potentially leaving
-> > layouts around forever, this sounds pretty serious.)
-
-We're always returning them on file close, so we're not leaking anything.
-The common case is that we actually return them too early when we close
-the file but still have an outstanding delegation.
-
-I'm ok with a cc to stable, but it's a bit borderline.  Note that currently
-you even applied my two patches to your 4.2 incoming queue, not even 4.1..
