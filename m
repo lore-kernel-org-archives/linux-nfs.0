@@ -1,51 +1,96 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-vn0-f51.google.com ([209.85.216.51]:40807 "EHLO
-	mail-vn0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753506AbbD2PYD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Apr 2015 11:24:03 -0400
-Received: by vnbg62 with SMTP id g62so3697699vnb.7
-        for <linux-nfs@vger.kernel.org>; Wed, 29 Apr 2015 08:24:02 -0700 (PDT)
+Received: from fieldses.org ([173.255.197.46]:43589 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753599AbbD2Pf5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 29 Apr 2015 11:35:57 -0400
+Date: Wed, 29 Apr 2015 11:35:54 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Scott Mayhew <smayhew@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] Documentation: remove overloads-avoided counter from
+ knfsd-stats.txt
+Message-ID: <20150429153554.GA18344@fieldses.org>
+References: <1430318306-26029-1-git-send-email-smayhew@redhat.com>
 MIME-Version: 1.0
-In-Reply-To: <20150429151404.GA12936@infradead.org>
-References: <20150428202157.GA23972@infradead.org>
-	<1C0C92C2-FBCF-49D8-BB31-3C23A520B075@oracle.com>
-	<20150429151404.GA12936@infradead.org>
-Date: Wed, 29 Apr 2015 11:24:02 -0400
-Message-ID: <CAHQdGtSzdoymP=8_KQJ1A6iCKe+v3qexsQMvJ3Hx2J+bo96RhA@mail.gmail.com>
-Subject: Re: [PATCH, RFC] backchannel overflows
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: Chuck Lever <chuck.lever@oracle.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1430318306-26029-1-git-send-email-smayhew@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Apr 29, 2015 at 11:14 AM, Christoph Hellwig <hch@infradead.org> wrote:
-> On Wed, Apr 29, 2015 at 10:55:10AM -0400, Chuck Lever wrote:
->>
->> On Apr 28, 2015, at 4:21 PM, Christoph Hellwig <hch@infradead.org> wrote:
->>
->> > Currently the client will just crap out if a CB_NULL comes in at the
->> > same time as a slot controlled CB_COMPOUND that includes a CB_SEQUENCE.
->>
->> Under what circumstances does the server send a CB_NULL while a CB_COMPOUND
->> is in flight?
->
-> When a client is under heavy loads from fsx or aio-stress, and we lose
-> the connection (nfsd4_conn_lost is called) while doing heavy recalls.
->
-> xfstests against a server offering pnfs layouts for which the client
-> can't reach the storage devices is an easy reproducer.
+On Wed, Apr 29, 2015 at 10:38:26AM -0400, Scott Mayhew wrote:
+> The 'overloads-avoided' counter itself was removed several years ago by
+> commit 78c210e (Revert "knfsd: avoid overloading the CPU scheduler with
+> enormous load averages").
 
-Why does it need to do this? If the client has sent the
-BIND_CONN_TO_SESSION (which I believe that knfsd asks for), then the
-server knows that this is a bi-directional connection.
-The difference between NFSv4 and NFSv4.1 is that the CB_NULL should
-almost always be redundant, because the client initiates the
-connection and it explicitly tells the server whether or not it is to
-be used for the callback channel.
+Thanks for cleaning this up.--b.
 
-The CB_NULL should always be redundant.
-
-Trond
+> 
+> Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+> ---
+>  Documentation/filesystems/nfs/knfsd-stats.txt | 44 +++------------------------
+>  1 file changed, 4 insertions(+), 40 deletions(-)
+> 
+> diff --git a/Documentation/filesystems/nfs/knfsd-stats.txt b/Documentation/filesystems/nfs/knfsd-stats.txt
+> index 64ced51..1a5d821 100644
+> --- a/Documentation/filesystems/nfs/knfsd-stats.txt
+> +++ b/Documentation/filesystems/nfs/knfsd-stats.txt
+> @@ -68,16 +68,10 @@ sockets-enqueued
+>  	rate of change for this counter is zero; significantly non-zero
+>  	values may indicate a performance limitation.
+>  
+> -	This can happen either because there are too few nfsd threads in the
+> -	thread pool for the NFS workload (the workload is thread-limited),
+> -	or because the NFS workload needs more CPU time than is available in
+> -	the thread pool (the workload is CPU-limited).  In the former case,
+> -	configuring more nfsd threads will probably improve the performance
+> -	of the NFS workload.  In the latter case, the sunrpc server layer is
+> -	already choosing not to wake idle nfsd threads because there are too
+> -	many nfsd threads which want to run but cannot, so configuring more
+> -	nfsd threads will make no difference whatsoever.  The overloads-avoided
+> -	statistic (see below) can be used to distinguish these cases.
+> +	This can happen because there are too few nfsd threads in the thread
+> +	pool for the NFS workload (the workload is thread-limited), in which
+> +	case configuring more nfsd threads will probably improve the
+> +	performance of the NFS workload.
+>  
+>  threads-woken
+>  	Counts how many times an idle nfsd thread is woken to try to
+> @@ -88,36 +82,6 @@ threads-woken
+>  	thing.  The ideal rate of change for this counter will be close
+>  	to but less than the rate of change of the packets-arrived counter.
+>  
+> -overloads-avoided
+> -	Counts how many times the sunrpc server layer chose not to wake an
+> -	nfsd thread, despite the presence of idle nfsd threads, because
+> -	too many nfsd threads had been recently woken but could not get
+> -	enough CPU time to actually run.
+> -
+> -	This statistic counts a circumstance where the sunrpc layer
+> -	heuristically avoids overloading the CPU scheduler with too many
+> -	runnable nfsd threads.  The ideal rate of change for this counter
+> -	is zero.  Significant non-zero values indicate that the workload
+> -	is CPU limited.  Usually this is associated with heavy CPU usage
+> -	on all the CPUs in the nfsd thread pool.
+> -
+> -	If a sustained large overloads-avoided rate is detected on a pool,
+> -	the top(1) utility should be used to check for the following
+> -	pattern of CPU usage on all the CPUs associated with the given
+> -	nfsd thread pool.
+> -
+> -	 - %us ~= 0 (as you're *NOT* running applications on your NFS server)
+> -
+> -	 - %wa ~= 0
+> -
+> -	 - %id ~= 0
+> -
+> -	 - %sy + %hi + %si ~= 100
+> -
+> -	If this pattern is seen, configuring more nfsd threads will *not*
+> -	improve the performance of the workload.  If this patten is not
+> -	seen, then something more subtle is wrong.
+> -
+>  threads-timedout
+>  	Counts how many times an nfsd thread triggered an idle timeout,
+>  	i.e. was not woken to handle any incoming network packets for
+> -- 
+> 1.9.3
