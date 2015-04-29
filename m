@@ -1,33 +1,57 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:43594 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:43659 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753580AbbD2PjX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 29 Apr 2015 11:39:23 -0400
-Date: Wed, 29 Apr 2015 11:39:22 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Simo Sorce <simo@redhat.com>
-Cc: Scott Mayhew <smayhew@redhat.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] svcrpc: fix potential GSSX_ACCEPT_SEC_CONTEXT decoding
- failures
-Message-ID: <20150429153922.GC18344@fieldses.org>
-References: <1430252993-20091-1-git-send-email-smayhew@redhat.com>
- <1430255365.13607.165.camel@willson.usersys.redhat.com>
- <20150429153834.GB18344@fieldses.org>
+	id S1423038AbbD2Rez (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 29 Apr 2015 13:34:55 -0400
+Date: Wed, 29 Apr 2015 13:34:54 -0400
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Christoph Hellwig <hch@infradead.org>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH, RFC] backchannel overflows
+Message-ID: <20150429173454.GA23284@fieldses.org>
+References: <20150428202157.GA23972@infradead.org>
+ <1C0C92C2-FBCF-49D8-BB31-3C23A520B075@oracle.com>
+ <20150429151404.GA12936@infradead.org>
+ <CAHQdGtSzdoymP=8_KQJ1A6iCKe+v3qexsQMvJ3Hx2J+bo96RhA@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20150429153834.GB18344@fieldses.org>
+In-Reply-To: <CAHQdGtSzdoymP=8_KQJ1A6iCKe+v3qexsQMvJ3Hx2J+bo96RhA@mail.gmail.com>
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Apr 29, 2015 at 11:38:34AM -0400, J. Bruce Fields wrote:
-> On Tue, Apr 28, 2015 at 05:09:25PM -0400, Simo Sorce wrote:
-> > Thanks Scott,
-> > I think this will help with older GSS-Proxy versions, in the newer
-> > versions we are simply suppressing the exported composite name as the
-> > kernel has no use for it.
+On Wed, Apr 29, 2015 at 11:24:02AM -0400, Trond Myklebust wrote:
+> On Wed, Apr 29, 2015 at 11:14 AM, Christoph Hellwig <hch@infradead.org> wrote:
+> > On Wed, Apr 29, 2015 at 10:55:10AM -0400, Chuck Lever wrote:
+> >>
+> >> On Apr 28, 2015, at 4:21 PM, Christoph Hellwig <hch@infradead.org> wrote:
+> >>
+> >> > Currently the client will just crap out if a CB_NULL comes in at the
+> >> > same time as a slot controlled CB_COMPOUND that includes a CB_SEQUENCE.
+> >>
+> >> Under what circumstances does the server send a CB_NULL while a CB_COMPOUND
+> >> is in flight?
+> >
+> > When a client is under heavy loads from fsx or aio-stress, and we lose
+> > the connection (nfsd4_conn_lost is called) while doing heavy recalls.
+> >
+> > xfstests against a server offering pnfs layouts for which the client
+> > can't reach the storage devices is an easy reproducer.
 > 
-> Thanks.  (Also adding a Reviewed-by: Simo Sorce <simo@redhat.com>.)
+> Why does it need to do this? If the client has sent the
+> BIND_CONN_TO_SESSION (which I believe that knfsd asks for), then the
+> server knows that this is a bi-directional connection.
+> The difference between NFSv4 and NFSv4.1 is that the CB_NULL should
+> almost always be redundant, because the client initiates the
+> connection and it explicitly tells the server whether or not it is to
+> be used for the callback channel.
+> 
+> The CB_NULL should always be redundant.
 
-(And a stable cc:.)
+I'd be fine with suppressing it.  I think I actually intended to but
+screwed it up.  (Chuck or somebody convinced me the
+NFSD4_CB_UP/UNKNOWN/DOWN logic is totally broken but I never got around
+to fixing it.)
 
 --b.
