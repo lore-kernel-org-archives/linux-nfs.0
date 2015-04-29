@@ -1,88 +1,66 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:53972 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1423251AbbD2Oia (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 29 Apr 2015 10:38:30 -0400
-From: Scott Mayhew <smayhew@redhat.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] Documentation: remove overloads-avoided counter from knfsd-stats.txt
-Date: Wed, 29 Apr 2015 10:38:26 -0400
-Message-Id: <1430318306-26029-1-git-send-email-smayhew@redhat.com>
+Received: from userp1040.oracle.com ([156.151.31.81]:44244 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1423035AbbD2Oys convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Apr 2015 10:54:48 -0400
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
+Subject: Re: [PATCH, RFC] backchannel overflows
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20150428202157.GA23972@infradead.org>
+Date: Wed, 29 Apr 2015 10:55:10 -0400
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <1C0C92C2-FBCF-49D8-BB31-3C23A520B075@oracle.com>
+References: <20150428202157.GA23972@infradead.org>
+To: Christoph Hellwig <hch@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The 'overloads-avoided' counter itself was removed several years ago by
-commit 78c210e (Revert "knfsd: avoid overloading the CPU scheduler with
-enormous load averages").
 
-Signed-off-by: Scott Mayhew <smayhew@redhat.com>
----
- Documentation/filesystems/nfs/knfsd-stats.txt | 44 +++------------------------
- 1 file changed, 4 insertions(+), 40 deletions(-)
+On Apr 28, 2015, at 4:21 PM, Christoph Hellwig <hch@infradead.org> wrote:
 
-diff --git a/Documentation/filesystems/nfs/knfsd-stats.txt b/Documentation/filesystems/nfs/knfsd-stats.txt
-index 64ced51..1a5d821 100644
---- a/Documentation/filesystems/nfs/knfsd-stats.txt
-+++ b/Documentation/filesystems/nfs/knfsd-stats.txt
-@@ -68,16 +68,10 @@ sockets-enqueued
- 	rate of change for this counter is zero; significantly non-zero
- 	values may indicate a performance limitation.
- 
--	This can happen either because there are too few nfsd threads in the
--	thread pool for the NFS workload (the workload is thread-limited),
--	or because the NFS workload needs more CPU time than is available in
--	the thread pool (the workload is CPU-limited).  In the former case,
--	configuring more nfsd threads will probably improve the performance
--	of the NFS workload.  In the latter case, the sunrpc server layer is
--	already choosing not to wake idle nfsd threads because there are too
--	many nfsd threads which want to run but cannot, so configuring more
--	nfsd threads will make no difference whatsoever.  The overloads-avoided
--	statistic (see below) can be used to distinguish these cases.
-+	This can happen because there are too few nfsd threads in the thread
-+	pool for the NFS workload (the workload is thread-limited), in which
-+	case configuring more nfsd threads will probably improve the
-+	performance of the NFS workload.
- 
- threads-woken
- 	Counts how many times an idle nfsd thread is woken to try to
-@@ -88,36 +82,6 @@ threads-woken
- 	thing.  The ideal rate of change for this counter will be close
- 	to but less than the rate of change of the packets-arrived counter.
- 
--overloads-avoided
--	Counts how many times the sunrpc server layer chose not to wake an
--	nfsd thread, despite the presence of idle nfsd threads, because
--	too many nfsd threads had been recently woken but could not get
--	enough CPU time to actually run.
--
--	This statistic counts a circumstance where the sunrpc layer
--	heuristically avoids overloading the CPU scheduler with too many
--	runnable nfsd threads.  The ideal rate of change for this counter
--	is zero.  Significant non-zero values indicate that the workload
--	is CPU limited.  Usually this is associated with heavy CPU usage
--	on all the CPUs in the nfsd thread pool.
--
--	If a sustained large overloads-avoided rate is detected on a pool,
--	the top(1) utility should be used to check for the following
--	pattern of CPU usage on all the CPUs associated with the given
--	nfsd thread pool.
--
--	 - %us ~= 0 (as you're *NOT* running applications on your NFS server)
--
--	 - %wa ~= 0
--
--	 - %id ~= 0
--
--	 - %sy + %hi + %si ~= 100
--
--	If this pattern is seen, configuring more nfsd threads will *not*
--	improve the performance of the workload.  If this patten is not
--	seen, then something more subtle is wrong.
--
- threads-timedout
- 	Counts how many times an nfsd thread triggered an idle timeout,
- 	i.e. was not woken to handle any incoming network packets for
--- 
-1.9.3
+> Currently the client will just crap out if a CB_NULL comes in at the
+> same time as a slot controlled CB_COMPOUND that includes a CB_SEQUENCE.
+
+Under what circumstances does the server send a CB_NULL while a CB_COMPOUND
+is in flight?
+
+
+> I don't really understand how the spec wants to treat CB_NULL in
+> relation to the available backchannel slots, but given that it's
+> not part of the sequences in CB_SEQUENCE it somehow nees to bypass them.
+> 
+> If we make sure to overallocate the rpc-level buffers so that we
+> have more than the available NFS-level slots we should be safe from
+> this condition which makes a 4.1 server doing heavy recalls under
+> load very unhapy by not returning an NFS level reply to its layout
+> recalls.
+> 
+> I dont really like this patch much, so any idea for a better solution
+> would be highly welcome!
+> 
+> diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
+> index 84326e9..7afb3ef 100644
+> --- a/fs/nfs/callback.h
+> +++ b/fs/nfs/callback.h
+> @@ -205,7 +205,7 @@ extern int nfs4_set_callback_sessionid(struct nfs_client *clp);
+>  * so we limit their concurrency to 1 by setting up the maximum number
+>  * of slots for the backchannel.
+>  */
+> -#define NFS41_BC_MIN_CALLBACKS 1
+> +#define NFS41_BC_MIN_CALLBACKS 2
+> #define NFS41_BC_MAX_CALLBACKS 1
+> 
+> extern unsigned int nfs_callback_set_tcpport;
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
 
