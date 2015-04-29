@@ -1,57 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:43659 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:43713 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1423038AbbD2Rez (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 29 Apr 2015 13:34:55 -0400
-Date: Wed, 29 Apr 2015 13:34:54 -0400
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Christoph Hellwig <hch@infradead.org>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH, RFC] backchannel overflows
-Message-ID: <20150429173454.GA23284@fieldses.org>
-References: <20150428202157.GA23972@infradead.org>
- <1C0C92C2-FBCF-49D8-BB31-3C23A520B075@oracle.com>
- <20150429151404.GA12936@infradead.org>
- <CAHQdGtSzdoymP=8_KQJ1A6iCKe+v3qexsQMvJ3Hx2J+bo96RhA@mail.gmail.com>
+	id S1750961AbbD2TTg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 29 Apr 2015 15:19:36 -0400
+Date: Wed, 29 Apr 2015 15:19:34 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: NeilBrown <neilb@suse.de>
+Cc: Kinglong Mee <kinglongmee@gmail.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH RFC] NFSD: fix cannot umounting mount points under pseudo
+ root
+Message-ID: <20150429191934.GA23980@fieldses.org>
+References: <553663B7.7030506@gmail.com>
+ <20150421215417.GE13782@fieldses.org>
+ <553781E2.1000900@gmail.com>
+ <20150422150703.GA1247@fieldses.org>
+ <20150423094431.1a8aa68b@notabene.brown>
+ <5538EB18.7080802@gmail.com>
+ <20150424130045.6bbdb2f9@notabene.brown>
+ <553E2784.6020906@gmail.com>
+ <20150429125728.69ddfc6c@notabene.brown>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAHQdGtSzdoymP=8_KQJ1A6iCKe+v3qexsQMvJ3Hx2J+bo96RhA@mail.gmail.com>
-From: bfields@fieldses.org (J. Bruce Fields)
+In-Reply-To: <20150429125728.69ddfc6c@notabene.brown>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Apr 29, 2015 at 11:24:02AM -0400, Trond Myklebust wrote:
-> On Wed, Apr 29, 2015 at 11:14 AM, Christoph Hellwig <hch@infradead.org> wrote:
-> > On Wed, Apr 29, 2015 at 10:55:10AM -0400, Chuck Lever wrote:
-> >>
-> >> On Apr 28, 2015, at 4:21 PM, Christoph Hellwig <hch@infradead.org> wrote:
-> >>
-> >> > Currently the client will just crap out if a CB_NULL comes in at the
-> >> > same time as a slot controlled CB_COMPOUND that includes a CB_SEQUENCE.
-> >>
-> >> Under what circumstances does the server send a CB_NULL while a CB_COMPOUND
-> >> is in flight?
-> >
-> > When a client is under heavy loads from fsx or aio-stress, and we lose
-> > the connection (nfsd4_conn_lost is called) while doing heavy recalls.
-> >
-> > xfstests against a server offering pnfs layouts for which the client
-> > can't reach the storage devices is an easy reproducer.
-> 
-> Why does it need to do this? If the client has sent the
-> BIND_CONN_TO_SESSION (which I believe that knfsd asks for), then the
-> server knows that this is a bi-directional connection.
-> The difference between NFSv4 and NFSv4.1 is that the CB_NULL should
-> almost always be redundant, because the client initiates the
-> connection and it explicitly tells the server whether or not it is to
-> be used for the callback channel.
-> 
-> The CB_NULL should always be redundant.
+On Wed, Apr 29, 2015 at 12:57:28PM +1000, NeilBrown wrote:
+> In any case, holding a mutex while waiting for an upcall is probably a bad
+> idea.  We should try to find a way to work around that...
 
-I'd be fine with suppressing it.  I think I actually intended to but
-screwed it up.  (Chuck or somebody convinced me the
-NFSD4_CB_UP/UNKNOWN/DOWN logic is totally broken but I never got around
-to fixing it.)
+Yeah, it sounds fragile even if we could fix this particular issue in
+mountd.
+
+> Any ideas Bruce ?-)
+
+Looking at nfsd_buffered_readdir():
+
+	/*
+	 * Various filldir functions may end up calling back into
+	 * lookup_one_len() and the file system's ->lookup() method.
+	 * These expect i_mutex to be held, as it would within readdir.
+	 */
+        host_err = mutex_lock_killable(&dir_inode->i_mutex);
+
+and as far as I can tell Kinglong's approach (adding an unlock and lock
+around nfsd_cross_mnt() calls might actually be OK.
+
+Though in general I expect
+
+	lock()
+	...code...
+	unlock()
+
+to mark a critical section and would be unpleasantly surprised to
+discover that a function somewhere in the middle had a buried
+unlock/lock pair.
+
+Maybe drop the locking from nfsd_buffered_readdir and *just* take the
+i_mutex around lookup_one_len(), if that's the only place we need it?
 
 --b.
