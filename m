@@ -1,63 +1,72 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:43713 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:43736 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750961AbbD2TTg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 29 Apr 2015 15:19:36 -0400
-Date: Wed, 29 Apr 2015 15:19:34 -0400
+	id S1750729AbbD2T4Y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 29 Apr 2015 15:56:24 -0400
+Date: Wed, 29 Apr 2015 15:56:23 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: NeilBrown <neilb@suse.de>
-Cc: Kinglong Mee <kinglongmee@gmail.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH RFC] NFSD: fix cannot umounting mount points under pseudo
- root
-Message-ID: <20150429191934.GA23980@fieldses.org>
-References: <553663B7.7030506@gmail.com>
- <20150421215417.GE13782@fieldses.org>
- <553781E2.1000900@gmail.com>
- <20150422150703.GA1247@fieldses.org>
- <20150423094431.1a8aa68b@notabene.brown>
- <5538EB18.7080802@gmail.com>
- <20150424130045.6bbdb2f9@notabene.brown>
- <553E2784.6020906@gmail.com>
- <20150429125728.69ddfc6c@notabene.brown>
+To: Kinglong Mee <kinglongmee@gmail.com>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/4] nfs: define NFS4_MAXTAGLEN to OPAQUE limits
+Message-ID: <20150429195623.GC23980@fieldses.org>
+References: <5516CCDB.4020509@gmail.com>
+ <5516CD45.7060200@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20150429125728.69ddfc6c@notabene.brown>
+In-Reply-To: <5516CD45.7060200@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Apr 29, 2015 at 12:57:28PM +1000, NeilBrown wrote:
-> In any case, holding a mutex while waiting for an upcall is probably a bad
-> idea.  We should try to find a way to work around that...
+On Sat, Mar 28, 2015 at 11:48:21PM +0800, Kinglong Mee wrote:
+> According to rfc3530 and rfc5661, the max tag length should be
+> limited by opaque limited.
+> 
+> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+> ---
+>  fs/nfs/nfs4xdr.c     | 7 -------
+>  include/linux/nfs4.h | 1 +
+>  2 files changed, 1 insertion(+), 7 deletions(-)
+> 
+> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+> index 5c399ec..1c2ad01 100644
+> --- a/fs/nfs/nfs4xdr.c
+> +++ b/fs/nfs/nfs4xdr.c
+> @@ -67,13 +67,6 @@
+>  
+>  static int nfs4_stat_to_errno(int);
+>  
+> -/* NFSv4 COMPOUND tags are only wanted for debugging purposes */
+> -#ifdef DEBUG
+> -#define NFS4_MAXTAGLEN		20
+> -#else
+> -#define NFS4_MAXTAGLEN		0
+> -#endif
 
-Yeah, it sounds fragile even if we could fix this particular issue in
-mountd.
+As far as I can tell, DEBUG is never defined, and there's no logic
+elsewhere that could actually make use of the tag if DEBUG was defined.
 
-> Any ideas Bruce ?-)
+So maybe simplest would be just to remove the DEBUG case and leave
 
-Looking at nfsd_buffered_readdir():
-
-	/*
-	 * Various filldir functions may end up calling back into
-	 * lookup_one_len() and the file system's ->lookup() method.
-	 * These expect i_mutex to be held, as it would within readdir.
-	 */
-        host_err = mutex_lock_killable(&dir_inode->i_mutex);
-
-and as far as I can tell Kinglong's approach (adding an unlock and lock
-around nfsd_cross_mnt() calls might actually be OK.
-
-Though in general I expect
-
-	lock()
-	...code...
-	unlock()
-
-to mark a critical section and would be unpleasantly surprised to
-discover that a function somewhere in the middle had a buried
-unlock/lock pair.
-
-Maybe drop the locking from nfsd_buffered_readdir and *just* take the
-i_mutex around lookup_one_len(), if that's the only place we need it?
+	#define NFS4_MAXTAGLEN	0
 
 --b.
+
+> -
+>  /* lock,open owner id:
+>   * we currently use size 2 (u64) out of (NFS4_OPAQUE_LIMIT  >> 2)
+>   */
+> diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+> index ed43cb7..ba54ec2 100644
+> --- a/include/linux/nfs4.h
+> +++ b/include/linux/nfs4.h
+> @@ -33,6 +33,7 @@ struct nfs4_acl {
+>  };
+>  
+>  #define NFS4_MAXLABELLEN	2048
+> +#define NFS4_MAXTAGLEN		NFS4_OPAQUE_LIMIT
+>  
+>  struct nfs4_label {
+>  	uint32_t	lfs;
+> -- 
+> 2.3.4
