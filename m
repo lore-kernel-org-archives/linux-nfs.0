@@ -1,51 +1,54 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([198.137.202.9]:51996 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750730AbbD3Jur (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Apr 2015 05:50:47 -0400
-From: Christoph Hellwig <hch@lst.de>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
-Subject: [PATCH 3/3] nfsd: skip CB_NULL probes for 4.1 or later
-Date: Thu, 30 Apr 2015 11:49:25 +0200
-Message-Id: <1430387365-24348-4-git-send-email-hch@lst.de>
-In-Reply-To: <1430387365-24348-1-git-send-email-hch@lst.de>
-References: <1430387365-24348-1-git-send-email-hch@lst.de>
+Received: from mx1.redhat.com ([209.132.183.28]:51542 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750807AbbD3NTc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 30 Apr 2015 09:19:32 -0400
+Received: from int-mx13.intmail.prod.int.phx2.redhat.com (int-mx13.intmail.prod.int.phx2.redhat.com [10.5.11.26])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id t3UDJVFe013520
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
+	for <linux-nfs@vger.kernel.org>; Thu, 30 Apr 2015 09:19:31 -0400
+Received: from smallhat.boston.devel.redhat.com (vpn-59-118.rdu2.redhat.com [10.10.59.118])
+	by int-mx13.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id t3UDJVTP021823
+	for <linux-nfs@vger.kernel.org>; Thu, 30 Apr 2015 09:19:31 -0400
+Message-ID: <55422BE2.6010708@RedHat.com>
+Date: Thu, 30 Apr 2015 09:19:30 -0400
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Linux NFS Town Hall  meeting: *TODAY* - Thur 03/30/15
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-With sessions in v4.1 or later we don't need to manually probe the backchannel
-connection, so we can declare it up instantly after setting up the RPC client.
+Hello,
 
-Note that we really should split nfsd4_run_cb_work in the long run, this is
-just the least intrusive fix for now.
+Its been a while... Let's see what everyone is up to... 
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
----
- fs/nfsd/nfs4callback.c | 9 +++++++++
- 1 file changed, 9 insertions(+)
+A Linux NFS town hall will be held tomorrow
+   *Today at 01:00 pm EST (10:00am PST)*
 
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index 4c993aa..5694cfb 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -1066,6 +1066,15 @@ nfsd4_run_cb_work(struct work_struct *work)
- 			cb->cb_ops->release(cb);
- 		return;
- 	}
-+
-+	/*
-+	 * Don't send probe messages for 4.1 or later.
-+	 */
-+	if (!cb->cb_ops && clp->cl_minorversion) {
-+		clp->cl_cb_state = NFSD4_CB_UP;
-+		return;
-+	}
-+
- 	cb->cb_msg.rpc_cred = clp->cl_cb_cred;
- 	rpc_call_async(clnt, &cb->cb_msg, RPC_TASK_SOFT | RPC_TASK_SOFTCONN,
- 			cb->cb_ops ? &nfsd4_cb_ops : &nfsd4_cb_probe_ops, cb);
--- 
-1.9.1
+The usual agenda will apply. The maintainers will give
+a quick status of what is happening in their worlds.
+
+Next we'll get updates from major contributors on what
+they have been doing and are planing on doing.
+  
+Finally, we'll open the floor to questions, comments, 
+concerns from the community.  
+
+Generally the meeting lasts between 30 to 45 mins, with 
+a very hard stop at 60mins. 
+
+Please feel to attend and participate!
+
+The call in numbers are:
+
+U.S. and Canada: (800) 451-8679
+World wide toll free numbers
+   https://www.intercallonline.com/listNumbersByCode.action?confCode=5642721552
+
+Conference code: 564.272.1552
+
+
+steved.
 
