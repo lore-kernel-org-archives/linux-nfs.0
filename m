@@ -1,36 +1,66 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from verein.lst.de ([213.95.11.211]:50943 "EHLO newverein.lst.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750794AbbD3Oig (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 30 Apr 2015 10:38:36 -0400
-Date: Thu, 30 Apr 2015 16:38:34 +0200
-From: Christoph Hellwig <hch@lst.de>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Christoph Hellwig <hch@lst.de>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/3] nfsd: split transport vs operation errors for
-	callbacks
-Message-ID: <20150430143834.GA25346@lst.de>
-References: <1430387365-24348-1-git-send-email-hch@lst.de> <1430387365-24348-2-git-send-email-hch@lst.de> <20150430142456.GA1704@fieldses.org>
+Received: from mail-vn0-f41.google.com ([209.85.216.41]:33499 "EHLO
+	mail-vn0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751564AbbD3PCb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Apr 2015 11:02:31 -0400
+Received: by vnbf1 with SMTP id f1so7539815vnb.0
+        for <linux-nfs@vger.kernel.org>; Thu, 30 Apr 2015 08:02:30 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20150430142456.GA1704@fieldses.org>
+In-Reply-To: <CAHQdGtRgEVXidNNYtYf4c3uS0vc6fbm-SZ5AxrY=awXYynmACw@mail.gmail.com>
+References: <20150428202157.GA23972@infradead.org>
+	<1C0C92C2-FBCF-49D8-BB31-3C23A520B075@oracle.com>
+	<20150429151404.GA12936@infradead.org>
+	<CAHQdGtSzdoymP=8_KQJ1A6iCKe+v3qexsQMvJ3Hx2J+bo96RhA@mail.gmail.com>
+	<20150429173454.GA23284@fieldses.org>
+	<20150430062558.GA25660@infradead.org>
+	<2ED34DBC-D928-4F1F-B5EF-B9F77D8AA075@oracle.com>
+	<20150430143731.GA22038@infradead.org>
+	<CAHQdGtRgEVXidNNYtYf4c3uS0vc6fbm-SZ5AxrY=awXYynmACw@mail.gmail.com>
+Date: Thu, 30 Apr 2015 11:02:30 -0400
+Message-ID: <CAHQdGtTOsSU1S55+04Yb=_VHgros1kzkgXOHtmJepteD7Y+FnA@mail.gmail.com>
+Subject: Re: [PATCH, RFC] backchannel overflows
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: Chuck Lever <chuck.lever@oracle.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Apr 30, 2015 at 10:24:56AM -0400, J. Bruce Fields wrote:
-> On Thu, Apr 30, 2015 at 11:49:23AM +0200, Christoph Hellwig wrote:
-> > We must only increment the sequence id if the client has seen and responded
-> > to a request.  If we failed to deliver it to the client we must resend with
-> > the same sequence id.  So just like the client track errors at the transport
-> > level differently from those returned in the XDR.
-> 
-> Looks good.
-> 
-> Though errors to the CB_SEQUENCE op itself don't bump the sequence id
-> either--maybe we need the equivalent of the logic in
-> fs/nfs/nfs4proc.c:nfs41_sequence_done().
+Apologies for the resend...
 
-For now the server logic could be a bit simpler, but that looks like a
-good model indeed.
+On Thu, Apr 30, 2015 at 11:01 AM, Trond Myklebust
+<trond.myklebust@primarydata.com> wrote:
+>
+>
+> On Thu, Apr 30, 2015 at 10:37 AM, Christoph Hellwig <hch@infradead.org>
+> wrote:
+>>
+>> On Thu, Apr 30, 2015 at 10:34:02AM -0400, Chuck Lever wrote:
+>> > I?ve been discussing the possibility of adding more session slots on
+>> > the Linux NFS client with jlayton. We think it would be straightforward,
+>> > once the workqueue-based NFSD patches are in, to make the backchannel
+>> > service into a workqueue. Then it would be a simple matter to increase
+>> > the number of session slots.
+>> >
+>> > We haven?t discussed what would be needed on the server side of this
+>> > equation, but sounds like it has some deeper problems if it is not
+>> > obeying the session slot table limits advertised by the client.
+>>
+>> No, the client isn't obeying it's own slot limits
+>>
+>> The problem is when the client responds to a callback it still
+>> holds a references on rpc_rqst for a while.  If the server
+>> sends the next callback fast enough to hit that race window the
+>> client incorrectly rejects it.  Note that we never even get
+>> to the nfs code that check the slot id in this case, it's low-level
+>> sunrpc code that is the problem.
+>
+>
+> We can add dynamic allocation of a new slot as part of the backchannel reply
+> transmit workload. That way we close the race without opening for violation
+> of session limits.
+>
+> Cheers
+>   Trond
