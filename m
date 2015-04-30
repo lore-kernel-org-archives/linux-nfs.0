@@ -1,197 +1,71 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:44162 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750912AbbD3OY5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 30 Apr 2015 10:24:57 -0400
-Date: Thu, 30 Apr 2015 10:24:56 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Christoph Hellwig <hch@lst.de>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/3] nfsd: split transport vs operation errors for
- callbacks
-Message-ID: <20150430142456.GA1704@fieldses.org>
-References: <1430387365-24348-1-git-send-email-hch@lst.de>
- <1430387365-24348-2-git-send-email-hch@lst.de>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1430387365-24348-2-git-send-email-hch@lst.de>
+Received: from userp1040.oracle.com ([156.151.31.81]:18192 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751202AbbD3Od1 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Apr 2015 10:33:27 -0400
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
+Subject: Re: [PATCH, RFC] backchannel overflows
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20150430062558.GA25660@infradead.org>
+Date: Thu, 30 Apr 2015 10:34:02 -0400
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <2ED34DBC-D928-4F1F-B5EF-B9F77D8AA075@oracle.com>
+References: <20150428202157.GA23972@infradead.org> <1C0C92C2-FBCF-49D8-BB31-3C23A520B075@oracle.com> <20150429151404.GA12936@infradead.org> <CAHQdGtSzdoymP=8_KQJ1A6iCKe+v3qexsQMvJ3Hx2J+bo96RhA@mail.gmail.com> <20150429173454.GA23284@fieldses.org> <20150430062558.GA25660@infradead.org>
+To: Christoph Hellwig <hch@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Apr 30, 2015 at 11:49:23AM +0200, Christoph Hellwig wrote:
-> We must only increment the sequence id if the client has seen and responded
-> to a request.  If we failed to deliver it to the client we must resend with
-> the same sequence id.  So just like the client track errors at the transport
-> level differently from those returned in the XDR.
 
-Looks good.
+On Apr 30, 2015, at 2:25 AM, Christoph Hellwig <hch@infradead.org> wrote:
 
-Though errors to the CB_SEQUENCE op itself don't bump the sequence id
-either--maybe we need the equivalent of the logic in
-fs/nfs/nfs4proc.c:nfs41_sequence_done().
-
---b.
-
+> On Wed, Apr 29, 2015 at 01:34:54PM -0400, J. Bruce Fields wrote:
+>>> Why does it need to do this? If the client has sent the
+>>> BIND_CONN_TO_SESSION (which I believe that knfsd asks for), then the
+>>> server knows that this is a bi-directional connection.
+>>> The difference between NFSv4 and NFSv4.1 is that the CB_NULL should
+>>> almost always be redundant, because the client initiates the
+>>> connection and it explicitly tells the server whether or not it is to
+>>> be used for the callback channel.
+>>> 
+>>> The CB_NULL should always be redundant.
+>> 
+>> I'd be fine with suppressing it.  I think I actually intended to but
+>> screwed it up.  (Chuck or somebody convinced me the
+>> NFSD4_CB_UP/UNKNOWN/DOWN logic is totally broken but I never got around
+>> to fixing it.)
 > 
-> Signed-off-by: Christoph Hellwig <hch@lst.de>
-> ---
->  fs/nfsd/nfs4callback.c | 60 ++++++++++++++++++++------------------------------
->  fs/nfsd/state.h        |  1 +
->  2 files changed, 25 insertions(+), 36 deletions(-)
+> I've dived into removing CB_NULL, and fixed various major breakage
+> in the nfsd callback path. for which I will send you an RFC series ASAP.
 > 
-> diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-> index 5827785..cd58b7c 100644
-> --- a/fs/nfsd/nfs4callback.c
-> +++ b/fs/nfsd/nfs4callback.c
-> @@ -224,7 +224,7 @@ static int nfs_cb_stat_to_errno(int status)
->  }
->  
->  static int decode_cb_op_status(struct xdr_stream *xdr, enum nfs_opnum4 expected,
-> -			       enum nfsstat4 *status)
-> +			       int *status)
->  {
->  	__be32 *p;
->  	u32 op;
-> @@ -235,7 +235,7 @@ static int decode_cb_op_status(struct xdr_stream *xdr, enum nfs_opnum4 expected,
->  	op = be32_to_cpup(p++);
->  	if (unlikely(op != expected))
->  		goto out_unexpected;
-> -	*status = be32_to_cpup(p);
-> +	*status = nfs_cb_stat_to_errno(be32_to_cpup(p));
->  	return 0;
->  out_overflow:
->  	print_overflow_msg(__func__, xdr);
-> @@ -446,22 +446,16 @@ out_overflow:
->  static int decode_cb_sequence4res(struct xdr_stream *xdr,
->  				  struct nfsd4_callback *cb)
->  {
-> -	enum nfsstat4 nfserr;
->  	int status;
->  
->  	if (cb->cb_minorversion == 0)
->  		return 0;
->  
-> -	status = decode_cb_op_status(xdr, OP_CB_SEQUENCE, &nfserr);
-> -	if (unlikely(status))
-> -		goto out;
-> -	if (unlikely(nfserr != NFS4_OK))
-> -		goto out_default;
-> -	status = decode_cb_sequence4resok(xdr, cb);
-> -out:
-> -	return status;
-> -out_default:
-> -	return nfs_cb_stat_to_errno(nfserr);
-> +	status = decode_cb_op_status(xdr, OP_CB_SEQUENCE, &cb->cb_status);
-> +	if (unlikely(status || cb->cb_status))
-> +		return status;
-> +
-> +	return decode_cb_sequence4resok(xdr, cb);
->  }
->  
->  /*
-> @@ -524,26 +518,19 @@ static int nfs4_xdr_dec_cb_recall(struct rpc_rqst *rqstp,
->  				  struct nfsd4_callback *cb)
->  {
->  	struct nfs4_cb_compound_hdr hdr;
-> -	enum nfsstat4 nfserr;
->  	int status;
->  
->  	status = decode_cb_compound4res(xdr, &hdr);
->  	if (unlikely(status))
-> -		goto out;
-> +		return status;
->  
->  	if (cb != NULL) {
->  		status = decode_cb_sequence4res(xdr, cb);
-> -		if (unlikely(status))
-> -			goto out;
-> +		if (unlikely(status || cb->cb_status))
-> +			return status;
->  	}
->  
-> -	status = decode_cb_op_status(xdr, OP_CB_RECALL, &nfserr);
-> -	if (unlikely(status))
-> -		goto out;
-> -	if (unlikely(nfserr != NFS4_OK))
-> -		status = nfs_cb_stat_to_errno(nfserr);
-> -out:
-> -	return status;
-> +	return decode_cb_op_status(xdr, OP_CB_RECALL, &cb->cb_status);
->  }
->  
->  #ifdef CONFIG_NFSD_PNFS
-> @@ -621,24 +608,18 @@ static int nfs4_xdr_dec_cb_layout(struct rpc_rqst *rqstp,
->  				  struct nfsd4_callback *cb)
->  {
->  	struct nfs4_cb_compound_hdr hdr;
-> -	enum nfsstat4 nfserr;
->  	int status;
->  
->  	status = decode_cb_compound4res(xdr, &hdr);
->  	if (unlikely(status))
-> -		goto out;
-> +		return status;
-> +
->  	if (cb) {
->  		status = decode_cb_sequence4res(xdr, cb);
-> -		if (unlikely(status))
-> -			goto out;
-> +		if (unlikely(status || cb->cb_status))
-> +			return status;
->  	}
-> -	status = decode_cb_op_status(xdr, OP_CB_LAYOUTRECALL, &nfserr);
-> -	if (unlikely(status))
-> -		goto out;
-> -	if (unlikely(nfserr != NFS4_OK))
-> -		status = nfs_cb_stat_to_errno(nfserr);
-> -out:
-> -	return status;
-> +	return decode_cb_op_status(xdr, OP_CB_LAYOUTRECALL, &cb->cb_status);
->  }
->  #endif /* CONFIG_NFSD_PNFS */
->  
-> @@ -918,7 +899,8 @@ static void nfsd4_cb_done(struct rpc_task *task, void *calldata)
->  
->  	if (clp->cl_minorversion) {
->  		/* No need for lock, access serialized in nfsd4_cb_prepare */
-> -		++clp->cl_cb_session->se_cb_seq_nr;
-> +		if (!task->tk_status)
-> +			++clp->cl_cb_session->se_cb_seq_nr;
->  		clear_bit(0, &clp->cl_cb_slot_busy);
->  		rpc_wake_up_next(&clp->cl_cb_waitq);
->  		dprintk("%s: freed slot, new seqid=%d\n", __func__,
-> @@ -935,6 +917,11 @@ static void nfsd4_cb_done(struct rpc_task *task, void *calldata)
->  	if (cb->cb_done)
->  		return;
->  
-> +	if (cb->cb_status) {
-> +		WARN_ON_ONCE(task->tk_status);
-> +		task->tk_status = cb->cb_status;
-> +	}
-> +
->  	switch (cb->cb_ops->done(cb, task)) {
->  	case 0:
->  		task->tk_status = 0;
-> @@ -1099,6 +1086,7 @@ void nfsd4_init_cb(struct nfsd4_callback *cb, struct nfs4_client *clp,
->  	cb->cb_ops = ops;
->  	INIT_WORK(&cb->cb_work, nfsd4_run_cb_work);
->  	INIT_LIST_HEAD(&cb->cb_per_client);
-> +	cb->cb_status = 0;
->  	cb->cb_done = true;
->  }
->  
-> diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-> index bde45d9..e791985 100644
-> --- a/fs/nfsd/state.h
-> +++ b/fs/nfsd/state.h
-> @@ -68,6 +68,7 @@ struct nfsd4_callback {
->  	struct rpc_message cb_msg;
->  	struct nfsd4_callback_ops *cb_ops;
->  	struct work_struct cb_work;
-> +	int cb_status;
->  	bool cb_done;
->  };
->  
-> -- 
-> 1.9.1
+> However, even with that I see the "Callback slot table overflowed" from the
+> client under load.  I think the problem is the following:
+> 
+> Between sending the callback response in call_bc_transmit -> xprt_transmit
+> and actually releasing the request from rpc_exit_task -> xprt_release ->
+> xprt_free_bc_request there is race window, and between and overloaded client
+> and a fast connection we can hit this one easily.
+> 
+> My patch to increase the number of buffers for the backchannel ensures
+> this doesn't happen in my setup, but of course I could envinsion a
+> theoretical setu where the client is so slow that multiple already
+> processed requests might not be returned yet.
+
+I’ve been discussing the possibility of adding more session slots on
+the Linux NFS client with jlayton. We think it would be straightforward,
+once the workqueue-based NFSD patches are in, to make the backchannel
+service into a workqueue. Then it would be a simple matter to increase
+the number of session slots.
+
+We haven’t discussed what would be needed on the server side of this
+equation, but sounds like it has some deeper problems if it is not
+obeying the session slot table limits advertised by the client.
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
