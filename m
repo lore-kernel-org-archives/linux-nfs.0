@@ -1,71 +1,48 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:46468 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750705AbbD3RkX convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Apr 2015 13:40:23 -0400
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
-Subject: Re: [PATCH, RFC] backchannel overflows
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20CCFEFF-8D28-431C-A1E2-5E42FB42D8FB@oracle.com>
-Date: Thu, 30 Apr 2015 13:41:02 -0400
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Message-Id: <E905ADC8-AB2B-45A7-87FD-0ADF660EA811@oracle.com>
-References: <20150428202157.GA23972@infradead.org> <1C0C92C2-FBCF-49D8-BB31-3C23A520B075@oracle.com> <20150429151404.GA12936@infradead.org> <CAHQdGtSzdoymP=8_KQJ1A6iCKe+v3qexsQMvJ3Hx2J+bo96RhA@mail.gmail.com> <20150429173454.GA23284@fieldses.org> <20150430062558.GA25660@infradead.org> <2ED34DBC-D928-4F1F-B5EF-B9F77D8AA075@oracle.com> <20150430143731.GA22038@infradead.org> <CAHQdGtRgEVXidNNYtYf4c3uS0vc6fbm-SZ5AxrY=awXYynmACw@mail.gmail.com> <20CCFEFF-8D28-431C-A1E2-5E42FB42D8FB@oracle.com>
-To: Christoph Hellwig <hch@infradead.org>
+Received: from mx1.redhat.com ([209.132.183.28]:56571 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751145AbbD3SJH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 30 Apr 2015 14:09:07 -0400
+Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+	by mx1.redhat.com (Postfix) with ESMTPS id 12DBD52
+	for <linux-nfs@vger.kernel.org>; Thu, 30 Apr 2015 18:09:07 +0000 (UTC)
+Received: from smallhat.boston.devel.redhat.com (vpn-56-224.rdu2.redhat.com [10.10.56.224])
+	by int-mx09.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id t3UI95Ub000381
+	for <linux-nfs@vger.kernel.org>; Thu, 30 Apr 2015 14:09:06 -0400
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH] nfsidmap: make sure given arguments are valid
+Date: Thu, 30 Apr 2015 14:09:04 -0400
+Message-Id: <1430417344-25020-2-git-send-email-steved@redhat.com>
+In-Reply-To: <1430417344-25020-1-git-send-email-steved@redhat.com>
+References: <1430417344-25020-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Detect when a given argument is invalid. Log
+the error and exit gracefully
 
-On Apr 30, 2015, at 11:11 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
+Signed-off-by: Steve Dickson <steved@redhat.com>
+---
+ utils/nfsidmap/nfsidmap.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
 
-> 
-> On Apr 30, 2015, at 11:01 AM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
-> 
->>> 
->>> 
->>> On Thu, Apr 30, 2015 at 10:37 AM, Christoph Hellwig <hch@infradead.org> wrote:
->>> On Thu, Apr 30, 2015 at 10:34:02AM -0400, Chuck Lever wrote:
->>>> I?ve been discussing the possibility of adding more session slots on
->>>> the Linux NFS client with jlayton. We think it would be straightforward,
->>>> once the workqueue-based NFSD patches are in, to make the backchannel
->>>> service into a workqueue. Then it would be a simple matter to increase
->>>> the number of session slots.
->>>> 
->>>> We haven?t discussed what would be needed on the server side of this
->>>> equation, but sounds like it has some deeper problems if it is not
->>>> obeying the session slot table limits advertised by the client.
->>> 
->>> No, the client isn't obeying it's own slot limits
->>> 
->>> The problem is when the client responds to a callback it still
->>> holds a references on rpc_rqst for a while.  If the server
->>> sends the next callback fast enough to hit that race window the
->>> client incorrectly rejects it.  Note that we never even get
->>> to the nfs code that check the slot id in this case, it's low-level
->>> sunrpc code that is the problem.
->> 
->> We can add dynamic allocation of a new slot as part of the backchannel reply transmit workload. That way we close the race without opening for violation of session limits.
-> 
-> I’ll have to think about how that would affect RPC/RDMA backchannel.
-> Transport resources are allocated when the transport is created, and
-> can’t be dynamically added. (It certainly wouldn’t be a problem to
-> overprovision, as Christoph has done here).
-
-We discussed this briefly during the Linux NFS town hall meeting.
-I agree using dynamic slot allocation for TCP is fine, and RPC/RDMA
-can use simple overprovisioning.
-
-This way the upper layer (NFSv4.1 client) doesn’t have to be aware of
-limitations in the RPC layer mechanism.
-
-Trond may have an additional concern that I didn’t capture.
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
+diff --git a/utils/nfsidmap/nfsidmap.c b/utils/nfsidmap/nfsidmap.c
+index 5d62078..1f5ba67 100644
+--- a/utils/nfsidmap/nfsidmap.c
++++ b/utils/nfsidmap/nfsidmap.c
+@@ -323,7 +323,10 @@ int main(int argc, char **argv)
+ 	}
+ 	type = strtok(arg, ":");
+ 	value = strtok(NULL, ":");
+-
++    if (value == NULL) {
++		xlog_err("Error: Null uid/gid value.");
++		return 1;
++	}
+ 	if (verbose) {
+ 		xlog_warn("key: 0x%lx type: %s value: %s timeout %ld",
+ 			key, type, value, timeout);
+-- 
+2.1.0
 
