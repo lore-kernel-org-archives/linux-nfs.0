@@ -1,37 +1,31 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx3-phx2.redhat.com ([209.132.183.24]:40752 "EHLO
-	mx3-phx2.redhat.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750786AbbEAFWf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 May 2015 01:22:35 -0400
-Date: Fri, 1 May 2015 01:22:35 -0400 (EDT)
-From: Jamie Bainbridge <jbainbri@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: harshula@redhat.com
-Message-ID: <284822107.10169266.1430457755109.JavaMail.zimbra@redhat.com>
-In-Reply-To: <107624115.10168203.1430457528206.JavaMail.zimbra@redhat.com>
-Subject: Desired RPC client behaviour on socket errors?
+Received: from verein.lst.de ([213.95.11.211]:54466 "EHLO newverein.lst.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750786AbbEAIoF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 1 May 2015 04:44:05 -0400
+Date: Fri, 1 May 2015 10:44:03 +0200
+From: Christoph Hellwig <hch@lst.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Christoph Hellwig <hch@lst.de>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 2/3] nfsd: fix callback restarts
+Message-ID: <20150501084403.GA9315@lst.de>
+References: <1430387365-24348-1-git-send-email-hch@lst.de> <1430387365-24348-3-git-send-email-hch@lst.de> <20150430203556.GA9509@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20150430203556.GA9509@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Commit 3ed5e2a introduced a change to the RPC client's handling of socket return on connect.
+On Thu, Apr 30, 2015 at 04:35:56PM -0400, J. Bruce Fields wrote:
+> This is an rpc callback, so tk_client better still be allocated.
+> cl_cb_client too, since as far as I can tell that's never changed
+> without shutting down the rpc client first (which will wait for all
+> tasks to exit).
+> 
+> So I agree that this is wrong, but I think the reason it's actually
+> wrong is that the condition is just never true....
 
-Prior to this commit, any error return was considered instantly fatal and rpc_exit(task,-EIO) was called.
-
-After this commit, socket returns ECONNREFUSED ECONNRESET ECONNABORTED ENETUNREACH EHOSTUNREACH are passed back to the caller. This is a good idea and works well.
-
-However, this commit also causes those returns to call rpc_delay(task,3*HZ) and the RPC connect to retry until the RPC times out. The timeout can be modified with soft/timeo/retrans but defaults to 3 minutes.
-
-In practice this means if a client tries to mount and there is a permanent network error outside the client, a TCP Reset or an ICMP error might get returned, bu the mount will hang and the client will keep trying to connect many times until the RPC times out. Previously a mount would fail almost straight away.
-
-It seems 3ed5e2a solves a problem for transient network errors but creates a problem for permanent network errors.
-
-I agree it's probably desirable for a client application (RPC in this instance) to keep trying to connect until a timeout, and it's good the timeout is configurable, but it's bad that the timeout must be tied to all RPC operations. Someone wanting a quick mount timeout must also suffer a quick NFS operation timeout, not to mention the data corruption risk that goes along with soft.
-
-Should the RPC client call rpc_exit() on an xprt connect which returns ECONNREFUSED ECONNRESET ECONNABORTED ENETUNREACH EHOSTUNREACH because those returns imply a "more permanent" network issue?
-
-Disclosure: We came across this because a customer is (ab)using NFSv4 Migrations in a strange way. One server in fs_locations is firewalled behind a TCP Reset and one is not. Depending on which security zone a client is in, it can connect to one server but not the other. This enables clients in both security zones to use the same NFS mount configuration.
-
-Cheers,
-Jamie
+It was never true in my testing, but I assumed that was because
+of slab reuse.  So you're probably right here.
