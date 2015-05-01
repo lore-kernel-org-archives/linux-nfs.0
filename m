@@ -1,81 +1,66 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:44855 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753795AbbEAN3y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 1 May 2015 09:29:54 -0400
-Date: Fri, 1 May 2015 09:29:53 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: NeilBrown <neilb@suse.de>
-Cc: Al Viro <viro@ZenIV.linux.org.uk>, Kinglong Mee <kinglongmee@gmail.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH RFC] NFSD: fix cannot umounting mount points under pseudo
- root
-Message-ID: <20150501132953.GA2583@fieldses.org>
-References: <553E2784.6020906@gmail.com>
- <20150429125728.69ddfc6c@notabene.brown>
- <20150429191934.GA23980@fieldses.org>
- <20150430075225.21a71056@notabene.brown>
- <20150430213602.GB9509@fieldses.org>
- <20150501115326.51f5613a@notabene.brown>
- <20150501020324.GP889@ZenIV.linux.org.uk>
- <20150501122333.1476c999@notabene.brown>
- <20150501022939.GQ889@ZenIV.linux.org.uk>
- <20150501130826.40721dd0@notabene.brown>
+Received: from mail-qc0-f173.google.com ([209.85.216.173]:33112 "EHLO
+	mail-qc0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753715AbbEANjx (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 May 2015 09:39:53 -0400
+Received: by qcrf4 with SMTP id f4so43766997qcr.0
+        for <linux-nfs@vger.kernel.org>; Fri, 01 May 2015 06:39:53 -0700 (PDT)
+Date: Fri, 1 May 2015 09:39:49 -0400
+From: Jeff Layton <jeff.layton@primarydata.com>
+To: Jamie Bainbridge <jbainbri@redhat.com>
+Cc: linux-nfs@vger.kernel.org, harshula@redhat.com
+Subject: Re: Desired RPC client behaviour on socket errors?
+Message-ID: <20150501093949.48f9e779@tlielax.poochiereds.net>
+In-Reply-To: <284822107.10169266.1430457755109.JavaMail.zimbra@redhat.com>
+References: <107624115.10168203.1430457528206.JavaMail.zimbra@redhat.com>
+	<284822107.10169266.1430457755109.JavaMail.zimbra@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20150501130826.40721dd0@notabene.brown>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, May 01, 2015 at 01:08:26PM +1000, NeilBrown wrote:
-> On Fri, 1 May 2015 03:29:40 +0100 Al Viro <viro@ZenIV.linux.org.uk> wrote:
-> 
-> > On Fri, May 01, 2015 at 12:23:33PM +1000, NeilBrown wrote:
-> > > > What kind of consistency warranties do callers expect, BTW?  You do realize
-> > > > that between iterate_dir() and callbacks an entry might have been removed
-> > > > and/or replaced?
-> > > 
-> > > For READDIR_PLUS, lookup_one_len is called on each name and it requires
-> > > i_mutex, so the code currently holds i_mutex over the whole sequence.
-> > > This is triggering a deadlock.
-> > 
-> > Yes, I've seen the context.  However, you are _not_ holding it between
-> > actual iterate_dir() and those callbacks, which opens a window when
-> > directory might have been changed.
-> > 
-> > Again, what kind of consistency is expected by callers?  Are they ready to
-> > cope with "there's no such entry anymore" or "inumber is nothing like
-> > what we'd put in ->ino, since it's no the same object" or "->d_type is
-> > completely unrelated to what we'd found, since the damn thing had been
-> > removed and created from scratch"?
-> 
-> Ah, sorry.
-> 
-> Yes, the callers are prepared for "there's no such entry anymore".
-> They don't use d_type, so don't care if it might be meaningless.
-> NFSv4 doesn't use ino either, but NFSv3 does and isn't properly cautious
-> about ino changing.
-> 
-> In nfs3xdr, we should probably pass 'ino' to encode_entryplus_baggage() and
-> thence to compose_entry_fh() and it should report failure if
-> dchild->d_inode->i_ino doesn't match.
+On Fri, 1 May 2015 01:22:35 -0400 (EDT)
+Jamie Bainbridge <jbainbri@redhat.com> wrote:
 
-Just to make sure I understand the concern..... So it shouldn't really
-be a problem if readdir and lookup find different objects for the same
-name, the problem is just when we mix attributes from the two objects,
-right?  Looks like the v3 code could return an inode number derived from
-the readdir and a filehandle from the lookup, which is a problem.  The
-v4 code will get everything from the result of the lookup, which should
-be OK.
-
-> Simply not returning the extra attributes is perfectly acceptable in NFSv3.
-
-Right, so no big deal anyway.--b.
-
-> So it looks like we are mostly OK here - we don't really need i_mutex to be
-> held for very long.
+> Commit 3ed5e2a introduced a change to the RPC client's handling of socket return on connect.
 > 
-> NeilBrown
+> Prior to this commit, any error return was considered instantly fatal and rpc_exit(task,-EIO) was called.
 > 
+> After this commit, socket returns ECONNREFUSED ECONNRESET ECONNABORTED ENETUNREACH EHOSTUNREACH are passed back to the caller. This is a good idea and works well.
+> 
+> However, this commit also causes those returns to call rpc_delay(task,3*HZ) and the RPC connect to retry until the RPC times out. The timeout can be modified with soft/timeo/retrans but defaults to 3 minutes.
+> 
+> In practice this means if a client tries to mount and there is a permanent network error outside the client, a TCP Reset or an ICMP error might get returned, bu the mount will hang and the client will keep trying to connect many times until the RPC times out. Previously a mount would fail almost straight away.
+> 
+> It seems 3ed5e2a solves a problem for transient network errors but creates a problem for permanent network errors.
+> 
+> I agree it's probably desirable for a client application (RPC in this instance) to keep trying to connect until a timeout, and it's good the timeout is configurable, but it's bad that the timeout must be tied to all RPC operations. Someone wanting a quick mount timeout must also suffer a quick NFS operation timeout, not to mention the data corruption risk that goes along with soft.
+> 
+> Should the RPC client call rpc_exit() on an xprt connect which returns ECONNREFUSED ECONNRESET ECONNABORTED ENETUNREACH EHOSTUNREACH because those returns imply a "more permanent" network issue?
+> 
+> Disclosure: We came across this because a customer is (ab)using NFSv4 Migrations in a strange way. One server in fs_locations is firewalled behind a TCP Reset and one is not. Depending on which security zone a client is in, it can connect to one server but not the other. This enables clients in both security zones to use the same NFS mount configuration.
+> 
+> Cheers,
+> Jamie
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
 
+I'd say no...
+
+One thing to consider is that it's quite common for servers (Linux or
+otherwise) to return those sorts of errors as they are coming up after
+a reboot. Network interfaces are often brought online before the nfs
+server is ready to accept connections.
+
+If we were to change that then you'd likely see RPCs failing in those
+situations, which is almost certainly not what you want.
+
+AFAICT, mount requests should end up trying to do a rpc_ping first,
+which should have RPC_TASK_SOFTCONN set. Is that not working for some
+reason?
+
+-- 
+Jeff Layton <jeff.layton@primarydata.com>
