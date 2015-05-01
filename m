@@ -1,31 +1,42 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from verein.lst.de ([213.95.11.211]:54466 "EHLO newverein.lst.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750786AbbEAIoF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 1 May 2015 04:44:05 -0400
-Date: Fri, 1 May 2015 10:44:03 +0200
-From: Christoph Hellwig <hch@lst.de>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Christoph Hellwig <hch@lst.de>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 2/3] nfsd: fix callback restarts
-Message-ID: <20150501084403.GA9315@lst.de>
-References: <1430387365-24348-1-git-send-email-hch@lst.de> <1430387365-24348-3-git-send-email-hch@lst.de> <20150430203556.GA9509@fieldses.org>
+Received: from smtp-3.concepts.nl ([213.197.30.127]:60159 "EHLO
+	smtp-3.concepts.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751643AbbEAL4T (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 May 2015 07:56:19 -0400
+Message-ID: <55436640.8080708@xmsnet.nl>
+Date: Fri, 01 May 2015 13:40:48 +0200
+From: Hans de Bruin <jmdebruin@xmsnet.nl>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20150430203556.GA9509@fieldses.org>
+To: "Eric W. Biederman" <ebiederm@xmission.com>
+CC: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        linux-nfs@vger.kernel.org
+Subject: Re: 3.17.0+ files disappearing after playing old dos game on nfsroot
+ laptop
+References: <543ED24D.4070905@xmsnet.nl> <5443F5A1.1050004@xmsnet.nl>	<544A7933.3010702@xmsnet.nl> <544A7D5C.5060804@xmsnet.nl>	<871tpx1gcx.fsf@x220.int.ebiederm.org> <544B7D9F.1070403@xmsnet.nl>	<87k33ow65k.fsf@x220.int.ebiederm.org> <544C1E40.6070901@xmsnet.nl> <87pp6kewzd.fsf@x220.int.ebiederm.org>
+In-Reply-To: <87pp6kewzd.fsf@x220.int.ebiederm.org>
+Content-Type: text/plain; charset=windows-1252; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Apr 30, 2015 at 04:35:56PM -0400, J. Bruce Fields wrote:
-> This is an rpc callback, so tk_client better still be allocated.
-> cl_cb_client too, since as far as I can tell that's never changed
-> without shutting down the rpc client first (which will wait for all
-> tasks to exit).
-> 
-> So I agree that this is wrong, but I think the reason it's actually
-> wrong is that the condition is just never true....
+On 05/01/2015 06:35 AM, Eric W. Biederman wrote:
+> Hans de Bruin <jmdebruin@xmsnet.nl> writes:
+>
+>>> I expect what needs to happen is to confirm that nfs directory entry
+>>> revalidation is buggy, and at least for the short term re-add the nfs
+>>> logic that will avoid dropping a dentry if it is a mount point, or
+>>> path to a mount point, to avoid the nfs bugs.
+>>>
+>>
+>> ok, I will go in waiting mode.
+>
+> I dropped the ball on this but it looks like someone else hit the
+> problem and the following two commits fixed this issue:
+>
+> Can you confirm that things are working again?
 
-It was never true in my testing, but I assumed that was because
-of slab reuse.  So you're probably right here.
+I noticed the issue was gone in one of the previous releases. I was 
+wondering whether you changed something or not. Sorry for not notifying you.
+
+-- 
+Hans
+
