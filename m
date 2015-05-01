@@ -1,82 +1,37 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from out02.mta.xmission.com ([166.70.13.232]:52102 "EHLO
-	out02.mta.xmission.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750728AbbEAEjm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 May 2015 00:39:42 -0400
-From: ebiederm@xmission.com (Eric W. Biederman)
-To: Hans de Bruin <jmdebruin@xmsnet.nl>
-Cc: "linux-kernel\@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        linux-nfs@vger.kernel.org
-References: <543ED24D.4070905@xmsnet.nl> <5443F5A1.1050004@xmsnet.nl>
-	<544A7933.3010702@xmsnet.nl> <544A7D5C.5060804@xmsnet.nl>
-	<871tpx1gcx.fsf@x220.int.ebiederm.org> <544B7D9F.1070403@xmsnet.nl>
-	<87k33ow65k.fsf@x220.int.ebiederm.org> <544C1E40.6070901@xmsnet.nl>
-Date: Thu, 30 Apr 2015 23:35:18 -0500
-In-Reply-To: <544C1E40.6070901@xmsnet.nl> (Hans de Bruin's message of "Sun, 26
-	Oct 2014 00:03:44 +0200")
-Message-ID: <87pp6kewzd.fsf@x220.int.ebiederm.org>
+Received: from mx3-phx2.redhat.com ([209.132.183.24]:40752 "EHLO
+	mx3-phx2.redhat.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750786AbbEAFWf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 May 2015 01:22:35 -0400
+Date: Fri, 1 May 2015 01:22:35 -0400 (EDT)
+From: Jamie Bainbridge <jbainbri@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: harshula@redhat.com
+Message-ID: <284822107.10169266.1430457755109.JavaMail.zimbra@redhat.com>
+In-Reply-To: <107624115.10168203.1430457528206.JavaMail.zimbra@redhat.com>
+Subject: Desired RPC client behaviour on socket errors?
 MIME-Version: 1.0
-Content-Type: text/plain
-Subject: Re: 3.17.0+ files disappearing after playing old dos game on nfsroot laptop
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hans de Bruin <jmdebruin@xmsnet.nl> writes:
+Commit 3ed5e2a introduced a change to the RPC client's handling of socket return on connect.
 
->> I expect what needs to happen is to confirm that nfs directory entry
->> revalidation is buggy, and at least for the short term re-add the nfs
->> logic that will avoid dropping a dentry if it is a mount point, or
->> path to a mount point, to avoid the nfs bugs.
->>
->
-> ok, I will go in waiting mode.
+Prior to this commit, any error return was considered instantly fatal and rpc_exit(task,-EIO) was called.
 
-I dropped the ball on this but it looks like someone else hit the
-problem and the following two commits fixed this issue:
+After this commit, socket returns ECONNREFUSED ECONNRESET ECONNABORTED ENETUNREACH EHOSTUNREACH are passed back to the caller. This is a good idea and works well.
 
-Can you confirm that things are working again?
+However, this commit also causes those returns to call rpc_delay(task,3*HZ) and the RPC connect to retry until the RPC times out. The timeout can be modified with soft/timeo/retrans but defaults to 3 minutes.
 
-commit fa9233699cc1dc236f4cf42245d13e40966938c5
-Author: Trond Myklebust <trond.myklebust@primarydata.com>
-Date:   Mon Feb 23 18:51:32 2015 -0500
+In practice this means if a client tries to mount and there is a permanent network error outside the client, a TCP Reset or an ICMP error might get returned, bu the mount will hang and the client will keep trying to connect many times until the RPC times out. Previously a mount would fail almost straight away.
 
-    NFS: Don't require a filehandle to refresh the inode in nfs_prime_dcache()
-    
-    If the server does not return a valid set of attributes that we can
-    use to either create a file or refresh the inode, then there is no
-    value in calling nfs_prime_dcache().
-    
-    However if we're just refreshing the inode using the attributes that
-    the server returned, then it shouldn't matter whether or not we have
-    a filehandle, as long as we check the fsid+fileid combination.
-    
-    Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+It seems 3ed5e2a solves a problem for transient network errors but creates a problem for permanent network errors.
 
-commit 6c441c254eea2354d686be7f5544bcd79fb6a61f
-Author: Trond Myklebust <trond.myklebust@primarydata.com>
-Date:   Sun Feb 22 16:35:36 2015 -0500
+I agree it's probably desirable for a client application (RPC in this instance) to keep trying to connect until a timeout, and it's good the timeout is configurable, but it's bad that the timeout must be tied to all RPC operations. Someone wanting a quick mount timeout must also suffer a quick NFS operation timeout, not to mention the data corruption risk that goes along with soft.
 
-    NFS: Don't invalidate a submounted dentry in nfs_prime_dcache()
-    
-    If we're traversing a directory which contains a submounted filesystem,
-    or one that has a referral, the NFS server that is processing the READDIR
-    request will often return information for the underlying (mounted-on)
-    directory. It may, or may not, also return filehandle information.
-    
-    If this happens, and the lookup in nfs_prime_dcache() returns the
-    dentry for the submounted directory, the filehandle comparison will
-    fail, and we call d_invalidate(). Post-commit 8ed936b5671bf
-    ("vfs: Lazily remove mounts on unlinked files and directories."), this
-    means the entire subtree is unmounted.
-    
-    The following minimal patch addresses this problem by punting on
-    the invalidation if there is a submount.
-    
-    Kudos to Neil Brown <neilb@suse.de> for having tracked down this
-    issue (see link).
-    
-    Reported-by: Nix <nix@esperi.org.uk>
-    Link: http://lkml.kernel.org/r/87iofju9ht.fsf@spindle.srvr.nix
-    Cc: stable@vger.kernel.org # 3.18+
-    Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Should the RPC client call rpc_exit() on an xprt connect which returns ECONNREFUSED ECONNRESET ECONNABORTED ENETUNREACH EHOSTUNREACH because those returns imply a "more permanent" network issue?
 
+Disclosure: We came across this because a customer is (ab)using NFSv4 Migrations in a strange way. One server in fs_locations is firewalled behind a TCP Reset and one is not. Depending on which security zone a client is in, it can connect to one server but not the other. This enables clients in both security zones to use the same NFS mount configuration.
+
+Cheers,
+Jamie
