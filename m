@@ -1,172 +1,204 @@
-Return-Path: <jeff.layton@primarydata.com>
-Date: Fri, 1 May 2015 19:17:41 -0400
-From: Jeff Layton <jeff.layton@primarydata.com>
-To: Benjamin Coddington <bcodding@redhat.com>
-Cc: Shawn Bohrer <shawn.bohrer@gmail.com>, linux-nfs@vger.kernel.org,
-        linux-pm@vger.kernel.org, linux-kernel@vger.kernel.org,
-        mayoff@rgmadvisors.com, fsorenso@redhat.com, tj@kernel.org
-Subject: Re: NFS Freezer and stuck tasks
-Message-ID: <20150501191741.17bed93c@tlielax.poochiereds.net>
-In-Reply-To: <alpine.OSX.2.19.9992.1505011708000.656@planck.local>
-References: <20150304220027.GB20242@sbohrermbp13-local.rgmadvisors.com>
-	<alpine.OSX.2.19.9992.1505011631390.946@planck.local>
-	<alpine.OSX.2.19.9992.1505011708000.656@planck.local>
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:35441 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750946AbbEBXRF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 2 May 2015 19:17:05 -0400
+Date: Sun, 3 May 2015 09:16:53 +1000
+From: NeilBrown <neilb@suse.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Al Viro <viro@ZenIV.linux.org.uk>, Kinglong Mee <kinglongmee@gmail.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH RFC] NFSD: fix cannot umounting mount points under
+ pseudo root
+Message-ID: <20150503091653.35169382@notabene.brown>
+In-Reply-To: <20150501132953.GA2583@fieldses.org>
+References: <553E2784.6020906@gmail.com>
+	<20150429125728.69ddfc6c@notabene.brown>
+	<20150429191934.GA23980@fieldses.org>
+	<20150430075225.21a71056@notabene.brown>
+	<20150430213602.GB9509@fieldses.org>
+	<20150501115326.51f5613a@notabene.brown>
+	<20150501020324.GP889@ZenIV.linux.org.uk>
+	<20150501122333.1476c999@notabene.brown>
+	<20150501022939.GQ889@ZenIV.linux.org.uk>
+	<20150501130826.40721dd0@notabene.brown>
+	<20150501132953.GA2583@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: multipart/signed; micalg=pgp-sha1;
+ boundary="Sig_/lhm296nF2Z5/v2u+nhJIddh"; protocol="application/pgp-signature"
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 1 May 2015 17:10:34 -0400 (EDT)
-Benjamin Coddington <bcodding@redhat.com> wrote:
+--Sig_/lhm296nF2Z5/v2u+nhJIddh
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-> On Fri, 1 May 2015, Benjamin Coddington wrote:
-> 
-> > On Wed, 4 Mar 2015, Shawn Bohrer wrote:
-> >
-> > > Hello,
-> > >
-> > > We're using the Linux cgroup Freezer on some machines that use NFS and
-> > > have run into what appears to be a bug where frozen tasks are blocking
-> > > running tasks and preventing them from completing.  On one of our
-> > > machines which happens to be running an older 3.10.46 kernel we have
-> > > frozen some of the tasks on the system using the cgroup Freezer.  We
-> > > also have a separate set of tasks which are NOT frozen which are stuck
-> > > trying to open some files on NFS.
-> > >
-> > > Looking at the frozen tasks there are several that have the following
-> > > stack:
-> > >
-> > > [<ffffffff814fd055>] rpc_wait_bit_killable+0x35/0x80
-> > > [<ffffffff814fd01d>] __rpc_wait_for_completion_task+0x2d/0x30
-> > > [<ffffffff811dce5d>] nfs4_run_open_task+0x11d/0x170
-> > > [<ffffffff811de7a3>] _nfs4_open_and_get_state+0x53/0x260
-> > > [<ffffffff811e12d1>] nfs4_do_open+0x121/0x400
-> > > [<ffffffff811e15e1>] nfs4_atomic_open+0x31/0x50
-> > > [<ffffffff811f02dc>] nfs4_file_open+0xac/0x180
-> > > [<ffffffff811479be>] do_dentry_open.isra.19+0x1ee/0x280
-> > > [<ffffffff81147b3e>] finish_open+0x1e/0x30
-> > > [<ffffffff811578d2>] do_last.isra.64+0x2c2/0xc40
-> > > [<ffffffff81158519>] path_openat.isra.65+0x2c9/0x490
-> > > [<ffffffff81158c38>] do_filp_open+0x38/0x80
-> > > [<ffffffff81148cd4>] do_sys_open+0xe4/0x1c0
-> > > [<ffffffff81148dce>] SyS_open+0x1e/0x20
-> > > [<ffffffff8153e719>] system_call_fastpath+0x16/0x1b
-> > > [<ffffffffffffffff>] 0xffffffffffffffff
-> > >
-> > > Here it looks like we are waiting in a wait queue inside
-> > > rpc_wait_bit_killable() for RPC_TASK_ACTIVE.
-> > >
-> > > And there is a single task with a stack that looks like the following:
-> > >
-> > > [<ffffffff8107dc05>] __refrigerator+0x55/0x150
-> > > [<ffffffff814fd086>] rpc_wait_bit_killable+0x66/0x80
-> > > [<ffffffff814fd01d>] __rpc_wait_for_completion_task+0x2d/0x30
-> > > [<ffffffff811dce5d>] nfs4_run_open_task+0x11d/0x170
-> > > [<ffffffff811de7a3>] _nfs4_open_and_get_state+0x53/0x260
-> > > [<ffffffff811e12d1>] nfs4_do_open+0x121/0x400
-> > > [<ffffffff811e15e1>] nfs4_atomic_open+0x31/0x50
-> > > [<ffffffff811f02dc>] nfs4_file_open+0xac/0x180
-> > > [<ffffffff811479be>] do_dentry_open.isra.19+0x1ee/0x280
-> > > [<ffffffff81147b3e>] finish_open+0x1e/0x30
-> > > [<ffffffff811578d2>] do_last.isra.64+0x2c2/0xc40
-> > > [<ffffffff81158519>] path_openat.isra.65+0x2c9/0x490
-> > > [<ffffffff81158c38>] do_filp_open+0x38/0x80
-> > > [<ffffffff81148cd4>] do_sys_open+0xe4/0x1c0
-> > > [<ffffffff81148dce>] SyS_open+0x1e/0x20
-> > > [<ffffffff8153e719>] system_call_fastpath+0x16/0x1b
-> > > [<ffffffffffffffff>] 0xffffffffffffffff
-> > >
-> > > This looks similar but the different offset into
-> > > rpc_wait_bit_killable() shows that we have returned from the
-> > > schedule() call in freezable_schedule() and are now blocked in
-> > > __refrigerator() inside freezer_count()
-> > >
-> > > Similarly if you look at the tasks that are NOT frozen but are stuck
-> > > opening a NFS file, they also have the following stack showing they are
-> > > waiting in the wait queue for RPC_TASK_ACTIVE.
-> > >
-> > > [<ffffffff814fd055>] rpc_wait_bit_killable+0x35/0x80
-> > > [<ffffffff814fd01d>] __rpc_wait_for_completion_task+0x2d/0x30
-> > > [<ffffffff811dce5d>] nfs4_run_open_task+0x11d/0x170
-> > > [<ffffffff811de7a3>] _nfs4_open_and_get_state+0x53/0x260
-> > > [<ffffffff811e12d1>] nfs4_do_open+0x121/0x400
-> > > [<ffffffff811e15e1>] nfs4_atomic_open+0x31/0x50
-> > > [<ffffffff811f02dc>] nfs4_file_open+0xac/0x180
-> > > [<ffffffff811479be>] do_dentry_open.isra.19+0x1ee/0x280
-> > > [<ffffffff81147b3e>] finish_open+0x1e/0x30
-> > > [<ffffffff811578d2>] do_last.isra.64+0x2c2/0xc40
-> > > [<ffffffff81158519>] path_openat.isra.65+0x2c9/0x490
-> > > [<ffffffff81158c38>] do_filp_open+0x38/0x80
-> > > [<ffffffff81148cd4>] do_sys_open+0xe4/0x1c0
-> > > [<ffffffff81148dce>] SyS_open+0x1e/0x20
-> > > [<ffffffff8153e719>] system_call_fastpath+0x16/0x1b
-> > > [<ffffffffffffffff>] 0xffffffffffffffff
-> > >
-> > > We have hit this a couple of times now and know that if we THAW all of
-> > > the frozen tasks that running tasks will unwedge and finish.
-> > >
-> > > Additionally we have also tried thawing the single task that is frozen
-> > > in __refrigerator() inside rpc_wait_bit_killable().  This usually
-> > > results in different frozen task entering the __refrigerator() state
-> > > inside rpc_wait_bit_killable().  It looks like each one of those tasks
-> > > must wake up another letting it progress.  Again if you thaw enough of
-> > > the frozen tasks eventually everything unwedges and everything
-> > > completes.
-> > >
-> > > I've looked through the 3.10 stable patches since 3.10.46 and don't
-> > > see anything that looks like it addresses this.  Does anyone have any
-> > > idea what might be going on here, and what the fix might be?
-> > >
-> > > Thanks,
-> > > Shawn
-> >
-> > Hi Shawn, just started looking at this myself, and as Frank Sorensen points
-> > out in https://bugzilla.redhat.com/show_bug.cgi?id=1209143 the problem is
-> > that a task takes the xprt lock and then ends up in the refrigerator
-> > effectively blocking other tasks from proceeding.
-> >
-> > Jeff, any suggestions on how to proceed here?
-> 
-> Sorry for the noise, and self-reply..  Looks like there's additional context
-> here: http://marc.info/?t=136761512100007&r=1&w=2
-> 
-> Due to a number of locking problems the answer to this problem is likely to
-> be "don't do that" for now.
-> 
-> Ben
+On Fri, 1 May 2015 09:29:53 -0400 "J. Bruce Fields" <bfields@fieldses.org>
+wrote:
 
-Yeah, that's definitely the answer for now.
+> On Fri, May 01, 2015 at 01:08:26PM +1000, NeilBrown wrote:
+> > On Fri, 1 May 2015 03:29:40 +0100 Al Viro <viro@ZenIV.linux.org.uk> wro=
+te:
+> >=20
+> > > On Fri, May 01, 2015 at 12:23:33PM +1000, NeilBrown wrote:
+> > > > > What kind of consistency warranties do callers expect, BTW?  You =
+do realize
+> > > > > that between iterate_dir() and callbacks an entry might have been=
+ removed
+> > > > > and/or replaced?
+> > > >=20
+> > > > For READDIR_PLUS, lookup_one_len is called on each name and it requ=
+ires
+> > > > i_mutex, so the code currently holds i_mutex over the whole sequenc=
+e.
+> > > > This is triggering a deadlock.
+> > >=20
+> > > Yes, I've seen the context.  However, you are _not_ holding it between
+> > > actual iterate_dir() and those callbacks, which opens a window when
+> > > directory might have been changed.
+> > >=20
+> > > Again, what kind of consistency is expected by callers?  Are they rea=
+dy to
+> > > cope with "there's no such entry anymore" or "inumber is nothing like
+> > > what we'd put in ->ino, since it's no the same object" or "->d_type is
+> > > completely unrelated to what we'd found, since the damn thing had been
+> > > removed and created from scratch"?
+> >=20
+> > Ah, sorry.
+> >=20
+> > Yes, the callers are prepared for "there's no such entry anymore".
+> > They don't use d_type, so don't care if it might be meaningless.
+> > NFSv4 doesn't use ino either, but NFSv3 does and isn't properly cautious
+> > about ino changing.
+> >=20
+> > In nfs3xdr, we should probably pass 'ino' to encode_entryplus_baggage()=
+ and
+> > thence to compose_entry_fh() and it should report failure if
+> > dchild->d_inode->i_ino doesn't match.
+>=20
+> Just to make sure I understand the concern..... So it shouldn't really
+> be a problem if readdir and lookup find different objects for the same
+> name, the problem is just when we mix attributes from the two objects,
+> right?  Looks like the v3 code could return an inode number derived from
+> the readdir and a filehandle from the lookup, which is a problem.  The
+> v4 code will get everything from the result of the lookup, which should
+> be OK.
 
-NFS and the freezer basically cooperate if you are freezing the whole
-system, but freezing some tasks and not others is fraught with peril.
-The problem is that by the time you get a freeze "signal" you might be
-very deep inside the call stack, holding VFS layer locks, etc. and that
-can block other non-freezing tasks from progressing.
+That agrees with my understanding, yes.
 
-My memory is vague, but Tejun (cc'ed) and I discussed this a couple of
-years or so ago and the tentative idea at the time was to teach the
-NFS and RPC code to return a particular error akin to ERESTARTSYS
-(EFREEZE?) when a freeze event comes in and we haven't yet sent an RPC
-call.
+I did wonder for a little while about the possibility of a directory
+containing both 'a' and 'b', and NFSv4 doing the readdir and the stat of 'a=
+',
+and the a "mv a b" happening before the stat of 'b'.
 
-The idea was to teach the ptrace layer to watch for this error and
-freeze at that point and then to reissue the syscall after resume. All
-of that's a non-trivial task though, as knowledge of this would need to
-be plumbed all the way through the stack down to the RPC layer.
+Then the readdir response will show both 'a' and 'b' referring to the same
+object with a link count of 1.
 
-When you have already sent the call though, then things get trickier.
-You want to wait for a bit and see if the reply comes in. If it does,
-great...just return and let the freeze in userland happen.
+I can't quite decide if that is a problem or not.
 
-If it doesn't though then you're sort of screwed as you can't really
-freeze (at least if you have a hard mount) since that mandates that you
-keep retransmitting. So, we also discussed adding a new hard/soft
-variant (slushy?) that basically acts like "hard" most of the time, but
-"soft" when the freezer kicks in. That's not transparent to userland
-though, so YMMV there...
 
-Anyway, I'm afraid I won't have time to work on this anytime soon, but
-if someone else wanted to pick up that torch and run with it I can try
-to offer encouragement and guidance.
+>=20
+> > Simply not returning the extra attributes is perfectly acceptable in NF=
+Sv3.
+>=20
+> Right, so no big deal anyway.--b.
 
--- 
-Jeff Layton <jeff.layton@primarydata.com>
+Not a big deal, but we should really add a patch like the following ("like"
+as in "actually compile tested and documented" which this one isn't).
+
+NeilBrown
+
+>=20
+> > So it looks like we are mostly OK here - we don't really need i_mutex t=
+o be
+> > held for very long.
+> >=20
+> > NeilBrown
+> >=20
+>=20
+
+diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
+index e4b2b4322553..f6e7cbabac5a 100644
+--- a/fs/nfsd/nfs3xdr.c
++++ b/fs/nfsd/nfs3xdr.c
+@@ -805,7 +805,7 @@ encode_entry_baggage(struct nfsd3_readdirres *cd, __be3=
+2 *p, const char *name,
+=20
+ static __be32
+ compose_entry_fh(struct nfsd3_readdirres *cd, struct svc_fh *fhp,
+-		const char *name, int namlen)
++		 const char *name, int namlen, u64 ino)
+ {
+ 	struct svc_export	*exp;
+ 	struct dentry		*dparent, *dchild;
+@@ -830,19 +830,21 @@ compose_entry_fh(struct nfsd3_readdirres *cd, struct =
+svc_fh *fhp,
+ 		goto out;
+ 	if (d_really_is_negative(dchild))
+ 		goto out;
++	if (dchild->d_inode->i_ino !=3D ino)
++		goto out;
+ 	rv =3D fh_compose(fhp, exp, dchild, &cd->fh);
+ out:
+ 	dput(dchild);
+ 	return rv;
+ }
+=20
+-static __be32 *encode_entryplus_baggage(struct nfsd3_readdirres *cd, __be3=
+2 *p, const char *name, int namlen)
++static __be32 *encode_entryplus_baggage(struct nfsd3_readdirres *cd, __be3=
+2 *p, const char *name, int namlen, u64 ino)
+ {
+ 	struct svc_fh	*fh =3D &cd->scratch;
+ 	__be32 err;
+=20
+ 	fh_init(fh, NFS3_FHSIZE);
+-	err =3D compose_entry_fh(cd, fh, name, namlen);
++	err =3D compose_entry_fh(cd, fh, name, namlen, ino);
+ 	if (err) {
+ 		*p++ =3D 0;
+ 		*p++ =3D 0;
+@@ -927,7 +929,7 @@ encode_entry(struct readdir_cd *ccd, const char *name, =
+int namlen,
+ 		p =3D encode_entry_baggage(cd, p, name, namlen, ino);
+=20
+ 		if (plus)
+-			p =3D encode_entryplus_baggage(cd, p, name, namlen);
++			p =3D encode_entryplus_baggage(cd, p, name, namlen, ino);
+ 		num_entry_words =3D p - cd->buffer;
+ 	} else if (*(page+1) !=3D NULL) {
+ 		/* temporarily encode entry into next page, then move back to
+@@ -941,7 +943,7 @@ encode_entry(struct readdir_cd *ccd, const char *name, =
+int namlen,
+ 		p1 =3D encode_entry_baggage(cd, p1, name, namlen, ino);
+=20
+ 		if (plus)
+-			p1 =3D encode_entryplus_baggage(cd, p1, name, namlen);
++			p1 =3D encode_entryplus_baggage(cd, p1, name, namlen, ino);
+=20
+ 		/* determine entry word length and lengths to go in pages */
+ 		num_entry_words =3D p1 - tmp;
+
+--Sig_/lhm296nF2Z5/v2u+nhJIddh
+Content-Type: application/pgp-signature
+Content-Description: OpenPGP digital signature
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2
+
+iQIVAwUBVUVa5jnsnt1WYoG5AQKDcQ//TgHqpTUOQLrbBbrFcNVGcqyNuuPIyft0
+qUlYhqPGyQhHUBU80w10J1x9FotScY3vyAFqpFR37mhhG7eexE21gMkVPb+ImpdO
+oJJW5sc6Mr/K/OE0u9a06dmHtzFyrXfXXOrYHTJJZYp4YrMpU2H8YcQ8S1W4r3EX
+DogTWxAVEkQsKlNl4xZoWVW7RHNPuTpOWS7VC2EDE1SgmQpz34SRYX6140dxDCOM
+KPToVHpdWvG2TscgkBkhy9G+sGgmxznyMMOGhk8gvYCw6LiAHal8bVRBjtMDpiLE
+1kJVzW1tiLf/rg10icDEx/pATkGOyQf+qMrmYjbzCF0hyA/5SOfhgnzd5oZ/jrUO
+pPz/ywu+yat6OWHpdAmotO6Sa8nkbWP8E/hYKGgmX72WOhTvRGLumieOP4hVDcc9
+Vl8hH8zHhPRyEX37TIq0dQJSwE8SEHO2nHpFa3oGd6AfM3Oc69qOyxmWY5v6vCW4
+fkKWL0TvEfczoKEuA4Os6gQg88YOMONdHrYZ81Hw0yYpqhOzDb8OUtC/JTvTagZa
+6GEYHQB3JUjE5SurGOBs4ip+3RGnJA1dmqJKZABlM0YW5oq3QXkOXKrTKtGf6JIA
+R0ixpMZw6uteGSA4YAB6Ko8QFFowXrG5D/u+A0AGx/HjQYfsU9LEqICwAepIzhWZ
+woDewut8lYU=
+=GqsP
+-----END PGP SIGNATURE-----
+
+--Sig_/lhm296nF2Z5/v2u+nhJIddh--
