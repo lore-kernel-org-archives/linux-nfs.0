@@ -1,21 +1,21 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qc0-f172.google.com ([209.85.216.172]:34618 "EHLO
-	mail-qc0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750820AbbEDQTl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 May 2015 12:19:41 -0400
-Received: by qcyk17 with SMTP id k17so74326726qcy.1
-        for <linux-nfs@vger.kernel.org>; Mon, 04 May 2015 09:19:41 -0700 (PDT)
+Received: from mail-qg0-f45.google.com ([209.85.192.45]:36434 "EHLO
+	mail-qg0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750992AbbEDQTv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 May 2015 12:19:51 -0400
+Received: by qgeb100 with SMTP id b100so67867253qge.3
+        for <linux-nfs@vger.kernel.org>; Mon, 04 May 2015 09:19:50 -0700 (PDT)
 Received: from klimt.1015granger.net ([2604:8800:100:81fc:be5f:f4ff:fed6:c3ba])
-        by mx.google.com with ESMTPSA id w67sm10162569qgw.41.2015.05.04.09.19.40
+        by mx.google.com with ESMTPSA id n72sm25215456qha.19.2015.05.04.09.19.49
         for <linux-nfs@vger.kernel.org>
         (version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Mon, 04 May 2015 09:19:40 -0700 (PDT)
+        Mon, 04 May 2015 09:19:49 -0700 (PDT)
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH v1 7/8] svcrdma: Add a separate "max data segs macro for
-	svcrdma
+Subject: [PATCH v1 8/8] svcrdma: Add backward direction service for RPC/RDMA
+	transport
 To: linux-nfs@vger.kernel.org
-Date: Mon, 04 May 2015 12:19:39 -0400
-Message-ID: <20150504161939.16870.31923.stgit@klimt.1015granger.net>
+Date: Mon, 04 May 2015 12:19:48 -0400
+Message-ID: <20150504161948.16870.24274.stgit@klimt.1015granger.net>
 In-Reply-To: <20150504160738.16870.19295.stgit@klimt.1015granger.net>
 References: <20150504160738.16870.19295.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
@@ -23,61 +23,152 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The server and client maximum are architecturally independent.
-Allow changing one without affecting the other.
+Introduce some pre-requisite infrastructure needed for handling
+RPC/RDMA bi-direction on the client side.
+
+An NFSv4.1+ client uses this end of the transport to pick up
+backward direction calls and route replies back to the NFSv4.1
+server.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- include/linux/sunrpc/svc_rdma.h          |    7 +++++++
- net/sunrpc/xprtrdma/svc_rdma_transport.c |    2 +-
- net/sunrpc/xprtrdma/xprt_rdma.h          |    6 ------
- 3 files changed, 8 insertions(+), 7 deletions(-)
+ include/linux/sunrpc/svc_rdma.h          |    6 +++
+ include/linux/sunrpc/xprt.h              |    1 +
+ net/sunrpc/xprtrdma/svc_rdma.c           |    6 +++
+ net/sunrpc/xprtrdma/svc_rdma_transport.c |   59 ++++++++++++++++++++++++++++++
+ 4 files changed, 71 insertions(+), 1 deletions(-)
 
 diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
-index d26384b..cb94ee4 100644
+index cb94ee4..0e7234d 100644
 --- a/include/linux/sunrpc/svc_rdma.h
 +++ b/include/linux/sunrpc/svc_rdma.h
-@@ -172,6 +172,13 @@ struct svcxprt_rdma {
- #define RDMAXPRT_SQ_PENDING	2
- #define RDMAXPRT_CONN_PENDING	3
+@@ -231,9 +231,13 @@ extern void svc_rdma_put_frmr(struct svcxprt_rdma *,
+ 			      struct svc_rdma_fastreg_mr *);
+ extern void svc_sq_reap(struct svcxprt_rdma *);
+ extern void svc_rq_reap(struct svcxprt_rdma *);
+-extern struct svc_xprt_class svc_rdma_class;
+ extern void svc_rdma_prep_reply_hdr(struct svc_rqst *);
  
-+#define RPCRDMA_MAX_SVC_SEGS	(64)	/* server max scatter/gather */
-+#if RPCSVC_MAXPAYLOAD < (RPCRDMA_MAX_SVC_SEGS << PAGE_SHIFT)
-+#define RPCRDMA_MAXPAYLOAD	RPCSVC_MAXPAYLOAD
-+#else
-+#define RPCRDMA_MAXPAYLOAD	(RPCRDMA_MAX_SVC_SEGS << PAGE_SHIFT)
++extern struct svc_xprt_class svc_rdma_class;
++#ifdef CONFIG_SUNRPC_BACKCHANNEL
++extern struct svc_xprt_class svc_rdma_bc_class;
 +#endif
 +
- #define RPCRDMA_LISTEN_BACKLOG  10
- /* The default ORD value is based on two outstanding full-size writes with a
-  * page size of 4k, or 32k * 2 ops / 4k = 16 outstanding RDMA_READ.  */
+ /* svc_rdma.c */
+ extern int svc_rdma_init(void);
+ extern void svc_rdma_cleanup(void);
+diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+index 8b93ef5..693f9f1 100644
+--- a/include/linux/sunrpc/xprt.h
++++ b/include/linux/sunrpc/xprt.h
+@@ -150,6 +150,7 @@ enum xprt_transports {
+ 	XPRT_TRANSPORT_TCP	= IPPROTO_TCP,
+ 	XPRT_TRANSPORT_BC_TCP	= IPPROTO_TCP | XPRT_TRANSPORT_BC,
+ 	XPRT_TRANSPORT_RDMA	= 256,
++	XPRT_TRANSPORT_BC_RDMA	= XPRT_TRANSPORT_RDMA | XPRT_TRANSPORT_BC,
+ 	XPRT_TRANSPORT_LOCAL	= 257,
+ };
+ 
+diff --git a/net/sunrpc/xprtrdma/svc_rdma.c b/net/sunrpc/xprtrdma/svc_rdma.c
+index 8eedb60..7a18ae4 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma.c
++++ b/net/sunrpc/xprtrdma/svc_rdma.c
+@@ -244,6 +244,9 @@ void svc_rdma_cleanup(void)
+ 		unregister_sysctl_table(svcrdma_table_header);
+ 		svcrdma_table_header = NULL;
+ 	}
++#ifdef CONFIG_SUNRPC_BACKCHANNEL
++	svc_unreg_xprt_class(&svc_rdma_bc_class);
++#endif
+ 	svc_unreg_xprt_class(&svc_rdma_class);
+ 	kmem_cache_destroy(svc_rdma_map_cachep);
+ 	kmem_cache_destroy(svc_rdma_ctxt_cachep);
+@@ -291,6 +294,9 @@ int svc_rdma_init(void)
+ 
+ 	/* Register RDMA with the SVC transport switch */
+ 	svc_reg_xprt_class(&svc_rdma_class);
++#ifdef CONFIG_SUNRPC_BACKCHANNEL
++	svc_reg_xprt_class(&svc_rdma_bc_class);
++#endif
+ 	return 0;
+  err1:
+ 	kmem_cache_destroy(svc_rdma_map_cachep);
 diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-index 1ed4740..3b4c2ff 100644
+index 3b4c2ff..9b8bccd 100644
 --- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
 +++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-@@ -91,7 +91,7 @@ struct svc_xprt_class svc_rdma_class = {
- 	.xcl_name = "rdma",
- 	.xcl_owner = THIS_MODULE,
- 	.xcl_ops = &svc_rdma_ops,
--	.xcl_max_payload = RPCSVC_MAXPAYLOAD_RDMA,
-+	.xcl_max_payload = RPCRDMA_MAXPAYLOAD,
+@@ -56,6 +56,7 @@
+ 
+ #define RPCDBG_FACILITY	RPCDBG_SVCXPRT
+ 
++static struct svcxprt_rdma *rdma_create_xprt(struct svc_serv *, int);
+ static struct svc_xprt *svc_rdma_create(struct svc_serv *serv,
+ 					struct net *net,
+ 					struct sockaddr *sa, int salen,
+@@ -95,6 +96,64 @@ struct svc_xprt_class svc_rdma_class = {
  	.xcl_ident = XPRT_TRANSPORT_RDMA,
  };
  
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index 78e0b8b..e60907b 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -487,10 +487,4 @@ extern struct kmem_cache *svc_rdma_ctxt_cachep;
- /* Workqueue created in svc_rdma.c */
- extern struct workqueue_struct *svc_rdma_wq;
- 
--#if RPCSVC_MAXPAYLOAD < (RPCRDMA_MAX_DATA_SEGS << PAGE_SHIFT)
--#define RPCSVC_MAXPAYLOAD_RDMA RPCSVC_MAXPAYLOAD
--#else
--#define RPCSVC_MAXPAYLOAD_RDMA (RPCRDMA_MAX_DATA_SEGS << PAGE_SHIFT)
--#endif
--
- #endif				/* _LINUX_SUNRPC_XPRT_RDMA_H */
++#if defined(CONFIG_SUNRPC_BACKCHANNEL)
++static struct svc_xprt *svc_rdma_bc_create(struct svc_serv *, struct net *,
++					   struct sockaddr *, int, int);
++static void svc_rdma_bc_detach(struct svc_xprt *);
++static void svc_rdma_bc_free(struct svc_xprt *);
++
++static struct svc_xprt_ops svc_rdma_bc_ops = {
++	.xpo_create = svc_rdma_bc_create,
++	.xpo_detach = svc_rdma_bc_detach,
++	.xpo_free = svc_rdma_bc_free,
++	.xpo_prep_reply_hdr = svc_rdma_prep_reply_hdr,
++	.xpo_secure_port = svc_rdma_secure_port,
++};
++
++struct svc_xprt_class svc_rdma_bc_class = {
++	.xcl_name = "rdma-bc",
++	.xcl_owner = THIS_MODULE,
++	.xcl_ops = &svc_rdma_bc_ops,
++	.xcl_max_payload = (1024 - RPCRDMA_HDRLEN_MIN),
++	.xcl_ident = XPRT_TRANSPORT_BC_RDMA,
++};
++
++static struct svc_xprt *svc_rdma_bc_create(struct svc_serv *serv,
++					   struct net *net,
++					   struct sockaddr *sa, int salen,
++					   int flags)
++{
++	struct svcxprt_rdma *cma_xprt;
++	struct svc_xprt *xprt;
++
++	cma_xprt = rdma_create_xprt(serv, 0);
++	if (!cma_xprt)
++		return ERR_PTR(-ENOMEM);
++	xprt = &cma_xprt->sc_xprt;
++
++	svc_xprt_init(net, &svc_rdma_bc_class, xprt, serv);
++	serv->sv_bc_xprt = xprt;
++
++	dprintk("svcrdma: %s(%p)\n", __func__, xprt);
++	return xprt;
++}
++
++static void svc_rdma_bc_detach(struct svc_xprt *xprt)
++{
++	dprintk("svcrdma: %s(%p)\n", __func__, xprt);
++}
++
++static void svc_rdma_bc_free(struct svc_xprt *xprt)
++{
++	struct svcxprt_rdma *rdma =
++		container_of(xprt, struct svcxprt_rdma, sc_xprt);
++
++	dprintk("svcrdma: %s(%p)\n", __func__, xprt);
++	if (xprt)
++		kfree(rdma);
++}
++#endif	/* CONFIG_SUNRPC_BACKCHANNEL */
++
+ struct svc_rdma_op_ctxt *svc_rdma_get_context(struct svcxprt_rdma *xprt)
+ {
+ 	struct svc_rdma_op_ctxt *ctxt;
 
