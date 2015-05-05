@@ -1,45 +1,37 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([198.137.202.9]:36705 "EHLO
+Received: from bombadil.infradead.org ([198.137.202.9]:36776 "EHLO
 	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754183AbbEETKP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 5 May 2015 15:10:15 -0400
-Date: Tue, 5 May 2015 12:10:12 -0700
+	with ESMTP id S1753293AbbEETMb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 5 May 2015 15:12:31 -0400
+Date: Tue, 5 May 2015 12:12:31 -0700
 From: Christoph Hellwig <hch@infradead.org>
-To: Tom Talpey <tom@talpey.com>
+To: Chuck Lever <chuck.lever@oracle.com>
 Cc: Christoph Hellwig <hch@infradead.org>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-rdma@vger.kernel.org
-Subject: Re: [PATCH v1 00/16] NFS/RDMA patches proposed for 4.1
-Message-ID: <20150505191012.GA21164@infradead.org>
-References: <20150313211124.22471.14517.stgit@manet.1015granger.net>
- <20150505154411.GA16729@infradead.org>
- <5E1B32EA-9803-49AA-856D-BF0E1A5DFFF4@oracle.com>
- <20150505172540.GA19442@infradead.org>
- <55490886.4070502@talpey.com>
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: RFC: combine xprtrdma and svcrdma
+Message-ID: <20150505191231.GA28818@infradead.org>
+References: <CE0356DB-12BA-4208-83B1-E51B34B25388@oracle.com>
+ <20150505173207.GA14409@infradead.org>
+ <4A99CF87-4AA6-4F60-9678-AE4F8B45E5AF@oracle.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <55490886.4070502@talpey.com>
+In-Reply-To: <4A99CF87-4AA6-4F60-9678-AE4F8B45E5AF@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, May 05, 2015 at 02:14:30PM -0400, Tom Talpey wrote:
-> As you might guess, I can go on at length about this. :-) But, if
-> you have a kernel service, the ability to pin memory, and you
-> want it to go fast, you want FRWR.
+On Tue, May 05, 2015 at 02:15:07PM -0400, Chuck Lever wrote:
+> bc_svc.c struck me as left over from a prototype.
+> 
+> It would be reasonable to move bc_send into xprtsock.c (or some other
+> convenient file) and then pass its address into the server code via
+> a virtual function (eg. as an rpc_xprt op).
 
-Basically most in-kernel consumers seem to have the same requirements:
+Given that they always sit in the same module direct calls should just
+work fine.
 
- - register a struct page, which can be kernel or user memory (it's
-   probably pinned in your Terms, but we don't really use that much in
-   kernelspace).
- - In many but not all cases we might need an offset/length for each
-   page (think struct bvec, paged sk_buffs, or scatterlists of some
-   sort), in other an offset/len for the whole set of pages is fine,
-   but that's a superset of the one above.
- - we usually want it to be as fast as possible
+> I?ve been scratching my head wondering why we have still have
+> CONFIG_SUNRPC_BACKCHANNEL, which is not exposed in menuconfig. Is it
+> time to remove it?
 
-While my grep skills aren't the best I can't really find an in-kernel
-user that doesn't fit the above, although I might have missed some
-long-term registrations where we don't really care about the fast
-part.
+It's selected by CONFIG_NFS_V4_1, and thus isn't build if you don't
+select 4.1 support.
