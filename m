@@ -1,61 +1,50 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from quartz.orcorp.ca ([184.70.90.242]:44346 "EHLO quartz.orcorp.ca"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751771AbbEEWjN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 5 May 2015 18:39:13 -0400
-Date: Tue, 5 May 2015 16:38:55 -0600
-From: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
-To: Tom Talpey <tom@talpey.com>
-Cc: Christoph Hellwig <hch@infradead.org>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-rdma@vger.kernel.org
-Subject: Re: [PATCH v1 00/16] NFS/RDMA patches proposed for 4.1
-Message-ID: <20150505223855.GA7696@obsidianresearch.com>
-References: <20150313211124.22471.14517.stgit@manet.1015granger.net>
- <20150505154411.GA16729@infradead.org>
- <5E1B32EA-9803-49AA-856D-BF0E1A5DFFF4@oracle.com>
- <20150505172540.GA19442@infradead.org>
- <55490886.4070502@talpey.com>
- <20150505191012.GA21164@infradead.org>
- <55492ED3.7000507@talpey.com>
- <20150505210627.GA5941@infradead.org>
- <554936E5.80607@talpey.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <554936E5.80607@talpey.com>
+Received: from aserp1040.oracle.com ([141.146.126.69]:22863 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755271AbbEEXgf convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 5 May 2015 19:36:35 -0400
+From: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=windows-1252
+Subject: problem with commit 5bb89b4702e2
+Date: Tue, 5 May 2015 19:36:52 -0400
+Message-Id: <3CB8BDBA-ABB9-4C8B-8440-9B83C21CFB03@oracle.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, May 05, 2015 at 05:32:21PM -0400, Tom Talpey wrote:
+Hi Trond-
 
-> >Do you have any information on these attempts and why the failed?  Note
-> >that the only interesting ones would be for in-kernel consumers.
-> >Userspace verbs are another order of magnitude more problems, so they're
-> >not too interesting.
+I’ve found that after 4.1-rc1, cthon basic test 5 fails when run over
+NFSv4.0 against Solaris servers (affects both TCP and RDMA).
+
+> [cel@manet cthon04]$ ./server -b
 > 
-> Hmm, most of these are userspace API experiences, and I would not be
-> so quick as to dismiss their applicability, or their lessons.
+> sh ./runtests  -b -t /mnt/lebasque/manet.test
+> 
+> Starting BASIC tests: test directory /mnt/lebasque/manet.test (arg: -t)
+> 
+> ./test5a: write
+> 	./test5a: (/mnt/lebasque/manet.test) 'bigfile' has size 0, should be 1048576
+> basic tests failed
+> Tests failed, leaving /mnt/lebasque mounted
+> [cel@manet cthon04]$
 
-The specific use-case of a RDMA to/from a logical linear region broken
-up into HW pages is incredibly kernel specific, and very friendly to
-hardware support.
 
-Heck, on modern systems 100% of these requirements can be solved just
-by using the IOMMU. No need for the HCA at all. (HCA may be more
-performant, of course)
+I bisected to commit 5bb89b4702e2 ("NFSv4.1/pnfs: Separate out metadata
+and data consistency for pNFS”). I’ve been comparing network captures
+and I don’t see anything that stands out.
 
-This is a huge pain for everyone. ie The Lustre devs were talking
-about how Lustre is not performant on newer HCAs because their code
-doesn't support the new MR scheme.
+Reverting just the change to nfs_wb_all() makes the regression go away.
 
-It makes sense to me to have a dedicated API for this work load:
+As a rough guess, I think the problem could be that Solaris is handing
+out a write delegation, and after commit 5bb89b4702e2, the client is not
+flushing as often as it needs to ?
 
-'post outbound rdma send/write of page region'
-'prepare inbound rdma write of page region'
-'post rdma read, result into page region'
-'complete X'
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
-I'd love to see someone propose some patches :)
 
-Jason
+
