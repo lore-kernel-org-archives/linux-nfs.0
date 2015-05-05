@@ -1,43 +1,49 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from p3plsmtpa09-09.prod.phx3.secureserver.net ([173.201.193.238]:39950
-	"EHLO p3plsmtpa09-09.prod.phx3.secureserver.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1762703AbbEESOg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 5 May 2015 14:14:36 -0400
-Message-ID: <55490886.4070502@talpey.com>
-Date: Tue, 05 May 2015 14:14:30 -0400
-From: Tom Talpey <tom@talpey.com>
-MIME-Version: 1.0
-To: Christoph Hellwig <hch@infradead.org>,
-        Chuck Lever <chuck.lever@oracle.com>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-rdma@vger.kernel.org
-Subject: Re: [PATCH v1 00/16] NFS/RDMA patches proposed for 4.1
-References: <20150313211124.22471.14517.stgit@manet.1015granger.net> <20150505154411.GA16729@infradead.org> <5E1B32EA-9803-49AA-856D-BF0E1A5DFFF4@oracle.com> <20150505172540.GA19442@infradead.org>
-In-Reply-To: <20150505172540.GA19442@infradead.org>
-Content-Type: text/plain; charset=windows-1252; format=flowed
+Received: from userp1040.oracle.com ([156.151.31.81]:42115 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756460AbbEESPS convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 5 May 2015 14:15:18 -0400
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
+Subject: Re: RFC: combine xprtrdma and svcrdma
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20150505173207.GA14409@infradead.org>
+Date: Tue, 5 May 2015 14:15:07 -0400
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <4A99CF87-4AA6-4F60-9678-AE4F8B45E5AF@oracle.com>
+References: <CE0356DB-12BA-4208-83B1-E51B34B25388@oracle.com> <20150505173207.GA14409@infradead.org>
+To: Christoph Hellwig <hch@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 5/5/2015 1:25 PM, Christoph Hellwig wrote:
-> On Tue, May 05, 2015 at 12:04:00PM -0400, Chuck Lever wrote:
->> IMO FRWR is the only registration mode that has legs for the long term,
->> and is specifically designed for storage.
->>
->> If you are not working on a legacy piece of code that has to support
->> older HCAs, why not stay with FRWR?
->
-> The raw FRWR API seems like an absolute nightmare, and I'm bound to
-> get it wrong at first :)  This is only half joking, but despite that
-> it's the first target for sure.  It's just very frustrating that there
-> is no usable common API.
 
-Memory registration is quite subtle with dependencies on the memory
-being registered (user, kernel, physical), the requirements of the
-upper layer (storage, etc) and the scope of the registration (scatter/
-gather, memory protection, etc). I don't think you *want* a common API.
+On May 5, 2015, at 1:32 PM, Christoph Hellwig <hch@infradead.org> wrote:
 
-As you might guess, I can go on at length about this. :-) But, if
-you have a kernel service, the ability to pin memory, and you
-want it to go fast, you want FRWR.
+> On Mon, May 04, 2015 at 03:17:25PM -0400, Chuck Lever wrote:
+>> This isn?t a problem for TCP because both client and server side
+>> TCP socket support are built into the sunrpc.ko module. The client and
+>> server RDMA transport support are in separate modules.
+> 
+> A little offtopic, but at least the code structure is a nightmare for
+> TCP as well where we have a file like bc_svc.c which only has a single
+> function (bc_send), that happens to be called from backchannel-specific code
+> in svc.c just to call into a function in clnt.c that is entirely
+> backchannel-specific as well.  Of course due to the lack of separate
+> modules that at least doesn't cause problems for users.
 
-Tom.
+bc_svc.c struck me as left over from a prototype.
+
+It would be reasonable to move bc_send into xprtsock.c (or some other
+convenient file) and then pass its address into the server code via
+a virtual function (eg. as an rpc_xprt op).
+
+I’ve been scratching my head wondering why we have still have
+CONFIG_SUNRPC_BACKCHANNEL, which is not exposed in menuconfig. Is it
+time to remove it?
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
