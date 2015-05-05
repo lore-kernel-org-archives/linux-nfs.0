@@ -1,278 +1,36 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:47449 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S2993475AbbEEPwE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 5 May 2015 11:52:04 -0400
-Date: Tue, 5 May 2015 11:52:03 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: NeilBrown <neilb@suse.de>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH RFC] NFSD: fix cannot umounting mount points under pseudo
- root
-Message-ID: <20150505155203.GD27106@fieldses.org>
-References: <20150424130045.6bbdb2f9@notabene.brown>
- <553E2784.6020906@gmail.com>
- <20150429125728.69ddfc6c@notabene.brown>
- <20150429191934.GA23980@fieldses.org>
- <20150430075225.21a71056@notabene.brown>
- <20150430213602.GB9509@fieldses.org>
- <20150501115326.51f5613a@notabene.brown>
- <20150504220130.GB16827@fieldses.org>
- <5548CBA3.9080608@gmail.com>
- <20150505141801.GB27106@fieldses.org>
+Received: from bombadil.infradead.org ([198.137.202.9]:59713 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S2993449AbbEEPoM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 5 May 2015 11:44:12 -0400
+Date: Tue, 5 May 2015 08:44:11 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
+Subject: Re: [PATCH v1 00/16] NFS/RDMA patches proposed for 4.1
+Message-ID: <20150505154411.GA16729@infradead.org>
+References: <20150313211124.22471.14517.stgit@manet.1015granger.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20150505141801.GB27106@fieldses.org>
+In-Reply-To: <20150313211124.22471.14517.stgit@manet.1015granger.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, May 05, 2015 at 10:18:01AM -0400, J. Bruce Fields wrote:
-> On Tue, May 05, 2015 at 09:54:43PM +0800, Kinglong Mee wrote:
-> > On 5/5/2015 6:01 AM, J. Bruce Fields wrote:
-> > > + * Unlike lookup_one_len, it should be called without the parent
-> > > + * i_mutex held, and will take the i_mutex itself if necessary.
-> > > + */
-> > > +struct dentry *lookup_one_len_unlocked(const char *name,
-> > > +				       struct dentry *base, int len)
-> > > +{
-> > > +	struct qstr this;
-> > > +	unsigned int c;
-> > > +	int err;
-> > > +	struct dentry *ret;
-> > > +
-> > > +	WARN_ON_ONCE(!mutex_is_locked(&base->d_inode->i_mutex));
-> > 
-> > Remove this line.
-> 
-> Whoops, thanks.
-> 
-> > > diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-> > > index a30e79900086..cc7995762190 100644
-> > > --- a/fs/nfsd/vfs.c
-> > > +++ b/fs/nfsd/vfs.c
-> > > @@ -217,6 +217,13 @@ nfsd_lookup_dentry(struct svc_rqst *rqstp, struct svc_fh *fhp,
-> > >  		host_err = PTR_ERR(dentry);
-> > >  		if (IS_ERR(dentry))
-> > >  			goto out_nfserr;
-> > > +		if (!S_ISREG(d_inode(dentry)->i_mode)) {
-> > 
-> > Got a crash here tested by pynfs,
-> 
-> OK, I guess I just forgot to take into account negative dentries.
-> Testing that now with (!(d_inode(dentry) && S_ISREG(..))).
+On Fri, Mar 13, 2015 at 05:21:17PM -0400, Chuck Lever wrote:
+> This is a series of client-side patches for NFS/RDMA. In preparation
+> for increasing the transport credit limit and maximum rsize/wsize,
+> I've re-factored the memory registration logic into separate files,
+> invoked via a method API.
 
-And I also forgot nfs3xdr.c.
+Just curious if you ever though of moving this into the generic
+rdma layer?
 
---b.
+I've been working on a rdma based storage driver recently, and the
+various different memory registration methods are a complete pain in the
+ass, and impossible to test in and ULD without havin access to all kinds
+of different hardware.
 
-commit 6c942d342f9f
-Author: NeilBrown <neilb@suse.de>
-Date:   Fri May 1 11:53:26 2015 +1000
-
-    nfsd: don't hold i_mutex over userspace upcalls
-    
-    We need information about exports when crossing mountpoints during
-    lookup or NFSv4 readdir.  If we don't already have that information
-    cached, we may have to ask (and wait for) rpc.mountd.
-    
-    In both cases we currently hold the i_mutex on the parent of the
-    directory we're asking rpc.mountd about.  We've seen situations where
-    rpc.mountd performs some operation on that directory that tries to take
-    the i_mutex again, resulting in deadlock.
-    
-    With some care, we may be able to avoid that in rpc.mountd.  But it
-    seems better just to avoid holding a mutex while waiting on userspace.
-    
-    It appears that lookup_one_len is pretty much the only operation that
-    needs the i_mutex.  So we could just drop the i_mutex elsewhere and do
-    something like
-    
-    	mutex_lock()
-    	lookup_one_len()
-    	mutex_unlock()
-    
-    In many cases though the lookup would have been cached and not required
-    the i_mutex, so it's more efficient to create a lookup_one_len() variant
-    that only takes the i_mutex when necessary.
-    
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-
-diff --git a/fs/namei.c b/fs/namei.c
-index 4a8d998b7274..0f554bf41dea 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -2139,6 +2139,8 @@ static struct dentry *lookup_hash(struct nameidata *nd)
-  *
-  * Note that this routine is purely a helper for filesystem usage and should
-  * not be called by generic code.
-+ *
-+ * Must be called with the parented i_mutex held.
-  */
- struct dentry *lookup_one_len(const char *name, struct dentry *base, int len)
- {
-@@ -2182,6 +2184,66 @@ struct dentry *lookup_one_len(const char *name, struct dentry *base, int len)
- }
- EXPORT_SYMBOL(lookup_one_len);
- 
-+/**
-+ * lookup_one_len - filesystem helper to lookup single pathname component
-+ * @name:	pathname component to lookup
-+ * @base:	base directory to lookup from
-+ * @len:	maximum length @len should be interpreted to
-+ *
-+ * Note that this routine is purely a helper for filesystem usage and should
-+ * not be called by generic code.
-+ *
-+ * Unlike lookup_one_len, it should be called without the parent
-+ * i_mutex held, and will take the i_mutex itself if necessary.
-+ */
-+struct dentry *lookup_one_len_unlocked(const char *name,
-+				       struct dentry *base, int len)
-+{
-+	struct qstr this;
-+	unsigned int c;
-+	int err;
-+	struct dentry *ret;
-+
-+	this.name = name;
-+	this.len = len;
-+	this.hash = full_name_hash(name, len);
-+	if (!len)
-+		return ERR_PTR(-EACCES);
-+
-+	if (unlikely(name[0] == '.')) {
-+		if (len < 2 || (len == 2 && name[1] == '.'))
-+			return ERR_PTR(-EACCES);
-+	}
-+
-+	while (len--) {
-+		c = *(const unsigned char *)name++;
-+		if (c == '/' || c == '\0')
-+			return ERR_PTR(-EACCES);
-+	}
-+	/*
-+	 * See if the low-level filesystem might want
-+	 * to use its own hash..
-+	 */
-+	if (base->d_flags & DCACHE_OP_HASH) {
-+		int err = base->d_op->d_hash(base, &this);
-+		if (err < 0)
-+			return ERR_PTR(err);
-+	}
-+
-+	err = inode_permission(base->d_inode, MAY_EXEC);
-+	if (err)
-+		return ERR_PTR(err);
-+
-+	ret = __d_lookup(base, &this);
-+	if (ret)
-+		return ret;
-+	mutex_lock(&base->d_inode->i_mutex);
-+	ret =  __lookup_hash(&this, base, 0);
-+	mutex_unlock(&base->d_inode->i_mutex);
-+	return ret;
-+}
-+EXPORT_SYMBOL(lookup_one_len_unlocked);
-+
- int user_path_at_empty(int dfd, const char __user *name, unsigned flags,
- 		 struct path *path, int *empty)
- {
-diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
-index f6e7cbabac5a..01dcd494f781 100644
---- a/fs/nfsd/nfs3xdr.c
-+++ b/fs/nfsd/nfs3xdr.c
-@@ -823,7 +823,7 @@ compose_entry_fh(struct nfsd3_readdirres *cd, struct svc_fh *fhp,
- 		} else
- 			dchild = dget(dparent);
- 	} else
--		dchild = lookup_one_len(name, dparent, namlen);
-+		dchild = lookup_one_len_unlocked(name, dparent, namlen);
- 	if (IS_ERR(dchild))
- 		return rv;
- 	if (d_mountpoint(dchild))
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 158badf945df..2c1adaa0bd2f 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -2804,14 +2804,14 @@ nfsd4_encode_dirent_fattr(struct xdr_stream *xdr, struct nfsd4_readdir *cd,
- 	__be32 nfserr;
- 	int ignore_crossmnt = 0;
- 
--	dentry = lookup_one_len(name, cd->rd_fhp->fh_dentry, namlen);
-+	dentry = lookup_one_len_unlocked(name, cd->rd_fhp->fh_dentry, namlen);
- 	if (IS_ERR(dentry))
- 		return nfserrno(PTR_ERR(dentry));
- 	if (d_really_is_negative(dentry)) {
- 		/*
--		 * nfsd_buffered_readdir drops the i_mutex between
--		 * readdir and calling this callback, leaving a window
--		 * where this directory entry could have gone away.
-+		 * we're not holding the i_mutex here, so there's
-+		 * a window where this directory entry could have gone
-+		 * away.
- 		 */
- 		dput(dentry);
- 		return nfserr_noent;
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index a30e79900086..4accdb00976b 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -217,6 +217,13 @@ nfsd_lookup_dentry(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 		host_err = PTR_ERR(dentry);
- 		if (IS_ERR(dentry))
- 			goto out_nfserr;
-+		if (!(d_inode(dentry) && S_ISREG(d_inode(dentry)->i_mode))) {
-+			/*
-+			 * Never mind, we're not going to open this
-+			 * anyway.  And we don't want to hold it over
-+			 * the userspace upcalls in nfsd_mountpoint. */
-+			fh_unlock(fhp);
-+		}
- 		/*
- 		 * check if we have crossed a mount point ...
- 		 */
-@@ -1876,7 +1883,6 @@ static __be32 nfsd_buffered_readdir(struct file *file, nfsd_filldir_t func,
- 	offset = *offsetp;
- 
- 	while (1) {
--		struct inode *dir_inode = file_inode(file);
- 		unsigned int reclen;
- 
- 		cdp->err = nfserr_eof; /* will be cleared on successful read */
-@@ -1895,15 +1901,6 @@ static __be32 nfsd_buffered_readdir(struct file *file, nfsd_filldir_t func,
- 		if (!size)
- 			break;
- 
--		/*
--		 * Various filldir functions may end up calling back into
--		 * lookup_one_len() and the file system's ->lookup() method.
--		 * These expect i_mutex to be held, as it would within readdir.
--		 */
--		host_err = mutex_lock_killable(&dir_inode->i_mutex);
--		if (host_err)
--			break;
--
- 		de = (struct buffered_dirent *)buf.dirent;
- 		while (size > 0) {
- 			offset = de->offset;
-@@ -1920,7 +1917,6 @@ static __be32 nfsd_buffered_readdir(struct file *file, nfsd_filldir_t func,
- 			size -= reclen;
- 			de = (struct buffered_dirent *)((char *)de + reclen);
- 		}
--		mutex_unlock(&dir_inode->i_mutex);
- 		if (size > 0) /* We bailed out early */
- 			break;
- 
-diff --git a/include/linux/namei.h b/include/linux/namei.h
-index c8990779f0c3..bb3a2f7cca67 100644
---- a/include/linux/namei.h
-+++ b/include/linux/namei.h
-@@ -62,6 +62,7 @@ extern struct dentry *kern_path_locked(const char *, struct path *);
- extern int kern_path_mountpoint(int, const char *, struct path *, unsigned int);
- 
- extern struct dentry *lookup_one_len(const char *, struct dentry *, int);
-+extern struct dentry *lookup_one_len_unlocked(const char *, struct dentry *, int);
- 
- extern int follow_down_one(struct path *);
- extern int follow_down(struct path *);
+And from I see we litterly dont use them much different from the generic
+dma mapping API helpers (at a very high level) so it seems it should
+be easy to move a slightly expanded version of your API to the core
+code.
