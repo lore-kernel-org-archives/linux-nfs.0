@@ -1,40 +1,39 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f175.google.com ([209.85.213.175]:38059 "EHLO
-	mail-ig0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750845AbbEFU2I (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 May 2015 16:28:08 -0400
-Received: by igbhj9 with SMTP id hj9so27625838igb.1
-        for <linux-nfs@vger.kernel.org>; Wed, 06 May 2015 13:28:07 -0700 (PDT)
+Received: from mx1.redhat.com ([209.132.183.28]:44270 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751116AbbEFU2z (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 6 May 2015 16:28:55 -0400
+Message-ID: <554A7982.50604@RedHat.com>
+Date: Wed, 06 May 2015 16:28:50 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-In-Reply-To: <554A7626.1050709@RedHat.com>
-References: <alpine.DEB.2.10.1504201417410.5338@valhalla.home>
-	<554A7626.1050709@RedHat.com>
-Date: Wed, 6 May 2015 16:28:07 -0400
-Message-ID: <CALs61uevioa8FgEbCuTO2JA+74mnH_PCAPUzpLfSzGJ-68729w@mail.gmail.com>
-Subject: Re: [PATCH] nfs-utils: Allow users to disable mount option rewriting
- via norewriteopts mount option
-From: Gregory Boyce <gregory.boyce@gmail.com>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+To: Calvin Walton <calvin.walton@kepstin.ca>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfs-utils: Substitute sbindir in systemd unit files.
+References: <1429638029-13637-1-git-send-email-calvin.walton@kepstin.ca>
+In-Reply-To: <1429638029-13637-1-git-send-email-calvin.walton@kepstin.ca>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, May 6, 2015 at 4:14 PM, Steve Dickson <SteveD@redhat.com> wrote:
->
->
-> On 04/20/2015 02:18 PM, Gregory Boyce wrote:
->> Allow users to disable mount option rewriting via norewriteopts mount option.
->> This was required in our case in order to allow mounting a filer which inappropriately responded via the wrong interface.
->>
->> Signed-off-by: Gregory Boyce <gregory.boyce@gmail.com>
-> Again... This is fixing a filer bug, correct?
->
-> We generally don't do that...
->
-> steved.
 
-This is working around a server bug on the client side, yes.
 
--- 
-Greg
+On 04/21/2015 01:40 PM, Calvin Walton wrote:
+> The systemd unit files now include the correct full paths to the
+> executables when nfs-utils is configured with an alternate value
+> for e.g. --prefix or --sbindir
+> 
+> Signed-off-by: Calvin Walton <calvin.walton@kepstin.ca>
+This kind of major change always makes me a bit nervous and
+unfortunately I'm not going to have the cycles to give
+it the testing I would like because I'm going on holiday 
+all next week...
+
+I'll keep it on my TODO list because it sound like it makes
+sense... but probably will not get to it for a couple weeks.
+
+Also, would you mind breaking the patch up to show what you
+are doing to each script? It would make it a lot easier 
+to review... 
+
+steved.
+ 
