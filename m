@@ -1,36 +1,64 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ob0-f177.google.com ([209.85.214.177]:36089 "EHLO
-	mail-ob0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750816AbbEFKMO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 May 2015 06:12:14 -0400
-Received: by obbkp3 with SMTP id kp3so3307404obb.3
-        for <linux-nfs@vger.kernel.org>; Wed, 06 May 2015 03:12:13 -0700 (PDT)
+Received: from mail-lb0-f176.google.com ([209.85.217.176]:34558 "EHLO
+	mail-lb0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751029AbbEFLhG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 May 2015 07:37:06 -0400
+Received: by lbcga7 with SMTP id ga7so5245312lbc.1
+        for <linux-nfs@vger.kernel.org>; Wed, 06 May 2015 04:37:05 -0700 (PDT)
 MIME-Version: 1.0
-In-Reply-To: <20150506065651.GA22454@lst.de>
-References: <1430895024-1403-1-git-send-email-andreas.gruenbacher@gmail.com>
-	<20150506065651.GA22454@lst.de>
-Date: Wed, 6 May 2015 12:12:13 +0200
-Message-ID: <CAHpGcMJe1YyCev2mza=pOCvs1pcV6M2AnX-0hVa4gdppnXassA@mail.gmail.com>
-Subject: Re: [PATCH] nfsd: Disable NFSv2 timestamp workaround for NFSv3+
-From: =?UTF-8?Q?Andreas_Gr=C3=BCnbacher?= <andreas.gruenbacher@gmail.com>
-To: Christoph Hellwig <hch@lst.de>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+In-Reply-To: <20150504175700.3483.57728.stgit@manet.1015granger.net>
+References: <20150504174626.3483.97639.stgit@manet.1015granger.net>
+	<20150504175700.3483.57728.stgit@manet.1015granger.net>
+Date: Wed, 6 May 2015 17:07:05 +0530
+Message-ID: <CANjDDBicLDb7K=RZB5Gqv+oACaAG8DANJX3ML971jnXd_5KEuQ@mail.gmail.com>
+Subject: Re: [PATCH v1 02/14] xprtrdma: Warn when there are orphaned IB objects
+From: Devesh Sharma <devesh.sharma@avagotech.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-2015-05-06 8:56 GMT+02:00 Christoph Hellwig <hch@lst.de>:
-> How about moving the workaround into the NFSv2 specific code?
+On Mon, May 4, 2015 at 11:27 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>
+> Print an error during transport destruction if ib_dealloc_pd()
+> fails. This is a sign that xprtrdma orphaned one or more RDMA API
+> objects at some point, which can pin lower layer kernel modules
+> and cause shutdown to hang.
+>
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+>  net/sunrpc/xprtrdma/verbs.c |    4 ++--
+>  1 file changed, 2 insertions(+), 2 deletions(-)
+>
+> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+> index 4870d27..0cc4617 100644
+> --- a/net/sunrpc/xprtrdma/verbs.c
+> +++ b/net/sunrpc/xprtrdma/verbs.c
+> @@ -710,8 +710,8 @@ rpcrdma_ia_close(struct rpcrdma_ia *ia)
+>         }
+>         if (ia->ri_pd != NULL && !IS_ERR(ia->ri_pd)) {
+>                 rc = ib_dealloc_pd(ia->ri_pd);
+> -               dprintk("RPC:       %s: ib_dealloc_pd returned %i\n",
+> -                       __func__, rc);
 
-Not trivially, we would have to fh_verify() the file handle in
-nfsd_proc_setattr() first. Is that preferable?
+Should we check for EBUSY explicitly? other then this is an error in
+vendor specific ib_dealloc_pd()
 
-> Looks like the call from nfsd_create() should never be used for this
-> workaround,
+> +               if (rc)
+> +                       pr_warn("rpcrdma: ib_dealloc_pd status %i\n", rc);
+>         }
+>  }
+>
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-Right, the workaround won't trigger there because setting the times
-arbitrarily will already succeed because we are the owner
-(nfsd_sanitize_attrs tries that first with inode_change_ok).
 
-Thanks,
-Andreas
+
+
+-- 
+-Regards
+Devesh
