@@ -1,58 +1,104 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from quartz.orcorp.ca ([184.70.90.242]:57960 "EHLO quartz.orcorp.ca"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751225AbbEFQsU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 6 May 2015 12:48:20 -0400
-Date: Wed, 6 May 2015 10:48:17 -0600
-From: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
-To: Devesh Sharma <devesh.sharma@avagotech.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>, linux-rdma@vger.kernel.org,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v1 02/14] xprtrdma: Warn when there are orphaned IB
- objects
-Message-ID: <20150506164817.GC11331@obsidianresearch.com>
-References: <20150504174626.3483.97639.stgit@manet.1015granger.net>
- <20150504175700.3483.57728.stgit@manet.1015granger.net>
- <CANjDDBicLDb7K=RZB5Gqv+oACaAG8DANJX3ML971jnXd_5KEuQ@mail.gmail.com>
- <963F9850-38D0-4434-88E8-14BC42F74499@oracle.com>
- <CANjDDBg3Ey0DEM3n9PY9VLW+chF0=AJPghYOopo1a9vL3CKzKg@mail.gmail.com>
+Return-Path: <SteveD@redhat.com>
+Message-ID: <554A5F65.3070001@RedHat.com>
+Date: Wed, 06 May 2015 14:37:25 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <CANjDDBg3Ey0DEM3n9PY9VLW+chF0=AJPghYOopo1a9vL3CKzKg@mail.gmail.com>
-Sender: linux-nfs-owner@vger.kernel.org
+To: Kinglong Mee <kinglongmee@gmail.com>
+CC: Benjamin Coddington <bcodding@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] mount: make sure mounting nfs with v4,vers=4 and nfsvers=4
+References: <552A5F3F.1090206@gmail.com> <alpine.OSX.2.19.9992.1504130805140.4187@planck.local> <552BB4DF.2090200@gmail.com> <alpine.OSX.2.19.9992.1504130839410.4187@planck.local> <554A18D6.6070903@gmail.com>
+In-Reply-To: <554A18D6.6070903@gmail.com>
+Content-Type: text/plain; charset=windows-1252
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, May 06, 2015 at 07:52:03PM +0530, Devesh Sharma wrote:
-> >> Should we check for EBUSY explicitly? other then this is an error in
-> >> vendor specific ib_dealloc_pd()
-> >
-> > Any error return means ib_dealloc_pd() has failed, right? Doesn’t that
-> > mean the PD is still allocated, and could cause problems later?
+
+
+On 05/06/2015 09:36 AM, Kinglong Mee wrote:
+> On 4/13/2015 8:43 PM, Benjamin Coddington wrote:
+>> On Mon, 13 Apr 2015, Kinglong Mee wrote:
+>>
+>>> On 4/13/2015 8:16 PM, Benjamin Coddington wrote:
+>>>> Hi Kinglong,  I can't seem to figure out how to reproduce your problem, and
+>>>> I don't see show this change fixes it.  Your mount is falling back to a v3
+>>>> attempt without this patch?  What's set in nfsmount.conf?
+>>>
+>>> Sorry for my missing notes for nfsmount.conf.
+>>> My nfsmount.conf is default config,
+>>> besides [ NFSMount_Global_Options ], others line are commented by "#",
+>>> Defaultvers isn't set as, "# Defaultvers=4"
+>>>
+>>> thanks,
+>>> Kinglong Mee
+>>
+>> Yes, I see the problem now.   The version strings were stripped and never
+>> added back in the general case.  Thank you.  This looks right.
+>>
+>> Reviewed-by: Benjamin Coddington <bcodding@redhat.com>
 > 
-> Yes, you are correct, I was thinking ib_dealloc_pd() has a refcount
-> implemented in the core layer, thus if the PD is used by any resource,
-> it will always fail with -EBUSY.
+> Hello Steve, 
+> 
+> What's the status of this patch?
+I'm working on it... ;-) 
 
-.. and it will not be freed, which indicates a serious bug in the
-caller, so the caller should respond to the failure with a BUG_ON or
-WARN_ON.
+steved.
 
-> .With emulex adapter it is possible to fail dealloc_pd with ENOMEM or
-> EIO in cases where device f/w is not responding etc. this situation do
-> not represent PD is actually in use.
-
-This is a really bad idea. If the pd was freed and from the consumer's
-perspective everything is sane then it should return success.
-
-If the driver detects an internal failure, then it should move the
-driver to a failed state (whatever that means, but at a minimum it
-means the firmware state and driver state must be resync'd), and still
-succeed the dealloc.
-
-There is absolutely nothing the caller can do about a driver level
-failure here, and it doesn't indicate a caller bug.
-
-Returning ENOMEM for dealloc is what we'd call an insane API. You
-can't have failable memory allocations in a dealloc path.
-
-Jason
+> 
+> thanks,
+> Kinglong Mee
+> 
+>>
+>>>> On Sun, 12 Apr 2015, Kinglong Mee wrote:
+>>>>
+>>>>> When mounting nfs with -ov4, -overs=4 or -onfsvers=4, fail as,
+>>>>>
+>>>>> # mount -t nfs -ov4 192.168.31.12:/ /testidr/
+>>>>> mount.nfs: access denied by server while mounting 192.168.31.12:/
+>>>>>
+>>>>> Fixes: f980298853 "mount.nfs: configurable minor version defaults"
+>>>>> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+>>>>> ---
+>>>>>  utils/mount/stropts.c | 12 +++---------
+>>>>>  1 file changed, 3 insertions(+), 9 deletions(-)
+>>>>>
+>>>>> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+>>>>> index df67fac..2ae532e 100644
+>>>>> --- a/utils/mount/stropts.c
+>>>>> +++ b/utils/mount/stropts.c
+>>>>> @@ -108,12 +108,6 @@ static void nfs_default_version(struct nfsmount_info *mi)
+>>>>>  		return;
+>>>>>  	}
+>>>>>
+>>>>> -	if (mi->version.v_mode == V_GENERAL &&
+>>>>> -		config_default_vers.v_mode == V_DEFAULT) {
+>>>>> -		mi->version.v_mode = V_SPECIFIC;
+>>>>> -		return;
+>>>>> -	}
+>>>>> -
+>>>>>  	if (mi->version.v_mode == V_DEFAULT &&
+>>>>>  		config_default_vers.v_mode != V_DEFAULT) {
+>>>>>  		mi->version.major = config_default_vers.major;
+>>>>> @@ -121,9 +115,9 @@ static void nfs_default_version(struct nfsmount_info *mi)
+>>>>>  		return;
+>>>>>  	}
+>>>>>
+>>>>> -	if (mi->version.v_mode == V_GENERAL &&
+>>>>> -		config_default_vers.v_mode != V_DEFAULT) {
+>>>>> -		if (mi->version.major == config_default_vers.major)
+>>>>> +	if (mi->version.v_mode == V_GENERAL) {
+>>>>> +		if (config_default_vers.v_mode != V_DEFAULT &&
+>>>>> +		    mi->version.major == config_default_vers.major)
+>>>>>  			mi->version.minor = config_default_vers.minor;
+>>>>>  		return;
+>>>>>  	}
+>>>>> --
+>>>>> 2.3.5
+>>>>>
+>>>>>
+>>>>
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>>
+>>
