@@ -1,78 +1,83 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wg0-f42.google.com ([74.125.82.42]:34337 "EHLO
-	mail-wg0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752023AbbEFMPr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 May 2015 08:15:47 -0400
-Received: by wgso17 with SMTP id o17so9410507wgs.1
-        for <linux-nfs@vger.kernel.org>; Wed, 06 May 2015 05:15:46 -0700 (PDT)
-Message-ID: <554A05FD.5080605@dev.mellanox.co.il>
-Date: Wed, 06 May 2015 15:15:57 +0300
-From: Sagi Grimberg <sagig@dev.mellanox.co.il>
+Received: from mail-pd0-f178.google.com ([209.85.192.178]:33667 "EHLO
+	mail-pd0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751068AbbEFNS0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 May 2015 09:18:26 -0400
+Message-ID: <554A149B.5060102@gmail.com>
+Date: Wed, 06 May 2015 21:18:19 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
 MIME-Version: 1.0
-To: Christoph Hellwig <hch@infradead.org>,
-        Chuck Lever <chuck.lever@oracle.com>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-rdma@vger.kernel.org
-Subject: Re: [PATCH v1 00/16] NFS/RDMA patches proposed for 4.1
-References: <20150313211124.22471.14517.stgit@manet.1015granger.net> <20150505154411.GA16729@infradead.org> <5E1B32EA-9803-49AA-856D-BF0E1A5DFFF4@oracle.com> <20150505172540.GA19442@infradead.org>
-In-Reply-To: <20150505172540.GA19442@infradead.org>
-Content-Type: text/plain; charset=windows-1252; format=flowed
+To: "J. Bruce Fields" <bfields@fieldses.org>,
+        Al Viro <viro@zeniv.linux.org.uk>, linux-fsdevel@vger.kernel.org,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+CC: NeilBrown <neilb@suse.de>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        kinglongmee@gmail.com
+Subject: [PATCH 0/4] NFSD: Pin to vfsmount instead of mntget for export cache
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 5/5/2015 8:25 PM, Christoph Hellwig wrote:
-> On Tue, May 05, 2015 at 12:04:00PM -0400, Chuck Lever wrote:
->>> Just curious if you ever though of moving this into the generic
->>> rdma layer?
->>
->> Not really. The new files are really just shims that adapt the RPC/RDMA
->> transport to memory registration verbs. There?s only a few hundred lines
->> per registration mode, and it?s all fairly specific to RPC/RDMA.
->
-> While it's using RPC/RDMA specific data structures it basically
-> abstracts out the action of mapping a number of pages onto the rdma
-> hardware.   There isn't a whole lot of interaction with the actual
-> sunrpc layer except for a few hardcoded limits.
->
-> Btw, this is not a critique of the code, it's an obvious major
-> improvement of what was there before, it justs seems like it would be
-> nice to move it up to a higher layer.
->
->>> And from I see we litterly dont use them much different from the generic
->>> dma mapping API helpers (at a very high level) so it seems it should
->>> be easy to move a slightly expanded version of your API to the core
->>> code.
->>
->> IMO FRWR is the only registration mode that has legs for the long term,
->> and is specifically designed for storage.
->>
->> If you are not working on a legacy piece of code that has to support
->> older HCAs, why not stay with FRWR?
+If there are some mount points(not exported for nfs) under pseudo root,
+after client's operation of those entry under the root, anyone *can't*
+unmount those mount points until export cache expired.
 
-Hey Christoph,
+# cat /etc/exports
+/nfs/xfs        *(rw,insecure,no_subtree_check,no_root_squash)
+/nfs/pnfs       *(rw,insecure,no_subtree_check,no_root_squash)
+# ll /nfs/
+total 0
+drwxr-xr-x. 3 root root 84 Apr 21 22:27 pnfs
+drwxr-xr-x. 3 root root 84 Apr 21 22:27 test
+drwxr-xr-x. 2 root root  6 Apr 20 22:01 xfs
+# mount /dev/sde /nfs/test
+# df
+Filesystem                      1K-blocks    Used Available Use% Mounted on
+......
+/dev/sdd                          1038336   32944   1005392   4% /nfs/pnfs
+/dev/sdc                         10475520   32928  10442592   1% /nfs/xfs
+/dev/sde                           999320    1284    929224   1% /nfs/test
+# mount -t nfs 127.0.0.1:/nfs/ /mnt
+# ll /mnt/*/
+/mnt/pnfs/:
+total 0
+-rw-r--r--. 1 root root 0 Apr 21 22:23 attr
+drwxr-xr-x. 2 root root 6 Apr 21 22:19 tmp
 
-I agree here,
+/mnt/xfs/:
+total 0
+# umount /nfs/test/
+umount: /nfs/test/: target is busy
+        (In some cases useful info about processes that
+         use the device is found by lsof(8) or fuser(1).)
 
-FMRs (and FMR pools) are not supported over VFs. Also, I've seen some
-unpredictable performance in certain workloads because the fmr pool
-maintains a flush thread that executes a HW sync (terribly blocking on
-mlx4 devices) when hitting some dirty_watermark...
+I don't think that's user expect, they want umount /nfs/test/.
 
-If you are writing a driver, I suggest to stick FRWR as well.
+It's caused by exports cache of nfsd holds the reference of
+the path (here is /nfs/test/), so, it can't be umounted.
 
->
-> The raw FRWR API seems like an absolute nightmare, and I'm bound to
-> get it wrong at first :)  This is only half joking, but despite that
-> it's the first target for sure.  It's just very frustrating that there
-> is no usable common API.
+The patch site using fs_pin instead of mntget for export cache,
+user at nfs server can unmount any mount points includes exported
+for nfs. Maybe, only umounted for unexported mount points is better?
 
-The FRWR API is a work request interface. The advantage here is the
-option to concatenate it with a send/rdma work request and save an extra
-send queue lock and more importantly a doorbell. This matters in high
-workloads. The iser target is doing this and I have a patch for the
-initiator code as well.
+[PATCH 1/4] fs_pin: Fix uninitialized value in fs_pin
+[PATCH 2/4] fs_pin: Export functions for specific filesystem
+[PATCH 3/4] sunrpc: New helper cache_force_expire for cache cleanup
+[PATCH 4/4] nfsd: Pin to vfsmnt instead of mntget
 
-I'm not sure that providing an API that allows you to do post-lists
-might be simpler...
+Kinglong Mee (4):
+  fs_pin: initialize done to zero
+  fs_pin: export functions for nactive filesystem
+  sunrpc: new helper cache_force_expire for deleting a cache
+  nfsd: pin to mnt insteads mntget
 
-Sagi.
+ fs/fs_pin.c                  |  3 +++
+ fs/nfsd/export.c             | 37 ++++++++++++++++++++++++++++++-------
+ fs/nfsd/export.h             | 10 +++++++++-
+ include/linux/fs_pin.h       |  1 +
+ include/linux/sunrpc/cache.h | 11 +++++++++++
+ 5 files changed, 54 insertions(+), 8 deletions(-)
+
+-- 
+2.4.0
+
