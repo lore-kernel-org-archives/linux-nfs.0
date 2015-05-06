@@ -1,57 +1,86 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:36091 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:55611 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752177AbbEFI0g (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 6 May 2015 04:26:36 -0400
-Date: Wed, 6 May 2015 09:26:30 +0100
+	id S1751655AbbEFIcO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 6 May 2015 04:32:14 -0400
 From: Stefan Hajnoczi <stefanha@redhat.com>
-To: Anna Schumaker <Anna.Schumaker@netapp.com>
-Cc: linux-nfs@vger.kernel.org,
+To: linux-nfs@vger.kernel.org
+Cc: Anna Schumaker <anna.schumaker@netapp.com>,
         Trond Myklebust <trond.myklebust@primarydata.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] SUNRPC: drop stale setup_socket doc comments
-Message-ID: <20150506082630.GA24280@stefanha-thinkpad.redhat.com>
-References: <1430835480-29982-1-git-send-email-stefanha@redhat.com>
- <5548F98F.5050601@Netapp.com>
-MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="KsGdsel6WgEHnImy"
-In-Reply-To: <5548F98F.5050601@Netapp.com>
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Stefan Hajnoczi <stefanha@redhat.com>
+Subject: [PATCH v2] SUNRPC: drop stale doc comments in xprtsock.c
+Date: Wed,  6 May 2015 09:32:03 +0100
+Message-Id: <1430901123-24555-1-git-send-email-stefanha@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Several functions have outdated arguments listed in the doc comments.
+Drop documentation for arguments that no longer exist.
 
---KsGdsel6WgEHnImy
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+Signed-off-by: Stefan Hajnoczi <stefanha@redhat.com>
+---
+ net/sunrpc/xprtsock.c | 8 --------
+ 1 file changed, 8 deletions(-)
 
-On Tue, May 05, 2015 at 01:10:39PM -0400, Anna Schumaker wrote:
-> On 05/05/2015 10:18 AM, Stefan Hajnoczi wrote:
-> > xs_local_setup_socket() and xs_tcp_setup_socket() have outdated
-> > arguments listed in the doc comments.  Drop arguments that no longer
-> > exist.
->=20
-> Can you please fix up xs_local_data_ready(), xs_udp_data_ready(), and xs_=
-tcp_data_ready() while you're at it?
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 66891e3..b142fee 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -900,9 +900,8 @@ static int xs_local_copy_to_xdr(struct xdr_buf *xdr, struct sk_buff *skb)
+ 
+ /**
+  * xs_local_data_ready - "data ready" callback for AF_LOCAL sockets
+  * @sk: socket with data to read
+- * @len: how much data to read
+  *
+  * Currently this assumes we can read the whole reply in a single gulp.
+  */
+ static void xs_local_data_ready(struct sock *sk)
+@@ -964,9 +963,8 @@ static void xs_local_data_ready(struct sock *sk)
+ 
+ /**
+  * xs_udp_data_ready - "data ready" callback for UDP sockets
+  * @sk: socket with data to read
+- * @len: how much data to read
+  *
+  */
+ static void xs_udp_data_ready(struct sock *sk)
+ {
+@@ -1388,9 +1386,8 @@ static int xs_tcp_data_recv(read_descriptor_t *rd_desc, struct sk_buff *skb, uns
+ 
+ /**
+  * xs_tcp_data_ready - "data ready" callback for TCP sockets
+  * @sk: socket with data to read
+- * @bytes: how much data to read
+  *
+  */
+ static void xs_tcp_data_ready(struct sock *sk)
+ {
+@@ -1885,11 +1882,9 @@ static int xs_local_finish_connecting(struct rpc_xprt *xprt,
+ }
+ 
+ /**
+  * xs_local_setup_socket - create AF_LOCAL socket, connect to a local endpoint
+- * @xprt: RPC transport to connect
+  * @transport: socket transport to connect
+- * @create_sock: function to create a socket of the correct type
+  */
+ static int xs_local_setup_socket(struct sock_xprt *transport)
+ {
+ 	struct rpc_xprt *xprt = &transport->xprt;
+@@ -2124,11 +2119,8 @@ out:
+ }
+ 
+ /**
+  * xs_tcp_setup_socket - create a TCP socket and connect to a remote endpoint
+- * @xprt: RPC transport to connect
+- * @transport: socket transport to connect
+- * @create_sock: function to create a socket of the correct type
+  *
+  * Invoked by a work queue tasklet.
+  */
+ static void xs_tcp_setup_socket(struct work_struct *work)
+-- 
+2.1.0
 
-Sure, will send a v2.
-
-Stefan
-
---KsGdsel6WgEHnImy
-Content-Type: application/pgp-signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1
-
-iQEcBAEBAgAGBQJVSdA2AAoJEJykq7OBq3PIUIwH/izXN+fCoO2ZTsNoGG5Sa2nb
-hg4OwR5jM7FZt963DvtE7gHKDgGp+VLA3gA2mXK6vxzszypkramZrX807DZhUWSf
-8tu2MgdSUgDne/BPp/Jc7VVUUJ7EvNRQ0KCTOonoz36F5xoTCm/lf3AoVl+3BQyq
-u8OXZFp4S6NsRStRChlB/vsw15gzdEQCwchhkt4k2cBhvfm5ZwpKWEElUQXOj8dH
-r9mEUgVMOgxEcc70yWxwqc4vfE3tmmnCUxzC8XylRdct+GxUDtcdvzkJvhwQuhlp
-zhB7oJRusnOtX8Dze5kQ2UVi1JFdm26jLQDPF+/L6+ZV5oTnhvOIu5HnrQuR5SU=
-=KLR+
------END PGP SIGNATURE-----
-
---KsGdsel6WgEHnImy--
