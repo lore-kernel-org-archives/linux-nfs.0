@@ -1,86 +1,36 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:55611 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751655AbbEFIcO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 6 May 2015 04:32:14 -0400
-From: Stefan Hajnoczi <stefanha@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: Anna Schumaker <anna.schumaker@netapp.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Stefan Hajnoczi <stefanha@redhat.com>
-Subject: [PATCH v2] SUNRPC: drop stale doc comments in xprtsock.c
-Date: Wed,  6 May 2015 09:32:03 +0100
-Message-Id: <1430901123-24555-1-git-send-email-stefanha@redhat.com>
+Received: from mail-ob0-f177.google.com ([209.85.214.177]:36089 "EHLO
+	mail-ob0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750816AbbEFKMO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 May 2015 06:12:14 -0400
+Received: by obbkp3 with SMTP id kp3so3307404obb.3
+        for <linux-nfs@vger.kernel.org>; Wed, 06 May 2015 03:12:13 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <20150506065651.GA22454@lst.de>
+References: <1430895024-1403-1-git-send-email-andreas.gruenbacher@gmail.com>
+	<20150506065651.GA22454@lst.de>
+Date: Wed, 6 May 2015 12:12:13 +0200
+Message-ID: <CAHpGcMJe1YyCev2mza=pOCvs1pcV6M2AnX-0hVa4gdppnXassA@mail.gmail.com>
+Subject: Re: [PATCH] nfsd: Disable NFSv2 timestamp workaround for NFSv3+
+From: =?UTF-8?Q?Andreas_Gr=C3=BCnbacher?= <andreas.gruenbacher@gmail.com>
+To: Christoph Hellwig <hch@lst.de>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Several functions have outdated arguments listed in the doc comments.
-Drop documentation for arguments that no longer exist.
+2015-05-06 8:56 GMT+02:00 Christoph Hellwig <hch@lst.de>:
+> How about moving the workaround into the NFSv2 specific code?
 
-Signed-off-by: Stefan Hajnoczi <stefanha@redhat.com>
----
- net/sunrpc/xprtsock.c | 8 --------
- 1 file changed, 8 deletions(-)
+Not trivially, we would have to fh_verify() the file handle in
+nfsd_proc_setattr() first. Is that preferable?
 
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 66891e3..b142fee 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -900,9 +900,8 @@ static int xs_local_copy_to_xdr(struct xdr_buf *xdr, struct sk_buff *skb)
- 
- /**
-  * xs_local_data_ready - "data ready" callback for AF_LOCAL sockets
-  * @sk: socket with data to read
-- * @len: how much data to read
-  *
-  * Currently this assumes we can read the whole reply in a single gulp.
-  */
- static void xs_local_data_ready(struct sock *sk)
-@@ -964,9 +963,8 @@ static void xs_local_data_ready(struct sock *sk)
- 
- /**
-  * xs_udp_data_ready - "data ready" callback for UDP sockets
-  * @sk: socket with data to read
-- * @len: how much data to read
-  *
-  */
- static void xs_udp_data_ready(struct sock *sk)
- {
-@@ -1388,9 +1386,8 @@ static int xs_tcp_data_recv(read_descriptor_t *rd_desc, struct sk_buff *skb, uns
- 
- /**
-  * xs_tcp_data_ready - "data ready" callback for TCP sockets
-  * @sk: socket with data to read
-- * @bytes: how much data to read
-  *
-  */
- static void xs_tcp_data_ready(struct sock *sk)
- {
-@@ -1885,11 +1882,9 @@ static int xs_local_finish_connecting(struct rpc_xprt *xprt,
- }
- 
- /**
-  * xs_local_setup_socket - create AF_LOCAL socket, connect to a local endpoint
-- * @xprt: RPC transport to connect
-  * @transport: socket transport to connect
-- * @create_sock: function to create a socket of the correct type
-  */
- static int xs_local_setup_socket(struct sock_xprt *transport)
- {
- 	struct rpc_xprt *xprt = &transport->xprt;
-@@ -2124,11 +2119,8 @@ out:
- }
- 
- /**
-  * xs_tcp_setup_socket - create a TCP socket and connect to a remote endpoint
-- * @xprt: RPC transport to connect
-- * @transport: socket transport to connect
-- * @create_sock: function to create a socket of the correct type
-  *
-  * Invoked by a work queue tasklet.
-  */
- static void xs_tcp_setup_socket(struct work_struct *work)
--- 
-2.1.0
+> Looks like the call from nfsd_create() should never be used for this
+> workaround,
 
+Right, the workaround won't trigger there because setting the times
+arbitrarily will already succeed because we are the owner
+(nfsd_sanitize_attrs tries that first with inode_change_ok).
+
+Thanks,
+Andreas
