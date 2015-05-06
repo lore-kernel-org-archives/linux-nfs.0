@@ -1,47 +1,57 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-by2on0079.outbound.protection.outlook.com ([207.46.100.79]:2561
-	"EHLO na01-by2-obe.outbound.protection.outlook.com"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1751713AbbEFHdy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 6 May 2015 03:33:54 -0400
-Message-ID: <5549BC33.30905@sandisk.com>
-Date: Wed, 6 May 2015 09:01:07 +0200
-From: Bart Van Assche <bart.vanassche@sandisk.com>
+Received: from mx1.redhat.com ([209.132.183.28]:36091 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752177AbbEFI0g (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 6 May 2015 04:26:36 -0400
+Date: Wed, 6 May 2015 09:26:30 +0100
+From: Stefan Hajnoczi <stefanha@redhat.com>
+To: Anna Schumaker <Anna.Schumaker@netapp.com>
+Cc: linux-nfs@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH] SUNRPC: drop stale setup_socket doc comments
+Message-ID: <20150506082630.GA24280@stefanha-thinkpad.redhat.com>
+References: <1430835480-29982-1-git-send-email-stefanha@redhat.com>
+ <5548F98F.5050601@Netapp.com>
 MIME-Version: 1.0
-To: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>,
-        Tom Talpey <tom@talpey.com>
-CC: Christoph Hellwig <hch@infradead.org>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        <linux-rdma@vger.kernel.org>
-Subject: Re: [PATCH v1 00/16] NFS/RDMA patches proposed for 4.1
-References: <20150313211124.22471.14517.stgit@manet.1015granger.net>
- <20150505154411.GA16729@infradead.org>
- <5E1B32EA-9803-49AA-856D-BF0E1A5DFFF4@oracle.com>
- <20150505172540.GA19442@infradead.org> <55490886.4070502@talpey.com>
- <20150505191012.GA21164@infradead.org> <55492ED3.7000507@talpey.com>
- <20150505210627.GA5941@infradead.org> <554936E5.80607@talpey.com>
- <20150505223855.GA7696@obsidianresearch.com>
-In-Reply-To: <20150505223855.GA7696@obsidianresearch.com>
-Content-Type: text/plain; charset="windows-1252"; format=flowed
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature"; boundary="KsGdsel6WgEHnImy"
+In-Reply-To: <5548F98F.5050601@Netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 05/06/15 00:38, Jason Gunthorpe wrote:
-> Heck, on modern systems 100% of these requirements can be solved just
-> by using the IOMMU. No need for the HCA at all. (HCA may be more
-> performant, of course)
 
-Hello Jason,
+--KsGdsel6WgEHnImy
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
-Any performance tests I have run so far with the IOMMU enabled show much 
-worse results than the same test with the IOMMU disabled. The perf tool 
-learned me that this performance difference is due to lock contention 
-caused by the IOMMU kernel code. I have not yet tried to verify whether 
-this is an implementation issue or something fundamental.
+On Tue, May 05, 2015 at 01:10:39PM -0400, Anna Schumaker wrote:
+> On 05/05/2015 10:18 AM, Stefan Hajnoczi wrote:
+> > xs_local_setup_socket() and xs_tcp_setup_socket() have outdated
+> > arguments listed in the doc comments.  Drop arguments that no longer
+> > exist.
+>=20
+> Can you please fix up xs_local_data_ready(), xs_udp_data_ready(), and xs_=
+tcp_data_ready() while you're at it?
 
-This is why I'm not enthusiast about any approach that relies on the 
-IOMMU being enabled.
+Sure, will send a v2.
 
-Bart.
+Stefan
 
+--KsGdsel6WgEHnImy
+Content-Type: application/pgp-signature
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1
+
+iQEcBAEBAgAGBQJVSdA2AAoJEJykq7OBq3PIUIwH/izXN+fCoO2ZTsNoGG5Sa2nb
+hg4OwR5jM7FZt963DvtE7gHKDgGp+VLA3gA2mXK6vxzszypkramZrX807DZhUWSf
+8tu2MgdSUgDne/BPp/Jc7VVUUJ7EvNRQ0KCTOonoz36F5xoTCm/lf3AoVl+3BQyq
+u8OXZFp4S6NsRStRChlB/vsw15gzdEQCwchhkt4k2cBhvfm5ZwpKWEElUQXOj8dH
+r9mEUgVMOgxEcc70yWxwqc4vfE3tmmnCUxzC8XylRdct+GxUDtcdvzkJvhwQuhlp
+zhB7oJRusnOtX8Dze5kQ2UVi1JFdm26jLQDPF+/L6+ZV5oTnhvOIu5HnrQuR5SU=
+=KLR+
+-----END PGP SIGNATURE-----
+
+--KsGdsel6WgEHnImy--
