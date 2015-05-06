@@ -1,95 +1,72 @@
 Return-Path: <kinglongmee@gmail.com>
-Message-ID: <554A18D6.6070903@gmail.com>
-Date: Wed, 06 May 2015 21:36:22 +0800
+Message-ID: <554A191A.6090301@gmail.com>
+Date: Wed, 06 May 2015 21:37:30 +0800
 From: Kinglong Mee <kinglongmee@gmail.com>
 MIME-Version: 1.0
 To: Steve Dickson <SteveD@redhat.com>
 CC: Benjamin Coddington <bcodding@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        kinglongmee@gmail.com
-Subject: Re: [PATCH] mount: make sure mounting nfs with v4,vers=4 and nfsvers=4
-References: <552A5F3F.1090206@gmail.com> <alpine.OSX.2.19.9992.1504130805140.4187@planck.local> <552BB4DF.2090200@gmail.com> <alpine.OSX.2.19.9992.1504130839410.4187@planck.local>
-In-Reply-To: <alpine.OSX.2.19.9992.1504130839410.4187@planck.local>
-Content-Type: text/plain; charset=windows-1252
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] mount: Writes signal number to kernel as command line
+References: <552BB264.8010104@gmail.com> <alpine.OSX.2.19.9992.1504130843210.4187@planck.local>
+In-Reply-To: <alpine.OSX.2.19.9992.1504130843210.4187@planck.local>
+Content-Type: text/plain; charset=utf-8
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 4/13/2015 8:43 PM, Benjamin Coddington wrote:
+
+On 4/13/2015 8:53 PM, Benjamin Coddington wrote:
 > On Mon, 13 Apr 2015, Kinglong Mee wrote:
 > 
->> On 4/13/2015 8:16 PM, Benjamin Coddington wrote:
->>> Hi Kinglong,  I can't seem to figure out how to reproduce your problem, and
->>> I don't see show this change fixes it.  Your mount is falling back to a v3
->>> attempt without this patch?  What's set in nfsmount.conf?
+>> When mounting nfs with -overs=4,minorversion=2, want getting
+>> nfs mounts with vers=4.2, but got vers=4.0 as,
 >>
->> Sorry for my missing notes for nfsmount.conf.
->> My nfsmount.conf is default config,
->> besides [ NFSMount_Global_Options ], others line are commented by "#",
->> Defaultvers isn't set as, "# Defaultvers=4"
+>> # mount -t nfs -onfsvers=4,minorversion=2 127.0.0.1:/ /mnt/
+>> # cat /proc/mounts | grep vers
+>> 127.0.0.1:/ /mnt nfs4 rw,relatime,vers=4.0,rsize=262144,wsize=262144,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=sys,clientaddr=127.0.0.1,local_lock=none,addr=127.0.0.1 0 0
 >>
->> thanks,
->> Kinglong Mee
+>> It's caused by mount.nfs writing bad vers to kernel. This patch
+>> lets mount.nfs writing signal number to kernel as command line.
+>>
+>> Note： This patch is based on my last patch,
+>> "mount: make sure mounting nfs with v4,vers=4 and nfsvers=4"
+>>
+>> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
 > 
-> Yes, I see the problem now.   The version strings were stripped and never
-> added back in the general case.  Thank you.  This looks right.
+> Looks good.
 > 
 > Reviewed-by: Benjamin Coddington <bcodding@redhat.com>
 
-Hello Steve, 
-
-What's the status of this patch?
+Add this one?
 
 thanks,
 Kinglong Mee
 
-> 
->>> On Sun, 12 Apr 2015, Kinglong Mee wrote:
->>>
->>>> When mounting nfs with -ov4, -overs=4 or -onfsvers=4, fail as,
->>>>
->>>> # mount -t nfs -ov4 192.168.31.12:/ /testidr/
->>>> mount.nfs: access denied by server while mounting 192.168.31.12:/
->>>>
->>>> Fixes: f980298853 "mount.nfs: configurable minor version defaults"
->>>> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
->>>> ---
->>>>  utils/mount/stropts.c | 12 +++---------
->>>>  1 file changed, 3 insertions(+), 9 deletions(-)
->>>>
->>>> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
->>>> index df67fac..2ae532e 100644
->>>> --- a/utils/mount/stropts.c
->>>> +++ b/utils/mount/stropts.c
->>>> @@ -108,12 +108,6 @@ static void nfs_default_version(struct nfsmount_info *mi)
->>>>  		return;
->>>>  	}
->>>>
->>>> -	if (mi->version.v_mode == V_GENERAL &&
->>>> -		config_default_vers.v_mode == V_DEFAULT) {
->>>> -		mi->version.v_mode = V_SPECIFIC;
->>>> -		return;
->>>> -	}
->>>> -
->>>>  	if (mi->version.v_mode == V_DEFAULT &&
->>>>  		config_default_vers.v_mode != V_DEFAULT) {
->>>>  		mi->version.major = config_default_vers.major;
->>>> @@ -121,9 +115,9 @@ static void nfs_default_version(struct nfsmount_info *mi)
->>>>  		return;
->>>>  	}
->>>>
->>>> -	if (mi->version.v_mode == V_GENERAL &&
->>>> -		config_default_vers.v_mode != V_DEFAULT) {
->>>> -		if (mi->version.major == config_default_vers.major)
->>>> +	if (mi->version.v_mode == V_GENERAL) {
->>>> +		if (config_default_vers.v_mode != V_DEFAULT &&
->>>> +		    mi->version.major == config_default_vers.major)
->>>>  			mi->version.minor = config_default_vers.minor;
->>>>  		return;
->>>>  	}
->>>> --
->>>> 2.3.5
->>>>
->>>>
->>>
+>> ---
+>>  utils/mount/stropts.c | 9 +++++++--
+>>  1 file changed, 7 insertions(+), 2 deletions(-)
+>>
+>> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+>> index 2ae532e..c8f5a6d 100644
+>> --- a/utils/mount/stropts.c
+>> +++ b/utils/mount/stropts.c
+>> @@ -737,8 +737,13 @@ static int nfs_do_mount_v4(struct nfsmount_info *mi,
+>>  	}
+>>
+>>  	if (mi->version.v_mode != V_SPECIFIC) {
+>> -		snprintf(version_opt, sizeof(version_opt) - 1,
+>> -			"vers=%lu.%lu", mi->version.major, mi->version.minor);
+>> +		if (mi->version.v_mode == V_GENERAL)
+>> +			snprintf(version_opt, sizeof(version_opt) - 1,
+>> +				"vers=%lu", mi->version.major);
+>> +		else
+>> +			snprintf(version_opt, sizeof(version_opt) - 1,
+>> +				"vers=%lu.%lu", mi->version.major,
+>> +				mi->version.minor);
+>>
+>>  		if (po_append(options, version_opt) == PO_FAILED) {
+>>  			errno = EINVAL;
+>> --
+>> 2.3.5
+>>
 >> --
 >> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 >> the body of a message to majordomo@vger.kernel.org
