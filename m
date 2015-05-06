@@ -1,104 +1,54 @@
-Return-Path: <SteveD@redhat.com>
-Message-ID: <554A5F65.3070001@RedHat.com>
-Date: Wed, 06 May 2015 14:37:25 -0400
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:57875 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751034AbbEFUOp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 6 May 2015 16:14:45 -0400
+Message-ID: <554A7626.1050709@RedHat.com>
+Date: Wed, 06 May 2015 16:14:30 -0400
 From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-To: Kinglong Mee <kinglongmee@gmail.com>
-CC: Benjamin Coddington <bcodding@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] mount: make sure mounting nfs with v4,vers=4 and nfsvers=4
-References: <552A5F3F.1090206@gmail.com> <alpine.OSX.2.19.9992.1504130805140.4187@planck.local> <552BB4DF.2090200@gmail.com> <alpine.OSX.2.19.9992.1504130839410.4187@planck.local> <554A18D6.6070903@gmail.com>
-In-Reply-To: <554A18D6.6070903@gmail.com>
+To: Gregory Boyce <gregory.boyce@gmail.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfs-utils: Allow users to disable mount option rewriting
+ via norewriteopts mount option
+References: <alpine.DEB.2.10.1504201417410.5338@valhalla.home>
+In-Reply-To: <alpine.DEB.2.10.1504201417410.5338@valhalla.home>
 Content-Type: text/plain; charset=windows-1252
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
 
-On 05/06/2015 09:36 AM, Kinglong Mee wrote:
-> On 4/13/2015 8:43 PM, Benjamin Coddington wrote:
->> On Mon, 13 Apr 2015, Kinglong Mee wrote:
->>
->>> On 4/13/2015 8:16 PM, Benjamin Coddington wrote:
->>>> Hi Kinglong,  I can't seem to figure out how to reproduce your problem, and
->>>> I don't see show this change fixes it.  Your mount is falling back to a v3
->>>> attempt without this patch?  What's set in nfsmount.conf?
->>>
->>> Sorry for my missing notes for nfsmount.conf.
->>> My nfsmount.conf is default config,
->>> besides [ NFSMount_Global_Options ], others line are commented by "#",
->>> Defaultvers isn't set as, "# Defaultvers=4"
->>>
->>> thanks,
->>> Kinglong Mee
->>
->> Yes, I see the problem now.   The version strings were stripped and never
->> added back in the general case.  Thank you.  This looks right.
->>
->> Reviewed-by: Benjamin Coddington <bcodding@redhat.com>
+On 04/20/2015 02:18 PM, Gregory Boyce wrote:
+> Allow users to disable mount option rewriting via norewriteopts mount option.
+> This was required in our case in order to allow mounting a filer which inappropriately responded via the wrong interface.
 > 
-> Hello Steve, 
-> 
-> What's the status of this patch?
-I'm working on it... ;-) 
+> Signed-off-by: Gregory Boyce <gregory.boyce@gmail.com>
+Again... This is fixing a filer bug, correct? 
+
+We generally don't do that... 
 
 steved.
 
+> ---
+>  utils/mount/stropts.c | 8 ++++++++
+>  1 file changed, 8 insertions(+)
 > 
-> thanks,
-> Kinglong Mee
+> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+> index df67fac..bbda754 100644
+> --- a/utils/mount/stropts.c
+> +++ b/utils/mount/stropts.c
+> @@ -534,6 +534,14 @@ nfs_rewrite_pmap_mount_options(struct mount_options *options, int checkv4)
+>      struct pmap mnt_pmap;
 > 
->>
->>>> On Sun, 12 Apr 2015, Kinglong Mee wrote:
->>>>
->>>>> When mounting nfs with -ov4, -overs=4 or -onfsvers=4, fail as,
->>>>>
->>>>> # mount -t nfs -ov4 192.168.31.12:/ /testidr/
->>>>> mount.nfs: access denied by server while mounting 192.168.31.12:/
->>>>>
->>>>> Fixes: f980298853 "mount.nfs: configurable minor version defaults"
->>>>> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
->>>>> ---
->>>>>  utils/mount/stropts.c | 12 +++---------
->>>>>  1 file changed, 3 insertions(+), 9 deletions(-)
->>>>>
->>>>> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
->>>>> index df67fac..2ae532e 100644
->>>>> --- a/utils/mount/stropts.c
->>>>> +++ b/utils/mount/stropts.c
->>>>> @@ -108,12 +108,6 @@ static void nfs_default_version(struct nfsmount_info *mi)
->>>>>  		return;
->>>>>  	}
->>>>>
->>>>> -	if (mi->version.v_mode == V_GENERAL &&
->>>>> -		config_default_vers.v_mode == V_DEFAULT) {
->>>>> -		mi->version.v_mode = V_SPECIFIC;
->>>>> -		return;
->>>>> -	}
->>>>> -
->>>>>  	if (mi->version.v_mode == V_DEFAULT &&
->>>>>  		config_default_vers.v_mode != V_DEFAULT) {
->>>>>  		mi->version.major = config_default_vers.major;
->>>>> @@ -121,9 +115,9 @@ static void nfs_default_version(struct nfsmount_info *mi)
->>>>>  		return;
->>>>>  	}
->>>>>
->>>>> -	if (mi->version.v_mode == V_GENERAL &&
->>>>> -		config_default_vers.v_mode != V_DEFAULT) {
->>>>> -		if (mi->version.major == config_default_vers.major)
->>>>> +	if (mi->version.v_mode == V_GENERAL) {
->>>>> +		if (config_default_vers.v_mode != V_DEFAULT &&
->>>>> +		    mi->version.major == config_default_vers.major)
->>>>>  			mi->version.minor = config_default_vers.minor;
->>>>>  		return;
->>>>>  	}
->>>>> --
->>>>> 2.3.5
->>>>>
->>>>>
->>>>
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>
->>
+>      /*
+> +     * "norewriteopts" option bypasses the options rewriting
+> +     */
+> +    if (po_contains(options, "norewriteopts") == PO_FOUND) {
+> +        po_remove_all(options, "norewriteopts");
+> +        return 1;
+> +    }
+> +
+> +    /*
+>       * Version and transport negotiation is not required
+>       * and does not work for RDMA mounts.
+>       */
