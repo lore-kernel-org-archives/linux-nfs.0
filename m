@@ -1,98 +1,73 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:44052 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751135AbbEGHks (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 7 May 2015 03:40:48 -0400
-Date: Thu, 7 May 2015 09:40:46 +0200
-From: Thorsten Kukuk <kukuk@suse.de>
-To: Mike Frysinger <vapier@gentoo.org>
-Cc: libtirpc-devel@lists.sourceforge.net, linux-nfs@vger.kernel.org
-Subject: Re: [Libtirpc-devel] [PATCH libtirpc] fix build w/gssapi disabled
-Message-ID: <20150507074046.GA13973@suse.de>
-References: <1430983149-22199-1-git-send-email-vapier@gentoo.org>
+Received: from bombadil.infradead.org ([198.137.202.9]:35621 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752214AbbEGHmQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 May 2015 03:42:16 -0400
+Date: Thu, 7 May 2015 00:42:15 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Weston Andros Adamson <dros@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: blocklayout regression in "pnfs: lookup new lseg at lseg
+ boundary"
+Message-ID: <20150507074215.GA14450@infradead.org>
+References: <20150425165640.GA2008@infradead.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-In-Reply-To: <1430983149-22199-1-git-send-email-vapier@gentoo.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20150425165640.GA2008@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+ping?
 
-Hi,
-
-On Thu, May 07, Mike Frysinger wrote:
-
-> Starting with commit d5259e751111cb108c784b044296185f543fc0be (Add header
-> definitions for rpc_gss_*() APIs), the gss headers were pulled in all the
-> time leading to build failures like so:
->   CC       libtirpc_la-bindresvport.lo
-> In file included from ../tirpc/rpc/svc_auth.h:44:0,
->                  from ../tirpc/rpc/rpc.h:68,
->                  from bindresvport.c:46:
-> ../tirpc/rpc/rpcsec_gss.h:38:27: fatal error: gssapi/gssapi.h: No such file or directory
-
-This will not work since this headers will be installed in
-/usr/include and other appliations compiled against libtirpc
-will never define HAVE_RPCSEC_GSS, thus never see this interfaces.
-
-We need something like the glibc features.h file, which will always
-be included and defines, how tirpc was configured.
-
-  Thorsten
-
-> Signed-off-by: Mike Frysinger <vapier@gentoo.org>
-> ---
->  tirpc/rpc/svc_auth.h | 6 ++++++
->  1 file changed, 6 insertions(+)
+On Sat, Apr 25, 2015 at 09:56:40AM -0700, Christoph Hellwig wrote:
+> Hi Andros,
 > 
-> diff --git a/tirpc/rpc/svc_auth.h b/tirpc/rpc/svc_auth.h
-> index 44b38bf..998b13a 100644
-> --- a/tirpc/rpc/svc_auth.h
-> +++ b/tirpc/rpc/svc_auth.h
-> @@ -41,6 +41,8 @@
->  #ifndef _RPC_SVC_AUTH_H
->  #define _RPC_SVC_AUTH_H
->  
-> +#ifdef HAVE_RPCSEC_GSS
-> +
->  #include <rpc/rpcsec_gss.h>
->  
->  typedef struct {
-> @@ -51,6 +53,8 @@ typedef struct {
->  	u_int			seq_num;
->  } svc_rpc_gss_parms_t;
->  
-> +#endif
-> +
->  /*
->   * Interface to server-side authentication flavors.
->   */
-> @@ -63,8 +67,10 @@ typedef struct SVCAUTH {
->  		int     (*svc_ah_destroy)(struct SVCAUTH *);
->  		} *svc_ah_ops;
->  	caddr_t svc_ah_private;
-> +#ifdef HAVE_RPCSEC_GSS
->  	svc_rpc_gss_parms_t svc_gss_params;
->  	rpc_gss_rawcred_t raw_cred;
-> +#endif
->  } SVCAUTH;
->  
->  #define SVCAUTH_WRAP(auth, xdrs, xfunc, xwhere) \
-> -- 
-> 2.4.0
+> your commit "pnfs: lookup new lseg at lseg boundary: triggers a warning
+> with the block layout driver under xfstests.  I have hard time
+> parsing he commit log, but it changes this WARN_ON from a > to a >=
+> without mentioning anything related to this one-off which make
+> me suspicious.
 > 
+> generic/013 files ...[  170.557305] ------------[ cut here ]------------
+> [  170.557889] WARNING: CPU: 0 PID: 9755 at ../fs/nfs/pnfs.c:1792 pnfs_generic_pg_test+0xba/0xd0()
+> [  170.558728] Modules linked in:
+> [  170.559104] CPU: 0 PID: 9755 Comm: fsstress Not tainted 4.0.0+ #356
+> [  170.559770] Hardware name: Bochs Bochs, BIOS Bochs 01/01/2007
+> [  170.560368]  ffffffff822a6079 ffff8800770af9c8 ffffffff81e03a7f 0000000000000000
+> [  170.561282]  0000000000000000 ffff8800770afa08 ffffffff810c4dc2 0000000000000000
+> [  170.562303]  ffff88007a730140 ffff8800770afcb8 ffff88007a730140 ffff88007a730140
+> [  170.563218] Call Trace:
+> [  170.563636]  [<ffffffff81e03a7f>] dump_stack+0x45/0x57
+> [  170.564254]  [<ffffffff810c4dc2>] warn_slowpath_common+0x92/0xd0
+> [  170.565283]  [<ffffffff810c4e15>] warn_slowpath_null+0x15/0x20
+> [  170.566273]  [<ffffffff813b608a>] pnfs_generic_pg_test+0xba/0xd0
+> [  170.567325]  [<ffffffff813be7c5>] bl_pg_test_write+0x45/0x50
+> [  170.568533]  [<ffffffff8137b7ae>] __nfs_pageio_add_request+0x10e/0x470
+> [  170.569616]  [<ffffffff8137c043>] nfs_pageio_add_request+0x93/0x1c0
+> [  170.570679]  [<ffffffff8137faef>] nfs_do_writepage+0x11f/0x1e0
+> [  170.571649]  [<ffffffff8137fc68>] nfs_writepages_callback+0x18/0x30
+> [  170.572668]  [<ffffffff8119d50c>] write_cache_pages+0x22c/0x4a0
+> [  170.573704]  [<ffffffff8111132d>] ? trace_hardirqs_on_caller+0x10d/0x1d0
+> [  170.574861]  [<ffffffff811113fd>] ? trace_hardirqs_on+0xd/0x10
+> [  170.575833]  [<ffffffff811da881>] ? kmem_cache_free+0xe1/0x210
+> [  170.576867]  [<ffffffff8137fc50>] ? nfs_writepage_locked+0xa0/0xa0
+> [  170.577876]  [<ffffffff8137fd44>] nfs_writepages+0x94/0x130
+> [  170.578805]  [<ffffffff8119f34c>] do_writepages+0x1c/0x40
+> [  170.579712]  [<ffffffff811948f1>] __filemap_fdatawrite_range+0x51/0x60
+> [  170.580774]  [<ffffffff811949d5>] filemap_write_and_wait_range+0x35/0x80
+> [  170.581817]  [<ffffffff813a73ef>] nfs4_file_fsync+0x5f/0xb0
+> [  170.582710]  [<ffffffff81213bd1>] vfs_fsync_range+0x41/0xc0
+> [  170.583630]  [<ffffffff813a75f0>] ? nfs4_file_open+0x1b0/0x1b0
+> [  170.584584]  [<ffffffff81213c67>] vfs_fsync+0x17/0x20
+> [  170.585461]  [<ffffffff813724ce>] nfs_file_flush+0x6e/0x90
+> [  170.586428]  [<ffffffff811dd185>] filp_close+0x35/0x80
+> [  170.587075]  [<ffffffff811ff7ce>] __close_fd+0x9e/0x110
+> [  170.587694]  [<ffffffff811dd11e>] SyS_close+0x1e/0x50
+> [  170.588291]  [<ffffffff81e0e2ee>] system_call_fastpath+0x12/0x76
+> [  170.588971] ---[ end trace c6bc30a03cc4fc6e ]---
 > 
-> ------------------------------------------------------------------------------
-> One dashboard for servers and applications across Physical-Virtual-Cloud 
-> Widest out-of-the-box monitoring support with 50+ applications
-> Performance metrics, stats and reports that give you Actionable Insights
-> Deep dive visibility with transaction tracing using APM Insight.
-> http://ad.doubleclick.net/ddm/clk/290420510;117567292;y
-> _______________________________________________
-> Libtirpc-devel mailing list
-> Libtirpc-devel@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/libtirpc-devel
-
--- 
-Thorsten Kukuk, Senior Architect SLES & Common Code Base
-SUSE LINUX GmbH, Maxfeldstr. 5, 90409 Nuernberg, Germany
-GF: Felix Imendörffer, Jane Smithard, Jennifer Guild, Dilip Upmanyu, Graham Norton, HRB 21284 (AG Nürnberg)
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+---end quoted text---
