@@ -1,72 +1,64 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-lb0-f176.google.com ([209.85.217.176]:35490 "EHLO
-	mail-lb0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751922AbbEGCw4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 May 2015 22:52:56 -0400
-Received: by lbbuc2 with SMTP id uc2so21147147lbb.2
-        for <linux-nfs@vger.kernel.org>; Wed, 06 May 2015 19:52:55 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <CAHO5Pa0UEhOC3vqP9Nq4+gEH_OJPG6dgoLM9XbRLOfTRsRVSCw@mail.gmail.com>
-References: <1428703236-24735-1-git-send-email-zab@redhat.com> <CAHO5Pa0UEhOC3vqP9Nq4+gEH_OJPG6dgoLM9XbRLOfTRsRVSCw@mail.gmail.com>
-From: Andy Lutomirski <luto@amacapital.net>
-Date: Wed, 6 May 2015 19:52:34 -0700
-Message-ID: <CALCETrUj2EqJ7uDPbAuOGBnLycWBqqnt2Z2cAf8Pp+sgCqBhvw@mail.gmail.com>
-Subject: Re: [PATCH RFC 0/3] simple copy offloading system call
-To: Michael Kerrisk <mtk.manpages@gmail.com>
-Cc: Linux FS Devel <linux-fsdevel@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        Linux API <linux-api@vger.kernel.org>,
-        Linux SCSI List <linux-scsi@vger.kernel.org>,
-        linux-nfs@vger.kernel.org,
-        Linux btrfs Developers List <linux-btrfs@vger.kernel.org>,
-        Zach Brown <zab@redhat.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from smtp.gentoo.org ([140.211.166.183]:60201 "EHLO smtp.gentoo.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753231AbbEGHTM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 7 May 2015 03:19:12 -0400
+From: Mike Frysinger <vapier@gentoo.org>
+To: libtirpc-devel@lists.sourceforge.net
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH libtirpc] fix build w/gssapi disabled
+Date: Thu,  7 May 2015 03:19:09 -0400
+Message-Id: <1430983149-22199-1-git-send-email-vapier@gentoo.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On May 6, 2015 11:45 AM, "Michael Kerrisk" <mtk.manpages@gmail.com> wrote:
->
-> [CC += linux-api@vger.kernel.org]
->
-> Zach,
->
-> Since this is a kernel-user-space API change, please CC linux-api@.
-> The kernel source file Documentation/SubmitChecklist notes that all
-> Linux kernel patches that change userspace interfaces should be CCed
-> to linux-api@vger.kernel.org, so that the various parties who are
-> interested in API changes are informed. For further information, see
-> https://www.kernel.org/doc/man-pages/linux-api-ml.html
->
-> Thanks,
->
-> Michael
->
->
->
->
-> On Sat, Apr 11, 2015 at 12:00 AM, Zach Brown <zab@redhat.com> wrote:
-> > Hello everyone!
-> >
-> > Here's my current attempt at the most basic system call interface for
-> > offloading copying between files.  The system call and vfs function
-> > are relatively light wrappers around the file_operation method that
-> > does the heavy lifting.
-> >
-> > There was interest at LSF in getting the basic infrastructure merged
-> > before worrying about adding behavioural flags and more complicated
-> > implementations.  This series only offers a refactoring of the btrfs
-> > clone ioctl as an example of an implementation of the file
-> > copy_file_range method.
-> >
-> > I've added support for copy_file_range() to xfs_io in xfsprogs and
-> > have the start of an xfstest that tests the system call.  I'll send
-> > those to fstests@.
-> >
-> > So how does this look?
-> >
-> > Do we want to merge this and let the NFS and block XCOPY patches add
-> > their changes when they're ready?
+Starting with commit d5259e751111cb108c784b044296185f543fc0be (Add header
+definitions for rpc_gss_*() APIs), the gss headers were pulled in all the
+time leading to build failures like so:
+  CC       libtirpc_la-bindresvport.lo
+In file included from ../tirpc/rpc/svc_auth.h:44:0,
+                 from ../tirpc/rpc/rpc.h:68,
+                 from bindresvport.c:46:
+../tirpc/rpc/rpcsec_gss.h:38:27: fatal error: gssapi/gssapi.h: No such file or directory
 
-This sounds enough like splice that I'm wondering why the API isn't splice.
+Signed-off-by: Mike Frysinger <vapier@gentoo.org>
+---
+ tirpc/rpc/svc_auth.h | 6 ++++++
+ 1 file changed, 6 insertions(+)
 
---Andy
+diff --git a/tirpc/rpc/svc_auth.h b/tirpc/rpc/svc_auth.h
+index 44b38bf..998b13a 100644
+--- a/tirpc/rpc/svc_auth.h
++++ b/tirpc/rpc/svc_auth.h
+@@ -41,6 +41,8 @@
+ #ifndef _RPC_SVC_AUTH_H
+ #define _RPC_SVC_AUTH_H
+ 
++#ifdef HAVE_RPCSEC_GSS
++
+ #include <rpc/rpcsec_gss.h>
+ 
+ typedef struct {
+@@ -51,6 +53,8 @@ typedef struct {
+ 	u_int			seq_num;
+ } svc_rpc_gss_parms_t;
+ 
++#endif
++
+ /*
+  * Interface to server-side authentication flavors.
+  */
+@@ -63,8 +67,10 @@ typedef struct SVCAUTH {
+ 		int     (*svc_ah_destroy)(struct SVCAUTH *);
+ 		} *svc_ah_ops;
+ 	caddr_t svc_ah_private;
++#ifdef HAVE_RPCSEC_GSS
+ 	svc_rpc_gss_parms_t svc_gss_params;
+ 	rpc_gss_rawcred_t raw_cred;
++#endif
+ } SVCAUTH;
+ 
+ #define SVCAUTH_WRAP(auth, xdrs, xfunc, xwhere) \
+-- 
+2.4.0
+
