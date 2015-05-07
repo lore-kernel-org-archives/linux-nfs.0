@@ -1,29 +1,78 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from verein.lst.de ([213.95.11.211]:52719 "EHLO newverein.lst.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751107AbbEGHxE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 7 May 2015 03:53:04 -0400
-Date: Thu, 7 May 2015 09:53:02 +0200
-From: Christoph Hellwig <hch@lst.de>
-To: Andreas =?iso-8859-1?Q?Gr=FCnbacher?=
-	<andreas.gruenbacher@gmail.com>
-Cc: Christoph Hellwig <hch@lst.de>, "J. Bruce Fields" <bfields@fieldses.org>,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsd: Disable NFSv2 timestamp workaround for NFSv3+
-Message-ID: <20150507075302.GA23816@lst.de>
-References: <1430895024-1403-1-git-send-email-andreas.gruenbacher@gmail.com> <20150506065651.GA22454@lst.de> <CAHpGcMJe1YyCev2mza=pOCvs1pcV6M2AnX-0hVa4gdppnXassA@mail.gmail.com>
+Received: from mail-la0-f53.google.com ([209.85.215.53]:36639 "EHLO
+	mail-la0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751622AbbEGHxQ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 May 2015 03:53:16 -0400
+Received: by lagv1 with SMTP id v1so24597715lag.3
+        for <linux-nfs@vger.kernel.org>; Thu, 07 May 2015 00:53:14 -0700 (PDT)
+From: Devesh Sharma <devesh.sharma@avagotech.com>
+References: <20150504174626.3483.97639.stgit@manet.1015granger.net>
+ <20150504175700.3483.57728.stgit@manet.1015granger.net> <CANjDDBicLDb7K=RZB5Gqv+oACaAG8DANJX3ML971jnXd_5KEuQ@mail.gmail.com>
+ <963F9850-38D0-4434-88E8-14BC42F74499@oracle.com> <CANjDDBg3Ey0DEM3n9PY9VLW+chF0=AJPghYOopo1a9vL3CKzKg@mail.gmail.com>
+ <20150506164817.GC11331@obsidianresearch.com>
+In-Reply-To: <20150506164817.GC11331@obsidianresearch.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-In-Reply-To: <CAHpGcMJe1YyCev2mza=pOCvs1pcV6M2AnX-0hVa4gdppnXassA@mail.gmail.com>
+Date: Thu, 7 May 2015 13:23:13 +0530
+Message-ID: <a943c57dfa28c91f418a07a2904ef852@mail.gmail.com>
+Subject: RE: [PATCH v1 02/14] xprtrdma: Warn when there are orphaned IB objects
+To: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
+Cc: Chuck Lever <chuck.lever@oracle.com>, linux-rdma@vger.kernel.org,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, May 06, 2015 at 12:12:13PM +0200, Andreas Gr�nbacher wrote:
-> 2015-05-06 8:56 GMT+02:00 Christoph Hellwig <hch@lst.de>:
-> > How about moving the workaround into the NFSv2 specific code?
-> 
-> Not trivially, we would have to fh_verify() the file handle in
-> nfsd_proc_setattr() first. Is that preferable?
+> -----Original Message-----
+> From: Jason Gunthorpe [mailto:jgunthorpe@obsidianresearch.com]
+> Sent: Wednesday, May 06, 2015 10:18 PM
+> To: Devesh Sharma
+> Cc: Chuck Lever; linux-rdma@vger.kernel.org; Linux NFS Mailing List
+> Subject: Re: [PATCH v1 02/14] xprtrdma: Warn when there are orphaned IB
+> objects
+>
+> On Wed, May 06, 2015 at 07:52:03PM +0530, Devesh Sharma wrote:
+> > >> Should we check for EBUSY explicitly? other then this is an error
+> > >> in vendor specific ib_dealloc_pd()
+> > >
+> > > Any error return means ib_dealloc_pd() has failed, right? Doesn’t
+> > > that mean the PD is still allocated, and could cause problems later?
+> >
+> > Yes, you are correct, I was thinking ib_dealloc_pd() has a refcount
+> > implemented in the core layer, thus if the PD is used by any resource,
+> > it will always fail with -EBUSY.
+>
+> .. and it will not be freed, which indicates a serious bug in the caller,
+> so the
+> caller should respond to the failure with a BUG_ON or WARN_ON.
 
-Sounds better to me than making this workaround even more invasive
-in the core.  Bruce, what do you think?
+Yes, that’s what this patch is doing.
+
+>
+> > .With emulex adapter it is possible to fail dealloc_pd with ENOMEM or
+> > EIO in cases where device f/w is not responding etc. this situation do
+> > not represent PD is actually in use.
+>
+> This is a really bad idea. If the pd was freed and from the consumer's
+> perspective everything is sane then it should return success.
+>
+> If the driver detects an internal failure, then it should move the driver
+> to a
+> failed state (whatever that means, but at a minimum it means the firmware
+> state and driver state must be resync'd), and still succeed the dealloc.
+
+Makes sense.
+
+>
+> There is absolutely nothing the caller can do about a driver level failure
+> here,
+> and it doesn't indicate a caller bug.
+>
+> Returning ENOMEM for dealloc is what we'd call an insane API. You can't
+> have
+> failable memory allocations in a dealloc path.
+
+I will supply a fix in ocrdma.
+
+Reviewed-by: Devesh Sharma <devesh.sharma@avagotech.com>
+>
+> Jason
