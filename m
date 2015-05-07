@@ -1,26 +1,34 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:43769 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:37332 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751158AbbEGUYd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 7 May 2015 16:24:33 -0400
-Message-ID: <554BC9F3.6020005@RedHat.com>
-Date: Thu, 07 May 2015 16:24:19 -0400
+	id S1751167AbbEGU3y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 7 May 2015 16:29:54 -0400
+Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+	by mx1.redhat.com (Postfix) with ESMTPS id 0A0B53E493
+	for <linux-nfs@vger.kernel.org>; Thu,  7 May 2015 20:29:54 +0000 (UTC)
+Received: from smallhat.boston.devel.redhat.com (vpn-63-67.rdu2.redhat.com [10.10.63.67])
+	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id t47KTrA1013030
+	for <linux-nfs@vger.kernel.org>; Thu, 7 May 2015 16:29:53 -0400
+Message-ID: <554BCB2B.2010707@RedHat.com>
+Date: Thu, 07 May 2015 16:29:31 -0400
 From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-To: Thorsten Kukuk <kukuk@suse.de>
-CC: Mike Frysinger <vapier@gentoo.org>, libtirpc-devel@lists.sourceforge.net,
-        linux-nfs@vger.kernel.org
-Subject: [PATCH V2] Fix Build w/gssapi disabled
-References: <1430983149-22199-1-git-send-email-vapier@gentoo.org> <20150507115248.GA20243@suse.de> <554B86E2.8090908@RedHat.com> <20150507163326.GA6156@suse.de> <554B98E9.4040601@RedHat.com> <20150507181206.GA7810@suse.de> <554BC53C.5080807@RedHat.com> <554BC730.3000004@RedHat.com>
-In-Reply-To: <554BC730.3000004@RedHat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Linux NFS town hall  meeting  Next Week  (Cancelled)
 Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This version seems to work now.
+Hello,
 
-I wonder if this warrants a 0.3.1 release...
+I'll be on PTO all next week... 
 
-How do other library deal with API breakage?   
+I wonder if it makes sense to move this
+meeting from bi-weekly to once a month,
+since that's basically what has been 
+happening over the last few months.
+
+thoughts?
 
 steved.
+
