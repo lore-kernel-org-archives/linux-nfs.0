@@ -1,89 +1,72 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ie0-f175.google.com ([209.85.223.175]:34601 "EHLO
-	mail-ie0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751053AbbEGRE7 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 May 2015 13:04:59 -0400
-Received: by iedfl3 with SMTP id fl3so49634472ied.1
-        for <linux-nfs@vger.kernel.org>; Thu, 07 May 2015 10:04:58 -0700 (PDT)
+Received: from cantor2.suse.de ([195.135.220.15]:40569 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751279AbbEGSMI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 7 May 2015 14:12:08 -0400
+Date: Thu, 7 May 2015 20:12:06 +0200
+From: Thorsten Kukuk <kukuk@suse.de>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: Mike Frysinger <vapier@gentoo.org>, libtirpc-devel@lists.sourceforge.net,
+        linux-nfs@vger.kernel.org
+Subject: Re: [Libtirpc-devel] [PATCH libtirpc] fix build w/gssapi disabled
+Message-ID: <20150507181206.GA7810@suse.de>
+References: <1430983149-22199-1-git-send-email-vapier@gentoo.org>
+ <20150507115248.GA20243@suse.de>
+ <554B86E2.8090908@RedHat.com>
+ <20150507163326.GA6156@suse.de>
+ <554B98E9.4040601@RedHat.com>
 MIME-Version: 1.0
-Date: Thu, 7 May 2015 13:04:58 -0400
-Message-ID: <CAN-5tyG8ukoGJATK1RA85xv9BDikfC1CPP0nc=-80h=BSGV6=w@mail.gmail.com>
-Subject: 4.0 NFS client in infinite loop in state recovery after getting BAD_STATEID
-From: Olga Kornievskaia <aglo@umich.edu>
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=iso-8859-1
+In-Reply-To: <554B98E9.4040601@RedHat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi folks,
+On Thu, May 07, Steve Dickson wrote:
 
-Problem:
-The upstream nfs4.0 client has problem where it will go into an
-infinite loop of re-sending an OPEN when it's trying to recover from
-receiving a BAD_STATEID error on an IO operation such READ or WRITE.
+> On 05/07/2015 12:33 PM, Thorsten Kukuk wrote:
+> >>> > > Else here is my patch:
+> >> > Is this patch addition to Mike's patch?
+> > No, replacing it except the struct part.
+> So this is the complete patch..... 
+> 
+> Look reasonable??
 
-How to easily reproduce (by using fault injection):
-1. Do nfs4.0 mount to a server.
-2. Open a file such that the server gives you a write delegation.
-3. Do a write. Have a server return a BAD_STATEID. One way to do so is
-by using a python proxy, nfs4proxy, and inject BAD_STATEID error on
-WRITE.
-4. And off it goes with the loop.
+Some corrections:
 
-Here’s why….
+> diff --git a/tirpc/rpc/svc_auth.h b/tirpc/rpc/svc_auth.h
+> index 44b38bf..4b9b0f1 100644
+> --- a/tirpc/rpc/svc_auth.h
+> +++ b/tirpc/rpc/svc_auth.h
 
-IO op like WRITE receives a BAD_STATEID.
-1. for this error, in async handle error we  call
-nfs4_schedule_stateid_recover()
-2. that in turn will call nfs4_state_mark_reclaim_nograce() that will
-set a RECLAIM_NOGRACE in the state flags.
-3. state manager thread will run and call nfs4_do_reclaim() to recover.
-4. that will call nfs4_reclaim_open_state()
+> @@ -63,8 +69,10 @@ typedef struct SVCAUTH {
+>  		int     (*svc_ah_destroy)(struct SVCAUTH *);
+>  		} *svc_ah_ops;
+>  	caddr_t svc_ah_private;
+> +#ifdef HAVE_RPCSEC_GSS
+>  	svc_rpc_gss_parms_t svc_gss_params;
+>  	rpc_gss_rawcred_t raw_cred;
+> +#endif
+>  } SVCAUTH;
+>  
 
-in that function:
+This needs to be "#ifdef HAVE_GSSAPI", HAVE_RPCSEC_GSS
+will never be defined if the header is used outside of
+libtirpc sources
 
-restart:
-for open states in state
-test if RECLAIM_NOGRACE is set in state flags, if so clear it (it’s
-set and we’ll clear it)
-check open_stateid (checks if RECOVERY_FAILED is not set) (it’s not)
-checks if we have state
-calls ops->recover_open()
+> diff --git a/tirpc/tirpc-features.h b/tirpc/tirpc-features.h
+> new file mode 100644
+> index 0000000..7aec775
+> --- /dev/null
+> +++ b/tirpc/tirpc-features.h
 
-for nfs4.0, it’ll call nfs40_open_expired()
-it’ll call nfs40_clear_delegation_stateid()
-it’ll call nfs_finish_clear_delegation_stateid()
-it’ll call nfs_remove_bad_delegation()
-it’ll call nfs_inode_find_state_and_recover()
-it’ll call nfs4_state_mark_reclaim_nograce() **** this will set
-RECLAIM_NOGRACE in state flags
 
-we return from recover_open() with status 0
-call nfs4_reclaim_locks() returns 0 then
-goto restart; **************  what happens is since we reset the flag
-in the state flags the whole loop starts again.
+You should not tirpc/tirpc-features.h, only tirpc/tirpc-features.h.in
+tirpc/tirpc-features.h will be created by configure, like libtirpc.pc
+and config.h.
 
-Solution:
-nfs_remove_bad_delegation() is only called from
-nfs_finish_clear_delegation_stateid() which is called from either 4.0
-or 4.1 recover open functions in nograce case. In both cases, this is
-already state manager doing recovery based on the RECLAIM_NOGRACE flag
-set and it's going thru opens that need to be recovered.
+  Thorsten
 
-I propose to correct the loop by removing the call:
-diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
-index 4711d04..b322823 100644
---- a/fs/nfs/delegation.c
-+++ b/fs/nfs/delegation.c
-@@ -632,10 +632,8 @@ void nfs_remove_bad_delegation(struct inode *inode)
-
-        nfs_revoke_delegation(inode);
-        delegation = nfs_inode_detach_delegation(inode);
--       if (delegation) {
--               nfs_inode_find_state_and_recover(inode, &delegation->stateid);
-+       if (delegation)
-                nfs_free_delegation(delegation);
--       }
- }
- EXPORT_SYMBOL_GPL(nfs_remove_bad_delegation);
+-- 
+Thorsten Kukuk, Senior Architect SLES & Common Code Base
+SUSE LINUX GmbH, Maxfeldstr. 5, 90409 Nuernberg, Germany
+GF: Felix Imend�rffer, Jane Smithard, Jennifer Guild, Dilip Upmanyu, Graham Norton, HRB 21284 (AG N�rnberg)
