@@ -1,93 +1,81 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp-o-3.desy.de ([131.169.56.156]:53419 "EHLO smtp-o-3.desy.de"
+Received: from fieldses.org ([173.255.197.46]:49201 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751570AbbEHNNQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 8 May 2015 09:13:16 -0400
-Received: from smtp-map-3.desy.de (smtp-map-3.desy.de [131.169.56.68])
-	by smtp-o-3.desy.de (DESY-O-3) with ESMTP id 9D8DA280897
-	for <linux-nfs@vger.kernel.org>; Fri,  8 May 2015 15:13:14 +0200 (CEST)
-Received: from ZITSWEEP4.win.desy.de (zitsweep4.win.desy.de [131.169.97.98])
-	by smtp-map-3.desy.de (DESY_MAP_3) with ESMTP id 91D4F14D4
-	for <linux-nfs@vger.kernel.org>; Fri,  8 May 2015 15:13:14 +0200 (MEST)
-Date: Fri, 8 May 2015 15:13:13 +0200 (CEST)
-From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
-To: Benjamin Coddington <bcodding@redhat.com>
-Cc: Olga Kornievskaia <aglo@umich.edu>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>
-Message-ID: <418948160.1602341.1431090793667.JavaMail.zimbra@desy.de>
-In-Reply-To: <alpine.OSX.2.19.9992.1505080906070.656@planck.local>
-References: <CAN-5tyG8ukoGJATK1RA85xv9BDikfC1CPP0nc=-80h=BSGV6=w@mail.gmail.com> <110354172.1516782.1431074928783.JavaMail.zimbra@desy.de> <alpine.OSX.2.19.9992.1505080824560.656@planck.local> <752919938.1601268.1431090048609.JavaMail.zimbra@desy.de> <alpine.OSX.2.19.9992.1505080906070.656@planck.local>
-Subject: Re: 4.0 NFS client in infinite loop in state recovery after getting
- BAD_STATEID
+	id S1752781AbbEHNrp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 8 May 2015 09:47:45 -0400
+Date: Fri, 8 May 2015 09:47:44 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: NeilBrown <neilb@suse.de>
+Cc: Kinglong Mee <kinglongmee@gmail.com>, linux-fsdevel@vger.kernel.org,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Al Viro <viro@zeniv.linux.org.uk>,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: Re: [PATCH 4/4] nfsd: Pin to vfsmnt instead of mntget
+Message-ID: <20150508134744.GA23753@fieldses.org>
+References: <554A149B.5060102@gmail.com>
+ <554A154B.6040103@gmail.com>
+ <20150508144031.6f0d3cda@notabene.brown>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20150508144031.6f0d3cda@notabene.brown>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-No, Olga's case includes delegation, which our server does not supports.
-
-Tigran.
-
------ Original Message -----
-> From: "Benjamin Coddington" <bcodding@redhat.com>
-> To: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
-> Cc: "Olga Kornievskaia" <aglo@umich.edu>, "Trond Myklebust" <trond.myklebust@primarydata.com>, "linux-nfs"
-> <linux-nfs@vger.kernel.org>
-> Sent: Friday, May 8, 2015 3:08:03 PM
-> Subject: Re: 4.0 NFS client in infinite loop in state recovery after getting BAD_STATEID
-
-> Yes, I've done that, and the client's behavior correctly cycles through
-> OPEN, then READ with the new stateid.  Are you able to create what Olga's
-> talking about -- which is (I believe) a loop of just OPENs?
+On Fri, May 08, 2015 at 02:40:31PM +1000, NeilBrown wrote:
+> Thanks for this patch.  It looks good!
 > 
-> Ben
+> My only comment on the code is that I would really like to see a
+> "path_get_pin()" and "path_put_unpin()" rather than open coding:
 > 
-> On Fri, 8 May 2015, Mkrtchyan, Tigran wrote:
+> > +	dget(item->ek_path.dentry);
+> > +	pin_insert_group(&new->ek_pin, item->ek_path.mnt, NULL);
 > 
->> Hi Ben,
->>
->> probably you can simulate, as Olga has suggested, with fault injection.
->> I can I can prepare a snadalone version of your server, which returns
->> BAD_STATEID on any IO request.
->>
->> Tigran.
->>
->> ----- Original Message -----
->> > From: "Benjamin Coddington" <bcodding@redhat.com>
->> > To: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
->> > Cc: "Olga Kornievskaia" <aglo@umich.edu>, "Trond Myklebust"
->> > <trond.myklebust@primarydata.com>, "linux-nfs"
->> > <linux-nfs@vger.kernel.org>
->> > Sent: Friday, May 8, 2015 2:25:19 PM
->> > Subject: Re: 4.0 NFS client in infinite loop in state recovery after getting
->> > BAD_STATEID
->>
->> > On Fri, 8 May 2015, Mkrtchyan, Tigran wrote:
->> >
->> >> Hi Olga,
->> >>
->> >> I believe we see the same infinite loop without delegation with RHEL6/7
->> >> kernels, but without delegation being involved. Currently, on the server
->> >> side, if client looping is detected, we return RESOURCE. This breaks the
->> >> loop and application gets an IO error.
->> >>
->> >> Your fix is only covers the delegation case isn't it?
->> >>
->> >> Tigran.
->> >
->> > Tigran, do you have a BZ or can you tell me how to reproduce this?
->> >
->> > Ben
->> > --
->> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> > the body of a message to majordomo@vger.kernel.org
->> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> and 
+> 
+> > +		dput(key->ek_path.dentry);
+> > +		pin_remove(&key->ek_pin);
+> 
+> 
+> But the question you raise is an important one:  Exactly which filesystems
+> should be allowed to be unmounted?
+> This is a change in behaviour - is it one that people uniformly would want?
+> 
+> The kernel doesn't currently know which file systems were explicitly listed
+> in /etc/exports, and which were found by following a 'crossmnt'.
+> It could guess and allow the unmounting of anything below a 'crossmnt', but I
+> wouldn't be comfortable with that - it is error prone.
+> 
+> mountd does know what is in /etc/exports, and could tell the kernel.
+> For the expkey cache, we could always use path_get_pin.
+> For the export cache (where flags are available) we could use path_get
+> or path_get_pin depending on some new flag.
+> 
+> I'm not really sure it is worth it.  I would rather the filesystems could
+> always be unmounted.  But doing that could possibly break someone's work
+> flow.  Maybe.
+> 
+> Or maybe I'm seeing problems where there aren't any.
+> 
+> Anyone else have an opinion?
+
+The undisputed bug here was negative cache entries preventing unmount.
+So most conservative might be just to purge negative entries.
+
+Otherwise, the only guarantees I think we've really had is that we won't
+allow unmount if you hold any actual state on the filesystem (NLM locks,
+NFSv4 locks, opens, or delegations).
+
+If a filesystem is exported but no clients hold state on it, then it's
+currently mostly chance whether the unmount succeeds or not.  So we're
+probably free to change the behavior in this case.  I'd be inclined to
+allow the unmount, but haven't thought this through carefully.
+
+It could also be useful to have the ability to force an unmount even in
+the presence of locks.  That's not a safe default, but an
+"allow_force_unmount" export option might be useful.
+
+We might similarly be able to add some way for the kernel to distinguish
+explicit exports from crossmnt-found exports, but I'm not seeing the use
+case for that.
+
+--b.
