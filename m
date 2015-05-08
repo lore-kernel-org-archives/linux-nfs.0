@@ -1,76 +1,155 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:56312 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752981AbbEHWeO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 8 May 2015 18:34:14 -0400
-Date: Sat, 9 May 2015 00:34:12 +0200
-From: Thorsten Kukuk <kukuk@suse.de>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: libtirpc-devel@lists.sourceforge.net, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH V2] Fix Build w/gssapi disabled
-Message-ID: <20150508223412.GA14634@suse.de>
-References: <554B86E2.8090908@RedHat.com>
- <20150507163326.GA6156@suse.de>
- <554B98E9.4040601@RedHat.com>
- <20150507181206.GA7810@suse.de>
- <554BC53C.5080807@RedHat.com>
- <554BC730.3000004@RedHat.com>
- <554BC9F3.6020005@RedHat.com>
- <20150508020322.GF30924@vapier>
- <20150508081717.GA16376@suse.de>
- <554D2A4B.6040307@RedHat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-In-Reply-To: <554D2A4B.6040307@RedHat.com>
+Received: from mail-wi0-f171.google.com ([209.85.212.171]:35348 "EHLO
+	mail-wi0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751536AbbEHWi1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 May 2015 18:38:27 -0400
+Received: by widdi4 with SMTP id di4so45487847wid.0
+        for <linux-nfs@vger.kernel.org>; Fri, 08 May 2015 15:38:25 -0700 (PDT)
+From: Andreas Gruenbacher <andreas.gruenbacher@gmail.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
+        Christoph Hellwig <hch@lst.de>
+Cc: Andreas Gruenbacher <agruenba@redhat.com>
+Subject: [PATCH v2] nfsd: Disable NFSv2 timestamp workaround for NFSv3+
+Date: Sat,  9 May 2015 00:37:57 +0200
+Message-Id: <1431124677-13388-1-git-send-email-andreas.gruenbacher@gmail.com>
+In-Reply-To: <20150507140814.GF27106@fieldses.org>
+References: <20150507140814.GF27106@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, May 08, Steve Dickson wrote:
+NFSv2 can set the atime and/or mtime of a file to specific timestamps but not
+to the server's current time.  To implement the equivalent of utimes("file",
+NULL), it uses a heuristic.
 
-> Hello Thorsten,
-> 
-> On 05/08/2015 04:17 AM, Thorsten Kukuk wrote:
-> > On Thu, May 07, Mike Frysinger wrote:
-> > 
-> >> it is dangerous to export raw HAVE_xxx defines -- it can break packages that
-> >> use autotools themselves.  they need an appropriate prefix like RPC_xxx or
-> >> TIRPC_xxx.
-> > 
-> > 
-> > For this and to solve the different size of the struct, I created
-> > a new patch on top of current git. I only had to rearange the structs
-> > a little bit, since they don't use any kerberos specific variables,
-> > only standard C:
-> I applied the following patch to the top of the git tree
-> then I yum remove krb5-devel (which removes gssapi/gssapi.h)
-> 
-> After an 'sh autogen.sh' and ./configure --disable-gssapi 
-> I'm getting the following compile errors 
->   http://ur1.ca/kbq67
-> because gssapi.h does not exist.. 
->    
-> What am I doing wrong??
+NFSv3 and later do support setting the atime and/or mtime to the server's
+current time directly.  The NFSv2 heuristic is still enabled, and causes
+timestamps to be set wrong sometimes.
 
-Sorry, somehow my patch was incomplete, this part did go 
-missing:
+Fix this by moving the heuristic into the NFSv2 specific code.  We can leave it
+out of the create code path: the owner can always set timestamps arbitrarily,
+and the workaround would never trigger.
 
-diff --git a/tirpc/rpc/rpcsec_gss.h b/tirpc/rpc/rpcsec_gss.h
-index 217fc0d..f02de8a 100644
---- a/tirpc/rpc/rpcsec_gss.h
-+++ b/tirpc/rpc/rpcsec_gss.h
-@@ -35,8 +35,6 @@
- #include <rpc/auth.h>
- #include <rpc/clnt.h>
+Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
+---
+ fs/nfsd/nfsproc.c | 52 ++++++++++++++++++++++++++++++++++++++++++++++++++--
+ fs/nfsd/vfs.c     | 36 ------------------------------------
+ 2 files changed, 50 insertions(+), 38 deletions(-)
+
+diff --git a/fs/nfsd/nfsproc.c b/fs/nfsd/nfsproc.c
+index aecbcd3..4cd78ef 100644
+--- a/fs/nfsd/nfsproc.c
++++ b/fs/nfsd/nfsproc.c
+@@ -59,13 +59,61 @@ static __be32
+ nfsd_proc_setattr(struct svc_rqst *rqstp, struct nfsd_sattrargs *argp,
+ 					  struct nfsd_attrstat  *resp)
+ {
++	struct iattr *iap = &argp->attrs;
++	struct svc_fh *fhp;
+ 	__be32 nfserr;
++
+ 	dprintk("nfsd: SETATTR  %s, valid=%x, size=%ld\n",
+ 		SVCFH_fmt(&argp->fh),
+ 		argp->attrs.ia_valid, (long) argp->attrs.ia_size);
  
--#include <gssapi/gssapi.h>
+-	fh_copy(&resp->fh, &argp->fh);
+-	nfserr = nfsd_setattr(rqstp, &resp->fh, &argp->attrs,0, (time_t)0);
++	fhp = fh_copy(&resp->fh, &argp->fh);
++
++	/*
++	 * NFSv2 does not differentiate between "set-[ac]time-to-now"
++	 * which only requires access, and "set-[ac]time-to-X" which
++	 * requires ownership.
++	 * So if it looks like it might be "set both to the same time which
++	 * is close to now", and if inode_change_ok fails, then we
++	 * convert to "set to now" instead of "set to explicit time"
++	 *
++	 * We only call inode_change_ok as the last test as technically
++	 * it is not an interface that we should be using.
++	 */
++#define BOTH_TIME_SET (ATTR_ATIME_SET | ATTR_MTIME_SET)
++#define	MAX_TOUCH_TIME_ERROR (30*60)
++	if ((iap->ia_valid & BOTH_TIME_SET) == BOTH_TIME_SET &&
++	    iap->ia_mtime.tv_sec == iap->ia_atime.tv_sec) {
++		/*
++		 * Looks probable.
++		 *
++		 * Now just make sure time is in the right ballpark.
++		 * Solaris, at least, doesn't seem to care what the time
++		 * request is.  We require it be within 30 minutes of now.
++		 */
++		time_t delta = iap->ia_atime.tv_sec - get_seconds();
++		struct inode *inode;
++
++		nfserr = fh_verify(rqstp, fhp, 0, NFSD_MAY_NOP);
++		if (nfserr)
++			goto done;
++		inode = d_inode(fhp->fh_dentry);
++
++		if (delta < 0)
++			delta = -delta;
++		if (delta < MAX_TOUCH_TIME_ERROR &&
++		    inode_change_ok(inode, iap) != 0) {
++			/*
++			 * Turn off ATTR_[AM]TIME_SET but leave ATTR_[AM]TIME.
++			 * This will cause notify_change to set these times
++			 * to "now"
++			 */
++			iap->ia_valid &= ~BOTH_TIME_SET;
++		}
++	}
++
++	nfserr = nfsd_setattr(rqstp, fhp, iap, 0, (time_t)0);
++done:
+ 	return nfsd_return_attrs(nfserr, resp);
+ }
+ 
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index 84d770b..92de374 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -302,42 +302,6 @@ commit_metadata(struct svc_fh *fhp)
+ static void
+ nfsd_sanitize_attrs(struct inode *inode, struct iattr *iap)
+ {
+-	/*
+-	 * NFSv2 does not differentiate between "set-[ac]time-to-now"
+-	 * which only requires access, and "set-[ac]time-to-X" which
+-	 * requires ownership.
+-	 * So if it looks like it might be "set both to the same time which
+-	 * is close to now", and if inode_change_ok fails, then we
+-	 * convert to "set to now" instead of "set to explicit time"
+-	 *
+-	 * We only call inode_change_ok as the last test as technically
+-	 * it is not an interface that we should be using.
+-	 */
+-#define BOTH_TIME_SET (ATTR_ATIME_SET | ATTR_MTIME_SET)
+-#define	MAX_TOUCH_TIME_ERROR (30*60)
+-	if ((iap->ia_valid & BOTH_TIME_SET) == BOTH_TIME_SET &&
+-	    iap->ia_mtime.tv_sec == iap->ia_atime.tv_sec) {
+-		/*
+-		 * Looks probable.
+-		 *
+-		 * Now just make sure time is in the right ballpark.
+-		 * Solaris, at least, doesn't seem to care what the time
+-		 * request is.  We require it be within 30 minutes of now.
+-		 */
+-		time_t delta = iap->ia_atime.tv_sec - get_seconds();
+-		if (delta < 0)
+-			delta = -delta;
+-		if (delta < MAX_TOUCH_TIME_ERROR &&
+-		    inode_change_ok(inode, iap) != 0) {
+-			/*
+-			 * Turn off ATTR_[AM]TIME_SET but leave ATTR_[AM]TIME.
+-			 * This will cause notify_change to set these times
+-			 * to "now"
+-			 */
+-			iap->ia_valid &= ~BOTH_TIME_SET;
+-		}
+-	}
 -
- typedef enum {
-        rpcsec_gss_svc_default  = 0,
-        rpcsec_gss_svc_none     = 1,
-
-
-
+ 	/* sanitize the mode change */
+ 	if (iap->ia_valid & ATTR_MODE) {
+ 		iap->ia_mode &= S_IALLUGO;
 -- 
-Thorsten Kukuk, Senior Architect SLES & Common Code Base
-SUSE LINUX GmbH, Maxfeldstr. 5, 90409 Nuernberg, Germany
-GF: Felix Imendörffer, Jane Smithard, Dilip Upmanyu, Graham Norton, HRB 21284 (AG Nürnberg)
+2.1.0
+
