@@ -1,60 +1,70 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pd0-f169.google.com ([209.85.192.169]:34253 "EHLO
-	mail-pd0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751398AbbEHAXX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 May 2015 20:23:23 -0400
-Received: by pdbqa5 with SMTP id qa5so55242322pdb.1
-        for <linux-nfs@vger.kernel.org>; Thu, 07 May 2015 17:23:23 -0700 (PDT)
-Message-ID: <554C01F4.2060003@gmail.com>
-Date: Fri, 08 May 2015 08:23:16 +0800
+Received: from mail-pa0-f51.google.com ([209.85.220.51]:36535 "EHLO
+	mail-pa0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751122AbbEHAgT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 May 2015 20:36:19 -0400
+Message-ID: <554C04FB.10802@gmail.com>
+Date: Fri, 08 May 2015 08:36:11 +0800
 From: Kinglong Mee <kinglongmee@gmail.com>
 MIME-Version: 1.0
-To: Steve Dickson <SteveD@redhat.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Eino Juhani Oltedal <e.j.oltedal@fys.uio.no>, kinglongmee@gmail.com
-Subject: Re: [PATCH 3/3] osd_login: add --disable-osdlogin for configure osd_login
-References: <552E8FE8.1070601@gmail.com> <554B73D8.40007@RedHat.com> <554B7DED.2000403@gmail.com> <554B834A.5030405@RedHat.com>
-In-Reply-To: <554B834A.5030405@RedHat.com>
-Content-Type: text/plain; charset=utf-8
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Al Viro <viro@zeniv.linux.org.uk>, linux-fsdevel@vger.kernel.org,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        NeilBrown <neilb@suse.de>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        kinglongmee@gmail.com
+Subject: Re: [PATCH 1/4] fs_pin: Fix uninitialized value in fs_pin
+References: <554A149B.5060102@gmail.com> <554A14DB.1020504@gmail.com> <20150507194335.GA16527@fieldses.org>
+In-Reply-To: <20150507194335.GA16527@fieldses.org>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On 5/7/2015 11:22 PM, Steve Dickson wrote:
-> Hello,
+On 5/8/2015 3:43 AM, J. Bruce Fields wrote:
+> On Wed, May 06, 2015 at 09:19:23PM +0800, Kinglong Mee wrote:
+>> Without initialized, done in fs_pin at stack space may
+>> contains strange value.
 > 
-> On 05/07/2015 10:59 AM, Kinglong Mee wrote:
->> Miss updating of utils/Makefile.am in your tree.
+> Looks like both init_fs_pin callers use some variation on kzalloc(), so
+> I don't think there's any actual bug here.
+
+Yes, you are right.
+
+But nfsd's export cache using kmalloc for memory allocating,
+if I insert a fs_pin into svc_export{}, the value of done maybe
+strange value.
+
+Maybe I should update using kzalloc in nfsd?
+But I'd like this one.
+
+thanks,
+Kinglong Mee
+
+> 
+> Maybe there's some other reason for the belt-and-suspenders approach,
+> that's Al's call, I think.
+> 
+> --b.
+> 
 >>
->> http://git.linux-nfs.org/?p=steved/nfs-utils.git;a=commitdiff;h=3e28fe73af023bf42e0d654146bfb9314b4d8438
-> Are you saying something is missing??
-
-Yes,
-the old patch also update utils/Makefile.am, 
-otherwise adding --enable-osdlogin is useless.
-
-
-diff --git a/utils/Makefile.am b/utils/Makefile.am
-index b892dc8..6dd4a57 100644
---- a/utils/Makefile.am
-+++ b/utils/Makefile.am
-@@ -25,6 +25,10 @@ if CONFIG_NFSDCLTRACK
- OPTDIRS += nfsdcltrack
- endif
- 
-+if CONFIG_OSD_LOGIN
-+OPTDIRS += osd_login
-+endif
-+
- SUBDIRS = \
- 	exportfs \
- 	mountd \
-@@ -32,7 +36,6 @@ SUBDIRS = \
- 	nfsstat \
- 	showmount \
- 	statd \
--	osd_login \
- 	$(OPTDIRS)
- 
- MAINTAINERCLEANFILES = Makefile.in
--- 2.3.5 
+>> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+>> ---
+>>  include/linux/fs_pin.h | 1 +
+>>  1 file changed, 1 insertion(+)
+>>
+>> diff --git a/include/linux/fs_pin.h b/include/linux/fs_pin.h
+>> index 3886b3b..18fad53 100644
+>> --- a/include/linux/fs_pin.h
+>> +++ b/include/linux/fs_pin.h
+>> @@ -16,6 +16,7 @@ static inline void init_fs_pin(struct fs_pin *p, void (*kill)(struct fs_pin *))
+>>  	INIT_HLIST_NODE(&p->s_list);
+>>  	INIT_HLIST_NODE(&p->m_list);
+>>  	p->kill = kill;
+>> +	p->done = 0;
+>>  }
+>>  
+>>  void pin_remove(struct fs_pin *);
+>> -- 
+>> 2.4.0
+>>
+> 
