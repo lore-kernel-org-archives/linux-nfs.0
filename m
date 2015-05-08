@@ -1,82 +1,105 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:58823 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752679AbbEHPPG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 8 May 2015 11:15:06 -0400
-Date: Fri, 8 May 2015 11:14:59 -0400
-From: Scott Mayhew <smayhew@redhat.com>
-To: NeilBrown <neilb@suse.de>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] NFS: report more appropriate block size for directories.
-Message-ID: <20150508151459.GA63078@tonberry.usersys.redhat.com>
-References: <20150508131040.140bf570@notabene.brown>
+Return-Path: <olga.kornievskaia@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20150508131040.140bf570@notabene.brown>
-Sender: linux-nfs-owner@vger.kernel.org
+Sender: olga.kornievskaia@gmail.com
+In-Reply-To: <418948160.1602341.1431090793667.JavaMail.zimbra@desy.de>
+References: <CAN-5tyG8ukoGJATK1RA85xv9BDikfC1CPP0nc=-80h=BSGV6=w@mail.gmail.com>
+	<110354172.1516782.1431074928783.JavaMail.zimbra@desy.de>
+	<alpine.OSX.2.19.9992.1505080824560.656@planck.local>
+	<752919938.1601268.1431090048609.JavaMail.zimbra@desy.de>
+	<alpine.OSX.2.19.9992.1505080906070.656@planck.local>
+	<418948160.1602341.1431090793667.JavaMail.zimbra@desy.de>
+Date: Fri, 8 May 2015 11:18:09 -0400
+Message-ID: <CAN-5tyHBPU8Hd0L+Ubf6GfoGK+LQ+Smf7tChr-o2-kb=kysQDA@mail.gmail.com>
+Subject: Re: 4.0 NFS client in infinite loop in state recovery after getting BAD_STATEID
+From: Olga Kornievskaia <aglo@umich.edu>
+To: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+Cc: Benjamin Coddington <bcodding@redhat.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 08 May 2015, NeilBrown wrote:
+Hi Tigran,
 
-> 
-> In glibc 2.21 (and several previous), a call to opendir() will
-> result in a 32K (BUFSIZ*4) buffer being allocated and passed to
-> getdents.
-> 
-> However a call to fdopendir() results in an 'fstat' request to
-> determine block size and a matching buffer allocated for subsequent
-> use with getdents.  This will typically be 1M.
-> 
-> The first getdents call on an NFS directory will always use
-> READDIR_PLUS (or NFSv4 equivalent) if available.  Subsequent getdents
-> calls only use this more expensive version if some 'stat' requests are
-> made between the getdents calls.
-> 
-> For this reason it is good to keep at least that first getdents call
-> relatively short.  When fdopendir() and readdir() is used on a large
-> directory, it takes approximately 32 times as long to complete as
-> using "opendir".  Current versions of 'find' use fdopendir() and
-> demonstrate this slowness.
-> 
-> 'stat' on a directory currently returns the 'wsize'.  This number has
-> no meaning on directories.
-> Actual READDIR requests are limited to ->dtsize, which itself is
-> capped at 4 pages, coincidently the same as BUFSIZ*4.
-> So this is a meaningful number to use as the blocksize on directories,
-> and has the effect of making 'find' on large directories go a lot
-> faster.
+I think you are hitting something else as mine is as you mentioned has
+to do with delegation. Also, RHEL6.6 code is very different from
+RHEL7.1 (or upstream). I haven't tested my test case on RHEL6.6 but
+just looking at it, I don't think it has the same OPEN loop problem.
 
-Would it make sense to do something similar for regular files too?
-fopen() does a similar buffer allocation unless the application
-overrides the buffer size via setbuffer()/setvbuf().  That can then
-result in fseek() reading a lot of unnecessary data over the wire.
+Ben,
 
-Prior to commit ba52de1 (inode-diet: Eliminate i_blksize from the inode
-structure), a stat() over nfs would return the page size in st_blksize,
-and for some workloads it does make a difference.  For instance, I have
-a customer running gdb in an diskless environment.  On a stock kernel
-where a stat() over nfs returns the wsize in st_blksize, their job takes
-~19 minutes... on a test kernel where a stat() over nfs returns the page
-size instead, that same job takes ~13 minutes.  I hadn't sent a patch
-yet because I'm still trying to account for a few extra minutes of
-run time elsewhere...
+I didn't include this in my original message but we do have BZ open
+for the problem by Jorge Mora,
+Bug 1219184:
+Infinite OPEN loop on NFSv4.0 when I/O receives NFS4ERR_BAD_STATEID
 
--Scott
-> 
-> Signed-off-by: NeilBrown <neilb@suse.de>
-> 
-> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-> index 96f2d55781fb..f8aebf59383f 100644
-> --- a/fs/nfs/inode.c
-> +++ b/fs/nfs/inode.c
-> @@ -678,6 +678,8 @@ int nfs_getattr(struct vfsmount *mnt, struct dentry *dentry, struct kstat *stat)
->  	if (!err) {
->  		generic_fillattr(inode, stat);
->  		stat->ino = nfs_compat_user_ino64(NFS_FILEID(inode));
-> +		if (S_ISDIR(inode->i_mode))
-> +			stat->blksize = NFS_SERVER(inode)->dtsize;
->  	}
->  out:
->  	trace_nfs_getattr_exit(inode, err);
+https://bugzilla.redhat.com/show_bug.cgi?id=1219184
+
+On Fri, May 8, 2015 at 9:13 AM, Mkrtchyan, Tigran
+<tigran.mkrtchyan@desy.de> wrote:
+> No, Olga's case includes delegation, which our server does not supports.
+>
+> Tigran.
+>
+> ----- Original Message -----
+>> From: "Benjamin Coddington" <bcodding@redhat.com>
+>> To: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+>> Cc: "Olga Kornievskaia" <aglo@umich.edu>, "Trond Myklebust" <trond.myklebust@primarydata.com>, "linux-nfs"
+>> <linux-nfs@vger.kernel.org>
+>> Sent: Friday, May 8, 2015 3:08:03 PM
+>> Subject: Re: 4.0 NFS client in infinite loop in state recovery after getting BAD_STATEID
+>
+>> Yes, I've done that, and the client's behavior correctly cycles through
+>> OPEN, then READ with the new stateid.  Are you able to create what Olga's
+>> talking about -- which is (I believe) a loop of just OPENs?
+>>
+>> Ben
+>>
+>> On Fri, 8 May 2015, Mkrtchyan, Tigran wrote:
+>>
+>>> Hi Ben,
+>>>
+>>> probably you can simulate, as Olga has suggested, with fault injection.
+>>> I can I can prepare a snadalone version of your server, which returns
+>>> BAD_STATEID on any IO request.
+>>>
+>>> Tigran.
+>>>
+>>> ----- Original Message -----
+>>> > From: "Benjamin Coddington" <bcodding@redhat.com>
+>>> > To: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+>>> > Cc: "Olga Kornievskaia" <aglo@umich.edu>, "Trond Myklebust"
+>>> > <trond.myklebust@primarydata.com>, "linux-nfs"
+>>> > <linux-nfs@vger.kernel.org>
+>>> > Sent: Friday, May 8, 2015 2:25:19 PM
+>>> > Subject: Re: 4.0 NFS client in infinite loop in state recovery after getting
+>>> > BAD_STATEID
+>>>
+>>> > On Fri, 8 May 2015, Mkrtchyan, Tigran wrote:
+>>> >
+>>> >> Hi Olga,
+>>> >>
+>>> >> I believe we see the same infinite loop without delegation with RHEL6/7
+>>> >> kernels, but without delegation being involved. Currently, on the server
+>>> >> side, if client looping is detected, we return RESOURCE. This breaks the
+>>> >> loop and application gets an IO error.
+>>> >>
+>>> >> Your fix is only covers the delegation case isn't it?
+>>> >>
+>>> >> Tigran.
+>>> >
+>>> > Tigran, do you have a BZ or can you tell me how to reproduce this?
+>>> >
+>>> > Ben
+>>> > --
+>>> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> > the body of a message to majordomo@vger.kernel.org
+>>> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
