@@ -1,76 +1,90 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.gentoo.org ([140.211.166.183]:54407 "EHLO smtp.gentoo.org"
+Received: from cantor2.suse.de ([195.135.220.15]:60070 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750995AbbEHCDX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 7 May 2015 22:03:23 -0400
-Date: Thu, 7 May 2015 22:03:22 -0400
-From: Mike Frysinger <vapier@gentoo.org>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: Thorsten Kukuk <kukuk@suse.de>, libtirpc-devel@lists.sourceforge.net,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH V2] Fix Build w/gssapi disabled
-Message-ID: <20150508020322.GF30924@vapier>
-References: <1430983149-22199-1-git-send-email-vapier@gentoo.org>
- <20150507115248.GA20243@suse.de>
- <554B86E2.8090908@RedHat.com>
- <20150507163326.GA6156@suse.de>
- <554B98E9.4040601@RedHat.com>
- <20150507181206.GA7810@suse.de>
- <554BC53C.5080807@RedHat.com>
- <554BC730.3000004@RedHat.com>
- <554BC9F3.6020005@RedHat.com>
+	id S1750995AbbEHDKt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 7 May 2015 23:10:49 -0400
+Date: Fri, 8 May 2015 13:10:40 +1000
+From: NeilBrown <neilb@suse.de>
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: [PATCH] NFS: report more appropriate block size for directories.
+Message-ID: <20150508131040.140bf570@notabene.brown>
 MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha256;
-	protocol="application/pgp-signature"; boundary="8JAmzYDSl0Sjbh5d"
-In-Reply-To: <554BC9F3.6020005@RedHat.com>
+Content-Type: multipart/signed; micalg=pgp-sha1;
+ boundary="Sig_//Pcnv_YYXP8E3noH37hDxpA"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+--Sig_//Pcnv_YYXP8E3noH37hDxpA
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
---8JAmzYDSl0Sjbh5d
-Content-Type: text/plain; charset=utf-8
-Content-Disposition: inline
 
-On 07 May 2015 16:24, Steve Dickson wrote:
-> --- /dev/null
-> +++ b/tirpc/tirpc-features.h.in
-> @@ -0,0 +1,10 @@
-> +#ifndef _TIRPC_FEATURES_H
-> +#define _TIRPC_FEATURES_H
-> +
-> +/* Define to 1 if DES authentication is enabled */
-> +#undef HAVE_AUTHDES
-> +
-> +/* Define to 1 if GSSAPI is enabled */
-> +#undef HAVE_GSSAPI
-> +
-> +#endif /* _TIRPC_FEATURES_H */
+In glibc 2.21 (and several previous), a call to opendir() will
+result in a 32K (BUFSIZ*4) buffer being allocated and passed to
+getdents.
 
-it is dangerous to export raw HAVE_xxx defines -- it can break packages that
-use autotools themselves.  they need an appropriate prefix like RPC_xxx or
-TIRPC_xxx.
--mike
+However a call to fdopendir() results in an 'fstat' request to
+determine block size and a matching buffer allocated for subsequent
+use with getdents.  This will typically be 1M.
 
---8JAmzYDSl0Sjbh5d
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: Digital signature
+The first getdents call on an NFS directory will always use
+READDIR_PLUS (or NFSv4 equivalent) if available.  Subsequent getdents
+calls only use this more expensive version if some 'stat' requests are
+made between the getdents calls.
+
+For this reason it is good to keep at least that first getdents call
+relatively short.  When fdopendir() and readdir() is used on a large
+directory, it takes approximately 32 times as long to complete as
+using "opendir".  Current versions of 'find' use fdopendir() and
+demonstrate this slowness.
+
+'stat' on a directory currently returns the 'wsize'.  This number has
+no meaning on directories.
+Actual READDIR requests are limited to ->dtsize, which itself is
+capped at 4 pages, coincidently the same as BUFSIZ*4.
+So this is a meaningful number to use as the blocksize on directories,
+and has the effect of making 'find' on large directories go a lot
+faster.
+
+Signed-off-by: NeilBrown <neilb@suse.de>
+
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 96f2d55781fb..f8aebf59383f 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -678,6 +678,8 @@ int nfs_getattr(struct vfsmount *mnt, struct dentry *de=
+ntry, struct kstat *stat)
+ 	if (!err) {
+ 		generic_fillattr(inode, stat);
+ 		stat->ino =3D nfs_compat_user_ino64(NFS_FILEID(inode));
++		if (S_ISDIR(inode->i_mode))
++			stat->blksize =3D NFS_SERVER(inode)->dtsize;
+ 	}
+ out:
+ 	trace_nfs_getattr_exit(inode, err);
+
+--Sig_//Pcnv_YYXP8E3noH37hDxpA
+Content-Type: application/pgp-signature
+Content-Description: OpenPGP digital signature
 
 -----BEGIN PGP SIGNATURE-----
 Version: GnuPG v2
 
-iQIcBAEBCAAGBQJVTBlqAAoJEEFjO5/oN/WBOIUP/RSBfDz5JPqdiTel7uXONTf8
-O85z7mftzu/SFE25whVuhZKM5/jsmU92kp1DwzAZsZ/61M662TjHe6dUe6ygglwH
-OOBsouPlBjD6vtEZE5vLug4t7JK0oSa6OuCeJxfn38mN9a2+KGnVyRu0EE+ReecI
-UM7BhiF6Tcy26WqFW9NjcCxpZWpgTdNJHXblM0u/WZRWjdelmZ+iopMFVKosgX1H
-HrXWlJZNrcLn+Y76lCpH69ZvxsUhLG2SEg/Zypj+jp6C62dHZ6caHhLntUjwz0yN
-DEdMxUQcXQO6DfoQTrWb8rkMLBqf6lCvR2WoiD5zuS19734wwBC12azzWhqlnCAp
-uSvv4Pqq8vbBuiSA4wcCGPnFnXbP1otfag56txYcvdjZZUthH9dWNw2VLDr8n8n0
-mgmaMqQLDDXPk5Rw6MH6WxVCLLbUDZFU8mYNGnZn8TL3EJpC+qy/W+Ed92utiwVG
-klyisbt5EvRoLzWgpO7GTc29Wox4yWf9LbR4og6PifSeBogVjt2gDnG7I7Mlkq80
-gdrKIj44VhZ/cqnpRHqkQVj+5eerq8QEB5PnoGygGPMI5FBDrAOznWaqy3lMqWBB
-K18AvkOV4KjXR/7m7iZhyGZY6s8sjK33/VjXxOok3k1Rbx1LUjidEUNkKpJlpVr1
-vEX9zzoX1AqXmhFfya3M
-=q/LY
+iQIVAwUBVUwpMDnsnt1WYoG5AQKflg/7BCIIbLrKpZD4ddhPkklyGtA88DnaZ+Sh
+rgU7n/Drca2L9DrvpanKRadPxxoCSS9nFeA0NWFBZNdypztrEEgt98g0WiW07mqI
+xHSTjAzcqupxcVNWgO3x6umCd2ZALwS59Da6KXmV9a400HbIaEMyOle3D+xrvoRE
+QX/oUN9dSFGzq7LC1Xq9I2irZX5tb+BroW98+WBKib4eqFWdmLc/sxkGCjX7f6xQ
+90MqVMQ2YQQdE/OxBJSbfTcUr4Gt4/9ivNw+Bpe2XBnuNnGoYL+Zv62J6BHzHl7T
+rheapMtBhSigG2vv5GVSdDkgYMAeTcaU6KjxiSCA5Dmg5/wYj4S8uyIGi3Mr0HLZ
+XUzGRNCh4DmhYPntstnUehPq7oWrzrxx0oZc/lLIJNrHq8oH++QPs3P9N5OW0828
+Fpxm1fmVFy7F+Vsnvlig6fLt58m/OsckyBXd04fJs/a1Im/FD+HyomNzh03nQ0Sw
+1vFF3lsbvSqtfAKaiWmuNTperL3+m2lXBgEdK2EYcZZVUD1JufAB0eqLyBOhYyTk
+c0RqCF4w7Gs1sNDZ9MR0fjYd/H3Fk+2rMMtwdPT6WJW6CZL7CTWVBaoPp8PwJySh
+9lWBTYwmLXIjR7bqGhy7J6jNUmwLZZlVvXfIpGbNTTZxbvimTJqGJr5AU8D4dzJU
+DZjdWDjdDPs=
+=2Tob
 -----END PGP SIGNATURE-----
 
---8JAmzYDSl0Sjbh5d--
+--Sig_//Pcnv_YYXP8E3noH37hDxpA--
