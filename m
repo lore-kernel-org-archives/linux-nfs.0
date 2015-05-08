@@ -1,81 +1,86 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:49201 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:49234 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752781AbbEHNrp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 8 May 2015 09:47:45 -0400
-Date: Fri, 8 May 2015 09:47:44 -0400
+	id S1752203AbbEHOKf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 8 May 2015 10:10:35 -0400
+Date: Fri, 8 May 2015 10:10:34 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
 To: NeilBrown <neilb@suse.de>
-Cc: Kinglong Mee <kinglongmee@gmail.com>, linux-fsdevel@vger.kernel.org,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: Re: [PATCH 4/4] nfsd: Pin to vfsmnt instead of mntget
-Message-ID: <20150508134744.GA23753@fieldses.org>
-References: <554A149B.5060102@gmail.com>
- <554A154B.6040103@gmail.com>
- <20150508144031.6f0d3cda@notabene.brown>
+Cc: Kinglong Mee <kinglongmee@gmail.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH RFC] NFSD: fix cannot umounting mount points under pseudo
+ root
+Message-ID: <20150508141034.GC23753@fieldses.org>
+References: <20150429191934.GA23980@fieldses.org>
+ <20150430075225.21a71056@notabene.brown>
+ <20150430213602.GB9509@fieldses.org>
+ <20150501115326.51f5613a@notabene.brown>
+ <20150504220130.GB16827@fieldses.org>
+ <5548CBA3.9080608@gmail.com>
+ <20150505141801.GB27106@fieldses.org>
+ <20150505155203.GD27106@fieldses.org>
+ <20150507153116.GI27106@fieldses.org>
+ <20150508084230.716439d5@notabene.brown>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20150508144031.6f0d3cda@notabene.brown>
+In-Reply-To: <20150508084230.716439d5@notabene.brown>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, May 08, 2015 at 02:40:31PM +1000, NeilBrown wrote:
-> Thanks for this patch.  It looks good!
+On Fri, May 08, 2015 at 08:42:30AM +1000, NeilBrown wrote:
+> On Thu, 7 May 2015 11:31:16 -0400 "J. Bruce Fields" <bfields@fieldses.org>
+> wrote:
 > 
-> My only comment on the code is that I would really like to see a
-> "path_get_pin()" and "path_put_unpin()" rather than open coding:
+> > On Tue, May 05, 2015 at 11:52:03AM -0400, J. Bruce Fields wrote:
+> > > On Tue, May 05, 2015 at 10:18:01AM -0400, J. Bruce Fields wrote:
+> > > > On Tue, May 05, 2015 at 09:54:43PM +0800, Kinglong Mee wrote:
+> > > > > On 5/5/2015 6:01 AM, J. Bruce Fields wrote:
+> > > > > > + * Unlike lookup_one_len, it should be called without the parent
+> > > > > > + * i_mutex held, and will take the i_mutex itself if necessary.
+> > > > > > + */
+> > > > > > +struct dentry *lookup_one_len_unlocked(const char *name,
+> > > > > > +				       struct dentry *base, int len)
+> > > > > > +{
+> > > > > > +	struct qstr this;
+> > > > > > +	unsigned int c;
+> > > > > > +	int err;
+> > > > > > +	struct dentry *ret;
+> > > > > > +
+> > > > > > +	WARN_ON_ONCE(!mutex_is_locked(&base->d_inode->i_mutex));
+> > > > > 
+> > > > > Remove this line.
+> > > > 
+> > > > Whoops, thanks.
+> > > > 
+> > > > > > diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+> > > > > > index a30e79900086..cc7995762190 100644
+> > > > > > --- a/fs/nfsd/vfs.c
+> > > > > > +++ b/fs/nfsd/vfs.c
+> > > > > > @@ -217,6 +217,13 @@ nfsd_lookup_dentry(struct svc_rqst *rqstp, struct svc_fh *fhp,
+> > > > > >  		host_err = PTR_ERR(dentry);
+> > > > > >  		if (IS_ERR(dentry))
+> > > > > >  			goto out_nfserr;
+> > > > > > +		if (!S_ISREG(d_inode(dentry)->i_mode)) {
+> > > > > 
+> > > > > Got a crash here tested by pynfs,
+> > > > 
+> > > > OK, I guess I just forgot to take into account negative dentries.
+> > > > Testing that now with (!(d_inode(dentry) && S_ISREG(..))).
+> > > 
+> > > And I also forgot nfs3xdr.c.
+> > 
+> > But, this doesn't look good.
+> > 
+> > OK, to be fair I'm not sure whether this was already happening before this
+> > patch.
 > 
-> > +	dget(item->ek_path.dentry);
-> > +	pin_insert_group(&new->ek_pin, item->ek_path.mnt, NULL);
+> None of the stacks show any code that we changed, so I'm guessing it is a
+> separate issues as you hint at.
 > 
-> and 
-> 
-> > +		dput(key->ek_path.dentry);
-> > +		pin_remove(&key->ek_pin);
-> 
-> 
-> But the question you raise is an important one:  Exactly which filesystems
-> should be allowed to be unmounted?
-> This is a change in behaviour - is it one that people uniformly would want?
-> 
-> The kernel doesn't currently know which file systems were explicitly listed
-> in /etc/exports, and which were found by following a 'crossmnt'.
-> It could guess and allow the unmounting of anything below a 'crossmnt', but I
-> wouldn't be comfortable with that - it is error prone.
-> 
-> mountd does know what is in /etc/exports, and could tell the kernel.
-> For the expkey cache, we could always use path_get_pin.
-> For the export cache (where flags are available) we could use path_get
-> or path_get_pin depending on some new flag.
-> 
-> I'm not really sure it is worth it.  I would rather the filesystems could
-> always be unmounted.  But doing that could possibly break someone's work
-> flow.  Maybe.
-> 
-> Or maybe I'm seeing problems where there aren't any.
-> 
-> Anyone else have an opinion?
+> If I didn't have a list as long as my arm of things I really should be doing,
+> I'd go diving into the XFS code ....
 
-The undisputed bug here was negative cache entries preventing unmount.
-So most conservative might be just to purge negative entries.
-
-Otherwise, the only guarantees I think we've really had is that we won't
-allow unmount if you hold any actual state on the filesystem (NLM locks,
-NFSv4 locks, opens, or delegations).
-
-If a filesystem is exported but no clients hold state on it, then it's
-currently mostly chance whether the unmount succeeds or not.  So we're
-probably free to change the behavior in this case.  I'd be inclined to
-allow the unmount, but haven't thought this through carefully.
-
-It could also be useful to have the ability to force an unmount even in
-the presence of locks.  That's not a safe default, but an
-"allow_force_unmount" export option might be useful.
-
-We might similarly be able to add some way for the kernel to distinguish
-explicit exports from crossmnt-found exports, but I'm not seeing the use
-case for that.
+Yeah.  Looks like it might be intermittent.  I'll keep an eye on it and
+report to xfs people, I guess....
 
 --b.
