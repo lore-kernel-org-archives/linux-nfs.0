@@ -1,155 +1,122 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wi0-f171.google.com ([209.85.212.171]:35348 "EHLO
-	mail-wi0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751536AbbEHWi1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 May 2015 18:38:27 -0400
-Received: by widdi4 with SMTP id di4so45487847wid.0
-        for <linux-nfs@vger.kernel.org>; Fri, 08 May 2015 15:38:25 -0700 (PDT)
-From: Andreas Gruenbacher <andreas.gruenbacher@gmail.com>
+Received: from mail-ob0-f173.google.com ([209.85.214.173]:35674 "EHLO
+	mail-ob0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753032AbbEHWui (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 May 2015 18:50:38 -0400
+Received: by obcus9 with SMTP id us9so36241107obc.2
+        for <linux-nfs@vger.kernel.org>; Fri, 08 May 2015 15:50:38 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <1431124677-13388-1-git-send-email-andreas.gruenbacher@gmail.com>
+References: <20150507140814.GF27106@fieldses.org>
+	<1431124677-13388-1-git-send-email-andreas.gruenbacher@gmail.com>
+Date: Sat, 9 May 2015 00:50:38 +0200
+Message-ID: <CAHpGcM+i1ZDJUV4oRVV3q9f2GSiDTYBfmRyzsQzRCeM1ck6EzA@mail.gmail.com>
+Subject: Re: [PATCH v2] nfsd: Disable NFSv2 timestamp workaround for NFSv3+
+From: =?UTF-8?Q?Andreas_Gr=C3=BCnbacher?= <andreas.gruenbacher@gmail.com>
 To: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
         Christoph Hellwig <hch@lst.de>
 Cc: Andreas Gruenbacher <agruenba@redhat.com>
-Subject: [PATCH v2] nfsd: Disable NFSv2 timestamp workaround for NFSv3+
-Date: Sat,  9 May 2015 00:37:57 +0200
-Message-Id: <1431124677-13388-1-git-send-email-andreas.gruenbacher@gmail.com>
-In-Reply-To: <20150507140814.GF27106@fieldses.org>
-References: <20150507140814.GF27106@fieldses.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-NFSv2 can set the atime and/or mtime of a file to specific timestamps but not
-to the server's current time.  To implement the equivalent of utimes("file",
-NULL), it uses a heuristic.
+Here's a little test for this:
 
-NFSv3 and later do support setting the atime and/or mtime to the server's
-current time directly.  The NFSv2 heuristic is still enabled, and causes
-timestamps to be set wrong sometimes.
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <time.h>
+#include <utime.h>
+#include <grp.h>
+#include <errno.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
 
-Fix this by moving the heuristic into the NFSv2 specific code.  We can leave it
-out of the create code path: the owner can always set timestamps arbitrarily,
-and the workaround would never trigger.
+static int touch(const char *path, mode_t mode, bool current_time)
+{
+        if (current_time)
+                return utime(path, NULL);
+        else {
+                time_t now = time(NULL);
+                struct utimbuf times = {
+                        .actime = now,
+                        .modtime = now,
+                };
+                return utime(path, &times);
+        }
+}
 
-Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
----
- fs/nfsd/nfsproc.c | 52 ++++++++++++++++++++++++++++++++++++++++++++++++++--
- fs/nfsd/vfs.c     | 36 ------------------------------------
- 2 files changed, 50 insertions(+), 38 deletions(-)
+static int su(uid_t uid, gid_t gid)
+{
+        int ret;
 
-diff --git a/fs/nfsd/nfsproc.c b/fs/nfsd/nfsproc.c
-index aecbcd3..4cd78ef 100644
---- a/fs/nfsd/nfsproc.c
-+++ b/fs/nfsd/nfsproc.c
-@@ -59,13 +59,61 @@ static __be32
- nfsd_proc_setattr(struct svc_rqst *rqstp, struct nfsd_sattrargs *argp,
- 					  struct nfsd_attrstat  *resp)
- {
-+	struct iattr *iap = &argp->attrs;
-+	struct svc_fh *fhp;
- 	__be32 nfserr;
-+
- 	dprintk("nfsd: SETATTR  %s, valid=%x, size=%ld\n",
- 		SVCFH_fmt(&argp->fh),
- 		argp->attrs.ia_valid, (long) argp->attrs.ia_size);
- 
--	fh_copy(&resp->fh, &argp->fh);
--	nfserr = nfsd_setattr(rqstp, &resp->fh, &argp->attrs,0, (time_t)0);
-+	fhp = fh_copy(&resp->fh, &argp->fh);
-+
-+	/*
-+	 * NFSv2 does not differentiate between "set-[ac]time-to-now"
-+	 * which only requires access, and "set-[ac]time-to-X" which
-+	 * requires ownership.
-+	 * So if it looks like it might be "set both to the same time which
-+	 * is close to now", and if inode_change_ok fails, then we
-+	 * convert to "set to now" instead of "set to explicit time"
-+	 *
-+	 * We only call inode_change_ok as the last test as technically
-+	 * it is not an interface that we should be using.
-+	 */
-+#define BOTH_TIME_SET (ATTR_ATIME_SET | ATTR_MTIME_SET)
-+#define	MAX_TOUCH_TIME_ERROR (30*60)
-+	if ((iap->ia_valid & BOTH_TIME_SET) == BOTH_TIME_SET &&
-+	    iap->ia_mtime.tv_sec == iap->ia_atime.tv_sec) {
-+		/*
-+		 * Looks probable.
-+		 *
-+		 * Now just make sure time is in the right ballpark.
-+		 * Solaris, at least, doesn't seem to care what the time
-+		 * request is.  We require it be within 30 minutes of now.
-+		 */
-+		time_t delta = iap->ia_atime.tv_sec - get_seconds();
-+		struct inode *inode;
-+
-+		nfserr = fh_verify(rqstp, fhp, 0, NFSD_MAY_NOP);
-+		if (nfserr)
-+			goto done;
-+		inode = d_inode(fhp->fh_dentry);
-+
-+		if (delta < 0)
-+			delta = -delta;
-+		if (delta < MAX_TOUCH_TIME_ERROR &&
-+		    inode_change_ok(inode, iap) != 0) {
-+			/*
-+			 * Turn off ATTR_[AM]TIME_SET but leave ATTR_[AM]TIME.
-+			 * This will cause notify_change to set these times
-+			 * to "now"
-+			 */
-+			iap->ia_valid &= ~BOTH_TIME_SET;
-+		}
-+	}
-+
-+	nfserr = nfsd_setattr(rqstp, fhp, iap, 0, (time_t)0);
-+done:
- 	return nfsd_return_attrs(nfserr, resp);
- }
- 
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 84d770b..92de374 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -302,42 +302,6 @@ commit_metadata(struct svc_fh *fhp)
- static void
- nfsd_sanitize_attrs(struct inode *inode, struct iattr *iap)
- {
--	/*
--	 * NFSv2 does not differentiate between "set-[ac]time-to-now"
--	 * which only requires access, and "set-[ac]time-to-X" which
--	 * requires ownership.
--	 * So if it looks like it might be "set both to the same time which
--	 * is close to now", and if inode_change_ok fails, then we
--	 * convert to "set to now" instead of "set to explicit time"
--	 *
--	 * We only call inode_change_ok as the last test as technically
--	 * it is not an interface that we should be using.
--	 */
--#define BOTH_TIME_SET (ATTR_ATIME_SET | ATTR_MTIME_SET)
--#define	MAX_TOUCH_TIME_ERROR (30*60)
--	if ((iap->ia_valid & BOTH_TIME_SET) == BOTH_TIME_SET &&
--	    iap->ia_mtime.tv_sec == iap->ia_atime.tv_sec) {
--		/*
--		 * Looks probable.
--		 *
--		 * Now just make sure time is in the right ballpark.
--		 * Solaris, at least, doesn't seem to care what the time
--		 * request is.  We require it be within 30 minutes of now.
--		 */
--		time_t delta = iap->ia_atime.tv_sec - get_seconds();
--		if (delta < 0)
--			delta = -delta;
--		if (delta < MAX_TOUCH_TIME_ERROR &&
--		    inode_change_ok(inode, iap) != 0) {
--			/*
--			 * Turn off ATTR_[AM]TIME_SET but leave ATTR_[AM]TIME.
--			 * This will cause notify_change to set these times
--			 * to "now"
--			 */
--			iap->ia_valid &= ~BOTH_TIME_SET;
--		}
--	}
--
- 	/* sanitize the mode change */
- 	if (iap->ia_valid & ATTR_MODE) {
- 		iap->ia_mode &= S_IALLUGO;
--- 
-2.1.0
+        ret = seteuid(0);
+        if (ret != 0)
+                return ret;
+        ret = setegid(gid);
+        if (ret != 0)
+                return ret;
+        ret = setgroups(0, NULL);
+        if (ret != 0)
+                return ret;
+        ret = seteuid(uid);
+        return ret;
+}
 
+static void die(const char *str)
+{
+        perror(str);
+        exit(1);
+}
+
+void cleanup(void)
+{
+        su(0, 0);
+        unlink("foo");
+}
+
+int main(void)
+{
+        int ret;
+
+        atexit(cleanup);
+
+        ret = creat("foo", 0600);
+        if (ret < 0)
+                die("foo");
+        close(ret);
+        ret = chown("foo", 0, 12345);
+        if (ret != 0)
+                die("foo");
+
+        ret = su(12345, 12345);
+        if (ret != 0)
+                die("su");
+        errno = 0;
+        ret = touch("foo", 0660, true);
+        if (ret == 0)
+                die("touch should have failed");
+
+        ret = su(0, 0);
+        if (ret != 0)
+                die("su");
+        ret = chmod("foo", 0660);
+        if (ret != 0)
+                die("foo");
+
+        ret = su(12345, 12345);
+        if (ret != 0)
+                die("su");
+        errno = 0;
+        ret = touch("foo", 0660, true);
+        if (ret != 0)
+                die("touch should have succeeded");
+
+        ret = touch("foo", 0660, false);
+        if (ret == 0)
+                die("touch should fail on NFSv3+");
+
+        return 0;
+}
