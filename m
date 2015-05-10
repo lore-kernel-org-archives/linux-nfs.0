@@ -1,50 +1,84 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wi0-f169.google.com ([209.85.212.169]:35727 "EHLO
-	mail-wi0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752323AbbEJKRn (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 10 May 2015 06:17:43 -0400
-Received: by widdi4 with SMTP id di4so74323152wid.0
-        for <linux-nfs@vger.kernel.org>; Sun, 10 May 2015 03:17:42 -0700 (PDT)
-Message-ID: <554F3043.4090303@dev.mellanox.co.il>
-Date: Sun, 10 May 2015 13:17:39 +0300
-From: Sagi Grimberg <sagig@dev.mellanox.co.il>
-MIME-Version: 1.0
-To: Chuck Lever <chuck.lever@oracle.com>,
-        Devesh Sharma <devesh.sharma@avagotech.com>
-CC: linux-rdma@vger.kernel.org,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v1 08/14] xprtrdma: Acquire MRs in rpcrdma_register_external()
-References: <20150504174626.3483.97639.stgit@manet.1015granger.net> <20150504175758.3483.44890.stgit@manet.1015granger.net> <554B3EEB.7070302@dev.mellanox.co.il> <CANjDDBiGLcaAofGwz6OGEXUUE_b2rcZepv0ebvTc-XNVEBq5Mw@mail.gmail.com> <6FBAAAF3-3E70-418F-A887-C022525D6C4F@oracle.com>
-In-Reply-To: <6FBAAAF3-3E70-418F-A887-C022525D6C4F@oracle.com>
-Content-Type: text/plain; charset=windows-1252; format=flowed
+Received: from mail-pa0-f44.google.com ([209.85.220.44]:34438 "EHLO
+	mail-pa0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751010AbbEJQbu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 10 May 2015 12:31:50 -0400
+Date: Mon, 11 May 2015 01:31:43 +0900 (JST)
+Message-Id: <20150511.013143.706881749197692581.konishi.ryusuke@lab.ntt.co.jp>
+To: NeilBrown <neilb@suse.de>
+Cc: Josef Bacik <jbacik@fb.com>, Chris Mason <clm@fb.com>,
+        Jan Kara <jack@suse.cz>, David Sterba <dsterba@suse.cz>,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-nilfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-btrfs@vger.kernel.org
+Subject: Re: [PATCH 2/3] NILFS2: support NFSv2 export
+From: Ryusuke Konishi <konishi.ryusuke@lab.ntt.co.jp>
+In-Reply-To: <20150508001623.31129.25102.stgit@notabene.brown>
+References: <20150508001142.31129.7604.stgit@notabene.brown>
+	<20150508001623.31129.25102.stgit@notabene.brown>
+Mime-Version: 1.0
+Content-Type: Text/Plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 5/8/2015 6:40 PM, Chuck Lever wrote:
+On Fri, 08 May 2015 10:16:23 +1000, NeilBrown <neilb@suse.de> wrote:
+> The "fh_len" passed to ->fh_to_* is not guaranteed to be that same as
+> that returned by encode_fh - it may be larger.
+> 
+> With NFSv2, the filehandle is fixed length, so it may appear longer
+> than expected and be zero-padded.
+> 
+> So we must test that fh_len is at least some value, not exactly equal
+> to it.
+> 
+> Signed-off-by: NeilBrown <neilb@suse.de>
+> ---
+>  fs/nilfs2/namei.c |    6 +++---
+>  1 file changed, 3 insertions(+), 3 deletions(-)
+> 
+> diff --git a/fs/nilfs2/namei.c b/fs/nilfs2/namei.c
+> index 22180836ec22..b65fb79d16fd 100644
+> --- a/fs/nilfs2/namei.c
+> +++ b/fs/nilfs2/namei.c
+> @@ -496,8 +496,8 @@ static struct dentry *nilfs_fh_to_dentry(struct super_block *sb, struct fid *fh,
+>  {
+>  	struct nilfs_fid *fid = (struct nilfs_fid *)fh;
+>  
+> -	if ((fh_len != NILFS_FID_SIZE_NON_CONNECTABLE &&
+> -	     fh_len != NILFS_FID_SIZE_CONNECTABLE) ||
 
->>>
->>> Don't you need a call to flush_workqueue(frwr_recovery_wq) when you're
->>> about to destroy the endpoint (and the buffers and the MRs...)?
->>
->> I agree with Sagi here, in xprt_rdma_destroy() before calling
->> rpcrdma_destroy_buffer(), flush_workqueue and cancelling any pending
->> work seems required.
->
-> The buffer list is destroyed only when all work has completed on the
-> transport (no RPCs are outstanding, and the upper layer is shutting
-> down). It’s pretty unlikely that there will be ongoing recovery work
-> at this point.
+> +	if ((fh_len < NILFS_FID_SIZE_NON_CONNECTABLE &&
+> +	     fh_len < NILFS_FID_SIZE_CONNECTABLE) ||
+>  	    (fh_type != FILEID_NILFS_WITH_PARENT &&
+>  	     fh_type != FILEID_NILFS_WITHOUT_PARENT))
+>  		return NULL;
 
-It may be that there aren't any outstanding RPCs, but it is possible
-that those that finished queued a frwr recovery work if the QP flushed
-inflight frwr's.
+A bit weird.  "fh_len < NILFS_FID_SIZE_CONNECTABLE" implies "fh_len <
+NILFS_FID_SIZE_NON_CONNECTABLE".
 
->
-> That said, would it be enough to add a defensive call to flush_workqueue()
-> at the top of frwr_op_destroy() ?
+How about the following fix ?
 
-If at this point you can guarantee that no one will queue another frwr
-work (i.e. all flushe errors were consumed), then yes, I think
-flush_workqueue() would do the job.
+	if ((fh_type != FILEID_NILFS_WITH_PARENT ||
+	     fh_len < NILFS_FID_SIZE_CONNECTABLE) &&
+	    (fh_type != FILEID_NILFS_WITHOUT_PARENT ||
+	     fh_len < NILFS_FID_SIZE_NON_CONNECTABLE))
+		return NULL;
 
-Sagi.
+Regards,
+Ryusuke Konishi
+
+> @@ -510,7 +510,7 @@ static struct dentry *nilfs_fh_to_parent(struct super_block *sb, struct fid *fh,
+>  {
+>  	struct nilfs_fid *fid = (struct nilfs_fid *)fh;
+>  
+> -	if (fh_len != NILFS_FID_SIZE_CONNECTABLE ||
+> +	if (fh_len < NILFS_FID_SIZE_CONNECTABLE ||
+>  	    fh_type != FILEID_NILFS_WITH_PARENT)
+>  		return NULL;
+>  
+> 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nilfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
