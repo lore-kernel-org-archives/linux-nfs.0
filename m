@@ -1,13 +1,13 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f171.google.com ([209.85.220.171]:35750 "EHLO
-	mail-qk0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753333AbbEKSEo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 May 2015 14:04:44 -0400
-Subject: [PATCH v2 15/16] xprtrdma: Reduce per-transport MR allocation
+Received: from mail-qg0-f41.google.com ([209.85.192.41]:35532 "EHLO
+	mail-qg0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753373AbbEKSEx (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 May 2015 14:04:53 -0400
+Subject: [PATCH v2 16/16] SUNRPC: Clean up bc_send()
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 11 May 2015 14:04:40 -0400
-Message-ID: <20150511180440.31263.91321.stgit@manet.1015granger.net>
+Date: Mon, 11 May 2015 14:04:50 -0400
+Message-ID: <20150511180450.31263.29472.stgit@manet.1015granger.net>
 In-Reply-To: <20150511174401.31263.79596.stgit@manet.1015granger.net>
 References: <20150511174401.31263.79596.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -15,50 +15,168 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Reduce resource consumption per-transport to make way for increasing
-the credit limit and maximum r/wsize. Pre-allocate fewer MRs.
+Clean up: Merge bc_send() into bc_svc_process().
+
+Note: even thought this touches svc.c, it is a client-side change.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Reviewed-by: Steve Wise <swise@opengridcomputing.com>
-Reviewed-by: Sagi Grimberg <sagig@mellanox.com>
-Reviewed-by: Devesh Sharma <devesh.sharma@avagotech.com>
 ---
- net/sunrpc/xprtrdma/fmr_ops.c  |    6 ++++--
- net/sunrpc/xprtrdma/frwr_ops.c |    6 ++++--
- 2 files changed, 8 insertions(+), 4 deletions(-)
+ include/linux/sunrpc/bc_xprt.h |    1 -
+ net/sunrpc/Makefile            |    2 +
+ net/sunrpc/bc_svc.c            |   63 ----------------------------------------
+ net/sunrpc/svc.c               |   33 ++++++++++++++++-----
+ 4 files changed, 26 insertions(+), 73 deletions(-)
+ delete mode 100644 net/sunrpc/bc_svc.c
 
-diff --git a/net/sunrpc/xprtrdma/fmr_ops.c b/net/sunrpc/xprtrdma/fmr_ops.c
-index 4a53ad5..f1e8daf 100644
---- a/net/sunrpc/xprtrdma/fmr_ops.c
-+++ b/net/sunrpc/xprtrdma/fmr_ops.c
-@@ -69,8 +69,10 @@ fmr_op_init(struct rpcrdma_xprt *r_xprt)
- 	INIT_LIST_HEAD(&buf->rb_mws);
- 	INIT_LIST_HEAD(&buf->rb_all);
+diff --git a/include/linux/sunrpc/bc_xprt.h b/include/linux/sunrpc/bc_xprt.h
+index 2ca67b5..8df43c9f 100644
+--- a/include/linux/sunrpc/bc_xprt.h
++++ b/include/linux/sunrpc/bc_xprt.h
+@@ -37,7 +37,6 @@ void xprt_complete_bc_request(struct rpc_rqst *req, uint32_t copied);
+ void xprt_free_bc_request(struct rpc_rqst *req);
+ int xprt_setup_backchannel(struct rpc_xprt *, unsigned int min_reqs);
+ void xprt_destroy_backchannel(struct rpc_xprt *, unsigned int max_reqs);
+-int bc_send(struct rpc_rqst *req);
  
--	i = (buf->rb_max_requests + 1) * RPCRDMA_MAX_SEGS;
--	dprintk("RPC:       %s: initializing %d FMRs\n", __func__, i);
-+	i = max_t(int, RPCRDMA_MAX_DATA_SEGS / RPCRDMA_MAX_FMR_SGES, 1);
-+	i += 2;				/* head + tail */
-+	i *= buf->rb_max_requests;	/* one set for each RPC slot */
-+	dprintk("RPC:       %s: initalizing %d FMRs\n", __func__, i);
+ /*
+  * Determine if a shared backchannel is in use
+diff --git a/net/sunrpc/Makefile b/net/sunrpc/Makefile
+index 15e6f6c..1b8e68d 100644
+--- a/net/sunrpc/Makefile
++++ b/net/sunrpc/Makefile
+@@ -15,6 +15,6 @@ sunrpc-y := clnt.o xprt.o socklib.o xprtsock.o sched.o \
+ 	    sunrpc_syms.o cache.o rpc_pipe.o \
+ 	    svc_xprt.o
+ sunrpc-$(CONFIG_SUNRPC_DEBUG) += debugfs.o
+-sunrpc-$(CONFIG_SUNRPC_BACKCHANNEL) += backchannel_rqst.o bc_svc.o
++sunrpc-$(CONFIG_SUNRPC_BACKCHANNEL) += backchannel_rqst.o
+ sunrpc-$(CONFIG_PROC_FS) += stats.o
+ sunrpc-$(CONFIG_SYSCTL) += sysctl.o
+diff --git a/net/sunrpc/bc_svc.c b/net/sunrpc/bc_svc.c
+deleted file mode 100644
+index 15c7a8a..0000000
+--- a/net/sunrpc/bc_svc.c
++++ /dev/null
+@@ -1,63 +0,0 @@
+-/******************************************************************************
+-
+-(c) 2007 Network Appliance, Inc.  All Rights Reserved.
+-(c) 2009 NetApp.  All Rights Reserved.
+-
+-NetApp provides this source code under the GPL v2 License.
+-The GPL v2 license is available at
+-http://opensource.org/licenses/gpl-license.php.
+-
+-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+-"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+-LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+-A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+-CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+-EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+-PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+-PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+-LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+-NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+-SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+-
+-******************************************************************************/
+-
+-/*
+- * The NFSv4.1 callback service helper routines.
+- * They implement the transport level processing required to send the
+- * reply over an existing open connection previously established by the client.
+- */
+-
+-#include <linux/module.h>
+-
+-#include <linux/sunrpc/xprt.h>
+-#include <linux/sunrpc/sched.h>
+-#include <linux/sunrpc/bc_xprt.h>
+-
+-#define RPCDBG_FACILITY	RPCDBG_SVCDSP
+-
+-/* Empty callback ops */
+-static const struct rpc_call_ops nfs41_callback_ops = {
+-};
+-
+-
+-/*
+- * Send the callback reply
+- */
+-int bc_send(struct rpc_rqst *req)
+-{
+-	struct rpc_task *task;
+-	int ret;
+-
+-	dprintk("RPC:       bc_send req= %p\n", req);
+-	task = rpc_run_bc_task(req, &nfs41_callback_ops);
+-	if (IS_ERR(task))
+-		ret = PTR_ERR(task);
+-	else {
+-		WARN_ON_ONCE(atomic_read(&task->tk_count) != 1);
+-		ret = task->tk_status;
+-		rpc_put_task(task);
+-	}
+-	dprintk("RPC:       bc_send ret= %d\n", ret);
+-	return ret;
+-}
+-
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index 78974e4..e144902 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -1350,6 +1350,11 @@ bc_svc_process(struct svc_serv *serv, struct rpc_rqst *req,
+ {
+ 	struct kvec	*argv = &rqstp->rq_arg.head[0];
+ 	struct kvec	*resv = &rqstp->rq_res.head[0];
++	static const struct rpc_call_ops reply_ops = { };
++	struct rpc_task *task;
++	int error;
++
++	dprintk("svc: %s(%p)\n", __func__, req);
  
- 	rc = -ENOMEM;
- 	while (i--) {
-diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
-index 18b7305..661fbc1 100644
---- a/net/sunrpc/xprtrdma/frwr_ops.c
-+++ b/net/sunrpc/xprtrdma/frwr_ops.c
-@@ -270,8 +270,10 @@ frwr_op_init(struct rpcrdma_xprt *r_xprt)
- 	INIT_LIST_HEAD(&buf->rb_mws);
- 	INIT_LIST_HEAD(&buf->rb_all);
+ 	/* Build the svc_rqst used by the common processing routine */
+ 	rqstp->rq_xprt = serv->sv_bc_xprt;
+@@ -1372,21 +1377,33 @@ bc_svc_process(struct svc_serv *serv, struct rpc_rqst *req,
  
--	i = (buf->rb_max_requests + 1) * RPCRDMA_MAX_SEGS;
--	dprintk("RPC:       %s: initializing %d FRMRs\n", __func__, i);
-+	i = max_t(int, RPCRDMA_MAX_DATA_SEGS / depth, 1);
-+	i += 2;				/* head + tail */
-+	i *= buf->rb_max_requests;	/* one set for each RPC slot */
-+	dprintk("RPC:       %s: initalizing %d FRMRs\n", __func__, i);
+ 	/*
+ 	 * Skip the next two words because they've already been
+-	 * processed in the trasport
++	 * processed in the transport
+ 	 */
+ 	svc_getu32(argv);	/* XID */
+ 	svc_getnl(argv);	/* CALLDIR */
  
- 	while (i--) {
- 		struct rpcrdma_mw *r;
+-	/* Returns 1 for send, 0 for drop */
+-	if (svc_process_common(rqstp, argv, resv)) {
+-		memcpy(&req->rq_snd_buf, &rqstp->rq_res,
+-						sizeof(req->rq_snd_buf));
+-		return bc_send(req);
+-	} else {
+-		/* drop request */
++	/* Parse and execute the bc call */
++	if (!svc_process_common(rqstp, argv, resv)) {
++		/* Processing error: drop the request */
+ 		xprt_free_bc_request(req);
+ 		return 0;
+ 	}
++
++	/* Finally, send the reply synchronously */
++	memcpy(&req->rq_snd_buf, &rqstp->rq_res, sizeof(req->rq_snd_buf));
++	task = rpc_run_bc_task(req, &reply_ops);
++	if (IS_ERR(task)) {
++		error = PTR_ERR(task);
++		goto out;
++	}
++
++	WARN_ON_ONCE(atomic_read(&task->tk_count) != 1);
++	error = task->tk_status;
++	rpc_put_task(task);
++
++out:
++	dprintk("svc: %s(), error=%d\n", __func__, error);
++	return error;
+ }
+ EXPORT_SYMBOL_GPL(bc_svc_process);
+ #endif /* CONFIG_SUNRPC_BACKCHANNEL */
 
