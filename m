@@ -1,13 +1,13 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f181.google.com ([209.85.220.181]:34630 "EHLO
-	mail-qk0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753210AbbEKSDz (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 May 2015 14:03:55 -0400
-Subject: [PATCH v2 10/16] xprtrdma: Remove unused LOCAL_INV recovery logic
+Received: from mail-qg0-f46.google.com ([209.85.192.46]:36262 "EHLO
+	mail-qg0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753178AbbEKSEe (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 May 2015 14:04:34 -0400
+Subject: [PATCH v2 14/16] xprtrdma: Stack relief in fmr_op_map()
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 11 May 2015 14:03:51 -0400
-Message-ID: <20150511180351.31263.56843.stgit@manet.1015granger.net>
+Date: Mon, 11 May 2015 14:04:31 -0400
+Message-ID: <20150511180431.31263.23229.stgit@manet.1015granger.net>
 In-Reply-To: <20150511174401.31263.79596.stgit@manet.1015granger.net>
 References: <20150511174401.31263.79596.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -15,141 +15,140 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: Remove functions no longer used to recover broken FRMRs.
+fmr_op_map() declares a 64 element array of u64 in automatic
+storage. This is 512 bytes (8 * 64) on the stack.
+
+Instead, when FMR memory registration is in use, pre-allocate a
+physaddr array for each rpcrdma_mw.
+
+This is a pre-requisite for increasing the r/wsize maximum for
+FMR on platforms with 4KB pages.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 Reviewed-by: Steve Wise <swise@opengridcomputing.com>
 Reviewed-by: Sagi Grimberg <sagig@mellanox.com>
 Reviewed-by: Devesh Sharma <devesh.sharma@avagotech.com>
 ---
- net/sunrpc/xprtrdma/verbs.c |  109 -------------------------------------------
- 1 file changed, 109 deletions(-)
+ net/sunrpc/xprtrdma/fmr_ops.c   |   32 ++++++++++++++++++++++----------
+ net/sunrpc/xprtrdma/xprt_rdma.h |    7 ++++++-
+ 2 files changed, 28 insertions(+), 11 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 768bb77..a891cf7 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -1204,33 +1204,6 @@ rpcrdma_put_mw(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mw *mw)
- 	spin_unlock_irqrestore(&buf->rb_lock, flags);
+diff --git a/net/sunrpc/xprtrdma/fmr_ops.c b/net/sunrpc/xprtrdma/fmr_ops.c
+index 52f9ad5..4a53ad5 100644
+--- a/net/sunrpc/xprtrdma/fmr_ops.c
++++ b/net/sunrpc/xprtrdma/fmr_ops.c
+@@ -72,13 +72,19 @@ fmr_op_init(struct rpcrdma_xprt *r_xprt)
+ 	i = (buf->rb_max_requests + 1) * RPCRDMA_MAX_SEGS;
+ 	dprintk("RPC:       %s: initializing %d FMRs\n", __func__, i);
+ 
++	rc = -ENOMEM;
+ 	while (i--) {
+ 		r = kzalloc(sizeof(*r), GFP_KERNEL);
+ 		if (!r)
+-			return -ENOMEM;
++			goto out;
++
++		r->r.fmr.physaddrs = kmalloc(RPCRDMA_MAX_FMR_SGES *
++					     sizeof(u64), GFP_KERNEL);
++		if (!r->r.fmr.physaddrs)
++			goto out_free;
+ 
+-		r->r.fmr = ib_alloc_fmr(pd, mr_access_flags, &fmr_attr);
+-		if (IS_ERR(r->r.fmr))
++		r->r.fmr.fmr = ib_alloc_fmr(pd, mr_access_flags, &fmr_attr);
++		if (IS_ERR(r->r.fmr.fmr))
+ 			goto out_fmr_err;
+ 
+ 		list_add(&r->mw_list, &buf->rb_mws);
+@@ -87,9 +93,12 @@ fmr_op_init(struct rpcrdma_xprt *r_xprt)
+ 	return 0;
+ 
+ out_fmr_err:
+-	rc = PTR_ERR(r->r.fmr);
++	rc = PTR_ERR(r->r.fmr.fmr);
+ 	dprintk("RPC:       %s: ib_alloc_fmr status %i\n", __func__, rc);
++	kfree(r->r.fmr.physaddrs);
++out_free:
+ 	kfree(r);
++out:
+ 	return rc;
  }
  
--/* "*mw" can be NULL when rpcrdma_buffer_get_mrs() fails, leaving
-- * some req segments uninitialized.
-- */
--static void
--rpcrdma_buffer_put_mr(struct rpcrdma_mw **mw, struct rpcrdma_buffer *buf)
--{
--	if (*mw) {
--		list_add_tail(&(*mw)->mw_list, &buf->rb_mws);
--		*mw = NULL;
--	}
--}
--
--/* Cycle mw's back in reverse order, and "spin" them.
-- * This delays and scrambles reuse as much as possible.
-- */
--static void
--rpcrdma_buffer_put_mrs(struct rpcrdma_req *req, struct rpcrdma_buffer *buf)
--{
--	struct rpcrdma_mr_seg *seg = req->rl_segments;
--	struct rpcrdma_mr_seg *seg1 = seg;
--	int i;
--
--	for (i = 1, seg++; i < RPCRDMA_MAX_SEGS; seg++, i++)
--		rpcrdma_buffer_put_mr(&seg->rl_mw, buf);
--	rpcrdma_buffer_put_mr(&seg1->rl_mw, buf);
--}
--
- static void
- rpcrdma_buffer_put_sendbuf(struct rpcrdma_req *req, struct rpcrdma_buffer *buf)
+@@ -98,7 +107,7 @@ __fmr_unmap(struct rpcrdma_mw *r)
  {
-@@ -1242,88 +1215,6 @@ rpcrdma_buffer_put_sendbuf(struct rpcrdma_req *req, struct rpcrdma_buffer *buf)
+ 	LIST_HEAD(l);
+ 
+-	list_add(&r->r.fmr->list, &l);
++	list_add(&r->r.fmr.fmr->list, &l);
+ 	return ib_unmap_fmr(&l);
+ }
+ 
+@@ -113,7 +122,6 @@ fmr_op_map(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
+ 	struct ib_device *device = ia->ri_device;
+ 	enum dma_data_direction direction = rpcrdma_data_dir(writing);
+ 	struct rpcrdma_mr_seg *seg1 = seg;
+-	u64 physaddrs[RPCRDMA_MAX_DATA_SEGS];
+ 	int len, pageoff, i, rc;
+ 	struct rpcrdma_mw *mw;
+ 
+@@ -138,7 +146,7 @@ fmr_op_map(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
+ 		nsegs = RPCRDMA_MAX_FMR_SGES;
+ 	for (i = 0; i < nsegs;) {
+ 		rpcrdma_map_one(device, seg, direction);
+-		physaddrs[i] = seg->mr_dma;
++		mw->r.fmr.physaddrs[i] = seg->mr_dma;
+ 		len += seg->mr_len;
+ 		++seg;
+ 		++i;
+@@ -148,12 +156,13 @@ fmr_op_map(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
+ 			break;
+ 	}
+ 
+-	rc = ib_map_phys_fmr(mw->r.fmr, physaddrs, i, seg1->mr_dma);
++	rc = ib_map_phys_fmr(mw->r.fmr.fmr, mw->r.fmr.physaddrs,
++			     i, seg1->mr_dma);
+ 	if (rc)
+ 		goto out_maperr;
+ 
+ 	seg1->rl_mw = mw;
+-	seg1->mr_rkey = mw->r.fmr->rkey;
++	seg1->mr_rkey = mw->r.fmr.fmr->rkey;
+ 	seg1->mr_base = seg1->mr_dma + pageoff;
+ 	seg1->mr_nsegs = i;
+ 	seg1->mr_len = len;
+@@ -207,10 +216,13 @@ fmr_op_destroy(struct rpcrdma_buffer *buf)
+ 	while (!list_empty(&buf->rb_all)) {
+ 		r = list_entry(buf->rb_all.next, struct rpcrdma_mw, mw_all);
+ 		list_del(&r->mw_all);
+-		rc = ib_dealloc_fmr(r->r.fmr);
++		kfree(r->r.fmr.physaddrs);
++
++		rc = ib_dealloc_fmr(r->r.fmr.fmr);
+ 		if (rc)
+ 			dprintk("RPC:       %s: ib_dealloc_fmr failed %i\n",
+ 				__func__, rc);
++
+ 		kfree(r);
  	}
  }
+diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+index df92884..110d685 100644
+--- a/net/sunrpc/xprtrdma/xprt_rdma.h
++++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+@@ -206,9 +206,14 @@ struct rpcrdma_frmr {
+ 	struct rpcrdma_xprt		*fr_xprt;
+ };
  
--/* rpcrdma_unmap_one() was already done during deregistration.
-- * Redo only the ib_post_send().
-- */
--static void
--rpcrdma_retry_local_inv(struct rpcrdma_mw *r, struct rpcrdma_ia *ia)
--{
--	struct rpcrdma_xprt *r_xprt =
--				container_of(ia, struct rpcrdma_xprt, rx_ia);
--	struct ib_send_wr invalidate_wr, *bad_wr;
--	int rc;
--
--	dprintk("RPC:       %s: FRMR %p is stale\n", __func__, r);
--
--	/* When this FRMR is re-inserted into rb_mws, it is no longer stale */
--	r->r.frmr.fr_state = FRMR_IS_INVALID;
--
--	memset(&invalidate_wr, 0, sizeof(invalidate_wr));
--	invalidate_wr.wr_id = (unsigned long)(void *)r;
--	invalidate_wr.opcode = IB_WR_LOCAL_INV;
--	invalidate_wr.ex.invalidate_rkey = r->r.frmr.fr_mr->rkey;
--	DECR_CQCOUNT(&r_xprt->rx_ep);
--
--	dprintk("RPC:       %s: frmr %p invalidating rkey %08x\n",
--		__func__, r, r->r.frmr.fr_mr->rkey);
--
--	read_lock(&ia->ri_qplock);
--	rc = ib_post_send(ia->ri_id->qp, &invalidate_wr, &bad_wr);
--	read_unlock(&ia->ri_qplock);
--	if (rc) {
--		/* Force rpcrdma_buffer_get() to retry */
--		r->r.frmr.fr_state = FRMR_IS_STALE;
--		dprintk("RPC:       %s: ib_post_send failed, %i\n",
--			__func__, rc);
--	}
--}
--
--static void
--rpcrdma_retry_flushed_linv(struct list_head *stale,
--			   struct rpcrdma_buffer *buf)
--{
--	struct rpcrdma_ia *ia = rdmab_to_ia(buf);
--	struct list_head *pos;
--	struct rpcrdma_mw *r;
--	unsigned long flags;
--
--	list_for_each(pos, stale) {
--		r = list_entry(pos, struct rpcrdma_mw, mw_list);
--		rpcrdma_retry_local_inv(r, ia);
--	}
--
--	spin_lock_irqsave(&buf->rb_lock, flags);
--	list_splice_tail(stale, &buf->rb_mws);
--	spin_unlock_irqrestore(&buf->rb_lock, flags);
--}
--
--static struct rpcrdma_req *
--rpcrdma_buffer_get_frmrs(struct rpcrdma_req *req, struct rpcrdma_buffer *buf,
--			 struct list_head *stale)
--{
--	struct rpcrdma_mw *r;
--	int i;
--
--	i = RPCRDMA_MAX_SEGS - 1;
--	while (!list_empty(&buf->rb_mws)) {
--		r = list_entry(buf->rb_mws.next,
--			       struct rpcrdma_mw, mw_list);
--		list_del(&r->mw_list);
--		if (r->r.frmr.fr_state == FRMR_IS_STALE) {
--			list_add(&r->mw_list, stale);
--			continue;
--		}
--		req->rl_segments[i].rl_mw = r;
--		if (unlikely(i-- == 0))
--			return req;	/* Success */
--	}
--
--	/* Not enough entries on rb_mws for this req */
--	rpcrdma_buffer_put_sendbuf(req, buf);
--	rpcrdma_buffer_put_mrs(req, buf);
--	return NULL;
--}
--
- /*
-  * Get a set of request/reply buffers.
-  *
++struct rpcrdma_fmr {
++	struct ib_fmr		*fmr;
++	u64			*physaddrs;
++};
++
+ struct rpcrdma_mw {
+ 	union {
+-		struct ib_fmr		*fmr;
++		struct rpcrdma_fmr	fmr;
+ 		struct rpcrdma_frmr	frmr;
+ 	} r;
+ 	void			(*mw_sendcompletion)(struct ib_wc *);
 
