@@ -1,14 +1,13 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f178.google.com ([209.85.220.178]:34912 "EHLO
-	mail-qk0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753526AbbEKSDp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 May 2015 14:03:45 -0400
-Subject: [PATCH v2 09/16] xprtrdma: Acquire MRs in
- rpcrdma_register_external()
+Received: from mail-qg0-f44.google.com ([209.85.192.44]:33283 "EHLO
+	mail-qg0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932087AbbEKSDg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 May 2015 14:03:36 -0400
+Subject: [PATCH v2 08/16] xprtrdma: Introduce an FRMR recovery workqueue
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 11 May 2015 14:03:42 -0400
-Message-ID: <20150511180342.31263.51749.stgit@manet.1015granger.net>
+Date: Mon, 11 May 2015 14:03:33 -0400
+Message-ID: <20150511180333.31263.60827.stgit@manet.1015granger.net>
 In-Reply-To: <20150511174401.31263.79596.stgit@manet.1015granger.net>
 References: <20150511174401.31263.79596.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -16,284 +15,181 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Acquiring 64 MRs in rpcrdma_buffer_get() while holding the buffer
-pool lock is expensive, and unnecessary because most modern adapters
-can transfer 100s of KBs of payload using just a single MR.
+After a transport disconnect, FRMRs can be left in an undetermined
+state. In particular, the MR's rkey is no good.
 
-Instead, acquire MRs one-at-a-time as chunks are registered, and
-return them to rb_mws immediately during deregistration.
+Currently, FRMRs are fixed up by the transport connect worker, but
+that can race with ->ro_unmap if an RPC happens to exit while the
+transport connect worker is running.
 
-Note: commit 539431a437d2 ("xprtrdma: Don't invalidate FRMRs if
-registration fails") is reverted: There is now a valid case where
-registration can fail (with -ENOMEM) but the QP is still in RTS.
+A better way of dealing with broken FRMRs is to detect them before
+they are re-used by ->ro_map. Such FRMRs are either already invalid
+or are owned by the sending RPC, and thus no race with ->ro_unmap
+is possible.
+
+Introduce a mechanism for handing broken FRMRs to a workqueue to be
+reset in a context that is appropriate for allocating resources
+(ie. an ib_alloc_fast_reg_mr() API call).
+
+This mechanism is not yet used, but will be in subsequent patches.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 Reviewed-by: Steve Wise <swise@opengridcomputing.com>
+Reviewed-By: Devesh Sharma <devesh.sharma@avagotech.com>
 ---
- net/sunrpc/xprtrdma/frwr_ops.c |  100 +++++++++++++++++++++++++++++++++++-----
- net/sunrpc/xprtrdma/rpc_rdma.c |    3 -
- net/sunrpc/xprtrdma/verbs.c    |   21 --------
- 3 files changed, 89 insertions(+), 35 deletions(-)
+ net/sunrpc/xprtrdma/frwr_ops.c  |   71 ++++++++++++++++++++++++++++++++++++++-
+ net/sunrpc/xprtrdma/transport.c |   11 +++++-
+ net/sunrpc/xprtrdma/xprt_rdma.h |    5 +++
+ 3 files changed, 84 insertions(+), 3 deletions(-)
 
 diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
-index a06d9a3..133edf6 100644
+index 66a85fa..a06d9a3 100644
 --- a/net/sunrpc/xprtrdma/frwr_ops.c
 +++ b/net/sunrpc/xprtrdma/frwr_ops.c
-@@ -11,6 +11,62 @@
-  * but most complex memory registration mode.
-  */
+@@ -17,6 +17,74 @@
+ # define RPCDBG_FACILITY	RPCDBG_TRANS
+ #endif
  
-+/* Normal operation
++static struct workqueue_struct *frwr_recovery_wq;
++
++#define FRWR_RECOVERY_WQ_FLAGS		(WQ_UNBOUND | WQ_MEM_RECLAIM)
++
++int
++frwr_alloc_recovery_wq(void)
++{
++	frwr_recovery_wq = alloc_workqueue("frwr_recovery",
++					   FRWR_RECOVERY_WQ_FLAGS, 0);
++	return !frwr_recovery_wq ? -ENOMEM : 0;
++}
++
++void
++frwr_destroy_recovery_wq(void)
++{
++	struct workqueue_struct *wq;
++
++	if (!frwr_recovery_wq)
++		return;
++
++	wq = frwr_recovery_wq;
++	frwr_recovery_wq = NULL;
++	destroy_workqueue(wq);
++}
++
++/* Deferred reset of a single FRMR. Generate a fresh rkey by
++ * replacing the MR.
 + *
-+ * A Memory Region is prepared for RDMA READ or WRITE using a FAST_REG
-+ * Work Request (frmr_op_map). When the RDMA operation is finished, this
-+ * Memory Region is invalidated using a LOCAL_INV Work Request
-+ * (frmr_op_unmap).
-+ *
-+ * Typically these Work Requests are not signaled, and neither are RDMA
-+ * SEND Work Requests (with the exception of signaling occasionally to
-+ * prevent provider work queue overflows). This greatly reduces HCA
-+ * interrupt workload.
-+ *
-+ * As an optimization, frwr_op_unmap marks MRs INVALID before the
-+ * LOCAL_INV WR is posted. If posting succeeds, the MR is placed on
-+ * rb_mws immediately so that no work (like managing a linked list
-+ * under a spinlock) is needed in the completion upcall.
-+ *
-+ * But this means that frwr_op_map() can occasionally encounter an MR
-+ * that is INVALID but the LOCAL_INV WR has not completed. Work Queue
-+ * ordering prevents a subsequent FAST_REG WR from executing against
-+ * that MR while it is still being invalidated.
++ * There's no recovery if this fails. The FRMR is abandoned, but
++ * remains in rb_all. It will be cleaned up when the transport is
++ * destroyed.
 + */
++static void
++__frwr_recovery_worker(struct work_struct *work)
++{
++	struct rpcrdma_mw *r = container_of(work, struct rpcrdma_mw,
++					    r.frmr.fr_work);
++	struct rpcrdma_xprt *r_xprt = r->r.frmr.fr_xprt;
++	unsigned int depth = r_xprt->rx_ia.ri_max_frmr_depth;
++	struct ib_pd *pd = r_xprt->rx_ia.ri_pd;
 +
-+/* Transport recovery
-+ *
-+ * ->op_map and the transport connect worker cannot run at the same
-+ * time, but ->op_unmap can fire while the transport connect worker
-+ * is running. Thus MR recovery is handled in ->op_map, to guarantee
-+ * that recovered MRs are owned by a sending RPC, and not one where
-+ * ->op_unmap could fire at the same time transport reconnect is
-+ * being done.
-+ *
-+ * When the underlying transport disconnects, MRs are left in one of
-+ * three states:
-+ *
-+ * INVALID:	The MR was not in use before the QP entered ERROR state.
-+ *		(Or, the LOCAL_INV WR has not completed or flushed yet).
-+ *
-+ * STALE:	The MR was being registered or unregistered when the QP
-+ *		entered ERROR state, and the pending WR was flushed.
-+ *
-+ * VALID:	The MR was registered before the QP entered ERROR state.
-+ *
-+ * When frwr_op_map encounters STALE and VALID MRs, they are recovered
-+ * with ib_dereg_mr and then are re-initialized. Beause MR recovery
-+ * allocates fresh resources, it is deferred to a workqueue, and the
-+ * recovered MRs are placed back on the rb_mws list when recovery is
-+ * complete. frwr_op_map allocates another MR for the current RPC while
-+ * the broken MR is reset.
-+ *
-+ * To ensure that frwr_op_map doesn't encounter an MR that is marked
-+ * INVALID but that is about to be flushed due to a previous transport
-+ * disconnect, the transport connect worker attempts to drain all
-+ * pending send queue WRs before the transport is reconnected.
++	if (ib_dereg_mr(r->r.frmr.fr_mr))
++		goto out_fail;
++
++	r->r.frmr.fr_mr = ib_alloc_fast_reg_mr(pd, depth);
++	if (IS_ERR(r->r.frmr.fr_mr))
++		goto out_fail;
++
++	dprintk("RPC:       %s: recovered FRMR %p\n", __func__, r);
++	r->r.frmr.fr_state = FRMR_IS_INVALID;
++	rpcrdma_put_mw(r_xprt, r);
++	return;
++
++out_fail:
++	pr_warn("RPC:       %s: FRMR %p unrecovered\n",
++		__func__, r);
++}
++
++/* A broken MR was discovered in a context that can't sleep.
++ * Defer recovery to the recovery worker.
 + */
++static void
++__frwr_queue_recovery(struct rpcrdma_mw *r)
++{
++	INIT_WORK(&r->r.frmr.fr_work, __frwr_recovery_worker);
++	queue_work(frwr_recovery_wq, &r->r.frmr.fr_work);
++}
 +
- #include "xprt_rdma.h"
+ static int
+ __frwr_init(struct rpcrdma_mw *r, struct ib_pd *pd, struct ib_device *device,
+ 	    unsigned int depth)
+@@ -128,7 +196,7 @@ frwr_sendcompletion(struct ib_wc *wc)
  
- #if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
-@@ -250,9 +306,9 @@ frwr_op_map(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
- 	struct ib_device *device = ia->ri_device;
- 	enum dma_data_direction direction = rpcrdma_data_dir(writing);
- 	struct rpcrdma_mr_seg *seg1 = seg;
--	struct rpcrdma_mw *mw = seg1->rl_mw;
--	struct rpcrdma_frmr *frmr = &mw->r.frmr;
--	struct ib_mr *mr = frmr->fr_mr;
-+	struct rpcrdma_mw *mw;
-+	struct rpcrdma_frmr *frmr;
-+	struct ib_mr *mr;
- 	struct ib_send_wr fastreg_wr, *bad_wr;
- 	u8 key;
- 	int len, pageoff;
-@@ -261,12 +317,25 @@ frwr_op_map(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
- 	u64 pa;
- 	int page_no;
- 
-+	mw = seg1->rl_mw;
-+	seg1->rl_mw = NULL;
-+	do {
-+		if (mw)
-+			__frwr_queue_recovery(mw);
-+		mw = rpcrdma_get_mw(r_xprt);
-+		if (!mw)
-+			return -ENOMEM;
-+	} while (mw->r.frmr.fr_state != FRMR_IS_INVALID);
-+	frmr = &mw->r.frmr;
-+	frmr->fr_state = FRMR_IS_VALID;
-+
- 	pageoff = offset_in_page(seg1->mr_offset);
- 	seg1->mr_offset -= pageoff;	/* start of page */
- 	seg1->mr_len += pageoff;
- 	len = -pageoff;
- 	if (nsegs > ia->ri_max_frmr_depth)
- 		nsegs = ia->ri_max_frmr_depth;
-+
- 	for (page_no = i = 0; i < nsegs;) {
- 		rpcrdma_map_one(device, seg, direction);
- 		pa = seg->mr_dma;
-@@ -285,8 +354,6 @@ frwr_op_map(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
- 	dprintk("RPC:       %s: Using frmr %p to map %d segments (%d bytes)\n",
- 		__func__, mw, i, len);
- 
--	frmr->fr_state = FRMR_IS_VALID;
--
- 	memset(&fastreg_wr, 0, sizeof(fastreg_wr));
- 	fastreg_wr.wr_id = (unsigned long)(void *)mw;
- 	fastreg_wr.opcode = IB_WR_FAST_REG_MR;
-@@ -298,6 +365,7 @@ frwr_op_map(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
- 	fastreg_wr.wr.fast_reg.access_flags = writing ?
- 				IB_ACCESS_REMOTE_WRITE | IB_ACCESS_LOCAL_WRITE :
- 				IB_ACCESS_REMOTE_READ;
-+	mr = frmr->fr_mr;
- 	key = (u8)(mr->rkey & 0x000000FF);
- 	ib_update_fast_reg_key(mr, ++key);
- 	fastreg_wr.wr.fast_reg.rkey = mr->rkey;
-@@ -307,6 +375,7 @@ frwr_op_map(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
- 	if (rc)
- 		goto out_senderr;
- 
-+	seg1->rl_mw = mw;
- 	seg1->mr_rkey = mr->rkey;
- 	seg1->mr_base = seg1->mr_dma + pageoff;
- 	seg1->mr_nsegs = i;
-@@ -315,10 +384,9 @@ frwr_op_map(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
- 
- out_senderr:
- 	dprintk("RPC:       %s: ib_post_send status %i\n", __func__, rc);
--	ib_update_fast_reg_key(mr, --key);
--	frmr->fr_state = FRMR_IS_INVALID;
- 	while (i--)
- 		rpcrdma_unmap_one(device, --seg);
-+	__frwr_queue_recovery(mw);
- 	return rc;
+ 	/* WARNING: Only wr_id and status are reliable at this point */
+ 	r = (struct rpcrdma_mw *)(unsigned long)wc->wr_id;
+-	dprintk("RPC:       %s: frmr %p (stale), status %d\n",
++	pr_warn("RPC:       %s: frmr %p flushed, status %d\n",
+ 		__func__, r, wc->status);
+ 	r->r.frmr.fr_state = FRMR_IS_STALE;
  }
- 
-@@ -330,15 +398,19 @@ frwr_op_unmap(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg)
- {
- 	struct rpcrdma_mr_seg *seg1 = seg;
- 	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
-+	struct rpcrdma_mw *mw = seg1->rl_mw;
- 	struct ib_send_wr invalidate_wr, *bad_wr;
- 	int rc, nsegs = seg->mr_nsegs;
- 
--	seg1->rl_mw->r.frmr.fr_state = FRMR_IS_INVALID;
-+	dprintk("RPC:       %s: FRMR %p\n", __func__, mw);
-+
-+	seg1->rl_mw = NULL;
-+	mw->r.frmr.fr_state = FRMR_IS_INVALID;
- 
- 	memset(&invalidate_wr, 0, sizeof(invalidate_wr));
--	invalidate_wr.wr_id = (unsigned long)(void *)seg1->rl_mw;
-+	invalidate_wr.wr_id = (unsigned long)(void *)mw;
- 	invalidate_wr.opcode = IB_WR_LOCAL_INV;
--	invalidate_wr.ex.invalidate_rkey = seg1->rl_mw->r.frmr.fr_mr->rkey;
-+	invalidate_wr.ex.invalidate_rkey = mw->r.frmr.fr_mr->rkey;
- 	DECR_CQCOUNT(&r_xprt->rx_ep);
- 
- 	while (seg1->mr_nsegs--)
-@@ -348,12 +420,13 @@ frwr_op_unmap(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg)
- 	read_unlock(&ia->ri_qplock);
- 	if (rc)
- 		goto out_err;
-+
-+	rpcrdma_put_mw(r_xprt, mw);
- 	return nsegs;
- 
- out_err:
--	/* Force rpcrdma_buffer_get() to retry */
--	seg1->rl_mw->r.frmr.fr_state = FRMR_IS_STALE;
- 	dprintk("RPC:       %s: ib_post_send status %i\n", __func__, rc);
-+	__frwr_queue_recovery(mw);
- 	return nsegs;
- }
- 
-@@ -400,6 +473,9 @@ frwr_op_destroy(struct rpcrdma_buffer *buf)
- {
- 	struct rpcrdma_mw *r;
- 
-+	/* Ensure stale MWs for "buf" are no longer in flight */
-+	flush_workqueue(frwr_recovery_wq);
-+
- 	while (!list_empty(&buf->rb_all)) {
- 		r = list_entry(buf->rb_all.next, struct rpcrdma_mw, mw_all);
- 		list_del(&r->mw_all);
-diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index 3f422ca..84ea37d 100644
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -284,9 +284,6 @@ rpcrdma_create_chunks(struct rpc_rqst *rqst, struct xdr_buf *target,
- 	return (unsigned char *)iptr - (unsigned char *)headerp;
- 
- out:
--	if (r_xprt->rx_ia.ri_memreg_strategy == RPCRDMA_FRMR)
--		return n;
--
- 	for (pos = 0; nchunks--;)
- 		pos += r_xprt->rx_ia.ri_ops->ro_unmap(r_xprt,
- 						      &req->rl_segments[pos]);
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 3188e36..768bb77 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -1336,12 +1336,11 @@ rpcrdma_buffer_get_frmrs(struct rpcrdma_req *req, struct rpcrdma_buffer *buf,
- struct rpcrdma_req *
- rpcrdma_buffer_get(struct rpcrdma_buffer *buffers)
- {
--	struct rpcrdma_ia *ia = rdmab_to_ia(buffers);
--	struct list_head stale;
- 	struct rpcrdma_req *req;
- 	unsigned long flags;
- 
- 	spin_lock_irqsave(&buffers->rb_lock, flags);
-+
- 	if (buffers->rb_send_index == buffers->rb_max_requests) {
- 		spin_unlock_irqrestore(&buffers->rb_lock, flags);
- 		dprintk("RPC:       %s: out of request buffers\n", __func__);
-@@ -1360,17 +1359,7 @@ rpcrdma_buffer_get(struct rpcrdma_buffer *buffers)
+@@ -165,6 +233,7 @@ frwr_op_init(struct rpcrdma_xprt *r_xprt)
+ 		list_add(&r->mw_list, &buf->rb_mws);
+ 		list_add(&r->mw_all, &buf->rb_all);
+ 		r->mw_sendcompletion = frwr_sendcompletion;
++		r->r.frmr.fr_xprt = r_xprt;
  	}
- 	buffers->rb_send_bufs[buffers->rb_send_index++] = NULL;
  
--	INIT_LIST_HEAD(&stale);
--	switch (ia->ri_memreg_strategy) {
--	case RPCRDMA_FRMR:
--		req = rpcrdma_buffer_get_frmrs(req, buffers, &stale);
--		break;
--	default:
--		break;
--	}
- 	spin_unlock_irqrestore(&buffers->rb_lock, flags);
--	if (!list_empty(&stale))
--		rpcrdma_retry_flushed_linv(&stale, buffers);
- 	return req;
+ 	return 0;
+diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+index 7c12556..6f8943c 100644
+--- a/net/sunrpc/xprtrdma/transport.c
++++ b/net/sunrpc/xprtrdma/transport.c
+@@ -731,17 +731,24 @@ static void __exit xprt_rdma_cleanup(void)
+ 	if (rc)
+ 		dprintk("RPC:       %s: xprt_unregister returned %i\n",
+ 			__func__, rc);
++
++	frwr_destroy_recovery_wq();
  }
  
-@@ -1382,18 +1371,10 @@ void
- rpcrdma_buffer_put(struct rpcrdma_req *req)
+ static int __init xprt_rdma_init(void)
  {
- 	struct rpcrdma_buffer *buffers = req->rl_buffer;
--	struct rpcrdma_ia *ia = rdmab_to_ia(buffers);
- 	unsigned long flags;
+ 	int rc;
  
- 	spin_lock_irqsave(&buffers->rb_lock, flags);
- 	rpcrdma_buffer_put_sendbuf(req, buffers);
--	switch (ia->ri_memreg_strategy) {
--	case RPCRDMA_FRMR:
--		rpcrdma_buffer_put_mrs(req, buffers);
--		break;
--	default:
--		break;
--	}
- 	spin_unlock_irqrestore(&buffers->rb_lock, flags);
- }
+-	rc = xprt_register_transport(&xprt_rdma);
+-
++	rc = frwr_alloc_recovery_wq();
+ 	if (rc)
+ 		return rc;
  
++	rc = xprt_register_transport(&xprt_rdma);
++	if (rc) {
++		frwr_destroy_recovery_wq();
++		return rc;
++	}
++
+ 	dprintk("RPCRDMA Module Init, register RPC RDMA transport\n");
+ 
+ 	dprintk("Defaults:\n");
+diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+index 5b801d5..c5862a4 100644
+--- a/net/sunrpc/xprtrdma/xprt_rdma.h
++++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+@@ -203,6 +203,8 @@ struct rpcrdma_frmr {
+ 	struct ib_fast_reg_page_list	*fr_pgl;
+ 	struct ib_mr			*fr_mr;
+ 	enum rpcrdma_frmr_state		fr_state;
++	struct work_struct		fr_work;
++	struct rpcrdma_xprt		*fr_xprt;
+ };
+ 
+ struct rpcrdma_mw {
+@@ -427,6 +429,9 @@ void rpcrdma_free_regbuf(struct rpcrdma_ia *,
+ 
+ unsigned int rpcrdma_max_segments(struct rpcrdma_xprt *);
+ 
++int frwr_alloc_recovery_wq(void);
++void frwr_destroy_recovery_wq(void);
++
+ /*
+  * Wrappers for chunk registration, shared by read/write chunk code.
+  */
 
