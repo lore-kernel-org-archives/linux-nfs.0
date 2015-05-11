@@ -1,30 +1,38 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([198.137.202.9]:46135 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752501AbbEKHQe (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 May 2015 03:16:34 -0400
-Date: Mon, 11 May 2015 00:16:34 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: hch@infradead.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] SUNRPC: Clean up bc_send()
-Message-ID: <20150511071634.GA31452@infradead.org>
-References: <20150507232028.2092.78506.stgit@manet.1015granger.net>
+Received: from cantor2.suse.de ([195.135.220.15]:60208 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751435AbbEKINM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 11 May 2015 04:13:12 -0400
+Date: Mon, 11 May 2015 10:13:09 +0200
+From: David Sterba <dsterba@suse.cz>
+To: NeilBrown <neilb@suse.de>
+Cc: Josef Bacik <jbacik@fb.com>, Chris Mason <clm@fb.com>,
+        Jan Kara <jack@suse.cz>,
+        Ryusuke Konishi <konishi.ryusuke@lab.ntt.co.jp>,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-nilfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-btrfs@vger.kernel.org
+Subject: Re: [PATCH 1/3] BTRFS: support NFSv2 export
+Message-ID: <20150511081309.GI23255@suse.cz>
+Reply-To: dsterba@suse.cz
+References: <20150508001142.31129.7604.stgit@notabene.brown>
+ <20150508001623.31129.91695.stgit@notabene.brown>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20150507232028.2092.78506.stgit@manet.1015granger.net>
+In-Reply-To: <20150508001623.31129.91695.stgit@notabene.brown>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, May 07, 2015 at 07:20:28PM -0400, Chuck Lever wrote:
-> Clean up: Merge bc_svc.c into backchannel_rqst.c, and adopt a more
-> consistent naming scheme for bc_send().
+On Fri, May 08, 2015 at 10:16:23AM +1000, NeilBrown wrote:
+> The "fh_len" passed to ->fh_to_* is not guaranteed to be that same as
+> that returned by encode_fh - it may be larger.
+> 
+> With NFSv2, the filehandle is fixed length, so it may appear longer
+> than expected and be zero-padded.
+> 
+> So we must test that fh_len is at least some value, not exactly equal
+> to it.
+> 
+> Signed-off-by: NeilBrown <neilb@suse.de>
 
-Seems like a bit of an odd choise as none of the callchain bc_send
-is in really touches backchannel_rqst.c.
-
-How about just killing bc_send() and open coding it in bc_svc_process?
-
-And while we're at it - bc_svc_process seems totally generic RPC
-code that might want to be moved to net/sunrpc and converted to
-a workqueue.
+Acked-by: David Sterba <dsterba@suse.cz>
