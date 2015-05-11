@@ -1,13 +1,13 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qc0-f172.google.com ([209.85.216.172]:33212 "EHLO
-	mail-qc0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753178AbbEKSEP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 May 2015 14:04:15 -0400
-Subject: [PATCH v2 12/16] xprtrdma: Remove rpcrdma_ia::ri_memreg_strategy
+Received: from mail-qc0-f170.google.com ([209.85.216.170]:33938 "EHLO
+	mail-qc0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751933AbbEKSEZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 May 2015 14:04:25 -0400
+Subject: [PATCH v2 13/16] xprtrdma: Split rb_lock
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 11 May 2015 14:04:12 -0400
-Message-ID: <20150511180412.31263.53368.stgit@manet.1015granger.net>
+Date: Mon, 11 May 2015 14:04:21 -0400
+Message-ID: <20150511180421.31263.78591.stgit@manet.1015granger.net>
 In-Reply-To: <20150511174401.31263.79596.stgit@manet.1015granger.net>
 References: <20150511174401.31263.79596.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -15,56 +15,116 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: This field is no longer used.
+/proc/lock_stat showed contention between rpcrdma_buffer_get/put
+and the MR allocation functions during I/O intensive workloads.
+
+Now that MRs are no longer allocated in rpcrdma_buffer_get(),
+there's no reason the rb_mws list has to be managed using the
+same lock as the send/receive buffers. Split that lock. The
+new lock does not need to disable interrupts because buffer
+get/put is never called in an interrupt context.
+
+struct rpcrdma_buffer is re-arranged to ensure rb_mwlock and rb_mws
+are always in a different cacheline than rb_lock and the buffer
+pointers.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 Reviewed-by: Steve Wise <swise@opengridcomputing.com>
 Reviewed-by: Sagi Grimberg <sagig@mellanox.com>
-Reviewed-by: Devesh Sharma <devesh.sharma@avagotech.com>
 ---
- include/linux/sunrpc/xprtrdma.h |    3 ++-
- net/sunrpc/xprtrdma/verbs.c     |    3 ---
- net/sunrpc/xprtrdma/xprt_rdma.h |    1 -
- 3 files changed, 2 insertions(+), 5 deletions(-)
+ net/sunrpc/xprtrdma/fmr_ops.c   |    1 +
+ net/sunrpc/xprtrdma/frwr_ops.c  |    1 +
+ net/sunrpc/xprtrdma/verbs.c     |   10 ++++------
+ net/sunrpc/xprtrdma/xprt_rdma.h |   16 +++++++++-------
+ 4 files changed, 15 insertions(+), 13 deletions(-)
 
-diff --git a/include/linux/sunrpc/xprtrdma.h b/include/linux/sunrpc/xprtrdma.h
-index c984c85..b176130 100644
---- a/include/linux/sunrpc/xprtrdma.h
-+++ b/include/linux/sunrpc/xprtrdma.h
-@@ -56,7 +56,8 @@
+diff --git a/net/sunrpc/xprtrdma/fmr_ops.c b/net/sunrpc/xprtrdma/fmr_ops.c
+index 5dd77da..52f9ad5 100644
+--- a/net/sunrpc/xprtrdma/fmr_ops.c
++++ b/net/sunrpc/xprtrdma/fmr_ops.c
+@@ -65,6 +65,7 @@ fmr_op_init(struct rpcrdma_xprt *r_xprt)
+ 	struct rpcrdma_mw *r;
+ 	int i, rc;
  
- #define RPCRDMA_INLINE_PAD_THRESH  (512)/* payload threshold to pad (bytes) */
++	spin_lock_init(&buf->rb_mwlock);
+ 	INIT_LIST_HEAD(&buf->rb_mws);
+ 	INIT_LIST_HEAD(&buf->rb_all);
  
--/* memory registration strategies */
-+/* Memory registration strategies, by number.
-+ * This is part of a kernel / user space API. Do not remove. */
- enum rpcrdma_memreg {
- 	RPCRDMA_BOUNCEBUFFERS = 0,
- 	RPCRDMA_REGISTER,
+diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
+index 8622792..18b7305 100644
+--- a/net/sunrpc/xprtrdma/frwr_ops.c
++++ b/net/sunrpc/xprtrdma/frwr_ops.c
+@@ -266,6 +266,7 @@ frwr_op_init(struct rpcrdma_xprt *r_xprt)
+ 	struct ib_pd *pd = r_xprt->rx_ia.ri_pd;
+ 	int i;
+ 
++	spin_lock_init(&buf->rb_mwlock);
+ 	INIT_LIST_HEAD(&buf->rb_mws);
+ 	INIT_LIST_HEAD(&buf->rb_all);
+ 
 diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index db9303a..cc1a526 100644
+index cc1a526..2340835 100644
 --- a/net/sunrpc/xprtrdma/verbs.c
 +++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -665,9 +665,6 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
- 	dprintk("RPC:       %s: memory registration strategy is '%s'\n",
- 		__func__, ia->ri_ops->ro_displayname);
+@@ -1173,15 +1173,14 @@ rpcrdma_get_mw(struct rpcrdma_xprt *r_xprt)
+ {
+ 	struct rpcrdma_buffer *buf = &r_xprt->rx_buf;
+ 	struct rpcrdma_mw *mw = NULL;
+-	unsigned long flags;
  
--	/* Else will do memory reg/dereg for each chunk */
--	ia->ri_memreg_strategy = memreg;
--
- 	rwlock_init(&ia->ri_qplock);
- 	return 0;
+-	spin_lock_irqsave(&buf->rb_lock, flags);
++	spin_lock(&buf->rb_mwlock);
+ 	if (!list_empty(&buf->rb_mws)) {
+ 		mw = list_first_entry(&buf->rb_mws,
+ 				      struct rpcrdma_mw, mw_list);
+ 		list_del_init(&mw->mw_list);
+ 	}
+-	spin_unlock_irqrestore(&buf->rb_lock, flags);
++	spin_unlock(&buf->rb_mwlock);
  
+ 	if (!mw)
+ 		pr_err("RPC:       %s: no MWs available\n", __func__);
+@@ -1192,11 +1191,10 @@ void
+ rpcrdma_put_mw(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mw *mw)
+ {
+ 	struct rpcrdma_buffer *buf = &r_xprt->rx_buf;
+-	unsigned long flags;
+ 
+-	spin_lock_irqsave(&buf->rb_lock, flags);
++	spin_lock(&buf->rb_mwlock);
+ 	list_add_tail(&mw->mw_list, &buf->rb_mws);
+-	spin_unlock_irqrestore(&buf->rb_lock, flags);
++	spin_unlock(&buf->rb_mwlock);
+ }
+ 
+ static void
 diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index f19376d..3ecee38 100644
+index 3ecee38..df92884 100644
 --- a/net/sunrpc/xprtrdma/xprt_rdma.h
 +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -70,7 +70,6 @@ struct rpcrdma_ia {
- 	int			ri_have_dma_lkey;
- 	struct completion	ri_done;
- 	int			ri_async_rc;
--	enum rpcrdma_memreg	ri_memreg_strategy;
- 	unsigned int		ri_max_frmr_depth;
- 	struct ib_device_attr	ri_devattr;
- 	struct ib_qp_attr	ri_qp_attr;
+@@ -282,15 +282,17 @@ rpcr_to_rdmar(struct rpc_rqst *rqst)
+  * One of these is associated with a transport instance
+  */
+ struct rpcrdma_buffer {
+-	spinlock_t	rb_lock;	/* protects indexes */
+-	u32		rb_max_requests;/* client max requests */
+-	struct list_head rb_mws;	/* optional memory windows/fmrs/frmrs */
+-	struct list_head rb_all;
+-	int		rb_send_index;
++	spinlock_t		rb_mwlock;	/* protect rb_mws list */
++	struct list_head	rb_mws;
++	struct list_head	rb_all;
++	char			*rb_pool;
++
++	spinlock_t		rb_lock;	/* protect buf arrays */
++	u32			rb_max_requests;
++	int			rb_send_index;
++	int			rb_recv_index;
+ 	struct rpcrdma_req	**rb_send_bufs;
+-	int		rb_recv_index;
+ 	struct rpcrdma_rep	**rb_recv_bufs;
+-	char		*rb_pool;
+ };
+ #define rdmab_to_ia(b) (&container_of((b), struct rpcrdma_xprt, rx_buf)->rx_ia)
+ 
 
