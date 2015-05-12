@@ -1,10 +1,10 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx143.netapp.com ([216.240.21.24]:58064 "EHLO mx143.netapp.com"
+Received: from mx142.netapp.com ([216.240.21.19]:5533 "EHLO mx142.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932822AbbELSND (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 12 May 2015 14:13:03 -0400
-Message-ID: <555242A7.8020607@Netapp.com>
-Date: Tue, 12 May 2015 14:12:55 -0400
+	id S932809AbbELSOF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 12 May 2015 14:14:05 -0400
+Message-ID: <555242E8.4050007@Netapp.com>
+Date: Tue, 12 May 2015 14:14:00 -0400
 From: Anna Schumaker <Anna.Schumaker@netapp.com>
 MIME-Version: 1.0
 To: Chuck Lever <chuck.lever@oracle.com>, <linux-rdma@vger.kernel.org>,
@@ -24,7 +24,7 @@ On 05/11/2015 02:02 PM, Chuck Lever wrote:
 > point, which can pin lower layer kernel modules and cause shutdown
 > to hang.
 
-I'm curious, what would cause an RDMA object to get orphaned in the first place?  Is there any way to prevent that?
+I'm curious, what would cause the API objects to get orphaned in the first place?  Is there any way to prevent it?
 
 Anna
 
