@@ -1,52 +1,45 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mout.kundenserver.de ([212.227.126.130]:62652 "EHLO
-	mout.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933017AbbELVbe (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 May 2015 17:31:34 -0400
-From: Arnd Bergmann <arnd@arndb.de>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
-        linux-kernel@vger.kernel.org
-Subject: [PATCH] nfsd: work around a gcc-5.1 warning
-Date: Tue, 12 May 2015 23:31:29 +0200
-Message-ID: <2121336.tAfQfAWQ2u@wuerfel>
+Received: from fieldses.org ([173.255.197.46]:51597 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753835AbbELVoF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 12 May 2015 17:44:05 -0400
+Date: Tue, 12 May 2015 17:44:03 -0400
+To: Andreas Gruenbacher <andreas.gruenbacher@gmail.com>
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org
+Subject: Re: [RFC v3 12/45] richacl: Compute maximum file masks from an acl
+Message-ID: <20150512214403.GB8980@fieldses.org>
+References: <cover.1429868795.git.agruenba@redhat.com>
+ <922da02afd085be0d28d3c76f0b4fcb3b2e811f3.1429868795.git.agruenba@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <922da02afd085be0d28d3c76f0b4fcb3b2e811f3.1429868795.git.agruenba@redhat.com>
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-gcc-5.0 warns about a potential uninitialized variable use in nfsd:
+On Fri, Apr 24, 2015 at 01:04:09PM +0200, Andreas Gruenbacher wrote:
+> Compute upper bound owner, group, and other file masks with as few
+> permissions as possible without denying any permissions that the NFSv4
+> acl in a richacl grants.
+> 
+> This algorithm is used when a file inherits an acl at create time and
+> when an acl is set via a mechanism that does not provide file masks
+> (such as setting an acl via nfsd).  When user-space sets an acl via
+> setxattr, the extended attribute already includes the file masks.
+> 
+> Setting an acl also sets the file mode permission bits: they are
+> determined by the file masks; see richacl_masks_to_mode().
 
-fs/nfsd/nfs4state.c: In function 'nfsd4_process_open2':
-fs/nfsd/nfs4state.c:3781:3: warning: 'old_deny_bmap' may be used uninitialized in this function [-Wmaybe-uninitialized]
-   reset_union_bmap_deny(old_deny_bmap, stp);
-   ^
-fs/nfsd/nfs4state.c:3760:16: note: 'old_deny_bmap' was declared here
-  unsigned char old_deny_bmap;
-                ^
+Thanks, the verbose comments are welcomed here, just one typo:
 
-This is a false positive, the code path that is warned about cannot
-actually be reached.
+> +	/*
+> +	 * @gmask contains all permissions which the group class is ever
+> +	 * allowed.  We use it to avoid adding permissions to the group mask
+> +	 * from everyone@ allow aces which the group class is always denied
+> +	 * through other aces.  For example, the following acl would otherwise
+> +	 * result in a group mask or rw:
 
-This adds an initialization for the variable to make the warning go
-away.
+s/or/of/ ?
 
-Signed-off-by: Arnd Bergmann <arnd@arndb.de>
----
-This warning shows up in some ARM defconfig builds, which we try to
-build with no warnings to detect regressions.
-
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 38f2d7abe3a7..997eda362a75 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -3770,6 +3770,8 @@ nfs4_upgrade_open(struct svc_rqst *rqstp, struct nfs4_file *fp, struct svc_fh *c
- 		set_deny(open->op_share_deny, stp);
- 		fp->fi_share_deny |=
- 				(open->op_share_deny & NFS4_SHARE_DENY_BOTH);
-+	} else {
-+		old_deny_bmap = 0;
- 	}
- 	spin_unlock(&fp->fi_lock);
- 
-
+--b.
