@@ -1,113 +1,144 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:46986 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:50983 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S965194AbbEMA4M (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 12 May 2015 20:56:12 -0400
-Date: Wed, 13 May 2015 10:56:04 +1000
+	id S1750727AbbEMEZZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 13 May 2015 00:25:25 -0400
+Date: Wed, 13 May 2015 14:25:15 +1000
 From: NeilBrown <neilb@suse.de>
-To: Shaohua Li <shli@kernel.org>
-Cc: linux-raid@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 7/7] md/raid5: fix handling of degraded stripes in
- batches.
-Message-ID: <20150513105604.55ac700a@notabene.brown>
-In-Reply-To: <20150508191223.GA116778@kernel.org>
-References: <20150508085345.19179.8866.stgit@notabene.brown>
-	<20150508085612.19179.92120.stgit@notabene.brown>
-	<20150508191223.GA116778@kernel.org>
+To: Kinglong Mee <kinglongmee@gmail.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-fsdevel@vger.kernel.org,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Al Viro <viro@zeniv.linux.org.uk>,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: Re: [PATCH 4/4] nfsd: Pin to vfsmnt instead of mntget
+Message-ID: <20150513142515.6bd881c8@notabene.brown>
+In-Reply-To: <5550A9DF.1070908@gmail.com>
+References: <554A149B.5060102@gmail.com>
+	<554A154B.6040103@gmail.com>
+	<20150508144031.6f0d3cda@notabene.brown>
+	<20150508134744.GA23753@fieldses.org>
+	<5550A9DF.1070908@gmail.com>
 MIME-Version: 1.0
 Content-Type: multipart/signed; micalg=pgp-sha1;
- boundary="Sig_/9Y0wdredF1_E+9pUGcz3deW"; protocol="application/pgp-signature"
+ boundary="Sig_/wYaxr3jgzWBoildcHHrztJS"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/9Y0wdredF1_E+9pUGcz3deW
+--Sig_/wYaxr3jgzWBoildcHHrztJS
 Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: quoted-printable
 
-On Fri, 8 May 2015 12:12:23 -0700 Shaohua Li <shli@kernel.org> wrote:
+On Mon, 11 May 2015 21:08:47 +0800 Kinglong Mee <kinglongmee@gmail.com> wro=
+te:
 
-> On Fri, May 08, 2015 at 06:56:12PM +1000, NeilBrown wrote:
-> > There is no need for special handling of stripe-batches when the array
-> > is degraded.
+> On 5/8/2015 9:47 PM, J. Bruce Fields wrote:
+> > On Fri, May 08, 2015 at 02:40:31PM +1000, NeilBrown wrote:
+> >> Thanks for this patch.  It looks good!
+> >>
+> >> My only comment on the code is that I would really like to see a
+> >> "path_get_pin()" and "path_put_unpin()" rather than open coding:
+> >>
+> >>> +	dget(item->ek_path.dentry);
+> >>> +	pin_insert_group(&new->ek_pin, item->ek_path.mnt, NULL);
+> >>
+> >> and=20
+> >>
+> >>> +		dput(key->ek_path.dentry);
+> >>> +		pin_remove(&key->ek_pin);
+> >>
+> >>
+> >> But the question you raise is an important one:  Exactly which filesys=
+tems
+> >> should be allowed to be unmounted?
+> >> This is a change in behaviour - is it one that people uniformly would =
+want?
+> >>
+> >> The kernel doesn't currently know which file systems were explicitly l=
+isted
+> >> in /etc/exports, and which were found by following a 'crossmnt'.
+> >> It could guess and allow the unmounting of anything below a 'crossmnt'=
+, but I
+> >> wouldn't be comfortable with that - it is error prone.
+> >>
+> >> mountd does know what is in /etc/exports, and could tell the kernel.
+> >> For the expkey cache, we could always use path_get_pin.
+> >> For the export cache (where flags are available) we could use path_get
+> >> or path_get_pin depending on some new flag.
+> >>
+> >> I'm not really sure it is worth it.  I would rather the filesystems co=
+uld
+> >> always be unmounted.  But doing that could possibly break someone's wo=
+rk
+> >> flow.  Maybe.
+> >>
+> >> Or maybe I'm seeing problems where there aren't any.
+> >>
+> >> Anyone else have an opinion?
 > >=20
-> > There may be if there is a failure in the batch, but STRIPE_DEGRADED
-> > does not imply an error.
-> >=20
-> > So don't set STRIPE_BATCH_ERR in ops_run_io just because the array is
-> > degraded.
-> > This actually causes a bug: the STRIPE_DEGRADED flag gets cleared in
-> > check_break_stripe_batch_list() and so the bitmap bit gets cleared
-> > when it shouldn't.
-> >=20
-> > So in check_break_stripe_batch_list(), split the batch up completely -
-> > again STRIPE_DEGRADED isn't meaningful.
-> >=20
-> > Also don't set STRIPE_BATCH_ERR when there is a write error to a
-> > replacement device.  This simply removes the replacement device and
-> > requires no extra handling.
-> >=20
-> > Signed-off-by: NeilBrown <neilb@suse.de>
-> > ---
-> >  drivers/md/raid5.c |   17 +++--------------
-> >  1 file changed, 3 insertions(+), 14 deletions(-)
-> >=20
-> > diff --git a/drivers/md/raid5.c b/drivers/md/raid5.c
-> > index 3873eaa6fa2e..1ba97fdc6df1 100644
-> > --- a/drivers/md/raid5.c
-> > +++ b/drivers/md/raid5.c
-> > @@ -1078,9 +1078,6 @@ again:
-> >  			pr_debug("skip op %ld on disc %d for sector %llu\n",
-> >  				bi->bi_rw, i, (unsigned long long)sh->sector);
-> >  			clear_bit(R5_LOCKED, &sh->dev[i].flags);
-> > -			if (sh->batch_head)
-> > -				set_bit(STRIPE_BATCH_ERR,
-> > -					&sh->batch_head->state);
-> >  			set_bit(STRIPE_HANDLE, &sh->state);
-> >  		}
+> > The undisputed bug here was negative cache entries preventing unmount.
+> > So most conservative might be just to purge negative entries.
 >=20
-> Patches look good to me. I had a question here. Is it possible some strip=
-es in
-> a batch become degraded here but some not? Seems possible, then the batch
-> should be splitted too.
+> I'd like this,
+> if the cache is valid, user should not be allowed to umount the filesyste=
+m.
+>=20
+> >=20
+> > Otherwise, the only guarantees I think we've really had is that we won't
+> > allow unmount if you hold any actual state on the filesystem (NLM locks,
+> > NFSv4 locks, opens, or delegations).
+>=20
+> Those resources hold the reference of vfsmnt.
+>=20
+> >=20
+> > If a filesystem is exported but no clients hold state on it, then it's
+> > currently mostly chance whether the unmount succeeds or not.  So we're
+> > probably free to change the behavior in this case.  I'd be inclined to
+> > allow the unmount, but haven't thought this through carefully.
+>=20
+> If client mount a nfsserver succeed without holds state,=20
+> nfs server umounts the exported filesystem,=20
+> client also think the filesystem is valid, but it is umounted.
 
-Why?
+This is no different from "exportfs -au" being run on the server, thus
+unexporting the filesystem and making in unavailable to the client, even
+though the client has it mounted.
 
-I don't really understand the purpose of splitting up the batch.
-The only possible error handling on a full-stripe write is:
- - fail a device, or
- - record a bad-block.
+I think we need to give the server admin control of their filesystems, and
+assume they won't do something that they don't really want to do.
 
-The first case affects all stripes in a batch equally so there is no need to
-split it up.
-The second case it is probably best to record the bad blocks while iterating
-through the batch in handle_stripe_clean_event().
 
-What exactly do you expect to happen after the stripes in a batch after they
-have been split up?
 
-Thanks,
+>=20
+> >=20
+> > It could also be useful to have the ability to force an unmount even in
+> > the presence of locks.  That's not a safe default, but an
+> > "allow_force_unmount" export option might be useful.
+
+We already have a mechanism to forcibly drop any locks by writing some magic
+to /proc/fs/nfsd/unlock_{ip,filesystem}.  I don't think we need any more.
+
 NeilBrown
 
---Sig_/9Y0wdredF1_E+9pUGcz3deW
+--Sig_/wYaxr3jgzWBoildcHHrztJS
 Content-Type: application/pgp-signature
 Content-Description: OpenPGP digital signature
 
 -----BEGIN PGP SIGNATURE-----
 Version: GnuPG v2
 
-iQIVAwUBVVKhJDnsnt1WYoG5AQIZ0BAAgP1Pmkoanw90j9714cc/B7NFvkLx7PC6
-ddMnj8xmsTthdsTgdKCqAugi6FhBzmRTazDN9IHDMXQIT37ZBlxjd5w25yM3ohXQ
-aIODlzqkRMfbCgH7PR+lYkkKJ+Ut6eJ7Ik5K/DKjPDiljAj4sqdVmpoy/EIpVuod
-7dguOmzB7BsucgxlNYU2WyMZA1Fb2nD4zJ+oOhy5+QpOrIuCuUAqJPUNRrsseLWf
-Y+tByYAoDZ6f2SmIUYUawD/kKs6KPZiFvy4cD3gvtBB4/BrZla6eitMnzJEbjmxu
-Tx08DWMAzqWHuiKzUudu5+/VWKAsw+t0fkVYVMi8t5GuZrLenU7sE2VTsPt1qSMr
-vCVBsRKu6B4Rbht+g0SOnOqruDFrC9JpSdm4KMV4MVaN6D3yPVYC0cpLXCFq/4mR
-Nd4Jyh6Dczuvw+JDbcIoXWXz8YGteHdg99DEn2dCO1WHmKR0mLLOJog5zQFGhQ5T
-yzaAM/U6tw2GsH9qJaw3ZalaTD1NJXjkfw2ANQceNkkmLZ8TogzLfW/51N+Rc67L
-wzIwVAqauLnDIn4NPbKmumLtAJTXMynhJQseIn9qSDkUCkI7vwX+614/T0LVFO+Z
-Nkghs1MSlLhZVv871Pu39uZCd3EyJ5kQy4bbzAf+Oh6vK5UcVxeVawFjchLwJibI
-ixg0I8IbjBQ=
-=et1C
+iQIVAwUBVVLSLDnsnt1WYoG5AQKhVhAAkeD7+D2c8COcul3ZAY3uIA0hR/EDLcLg
+rbWbfqpjCcqI0BZ/Nvaat6oXYSVTmX+hS9LYEXVJX8xvd1AMvY6hoYp9RsnvTonH
+oqJ6nnY1wvQs1KIYxItI3ao7+O6jFR7SFggi7p7WqEYBHAEhAVmZnxAocPP5qGnX
+GbypIUIlrxrQk6KiYmy3pkwom4dOZ0Z6sPPHBGesMyAOROIBYDCE4w3lMtv0tyxf
+y2XqOgpZmRpjtpIzBW3/3xxfpzG62leFBcF/1OXDlUbamUWekW8M0PygBmCaLFKw
+Ck0rHkIuJ8zXsZyGoBD2iwSp/3du6GQbm+GLG1cc0tpv61Pr2+xOWVEuJ+k9FaNt
+oVL14aiqHRPuzzgkJ/SpI8rL/VuHq77E+Xc+Taf0q/hFquekCRzeASJ/m+v/jMmZ
+k814tmIUe9j+5HoEIoax2P8fuI8dmP6/6L+gYkCi+ce/HjZs9oSq7tpJZqn+4lYm
+v/2sVb7sLJahtY9Ws91gFsehZKsG7NPMNXCpLBJXTNKBUeeimeQ6Nuh4cN36D3ds
+T7txAcDGTkDD+NXrOfKsG0K9aVoHjZyzOIhNhBbcSAdNwZeWF40Ij3jDvtbYuqNu
+WMtqZuj3j+M2I+jOd8qs6npC4lyqNp+6cWvdHARMIy783tt/t4vuRCXGNzE0wDX7
+mFQoncD3ip8=
+=0oBb
 -----END PGP SIGNATURE-----
 
---Sig_/9Y0wdredF1_E+9pUGcz3deW--
+--Sig_/wYaxr3jgzWBoildcHHrztJS--
