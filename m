@@ -1,57 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fn.samba.org ([216.83.154.106]:34016 "EHLO mail.samba.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753298AbbEMUzl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 13 May 2015 16:55:41 -0400
-Date: Wed, 13 May 2015 13:55:31 -0700
-From: Jeremy Allison <jra@samba.org>
-To: Andreas =?iso-8859-1?Q?Gr=FCnbacher?=
-	<andreas.gruenbacher@gmail.com>
-Cc: Jeremy Allison <jra@samba.org>, Frank Filz <ffilzlnx@mindspring.com>,
-        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-Subject: Re: [RFC v3 20/45] richacl: Automatic Inheritance
-Message-ID: <20150513205531.GG10059@samba2>
-Reply-To: Jeremy Allison <jra@samba.org>
-References: <cover.1429868795.git.agruenba@redhat.com>
- <28e2cd75064ff56bad897b6f69356f4fb15b8128.1429868795.git.agruenba@redhat.com>
- <0b2401d08da6$dad0d0f0$907272d0$@mindspring.com>
- <CAHpGcMLBb+s7iSv9SN1eRX-46VU_wnbGX1nXrNkuaYVp8v0jYw@mail.gmail.com>
- <20150513202803.GD10059@samba2>
- <CAHpGcMLg2+SrMJrFe9Sj-tfXVMW040xJMq2uRcAM+LBEUmqpvA@mail.gmail.com>
+Received: from mail-ob0-f179.google.com ([209.85.214.179]:34662 "EHLO
+	mail-ob0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S965383AbbEMVFp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 May 2015 17:05:45 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-In-Reply-To: <CAHpGcMLg2+SrMJrFe9Sj-tfXVMW040xJMq2uRcAM+LBEUmqpvA@mail.gmail.com>
+In-Reply-To: <0b2f01d08dbc$d3418940$79c49bc0$@mindspring.com>
+References: <cover.1429868795.git.agruenba@redhat.com>
+	<28e2cd75064ff56bad897b6f69356f4fb15b8128.1429868795.git.agruenba@redhat.com>
+	<0b2401d08da6$dad0d0f0$907272d0$@mindspring.com>
+	<CAHpGcMLBb+s7iSv9SN1eRX-46VU_wnbGX1nXrNkuaYVp8v0jYw@mail.gmail.com>
+	<0b2f01d08dbc$d3418940$79c49bc0$@mindspring.com>
+Date: Wed, 13 May 2015 23:05:44 +0200
+Message-ID: <CAHpGcM+t00=QjR5S+aoi_o=REdnTT7r_K0M7vh7fGESmtQP=_w@mail.gmail.com>
+Subject: Re: [RFC v3 20/45] richacl: Automatic Inheritance
+From: =?UTF-8?Q?Andreas_Gr=C3=BCnbacher?= <andreas.gruenbacher@gmail.com>
+To: Frank Filz <ffilzlnx@mindspring.com>
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, May 13, 2015 at 10:47:44PM +0200, Andreas Grünbacher wrote:
-> 2015-05-13 22:28 GMT+02:00 Jeremy Allison <jra@samba.org>:
-> > On Wed, May 13, 2015 at 10:22:21PM +0200, Andreas Grünbacher wrote:
-> >>
-> >> That being said, a daemon like Samba can "fake" full Automatic
-> >> Inheritance by creating files and then updating the inherited acls
-> >> appropriately. This will inevitably be racy, but unless someone
-> >> implements a way to create files without a mode, that's the closest
-> >> Samba can get.
-> >
-> > On Windows systems the client fake (no quotes :-) full Automatic
-> > Inheritance by creating files and then updating the inherited acls
-> > appropriately.
-> 
-> Hmm, interesting, are you *absolutely* sure about that? Is there
-> anywhere I can look that up?
+2015-05-13 22:38 GMT+02:00 Frank Filz <ffilzlnx@mindspring.com>:
+> So inheritance will happen, but there is also a mode set as part of the create that I assume
+> is effectively handled the same as a subsequent chmod() on the file?
 
-Hmm. Just realized we may be talking about different things :-).
+The effect is similar to a subsequent chmod except that the effective
+permissions may be fewer then the create mode:
 
-In SMB/Samba the clients can create a file with no ACL, and
-the directory ACL is auto inherited. *That* we fake in
-Samba by creating then updating.
+ * In the traditional POSIX case, the effective permissions are
+   (create_mode & ~umask).
 
-But in Windows there are the concept of "inherited" ACE
-entries, which can come from parents of parents of parents
-(etc.) objects. When a client modifies one of these on an
-upper level directory, the server doesn't do the auto
-updating that the vision of the file system might lead
-you to expect - that updating is done by a tree walk
-by the client.
+ * With POSIX ACLs and Richacls, if there are inheritable permissions,
+   the effective permissions are the intersection of the create mode and
+   the maximum permissions the inherited acl grants. So if the inherited
+   acl grants at most rwxr-x---, with a create mode of rw-rw-rw, the
+   effective permissions end up being rw-r-----.
+
+> Any chance we could add a system call to do a open/create and pass an ACL
+> (and heck, if we go there, why not a system call that allows creating with mtime,
+> atime, owner, etc. also...).
+
+Send patches, but expect them to get killed :)
+
+> Is there a mode that we could pass that would cause the least amount
+> of damage to the inherited ACL?
+
+Yes, 0777. But the RICHACL_PROTECTED flag will still be set, and that
+is the problem in this case.
+
+Andreas
