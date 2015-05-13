@@ -1,144 +1,129 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:50983 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750727AbbEMEZZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 13 May 2015 00:25:25 -0400
-Date: Wed, 13 May 2015 14:25:15 +1000
-From: NeilBrown <neilb@suse.de>
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-fsdevel@vger.kernel.org,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: Re: [PATCH 4/4] nfsd: Pin to vfsmnt instead of mntget
-Message-ID: <20150513142515.6bd881c8@notabene.brown>
-In-Reply-To: <5550A9DF.1070908@gmail.com>
-References: <554A149B.5060102@gmail.com>
-	<554A154B.6040103@gmail.com>
-	<20150508144031.6f0d3cda@notabene.brown>
-	<20150508134744.GA23753@fieldses.org>
-	<5550A9DF.1070908@gmail.com>
+Received: from mx3-phx2.redhat.com ([209.132.183.24]:53245 "EHLO
+	mx3-phx2.redhat.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750958AbbEMEi2 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 May 2015 00:38:28 -0400
+Date: Wed, 13 May 2015 00:38:27 -0400 (EDT)
+From: Jamie Bainbridge <jbainbri@redhat.com>
+To: Jeff Layton <jeff.layton@primarydata.com>
+Cc: linux-nfs@vger.kernel.org, harshula@redhat.com
+Message-ID: <1145440816.15746284.1431491907073.JavaMail.zimbra@redhat.com>
+In-Reply-To: <1931935701.11701794.1430720586398.JavaMail.zimbra@redhat.com>
+References: <107624115.10168203.1430457528206.JavaMail.zimbra@redhat.com> <284822107.10169266.1430457755109.JavaMail.zimbra@redhat.com> <20150501093949.48f9e779@tlielax.poochiereds.net> <1931935701.11701794.1430720586398.JavaMail.zimbra@redhat.com>
+Subject: Re: Desired RPC client behaviour on socket errors?
 MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
- boundary="Sig_/wYaxr3jgzWBoildcHHrztJS"; protocol="application/pgp-signature"
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/wYaxr3jgzWBoildcHHrztJS
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+----- Original Message -----
+> From: "Jamie Bainbridge" <jbainbri@redhat.com>
+> To: "Jeff Layton" <jeff.layton@primarydata.com>
+> Cc: linux-nfs@vger.kernel.org, harshula@redhat.com
+> Sent: Monday, 4 May, 2015 4:23:06 PM
+> Subject: Re: Desired RPC client behaviour on socket errors?
+> 
+> ----- Original Message -----
+> > From: "Jeff Layton" <jeff.layton@primarydata.com>
+> > To: "Jamie Bainbridge" <jbainbri@redhat.com>
+> > Cc: linux-nfs@vger.kernel.org, harshula@redhat.com
+> > Sent: Friday, 1 May, 2015 11:39:49 PM
+> > Subject: Re: Desired RPC client behaviour on socket errors?
+> > 
+> > On Fri, 1 May 2015 01:22:35 -0400 (EDT)
+> > Jamie Bainbridge <jbainbri@redhat.com> wrote:
+> > 
+> > > Commit 3ed5e2a introduced a change to the RPC client's handling of socket
+> > > return on connect.
+> > > 
+> > > Prior to this commit, any error return was considered instantly fatal and
+> > > rpc_exit(task,-EIO) was called.
+> > > 
+> > > After this commit, socket returns ECONNREFUSED ECONNRESET ECONNABORTED
+> > > ENETUNREACH EHOSTUNREACH are passed back to the caller. This is a good
+> > > idea and works well.
+> > > 
+> > > However, this commit also causes those returns to call
+> > > rpc_delay(task,3*HZ)
+> > > and the RPC connect to retry until the RPC times out. The timeout can be
+> > > modified with soft/timeo/retrans but defaults to 3 minutes.
+> > > 
+> > > In practice this means if a client tries to mount and there is a
+> > > permanent
+> > > network error outside the client, a TCP Reset or an ICMP error might get
+> > > returned, bu the mount will hang and the client will keep trying to
+> > > connect many times until the RPC times out. Previously a mount would fail
+> > > almost straight away.
+> > > 
+> > > It seems 3ed5e2a solves a problem for transient network errors but
+> > > creates
+> > > a problem for permanent network errors.
+> > > 
+> > > I agree it's probably desirable for a client application (RPC in this
+> > > instance) to keep trying to connect until a timeout, and it's good the
+> > > timeout is configurable, but it's bad that the timeout must be tied to
+> > > all
+> > > RPC operations. Someone wanting a quick mount timeout must also suffer a
+> > > quick NFS operation timeout, not to mention the data corruption risk that
+> > > goes along with soft.
+> > > 
+> > > Should the RPC client call rpc_exit() on an xprt connect which returns
+> > > ECONNREFUSED ECONNRESET ECONNABORTED ENETUNREACH EHOSTUNREACH because
+> > > those returns imply a "more permanent" network issue?
+> > > 
+> > > Disclosure: We came across this because a customer is (ab)using NFSv4
+> > > Migrations in a strange way. One server in fs_locations is firewalled
+> > > behind a TCP Reset and one is not. Depending on which security zone a
+> > > client is in, it can connect to one server but not the other. This
+> > > enables
+> > > clients in both security zones to use the same NFS mount configuration.
+> > > 
+> > > Cheers,
+> > > Jamie
+> > > --
+> > > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > > the body of a message to majordomo@vger.kernel.org
+> > > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > 
+> > 
+> > I'd say no...
+> > 
+> > One thing to consider is that it's quite common for servers (Linux or
+> > otherwise) to return those sorts of errors as they are coming up after
+> > a reboot. Network interfaces are often brought online before the nfs
+> > server is ready to accept connections.
+> > 
+> > If we were to change that then you'd likely see RPCs failing in those
+> > situations, which is almost certainly not what you want.
+> > 
+> > AFAICT, mount requests should end up trying to do a rpc_ping first,
+> > which should have RPC_TASK_SOFTCONN set. Is that not working for some
+> > reason?
+> > 
+> > --
+> > Jeff Layton <jeff.layton@primarydata.com>
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > 
+> 
+> Thanks for the confirmation of connect behaviour.
+> 
+> Debug shows a NULL procedure being generated, so it seems rpc_ping is called,
+> but the RPC task ends up with a status of -EAGAIN and not -ECONNRESET, so it
+> doesn't break out of the switch:case to call rpc_exit().
+> 
+> It seems socket status is not being passed back to become task status. I'll
+> look into why that is.
 
-On Mon, 11 May 2015 21:08:47 +0800 Kinglong Mee <kinglongmee@gmail.com> wro=
-te:
+Turns out this is working fine in 4.0.1 but not in EL6.
 
-> On 5/8/2015 9:47 PM, J. Bruce Fields wrote:
-> > On Fri, May 08, 2015 at 02:40:31PM +1000, NeilBrown wrote:
-> >> Thanks for this patch.  It looks good!
-> >>
-> >> My only comment on the code is that I would really like to see a
-> >> "path_get_pin()" and "path_put_unpin()" rather than open coding:
-> >>
-> >>> +	dget(item->ek_path.dentry);
-> >>> +	pin_insert_group(&new->ek_pin, item->ek_path.mnt, NULL);
-> >>
-> >> and=20
-> >>
-> >>> +		dput(key->ek_path.dentry);
-> >>> +		pin_remove(&key->ek_pin);
-> >>
-> >>
-> >> But the question you raise is an important one:  Exactly which filesys=
-tems
-> >> should be allowed to be unmounted?
-> >> This is a change in behaviour - is it one that people uniformly would =
-want?
-> >>
-> >> The kernel doesn't currently know which file systems were explicitly l=
-isted
-> >> in /etc/exports, and which were found by following a 'crossmnt'.
-> >> It could guess and allow the unmounting of anything below a 'crossmnt'=
-, but I
-> >> wouldn't be comfortable with that - it is error prone.
-> >>
-> >> mountd does know what is in /etc/exports, and could tell the kernel.
-> >> For the expkey cache, we could always use path_get_pin.
-> >> For the export cache (where flags are available) we could use path_get
-> >> or path_get_pin depending on some new flag.
-> >>
-> >> I'm not really sure it is worth it.  I would rather the filesystems co=
-uld
-> >> always be unmounted.  But doing that could possibly break someone's wo=
-rk
-> >> flow.  Maybe.
-> >>
-> >> Or maybe I'm seeing problems where there aren't any.
-> >>
-> >> Anyone else have an opinion?
-> >=20
-> > The undisputed bug here was negative cache entries preventing unmount.
-> > So most conservative might be just to purge negative entries.
->=20
-> I'd like this,
-> if the cache is valid, user should not be allowed to umount the filesyste=
-m.
->=20
-> >=20
-> > Otherwise, the only guarantees I think we've really had is that we won't
-> > allow unmount if you hold any actual state on the filesystem (NLM locks,
-> > NFSv4 locks, opens, or delegations).
->=20
-> Those resources hold the reference of vfsmnt.
->=20
-> >=20
-> > If a filesystem is exported but no clients hold state on it, then it's
-> > currently mostly chance whether the unmount succeeds or not.  So we're
-> > probably free to change the behavior in this case.  I'd be inclined to
-> > allow the unmount, but haven't thought this through carefully.
->=20
-> If client mount a nfsserver succeed without holds state,=20
-> nfs server umounts the exported filesystem,=20
-> client also think the filesystem is valid, but it is umounted.
+The EL6 kernel is currently missing xs_error_report() which sets sock->sk_err to task->status. Without that function, the default state of -EAGAIN is set in xprt_disconnect_done().
 
-This is no different from "exportfs -au" being run on the server, thus
-unexporting the filesystem and making in unavailable to the client, even
-though the client has it mounted.
+I'll handle this further via Red Hat Bugzilla.
 
-I think we need to give the server admin control of their filesystems, and
-assume they won't do something that they don't really want to do.
+Thanks for the help Jeff!
 
-
-
->=20
-> >=20
-> > It could also be useful to have the ability to force an unmount even in
-> > the presence of locks.  That's not a safe default, but an
-> > "allow_force_unmount" export option might be useful.
-
-We already have a mechanism to forcibly drop any locks by writing some magic
-to /proc/fs/nfsd/unlock_{ip,filesystem}.  I don't think we need any more.
-
-NeilBrown
-
---Sig_/wYaxr3jgzWBoildcHHrztJS
-Content-Type: application/pgp-signature
-Content-Description: OpenPGP digital signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2
-
-iQIVAwUBVVLSLDnsnt1WYoG5AQKhVhAAkeD7+D2c8COcul3ZAY3uIA0hR/EDLcLg
-rbWbfqpjCcqI0BZ/Nvaat6oXYSVTmX+hS9LYEXVJX8xvd1AMvY6hoYp9RsnvTonH
-oqJ6nnY1wvQs1KIYxItI3ao7+O6jFR7SFggi7p7WqEYBHAEhAVmZnxAocPP5qGnX
-GbypIUIlrxrQk6KiYmy3pkwom4dOZ0Z6sPPHBGesMyAOROIBYDCE4w3lMtv0tyxf
-y2XqOgpZmRpjtpIzBW3/3xxfpzG62leFBcF/1OXDlUbamUWekW8M0PygBmCaLFKw
-Ck0rHkIuJ8zXsZyGoBD2iwSp/3du6GQbm+GLG1cc0tpv61Pr2+xOWVEuJ+k9FaNt
-oVL14aiqHRPuzzgkJ/SpI8rL/VuHq77E+Xc+Taf0q/hFquekCRzeASJ/m+v/jMmZ
-k814tmIUe9j+5HoEIoax2P8fuI8dmP6/6L+gYkCi+ce/HjZs9oSq7tpJZqn+4lYm
-v/2sVb7sLJahtY9Ws91gFsehZKsG7NPMNXCpLBJXTNKBUeeimeQ6Nuh4cN36D3ds
-T7txAcDGTkDD+NXrOfKsG0K9aVoHjZyzOIhNhBbcSAdNwZeWF40Ij3jDvtbYuqNu
-WMtqZuj3j+M2I+jOd8qs6npC4lyqNp+6cWvdHARMIy783tt/t4vuRCXGNzE0wDX7
-mFQoncD3ip8=
-=0oBb
------END PGP SIGNATURE-----
-
---Sig_/wYaxr3jgzWBoildcHHrztJS--
+Cheers,
+Jamie
