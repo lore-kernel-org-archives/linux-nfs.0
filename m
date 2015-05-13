@@ -1,84 +1,53 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ie0-f174.google.com ([209.85.223.174]:36697 "EHLO
-	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S934378AbbEMSzn (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 May 2015 14:55:43 -0400
-Received: by iepk2 with SMTP id k2so39458377iep.3
-        for <linux-nfs@vger.kernel.org>; Wed, 13 May 2015 11:55:43 -0700 (PDT)
-Message-ID: <1431543341.9235.10.camel@primarydata.com>
-Subject: Re: [PATCH] NFS: report more appropriate block size for directories.
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Scott Mayhew <smayhew@redhat.com>
-Cc: NeilBrown <neilb@suse.de>, Anna Schumaker <anna.schumaker@netapp.com>,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Date: Wed, 13 May 2015 14:55:41 -0400
-In-Reply-To: <20150508151459.GA63078@tonberry.usersys.redhat.com>
-References: <20150508131040.140bf570@notabene.brown>
-	 <20150508151459.GA63078@tonberry.usersys.redhat.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from mout.kundenserver.de ([212.227.17.24]:53677 "EHLO
+	mout.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754575AbbEMTAE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 May 2015 15:00:04 -0400
+From: Arnd Bergmann <arnd@arndb.de>
+To: linux-arm-kernel@lists.infradead.org
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] nfsd: work around a gcc-5.1 warning
+Date: Wed, 13 May 2015 20:59:36 +0200
+Message-ID: <9574260.omRer6Oeha@wuerfel>
+In-Reply-To: <20150513181143.GD2827@fieldses.org>
+References: <2121336.tAfQfAWQ2u@wuerfel> <20150513181143.GD2827@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2015-05-08 at 11:14 -0400, Scott Mayhew wrote:
-> On Fri, 08 May 2015, NeilBrown wrote:
+On Wednesday 13 May 2015 14:11:43 J. Bruce Fields wrote:
 > 
-> > 
-> > In glibc 2.21 (and several previous), a call to opendir() will
-> > result in a 32K (BUFSIZ*4) buffer being allocated and passed to
-> > getdents.
-> > 
-> > However a call to fdopendir() results in an 'fstat' request to
-> > determine block size and a matching buffer allocated for subsequent
-> > use with getdents.  This will typically be 1M.
-> > 
-> > The first getdents call on an NFS directory will always use
-> > READDIR_PLUS (or NFSv4 equivalent) if available.  Subsequent getdents
-> > calls only use this more expensive version if some 'stat' requests are
-> > made between the getdents calls.
-> > 
-> > For this reason it is good to keep at least that first getdents call
-> > relatively short.  When fdopendir() and readdir() is used on a large
-> > directory, it takes approximately 32 times as long to complete as
-> > using "opendir".  Current versions of 'find' use fdopendir() and
-> > demonstrate this slowness.
-> > 
-> > 'stat' on a directory currently returns the 'wsize'.  This number has
-> > no meaning on directories.
-> > Actual READDIR requests are limited to ->dtsize, which itself is
-> > capped at 4 pages, coincidently the same as BUFSIZ*4.
-> > So this is a meaningful number to use as the blocksize on directories,
-> > and has the effect of making 'find' on large directories go a lot
-> > faster.
+> OK, I guess.  How about simplifying slightly and doing it this way?--b
 > 
-> Would it make sense to do something similar for regular files too?
-> fopen() does a similar buffer allocation unless the application
-> overrides the buffer size via setbuffer()/setvbuf().  That can then
-> result in fseek() reading a lot of unnecessary data over the wire.
+> commit 3ae81ac291ec
+> Author: Arnd Bergmann <arnd@arndb.de>
+> Date:   Tue May 12 23:31:29 2015 +0200
 > 
-> Prior to commit ba52de1 (inode-diet: Eliminate i_blksize from the inode
-> structure), a stat() over nfs would return the page size in st_blksize,
-> and for some workloads it does make a difference.  For instance, I have
-> a customer running gdb in an diskless environment.  On a stock kernel
-> where a stat() over nfs returns the wsize in st_blksize, their job takes
-> ~19 minutes... on a test kernel where a stat() over nfs returns the page
-> size instead, that same job takes ~13 minutes.  I hadn't sent a patch
-> yet because I'm still trying to account for a few extra minutes of
-> run time elsewhere...
+>     nfsd: work around a gcc-5.1 warning
+>     
+>     gcc-5.0 warns about a potential uninitialized variable use in nfsd:
+>     
+>     fs/nfsd/nfs4state.c: In function 'nfsd4_process_open2':
+>     fs/nfsd/nfs4state.c:3781:3: warning: 'old_deny_bmap' may be used uninitialized in this function [-Wmaybe-uninitialized]
+>        reset_union_bmap_deny(old_deny_bmap, stp);
+>        ^
+>     fs/nfsd/nfs4state.c:3760:16: note: 'old_deny_bmap' was declared here
+>       unsigned char old_deny_bmap;
+>                     ^
+>     
+>     This is a false positive, the code path that is warned about cannot
+>     actually be reached.
+>     
+>     This adds an initialization for the variable to make the warning go
+>     away.
+>     
+>     Signed-off-by: Arnd Bergmann <arnd@arndb.de>
+>     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> 
 > 
 
-The client shouldn't be reporting anything different after commit
-ba52de1. We should have
-  inode->i_blkbits = sb->s_blocksize_bits;
+Works for me, thanks!
 
-with
-  sb->s_blocksize_bits being set as log2(sb->s_blocksize)
-
-Previously, inode->i_blksize was the same as sb_s_blocksize.
-
--- 
-Trond Myklebust
-Linux NFS client maintainer, PrimaryData
-trond.myklebust@primarydata.com
-
-
+	Arnd
