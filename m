@@ -1,49 +1,37 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx142.netapp.com ([216.240.21.19]:23472 "EHLO mx142.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1946103AbbEOPzD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 15 May 2015 11:55:03 -0400
-From: Olga Kornievskaia <kolga@netapp.com>
-To: <trond.myklebust@primarydata.com>
-CC: <linux-nfs@vger.kernel.org>
-Subject: [PATCH 1/1] fixing infinite OPEN loop in 4.0 stateid recovery
-Date: Fri, 15 May 2015 11:45:31 -0400
-Message-ID: <1431704731-1269-1-git-send-email-kolga@netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+Received: from outbound-smtp02.blacknight.com ([81.17.249.8]:44274 "EHLO
+	outbound-smtp02.blacknight.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754002AbbEORtn convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 15 May 2015 13:49:43 -0400
+Received: from mail.blacknight.com (pemlinmail02.blacknight.ie [81.17.254.11])
+	by outbound-smtp02.blacknight.com (Postfix) with ESMTPS id 932DA980C0
+	for <linux-nfs@vger.kernel.org>; Fri, 15 May 2015 17:44:25 +0000 (UTC)
+Subject: Issue running buffered writes to a pNFS (NFS 4.1 backed by SAN) filesystem.
+Mime-Version: 1.0 (1.0)
+From: Benjamin ESTRABAUD <be@mpstor.com>
+Content-Type: text/plain;
+	charset=us-ascii
+Message-Id: <41EB9782-8445-4FBB-A825-A484EFF7169C@mpstor.com>
+Date: Fri, 15 May 2015 10:44:13 -0700
+Cc: "bc@mpstor.com" <bc@mpstor.com>
+To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Problem: When an operation like WRITE receives a BAD_STATEID, even though
-recovery code clears the RECLAIM_NOGRACE recovery flag before recovering
-the open state, because of clearing delegation state for the associated
-inode, nfs_inode_find_state_and_recover() gets called and it makes the
-same state with RECLAIM_NOGRACE flag again. As a results, when we restart
-looking over the open states, we end up in the infinite loop instead of
-breaking out in the next test of state flags.
+Hi!
 
-Solution: unset the RECLAIM_NOGRACE set because of
-calling of nfs_inode_find_state_and_recover() after returning from calling
-recover_open() function.
+I've been using pNFS for a while since recently, and I am very pleased with its overall stability and performance.
 
-Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
----
- fs/nfs/nfs4state.c | 2 ++
- 1 file changed, 2 insertions(+)
+A pNFS MDS server was setup with SAN storage in the backend (a RAID0 built ontop of multiple LUNs). Clients were given access to the same RAID0 using the same LUNs on the same SAN.
 
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 2782cfc..e99e1f0 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -1482,6 +1482,8 @@ restart:
- 					spin_unlock(&state->state_lock);
- 				}
- 				nfs4_put_open_state(state);
-+				test_and_clear_bit(NFS4CLNT_RECLAIM_NOGRACE,
-+					&state->flags);
- 				spin_lock(&sp->so_lock);
- 				goto restart;
- 			}
--- 
-1.8.3.1
+However, I've been noticing a small issue with it that prevents me from using pNFS to its full potential: If I run non-direct IOs (for instance "dd" without the "oflag=direct" option), IOs run excessively slowly (3-4MB/sec) and the dd process hangs until forcefully terminated. The same behaviour can be observed laying out an IO file with FIO for instance, or using some applications which do not use the ODIRECT flag. When using direct IO I can observe lots of iSCSI traffic, at extremely good performance (same performance as the SAN gets on "raw" block devices).
 
+All the systems are running CentOS 7.0 with a custom kernel 4.1-rc2 (pNFS enabled) apart from the storage nodes which are running a custom minimal Linux distro with Kernel 3.18.
+
+The SAN is all 40G Mellanox Ethernet, and we are not using the OFED driver anywhere (Everything is only "standard" upstream Linux).
+
+Would anybody have any ideas where this issue could be coming from?
+
+Regards,
+Ben - MPSTOR.
