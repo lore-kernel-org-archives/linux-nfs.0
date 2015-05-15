@@ -1,96 +1,126 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from pandora.arm.linux.org.uk ([78.32.30.218]:48154 "EHLO
-	pandora.arm.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754254AbbEOOu0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 May 2015 10:50:26 -0400
-Date: Fri, 15 May 2015 15:50:14 +0100
-From: Russell King - ARM Linux <linux@arm.linux.org.uk>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        linux-fsdevel@vger.kernel.org,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org
-Subject: Re: NFS client broken in 4.1.0-rc2
-Message-ID: <20150515145013.GM2067@n2100.arm.linux.org.uk>
-References: <20150515142403.GL2067@n2100.arm.linux.org.uk>
- <F423EE93-1A93-42F8-8593-9D2E4F85CB3B@oracle.com>
+Received: from mail-ig0-f179.google.com ([209.85.213.179]:38272 "EHLO
+	mail-ig0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S934744AbbEOPwJ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 May 2015 11:52:09 -0400
+Received: by igcau1 with SMTP id au1so31590078igc.1
+        for <linux-nfs@vger.kernel.org>; Fri, 15 May 2015 08:52:08 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <F423EE93-1A93-42F8-8593-9D2E4F85CB3B@oracle.com>
+In-Reply-To: <CAN-5tyG8ukoGJATK1RA85xv9BDikfC1CPP0nc=-80h=BSGV6=w@mail.gmail.com>
+References: <CAN-5tyG8ukoGJATK1RA85xv9BDikfC1CPP0nc=-80h=BSGV6=w@mail.gmail.com>
+Date: Fri, 15 May 2015 11:52:08 -0400
+Message-ID: <CAN-5tyHKh0kFDqmq_9ZyTmzmMx33f2wixrWBpi5hx=YXF0kihg@mail.gmail.com>
+Subject: Re: 4.0 NFS client in infinite loop in state recovery after getting BAD_STATEID
+From: Olga Kornievskaia <aglo@umich.edu>
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, May 15, 2015 at 10:26:48AM -0400, Chuck Lever wrote:
-> 
-> On May 15, 2015, at 10:24 AM, Russell King - ARM Linux <linux@arm.linux.org.uk> wrote:
-> 
-> > While trying to update a kernel and modules on one of my test systems,
-> > I was greeted by these errors:
-> > 
-> > tar: lib/modules/4.1.0-rc2+/kernel/drivers/media/platform/coda/coda.ko: Cannot utime
-> > tar: lib/modules/4.1.0-rc2+/kernel/drivers/media/dvb-frontends/drx39xyj/drx39xyj.ko: Cannot utime
-> > tar: lib/modules/4.1.0-rc2+/kernel/drivers/media/usb/em28xx/em28xx.ko: Cannot utime
-> > tar: lib/modules/4.1.0-rc2+/kernel/drivers/usb/serial/option.ko: Cannot utime
-> > tar: lib/modules/4.1.0-rc2+/kernel/drivers/usb/serial/ftdi_sio.ko: Cannot utime
-> > tar: lib/modules/4.1.0-rc2+/kernel/drivers/net/wireless/brcm80211/brcmfmac/brcmfmac.ko: Cannot utime
-> > tar: lib/modules/4.1.0-rc2+/kernel/drivers/input/mouse/psmouse.ko: Cannot utime
-> > tar: lib/modules/4.1.0-rc2+/kernel/fs/udf/udf.ko: Cannot utime
-> > tar: lib/modules/4.1.0-rc2+/kernel/fs/fuse/fuse.ko: Cannot utime
-> > tar: lib/modules/4.1.0-rc2+/kernel/fs/nfsd/nfsd.ko: Cannot utime
-> > tar: lib/modules/4.1.0-rc2+/kernel/sound/soc/codecs/snd-soc-wm8962.ko: Cannot utime
-> > tar: lib/modules/4.1.0-rc2+/kernel/net/bluetooth/bluetooth.ko: Cannot utime
-> > tar: lib/modules/4.1.0-rc2+/modules.alias.bin: Cannot utime
-> > tar: lib/modules/4.1.0-rc2+/modules.alias: Cannot utime
-> > tar: Exiting with failure status due to previous errors
-> > 
-> > Searching google wasn't helpful, as all the "Cannot utime" errors that
-> > google could find are followed by an errno string.
-> > 
-> > stracing at first sight didn't seem to be helpful, as no syscalls (apart
-> > from openat() with a pre-existing file) were failing.
-> > 
-> > Having recently updated to fc21 tar generating the archive, I thought
-> > maybe it was a tar format bug between fc21 tar and the target's tar.
-> > That was until I tried to "apt-get source tar" on the target, and was
-> > greeted by the same error.
-> > 
-> > So I then tried untaring the tar source archive onto a ramfs, which
-> > worked without complaint.  The difference being that it's a root NFS
-> > box, and so I was untaring onto NFS.
-> > 
-> > Here's the entry from /proc/mounts:
-> > 
-> > x.y.z.221:/var/boot/ci on / type nfs (rw,nolock,vers=4,addr=x.y.z.221,clientaddr=a.b.c.55)
-> > 
-> > Looking closer at the strace reveals this:
-> > 
-> > openat(AT_FDCWD, "lib/modules/4.1.0-rc2+/kernel/drivers/media/platform/coda/coda.ko", O_WRONLY|O_CREAT|O_EXCL|O_NOCTTY|O_NONBLOCK|O_LARGEFILE|O_CLOEXEC, 0600) = -1 EEXIST (File exists)
-> > unlinkat(AT_FDCWD, "lib/modules/4.1.0-rc2+/kernel/drivers/media/platform/coda/coda.ko", 0) = 0
-> > openat(AT_FDCWD, "lib/modules/4.1.0-rc2+/kernel/drivers/media/platform/coda/coda.ko", O_WRONLY|O_CREAT|O_EXCL|O_NOCTTY|O_NONBLOCK|O_LARGEFILE|O_CLOEXEC, 0600) = 4
-> > write(4, "\177ELF\1\1\1\0\0\0\0\0\0\0\0\0\1\0(\0\1\0\0\0\0\0\0\0\0\0\0\0"..., 4096) = 4096
-> > ...
-> > write(4, "\300H\0\0\34\345\1\0\314H\0\0\34\345\1\0\330H\0\0\34\345\1\0<I\0\0\34\370\1\0"..., 7312) = 7312
-> > dup2(4, 4)                              = 4
-> > fstat64(4, {st_mode=0757221, st_size=13181880119170311768, ...}) = 21
-> > write(2, "tar: ", 5)                    = 5
-> > write(2, "lib/modules/4.1.0-rc2+/kernel/dr"..., 79) = 79
-> > write(2, "\n", 1)                       = 1
-> > fchown32(4, 0, 0)                       = 0
-> > fchmod(4, 0664)                         = 0
-> > close(4)                                = 0
-> > 
-> > Look closely at that fstat64, and you'll notice that it's returning crap.
-> 
-> This is likely fixed by:
-> 
->   http://marc.info/?l=linux-nfs&m=143095122604344&w=2
+Here's another version:
 
-Yes, it appears to be fixed by that change.  I'll add it to my tree so
-my test systems work.
+Problem: When an operation like WRITE receives a BAD_STATEID, even though
+recovery code clears the RECLAIM_NOGRACE recovery flag before recovering
+the open state, because of clearing delegation state for the associated
+inode, nfs_inode_find_state_and_recover() gets called and it marks the
+same state with RECLAIM_NOGRACE flag again. As a results, when we restart
+looking over the open states, we end up in the infinite loop instead of
+breaking out in the next test of state flags.
 
-Many thanks.
+Solution: unset the RECLAIM_NOGRACE set because of
+calling of nfs_inode_find_state_and_recover() after returning from calling
+recover_open() function.
 
+Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+---
+ fs/nfs/nfs4state.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 2782cfc..e99e1f0 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -1482,6 +1482,8 @@ restart:
+                                        spin_unlock(&state->state_lock);
+                                }
+                                nfs4_put_open_state(state);
++                               test_and_clear_bit(NFS4CLNT_RECLAIM_NOGRACE,
++                                       &state->flags);
+                                spin_lock(&sp->so_lock);
+                                goto restart;
+                        }
 -- 
-FTTC broadband for 0.8mile line: currently at 10.5Mbps down 400kbps up
-according to speedtest.net.
+
+On Thu, May 7, 2015 at 1:04 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
+> Hi folks,
+>
+> Problem:
+> The upstream nfs4.0 client has problem where it will go into an
+> infinite loop of re-sending an OPEN when it's trying to recover from
+> receiving a BAD_STATEID error on an IO operation such READ or WRITE.
+>
+> How to easily reproduce (by using fault injection):
+> 1. Do nfs4.0 mount to a server.
+> 2. Open a file such that the server gives you a write delegation.
+> 3. Do a write. Have a server return a BAD_STATEID. One way to do so is
+> by using a python proxy, nfs4proxy, and inject BAD_STATEID error on
+> WRITE.
+> 4. And off it goes with the loop.
+>
+> Here’s why….
+>
+> IO op like WRITE receives a BAD_STATEID.
+> 1. for this error, in async handle error we  call
+> nfs4_schedule_stateid_recover()
+> 2. that in turn will call nfs4_state_mark_reclaim_nograce() that will
+> set a RECLAIM_NOGRACE in the state flags.
+> 3. state manager thread will run and call nfs4_do_reclaim() to recover.
+> 4. that will call nfs4_reclaim_open_state()
+>
+> in that function:
+>
+> restart:
+> for open states in state
+> test if RECLAIM_NOGRACE is set in state flags, if so clear it (it’s
+> set and we’ll clear it)
+> check open_stateid (checks if RECOVERY_FAILED is not set) (it’s not)
+> checks if we have state
+> calls ops->recover_open()
+>
+> for nfs4.0, it’ll call nfs40_open_expired()
+> it’ll call nfs40_clear_delegation_stateid()
+> it’ll call nfs_finish_clear_delegation_stateid()
+> it’ll call nfs_remove_bad_delegation()
+> it’ll call nfs_inode_find_state_and_recover()
+> it’ll call nfs4_state_mark_reclaim_nograce() **** this will set
+> RECLAIM_NOGRACE in state flags
+>
+> we return from recover_open() with status 0
+> call nfs4_reclaim_locks() returns 0 then
+> goto restart; **************  what happens is since we reset the flag
+> in the state flags the whole loop starts again.
+>
+> Solution:
+> nfs_remove_bad_delegation() is only called from
+> nfs_finish_clear_delegation_stateid() which is called from either 4.0
+> or 4.1 recover open functions in nograce case. In both cases, this is
+> already state manager doing recovery based on the RECLAIM_NOGRACE flag
+> set and it's going thru opens that need to be recovered.
+>
+> I propose to correct the loop by removing the call:
+> diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
+> index 4711d04..b322823 100644
+> --- a/fs/nfs/delegation.c
+> +++ b/fs/nfs/delegation.c
+> @@ -632,10 +632,8 @@ void nfs_remove_bad_delegation(struct inode *inode)
+>
+>         nfs_revoke_delegation(inode);
+>         delegation = nfs_inode_detach_delegation(inode);
+> -       if (delegation) {
+> -               nfs_inode_find_state_and_recover(inode, &delegation->stateid);
+> +       if (delegation)
+>                 nfs_free_delegation(delegation);
+> -       }
+>  }
+>  EXPORT_SYMBOL_GPL(nfs_remove_bad_delegation);
