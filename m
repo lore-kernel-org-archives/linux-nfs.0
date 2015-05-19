@@ -1,42 +1,58 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx0a-00082601.pphosted.com ([67.231.145.42]:63226 "EHLO
-	mx0a-00082601.pphosted.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754524AbbESOoz (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 May 2015 10:44:55 -0400
-Message-ID: <555B4C4E.2020403@fb.com>
-Date: Tue, 19 May 2015 10:44:30 -0400
-From: Chris Mason <clm@fb.com>
-MIME-Version: 1.0
-To: Piotr Szymaniak <szarpaj@grubelek.pl>
-CC: Govindarajulu Varadarajan <_govind@gmx.com>, <linux-btrfs@vger.kernel.org>,
-        <linux-nfs@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
-        <jbacik@fb.com>, <dsterba@suse.cz>
-Subject: Re: btrfs: kernel BUG at mm/page-writeback.c:2286!
-References: <alpine.LNX.2.03.1505191317300.21108@ws.cisco> <555B3DEE.1000900@fb.com> <20150519135416.GO2539@wloczykij>
-In-Reply-To: <20150519135416.GO2539@wloczykij>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-ig0-f177.google.com ([209.85.213.177]:37277 "EHLO
+	mail-ig0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752084AbbESPza (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 May 2015 11:55:30 -0400
+Received: by igbsb11 with SMTP id sb11so17655107igb.0
+        for <linux-nfs@vger.kernel.org>; Tue, 19 May 2015 08:55:29 -0700 (PDT)
+Message-ID: <1432050927.7675.1.camel@primarydata.com>
+Subject: [GIT PULL] Please pull 2 client bugfixes
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
+Date: Tue, 19 May 2015 11:55:27 -0400
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 05/19/2015 09:54 AM, Piotr Szymaniak wrote:
-> On Tue, May 19, 2015 at 09:43:10AM -0400, Chris Mason wrote:
->> On 05/19/2015 03:55 AM, Govindarajulu Varadarajan wrote:
->>> 2286--->BUG_ON(!PageLocked(page));
->>>
->>> [  166.769868] BTRFS info (device sdf): no csum found for inode 1154
->>> start 43192320
->>> [  166.774334] BTRFS info (device sdf): csum failed ino 1154 extent
->>> 4434247680 csum 1388825687 wanted 0 mirror 0
->>
->>
->> Josef and I both missed this the first time you pasted it, but the
->> unlocked page is almost certainly related to this csum error.  While
->> we're looking at things can you please scrub?
+Hi Linus,
 
-Josef and I just read through all of this, and I'm not finding a way to
-connect the crc error to the BUG_ON.  Do all kernels crash like this, or
-was it just 4.1-rc?
+The following changes since commit 030bbdbf4c833bc69f502eae58498bc5572db736:
 
--chris
+  Linux 4.1-rc3 (2015-05-10 15:12:29 -0700)
+
+are available in the git repository at:
+
+  git://git.linux-nfs.org/projects/trondmy/linux-nfs.git tags/nfs-for-4.1-2
+
+for you to fetch changes up to feaff8e5b2cfc3eae02cf65db7a400b0b9ffc596:
+
+  nfs: take extra reference to fl->fl_file when running a setlk (2015-05-13 14:56:06 -0400)
+
+----------------------------------------------------------------
+NFS client bugfixes for Linux 4.1
+
+Highlights include:
+
+- Fix a Linux-4.1 regression affecting stat()
+- Take an extra reference to fl->fl_file when running a setlk
+
+----------------------------------------------------------------
+Chuck Lever (1):
+      nfs: stat(2) fails during cthon04 basic test5 on NFSv4.0
+
+Jeff Layton (1):
+      nfs: take extra reference to fl->fl_file when running a setlk
+
+ fs/nfs/nfs4proc.c |  3 +++
+ fs/nfs/write.c    | 13 ++++++++-----
+ 2 files changed, 11 insertions(+), 5 deletions(-)
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer, PrimaryData
+trond.myklebust@primarydata.com
 
 
