@@ -1,164 +1,97 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:49316 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754279AbbETTkt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 20 May 2015 15:40:49 -0400
-Date: Wed, 20 May 2015 15:40:48 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Benjamin ESTRABAUD <be@mpstor.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "bc@mpstor.com" <bc@mpstor.com>, Christoph Hellwig <hch@infradead.org>
-Subject: Re: Issue running buffered writes to a pNFS (NFS 4.1 backed by SAN)
- filesystem.
-Message-ID: <20150520194048.GA20221@fieldses.org>
-References: <41EB9782-8445-4FBB-A825-A484EFF7169C@mpstor.com>
- <20150515192037.GB29627@fieldses.org>
- <555CB5EE.2@mpstor.com>
+Received: from pandora.arm.linux.org.uk ([78.32.30.218]:60922 "EHLO
+	pandora.arm.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752759AbbETXWm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 May 2015 19:22:42 -0400
+Date: Thu, 21 May 2015 00:22:28 +0100
+From: Russell King - ARM Linux <linux@arm.linux.org.uk>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        linux-arm-kernel@lists.infradead.org
+Subject: Re: NFS client broken in 4.1.0-rc2
+Message-ID: <20150520232228.GC2067@n2100.arm.linux.org.uk>
+References: <20150515142403.GL2067@n2100.arm.linux.org.uk>
+ <F423EE93-1A93-42F8-8593-9D2E4F85CB3B@oracle.com>
+ <20150515145013.GM2067@n2100.arm.linux.org.uk>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <555CB5EE.2@mpstor.com>
+In-Reply-To: <20150515145013.GM2067@n2100.arm.linux.org.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, May 20, 2015 at 05:27:26PM +0100, Benjamin ESTRABAUD wrote:
-> On 15/05/15 20:20, J. Bruce Fields wrote:
-> >On Fri, May 15, 2015 at 10:44:13AM -0700, Benjamin ESTRABAUD wrote:
-> >>I've been using pNFS for a while since recently, and I am very pleased
-> >>with its overall stability and performance.
-> >>
-> >>A pNFS MDS server was setup with SAN storage in the backend (a RAID0
-> >>built ontop of multiple LUNs). Clients were given access to the same
-> >>RAID0 using the same LUNs on the same SAN.
-> >>
-> >>However, I've been noticing a small issue with it that prevents me
-> >>from using pNFS to its full potential: If I run non-direct IOs (for
-> >>instance "dd" without the "oflag=direct" option), IOs run excessively
-> >>slowly (3-4MB/sec) and the dd process hangs until forcefully
-> >>terminated.
-> >
-> Sorry for the late reply, I was unavailable for the past few days. I
-> had time to look at the problem further.
+On Fri, May 15, 2015 at 03:50:14PM +0100, Russell King - ARM Linux wrote:
+> On Fri, May 15, 2015 at 10:26:48AM -0400, Chuck Lever wrote:
+> > On May 15, 2015, at 10:24 AM, Russell King - ARM Linux <linux@arm.linux.org.uk> wrote:
+> > > While trying to update a kernel and modules on one of my test systems,
+> > > I was greeted by these errors:
+> > > 
+> > > tar: lib/modules/4.1.0-rc2+/kernel/drivers/media/platform/coda/coda.ko: Cannot utime
+> > > tar: lib/modules/4.1.0-rc2+/kernel/drivers/media/dvb-frontends/drx39xyj/drx39xyj.ko: Cannot utime
+> > > tar: lib/modules/4.1.0-rc2+/kernel/drivers/media/usb/em28xx/em28xx.ko: Cannot utime
+> > > tar: lib/modules/4.1.0-rc2+/kernel/drivers/usb/serial/option.ko: Cannot utime
+> > > tar: lib/modules/4.1.0-rc2+/kernel/drivers/usb/serial/ftdi_sio.ko: Cannot utime
+> > > tar: lib/modules/4.1.0-rc2+/kernel/drivers/net/wireless/brcm80211/brcmfmac/brcmfmac.ko: Cannot utime
+> > > tar: lib/modules/4.1.0-rc2+/kernel/drivers/input/mouse/psmouse.ko: Cannot utime
+> > > tar: lib/modules/4.1.0-rc2+/kernel/fs/udf/udf.ko: Cannot utime
+> > > tar: lib/modules/4.1.0-rc2+/kernel/fs/fuse/fuse.ko: Cannot utime
+> > > tar: lib/modules/4.1.0-rc2+/kernel/fs/nfsd/nfsd.ko: Cannot utime
+> > > tar: lib/modules/4.1.0-rc2+/kernel/sound/soc/codecs/snd-soc-wm8962.ko: Cannot utime
+> > > tar: lib/modules/4.1.0-rc2+/kernel/net/bluetooth/bluetooth.ko: Cannot utime
+> > > tar: lib/modules/4.1.0-rc2+/modules.alias.bin: Cannot utime
+> > > tar: lib/modules/4.1.0-rc2+/modules.alias: Cannot utime
+> > > tar: Exiting with failure status due to previous errors
+> > > 
+> > > Searching google wasn't helpful, as all the "Cannot utime" errors that
+> > > google could find are followed by an errno string.
+> > > 
+> > > stracing at first sight didn't seem to be helpful, as no syscalls (apart
+> > > from openat() with a pre-existing file) were failing.
+> > > 
+> > > Having recently updated to fc21 tar generating the archive, I thought
+> > > maybe it was a tar format bug between fc21 tar and the target's tar.
+> > > That was until I tried to "apt-get source tar" on the target, and was
+> > > greeted by the same error.
+> > > 
+> > > So I then tried untaring the tar source archive onto a ramfs, which
+> > > worked without complaint.  The difference being that it's a root NFS
+> > > box, and so I was untaring onto NFS.
+> > > 
+> > > Here's the entry from /proc/mounts:
+> > > 
+> > > x.y.z.221:/var/boot/ci on / type nfs (rw,nolock,vers=4,addr=x.y.z.221,clientaddr=a.b.c.55)
+> > > 
+> > > Looking closer at the strace reveals this:
+> > > 
+> > > openat(AT_FDCWD, "lib/modules/4.1.0-rc2+/kernel/drivers/media/platform/coda/coda.ko", O_WRONLY|O_CREAT|O_EXCL|O_NOCTTY|O_NONBLOCK|O_LARGEFILE|O_CLOEXEC, 0600) = -1 EEXIST (File exists)
+> > > unlinkat(AT_FDCWD, "lib/modules/4.1.0-rc2+/kernel/drivers/media/platform/coda/coda.ko", 0) = 0
+> > > openat(AT_FDCWD, "lib/modules/4.1.0-rc2+/kernel/drivers/media/platform/coda/coda.ko", O_WRONLY|O_CREAT|O_EXCL|O_NOCTTY|O_NONBLOCK|O_LARGEFILE|O_CLOEXEC, 0600) = 4
+> > > write(4, "\177ELF\1\1\1\0\0\0\0\0\0\0\0\0\1\0(\0\1\0\0\0\0\0\0\0\0\0\0\0"..., 4096) = 4096
+> > > ...
+> > > write(4, "\300H\0\0\34\345\1\0\314H\0\0\34\345\1\0\330H\0\0\34\345\1\0<I\0\0\34\370\1\0"..., 7312) = 7312
+> > > dup2(4, 4)                              = 4
+> > > fstat64(4, {st_mode=0757221, st_size=13181880119170311768, ...}) = 21
+> > > write(2, "tar: ", 5)                    = 5
+> > > write(2, "lib/modules/4.1.0-rc2+/kernel/dr"..., 79) = 79
+> > > write(2, "\n", 1)                       = 1
+> > > fchown32(4, 0, 0)                       = 0
+> > > fchmod(4, 0664)                         = 0
+> > > close(4)                                = 0
+> > > 
+> > > Look closely at that fstat64, and you'll notice that it's returning crap.
+> > 
+> > This is likely fixed by:
+> > 
+> >   http://marc.info/?l=linux-nfs&m=143095122604344&w=2
 > 
-> >And that's reproduceable every time?
-> >
+> Yes, it appears to be fixed by that change.  I'll add it to my tree so
+> my test systems work.
 
-Thanks for the detailed report.  Quick questions:
+I notice NFS patches were merged by Linus recently, but this patch was not
+in the set.  Is this patch scheduled to go in for 4.1?
 
-> It is, and here is what is happening more in details:
-> 
-> on the client, "/mnt/pnfs1" is the "pNFS" mount point. We use NFS v 4.1.
-> 
-> * Running dd with bs=512 and no "direct" set on the client:
-> 
-> dd if=/dev/zero of=/mnt/pnfs1/testfile bs=512 count=100000000
-> 
-> => Here we get variable performance, dd's average is 100MB/sec, and
-> we can see all the IOs going to the SAN block device. nfsstat
-> confirms that no IOs are going through the NFS server (no "writes"
-> are recorded, only "layoutcommit". Performance is maybe low but at
-> this block size we don't really care.
-> 
-> * Running dd with bs=512 and "direct" setL
-> 
-> dd if=/dev/zero of=/mnt/pnfs1/testfile bs=512 count=100000000 oflag=direct
-> 
-> => Here, funnily enough, all the IOs are sent over NFS. The
-> "nfsstat" command shows writes increasing, the SAN block device
-> activity on the client is idle. The performance is about 13MB/sec,
-> but again expected with such a small IO size. The only unexpected is
-> that small 512bytes IOs are not going through the iSCSI SAN.
-> 
-> * Running dd with bs=1M and no "direct" set on the client:
-> 
-> dd if=/dev/zero of=/mnt/pnfs1/testfile bs=1M count=100000000
-> 
-> => Here the IOs "work" and go through the SAN (no "write" counter
-> increasing in "nfsstat" and I can see disk statistics on the block
-> device on the client increasing). However the speed at which the IOs
-> go through is really slow (the actual speed recorded on the SAN
-> device fluctuates a lot, from 3MB/sec to a lot more). Overall dd is
-> not really happy and "Ctrl-C"ing it takes a long time, and in the
-> last try actually caused a kernel panic (see
-> http://imgur.com/YpXjvQ3 sorry about the picture format, did not
-> have the dmesg output capturing and had access to the VGA only).
-> When "dd" finally comes around and terminates, the average speed is
-> 200MB/sec.
-> Again the SAN block device shows IOs being submitted and "nfsstat"
-> shows no "writes" but a few "layoutcommits", showing that the writes
-> are not going through the "regular" NFS server.
-> 
-> 
-> * Running dd with bs=1M and no "direct" set on the client:
-
-I think you meant to leave out the "no" there?
-
-> dd if=/dev/zero of=/mnt/pnfs1/testfile bs=1M count=100000000 oflag=direct
-> 
-> => Here the IOs work much faster (almost twice as fast as with
-> "direct" set, or 350+MB/sec) and dd is much more responsive (can
-> "Ctrl-C" it almost instantly). Again the SAN block device shows IOs
-> being submitted and "nfsstat" shows no "writes" but a few
-> "layoutcommits", showing that the writes are not going through the
-> "regular" NFS server.
-> 
-> This shows that somehow running with "oflag=direct" causes
-> unstability and lower performance, at least on this version.
-
-And I think you mean "running without", not "running with"?
-
-Assuming those are just typos, unless I'm missing something.
-
---b.
-
-> 
-> Both clients are running Linux 4.1.0-rc2 on CentOS 7.0 and the
-> server is running Linux 4.1.0-rc2 on CentOS 7.1.
-> 
-> >Can you get network captures and figure out (for example), whether the
-> >slow writes are going over iSCSI or NFS, and if they're returning errors
-> >in either case?
-> >
-> I'm going to do that now (try and locate errors). However "nfsstat"
-> does indicate that slower writes are going through iSCSI.
-> 
-> >>The same behaviour can be observed laying out an IO file
-> >>with FIO for instance, or using some applications which do not use the
-> >>ODIRECT flag. When using direct IO I can observe lots of iSCSI
-> >>traffic, at extremely good performance (same performance as the SAN
-> >>gets on "raw" block devices).
-> >>
-> >>All the systems are running CentOS 7.0 with a custom kernel 4.1-rc2
-> >>(pNFS enabled) apart from the storage nodes which are running a custom
-> >>minimal Linux distro with Kernel 3.18.
-> >>
-> >>The SAN is all 40G Mellanox Ethernet, and we are not using the OFED
-> >>driver anywhere (Everything is only "standard" upstream Linux).
-> >
-> >What's the non-SAN network (that the NFS traffic goes over)?
-> >
-> The NFS traffic also goes through the same SAN actually, both the
-> iSCSI LUNs and the NFS server are accessible over the same 40G/sec
-> Ethernet fabric.
-> 
-> Regards,
-> Ben.
-> 
-> >--b.
-> >
-> >>
-> >>Would anybody have any ideas where this issue could be coming from?
-> >>
-> >>Regards, Ben - MPSTOR.-- To unsubscribe from this list: send the line
-> >>"unsubscribe linux-nfs" in the body of a message to
-> >>majordomo@vger.kernel.org More majordomo info at
-> >>http://vger.kernel.org/majordomo-info.html
-> >--
-> >To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> >the body of a message to majordomo@vger.kernel.org
-> >More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> >
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-- 
+FTTC broadband for 0.8mile line: currently at 10.5Mbps down 400kbps up
+according to speedtest.net.
