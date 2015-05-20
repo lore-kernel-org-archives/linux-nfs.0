@@ -1,58 +1,51 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f177.google.com ([209.85.213.177]:37277 "EHLO
-	mail-ig0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752084AbbESPza (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 May 2015 11:55:30 -0400
-Received: by igbsb11 with SMTP id sb11so17655107igb.0
-        for <linux-nfs@vger.kernel.org>; Tue, 19 May 2015 08:55:29 -0700 (PDT)
-Message-ID: <1432050927.7675.1.camel@primarydata.com>
-Subject: [GIT PULL] Please pull 2 client bugfixes
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
-Date: Tue, 19 May 2015 11:55:27 -0400
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from smtprelay0068.hostedemail.com ([216.40.44.68]:43063 "EHLO
+	smtprelay.hostedemail.com" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1751472AbbETBqA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 May 2015 21:46:00 -0400
+From: Joe Perches <joe@perches.com>
+To: linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
+        dri-devel@lists.freedesktop.org, linux-rdma@vger.kernel.org,
+        linux-bcache@vger.kernel.org, netdev@vger.kernel.org,
+        linux-scsi@vger.kernel.org, logfs@logfs.org
+Cc: dmaengine@vger.kernel.org, linux-raid@vger.kernel.org,
+        linux-s390@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: [PATCH 00/12] treewide: Use DECLARE_BITMAP
+Date: Tue, 19 May 2015 18:37:48 -0700
+Message-Id: <cover.1432085659.git.joe@perches.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Linus,
+Use the standard method to declare a bitmap array.
 
-The following changes since commit 030bbdbf4c833bc69f502eae58498bc5572db736:
+Joe Perches (12):
+  ARM: mach-imx: iomux-imx31: Use DECLARE_BITMAP
+  dmaengine: rcar-dmac: Use DECLARE_BITMAP
+  drm/amdkfd: Use DECLARE_BITMAP
+  drm/radeon: Use DECLARE_BITMAP
+  IB/ehca: Use DECLARE_BITMAP
+  bcache: Use DECLARE_BITMAP
+  spider_net: Use DECLARE_BITMAP
+  s390/sclp: Use DECLARE_BITMAP
+  [SCSI] qla4xxx: Use DECLARE_BITMAP
+  scsi: Use DECLARE_BITMAP
+  logfs: Use DECLARE_BITMAP
+  sunrpc: Use DECLARE_BITMAP
 
-  Linux 4.1-rc3 (2015-05-10 15:12:29 -0700)
-
-are available in the git repository at:
-
-  git://git.linux-nfs.org/projects/trondmy/linux-nfs.git tags/nfs-for-4.1-2
-
-for you to fetch changes up to feaff8e5b2cfc3eae02cf65db7a400b0b9ffc596:
-
-  nfs: take extra reference to fl->fl_file when running a setlk (2015-05-13 14:56:06 -0400)
-
-----------------------------------------------------------------
-NFS client bugfixes for Linux 4.1
-
-Highlights include:
-
-- Fix a Linux-4.1 regression affecting stat()
-- Take an extra reference to fl->fl_file when running a setlk
-
-----------------------------------------------------------------
-Chuck Lever (1):
-      nfs: stat(2) fails during cthon04 basic test5 on NFSv4.0
-
-Jeff Layton (1):
-      nfs: take extra reference to fl->fl_file when running a setlk
-
- fs/nfs/nfs4proc.c |  3 +++
- fs/nfs/write.c    | 13 ++++++++-----
- 2 files changed, 11 insertions(+), 5 deletions(-)
+ arch/arm/mach-imx/iomux-imx31.c           | 2 +-
+ drivers/dma/sh/rcar-dmac.c                | 2 +-
+ drivers/gpu/drm/amd/amdkfd/kfd_priv.h     | 5 ++---
+ drivers/gpu/drm/radeon/radeon.h           | 2 +-
+ drivers/infiniband/hw/ehca/ipz_pt_fn.h    | 2 +-
+ drivers/md/bcache/journal.c               | 2 +-
+ drivers/net/ethernet/toshiba/spider_net.c | 3 +--
+ drivers/s390/char/sclp_cmd.c              | 2 +-
+ drivers/scsi/qla4xxx/ql4_def.h            | 2 +-
+ drivers/scsi/sr.c                         | 2 +-
+ fs/logfs/logfs.h                          | 2 +-
+ net/sunrpc/auth_gss/svcauth_gss.c         | 2 +-
+ 12 files changed, 13 insertions(+), 15 deletions(-)
 
 -- 
-Trond Myklebust
-Linux NFS client maintainer, PrimaryData
-trond.myklebust@primarydata.com
-
+2.1.2
 
