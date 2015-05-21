@@ -1,107 +1,143 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:41692 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751075AbbEUBQv convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 May 2015 21:16:51 -0400
+Received: from smtp4-g21.free.fr ([212.27.42.4]:56809 "EHLO smtp4-g21.free.fr"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753649AbbEUBV6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 20 May 2015 21:21:58 -0400
+Date: Thu, 21 May 2015 03:21:55 +0200
+From: Guillaume Morin <guillaume@morinfr.org>
+To: linux-nfs@vger.kernel.org
+Cc: guillaume@morinfr.org, trond.myklebust@primarydata.com
+Subject: [BUG] nfs3 client stops retrying to connect
+Message-ID: <20150521012155.GA19680@bender.morinfr.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
-Subject: Re: NFS client broken in 4.1.0-rc2
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20150520232228.GC2067@n2100.arm.linux.org.uk>
-Date: Wed, 20 May 2015 21:16:18 -0400
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        LKML Kernel <linux-kernel@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        linux-arm-kernel@lists.infradead.org
-Message-Id: <4DD061F4-B1A8-4CBE-A817-ACC921661A89@oracle.com>
-References: <20150515142403.GL2067@n2100.arm.linux.org.uk> <F423EE93-1A93-42F8-8593-9D2E4F85CB3B@oracle.com> <20150515145013.GM2067@n2100.arm.linux.org.uk> <20150520232228.GC2067@n2100.arm.linux.org.uk>
-To: Russell King - ARM Linux <linux@arm.linux.org.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hi,
 
-On May 20, 2015, at 7:22 PM, Russell King - ARM Linux <linux@arm.linux.org.uk> wrote:
+Last week we had an NFS outage and one of our NFS servers
+went down for quite a while. All clients use it for NFSv3 hard mount
+using TCP
 
-> On Fri, May 15, 2015 at 03:50:14PM +0100, Russell King - ARM Linux wrote:
->> On Fri, May 15, 2015 at 10:26:48AM -0400, Chuck Lever wrote:
->>> On May 15, 2015, at 10:24 AM, Russell King - ARM Linux <linux@arm.linux.org.uk> wrote:
->>>> While trying to update a kernel and modules on one of my test systems,
->>>> I was greeted by these errors:
->>>> 
->>>> tar: lib/modules/4.1.0-rc2+/kernel/drivers/media/platform/coda/coda.ko: Cannot utime
->>>> tar: lib/modules/4.1.0-rc2+/kernel/drivers/media/dvb-frontends/drx39xyj/drx39xyj.ko: Cannot utime
->>>> tar: lib/modules/4.1.0-rc2+/kernel/drivers/media/usb/em28xx/em28xx.ko: Cannot utime
->>>> tar: lib/modules/4.1.0-rc2+/kernel/drivers/usb/serial/option.ko: Cannot utime
->>>> tar: lib/modules/4.1.0-rc2+/kernel/drivers/usb/serial/ftdi_sio.ko: Cannot utime
->>>> tar: lib/modules/4.1.0-rc2+/kernel/drivers/net/wireless/brcm80211/brcmfmac/brcmfmac.ko: Cannot utime
->>>> tar: lib/modules/4.1.0-rc2+/kernel/drivers/input/mouse/psmouse.ko: Cannot utime
->>>> tar: lib/modules/4.1.0-rc2+/kernel/fs/udf/udf.ko: Cannot utime
->>>> tar: lib/modules/4.1.0-rc2+/kernel/fs/fuse/fuse.ko: Cannot utime
->>>> tar: lib/modules/4.1.0-rc2+/kernel/fs/nfsd/nfsd.ko: Cannot utime
->>>> tar: lib/modules/4.1.0-rc2+/kernel/sound/soc/codecs/snd-soc-wm8962.ko: Cannot utime
->>>> tar: lib/modules/4.1.0-rc2+/kernel/net/bluetooth/bluetooth.ko: Cannot utime
->>>> tar: lib/modules/4.1.0-rc2+/modules.alias.bin: Cannot utime
->>>> tar: lib/modules/4.1.0-rc2+/modules.alias: Cannot utime
->>>> tar: Exiting with failure status due to previous errors
->>>> 
->>>> Searching google wasn't helpful, as all the "Cannot utime" errors that
->>>> google could find are followed by an errno string.
->>>> 
->>>> stracing at first sight didn't seem to be helpful, as no syscalls (apart
->>>> from openat() with a pre-existing file) were failing.
->>>> 
->>>> Having recently updated to fc21 tar generating the archive, I thought
->>>> maybe it was a tar format bug between fc21 tar and the target's tar.
->>>> That was until I tried to "apt-get source tar" on the target, and was
->>>> greeted by the same error.
->>>> 
->>>> So I then tried untaring the tar source archive onto a ramfs, which
->>>> worked without complaint.  The difference being that it's a root NFS
->>>> box, and so I was untaring onto NFS.
->>>> 
->>>> Here's the entry from /proc/mounts:
->>>> 
->>>> x.y.z.221:/var/boot/ci on / type nfs (rw,nolock,vers=4,addr=x.y.z.221,clientaddr=a.b.c.55)
->>>> 
->>>> Looking closer at the strace reveals this:
->>>> 
->>>> openat(AT_FDCWD, "lib/modules/4.1.0-rc2+/kernel/drivers/media/platform/coda/coda.ko", O_WRONLY|O_CREAT|O_EXCL|O_NOCTTY|O_NONBLOCK|O_LARGEFILE|O_CLOEXEC, 0600) = -1 EEXIST (File exists)
->>>> unlinkat(AT_FDCWD, "lib/modules/4.1.0-rc2+/kernel/drivers/media/platform/coda/coda.ko", 0) = 0
->>>> openat(AT_FDCWD, "lib/modules/4.1.0-rc2+/kernel/drivers/media/platform/coda/coda.ko", O_WRONLY|O_CREAT|O_EXCL|O_NOCTTY|O_NONBLOCK|O_LARGEFILE|O_CLOEXEC, 0600) = 4
->>>> write(4, "\177ELF\1\1\1\0\0\0\0\0\0\0\0\0\1\0(\0\1\0\0\0\0\0\0\0\0\0\0\0"..., 4096) = 4096
->>>> ...
->>>> write(4, "\300H\0\0\34\345\1\0\314H\0\0\34\345\1\0\330H\0\0\34\345\1\0<I\0\0\34\370\1\0"..., 7312) = 7312
->>>> dup2(4, 4)                              = 4
->>>> fstat64(4, {st_mode=0757221, st_size=13181880119170311768, ...}) = 21
->>>> write(2, "tar: ", 5)                    = 5
->>>> write(2, "lib/modules/4.1.0-rc2+/kernel/dr"..., 79) = 79
->>>> write(2, "\n", 1)                       = 1
->>>> fchown32(4, 0, 0)                       = 0
->>>> fchmod(4, 0664)                         = 0
->>>> close(4)                                = 0
->>>> 
->>>> Look closely at that fstat64, and you'll notice that it's returning crap.
->>> 
->>> This is likely fixed by:
->>> 
->>>  http://marc.info/?l=linux-nfs&m=143095122604344&w=2
->> 
->> Yes, it appears to be fixed by that change.  I'll add it to my tree so
->> my test systems work.
-> 
-> I notice NFS patches were merged by Linus recently, but this patch was not
-> in the set.  Is this patch scheduled to go in for 4.1?
+Most clients recovered fine when the server came back up but a dozen or
+so never did.  They are all running 3.14.35 or later.
 
-Trond sent Linus a pull request yesterday for 2 patches, including
-the one you are asking about. See:
+All tasks trying to use the mount are in D state and have not recovered.
+The last and only nfs-related message in the kernel log is
+nfs: server blah not responding, still trying
 
-http://marc.info/?l=linux-nfs&m=143205093309624&w=2
+I spent some time trying to debug the problem.  ftrace showed that the
+rpc subsystems is trying to recover:
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+ <idle>-0     [003] dNs. 4619235.426567: sched_wakeup: comm=daemon pid=4247 prio=120 success=1 target_cpu=003
+daemon-4247  [003] .... 4619235.426582: rpc_task_run_action: task:44610@4 flags=00a0 state=0005 status=-110 action=call_connect_status [sunrpc]
+daemon-4247  [003] .... 4619235.426583: rpc_connect_status: task:44610@4, status -110
+daemon-4247  [003] .... 4619235.426588: rpc_task_run_action: task:44610@4 flags=00a0 state=0005 status=0 action=call_timeout [sunrpc]
+daemon-4247  [003] .... 4619235.426589: rpc_task_run_action: task:44610@4 flags=00a0 state=0005 status=0 action=call_bind [sunrpc]
+daemon-4247  [003] .... 4619235.426590: rpc_task_run_action: task:44610@4 flags=00a0 state=0005 status=0 action=call_connect [sunrpc]
+daemon-4247  [003] ..s. 4619235.426591: rpc_task_sleep: task:44610@4 flags=00a0 state=0005 status=0 timeout=18000 queue=xprt_pending
+
+This goes on and on but despite all this a tcpdump shows that the client
+never tries to connect.  There is absolutely no traffic between the
+nfs client and the nfs server.
+
+I looked at the daemon in crash and looked at its rpc_task, it looked
+pretty legit:
+struct rpc_task {
+  tk_count = {
+    counter = 2
+  }, 
+  tk_task = {
+    next = 0xffff88010bf67008, 
+    prev = 0xffff88032f81e018
+  }, 
+  tk_client = 0xffff88032f81e000, 
+  tk_rqstp = 0xffff8803310a4c00, 
+  tk_msg = {
+    rpc_proc = 0xffffffffa08b7b18, 
+    rpc_argp = 0xffff88016abe6a58, 
+    rpc_resp = 0xffff880165d6db00, 
+    rpc_cred = 0x0
+  }, 
+  tk_callback = 0xffffffffa06f19e0 <xprt_connect_status>, 
+  tk_action = 0xffffffffa06ee310 <call_connect_status>, 
+  tk_ops = 0xffffffffa070db20 <rpc_default_ops>, 
+  tk_calldata = 0x0, 
+  tk_timeout = 36000, 
+  tk_runstate = 6, 
+  tk_workqueue = 0x0, 
+  tk_waitqueue = 0xffff880331352a58, 
+  u = {
+    tk_work = {
+      data = {
+        counter = -131927684863392
+      }, 
+      entry = {
+        next = 0xffff880331352a60, 
+        prev = 0x0
+      }, 
+      func = 0x0
+    }, 
+    tk_wait = {
+      list = {
+        next = 0xffff880331352a60, 
+        prev = 0xffff880331352a60
+      }, 
+      links = {
+        next = 0x0, 
+        prev = 0x0
+      }, 
+      timer_list = {
+        next = 0xffff880331352b00, 
+        prev = 0xffff880331352b00
+      }, 
+      expires = 5680095648
+    }
+  }, 
+  tk_start = {
+    tv64 = 4088588208239840
+  }, 
+  tk_owner = 4247, 
+  tk_status = 0, 
+  tk_flags = 160, 
+  tk_timeouts = 2929, 
+  tk_pid = 44610, 
+  tk_priority = 1 '\001', 
+  tk_garb_retry = 2 '\002', 
+  tk_cred_retry = 2 '\002', 
+  tk_rebind_retry = 2 '\002'
 
 
+When I dug into the nested rpc_xprt object, I noticed that the state was 0x15 which is
+XPRT_LOCKED|XPRT_CONNECTING|XPRT_BOUND
 
+XPRT_CONNECTING is surprising since there was definitely no traffic
+going on between the server and the client (and it was the case for
+a few days)
+
+If xprt_connect() is called while XPRT_CONNECTING is set, we do not try to
+connect() again until it cleared.  It seemed it was erroneously set.
+
+To test this theory, I wrote a module that when loaded cleared that bit
+in the xprt_task.  As soon as the rpc task timed out, the client tried
+to connect and the mount recovered gracefully.
+
+I am not quite sure how it got into that state though as
+xs_tcp_setup_socket always clears it.  But it definitely happened on a
+few machines.
+
+If somehow xs_close() is called before the callback
+happens, I think it could leave XPRT_CONNECTING on forever though
+(since xs_tcp_setup_socket is never called), see
+https://git.kernel.org/cgit/linux/kernel/git/stable/linux-stable.git/tree/net/sunrpc/xprtsock.c?id=refs/tags/v3.14.43#n887
+
+I am still have a few clients with the stuck mount so I could gather
+more information if necessary.
+
+Thanks in advance
+
+Guillaume.
+
+-- 
+Guillaume Morin <guillaume@morinfr.org>
