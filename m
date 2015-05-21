@@ -1,184 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from outbound-smtp01.blacknight.com ([81.17.249.7]:53499 "EHLO
-	outbound-smtp01.blacknight.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753275AbbEUKJx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 May 2015 06:09:53 -0400
-Received: from mail.blacknight.com (pemlinmail05.blacknight.ie [81.17.254.26])
-	by outbound-smtp01.blacknight.com (Postfix) with ESMTPS id 78EC6985F0
-	for <linux-nfs@vger.kernel.org>; Thu, 21 May 2015 10:09:51 +0000 (UTC)
-Message-ID: <555DAEEF.9040204@mpstor.com>
-Date: Thu, 21 May 2015 11:09:51 +0100
-From: Benjamin ESTRABAUD <be@mpstor.com>
+Received: from fieldses.org ([173.255.197.46]:49616 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754984AbbEUNHh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 21 May 2015 09:07:37 -0400
+Date: Thu, 21 May 2015 09:07:35 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: NeilBrown <neilb@suse.de>
+Cc: NFS <linux-nfs@vger.kernel.org>
+Subject: Re: Does NFSv4 need to call inode_permission on every write???
+Message-ID: <20150521130735.GA27065@fieldses.org>
+References: <20150521144029.57f1b33f@notabene.brown>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "bc@mpstor.com" <bc@mpstor.com>, Christoph Hellwig <hch@infradead.org>
-Subject: Re: Issue running buffered writes to a pNFS (NFS 4.1 backed by SAN)
- filesystem.
-References: <41EB9782-8445-4FBB-A825-A484EFF7169C@mpstor.com> <20150515192037.GB29627@fieldses.org> <555CB5EE.2@mpstor.com> <20150520194048.GA20221@fieldses.org>
-In-Reply-To: <20150520194048.GA20221@fieldses.org>
-Content-Type: text/plain; charset=windows-1252; format=flowed
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20150521144029.57f1b33f@notabene.brown>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 20/05/15 20:40, J. Bruce Fields wrote:
-> On Wed, May 20, 2015 at 05:27:26PM +0100, Benjamin ESTRABAUD wrote:
->> On 15/05/15 20:20, J. Bruce Fields wrote:
->>> On Fri, May 15, 2015 at 10:44:13AM -0700, Benjamin ESTRABAUD wrote:
->>>> I've been using pNFS for a while since recently, and I am very pleased
->>>> with its overall stability and performance.
->>>>
->>>> A pNFS MDS server was setup with SAN storage in the backend (a RAID0
->>>> built ontop of multiple LUNs). Clients were given access to the same
->>>> RAID0 using the same LUNs on the same SAN.
->>>>
->>>> However, I've been noticing a small issue with it that prevents me
->>> >from using pNFS to its full potential: If I run non-direct IOs (for
->>>> instance "dd" without the "oflag=direct" option), IOs run excessively
->>>> slowly (3-4MB/sec) and the dd process hangs until forcefully
->>>> terminated.
->>>
->> Sorry for the late reply, I was unavailable for the past few days. I
->> had time to look at the problem further.
->>
->>> And that's reproduceable every time?
->>>
->
-Hi Bruce,
+On Thu, May 21, 2015 at 02:40:29PM +1000, NeilBrown wrote:
+> 
+> 
+> Apologies if this has been answered before, however...
+> 
+> In nfsd_write() we have:
+> 
+> 	if (file) {
+> 		err = nfsd_permission(rqstp, fhp->fh_export, fhp->fh_dentry,
+> 				NFSD_MAY_WRITE|NFSD_MAY_OWNER_OVERRIDE);
+> 		if (err)
+> 			goto out;
+> 		err = nfsd_vfs_write(rqstp, fhp, file, offset, vec, vlen, cnt,
+> 				stablep);
+> 	} else {
+> 
+> So if a 'file' is already available - because the request came via NFSv4 and
+> there was a valid state id, and a 'struct file' was associated with that
+> state - we still call nfsd_permission().
+> 
+> Is that really needed?  The permission check will have been performed at open
+> - it shouldn't be needed again now.
+> 
+> With NFSv3 we have to check permission at each IO, and this is slightly
+> different from POSIX semantics.  We shouldn't have to with NFSv4... should we?
+> 
+> The particular issue that brought this to my attention is that "chattr +i" -
+> to make a file immutable - is not supposed to affect current opens, only
+> future opens.  But a current open over NFSv4 is affected.
+> 
+> Is there some reason that we cannot just remove that nfsd_permission() check?
 
-> Thanks for the detailed report.  Quick questions:
->
->> It is, and here is what is happening more in details:
->>
->> on the client, "/mnt/pnfs1" is the "pNFS" mount point. We use NFS v 4.1.
->>
->> * Running dd with bs=512 and no "direct" set on the client:
->>
->> dd if=/dev/zero of=/mnt/pnfs1/testfile bs=512 count=100000000
->>
->> => Here we get variable performance, dd's average is 100MB/sec, and
->> we can see all the IOs going to the SAN block device. nfsstat
->> confirms that no IOs are going through the NFS server (no "writes"
->> are recorded, only "layoutcommit". Performance is maybe low but at
->> this block size we don't really care.
->>
->> * Running dd with bs=512 and "direct" setL
->>
->> dd if=/dev/zero of=/mnt/pnfs1/testfile bs=512 count=100000000 oflag=direct
->>
->> => Here, funnily enough, all the IOs are sent over NFS. The
->> "nfsstat" command shows writes increasing, the SAN block device
->> activity on the client is idle. The performance is about 13MB/sec,
->> but again expected with such a small IO size. The only unexpected is
->> that small 512bytes IOs are not going through the iSCSI SAN.
->>
->> * Running dd with bs=1M and no "direct" set on the client:
->>
->> dd if=/dev/zero of=/mnt/pnfs1/testfile bs=1M count=100000000
->>
->> => Here the IOs "work" and go through the SAN (no "write" counter
->> increasing in "nfsstat" and I can see disk statistics on the block
->> device on the client increasing). However the speed at which the IOs
->> go through is really slow (the actual speed recorded on the SAN
->> device fluctuates a lot, from 3MB/sec to a lot more). Overall dd is
->> not really happy and "Ctrl-C"ing it takes a long time, and in the
->> last try actually caused a kernel panic (see
->> http://imgur.com/YpXjvQ3 sorry about the picture format, did not
->> have the dmesg output capturing and had access to the VGA only).
->> When "dd" finally comes around and terminates, the average speed is
->> 200MB/sec.
->> Again the SAN block device shows IOs being submitted and "nfsstat"
->> shows no "writes" but a few "layoutcommits", showing that the writes
->> are not going through the "regular" NFS server.
->>
->>
->> * Running dd with bs=1M and no "direct" set on the client:
->
-> I think you meant to leave out the "no" there?
->
-Exactly, that's what I meant, sorry was confused.
+The only proof that this write is part of the open is a stateid provided
+as part of the write arguments.  Anyone could sniff or guess that
+stateid.
 
->> dd if=/dev/zero of=/mnt/pnfs1/testfile bs=1M count=100000000 oflag=direct
->>
->> => Here the IOs work much faster (almost twice as fast as with
->> "direct" set, or 350+MB/sec) and dd is much more responsive (can
->> "Ctrl-C" it almost instantly). Again the SAN block device shows IOs
->> being submitted and "nfsstat" shows no "writes" but a few
->> "layoutcommits", showing that the writes are not going through the
->> "regular" NFS server.
->>
->> This shows that somehow running with "oflag=direct" causes
->> unstability and lower performance, at least on this version.
->
-> And I think you mean "running without", not "running with"?
->
-> Assuming those are just typos, unless I'm missing something.
->
-Also right, I meant that without oflag=direct I get lower performance. 
-Well, actually, as my later mail shows, it does only for a specific file 
-size. I'm going to be running more tests to narrow it down.
+We could try to make that work by checking the stateid against the
+principal from the rpc header.  Unfortunately that turns out to be more
+complicated than "is this the same principal as did the open"; among
+other things I think it's possible the stateid resulted from opens done
+by different principals, so we'd need to keep a list.  If we added that
+kind of check, could we drop the per-operation check?  It's not obvious
+to me.
 
-In the meantime I tried looking into network traces but couldn't capture 
-nice traces as Wireshark was losing input. I'm running wireshark 
-remotely, with the tcpdump input coming from a slow SSH session, so 
-maybe I'll try and capture a few seconds worth of output, scp the file 
-back to me and use that instead.
-
-Ben.
-
-> --b.
->
->>
->> Both clients are running Linux 4.1.0-rc2 on CentOS 7.0 and the
->> server is running Linux 4.1.0-rc2 on CentOS 7.1.
->>
->>> Can you get network captures and figure out (for example), whether the
->>> slow writes are going over iSCSI or NFS, and if they're returning errors
->>> in either case?
->>>
->> I'm going to do that now (try and locate errors). However "nfsstat"
->> does indicate that slower writes are going through iSCSI.
->>
->>>> The same behaviour can be observed laying out an IO file
->>>> with FIO for instance, or using some applications which do not use the
->>>> ODIRECT flag. When using direct IO I can observe lots of iSCSI
->>>> traffic, at extremely good performance (same performance as the SAN
->>>> gets on "raw" block devices).
->>>>
->>>> All the systems are running CentOS 7.0 with a custom kernel 4.1-rc2
->>>> (pNFS enabled) apart from the storage nodes which are running a custom
->>>> minimal Linux distro with Kernel 3.18.
->>>>
->>>> The SAN is all 40G Mellanox Ethernet, and we are not using the OFED
->>>> driver anywhere (Everything is only "standard" upstream Linux).
->>>
->>> What's the non-SAN network (that the NFS traffic goes over)?
->>>
->> The NFS traffic also goes through the same SAN actually, both the
->> iSCSI LUNs and the NFS server are accessible over the same 40G/sec
->> Ethernet fabric.
->>
->> Regards,
->> Ben.
->>
->>> --b.
->>>
->>>>
->>>> Would anybody have any ideas where this issue could be coming from?
->>>>
->>>> Regards, Ben - MPSTOR.-- To unsubscribe from this list: send the line
->>>> "unsubscribe linux-nfs" in the body of a message to
->>>> majordomo@vger.kernel.org More majordomo info at
->>>> http://vger.kernel.org/majordomo-info.html
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
-
+--b.
