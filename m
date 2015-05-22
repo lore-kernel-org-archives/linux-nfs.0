@@ -1,82 +1,95 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:50278 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:50299 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1422691AbbEVQDy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 22 May 2015 12:03:54 -0400
-Date: Fri, 22 May 2015 12:03:52 -0400
+	id S1757717AbbEVQQl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 22 May 2015 12:16:41 -0400
+Date: Fri, 22 May 2015 12:16:38 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: NeilBrown <neilb@suse.de>, linux-fsdevel@vger.kernel.org,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: Re: [PATCH 4/4] nfsd: Pin to vfsmnt instead of mntget
-Message-ID: <20150522160352.GC5580@fieldses.org>
-References: <554A149B.5060102@gmail.com>
- <554A154B.6040103@gmail.com>
- <20150508144031.6f0d3cda@notabene.brown>
- <20150508134744.GA23753@fieldses.org>
- <5550A9DF.1070908@gmail.com>
- <20150513142515.6bd881c8@notabene.brown>
- <20150515211134.GG29627@fieldses.org>
- <20150516092349.6718a946@notabene.brown>
- <555F4501.2090806@gmail.com>
+To: NeilBrown <neilb@suse.de>
+Cc: NFS <linux-nfs@vger.kernel.org>
+Subject: Re: Does NFSv4 need to call inode_permission on every write???
+Message-ID: <20150522161638.GE5580@fieldses.org>
+References: <20150521144029.57f1b33f@notabene.brown>
+ <20150521130735.GA27065@fieldses.org>
+ <20150522090127.1571fcb7@notabene.brown>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <555F4501.2090806@gmail.com>
+In-Reply-To: <20150522090127.1571fcb7@notabene.brown>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, May 22, 2015 at 11:02:25PM +0800, Kinglong Mee wrote:
-> On 5/16/2015 7:23 AM, NeilBrown wrote:
-> > On Fri, 15 May 2015 17:11:34 -0400 "J. Bruce Fields" <bfields@fieldses.org>
-> > wrote:
-> > 
-> >> On Wed, May 13, 2015 at 02:25:15PM +1000, NeilBrown wrote:
-> >>> On Mon, 11 May 2015 21:08:47 +0800 Kinglong Mee <kinglongmee@gmail.com> wrote:
-> >>>
-> >>>> On 5/8/2015 9:47 PM, J. Bruce Fields wrote:
-> >>>>> It could also be useful to have the ability to force an unmount even in
-> >>>>> the presence of locks.  That's not a safe default, but an
-> >>>>> "allow_force_unmount" export option might be useful.
-> >>>
-> >>> We already have a mechanism to forcibly drop any locks by writing some magic
-> >>> to /proc/fs/nfsd/unlock_{ip,filesystem}.  I don't think we need any more.
-> >>
-> >> Yeah, I remember thinking this sort of approach would have advantages,
-> >> maybe I was wrong, I need to revisit it.
-> >>
-> >> The unlock_{ip,filesystem} approach requires temporarily shutting down
-> >> mountd, doesn't it?
-> > 
-> > Not necessarily.
-> > It does require ensuring that new locks aren't suddenly taken though.
-> > 
-> > I imagine an early step in the migration process is to "ifconfig down" the
-> > virtual interface with the floating ID.  Then you can safely "unlock" and
-> > unmount any filesystems are that only accessed via the IP.
-> > 
-> > But you are right that using the "unlock_*" interface and then unmounting is
-> > racy in a way that we are trying to make "unmount" not racy.  So maybe an
-> > "allow_force_unmount" would have a place.
+On Fri, May 22, 2015 at 09:01:27AM +1000, NeilBrown wrote:
+> On Thu, 21 May 2015 09:07:35 -0400 "J. Bruce Fields" <bfields@fieldses.org>
+> wrote:
 > 
-> No, unlock_{ip,filesystem} are used for nlmlock, doesn't support nfsv4 resources.
+> > On Thu, May 21, 2015 at 02:40:29PM +1000, NeilBrown wrote:
+> > > 
+> > > 
+> > > Apologies if this has been answered before, however...
+> > > 
+> > > In nfsd_write() we have:
+> > > 
+> > > 	if (file) {
+> > > 		err = nfsd_permission(rqstp, fhp->fh_export, fhp->fh_dentry,
+> > > 				NFSD_MAY_WRITE|NFSD_MAY_OWNER_OVERRIDE);
+> > > 		if (err)
+> > > 			goto out;
+> > > 		err = nfsd_vfs_write(rqstp, fhp, file, offset, vec, vlen, cnt,
+> > > 				stablep);
+> > > 	} else {
+> > > 
+> > > So if a 'file' is already available - because the request came via NFSv4 and
+> > > there was a valid state id, and a 'struct file' was associated with that
+> > > state - we still call nfsd_permission().
+> > > 
+> > > Is that really needed?  The permission check will have been performed at open
+> > > - it shouldn't be needed again now.
+> > > 
+> > > With NFSv3 we have to check permission at each IO, and this is slightly
+> > > different from POSIX semantics.  We shouldn't have to with NFSv4... should we?
+> > > 
+> > > The particular issue that brought this to my attention is that "chattr +i" -
+> > > to make a file immutable - is not supposed to affect current opens, only
+> > > future opens.  But a current open over NFSv4 is affected.
+> > > 
+> > > Is there some reason that we cannot just remove that nfsd_permission() check?
+> > 
+> > The only proof that this write is part of the open is a stateid provided
+> > as part of the write arguments.  Anyone could sniff or guess that
+> > stateid.
+> 
+> But a stateid is tied to a clientid
 
-I still prefer the "allow_force_unmount" option, but maybe we should
-also fix unlock_{ip,filesystem} to deal with nfsv4.  (Though I think
-it's a little less well-defined there due to the possibility of
-trunking.)
+The stateid does have sufficient information to allow the server to
+determine which NFSv4 client it's associated with.
 
-> Some other interfaces under /sys/kernel/debug/nfsd/forget_* support nfsv4 resources,
-> without for an filesystem. It seems will be removed sometime.
+> and the clientid is tied to server credentials....??
 
-We definitely don't want people to depend on those for anything other
-than testing clients.
+I'm not sure what you're thinking of there.  It could conceivably be
+tied to some kind of client credentials, but it isn't really.  A write
+is sent as the user performing the write, but could come from any IP
+address, from a different user than did the open or the setclientid,
+etc.
 
-I don't think they'd be practical for this use.  forget_client comes the
-closest, but you'd have to figure out the ip address of every client you
-want to forget.  If there's a risk people might try to really use that,
-then maybe we should go for scarier warnings and/or remove that
-particular interface.
+4.1 server state protection does give us more of a client credential,
+but I don't know that that helps here.
+
+> I guess it is harder than I at first imagined.
+> 
+> > 
+> > We could try to make that work by checking the stateid against the
+> > principal from the rpc header.  Unfortunately that turns out to be more
+> > complicated than "is this the same principal as did the open"; among
+> > other things I think it's possible the stateid resulted from opens done
+> > by different principals, so we'd need to keep a list.  If we added that
+> > kind of check, could we drop the per-operation check?  It's not obvious
+> > to me.
+> 
+> Delegations would certainly make that interesting.  Who exactly does
+> authentic writes when a delegation is flushed ... I don't remember.
+> 
+> Sounds like this belongs in the too-hard basket.
+
+That's been my conclusion so far.
 
 --b.
