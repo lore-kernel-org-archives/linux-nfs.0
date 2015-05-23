@@ -1,220 +1,113 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:50443 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756645AbbEVVIe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 22 May 2015 17:08:34 -0400
-Date: Fri, 22 May 2015 17:08:31 -0400
-To: Andreas Gruenbacher <andreas.gruenbacher@gmail.com>
-Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-Subject: Re: [RFC v3 14/45] richacl: Permission check algorithm
-Message-ID: <20150522210831.GA8689@fieldses.org>
-References: <cover.1429868795.git.agruenba@redhat.com>
- <380de2cdb4a129e4b5d7b586260b79d71c7d241d.1429868795.git.agruenba@redhat.com>
+Received: from mail-qk0-f174.google.com ([209.85.220.174]:33591 "EHLO
+	mail-qk0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757736AbbEWNhX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 23 May 2015 09:37:23 -0400
+Received: by qkgv12 with SMTP id v12so33232821qkg.0
+        for <linux-nfs@vger.kernel.org>; Sat, 23 May 2015 06:37:22 -0700 (PDT)
+Date: Sat, 23 May 2015 09:37:12 -0400
+From: Jeff Layton <jlayton@poochiereds.net>
+To: NeilBrown <neilb@suse.de>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, NFS <linux-nfs@vger.kernel.org>
+Subject: Re: Does NFSv4 need to call inode_permission on every write???
+Message-ID: <20150523093712.1a115b17@tlielax.poochiereds.net>
+In-Reply-To: <20150521144029.57f1b33f@notabene.brown>
+References: <20150521144029.57f1b33f@notabene.brown>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <380de2cdb4a129e4b5d7b586260b79d71c7d241d.1429868795.git.agruenba@redhat.com>
-From: bfields@fieldses.org (J. Bruce Fields)
+Content-Type: multipart/signed; micalg=pgp-sha256;
+ boundary="Sig_/BqZYQpmB7IFsjkmfIo4MHJA"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Apr 24, 2015 at 01:04:11PM +0200, Andreas Gruenbacher wrote:
-> A richacl grants a requested access if the NFSv4 acl in the richacl
-> grants the requested permissions (according to the NFSv4 permission
-> check algorithm) and the file mask that applies to the process
-> includes the requested permissions.
+--Sig_/BqZYQpmB7IFsjkmfIo4MHJA
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-Is that right?  Based on that I'd have thought that an acl like
+On Thu, 21 May 2015 14:40:29 +1000
+NeilBrown <neilb@suse.de> wrote:
 
-	owner  :r::mask
-	group  :-::mask
-	other  :-::mask
-	bfields:r::allow
+>=20
+>=20
+> Apologies if this has been answered before, however...
+>=20
+> In nfsd_write() we have:
+>=20
+> 	if (file) {
+> 		err =3D nfsd_permission(rqstp, fhp->fh_export, fhp->fh_dentry,
+> 				NFSD_MAY_WRITE|NFSD_MAY_OWNER_OVERRIDE);
+> 		if (err)
+> 			goto out;
+> 		err =3D nfsd_vfs_write(rqstp, fhp, file, offset, vec, vlen, cnt,
+> 				stablep);
+> 	} else {
+>=20
+> So if a 'file' is already available - because the request came via NFSv4 =
+and
+> there was a valid state id, and a 'struct file' was associated with that
+> state - we still call nfsd_permission().
+>=20
+> Is that really needed?  The permission check will have been performed at =
+open
+> - it shouldn't be needed again now.
+>=20
+> With NFSv3 we have to check permission at each IO, and this is slightly
+> different from POSIX semantics.  We shouldn't have to with NFSv4... shoul=
+d we?
+>=20
+> The particular issue that brought this to my attention is that "chattr +i=
+" -
+> to make a file immutable - is not supposed to affect current opens, only
+> future opens.  But a current open over NFSv4 is affected.
+>=20
+> Is there some reason that we cannot just remove that nfsd_permission() ch=
+eck?
+>=20
 
-would permit read to bfields in the case bfields is the file owner,
-because both the mask entries and the NFSv4 ACL would permit access.
+AIUI (maybe wrong), the stateid is mainly provided in WRITE for ordering
+purposes (in case of another OPEN or OPEN_DOWNGRADE, or some locking is
+also going on). From RFC5661:
 
-But I think it doesn't (because the "bfields" entry is subject to the
-group mask).
+   Except when special stateids are used, the stateid value for a WRITE
+   request represents a value returned from a previous byte-range LOCK
+   or OPEN request or the stateid associated with a delegation.  The
+   stateid identifies the associated owners if any and is used by the
+   server to verify that the associated locks are still valid (e.g.,
+   have not been revoked).
 
-But if I'm right, I'm not sure how to describe the algorithm concisely.
+That last bit is the significant part here...
 
---b.
+The actual info for the write itself is supposed to be given in other
+fields.
 
-> 
-> Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
-> ---
->  fs/Makefile             |   2 +-
->  fs/richacl_inode.c      | 130 ++++++++++++++++++++++++++++++++++++++++++++++++
->  include/linux/richacl.h |   3 ++
->  3 files changed, 134 insertions(+), 1 deletion(-)
->  create mode 100644 fs/richacl_inode.c
-> 
-> diff --git a/fs/Makefile b/fs/Makefile
-> index 8f0a59c..bb96ad7 100644
-> --- a/fs/Makefile
-> +++ b/fs/Makefile
-> @@ -48,7 +48,7 @@ obj-$(CONFIG_SYSCTL)		+= drop_caches.o
->  
->  obj-$(CONFIG_FHANDLE)		+= fhandle.o
->  obj-$(CONFIG_FS_RICHACL)	+= richacl.o
-> -richacl-y			:= richacl_base.o
-> +richacl-y			:= richacl_base.o richacl_inode.o
->  
->  obj-y				+= quota/
->  
-> diff --git a/fs/richacl_inode.c b/fs/richacl_inode.c
-> new file mode 100644
-> index 0000000..33e591a
-> --- /dev/null
-> +++ b/fs/richacl_inode.c
-> @@ -0,0 +1,130 @@
-> +/*
-> + * Copyright (C) 2010  Novell, Inc.
-> + * Copyright (C) 2015  Red Hat, Inc.
-> + * Written by Andreas Gruenbacher <agruen@kernel.org>
-> + *
-> + * This program is free software; you can redistribute it and/or modify it
-> + * under the terms of the GNU General Public License as published by the
-> + * Free Software Foundation; either version 2, or (at your option) any
-> + * later version.
-> + *
-> + * This program is distributed in the hope that it will be useful, but
-> + * WITHOUT ANY WARRANTY; without even the implied warranty of
-> + * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-> + * General Public License for more details.
-> + */
-> +
-> +#include <linux/sched.h>
-> +#include <linux/module.h>
-> +#include <linux/fs.h>
-> +#include <linux/slab.h>
-> +#include <linux/richacl.h>
-> +
-> +/**
-> + * richacl_permission  -  richacl permission check algorithm
-> + * @inode:	inode to check
-> + * @acl:	rich acl of the inode
-> + * @want:	requested access (MAY_* flags)
-> + *
-> + * Checks if the current process is granted @mask flags in @acl.
-> + */
-> +int
-> +richacl_permission(struct inode *inode, const struct richacl *acl,
-> +		   int want)
-> +{
-> +	const struct richace *ace;
-> +	unsigned int mask = richacl_want_to_mask(want);
-> +	unsigned int requested = mask, denied = 0;
-> +	int in_owning_group = in_group_p(inode->i_gid);
-> +	int in_owner_or_group_class = in_owning_group;
-> +
-> +	/*
-> +	 * We don't need to know which class the process is in when the acl is
-> +	 * not masked.
-> +	 */
-> +	if (!(acl->a_flags & RICHACL_MASKED))
-> +		in_owner_or_group_class = 1;
-> +
-> +	/*
-> +	 * A process is
-> +	 *   - in the owner file class if it owns the file,
-> +	 *   - in the group file class if it is in the file's owning group or
-> +	 *     it matches any of the user or group entries, and
-> +	 *   - in the other file class otherwise.
-> +	 */
-> +
-> +	/*
-> +	 * Check if the acl grants the requested access and determine which
-> +	 * file class the process is in.
-> +	 */
-> +	richacl_for_each_entry(ace, acl) {
-> +		unsigned int ace_mask = ace->e_mask;
-> +
-> +		if (richace_is_inherit_only(ace))
-> +			continue;
-> +		if (richace_is_owner(ace)) {
-> +			if (!uid_eq(current_fsuid(), inode->i_uid))
-> +				continue;
-> +			goto is_owner;
-> +		} else if (richace_is_group(ace)) {
-> +			if (!in_owning_group)
-> +				continue;
-> +		} else if (richace_is_unix_id(ace)) {
-> +			if (ace->e_flags & RICHACE_IDENTIFIER_GROUP) {
-> +				if (!in_group_p(ace->e_id.gid))
-> +					continue;
-> +			} else {
-> +				if (!uid_eq(current_fsuid(), ace->e_id.uid))
-> +					continue;
-> +			}
-> +		} else
-> +			goto is_everyone;
-> +
-> +		/*
-> +		 * Apply the group file mask to entries other than OWNER@ and
-> +		 * EVERYONE@. This is not required for correct access checking
-> +		 * but ensures that we grant the same permissions as the acl
-> +		 * computed by richacl_apply_masks() would grant.
-> +		 */
-> +		if ((acl->a_flags & RICHACL_MASKED) && richace_is_allow(ace))
-> +			ace_mask &= acl->a_group_mask;
-> +
-> +is_owner:
-> +		/* The process is in the owner or group file class. */
-> +		in_owner_or_group_class = 1;
-> +
-> +is_everyone:
-> +		/* Check which mask flags the ACE allows or denies. */
-> +		if (richace_is_deny(ace))
-> +			denied |= ace_mask & mask;
-> +		mask &= ~ace_mask;
-> +
-> +		/*
-> +		 * Keep going until we know which file class
-> +		 * the process is in.
-> +		 */
-> +		if (!mask && in_owner_or_group_class)
-> +			break;
-> +	}
-> +	denied |= mask;
-> +
-> +	if (acl->a_flags & RICHACL_MASKED) {
-> +		unsigned int file_mask;
-> +
-> +		/*
-> +		 * The file class a process is in determines which file mask
-> +		 * applies.  Check if that file mask also grants the requested
-> +		 * access.
-> +		 */
-> +		if (uid_eq(current_fsuid(), inode->i_uid))
-> +			file_mask = acl->a_owner_mask;
-> +		else if (in_owner_or_group_class)
-> +			file_mask = acl->a_group_mask;
-> +		else
-> +			file_mask = acl->a_other_mask;
-> +		denied |= requested & ~file_mask;
-> +	}
-> +
-> +	return denied ? -EACCES : 0;
-> +}
-> +EXPORT_SYMBOL_GPL(richacl_permission);
-> diff --git a/include/linux/richacl.h b/include/linux/richacl.h
-> index a27ff10..d11e8f3 100644
-> --- a/include/linux/richacl.h
-> +++ b/include/linux/richacl.h
-> @@ -292,4 +292,7 @@ extern unsigned int richacl_want_to_mask(unsigned int);
->  extern void richacl_compute_max_masks(struct richacl *);
->  extern struct richacl *richacl_chmod(struct richacl *, mode_t);
->  
-> +/* richacl_inode.c */
-> +extern int richacl_permission(struct inode *, const struct richacl *, int);
-> +
->  #endif /* __RICHACL_H */
-> -- 
-> 2.1.0
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+While, it probably is a good idea for the server to verify that the
+current_fh and the fh associated with the stateid actually match, you
+can't really do that with the creds.
+
+In short, READs and WRITEs are really still quite NFSv3-like in NFSv4...
+
+--=20
+Jeff Layton <jlayton@poochiereds.net>
+
+--Sig_/BqZYQpmB7IFsjkmfIo4MHJA
+Content-Type: application/pgp-signature
+Content-Description: OpenPGP digital signature
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2
+
+iQIcBAEBCAAGBQJVYIKJAAoJEAAOaEEZVoIVgpkP/RWWe/sT2bBUFgn07c/dP6f3
+LK4dKG6bcA/RK4gf+Zu+Ht0yNS4TemKSdGz2MtxZU3WxHLZC/ZlTxTaWXSWq2w9t
+YSGVczVQZZVYUoyejkv9GqKOnjZqZ39bjH50UqXDk7q4vXbUzTA2mui02lhIH7qo
+R4pFM9uY69X029PJXXnz1nm/R6pDXFaTwor5jxsBbK+zuG59RRdjJD8I6T2+i0gO
+cthPZxZnY51vqVW5gxuIWbxH7dpMZ61gHg8tnLWX3rQLTiOy5JpDzTTbS6RDbqRE
+JiEQ9ZF9aBjUG3q/rTz7AclsvdV6O8wAu43PPfb7/FCkK+XV5FBS0WoPL9wMYf9u
+Dn755Sp3b/oE745CkkywBSKjvL7YdO4uzK5MH8DonRYECFn8BjJSRtLj64Lv0OeY
+ce2GMu0FDuoxwZGOkYw7TYtaAEyfuoTRMdo8NHq2uZhzDvM9/FHlpRRywHKTpcJl
+/UcpR4WR8hWrpErv4qdMRNjmR7ZxwzNGEj3hibqmCJ0U11a2yPYUazpAm03tbY4/
+p8fGqIVj8c1InsfGHyX5BF6+ujAZ5xl6HXj7Ex5r0DXgi8XSfjiZpXnjKh/ZEav8
+4xFZmaWk1DHBU+ExItUjN+CkRi1WPdFt80hvef93jX4+3LTW4uTOFGCZHgl7j3N7
+gDv5lfZbiF71y1SC7ZEy
+=T8Ui
+-----END PGP SIGNATURE-----
+
+--Sig_/BqZYQpmB7IFsjkmfIo4MHJA--
