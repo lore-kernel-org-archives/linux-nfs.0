@@ -1,10 +1,10 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pa0-f50.google.com ([209.85.220.50]:34463 "EHLO
-	mail-pa0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751116AbbEXPKe (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 24 May 2015 11:10:34 -0400
-Message-ID: <5561E9E1.4070906@gmail.com>
-Date: Sun, 24 May 2015 23:10:25 +0800
+Received: from mail-pa0-f54.google.com ([209.85.220.54]:34533 "EHLO
+	mail-pa0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751132AbbEXPKo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 24 May 2015 11:10:44 -0400
+Message-ID: <5561E9ED.6060703@gmail.com>
+Date: Sun, 24 May 2015 23:10:37 +0800
 From: Kinglong Mee <kinglongmee@gmail.com>
 MIME-Version: 1.0
 To: "J. Bruce Fields" <bfields@fieldses.org>,
@@ -13,47 +13,83 @@ To: "J. Bruce Fields" <bfields@fieldses.org>,
         NeilBrown <neilb@suse.de>
 CC: Trond Myklebust <trond.myklebust@primarydata.com>,
         Steve Dickson <SteveD@redhat.com>, kinglongmee@gmail.com
-Subject: [PATCH 1/5 v2] fs_pin: Fix uninitialized value in fs_pin
+Subject: [PATCH 3/5 v2] path: New helpers path_get_pin/path_put_unpin for
+ path pin
 References: <5561E7E4.50604@gmail.com>
 In-Reply-To: <5561E7E4.50604@gmail.com>
 Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Without initialized, done in fs_pin at stack space may
-contains strange value.
+Two helpers for filesystem pining to vfsmnt, not mntget.
 
-v2, same as v1.
+v2, new patch.
 
 Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
 ---
- include/linux/fs_pin.h | 6 ++++++
- 1 file changed, 6 insertions(+)
+ fs/namei.c           | 26 ++++++++++++++++++++++++++
+ include/linux/path.h |  4 ++++
+ 2 files changed, 30 insertions(+)
 
-diff --git a/include/linux/fs_pin.h b/include/linux/fs_pin.h
-index 3886b3b..0dde7b7 100644
---- a/include/linux/fs_pin.h
-+++ b/include/linux/fs_pin.h
-@@ -1,3 +1,6 @@
-+#ifndef _LINUX_FS_PIN_H
-+#define _LINUX_FS_PIN_H
-+
- #include <linux/wait.h>
- 
- struct fs_pin {
-@@ -16,9 +19,12 @@ static inline void init_fs_pin(struct fs_pin *p, void (*kill)(struct fs_pin *))
- 	INIT_HLIST_NODE(&p->s_list);
- 	INIT_HLIST_NODE(&p->m_list);
- 	p->kill = kill;
-+	p->done = 0;
+diff --git a/fs/namei.c b/fs/namei.c
+index fe30d3b..8f94e7c 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -492,6 +492,32 @@ void path_put(const struct path *path)
  }
+ EXPORT_SYMBOL(path_put);
  
- void pin_remove(struct fs_pin *);
- void pin_insert_group(struct fs_pin *, struct vfsmount *, struct hlist_head *);
- void pin_insert(struct fs_pin *, struct vfsmount *);
- void pin_kill(struct fs_pin *);
++/**
++ * path_get_pin - get a reference to a path's dentry
++ *                and pin to path's vfsmnt
++ * @path: path to get the reference to
++ * @p: the fs_pin pin to vfsmnt
++ */
++void path_get_pin(struct path *path, struct fs_pin *p)
++{
++	dget(path->dentry);
++	pin_insert_group(p, path->mnt, NULL);
++}
++EXPORT_SYMBOL(path_get_pin);
 +
-+#endif
++/**
++ * path_put_unpin - put a reference to a path's dentry
++ *                  and remove pin to path's vfsmnt
++ * @path: path to put the reference to
++ * @p: the fs_pin removed from vfsmnt
++ */
++void path_put_unpin(struct path *path, struct fs_pin *p)
++{
++	dput(path->dentry);
++	pin_remove(p);
++}
++EXPORT_SYMBOL(path_put_unpin);
++
+ struct nameidata {
+ 	struct path	path;
+ 	struct qstr	last;
+diff --git a/include/linux/path.h b/include/linux/path.h
+index d137218..34599fb 100644
+--- a/include/linux/path.h
++++ b/include/linux/path.h
+@@ -3,6 +3,7 @@
+ 
+ struct dentry;
+ struct vfsmount;
++struct fs_pin;
+ 
+ struct path {
+ 	struct vfsmount *mnt;
+@@ -12,6 +13,9 @@ struct path {
+ extern void path_get(const struct path *);
+ extern void path_put(const struct path *);
+ 
++extern void path_get_pin(struct path *, struct fs_pin *);
++extern void path_put_unpin(struct path *, struct fs_pin *);
++
+ static inline int path_equal(const struct path *path1, const struct path *path2)
+ {
+ 	return path1->mnt == path2->mnt && path1->dentry == path2->dentry;
 -- 
 2.4.1
 
