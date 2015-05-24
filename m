@@ -1,10 +1,10 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pd0-f173.google.com ([209.85.192.173]:35956 "EHLO
-	mail-pd0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751132AbbEXPKi (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 24 May 2015 11:10:38 -0400
-Message-ID: <5561E9E7.8030308@gmail.com>
-Date: Sun, 24 May 2015 23:10:31 +0800
+Received: from mail-pd0-f169.google.com ([209.85.192.169]:35127 "EHLO
+	mail-pd0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751132AbbEXPKu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 24 May 2015 11:10:50 -0400
+Message-ID: <5561E9F3.8080806@gmail.com>
+Date: Sun, 24 May 2015 23:10:43 +0800
 From: Kinglong Mee <kinglongmee@gmail.com>
 MIME-Version: 1.0
 To: "J. Bruce Fields" <bfields@fieldses.org>,
@@ -13,49 +13,44 @@ To: "J. Bruce Fields" <bfields@fieldses.org>,
         NeilBrown <neilb@suse.de>
 CC: Trond Myklebust <trond.myklebust@primarydata.com>,
         Steve Dickson <SteveD@redhat.com>, kinglongmee@gmail.com
-Subject: [PATCH 2/5 v2] fs_pin: Export functions for specific filesystem
+Subject: [PATCH 4/5 v2] sunrpc: New helper cache_force_expire for cache cleanup
 References: <5561E7E4.50604@gmail.com>
 In-Reply-To: <5561E7E4.50604@gmail.com>
 Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Exports functions for others who want pin to vfsmount,
-eg, nfsd's export cache.
+Using expiry_time force cleanup a cache.
 
 v2, same as v1.
 
 Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
 ---
- fs/fs_pin.c | 3 +++
- 1 file changed, 3 insertions(+)
+ include/linux/sunrpc/cache.h | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
 
-diff --git a/fs/fs_pin.c b/fs/fs_pin.c
-index 611b540..553e8b1 100644
---- a/fs/fs_pin.c
-+++ b/fs/fs_pin.c
-@@ -17,6 +17,7 @@ void pin_remove(struct fs_pin *pin)
- 	wake_up_locked(&pin->wait);
- 	spin_unlock_irq(&pin->wait.lock);
- }
-+EXPORT_SYMBOL(pin_remove);
- 
- void pin_insert_group(struct fs_pin *pin, struct vfsmount *m, struct hlist_head *p)
- {
-@@ -26,11 +27,13 @@ void pin_insert_group(struct fs_pin *pin, struct vfsmount *m, struct hlist_head
- 	hlist_add_head(&pin->m_list, &real_mount(m)->mnt_pins);
- 	spin_unlock(&pin_lock);
- }
-+EXPORT_SYMBOL(pin_insert_group);
- 
- void pin_insert(struct fs_pin *pin, struct vfsmount *m)
- {
- 	pin_insert_group(pin, m, &m->mnt_sb->s_pins);
- }
-+EXPORT_SYMBOL(pin_insert);
- 
- void pin_kill(struct fs_pin *p)
- {
+diff --git a/include/linux/sunrpc/cache.h b/include/linux/sunrpc/cache.h
+index 437ddb6..ce75e9c 100644
+--- a/include/linux/sunrpc/cache.h
++++ b/include/linux/sunrpc/cache.h
+@@ -210,6 +210,17 @@ extern int cache_check(struct cache_detail *detail,
+ 		       struct cache_head *h, struct cache_req *rqstp);
+ extern void cache_flush(void);
+ extern void cache_purge(struct cache_detail *detail);
++
++static inline void cache_force_expire(struct cache_detail *detail, struct cache_head *h)
++{
++	write_lock(&detail->hash_lock);
++	h->expiry_time = seconds_since_boot() - 1;
++	detail->nextcheck = seconds_since_boot();
++	write_unlock(&detail->hash_lock);
++
++	cache_flush();
++}
++
+ #define NEVER (0x7FFFFFFF)
+ extern void __init cache_initialize(void);
+ extern int cache_register_net(struct cache_detail *cd, struct net *net);
 -- 
 2.4.1
 
