@@ -1,77 +1,70 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f170.google.com ([209.85.220.170]:34339 "EHLO
-	mail-qk0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751513AbbEZRsb (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 May 2015 13:48:31 -0400
-Received: by qkgx75 with SMTP id x75so95629672qkg.1
-        for <linux-nfs@vger.kernel.org>; Tue, 26 May 2015 10:48:30 -0700 (PDT)
+Received: from mail-qk0-f179.google.com ([209.85.220.179]:36108 "EHLO
+	mail-qk0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751620AbbEZRsv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 May 2015 13:48:51 -0400
+Received: by qkx62 with SMTP id 62so95557375qkx.3
+        for <linux-nfs@vger.kernel.org>; Tue, 26 May 2015 10:48:49 -0700 (PDT)
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH v2 00/10] NFS/RDMA server patches for 4.2
+Subject: [PATCH v2 02/10] svcrdma: Add missing access_ok() call in svc_rdma.c
 To: bfields@fieldses.org
 Cc: linux-nfs@vger.kernel.org
-Date: Tue, 26 May 2015 13:48:26 -0400
-Message-ID: <20150526174401.7061.43137.stgit@klimt.1015granger.net>
+Date: Tue, 26 May 2015 13:48:47 -0400
+Message-ID: <20150526174847.7061.52013.stgit@klimt.1015granger.net>
+In-Reply-To: <20150526174401.7061.43137.stgit@klimt.1015granger.net>
+References: <20150526174401.7061.43137.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Bruce-
+Ensure a proper memory access check is done by read_reset_stat(),
+then fix the following compiler warning.
 
-I'd like to see these merged into 4.2. This patch series includes:
+In file included from linux-2.6/include/net/checksum.h:25,
+                 from linux-2.6/include/linux/skbuff.h:31,
+                 from linux-2.6/include/linux/icmpv6.h:4,
+                 from linux-2.6/include/linux/ipv6.h:64,
+                 from linux-2.6/include/net/ipv6.h:16,
+                 from linux-2.6/include/linux/sunrpc/clnt.h:27,
+                 from linux-2.6/net/sunrpc/xprtrdma/svc_rdma.c:47:
+In function ‘copy_to_user’,
+    inlined from ‘read_reset_stat’ at
+linux-2.6/net/sunrpc/xprtrdma/svc_rdma.c:113:
+linux-2.6/arch/x86/include/asm/uaccess.h:735: warning:
+call to ‘__copy_to_user_overflow’ declared with attribute warning:
+copy_to_user() buffer size is not provably correct
 
- - Don't use a non-byte-swapped value as an array index
- - Fix use of copy_to_user() in a kernel/user space API
- - Annotate memory allocations
- - A server-side pre-requisite for increasing r/wsize on the client
- - A server-side pre-requisite for client RPC/RDMA bi-direction
- - Merged-together xprtrdma and svcrdma kernel modules
- - Miscellaneous clean-ups
-
-You can find these in my git repo in the "nfsd-rdma-for-4.2" topic
-branch. See:
-
-  git://git.linux-nfs.org/projects/cel/cel-2.6.git
-
-
-Changes since v1:
- - Rebased on v4.1-rc5
- - Add patch to merge xprtrdma.ko and svcrdma.ko into one module
-
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
-Chuck Lever (10):
-      rpcrdma: Merge svcrdma and xprtrdma modules into one
-      SUNRPC: Clean up bc_send()
-      svcrdma: Add backward direction service for RPC/RDMA transport
-      svcrdma: Add a separate "max data segs macro for svcrdma
-      svcrdma: Replace GFP_KERNEL in a loop with GFP_NOFAIL
-      svcrdma: Keep rpcrdma_msg fields in network byte-order
-      svcrdma: Remove svc_rdma_xdr_decode_deferred_req()
-      SUNRPC: Move EXPORT_SYMBOL for svc_process
-      svcrdma: Add missing access_ok() call in svc_rdma.c
-      svcrdma: Fix byte-swapping in svc_rdma_sendto.c
+ net/sunrpc/xprtrdma/svc_rdma.c |    8 ++++++--
+ 1 files changed, 6 insertions(+), 2 deletions(-)
 
+diff --git a/net/sunrpc/xprtrdma/svc_rdma.c b/net/sunrpc/xprtrdma/svc_rdma.c
+index c1b6270..8eedb60 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma.c
++++ b/net/sunrpc/xprtrdma/svc_rdma.c
+@@ -98,7 +98,11 @@ static int read_reset_stat(struct ctl_table *table, int write,
+ 	else {
+ 		char str_buf[32];
+ 		char *data;
+-		int len = snprintf(str_buf, 32, "%d\n", atomic_read(stat));
++		int len;
++
++		if (!access_ok(VERIFY_WRITE, buffer, *lenp))
++			return -EFAULT;
++		len = snprintf(str_buf, 32, "%d\n", atomic_read(stat));
+ 		if (len >= 32)
+ 			return -EFAULT;
+ 		len = strlen(str_buf);
+@@ -110,7 +114,7 @@ static int read_reset_stat(struct ctl_table *table, int write,
+ 		len -= *ppos;
+ 		if (len > *lenp)
+ 			len = *lenp;
+-		if (len && copy_to_user(buffer, str_buf, len))
++		if (len && __copy_to_user(buffer, str_buf, len))
+ 			return -EFAULT;
+ 		*lenp = len;
+ 		*ppos += len;
 
- include/linux/sunrpc/bc_xprt.h           |    1 
- include/linux/sunrpc/svc_rdma.h          |   17 +++-
- include/linux/sunrpc/xprt.h              |    1 
- net/sunrpc/Kconfig                       |   28 ++----
- net/sunrpc/Makefile                      |    5 -
- net/sunrpc/bc_svc.c                      |   63 --------------
- net/sunrpc/svc.c                         |   35 ++++++--
- net/sunrpc/xprtrdma/Makefile             |   14 +--
- net/sunrpc/xprtrdma/module.c             |   46 ++++++++++
- net/sunrpc/xprtrdma/svc_rdma.c           |   22 +++--
- net/sunrpc/xprtrdma/svc_rdma_marshal.c   |  140 ++++++++----------------------
- net/sunrpc/xprtrdma/svc_rdma_recvfrom.c  |    2 
- net/sunrpc/xprtrdma/svc_rdma_sendto.c    |   16 ++-
- net/sunrpc/xprtrdma/svc_rdma_transport.c |   95 ++++++++++++++------
- net/sunrpc/xprtrdma/transport.c          |   13 ---
- net/sunrpc/xprtrdma/xprt_rdma.h          |   11 +-
- 16 files changed, 238 insertions(+), 271 deletions(-)
- delete mode 100644 net/sunrpc/bc_svc.c
- create mode 100644 net/sunrpc/xprtrdma/module.c
-
--- 
-Chuck Lever
