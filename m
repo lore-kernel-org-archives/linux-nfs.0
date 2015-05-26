@@ -1,267 +1,196 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f181.google.com ([209.85.220.181]:33431 "EHLO
-	mail-qk0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752154AbbEZRuH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 May 2015 13:50:07 -0400
-Received: by qkhg32 with SMTP id g32so11719904qkh.0
-        for <linux-nfs@vger.kernel.org>; Tue, 26 May 2015 10:50:07 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH v2 10/10] rpcrdma: Merge svcrdma and xprtrdma modules into one
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Date: Tue, 26 May 2015 13:50:04 -0400
-Message-ID: <20150526175004.7061.83923.stgit@klimt.1015granger.net>
-In-Reply-To: <20150526174401.7061.43137.stgit@klimt.1015granger.net>
-References: <20150526174401.7061.43137.stgit@klimt.1015granger.net>
+Received: from fieldses.org ([173.255.197.46]:52624 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751635AbbEZV4v (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 26 May 2015 17:56:51 -0400
+Date: Tue, 26 May 2015 17:56:49 -0400
+To: Andreas Gruenbacher <andreas.gruenbacher@gmail.com>
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, Andreas Gruenbacher <agruen@kernel.org>
+Subject: Re: [RFC v3 29/45] richacl: Apply the file masks to a richacl
+Message-ID: <20150526215649.GA13524@fieldses.org>
+References: <cover.1429868795.git.agruenba@redhat.com>
+ <35b73e9515f2395c8595cbbf4ea7b92216e5e2a0.1429868795.git.agruenba@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <35b73e9515f2395c8595cbbf4ea7b92216e5e2a0.1429868795.git.agruenba@redhat.com>
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Bi-directional RPC support means code in svcrdma.ko invokes a bit of
-code in xprtrdma.ko, and vice versa. To avoid loader/linker loops,
-merge the server and client side modules together into a single
-module.
+On Fri, Apr 24, 2015 at 01:04:26PM +0200, Andreas Gruenbacher wrote:
+> Put all the pieces of the acl transformation puzzle together for
+> computing a richacl which has the file masks "applied" so that the
+> standard nfsv4 access check algorithm can be used on the richacl.
+> 
+> Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
+> ---
+>  fs/richacl_compat.c     | 103 ++++++++++++++++++++++++++++++++++++++++++++++++
+>  include/linux/richacl.h |   3 ++
+>  2 files changed, 106 insertions(+)
+> 
+> diff --git a/fs/richacl_compat.c b/fs/richacl_compat.c
+> index 645917f..49af600 100644
+> --- a/fs/richacl_compat.c
+> +++ b/fs/richacl_compat.c
+> @@ -647,3 +647,106 @@ richacl_isolate_group_class(struct richacl_alloc *x)
+>  	}
+>  	return 0;
+>  }
+> +
+> +/**
+> + * __richacl_apply_masks  -  apply the file masks to all aces
+> + * @x:		acl and number of allocated entries
+> + *
+> + * Apply the owner mask to owner@ aces, the other mask to
+> + * everyone@ aces, and the group mask to all other aces.
+> + *
+> + * The previous transformations have brought the acl into a
+> + * form in which applying the masks will not lead to the
+> + * accidental loss of permissions anymore.
+> + */
+> +static int
+> +__richacl_apply_masks(struct richacl_alloc *x)
+> +{
+> +	struct richace *ace;
+> +
+> +	richacl_for_each_entry(ace, x->acl) {
+> +		unsigned int mask;
+> +
+> +		if (richace_is_inherit_only(ace) || !richace_is_allow(ace))
+> +			continue;
+> +		if (richace_is_owner(ace))
+> +			mask = x->acl->a_owner_mask;
+> +		else if (richace_is_everyone(ace))
+> +			mask = x->acl->a_other_mask;
+> +		else
+> +			mask = x->acl->a_group_mask;
+> +		if (richace_change_mask(x, &ace, ace->e_mask & mask))
+> +			return -1;
+> +	}
+> +	return 0;
+> +}
+> +
+> +/**
+> + * richacl_apply_masks  -  apply the masks to the acl
+> + *
+> + * Transform @acl so that the standard NFSv4 permission check algorithm (which
+> + * is not aware of file masks) will compute the same access decisions as the
+> + * richacl permission check algorithm (which looks at the acl and the file
+> + * masks).
+> + *
+> + * This algorithm is split into several steps:
+> + *
+> + *   - Move everyone@ aces to the end of the acl.  This simplifies the other
+> + *     transformations, and allows the everyone@ allow ace at the end of the
+> + *     acl to eventually allow permissions to the other class only.
+> + *
+> + *   - Propagate everyone@ permissions up the acl.  This transformation makes
+> + *     sure that the owner and group class aces won't lose any permissions when
+> + *     we apply the other mask to the everyone@ allow ace at the end of the acl.
+> + *
+> + *   - Apply the file masks to all aces.
+> + *
+> + *   - Make sure that the owner is not granted any permissions beyond the owner
+> + *     mask from group class aces or from everyone@.
+> + *
+> + *   - Make sure that the group class is not granted any permissions from
+> + *     everyone@.
+> + *
+> + * The algorithm is exact except for richacls which cannot be represented as an
+> + * acl alone: for example, given this acl:
+> + *
+> + *    group@:rw::allow
+> + *
+> + * when file masks corresponding to mode 0600 are applied, the owner would only
+> + * get rw access if he is a member of the owning group.  This algorithm would
+> + * produce an empty acl in this case.  We fix this case by modifying
+> + * richacl_permission() so that the group mask is always applied to group class
+> + * aces.  With this fix, the owner would not have any access (beyond the
+> + * implicit permissions always granted to owners).
 
-When backchannel capabilities are added, the combined module will
-register all needed transport capabilities so that Upper Layer
-consumers automatically have everything needed to create a
-bi-directional transport connection.
+This discussion is really confusing.
 
-Module aliases are added for backwards compatibility with user
-space, which still may expect svcrdma.ko or xprtrdma.ko to be
-present.
+If I understand correctly, you're saying:
 
-This commit reverts commit 2e8c12e1b765 ("xprtrdma: add separate
-Kconfig options for NFSoRDMA client and server support") and
-provides a single CONFIG option for enabling the new module.
+	- this mapping is inaccurate in some cases.
+	- therefore we've modified the permission algorithm to fix those
+	  cases.
+	- therefore actually, wait, the mapping is always accurate.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+Do I have this right?
 
- net/sunrpc/Kconfig              |   28 +++++++-----------------
- net/sunrpc/Makefile             |    3 +--
- net/sunrpc/xprtrdma/Makefile    |   14 +++++-------
- net/sunrpc/xprtrdma/module.c    |   46 +++++++++++++++++++++++++++++++++++++++
- net/sunrpc/xprtrdma/svc_rdma.c  |    8 +------
- net/sunrpc/xprtrdma/transport.c |   13 ++---------
- net/sunrpc/xprtrdma/xprt_rdma.h |    5 ++++
- 7 files changed, 69 insertions(+), 48 deletions(-)
- create mode 100644 net/sunrpc/xprtrdma/module.c
+Please just define the group-mask behavior to be part of the richacl
+permission-checking algorithm from the start, and this will be less
+confusing.
 
-diff --git a/net/sunrpc/Kconfig b/net/sunrpc/Kconfig
-index 9068e72..04ce2c0 100644
---- a/net/sunrpc/Kconfig
-+++ b/net/sunrpc/Kconfig
-@@ -48,28 +48,16 @@ config SUNRPC_DEBUG
- 
- 	  If unsure, say Y.
- 
--config SUNRPC_XPRT_RDMA_CLIENT
--	tristate "RPC over RDMA Client Support"
-+config SUNRPC_XPRT_RDMA
-+	tristate "RPC-over-RDMA transport"
- 	depends on SUNRPC && INFINIBAND && INFINIBAND_ADDR_TRANS
- 	default SUNRPC && INFINIBAND
- 	help
--	  This option allows the NFS client to support an RDMA-enabled
--	  transport.
-+	  This option allows the NFS client and server to use RDMA
-+	  transports (InfiniBand, iWARP, or RoCE).
- 
--	  To compile RPC client RDMA transport support as a module,
--	  choose M here: the module will be called xprtrdma.
-+	  To compile this support as a module, choose M. The module
-+	  will be called rpcrdma.ko.
- 
--	  If unsure, say N.
--
--config SUNRPC_XPRT_RDMA_SERVER
--	tristate "RPC over RDMA Server Support"
--	depends on SUNRPC && INFINIBAND && INFINIBAND_ADDR_TRANS
--	default SUNRPC && INFINIBAND
--	help
--	  This option allows the NFS server to support an RDMA-enabled
--	  transport.
--
--	  To compile RPC server RDMA transport support as a module,
--	  choose M here: the module will be called svcrdma.
--
--	  If unsure, say N.
-+	  If unsure, or you know there is no RDMA capability on your
-+	  hardware platform, say N.
-diff --git a/net/sunrpc/Makefile b/net/sunrpc/Makefile
-index 1b8e68d..b512fbd 100644
---- a/net/sunrpc/Makefile
-+++ b/net/sunrpc/Makefile
-@@ -5,8 +5,7 @@
- 
- obj-$(CONFIG_SUNRPC) += sunrpc.o
- obj-$(CONFIG_SUNRPC_GSS) += auth_gss/
--
--obj-y += xprtrdma/
-+obj-$(CONFIG_SUNRPC_XPRT_RDMA) += xprtrdma/
- 
- sunrpc-y := clnt.o xprt.o socklib.o xprtsock.o sched.o \
- 	    auth.o auth_null.o auth_unix.o auth_generic.o \
-diff --git a/net/sunrpc/xprtrdma/Makefile b/net/sunrpc/xprtrdma/Makefile
-index 579f72b..48913de 100644
---- a/net/sunrpc/xprtrdma/Makefile
-+++ b/net/sunrpc/xprtrdma/Makefile
-@@ -1,9 +1,7 @@
--obj-$(CONFIG_SUNRPC_XPRT_RDMA_CLIENT) += xprtrdma.o
-+obj-$(CONFIG_SUNRPC_XPRT_RDMA) += rpcrdma.o
- 
--xprtrdma-y := transport.o rpc_rdma.o verbs.o \
--	fmr_ops.o frwr_ops.o physical_ops.o
--
--obj-$(CONFIG_SUNRPC_XPRT_RDMA_SERVER) += svcrdma.o
--
--svcrdma-y := svc_rdma.o svc_rdma_transport.o \
--	svc_rdma_marshal.o svc_rdma_sendto.o svc_rdma_recvfrom.o
-+rpcrdma-y := transport.o rpc_rdma.o verbs.o \
-+	fmr_ops.o frwr_ops.o physical_ops.o \
-+	svc_rdma.o svc_rdma_transport.o \
-+	svc_rdma_marshal.o svc_rdma_sendto.o svc_rdma_recvfrom.o \
-+	module.o
-diff --git a/net/sunrpc/xprtrdma/module.c b/net/sunrpc/xprtrdma/module.c
-new file mode 100644
-index 0000000..560712b
---- /dev/null
-+++ b/net/sunrpc/xprtrdma/module.c
-@@ -0,0 +1,46 @@
-+/*
-+ * Copyright (c) 2015 Oracle.  All rights reserved.
-+ */
-+
-+/* rpcrdma.ko module initialization
-+ */
-+
-+#include <linux/module.h>
-+#include <linux/init.h>
-+#include <linux/sunrpc/svc_rdma.h>
-+#include "xprt_rdma.h"
-+
-+#if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
-+# define RPCDBG_FACILITY	RPCDBG_TRANS
-+#endif
-+
-+MODULE_AUTHOR("Open Grid Computing and Network Appliance, Inc.");
-+MODULE_DESCRIPTION("RPC/RDMA Transport");
-+MODULE_LICENSE("Dual BSD/GPL");
-+MODULE_ALIAS("svcrdma");
-+MODULE_ALIAS("xprtrdma");
-+
-+static void __exit rpc_rdma_cleanup(void)
-+{
-+	xprt_rdma_cleanup();
-+	svc_rdma_cleanup();
-+}
-+
-+static int __init rpc_rdma_init(void)
-+{
-+	int rc;
-+
-+	rc = svc_rdma_init();
-+	if (rc)
-+		goto out;
-+
-+	rc = xprt_rdma_init();
-+	if (rc)
-+		svc_rdma_cleanup();
-+
-+out:
-+	return rc;
-+}
-+
-+module_init(rpc_rdma_init);
-+module_exit(rpc_rdma_cleanup);
-diff --git a/net/sunrpc/xprtrdma/svc_rdma.c b/net/sunrpc/xprtrdma/svc_rdma.c
-index 7a18ae4..dc7d7a5 100644
---- a/net/sunrpc/xprtrdma/svc_rdma.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma.c
-@@ -38,8 +38,7 @@
-  *
-  * Author: Tom Tucker <tom@opengridcomputing.com>
-  */
--#include <linux/module.h>
--#include <linux/init.h>
-+
- #include <linux/slab.h>
- #include <linux/fs.h>
- #include <linux/sysctl.h>
-@@ -305,8 +304,3 @@ int svc_rdma_init(void)
- 	destroy_workqueue(svc_rdma_wq);
- 	return -ENOMEM;
- }
--MODULE_AUTHOR("Tom Tucker <tom@opengridcomputing.com>");
--MODULE_DESCRIPTION("SVC RDMA Transport");
--MODULE_LICENSE("Dual BSD/GPL");
--module_init(svc_rdma_init);
--module_exit(svc_rdma_cleanup);
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index 54f23b1..436da2c 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -48,7 +48,6 @@
-  */
- 
- #include <linux/module.h>
--#include <linux/init.h>
- #include <linux/slab.h>
- #include <linux/seq_file.h>
- #include <linux/sunrpc/addr.h>
-@@ -59,11 +58,6 @@
- # define RPCDBG_FACILITY	RPCDBG_TRANS
- #endif
- 
--MODULE_LICENSE("Dual BSD/GPL");
--
--MODULE_DESCRIPTION("RPC/RDMA Transport for Linux kernel NFS");
--MODULE_AUTHOR("Network Appliance, Inc.");
--
- /*
-  * tunables
-  */
-@@ -711,7 +705,7 @@ static struct xprt_class xprt_rdma = {
- 	.setup			= xprt_setup_rdma,
- };
- 
--static void __exit xprt_rdma_cleanup(void)
-+void xprt_rdma_cleanup(void)
- {
- 	int rc;
- 
-@@ -728,7 +722,7 @@ static void __exit xprt_rdma_cleanup(void)
- 			__func__, rc);
- }
- 
--static int __init xprt_rdma_init(void)
-+int xprt_rdma_init(void)
- {
- 	int rc;
- 
-@@ -753,6 +747,3 @@ static int __init xprt_rdma_init(void)
- #endif
- 	return 0;
- }
--
--module_init(xprt_rdma_init);
--module_exit(xprt_rdma_cleanup);
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index e60907b..58163b8 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -480,6 +480,11 @@ void rpcrdma_reply_handler(struct rpcrdma_rep *);
-  */
- int rpcrdma_marshal_req(struct rpc_rqst *);
- 
-+/* RPC/RDMA module init - xprtrdma/transport.c
-+ */
-+int xprt_rdma_init(void);
-+void xprt_rdma_cleanup(void);
-+
- /* Temporary NFS request map cache. Created in svc_rdma.c  */
- extern struct kmem_cache *svc_rdma_map_cachep;
- /* WR context cache. Created in svc_rdma.c  */
+I don't think I'm convinced yet that the resulting algorithm really is
+correct.  I mean: I think it probably is, I just don't understand the
+argument quite yet.
 
+> + *
+> + * NOTE: Depending on the acl and file masks, this algorithm can increase the
+> + * number of aces by almost a factor of three in the worst case. This may make
+> + * the acl too large for some purposes.
+
+If only for the sake of reviewers, it would be helpful to have some more
+detail here to convince us that this isn't going to be a big problem in
+practice.
+
+For example, can we identify a subset of richacls which would cover most
+reasonable use cases and not be badly mangled by this algorithm?  It
+would be nice to be able to document some simple best practices which if
+followed would guarantee that the mapped acls will be sane.  (Order
+denies before allows?  Stick to a single EVERYONE@ ace at the end?
+Don't chmod to modes which give more permissions to other than to the
+group or to the group than to the owner?).
+
+--b.
+
+> + */
+> +int
+> +richacl_apply_masks(struct richacl **acl)
+> +{
+> +	if ((*acl)->a_flags & RICHACL_MASKED) {
+> +		struct richacl_alloc x = {
+> +			.acl = richacl_clone(*acl, GFP_KERNEL),
+> +			.count = (*acl)->a_count,
+> +		};
+> +		if (!x.acl)
+> +			return -ENOMEM;
+> +
+> +		if (richacl_move_everyone_aces_down(&x) ||
+> +		    richacl_propagate_everyone(&x) ||
+> +		    __richacl_apply_masks(&x) ||
+> +		    richacl_isolate_owner_class(&x) ||
+> +		    richacl_isolate_group_class(&x)) {
+> +			richacl_put(x.acl);
+> +			return -ENOMEM;
+> +		}
+> +
+> +		x.acl->a_flags &= ~RICHACL_MASKED;
+> +		richacl_put(*acl);
+> +		*acl = x.acl;
+> +	}
+> +	return 0;
+> +}
+> +EXPORT_SYMBOL_GPL(richacl_apply_masks);
+> diff --git a/include/linux/richacl.h b/include/linux/richacl.h
+> index bcc2b64..6a97dca 100644
+> --- a/include/linux/richacl.h
+> +++ b/include/linux/richacl.h
+> @@ -325,4 +325,7 @@ extern int richacl_equiv_mode(const struct richacl *, mode_t *);
+>  extern int richacl_permission(struct inode *, const struct richacl *, int);
+>  extern struct richacl *richacl_create(struct inode *, struct inode *);
+>  
+> +/* richacl_compat.c */
+> +extern int richacl_apply_masks(struct richacl **);
+> +
+>  #endif /* __RICHACL_H */
+> -- 
+> 2.1.0
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
