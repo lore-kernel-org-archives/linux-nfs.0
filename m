@@ -1,114 +1,74 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qg0-f50.google.com ([209.85.192.50]:36033 "EHLO
-	mail-qg0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754408AbbEZPvu (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 May 2015 11:51:50 -0400
-Subject: [PATCH v3 04/17] xprtrdma: Remove rr_func
-From: Chuck Lever <chuck.lever@oracle.com>
-To: Anna.Schumaker@netapp.com
-Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Tue, 26 May 2015 11:51:46 -0400
-Message-ID: <20150526155146.4542.12955.stgit@manet.1015granger.net>
-In-Reply-To: <20150526153926.4542.96409.stgit@manet.1015granger.net>
-References: <20150526153926.4542.96409.stgit@manet.1015granger.net>
+Received: from outbound-smtp04.blacknight.com ([81.17.249.35]:41297 "EHLO
+	outbound-smtp04.blacknight.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754128AbbEZQn3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 May 2015 12:43:29 -0400
+Received: from mail.blacknight.com (pemlinmail03.blacknight.ie [81.17.254.16])
+	by outbound-smtp04.blacknight.com (Postfix) with ESMTPS id 1A4649848B
+	for <linux-nfs@vger.kernel.org>; Tue, 26 May 2015 16:43:22 +0000 (UTC)
+Message-ID: <5564A2A9.80402@mpstor.com>
+Date: Tue, 26 May 2015 17:43:21 +0100
+From: Benjamin ESTRABAUD <be@mpstor.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: Christoph Hellwig <hch@infradead.org>
+CC: "J. Bruce Fields" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "bc@mpstor.com" <bc@mpstor.com>
+Subject: Re: Issue running buffered writes to a pNFS (NFS 4.1 backed by SAN)
+ filesystem.
+References: <41EB9782-8445-4FBB-A825-A484EFF7169C@mpstor.com> <20150515192037.GB29627@fieldses.org> <555CB5EE.2@mpstor.com> <555CD2F0.6080408@mpstor.com> <20150525151310.GA18386@infradead.org>
+In-Reply-To: <20150525151310.GA18386@infradead.org>
+Content-Type: text/plain; charset=windows-1252; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-A posted rpcrdma_rep never has rr_func set to anything but
-rpcrdma_reply_handler.
+On 25/05/15 16:13, Christoph Hellwig wrote:
+> On Wed, May 20, 2015 at 07:31:12PM +0100, Benjamin ESTRABAUD wrote:
+>> After 25 iterations (after creating a 25GiB file, for a cumulative total of
+>> 325GiB if including the testfile.1G -> testfile.24G) the issue occured
+>> again. The IO rate to the SAN LUN dropped severely to a real 3MiB/sec
+>> (measured at the SAN LUN block device level).
+>>
+>> Also I've noticed that a kernel process is taking up 100% of one core at
+>> least:
+>>
+>> 516 root      20   0       0      0      0 R 100.0  0.0  11:09.72
+>> kworker/u49:4
+>
+Hi Christoph,
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Tested-By: Devesh Sharma <devesh.sharma@avagotech.com>
-Reviewed-by: Doug Ledford <dledford@redhat.com>
----
- net/sunrpc/xprtrdma/rpc_rdma.c  |    1 -
- net/sunrpc/xprtrdma/transport.c |    3 ---
- net/sunrpc/xprtrdma/verbs.c     |   10 +---------
- net/sunrpc/xprtrdma/xprt_rdma.h |    1 -
- 4 files changed, 1 insertion(+), 14 deletions(-)
+> Can you send me the output of "perf record -ag" for that run?
+>
+I ran "perf record -ag" on the pNFS client and "trace-cmd record -e 
+nfsd" (it seems to capture all layout* tracepoints) on the pNFS server 
+(I figured there was no need to run it on the client, and anyways the 
+trace wound up empty when I tried).
 
-diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index 98a3b95..3f422ca 100644
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -770,7 +770,6 @@ rpcrdma_reply_handler(struct rpcrdma_rep *rep)
- 			rep->rr_len);
- repost:
- 		r_xprt->rx_stats.bad_reply_count++;
--		rep->rr_func = rpcrdma_reply_handler;
- 		if (rpcrdma_ep_post_recv(&r_xprt->rx_ia, &r_xprt->rx_ep, rep))
- 			rpcrdma_recv_buffer_put(rep);
- 
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index 25f7a6e..7c12556 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -627,9 +627,6 @@ xprt_rdma_send_request(struct rpc_task *task)
- 
- 	if (req->rl_reply == NULL) 		/* e.g. reconnection */
- 		rpcrdma_recv_buffer_get(req);
--	/* rpcrdma_recv_buffer_get may have set rl_reply, so check again */
--	if (req->rl_reply)
--		req->rl_reply->rr_func = rpcrdma_reply_handler;
- 
- 	/* Must suppress retransmit to maintain credits */
- 	if (req->rl_connect_cookie == xprt->connect_cookie)
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index c55bfbc..8e0bd84 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -80,7 +80,6 @@ static void
- rpcrdma_run_tasklet(unsigned long data)
- {
- 	struct rpcrdma_rep *rep;
--	void (*func)(struct rpcrdma_rep *);
- 	unsigned long flags;
- 
- 	data = data;
-@@ -89,14 +88,9 @@ rpcrdma_run_tasklet(unsigned long data)
- 		rep = list_entry(rpcrdma_tasklets_g.next,
- 				 struct rpcrdma_rep, rr_list);
- 		list_del(&rep->rr_list);
--		func = rep->rr_func;
--		rep->rr_func = NULL;
- 		spin_unlock_irqrestore(&rpcrdma_tk_lock_g, flags);
- 
--		if (func)
--			func(rep);
--		else
--			rpcrdma_recv_buffer_put(rep);
-+		rpcrdma_reply_handler(rep);
- 
- 		spin_lock_irqsave(&rpcrdma_tk_lock_g, flags);
- 	}
-@@ -1213,7 +1207,6 @@ rpcrdma_buffer_put_sendbuf(struct rpcrdma_req *req, struct rpcrdma_buffer *buf)
- 	req->rl_niovs = 0;
- 	if (req->rl_reply) {
- 		buf->rb_recv_bufs[--buf->rb_recv_index] = req->rl_reply;
--		req->rl_reply->rr_func = NULL;
- 		req->rl_reply = NULL;
- 	}
- }
-@@ -1428,7 +1421,6 @@ rpcrdma_recv_buffer_put(struct rpcrdma_rep *rep)
- 	struct rpcrdma_buffer *buffers = &rep->rr_rxprt->rx_buf;
- 	unsigned long flags;
- 
--	rep->rr_func = NULL;
- 	spin_lock_irqsave(&buffers->rb_lock, flags);
- 	buffers->rb_recv_bufs[--buffers->rb_recv_index] = rep;
- 	spin_unlock_irqrestore(&buffers->rb_lock, flags);
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index c3d57c0..230e7fe 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -174,7 +174,6 @@ struct rpcrdma_buffer;
- struct rpcrdma_rep {
- 	unsigned int		rr_len;
- 	struct rpcrdma_xprt	*rr_rxprt;
--	void			(*rr_func)(struct rpcrdma_rep *);
- 	struct list_head	rr_list;
- 	struct rpcrdma_regbuf	*rr_rdmabuf;
- };
+I then ran "dd if=/dev/zero of=/mnt/pnfs1/testfile.26G bs=1M 
+count=26624" on the client (writing a 26GB file), waited about 20 
+seconds for the kworker issue to happen (it never happens immediately) 
+and as soon as it started, waited another 10 seconds so that the trace 
+has enough data to debug with.
 
+All those three commands (perf record, trace-cmd and dd) where run 
+within a 3-4 seconds window, so there should be not much "junk" perf 
+trace at the beginning which has nothing to do with NFS.
+
+Here's the link to the compressed perf record -ag+trace-cmd outputs (let 
+me know if you need to use a different host provider than dropbox):
+
+https://www.dropbox.com/s/wou3hqb2go21gbw/traces.tar.gz?dl=0
+
+> Also can you send the output from trace-cmd for tracing all nfsd.layout*
+> tracepoints for such a run?
+>
+>> Would the 25GiB figure ring any bells to you? Would there be a way for me to
+>> identify this workqueue (figure out if it is pNFS related)?
+>
+> Perf record should help by looking at the cycles spent.
+>
+
+Thanks a lot for your help!
+
+Regards,
+Ben.
