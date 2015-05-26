@@ -1,74 +1,47 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from outbound-smtp04.blacknight.com ([81.17.249.35]:41297 "EHLO
-	outbound-smtp04.blacknight.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754128AbbEZQn3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 May 2015 12:43:29 -0400
-Received: from mail.blacknight.com (pemlinmail03.blacknight.ie [81.17.254.16])
-	by outbound-smtp04.blacknight.com (Postfix) with ESMTPS id 1A4649848B
-	for <linux-nfs@vger.kernel.org>; Tue, 26 May 2015 16:43:22 +0000 (UTC)
-Message-ID: <5564A2A9.80402@mpstor.com>
-Date: Tue, 26 May 2015 17:43:21 +0100
+Received: from outbound-smtp02.blacknight.com ([81.17.249.8]:52777 "EHLO
+	outbound-smtp02.blacknight.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753354AbbEZQoq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 May 2015 12:44:46 -0400
+Received: from mail.blacknight.com (pemlinmail05.blacknight.ie [81.17.254.26])
+	by outbound-smtp02.blacknight.com (Postfix) with ESMTPS id A8B3D9848B
+	for <linux-nfs@vger.kernel.org>; Tue, 26 May 2015 16:44:44 +0000 (UTC)
+Message-ID: <5564A2FC.20809@mpstor.com>
+Date: Tue, 26 May 2015 17:44:44 +0100
 From: Benjamin ESTRABAUD <be@mpstor.com>
 MIME-Version: 1.0
 To: Christoph Hellwig <hch@infradead.org>
-CC: "J. Bruce Fields" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
         "bc@mpstor.com" <bc@mpstor.com>
 Subject: Re: Issue running buffered writes to a pNFS (NFS 4.1 backed by SAN)
  filesystem.
-References: <41EB9782-8445-4FBB-A825-A484EFF7169C@mpstor.com> <20150515192037.GB29627@fieldses.org> <555CB5EE.2@mpstor.com> <555CD2F0.6080408@mpstor.com> <20150525151310.GA18386@infradead.org>
-In-Reply-To: <20150525151310.GA18386@infradead.org>
+References: <41EB9782-8445-4FBB-A825-A484EFF7169C@mpstor.com> <20150517163841.GA19109@infradead.org> <555CB69B.7030108@mpstor.com> <20150525151429.GB18386@infradead.org>
+In-Reply-To: <20150525151429.GB18386@infradead.org>
 Content-Type: text/plain; charset=windows-1252; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 25/05/15 16:13, Christoph Hellwig wrote:
-> On Wed, May 20, 2015 at 07:31:12PM +0100, Benjamin ESTRABAUD wrote:
->> After 25 iterations (after creating a 25GiB file, for a cumulative total of
->> 325GiB if including the testfile.1G -> testfile.24G) the issue occured
->> again. The IO rate to the SAN LUN dropped severely to a real 3MiB/sec
->> (measured at the SAN LUN block device level).
->>
->> Also I've noticed that a kernel process is taking up 100% of one core at
->> least:
->>
->> 516 root      20   0       0      0      0 R 100.0  0.0  11:09.72
->> kworker/u49:4
+On 25/05/15 16:14, Christoph Hellwig wrote:
+> On Wed, May 20, 2015 at 05:30:19PM +0100, Benjamin ESTRABAUD wrote:
+>> I'm going to try this now (move client and maybe even server to Linux 4.0,
+>> now that 4.0 has a more "current" stable release).
 >
-Hi Christoph,
-
-> Can you send me the output of "perf record -ag" for that run?
+> Only the client is interesting in this case.
 >
-I ran "perf record -ag" on the pNFS client and "trace-cmd record -e 
-nfsd" (it seems to capture all layout* tracepoints) on the pNFS server 
-(I figured there was no need to run it on the client, and anyways the 
-trace wound up empty when I tried).
-
-I then ran "dd if=/dev/zero of=/mnt/pnfs1/testfile.26G bs=1M 
-count=26624" on the client (writing a 26GB file), waited about 20 
-seconds for the kworker issue to happen (it never happens immediately) 
-and as soon as it started, waited another 10 seconds so that the trace 
-has enough data to debug with.
-
-All those three commands (perf record, trace-cmd and dd) where run 
-within a 3-4 seconds window, so there should be not much "junk" perf 
-trace at the beginning which has nothing to do with NFS.
-
-Here's the link to the compressed perf record -ag+trace-cmd outputs (let 
-me know if you need to use a different host provider than dropbox):
-
-https://www.dropbox.com/s/wou3hqb2go21gbw/traces.tar.gz?dl=0
-
-> Also can you send the output from trace-cmd for tracing all nfsd.layout*
-> tracepoints for such a run?
+>> By the way, what is the minimum Linux Kernel version required to connect to
+>> a NFS v4.1 server using pNFS? We only managed to get this working with
+>> kernel 4.0 (on the client) and it appears that this is the lowest kernel
+>> release that supports pNFS block clients (working with Linux pNFS recent
+>> block server). Could you please confirm this?
 >
->> Would the 25GiB figure ring any bells to you? Would there be a way for me to
->> identify this workqueue (figure out if it is pNFS related)?
+> The big changes to make the block client useful went into 3.18.  Almost
+> nothing has changed in the client since.
 >
-> Perf record should help by looking at the cycles spent.
->
+OK, we'll give 3.18 another shot (we had tried before without luck), but 
+if not much as changed we're likely to see the problem also there. I'm 
+going to also try running this test over a different SAN fabric (GbE 
+instead of 40GbE and see if the issue still occurs).
 
-Thanks a lot for your help!
+Thanks,
 
-Regards,
 Ben.
