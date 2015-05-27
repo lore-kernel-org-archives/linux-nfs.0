@@ -1,75 +1,71 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:48908 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([173.255.197.46]:53124 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753142AbbE0SD7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 27 May 2015 14:03:59 -0400
-Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id t4RI3vr0020288
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
-	for <linux-nfs@vger.kernel.org>; Wed, 27 May 2015 14:03:58 -0400
-Received: from [10.10.55.212] (vpn-55-212.rdu2.redhat.com [10.10.55.212])
-	by int-mx09.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id t4RI3uDR016863
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NO)
-	for <linux-nfs@vger.kernel.org>; Wed, 27 May 2015 14:03:57 -0400
-Date: Wed, 27 May 2015 14:03:56 -0400 (EDT)
-From: Benjamin Coddington <bcodding@redhat.com>
-To: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH pynfs 0/3] MITM tool for NFS traffic on linux
-In-Reply-To: <cover.1432749206.git.bcodding@redhat.com>
-Message-ID: <alpine.OSX.2.19.9992.1505271403070.53081@planck.local>
-References: <cover.1432749206.git.bcodding@redhat.com>
+	id S1753146AbbE0SgE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 27 May 2015 14:36:04 -0400
+Date: Wed, 27 May 2015 14:36:01 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Kinglong Mee <kinglongmee@gmail.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFSD: Process time setting separately only for nfsv2
+Message-ID: <20150527183601.GB23302@fieldses.org>
+References: <55657AB6.6060105@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <55657AB6.6060105@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 27 May 2015, Benjamin Coddington wrote:
+On Wed, May 27, 2015 at 04:05:10PM +0800, Kinglong Mee wrote:
+> NFSv2 does not different between "set-[ac]time-to-now" which only
+> requires access, and "set-[ac]time-to-X" which requires ownership.
+> 
+> But, NFSv3/v4 are support the difference.
+> Just let those codes valid for NFSv2.
 
-> What follows is a small tool I think may be convenient to test and reproduce
-> certain types of bugs that are difficult to create from above the
-> filesystem, but are clearly problematic and have well-defined network
-> triggers.  Anna's recent BAD_STATEID on WRITES with delegation is a good
+Looks like this is already done by Andreas Gruenbacher's "nfsd: Disable
+NFSv2 timestamp workaround for NFSv3+" in my for-4.2-incoming branch.
+Do you see any problem with that patch?
 
-*Olga
+--b.
 
-Apologies.
-
-Ben
-
-> example of that.  This tool uses netfilters NFQUEUE target to allow a linux
-> host to modify the NFS network traffic between existing clients and servers.
-> In that sense, it is very similar to nfs-proxy, however I find it to be much
-> more convenient to use, as it can be quickly inserted and removed from an
-> existing network conection.
->
-> Benjamin Coddington (3):
->   Fix default arg order error on swig > 1.x
->   Add a tool for modification of NFS network traffic: itm
->   itm: add a handler that truncates READDIR response page data
->
->  gssapi/gssapi.i                       |    2 +
->  itm/README                            |   26 ++++
->  itm/handlers.py                       |    9 ++
->  itm/handlers/default.py               |   19 +++
->  itm/handlers/example.py               |   14 ++
->  itm/handlers/readdir_reply_nopages.py |   86 ++++++++++++
->  itm/itm.py                            |  230 +++++++++++++++++++++++++++++++++
->  itm/run_itm.sh                        |   41 ++++++
->  itm/use_local.py                      |   14 ++
->  9 files changed, 441 insertions(+), 0 deletions(-)
->  create mode 100644 itm/README
->  create mode 100644 itm/__init__.py
->  create mode 100644 itm/handlers.py
->  create mode 100644 itm/handlers/__init__.py
->  create mode 100644 itm/handlers/default.py
->  create mode 100644 itm/handlers/example.py
->  create mode 100644 itm/handlers/readdir_reply_nopages.py
->  create mode 100755 itm/itm.py
->  create mode 100755 itm/run_itm.sh
->  create mode 100644 itm/use_local.py
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
+> 
+> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+> ---
+>  fs/nfsd/vfs.c | 7 ++++---
+>  1 file changed, 4 insertions(+), 3 deletions(-)
+> 
+> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+> index 84d770b..bf4a15b 100644
+> --- a/fs/nfsd/vfs.c
+> +++ b/fs/nfsd/vfs.c
+> @@ -300,7 +300,7 @@ commit_metadata(struct svc_fh *fhp)
+>   * NFS semantics and what Linux expects.
+>   */
+>  static void
+> -nfsd_sanitize_attrs(struct inode *inode, struct iattr *iap)
+> +nfsd_sanitize_attrs(struct svc_rqst *rqstp, struct inode *inode, struct iattr *iap)
+>  {
+>  	/*
+>  	 * NFSv2 does not differentiate between "set-[ac]time-to-now"
+> @@ -315,7 +315,8 @@ nfsd_sanitize_attrs(struct inode *inode, struct iattr *iap)
+>  	 */
+>  #define BOTH_TIME_SET (ATTR_ATIME_SET | ATTR_MTIME_SET)
+>  #define	MAX_TOUCH_TIME_ERROR (30*60)
+> -	if ((iap->ia_valid & BOTH_TIME_SET) == BOTH_TIME_SET &&
+> +	if (rqstp->rq_vers == 2 &&
+> +	    (iap->ia_valid & BOTH_TIME_SET) == BOTH_TIME_SET &&
+>  	    iap->ia_mtime.tv_sec == iap->ia_atime.tv_sec) {
+>  		/*
+>  		 * Looks probable.
+> @@ -435,7 +436,7 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp, struct iattr *iap,
+>  	if (!iap->ia_valid)
+>  		goto out;
+>  
+> -	nfsd_sanitize_attrs(inode, iap);
+> +	nfsd_sanitize_attrs(rqstp, inode, iap);
+>  
+>  	/*
+>  	 * The size case is special, it changes the file in addition to the
+> -- 
+> 2.4.1
