@@ -1,71 +1,55 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:53124 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:45453 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753146AbbE0SgE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 27 May 2015 14:36:04 -0400
-Date: Wed, 27 May 2015 14:36:01 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFSD: Process time setting separately only for nfsv2
-Message-ID: <20150527183601.GB23302@fieldses.org>
-References: <55657AB6.6060105@gmail.com>
+	id S1752937AbbE0S5K (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 27 May 2015 14:57:10 -0400
+Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+	by mx1.redhat.com (Postfix) with ESMTPS id D42CC8E7AA
+	for <linux-nfs@vger.kernel.org>; Wed, 27 May 2015 18:57:09 +0000 (UTC)
+Received: from smallhat.boston.devel.redhat.com (vpn-54-148.rdu2.redhat.com [10.10.54.148])
+	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id t4RIv95G007668
+	for <linux-nfs@vger.kernel.org>; Wed, 27 May 2015 14:57:09 -0400
+Message-ID: <55661384.2050301@RedHat.com>
+Date: Wed, 27 May 2015 14:57:08 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <55657AB6.6060105@gmail.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Linux NFS Town Hall  meeting: Tomorrow - Thur 05/28/15
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, May 27, 2015 at 04:05:10PM +0800, Kinglong Mee wrote:
-> NFSv2 does not different between "set-[ac]time-to-now" which only
-> requires access, and "set-[ac]time-to-X" which requires ownership.
-> 
-> But, NFSv3/v4 are support the difference.
-> Just let those codes valid for NFSv2.
+Hello,
 
-Looks like this is already done by Andreas Gruenbacher's "nfsd: Disable
-NFSv2 timestamp workaround for NFSv3+" in my for-4.2-incoming branch.
-Do you see any problem with that patch?
+Its been a while a while since we had one of these.
+Let see what everyone is doing... 
 
---b.
+Lets meet tomorrow 
+   *Thur May 28th 8 at 01:00 pm EST (10:00am PST)*
 
-> 
-> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
-> ---
->  fs/nfsd/vfs.c | 7 ++++---
->  1 file changed, 4 insertions(+), 3 deletions(-)
-> 
-> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-> index 84d770b..bf4a15b 100644
-> --- a/fs/nfsd/vfs.c
-> +++ b/fs/nfsd/vfs.c
-> @@ -300,7 +300,7 @@ commit_metadata(struct svc_fh *fhp)
->   * NFS semantics and what Linux expects.
->   */
->  static void
-> -nfsd_sanitize_attrs(struct inode *inode, struct iattr *iap)
-> +nfsd_sanitize_attrs(struct svc_rqst *rqstp, struct inode *inode, struct iattr *iap)
->  {
->  	/*
->  	 * NFSv2 does not differentiate between "set-[ac]time-to-now"
-> @@ -315,7 +315,8 @@ nfsd_sanitize_attrs(struct inode *inode, struct iattr *iap)
->  	 */
->  #define BOTH_TIME_SET (ATTR_ATIME_SET | ATTR_MTIME_SET)
->  #define	MAX_TOUCH_TIME_ERROR (30*60)
-> -	if ((iap->ia_valid & BOTH_TIME_SET) == BOTH_TIME_SET &&
-> +	if (rqstp->rq_vers == 2 &&
-> +	    (iap->ia_valid & BOTH_TIME_SET) == BOTH_TIME_SET &&
->  	    iap->ia_mtime.tv_sec == iap->ia_atime.tv_sec) {
->  		/*
->  		 * Looks probable.
-> @@ -435,7 +436,7 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp, struct iattr *iap,
->  	if (!iap->ia_valid)
->  		goto out;
->  
-> -	nfsd_sanitize_attrs(inode, iap);
-> +	nfsd_sanitize_attrs(rqstp, inode, iap);
->  
->  	/*
->  	 * The size case is special, it changes the file in addition to the
-> -- 
-> 2.4.1
+The usual agenda will apply. The maintainers will give
+a quick status of what is happening in their worlds.
+
+Next we'll get updates from major contributors on what
+they have been doing and are planing on doing.
+  
+Finally, we'll open the floor to questions, comments, 
+concerns from the community.  
+
+Generally the meeting lasts between 30 to 45 mins, with 
+a very hard stop at 60mins. 
+
+Please feel to attend and participate!
+
+Again the Time: 10:00 am PST (01:00 pm EST)
+
+The call in numbers are:
+
+U.S. and Canada: (800) 451-8679
+World wide toll free numbers
+   https://www.intercallonline.com/listNumbersByCode.action?confCode=5642721552
+
+Conference code: 564.272.1552
+
+steved.
+
