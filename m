@@ -1,19 +1,19 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-vn0-f52.google.com ([209.85.216.52]:41228 "EHLO
-	mail-vn0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754884AbbE1Xjy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 May 2015 19:39:54 -0400
-Received: by vnbg62 with SMTP id g62so6656241vnb.8
-        for <linux-nfs@vger.kernel.org>; Thu, 28 May 2015 16:39:54 -0700 (PDT)
+Received: from mail-ob0-f172.google.com ([209.85.214.172]:35321 "EHLO
+	mail-ob0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932474AbbE1Xk3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 May 2015 19:40:29 -0400
 MIME-Version: 1.0
-In-Reply-To: <9c755df47acdef7f6a1d0195af888dafb7d3e7bf.1429868795.git.agruenba@redhat.com>
+In-Reply-To: <CAHQdGtSUjeV_5UNFdgMQXXbRq2Fs+JTc6t-Dy2y1-hS4c49GOA@mail.gmail.com>
 References: <cover.1429868795.git.agruenba@redhat.com>
-	<9c755df47acdef7f6a1d0195af888dafb7d3e7bf.1429868795.git.agruenba@redhat.com>
-Date: Thu, 28 May 2015 19:39:54 -0400
-Message-ID: <CAHQdGtTEhYWcVaahYx_ajsp8-V0GEF7NEU7cPnLUQz+pCzuniA@mail.gmail.com>
-Subject: Re: [RFC v3 38/45] nfs/sunrpc: Return status code from encode functions
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Andreas Gruenbacher <andreas.gruenbacher@gmail.com>
+	<9fee05c37be52b8f8fcd5df05f391af9e3d820e8.1429868795.git.agruenba@redhat.com>
+	<CAHQdGtSUjeV_5UNFdgMQXXbRq2Fs+JTc6t-Dy2y1-hS4c49GOA@mail.gmail.com>
+Date: Fri, 29 May 2015 01:40:28 +0200
+Message-ID: <CAHpGcMKn1khdNTk=MFS7vFgLCHmxX2fVTJanertXT+Zj_BnAKA@mail.gmail.com>
+Subject: Re: [RFC v3 37/45] nfs/sunrpc: No more encode and decode function
+ pointer casting
+From: =?UTF-8?Q?Andreas_Gr=C3=BCnbacher?= <andreas.gruenbacher@gmail.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
 Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
         Linux FS-devel Mailing List <linux-fsdevel@vger.kernel.org>,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>
@@ -21,18 +21,20 @@ Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Apr 24, 2015 at 7:04 AM, Andreas Gruenbacher
-<andreas.gruenbacher@gmail.com> wrote:
-> Return a status code from the sunrpc xdr encode functions. While these
-> functions were originally returning a status code before commit 9f06c719 from
-> December 2010, it was found that none of them can actually fail and so they
-> were turned into void functions. With more complex objects like NFSv4 ACLs to
-> encode, it makes sense to do memory allocations and some of the error checking
-> inside the encode functions, so those functions may fail.
+2015-05-29 1:11 GMT+02:00 Trond Myklebust <trond.myklebust@primarydata.com>:
+> How is this even remotely relevant to ACL functionality, and why does
+> it deserve to bypass the NFS tree?
 
+I've posted this to the linux-nfs mailing list for review among
+others, how is that
+bypassing the NFS tree? Would you prefer those things sent to you personally
+as well?
 
-The standard way to do this is to allocate the xdr buffer and perform
-the xdr encoding outside the RPC call itself. Please see the
-layoutcommit function, for instance.
+This patch prepares for for the next one which changes the prototype
+of the encode
+functions to return an error code. Without this patch, oversights in
+the next patch
+would go unnoticed; with this patch, the compiler will complain.
 
-Trond
+Thanks,
+Andreas
