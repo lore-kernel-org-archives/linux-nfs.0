@@ -1,18 +1,19 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ob0-f179.google.com ([209.85.214.179]:36019 "EHLO
-	mail-ob0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932170AbbE1X3j (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 May 2015 19:29:39 -0400
+Received: from mail-vn0-f52.google.com ([209.85.216.52]:41228 "EHLO
+	mail-vn0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754884AbbE1Xjy (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 May 2015 19:39:54 -0400
+Received: by vnbg62 with SMTP id g62so6656241vnb.8
+        for <linux-nfs@vger.kernel.org>; Thu, 28 May 2015 16:39:54 -0700 (PDT)
 MIME-Version: 1.0
-In-Reply-To: <CAHQdGtQyEH9V_XJaQQgPkKGJLy__D0J6cmAHASeEXCZkCCrBjg@mail.gmail.com>
+In-Reply-To: <9c755df47acdef7f6a1d0195af888dafb7d3e7bf.1429868795.git.agruenba@redhat.com>
 References: <cover.1429868795.git.agruenba@redhat.com>
-	<39cf890265e2a906a1cf41d6949b5be69903a064.1429868795.git.agruenba@redhat.com>
-	<CAHQdGtQyEH9V_XJaQQgPkKGJLy__D0J6cmAHASeEXCZkCCrBjg@mail.gmail.com>
-Date: Fri, 29 May 2015 01:29:38 +0200
-Message-ID: <CAHpGcMLmhK7sy0Z=nLGm1aDr0NZWjiA6SnuRkWh5AU6=6=VCCQ@mail.gmail.com>
-Subject: Re: [RFC v3 42/45] nfs: Add richacl support
-From: =?UTF-8?Q?Andreas_Gr=C3=BCnbacher?= <andreas.gruenbacher@gmail.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
+	<9c755df47acdef7f6a1d0195af888dafb7d3e7bf.1429868795.git.agruenba@redhat.com>
+Date: Thu, 28 May 2015 19:39:54 -0400
+Message-ID: <CAHQdGtTEhYWcVaahYx_ajsp8-V0GEF7NEU7cPnLUQz+pCzuniA@mail.gmail.com>
+Subject: Re: [RFC v3 38/45] nfs/sunrpc: Return status code from encode functions
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Andreas Gruenbacher <andreas.gruenbacher@gmail.com>
 Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
         Linux FS-devel Mailing List <linux-fsdevel@vger.kernel.org>,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>
@@ -20,30 +21,18 @@ Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-2015-05-29 1:06 GMT+02:00 Trond Myklebust <trond.myklebust@primarydata.com>:
-> On Fri, Apr 24, 2015 at 7:04 AM, Andreas Gruenbacher
-> <andreas.gruenbacher@gmail.com> wrote:
->> Changes nfs to support the "system.richacl" xattr instead of "system.nfs4_acl".
->>
->
-> NACK.
->
-> You may declare a userspace syscall ABI that is more than 10 years old
-> to be deprecated, but you are not allowed to remove it.
+On Fri, Apr 24, 2015 at 7:04 AM, Andreas Gruenbacher
+<andreas.gruenbacher@gmail.com> wrote:
+> Return a status code from the sunrpc xdr encode functions. While these
+> functions were originally returning a status code before commit 9f06c719 from
+> December 2010, it was found that none of them can actually fail and so they
+> were turned into void functions. With more complex objects like NFSv4 ACLs to
+> encode, it makes sense to do memory allocations and some of the error checking
+> inside the encode functions, so those functions may fail.
 
-Okay, we can have "system.nfs4_acl" as well, it's just extra code.
 
-> Furthermore, your entire premise of using the mode bits and the acl at
-> the same time is flawed; you are at best trying to set up a private
-> protocol to pass your mask info. According to RFC7530, Section
-> 6.4.1.3, if you try to send the mode bits and ACL in the same SETATTR,
-> then the result should be to apply the mode first, then override all
-> the lower mode bits (i.e. everything except the suid, sgid and ) with
-> the ACL...
+The standard way to do this is to allocate the xdr buffer and perform
+the xdr encoding outside the RPC call itself. Please see the
+layoutcommit function, for instance.
 
-What do you mean? I'm happy with the behavior described in Section
-6.4.1.3 of RFC 7530; I'm not using the mode bits and the acl at the same
-time. What makes you think otherwise?
-
-Thanks,
-Andreas
+Trond
