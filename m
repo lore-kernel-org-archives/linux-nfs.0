@@ -1,62 +1,48 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail3-relais-sop.national.inria.fr ([192.134.164.104]:56662
-	"EHLO mail3-relais-sop.national.inria.fr" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S932234AbbE1VLm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 May 2015 17:11:42 -0400
-From: Julia Lawall <Julia.Lawall@lip6.fr>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: kernel-janitors@vger.kernel.org,
-        Anna Schumaker <anna.schumaker@netapp.com>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: [PATCH 3/9] NFS: drop unneeded goto
-Date: Thu, 28 May 2015 23:02:18 +0200
-Message-Id: <1432846944-7122-4-git-send-email-Julia.Lawall@lip6.fr>
-In-Reply-To: <1432846944-7122-1-git-send-email-Julia.Lawall@lip6.fr>
-References: <1432846944-7122-1-git-send-email-Julia.Lawall@lip6.fr>
+Received: from mail-ob0-f182.google.com ([209.85.214.182]:33191 "EHLO
+	mail-ob0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932219AbbE1VPa (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 May 2015 17:15:30 -0400
+MIME-Version: 1.0
+In-Reply-To: <20150528203332.GD31663@fieldses.org>
+References: <cover.1429868795.git.agruenba@redhat.com>
+	<8d601ee8babe5239b7926542c713c58502b15e35.1429868795.git.agruenba@redhat.com>
+	<20150528203332.GD31663@fieldses.org>
+Date: Thu, 28 May 2015 23:15:29 +0200
+Message-ID: <CAHpGcMLJ0R5fKMnrFV5HsJ5Pi7evc057uN2RBuNMcYO+szwWeA@mail.gmail.com>
+Subject: Re: [RFC v3 36/45] NFSv4: Fix GETATTR bitmap verification
+From: =?UTF-8?Q?Andreas_Gr=C3=BCnbacher?= <andreas.gruenbacher@gmail.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Julia Lawall <Julia.Lawall@lip6.fr>
+2015-05-28 22:33 GMT+02:00 J. Bruce Fields <bfields@fieldses.org>:
+> On Fri, Apr 24, 2015 at 01:04:33PM +0200, Andreas Gruenbacher wrote:
+>> The client fails to detect when unexpected attributes are sent after the last
+>> expected attribute in each word in the bitmap.
+>
+> Is it important that the client catch that?
 
-Delete jump to a label on the next line, when that label is not
-used elsewhere.
+Yes if there are more attributes in the next word that the client cares about;
+probably no otherwise.
 
-A simplified version of the semantic patch that makes this change is as
-follows: (http://coccinelle.lip6.fr/)
+>> Fix this by checking the entire bitmap for unexpected attributes first.  The
+>> server can still send attributes which the client understands but which it
+>> didn't request; this doesn't cause any harm.
+>
+> I don't understand that last sentence.  On a skim it looks like after
+> this patch we *will* still error out if a server does that, right?  (As
+> we should, that would be a server bug.)
 
-// <smpl>
-@r@
-identifier l;
-@@
+We don't actually verify the request bitmap against the reply bitmap;
+we don't keep
+the request bitmap around long enough. Some decode functions understand a set
+of attributes. Currently, we happily accept any of the attributes the
+decode function
+in question accepts, even ones that were not requested. That could be fixed by
+checking the request bitmap against the reply bitmap as well of course.
 
--if (...) goto l;
--l:
-// </smpl>
-
-Also drop the unnecessary ret variable.
-
-Signed-off-by: Julia Lawall <Julia.Lawall@lip6.fr>
-
----
- fs/nfs/nfs4idmap.c |    7 +------
- 1 file changed, 1 insertion(+), 6 deletions(-)
-
-diff --git a/fs/nfs/nfs4idmap.c b/fs/nfs/nfs4idmap.c
-index 2e1737c..535dfc6 100644
---- a/fs/nfs/nfs4idmap.c
-+++ b/fs/nfs/nfs4idmap.c
-@@ -494,12 +494,7 @@ nfs_idmap_delete(struct nfs_client *clp)
- 
- int nfs_idmap_init(void)
- {
--	int ret;
--	ret = nfs_idmap_init_keyring();
--	if (ret != 0)
--		goto out;
--out:
--	return ret;
-+	return nfs_idmap_init_keyring();
- }
- 
- void nfs_idmap_quit(void)
-
+Andreas
