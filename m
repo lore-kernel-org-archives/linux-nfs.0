@@ -1,109 +1,131 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:53716 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:53725 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754367AbbE1TZx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 28 May 2015 15:25:53 -0400
-Date: Thu, 28 May 2015 15:25:53 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1752909AbbE1TwG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 28 May 2015 15:52:06 -0400
+Date: Thu, 28 May 2015 15:52:05 -0400
 To: Andreas Gruenbacher <andreas.gruenbacher@gmail.com>
 Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, Andreas Gruenbacher <agruen@kernel.org>
-Subject: Re: [RFC v3 30/45] richacl: Create richacl from mode values
-Message-ID: <20150528192553.GB31663@fieldses.org>
+        linux-nfs@vger.kernel.org
+Subject: Re: [RFC v3 33/45] nfsd: Keep list of acls to dispose of in
+ compoundargs
+Message-ID: <20150528195205.GC31663@fieldses.org>
 References: <cover.1429868795.git.agruenba@redhat.com>
- <b435787dd651572f42984f9dec2a68cbf38bc7bf.1429868795.git.agruenba@redhat.com>
- <20150528192413.GA31663@fieldses.org>
+ <4f0168389120bf67cf69ce4ac7bb8ce878aa0f5d.1429868795.git.agruenba@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20150528192413.GA31663@fieldses.org>
+In-Reply-To: <4f0168389120bf67cf69ce4ac7bb8ce878aa0f5d.1429868795.git.agruenba@redhat.com>
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, May 28, 2015 at 03:24:13PM -0400, bfields wrote:
-> On Fri, Apr 24, 2015 at 01:04:27PM +0200, Andreas Gruenbacher wrote:
-> > Create a richacl that corresponds to given file mode permission bits.
-> > 
-> > Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
-> > ---
-> >  fs/richacl_compat.c     | 38 ++++++++++++++++++++++++++++++++++++++
-> >  include/linux/richacl.h |  1 +
-> >  2 files changed, 39 insertions(+)
-> > 
-> > diff --git a/fs/richacl_compat.c b/fs/richacl_compat.c
-> > index 49af600..8ebe772 100644
-> > --- a/fs/richacl_compat.c
-> > +++ b/fs/richacl_compat.c
-> > @@ -750,3 +750,41 @@ richacl_apply_masks(struct richacl **acl)
-> >  	return 0;
-> >  }
-> >  EXPORT_SYMBOL_GPL(richacl_apply_masks);
-> > +
-> > +/**
-> > + * richacl_from_mode_unmasked  -  create an acl which corresponds to @mode
-> > + *
-> > + * The resulting acl doesn't have the RICHACL_MASKED flag set.
+On Fri, Apr 24, 2015 at 01:04:30PM +0200, Andreas Gruenbacher wrote:
+> We will decode acls in requests into richacls; those need to be richacl_put()
+> at the end of the request instead of kfree()d; this allows the vfs to cache
+> them whenever possible.
 > 
-> That seems to disagree with:
-> 
-> > + *
-> > + * @mode:	file mode including the file type
-> > + */
-> > +struct richacl *
-> > +richacl_from_mode_unmasked(mode_t mode)
-> > +{
-> > +	struct richacl *acl;
-> > +	struct richace *ace;
-> > +
-> > +	acl = richacl_alloc(1, GFP_KERNEL);
-> > +	if (!acl)
-> > +		return NULL;
-> > +	acl->a_flags = RICHACL_MASKED;
-> 
-> this line?
+> NOTE: If we allow only a single acl per request, we can get rid of the list
+> here.
 
-OK, looks like that's a temporary issue, fixed by the next patch.
-Might be simpler just to squash the two patches and skip this step?
+Technically I guess we're supposed to allow it, and maybe someday
+someone will come up with a reason....  So I'm not inclined to drop the
+list.
 
 --b.
 
 > 
-> --b.
+> Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
+> ---
+>  fs/nfsd/nfs4xdr.c | 26 ++++++++++++++++++++++++++
+>  fs/nfsd/xdr4.h    |  6 ++++++
+>  2 files changed, 32 insertions(+)
 > 
-> > +	acl->a_owner_mask = richacl_mode_to_mask(mode >> 6) |
-> > +			    RICHACE_POSIX_OWNER_ALLOWED;
-> > +	acl->a_group_mask = richacl_mode_to_mask(mode >> 3);
-> > +	acl->a_other_mask = richacl_mode_to_mask(mode);
-> > +
-> > +	ace = acl->a_entries;
-> > +	ace->e_type  = RICHACE_ACCESS_ALLOWED_ACE_TYPE;
-> > +	ace->e_flags = RICHACE_SPECIAL_WHO;
-> > +	ace->e_mask = RICHACE_POSIX_ALWAYS_ALLOWED |
-> > +		      RICHACE_POSIX_MODE_ALL |
-> > +		      RICHACE_POSIX_OWNER_ALLOWED;
-> > +	/* RICHACE_DELETE_CHILD is meaningless for non-directories. */
-> > +	if (!S_ISDIR(mode))
-> > +		ace->e_mask &= ~RICHACE_DELETE_CHILD;
-> > +	ace->e_id.special = RICHACE_EVERYONE_SPECIAL_ID;
-> > +
-> > +	return acl;
-> > +
-> > +}
-> > +EXPORT_SYMBOL_GPL(richacl_from_mode_unmasked);
-> > diff --git a/include/linux/richacl.h b/include/linux/richacl.h
-> > index 6a97dca..25ff4df 100644
-> > --- a/include/linux/richacl.h
-> > +++ b/include/linux/richacl.h
-> > @@ -327,5 +327,6 @@ extern struct richacl *richacl_create(struct inode *, struct inode *);
-> >  
-> >  /* richacl_compat.c */
-> >  extern int richacl_apply_masks(struct richacl **);
-> > +extern struct richacl *richacl_from_mode_unmasked(mode_t);
-> >  
-> >  #endif /* __RICHACL_H */
-> > -- 
-> > 2.1.0
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> index e2d602d..f25d1e7 100644
+> --- a/fs/nfsd/nfs4xdr.c
+> +++ b/fs/nfsd/nfs4xdr.c
+> @@ -39,6 +39,7 @@
+>  #include <linux/utsname.h>
+>  #include <linux/pagemap.h>
+>  #include <linux/sunrpc/svcauth_gss.h>
+> +#include <linux/richacl.h>
+>  
+>  #include "idmap.h"
+>  #include "acl.h"
+> @@ -195,6 +196,24 @@ svcxdr_tmpalloc(struct nfsd4_compoundargs *argp, u32 len)
+>  	return tb->buf;
+>  }
+>  
+> +static struct richacl *
+> +svcxdr_alloc_richacl(struct nfsd4_compoundargs *argp, u32 nace)
+> +{
+> +	struct svcxdr_richacl *acls;
+> +
+> +	acls = kmalloc(sizeof(*acls), GFP_KERNEL);
+> +	if (!acls)
+> +		return NULL;
+> +	acls->acl = richacl_alloc(nace, GFP_KERNEL);
+> +	if (!acls->acl) {
+> +		kfree(acls);
+> +		return NULL;
+> +	}
+> +	acls->next = argp->acls;
+> +	argp->acls = acls;
+> +	return acls->acl;
+> +}
+> +
+>  /*
+>   * For xdr strings that need to be passed to other kernel api's
+>   * as null-terminated strings.
+> @@ -4390,6 +4409,12 @@ int nfsd4_release_compoundargs(void *rq, __be32 *p, void *resp)
+>  		args->to_free = tb->next;
+>  		kfree(tb);
+>  	}
+> +	while (args->acls) {
+> +		struct svcxdr_richacl *acls = args->acls;
+> +		args->acls = acls->next;
+> +		richacl_put(acls->acl);
+> +		kfree(acls);
+> +	}
+>  	return 1;
+>  }
+>  
+> @@ -4408,6 +4433,7 @@ nfs4svc_decode_compoundargs(struct svc_rqst *rqstp, __be32 *p, struct nfsd4_comp
+>  	args->pagelen = rqstp->rq_arg.page_len;
+>  	args->tmpp = NULL;
+>  	args->to_free = NULL;
+> +	args->acls = NULL;
+>  	args->ops = args->iops;
+>  	args->rqstp = rqstp;
+>  
+> diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+> index 0bda93e..4ed4db0 100644
+> --- a/fs/nfsd/xdr4.h
+> +++ b/fs/nfsd/xdr4.h
+> @@ -569,6 +569,11 @@ struct svcxdr_tmpbuf {
+>  	char buf[];
+>  };
+>  
+> +struct svcxdr_richacl {
+> +	struct svcxdr_richacl *next;
+> +	struct richacl *acl;
+> +};
+> +
+>  struct nfsd4_compoundargs {
+>  	/* scratch variables for XDR decode */
+>  	__be32 *			p;
+> @@ -578,6 +583,7 @@ struct nfsd4_compoundargs {
+>  	__be32				tmp[8];
+>  	__be32 *			tmpp;
+>  	struct svcxdr_tmpbuf		*to_free;
+> +	struct svcxdr_richacl		*acls;
+>  
+>  	struct svc_rqst			*rqstp;
+>  
+> -- 
+> 2.1.0
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
