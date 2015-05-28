@@ -1,38 +1,72 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-oi0-f51.google.com ([209.85.218.51]:34031 "EHLO
-	mail-oi0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754626AbbE1U2O (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 May 2015 16:28:14 -0400
-MIME-Version: 1.0
-In-Reply-To: <20150528195205.GC31663@fieldses.org>
-References: <cover.1429868795.git.agruenba@redhat.com>
-	<4f0168389120bf67cf69ce4ac7bb8ce878aa0f5d.1429868795.git.agruenba@redhat.com>
-	<20150528195205.GC31663@fieldses.org>
-Date: Thu, 28 May 2015 22:28:13 +0200
-Message-ID: <CAHpGcMJ1-EXQx8dxm=G4aXUkbTFDaMLFuxb33bY+tPt4_6TWBg@mail.gmail.com>
-Subject: Re: [RFC v3 33/45] nfsd: Keep list of acls to dispose of in compoundargs
-From: =?UTF-8?Q?Andreas_Gr=C3=BCnbacher?= <andreas.gruenbacher@gmail.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from fieldses.org ([173.255.197.46]:53757 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754220AbbE1Udd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 28 May 2015 16:33:33 -0400
+Date: Thu, 28 May 2015 16:33:32 -0400
+To: Andreas Gruenbacher <andreas.gruenbacher@gmail.com>
 Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=UTF-8
+Subject: Re: [RFC v3 36/45] NFSv4: Fix GETATTR bitmap verification
+Message-ID: <20150528203332.GD31663@fieldses.org>
+References: <cover.1429868795.git.agruenba@redhat.com>
+ <8d601ee8babe5239b7926542c713c58502b15e35.1429868795.git.agruenba@redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <8d601ee8babe5239b7926542c713c58502b15e35.1429868795.git.agruenba@redhat.com>
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-2015-05-28 21:52 GMT+02:00 J. Bruce Fields <bfields@fieldses.org>:
-> On Fri, Apr 24, 2015 at 01:04:30PM +0200, Andreas Gruenbacher wrote:
->> We will decode acls in requests into richacls; those need to be richacl_put()
->> at the end of the request instead of kfree()d; this allows the vfs to cache
->> them whenever possible.
->>
->> NOTE: If we allow only a single acl per request, we can get rid of the list
->> here.
->
-> Technically I guess we're supposed to allow it, and maybe someday
-> someone will come up with a reason....  So I'm not inclined to drop the
-> list.
+On Fri, Apr 24, 2015 at 01:04:33PM +0200, Andreas Gruenbacher wrote:
+> The NFSv4 client sends the server GETATTR requests with different sets of
+> requested attributes depending on the situation.  The requested set of
+> attributes is encoded in a bitmap; the server replies with the set of
+> attributes it could return.  These bitmaps can be several words wide.  The
+> bitmap returned by the server is a subset of the bitmap sent by the client.
+> 
+> While decoding the reply, the client tries to verify the reply bitmap: it
+> checks if any previous, unexpected attributes are left in the same word of the
+> bitmap for each attribute it tries to decode, then it clears the current
+> attribute's bit in the bitmap for the next decode function.
+> 
+> The client fails to detect when unexpected attributes are sent after the last
+> expected attribute in each word in the bitmap.
 
-Okay, I'll update the comment accordingly.
+Is it important that the client catch that?
 
-Thanks,
-Andreas
+> Fix this by checking the entire bitmap for unexpected attributes first.  The
+> server can still send attributes which the client understands but which it
+> didn't request; this doesn't cause any harm.
+
+I don't understand that last sentence.  On a skim it looks like after
+this patch we *will* still error out if a server does that, right?  (As
+we should, that would be a server bug.)
+
+...
+> +static int verify_attrs_allowed(uint32_t *bitmap, const uint32_t *attrs_allowed)
+> +{
+> +	if (unlikely(bitmap[0] & ~attrs_allowed[0] ||
+> +		     bitmap[1] & ~attrs_allowed[1] ||
+> +		     bitmap[2] & ~attrs_allowed[2]))
+> +		return -EIO;
+> +	return 0;
+> +}
+> +
+>  static int decode_change_info(struct xdr_stream *xdr, struct nfs4_change_info *cinfo)
+>  {
+>  	__be32 *p;
+> @@ -4296,6 +4195,11 @@ out_overflow:
+>  
+>  static int decode_server_caps(struct xdr_stream *xdr, struct nfs4_server_caps_res *res)
+>  {
+> +	static const uint32_t attrs_allowed[3] = {
+> +		[0] = FATTR4_WORD0_SUPPORTED_ATTRS | FATTR4_WORD0_FH_EXPIRE_TYPE |
+> +		      FATTR4_WORD0_LINK_SUPPORT | FATTR4_WORD0_SYMLINK_SUPPORT |
+> +		      FATTR4_WORD0_ACLSUPPORT,
+> +	};
+
+This is the same list as in nfs4-xdr_enc_server_caps.  Could we avoid
+that duplication?
+
+--b.
