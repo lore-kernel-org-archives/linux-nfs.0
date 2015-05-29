@@ -1,73 +1,75 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:54159 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756211AbbE2O5e (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 29 May 2015 10:57:34 -0400
-Date: Fri, 29 May 2015 10:57:30 -0400
-To: Andreas Gruenbacher <andreas.gruenbacher@gmail.com>
-Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-Subject: Re: [RFC v3 43/45] uapi/nfs: Add NFSv4.1 ACL definitions
-Message-ID: <20150529145730.GD4331@fieldses.org>
-References: <cover.1429868795.git.agruenba@redhat.com>
- <23f967e5728d254d218cc1134769864242988a08.1429868795.git.agruenba@redhat.com>
+Received: from mail-oi0-f51.google.com ([209.85.218.51]:36296 "EHLO
+	mail-oi0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756388AbbE2PAQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 May 2015 11:00:16 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <23f967e5728d254d218cc1134769864242988a08.1429868795.git.agruenba@redhat.com>
-From: bfields@fieldses.org (J. Bruce Fields)
+In-Reply-To: <CAHQdGtQCPqC=L1bxVzEQgwE16P6SX79c02Ex4=D02EQ5BgdGRA@mail.gmail.com>
+References: <cover.1429868795.git.agruenba@redhat.com>
+	<39cf890265e2a906a1cf41d6949b5be69903a064.1429868795.git.agruenba@redhat.com>
+	<CAHQdGtQyEH9V_XJaQQgPkKGJLy__D0J6cmAHASeEXCZkCCrBjg@mail.gmail.com>
+	<CAHQdGtQCPqC=L1bxVzEQgwE16P6SX79c02Ex4=D02EQ5BgdGRA@mail.gmail.com>
+Date: Fri, 29 May 2015 17:00:15 +0200
+Message-ID: <CAHpGcML5eG2bQZW1j6mkHLxvAJU=ZBK+cuYEK6dTkoEsT-MVyA@mail.gmail.com>
+Subject: Re: [RFC v3 42/45] nfs: Add richacl support
+From: =?UTF-8?Q?Andreas_Gr=C3=BCnbacher?= <andreas.gruenbacher@gmail.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        Linux FS-devel Mailing List <linux-fsdevel@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Apr 24, 2015 at 01:04:40PM +0200, Andreas Gruenbacher wrote:
-> Add the ACL related protocol definitions which were added in the NFSv4.1
-> specifiction.
+2015-05-29 15:15 GMT+02:00 Trond Myklebust <trond.myklebust@primarydata.com>:
+> [reply reordered]
+> So having revisited the reasons why I chose the system.nfs4_acl
+> interface when we did NFSv4 ACLs, I'm not sure we should implement
+> system.richacl for the NFS client at all.
+>
+> Your assertion that "when symbolic user@domain and group@domain names
+> are used in the acl, user-space needs to perform ID mapping in the
+> same way as the kernel"  is WRONG. User space needs do no such thing,
+> and that was the whole point of the interface; to allow the user to
+> specify ACLs in a format that is checked only on the _server_, and not
+> on the client.
 
-No harm in taking this now, I guess, I'll queue this one up for 4.2.
+That's only half true. Right now, user-space applications trying to copy
+permissions between an nfs mount and another file system will fail unless the
+application has explicitly been made nfs aware and supports the
+"system.nfs4_acl"
+attribute (as well as some other acl mechanism if the permissions go beyond the
+file mode).
 
---b.
+The same problem exists when trying to make sense of acls.
 
-> 
-> Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
-> ---
->  include/uapi/linux/nfs4.h | 7 +++++++
->  1 file changed, 7 insertions(+)
-> 
-> diff --git a/include/uapi/linux/nfs4.h b/include/uapi/linux/nfs4.h
-> index adc0aff..2119c7c 100644
-> --- a/include/uapi/linux/nfs4.h
-> +++ b/include/uapi/linux/nfs4.h
-> @@ -86,6 +86,10 @@
->  #define ACL4_SUPPORT_AUDIT_ACL 0x04
->  #define ACL4_SUPPORT_ALARM_ACL 0x08
->  
-> +#define NFS4_ACL_AUTO_INHERIT 0x00000001
-> +#define NFS4_ACL_PROTECTED    0x00000002
-> +#define NFS4_ACL_DEFAULTED    0x00000004
-> +
->  #define NFS4_ACE_FILE_INHERIT_ACE             0x00000001
->  #define NFS4_ACE_DIRECTORY_INHERIT_ACE        0x00000002
->  #define NFS4_ACE_NO_PROPAGATE_INHERIT_ACE     0x00000004
-> @@ -93,6 +97,7 @@
->  #define NFS4_ACE_SUCCESSFUL_ACCESS_ACE_FLAG   0x00000010
->  #define NFS4_ACE_FAILED_ACCESS_ACE_FLAG       0x00000020
->  #define NFS4_ACE_IDENTIFIER_GROUP             0x00000040
-> +#define NFS4_ACE_INHERITED_ACE                0x00000080
->  
->  #define NFS4_ACE_READ_DATA                    0x00000001
->  #define NFS4_ACE_LIST_DIRECTORY               0x00000001
-> @@ -106,6 +111,8 @@
->  #define NFS4_ACE_DELETE_CHILD                 0x00000040
->  #define NFS4_ACE_READ_ATTRIBUTES              0x00000080
->  #define NFS4_ACE_WRITE_ATTRIBUTES             0x00000100
-> +#define NFS4_ACE_WRITE_RETENTION              0x00000200
-> +#define NFS4_ACE_WRITE_RETENTION_HOLD         0x00000400
->  #define NFS4_ACE_DELETE                       0x00010000
->  #define NFS4_ACE_READ_ACL                     0x00020000
->  #define NFS4_ACE_WRITE_ACL                    0x00040000
-> -- 
-> 2.1.0
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+It seems unreasonable to me to expect applications other than special file
+system maintenance tools to cater to such file system differences; there are
+just too many file systems out there for that to work. Instead, it
+would be better
+to use an interface that can be generalized across file systems.
+
+> The problem is that you are 100% reliant on an accurate idmapper in
+> order to convert the name@domain to a _correct_ uid/gid. It isn't
+> sufficient to convert to just any valid uid/gid, because if your ACL
+> tool is trying to edit the ACL, you can end up converting all those
+> DENY modes for user 'Johnny_Rotten@blackhats.are.us' into DENY modes
+> for user 'nobody'.
+> ...and yes, libnfsidmap will happily convert all unknown
+> user/groupnames into whatever uid/gid corresponds to 'nobody' without
+> returning an error.
+
+That's indeed a problem, and I can think of two ways of addressing it:
+
+First, acl editors need to be careful about nobody entries; they need to be
+aware that nobody could actually stand for somebody else. (We could map
+unmappable users and groups to something else than nobody, but that
+might just shift the problem without improve anything.)
+
+Second, we could add support for passing through unmappable Who values
+as is. But that raises the problem of how to pass thtough and represent
+different kinds of identifiers: NFSv4 users user@domain and group@domain
+strings; smb users SIDs; maybe more.
+
+Thanks,
+Andreas
