@@ -1,22 +1,20 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-vn0-f41.google.com ([209.85.216.41]:44565 "EHLO
-	mail-vn0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755327AbbE2Ahb convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 May 2015 20:37:31 -0400
-Received: by vnbg129 with SMTP id g129so6720702vnb.11
-        for <linux-nfs@vger.kernel.org>; Thu, 28 May 2015 17:37:31 -0700 (PDT)
+Received: from mail-vn0-f48.google.com ([209.85.216.48]:37429 "EHLO
+	mail-vn0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751445AbbE2NPI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 May 2015 09:15:08 -0400
+Received: by vnbg190 with SMTP id g190so8109617vnb.4
+        for <linux-nfs@vger.kernel.org>; Fri, 29 May 2015 06:15:08 -0700 (PDT)
 MIME-Version: 1.0
-In-Reply-To: <CAHpGcMKn1khdNTk=MFS7vFgLCHmxX2fVTJanertXT+Zj_BnAKA@mail.gmail.com>
+In-Reply-To: <CAHQdGtQyEH9V_XJaQQgPkKGJLy__D0J6cmAHASeEXCZkCCrBjg@mail.gmail.com>
 References: <cover.1429868795.git.agruenba@redhat.com>
-	<9fee05c37be52b8f8fcd5df05f391af9e3d820e8.1429868795.git.agruenba@redhat.com>
-	<CAHQdGtSUjeV_5UNFdgMQXXbRq2Fs+JTc6t-Dy2y1-hS4c49GOA@mail.gmail.com>
-	<CAHpGcMKn1khdNTk=MFS7vFgLCHmxX2fVTJanertXT+Zj_BnAKA@mail.gmail.com>
-Date: Thu, 28 May 2015 20:37:30 -0400
-Message-ID: <CAHQdGtRKLnMbB6Z5w7MCnONujHH2uBnx4VUrTL1GGfWTNwurRQ@mail.gmail.com>
-Subject: Re: [RFC v3 37/45] nfs/sunrpc: No more encode and decode function
- pointer casting
+	<39cf890265e2a906a1cf41d6949b5be69903a064.1429868795.git.agruenba@redhat.com>
+	<CAHQdGtQyEH9V_XJaQQgPkKGJLy__D0J6cmAHASeEXCZkCCrBjg@mail.gmail.com>
+Date: Fri, 29 May 2015 09:15:07 -0400
+Message-ID: <CAHQdGtQCPqC=L1bxVzEQgwE16P6SX79c02Ex4=D02EQ5BgdGRA@mail.gmail.com>
+Subject: Re: [RFC v3 42/45] nfs: Add richacl support
 From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: =?UTF-8?Q?Andreas_Gr=C3=BCnbacher?= <andreas.gruenbacher@gmail.com>
+To: Andreas Gruenbacher <andreas.gruenbacher@gmail.com>
 Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
         Linux FS-devel Mailing List <linux-fsdevel@vger.kernel.org>,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>
@@ -24,30 +22,38 @@ Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, May 28, 2015 at 7:40 PM, Andreas Grünbacher
-<andreas.gruenbacher@gmail.com> wrote:
-> 2015-05-29 1:11 GMT+02:00 Trond Myklebust <trond.myklebust@primarydata.com>:
->> How is this even remotely relevant to ACL functionality, and why does
->> it deserve to bypass the NFS tree?
+On Thu, May 28, 2015 at 7:06 PM, Trond Myklebust
+<trond.myklebust@primarydata.com> wrote:
+> On Fri, Apr 24, 2015 at 7:04 AM, Andreas Gruenbacher
+> <andreas.gruenbacher@gmail.com> wrote:
+>> Changes nfs to support the "system.richacl" xattr instead of "system.nfs4_acl".
+>>
 >
-> I've posted this to the linux-nfs mailing list for review among
-> others, how is that
-> bypassing the NFS tree? Would you prefer those things sent to you personally
-> as well?
-
-No. I'm saying that changes that affect the core RPC code should not
-be going through external trees as part of an external feature; they
-should go through the maintainer trees.
-
-> This patch prepares for for the next one which changes the prototype
-> of the encode
-> functions to return an error code. Without this patch, oversights in
-> the next patch
-> would go unnoticed; with this patch, the compiler will complain.
+> NACK.
+>
+> You may declare a userspace syscall ABI that is more than 10 years old
+> to be deprecated, but you are not allowed to remove it.
 >
 
-See the comments to that patch too. There are precedents for doing
-what you are trying to accomplish, and they do not require changes to
-core code.
+So having revisited the reasons why I chose the system.nfs4_acl
+interface when we did NFSv4 ACLs, I'm not sure we should implement
+system.richacl for the NFS client at all.
+
+The problem is that you are 100% reliant on an accurate idmapper in
+order to convert the name@domain to a _correct_ uid/gid. It isn't
+sufficient to convert to just any valid uid/gid, because if your ACL
+tool is trying to edit the ACL, you can end up converting all those
+DENY modes for user 'Johnny_Rotten@blackhats.are.us' into DENY modes
+for user 'nobody'.
+...and yes, libnfsidmap will happily convert all unknown
+user/groupnames into whatever uid/gid corresponds to 'nobody' without
+returning an error.
+
+Your assertion that "when symbolic user@domain and group@domain names
+are used in the acl, user-space needs to perform ID mapping in the
+same way as the kernel"  is WRONG. User space needs do no such thing,
+and that was the whole point of the interface; to allow the user to
+specify ACLs in a format that is checked only on the _server_, and not
+on the client.
 
 Trond
