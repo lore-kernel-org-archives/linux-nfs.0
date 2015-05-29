@@ -1,43 +1,73 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:55594 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([173.255.197.46]:54159 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753328AbbE2NoM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 29 May 2015 09:44:12 -0400
-Date: Fri, 29 May 2015 09:44:11 -0400 (EDT)
-From: Benjamin Coddington <bcodding@redhat.com>
-To: Olga Kornievskaia <aglo@umich.edu>
-cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>
-Subject: Re: 4.0 NFS client in infinite loop in state recovery after getting
- BAD_STATEID
-In-Reply-To: <CAN-5tyG8ukoGJATK1RA85xv9BDikfC1CPP0nc=-80h=BSGV6=w@mail.gmail.com>
-Message-ID: <alpine.OSX.2.19.9992.1505290942250.65323@planck.local>
-References: <CAN-5tyG8ukoGJATK1RA85xv9BDikfC1CPP0nc=-80h=BSGV6=w@mail.gmail.com>
+	id S1756211AbbE2O5e (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 29 May 2015 10:57:34 -0400
+Date: Fri, 29 May 2015 10:57:30 -0400
+To: Andreas Gruenbacher <andreas.gruenbacher@gmail.com>
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org
+Subject: Re: [RFC v3 43/45] uapi/nfs: Add NFSv4.1 ACL definitions
+Message-ID: <20150529145730.GD4331@fieldses.org>
+References: <cover.1429868795.git.agruenba@redhat.com>
+ <23f967e5728d254d218cc1134769864242988a08.1429868795.git.agruenba@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <23f967e5728d254d218cc1134769864242988a08.1429868795.git.agruenba@redhat.com>
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 7 May 2015, Olga Kornievskaia wrote:
+On Fri, Apr 24, 2015 at 01:04:40PM +0200, Andreas Gruenbacher wrote:
+> Add the ACL related protocol definitions which were added in the NFSv4.1
+> specifiction.
 
-> Hi folks,
->
-> Problem:
-> The upstream nfs4.0 client has problem where it will go into an
-> infinite loop of re-sending an OPEN when it's trying to recover from
-> receiving a BAD_STATEID error on an IO operation such READ or WRITE.
->
-> How to easily reproduce (by using fault injection):
-> 1. Do nfs4.0 mount to a server.
-> 2. Open a file such that the server gives you a write delegation.
-> 3. Do a write. Have a server return a BAD_STATEID. One way to do so is
-> by using a python proxy, nfs4proxy, and inject BAD_STATEID error on
-> WRITE.
-> 4. And off it goes with the loop.
+No harm in taking this now, I guess, I'll queue this one up for 4.2.
 
-Hi Olga,
+--b.
 
-I've been trying to reproduce it, and I'm frustratingly unable.  It sounds
-fairly easy to produce..  What version of the client produces this?
-
-Ben
+> 
+> Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
+> ---
+>  include/uapi/linux/nfs4.h | 7 +++++++
+>  1 file changed, 7 insertions(+)
+> 
+> diff --git a/include/uapi/linux/nfs4.h b/include/uapi/linux/nfs4.h
+> index adc0aff..2119c7c 100644
+> --- a/include/uapi/linux/nfs4.h
+> +++ b/include/uapi/linux/nfs4.h
+> @@ -86,6 +86,10 @@
+>  #define ACL4_SUPPORT_AUDIT_ACL 0x04
+>  #define ACL4_SUPPORT_ALARM_ACL 0x08
+>  
+> +#define NFS4_ACL_AUTO_INHERIT 0x00000001
+> +#define NFS4_ACL_PROTECTED    0x00000002
+> +#define NFS4_ACL_DEFAULTED    0x00000004
+> +
+>  #define NFS4_ACE_FILE_INHERIT_ACE             0x00000001
+>  #define NFS4_ACE_DIRECTORY_INHERIT_ACE        0x00000002
+>  #define NFS4_ACE_NO_PROPAGATE_INHERIT_ACE     0x00000004
+> @@ -93,6 +97,7 @@
+>  #define NFS4_ACE_SUCCESSFUL_ACCESS_ACE_FLAG   0x00000010
+>  #define NFS4_ACE_FAILED_ACCESS_ACE_FLAG       0x00000020
+>  #define NFS4_ACE_IDENTIFIER_GROUP             0x00000040
+> +#define NFS4_ACE_INHERITED_ACE                0x00000080
+>  
+>  #define NFS4_ACE_READ_DATA                    0x00000001
+>  #define NFS4_ACE_LIST_DIRECTORY               0x00000001
+> @@ -106,6 +111,8 @@
+>  #define NFS4_ACE_DELETE_CHILD                 0x00000040
+>  #define NFS4_ACE_READ_ATTRIBUTES              0x00000080
+>  #define NFS4_ACE_WRITE_ATTRIBUTES             0x00000100
+> +#define NFS4_ACE_WRITE_RETENTION              0x00000200
+> +#define NFS4_ACE_WRITE_RETENTION_HOLD         0x00000400
+>  #define NFS4_ACE_DELETE                       0x00010000
+>  #define NFS4_ACE_READ_ACL                     0x00020000
+>  #define NFS4_ACE_WRITE_ACL                    0x00040000
+> -- 
+> 2.1.0
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
