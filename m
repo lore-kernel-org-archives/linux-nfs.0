@@ -1,70 +1,172 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.kapsi.fi ([217.30.184.167]:49701 "EHLO mail.kapsi.fi"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757324AbbE3Pkf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 30 May 2015 11:40:35 -0400
-From: Mikko Rapeli <mikko.rapeli@iki.fi>
-To: linux-kernel@vger.kernel.org
-Cc: Mikko Rapeli <mikko.rapeli@iki.fi>,
-        "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
-        linux-api@vger.kernel.org
-Subject: [PATCH 23/98] cld.h: use __u8, __u16, __s16, __u32 and __s64 from linux/types.h
-Date: Sat, 30 May 2015 17:38:15 +0200
-Message-Id: <1433000370-19509-24-git-send-email-mikko.rapeli@iki.fi>
-In-Reply-To: <1433000370-19509-1-git-send-email-mikko.rapeli@iki.fi>
-References: <1433000370-19509-1-git-send-email-mikko.rapeli@iki.fi>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Received: from userp1040.oracle.com ([156.151.31.81]:41616 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757812AbbE3RyQ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 30 May 2015 13:54:16 -0400
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
+Subject: Re: [PATCH 2/4] sunrpc: make xprt->swapper an atomic_t
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1432987393-15604-3-git-send-email-jeff.layton@primarydata.com>
+Date: Sat, 30 May 2015 13:55:44 -0400
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>, linux-mm@kvack.org,
+        linux-kernel@vger.kernel.org, Mel Gorman <mgorman@suse.de>,
+        Jerome Marchand <jmarchan@redhat.com>
+Message-Id: <12BA87C5-89D9-4244-B2D1-CB18ABBB705F@oracle.com>
+References: <1432987393-15604-1-git-send-email-jeff.layton@primarydata.com> <1432987393-15604-3-git-send-email-jeff.layton@primarydata.com>
+To: Jeff Layton <jlayton@poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Fixes userspace compilation errors like:
+Hi Jeff-
 
-linux/nfsd/cld.h:40:2: error: unknown type name â€˜uint16_tâ€™
+On May 30, 2015, at 8:03 AM, Jeff Layton <jlayton@poochiereds.net> wrote:
 
-Signed-off-by: Mikko Rapeli <mikko.rapeli@iki.fi>
----
- include/uapi/linux/nfsd/cld.h | 14 ++++++++------
- 1 file changed, 8 insertions(+), 6 deletions(-)
+> Split xs_swapper into enable/disable functions and eliminate the
+> "enable" flag.
+> 
+> Currently, it's racy if you have multiple swapon/swapoff operations
+> running in parallel over the same xprt. Also fix it so that we only
+> set it to a memalloc socket on a 0->1 transition and only clear it
+> on a 1->0 transition.
+> 
+> Cc: Mel Gorman <mgorman@suse.de>
+> Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
+> ---
+> include/linux/sunrpc/xprt.h |  5 +++--
+> net/sunrpc/clnt.c           |  4 ++--
+> net/sunrpc/xprtsock.c       | 38 +++++++++++++++++++++++++-------------
+> 3 files changed, 30 insertions(+), 17 deletions(-)
+> 
+> diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+> index 8b93ef53df3c..26b1624128ec 100644
+> --- a/include/linux/sunrpc/xprt.h
+> +++ b/include/linux/sunrpc/xprt.h
+> @@ -180,7 +180,7 @@ struct rpc_xprt {
+> 	atomic_t		num_reqs;	/* total slots */
+> 	unsigned long		state;		/* transport state */
+> 	unsigned char		resvport   : 1; /* use a reserved port */
+> -	unsigned int		swapper;	/* we're swapping over this
+> +	atomic_t		swapper;	/* we're swapping over this
+> 						   transport */
+> 	unsigned int		bind_index;	/* bind function index */
+> 
+> @@ -345,7 +345,8 @@ void			xprt_release_rqst_cong(struct rpc_task *task);
+> void			xprt_disconnect_done(struct rpc_xprt *xprt);
+> void			xprt_force_disconnect(struct rpc_xprt *xprt);
+> void			xprt_conditional_disconnect(struct rpc_xprt *xprt, unsigned int cookie);
+> -int			xs_swapper(struct rpc_xprt *xprt, int enable);
+> +int			xs_swapper_enable(struct rpc_xprt *xprt);
+> +void			xs_swapper_disable(struct rpc_xprt *xprt);
+> 
+> bool			xprt_lock_connect(struct rpc_xprt *, struct rpc_task *, void *);
+> void			xprt_unlock_connect(struct rpc_xprt *, void *);
+> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+> index 383cb778179f..804a75e71e84 100644
+> --- a/net/sunrpc/clnt.c
+> +++ b/net/sunrpc/clnt.c
+> @@ -2492,7 +2492,7 @@ retry:
+> 			goto retry;
+> 		}
+> 
+> -		ret = xs_swapper(xprt, 1);
+> +		ret = xs_swapper_enable(xprt);
+> 		xprt_put(xprt);
+> 	}
+> 	return ret;
+> @@ -2519,7 +2519,7 @@ retry:
+> 			goto retry;
+> 		}
+> 
+> -		xs_swapper(xprt, 0);
+> +		xs_swapper_disable(xprt);
+> 		xprt_put(xprt);
+> 	}
+> }
 
-diff --git a/include/uapi/linux/nfsd/cld.h b/include/uapi/linux/nfsd/cld.h
-index f14a9ab..d9f2306 100644
---- a/include/uapi/linux/nfsd/cld.h
-+++ b/include/uapi/linux/nfsd/cld.h
-@@ -22,6 +22,8 @@
- #ifndef _NFSD_CLD_H
- #define _NFSD_CLD_H
- 
-+#include <linux/types.h>
-+
- /* latest upcall version available */
- #define CLD_UPCALL_VERSION 1
- 
-@@ -37,18 +39,18 @@ enum cld_command {
- 
- /* representation of long-form NFSv4 client ID */
- struct cld_name {
--	uint16_t	cn_len;				/* length of cm_id */
-+	__u16	cn_len;				/* length of cm_id */
- 	unsigned char	cn_id[NFS4_OPAQUE_LIMIT];	/* client-provided */
- } __attribute__((packed));
- 
- /* message struct for communication with userspace */
- struct cld_msg {
--	uint8_t		cm_vers;		/* upcall version */
--	uint8_t		cm_cmd;			/* upcall command */
--	int16_t		cm_status;		/* return code */
--	uint32_t	cm_xid;			/* transaction id */
-+	__u8		cm_vers;		/* upcall version */
-+	__u8		cm_cmd;			/* upcall command */
-+	__s16		cm_status;		/* return code */
-+	__u32	cm_xid;			/* transaction id */
- 	union {
--		int64_t		cm_gracetime;	/* grace period start time */
-+		__s64		cm_gracetime;	/* grace period start time */
- 		struct cld_name	cm_name;
- 	} __attribute__((packed)) cm_u;
- } __attribute__((packed));
--- 
-2.1.4
+Seems like xs_swapper() is specific to socket-based transports.
+
+There’s no struct sock * to use as an argument with RDMA, so xs_swapper()
+would probably dereference garbage if “swapon” was invoked on a
+proto=rdma mount point.
+
+Should these new functions be made members of the rpc_xprt_ops? The
+RDMA version of the methods can be made no-ops for now.
+
+
+> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+> index b29703996028..a2861bbfd319 100644
+> --- a/net/sunrpc/xprtsock.c
+> +++ b/net/sunrpc/xprtsock.c
+> @@ -1966,31 +1966,43 @@ static void xs_set_memalloc(struct rpc_xprt *xprt)
+> 	struct sock_xprt *transport = container_of(xprt, struct sock_xprt,
+> 			xprt);
+> 
+> -	if (xprt->swapper)
+> +	if (atomic_read(&xprt->swapper))
+> 		sk_set_memalloc(transport->inet);
+> }
+> 
+> /**
+> - * xs_swapper - Tag this transport as being used for swap.
+> + * xs_swapper_enable - Tag this transport as being used for swap.
+>  * @xprt: transport to tag
+> - * @enable: enable/disable
+>  *
+> + * Take a reference to this transport on behalf of the rpc_clnt, and
+> + * optionally mark it for swapping if it wasn't already.
+>  */
+> -int xs_swapper(struct rpc_xprt *xprt, int enable)
+> +int
+> +xs_swapper_enable(struct rpc_xprt *xprt)
+> {
+> 	struct sock_xprt *transport = container_of(xprt, struct sock_xprt,
+> 			xprt);
+> -	int err = 0;
+> 
+> -	if (enable) {
+> -		xprt->swapper++;
+> -		xs_set_memalloc(xprt);
+> -	} else if (xprt->swapper) {
+> -		xprt->swapper--;
+> -		sk_clear_memalloc(transport->inet);
+> -	}
+> +	if (atomic_inc_return(&xprt->swapper) == 1)
+> +		sk_set_memalloc(transport->inet);
+> +	return 0;
+> +}
+> 
+> -	return err;
+> +/**
+> + * xs_swapper_disable - Untag this transport as being used for swap.
+> + * @xprt: transport to tag
+> + *
+> + * Drop a "swapper" reference to this xprt on behalf of the rpc_clnt. If the
+> + * swapper refcount goes to 0, untag the socket as a memalloc socket.
+> + */
+> +void
+> +xs_swapper_disable(struct rpc_xprt *xprt)
+> +{
+> +	struct sock_xprt *transport = container_of(xprt, struct sock_xprt,
+> +			xprt);
+> +
+> +	if (atomic_dec_and_test(&xprt->swapper))
+> +		sk_clear_memalloc(transport->inet);
+> }
+> #else
+> static void xs_set_memalloc(struct rpc_xprt *xprt)
+> -- 
+> 2.4.1
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
 
