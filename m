@@ -1,55 +1,42 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yh0-f54.google.com ([209.85.213.54]:32785 "EHLO
-	mail-yh0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751783AbbFAPFr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Jun 2015 11:05:47 -0400
-Received: by yhpn97 with SMTP id n97so33436834yhp.0
-        for <linux-nfs@vger.kernel.org>; Mon, 01 Jun 2015 08:05:46 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] NFSv4: Always drain the slot table before re-establishing the lease
-Date: Mon,  1 Jun 2015 11:05:42 -0400
-Message-Id: <1433171142-76930-1-git-send-email-trond.myklebust@primarydata.com>
-Sender: linux-nfs-owner@vger.kernel.org
+Return-Path: <bfields@fieldses.org>
+Date: Mon, 1 Jun 2015 14:12:17 -0400
+To: Benjamin Coddington <bcodding@redhat.com>
+Cc: linux-nfs@vger.kernel.org, smayhew@redhat.com
+Subject: Re: [PATCH pynfs 0/3] MITM tool for NFS traffic on linux
+Message-ID: <20150601181217.GB26489@fieldses.org>
+References: <cover.1432749206.git.bcodding@redhat.com>
+ <alpine.OSX.2.19.9992.1505271403070.53081@planck.local>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <alpine.OSX.2.19.9992.1505271403070.53081@planck.local>
+From: bfields@fieldses.org (J. Bruce Fields)
 List-ID: <linux-nfs.vger.kernel.org>
 
-While the NFSv4.1 code has always drained the slot tables in order to stop
-non-recovery related RPC calls when doing lease recovery, the NFSv4 code
-did not.
-The reason for the difference in behaviour is that NFSv4 does not have
-session state, and so RPC calls can in theory proceed while recovery is
-happening. In practice, however, anything I/O or state related needs to
-wait until recovery is over.
+On Wed, May 27, 2015 at 02:03:56PM -0400, Benjamin Coddington wrote:
+> On Wed, 27 May 2015, Benjamin Coddington wrote:
+> 
+> > What follows is a small tool I think may be convenient to test and reproduce
+> > certain types of bugs that are difficult to create from above the
+> > filesystem, but are clearly problematic and have well-defined network
+> > triggers.  Anna's recent BAD_STATEID on WRITES with delegation is a good
+> 
+> *Olga
+> 
+> Apologies.
+> 
+> Ben
+> 
+> > example of that.  This tool uses netfilters NFQUEUE target to allow a linux
+> > host to modify the NFS network traffic between existing clients and servers.
+> > In that sense, it is very similar to nfs-proxy, however I find it to be much
+> > more convenient to use, as it can be quickly inserted and removed from an
+> > existing network conection.
 
-This patch changes the behaviour of NFSv4 to match that of NFSv4.1 so that
-we can simplify the state recovery code by assuming that we do not have to
-deal with races between recovery and ordinary I/O.
+By the way, I only recently noticed there's a branch of Fred's old pynfs
+repo with the proxy-nfs code.  I've just merged that branch into my
+tree.  (Let me know if anyone uses that.)
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/nfs4state.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Do you want me to take these patches to?  Do you think you're going to
+continue using this?
 
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 2782cfca2265..ffb66f5db078 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -309,7 +309,6 @@ int nfs41_init_clientid(struct nfs_client *clp, struct rpc_cred *cred)
- 
- 	if (test_bit(NFS4CLNT_LEASE_CONFIRM, &clp->cl_state))
- 		goto do_confirm;
--	nfs4_begin_drain_session(clp);
- 	status = nfs4_proc_exchange_id(clp, cred);
- 	if (status != 0)
- 		goto out;
-@@ -1830,6 +1829,7 @@ static int nfs4_establish_lease(struct nfs_client *clp)
- 		clp->cl_mvops->reboot_recovery_ops;
- 	int status;
- 
-+	nfs4_begin_drain_session(clp);
- 	cred = nfs4_get_clid_cred(clp);
- 	if (cred == NULL)
- 		return -ENOENT;
--- 
-2.4.2
-
+--b.
