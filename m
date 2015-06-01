@@ -1,113 +1,55 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:29137 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751461AbbFAPBH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Jun 2015 11:01:07 -0400
-Received: from aserv0021.oracle.com (aserv0021.oracle.com [141.146.126.233])
-	by aserp1040.oracle.com (Sentrion-MTA-4.3.2/Sentrion-MTA-4.3.2) with ESMTP id t51F15mK003538
-	(version=TLSv1 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Mon, 1 Jun 2015 15:01:06 GMT
-Received: from userv0122.oracle.com (userv0122.oracle.com [156.151.31.75])
-	by aserv0021.oracle.com (8.13.8/8.13.8) with ESMTP id t51F15dK005003
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=FAIL)
-	for <linux-nfs@vger.kernel.org>; Mon, 1 Jun 2015 15:01:05 GMT
-Received: from abhmp0002.oracle.com (abhmp0002.oracle.com [141.146.116.8])
-	by userv0122.oracle.com (8.13.8/8.13.8) with ESMTP id t51F15pj027107
-	for <linux-nfs@vger.kernel.org>; Mon, 1 Jun 2015 15:01:05 GMT
-Message-ID: <556C73AE.4090900@oracle.com>
-Date: Mon, 01 Jun 2015 18:01:02 +0300
-From: Stanislav Kholmanskikh <stanislav.kholmanskikh@oracle.com>
-MIME-Version: 1.0
+Received: from mail-yh0-f54.google.com ([209.85.213.54]:32785 "EHLO
+	mail-yh0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751783AbbFAPFr (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Jun 2015 11:05:47 -0400
+Received: by yhpn97 with SMTP id n97so33436834yhp.0
+        for <linux-nfs@vger.kernel.org>; Mon, 01 Jun 2015 08:05:46 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: linux-nfs@vger.kernel.org
-CC: Vasily Isaenko <vasily.isaenko@oracle.com>,
-        "SHUANG.QIU" <shuang.qiu@oracle.com>
-Subject: nfsd: EACCES vs EPERM on utime()/utimes() calls
-Content-Type: text/plain; charset=utf-8; format=flowed
+Subject: [PATCH] NFSv4: Always drain the slot table before re-establishing the lease
+Date: Mon,  1 Jun 2015 11:05:42 -0400
+Message-Id: <1433171142-76930-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello.
+While the NFSv4.1 code has always drained the slot tables in order to stop
+non-recovery related RPC calls when doing lease recovery, the NFSv4 code
+did not.
+The reason for the difference in behaviour is that NFSv4 does not have
+session state, and so RPC calls can in theory proceed while recovery is
+happening. In practice, however, anything I/O or state related needs to
+wait until recovery is over.
 
-As the man page for utime/utimes states [1], EPERM is returned if the 
-second argument of utime/utimes is not NULL and:
-  * the caller's effective user id does not match the owner of the file
-  * the caller does not have write access to the file
-  * the caller is not privileged
+This patch changes the behaviour of NFSv4 to match that of NFSv4.1 so that
+we can simplify the state recovery code by assuming that we do not have to
+deal with races between recovery and ordinary I/O.
 
-However, I don't see this behavior with NFS, I see EACCES is generated 
-instead.
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfs/nfs4state.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-Please, consider this test:
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 2782cfca2265..ffb66f5db078 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -309,7 +309,6 @@ int nfs41_init_clientid(struct nfs_client *clp, struct rpc_cred *cred)
+ 
+ 	if (test_bit(NFS4CLNT_LEASE_CONFIRM, &clp->cl_state))
+ 		goto do_confirm;
+-	nfs4_begin_drain_session(clp);
+ 	status = nfs4_proc_exchange_id(clp, cred);
+ 	if (status != 0)
+ 		goto out;
+@@ -1830,6 +1829,7 @@ static int nfs4_establish_lease(struct nfs_client *clp)
+ 		clp->cl_mvops->reboot_recovery_ops;
+ 	int status;
+ 
++	nfs4_begin_drain_session(clp);
+ 	cred = nfs4_get_clid_cred(clp);
+ 	if (cred == NULL)
+ 		return -ENOENT;
+-- 
+2.4.2
 
-#include <stdio.h>
-#include <sys/types.h>
-#include <sys/time.h>
-#include <utime.h>
-
-int main(int argc, char *argv[])
-{
-	struct utimbuf u = { .actime = 0, .modtime = 0 };
-	struct timeval tv = { .tv_sec = 0, .tv_usec = 0 };
-
-	if (utime(argv[1], &u))
-		perror("utime() failed");
-
-	if (utimes(argv[1], &tv))
-		perror("utimes() failed");
-	
-	return 0;
-}
-
-In my environment the kernel is 4.1.0-rc6 x86_64, and there are 2 NFS 
-mounted directories:
-127.0.0.1:/opt/export/disk0 on /mnt/lin type nfs (rw,vers=3,addr=127.0.0.1)
-192.168.0.12:/export/bla on /mnt/sol type nfs (rw,vers=3,addr=192.168.0.12)
-
-/mnt/sol is from Solaris 11.2 x86_64. /opt/export/disk0 is handled by 
-the in-kernel nfs server.
-
-Execution of the above test program gives:
-
-* the server is Linux -> EACCES is generated:
-
-[stas@ol6-x64 tmp]$ ls -l /mnt/lin/test_file
--rw-r--r-- 1 root root 0 Jun  1 17:28 /mnt/lin/test_file
-[stas@ol6-x64 tmp]$ strace -e utime,utimes ./utime_test /mnt/lin/test_file
-utime("/mnt/lin/test_file", [0, 0])     = -1 EACCES (Permission denied)
-utime() failed: Permission denied
-utimes("/mnt/lin/test_file", {{0, 0}, {0, 0}}) = -1 EACCES (Permission 
-denied)
-utimes() failed: Permission denied
-
-* the server is Solaris 11.2 -> EPERM is generated
-
-[stas@ol6-x64 tmp]$ ls -l /mnt/sol/test_file
--rw-r--r--+ 1 root root 0 Jun  1  2015 /mnt/sol/test_file
-[stas@ol6-x64 tmp]$ strace -e utime,utimes ./utime_test /mnt/sol/test_file
-utime("/mnt/sol/test_file", [0, 0])     = -1 EPERM (Operation not permitted)
-utime() failed: Operation not permitted
-utimes("/mnt/sol/test_file", {{0, 0}, {0, 0}}) = -1 EPERM (Operation not 
-permitted)
-utimes() failed: Operation not permitted
-
-* on a local ext4 file system EPERM is generated:
-
-[stas@ol6-x64 tmp]$ ls -l /tmp/test_file
--rw-r--r-- 1 root root 0 Jun  1 17:51 /tmp/test_file
-[stas@ol6-x64 tmp]$ strace -e utime,utimes ./utime_test /tmp/test_file
-utime("/tmp/test_file", [0, 0])         = -1 EPERM (Operation not permitted)
-utime() failed: Operation not permitted
-utimes("/tmp/test_file", {{0, 0}, {0, 0}}) = -1 EPERM (Operation not 
-permitted)
-utimes() failed: Operation not permitted
-
-Plus EPERM is generated when the NFS server is FreeBSD 9.1.
-
-Could anybody, clarify, if the described behavior a bug in the Linux NFS 
-server implementation or not?
-
-Thank you.
-
-[1] http://man7.org/linux/man-pages/man2/utime.2.html
-
-PS: this all was found using utime06, utimes01 LTP test cases.
