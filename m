@@ -1,39 +1,52 @@
-From: Duncan <1i5t5.duncan@cox.net>
-Subject: Re: btrfs: kernel BUG at mm/page-writeback.c:2286!
-Date: Tue, 19 May 2015 13:00:37 +0000 (UTC)
-Message-ID: <pan$af9b8$8bb6af9f$b6451669$1f3d25ac@cox.net>
-References: <alpine.LNX.2.03.1505191317300.21108@ws.cisco>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: linux-btrfs@vger.kernel.org, linux-nfs@vger.kernel.org
-To: linux-kernel@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from userp1040.oracle.com ([156.151.31.81]:31397 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751332AbbFAL3P (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Jun 2015 07:29:15 -0400
+Received: from userv0021.oracle.com (userv0021.oracle.com [156.151.31.71])
+	by userp1040.oracle.com (Sentrion-MTA-4.3.2/Sentrion-MTA-4.3.2) with ESMTP id t51BTEpk023390
+	(version=TLSv1 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Mon, 1 Jun 2015 11:29:14 GMT
+Received: from aserv0122.oracle.com (aserv0122.oracle.com [141.146.126.236])
+	by userv0021.oracle.com (8.13.8/8.13.8) with ESMTP id t51BTDhA022782
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=FAIL)
+	for <linux-nfs@vger.kernel.org>; Mon, 1 Jun 2015 11:29:14 GMT
+Received: from abhmp0018.oracle.com (abhmp0018.oracle.com [141.146.116.24])
+	by aserv0122.oracle.com (8.13.8/8.13.8) with ESMTP id t51BTD1M003658
+	for <linux-nfs@vger.kernel.org>; Mon, 1 Jun 2015 11:29:13 GMT
+Message-ID: <556C41FC.3060902@oracle.com>
+Date: Mon, 01 Jun 2015 19:29:00 +0800
+From: Shuang Qiu <shuang.qiu@oracle.com>
+MIME-Version: 1.0
+To: linux-nfs@vger.kernel.org
+CC: Stanislav Kholmanskikh <stanislav.kholmanskikh@oracle.com>,
+        yueyi Li <yueyi.li@oracle.com>
+Subject: truncate() syscall against EFBIG errno issue over nfs filesystem
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Govindarajulu Varadarajan posted on Tue, 19 May 2015 13:25:49 +0530 as
-excerpted:
+Hi guys,
 
-> I am seeing the following crash on my btrfs filesystem with nfs export.
-> If I disable the nfs share and reboot, I do not hit the crash. Look like
-> the crash happens on btrfs with nfs export.
-> 
-> Is this a known issue? Has anyone else faced this?
+In LTP truncate03 testcase 
+(https://github.com/linux-test-project/ltp/blob/master/testcases/kernel/syscalls/truncate/truncate03.c),the 
+sub-test which test the EFBUG errno will fail.
+The test want to truncate the testfile to twice of the RLIMIT_FSIZE size.
 
-[Just a quick info-relay reply here; I'm not a dev and don't use nfs.  
-Hopefully someone with more information will reply given a few more hours 
-or a day or two...]
+According to the man page:
+RLIMIT_FSIZE
+               The  maximum  size of files that the process may create.  
+Attempts to extend a file beyond this limit result in delivery of a
+               SIGXFSZ signal.  By default, this signal terminates a 
+process, but a process can catch this signal instead, in which case the
+               relevant system call (e.g., write(2), truncate(2)) fails 
+with the error EFBIG.
 
-The issue has been reported by several people, now, yes.  There has also 
-been kernel dev discussion of a problem with nfs 2.x, with a patch in 
-progress (don't know if it's applied yet), but it hasn't been clear, at 
-least to me, whether all reports correspond to that or not.
+We can get EFBIG on some other filesystem such like ext4,xfs.
+But truncate will succeed unexpectedly if the testfile on nfs filesystem 
+after catch the SIGXFSZ signal.
+I'm not sure if it is a bug for truncate(2) on nfs,or expected behavior?
+Could someone help to have a look?
 
-Now that you know that much, if you don't get a better reply in a day or 
-two, or while you are waiting, you can check the (btrfs) list archive for 
-more information.
-
--- 
-Duncan - List replies preferred.   No HTML msgs.
-"Every nonfree program has a lord, a master --
-and if you use the program, he is your master."  Richard Stallman
+Thanks
+Shuang
