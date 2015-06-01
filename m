@@ -1,135 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:21338 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753719AbbFASpN convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Jun 2015 14:45:13 -0400
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
-Subject: Re: [PATCH v2 01/10] svcrdma: Fix byte-swapping in svc_rdma_sendto.c
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20150601184047.GE26489@fieldses.org>
-Date: Mon, 1 Jun 2015 14:47:14 -0400
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <26074859-F4ED-4314-8548-60161595D855@oracle.com>
-References: <20150526174401.7061.43137.stgit@klimt.1015granger.net> <20150526174837.7061.88468.stgit@klimt.1015granger.net> <20150601184047.GE26489@fieldses.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from fieldses.org ([173.255.197.46]:55796 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752038AbbFATbD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 1 Jun 2015 15:31:03 -0400
+Date: Mon, 1 Jun 2015 15:31:01 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2 02/10] svcrdma: Add missing access_ok() call in
+ svc_rdma.c
+Message-ID: <20150601193101.GA26972@fieldses.org>
+References: <20150526174401.7061.43137.stgit@klimt.1015granger.net>
+ <20150526174847.7061.52013.stgit@klimt.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <20150526174847.7061.52013.stgit@klimt.1015granger.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Jun 1, 2015, at 2:40 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-
-> On Tue, May 26, 2015 at 01:48:37PM -0400, Chuck Lever wrote:
->> In send_write_chunks(), we have:
->> 
->> 	for (xdr_off = rqstp->rq_res.head[0].iov_len, chunk_no = 0;
->> 	     xfer_len && chunk_no < arg_ary->wc_nchunks;
->> 	     chunk_no++) {
->> 		 . . .
->> 	}
->> 
->> Note that arg_ary->wc_nchunk is in network byte-order. For the
->> comparison to work correctly, both have to be in native byte-order.
->> 
->> In send_reply_chunks, we have:
->> 
->> 	write_len = min(xfer_len, htonl(ch->rs_length));
->> 
->> xfer_len is in native byte-order, and ch->rs_length is in
->> network byte-order. be32_to_cpu() is the correct byte swap
->> for ch->rs_length.
->> 
->> As an additional clean up, replace ntohl() with be32_to_cpu() in
->> a few other places.
+On Tue, May 26, 2015 at 01:48:47PM -0400, Chuck Lever wrote:
+> Ensure a proper memory access check is done by read_reset_stat(),
+> then fix the following compiler warning.
 > 
-> Why?  (Not arguing, really, just wondering.)
+> In file included from linux-2.6/include/net/checksum.h:25,
+>                  from linux-2.6/include/linux/skbuff.h:31,
+>                  from linux-2.6/include/linux/icmpv6.h:4,
+>                  from linux-2.6/include/linux/ipv6.h:64,
+>                  from linux-2.6/include/net/ipv6.h:16,
+>                  from linux-2.6/include/linux/sunrpc/clnt.h:27,
+>                  from linux-2.6/net/sunrpc/xprtrdma/svc_rdma.c:47:
+> In function ‘copy_to_user’,
+>     inlined from ‘read_reset_stat’ at
+> linux-2.6/net/sunrpc/xprtrdma/svc_rdma.c:113:
+> linux-2.6/arch/x86/include/asm/uaccess.h:735: warning:
+> call to ‘__copy_to_user_overflow’ declared with attribute warning:
+> copy_to_user() buffer size is not provably correct
 
-It�s just clean up to match the rest of the code. And it kind of marks
-the places that have been reviewed.
+How do you get that warning?  I can't hit it even with
+CONFIG_USER_STRICT_USER_COPY_CHECKS set.  Based on comments in arch/x86
+I would have thought this would only trigger when len was a constant.
 
+--b.
 
-> --b.
 > 
->> 
->> This appears to address a problem with large rsize hangs while
->> using PHYSICAL memory registration. I suspect that is the only
->> registration mode that uses more than one chunk element.
->> 
->> BugLink: https://bugzilla.linux-nfs.org/show_bug.cgi?id=248
->> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->> ---
->> 
->> net/sunrpc/xprtrdma/svc_rdma_sendto.c |   14 ++++++++------
->> 1 files changed, 8 insertions(+), 6 deletions(-)
->> 
->> diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
->> index 7de33d1..109e967 100644
->> --- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
->> +++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
->> @@ -240,6 +240,7 @@ static int send_write_chunks(struct svcxprt_rdma *xprt,
->> 	u32 xdr_off;
->> 	int chunk_off;
->> 	int chunk_no;
->> +	int nchunks;
->> 	struct rpcrdma_write_array *arg_ary;
->> 	struct rpcrdma_write_array *res_ary;
->> 	int ret;
->> @@ -251,14 +252,15 @@ static int send_write_chunks(struct svcxprt_rdma *xprt,
->> 		&rdma_resp->rm_body.rm_chunks[1];
->> 
->> 	/* Write chunks start at the pagelist */
->> +	nchunks = be32_to_cpu(arg_ary->wc_nchunks);
->> 	for (xdr_off = rqstp->rq_res.head[0].iov_len, chunk_no = 0;
->> -	     xfer_len && chunk_no < arg_ary->wc_nchunks;
->> +	     xfer_len && chunk_no < nchunks;
->> 	     chunk_no++) {
->> 		struct rpcrdma_segment *arg_ch;
->> 		u64 rs_offset;
->> 
->> 		arg_ch = &arg_ary->wc_array[chunk_no].wc_target;
->> -		write_len = min(xfer_len, ntohl(arg_ch->rs_length));
->> +		write_len = min(xfer_len, be32_to_cpu(arg_ch->rs_length));
->> 
->> 		/* Prepare the response chunk given the length actually
->> 		 * written */
->> @@ -270,7 +272,7 @@ static int send_write_chunks(struct svcxprt_rdma *xprt,
->> 		chunk_off = 0;
->> 		while (write_len) {
->> 			ret = send_write(xprt, rqstp,
->> -					 ntohl(arg_ch->rs_handle),
->> +					 be32_to_cpu(arg_ch->rs_handle),
->> 					 rs_offset + chunk_off,
->> 					 xdr_off,
->> 					 write_len,
->> @@ -318,13 +320,13 @@ static int send_reply_chunks(struct svcxprt_rdma *xprt,
->> 		&rdma_resp->rm_body.rm_chunks[2];
->> 
->> 	/* xdr offset starts at RPC message */
->> -	nchunks = ntohl(arg_ary->wc_nchunks);
->> +	nchunks = be32_to_cpu(arg_ary->wc_nchunks);
->> 	for (xdr_off = 0, chunk_no = 0;
->> 	     xfer_len && chunk_no < nchunks;
->> 	     chunk_no++) {
->> 		u64 rs_offset;
->> 		ch = &arg_ary->wc_array[chunk_no].wc_target;
->> -		write_len = min(xfer_len, htonl(ch->rs_length));
->> +		write_len = min(xfer_len, be32_to_cpu(ch->rs_length));
->> 
->> 		/* Prepare the reply chunk given the length actually
->> 		 * written */
->> @@ -335,7 +337,7 @@ static int send_reply_chunks(struct svcxprt_rdma *xprt,
->> 		chunk_off = 0;
->> 		while (write_len) {
->> 			ret = send_write(xprt, rqstp,
->> -					 ntohl(ch->rs_handle),
->> +					 be32_to_cpu(ch->rs_handle),
->> 					 rs_offset + chunk_off,
->> 					 xdr_off,
->> 					 write_len,
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+> 
+>  net/sunrpc/xprtrdma/svc_rdma.c |    8 ++++++--
+>  1 files changed, 6 insertions(+), 2 deletions(-)
+> 
+> diff --git a/net/sunrpc/xprtrdma/svc_rdma.c b/net/sunrpc/xprtrdma/svc_rdma.c
+> index c1b6270..8eedb60 100644
+> --- a/net/sunrpc/xprtrdma/svc_rdma.c
+> +++ b/net/sunrpc/xprtrdma/svc_rdma.c
+> @@ -98,7 +98,11 @@ static int read_reset_stat(struct ctl_table *table, int write,
+>  	else {
+>  		char str_buf[32];
+>  		char *data;
+> -		int len = snprintf(str_buf, 32, "%d\n", atomic_read(stat));
+> +		int len;
+> +
+> +		if (!access_ok(VERIFY_WRITE, buffer, *lenp))
+> +			return -EFAULT;
+> +		len = snprintf(str_buf, 32, "%d\n", atomic_read(stat));
+>  		if (len >= 32)
+>  			return -EFAULT;
+>  		len = strlen(str_buf);
+> @@ -110,7 +114,7 @@ static int read_reset_stat(struct ctl_table *table, int write,
+>  		len -= *ppos;
+>  		if (len > *lenp)
+>  			len = *lenp;
+> -		if (len && copy_to_user(buffer, str_buf, len))
+> +		if (len && __copy_to_user(buffer, str_buf, len))
+>  			return -EFAULT;
+>  		*lenp = len;
+>  		*ppos += len;
