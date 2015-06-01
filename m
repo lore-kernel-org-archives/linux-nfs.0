@@ -1,62 +1,122 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:50946 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([173.255.197.46]:55735 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751474AbbFASZu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 1 Jun 2015 14:25:50 -0400
-Date: Mon, 1 Jun 2015 14:25:45 -0400 (EDT)
-From: Benjamin Coddington <bcodding@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-cc: linux-nfs@vger.kernel.org, smayhew@redhat.com
-Subject: Re: [PATCH pynfs 0/3] MITM tool for NFS traffic on linux
-In-Reply-To: <20150601181217.GB26489@fieldses.org>
-Message-ID: <alpine.OSX.2.19.9992.1506011420560.53081@planck.local>
-References: <cover.1432749206.git.bcodding@redhat.com> <alpine.OSX.2.19.9992.1505271403070.53081@planck.local> <20150601181217.GB26489@fieldses.org>
+	id S1751531AbbFASks (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 1 Jun 2015 14:40:48 -0400
+Date: Mon, 1 Jun 2015 14:40:47 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2 01/10] svcrdma: Fix byte-swapping in svc_rdma_sendto.c
+Message-ID: <20150601184047.GE26489@fieldses.org>
+References: <20150526174401.7061.43137.stgit@klimt.1015granger.net>
+ <20150526174837.7061.88468.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20150526174837.7061.88468.stgit@klimt.1015granger.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 1 Jun 2015, J. Bruce Fields wrote:
+On Tue, May 26, 2015 at 01:48:37PM -0400, Chuck Lever wrote:
+> In send_write_chunks(), we have:
+> 
+> 	for (xdr_off = rqstp->rq_res.head[0].iov_len, chunk_no = 0;
+> 	     xfer_len && chunk_no < arg_ary->wc_nchunks;
+> 	     chunk_no++) {
+> 		 . . .
+> 	}
+> 
+> Note that arg_ary->wc_nchunk is in network byte-order. For the
+> comparison to work correctly, both have to be in native byte-order.
+> 
+> In send_reply_chunks, we have:
+> 
+> 	write_len = min(xfer_len, htonl(ch->rs_length));
+> 
+> xfer_len is in native byte-order, and ch->rs_length is in
+> network byte-order. be32_to_cpu() is the correct byte swap
+> for ch->rs_length.
+> 
+> As an additional clean up, replace ntohl() with be32_to_cpu() in
+> a few other places.
 
-> On Wed, May 27, 2015 at 02:03:56PM -0400, Benjamin Coddington wrote:
-> > On Wed, 27 May 2015, Benjamin Coddington wrote:
-> >
-> > > What follows is a small tool I think may be convenient to test and reproduce
-> > > certain types of bugs that are difficult to create from above the
-> > > filesystem, but are clearly problematic and have well-defined network
-> > > triggers.  Anna's recent BAD_STATEID on WRITES with delegation is a good
-> >
-> > *Olga
-> >
-> > Apologies.
-> >
-> > Ben
-> >
-> > > example of that.  This tool uses netfilters NFQUEUE target to allow a linux
-> > > host to modify the NFS network traffic between existing clients and servers.
-> > > In that sense, it is very similar to nfs-proxy, however I find it to be much
-> > > more convenient to use, as it can be quickly inserted and removed from an
-> > > existing network conection.
->
-> By the way, I only recently noticed there's a branch of Fred's old pynfs
-> repo with the proxy-nfs code.  I've just merged that branch into my
-> tree.  (Let me know if anyone uses that.)
->
-> Do you want me to take these patches to?  Do you think you're going to
-> continue using this?
+Why?  (Not arguing, really, just wondering.)
 
-I'm actually not sure yet if this is more or less useful than the
-nfs-proxy..   In using it the past week, I found it to be convenient for
-quickly inserting and removing behaviors, and then modifiying those
-behaviors and quickly inserting/removing them again.  I think doing that
-with the nfs-proxy would be more disruptive to the client, potentially.
+--b.
 
-It does suffer from a scrambling of TCP sequencing if payload sizes are
-modified - the nfs-proxy doesn't have this problem.  That causes the
-transport to want to reconnect.. so when using it you have to keep TCP in
-mind.
-
-I think I'll continue to use what I have and do a bit of refinement and post
-back again in a bit.
-
-Ben
+> 
+> This appears to address a problem with large rsize hangs while
+> using PHYSICAL memory registration. I suspect that is the only
+> registration mode that uses more than one chunk element.
+> 
+> BugLink: https://bugzilla.linux-nfs.org/show_bug.cgi?id=248
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+> 
+>  net/sunrpc/xprtrdma/svc_rdma_sendto.c |   14 ++++++++------
+>  1 files changed, 8 insertions(+), 6 deletions(-)
+> 
+> diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+> index 7de33d1..109e967 100644
+> --- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+> +++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+> @@ -240,6 +240,7 @@ static int send_write_chunks(struct svcxprt_rdma *xprt,
+>  	u32 xdr_off;
+>  	int chunk_off;
+>  	int chunk_no;
+> +	int nchunks;
+>  	struct rpcrdma_write_array *arg_ary;
+>  	struct rpcrdma_write_array *res_ary;
+>  	int ret;
+> @@ -251,14 +252,15 @@ static int send_write_chunks(struct svcxprt_rdma *xprt,
+>  		&rdma_resp->rm_body.rm_chunks[1];
+>  
+>  	/* Write chunks start at the pagelist */
+> +	nchunks = be32_to_cpu(arg_ary->wc_nchunks);
+>  	for (xdr_off = rqstp->rq_res.head[0].iov_len, chunk_no = 0;
+> -	     xfer_len && chunk_no < arg_ary->wc_nchunks;
+> +	     xfer_len && chunk_no < nchunks;
+>  	     chunk_no++) {
+>  		struct rpcrdma_segment *arg_ch;
+>  		u64 rs_offset;
+>  
+>  		arg_ch = &arg_ary->wc_array[chunk_no].wc_target;
+> -		write_len = min(xfer_len, ntohl(arg_ch->rs_length));
+> +		write_len = min(xfer_len, be32_to_cpu(arg_ch->rs_length));
+>  
+>  		/* Prepare the response chunk given the length actually
+>  		 * written */
+> @@ -270,7 +272,7 @@ static int send_write_chunks(struct svcxprt_rdma *xprt,
+>  		chunk_off = 0;
+>  		while (write_len) {
+>  			ret = send_write(xprt, rqstp,
+> -					 ntohl(arg_ch->rs_handle),
+> +					 be32_to_cpu(arg_ch->rs_handle),
+>  					 rs_offset + chunk_off,
+>  					 xdr_off,
+>  					 write_len,
+> @@ -318,13 +320,13 @@ static int send_reply_chunks(struct svcxprt_rdma *xprt,
+>  		&rdma_resp->rm_body.rm_chunks[2];
+>  
+>  	/* xdr offset starts at RPC message */
+> -	nchunks = ntohl(arg_ary->wc_nchunks);
+> +	nchunks = be32_to_cpu(arg_ary->wc_nchunks);
+>  	for (xdr_off = 0, chunk_no = 0;
+>  	     xfer_len && chunk_no < nchunks;
+>  	     chunk_no++) {
+>  		u64 rs_offset;
+>  		ch = &arg_ary->wc_array[chunk_no].wc_target;
+> -		write_len = min(xfer_len, htonl(ch->rs_length));
+> +		write_len = min(xfer_len, be32_to_cpu(ch->rs_length));
+>  
+>  		/* Prepare the reply chunk given the length actually
+>  		 * written */
+> @@ -335,7 +337,7 @@ static int send_reply_chunks(struct svcxprt_rdma *xprt,
+>  		chunk_off = 0;
+>  		while (write_len) {
+>  			ret = send_write(xprt, rqstp,
+> -					 ntohl(ch->rs_handle),
+> +					 be32_to_cpu(ch->rs_handle),
+>  					 rs_offset + chunk_off,
+>  					 xdr_off,
+>  					 write_len,
