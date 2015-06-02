@@ -1,99 +1,94 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pd0-f172.google.com ([209.85.192.172]:33335 "EHLO
-	mail-pd0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753892AbbFBBnI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Jun 2015 21:43:08 -0400
-Received: by pdbqa5 with SMTP id qa5so120976723pdb.0
-        for <linux-nfs@vger.kernel.org>; Mon, 01 Jun 2015 18:43:08 -0700 (PDT)
-Message-ID: <556D0A27.4060802@gmail.com>
-Date: Tue, 02 Jun 2015 09:43:03 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
-MIME-Version: 1.0
-To: Steve Dickson <SteveD@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-CC: "J. Bruce Fields" <bfields@fieldses.org>, NeilBrown <neilb@suse.de>
-Subject: Re: [PATCH] exports: add allow_umount option for user un-mounting
- cached exports
-References: <5561EB38.5090105@gmail.com>
-In-Reply-To: <5561EB38.5090105@gmail.com>
-Content-Type: text/plain; charset=utf-8
+Received: from smtp-o-3.desy.de ([131.169.56.156]:44955 "EHLO smtp-o-3.desy.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754206AbbFBGiX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 2 Jun 2015 02:38:23 -0400
+Received: from smtp-map-1.desy.de (smtp-map-1.desy.de [131.169.56.66])
+	by smtp-o-3.desy.de (DESY-O-3) with ESMTP id CB75A280897
+	for <linux-nfs@vger.kernel.org>; Tue,  2 Jun 2015 08:38:21 +0200 (CEST)
+Received: from ZITSWEEP4.win.desy.de (zitsweep4.win.desy.de [131.169.97.98])
+	by smtp-map-1.desy.de (DESY_MAP_1) with ESMTP id AFB9413E95
+	for <linux-nfs@vger.kernel.org>; Tue,  2 Jun 2015 08:38:21 +0200 (MEST)
+From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+Subject: [PATCH] nfs4lib: add test name as a compound tag
+Date: Tue,  2 Jun 2015 08:38:18 +0200
+Message-Id: <1433227098-4181-1-git-send-email-tigran.mkrtchyan@desy.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Please ignore this patch. Sorry for the noise.
+allowes to easy trace tests, e.q: [st_verify.py:_try_mand]
 
-thanks,
-Kinglong Mee
+a similar fix as 2b41c3e, but for 4.0. Introdces a bit
+of code duplication, but this is forced by test suite structure.
 
-On 5/24/2015 11:16 PM, Kinglong Mee wrote:
-> After nfsd get exports cache, user cannot umounts the filesystem
-> which base on for a reference of the vfsmnt.
-> 
-> This patch introduces a new option "allow_umount" for nfsd pining to
-> the vfsmnt, not get a refernce. At all, user can umount now.
-> 
-> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
-> ---
->  support/include/nfs/export.h | 3 ++-
->  support/nfs/exports.c        | 6 ++++++
->  utils/exportfs/exports.man   | 8 ++++++++
->  3 files changed, 16 insertions(+), 1 deletion(-)
-> 
-> diff --git a/support/include/nfs/export.h b/support/include/nfs/export.h
-> index 1194255..ca4e0c1 100644
-> --- a/support/include/nfs/export.h
-> +++ b/support/include/nfs/export.h
-> @@ -26,7 +26,8 @@
->  #define	NFSEXP_CROSSMOUNT	0x4000
->  #define NFSEXP_NOACL		0x8000 /* reserved for possible ACL related use */
->  #define NFSEXP_V4ROOT		0x10000
-> -#define NFSEXP_PNFS            0x20000
-> +#define NFSEXP_PNFS		0x20000
-> +#define NFSEXP_ALLOW_UMOUNT	0x40000
->  /*
->   * All flags supported by the kernel before addition of the
->   * export_features interface:
-> diff --git a/support/nfs/exports.c b/support/nfs/exports.c
-> index 0aea6f1..ed5b984 100644
-> --- a/support/nfs/exports.c
-> +++ b/support/nfs/exports.c
-> @@ -276,6 +276,8 @@ putexportent(struct exportent *ep)
->  	if (ep->e_flags & NFSEXP_NOREADDIRPLUS)
->  		fprintf(fp, "nordirplus,");
->  	fprintf(fp, "%spnfs,", (ep->e_flags & NFSEXP_PNFS)? "" : "no_");
-> +	if (ep->e_flags & NFSEXP_ALLOW_UMOUNT)
-> +		fprintf(fp, "allow_umount,");
->  	if (ep->e_flags & NFSEXP_FSID) {
->  		fprintf(fp, "fsid=%d,", ep->e_fsid);
->  	}
-> @@ -586,6 +588,10 @@ parseopts(char *cp, struct exportent *ep, int warn, int *had_subtree_opt_ptr)
->  			setflags(NFSEXP_PNFS, active, ep);
->  		else if (!strcmp(opt, "no_pnfs"))
->  			clearflags(NFSEXP_PNFS, active, ep);
-> +		else if (!strcmp(opt, "allow_umount"))
-> +			setflags(NFSEXP_ALLOW_UMOUNT, active, ep);
-> +		else if (!strcmp(opt, "no_allow_umount"))
-> +			clearflags(NFSEXP_ALLOW_UMOUNT, active, ep);
->  		else if (strncmp(opt, "anonuid=", 8) == 0) {
->  			char *oe;
->  			ep->e_anonuid = strtol(opt+8, &oe, 10);
-> diff --git a/utils/exportfs/exports.man b/utils/exportfs/exports.man
-> index 9309246..d3947a4 100644
-> --- a/utils/exportfs/exports.man
-> +++ b/utils/exportfs/exports.man
-> @@ -417,6 +417,14 @@ devices. The default can be explicitly requested with the
->  .I no_pnfs
->  option.
->  
-> +.TP
-> +.IR allow_umount
-> +This option allows user un-mounting the filesystem where cached nfsd exports
-> +is based on. Otherwise, the kernel may returns -EBUSY and un-mounting fail.
-> +The default is without the
-> +.I allow_umount
-> +option.
-> +
->  .SS User ID Mapping
->  .PP
->  .B nfsd
-> 
+Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+---
+ nfs4.0/nfs4lib.py    | 18 +++++++++++++++++-
+ nfs4.1/nfs4client.py |  3 ++-
+ 2 files changed, 19 insertions(+), 2 deletions(-)
+
+diff --git a/nfs4.0/nfs4lib.py b/nfs4.0/nfs4lib.py
+index f196bef..5031feb 100644
+--- a/nfs4.0/nfs4lib.py
++++ b/nfs4.0/nfs4lib.py
+@@ -40,6 +40,8 @@ import struct
+ import socket
+ import sys
+ import re
++import inspect
++from os.path import basename
+ 
+ class NFSException(rpc.RPCError):
+     pass
+@@ -313,8 +315,13 @@ class NFS4Client(rpc.RPCClient, nfs4_ops.NFS4Operations):
+         """Make COMPOUND procedure call"""
+         if type(argarray) is not list:
+             raise "Need list for argarray"
++
++        if len(tag) == 0:
++            compound_tag = self.create_tag()
++        else:
++            compound_tag = tag
+         # Make the actual call
+-        compoundargs = COMPOUND4args(argarray=argarray, tag=tag,
++        compoundargs = COMPOUND4args(argarray=argarray, tag=compound_tag,
+                                      minorversion=minorversion)
+         if SHOW_TRAFFIC:
+             print
+@@ -367,6 +374,15 @@ class NFS4Client(rpc.RPCClient, nfs4_ops.NFS4Operations):
+ 
+         return res
+ 
++    def create_tag(self):
++        current_module = inspect.getmodule(inspect.currentframe().f_back)
++        current_stack = inspect.stack()
++        stackid = 0
++        while current_module == inspect.getmodule(current_stack[stackid][0]):
++              stackid = stackid + 1
++        test_name = '%s:%s' % (basename(current_stack[stackid][1]), current_stack[stackid][3])
++        return test_name
++
+     def init_connection(self, id=None, verifier=None, cb_ident=None):
+         """Do setclientid/setclientidconfirm combination"""
+         # SETCLIENTID
+diff --git a/nfs4.1/nfs4client.py b/nfs4.1/nfs4client.py
+index 62ccc3a..14b34d2 100644
+--- a/nfs4.1/nfs4client.py
++++ b/nfs4.1/nfs4client.py
+@@ -307,9 +307,10 @@ class NFS4Client(rpc.Client, rpc.Server):
+         return s
+ 
+     def create_tag(self):
++        current_module = inspect.getmodule(inspect.currentframe().f_back)
+         current_stack = inspect.stack()
+         stackid = 0
+-        while basename(current_stack[stackid][1]) == 'environment.py' or basename(current_stack[stackid][1]) == 'nfs4client.py':
++        while current_module == inspect.getmodule(current_stack[stackid][0]):
+               stackid = stackid + 1
+         test_name = '%s:%s' % (basename(current_stack[stackid][1]), current_stack[stackid][3])
+         return test_name
+-- 
+2.4.2
+
