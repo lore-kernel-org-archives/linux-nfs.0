@@ -1,108 +1,54 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:56287 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:56288 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753781AbbFBP2h (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 2 Jun 2015 11:28:37 -0400
-Date: Tue, 2 Jun 2015 11:28:32 -0400
+	id S1758926AbbFBPaz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 2 Jun 2015 11:30:55 -0400
+Date: Tue, 2 Jun 2015 11:30:54 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
 To: Chuck Lever <chuck.lever@oracle.com>
 Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v2 02/10] svcrdma: Add missing access_ok() call in
- svc_rdma.c
-Message-ID: <20150602152832.GA32413@fieldses.org>
+Subject: Re: [PATCH v2 08/10] svcrdma: Add backward direction service for
+ RPC/RDMA transport
+Message-ID: <20150602153054.GB32413@fieldses.org>
 References: <20150526174401.7061.43137.stgit@klimt.1015granger.net>
- <20150526174847.7061.52013.stgit@klimt.1015granger.net>
- <20150601193101.GA26972@fieldses.org>
- <AC101B2E-76A2-4196-9D03-921BF6DE7D77@oracle.com>
+ <20150526174945.7061.58026.stgit@klimt.1015granger.net>
+ <20150601202641.GD26972@fieldses.org>
+ <C2428536-0784-4C42-B678-F2173C6CAB89@oracle.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <AC101B2E-76A2-4196-9D03-921BF6DE7D77@oracle.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <C2428536-0784-4C42-B678-F2173C6CAB89@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jun 01, 2015 at 04:01:15PM -0400, Chuck Lever wrote:
+On Mon, Jun 01, 2015 at 04:45:26PM -0400, Chuck Lever wrote:
 > 
-> On Jun 1, 2015, at 3:31 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> On Jun 1, 2015, at 4:26 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
 > 
-> > On Tue, May 26, 2015 at 01:48:47PM -0400, Chuck Lever wrote:
-> >> Ensure a proper memory access check is done by read_reset_stat(),
-> >> then fix the following compiler warning.
+> > On Tue, May 26, 2015 at 01:49:45PM -0400, Chuck Lever wrote:
+> >> Introduce some pre-requisite infrastructure needed for handling
+> >> RPC/RDMA bi-direction on the client side.
 > >> 
-> >> In file included from linux-2.6/include/net/checksum.h:25,
-> >>                 from linux-2.6/include/linux/skbuff.h:31,
-> >>                 from linux-2.6/include/linux/icmpv6.h:4,
-> >>                 from linux-2.6/include/linux/ipv6.h:64,
-> >>                 from linux-2.6/include/net/ipv6.h:16,
-> >>                 from linux-2.6/include/linux/sunrpc/clnt.h:27,
-> >>                 from linux-2.6/net/sunrpc/xprtrdma/svc_rdma.c:47:
-> >> In function ‘copy_to_user’,
-> >>    inlined from ‘read_reset_stat’ at
-> >> linux-2.6/net/sunrpc/xprtrdma/svc_rdma.c:113:
-> >> linux-2.6/arch/x86/include/asm/uaccess.h:735: warning:
-> >> call to ‘__copy_to_user_overflow’ declared with attribute warning:
-> >> copy_to_user() buffer size is not provably correct
+> >> On NFSv4.1 mount points, the client uses this transport endpoint to
+> >> receive backward direction calls and route replies back to the
+> >> NFS server.
 > > 
-> > How do you get that warning?  I can't hit it even with
-> > CONFIG_USER_STRICT_USER_COPY_CHECKS set.  Based on comments in arch/x86
-> > I would have thought this would only trigger when len was a constant.
+> > Am I missing something, or is this pretty much dead code for now?
+> > 
+> > In which case, I'd rather wait on it.
 > 
-> I only seem to see this warning when building and testing on EL6, gcc
-> version 4.4.7 20120313 (Red Hat 4.4.7-11) (GCC).
-> 
-> include/linux/compiler-gcc4.h has this:
-> 
->  16 #if GCC_VERSION >= 40100 && GCC_VERSION < 40600
->  17 # define __compiletime_object_size(obj) __builtin_object_size(obj, 0)
->  18 #endif
-> 
-> and include/linux/compiler.h has this:
-> 
-> 384 #ifndef __compiletime_object_size
-> 385 # define __compiletime_object_size(obj) -1
-> 386 #endif
-> 
-> Now, arch/x86/include/asm/uaccess.h spells copy_to_user() this way:
-> 
-> 722 static inline unsigned long __must_check
-> 723 copy_to_user(void __user *to, const void *from, unsigned long n)
-> 724 {
-> 725         int sz = __compiletime_object_size(from);
-> 726 
-> 727         might_fault();
-> 728 
-> 729         /* See the comment in copy_from_user() above. */
-> 730         if (likely(sz < 0 || sz >= n))
-> 731                 n = _copy_to_user(to, from, n);
-> 732         else if(__builtin_constant_p(n))
-> 733                 copy_to_user_overflow();
-> 734         else
-> 735                 __copy_to_user_overflow(sz, n);
-> 736 
-> 737         return n;
-> 738 }
-> 
-> If __compiletime_object_size isn’t defined for your compiler version, then
-> int sz is set to -1, and _copy_to_user() is invoked directly. Otherwise
-> if n is a variable, the warning pops.
-> 
-> This might be a false positive. The “from” parameter is always 32 bytes in
-> read_reset_stat().
+> When I submit the client-side backchannel patches, should I submit
+> this patch through Anna and request your Acked-by?
 
-Huh.  OK, I don't really understand this logic.
+Sure, feel free to add my Acked-by.
 
-> I think adding an access_ok() call here is reasonable, though?
+Or I guess I won't worry too much about some dead code if the
+client-side patches are coming soon.
 
-Well, we're just moving the access_ok() out of copy_to_user (by
-switching to __copy_to_user) and doing it by hand ourselves instead.
-
-It looks to me like the false positive is the bug.  The comments in
-uaccess.h at least suggest that they did intend to avoid such false
-positives.
-
-Dropping this for now.
+Whatever's simplest for you.
 
 --b.
 
+> 
 > 
 > > --b.
 > > 
@@ -110,39 +56,144 @@ Dropping this for now.
 > >> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 > >> ---
 > >> 
-> >> net/sunrpc/xprtrdma/svc_rdma.c |    8 ++++++--
-> >> 1 files changed, 6 insertions(+), 2 deletions(-)
+> >> include/linux/sunrpc/svc_rdma.h          |    6 +++
+> >> include/linux/sunrpc/xprt.h              |    1 +
+> >> net/sunrpc/xprtrdma/svc_rdma.c           |    6 +++
+> >> net/sunrpc/xprtrdma/svc_rdma_transport.c |   59 ++++++++++++++++++++++++++++++
+> >> 4 files changed, 71 insertions(+), 1 deletions(-)
+> >> 
+> >> diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
+> >> index cb94ee4..0e7234d 100644
+> >> --- a/include/linux/sunrpc/svc_rdma.h
+> >> +++ b/include/linux/sunrpc/svc_rdma.h
+> >> @@ -231,9 +231,13 @@ extern void svc_rdma_put_frmr(struct svcxprt_rdma *,
+> >> 			      struct svc_rdma_fastreg_mr *);
+> >> extern void svc_sq_reap(struct svcxprt_rdma *);
+> >> extern void svc_rq_reap(struct svcxprt_rdma *);
+> >> -extern struct svc_xprt_class svc_rdma_class;
+> >> extern void svc_rdma_prep_reply_hdr(struct svc_rqst *);
+> >> 
+> >> +extern struct svc_xprt_class svc_rdma_class;
+> >> +#ifdef CONFIG_SUNRPC_BACKCHANNEL
+> >> +extern struct svc_xprt_class svc_rdma_bc_class;
+> >> +#endif
+> >> +
+> >> /* svc_rdma.c */
+> >> extern int svc_rdma_init(void);
+> >> extern void svc_rdma_cleanup(void);
+> >> diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+> >> index 8b93ef5..693f9f1 100644
+> >> --- a/include/linux/sunrpc/xprt.h
+> >> +++ b/include/linux/sunrpc/xprt.h
+> >> @@ -150,6 +150,7 @@ enum xprt_transports {
+> >> 	XPRT_TRANSPORT_TCP	= IPPROTO_TCP,
+> >> 	XPRT_TRANSPORT_BC_TCP	= IPPROTO_TCP | XPRT_TRANSPORT_BC,
+> >> 	XPRT_TRANSPORT_RDMA	= 256,
+> >> +	XPRT_TRANSPORT_BC_RDMA	= XPRT_TRANSPORT_RDMA | XPRT_TRANSPORT_BC,
+> >> 	XPRT_TRANSPORT_LOCAL	= 257,
+> >> };
 > >> 
 > >> diff --git a/net/sunrpc/xprtrdma/svc_rdma.c b/net/sunrpc/xprtrdma/svc_rdma.c
-> >> index c1b6270..8eedb60 100644
+> >> index 8eedb60..7a18ae4 100644
 > >> --- a/net/sunrpc/xprtrdma/svc_rdma.c
 > >> +++ b/net/sunrpc/xprtrdma/svc_rdma.c
-> >> @@ -98,7 +98,11 @@ static int read_reset_stat(struct ctl_table *table, int write,
-> >> 	else {
-> >> 		char str_buf[32];
-> >> 		char *data;
-> >> -		int len = snprintf(str_buf, 32, "%d\n", atomic_read(stat));
-> >> +		int len;
+> >> @@ -244,6 +244,9 @@ void svc_rdma_cleanup(void)
+> >> 		unregister_sysctl_table(svcrdma_table_header);
+> >> 		svcrdma_table_header = NULL;
+> >> 	}
+> >> +#ifdef CONFIG_SUNRPC_BACKCHANNEL
+> >> +	svc_unreg_xprt_class(&svc_rdma_bc_class);
+> >> +#endif
+> >> 	svc_unreg_xprt_class(&svc_rdma_class);
+> >> 	kmem_cache_destroy(svc_rdma_map_cachep);
+> >> 	kmem_cache_destroy(svc_rdma_ctxt_cachep);
+> >> @@ -291,6 +294,9 @@ int svc_rdma_init(void)
+> >> 
+> >> 	/* Register RDMA with the SVC transport switch */
+> >> 	svc_reg_xprt_class(&svc_rdma_class);
+> >> +#ifdef CONFIG_SUNRPC_BACKCHANNEL
+> >> +	svc_reg_xprt_class(&svc_rdma_bc_class);
+> >> +#endif
+> >> 	return 0;
+> >>  err1:
+> >> 	kmem_cache_destroy(svc_rdma_map_cachep);
+> >> diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> >> index 3b4c2ff..9b8bccd 100644
+> >> --- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> >> +++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> >> @@ -56,6 +56,7 @@
+> >> 
+> >> #define RPCDBG_FACILITY	RPCDBG_SVCXPRT
+> >> 
+> >> +static struct svcxprt_rdma *rdma_create_xprt(struct svc_serv *, int);
+> >> static struct svc_xprt *svc_rdma_create(struct svc_serv *serv,
+> >> 					struct net *net,
+> >> 					struct sockaddr *sa, int salen,
+> >> @@ -95,6 +96,64 @@ struct svc_xprt_class svc_rdma_class = {
+> >> 	.xcl_ident = XPRT_TRANSPORT_RDMA,
+> >> };
+> >> 
+> >> +#if defined(CONFIG_SUNRPC_BACKCHANNEL)
+> >> +static struct svc_xprt *svc_rdma_bc_create(struct svc_serv *, struct net *,
+> >> +					   struct sockaddr *, int, int);
+> >> +static void svc_rdma_bc_detach(struct svc_xprt *);
+> >> +static void svc_rdma_bc_free(struct svc_xprt *);
 > >> +
-> >> +		if (!access_ok(VERIFY_WRITE, buffer, *lenp))
-> >> +			return -EFAULT;
-> >> +		len = snprintf(str_buf, 32, "%d\n", atomic_read(stat));
-> >> 		if (len >= 32)
-> >> 			return -EFAULT;
-> >> 		len = strlen(str_buf);
-> >> @@ -110,7 +114,7 @@ static int read_reset_stat(struct ctl_table *table, int write,
-> >> 		len -= *ppos;
-> >> 		if (len > *lenp)
-> >> 			len = *lenp;
-> >> -		if (len && copy_to_user(buffer, str_buf, len))
-> >> +		if (len && __copy_to_user(buffer, str_buf, len))
-> >> 			return -EFAULT;
-> >> 		*lenp = len;
-> >> 		*ppos += len;
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> >> +static struct svc_xprt_ops svc_rdma_bc_ops = {
+> >> +	.xpo_create = svc_rdma_bc_create,
+> >> +	.xpo_detach = svc_rdma_bc_detach,
+> >> +	.xpo_free = svc_rdma_bc_free,
+> >> +	.xpo_prep_reply_hdr = svc_rdma_prep_reply_hdr,
+> >> +	.xpo_secure_port = svc_rdma_secure_port,
+> >> +};
+> >> +
+> >> +struct svc_xprt_class svc_rdma_bc_class = {
+> >> +	.xcl_name = "rdma-bc",
+> >> +	.xcl_owner = THIS_MODULE,
+> >> +	.xcl_ops = &svc_rdma_bc_ops,
+> >> +	.xcl_max_payload = (1024 - RPCRDMA_HDRLEN_MIN),
+> >> +	.xcl_ident = XPRT_TRANSPORT_BC_RDMA,
+> >> +};
+> >> +
+> >> +static struct svc_xprt *svc_rdma_bc_create(struct svc_serv *serv,
+> >> +					   struct net *net,
+> >> +					   struct sockaddr *sa, int salen,
+> >> +					   int flags)
+> >> +{
+> >> +	struct svcxprt_rdma *cma_xprt;
+> >> +	struct svc_xprt *xprt;
+> >> +
+> >> +	cma_xprt = rdma_create_xprt(serv, 0);
+> >> +	if (!cma_xprt)
+> >> +		return ERR_PTR(-ENOMEM);
+> >> +	xprt = &cma_xprt->sc_xprt;
+> >> +
+> >> +	svc_xprt_init(net, &svc_rdma_bc_class, xprt, serv);
+> >> +	serv->sv_bc_xprt = xprt;
+> >> +
+> >> +	dprintk("svcrdma: %s(%p)\n", __func__, xprt);
+> >> +	return xprt;
+> >> +}
+> >> +
+> >> +static void svc_rdma_bc_detach(struct svc_xprt *xprt)
+> >> +{
+> >> +	dprintk("svcrdma: %s(%p)\n", __func__, xprt);
+> >> +}
+> >> +
+> >> +static void svc_rdma_bc_free(struct svc_xprt *xprt)
+> >> +{
+> >> +	struct svcxprt_rdma *rdma =
+> >> +		container_of(xprt, struct svcxprt_rdma, sc_xprt);
+> >> +
+> >> +	dprintk("svcrdma: %s(%p)\n", __func__, xprt);
+> >> +	if (xprt)
+> >> +		kfree(rdma);
+> >> +}
+> >> +#endif	/* CONFIG_SUNRPC_BACKCHANNEL */
+> >> +
+> >> struct svc_rdma_op_ctxt *svc_rdma_get_context(struct svcxprt_rdma *xprt)
+> >> {
+> >> 	struct svc_rdma_op_ctxt *ctxt;
 > 
 > --
 > Chuck Lever
