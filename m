@@ -1,9 +1,9 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:60212 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:60485 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756430AbbFBMiK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 2 Jun 2015 08:38:10 -0400
-Date: Tue, 2 Jun 2015 13:38:06 +0100
+	id S1753009AbbFBMkb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 2 Jun 2015 08:40:31 -0400
+Date: Tue, 2 Jun 2015 13:40:26 +0100
 From: Mel Gorman <mgorman@suse.de>
 To: Jeff Layton <jlayton@poochiereds.net>
 Cc: trond.myklebust@primarydata.com, linux-nfs@vger.kernel.org,
@@ -11,7 +11,7 @@ Cc: trond.myklebust@primarydata.com, linux-nfs@vger.kernel.org,
         Jerome Marchand <jmarchan@redhat.com>
 Subject: Re: [PATCH 3/4] sunrpc: if we're closing down a socket, clear
  memalloc on it first
-Message-ID: <20150602123806.GF26425@suse.de>
+Message-ID: <20150602124025.GG26425@suse.de>
 References: <1432987393-15604-1-git-send-email-jeff.layton@primarydata.com>
  <1432987393-15604-4-git-send-email-jeff.layton@primarydata.com>
 MIME-Version: 1.0
