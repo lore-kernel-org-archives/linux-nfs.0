@@ -1,94 +1,95 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp-o-3.desy.de ([131.169.56.156]:44955 "EHLO smtp-o-3.desy.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754206AbbFBGiX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 2 Jun 2015 02:38:23 -0400
-Received: from smtp-map-1.desy.de (smtp-map-1.desy.de [131.169.56.66])
-	by smtp-o-3.desy.de (DESY-O-3) with ESMTP id CB75A280897
-	for <linux-nfs@vger.kernel.org>; Tue,  2 Jun 2015 08:38:21 +0200 (CEST)
-Received: from ZITSWEEP4.win.desy.de (zitsweep4.win.desy.de [131.169.97.98])
-	by smtp-map-1.desy.de (DESY_MAP_1) with ESMTP id AFB9413E95
-	for <linux-nfs@vger.kernel.org>; Tue,  2 Jun 2015 08:38:21 +0200 (MEST)
-From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-Subject: [PATCH] nfs4lib: add test name as a compound tag
-Date: Tue,  2 Jun 2015 08:38:18 +0200
-Message-Id: <1433227098-4181-1-git-send-email-tigran.mkrtchyan@desy.de>
+Received: from mail-qk0-f177.google.com ([209.85.220.177]:33331 "EHLO
+	mail-qk0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754127AbbFBK65 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 2 Jun 2015 06:58:57 -0400
+Received: by qkhg32 with SMTP id g32so98545554qkh.0
+        for <linux-nfs@vger.kernel.org>; Tue, 02 Jun 2015 03:58:56 -0700 (PDT)
+Message-ID: <556D8C66.8080203@gmail.com>
+Date: Tue, 02 Jun 2015 18:58:46 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
+MIME-Version: 1.0
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+CC: Weston Andros Adamson <dros@primarydata.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>, kinglongmee@gmail.com,
+        Christoph Hellwig <hch@infradead.org>
+Subject: [PATCH 1/2] nfs: Only update callback sequnce id when CB_SEQUENCE
+ success
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-allowes to easy trace tests, e.q: [st_verify.py:_try_mand]
+When testing pnfs layout, nfsd got error NFS4ERR_SEQ_MISORDERED.
+It is caused by nfs return NFS4ERR_DELAY before validate_seqid(),
+don't update the sequnce id, but nfsd updates the sequnce id !!!
 
-a similar fix as 2b41c3e, but for 4.0. Introdces a bit
-of code duplication, but this is forced by test suite structure.
+According to RFC5661 20.9.3,
+" If CB_SEQUENCE returns an error, then the state of the slot
+  (sequence ID, cached reply) MUST NOT change. "
 
-Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
 ---
- nfs4.0/nfs4lib.py    | 18 +++++++++++++++++-
- nfs4.1/nfs4client.py |  3 ++-
- 2 files changed, 19 insertions(+), 2 deletions(-)
+ fs/nfs/callback_proc.c | 16 ++++++++++++----
+ 1 file changed, 12 insertions(+), 4 deletions(-)
 
-diff --git a/nfs4.0/nfs4lib.py b/nfs4.0/nfs4lib.py
-index f196bef..5031feb 100644
---- a/nfs4.0/nfs4lib.py
-+++ b/nfs4.0/nfs4lib.py
-@@ -40,6 +40,8 @@ import struct
- import socket
- import sys
- import re
-+import inspect
-+from os.path import basename
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index 197806f..7e9653a 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -327,10 +327,8 @@ validate_seqid(struct nfs4_slot_table *tbl, struct cb_sequenceargs * args)
+ 	dprintk("%s slot table seqid: %u\n", __func__, slot->seq_nr);
  
- class NFSException(rpc.RPCError):
-     pass
-@@ -313,8 +315,13 @@ class NFS4Client(rpc.RPCClient, nfs4_ops.NFS4Operations):
-         """Make COMPOUND procedure call"""
-         if type(argarray) is not list:
-             raise "Need list for argarray"
+ 	/* Normal */
+-	if (likely(args->csa_sequenceid == slot->seq_nr + 1)) {
+-		slot->seq_nr++;
++	if (likely(args->csa_sequenceid == slot->seq_nr + 1))
+ 		goto out_ok;
+-	}
+ 
+ 	/* Replay */
+ 	if (args->csa_sequenceid == slot->seq_nr) {
+@@ -418,6 +416,7 @@ __be32 nfs4_callback_sequence(struct cb_sequenceargs *args,
+ 			      struct cb_process_state *cps)
+ {
+ 	struct nfs4_slot_table *tbl;
++	struct nfs4_slot *slot;
+ 	struct nfs_client *clp;
+ 	int i;
+ 	__be32 status = htonl(NFS4ERR_BADSESSION);
+@@ -429,7 +428,9 @@ __be32 nfs4_callback_sequence(struct cb_sequenceargs *args,
+ 
+ 	if (!(clp->cl_session->flags & SESSION4_BACK_CHAN))
+ 		goto out;
 +
-+        if len(tag) == 0:
-+            compound_tag = self.create_tag()
-+        else:
-+            compound_tag = tag
-         # Make the actual call
--        compoundargs = COMPOUND4args(argarray=argarray, tag=tag,
-+        compoundargs = COMPOUND4args(argarray=argarray, tag=compound_tag,
-                                      minorversion=minorversion)
-         if SHOW_TRAFFIC:
-             print
-@@ -367,6 +374,15 @@ class NFS4Client(rpc.RPCClient, nfs4_ops.NFS4Operations):
+ 	tbl = &clp->cl_session->bc_slot_table;
++	slot = tbl->slots + args->csa_slotid;
  
-         return res
+ 	spin_lock(&tbl->slot_tbl_lock);
+ 	/* state manager is resetting the session */
+@@ -444,7 +445,7 @@ __be32 nfs4_callback_sequence(struct cb_sequenceargs *args,
+ 		goto out;
+ 	}
  
-+    def create_tag(self):
-+        current_module = inspect.getmodule(inspect.currentframe().f_back)
-+        current_stack = inspect.stack()
-+        stackid = 0
-+        while current_module == inspect.getmodule(current_stack[stackid][0]):
-+              stackid = stackid + 1
-+        test_name = '%s:%s' % (basename(current_stack[stackid][1]), current_stack[stackid][3])
-+        return test_name
+-	status = validate_seqid(&clp->cl_session->bc_slot_table, args);
++	status = validate_seqid(tbl, args);
+ 	spin_unlock(&tbl->slot_tbl_lock);
+ 	if (status)
+ 		goto out;
+@@ -468,6 +469,13 @@ __be32 nfs4_callback_sequence(struct cb_sequenceargs *args,
+ 	res->csr_highestslotid = NFS41_BC_MAX_CALLBACKS - 1;
+ 	res->csr_target_highestslotid = NFS41_BC_MAX_CALLBACKS - 1;
+ 
++	/*
++	 * RFC5661 20.9.3
++	 * If CB_SEQUENCE returns an error, then the state of the slot
++	 * (sequence ID, cached reply) MUST NOT change.
++	 */
++	slot->seq_nr++;
 +
-     def init_connection(self, id=None, verifier=None, cb_ident=None):
-         """Do setclientid/setclientidconfirm combination"""
-         # SETCLIENTID
-diff --git a/nfs4.1/nfs4client.py b/nfs4.1/nfs4client.py
-index 62ccc3a..14b34d2 100644
---- a/nfs4.1/nfs4client.py
-+++ b/nfs4.1/nfs4client.py
-@@ -307,9 +307,10 @@ class NFS4Client(rpc.Client, rpc.Server):
-         return s
- 
-     def create_tag(self):
-+        current_module = inspect.getmodule(inspect.currentframe().f_back)
-         current_stack = inspect.stack()
-         stackid = 0
--        while basename(current_stack[stackid][1]) == 'environment.py' or basename(current_stack[stackid][1]) == 'nfs4client.py':
-+        while current_module == inspect.getmodule(current_stack[stackid][0]):
-               stackid = stackid + 1
-         test_name = '%s:%s' % (basename(current_stack[stackid][1]), current_stack[stackid][3])
-         return test_name
+ out:
+ 	cps->clp = clp; /* put in nfs4_callback_compound */
+ 	for (i = 0; i < args->csa_nrclists; i++)
 -- 
 2.4.2
 
