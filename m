@@ -1,147 +1,111 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:36660 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754552AbbFBQJZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 2 Jun 2015 12:09:25 -0400
-Message-ID: <556DD52D.5040405@oracle.com>
-Date: Tue, 02 Jun 2015 19:09:17 +0300
-From: Stanislav Kholmanskikh <stanislav.kholmanskikh@oracle.com>
+Received: from fieldses.org ([173.255.197.46]:56372 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753980AbbFBSlY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 2 Jun 2015 14:41:24 -0400
+Date: Tue, 2 Jun 2015 14:41:20 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfs4lib: add test name as a compound tag
+Message-ID: <20150602184120.GA1215@fieldses.org>
+References: <1433227098-4181-1-git-send-email-tigran.mkrtchyan@desy.de>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: linux-nfs@vger.kernel.org, Vasily Isaenko <vasily.isaenko@oracle.com>,
-        "SHUANG.QIU" <shuang.qiu@oracle.com>
-Subject: Re: nfsd: EACCES vs EPERM on utime()/utimes() calls
-References: <556C73AE.4090900@oracle.com> <20150601212317.GF26972@fieldses.org>
-In-Reply-To: <20150601212317.GF26972@fieldses.org>
-Content-Type: text/plain; charset=windows-1252; format=flowed
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1433227098-4181-1-git-send-email-tigran.mkrtchyan@desy.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Tue, Jun 02, 2015 at 08:38:18AM +0200, Tigran Mkrtchyan wrote:
+> allowes to easy trace tests, e.q: [st_verify.py:_try_mand]
 
+Thanks, applied.
 
-On 06/02/2015 12:23 AM, bfields@fieldses.org wrote:
-> On Mon, Jun 01, 2015 at 06:01:02PM +0300, Stanislav Kholmanskikh wrote:
->> Hello.
->>
->> As the man page for utime/utimes states [1], EPERM is returned if
->> the second argument of utime/utimes is not NULL and:
->>   * the caller's effective user id does not match the owner of the file
->>   * the caller does not have write access to the file
->>   * the caller is not privileged
->>
->> However, I don't see this behavior with NFS, I see EACCES is
->> generated instead.
->
-> Agreed that it's probably a server bug.  (Have you run across a case
-> where this makes a difference?)
+> a similar fix as 2b41c3e, but for 4.0. Introdces a bit
+> of code duplication, but this is forced by test suite structure.
 
-Thank you.
+I looked into that for a while earlier this year.  I started out looking
+for duplicated code (e.g. there's two complete copies of the "ply"
+library) and making it shared.  I removed a lot of lines of code that
+way but didn't really feel like I'd really simplified anything.
 
-No, I've not seen such a real-word scenario.
+So I eventually decided it would be better to add support for 4.0 to the
+code under nfs4.1/ and then remove nfs4.0/ once all the tests have been
+ported over.
 
-I have these LTP test cases failing:
+But I only got as far as basic state setup (SETCLIENTID,
+SETCLIENTID_CONFIRM, OPEN, OPEN_CONFIRM), without any backchannel
+support and without the 4.0 tests ported over yet.  Not sure if/when I
+might get back to that.
 
-* 
-https://github.com/linux-test-project/ltp/blob/master/testcases/kernel/syscalls/utime/utime06.c
-* 
-https://github.com/linux-test-project/ltp/blob/master/testcases/kernel/syscalls/utimes/utimes01.c
+--b.
 
-and it makes me a bit nervous :)
-
->
-> Looking at nfsd_setattr()....  The main work is done by notify_change(),
-> which is probably doing the right thing.  But before that there's an
-> fh_verify()--looks like that is expected to fail in your case.  I bet
-> that's the cause.
-
-Ok.
-
-I doubt I can fix it by myself (at least quickly). So I am happy if 
-anyone more experienced will look at it as well :)
-
-Anyway, if nobody is interested, I'll give it a try, but later.
-
-Thanks again.
-
->
-> --b.
->
->>
->> Please, consider this test:
->>
->> #include <stdio.h>
->> #include <sys/types.h>
->> #include <sys/time.h>
->> #include <utime.h>
->>
->> int main(int argc, char *argv[])
->> {
->> 	struct utimbuf u = { .actime = 0, .modtime = 0 };
->> 	struct timeval tv = { .tv_sec = 0, .tv_usec = 0 };
->>
->> 	if (utime(argv[1], &u))
->> 		perror("utime() failed");
->>
->> 	if (utimes(argv[1], &tv))
->> 		perror("utimes() failed");
->> 	
->> 	return 0;
->> }
->>
->> In my environment the kernel is 4.1.0-rc6 x86_64, and there are 2
->> NFS mounted directories:
->> 127.0.0.1:/opt/export/disk0 on /mnt/lin type nfs (rw,vers=3,addr=127.0.0.1)
->> 192.168.0.12:/export/bla on /mnt/sol type nfs (rw,vers=3,addr=192.168.0.12)
->>
->> /mnt/sol is from Solaris 11.2 x86_64. /opt/export/disk0 is handled
->> by the in-kernel nfs server.
->>
->> Execution of the above test program gives:
->>
->> * the server is Linux -> EACCES is generated:
->>
->> [stas@ol6-x64 tmp]$ ls -l /mnt/lin/test_file
->> -rw-r--r-- 1 root root 0 Jun  1 17:28 /mnt/lin/test_file
->> [stas@ol6-x64 tmp]$ strace -e utime,utimes ./utime_test /mnt/lin/test_file
->> utime("/mnt/lin/test_file", [0, 0])     = -1 EACCES (Permission denied)
->> utime() failed: Permission denied
->> utimes("/mnt/lin/test_file", {{0, 0}, {0, 0}}) = -1 EACCES
->> (Permission denied)
->> utimes() failed: Permission denied
->>
->> * the server is Solaris 11.2 -> EPERM is generated
->>
->> [stas@ol6-x64 tmp]$ ls -l /mnt/sol/test_file
->> -rw-r--r--+ 1 root root 0 Jun  1  2015 /mnt/sol/test_file
->> [stas@ol6-x64 tmp]$ strace -e utime,utimes ./utime_test /mnt/sol/test_file
->> utime("/mnt/sol/test_file", [0, 0])     = -1 EPERM (Operation not permitted)
->> utime() failed: Operation not permitted
->> utimes("/mnt/sol/test_file", {{0, 0}, {0, 0}}) = -1 EPERM (Operation
->> not permitted)
->> utimes() failed: Operation not permitted
->>
->> * on a local ext4 file system EPERM is generated:
->>
->> [stas@ol6-x64 tmp]$ ls -l /tmp/test_file
->> -rw-r--r-- 1 root root 0 Jun  1 17:51 /tmp/test_file
->> [stas@ol6-x64 tmp]$ strace -e utime,utimes ./utime_test /tmp/test_file
->> utime("/tmp/test_file", [0, 0])         = -1 EPERM (Operation not permitted)
->> utime() failed: Operation not permitted
->> utimes("/tmp/test_file", {{0, 0}, {0, 0}}) = -1 EPERM (Operation not
->> permitted)
->> utimes() failed: Operation not permitted
->>
->> Plus EPERM is generated when the NFS server is FreeBSD 9.1.
->>
->> Could anybody, clarify, if the described behavior a bug in the Linux
->> NFS server implementation or not?
->>
->> Thank you.
->>
->> [1] http://man7.org/linux/man-pages/man2/utime.2.html
->>
->> PS: this all was found using utime06, utimes01 LTP test cases.
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+> ---
+>  nfs4.0/nfs4lib.py    | 18 +++++++++++++++++-
+>  nfs4.1/nfs4client.py |  3 ++-
+>  2 files changed, 19 insertions(+), 2 deletions(-)
+> 
+> diff --git a/nfs4.0/nfs4lib.py b/nfs4.0/nfs4lib.py
+> index f196bef..5031feb 100644
+> --- a/nfs4.0/nfs4lib.py
+> +++ b/nfs4.0/nfs4lib.py
+> @@ -40,6 +40,8 @@ import struct
+>  import socket
+>  import sys
+>  import re
+> +import inspect
+> +from os.path import basename
+>  
+>  class NFSException(rpc.RPCError):
+>      pass
+> @@ -313,8 +315,13 @@ class NFS4Client(rpc.RPCClient, nfs4_ops.NFS4Operations):
+>          """Make COMPOUND procedure call"""
+>          if type(argarray) is not list:
+>              raise "Need list for argarray"
+> +
+> +        if len(tag) == 0:
+> +            compound_tag = self.create_tag()
+> +        else:
+> +            compound_tag = tag
+>          # Make the actual call
+> -        compoundargs = COMPOUND4args(argarray=argarray, tag=tag,
+> +        compoundargs = COMPOUND4args(argarray=argarray, tag=compound_tag,
+>                                       minorversion=minorversion)
+>          if SHOW_TRAFFIC:
+>              print
+> @@ -367,6 +374,15 @@ class NFS4Client(rpc.RPCClient, nfs4_ops.NFS4Operations):
+>  
+>          return res
+>  
+> +    def create_tag(self):
+> +        current_module = inspect.getmodule(inspect.currentframe().f_back)
+> +        current_stack = inspect.stack()
+> +        stackid = 0
+> +        while current_module == inspect.getmodule(current_stack[stackid][0]):
+> +              stackid = stackid + 1
+> +        test_name = '%s:%s' % (basename(current_stack[stackid][1]), current_stack[stackid][3])
+> +        return test_name
+> +
+>      def init_connection(self, id=None, verifier=None, cb_ident=None):
+>          """Do setclientid/setclientidconfirm combination"""
+>          # SETCLIENTID
+> diff --git a/nfs4.1/nfs4client.py b/nfs4.1/nfs4client.py
+> index 62ccc3a..14b34d2 100644
+> --- a/nfs4.1/nfs4client.py
+> +++ b/nfs4.1/nfs4client.py
+> @@ -307,9 +307,10 @@ class NFS4Client(rpc.Client, rpc.Server):
+>          return s
+>  
+>      def create_tag(self):
+> +        current_module = inspect.getmodule(inspect.currentframe().f_back)
+>          current_stack = inspect.stack()
+>          stackid = 0
+> -        while basename(current_stack[stackid][1]) == 'environment.py' or basename(current_stack[stackid][1]) == 'nfs4client.py':
+> +        while current_module == inspect.getmodule(current_stack[stackid][0]):
+>                stackid = stackid + 1
+>          test_name = '%s:%s' % (basename(current_stack[stackid][1]), current_stack[stackid][3])
+>          return test_name
+> -- 
+> 2.4.2
