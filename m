@@ -1,97 +1,54 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qc0-f175.google.com ([209.85.216.175]:35131 "EHLO
-	mail-qc0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751891AbbFBK7d (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 2 Jun 2015 06:59:33 -0400
-Received: by qczw4 with SMTP id w4so33424269qcz.2
-        for <linux-nfs@vger.kernel.org>; Tue, 02 Jun 2015 03:59:33 -0700 (PDT)
-Message-ID: <556D8C8D.50205@gmail.com>
-Date: Tue, 02 Jun 2015 18:59:25 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
+Received: from cantor2.suse.de ([195.135.220.15]:60042 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932157AbbFBMg2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 2 Jun 2015 08:36:28 -0400
+Date: Tue, 2 Jun 2015 13:36:23 +0100
+From: Mel Gorman <mgorman@suse.de>
+To: Jeff Layton <jlayton@poochiereds.net>
+Cc: trond.myklebust@primarydata.com, linux-nfs@vger.kernel.org,
+        linux-mm@kvack.org, linux-kernel@vger.kernel.org,
+        Jerome Marchand <jmarchan@redhat.com>
+Subject: Re: [PATCH 1/4] sunrpc: keep a count of swapfiles associated with
+ the rpc_clnt
+Message-ID: <20150602123623.GE26425@suse.de>
+References: <1432987393-15604-1-git-send-email-jeff.layton@primarydata.com>
+ <1432987393-15604-2-git-send-email-jeff.layton@primarydata.com>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-CC: Christoph Hellwig <hch@infradead.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        kinglongmee@gmail.com
-Subject: [PATCH 2/2] nfsd: Update callback sequnce id only CB_SEQUENCE success
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=iso-8859-15
+In-Reply-To: <1432987393-15604-2-git-send-email-jeff.layton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When testing pnfs layout, nfsd got error NFS4ERR_SEQ_MISORDERED.
-It is caused by nfs return NFS4ERR_DELAY before validate_seqid(),
-don't update the sequnce id, but nfsd updates the sequnce id !!!
+On Sat, May 30, 2015 at 08:03:10AM -0400, Jeff Layton wrote:
+> Jerome reported seeing a warning pop when working with a swapfile on
+> NFS. The nfs_swap_activate can end up calling sk_set_memalloc while
+> holding the rcu_read_lock and that function can sleep.
+> 
+> To fix that, we need to take a reference to the xprt while holding the
+> rcu_read_lock, set the socket up for swapping and then drop that
+> reference. But, xprt_put is not exported and having NFS deal with the
+> underlying xprt is a bit of layering violation anyway.
+> 
+> Fix this by adding a set of activate/deactivate functions that take a
+> rpc_clnt pointer instead of an rpc_xprt, and have nfs_swap_activate and
+> nfs_swap_deactivate call those.
+> 
+> Also, add a per-rpc_clnt atomic counter to keep track of the number of
+> active swapfiles associated with it. When the counter does a 0->1
+> transition, we enable swapping on the xprt, when we do a 1->0 transition
+> we disable swapping on it.
+> 
+> This also allows us to be a bit more selective with the RPC_TASK_SWAPPER
+> flag. If non-swapper and swapper clnts are sharing a xprt, then we only
+> need to flag the tasks from the swapper clnt with that flag.
+> 
+> Cc: Mel Gorman <mgorman@suse.de>
+> Reported-by: Jerome Marchand <jmarchan@redhat.com>
+> Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
 
-According to RFC5661 20.9.3,
-" If CB_SEQUENCE returns an error, then the state of the slot
-(sequence ID, cached reply) MUST NOT change. "
+Acked-by: Mel Gorman <mgorman@suse.de>
 
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
----
- fs/nfsd/nfs4callback.c | 14 ++++++++++++--
- fs/nfsd/state.h        |  1 +
- 2 files changed, 13 insertions(+), 2 deletions(-)
-
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index 8b1ac8d..a492018 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -455,6 +455,7 @@ static int decode_cb_sequence4res(struct xdr_stream *xdr,
- 	if (unlikely(status || cb->cb_status))
- 		return status;
- 
-+	cb->cb_update_seq_nr = true;
- 	return decode_cb_sequence4resok(xdr, cb);
- }
- 
-@@ -875,6 +876,7 @@ static void nfsd4_cb_prepare(struct rpc_task *task, void *calldata)
- 	u32 minorversion = clp->cl_minorversion;
- 
- 	cb->cb_minorversion = minorversion;
-+	cb->cb_update_seq_nr = false;
- 	cb->cb_status = 0;
- 	if (minorversion) {
- 		if (!nfsd41_cb_get_slot(clp, task))
-@@ -892,9 +894,16 @@ static void nfsd4_cb_done(struct rpc_task *task, void *calldata)
- 		clp->cl_minorversion);
- 
- 	if (clp->cl_minorversion) {
--		/* No need for lock, access serialized in nfsd4_cb_prepare */
--		if (!task->tk_status)
-+		/*
-+		 * No need for lock, access serialized in nfsd4_cb_prepare
-+		 *
-+		 * RFC5661 20.9.3
-+		 * If CB_SEQUENCE returns an error, then the state of the slot
-+		 * (sequence ID, cached reply) MUST NOT change.
-+		 */
-+		if (cb->cb_update_seq_nr)
- 			++clp->cl_cb_session->se_cb_seq_nr;
-+
- 		clear_bit(0, &clp->cl_cb_slot_busy);
- 		rpc_wake_up_next(&clp->cl_cb_waitq);
- 		dprintk("%s: freed slot, new seqid=%d\n", __func__,
-@@ -1091,6 +1100,7 @@ void nfsd4_init_cb(struct nfsd4_callback *cb, struct nfs4_client *clp,
- 	cb->cb_ops = ops;
- 	INIT_WORK(&cb->cb_work, nfsd4_run_cb_work);
- 	cb->cb_status = 0;
-+	cb->cb_update_seq_nr = false;
- 	cb->cb_need_restart = false;
- }
- 
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index dbc4f85..4ed7c2a 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -68,6 +68,7 @@ struct nfsd4_callback {
- 	struct nfsd4_callback_ops *cb_ops;
- 	struct work_struct cb_work;
- 	int cb_status;
-+	bool cb_update_seq_nr;
- 	bool cb_need_restart;
- };
- 
 -- 
-2.4.2
-
+Mel Gorman
+SUSE Labs
