@@ -1,67 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qg0-f49.google.com ([209.85.192.49]:36733 "EHLO
-	mail-qg0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751891AbbFBK7K (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 2 Jun 2015 06:59:10 -0400
-Received: by qgf2 with SMTP id 2so57180925qgf.3
-        for <linux-nfs@vger.kernel.org>; Tue, 02 Jun 2015 03:59:10 -0700 (PDT)
-Message-ID: <556D8C75.4050409@gmail.com>
-Date: Tue, 02 Jun 2015 18:59:01 +0800
+Received: from mail-qc0-f179.google.com ([209.85.216.179]:33103 "EHLO
+	mail-qc0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752845AbbFBK70 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 2 Jun 2015 06:59:26 -0400
+Received: by qcmi9 with SMTP id i9so57975560qcm.0
+        for <linux-nfs@vger.kernel.org>; Tue, 02 Jun 2015 03:59:25 -0700 (PDT)
+Message-ID: <556D8C87.2000507@gmail.com>
+Date: Tue, 02 Jun 2015 18:59:19 +0800
 From: Kinglong Mee <kinglongmee@gmail.com>
 MIME-Version: 1.0
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
+To: "J. Bruce Fields" <bfields@fieldses.org>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-CC: Weston Andros Adamson <dros@primarydata.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>, kinglongmee@gmail.com,
-        Christoph Hellwig <hch@infradead.org>
-Subject: [PATCH 2/2] nfs: Initialize cb_sequenceres information before validate_seqid()
+CC: Christoph Hellwig <hch@infradead.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        kinglongmee@gmail.com
+Subject: [PATCH 1/2] nfsd: Reset cb_status in nfsd4_cb_prepare() at retrying
 Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-For a cb_layoutrecall replay, nfsd got CB_SEQUENCE status of zero,
-but all informations of cb_sequenceres are zero too !!!
+nfsd enters a infinite loop and print message per 10 seconds,
 
-validate_seqid() return NFS4ERR_RETRY_UNCACHED_REP for a replay,
-and skip the initlize cb_sequenceres.
+May 31 18:33:52 test-server kernel: Error sending entire callback!
+May 31 18:34:01 test-server kernel: Error sending entire callback!
+
+It is caused by a cb_layoutreturn got error -10008 (NFS4ERR_DELAY),
+and then, the client crash, nfsd enter the infinite loop.
+
+bc_sendto --> call_timeout --> nfsd4_cb_done --> nfsd4_cb_layout_done
+ with error -10008 --> rpc_delay(task, HZ/100) --> bc_sendto ...
 
 Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
 ---
- fs/nfs/callback_proc.c | 14 +++++++-------
- 1 file changed, 7 insertions(+), 7 deletions(-)
+ fs/nfsd/nfs4callback.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index 7e9653a..17a5c57 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -445,6 +445,13 @@ __be32 nfs4_callback_sequence(struct cb_sequenceargs *args,
- 		goto out;
- 	}
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index 5694cfb..8b1ac8d 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -875,6 +875,7 @@ static void nfsd4_cb_prepare(struct rpc_task *task, void *calldata)
+ 	u32 minorversion = clp->cl_minorversion;
  
-+	memcpy(&res->csr_sessionid, &args->csa_sessionid,
-+	       sizeof(res->csr_sessionid));
-+	res->csr_sequenceid = args->csa_sequenceid;
-+	res->csr_slotid = args->csa_slotid;
-+	res->csr_highestslotid = NFS41_BC_MAX_CALLBACKS - 1;
-+	res->csr_target_highestslotid = NFS41_BC_MAX_CALLBACKS - 1;
-+
- 	status = validate_seqid(tbl, args);
- 	spin_unlock(&tbl->slot_tbl_lock);
- 	if (status)
-@@ -462,13 +469,6 @@ __be32 nfs4_callback_sequence(struct cb_sequenceargs *args,
- 		goto out;
- 	}
- 
--	memcpy(&res->csr_sessionid, &args->csa_sessionid,
--	       sizeof(res->csr_sessionid));
--	res->csr_sequenceid = args->csa_sequenceid;
--	res->csr_slotid = args->csa_slotid;
--	res->csr_highestslotid = NFS41_BC_MAX_CALLBACKS - 1;
--	res->csr_target_highestslotid = NFS41_BC_MAX_CALLBACKS - 1;
--
- 	/*
- 	 * RFC5661 20.9.3
- 	 * If CB_SEQUENCE returns an error, then the state of the slot
+ 	cb->cb_minorversion = minorversion;
++	cb->cb_status = 0;
+ 	if (minorversion) {
+ 		if (!nfsd41_cb_get_slot(clp, task))
+ 			return;
 -- 
 2.4.2
 
