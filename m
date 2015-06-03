@@ -1,111 +1,54 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:56372 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753980AbbFBSlY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 2 Jun 2015 14:41:24 -0400
-Date: Tue, 2 Jun 2015 14:41:20 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfs4lib: add test name as a compound tag
-Message-ID: <20150602184120.GA1215@fieldses.org>
-References: <1433227098-4181-1-git-send-email-tigran.mkrtchyan@desy.de>
+Received: from extranet.sessys.com ([50.116.54.220]:40973 "EHLO
+	extranet.sessys.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754532AbbFCNwa (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 3 Jun 2015 09:52:30 -0400
+Received: from extranet.sessys.com (localhost [127.0.0.1])
+	by extranet.sessys.com (8.14.4/8.14.4-SES__EXTERNAL) with ESMTP id t53DdsfG020165
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NO)
+	for <linux-nfs@vger.kernel.org>; Wed, 3 Jun 2015 09:39:54 -0400
+To: linux-nfs@vger.kernel.org
+Subject: rpc.nfsd Host Option & IPv6
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1433227098-4181-1-git-send-email-tigran.mkrtchyan@desy.de>
+Content-Type: text/plain; charset=UTF-8;
+ format=flowed
+Date: Wed, 03 Jun 2015 09:39:53 -0400
+From: Sean Elble <elbles@sessys.com>
+Message-ID: <b66b20ec16b59568246f454bfbbfd5e9@mail.sessys.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jun 02, 2015 at 08:38:18AM +0200, Tigran Mkrtchyan wrote:
-> allowes to easy trace tests, e.q: [st_verify.py:_try_mand]
+Hi all,
 
-Thanks, applied.
+While it seems that most folks use iptables to restrict access to single 
+interfaces when multihomed hosts are acting as NFS servers, I do see 
+that there is a "--host" option that can be provided to rpc.nfsd when it 
+starts so that it only binds to a specific IP/interface.
 
-> a similar fix as 2b41c3e, but for 4.0. Introdces a bit
-> of code duplication, but this is forced by test suite structure.
+This does seem to work nicely, but when I try to use it, it throws an 
+error/warning (where nfs-server is defined in /etc/hosts for the IPv4 
+address of the interface I wish for TCP port 2049 to be opened on):
 
-I looked into that for a while earlier this year.  I started out looking
-for duplicated code (e.g. there's two complete copies of the "ply"
-library) and making it shared.  I removed a lot of lines of code that
-way but didn't really feel like I'd really simplified anything.
+rpc.nfsd: unable to resolve nfs-server:nfs to inet6 address: Name or 
+service not known
 
-So I eventually decided it would be better to add support for 4.0 to the
-code under nfs4.1/ and then remove nfs4.0/ once all the tests have been
-ported over.
+Commenting out the following lines in /etc/netconfig (as suggested by 
+the Google) allows the daemon to start without error:
 
-But I only got as far as basic state setup (SETCLIENTID,
-SETCLIENTID_CONFIRM, OPEN, OPEN_CONFIRM), without any backchannel
-support and without the 4.0 tests ported over yet.  Not sure if/when I
-might get back to that.
+udp6       tpi_clts      v     inet6    udp     -       -
+tcp6       tpi_cots_ord  v     inet6    tcp     -       -
 
---b.
+But I'm wondering if that is the only means for this to work, 
+particularly considering that I'd expect changes to /etc/netconfig to 
+apply to more than just rpc.nfsd.
 
-> 
-> Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-> ---
->  nfs4.0/nfs4lib.py    | 18 +++++++++++++++++-
->  nfs4.1/nfs4client.py |  3 ++-
->  2 files changed, 19 insertions(+), 2 deletions(-)
-> 
-> diff --git a/nfs4.0/nfs4lib.py b/nfs4.0/nfs4lib.py
-> index f196bef..5031feb 100644
-> --- a/nfs4.0/nfs4lib.py
-> +++ b/nfs4.0/nfs4lib.py
-> @@ -40,6 +40,8 @@ import struct
->  import socket
->  import sys
->  import re
-> +import inspect
-> +from os.path import basename
->  
->  class NFSException(rpc.RPCError):
->      pass
-> @@ -313,8 +315,13 @@ class NFS4Client(rpc.RPCClient, nfs4_ops.NFS4Operations):
->          """Make COMPOUND procedure call"""
->          if type(argarray) is not list:
->              raise "Need list for argarray"
-> +
-> +        if len(tag) == 0:
-> +            compound_tag = self.create_tag()
-> +        else:
-> +            compound_tag = tag
->          # Make the actual call
-> -        compoundargs = COMPOUND4args(argarray=argarray, tag=tag,
-> +        compoundargs = COMPOUND4args(argarray=argarray, tag=compound_tag,
->                                       minorversion=minorversion)
->          if SHOW_TRAFFIC:
->              print
-> @@ -367,6 +374,15 @@ class NFS4Client(rpc.RPCClient, nfs4_ops.NFS4Operations):
->  
->          return res
->  
-> +    def create_tag(self):
-> +        current_module = inspect.getmodule(inspect.currentframe().f_back)
-> +        current_stack = inspect.stack()
-> +        stackid = 0
-> +        while current_module == inspect.getmodule(current_stack[stackid][0]):
-> +              stackid = stackid + 1
-> +        test_name = '%s:%s' % (basename(current_stack[stackid][1]), current_stack[stackid][3])
-> +        return test_name
-> +
->      def init_connection(self, id=None, verifier=None, cb_ident=None):
->          """Do setclientid/setclientidconfirm combination"""
->          # SETCLIENTID
-> diff --git a/nfs4.1/nfs4client.py b/nfs4.1/nfs4client.py
-> index 62ccc3a..14b34d2 100644
-> --- a/nfs4.1/nfs4client.py
-> +++ b/nfs4.1/nfs4client.py
-> @@ -307,9 +307,10 @@ class NFS4Client(rpc.Client, rpc.Server):
->          return s
->  
->      def create_tag(self):
-> +        current_module = inspect.getmodule(inspect.currentframe().f_back)
->          current_stack = inspect.stack()
->          stackid = 0
-> -        while basename(current_stack[stackid][1]) == 'environment.py' or basename(current_stack[stackid][1]) == 'nfs4client.py':
-> +        while current_module == inspect.getmodule(current_stack[stackid][0]):
->                stackid = stackid + 1
->          test_name = '%s:%s' % (basename(current_stack[stackid][1]), current_stack[stackid][3])
->          return test_name
-> -- 
-> 2.4.2
+It is worth noting that 1) this seems to apply equally to Debian-based 
+and RHEL-based systems and 2) things seem to work even with the error, 
+but I wouldn't have expected to see that message for something 
+(seemingly) so simple.
+
+Any and all thoughts are welcome.
+
+Thanks,
+
+Sean
