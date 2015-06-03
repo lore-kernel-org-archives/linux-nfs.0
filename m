@@ -1,260 +1,273 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wi0-f170.google.com ([209.85.212.170]:35374 "EHLO
-	mail-wi0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933179AbbFCPCI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 3 Jun 2015 11:02:08 -0400
-Received: by wiga1 with SMTP id a1so17626831wig.0
-        for <linux-nfs@vger.kernel.org>; Wed, 03 Jun 2015 08:02:06 -0700 (PDT)
-Date: Wed, 3 Jun 2015 11:01:58 -0400
-From: Jeff Layton <jlayton@poochiereds.net>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Linux-MM <linux-mm@kvack.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        Mel Gorman <mgorman@suse.de>, Jerome Marchand <jmarchan@redhat.com>,
-        Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH v2 5/5] sunrpc: turn swapper_enable/disable functions
- into rpc_xprt_ops
-Message-ID: <20150603110158.0d21844d@synchrony.poochiereds.net>
-In-Reply-To: <CAHQdGtQGeVRTfv-hvZj_bHqgb5Cs84TY-ScFqzJ3qQOZy2qLcQ@mail.gmail.com>
-References: <1433342632-16173-1-git-send-email-jeff.layton@primarydata.com>
-	<1433342632-16173-6-git-send-email-jeff.layton@primarydata.com>
-	<CAHQdGtQGeVRTfv-hvZj_bHqgb5Cs84TY-ScFqzJ3qQOZy2qLcQ@mail.gmail.com>
+Received: from fieldses.org ([173.255.197.46]:56884 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932400AbbFCPSU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 3 Jun 2015 11:18:20 -0400
+Date: Wed, 3 Jun 2015 11:18:19 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: NeilBrown <neilb@suse.de>
+Cc: Kinglong Mee <kinglongmee@gmail.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Al Viro <viro@zeniv.linux.org.uk>, linux-fsdevel@vger.kernel.org
+Subject: Re: [PATCH] nfsd: don't hold i_mutex over userspace upcalls
+Message-ID: <20150603151819.GA8441@fieldses.org>
+References: <20150430075225.21a71056@notabene.brown>
+ <20150430213602.GB9509@fieldses.org>
+ <20150501115326.51f5613a@notabene.brown>
+ <20150504220130.GB16827@fieldses.org>
+ <5548CBA3.9080608@gmail.com>
+ <20150505141801.GB27106@fieldses.org>
+ <20150505155203.GD27106@fieldses.org>
+ <20150506082628.0dd049c7@notabene.brown>
+ <20150508161558.GA18851@fieldses.org>
+ <20150508200133.GC18851@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20150508200133.GC18851@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 3 Jun 2015 10:48:10 -0400
-Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+This passes my review, but it needs an ACK from Al or someone for the
+addition of the new lookup_one_len_unlocked (which is the same as
+lookup_one_len except that it takes the i_mutex itself when required
+instead of requiring the caller to).
 
-> On Wed, Jun 3, 2015 at 10:43 AM, Jeff Layton <jlayton@poochiereds.net> wrote:
-> > RDMA xprts don't have a sock_xprt, but an rdma_xprt, so the
-> > xs_swapper_enable/disable functions will likely oops when fed an RDMA
-> > xprt. Turn these functions into rpc_xprt_ops so that that doesn't
-> > occur. For now the RDMA versions are no-ops.
-> >
-> > Cc: Chuck Lever <chuck.lever@oracle.com>
-> > Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
-> > ---
-> >  include/linux/sunrpc/xprt.h     | 16 ++++++++++++++--
-> >  net/sunrpc/clnt.c               |  4 ++--
-> >  net/sunrpc/xprtrdma/transport.c | 15 ++++++++++++++-
-> >  net/sunrpc/xprtsock.c           | 31 +++++++++++++++++++++++++------
-> >  4 files changed, 55 insertions(+), 11 deletions(-)
-> >
-> > diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
-> > index 26b1624128ec..7eb58610eb94 100644
-> > --- a/include/linux/sunrpc/xprt.h
-> > +++ b/include/linux/sunrpc/xprt.h
-> > @@ -133,6 +133,8 @@ struct rpc_xprt_ops {
-> >         void            (*close)(struct rpc_xprt *xprt);
-> >         void            (*destroy)(struct rpc_xprt *xprt);
-> >         void            (*print_stats)(struct rpc_xprt *xprt, struct seq_file *seq);
-> > +       int             (*enable_swap)(struct rpc_xprt *xprt);
-> > +       void            (*disable_swap)(struct rpc_xprt *xprt);
-> >  };
-> >
-> >  /*
-> > @@ -327,6 +329,18 @@ static inline __be32 *xprt_skip_transport_header(struct rpc_xprt *xprt, __be32 *
-> >         return p + xprt->tsh_size;
-> >  }
-> >
-> > +static inline int
-> > +xprt_enable_swap(struct rpc_xprt *xprt)
-> > +{
-> > +       return xprt->ops->enable_swap(xprt);
-> > +}
-> > +
-> > +static inline void
-> > +xprt_disable_swap(struct rpc_xprt *xprt)
-> > +{
-> > +       xprt->ops->disable_swap(xprt);
-> > +}
-> > +
-> >  /*
-> >   * Transport switch helper functions
-> >   */
-> > @@ -345,8 +359,6 @@ void                        xprt_release_rqst_cong(struct rpc_task *task);
-> >  void                   xprt_disconnect_done(struct rpc_xprt *xprt);
-> >  void                   xprt_force_disconnect(struct rpc_xprt *xprt);
-> >  void                   xprt_conditional_disconnect(struct rpc_xprt *xprt, unsigned int cookie);
-> > -int                    xs_swapper_enable(struct rpc_xprt *xprt);
-> > -void                   xs_swapper_disable(struct rpc_xprt *xprt);
-> >
-> >  bool                   xprt_lock_connect(struct rpc_xprt *, struct rpc_task *, void *);
-> >  void                   xprt_unlock_connect(struct rpc_xprt *, void *);
-> > diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-> > index 804a75e71e84..60d1835edb26 100644
-> > --- a/net/sunrpc/clnt.c
-> > +++ b/net/sunrpc/clnt.c
-> > @@ -2492,7 +2492,7 @@ retry:
-> >                         goto retry;
-> >                 }
-> >
-> > -               ret = xs_swapper_enable(xprt);
-> > +               ret = xprt_enable_swap(xprt);
-> >                 xprt_put(xprt);
-> >         }
-> >         return ret;
-> > @@ -2519,7 +2519,7 @@ retry:
-> >                         goto retry;
-> >                 }
-> >
-> > -               xs_swapper_disable(xprt);
-> > +               xprt_disable_swap(xprt);
-> >                 xprt_put(xprt);
-> >         }
-> >  }
-> > diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-> > index 54f23b1be986..e7a157754095 100644
-> > --- a/net/sunrpc/xprtrdma/transport.c
-> > +++ b/net/sunrpc/xprtrdma/transport.c
-> > @@ -682,6 +682,17 @@ static void xprt_rdma_print_stats(struct rpc_xprt *xprt, struct seq_file *seq)
-> >            r_xprt->rx_stats.bad_reply_count);
-> >  }
-> >
-> > +static int
-> > +xprt_rdma_enable_swap(struct rpc_xprt *xprt)
-> > +{
-> > +       return 0;
+--b.
+
+On Fri, May 08, 2015 at 04:01:33PM -0400, J. Bruce Fields wrote:
+> From: NeilBrown <neilb@suse.de>
 > 
-> Shouldn't the function be returning an error here? What does swapon
-> expect if the device you are trying to enable doesn't support swap?
+> We need information about exports when crossing mountpoints during
+> lookup or NFSv4 readdir.  If we don't already have that information
+> cached, we may have to ask (and wait for) rpc.mountd.
 > 
-
-
-Chuck suggested making these no-ops for RDMA for now. I'm fine with
-returning an error, but is it really an error? Maybe RDMA doesn't need
-any special setup for swapping?
-
-> > +}
-> > +
-> > +static void
-> > +xprt_rdma_disable_swap(struct rpc_xprt *xprt)
-> > +{
-> > +}
-> > +
-> >  /*
-> >   * Plumbing for rpc transport switch and kernel module
-> >   */
-> > @@ -700,7 +711,9 @@ static struct rpc_xprt_ops xprt_rdma_procs = {
-> >         .send_request           = xprt_rdma_send_request,
-> >         .close                  = xprt_rdma_close,
-> >         .destroy                = xprt_rdma_destroy,
-> > -       .print_stats            = xprt_rdma_print_stats
-> > +       .print_stats            = xprt_rdma_print_stats,
-> > +       .enable_swap            = xprt_rdma_enable_swap,
-> > +       .disable_swap           = xprt_rdma_disable_swap,
-> >  };
-> >
-> >  static struct xprt_class xprt_rdma = {
-> > diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-> > index 16aa5dad41b2..b8aaf20aea96 100644
-> > --- a/net/sunrpc/xprtsock.c
-> > +++ b/net/sunrpc/xprtsock.c
-> > @@ -1985,14 +1985,14 @@ static void xs_set_memalloc(struct rpc_xprt *xprt)
-> >  }
-> >
-> >  /**
-> > - * xs_swapper_enable - Tag this transport as being used for swap.
-> > + * xs_enable_swap - Tag this transport as being used for swap.
-> >   * @xprt: transport to tag
-> >   *
-> >   * Take a reference to this transport on behalf of the rpc_clnt, and
-> >   * optionally mark it for swapping if it wasn't already.
-> >   */
-> > -int
-> > -xs_swapper_enable(struct rpc_xprt *xprt)
-> > +static int
-> > +xs_enable_swap(struct rpc_xprt *xprt)
-> >  {
-> >         struct sock_xprt *xs = container_of(xprt, struct sock_xprt, xprt);
-> >
-> > @@ -2007,14 +2007,14 @@ xs_swapper_enable(struct rpc_xprt *xprt)
-> >  }
-> >
-> >  /**
-> > - * xs_swapper_disable - Untag this transport as being used for swap.
-> > + * xs_disable_swap - Untag this transport as being used for swap.
-> >   * @xprt: transport to tag
-> >   *
-> >   * Drop a "swapper" reference to this xprt on behalf of the rpc_clnt. If the
-> >   * swapper refcount goes to 0, untag the socket as a memalloc socket.
-> >   */
-> > -void
-> > -xs_swapper_disable(struct rpc_xprt *xprt)
-> > +static void
-> > +xs_disable_swap(struct rpc_xprt *xprt)
-> >  {
-> >         struct sock_xprt *xs = container_of(xprt, struct sock_xprt, xprt);
-> >
-> > @@ -2030,6 +2030,17 @@ xs_swapper_disable(struct rpc_xprt *xprt)
-> >  static void xs_set_memalloc(struct rpc_xprt *xprt)
-> >  {
-> >  }
-> > +
-> > +static int
-> > +xs_enable_swap(struct rpc_xprt *xprt)
-> > +{
-> > +       return 0;
+> In both cases we currently hold the i_mutex on the parent of the
+> directory we're asking rpc.mountd about.  We've seen situations where
+> rpc.mountd performs some operation on that directory that tries to take
+> the i_mutex again, resulting in deadlock.
 > 
-> Ditto.
+> With some care, we may be able to avoid that in rpc.mountd.  But it
+> seems better just to avoid holding a mutex while waiting on userspace.
 > 
-
-This just mirrors what the existing code already does. When swap over
-NFS is Kconfig'ed off, it returns 0 here. AIUI, swapon will then fail
-at the NFS layer though, so you'd never see this.
-
-> > +}
-> > +
-> > +static void
-> > +xs_disable_swap(struct rpc_xprt *xprt)
-> > +{
-> > +}
-> >  #endif
-> >
-> >  static void xs_udp_finish_connecting(struct rpc_xprt *xprt, struct socket *sock)
-> > @@ -2496,6 +2507,8 @@ static struct rpc_xprt_ops xs_local_ops = {
-> >         .close                  = xs_close,
-> >         .destroy                = xs_destroy,
-> >         .print_stats            = xs_local_print_stats,
-> > +       .enable_swap            = xs_enable_swap,
-> > +       .disable_swap           = xs_disable_swap,
-> >  };
-> >
-> >  static struct rpc_xprt_ops xs_udp_ops = {
-> > @@ -2515,6 +2528,8 @@ static struct rpc_xprt_ops xs_udp_ops = {
-> >         .close                  = xs_close,
-> >         .destroy                = xs_destroy,
-> >         .print_stats            = xs_udp_print_stats,
-> > +       .enable_swap            = xs_enable_swap,
-> > +       .disable_swap           = xs_disable_swap,
-> >  };
-> >
-> >  static struct rpc_xprt_ops xs_tcp_ops = {
-> > @@ -2531,6 +2546,8 @@ static struct rpc_xprt_ops xs_tcp_ops = {
-> >         .close                  = xs_tcp_shutdown,
-> >         .destroy                = xs_destroy,
-> >         .print_stats            = xs_tcp_print_stats,
-> > +       .enable_swap            = xs_enable_swap,
-> > +       .disable_swap           = xs_disable_swap,
-> >  };
-> >
-> >  /*
-> > @@ -2548,6 +2565,8 @@ static struct rpc_xprt_ops bc_tcp_ops = {
-> >         .close                  = bc_close,
-> >         .destroy                = bc_destroy,
-> >         .print_stats            = xs_tcp_print_stats,
-> > +       .enable_swap            = xs_enable_swap,
-> > +       .disable_swap           = xs_disable_swap,
-> >  };
-> >
-> >  static int xs_init_anyaddr(const int family, struct sockaddr *sap)
-> > --
-> > 2.4.2
-> >
-
-
--- 
-Jeff Layton <jlayton@poochiereds.net>
+> It appears that lookup_one_len is pretty much the only operation that
+> needs the i_mutex.  So we could just drop the i_mutex elsewhere and do
+> something like
+> 
+> 	mutex_lock()
+> 	lookup_one_len()
+> 	mutex_unlock()
+> 
+> In many cases though the lookup would have been cached and not required
+> the i_mutex, so it's more efficient to create a lookup_one_len() variant
+> that only takes the i_mutex when necessary.
+> 
+> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> ---
+>  fs/namei.c            | 74 +++++++++++++++++++++++++++++++++++++++++++++++++++
+>  fs/nfsd/nfs3xdr.c     |  2 +-
+>  fs/nfsd/nfs4xdr.c     |  8 +++---
+>  fs/nfsd/vfs.c         | 23 +++++++---------
+>  include/linux/namei.h |  1 +
+>  5 files changed, 89 insertions(+), 19 deletions(-)
+> 
+> Here's an updated patch.
+> 
+> diff --git a/fs/namei.c b/fs/namei.c
+> index 4a8d998b7274..8b866d79c5b7 100644
+> --- a/fs/namei.c
+> +++ b/fs/namei.c
+> @@ -2139,6 +2139,8 @@ static struct dentry *lookup_hash(struct nameidata *nd)
+>   *
+>   * Note that this routine is purely a helper for filesystem usage and should
+>   * not be called by generic code.
+> + *
+> + * The caller must hold base->i_mutex.
+>   */
+>  struct dentry *lookup_one_len(const char *name, struct dentry *base, int len)
+>  {
+> @@ -2182,6 +2184,78 @@ struct dentry *lookup_one_len(const char *name, struct dentry *base, int len)
+>  }
+>  EXPORT_SYMBOL(lookup_one_len);
+>  
+> +/**
+> + * lookup_one_len_unlocked - filesystem helper to lookup single pathname component
+> + * @name:	pathname component to lookup
+> + * @base:	base directory to lookup from
+> + * @len:	maximum length @len should be interpreted to
+> + *
+> + * Note that this routine is purely a helper for filesystem usage and should
+> + * not be called by generic code.
+> + *
+> + * Unlike lookup_one_len, it should be called without the parent
+> + * i_mutex held, and will take the i_mutex itself if necessary.
+> + */
+> +struct dentry *lookup_one_len_unlocked(const char *name,
+> +				       struct dentry *base, int len)
+> +{
+> +	struct qstr this;
+> +	unsigned int c;
+> +	int err;
+> +	struct dentry *ret;
+> +
+> +	this.name = name;
+> +	this.len = len;
+> +	this.hash = full_name_hash(name, len);
+> +	if (!len)
+> +		return ERR_PTR(-EACCES);
+> +
+> +	if (unlikely(name[0] == '.')) {
+> +		if (len < 2 || (len == 2 && name[1] == '.'))
+> +			return ERR_PTR(-EACCES);
+> +	}
+> +
+> +	while (len--) {
+> +		c = *(const unsigned char *)name++;
+> +		if (c == '/' || c == '\0')
+> +			return ERR_PTR(-EACCES);
+> +	}
+> +	/*
+> +	 * See if the low-level filesystem might want
+> +	 * to use its own hash..
+> +	 */
+> +	if (base->d_flags & DCACHE_OP_HASH) {
+> +		int err = base->d_op->d_hash(base, &this);
+> +		if (err < 0)
+> +			return ERR_PTR(err);
+> +	}
+> +
+> +	err = inode_permission(base->d_inode, MAY_EXEC);
+> +	if (err)
+> +		return ERR_PTR(err);
+> +
+> +	ret = __d_lookup(base, &this);
+> +	if (ret)
+> +		return ret;
+> +	/*
+> +	 * __d_lookup() is used to try to get a quick answer and avoid the
+> +	 * mutex.  A false-negative does no harm.
+> +	 */
+> +	ret = __d_lookup(base, &this);
+> +	if (ret && ret->d_flags & DCACHE_OP_REVALIDATE) {
+> +		dput(ret);
+> +		ret = NULL;
+> +	}
+> +	if (ret)
+> +		return ret;
+> +
+> +	mutex_lock(&base->d_inode->i_mutex);
+> +	ret =  __lookup_hash(&this, base, 0);
+> +	mutex_unlock(&base->d_inode->i_mutex);
+> +	return ret;
+> +}
+> +EXPORT_SYMBOL(lookup_one_len_unlocked);
+> +
+>  int user_path_at_empty(int dfd, const char __user *name, unsigned flags,
+>  		 struct path *path, int *empty)
+>  {
+> diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
+> index f6e7cbabac5a..01dcd494f781 100644
+> --- a/fs/nfsd/nfs3xdr.c
+> +++ b/fs/nfsd/nfs3xdr.c
+> @@ -823,7 +823,7 @@ compose_entry_fh(struct nfsd3_readdirres *cd, struct svc_fh *fhp,
+>  		} else
+>  			dchild = dget(dparent);
+>  	} else
+> -		dchild = lookup_one_len(name, dparent, namlen);
+> +		dchild = lookup_one_len_unlocked(name, dparent, namlen);
+>  	if (IS_ERR(dchild))
+>  		return rv;
+>  	if (d_mountpoint(dchild))
+> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> index 158badf945df..2c1adaa0bd2f 100644
+> --- a/fs/nfsd/nfs4xdr.c
+> +++ b/fs/nfsd/nfs4xdr.c
+> @@ -2804,14 +2804,14 @@ nfsd4_encode_dirent_fattr(struct xdr_stream *xdr, struct nfsd4_readdir *cd,
+>  	__be32 nfserr;
+>  	int ignore_crossmnt = 0;
+>  
+> -	dentry = lookup_one_len(name, cd->rd_fhp->fh_dentry, namlen);
+> +	dentry = lookup_one_len_unlocked(name, cd->rd_fhp->fh_dentry, namlen);
+>  	if (IS_ERR(dentry))
+>  		return nfserrno(PTR_ERR(dentry));
+>  	if (d_really_is_negative(dentry)) {
+>  		/*
+> -		 * nfsd_buffered_readdir drops the i_mutex between
+> -		 * readdir and calling this callback, leaving a window
+> -		 * where this directory entry could have gone away.
+> +		 * we're not holding the i_mutex here, so there's
+> +		 * a window where this directory entry could have gone
+> +		 * away.
+>  		 */
+>  		dput(dentry);
+>  		return nfserr_noent;
+> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+> index a30e79900086..6d5b33458e91 100644
+> --- a/fs/nfsd/vfs.c
+> +++ b/fs/nfsd/vfs.c
+> @@ -217,10 +217,16 @@ nfsd_lookup_dentry(struct svc_rqst *rqstp, struct svc_fh *fhp,
+>  		host_err = PTR_ERR(dentry);
+>  		if (IS_ERR(dentry))
+>  			goto out_nfserr;
+> -		/*
+> -		 * check if we have crossed a mount point ...
+> -		 */
+>  		if (nfsd_mountpoint(dentry, exp)) {
+> +			/*
+> +			 * We don't need the i_mutex after all.  It's
+> +			 * still possible we could open this (regular
+> +			 * files can be mountpoints too), but the
+> +			 * i_mutex is just there to prevent renames of
+> +			 * something that we might be about to delegate,
+> +			 * and a mountpoint won't be renamed:
+> +			 */
+> +			fh_unlock(fhp);
+>  			if ((host_err = nfsd_cross_mnt(rqstp, &dentry, &exp))) {
+>  				dput(dentry);
+>  				goto out_nfserr;
+> @@ -1876,7 +1882,6 @@ static __be32 nfsd_buffered_readdir(struct file *file, nfsd_filldir_t func,
+>  	offset = *offsetp;
+>  
+>  	while (1) {
+> -		struct inode *dir_inode = file_inode(file);
+>  		unsigned int reclen;
+>  
+>  		cdp->err = nfserr_eof; /* will be cleared on successful read */
+> @@ -1895,15 +1900,6 @@ static __be32 nfsd_buffered_readdir(struct file *file, nfsd_filldir_t func,
+>  		if (!size)
+>  			break;
+>  
+> -		/*
+> -		 * Various filldir functions may end up calling back into
+> -		 * lookup_one_len() and the file system's ->lookup() method.
+> -		 * These expect i_mutex to be held, as it would within readdir.
+> -		 */
+> -		host_err = mutex_lock_killable(&dir_inode->i_mutex);
+> -		if (host_err)
+> -			break;
+> -
+>  		de = (struct buffered_dirent *)buf.dirent;
+>  		while (size > 0) {
+>  			offset = de->offset;
+> @@ -1920,7 +1916,6 @@ static __be32 nfsd_buffered_readdir(struct file *file, nfsd_filldir_t func,
+>  			size -= reclen;
+>  			de = (struct buffered_dirent *)((char *)de + reclen);
+>  		}
+> -		mutex_unlock(&dir_inode->i_mutex);
+>  		if (size > 0) /* We bailed out early */
+>  			break;
+>  
+> diff --git a/include/linux/namei.h b/include/linux/namei.h
+> index c8990779f0c3..bb3a2f7cca67 100644
+> --- a/include/linux/namei.h
+> +++ b/include/linux/namei.h
+> @@ -62,6 +62,7 @@ extern struct dentry *kern_path_locked(const char *, struct path *);
+>  extern int kern_path_mountpoint(int, const char *, struct path *, unsigned int);
+>  
+>  extern struct dentry *lookup_one_len(const char *, struct dentry *, int);
+> +extern struct dentry *lookup_one_len_unlocked(const char *, struct dentry *, int);
+>  
+>  extern int follow_down_one(struct path *);
+>  extern int follow_down(struct path *);
+> -- 
+> 1.9.3
+> 
