@@ -1,273 +1,64 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:56884 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:40593 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932400AbbFCPSU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 3 Jun 2015 11:18:20 -0400
-Date: Wed, 3 Jun 2015 11:18:19 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: NeilBrown <neilb@suse.de>
-Cc: Kinglong Mee <kinglongmee@gmail.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Al Viro <viro@zeniv.linux.org.uk>, linux-fsdevel@vger.kernel.org
-Subject: Re: [PATCH] nfsd: don't hold i_mutex over userspace upcalls
-Message-ID: <20150603151819.GA8441@fieldses.org>
-References: <20150430075225.21a71056@notabene.brown>
- <20150430213602.GB9509@fieldses.org>
- <20150501115326.51f5613a@notabene.brown>
- <20150504220130.GB16827@fieldses.org>
- <5548CBA3.9080608@gmail.com>
- <20150505141801.GB27106@fieldses.org>
- <20150505155203.GD27106@fieldses.org>
- <20150506082628.0dd049c7@notabene.brown>
- <20150508161558.GA18851@fieldses.org>
- <20150508200133.GC18851@fieldses.org>
+	id S1754544AbbFCPvp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 3 Jun 2015 11:51:45 -0400
+Date: Wed, 3 Jun 2015 11:51:43 -0400 (EDT)
+From: Benjamin Coddington <bcodding@redhat.com>
+To: Olga Kornievskaia <aglo@umich.edu>
+cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-nfs <linux-nfs@vger.kernel.org>
+Subject: Re: 4.0 NFS client in infinite loop in state recovery after getting
+ BAD_STATEID
+In-Reply-To: <CAN-5tyEGq0XNh8hE+3XsD0XG_4XGkeW1cyZvcw==dNTXgXTaAQ@mail.gmail.com>
+Message-ID: <alpine.OSX.2.19.9992.1506031149180.70615@dhcp-132.nfsv4bat.org>
+References: <CAN-5tyG8ukoGJATK1RA85xv9BDikfC1CPP0nc=-80h=BSGV6=w@mail.gmail.com> <alpine.OSX.2.19.9992.1505290942250.65323@planck.local> <CAN-5tyE2wepUkuBO=sWwkBpr+jfQzh1+c_QbNykLk=wy3A77UQ@mail.gmail.com>
+ <CAN-5tyEGq0XNh8hE+3XsD0XG_4XGkeW1cyZvcw==dNTXgXTaAQ@mail.gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20150508200133.GC18851@fieldses.org>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This passes my review, but it needs an ACK from Al or someone for the
-addition of the new lookup_one_len_unlocked (which is the same as
-lookup_one_len except that it takes the i_mutex itself when required
-instead of requiring the caller to).
+On Fri, 29 May 2015, Olga Kornievskaia wrote:
 
---b.
+> I meant to say 3.10.0-229. Mixing my RHEL6 and RHEL7 prefixes...
+>
+> On Fri, May 29, 2015 at 12:51 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
+> > On Fri, May 29, 2015 at 9:44 AM, Benjamin Coddington
+> > <bcodding@redhat.com> wrote:
+> >> On Thu, 7 May 2015, Olga Kornievskaia wrote:
+> >>
+> >>> Hi folks,
+> >>>
+> >>> Problem:
+> >>> The upstream nfs4.0 client has problem where it will go into an
+> >>> infinite loop of re-sending an OPEN when it's trying to recover from
+> >>> receiving a BAD_STATEID error on an IO operation such READ or WRITE.
+> >>>
+> >>> How to easily reproduce (by using fault injection):
+> >>> 1. Do nfs4.0 mount to a server.
+> >>> 2. Open a file such that the server gives you a write delegation.
+> >>> 3. Do a write. Have a server return a BAD_STATEID. One way to do so is
+> >>> by using a python proxy, nfs4proxy, and inject BAD_STATEID error on
+> >>> WRITE.
+> >>> 4. And off it goes with the loop.
+> >>
+> >> Hi Olga,
+> >>
+> >> I've been trying to reproduce it, and I'm frustratingly unable.  It sounds
+> >> fairly easy to produce..  What version of the client produces this?
+> >>
+> >
+> > Hi Ben,
+> >
+> > Problem exists in the upstream kernels as well but we noticed the
+> > problem on RHEL7.1 distro (RedHat's 2.6.32-229.el7 kernel I think).
 
-On Fri, May 08, 2015 at 04:01:33PM -0400, J. Bruce Fields wrote:
-> From: NeilBrown <neilb@suse.de>
-> 
-> We need information about exports when crossing mountpoints during
-> lookup or NFSv4 readdir.  If we don't already have that information
-> cached, we may have to ask (and wait for) rpc.mountd.
-> 
-> In both cases we currently hold the i_mutex on the parent of the
-> directory we're asking rpc.mountd about.  We've seen situations where
-> rpc.mountd performs some operation on that directory that tries to take
-> the i_mutex again, resulting in deadlock.
-> 
-> With some care, we may be able to avoid that in rpc.mountd.  But it
-> seems better just to avoid holding a mutex while waiting on userspace.
-> 
-> It appears that lookup_one_len is pretty much the only operation that
-> needs the i_mutex.  So we could just drop the i_mutex elsewhere and do
-> something like
-> 
-> 	mutex_lock()
-> 	lookup_one_len()
-> 	mutex_unlock()
-> 
-> In many cases though the lookup would have been cached and not required
-> the i_mutex, so it's more efficient to create a lookup_one_len() variant
-> that only takes the i_mutex when necessary.
-> 
-> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> ---
->  fs/namei.c            | 74 +++++++++++++++++++++++++++++++++++++++++++++++++++
->  fs/nfsd/nfs3xdr.c     |  2 +-
->  fs/nfsd/nfs4xdr.c     |  8 +++---
->  fs/nfsd/vfs.c         | 23 +++++++---------
->  include/linux/namei.h |  1 +
->  5 files changed, 89 insertions(+), 19 deletions(-)
-> 
-> Here's an updated patch.
-> 
-> diff --git a/fs/namei.c b/fs/namei.c
-> index 4a8d998b7274..8b866d79c5b7 100644
-> --- a/fs/namei.c
-> +++ b/fs/namei.c
-> @@ -2139,6 +2139,8 @@ static struct dentry *lookup_hash(struct nameidata *nd)
->   *
->   * Note that this routine is purely a helper for filesystem usage and should
->   * not be called by generic code.
-> + *
-> + * The caller must hold base->i_mutex.
->   */
->  struct dentry *lookup_one_len(const char *name, struct dentry *base, int len)
->  {
-> @@ -2182,6 +2184,78 @@ struct dentry *lookup_one_len(const char *name, struct dentry *base, int len)
->  }
->  EXPORT_SYMBOL(lookup_one_len);
->  
-> +/**
-> + * lookup_one_len_unlocked - filesystem helper to lookup single pathname component
-> + * @name:	pathname component to lookup
-> + * @base:	base directory to lookup from
-> + * @len:	maximum length @len should be interpreted to
-> + *
-> + * Note that this routine is purely a helper for filesystem usage and should
-> + * not be called by generic code.
-> + *
-> + * Unlike lookup_one_len, it should be called without the parent
-> + * i_mutex held, and will take the i_mutex itself if necessary.
-> + */
-> +struct dentry *lookup_one_len_unlocked(const char *name,
-> +				       struct dentry *base, int len)
-> +{
-> +	struct qstr this;
-> +	unsigned int c;
-> +	int err;
-> +	struct dentry *ret;
-> +
-> +	this.name = name;
-> +	this.len = len;
-> +	this.hash = full_name_hash(name, len);
-> +	if (!len)
-> +		return ERR_PTR(-EACCES);
-> +
-> +	if (unlikely(name[0] == '.')) {
-> +		if (len < 2 || (len == 2 && name[1] == '.'))
-> +			return ERR_PTR(-EACCES);
-> +	}
-> +
-> +	while (len--) {
-> +		c = *(const unsigned char *)name++;
-> +		if (c == '/' || c == '\0')
-> +			return ERR_PTR(-EACCES);
-> +	}
-> +	/*
-> +	 * See if the low-level filesystem might want
-> +	 * to use its own hash..
-> +	 */
-> +	if (base->d_flags & DCACHE_OP_HASH) {
-> +		int err = base->d_op->d_hash(base, &this);
-> +		if (err < 0)
-> +			return ERR_PTR(err);
-> +	}
-> +
-> +	err = inode_permission(base->d_inode, MAY_EXEC);
-> +	if (err)
-> +		return ERR_PTR(err);
-> +
-> +	ret = __d_lookup(base, &this);
-> +	if (ret)
-> +		return ret;
-> +	/*
-> +	 * __d_lookup() is used to try to get a quick answer and avoid the
-> +	 * mutex.  A false-negative does no harm.
-> +	 */
-> +	ret = __d_lookup(base, &this);
-> +	if (ret && ret->d_flags & DCACHE_OP_REVALIDATE) {
-> +		dput(ret);
-> +		ret = NULL;
-> +	}
-> +	if (ret)
-> +		return ret;
-> +
-> +	mutex_lock(&base->d_inode->i_mutex);
-> +	ret =  __lookup_hash(&this, base, 0);
-> +	mutex_unlock(&base->d_inode->i_mutex);
-> +	return ret;
-> +}
-> +EXPORT_SYMBOL(lookup_one_len_unlocked);
-> +
->  int user_path_at_empty(int dfd, const char __user *name, unsigned flags,
->  		 struct path *path, int *empty)
->  {
-> diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
-> index f6e7cbabac5a..01dcd494f781 100644
-> --- a/fs/nfsd/nfs3xdr.c
-> +++ b/fs/nfsd/nfs3xdr.c
-> @@ -823,7 +823,7 @@ compose_entry_fh(struct nfsd3_readdirres *cd, struct svc_fh *fhp,
->  		} else
->  			dchild = dget(dparent);
->  	} else
-> -		dchild = lookup_one_len(name, dparent, namlen);
-> +		dchild = lookup_one_len_unlocked(name, dparent, namlen);
->  	if (IS_ERR(dchild))
->  		return rv;
->  	if (d_mountpoint(dchild))
-> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-> index 158badf945df..2c1adaa0bd2f 100644
-> --- a/fs/nfsd/nfs4xdr.c
-> +++ b/fs/nfsd/nfs4xdr.c
-> @@ -2804,14 +2804,14 @@ nfsd4_encode_dirent_fattr(struct xdr_stream *xdr, struct nfsd4_readdir *cd,
->  	__be32 nfserr;
->  	int ignore_crossmnt = 0;
->  
-> -	dentry = lookup_one_len(name, cd->rd_fhp->fh_dentry, namlen);
-> +	dentry = lookup_one_len_unlocked(name, cd->rd_fhp->fh_dentry, namlen);
->  	if (IS_ERR(dentry))
->  		return nfserrno(PTR_ERR(dentry));
->  	if (d_really_is_negative(dentry)) {
->  		/*
-> -		 * nfsd_buffered_readdir drops the i_mutex between
-> -		 * readdir and calling this callback, leaving a window
-> -		 * where this directory entry could have gone away.
-> +		 * we're not holding the i_mutex here, so there's
-> +		 * a window where this directory entry could have gone
-> +		 * away.
->  		 */
->  		dput(dentry);
->  		return nfserr_noent;
-> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-> index a30e79900086..6d5b33458e91 100644
-> --- a/fs/nfsd/vfs.c
-> +++ b/fs/nfsd/vfs.c
-> @@ -217,10 +217,16 @@ nfsd_lookup_dentry(struct svc_rqst *rqstp, struct svc_fh *fhp,
->  		host_err = PTR_ERR(dentry);
->  		if (IS_ERR(dentry))
->  			goto out_nfserr;
-> -		/*
-> -		 * check if we have crossed a mount point ...
-> -		 */
->  		if (nfsd_mountpoint(dentry, exp)) {
-> +			/*
-> +			 * We don't need the i_mutex after all.  It's
-> +			 * still possible we could open this (regular
-> +			 * files can be mountpoints too), but the
-> +			 * i_mutex is just there to prevent renames of
-> +			 * something that we might be about to delegate,
-> +			 * and a mountpoint won't be renamed:
-> +			 */
-> +			fh_unlock(fhp);
->  			if ((host_err = nfsd_cross_mnt(rqstp, &dentry, &exp))) {
->  				dput(dentry);
->  				goto out_nfserr;
-> @@ -1876,7 +1882,6 @@ static __be32 nfsd_buffered_readdir(struct file *file, nfsd_filldir_t func,
->  	offset = *offsetp;
->  
->  	while (1) {
-> -		struct inode *dir_inode = file_inode(file);
->  		unsigned int reclen;
->  
->  		cdp->err = nfserr_eof; /* will be cleared on successful read */
-> @@ -1895,15 +1900,6 @@ static __be32 nfsd_buffered_readdir(struct file *file, nfsd_filldir_t func,
->  		if (!size)
->  			break;
->  
-> -		/*
-> -		 * Various filldir functions may end up calling back into
-> -		 * lookup_one_len() and the file system's ->lookup() method.
-> -		 * These expect i_mutex to be held, as it would within readdir.
-> -		 */
-> -		host_err = mutex_lock_killable(&dir_inode->i_mutex);
-> -		if (host_err)
-> -			break;
-> -
->  		de = (struct buffered_dirent *)buf.dirent;
->  		while (size > 0) {
->  			offset = de->offset;
-> @@ -1920,7 +1916,6 @@ static __be32 nfsd_buffered_readdir(struct file *file, nfsd_filldir_t func,
->  			size -= reclen;
->  			de = (struct buffered_dirent *)((char *)de + reclen);
->  		}
-> -		mutex_unlock(&dir_inode->i_mutex);
->  		if (size > 0) /* We bailed out early */
->  			break;
->  
-> diff --git a/include/linux/namei.h b/include/linux/namei.h
-> index c8990779f0c3..bb3a2f7cca67 100644
-> --- a/include/linux/namei.h
-> +++ b/include/linux/namei.h
-> @@ -62,6 +62,7 @@ extern struct dentry *kern_path_locked(const char *, struct path *);
->  extern int kern_path_mountpoint(int, const char *, struct path *, unsigned int);
->  
->  extern struct dentry *lookup_one_len(const char *, struct dentry *, int);
-> +extern struct dentry *lookup_one_len_unlocked(const char *, struct dentry *, int);
->  
->  extern int follow_down_one(struct path *);
->  extern int follow_down(struct path *);
-> -- 
-> 1.9.3
-> 
+I've now been able to reproduce this upstream, and 7.1.. and just today on a
+6.7 client.  The 6.7 client seems to self-limit the OPEN storm to around 7k
+OPENs..  That's interesting enough to look into further..
+
+Taking this issue to the BZs for now, just wanted to let the list know that
+we see this now, too.
+
+Ben
