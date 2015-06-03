@@ -1,59 +1,70 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:57016 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753016AbbFCTrm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 3 Jun 2015 15:47:42 -0400
-Date: Wed, 3 Jun 2015 15:47:41 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v2 08/10] svcrdma: Add backward direction service for
- RPC/RDMA transport
-Message-ID: <20150603194741.GC9627@fieldses.org>
-References: <20150526174401.7061.43137.stgit@klimt.1015granger.net>
- <20150526174945.7061.58026.stgit@klimt.1015granger.net>
- <20150601202641.GD26972@fieldses.org>
- <C2428536-0784-4C42-B678-F2173C6CAB89@oracle.com>
- <20150602153054.GB32413@fieldses.org>
- <4939D8DF-4AD0-477F-B06C-0E27F015BBE0@oracle.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <4939D8DF-4AD0-477F-B06C-0E27F015BBE0@oracle.com>
+Received: from mail-ig0-f173.google.com ([209.85.213.173]:35255 "EHLO
+	mail-ig0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754377AbbFCUOi (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 3 Jun 2015 16:14:38 -0400
+Received: by igbyr2 with SMTP id yr2so122428434igb.0
+        for <linux-nfs@vger.kernel.org>; Wed, 03 Jun 2015 13:14:37 -0700 (PDT)
+From: Jeff Layton <jlayton@poochiereds.net>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: linux-nfs@vger.kernel.org, linux-mm@kvack.org,
+        linux-kernel@vger.kernel.org, Mel Gorman <mgorman@suse.de>,
+        Jerome Marchand <jmarchan@redhat.com>,
+        Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH v3 0/5] sunrpc: clean up "swapper" xprt handling
+Date: Wed,  3 Jun 2015 16:14:24 -0400
+Message-Id: <1433362469-2615-1-git-send-email-jeff.layton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jun 03, 2015 at 03:49:13PM -0400, Chuck Lever wrote:
-> 
-> On Jun 2, 2015, at 11:30 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> 
-> > On Mon, Jun 01, 2015 at 04:45:26PM -0400, Chuck Lever wrote:
-> >> 
-> >> On Jun 1, 2015, at 4:26 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> >> 
-> >>> On Tue, May 26, 2015 at 01:49:45PM -0400, Chuck Lever wrote:
-> >>>> Introduce some pre-requisite infrastructure needed for handling
-> >>>> RPC/RDMA bi-direction on the client side.
-> >>>> 
-> >>>> On NFSv4.1 mount points, the client uses this transport endpoint to
-> >>>> receive backward direction calls and route replies back to the
-> >>>> NFS server.
-> >>> 
-> >>> Am I missing something, or is this pretty much dead code for now?
-> >>> 
-> >>> In which case, I'd rather wait on it.
-> >> 
-> >> When I submit the client-side backchannel patches, should I submit
-> >> this patch through Anna and request your Acked-by?
-> > 
-> > Sure, feel free to add my Acked-by.
-> > 
-> > Or I guess I won't worry too much about some dead code if the
-> > client-side patches are coming soon.
-> 
-> There are more pre-requisites on the client than there are on the server.
-> I anticipate it will be at least two more merge windows before the client
-> will be ready to merge backchannel support.
-> 
-> I’ll add this patch back into the client backchannel series.
+v3:
+- make "enable" operations return -EINVAL when CONFIG_NFS_SWAP is
+  disabled.
 
-OK.--b.
+v2:
+- don't take xprt lock unless we need to manipulate the memalloc flag
+- add new xprt operations for swap enable/disable
+
+This series is a (small) overhaul of the swap-over-NFS code. The main
+impetus is to fix the problem reported by Jerome Marchand. We currently
+hold the rcu_read_lock when calling xs_swapper and that's just plain
+wrong. The first patch in this series should fix that problem, and also
+clean up a bit of a layering violation.
+
+The other focus of this set is to change how the swapper refcounting
+works. Right now, it's only tracked in the rpc_xprt, and there seem to
+be some gaps in its coverage -- places where we should taking or
+dropping references but aren't. This changes it so that the clnt tracks
+the number of swapfiles that it has, and the xprt tracks the number of
+"swappable" clients.
+
+It also ensures that we only call sk_set_memalloc once per socket. I
+believe that's the correct thing to do as the main reason for the
+memalloc_socks counter is to track whether we have _any_
+memalloc-enabled sockets.
+
+There is still some work to be done here as I think there remains some
+potential for races between swapon/swapoff, and reconnect or migration
+events. That will take some careful thought that I haven't the time to
+spend on at the moment. I don't think this set will make those races
+any worse though.
+
+Jeff Layton (5):
+  sunrpc: keep a count of swapfiles associated with the rpc_clnt
+  sunrpc: make xprt->swapper an atomic_t
+  sunrpc: if we're closing down a socket, clear memalloc on it first
+  sunrpc: lock xprt before trying to set memalloc on the sockets
+  sunrpc: turn swapper_enable/disable functions into rpc_xprt_ops
+
+ fs/nfs/file.c                   | 15 +------
+ include/linux/sunrpc/clnt.h     |  1 +
+ include/linux/sunrpc/sched.h    | 16 ++++++++
+ include/linux/sunrpc/xprt.h     | 17 +++++++-
+ net/sunrpc/clnt.c               | 67 +++++++++++++++++++++++++++-----
+ net/sunrpc/xprtrdma/transport.c | 15 ++++++-
+ net/sunrpc/xprtsock.c           | 86 +++++++++++++++++++++++++++++++++--------
+ 7 files changed, 175 insertions(+), 42 deletions(-)
+
+-- 
+2.4.2
+
