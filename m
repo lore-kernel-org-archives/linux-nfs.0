@@ -1,70 +1,146 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f173.google.com ([209.85.213.173]:35255 "EHLO
-	mail-ig0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754377AbbFCUOi (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 3 Jun 2015 16:14:38 -0400
-Received: by igbyr2 with SMTP id yr2so122428434igb.0
-        for <linux-nfs@vger.kernel.org>; Wed, 03 Jun 2015 13:14:37 -0700 (PDT)
+Received: from mail-ie0-f173.google.com ([209.85.223.173]:34735 "EHLO
+	mail-ie0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755190AbbFCUOm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 3 Jun 2015 16:14:42 -0400
+Received: by iecwk5 with SMTP id wk5so21183834iec.1
+        for <linux-nfs@vger.kernel.org>; Wed, 03 Jun 2015 13:14:42 -0700 (PDT)
 From: Jeff Layton <jlayton@poochiereds.net>
 To: Trond Myklebust <trond.myklebust@primarydata.com>
 Cc: linux-nfs@vger.kernel.org, linux-mm@kvack.org,
         linux-kernel@vger.kernel.org, Mel Gorman <mgorman@suse.de>,
         Jerome Marchand <jmarchan@redhat.com>,
         Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH v3 0/5] sunrpc: clean up "swapper" xprt handling
-Date: Wed,  3 Jun 2015 16:14:24 -0400
-Message-Id: <1433362469-2615-1-git-send-email-jeff.layton@primarydata.com>
+Subject: [PATCH v3 2/5] sunrpc: make xprt->swapper an atomic_t
+Date: Wed,  3 Jun 2015 16:14:26 -0400
+Message-Id: <1433362469-2615-3-git-send-email-jeff.layton@primarydata.com>
+In-Reply-To: <1433362469-2615-1-git-send-email-jeff.layton@primarydata.com>
+References: <1433362469-2615-1-git-send-email-jeff.layton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-v3:
-- make "enable" operations return -EINVAL when CONFIG_NFS_SWAP is
-  disabled.
+Split xs_swapper into enable/disable functions and eliminate the
+"enable" flag.
 
-v2:
-- don't take xprt lock unless we need to manipulate the memalloc flag
-- add new xprt operations for swap enable/disable
+Currently, it's racy if you have multiple swapon/swapoff operations
+running in parallel over the same xprt. Also fix it so that we only
+set it to a memalloc socket on a 0->1 transition and only clear it
+on a 1->0 transition.
 
-This series is a (small) overhaul of the swap-over-NFS code. The main
-impetus is to fix the problem reported by Jerome Marchand. We currently
-hold the rcu_read_lock when calling xs_swapper and that's just plain
-wrong. The first patch in this series should fix that problem, and also
-clean up a bit of a layering violation.
+Cc: Mel Gorman <mgorman@suse.de>
+Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
+---
+ include/linux/sunrpc/xprt.h |  5 +++--
+ net/sunrpc/clnt.c           |  4 ++--
+ net/sunrpc/xprtsock.c       | 38 +++++++++++++++++++++++++-------------
+ 3 files changed, 30 insertions(+), 17 deletions(-)
 
-The other focus of this set is to change how the swapper refcounting
-works. Right now, it's only tracked in the rpc_xprt, and there seem to
-be some gaps in its coverage -- places where we should taking or
-dropping references but aren't. This changes it so that the clnt tracks
-the number of swapfiles that it has, and the xprt tracks the number of
-"swappable" clients.
-
-It also ensures that we only call sk_set_memalloc once per socket. I
-believe that's the correct thing to do as the main reason for the
-memalloc_socks counter is to track whether we have _any_
-memalloc-enabled sockets.
-
-There is still some work to be done here as I think there remains some
-potential for races between swapon/swapoff, and reconnect or migration
-events. That will take some careful thought that I haven't the time to
-spend on at the moment. I don't think this set will make those races
-any worse though.
-
-Jeff Layton (5):
-  sunrpc: keep a count of swapfiles associated with the rpc_clnt
-  sunrpc: make xprt->swapper an atomic_t
-  sunrpc: if we're closing down a socket, clear memalloc on it first
-  sunrpc: lock xprt before trying to set memalloc on the sockets
-  sunrpc: turn swapper_enable/disable functions into rpc_xprt_ops
-
- fs/nfs/file.c                   | 15 +------
- include/linux/sunrpc/clnt.h     |  1 +
- include/linux/sunrpc/sched.h    | 16 ++++++++
- include/linux/sunrpc/xprt.h     | 17 +++++++-
- net/sunrpc/clnt.c               | 67 +++++++++++++++++++++++++++-----
- net/sunrpc/xprtrdma/transport.c | 15 ++++++-
- net/sunrpc/xprtsock.c           | 86 +++++++++++++++++++++++++++++++++--------
- 7 files changed, 175 insertions(+), 42 deletions(-)
-
+diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+index 8b93ef53df3c..26b1624128ec 100644
+--- a/include/linux/sunrpc/xprt.h
++++ b/include/linux/sunrpc/xprt.h
+@@ -180,7 +180,7 @@ struct rpc_xprt {
+ 	atomic_t		num_reqs;	/* total slots */
+ 	unsigned long		state;		/* transport state */
+ 	unsigned char		resvport   : 1; /* use a reserved port */
+-	unsigned int		swapper;	/* we're swapping over this
++	atomic_t		swapper;	/* we're swapping over this
+ 						   transport */
+ 	unsigned int		bind_index;	/* bind function index */
+ 
+@@ -345,7 +345,8 @@ void			xprt_release_rqst_cong(struct rpc_task *task);
+ void			xprt_disconnect_done(struct rpc_xprt *xprt);
+ void			xprt_force_disconnect(struct rpc_xprt *xprt);
+ void			xprt_conditional_disconnect(struct rpc_xprt *xprt, unsigned int cookie);
+-int			xs_swapper(struct rpc_xprt *xprt, int enable);
++int			xs_swapper_enable(struct rpc_xprt *xprt);
++void			xs_swapper_disable(struct rpc_xprt *xprt);
+ 
+ bool			xprt_lock_connect(struct rpc_xprt *, struct rpc_task *, void *);
+ void			xprt_unlock_connect(struct rpc_xprt *, void *);
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 383cb778179f..804a75e71e84 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -2492,7 +2492,7 @@ retry:
+ 			goto retry;
+ 		}
+ 
+-		ret = xs_swapper(xprt, 1);
++		ret = xs_swapper_enable(xprt);
+ 		xprt_put(xprt);
+ 	}
+ 	return ret;
+@@ -2519,7 +2519,7 @@ retry:
+ 			goto retry;
+ 		}
+ 
+-		xs_swapper(xprt, 0);
++		xs_swapper_disable(xprt);
+ 		xprt_put(xprt);
+ 	}
+ }
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 92d198fd6820..3f34dbcbec6a 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -1966,31 +1966,43 @@ static void xs_set_memalloc(struct rpc_xprt *xprt)
+ 	struct sock_xprt *transport = container_of(xprt, struct sock_xprt,
+ 			xprt);
+ 
+-	if (xprt->swapper)
++	if (atomic_read(&xprt->swapper))
+ 		sk_set_memalloc(transport->inet);
+ }
+ 
+ /**
+- * xs_swapper - Tag this transport as being used for swap.
++ * xs_swapper_enable - Tag this transport as being used for swap.
+  * @xprt: transport to tag
+- * @enable: enable/disable
+  *
++ * Take a reference to this transport on behalf of the rpc_clnt, and
++ * optionally mark it for swapping if it wasn't already.
+  */
+-int xs_swapper(struct rpc_xprt *xprt, int enable)
++int
++xs_swapper_enable(struct rpc_xprt *xprt)
+ {
+ 	struct sock_xprt *transport = container_of(xprt, struct sock_xprt,
+ 			xprt);
+-	int err = 0;
+ 
+-	if (enable) {
+-		xprt->swapper++;
+-		xs_set_memalloc(xprt);
+-	} else if (xprt->swapper) {
+-		xprt->swapper--;
+-		sk_clear_memalloc(transport->inet);
+-	}
++	if (atomic_inc_return(&xprt->swapper) == 1)
++		sk_set_memalloc(transport->inet);
++	return 0;
++}
+ 
+-	return err;
++/**
++ * xs_swapper_disable - Untag this transport as being used for swap.
++ * @xprt: transport to tag
++ *
++ * Drop a "swapper" reference to this xprt on behalf of the rpc_clnt. If the
++ * swapper refcount goes to 0, untag the socket as a memalloc socket.
++ */
++void
++xs_swapper_disable(struct rpc_xprt *xprt)
++{
++	struct sock_xprt *transport = container_of(xprt, struct sock_xprt,
++			xprt);
++
++	if (atomic_dec_and_test(&xprt->swapper))
++		sk_clear_memalloc(transport->inet);
+ }
+ #else
+ static void xs_set_memalloc(struct rpc_xprt *xprt)
 -- 
 2.4.2
 
