@@ -1,246 +1,245 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ie0-f176.google.com ([209.85.223.176]:34707 "EHLO
-	mail-ie0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754787AbbFCUOl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 3 Jun 2015 16:14:41 -0400
-Received: by iecwk5 with SMTP id wk5so21183083iec.1
-        for <linux-nfs@vger.kernel.org>; Wed, 03 Jun 2015 13:14:39 -0700 (PDT)
-From: Jeff Layton <jlayton@poochiereds.net>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: linux-nfs@vger.kernel.org, linux-mm@kvack.org,
-        linux-kernel@vger.kernel.org, Mel Gorman <mgorman@suse.de>,
-        Jerome Marchand <jmarchan@redhat.com>,
-        Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH v3 1/5] sunrpc: keep a count of swapfiles associated with the rpc_clnt
-Date: Wed,  3 Jun 2015 16:14:25 -0400
-Message-Id: <1433362469-2615-2-git-send-email-jeff.layton@primarydata.com>
-In-Reply-To: <1433362469-2615-1-git-send-email-jeff.layton@primarydata.com>
-References: <1433362469-2615-1-git-send-email-jeff.layton@primarydata.com>
+Received: from userp1040.oracle.com ([156.151.31.81]:45297 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753607AbbFCU0m convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 3 Jun 2015 16:26:42 -0400
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
+Subject: Re: [PATCH v3 5/5] sunrpc: turn swapper_enable/disable functions into rpc_xprt_ops
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1433362469-2615-6-git-send-email-jeff.layton@primarydata.com>
+Date: Wed, 3 Jun 2015 16:28:52 -0400
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>, linux-mm@kvack.org,
+        LKML Kernel <linux-kernel@vger.kernel.org>,
+        Mel Gorman <mgorman@suse.de>, Jerome Marchand <jmarchan@redhat.com>
+Message-Id: <FE4614A3-C538-48E0-A094-C004899A0BBD@oracle.com>
+References: <1433362469-2615-1-git-send-email-jeff.layton@primarydata.com> <1433362469-2615-6-git-send-email-jeff.layton@primarydata.com>
+To: Jeff Layton <jlayton@poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Jerome reported seeing a warning pop when working with a swapfile on
-NFS. The nfs_swap_activate can end up calling sk_set_memalloc while
-holding the rcu_read_lock and that function can sleep.
 
-To fix that, we need to take a reference to the xprt while holding the
-rcu_read_lock, set the socket up for swapping and then drop that
-reference. But, xprt_put is not exported and having NFS deal with the
-underlying xprt is a bit of layering violation anyway.
+On Jun 3, 2015, at 4:14 PM, Jeff Layton <jlayton@poochiereds.net> wrote:
 
-Fix this by adding a set of activate/deactivate functions that take a
-rpc_clnt pointer instead of an rpc_xprt, and have nfs_swap_activate and
-nfs_swap_deactivate call those.
+> RDMA xprts don't have a sock_xprt, but an rdma_xprt, so the
+> xs_swapper_enable/disable functions will likely oops when fed an RDMA
+> xprt. Turn these functions into rpc_xprt_ops so that that doesn't
+> occur. For now the RDMA versions are no-ops that just return -EINVAL
+> on an attempt to swapon.
+> 
+> Cc: Chuck Lever <chuck.lever@oracle.com>
+> Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
 
-Also, add a per-rpc_clnt atomic counter to keep track of the number of
-active swapfiles associated with it. When the counter does a 0->1
-transition, we enable swapping on the xprt, when we do a 1->0 transition
-we disable swapping on it.
+Thanks, Jeff, that works for me.
 
-This also allows us to be a bit more selective with the RPC_TASK_SWAPPER
-flag. If non-swapper and swapper clnts are sharing a xprt, then we only
-need to flag the tasks from the swapper clnt with that flag.
+Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
 
-Acked-by: Mel Gorman <mgorman@suse.de>
-Reported-by: Jerome Marchand <jmarchan@redhat.com>
-Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
----
- fs/nfs/file.c                | 15 ++--------
- include/linux/sunrpc/clnt.h  |  1 +
- include/linux/sunrpc/sched.h | 16 +++++++++++
- net/sunrpc/clnt.c            | 67 ++++++++++++++++++++++++++++++++++++++------
- net/sunrpc/xprtsock.c        |  3 +-
- 5 files changed, 78 insertions(+), 24 deletions(-)
 
-diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index 8b8d83a526ce..cc4fa1ed61fc 100644
---- a/fs/nfs/file.c
-+++ b/fs/nfs/file.c
-@@ -555,31 +555,22 @@ static int nfs_launder_page(struct page *page)
- 	return nfs_wb_page(inode, page);
- }
- 
--#ifdef CONFIG_NFS_SWAP
- static int nfs_swap_activate(struct swap_info_struct *sis, struct file *file,
- 						sector_t *span)
- {
--	int ret;
- 	struct rpc_clnt *clnt = NFS_CLIENT(file->f_mapping->host);
- 
- 	*span = sis->pages;
- 
--	rcu_read_lock();
--	ret = xs_swapper(rcu_dereference(clnt->cl_xprt), 1);
--	rcu_read_unlock();
--
--	return ret;
-+	return rpc_clnt_swap_activate(clnt);
- }
- 
- static void nfs_swap_deactivate(struct file *file)
- {
- 	struct rpc_clnt *clnt = NFS_CLIENT(file->f_mapping->host);
- 
--	rcu_read_lock();
--	xs_swapper(rcu_dereference(clnt->cl_xprt), 0);
--	rcu_read_unlock();
-+	rpc_clnt_swap_deactivate(clnt);
- }
--#endif
- 
- const struct address_space_operations nfs_file_aops = {
- 	.readpage = nfs_readpage,
-@@ -596,10 +587,8 @@ const struct address_space_operations nfs_file_aops = {
- 	.launder_page = nfs_launder_page,
- 	.is_dirty_writeback = nfs_check_dirty_writeback,
- 	.error_remove_page = generic_error_remove_page,
--#ifdef CONFIG_NFS_SWAP
- 	.swap_activate = nfs_swap_activate,
- 	.swap_deactivate = nfs_swap_deactivate,
--#endif
- };
- 
- /*
-diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-index 598ba80ec30c..131032f15cc1 100644
---- a/include/linux/sunrpc/clnt.h
-+++ b/include/linux/sunrpc/clnt.h
-@@ -56,6 +56,7 @@ struct rpc_clnt {
- 	struct rpc_rtt *	cl_rtt;		/* RTO estimator data */
- 	const struct rpc_timeout *cl_timeout;	/* Timeout strategy */
- 
-+	atomic_t		cl_swapper;	/* swapfile count */
- 	int			cl_nodelen;	/* nodename length */
- 	char 			cl_nodename[UNX_MAXNODENAME+1];
- 	struct rpc_pipe_dir_head cl_pipedir_objects;
-diff --git a/include/linux/sunrpc/sched.h b/include/linux/sunrpc/sched.h
-index 5f1e6bd4c316..3cc54ace99dd 100644
---- a/include/linux/sunrpc/sched.h
-+++ b/include/linux/sunrpc/sched.h
-@@ -269,4 +269,20 @@ static inline void rpc_assign_waitqueue_name(struct rpc_wait_queue *q,
- }
- #endif
- 
-+#if IS_ENABLED(CONFIG_SUNRPC_SWAP)
-+int rpc_clnt_swap_activate(struct rpc_clnt *clnt);
-+void rpc_clnt_swap_deactivate(struct rpc_clnt *clnt);
-+#else
-+static inline int
-+rpc_clnt_swap_activate(struct rpc_clnt *clnt)
-+{
-+	return -EINVAL;
-+}
-+
-+static inline void
-+rpc_clnt_swap_deactivate(struct rpc_clnt *clnt)
-+{
-+}
-+#endif /* CONFIG_SUNRPC_SWAP */
-+
- #endif /* _LINUX_SUNRPC_SCHED_H_ */
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index e6ce1517367f..383cb778179f 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -891,15 +891,8 @@ void rpc_task_set_client(struct rpc_task *task, struct rpc_clnt *clnt)
- 			task->tk_flags |= RPC_TASK_SOFT;
- 		if (clnt->cl_noretranstimeo)
- 			task->tk_flags |= RPC_TASK_NO_RETRANS_TIMEOUT;
--		if (sk_memalloc_socks()) {
--			struct rpc_xprt *xprt;
--
--			rcu_read_lock();
--			xprt = rcu_dereference(clnt->cl_xprt);
--			if (xprt->swapper)
--				task->tk_flags |= RPC_TASK_SWAPPER;
--			rcu_read_unlock();
--		}
-+		if (atomic_read(&clnt->cl_swapper))
-+			task->tk_flags |= RPC_TASK_SWAPPER;
- 		/* Add to the client's list of all tasks */
- 		spin_lock(&clnt->cl_lock);
- 		list_add_tail(&task->tk_task, &clnt->cl_tasks);
-@@ -2476,3 +2469,59 @@ void rpc_show_tasks(struct net *net)
- 	spin_unlock(&sn->rpc_client_lock);
- }
- #endif
-+
-+#if IS_ENABLED(CONFIG_SUNRPC_SWAP)
-+int
-+rpc_clnt_swap_activate(struct rpc_clnt *clnt)
-+{
-+	int ret = 0;
-+	struct rpc_xprt	*xprt;
-+
-+	if (atomic_inc_return(&clnt->cl_swapper) == 1) {
-+retry:
-+		rcu_read_lock();
-+		xprt = xprt_get(rcu_dereference(clnt->cl_xprt));
-+		rcu_read_unlock();
-+		if (!xprt) {
-+			/*
-+			 * If we didn't get a reference, then we likely are
-+			 * racing with a migration event. Wait for a grace
-+			 * period and try again.
-+			 */
-+			synchronize_rcu();
-+			goto retry;
-+		}
-+
-+		ret = xs_swapper(xprt, 1);
-+		xprt_put(xprt);
-+	}
-+	return ret;
-+}
-+EXPORT_SYMBOL_GPL(rpc_clnt_swap_activate);
-+
-+void
-+rpc_clnt_swap_deactivate(struct rpc_clnt *clnt)
-+{
-+	struct rpc_xprt	*xprt;
-+
-+	if (atomic_dec_if_positive(&clnt->cl_swapper) == 0) {
-+retry:
-+		rcu_read_lock();
-+		xprt = xprt_get(rcu_dereference(clnt->cl_xprt));
-+		rcu_read_unlock();
-+		if (!xprt) {
-+			/*
-+			 * If we didn't get a reference, then we likely are
-+			 * racing with a migration event. Wait for a grace
-+			 * period and try again.
-+			 */
-+			synchronize_rcu();
-+			goto retry;
-+		}
-+
-+		xs_swapper(xprt, 0);
-+		xprt_put(xprt);
-+	}
-+}
-+EXPORT_SYMBOL_GPL(rpc_clnt_swap_deactivate);
-+#endif /* CONFIG_SUNRPC_SWAP */
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 66891e32c5e3..92d198fd6820 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -1960,7 +1960,7 @@ static void xs_local_connect(struct rpc_xprt *xprt, struct rpc_task *task)
- 		msleep_interruptible(15000);
- }
- 
--#ifdef CONFIG_SUNRPC_SWAP
-+#if IS_ENABLED(CONFIG_SUNRPC_SWAP)
- static void xs_set_memalloc(struct rpc_xprt *xprt)
- {
- 	struct sock_xprt *transport = container_of(xprt, struct sock_xprt,
-@@ -1992,7 +1992,6 @@ int xs_swapper(struct rpc_xprt *xprt, int enable)
- 
- 	return err;
- }
--EXPORT_SYMBOL_GPL(xs_swapper);
- #else
- static void xs_set_memalloc(struct rpc_xprt *xprt)
- {
--- 
-2.4.2
+> ---
+> include/linux/sunrpc/xprt.h     | 16 ++++++++++++++--
+> net/sunrpc/clnt.c               |  4 ++--
+> net/sunrpc/xprtrdma/transport.c | 15 ++++++++++++++-
+> net/sunrpc/xprtsock.c           | 31 +++++++++++++++++++++++++------
+> 4 files changed, 55 insertions(+), 11 deletions(-)
+> 
+> diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+> index 26b1624128ec..7eb58610eb94 100644
+> --- a/include/linux/sunrpc/xprt.h
+> +++ b/include/linux/sunrpc/xprt.h
+> @@ -133,6 +133,8 @@ struct rpc_xprt_ops {
+> 	void		(*close)(struct rpc_xprt *xprt);
+> 	void		(*destroy)(struct rpc_xprt *xprt);
+> 	void		(*print_stats)(struct rpc_xprt *xprt, struct seq_file *seq);
+> +	int		(*enable_swap)(struct rpc_xprt *xprt);
+> +	void		(*disable_swap)(struct rpc_xprt *xprt);
+> };
+> 
+> /*
+> @@ -327,6 +329,18 @@ static inline __be32 *xprt_skip_transport_header(struct rpc_xprt *xprt, __be32 *
+> 	return p + xprt->tsh_size;
+> }
+> 
+> +static inline int
+> +xprt_enable_swap(struct rpc_xprt *xprt)
+> +{
+> +	return xprt->ops->enable_swap(xprt);
+> +}
+> +
+> +static inline void
+> +xprt_disable_swap(struct rpc_xprt *xprt)
+> +{
+> +	xprt->ops->disable_swap(xprt);
+> +}
+> +
+> /*
+>  * Transport switch helper functions
+>  */
+> @@ -345,8 +359,6 @@ void			xprt_release_rqst_cong(struct rpc_task *task);
+> void			xprt_disconnect_done(struct rpc_xprt *xprt);
+> void			xprt_force_disconnect(struct rpc_xprt *xprt);
+> void			xprt_conditional_disconnect(struct rpc_xprt *xprt, unsigned int cookie);
+> -int			xs_swapper_enable(struct rpc_xprt *xprt);
+> -void			xs_swapper_disable(struct rpc_xprt *xprt);
+> 
+> bool			xprt_lock_connect(struct rpc_xprt *, struct rpc_task *, void *);
+> void			xprt_unlock_connect(struct rpc_xprt *, void *);
+> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+> index 804a75e71e84..60d1835edb26 100644
+> --- a/net/sunrpc/clnt.c
+> +++ b/net/sunrpc/clnt.c
+> @@ -2492,7 +2492,7 @@ retry:
+> 			goto retry;
+> 		}
+> 
+> -		ret = xs_swapper_enable(xprt);
+> +		ret = xprt_enable_swap(xprt);
+> 		xprt_put(xprt);
+> 	}
+> 	return ret;
+> @@ -2519,7 +2519,7 @@ retry:
+> 			goto retry;
+> 		}
+> 
+> -		xs_swapper_disable(xprt);
+> +		xprt_disable_swap(xprt);
+> 		xprt_put(xprt);
+> 	}
+> }
+> diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+> index 54f23b1be986..ebf6fe759f0e 100644
+> --- a/net/sunrpc/xprtrdma/transport.c
+> +++ b/net/sunrpc/xprtrdma/transport.c
+> @@ -682,6 +682,17 @@ static void xprt_rdma_print_stats(struct rpc_xprt *xprt, struct seq_file *seq)
+> 	   r_xprt->rx_stats.bad_reply_count);
+> }
+> 
+> +static int
+> +xprt_rdma_enable_swap(struct rpc_xprt *xprt)
+> +{
+> +	return -EINVAL;
+> +}
+> +
+> +static void
+> +xprt_rdma_disable_swap(struct rpc_xprt *xprt)
+> +{
+> +}
+> +
+> /*
+>  * Plumbing for rpc transport switch and kernel module
+>  */
+> @@ -700,7 +711,9 @@ static struct rpc_xprt_ops xprt_rdma_procs = {
+> 	.send_request		= xprt_rdma_send_request,
+> 	.close			= xprt_rdma_close,
+> 	.destroy		= xprt_rdma_destroy,
+> -	.print_stats		= xprt_rdma_print_stats
+> +	.print_stats		= xprt_rdma_print_stats,
+> +	.enable_swap		= xprt_rdma_enable_swap,
+> +	.disable_swap		= xprt_rdma_disable_swap,
+> };
+> 
+> static struct xprt_class xprt_rdma = {
+> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+> index e3596fe184a0..600194bfdbce 100644
+> --- a/net/sunrpc/xprtsock.c
+> +++ b/net/sunrpc/xprtsock.c
+> @@ -1985,14 +1985,14 @@ static void xs_set_memalloc(struct rpc_xprt *xprt)
+> }
+> 
+> /**
+> - * xs_swapper_enable - Tag this transport as being used for swap.
+> + * xs_enable_swap - Tag this transport as being used for swap.
+>  * @xprt: transport to tag
+>  *
+>  * Take a reference to this transport on behalf of the rpc_clnt, and
+>  * optionally mark it for swapping if it wasn't already.
+>  */
+> -int
+> -xs_swapper_enable(struct rpc_xprt *xprt)
+> +static int
+> +xs_enable_swap(struct rpc_xprt *xprt)
+> {
+> 	struct sock_xprt *xs = container_of(xprt, struct sock_xprt, xprt);
+> 
+> @@ -2007,14 +2007,14 @@ xs_swapper_enable(struct rpc_xprt *xprt)
+> }
+> 
+> /**
+> - * xs_swapper_disable - Untag this transport as being used for swap.
+> + * xs_disable_swap - Untag this transport as being used for swap.
+>  * @xprt: transport to tag
+>  *
+>  * Drop a "swapper" reference to this xprt on behalf of the rpc_clnt. If the
+>  * swapper refcount goes to 0, untag the socket as a memalloc socket.
+>  */
+> -void
+> -xs_swapper_disable(struct rpc_xprt *xprt)
+> +static void
+> +xs_disable_swap(struct rpc_xprt *xprt)
+> {
+> 	struct sock_xprt *xs = container_of(xprt, struct sock_xprt, xprt);
+> 
+> @@ -2030,6 +2030,17 @@ xs_swapper_disable(struct rpc_xprt *xprt)
+> static void xs_set_memalloc(struct rpc_xprt *xprt)
+> {
+> }
+> +
+> +static int
+> +xs_enable_swap(struct rpc_xprt *xprt)
+> +{
+> +	return -EINVAL;
+> +}
+> +
+> +static void
+> +xs_disable_swap(struct rpc_xprt *xprt)
+> +{
+> +}
+> #endif
+> 
+> static void xs_udp_finish_connecting(struct rpc_xprt *xprt, struct socket *sock)
+> @@ -2496,6 +2507,8 @@ static struct rpc_xprt_ops xs_local_ops = {
+> 	.close			= xs_close,
+> 	.destroy		= xs_destroy,
+> 	.print_stats		= xs_local_print_stats,
+> +	.enable_swap		= xs_enable_swap,
+> +	.disable_swap		= xs_disable_swap,
+> };
+> 
+> static struct rpc_xprt_ops xs_udp_ops = {
+> @@ -2515,6 +2528,8 @@ static struct rpc_xprt_ops xs_udp_ops = {
+> 	.close			= xs_close,
+> 	.destroy		= xs_destroy,
+> 	.print_stats		= xs_udp_print_stats,
+> +	.enable_swap		= xs_enable_swap,
+> +	.disable_swap		= xs_disable_swap,
+> };
+> 
+> static struct rpc_xprt_ops xs_tcp_ops = {
+> @@ -2531,6 +2546,8 @@ static struct rpc_xprt_ops xs_tcp_ops = {
+> 	.close			= xs_tcp_shutdown,
+> 	.destroy		= xs_destroy,
+> 	.print_stats		= xs_tcp_print_stats,
+> +	.enable_swap		= xs_enable_swap,
+> +	.disable_swap		= xs_disable_swap,
+> };
+> 
+> /*
+> @@ -2548,6 +2565,8 @@ static struct rpc_xprt_ops bc_tcp_ops = {
+> 	.close			= bc_close,
+> 	.destroy		= bc_destroy,
+> 	.print_stats		= xs_tcp_print_stats,
+> +	.enable_swap		= xs_enable_swap,
+> +	.disable_swap		= xs_disable_swap,
+> };
+> 
+> static int xs_init_anyaddr(const int family, struct sockaddr *sap)
+> -- 
+> 2.4.2
+> 
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
 
