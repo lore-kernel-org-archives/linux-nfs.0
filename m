@@ -1,240 +1,57 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-vn0-f46.google.com ([209.85.216.46]:44584 "EHLO
-	mail-vn0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756272AbbFCOsL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 3 Jun 2015 10:48:11 -0400
-Received: by vnbg129 with SMTP id g129so1372539vnb.11
-        for <linux-nfs@vger.kernel.org>; Wed, 03 Jun 2015 07:48:11 -0700 (PDT)
+Received: from fieldses.org ([173.255.197.46]:56859 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933240AbbFCPDP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 3 Jun 2015 11:03:15 -0400
+Date: Wed, 3 Jun 2015 11:03:11 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Kinglong Mee <kinglongmee@gmail.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Christoph Hellwig <hch@infradead.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: Re: [PATCH 1/2] nfsd: Reset cb_status in nfsd4_cb_prepare() at
+ retrying
+Message-ID: <20150603150311.GA7574@fieldses.org>
+References: <556D8C87.2000507@gmail.com>
 MIME-Version: 1.0
-In-Reply-To: <1433342632-16173-6-git-send-email-jeff.layton@primarydata.com>
-References: <1433342632-16173-1-git-send-email-jeff.layton@primarydata.com>
-	<1433342632-16173-6-git-send-email-jeff.layton@primarydata.com>
-Date: Wed, 3 Jun 2015 10:48:10 -0400
-Message-ID: <CAHQdGtQGeVRTfv-hvZj_bHqgb5Cs84TY-ScFqzJ3qQOZy2qLcQ@mail.gmail.com>
-Subject: Re: [PATCH v2 5/5] sunrpc: turn swapper_enable/disable functions into rpc_xprt_ops
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Jeff Layton <jlayton@poochiereds.net>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Linux-MM <linux-mm@kvack.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        Mel Gorman <mgorman@suse.de>, Jerome Marchand <jmarchan@redhat.com>,
-        Chuck Lever <chuck.lever@oracle.com>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <556D8C87.2000507@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jun 3, 2015 at 10:43 AM, Jeff Layton <jlayton@poochiereds.net> wrote:
-> RDMA xprts don't have a sock_xprt, but an rdma_xprt, so the
-> xs_swapper_enable/disable functions will likely oops when fed an RDMA
-> xprt. Turn these functions into rpc_xprt_ops so that that doesn't
-> occur. For now the RDMA versions are no-ops.
->
-> Cc: Chuck Lever <chuck.lever@oracle.com>
-> Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
+On Tue, Jun 02, 2015 at 06:59:19PM +0800, Kinglong Mee wrote:
+> nfsd enters a infinite loop and print message per 10 seconds,
+> 
+> May 31 18:33:52 test-server kernel: Error sending entire callback!
+> May 31 18:34:01 test-server kernel: Error sending entire callback!
+> 
+> It is caused by a cb_layoutreturn got error -10008 (NFS4ERR_DELAY),
+> and then, the client crash, nfsd enter the infinite loop.
+> 
+> bc_sendto --> call_timeout --> nfsd4_cb_done --> nfsd4_cb_layout_done
+>  with error -10008 --> rpc_delay(task, HZ/100) --> bc_sendto ...
+
+How are you reproducing this?
+
+--b.
+
+> 
+> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
 > ---
->  include/linux/sunrpc/xprt.h     | 16 ++++++++++++++--
->  net/sunrpc/clnt.c               |  4 ++--
->  net/sunrpc/xprtrdma/transport.c | 15 ++++++++++++++-
->  net/sunrpc/xprtsock.c           | 31 +++++++++++++++++++++++++------
->  4 files changed, 55 insertions(+), 11 deletions(-)
->
-> diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
-> index 26b1624128ec..7eb58610eb94 100644
-> --- a/include/linux/sunrpc/xprt.h
-> +++ b/include/linux/sunrpc/xprt.h
-> @@ -133,6 +133,8 @@ struct rpc_xprt_ops {
->         void            (*close)(struct rpc_xprt *xprt);
->         void            (*destroy)(struct rpc_xprt *xprt);
->         void            (*print_stats)(struct rpc_xprt *xprt, struct seq_file *seq);
-> +       int             (*enable_swap)(struct rpc_xprt *xprt);
-> +       void            (*disable_swap)(struct rpc_xprt *xprt);
->  };
->
->  /*
-> @@ -327,6 +329,18 @@ static inline __be32 *xprt_skip_transport_header(struct rpc_xprt *xprt, __be32 *
->         return p + xprt->tsh_size;
->  }
->
-> +static inline int
-> +xprt_enable_swap(struct rpc_xprt *xprt)
-> +{
-> +       return xprt->ops->enable_swap(xprt);
-> +}
-> +
-> +static inline void
-> +xprt_disable_swap(struct rpc_xprt *xprt)
-> +{
-> +       xprt->ops->disable_swap(xprt);
-> +}
-> +
->  /*
->   * Transport switch helper functions
->   */
-> @@ -345,8 +359,6 @@ void                        xprt_release_rqst_cong(struct rpc_task *task);
->  void                   xprt_disconnect_done(struct rpc_xprt *xprt);
->  void                   xprt_force_disconnect(struct rpc_xprt *xprt);
->  void                   xprt_conditional_disconnect(struct rpc_xprt *xprt, unsigned int cookie);
-> -int                    xs_swapper_enable(struct rpc_xprt *xprt);
-> -void                   xs_swapper_disable(struct rpc_xprt *xprt);
->
->  bool                   xprt_lock_connect(struct rpc_xprt *, struct rpc_task *, void *);
->  void                   xprt_unlock_connect(struct rpc_xprt *, void *);
-> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-> index 804a75e71e84..60d1835edb26 100644
-> --- a/net/sunrpc/clnt.c
-> +++ b/net/sunrpc/clnt.c
-> @@ -2492,7 +2492,7 @@ retry:
->                         goto retry;
->                 }
->
-> -               ret = xs_swapper_enable(xprt);
-> +               ret = xprt_enable_swap(xprt);
->                 xprt_put(xprt);
->         }
->         return ret;
-> @@ -2519,7 +2519,7 @@ retry:
->                         goto retry;
->                 }
->
-> -               xs_swapper_disable(xprt);
-> +               xprt_disable_swap(xprt);
->                 xprt_put(xprt);
->         }
->  }
-> diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-> index 54f23b1be986..e7a157754095 100644
-> --- a/net/sunrpc/xprtrdma/transport.c
-> +++ b/net/sunrpc/xprtrdma/transport.c
-> @@ -682,6 +682,17 @@ static void xprt_rdma_print_stats(struct rpc_xprt *xprt, struct seq_file *seq)
->            r_xprt->rx_stats.bad_reply_count);
->  }
->
-> +static int
-> +xprt_rdma_enable_swap(struct rpc_xprt *xprt)
-> +{
-> +       return 0;
-
-Shouldn't the function be returning an error here? What does swapon
-expect if the device you are trying to enable doesn't support swap?
-
-> +}
-> +
-> +static void
-> +xprt_rdma_disable_swap(struct rpc_xprt *xprt)
-> +{
-> +}
-> +
->  /*
->   * Plumbing for rpc transport switch and kernel module
->   */
-> @@ -700,7 +711,9 @@ static struct rpc_xprt_ops xprt_rdma_procs = {
->         .send_request           = xprt_rdma_send_request,
->         .close                  = xprt_rdma_close,
->         .destroy                = xprt_rdma_destroy,
-> -       .print_stats            = xprt_rdma_print_stats
-> +       .print_stats            = xprt_rdma_print_stats,
-> +       .enable_swap            = xprt_rdma_enable_swap,
-> +       .disable_swap           = xprt_rdma_disable_swap,
->  };
->
->  static struct xprt_class xprt_rdma = {
-> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-> index 16aa5dad41b2..b8aaf20aea96 100644
-> --- a/net/sunrpc/xprtsock.c
-> +++ b/net/sunrpc/xprtsock.c
-> @@ -1985,14 +1985,14 @@ static void xs_set_memalloc(struct rpc_xprt *xprt)
->  }
->
->  /**
-> - * xs_swapper_enable - Tag this transport as being used for swap.
-> + * xs_enable_swap - Tag this transport as being used for swap.
->   * @xprt: transport to tag
->   *
->   * Take a reference to this transport on behalf of the rpc_clnt, and
->   * optionally mark it for swapping if it wasn't already.
->   */
-> -int
-> -xs_swapper_enable(struct rpc_xprt *xprt)
-> +static int
-> +xs_enable_swap(struct rpc_xprt *xprt)
->  {
->         struct sock_xprt *xs = container_of(xprt, struct sock_xprt, xprt);
->
-> @@ -2007,14 +2007,14 @@ xs_swapper_enable(struct rpc_xprt *xprt)
->  }
->
->  /**
-> - * xs_swapper_disable - Untag this transport as being used for swap.
-> + * xs_disable_swap - Untag this transport as being used for swap.
->   * @xprt: transport to tag
->   *
->   * Drop a "swapper" reference to this xprt on behalf of the rpc_clnt. If the
->   * swapper refcount goes to 0, untag the socket as a memalloc socket.
->   */
-> -void
-> -xs_swapper_disable(struct rpc_xprt *xprt)
-> +static void
-> +xs_disable_swap(struct rpc_xprt *xprt)
->  {
->         struct sock_xprt *xs = container_of(xprt, struct sock_xprt, xprt);
->
-> @@ -2030,6 +2030,17 @@ xs_swapper_disable(struct rpc_xprt *xprt)
->  static void xs_set_memalloc(struct rpc_xprt *xprt)
->  {
->  }
-> +
-> +static int
-> +xs_enable_swap(struct rpc_xprt *xprt)
-> +{
-> +       return 0;
-
-Ditto.
-
-> +}
-> +
-> +static void
-> +xs_disable_swap(struct rpc_xprt *xprt)
-> +{
-> +}
->  #endif
->
->  static void xs_udp_finish_connecting(struct rpc_xprt *xprt, struct socket *sock)
-> @@ -2496,6 +2507,8 @@ static struct rpc_xprt_ops xs_local_ops = {
->         .close                  = xs_close,
->         .destroy                = xs_destroy,
->         .print_stats            = xs_local_print_stats,
-> +       .enable_swap            = xs_enable_swap,
-> +       .disable_swap           = xs_disable_swap,
->  };
->
->  static struct rpc_xprt_ops xs_udp_ops = {
-> @@ -2515,6 +2528,8 @@ static struct rpc_xprt_ops xs_udp_ops = {
->         .close                  = xs_close,
->         .destroy                = xs_destroy,
->         .print_stats            = xs_udp_print_stats,
-> +       .enable_swap            = xs_enable_swap,
-> +       .disable_swap           = xs_disable_swap,
->  };
->
->  static struct rpc_xprt_ops xs_tcp_ops = {
-> @@ -2531,6 +2546,8 @@ static struct rpc_xprt_ops xs_tcp_ops = {
->         .close                  = xs_tcp_shutdown,
->         .destroy                = xs_destroy,
->         .print_stats            = xs_tcp_print_stats,
-> +       .enable_swap            = xs_enable_swap,
-> +       .disable_swap           = xs_disable_swap,
->  };
->
->  /*
-> @@ -2548,6 +2565,8 @@ static struct rpc_xprt_ops bc_tcp_ops = {
->         .close                  = bc_close,
->         .destroy                = bc_destroy,
->         .print_stats            = xs_tcp_print_stats,
-> +       .enable_swap            = xs_enable_swap,
-> +       .disable_swap           = xs_disable_swap,
->  };
->
->  static int xs_init_anyaddr(const int family, struct sockaddr *sap)
-> --
+>  fs/nfsd/nfs4callback.c | 1 +
+>  1 file changed, 1 insertion(+)
+> 
+> diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+> index 5694cfb..8b1ac8d 100644
+> --- a/fs/nfsd/nfs4callback.c
+> +++ b/fs/nfsd/nfs4callback.c
+> @@ -875,6 +875,7 @@ static void nfsd4_cb_prepare(struct rpc_task *task, void *calldata)
+>  	u32 minorversion = clp->cl_minorversion;
+>  
+>  	cb->cb_minorversion = minorversion;
+> +	cb->cb_status = 0;
+>  	if (minorversion) {
+>  		if (!nfsd41_cb_get_slot(clp, task))
+>  			return;
+> -- 
 > 2.4.2
->
