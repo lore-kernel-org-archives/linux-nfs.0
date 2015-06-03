@@ -1,64 +1,56 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:40593 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([173.255.197.46]:56920 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754544AbbFCPvp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 3 Jun 2015 11:51:45 -0400
-Date: Wed, 3 Jun 2015 11:51:43 -0400 (EDT)
-From: Benjamin Coddington <bcodding@redhat.com>
-To: Olga Kornievskaia <aglo@umich.edu>
-cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>
-Subject: Re: 4.0 NFS client in infinite loop in state recovery after getting
- BAD_STATEID
-In-Reply-To: <CAN-5tyEGq0XNh8hE+3XsD0XG_4XGkeW1cyZvcw==dNTXgXTaAQ@mail.gmail.com>
-Message-ID: <alpine.OSX.2.19.9992.1506031149180.70615@dhcp-132.nfsv4bat.org>
-References: <CAN-5tyG8ukoGJATK1RA85xv9BDikfC1CPP0nc=-80h=BSGV6=w@mail.gmail.com> <alpine.OSX.2.19.9992.1505290942250.65323@planck.local> <CAN-5tyE2wepUkuBO=sWwkBpr+jfQzh1+c_QbNykLk=wy3A77UQ@mail.gmail.com>
- <CAN-5tyEGq0XNh8hE+3XsD0XG_4XGkeW1cyZvcw==dNTXgXTaAQ@mail.gmail.com>
+	id S1753322AbbFCQzU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 3 Jun 2015 12:55:20 -0400
+Date: Wed, 3 Jun 2015 12:55:18 -0400
+To: Shirley Ma <shirley.ma@oracle.com>
+Cc: Charles EDWARD Lever <chuck.lever@oracle.com>,
+        "Anna.Schumaker@netapp.com" <Anna.Schumaker@netapp.com>,
+        "devesh.sharma@avagotech.com" <devesh.sharma@avagotech.com>,
+        "dledford@redhat.com" <dledford@redhat.com>,
+        "dominique.martinet@cea.fr" <dominique.martinet@cea.fr>,
+        "jeffrey.c.becker@nasa.gov" <jeffrey.c.becker@nasa.gov>,
+        "rsdance@soft-forge.com" <rsdance@soft-forge.com>,
+        "skc@lanl.gov" <skc@lanl.gov>,
+        "sprabhu@redhat.com" <sprabhu@redhat.com>,
+        "SteveD@redhat.com" <SteveD@redhat.com>,
+        "swise@opengridcomputing.com" <swise@opengridcomputing.com>,
+        "wendy.cheng@intel.com" <wendy.cheng@intel.com>,
+        linux-rdma <linux-rdma@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: NFSoRDMA bi-weekly developers meeting minutes (5/28/15)
+Message-ID: <20150603165518.GB8441@fieldses.org>
+References: <55675A52.1010700@oracle.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <55675A52.1010700@oracle.com>
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 29 May 2015, Olga Kornievskaia wrote:
+On Thu, May 28, 2015 at 11:11:30AM -0700, Shirley Ma wrote:
+> NFSD workqueue mode vs. threading mode performance impacts: (Shirley)
+> ---------------------------------------------------------------------
+> Shirley has spent sometime test/fix/evaluating NFSD workqueue mode
+> originally implemented by Jeff Layton. NFSD workqueue patchset NFSD
+> workqueue modes benefit some workloads while global threading mode
+> benefits some other workloads. workqueue mode is better than per-cpu
+> threading mode in general. workqueue is per-cpu workqueue while global
+> threading mode is not per-cpu based. There might be some room to make
+> NFSD workqueue not worse than global threading mode, but this requires
+> to do more in depth performance investigation work.
+> 
+> Feel free to reply here for anything missing or incorrect. Thanks
+> everyone for joining the call and providing valuable inputs/work to
+> the community to make NFSoRDMA better.
 
-> I meant to say 3.10.0-229. Mixing my RHEL6 and RHEL7 prefixes...
->
-> On Fri, May 29, 2015 at 12:51 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
-> > On Fri, May 29, 2015 at 9:44 AM, Benjamin Coddington
-> > <bcodding@redhat.com> wrote:
-> >> On Thu, 7 May 2015, Olga Kornievskaia wrote:
-> >>
-> >>> Hi folks,
-> >>>
-> >>> Problem:
-> >>> The upstream nfs4.0 client has problem where it will go into an
-> >>> infinite loop of re-sending an OPEN when it's trying to recover from
-> >>> receiving a BAD_STATEID error on an IO operation such READ or WRITE.
-> >>>
-> >>> How to easily reproduce (by using fault injection):
-> >>> 1. Do nfs4.0 mount to a server.
-> >>> 2. Open a file such that the server gives you a write delegation.
-> >>> 3. Do a write. Have a server return a BAD_STATEID. One way to do so is
-> >>> by using a python proxy, nfs4proxy, and inject BAD_STATEID error on
-> >>> WRITE.
-> >>> 4. And off it goes with the loop.
-> >>
-> >> Hi Olga,
-> >>
-> >> I've been trying to reproduce it, and I'm frustratingly unable.  It sounds
-> >> fairly easy to produce..  What version of the client produces this?
-> >>
-> >
-> > Hi Ben,
-> >
-> > Problem exists in the upstream kernels as well but we noticed the
-> > problem on RHEL7.1 distro (RedHat's 2.6.32-229.el7 kernel I think).
+Are you planning to repost those patches to the list with a summary of
+the results so far?
 
-I've now been able to reproduce this upstream, and 7.1.. and just today on a
-6.7 client.  The 6.7 client seems to self-limit the OPEN storm to around 7k
-OPENs..  That's interesting enough to look into further..
+I don't necessarily expect that we'll have all performance problems
+worked out before merging, but we do need to judge the risk that the new
+threading mode never overcomes those regressions so that we're stuck
+supporting both old and new threading modes indefinitely.
 
-Taking this issue to the BZs for now, just wanted to let the list know that
-we see this now, too.
-
-Ben
+--b.
