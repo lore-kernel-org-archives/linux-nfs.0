@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:53808 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:40368 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932087AbbFDQqF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 4 Jun 2015 12:46:05 -0400
+	id S1753546AbbFDQqD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 4 Jun 2015 12:46:03 -0400
 From: Stefan Hajnoczi <stefanha@redhat.com>
 To: linux-nfs@vger.kernel.org
 Cc: Anna Schumaker <anna.schumaker@netapp.com>,
@@ -12,69 +12,85 @@ Cc: Anna Schumaker <anna.schumaker@netapp.com>,
         Daniel Berrange <berrange@redhat.com>,
         "David S. Miller" <davem@davemloft.net>,
         Stefan Hajnoczi <stefanha@redhat.com>
-Subject: [RFC 04/10] SUNRPC: extract xs_stream_reset_state()
-Date: Thu,  4 Jun 2015 17:45:47 +0100
-Message-Id: <1433436353-6761-5-git-send-email-stefanha@redhat.com>
+Subject: [RFC 03/10] SUNRPC: abstract tcp_read_sock() in record fragment parser
+Date: Thu,  4 Jun 2015 17:45:46 +0100
+Message-Id: <1433436353-6761-4-git-send-email-stefanha@redhat.com>
 In-Reply-To: <1433436353-6761-1-git-send-email-stefanha@redhat.com>
 References: <1433436353-6761-1-git-send-email-stefanha@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Extract a function to reset the record fragment parser.
+Use a function pointer to abstract tcp_read_sock()-like functions.  For
+TCP this function will be tcp_read_sock().  For AF_VSOCK it will be
+vsock_read_sock().
 
 Signed-off-by: Stefan Hajnoczi <stefanha@redhat.com>
 ---
- net/sunrpc/xprtsock.c | 33 +++++++++++++++++++++++----------
- 1 file changed, 23 insertions(+), 10 deletions(-)
+ include/linux/sunrpc/xprtsock.h | 6 ++++++
+ net/sunrpc/xprtsock.c           | 8 +++++++-
+ 2 files changed, 13 insertions(+), 1 deletion(-)
 
+diff --git a/include/linux/sunrpc/xprtsock.h b/include/linux/sunrpc/xprtsock.h
+index e3de7bf..3b4cd4c 100644
+--- a/include/linux/sunrpc/xprtsock.h
++++ b/include/linux/sunrpc/xprtsock.h
+@@ -9,6 +9,9 @@
+ 
+ #ifdef __KERNEL__
+ 
++/* TODO why does this header have no includes? */
++#include <net/tcp.h> /* for sk_read_actor_t */
++
+ int		init_socket_xprt(void);
+ void		cleanup_socket_xprt(void);
+ 
+@@ -39,6 +42,9 @@ struct sock_xprt {
+ 	unsigned long		stream_copied,
+ 				stream_flags;
+ 
++	int			(*stream_read_sock)(struct sock *,
++						    read_descriptor_t *,
++						    sk_read_actor_t);
+ 
+ 	/*
+ 	 * Connection of transports
 diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 06fde0e..9fa63f7 100644
+index c84d45e..06fde0e 100644
 --- a/net/sunrpc/xprtsock.c
 +++ b/net/sunrpc/xprtsock.c
-@@ -1431,6 +1431,28 @@ out:
- }
- 
- /**
-+ * xs_stream_reset_state - reset SOCK_STREAM record parser
-+ * @transport: socket transport
-+ * @read_sock: tcp_read_sock()-like function
-+ *
-+ */
-+static void xs_stream_reset_state(struct rpc_xprt *xprt,
-+				  int (*read_sock)(struct sock *,
-+						   read_descriptor_t *,
-+						   sk_read_actor_t))
-+{
-+	struct sock_xprt *transport = container_of(xprt,
-+			struct sock_xprt, xprt);
+@@ -1395,6 +1395,7 @@ static int xs_stream_data_recv(read_descriptor_t *rd_desc, struct sk_buff *skb,
+ static void xs_stream_data_ready(struct sock *sk)
+ {
+ 	struct rpc_xprt *xprt;
++	struct sock_xprt *transport;
+ 	read_descriptor_t rd_desc;
+ 	int read;
+ 	unsigned long total = 0;
+@@ -1406,6 +1407,9 @@ static void xs_stream_data_ready(struct sock *sk)
+ 		read = 0;
+ 		goto out;
+ 	}
 +
-+	transport->stream_offset = 0;
-+	transport->stream_reclen = 0;
-+	transport->stream_copied = 0;
-+	transport->stream_flags =
-+		STREAM_RCV_COPY_FRAGHDR | STREAM_RCV_COPY_XID;
-+	transport->stream_read_sock = read_sock;
-+}
++	transport = container_of(xprt, struct sock_xprt, xprt);
 +
-+/**
-  * xs_tcp_state_change - callback to handle TCP socket state changes
-  * @sk: socket whose state has changed
-  *
-@@ -1454,16 +1476,7 @@ static void xs_tcp_state_change(struct sock *sk)
- 	case TCP_ESTABLISHED:
- 		spin_lock(&xprt->transport_lock);
- 		if (!xprt_test_and_set_connected(xprt)) {
--			struct sock_xprt *transport = container_of(xprt,
--					struct sock_xprt, xprt);
--
--			/* Reset stream record info */
--			transport->stream_offset = 0;
--			transport->stream_reclen = 0;
--			transport->stream_copied = 0;
--			transport->stream_flags =
--				STREAM_RCV_COPY_FRAGHDR | STREAM_RCV_COPY_XID;
--			transport->stream_read_sock = tcp_read_sock;
-+			xs_stream_reset_state(xprt, tcp_read_sock);
+ 	/* Any data means we had a useful conversation, so
+ 	 * the we don't need to delay the next reconnect
+ 	 */
+@@ -1416,7 +1420,8 @@ static void xs_stream_data_ready(struct sock *sk)
+ 	rd_desc.arg.data = xprt;
+ 	do {
+ 		rd_desc.count = 65536;
+-		read = tcp_read_sock(sk, &rd_desc, xs_stream_data_recv);
++		read = transport->stream_read_sock(sk, &rd_desc,
++						   xs_stream_data_recv);
+ 		if (read > 0)
+ 			total += read;
+ 	} while (read > 0);
+@@ -1458,6 +1463,7 @@ static void xs_tcp_state_change(struct sock *sk)
+ 			transport->stream_copied = 0;
+ 			transport->stream_flags =
+ 				STREAM_RCV_COPY_FRAGHDR | STREAM_RCV_COPY_XID;
++			transport->stream_read_sock = tcp_read_sock;
  			xprt->connect_cookie++;
  
  			xprt_wake_pending_tasks(xprt, -EAGAIN);
