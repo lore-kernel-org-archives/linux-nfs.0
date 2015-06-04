@@ -1,59 +1,129 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp4-g21.free.fr ([212.27.42.4]:12626 "EHLO smtp4-g21.free.fr"
+Received: from fieldses.org ([173.255.197.46]:36030 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751874AbbFDUGZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 4 Jun 2015 16:06:25 -0400
-Date: Thu, 4 Jun 2015 22:06:22 +0200
-From: Guillaume Morin <guillaume@morinfr.org>
-To: Chuck Lever <chucklever@gmail.com>
-Cc: Guillaume Morin <guillaume@morinfr.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Chris Mason <clm@fb.com>
-Subject: Re: [BUG] nfs3 client stops retrying to connect
-Message-ID: <20150604200621.GA10335@bender.morinfr.org>
-References: <20150521012155.GA19680@bender.morinfr.org>
- <DAF3CB64-5777-4F74-A31E-4F3FE55D14AD@gmail.com>
+	id S932275AbbFDU11 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 4 Jun 2015 16:27:27 -0400
+Date: Thu, 4 Jun 2015 16:27:25 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Kinglong Mee <kinglongmee@gmail.com>
+Cc: Stanislav Kholmanskikh <stanislav.kholmanskikh@oracle.com>,
+        linux-nfs@vger.kernel.org, Vasily Isaenko <vasily.isaenko@oracle.com>,
+        "SHUANG.QIU" <shuang.qiu@oracle.com>
+Subject: Re: nfsd: EACCES vs EPERM on utime()/utimes() calls
+Message-ID: <20150604202725.GE5209@fieldses.org>
+References: <556C73AE.4090900@oracle.com>
+ <20150601212317.GF26972@fieldses.org>
+ <556DD52D.5040405@oracle.com>
+ <557047E2.10804@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <DAF3CB64-5777-4F74-A31E-4F3FE55D14AD@gmail.com>
+In-Reply-To: <557047E2.10804@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Chuck,
-
-On 03 Jun 14:31, Chuck Lever wrote:
-> > If somehow xs_close() is called before the callback
-> > happens, I think it could leave XPRT_CONNECTING on forever though
-> > (since xs_tcp_setup_socket is never called), see
-> > https://git.kernel.org/cgit/linux/kernel/git/stable/linux-stable.git/tree/net/sunrpc/xprtsock.c?id=refs/tags/v3.14.43#n887
+On Thu, Jun 04, 2015 at 08:43:14PM +0800, Kinglong Mee wrote:
+> On 6/3/2015 12:09 AM, Stanislav Kholmanskikh wrote:
+> > On 06/02/2015 12:23 AM, bfields@fieldses.org wrote:
+> >> On Mon, Jun 01, 2015 at 06:01:02PM +0300, Stanislav Kholmanskikh wrote:
+> >>> Hello.
+> >>>
+> >>> As the man page for utime/utimes states [1], EPERM is returned if
+> >>> the second argument of utime/utimes is not NULL and:
+> >>>   * the caller's effective user id does not match the owner of the file
+> >>>   * the caller does not have write access to the file
+> >>>   * the caller is not privileged
+> >>>
+> >>> However, I don't see this behavior with NFS, I see EACCES is
+> >>> generated instead.
+> >>
+> >> Agreed that it's probably a server bug.  (Have you run across a case
+> >> where this makes a difference?)
 > > 
-> > I am still have a few clients with the stuck mount so I could gather
-> > more information if necessary.
+> > Thank you.
+> > 
+> > No, I've not seen such a real-word scenario.
+> > 
+> > I have these LTP test cases failing:
+> > 
+> > * https://github.com/linux-test-project/ltp/blob/master/testcases/kernel/syscalls/utime/utime06.c
+> > * https://github.com/linux-test-project/ltp/blob/master/testcases/kernel/syscalls/utimes/utimes01.c
+> > 
+> > and it makes me a bit nervous :)
+> > 
+> >>
+> >> Looking at nfsd_setattr()....  The main work is done by notify_change(),
+> >> which is probably doing the right thing.  But before that there's an
+> >> fh_verify()--looks like that is expected to fail in your case.  I bet
+> >> that's the cause.
 > 
-> A series of commits were merged into the v4.0 kernel, starting with commit 4dda9c8a5e34,
-> that changed the TCP connect logic significantly. It would be helpful to know if the
-> problem can be reproduced when your clients are running the v4.0 kernel.
+> Yes, it is.
+> 
+> nfsd do the permission checking before notify_change() as,
+> 
+> /* This assumes  NFSD_MAY_{READ,WRITE,EXEC} == MAY_{READ,WRITE,EXEC} */
+> err = inode_permission(inode, acc & (MAY_READ|MAY_WRITE|MAY_EXEC));
+> 
+> return -EACCES for non-owner user.
+> 
+> > 
+> > I doubt I can fix it by myself (at least quickly). So I am happy if anyone more experienced will look at it as well :)
+> > 
+> > Anyway, if nobody is interested, I'll give it a try, but later.
+> 
+> Here is a diff patch for this problem, please try testing.
+> If okay, I will send an official patch.
+> 
+> Note: must apply the following patch first in the url,
+> http://git.linux-nfs.org/?p=bfields/linux.git;a=commitdiff;h=cc265089ce1b176dde963c74b53593446ee7f99a
 
-Understood but I actually cannot reproduce it on 3.14 as well so I am
-not hopeful I'll be able to try this.
+We could do that if we have to.
 
-This just happened during a kernel panic of our nfs server which stayed
-down for a while, then only a dozen machines could not recover, the rest
-was fine.  So it is definitely not that easy to trigger.
+I wonder if we could instead skip the fh_verify's inode_permission call
+entirely?  Most callers of fh_verify don't need the inode_permission
+call at all as far as I can tell, because the following vfs operation
+does permission checking already.
 
-So far all my attempts to reproduce this have failed.  I tried mostly by
-setting iptables to send RSTs back to the server randomly using iptables
-and dropping syns pretty often. If you have any suggestions, that'd be
-great
+We still need some nfs-specific checking, I guess (e.g. to make sure we
+aren't allowing setattr on a read-only export of a writeable mount), but
+the inode_permission itself I think we can usually skip.
 
-Do you have any thoughts about my impression that there could be race
-between cancelling the callback in xs_close() that could leave
-XPRT_CONNECTING on?
+Andreas Gruenbacher has also been complaining that the redundant
+inode_permission calls make the richacl work more difficult, I can't
+remember why exactly.
 
-Thanks in advance
+--b.
 
-Guillaume.
-
--- 
-Guillaume Morin <guillaume@morinfr.org>
+> 
+> thanks,
+> Kinglong Mee
+> -------------------------------------------------------------
+> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+> index 84d770b..2533088 100644
+> --- a/fs/nfsd/vfs.c
+> +++ b/fs/nfsd/vfs.c
+> @@ -407,10 +371,23 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp, struct iattr *iap,
+>  	bool		get_write_count;
+>  	int		size_change = 0;
+>  
+> -	if (iap->ia_valid & (ATTR_ATIME | ATTR_MTIME | ATTR_SIZE))
+> +	if (iap->ia_valid & ATTR_SIZE) {
+>  		accmode |= NFSD_MAY_WRITE|NFSD_MAY_OWNER_OVERRIDE;
+> -	if (iap->ia_valid & ATTR_SIZE)
+>  		ftype = S_IFREG;
+> +	}
+> +
+> +	/*
+> +	 * According to utimes_common(),
+> +	 *
+> +	 * If times is NULL (or both times are UTIME_NOW),
+> +	 * then we need to check permissions, because
+> +	 * inode_change_ok() won't do it.
+> +	 */
+> +	if (iap->ia_valid & (ATTR_ATIME | ATTR_MTIME)) {
+> +		accmode |= NFSD_MAY_OWNER_OVERRIDE;
+> +		if (!(iap->ia_valid & (ATTR_ATIME_SET | ATTR_MTIME_SET)))
+> +			accmode |= NFSD_MAY_WRITE;
+> +	}
+>  
+>  	/* Callers that do fh_verify should do the fh_want_write: */
+>  	get_write_count = !fhp->fh_dentry;
