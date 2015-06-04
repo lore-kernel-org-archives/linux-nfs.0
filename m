@@ -1,49 +1,66 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from nautica.notk.org ([91.121.71.147]:33418 "EHLO nautica.notk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752330AbbFDPOh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 4 Jun 2015 11:14:37 -0400
-From: Dominique Martinet <dominique.martinet@cea.fr>
-To: linux-nfs@vger.kernel.org, Anna Schumaker <anna.schumaker@netapp.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: linux-kernel@vger.kernel.org,
-        Dominique Martinet <dominique.martinet@cea.fr>,
-        "Frank S. Filz" <ffilzlnx@mindspring.com>
-Subject: [PATCH] NFSv4: handle nfs4_get_referral failure
-Date: Thu,  4 Jun 2015 17:04:17 +0200
-Message-Id: <1433430257-11894-1-git-send-email-dominique.martinet@cea.fr>
+Received: from mail-qk0-f182.google.com ([209.85.220.182]:33179 "EHLO
+	mail-qk0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751632AbbFDPUc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Jun 2015 11:20:32 -0400
+Received: by qkhg32 with SMTP id g32so25505646qkh.0
+        for <linux-nfs@vger.kernel.org>; Thu, 04 Jun 2015 08:20:32 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH v3 0/7] NFS/RDMA server patches for 4.2
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Date: Thu, 04 Jun 2015 11:20:25 -0400
+Message-ID: <20150604151716.7835.65047.stgit@klimt.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-nfs4_proc_lookup_common is supposed to return a posix error, we have to
-handle any error returned that isn't errno
+Hi Bruce-
 
-Reported-by: Olga Kornievskaia <kolga@netapp.com>
-Signed-off-by: Frank S. Filz <ffilzlnx@mindspring.com>
-Signed-off-by: Dominique Martinet <dominique.martinet@cea.fr>
+This is a simple update of last week's v2, just to keep up to date
+with review comments. You can find these in my git repo in the
+"nfsd-rdma-for-4.2" topic branch. See:
+
+ git://git.linux-nfs.org/projects/cel/cel-2.6.git
+
+
+Changes since v2:
+- Rebased on v4.1-rc6
+- Dropped 2/10, 8/10, and 9/10, as discussed
+
+
+Changes since v1:
+- Rebased on v4.1-rc5
+- Add patch to merge xprtrdma.ko and svcrdma.ko into one module
+
 ---
 
-Other way of fixing it would be to return something like -EIO directly
-in nfs4_get_referral, but I believe handling exception is the right
-thing to do.
-Only other return code atm is -ENOMEM which probably isn't recoverable?
+Chuck Lever (7):
+      rpcrdma: Merge svcrdma and xprtrdma modules into one
+      svcrdma: Add a separate "max data segs macro for svcrdma
+      svcrdma: Replace GFP_KERNEL in a loop with GFP_NOFAIL
+      svcrdma: Keep rpcrdma_msg fields in network byte-order
+      svcrdma: Remove svc_rdma_xdr_decode_deferred_req()
+      SUNRPC: Move EXPORT_SYMBOL for svc_process
+      svcrdma: Fix byte-swapping in svc_rdma_sendto.c
 
- fs/nfs/nfs4proc.c | 2 ++
- 1 file changed, 2 insertions(+)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 627f37c..e7fbf24 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -3356,6 +3356,8 @@ static int nfs4_proc_lookup_common(struct rpc_clnt **clnt, struct inode *dir,
- 			goto out;
- 		case -NFS4ERR_MOVED:
- 			err = nfs4_get_referral(client, dir, name, fattr, fhandle);
-+			if (err == -NFS4ERR_MOVED)
-+				err = nfs4_handle_exception(NFS_SERVER(dir), err, &exception);
- 			goto out;
- 		case -NFS4ERR_WRONGSEC:
- 			err = -EPERM;
+ include/linux/sunrpc/svc_rdma.h          |   11 ++
+ net/sunrpc/Kconfig                       |   28 ++----
+ net/sunrpc/Makefile                      |    3 -
+ net/sunrpc/svc.c                         |    2 
+ net/sunrpc/xprtrdma/Makefile             |   14 +--
+ net/sunrpc/xprtrdma/module.c             |   46 ++++++++++
+ net/sunrpc/xprtrdma/svc_rdma.c           |    8 --
+ net/sunrpc/xprtrdma/svc_rdma_marshal.c   |  140 ++++++++----------------------
+ net/sunrpc/xprtrdma/svc_rdma_recvfrom.c  |    2 
+ net/sunrpc/xprtrdma/svc_rdma_sendto.c    |   16 ++-
+ net/sunrpc/xprtrdma/svc_rdma_transport.c |   36 ++------
+ net/sunrpc/xprtrdma/transport.c          |   13 ---
+ net/sunrpc/xprtrdma/xprt_rdma.h          |   11 +-
+ 13 files changed, 135 insertions(+), 195 deletions(-)
+ create mode 100644 net/sunrpc/xprtrdma/module.c
+
 -- 
-2.4.2
-
+Chuck Lever
