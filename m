@@ -1,172 +1,79 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f178.google.com ([209.85.213.178]:35974 "EHLO
-	mail-ig0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753645AbbFDOZ6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Jun 2015 10:25:58 -0400
-Received: by igbpi8 with SMTP id pi8so138824890igb.1
-        for <linux-nfs@vger.kernel.org>; Thu, 04 Jun 2015 07:25:57 -0700 (PDT)
-Date: Thu, 4 Jun 2015 10:25:49 -0400
-From: Jeff Layton <jlayton@poochiereds.net>
-To: Mel Gorman <mgorman@suse.de>
-Cc: trond.myklebust@primarydata.com, linux-nfs@vger.kernel.org,
-        linux-mm@kvack.org, linux-kernel@vger.kernel.org,
-        Jerome Marchand <jmarchan@redhat.com>
-Subject: Re: [PATCH 3/4] sunrpc: if we're closing down a socket, clear
- memalloc on it first
-Message-ID: <20150604102549.663c267e@tlielax.poochiereds.net>
-In-Reply-To: <20150604130830.GH26425@suse.de>
-References: <1432987393-15604-1-git-send-email-jeff.layton@primarydata.com>
-	<1432987393-15604-4-git-send-email-jeff.layton@primarydata.com>
-	<20150602124025.GG26425@suse.de>
-	<20150603103200.4f66bae5@synchrony.poochiereds.net>
-	<20150604130830.GH26425@suse.de>
+Received: from elasmtp-spurfowl.atl.sa.earthlink.net ([209.86.89.66]:54061
+	"EHLO elasmtp-spurfowl.atl.sa.earthlink.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752187AbbFDPNX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Jun 2015 11:13:23 -0400
+From: "Frank Filz" <ffilzlnx@mindspring.com>
+To: "'Dominique Martinet'" <dominique.martinet@cea.fr>,
+        <linux-nfs@vger.kernel.org>,
+        "'Anna Schumaker'" <anna.schumaker@netapp.com>,
+        "'Trond Myklebust'" <trond.myklebust@primarydata.com>
+Cc: <linux-kernel@vger.kernel.org>
+References: <1433430257-11894-1-git-send-email-dominique.martinet@cea.fr>
+In-Reply-To: <1433430257-11894-1-git-send-email-dominique.martinet@cea.fr>
+Subject: RE: [PATCH] NFSv4: handle nfs4_get_referral failure
+Date: Thu, 4 Jun 2015 11:13:17 -0400
+Message-ID: <004101d09ed8$fcbe7850$f63b68f0$@mindspring.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain;
+	charset="us-ascii"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 4 Jun 2015 14:08:30 +0100
-Mel Gorman <mgorman@suse.de> wrote:
+More detail on this,
 
-> On Wed, Jun 03, 2015 at 10:32:00AM -0400, Jeff Layton wrote:
-> > On Tue, 2 Jun 2015 13:40:26 +0100
-> > Mel Gorman <mgorman@suse.de> wrote:
-> > 
-> > > On Sat, May 30, 2015 at 08:03:12AM -0400, Jeff Layton wrote:
-> > > > We currently increment the memalloc_socks counter if we have a xprt that
-> > > > is associated with a swapfile. That socket can be replaced however
-> > > > during a reconnect event, and the memalloc_socks counter is never
-> > > > decremented if that occurs.
-> > > > 
-> > > > When tearing down a xprt socket, check to see if the xprt is set up for
-> > > > swapping and sk_clear_memalloc before releasing the socket if so.
-> > > > 
-> > > > Cc: Mel Gorman <mgorman@suse.de>
-> > > > Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
-> > > 
-> > > Acked-by: Mel Gorman <mgorman@suse.de>
-> > > 
-> > 
-> > Thanks Mel,
-> > 
-> > I should also mention that I see this warning pop when working with
-> > swapfiles on NFS. This trace is with this patchset, but I see a similar
-> > one without it:
-> > 
-> > [   74.232485] ------------[ cut here ]------------
-> > [   74.233354] WARNING: CPU: 2 PID: 754 at net/core/sock.c:364 sk_clear_memalloc+0x51/0x80()
-> > [   74.234790] Modules linked in: cts rpcsec_gss_krb5 nfsv4 dns_resolver nfs fscache xfs libcrc32c snd_hda_codec_generic snd_hda_intel snd_hda_controller snd_hda_codec snd_hda_core snd_hwdep snd_seq snd_seq_device nfsd snd_pcm snd_timer snd e1000 ppdev parport_pc joydev parport pvpanic soundcore floppy serio_raw i2c_piix4 pcspkr nfs_acl lockd virtio_balloon acpi_cpufreq auth_rpcgss grace sunrpc qxl drm_kms_helper ttm drm virtio_console virtio_blk virtio_pci ata_generic virtio_ring pata_acpi virtio
-> > [   74.243599] CPU: 2 PID: 754 Comm: swapoff Not tainted 4.1.0-rc6+ #5
-> > [   74.244635] Hardware name: Bochs Bochs, BIOS Bochs 01/01/2011
-> > [   74.245546]  0000000000000000 0000000079e69e31 ffff8800d066bde8 ffffffff8179263d
-> > [   74.246786]  0000000000000000 0000000000000000 ffff8800d066be28 ffffffff8109e6fa
-> > [   74.248175]  0000000000000000 ffff880118d48000 ffff8800d58f5c08 ffff880036e380a8
-> > [   74.249483] Call Trace:
-> > [   74.249872]  [<ffffffff8179263d>] dump_stack+0x45/0x57
-> > [   74.250703]  [<ffffffff8109e6fa>] warn_slowpath_common+0x8a/0xc0
-> > [   74.251655]  [<ffffffff8109e82a>] warn_slowpath_null+0x1a/0x20
-> > [   74.252585]  [<ffffffff81661241>] sk_clear_memalloc+0x51/0x80
-> > [   74.253519]  [<ffffffffa0116c72>] xs_disable_swap+0x42/0x80 [sunrpc]
-> > [   74.254537]  [<ffffffffa01109de>] rpc_clnt_swap_deactivate+0x7e/0xc0 [sunrpc]
-> > [   74.255610]  [<ffffffffa03e4fd7>] nfs_swap_deactivate+0x27/0x30 [nfs]
-> > [   74.256582]  [<ffffffff811e99d4>] destroy_swap_extents+0x74/0x80
-> > [   74.257496]  [<ffffffff811ecb52>] SyS_swapoff+0x222/0x5c0
-> > [   74.258318]  [<ffffffff81023f27>] ? syscall_trace_leave+0xc7/0x140
-> > [   74.259253]  [<ffffffff81798dae>] system_call_fastpath+0x12/0x71
-> > [   74.260158] ---[ end trace 2530722966429f10 ]---
-> > 
-> > ...that comes from this in sk_clear_memalloc:
-> > 
-> >         /*
-> >          * SOCK_MEMALLOC is allowed to ignore rmem limits to ensure forward
-> >          * progress of swapping. However, if SOCK_MEMALLOC is cleared while
-> >          * it has rmem allocations there is a risk that the user of the
-> >          * socket cannot make forward progress due to exceeding the rmem
-> >          * limits. By rights, sk_clear_memalloc() should only be called
-> >          * on sockets being torn down but warn and reset the accounting if
-> >          * that assumption breaks.
-> >          */
-> >         if (WARN_ON(sk->sk_forward_alloc))
-> >                 sk_mem_reclaim(sk);
-> > 
-> > Is it wrong to call sk_clear_memalloc on swapoff? Should we try to keep
-> > it set up as a memalloc socket on the last swapoff and just wait until
-> > the socket is being freed to clear it? If so, then maybe the right
-> > thing to do is to call sk_clear_memalloc in __sk_free or somewhere
-> > similar if it's set up for memalloc?
-> >
+Basically what is going on is that a migration event has been detected in
+nfs4_get_referral, but the migration recovery is not actually initiated.
+
+We tripped over this because Ganesha intends to support referrals, but the
+implementation is incomplete (not all FSALs support referrals, and we don't
+necessarily change the fsid) and thus Ganesha's returning an NFS4ERR_MOVED
+winds up looking like a migration event to the client (of course we don't
+support migration either).
+
+Thanks
+
+Frank
+
+> -----Original Message-----
+> From: Dominique Martinet [mailto:dominique.martinet@cea.fr]
+> Sent: Thursday, June 4, 2015 11:04 AM
+> To: linux-nfs@vger.kernel.org; Anna Schumaker; Trond Myklebust
+> Cc: linux-kernel@vger.kernel.org; Dominique Martinet; Frank S. Filz
+> Subject: [PATCH] NFSv4: handle nfs4_get_referral failure
 > 
-> I think it is perfectly reasonable to remove the warning after your
-> series. When I had it in mind, I was primarily thinking of the shutdown
-> case and a single swap file. With your series applied, the disabling of
-> swap is called at the correct time. So, something like this to tack on
-> to the end of your series?
+> nfs4_proc_lookup_common is supposed to return a posix error, we have to
+> handle any error returned that isn't errno
 > 
-> ---8<---
-> net, swap: Remove a warning and clarify why sk_mem_reclaim is required when deactivating swap
-> 
-> Jeff Layton reported the following;
-> 
->  [   74.232485] ------------[ cut here ]------------
->  [   74.233354] WARNING: CPU: 2 PID: 754 at net/core/sock.c:364 sk_clear_memalloc+0x51/0x80()
->  [   74.234790] Modules linked in: cts rpcsec_gss_krb5 nfsv4 dns_resolver nfs fscache xfs libcrc32c snd_hda_codec_generic snd_hda_intel snd_hda_controller snd_hda_codec snd_hda_core snd_hwdep snd_seq snd_seq_device nfsd snd_pcm snd_timer snd e1000 ppdev parport_pc joydev parport pvpanic soundcore floppy serio_raw i2c_piix4 pcspkr nfs_acl lockd virtio_balloon acpi_cpufreq auth_rpcgss grace sunrpc qxl drm_kms_helper ttm drm virtio_console virtio_blk virtio_pci ata_generic virtio_ring pata_acpi virtio
->  [   74.243599] CPU: 2 PID: 754 Comm: swapoff Not tainted 4.1.0-rc6+ #5
->  [   74.244635] Hardware name: Bochs Bochs, BIOS Bochs 01/01/2011
->  [   74.245546]  0000000000000000 0000000079e69e31 ffff8800d066bde8 ffffffff8179263d
->  [   74.246786]  0000000000000000 0000000000000000 ffff8800d066be28 ffffffff8109e6fa
->  [   74.248175]  0000000000000000 ffff880118d48000 ffff8800d58f5c08 ffff880036e380a8
->  [   74.249483] Call Trace:
->  [   74.249872]  [<ffffffff8179263d>] dump_stack+0x45/0x57
->  [   74.250703]  [<ffffffff8109e6fa>] warn_slowpath_common+0x8a/0xc0
->  [   74.251655]  [<ffffffff8109e82a>] warn_slowpath_null+0x1a/0x20
->  [   74.252585]  [<ffffffff81661241>] sk_clear_memalloc+0x51/0x80
->  [   74.253519]  [<ffffffffa0116c72>] xs_disable_swap+0x42/0x80 [sunrpc]
->  [   74.254537]  [<ffffffffa01109de>] rpc_clnt_swap_deactivate+0x7e/0xc0 [sunrpc]
->  [   74.255610]  [<ffffffffa03e4fd7>] nfs_swap_deactivate+0x27/0x30 [nfs]
->  [   74.256582]  [<ffffffff811e99d4>] destroy_swap_extents+0x74/0x80
->  [   74.257496]  [<ffffffff811ecb52>] SyS_swapoff+0x222/0x5c0
->  [   74.258318]  [<ffffffff81023f27>] ? syscall_trace_leave+0xc7/0x140
->  [   74.259253]  [<ffffffff81798dae>] system_call_fastpath+0x12/0x71
->  [   74.260158] ---[ end trace 2530722966429f10 ]---
-> 
-> The warning in question was unnecessary but with Jeff's series the rules
-> are also clearer.  This patch removes the warning and updates the comment
-> to explain why sk_mem_reclaim() may still be called.
-> 
-> Signed-off-by: Mel Gorman <mgorman@suse.de>
+> Reported-by: Olga Kornievskaia <kolga@netapp.com>
+> Signed-off-by: Frank S. Filz <ffilzlnx@mindspring.com>
+> Signed-off-by: Dominique Martinet <dominique.martinet@cea.fr>
 > ---
->  net/core/sock.c | 12 +++++-------
->  1 file changed, 5 insertions(+), 7 deletions(-)
 > 
-> diff --git a/net/core/sock.c b/net/core/sock.c
-> index 71e3e5f1eaa0..1ebf706b5847 100644
-> --- a/net/core/sock.c
-> +++ b/net/core/sock.c
-> @@ -354,14 +354,12 @@ void sk_clear_memalloc(struct sock *sk)
->  
->  	/*
->  	 * SOCK_MEMALLOC is allowed to ignore rmem limits to ensure forward
-> -	 * progress of swapping. However, if SOCK_MEMALLOC is cleared while
-> -	 * it has rmem allocations there is a risk that the user of the
-> -	 * socket cannot make forward progress due to exceeding the rmem
-> -	 * limits. By rights, sk_clear_memalloc() should only be called
-> -	 * on sockets being torn down but warn and reset the accounting if
-> -	 * that assumption breaks.
-> +	 * progress of swapping. SOCK_MEMALLOC may be cleared while
-> +	 * it has rmem allocations due to the last swapfile being deactivated
-> +	 * but there is a risk that the socket is unusable due to exceeding
-> +	 * the rmem limits. Reclaim the reserves and obey rmem limits again.
->  	 */
-> -	if (WARN_ON(sk->sk_forward_alloc))
-> +	if (sk->sk_forward_alloc)
->  		sk_mem_reclaim(sk);
->  }
->  EXPORT_SYMBOL_GPL(sk_clear_memalloc);
+> Other way of fixing it would be to return something like -EIO directly in
+> nfs4_get_referral, but I believe handling exception is the right thing to
+do.
+> Only other return code atm is -ENOMEM which probably isn't recoverable?
+> 
+>  fs/nfs/nfs4proc.c | 2 ++
+>  1 file changed, 2 insertions(+)
+> 
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c index 627f37c..e7fbf24
+> 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -3356,6 +3356,8 @@ static int nfs4_proc_lookup_common(struct
+> rpc_clnt **clnt, struct inode *dir,
+>  			goto out;
+>  		case -NFS4ERR_MOVED:
+>  			err = nfs4_get_referral(client, dir, name, fattr,
+> fhandle);
+> +			if (err == -NFS4ERR_MOVED)
+> +				err =
+> nfs4_handle_exception(NFS_SERVER(dir), err, &exception);
+>  			goto out;
+>  		case -NFS4ERR_WRONGSEC:
+>  			err = -EPERM;
+> --
+> 2.4.2
 
-Sure, sounds reasonable. If I need to do a respin of the series, I'll
-roll this into it. Otherwise you or I can just send it as a separate
-patch afterward.
-
-Thanks,
--- 
-Jeff Layton <jlayton@poochiereds.net>
