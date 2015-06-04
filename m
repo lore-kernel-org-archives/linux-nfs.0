@@ -1,129 +1,88 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:36030 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:36033 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932275AbbFDU11 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 4 Jun 2015 16:27:27 -0400
-Date: Thu, 4 Jun 2015 16:27:25 -0400
+	id S1752184AbbFDUlz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 4 Jun 2015 16:41:55 -0400
+Date: Thu, 4 Jun 2015 16:41:53 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
 To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: Stanislav Kholmanskikh <stanislav.kholmanskikh@oracle.com>,
-        linux-nfs@vger.kernel.org, Vasily Isaenko <vasily.isaenko@oracle.com>,
-        "SHUANG.QIU" <shuang.qiu@oracle.com>
-Subject: Re: nfsd: EACCES vs EPERM on utime()/utimes() calls
-Message-ID: <20150604202725.GE5209@fieldses.org>
-References: <556C73AE.4090900@oracle.com>
- <20150601212317.GF26972@fieldses.org>
- <556DD52D.5040405@oracle.com>
- <557047E2.10804@gmail.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Christoph Hellwig <hch@infradead.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: Re: [PATCH 1/2] nfsd: Reset cb_status in nfsd4_cb_prepare() at
+ retrying
+Message-ID: <20150604204153.GF5209@fieldses.org>
+References: <556D8C87.2000507@gmail.com>
+ <20150603150311.GA7574@fieldses.org>
+ <556F96A1.20301@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <557047E2.10804@gmail.com>
+In-Reply-To: <556F96A1.20301@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jun 04, 2015 at 08:43:14PM +0800, Kinglong Mee wrote:
-> On 6/3/2015 12:09 AM, Stanislav Kholmanskikh wrote:
-> > On 06/02/2015 12:23 AM, bfields@fieldses.org wrote:
-> >> On Mon, Jun 01, 2015 at 06:01:02PM +0300, Stanislav Kholmanskikh wrote:
-> >>> Hello.
-> >>>
-> >>> As the man page for utime/utimes states [1], EPERM is returned if
-> >>> the second argument of utime/utimes is not NULL and:
-> >>>   * the caller's effective user id does not match the owner of the file
-> >>>   * the caller does not have write access to the file
-> >>>   * the caller is not privileged
-> >>>
-> >>> However, I don't see this behavior with NFS, I see EACCES is
-> >>> generated instead.
+On Thu, Jun 04, 2015 at 08:06:57AM +0800, Kinglong Mee wrote:
+> On 6/3/2015 11:03 PM, J. Bruce Fields wrote:
+> > On Tue, Jun 02, 2015 at 06:59:19PM +0800, Kinglong Mee wrote:
+> >> nfsd enters a infinite loop and print message per 10 seconds,
 > >>
-> >> Agreed that it's probably a server bug.  (Have you run across a case
-> >> where this makes a difference?)
-> > 
-> > Thank you.
-> > 
-> > No, I've not seen such a real-word scenario.
-> > 
-> > I have these LTP test cases failing:
-> > 
-> > * https://github.com/linux-test-project/ltp/blob/master/testcases/kernel/syscalls/utime/utime06.c
-> > * https://github.com/linux-test-project/ltp/blob/master/testcases/kernel/syscalls/utimes/utimes01.c
-> > 
-> > and it makes me a bit nervous :)
-> > 
+> >> May 31 18:33:52 test-server kernel: Error sending entire callback!
+> >> May 31 18:34:01 test-server kernel: Error sending entire callback!
 > >>
-> >> Looking at nfsd_setattr()....  The main work is done by notify_change(),
-> >> which is probably doing the right thing.  But before that there's an
-> >> fh_verify()--looks like that is expected to fail in your case.  I bet
-> >> that's the cause.
-> 
-> Yes, it is.
-> 
-> nfsd do the permission checking before notify_change() as,
-> 
-> /* This assumes  NFSD_MAY_{READ,WRITE,EXEC} == MAY_{READ,WRITE,EXEC} */
-> err = inode_permission(inode, acc & (MAY_READ|MAY_WRITE|MAY_EXEC));
-> 
-> return -EACCES for non-owner user.
-> 
+> >> It is caused by a cb_layoutreturn got error -10008 (NFS4ERR_DELAY),
+> >> and then, the client crash, nfsd enter the infinite loop.
+> >>
+> >> bc_sendto --> call_timeout --> nfsd4_cb_done --> nfsd4_cb_layout_done
+> >>  with error -10008 --> rpc_delay(task, HZ/100) --> bc_sendto ...
 > > 
-> > I doubt I can fix it by myself (at least quickly). So I am happy if anyone more experienced will look at it as well :)
-> > 
-> > Anyway, if nobody is interested, I'll give it a try, but later.
+> > How are you reproducing this?
 > 
-> Here is a diff patch for this problem, please try testing.
-> If okay, I will send an official patch.
+> Yes, 
 > 
-> Note: must apply the following patch first in the url,
-> http://git.linux-nfs.org/?p=bfields/linux.git;a=commitdiff;h=cc265089ce1b176dde963c74b53593446ee7f99a
+> I test it by xfstests 074 with nfs client's kdump is on,
+> set CONFIG_DEFAULT_HUNG_TASK_TIMEOUT, and client's blkmapd is down.
+> 
+> 1. nfs client's write operation will get the layout of file, 
+>    and then the getdeviceinfo,
+> 2. but layout segment is not record by client for blkmapd is down, 
+> 3. client write data by sending WRITE to server, 
+> 4. nfs server will recall the layout of the file before WRITE,
+> 5. network error cause the client reset the session and return NFS4ERR_DELAY,
+> 6. so client's WRITE operation is waiting the reply,
+>    if the task hang 120s, client will crash.
+> 7. so that, the next bc_sendto will fail with TIMEOUT,
+>    and cb_status is NFS4ERR_DELAY.
 
-We could do that if we have to.
-
-I wonder if we could instead skip the fh_verify's inode_permission call
-entirely?  Most callers of fh_verify don't need the inode_permission
-call at all as far as I can tell, because the following vfs operation
-does permission checking already.
-
-We still need some nfs-specific checking, I guess (e.g. to make sure we
-aren't allowing setattr on a read-only export of a writeable mount), but
-the inode_permission itself I think we can usually skip.
-
-Andreas Gruenbacher has also been complaining that the redundant
-inode_permission calls make the richacl work more difficult, I can't
-remember why exactly.
+OK, that's complicated.  Sounds like you're giving this code a
+workout--thanks.  I'll add the reproducer to the changelog....
 
 --b.
 
 > 
 > thanks,
 > Kinglong Mee
-> -------------------------------------------------------------
-> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-> index 84d770b..2533088 100644
-> --- a/fs/nfsd/vfs.c
-> +++ b/fs/nfsd/vfs.c
-> @@ -407,10 +371,23 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp, struct iattr *iap,
->  	bool		get_write_count;
->  	int		size_change = 0;
->  
-> -	if (iap->ia_valid & (ATTR_ATIME | ATTR_MTIME | ATTR_SIZE))
-> +	if (iap->ia_valid & ATTR_SIZE) {
->  		accmode |= NFSD_MAY_WRITE|NFSD_MAY_OWNER_OVERRIDE;
-> -	if (iap->ia_valid & ATTR_SIZE)
->  		ftype = S_IFREG;
-> +	}
-> +
-> +	/*
-> +	 * According to utimes_common(),
-> +	 *
-> +	 * If times is NULL (or both times are UTIME_NOW),
-> +	 * then we need to check permissions, because
-> +	 * inode_change_ok() won't do it.
-> +	 */
-> +	if (iap->ia_valid & (ATTR_ATIME | ATTR_MTIME)) {
-> +		accmode |= NFSD_MAY_OWNER_OVERRIDE;
-> +		if (!(iap->ia_valid & (ATTR_ATIME_SET | ATTR_MTIME_SET)))
-> +			accmode |= NFSD_MAY_WRITE;
-> +	}
->  
->  	/* Callers that do fh_verify should do the fh_want_write: */
->  	get_write_count = !fhp->fh_dentry;
+> 
+> > 
+> > --b.
+> > 
+> >>
+> >> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+> >> ---
+> >>  fs/nfsd/nfs4callback.c | 1 +
+> >>  1 file changed, 1 insertion(+)
+> >>
+> >> diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+> >> index 5694cfb..8b1ac8d 100644
+> >> --- a/fs/nfsd/nfs4callback.c
+> >> +++ b/fs/nfsd/nfs4callback.c
+> >> @@ -875,6 +875,7 @@ static void nfsd4_cb_prepare(struct rpc_task *task, void *calldata)
+> >>  	u32 minorversion = clp->cl_minorversion;
+> >>  
+> >>  	cb->cb_minorversion = minorversion;
+> >> +	cb->cb_status = 0;
+> >>  	if (minorversion) {
+> >>  		if (!nfsd41_cb_get_slot(clp, task))
+> >>  			return;
+> >> -- 
+> >> 2.4.2
+> > 
