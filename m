@@ -1,109 +1,158 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qc0-f182.google.com ([209.85.216.182]:33828 "EHLO
-	mail-qc0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752335AbbFDMnX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Jun 2015 08:43:23 -0400
-Received: by qcej9 with SMTP id j9so17000399qce.1
-        for <linux-nfs@vger.kernel.org>; Thu, 04 Jun 2015 05:43:22 -0700 (PDT)
-Message-ID: <557047E2.10804@gmail.com>
-Date: Thu, 04 Jun 2015 20:43:14 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
+Received: from cantor2.suse.de ([195.135.220.15]:40896 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752609AbbFDNIg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 4 Jun 2015 09:08:36 -0400
+Date: Thu, 4 Jun 2015 14:08:30 +0100
+From: Mel Gorman <mgorman@suse.de>
+To: Jeff Layton <jlayton@poochiereds.net>
+Cc: trond.myklebust@primarydata.com, linux-nfs@vger.kernel.org,
+        linux-mm@kvack.org, linux-kernel@vger.kernel.org,
+        Jerome Marchand <jmarchan@redhat.com>
+Subject: Re: [PATCH 3/4] sunrpc: if we're closing down a socket, clear
+ memalloc on it first
+Message-ID: <20150604130830.GH26425@suse.de>
+References: <1432987393-15604-1-git-send-email-jeff.layton@primarydata.com>
+ <1432987393-15604-4-git-send-email-jeff.layton@primarydata.com>
+ <20150602124025.GG26425@suse.de>
+ <20150603103200.4f66bae5@synchrony.poochiereds.net>
 MIME-Version: 1.0
-To: Stanislav Kholmanskikh <stanislav.kholmanskikh@oracle.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>
-CC: linux-nfs@vger.kernel.org, Vasily Isaenko <vasily.isaenko@oracle.com>,
-        "SHUANG.QIU" <shuang.qiu@oracle.com>
-Subject: Re: nfsd: EACCES vs EPERM on utime()/utimes() calls
-References: <556C73AE.4090900@oracle.com> <20150601212317.GF26972@fieldses.org> <556DD52D.5040405@oracle.com>
-In-Reply-To: <556DD52D.5040405@oracle.com>
-Content-Type: text/plain; charset=windows-1252
+Content-Type: text/plain; charset=iso-8859-15
+In-Reply-To: <20150603103200.4f66bae5@synchrony.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 6/3/2015 12:09 AM, Stanislav Kholmanskikh wrote:
-> On 06/02/2015 12:23 AM, bfields@fieldses.org wrote:
->> On Mon, Jun 01, 2015 at 06:01:02PM +0300, Stanislav Kholmanskikh wrote:
->>> Hello.
->>>
->>> As the man page for utime/utimes states [1], EPERM is returned if
->>> the second argument of utime/utimes is not NULL and:
->>>   * the caller's effective user id does not match the owner of the file
->>>   * the caller does not have write access to the file
->>>   * the caller is not privileged
->>>
->>> However, I don't see this behavior with NFS, I see EACCES is
->>> generated instead.
->>
->> Agreed that it's probably a server bug.  (Have you run across a case
->> where this makes a difference?)
+On Wed, Jun 03, 2015 at 10:32:00AM -0400, Jeff Layton wrote:
+> On Tue, 2 Jun 2015 13:40:26 +0100
+> Mel Gorman <mgorman@suse.de> wrote:
 > 
-> Thank you.
+> > On Sat, May 30, 2015 at 08:03:12AM -0400, Jeff Layton wrote:
+> > > We currently increment the memalloc_socks counter if we have a xprt that
+> > > is associated with a swapfile. That socket can be replaced however
+> > > during a reconnect event, and the memalloc_socks counter is never
+> > > decremented if that occurs.
+> > > 
+> > > When tearing down a xprt socket, check to see if the xprt is set up for
+> > > swapping and sk_clear_memalloc before releasing the socket if so.
+> > > 
+> > > Cc: Mel Gorman <mgorman@suse.de>
+> > > Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
+> > 
+> > Acked-by: Mel Gorman <mgorman@suse.de>
+> > 
 > 
-> No, I've not seen such a real-word scenario.
+> Thanks Mel,
 > 
-> I have these LTP test cases failing:
+> I should also mention that I see this warning pop when working with
+> swapfiles on NFS. This trace is with this patchset, but I see a similar
+> one without it:
 > 
-> * https://github.com/linux-test-project/ltp/blob/master/testcases/kernel/syscalls/utime/utime06.c
-> * https://github.com/linux-test-project/ltp/blob/master/testcases/kernel/syscalls/utimes/utimes01.c
+> [   74.232485] ------------[ cut here ]------------
+> [   74.233354] WARNING: CPU: 2 PID: 754 at net/core/sock.c:364 sk_clear_memalloc+0x51/0x80()
+> [   74.234790] Modules linked in: cts rpcsec_gss_krb5 nfsv4 dns_resolver nfs fscache xfs libcrc32c snd_hda_codec_generic snd_hda_intel snd_hda_controller snd_hda_codec snd_hda_core snd_hwdep snd_seq snd_seq_device nfsd snd_pcm snd_timer snd e1000 ppdev parport_pc joydev parport pvpanic soundcore floppy serio_raw i2c_piix4 pcspkr nfs_acl lockd virtio_balloon acpi_cpufreq auth_rpcgss grace sunrpc qxl drm_kms_helper ttm drm virtio_console virtio_blk virtio_pci ata_generic virtio_ring pata_acpi virtio
+> [   74.243599] CPU: 2 PID: 754 Comm: swapoff Not tainted 4.1.0-rc6+ #5
+> [   74.244635] Hardware name: Bochs Bochs, BIOS Bochs 01/01/2011
+> [   74.245546]  0000000000000000 0000000079e69e31 ffff8800d066bde8 ffffffff8179263d
+> [   74.246786]  0000000000000000 0000000000000000 ffff8800d066be28 ffffffff8109e6fa
+> [   74.248175]  0000000000000000 ffff880118d48000 ffff8800d58f5c08 ffff880036e380a8
+> [   74.249483] Call Trace:
+> [   74.249872]  [<ffffffff8179263d>] dump_stack+0x45/0x57
+> [   74.250703]  [<ffffffff8109e6fa>] warn_slowpath_common+0x8a/0xc0
+> [   74.251655]  [<ffffffff8109e82a>] warn_slowpath_null+0x1a/0x20
+> [   74.252585]  [<ffffffff81661241>] sk_clear_memalloc+0x51/0x80
+> [   74.253519]  [<ffffffffa0116c72>] xs_disable_swap+0x42/0x80 [sunrpc]
+> [   74.254537]  [<ffffffffa01109de>] rpc_clnt_swap_deactivate+0x7e/0xc0 [sunrpc]
+> [   74.255610]  [<ffffffffa03e4fd7>] nfs_swap_deactivate+0x27/0x30 [nfs]
+> [   74.256582]  [<ffffffff811e99d4>] destroy_swap_extents+0x74/0x80
+> [   74.257496]  [<ffffffff811ecb52>] SyS_swapoff+0x222/0x5c0
+> [   74.258318]  [<ffffffff81023f27>] ? syscall_trace_leave+0xc7/0x140
+> [   74.259253]  [<ffffffff81798dae>] system_call_fastpath+0x12/0x71
+> [   74.260158] ---[ end trace 2530722966429f10 ]---
 > 
-> and it makes me a bit nervous :)
+> ...that comes from this in sk_clear_memalloc:
 > 
->>
->> Looking at nfsd_setattr()....  The main work is done by notify_change(),
->> which is probably doing the right thing.  But before that there's an
->> fh_verify()--looks like that is expected to fail in your case.  I bet
->> that's the cause.
-
-Yes, it is.
-
-nfsd do the permission checking before notify_change() as,
-
-/* This assumes  NFSD_MAY_{READ,WRITE,EXEC} == MAY_{READ,WRITE,EXEC} */
-err = inode_permission(inode, acc & (MAY_READ|MAY_WRITE|MAY_EXEC));
-
-return -EACCES for non-owner user.
-
+>         /*
+>          * SOCK_MEMALLOC is allowed to ignore rmem limits to ensure forward
+>          * progress of swapping. However, if SOCK_MEMALLOC is cleared while
+>          * it has rmem allocations there is a risk that the user of the
+>          * socket cannot make forward progress due to exceeding the rmem
+>          * limits. By rights, sk_clear_memalloc() should only be called
+>          * on sockets being torn down but warn and reset the accounting if
+>          * that assumption breaks.
+>          */
+>         if (WARN_ON(sk->sk_forward_alloc))
+>                 sk_mem_reclaim(sk);
 > 
-> I doubt I can fix it by myself (at least quickly). So I am happy if anyone more experienced will look at it as well :)
-> 
-> Anyway, if nobody is interested, I'll give it a try, but later.
+> Is it wrong to call sk_clear_memalloc on swapoff? Should we try to keep
+> it set up as a memalloc socket on the last swapoff and just wait until
+> the socket is being freed to clear it? If so, then maybe the right
+> thing to do is to call sk_clear_memalloc in __sk_free or somewhere
+> similar if it's set up for memalloc?
+>
 
-Here is a diff patch for this problem, please try testing.
-If okay, I will send an official patch.
+I think it is perfectly reasonable to remove the warning after your
+series. When I had it in mind, I was primarily thinking of the shutdown
+case and a single swap file. With your series applied, the disabling of
+swap is called at the correct time. So, something like this to tack on
+to the end of your series?
 
-Note: must apply the following patch first in the url,
-http://git.linux-nfs.org/?p=bfields/linux.git;a=commitdiff;h=cc265089ce1b176dde963c74b53593446ee7f99a
+---8<---
+net, swap: Remove a warning and clarify why sk_mem_reclaim is required when deactivating swap
 
-thanks,
-Kinglong Mee
--------------------------------------------------------------
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 84d770b..2533088 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -407,10 +371,23 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp, struct iattr *iap,
- 	bool		get_write_count;
- 	int		size_change = 0;
+Jeff Layton reported the following;
+
+ [   74.232485] ------------[ cut here ]------------
+ [   74.233354] WARNING: CPU: 2 PID: 754 at net/core/sock.c:364 sk_clear_memalloc+0x51/0x80()
+ [   74.234790] Modules linked in: cts rpcsec_gss_krb5 nfsv4 dns_resolver nfs fscache xfs libcrc32c snd_hda_codec_generic snd_hda_intel snd_hda_controller snd_hda_codec snd_hda_core snd_hwdep snd_seq snd_seq_device nfsd snd_pcm snd_timer snd e1000 ppdev parport_pc joydev parport pvpanic soundcore floppy serio_raw i2c_piix4 pcspkr nfs_acl lockd virtio_balloon acpi_cpufreq auth_rpcgss grace sunrpc qxl drm_kms_helper ttm drm virtio_console virtio_blk virtio_pci ata_generic virtio_ring pata_acpi virtio
+ [   74.243599] CPU: 2 PID: 754 Comm: swapoff Not tainted 4.1.0-rc6+ #5
+ [   74.244635] Hardware name: Bochs Bochs, BIOS Bochs 01/01/2011
+ [   74.245546]  0000000000000000 0000000079e69e31 ffff8800d066bde8 ffffffff8179263d
+ [   74.246786]  0000000000000000 0000000000000000 ffff8800d066be28 ffffffff8109e6fa
+ [   74.248175]  0000000000000000 ffff880118d48000 ffff8800d58f5c08 ffff880036e380a8
+ [   74.249483] Call Trace:
+ [   74.249872]  [<ffffffff8179263d>] dump_stack+0x45/0x57
+ [   74.250703]  [<ffffffff8109e6fa>] warn_slowpath_common+0x8a/0xc0
+ [   74.251655]  [<ffffffff8109e82a>] warn_slowpath_null+0x1a/0x20
+ [   74.252585]  [<ffffffff81661241>] sk_clear_memalloc+0x51/0x80
+ [   74.253519]  [<ffffffffa0116c72>] xs_disable_swap+0x42/0x80 [sunrpc]
+ [   74.254537]  [<ffffffffa01109de>] rpc_clnt_swap_deactivate+0x7e/0xc0 [sunrpc]
+ [   74.255610]  [<ffffffffa03e4fd7>] nfs_swap_deactivate+0x27/0x30 [nfs]
+ [   74.256582]  [<ffffffff811e99d4>] destroy_swap_extents+0x74/0x80
+ [   74.257496]  [<ffffffff811ecb52>] SyS_swapoff+0x222/0x5c0
+ [   74.258318]  [<ffffffff81023f27>] ? syscall_trace_leave+0xc7/0x140
+ [   74.259253]  [<ffffffff81798dae>] system_call_fastpath+0x12/0x71
+ [   74.260158] ---[ end trace 2530722966429f10 ]---
+
+The warning in question was unnecessary but with Jeff's series the rules
+are also clearer.  This patch removes the warning and updates the comment
+to explain why sk_mem_reclaim() may still be called.
+
+Signed-off-by: Mel Gorman <mgorman@suse.de>
+---
+ net/core/sock.c | 12 +++++-------
+ 1 file changed, 5 insertions(+), 7 deletions(-)
+
+diff --git a/net/core/sock.c b/net/core/sock.c
+index 71e3e5f1eaa0..1ebf706b5847 100644
+--- a/net/core/sock.c
++++ b/net/core/sock.c
+@@ -354,14 +354,12 @@ void sk_clear_memalloc(struct sock *sk)
  
--	if (iap->ia_valid & (ATTR_ATIME | ATTR_MTIME | ATTR_SIZE))
-+	if (iap->ia_valid & ATTR_SIZE) {
- 		accmode |= NFSD_MAY_WRITE|NFSD_MAY_OWNER_OVERRIDE;
--	if (iap->ia_valid & ATTR_SIZE)
- 		ftype = S_IFREG;
-+	}
-+
-+	/*
-+	 * According to utimes_common(),
-+	 *
-+	 * If times is NULL (or both times are UTIME_NOW),
-+	 * then we need to check permissions, because
-+	 * inode_change_ok() won't do it.
-+	 */
-+	if (iap->ia_valid & (ATTR_ATIME | ATTR_MTIME)) {
-+		accmode |= NFSD_MAY_OWNER_OVERRIDE;
-+		if (!(iap->ia_valid & (ATTR_ATIME_SET | ATTR_MTIME_SET)))
-+			accmode |= NFSD_MAY_WRITE;
-+	}
- 
- 	/* Callers that do fh_verify should do the fh_want_write: */
- 	get_write_count = !fhp->fh_dentry;
+ 	/*
+ 	 * SOCK_MEMALLOC is allowed to ignore rmem limits to ensure forward
+-	 * progress of swapping. However, if SOCK_MEMALLOC is cleared while
+-	 * it has rmem allocations there is a risk that the user of the
+-	 * socket cannot make forward progress due to exceeding the rmem
+-	 * limits. By rights, sk_clear_memalloc() should only be called
+-	 * on sockets being torn down but warn and reset the accounting if
+-	 * that assumption breaks.
++	 * progress of swapping. SOCK_MEMALLOC may be cleared while
++	 * it has rmem allocations due to the last swapfile being deactivated
++	 * but there is a risk that the socket is unusable due to exceeding
++	 * the rmem limits. Reclaim the reserves and obey rmem limits again.
+ 	 */
+-	if (WARN_ON(sk->sk_forward_alloc))
++	if (sk->sk_forward_alloc)
+ 		sk_mem_reclaim(sk);
+ }
+ EXPORT_SYMBOL_GPL(sk_clear_memalloc);
