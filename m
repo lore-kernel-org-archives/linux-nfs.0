@@ -1,243 +1,218 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:50584 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932143AbbFDQqH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 4 Jun 2015 12:46:07 -0400
-From: Stefan Hajnoczi <stefanha@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: Anna Schumaker <anna.schumaker@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        asias.hejun@gmail.com, netdev@vger.kernel.org,
-        Daniel Berrange <berrange@redhat.com>,
-        "David S. Miller" <davem@davemloft.net>,
-        Stefan Hajnoczi <stefanha@redhat.com>
-Subject: [RFC 05/10] VSOCK: add tcp_read_sock()-like vsock_read_sock() function
-Date: Thu,  4 Jun 2015 17:45:48 +0100
-Message-Id: <1433436353-6761-6-git-send-email-stefanha@redhat.com>
-In-Reply-To: <1433436353-6761-1-git-send-email-stefanha@redhat.com>
-References: <1433436353-6761-1-git-send-email-stefanha@redhat.com>
+Received: from mail-ig0-f176.google.com ([209.85.213.176]:38014 "EHLO
+	mail-ig0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932359AbbFDRK1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Jun 2015 13:10:27 -0400
+Received: by igblz2 with SMTP id lz2so44120893igb.1
+        for <linux-nfs@vger.kernel.org>; Thu, 04 Jun 2015 10:10:27 -0700 (PDT)
+Date: Thu, 4 Jun 2015 13:10:20 -0400
+From: Jeff Layton <jlayton@poochiereds.net>
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org,
+        Michael Skralivetsky <michael.skralivetsky@primarydata.com>
+Subject: Re: [PATCH 4/4] nfs: make nfs4_init_uniform_client_string use a
+ dynamically allocated buffer
+Message-ID: <20150604131020.7ce8e888@tlielax.poochiereds.net>
+In-Reply-To: <1433436269-12292-5-git-send-email-jeff.layton@primarydata.com>
+References: <1433436269-12292-1-git-send-email-jeff.layton@primarydata.com>
+	<1433436269-12292-5-git-send-email-jeff.layton@primarydata.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The tcp_read_sock() interface dequeues skbs and gives them to the
-caller's callback function for processing.  This interface can avoid
-data copies since the caller accesses the skb instead of using its own
-receive buffer.
+On Thu,  4 Jun 2015 12:44:29 -0400
+Jeff Layton <jlayton@poochiereds.net> wrote:
 
-This patch implements vsock_read_sock() for AF_VSOCK SOCK_STREAM
-sockets.  The implementation is only for virtio-vsock at this time, not
-for the VMware VMCI transport.  It is not zero-copy yet because the
-virtio-vsock receive queue does not consist of skbs.
+> Change the uniform client string generator to use the same scheme as
+> the nonuniform one. This one is a little simpler since we don't need to
+> deal with RCU, but we do have two different cases, depending on whether
+> there is a uniquifier or not.
+> 
+> Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
+> ---
+>  fs/nfs/nfs4proc.c       | 105 ++++++++++++++++++++++++++++++++----------------
+>  include/linux/nfs_xdr.h |   6 ---
+>  2 files changed, 70 insertions(+), 41 deletions(-)
+> 
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index 49e3b3e55887..479b0f583f33 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -5000,28 +5000,71 @@ retry:
+>  	return 0;
+>  }
+>  
+> -static unsigned int
+> -nfs4_init_uniform_client_string(struct nfs_client *clp,
+> -				char *buf, size_t len)
+> +static int
+> +nfs4_init_uniquifier_client_string(struct nfs_client *clp)
+>  {
+> -	const char *nodename = clp->cl_rpcclient->cl_nodename;
+> -	unsigned int result;
+> +	int result;
+> +	size_t len;
+> +	char *str;
+>  
+>  	if (clp->cl_owner_id != NULL)
+> -		return strlcpy(buf, clp->cl_owner_id, len);
+> +		return 0;
+> +
 
-The tcp_read_sock()-like interface is needed for AF_VSOCK sunrpc
-support.
+Self review...
 
-Signed-off-by: Stefan Hajnoczi <stefanha@redhat.com>
----
- drivers/vhost/vsock.c                   |  1 +
- include/linux/virtio_vsock.h            |  4 +++
- include/net/af_vsock.h                  |  5 +++
- net/vmw_vsock/af_vsock.c                | 15 +++++++++
- net/vmw_vsock/virtio_transport.c        |  1 +
- net/vmw_vsock/virtio_transport_common.c | 55 +++++++++++++++++++++++++++++++++
- net/vmw_vsock/vmci_transport.c          |  8 +++++
- 7 files changed, 89 insertions(+)
+The above isn't necessary since we check that in the caller.
 
-diff --git a/drivers/vhost/vsock.c b/drivers/vhost/vsock.c
-index 7a6f669..d715863 100644
---- a/drivers/vhost/vsock.c
-+++ b/drivers/vhost/vsock.c
-@@ -556,6 +556,7 @@ static struct vsock_transport vhost_transport = {
- 	.stream_rcvhiwat          = virtio_transport_stream_rcvhiwat,
- 	.stream_is_active         = virtio_transport_stream_is_active,
- 	.stream_allow             = virtio_transport_stream_allow,
-+	.stream_read_sock         = virtio_transport_stream_read_sock,
- 
- 	.notify_poll_in           = virtio_transport_notify_poll_in,
- 	.notify_poll_out          = virtio_transport_notify_poll_out,
-diff --git a/include/linux/virtio_vsock.h b/include/linux/virtio_vsock.h
-index 01d84a5..a8af8f0 100644
---- a/include/linux/virtio_vsock.h
-+++ b/include/linux/virtio_vsock.h
-@@ -37,6 +37,7 @@
- #include <uapi/linux/virtio_vsock.h>
- #include <linux/socket.h>
- #include <net/sock.h>
-+#include <net/tcp.h> /* for sk_read_actor_t */
- 
- #define VIRTIO_VSOCK_DEFAULT_MIN_BUF_SIZE	128
- #define VIRTIO_VSOCK_DEFAULT_BUF_SIZE		(1024 * 256)
-@@ -176,6 +177,9 @@ int virtio_transport_notify_send_post_enqueue(struct vsock_sock *vsk,
- u64 virtio_transport_stream_rcvhiwat(struct vsock_sock *vsk);
- bool virtio_transport_stream_is_active(struct vsock_sock *vsk);
- bool virtio_transport_stream_allow(u32 cid, u32 port);
-+int virtio_transport_stream_read_sock(struct vsock_sock *vsk,
-+				      read_descriptor_t *desc,
-+				      sk_read_actor_t recv_actor);
- int virtio_transport_dgram_bind(struct vsock_sock *vsk,
- 				struct sockaddr_vm *addr);
- bool virtio_transport_dgram_allow(u32 cid, u32 port);
-diff --git a/include/net/af_vsock.h b/include/net/af_vsock.h
-index bc9055c..2fb7ea3 100644
---- a/include/net/af_vsock.h
-+++ b/include/net/af_vsock.h
-@@ -19,6 +19,7 @@
- #include <linux/kernel.h>
- #include <linux/workqueue.h>
- #include <linux/vm_sockets.h>
-+#include <net/tcp.h> /* for sk_read_actor_t */
- 
- #include "vsock_addr.h"
- 
-@@ -69,6 +70,8 @@ struct vsock_sock {
- 	void *trans;
- };
- 
-+int vsock_read_sock(struct sock *sk, read_descriptor_t *desc,
-+		    sk_read_actor_t recv_actor);
- s64 vsock_stream_has_data(struct vsock_sock *vsk);
- s64 vsock_stream_has_space(struct vsock_sock *vsk);
- void vsock_pending_work(struct work_struct *work);
-@@ -118,6 +121,8 @@ struct vsock_transport {
- 	u64 (*stream_rcvhiwat)(struct vsock_sock *);
- 	bool (*stream_is_active)(struct vsock_sock *);
- 	bool (*stream_allow)(u32 cid, u32 port);
-+	int (*stream_read_sock)(struct vsock_sock *, read_descriptor_t *desc,
-+				sk_read_actor_t recv_actor);
- 
- 	/* Notification. */
- 	int (*notify_poll_in)(struct vsock_sock *, size_t, bool *);
-diff --git a/net/vmw_vsock/af_vsock.c b/net/vmw_vsock/af_vsock.c
-index 0b3c498..61b412c 100644
---- a/net/vmw_vsock/af_vsock.c
-+++ b/net/vmw_vsock/af_vsock.c
-@@ -764,6 +764,21 @@ static void vsock_sk_destruct(struct sock *sk)
- 	put_cred(vsk->owner);
- }
- 
-+int vsock_read_sock(struct sock *sk, read_descriptor_t *desc,
-+		    sk_read_actor_t recv_actor)
-+{
-+	struct vsock_sock *vsp = vsock_sk(sk);
-+
-+	if (sk->sk_type != SOCK_STREAM)
-+		return -EOPNOTSUPP;
-+
-+	if (sk->sk_state != SS_CONNECTED && sk->sk_state != SS_DISCONNECTING)
-+		return -ENOTCONN;
-+
-+	return transport->stream_read_sock(vsp, desc, recv_actor);
-+}
-+EXPORT_SYMBOL(vsock_read_sock);
-+
- static int vsock_queue_rcv_skb(struct sock *sk, struct sk_buff *skb)
- {
- 	int err;
-diff --git a/net/vmw_vsock/virtio_transport.c b/net/vmw_vsock/virtio_transport.c
-index 5c35b31..365e8a6 100644
---- a/net/vmw_vsock/virtio_transport.c
-+++ b/net/vmw_vsock/virtio_transport.c
-@@ -315,6 +315,7 @@ static struct vsock_transport virtio_transport = {
- 	.stream_rcvhiwat          = virtio_transport_stream_rcvhiwat,
- 	.stream_is_active         = virtio_transport_stream_is_active,
- 	.stream_allow             = virtio_transport_stream_allow,
-+	.stream_read_sock         = virtio_transport_stream_read_sock,
- 
- 	.notify_poll_in           = virtio_transport_notify_poll_in,
- 	.notify_poll_out          = virtio_transport_notify_poll_out,
-diff --git a/net/vmw_vsock/virtio_transport_common.c b/net/vmw_vsock/virtio_transport_common.c
-index 1153d29..28122e2 100644
---- a/net/vmw_vsock/virtio_transport_common.c
-+++ b/net/vmw_vsock/virtio_transport_common.c
-@@ -320,6 +320,61 @@ virtio_transport_stream_dequeue(struct vsock_sock *vsk,
- }
- EXPORT_SYMBOL_GPL(virtio_transport_stream_dequeue);
- 
-+int
-+virtio_transport_stream_read_sock(struct vsock_sock *vsk,
-+				  read_descriptor_t *desc,
-+				  sk_read_actor_t recv_actor)
-+{
-+	struct virtio_transport *trans;
-+	int ret = 0;
-+
-+	trans = vsk->trans;
-+
-+	mutex_lock(&trans->rx_lock);
-+	while (trans->rx_bytes) {
-+		struct virtio_vsock_pkt *pkt;
-+		struct sk_buff *skb;
-+		size_t len;
-+		int used;
-+
-+		pkt = list_first_entry(&trans->rx_queue,
-+				       struct virtio_vsock_pkt, list);
-+
-+		len = pkt->len - pkt->off;
-+		skb = alloc_skb(len, GFP_KERNEL);
-+		if (!skb)
-+			break;
-+
-+		memcpy(skb_put(skb, len),
-+		       pkt->buf + pkt->off,
-+		       len);
-+
-+		used = recv_actor(desc, skb, 0, len);
-+
-+		kfree_skb(skb);
-+
-+		if (used > 0) {
-+			ret += used;
-+			pkt->off += used;
-+			if (pkt->off == pkt->len) {
-+				virtio_transport_dec_rx_pkt(pkt);
-+				list_del(&pkt->list);
-+				virtio_transport_free_pkt(pkt);
-+			}
-+		}
-+
-+		if (used <= 0 || !desc->count)
-+			break;
-+	}
-+	mutex_unlock(&trans->rx_lock);
-+
-+	if (ret > 0)
-+		virtio_transport_send_credit_update(vsk, SOCK_STREAM, NULL);
-+
-+	return ret;
-+}
-+EXPORT_SYMBOL_GPL(virtio_transport_stream_read_sock);
-+
- struct dgram_skb {
- 	struct list_head list;
- 	struct sk_buff *skb;
-diff --git a/net/vmw_vsock/vmci_transport.c b/net/vmw_vsock/vmci_transport.c
-index c294da0..d329564 100644
---- a/net/vmw_vsock/vmci_transport.c
-+++ b/net/vmw_vsock/vmci_transport.c
-@@ -654,6 +654,13 @@ static bool vmci_transport_stream_allow(u32 cid, u32 port)
- 	return true;
- }
- 
-+static int vmci_transport_stream_read_sock(struct vsock_sock *vsk,
-+					   read_descriptor_t *desc,
-+					   sk_read_actor_t recv_actor)
-+{
-+	return -EOPNOTSUPP; /* not yet implemented */
-+}
-+
- /* This is invoked as part of a tasklet that's scheduled when the VMCI
-  * interrupt fires.  This is run in bottom-half context but it defers most of
-  * its work to the packet handling work queue.
-@@ -2083,6 +2090,7 @@ static struct vsock_transport vmci_transport = {
- 	.stream_rcvhiwat = vmci_transport_stream_rcvhiwat,
- 	.stream_is_active = vmci_transport_stream_is_active,
- 	.stream_allow = vmci_transport_stream_allow,
-+	.stream_read_sock = vmci_transport_stream_read_sock,
- 	.notify_poll_in = vmci_transport_notify_poll_in,
- 	.notify_poll_out = vmci_transport_notify_poll_out,
- 	.notify_recv_init = vmci_transport_notify_recv_init,
+> +	len = 10 + 10 + 1 + 10 + 1 +
+> +		strlen(nfs4_client_id_uniquifier) + 1 +
+> +		strlen(clp->cl_rpcclient->cl_nodename) + 1;
+> +
+> +	if (len > NFS4_OPAQUE_LIMIT + 1)
+> +		return -EINVAL;
+> +
+> +	str = kmalloc(len, GFP_NOFS);
+> +	if (!str)
+> +		return -ENOMEM;
+> +
+> +	result = scnprintf(str, len, "Linux NFSv%u.%u %s/%s",
+> +			clp->rpc_ops->version, clp->cl_minorversion,
+> +			nfs4_client_id_uniquifier,
+> +			clp->cl_rpcclient->cl_nodename);
+> +	if (result >= len) {
+> +		kfree(str);
+> +		return -EINVAL;
+> +	}
+> +	clp->cl_owner_id = str;
+> +	return 0;
+> +}
+> +
+> +static int
+> +nfs4_init_uniform_client_string(struct nfs_client *clp)
+> +{
+> +	int result;
+> +	size_t len;
+> +	char *str;
+> +
+> +	if (clp->cl_owner_id != NULL)
+> +		return 0;
+>  
+>  	if (nfs4_client_id_uniquifier[0] != '\0')
+> -		result = scnprintf(buf, len, "Linux NFSv%u.%u %s/%s",
+> -				clp->rpc_ops->version,
+> -				clp->cl_minorversion,
+> -				nfs4_client_id_uniquifier,
+> -				nodename);
+> -	else
+> -		result = scnprintf(buf, len, "Linux NFSv%u.%u %s",
+> -				clp->rpc_ops->version, clp->cl_minorversion,
+> -				nodename);
+> -	clp->cl_owner_id = kstrdup(buf, GFP_NOFS);
+> -	return result;
+> +		return nfs4_init_uniquifier_client_string(clp);
+> +
+> +	len = 10 + 10 + 1 + 10 + 1 +
+> +		strlen(clp->cl_rpcclient->cl_nodename) + 1;
+> +
+> +	str = kmalloc(len, GFP_NOFS);
+> +	if (!str)
+> +		return -ENOMEM;
+> +
+> +	if (len > NFS4_OPAQUE_LIMIT + 1)
+> +		return -EINVAL;
+> +
+
+The above two if statements should be reordered. We want to check the
+length before the allocation or we leak memory here when it's too long.
+I'll fix that in v2 once everyone has had a chance to comment on the
+rest.
+
+> +	result = scnprintf(str, len, "Linux NFSv%u.%u %s",
+> +			clp->rpc_ops->version, clp->cl_minorversion,
+> +			clp->cl_rpcclient->cl_nodename);
+> +	if (result >= len) {
+> +		kfree(str);
+> +		return -EINVAL;
+> +	}
+> +	clp->cl_owner_id = str;
+> +	return 0;
+>  }
+>  
+>  /*
+> @@ -5088,20 +5131,14 @@ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
+>  
+>  	/* nfs_client_id4 */
+>  	nfs4_init_boot_verifier(clp, &sc_verifier);
+> -	if (test_bit(NFS_CS_MIGRATION, &clp->cl_flags)) {
+> -		setclientid.sc_name_len =
+> -				nfs4_init_uniform_client_string(clp,
+> -						setclientid.sc_name,
+> -						sizeof(setclientid.sc_name));
+> -		if (!clp->cl_owner_id) {
+> -			status = -ENOMEM;
+> -			goto out;
+> -		}
+> -	} else {
+> +
+> +	if (test_bit(NFS_CS_MIGRATION, &clp->cl_flags))
+> +		status = nfs4_init_uniform_client_string(clp);
+> +	else
+>  		status = nfs4_init_nonuniform_client_string(clp);
+> -		if (status)
+> -			goto out;
+> -	}
+> +
+> +	if (status)
+> +		goto out;
+>  
+>  	/* cb_client4 */
+>  	setclientid.sc_netid_len =
+> @@ -6875,12 +6912,10 @@ static int _nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred,
+>  	};
+>  
+>  	nfs4_init_boot_verifier(clp, &verifier);
+> -	args.id_len = nfs4_init_uniform_client_string(clp, args.id,
+> -							sizeof(args.id));
+> -	if (!clp->cl_owner_id) {
+> -		status = -ENOMEM;
+> +
+> +	status = nfs4_init_uniform_client_string(clp);
+> +	if (status)
+>  		goto out;
+> -	}
+>  
+>  	dprintk("NFS call  exchange_id auth=%s, '%s'\n",
+>  		clp->cl_rpcclient->cl_auth->au_ops->au_name,
+> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+> index 16991f5e274e..c959e7eb5bd4 100644
+> --- a/include/linux/nfs_xdr.h
+> +++ b/include/linux/nfs_xdr.h
+> @@ -984,11 +984,8 @@ struct nfs4_readlink_res {
+>  	struct nfs4_sequence_res	seq_res;
+>  };
+>  
+> -#define NFS4_SETCLIENTID_NAMELEN	(127)
+>  struct nfs4_setclientid {
+>  	const nfs4_verifier *		sc_verifier;
+> -	unsigned int			sc_name_len;
+> -	char				sc_name[NFS4_SETCLIENTID_NAMELEN + 1];
+>  	u32				sc_prog;
+>  	unsigned int			sc_netid_len;
+>  	char				sc_netid[RPCBIND_MAXNETIDLEN + 1];
+> @@ -1142,12 +1139,9 @@ struct nfs41_state_protection {
+>  	struct nfs4_op_map allow;
+>  };
+>  
+> -#define NFS4_EXCHANGE_ID_LEN	(48)
+>  struct nfs41_exchange_id_args {
+>  	struct nfs_client		*client;
+>  	nfs4_verifier			*verifier;
+> -	unsigned int 			id_len;
+> -	char 				id[NFS4_EXCHANGE_ID_LEN];
+>  	u32				flags;
+>  	struct nfs41_state_protection	state_protect;
+>  };
+
+
 -- 
-2.4.2
-
+Jeff Layton <jlayton@poochiereds.net>
