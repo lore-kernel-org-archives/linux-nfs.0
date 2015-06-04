@@ -1,267 +1,53 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f170.google.com ([209.85.220.170]:33006 "EHLO
-	mail-qk0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751759AbbFDPVq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Jun 2015 11:21:46 -0400
-Received: by qkhg32 with SMTP id g32so25527016qkh.0
-        for <linux-nfs@vger.kernel.org>; Thu, 04 Jun 2015 08:21:46 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH v3 7/7] rpcrdma: Merge svcrdma and xprtrdma modules into one
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Date: Thu, 04 Jun 2015 11:21:42 -0400
-Message-ID: <20150604152142.7835.10542.stgit@klimt.1015granger.net>
-In-Reply-To: <20150604151716.7835.65047.stgit@klimt.1015granger.net>
-References: <20150604151716.7835.65047.stgit@klimt.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-ie0-f174.google.com ([209.85.223.174]:34924 "EHLO
+	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753019AbbFDQon (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Jun 2015 12:44:43 -0400
+Received: by iesa3 with SMTP id a3so40213727ies.2
+        for <linux-nfs@vger.kernel.org>; Thu, 04 Jun 2015 09:44:42 -0700 (PDT)
+From: Jeff Layton <jlayton@poochiereds.net>
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org,
+        Michael Skralivetsky <michael.skralivetsky@primarydata.com>
+Subject: [PATCH 2/4] nfs: update maxsz values for SETCLIENTID and EXCHANGE_ID
+Date: Thu,  4 Jun 2015 12:44:27 -0400
+Message-Id: <1433436269-12292-3-git-send-email-jeff.layton@primarydata.com>
+In-Reply-To: <1433436269-12292-1-git-send-email-jeff.layton@primarydata.com>
+References: <1433436269-12292-1-git-send-email-jeff.layton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Bi-directional RPC support means code in svcrdma.ko invokes a bit of
-code in xprtrdma.ko, and vice versa. To avoid loader/linker loops,
-merge the server and client side modules together into a single
-module.
+The spec allows for up to NFS4_OPAQUE_LIMIT (1k). While we'll almost
+certainly never use that much, these ops are generally the only ones
+in the compound so we might as well allow for them to be that large.
 
-When backchannel capabilities are added, the combined module will
-register all needed transport capabilities so that Upper Layer
-consumers automatically have everything needed to create a
-bi-directional transport connection.
-
-Module aliases are added for backwards compatibility with user
-space, which still may expect svcrdma.ko or xprtrdma.ko to be
-present.
-
-This commit reverts commit 2e8c12e1b765 ("xprtrdma: add separate
-Kconfig options for NFSoRDMA client and server support") and
-provides a single CONFIG option for enabling the new module.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
 ---
+ fs/nfs/nfs4xdr.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
- net/sunrpc/Kconfig              |   28 +++++++-----------------
- net/sunrpc/Makefile             |    3 +--
- net/sunrpc/xprtrdma/Makefile    |   14 +++++-------
- net/sunrpc/xprtrdma/module.c    |   46 +++++++++++++++++++++++++++++++++++++++
- net/sunrpc/xprtrdma/svc_rdma.c  |    8 +------
- net/sunrpc/xprtrdma/transport.c |   13 ++---------
- net/sunrpc/xprtrdma/xprt_rdma.h |    5 ++++
- 7 files changed, 69 insertions(+), 48 deletions(-)
- create mode 100644 net/sunrpc/xprtrdma/module.c
-
-diff --git a/net/sunrpc/Kconfig b/net/sunrpc/Kconfig
-index 9068e72..04ce2c0 100644
---- a/net/sunrpc/Kconfig
-+++ b/net/sunrpc/Kconfig
-@@ -48,28 +48,16 @@ config SUNRPC_DEBUG
- 
- 	  If unsure, say Y.
- 
--config SUNRPC_XPRT_RDMA_CLIENT
--	tristate "RPC over RDMA Client Support"
-+config SUNRPC_XPRT_RDMA
-+	tristate "RPC-over-RDMA transport"
- 	depends on SUNRPC && INFINIBAND && INFINIBAND_ADDR_TRANS
- 	default SUNRPC && INFINIBAND
- 	help
--	  This option allows the NFS client to support an RDMA-enabled
--	  transport.
-+	  This option allows the NFS client and server to use RDMA
-+	  transports (InfiniBand, iWARP, or RoCE).
- 
--	  To compile RPC client RDMA transport support as a module,
--	  choose M here: the module will be called xprtrdma.
-+	  To compile this support as a module, choose M. The module
-+	  will be called rpcrdma.ko.
- 
--	  If unsure, say N.
--
--config SUNRPC_XPRT_RDMA_SERVER
--	tristate "RPC over RDMA Server Support"
--	depends on SUNRPC && INFINIBAND && INFINIBAND_ADDR_TRANS
--	default SUNRPC && INFINIBAND
--	help
--	  This option allows the NFS server to support an RDMA-enabled
--	  transport.
--
--	  To compile RPC server RDMA transport support as a module,
--	  choose M here: the module will be called svcrdma.
--
--	  If unsure, say N.
-+	  If unsure, or you know there is no RDMA capability on your
-+	  hardware platform, say N.
-diff --git a/net/sunrpc/Makefile b/net/sunrpc/Makefile
-index 15e6f6c..936ad0a 100644
---- a/net/sunrpc/Makefile
-+++ b/net/sunrpc/Makefile
-@@ -5,8 +5,7 @@
- 
- obj-$(CONFIG_SUNRPC) += sunrpc.o
- obj-$(CONFIG_SUNRPC_GSS) += auth_gss/
--
--obj-y += xprtrdma/
-+obj-$(CONFIG_SUNRPC_XPRT_RDMA) += xprtrdma/
- 
- sunrpc-y := clnt.o xprt.o socklib.o xprtsock.o sched.o \
- 	    auth.o auth_null.o auth_unix.o auth_generic.o \
-diff --git a/net/sunrpc/xprtrdma/Makefile b/net/sunrpc/xprtrdma/Makefile
-index 579f72b..48913de 100644
---- a/net/sunrpc/xprtrdma/Makefile
-+++ b/net/sunrpc/xprtrdma/Makefile
-@@ -1,9 +1,7 @@
--obj-$(CONFIG_SUNRPC_XPRT_RDMA_CLIENT) += xprtrdma.o
-+obj-$(CONFIG_SUNRPC_XPRT_RDMA) += rpcrdma.o
- 
--xprtrdma-y := transport.o rpc_rdma.o verbs.o \
--	fmr_ops.o frwr_ops.o physical_ops.o
--
--obj-$(CONFIG_SUNRPC_XPRT_RDMA_SERVER) += svcrdma.o
--
--svcrdma-y := svc_rdma.o svc_rdma_transport.o \
--	svc_rdma_marshal.o svc_rdma_sendto.o svc_rdma_recvfrom.o
-+rpcrdma-y := transport.o rpc_rdma.o verbs.o \
-+	fmr_ops.o frwr_ops.o physical_ops.o \
-+	svc_rdma.o svc_rdma_transport.o \
-+	svc_rdma_marshal.o svc_rdma_sendto.o svc_rdma_recvfrom.o \
-+	module.o
-diff --git a/net/sunrpc/xprtrdma/module.c b/net/sunrpc/xprtrdma/module.c
-new file mode 100644
-index 0000000..560712b
---- /dev/null
-+++ b/net/sunrpc/xprtrdma/module.c
-@@ -0,0 +1,46 @@
-+/*
-+ * Copyright (c) 2015 Oracle.  All rights reserved.
-+ */
-+
-+/* rpcrdma.ko module initialization
-+ */
-+
-+#include <linux/module.h>
-+#include <linux/init.h>
-+#include <linux/sunrpc/svc_rdma.h>
-+#include "xprt_rdma.h"
-+
-+#if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
-+# define RPCDBG_FACILITY	RPCDBG_TRANS
-+#endif
-+
-+MODULE_AUTHOR("Open Grid Computing and Network Appliance, Inc.");
-+MODULE_DESCRIPTION("RPC/RDMA Transport");
-+MODULE_LICENSE("Dual BSD/GPL");
-+MODULE_ALIAS("svcrdma");
-+MODULE_ALIAS("xprtrdma");
-+
-+static void __exit rpc_rdma_cleanup(void)
-+{
-+	xprt_rdma_cleanup();
-+	svc_rdma_cleanup();
-+}
-+
-+static int __init rpc_rdma_init(void)
-+{
-+	int rc;
-+
-+	rc = svc_rdma_init();
-+	if (rc)
-+		goto out;
-+
-+	rc = xprt_rdma_init();
-+	if (rc)
-+		svc_rdma_cleanup();
-+
-+out:
-+	return rc;
-+}
-+
-+module_init(rpc_rdma_init);
-+module_exit(rpc_rdma_cleanup);
-diff --git a/net/sunrpc/xprtrdma/svc_rdma.c b/net/sunrpc/xprtrdma/svc_rdma.c
-index c1b6270..2cd252f 100644
---- a/net/sunrpc/xprtrdma/svc_rdma.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma.c
-@@ -38,8 +38,7 @@
-  *
-  * Author: Tom Tucker <tom@opengridcomputing.com>
-  */
--#include <linux/module.h>
--#include <linux/init.h>
-+
- #include <linux/slab.h>
- #include <linux/fs.h>
- #include <linux/sysctl.h>
-@@ -295,8 +294,3 @@ int svc_rdma_init(void)
- 	destroy_workqueue(svc_rdma_wq);
- 	return -ENOMEM;
- }
--MODULE_AUTHOR("Tom Tucker <tom@opengridcomputing.com>");
--MODULE_DESCRIPTION("SVC RDMA Transport");
--MODULE_LICENSE("Dual BSD/GPL");
--module_init(svc_rdma_init);
--module_exit(svc_rdma_cleanup);
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index 54f23b1..436da2c 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -48,7 +48,6 @@
-  */
- 
- #include <linux/module.h>
--#include <linux/init.h>
- #include <linux/slab.h>
- #include <linux/seq_file.h>
- #include <linux/sunrpc/addr.h>
-@@ -59,11 +58,6 @@
- # define RPCDBG_FACILITY	RPCDBG_TRANS
- #endif
- 
--MODULE_LICENSE("Dual BSD/GPL");
--
--MODULE_DESCRIPTION("RPC/RDMA Transport for Linux kernel NFS");
--MODULE_AUTHOR("Network Appliance, Inc.");
--
- /*
-  * tunables
-  */
-@@ -711,7 +705,7 @@ static struct xprt_class xprt_rdma = {
- 	.setup			= xprt_setup_rdma,
- };
- 
--static void __exit xprt_rdma_cleanup(void)
-+void xprt_rdma_cleanup(void)
- {
- 	int rc;
- 
-@@ -728,7 +722,7 @@ static void __exit xprt_rdma_cleanup(void)
- 			__func__, rc);
- }
- 
--static int __init xprt_rdma_init(void)
-+int xprt_rdma_init(void)
- {
- 	int rc;
- 
-@@ -753,6 +747,3 @@ static int __init xprt_rdma_init(void)
- #endif
- 	return 0;
- }
--
--module_init(xprt_rdma_init);
--module_exit(xprt_rdma_cleanup);
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index e60907b..58163b8 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -480,6 +480,11 @@ void rpcrdma_reply_handler(struct rpcrdma_rep *);
-  */
- int rpcrdma_marshal_req(struct rpc_rqst *);
- 
-+/* RPC/RDMA module init - xprtrdma/transport.c
-+ */
-+int xprt_rdma_init(void);
-+void xprt_rdma_cleanup(void);
-+
- /* Temporary NFS request map cache. Created in svc_rdma.c  */
- extern struct kmem_cache *svc_rdma_map_cachep;
- /* WR context cache. Created in svc_rdma.c  */
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 2826e117e3df..e105b9363f0a 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -139,7 +139,7 @@ static int nfs4_stat_to_errno(int);
+ #define encode_setclientid_maxsz \
+ 				(op_encode_hdr_maxsz + \
+ 				XDR_QUADLEN(NFS4_VERIFIER_SIZE) + \
+-				XDR_QUADLEN(NFS4_SETCLIENTID_NAMELEN) + \
++				XDR_QUADLEN(NFS4_OPAQUE_LIMIT) + \
+ 				1 /* sc_prog */ + \
+ 				1 + XDR_QUADLEN(RPCBIND_MAXNETIDLEN) + \
+ 				1 + XDR_QUADLEN(RPCBIND_MAXUADDRLEN) + \
+@@ -288,7 +288,7 @@ static int nfs4_stat_to_errno(int);
+ #define encode_exchange_id_maxsz (op_encode_hdr_maxsz + \
+ 				encode_verifier_maxsz + \
+ 				1 /* co_ownerid.len */ + \
+-				XDR_QUADLEN(NFS4_EXCHANGE_ID_LEN) + \
++				XDR_QUADLEN(NFS4_OPAQUE_LIMIT) + \
+ 				1 /* flags */ + \
+ 				1 /* spa_how */ + \
+ 				/* max is SP4_MACH_CRED (for now) */ + \
+-- 
+2.4.2
 
