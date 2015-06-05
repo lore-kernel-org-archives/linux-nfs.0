@@ -1,120 +1,203 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:25061 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1423378AbbFEPae (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Jun 2015 11:30:34 -0400
-Message-ID: <5571C091.1000105@oracle.com>
-Date: Fri, 05 Jun 2015 18:30:25 +0300
-From: Stanislav Kholmanskikh <stanislav.kholmanskikh@oracle.com>
+Received: from mail-la0-f52.google.com ([209.85.215.52]:34549 "EHLO
+	mail-la0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755162AbbFEPur (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Jun 2015 11:50:47 -0400
+Received: by laew7 with SMTP id w7so57252950lae.1
+        for <linux-nfs@vger.kernel.org>; Fri, 05 Jun 2015 08:50:46 -0700 (PDT)
 MIME-Version: 1.0
-To: Kinglong Mee <kinglongmee@gmail.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>
-CC: linux-nfs@vger.kernel.org, Vasily Isaenko <vasily.isaenko@oracle.com>,
-        "SHUANG.QIU" <shuang.qiu@oracle.com>
-Subject: Re: nfsd: EACCES vs EPERM on utime()/utimes() calls
-References: <556C73AE.4090900@oracle.com> <20150601212317.GF26972@fieldses.org> <556DD52D.5040405@oracle.com> <557047E2.10804@gmail.com>
-In-Reply-To: <557047E2.10804@gmail.com>
-Content-Type: text/plain; charset=windows-1252; format=flowed
+In-Reply-To: <1433453213-13466-3-git-send-email-trond.myklebust@primarydata.com>
+References: <1433453213-13466-1-git-send-email-trond.myklebust@primarydata.com>
+	<1433453213-13466-2-git-send-email-trond.myklebust@primarydata.com>
+	<1433453213-13466-3-git-send-email-trond.myklebust@primarydata.com>
+Date: Fri, 5 Jun 2015 11:50:45 -0400
+Message-ID: <CAHVgHyWz-dKX-6TbRCYRBp7b2uV2-kCd7U63sHd5ZKZKr6e7aw@mail.gmail.com>
+Subject: Re: [PATCH 3/6] SUNRPC: Clean up bc_send()
+From: Andy Adamson <androsadamson@gmail.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: NFS list <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi.
+On Thu, Jun 4, 2015 at 5:26 PM, Trond Myklebust
+<trond.myklebust@primarydata.com> wrote:
+> From: Chuck Lever <chuck.lever@oracle.com>
+>
+> Clean up: Merge bc_send() into bc_svc_process().
+>
+> Note: even thought this touches svc.c, it is a client-side change.
+>
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> ---
+>  include/linux/sunrpc/bc_xprt.h |  1 -
+>  net/sunrpc/Makefile            |  2 +-
+>  net/sunrpc/bc_svc.c            | 63 ------------------------------------------
+>  net/sunrpc/svc.c               | 33 ++++++++++++++++------
+>  4 files changed, 26 insertions(+), 73 deletions(-)
+>  delete mode 100644 net/sunrpc/bc_svc.c
+>
+> diff --git a/include/linux/sunrpc/bc_xprt.h b/include/linux/sunrpc/bc_xprt.h
+> index 2ca67b55e0fe..8df43c9f11dc 100644
+> --- a/include/linux/sunrpc/bc_xprt.h
+> +++ b/include/linux/sunrpc/bc_xprt.h
+> @@ -37,7 +37,6 @@ void xprt_complete_bc_request(struct rpc_rqst *req, uint32_t copied);
+>  void xprt_free_bc_request(struct rpc_rqst *req);
+>  int xprt_setup_backchannel(struct rpc_xprt *, unsigned int min_reqs);
+>  void xprt_destroy_backchannel(struct rpc_xprt *, unsigned int max_reqs);
+> -int bc_send(struct rpc_rqst *req);
+>
+>  /*
+>   * Determine if a shared backchannel is in use
+> diff --git a/net/sunrpc/Makefile b/net/sunrpc/Makefile
+> index 15e6f6c23c5d..1b8e68d0e690 100644
+> --- a/net/sunrpc/Makefile
+> +++ b/net/sunrpc/Makefile
+> @@ -15,6 +15,6 @@ sunrpc-y := clnt.o xprt.o socklib.o xprtsock.o sched.o \
+>             sunrpc_syms.o cache.o rpc_pipe.o \
+>             svc_xprt.o
+>  sunrpc-$(CONFIG_SUNRPC_DEBUG) += debugfs.o
+> -sunrpc-$(CONFIG_SUNRPC_BACKCHANNEL) += backchannel_rqst.o bc_svc.o
+> +sunrpc-$(CONFIG_SUNRPC_BACKCHANNEL) += backchannel_rqst.o
+>  sunrpc-$(CONFIG_PROC_FS) += stats.o
+>  sunrpc-$(CONFIG_SYSCTL) += sysctl.o
+> diff --git a/net/sunrpc/bc_svc.c b/net/sunrpc/bc_svc.c
+> deleted file mode 100644
+> index 15c7a8a1c24f..000000000000
+> --- a/net/sunrpc/bc_svc.c
+> +++ /dev/null
+> @@ -1,63 +0,0 @@
+> -/******************************************************************************
+> -
+> -(c) 2007 Network Appliance, Inc.  All Rights Reserved.
+> -(c) 2009 NetApp.  All Rights Reserved.
+> -
+> -NetApp provides this source code under the GPL v2 License.
+> -The GPL v2 license is available at
+> -http://opensource.org/licenses/gpl-license.php.
+> -
+> -THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+> -"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+> -LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+> -A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+> -CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+> -EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+> -PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+> -PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+> -LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+> -NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+> -SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+> -
+> -******************************************************************************/
 
-On 06/04/2015 03:43 PM, Kinglong Mee wrote:
-> On 6/3/2015 12:09 AM, Stanislav Kholmanskikh wrote:
->> On 06/02/2015 12:23 AM, bfields@fieldses.org wrote:
->>> On Mon, Jun 01, 2015 at 06:01:02PM +0300, Stanislav Kholmanskikh wrote:
->>>> Hello.
->>>>
->>>> As the man page for utime/utimes states [1], EPERM is returned if
->>>> the second argument of utime/utimes is not NULL and:
->>>>    * the caller's effective user id does not match the owner of the file
->>>>    * the caller does not have write access to the file
->>>>    * the caller is not privileged
->>>>
->>>> However, I don't see this behavior with NFS, I see EACCES is
->>>> generated instead.
->>>
->>> Agreed that it's probably a server bug.  (Have you run across a case
->>> where this makes a difference?)
->>
->> Thank you.
->>
->> No, I've not seen such a real-word scenario.
->>
->> I have these LTP test cases failing:
->>
->> * https://github.com/linux-test-project/ltp/blob/master/testcases/kernel/syscalls/utime/utime06.c
->> * https://github.com/linux-test-project/ltp/blob/master/testcases/kernel/syscalls/utimes/utimes01.c
->>
->> and it makes me a bit nervous :)
->>
->>>
->>> Looking at nfsd_setattr()....  The main work is done by notify_change(),
->>> which is probably doing the right thing.  But before that there's an
->>> fh_verify()--looks like that is expected to fail in your case.  I bet
->>> that's the cause.
->
-> Yes, it is.
->
-> nfsd do the permission checking before notify_change() as,
->
-> /* This assumes  NFSD_MAY_{READ,WRITE,EXEC} == MAY_{READ,WRITE,EXEC} */
-> err = inode_permission(inode, acc & (MAY_READ|MAY_WRITE|MAY_EXEC));
->
-> return -EACCES for non-owner user.
->
->>
->> I doubt I can fix it by myself (at least quickly). So I am happy if anyone more experienced will look at it as well :)
->>
->> Anyway, if nobody is interested, I'll give it a try, but later.
->
-> Here is a diff patch for this problem, please try testing.
-> If okay, I will send an official patch.
->
-> Note: must apply the following patch first in the url,
-> http://git.linux-nfs.org/?p=bfields/linux.git;a=commitdiff;h=cc265089ce1b176dde963c74b53593446ee7f99a
->
-> thanks,
-> Kinglong Mee
-> -------------------------------------------------------------
-> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-> index 84d770b..2533088 100644
-> --- a/fs/nfsd/vfs.c
-> +++ b/fs/nfsd/vfs.c
-> @@ -407,10 +371,23 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp, struct iattr *iap,
->   	bool		get_write_count;
->   	int		size_change = 0;
->
-> -	if (iap->ia_valid & (ATTR_ATIME | ATTR_MTIME | ATTR_SIZE))
-> +	if (iap->ia_valid & ATTR_SIZE) {
->   		accmode |= NFSD_MAY_WRITE|NFSD_MAY_OWNER_OVERRIDE;
-> -	if (iap->ia_valid & ATTR_SIZE)
->   		ftype = S_IFREG;
-> +	}
+Why is the above being removed?
+
+-->Andy
+
+> -
+> -/*
+> - * The NFSv4.1 callback service helper routines.
+> - * They implement the transport level processing required to send the
+> - * reply over an existing open connection previously established by the client.
+> - */
+> -
+> -#include <linux/module.h>
+> -
+> -#include <linux/sunrpc/xprt.h>
+> -#include <linux/sunrpc/sched.h>
+> -#include <linux/sunrpc/bc_xprt.h>
+> -
+> -#define RPCDBG_FACILITY        RPCDBG_SVCDSP
+> -
+> -/* Empty callback ops */
+> -static const struct rpc_call_ops nfs41_callback_ops = {
+> -};
+> -
+> -
+> -/*
+> - * Send the callback reply
+> - */
+> -int bc_send(struct rpc_rqst *req)
+> -{
+> -       struct rpc_task *task;
+> -       int ret;
+> -
+> -       dprintk("RPC:       bc_send req= %p\n", req);
+> -       task = rpc_run_bc_task(req, &nfs41_callback_ops);
+> -       if (IS_ERR(task))
+> -               ret = PTR_ERR(task);
+> -       else {
+> -               WARN_ON_ONCE(atomic_read(&task->tk_count) != 1);
+> -               ret = task->tk_status;
+> -               rpc_put_task(task);
+> -       }
+> -       dprintk("RPC:       bc_send ret= %d\n", ret);
+> -       return ret;
+> -}
+> -
+> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+> index 78974e4d9ad2..e144902d382e 100644
+> --- a/net/sunrpc/svc.c
+> +++ b/net/sunrpc/svc.c
+> @@ -1350,6 +1350,11 @@ bc_svc_process(struct svc_serv *serv, struct rpc_rqst *req,
+>  {
+>         struct kvec     *argv = &rqstp->rq_arg.head[0];
+>         struct kvec     *resv = &rqstp->rq_res.head[0];
+> +       static const struct rpc_call_ops reply_ops = { };
+> +       struct rpc_task *task;
+> +       int error;
 > +
-> +	/*
-> +	 * According to utimes_common(),
-> +	 *
-> +	 * If times is NULL (or both times are UTIME_NOW),
-> +	 * then we need to check permissions, because
-> +	 * inode_change_ok() won't do it.
-> +	 */
-> +	if (iap->ia_valid & (ATTR_ATIME | ATTR_MTIME)) {
-> +		accmode |= NFSD_MAY_OWNER_OVERRIDE;
-> +		if (!(iap->ia_valid & (ATTR_ATIME_SET | ATTR_MTIME_SET)))
-> +			accmode |= NFSD_MAY_WRITE;
-> +	}
+> +       dprintk("svc: %s(%p)\n", __func__, req);
 >
->   	/* Callers that do fh_verify should do the fh_want_write: */
->   	get_write_count = !fhp->fh_dentry;
+>         /* Build the svc_rqst used by the common processing routine */
+>         rqstp->rq_xprt = serv->sv_bc_xprt;
+> @@ -1372,21 +1377,33 @@ bc_svc_process(struct svc_serv *serv, struct rpc_rqst *req,
 >
-
-Tested with v4.1-rc6 plust the above two patches.
-
-The issue is fixed.
-
-My utime_test  now reports EPERM. LTP's utime06, utimes01 now pass, 
-other LTP syscall test cases don't show any regression either.
-
-Thank you!
+>         /*
+>          * Skip the next two words because they've already been
+> -        * processed in the trasport
+> +        * processed in the transport
+>          */
+>         svc_getu32(argv);       /* XID */
+>         svc_getnl(argv);        /* CALLDIR */
+>
+> -       /* Returns 1 for send, 0 for drop */
+> -       if (svc_process_common(rqstp, argv, resv)) {
+> -               memcpy(&req->rq_snd_buf, &rqstp->rq_res,
+> -                                               sizeof(req->rq_snd_buf));
+> -               return bc_send(req);
+> -       } else {
+> -               /* drop request */
+> +       /* Parse and execute the bc call */
+> +       if (!svc_process_common(rqstp, argv, resv)) {
+> +               /* Processing error: drop the request */
+>                 xprt_free_bc_request(req);
+>                 return 0;
+>         }
+> +
+> +       /* Finally, send the reply synchronously */
+> +       memcpy(&req->rq_snd_buf, &rqstp->rq_res, sizeof(req->rq_snd_buf));
+> +       task = rpc_run_bc_task(req, &reply_ops);
+> +       if (IS_ERR(task)) {
+> +               error = PTR_ERR(task);
+> +               goto out;
+> +       }
+> +
+> +       WARN_ON_ONCE(atomic_read(&task->tk_count) != 1);
+> +       error = task->tk_status;
+> +       rpc_put_task(task);
+> +
+> +out:
+> +       dprintk("svc: %s(), error=%d\n", __func__, error);
+> +       return error;
+>  }
+>  EXPORT_SYMBOL_GPL(bc_svc_process);
+>  #endif /* CONFIG_SUNRPC_BACKCHANNEL */
+> --
+> 2.4.2
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
