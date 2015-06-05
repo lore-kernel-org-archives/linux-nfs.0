@@ -1,62 +1,61 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from emvm-gh1-uea09.nsa.gov ([63.239.67.10]:63816 "EHLO
-	emvm-gh1-uea09.nsa.gov" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754596AbbFEMky (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Jun 2015 08:40:54 -0400
-Message-ID: <5571951E.4010902@tycho.nsa.gov>
-Date: Fri, 05 Jun 2015 08:25:02 -0400
-From: Stephen Smalley <sds@tycho.nsa.gov>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>, Paul Moore <paul@paul-moore.com>,
-        Eric Paris <eparis@parisplace.org>
-CC: Richard Chan <rc556677@outlook.com>, linux-nfs@vger.kernel.org,
-        David Quigley <dpquigl@davequigley.com>, selinux@tycho.nsa.gov
-Subject: Re: [PATCH] selinux: fix setting of security labels on NFS
-References: <20150604195725.GC5209@fieldses.org>
-In-Reply-To: <20150604195725.GC5209@fieldses.org>
+Received: from userp1040.oracle.com ([156.151.31.81]:51273 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1030182AbbFEOPQ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Jun 2015 10:15:16 -0400
 Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
+Subject: Re: libtirpc-0.3.1 fails to build with Heimdal Kerberos
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <2431059.CVRe3y6Cse@orley>
+Date: Fri, 5 Jun 2015 10:17:29 -0400
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Steve Dickson <steved@redhat.com>,
+        libtirpc List <libtirpc-devel@lists.sourceforge.net>
+Message-Id: <446814BB-D4F9-4488-BA41-F0940E1CEBF2@oracle.com>
+References: <2431059.CVRe3y6Cse@orley>
+To: Karl-Johan Karlsson <creideiki+linux-nfs@lysator.liu.se>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 06/04/2015 03:57 PM, J. Bruce Fields wrote:
-> From: "J. Bruce Fields" <bfields@redhat.com>
-> 
-> Before calling into the filesystem, vfs_setxattr calls
-> security_inode_setxattr, which ends up calling selinux_inode_setxattr in
-> our case.  That returns -EOPNOTSUPP whenever SBLABEL_MNT is not set.
-> SBLABEL_MNT was supposed to be set by sb_finish_set_opts, which sets it
-> only if selinux_is_sblabel_mnt returns true.
-> 
-> The selinux_is_sblabel_mnt logic was broken by eadcabc697e9 "SELinux: do
-> all flags twiddling in one place", which didn't take into the account
-> the SECURITY_FS_USE_NATIVE behavior that had been introduced for nfs
-> with eb9ae686507b "SELinux: Add new labeling type native labels".
-> 
-> This caused setxattr's of security labels over NFSv4.2 to fail.
-> 
-> Cc: stable@kernel.org
-> Cc: Eric Paris <eparis@redhat.com>
-> Cc: David Quigley <dpquigl@davequigley.com>
-> Reported-by: Richard Chan <rc556677@outlook.com>
-> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 
-Acked-by:  Stephen Smalley <sds@tycho.nsa.gov>
+On Jun 5, 2015, at 8:18 AM, Karl-Johan Karlsson <creideiki+linux-nfs@lysator.liu.se> wrote:
 
-> ---
->  security/selinux/hooks.c | 1 +
->  1 file changed, 1 insertion(+)
+> Hi,
 > 
-> diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
-> index e8a060bd9677..171fb30e4b99 100644
-> --- a/security/selinux/hooks.c
-> +++ b/security/selinux/hooks.c
-> @@ -403,6 +403,7 @@ static int selinux_is_sblabel_mnt(struct super_block *sb)
->  	return sbsec->behavior == SECURITY_FS_USE_XATTR ||
->  		sbsec->behavior == SECURITY_FS_USE_TRANS ||
->  		sbsec->behavior == SECURITY_FS_USE_TASK ||
-> +		sbsec->behavior == SECURITY_FS_USE_NATIVE ||
->  		/* Special handling. Genfs but also in-core setxattr handler */
->  		!strcmp(sb->s_type->name, "sysfs") ||
->  		!strcmp(sb->s_type->name, "pstore") ||
+> I'm trying to debug a build failure for libtirpc-0.3.1 with GSSAPI support 
+> when using Heimdal 1.5.3 as Kerberos provider. Downstream bug report is at 
+> https://bugs.gentoo.org/show_bug.cgi?id=551036
 > 
+> src/svc_auth_gss.c has an unconditional
+>   #include <gssapi/gssapi_ext.h>
+> but Heimdal doesn't ship that file; MIT-Krb5 does, though. It looks like most 
+> (but not all) of the functions that MIT-Krb5 declares in <gssapi/gssapi_ext.h> 
+> are declared in Heimdal by <gssapi/gssapi.h>.
+> 
+> src/svc_auth_gss.c has
+>   #ifdef HAVE_KRB5
+> and
+>   #elif HAVE_HEIMDAL
+> sections, but nothing I can see in the Autoconf system defines those. 
+
+Looks like that’s dead code. But it’s just a debugging message, so no harm.
+Should be cleaned up, eventually.
+
+> configure.ac does have
+>   AC_CHECK_HEADER([gssapi/gssapi.h], [HAVE_GSSAPI_H=yes], [HAVE_GSSAPI_H=no])
+> but that's just used internally in the configure script.
+> 
+> Would it be correct to export HAVE_GSSAPI_H and HAVE_GSSAPI_EXT_H to config.h 
+> and have src/svc_auth_gss.c include gssapi.h and/or gssapi_ext.h depending on 
+> them?
+
+Using the HAVE_GSSAPI_* macros in src/*.c is just fine. You’ll have to introduce
+an AC_CHECK for gssapi_ext.h in configure.ac.
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
 
