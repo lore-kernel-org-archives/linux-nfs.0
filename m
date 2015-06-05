@@ -1,48 +1,91 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from zeniv.linux.org.uk ([195.92.253.2]:59110 "EHLO
-	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1422784AbbFEPCR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Jun 2015 11:02:17 -0400
-Date: Fri, 5 Jun 2015 16:02:13 +0100
-From: Al Viro <viro@ZenIV.linux.org.uk>
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-fsdevel@vger.kernel.org,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        NeilBrown <neilb@suse.de>,
+Received: from cantor2.suse.de ([195.135.220.15]:58443 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1422737AbbFEPCN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 5 Jun 2015 11:02:13 -0400
+From: Petr Mladek <pmladek@suse.cz>
+To: Andrew Morton <akpm@linux-foundation.org>, Oleg Nesterov <oleg@redhat.com>,
+        Tejun Heo <tj@kernel.org>, Ingo Molnar <mingo@redhat.com>,
+        Peter Zijlstra <peterz@infradead.org>
+Cc: Richard Weinberger <richard@nod.at>, Steven Rostedt <rostedt@goodmis.org>,
+        David Woodhouse <dwmw2@infradead.org>, linux-mtd@lists.infradead.org,
         Trond Myklebust <trond.myklebust@primarydata.com>,
-        Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH 5/5] nfsd: allows user un-mounting filesystem where nfsd
- exports base on
-Message-ID: <20150605150213.GV7232@ZenIV.linux.org.uk>
-References: <5561E7E4.50604@gmail.com>
- <5561E9FA.4050808@gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <5561E9FA.4050808@gmail.com>
+        Anna Schumaker <anna.schumaker@netapp.com>, linux-nfs@vger.kernel.org,
+        Chris Mason <clm@fb.com>,
+        "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
+        Thomas Gleixner <tglx@linutronix.de>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Jiri Kosina <jkosina@suse.cz>, Borislav Petkov <bp@suse.de>,
+        Michal Hocko <mhocko@suse.cz>, live-patching@vger.kernel.org,
+        linux-api@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Petr Mladek <pmladek@suse.cz>
+Subject: [RFC PATCH 18/18] jffs2: Use the new API for a sleep with a timeout
+Date: Fri,  5 Jun 2015 17:01:17 +0200
+Message-Id: <1433516477-5153-19-git-send-email-pmladek@suse.cz>
+In-Reply-To: <1433516477-5153-1-git-send-email-pmladek@suse.cz>
+References: <1433516477-5153-1-git-send-email-pmladek@suse.cz>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, May 24, 2015 at 11:10:50PM +0800, Kinglong Mee wrote:
-> --- a/fs/nfsd/export.c
-> +++ b/fs/nfsd/export.c
-> @@ -43,9 +43,9 @@ static void expkey_put(struct kref *ref)
->  
->  	if (test_bit(CACHE_VALID, &key->h.flags) &&
->  	    !test_bit(CACHE_NEGATIVE, &key->h.flags))
-> -		path_put(&key->ek_path);
-> +		path_put_unpin(&key->ek_path, &key->ek_pin);
->  	auth_domain_put(key->ek_client);
-> -	kfree(key);
-> +	kfree_rcu(key, rcu_head);
->  }
+It allows to maintain the checks for freezing, parking, and signal
+handling on a single place.
 
-That looks wrong.  OK, so you want umount() to proceed; fine, no problem
-with that.  However, what happens if the final mntput() hits while you
-are just approaching that path_put_unpin()?  ->kill() will be triggered,
-and it would bloody better
-	a) make sure that expkey_put() is called for that key if it hadn't
-already been done and
-	b) do not return until such expkey_put() completes.  Including the
-ones that might have been already entered by the time we'd got to ->kill().
+Note that the sleep with the timeout is used here to slow down
+the progress a bit. It does not matter if we do it before or after
+calling jffs2_garbage_collect_pass().
 
-Am I missing something subtle here?
+Signed-off-by: Petr Mladek <pmladek@suse.cz>
+---
+ fs/jffs2/background.c | 29 +++++++++++------------------
+ 1 file changed, 11 insertions(+), 18 deletions(-)
+
+diff --git a/fs/jffs2/background.c b/fs/jffs2/background.c
+index 50c16048ba2d..2d38d40e0ad1 100644
+--- a/fs/jffs2/background.c
++++ b/fs/jffs2/background.c
+@@ -62,6 +62,16 @@ static void jffs2_garbage_collect_thread_func(void *_c)
+ 	}
+ 	spin_unlock(&c->erase_completion_lock);
+ 
++	/* We don't want SIGHUP to interrupt us. STOP and KILL are OK though. */
++	sigprocmask(SIG_BLOCK, &hupmask, NULL);
++
++	jffs2_dbg(1, "%s(): pass\n", __func__);
++	if (jffs2_garbage_collect_pass(c) == -ENOSPC) {
++		pr_notice("No space for garbage collection. Aborting GC thread\n");
++		kthread_stop_current();
++	}
++	sigprocmask(SIG_UNBLOCK, &hupmask, NULL);
++
+ 	/* Problem - immediately after bootup, the GCD spends a lot
+ 	 * of time in places like jffs2_kill_fragtree(); so much so
+ 	 * that userspace processes (like gdm and X) are starved
+@@ -73,24 +83,7 @@ static void jffs2_garbage_collect_thread_func(void *_c)
+ 	 * inode in with read_inode() is much preferable to having
+ 	 * the GC thread get there first.
+ 	 */
+-	schedule_timeout_interruptible(msecs_to_jiffies(50));
+-
+-	if (kthread_should_stop()) {
+-		jffs2_dbg(1, "%s(): kthread_stop() called\n", __func__);
+-		return;
+-	}
+-
+-	try_to_freeze();
+-
+-	/* We don't want SIGHUP to interrupt us. STOP and KILL are OK though. */
+-	sigprocmask(SIG_BLOCK, &hupmask, NULL);
+-
+-	jffs2_dbg(1, "%s(): pass\n", __func__);
+-	if (jffs2_garbage_collect_pass(c) == -ENOSPC) {
+-		pr_notice("No space for garbage collection. Aborting GC thread\n");
+-		kthread_stop_current();
+-	}
+-	sigprocmask(SIG_UNBLOCK, &hupmask, NULL);
++	set_kthread_iterant_int_sleep_timeout(msecs_to_jiffies(50));
+ }
+ 
+ static void jffs2_garbage_collect_thread_destroy(void *_c)
+-- 
+1.8.5.6
+
