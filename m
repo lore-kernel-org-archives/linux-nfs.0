@@ -1,99 +1,35 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:41900 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752566AbbFEAZF convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Jun 2015 20:25:05 -0400
+Received: from zeniv.linux.org.uk ([195.92.253.2]:56245 "EHLO
+	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752566AbbFEAus (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Jun 2015 20:50:48 -0400
+Date: Fri, 5 Jun 2015 01:50:43 +0100
+From: Al Viro <viro@ZenIV.linux.org.uk>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Kinglong Mee <kinglongmee@gmail.com>,
+        Stanislav Kholmanskikh <stanislav.kholmanskikh@oracle.com>,
+        linux-nfs@vger.kernel.org, Vasily Isaenko <vasily.isaenko@oracle.com>,
+        "SHUANG.QIU" <shuang.qiu@oracle.com>
+Subject: Re: nfsd: EACCES vs EPERM on utime()/utimes() calls
+Message-ID: <20150605005043.GR7232@ZenIV.linux.org.uk>
+References: <556C73AE.4090900@oracle.com>
+ <20150601212317.GF26972@fieldses.org>
+ <556DD52D.5040405@oracle.com>
+ <557047E2.10804@gmail.com>
+ <20150604202725.GE5209@fieldses.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
-Subject: Re: [PATCH 4/6] SUNRPC: Remove unused argument 'tk_ops' in rpc_run_bc_task
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1433453213-13466-4-git-send-email-trond.myklebust@primarydata.com>
-Date: Thu, 4 Jun 2015 20:27:37 -0400
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <B5F515A7-9F67-43AF-8D37-584A2E4F0672@oracle.com>
-References: <1433453213-13466-1-git-send-email-trond.myklebust@primarydata.com> <1433453213-13466-2-git-send-email-trond.myklebust@primarydata.com> <1433453213-13466-3-git-send-email-trond.myklebust@primarydata.com> <1433453213-13466-4-git-send-email-trond.myklebust@primarydata.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
+In-Reply-To: <20150604202725.GE5209@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Thu, Jun 04, 2015 at 04:27:25PM -0400, J. Bruce Fields wrote:
 
-On Jun 4, 2015, at 5:26 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+> I wonder if we could instead skip the fh_verify's inode_permission call
+> entirely?  Most callers of fh_verify don't need the inode_permission
+> call at all as far as I can tell, because the following vfs operation
+> does permission checking already.
 
-Yeah, I was wondering about that. Seems reasonable.
-
-> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-> ---
-> include/linux/sunrpc/sched.h | 3 +--
-> net/sunrpc/clnt.c            | 5 ++---
-> net/sunrpc/svc.c             | 3 +--
-> 3 files changed, 4 insertions(+), 7 deletions(-)
-> 
-> diff --git a/include/linux/sunrpc/sched.h b/include/linux/sunrpc/sched.h
-> index 5f1e6bd4c316..2aa68976a482 100644
-> --- a/include/linux/sunrpc/sched.h
-> +++ b/include/linux/sunrpc/sched.h
-> @@ -205,8 +205,7 @@ struct rpc_wait_queue {
->  */
-> struct rpc_task *rpc_new_task(const struct rpc_task_setup *);
-> struct rpc_task *rpc_run_task(const struct rpc_task_setup *);
-> -struct rpc_task *rpc_run_bc_task(struct rpc_rqst *req,
-> -				const struct rpc_call_ops *ops);
-> +struct rpc_task *rpc_run_bc_task(struct rpc_rqst *req);
-> void		rpc_put_task(struct rpc_task *);
-> void		rpc_put_task_async(struct rpc_task *);
-> void		rpc_exit_task(struct rpc_task *);
-> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-> index fa70f663eb92..46c13bca8555 100644
-> --- a/net/sunrpc/clnt.c
-> +++ b/net/sunrpc/clnt.c
-> @@ -1033,13 +1033,12 @@ EXPORT_SYMBOL_GPL(rpc_call_async);
->  * @req: RPC request
->  * @tk_ops: RPC call ops
->  */
-> -struct rpc_task *rpc_run_bc_task(struct rpc_rqst *req,
-> -				const struct rpc_call_ops *tk_ops)
-> +struct rpc_task *rpc_run_bc_task(struct rpc_rqst *req)
-> {
-> 	struct rpc_task *task;
-> 	struct xdr_buf *xbufp = &req->rq_snd_buf;
-> 	struct rpc_task_setup task_setup_data = {
-> -		.callback_ops = tk_ops,
-> +		.callback_ops = &rpc_default_ops,
-> 	};
-> 
-> 	dprintk("RPC: rpc_run_bc_task req= %p\n", req);
-> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-> index e144902d382e..51c8cad5e765 100644
-> --- a/net/sunrpc/svc.c
-> +++ b/net/sunrpc/svc.c
-> @@ -1350,7 +1350,6 @@ bc_svc_process(struct svc_serv *serv, struct rpc_rqst *req,
-> {
-> 	struct kvec	*argv = &rqstp->rq_arg.head[0];
-> 	struct kvec	*resv = &rqstp->rq_res.head[0];
-> -	static const struct rpc_call_ops reply_ops = { };
-> 	struct rpc_task *task;
-> 	int error;
-> 
-> @@ -1391,7 +1390,7 @@ bc_svc_process(struct svc_serv *serv, struct rpc_rqst *req,
-> 
-> 	/* Finally, send the reply synchronously */
-> 	memcpy(&req->rq_snd_buf, &rqstp->rq_res, sizeof(req->rq_snd_buf));
-> -	task = rpc_run_bc_task(req, &reply_ops);
-> +	task = rpc_run_bc_task(req);
-> 	if (IS_ERR(task)) {
-> 		error = PTR_ERR(task);
-> 		goto out;
-> -- 
-> 2.4.2
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+In case of notify_change() we only pass a dentry, so anything mount-dependent
+must be done in callers...  Actually, I wonder how does tomoyo and its ilk
+interact with nfsd?
