@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:58232 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:58304 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933468AbbFEPB6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 5 Jun 2015 11:01:58 -0400
+	id S933475AbbFEPCC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 5 Jun 2015 11:02:02 -0400
 From: Petr Mladek <pmladek@suse.cz>
 To: Andrew Morton <akpm@linux-foundation.org>, Oleg Nesterov <oleg@redhat.com>,
         Tejun Heo <tj@kernel.org>, Ingo Molnar <mingo@redhat.com>,
@@ -19,56 +19,141 @@ Cc: Richard Weinberger <richard@nod.at>, Steven Rostedt <rostedt@goodmis.org>,
         Michal Hocko <mhocko@suse.cz>, live-patching@vger.kernel.org,
         linux-api@vger.kernel.org, linux-kernel@vger.kernel.org,
         Petr Mladek <pmladek@suse.cz>
-Subject: [RFC PATCH 07/18] kthread: Make iterant kthreads freezable by default
-Date: Fri,  5 Jun 2015 17:01:06 +0200
-Message-Id: <1433516477-5153-8-git-send-email-pmladek@suse.cz>
+Subject: [RFC PATCH 10/18] jffs2: Remove forward definition of jffs2_garbage_collect_thread()
+Date: Fri,  5 Jun 2015 17:01:09 +0200
+Message-Id: <1433516477-5153-11-git-send-email-pmladek@suse.cz>
 In-Reply-To: <1433516477-5153-1-git-send-email-pmladek@suse.cz>
 References: <1433516477-5153-1-git-send-email-pmladek@suse.cz>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Many kthreads already calls set_freezable() before they enter the main
-cycle. One of the reasons for creating iterant kthreads is to create
-a safe point for freezing and make even more kthreads properly
-freezable. Therefore it would make sense to set all iterant
-kthreads freezable by default.
+This commit just moves the function definition and fixes few coding
+style problems reported by checkpatch.pl. There are no changes in
+the functionality.
 
-However some kthreads might be hard to make properly freezable.
-For example, if they do non-interruptible sleeps. They would
-need to explicitly clear PF_NOFREEZE flag in the init() call.
-But it should be avoided whenever possible.
+The change will be useful when switching to the new iterant kthread API.
 
 Signed-off-by: Petr Mladek <pmladek@suse.cz>
 ---
- kernel/kthread.c | 9 ++++++++-
- 1 file changed, 8 insertions(+), 1 deletion(-)
+ fs/jffs2/background.c | 101 +++++++++++++++++++++++++-------------------------
+ 1 file changed, 50 insertions(+), 51 deletions(-)
 
-diff --git a/kernel/kthread.c b/kernel/kthread.c
-index 185902d0e293..e34f67cb8ecf 100644
---- a/kernel/kthread.c
-+++ b/kernel/kthread.c
-@@ -412,13 +412,20 @@ struct task_struct *kthread_create_on_cpu(int (*threadfn)(void *data),
-  *
-  * This function defines the work flow of iterant kthreads. It calls
-  * the given callbacks. Also it defines and implements a common
-- * check point for freezing and stopping.
-+ * check point for freezing, stopping, and signal handling.
-+ *
-+ * IMPORTANT: Iterant kthreads are freezable by default. The functions
-+ * defined in the given struct kthread_iterant still have to explicitly
-+ * call try_to_freeze() after each interruptible sleep. They must avoid
-+ * non-interruptible sleep if freezing is allowed.
-  */
- static int kthread_iterant_fn(void *kti_ptr)
+diff --git a/fs/jffs2/background.c b/fs/jffs2/background.c
+index bb9cebc9ca8a..6af076b8f60f 100644
+--- a/fs/jffs2/background.c
++++ b/fs/jffs2/background.c
+@@ -21,57 +21,6 @@
+ #include <linux/kthread.h>
+ #include "nodelist.h"
+ 
+-
+-static int jffs2_garbage_collect_thread(void *);
+-
+-void jffs2_garbage_collect_trigger(struct jffs2_sb_info *c)
+-{
+-	assert_spin_locked(&c->erase_completion_lock);
+-	if (c->gc_task && jffs2_thread_should_wake(c))
+-		send_sig(SIGHUP, c->gc_task, 1);
+-}
+-
+-/* This must only ever be called when no GC thread is currently running */
+-int jffs2_start_garbage_collect_thread(struct jffs2_sb_info *c)
+-{
+-	struct task_struct *tsk;
+-	int ret = 0;
+-
+-	BUG_ON(c->gc_task);
+-
+-	init_completion(&c->gc_thread_start);
+-	init_completion(&c->gc_thread_exit);
+-
+-	tsk = kthread_run(jffs2_garbage_collect_thread, c, "jffs2_gcd_mtd%d", c->mtd->index);
+-	if (IS_ERR(tsk)) {
+-		pr_warn("fork failed for JFFS2 garbage collect thread: %ld\n",
+-			-PTR_ERR(tsk));
+-		complete(&c->gc_thread_exit);
+-		ret = PTR_ERR(tsk);
+-	} else {
+-		/* Wait for it... */
+-		jffs2_dbg(1, "Garbage collect thread is pid %d\n", tsk->pid);
+-		wait_for_completion(&c->gc_thread_start);
+-		ret = tsk->pid;
+-	}
+-
+-	return ret;
+-}
+-
+-void jffs2_stop_garbage_collect_thread(struct jffs2_sb_info *c)
+-{
+-	int wait = 0;
+-	spin_lock(&c->erase_completion_lock);
+-	if (c->gc_task) {
+-		jffs2_dbg(1, "Killing GC task %d\n", c->gc_task->pid);
+-		send_sig(SIGKILL, c->gc_task, 1);
+-		wait = 1;
+-	}
+-	spin_unlock(&c->erase_completion_lock);
+-	if (wait)
+-		wait_for_completion(&c->gc_thread_exit);
+-}
+-
+ static int jffs2_garbage_collect_thread(void *_c)
  {
- 	struct kthread_iterant *kti = kti_ptr;
- 	void *data = kti->data;
- 
-+	set_freezable();
+ 	struct jffs2_sb_info *c = _c;
+@@ -166,3 +115,53 @@ static int jffs2_garbage_collect_thread(void *_c)
+ 	spin_unlock(&c->erase_completion_lock);
+ 	complete_and_exit(&c->gc_thread_exit, 0);
+ }
 +
- 	if (kti->init)
- 		kti->init(data);
- 
++void jffs2_garbage_collect_trigger(struct jffs2_sb_info *c)
++{
++	assert_spin_locked(&c->erase_completion_lock);
++	if (c->gc_task && jffs2_thread_should_wake(c))
++		send_sig(SIGHUP, c->gc_task, 1);
++}
++
++/* This must only ever be called when no GC thread is currently running */
++int jffs2_start_garbage_collect_thread(struct jffs2_sb_info *c)
++{
++	struct task_struct *tsk;
++	int ret = 0;
++
++	BUG_ON(c->gc_task);
++
++	init_completion(&c->gc_thread_start);
++	init_completion(&c->gc_thread_exit);
++
++	tsk = kthread_run(jffs2_garbage_collect_thread, c,
++			  "jffs2_gcd_mtd%d", c->mtd->index);
++	if (IS_ERR(tsk)) {
++		pr_warn("fork failed for JFFS2 garbage collect thread: %ld\n",
++			-PTR_ERR(tsk));
++		complete(&c->gc_thread_exit);
++		ret = PTR_ERR(tsk);
++	} else {
++		/* Wait for it... */
++		jffs2_dbg(1, "Garbage collect thread is pid %d\n", tsk->pid);
++		wait_for_completion(&c->gc_thread_start);
++		ret = tsk->pid;
++	}
++
++	return ret;
++}
++
++void jffs2_stop_garbage_collect_thread(struct jffs2_sb_info *c)
++{
++	int wait = 0;
++
++	spin_lock(&c->erase_completion_lock);
++	if (c->gc_task) {
++		jffs2_dbg(1, "Killing GC task %d\n", c->gc_task->pid);
++		send_sig(SIGKILL, c->gc_task, 1);
++		wait = 1;
++	}
++	spin_unlock(&c->erase_completion_lock);
++	if (wait)
++		wait_for_completion(&c->gc_thread_exit);
++}
 -- 
 1.8.5.6
 
