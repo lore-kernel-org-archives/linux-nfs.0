@@ -1,13 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:42748 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:37849 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752537AbbFFV7R (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 6 Jun 2015 17:59:17 -0400
-Date: Sat, 6 Jun 2015 23:58:16 +0200
+	id S932631AbbFFWbC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 6 Jun 2015 18:31:02 -0400
+Date: Sun, 7 Jun 2015 00:30:01 +0200
 From: Oleg Nesterov <oleg@redhat.com>
-To: Petr Mladek <pmladek@suse.cz>
-Cc: Andrew Morton <akpm@linux-foundation.org>, Tejun Heo <tj@kernel.org>,
-        Ingo Molnar <mingo@redhat.com>, Peter Zijlstra <peterz@infradead.org>,
+To: Jiri Kosina <jkosina@suse.cz>
+Cc: Petr Mladek <pmladek@suse.cz>, Andrew Morton <akpm@linux-foundation.org>,
+        Tejun Heo <tj@kernel.org>, Ingo Molnar <mingo@redhat.com>,
+        Peter Zijlstra <peterz@infradead.org>,
         Richard Weinberger <richard@nod.at>,
         Steven Rostedt <rostedt@goodmis.org>,
         David Woodhouse <dwmw2@infradead.org>, linux-mtd@lists.infradead.org,
@@ -17,112 +18,71 @@ Cc: Andrew Morton <akpm@linux-foundation.org>, Tejun Heo <tj@kernel.org>,
         "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
         Thomas Gleixner <tglx@linutronix.de>,
         Linus Torvalds <torvalds@linux-foundation.org>,
-        Jiri Kosina <jkosina@suse.cz>, Borislav Petkov <bp@suse.de>,
-        Michal Hocko <mhocko@suse.cz>, live-patching@vger.kernel.org,
-        linux-api@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [RFC PATCH 06/18] signal/kthread: Initial implementation of
-	kthread signal handling
-Message-ID: <20150606215816.GB15591@redhat.com>
-References: <1433516477-5153-1-git-send-email-pmladek@suse.cz> <1433516477-5153-7-git-send-email-pmladek@suse.cz>
+        Borislav Petkov <bp@suse.de>, Michal Hocko <mhocko@suse.cz>,
+        live-patching@vger.kernel.org, linux-api@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [RFC PATCH 11/18] jffs2: Convert jffs2_gcd_mtd kthread into
+	the iterant API
+Message-ID: <20150606223001.GA18838@redhat.com>
+References: <1433516477-5153-1-git-send-email-pmladek@suse.cz> <1433516477-5153-12-git-send-email-pmladek@suse.cz> <20150606211648.GA15591@redhat.com> <alpine.LNX.2.00.1506062322550.12753@pobox.suse.cz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1433516477-5153-7-git-send-email-pmladek@suse.cz>
+In-Reply-To: <alpine.LNX.2.00.1506062322550.12753@pobox.suse.cz>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 06/05, Petr Mladek wrote:
+On 06/06, Jiri Kosina wrote:
 >
-> The main question is how much it should follow POSIX and the signal
-> handling of user space processes. On one hand, we want to be as close
-> as possible.
+> On Sat, 6 Jun 2015, Oleg Nesterov wrote:
+>
+> > Still I personally dislike the new kthread_sigaction() API. I agree,
+> > a couple if signal helpers for kthreads make sense. Say,
+> >
+> > 	void kthread_do_signal_stop(void)
+> > 	{
+> > 		spin_lock_irq(&curtent->sighand->siglock);
+> > 		if (current->jobctl & JOBCTL_STOP_DEQUEUED)
+> > 			__set_current_state(TASK_STOPPED);
+> > 		spin_unlock_irq(&current->sighand->siglock);
+> >
+> > 		schedule();
+> > 	}
+>
+> ... not to mention the fact that 'STOP' keyword in relation to kthreads
+> has completely different meaning today, which just contributes to overall
+> confusion; but that's an independent story.
 
-Why? Let the kthread decide what it should if it gets, say, SIGSTOP.
+Yes, agreed.
 
-> Finally, kthread_do_signal() is called on a safe place in the main
-> iterant kthread cycle. Then we will not need any special code for
-> signals when using this kthread API.
+> > But personally I do not think kthread_do_signal() makes a lot of sense...
+>
+> Would it be possible for you to elaborate a little bit more why you think
+> so ... ?
 
-OK, I will not comment other parts of iterant API in this thread.
+Please see another email I sent in reply to 06/18.
 
-But as for signal handling, to me a single kthread_iterant->do_signal()
-callback looks better. Rather than multiple callbacks passed as
-->kthread_sa_handler.
+> I personally don't see a huge principal difference between
+> "kthread_signal_dequeue() + kthread_do_signal_{stop,...}" vs. generic
+> "kthread_do_signal()" that's just basically completely general and takes
+> care of 'everything necessary'.
 
-That single callback can deque a signal and decide what it should do.
+Then why do we need the new API ?
 
-> +	spin_lock_irqsave(&sighand->siglock, flags);
-> +
-> +	if (unlikely(signal->flags & SIGNAL_CLD_MASK)) {
-> +		WARN(1, "there are no parents for kernel threads\n");
-> +		signal->flags &= ~SIGNAL_CLD_MASK;
-> +	}
-> +
-> +	for (;;) {
-> +		struct k_sigaction *ka;
-> +
-> +		signr = dequeue_signal(current, &current->blocked, &ksig.info);
-> +
-> +		if (!signr)
-> +			break;
-> +
-> +		ka = &sighand->action[signr-1];
-> +
-> +		/* Do nothing for ignored signals */
-> +		if (ka->sa.kthread_sa_handler == KTHREAD_SIG_IGN)
-> +			continue;
+And I do see the difference. Rightly or not I belive that this API buys
+nothing but makes the kthread && signal interaction more complex and
+confusing. For no reason.
 
-Again, I agree something like the simple kthread_dequeue_signal() makes
-sense. Say, to drop the ignore signal like this code does. Although I
-do not think this is really important, SIG_IGN is only possible if this
-kthread does something strange. Say, blocks/unblocs the ignored signal.
+But!
 
-> +
-> +		/* Run the custom handler if any */
-> +		if (ka->sa.kthread_sa_handler != KTHREAD_SIG_DFL) {
-> +			ksig.ka = *ka;
-> +
-> +			if (ka->sa.sa_flags & SA_ONESHOT)
-> +				ka->sa.kthread_sa_handler = KTHREAD_SIG_DFL;
-> +
-> +			spin_unlock_irqrestore(&sighand->siglock, flags);
-> +			/* could run directly for kthreads */
-> +			ksig.ka.sa.kthread_sa_handler(signr);
-> +			freezable_cond_resched();
-> +			goto relock;
+> That being said, my relationship to signal
+> handling code is of course much less intimate compared to yours,
 
-Well. But for what? A simple "switch (signr)" after kthread_dequeue_signal()
-can do the same. Or, speaking of kthread_iterant_fn() it can even dequeue the
-signal and pass it to kti->whatever(signr).
+No, no, no, this doesn't matter at all ;)
 
-> +		if (sig_kernel_ignore(signr))
-> +			continue;
-
-For what? Why a kthread should unignore (say) SIGWINCH if it is not going
-to react?
-
-> +		if (sig_kernel_stop(signr)) {
-> +			__set_current_state(TASK_STOPPED);
-> +			spin_unlock_irqrestore(&sighand->siglock, flags);
-> +			/* Don't run again until woken by SIGCONT or SIGKILL */
-> +			freezable_schedule();
-> +			goto relock;
-
-Yes this avoids the race with SIGCONT. But as I said we can add another
-trivial helper which checks JOBCTL_STOP_DEQUEUED. So a kthread can do
-this itself.
-
-To me, SIG_DFL behaviour just makes makes no sense when it comes to
-kthreads. I do not even think this can simplify the code. Unlike user-
-space task, kthread can happily dequeue SIGSTOP, so why should we mimic
-the userspace SIG_DFL logic.
-
-
-> +		/* Death signals, but try to terminate cleanly */
-> +		kthread_stop_current();
-> +		__flush_signals(current);
-> +		break;
-
-The same.
+Yes I do dislike this API. So what? I can be wrong. So if other reviewers
+like it I will hate them all ^W^W^W not argure. So please comment. I never
+trust myself unless I can technically (try to) prove I am right. In this
+case I can't, this is only my feeling.
 
 Oleg.
 
