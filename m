@@ -1,92 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f181.google.com ([209.85.220.181]:34602 "EHLO
-	mail-qk0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752219AbbFFO4M (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 6 Jun 2015 10:56:12 -0400
-Message-ID: <5573068B.5010406@gmail.com>
-Date: Sat, 06 Jun 2015 22:41:15 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
-MIME-Version: 1.0
-To: Al Viro <viro@zeniv.linux.org.uk>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        linux-fsdevel@vger.kernel.org
-CC: NeilBrown <neilb@suse.de>,
+Received: from mx1.redhat.com ([209.132.183.28]:56012 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753008AbbFFVRt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 6 Jun 2015 17:17:49 -0400
+Date: Sat, 6 Jun 2015 23:16:48 +0200
+From: Oleg Nesterov <oleg@redhat.com>
+To: Petr Mladek <pmladek@suse.cz>
+Cc: Andrew Morton <akpm@linux-foundation.org>, Tejun Heo <tj@kernel.org>,
+        Ingo Molnar <mingo@redhat.com>, Peter Zijlstra <peterz@infradead.org>,
+        Richard Weinberger <richard@nod.at>,
+        Steven Rostedt <rostedt@goodmis.org>,
+        David Woodhouse <dwmw2@infradead.org>, linux-mtd@lists.infradead.org,
         Trond Myklebust <trond.myklebust@primarydata.com>,
-        kinglongmee@gmail.com
-Subject: [PATCH 0/5 v4] NFSD: Pin to vfsmount for nfsd exports cache
-Content-Type: text/plain; charset=utf-8
+        Anna Schumaker <anna.schumaker@netapp.com>, linux-nfs@vger.kernel.org,
+        Chris Mason <clm@fb.com>,
+        "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
+        Thomas Gleixner <tglx@linutronix.de>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Jiri Kosina <jkosina@suse.cz>, Borislav Petkov <bp@suse.de>,
+        Michal Hocko <mhocko@suse.cz>, live-patching@vger.kernel.org,
+        linux-api@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [RFC PATCH 11/18] jffs2: Convert jffs2_gcd_mtd kthread into
+	the iterant API
+Message-ID: <20150606211648.GA15591@redhat.com>
+References: <1433516477-5153-1-git-send-email-pmladek@suse.cz> <1433516477-5153-12-git-send-email-pmladek@suse.cz>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1433516477-5153-12-git-send-email-pmladek@suse.cz>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If there are some mount points(not exported for nfs) under pseudo root,
-after client's operation of those entry under the root, anyone *can't*
-unmount those mount points until export cache expired.
+On 06/05, Petr Mladek wrote:
+>
+> [*] In fact, there was a bug in the original code. It tried to process
+>     a non-existing signal when the system was freezing. See the common
+>     check for pending signal and freezing.
 
-# cat /etc/exports
-/nfs/xfs        *(rw,insecure,no_subtree_check,no_root_squash)
-/nfs/pnfs       *(rw,insecure,no_subtree_check,no_root_squash)
-# ll /nfs/
-total 0
-drwxr-xr-x. 3 root root 84 Apr 21 22:27 pnfs
-drwxr-xr-x. 3 root root 84 Apr 21 22:27 test
-drwxr-xr-x. 2 root root  6 Apr 20 22:01 xfs
-# mount /dev/sde /nfs/test
-# df
-Filesystem                      1K-blocks    Used Available Use% Mounted on
-......
-/dev/sdd                          1038336   32944   1005392   4% /nfs/pnfs
-/dev/sdc                         10475520   32928  10442592   1% /nfs/xfs
-/dev/sde                           999320    1284    929224   1% /nfs/test
-# mount -t nfs 127.0.0.1:/nfs/ /mnt
-# ll /mnt/*/
-/mnt/pnfs/:
-total 0
--rw-r--r--. 1 root root 0 Apr 21 22:23 attr
-drwxr-xr-x. 2 root root 6 Apr 21 22:19 tmp
+And another bug afaics:
 
-/mnt/xfs/:
-total 0
-# umount /nfs/test/
-umount: /nfs/test/: target is busy
-        (In some cases useful info about processes that
-         use the device is found by lsof(8) or fuser(1).)
+> -			case SIGSTOP:
+> -				jffs2_dbg(1, "%s(): SIGSTOP received\n",
+> -					  __func__);
+> -				set_current_state(TASK_STOPPED);
+> -				schedule();
+> -				break;
 
-It's caused by exports cache of nfsd holds the reference of
-the path (here is /nfs/test/), so, it can't be umounted.
+This is obviously racy, we can miss SIGCONT.
 
-I don't think that's user expect, they want umount /nfs/test/.
-Bruce think user can also umount /nfs/pnfs/ and /nfs/xfs.
+Still I personally dislike the new kthread_sigaction() API. I agree,
+a couple if signal helpers for kthreads make sense. Say,
 
-This patch site lets nfsd exports pinning to vfsmount, 
-not using mntget, so user can umount any exports mountpoint now.
+	void kthread_do_signal_stop(void)
+	{
+		spin_lock_irq(&curtent->sighand->siglock);
+		if (current->jobctl & JOBCTL_STOP_DEQUEUED)
+			__set_current_state(TASK_STOPPED);
+		spin_unlock_irq(&current->sighand->siglock);
 
-v3, 
-1. New helpers path_get_pin/path_put_unpin for path pin.
-2. Use kzalloc for allocating memory.
+		schedule();
+	}
 
-v4, Thanks for Al Viro's commets for the logic of fs_pin.
-1. add a completion for pin_kill waiting the reference is decreased to zero.
-2. add a work_struct for pin_kill decreases the reference indirectly.
-3. free svc_export/svc_expkey in pin_kill, not svc_export_put/svc_expkey_put.
-4. svc_export_put/svc_expkey_put go though pin_kill logic.
+and probably even "int kthread_signal_deque(void)".
 
-Kinglong Mee (5):
-  fs_pin: Initialize value for fs_pin explicitly
-  fs_pin: Export functions for specific filesystem
-  path: New helpers path_get_pin/path_put_unpin for path pin
-  sunrpc: New helper cache_force_expire for cache cleanup
-  nfsd: Allows user un-mounting filesystem where nfsd exports base on
+But personally I do not think kthread_do_signal() makes a lot of sense...
 
- fs/fs_pin.c                  |  4 ++
- fs/namei.c                   | 26 ++++++++++++
- fs/nfsd/export.c             | 96 +++++++++++++++++++++++++++++++++++---------
- fs/nfsd/export.h             | 18 ++++++++-
- include/linux/fs_pin.h       |  6 +++
- include/linux/path.h         |  4 ++
- include/linux/sunrpc/cache.h | 11 +++++
- 7 files changed, 146 insertions(+), 19 deletions(-)
-
--- 
-2.4.2
+Oleg.
 
