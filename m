@@ -1,87 +1,84 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtprelay0011.hostedemail.com ([216.40.44.11]:41131 "EHLO
-	smtprelay.hostedemail.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1751424AbbFHRzX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Jun 2015 13:55:23 -0400
-Date: Mon, 8 Jun 2015 13:48:10 -0400
-From: Steven Rostedt <rostedt@goodmis.org>
-To: Peter Zijlstra <peterz@infradead.org>
-Cc: Petr Mladek <pmladek@suse.cz>, Andrew Morton <akpm@linux-foundation.org>,
-        Oleg Nesterov <oleg@redhat.com>, Tejun Heo <tj@kernel.org>,
-        Ingo Molnar <mingo@redhat.com>, Richard Weinberger <richard@nod.at>,
-        David Woodhouse <dwmw2@infradead.org>, linux-mtd@lists.infradead.org,
+Received: from smtp4-g21.free.fr ([212.27.42.4]:48475 "EHLO smtp4-g21.free.fr"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753188AbbFHSMM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 8 Jun 2015 14:12:12 -0400
+Date: Mon, 8 Jun 2015 20:12:10 +0200
+From: Guillaume Morin <guillaume@morinfr.org>
+To: Chuck Lever <chucklever@gmail.com>
+Cc: Guillaume Morin <guillaume@morinfr.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
         Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>, linux-nfs@vger.kernel.org,
-        Chris Mason <clm@fb.com>,
-        "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
-        Thomas Gleixner <tglx@linutronix.de>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Jiri Kosina <jkosina@suse.cz>, Borislav Petkov <bp@suse.de>,
-        Michal Hocko <mhocko@suse.cz>, live-patching@vger.kernel.org,
-        linux-api@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [RFC PATCH 09/18] kthread: Make it easier to correctly sleep in
- iterant kthreads
-Message-ID: <20150608134810.3abd862b@gandalf.local.home>
-In-Reply-To: <20150605161021.GJ19282@twins.programming.kicks-ass.net>
-References: <1433516477-5153-1-git-send-email-pmladek@suse.cz>
-	<1433516477-5153-10-git-send-email-pmladek@suse.cz>
-	<20150605161021.GJ19282@twins.programming.kicks-ass.net>
+        Chris Mason <clm@fb.com>
+Subject: Re: [BUG] nfs3 client stops retrying to connect
+Message-ID: <20150608181210.GA18244@bender.morinfr.org>
+References: <20150521012155.GA19680@bender.morinfr.org>
+ <DAF3CB64-5777-4F74-A31E-4F3FE55D14AD@gmail.com>
+ <20150604200621.GA10335@bender.morinfr.org>
+ <1E6DAEB8-754B-4F88-8301-4A1A9134922A@gmail.com>
+ <20150604221404.GA20363@bender.morinfr.org>
+ <22109174-5489-46AB-8C0A-62840D63DC97@gmail.com>
+ <20150608171006.GA13396@bender.morinfr.org>
+ <21A8A567-1EB4-4E3A-8DB8-BD07212044D0@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <21A8A567-1EB4-4E3A-8DB8-BD07212044D0@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 5 Jun 2015 18:10:21 +0200
-Peter Zijlstra <peterz@infradead.org> wrote:
-
-> On Fri, Jun 05, 2015 at 05:01:08PM +0200, Petr Mladek wrote:
-> > Many kthreads go into an interruptible sleep when there is nothing
-> > to do. They should check if anyone did not requested the kthread
-> > to terminate, freeze, or park in the meantime. It is easy to do
-> > it a wrong way.
+On 08 Jun 13:50, Chuck Lever wrote:
+> The linger timer is started by FIN_WAIT1 or LAST_ACK, and
+> xs_tcp_schedule_linger_timeout sets XPRT_CONNECTING and
+> XPRT_CONNECTION_ABORT.
 > 
-> INTERRUPTIBLE is the wrong state to idle in for kthreads, use
-> TASK_IDLE.
+> At a guess there could be a race between xs_tcp_cancel_linger_timeout
+> and the connect worker clearing those flags.
+
+The connect worker is xs_tcp_setup_socket().  It clears the connecting
+bit in all code paths.  So the only kind of race I can see here is
+another function cancelling it before it runs without clearing the bit.
+
+xs_tcp_cancel_linger_timeout() does the right thing afaict.  It clears
+the bit if cancel_delayed_work() returns a non-zero value.
+
+The only other place where the worker is cancelled is xs_close() but it
+does not clear the bit. So if it cancels the worker before it had
+started running, the bit will stay up.
+
+> AFAICT ->close is invoked when the transport is being shut down, in other
+> words at umount time. It is also invoked when the autoclose timer fires.
 > 
-> ---
+> Autoclose is simply a mechanism for reaping NFS sockets that are idle.
+> I think the timer is 5 or 6 minutes.
 > 
-> commit 80ed87c8a9ca0cad7ca66cf3bbdfb17559a66dcf
-> Author: Peter Zijlstra <peterz@infradead.org>
-> Date:   Fri May 8 14:23:45 2015 +0200
+> Autoclose won't fire if there is frequent work being done on the mount
+> point. If this is related to autoclose, then the workload on the client
+> might need to be sparse (NFS requests only every few minutes or so) to
+> reproduce it.
 > 
->     sched/wait: Introduce TASK_NOLOAD and TASK_IDLE
->     
->     Currently people use TASK_INTERRUPTIBLE to idle kthreads and wait for
->     'work' because TASK_UNINTERRUPTIBLE contributes to the loadavg. Having
->     all idle kthreads contribute to the loadavg is somewhat silly.
+> For example, autoclose fires and tries to shut down the socket after the
+> server is no longer responding.
 
-Not to mention, tasks in TASK_UNINTERRUPTIBLE state for too long will
-trigger hung task detection.
+It does not seem that autoclose is the cause here since it has happened
+only during server outages. 
 
+If autoclose and umount are the only thing that can call xs_close(),
+that seems unlikely to eb the problem.  But I see that xprt_connect()
+can call it too so that gives me some hope
 
->     
->     Now mostly this works OK, because kthreads have all their signals
->     masked. However there's a few sites where this is causing problems and
->     TASK_UNINTERRUPTIBLE should be used, except for that loadavg issue.
->     
->     This patch adds TASK_NOLOAD which, when combined with
->     TASK_UNINTERRUPTIBLE avoids the loadavg accounting.
->     
->     As most of imagined usage sites are loops where a thread wants to
->     idle, waiting for work, a helper TASK_IDLE is introduced.
->     
->     Signed-off-by: Peter Zijlstra (Intel) <peterz@infradead.org>
-
-Acked-by: Steven Rostedt <rostedt@goodmis.org>
-
--- Steve
-
->     Cc: Julian Anastasov <ja@ssi.bg>
->     Cc: Linus Torvalds <torvalds@linux-foundation.org>
->     Cc: NeilBrown <neilb@suse.de>
->     Cc: Oleg Nesterov <oleg@redhat.com>
->     Cc: Peter Zijlstra <peterz@infradead.org>
->     Cc: Thomas Gleixner <tglx@linutronix.de>
->     Signed-off-by: Ingo Molnar <mingo@kernel.org>
+> > We had to move an nfs server on friday and I got a few machines that had
+> > the same issue again?
 > 
-> diff --git a/include/linux/sched.h b/include/linux/sched.h
+> That suggests one requirement for your reproducer: after clients have
+> mounted it, the NFS server needs to be fully down for an extended period.
+
+Yes, it seems to be the case but if it's a race this just gives more
+opportunity to race.
+
+> Since some clients recovered, I assume the server retained its IP address.
+> Did the network route change?
+
+No the route did not change
+
+-- 
+Guillaume Morin <guillaume@morinfr.org>
