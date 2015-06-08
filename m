@@ -1,153 +1,151 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:16749 "EHLO
+Received: from aserp1040.oracle.com ([141.146.126.69]:17351 "EHLO
 	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752355AbbFHTJ5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Jun 2015 15:09:57 -0400
-Message-ID: <5575E882.3010702@oracle.com>
-Date: Mon, 08 Jun 2015 12:09:54 -0700
+	with ESMTP id S1752355AbbFHTLU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Jun 2015 15:11:20 -0400
+Message-ID: <5575E8CE.4030805@oracle.com>
+Date: Mon, 08 Jun 2015 12:11:10 -0700
 From: Shirley Ma <shirley.ma@oracle.com>
 MIME-Version: 1.0
 To: "J. Bruce Fields" <bfields@fieldses.org>,
         Jeff Layton <jlayton@primarydata.com>,
         Trond Myklebust <trond.myklebust@primarydata.com>
 CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: [RFC PATCH V4 6/7] nfsd/sunrpc: move pool_mode definitions into svc.h
+Subject: [RFC PATCH V4 7/7] nfsd/sunrpc: factor svc_rqst allocation and freeing
+ from sv_nrthreads refcounting
 Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Jeff Layton <jlayton@primarydata.com>
 
-In later patches, we're going to need to allow code external to svc.c
-to figure out what pool_mode is in use. Move these definitions into
-svc.h to prepare for that.
-   
-Also, make the svc_pool_map object available and exported so that other
-modules can peek in there to get insight into what pool mode is in use.
-Likewise, export svc_pool_map_get/put function to make it safe to do so.
+In later patches, we'll want to be able to allocate and free svc_rqst
+structures without monkeying with the serv->sv_nrthreads refcount.
+    
+Factor those pieces out of their respective functions.
     
 Signed-off-by: Shirley Ma <shirley.ma@oracle.com>
 Acked-by: Jeff Layton <jlayton@primarydata.com>
 Tested-by: Shirley Ma <shirley.ma@oracle.com>
 ---
 diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index 12941f6..758b4eb 100644
+index 758b4eb..8203ec0 100644
 --- a/include/linux/sunrpc/svc.h
 +++ b/include/linux/sunrpc/svc.h
-@@ -428,6 +428,29 @@ struct svc_procedure {
- };
- 
- /*
-+ * Mode for mapping cpus to pools.
-+ */
-+enum {
-+	SVC_POOL_AUTO = -1,	/* choose one of the others */
-+	SVC_POOL_GLOBAL,	/* no mapping, just a single global pool
-+				 * (legacy & UP mode) */
-+	SVC_POOL_PERCPU,	/* one pool per cpu */
-+	SVC_POOL_PERNODE	/* one pool per numa node */
-+};
-+
-+struct svc_pool_map {
-+	int count;			/* How many svc_servs use us */
-+	int mode;			/* Note: int not enum to avoid
-+					 * warnings about "enumeration value
-+					 * not handled in switch" */
-+	unsigned int npools;
-+	unsigned int *pool_to;		/* maps pool id to cpu or node */
-+	unsigned int *to_pool;		/* maps cpu or node to pool id */
-+};
-+
-+extern struct svc_pool_map svc_pool_map;
-+
-+/*
-  * Function prototypes.
-  */
- int svc_rpcb_setup(struct svc_serv *serv, struct net *net);
-@@ -438,6 +461,8 @@ struct svc_serv *svc_create(struct svc_program *, unsigned int,
+@@ -458,8 +458,11 @@ void svc_rpcb_cleanup(struct svc_serv *serv, struct net *net);
+ int svc_bind(struct svc_serv *serv, struct net *net);
+ struct svc_serv *svc_create(struct svc_program *, unsigned int,
+ 			    struct svc_serv_ops *);
++struct svc_rqst *svc_rqst_alloc(struct svc_serv *serv,
++					struct svc_pool *pool, int node);
  struct svc_rqst *svc_prepare_thread(struct svc_serv *serv,
  					struct svc_pool *pool, int node);
++void		   svc_rqst_free(struct svc_rqst *);
  void		   svc_exit_thread(struct svc_rqst *);
-+unsigned int	   svc_pool_map_get(void);
-+void		   svc_pool_map_put(void);
- struct svc_serv *  svc_create_pooled(struct svc_program *, unsigned int,
- 			struct svc_serv_ops *);
- int		   svc_set_num_threads(struct svc_serv *, struct svc_pool *, int);
+ unsigned int	   svc_pool_map_get(void);
+ void		   svc_pool_map_put(void);
 diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index 5ae9d63..3c658c4 100644
+index 3c658c4..2c76f28 100644
 --- a/net/sunrpc/svc.c
 +++ b/net/sunrpc/svc.c
-@@ -36,34 +36,17 @@ static void svc_unregister(const struct svc_serv *serv, struct net *net);
+@@ -583,40 +583,52 @@ svc_release_buffer(struct svc_rqst *rqstp)
+ }
  
- #define svc_serv_is_pooled(serv)    ((serv)->sv_ops->svo_function)
+ struct svc_rqst *
+-svc_prepare_thread(struct svc_serv *serv, struct svc_pool *pool, int node)
++svc_rqst_alloc(struct svc_serv *serv, struct svc_pool *pool, int node)
+ {
+ 	struct svc_rqst	*rqstp;
  
--/*
-- * Mode for mapping cpus to pools.
-- */
--enum {
--	SVC_POOL_AUTO = -1,	/* choose one of the others */
--	SVC_POOL_GLOBAL,	/* no mapping, just a single global pool
--				 * (legacy & UP mode) */
--	SVC_POOL_PERCPU,	/* one pool per cpu */
--	SVC_POOL_PERNODE	/* one pool per numa node */
--};
- #define SVC_POOL_DEFAULT	SVC_POOL_GLOBAL
+ 	rqstp = kzalloc_node(sizeof(*rqstp), GFP_KERNEL, node);
+ 	if (!rqstp)
+-		goto out_enomem;
++		return rqstp;
  
- /*
-  * Structure for mapping cpus to pools and vice versa.
-  * Setup once during sunrpc initialisation.
-  */
--static struct svc_pool_map {
--	int count;			/* How many svc_servs use us */
--	int mode;			/* Note: int not enum to avoid
--					 * warnings about "enumeration value
--					 * not handled in switch" */
--	unsigned int npools;
--	unsigned int *pool_to;		/* maps pool id to cpu or node */
--	unsigned int *to_pool;		/* maps cpu or node to pool id */
--} svc_pool_map = {
--	.count = 0,
-+struct svc_pool_map svc_pool_map = {
- 	.mode = SVC_POOL_DEFAULT
- };
-+EXPORT_SYMBOL_GPL(svc_pool_map);
+-	serv->sv_nrthreads++;
+ 	__set_bit(RQ_BUSY, &rqstp->rq_flags);
+ 	spin_lock_init(&rqstp->rq_lock);
+ 	rqstp->rq_server = serv;
+ 	rqstp->rq_pool = pool;
+-	spin_lock_bh(&pool->sp_lock);
+-	pool->sp_nrthreads++;
+-	list_add_rcu(&rqstp->rq_all, &pool->sp_all_threads);
+-	spin_unlock_bh(&pool->sp_lock);
+ 
+ 	rqstp->rq_argp = kmalloc_node(serv->sv_xdrsize, GFP_KERNEL, node);
+ 	if (!rqstp->rq_argp)
+-		goto out_thread;
++		goto out_enomem;
+ 
+ 	rqstp->rq_resp = kmalloc_node(serv->sv_xdrsize, GFP_KERNEL, node);
+ 	if (!rqstp->rq_resp)
+-		goto out_thread;
++		goto out_enomem;
+ 
+ 	if (!svc_init_buffer(rqstp, serv->sv_max_mesg, node))
+-		goto out_thread;
++		goto out_enomem;
+ 
+ 	return rqstp;
+-out_thread:
+-	svc_exit_thread(rqstp);
+ out_enomem:
+-	return ERR_PTR(-ENOMEM);
++	svc_rqst_free(rqstp);
++	return NULL;
++}
++EXPORT_SYMBOL_GPL(svc_rqst_alloc);
 +
- static DEFINE_MUTEX(svc_pool_map_mutex);/* protects svc_pool_map.count only */
- 
- static int
-@@ -236,7 +219,7 @@ svc_pool_map_init_pernode(struct svc_pool_map *m)
-  * vice versa).  Initialise the map if we're the first user.
-  * Returns the number of pools.
-  */
--static unsigned int
-+unsigned int
- svc_pool_map_get(void)
- {
- 	struct svc_pool_map *m = &svc_pool_map;
-@@ -271,7 +254,7 @@ svc_pool_map_get(void)
- 	mutex_unlock(&svc_pool_map_mutex);
- 	return m->npools;
++struct svc_rqst *
++svc_prepare_thread(struct svc_serv *serv, struct svc_pool *pool, int node)
++{
++	struct svc_rqst	*rqstp;
++
++	rqstp = svc_rqst_alloc(serv, pool, node);
++	if (!rqstp)
++		return ERR_PTR(-ENOMEM);
++
++	serv->sv_nrthreads++;
++	spin_lock_bh(&pool->sp_lock);
++	pool->sp_nrthreads++;
++	list_add_rcu(&rqstp->rq_all, &pool->sp_all_threads);
++	spin_unlock_bh(&pool->sp_lock);
++	return rqstp;
  }
--
-+EXPORT_SYMBOL_GPL(svc_pool_map_get);
+ EXPORT_SYMBOL_GPL(svc_prepare_thread);
  
- /*
-  * Drop a reference to the global map of cpus to pools.
-@@ -280,7 +263,7 @@ svc_pool_map_get(void)
-  * mode using the pool_mode module option without
-  * rebooting or re-loading sunrpc.ko.
+@@ -751,15 +763,21 @@ EXPORT_SYMBOL_GPL(svc_set_num_threads);
+  * mutex" for the service.
   */
--static void
+ void
+-svc_exit_thread(struct svc_rqst *rqstp)
++svc_rqst_free(struct svc_rqst *rqstp)
+ {
+-	struct svc_serv	*serv = rqstp->rq_server;
+-	struct svc_pool	*pool = rqstp->rq_pool;
+-
+ 	svc_release_buffer(rqstp);
+ 	kfree(rqstp->rq_resp);
+ 	kfree(rqstp->rq_argp);
+ 	kfree(rqstp->rq_auth_data);
++	kfree_rcu(rqstp, rq_rcu_head);
++}
++EXPORT_SYMBOL_GPL(svc_rqst_free);
++
 +void
- svc_pool_map_put(void)
- {
- 	struct svc_pool_map *m = &svc_pool_map;
-@@ -297,7 +280,7 @@ svc_pool_map_put(void)
++svc_exit_thread(struct svc_rqst *rqstp)
++{
++	struct svc_serv	*serv = rqstp->rq_server;
++	struct svc_pool	*pool = rqstp->rq_pool;
  
- 	mutex_unlock(&svc_pool_map_mutex);
- }
--
-+EXPORT_SYMBOL_GPL(svc_pool_map_put);
+ 	spin_lock_bh(&pool->sp_lock);
+ 	pool->sp_nrthreads--;
+@@ -767,7 +785,7 @@ svc_exit_thread(struct svc_rqst *rqstp)
+ 		list_del_rcu(&rqstp->rq_all);
+ 	spin_unlock_bh(&pool->sp_lock);
  
- static int svc_pool_map_get_node(unsigned int pidx)
- {
+-	kfree_rcu(rqstp, rq_rcu_head);
++	svc_rqst_free(rqstp);
+ 
+ 	/* Release the server */
+ 	if (serv)
