@@ -1,16 +1,16 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:28776 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750976AbbFHF0J (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Jun 2015 01:26:09 -0400
-Message-ID: <5575276A.4030305@oracle.com>
-Date: Sun, 07 Jun 2015 22:26:02 -0700
+Received: from aserp1040.oracle.com ([141.146.126.69]:16959 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751190AbbFHF1D (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Jun 2015 01:27:03 -0400
+Message-ID: <557527A0.2080909@oracle.com>
+Date: Sun, 07 Jun 2015 22:26:56 -0700
 From: Shirley Ma <shirley.ma@oracle.com>
 MIME-Version: 1.0
 To: "J. Bruce Fields" <bfields@fieldses.org>,
         Jeff Layton <jlayton@primarydata.com>
 CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: [RFC PATCH V3 2/7] nfsd/sunrpc: move sv_function into sv_ops
+Subject: RFC PATCH V3 3/7] nfsd/sunrpc:  move sv_module parm into sv_ops
 Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
