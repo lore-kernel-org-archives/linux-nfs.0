@@ -1,69 +1,121 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:48218 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752206AbbFHTpZ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Jun 2015 15:45:25 -0400
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
-Subject: Re: rpc.nfsd Host Option & IPv6
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <b66b20ec16b59568246f454bfbbfd5e9@mail.sessys.com>
-Date: Mon, 8 Jun 2015 15:48:29 -0400
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <8AB90F17-5DBB-460C-8418-399C50F87D4C@oracle.com>
-References: <b66b20ec16b59568246f454bfbbfd5e9@mail.sessys.com>
-To: Sean Elble <elbles@sessys.com>, Jeff Layton <jlayton@poochiereds.net>
+Received: from fieldses.org ([173.255.197.46]:41017 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752239AbbFHUrl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 8 Jun 2015 16:47:41 -0400
+Date: Mon, 8 Jun 2015 16:47:34 -0400
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: "William A. (Andy) Adamson" <androsadamson@gmail.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 3/6] SUNRPC: Clean up bc_send()
+Message-ID: <20150608204734.GA27887@fieldses.org>
+References: <1433453213-13466-1-git-send-email-trond.myklebust@primarydata.com>
+ <1433453213-13466-2-git-send-email-trond.myklebust@primarydata.com>
+ <1433453213-13466-3-git-send-email-trond.myklebust@primarydata.com>
+ <CAHVgHyWz-dKX-6TbRCYRBp7b2uV2-kCd7U63sHd5ZKZKr6e7aw@mail.gmail.com>
+ <B30A41CC-EADC-4738-8FDF-E8B03AAA48FC@oracle.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <B30A41CC-EADC-4738-8FDF-E8B03AAA48FC@oracle.com>
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Jun 3, 2015, at 9:39 AM, Sean Elble <elbles@sessys.com> wrote:
-
-> Hi all,
+On Fri, Jun 05, 2015 at 12:02:11PM -0400, Chuck Lever wrote:
 > 
-> While it seems that most folks use iptables to restrict access to single interfaces when multihomed hosts are acting as NFS servers, I do see that there is a "--host" option that can be provided to rpc.nfsd when it starts so that it only binds to a specific IP/interface.
+> On Jun 5, 2015, at 11:50 AM, Andy Adamson <androsadamson@gmail.com> wrote:
 > 
-> This does seem to work nicely, but when I try to use it, it throws an error/warning (where nfs-server is defined in /etc/hosts for the IPv4 address of the interface I wish for TCP port 2049 to be opened on):
+> > On Thu, Jun 4, 2015 at 5:26 PM, Trond Myklebust
+> > <trond.myklebust@primarydata.com> wrote:
+> >> From: Chuck Lever <chuck.lever@oracle.com>
+> >> 
+> >> Clean up: Merge bc_send() into bc_svc_process().
+> >> 
+> >> Note: even thought this touches svc.c, it is a client-side change.
+> >> 
+> >> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> >> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> >> ---
+> >> include/linux/sunrpc/bc_xprt.h |  1 -
+> >> net/sunrpc/Makefile            |  2 +-
+> >> net/sunrpc/bc_svc.c            | 63 ------------------------------------------
+> >> net/sunrpc/svc.c               | 33 ++++++++++++++++------
+> >> 4 files changed, 26 insertions(+), 73 deletions(-)
+> >> delete mode 100644 net/sunrpc/bc_svc.c
+> >> 
+> >> diff --git a/include/linux/sunrpc/bc_xprt.h b/include/linux/sunrpc/bc_xprt.h
+> >> index 2ca67b55e0fe..8df43c9f11dc 100644
+> >> --- a/include/linux/sunrpc/bc_xprt.h
+> >> +++ b/include/linux/sunrpc/bc_xprt.h
+> >> @@ -37,7 +37,6 @@ void xprt_complete_bc_request(struct rpc_rqst *req, uint32_t copied);
+> >> void xprt_free_bc_request(struct rpc_rqst *req);
+> >> int xprt_setup_backchannel(struct rpc_xprt *, unsigned int min_reqs);
+> >> void xprt_destroy_backchannel(struct rpc_xprt *, unsigned int max_reqs);
+> >> -int bc_send(struct rpc_rqst *req);
+> >> 
+> >> /*
+> >>  * Determine if a shared backchannel is in use
+> >> diff --git a/net/sunrpc/Makefile b/net/sunrpc/Makefile
+> >> index 15e6f6c23c5d..1b8e68d0e690 100644
+> >> --- a/net/sunrpc/Makefile
+> >> +++ b/net/sunrpc/Makefile
+> >> @@ -15,6 +15,6 @@ sunrpc-y := clnt.o xprt.o socklib.o xprtsock.o sched.o \
+> >>            sunrpc_syms.o cache.o rpc_pipe.o \
+> >>            svc_xprt.o
+> >> sunrpc-$(CONFIG_SUNRPC_DEBUG) += debugfs.o
+> >> -sunrpc-$(CONFIG_SUNRPC_BACKCHANNEL) += backchannel_rqst.o bc_svc.o
+> >> +sunrpc-$(CONFIG_SUNRPC_BACKCHANNEL) += backchannel_rqst.o
+> >> sunrpc-$(CONFIG_PROC_FS) += stats.o
+> >> sunrpc-$(CONFIG_SYSCTL) += sysctl.o
+> >> diff --git a/net/sunrpc/bc_svc.c b/net/sunrpc/bc_svc.c
+> >> deleted file mode 100644
+> >> index 15c7a8a1c24f..000000000000
+> >> --- a/net/sunrpc/bc_svc.c
+> >> +++ /dev/null
+> >> @@ -1,63 +0,0 @@
+> >> -/******************************************************************************
+> >> -
+> >> -(c) 2007 Network Appliance, Inc.  All Rights Reserved.
+> >> -(c) 2009 NetApp.  All Rights Reserved.
+> >> -
+> >> -NetApp provides this source code under the GPL v2 License.
+> >> -The GPL v2 license is available at
+> >> -http://opensource.org/licenses/gpl-license.php.
+> >> -
+> >> -THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+> >> -"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+> >> -LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+> >> -A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+> >> -CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+> >> -EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+> >> -PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+> >> -PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+> >> -LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+> >> -NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+> >> -SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+> >> -
+> >> -******************************************************************************/
+> > 
+> > Why is the above being removed?
 > 
-> rpc.nfsd: unable to resolve nfs-server:nfs to inet6 address: Name or service not known
-
-This is a DNS error. No IPv6 mapping is provided in /etc/hosts. I suppose
-if you provided “-H ipv4-address” the getaddrinfo(AF_INET6) call would
-also fail.
-
-Normally an ANY address is used when setting up NFSD listeners, and
-no DNS lookup is done. This appears to be an issue just with -H.
-
-> Commenting out the following lines in /etc/netconfig (as suggested by the Google) allows the daemon to start without error:
+> Hi Andy-
 > 
-> udp6       tpi_clts      v     inet6    udp     -       -
-> tcp6       tpi_cots_ord  v     inet6    tcp     -       -
+> Interesting question, and IANAL.
 > 
-> But I'm wondering if that is the only means for this to work, particularly considering that I'd expect changes to /etc/netconfig to apply to more than just rpc.nfsd.
+> Where should the boilerplate go if the below function is merged into
+> existing generic server code? I suppose we could fold the NetApp
+> copyright into the comment at the top of net/sunrpc/svc.c , but the
+> merged code is paraphrased rather than copied directly.
+> 
+> Suggestions/opinions are welcome.
 
-The kernel handles IPv4 and IPv6 traffic on separate listener sockets.
+I don't know, the above looks like pretty generic boilerplate, and I'd
+rather not accumulate a that kind of thing every time we move a
+significant piece of code around.  Could we compromise by adding a line
+or two to net/sunrpc/svc.c following the existing convention there?
+("backchannel implementation originally (c) 2007 Network Appliance and
+(c) 2009 Netapp", or similar?)  Not a lawyer either, just looking for a
+way to keep it both honest and concise....
 
-It appears that with support for /etc/netconfig, it is possible to
-set up a UDP AF_INET NFSD socket and a TCP AF_INET6 NFSD socket?
-
-Since these are not really TI-RPC sockets and libtirpc isn’t
-involved after the sockets are passed to the kernel, I’m not sure
-it’s appropriate to consult /etc/netconfig here?
-
-Anyway, the creation of the IPv4 socket succeeded, but the creation
-of the IPv6 socket did not. At least one socket was created, so the
-rpc.nfsd command worked, even though it threw a spurious error.
-
-My preference would be to change the way all this works so that a
-single getaddrinfo(3) could be used for both sockets. That way the
-DNS failure would occur only if there were _no_ valid addresses,
-since that’s the only legitimate failure in this case.
-
-Jeff, any thoughts? Am I contradicting myself from 6 years ago?
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+--b.
