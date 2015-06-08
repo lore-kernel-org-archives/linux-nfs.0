@@ -1,127 +1,192 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:45645 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753322AbbFHUt6 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Jun 2015 16:49:58 -0400
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
-Subject: Re: [PATCH 3/6] SUNRPC: Clean up bc_send()
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20150608204734.GA27887@fieldses.org>
-Date: Mon, 8 Jun 2015 16:52:54 -0400
-Cc: "William A. (Andy) Adamson" <androsadamson@gmail.com>,
+Received: from fieldses.org ([173.255.197.46]:41028 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752584AbbFHVCy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 8 Jun 2015 17:02:54 -0400
+Date: Mon, 8 Jun 2015 17:02:47 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Stefan Hajnoczi <stefanha@redhat.com>
+Cc: linux-nfs@vger.kernel.org, Anna Schumaker <anna.schumaker@netapp.com>,
         Trond Myklebust <trond.myklebust@primarydata.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <BAD55198-804F-4B00-8A79-080FB694343D@oracle.com>
-References: <1433453213-13466-1-git-send-email-trond.myklebust@primarydata.com> <1433453213-13466-2-git-send-email-trond.myklebust@primarydata.com> <1433453213-13466-3-git-send-email-trond.myklebust@primarydata.com> <CAHVgHyWz-dKX-6TbRCYRBp7b2uV2-kCd7U63sHd5ZKZKr6e7aw@mail.gmail.com> <B30A41CC-EADC-4738-8FDF-E8B03AAA48FC@oracle.com> <20150608204734.GA27887@fieldses.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+        asias.hejun@gmail.com, netdev@vger.kernel.org,
+        Daniel Berrange <berrange@redhat.com>,
+        "David S. Miller" <davem@davemloft.net>
+Subject: Re: [RFC 00/10] NFS: add AF_VSOCK support to NFS client
+Message-ID: <20150608210247.GB27887@fieldses.org>
+References: <1433436353-6761-1-git-send-email-stefanha@redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1433436353-6761-1-git-send-email-stefanha@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Jun 8, 2015, at 4:47 PM, bfields@fieldses.org wrote:
-
-> On Fri, Jun 05, 2015 at 12:02:11PM -0400, Chuck Lever wrote:
->> 
->> On Jun 5, 2015, at 11:50 AM, Andy Adamson <androsadamson@gmail.com> wrote:
->> 
->>> On Thu, Jun 4, 2015 at 5:26 PM, Trond Myklebust
->>> <trond.myklebust@primarydata.com> wrote:
->>>> From: Chuck Lever <chuck.lever@oracle.com>
->>>> 
->>>> Clean up: Merge bc_send() into bc_svc_process().
->>>> 
->>>> Note: even thought this touches svc.c, it is a client-side change.
->>>> 
->>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->>>> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
->>>> ---
->>>> include/linux/sunrpc/bc_xprt.h |  1 -
->>>> net/sunrpc/Makefile            |  2 +-
->>>> net/sunrpc/bc_svc.c            | 63 ------------------------------------------
->>>> net/sunrpc/svc.c               | 33 ++++++++++++++++------
->>>> 4 files changed, 26 insertions(+), 73 deletions(-)
->>>> delete mode 100644 net/sunrpc/bc_svc.c
->>>> 
->>>> diff --git a/include/linux/sunrpc/bc_xprt.h b/include/linux/sunrpc/bc_xprt.h
->>>> index 2ca67b55e0fe..8df43c9f11dc 100644
->>>> --- a/include/linux/sunrpc/bc_xprt.h
->>>> +++ b/include/linux/sunrpc/bc_xprt.h
->>>> @@ -37,7 +37,6 @@ void xprt_complete_bc_request(struct rpc_rqst *req, uint32_t copied);
->>>> void xprt_free_bc_request(struct rpc_rqst *req);
->>>> int xprt_setup_backchannel(struct rpc_xprt *, unsigned int min_reqs);
->>>> void xprt_destroy_backchannel(struct rpc_xprt *, unsigned int max_reqs);
->>>> -int bc_send(struct rpc_rqst *req);
->>>> 
->>>> /*
->>>> * Determine if a shared backchannel is in use
->>>> diff --git a/net/sunrpc/Makefile b/net/sunrpc/Makefile
->>>> index 15e6f6c23c5d..1b8e68d0e690 100644
->>>> --- a/net/sunrpc/Makefile
->>>> +++ b/net/sunrpc/Makefile
->>>> @@ -15,6 +15,6 @@ sunrpc-y := clnt.o xprt.o socklib.o xprtsock.o sched.o \
->>>>           sunrpc_syms.o cache.o rpc_pipe.o \
->>>>           svc_xprt.o
->>>> sunrpc-$(CONFIG_SUNRPC_DEBUG) += debugfs.o
->>>> -sunrpc-$(CONFIG_SUNRPC_BACKCHANNEL) += backchannel_rqst.o bc_svc.o
->>>> +sunrpc-$(CONFIG_SUNRPC_BACKCHANNEL) += backchannel_rqst.o
->>>> sunrpc-$(CONFIG_PROC_FS) += stats.o
->>>> sunrpc-$(CONFIG_SYSCTL) += sysctl.o
->>>> diff --git a/net/sunrpc/bc_svc.c b/net/sunrpc/bc_svc.c
->>>> deleted file mode 100644
->>>> index 15c7a8a1c24f..000000000000
->>>> --- a/net/sunrpc/bc_svc.c
->>>> +++ /dev/null
->>>> @@ -1,63 +0,0 @@
->>>> -/******************************************************************************
->>>> -
->>>> -(c) 2007 Network Appliance, Inc.  All Rights Reserved.
->>>> -(c) 2009 NetApp.  All Rights Reserved.
->>>> -
->>>> -NetApp provides this source code under the GPL v2 License.
->>>> -The GPL v2 license is available at
->>>> -http://opensource.org/licenses/gpl-license.php.
->>>> -
->>>> -THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
->>>> -"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
->>>> -LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
->>>> -A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
->>>> -CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
->>>> -EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
->>>> -PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
->>>> -PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
->>>> -LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
->>>> -NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
->>>> -SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
->>>> -
->>>> -******************************************************************************/
->>> 
->>> Why is the above being removed?
->> 
->> Hi Andy-
->> 
->> Interesting question, and IANAL.
->> 
->> Where should the boilerplate go if the below function is merged into
->> existing generic server code? I suppose we could fold the NetApp
->> copyright into the comment at the top of net/sunrpc/svc.c , but the
->> merged code is paraphrased rather than copied directly.
->> 
->> Suggestions/opinions are welcome.
+On Thu, Jun 04, 2015 at 05:45:43PM +0100, Stefan Hajnoczi wrote:
+> This patch series enables AF_VSOCK address family support in the NFS client.
+> Please use the https://github.com/stefanha/linux.git vsock-nfs branch, which
+> contains the dependencies for this series.
 > 
-> I don't know, the above looks like pretty generic boilerplate, and I'd
-> rather not accumulate a that kind of thing every time we move a
-> significant piece of code around.  Could we compromise by adding a line
-> or two to net/sunrpc/svc.c following the existing convention there?
-> ("backchannel implementation originally (c) 2007 Network Appliance and
-> (c) 2009 Netapp", or similar?)  Not a lawyer either, just looking for a
-> way to keep it both honest and concise….
+> The AF_VSOCK address family provides dgram and stream socket communication
+> between virtual machines and hypervisors.  A VMware VMCI transport is currently
+> available in-tree (see net/vmw_vsock) and I have posted virtio-vsock patches
+> for use with QEMU/KVM: http://thread.gmane.org/gmane.linux.network/365205
+> 
+> The goal of this work is sharing files between virtual machines and
+> hypervisors.  AF_VSOCK is well-suited to this because it requires no
+> configuration inside the virtual machine, making it simple to manage and
+> reliable.
+> 
+> Why NFS over AF_VSOCK?
+> ----------------------
+> It is unusual to add a new NFS transport, only TCP, RDMA, and UDP are currently
+> supported.  Here is the rationale for adding AF_VSOCK.
+> 
+> Sharing files with a virtual machine can be configured manually:
+> 1. Add a dedicated network card to the virtual machine.  It will be used for
+>    NFS traffic.
+> 2. Configure a local subnet and assign IP addresses to the virtual machine and
+>    hypervisor
+> 3. Configure an NFS export on the hypervisor and start the NFS server
+> 4. Mount the export inside the virtual machine
+> 
+> Automating these steps poses a problem: modifying network configuration inside
+> the virtual machine is invasive.  It's hard to add a network interface to an
+> arbitrary running system in an automated fashion, considering the network
+> management tools, firewall rules, IP address usage, etc.
+> 
+> Furthermore, the user may disrupt file sharing by accident when they add
+> firewall rules, restart networking, etc because the NFS network interface is
+> visible alongside the network interfaces managed by the user.
+> 
+> AF_VSOCK is a zero-configuration network transport that avoids these problems.
+> Adding it to a virtual machine is non-invasive.  It also avoids accidental
+> misconfiguration by the user.  This is why "guest agents" and other services in
+> various hypervisors (KVM, Xen, VMware, VirtualBox) do not use regular network
+> interfaces.
+> 
+> This is why AF_VSOCK is appropriate for providing shared files as a hypervisor
+> service.
+> 
+> The approach in this series
+> ---------------------------
+> AF_VSOCK stream sockets can be used for NFSv4.1 much in the same way as TCP.
+> RFC 1831 record fragments divide messages since SOCK_STREAM semantics are
+> present.  The backchannel shares the connection just like the default TCP
+> configuration.
 
-Yes, that’s exactly what I was thinking. Sorry I wasn’t clear.
+So the NFSv4 backchannel isn't handled for now, I assume.  And I guess
+NFSv2/v3 is out too thanks to rpcbind?  Which maybe is fine.
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+Do we need an IETF draft or similar to document how NFS should work over
+AF_VSOCK?
 
+NFS developers rely heavily on wireshark (and similar tools) for
+debugging.  Is that still possible over AF_VSOCK?
 
+> Addresses are <Context ID, Port Number> pairs.  These patches use "vsock:<cid>"
+> string representation to distinguish AF_VSOCK addresses from IPv4 and IPv6
+> numeric addresses.
+> 
+> The patches cover the following areas:
+> 
+> Patch 1 - support struct sockaddr_vm in sunrpc addr.h
+> 
+> Patch 2-4 - make sunrpc TCP record fragment parser reusable for any stream
+>             socket
+> 
+> Patch 5 - add tcp_read_sock()-like interface to AF_VSOCK sockets
+> 
+> Patch 6 - extend sunrpc xprtsock.c for AF_VSOCK RPC clients
+> 
+> Patch 7-9 - AF_VSOCK backchannel support
+> 
+> Patch 10 - add AF_VSOCK support to NFS client
+> 
+> The following example mounts /export from the hypervisor (CID 2) inside the
+> virtual machine (CID 3):
+> 
+>   # /sbin/mount.nfs 2:/export /mnt -o clientaddr=3,proto=vsock
+> 
+> Status
+> ------
+> I am looking for feedback on this approach.  There are TODOs remaining in the code.
+> 
+> Hopefully the way I add AF_VSOCK support to sunrpc is reasonable and something
+> that can be standardized (a netid assigned and the uaddr string format decided).
+> 
+> See below for the nfs-utils patch.  It can be made nice once glibc
+> getnameinfo()/getaddrinfo() support AF_VSOCK.
+> 
+> The vsock_read_sock() implementation is dumb.  Less of a NFS/SUNRPC issue and
+> more of a vsock issue, but perhaps virtio_transport.c should use skbs for its
+> receive queue instead of a custom packet struct.  That would eliminate memory
+> allocation and copying in vsock_read_sock().
+> 
+> The next step is tackling NFS server.  In the meantime, I have tested the
+> patches using the nc-vsock netcat-like utility that is available in my Linux
+> kernel repo below.
 
+So by a netcat-like utility, you mean it's proxying between client and a
+server so the client thinks the server is communicating over AF_VSOCK
+and the server thinks the client is using TCP?  (Sorry, I haven't looked
+at the code.)
+
+Once we have a server and client, how will you recommend testing them?
+(Will the server side need to run on real hardware?)
+
+I guess if it works then the main question is whether it's worth
+supporting another transport type in order to get the zero-configuration
+host<->guest NFS setup.  Or whether there's another way to get the same
+gains.
+
+Seems like a useful thing to have.
+
+--b.
+
+> 
+> Repositories
+> ------------
+>  * Linux kernel: https://github.com/stefanha/linux.git vsock-nfs
+>  * QEMU virtio-vsock device: https://github.com/stefanha/qemu.git vsock
+>  * nfs-utils vsock: https://github.com/stefanha/nfs-utils.git vsock
+> 
+> Stefan Hajnoczi (10):
+>   SUNRPC: add AF_VSOCK support to addr.h
+>   SUNRPC: rename "TCP" record parser to "stream" parser
+>   SUNRPC: abstract tcp_read_sock() in record fragment parser
+>   SUNRPC: extract xs_stream_reset_state()
+>   VSOCK: add tcp_read_sock()-like vsock_read_sock() function
+>   SUNRPC: add AF_VSOCK support to xprtsock.c
+>   SUNRPC: restrict backchannel svc IPPROTO_TCP check to IP
+>   SUNRPC: add vsock-bc backchannel
+>   SUNRPC: add AF_VSOCK support to svc_xprt.c
+>   NFS: add AF_VSOCK support to NFS client
+> 
+>  drivers/vhost/vsock.c                   |   1 +
+>  fs/nfs/callback.c                       |   7 +-
+>  fs/nfs/client.c                         |  16 +
+>  fs/nfs/super.c                          |  10 +
+>  include/linux/sunrpc/addr.h             |   6 +
+>  include/linux/sunrpc/svc_xprt.h         |  12 +
+>  include/linux/sunrpc/xprt.h             |   1 +
+>  include/linux/sunrpc/xprtsock.h         |  37 +-
+>  include/linux/virtio_vsock.h            |   4 +
+>  include/net/af_vsock.h                  |   5 +
+>  include/trace/events/sunrpc.h           |  30 +-
+>  net/sunrpc/addr.c                       |  57 +++
+>  net/sunrpc/svc.c                        |  13 +-
+>  net/sunrpc/svc_xprt.c                   |  13 +
+>  net/sunrpc/svcsock.c                    |  48 ++-
+>  net/sunrpc/xprtsock.c                   | 693 +++++++++++++++++++++++++-------
+>  net/vmw_vsock/af_vsock.c                |  15 +
+>  net/vmw_vsock/virtio_transport.c        |   1 +
+>  net/vmw_vsock/virtio_transport_common.c |  55 +++
+>  net/vmw_vsock/vmci_transport.c          |   8 +
+>  20 files changed, 825 insertions(+), 207 deletions(-)
+> 
+> -- 
+> 2.4.2
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
