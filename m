@@ -1,192 +1,47 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:41028 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752584AbbFHVCy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 8 Jun 2015 17:02:54 -0400
-Date: Mon, 8 Jun 2015 17:02:47 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Stefan Hajnoczi <stefanha@redhat.com>
-Cc: linux-nfs@vger.kernel.org, Anna Schumaker <anna.schumaker@netapp.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        asias.hejun@gmail.com, netdev@vger.kernel.org,
-        Daniel Berrange <berrange@redhat.com>,
-        "David S. Miller" <davem@davemloft.net>
-Subject: Re: [RFC 00/10] NFS: add AF_VSOCK support to NFS client
-Message-ID: <20150608210247.GB27887@fieldses.org>
-References: <1433436353-6761-1-git-send-email-stefanha@redhat.com>
+Received: from mail-vn0-f51.google.com ([209.85.216.51]:46766 "EHLO
+	mail-vn0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752584AbbFHVDY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Jun 2015 17:03:24 -0400
+Received: by vnbf7 with SMTP id f7so19603124vnb.13
+        for <linux-nfs@vger.kernel.org>; Mon, 08 Jun 2015 14:03:23 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1433436353-6761-1-git-send-email-stefanha@redhat.com>
+In-Reply-To: <20150608204734.GA27887@fieldses.org>
+References: <1433453213-13466-1-git-send-email-trond.myklebust@primarydata.com>
+	<1433453213-13466-2-git-send-email-trond.myklebust@primarydata.com>
+	<1433453213-13466-3-git-send-email-trond.myklebust@primarydata.com>
+	<CAHVgHyWz-dKX-6TbRCYRBp7b2uV2-kCd7U63sHd5ZKZKr6e7aw@mail.gmail.com>
+	<B30A41CC-EADC-4738-8FDF-E8B03AAA48FC@oracle.com>
+	<20150608204734.GA27887@fieldses.org>
+Date: Mon, 8 Jun 2015 17:03:22 -0400
+Message-ID: <CAHQdGtTeSTD0Meiq+9eT6HKGkwwD9aWAqusPQ74CYWgRAxZCrA@mail.gmail.com>
+Subject: Re: [PATCH 3/6] SUNRPC: Clean up bc_send()
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Chuck Lever <chuck.lever@oracle.com>,
+        "William A. (Andy) Adamson" <androsadamson@gmail.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jun 04, 2015 at 05:45:43PM +0100, Stefan Hajnoczi wrote:
-> This patch series enables AF_VSOCK address family support in the NFS client.
-> Please use the https://github.com/stefanha/linux.git vsock-nfs branch, which
-> contains the dependencies for this series.
-> 
-> The AF_VSOCK address family provides dgram and stream socket communication
-> between virtual machines and hypervisors.  A VMware VMCI transport is currently
-> available in-tree (see net/vmw_vsock) and I have posted virtio-vsock patches
-> for use with QEMU/KVM: http://thread.gmane.org/gmane.linux.network/365205
-> 
-> The goal of this work is sharing files between virtual machines and
-> hypervisors.  AF_VSOCK is well-suited to this because it requires no
-> configuration inside the virtual machine, making it simple to manage and
-> reliable.
-> 
-> Why NFS over AF_VSOCK?
-> ----------------------
-> It is unusual to add a new NFS transport, only TCP, RDMA, and UDP are currently
-> supported.  Here is the rationale for adding AF_VSOCK.
-> 
-> Sharing files with a virtual machine can be configured manually:
-> 1. Add a dedicated network card to the virtual machine.  It will be used for
->    NFS traffic.
-> 2. Configure a local subnet and assign IP addresses to the virtual machine and
->    hypervisor
-> 3. Configure an NFS export on the hypervisor and start the NFS server
-> 4. Mount the export inside the virtual machine
-> 
-> Automating these steps poses a problem: modifying network configuration inside
-> the virtual machine is invasive.  It's hard to add a network interface to an
-> arbitrary running system in an automated fashion, considering the network
-> management tools, firewall rules, IP address usage, etc.
-> 
-> Furthermore, the user may disrupt file sharing by accident when they add
-> firewall rules, restart networking, etc because the NFS network interface is
-> visible alongside the network interfaces managed by the user.
-> 
-> AF_VSOCK is a zero-configuration network transport that avoids these problems.
-> Adding it to a virtual machine is non-invasive.  It also avoids accidental
-> misconfiguration by the user.  This is why "guest agents" and other services in
-> various hypervisors (KVM, Xen, VMware, VirtualBox) do not use regular network
-> interfaces.
-> 
-> This is why AF_VSOCK is appropriate for providing shared files as a hypervisor
-> service.
-> 
-> The approach in this series
-> ---------------------------
-> AF_VSOCK stream sockets can be used for NFSv4.1 much in the same way as TCP.
-> RFC 1831 record fragments divide messages since SOCK_STREAM semantics are
-> present.  The backchannel shares the connection just like the default TCP
-> configuration.
+On Mon, Jun 8, 2015 at 4:47 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> I don't know, the above looks like pretty generic boilerplate, and I'd
+> rather not accumulate a that kind of thing every time we move a
+> significant piece of code around.  Could we compromise by adding a line
+> or two to net/sunrpc/svc.c following the existing convention there?
+> ("backchannel implementation originally (c) 2007 Network Appliance and
+> (c) 2009 Netapp", or similar?)  Not a lawyer either, just looking for a
+> way to keep it both honest and concise....
+>
 
-So the NFSv4 backchannel isn't handled for now, I assume.  And I guess
-NFSv2/v3 is out too thanks to rpcbind?  Which maybe is fine.
+For significant contributions, we do sometimes allow contributors to
+add a copyright notice. The other case where it is usually done is
+when creating a new file, on the theory that the GPL does require that
+code be copyrighted in order to be enforceable.
 
-Do we need an IETF draft or similar to document how NFS should work over
-AF_VSOCK?
+I'd suggest just a simple:
 
-NFS developers rely heavily on wireshark (and similar tools) for
-debugging.  Is that still possible over AF_VSOCK?
+"Portions of this code are (c) 2007 Network Appliance, (c) 2009 NetApp".
 
-> Addresses are <Context ID, Port Number> pairs.  These patches use "vsock:<cid>"
-> string representation to distinguish AF_VSOCK addresses from IPv4 and IPv6
-> numeric addresses.
-> 
-> The patches cover the following areas:
-> 
-> Patch 1 - support struct sockaddr_vm in sunrpc addr.h
-> 
-> Patch 2-4 - make sunrpc TCP record fragment parser reusable for any stream
->             socket
-> 
-> Patch 5 - add tcp_read_sock()-like interface to AF_VSOCK sockets
-> 
-> Patch 6 - extend sunrpc xprtsock.c for AF_VSOCK RPC clients
-> 
-> Patch 7-9 - AF_VSOCK backchannel support
-> 
-> Patch 10 - add AF_VSOCK support to NFS client
-> 
-> The following example mounts /export from the hypervisor (CID 2) inside the
-> virtual machine (CID 3):
-> 
->   # /sbin/mount.nfs 2:/export /mnt -o clientaddr=3,proto=vsock
-> 
-> Status
-> ------
-> I am looking for feedback on this approach.  There are TODOs remaining in the code.
-> 
-> Hopefully the way I add AF_VSOCK support to sunrpc is reasonable and something
-> that can be standardized (a netid assigned and the uaddr string format decided).
-> 
-> See below for the nfs-utils patch.  It can be made nice once glibc
-> getnameinfo()/getaddrinfo() support AF_VSOCK.
-> 
-> The vsock_read_sock() implementation is dumb.  Less of a NFS/SUNRPC issue and
-> more of a vsock issue, but perhaps virtio_transport.c should use skbs for its
-> receive queue instead of a custom packet struct.  That would eliminate memory
-> allocation and copying in vsock_read_sock().
-> 
-> The next step is tackling NFS server.  In the meantime, I have tested the
-> patches using the nc-vsock netcat-like utility that is available in my Linux
-> kernel repo below.
-
-So by a netcat-like utility, you mean it's proxying between client and a
-server so the client thinks the server is communicating over AF_VSOCK
-and the server thinks the client is using TCP?  (Sorry, I haven't looked
-at the code.)
-
-Once we have a server and client, how will you recommend testing them?
-(Will the server side need to run on real hardware?)
-
-I guess if it works then the main question is whether it's worth
-supporting another transport type in order to get the zero-configuration
-host<->guest NFS setup.  Or whether there's another way to get the same
-gains.
-
-Seems like a useful thing to have.
-
---b.
-
-> 
-> Repositories
-> ------------
->  * Linux kernel: https://github.com/stefanha/linux.git vsock-nfs
->  * QEMU virtio-vsock device: https://github.com/stefanha/qemu.git vsock
->  * nfs-utils vsock: https://github.com/stefanha/nfs-utils.git vsock
-> 
-> Stefan Hajnoczi (10):
->   SUNRPC: add AF_VSOCK support to addr.h
->   SUNRPC: rename "TCP" record parser to "stream" parser
->   SUNRPC: abstract tcp_read_sock() in record fragment parser
->   SUNRPC: extract xs_stream_reset_state()
->   VSOCK: add tcp_read_sock()-like vsock_read_sock() function
->   SUNRPC: add AF_VSOCK support to xprtsock.c
->   SUNRPC: restrict backchannel svc IPPROTO_TCP check to IP
->   SUNRPC: add vsock-bc backchannel
->   SUNRPC: add AF_VSOCK support to svc_xprt.c
->   NFS: add AF_VSOCK support to NFS client
-> 
->  drivers/vhost/vsock.c                   |   1 +
->  fs/nfs/callback.c                       |   7 +-
->  fs/nfs/client.c                         |  16 +
->  fs/nfs/super.c                          |  10 +
->  include/linux/sunrpc/addr.h             |   6 +
->  include/linux/sunrpc/svc_xprt.h         |  12 +
->  include/linux/sunrpc/xprt.h             |   1 +
->  include/linux/sunrpc/xprtsock.h         |  37 +-
->  include/linux/virtio_vsock.h            |   4 +
->  include/net/af_vsock.h                  |   5 +
->  include/trace/events/sunrpc.h           |  30 +-
->  net/sunrpc/addr.c                       |  57 +++
->  net/sunrpc/svc.c                        |  13 +-
->  net/sunrpc/svc_xprt.c                   |  13 +
->  net/sunrpc/svcsock.c                    |  48 ++-
->  net/sunrpc/xprtsock.c                   | 693 +++++++++++++++++++++++++-------
->  net/vmw_vsock/af_vsock.c                |  15 +
->  net/vmw_vsock/virtio_transport.c        |   1 +
->  net/vmw_vsock/virtio_transport_common.c |  55 +++
->  net/vmw_vsock/vmci_transport.c          |   8 +
->  20 files changed, 825 insertions(+), 207 deletions(-)
-> 
-> -- 
-> 2.4.2
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Trond
