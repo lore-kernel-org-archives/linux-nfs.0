@@ -1,195 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qc0-f170.google.com ([209.85.216.170]:32856 "EHLO
-	mail-qc0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752022AbbFHNZt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Jun 2015 09:25:49 -0400
-Received: by qcnj1 with SMTP id j1so24248288qcn.0
-        for <linux-nfs@vger.kernel.org>; Mon, 08 Jun 2015 06:25:48 -0700 (PDT)
-Message-ID: <557597D3.8090401@gmail.com>
-Date: Mon, 08 Jun 2015 21:25:39 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
+Received: from mail-ig0-f169.google.com ([209.85.213.169]:37347 "EHLO
+	mail-ig0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752244AbbFHNel (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Jun 2015 09:34:41 -0400
+Received: by igbsb11 with SMTP id sb11so57059579igb.0
+        for <linux-nfs@vger.kernel.org>; Mon, 08 Jun 2015 06:34:41 -0700 (PDT)
+Date: Mon, 8 Jun 2015 09:34:37 -0400
+From: Jeff Layton <jeff.layton@primarydata.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Shirley Ma <shirley.ma@oracle.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [RFC PATCH V3 0/7] nfsd/sunrpc: prepare nfsd to add workqueue
+ support
+Message-ID: <20150608093437.3bb9b028@synchrony.poochiereds.net>
+In-Reply-To: <CAHQdGtSrgLaTRDBxtUCKrt+90WrJq2YR_VfSi9RC4_7m0k--3w@mail.gmail.com>
+References: <557525DD.6070300@oracle.com>
+	<CAHQdGtSrgLaTRDBxtUCKrt+90WrJq2YR_VfSi9RC4_7m0k--3w@mail.gmail.com>
 MIME-Version: 1.0
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: Steve Dickson <SteveD@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Sean Elble <elbles@sessys.com>, kinglongmee@gmail.com
-Subject: Re: [PATCH] rpc.nfsd: add no-ipv4 and no-ipv6 options
-References: <55743EDE.7070707@gmail.com> <3CE6594A-508B-4BBD-9E52-CF9EDDA6274D@oracle.com>
-In-Reply-To: <3CE6594A-508B-4BBD-9E52-CF9EDDA6274D@oracle.com>
-Content-Type: text/plain; charset=windows-1252
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 6/8/2015 3:01 AM, Chuck Lever wrote:
-> Hi Kinglong-
-> 
-> On Jun 7, 2015, at 8:53 AM, Kinglong Mee <kinglongmee@gmail.com> wrote:
-> 
->> Sean reports running rpc.nfsd with --host options without IPv6 address.
->> rpc.nfsd prints error message, but runs correctly for IPv4.
->> It is caused by that rpc.nfsd tries to bind IPv4 and IPv6 address default.
->>
->> rpc.nfsd: unable to resolve nfs-server:nfs to inet6 address: Name or service not known 
-> 
-> Why not just turn this message into a debugging message?
+On Mon, 8 Jun 2015 09:15:28 -0400
+Trond Myklebust <trond.myklebust@primarydata.com> wrote:
 
-I think it's an important message for user, especially meeting error both,
-we should not remove it.
+> On Mon, Jun 8, 2015 at 1:19 AM, Shirley Ma <shirley.ma@oracle.com> wrote:
+> > This patchset was originally written by Jeff Layton from adding support for a workqueue-based nfsd. I am helping on stability test and performance analysis. There are some workloads benefit from global threading mode, some workloads benefit from workqueue mode. I am still investigating on how to make workqueue mode better to bid global theading mode. I am splitting the patchset into two parts: one is preparing nfsd to add workqueue mode, one is adding workqueue mode. The test results show that the first part doesn't cause much performance change, the results are within the variation from each run.
+> 
+> As stated in the original emails, Primary Data's internal testing of
+> these patches showed that there is a significant difference. We had 48
+> virtual clients running on 7 ESX hypervisors with 10GigE NICs against
+> a hardware NFSv3 server with a 40GigE NIC. The clients were doing 4k
+> aio/dio reads+writes in a 70/30 mix.
+> At the time, we saw a roughly 50% decrease with measured standard
+> deviations being of the order a few % when comparing the performance
+> as measured in IOPs between the existing code and the workqueue code.
+> 
+> Testing showed the workqueue performance was relatively improved when
+> we upped the block size to 256k (with lower IOPs counts). That would
+> indicate that the workqueues are failing to scale correctly for the
+> high IOPs (i.e. high thread count) case.
+> 
+> Trond
 
-Also, it's a useful feature of turning off ipv4 or ipv6 for some case.
+Yes.
 
-thanks,
-Kinglong Mee
+Also, I did some work with tracepoints to see if I could figure out
+where the extra latency was coming from. At the time, the data I
+collected showed that the workqueue server was processing incoming
+frames _faster_ than the thread based one.
 
-> 
->> This patch add no-ipv4 and no-ipv6 options to disable ipv4/ipv6 directly.
->>
->> Reported-by: Sean Elble <elbles@sessys.com>
->> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
->> ---
->> support/include/nfs/nfs.h |  8 ++++++++
->> utils/nfsd/nfsd.c         | 27 ++++++++++++++++++++++++++-
->> utils/nfsd/nfsd.man       | 10 ++++++++++
->> 3 files changed, 44 insertions(+), 1 deletion(-)
->>
->> diff --git a/support/include/nfs/nfs.h b/support/include/nfs/nfs.h
->> index 27054e5..2be61f0 100644
->> --- a/support/include/nfs/nfs.h
->> +++ b/support/include/nfs/nfs.h
->> @@ -47,19 +47,27 @@ struct nfs_fh_old {
->>
->> #define NFSCTL_UDPBIT		      (1 << (17 - 1))
->> #define NFSCTL_TCPBIT		      (1 << (18 - 1))
->> +#define NFSCTL_INETBIT		      (1 << (19 - 1))
->> +#define NFSCTL_INET6BIT		      (1 << (20 - 1))
->>
->> #define NFSCTL_VERUNSET(_cltbits, _v) ((_cltbits) &= ~(1 << ((_v) - 1))) 
->> #define NFSCTL_UDPUNSET(_cltbits)     ((_cltbits) &= ~NFSCTL_UDPBIT) 
->> #define NFSCTL_TCPUNSET(_cltbits)     ((_cltbits) &= ~NFSCTL_TCPBIT) 
->> +#define NFSCTL_INETUNSET(_cltbits)    ((_cltbits) &= ~NFSCTL_INETBIT)
->> +#define NFSCTL_INET6UNSET(_cltbits)   ((_cltbits) &= ~NFSCTL_INET6BIT)
->>
->> #define NFSCTL_VERISSET(_cltbits, _v) ((_cltbits) & (1 << ((_v) - 1))) 
->> #define NFSCTL_UDPISSET(_cltbits)     ((_cltbits) & NFSCTL_UDPBIT) 
->> #define NFSCTL_TCPISSET(_cltbits)     ((_cltbits) & NFSCTL_TCPBIT) 
->> +#define NFSCTL_INETISSET(_cltbits)    ((_cltbits) & NFSCTL_INETBIT)
->> +#define NFSCTL_INET6ISSET(_cltbits)   ((_cltbits) & NFSCTL_INET6BIT)
->>
->> #define NFSCTL_VERDEFAULT (0xc)       /* versions 3 and 4 */
->> #define NFSCTL_VERSET(_cltbits, _v)   ((_cltbits) |= (1 << ((_v) - 1))) 
->> #define NFSCTL_UDPSET(_cltbits)       ((_cltbits) |= NFSCTL_UDPBIT)
->> #define NFSCTL_TCPSET(_cltbits)       ((_cltbits) |= NFSCTL_TCPBIT)
->> +#define NFSCTL_INETSET(_cltbits)      ((_cltbits) |= NFSCTL_INETBIT)
->> +#define NFSCTL_INET6SET(_cltbits)     ((_cltbits) |= NFSCTL_INET6BIT)
->>
->> #define NFSCTL_ANYPROTO(_cltbits)     ((_cltbits) & (NFSCTL_UDPBIT | NFSCTL_TCPBIT))
->> #define NFSCTL_ALLBITS (~0)
->> diff --git a/utils/nfsd/nfsd.c b/utils/nfsd/nfsd.c
->> index 201bb13..4cd1ea8 100644
->> --- a/utils/nfsd/nfsd.c
->> +++ b/utils/nfsd/nfsd.c
->> @@ -42,6 +42,8 @@ static struct option longopts[] =
->> 	{ "nfs-version", 1, 0, 'V' },
->> 	{ "no-tcp", 0, 0, 'T' },
->> 	{ "no-udp", 0, 0, 'U' },
->> +	{ "no-ipv4", 0, 0, 'F'},
->> +	{ "no-ipv6", 0, 0, 'S'},
->> 	{ "port", 1, 0, 'P' },
->> 	{ "port", 1, 0, 'p' },
->> 	{ "debug", 0, 0, 'd' },
->> @@ -135,7 +137,7 @@ main(int argc, char **argv)
->> 	xlog_syslog(0);
->> 	xlog_stderr(1);
->>
->> -	while ((c = getopt_long(argc, argv, "dH:hN:V:p:P:sTUrG:L:", longopts, NULL)) != EOF) {
->> +	while ((c = getopt_long(argc, argv, "dH:hN:V:p:P:sTUrG:L:FS", longopts, NULL)) != EOF) {
->> 		switch(c) {
->> 		case 'd':
->> 			xlog_config(D_ALL, 1);
->> @@ -238,6 +240,12 @@ main(int argc, char **argv)
->> 		case 'U':
->> 			NFSCTL_UDPUNSET(protobits);
->> 			break;
->> +		case 'F':
->> +			NFSCTL_INETUNSET(protobits);
->> +			break;
->> +		case 'S':
->> +			NFSCTL_INET6UNSET(protobits);
->> +			break;
->> 		case 'G':
->> 			grace = strtol(optarg, &p, 0);
->> 			if (*p || grace <= 0) {
->> @@ -280,6 +288,16 @@ main(int argc, char **argv)
->>
->> 	nfsd_enable_protos(&proto4, &proto6);
->>
->> +	if (!NFSCTL_INETISSET(protobits)) {
->> +		NFSCTL_TCPUNSET(proto4);
->> +		NFSCTL_UDPUNSET(proto4);
->> +	}
->> +
->> +	if (!NFSCTL_INET6ISSET(protobits)) {
->> +		NFSCTL_TCPUNSET(proto6);
->> +		NFSCTL_UDPUNSET(proto6);
->> +	}
->> +
->> 	if (!NFSCTL_TCPISSET(protobits)) {
->> 		NFSCTL_TCPUNSET(proto4);
->> 		NFSCTL_TCPUNSET(proto6);
->> @@ -301,6 +319,12 @@ main(int argc, char **argv)
->> 		exit(1);
->> 	}
->>
->> +	if (!NFSCTL_INETISSET(protobits) &&
->> +	    !NFSCTL_INET6ISSET(protobits)) {
->> +		xlog(L_ERROR, "no internet protocols specified");
->> +		exit(1);
->> +	}
->> +
->> 	if (NFSCTL_VERISSET(versbits, 4) &&
->> 	    !NFSCTL_TCPISSET(proto4) &&
->> 	    !NFSCTL_TCPISSET(proto6)) {
->> @@ -397,6 +421,7 @@ usage(const char *prog)
->> 		"%s [-d|--debug] [-H hostname] [-p|-P|--port port]\n"
->> 		"     [-N|--no-nfs-version version] [-V|--nfs-version version]\n"
->> 		"     [-s|--syslog] [-T|--no-tcp] [-U|--no-udp] [-r|--rdma=]\n"
->> +		"     [-F|--no-ipv4] [-S|--no-ipv6]\n"
->> 		"     [-G|--grace-time secs] [-L|--leasetime secs] nrservs\n",
->> 		prog);
->> 	exit(2);
->> diff --git a/utils/nfsd/nfsd.man b/utils/nfsd/nfsd.man
->> index 3ba847e..795f766 100644
->> --- a/utils/nfsd/nfsd.man
->> +++ b/utils/nfsd/nfsd.man
->> @@ -77,6 +77,16 @@ Disable
->> .B rpc.nfsd
->> from accepting UDP connections from clients.
->> .TP
->> +.B \-F " or " \-\-no-ipv4
->> +Disable
->> +.B rpc.nfsd
->> +from accepting IPv4 connections from clients.
->> +.TP
->> +.B \-S " or " \-\-no-ipv6
->> +Disable
->> +.B rpc.nfsd
->> +from accepting IPv6 connections from clients.
->> +.TP
->> .B \-V " or " \-\-nfs-version vers
->> This option can be used to request that 
->> .B rpc.nfsd
->> -- 
->> 2.4.2
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> --
-> Chuck Lever
-> chuck[dot]lever[at]oracle[dot]com
-> 
-> 
-> 
-> 
+So, my theory (untested) is that somehow the workqueue server is
+causing extra latency in processing interrupts for the network card or
+disk. The test I was using at the time was to just dd a bunch of
+sequential reads and writes to a file. I figured that was as simple a
+testcase as you could get...
+
+In any case though, the patches that Shirley is proposing here don't
+actually add any of the workqueue based server code. It's all just
+preparatory patches to add an ops structure to the svc_serv and move a
+bunch of disparate function pointers into it. I think that's a reasonable
+set to take, even if we don't take the workqueue code itself as it
+cleans up the rpc server API considerably (IMNSHO).
+
+-- 
+Jeff Layton <jeff.layton@primarydata.com>
