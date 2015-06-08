@@ -1,52 +1,71 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qc0-f173.google.com ([209.85.216.173]:35922 "EHLO
-	mail-qc0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752545AbbFHOmL convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Jun 2015 10:42:11 -0400
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
-Subject: Re: [PATCH] rpc.nfsd: add no-ipv4 and no-ipv6 options
-From: Chuck Lever <chucklever@gmail.com>
-In-Reply-To: <d4bfa4c82f2a8ef2dec4dce303c0c96b@mail.sessys.com>
-Date: Mon, 8 Jun 2015 10:45:00 -0400
-Cc: Kinglong Mee <kinglongmee@gmail.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-nfs-owner@vger.kernel.org
-Message-Id: <AA024850-47EF-40EB-A312-D2490D6FCEC5@gmail.com>
-References: <55743EDE.7070707@gmail.com> <3CE6594A-508B-4BBD-9E52-CF9EDDA6274D@oracle.com> <557597D3.8090401@gmail.com> <312511264c19c5a98cbd1062531b306e@mail.sessys.com> <2F03891D-9240-4A8E-BEEB-7F5BBAD1B5FE@gmail.com> <76DB6DF0-8409-4D42-B2FD-6C7B08B148A5@gmail.com> <d4bfa4c82f2a8ef2dec4dce303c0c96b@mail.sessys.com>
-To: Sean Elble <elbles@sessys.com>
+Received: from fieldses.org ([173.255.197.46]:40799 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751947AbbFHO5b (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 8 Jun 2015 10:57:31 -0400
+Date: Mon, 8 Jun 2015 10:57:30 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jeff.layton@primarydata.com>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Shirley Ma <shirley.ma@oracle.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [RFC PATCH V3 0/7] nfsd/sunrpc: prepare nfsd to add workqueue
+ support
+Message-ID: <20150608145730.GE24159@fieldses.org>
+References: <557525DD.6070300@oracle.com>
+ <CAHQdGtSrgLaTRDBxtUCKrt+90WrJq2YR_VfSi9RC4_7m0k--3w@mail.gmail.com>
+ <20150608093437.3bb9b028@synchrony.poochiereds.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20150608093437.3bb9b028@synchrony.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Jun 8, 2015, at 10:33 AM, Sean Elble <elbles@sessys.com> wrote:
-
-> On 08.06.2015 10:27, Chuck Lever wrote:
->>> I don’t understand the need to “turn off” an address family. That’s what
->>> /etc/netconfig is supposed to be for. What’s not happening here that
->>> should be?
->> What I mean is: I’d rather not add more command line options if there
->> is a way for rpc.nfsd to automatically and quietly do what is needed.
->> But I don’t understand the use case here. Sean, can you explain it for
->> bears of little brain?
+On Mon, Jun 08, 2015 at 09:34:37AM -0400, Jeff Layton wrote:
+> On Mon, 8 Jun 2015 09:15:28 -0400
+> Trond Myklebust <trond.myklebust@primarydata.com> wrote:
 > 
-> Sure, and please correct me if any of my understanding is incorrect (as it may well be).  In my environment, I wanted to have NFS only listen on one interface of a multihomed host.  In using the "--host" parameter to do so, I saw the error message regarding IPv6 thrown.
-
-OK, yes I read that last week, and had just forgotten it. That sounds to
-me like - - host is broken (or, at least noisier than it should be in this
-case).
-
-Do you provide an IP address or a hostname when specifying - - host?
-
-> While disabling IPv6 globally in /etc/netconfig is an option (one I understand to be "global", in that it'd affect *all* applications on the host), it'd be nice to disable IPv6 for a single service/daemon instead.
+> > On Mon, Jun 8, 2015 at 1:19 AM, Shirley Ma <shirley.ma@oracle.com> wrote:
+> > > This patchset was originally written by Jeff Layton from adding support for a workqueue-based nfsd. I am helping on stability test and performance analysis. There are some workloads benefit from global threading mode, some workloads benefit from workqueue mode. I am still investigating on how to make workqueue mode better to bid global theading mode. I am splitting the patchset into two parts: one is preparing nfsd to add workqueue mode, one is adding workqueue mode. The test results show that the first part doesn't cause much performance change, the results are within the variation from each run.
+> > 
+> > As stated in the original emails, Primary Data's internal testing of
+> > these patches showed that there is a significant difference. We had 48
+> > virtual clients running on 7 ESX hypervisors with 10GigE NICs against
+> > a hardware NFSv3 server with a 40GigE NIC. The clients were doing 4k
+> > aio/dio reads+writes in a 70/30 mix.
+> > At the time, we saw a roughly 50% decrease with measured standard
+> > deviations being of the order a few % when comparing the performance
+> > as measured in IOPs between the existing code and the workqueue code.
+> > 
+> > Testing showed the workqueue performance was relatively improved when
+> > we upped the block size to 256k (with lower IOPs counts). That would
+> > indicate that the workqueues are failing to scale correctly for the
+> > high IOPs (i.e. high thread count) case.
+> > 
+> > Trond
 > 
-> Of course, the fact that at least Ubuntu and RHEL (and almost certainly their upstream and their derivatives, respectively) relay the error message when running the NFS init scripts could confuse someone into thinking NFS failed to start properly (until they look at the output of netstat -nalp, etc.).  I'd almost argue that's a larger concern. By the same token, "--host" seems a little used option, for whatever reason.
+> Yes.
 > 
-> In any case, I'm the little brained one in this group.  :-)
+> Also, I did some work with tracepoints to see if I could figure out
+> where the extra latency was coming from. At the time, the data I
+> collected showed that the workqueue server was processing incoming
+> frames _faster_ than the thread based one.
+> 
+> So, my theory (untested) is that somehow the workqueue server is
+> causing extra latency in processing interrupts for the network card or
+> disk. The test I was using at the time was to just dd a bunch of
+> sequential reads and writes to a file. I figured that was as simple a
+> testcase as you could get...
+> 
+> In any case though, the patches that Shirley is proposing here don't
+> actually add any of the workqueue based server code. It's all just
+> preparatory patches to add an ops structure to the svc_serv and move a
+> bunch of disparate function pointers into it. I think that's a reasonable
+> set to take, even if we don't take the workqueue code itself as it
+> cleans up the rpc server API considerably (IMNSHO).
 
---
-Chuck Lever
-chucklever@gmail.com
+OK.  And just out of paranoia--you didn't notice any significant
+difference with the new patches running in the old thread-based mode,
+right?
 
-
-
+--b.
