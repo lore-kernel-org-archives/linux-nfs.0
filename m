@@ -1,88 +1,84 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from extranet.sessys.com ([50.116.54.220]:60930 "EHLO
-	extranet.sessys.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750823AbbFHQtZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Jun 2015 12:49:25 -0400
+Received: from smtp4-g21.free.fr ([212.27.42.4]:20819 "EHLO smtp4-g21.free.fr"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751317AbbFHRKJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 8 Jun 2015 13:10:09 -0400
+Date: Mon, 8 Jun 2015 19:10:06 +0200
+From: Guillaume Morin <guillaume@morinfr.org>
 To: Chuck Lever <chucklever@gmail.com>
-Subject: Re: [PATCH] rpc.nfsd: add no-ipv4 and no-ipv6 options
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8;
- format=flowed
-Date: Mon, 08 Jun 2015 12:49:23 -0400
-From: Sean Elble <elbles@sessys.com>
-Cc: Kinglong Mee <kinglongmee@gmail.com>,
+Cc: Guillaume Morin <guillaume@morinfr.org>,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-nfs-owner@vger.kernel.org
-In-Reply-To: <AA024850-47EF-40EB-A312-D2490D6FCEC5@gmail.com>
-References: <55743EDE.7070707@gmail.com>
- <3CE6594A-508B-4BBD-9E52-CF9EDDA6274D@oracle.com>
- <557597D3.8090401@gmail.com>
- <312511264c19c5a98cbd1062531b306e@mail.sessys.com>
- <2F03891D-9240-4A8E-BEEB-7F5BBAD1B5FE@gmail.com>
- <76DB6DF0-8409-4D42-B2FD-6C7B08B148A5@gmail.com>
- <d4bfa4c82f2a8ef2dec4dce303c0c96b@mail.sessys.com>
- <AA024850-47EF-40EB-A312-D2490D6FCEC5@gmail.com>
-Message-ID: <7317134dfd069e17171db7e004baa2c6@mail.sessys.com>
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Chris Mason <clm@fb.com>
+Subject: Re: [BUG] nfs3 client stops retrying to connect
+Message-ID: <20150608171006.GA13396@bender.morinfr.org>
+References: <20150521012155.GA19680@bender.morinfr.org>
+ <DAF3CB64-5777-4F74-A31E-4F3FE55D14AD@gmail.com>
+ <20150604200621.GA10335@bender.morinfr.org>
+ <1E6DAEB8-754B-4F88-8301-4A1A9134922A@gmail.com>
+ <20150604221404.GA20363@bender.morinfr.org>
+ <22109174-5489-46AB-8C0A-62840D63DC97@gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <22109174-5489-46AB-8C0A-62840D63DC97@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 08.06.2015 10:45, Chuck Lever wrote:
-> On Jun 8, 2015, at 10:33 AM, Sean Elble <elbles@sessys.com> wrote:
-> 
->> On 08.06.2015 10:27, Chuck Lever wrote:
->>>> I don’t understand the need to “turn off” an address family. 
->>>> That’s what
->>>> /etc/netconfig is supposed to be for. What’s not happening here 
->>>> that
->>>> should be?
->>> What I mean is: I’d rather not add more command line options if 
->>> there
->>> is a way for rpc.nfsd to automatically and quietly do what is needed.
->>> But I don’t understand the use case here. Sean, can you explain it 
->>> for
->>> bears of little brain?
->> 
->> Sure, and please correct me if any of my understanding is incorrect 
->> (as it may well be).  In my environment, I wanted to have NFS only 
->> listen on one interface of a multihomed host.  In using the "--host" 
->> parameter to do so, I saw the error message regarding IPv6 thrown.
-> 
-> OK, yes I read that last week, and had just forgotten it. That sounds 
-> to
-> me like - - host is broken (or, at least noisier than it should be in 
-> this
-> case).
+Chuck,
 
-Agreed.  I guess it's just a matter of what the appropriate fix is.
+On 04 Jun 22:57, Chuck Lever wrote:
+> > I am 100% sure that XPRT_CONNECTING is the issue because 1) the state
+> > had the flag up 2) there was absolutley no nfs network traffic between the
+> > client and the server 3) I "unfroze" the mounts by clearing it manually.
+> > 
+> > xs_tcp_cancel_linger_timeout, I think, is guaranteed to clear the flag.
+> 
+> I'm speculating based on some comments in the git log, but what if
+> the transport never sees TCP_CLOSE, but rather gets an error_report
+> callback instead?
 
-> 
-> Do you provide an IP address or a hostname when specifying - - host?
+I don't think that could be it because xs_tcp_setup_socket() does the
+connecting and is clearing the bit in all cases so at the time you would get
+a TCP_CLOSE it would have been cleared a while ago.
 
-I've provided both hostname and IP address, with the same result, IIRC.
+So that's why I thought the best explanation was finding a place where
+the worker task running xs_tcp_setup_socket() is cancelled and the bit
+not cleared.  This is how I found xs_tcp_close()
 
+> > Either the callback is canceled and it clears the flag or the callback
+> > will do it.  I am not sure how this could leave the flag set but I am
+> > not familiar with this code, so I could totally be missing something
+> > obvious.
+> > 
+> > xs_tcp_close() is the only thing I have found which cancels the callback
+> > and does not clear the flag.
 > 
->> While disabling IPv6 globally in /etc/netconfig is an option (one I 
->> understand to be "global", in that it'd affect *all* applications on 
->> the host), it'd be nice to disable IPv6 for a single service/daemon 
->> instead.
->> 
->> Of course, the fact that at least Ubuntu and RHEL (and almost 
->> certainly their upstream and their derivatives, respectively) relay 
->> the error message when running the NFS init scripts could confuse 
->> someone into thinking NFS failed to start properly (until they look at 
->> the output of netstat -nalp, etc.).  I'd almost argue that's a larger 
->> concern. By the same token, "--host" seems a little used option, for 
->> whatever reason.
->> 
->> In any case, I'm the little brained one in this group.  :-)
+> How would xs_tcp_close() be invoked?
+
+TBH I do not know.  It's the close() method of the xprt so I am assuming
+there are a few places where it could be.  But I am not familiar with
+the code base..
+
+> >> It's rather academic, though. All this code was replaced in 4.0.
+> > 
+> > Well, it's not academic for all the users of the stable branches which
+> > might have this bug in the kernel they're running :-)
 > 
-> --
-> Chuck Lever
-> chucklever@gmail.com
-> 
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> I didn't mean to be glib. The point is, stable kernels are always fixed
+> by backporting an existing fix from a newer kernel.
+
+The stable kernel rules says an "equivalent" fix in the Linus' tree.  I
+think that Greg would pick up this fix unless it's too complicated.
+
+Nevertheless, it's such an annoying bug I am pretty sure the
+distributions would pick it up if Greg does not.
+
+We had to move an nfs server on friday and I got a few machines that had
+the same issue again... 
+
+Thanks for your help, I appreciate it.
+
+Guillaume.
+
+-- 
+Guillaume Morin <guillaume@morinfr.org>
