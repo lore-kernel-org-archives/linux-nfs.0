@@ -1,85 +1,140 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ie0-f174.google.com ([209.85.223.174]:35547 "EHLO
-	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752971AbbFHPvT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Jun 2015 11:51:19 -0400
-Received: by iesa3 with SMTP id a3so101019737ies.2
-        for <linux-nfs@vger.kernel.org>; Mon, 08 Jun 2015 08:51:18 -0700 (PDT)
-Date: Mon, 8 Jun 2015 11:51:13 -0400
-From: Jeff Layton <jeff.layton@primarydata.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Shirley Ma <shirley.ma@oracle.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [RFC PATCH V3 0/7] nfsd/sunrpc: prepare nfsd to add workqueue
- support
-Message-ID: <20150608115113.349061b5@tlielax.poochiereds.net>
-In-Reply-To: <20150608145730.GE24159@fieldses.org>
-References: <557525DD.6070300@oracle.com>
-	<CAHQdGtSrgLaTRDBxtUCKrt+90WrJq2YR_VfSi9RC4_7m0k--3w@mail.gmail.com>
-	<20150608093437.3bb9b028@synchrony.poochiereds.net>
-	<20150608145730.GE24159@fieldses.org>
+Received: from userp1040.oracle.com ([156.151.31.81]:17011 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752052AbbFHPy3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Jun 2015 11:54:29 -0400
+Message-ID: <5575BAAD.4040600@oracle.com>
+Date: Mon, 08 Jun 2015 08:54:21 -0700
+From: Shirley Ma <shirley.ma@oracle.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+To: Jeff Layton <jeff.layton@primarydata.com>
+CC: "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@primarydata.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [RFC PATCH V3 2/7] nfsd/sunrpc: move sv_function into sv_ops
+References: <5575276A.4030305@oracle.com> <20150608074213.2c70a37c@synchrony.poochiereds.net>
+In-Reply-To: <20150608074213.2c70a37c@synchrony.poochiereds.net>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 8 Jun 2015 10:57:30 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
+Oops, I made a mistake. Yes, I will resend them.
 
-> On Mon, Jun 08, 2015 at 09:34:37AM -0400, Jeff Layton wrote:
-> > On Mon, 8 Jun 2015 09:15:28 -0400
-> > Trond Myklebust <trond.myklebust@primarydata.com> wrote:
-> > 
-> > > On Mon, Jun 8, 2015 at 1:19 AM, Shirley Ma <shirley.ma@oracle.com> wrote:
-> > > > This patchset was originally written by Jeff Layton from adding support for a workqueue-based nfsd. I am helping on stability test and performance analysis. There are some workloads benefit from global threading mode, some workloads benefit from workqueue mode. I am still investigating on how to make workqueue mode better to bid global theading mode. I am splitting the patchset into two parts: one is preparing nfsd to add workqueue mode, one is adding workqueue mode. The test results show that the first part doesn't cause much performance change, the results are within the variation from each run.
-> > > 
-> > > As stated in the original emails, Primary Data's internal testing of
-> > > these patches showed that there is a significant difference. We had 48
-> > > virtual clients running on 7 ESX hypervisors with 10GigE NICs against
-> > > a hardware NFSv3 server with a 40GigE NIC. The clients were doing 4k
-> > > aio/dio reads+writes in a 70/30 mix.
-> > > At the time, we saw a roughly 50% decrease with measured standard
-> > > deviations being of the order a few % when comparing the performance
-> > > as measured in IOPs between the existing code and the workqueue code.
-> > > 
-> > > Testing showed the workqueue performance was relatively improved when
-> > > we upped the block size to 256k (with lower IOPs counts). That would
-> > > indicate that the workqueues are failing to scale correctly for the
-> > > high IOPs (i.e. high thread count) case.
-> > > 
-> > > Trond
-> > 
-> > Yes.
-> > 
-> > Also, I did some work with tracepoints to see if I could figure out
-> > where the extra latency was coming from. At the time, the data I
-> > collected showed that the workqueue server was processing incoming
-> > frames _faster_ than the thread based one.
-> > 
-> > So, my theory (untested) is that somehow the workqueue server is
-> > causing extra latency in processing interrupts for the network card or
-> > disk. The test I was using at the time was to just dd a bunch of
-> > sequential reads and writes to a file. I figured that was as simple a
-> > testcase as you could get...
-> > 
-> > In any case though, the patches that Shirley is proposing here don't
-> > actually add any of the workqueue based server code. It's all just
-> > preparatory patches to add an ops structure to the svc_serv and move a
-> > bunch of disparate function pointers into it. I think that's a reasonable
-> > set to take, even if we don't take the workqueue code itself as it
-> > cleans up the rpc server API considerably (IMNSHO).
+Thanks
+Shirley
+
+On 06/08/2015 04:42 AM, Jeff Layton wrote:
+> On Sun, 07 Jun 2015 22:26:02 -0700
+> Shirley Ma <shirley.ma@oracle.com> wrote:
 > 
-> OK.  And just out of paranoia--you didn't notice any significant
-> difference with the new patches running in the old thread-based mode,
-> right?
+>> sunrpc: move sv_module parm into sv_ops
+>>     
+>> ...not technically an operation, but it's more convenient and cleaner
+>> to pass the module pointer in this struct.
+>>     
+>> Author: Jeff Layton <jlayton@primarydata.com>
+>> Signed-off-by: Shirley Ma <shirley.ma@oracle.com>
+>> Tested-by: Shirley Ma <shirley.ma@oracle.com>
+>> ---
+>> diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+>> index bd03968..17ceaad 100644
+>> --- a/fs/nfsd/nfssvc.c
+>> +++ b/fs/nfsd/nfssvc.c
+>> @@ -394,6 +394,7 @@ static int nfsd_get_default_max_blksize(void)
+>>  static struct svc_serv_ops nfsd_sv_ops = {
+>>  	.svo_shutdown = nfsd_last_thread,
+>>  	.svo_function = nfsd,
+>> +	.svo_module = THIS_MODULE,
+>>  };
+>>  
+>>  int nfsd_create_serv(struct net *net)
+>> @@ -410,7 +411,7 @@ int nfsd_create_serv(struct net *net)
+>>  		nfsd_max_blksize = nfsd_get_default_max_blksize();
+>>  	nfsd_reset_versions();
+>>  	nn->nfsd_serv = svc_create_pooled(&nfsd_program, nfsd_max_blksize,
+>> -				      &nfsd_sv_ops, THIS_MODULE);
+>> +						&nfsd_sv_ops);
+>>  	if (nn->nfsd_serv == NULL)
+>>  		return -ENOMEM;
+>>  
+>> diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+>> index 68103a6..2ec741a 100644
+>> --- a/include/linux/sunrpc/svc.h
+>> +++ b/include/linux/sunrpc/svc.h
+>> @@ -54,7 +54,12 @@ struct svc_serv;
+>>  struct svc_serv_ops {
+>>  	/* Callback to use when last thread exits. */
+>>  	void		(*svo_shutdown)(struct svc_serv *, struct net *);
+>> +
+>> +	/* function for service threads to run */
+>>  	int		(*svo_function)(void *);
+>> +
+>> +	/* optional module to count when adding threads (pooled svcs only) */
+>> +	struct module	*svo_module;
+>>  };
+>>  
+>>  /*
+>> @@ -89,8 +94,6 @@ struct svc_serv {
+>>  	unsigned int		sv_nrpools;	/* number of thread pools */
+>>  	struct svc_pool *	sv_pools;	/* array of thread pools */
+>>  	struct svc_serv_ops *	sv_ops;		/* server operations */
+>> -	struct module *		sv_module;	/* optional module to count when
+>> -						 * adding threads */
+>>  #if defined(CONFIG_SUNRPC_BACKCHANNEL)
+>>  	struct list_head	sv_cb_list;	/* queue for callback requests
+>>  						 * that arrive over the same
+>> @@ -430,7 +433,7 @@ struct svc_rqst *svc_prepare_thread(struct svc_serv *serv,
+>>  					struct svc_pool *pool, int node);
+>>  void		   svc_exit_thread(struct svc_rqst *);
+>>  struct svc_serv *  svc_create_pooled(struct svc_program *, unsigned int,
+>> -			struct svc_serv_ops *, struct module *);
+>> +			struct svc_serv_ops *);
+>>  int		   svc_set_num_threads(struct svc_serv *, struct svc_pool *, int);
+>>  int		   svc_pool_stats_open(struct svc_serv *serv, struct file *file);
+>>  void		   svc_destroy(struct svc_serv *);
+>> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+>> index 25d7b92..5ae9d63 100644
+>> --- a/net/sunrpc/svc.c
+>> +++ b/net/sunrpc/svc.c
+>> @@ -494,7 +494,7 @@ EXPORT_SYMBOL_GPL(svc_create);
+>>  
+>>  struct svc_serv *
+>>  svc_create_pooled(struct svc_program *prog, unsigned int bufsize,
+>> -		  struct svc_serv_ops *ops, struct module *mod)
+>> +		  struct svc_serv_ops *ops)
+>>  {
+>>  	struct svc_serv *serv;
+>>  	unsigned int npools = svc_pool_map_get();
+>> @@ -502,8 +502,6 @@ svc_create_pooled(struct svc_program *prog, unsigned int bufsize,
+>>  	serv = __svc_create(prog, bufsize, npools, ops);
+>>  	if (!serv)
+>>  		goto out_err;
+>> -
+>> -	serv->sv_module = mod;
+>>  	return serv;
+>>  out_err:
+>>  	svc_pool_map_put();
+>> @@ -737,12 +735,12 @@ svc_set_num_threads(struct svc_serv *serv, struct svc_pool *pool, int nrservs)
+>>  			break;
+>>  		}
+>>  
+>> -		__module_get(serv->sv_module);
+>> +		__module_get(serv->sv_ops->svo_module);
+>>  		task = kthread_create_on_node(serv->sv_ops->svo_function, rqstp,
+>>  					      node, "%s", serv->sv_name);
+>>  		if (IS_ERR(task)) {
+>>  			error = PTR_ERR(task);
+>> -			module_put(serv->sv_module);
+>> +			module_put(serv->sv_ops->svo_module);
+>>  			svc_exit_thread(rqstp);
+>>  			break;
+>>  		}
 > 
-> --b.
-
-No, we didn't notice any substantive difference. I'd be quite surprised
-if there were. There might be (e.g.) slightly more pointer-chasing with
-this set (since you have to look in the ops structure), but it doesn't
-make much in the way of substantive changes to how the code works.
-
--- 
-Jeff Layton <jeff.layton@primarydata.com>
+> Hmmm...there are two patch #2's in this series and one looks like a dup
+> of #3? It'd be good to clean that up and resend eventually once
+> everyone has commented...
+> 
+> Anyway, ACK from me on merging this part of the work. It's unlikely to
+> hurt anything performance-wise, and having an ops container for the serv
+> makes a lot of sense, IMO.
+> 
