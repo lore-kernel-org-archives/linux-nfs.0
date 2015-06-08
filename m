@@ -1,121 +1,88 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:41017 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752239AbbFHUrl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 8 Jun 2015 16:47:41 -0400
-Date: Mon, 8 Jun 2015 16:47:34 -0400
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: "William A. (Andy) Adamson" <androsadamson@gmail.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 3/6] SUNRPC: Clean up bc_send()
-Message-ID: <20150608204734.GA27887@fieldses.org>
-References: <1433453213-13466-1-git-send-email-trond.myklebust@primarydata.com>
- <1433453213-13466-2-git-send-email-trond.myklebust@primarydata.com>
- <1433453213-13466-3-git-send-email-trond.myklebust@primarydata.com>
- <CAHVgHyWz-dKX-6TbRCYRBp7b2uV2-kCd7U63sHd5ZKZKr6e7aw@mail.gmail.com>
- <B30A41CC-EADC-4738-8FDF-E8B03AAA48FC@oracle.com>
+Received: from mail-oi0-f48.google.com ([209.85.218.48]:34094 "EHLO
+	mail-oi0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753458AbbFHUtD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Jun 2015 16:49:03 -0400
+Received: by oigz2 with SMTP id z2so38441213oig.1
+        for <linux-nfs@vger.kernel.org>; Mon, 08 Jun 2015 13:49:02 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <B30A41CC-EADC-4738-8FDF-E8B03AAA48FC@oracle.com>
-From: bfields@fieldses.org (J. Bruce Fields)
+In-Reply-To: <20150608151704.GF24159@fieldses.org>
+References: <20150604195725.GC5209@fieldses.org>
+	<1445478.RRUV9J93hm@sifl>
+	<20150608151704.GF24159@fieldses.org>
+Date: Mon, 8 Jun 2015 16:49:02 -0400
+Message-ID: <CAHC9VhR2D6Gy31L0N8oPTwyz1+s-ACEr6MNiDZ=j6aMBXo_u+w@mail.gmail.com>
+Subject: Re: [PATCH] selinux: fix setting of security labels on NFS
+From: Paul Moore <paul@paul-moore.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Stephen Smalley <sds@tycho.nsa.gov>, Eric Paris <eparis@parisplace.org>,
+        selinux@tycho.nsa.gov, linux-nfs@vger.kernel.org,
+        Richard Chan <rc556677@outlook.com>,
+        David Quigley <dpquigl@davequigley.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jun 05, 2015 at 12:02:11PM -0400, Chuck Lever wrote:
-> 
-> On Jun 5, 2015, at 11:50 AM, Andy Adamson <androsadamson@gmail.com> wrote:
-> 
-> > On Thu, Jun 4, 2015 at 5:26 PM, Trond Myklebust
-> > <trond.myklebust@primarydata.com> wrote:
-> >> From: Chuck Lever <chuck.lever@oracle.com>
-> >> 
-> >> Clean up: Merge bc_send() into bc_svc_process().
-> >> 
-> >> Note: even thought this touches svc.c, it is a client-side change.
-> >> 
-> >> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> >> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-> >> ---
-> >> include/linux/sunrpc/bc_xprt.h |  1 -
-> >> net/sunrpc/Makefile            |  2 +-
-> >> net/sunrpc/bc_svc.c            | 63 ------------------------------------------
-> >> net/sunrpc/svc.c               | 33 ++++++++++++++++------
-> >> 4 files changed, 26 insertions(+), 73 deletions(-)
-> >> delete mode 100644 net/sunrpc/bc_svc.c
-> >> 
-> >> diff --git a/include/linux/sunrpc/bc_xprt.h b/include/linux/sunrpc/bc_xprt.h
-> >> index 2ca67b55e0fe..8df43c9f11dc 100644
-> >> --- a/include/linux/sunrpc/bc_xprt.h
-> >> +++ b/include/linux/sunrpc/bc_xprt.h
-> >> @@ -37,7 +37,6 @@ void xprt_complete_bc_request(struct rpc_rqst *req, uint32_t copied);
-> >> void xprt_free_bc_request(struct rpc_rqst *req);
-> >> int xprt_setup_backchannel(struct rpc_xprt *, unsigned int min_reqs);
-> >> void xprt_destroy_backchannel(struct rpc_xprt *, unsigned int max_reqs);
-> >> -int bc_send(struct rpc_rqst *req);
-> >> 
-> >> /*
-> >>  * Determine if a shared backchannel is in use
-> >> diff --git a/net/sunrpc/Makefile b/net/sunrpc/Makefile
-> >> index 15e6f6c23c5d..1b8e68d0e690 100644
-> >> --- a/net/sunrpc/Makefile
-> >> +++ b/net/sunrpc/Makefile
-> >> @@ -15,6 +15,6 @@ sunrpc-y := clnt.o xprt.o socklib.o xprtsock.o sched.o \
-> >>            sunrpc_syms.o cache.o rpc_pipe.o \
-> >>            svc_xprt.o
-> >> sunrpc-$(CONFIG_SUNRPC_DEBUG) += debugfs.o
-> >> -sunrpc-$(CONFIG_SUNRPC_BACKCHANNEL) += backchannel_rqst.o bc_svc.o
-> >> +sunrpc-$(CONFIG_SUNRPC_BACKCHANNEL) += backchannel_rqst.o
-> >> sunrpc-$(CONFIG_PROC_FS) += stats.o
-> >> sunrpc-$(CONFIG_SYSCTL) += sysctl.o
-> >> diff --git a/net/sunrpc/bc_svc.c b/net/sunrpc/bc_svc.c
-> >> deleted file mode 100644
-> >> index 15c7a8a1c24f..000000000000
-> >> --- a/net/sunrpc/bc_svc.c
-> >> +++ /dev/null
-> >> @@ -1,63 +0,0 @@
-> >> -/******************************************************************************
-> >> -
-> >> -(c) 2007 Network Appliance, Inc.  All Rights Reserved.
-> >> -(c) 2009 NetApp.  All Rights Reserved.
-> >> -
-> >> -NetApp provides this source code under the GPL v2 License.
-> >> -The GPL v2 license is available at
-> >> -http://opensource.org/licenses/gpl-license.php.
-> >> -
-> >> -THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-> >> -"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-> >> -LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-> >> -A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-> >> -CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-> >> -EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-> >> -PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-> >> -PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-> >> -LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-> >> -NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-> >> -SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-> >> -
-> >> -******************************************************************************/
-> > 
-> > Why is the above being removed?
-> 
-> Hi Andy-
-> 
-> Interesting question, and IANAL.
-> 
-> Where should the boilerplate go if the below function is merged into
-> existing generic server code? I suppose we could fold the NetApp
-> copyright into the comment at the top of net/sunrpc/svc.c , but the
-> merged code is paraphrased rather than copied directly.
-> 
-> Suggestions/opinions are welcome.
+On Mon, Jun 8, 2015 at 11:17 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> On Fri, Jun 05, 2015 at 02:28:51PM -0400, Paul Moore wrote:
+>> On Thursday, June 04, 2015 03:57:25 PM J. Bruce Fields wrote:
+>> > From: "J. Bruce Fields" <bfields@redhat.com>
+>> >
+>> > Before calling into the filesystem, vfs_setxattr calls
+>> > security_inode_setxattr, which ends up calling selinux_inode_setxattr in
+>> > our case.  That returns -EOPNOTSUPP whenever SBLABEL_MNT is not set.
+>> > SBLABEL_MNT was supposed to be set by sb_finish_set_opts, which sets it
+>> > only if selinux_is_sblabel_mnt returns true.
+>> >
+>> > The selinux_is_sblabel_mnt logic was broken by eadcabc697e9 "SELinux: do
+>> > all flags twiddling in one place", which didn't take into the account
+>> > the SECURITY_FS_USE_NATIVE behavior that had been introduced for nfs
+>> > with eb9ae686507b "SELinux: Add new labeling type native labels".
+>> >
+>> > This caused setxattr's of security labels over NFSv4.2 to fail.
+>> >
+>> > Cc: stable@kernel.org
+>> > Cc: Eric Paris <eparis@redhat.com>
+>> > Cc: David Quigley <dpquigl@davequigley.com>
+>> > Reported-by: Richard Chan <rc556677@outlook.com>
+>> > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+>> > ---
+>> >  security/selinux/hooks.c | 1 +
+>> >  1 file changed, 1 insertion(+)
+>>
+>> Applied, thanks.
+>
+> Thanks!
+>
+>> In the future, you don't have to worry about marking it for
+>> stable, I'll take care of that when I merge it into the tree.
+>
+> OK.  With roles reversed, I usually appreciate the stable tag from
+> submitters, just as a statement of their opinion as to whether it's
+> stable-worthy, which can always be overridden.
 
-I don't know, the above looks like pretty generic boilerplate, and I'd
-rather not accumulate a that kind of thing every time we move a
-significant piece of code around.  Could we compromise by adding a line
-or two to net/sunrpc/svc.c following the existing convention there?
-("backchannel implementation originally (c) 2007 Network Appliance and
-(c) 2009 Netapp", or similar?)  Not a lawyer either, just looking for a
-way to keep it both honest and concise....
+Every subsystem is different, but in general I haven't found it too
+difficult to determine if a given patch is stable worthy; on the rare
+occasion that I'm uncertain I'll ask the submitter for their opinion.
+I wouldn't say I discourage people from adding a stable tag, it is
+just that I don't require people to add one to make it into my stable
+queue, and I don't automatically add it to the queue if the poster
+does tag it so (although that said, I don't recall ever removing a
+stable CC).
 
---b.
+> (I mean, this one seems obvious enough--one-liner, fixes a user-visible
+> regression--but in more complicated cases their opinion might be
+> useful.)
+
+This patch is definitely a stable no-brainer.
+
+> By the way, I suspect this requires (obvious) fixups to apply to some
+> older kernels, let me know if help's needed there.
+
+It may, I generally wait until the stable devs pick it up and if they
+hit a merge conflict I fix it up, however, since you offered I may
+kick it your way ;)
+
+-- 
+paul moore
+www.paul-moore.com
