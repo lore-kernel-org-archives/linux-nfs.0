@@ -1,64 +1,132 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from extranet.sessys.com ([50.116.54.220]:34329 "EHLO
-	extranet.sessys.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752984AbbFIB5k convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Jun 2015 21:57:40 -0400
-Content-Type: text/plain; charset=utf-8
-Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2098\))
-Subject: Re: [PATCH] rpc.nfsd: add no-ipv4 and no-ipv6 options
-From: Sean Elble <elbles@sessys.com>
-In-Reply-To: <20150608211210.GC27887@fieldses.org>
-Date: Mon, 8 Jun 2015 21:57:33 -0400
-Cc: Chuck Lever <chucklever@gmail.com>, Kinglong Mee <kinglongmee@gmail.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-nfs-owner@vger.kernel.org
-Message-Id: <62BB9BD0-7234-41FD-A857-E2ACF7443310@sessys.com>
-References: <55743EDE.7070707@gmail.com> <3CE6594A-508B-4BBD-9E52-CF9EDDA6274D@oracle.com> <557597D3.8090401@gmail.com> <312511264c19c5a98cbd1062531b306e@mail.sessys.com> <2F03891D-9240-4A8E-BEEB-7F5BBAD1B5FE@gmail.com> <76DB6DF0-8409-4D42-B2FD-6C7B08B148A5@gmail.com> <d4bfa4c82f2a8ef2dec4dce303c0c96b@mail.sessys.com> <20150608211210.GC27887@fieldses.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from mail-pa0-f42.google.com ([209.85.220.42]:33069 "EHLO
+	mail-pa0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752789AbbFIGKj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Jun 2015 02:10:39 -0400
+Date: Tue, 9 Jun 2015 15:10:25 +0900
+From: Tejun Heo <tj@kernel.org>
+To: Petr Mladek <pmladek@suse.cz>
+Cc: Andrew Morton <akpm@linux-foundation.org>, Oleg Nesterov <oleg@redhat.com>,
+        Ingo Molnar <mingo@redhat.com>, Peter Zijlstra <peterz@infradead.org>,
+        Richard Weinberger <richard@nod.at>,
+        Steven Rostedt <rostedt@goodmis.org>,
+        David Woodhouse <dwmw2@infradead.org>, linux-mtd@lists.infradead.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>, linux-nfs@vger.kernel.org,
+        Chris Mason <clm@fb.com>,
+        "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
+        Thomas Gleixner <tglx@linutronix.de>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Jiri Kosina <jkosina@suse.cz>, Borislav Petkov <bp@suse.de>,
+        Michal Hocko <mhocko@suse.cz>, live-patching@vger.kernel.org,
+        linux-api@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [RFC PATCH 00/18] kthreads/signal: Safer kthread API and signal
+ handling
+Message-ID: <20150609061025.GU21465@mtj.duckdns.org>
+References: <1433516477-5153-1-git-send-email-pmladek@suse.cz>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1433516477-5153-1-git-send-email-pmladek@suse.cz>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hello,
 
-> On Jun 8, 2015, at 5:12 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> 
-> On Mon, Jun 08, 2015 at 10:33:22AM -0400, Sean Elble wrote:
->> On 08.06.2015 10:27, Chuck Lever wrote:
->>>> I don’t understand the need to “turn off” an address family.
->>>> That’s what
->>>> /etc/netconfig is supposed to be for. What’s not happening here that
->>>> should be?
->>> 
->>> What I mean is: I’d rather not add more command line options if there
->>> is a way for rpc.nfsd to automatically and quietly do what is needed.
->>> But I don’t understand the use case here. Sean, can you explain it
->>> for
->>> bears of little brain?
->> 
->> Sure, and please correct me if any of my understanding is incorrect
->> (as it may well be).  In my environment, I wanted to have NFS only
->> listen on one interface of a multihomed host.  In using the "--host"
->> parameter to do so, I saw the error message regarding IPv6 thrown.
->> While disabling IPv6 globally in /etc/netconfig is an option (one I
->> understand to be "global", in that it'd affect *all* applications on
->> the host), it'd be nice to disable IPv6 for a single service/daemon
->> instead.
-> 
-> But doesn't something like
-> 
-> 	rpc.nfsd --host 10.0.0.1 --no-ipv6
-> 
-> seem a bit redundant?
+On Fri, Jun 05, 2015 at 05:00:59PM +0200, Petr Mladek wrote:
+> Workqueue
+...
+> But there are many kthreads that need to cycle many times
+> until some work is finished, e.g. khugepaged, virtio_balloon,
+> jffs2_garbage_collect_thread. They would need to queue the
+> work item repeatedly from the same work item or between
+> more work items. It would be a strange semantic.
 
-In that case, perhaps it does.  But what if you were to use a hostname that resolved to both IPv4 and IPv6 addresses?
+Hmm... took a look at balloon and jffs2_garbage_collect_thread and I'm
+not not sure about this part of argument.  What's wrong with doing a
+single round and requeueing if more rounds are necessary?  There are
+quite a few which already behave that way.  It sure adds queueing /
+dispatch overhead but I'm skeptical that's gonna be anything
+noticeable in vast majority of cases.
 
+> Work queues allow to share the same kthread between more users.
+> It helps to reduce the number of running kthreads. It is especially
+> useful if you would need a kthread for each CPU.
+
+Unbound workqueues also do NUMA node affinities automatically which
+usually is a pretty big win for jobs which process lots of data.
+Managing concurrency level for these cases is still cumbersome but
+there have been some ideas making that part mostly automatic too.
+
+> But this might also be a disadvantage. Just look into the output
+> of the command "ps" and see the many [kworker*] processes. One
+> might see this a black hole. If a kworker makes the system busy,
+> it is less obvious what the problem is in compare with the old
+> "simple" and dedicated kthreads.
+>
+> Yes, we could add some debugging tools for work queues but
+> it would be another non-standard thing that developers and
+> system administrators would need to understand.
+
+Yeah, that's an almost inherent drawback of pooling anything.  It'd be
+nice to improve visibility into what workers are doing.  sysrq-t has
+recently been extended to help debugging but it'd nice to have
+visibility into who's consuming how much.
+
+> Another thing is that work queues have their own scheduler. If we
+> move even more tasks there it might need even more love. Anyway,
+> the extra scheduler adds another level of complexity when
+> debugging problems.
+
+That's only true for the concurrency managed percpu workqueues which
+shouldn't be used for anything CPU intensive anyway.  I don't see that
+getting much more sophiscated than now.  For unbound workqueues, once
+a work item starts executing, the worker thread is under the control
+of the scheduler.
+
+> kthread_worker
 > 
-> I mean, you've already told it to listen to that one (ipv4) address.
-> That'd argue for just disabling the warning in this case, I think.  But
-> my understanding of IPv6 is still poor.
-
-Yours and mine both.  But until it gets better, I’m very comfortable in just turning it off in places where 1) I know it’s not needed and 2) Places where exploits could linger with most of our emphasis on IPv4 still.
-
 > 
-> --b.
+> kthread_worker is similar to workqueues in many ways. You need to
 > 
+>   + define work functions
+>   + define and initialize work structs
+>   + queue work items (structs pointing to the functions and data)
+> 
+> We could repeat the paragraphs about splitting the work
+> and sharing the kthread between more users here.
+> 
+> Well, the kthread_worker implementation is much simpler than
+> the one for workqueues. It is more similar to a simple
+> kthread. Especially, it uses the system scheduler.
+> But it is still more complex that the simple kthread.
+> 
+> One interesting thing is that kthread_workers add internal work
+> items into the queue. They typically use a completion. An example
+> is the flush work. see flush_kthread_work(). It is a nice trick
+> but you need to be careful. For example, if you would want to
+> terminate the kthread, you might want to remove some work item
+> from the queue, especially if you need to break a work item that
+> is called in a cycle (queues itself). The question is what to do
+> with the internal tasks. If you keep them, they might wake up
+> sleepers when the work was not really completed. If you remove
+> them, the counter part might sleep forever.
 
+You can pretty much align this part of interface with regular
+workqueues which has cancel_work_sync().  The only reason it doesn't
+have that is because nobody needed it yet.
+
+That said, there sure are cases where dedicated kthreads are necessary
+and kthread_worker was added to help those cases to be more
+structured.  I think it's nice to keep the API aligned with workqueue
+so that users can easily be converted back and forth but if something
+which is more aligned to the current kthread usages eases replacing
+the original kthread API completely, I'm all for that.
+
+Also, if this one takes off, I don't think we have any need for
+kthread_worker.  It should be easy to replace the few kthread_worker
+usages to the new API.
+
+Thanks.
+
+-- 
+tejun
