@@ -1,80 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ie0-f179.google.com ([209.85.223.179]:35948 "EHLO
-	mail-ie0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753769AbbFISqo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Jun 2015 14:46:44 -0400
-Received: by ieclw1 with SMTP id lw1so19517557iec.3
-        for <linux-nfs@vger.kernel.org>; Tue, 09 Jun 2015 11:46:44 -0700 (PDT)
+Received: from mail-ig0-f182.google.com ([209.85.213.182]:34103 "EHLO
+	mail-ig0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751475AbbFITFc convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Jun 2015 15:05:32 -0400
+Received: by igbhj9 with SMTP id hj9so19674234igb.1
+        for <linux-nfs@vger.kernel.org>; Tue, 09 Jun 2015 12:05:31 -0700 (PDT)
+Date: Tue, 9 Jun 2015 15:05:24 -0400
 From: Jeff Layton <jlayton@poochiereds.net>
-To: trond.myklebust@primarydata.com
-Cc: davem@davemloft.net, netdev@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, mgorman@suse.de, linux-mm@kvack.org
-Subject: [PATCH] net, swap: Remove a warning and clarify why sk_mem_reclaim is required when deactivating swap
-Date: Tue,  9 Jun 2015 14:40:04 -0400
-Message-Id: <1433875204-18060-1-git-send-email-jeff.layton@primarydata.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Sean Elble <elbles@sessys.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: rpc.nfsd Host Option & IPv6
+Message-ID: <20150609150524.327489f6@tlielax.poochiereds.net>
+In-Reply-To: <8AB90F17-5DBB-460C-8418-399C50F87D4C@oracle.com>
+References: <b66b20ec16b59568246f454bfbbfd5e9@mail.sessys.com>
+	<8AB90F17-5DBB-460C-8418-399C50F87D4C@oracle.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Mel Gorman <mgorman@suse.de>
+On Mon, 8 Jun 2015 15:48:29 -0400
+Chuck Lever <chuck.lever@oracle.com> wrote:
 
-Jeff Layton reported the following;
+> 
+> On Jun 3, 2015, at 9:39 AM, Sean Elble <elbles@sessys.com> wrote:
+> 
+> > Hi all,
+> > 
+> > While it seems that most folks use iptables to restrict access to single interfaces when multihomed hosts are acting as NFS servers, I do see that there is a "--host" option that can be provided to rpc.nfsd when it starts so that it only binds to a specific IP/interface.
+> > 
+> > This does seem to work nicely, but when I try to use it, it throws an error/warning (where nfs-server is defined in /etc/hosts for the IPv4 address of the interface I wish for TCP port 2049 to be opened on):
+> > 
+> > rpc.nfsd: unable to resolve nfs-server:nfs to inet6 address: Name or service not known
+> 
+> This is a DNS error. No IPv6 mapping is provided in /etc/hosts. I suppose
+> if you provided “-H ipv4-address” the getaddrinfo(AF_INET6) call would
+> also fail.
+> 
+> Normally an ANY address is used when setting up NFSD listeners, and
+> no DNS lookup is done. This appears to be an issue just with -H.
+> 
+> > Commenting out the following lines in /etc/netconfig (as suggested by the Google) allows the daemon to start without error:
+> > 
+> > udp6       tpi_clts      v     inet6    udp     -       -
+> > tcp6       tpi_cots_ord  v     inet6    tcp     -       -
+> > 
+> > But I'm wondering if that is the only means for this to work, particularly considering that I'd expect changes to /etc/netconfig to apply to more than just rpc.nfsd.
+> 
+> The kernel handles IPv4 and IPv6 traffic on separate listener sockets.
+> 
+> It appears that with support for /etc/netconfig, it is possible to
+> set up a UDP AF_INET NFSD socket and a TCP AF_INET6 NFSD socket?
+> 
+> Since these are not really TI-RPC sockets and libtirpc isn’t
+> involved after the sockets are passed to the kernel, I’m not sure
+> it’s appropriate to consult /etc/netconfig here?
+> 
+> Anyway, the creation of the IPv4 socket succeeded, but the creation
+> of the IPv6 socket did not. At least one socket was created, so the
+> rpc.nfsd command worked, even though it threw a spurious error.
+> 
+> My preference would be to change the way all this works so that a
+> single getaddrinfo(3) could be used for both sockets. That way the
+> DNS failure would occur only if there were _no_ valid addresses,
+> since that’s the only legitimate failure in this case.
+> 
+> Jeff, any thoughts? Am I contradicting myself from 6 years ago?
+> 
 
- [   74.232485] ------------[ cut here ]------------
- [   74.233354] WARNING: CPU: 2 PID: 754 at net/core/sock.c:364 sk_clear_memalloc+0x51/0x80()
- [   74.234790] Modules linked in: cts rpcsec_gss_krb5 nfsv4 dns_resolver nfs fscache xfs libcrc32c snd_hda_codec_generic snd_hda_intel snd_hda_controller snd_hda_codec snd_hda_core snd_hwdep snd_seq snd_seq_device nfsd snd_pcm snd_timer snd e1000 ppdev parport_pc joydev parport pvpanic soundcore floppy serio_raw i2c_piix4 pcspkr nfs_acl lockd virtio_balloon acpi_cpufreq auth_rpcgss grace sunrpc qxl drm_kms_helper ttm drm virtio_console virtio_blk virtio_pci ata_generic virtio_ring pata_acpi virtio
- [   74.243599] CPU: 2 PID: 754 Comm: swapoff Not tainted 4.1.0-rc6+ #5
- [   74.244635] Hardware name: Bochs Bochs, BIOS Bochs 01/01/2011
- [   74.245546]  0000000000000000 0000000079e69e31 ffff8800d066bde8 ffffffff8179263d
- [   74.246786]  0000000000000000 0000000000000000 ffff8800d066be28 ffffffff8109e6fa
- [   74.248175]  0000000000000000 ffff880118d48000 ffff8800d58f5c08 ffff880036e380a8
- [   74.249483] Call Trace:
- [   74.249872]  [<ffffffff8179263d>] dump_stack+0x45/0x57
- [   74.250703]  [<ffffffff8109e6fa>] warn_slowpath_common+0x8a/0xc0
- [   74.251655]  [<ffffffff8109e82a>] warn_slowpath_null+0x1a/0x20
- [   74.252585]  [<ffffffff81661241>] sk_clear_memalloc+0x51/0x80
- [   74.253519]  [<ffffffffa0116c72>] xs_disable_swap+0x42/0x80 [sunrpc]
- [   74.254537]  [<ffffffffa01109de>] rpc_clnt_swap_deactivate+0x7e/0xc0 [sunrpc]
- [   74.255610]  [<ffffffffa03e4fd7>] nfs_swap_deactivate+0x27/0x30 [nfs]
- [   74.256582]  [<ffffffff811e99d4>] destroy_swap_extents+0x74/0x80
- [   74.257496]  [<ffffffff811ecb52>] SyS_swapoff+0x222/0x5c0
- [   74.258318]  [<ffffffff81023f27>] ? syscall_trace_leave+0xc7/0x140
- [   74.259253]  [<ffffffff81798dae>] system_call_fastpath+0x12/0x71
- [   74.260158] ---[ end trace 2530722966429f10 ]---
+No, sounds reasonable to me. I suspect that the code is probably not
+structured to handle that well at the moment, so that'll mean some
+refactoring.
 
-The warning in question was unnecessary but with Jeff's series the rules
-are also clearer.  This patch removes the warning and updates the comment
-to explain why sk_mem_reclaim() may still be called.
-
-Signed-off-by: Mel Gorman <mgorman@suse.de>
-Acked-by: Jeff Layton <jeff.layton@primarydata.com>
----
- net/core/sock.c | 12 +++++-------
- 1 file changed, 5 insertions(+), 7 deletions(-)
-
-diff --git a/net/core/sock.c b/net/core/sock.c
-index 292f42228bfb..2bb4c56370e5 100644
---- a/net/core/sock.c
-+++ b/net/core/sock.c
-@@ -354,14 +354,12 @@ void sk_clear_memalloc(struct sock *sk)
- 
- 	/*
- 	 * SOCK_MEMALLOC is allowed to ignore rmem limits to ensure forward
--	 * progress of swapping. However, if SOCK_MEMALLOC is cleared while
--	 * it has rmem allocations there is a risk that the user of the
--	 * socket cannot make forward progress due to exceeding the rmem
--	 * limits. By rights, sk_clear_memalloc() should only be called
--	 * on sockets being torn down but warn and reset the accounting if
--	 * that assumption breaks.
-+	 * progress of swapping. SOCK_MEMALLOC may be cleared while
-+	 * it has rmem allocations due to the last swapfile being deactivated
-+	 * but there is a risk that the socket is unusable due to exceeding
-+	 * the rmem limits. Reclaim the reserves and obey rmem limits again.
- 	 */
--	if (WARN_ON(sk->sk_forward_alloc))
-+	if (sk->sk_forward_alloc)
- 		sk_mem_reclaim(sk);
- }
- EXPORT_SYMBOL_GPL(sk_clear_memalloc);
 -- 
-2.4.2
-
+Jeff Layton <jlayton@poochiereds.net>
