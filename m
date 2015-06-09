@@ -1,13 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pa0-f52.google.com ([209.85.220.52]:34373 "EHLO
-	mail-pa0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752240AbbFIH6W (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Jun 2015 03:58:22 -0400
-Date: Tue, 9 Jun 2015 16:58:08 +0900
-From: Tejun Heo <tj@kernel.org>
-To: Petr Mladek <pmladek@suse.cz>
-Cc: Andrew Morton <akpm@linux-foundation.org>, Oleg Nesterov <oleg@redhat.com>,
-        Ingo Molnar <mingo@redhat.com>, Peter Zijlstra <peterz@infradead.org>,
+Received: from cantor2.suse.de ([195.135.220.15]:53351 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752483AbbFIMP2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 9 Jun 2015 08:15:28 -0400
+Date: Tue, 9 Jun 2015 14:15:24 +0200 (CEST)
+From: Jiri Kosina <jkosina@suse.cz>
+To: Tejun Heo <tj@kernel.org>
+cc: Petr Mladek <pmladek@suse.cz>, Andrew Morton <akpm@linux-foundation.org>,
+        Oleg Nesterov <oleg@redhat.com>, Ingo Molnar <mingo@redhat.com>,
+        Peter Zijlstra <peterz@infradead.org>,
         Richard Weinberger <richard@nod.at>,
         Steven Rostedt <rostedt@goodmis.org>,
         David Woodhouse <dwmw2@infradead.org>, linux-mtd@lists.infradead.org,
@@ -17,38 +18,68 @@ Cc: Andrew Morton <akpm@linux-foundation.org>, Oleg Nesterov <oleg@redhat.com>,
         "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
         Thomas Gleixner <tglx@linutronix.de>,
         Linus Torvalds <torvalds@linux-foundation.org>,
-        Jiri Kosina <jkosina@suse.cz>, Borislav Petkov <bp@suse.de>,
-        Michal Hocko <mhocko@suse.cz>, live-patching@vger.kernel.org,
-        linux-api@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [RFC PATCH 00/18] kthreads/signal: Safer kthread API and signal
- handling
-Message-ID: <20150609075808.GA11955@mtj.duckdns.org>
-References: <1433516477-5153-1-git-send-email-pmladek@suse.cz>
- <20150609061025.GU21465@mtj.duckdns.org>
+        Borislav Petkov <bp@suse.de>, Michal Hocko <mhocko@suse.cz>,
+        live-patching@vger.kernel.org, linux-api@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [RFC PATCH 06/18] signal/kthread: Initial implementation of
+ kthread signal handling
+In-Reply-To: <20150609071022.GX21465@mtj.duckdns.org>
+Message-ID: <alpine.LNX.2.00.1506091405360.12753@pobox.suse.cz>
+References: <1433516477-5153-1-git-send-email-pmladek@suse.cz> <1433516477-5153-7-git-send-email-pmladek@suse.cz> <20150609071022.GX21465@mtj.duckdns.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20150609061025.GU21465@mtj.duckdns.org>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello, Petr.
+On Tue, 9 Jun 2015, Tejun Heo wrote:
 
-I've skimmed through the patchset and I'm not quite sure.
-kthread_iterant seems to map almost one to one to kthread_worker
-interface.  One calls a predefined callback repeatedly while the other
-queues work items which contain callback.  One does nasty plumbing
-tasks inbetween interations, the other does inbetween work items.  One
-has sleep helper to sleep "safely", the other can use delayed work
-items and flushing cancel.  In fact, I'm pretty sure it'd be trivial
-to convert between the two sets of API.
+> While I agree that it'd be great to consolidate the existing kthread
+> signal users, I feel quite uncomfortable with doing full-fledged
+> signal handling for kthreads which try to mimic the userland behavior.
+> Most of the default behaviors don't make sense for kthreads and it'd
+> be awful to have different kthreads interpreting arbitrary signals for
+> differing custom behaviors, which often happens when there's no
+> default.
 
-If so, is it really worthwhile to introduce the new API?
-kthread_iterant is closer to raw kthread but not quite.  It shouldn't
-be difficult to apply the bulk of kthread_iterant's features to
-kthread_worker.  Wouldn't it be more beneficial to have async
-execution mechanisms more closely aligned?
+I don't think the ultimate goal is to mimic what userspace does; 
+especially when it comes to default actions.
 
-Thanks a lot.
+To me, the ultimate goal (*) is to make it possible for kthread to be able 
+to decide whether it wants "some kind of default behavior" (however that'd 
+be defined), or "ignore all", or "just handle this set of signals with 
+these handlers", and make API for this that would avoid every kthread 
+implementing its own complete signal handling.
+
+(*) Well, the ultimate goal really is to bring sanity to how kthreads are 
+    handling their main loop. Trying to bring some consistency to how 
+    kthreads are handling signals is just an (optional) added value on 
+    top of that.
+
+> While we do have several kthread signal users, they aren't too many and 
+> majority of them use it to allow userland to tell it to shutdown and 
+
+Yeah. Via SIGKILL. Or SIGTERM. Or SIGINT. Or SIGQUIT. Not really 
+consistent either.
+
+> there seem to be a couple which use HUP/USR1 to cancel whatever it's 
+> processing / waiting on at the moment.  Hmmm... jffs uses STOP/CONT too.
+
+> I don't know how this should be done but let's please try to
+> 
+> 1. Encourage uniform behaviors across the signals.
+
+Fully agreed.
+
+> 2. Ultimately discourage usage of signals on kthreads as this closely
+>    ties implementation detail (use of single kthread) to the userland
+>    visible interface in a way where we can't easily get back out of.
+>    For example, what if jffs needs its gc workers to be multi-threaded
+>    and per-NUMA for high-iops devices later on?
+
+What kind of multi-threading kthreads are you referring to here? Something 
+more sophisticated than simply spawning several per-CPU (or 
+per-whatever-resource) full-fledged kthreads?
 
 -- 
-tejun
+Jiri Kosina
+SUSE Labs
