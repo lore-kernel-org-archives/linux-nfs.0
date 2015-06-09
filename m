@@ -1,95 +1,95 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:41502 "EHLO fieldses.org"
+Received: from cantor2.suse.de ([195.135.220.15]:43309 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753041AbbFIPhw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 9 Jun 2015 11:37:52 -0400
-Date: Tue, 9 Jun 2015 11:37:51 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Chuck Lever <chucklever@gmail.com>
-Cc: Sean Elble <elbles@sessys.com>, Kinglong Mee <kinglongmee@gmail.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-nfs-owner@vger.kernel.org
-Subject: Re: [PATCH] rpc.nfsd: add no-ipv4 and no-ipv6 options
-Message-ID: <20150609153751.GB32449@fieldses.org>
-References: <55743EDE.7070707@gmail.com>
- <3CE6594A-508B-4BBD-9E52-CF9EDDA6274D@oracle.com>
- <557597D3.8090401@gmail.com>
- <312511264c19c5a98cbd1062531b306e@mail.sessys.com>
- <2F03891D-9240-4A8E-BEEB-7F5BBAD1B5FE@gmail.com>
- <76DB6DF0-8409-4D42-B2FD-6C7B08B148A5@gmail.com>
- <d4bfa4c82f2a8ef2dec4dce303c0c96b@mail.sessys.com>
- <20150608211210.GC27887@fieldses.org>
- <62BB9BD0-7234-41FD-A857-E2ACF7443310@sessys.com>
- <F49F031D-0666-4B2F-A9AB-955B41ADFB75@gmail.com>
+	id S1753287AbbFIPxR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 9 Jun 2015 11:53:17 -0400
+Date: Tue, 9 Jun 2015 17:53:13 +0200
+From: Petr Mladek <pmladek@suse.cz>
+To: Tejun Heo <tj@kernel.org>
+Cc: Andrew Morton <akpm@linux-foundation.org>, Oleg Nesterov <oleg@redhat.com>,
+        Ingo Molnar <mingo@redhat.com>, Peter Zijlstra <peterz@infradead.org>,
+        Richard Weinberger <richard@nod.at>,
+        Steven Rostedt <rostedt@goodmis.org>,
+        David Woodhouse <dwmw2@infradead.org>, linux-mtd@lists.infradead.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>, linux-nfs@vger.kernel.org,
+        Chris Mason <clm@fb.com>,
+        "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
+        Thomas Gleixner <tglx@linutronix.de>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Jiri Kosina <jkosina@suse.cz>, Borislav Petkov <bp@suse.de>,
+        Michal Hocko <mhocko@suse.cz>, live-patching@vger.kernel.org,
+        linux-api@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [RFC PATCH 07/18] kthread: Make iterant kthreads freezable by
+ default
+Message-ID: <20150609155313.GC9409@pathway.suse.cz>
+References: <1433516477-5153-1-git-send-email-pmladek@suse.cz>
+ <1433516477-5153-8-git-send-email-pmladek@suse.cz>
+ <20150609072003.GY21465@mtj.duckdns.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <F49F031D-0666-4B2F-A9AB-955B41ADFB75@gmail.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20150609072003.GY21465@mtj.duckdns.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jun 09, 2015 at 11:37:38AM -0400, Chuck Lever wrote:
+On Tue 2015-06-09 16:20:03, Tejun Heo wrote:
+> Hello, Petr.
 > 
-> On Jun 8, 2015, at 9:57 PM, Sean Elble <elbles@sessys.com> wrote:
+> On Fri, Jun 05, 2015 at 05:01:06PM +0200, Petr Mladek wrote:
+> > Many kthreads already calls set_freezable() before they enter the main
+> > cycle. One of the reasons for creating iterant kthreads is to create
+> > a safe point for freezing and make even more kthreads properly
+> > freezable. Therefore it would make sense to set all iterant
+> > kthreads freezable by default.
 > 
-> > 
-> >> On Jun 8, 2015, at 5:12 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> >> 
-> >> On Mon, Jun 08, 2015 at 10:33:22AM -0400, Sean Elble wrote:
-> >>> On 08.06.2015 10:27, Chuck Lever wrote:
-> >>>>> I don’t understand the need to “turn off” an address family.
-> >>>>> That’s what
-> >>>>> /etc/netconfig is supposed to be for. What’s not happening here that
-> >>>>> should be?
-> >>>> 
-> >>>> What I mean is: I’d rather not add more command line options if there
-> >>>> is a way for rpc.nfsd to automatically and quietly do what is needed.
-> >>>> But I don’t understand the use case here. Sean, can you explain it
-> >>>> for
-> >>>> bears of little brain?
-> >>> 
-> >>> Sure, and please correct me if any of my understanding is incorrect
-> >>> (as it may well be).  In my environment, I wanted to have NFS only
-> >>> listen on one interface of a multihomed host.  In using the "--host"
-> >>> parameter to do so, I saw the error message regarding IPv6 thrown.
-> >>> While disabling IPv6 globally in /etc/netconfig is an option (one I
-> >>> understand to be "global", in that it'd affect *all* applications on
-> >>> the host), it'd be nice to disable IPv6 for a single service/daemon
-> >>> instead.
-> >> 
-> >> But doesn't something like
-> >> 
-> >> 	rpc.nfsd --host 10.0.0.1 --no-ipv6
-> >> 
-> >> seem a bit redundant?
-> > 
-> > In that case, perhaps it does.  But what if you were to use a hostname that resolved to both IPv4 and IPv6 addresses?
-> 
-> I think the common expectation is that NFSD should present an IPv6
-> listener in that case.
-> 
-> If you give rpc.nfsd a hostname and it has no mapped IPv6 address, or
-> you give rpc.nfsd an IPv4 address, then no IPv6 listener should be
-> started.
-> 
-> >> I mean, you've already told it to listen to that one (ipv4) address.
-> >> That'd argue for just disabling the warning in this case, I think.
-> 
-> I agree with that (either disabling it, or getting rid of the false
-> negative).
-> 
-> >> But my understanding of IPv6 is still poor.
-> > 
-> > Yours and mine both.  But until it gets better, I’m very comfortable in just turning it off in places where 1) I know it’s not needed and 2) Places where exploits could linger with most of our emphasis on IPv4 still.
-> 
-> In the specific usage scenario you opened the thread with, you used
-> a hostname with no IPv6 mapping, and you got exactly what you wanted:
-> only an IPv4 listener.
-> 
-> Seems like the rpc.nfsd command line interface is already rich enough
-> to provide what you want?
+> Actually, for most cases, making kthreads freezable is unnecessary and
+> often indicative of something going wrong.  This is a crude mechanism
+> which goes along the line of "if all threads are stopped, the machine
+> should be safe to be put into whatever state", which isn't true at all
+> as there usually are a lot of stuff going on asynchronously especially
+> when interacting with hardware.
 
-Yeah.  If somebody does need the --no-ipv4/6 stuff then we can add that
-in addition, but first let's just kill the warning, it sounds to me like
-that warning's just wrong.
+I think that the interaction with the hardware should be the reason to
+make them properly freezable. In the current state they are stopped at
+some random place, they might either miss some event from the hardware
+or the hardware might get resumed into another state and the kthread
+might wait forever.
 
---b.
+Also I think that freezing kthreads on some well defined location
+should help with reproducing and fixing problems.
+
+Note that _only_ kthreads using the _new API_ should be freezable by
+default. The move need to be done carefully. It is chance to review
+and clean up the freezer stuff.
+
+Of course, I might be too optimistic here.
+
+> In most cases, we want to implement proper power management callbacks
+> which plug new issuance of whatever work-unit the code is dealing with
+> and drain in-flight ones.  Whether the worker threads are frozen or
+> not doesn't matter once that's implemented.
+
+I see. The power management is important here.
+
+
+> It seems that people have been marking kthreads freezable w/o really
+> thinking about it - some of them are subtly broken due to missing
+> drainage of in-flight things while others simply don't need freezing
+> for correctness.
+
+I have similar feeling.
+
+> We do want to clean up freezer usage in the kernel but definitely do
+> not want to make kthreads freezable by default especially given that
+> the freezer essentially is one giant lockdep-less system-wide lock.
+
+I think that we both want to clean up freezing. I would like to make
+it more deterministic and you suggest to make it more relaxed.
+Do I understand it correctly?
+
+Best Regards,
+Petr
+
+
+PS: Thanks a lot everyone for feedback. I try hard to get it
+somehow sorted and more confident about the conclusions.
