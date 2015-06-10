@@ -1,264 +1,135 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f173.google.com ([209.85.220.173]:35788 "EHLO
-	mail-qk0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753877AbbFJOqW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Jun 2015 10:46:22 -0400
-Received: by qkhq76 with SMTP id q76so26156638qkh.2
-        for <linux-nfs@vger.kernel.org>; Wed, 10 Jun 2015 07:46:22 -0700 (PDT)
-Received: from manet.1015granger.net ([2604:8800:100:81fc:82ee:73ff:fe43:d64f])
-        by mx.google.com with ESMTPSA id 45sm4225671qgc.4.2015.06.10.07.46.20
-        for <linux-nfs@vger.kernel.org>
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Wed, 10 Jun 2015 07:46:20 -0700 (PDT)
-Subject: [PATCH v3] rpc.nfsd: Squelch DNS errors when using the --host option
-From: Chuck Lever <chuck.lever@oracle.com>
-To: linux-nfs@vger.kernel.org
-Date: Wed, 10 Jun 2015 10:46:19 -0400
-Message-ID: <20150610144349.19869.87412.stgit@manet.1015granger.net>
+Received: from mx1.redhat.com ([209.132.183.28]:50685 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S966334AbbFJQnS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 10 Jun 2015 12:43:18 -0400
+Date: Wed, 10 Jun 2015 17:43:15 +0100
+From: Stefan Hajnoczi <stefanha@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org, Anna Schumaker <anna.schumaker@netapp.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        asias.hejun@gmail.com, netdev@vger.kernel.org,
+        Daniel Berrange <berrange@redhat.com>,
+        "David S. Miller" <davem@davemloft.net>
+Subject: Re: [RFC 00/10] NFS: add AF_VSOCK support to NFS client
+Message-ID: <20150610164315.GD17294@stefanha-thinkpad.redhat.com>
+References: <1433436353-6761-1-git-send-email-stefanha@redhat.com>
+ <20150608210247.GB27887@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature"; boundary="HWvPVVuAAfuRc6SZ"
+In-Reply-To: <20150608210247.GB27887@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Sean Elble <elbles@sessys.com> says:
-> [rpc.nfsd --host] throws an error/warning (where nfs-server is
-> defined in /etc/hosts for the IPv4 address of the interface I wish
-> for TCP port 2049 to be opened on):
->
->  rpc.nfsd: unable to resolve nfs-server:nfs to inet6 address: Name
->  or service not known
 
-I think we can simplify the use of getaddrinfo(3) so that only one
-call is needed to gather both IPv4 and IPv6 addresses. The call
-should fail, and an error should be reported, only when there are
-_no_ addresses bound to a hostname.
+--HWvPVVuAAfuRc6SZ
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
-Reported-by: Sean Elble <elbles@sessys.com>
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+On Mon, Jun 08, 2015 at 05:02:47PM -0400, J. Bruce Fields wrote:
+> On Thu, Jun 04, 2015 at 05:45:43PM +0100, Stefan Hajnoczi wrote:
+> > The approach in this series
+> > ---------------------------
+> > AF_VSOCK stream sockets can be used for NFSv4.1 much in the same way as=
+ TCP.
+> > RFC 1831 record fragments divide messages since SOCK_STREAM semantics a=
+re
+> > present.  The backchannel shares the connection just like the default T=
+CP
+> > configuration.
+>=20
+> So the NFSv4 backchannel isn't handled for now, I assume.
 
+Right, I did not touch nfs4_callback_up_net(), only
+nfs41_callback_up_net().
 
-Here is version 3. This version addresses both Jeff's and Kinglong's
-review comments. It has passed basic testing.
+If I'm reading the code right NFSv4 uses a separate listen port for the
+backchannel instead of sharing the client's socket?
 
+This is possible to implement with AF_VSOCK but I have only tested
+NFSv4.1 so far.  Should I go ahead and do this?
 
- utils/nfsd/nfsd.c   |   70 ++-------------------------------------------------
- utils/nfsd/nfssvc.c |   47 ++++++++++++++++++----------------
- utils/nfsd/nfssvc.h |    2 +
- 3 files changed, 29 insertions(+), 90 deletions(-)
+> And I guess
+> NFSv2/v3 is out too thanks to rpcbind?  Which maybe is fine.
 
-diff --git a/utils/nfsd/nfsd.c b/utils/nfsd/nfsd.c
-index 201bb13..2165744 100644
---- a/utils/nfsd/nfsd.c
-+++ b/utils/nfsd/nfsd.c
-@@ -52,50 +52,6 @@ static struct option longopts[] =
- 	{ NULL, 0, 0, 0 }
- };
- 
--/* given a family and ctlbits, disable any that aren't listed in netconfig */
--#ifdef HAVE_LIBTIRPC
--static void
--nfsd_enable_protos(unsigned int *proto4, unsigned int *proto6)
--{
--	struct netconfig *nconf;
--	unsigned int *famproto;
--	void *handle;
--
--	xlog(D_GENERAL, "Checking netconfig for visible protocols.");
--
--	handle = setnetconfig();
--	while((nconf = getnetconfig(handle))) {
--		if (!(nconf->nc_flag & NC_VISIBLE))
--			continue;
--
--		if (!strcmp(nconf->nc_protofmly, NC_INET))
--			famproto = proto4;
--		else if (!strcmp(nconf->nc_protofmly, NC_INET6))
--			famproto = proto6;
--		else
--			continue;
--
--		if (!strcmp(nconf->nc_proto, NC_TCP))
--			NFSCTL_TCPSET(*famproto);
--		else if (!strcmp(nconf->nc_proto, NC_UDP))
--			NFSCTL_UDPSET(*famproto);
--
--		xlog(D_GENERAL, "Enabling %s %s.", nconf->nc_protofmly,
--			nconf->nc_proto);
--	}
--	endnetconfig(handle);
--	return;
--}
--#else /* HAVE_LIBTIRPC */
--static void
--nfsd_enable_protos(unsigned int *proto4, unsigned int *proto6)
--{
--	/* Enable all IPv4 protocols if no TIRPC support */
--	*proto4 = NFSCTL_ALLBITS;
--	*proto6 = 0;
--}
--#endif /* HAVE_LIBTIRPC */
--
- int
- main(int argc, char **argv)
- {
-@@ -108,8 +64,6 @@ main(int argc, char **argv)
- 	unsigned int minorversset = 0;
- 	unsigned int versbits = NFSCTL_VERDEFAULT;
- 	unsigned int protobits = NFSCTL_ALLBITS;
--	unsigned int proto4 = 0;
--	unsigned int proto6 = 0;
- 	int grace = -1;
- 	int lease = -1;
- 
-@@ -278,18 +232,6 @@ main(int argc, char **argv)
- 
- 	xlog_open(progname);
- 
--	nfsd_enable_protos(&proto4, &proto6);
--
--	if (!NFSCTL_TCPISSET(protobits)) {
--		NFSCTL_TCPUNSET(proto4);
--		NFSCTL_TCPUNSET(proto6);
--	}
--
--	if (!NFSCTL_UDPISSET(protobits)) {
--		NFSCTL_UDPUNSET(proto4);
--		NFSCTL_UDPUNSET(proto6);
--	}
--
- 	/* make sure that at least one version is enabled */
- 	found_one = 0;
- 	for (c = NFSD_MINVERS; c <= NFSD_MAXVERS; c++) {
-@@ -302,8 +244,7 @@ main(int argc, char **argv)
- 	}
- 
- 	if (NFSCTL_VERISSET(versbits, 4) &&
--	    !NFSCTL_TCPISSET(proto4) &&
--	    !NFSCTL_TCPISSET(proto6)) {
-+	    !NFSCTL_TCPISSET(protobits)) {
- 		xlog(L_ERROR, "version 4 requires the TCP protocol");
- 		exit(1);
- 	}
-@@ -337,15 +278,10 @@ main(int argc, char **argv)
- 
- 	i = 0;
- 	do {
--		error = nfssvc_set_sockets(AF_INET, proto4, haddr[i], port);
--		if (!error)
--			socket_up = 1;
--#ifdef IPV6_SUPPORTED
--		error = nfssvc_set_sockets(AF_INET6, proto6, haddr[i], port);
-+		error = nfssvc_set_sockets(protobits, haddr[i], port);
- 		if (!error)
- 			socket_up = 1;
--#endif /* IPV6_SUPPORTED */
--	} while (++i < hcounter); 
-+	} while (++i < hcounter);
- 
- 	if (rdma_port) {
- 		error = nfssvc_set_rdmaport(rdma_port);
-diff --git a/utils/nfsd/nfssvc.c b/utils/nfsd/nfssvc.c
-index 027e5ac..a2b11d8 100644
---- a/utils/nfsd/nfssvc.c
-+++ b/utils/nfsd/nfssvc.c
-@@ -24,6 +24,7 @@
- 
- #include "nfslib.h"
- #include "xlog.h"
-+#include "nfssvc.h"
- 
- #ifndef NFSD_FS_DIR
- #define NFSD_FS_DIR	  "/proc/fs/nfsd"
-@@ -124,22 +125,6 @@ nfssvc_setfds(const struct addrinfo *hints, const char *node, const char *port)
- 	if (fd < 0)
- 		return 0;
- 
--	switch(hints->ai_family) {
--	case AF_INET:
--		family = "inet";
--		break;
--#ifdef IPV6_SUPPORTED
--	case AF_INET6:
--		family = "inet6";
--		break;
--#endif /* IPV6_SUPPORTED */
--	default:
--		xlog(L_ERROR, "Unknown address family specified: %d\n",
--				hints->ai_family);
--		rc = EAFNOSUPPORT;
--		goto error;
--	}
--
- 	rc = getaddrinfo(node, port, hints, &addrhead);
- 	if (rc == EAI_NONAME && !strcmp(port, "nfs")) {
- 		snprintf(buf, sizeof(buf), "%d", NFS_PORT);
-@@ -147,10 +132,10 @@ nfssvc_setfds(const struct addrinfo *hints, const char *node, const char *port)
- 	}
- 
- 	if (rc != 0) {
--		xlog(L_ERROR, "unable to resolve %s:%s to %s address: "
--				"%s", node ? node : "ANYADDR", port, family,
--				rc == EAI_SYSTEM ? strerror(errno) :
--					gai_strerror(rc));
-+		xlog(L_ERROR, "unable to resolve %s:%s: %s",
-+			node ? node : "ANYADDR", port,
-+			rc == EAI_SYSTEM ? strerror(errno) :
-+				gai_strerror(rc));
- 		goto error;
- 	}
- 
-@@ -169,6 +154,20 @@ nfssvc_setfds(const struct addrinfo *hints, const char *node, const char *port)
- 			continue;
- 		}
- 
-+		switch(addr->ai_addr->sa_family) {
-+		case AF_INET:
-+			family = "AF_INET";
-+			break;
-+#ifdef IPV6_SUPPORTED
-+		case AF_INET6:
-+			family = "AF_INET6";
-+			break;
-+#endif /* IPV6_SUPPORTED */
-+		default:
-+			addr = addr->ai_next;
-+			continue;
-+		}
-+
- 		xlog(D_GENERAL, "Creating %s %s socket.", family, proto);
- 
- 		/* open socket and prepare to hand it off to kernel */
-@@ -252,12 +251,16 @@ error:
- }
- 
- int
--nfssvc_set_sockets(const int family, const unsigned int protobits,
-+nfssvc_set_sockets(const unsigned int protobits,
- 		   const char *host, const char *port)
- {
- 	struct addrinfo hints = { .ai_flags = AI_PASSIVE };
- 
--	hints.ai_family = family;
-+#ifdef IPV6_SUPPORTED
-+	hints.ai_family = AF_UNSPEC;
-+#else  /* IPV6_SUPPORTED */
-+	hints.ai_family = AF_INET;
-+#endif /* IPV6_SUPPORTED */
- 
- 	if (!NFSCTL_ANYPROTO(protobits))
- 		return EPROTOTYPE;
-diff --git a/utils/nfsd/nfssvc.h b/utils/nfsd/nfssvc.h
-index fbb89b2..7d70f0d 100644
---- a/utils/nfsd/nfssvc.h
-+++ b/utils/nfsd/nfssvc.h
-@@ -22,7 +22,7 @@
- 
- void	nfssvc_mount_nfsdfs(char *progname);
- int	nfssvc_inuse(void);
--int	nfssvc_set_sockets(const int family, const unsigned int protobits,
-+int	nfssvc_set_sockets(const unsigned int protobits,
- 			   const char *host, const char *port);
- void	nfssvc_set_time(const char *type, const int seconds);
- int	nfssvc_set_rdmaport(const char *port);
+Yes, I ignored rpcbind and didn't test NFSv2/v3.
 
+> Do we need an IETF draft or similar to document how NFS should work over
+> AF_VSOCK?
+
+I am not familiar with the standards process but I came across a few
+places where it makes sense to have a standard:
+
+ * SUNRPC netid for AF_VSOCK (currently "tcp", "udp", and others exist)
+ * The uaddr string format ("vsock:...")
+ * Use of RFC 1831 record fragments (just like TCP) over AF_VSOCK
+   SOCK_STREAM sockets
+
+These are all at the SUNRPC level rather than at the NFS protocol level.
+
+Any idea who I need to talk to?
+
+> NFS developers rely heavily on wireshark (and similar tools) for
+> debugging.  Is that still possible over AF_VSOCK?
+
+No, this will require kernel and libpcap patches.  Something like
+drivers/net/nlmon.c is needed for AF_VSOCK.  Basically a dummy network
+interface and code that clones skbs when monitoring is enabled.
+
+It's on the TODO list and will be very useful.
+
+> > The next step is tackling NFS server.  In the meantime, I have tested t=
+he
+> > patches using the nc-vsock netcat-like utility that is available in my =
+Linux
+> > kernel repo below.
+>=20
+> So by a netcat-like utility, you mean it's proxying between client and a
+> server so the client thinks the server is communicating over AF_VSOCK
+> and the server thinks the client is using TCP?  (Sorry, I haven't looked
+> at the code.)
+
+Yes, exactly.  It works since the TCP and AF_VSOCK streams are almost
+bit-compatible.  I think the difference between the streams occurs when
+network addresses are transmitted (e.g. SUNRPC netids), but I haven't
+encountered that with NFSv4.1 and no pnfs or fancy features in use.
+
+> Once we have a server and client, how will you recommend testing them?
+> (Will the server side need to run on real hardware?)
+
+I have been testing nfsd on the host and nfs client in a virtual
+machine.  Vice versa should work in the same way.
+
+It's also possible to run nfsd in VM #1 and nfs client in VM #2 and use
+the netcat-like utility on the host to forward the traffic.  That way
+any kernel panic happens in a VM and doesn't bring down the machine.
+I'll probably begin using this approach when I start nfsd work.
+
+> I guess if it works then the main question is whether it's worth
+> supporting another transport type in order to get the zero-configuration
+> host<->guest NFS setup.  Or whether there's another way to get the same
+> gains.
+
+Thanks!  If anyone has suggestions to avoid adding the AF_VSOCK
+transport I'd be interested to learn about that.
+
+Stefan
+
+--HWvPVVuAAfuRc6SZ
+Content-Type: application/pgp-signature
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1
+
+iQEcBAEBAgAGBQJVeGkjAAoJEJykq7OBq3PIy2wH+gJBTKWNl7Nw7qUYG7Vo4wb5
+oQxSkOwhaA9UDZ2rwoLuMfmxshDRdlRuYZWvhkRjYXUtKOHyvMZ8GSXGM7cSP40/
+gDFAP5kISKM6x2DOAKK47ggt/oe8D6kwaTLCHKceFt9yyeyLsWQ+nLD6bOdy10Rr
+07TAEXH+G1HUQLy9GU5V3EIswL27MobaWdDK+s/gjVJap45bP0gRWdeZVeQLAB9u
+fsAPzX7j2S/jg6evcWHrqQMciFaS/gjpYvTjNyk1TVspx9GNpF/K4rsKXCGd7aQZ
+MqY37vkZsTonPRNtOG5UaKW+iuWQOoHAGWSacfOGZvBBCtJhMp/EvmAU12d+sEY=
+=4pp/
+-----END PGP SIGNATURE-----
+
+--HWvPVVuAAfuRc6SZ--
