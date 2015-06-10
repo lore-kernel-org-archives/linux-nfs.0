@@ -1,112 +1,116 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wi0-f179.google.com ([209.85.212.179]:37323 "EHLO
-	mail-wi0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933379AbbFJIMg convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Jun 2015 04:12:36 -0400
-Received: by wifx6 with SMTP id x6so38807671wif.0
-        for <linux-nfs@vger.kernel.org>; Wed, 10 Jun 2015 01:12:35 -0700 (PDT)
+Received: from bombadil.infradead.org ([198.137.202.9]:46133 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752109AbbFJJGc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Jun 2015 05:06:32 -0400
+Date: Wed, 10 Jun 2015 11:05:49 +0200
+From: Peter Zijlstra <peterz@infradead.org>
+To: Petr Mladek <pmladek@suse.cz>
+Cc: Andrew Morton <akpm@linux-foundation.org>, Oleg Nesterov <oleg@redhat.com>,
+        Tejun Heo <tj@kernel.org>, Ingo Molnar <mingo@redhat.com>,
+        Richard Weinberger <richard@nod.at>,
+        Steven Rostedt <rostedt@goodmis.org>,
+        David Woodhouse <dwmw2@infradead.org>, linux-mtd@lists.infradead.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>, linux-nfs@vger.kernel.org,
+        Chris Mason <clm@fb.com>,
+        "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
+        Thomas Gleixner <tglx@linutronix.de>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Jiri Kosina <jkosina@suse.cz>, Borislav Petkov <bp@suse.de>,
+        Michal Hocko <mhocko@suse.cz>, live-patching@vger.kernel.org,
+        linux-api@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [RFC PATCH 09/18] kthread: Make it easier to correctly sleep in
+ iterant kthreads
+Message-ID: <20150610090549.GC3644@twins.programming.kicks-ass.net>
+References: <1433516477-5153-1-git-send-email-pmladek@suse.cz>
+ <1433516477-5153-10-git-send-email-pmladek@suse.cz>
+ <20150605161021.GJ19282@twins.programming.kicks-ass.net>
+ <20150608100107.GA3135@pathway.suse.cz>
+ <1433763595.1495.35.camel@twins>
+ <20150609152526.GB9409@pathway.suse.cz>
 MIME-Version: 1.0
-In-Reply-To: <1433875204-18060-1-git-send-email-jeff.layton@primarydata.com>
-References: <1433875204-18060-1-git-send-email-jeff.layton@primarydata.com>
-From: Leon Romanovsky <leon@leon.nu>
-Date: Wed, 10 Jun 2015 11:12:14 +0300
-Message-ID: <CALq1K=J2JHswhYX+z4RX-fm75JqXeR8Yq8sMzeDqCjSoRN0oEw@mail.gmail.com>
-Subject: Re: [PATCH] net, swap: Remove a warning and clarify why
- sk_mem_reclaim is required when deactivating swap
-To: Jeff Layton <jlayton@poochiereds.net>
-Cc: trond.myklebust@primarydata.com, davem@davemloft.net,
-        netdev@vger.kernel.org, linux-nfs@vger.kernel.org,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        Mel Gorman <mgorman@suse.de>, Linux-MM <linux-mm@kvack.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20150609152526.GB9409@pathway.suse.cz>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jun 9, 2015 at 9:40 PM, Jeff Layton <jlayton@poochiereds.net> wrote:
-> From: Mel Gorman <mgorman@suse.de>
->
-> Jeff Layton reported the following;
->
->  [   74.232485] ------------[ cut here ]------------
->  [   74.233354] WARNING: CPU: 2 PID: 754 at net/core/sock.c:364 sk_clear_memalloc+0x51/0x80()
->  [   74.234790] Modules linked in: cts rpcsec_gss_krb5 nfsv4 dns_resolver nfs fscache xfs libcrc32c snd_hda_codec_generic snd_hda_intel snd_hda_controller snd_hda_codec snd_hda_core snd_hwdep snd_seq snd_seq_device nfsd snd_pcm snd_timer snd e1000 ppdev parport_pc joydev parport pvpanic soundcore floppy serio_raw i2c_piix4 pcspkr nfs_acl lockd virtio_balloon acpi_cpufreq auth_rpcgss grace sunrpc qxl drm_kms_helper ttm drm virtio_console virtio_blk virtio_pci ata_generic virtio_ring pata_acpi virtio
->  [   74.243599] CPU: 2 PID: 754 Comm: swapoff Not tainted 4.1.0-rc6+ #5
->  [   74.244635] Hardware name: Bochs Bochs, BIOS Bochs 01/01/2011
->  [   74.245546]  0000000000000000 0000000079e69e31 ffff8800d066bde8 ffffffff8179263d
->  [   74.246786]  0000000000000000 0000000000000000 ffff8800d066be28 ffffffff8109e6fa
->  [   74.248175]  0000000000000000 ffff880118d48000 ffff8800d58f5c08 ffff880036e380a8
->  [   74.249483] Call Trace:
->  [   74.249872]  [<ffffffff8179263d>] dump_stack+0x45/0x57
->  [   74.250703]  [<ffffffff8109e6fa>] warn_slowpath_common+0x8a/0xc0
->  [   74.251655]  [<ffffffff8109e82a>] warn_slowpath_null+0x1a/0x20
->  [   74.252585]  [<ffffffff81661241>] sk_clear_memalloc+0x51/0x80
->  [   74.253519]  [<ffffffffa0116c72>] xs_disable_swap+0x42/0x80 [sunrpc]
->  [   74.254537]  [<ffffffffa01109de>] rpc_clnt_swap_deactivate+0x7e/0xc0 [sunrpc]
->  [   74.255610]  [<ffffffffa03e4fd7>] nfs_swap_deactivate+0x27/0x30 [nfs]
->  [   74.256582]  [<ffffffff811e99d4>] destroy_swap_extents+0x74/0x80
->  [   74.257496]  [<ffffffff811ecb52>] SyS_swapoff+0x222/0x5c0
->  [   74.258318]  [<ffffffff81023f27>] ? syscall_trace_leave+0xc7/0x140
->  [   74.259253]  [<ffffffff81798dae>] system_call_fastpath+0x12/0x71
->  [   74.260158] ---[ end trace 2530722966429f10 ]---
->
-> The warning in question was unnecessary but with Jeff's series the rules
-> are also clearer.  This patch removes the warning and updates the comment
-> to explain why sk_mem_reclaim() may still be called.
->
-> Signed-off-by: Mel Gorman <mgorman@suse.de>
-> Acked-by: Jeff Layton <jeff.layton@primarydata.com>
-> ---
->  net/core/sock.c | 12 +++++-------
->  1 file changed, 5 insertions(+), 7 deletions(-)
->
-> diff --git a/net/core/sock.c b/net/core/sock.c
-> index 292f42228bfb..2bb4c56370e5 100644
-> --- a/net/core/sock.c
-> +++ b/net/core/sock.c
-> @@ -354,14 +354,12 @@ void sk_clear_memalloc(struct sock *sk)
->
->         /*
->          * SOCK_MEMALLOC is allowed to ignore rmem limits to ensure forward
-> -        * progress of swapping. However, if SOCK_MEMALLOC is cleared while
-> -        * it has rmem allocations there is a risk that the user of the
-> -        * socket cannot make forward progress due to exceeding the rmem
-> -        * limits. By rights, sk_clear_memalloc() should only be called
-> -        * on sockets being torn down but warn and reset the accounting if
-> -        * that assumption breaks.
-> +        * progress of swapping. SOCK_MEMALLOC may be cleared while
-> +        * it has rmem allocations due to the last swapfile being deactivated
-> +        * but there is a risk that the socket is unusable due to exceeding
-> +        * the rmem limits. Reclaim the reserves and obey rmem limits again.
->          */
-> -       if (WARN_ON(sk->sk_forward_alloc))
-> +       if (sk->sk_forward_alloc)
-You don't really need this IF. if sk->sk_forward_alloc is equal to
-zero, it will be less than SK_MEM_QUANTUM.
-http://lxr.free-electrons.com/source/include/net/sock.h#L1405
+On Tue, Jun 09, 2015 at 05:25:26PM +0200, Petr Mladek wrote:
+> On Mon 2015-06-08 13:39:55, Peter Zijlstra wrote:
+> > On Mon, 2015-06-08 at 12:01 +0200, Petr Mladek wrote:
+> > 
+> > > Just to be sure. Do you suggest to use TASK_IDLE everywhere in
+> > > kthreads or only when the uninterruptible sleep is really needed?
+> >
+> > Always, only use INTERRUPTIBLE when you're actually interruptible, that
+> > is you want signals or such muck to terminate your wait.
+> 
+> I like that TASK_IDLE clearly describes that the state of the task.
+> I am just curious. Is there any particular advantage of using
+> uninterruptible sleep over the interruptible one, please?
 
-1405 static inline void sk_mem_reclaim(struct sock *sk)
-1406 {
-1407         if (!sk_has_account(sk))
-1408                 return;
-1409         if (sk->sk_forward_alloc >= SK_MEM_QUANTUM)
-1410                 __sk_mem_reclaim(sk);
-1411 }
+I think, given how all schedule() calls should be inside a loop testing
+their sleep condition, and one has to assume spurious wakeups anyhow,
+one can make an argument for removing the distinction.
+
+That said, typically INTERRUPTIBLE means 'capable of handling signals
+while waiting for $foo', and as said elsewhere in this thread, kthreads
+should not really be having signals.
+
+In that spirit, I think UNINTERRUPTIBLE is the right sleep.
+
+> I ask because making freezable kthreads is quite tricky. You need to
+> call try_to_freeze() after each schedule or call freezable_* variants
+> of schedule(). I think that it is easy to make a mistake. I wonder if
+> it might be more elegant to use interruptible sleep whenever possible,
+> send the fake signal also to kthreads and force them moving into some
+> location where the freeze is safe and handled.
+
+I don't think that's really a concern here, you have an absolutely
+perfect freeze point and freezable_schedule() is fine.
+> 
+> > > IMHO, we should not use TASK_IDLE in freezable kthreads because
+> > > it would break freezing.
+> > 
+> > How so? The task is IDLE, its not doing anything.
+> 
+> Well, it might cause the freeze. I have just double checked this
+> with ubi_thread(). It calls set_freezable().
+
+> I did the following change:
+> 
+> diff --git a/drivers/mtd/ubi/wl.c b/drivers/mtd/ubi/wl.c
+> index 16214d3d57a4..d528fa5e93ba 100644
+> --- a/drivers/mtd/ubi/wl.c
+> +++ b/drivers/mtd/ubi/wl.c
+> @@ -1428,7 +1428,7 @@ int ubi_thread(void *u)
+>                 spin_lock(&ubi->wl_lock);
+>                 if (list_empty(&ubi->works) || ubi->ro_mode ||
+>                     !ubi->thread_enabled || ubi_dbg_is_bgt_disabled(ubi)) {
+> -                       set_current_state(TASK_INTERRUPTIBLE);
+> +                       set_current_state(TASK_IDLE);
+>                         spin_unlock(&ubi->wl_lock);
+>                         schedule();
+>                         continue;
 
 
->                 sk_mem_reclaim(sk);
->  }
->  EXPORT_SYMBOL_GPL(sk_clear_memalloc);
-> --
-> 2.4.2
->
-> --
-> To unsubscribe, send a message with 'unsubscribe linux-mm' in
-> the body to majordomo@kvack.org.  For more info on Linux MM,
-> see: http://www.linux-mm.org/ .
-> Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+> or use in ubi_thread()
+> 
+> 		freezable_schedule()
 
+This
 
+> or always ignore freezing when the task sets TASK_IDLE.
 
--- 
-Leon Romanovsky | Independent Linux Consultant
-        www.leon.nu | leon@leon.nu
+Can't, because they might get woken up, in which case they need to end
+up in the fridge.
+
+> > And this is the arch typical freeze point if ever there was one, you're
+> > checking kthread_stop, if we can terminate the kthread, we can certainly
+> > get frozen.
+> 
+> It makes sense. The tasks should be in some sane state when it goes
+> into the idle state. I hope that people will not misuse it too much.
+
+Do your utmost bestest to put in as many assertions as you can to avoid
+abuse.
