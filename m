@@ -1,269 +1,102 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:48389 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754010AbbFJBg0 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Jun 2015 21:36:26 -0400
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
-Subject: Re: [PATCH v2] rpc.nfsd: Squelch DNS errors when using the --host option
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <557792B1.9070008@gmail.com>
-Date: Tue, 9 Jun 2015 21:36:25 -0400
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Jeff Layton <jlayton@poochiereds.net>
-Message-Id: <EDAC041D-7D2F-4C57-8424-58E04A7FE862@oracle.com>
-References: <20150610010300.4602.66091.stgit@manet.1015granger.net> <557792B1.9070008@gmail.com>
-To: Kinglong Mee <kinglongmee@gmail.com>
+Received: from mail-pa0-f50.google.com ([209.85.220.50]:32848 "EHLO
+	mail-pa0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752616AbbFJDNg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Jun 2015 23:13:36 -0400
+Date: Wed, 10 Jun 2015 12:13:21 +0900
+From: Tejun Heo <tj@kernel.org>
+To: Jiri Kosina <jkosina@suse.cz>
+Cc: Petr Mladek <pmladek@suse.cz>, Andrew Morton <akpm@linux-foundation.org>,
+        Oleg Nesterov <oleg@redhat.com>, Ingo Molnar <mingo@redhat.com>,
+        Peter Zijlstra <peterz@infradead.org>,
+        Richard Weinberger <richard@nod.at>,
+        Steven Rostedt <rostedt@goodmis.org>,
+        David Woodhouse <dwmw2@infradead.org>, linux-mtd@lists.infradead.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>, linux-nfs@vger.kernel.org,
+        Chris Mason <clm@fb.com>,
+        "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
+        Thomas Gleixner <tglx@linutronix.de>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Borislav Petkov <bp@suse.de>, Michal Hocko <mhocko@suse.cz>,
+        live-patching@vger.kernel.org, linux-api@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [RFC PATCH 06/18] signal/kthread: Initial implementation of
+ kthread signal handling
+Message-ID: <20150610031321.GF11955@mtj.duckdns.org>
+References: <1433516477-5153-1-git-send-email-pmladek@suse.cz>
+ <1433516477-5153-7-git-send-email-pmladek@suse.cz>
+ <20150609071022.GX21465@mtj.duckdns.org>
+ <alpine.LNX.2.00.1506091405360.12753@pobox.suse.cz>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <alpine.LNX.2.00.1506091405360.12753@pobox.suse.cz>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hello, Jiri.
 
-On Jun 9, 2015, at 9:28 PM, Kinglong Mee <kinglongmee@gmail.com> wrote:
+On Tue, Jun 09, 2015 at 02:15:24PM +0200, Jiri Kosina wrote:
+> To me, the ultimate goal (*) is to make it possible for kthread to be able 
+> to decide whether it wants "some kind of default behavior" (however that'd 
+> be defined), or "ignore all", or "just handle this set of signals with 
+> these handlers", and make API for this that would avoid every kthread 
+> implementing its own complete signal handling.
 
-> On 6/10/2015 9:04 AM, Chuck Lever wrote:
->> Sean Elble <elbles@sessys.com> says:
->>> [rpc.nfsd --host] throws an error/warning (where nfs-server is
->>> defined in /etc/hosts for the IPv4 address of the interface I wish
->>> for TCP port 2049 to be opened on):
->>> 
->>> rpc.nfsd: unable to resolve nfs-server:nfs to inet6 address: Name
->>> or service not known
->> 
->> I think we can simplify the use of getaddrinfo(3) so that only one
->> call is needed to gather both IPv4 and IPv6 addresses. The call
->> should fail, and an error should be reported, only when there are
->> _no_ addresses bound to a hostname.
->> 
->> Reported-by: Sean Elble <elbles@sessys.com>
->> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->> ---
->> 
->> Second take, after review by Jeff. This one should now create both
->> an IPv4 and an IPv6 listener in the case where -H is not specified.
->> 
->> 
->> utils/nfsd/nfsd.c   |   75 +++------------------------------------------------
->> utils/nfsd/nfssvc.c |    9 +++++-
->> utils/nfsd/nfssvc.h |    2 +
->> 3 files changed, 13 insertions(+), 73 deletions(-)
->> 
->> diff --git a/utils/nfsd/nfsd.c b/utils/nfsd/nfsd.c
->> index 201bb13..586a9f2 100644
->> --- a/utils/nfsd/nfsd.c
->> +++ b/utils/nfsd/nfsd.c
->> @@ -52,50 +52,6 @@ static struct option longopts[] =
->> 	{ NULL, 0, 0, 0 }
->> };
->> 
->> -/* given a family and ctlbits, disable any that aren't listed in netconfig */
->> -#ifdef HAVE_LIBTIRPC
->> -static void
->> -nfsd_enable_protos(unsigned int *proto4, unsigned int *proto6)
->> -{
->> -	struct netconfig *nconf;
->> -	unsigned int *famproto;
->> -	void *handle;
->> -
->> -	xlog(D_GENERAL, "Checking netconfig for visible protocols.");
->> -
->> -	handle = setnetconfig();
->> -	while((nconf = getnetconfig(handle))) {
->> -		if (!(nconf->nc_flag & NC_VISIBLE))
->> -			continue;
->> -
->> -		if (!strcmp(nconf->nc_protofmly, NC_INET))
->> -			famproto = proto4;
->> -		else if (!strcmp(nconf->nc_protofmly, NC_INET6))
->> -			famproto = proto6;
->> -		else
->> -			continue;
->> -
->> -		if (!strcmp(nconf->nc_proto, NC_TCP))
->> -			NFSCTL_TCPSET(*famproto);
->> -		else if (!strcmp(nconf->nc_proto, NC_UDP))
->> -			NFSCTL_UDPSET(*famproto);
->> -
->> -		xlog(D_GENERAL, "Enabling %s %s.", nconf->nc_protofmly,
->> -			nconf->nc_proto);
->> -	}
->> -	endnetconfig(handle);
->> -	return;
->> -}
->> -#else /* HAVE_LIBTIRPC */
->> -static void
->> -nfsd_enable_protos(unsigned int *proto4, unsigned int *proto6)
->> -{
->> -	/* Enable all IPv4 protocols if no TIRPC support */
->> -	*proto4 = NFSCTL_ALLBITS;
->> -	*proto6 = 0;
->> -}
->> -#endif /* HAVE_LIBTIRPC */
->> -
->> int
->> main(int argc, char **argv)
->> {
->> @@ -108,8 +64,6 @@ main(int argc, char **argv)
->> 	unsigned int minorversset = 0;
->> 	unsigned int versbits = NFSCTL_VERDEFAULT;
->> 	unsigned int protobits = NFSCTL_ALLBITS;
->> -	unsigned int proto4 = 0;
->> -	unsigned int proto6 = 0;
->> 	int grace = -1;
->> 	int lease = -1;
->> 
->> @@ -278,18 +232,6 @@ main(int argc, char **argv)
->> 
->> 	xlog_open(progname);
->> 
->> -	nfsd_enable_protos(&proto4, &proto6);
->> -
->> -	if (!NFSCTL_TCPISSET(protobits)) {
->> -		NFSCTL_TCPUNSET(proto4);
->> -		NFSCTL_TCPUNSET(proto6);
->> -	}
->> -
->> -	if (!NFSCTL_UDPISSET(protobits)) {
->> -		NFSCTL_UDPUNSET(proto4);
->> -		NFSCTL_UDPUNSET(proto6);
->> -	}
->> -
->> 	/* make sure that at least one version is enabled */
->> 	found_one = 0;
->> 	for (c = NFSD_MINVERS; c <= NFSD_MAXVERS; c++) {
->> @@ -302,8 +244,7 @@ main(int argc, char **argv)
->> 	}
->> 
->> 	if (NFSCTL_VERISSET(versbits, 4) &&
->> -	    !NFSCTL_TCPISSET(proto4) &&
->> -	    !NFSCTL_TCPISSET(proto6)) {
->> +	    !NFSCTL_TCPISSET(protobits)) {
->> 		xlog(L_ERROR, "version 4 requires the TCP protocol");
->> 		exit(1);
->> 	}
->> @@ -335,23 +276,17 @@ main(int argc, char **argv)
->> 	if (lease  > 0)
->> 		nfssvc_set_time("lease", lease);
->> 
->> -	i = 0;
->> -	do {
->> -		error = nfssvc_set_sockets(AF_INET, proto4, haddr[i], port);
->> +	for (i = 0; i < hcounter; i++) {
->> +		error = nfssvc_set_sockets(protobits, haddr[i], port);
+Yes, cleaning up the current usages like above would be great but one
+concern is that the above might inadvertantly encourage usage of
+signals in kthreads which I don't think is a good idea.  It'd be great
+if we can consolidate the current users while also making it clear
+that we shouldn't be adding new ones.
+
+> > While we do have several kthread signal users, they aren't too many and 
+> > majority of them use it to allow userland to tell it to shutdown and 
 > 
-> Must use do {} while() here,
-> otherwise nfssvc_set_sockets will never be called when rpc.nfsd without anything.
+> Yeah. Via SIGKILL. Or SIGTERM. Or SIGINT. Or SIGQUIT. Not really 
+> consistent either.
 
-Yech. OK, I’ll revert that.
+Exactly, and it's pretty confusing from userland.  Why do some
+kthreads take SIGTERM but not SIGKILL while others do the other way
+and yet others ignore them all?  This is too low level for a userland
+visible interface which is tied too closely to the implementation
+detail (usage of one kthread) and often unclear in terms of the
+meaning of the action.
 
+> > there seem to be a couple which use HUP/USR1 to cancel whatever it's 
+> > processing / waiting on at the moment.  Hmmm... jffs uses STOP/CONT too.
 > 
->> 		if (!error)
->> 			socket_up = 1;
->> -#ifdef IPV6_SUPPORTED
->> -		error = nfssvc_set_sockets(AF_INET6, proto6, haddr[i], port);
->> -		if (!error)
->> -			socket_up = 1;
->> -#endif /* IPV6_SUPPORTED */
->> -	} while (++i < hcounter); 
->> -
->> +	}
->> 	if (rdma_port) {
->> 		error = nfssvc_set_rdmaport(rdma_port);
->> 		if (!error)
->> 			socket_up = 1;
->> 	}
->> +
->> set_threads:
->> 	/* don't start any threads if unable to hand off any sockets */
->> 	if (!socket_up) {
->> diff --git a/utils/nfsd/nfssvc.c b/utils/nfsd/nfssvc.c
->> index 027e5ac..2bcd600 100644
->> --- a/utils/nfsd/nfssvc.c
->> +++ b/utils/nfsd/nfssvc.c
->> @@ -24,6 +24,7 @@
->> 
->> #include "nfslib.h"
->> #include "xlog.h"
->> +#include "nfssvc.h"
->> 
->> #ifndef NFSD_FS_DIR
->> #define NFSD_FS_DIR	  "/proc/fs/nfsd"
->> @@ -252,12 +253,16 @@ error:
->> }
->> 
+> > I don't know how this should be done but let's please try to
+> > 
+> > 1. Encourage uniform behaviors across the signals.
 > 
-> Also, nfssvc_setfds needs update, otherwise, 
+> Fully agreed.
 > 
-> rpc.nfsd: Unknown address family specified: 0
+> > 2. Ultimately discourage usage of signals on kthreads as this closely
+> >    ties implementation detail (use of single kthread) to the userland
+> >    visible interface in a way where we can't easily get back out of.
+> >    For example, what if jffs needs its gc workers to be multi-threaded
+> >    and per-NUMA for high-iops devices later on?
 > 
-> rpc.nfsd: unable to set any sockets for nfsd
-> 
-> @@ -125,6 +126,9 @@ nfssvc_setfds(const struct addrinfo *hints, const char *node, const char *port)
->                return 0;
-> 
->        switch(hints->ai_family) {
-> +       case AF_UNSPEC:
-> +               family = "unspec";
-> +               break;
->        case AF_INET:
->                family = "inet";
->                break;
-> @@ -252,12 +256,16 @@ error:
+> What kind of multi-threading kthreads are you referring to here? Something 
+> more sophisticated than simply spawning several per-CPU (or 
+> per-whatever-resource) full-fledged kthreads?
 
-Actually, here I might consider removing all of that logic. “family”
-is used only when reporting errors, and “unspec” really doesn’t make
-sense in these error messages.
+Becoming simple multi-threaded or per-cpu are good examples but these
+things not too rarely develop into something which needs more
+sophiscation.  e.g. jobs which process considerable amount data are
+usually best served by NUMA-node-affine workers roughly matching the
+number of CPUs in each node.  workqueue is half way there but still
+lacking an automatic way to regulate concurrency in those cases.
 
-Checking hints->ai->family seems like overkill, as it is set right
-here in nfssvc.c, and is not provided from user input.
+For certain use cases, you really can't avoid employing a pool of
+workers and once things get there, having tied userland interface to a
+single kthread becomes pretty awkward.  It sure works for certain use
+cases and sending signals to kthreads *might* be considered a "softer"
+interface where userland is meddling with kernel implementation
+details that it can be changed later on but it can still be painful
+for users depending on it.
 
-Thanks for the review!
+Thanks.
 
-> thanks,
-> Kinglong Mee
-> 
->> int
->> -nfssvc_set_sockets(const int family, const unsigned int protobits,
->> +nfssvc_set_sockets(const unsigned int protobits,
->> 		   const char *host, const char *port)
->> {
->> 	struct addrinfo hints = { .ai_flags = AI_PASSIVE };
->> 
->> -	hints.ai_family = family;
->> +#ifdef IPV6_SUPPORTED
->> +	hints.ai_family = AF_UNSPEC;
->> +#else
->> +	hints.ai_family = AF_INET;
->> +#endif
->> 
->> 	if (!NFSCTL_ANYPROTO(protobits))
->> 		return EPROTOTYPE;
->> diff --git a/utils/nfsd/nfssvc.h b/utils/nfsd/nfssvc.h
->> index fbb89b2..7d70f0d 100644
->> --- a/utils/nfsd/nfssvc.h
->> +++ b/utils/nfsd/nfssvc.h
->> @@ -22,7 +22,7 @@
->> 
->> void	nfssvc_mount_nfsdfs(char *progname);
->> int	nfssvc_inuse(void);
->> -int	nfssvc_set_sockets(const int family, const unsigned int protobits,
->> +int	nfssvc_set_sockets(const unsigned int protobits,
->> 			   const char *host, const char *port);
->> void	nfssvc_set_time(const char *type, const int seconds);
->> int	nfssvc_set_rdmaport(const char *port);
->> 
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+-- 
+tejun
