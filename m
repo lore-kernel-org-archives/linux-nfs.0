@@ -1,157 +1,112 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pa0-f42.google.com ([209.85.220.42]:34601 "EHLO
-	mail-pa0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751035AbbFJEcH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Jun 2015 00:32:07 -0400
-Date: Wed, 10 Jun 2015 13:31:54 +0900
-From: Tejun Heo <tj@kernel.org>
-To: Petr Mladek <pmladek@suse.cz>
-Cc: Andrew Morton <akpm@linux-foundation.org>, Oleg Nesterov <oleg@redhat.com>,
-        Ingo Molnar <mingo@redhat.com>, Peter Zijlstra <peterz@infradead.org>,
-        Richard Weinberger <richard@nod.at>,
-        Steven Rostedt <rostedt@goodmis.org>,
-        David Woodhouse <dwmw2@infradead.org>, linux-mtd@lists.infradead.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>, linux-nfs@vger.kernel.org,
-        Chris Mason <clm@fb.com>,
-        "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
-        Thomas Gleixner <tglx@linutronix.de>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Jiri Kosina <jkosina@suse.cz>, Borislav Petkov <bp@suse.de>,
-        Michal Hocko <mhocko@suse.cz>, live-patching@vger.kernel.org,
-        linux-api@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [RFC PATCH 07/18] kthread: Make iterant kthreads freezable by
- default
-Message-ID: <20150610043154.GG11955@mtj.duckdns.org>
-References: <1433516477-5153-1-git-send-email-pmladek@suse.cz>
- <1433516477-5153-8-git-send-email-pmladek@suse.cz>
- <20150609072003.GY21465@mtj.duckdns.org>
- <20150609155313.GC9409@pathway.suse.cz>
+Received: from mail-wi0-f179.google.com ([209.85.212.179]:37323 "EHLO
+	mail-wi0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933379AbbFJIMg convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Jun 2015 04:12:36 -0400
+Received: by wifx6 with SMTP id x6so38807671wif.0
+        for <linux-nfs@vger.kernel.org>; Wed, 10 Jun 2015 01:12:35 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20150609155313.GC9409@pathway.suse.cz>
+In-Reply-To: <1433875204-18060-1-git-send-email-jeff.layton@primarydata.com>
+References: <1433875204-18060-1-git-send-email-jeff.layton@primarydata.com>
+From: Leon Romanovsky <leon@leon.nu>
+Date: Wed, 10 Jun 2015 11:12:14 +0300
+Message-ID: <CALq1K=J2JHswhYX+z4RX-fm75JqXeR8Yq8sMzeDqCjSoRN0oEw@mail.gmail.com>
+Subject: Re: [PATCH] net, swap: Remove a warning and clarify why
+ sk_mem_reclaim is required when deactivating swap
+To: Jeff Layton <jlayton@poochiereds.net>
+Cc: trond.myklebust@primarydata.com, davem@davemloft.net,
+        netdev@vger.kernel.org, linux-nfs@vger.kernel.org,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        Mel Gorman <mgorman@suse.de>, Linux-MM <linux-mm@kvack.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello, Petr.
-
-On Tue, Jun 09, 2015 at 05:53:13PM +0200, Petr Mladek wrote:
-> I think that the interaction with the hardware should be the reason to
-> make them properly freezable. In the current state they are stopped at
-> some random place, they might either miss some event from the hardware
-> or the hardware might get resumed into another state and the kthread
-> might wait forever.
-
-Yes, IIUC, there are two classes of use cases where freezing kthreads
-makes sense.
-
-* While hibernating, freezing writeback workers and whoever else which
-  might issue IOs.  This is because we have to thaw devices to issue
-  IOs to write out the prepared hibernation image.  If new IOs are
-  issued from page cache or whereever when the devices are thawed for
-  writing out the hibernation image, the hibernation image and the
-  data on the disk deviate.
-
-  Note that this only works because currently none of the block
-  drivers which may be used to write out hibernation images depend on
-  freezable kthreads and hopefully nobody issues IOs from unfreezable
-  kthreads or bh or softirq, which, I think, can happen with
-  preallocated requests or bio based devices.
-
-  This is a very brittle approach.  Instead of controlling things
-  where it actually can be controlled - the IO ingress point - we're
-  trying to control all its users with a pretty blunt tool while at
-  the same time depending on the fact that some of the low level
-  subsystems don't happen to make use of the said blunt tool.
-
-  I think what we should do is simply blocking all non-image IOs from
-  the block layer while writing out hibernation image.  It'd be
-  simpler and a lot more reliable.
-
-* Device drivers which interact with their devices in a fully
-  synchronous manner so that blocking the kthread always reliably
-  quiesces the device.  For this to be true, the device shouldn't
-  carry over any state across the freezing points.  There are drivers
-  which are actually like this and it works for them.
-
-  However, my impression is that people don't really scrutinize why
-  freezer works for a specific case and tend to spray them all over
-  and develop a fuzzy sense that freezing will somehow magically make
-  the driver ready for PM operatoins.  It doesn't help that freezer is
-  such a blunt tool and our historical usage has always been fuzzy -
-  in the earlier days, we depended on freezer even when we knew it
-  wasn't sufficient probably because updating all subsystems and
-  drivers were such a huge undertaking and freezer kinda sorta works
-  in many cases.
-
-  IMHO we'd be a lot better served by blocking the kthread from PM
-  callbacks explicitly for these drivers to unify control points for
-  PM operations and make what's going on a lot more explicit.  This
-  will surely involve a bit more boilerplate code but with the right
-  helpers it should be mostly trivial and I believe that it's likely
-  to encourage higher quality PM operations why getting rid of this
-  fuzzy feeling around the freezer.
-
-For both cases, I don't really think kthread freezer is a good
-solution.  This is a blunt enough tool to hide problems in most but
-not all cases while unnecessarily obscuring what's going on from
-developers.  I personally strongly think that we eventually need to
-get rid of the kernel part of freezer.
-
-> Also I think that freezing kthreads on some well defined location
-> should help with reproducing and fixing problems.
-> 
-> Note that _only_ kthreads using the _new API_ should be freezable by
-> default. The move need to be done carefully. It is chance to review
-> and clean up the freezer stuff.
+On Tue, Jun 9, 2015 at 9:40 PM, Jeff Layton <jlayton@poochiereds.net> wrote:
+> From: Mel Gorman <mgorman@suse.de>
 >
-> Of course, I might be too optimistic here.
+> Jeff Layton reported the following;
+>
+>  [   74.232485] ------------[ cut here ]------------
+>  [   74.233354] WARNING: CPU: 2 PID: 754 at net/core/sock.c:364 sk_clear_memalloc+0x51/0x80()
+>  [   74.234790] Modules linked in: cts rpcsec_gss_krb5 nfsv4 dns_resolver nfs fscache xfs libcrc32c snd_hda_codec_generic snd_hda_intel snd_hda_controller snd_hda_codec snd_hda_core snd_hwdep snd_seq snd_seq_device nfsd snd_pcm snd_timer snd e1000 ppdev parport_pc joydev parport pvpanic soundcore floppy serio_raw i2c_piix4 pcspkr nfs_acl lockd virtio_balloon acpi_cpufreq auth_rpcgss grace sunrpc qxl drm_kms_helper ttm drm virtio_console virtio_blk virtio_pci ata_generic virtio_ring pata_acpi virtio
+>  [   74.243599] CPU: 2 PID: 754 Comm: swapoff Not tainted 4.1.0-rc6+ #5
+>  [   74.244635] Hardware name: Bochs Bochs, BIOS Bochs 01/01/2011
+>  [   74.245546]  0000000000000000 0000000079e69e31 ffff8800d066bde8 ffffffff8179263d
+>  [   74.246786]  0000000000000000 0000000000000000 ffff8800d066be28 ffffffff8109e6fa
+>  [   74.248175]  0000000000000000 ffff880118d48000 ffff8800d58f5c08 ffff880036e380a8
+>  [   74.249483] Call Trace:
+>  [   74.249872]  [<ffffffff8179263d>] dump_stack+0x45/0x57
+>  [   74.250703]  [<ffffffff8109e6fa>] warn_slowpath_common+0x8a/0xc0
+>  [   74.251655]  [<ffffffff8109e82a>] warn_slowpath_null+0x1a/0x20
+>  [   74.252585]  [<ffffffff81661241>] sk_clear_memalloc+0x51/0x80
+>  [   74.253519]  [<ffffffffa0116c72>] xs_disable_swap+0x42/0x80 [sunrpc]
+>  [   74.254537]  [<ffffffffa01109de>] rpc_clnt_swap_deactivate+0x7e/0xc0 [sunrpc]
+>  [   74.255610]  [<ffffffffa03e4fd7>] nfs_swap_deactivate+0x27/0x30 [nfs]
+>  [   74.256582]  [<ffffffff811e99d4>] destroy_swap_extents+0x74/0x80
+>  [   74.257496]  [<ffffffff811ecb52>] SyS_swapoff+0x222/0x5c0
+>  [   74.258318]  [<ffffffff81023f27>] ? syscall_trace_leave+0xc7/0x140
+>  [   74.259253]  [<ffffffff81798dae>] system_call_fastpath+0x12/0x71
+>  [   74.260158] ---[ end trace 2530722966429f10 ]---
+>
+> The warning in question was unnecessary but with Jeff's series the rules
+> are also clearer.  This patch removes the warning and updates the comment
+> to explain why sk_mem_reclaim() may still be called.
+>
+> Signed-off-by: Mel Gorman <mgorman@suse.de>
+> Acked-by: Jeff Layton <jeff.layton@primarydata.com>
+> ---
+>  net/core/sock.c | 12 +++++-------
+>  1 file changed, 5 insertions(+), 7 deletions(-)
+>
+> diff --git a/net/core/sock.c b/net/core/sock.c
+> index 292f42228bfb..2bb4c56370e5 100644
+> --- a/net/core/sock.c
+> +++ b/net/core/sock.c
+> @@ -354,14 +354,12 @@ void sk_clear_memalloc(struct sock *sk)
+>
+>         /*
+>          * SOCK_MEMALLOC is allowed to ignore rmem limits to ensure forward
+> -        * progress of swapping. However, if SOCK_MEMALLOC is cleared while
+> -        * it has rmem allocations there is a risk that the user of the
+> -        * socket cannot make forward progress due to exceeding the rmem
+> -        * limits. By rights, sk_clear_memalloc() should only be called
+> -        * on sockets being torn down but warn and reset the accounting if
+> -        * that assumption breaks.
+> +        * progress of swapping. SOCK_MEMALLOC may be cleared while
+> +        * it has rmem allocations due to the last swapfile being deactivated
+> +        * but there is a risk that the socket is unusable due to exceeding
+> +        * the rmem limits. Reclaim the reserves and obey rmem limits again.
+>          */
+> -       if (WARN_ON(sk->sk_forward_alloc))
+> +       if (sk->sk_forward_alloc)
+You don't really need this IF. if sk->sk_forward_alloc is equal to
+zero, it will be less than SK_MEM_QUANTUM.
+http://lxr.free-electrons.com/source/include/net/sock.h#L1405
 
-I'm strongly against this.  We really don't want to make it even
-fuzzier.  There are finite things which need to be controlled for PM
-operations and I believe what we need to do is identifying them and
-implementing explicit and clear control mechanisms for them, not
-spreading this feel-good mechanism even more, further obscuring where
-those points are.
+1405 static inline void sk_mem_reclaim(struct sock *sk)
+1406 {
+1407         if (!sk_has_account(sk))
+1408                 return;
+1409         if (sk->sk_forward_alloc >= SK_MEM_QUANTUM)
+1410                 __sk_mem_reclaim(sk);
+1411 }
 
-This becomes the game of "is it frozen ENOUGH yet?"  and that "enough"
-is extremely difficult to determine as we're not looking at the choke
-spots at all and freezable kthreads only cover part of kernel
-activity.  The fuzzy enoughness also actually inhibits development of
-proper mechanisms - "I believe this is frozen ENOUGH at this point so
-it is probably safe to assume that X, Y and Z aren't happening
-anymore" and it usually is except when it's not.
 
-Let's please not spread this even more.
+>                 sk_mem_reclaim(sk);
+>  }
+>  EXPORT_SYMBOL_GPL(sk_clear_memalloc);
+> --
+> 2.4.2
+>
+> --
+> To unsubscribe, send a message with 'unsubscribe linux-mm' in
+> the body to majordomo@kvack.org.  For more info on Linux MM,
+> see: http://www.linux-mm.org/ .
+> Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
 
-> > In most cases, we want to implement proper power management callbacks
-> > which plug new issuance of whatever work-unit the code is dealing with
-> > and drain in-flight ones.  Whether the worker threads are frozen or
-> > not doesn't matter once that's implemented.
-> 
-> I see. The power management is important here.
 
-That's the only reason we have freezer at all.
-
-> > It seems that people have been marking kthreads freezable w/o really
-> > thinking about it - some of them are subtly broken due to missing
-> > drainage of in-flight things while others simply don't need freezing
-> > for correctness.
-> 
-> I have similar feeling.
-> 
-> > We do want to clean up freezer usage in the kernel but definitely do
-> > not want to make kthreads freezable by default especially given that
-> > the freezer essentially is one giant lockdep-less system-wide lock.
-> 
-> I think that we both want to clean up freezing. I would like to make
-> it more deterministic and you suggest to make it more relaxed.
-> Do I understand it correctly?
-
-I'm not sure I'm trying to make it more relaxed.  I just don't want it
-to spread uncontrolled.
-
-Thanks a lot.
 
 -- 
-tejun
+Leon Romanovsky | Independent Linux Consultant
+        www.leon.nu | leon@leon.nu
