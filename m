@@ -1,88 +1,277 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ie0-f182.google.com ([209.85.223.182]:36062 "EHLO
-	mail-ie0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754217AbbFKBCR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Jun 2015 21:02:17 -0400
-Received: by iebps5 with SMTP id ps5so5961459ieb.3
-        for <linux-nfs@vger.kernel.org>; Wed, 10 Jun 2015 18:02:15 -0700 (PDT)
-From: Jeff Layton <jlayton@poochiereds.net>
-To: trond.myklebust@primarydata.com
-Cc: davem@davemloft.net, netdev@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, mgorman@suse.de, linux-mm@kvack.org,
-        Leon Romanovsky <leon@leon.nu>
-Subject: [PATCH v2] net, swap: Remove a warning and clarify why sk_mem_reclaim is required when deactivating swap
-Date: Wed, 10 Jun 2015 21:02:04 -0400
-Message-Id: <1433984524-28063-1-git-send-email-jeff.layton@primarydata.com>
-In-Reply-To: <1433875204-18060-1-git-send-email-jeff.layton@primarydata.com>
-References: <1433875204-18060-1-git-send-email-jeff.layton@primarydata.com>
+Received: from mail-qc0-f196.google.com ([209.85.216.196]:35244 "EHLO
+	mail-qc0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750761AbbFKBhl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Jun 2015 21:37:41 -0400
+Received: by qcvp6 with SMTP id p6so5334805qcv.2
+        for <linux-nfs@vger.kernel.org>; Wed, 10 Jun 2015 18:37:40 -0700 (PDT)
+Message-ID: <5578E65C.6080802@gmail.com>
+Date: Thu, 11 Jun 2015 09:37:32 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
+MIME-Version: 1.0
+To: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v3] rpc.nfsd: Squelch DNS errors when using the --host
+ option
+References: <20150610144349.19869.87412.stgit@manet.1015granger.net>
+In-Reply-To: <20150610144349.19869.87412.stgit@manet.1015granger.net>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Mel Gorman <mgorman@suse.de>
 
-Jeff Layton reported the following;
+On 6/10/2015 10:46 PM, Chuck Lever wrote:
+> Sean Elble <elbles@sessys.com> says:
+>> [rpc.nfsd --host] throws an error/warning (where nfs-server is
+>> defined in /etc/hosts for the IPv4 address of the interface I wish
+>> for TCP port 2049 to be opened on):
+>>
+>>  rpc.nfsd: unable to resolve nfs-server:nfs to inet6 address: Name
+>>  or service not known
+> 
+> I think we can simplify the use of getaddrinfo(3) so that only one
+> call is needed to gather both IPv4 and IPv6 addresses. The call
+> should fail, and an error should be reported, only when there are
+> _no_ addresses bound to a hostname.
+> 
+> Reported-by: Sean Elble <elbles@sessys.com>
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+> 
+> 
+> Here is version 3. This version addresses both Jeff's and Kinglong's
+> review comments. It has passed basic testing.
 
- [   74.232485] ------------[ cut here ]------------
- [   74.233354] WARNING: CPU: 2 PID: 754 at net/core/sock.c:364 sk_clear_memalloc+0x51/0x80()
- [   74.234790] Modules linked in: cts rpcsec_gss_krb5 nfsv4 dns_resolver nfs fscache xfs libcrc32c snd_hda_codec_generic snd_hda_intel snd_hda_controller snd_hda_codec snd_hda_core snd_hwdep snd_seq snd_seq_device nfsd snd_pcm snd_timer snd e1000 ppdev parport_pc joydev parport pvpanic soundcore floppy serio_raw i2c_piix4 pcspkr nfs_acl lockd virtio_balloon acpi_cpufreq auth_rpcgss grace sunrpc qxl drm_kms_helper ttm drm virtio_console virtio_blk virtio_pci ata_generic virtio_ring pata_acpi virtio
- [   74.243599] CPU: 2 PID: 754 Comm: swapoff Not tainted 4.1.0-rc6+ #5
- [   74.244635] Hardware name: Bochs Bochs, BIOS Bochs 01/01/2011
- [   74.245546]  0000000000000000 0000000079e69e31 ffff8800d066bde8 ffffffff8179263d
- [   74.246786]  0000000000000000 0000000000000000 ffff8800d066be28 ffffffff8109e6fa
- [   74.248175]  0000000000000000 ffff880118d48000 ffff8800d58f5c08 ffff880036e380a8
- [   74.249483] Call Trace:
- [   74.249872]  [<ffffffff8179263d>] dump_stack+0x45/0x57
- [   74.250703]  [<ffffffff8109e6fa>] warn_slowpath_common+0x8a/0xc0
- [   74.251655]  [<ffffffff8109e82a>] warn_slowpath_null+0x1a/0x20
- [   74.252585]  [<ffffffff81661241>] sk_clear_memalloc+0x51/0x80
- [   74.253519]  [<ffffffffa0116c72>] xs_disable_swap+0x42/0x80 [sunrpc]
- [   74.254537]  [<ffffffffa01109de>] rpc_clnt_swap_deactivate+0x7e/0xc0 [sunrpc]
- [   74.255610]  [<ffffffffa03e4fd7>] nfs_swap_deactivate+0x27/0x30 [nfs]
- [   74.256582]  [<ffffffff811e99d4>] destroy_swap_extents+0x74/0x80
- [   74.257496]  [<ffffffff811ecb52>] SyS_swapoff+0x222/0x5c0
- [   74.258318]  [<ffffffff81023f27>] ? syscall_trace_leave+0xc7/0x140
- [   74.259253]  [<ffffffff81798dae>] system_call_fastpath+0x12/0x71
- [   74.260158] ---[ end trace 2530722966429f10 ]---
+Yes, I'd like this one.
 
-The warning in question was unnecessary but with Jeff's series the rules
-are also clearer.  This patch removes the warning and updates the comment
-to explain why sk_mem_reclaim() may still be called.
+Reviewed-by: Kinglong Mee <kinglongmee@gmail.com>
 
-[jlayton: remove if (sk->sk_forward_alloc) conditional. As Leon
-          points out that it's not needed.]
+thanks,
+Kinglong Mee
 
-Cc: Leon Romanovsky <leon@leon.nu>
-Signed-off-by: Mel Gorman <mgorman@suse.de>
-Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
----
- net/core/sock.c | 13 +++++--------
- 1 file changed, 5 insertions(+), 8 deletions(-)
-
-diff --git a/net/core/sock.c b/net/core/sock.c
-index 292f42228bfb..469d6039c7f5 100644
---- a/net/core/sock.c
-+++ b/net/core/sock.c
-@@ -354,15 +354,12 @@ void sk_clear_memalloc(struct sock *sk)
- 
- 	/*
- 	 * SOCK_MEMALLOC is allowed to ignore rmem limits to ensure forward
--	 * progress of swapping. However, if SOCK_MEMALLOC is cleared while
--	 * it has rmem allocations there is a risk that the user of the
--	 * socket cannot make forward progress due to exceeding the rmem
--	 * limits. By rights, sk_clear_memalloc() should only be called
--	 * on sockets being torn down but warn and reset the accounting if
--	 * that assumption breaks.
-+	 * progress of swapping. SOCK_MEMALLOC may be cleared while
-+	 * it has rmem allocations due to the last swapfile being deactivated
-+	 * but there is a risk that the socket is unusable due to exceeding
-+	 * the rmem limits. Reclaim the reserves and obey rmem limits again.
- 	 */
--	if (WARN_ON(sk->sk_forward_alloc))
--		sk_mem_reclaim(sk);
-+	sk_mem_reclaim(sk);
- }
- EXPORT_SYMBOL_GPL(sk_clear_memalloc);
- 
--- 
-2.4.2
-
+> 
+> 
+>  utils/nfsd/nfsd.c   |   70 ++-------------------------------------------------
+>  utils/nfsd/nfssvc.c |   47 ++++++++++++++++++----------------
+>  utils/nfsd/nfssvc.h |    2 +
+>  3 files changed, 29 insertions(+), 90 deletions(-)
+> 
+> diff --git a/utils/nfsd/nfsd.c b/utils/nfsd/nfsd.c
+> index 201bb13..2165744 100644
+> --- a/utils/nfsd/nfsd.c
+> +++ b/utils/nfsd/nfsd.c
+> @@ -52,50 +52,6 @@ static struct option longopts[] =
+>  	{ NULL, 0, 0, 0 }
+>  };
+>  
+> -/* given a family and ctlbits, disable any that aren't listed in netconfig */
+> -#ifdef HAVE_LIBTIRPC
+> -static void
+> -nfsd_enable_protos(unsigned int *proto4, unsigned int *proto6)
+> -{
+> -	struct netconfig *nconf;
+> -	unsigned int *famproto;
+> -	void *handle;
+> -
+> -	xlog(D_GENERAL, "Checking netconfig for visible protocols.");
+> -
+> -	handle = setnetconfig();
+> -	while((nconf = getnetconfig(handle))) {
+> -		if (!(nconf->nc_flag & NC_VISIBLE))
+> -			continue;
+> -
+> -		if (!strcmp(nconf->nc_protofmly, NC_INET))
+> -			famproto = proto4;
+> -		else if (!strcmp(nconf->nc_protofmly, NC_INET6))
+> -			famproto = proto6;
+> -		else
+> -			continue;
+> -
+> -		if (!strcmp(nconf->nc_proto, NC_TCP))
+> -			NFSCTL_TCPSET(*famproto);
+> -		else if (!strcmp(nconf->nc_proto, NC_UDP))
+> -			NFSCTL_UDPSET(*famproto);
+> -
+> -		xlog(D_GENERAL, "Enabling %s %s.", nconf->nc_protofmly,
+> -			nconf->nc_proto);
+> -	}
+> -	endnetconfig(handle);
+> -	return;
+> -}
+> -#else /* HAVE_LIBTIRPC */
+> -static void
+> -nfsd_enable_protos(unsigned int *proto4, unsigned int *proto6)
+> -{
+> -	/* Enable all IPv4 protocols if no TIRPC support */
+> -	*proto4 = NFSCTL_ALLBITS;
+> -	*proto6 = 0;
+> -}
+> -#endif /* HAVE_LIBTIRPC */
+> -
+>  int
+>  main(int argc, char **argv)
+>  {
+> @@ -108,8 +64,6 @@ main(int argc, char **argv)
+>  	unsigned int minorversset = 0;
+>  	unsigned int versbits = NFSCTL_VERDEFAULT;
+>  	unsigned int protobits = NFSCTL_ALLBITS;
+> -	unsigned int proto4 = 0;
+> -	unsigned int proto6 = 0;
+>  	int grace = -1;
+>  	int lease = -1;
+>  
+> @@ -278,18 +232,6 @@ main(int argc, char **argv)
+>  
+>  	xlog_open(progname);
+>  
+> -	nfsd_enable_protos(&proto4, &proto6);
+> -
+> -	if (!NFSCTL_TCPISSET(protobits)) {
+> -		NFSCTL_TCPUNSET(proto4);
+> -		NFSCTL_TCPUNSET(proto6);
+> -	}
+> -
+> -	if (!NFSCTL_UDPISSET(protobits)) {
+> -		NFSCTL_UDPUNSET(proto4);
+> -		NFSCTL_UDPUNSET(proto6);
+> -	}
+> -
+>  	/* make sure that at least one version is enabled */
+>  	found_one = 0;
+>  	for (c = NFSD_MINVERS; c <= NFSD_MAXVERS; c++) {
+> @@ -302,8 +244,7 @@ main(int argc, char **argv)
+>  	}
+>  
+>  	if (NFSCTL_VERISSET(versbits, 4) &&
+> -	    !NFSCTL_TCPISSET(proto4) &&
+> -	    !NFSCTL_TCPISSET(proto6)) {
+> +	    !NFSCTL_TCPISSET(protobits)) {
+>  		xlog(L_ERROR, "version 4 requires the TCP protocol");
+>  		exit(1);
+>  	}
+> @@ -337,15 +278,10 @@ main(int argc, char **argv)
+>  
+>  	i = 0;
+>  	do {
+> -		error = nfssvc_set_sockets(AF_INET, proto4, haddr[i], port);
+> -		if (!error)
+> -			socket_up = 1;
+> -#ifdef IPV6_SUPPORTED
+> -		error = nfssvc_set_sockets(AF_INET6, proto6, haddr[i], port);
+> +		error = nfssvc_set_sockets(protobits, haddr[i], port);
+>  		if (!error)
+>  			socket_up = 1;
+> -#endif /* IPV6_SUPPORTED */
+> -	} while (++i < hcounter); 
+> +	} while (++i < hcounter);
+>  
+>  	if (rdma_port) {
+>  		error = nfssvc_set_rdmaport(rdma_port);
+> diff --git a/utils/nfsd/nfssvc.c b/utils/nfsd/nfssvc.c
+> index 027e5ac..a2b11d8 100644
+> --- a/utils/nfsd/nfssvc.c
+> +++ b/utils/nfsd/nfssvc.c
+> @@ -24,6 +24,7 @@
+>  
+>  #include "nfslib.h"
+>  #include "xlog.h"
+> +#include "nfssvc.h"
+>  
+>  #ifndef NFSD_FS_DIR
+>  #define NFSD_FS_DIR	  "/proc/fs/nfsd"
+> @@ -124,22 +125,6 @@ nfssvc_setfds(const struct addrinfo *hints, const char *node, const char *port)
+>  	if (fd < 0)
+>  		return 0;
+>  
+> -	switch(hints->ai_family) {
+> -	case AF_INET:
+> -		family = "inet";
+> -		break;
+> -#ifdef IPV6_SUPPORTED
+> -	case AF_INET6:
+> -		family = "inet6";
+> -		break;
+> -#endif /* IPV6_SUPPORTED */
+> -	default:
+> -		xlog(L_ERROR, "Unknown address family specified: %d\n",
+> -				hints->ai_family);
+> -		rc = EAFNOSUPPORT;
+> -		goto error;
+> -	}
+> -
+>  	rc = getaddrinfo(node, port, hints, &addrhead);
+>  	if (rc == EAI_NONAME && !strcmp(port, "nfs")) {
+>  		snprintf(buf, sizeof(buf), "%d", NFS_PORT);
+> @@ -147,10 +132,10 @@ nfssvc_setfds(const struct addrinfo *hints, const char *node, const char *port)
+>  	}
+>  
+>  	if (rc != 0) {
+> -		xlog(L_ERROR, "unable to resolve %s:%s to %s address: "
+> -				"%s", node ? node : "ANYADDR", port, family,
+> -				rc == EAI_SYSTEM ? strerror(errno) :
+> -					gai_strerror(rc));
+> +		xlog(L_ERROR, "unable to resolve %s:%s: %s",
+> +			node ? node : "ANYADDR", port,
+> +			rc == EAI_SYSTEM ? strerror(errno) :
+> +				gai_strerror(rc));
+>  		goto error;
+>  	}
+>  
+> @@ -169,6 +154,20 @@ nfssvc_setfds(const struct addrinfo *hints, const char *node, const char *port)
+>  			continue;
+>  		}
+>  
+> +		switch(addr->ai_addr->sa_family) {
+> +		case AF_INET:
+> +			family = "AF_INET";
+> +			break;
+> +#ifdef IPV6_SUPPORTED
+> +		case AF_INET6:
+> +			family = "AF_INET6";
+> +			break;
+> +#endif /* IPV6_SUPPORTED */
+> +		default:
+> +			addr = addr->ai_next;
+> +			continue;
+> +		}
+> +
+>  		xlog(D_GENERAL, "Creating %s %s socket.", family, proto);
+>  
+>  		/* open socket and prepare to hand it off to kernel */
+> @@ -252,12 +251,16 @@ error:
+>  }
+>  
+>  int
+> -nfssvc_set_sockets(const int family, const unsigned int protobits,
+> +nfssvc_set_sockets(const unsigned int protobits,
+>  		   const char *host, const char *port)
+>  {
+>  	struct addrinfo hints = { .ai_flags = AI_PASSIVE };
+>  
+> -	hints.ai_family = family;
+> +#ifdef IPV6_SUPPORTED
+> +	hints.ai_family = AF_UNSPEC;
+> +#else  /* IPV6_SUPPORTED */
+> +	hints.ai_family = AF_INET;
+> +#endif /* IPV6_SUPPORTED */
+>  
+>  	if (!NFSCTL_ANYPROTO(protobits))
+>  		return EPROTOTYPE;
+> diff --git a/utils/nfsd/nfssvc.h b/utils/nfsd/nfssvc.h
+> index fbb89b2..7d70f0d 100644
+> --- a/utils/nfsd/nfssvc.h
+> +++ b/utils/nfsd/nfssvc.h
+> @@ -22,7 +22,7 @@
+>  
+>  void	nfssvc_mount_nfsdfs(char *progname);
+>  int	nfssvc_inuse(void);
+> -int	nfssvc_set_sockets(const int family, const unsigned int protobits,
+> +int	nfssvc_set_sockets(const unsigned int protobits,
+>  			   const char *host, const char *port);
+>  void	nfssvc_set_time(const char *type, const int seconds);
+>  int	nfssvc_set_rdmaport(const char *port);
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
