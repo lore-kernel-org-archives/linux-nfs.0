@@ -1,98 +1,54 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qg0-f66.google.com ([209.85.192.66]:35335 "EHLO
-	mail-qg0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751831AbbFKBiN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Jun 2015 21:38:13 -0400
-Received: by qgdq107 with SMTP id q107so4853369qgd.2
-        for <linux-nfs@vger.kernel.org>; Wed, 10 Jun 2015 18:38:12 -0700 (PDT)
-Message-ID: <5578E67C.1030303@gmail.com>
-Date: Thu, 11 Jun 2015 09:38:04 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
+Received: from cantor2.suse.de ([195.135.220.15]:53100 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750735AbbFKE2c (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 11 Jun 2015 00:28:32 -0400
+Date: Thu, 11 Jun 2015 06:28:28 +0200 (CEST)
+From: Jiri Kosina <jkosina@suse.cz>
+To: Steven Rostedt <rostedt@goodmis.org>
+cc: Peter Zijlstra <peterz@infradead.org>, Petr Mladek <pmladek@suse.cz>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Oleg Nesterov <oleg@redhat.com>, Tejun Heo <tj@kernel.org>,
+        Ingo Molnar <mingo@redhat.com>, Richard Weinberger <richard@nod.at>,
+        David Woodhouse <dwmw2@infradead.org>, linux-mtd@lists.infradead.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>, linux-nfs@vger.kernel.org,
+        Chris Mason <clm@fb.com>,
+        "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
+        Thomas Gleixner <tglx@linutronix.de>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Borislav Petkov <bp@suse.de>, Michal Hocko <mhocko@suse.cz>,
+        live-patching@vger.kernel.org, linux-api@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [RFC PATCH 09/18] kthread: Make it easier to correctly sleep in
+ iterant kthreads
+In-Reply-To: <20150610100729.6a674c15@gandalf.local.home>
+Message-ID: <alpine.LNX.2.00.1506110625010.12753@pobox.suse.cz>
+References: <1433516477-5153-1-git-send-email-pmladek@suse.cz> <1433516477-5153-10-git-send-email-pmladek@suse.cz> <20150605161021.GJ19282@twins.programming.kicks-ass.net> <20150608134810.3abd862b@gandalf.local.home> <20150610090724.GD3644@twins.programming.kicks-ass.net>
+ <20150610100729.6a674c15@gandalf.local.home>
 MIME-Version: 1.0
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-CC: Weston Andros Adamson <dros@primarydata.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH 1/2] nfs: Only update callback sequnce id when CB_SEQUENCE
- success
-References: <556D8C66.8080203@gmail.com>
-In-Reply-To: <556D8C66.8080203@gmail.com>
-Content-Type: text/plain; charset=utf-8
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-ping .... 
+On Wed, 10 Jun 2015, Steven Rostedt wrote:
 
-On 6/2/2015 6:58 PM, Kinglong Mee wrote:
-> When testing pnfs layout, nfsd got error NFS4ERR_SEQ_MISORDERED.
-> It is caused by nfs return NFS4ERR_DELAY before validate_seqid(),
-> don't update the sequnce id, but nfsd updates the sequnce id !!!
+> > Right, and I had not considered that, but it turns out the hung_task
+> > detector checks p->state == TASK_UNINTERRUPTIBLE, so TASK_IDLE is indeed
+> > safe from that.
 > 
-> According to RFC5661 20.9.3,
-> " If CB_SEQUENCE returns an error, then the state of the slot
->   (sequence ID, cached reply) MUST NOT change. "
-> 
-> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
-> ---
->  fs/nfs/callback_proc.c | 16 ++++++++++++----
->  1 file changed, 12 insertions(+), 4 deletions(-)
-> 
-> diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-> index 197806f..7e9653a 100644
-> --- a/fs/nfs/callback_proc.c
-> +++ b/fs/nfs/callback_proc.c
-> @@ -327,10 +327,8 @@ validate_seqid(struct nfs4_slot_table *tbl, struct cb_sequenceargs * args)
->  	dprintk("%s slot table seqid: %u\n", __func__, slot->seq_nr);
->  
->  	/* Normal */
-> -	if (likely(args->csa_sequenceid == slot->seq_nr + 1)) {
-> -		slot->seq_nr++;
-> +	if (likely(args->csa_sequenceid == slot->seq_nr + 1))
->  		goto out_ok;
-> -	}
->  
->  	/* Replay */
->  	if (args->csa_sequenceid == slot->seq_nr) {
-> @@ -418,6 +416,7 @@ __be32 nfs4_callback_sequence(struct cb_sequenceargs *args,
->  			      struct cb_process_state *cps)
->  {
->  	struct nfs4_slot_table *tbl;
-> +	struct nfs4_slot *slot;
->  	struct nfs_client *clp;
->  	int i;
->  	__be32 status = htonl(NFS4ERR_BADSESSION);
-> @@ -429,7 +428,9 @@ __be32 nfs4_callback_sequence(struct cb_sequenceargs *args,
->  
->  	if (!(clp->cl_session->flags & SESSION4_BACK_CHAN))
->  		goto out;
-> +
->  	tbl = &clp->cl_session->bc_slot_table;
-> +	slot = tbl->slots + args->csa_slotid;
->  
->  	spin_lock(&tbl->slot_tbl_lock);
->  	/* state manager is resetting the session */
-> @@ -444,7 +445,7 @@ __be32 nfs4_callback_sequence(struct cb_sequenceargs *args,
->  		goto out;
->  	}
->  
-> -	status = validate_seqid(&clp->cl_session->bc_slot_table, args);
-> +	status = validate_seqid(tbl, args);
->  	spin_unlock(&tbl->slot_tbl_lock);
->  	if (status)
->  		goto out;
-> @@ -468,6 +469,13 @@ __be32 nfs4_callback_sequence(struct cb_sequenceargs *args,
->  	res->csr_highestslotid = NFS41_BC_MAX_CALLBACKS - 1;
->  	res->csr_target_highestslotid = NFS41_BC_MAX_CALLBACKS - 1;
->  
-> +	/*
-> +	 * RFC5661 20.9.3
-> +	 * If CB_SEQUENCE returns an error, then the state of the slot
-> +	 * (sequence ID, cached reply) MUST NOT change.
-> +	 */
-> +	slot->seq_nr++;
-> +
->  out:
->  	cps->clp = clp; /* put in nfs4_callback_compound */
->  	for (i = 0; i < args->csa_nrclists; i++)
-> 
+> Also, I would assume that TASK_IDLE only makes sense for kernel
+> threads, I wonder if we should add an assertion in schedule that
+> triggers if a task is scheduling with TASK_IDLE and is not a kernel
+> thread (has its own mm?)
+
+For the sake of completnes -- testing for !task_struct->mm is not a 
+correct test to find out whether given entity is a kernel thread; kernel 
+threads are free to temporarily adopt user struct mm via use_mm() (usually 
+for handling AIO on behalf of a particular struct mm).
+
+The correct check is to look at PF_KTHREAD flag in task_struct->flags.
+
+-- 
+Jiri Kosina
+SUSE Labs
