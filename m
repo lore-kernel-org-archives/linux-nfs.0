@@ -1,54 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:53100 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750735AbbFKE2c (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 11 Jun 2015 00:28:32 -0400
-Date: Thu, 11 Jun 2015 06:28:28 +0200 (CEST)
-From: Jiri Kosina <jkosina@suse.cz>
-To: Steven Rostedt <rostedt@goodmis.org>
-cc: Peter Zijlstra <peterz@infradead.org>, Petr Mladek <pmladek@suse.cz>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Oleg Nesterov <oleg@redhat.com>, Tejun Heo <tj@kernel.org>,
-        Ingo Molnar <mingo@redhat.com>, Richard Weinberger <richard@nod.at>,
-        David Woodhouse <dwmw2@infradead.org>, linux-mtd@lists.infradead.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>, linux-nfs@vger.kernel.org,
-        Chris Mason <clm@fb.com>,
-        "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
-        Thomas Gleixner <tglx@linutronix.de>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Borislav Petkov <bp@suse.de>, Michal Hocko <mhocko@suse.cz>,
-        live-patching@vger.kernel.org, linux-api@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [RFC PATCH 09/18] kthread: Make it easier to correctly sleep in
- iterant kthreads
-In-Reply-To: <20150610100729.6a674c15@gandalf.local.home>
-Message-ID: <alpine.LNX.2.00.1506110625010.12753@pobox.suse.cz>
-References: <1433516477-5153-1-git-send-email-pmladek@suse.cz> <1433516477-5153-10-git-send-email-pmladek@suse.cz> <20150605161021.GJ19282@twins.programming.kicks-ass.net> <20150608134810.3abd862b@gandalf.local.home> <20150610090724.GD3644@twins.programming.kicks-ass.net>
- <20150610100729.6a674c15@gandalf.local.home>
-MIME-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Received: from shards.monkeyblade.net ([149.20.54.216]:58277 "EHLO
+	shards.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750717AbbFKGCr (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Jun 2015 02:02:47 -0400
+Date: Wed, 10 Jun 2015 23:02:45 -0700 (PDT)
+Message-Id: <20150610.230245.11186520327122078.davem@davemloft.net>
+To: jlayton@poochiereds.net
+Cc: trond.myklebust@primarydata.com, netdev@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        mgorman@suse.de, linux-mm@kvack.org, leon@leon.nu
+Subject: Re: [PATCH v2] net, swap: Remove a warning and clarify why
+ sk_mem_reclaim is required when deactivating swap
+From: David Miller <davem@davemloft.net>
+In-Reply-To: <1433984524-28063-1-git-send-email-jeff.layton@primarydata.com>
+References: <1433875204-18060-1-git-send-email-jeff.layton@primarydata.com>
+	<1433984524-28063-1-git-send-email-jeff.layton@primarydata.com>
+Mime-Version: 1.0
+Content-Type: Text/Plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 10 Jun 2015, Steven Rostedt wrote:
+From: Jeff Layton <jlayton@poochiereds.net>
+Date: Wed, 10 Jun 2015 21:02:04 -0400
 
-> > Right, and I had not considered that, but it turns out the hung_task
-> > detector checks p->state == TASK_UNINTERRUPTIBLE, so TASK_IDLE is indeed
-> > safe from that.
+> From: Mel Gorman <mgorman@suse.de>
 > 
-> Also, I would assume that TASK_IDLE only makes sense for kernel
-> threads, I wonder if we should add an assertion in schedule that
-> triggers if a task is scheduling with TASK_IDLE and is not a kernel
-> thread (has its own mm?)
+> Jeff Layton reported the following;
+> 
+>  [   74.232485] ------------[ cut here ]------------
+>  [   74.233354] WARNING: CPU: 2 PID: 754 at net/core/sock.c:364 sk_clear_memalloc+0x51/0x80()
+>  [   74.234790] Modules linked in: cts rpcsec_gss_krb5 nfsv4 dns_resolver nfs fscache xfs libcrc32c snd_hda_codec_generic snd_hda_intel snd_hda_controller snd_hda_codec snd_hda_core snd_hwdep snd_seq snd_seq_device nfsd snd_pcm snd_timer snd e1000 ppdev parport_pc joydev parport pvpanic soundcore floppy serio_raw i2c_piix4 pcspkr nfs_acl lockd virtio_balloon acpi_cpufreq auth_rpcgss grace sunrpc qxl drm_kms_helper ttm drm virtio_console virtio_blk virtio_pci ata_generic virtio_ring pata_acpi virtio
+>  [   74.243599] CPU: 2 PID: 754 Comm: swapoff Not tainted 4.1.0-rc6+ #5
+>  [   74.244635] Hardware name: Bochs Bochs, BIOS Bochs 01/01/2011
+>  [   74.245546]  0000000000000000 0000000079e69e31 ffff8800d066bde8 ffffffff8179263d
+>  [   74.246786]  0000000000000000 0000000000000000 ffff8800d066be28 ffffffff8109e6fa
+>  [   74.248175]  0000000000000000 ffff880118d48000 ffff8800d58f5c08 ffff880036e380a8
+>  [   74.249483] Call Trace:
+>  [   74.249872]  [<ffffffff8179263d>] dump_stack+0x45/0x57
+>  [   74.250703]  [<ffffffff8109e6fa>] warn_slowpath_common+0x8a/0xc0
+>  [   74.251655]  [<ffffffff8109e82a>] warn_slowpath_null+0x1a/0x20
+>  [   74.252585]  [<ffffffff81661241>] sk_clear_memalloc+0x51/0x80
+>  [   74.253519]  [<ffffffffa0116c72>] xs_disable_swap+0x42/0x80 [sunrpc]
+>  [   74.254537]  [<ffffffffa01109de>] rpc_clnt_swap_deactivate+0x7e/0xc0 [sunrpc]
+>  [   74.255610]  [<ffffffffa03e4fd7>] nfs_swap_deactivate+0x27/0x30 [nfs]
+>  [   74.256582]  [<ffffffff811e99d4>] destroy_swap_extents+0x74/0x80
+>  [   74.257496]  [<ffffffff811ecb52>] SyS_swapoff+0x222/0x5c0
+>  [   74.258318]  [<ffffffff81023f27>] ? syscall_trace_leave+0xc7/0x140
+>  [   74.259253]  [<ffffffff81798dae>] system_call_fastpath+0x12/0x71
+>  [   74.260158] ---[ end trace 2530722966429f10 ]---
+> 
+> The warning in question was unnecessary but with Jeff's series the rules
+> are also clearer.  This patch removes the warning and updates the comment
+> to explain why sk_mem_reclaim() may still be called.
+> 
+> [jlayton: remove if (sk->sk_forward_alloc) conditional. As Leon
+>           points out that it's not needed.]
+> 
+> Cc: Leon Romanovsky <leon@leon.nu>
+> Signed-off-by: Mel Gorman <mgorman@suse.de>
+> Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
 
-For the sake of completnes -- testing for !task_struct->mm is not a 
-correct test to find out whether given entity is a kernel thread; kernel 
-threads are free to temporarily adopt user struct mm via use_mm() (usually 
-for handling AIO on behalf of a particular struct mm).
-
-The correct check is to look at PF_KTHREAD flag in task_struct->flags.
-
--- 
-Jiri Kosina
-SUSE Labs
+Applied, thanks everyone.
