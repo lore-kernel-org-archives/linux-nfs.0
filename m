@@ -1,72 +1,83 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx144.netapp.com ([216.240.21.25]:48684 "EHLO mx144.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753609AbbFLVhJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 12 Jun 2015 17:37:09 -0400
-From: "Kornievskaia, Olga" <Olga.Kornievskaia@netapp.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-CC: "Schumaker, Anna" <Anna.Schumaker@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/1] Recover from stateid-type error on SETATTR
-Date: Fri, 12 Jun 2015 21:37:08 +0000
-Message-ID: <433911A8-6C05-4F6A-888F-4C3CD3FC7ED0@netapp.com>
-References: <1434142410-86401-1-git-send-email-kolga@netapp.com>
- <CAHQdGtQVgDcT53C+_GsFjQ-qdWy1XOhRgx5HAk-WCC-8ik7i+g@mail.gmail.com>
-In-Reply-To: <CAHQdGtQVgDcT53C+_GsFjQ-qdWy1XOhRgx5HAk-WCC-8ik7i+g@mail.gmail.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-vn0-f44.google.com ([209.85.216.44]:39314 "EHLO
+	mail-vn0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752918AbbFLVmT convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Jun 2015 17:42:19 -0400
+Received: by vnbg190 with SMTP id g190so8063076vnb.6
+        for <linux-nfs@vger.kernel.org>; Fri, 12 Jun 2015 14:42:18 -0700 (PDT)
 MIME-Version: 1.0
+In-Reply-To: <433911A8-6C05-4F6A-888F-4C3CD3FC7ED0@netapp.com>
+References: <1434142410-86401-1-git-send-email-kolga@netapp.com>
+	<CAHQdGtQVgDcT53C+_GsFjQ-qdWy1XOhRgx5HAk-WCC-8ik7i+g@mail.gmail.com>
+	<433911A8-6C05-4F6A-888F-4C3CD3FC7ED0@netapp.com>
+Date: Fri, 12 Jun 2015 17:42:18 -0400
+Message-ID: <CAHQdGtQ8R600Dai=n4gzctE39dBaek6o1DNeGGuTu0MXo1vfPw@mail.gmail.com>
+Subject: Re: [PATCH 1/1] Recover from stateid-type error on SETATTR
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: "Kornievskaia, Olga" <Olga.Kornievskaia@netapp.com>
+Cc: "Schumaker, Anna" <Anna.Schumaker@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQo+IE9uIEp1biAxMiwgMjAxNSwgYXQgNToyMSBQTSwgVHJvbmQgTXlrbGVidXN0IDx0cm9uZC5t
-eWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29tPiB3cm90ZToNCj4gDQo+IE9uIEZyaSwgSnVuIDEyLCAy
-MDE1IGF0IDQ6NTMgUE0sIE9sZ2EgS29ybmlldnNrYWlhIDxrb2xnYUBuZXRhcHAuY29tPiB3cm90
-ZToNCj4+IENsaWVudCBjYW4gcmVjZWl2ZXMgc3RhdGVpZC10eXBlIGVycm9yIChlZy4sIEJBRF9T
-VEFURUlEKSBvbiBTRVRBVFRSIHdoZW4NCj4+IGRlbGVnYXRpb24gc3RhdGVpZCB3YXMgdXNlZC4g
-V2hlbiBubyBvcGVuIHN0YXRlIGV4aXN0cywgaW4gY2FzZSBvZiBhcHBsaWNhdGlvbg0KPj4gY2Fs
-bGluZyB0cnVuY2F0ZSgpIG9uIHRoZSBmaWxlLCBjbGllbnQgaGFzIG5vIHN0YXRlIHRvIHJlY292
-ZXIgYW5kIGZhaWxzIHdpdGgNCj4+IEVJTy4NCj4+IA0KPj4gSW5zdGVhZCwgdXBvbiBzdWNoIGVy
-cm9yLCByZXR1cm4gdGhlIGJhZCBkZWxlZ2F0aW9uIGFuZCB0aGVuIHJlc2VuZCB0aGUNCj4+IFNF
-VEFUVFIgd2l0aCBhIHplcm8gc3RhdGVpZC4NCj4+IA0KPj4gU2lnbmVkLW9mZjogT2xnYSBLb3Ju
-aWV2c2thaWEgPGtvbGdhQG5ldGFwcC5jb20+DQo+PiAtLS0NCj4+IGZzL25mcy9uZnM0cHJvYy5j
-IHwgOCArKysrKysrLQ0KPj4gMSBmaWxlIGNoYW5nZWQsIDcgaW5zZXJ0aW9ucygrKSwgMSBkZWxl
-dGlvbigtKQ0KPj4gDQo+PiBkaWZmIC0tZ2l0IGEvZnMvbmZzL25mczRwcm9jLmMgYi9mcy9uZnMv
-bmZzNHByb2MuYw0KPj4gaW5kZXggYWQ3Y2Y3ZS4uMmE4NWFmMyAxMDA2NDQNCj4+IC0tLSBhL2Zz
-L25mcy9uZnM0cHJvYy5jDQo+PiArKysgYi9mcy9uZnMvbmZzNHByb2MuYw0KPj4gQEAgLTM2MCw4
-ICszNjAsMTQgQEAgc3RhdGljIGludCBuZnM0X2hhbmRsZV9leGNlcHRpb24oc3RydWN0IG5mc19z
-ZXJ2ZXIgKnNlcnZlciwgaW50IGVycm9yY29kZSwgc3RydWMNCj4+ICAgICAgICAgICAgICAgIGNh
-c2UgLU5GUzRFUlJfREVMRUdfUkVWT0tFRDoNCj4+ICAgICAgICAgICAgICAgIGNhc2UgLU5GUzRF
-UlJfQURNSU5fUkVWT0tFRDoNCj4+ICAgICAgICAgICAgICAgIGNhc2UgLU5GUzRFUlJfQkFEX1NU
-QVRFSUQ6DQo+PiAtICAgICAgICAgICAgICAgICAgICAgICBpZiAoc3RhdGUgPT0gTlVMTCkNCj4+
-ICsgICAgICAgICAgICAgICAgICAgICAgIGlmIChzdGF0ZSA9PSBOVUxMKSB7DQo+PiArICAgICAg
-ICAgICAgICAgICAgICAgICAgICAgICAgIGlmIChpbm9kZSAmJiBuZnM0X2hhdmVfZGVsZWdhdGlv
-bihpbm9kZSwNCj4+ICsgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
-ICAgIEZNT0RFX1JFQUQpKSB7DQo+PiArICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
-ICAgICAgbmZzNF9pbm9kZV9yZXR1cm5fZGVsZWdhdGlvbihpbm9kZSk7DQo+PiArICAgICAgICAg
-ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgZXhjZXB0aW9uLT5yZXRyeSA9IDE7DQo+PiAr
-ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIH0NCj4+ICAgICAgICAgICAgICAgICAgICAg
-ICAgICAgICAgICBicmVhazsNCj4+ICsgICAgICAgICAgICAgICAgICAgICAgIH0NCj4+ICAgICAg
-ICAgICAgICAgICAgICAgICAgcmV0ID0gbmZzNF9zY2hlZHVsZV9zdGF0ZWlkX3JlY292ZXJ5KHNl
-cnZlciwgc3RhdGUpOw0KPj4gICAgICAgICAgICAgICAgICAgICAgICBpZiAocmV0IDwgMCkNCj4+
-ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBicmVhazsNCj4gDQo+IE15IHJlbWFpbmlu
-ZyBxdWVzdGlvbiBoZXJlIGlzOiBXZSBkb24ndCBzZWVtIHRvIGJlIGNvbW11bmljYXRpbmcgdGhl
-DQo+IF9SRVZPS0VEIHN0YXRlIG9mIHRoZSBkZWxlZ2F0aW9uIHRvIG5mczRfc2NoZWR1bGVfc3Rh
-dGVpZF9yZWNvdmVyeSgpLA0KPiBzbyB3b24ndCB3ZSBjb250aW51ZSB0byBsb29wIGlmIHN0YXRl
-ICE9IE5VTEw/DQoNCknigJltIG5vdCBmb2xsb3dpbmcuIFRoaXMgcGF0Y2ggaXMgdG8gaGFuZGxl
-IHRoZSBjYXNlIHdoZW4gc3RhdGUgaXMgTlVMTCBhbmQgdGhlcmVmb3JlIHdlIGNhbuKAmXQgaW5p
-dGlhdGUgcmVjb3ZlcnkuIEJlZm9yZSB0aGlzIHBhdGNoLCB0aGUgcHJvYmxlbSB3YXMgdGhhdCB3
-aGVuIHN0YXRlIHdhcyBOVUxMIHdlIGRpZG7igJl0IChhKSBjbGVhbiB1cCBieSBkb2luZyBkZWxl
-Z3JldHVybiBhbmQgKGIpIHdlIHdlcmVu4oCZdCByZXRyeWluZyB3aGVuIHdlIGNhbiDigJQgaS5l
-LiB3aXRoIGEgc3BlY2lhbCBzdGF0ZWlkIGZvciBTRVRBVFRSLg0KDQpJZiBzdGF0ZSBpcyBub3Qg
-bnVsbCwgSeKAmW0gYXNzdW1pbmcgdGhlIGNvZGUgaXMgaGFuZGxpbmcgY29ycmVjdGx5IGJ5IGNh
-bGxpbmcgbmZzNF9zY2hlZHVsZV9zdGF0ZWlkX3JlY292ZXJ5LiBUaGUgY29ycmVjdG5lc3Mgb2Yg
-dGhhdCBjb2RlIGlzIGJleW9uZCB0aGUgc2NvcGUgb2YgdGhlIHByb2JsZW0gaeKAmW0gcHJvcG9z
-aW5nIHRvIHNvbHZlIGhlcmUuDQoNCg0KPiBJT1c6IGlzIHRoZXJlIGFueSByZWFzb24gbm90IHRv
-IGRvIHRoZSBzYW1lIHRoaW5nIGhlcmUgdGhhdCB3ZSBhbHJlYWR5DQo+IGRvIGZvciBORlM0RVJS
-X09QRU5NT0RFPw0KDQpUaGUgT1BFTk1PREUgZXJyb3IgbW9kZSBjb2RlIHNlZW1zIHRvIGhhdmUg
-c2xpZ2h0bHkgZGlmZmVyZW50IGxvZ2ljLiBJdCB3YW50cyB0byByZXR1cm4gIHRoZSBkZWxlZ2F0
-aW9uIHJlZ2FyZGxlc3Mgb2Ygd2hldGhlciBvciBub3Qgc3RhdGUgaXMgTlVMTC4gDQoNCg0KPiBB
-dCB0aGUgdGltZSB3aGVuIHdlIHdyb3RlIGNvbW1pdA0KPiAzMTE0ZWE3YTI0ZDMyLCB0aGVyZSB3
-YXMgYSBkaWZmZXJlbmNlIGJldHdlZW4NCj4gbmZzX2lub2RlX3JldHVybl9kZWxlZ2F0aW9uKCkg
-YW5kIG5mc19yZW1vdmVfYmFkX2RlbGVnYXRpb24oKSwgYnV0IG5vdw0KPiB0aGUgZm9ybWVyIGhh
-bmRsZXMgYm90aCBjYXNlcy4uLg0KDQo=
+On Fri, Jun 12, 2015 at 5:37 PM, Kornievskaia, Olga
+<Olga.Kornievskaia@netapp.com> wrote:
+>
+>> On Jun 12, 2015, at 5:21 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+>>
+>> On Fri, Jun 12, 2015 at 4:53 PM, Olga Kornievskaia <kolga@netapp.com> wrote:
+>>> Client can receives stateid-type error (eg., BAD_STATEID) on SETATTR when
+>>> delegation stateid was used. When no open state exists, in case of application
+>>> calling truncate() on the file, client has no state to recover and fails with
+>>> EIO.
+>>>
+>>> Instead, upon such error, return the bad delegation and then resend the
+>>> SETATTR with a zero stateid.
+>>>
+>>> Signed-off: Olga Kornievskaia <kolga@netapp.com>
+>>> ---
+>>> fs/nfs/nfs4proc.c | 8 +++++++-
+>>> 1 file changed, 7 insertions(+), 1 deletion(-)
+>>>
+>>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+>>> index ad7cf7e..2a85af3 100644
+>>> --- a/fs/nfs/nfs4proc.c
+>>> +++ b/fs/nfs/nfs4proc.c
+>>> @@ -360,8 +360,14 @@ static int nfs4_handle_exception(struct nfs_server *server, int errorcode, struc
+>>>                case -NFS4ERR_DELEG_REVOKED:
+>>>                case -NFS4ERR_ADMIN_REVOKED:
+>>>                case -NFS4ERR_BAD_STATEID:
+>>> -                       if (state == NULL)
+>>> +                       if (state == NULL) {
+>>> +                               if (inode && nfs4_have_delegation(inode,
+>>> +                                               FMODE_READ)) {
+>>> +                                       nfs4_inode_return_delegation(inode);
+>>> +                                       exception->retry = 1;
+>>> +                               }
+>>>                                break;
+>>> +                       }
+>>>                        ret = nfs4_schedule_stateid_recovery(server, state);
+>>>                        if (ret < 0)
+>>>                                break;
+>>
+>> My remaining question here is: We don't seem to be communicating the
+>> _REVOKED state of the delegation to nfs4_schedule_stateid_recovery(),
+>> so won't we continue to loop if state != NULL?
+>
+> I’m not following. This patch is to handle the case when state is NULL and therefore we can’t initiate recovery. Before this patch, the problem was that when state was NULL we didn’t (a) clean up by doing delegreturn and (b) we weren’t retrying when we can — i.e. with a special stateid for SETATTR.
+>
+> If state is not null, I’m assuming the code is handling correctly by calling nfs4_schedule_stateid_recovery. The correctness of that code is beyond the scope of the problem i’m proposing to solve here.
+
+That's my point. I'm not seeing that the code is handling that case,
+and so I'm not seeing why we should treat state == NULL as being
+special.
+
+>
+>
+>> IOW: is there any reason not to do the same thing here that we already
+>> do for NFS4ERR_OPENMODE?
+>
+> The OPENMODE error mode code seems to have slightly different logic. It wants to return  the delegation regardless of whether or not state is NULL.
+
+See above.
