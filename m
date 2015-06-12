@@ -1,93 +1,120 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-vn0-f42.google.com ([209.85.216.42]:46695 "EHLO
-	mail-vn0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752818AbbFLOEz (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Jun 2015 10:04:55 -0400
-Received: by vnbf7 with SMTP id f7so6132033vnb.13
-        for <linux-nfs@vger.kernel.org>; Fri, 12 Jun 2015 07:04:54 -0700 (PDT)
+Received: from mail-vn0-f46.google.com ([209.85.216.46]:45765 "EHLO
+	mail-vn0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755147AbbFLOKX convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Jun 2015 10:10:23 -0400
+Received: by vnbf62 with SMTP id f62so6173748vnb.12
+        for <linux-nfs@vger.kernel.org>; Fri, 12 Jun 2015 07:10:22 -0700 (PDT)
 MIME-Version: 1.0
-In-Reply-To: <557AE2E7.1090908@gmail.com>
-References: <557AE2E7.1090908@gmail.com>
-Date: Fri, 12 Jun 2015 10:04:54 -0400
-Message-ID: <CAHQdGtSB9s6m12Y2pY+JYToLcak9Q-vw-ybC0-UbBPJQUd0P+A@mail.gmail.com>
-Subject: Re: [PATCH] nfs: Fix showing truncated fsid/dev in /proc/net/nfsfs/volumes
+In-Reply-To: <20150611234929.7b48d314@gandalf.local.home>
+References: <20150611234929.7b48d314@gandalf.local.home>
+Date: Fri, 12 Jun 2015 10:10:22 -0400
+Message-ID: <CAHQdGtSyHtMfyVxT=hFY4m6XvM=3mxnZ=ajVJWYNXvYqE0+3zA@mail.gmail.com>
+Subject: Re: [REGRESSION] NFS is creating a hidden port (left over from
+ xs_bind() )
 From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        David Howells <dhowells@redhat.com>
+To: Steven Rostedt <rostedt@goodmis.org>
+Cc: Anna Schumaker <anna.schumaker@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Linux Network Devel Mailing List <netdev@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        Andrew Morton <akpm@linux-foundation.org>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jun 12, 2015 at 9:47 AM, Kinglong Mee <kinglongmee@gmail.com> wrote:
-> A truncated fsid showing from /proc/fs/nfsfs/volumes as,
-> # cat /proc/fs/nfsfs/volumes
-> NV SERVER   PORT DEV     FSID              FSC
-> v4 c0a80881  801 0:43    34931f044c2a439b  no
+On Thu, Jun 11, 2015 at 11:49 PM, Steven Rostedt <rostedt@goodmis.org> wrote:
 >
-> It should be as,
-> # cat /proc/fs/nfsfs/volumes
-> NV SERVER   PORT DEV          FSID                              FSC
-> v4 c0a80881  801 0:43         34931f044c2a439b:954c5d830fa4be8c no
+> I recently upgraded my main server to 4.0.4 from 3.19.5 and rkhunter
+> started reporting a hidden port on my box.
 >
-> The max buffer length for storing "%llx:%llx" format should be
->  16 + 1 + 16 + 1 = 34 (16 for %llx, 1 for ':', 1 for '\0').
+> Running unhide-tcp I see this:
 >
-> Also, for storing "%u:%u" of MAJOR() and MINOR() should be
->  8 + 1 + 3 + 1 = 13 (8 for 2^24, 1 for ':', 3 for 2^8, 1 for '\0').
+> # unhide-tcp
+> Unhide-tcp 20121229
+> Copyright © 2012 Yago Jesus & Patrick Gouin
+> License GPLv3+ : GNU GPL version 3 or later
+> http://www.unhide-forensics.info
+> Used options:
+> [*]Starting TCP checking
 >
-> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
-> ---
->  fs/nfs/client.c | 11 ++++++-----
->  1 file changed, 6 insertions(+), 5 deletions(-)
+> Found Hidden port that not appears in ss: 946
+> [*]Starting UDP checking
 >
-> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-> index 892aeff..873f194 100644
-> --- a/fs/nfs/client.c
-> +++ b/fs/nfs/client.c
-> @@ -1364,27 +1364,28 @@ static int nfs_volume_list_show(struct seq_file *m, void *v)
->  {
->         struct nfs_server *server;
->         struct nfs_client *clp;
-> -       char dev[8], fsid[17];
-> +       char dev[13], fsid[34];
+> This scared the hell out of me as I'm thinking that I have got some kind
+> of NSA backdoor hooked into my server and it is monitoring my plans to
+> smuggle Kinder Überraschung into the USA from Germany. I panicked!
+>
+> Well, I wasted the day writing modules to first look at all the sockets
+> opened by all processes (via their file descriptors) and posted their
+> port numbers.
+>
+>   http://rostedt.homelinux.com/private/tasklist.c
+>
+> But this port wasn't there either.
+>
+> Then I decided to look at the ports in tcp_hashinfo.
+>
+>   http://rostedt.homelinux.com/private/portlist.c
+>
+> This found the port but no file was connected to it, and worse yet,
+> when I first ran it without using probe_kernel_read(), it crashed my
+> kernel, because sk->sk_socket pointed to a freed socket!
+>
+> Note, each boot, the hidden port is different.
+>
+> Finally, I decided to bring in the big guns, and inserted a
+> trace_printk() into the bind logic, to see if I could find the culprit.
+> After fiddling with it a few times, I found a suspect:
+>
+>    kworker/3:1H-123   [003] ..s.    96.696213: inet_bind_hash: add 946
+>
+> Bah, it's a kernel thread doing it, via a work queue. I then added a
+> trace_dump_stack() to find what was calling this, and here it is:
+>
+>     kworker/3:1H-123   [003] ..s.    96.696222: <stack trace>
+>  => inet_csk_get_port
+>  => inet_addr_type
+>  => inet_bind
+>  => xs_bind
+>  => sock_setsockopt
+>  => __sock_create
+>  => xs_create_sock.isra.18
+>  => xs_tcp_setup_socket
+>  => process_one_work
+>  => worker_thread
+>  => worker_thread
+>  => kthread
+>  => kthread
+>  => ret_from_fork
+>  => kthread
+>
+> I rebooted, and examined what happens. I see the kworker binding that
+> port, and all seems well:
+>
+> # netstat -tapn |grep 946
+> tcp        0      0 192.168.23.9:946        192.168.23.22:55201     ESTABLISHED -
+>
+> But waiting for a bit, the connection goes into a TIME_WAIT, and then
+> it just disappears. But the bind to the port does not get released, and
+> that port is from then on, taken.
+>
+> This never happened with my 3.19 kernels. I would bisect it but this is
+> happening on my main server box which I usually only reboot every other
+> month doing upgrades. It causes too much disturbance for myself (and my
+> family) as when this box is offline, basically the rest of my machines
+> are too.
+>
+> I figured this may be enough information to see if you can fix it.
+> Otherwise I can try to do the bisect, but that's not going to happen
+> any time soon. I may just go back to 3.19 for now, such that rkhunter
+> stops complaining about the hidden port.
+>
 
-Could use a comment to explain why these particular sizes.
+The only new thing that we're doing with 4.0 is to set SO_REUSEPORT on
+the socket before binding the port (commit 4dda9c8a5e34: "SUNRPC: Set
+SO_REUSEPORT socket option for TCP connections"). Perhaps there is an
+issue with that?
 
->         struct nfs_net *nn = net_generic(seq_file_net(m), nfs_net_id);
->
->         /* display header on line 1 */
->         if (v == &nn->nfs_volume_list) {
-> -               seq_puts(m, "NV SERVER   PORT DEV     FSID              FSC\n");
-> +               seq_puts(m, "NV SERVER   PORT DEV          FSID"
-> +                           "                              FSC\n");
->                 return 0;
->         }
->         /* display one transport per line on subsequent lines */
->         server = list_entry(v, struct nfs_server, master_link);
->         clp = server->nfs_client;
->
-> -       snprintf(dev, 8, "%u:%u",
-> +       snprintf(dev, 13, "%u:%u",
-
-Is there any reason not to settle for using sizeof(dev) here?
-
->                  MAJOR(server->s_dev), MINOR(server->s_dev));
->
-> -       snprintf(fsid, 17, "%llx:%llx",
-> +       snprintf(fsid, 34, "%llx:%llx",
-
-ditto
-
->                  (unsigned long long) server->fsid.major,
->                  (unsigned long long) server->fsid.minor);
->
->         rcu_read_lock();
-> -       seq_printf(m, "v%u %s %s %-7s %-17s %s\n",
-> +       seq_printf(m, "v%u %s %s %-12s %-33s %s\n",
->                    clp->rpc_ops->version,
->                    rpc_peeraddr2str(clp->cl_rpcclient, RPC_DISPLAY_HEX_ADDR),
->                    rpc_peeraddr2str(clp->cl_rpcclient, RPC_DISPLAY_HEX_PORT),
-> --
-> 2.4.3
->
+Cheers
+  Trond
