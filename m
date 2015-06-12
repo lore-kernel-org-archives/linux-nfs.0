@@ -1,81 +1,109 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ie0-f176.google.com ([209.85.223.176]:36524 "EHLO
-	mail-ie0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751136AbbFLBfO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Jun 2015 21:35:14 -0400
-Received: by iebps5 with SMTP id ps5so15321586ieb.3
-        for <linux-nfs@vger.kernel.org>; Thu, 11 Jun 2015 18:35:14 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>,
-        J Bruce Fields <bfields@fieldses.org>,
-        Christoph Hellwig <hch@infradead.org>
-Subject: [PATCH] NFS: Ensure that we update the sequence id under the slot table lock
-Date: Thu, 11 Jun 2015 21:35:11 -0400
-Message-Id: <1434072911-74171-1-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <556D8C66.8080203@gmail.com>
-References: <556D8C66.8080203@gmail.com>
+Received: from smtprelay0098.hostedemail.com ([216.40.44.98]:60045 "EHLO
+	smtprelay.hostedemail.com" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1750891AbbFLDtc convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 11 Jun 2015 23:49:32 -0400
+Date: Thu, 11 Jun 2015 23:49:29 -0400
+From: Steven Rostedt <rostedt@goodmis.org>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Anna Schumaker <anna.schumaker@netapp.com>, linux-nfs@vger.kernel.org,
+        netdev@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
+        Andrew Morton <akpm@linux-foundation.org>
+Subject: [REGRESSION] NFS is creating a hidden port (left over from
+ xs_bind() )
+Message-ID: <20150611234929.7b48d314@gandalf.local.home>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Fix a callback slot table regression.
 
-Fixes: e937ee714b2d ("nfs: Only update callback sequnce id when CB_SEQUENCE success")
-Cc: Kinglong Mee <kinglongmee@gmail.com>
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/callback_proc.c | 10 +++++-----
- 1 file changed, 5 insertions(+), 5 deletions(-)
+I recently upgraded my main server to 4.0.4 from 3.19.5 and rkhunter
+started reporting a hidden port on my box.
 
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index 17a5c571a006..29e3c1b011b7 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -435,14 +435,13 @@ __be32 nfs4_callback_sequence(struct cb_sequenceargs *args,
- 	spin_lock(&tbl->slot_tbl_lock);
- 	/* state manager is resetting the session */
- 	if (test_bit(NFS4_SLOT_TBL_DRAINING, &tbl->slot_tbl_state)) {
--		spin_unlock(&tbl->slot_tbl_lock);
- 		status = htonl(NFS4ERR_DELAY);
- 		/* Return NFS4ERR_BADSESSION if we're draining the session
- 		 * in order to reset it.
- 		 */
- 		if (test_bit(NFS4CLNT_SESSION_RESET, &clp->cl_state))
- 			status = htonl(NFS4ERR_BADSESSION);
--		goto out;
-+		goto out_unlock;
- 	}
- 
- 	memcpy(&res->csr_sessionid, &args->csa_sessionid,
-@@ -453,9 +452,8 @@ __be32 nfs4_callback_sequence(struct cb_sequenceargs *args,
- 	res->csr_target_highestslotid = NFS41_BC_MAX_CALLBACKS - 1;
- 
- 	status = validate_seqid(tbl, args);
--	spin_unlock(&tbl->slot_tbl_lock);
- 	if (status)
--		goto out;
-+		goto out_unlock;
- 
- 	cps->slotid = args->csa_slotid;
- 
-@@ -466,7 +464,7 @@ __be32 nfs4_callback_sequence(struct cb_sequenceargs *args,
- 	 */
- 	if (referring_call_exists(clp, args->csa_nrclists, args->csa_rclists)) {
- 		status = htonl(NFS4ERR_DELAY);
--		goto out;
-+		goto out_unlock;
- 	}
- 
- 	/*
-@@ -475,6 +473,8 @@ __be32 nfs4_callback_sequence(struct cb_sequenceargs *args,
- 	 * (sequence ID, cached reply) MUST NOT change.
- 	 */
- 	slot->seq_nr++;
-+out_unlock:
-+	spin_unlock(&tbl->slot_tbl_lock);
- 
- out:
- 	cps->clp = clp; /* put in nfs4_callback_compound */
--- 
-2.4.2
+Running unhide-tcp I see this:
 
+# unhide-tcp 
+Unhide-tcp 20121229
+Copyright © 2012 Yago Jesus & Patrick Gouin
+License GPLv3+ : GNU GPL version 3 or later
+http://www.unhide-forensics.info
+Used options: 
+[*]Starting TCP checking
+
+Found Hidden port that not appears in ss: 946
+[*]Starting UDP checking
+
+This scared the hell out of me as I'm thinking that I have got some kind
+of NSA backdoor hooked into my server and it is monitoring my plans to
+smuggle Kinder Überraschung into the USA from Germany. I panicked!
+
+Well, I wasted the day writing modules to first look at all the sockets
+opened by all processes (via their file descriptors) and posted their
+port numbers.
+
+  http://rostedt.homelinux.com/private/tasklist.c
+
+But this port wasn't there either.
+
+Then I decided to look at the ports in tcp_hashinfo.
+
+  http://rostedt.homelinux.com/private/portlist.c
+
+This found the port but no file was connected to it, and worse yet,
+when I first ran it without using probe_kernel_read(), it crashed my
+kernel, because sk->sk_socket pointed to a freed socket!
+
+Note, each boot, the hidden port is different.
+
+Finally, I decided to bring in the big guns, and inserted a
+trace_printk() into the bind logic, to see if I could find the culprit.
+After fiddling with it a few times, I found a suspect:
+
+   kworker/3:1H-123   [003] ..s.    96.696213: inet_bind_hash: add 946
+
+Bah, it's a kernel thread doing it, via a work queue. I then added a
+trace_dump_stack() to find what was calling this, and here it is:
+
+    kworker/3:1H-123   [003] ..s.    96.696222: <stack trace>
+ => inet_csk_get_port
+ => inet_addr_type
+ => inet_bind
+ => xs_bind
+ => sock_setsockopt
+ => __sock_create
+ => xs_create_sock.isra.18
+ => xs_tcp_setup_socket
+ => process_one_work
+ => worker_thread
+ => worker_thread
+ => kthread
+ => kthread
+ => ret_from_fork
+ => kthread
+
+I rebooted, and examined what happens. I see the kworker binding that
+port, and all seems well:
+
+# netstat -tapn |grep 946
+tcp        0      0 192.168.23.9:946        192.168.23.22:55201     ESTABLISHED -               
+
+But waiting for a bit, the connection goes into a TIME_WAIT, and then
+it just disappears. But the bind to the port does not get released, and
+that port is from then on, taken.
+
+This never happened with my 3.19 kernels. I would bisect it but this is
+happening on my main server box which I usually only reboot every other
+month doing upgrades. It causes too much disturbance for myself (and my
+family) as when this box is offline, basically the rest of my machines
+are too.
+
+I figured this may be enough information to see if you can fix it.
+Otherwise I can try to do the bisect, but that's not going to happen
+any time soon. I may just go back to 3.19 for now, such that rkhunter
+stops complaining about the hidden port.
+
+If you need anymore information, let me know.
+
+-- Steve
