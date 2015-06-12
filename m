@@ -1,57 +1,48 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-vn0-f46.google.com ([209.85.216.46]:36609 "EHLO
-	mail-vn0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754552AbbFLShE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Jun 2015 14:37:04 -0400
-Received: by vnbg1 with SMTP id g1so7372464vnb.3
-        for <linux-nfs@vger.kernel.org>; Fri, 12 Jun 2015 11:37:03 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <1434133855-86259-1-git-send-email-kolga@netapp.com>
-References: <1434133855-86259-1-git-send-email-kolga@netapp.com>
-Date: Fri, 12 Jun 2015 14:37:03 -0400
-Message-ID: <CAHQdGtTSzfHL8WaMXRN+vVmUuTQ6a8w71zFpkutTkaVgAG_TYQ@mail.gmail.com>
-Subject: Re: [PATCH 1/1] Recover from stateid-type error on SETATTR
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Olga Kornievskaia <kolga@netapp.com>
-Cc: Anna Schumaker <Anna.Schumaker@netapp.com>,
+Received: from mx144.netapp.com ([216.240.21.25]:27477 "EHLO mx144.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752797AbbFLSsi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 12 Jun 2015 14:48:38 -0400
+From: "Kornievskaia, Olga" <Olga.Kornievskaia@netapp.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+CC: "Schumaker, Anna" <Anna.Schumaker@netapp.com>,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Subject: Re: [PATCH 1/1] Recover from stateid-type error on SETATTR
+Date: Fri, 12 Jun 2015 18:48:37 +0000
+Message-ID: <AD67FFD6-69C1-4512-A967-3933731D9629@netapp.com>
+References: <1434133855-86259-1-git-send-email-kolga@netapp.com>
+ <CAHQdGtTSzfHL8WaMXRN+vVmUuTQ6a8w71zFpkutTkaVgAG_TYQ@mail.gmail.com>
+In-Reply-To: <CAHQdGtTSzfHL8WaMXRN+vVmUuTQ6a8w71zFpkutTkaVgAG_TYQ@mail.gmail.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Olga,
-
-On Fri, Jun 12, 2015 at 2:30 PM, Olga Kornievskaia <kolga@netapp.com> wrote:
-> Client can receives stateid-type error (eg., BAD_STATEID) on SETATTR when
-> delegation stateid was used. When no open state exists, in case of application
-> calling truncate() on the file, client has no state to recover and fails with
-> EIO.
->
-> Instead, upon such error, return the bad delegation and then resend the
-> SETATTR with a zero stateid.
->
-> Signed-off: Olga Kornievskaia <kolga@netapp.com>
-> ---
->  fs/nfs/delegation.h | 6 ++++++
->  fs/nfs/nfs4proc.c   | 7 ++++++-
->  2 files changed, 12 insertions(+), 1 deletion(-)
->
-> diff --git a/fs/nfs/delegation.h b/fs/nfs/delegation.h
-> index e3c20a3..e37165f 100644
-> --- a/fs/nfs/delegation.h
-> +++ b/fs/nfs/delegation.h
-> @@ -62,6 +62,12 @@ void nfs_mark_delegation_referenced(struct nfs_delegation *delegation);
->  int nfs4_have_delegation(struct inode *inode, fmode_t flags);
->  int nfs4_check_delegation(struct inode *inode, fmode_t flags);
->
-> +static inline int nfs4_have_any_delegation(struct inode *inode)
-> +{
-> +       struct nfs_inode *nfsi = NFS_I(inode);
-> +       return rcu_access_pointer(nfsi->delegation) ? 1 : 0;
-> +}
-
-What would this do that isn't already covered by
-nfs4_have_delegation(inode, FMODE_READ)?
-
-Cheers
-  Trond
+DQo+IE9uIEp1biAxMiwgMjAxNSwgYXQgMjozNyBQTSwgVHJvbmQgTXlrbGVidXN0IDx0cm9uZC5t
+eWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29tPiB3cm90ZToNCj4gDQo+IEhpIE9sZ2EsDQo+IA0KPiBP
+biBGcmksIEp1biAxMiwgMjAxNSBhdCAyOjMwIFBNLCBPbGdhIEtvcm5pZXZza2FpYSA8a29sZ2FA
+bmV0YXBwLmNvbT4gd3JvdGU6DQo+PiBDbGllbnQgY2FuIHJlY2VpdmVzIHN0YXRlaWQtdHlwZSBl
+cnJvciAoZWcuLCBCQURfU1RBVEVJRCkgb24gU0VUQVRUUiB3aGVuDQo+PiBkZWxlZ2F0aW9uIHN0
+YXRlaWQgd2FzIHVzZWQuIFdoZW4gbm8gb3BlbiBzdGF0ZSBleGlzdHMsIGluIGNhc2Ugb2YgYXBw
+bGljYXRpb24NCj4+IGNhbGxpbmcgdHJ1bmNhdGUoKSBvbiB0aGUgZmlsZSwgY2xpZW50IGhhcyBu
+byBzdGF0ZSB0byByZWNvdmVyIGFuZCBmYWlscyB3aXRoDQo+PiBFSU8uDQo+PiANCj4+IEluc3Rl
+YWQsIHVwb24gc3VjaCBlcnJvciwgcmV0dXJuIHRoZSBiYWQgZGVsZWdhdGlvbiBhbmQgdGhlbiBy
+ZXNlbmQgdGhlDQo+PiBTRVRBVFRSIHdpdGggYSB6ZXJvIHN0YXRlaWQuDQo+PiANCj4+IFNpZ25l
+ZC1vZmY6IE9sZ2EgS29ybmlldnNrYWlhIDxrb2xnYUBuZXRhcHAuY29tPg0KPj4gLS0tDQo+PiBm
+cy9uZnMvZGVsZWdhdGlvbi5oIHwgNiArKysrKysNCj4+IGZzL25mcy9uZnM0cHJvYy5jICAgfCA3
+ICsrKysrKy0NCj4+IDIgZmlsZXMgY2hhbmdlZCwgMTIgaW5zZXJ0aW9ucygrKSwgMSBkZWxldGlv
+bigtKQ0KPj4gDQo+PiBkaWZmIC0tZ2l0IGEvZnMvbmZzL2RlbGVnYXRpb24uaCBiL2ZzL25mcy9k
+ZWxlZ2F0aW9uLmgNCj4+IGluZGV4IGUzYzIwYTMuLmUzNzE2NWYgMTAwNjQ0DQo+PiAtLS0gYS9m
+cy9uZnMvZGVsZWdhdGlvbi5oDQo+PiArKysgYi9mcy9uZnMvZGVsZWdhdGlvbi5oDQo+PiBAQCAt
+NjIsNiArNjIsMTIgQEAgdm9pZCBuZnNfbWFya19kZWxlZ2F0aW9uX3JlZmVyZW5jZWQoc3RydWN0
+IG5mc19kZWxlZ2F0aW9uICpkZWxlZ2F0aW9uKTsNCj4+IGludCBuZnM0X2hhdmVfZGVsZWdhdGlv
+bihzdHJ1Y3QgaW5vZGUgKmlub2RlLCBmbW9kZV90IGZsYWdzKTsNCj4+IGludCBuZnM0X2NoZWNr
+X2RlbGVnYXRpb24oc3RydWN0IGlub2RlICppbm9kZSwgZm1vZGVfdCBmbGFncyk7DQo+PiANCj4+
+ICtzdGF0aWMgaW5saW5lIGludCBuZnM0X2hhdmVfYW55X2RlbGVnYXRpb24oc3RydWN0IGlub2Rl
+ICppbm9kZSkNCj4+ICt7DQo+PiArICAgICAgIHN0cnVjdCBuZnNfaW5vZGUgKm5mc2kgPSBORlNf
+SShpbm9kZSk7DQo+PiArICAgICAgIHJldHVybiByY3VfYWNjZXNzX3BvaW50ZXIobmZzaS0+ZGVs
+ZWdhdGlvbikgPyAxIDogMDsNCj4+ICt9DQo+IA0KPiBXaGF0IHdvdWxkIHRoaXMgZG8gdGhhdCBp
+c24ndCBhbHJlYWR5IGNvdmVyZWQgYnkNCj4gbmZzNF9oYXZlX2RlbGVnYXRpb24oaW5vZGUsIEZN
+T0RFX1JFQUQpPw0KDQpXZSBuZWVkIHRvIHJldHVybiBkZWxlZ2F0aW9uIHJlZ2FyZGxlc3Mgb2Yg
+d2hldGhlciBpdOKAmXMgcmVhZCBvciB3cml0ZS4gDQoNCj4gDQo+IENoZWVycw0KPiAgVHJvbmQN
+Cg0K
