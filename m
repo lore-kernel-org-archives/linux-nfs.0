@@ -1,45 +1,51 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtprelay0041.hostedemail.com ([216.40.44.41]:47440 "EHLO
-	smtprelay.hostedemail.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1750832AbbFLPxj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Jun 2015 11:53:39 -0400
-Date: Fri, 12 Jun 2015 11:53:36 -0400
-From: Steven Rostedt <rostedt@goodmis.org>
-To: Eric Dumazet <eric.dumazet@gmail.com>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Linux Network Devel Mailing List <netdev@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [REGRESSION] NFS is creating a hidden port (left over from
- xs_bind() )
-Message-ID: <20150612115336.35f37c34@gandalf.local.home>
-In-Reply-To: <20150612115038.44e20ccd@gandalf.local.home>
-References: <20150611234929.7b48d314@gandalf.local.home>
-	<CAHQdGtSyHtMfyVxT=hFY4m6XvM=3mxnZ=ajVJWYNXvYqE0+3zA@mail.gmail.com>
-	<1434120035.27504.77.camel@edumazet-glaptop2.roam.corp.google.com>
-	<20150612113420.5c114183@gandalf.local.home>
-	<20150612115038.44e20ccd@gandalf.local.home>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from mailrelay108.isp.belgacom.be ([195.238.20.135]:1917 "EHLO
+	mailrelay108.isp.belgacom.be" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1755245AbbFLQ7B (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Jun 2015 12:59:01 -0400
+From: Fabian Frederick <fabf@skynet.be>
+To: linux-kernel@vger.kernel.org
+Cc: Julia Lawall <Julia.Lawall@lip6.fr>, Fabian Frederick <fabf@skynet.be>,
+        "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+Subject: [PATCH 1/1 linux-next] nfsd: use swap() in sort_pacl_range()
+Date: Fri, 12 Jun 2015 18:58:57 +0200
+Message-Id: <1434128337-10366-1-git-send-email-fabf@skynet.be>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 12 Jun 2015 11:50:38 -0400
-Steven Rostedt <rostedt@goodmis.org> wrote:
+Use kernel.h macro definition.
 
-> On Fri, 12 Jun 2015 11:34:20 -0400
-> Steven Rostedt <rostedt@goodmis.org> wrote:
-> 
+Thanks to Julia Lawall for Coccinelle scripting support.
 
-> 
-> And the issue goes away. That is, I watched the port go from
-> ESTABLISHED to TIME_WAIT, and then gone, and theirs no hidden port.
-> 
+Signed-off-by: Fabian Frederick <fabf@skynet.be>
+---
+ fs/nfsd/nfs4acl.c | 6 ++----
+ 1 file changed, 2 insertions(+), 4 deletions(-)
 
-s/theirs/there's/
+diff --git a/fs/nfsd/nfs4acl.c b/fs/nfsd/nfs4acl.c
+index 7e10e2a..eb5accf 100644
+--- a/fs/nfsd/nfs4acl.c
++++ b/fs/nfsd/nfs4acl.c
+@@ -372,7 +372,6 @@ pace_gt(struct posix_acl_entry *pace1, struct posix_acl_entry *pace2)
+ static void
+ sort_pacl_range(struct posix_acl *pacl, int start, int end) {
+ 	int sorted = 0, i;
+-	struct posix_acl_entry tmp;
+ 
+ 	/* We just do a bubble sort; easy to do in place, and we're not
+ 	 * expecting acl's to be long enough to justify anything more. */
+@@ -382,9 +381,8 @@ sort_pacl_range(struct posix_acl *pacl, int start, int end) {
+ 			if (pace_gt(&pacl->a_entries[i],
+ 				    &pacl->a_entries[i+1])) {
+ 				sorted = 0;
+-				tmp = pacl->a_entries[i];
+-				pacl->a_entries[i] = pacl->a_entries[i+1];
+-				pacl->a_entries[i+1] = tmp;
++				swap(pacl->a_entries[i],
++				     pacl->a_entries[i + 1]);
+ 			}
+ 		}
+ 	}
+-- 
+2.4.2
 
-Time to go back to grammar school. :-p
-
--- Steve
