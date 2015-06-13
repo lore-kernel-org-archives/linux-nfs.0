@@ -1,61 +1,105 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f180.google.com ([209.85.213.180]:37308 "EHLO
-	mail-ig0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752097AbbFMArc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Jun 2015 20:47:32 -0400
-Received: by igbsb11 with SMTP id sb11so20342611igb.0
-        for <linux-nfs@vger.kernel.org>; Fri, 12 Jun 2015 17:47:32 -0700 (PDT)
-Received: from gmail.com (c-98-212-204-93.hsd1.il.comcast.net. [98.212.204.93])
-        by mx.google.com with ESMTPSA id j5sm3607641ioo.8.2015.06.12.17.47.30
-        for <linux-nfs@vger.kernel.org>
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Fri, 12 Jun 2015 17:47:30 -0700 (PDT)
-Date: Fri, 12 Jun 2015 19:47:18 -0500
-From: Quentin Barnes <qbarnes@gmail.com>
-To: linux-nfs@vger.kernel.org
-Subject: Adding file handle support to NFS client code
-Message-ID: <20150613004718.GA26293@gmail.com>
+Received: from mail-pa0-f68.google.com ([209.85.220.68]:35637 "EHLO
+	mail-pa0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751330AbbFMA6x (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Jun 2015 20:58:53 -0400
+Received: by pabli10 with SMTP id li10so9344012pab.2
+        for <linux-nfs@vger.kernel.org>; Fri, 12 Jun 2015 17:58:53 -0700 (PDT)
+Message-ID: <557B8042.8010208@gmail.com>
+Date: Sat, 13 Jun 2015 08:58:42 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        David Howells <dhowells@redhat.com>
+Subject: Re: [PATCH] nfs: Fix showing truncated fsid/dev in /proc/net/nfsfs/volumes
+References: <557AE2E7.1090908@gmail.com> <CAHQdGtSB9s6m12Y2pY+JYToLcak9Q-vw-ybC0-UbBPJQUd0P+A@mail.gmail.com>
+In-Reply-To: <CAHQdGtSB9s6m12Y2pY+JYToLcak9Q-vw-ybC0-UbBPJQUd0P+A@mail.gmail.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I'm thinking of adding support to the NFS client code so that the
-open_by_handle_at(2) and name_to_handle_at(2) services would work
-on NFS mounted file systems.  As far as I can tell, this support
-currently doesn't exist in mainline, correct?
+On 6/12/2015 10:04 PM, Trond Myklebust wrote:
+> On Fri, Jun 12, 2015 at 9:47 AM, Kinglong Mee <kinglongmee@gmail.com> wrote:
+>> A truncated fsid showing from /proc/fs/nfsfs/volumes as,
+>> # cat /proc/fs/nfsfs/volumes
+>> NV SERVER   PORT DEV     FSID              FSC
+>> v4 c0a80881  801 0:43    34931f044c2a439b  no
+>>
+>> It should be as,
+>> # cat /proc/fs/nfsfs/volumes
+>> NV SERVER   PORT DEV          FSID                              FSC
+>> v4 c0a80881  801 0:43         34931f044c2a439b:954c5d830fa4be8c no
+>>
+>> The max buffer length for storing "%llx:%llx" format should be
+>>  16 + 1 + 16 + 1 = 34 (16 for %llx, 1 for ':', 1 for '\0').
+>>
+>> Also, for storing "%u:%u" of MAJOR() and MINOR() should be
+>>  8 + 1 + 3 + 1 = 13 (8 for 2^24, 1 for ':', 3 for 2^8, 1 for '\0').
 
+Here is the comments for why buffer size is 13 and 34.
 
-Many years ago I created and still maintain (unreleased) code for
-RHEL4-RHEL6 kernels that provide open-by-file-handle services for
-NFS clients.  The approach was loosely based on Robert Love's ext3
-open-by-inode patch of long ago.
+>>
+>> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+>> ---
+>>  fs/nfs/client.c | 11 ++++++-----
+>>  1 file changed, 6 insertions(+), 5 deletions(-)
+>>
+>> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+>> index 892aeff..873f194 100644
+>> --- a/fs/nfs/client.c
+>> +++ b/fs/nfs/client.c
+>> @@ -1364,27 +1364,28 @@ static int nfs_volume_list_show(struct seq_file *m, void *v)
+>>  {
+>>         struct nfs_server *server;
+>>         struct nfs_client *clp;
+>> -       char dev[8], fsid[17];
+>> +       char dev[13], fsid[34];
+> 
+> Could use a comment to explain why these particular sizes.
+> 
+>>         struct nfs_net *nn = net_generic(seq_file_net(m), nfs_net_id);
+>>
+>>         /* display header on line 1 */
+>>         if (v == &nn->nfs_volume_list) {
+>> -               seq_puts(m, "NV SERVER   PORT DEV     FSID              FSC\n");
+>> +               seq_puts(m, "NV SERVER   PORT DEV          FSID"
+>> +                           "                              FSC\n");
+>>                 return 0;
+>>         }
+>>         /* display one transport per line on subsequent lines */
+>>         server = list_entry(v, struct nfs_server, master_link);
+>>         clp = server->nfs_client;
+>>
+>> -       snprintf(dev, 8, "%u:%u",
+>> +       snprintf(dev, 13, "%u:%u",
+> 
+> Is there any reason not to settle for using sizeof(dev) here?
 
-We have used the modified NFS client code as a significant
-performance boost in accessing mostly read-only files from NFS file
-servers.  The files number in the many 10s of millions in trees
-spread across many hundreds of thousands of nested directories.
-(Come to think of it, that was several years ago.  I'm sure since
-then the numbers have grown by at least an order of magnitude or
-two.)  With the sheer numbers of files and directories, attempting
-to use even openat(2) with all those directories would still be
-overwhelming to the servers' inode cache.  Also, just doing all the
-constant tree-walks down to the files kill performance and stresses
-the dentry cache, let alone all the network traffic and load on our
-filers that would generate.  So that's why an open-by-file-handle
-hack was added to our kernels.
+No, I just modify it as before.
+I will update it as using sizeof(dev) in the new version.
 
-Now the time has come for that functionality to be ported to a
-RHEL7-based kernel.  Seems to me the best approach would be not to
-port my old work forward but to complete the fhandle callbacks for
-NFS clients.  However, before I begin my journey down that path, I'd
-like to hear if anyone has tried it before, or if there's a good
-reason not to choose this approach.  Any comments?
+thanks,
+Kinglong Mee
 
-
-If the NFS client fhandle support is the right way to go, since
-it wouldn't be a hackfest like my previous effort, I'd attempt
-contribute it upstream in case anyone else would ever find it
-useful.
-
-Quentin
+> 
+>>                  MAJOR(server->s_dev), MINOR(server->s_dev));
+>>
+>> -       snprintf(fsid, 17, "%llx:%llx",
+>> +       snprintf(fsid, 34, "%llx:%llx",
+> 
+> ditto
+> 
+>>                  (unsigned long long) server->fsid.major,
+>>                  (unsigned long long) server->fsid.minor);
+>>
+>>         rcu_read_lock();
+>> -       seq_printf(m, "v%u %s %s %-7s %-17s %s\n",
+>> +       seq_printf(m, "v%u %s %s %-12s %-33s %s\n",
+>>                    clp->rpc_ops->version,
+>>                    rpc_peeraddr2str(clp->cl_rpcclient, RPC_DISPLAY_HEX_ADDR),
+>>                    rpc_peeraddr2str(clp->cl_rpcclient, RPC_DISPLAY_HEX_PORT),
+>> --
+>> 2.4.3
+>>
+> 
