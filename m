@@ -1,11 +1,11 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtprelay0045.hostedemail.com ([216.40.44.45]:51755 "EHLO
-	smtprelay.hostedemail.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1751550AbbFOPds (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Jun 2015 11:33:48 -0400
-Date: Mon, 15 Jun 2015 11:33:43 -0400
-From: Steven Rostedt <rostedt@goodmis.org>
-To: Petr Mladek <pmladek@suse.cz>
+Received: from cantor2.suse.de ([195.135.220.15]:34336 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754283AbbFOPyd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 15 Jun 2015 11:54:33 -0400
+Date: Mon, 15 Jun 2015 17:54:28 +0200
+From: Petr Mladek <pmladek@suse.cz>
+To: Steven Rostedt <rostedt@goodmis.org>
 Cc: Andrew Morton <akpm@linux-foundation.org>, Oleg Nesterov <oleg@redhat.com>,
         Tejun Heo <tj@kernel.org>, Ingo Molnar <mingo@redhat.com>,
         Peter Zijlstra <peterz@infradead.org>,
@@ -22,27 +22,34 @@ Cc: Andrew Morton <akpm@linux-foundation.org>, Oleg Nesterov <oleg@redhat.com>,
         linux-api@vger.kernel.org, linux-kernel@vger.kernel.org
 Subject: Re: [RFC PATCH 15/18] ring_buffer: Allow to exit the ring buffer
  benchmark immediately
-Message-ID: <20150615113343.215bcd43@gandalf.local.home>
-In-Reply-To: <20150615152313.GC3135@pathway.suse.cz>
+Message-ID: <20150615155428.GD3135@pathway.suse.cz>
 References: <1433516477-5153-1-git-send-email-pmladek@suse.cz>
-	<1433516477-5153-16-git-send-email-pmladek@suse.cz>
-	<20150608134417.3fb7a811@gandalf.local.home>
-	<20150615152313.GC3135@pathway.suse.cz>
+ <1433516477-5153-16-git-send-email-pmladek@suse.cz>
+ <20150608134417.3fb7a811@gandalf.local.home>
+ <20150615152313.GC3135@pathway.suse.cz>
+ <20150615113343.215bcd43@gandalf.local.home>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20150615113343.215bcd43@gandalf.local.home>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 15 Jun 2015 17:23:13 +0200
-Petr Mladek <pmladek@suse.cz> wrote:
-
-
-> Please, find below a version of the patch that can be applied against
-> current Linus tree and also against your for-next branch.
+On Mon 2015-06-15 11:33:43, Steven Rostedt wrote:
+> On Mon, 15 Jun 2015 17:23:13 +0200
+> Petr Mladek <pmladek@suse.cz> wrote:
 > 
+> 
+> > Please, find below a version of the patch that can be applied against
+> > current Linus tree and also against your for-next branch.
+> > 
+> 
+> Thanks, just on Friday, I was testing ring buffer changes with the
+> ringbuffer benchmark, and was bitching about how I had to wait the 10
+> seconds before the module would unload ;-)
 
-Thanks, just on Friday, I was testing ring buffer changes with the
-ringbuffer benchmark, and was bitching about how I had to wait the 10
-seconds before the module would unload ;-)
+I am glad that it will be useful.
 
--- Steve
+Please, find below a version with a small typo fix. Heh, I spent a lot
+of time with doulbe checking the patch and then decided to do a last
+minute change. It produced "only" compilation warning that I missed.
+It was not visible with my testing :-(
