@@ -1,55 +1,96 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:34336 "EHLO mx2.suse.de"
+Received: from mx144.netapp.com ([216.240.21.25]:33059 "EHLO mx144.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754283AbbFOPyd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 15 Jun 2015 11:54:33 -0400
-Date: Mon, 15 Jun 2015 17:54:28 +0200
-From: Petr Mladek <pmladek@suse.cz>
-To: Steven Rostedt <rostedt@goodmis.org>
-Cc: Andrew Morton <akpm@linux-foundation.org>, Oleg Nesterov <oleg@redhat.com>,
-        Tejun Heo <tj@kernel.org>, Ingo Molnar <mingo@redhat.com>,
-        Peter Zijlstra <peterz@infradead.org>,
-        Richard Weinberger <richard@nod.at>,
-        David Woodhouse <dwmw2@infradead.org>, linux-mtd@lists.infradead.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>, linux-nfs@vger.kernel.org,
-        Chris Mason <clm@fb.com>,
-        "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
-        Thomas Gleixner <tglx@linutronix.de>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Jiri Kosina <jkosina@suse.cz>, Borislav Petkov <bp@suse.de>,
-        Michal Hocko <mhocko@suse.cz>, live-patching@vger.kernel.org,
-        linux-api@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [RFC PATCH 15/18] ring_buffer: Allow to exit the ring buffer
- benchmark immediately
-Message-ID: <20150615155428.GD3135@pathway.suse.cz>
-References: <1433516477-5153-1-git-send-email-pmladek@suse.cz>
- <1433516477-5153-16-git-send-email-pmladek@suse.cz>
- <20150608134417.3fb7a811@gandalf.local.home>
- <20150615152313.GC3135@pathway.suse.cz>
- <20150615113343.215bcd43@gandalf.local.home>
+	id S1754213AbbFOQFS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 15 Jun 2015 12:05:18 -0400
+From: "Kornievskaia, Olga" <Olga.Kornievskaia@netapp.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+CC: "Kornievskaia, Olga" <Olga.Kornievskaia@netapp.com>,
+        "Schumaker, Anna" <Anna.Schumaker@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/1] Recover from stateid-type error on SETATTR
+Date: Mon, 15 Jun 2015 16:03:53 +0000
+Message-ID: <830BB651-81AE-4268-8EC7-ABEF4B609BB5@netapp.com>
+References: <1434142410-86401-1-git-send-email-kolga@netapp.com>
+ <CAHQdGtQVgDcT53C+_GsFjQ-qdWy1XOhRgx5HAk-WCC-8ik7i+g@mail.gmail.com>
+ <433911A8-6C05-4F6A-888F-4C3CD3FC7ED0@netapp.com>
+ <CAHQdGtQ8R600Dai=n4gzctE39dBaek6o1DNeGGuTu0MXo1vfPw@mail.gmail.com>
+In-Reply-To: <CAHQdGtQ8R600Dai=n4gzctE39dBaek6o1DNeGGuTu0MXo1vfPw@mail.gmail.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20150615113343.215bcd43@gandalf.local.home>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon 2015-06-15 11:33:43, Steven Rostedt wrote:
-> On Mon, 15 Jun 2015 17:23:13 +0200
-> Petr Mladek <pmladek@suse.cz> wrote:
-> 
-> 
-> > Please, find below a version of the patch that can be applied against
-> > current Linus tree and also against your for-next branch.
-> > 
-> 
-> Thanks, just on Friday, I was testing ring buffer changes with the
-> ringbuffer benchmark, and was bitching about how I had to wait the 10
-> seconds before the module would unload ;-)
-
-I am glad that it will be useful.
-
-Please, find below a version with a small typo fix. Heh, I spent a lot
-of time with doulbe checking the patch and then decided to do a last
-minute change. It produced "only" compilation warning that I missed.
-It was not visible with my testing :-(
+DQo+IE9uIEp1biAxMiwgMjAxNSwgYXQgNTo0MiBQTSwgVHJvbmQgTXlrbGVidXN0IDx0cm9uZC5t
+eWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29tPiB3cm90ZToNCj4gDQo+IE9uIEZyaSwgSnVuIDEyLCAy
+MDE1IGF0IDU6MzcgUE0sIEtvcm5pZXZza2FpYSwgT2xnYQ0KPiA8T2xnYS5Lb3JuaWV2c2thaWFA
+bmV0YXBwLmNvbT4gd3JvdGU6DQo+PiANCj4+PiBPbiBKdW4gMTIsIDIwMTUsIGF0IDU6MjEgUE0s
+IFRyb25kIE15a2xlYnVzdCA8dHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbT4gd3JvdGU6
+DQo+Pj4gDQo+Pj4gT24gRnJpLCBKdW4gMTIsIDIwMTUgYXQgNDo1MyBQTSwgT2xnYSBLb3JuaWV2
+c2thaWEgPGtvbGdhQG5ldGFwcC5jb20+IHdyb3RlOg0KPj4+PiBDbGllbnQgY2FuIHJlY2VpdmVz
+IHN0YXRlaWQtdHlwZSBlcnJvciAoZWcuLCBCQURfU1RBVEVJRCkgb24gU0VUQVRUUiB3aGVuDQo+
+Pj4+IGRlbGVnYXRpb24gc3RhdGVpZCB3YXMgdXNlZC4gV2hlbiBubyBvcGVuIHN0YXRlIGV4aXN0
+cywgaW4gY2FzZSBvZiBhcHBsaWNhdGlvbg0KPj4+PiBjYWxsaW5nIHRydW5jYXRlKCkgb24gdGhl
+IGZpbGUsIGNsaWVudCBoYXMgbm8gc3RhdGUgdG8gcmVjb3ZlciBhbmQgZmFpbHMgd2l0aA0KPj4+
+PiBFSU8uDQo+Pj4+IA0KPj4+PiBJbnN0ZWFkLCB1cG9uIHN1Y2ggZXJyb3IsIHJldHVybiB0aGUg
+YmFkIGRlbGVnYXRpb24gYW5kIHRoZW4gcmVzZW5kIHRoZQ0KPj4+PiBTRVRBVFRSIHdpdGggYSB6
+ZXJvIHN0YXRlaWQuDQo+Pj4+IA0KPj4+PiBTaWduZWQtb2ZmOiBPbGdhIEtvcm5pZXZza2FpYSA8
+a29sZ2FAbmV0YXBwLmNvbT4NCj4+Pj4gLS0tDQo+Pj4+IGZzL25mcy9uZnM0cHJvYy5jIHwgOCAr
+KysrKysrLQ0KPj4+PiAxIGZpbGUgY2hhbmdlZCwgNyBpbnNlcnRpb25zKCspLCAxIGRlbGV0aW9u
+KC0pDQo+Pj4+IA0KPj4+PiBkaWZmIC0tZ2l0IGEvZnMvbmZzL25mczRwcm9jLmMgYi9mcy9uZnMv
+bmZzNHByb2MuYw0KPj4+PiBpbmRleCBhZDdjZjdlLi4yYTg1YWYzIDEwMDY0NA0KPj4+PiAtLS0g
+YS9mcy9uZnMvbmZzNHByb2MuYw0KPj4+PiArKysgYi9mcy9uZnMvbmZzNHByb2MuYw0KPj4+PiBA
+QCAtMzYwLDggKzM2MCwxNCBAQCBzdGF0aWMgaW50IG5mczRfaGFuZGxlX2V4Y2VwdGlvbihzdHJ1
+Y3QgbmZzX3NlcnZlciAqc2VydmVyLCBpbnQgZXJyb3Jjb2RlLCBzdHJ1Yw0KPj4+PiAgICAgICAg
+ICAgICAgIGNhc2UgLU5GUzRFUlJfREVMRUdfUkVWT0tFRDoNCj4+Pj4gICAgICAgICAgICAgICBj
+YXNlIC1ORlM0RVJSX0FETUlOX1JFVk9LRUQ6DQo+Pj4+ICAgICAgICAgICAgICAgY2FzZSAtTkZT
+NEVSUl9CQURfU1RBVEVJRDoNCj4+Pj4gLSAgICAgICAgICAgICAgICAgICAgICAgaWYgKHN0YXRl
+ID09IE5VTEwpDQo+Pj4+ICsgICAgICAgICAgICAgICAgICAgICAgIGlmIChzdGF0ZSA9PSBOVUxM
+KSB7DQo+Pj4+ICsgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgaWYgKGlub2RlICYmIG5m
+czRfaGF2ZV9kZWxlZ2F0aW9uKGlub2RlLA0KPj4+PiArICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgICBGTU9ERV9SRUFEKSkgew0KPj4+PiArICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgbmZzNF9pbm9kZV9yZXR1cm5fZGVsZWdhdGlvbihp
+bm9kZSk7DQo+Pj4+ICsgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBleGNl
+cHRpb24tPnJldHJ5ID0gMTsNCj4+Pj4gKyAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB9
+DQo+Pj4+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIGJyZWFrOw0KPj4+PiArICAgICAg
+ICAgICAgICAgICAgICAgICB9DQo+Pj4+ICAgICAgICAgICAgICAgICAgICAgICByZXQgPSBuZnM0
+X3NjaGVkdWxlX3N0YXRlaWRfcmVjb3Zlcnkoc2VydmVyLCBzdGF0ZSk7DQo+Pj4+ICAgICAgICAg
+ICAgICAgICAgICAgICBpZiAocmV0IDwgMCkNCj4+Pj4gICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgYnJlYWs7DQo+Pj4gDQo+Pj4gTXkgcmVtYWluaW5nIHF1ZXN0aW9uIGhlcmUgaXM6IFdl
+IGRvbid0IHNlZW0gdG8gYmUgY29tbXVuaWNhdGluZyB0aGUNCj4+PiBfUkVWT0tFRCBzdGF0ZSBv
+ZiB0aGUgZGVsZWdhdGlvbiB0byBuZnM0X3NjaGVkdWxlX3N0YXRlaWRfcmVjb3ZlcnkoKSwNCj4+
+PiBzbyB3b24ndCB3ZSBjb250aW51ZSB0byBsb29wIGlmIHN0YXRlICE9IE5VTEw/DQo+PiANCj4+
+IEnigJltIG5vdCBmb2xsb3dpbmcuIFRoaXMgcGF0Y2ggaXMgdG8gaGFuZGxlIHRoZSBjYXNlIHdo
+ZW4gc3RhdGUgaXMgTlVMTCBhbmQgdGhlcmVmb3JlIHdlIGNhbuKAmXQgaW5pdGlhdGUgcmVjb3Zl
+cnkuIEJlZm9yZSB0aGlzIHBhdGNoLCB0aGUgcHJvYmxlbSB3YXMgdGhhdCB3aGVuIHN0YXRlIHdh
+cyBOVUxMIHdlIGRpZG7igJl0IChhKSBjbGVhbiB1cCBieSBkb2luZyBkZWxlZ3JldHVybiBhbmQg
+KGIpIHdlIHdlcmVu4oCZdCByZXRyeWluZyB3aGVuIHdlIGNhbiDigJQgaS5lLiB3aXRoIGEgc3Bl
+Y2lhbCBzdGF0ZWlkIGZvciBTRVRBVFRSLg0KPj4gDQo+PiBJZiBzdGF0ZSBpcyBub3QgbnVsbCwg
+SeKAmW0gYXNzdW1pbmcgdGhlIGNvZGUgaXMgaGFuZGxpbmcgY29ycmVjdGx5IGJ5IGNhbGxpbmcg
+bmZzNF9zY2hlZHVsZV9zdGF0ZWlkX3JlY292ZXJ5LiBUaGUgY29ycmVjdG5lc3Mgb2YgdGhhdCBj
+b2RlIGlzIGJleW9uZCB0aGUgc2NvcGUgb2YgdGhlIHByb2JsZW0gaeKAmW0gcHJvcG9zaW5nIHRv
+IHNvbHZlIGhlcmUuDQo+IA0KPiBUaGF0J3MgbXkgcG9pbnQuIEknbSBub3Qgc2VlaW5nIHRoYXQg
+dGhlIGNvZGUgaXMgaGFuZGxpbmcgdGhhdCBjYXNlLA0KPiBhbmQgc28gSSdtIG5vdCBzZWVpbmcg
+d2h5IHdlIHNob3VsZCB0cmVhdCBzdGF0ZSA9PSBOVUxMIGFzIGJlaW5nDQo+IHNwZWNpYWwuDQo+
+IA0KDQpUaGUgY2FzZSDigJxzdGF0ZT09bnVsbOKAnSBpcyBzcGVjaWFsIGJlY2F1c2Ugc3RhdGUg
+aXMgbnVsbCBzbyB3ZSBjYW7igJl0IGluaXRpYXRlIHN0YXRlIHJlY292ZXJ5LiBXaGlsZSBjYWxs
+aW5nIG5mczRfaW5vZGVfcmV0dXJuX2RlbGVnYXRpb24gaXMganVzdCB0byBkbyBpbnRlcm5hbCBj
+bGVhbiB1cCwgdGhlIGltcG9ydGFudCBwaWVjZSBpbiB0aGlzIGNhc2UgaXMgdG8gcmV0cnkgYmVj
+YXVzZSBpbiBTRVRBVFRSIGNhc2Ugd2UgaGF2ZSBhIHNwZWNpYWwgc3RhdGVpZCB0byB0cnkuIFdo
+ZW4gc3RhdGUgaXNu4oCZdCBudWxsLCBpbml0aWF0aW5nIHJlY292ZXJ5IGFuZCB0cnlpbmcgdG8g
+cmVjbGFpbSBvcGVuIHN0YXRlIGJlZm9yZSByZXR1cmluZyB0aGUgZGVsZWdhdGlvbiBzdGF0ZSB0
+aGF04oCZcyB0aGUgc2VydmVyIGlzIGNvbXBsYWluaW5nIGFib3V0IGlzIG5lZWRlZCBiZWZvcmUg
+cmV0dXJuaW5nIHRoZSBkZWxlZ2F0aW9uLiBUaGVyZWZvcmUgY2FsbGluZyBuZnM0X2lub2RlX3Jl
+dHVybl9kZWxlZ2F0aW9uKCkgd291bGQgbm90IGJlIGFwcHJvcHJpYXRlIGxpa2UgaXTigJlzIGRv
+bmUgaW4gT1BFTk1PREUgY2FzZS4NCg0KR2l2ZW4gY3VycmVudCB0ZXN0aW5nLCBJIGRvbuKAmXQg
+c2VlIGFuIGlzc3VlIG9mIHJlY292ZXJ5IGZyb20gcmVjZWl2aW5nIEJBRF9TVEFURUlEIG9uIGEg
+c3luY2hyb25vdXMgb3BlcmF0aW9uIHdoZW4gc3RhdGUgaXMgbm90IE5VTEwuIFlldCwgSSBoYXZl
+IGEgc3BlY2lhbCB0ZXN0IGZhaWx1cmUgY2FzZSBmb3Igd2hlbiBzdGF0ZSBpcyBOVUxMLiBUaHVz
+IEnigJltIHRyeWluZyB0byBnZXQgdGhpcyBmaXggaW4uIElmIGFub3RoZXIgcHJvYmxlbSBpcyB1
+bmNvdmVyZWQgZm9yIHdoZW4gc3RhdGUgaXMgbm90IG51bGwsIEkgdGhpbmsgdGhhdCB3b3VsZCBi
+ZSB0aGUgdGltZSB0byBmaXggdGhhdCBwcm9ibGVtPw0KDQoNCj4+IA0KPj4gDQo+Pj4gSU9XOiBp
+cyB0aGVyZSBhbnkgcmVhc29uIG5vdCB0byBkbyB0aGUgc2FtZSB0aGluZyBoZXJlIHRoYXQgd2Ug
+YWxyZWFkeQ0KPj4+IGRvIGZvciBORlM0RVJSX09QRU5NT0RFPw0KPj4gDQo+PiBUaGUgT1BFTk1P
+REUgZXJyb3IgbW9kZSBjb2RlIHNlZW1zIHRvIGhhdmUgc2xpZ2h0bHkgZGlmZmVyZW50IGxvZ2lj
+LiBJdCB3YW50cyB0byByZXR1cm4gIHRoZSBkZWxlZ2F0aW9uIHJlZ2FyZGxlc3Mgb2Ygd2hldGhl
+ciBvciBub3Qgc3RhdGUgaXMgTlVMTC4NCj4gDQo+IFNlZSBhYm92ZS4NCg0K
