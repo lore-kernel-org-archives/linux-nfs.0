@@ -1,48 +1,88 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pd0-f174.google.com ([209.85.192.174]:33538 "EHLO
-	mail-pd0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756554AbbFPOtQ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Jun 2015 10:49:16 -0400
-Received: by pdjn11 with SMTP id n11so16063792pdj.0
-        for <linux-nfs@vger.kernel.org>; Tue, 16 Jun 2015 07:49:15 -0700 (PDT)
+Received: from mail-pd0-f177.google.com ([209.85.192.177]:33572 "EHLO
+	mail-pd0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756631AbbFPOtT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Jun 2015 10:49:19 -0400
+Received: by pdjn11 with SMTP id n11so16064619pdj.0
+        for <linux-nfs@vger.kernel.org>; Tue, 16 Jun 2015 07:49:18 -0700 (PDT)
 From: Peng Tao <tao.peng@primarydata.com>
 To: linux-nfs <linux-nfs@vger.kernel.org>
 Cc: Peng Tao <tao.peng@primarydata.com>
-Subject: [PATCH 09/11] pnfs/flexfiles: reset IO statistics upon LAYOUTSTATS success
-Date: Tue, 16 Jun 2015 22:47:30 +0800
-Message-Id: <1434466052-10491-10-git-send-email-tao.peng@primarydata.com>
+Subject: [PATCH 10/11] nfs42: serialize LAYOUTSTATS calls of the same file
+Date: Tue, 16 Jun 2015 22:47:31 +0800
+Message-Id: <1434466052-10491-11-git-send-email-tao.peng@primarydata.com>
 In-Reply-To: <1434466052-10491-1-git-send-email-tao.peng@primarydata.com>
 References: <1434466052-10491-1-git-send-email-tao.peng@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Per RFC NFSv42 draft, client MUST reset the statistics after getting
-a successfully reply from the metadata server.
+There is no need to report concurrently.
 
 Signed-off-by: Peng Tao <tao.peng@primarydata.com>
 ---
- fs/nfs/flexfilelayout/flexfilelayout.c | 8 ++++++++
- 1 file changed, 8 insertions(+)
+ fs/nfs/nfs42proc.c     | 3 +++
+ fs/nfs/pnfs.c          | 7 +++++++
+ include/linux/nfs_fs.h | 1 +
+ 3 files changed, 11 insertions(+)
 
-diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
-index 64beedd..4b79c74 100644
---- a/fs/nfs/flexfilelayout/flexfilelayout.c
-+++ b/fs/nfs/flexfilelayout/flexfilelayout.c
-@@ -1881,6 +1881,14 @@ ff_layout_cleanup_layoutstats(struct nfs42_layoutstat_data *data)
- 	for (i = 0; i < data->args.num_dev; i++) {
- 		mirror = data->args.devinfo[i].layout_private;
- 		data->args.devinfo[i].layout_private = NULL;
-+		if (data->res.rpc_status == NFS4_OK) {
-+			spin_lock(&mirror->lock);
-+			memset(&mirror->read_stat.io_stat, 0,
-+				sizeof(mirror->read_stat.io_stat));
-+			memset(&mirror->write_stat.io_stat, 0,
-+				sizeof(mirror->write_stat.io_stat));
-+			spin_unlock(&mirror->lock);
-+		}
- 		pnfs_put_lseg(mirror->lseg);
- 	}
+diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
+index ee02483..06c74cd 100644
+--- a/fs/nfs/nfs42proc.c
++++ b/fs/nfs/nfs42proc.c
+@@ -204,6 +204,9 @@ nfs42_layoutstat_release(void *calldata)
+ 		nfss->pnfs_curr_ld->cleanup_layoutstats(data);
+ 
+ 	pnfs_put_layout_hdr(NFS_I(data->args.inode)->layout);
++	smp_mb__before_atomic();
++	clear_bit(NFS_INO_LAYOUTSTATS, &NFS_I(data->args.inode)->flags);
++	smp_mb__after_atomic();
+ 	nfs_iput_and_deactive(data->inode);
+ 	kfree(data->args.devinfo);
+ 	kfree(data);
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 389f7c9..e5bd626 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -2254,6 +2254,7 @@ pnfs_report_layoutstat(struct inode *inode)
+ {
+ 	struct pnfs_layoutdriver_type *ld = NFS_SERVER(inode)->pnfs_curr_ld;
+ 	struct nfs_server *server = NFS_SERVER(inode);
++	struct nfs_inode *nfsi = NFS_I(inode);
+ 	struct nfs42_layoutstat_data *data;
+ 	struct pnfs_layout_hdr *hdr;
+ 	int status = 0;
+@@ -2261,6 +2262,9 @@ pnfs_report_layoutstat(struct inode *inode)
+ 	if (!pnfs_enabled_sb(server) || !ld->prepare_layoutstats)
+ 		goto out;
+ 
++	if (test_and_set_bit(NFS_INO_LAYOUTSTATS, &nfsi->flags))
++		goto out;
++
+ 	spin_lock(&inode->i_lock);
+ 	if (!NFS_I(inode)->layout) {
+ 		spin_unlock(&inode->i_lock);
+@@ -2293,6 +2297,9 @@ out_free:
+ 	kfree(data);
+ out_put:
+ 	pnfs_put_layout_hdr(hdr);
++	smp_mb__before_atomic();
++	clear_bit(NFS_INO_LAYOUTSTATS, &nfsi->flags);
++	smp_mb__after_atomic();
+ 	goto out;
  }
+ EXPORT_SYMBOL_GPL(pnfs_report_layoutstat);
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index b95f914..f91b5ad 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -219,6 +219,7 @@ struct nfs_inode {
+ #define NFS_INO_COMMIT		(7)		/* inode is committing unstable writes */
+ #define NFS_INO_LAYOUTCOMMIT	(9)		/* layoutcommit required */
+ #define NFS_INO_LAYOUTCOMMITTING (10)		/* layoutcommit inflight */
++#define NFS_INO_LAYOUTSTATS	(11)		/* layoutstats inflight */
+ 
+ static inline struct nfs_inode *NFS_I(const struct inode *inode)
+ {
 -- 
 1.8.3.1
 
