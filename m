@@ -1,57 +1,61 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:43760 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752907AbbFPP1K (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 16 Jun 2015 11:27:10 -0400
-Date: Tue, 16 Jun 2015 11:27:09 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Fabian Frederick <fabf@skynet.be>
-Cc: linux-kernel@vger.kernel.org, Julia Lawall <Julia.Lawall@lip6.fr>,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/1 linux-next] nfsd: use swap() in sort_pacl_range()
-Message-ID: <20150616152709.GA2147@fieldses.org>
-References: <1434128337-10366-1-git-send-email-fabf@skynet.be>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1434128337-10366-1-git-send-email-fabf@skynet.be>
+Received: from mail-ie0-f180.google.com ([209.85.223.180]:35287 "EHLO
+	mail-ie0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751404AbbFPP3V (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Jun 2015 11:29:21 -0400
+Received: by iesa3 with SMTP id a3so15267373ies.2
+        for <linux-nfs@vger.kernel.org>; Tue, 16 Jun 2015 08:29:21 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] NFSv4: Fix stateid recovery on revoked delegations
+Date: Tue, 16 Jun 2015 11:29:14 -0400
+Message-Id: <1434468554-7557-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Applying, thanks.--b.
+Ensure that we fix the non-NULL stateid case as well.
 
-On Fri, Jun 12, 2015 at 06:58:57PM +0200, Fabian Frederick wrote:
-> Use kernel.h macro definition.
-> 
-> Thanks to Julia Lawall for Coccinelle scripting support.
-> 
-> Signed-off-by: Fabian Frederick <fabf@skynet.be>
-> ---
->  fs/nfsd/nfs4acl.c | 6 ++----
->  1 file changed, 2 insertions(+), 4 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4acl.c b/fs/nfsd/nfs4acl.c
-> index 7e10e2a..eb5accf 100644
-> --- a/fs/nfsd/nfs4acl.c
-> +++ b/fs/nfsd/nfs4acl.c
-> @@ -372,7 +372,6 @@ pace_gt(struct posix_acl_entry *pace1, struct posix_acl_entry *pace2)
->  static void
->  sort_pacl_range(struct posix_acl *pacl, int start, int end) {
->  	int sorted = 0, i;
-> -	struct posix_acl_entry tmp;
->  
->  	/* We just do a bubble sort; easy to do in place, and we're not
->  	 * expecting acl's to be long enough to justify anything more. */
-> @@ -382,9 +381,8 @@ sort_pacl_range(struct posix_acl *pacl, int start, int end) {
->  			if (pace_gt(&pacl->a_entries[i],
->  				    &pacl->a_entries[i+1])) {
->  				sorted = 0;
-> -				tmp = pacl->a_entries[i];
-> -				pacl->a_entries[i] = pacl->a_entries[i+1];
-> -				pacl->a_entries[i+1] = tmp;
-> +				swap(pacl->a_entries[i],
-> +				     pacl->a_entries[i + 1]);
->  			}
->  		}
->  	}
-> -- 
-> 2.4.2
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfs/nfs4proc.c | 18 +++---------------
+ 1 file changed, 3 insertions(+), 15 deletions(-)
+
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 6bcdecd61125..0fc1b0cdda98 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -356,6 +356,9 @@ int nfs4_handle_exception(struct nfs_server *server, int errorcode, struct nfs4_
+ 		case 0:
+ 			return 0;
+ 		case -NFS4ERR_OPENMODE:
++		case -NFS4ERR_DELEG_REVOKED:
++		case -NFS4ERR_ADMIN_REVOKED:
++		case -NFS4ERR_BAD_STATEID:
+ 			if (inode && nfs4_have_delegation(inode, FMODE_READ)) {
+ 				nfs4_inode_return_delegation(inode);
+ 				exception->retry = 1;
+@@ -367,21 +370,6 @@ int nfs4_handle_exception(struct nfs_server *server, int errorcode, struct nfs4_
+ 			if (ret < 0)
+ 				break;
+ 			goto wait_on_recovery;
+-		case -NFS4ERR_DELEG_REVOKED:
+-		case -NFS4ERR_ADMIN_REVOKED:
+-		case -NFS4ERR_BAD_STATEID:
+-			if (state == NULL) {
+-				if (inode && nfs4_have_delegation(inode,
+-						FMODE_READ)) {
+-					nfs4_inode_return_delegation(inode);
+-					exception->retry = 1;
+-				}
+-				break;
+-			}
+-			ret = nfs4_schedule_stateid_recovery(server, state);
+-			if (ret < 0)
+-				break;
+-			goto wait_on_recovery;
+ 		case -NFS4ERR_EXPIRED:
+ 			if (state != NULL) {
+ 				ret = nfs4_schedule_stateid_recovery(server, state);
+-- 
+2.4.3
+
