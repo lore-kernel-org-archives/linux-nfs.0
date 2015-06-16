@@ -1,124 +1,57 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pd0-f181.google.com ([209.85.192.181]:36038 "EHLO
-	mail-pd0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756631AbbFPOtV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Jun 2015 10:49:21 -0400
-Received: by pdjm12 with SMTP id m12so15944839pdj.3
-        for <linux-nfs@vger.kernel.org>; Tue, 16 Jun 2015 07:49:21 -0700 (PDT)
-From: Peng Tao <tao.peng@primarydata.com>
-To: linux-nfs <linux-nfs@vger.kernel.org>
-Cc: Peng Tao <tao.peng@primarydata.com>
-Subject: [PATCH 11/11] pnfs/flexfiles: report layoutstat regularly
-Date: Tue, 16 Jun 2015 22:47:32 +0800
-Message-Id: <1434466052-10491-12-git-send-email-tao.peng@primarydata.com>
-In-Reply-To: <1434466052-10491-1-git-send-email-tao.peng@primarydata.com>
-References: <1434466052-10491-1-git-send-email-tao.peng@primarydata.com>
+Received: from fieldses.org ([173.255.197.46]:43760 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752907AbbFPP1K (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 16 Jun 2015 11:27:10 -0400
+Date: Tue, 16 Jun 2015 11:27:09 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Fabian Frederick <fabf@skynet.be>
+Cc: linux-kernel@vger.kernel.org, Julia Lawall <Julia.Lawall@lip6.fr>,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/1 linux-next] nfsd: use swap() in sort_pacl_range()
+Message-ID: <20150616152709.GA2147@fieldses.org>
+References: <1434128337-10366-1-git-send-email-fabf@skynet.be>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1434128337-10366-1-git-send-email-fabf@skynet.be>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-As a simple scheme, report every minute if IO is still going on.
+Applying, thanks.--b.
 
-Signed-off-by: Peng Tao <tao.peng@primarydata.com>
----
- fs/nfs/flexfilelayout/flexfilelayout.c | 27 +++++++++++++++++++++++----
- fs/nfs/flexfilelayout/flexfilelayout.h |  6 +++++-
- 2 files changed, 28 insertions(+), 5 deletions(-)
-
-diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
-index 4b79c74..deddeaf 100644
---- a/fs/nfs/flexfilelayout/flexfilelayout.c
-+++ b/fs/nfs/flexfilelayout/flexfilelayout.c
-@@ -454,14 +454,23 @@ nfs4_ff_layout_calc_completion_time(struct rpc_task *task)
- 	return ktime_sub(ktime_get(), task->tk_start);
- }
- 
--static void
-+static bool
- nfs4_ff_layoutstat_start_io(struct nfs4_ff_layout_mirror *mirror,
- 			    struct nfs4_ff_layoutstat *layoutstat)
- {
- 	static const ktime_t notime = {0};
-+	ktime_t now = ktime_get();
- 
- 	nfs4_ff_start_busy_timer(&layoutstat->busy_timer);
--	cmpxchg(&mirror->start_time, notime, ktime_get());
-+	cmpxchg(&mirror->start_time, notime, now);
-+	cmpxchg(&mirror->last_report_time, notime, now);
-+	if (ktime_to_ms(ktime_sub(now, mirror->last_report_time)) >=
-+			FF_LAYOUTSTATS_REPORT_INTERVAL) {
-+		mirror->last_report_time = now;
-+		return true;
-+	}
-+
-+	return false;
- }
- 
- static void
-@@ -498,10 +507,15 @@ static void
- nfs4_ff_layout_stat_io_start_read(struct nfs4_ff_layout_mirror *mirror,
- 		__u64 requested)
- {
-+	bool report;
-+
- 	spin_lock(&mirror->lock);
--	nfs4_ff_layoutstat_start_io(mirror, &mirror->read_stat);
-+	report = nfs4_ff_layoutstat_start_io(mirror, &mirror->read_stat);
- 	nfs4_ff_layout_stat_io_update_requested(&mirror->read_stat, requested);
- 	spin_unlock(&mirror->lock);
-+
-+	if (report)
-+		pnfs_report_layoutstat(mirror->lseg->pls_layout->plh_inode);
- }
- 
- static void
-@@ -521,10 +535,15 @@ static void
- nfs4_ff_layout_stat_io_start_write(struct nfs4_ff_layout_mirror *mirror,
- 		__u64 requested)
- {
-+	bool report;
-+
- 	spin_lock(&mirror->lock);
--	nfs4_ff_layoutstat_start_io(mirror , &mirror->write_stat);
-+	report = nfs4_ff_layoutstat_start_io(mirror , &mirror->write_stat);
- 	nfs4_ff_layout_stat_io_update_requested(&mirror->write_stat, requested);
- 	spin_unlock(&mirror->lock);
-+
-+	if (report)
-+		pnfs_report_layoutstat(mirror->lseg->pls_layout->plh_inode);
- }
- 
- static void
-diff --git a/fs/nfs/flexfilelayout/flexfilelayout.h b/fs/nfs/flexfilelayout/flexfilelayout.h
-index 7e24887..6fcd8d5 100644
---- a/fs/nfs/flexfilelayout/flexfilelayout.h
-+++ b/fs/nfs/flexfilelayout/flexfilelayout.h
-@@ -15,6 +15,9 @@
-  * due to network error etc. */
- #define NFS4_FLEXFILE_LAYOUT_MAX_MIRROR_CNT 4096
- 
-+/* LAYOUTSTATS report interval in ms */
-+#define FF_LAYOUTSTATS_REPORT_INTERVAL (60000L)
-+
- struct nfs4_ff_ds_version {
- 	u32				version;
- 	u32				minor_version;
-@@ -62,6 +65,7 @@ struct nfs4_ff_layoutstat {
- };
- 
- struct nfs4_ff_layout_mirror {
-+	struct pnfs_layout_segment	*lseg; /* back pointer */
- 	u32				ds_count;
- 	u32				efficiency;
- 	struct nfs4_ff_layout_ds	*mirror_ds;
-@@ -75,7 +79,7 @@ struct nfs4_ff_layout_mirror {
- 	struct nfs4_ff_layoutstat	read_stat;
- 	struct nfs4_ff_layoutstat	write_stat;
- 	ktime_t				start_time;
--	struct pnfs_layout_segment	*lseg; /* back pointer */
-+	ktime_t				last_report_time;
- };
- 
- struct nfs4_ff_layout_segment {
--- 
-1.8.3.1
-
+On Fri, Jun 12, 2015 at 06:58:57PM +0200, Fabian Frederick wrote:
+> Use kernel.h macro definition.
+> 
+> Thanks to Julia Lawall for Coccinelle scripting support.
+> 
+> Signed-off-by: Fabian Frederick <fabf@skynet.be>
+> ---
+>  fs/nfsd/nfs4acl.c | 6 ++----
+>  1 file changed, 2 insertions(+), 4 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4acl.c b/fs/nfsd/nfs4acl.c
+> index 7e10e2a..eb5accf 100644
+> --- a/fs/nfsd/nfs4acl.c
+> +++ b/fs/nfsd/nfs4acl.c
+> @@ -372,7 +372,6 @@ pace_gt(struct posix_acl_entry *pace1, struct posix_acl_entry *pace2)
+>  static void
+>  sort_pacl_range(struct posix_acl *pacl, int start, int end) {
+>  	int sorted = 0, i;
+> -	struct posix_acl_entry tmp;
+>  
+>  	/* We just do a bubble sort; easy to do in place, and we're not
+>  	 * expecting acl's to be long enough to justify anything more. */
+> @@ -382,9 +381,8 @@ sort_pacl_range(struct posix_acl *pacl, int start, int end) {
+>  			if (pace_gt(&pacl->a_entries[i],
+>  				    &pacl->a_entries[i+1])) {
+>  				sorted = 0;
+> -				tmp = pacl->a_entries[i];
+> -				pacl->a_entries[i] = pacl->a_entries[i+1];
+> -				pacl->a_entries[i+1] = tmp;
+> +				swap(pacl->a_entries[i],
+> +				     pacl->a_entries[i + 1]);
+>  			}
+>  		}
+>  	}
+> -- 
+> 2.4.2
