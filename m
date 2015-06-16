@@ -1,82 +1,70 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:55168 "EHLO mx1.redhat.com"
+Received: from smtp-o-3.desy.de ([131.169.56.156]:44942 "EHLO smtp-o-3.desy.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752249AbbFPMtX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 16 Jun 2015 08:49:23 -0400
-Date: Tue, 16 Jun 2015 08:49:19 -0400 (EDT)
-From: Benjamin Coddington <bcodding@redhat.com>
-To: Anna Schumaker <Anna.Schumaker@netapp.com>
-cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] NFS: Handle exceptions for SEEK
-In-Reply-To: <558017BF.1040607@Netapp.com>
-Message-ID: <alpine.OSX.2.19.9992.1506160844350.644@planck.local>
-References: <e666c4a3bb9da72bffbf5ecb33daba4a25d78a5a.1434317690.git.bcodding@redhat.com> <558017BF.1040607@Netapp.com>
+	id S1752817AbbFPNFZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 16 Jun 2015 09:05:25 -0400
+Received: from smtp-map-3.desy.de (smtp-map-3.desy.de [131.169.56.68])
+	by smtp-o-3.desy.de (DESY-O-3) with ESMTP id EF25D280737
+	for <linux-nfs@vger.kernel.org>; Tue, 16 Jun 2015 15:05:23 +0200 (CEST)
+Received: from ZITSWEEP4.win.desy.de (zitsweep4.win.desy.de [131.169.97.98])
+	by smtp-map-3.desy.de (DESY_MAP_3) with ESMTP id E06351237
+	for <linux-nfs@vger.kernel.org>; Tue, 16 Jun 2015 15:05:23 +0200 (MEST)
+Date: Tue, 16 Jun 2015 15:05:23 +0200 (CEST)
+From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: linux-nfs <linux-nfs@vger.kernel.org>
+Message-ID: <1131665268.4008393.1434459923077.JavaMail.zimbra@desy.de>
+In-Reply-To: <CAHQdGtRN39m1UDFMbMn+35Wp=1L9XZYJAgYpZ850qgypcGKjJg@mail.gmail.com>
+References: <1857695394.3971135.1434449335470.JavaMail.zimbra@desy.de> <CAHQdGtRN39m1UDFMbMn+35Wp=1L9XZYJAgYpZ850qgypcGKjJg@mail.gmail.com>
+Subject: Re: crash on read overflow
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 16 Jun 2015, Anna Schumaker wrote:
+Hi Trond,
 
-> Thanks for finding this!
->
-> On 06/14/2015 05:35 PM, Benjamin Coddington wrote:
-> > Don't pass along NFS4ERR_* exceptions to VFS and do recovery if needed.
-> > These exceptions might look like offsets (even though they are negative) and
-> > applications that used the previous behavior of seeking to eof for
-> > SEEK_HOLE, and current offset for SEEK_DATA may be caught off-guard if the server
-> > responds with transient errors such as NFS4ERR_GRACE.
-> >
-> > Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
-> > ---
-> >  fs/nfs/nfs42proc.c |   23 +++++++++++++++--------
-> >  1 files changed, 15 insertions(+), 8 deletions(-)
-> >
-> > diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
-> > index 3a9e752..9c3c9d2 100644
-> > --- a/fs/nfs/nfs42proc.c
-> > +++ b/fs/nfs/nfs42proc.c
-> > @@ -146,20 +146,27 @@ loff_t nfs42_proc_llseek(struct file *filep, loff_t offset, int whence)
-> >  		.rpc_resp = &res,
-> >  	};
-> >  	struct nfs_server *server = NFS_SERVER(inode);
-> > +	struct nfs4_exception exception = { };
-> >  	int status;
-> >
-> >  	if (!nfs_server_capable(inode, NFS_CAP_SEEK))
-> >  		return -ENOTSUPP;
-> >
-> > -	status = nfs42_set_rw_stateid(&args.sa_stateid, filep, FMODE_READ);
-> > -	if (status)
-> > -		return status;
-> > -
-> >  	nfs_wb_all(inode);
-> > -	status = nfs4_call_sync(server->client, server, &msg,
-> > -				&args.seq_args, &res.seq_res, 0);
-> > -	if (status == -ENOTSUPP)
-> > -		server->caps &= ~NFS_CAP_SEEK;
-> > +	do {
-> > +		status = nfs42_set_rw_stateid(&args.sa_stateid, filep, FMODE_READ);
-> > +		if (status)
-> > +			return status;
-> > +
-> > +		status = nfs4_call_sync(server->client, server, &msg,
-> > +					&args.seq_args, &res.seq_res, 0);
-> > +		if (status == -ENOTSUPP) {
-> > +			server->caps &= ~NFS_CAP_SEEK;
-> > +			return status;
-> > +		}
-> > +		status = nfs4_handle_exception(server, status, &exception);
-> > +	} while (exception.retry);
-> > +
->
-> Other functions using the nfs4_exception structure have the exception handling in a single function, and then call something like _nfs4_proc_llseek() to set up the RPC call.  Is there a reason you're not doing it that way here?
+Yes, I already have discovered rpc level dependencies as well 
+and testing a minnimal patch set for RHEL6.
 
-I made a first pass at it that way, but because the response's offset needs
-to be passed back to vfs_setpos, it meant passing in the nfs42_seek_res * to
-_nfs4_proc_llseek(), or passing it back via the retun, or other fiddling.
-It ended up being much smaller and simpler to do it this way.
+Thanks,
+  Tigran.
 
-Let me know and I'll send it with _nfs4_proc_llseek() instead if you'd like.
+----- Original Message -----
+> From: "Trond Myklebust" <trond.myklebust@primarydata.com>
+> To: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+> Cc: "linux-nfs" <linux-nfs@vger.kernel.org>
+> Sent: Tuesday, June 16, 2015 2:32:04 PM
+> Subject: Re: crash on read overflow
 
-Ben
+> Hi Tigran,
+> 
+> On Tue, Jun 16, 2015 at 6:08 AM, Mkrtchyan, Tigran
+> <tigran.mkrtchyan@desy.de> wrote:
+>>
+>>
+>> Hi Trond,
+>>
+>> with RHEL6 kernel we observe kernel panic if server reply
+>> more data than client requested. This is obviously fixed in
+>> RHEL7 and upstream. Unfortunately, kernel crashes so badly
+>> that I can't get any stacktrace. My guess is that
+>> commit 64bd577ea0021f5903505de061b3b7d8a785ee94 is the one
+>> which fixes the issue. Can you confirm?
+>>
+> 
+> That should help, but you also need to ensure that they have applied
+> commit bfeea1dc1c92 ("SUNRPC: Don't decode beyond the end of the RPC
+> reply message").
+> 
+> You might possibly also need commit 1537693ceaa8 ("SUNRPC: Clean up
+> xdr_set_iov()") and commit 76cacaabf15a ("SUNRPC: xdr_read_pages needs
+> to clear xdr->page_ptr.") since those are all dependencies for
+> bfeea1dc1c92.
+> 
+> Cheers
+>  Trond
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
