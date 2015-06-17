@@ -1,121 +1,245 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailgate-02.zdv.uni-mainz.de ([134.93.178.246]:15773 "EHLO
-	mailgate-02.zdv.uni-mainz.de" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752563AbbFQM7v (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Jun 2015 08:59:51 -0400
-Message-ID: <55816C84.1080608@uni-mainz.de>
-Date: Wed, 17 Jun 2015 14:48:04 +0200
-From: Christoph Martin <martin@uni-mainz.de>
+Received: from mail-pd0-f176.google.com ([209.85.192.176]:35477 "EHLO
+	mail-pd0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753366AbbFQN5q (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Jun 2015 09:57:46 -0400
+Received: by pdbnf5 with SMTP id nf5so40848067pdb.2
+        for <linux-nfs@vger.kernel.org>; Wed, 17 Jun 2015 06:57:45 -0700 (PDT)
+Message-ID: <55817CCE.1030704@gmail.com>
+Date: Wed, 17 Jun 2015 21:57:34 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
 MIME-Version: 1.0
-To: Andy Adamson <andros@netapp.com>, "J. Bruce Fields" <bfields@fieldses.org>
-CC: Markus Tacke <tacke@uni-mainz.de>, <linux-nfs@vger.kernel.org>
-Subject: [PATCH] make nfsd_drc_max_mem configurable
-Content-Type: multipart/signed; micalg=pgp-sha512;
-	protocol="application/pgp-signature";
-	boundary="O9EFGWeqDssTiUSJwphFkQNfT1NRbuIQu"
+To: "J. Bruce Fields" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+CC: Christoph Hellwig <hch@infradead.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        kinglongmee@gmail.com
+Subject: [PATCH v2] nfsd: nfsd4_cb_sequence_done() for processing more cb
+ errors
+References: <556D8C8D.50205@gmail.com>
+In-Reply-To: <556D8C8D.50205@gmail.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---O9EFGWeqDssTiUSJwphFkQNfT1NRbuIQu
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
+When testing pnfs layout, nfsd got error NFS4ERR_SEQ_MISORDERED.
+It is caused by nfs return NFS4ERR_DELAY before validate_seqid(),
+don't update the sequnce id, but nfsd updates the sequnce id !!!
 
-Dear Andy, dear Bruce,
+According to RFC5661 20.9.3,
+" If CB_SEQUENCE returns an error, then the state of the slot
+(sequence ID, cached reply) MUST NOT change."
 
-(sorry for the recent to you, I now cc'd linux-nfs)
+This patch introduce a new helper nfsd4_cb_sequence_done() for
+processing more callback errors as client.
 
-I have attached a patch to nfssvc.diff to make the size of the drc nfsd
-cache configurable.
+v2, 
+thanks Christoph's advice of adding a helper process errors as client
 
-In the last month we were stumbling twice over the problem that the
-NFS4.1 session cache was to small.
+Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+---
+ fs/nfsd/nfs4callback.c | 122 +++++++++++++++++++++++++++++++++++++------------
+ fs/nfsd/state.h        |   1 +
+ 2 files changed, 93 insertions(+), 30 deletions(-)
 
-The first time we wanted to setup a NFS Server for our HPC cluster. We
-were wondering why we were only able to mount the filesystem on 380 of
-our ~700 nodes. It took us a long time to find out that it was the limit
-of the NFS4.1 session cache. Since this machine had 12G Ram, the kernel
-reserved 12M for the cache, which results in 384 slots a 32k:
-
-echo $(((12582912>>10)/32))
-384
-
-We patched the kernel redhat 7 kernel to change NFSD_DRC_SIZE_SHIFT to
-from 10 to 7 to fix this problem.
-
-The second time we installed a small Debian VM with 1G ram to act as a
-NFS4 referral server for the home and group directories on our campus.
-Since the server does only NFS referrals it does not really need more
-memory than the 1G. But it could only server about 30 clients with this
-limitation of the session cache.
-
-I think it would be a good idea to have the amount of memory
-configurable in nfsd. So I wrote this small patch to make drc_size
-configurable while loading the kernel nfsd module.
-
-The patch uses the old value computed from NFSD_DRC_SIZE_SHIFT as the
-lower limit. If drc_size as a parameter for then nfsd is higher than a
-1/1000 of the RAM, this value will be used.
-
-One might consider to make NFSD_DRC_SIZE_SHIFT even higher to use less
-memory for situations where it is not needed. I did not implement an
-upper limit, but it might be important.
-
-Please consider to include this patch into the nfsd code.
-
-Yours
-Christoph Martin
-
---- linux-source-3.16/fs/nfsd/nfssvc.c	2015-03-30 12:09:09.000000000 +020=
-0
-+++ linux-source-3.16.nfsd/fs/nfsd/nfssvc.c	2015-06-17
-09:28:37.880443867 +0200
-@@ -359,11 +359,19 @@ void nfsd_reset_versions(void)
-  * For now this is a #defined shift which could be under admin control
-  * in the future.
-  */
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index ce8d3f2..6fce478 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -435,12 +435,12 @@ static int decode_cb_sequence4resok(struct xdr_stream *xdr,
+ 	 */
+ 	status = 0;
+ out:
+-	if (status)
+-		nfsd4_mark_cb_fault(cb->cb_clp, status);
++	cb->cb_seq_status = status;
+ 	return status;
+ out_overflow:
+ 	print_overflow_msg(__func__, xdr);
+-	return -EIO;
++	status = -EIO;
++	goto out;
+ }
+ 
+ static int decode_cb_sequence4res(struct xdr_stream *xdr,
+@@ -451,8 +451,8 @@ static int decode_cb_sequence4res(struct xdr_stream *xdr,
+ 	if (cb->cb_minorversion == 0)
+ 		return 0;
+ 
+-	status = decode_cb_op_status(xdr, OP_CB_SEQUENCE, &cb->cb_status);
+-	if (unlikely(status || cb->cb_status))
++	status = decode_cb_op_status(xdr, OP_CB_SEQUENCE, &cb->cb_seq_status);
++	if (unlikely(status || cb->cb_seq_status))
+ 		return status;
+ 
+ 	return decode_cb_sequence4resok(xdr, cb);
+@@ -526,7 +526,7 @@ static int nfs4_xdr_dec_cb_recall(struct rpc_rqst *rqstp,
+ 
+ 	if (cb != NULL) {
+ 		status = decode_cb_sequence4res(xdr, cb);
+-		if (unlikely(status || cb->cb_status))
++		if (unlikely(status || cb->cb_seq_status))
+ 			return status;
+ 	}
+ 
+@@ -616,7 +616,7 @@ static int nfs4_xdr_dec_cb_layout(struct rpc_rqst *rqstp,
+ 
+ 	if (cb) {
+ 		status = decode_cb_sequence4res(xdr, cb);
+-		if (unlikely(status || cb->cb_status))
++		if (unlikely(status || cb->cb_seq_status))
+ 			return status;
+ 	}
+ 	return decode_cb_op_status(xdr, OP_CB_LAYOUTRECALL, &cb->cb_status);
+@@ -874,6 +874,11 @@ static void nfsd4_cb_prepare(struct rpc_task *task, void *calldata)
+ 	struct nfs4_client *clp = cb->cb_clp;
+ 	u32 minorversion = clp->cl_minorversion;
+ 
++	/*
++	 * cb_seq_status is only set in decode_cb_sequence4res,
++	 * and so will remain 1 if an rpc level failure occurs.
++	 */
++	cb->cb_seq_status = 1;
+ 	cb->cb_status = 0;
+ 	cb->cb_minorversion = minorversion;
+ 	if (minorversion) {
+@@ -883,6 +888,84 @@ static void nfsd4_cb_prepare(struct rpc_task *task, void *calldata)
+ 	rpc_call_start(task);
+ }
+ 
++static bool nfsd4_cb_sequence_done(struct rpc_task *task, struct nfsd4_callback *cb)
++{
++	struct nfs4_client *clp = cb->cb_clp;
++	struct nfsd4_session *session = clp->cl_cb_session;
++	bool ret = true;
 +
-+static ulong drc_size =3D 0;
-+module_param(drc_size, ulong, 0444);
-+MODULE_PARM_DESC(drc_size,
-+		 "size of NFSv4.1 DRC cache memory (default and minimum:
-free_buffer_size >> 10)");
++	if (!clp->cl_minorversion) {
++		/*
++		 * If the backchannel connection was shut down while this
++		 * task was queued, we need to resubmit it after setting up
++		 * a new backchannel connection.
++		 *
++		 * Note that if we lost our callback connection permanently
++		 * the submission code will error out, so we don't need to
++		 * handle that case here.
++		 */
++		if (task->tk_flags & RPC_TASK_KILLED)
++			goto need_restart;
 +
- static void set_max_drc(void)
++		return true;
++	}
++
++	switch (cb->cb_seq_status) {
++	case 0:
++		/*
++		 * No need for lock, access serialized in nfsd4_cb_prepare
++		 *
++		 * RFC5661 20.9.3
++		 * If CB_SEQUENCE returns an error, then the state of the slot
++		 * (sequence ID, cached reply) MUST NOT change.
++		 */
++		++session->se_cb_seq_nr;
++		break;
++	case -ESERVERFAULT:
++		++session->se_cb_seq_nr;
++	case 1:
++	case -NFS4ERR_BADSESSION:
++		nfsd4_mark_cb_fault(cb->cb_clp, cb->cb_seq_status);
++		ret = false;
++		break;
++	case -NFS4ERR_DELAY:
++		if (!rpc_restart_call(task))
++			goto out;
++
++		rpc_delay(task, 2 * HZ);
++		return false;
++	case -NFS4ERR_BADSLOT:
++		goto retry_nowait;
++	case -NFS4ERR_SEQ_MISORDERED:
++		if (session->se_cb_seq_nr != 1) {
++			session->se_cb_seq_nr = 1;
++			goto retry_nowait;
++		}
++		break;
++	default:
++		dprintk("%s: unprocessed error %d\n", __func__,
++			cb->cb_seq_status);
++	}
++
++	clear_bit(0, &clp->cl_cb_slot_busy);
++	rpc_wake_up_next(&clp->cl_cb_waitq);
++	dprintk("%s: freed slot, new seqid=%d\n", __func__,
++		clp->cl_cb_session->se_cb_seq_nr);
++
++	if (task->tk_flags & RPC_TASK_KILLED)
++		goto need_restart;
++out:
++	return ret;
++retry_nowait:
++	if (rpc_restart_call_prepare(task))
++		ret = false;
++	goto out;
++need_restart:
++	task->tk_status = 0;
++	cb->cb_need_restart = true;
++	return false;
++}
++
+ static void nfsd4_cb_done(struct rpc_task *task, void *calldata)
  {
- 	#define NFSD_DRC_SIZE_SHIFT	10
--	nfsd_drc_max_mem =3D (nr_free_buffer_pages()
--					>> NFSD_DRC_SIZE_SHIFT) * PAGE_SIZE;
-+	nfsd_drc_max_mem =3D max(drc_size,
-+			       (nr_free_buffer_pages()
-+				>> NFSD_DRC_SIZE_SHIFT) * PAGE_SIZE);
-+	drc_size =3D nfsd_drc_max_mem;
- 	nfsd_drc_mem_used =3D 0;
- 	spin_lock_init(&nfsd_drc_lock);
- 	dprintk("%s nfsd_drc_max_mem %lu \n", __func__, nfsd_drc_max_mem);
+ 	struct nfsd4_callback *cb = calldata;
+@@ -891,30 +974,8 @@ static void nfsd4_cb_done(struct rpc_task *task, void *calldata)
+ 	dprintk("%s: minorversion=%d\n", __func__,
+ 		clp->cl_minorversion);
+ 
+-	if (clp->cl_minorversion) {
+-		/* No need for lock, access serialized in nfsd4_cb_prepare */
+-		if (!task->tk_status)
+-			++clp->cl_cb_session->se_cb_seq_nr;
+-		clear_bit(0, &clp->cl_cb_slot_busy);
+-		rpc_wake_up_next(&clp->cl_cb_waitq);
+-		dprintk("%s: freed slot, new seqid=%d\n", __func__,
+-			clp->cl_cb_session->se_cb_seq_nr);
+-	}
+-
+-	/*
+-	 * If the backchannel connection was shut down while this
+-	 * task was queued, we need to resubmit it after setting up
+-	 * a new backchannel connection.
+-	 *
+-	 * Note that if we lost our callback connection permanently
+-	 * the submission code will error out, so we don't need to
+-	 * handle that case here.
+-	 */
+-	if (task->tk_flags & RPC_TASK_KILLED) {
+-		task->tk_status = 0;
+-		cb->cb_need_restart = true;
++	if (!nfsd4_cb_sequence_done(task, cb))
+ 		return;
+-	}
+ 
+ 	if (cb->cb_status) {
+ 		WARN_ON_ONCE(task->tk_status);
+@@ -1090,6 +1151,7 @@ void nfsd4_init_cb(struct nfsd4_callback *cb, struct nfs4_client *clp,
+ 	cb->cb_msg.rpc_resp = cb;
+ 	cb->cb_ops = ops;
+ 	INIT_WORK(&cb->cb_work, nfsd4_run_cb_work);
++	cb->cb_seq_status = 1;
+ 	cb->cb_status = 0;
+ 	cb->cb_need_restart = false;
+ }
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index dbc4f85..d975165 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -67,6 +67,7 @@ struct nfsd4_callback {
+ 	struct rpc_message cb_msg;
+ 	struct nfsd4_callback_ops *cb_ops;
+ 	struct work_struct cb_work;
++	int cb_seq_status;
+ 	int cb_status;
+ 	bool cb_need_restart;
+ };
+-- 
+2.4.3
 
-
-
---O9EFGWeqDssTiUSJwphFkQNfT1NRbuIQu
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: OpenPGP digital signature
-Content-Disposition: attachment; filename="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1
-
-iQIcBAEBCgAGBQJVgWyEAAoJEPqBswqWsQmc5pwP/2L38N9Ifuz7ak6Q1xgmXhka
-DdAH5K5evtBVya0yKb2e4nTUlEtF9uTBgasbc0QlRkLr85LafWYGxDetzJP4mV0d
-7yA8KVMCz+IwPXg5pdPbv/lPBuM7vK9wWRcSIPDM5g/BfasGrvn8lqlBdP6LOfQ1
-/OEDVJrysUWxdILVJ5xbjDHhgHInxOlR0fR0xAdbftKLJvQ8nwoqlmxJvbUgS5Dk
-dmBLHdQIrUDFVcZDSEzFC/2exIM4k6+wt7cbeCIzs8r7QvvMlBiJY7mxWv3ZZw55
-xGzDgsTG6nXs3e60G5Lwif/eZrbMIsApiuVTXVl9vIlVFWWEjunWioFJKPY2uQWW
-/Mu5B9sgu/2D+leCz4nBaJwzgmcZnt4hydfHHNseXuOLhbH1FqIDz6Se60/R/G02
-0k4T0SJjPBjhFaPqHIesaTznZEcQ49nUmcnZ6LOm++ysJwJIuvOQL7pSCWq8f8lh
-ZBEtpoGfS3Uih0HZ2ZsSmyRkH9SwHNQJK8gYEGmJ5b4lgMkChHneSVSH6IBsX9kW
-VEc0Te0oJmcbajc0tV9Lrr/jZrWF7bzIrG+vVqs+27/R6wRfMJbXKXkHMU5c6zDz
-cLyRxZJzfdXxN0T4/mIJIIyYaCLa+oogOSti+x6FH5FT9qaAvXTlFIzc6qhO7QFd
-mtVCG7iCJt5QNpuUrfjf
-=ZTiw
------END PGP SIGNATURE-----
-
---O9EFGWeqDssTiUSJwphFkQNfT1NRbuIQu--
