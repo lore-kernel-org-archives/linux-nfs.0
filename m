@@ -1,10 +1,10 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pd0-f173.google.com ([209.85.192.173]:34754 "EHLO
-	mail-pd0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757753AbbFQHwV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Jun 2015 03:52:21 -0400
-Message-ID: <5581272E.5040500@gmail.com>
-Date: Wed, 17 Jun 2015 15:52:14 +0800
+Received: from mail-pd0-f181.google.com ([209.85.192.181]:36732 "EHLO
+	mail-pd0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757818AbbFQHwo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Jun 2015 03:52:44 -0400
+Message-ID: <55812746.8010704@gmail.com>
+Date: Wed, 17 Jun 2015 15:52:38 +0800
 From: Kinglong Mee <kinglongmee@gmail.com>
 MIME-Version: 1.0
 To: Al Viro <viro@zeniv.linux.org.uk>,
@@ -14,83 +14,44 @@ To: Al Viro <viro@zeniv.linux.org.uk>,
 CC: NeilBrown <neilb@suse.de>,
         Trond Myklebust <trond.myklebust@primarydata.com>,
         kinglongmee@gmail.com
-Subject: [PATCH 4/6 v5] path: New helpers path_get_pin/path_put_unpin for
- path pin
+Subject: [PATCH 5/6 v5] sunrpc: New helper cache_force_expire for cache cleanup
 References: <5581266C.9080404@gmail.com>
 In-Reply-To: <5581266C.9080404@gmail.com>
 Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Two helpers for filesystem pining to vfsmnt, not mntget.
+Using expiry_time force cleanup a cache.
 
-v4, v5, same as v2.
+v5, same v1.
 
 Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
 ---
- fs/namei.c           | 26 ++++++++++++++++++++++++++
- include/linux/path.h |  4 ++++
- 2 files changed, 30 insertions(+)
+ include/linux/sunrpc/cache.h | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
 
-diff --git a/fs/namei.c b/fs/namei.c
-index fe30d3b..8f94e7c 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -492,6 +492,32 @@ void path_put(const struct path *path)
- }
- EXPORT_SYMBOL(path_put);
- 
-+/**
-+ * path_get_pin - get a reference to a path's dentry
-+ *                and pin to path's vfsmnt
-+ * @path: path to get the reference to
-+ * @p: the fs_pin pin to vfsmnt
-+ */
-+void path_get_pin(struct path *path, struct fs_pin *p)
+diff --git a/include/linux/sunrpc/cache.h b/include/linux/sunrpc/cache.h
+index 437ddb6..ce75e9c 100644
+--- a/include/linux/sunrpc/cache.h
++++ b/include/linux/sunrpc/cache.h
+@@ -210,6 +210,17 @@ extern int cache_check(struct cache_detail *detail,
+ 		       struct cache_head *h, struct cache_req *rqstp);
+ extern void cache_flush(void);
+ extern void cache_purge(struct cache_detail *detail);
++
++static inline void cache_force_expire(struct cache_detail *detail, struct cache_head *h)
 +{
-+	dget(path->dentry);
-+	pin_insert_group(p, path->mnt, NULL);
++	write_lock(&detail->hash_lock);
++	h->expiry_time = seconds_since_boot() - 1;
++	detail->nextcheck = seconds_since_boot();
++	write_unlock(&detail->hash_lock);
++
++	cache_flush();
 +}
-+EXPORT_SYMBOL(path_get_pin);
 +
-+/**
-+ * path_put_unpin - put a reference to a path's dentry
-+ *                  and remove pin to path's vfsmnt
-+ * @path: path to put the reference to
-+ * @p: the fs_pin removed from vfsmnt
-+ */
-+void path_put_unpin(struct path *path, struct fs_pin *p)
-+{
-+	dput(path->dentry);
-+	pin_remove(p);
-+}
-+EXPORT_SYMBOL(path_put_unpin);
-+
- struct nameidata {
- 	struct path	path;
- 	struct qstr	last;
-diff --git a/include/linux/path.h b/include/linux/path.h
-index d137218..34599fb 100644
---- a/include/linux/path.h
-+++ b/include/linux/path.h
-@@ -3,6 +3,7 @@
- 
- struct dentry;
- struct vfsmount;
-+struct fs_pin;
- 
- struct path {
- 	struct vfsmount *mnt;
-@@ -12,6 +13,9 @@ struct path {
- extern void path_get(const struct path *);
- extern void path_put(const struct path *);
- 
-+extern void path_get_pin(struct path *, struct fs_pin *);
-+extern void path_put_unpin(struct path *, struct fs_pin *);
-+
- static inline int path_equal(const struct path *path1, const struct path *path2)
- {
- 	return path1->mnt == path2->mnt && path1->dentry == path2->dentry;
+ #define NEVER (0x7FFFFFFF)
+ extern void __init cache_initialize(void);
+ extern int cache_register_net(struct cache_detail *cd, struct net *net);
 -- 
 2.4.3
 
