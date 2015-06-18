@@ -1,79 +1,60 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ie0-f170.google.com ([209.85.223.170]:34256 "EHLO
-	mail-ie0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754435AbbFRURc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Jun 2015 16:17:32 -0400
-Received: by iebmu5 with SMTP id mu5so62265154ieb.1
-        for <linux-nfs@vger.kernel.org>; Thu, 18 Jun 2015 13:17:31 -0700 (PDT)
-Date: Thu, 18 Jun 2015 16:17:27 -0400
+Received: from mail-ie0-f169.google.com ([209.85.223.169]:36174 "EHLO
+	mail-ie0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754895AbbFRUfi (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Jun 2015 16:35:38 -0400
+Received: by iecrd14 with SMTP id rd14so62632677iec.3
+        for <linux-nfs@vger.kernel.org>; Thu, 18 Jun 2015 13:35:37 -0700 (PDT)
+Date: Thu, 18 Jun 2015 16:35:34 -0400
 From: Jeff Layton <jeff.layton@primarydata.com>
-To: Peng Tao <tao.peng@primarydata.com>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 00/11] pnfs/flexfiles: layoutstats support
-Message-ID: <20150618161727.1b4e287f@tlielax.poochiereds.net>
-In-Reply-To: <1434466052-10491-1-git-send-email-tao.peng@primarydata.com>
-References: <1434466052-10491-1-git-send-email-tao.peng@primarydata.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/2] pNFS: Fix a memory leak when attempted pnfs fails
+Message-ID: <20150618163534.5bc0ac04@tlielax.poochiereds.net>
+In-Reply-To: <1434585771-14169-1-git-send-email-trond.myklebust@primarydata.com>
+References: <1434585771-14169-1-git-send-email-trond.myklebust@primarydata.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 16 Jun 2015 22:47:21 +0800
-Peng Tao <tao.peng@primarydata.com> wrote:
+On Wed, 17 Jun 2015 20:02:50 -0400
+Trond Myklebust <trond.myklebust@primarydata.com> wrote:
 
-> Hi all,
+> pnfs_do_write() expects the call to pnfs_write_through_mds() to free the
+> pgio header and to release the layout segment before exiting. The problem
+> is that nfs_pgio_data_destroy() doesn't actually do this; it only frees
+> the memory allocated by nfs_generic_pgio().
 > 
-> The patchsets add LAYOUTSTATS support to flexfiles. LAYOUTSTATS are sent
-> every minute if IO is still happening upon a file.
+> Ditto for pnfs_do_read()...
 > 
-> One limitation is that at most 4 LAYOUTSTATS calls are permitted in a compound.
-> Had to send multiple LAYOUTSTATS operations per compound because OP_LAYOUTSTATS
-> requires stateid and deviceid as its arguments, which makes it a per-file per-deviceid
-> call.
+> Fix in both cases is to add a call to hdr->release(hdr).
 > 
-
-So what happens if there are more than 4 mirrors? Do you send more
-LAYOUTSTATS rpcs or do the other ones get left out? I couldn't quite
-tell that from looking over the code...
-
-> Cheers,
-> Tao
+> Cc: stable@vger.kernel.org
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> ---
+>  fs/nfs/pnfs.c | 2 ++
+>  1 file changed, 2 insertions(+)
 > 
-> Peng Tao (8):
->   pNFS: fill in nfs42_layoutstat_ops
->   pnfs: add pnfs_report_layoutstat helper function
->   pNFS/flexfiles: track when layout is first used
->   pnfs/flexfiles: add ff_layout_prepare_layoutstats
->   pnfs/flexfiles: encode LAYOUTSTATS flexfiles specific data
->   pnfs/flexfiles: reset IO statistics upon LAYOUTSTATS success
->   nfs42: serialize LAYOUTSTATS calls of the same file
->   pnfs/flexfiles: report layoutstat regularly
-> 
-> Trond Myklebust (3):
->   NFSv.2/pnfs Add a LAYOUTSTATS rpc function
->   pNFS/flexfiles: Remove unused struct members user_name, group_name
->   pNFS/flexfiles: add layoutstats tracking
-> 
->  fs/nfs/flexfilelayout/flexfilelayout.c | 448 ++++++++++++++++++++++++++++++++-
->  fs/nfs/flexfilelayout/flexfilelayout.h |  30 ++-
->  fs/nfs/nfs42.h                         |   7 +-
->  fs/nfs/nfs42proc.c                     |  81 ++++++
->  fs/nfs/nfs42xdr.c                      | 122 +++++++++
->  fs/nfs/nfs4_fs.h                       |   1 +
->  fs/nfs/nfs4proc.c                      |   4 +-
->  fs/nfs/nfs4xdr.c                       |   1 +
->  fs/nfs/pnfs.c                          |  56 +++++
->  fs/nfs/pnfs.h                          |   3 +
->  include/linux/nfs4.h                   |   1 +
->  include/linux/nfs_fs.h                 |   1 +
->  include/linux/nfs_xdr.h                |  43 ++++
->  13 files changed, 782 insertions(+), 16 deletions(-)
-> 
-
-Nice work, Tao. This looks pretty good to me. I had a couple of
-nitpicky comments, but that's stuff that can wait unless you need to
-respin for other reasons.
-
-You can add my:
+> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+> index 230606243be6..219ee6a3f1b3 100644
+> --- a/fs/nfs/pnfs.c
+> +++ b/fs/nfs/pnfs.c
+> @@ -1865,6 +1865,7 @@ pnfs_write_through_mds(struct nfs_pageio_descriptor *desc,
+>  		mirror->pg_recoalesce = 1;
+>  	}
+>  	nfs_pgio_data_destroy(hdr);
+> +	hdr->release(hdr);
+>  }
+>  
+>  static enum pnfs_try_status
+> @@ -1979,6 +1980,7 @@ pnfs_read_through_mds(struct nfs_pageio_descriptor *desc,
+>  		mirror->pg_recoalesce = 1;
+>  	}
+>  	nfs_pgio_data_destroy(hdr);
+> +	hdr->release(hdr);
+>  }
+>  
+>  /*
 
 Reviewed-by: Jeff Layton <jeff.layton@primarydata.com>
