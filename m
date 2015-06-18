@@ -1,43 +1,64 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail3.conversis.de ([213.203.208.210]:38527 "EHLO
-	mail3.conversis.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756318AbbFRSHg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Jun 2015 14:07:36 -0400
-Message-ID: <558308E6.2040802@conversis.de>
-Date: Thu, 18 Jun 2015 20:07:34 +0200
-From: Dennis Jacobfeuerborn <dennisml@conversis.de>
+Received: from mail-yk0-f182.google.com ([209.85.160.182]:33955 "EHLO
+	mail-yk0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752753AbbFRTYy (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Jun 2015 15:24:54 -0400
+Received: by ykfl8 with SMTP id l8so74573163ykf.1
+        for <linux-nfs@vger.kernel.org>; Thu, 18 Jun 2015 12:24:52 -0700 (PDT)
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: NFS server startup hangs for 60 seconds
-References: <5582B009.9090901@conversis.de> <20150618180141.GA21212@fieldses.org>
-In-Reply-To: <20150618180141.GA21212@fieldses.org>
-Content-Type: text/plain; charset=windows-1252
+In-Reply-To: <20150617230819.0a11e47a@grimm.local.home>
+References: <20150611234929.7b48d314@gandalf.local.home>
+	<CAHQdGtSyHtMfyVxT=hFY4m6XvM=3mxnZ=ajVJWYNXvYqE0+3zA@mail.gmail.com>
+	<1434120035.27504.77.camel@edumazet-glaptop2.roam.corp.google.com>
+	<20150612113420.5c114183@gandalf.local.home>
+	<20150612115038.44e20ccd@gandalf.local.home>
+	<20150617230819.0a11e47a@grimm.local.home>
+Date: Thu, 18 Jun 2015 15:24:52 -0400
+Message-ID: <CAHQdGtQfF8sgfj6B2H=Sg+mn6ghPD+4UuZMSMFjj3XCVee60pw@mail.gmail.com>
+Subject: Re: [REGRESSION] NFS is creating a hidden port (left over from
+ xs_bind() )
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Steven Rostedt <rostedt@goodmis.org>
+Cc: Eric Dumazet <eric.dumazet@gmail.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Linux Network Devel Mailing List <netdev@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        Andrew Morton <akpm@linux-foundation.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 18.06.2015 20:01, J. Bruce Fields wrote:
-> On Thu, Jun 18, 2015 at 01:48:25PM +0200, Dennis Jacobfeuerborn wrote:
->> Hi,
->> when I start nfs-server.service on a CentOS 7 system it takes 60 seconds
->> until the nfsd finally is up.
-> 
-> How exactly are you testing that?  (What are you using to decide when
-> nfsd is up?)
-> 
+On Wed, Jun 17, 2015 at 11:08 PM, Steven Rostedt <rostedt@goodmis.org> wrote:
+> On Fri, 12 Jun 2015 11:50:38 -0400
+> Steven Rostedt <rostedt@goodmis.org> wrote:
+>
+>> I reverted the following commits:
+>>
+>> c627d31ba0696cbd829437af2be2f2dee3546b1e
+>> 9e2b9f37760e129cee053cc7b6e7288acc2a7134
+>> caf4ccd4e88cf2795c927834bc488c8321437586
+>>
+>> And the issue goes away. That is, I watched the port go from
+>> ESTABLISHED to TIME_WAIT, and then gone, and theirs no hidden port.
+>>
+>> In fact, I watched the port with my portlist.c module, and it
+>> disappeared there too when it entered the TIME_WAIT state.
+>>
 
-The nfsd processes show up in the ps output.
+I've scanned those commits again and again, and I'm not seeing how we
+could be introducing a socket leak there. The only suspect I can see
+would be the NFS swap bugs that Jeff fixed a few weeks ago. Are you
+using NFS swap?
 
-After some digging I finally found that the reason for this is a buggy
-systemd unit file in RHEL/CentOS 7.
+> I've been running v4.0.5 with the above commits reverted for 5 days
+> now, and there's still no hidden port appearing.
+>
+> What's the status on this? Should those commits be reverted or is there
+> another solution to this bug?
+>
 
-This is a bug in nfs-server.service and he fix is to copy
-nfs-server.service to /etc/systemd/system and replace all occurrences of
-"rpcbind.target" with "rpcbind.service".
+I'm trying to reproduce, but I've had no luck yet.
 
-See this bug for reference:
-https://bugzilla.redhat.com/show_bug.cgi?id=1171603
-
-Regards,
- Dennis
-
+Cheers
+  Trond
