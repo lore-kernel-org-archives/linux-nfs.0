@@ -1,51 +1,66 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cdptpa-outbound-snat.email.rr.com ([107.14.166.229]:16123 "EHLO
-	cdptpa-oedge-vip.email.rr.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1751163AbbFRDHi (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Jun 2015 23:07:38 -0400
-Date: Wed, 17 Jun 2015 23:08:19 -0400
-From: Steven Rostedt <rostedt@goodmis.org>
-To: Eric Dumazet <eric.dumazet@gmail.com>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Linux Network Devel Mailing List <netdev@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [REGRESSION] NFS is creating a hidden port (left over from
- xs_bind() )
-Message-ID: <20150617230819.0a11e47a@grimm.local.home>
-In-Reply-To: <20150612115038.44e20ccd@gandalf.local.home>
-References: <20150611234929.7b48d314@gandalf.local.home>
-	<CAHQdGtSyHtMfyVxT=hFY4m6XvM=3mxnZ=ajVJWYNXvYqE0+3zA@mail.gmail.com>
-	<1434120035.27504.77.camel@edumazet-glaptop2.roam.corp.google.com>
-	<20150612113420.5c114183@gandalf.local.home>
-	<20150612115038.44e20ccd@gandalf.local.home>
+Received: from mail-pa0-f54.google.com ([209.85.220.54]:36007 "EHLO
+	mail-pa0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752241AbbFRHAS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Jun 2015 03:00:18 -0400
+Received: by paceq1 with SMTP id eq1so30270014pac.3
+        for <linux-nfs@vger.kernel.org>; Thu, 18 Jun 2015 00:00:17 -0700 (PDT)
+Message-ID: <55826C74.8020703@gmail.com>
+Date: Thu, 18 Jun 2015 15:00:04 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+To: "J. Bruce Fields" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+CC: kinglongmee@gmail.com
+Subject: [PATCH] nfsd: Prints a suitable length of filehandle
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 12 Jun 2015 11:50:38 -0400
-Steven Rostedt <rostedt@goodmis.org> wrote:
+With nfsd_debug on, fh_verify prints a fixed length of filehandle as,
+nfsd: fh_verify(8: 00010001 00000000 00000000 00000000 00000000 00000000)
+nfsd: fh_verify(28: 00070001 001c0002 00000000 041f9334 9b432a4c 835d4c95)
 
-> I reverted the following commits:
-> 
-> c627d31ba0696cbd829437af2be2f2dee3546b1e
-> 9e2b9f37760e129cee053cc7b6e7288acc2a7134
-> caf4ccd4e88cf2795c927834bc488c8321437586
-> 
-> And the issue goes away. That is, I watched the port go from
-> ESTABLISHED to TIME_WAIT, and then gone, and theirs no hidden port.
-> 
-> In fact, I watched the port with my portlist.c module, and it
-> disappeared there too when it entered the TIME_WAIT state.
-> 
+This patch lets nfsd prints a suitable length of filehandle as, 
+nfsd: fh_verify(8: 00010001 00000000)
+nfsd: fh_verify(28: 00070001 001c0002 00000000 041f9334 9b432a4c 835d4c95 8cbea40f)
 
-I've been running v4.0.5 with the above commits reverted for 5 days
-now, and there's still no hidden port appearing.
+Also, use snprintf insteads sprintf.
 
-What's the status on this? Should those commits be reverted or is there
-another solution to this bug?
+Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+---
+ fs/nfsd/nfsfh.c | 18 ++++++++----------
+ 1 file changed, 8 insertions(+), 10 deletions(-)
 
--- Steve
+diff --git a/fs/nfsd/nfsfh.c b/fs/nfsd/nfsfh.c
+index 350041a..dd6a5c1 100644
+--- a/fs/nfsd/nfsfh.c
++++ b/fs/nfsd/nfsfh.c
+@@ -650,16 +650,14 @@ fh_put(struct svc_fh *fhp)
+ char * SVCFH_fmt(struct svc_fh *fhp)
+ {
+ 	struct knfsd_fh *fh = &fhp->fh_handle;
+-
+-	static char buf[80];
+-	sprintf(buf, "%d: %08x %08x %08x %08x %08x %08x",
+-		fh->fh_size,
+-		fh->fh_base.fh_pad[0],
+-		fh->fh_base.fh_pad[1],
+-		fh->fh_base.fh_pad[2],
+-		fh->fh_base.fh_pad[3],
+-		fh->fh_base.fh_pad[4],
+-		fh->fh_base.fh_pad[5]);
++	/* 9 * NFS4_FHSIZE / 4 = 288 for fh_pad, 4 for fh_size, 1 for '\0' */
++	static char buf[293];
++	int pos = 0, i = 0;
++
++	pos = snprintf(buf, sizeof(buf), "%d:", fh->fh_size);
++	for (i = 0; i < fh->fh_size / sizeof(__u32); i++)
++		pos += snprintf(buf + pos, sizeof(buf) - pos,
++				" %08x", fh->fh_base.fh_pad[i]);
+ 	return buf;
+ }
+ 
+-- 
+2.4.3
+
