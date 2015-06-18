@@ -1,66 +1,73 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pa0-f54.google.com ([209.85.220.54]:36007 "EHLO
-	mail-pa0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752241AbbFRHAS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Jun 2015 03:00:18 -0400
-Received: by paceq1 with SMTP id eq1so30270014pac.3
-        for <linux-nfs@vger.kernel.org>; Thu, 18 Jun 2015 00:00:17 -0700 (PDT)
-Message-ID: <55826C74.8020703@gmail.com>
-Date: Thu, 18 Jun 2015 15:00:04 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
+Received: from sperry-03.control.lth.se ([130.235.83.190]:53577 "EHLO
+	sperry-03.control.lth.se" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752605AbbFRIXK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Jun 2015 04:23:10 -0400
+Received: from [130.235.83.12] (lie.control.lth.se [130.235.83.12])
+	(authenticated bits=0)
+	by sperry-03.control.lth.se (8.14.4/8.14.4) with ESMTP id t5I84Tja017271
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES128-SHA bits=128 verify=NO)
+	for <linux-nfs@vger.kernel.org>; Thu, 18 Jun 2015 10:04:29 +0200
+Message-ID: <55827B8D.3070103@control.lth.se>
+Date: Thu, 18 Jun 2015 10:04:29 +0200
+From: Anders Blomdell <anders.blomdell@control.lth.se>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-CC: kinglongmee@gmail.com
-Subject: [PATCH] nfsd: Prints a suitable length of filehandle
-Content-Type: text/plain; charset=utf-8
+To: linux-nfs@vger.kernel.org
+Subject: Mount regression between 4.0.4 client and 2.6.35 server
+Content-Type: multipart/mixed;
+ boundary="------------070208010501000401080500"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-With nfsd_debug on, fh_verify prints a fixed length of filehandle as,
-nfsd: fh_verify(8: 00010001 00000000 00000000 00000000 00000000 00000000)
-nfsd: fh_verify(28: 00070001 001c0002 00000000 041f9334 9b432a4c 835d4c95)
+This is a multi-part message in MIME format.
+--------------070208010501000401080500
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 7bit
 
-This patch lets nfsd prints a suitable length of filehandle as, 
-nfsd: fh_verify(8: 00010001 00000000)
-nfsd: fh_verify(28: 00070001 001c0002 00000000 041f9334 9b432a4c 835d4c95 8cbea40f)
+I have a problem with a 4.0.4 client refusing to mount from a 2.6.35 server
+due to NFS4ERR_INVAL returned during nfs4_discover_server_trunking. See
+https://bugzilla.redhat.com/show_bug.cgi?id=1228272.
 
-Also, use snprintf insteads sprintf.
+Proposed patch attached.
 
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
----
- fs/nfsd/nfsfh.c | 18 ++++++++----------
- 1 file changed, 8 insertions(+), 10 deletions(-)
+Regards
 
-diff --git a/fs/nfsd/nfsfh.c b/fs/nfsd/nfsfh.c
-index 350041a..dd6a5c1 100644
---- a/fs/nfsd/nfsfh.c
-+++ b/fs/nfsd/nfsfh.c
-@@ -650,16 +650,14 @@ fh_put(struct svc_fh *fhp)
- char * SVCFH_fmt(struct svc_fh *fhp)
- {
- 	struct knfsd_fh *fh = &fhp->fh_handle;
--
--	static char buf[80];
--	sprintf(buf, "%d: %08x %08x %08x %08x %08x %08x",
--		fh->fh_size,
--		fh->fh_base.fh_pad[0],
--		fh->fh_base.fh_pad[1],
--		fh->fh_base.fh_pad[2],
--		fh->fh_base.fh_pad[3],
--		fh->fh_base.fh_pad[4],
--		fh->fh_base.fh_pad[5]);
-+	/* 9 * NFS4_FHSIZE / 4 = 288 for fh_pad, 4 for fh_size, 1 for '\0' */
-+	static char buf[293];
-+	int pos = 0, i = 0;
-+
-+	pos = snprintf(buf, sizeof(buf), "%d:", fh->fh_size);
-+	for (i = 0; i < fh->fh_size / sizeof(__u32); i++)
-+		pos += snprintf(buf + pos, sizeof(buf) - pos,
-+				" %08x", fh->fh_base.fh_pad[i]);
- 	return buf;
- }
- 
+Anders Blomdell
 -- 
-2.4.3
+Anders Blomdell                  Email: anders.blomdell@control.lth.se
+Department of Automatic Control
+Lund University                  Phone:    +46 46 222 4625
+P.O. Box 118                     Fax:      +46 46 138118
+SE-221 00 Lund, Sweden
 
+
+--------------070208010501000401080500
+Content-Type: text/x-patch;
+ name="nfs4_discover_server_trunking-eio.patch"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="nfs4_discover_server_trunking-eio.patch"
+
+Minimum viable patch to continue version autonegotiotion in
+case where the server returns an unexpected NFS4ERR_INVAL,
+which happens for a 4.0.4-303.fc22.x86_64 client talking to
+a 2.6.35.14-106.fc14.i686.PAE server, see
+https://bugzilla.redhat.com/show_bug.cgi?id=1228272
+
+Signed-off-by: Anders Blomdell <anders.blomdell@control.lth.se>
+
+--- utils/mount/stropts.c.orig	2015-06-18 09:51:02.091148891 +0200
++++ utils/mount/stropts.c	2015-06-18 09:48:56.859970023 +0200
+@@ -838,6 +838,10 @@ check_result:
+ 		return result;
+ 
+ 	switch (errno) {
++	case EIO:
++		/* Fix to handle nfs4_discover_server_trunking returning
++		 * EIO in case where nfs server returns NFS4ERR_INVAL,
++		 * see https://bugzilla.redhat.com/show_bug.cgi?id=1228272 */
+ 	case EPROTONOSUPPORT:
+ 		/* A clear indication that the server or our
+ 		 * client does not support NFS version 4 and minor */
+
+--------------070208010501000401080500--
