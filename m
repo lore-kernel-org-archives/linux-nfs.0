@@ -1,55 +1,51 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f174.google.com ([209.85.213.174]:37692 "EHLO
-	mail-ig0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751997AbbFRAC4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Jun 2015 20:02:56 -0400
-Received: by igbsb11 with SMTP id sb11so48865033igb.0
-        for <linux-nfs@vger.kernel.org>; Wed, 17 Jun 2015 17:02:55 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 2/2] NFS: Ensure we set NFS_CONTEXT_RESEND_WRITES when requeuing writes
-Date: Wed, 17 Jun 2015 20:02:51 -0400
-Message-Id: <1434585771-14169-2-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1434585771-14169-1-git-send-email-trond.myklebust@primarydata.com>
-References: <1434585771-14169-1-git-send-email-trond.myklebust@primarydata.com>
+Received: from cdptpa-outbound-snat.email.rr.com ([107.14.166.229]:16123 "EHLO
+	cdptpa-oedge-vip.email.rr.com" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1751163AbbFRDHi (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Jun 2015 23:07:38 -0400
+Date: Wed, 17 Jun 2015 23:08:19 -0400
+From: Steven Rostedt <rostedt@goodmis.org>
+To: Eric Dumazet <eric.dumazet@gmail.com>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Linux Network Devel Mailing List <netdev@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [REGRESSION] NFS is creating a hidden port (left over from
+ xs_bind() )
+Message-ID: <20150617230819.0a11e47a@grimm.local.home>
+In-Reply-To: <20150612115038.44e20ccd@gandalf.local.home>
+References: <20150611234929.7b48d314@gandalf.local.home>
+	<CAHQdGtSyHtMfyVxT=hFY4m6XvM=3mxnZ=ajVJWYNXvYqE0+3zA@mail.gmail.com>
+	<1434120035.27504.77.camel@edumazet-glaptop2.roam.corp.google.com>
+	<20150612113420.5c114183@gandalf.local.home>
+	<20150612115038.44e20ccd@gandalf.local.home>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If a write attempt fails, and the write is queued up for resending to
-the server, as opposed to being dropped, then we need to set the
-appropriate flag so that nfs_file_fsync() does the right thing.
+On Fri, 12 Jun 2015 11:50:38 -0400
+Steven Rostedt <rostedt@goodmis.org> wrote:
 
-Cc: stable@vger.kernel.org
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/pnfs.c  | 1 +
- fs/nfs/write.c | 1 +
- 2 files changed, 2 insertions(+)
+> I reverted the following commits:
+> 
+> c627d31ba0696cbd829437af2be2f2dee3546b1e
+> 9e2b9f37760e129cee053cc7b6e7288acc2a7134
+> caf4ccd4e88cf2795c927834bc488c8321437586
+> 
+> And the issue goes away. That is, I watched the port go from
+> ESTABLISHED to TIME_WAIT, and then gone, and theirs no hidden port.
+> 
+> In fact, I watched the port with my portlist.c module, and it
+> disappeared there too when it entered the TIME_WAIT state.
+> 
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 219ee6a3f1b3..d47c188682b1 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1821,6 +1821,7 @@ int pnfs_write_done_resend_to_mds(struct nfs_pgio_header *hdr)
- 	/* Resend all requests through the MDS */
- 	nfs_pageio_init_write(&pgio, hdr->inode, FLUSH_STABLE, true,
- 			      hdr->completion_ops);
-+	set_bit(NFS_CONTEXT_RESEND_WRITES, &hdr->args.context->flags);
- 	return nfs_pageio_resend(&pgio, hdr);
- }
- EXPORT_SYMBOL_GPL(pnfs_write_done_resend_to_mds);
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index dfc19f1575a1..daf355642845 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -1289,6 +1289,7 @@ static void nfs_initiate_write(struct nfs_pgio_header *hdr,
- static void nfs_redirty_request(struct nfs_page *req)
- {
- 	nfs_mark_request_dirty(req);
-+	set_bit(NFS_CONTEXT_RESEND_WRITES, &req->wb_context->flags);
- 	nfs_unlock_request(req);
- 	nfs_end_page_writeback(req);
- 	nfs_release_request(req);
--- 
-2.4.3
+I've been running v4.0.5 with the above commits reverted for 5 days
+now, and there's still no hidden port appearing.
 
+What's the status on this? Should those commits be reverted or is there
+another solution to this bug?
+
+-- Steve
