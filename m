@@ -1,220 +1,164 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([198.137.202.9]:41949 "EHLO
+Received: from bombadil.infradead.org ([198.137.202.9]:42079 "EHLO
 	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932147AbbFROq7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Jun 2015 10:46:59 -0400
+	with ESMTP id S932184AbbFROrC (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Jun 2015 10:47:02 -0400
 From: Christoph Hellwig <hch@lst.de>
 To: "J. Bruce Fields" <bfields@fieldses.org>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 1/5] nfsd: clean up raparams handling
-Date: Thu, 18 Jun 2015 16:44:58 +0200
-Message-Id: <1434638702-353-2-git-send-email-hch@lst.de>
+Subject: [PATCH 2/5] nfsd: refactor nfs4_preprocess_stateid_op
+Date: Thu, 18 Jun 2015 16:44:59 +0200
+Message-Id: <1434638702-353-3-git-send-email-hch@lst.de>
 In-Reply-To: <1434638702-353-1-git-send-email-hch@lst.de>
 References: <1434638702-353-1-git-send-email-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Refactor the raparam hash helpers to just deal with the raparms,
-and keep opening/closing files separate from that.
+Split out two self contained helpers to make the function more readable.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- fs/nfsd/nfs4xdr.c | 24 +++++++++++++-------
- fs/nfsd/vfs.c     | 68 ++++++++++++++++++++-----------------------------------
- fs/nfsd/vfs.h     |  6 ++---
- 3 files changed, 43 insertions(+), 55 deletions(-)
+ fs/nfsd/nfs4state.c | 97 ++++++++++++++++++++++++++++-------------------------
+ 1 file changed, 52 insertions(+), 45 deletions(-)
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 0e8dd9b..41656be 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -33,6 +33,7 @@
-  *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-  */
- 
-+#include <linux/file.h>
- #include <linux/slab.h>
- #include <linux/namei.h>
- #include <linux/statfs.h>
-@@ -3419,7 +3420,7 @@ nfsd4_encode_read(struct nfsd4_compoundres *resp, __be32 nfserr,
- 	struct file *file = read->rd_filp;
- 	struct svc_fh *fhp = read->rd_fhp;
- 	int starting_len = xdr->buf->len;
--	struct raparms *ra;
-+	struct raparms *ra = NULL;
- 	__be32 *p;
- 	__be32 err;
- 
-@@ -3441,23 +3442,30 @@ nfsd4_encode_read(struct nfsd4_compoundres *resp, __be32 nfserr,
- 	maxcount = min_t(unsigned long, maxcount, (xdr->buf->buflen - xdr->buf->len));
- 	maxcount = min_t(unsigned long, maxcount, read->rd_length);
- 
--	if (read->rd_filp)
-+	if (read->rd_filp) {
- 		err = nfsd_permission(resp->rqstp, fhp->fh_export,
- 				fhp->fh_dentry,
- 				NFSD_MAY_READ|NFSD_MAY_OWNER_OVERRIDE);
--	else
--		err = nfsd_get_tmp_read_open(resp->rqstp, read->rd_fhp,
--						&file, &ra);
--	if (err)
--		goto err_truncate;
-+		if (err)
-+			goto err_truncate;
-+	} else {
-+		err = nfsd_open(resp->rqstp, fhp, S_IFREG, NFSD_MAY_READ,
-+				&file);
-+		if (err)
-+			goto err_truncate;
-+
-+		ra = nfsd_init_raparms(file);
-+	}
- 
- 	if (file->f_op->splice_read && test_bit(RQ_SPLICE_OK, &resp->rqstp->rq_flags))
- 		err = nfsd4_encode_splice_read(resp, read, file, maxcount);
- 	else
- 		err = nfsd4_encode_readv(resp, read, file, maxcount);
- 
-+	if (ra)
-+		nfsd_put_raparams(file, ra);
- 	if (!read->rd_filp)
--		nfsd_put_tmp_read_open(file, ra);
-+		fput(file);
- 
- err_truncate:
- 	if (err)
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 25f035c..478da8e 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -731,14 +731,12 @@ out:
- 	return err;
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index aef7c9b..f8d5081 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4573,20 +4573,51 @@ nfsd4_lookup_stateid(struct nfsd4_compound_state *cstate,
+ 	return nfs_ok;
  }
  
--/*
-- * Obtain the readahead parameters for the file
-- * specified by (dev, ino).
-- */
--
--static inline struct raparms *
--nfsd_get_raparms(dev_t dev, ino_t ino)
-+struct raparms *
-+nfsd_init_raparms(struct file *file)
- {
-+	struct inode *inode = file_inode(file);
-+	dev_t dev = inode->i_sb->s_dev;
-+	ino_t ino = inode->i_ino;
- 	struct raparms	*ra, **rap, **frap = NULL;
- 	int depth = 0;
- 	unsigned int hash;
-@@ -775,9 +773,23 @@ found:
- 	ra->p_count++;
- 	nfsdstats.ra_depth[depth*10/nfsdstats.ra_size]++;
- 	spin_unlock(&rab->pb_lock);
-+
-+	if (ra->p_set)
-+		file->f_ra = ra->p_ra;
- 	return ra;
- }
- 
-+void nfsd_put_raparams(struct file *file, struct raparms *ra)
++static struct file *
++nfs4_find_file(struct nfs4_stid *s, int flags)
 +{
-+	struct raparm_hbucket *rab = &raparm_hash[ra->p_hindex];
++	switch (s->sc_type) {
++	case NFS4_DELEG_STID:
++		if (WARN_ON_ONCE(!s->sc_file->fi_deleg_file))
++			return NULL;
++		return get_file(s->sc_file->fi_deleg_file);
++	case NFS4_OPEN_STID:
++	case NFS4_LOCK_STID:
++		if (flags & RD_STATE)
++			return find_readable_file(s->sc_file);
++		else
++			return find_writeable_file(s->sc_file);
++		break;
++	}
 +
-+	spin_lock(&rab->pb_lock);
-+	ra->p_ra = file->f_ra;
-+	ra->p_set = 1;
-+	ra->p_count--;
-+	spin_unlock(&rab->pb_lock);
++	return NULL;
++}
++
++static __be32
++nfs4_check_olstateid(struct svc_fh *fhp, struct nfs4_ol_stateid *ols, int flags)
++{
++	__be32 status;
++
++	status = nfs4_check_fh(fhp, ols);
++	if (status)
++		return status;
++	status = nfsd4_check_openowner_confirmed(ols);
++	if (status)
++		return status;
++	return nfs4_check_openmode(ols, flags);
 +}
 +
  /*
-  * Grab and keep cached pages associated with a file in the svc_rqst
-  * so that they can be passed to the network sendmsg/sendpage routines
-@@ -970,40 +982,6 @@ out_nfserr:
- 	return err;
- }
- 
--__be32 nfsd_get_tmp_read_open(struct svc_rqst *rqstp, struct svc_fh *fhp,
--		struct file **file, struct raparms **ra)
--{
--	struct inode *inode;
--	__be32 err;
--
--	err = nfsd_open(rqstp, fhp, S_IFREG, NFSD_MAY_READ, file);
--	if (err)
--		return err;
--
--	inode = file_inode(*file);
--
--	/* Get readahead parameters */
--	*ra = nfsd_get_raparms(inode->i_sb->s_dev, inode->i_ino);
--
--	if (*ra && (*ra)->p_set)
--		(*file)->f_ra = (*ra)->p_ra;
--	return nfs_ok;
--}
--
--void nfsd_put_tmp_read_open(struct file *file, struct raparms *ra)
--{
--	/* Write back readahead params */
--	if (ra) {
--		struct raparm_hbucket *rab = &raparm_hash[ra->p_hindex];
--		spin_lock(&rab->pb_lock);
--		ra->p_ra = file->f_ra;
--		ra->p_set = 1;
--		ra->p_count--;
--		spin_unlock(&rab->pb_lock);
--	}
--	fput(file);
--}
--
- /*
-  * Read data from a file. count must contain the requested read count
-  * on entry. On return, *count contains the number of bytes actually read.
-@@ -1016,13 +994,15 @@ __be32 nfsd_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 	struct raparms	*ra;
- 	__be32 err;
- 
--	err = nfsd_get_tmp_read_open(rqstp, fhp, &file, &ra);
-+	err = nfsd_open(rqstp, fhp, S_IFREG, NFSD_MAY_READ, &file);
- 	if (err)
- 		return err;
- 
-+	ra = nfsd_init_raparms(file);
- 	err = nfsd_vfs_read(rqstp, file, offset, vec, vlen, count);
--
--	nfsd_put_tmp_read_open(file, ra);
-+	if (ra)
-+		nfsd_put_raparams(file, ra);
-+	fput(file);
- 
- 	return err;
- }
-diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
-index 17a5e0d..053c4ad 100644
---- a/fs/nfsd/vfs.h
-+++ b/fs/nfsd/vfs.h
-@@ -72,9 +72,6 @@ __be32		nfsd_commit(struct svc_rqst *, struct svc_fh *,
- __be32		nfsd_open(struct svc_rqst *, struct svc_fh *, umode_t,
- 				int, struct file **);
- struct raparms;
--__be32		nfsd_get_tmp_read_open(struct svc_rqst *, struct svc_fh *,
--				struct file **, struct raparms **);
--void		nfsd_put_tmp_read_open(struct file *, struct raparms *);
- __be32		nfsd_splice_read(struct svc_rqst *,
- 				struct file *, loff_t, unsigned long *);
- __be32		nfsd_readv(struct file *, loff_t, struct kvec *, int,
-@@ -103,6 +100,9 @@ __be32		nfsd_statfs(struct svc_rqst *, struct svc_fh *,
- __be32		nfsd_permission(struct svc_rqst *, struct svc_export *,
- 				struct dentry *, int);
- 
-+struct raparms *nfsd_init_raparms(struct file *file);
-+void		nfsd_put_raparams(struct file *file, struct raparms *ra);
-+
- static inline int fh_want_write(struct svc_fh *fh)
+-* Checks for stateid operations
+-*/
++ * Checks for stateid operations
++ */
+ __be32
+ nfs4_preprocess_stateid_op(struct net *net, struct nfsd4_compound_state *cstate,
+ 			   stateid_t *stateid, int flags, struct file **filpp)
  {
- 	int ret = mnt_want_write(fh->fh_export->ex_path.mnt);
+-	struct nfs4_stid *s;
+-	struct nfs4_ol_stateid *stp = NULL;
+-	struct nfs4_delegation *dp = NULL;
+-	struct svc_fh *current_fh = &cstate->current_fh;
+-	struct inode *ino = d_inode(current_fh->fh_dentry);
++	struct svc_fh *fhp = &cstate->current_fh;
++	struct inode *ino = d_inode(fhp->fh_dentry);
+ 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+-	struct file *file = NULL;
++	struct nfs4_stid *s;
+ 	__be32 status;
+ 
+ 	if (filpp)
+@@ -4596,60 +4627,36 @@ nfs4_preprocess_stateid_op(struct net *net, struct nfsd4_compound_state *cstate,
+ 		return nfserr_grace;
+ 
+ 	if (ZERO_STATEID(stateid) || ONE_STATEID(stateid))
+-		return check_special_stateids(net, current_fh, stateid, flags);
++		return check_special_stateids(net, fhp, stateid, flags);
+ 
+ 	status = nfsd4_lookup_stateid(cstate, stateid,
+ 				NFS4_DELEG_STID|NFS4_OPEN_STID|NFS4_LOCK_STID,
+ 				&s, nn);
+ 	if (status)
+ 		return status;
+-	status = check_stateid_generation(stateid, &s->sc_stateid, nfsd4_has_session(cstate));
++	status = check_stateid_generation(stateid, &s->sc_stateid,
++			nfsd4_has_session(cstate));
+ 	if (status)
+ 		goto out;
++
+ 	switch (s->sc_type) {
+ 	case NFS4_DELEG_STID:
+-		dp = delegstateid(s);
+-		status = nfs4_check_delegmode(dp, flags);
+-		if (status)
+-			goto out;
+-		if (filpp) {
+-			file = dp->dl_stid.sc_file->fi_deleg_file;
+-			if (!file) {
+-				WARN_ON_ONCE(1);
+-				status = nfserr_serverfault;
+-				goto out;
+-			}
+-			get_file(file);
+-		}
++		status = nfs4_check_delegmode(delegstateid(s), flags);
+ 		break;
+ 	case NFS4_OPEN_STID:
+ 	case NFS4_LOCK_STID:
+-		stp = openlockstateid(s);
+-		status = nfs4_check_fh(current_fh, stp);
+-		if (status)
+-			goto out;
+-		status = nfsd4_check_openowner_confirmed(stp);
+-		if (status)
+-			goto out;
+-		status = nfs4_check_openmode(stp, flags);
+-		if (status)
+-			goto out;
+-		if (filpp) {
+-			struct nfs4_file *fp = stp->st_stid.sc_file;
+-
+-			if (flags & RD_STATE)
+-				file = find_readable_file(fp);
+-			else
+-				file = find_writeable_file(fp);
+-		}
++		status = nfs4_check_olstateid(fhp, openlockstateid(s), flags);
+ 		break;
+ 	default:
+ 		status = nfserr_bad_stateid;
+-		goto out;
++		break;
++	}
++
++	if (!status && filpp) {
++		*filpp = nfs4_find_file(s, flags);
++		if (!*filpp)
++			status = nfserr_serverfault;
+ 	}
+-	status = nfs_ok;
+-	if (file)
+-		*filpp = file;
+ out:
+ 	nfs4_put_stid(s);
+ 	return status;
 -- 
 1.9.1
 
