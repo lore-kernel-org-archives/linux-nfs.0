@@ -1,60 +1,64 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ie0-f169.google.com ([209.85.223.169]:36174 "EHLO
-	mail-ie0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754895AbbFRUfi (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Jun 2015 16:35:38 -0400
-Received: by iecrd14 with SMTP id rd14so62632677iec.3
-        for <linux-nfs@vger.kernel.org>; Thu, 18 Jun 2015 13:35:37 -0700 (PDT)
-Date: Thu, 18 Jun 2015 16:35:34 -0400
+Received: from mail-ig0-f176.google.com ([209.85.213.176]:36098 "EHLO
+	mail-ig0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751044AbbFRUib (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Jun 2015 16:38:31 -0400
+Received: by igbiq7 with SMTP id iq7so221082igb.1
+        for <linux-nfs@vger.kernel.org>; Thu, 18 Jun 2015 13:38:30 -0700 (PDT)
+Date: Thu, 18 Jun 2015 16:38:28 -0400
 From: Jeff Layton <jeff.layton@primarydata.com>
 To: Trond Myklebust <trond.myklebust@primarydata.com>
 Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/2] pNFS: Fix a memory leak when attempted pnfs fails
-Message-ID: <20150618163534.5bc0ac04@tlielax.poochiereds.net>
-In-Reply-To: <1434585771-14169-1-git-send-email-trond.myklebust@primarydata.com>
+Subject: Re: [PATCH 2/2] NFS: Ensure we set NFS_CONTEXT_RESEND_WRITES when
+ requeuing writes
+Message-ID: <20150618163828.1fe03023@tlielax.poochiereds.net>
+In-Reply-To: <1434585771-14169-2-git-send-email-trond.myklebust@primarydata.com>
 References: <1434585771-14169-1-git-send-email-trond.myklebust@primarydata.com>
+	<1434585771-14169-2-git-send-email-trond.myklebust@primarydata.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 17 Jun 2015 20:02:50 -0400
+On Wed, 17 Jun 2015 20:02:51 -0400
 Trond Myklebust <trond.myklebust@primarydata.com> wrote:
 
-> pnfs_do_write() expects the call to pnfs_write_through_mds() to free the
-> pgio header and to release the layout segment before exiting. The problem
-> is that nfs_pgio_data_destroy() doesn't actually do this; it only frees
-> the memory allocated by nfs_generic_pgio().
-> 
-> Ditto for pnfs_do_read()...
-> 
-> Fix in both cases is to add a call to hdr->release(hdr).
+> If a write attempt fails, and the write is queued up for resending to
+> the server, as opposed to being dropped, then we need to set the
+> appropriate flag so that nfs_file_fsync() does the right thing.
 > 
 > Cc: stable@vger.kernel.org
 > Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 > ---
->  fs/nfs/pnfs.c | 2 ++
->  1 file changed, 2 insertions(+)
+>  fs/nfs/pnfs.c  | 1 +
+>  fs/nfs/write.c | 1 +
+>  2 files changed, 2 insertions(+)
 > 
 > diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-> index 230606243be6..219ee6a3f1b3 100644
+> index 219ee6a3f1b3..d47c188682b1 100644
 > --- a/fs/nfs/pnfs.c
 > +++ b/fs/nfs/pnfs.c
-> @@ -1865,6 +1865,7 @@ pnfs_write_through_mds(struct nfs_pageio_descriptor *desc,
->  		mirror->pg_recoalesce = 1;
->  	}
->  	nfs_pgio_data_destroy(hdr);
-> +	hdr->release(hdr);
+> @@ -1821,6 +1821,7 @@ int pnfs_write_done_resend_to_mds(struct nfs_pgio_header *hdr)
+>  	/* Resend all requests through the MDS */
+>  	nfs_pageio_init_write(&pgio, hdr->inode, FLUSH_STABLE, true,
+>  			      hdr->completion_ops);
+> +	set_bit(NFS_CONTEXT_RESEND_WRITES, &hdr->args.context->flags);
+>  	return nfs_pageio_resend(&pgio, hdr);
 >  }
->  
->  static enum pnfs_try_status
-> @@ -1979,6 +1980,7 @@ pnfs_read_through_mds(struct nfs_pageio_descriptor *desc,
->  		mirror->pg_recoalesce = 1;
->  	}
->  	nfs_pgio_data_destroy(hdr);
-> +	hdr->release(hdr);
->  }
->  
->  /*
+>  EXPORT_SYMBOL_GPL(pnfs_write_done_resend_to_mds);
+> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+> index dfc19f1575a1..daf355642845 100644
+> --- a/fs/nfs/write.c
+> +++ b/fs/nfs/write.c
+> @@ -1289,6 +1289,7 @@ static void nfs_initiate_write(struct nfs_pgio_header *hdr,
+>  static void nfs_redirty_request(struct nfs_page *req)
+>  {
+>  	nfs_mark_request_dirty(req);
+> +	set_bit(NFS_CONTEXT_RESEND_WRITES, &req->wb_context->flags);
+>  	nfs_unlock_request(req);
+>  	nfs_end_page_writeback(req);
+>  	nfs_release_request(req);
+
+Looks right.
 
 Reviewed-by: Jeff Layton <jeff.layton@primarydata.com>
