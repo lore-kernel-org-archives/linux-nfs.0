@@ -1,88 +1,75 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f179.google.com ([209.85.213.179]:37115 "EHLO
-	mail-ig0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752228AbbFSBrt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Jun 2015 21:47:49 -0400
-Received: by igblr2 with SMTP id lr2so4282708igb.0
-        for <linux-nfs@vger.kernel.org>; Thu, 18 Jun 2015 18:47:48 -0700 (PDT)
+Received: from smtprelay0084.hostedemail.com ([216.40.44.84]:38369 "EHLO
+	smtprelay.hostedemail.com" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1752636AbbFSDVE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Jun 2015 23:21:04 -0400
+Date: Thu, 18 Jun 2015 23:21:00 -0400
+From: Steven Rostedt <rostedt@goodmis.org>
+To: Jeff Layton <jlayton@poochiereds.net>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Eric Dumazet <eric.dumazet@gmail.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Linux Network Devel Mailing List <netdev@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        Andrew Morton <akpm@linux-foundation.org>, bfields@fieldses.org
+Subject: Re: [REGRESSION] NFS is creating a hidden port (left over from
+ xs_bind() )
+Message-ID: <20150618232100.78318096@gandalf.local.home>
+In-Reply-To: <20150618213702.33f64b20@synchrony.poochiereds.net>
+References: <20150611234929.7b48d314@gandalf.local.home>
+	<CAHQdGtSyHtMfyVxT=hFY4m6XvM=3mxnZ=ajVJWYNXvYqE0+3zA@mail.gmail.com>
+	<1434120035.27504.77.camel@edumazet-glaptop2.roam.corp.google.com>
+	<20150612113420.5c114183@gandalf.local.home>
+	<20150612115038.44e20ccd@gandalf.local.home>
+	<20150617230819.0a11e47a@grimm.local.home>
+	<CAHQdGtQfF8sgfj6B2H=Sg+mn6ghPD+4UuZMSMFjj3XCVee60pw@mail.gmail.com>
+	<20150618154914.57424225@gandalf.local.home>
+	<20150618185051.2b2828c3@tlielax.poochiereds.net>
+	<20150618210843.4b09c31c@grimm.local.home>
+	<20150618213702.33f64b20@synchrony.poochiereds.net>
 MIME-Version: 1.0
-In-Reply-To: <20150618161727.1b4e287f@tlielax.poochiereds.net>
-References: <1434466052-10491-1-git-send-email-tao.peng@primarydata.com> <20150618161727.1b4e287f@tlielax.poochiereds.net>
-From: Peng Tao <tao.peng@primarydata.com>
-Date: Fri, 19 Jun 2015 09:47:28 +0800
-Message-ID: <CAKVebiWHFGFWyhF0Two+REnkW=eFvsj_ju4NkcUJb08e2nrhTA@mail.gmail.com>
-Subject: Re: [PATCH 00/11] pnfs/flexfiles: layoutstats support
-To: Jeff Layton <jeff.layton@primarydata.com>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jun 19, 2015 at 4:17 AM, Jeff Layton
-<jeff.layton@primarydata.com> wrote:
-> On Tue, 16 Jun 2015 22:47:21 +0800
-> Peng Tao <tao.peng@primarydata.com> wrote:
->
->> Hi all,
->>
->> The patchsets add LAYOUTSTATS support to flexfiles. LAYOUTSTATS are sent
->> every minute if IO is still happening upon a file.
->>
->> One limitation is that at most 4 LAYOUTSTATS calls are permitted in a compound.
->> Had to send multiple LAYOUTSTATS operations per compound because OP_LAYOUTSTATS
->> requires stateid and deviceid as its arguments, which makes it a per-file per-deviceid
->> call.
->>
->
-> So what happens if there are more than 4 mirrors? Do you send more
-> LAYOUTSTATS rpcs or do the other ones get left out? I couldn't quite
-> tell that from looking over the code...
->
-Only the first four mirrors' stats are sent out. The rest are left
-out. It is in ff_layout_prepare_layoutstats().
+On Thu, 18 Jun 2015 21:37:02 -0400
+Jeff Layton <jlayton@poochiereds.net> wrote:
 
->> Cheers,
->> Tao
->>
->> Peng Tao (8):
->>   pNFS: fill in nfs42_layoutstat_ops
->>   pnfs: add pnfs_report_layoutstat helper function
->>   pNFS/flexfiles: track when layout is first used
->>   pnfs/flexfiles: add ff_layout_prepare_layoutstats
->>   pnfs/flexfiles: encode LAYOUTSTATS flexfiles specific data
->>   pnfs/flexfiles: reset IO statistics upon LAYOUTSTATS success
->>   nfs42: serialize LAYOUTSTATS calls of the same file
->>   pnfs/flexfiles: report layoutstat regularly
->>
->> Trond Myklebust (3):
->>   NFSv.2/pnfs Add a LAYOUTSTATS rpc function
->>   pNFS/flexfiles: Remove unused struct members user_name, group_name
->>   pNFS/flexfiles: add layoutstats tracking
->>
->>  fs/nfs/flexfilelayout/flexfilelayout.c | 448 ++++++++++++++++++++++++++++++++-
->>  fs/nfs/flexfilelayout/flexfilelayout.h |  30 ++-
->>  fs/nfs/nfs42.h                         |   7 +-
->>  fs/nfs/nfs42proc.c                     |  81 ++++++
->>  fs/nfs/nfs42xdr.c                      | 122 +++++++++
->>  fs/nfs/nfs4_fs.h                       |   1 +
->>  fs/nfs/nfs4proc.c                      |   4 +-
->>  fs/nfs/nfs4xdr.c                       |   1 +
->>  fs/nfs/pnfs.c                          |  56 +++++
->>  fs/nfs/pnfs.h                          |   3 +
->>  include/linux/nfs4.h                   |   1 +
->>  include/linux/nfs_fs.h                 |   1 +
->>  include/linux/nfs_xdr.h                |  43 ++++
->>  13 files changed, 782 insertions(+), 16 deletions(-)
->>
->
-> Nice work, Tao. This looks pretty good to me. I had a couple of
-> nitpicky comments, but that's stuff that can wait unless you need to
-> respin for other reasons.
->
-> You can add my:
->
-> Reviewed-by: Jeff Layton <jeff.layton@primarydata.com>
-Thanks Jeff!
+> > Note, the box has been rebooted since I posted my last trace.
+> > 
+> 
+> Ahh pity. The port has probably changed...if you trace it again maybe
+> try to figure out what it's talking to before rebooting the server?
 
-Cheers,
-Tao
+I could probably re-enable the trace again.
+
+Would it be best if I put back the commits and run it with the buggy
+kernel. I could then run these commands after the bug happens and/or
+before the port goes away.
+
+ 
+> Oh! I was thinking that you were seeing this extra port on the
+> _client_, but now rereading your original mail I see that it's
+> appearing up on the NFS server. Is that correct?
+
+Correct, the bug is on the NFS server, not the client. The client is
+already up and running, and had the filesystem mounted when the server
+rebooted. I take it that this happened when the client tried to
+reconnect.
+
+Just let me know what you would like to do. As this is my main
+production server of my local network, I would only be able to do this
+a few times. Let me know all the commands and tracing you would like to
+have. I'll try it tomorrow (going to bed now).
+
+-- Steve
+
+
+> 
+> So, assuming that this is NFSv4.0, then this port is probably bound
+> when the server is establishing the callback channel to the client. So
+> we may need to look at how those xprts are being created and whether
+> there are differences from a standard client xprt.
+> 
+
