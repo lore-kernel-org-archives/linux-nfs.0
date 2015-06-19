@@ -1,75 +1,84 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtprelay0084.hostedemail.com ([216.40.44.84]:38369 "EHLO
-	smtprelay.hostedemail.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1752636AbbFSDVE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Jun 2015 23:21:04 -0400
-Date: Thu, 18 Jun 2015 23:21:00 -0400
-From: Steven Rostedt <rostedt@goodmis.org>
-To: Jeff Layton <jlayton@poochiereds.net>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Eric Dumazet <eric.dumazet@gmail.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Linux Network Devel Mailing List <netdev@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        Andrew Morton <akpm@linux-foundation.org>, bfields@fieldses.org
-Subject: Re: [REGRESSION] NFS is creating a hidden port (left over from
- xs_bind() )
-Message-ID: <20150618232100.78318096@gandalf.local.home>
-In-Reply-To: <20150618213702.33f64b20@synchrony.poochiereds.net>
-References: <20150611234929.7b48d314@gandalf.local.home>
-	<CAHQdGtSyHtMfyVxT=hFY4m6XvM=3mxnZ=ajVJWYNXvYqE0+3zA@mail.gmail.com>
-	<1434120035.27504.77.camel@edumazet-glaptop2.roam.corp.google.com>
-	<20150612113420.5c114183@gandalf.local.home>
-	<20150612115038.44e20ccd@gandalf.local.home>
-	<20150617230819.0a11e47a@grimm.local.home>
-	<CAHQdGtQfF8sgfj6B2H=Sg+mn6ghPD+4UuZMSMFjj3XCVee60pw@mail.gmail.com>
-	<20150618154914.57424225@gandalf.local.home>
-	<20150618185051.2b2828c3@tlielax.poochiereds.net>
-	<20150618210843.4b09c31c@grimm.local.home>
-	<20150618213702.33f64b20@synchrony.poochiereds.net>
+Received: from plane.gmane.org ([80.91.229.3]:40709 "EHLO plane.gmane.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754252AbbFSKPE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 19 Jun 2015 06:15:04 -0400
+Received: from public by plane.gmane.org with local (Exim 4.69)
+	(envelope-from <public@plane.gmane.org>)
+	id 1Z5tJy-00053E-3x
+	for linux-nfs@vger.kernel.org; Fri, 19 Jun 2015 12:14:50 +0200
+Date: Fri, 19 Jun 2015 06:11:53 -0400 (EDT)
+From: Benjamin Coddington <bcodding@redhat.com>
+To: Weston Andros Adamson
+	<public-dros-7I+n7zu2hftEKMMhf/gKZA@plane.gmane.org>
+cc: public-linux-nfs-u79uwXL29TY76Z2rM5mHXA@plane.gmane.org
+Subject: Re: [PATCH 0/5] pgio: fix buffered write retry path
+In-Reply-To: <1405088449-11268-1-git-send-email-dros@primarydata.com>
+Message-ID: <alpine.OSX.2.19.9992.1506190547060.4030@ip0af51906.int.uvm.edu>
+References: <1405088449-11268-1-git-send-email-dros@primarydata.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 18 Jun 2015 21:37:02 -0400
-Jeff Layton <jlayton@poochiereds.net> wrote:
-
-> > Note, the box has been rebooted since I posted my last trace.
-> > 
-> 
-> Ahh pity. The port has probably changed...if you trace it again maybe
-> try to figure out what it's talking to before rebooting the server?
-
-I could probably re-enable the trace again.
-
-Would it be best if I put back the commits and run it with the buggy
-kernel. I could then run these commands after the bug happens and/or
-before the port goes away.
-
- 
-> Oh! I was thinking that you were seeing this extra port on the
-> _client_, but now rereading your original mail I see that it's
-> appearing up on the NFS server. Is that correct?
-
-Correct, the bug is on the NFS server, not the client. The client is
-already up and running, and had the filesystem mounted when the server
-rebooted. I take it that this happened when the client tried to
-reconnect.
-
-Just let me know what you would like to do. As this is my main
-production server of my local network, I would only be able to do this
-a few times. Let me know all the commands and tracing you would like to
-have. I'll try it tomorrow (going to bed now).
-
--- Steve
 
 
-> 
-> So, assuming that this is NFSv4.0, then this port is probably bound
-> when the server is establishing the callback channel to the client. So
-> we may need to look at how those xprts are being created and whether
-> there are differences from a standard client xprt.
-> 
+
+On Fri, 11 Jul 2014, Weston Andros Adamson wrote:
+
+> My recent pgio work added the ability to split requests into sub-page
+> regions, but didn't handle a few places in the writeback code where
+> requests are looked up by struct page and may already be split into
+> multiple requests.
+>
+> This patchset adds a function "nfs_lock_and_join_requests" in patch
+> "nfs: handle multiple reqs in nfs_page_async_flush", which:
+>   - takes mutex lock
+>   - looks up head request
+>   - grabs request lock for each subrequest
+>      - if unsuccessful, unrolls old locks and waits on subrequest
+>   - removes all requests from commit lists
+>   - merges range of subrequests into the head requests
+>   - unlinks and destroys the old subrequests.
+>
+> The other patches are related fixes.
+>
+> The problem showed up when mounting with wsize < PAGE_SIZE - this would
+> cause multiple requests per page. If a commit failed, nfs_page_async_flush
+> would operate just on the head request, leading to a hang.
+>
+> The nfs_wb_page_cancel patch leverages the same function -
+> nfs_lock_and_join_requests cancels all operations on the page group.  I've had
+> a really hard time testing nfs_wb_page_cancel, I've only hit it once in weeks of
+> testing. Any ideas on how to reliably trigger this is appreciated - it's not
+> as easy as just kicking off a ton of writeback then truncating. The one time I
+> did see it was with a ton of i/o on a VM with 256M of RAM, which was swapping
+> like crazy, along with restarting the server repeatedly (to get commit verifier
+> mismatch).
+
+Hey Dros, it's a year later -- but I want to report that this set fixes a
+rare race where nfs_wb_page_cancel() and nfs_commit_release_pages() both
+remove the same request from an inode, resulting in an underflow in
+nfs_inode->nrequests, and finally a BUG (now changed to a WARN) when the
+inode is cleaned up.
+
+The fix is that nfs_lock_and_join_requests() holds i_lock for the duration
+of checking PagePrivate and trying to lock the nfs_page, and retrying or
+returning NULL.  Previously, nfs_wb_page_cancel() held the i_lock while
+checking PagePrivate, then released it which allowed the page to be removed
+and then unlocked in nfs_commit_release_pages(), and then
+nfs_wb_page_cancel() could lock and remove it as well.
+
+I've had good luck exercising nfs_wb_page_cancel() by racing writes and
+truncates on a mount with small nfs page size.. but there are lots of
+wait_on_page_writeback() and friends in the pagth that close the race
+window.  Better luck can be had using madvise w/ the hardware poision flag,
+since that jumps you past a bunch of page invalidation checks, but I wonder
+if that is a realistic test of real world conditions..
+
+Anyway, thanks for these.. I have to see what of this work I can move back
+into the already long-in-the-tooth RHEL6.
+
+Ben
+
 
