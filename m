@@ -1,9 +1,9 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtprelay0069.hostedemail.com ([216.40.44.69]:40191 "EHLO
+Received: from smtprelay0231.hostedemail.com ([216.40.44.231]:56926 "EHLO
 	smtprelay.hostedemail.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1753326AbbFSV4e (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Jun 2015 17:56:34 -0400
-Date: Fri, 19 Jun 2015 17:56:28 -0400
+	by vger.kernel.org with ESMTP id S932839AbbFSWOn (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Jun 2015 18:14:43 -0400
+Date: Fri, 19 Jun 2015 18:14:40 -0400
 From: Steven Rostedt <rostedt@goodmis.org>
 To: Trond Myklebust <trond.myklebust@primarydata.com>
 Cc: Jeff Layton <jlayton@poochiereds.net>,
@@ -16,7 +16,7 @@ Cc: Jeff Layton <jlayton@poochiereds.net>,
         Bruce James Fields <bfields@fieldses.org>
 Subject: Re: [REGRESSION] NFS is creating a hidden port (left over from
  xs_bind() )
-Message-ID: <20150619175628.31e62ef7@gandalf.local.home>
+Message-ID: <20150619181440.22f54e6a@gandalf.local.home>
 In-Reply-To: <1434745818.8838.1.camel@primarydata.com>
 References: <20150611234929.7b48d314@gandalf.local.home>
 	<CAHQdGtSyHtMfyVxT=hFY4m6XvM=3mxnZ=ajVJWYNXvYqE0+3zA@mail.gmail.com>
@@ -43,11 +43,27 @@ On Fri, 19 Jun 2015 16:30:18 -0400
 Trond Myklebust <trond.myklebust@primarydata.com> wrote:
 
 > Steven, how about something like the following patch?
-
-Building it now. Will let you know in a bit.
-
-
 > 
+
+OK, the box I'm running this on is using v4.0.5, can you make a patch
+based on that, as whatever you make needs to go to stable as well.
+
+distcc[31554] ERROR: compile /home/rostedt/work/git/nobackup/linux-build.git/net/sunrpc/xprtsock.c on fedora/8 failed
+distcc[31554] (dcc_build_somewhere) Warning: remote compilation of '/home/rostedt/work/git/nobackup/linux-build.git/net/sunrpc/xprtsock.c' failed, retrying locally
+distcc[31554] Warning: failed to distribute /home/rostedt/work/git/nobackup/linux-build.git/net/sunrpc/xprtsock.c to fedora/8, running locally instead
+/home/rostedt/work/git/nobackup/linux-build.git/net/sunrpc/xprtsock.c: In function 'xs_tcp_shutdown':
+/home/rostedt/work/git/nobackup/linux-build.git/net/sunrpc/xprtsock.c:643:3: error: implicit declaration of function 'xs_reset_transport' [-Werror=implicit-function-declaration]
+/home/rostedt/work/git/nobackup/linux-build.git/net/sunrpc/xprtsock.c: At top level:
+/home/rostedt/work/git/nobackup/linux-build.git/net/sunrpc/xprtsock.c:825:13: warning: conflicting types for 'xs_reset_transport' [enabled by default]
+/home/rostedt/work/git/nobackup/linux-build.git/net/sunrpc/xprtsock.c:825:13: error: static declaration of 'xs_reset_transport' follows non-static declaration
+/home/rostedt/work/git/nobackup/linux-build.git/net/sunrpc/xprtsock.c:643:3: note: previous implicit declaration of 'xs_reset_transport' was here
+cc1: some warnings being treated as errors
+distcc[31554] ERROR: compile /home/rostedt/work/git/nobackup/linux-build.git/net/sunrpc/xprtsock.c on localhost failed
+/home/rostedt/work/git/nobackup/linux-build.git/scripts/Makefile.build:258: recipe for target 'net/sunrpc/xprtsock.o' failed
+make[3]: *** [net/sunrpc/xprtsock.o] Error 1
+
+-- Steve
+
 > 8<-----------------------------------------------------------------
 > >From 9a0bcfdbdbc793eae1ed6d901a6396b6c66f9513 Mon Sep 17 00:00:00 2001
 > From: Trond Myklebust <trond.myklebust@primarydata.com>
@@ -63,17 +79,6 @@ Building it now. Will let you know in a bit.
 > 
 > While the current behaviour is harmless, it does leave the port bound
 > until either RPC traffic resumes or the RPC client is shut down.
-
-Hmm, is this true? The port is bound, but the socket has been freed.
-That is sk->sk_socket points to garbage. As my portlist.c module
-verified.
-
-It doesn't seem that anything can attach to that port again that I
-know of. Is there a way to verify that something can attach to it again?
-
--- Steve
-
-
 > 
 > Reported-by: Steven Rostedt <rostedt@goodmis.org>
 > Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
