@@ -1,77 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from zeniv.linux.org.uk ([195.92.253.2]:56690 "EHLO
-	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933705AbbFSVJ7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Jun 2015 17:09:59 -0400
-Date: Fri, 19 Jun 2015 22:09:56 +0100
-From: Al Viro <viro@ZenIV.linux.org.uk>
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        linux-fsdevel@vger.kernel.org, NeilBrown <neilb@suse.de>,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: Re: [PATCH 6/6 v5] nfsd: Allows user un-mounting filesystem where
- nfsd exports base on
-Message-ID: <20150619210956.GN17109@ZenIV.linux.org.uk>
-References: <5581266C.9080404@gmail.com>
- <55812768.1080908@gmail.com>
+Received: from smtprelay0100.hostedemail.com ([216.40.44.100]:36333 "EHLO
+	smtprelay.hostedemail.com" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1754204AbbFSVuG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Jun 2015 17:50:06 -0400
+Date: Fri, 19 Jun 2015 17:50:02 -0400
+From: Steven Rostedt <rostedt@goodmis.org>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Jeff Layton <jlayton@poochiereds.net>,
+        Eric Dumazet <eric.dumazet@gmail.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Linux Network Devel Mailing List <netdev@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Bruce James Fields <bfields@fieldses.org>
+Subject: Re: [REGRESSION] NFS is creating a hidden port (left over from
+ xs_bind() )
+Message-ID: <20150619175002.17a231b1@gandalf.local.home>
+In-Reply-To: <CAHQdGtRCYoeToxyDHjnd+6f40J8SrScmQKKOW5O8AzJo3NefAA@mail.gmail.com>
+References: <20150611234929.7b48d314@gandalf.local.home>
+	<CAHQdGtSyHtMfyVxT=hFY4m6XvM=3mxnZ=ajVJWYNXvYqE0+3zA@mail.gmail.com>
+	<1434120035.27504.77.camel@edumazet-glaptop2.roam.corp.google.com>
+	<20150612113420.5c114183@gandalf.local.home>
+	<20150612115038.44e20ccd@gandalf.local.home>
+	<20150617230819.0a11e47a@grimm.local.home>
+	<CAHQdGtQfF8sgfj6B2H=Sg+mn6ghPD+4UuZMSMFjj3XCVee60pw@mail.gmail.com>
+	<20150618154914.57424225@gandalf.local.home>
+	<20150618185051.2b2828c3@tlielax.poochiereds.net>
+	<20150618210843.4b09c31c@grimm.local.home>
+	<20150618213702.33f64b20@synchrony.poochiereds.net>
+	<20150619122553.43d2d86c@gandalf.local.home>
+	<20150619131759.7b38d9de@gandalf.local.home>
+	<CAHQdGtRCYoeToxyDHjnd+6f40J8SrScmQKKOW5O8AzJo3NefAA@mail.gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <55812768.1080908@gmail.com>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jun 17, 2015 at 03:53:12PM +0800, Kinglong Mee wrote:
->  static void expkey_put(struct kref *ref)
->  {
->  	struct svc_expkey *key = container_of(ref, struct svc_expkey, h.ref);
->  
->  	if (test_bit(CACHE_VALID, &key->h.flags) &&
-> -	    !test_bit(CACHE_NEGATIVE, &key->h.flags))
-> -		path_put(&key->ek_path);
-> -	auth_domain_put(key->ek_client);
-> -	kfree(key);
-> +	    !test_bit(CACHE_NEGATIVE, &key->h.flags)) {
-> +		rcu_read_lock();
-> +		complete(&key->ek_done);
-> +		pin_kill(&key->ek_pin);
-> +	} else
-> +		expkey_destroy(key);
->  }
+On Fri, 19 Jun 2015 13:39:08 -0400
+Trond Myklebust <trond.myklebust@primarydata.com> wrote:
 
-> +static void expkey_pin_kill(struct fs_pin *pin)
-> +{
-> +	struct svc_expkey *key = container_of(pin, struct svc_expkey, ek_pin);
-> +
-> +	if (!completion_done(&key->ek_done)) {
-> +		schedule_work(&key->ek_work);
-> +		wait_for_completion(&key->ek_done);
-> +	}
-> +	path_put_unpin(&key->ek_path, &key->ek_pin);
-> +	expkey_destroy(key);
-> +}
 
-So basically you want umount(2) to hang until all references are gone.
-How long can they stick around and, more to the point, what happens
-if some sucker does path_get(&key->ek_path) while umount(2) had been
-waiting?  You'll drop the reference to svc_export you'd copied ->ek_path
-from and get through the whole dance, letting umount(2) go.
+> Hang on. This is on the client box while there is an active NFSv4
+> mount? Then that's probably the NFSv4 callback channel listening for
+> delegation callbacks.
+> 
+> Can you please try:
+> 
+> echo "options nfs callback_tcpport=4048" > /etc/modprobe.d/nfs-local.conf
+> 
+> and then either reboot the client or unload and then reload the nfs
+> modules before reattempting the mount. If this is indeed the callback
+> channel, then that will move your phantom listener to port 4048...
 
-Now what?  Sure, with your previous patch vfsmount will survive - no oopsen
-there.  However, you have had umount run to completion, with filesystem
-still not shut down.  This is badly broken.
+I unmounted the directories, removed the nfs modules, and then add this
+file, and loaded the modules back and remounted the directories.
 
-You can't do "I can grab reference at any time until the call of
-expkey_pin_kill()" - it's not going to work.  You _must_ grab it
-carefully, being ready to cope with "umount has already decided it's
-not busy, so it's a goner and we must fail" kind of situations.
+# netstat -ntap |grep 4048
+tcp        0      0 0.0.0.0:4048            0.0.0.0:*               LISTEN      -               
+tcp        0      0 192.168.23.22:4048      192.168.23.9:1010       ESTABLISHED -               
+tcp6       0      0 :::4048                 :::*                    LISTEN      -               
 
-You need to
-	grab mount_lock with read_seqlock_excl()
-	check that vfsmount isn't marked MNT_SYNC_UMOUNT or MNT_DOOMED
-and bump refcount in such case; give up on attempt otherwise.
-	drop mount_lock
-for those attempts to grab the first reference.  And be ready to cope with
-failures.
+-- Steve
+
 --
 To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
