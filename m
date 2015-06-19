@@ -1,105 +1,107 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f175.google.com ([209.85.213.175]:36766 "EHLO
-	mail-ig0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750968AbbFRWu7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Jun 2015 18:50:59 -0400
-Received: by igbiq7 with SMTP id iq7so2358247igb.1
-        for <linux-nfs@vger.kernel.org>; Thu, 18 Jun 2015 15:50:59 -0700 (PDT)
-Date: Thu, 18 Jun 2015 18:50:51 -0400
-From: Jeff Layton <jlayton@poochiereds.net>
-To: Steven Rostedt <rostedt@goodmis.org>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Eric Dumazet <eric.dumazet@gmail.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Linux Network Devel Mailing List <netdev@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [REGRESSION] NFS is creating a hidden port (left over from
- xs_bind() )
-Message-ID: <20150618185051.2b2828c3@tlielax.poochiereds.net>
-In-Reply-To: <20150618154914.57424225@gandalf.local.home>
-References: <20150611234929.7b48d314@gandalf.local.home>
-	<CAHQdGtSyHtMfyVxT=hFY4m6XvM=3mxnZ=ajVJWYNXvYqE0+3zA@mail.gmail.com>
-	<1434120035.27504.77.camel@edumazet-glaptop2.roam.corp.google.com>
-	<20150612113420.5c114183@gandalf.local.home>
-	<20150612115038.44e20ccd@gandalf.local.home>
-	<20150617230819.0a11e47a@grimm.local.home>
-	<CAHQdGtQfF8sgfj6B2H=Sg+mn6ghPD+4UuZMSMFjj3XCVee60pw@mail.gmail.com>
-	<20150618154914.57424225@gandalf.local.home>
+Received: from mail-pa0-f45.google.com ([209.85.220.45]:34271 "EHLO
+	mail-pa0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751818AbbFSAti (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Jun 2015 20:49:38 -0400
+Received: by pabvl15 with SMTP id vl15so26404594pab.1
+        for <linux-nfs@vger.kernel.org>; Thu, 18 Jun 2015 17:49:38 -0700 (PDT)
+Message-ID: <55836719.8050806@gmail.com>
+Date: Fri, 19 Jun 2015 08:49:29 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        kinglongmee@gmail.com
+Subject: Re: [PATCH] nfsd: Prints a suitable length of filehandle
+References: <55826C74.8020703@gmail.com> <20150618213550.GB21903@fieldses.org>
+In-Reply-To: <20150618213550.GB21903@fieldses.org>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 18 Jun 2015 15:49:14 -0400
-Steven Rostedt <rostedt@goodmis.org> wrote:
+On 6/19/2015 5:35 AM, J. Bruce Fields wrote:
+> On Thu, Jun 18, 2015 at 03:00:04PM +0800, Kinglong Mee wrote:
+>> With nfsd_debug on, fh_verify prints a fixed length of filehandle as,
+>> nfsd: fh_verify(8: 00010001 00000000 00000000 00000000 00000000 00000000)
+>> nfsd: fh_verify(28: 00070001 001c0002 00000000 041f9334 9b432a4c 835d4c95)
+>>
+>> This patch lets nfsd prints a suitable length of filehandle as, 
+>> nfsd: fh_verify(8: 00010001 00000000)
+>> nfsd: fh_verify(28: 00070001 001c0002 00000000 041f9334 9b432a4c 835d4c95 8cbea40f)
+>>
+>> Also, use snprintf insteads sprintf.
+>>
+>> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+>> ---
+>>  fs/nfsd/nfsfh.c | 18 ++++++++----------
+>>  1 file changed, 8 insertions(+), 10 deletions(-)
+>>
+>> diff --git a/fs/nfsd/nfsfh.c b/fs/nfsd/nfsfh.c
+>> index 350041a..dd6a5c1 100644
+>> --- a/fs/nfsd/nfsfh.c
+>> +++ b/fs/nfsd/nfsfh.c
+>> @@ -650,16 +650,14 @@ fh_put(struct svc_fh *fhp)
+>>  char * SVCFH_fmt(struct svc_fh *fhp)
+>>  {
+>>  	struct knfsd_fh *fh = &fhp->fh_handle;
+>> -
+>> -	static char buf[80];
+>> -	sprintf(buf, "%d: %08x %08x %08x %08x %08x %08x",
+>> -		fh->fh_size,
+>> -		fh->fh_base.fh_pad[0],
+>> -		fh->fh_base.fh_pad[1],
+>> -		fh->fh_base.fh_pad[2],
+>> -		fh->fh_base.fh_pad[3],
+>> -		fh->fh_base.fh_pad[4],
+>> -		fh->fh_base.fh_pad[5]);
+>> +	/* 9 * NFS4_FHSIZE / 4 = 288 for fh_pad, 4 for fh_size, 1 for '\0' */
+>> +	static char buf[293];
+> 
+> So that buffer can be shared by multiple users without any locking.
+> 
+> That's from the preexisting code, not your fault.  Also, I don't know
+> whether to care about an unlikely race in debugging code.
 
-> On Thu, 18 Jun 2015 15:24:52 -0400
-> Trond Myklebust <trond.myklebust@primarydata.com> wrote:
-> 
-> > On Wed, Jun 17, 2015 at 11:08 PM, Steven Rostedt <rostedt@goodmis.org> wrote:
-> > > On Fri, 12 Jun 2015 11:50:38 -0400
-> > > Steven Rostedt <rostedt@goodmis.org> wrote:
-> > >
-> > >> I reverted the following commits:
-> > >>
-> > >> c627d31ba0696cbd829437af2be2f2dee3546b1e
-> > >> 9e2b9f37760e129cee053cc7b6e7288acc2a7134
-> > >> caf4ccd4e88cf2795c927834bc488c8321437586
-> > >>
-> > >> And the issue goes away. That is, I watched the port go from
-> > >> ESTABLISHED to TIME_WAIT, and then gone, and theirs no hidden port.
-> > >>
-> > >> In fact, I watched the port with my portlist.c module, and it
-> > >> disappeared there too when it entered the TIME_WAIT state.
-> > >>
-> > 
-> > I've scanned those commits again and again, and I'm not seeing how we
-> > could be introducing a socket leak there. The only suspect I can see
-> > would be the NFS swap bugs that Jeff fixed a few weeks ago. Are you
-> > using NFS swap?
-> 
-> Not that I'm aware of.
-> 
-> > 
-> > > I've been running v4.0.5 with the above commits reverted for 5 days
-> > > now, and there's still no hidden port appearing.
-> > >
-> > > What's the status on this? Should those commits be reverted or is there
-> > > another solution to this bug?
-> > >
-> > 
-> > I'm trying to reproduce, but I've had no luck yet.
-> 
-> It seems to happen with the connection to my wife's machine, and that
-> is where my wife's box connects two directories via nfs:
-> 
-> This is what's in my wife's /etc/fstab directory
-> 
-> goliath:/home/upload     /upload         nfs     auto,rw,intr,soft       0 0
-> goliath:/home/gallery    /gallery        nfs     auto,ro,intr,soft	 0 0
-> 
-> And here's what's in my /etc/exports directory
-> 
-> /home/upload       wife(no_root_squash,no_all_squash,rw,sync,no_subtree_check)
-> /home/gallery      192.168.23.0/24(ro,sync,no_subtree_check)
-> 
-> Attached is my config.
-> 
+I think we should not care it.
+We cannot know the caller how to use it, printk directly or save to an pointer.
+Otherwise let the caller supporting the buffer? that sounds bad.
 
-The interesting bit here is that the sockets all seem to connect to port
-55201 on the remote host, if I'm reading these traces correctly. What's
-listening on that port on the server?
+> 
+> The only risk aside from corruption of the output might be if the race
+> could leave the string temporarily non-null-terminated.  I think that's
+> possible?  In which case that could be prevented by making sure buf is
+> initialized to zeroes and is at least one byte longer than the following
+> code will ever write.
 
-This might give some helpful info:
+Yes, It's possible.
+Static variable will be initialized to all zero default.
+So, define a longer buffer is enough.
 
-    $ rpcinfo -p <NFS servername>
+For that, I define a buffer with length is 293.
 
-Also, what NFS version are you using to mount here? Your fstab entries
-suggest that you're using the default version (for whatever distro this
-is), but have you (e.g.) set up nfsmount.conf to default to v3 on this
-box?
+The max fh_size is NFS4_FHSIZE (128), as max length of
+decimal string with a ':' is 4.
 
--- 
-Jeff Layton <jlayton@poochiereds.net>
+The max fh_pad length should be
+9 (%08x and a ' ') * NFS4_FHSIZE / 4 = 288.
+
+At last, 1 for '\0'
+
+thanks,
+Kinglong Mee
+
+> 
+> --b.
+> 
+>> +	int pos = 0, i = 0;
+>> +
+>> +	pos = snprintf(buf, sizeof(buf), "%d:", fh->fh_size);
+>> +	for (i = 0; i < fh->fh_size / sizeof(__u32); i++)
+>> +		pos += snprintf(buf + pos, sizeof(buf) - pos,
+>> +				" %08x", fh->fh_base.fh_pad[i]);
+>>  	return buf;
+>>  }
+>>  
+>> -- 
+>> 2.4.3
+> 
