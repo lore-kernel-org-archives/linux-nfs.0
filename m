@@ -1,63 +1,76 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:45523 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:45542 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754463AbbFSTwx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 19 Jun 2015 15:52:53 -0400
-Date: Fri, 19 Jun 2015 15:52:51 -0400
+	id S1753172AbbFSU3Q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 19 Jun 2015 16:29:16 -0400
+Date: Fri, 19 Jun 2015 16:29:16 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Fabian Frederick <fabf@skynet.be>
-Cc: linux-kernel@vger.kernel.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        "David S. Miller" <davem@davemloft.net>, linux-nfs@vger.kernel.org,
-        netdev@vger.kernel.org
-Subject: Re: [PATCH 1/1 net-next] sunrpc: use sg_init_one() in
- krb5_rc4_setup_enc/seq_key()
-Message-ID: <20150619195251.GD21903@fieldses.org>
-References: <1434484672-5877-1-git-send-email-fabf@skynet.be>
+To: Kinglong Mee <kinglongmee@gmail.com>
+Cc: Al Viro <viro@zeniv.linux.org.uk>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        linux-fsdevel@vger.kernel.org, NeilBrown <neilb@suse.de>,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: Re: [PATCH 3/6 v5] fs_pin: Kill fs_pin under a reference of vfsmnt
+Message-ID: <20150619202916.GE21903@fieldses.org>
+References: <5581266C.9080404@gmail.com>
+ <558126FA.8050608@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1434484672-5877-1-git-send-email-fabf@skynet.be>
+In-Reply-To: <558126FA.8050608@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Thanks, applying.--b.
+On Wed, Jun 17, 2015 at 03:51:22PM +0800, Kinglong Mee wrote:
+> v5, new patch
 
-On Tue, Jun 16, 2015 at 09:57:52PM +0200, Fabian Frederick wrote:
-> Don't opencode sg_init_one()
+I don't know this code at all.  I'll try to give it a proper review.
+But could you help me by explaining in some detail what this is doing
+and why you're sure it's correct?
+
+--b.
+
 > 
-> Signed-off-by: Fabian Frederick <fabf@skynet.be>
+> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
 > ---
->  net/sunrpc/auth_gss/gss_krb5_crypto.c | 8 ++------
->  1 file changed, 2 insertions(+), 6 deletions(-)
+>  fs/namespace.c | 10 ++++++++--
+>  1 file changed, 8 insertions(+), 2 deletions(-)
 > 
-> diff --git a/net/sunrpc/auth_gss/gss_krb5_crypto.c b/net/sunrpc/auth_gss/gss_krb5_crypto.c
-> index b5408e8..fee3c15 100644
-> --- a/net/sunrpc/auth_gss/gss_krb5_crypto.c
-> +++ b/net/sunrpc/auth_gss/gss_krb5_crypto.c
-> @@ -881,9 +881,7 @@ krb5_rc4_setup_seq_key(struct krb5_ctx *kctx, struct crypto_blkcipher *cipher,
->  	if (err)
->  		goto out_err;
+> diff --git a/fs/namespace.c b/fs/namespace.c
+> index 1b9e111..3f08a48 100644
+> --- a/fs/namespace.c
+> +++ b/fs/namespace.c
+> @@ -1049,8 +1049,6 @@ static void cleanup_mnt(struct mount *mnt)
+>  	 * so mnt_get_writers() below is safe.
+>  	 */
+>  	WARN_ON(mnt_get_writers(mnt));
+> -	if (unlikely(mnt->mnt_pins.first))
+> -		mnt_pin_kill(mnt);
+>  	fsnotify_vfsmount_delete(&mnt->mnt);
+>  	dput(mnt->mnt.mnt_root);
+>  	deactivate_super(mnt->mnt.mnt_sb);
+> @@ -1078,6 +1076,7 @@ static DECLARE_DELAYED_WORK(delayed_mntput_work, delayed_mntput);
 >  
-> -	sg_init_table(sg, 1);
-> -	sg_set_buf(sg, &zeroconstant, 4);
-> -
-> +	sg_init_one(sg, &zeroconstant, 4);
->  	err = crypto_hash_digest(&desc, sg, 4, Kseq);
->  	if (err)
->  		goto out_err;
-> @@ -951,9 +949,7 @@ krb5_rc4_setup_enc_key(struct krb5_ctx *kctx, struct crypto_blkcipher *cipher,
->  	if (err)
->  		goto out_err;
->  
-> -	sg_init_table(sg, 1);
-> -	sg_set_buf(sg, zeroconstant, 4);
-> -
-> +	sg_init_one(sg, zeroconstant, 4);
->  	err = crypto_hash_digest(&desc, sg, 4, Kcrypt);
->  	if (err)
->  		goto out_err;
+>  static void mntput_no_expire(struct mount *mnt)
+>  {
+> +put_again:
+>  	rcu_read_lock();
+>  	mnt_add_count(mnt, -1);
+>  	if (likely(mnt->mnt_ns)) { /* shouldn't be the last one */
+> @@ -1090,6 +1089,13 @@ static void mntput_no_expire(struct mount *mnt)
+>  		unlock_mount_hash();
+>  		return;
+>  	}
+> +	if (unlikely(mnt->mnt_pins.first)) {
+> +		mnt_add_count(mnt, 1);
+> +		rcu_read_unlock();
+> +		unlock_mount_hash();
+> +		mnt_pin_kill(mnt);
+> +		goto put_again;
+> +	}
+>  	if (unlikely(mnt->mnt.mnt_flags & MNT_DOOMED)) {
+>  		rcu_read_unlock();
+>  		unlock_mount_hash();
 > -- 
-> 2.4.2
+> 2.4.3
 --
 To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
