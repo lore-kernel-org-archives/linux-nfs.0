@@ -1,76 +1,129 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:45542 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753172AbbFSU3Q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 19 Jun 2015 16:29:16 -0400
-Date: Fri, 19 Jun 2015 16:29:16 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: Al Viro <viro@zeniv.linux.org.uk>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        linux-fsdevel@vger.kernel.org, NeilBrown <neilb@suse.de>,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: Re: [PATCH 3/6 v5] fs_pin: Kill fs_pin under a reference of vfsmnt
-Message-ID: <20150619202916.GE21903@fieldses.org>
-References: <5581266C.9080404@gmail.com>
- <558126FA.8050608@gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <558126FA.8050608@gmail.com>
+Received: from mail-ig0-f173.google.com ([209.85.213.173]:34490 "EHLO
+	mail-ig0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932189AbbFSUal (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Jun 2015 16:30:41 -0400
+Received: by igboe5 with SMTP id oe5so24665490igb.1
+        for <linux-nfs@vger.kernel.org>; Fri, 19 Jun 2015 13:30:40 -0700 (PDT)
+Message-ID: <1434745818.8838.1.camel@primarydata.com>
+Subject: Re: [REGRESSION] NFS is creating a hidden port (left over from
+ xs_bind() )
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Jeff Layton <jlayton@poochiereds.net>
+Cc: Steven Rostedt <rostedt@goodmis.org>,
+        Eric Dumazet <eric.dumazet@gmail.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Linux Network Devel Mailing List <netdev@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Bruce James Fields <bfields@fieldses.org>
+Date: Fri, 19 Jun 2015 16:30:18 -0400
+In-Reply-To: <20150619155226.7c5d6637@synchrony.poochiereds.net>
+References: <20150611234929.7b48d314@gandalf.local.home>
+	 <CAHQdGtSyHtMfyVxT=hFY4m6XvM=3mxnZ=ajVJWYNXvYqE0+3zA@mail.gmail.com>
+	 <1434120035.27504.77.camel@edumazet-glaptop2.roam.corp.google.com>
+	 <20150612113420.5c114183@gandalf.local.home>
+	 <20150612115038.44e20ccd@gandalf.local.home>
+	 <20150617230819.0a11e47a@grimm.local.home>
+	 <CAHQdGtQfF8sgfj6B2H=Sg+mn6ghPD+4UuZMSMFjj3XCVee60pw@mail.gmail.com>
+	 <20150618154914.57424225@gandalf.local.home>
+	 <20150618185051.2b2828c3@tlielax.poochiereds.net>
+	 <20150618210843.4b09c31c@grimm.local.home>
+	 <20150618213702.33f64b20@synchrony.poochiereds.net>
+	 <20150619122553.43d2d86c@gandalf.local.home>
+	 <20150619131759.7b38d9de@gandalf.local.home>
+	 <CAHQdGtRCYoeToxyDHjnd+6f40J8SrScmQKKOW5O8AzJo3NefAA@mail.gmail.com>
+	 <20150619155226.7c5d6637@synchrony.poochiereds.net>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jun 17, 2015 at 03:51:22PM +0800, Kinglong Mee wrote:
-> v5, new patch
-
-I don't know this code at all.  I'll try to give it a proper review.
-But could you help me by explaining in some detail what this is doing
-and why you're sure it's correct?
-
---b.
-
+On Fri, 2015-06-19 at 15:52 -0400, Jeff Layton wrote:
+> On Fri, 19 Jun 2015 13:39:08 -0400
+> Trond Myklebust <trond.myklebust@primarydata.com> wrote:
 > 
-> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
-> ---
->  fs/namespace.c | 10 ++++++++--
->  1 file changed, 8 insertions(+), 2 deletions(-)
+> > On Fri, Jun 19, 2015 at 1:17 PM, Steven Rostedt <
+> > rostedt@goodmis.org> wrote:
+> > > On Fri, 19 Jun 2015 12:25:53 -0400
+> > > Steven Rostedt <rostedt@goodmis.org> wrote:
+> > > 
+> > > 
+> > > > I don't see that 55201 anywhere. But then again, I didn't look 
+> > > > for it
+> > > > before the port disappeared. I could reboot and look for it 
+> > > > again. I
+> > > > should have saved the full netstat -tapn as well :-/
+> > > 
+> > > Of course I didn't find it anywhere, that's the port on my wife's 
+> > > box
+> > > that port 947 was connected to.
+> > > 
+> > > Now I even went over to my wife's box and ran
+> > > 
+> > >  # rpcinfo -p localhost
+> > >    program vers proto   port  service
+> > >     100000    4   tcp    111  portmapper
+> > >     100000    3   tcp    111  portmapper
+> > >     100000    2   tcp    111  portmapper
+> > >     100000    4   udp    111  portmapper
+> > >     100000    3   udp    111  portmapper
+> > >     100000    2   udp    111  portmapper
+> > >     100024    1   udp  34243  status
+> > >     100024    1   tcp  34498  status
+> > > 
+> > > which doesn't show anything.
+> > > 
+> > > but something is listening to that port...
+> > > 
+> > >  # netstat -ntap |grep 55201
+> > > tcp        0      0 0.0.0.0:55201           0.0.0.0:*            
+> > >    LISTEN
+> > 
+> > 
+> > Hang on. This is on the client box while there is an active NFSv4
+> > mount? Then that's probably the NFSv4 callback channel listening 
+> > for
+> > delegation callbacks.
+> > 
+> > Can you please try:
+> > 
+> > echo "options nfs callback_tcpport=4048" > /etc/modprobe.d/nfs
+> > -local.conf
+> > 
+> > and then either reboot the client or unload and then reload the nfs
+> > modules before reattempting the mount. If this is indeed the 
+> > callback
+> > channel, then that will move your phantom listener to port 4048...
+> > 
 > 
-> diff --git a/fs/namespace.c b/fs/namespace.c
-> index 1b9e111..3f08a48 100644
-> --- a/fs/namespace.c
-> +++ b/fs/namespace.c
-> @@ -1049,8 +1049,6 @@ static void cleanup_mnt(struct mount *mnt)
->  	 * so mnt_get_writers() below is safe.
->  	 */
->  	WARN_ON(mnt_get_writers(mnt));
-> -	if (unlikely(mnt->mnt_pins.first))
-> -		mnt_pin_kill(mnt);
->  	fsnotify_vfsmount_delete(&mnt->mnt);
->  	dput(mnt->mnt.mnt_root);
->  	deactivate_super(mnt->mnt.mnt_sb);
-> @@ -1078,6 +1076,7 @@ static DECLARE_DELAYED_WORK(delayed_mntput_work, delayed_mntput);
->  
->  static void mntput_no_expire(struct mount *mnt)
->  {
-> +put_again:
->  	rcu_read_lock();
->  	mnt_add_count(mnt, -1);
->  	if (likely(mnt->mnt_ns)) { /* shouldn't be the last one */
-> @@ -1090,6 +1089,13 @@ static void mntput_no_expire(struct mount *mnt)
->  		unlock_mount_hash();
->  		return;
->  	}
-> +	if (unlikely(mnt->mnt_pins.first)) {
-> +		mnt_add_count(mnt, 1);
-> +		rcu_read_unlock();
-> +		unlock_mount_hash();
-> +		mnt_pin_kill(mnt);
-> +		goto put_again;
-> +	}
->  	if (unlikely(mnt->mnt.mnt_flags & MNT_DOOMED)) {
->  		rcu_read_unlock();
->  		unlock_mount_hash();
-> -- 
-> 2.4.3
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> Right, it was a little unclear to me before, but it now seems clear
+> that the callback socket that the server is opening to the client is
+> the one squatting on the port.
+> 
+> ...and that sort of makes sense, doesn't it? That rpc_clnt will stick
+> around for the life of the client's lease, and the rpc_clnt binds to 
+> a
+> particular port so that it can reconnect using the same one.
+> 
+> Given that Stephen has done the legwork and figured out that 
+> reverting
+> those commits fixes the issue, then I suspect that the real culprit 
+> is
+> caf4ccd4e88cf2.
+> 
+> The client is likely closing down the other end of the callback
+> socket when it goes idle. Before that commit, we probably did an
+> xs_close on it, but now we're doing a xs_tcp_shutdown and that leaves
+> the port bound.
+> 
+
+Agreed. I've been looking into whether or not there is a simple fix.
+Reverting those patches is not an option, because the whole point was
+to ensure that the socket is in the TCP_CLOSED state before we release
+the socket.
+
+Steven, how about something like the following patch?
+
+8<-----------------------------------------------------------------
