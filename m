@@ -1,70 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from zeniv.linux.org.uk ([195.92.253.2]:56655 "EHLO
+Received: from zeniv.linux.org.uk ([195.92.253.2]:56690 "EHLO
 	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753479AbbFSUoY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Jun 2015 16:44:24 -0400
-Date: Fri, 19 Jun 2015 21:44:18 +0100
+	with ESMTP id S933705AbbFSVJ7 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Jun 2015 17:09:59 -0400
+Date: Fri, 19 Jun 2015 22:09:56 +0100
 From: Al Viro <viro@ZenIV.linux.org.uk>
 To: Kinglong Mee <kinglongmee@gmail.com>
 Cc: "J. Bruce Fields" <bfields@fieldses.org>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
         linux-fsdevel@vger.kernel.org, NeilBrown <neilb@suse.de>,
         Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: Re: [PATCH 3/6 v5] fs_pin: Kill fs_pin under a reference of vfsmnt
-Message-ID: <20150619204418.GM17109@ZenIV.linux.org.uk>
+Subject: Re: [PATCH 6/6 v5] nfsd: Allows user un-mounting filesystem where
+ nfsd exports base on
+Message-ID: <20150619210956.GN17109@ZenIV.linux.org.uk>
 References: <5581266C.9080404@gmail.com>
- <558126FA.8050608@gmail.com>
+ <55812768.1080908@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <558126FA.8050608@gmail.com>
+In-Reply-To: <55812768.1080908@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jun 17, 2015 at 03:51:22PM +0800, Kinglong Mee wrote:
-> +++ b/fs/namespace.c
-> @@ -1049,8 +1049,6 @@ static void cleanup_mnt(struct mount *mnt)
->  	 * so mnt_get_writers() below is safe.
->  	 */
->  	WARN_ON(mnt_get_writers(mnt));
-> -	if (unlikely(mnt->mnt_pins.first))
-> -		mnt_pin_kill(mnt);
->  	fsnotify_vfsmount_delete(&mnt->mnt);
->  	dput(mnt->mnt.mnt_root);
->  	deactivate_super(mnt->mnt.mnt_sb);
-> @@ -1078,6 +1076,7 @@ static DECLARE_DELAYED_WORK(delayed_mntput_work, delayed_mntput);
->  
->  static void mntput_no_expire(struct mount *mnt)
+On Wed, Jun 17, 2015 at 03:53:12PM +0800, Kinglong Mee wrote:
+>  static void expkey_put(struct kref *ref)
 >  {
-> +put_again:
->  	rcu_read_lock();
->  	mnt_add_count(mnt, -1);
->  	if (likely(mnt->mnt_ns)) { /* shouldn't be the last one */
-> @@ -1090,6 +1089,13 @@ static void mntput_no_expire(struct mount *mnt)
->  		unlock_mount_hash();
->  		return;
->  	}
-> +	if (unlikely(mnt->mnt_pins.first)) {
-> +		mnt_add_count(mnt, 1);
-> +		rcu_read_unlock();
-> +		unlock_mount_hash();
-> +		mnt_pin_kill(mnt);
-> +		goto put_again;
+>  	struct svc_expkey *key = container_of(ref, struct svc_expkey, h.ref);
+>  
+>  	if (test_bit(CACHE_VALID, &key->h.flags) &&
+> -	    !test_bit(CACHE_NEGATIVE, &key->h.flags))
+> -		path_put(&key->ek_path);
+> -	auth_domain_put(key->ek_client);
+> -	kfree(key);
+> +	    !test_bit(CACHE_NEGATIVE, &key->h.flags)) {
+> +		rcu_read_lock();
+> +		complete(&key->ek_done);
+> +		pin_kill(&key->ek_pin);
+> +	} else
+> +		expkey_destroy(key);
+>  }
+
+> +static void expkey_pin_kill(struct fs_pin *pin)
+> +{
+> +	struct svc_expkey *key = container_of(pin, struct svc_expkey, ek_pin);
+> +
+> +	if (!completion_done(&key->ek_done)) {
+> +		schedule_work(&key->ek_work);
+> +		wait_for_completion(&key->ek_done);
 > +	}
->  	if (unlikely(mnt->mnt.mnt_flags & MNT_DOOMED)) {
->  		rcu_read_unlock();
->  		unlock_mount_hash();
+> +	path_put_unpin(&key->ek_path, &key->ek_pin);
+> +	expkey_destroy(key);
+> +}
 
-This is absolutely wrong.  For one thing, you are running those suckers on
-fairly deep stack now, which is a bloody bad idea for a lot reasons -
-final mntput() can come with a lot of stack space consumed.  For another,
-I'm really not convinced that what you are doing won't bugger the ordering
-to hell and back - not without a detailed analysis I don't see in these
-patches.
+So basically you want umount(2) to hang until all references are gone.
+How long can they stick around and, more to the point, what happens
+if some sucker does path_get(&key->ek_path) while umount(2) had been
+waiting?  You'll drop the reference to svc_export you'd copied ->ek_path
+from and get through the whole dance, letting umount(2) go.
 
-If you want to be able to grab references by those suckers, this is a very
-wrong way to go.  Look at legitimize_mnt() for better approach, and yes,
-you need to be able to cope with "too late, it's already doomed".  Or you'll
-trade those -EBUSY for race with umount(2) returning before the fs shutdown
-is complete.
+Now what?  Sure, with your previous patch vfsmount will survive - no oopsen
+there.  However, you have had umount run to completion, with filesystem
+still not shut down.  This is badly broken.
+
+You can't do "I can grab reference at any time until the call of
+expkey_pin_kill()" - it's not going to work.  You _must_ grab it
+carefully, being ready to cope with "umount has already decided it's
+not busy, so it's a goner and we must fail" kind of situations.
+
+You need to
+	grab mount_lock with read_seqlock_excl()
+	check that vfsmount isn't marked MNT_SYNC_UMOUNT or MNT_DOOMED
+and bump refcount in such case; give up on attempt otherwise.
+	drop mount_lock
+for those attempts to grab the first reference.  And be ready to cope with
+failures.
 --
 To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
