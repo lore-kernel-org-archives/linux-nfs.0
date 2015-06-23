@@ -1,84 +1,65 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:50774 "EHLO imap.thunk.org"
+Received: from fieldses.org ([173.255.197.46]:48114 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751055AbbFWQcs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 23 Jun 2015 12:32:48 -0400
-Date: Tue, 23 Jun 2015 12:32:41 -0400
-From: "Theodore Ts'o" <tytso@mit.edu>
-To: dsterba@suse.cz, Liu Bo <bo.li.liu@oracle.com>,
-        linux-btrfs@vger.kernel.org, fdmanana@suse.com, kzak@redhat.com,
-        linux-fsdevel@vger.kernel.org, viro@zeniv.linux.org.uk,
-        linux-nfs@vger.kernel.org, chuck.lever@oracle.com,
-        mingming.cao@oracle.com
-Subject: Re: i_version vs iversion (Was: Re: [RFC PATCH v2 1/2] Btrfs: add
- noi_version option to disable MS_I_VERSION)
-Message-ID: <20150623163241.GA6645@thunk.org>
-References: <1434527672-5762-1-git-send-email-bo.li.liu@oracle.com>
- <20150617153306.GY6761@twin.jikos.cz>
- <20150617155234.GB7773@localhost.localdomain>
- <20150617170118.GA6761@twin.jikos.cz>
- <20150618024607.GA8530@localhost.localdomain>
- <20150618143856.GG6761@suse.cz>
+	id S932116AbbFWVeB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 23 Jun 2015 17:34:01 -0400
+Date: Tue, 23 Jun 2015 17:34:01 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Kinglong Mee <kinglongmee@gmail.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Christoph Hellwig <hch@infradead.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: Re: [PATCH v2] nfsd: nfsd4_cb_sequence_done() for processing more cb
+ errors
+Message-ID: <20150623213401.GB25319@fieldses.org>
+References: <556D8C8D.50205@gmail.com>
+ <55817CCE.1030704@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20150618143856.GG6761@suse.cz>
+In-Reply-To: <55817CCE.1030704@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jun 18, 2015 at 04:38:56PM +0200, David Sterba wrote:
-> Moving the discussion to fsdevel.
+On Wed, Jun 17, 2015 at 09:57:34PM +0800, Kinglong Mee wrote:
+> When testing pnfs layout, nfsd got error NFS4ERR_SEQ_MISORDERED.
+> It is caused by nfs return NFS4ERR_DELAY before validate_seqid(),
+> don't update the sequnce id, but nfsd updates the sequnce id !!!
 > 
-> Summary: disabling MS_I_VERSION brings some speedups to btrfs, but the
-> generic 'noiversion' option cannot be used to achieve that. It is
-> processed before it reaches btrfs superblock callback, where
-> MS_I_VERSION is forced.
+> According to RFC5661 20.9.3,
+> " If CB_SEQUENCE returns an error, then the state of the slot
+> (sequence ID, cached reply) MUST NOT change."
 > 
-> The proposed fix is to add btrfs-specific i_version/noi_version to btrfs,
-> to which I object.
+> This patch introduce a new helper nfsd4_cb_sequence_done() for
+> processing more callback errors as client.
+> 
+> v2, 
+> thanks Christoph's advice of adding a helper process errors as client
 
-I was talking to Mingming about this on today's ext4 conference call,
-and one of the reasons why ext4 turns off i_version update by default
-is because it does a real number on our performance as well --- and
-furthermore, the only real user of the field from what we can tell is
-NFSv4, which not all that many ext4 users actually care about.
+Thanks, could you rebase this on top of my for-4.2 branch?  (I already
+took your earlier patch.)  Also:
 
-This has caused pain for the nfsv4 folks since it means that they need
-to tell people to use a special mount option for ext4 if they are
-actually using this for nfsv4, and I suspect they won't be all that
-eager to hear that btrfs is going to go the same way.
+> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+> ---
+>  fs/nfsd/nfs4callback.c | 122 +++++++++++++++++++++++++++++++++++++------------
+>  fs/nfsd/state.h        |   1 +
+>  2 files changed, 93 insertions(+), 30 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+> index ce8d3f2..6fce478 100644
+> --- a/fs/nfsd/nfs4callback.c
+> +++ b/fs/nfsd/nfs4callback.c
+...
+> @@ -874,6 +874,11 @@ static void nfsd4_cb_prepare(struct rpc_task *task, void *calldata)
+>  	struct nfs4_client *clp = cb->cb_clp;
+>  	u32 minorversion = clp->cl_minorversion;
+>  
+> +	/*
+> +	 * cb_seq_status is only set in decode_cb_sequence4res,
+> +	 * and so will remain 1 if an rpc level failure occurs.
+> +	 */
+> +	cb->cb_seq_status = 1;
 
-This however got us thinking --- even in if NFSv4 is depending on
-i_version, it doesn't actually _look_ at that field all that often.
-It's only going to look at it in a response to a client's getattr
-call, and that in turn is used to so the client can do its local disk
-cache invalidation if anby of the data blocks of the inode has changed.
+Isn't that a valid error code?  OK, I guess NFS4ERR_PERM isn't a legal
+SEQUENCE return.  Still, -1 might make this a bit more obvious.
 
-So what if we have a per-inode flag which "don't update I_VERSION",
-which is off by default, but after the i_version has been updated at
-least once, is set, so the i_version field won't be updated again ---
-at least until something has actually looked at the i_version field,
-when the "don't update I_VERSOIN" flag will get cleared again.
-
-So basically, if we know there are no microphones in the forest, we
-don't need to make the tree fall.  However, if someone has sampled the
-i_version field, then the next time the inode gets updated, we will
-update the i_version field so the NFSv4 client can hear the sound of
-the tree crashing to the forst floor and so it can invalidate its
-local cache of the file.  :-)
-
-This should significantly improve the performance of using the
-i_version field if the file system is being exported via NFSv4, and if
-NFSv4 is not in use, no one will be looking at the i_version field, so
-the performance impact will be very slight, and thus we could enable
-i_version updates by default for btrfs and ext4.
-
-And this should make the distribution folks happy, since it will unify
-the behavior of all file systems, and make life easier for users who
-won't need to set certain magic mount options depending on what file
-system they are using and whether they are using NFSv4 or not.
-
-Does this sound reasonable?
-
-Cheers,
-
-						- Ted
+--b.
