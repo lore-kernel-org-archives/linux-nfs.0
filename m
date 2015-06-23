@@ -1,38 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from [115.29.104.60] ([115.29.104.60]:49368 "HELO fumeilaistone.cn"
-	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with SMTP
-	id S1753706AbbFWKvV convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Jun 2015 06:51:21 -0400
-Message-ID: <9D68CE35-B679-4AAF-A49F-CE77F9D3D665@fumeilaistone.cn>
-Reply-To: <martinsdweber@aim.com>
-From: "Herr Martins D Weber" <test@fumeilaistone.cn>
-Subject: Lieber Freund!!!
-Date: Sat, 13 Jun 2015 05:14:17 -0700
-MIME-Version: 1.0
-Content-Type: text/plain;
-	charset="Windows-1251"
-To: unlisted-recipients:; (no To-header on input)@mail.corp.redhat.com
+Received: from mail-pd0-f180.google.com ([209.85.192.180]:36539 "EHLO
+	mail-pd0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754559AbbFWLw0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Jun 2015 07:52:26 -0400
+Received: by pdcu2 with SMTP id u2so5843672pdc.3
+        for <linux-nfs@vger.kernel.org>; Tue, 23 Jun 2015 04:52:26 -0700 (PDT)
+From: Peng Tao <tao.peng@primarydata.com>
+To: linux-nfs <linux-nfs@vger.kernel.org>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Peng Tao <tao.peng@primarydata.com>
+Subject: [PATCH-v2 00/10] pnfs/flexfiles: layoutstats support
+Date: Tue, 23 Jun 2015 19:51:54 +0800
+Message-Id: <1435060324-13279-1-git-send-email-tao.peng@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Lieber Freund!!!
+Hi all,
 
-Ich vermute das diese E-Mail eine ?berraschung f?r Sie sein wird, aber es ist wahr.Ich bin bei einer routinen ?berpr?fung in meiner Bank (StandardBank PLC von S?d Afrika) wo ich arbeite, auf einem Konto gesto?en, was nicht in anspruch genommen worden ist, wo derzeit USD$18.5M (Achtzehn Million, F?nf Hundert Tausend, US Dollar)  gutgeschrieben sind.Dieses Konto geh?rte Herrn Manfred Becker, der ein Kunde in unsere Bank war, der leider verstorben ist. Herrn Manfred Becker war ein geb?rtiger Deutscher.
+The patchsets add LAYOUTSTATS support to flexfiles. LAYOUTSTATS are sent
+every minute if IO is still happening upon a file.
 
-Damit es mir m?glich ist dieses Geld $18,500,000 inanspruch zunehmen,ben?tige ich die zusammenarbeit eines Ausl?ndischen Partners wie Sie,den ich als Verwandter und Erbe des verstorbenen Herrn Manfred Becker vorstellen kann,damit wir das Geld inanspruch nehmen k?nnen. F?r diese Unterst?tzung erhalten Sie 30% der Erbschaftsumme und die restlichen 70% teile ich mirmit meinen zwei Arbeitskollegen, die mich bei dieser Transaktion ebenfalls unterst?tzen.
+One limitation is that at most 4 LAYOUTSTATS calls are permitted in a compound.
+Had to send multiple LAYOUTSTATS operations per compound because OP_LAYOUTSTATS
+requires stateid and deviceid as its arguments, which makes it a per-file per-deviceid
+call.
 
+Cheers,
+Tao
 
-Wenn Sie interessiert sind, k?nnen Sie mir bitte eine E-Mail schicken, damit ich Ihnen mehr Details zukommen lassen kann. N.B.BITTE SENDEN SIE MIR Martins D Weber ANTWORT ZU durch mein E-mail: ( martinsdweber@aim.com ) f?R VERTRAULICHEN GRUND. Schicken Sie keine POST ZU MEINEM B?RO-E-MAIL.(martinsdweber@aim.com )
+v1->v2 Changelog:
+1. don't reset IO statistics upon LAYOUTSTATS reply per latest NFS42 draft.
+2. update flexfiles xdr to match latetst flexfiles draft.
+3. address Jeff's comments and add his reviewed-by line.
 
+Peng Tao (7):
+  pNFS: fill in nfs42_layoutstat_ops
+  pnfs: add pnfs_report_layoutstat helper function
+  pNFS/flexfiles: track when layout is first used
+  pnfs/flexfiles: add ff_layout_prepare_layoutstats
+  pnfs/flexfiles: encode LAYOUTSTATS flexfiles specific data
+  nfs42: serialize LAYOUTSTATS calls of the same file
+  pnfs/flexfiles: report layoutstat regularly
 
-If you understand english,please  kindly reply with english ( martinsdweber@aim.com )
+Trond Myklebust (3):
+  NFSv.2/pnfs Add a LAYOUTSTATS rpc function
+  pNFS/flexfiles: Remove unused struct members user_name, group_name
+  pNFS/flexfiles: add layoutstats tracking
 
-Mit freundlichen Grüßen
+ fs/nfs/flexfilelayout/flexfilelayout.c | 459 ++++++++++++++++++++++++++++++++-
+ fs/nfs/flexfilelayout/flexfilelayout.h |  30 ++-
+ fs/nfs/nfs42.h                         |   9 +-
+ fs/nfs/nfs42proc.c                     |  81 ++++++
+ fs/nfs/nfs42xdr.c                      | 122 +++++++++
+ fs/nfs/nfs4_fs.h                       |   1 +
+ fs/nfs/nfs4proc.c                      |   4 +-
+ fs/nfs/nfs4xdr.c                       |   1 +
+ fs/nfs/pnfs.c                          |  56 ++++
+ fs/nfs/pnfs.h                          |   3 +
+ include/linux/nfs4.h                   |   1 +
+ include/linux/nfs_fs.h                 |   1 +
+ include/linux/nfs_xdr.h                |  43 +++
+ 13 files changed, 795 insertions(+), 16 deletions(-)
 
-Herr Martins D Weber
-
----
-This email has been checked for viruses by Avast antivirus software.
-https://www.avast.com/antivirus
-
+-- 
+1.8.3.1
 
