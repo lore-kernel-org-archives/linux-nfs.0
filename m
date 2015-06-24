@@ -1,227 +1,113 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wg0-f54.google.com ([74.125.82.54]:34245 "EHLO
-	mail-wg0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752450AbbFXV6H (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Jun 2015 17:58:07 -0400
+Received: from mail-wg0-f51.google.com ([74.125.82.51]:34314 "EHLO
+	mail-wg0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751815AbbFXV6N (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Jun 2015 17:58:13 -0400
 From: Andreas Gruenbacher <andreas.gruenbacher@gmail.com>
 To: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-nfs@vger.kernel.org, linux-api@vger.kernel.org,
         samba-technical@lists.samba.org, linux-security-module@vger.kernel.org
-Cc: Andreas Gruenbacher <agruen@kernel.org>
-Subject: [RFC v4 22/31] richacl: Propagate everyone@ permissions to other aces
-Date: Wed, 24 Jun 2015 23:57:11 +0200
-Message-Id: <1435183040-22726-23-git-send-email-agruenba@redhat.com>
+Subject: [RFC v4 28/31] nfsd: Keep list of acls to dispose of in compoundargs
+Date: Wed, 24 Jun 2015 23:57:17 +0200
+Message-Id: <1435183040-22726-29-git-send-email-agruenba@redhat.com>
 In-Reply-To: <1435183040-22726-1-git-send-email-agruenba@redhat.com>
 References: <1435183040-22726-1-git-send-email-agruenba@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The trailing everyone@ allow ace can grant permissions to all file
-classes including the owner and group class.  Before we can apply the
-other mask to this entry to turn it into an "other class" entry, we need
-to ensure that members of the owner or group class will not lose any
-permissions from that ace.
+We will decode acls in requests into richacls.  Even if unlikely, there can be
+more than one acl in a single request; those richacls need to be richacl_put()
+at the end of the request instead of kfree()d, so keep a list of acls in
+compoundargs for that.
 
-Conceptually, we do this by inserting additional <who>:<allow>::allow
-entries before the trailing everyone@ allow ace with the same
-permissions as the trailing everyone@ allow ace for owner@, group@, and
-all explicitly mentioned users and groups.  (In practice, we will rarely
-need to insert any additional aces in this step.)
-
-Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
+Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
 ---
- fs/richacl_compat.c | 181 ++++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 181 insertions(+)
+ fs/nfsd/nfs4xdr.c | 26 ++++++++++++++++++++++++++
+ fs/nfsd/xdr4.h    |  6 ++++++
+ 2 files changed, 32 insertions(+)
 
-diff --git a/fs/richacl_compat.c b/fs/richacl_compat.c
-index d813789..c6db72a 100644
---- a/fs/richacl_compat.c
-+++ b/fs/richacl_compat.c
-@@ -224,3 +224,184 @@ richacl_move_everyone_aces_down(struct richacl_alloc *alloc)
- 	}
- 	return 0;
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index ba81da1..277d9d8 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -39,6 +39,7 @@
+ #include <linux/utsname.h>
+ #include <linux/pagemap.h>
+ #include <linux/sunrpc/svcauth_gss.h>
++#include <linux/richacl.h>
+ 
+ #include "idmap.h"
+ #include "acl.h"
+@@ -195,6 +196,24 @@ svcxdr_tmpalloc(struct nfsd4_compoundargs *argp, u32 len)
+ 	return tb->buf;
  }
-+
-+/**
-+ * __richacl_propagate_everyone  -  propagate everyone@ permissions up for @who
-+ * @alloc:	acl and number of allocated entries
-+ * @who:	identifier to propagate permissions for
-+ * @allow:	permissions to propagate up
-+ *
-+ * Propagate the permissions in @allow up from the end of the acl to the start
-+ * for the specified principal @who.
-+ *
-+ * The simplest possible approach to achieve this would be to insert a
-+ * "<who>:<allow>::allow" ace before the final everyone@ allow ace.  Since this
-+ * would often result in aces which are not needed or which could be merged
-+ * with an existing ace, we make the following optimizations:
-+ *
-+ *   - We go through the acl and determine which permissions are already
-+ *     allowed or denied to @who, and we remove those permissions from
-+ *     @allow.
-+ *
-+ *   - If the acl contains an allow ace for @who and no aces after this entry
-+ *     deny permissions in @allow, we add the permissions in @allow to this
-+ *     ace.  (Propagating permissions across a deny ace which can match the
-+ *     process can elevate permissions.)
-+ *
-+ * This transformation does not alter the permissions that the acl grants.
-+ */
-+static int
-+__richacl_propagate_everyone(struct richacl_alloc *alloc, struct richace *who,
-+			  unsigned int allow)
+ 
++static struct richacl *
++svcxdr_alloc_richacl(struct nfsd4_compoundargs *argp, u32 nace)
 +{
-+	struct richace *allow_last = NULL, *ace;
++	struct svcxdr_richacl *acls;
 +
-+	/*
-+	 * Remove the permissions from allow that are already determined for
-+	 * this who value, and figure out if there is an allow entry for
-+	 * this who value that is "reachable" from the trailing everyone@
-+	 * allow ace.
-+	 */
-+	richacl_for_each_entry(ace, alloc->acl) {
-+		if (richace_is_inherit_only(ace))
-+			continue;
-+		if (richace_is_allow(ace)) {
-+			if (richace_is_same_identifier(ace, who)) {
-+				allow &= ~ace->e_mask;
-+				allow_last = ace;
-+			}
-+		} else if (richace_is_deny(ace)) {
-+			if (richace_is_same_identifier(ace, who))
-+				allow &= ~ace->e_mask;
-+			else if (allow & ace->e_mask)
-+				allow_last = NULL;
-+		}
++	acls = kmalloc(sizeof(*acls), GFP_KERNEL);
++	if (!acls)
++		return NULL;
++	acls->acl = richacl_alloc(nace, GFP_KERNEL);
++	if (!acls->acl) {
++		kfree(acls);
++		return NULL;
 +	}
-+	ace--;
-+
-+        /*
-+	 * If for group class entries, all the remaining permissions will
-+	 * remain granted by the trailing everyone@ ace, no additional entry is
-+	 * needed.
-+	 */
-+	if (!richace_is_owner(who) &&
-+	    richace_is_everyone(ace) && richace_is_allow(ace) &&
-+	    !(allow & ~(ace->e_mask & alloc->acl->a_other_mask)))
-+		allow = 0;
-+
-+	if (allow) {
-+		if (allow_last)
-+			return richace_change_mask(alloc, &allow_last,
-+						   allow_last->e_mask | allow);
-+		else {
-+			struct richace who_copy;
-+
-+			ace = alloc->acl->a_entries + alloc->acl->a_count - 1;
-+			memcpy(&who_copy, who, sizeof(struct richace));
-+			if (richacl_insert_entry(alloc, &ace))
-+				return -1;
-+			memcpy(ace, &who_copy, sizeof(struct richace));
-+			ace->e_type = RICHACE_ACCESS_ALLOWED_ACE_TYPE;
-+			richace_clear_inheritance_flags(ace);
-+			ace->e_mask = allow;
-+		}
-+	}
-+	return 0;
++	acls->next = argp->acls;
++	argp->acls = acls;
++	return acls->acl;
 +}
 +
-+/**
-+ * richacl_propagate_everyone  -  propagate everyone@ permissions up the acl
-+ * @alloc:	acl and number of allocated entries
-+ *
-+ * Make sure that group@ and all other users and groups mentioned in the acl
-+ * will not lose any permissions when finally applying the other mask to the
-+ * everyone@ allow ace at the end of the acl.  We modify the permissions of
-+ * existing entries or add new entries before the final everyone@ allow ace to
-+ * achieve that.
-+ *
-+ * Entries for owner@ are ignored here; see richacl_set_owner_permissions().
-+ *
-+ * For example, the following acl implicitly grants everyone rwpx access:
-+ *
-+ *    joe:r::allow
-+ *    everyone@:rwpx::allow
-+ *
-+ * When applying mode 0660 to this acl, group@ would lose rwp access, and joe
-+ * would lose wp access even though the mode does not exclude those
-+ * permissions.  After propagating the everyone@ permissions, the result for
-+ * applying mode 0660 becomes:
-+ *
-+ *    owner@:rwp::allow
-+ *    joe:rwp::allow
-+ *    group@:rwp::allow
-+ *
-+ * Deny aces complicate the matter.  For example, the following acl grants
-+ * everyone but joe write access:
-+ *
-+ *    joe:wp::deny
-+ *    everyone@:rwpx::allow
-+ *
-+ * When applying mode 0660 to this acl, group@ would lose rwp access, and joe
-+ * would lose r access.  After propagating the everyone@ permissions, the
-+ * result for applying mode 0660 becomes:
-+ *
-+ *    owner@:rwp::allow
-+ *    joe:w::deny
-+ *    group@:rwp::allow
-+ *    joe:r::allow
-+ */
-+static int
-+richacl_propagate_everyone(struct richacl_alloc *alloc)
-+{
-+	struct richace who = { .e_flags = RICHACE_SPECIAL_WHO };
-+	struct richacl *acl = alloc->acl;
-+	struct richace *ace;
-+	unsigned int group_allow;
-+
-+	/*
-+	 * If the group mask contains permissions which are not in the other
-+	 * mask, we may need to propagate permissions up from the everyone@
-+	 * allow ace.
-+	 */
-+	if (!(acl->a_group_mask & ~acl->a_other_mask))
-+		return 0;
-+	if (!acl->a_count)
-+		return 0;
-+	ace = acl->a_entries + acl->a_count - 1;
-+	if (richace_is_inherit_only(ace) || !richace_is_everyone(ace))
-+		return 0;
-+
-+	group_allow = ace->e_mask & acl->a_group_mask;
-+	if (group_allow & ~acl->a_other_mask) {
-+		int n;
-+
-+		/* Propagate everyone@ permissions through to group@. */
-+		who.e_id.special = RICHACE_GROUP_SPECIAL_ID;
-+		if (__richacl_propagate_everyone(alloc, &who, group_allow))
-+			return -1;
-+		acl = alloc->acl;
-+
-+		/*
-+		 * Start from the entry before the trailing everyone@ allow
-+		 * entry. We will not hit everyone@ entries in the loop.
-+		 */
-+		for (n = acl->a_count - 2; n != -1; n--) {
-+			ace = acl->a_entries + n;
-+
-+			if (richace_is_inherit_only(ace) ||
-+			    richace_is_owner(ace) ||
-+			    richace_is_group(ace))
-+				continue;
-+			if (richace_is_allow(ace) || richace_is_deny(ace)) {
-+				/*
-+				 * Any inserted entry will end up below the
-+				 * current entry
-+				 */
-+				if (__richacl_propagate_everyone(alloc, ace,
-+								 group_allow))
-+					return -1;
-+			}
-+		}
+ /*
+  * For xdr strings that need to be passed to other kernel api's
+  * as null-terminated strings.
+@@ -4394,6 +4413,12 @@ int nfsd4_release_compoundargs(void *rq, __be32 *p, void *resp)
+ 		args->to_free = tb->next;
+ 		kfree(tb);
+ 	}
++	while (args->acls) {
++		struct svcxdr_richacl *acls = args->acls;
++		args->acls = acls->next;
++		richacl_put(acls->acl);
++		kfree(acls);
 +	}
-+	return 0;
-+}
+ 	return 1;
+ }
+ 
+@@ -4412,6 +4437,7 @@ nfs4svc_decode_compoundargs(struct svc_rqst *rqstp, __be32 *p, struct nfsd4_comp
+ 	args->pagelen = rqstp->rq_arg.page_len;
+ 	args->tmpp = NULL;
+ 	args->to_free = NULL;
++	args->acls = NULL;
+ 	args->ops = args->iops;
+ 	args->rqstp = rqstp;
+ 
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index 2f8c092..db47af2 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -569,6 +569,11 @@ struct svcxdr_tmpbuf {
+ 	char buf[];
+ };
+ 
++struct svcxdr_richacl {
++	struct svcxdr_richacl *next;
++	struct richacl *acl;
++};
++
+ struct nfsd4_compoundargs {
+ 	/* scratch variables for XDR decode */
+ 	__be32 *			p;
+@@ -578,6 +583,7 @@ struct nfsd4_compoundargs {
+ 	__be32				tmp[8];
+ 	__be32 *			tmpp;
+ 	struct svcxdr_tmpbuf		*to_free;
++	struct svcxdr_richacl		*acls;
+ 
+ 	struct svc_rqst			*rqstp;
+ 
 -- 
 2.4.2
 
