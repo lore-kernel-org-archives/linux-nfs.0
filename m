@@ -1,272 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wg0-f48.google.com ([74.125.82.48]:33100 "EHLO
-	mail-wg0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752428AbbFXV6D (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Jun 2015 17:58:03 -0400
+Received: from mail-wg0-f51.google.com ([74.125.82.51]:36630 "EHLO
+	mail-wg0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752463AbbFXV6H (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Jun 2015 17:58:07 -0400
 From: Andreas Gruenbacher <andreas.gruenbacher@gmail.com>
 To: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-nfs@vger.kernel.org, linux-api@vger.kernel.org,
         samba-technical@lists.samba.org, linux-security-module@vger.kernel.org
-Cc: Andreas Gruenbacher <agruen@kernel.org>
-Subject: [RFC v4 20/31] richacl: acl editing helper functions
-Date: Wed, 24 Jun 2015 23:57:09 +0200
-Message-Id: <1435183040-22726-21-git-send-email-agruenba@redhat.com>
+Subject: [RFC v4 23/31] richacl: Set the owner permissions to the owner mask
+Date: Wed, 24 Jun 2015 23:57:12 +0200
+Message-Id: <1435183040-22726-24-git-send-email-agruenba@redhat.com>
 In-Reply-To: <1435183040-22726-1-git-send-email-agruenba@redhat.com>
 References: <1435183040-22726-1-git-send-email-agruenba@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The file masks in richacls make chmod and creating new files more
-efficient than having to apply file permission bits to the acl directly.
-They also allow us to regain permissions from an acl even after a
-restrictive chmod, because the permissions in the acl itself are not
-being destroyed.  In POSIX ACLs, the mask entry has a similar function.
+Change the acl so that owner@ is granted the permissions set in the owner mask.
 
-Protocols like nfsv4 do not understand file masks.  For those protocols,
-we need to compute nfs4 acls which represent the effective permissions
-granted by a richacl: we need to "apply" the file masks to the acl.
-
-This is the first in a series of richacl transformation patches; it
-implements basic richacl editing functions.  The following patches
-implement algorithms for transforming a richacl so that it can be
-evaluated as a plain nfs4 acl, with identical permission check results.
-
-Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
+Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
 ---
- fs/Makefile                    |   3 +-
- fs/richacl_compat.c            | 161 +++++++++++++++++++++++++++++++++++++++++
- include/linux/richacl_compat.h |  40 ++++++++++
- 3 files changed, 203 insertions(+), 1 deletion(-)
- create mode 100644 fs/richacl_compat.c
- create mode 100644 include/linux/richacl_compat.h
+ fs/richacl_compat.c | 42 ++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 42 insertions(+)
 
-diff --git a/fs/Makefile b/fs/Makefile
-index e0cdaab..1baae4e 100644
---- a/fs/Makefile
-+++ b/fs/Makefile
-@@ -48,7 +48,8 @@ obj-$(CONFIG_SYSCTL)		+= drop_caches.o
- 
- obj-$(CONFIG_FHANDLE)		+= fhandle.o
- obj-$(CONFIG_FS_RICHACL)	+= richacl.o
--richacl-y			:= richacl_base.o richacl_inode.o richacl_xattr.o
-+richacl-y			:= richacl_base.o richacl_inode.o \
-+				   richacl_xattr.o richacl_compat.o
- 
- obj-y				+= quota/
- 
 diff --git a/fs/richacl_compat.c b/fs/richacl_compat.c
-new file mode 100644
-index 0000000..1c62c3c
---- /dev/null
+index c6db72a..882c2f1 100644
+--- a/fs/richacl_compat.c
 +++ b/fs/richacl_compat.c
-@@ -0,0 +1,161 @@
-+/*
-+ * Copyright (C) 2006, 2010  Novell, Inc.
-+ * Copyright (C) 2015  Red Hat, Inc.
-+ * Written by Andreas Gruenbacher <agruen@kernel.org>
-+ *
-+ * This program is free software; you can redistribute it and/or modify it
-+ * under the terms of the GNU General Public License as published by the
-+ * Free Software Foundation; either version 2, or (at your option) any
-+ * later version.
-+ *
-+ * This program is distributed in the hope that it will be useful, but
-+ * WITHOUT ANY WARRANTY; without even the implied warranty of
-+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-+ * General Public License for more details.
-+ */
-+
-+#include <linux/module.h>
-+#include <linux/fs.h>
-+#include <linux/slab.h>
-+#include <linux/richacl_compat.h>
+@@ -405,3 +405,45 @@ richacl_propagate_everyone(struct richacl_alloc *alloc)
+ 	}
+ 	return 0;
+ }
 +
 +/**
-+ * richacl_prepare  -  allocate richacl being constructed
++ * richacl_set_owner_permissions  -  set the owner permissions to the owner mask
 + *
-+ * Allocate a richacl which can hold @count entries but which is initially
-+ * empty.
-+ */
-+struct richacl *richacl_prepare(struct richacl_alloc *alloc, unsigned int count)
-+{
-+	alloc->acl = richacl_alloc(count, GFP_KERNEL);
-+	if (!alloc->acl)
-+		return NULL;
-+	alloc->acl->a_count = 0;
-+	alloc->count = count;
-+	return alloc->acl;
-+}
-+EXPORT_SYMBOL_GPL(richacl_prepare);
-+
-+/**
-+ * richacl_delete_entry  -  delete an entry in an acl
-+ * @alloc:	acl and number of allocated entries
-+ * @ace:	an entry in @alloc->acl
-+ *
-+ * Updates @ace so that it points to the entry before the deleted entry
-+ * on return. (When deleting the first entry, @ace will point to the
-+ * (non-existant) entry before the first entry). This behavior is the
-+ * expected behavior when deleting entries while forward iterating over
-+ * an acl.
-+ */
-+void
-+richacl_delete_entry(struct richacl_alloc *alloc, struct richace **ace)
-+{
-+	void *end = alloc->acl->a_entries + alloc->acl->a_count;
-+
-+	memmove(*ace, *ace + 1, end - (void *)(*ace + 1));
-+	(*ace)--;
-+	alloc->acl->a_count--;
-+}
-+EXPORT_SYMBOL_GPL(richacl_delete_entry);
-+
-+/**
-+ * richacl_insert_entry  -  insert an entry in an acl
-+ * @alloc:	acl and number of allocated entries
-+ * @ace:	entry before which the new entry shall be inserted
-+ *
-+ * Insert a new entry in @alloc->acl at position @ace and zero-initialize
-+ * it.  This may require reallocating @alloc->acl.
-+ */
-+int
-+richacl_insert_entry(struct richacl_alloc *alloc, struct richace **ace)
-+{
-+	if (alloc->count == alloc->acl->a_count) {
-+		int n = *ace - alloc->acl->a_entries;
-+		struct richacl *acl2;
-+
-+		acl2 = richacl_alloc(alloc->acl->a_count + 1, GFP_KERNEL);
-+		if (!acl2)
-+			return -1;
-+		acl2->a_flags = alloc->acl->a_flags;
-+		acl2->a_owner_mask = alloc->acl->a_owner_mask;
-+		acl2->a_group_mask = alloc->acl->a_group_mask;
-+		acl2->a_other_mask = alloc->acl->a_other_mask;
-+		memcpy(acl2->a_entries, alloc->acl->a_entries,
-+		       n * sizeof(struct richace));
-+		memcpy(acl2->a_entries + n + 1, *ace,
-+		       (alloc->acl->a_count - n) * sizeof(struct richace));
-+		kfree(alloc->acl);
-+		alloc->acl = acl2;
-+		alloc->count = acl2->a_count;
-+		*ace = acl2->a_entries + n;
-+	} else {
-+		void *end = alloc->acl->a_entries + alloc->acl->a_count;
-+
-+		memmove(*ace + 1, *ace, end - (void *)*ace);
-+		alloc->acl->a_count++;
-+	}
-+	memset(*ace, 0, sizeof(struct richace));
-+	return 0;
-+}
-+EXPORT_SYMBOL_GPL(richacl_insert_entry);
-+
-+/**
-+ * richacl_append_entry  -  append an entry to an acl
-+ * @alloc:		acl and number of allocated entries
-+ *
-+ * This may require reallocating @alloc->acl.
-+ */
-+struct richace *richacl_append_entry(struct richacl_alloc *alloc)
-+{
-+	struct richacl *acl = alloc->acl;
-+	struct richace *ace = acl->a_entries + acl->a_count;
-+
-+	if (alloc->count > alloc->acl->a_count) {
-+		acl->a_count++;
-+		return ace;
-+	}
-+	return richacl_insert_entry(alloc, &ace) ? NULL : ace;
-+}
-+EXPORT_SYMBOL_GPL(richacl_append_entry);
-+
-+/**
-+ * richace_change_mask  -  set the mask of @ace to @mask
-+ * @alloc:	acl and number of allocated entries
-+ * @ace:	entry to modify
-+ * @mask:	new mask for @ace
-+ *
-+ * If @ace is inheritable, a inherit-only ace is inserted before @ace which
-+ * includes the inheritable permissions of @ace and the inheritance flags of
-+ * @ace are cleared before changing the mask.
-+ *
-+ * If @mask is 0, the original ace is turned into an inherit-only entry if
-+ * there are any inheritable permissions, and removed otherwise.
-+ *
-+ * The returned @ace points to the modified or inserted effective-only acl
-+ * entry if that entry exists, to the entry that has become inheritable-only,
-+ * or else to the previous entry in the acl.
++ * Change the acl so that owner@ is granted the permissions set in the owner
++ * mask.  This leaves at most one efective owner@ allow entry at the beginning
++ * of the acl.
 + */
 +static int
-+richace_change_mask(struct richacl_alloc *alloc, struct richace **ace,
-+			   unsigned int mask)
++richacl_set_owner_permissions(struct richacl_alloc *alloc)
 +{
-+	if (mask && (*ace)->e_mask == mask)
-+		(*ace)->e_flags &= ~RICHACE_INHERIT_ONLY_ACE;
-+	else if (mask & ~RICHACE_POSIX_ALWAYS_ALLOWED) {
-+		if (richace_is_inheritable(*ace)) {
-+			if (richacl_insert_entry(alloc, ace))
-+				return -1;
-+			memcpy(*ace, *ace + 1, sizeof(struct richace));
-+			(*ace)->e_flags |= RICHACE_INHERIT_ONLY_ACE;
-+			(*ace)++;
-+			richace_clear_inheritance_flags(*ace);
++	unsigned int x = RICHACE_POSIX_ALWAYS_ALLOWED;
++	unsigned int owner_mask = alloc->acl->a_owner_mask & ~x;
++	unsigned int denied = 0;
++	struct richace *ace;
++
++	if (!owner_mask)
++		return 0;
++
++	richacl_for_each_entry(ace, alloc->acl) {
++		if (richace_is_owner(ace)) {
++			if (!richace_is_inherit_only(ace))
++				richace_change_mask(alloc, &ace, 0);
++		} else {
++			if (richace_is_deny(ace))
++				denied |= ace->e_mask;
 +		}
-+		(*ace)->e_mask = mask;
-+	} else {
-+		if (richace_is_inheritable(*ace))
-+			(*ace)->e_flags |= RICHACE_INHERIT_ONLY_ACE;
-+		else
-+			richacl_delete_entry(alloc, ace);
++	}
++
++	if (owner_mask & (denied |
++			  ~alloc->acl->a_other_mask |
++			  ~alloc->acl->a_group_mask)) {
++		ace = alloc->acl->a_entries;
++		if (richacl_insert_entry(alloc, &ace))
++			return -1;
++		ace->e_type = RICHACE_ACCESS_ALLOWED_ACE_TYPE;
++		ace->e_flags = RICHACE_SPECIAL_WHO;
++		ace->e_mask = owner_mask;
++		ace->e_id.special = RICHACE_OWNER_SPECIAL_ID;
 +	}
 +	return 0;
 +}
-diff --git a/include/linux/richacl_compat.h b/include/linux/richacl_compat.h
-new file mode 100644
-index 0000000..a9ff630
---- /dev/null
-+++ b/include/linux/richacl_compat.h
-@@ -0,0 +1,40 @@
-+/*
-+ * Copyright (C) 2015  Red Hat, Inc.
-+ * Written by Andreas Gruenbacher <agruenba@redhat.com>
-+ *
-+ * This program is free software; you can redistribute it and/or modify it
-+ * under the terms of the GNU General Public License as published by the
-+ * Free Software Foundation; either version 2, or (at your option) any
-+ * later version.
-+ *
-+ * This program is distributed in the hope that it will be useful, but
-+ * WITHOUT ANY WARRANTY; without even the implied warranty of
-+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-+ * General Public License for more details.
-+ */
-+
-+#ifndef __RICHACL_COMPAT_H
-+#define __RICHACL_COMPAT_H
-+
-+#include <linux/richacl.h>
-+
-+/**
-+ * struct richacl_alloc  -  remember how many entries are actually allocated
-+ * @acl:	acl with a_count <= @count
-+ * @count:	the actual number of entries allocated in @acl
-+ *
-+ * We pass around this structure while modifying an acl so that we do
-+ * not have to reallocate when we remove existing entries followed by
-+ * adding new entries.
-+ */
-+struct richacl_alloc {
-+	struct richacl *acl;
-+	unsigned int count;
-+};
-+
-+struct richacl *richacl_prepare(struct richacl_alloc *, unsigned int);
-+struct richace *richacl_append_entry(struct richacl_alloc *);
-+int richacl_insert_entry(struct richacl_alloc *, struct richace **);
-+void richacl_delete_entry(struct richacl_alloc *, struct richace **);
-+
-+#endif  /* __RICHACL_COMPAT_H */
 -- 
 2.4.2
 
