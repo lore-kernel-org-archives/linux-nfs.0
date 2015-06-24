@@ -1,189 +1,56 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wi0-f177.google.com ([209.85.212.177]:38062 "EHLO
-	mail-wi0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752310AbbFXV5z (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Jun 2015 17:57:55 -0400
+Received: from mail-wg0-f44.google.com ([74.125.82.44]:36384 "EHLO
+	mail-wg0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751578AbbFXV5i (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Jun 2015 17:57:38 -0400
 From: Andreas Gruenbacher <andreas.gruenbacher@gmail.com>
 To: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-nfs@vger.kernel.org, linux-api@vger.kernel.org,
         samba-technical@lists.samba.org, linux-security-module@vger.kernel.org
-Subject: [RFC v4 15/31] richacl: Automatic Inheritance
-Date: Wed, 24 Jun 2015 23:57:04 +0200
-Message-Id: <1435183040-22726-16-git-send-email-agruenba@redhat.com>
+Subject: [RFC v4 04/31] vfs: Make the inode passed to inode_change_ok non-const
+Date: Wed, 24 Jun 2015 23:56:53 +0200
+Message-Id: <1435183040-22726-5-git-send-email-agruenba@redhat.com>
 In-Reply-To: <1435183040-22726-1-git-send-email-agruenba@redhat.com>
 References: <1435183040-22726-1-git-send-email-agruenba@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Automatic Inheritance (AI) allows changes to the acl of a directory to
-propagate down to children.
-
-This is mostly implemented in user space: when a process changes the
-permissions of a directory and Automatic Inheritance is enabled for that
-directory, the process must propagate those changes to all children,
-recursively.
-
-The kernel enables this by keeping track of which permissions have been
-inherited at file create time.  In addition, it makes sure that permission
-propagation is turned off when the permissions of a file are set explicitly
-(for example, upon create or chmod).
-
-Automatic Inheritance works as follows:
-
- - When the RICHACL_AUTO_INHERIT flag in the acl of a file is not set,
-   the file is not affected by AI.
-
- - When the RICHACL_AUTO_INHERIT flag in the acl of a directory is set
-   and a file or subdirectory is created in that directory, the
-   inherited acl will have the RICHACL_AUTO_INHERIT flag set, and all
-   inherited aces will have the RICHACE_INHERITED_ACE flag set.  This
-   allows user space to distinguish between aces which have been
-   inherited and aces which have been explicitly added.
-
- - When the RICHACL_PROTECTED acl flag in the acl of a file is set, AI
-   will not modify the acl of the file.  This does not affect
-   propagation of permissions from the file to its children (if the
-   file is a directory).
-
-Linux does not have a way of creating files without setting the file
-permission bits, so all files created inside a directory with
-RICHACL_AUTO_INHERIT set will have the RICHACL_PROTECTED flag set.  This
-effectively disables Automatic Inheritance.
-
-Protocols which support creating files without specifying permissions can
-explicitly clear the RICHACL_PROTECTED flag after creating a file and
-reset the file masks to "undo" applying the create mode; see
-richacl_compute_max_masks().  They should set the RICHACL_DEFAULTED flag.
-This is a workaround; a mechanism that would allow a process to indicate
-to the kernel to ignore the create mode when there are inherited
-permissions would fix this problem.
+We will need to call iop->permission and iop->get_acl from
+inode_change_ok() for additional permission checks, and both take a
+non-const inode.
 
 Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
 ---
- fs/richacl_base.c       | 10 +++++++++-
- fs/richacl_inode.c      |  7 +++++++
- include/linux/richacl.h | 25 +++++++++++++++++++++++--
- 3 files changed, 39 insertions(+), 3 deletions(-)
+ fs/attr.c          | 2 +-
+ include/linux/fs.h | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/fs/richacl_base.c b/fs/richacl_base.c
-index 29d3197..4a31a2f 100644
---- a/fs/richacl_base.c
-+++ b/fs/richacl_base.c
-@@ -349,7 +349,8 @@ richacl_chmod(struct richacl *acl, mode_t mode)
- 	if (acl->a_owner_mask == owner_mask &&
- 	    acl->a_group_mask == group_mask &&
- 	    acl->a_other_mask == other_mask &&
--	    (acl->a_flags & RICHACL_MASKED))
-+	    (acl->a_flags & RICHACL_MASKED) &&
-+	    (!richacl_is_auto_inherit(acl) || richacl_is_protected(acl)))
- 		return acl;
- 
- 	clone = richacl_clone(acl, GFP_KERNEL);
-@@ -361,6 +362,8 @@ richacl_chmod(struct richacl *acl, mode_t mode)
- 	clone->a_owner_mask = owner_mask;
- 	clone->a_group_mask = group_mask;
- 	clone->a_other_mask = other_mask;
-+	if (richacl_is_auto_inherit(clone))
-+		clone->a_flags |= RICHACL_PROTECTED;
- 
- 	return clone;
- }
-@@ -526,6 +529,11 @@ richacl_inherit(const struct richacl *dir_acl, int isdir)
- 			ace++;
- 		}
- 	}
-+	if (richacl_is_auto_inherit(dir_acl)) {
-+		acl->a_flags = RICHACL_AUTO_INHERIT;
-+		richacl_for_each_entry(ace, acl)
-+			ace->e_flags |= RICHACE_INHERITED_ACE;
-+	}
- 
- 	return acl;
- }
-diff --git a/fs/richacl_inode.c b/fs/richacl_inode.c
-index f233872..8277963 100644
---- a/fs/richacl_inode.c
-+++ b/fs/richacl_inode.c
-@@ -220,6 +220,13 @@ richacl_inherit_inode(const struct richacl *dir_acl, struct inode *inode)
- 			richacl_put(acl);
- 			acl = NULL;
- 		} else {
-+			/*
-+			 * We need to set RICHACL_PROTECTED because we are
-+			 * doing an implicit chmod
-+			 */
-+			if (richacl_is_auto_inherit(acl))
-+				acl->a_flags |= RICHACL_PROTECTED;
-+
- 			richacl_compute_max_masks(acl, inode->i_uid);
- 			/*
- 			 * Ensure that the acl will not grant any permissions
-diff --git a/include/linux/richacl.h b/include/linux/richacl.h
-index 3fcefe3..4ccd6fb 100644
---- a/include/linux/richacl.h
-+++ b/include/linux/richacl.h
-@@ -53,9 +53,15 @@ struct richacl {
- 	     _ace--)
- 
- /* a_flag values */
-+#define RICHACL_AUTO_INHERIT			0x01
-+#define RICHACL_PROTECTED			0x02
-+#define RICHACL_DEFAULTED			0x04
- #define RICHACL_MASKED				0x80
- 
--#define RICHACL_VALID_FLAGS (					\
-+#define RICHACL_VALID_FLAGS (			\
-+		RICHACL_AUTO_INHERIT |		\
-+		RICHACL_PROTECTED |		\
-+		RICHACL_DEFAULTED |		\
- 		RICHACL_MASKED)
- 
- /* e_type values */
-@@ -68,6 +74,7 @@ struct richacl {
- #define RICHACE_NO_PROPAGATE_INHERIT_ACE	0x0004
- #define RICHACE_INHERIT_ONLY_ACE		0x0008
- #define RICHACE_IDENTIFIER_GROUP		0x0040
-+#define RICHACE_INHERITED_ACE			0x0080
- #define RICHACE_SPECIAL_WHO			0x4000
- 
- #define RICHACE_VALID_FLAGS (					\
-@@ -76,6 +83,7 @@ struct richacl {
- 	RICHACE_NO_PROPAGATE_INHERIT_ACE |			\
- 	RICHACE_INHERIT_ONLY_ACE |				\
- 	RICHACE_IDENTIFIER_GROUP |				\
-+	RICHACE_INHERITED_ACE |					\
- 	RICHACE_SPECIAL_WHO)
- 
- /* e_mask bitflags */
-@@ -187,6 +195,18 @@ extern void set_cached_richacl(struct inode *, struct richacl *);
- extern void forget_cached_richacl(struct inode *);
- extern struct richacl *get_richacl(struct inode *);
- 
-+static inline int
-+richacl_is_auto_inherit(const struct richacl *acl)
-+{
-+	return acl->a_flags & RICHACL_AUTO_INHERIT;
-+}
-+
-+static inline int
-+richacl_is_protected(const struct richacl *acl)
-+{
-+	return acl->a_flags & RICHACL_PROTECTED;
-+}
-+
- /**
-  * richace_is_owner  -  check if @ace is an OWNER@ entry
+diff --git a/fs/attr.c b/fs/attr.c
+index 6530ced..328be71 100644
+--- a/fs/attr.c
++++ b/fs/attr.c
+@@ -28,7 +28,7 @@
+  * Should be called as the first thing in ->setattr implementations,
+  * possibly after taking additional locks.
   */
-@@ -268,7 +288,8 @@ richace_clear_inheritance_flags(struct richace *ace)
- 	ace->e_flags &= ~(RICHACE_FILE_INHERIT_ACE |
- 			  RICHACE_DIRECTORY_INHERIT_ACE |
- 			  RICHACE_NO_PROPAGATE_INHERIT_ACE |
--			  RICHACE_INHERIT_ONLY_ACE);
-+			  RICHACE_INHERIT_ONLY_ACE |
-+			  RICHACE_INHERITED_ACE);
- }
+-int inode_change_ok(const struct inode *inode, struct iattr *attr)
++int inode_change_ok(struct inode *inode, struct iattr *attr)
+ {
+ 	unsigned int ia_valid = attr->ia_valid;
  
- /**
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 96a9954..b98b211 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -2820,7 +2820,7 @@ extern int buffer_migrate_page(struct address_space *,
+ #define buffer_migrate_page NULL
+ #endif
+ 
+-extern int inode_change_ok(const struct inode *, struct iattr *);
++extern int inode_change_ok(struct inode *, struct iattr *);
+ extern int inode_newsize_ok(const struct inode *, loff_t offset);
+ extern void setattr_copy(struct inode *inode, const struct iattr *attr);
+ 
 -- 
 2.4.2
 
