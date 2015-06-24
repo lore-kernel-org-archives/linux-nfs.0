@@ -1,56 +1,147 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wg0-f44.google.com ([74.125.82.44]:36384 "EHLO
-	mail-wg0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751578AbbFXV5i (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Jun 2015 17:57:38 -0400
+Received: from mail-wi0-f180.google.com ([209.85.212.180]:34079 "EHLO
+	mail-wi0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752235AbbFXV5x (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Jun 2015 17:57:53 -0400
 From: Andreas Gruenbacher <andreas.gruenbacher@gmail.com>
 To: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-nfs@vger.kernel.org, linux-api@vger.kernel.org,
         samba-technical@lists.samba.org, linux-security-module@vger.kernel.org
-Subject: [RFC v4 04/31] vfs: Make the inode passed to inode_change_ok non-const
-Date: Wed, 24 Jun 2015 23:56:53 +0200
-Message-Id: <1435183040-22726-5-git-send-email-agruenba@redhat.com>
+Subject: [RFC v4 13/31] richacl: Check if an acl is equivalent to a file mode
+Date: Wed, 24 Jun 2015 23:57:02 +0200
+Message-Id: <1435183040-22726-14-git-send-email-agruenba@redhat.com>
 In-Reply-To: <1435183040-22726-1-git-send-email-agruenba@redhat.com>
 References: <1435183040-22726-1-git-send-email-agruenba@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We will need to call iop->permission and iop->get_acl from
-inode_change_ok() for additional permission checks, and both take a
-non-const inode.
+ACLs are considered equivalent to file modes if they only consist of owner@,
+group@, and everyone@ entries, the owner@ permissions do not depend on whether
+the owner is a member in the owning group, and no inheritance flags are set.
+This test is used to avoid storing richacls if the acl can be computed from the
+file permission bits.
 
 Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
 ---
- fs/attr.c          | 2 +-
- include/linux/fs.h | 2 +-
- 2 files changed, 2 insertions(+), 2 deletions(-)
+ fs/richacl_base.c       | 95 +++++++++++++++++++++++++++++++++++++++++++++++++
+ include/linux/richacl.h |  1 +
+ 2 files changed, 96 insertions(+)
 
-diff --git a/fs/attr.c b/fs/attr.c
-index 6530ced..328be71 100644
---- a/fs/attr.c
-+++ b/fs/attr.c
-@@ -28,7 +28,7 @@
-  * Should be called as the first thing in ->setattr implementations,
-  * possibly after taking additional locks.
-  */
--int inode_change_ok(const struct inode *inode, struct iattr *attr)
-+int inode_change_ok(struct inode *inode, struct iattr *attr)
- {
- 	unsigned int ia_valid = attr->ia_valid;
+diff --git a/fs/richacl_base.c b/fs/richacl_base.c
+index 5da092b..1ef3bf3 100644
+--- a/fs/richacl_base.c
++++ b/fs/richacl_base.c
+@@ -365,3 +365,98 @@ richacl_chmod(struct richacl *acl, mode_t mode)
+ 	return clone;
+ }
+ EXPORT_SYMBOL_GPL(richacl_chmod);
++
++/**
++ * richacl_equiv_mode  -  compute the mode equivalent of @acl
++ *
++ * An acl is considered equivalent to a file mode if it only consists of
++ * owner@, group@, and everyone@ entries and the owner@ permissions do not
++ * depend on whether the owner is a member in the owning group.
++ */
++int
++richacl_equiv_mode(const struct richacl *acl, mode_t *mode_p)
++{
++	mode_t mode = *mode_p;
++
++	/*
++	 * The RICHACE_DELETE_CHILD flag is meaningless for non-directories, so
++	 * we ignore it.
++	 */
++	unsigned int x = S_ISDIR(mode) ? 0 : RICHACE_DELETE_CHILD;
++	struct {
++		unsigned int allowed;
++		unsigned int defined;  /* allowed or denied */
++	} owner = {
++		.defined = RICHACE_POSIX_ALWAYS_ALLOWED | RICHACE_POSIX_OWNER_ALLOWED | x,
++	}, group = {
++		.defined = RICHACE_POSIX_ALWAYS_ALLOWED | x,
++	}, everyone = {
++		.defined = RICHACE_POSIX_ALWAYS_ALLOWED | x,
++	};
++	const struct richace *ace;
++
++	if (acl->a_flags & ~RICHACL_MASKED)
++		return -1;
++
++	richacl_for_each_entry(ace, acl) {
++		if (ace->e_flags & ~RICHACE_SPECIAL_WHO)
++			return -1;
++
++		if (richace_is_owner(ace) || richace_is_everyone(ace)) {
++			x = ace->e_mask & ~owner.defined;
++			if (richace_is_allow(ace)) {
++				unsigned int group_denied = group.defined & ~group.allowed;
++
++				if (x & group_denied)
++					return -1;
++				owner.allowed |= x;
++			} else /* if (richace_is_deny(ace)) */ {
++				if (x & group.allowed)
++					return -1;
++			}
++			owner.defined |= x;
++
++			if (richace_is_everyone(ace)) {
++				x = ace->e_mask;
++				if (richace_is_allow(ace)) {
++					group.allowed |= x & ~group.defined;
++					everyone.allowed |= x & ~everyone.defined;
++				}
++				group.defined |= x;
++				everyone.defined |= x;
++			}
++		} else if (richace_is_group(ace)) {
++			x = ace->e_mask & ~group.defined;
++			if (richace_is_allow(ace))
++				group.allowed |= x;
++			group.defined |= x;
++		} else
++			return -1;
++	}
++
++	if (group.allowed & ~owner.defined)
++		return -1;
++
++	if (acl->a_flags & RICHACL_MASKED) {
++		owner.allowed = acl->a_owner_mask;
++		group.allowed &= acl->a_group_mask;
++		everyone.allowed = acl->a_other_mask;
++	}
++
++	mode = (mode & ~S_IRWXUGO) |
++	       (richacl_mask_to_mode(owner.allowed) << 6) |
++	       (richacl_mask_to_mode(group.allowed) << 3) |
++		richacl_mask_to_mode(everyone.allowed);
++
++	/* Mask flags we can ignore */
++	x = S_ISDIR(mode) ? 0 : RICHACE_DELETE_CHILD;
++
++	if (((richacl_mode_to_mask(mode >> 6) ^ owner.allowed)    & ~x) ||
++	    ((richacl_mode_to_mask(mode >> 3) ^ group.allowed)    & ~x) ||
++	    ((richacl_mode_to_mask(mode)      ^ everyone.allowed) & ~x))
++		return -1;
++
++	*mode_p = mode;
++	return 0;
++}
++EXPORT_SYMBOL_GPL(richacl_equiv_mode);
+diff --git a/include/linux/richacl.h b/include/linux/richacl.h
+index 1b66cd5..2357d6b 100644
+--- a/include/linux/richacl.h
++++ b/include/linux/richacl.h
+@@ -307,6 +307,7 @@ extern unsigned int richacl_mode_to_mask(mode_t);
+ extern unsigned int richacl_want_to_mask(unsigned int);
+ extern void richacl_compute_max_masks(struct richacl *, kuid_t);
+ extern struct richacl *richacl_chmod(struct richacl *, mode_t);
++extern int richacl_equiv_mode(const struct richacl *, mode_t *);
  
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 96a9954..b98b211 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -2820,7 +2820,7 @@ extern int buffer_migrate_page(struct address_space *,
- #define buffer_migrate_page NULL
- #endif
- 
--extern int inode_change_ok(const struct inode *, struct iattr *);
-+extern int inode_change_ok(struct inode *, struct iattr *);
- extern int inode_newsize_ok(const struct inode *, loff_t offset);
- extern void setattr_copy(struct inode *inode, const struct iattr *attr);
- 
+ /* richacl_inode.c */
+ extern int richacl_permission(struct inode *, const struct richacl *, int);
 -- 
 2.4.2
 
