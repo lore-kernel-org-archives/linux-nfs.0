@@ -1,113 +1,114 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wg0-f51.google.com ([74.125.82.51]:34314 "EHLO
-	mail-wg0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751815AbbFXV6N (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Jun 2015 17:58:13 -0400
+Received: from mail-wg0-f45.google.com ([74.125.82.45]:36604 "EHLO
+	mail-wg0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752438AbbFXV6D (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Jun 2015 17:58:03 -0400
 From: Andreas Gruenbacher <andreas.gruenbacher@gmail.com>
 To: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-nfs@vger.kernel.org, linux-api@vger.kernel.org,
         samba-technical@lists.samba.org, linux-security-module@vger.kernel.org
-Subject: [RFC v4 28/31] nfsd: Keep list of acls to dispose of in compoundargs
-Date: Wed, 24 Jun 2015 23:57:17 +0200
-Message-Id: <1435183040-22726-29-git-send-email-agruenba@redhat.com>
+Cc: Andreas Gruenbacher <agruen@kernel.org>
+Subject: [RFC v4 21/31] richacl: Move everyone@ aces down the acl
+Date: Wed, 24 Jun 2015 23:57:10 +0200
+Message-Id: <1435183040-22726-22-git-send-email-agruenba@redhat.com>
 In-Reply-To: <1435183040-22726-1-git-send-email-agruenba@redhat.com>
 References: <1435183040-22726-1-git-send-email-agruenba@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We will decode acls in requests into richacls.  Even if unlikely, there can be
-more than one acl in a single request; those richacls need to be richacl_put()
-at the end of the request instead of kfree()d, so keep a list of acls in
-compoundargs for that.
+The POSIX standard puts processes which are not the owner or a member in
+the owning group or which match any ace other then everyone@ on the
+other file class.  We only know if a process is in the other class after
+processing the entire acl.
 
-Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
+Move all everyone@ aces in the acl down in the acl so that at most a
+single everyone@ allow ace remains at the end.  Permissions which are
+not explicitly allowed are implicitly denied, so an everyone@ deny ace is
+unneeded.
+
+The everyone@ aces can be moved down the acl without changing the
+permissions that the acl grants.  This transformation simplifies the
+following algorithms, and eventually allows us to turn the final
+everyone@ allow ace into an entry for the other class.
+
+Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
 ---
- fs/nfsd/nfs4xdr.c | 26 ++++++++++++++++++++++++++
- fs/nfsd/xdr4.h    |  6 ++++++
- 2 files changed, 32 insertions(+)
+ fs/richacl_compat.c | 65 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 65 insertions(+)
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index ba81da1..277d9d8 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -39,6 +39,7 @@
- #include <linux/utsname.h>
- #include <linux/pagemap.h>
- #include <linux/sunrpc/svcauth_gss.h>
-+#include <linux/richacl.h>
- 
- #include "idmap.h"
- #include "acl.h"
-@@ -195,6 +196,24 @@ svcxdr_tmpalloc(struct nfsd4_compoundargs *argp, u32 len)
- 	return tb->buf;
- }
- 
-+static struct richacl *
-+svcxdr_alloc_richacl(struct nfsd4_compoundargs *argp, u32 nace)
-+{
-+	struct svcxdr_richacl *acls;
-+
-+	acls = kmalloc(sizeof(*acls), GFP_KERNEL);
-+	if (!acls)
-+		return NULL;
-+	acls->acl = richacl_alloc(nace, GFP_KERNEL);
-+	if (!acls->acl) {
-+		kfree(acls);
-+		return NULL;
-+	}
-+	acls->next = argp->acls;
-+	argp->acls = acls;
-+	return acls->acl;
-+}
-+
- /*
-  * For xdr strings that need to be passed to other kernel api's
-  * as null-terminated strings.
-@@ -4394,6 +4413,12 @@ int nfsd4_release_compoundargs(void *rq, __be32 *p, void *resp)
- 		args->to_free = tb->next;
- 		kfree(tb);
+diff --git a/fs/richacl_compat.c b/fs/richacl_compat.c
+index 1c62c3c..d813789 100644
+--- a/fs/richacl_compat.c
++++ b/fs/richacl_compat.c
+@@ -159,3 +159,68 @@ richace_change_mask(struct richacl_alloc *alloc, struct richace **ace,
  	}
-+	while (args->acls) {
-+		struct svcxdr_richacl *acls = args->acls;
-+		args->acls = acls->next;
-+		richacl_put(acls->acl);
-+		kfree(acls);
-+	}
- 	return 1;
+ 	return 0;
  }
- 
-@@ -4412,6 +4437,7 @@ nfs4svc_decode_compoundargs(struct svc_rqst *rqstp, __be32 *p, struct nfsd4_comp
- 	args->pagelen = rqstp->rq_arg.page_len;
- 	args->tmpp = NULL;
- 	args->to_free = NULL;
-+	args->acls = NULL;
- 	args->ops = args->iops;
- 	args->rqstp = rqstp;
- 
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index 2f8c092..db47af2 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -569,6 +569,11 @@ struct svcxdr_tmpbuf {
- 	char buf[];
- };
- 
-+struct svcxdr_richacl {
-+	struct svcxdr_richacl *next;
-+	struct richacl *acl;
-+};
 +
- struct nfsd4_compoundargs {
- 	/* scratch variables for XDR decode */
- 	__be32 *			p;
-@@ -578,6 +583,7 @@ struct nfsd4_compoundargs {
- 	__be32				tmp[8];
- 	__be32 *			tmpp;
- 	struct svcxdr_tmpbuf		*to_free;
-+	struct svcxdr_richacl		*acls;
- 
- 	struct svc_rqst			*rqstp;
- 
++/**
++ * richacl_move_everyone_aces_down  -  move everyone@ aces to the end of the acl
++ * @alloc:	acl and number of allocated entries
++ *
++ * Move all everyone aces to the end of the acl so that only a single everyone@
++ * allow ace remains at the end, and update the mask fields of all aces on the
++ * way.  The last ace of the resulting acl will be an everyone@ allow ace only
++ * if @acl grants any permissions to @everyone.  No @everyone deny aces will
++ * remain.
++ *
++ * This transformation does not alter the permissions that the acl grants.
++ * Having at most one everyone@ allow ace at the end of the acl helps us in the
++ * following algorithms.
++ */
++static int
++richacl_move_everyone_aces_down(struct richacl_alloc *alloc)
++{
++	struct richace *ace;
++	unsigned int allowed = 0, denied = 0;
++
++	richacl_for_each_entry(ace, alloc->acl) {
++		if (richace_is_inherit_only(ace))
++			continue;
++		if (richace_is_everyone(ace)) {
++			if (richace_is_allow(ace))
++				allowed |= (ace->e_mask & ~denied);
++			else if (richace_is_deny(ace))
++				denied |= (ace->e_mask & ~allowed);
++			else
++				continue;
++			if (richace_change_mask(alloc, &ace, 0))
++				return -1;
++		} else {
++			if (richace_is_allow(ace)) {
++				if (richace_change_mask(alloc, &ace, allowed |
++						(ace->e_mask & ~denied)))
++					return -1;
++			} else if (richace_is_deny(ace)) {
++				if (richace_change_mask(alloc, &ace, denied |
++						(ace->e_mask & ~allowed)))
++					return -1;
++			}
++		}
++	}
++	if (allowed & ~RICHACE_POSIX_ALWAYS_ALLOWED) {
++		struct richace *last_ace = ace - 1;
++
++		if (alloc->acl->a_entries &&
++		    richace_is_everyone(last_ace) &&
++		    richace_is_allow(last_ace) &&
++		    richace_is_inherit_only(last_ace) &&
++		    last_ace->e_mask == allowed)
++			last_ace->e_flags &= ~RICHACE_INHERIT_ONLY_ACE;
++		else {
++			if (richacl_insert_entry(alloc, &ace))
++				return -1;
++			ace->e_type = RICHACE_ACCESS_ALLOWED_ACE_TYPE;
++			ace->e_flags = RICHACE_SPECIAL_WHO;
++			ace->e_mask = allowed;
++			ace->e_id.special = RICHACE_EVERYONE_SPECIAL_ID;
++		}
++	}
++	return 0;
++}
 -- 
 2.4.2
 
