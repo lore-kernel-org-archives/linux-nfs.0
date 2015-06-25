@@ -1,10 +1,10 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pa0-f53.google.com ([209.85.220.53]:33709 "EHLO
-	mail-pa0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750786AbbFYOZf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Jun 2015 10:25:35 -0400
-Message-ID: <558C0F52.4070307@gmail.com>
-Date: Thu, 25 Jun 2015 22:25:22 +0800
+Received: from mail-pd0-f182.google.com ([209.85.192.182]:34168 "EHLO
+	mail-pd0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750988AbbFYO2E (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Jun 2015 10:28:04 -0400
+Message-ID: <558C0FE9.2080504@gmail.com>
+Date: Thu, 25 Jun 2015 22:27:53 +0800
 From: Kinglong Mee <kinglongmee@gmail.com>
 MIME-Version: 1.0
 To: Al Viro <viro@zeniv.linux.org.uk>,
@@ -14,108 +14,185 @@ To: Al Viro <viro@zeniv.linux.org.uk>,
 CC: NeilBrown <neilb@suse.de>,
         Trond Myklebust <trond.myklebust@primarydata.com>,
         kinglongmee@gmail.com
-Subject: [PATCH 05/10 v6] sunrpc: Store cache_detail in seq_file's private
- directly
+Subject: [PATCH 06/10 v6] sunrpc/nfsd: Remove redundant code by exports seq_operations
+ functions
 References: <558C0D6A.9050104@gmail.com>
 In-Reply-To: <558C0D6A.9050104@gmail.com>
 Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Cleanup.
-
-Just store cache_detail in seq_file's private,
-an allocated handle is redundant.
+Nfsd has implement a site of seq_operations functions as sunrpc's cache.
+Just exports sunrpc's codes, and remove nfsd's redundant codes.
 
 Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
 ---
- net/sunrpc/cache.c | 28 +++++++++++++---------------
- 1 file changed, 13 insertions(+), 15 deletions(-)
+ fs/nfsd/export.c             | 73 ++------------------------------------------
+ include/linux/sunrpc/cache.h |  5 +++
+ net/sunrpc/cache.c           | 15 +++++----
+ 3 files changed, 17 insertions(+), 76 deletions(-)
 
+diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
+index 002d3a9..34a384c 100644
+--- a/fs/nfsd/export.c
++++ b/fs/nfsd/export.c
+@@ -1075,73 +1075,6 @@ exp_pseudoroot(struct svc_rqst *rqstp, struct svc_fh *fhp)
+ 	return rv;
+ }
+ 
+-/* Iterator */
+-
+-static void *e_start(struct seq_file *m, loff_t *pos)
+-	__acquires(((struct cache_detail *)m->private)->hash_lock)
+-{
+-	loff_t n = *pos;
+-	unsigned hash, export;
+-	struct cache_head *ch;
+-	struct cache_detail *cd = m->private;
+-	struct cache_head **export_table = cd->hash_table;
+-
+-	read_lock(&cd->hash_lock);
+-	if (!n--)
+-		return SEQ_START_TOKEN;
+-	hash = n >> 32;
+-	export = n & ((1LL<<32) - 1);
+-
+-	
+-	for (ch=export_table[hash]; ch; ch=ch->next)
+-		if (!export--)
+-			return ch;
+-	n &= ~((1LL<<32) - 1);
+-	do {
+-		hash++;
+-		n += 1LL<<32;
+-	} while(hash < EXPORT_HASHMAX && export_table[hash]==NULL);
+-	if (hash >= EXPORT_HASHMAX)
+-		return NULL;
+-	*pos = n+1;
+-	return export_table[hash];
+-}
+-
+-static void *e_next(struct seq_file *m, void *p, loff_t *pos)
+-{
+-	struct cache_head *ch = p;
+-	int hash = (*pos >> 32);
+-	struct cache_detail *cd = m->private;
+-	struct cache_head **export_table = cd->hash_table;
+-
+-	if (p == SEQ_START_TOKEN)
+-		hash = 0;
+-	else if (ch->next == NULL) {
+-		hash++;
+-		*pos += 1LL<<32;
+-	} else {
+-		++*pos;
+-		return ch->next;
+-	}
+-	*pos &= ~((1LL<<32) - 1);
+-	while (hash < EXPORT_HASHMAX && export_table[hash] == NULL) {
+-		hash++;
+-		*pos += 1LL<<32;
+-	}
+-	if (hash >= EXPORT_HASHMAX)
+-		return NULL;
+-	++*pos;
+-	return export_table[hash];
+-}
+-
+-static void e_stop(struct seq_file *m, void *p)
+-	__releases(((struct cache_detail *)m->private)->hash_lock)
+-{
+-	struct cache_detail *cd = m->private;
+-
+-	read_unlock(&cd->hash_lock);
+-}
+-
+ static struct flags {
+ 	int flag;
+ 	char *name[2];
+@@ -1270,9 +1203,9 @@ static int e_show(struct seq_file *m, void *p)
+ }
+ 
+ const struct seq_operations nfs_exports_op = {
+-	.start	= e_start,
+-	.next	= e_next,
+-	.stop	= e_stop,
++	.start	= cache_seq_start,
++	.next	= cache_seq_next,
++	.stop	= cache_seq_stop,
+ 	.show	= e_show,
+ };
+ 
+diff --git a/include/linux/sunrpc/cache.h b/include/linux/sunrpc/cache.h
+index 437ddb6..04ee5a2 100644
+--- a/include/linux/sunrpc/cache.h
++++ b/include/linux/sunrpc/cache.h
+@@ -224,6 +224,11 @@ extern int sunrpc_cache_register_pipefs(struct dentry *parent, const char *,
+ 					umode_t, struct cache_detail *);
+ extern void sunrpc_cache_unregister_pipefs(struct cache_detail *);
+ 
++/* Must store cache_detail in seq_file->private if using next three functions */
++extern void *cache_seq_start(struct seq_file *file, loff_t *pos);
++extern void *cache_seq_next(struct seq_file *file, void *p, loff_t *pos);
++extern void cache_seq_stop(struct seq_file *file, void *p);
++
+ extern void qword_add(char **bpp, int *lp, char *str);
+ extern void qword_addhex(char **bpp, int *lp, char *buf, int blen);
+ extern int qword_get(char **bpp, char *dest, int bufsize);
 diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-index 2928aff..edec603 100644
+index edec603..673c2fa 100644
 --- a/net/sunrpc/cache.c
 +++ b/net/sunrpc/cache.c
-@@ -1270,18 +1270,13 @@ EXPORT_SYMBOL_GPL(qword_get);
+@@ -1270,7 +1270,7 @@ EXPORT_SYMBOL_GPL(qword_get);
   * get a header, then pass each real item in the cache
   */
  
--struct handle {
--	struct cache_detail *cd;
--};
--
- static void *c_start(struct seq_file *m, loff_t *pos)
+-static void *c_start(struct seq_file *m, loff_t *pos)
++void *cache_seq_start(struct seq_file *m, loff_t *pos)
  	__acquires(cd->hash_lock)
  {
  	loff_t n = *pos;
- 	unsigned int hash, entry;
- 	struct cache_head *ch;
--	struct cache_detail *cd = ((struct handle*)m->private)->cd;
--
-+	struct cache_detail *cd = m->private;
+@@ -1298,8 +1298,9 @@ static void *c_start(struct seq_file *m, loff_t *pos)
+ 	*pos = n+1;
+ 	return cd->hash_table[hash];
+ }
++EXPORT_SYMBOL_GPL(cache_seq_start);
  
- 	read_lock(&cd->hash_lock);
- 	if (!n--)
-@@ -1308,7 +1303,7 @@ static void *c_next(struct seq_file *m, void *p, loff_t *pos)
+-static void *c_next(struct seq_file *m, void *p, loff_t *pos)
++void *cache_seq_next(struct seq_file *m, void *p, loff_t *pos)
  {
  	struct cache_head *ch = p;
  	int hash = (*pos >> 32);
--	struct cache_detail *cd = ((struct handle*)m->private)->cd;
-+	struct cache_detail *cd = m->private;
+@@ -1325,13 +1326,15 @@ static void *c_next(struct seq_file *m, void *p, loff_t *pos)
+ 	++*pos;
+ 	return cd->hash_table[hash];
+ }
++EXPORT_SYMBOL_GPL(cache_seq_next);
  
- 	if (p == SEQ_START_TOKEN)
- 		hash = 0;
-@@ -1334,14 +1329,14 @@ static void *c_next(struct seq_file *m, void *p, loff_t *pos)
- static void c_stop(struct seq_file *m, void *p)
+-static void c_stop(struct seq_file *m, void *p)
++void cache_seq_stop(struct seq_file *m, void *p)
  	__releases(cd->hash_lock)
  {
--	struct cache_detail *cd = ((struct handle*)m->private)->cd;
-+	struct cache_detail *cd = m->private;
+ 	struct cache_detail *cd = m->private;
  	read_unlock(&cd->hash_lock);
  }
++EXPORT_SYMBOL_GPL(cache_seq_stop);
  
  static int c_show(struct seq_file *m, void *p)
  {
- 	struct cache_head *cp = p;
--	struct cache_detail *cd = ((struct handle*)m->private)->cd;
-+	struct cache_detail *cd = m->private;
- 
- 	if (p == SEQ_START_TOKEN)
- 		return cd->cache_show(m, cd, NULL);
-@@ -1373,24 +1368,27 @@ static const struct seq_operations cache_content_op = {
- static int content_open(struct inode *inode, struct file *file,
- 			struct cache_detail *cd)
- {
--	struct handle *han;
-+	struct seq_file *seq;
-+	int err;
- 
- 	if (!cd || !try_module_get(cd->owner))
- 		return -EACCES;
--	han = __seq_open_private(file, &cache_content_op, sizeof(*han));
--	if (han == NULL) {
-+
-+	err = seq_open(file, &cache_content_op);
-+	if (err) {
- 		module_put(cd->owner);
--		return -ENOMEM;
-+		return err;
- 	}
- 
--	han->cd = cd;
-+	seq = file->private_data;
-+	seq->private = cd;
- 	return 0;
+@@ -1359,9 +1362,9 @@ static int c_show(struct seq_file *m, void *p)
  }
  
- static int content_release(struct inode *inode, struct file *file,
- 		struct cache_detail *cd)
- {
--	int ret = seq_release_private(inode, file);
-+	int ret = seq_release(inode, file);
- 	module_put(cd->owner);
- 	return ret;
- }
+ static const struct seq_operations cache_content_op = {
+-	.start	= c_start,
+-	.next	= c_next,
+-	.stop	= c_stop,
++	.start	= cache_seq_start,
++	.next	= cache_seq_next,
++	.stop	= cache_seq_stop,
+ 	.show	= c_show,
+ };
+ 
 -- 
 2.4.3
 
