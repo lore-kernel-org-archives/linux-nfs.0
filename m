@@ -1,62 +1,76 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pd0-f181.google.com ([209.85.192.181]:33996 "EHLO
-	mail-pd0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751405AbbFYDSQ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Jun 2015 23:18:16 -0400
-Received: by pdbep18 with SMTP id ep18so21759110pdb.1
-        for <linux-nfs@vger.kernel.org>; Wed, 24 Jun 2015 20:18:16 -0700 (PDT)
-Message-ID: <558B72E9.1040005@gmail.com>
-Date: Thu, 25 Jun 2015 11:18:01 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
-MIME-Version: 1.0
-To: Benjamin Coddington <bcodding@redhat.com>, linux-nfs@vger.kernel.org,
-        kinglongmee@gmail.com
-Subject: Re: [PATCH pynfs 1/3] Fix default arg order error on swig > 1.x
-References: <cover.1432749206.git.bcodding@redhat.com> <72bd55393455ddd1cfba7902e9136b92b87b9a7b.1432749206.git.bcodding@redhat.com>
-In-Reply-To: <72bd55393455ddd1cfba7902e9136b92b87b9a7b.1432749206.git.bcodding@redhat.com>
-Content-Type: text/plain; charset=windows-1252
+Received: from mail-pd0-f174.google.com ([209.85.192.174]:36294 "EHLO
+	mail-pd0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754349AbbFYKUJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Jun 2015 06:20:09 -0400
+Received: by pdcu2 with SMTP id u2so50730296pdc.3
+        for <linux-nfs@vger.kernel.org>; Thu, 25 Jun 2015 03:20:08 -0700 (PDT)
+From: Peng Tao <tao.peng@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Peng Tao <tao.peng@primarydata.com>
+Subject: [PATCH] nfs: provide pnfs_report_layoutstat when NFS42 is disabled
+Date: Thu, 25 Jun 2015 18:19:32 +0800
+Message-Id: <1435227572-75919-1-git-send-email-tao.peng@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 5/28/2015 2:01 AM, Benjamin Coddington wrote:
-> The gssapi.py module ends up with
-> def initSecContext(name, context=None, INPUT=0, cred=0, mech, flags=2, time=0, chan=0):
-> 
-> which creates the error "SyntaxError: non-default argument follows default
-> argument" on import.  Revert to earlier swig behavior of using compact
-> default args.
-> 
-> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+kbuild test robot reported:
+   fs/built-in.o: In function `pnfs_report_layoutstat':
+>> (.text+0x151a1c): undefined reference to `nfs42_proc_layoutstats_generic'
 
-Anyway this one is useful.
+Reported-by: kbuild test robot <fengguang.wu@intel.com>
+Signed-off-by: Peng Tao <tao.peng@primarydata.com>
+---
+ fs/nfs/pnfs.c |  2 ++
+ fs/nfs/pnfs.h | 12 ++++++++++--
+ 2 files changed, 12 insertions(+), 2 deletions(-)
 
-Acked-by: Kinglong Mee <kinglongmee@gmail.com>
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index e5bd626..546cbbe 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -2249,6 +2249,7 @@ struct nfs4_threshold *pnfs_mdsthreshold_alloc(void)
+ 	return thp;
+ }
+ 
++#if IS_ENABLED(CONFIG_NFS_V4_2)
+ int
+ pnfs_report_layoutstat(struct inode *inode)
+ {
+@@ -2303,3 +2304,4 @@ out_put:
+ 	goto out;
+ }
+ EXPORT_SYMBOL_GPL(pnfs_report_layoutstat);
++#endif
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 0a47239..3e6ab7b 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -292,8 +292,6 @@ int pnfs_write_done_resend_to_mds(struct nfs_pgio_header *);
+ struct nfs4_threshold *pnfs_mdsthreshold_alloc(void);
+ void pnfs_error_mark_layout_for_return(struct inode *inode,
+ 				       struct pnfs_layout_segment *lseg);
+-int pnfs_report_layoutstat(struct inode *inode);
+-
+ /* nfs4_deviceid_flags */
+ enum {
+ 	NFS_DEVICEID_INVALID = 0,       /* set when MDS clientid recalled */
+@@ -692,4 +690,14 @@ static inline void nfs4_pnfs_v3_ds_connect_unload(void)
+ 
+ #endif /* CONFIG_NFS_V4_1 */
+ 
++#if IS_ENABLED(CONFIG_NFS_V4_2)
++int pnfs_report_layoutstat(struct inode *inode);
++#else
++static inline int
++pnfs_report_layoutstat(struct inode *inode)
++{
++	return 0;
++}
++#endif
++
+ #endif /* FS_NFS_PNFS_H */
+-- 
+1.8.3.1
 
-thanks,
-Kinglong Mee
-
-> ---
->  gssapi/gssapi.i |    2 ++
->  1 files changed, 2 insertions(+), 0 deletions(-)
-> 
-> diff --git a/gssapi/gssapi.i b/gssapi/gssapi.i
-> index 5b66ce0..28656c7 100644
-> --- a/gssapi/gssapi.i
-> +++ b/gssapi/gssapi.i
-> @@ -487,6 +487,7 @@ OM_uint32 reordered_init_sec_context
->  %apply gss_buffer_t OUTPUT {gss_buffer_t token};
->  %apply OM_uint32 *OUTPUT {OM_uint32 *flags, OM_uint32 *time};
->  %feature("autodoc", "initSecContext(gss_name_t name, gss_ctx_id_t *context=None, string token=None, gss_cred_id_t cred=None, gss_OID mech=krb5oid, int flags=0, int time=0, gss_channel_bindings_t chan=None) -> context, mech, token, flags, time");
-> +%feature("compactdefaultargs");
->  OM_uint32 reordered_init_sec_context
->  	        (OM_uint32 *minor,		/* minor_status */
->  		 gss_name_t name,			/* target_name IN*/
-> @@ -507,6 +508,7 @@ OM_uint32 reordered_init_sec_context
->  %clear gss_OID *mech;
->  %clear gss_buffer_t token;
->  %clear OM_uint32 *flags, OM_uint32 *time;
-> +%feature("compactdefaultargs", 0);
->  
->  /********/
->  
-> 
