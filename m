@@ -1,126 +1,82 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mo4-p05-ob.smtp.rzone.de ([81.169.146.181]:22790 "EHLO
-	mo4-p05-ob.smtp.rzone.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752880AbbFYVk2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Jun 2015 17:40:28 -0400
-Message-ID: <558C7535.9050502@samba.org>
-Date: Thu, 25 Jun 2015 23:40:05 +0200
-From: "Stefan (metze) Metzmacher" <metze@samba.org>
+Received: from imap.thunk.org ([74.207.234.97]:55545 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751984AbbFYWNH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 25 Jun 2015 18:13:07 -0400
+Date: Thu, 25 Jun 2015 18:12:57 -0400
+From: "Theodore Ts'o" <tytso@mit.edu>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: dsterba@suse.cz, Liu Bo <bo.li.liu@oracle.com>,
+        linux-btrfs@vger.kernel.org, fdmanana@suse.com, kzak@redhat.com,
+        linux-fsdevel@vger.kernel.org, viro@zeniv.linux.org.uk,
+        linux-nfs@vger.kernel.org, chuck.lever@oracle.com,
+        mingming.cao@oracle.com
+Subject: Re: i_version vs iversion (Was: Re: [RFC PATCH v2 1/2] Btrfs: add
+ noi_version option to disable MS_I_VERSION)
+Message-ID: <20150625221257.GD13380@thunk.org>
+References: <1434527672-5762-1-git-send-email-bo.li.liu@oracle.com>
+ <20150617153306.GY6761@twin.jikos.cz>
+ <20150617155234.GB7773@localhost.localdomain>
+ <20150617170118.GA6761@twin.jikos.cz>
+ <20150618024607.GA8530@localhost.localdomain>
+ <20150618143856.GG6761@suse.cz>
+ <20150623163241.GA6645@thunk.org>
+ <20150625184644.GA12300@fieldses.org>
 MIME-Version: 1.0
-To: =?UTF-8?B?QW5kcmVhcyBHcsO8bmJhY2hlcg==?=
-	<andreas.gruenbacher@gmail.com>
-CC: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        Linux FS-devel Mailing List <linux-fsdevel@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Linux API Mailing List <linux-api@vger.kernel.org>,
-        samba-technical <samba-technical@lists.samba.org>,
-        linux-security-module@vger.kernel.org
-Subject: Re: [RFC v4 06/31] richacl: In-memory representation and helper functions
-References: <1435183040-22726-1-git-send-email-agruenba@redhat.com>	<1435183040-22726-7-git-send-email-agruenba@redhat.com>	<558C5D75.6050608@samba.org> <CAHpGcM+AwRubQqX96V3WbwLKXKTfk3YcgFG_eqG6r7cVbCTV-w@mail.gmail.com>
-In-Reply-To: <CAHpGcM+AwRubQqX96V3WbwLKXKTfk3YcgFG_eqG6r7cVbCTV-w@mail.gmail.com>
-Content-Type: multipart/signed; micalg=pgp-sha1;
- protocol="application/pgp-signature";
- boundary="aC1M27CKf9tWKRLKcLCCiKarTR1aSIoOt"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20150625184644.GA12300@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is an OpenPGP/MIME signed message (RFC 4880 and 3156)
---aC1M27CKf9tWKRLKcLCCiKarTR1aSIoOt
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
+On Thu, Jun 25, 2015 at 02:46:44PM -0400, J. Bruce Fields wrote:
+> > Does this sound reasonable?
+> 
+> Just to make sure I understand, the logic is something like:
+> 
+> 	to read the i_version:
+> 
+> 		inode->i_version_seen = true;
+> 		return inode->i_version
+> 
+> 	to update the i_version:
+> 
+> 		/*
+> 		 * If nobody's seen this value of i_version then we can
+> 		 * keep using it, otherwise we need a new one:
+> 		 */
+> 		if (inode->i_version_seen)
+> 			inode->i_version++;
+> 		inode->i_version_seen = false;
 
-Hi Andreas,
+Yep, that's what I was proposing.
 
->> I'm wondering if the size of an ace should be dynamic,
->> which might make it possible to support other ace types
->> in future. E.g. supporting other identities like 128-bit values
->> to make it easier to map Windows SIDS.
->=20
-> I'm working on additionally supporting unmapped user@domain and
-> group@domain identifier strings; we have to deal with that case in the
-> nfs client; that may be useful for Samba as well.
+> Looks OK to me.  As I say I'd expect i_version_seen == true to end up
+> being the common case in a lot of v4 workloads, so I'm more skeptical of
+> the claim of a performance improvement in the v4 case.
 
-Can this be any string? So would
-"S-1-5-21-4052121579-2079768045-1474639452-1001" also work?
+Well, so long as we require i_version to be committed to disk on every
+single disk write, we're going to be trading off:
 
-How would the current thread/process get a "token" that would match such
-an ace?
+	* client-side performance of the advanced NFSv4 cacheing for reads
+	* server-side performance for writes
+	* data robustness in case of the server crashing and the client-side cache
+	  getting out of sync with the server after the crash
 
->> Even without 128-bit ids, it would be very useful to mark an
->> ace so that it applies to a uid or gid at the same time.
->> This would reduce the size of the ace list when Samba uses
->> IDMAP_TYPE_BOTH, which means a SID is mapped to a unix id, which
->> is user (uid) and group (gid) at the same time. This feature is requir=
-ed
->> in order to support SID-Histories on accounts.
->> Currently Samba needs to add two aces (one uid and one gid)
->> in order to represent one Windows ace.
->=20
-> It's not clear to me if supporting this would be a good idea right now.=
+I don't see any way around that.  (So for example, with lazy mtime
+updates we wouldn't be updating the inode after every single
+non-allocating write; enabling i_version updates will trash that
+optimization.)
 
-> The kernel would have to treat each such entry like two separate entrie=
-s
-> internally. How would we map a combined user-space "uid + gid"
-> number to a kernel uid and gid since it could map to two distinct
-> numbers there?
+I just want to reduce to a bare minimum the performance hit in the
+case where NFSv4 exports are not being used (since that is true in a
+very *large* number of ext4 deployments --- i.e., every single Android
+handset using ext4 :-), such that we can leave i_version updates
+turned on by default.
 
-No, the numeric value is the same.
+> Could maintaining the new flag be a significant drag in itself?  If not,
+> then I guess we're not making things any worse there, so fine.
 
-I think richacl_permission() is the only place that requires any action.
+I don't think so; it's a bit in the in-memory inode, so I don't think
+that should be an issue.
 
-	richacl_for_each_entry(ace, acl) {
-		unsigned int ace_mask =3D ace->e_mask;
-
-		if (richace_is_inherit_only(ace))
-			continue;
-		if (richace_is_owner(ace)) {
-			if (!uid_eq(current_fsuid(), inode->i_uid))
-				continue;
-		} else if (richace_is_group(ace)) {
-			if (!in_owning_group)
-				continue;
-+		} else if (richace_is_unix_both(ace)) {
-+			kuid_t uid =3D current_fsuid();
-+
-+			if (!uid_eq(uid, ace->e_id.xid) && !in_group_p(ace->e_id.xid))
-+				continue;
-		} else if (richace_is_unix_user(ace)) {
-			kuid_t uid =3D current_fsuid();
-
-			if (!uid_eq(uid, ace->e_id.uid))
-				continue;
-		} else if (richace_is_unix_group(ace)) {
-			if (!in_group_p(ace->e_id.gid))
-				continue;
-		} else
-			goto entry_matches_everyone;
-
-In general shouldn't kuid_t uid =3D current_fsuid(); be at the top of the=
-
-function just once?
-
->> I haven't looked at the claims based acls on Windows, but it would be
->> good if the new infrastructure is dynamic enough to support something
->> like that in a future version.
->=20
-> I don't know, I have yet to see a use case that isn't totally crazy.
-
-Ok, I found the a_version in struct richacl_xattr.
-
-metze
-
-
---aC1M27CKf9tWKRLKcLCCiKarTR1aSIoOt
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: OpenPGP digital signature
-Content-Disposition: attachment; filename="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.22 (GNU/Linux)
-
-iEYEARECAAYFAlWMdTgACgkQm70gjA5TCD8w2ACdEy9YtMXiH2k8cKTgcQm9nKeJ
-em0AnAykqCZgGuPWl8KTjX7vgJNcirg2
-=0Opo
------END PGP SIGNATURE-----
-
---aC1M27CKf9tWKRLKcLCCiKarTR1aSIoOt--
+						- Ted
