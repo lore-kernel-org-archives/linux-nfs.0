@@ -1,62 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from ipmail06.adl2.internode.on.net ([150.101.137.129]:13168 "EHLO
-	ipmail06.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752113AbbFXX7E (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Jun 2015 19:59:04 -0400
-Date: Thu, 25 Jun 2015 09:59:00 +1000
-From: Dave Chinner <david@fromorbit.com>
-To: "Theodore Ts'o" <tytso@mit.edu>
-Cc: dsterba@suse.cz, Liu Bo <bo.li.liu@oracle.com>,
-        linux-btrfs@vger.kernel.org, fdmanana@suse.com, kzak@redhat.com,
-        linux-fsdevel@vger.kernel.org, viro@zeniv.linux.org.uk,
-        linux-nfs@vger.kernel.org, chuck.lever@oracle.com,
-        mingming.cao@oracle.com
-Subject: Re: i_version vs iversion (Was: Re: [RFC PATCH v2 1/2] Btrfs: add
- noi_version option to disable MS_I_VERSION)
-Message-ID: <20150624235900.GC7943@dastard>
-References: <1434527672-5762-1-git-send-email-bo.li.liu@oracle.com>
- <20150617153306.GY6761@twin.jikos.cz>
- <20150617155234.GB7773@localhost.localdomain>
- <20150617170118.GA6761@twin.jikos.cz>
- <20150618024607.GA8530@localhost.localdomain>
- <20150618143856.GG6761@suse.cz>
- <20150623163241.GA6645@thunk.org>
- <20150624180215.GC726@suse.cz>
- <20150624231750.GE14324@thunk.org>
+Received: from mail-pd0-f181.google.com ([209.85.192.181]:33996 "EHLO
+	mail-pd0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751405AbbFYDSQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Jun 2015 23:18:16 -0400
+Received: by pdbep18 with SMTP id ep18so21759110pdb.1
+        for <linux-nfs@vger.kernel.org>; Wed, 24 Jun 2015 20:18:16 -0700 (PDT)
+Message-ID: <558B72E9.1040005@gmail.com>
+Date: Thu, 25 Jun 2015 11:18:01 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20150624231750.GE14324@thunk.org>
+To: Benjamin Coddington <bcodding@redhat.com>, linux-nfs@vger.kernel.org,
+        kinglongmee@gmail.com
+Subject: Re: [PATCH pynfs 1/3] Fix default arg order error on swig > 1.x
+References: <cover.1432749206.git.bcodding@redhat.com> <72bd55393455ddd1cfba7902e9136b92b87b9a7b.1432749206.git.bcodding@redhat.com>
+In-Reply-To: <72bd55393455ddd1cfba7902e9136b92b87b9a7b.1432749206.git.bcodding@redhat.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jun 24, 2015 at 07:17:50PM -0400, Theodore Ts'o wrote:
-> On Wed, Jun 24, 2015 at 08:02:15PM +0200, David Sterba wrote:
-> > 
-> > This sounds similar to what Dave proposed, a per-inode I_VERSION
-> > attribute that can be changed through chattr. Though the negated meaning
-> > of the flag could be confusing, I had to reread the paragraph again.
+On 5/28/2015 2:01 AM, Benjamin Coddington wrote:
+> The gssapi.py module ends up with
+> def initSecContext(name, context=None, INPUT=0, cred=0, mech, flags=2, time=0, chan=0):
 > 
-> Dave did not specify an I_VERSION attribute that would be stored on
-> disk.  Instead he talked about a inode flag that would be set when the
-> struct inode is created by the file system.
+> which creates the error "SyntaxError: non-default argument follows default
+> argument" on import.  Revert to earlier swig behavior of using compact
+> default args.
+> 
+> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
 
-Right.
+Anyway this one is useful.
 
-> This would allow file systems to permanently configure (on a per-inode
-> basis) whether or not a particular inode would require a forced
-> i_version update any time the inode's data or metadata is modified.  I
-> suppose you could initialized the inode flag from an on-disk
-> attribute, but that wasn't implied by Dave's proposal, at least as I
-> understood it.
+Acked-by: Kinglong Mee <kinglongmee@gmail.com>
 
-It enables filesystems to do this. If btrfs want to add an on-disk
-flag to turn off I_VERSION on a per-inode basis, or imply it from
-some other on-disk flag, then they are welcome to do so and the
-above infrastructure change will support it.
+thanks,
+Kinglong Mee
 
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+> ---
+>  gssapi/gssapi.i |    2 ++
+>  1 files changed, 2 insertions(+), 0 deletions(-)
+> 
+> diff --git a/gssapi/gssapi.i b/gssapi/gssapi.i
+> index 5b66ce0..28656c7 100644
+> --- a/gssapi/gssapi.i
+> +++ b/gssapi/gssapi.i
+> @@ -487,6 +487,7 @@ OM_uint32 reordered_init_sec_context
+>  %apply gss_buffer_t OUTPUT {gss_buffer_t token};
+>  %apply OM_uint32 *OUTPUT {OM_uint32 *flags, OM_uint32 *time};
+>  %feature("autodoc", "initSecContext(gss_name_t name, gss_ctx_id_t *context=None, string token=None, gss_cred_id_t cred=None, gss_OID mech=krb5oid, int flags=0, int time=0, gss_channel_bindings_t chan=None) -> context, mech, token, flags, time");
+> +%feature("compactdefaultargs");
+>  OM_uint32 reordered_init_sec_context
+>  	        (OM_uint32 *minor,		/* minor_status */
+>  		 gss_name_t name,			/* target_name IN*/
+> @@ -507,6 +508,7 @@ OM_uint32 reordered_init_sec_context
+>  %clear gss_OID *mech;
+>  %clear gss_buffer_t token;
+>  %clear OM_uint32 *flags, OM_uint32 *time;
+> +%feature("compactdefaultargs", 0);
+>  
+>  /********/
+>  
+> 
