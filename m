@@ -1,10 +1,10 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pd0-f175.google.com ([209.85.192.175]:33092 "EHLO
-	mail-pd0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751006AbbFYOTL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Jun 2015 10:19:11 -0400
-Message-ID: <558C0DC3.4020807@gmail.com>
-Date: Thu, 25 Jun 2015 22:18:43 +0800
+Received: from mail-pa0-f47.google.com ([209.85.220.47]:36278 "EHLO
+	mail-pa0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751042AbbFYOTc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Jun 2015 10:19:32 -0400
+Message-ID: <558C0DE8.50509@gmail.com>
+Date: Thu, 25 Jun 2015 22:19:20 +0800
 From: Kinglong Mee <kinglongmee@gmail.com>
 MIME-Version: 1.0
 To: Al Viro <viro@zeniv.linux.org.uk>,
@@ -14,48 +14,58 @@ To: Al Viro <viro@zeniv.linux.org.uk>,
 CC: NeilBrown <neilb@suse.de>,
         Trond Myklebust <trond.myklebust@primarydata.com>,
         kinglongmee@gmail.com
-Subject: [PATCH 01/10 v6] fs_pin: Initialize value for fs_pin explicitly
+Subject: [PATCH 02/10 v6] fs_pin: Export functions for specific filesystem
 References: <558C0D6A.9050104@gmail.com>
 In-Reply-To: <558C0D6A.9050104@gmail.com>
 Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Without initialized, done in fs_pin at stack space may
-contains strange value.
+Exports functions for others who want pin to vfsmount,
+eg, nfsd's export cache.
 
-v3, v4, v5, v6
-Adds macro for header file
+v4, v5, v6
+add exporting of pin_kill.
 
 Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
 ---
- include/linux/fs_pin.h | 6 ++++++
- 1 file changed, 6 insertions(+)
+ fs/fs_pin.c | 4 ++++
+ 1 file changed, 4 insertions(+)
 
-diff --git a/include/linux/fs_pin.h b/include/linux/fs_pin.h
-index 3886b3b..0dde7b7 100644
---- a/include/linux/fs_pin.h
-+++ b/include/linux/fs_pin.h
-@@ -1,3 +1,6 @@
-+#ifndef _LINUX_FS_PIN_H
-+#define _LINUX_FS_PIN_H
-+
- #include <linux/wait.h>
- 
- struct fs_pin {
-@@ -16,9 +19,12 @@ static inline void init_fs_pin(struct fs_pin *p, void (*kill)(struct fs_pin *))
- 	INIT_HLIST_NODE(&p->s_list);
- 	INIT_HLIST_NODE(&p->m_list);
- 	p->kill = kill;
-+	p->done = 0;
+diff --git a/fs/fs_pin.c b/fs/fs_pin.c
+index 611b540..a1a4eb2 100644
+--- a/fs/fs_pin.c
++++ b/fs/fs_pin.c
+@@ -17,6 +17,7 @@ void pin_remove(struct fs_pin *pin)
+ 	wake_up_locked(&pin->wait);
+ 	spin_unlock_irq(&pin->wait.lock);
  }
++EXPORT_SYMBOL(pin_remove);
  
- void pin_remove(struct fs_pin *);
- void pin_insert_group(struct fs_pin *, struct vfsmount *, struct hlist_head *);
- void pin_insert(struct fs_pin *, struct vfsmount *);
- void pin_kill(struct fs_pin *);
-+
-+#endif
+ void pin_insert_group(struct fs_pin *pin, struct vfsmount *m, struct hlist_head *p)
+ {
+@@ -26,11 +27,13 @@ void pin_insert_group(struct fs_pin *pin, struct vfsmount *m, struct hlist_head
+ 	hlist_add_head(&pin->m_list, &real_mount(m)->mnt_pins);
+ 	spin_unlock(&pin_lock);
+ }
++EXPORT_SYMBOL(pin_insert_group);
+ 
+ void pin_insert(struct fs_pin *pin, struct vfsmount *m)
+ {
+ 	pin_insert_group(pin, m, &m->mnt_sb->s_pins);
+ }
++EXPORT_SYMBOL(pin_insert);
+ 
+ void pin_kill(struct fs_pin *p)
+ {
+@@ -72,6 +75,7 @@ void pin_kill(struct fs_pin *p)
+ 	}
+ 	rcu_read_unlock();
+ }
++EXPORT_SYMBOL(pin_kill);
+ 
+ void mnt_pin_kill(struct mount *m)
+ {
 -- 
 2.4.3
 
