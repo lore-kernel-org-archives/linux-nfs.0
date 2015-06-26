@@ -1,82 +1,94 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:55545 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751984AbbFYWNH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 25 Jun 2015 18:13:07 -0400
-Date: Thu, 25 Jun 2015 18:12:57 -0400
-From: "Theodore Ts'o" <tytso@mit.edu>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: dsterba@suse.cz, Liu Bo <bo.li.liu@oracle.com>,
-        linux-btrfs@vger.kernel.org, fdmanana@suse.com, kzak@redhat.com,
-        linux-fsdevel@vger.kernel.org, viro@zeniv.linux.org.uk,
-        linux-nfs@vger.kernel.org, chuck.lever@oracle.com,
-        mingming.cao@oracle.com
-Subject: Re: i_version vs iversion (Was: Re: [RFC PATCH v2 1/2] Btrfs: add
- noi_version option to disable MS_I_VERSION)
-Message-ID: <20150625221257.GD13380@thunk.org>
-References: <1434527672-5762-1-git-send-email-bo.li.liu@oracle.com>
- <20150617153306.GY6761@twin.jikos.cz>
- <20150617155234.GB7773@localhost.localdomain>
- <20150617170118.GA6761@twin.jikos.cz>
- <20150618024607.GA8530@localhost.localdomain>
- <20150618143856.GG6761@suse.cz>
- <20150623163241.GA6645@thunk.org>
- <20150625184644.GA12300@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20150625184644.GA12300@fieldses.org>
+Received: from mail-pd0-f172.google.com ([209.85.192.172]:32853 "EHLO
+	mail-pd0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751123AbbFZBqG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Jun 2015 21:46:06 -0400
+Received: by pdjn11 with SMTP id n11so64615759pdj.0
+        for <linux-nfs@vger.kernel.org>; Thu, 25 Jun 2015 18:46:05 -0700 (PDT)
+From: Peng Tao <tao.peng@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Peng Tao <tao.peng@primarydata.com>
+Subject: [PATCH] pnfs/flexfiles: protect ktime manipulation with mirror lock
+Date: Fri, 26 Jun 2015 09:45:49 +0800
+Message-Id: <1435283149-14223-1-git-send-email-tao.peng@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jun 25, 2015 at 02:46:44PM -0400, J. Bruce Fields wrote:
-> > Does this sound reasonable?
-> 
-> Just to make sure I understand, the logic is something like:
-> 
-> 	to read the i_version:
-> 
-> 		inode->i_version_seen = true;
-> 		return inode->i_version
-> 
-> 	to update the i_version:
-> 
-> 		/*
-> 		 * If nobody's seen this value of i_version then we can
-> 		 * keep using it, otherwise we need a new one:
-> 		 */
-> 		if (inode->i_version_seen)
-> 			inode->i_version++;
-> 		inode->i_version_seen = false;
+It looks as if xchg() and cmpxchg() are not available for 64-bit integers on sparc32:
 
-Yep, that's what I was proposing.
+> New breakage seen in linux-next today:
+>
+> ERROR: "__xchg_called_with_bad_pointer" [fs/nfs/flexfilelayout/nfs_layout_flexfiles.ko] undefined!
+> ERROR: "__cmpxchg_called_with_bad_pointer" [fs/nfs/flexfilelayout/nfs_layout_flexfiles.ko] undefined!
+> make[2]: *** [__modpost] Error 1
+> make[1]: *** [modules] Error 2
 
-> Looks OK to me.  As I say I'd expect i_version_seen == true to end up
-> being the common case in a lot of v4 workloads, so I'm more skeptical of
-> the claim of a performance improvement in the v4 case.
+Given that mirror ktime manipulation is already under mirror->lock, let's make use of the fact.
 
-Well, so long as we require i_version to be committed to disk on every
-single disk write, we're going to be trading off:
+Reported-by: Paul Gortmaker <paul.gortmaker@windriver.com>
+Signed-off-by: Peng Tao <tao.peng@primarydata.com>
+---
+ fs/nfs/flexfilelayout/flexfilelayout.c | 31 ++++++++++++-------------------
+ 1 file changed, 12 insertions(+), 19 deletions(-)
 
-	* client-side performance of the advanced NFSv4 cacheing for reads
-	* server-side performance for writes
-	* data robustness in case of the server crashing and the client-side cache
-	  getting out of sync with the server after the crash
+diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
+index d3b3b62..85b4234 100644
+--- a/fs/nfs/flexfilelayout/flexfilelayout.c
++++ b/fs/nfs/flexfilelayout/flexfilelayout.c
+@@ -417,21 +417,9 @@ ff_layout_get_lseg_count(struct nfs4_ff_layout_segment *fls)
+ static void
+ nfs4_ff_start_busy_timer(struct nfs4_ff_busy_timer *timer)
+ {
+-	ktime_t old, new;
+-
+-	/*
+-	 * Note: careful here!
+-	 * If the counter is zero, then we must not increment it until after
+-	 * we've set the start_time.
+-	 * If we were instead to use atomic_inc_return(), then another
+-	 * request might come in, bump, and then call end_busy_timer()
+-	 * before we've set the timer->start_time.
+-	 */
+-	old = timer->start_time;
+-	if (atomic_inc_not_zero(&timer->n_ops) == 0) {
+-		new = ktime_get();
+-		cmpxchg(&timer->start_time.tv64, old.tv64, new.tv64);
+-		atomic_inc(&timer->n_ops);
++	/* first IO request? */
++	if (atomic_inc_return(&timer->n_ops) == 1) {
++		timer->start_time = ktime_get();
+ 	}
+ }
+ 
+@@ -440,9 +428,12 @@ nfs4_ff_end_busy_timer(struct nfs4_ff_busy_timer *timer)
+ {
+ 	ktime_t start, now;
+ 
++	if (atomic_dec_return(&timer->n_ops) < 0)
++		WARN_ON_ONCE(1);
++
+ 	now = ktime_get();
+-	start.tv64 = xchg(&timer->start_time.tv64, now.tv64);
+-	atomic_dec(&timer->n_ops);
++	start = timer->start_time;
++	timer->start_time = now;
+ 	return ktime_sub(now, start);
+ }
+ 
+@@ -460,8 +451,10 @@ nfs4_ff_layoutstat_start_io(struct nfs4_ff_layout_mirror *mirror,
+ 	ktime_t now = ktime_get();
+ 
+ 	nfs4_ff_start_busy_timer(&layoutstat->busy_timer);
+-	cmpxchg(&mirror->start_time.tv64, notime.tv64, now.tv64);
+-	cmpxchg(&mirror->last_report_time.tv64, notime.tv64, now.tv64);
++	if (ktime_equal(mirror->start_time, notime))
++		mirror->start_time = now;
++	if (ktime_equal(mirror->last_report_time, notime))
++		mirror->last_report_time = now;
+ 	if (ktime_to_ms(ktime_sub(now, mirror->last_report_time)) >=
+ 			FF_LAYOUTSTATS_REPORT_INTERVAL) {
+ 		mirror->last_report_time = now;
+-- 
+1.8.3.1
 
-I don't see any way around that.  (So for example, with lazy mtime
-updates we wouldn't be updating the inode after every single
-non-allocating write; enabling i_version updates will trash that
-optimization.)
-
-I just want to reduce to a bare minimum the performance hit in the
-case where NFSv4 exports are not being used (since that is true in a
-very *large* number of ext4 deployments --- i.e., every single Android
-handset using ext4 :-), such that we can leave i_version updates
-turned on by default.
-
-> Could maintaining the new flag be a significant drag in itself?  If not,
-> then I guess we're not making things any worse there, so fine.
-
-I don't think so; it's a bit in the in-memory inode, so I don't think
-that should be an issue.
-
-						- Ted
