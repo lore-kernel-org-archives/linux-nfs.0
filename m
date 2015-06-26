@@ -1,60 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:40887 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([173.255.197.46]:52310 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752454AbbFZNVp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 26 Jun 2015 09:21:45 -0400
-Received: from int-mx14.intmail.prod.int.phx2.redhat.com (int-mx14.intmail.prod.int.phx2.redhat.com [10.5.11.27])
-	by mx1.redhat.com (Postfix) with ESMTPS id 52D5E45AA14
-	for <linux-nfs@vger.kernel.org>; Fri, 26 Jun 2015 13:21:45 +0000 (UTC)
-Received: from smallhat.boston.devel.redhat.com (unused [10.10.50.112] (may be forged))
-	by int-mx14.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id t5QDLiZp016960
-	for <linux-nfs@vger.kernel.org>; Fri, 26 Jun 2015 09:21:44 -0400
-Message-ID: <558D51E8.4070001@RedHat.com>
-Date: Fri, 26 Jun 2015 09:21:44 -0400
-From: Steve Dickson <SteveD@redhat.com>
+	id S1751784AbbFZNcw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 26 Jun 2015 09:32:52 -0400
+Date: Fri, 26 Jun 2015 09:32:42 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "Theodore Ts'o" <tytso@mit.edu>
+Cc: dsterba@suse.cz, Liu Bo <bo.li.liu@oracle.com>,
+        linux-btrfs@vger.kernel.org, fdmanana@suse.com, kzak@redhat.com,
+        linux-fsdevel@vger.kernel.org, viro@zeniv.linux.org.uk,
+        linux-nfs@vger.kernel.org, chuck.lever@oracle.com,
+        mingming.cao@oracle.com
+Subject: Re: i_version vs iversion (Was: Re: [RFC PATCH v2 1/2] Btrfs: add
+ noi_version option to disable MS_I_VERSION)
+Message-ID: <20150626133242.GA3179@fieldses.org>
+References: <1434527672-5762-1-git-send-email-bo.li.liu@oracle.com>
+ <20150617153306.GY6761@twin.jikos.cz>
+ <20150617155234.GB7773@localhost.localdomain>
+ <20150617170118.GA6761@twin.jikos.cz>
+ <20150618024607.GA8530@localhost.localdomain>
+ <20150618143856.GG6761@suse.cz>
+ <20150623163241.GA6645@thunk.org>
+ <20150625184644.GA12300@fieldses.org>
+ <20150625221257.GD13380@thunk.org>
 MIME-Version: 1.0
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfs-server: Use rpcbind.service instead of rpbind.target
-References: <1435245381-25085-1-git-send-email-steved@redhat.com>
-In-Reply-To: <1435245381-25085-1-git-send-email-steved@redhat.com>
-Content-Type: text/plain; charset=windows-1252
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20150625221257.GD13380@thunk.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-On 06/25/2015 11:16 AM, Steve Dickson wrote:
-> To trigger the systemd socket activation support
-> in rpcbind, nfs-service needs to Requires/After
-> rpcbind.service instead of rpbind.target
+On Thu, Jun 25, 2015 at 06:12:57PM -0400, Theodore Ts'o wrote:
+> On Thu, Jun 25, 2015 at 02:46:44PM -0400, J. Bruce Fields wrote:
+> > Looks OK to me.  As I say I'd expect i_version_seen == true to end up
+> > being the common case in a lot of v4 workloads, so I'm more skeptical of
+> > the claim of a performance improvement in the v4 case.
 > 
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-Committed... 
-
-steved.
-
-> ---
->  systemd/nfs-server.service | 4 ++--
->  1 file changed, 2 insertions(+), 2 deletions(-)
+> Well, so long as we require i_version to be committed to disk on every
+> single disk write, we're going to be trading off:
 > 
-> diff --git a/systemd/nfs-server.service b/systemd/nfs-server.service
-> index db801cb..12b02f2 100644
-> --- a/systemd/nfs-server.service
-> +++ b/systemd/nfs-server.service
-> @@ -1,13 +1,13 @@
->  [Unit]
->  Description=NFS server and services
->  DefaultDependencies=no
-> -Requires= network.target proc-fs-nfsd.mount rpcbind.target
-> +Requires= network.target proc-fs-nfsd.mount rpcbind.service
->  Requires= nfs-mountd.service
->  Wants=rpc-statd.service nfs-idmapd.service
->  Wants=rpc-statd-notify.service
->  
->  After= local-fs.target
-> -After= network.target proc-fs-nfsd.mount rpcbind.target nfs-mountd.service
-> +After= network.target proc-fs-nfsd.mount rpcbind.service nfs-mountd.service
->  After= nfs-idmapd.service rpc-statd.service
->  Before= rpc-statd-notify.service
->  
+> 	* client-side performance of the advanced NFSv4 cacheing for reads
+> 	* server-side performance for writes
+> 	* data robustness in case of the server crashing and the client-side cache
+> 	  getting out of sync with the server after the crash
 > 
+> I don't see any way around that.  (So for example, with lazy mtime
+> updates we wouldn't be updating the inode after every single
+> non-allocating write; enabling i_version updates will trash that
+> optimization.)
+> 
+> I just want to reduce to a bare minimum the performance hit in the
+> case where NFSv4 exports are not being used (since that is true in a
+> very *large* number of ext4 deployments --- i.e., every single Android
+> handset using ext4 :-), such that we can leave i_version updates
+> turned on by default.
+
+Definitely understood.  I think it's a good idea.
+
+> > Could maintaining the new flag be a significant drag in itself?  If not,
+> > then I guess we're not making things any worse there, so fine.
+> 
+> I don't think so; it's a bit in the in-memory inode, so I don't think
+> that should be an issue.
+
+OK!
+
+--b.
