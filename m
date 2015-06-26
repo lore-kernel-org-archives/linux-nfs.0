@@ -1,67 +1,52 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:52310 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751784AbbFZNcw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 26 Jun 2015 09:32:52 -0400
-Date: Fri, 26 Jun 2015 09:32:42 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
-Cc: dsterba@suse.cz, Liu Bo <bo.li.liu@oracle.com>,
-        linux-btrfs@vger.kernel.org, fdmanana@suse.com, kzak@redhat.com,
-        linux-fsdevel@vger.kernel.org, viro@zeniv.linux.org.uk,
-        linux-nfs@vger.kernel.org, chuck.lever@oracle.com,
-        mingming.cao@oracle.com
-Subject: Re: i_version vs iversion (Was: Re: [RFC PATCH v2 1/2] Btrfs: add
- noi_version option to disable MS_I_VERSION)
-Message-ID: <20150626133242.GA3179@fieldses.org>
-References: <1434527672-5762-1-git-send-email-bo.li.liu@oracle.com>
- <20150617153306.GY6761@twin.jikos.cz>
- <20150617155234.GB7773@localhost.localdomain>
- <20150617170118.GA6761@twin.jikos.cz>
- <20150618024607.GA8530@localhost.localdomain>
- <20150618143856.GG6761@suse.cz>
- <20150623163241.GA6645@thunk.org>
- <20150625184644.GA12300@fieldses.org>
- <20150625221257.GD13380@thunk.org>
+Return-Path: <bfields@fieldses.org>
+Date: Fri, 26 Jun 2015 13:50:32 -0400
+To: Benjamin Coddington <bcodding@redhat.com>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anders Blomdell <anders.blomdell@control.lth.se>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: Mount regression between 4.0.4 client and 2.6.35 server
+Message-ID: <20150626175032.GA4293@fieldses.org>
+References: <55827B8D.3070103@control.lth.se>
+ <CAHQdGtS1affPWS=MLM8cn4C-JYjjbJUf2jHaK7uomLLkKc12HA@mail.gmail.com>
+ <alpine.OSX.2.19.9992.1506260807060.13917@planck.local>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20150625221257.GD13380@thunk.org>
-Sender: linux-nfs-owner@vger.kernel.org
+In-Reply-To: <alpine.OSX.2.19.9992.1506260807060.13917@planck.local>
+From: bfields@fieldses.org (J. Bruce Fields)
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jun 25, 2015 at 06:12:57PM -0400, Theodore Ts'o wrote:
-> On Thu, Jun 25, 2015 at 02:46:44PM -0400, J. Bruce Fields wrote:
-> > Looks OK to me.  As I say I'd expect i_version_seen == true to end up
-> > being the common case in a lot of v4 workloads, so I'm more skeptical of
-> > the claim of a performance improvement in the v4 case.
+On Fri, Jun 26, 2015 at 08:17:30AM -0400, Benjamin Coddington wrote:
+> On Thu, 18 Jun 2015, Trond Myklebust wrote:
 > 
-> Well, so long as we require i_version to be committed to disk on every
-> single disk write, we're going to be trading off:
+> > On Thu, Jun 18, 2015 at 4:04 AM, Anders Blomdell
+> > <anders.blomdell@control.lth.se> wrote:
+> > >
+> > > I have a problem with a 4.0.4 client refusing to mount from a 2.6.35 server
+> > > due to NFS4ERR_INVAL returned during nfs4_discover_server_trunking. See
+> > > https://bugzilla.redhat.com/show_bug.cgi?id=1228272.
+> >
+> >
+> > Why should we change the clients if the server is in clear and obvious
+> > violation of the spec?
 > 
-> 	* client-side performance of the advanced NFSv4 cacheing for reads
-> 	* server-side performance for writes
-> 	* data robustness in case of the server crashing and the client-side cache
-> 	  getting out of sync with the server after the crash
 > 
-> I don't see any way around that.  (So for example, with lazy mtime
-> updates we wouldn't be updating the inode after every single
-> non-allocating write; enabling i_version updates will trash that
-> optimization.)
-> 
-> I just want to reduce to a bare minimum the performance hit in the
-> case where NFSv4 exports are not being used (since that is true in a
-> very *large* number of ext4 deployments --- i.e., every single Android
-> handset using ext4 :-), such that we can leave i_version updates
-> turned on by default.
+> What's happening here is knfsd older than 2.6.38 will return NFS4ERR_INVAL
+> for EXCHANGE_ID that has EXCHGID4_FLAG_BIND_PRINC_STATEID set in the
+> request.
 
-Definitely understood.  I think it's a good idea.
+Note that intentionally left off by default until 3.11, exactly because
+I thought there was a high risk of incompatibility with future clients
+at that point.
 
-> > Could maintaining the new flag be a significant drag in itself?  If not,
-> > then I guess we're not making things any worse there, so fine.
-> 
-> I don't think so; it's a bit in the in-memory inode, so I don't think
-> that should be an issue.
+> Should the client's use of stateid/princ binding be optional/configureable?
 
-OK!
+So, perhaps there's other reasons for doing this, but we're not going to
+justify it for compatibility with out-of-spec behavior in older
+experimental server code.
+
+Possibly more annoying is that Solaris servers (I don't know which
+versions, I just have one report that says "Solaris 10") are also
+returning GARBAGE_ARGS instead of NFS4ERR_MINOR_VERS_MISMATCH on
+attempts to use 4.2.
 
 --b.
