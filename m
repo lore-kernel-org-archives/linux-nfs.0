@@ -1,67 +1,101 @@
-Return-Path: <bfields@fieldses.org>
-Date: Fri, 26 Jun 2015 14:32:20 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Benjamin Coddington <bcodding@redhat.com>,
-        Anders Blomdell <anders.blomdell@control.lth.se>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: Mount regression between 4.0.4 client and 2.6.35 server
-Message-ID: <20150626183220.GB4293@fieldses.org>
-References: <55827B8D.3070103@control.lth.se>
- <CAHQdGtS1affPWS=MLM8cn4C-JYjjbJUf2jHaK7uomLLkKc12HA@mail.gmail.com>
- <alpine.OSX.2.19.9992.1506260807060.13917@planck.local>
- <20150626175032.GA4293@fieldses.org>
- <CAHQdGtSS7+Vu4fS9_-UkkoE7AcjsAC8HSqT=LhT32A-kc5UnOA@mail.gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAHQdGtSS7+Vu4fS9_-UkkoE7AcjsAC8HSqT=LhT32A-kc5UnOA@mail.gmail.com>
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail-ig0-f169.google.com ([209.85.213.169]:38618 "EHLO
+	mail-ig0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752260AbbFZS5r (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 26 Jun 2015 14:57:47 -0400
+Received: by igrv9 with SMTP id v9so7037589igr.1
+        for <linux-nfs@vger.kernel.org>; Fri, 26 Jun 2015 11:57:47 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] pNFS/flexfiles: Turn off layoutcommit for servers that don't need it
+Date: Fri, 26 Jun 2015 14:57:44 -0400
+Message-Id: <1435345064-12128-1-git-send-email-trond.myklebust@primarydata.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jun 26, 2015 at 01:58:35PM -0400, Trond Myklebust wrote:
-> On Fri, Jun 26, 2015 at 1:50 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> > On Fri, Jun 26, 2015 at 08:17:30AM -0400, Benjamin Coddington wrote:
-> >> On Thu, 18 Jun 2015, Trond Myklebust wrote:
-> >>
-> >> > On Thu, Jun 18, 2015 at 4:04 AM, Anders Blomdell
-> >> > <anders.blomdell@control.lth.se> wrote:
-> >> > >
-> >> > > I have a problem with a 4.0.4 client refusing to mount from a 2.6.35 server
-> >> > > due to NFS4ERR_INVAL returned during nfs4_discover_server_trunking. See
-> >> > > https://bugzilla.redhat.com/show_bug.cgi?id=1228272.
-> >> >
-> >> >
-> >> > Why should we change the clients if the server is in clear and obvious
-> >> > violation of the spec?
-> >>
-> >>
-> >> What's happening here is knfsd older than 2.6.38 will return NFS4ERR_INVAL
-> >> for EXCHANGE_ID that has EXCHGID4_FLAG_BIND_PRINC_STATEID set in the
-> >> request.
-> >
-> > Note that intentionally left off by default until 3.11, exactly because
-> > I thought there was a high risk of incompatibility with future clients
-> > at that point.
-> >
-> >> Should the client's use of stateid/princ binding be optional/configureable?
-> >
-> > So, perhaps there's other reasons for doing this, but we're not going to
-> > justify it for compatibility with out-of-spec behavior in older
-> > experimental server code.
-> 
-> The protocol gives the server the option of rejecting the client's
-> request for bind_princ_stateid by simply turning off the flag in its
-> reply. See https://tools.ietf.org/html/rfc5661#section-18.35.3
+This patch ensures that we record the value of 'ffl_flags' from
+the layout, and then checks for the presence of the
+FF_FLAGS_NO_LAYOUTCOMMIT flag before deciding whether or not to
+call pnfs_set_layoutcommit().
 
-Yeah, that's what it's doing.
+The effect is that servers now can decide whether or not they want
+the client to call layoutcommit before returning a writeable layout.
 
-(The failure in this case was because the code just didn't know about
-the flag at all--I think it still had constants taken from an earlier
-ietf draft.  Like I say, experimental code.)
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfs/flexfilelayout/flexfilelayout.c | 16 +++++++++++++++-
+ fs/nfs/flexfilelayout/flexfilelayout.h |  3 +++
+ 2 files changed, 18 insertions(+), 1 deletion(-)
 
---b.
+diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
+index 85b4234b8090..594ab35eacfb 100644
+--- a/fs/nfs/flexfilelayout/flexfilelayout.c
++++ b/fs/nfs/flexfilelayout/flexfilelayout.c
+@@ -343,6 +343,10 @@ ff_layout_alloc_lseg(struct pnfs_layout_hdr *lh,
+ 			fls->mirror_array[i]->gid);
+ 	}
+ 
++	p = xdr_inline_decode(&stream, 4);
++	if (p)
++		fls->flags = be32_to_cpup(p);
++
+ 	ff_layout_sort_mirrors(fls);
+ 	rc = ff_layout_check_layout(lgr);
+ 	if (rc)
+@@ -1018,6 +1022,12 @@ static int ff_layout_read_done_cb(struct rpc_task *task,
+ 	return 0;
+ }
+ 
++static bool
++ff_layout_need_layoutcommit(struct pnfs_layout_segment *lseg)
++{
++	return !(FF_LAYOUT_LSEG(lseg)->flags & FF_FLAGS_NO_LAYOUTCOMMIT);
++}
++
+ /*
+  * We reference the rpc_cred of the first WRITE that triggers the need for
+  * a LAYOUTCOMMIT, and use it to send the layoutcommit compound.
+@@ -1030,6 +1040,9 @@ static int ff_layout_read_done_cb(struct rpc_task *task,
+ static void
+ ff_layout_set_layoutcommit(struct nfs_pgio_header *hdr)
+ {
++	if (!ff_layout_need_layoutcommit(hdr->lseg))
++		return;
++
+ 	pnfs_set_layoutcommit(hdr->inode, hdr->lseg,
+ 			hdr->mds_offset + hdr->res.count);
+ 	dprintk("%s inode %lu pls_end_pos %lu\n", __func__, hdr->inode->i_ino,
+@@ -1221,7 +1234,8 @@ static int ff_layout_commit_done_cb(struct rpc_task *task,
+ 		return -EAGAIN;
+ 	}
+ 
+-	if (data->verf.committed == NFS_UNSTABLE)
++	if (data->verf.committed == NFS_UNSTABLE
++	    && ff_layout_need_layoutcommit(data->lseg))
+ 		pnfs_set_layoutcommit(data->inode, data->lseg, data->lwb);
+ 
+ 	return 0;
+diff --git a/fs/nfs/flexfilelayout/flexfilelayout.h b/fs/nfs/flexfilelayout/flexfilelayout.h
+index 6fcd8d5e8e3d..f92f9a0a856b 100644
+--- a/fs/nfs/flexfilelayout/flexfilelayout.h
++++ b/fs/nfs/flexfilelayout/flexfilelayout.h
+@@ -9,6 +9,8 @@
+ #ifndef FS_NFS_NFS4FLEXFILELAYOUT_H
+ #define FS_NFS_NFS4FLEXFILELAYOUT_H
+ 
++#define FF_FLAGS_NO_LAYOUTCOMMIT 1
++
+ #include "../pnfs.h"
+ 
+ /* XXX: Let's filter out insanely large mirror count for now to avoid oom
+@@ -85,6 +87,7 @@ struct nfs4_ff_layout_mirror {
+ struct nfs4_ff_layout_segment {
+ 	struct pnfs_layout_segment	generic_hdr;
+ 	u64				stripe_unit;
++	u32				flags;
+ 	u32				mirror_array_cnt;
+ 	struct nfs4_ff_layout_mirror	**mirror_array;
+ };
+-- 
+2.4.3
 
-> 
-> > Possibly more annoying is that Solaris servers (I don't know which
-> > versions, I just have one report that says "Solaris 10") are also
-> > returning GARBAGE_ARGS instead of NFS4ERR_MINOR_VERS_MISMATCH on
-> > attempts to use 4.2.
