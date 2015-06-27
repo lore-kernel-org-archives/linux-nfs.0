@@ -1,58 +1,55 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bh-25.webhostbox.net ([208.91.199.152]:55143 "EHLO
-	bh-25.webhostbox.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752122AbbF0FjK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 27 Jun 2015 01:39:10 -0400
-Message-ID: <558E36FA.7050803@roeck-us.net>
-Date: Fri, 26 Jun 2015 22:39:06 -0700
-From: Guenter Roeck <linux@roeck-us.net>
-MIME-Version: 1.0
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-CC: Tao Peng <tao.peng@primarydata.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        "linux-next@vger.kernel.org" <linux-next@vger.kernel.org>
-Subject: Re: Build errors due to 64 bit xchg/cmpxchg operations in fs/nfs/flexfilelayout
-References: <558E2201.1040003@roeck-us.net> <CAHQdGtRURfhjoY0EMGMWQR=Yw-tiKr3PWWZ1YVCu9+u8ff9xFw@mail.gmail.com>
-In-Reply-To: <CAHQdGtRURfhjoY0EMGMWQR=Yw-tiKr3PWWZ1YVCu9+u8ff9xFw@mail.gmail.com>
-Content-Type: text/plain; charset=utf-8; format=flowed
+Received: from mail-ie0-f181.google.com ([209.85.223.181]:34288 "EHLO
+	mail-ie0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751712AbbF0PwS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 27 Jun 2015 11:52:18 -0400
+Received: by iebmu5 with SMTP id mu5so92133856ieb.1
+        for <linux-nfs@vger.kernel.org>; Sat, 27 Jun 2015 08:52:17 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 1/2] NFSv4.2: Fix up a decoding error in layoutstats
+Date: Sat, 27 Jun 2015 11:52:13 -0400
+Message-Id: <1435420334-12967-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 06/26/2015 09:15 PM, Trond Myklebust wrote:
->
-> On Jun 27, 2015 12:09 AM, "Guenter Roeck" <linux@roeck-us.net <mailto:linux@roeck-us.net>> wrote:
->  >
->  > Hi,
->  >
->  > commits 'pNFS/flexfiles: add layoutstats tracking' and 'pnfs/flexfiles: report layoutstat
->  > regularly' in -next introduce 64 bit xchg and cmpxchg operations. This causes compile
->  > errors with 32 bit builds on architectures which do not support those operations.
->  >
->  > arm:shmobile_defconfig:
->  >
->  > fs/built-in.o: In function `nfs4_ff_end_busy_timer':
->  > :(.text+0xa7110): undefined reference to `__bad_xchg'
->  > fs/built-in.o: In function `nfs4_ff_layoutstat_start_io':
->  > :(.text+0xa7304): undefined reference to `__bad_cmpxchg'
->  > :(.text+0xa731c): undefined reference to `__bad_cmpxchg'
->  > :(.text+0xa73d8): undefined reference to `__bad_cmpxchg'
->  >
->  > xtensa:allmodconfig:
->  >
->  > ERROR: "__xchg_called_with_bad_pointer" [fs/nfs/flexfilelayout/nfs_layout_flexfiles.ko] undefined!
->  > ERROR: "__cmpxchg_called_with_bad_pointer" [fs/nfs/flexfilelayout/nfs_layout_flexfiles.ko] undefined!
->  >
->  > Guenter
->
-> Hi Guenter
->
-> Is this still the case with today's update? The latest patch from Tao was intended to remove those calls.
->
+According to the spec, the server is only returning the status,
+which we decode in the op header.
 
-Hi Trond,
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfs/nfs42xdr.c | 18 +-----------------
+ 1 file changed, 1 insertion(+), 17 deletions(-)
 
-This is with next-20150626. I'll let you know if it still happens with the next build.
-
-Guenter
-
+diff --git a/fs/nfs/nfs42xdr.c b/fs/nfs/nfs42xdr.c
+index 9aae0205ef11..a6bd27da6286 100644
+--- a/fs/nfs/nfs42xdr.c
++++ b/fs/nfs/nfs42xdr.c
+@@ -241,23 +241,7 @@ out_overflow:
+ static int decode_layoutstats(struct xdr_stream *xdr,
+ 			      struct nfs42_layoutstat_res *res)
+ {
+-	int status;
+-	__be32 *p;
+-
+-	status = decode_op_hdr(xdr, OP_LAYOUTSTATS);
+-	if (status)
+-		return status;
+-
+-	p = xdr_inline_decode(xdr, 4);
+-	if (unlikely(!p))
+-		goto out_overflow;
+-
+-	res->rpc_status = be32_to_cpup(p++);
+-	return 0;
+-
+-out_overflow:
+-	print_overflow_msg(__func__, xdr);
+-	return -EIO;
++	return decode_op_hdr(xdr, OP_LAYOUTSTATS);
+ }
+ 
+ /*
+-- 
+2.4.3
 
