@@ -1,92 +1,74 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ie0-f172.google.com ([209.85.223.172]:35521 "EHLO
-	mail-ie0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752400AbbF0PwT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 27 Jun 2015 11:52:19 -0400
-Received: by iebrt9 with SMTP id rt9so92402273ieb.2
-        for <linux-nfs@vger.kernel.org>; Sat, 27 Jun 2015 08:52:19 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 2/2] NFSv4.2: LAYOUTSTATS is optional to implement
-Date: Sat, 27 Jun 2015 11:52:14 -0400
-Message-Id: <1435420334-12967-2-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1435420334-12967-1-git-send-email-trond.myklebust@primarydata.com>
-References: <1435420334-12967-1-git-send-email-trond.myklebust@primarydata.com>
+Received: from cantor2.suse.de ([195.135.220.15]:53930 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750834AbbF2EYO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 29 Jun 2015 00:24:14 -0400
+Date: Mon, 29 Jun 2015 14:24:06 +1000
+From: NeilBrown <neilb@suse.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH/RFC] NFSv4 - do not accept an incompatible delegation.
+Message-ID: <20150629142406.0afdd862@noble>
+In-Reply-To: <CAHQdGtTWszzRdN+akenDkbiXd7xAJwAr6=144m6+dPWSxZ=boA@mail.gmail.com>
+References: <20150622175318.6e840b23@noble>
+	<CAHQdGtS2P7gU+9NWjEX5ejrtntMFv+8v6WCPRf3b7XCLuVXxLQ@mail.gmail.com>
+	<20150623070414.2bbafec7@noble>
+	<CAHQdGtS7pw3wicgAw9hdJrAQjtUKU==UhnaMGhNxcCnZ8WnnoQ@mail.gmail.com>
+	<20150623110717.783535ca@noble>
+	<CAHQdGtTWszzRdN+akenDkbiXd7xAJwAr6=144m6+dPWSxZ=boA@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Make it so, by checking the return value for NFS4ERR_MOTSUPP and
-caching the information as a server capability.
+On Mon, 22 Jun 2015 21:16:37 -0400 Trond Myklebust
+<trond.myklebust@primarydata.com> wrote:
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/nfs42proc.c        | 10 ++++++++--
- fs/nfs/nfs4proc.c         |  3 ++-
- fs/nfs/pnfs.c             |  3 +++
- include/linux/nfs_fs_sb.h |  1 +
- 4 files changed, 14 insertions(+), 3 deletions(-)
+> On Mon, Jun 22, 2015 at 9:07 PM, NeilBrown <neilb@suse.com> wrote:
 
-diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
-index 06c74cd93875..f486b80f927a 100644
---- a/fs/nfs/nfs42proc.c
-+++ b/fs/nfs/nfs42proc.c
-@@ -189,9 +189,15 @@ nfs42_layoutstat_done(struct rpc_task *task, void *calldata)
- 	if (!nfs4_sequence_done(task, &data->res.seq_res))
- 		return;
- 
--	/* well, we don't care about errors at all! */
--	if (task->tk_status)
-+	switch (task->tk_status) {
-+	case 0:
-+		break;
-+	case -ENOTSUPP:
-+	case -EOPNOTSUPP:
-+		NFS_SERVER(data->inode)->caps &= ~NFS_CAP_LAYOUTSTATS;
-+	default:
- 		dprintk("%s server returns %d\n", __func__, task->tk_status);
-+	}
- }
- 
- static void
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 643ce3a91b22..8eab42407d39 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -8635,7 +8635,8 @@ static const struct nfs4_minor_version_ops nfs_v4_2_minor_ops = {
- 		| NFS_CAP_ATOMIC_OPEN_V1
- 		| NFS_CAP_ALLOCATE
- 		| NFS_CAP_DEALLOCATE
--		| NFS_CAP_SEEK,
-+		| NFS_CAP_SEEK
-+		| NFS_CAP_LAYOUTSTATS,
- 	.init_client = nfs41_init_client,
- 	.shutdown_client = nfs41_shutdown_client,
- 	.match_stateid = nfs41_match_stateid,
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 40bacebb5b97..0ba9a02c9566 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -2266,6 +2266,9 @@ pnfs_report_layoutstat(struct inode *inode)
- 	if (!pnfs_enabled_sb(server) || !ld->prepare_layoutstats)
- 		goto out;
- 
-+	if (!nfs_server_capable(inode, NFS_CAP_LAYOUTSTATS))
-+		goto out;
-+
- 	if (test_and_set_bit(NFS_INO_LAYOUTSTATS, &nfsi->flags))
- 		goto out;
- 
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 5e1273d4de14..a2ea1491d3df 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -237,5 +237,6 @@ struct nfs_server {
- #define NFS_CAP_SEEK		(1U << 19)
- #define NFS_CAP_ALLOCATE	(1U << 20)
- #define NFS_CAP_DEALLOCATE	(1U << 21)
-+#define NFS_CAP_LAYOUTSTATS	(1U << 22)
- 
- #endif
--- 
-2.4.3
+> > So maybe something like this:
+> >
+> > diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> > index 55e1e3a..ce5f1489 100644
+> > --- a/fs/nfs/nfs4proc.c
+> > +++ b/fs/nfs/nfs4proc.c
+> > @@ -1553,6 +1553,10 @@ static int nfs4_open_recover_helper(struct nfs4_opendata *opendata, fmode_t fmod
+> >         struct nfs4_state *newstate;
+> >         int ret;
+> >
+> > +       if ((opendata->o_arg.claim == NFS4_OPEN_CLAIM_DELEGATE_CUR ||
+> > +            opendata->o-arg.claim == NFS4_OPEN_CLAIM_DELE_CUR_FH) &&
+> > +           (opendata->o_arg.u_delegation_type & mode) != mode)
+> > +               return 0;
+> >         opendata->o_arg.open_flags = 0;
+> >         opendata->o_arg.fmode = fmode;
+> >         opendata->o_arg.share_access = nfs4_map_atomic_open_share(
+> >
+> >
+> > I'm not entirely clear on the process of reclaiming opens and
+> > delegations after a server reboot, so this may need to be adjusted to
+> > handle that correctly.
+> 
+> The above is along the lines of what I was suggesting. I hope it tests out OK.
+> 
 
+Once I fixed the syntax errors, this was all I needed.
+I was concerned there might be similar issues with
+OPEN_CLAIM_DELEGATE_PREV (or whatever it is called) but Linux doesn't
+appear to use that.
+
+I tested it by commenting out
+
+	status = vfs_setlease(filp, fl->fl_type, &fl, NULL);
+
+in nfs4_setlease in the Linux nfsd, so that it would always return a
+read delegation.  This was enough to demonstrate the problem and verify
+the fix.
+I haven't yet received confirmation from people with access to the
+Netapp but I would be very surprised if this doesn't work (though I
+think there are other issues that still need to be examined).
+
+Separately I've discovered a bug that causes a livelock when a TCP
+sendmsg fails because kmalloc failed.  I'll send patches for both.
+
+NeilBrown
