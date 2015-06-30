@@ -1,103 +1,57 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f171.google.com ([209.85.220.171]:33328 "EHLO
-	mail-qk0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752213AbbF3SMo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Jun 2015 14:12:44 -0400
-Received: by qkhu186 with SMTP id u186so12438021qkh.0
-        for <linux-nfs@vger.kernel.org>; Tue, 30 Jun 2015 11:12:41 -0700 (PDT)
-From: Jeff Layton <jlayton@poochiereds.net>
-To: trond.myklebust@primarydata.com
-Cc: jean@primarydata.com, linux-nfs@vger.kernel.org
-Subject: [PATCH] nfs: take extra reference to fl->fl_file when running a LOCKU operation
-Date: Tue, 30 Jun 2015 14:12:30 -0400
-Message-Id: <1435687950-22037-1-git-send-email-jeff.layton@primarydata.com>
+Received: from mx1.redhat.com ([209.132.183.28]:38624 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751253AbbF3SSW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 30 Jun 2015 14:18:22 -0400
+Message-ID: <5592DD6C.5010705@RedHat.com>
+Date: Tue, 30 Jun 2015 14:18:20 -0400
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: Kinglong Mee <kinglongmee@gmail.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH] blkmapd: Fix infinite loop when reading serial
+References: <556693B7.6040501@gmail.com>
+In-Reply-To: <556693B7.6040501@gmail.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Jean reported another crash, similar to the one fixed by feaff8e5b2cf:
 
-    BUG: unable to handle kernel NULL pointer dereference at 0000000000000148
-    IP: [<ffffffff8124ef7f>] locks_get_lock_context+0xf/0xa0
-    PGD 0
-    Oops: 0000 [#1] SMP
-    Modules linked in: nfsv3 nfs_layout_flexfiles rpcsec_gss_krb5 nfsv4 dns_resolver nfs fscache vmw_vsock_vmci_transport vsock cfg80211 rfkill coretemp crct10dif_pclmul ppdev vmw_balloon crc32_pclmul crc32c_intel ghash_clmulni_intel pcspkr vmxnet3 parport_pc i2c_piix4 microcode serio_raw parport nfsd floppy vmw_vmci acpi_cpufreq auth_rpcgss shpchp nfs_acl lockd grace sunrpc vmwgfx drm_kms_helper ttm drm mptspi scsi_transport_spi mptscsih ata_generic mptbase i2c_core pata_acpi
-    CPU: 0 PID: 329 Comm: kworker/0:1H Not tainted 4.1.0-rc7+ #2
-    Hardware name: VMware, Inc. VMware Virtual Platform/440BX Desktop Reference Platform, BIOS 6.00 07/30/2013
-    Workqueue: rpciod rpc_async_schedule [sunrpc]
-    30ec000
-    RIP: 0010:[<ffffffff8124ef7f>]  [<ffffffff8124ef7f>] locks_get_lock_context+0xf/0xa0
-    RSP: 0018:ffff8802330efc08  EFLAGS: 00010296
-    RAX: ffff8802330efc58 RBX: ffff880097187c80 RCX: 0000000000000000
-    RDX: 0000000000000000 RSI: 0000000000000002 RDI: 0000000000000000
-    RBP: ffff8802330efc18 R08: ffff88023fc173d8 R09: 3038b7bf00000000
-    R10: 00002f1a02000000 R11: 3038b7bf00000000 R12: 0000000000000000
-    R13: 0000000000000000 R14: ffff8802337a2300 R15: 0000000000000020
-    FS:  0000000000000000(0000) GS:ffff88023fc00000(0000) knlGS:0000000000000000
-    CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-    CR2: 0000000000000148 CR3: 000000003680f000 CR4: 00000000001407f0
-    Stack:
-     ffff880097187c80 ffff880097187cd8 ffff8802330efc98 ffffffff81250281
-     ffff8802330efc68 ffffffffa013e7df ffff8802330efc98 0000000000000246
-     ffff8801f6901c00 ffff880233d2b8d8 ffff8802330efc58 ffff8802330efc58
-    Call Trace:
-     [<ffffffff81250281>] __posix_lock_file+0x31/0x5e0
-     [<ffffffffa013e7df>] ? rpc_wake_up_task_queue_locked.part.35+0xcf/0x240 [sunrpc]
-     [<ffffffff8125088b>] posix_lock_file_wait+0x3b/0xd0
-     [<ffffffffa03890b2>] ? nfs41_wake_and_assign_slot+0x32/0x40 [nfsv4]
-     [<ffffffffa0365808>] ? nfs41_sequence_done+0xd8/0x300 [nfsv4]
-     [<ffffffffa0367525>] do_vfs_lock+0x35/0x40 [nfsv4]
-     [<ffffffffa03690c1>] nfs4_locku_done+0x81/0x120 [nfsv4]
-     [<ffffffffa013e310>] ? rpc_destroy_wait_queue+0x20/0x20 [sunrpc]
-     [<ffffffffa013e310>] ? rpc_destroy_wait_queue+0x20/0x20 [sunrpc]
-     [<ffffffffa013e33c>] rpc_exit_task+0x2c/0x90 [sunrpc]
-     [<ffffffffa0134400>] ? call_refreshresult+0x170/0x170 [sunrpc]
-     [<ffffffffa013ece4>] __rpc_execute+0x84/0x410 [sunrpc]
-     [<ffffffffa013f085>] rpc_async_schedule+0x15/0x20 [sunrpc]
-     [<ffffffff810add67>] process_one_work+0x147/0x400
-     [<ffffffff810ae42b>] worker_thread+0x11b/0x460
-     [<ffffffff810ae310>] ? rescuer_thread+0x2f0/0x2f0
-     [<ffffffff810b35d9>] kthread+0xc9/0xe0
-     [<ffffffff81010000>] ? perf_trace_xen_mmu_set_pmd+0xa0/0x160
-     [<ffffffff810b3510>] ? kthread_create_on_node+0x170/0x170
-     [<ffffffff8173c222>] ret_from_fork+0x42/0x70
-     [<ffffffff810b3510>] ? kthread_create_on_node+0x170/0x170
-    Code: a5 81 e8 85 75 e4 ff c6 05 31 ee aa 00 01 eb 98 66 66 66 2e 0f 1f 84 00 00 00 00 00 0f 1f 44 00 00 55 48 89 e5 41 54 49 89 fc 53 <48> 8b 9f 48 01 00 00 48 85 db 74 08 48 89 d8 5b 41 5c 5d c3 83
-    RIP  [<ffffffff8124ef7f>] locks_get_lock_context+0xf/0xa0
-     RSP <ffff8802330efc08>
-    CR2: 0000000000000148
-    ---[ end trace 64484f16250de7ef ]---
 
-The problem is almost exactly the same as the one fixed by feaff8e5b2cf.
-We must take a reference to the struct file when running the LOCKU
-compound to prevent the final fput from running until the operation is
-complete.
+On 05/28/2015 12:04 AM, Kinglong Mee wrote:
+> If (dev_id->ids & 0xf) < current_id, must updates pos when continue.
+> Otherwise an infinite loop.
+> 
+> No other places use the pos value, just move to the top of while.
+> 
+> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+Sorry for the delay.... Committed! 
 
-Reported-by: Jean Spector <jean@primarydata.com>
-Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
----
- fs/nfs/nfs4proc.c | 2 ++
- 1 file changed, 2 insertions(+)
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 605c203de556..5e7638d8e31b 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5484,6 +5484,7 @@ static struct nfs4_unlockdata *nfs4_alloc_unlockdata(struct file_lock *fl,
- 	atomic_inc(&lsp->ls_count);
- 	/* Ensure we don't close file until we're done freeing locks! */
- 	p->ctx = get_nfs_open_context(ctx);
-+	get_file(fl->fl_file);
- 	memcpy(&p->fl, fl, sizeof(p->fl));
- 	p->server = NFS_SERVER(inode);
- 	return p;
-@@ -5495,6 +5496,7 @@ static void nfs4_locku_release_calldata(void *data)
- 	nfs_free_seqid(calldata->arg.seqid);
- 	nfs4_put_lock_state(calldata->lsp);
- 	put_nfs_open_context(calldata->ctx);
-+	fput(calldata->fl.fl_file);
- 	kfree(calldata);
- }
- 
--- 
-2.4.3
-
+steved.
+> ---
+>  utils/blkmapd/device-inq.c | 3 ++-
+>  1 file changed, 2 insertions(+), 1 deletion(-)
+> 
+> diff --git a/utils/blkmapd/device-inq.c b/utils/blkmapd/device-inq.c
+> index c5bf71f..6b56b67 100644
+> --- a/utils/blkmapd/device-inq.c
+> +++ b/utils/blkmapd/device-inq.c
+> @@ -196,6 +196,8 @@ struct bl_serial *bldev_read_serial(int fd, const char *filename)
+>  
+>  	while (pos < (len - devid_len)) {
+>  		dev_id = (struct bl_dev_id *)&(dev_root->data[pos]);
+> +		pos += (dev_id->len + devid_len);
+> +
+>  		if ((dev_id->ids & 0xf) < current_id)
+>  			continue;
+>  		switch (dev_id->ids & 0xf) {
+> @@ -226,7 +228,6 @@ struct bl_serial *bldev_read_serial(int fd, const char *filename)
+>  		}
+>  		if (current_id == 3)
+>  			break;
+> -		pos += (dev_id->len + devid_len);
+>  	}
+>   out:
+>  	if (!serial_out)
+> 
