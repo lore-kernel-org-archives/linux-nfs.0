@@ -1,76 +1,38 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pd0-f178.google.com ([209.85.192.178]:34103 "EHLO
-	mail-pd0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750725AbbGAEAU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Jul 2015 00:00:20 -0400
-Received: by pdbep18 with SMTP id ep18so17825732pdb.1
-        for <linux-nfs@vger.kernel.org>; Tue, 30 Jun 2015 21:00:19 -0700 (PDT)
-Message-ID: <559365CD.5040207@gmail.com>
-Date: Wed, 01 Jul 2015 12:00:13 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
-MIME-Version: 1.0
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: [PATCH 8/8] nfs: Remove invalid tk_pid from debug message
+Received: from zeniv.linux.org.uk ([195.92.253.2]:42320 "EHLO
+	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750765AbbGAFUJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Jul 2015 01:20:09 -0400
+Date: Wed, 1 Jul 2015 06:20:07 +0100
+From: Al Viro <viro@ZenIV.linux.org.uk>
+To: Kinglong Mee <kinglongmee@gmail.com>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 3/8] nfs: Use remove_proc_subtree() instead
+ remove_proc_entry()
+Message-ID: <20150701052007.GA17109@ZenIV.linux.org.uk>
 References: <5593648D.7020804@gmail.com>
-In-Reply-To: <5593648D.7020804@gmail.com>
-Content-Type: text/plain; charset=utf-8
+ <559364E9.1070808@gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <559364E9.1070808@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Before rpc_run_task(), tk_pid is uninitiated as 0 always.
+On Wed, Jul 01, 2015 at 11:56:25AM +0800, Kinglong Mee wrote:
+> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+> ---
+>  fs/nfs/client.c | 10 +++-------
+>  1 file changed, 3 insertions(+), 7 deletions(-)
+> 
+> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+> index a13fada..52488ec 100644
+> --- a/fs/nfs/client.c
+> +++ b/fs/nfs/client.c
+> @@ -1447,13 +1447,11 @@ int __init nfs_fs_proc_init(void)
+>  	/* a file of volumes that we have mounted */
+>  	p = proc_symlink("volumes", proc_fs_nfs, "../../net/nfsfs/volumes");
 
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
----
- fs/nfs/nfs4proc.c | 5 ++---
- fs/nfs/pagelist.c | 3 +--
- fs/nfs/write.c    | 2 +-
- 3 files changed, 4 insertions(+), 6 deletions(-)
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index f1e0843..c3bb09f 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -8063,9 +8063,8 @@ nfs4_proc_layoutcommit(struct nfs4_layoutcommit_data *data, bool sync)
- 	struct rpc_task *task;
- 	int status = 0;
- 
--	dprintk("NFS: %4d initiating layoutcommit call. sync %d "
--		"lbw: %llu inode %lu\n",
--		data->task.tk_pid, sync,
-+	dprintk("NFS: initiating layoutcommit call. sync %d "
-+		"lbw: %llu inode %lu\n", sync,
- 		data->args.lastbytewritten,
- 		data->args.inode->i_ino);
- 
-diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index 282b393..776f8f8 100644
---- a/fs/nfs/pagelist.c
-+++ b/fs/nfs/pagelist.c
-@@ -636,9 +636,8 @@ int nfs_initiate_pgio(struct rpc_clnt *clnt, struct nfs_pgio_header *hdr,
- 
- 	hdr->rw_ops->rw_initiate(hdr, &msg, rpc_ops, &task_setup_data, how);
- 
--	dprintk("NFS: %5u initiated pgio call "
-+	dprintk("NFS: initiated pgio call "
- 		"(req %s/%llu, %u bytes @ offset %llu)\n",
--		hdr->task.tk_pid,
- 		hdr->inode->i_sb->s_id,
- 		(unsigned long long)NFS_FILEID(hdr->inode),
- 		hdr->args.count,
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index e6c2625..9354980 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -1556,7 +1556,7 @@ int nfs_initiate_commit(struct rpc_clnt *clnt, struct nfs_commit_data *data,
- 	/* Set up the initial task struct.  */
- 	nfs_ops->commit_setup(data, &msg);
- 
--	dprintk("NFS: %5u initiated commit call\n", data->task.tk_pid);
-+	dprintk("NFS: initiated commit call\n");
- 
- 	nfs4_state_protect(NFS_SERVER(data->inode)->nfs_client,
- 		NFS_SP4_MACH_CRED_COMMIT, &task_setup_data.rpc_client, &msg);
--- 
-2.4.3
-
+Why not make that
+	if (!proc_symlink("fs/nfs/volumes", NULL, "../../net/nfsfs/volumes"))
+instead, and kill proc_fs_nfs completely?
