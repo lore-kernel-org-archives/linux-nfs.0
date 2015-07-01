@@ -1,60 +1,50 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pa0-f46.google.com ([209.85.220.46]:34024 "EHLO
-	mail-pa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752938AbbGAD4d (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Jun 2015 23:56:33 -0400
-Received: by pabvl15 with SMTP id vl15so15904804pab.1
-        for <linux-nfs@vger.kernel.org>; Tue, 30 Jun 2015 20:56:32 -0700 (PDT)
-Message-ID: <559364E9.1070808@gmail.com>
-Date: Wed, 01 Jul 2015 11:56:25 +0800
+Received: from mail-pa0-f51.google.com ([209.85.220.51]:35652 "EHLO
+	mail-pa0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752443AbbGAD55 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Jun 2015 23:57:57 -0400
+Received: by pactm7 with SMTP id tm7so15862231pac.2
+        for <linux-nfs@vger.kernel.org>; Tue, 30 Jun 2015 20:57:57 -0700 (PDT)
+Message-ID: <5593653D.3030101@gmail.com>
+Date: Wed, 01 Jul 2015 11:57:49 +0800
 From: Kinglong Mee <kinglongmee@gmail.com>
 MIME-Version: 1.0
 To: Trond Myklebust <trond.myklebust@primarydata.com>
 CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        kinglongmee@gmail.com
-Subject: [PATCH 3/8] nfs: Use remove_proc_subtree() instead remove_proc_entry()
+        kinglongmee@gmail.com, Al Viro <viro@zeniv.linux.org.uk>
+Subject: [PATCH 4/8] nfs: Don't setting FILE_CREATED flags always
 References: <5593648D.7020804@gmail.com>
 In-Reply-To: <5593648D.7020804@gmail.com>
 Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Commit 5bc2afc2b5 "NFSv4: Honour the 'opened' parameter in the atomic_open()
+ filesystem method" have support the opened arguments now.
+
+Also,
+Commit 03da633aa7 "atomic_open: take care of EEXIST in no-open case with
+ O_CREAT|O_EXCL in fs/namei.c" have change vfs's logical.
+
 Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
 ---
- fs/nfs/client.c | 10 +++-------
- 1 file changed, 3 insertions(+), 7 deletions(-)
+ fs/nfs/dir.c | 3 ---
+ 1 file changed, 3 deletions(-)
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index a13fada..52488ec 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -1447,13 +1447,11 @@ int __init nfs_fs_proc_init(void)
- 	/* a file of volumes that we have mounted */
- 	p = proc_symlink("volumes", proc_fs_nfs, "../../net/nfsfs/volumes");
- 	if (!p)
--		goto error_2;
-+		goto error_1;
- 	return 0;
- 
--error_2:
--	remove_proc_entry("servers", proc_fs_nfs);
- error_1:
--	remove_proc_entry("fs/nfsfs", NULL);
-+	remove_proc_subtree("fs/nfsfs", NULL);
- error_0:
- 	return -ENOMEM;
- }
-@@ -1463,9 +1461,7 @@ error_0:
-  */
- void nfs_fs_proc_exit(void)
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index b2c8b31..21457bb 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -1470,9 +1470,6 @@ static int nfs_finish_open(struct nfs_open_context *ctx,
  {
--	remove_proc_entry("volumes", proc_fs_nfs);
--	remove_proc_entry("servers", proc_fs_nfs);
--	remove_proc_entry("fs/nfsfs", NULL);
-+	remove_proc_subtree("fs/nfsfs", NULL);
- }
+ 	int err;
  
- #endif /* CONFIG_PROC_FS */
+-	if ((open_flags & (O_CREAT | O_EXCL)) == (O_CREAT | O_EXCL))
+-		*opened |= FILE_CREATED;
+-
+ 	err = finish_open(file, dentry, do_open, opened);
+ 	if (err)
+ 		goto out;
 -- 
 2.4.3
 
