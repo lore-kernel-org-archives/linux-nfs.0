@@ -1,66 +1,36 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from zeniv.linux.org.uk ([195.92.253.2]:49682 "EHLO
-	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753131AbbGBImL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Jul 2015 04:42:11 -0400
-Date: Thu, 2 Jul 2015 09:42:08 +0100
-From: Al Viro <viro@ZenIV.linux.org.uk>
-To: Andrey Ryabinin <ryabinin.a.a@gmail.com>
-Cc: Linus Torvalds <torvalds@linux-foundation.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-        Eric Van Hensbergen <ericvh@gmail.com>, linux-nfs@vger.kernel.org
-Subject: Re: running out of tags in 9P (was Re: [git pull] vfs part 2)
-Message-ID: <20150702084208.GK17109@ZenIV.linux.org.uk>
-References: <5593A7A0.6050400@samsung.com>
- <20150701085507.GE17109@ZenIV.linux.org.uk>
- <5593CE37.4070307@samsung.com>
- <20150701184408.GF17109@ZenIV.linux.org.uk>
- <20150702032042.GA32613@ZenIV.linux.org.uk>
- <20150702041046.GG17109@ZenIV.linux.org.uk>
- <CAPAsAGzZVy3-D4J1ZGsUZU4RRQ36NtprZg_Uvfi5=46=1_rpWA@mail.gmail.com>
- <20150702075932.GI17109@ZenIV.linux.org.uk>
- <CAPAsAGzJW1C-4rd9myZOsiA9dLp2d420PTePaguK=y2RWjrz2A@mail.gmail.com>
- <20150702082529.GJ17109@ZenIV.linux.org.uk>
+Received: from mail-wi0-f180.google.com ([209.85.212.180]:33685 "EHLO
+	mail-wi0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753131AbbGBI7U (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Jul 2015 04:59:20 -0400
+Received: by wiwl6 with SMTP id l6so189731034wiw.0
+        for <linux-nfs@vger.kernel.org>; Thu, 02 Jul 2015 01:59:19 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20150702082529.GJ17109@ZenIV.linux.org.uk>
+In-Reply-To: <20150701093547.116dd788@tlielax.poochiereds.net>
+References: <1435687950-22037-1-git-send-email-jeff.layton@primarydata.com> <20150701093547.116dd788@tlielax.poochiereds.net>
+From: William Dauchy <wdauchy@gmail.com>
+Date: Thu, 2 Jul 2015 10:58:59 +0200
+Message-ID: <CAJ75kXYQ1+_1hRun-kUq=VH2Y3wM+2SEH0zd5-j7xsq9x+RSLA@mail.gmail.com>
+Subject: Re: [PATCH] nfs: take extra reference to fl->fl_file when running a
+ LOCKU operation
+To: Jeff Layton <jeff.layton@primarydata.com>, trond.myklebust@primarydata.com
+Cc: jean@primarydata.com, Linux NFS mailing list <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jul 02, 2015 at 09:25:30AM +0100, Al Viro wrote:
-> On Thu, Jul 02, 2015 at 11:19:03AM +0300, Andrey Ryabinin wrote:
-> > Besides qemu, I've also tried kvmtool with the same result. IOW I'm seeing
-> > this under kvmtool as well. It just takes a bit longer to reproduce
-> > this in kvmtool.
-> > 
-> > > The bug I suspected to be the cause of that is in tag allocation in
-> > > net/9p/client.c - we could end up wrapping around 2^16 with enough pending
-> > > requests and that would have triggered that kind of mess.  However, Andrey
-> > > doesn't see that test (tag wraparound in p9_client_prepare_req()) trigger.
-> > > BTW, was that on the run where debugging printk in p9_client_write() *did*
-> > > trigger?
-> > 
-> > Yes, WARN_ON_ONCE() in p9_client_prepare_req() didn't trigger,
-> > but debug printk in p9_client_write() *did* trigger.
-> 
-> Bloody wonderful...  Could you check if v9fs_write() in qemu
-> hw/9pfs/virtio-9p.c ever gets to
->     offset = 7;
->     err = pdu_marshal(pdu, offset, "d", total);
-> with total > count on your testcase?
+On Wed, Jul 1, 2015 at 3:37 PM Jeff Layton <jeff.layton@primarydata.com> wrote:
+>
+> > The problem is almost exactly the same as the one fixed by feaff8e5b2cf.
+>
+> Oops, I forgot to Cc stable on this one...
+> Trond, can you add that?
 
-Another thing that might be worth checking: in p9_tag_alloc() (net/9p/client.c)
-before
-        req->status = REQ_STATUS_ALLOC;
-check that req->status == REQ_STATUS_IDLE and yell if it isn't.
+Is the commit mentionned also targeted for stable?
+commit feaff8e5b2cfc3eae02cf65db7a400b0b9ffc596
+nfs: take extra reference to fl->fl_file when running a setlk
 
-BTW, the loop in there (
-                /* check again since original check was outside of lock */
-                while (tag >= c->max_tag) {
-) looks fishy.  If we get more than P9_ROW_MAXTAG allocations at once,
-we'll have trouble, but I doubt that this is what we are hitting.  In any
-case, adding WARN_ON(c->req[row]); right after
-                        row = (tag / P9_ROW_MAXTAG);
-wouldn't hurt.  I would be very surprised if that one triggered, though.
+Regards,
+-- 
+
+William
