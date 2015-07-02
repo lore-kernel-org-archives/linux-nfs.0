@@ -1,242 +1,133 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f174.google.com ([209.85.213.174]:33178 "EHLO
-	mail-ig0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753715AbbGBQV4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Jul 2015 12:21:56 -0400
-Message-ID: <1435854102.4771.1.camel@gmail.com>
-Subject: [GIT PULL] Please pull NFS client updates
-From: Trond Myklebust <trondmy@gmail.com>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
-Date: Thu, 02 Jul 2015 12:21:42 -0400
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from zeniv.linux.org.uk ([195.92.253.2]:52933 "EHLO
+	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751864AbbGBQnj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Jul 2015 12:43:39 -0400
+Date: Thu, 2 Jul 2015 17:43:32 +0100
+From: Al Viro <viro@ZenIV.linux.org.uk>
+To: Andrey Ryabinin <a.ryabinin@samsung.com>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+        Eric Van Hensbergen <ericvh@gmail.com>, linux-nfs@vger.kernel.org
+Subject: Re: running out of tags in 9P (was Re: [git pull] vfs part 2)
+Message-ID: <20150702164332.GL17109@ZenIV.linux.org.uk>
+References: <5593CE37.4070307@samsung.com>
+ <20150701184408.GF17109@ZenIV.linux.org.uk>
+ <20150702032042.GA32613@ZenIV.linux.org.uk>
+ <20150702041046.GG17109@ZenIV.linux.org.uk>
+ <CAPAsAGzZVy3-D4J1ZGsUZU4RRQ36NtprZg_Uvfi5=46=1_rpWA@mail.gmail.com>
+ <20150702075932.GI17109@ZenIV.linux.org.uk>
+ <CAPAsAGzJW1C-4rd9myZOsiA9dLp2d420PTePaguK=y2RWjrz2A@mail.gmail.com>
+ <20150702082529.GJ17109@ZenIV.linux.org.uk>
+ <20150702084208.GK17109@ZenIV.linux.org.uk>
+ <55952C6D.50805@samsung.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <55952C6D.50805@samsung.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Linus,
+On Thu, Jul 02, 2015 at 03:19:57PM +0300, Andrey Ryabinin wrote:
 
-The following changes since commit d4a4f75cd8f29cd9464a5a32e9224a91571d6649:
+> Added:
+> +    if (total > count)
+> +           *(char *)0 = 0
+> 
+> and never hit this condition.
+> 
 
-  Linux 4.1-rc7 (2015-06-07 20:23:50 -0700)
+OK, so it's definitely a mismatched response.
 
-are available in the git repository at:
+>         req->tc->tag = tag-1;
+> +       if (WARN_ON(req->status != REQ_STATUS_IDLE))
+> +               pr_err("req->status: %d\n", req->status);
+>         req->status = REQ_STATUS_ALLOC;
+> 
+>         return req;
 
-  git://git.linux-nfs.org/projects/trondmy/linux-nfs.git tags/nfs-for-4.2-1
+> [  150.259076] 9pnet: req->status: 4
 
-for you to fetch changes up to b4839ebe21fc5d543b933d83644981ea73e9ba36:
+IOW, REQ_STATUS_RCVD.  Hmm...  Stray tag seen by req_done() after we'd already
+freed the tag in question?  That, or it really would have to had wrapped
+around...  Note that req_done() does *not* check anything about the req -
+not even that p9_tag_lookup() hasn't returned NULL, so a server sending you
+any response tagged with number well above anything you'd ever sent will
+reliably oops you.
 
-  nfs: Remove invalid tk_pid from debug message (2015-07-01 11:31:25 -0400)
+Frankly, the whole thing needs fuzzing from the server side - start throwing
+crap at the client and see how badly does it get fucked...  Folks, it's
+a network protocol, with userland servers, no less.  You *can't* assume
+them competent and non-malicious...
 
-----------------------------------------------------------------
-NFS client updates for Linux 4.2
+How much traffic does it take to reproduce that fun, BTW?  IOW, is attempting
+to log the sequence of tag {allocation,freeing}/tag of packet being {sent,
+received} something completely suicidal, or is it more or less feasible?
 
-Highlights include:
+> I didn't get this. c->reqs[row] is always non-NULL as it should be, so this warning
+> will trigger all the time.
 
-Stable patches:
-- Fix a crash in the NFSv4 file locking code.
-- Fix an fsync() regression, where we were failing to retry I/O in some
-  circumstances.
-- Fix an infinite loop in NFSv4.0 OPEN stateid recovery
-- Fix a memory leak when an attempted pnfs fails.
-- Fix a memory leak in the backchannel code
-- Large hostnames were not supported correctly in NFSv4.1
-- Fix a pNFS/flexfiles bug that was impeding error reporting on I/O.
-- Fix a couple of credential issues in pNFS/flexfiles
+????
+                        row = (tag / P9_ROW_MAXTAG);
+                        c->reqs[row] = kcalloc(P9_ROW_MAXTAG,
+                                        sizeof(struct p9_req_t), GFP_ATOMIC);
 
-Bugfixes + cleanups:
-- Open flag sanity checks in the NFSv4 atomic open codepath
-- More NFSv4 delegation related bugfixes
-- Various NFSv4.1 backchannel bugfixes and cleanups
-- Fix the NFS swap socket code
-- Various cleanups of the NFSv4 SETCLIENTID and EXCHANGE_ID code
-- Fix a UDP transport deadlock issue
+and you are seeing c->reqs[row] != NULL *BEFORE* that kcalloc()?  All the time,
+no less?  Just to make sure we are on the same page - the delta against
+mainline I would like tested is this:
 
-Features:
-- More RDMA client transport improvements
-- NFSv4.2 LAYOUTSTATS functionality for pnfs flexfiles.
-
-----------------------------------------------------------------
-Anna Schumaker (1):
-      NFS: Remove unused nfs_rw_ops->rw_release() function
-
-Benjamin Coddington (1):
-      nfs: verify open flags before allowing open
-
-Chuck Lever (18):
-      NFS: Fix size of NFSACL SETACL operations
-      SUNRPC: Clean up bc_send()
-      SUNRPC: Transport fault injection
-      SUNRPC: Address kbuild warning in net/sunrpc/debugfs.c
-      xprtrdma: Warn when there are orphaned IB objects
-      xprtrdma: Replace rpcrdma_rep::rr_buffer with rr_rxprt
-      xprtrdma: Remove rr_func
-      xprtrdma: Use ib_device pointer safely
-      xprtrdma: Introduce helpers for allocating MWs
-      xprtrdma: Acquire FMRs in rpcrdma_fmr_register_external()
-      xprtrdma: Introduce an FRMR recovery workqueue
-      xprtrdma: Acquire MRs in rpcrdma_register_external()
-      xprtrdma: Remove unused LOCAL_INV recovery logic
-      xprtrdma: Remove ->ro_reset
-      xprtrdma: Remove rpcrdma_ia::ri_memreg_strategy
-      xprtrdma: Split rb_lock
-      xprtrdma: Stack relief in fmr_op_map()
-      xprtrdma: Reduce per-transport MR allocation
-
-Dominique Martinet (1):
-      NFSv4: handle nfs4_get_referral failure
-
-Fabian Frederick (2):
-      pnfs/flexfiles: use swap() in ff_layout_sort_mirrors()
-      sunrpc: use sg_init_one() in krb5_rc4_setup_enc/seq_key()
-
-Jeff Layton (14):
-      sunrpc: keep a count of swapfiles associated with the rpc_clnt
-      sunrpc: make xprt->swapper an atomic_t
-      sunrpc: if we're closing down a socket, clear memalloc on it first
-      sunrpc: lock xprt before trying to set memalloc on the sockets
-      sunrpc: turn swapper_enable/disable functions into rpc_xprt_ops
-      nfs: deny backchannel RPCs with an incorrect authflavor instead of dropping them
-      nfs: increase size of EXCHANGE_ID name string buffer
-      nfs: convert setclientid and exchange_id encoders to use clp->cl_owner_id
-      nfs: update maxsz values for SETCLIENTID and EXCHANGE_ID
-      nfs: make nfs4_init_nonuniform_client_string use a dynamically allocated buffer
-      nfs: make nfs4_init_uniform_client_string use a dynamically allocated buffer
-      nfs: fix potential credential leak in ff_layout_update_mirror_cred
-      nfs: always update creds in mirror, even when we have an already connected ds
-      nfs: take extra reference to fl->fl_file when running a LOCKU operation
-
-Julia Lawall (1):
-      NFS: drop unneeded goto
-
-Kinglong Mee (11):
-      nfs: Only update callback sequnce id when CB_SEQUENCE success
-      nfs: Initialize cb_sequenceres information before validate_seqid()
-      nfs: Fix showing truncated fsid/dev in, /proc/net/nfsfs/volumes
-      nfs: Fix a memory leak when meeting an unsupported state protect
-      nfs: Remove unused argument in nfs_server_set_fsinfo()
-      nfs: Use remove_proc_subtree() instead remove_proc_entry()
-      nfs: Don't setting FILE_CREATED flags always
-      nfs: Remove unneeded micro checking of CONFIG_PROC_FS
-      nfs: Drop bad comment in nfs41_walk_client_list()
-      nfs: Remove invalid NFS_ATTR_FATTR_V4_REFERRAL checking in nfs4_get_rootfh
-      nfs: Remove invalid tk_pid from debug message
-
-Neil Brown (1):
-      SUNRPC: never enqueue a ->rq_cong request on ->sending
-
-NeilBrown (2):
-      NFS: report more appropriate block size for directories.
-      NFSv4: When returning a delegation, don't reclaim an incompatible open mode.
-
-Olga Kornievskaia (2):
-      fixing infinite OPEN loop in 4.0 stateid recovery
-      Recover from stateid-type error on SETATTR
-
-Peng Tao (9):
-      pNFS: fill in nfs42_layoutstat_ops
-      pnfs: add pnfs_report_layoutstat helper function
-      pNFS/flexfiles: track when layout is first used
-      pnfs/flexfiles: add ff_layout_prepare_layoutstats
-      pnfs/flexfiles: encode LAYOUTSTATS flexfiles specific data
-      nfs42: serialize LAYOUTSTATS calls of the same file
-      pnfs/flexfiles: report layoutstat regularly
-      nfs: provide pnfs_report_layoutstat when NFS42 is disabled
-      pnfs/flexfiles: protect ktime manipulation with mirror lock
-
-Stefan Hajnoczi (1):
-      SUNRPC: drop stale doc comments in xprtsock.c
-
-Trond Myklebust (24):
-      NFSv4: Always drain the slot table before re-establishing the lease
-      SUNRPC: Fix a memory leak in the backchannel code
-      SUNRPC: Backchannel handle socket nospace
-      NFSv4: nfs4_handle_delegation_recall_error should ignore EAGAIN
-      SUNRPC: Remove unused argument 'tk_ops' in rpc_run_bc_task
-      SUNRPC: Clean up allocation and freeing of back channel requests
-      SUNRPC: Fix a backchannel race
-      NFS: Ensure that we update the sequence id under the slot table lock
-      NFSv4: Fix stateid recovery on revoked delegations
-      Merge tag 'nfs-rdma-for-4.2' of git://git.linux-nfs.org/projects/anna/nfs-rdma
-      pNFS: Fix a memory leak when attempted pnfs fails
-      NFS: Ensure we set NFS_CONTEXT_RESEND_WRITES when requeuing writes
-      SUNRPC: Handle connection issues correctly on the back channel
-      SUNRPC: Ensure we release the TCP socket once it has been closed
-      SUNRPC: Set the TCP user timeout option on client sockets
-      Merge branch 'bugfixes'
-      NFSv.2/pnfs Add a LAYOUTSTATS rpc function
-      pNFS/flexfiles: Remove unused struct members user_name, group_name
-      pNFS/flexfiles: add layoutstats tracking
-      Merge branch 'layoutstats'
-      pNFS/flexfiles: Turn off layoutcommit for servers that don't need it
-      pNFS/flexfiles: Fix the reset of struct pgio_header when resending
-      NFSv4.2: Fix up a decoding error in layoutstats
-      NFSv4.2: LAYOUTSTATS is optional to implement
-
-Vaishali Thakkar (1):
-      NFS: Convert use of __constant_htonl to htonl
-
-Yijing Wang (1):
-      nfs: Fix comment for nfs_pageio_init() and nfs_pageio_complete_mirror()
-
- fs/nfs/callback.c                         |   6 +-
- fs/nfs/callback_proc.c                    |  38 ++-
- fs/nfs/callback_xdr.c                     |   2 +-
- fs/nfs/client.c                           |  40 +--
- fs/nfs/dir.c                              |   3 -
- fs/nfs/file.c                             |  15 +-
- fs/nfs/flexfilelayout/flexfilelayout.c    | 480 ++++++++++++++++++++++++++++--
- fs/nfs/flexfilelayout/flexfilelayout.h    |  33 +-
- fs/nfs/flexfilelayout/flexfilelayoutdev.c |   7 +-
- fs/nfs/inode.c                            |  12 +-
- fs/nfs/nfs3xdr.c                          |   2 +-
- fs/nfs/nfs42.h                            |   9 +-
- fs/nfs/nfs42proc.c                        |  87 ++++++
- fs/nfs/nfs42xdr.c                         | 106 +++++++
- fs/nfs/nfs4_fs.h                          |   1 +
- fs/nfs/nfs4client.c                       |   1 -
- fs/nfs/nfs4file.c                         |   4 +
- fs/nfs/nfs4getroot.c                      |   7 -
- fs/nfs/nfs4idmap.c                        |   7 +-
- fs/nfs/nfs4proc.c                         | 221 ++++++++++----
- fs/nfs/nfs4state.c                        |   4 +-
- fs/nfs/nfs4xdr.c                          |  15 +-
- fs/nfs/pagelist.c                         |  10 +-
- fs/nfs/pnfs.c                             |  64 ++++
- fs/nfs/pnfs.h                             |  13 +-
- fs/nfs/write.c                            |   9 +-
- include/linux/nfs4.h                      |   1 +
- include/linux/nfs_fs.h                    |   1 +
- include/linux/nfs_fs_sb.h                 |   1 +
- include/linux/nfs_page.h                  |   1 -
- include/linux/nfs_xdr.h                   |  51 +++-
- include/linux/sunrpc/bc_xprt.h            |   1 -
- include/linux/sunrpc/clnt.h               |   1 +
- include/linux/sunrpc/sched.h              |  19 +-
- include/linux/sunrpc/xprt.h               |  39 ++-
- include/linux/sunrpc/xprtrdma.h           |   3 +-
- net/sunrpc/Makefile                       |   2 +-
- net/sunrpc/auth_gss/gss_krb5_crypto.c     |   8 +-
- net/sunrpc/backchannel_rqst.c             | 134 +++++----
- net/sunrpc/bc_svc.c                       |  63 ----
- net/sunrpc/clnt.c                         | 109 +++++--
- net/sunrpc/debugfs.c                      |  78 +++++
- net/sunrpc/svc.c                          |  36 ++-
- net/sunrpc/xprt.c                         |   7 +-
- net/sunrpc/xprtrdma/fmr_ops.c             | 120 +++++---
- net/sunrpc/xprtrdma/frwr_ops.c            | 227 ++++++++++----
- net/sunrpc/xprtrdma/physical_ops.c        |  14 +-
- net/sunrpc/xprtrdma/rpc_rdma.c            |   8 +-
- net/sunrpc/xprtrdma/transport.c           |  43 ++-
- net/sunrpc/xprtrdma/verbs.c               | 257 ++++------------
- net/sunrpc/xprtrdma/xprt_rdma.h           |  38 ++-
- net/sunrpc/xprtsock.c                     | 151 +++++++---
- 52 files changed, 1862 insertions(+), 747 deletions(-)
- delete mode 100644 net/sunrpc/bc_svc.c
--- 
-Trond Myklebust
-Linux NFS client maintainer, PrimaryData
-trond.myklebust@primarydata.com
-
-
+diff --git a/net/9p/client.c b/net/9p/client.c
+index 6f4c4c8..fa88c9a 100644
+--- a/net/9p/client.c
++++ b/net/9p/client.c
+@@ -248,6 +248,9 @@ p9_tag_alloc(struct p9_client *c, u16 tag, unsigned int max_size)
+ 		/* check again since original check was outside of lock */
+ 		while (tag >= c->max_tag) {
+ 			row = (tag / P9_ROW_MAXTAG);
++
++			WARN_ON_ONCE(c->reqs[row]);	// are we about to leak?
++
+ 			c->reqs[row] = kcalloc(P9_ROW_MAXTAG,
+ 					sizeof(struct p9_req_t), GFP_ATOMIC);
+ 
+@@ -286,6 +289,8 @@ p9_tag_alloc(struct p9_client *c, u16 tag, unsigned int max_size)
+ 	p9pdu_reset(req->rc);
+ 
+ 	req->tc->tag = tag-1;
++	if (req->status != REQ_STATUS_IDLE)
++		pr_err("using tag %d with odd status (%d)", tag, req->status);
+ 	req->status = REQ_STATUS_ALLOC;
+ 
+ 	return req;
+@@ -425,6 +430,8 @@ void p9_client_cb(struct p9_client *c, struct p9_req_t *req, int status)
+ 	 * the other thread wakes up will indeed be seen by the waiting side.
+ 	 */
+ 	smp_wmb();
++	if (req->status == REQ_STATUS_IDLE)
++		pr_err("late delivery, tag %d already freed", req->tc->tag);
+ 	req->status = status;
+ 
+ 	wake_up(req->wq);
+@@ -693,6 +700,10 @@ static struct p9_req_t *p9_client_prepare_req(struct p9_client *c,
+ 		tag = p9_idpool_get(c->tagpool);
+ 		if (tag < 0)
+ 			return ERR_PTR(-ENOMEM);
++		if (WARN_ON_ONCE(tag != (u16)tag)) {	// wrapped around?
++			p9_idpool_put(tag, c->tagpool);
++			return ERR_PTR(-ENOMEM);
++		}
+ 	}
+ 
+ 	req = p9_tag_alloc(c, tag, req_size);
+@@ -1647,7 +1658,10 @@ p9_client_write(struct p9_fid *fid, u64 offset, struct iov_iter *from, int *err)
+ 		if (*err) {
+ 			trace_9p_protocol_dump(clnt, req->rc);
+ 			p9_free_req(clnt, req);
++			break;
+ 		}
++		if (rsize < count)
++			pr_err("mismatched reply [tag = %d]\n", req->tc->tag);
+ 
+ 		p9_debug(P9_DEBUG_9P, "<<< RWRITE count %d\n", count);
+ 
