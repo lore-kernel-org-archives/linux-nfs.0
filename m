@@ -1,130 +1,153 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yk0-f182.google.com ([209.85.160.182]:35820 "EHLO
-	mail-yk0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752635AbbGBKka (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Jul 2015 06:40:30 -0400
-Received: by ykdy1 with SMTP id y1so64275407ykd.2
-        for <linux-nfs@vger.kernel.org>; Thu, 02 Jul 2015 03:40:29 -0700 (PDT)
-From: Jeff Layton <jlayton@poochiereds.net>
-To: stable@vger.kernel.org
-Cc: linux-nfs@vger.kernel.org, William Dauchy <wdauchy@gmail.com>,
-        jean@primarydata.com
-Subject: [PATCH][stable] nfs: take extra reference to fl->fl_file when running a setlk
-Date: Thu,  2 Jul 2015 06:40:17 -0400
-Message-Id: <1435833617-4562-1-git-send-email-jeff.layton@primarydata.com>
+Received: from mailout4.w1.samsung.com ([210.118.77.14]:25563 "EHLO
+	mailout4.w1.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753164AbbGBMUC (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Jul 2015 08:20:02 -0400
+Message-id: <55952C6D.50805@samsung.com>
+Date: Thu, 02 Jul 2015 15:19:57 +0300
+From: Andrey Ryabinin <a.ryabinin@samsung.com>
+MIME-version: 1.0
+To: Al Viro <viro@ZenIV.linux.org.uk>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+        Eric Van Hensbergen <ericvh@gmail.com>, linux-nfs@vger.kernel.org
+Subject: Re: running out of tags in 9P (was Re: [git pull] vfs part 2)
+References: <5593A7A0.6050400@samsung.com>
+ <20150701085507.GE17109@ZenIV.linux.org.uk> <5593CE37.4070307@samsung.com>
+ <20150701184408.GF17109@ZenIV.linux.org.uk>
+ <20150702032042.GA32613@ZenIV.linux.org.uk>
+ <20150702041046.GG17109@ZenIV.linux.org.uk>
+ <CAPAsAGzZVy3-D4J1ZGsUZU4RRQ36NtprZg_Uvfi5=46=1_rpWA@mail.gmail.com>
+ <20150702075932.GI17109@ZenIV.linux.org.uk>
+ <CAPAsAGzJW1C-4rd9myZOsiA9dLp2d420PTePaguK=y2RWjrz2A@mail.gmail.com>
+ <20150702082529.GJ17109@ZenIV.linux.org.uk>
+ <20150702084208.GK17109@ZenIV.linux.org.uk>
+In-reply-to: <20150702084208.GK17109@ZenIV.linux.org.uk>
+Content-type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Jeff Layton <jlayton@poochiereds.net>
+On 07/02/2015 11:42 AM, Al Viro wrote:
+> On Thu, Jul 02, 2015 at 09:25:30AM +0100, Al Viro wrote:
+>> On Thu, Jul 02, 2015 at 11:19:03AM +0300, Andrey Ryabinin wrote:
+>>> Besides qemu, I've also tried kvmtool with the same result. IOW I'm seeing
+>>> this under kvmtool as well. It just takes a bit longer to reproduce
+>>> this in kvmtool.
+>>>
+>>>> The bug I suspected to be the cause of that is in tag allocation in
+>>>> net/9p/client.c - we could end up wrapping around 2^16 with enough pending
+>>>> requests and that would have triggered that kind of mess.  However, Andrey
+>>>> doesn't see that test (tag wraparound in p9_client_prepare_req()) trigger.
+>>>> BTW, was that on the run where debugging printk in p9_client_write() *did*
+>>>> trigger?
+>>>
+>>> Yes, WARN_ON_ONCE() in p9_client_prepare_req() didn't trigger,
+>>> but debug printk in p9_client_write() *did* trigger.
+>>
+>> Bloody wonderful...  Could you check if v9fs_write() in qemu
+>> hw/9pfs/virtio-9p.c ever gets to
+>>     offset = 7;
+>>     err = pdu_marshal(pdu, offset, "d", total);
+>> with total > count on your testcase?
 
-We had a report of a crash while stress testing the NFS client:
+Added:
++    if (total > count)
++           *(char *)0 = 0
 
-    BUG: unable to handle kernel NULL pointer dereference at 0000000000000150
-    IP: [<ffffffff8127b698>] locks_get_lock_context+0x8/0x90
-    PGD 0
-    Oops: 0000 [#1] SMP
-    Modules linked in: rpcsec_gss_krb5 nfsv4 dns_resolver nfs fscache ip6t_rpfilter ip6t_REJECT nf_reject_ipv6 xt_conntrack ebtable_nat ebtable_filter ebtable_broute bridge stp llc ebtables ip6table_security ip6table_mangle ip6table_nat nf_conntrack_ipv6 nf_defrag_ipv6 nf_nat_ipv6 ip6table_raw ip6table_filter ip6_tables iptable_security iptable_mangle iptable_nat nf_conntrack_ipv4 nf_defrag_ipv4 nf_nat_ipv4 nf_nat nf_conntrack iptable_raw coretemp crct10dif_pclmul ppdev crc32_pclmul crc32c_intel ghash_clmulni_intel vmw_balloon serio_raw vmw_vmci i2c_piix4 shpchp parport_pc acpi_cpufreq parport nfsd auth_rpcgss nfs_acl lockd grace sunrpc vmwgfx drm_kms_helper ttm drm mptspi scsi_transport_spi mptscsih mptbase e1000 ata_generic pata_acpi
-    CPU: 1 PID: 399 Comm: kworker/1:1H Not tainted 4.1.0-0.rc1.git0.1.fc23.x86_64 #1
-    Hardware name: VMware, Inc. VMware Virtual Platform/440BX Desktop Reference Platform, BIOS 6.00 07/30/2013
-    Workqueue: rpciod rpc_async_schedule [sunrpc]
-    task: ffff880036aea7c0 ti: ffff8800791f4000 task.ti: ffff8800791f4000
-    RIP: 0010:[<ffffffff8127b698>]  [<ffffffff8127b698>] locks_get_lock_context+0x8/0x90
-    RSP: 0018:ffff8800791f7c00  EFLAGS: 00010293
-    RAX: ffff8800791f7c40 RBX: ffff88001f2ad8c0 RCX: ffffe8ffffc80305
-    RDX: 0000000000000000 RSI: 0000000000000000 RDI: 0000000000000000
-    RBP: ffff8800791f7c88 R08: ffff88007fc971d8 R09: 279656d600000000
-    R10: 0000034a01000000 R11: 279656d600000000 R12: ffff88001f2ad918
-    R13: ffff88001f2ad8c0 R14: 0000000000000000 R15: 0000000100e73040
-    FS:  0000000000000000(0000) GS:ffff88007fc80000(0000) knlGS:0000000000000000
-    CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-    CR2: 0000000000000150 CR3: 0000000001c0b000 CR4: 00000000000407e0
-    Stack:
-     ffffffff8127c5b0 ffff8800791f7c18 ffffffffa0171e29 ffff8800791f7c58
-     ffffffffa0171ef8 ffff8800791f7c78 0000000000000246 ffff88001ea0ba00
-     ffff8800791f7c40 ffff8800791f7c40 00000000ff5d86a3 ffff8800791f7ca8
-    Call Trace:
-     [<ffffffff8127c5b0>] ? __posix_lock_file+0x40/0x760
-     [<ffffffffa0171e29>] ? rpc_make_runnable+0x99/0xa0 [sunrpc]
-     [<ffffffffa0171ef8>] ? rpc_wake_up_task_queue_locked.part.35+0xc8/0x250 [sunrpc]
-     [<ffffffff8127cd3a>] posix_lock_file_wait+0x4a/0x120
-     [<ffffffffa03e4f12>] ? nfs41_wake_and_assign_slot+0x32/0x40 [nfsv4]
-     [<ffffffffa03bf108>] ? nfs41_sequence_done+0xd8/0x2d0 [nfsv4]
-     [<ffffffffa03c116d>] do_vfs_lock+0x2d/0x30 [nfsv4]
-     [<ffffffffa03c251d>] nfs4_lock_done+0x1ad/0x210 [nfsv4]
-     [<ffffffffa0171a30>] ? __rpc_sleep_on_priority+0x390/0x390 [sunrpc]
-     [<ffffffffa0171a30>] ? __rpc_sleep_on_priority+0x390/0x390 [sunrpc]
-     [<ffffffffa0171a5c>] rpc_exit_task+0x2c/0xa0 [sunrpc]
-     [<ffffffffa0167450>] ? call_refreshresult+0x150/0x150 [sunrpc]
-     [<ffffffffa0172640>] __rpc_execute+0x90/0x460 [sunrpc]
-     [<ffffffffa0172a25>] rpc_async_schedule+0x15/0x20 [sunrpc]
-     [<ffffffff810baa1b>] process_one_work+0x1bb/0x410
-     [<ffffffff810bacc3>] worker_thread+0x53/0x480
-     [<ffffffff810bac70>] ? process_one_work+0x410/0x410
-     [<ffffffff810bac70>] ? process_one_work+0x410/0x410
-     [<ffffffff810c0b38>] kthread+0xd8/0xf0
-     [<ffffffff810c0a60>] ? kthread_worker_fn+0x180/0x180
-     [<ffffffff817a1aa2>] ret_from_fork+0x42/0x70
-     [<ffffffff810c0a60>] ? kthread_worker_fn+0x180/0x180
+and never hit this condition.
 
-Jean says:
+> 
+> Another thing that might be worth checking: in p9_tag_alloc() (net/9p/client.c)
+> before
+>         req->status = REQ_STATUS_ALLOC;
+> check that req->status == REQ_STATUS_IDLE and yell if it isn't.
+> 
 
-"Running locktests with a large number of iterations resulted in a
- client crash.  The test run took a while and hasn't finished after close
- to 2 hours. The crash happened right after I gave up and killed the test
- (after 107m) with Ctrl+C."
+diff --git a/net/9p/client.c b/net/9p/client.c
+index 6f4c4c8..16a17a0 100644
+--- a/net/9p/client.c
++++ b/net/9p/client.c
+@@ -286,6 +286,8 @@ p9_tag_alloc(struct p9_client *c, u16 tag, unsigned int max_size)
+        p9pdu_reset(req->rc);
 
-The crash happened because a NULL inode pointer got passed into
-locks_get_lock_context. The call chain indicates that file_inode(filp)
-returned NULL, which means that f_inode was NULL. Since that's zeroed
-out in __fput, that suggests that this filp pointer outlived the last
-reference.
+        req->tc->tag = tag-1;
++       if (WARN_ON(req->status != REQ_STATUS_IDLE))
++               pr_err("req->status: %d\n", req->status);
+        req->status = REQ_STATUS_ALLOC;
 
-Looking at the code, that seems possible. We copy the struct file_lock
-that's passed in, but if the task is signalled at an inopportune time we
-can end up trying to use that file_lock in rpciod context after the process
-that requested it has already returned (and possibly put its filp
-reference).
+        return req;
 
-Fix this by taking an extra reference to the filp when we allocate the
-lock info, and put it in nfs4_lock_release.
+[  150.155020] ------------[ cut here ]------------
+[  150.156700] WARNING: CPU: 2 PID: 2304 at ../net/9p/client.c:289 p9_client_prepare_req+0x3b0/0x550()
+[  150.158404] Modules linked in:
+[  150.160177] CPU: 2 PID: 2304 Comm: trinity-c84 Not tainted 4.1.0-rc8+ #409
+[  150.161794] Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS rel-1.7.5.1-0-g8936dbb-20141113_115728-nilsson.home.kraxel.org 04/01/2014
+[  150.165540]  0000000000000009 ffff8801ed13f7a8 ffffffff8161434b 0000000000000000
+[  150.170939]  0000000000000000 ffff8801ed13f7f8 ffffffff8107cf99 ffff8801f451d5f0
+[  150.175942]  ffffffff815f6760 0000000000000003 ffff8800bbac00e0 ffff8800bbac00f0
+[  150.178393] Call Trace:
+[  150.178883]  [<ffffffff8161434b>] dump_stack+0x45/0x57
+[  150.179914]  [<ffffffff8107cf99>] warn_slowpath_common+0x99/0xe0
+[  150.181375]  [<ffffffff815f6760>] ? p9_client_prepare_req+0x3b0/0x550
+[  150.182597]  [<ffffffff8107d145>] warn_slowpath_null+0x15/0x20
+[  150.184067]  [<ffffffff815f6760>] p9_client_prepare_req+0x3b0/0x550
+[  150.185043]  [<ffffffff815fb1e2>] p9_client_zc_rpc.constprop.5+0xe2/0x730
+[  150.186229]  [<ffffffff8161ba46>] ? _raw_spin_unlock+0x16/0x70
+[  150.187049]  [<ffffffff815fb100>] ? p9_client_xattrwalk+0x1b0/0x1b0
+[  150.188477]  [<ffffffff812b1b5e>] ? idr_remove+0x2ce/0x420
+[  150.189443]  [<ffffffff815f5af0>] ? v9fs_unregister_trans+0x70/0x70
+[  150.190456]  [<ffffffff812b1890>] ? idr_mark_full+0x80/0x80
+[  150.191489]  [<ffffffff815f5af0>] ? v9fs_unregister_trans+0x70/0x70
+[  150.193911]  [<ffffffff8161bae7>] ? _raw_spin_unlock_irqrestore+0x47/0xb0
+[  150.195462]  [<ffffffff815fcae4>] ? p9_idpool_put+0x54/0x60
+[  150.196729]  [<ffffffff812c9906>] ? iov_iter_advance+0xb6/0x240
+[  150.199766]  [<ffffffff815fbea3>] p9_client_write+0x333/0x3d0
+[  150.201073]  [<ffffffff811a882e>] ? kasan_kmalloc+0x5e/0x70
+[  150.202512]  [<ffffffff815fbb70>] ? p9_client_readdir+0x340/0x340
+[  150.204115]  [<ffffffff811c80dd>] ? rw_copy_check_uvector+0xed/0x170
+[  150.204960]  [<ffffffff812d82d6>] ? __percpu_counter_add+0x26/0xb0
+[  150.206517]  [<ffffffff8113574a>] ? generic_write_checks+0xfa/0x1e0
+[  150.208092]  [<ffffffff8125c054>] v9fs_file_write_iter+0xc4/0x200
+[  150.209642]  [<ffffffff811c9840>] ? __sb_end_write+0x80/0x80
+[  150.211305]  [<ffffffff8125bf90>] ? v9fs_file_lock_dotl+0x3d0/0x3d0
+[  150.216908]  [<ffffffff81128d14>] ? ctx_sched_in.isra.57+0xe4/0x2f0
+[  150.221069]  [<ffffffff811c6d84>] ? rw_verify_area+0x54/0x150
+[  150.222570]  [<ffffffff811c7363>] do_readv_writev+0x223/0x450
+[  150.229044]  [<ffffffff811290b7>] ? perf_event_context_sched_in.isra.61+0x127/0x180
+[  150.231020]  [<ffffffff8125bf90>] ? v9fs_file_lock_dotl+0x3d0/0x3d0
+[  150.231862]  [<ffffffff811c7140>] ? vfs_write+0x1e0/0x1e0
+[  150.232583]  [<ffffffff81129b7a>] ? __perf_event_task_sched_in+0x5a/0xa0
+[  150.233471]  [<ffffffff810aee08>] ? finish_task_switch+0xa8/0x1b0
+[  150.234282]  [<ffffffff8161588b>] ? __schedule+0x3db/0xc90
+[  150.235020]  [<ffffffff81616197>] ? schedule+0x57/0xd0
+[  150.235709]  [<ffffffff8161ba46>] ? _raw_spin_unlock+0x16/0x70
+[  150.236493]  [<ffffffff81618a0f>] ? __mutex_lock_slowpath+0x1df/0x200
+[  150.239059]  [<ffffffff811c9840>] ? __sb_end_write+0x80/0x80
+[  150.242120]  [<ffffffff81618830>] ? __ww_mutex_lock_interruptible+0xe0/0xe0
+[  150.245274]  [<ffffffff810ecfd3>] ? hrtimer_start+0x13/0x20
+[  150.247527]  [<ffffffff810ee54d>] ? do_setitimer+0x30d/0x400
+[  150.249351]  [<ffffffff811c764e>] vfs_writev+0x4e/0x70
+[  150.250378]  [<ffffffff811c8348>] SyS_writev+0xa8/0x140
+[  150.251545]  [<ffffffff811c82a0>] ? SyS_readv+0x140/0x140
+[  150.253208]  [<ffffffff8161c2ae>] system_call_fastpath+0x12/0x71
+[  150.256990] ---[ end trace 4f640ea141ed3d61 ]---
+[  150.259076] 9pnet: req->status: 4
 
-Reported-by: Jean Spector <jean@primarydata.com>
-Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: <stable@vger.kernel.org> # all stable-series kernels
-Upstream commit: feaff8e5b2cfc3eae02cf65db7a400b0b9ffc596
----
- fs/nfs/nfs4proc.c | 3 +++
- 1 file changed, 3 insertions(+)
+> BTW, the loop in there (
+>                 /* check again since original check was outside of lock */
+>                 while (tag >= c->max_tag) {
+> ) looks fishy.  If we get more than P9_ROW_MAXTAG allocations at once,
+> we'll have trouble, but I doubt that this is what we are hitting.  In any
+> case, adding WARN_ON(c->req[row]); right after
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 45b35b9b1e36..55e1e3af23a3 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -38,6 +38,7 @@
- #include <linux/mm.h>
- #include <linux/delay.h>
- #include <linux/errno.h>
-+#include <linux/file.h>
- #include <linux/string.h>
- #include <linux/ratelimit.h>
- #include <linux/printk.h>
-@@ -5604,6 +5605,7 @@ static struct nfs4_lockdata *nfs4_alloc_lockdata(struct file_lock *fl,
- 	p->server = server;
- 	atomic_inc(&lsp->ls_count);
- 	p->ctx = get_nfs_open_context(ctx);
-+	get_file(fl->fl_file);
- 	memcpy(&p->fl, fl, sizeof(p->fl));
- 	return p;
- out_free_seqid:
-@@ -5716,6 +5718,7 @@ static void nfs4_lock_release(void *calldata)
- 		nfs_free_seqid(data->arg.lock_seqid);
- 	nfs4_put_lock_state(data->lsp);
- 	put_nfs_open_context(data->ctx);
-+	fput(data->fl.fl_file);
- 	kfree(data);
- 	dprintk("%s: done!\n", __func__);
- }
--- 
-2.4.3
+I didn't get this. c->reqs[row] is always non-NULL as it should be, so this warning
+will trigger all the time.
+
+
+
+>                         row = (tag / P9_ROW_MAXTAG);
+> wouldn't hurt.  I would be very surprised if that one triggered, though.
+> 
 
