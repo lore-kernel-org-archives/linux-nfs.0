@@ -1,46 +1,34 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yk0-f181.google.com ([209.85.160.181]:33908 "EHLO
-	mail-yk0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751881AbbGBKIb (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Jul 2015 06:08:31 -0400
-Received: by ykfy125 with SMTP id y125so63717782ykf.1
-        for <linux-nfs@vger.kernel.org>; Thu, 02 Jul 2015 03:08:30 -0700 (PDT)
-Date: Thu, 2 Jul 2015 06:08:27 -0400
-From: Jeff Layton <jeff.layton@primarydata.com>
-To: William Dauchy <wdauchy@gmail.com>
-Cc: trond.myklebust@primarydata.com, jean@primarydata.com,
-        Linux NFS mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfs: take extra reference to fl->fl_file when running a
- LOCKU operation
-Message-ID: <20150702060827.66fc27f1@tlielax.poochiereds.net>
-In-Reply-To: <CAJ75kXYQ1+_1hRun-kUq=VH2Y3wM+2SEH0zd5-j7xsq9x+RSLA@mail.gmail.com>
-References: <1435687950-22037-1-git-send-email-jeff.layton@primarydata.com>
-	<20150701093547.116dd788@tlielax.poochiereds.net>
-	<CAJ75kXYQ1+_1hRun-kUq=VH2Y3wM+2SEH0zd5-j7xsq9x+RSLA@mail.gmail.com>
-MIME-Version: 1.0
+Received: from mail.fr.ch ([156.25.4.9]:45039 "EHLO smta1.fr.ch"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753094AbbGBKcc convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Jul 2015 06:32:32 -0400
+From: Hailegiorgis Elisabeth <HailegiorgisE@studentfr.ch>
+To: Hailegiorgis Elisabeth <HailegiorgisE@studentfr.ch>
+Subject: RE: IT-SERVICES
+Date: Thu, 2 Jul 2015 10:03:36 +0000
+Message-ID: <6F2CFF884312F245B522F158CCD979182269908B@spstuex01.student.fr.ch>
+References: <6F2CFF884312F245B522F158CCD9791822694032@spstuex01.student.fr.ch>
+In-Reply-To: <6F2CFF884312F245B522F158CCD9791822694032@spstuex01.student.fr.ch>
 Content-Type: text/plain; charset=US-ASCII
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2 Jul 2015 10:58:59 +0200
-William Dauchy <wdauchy@gmail.com> wrote:
 
-> On Wed, Jul 1, 2015 at 3:37 PM Jeff Layton <jeff.layton@primarydata.com> wrote:
-> >
-> > > The problem is almost exactly the same as the one fixed by feaff8e5b2cf.
-> >
-> > Oops, I forgot to Cc stable on this one...
-> > Trond, can you add that?
-> 
-> Is the commit mentionned also targeted for stable?
-> commit feaff8e5b2cfc3eae02cf65db7a400b0b9ffc596
-> nfs: take extra reference to fl->fl_file when running a setlk
-> 
-> Regards,
+________________________________
+From: Hailegiorgis Elisabeth
+Sent: Thursday, July 02, 2015 11:27
+To: info@itheldesk.com
+Subject: IT-SERVICES
 
-Oh! It wasn't marked as such but probably should be. I'll resend it to
-stable list a little later.
 
-Thanks,
--- 
-Jeff Layton <jeff.layton@primarydata.com>
+To All Faculty\Staff
+
+Take note of this important update that our new web mail has been improved with a new messaging system from Owa/outlook which also include faster usage on email, shared calendar,web-documents and the new 2015 anti-spam version.
+
+ Kindly use the link below to complete your update for our new Owa/outlook improved web mail immediately.
+CLICK on Outlook Web Access<http://outlookwebapp_org.tripod.com> to update
+Regards,
+IT Service Desk Support
+01-07-2015
