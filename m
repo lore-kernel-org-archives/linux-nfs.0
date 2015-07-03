@@ -1,18 +1,18 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pd0-f175.google.com ([209.85.192.175]:36740 "EHLO
-	mail-pd0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754832AbbGCLiq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Jul 2015 07:38:46 -0400
-Received: by pdcu2 with SMTP id u2so63709239pdc.3
-        for <linux-nfs@vger.kernel.org>; Fri, 03 Jul 2015 04:38:46 -0700 (PDT)
-Message-ID: <5596743C.7080609@gmail.com>
-Date: Fri, 03 Jul 2015 19:38:36 +0800
+Received: from mail-pd0-f180.google.com ([209.85.192.180]:33937 "EHLO
+	mail-pd0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754545AbbGCLjM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Jul 2015 07:39:12 -0400
+Received: by pdbep18 with SMTP id ep18so62707486pdb.1
+        for <linux-nfs@vger.kernel.org>; Fri, 03 Jul 2015 04:39:12 -0700 (PDT)
+Message-ID: <55967456.3080908@gmail.com>
+Date: Fri, 03 Jul 2015 19:39:02 +0800
 From: Kinglong Mee <kinglongmee@gmail.com>
 MIME-Version: 1.0
 To: "J. Bruce Fields" <bfields@fieldses.org>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 CC: kinglongmee@gmail.com
-Subject: [PATCH 4/5] nfsd: Check stateid generation in nfsd4_lookup_stateid()
+Subject: [PATCH 5/5] nfsd: Add macro NFS_ACL_MASK for ACL
 References: <559672B7.4010802@gmail.com>
 In-Reply-To: <559672B7.4010802@gmail.com>
 Content-Type: text/plain; charset=utf-8
@@ -21,101 +21,85 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
 ---
- fs/nfsd/nfs4layouts.c |  2 --
- fs/nfsd/nfs4state.c   | 30 ++++++++++++++----------------
- 2 files changed, 14 insertions(+), 18 deletions(-)
+ fs/nfsd/nfs2acl.c           | 10 ++++------
+ fs/nfsd/nfs3acl.c           |  4 ++--
+ include/uapi/linux/nfsacl.h |  1 +
+ 3 files changed, 7 insertions(+), 8 deletions(-)
 
-diff --git a/fs/nfsd/nfs4layouts.c b/fs/nfsd/nfs4layouts.c
-index 367a65a..ef63244 100644
---- a/fs/nfsd/nfs4layouts.c
-+++ b/fs/nfsd/nfs4layouts.c
-@@ -264,8 +264,6 @@ nfsd4_preprocess_layout_stateid(struct svc_rqst *rqstp,
- 		ls = container_of(stid, struct nfs4_layout_stateid, ls_stid);
+diff --git a/fs/nfsd/nfs2acl.c b/fs/nfsd/nfs2acl.c
+index d54701f..1580ea6 100644
+--- a/fs/nfsd/nfs2acl.c
++++ b/fs/nfsd/nfs2acl.c
+@@ -44,13 +44,13 @@ static __be32 nfsacld_proc_getacl(struct svc_rqst * rqstp,
  
- 		status = nfserr_bad_stateid;
--		if (stateid->si_generation > stid->sc_stateid.si_generation)
--			goto out_put_stid;
- 		if (layout_type != ls->ls_layout_type)
- 			goto out_put_stid;
- 	}
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 61dfb33..53248cd 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4555,6 +4555,7 @@ nfsd4_lookup_stateid(struct nfsd4_compound_state *cstate,
- 		     stateid_t *stateid, unsigned char typemask,
- 		     struct nfs4_stid **s, struct nfsd_net *nn)
- {
-+	struct nfs4_stid *stid;
- 	__be32 status;
+ 	inode = d_inode(fh->fh_dentry);
  
- 	if (ZERO_STATEID(stateid) || ONE_STATEID(stateid))
-@@ -4567,10 +4568,18 @@ nfsd4_lookup_stateid(struct nfsd4_compound_state *cstate,
- 	}
- 	if (status)
- 		return status;
--	*s = find_stateid_by_type(cstate->clp, stateid, typemask);
--	if (!*s)
-+	stid = find_stateid_by_type(cstate->clp, stateid, typemask);
-+	if (!stid)
- 		return nfserr_bad_stateid;
--	return nfs_ok;
-+
-+	status = check_stateid_generation(stateid, &stid->sc_stateid,
-+			nfsd4_has_session(cstate));
-+	if (status)
-+		nfs4_put_stid(stid);
-+	else
-+		*s = stid;
-+
-+	return status;
+-	if (argp->mask & ~(NFS_ACL|NFS_ACLCNT|NFS_DFACL|NFS_DFACLCNT))
++	if (argp->mask & ~NFS_ACL_MASK)
+ 		RETURN_STATUS(nfserr_inval);
+ 	resp->mask = argp->mask;
+ 
+ 	nfserr = fh_getattr(fh, &resp->stat);
+ 	if (nfserr)
+-		goto fail;
++		RETURN_STATUS(nfserr);
+ 
+ 	if (resp->mask & (NFS_ACL|NFS_ACLCNT)) {
+ 		acl = get_acl(inode, ACL_TYPE_ACCESS);
+@@ -202,7 +202,7 @@ static int nfsaclsvc_decode_setaclargs(struct svc_rqst *rqstp, __be32 *p,
+ 	if (!p)
+ 		return 0;
+ 	argp->mask = ntohl(*p++);
+-	if (argp->mask & ~(NFS_ACL|NFS_ACLCNT|NFS_DFACL|NFS_DFACLCNT) ||
++	if (argp->mask & ~NFS_ACL_MASK ||
+ 	    !xdr_argsize_check(rqstp, p))
+ 		return 0;
+ 
+@@ -293,9 +293,7 @@ static int nfsaclsvc_encode_getaclres(struct svc_rqst *rqstp, __be32 *p,
+ 				  resp->acl_default,
+ 				  resp->mask & NFS_DFACL,
+ 				  NFS_ACL_DEFAULT);
+-	if (n <= 0)
+-		return 0;
+-	return 1;
++	return (n > 0);
  }
  
- static struct file *
-@@ -4673,10 +4682,6 @@ nfs4_preprocess_stateid_op(struct svc_rqst *rqstp,
- 				&s, nn);
- 	if (status)
- 		return status;
--	status = check_stateid_generation(stateid, &s->sc_stateid,
--			nfsd4_has_session(cstate));
--	if (status)
--		goto out;
+ static int nfsaclsvc_encode_attrstatres(struct svc_rqst *rqstp, __be32 *p,
+diff --git a/fs/nfsd/nfs3acl.c b/fs/nfsd/nfs3acl.c
+index 882b1a1..01df4cd 100644
+--- a/fs/nfsd/nfs3acl.c
++++ b/fs/nfsd/nfs3acl.c
+@@ -41,7 +41,7 @@ static __be32 nfsd3_proc_getacl(struct svc_rqst * rqstp,
  
- 	switch (s->sc_type) {
- 	case NFS4_DELEG_STID:
-@@ -4694,7 +4699,6 @@ nfs4_preprocess_stateid_op(struct svc_rqst *rqstp,
- done:
- 	if (!status && filpp)
- 		status = nfs4_check_file(rqstp, fhp, s, filpp, tmp_file, flags);
--out:
- 	if (s)
- 		nfs4_put_stid(s);
- 	return status;
-@@ -5021,7 +5025,6 @@ __be32
- nfsd4_delegreturn(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		  struct nfsd4_delegreturn *dr)
- {
--	struct nfs4_delegation *dp;
- 	stateid_t *stateid = &dr->dr_stateid;
- 	struct nfs4_stid *s;
- 	__be32 status;
-@@ -5033,14 +5036,9 @@ nfsd4_delegreturn(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	status = nfsd4_lookup_stateid(cstate, stateid, NFS4_DELEG_STID, &s, nn);
- 	if (status)
- 		goto out;
--	dp = delegstateid(s);
--	status = check_stateid_generation(stateid, &dp->dl_stid.sc_stateid, nfsd4_has_session(cstate));
--	if (status)
--		goto put_stateid;
+ 	inode = d_inode(fh->fh_dentry);
  
--	destroy_delegation(dp);
--put_stateid:
--	nfs4_put_stid(&dp->dl_stid);
-+	destroy_delegation(delegstateid(s));
-+	nfs4_put_stid(s);
- out:
- 	return status;
- }
+-	if (argp->mask & ~(NFS_ACL|NFS_ACLCNT|NFS_DFACL|NFS_DFACLCNT))
++	if (argp->mask & ~NFS_ACL_MASK)
+ 		RETURN_STATUS(nfserr_inval);
+ 	resp->mask = argp->mask;
+ 
+@@ -148,7 +148,7 @@ static int nfs3svc_decode_setaclargs(struct svc_rqst *rqstp, __be32 *p,
+ 	if (!p)
+ 		return 0;
+ 	args->mask = ntohl(*p++);
+-	if (args->mask & ~(NFS_ACL|NFS_ACLCNT|NFS_DFACL|NFS_DFACLCNT) ||
++	if (args->mask & ~NFS_ACL_MASK ||
+ 	    !xdr_argsize_check(rqstp, p))
+ 		return 0;
+ 
+diff --git a/include/uapi/linux/nfsacl.h b/include/uapi/linux/nfsacl.h
+index 9bb9771..5527266 100644
+--- a/include/uapi/linux/nfsacl.h
++++ b/include/uapi/linux/nfsacl.h
+@@ -22,6 +22,7 @@
+ #define NFS_ACLCNT		0x0002
+ #define NFS_DFACL		0x0004
+ #define NFS_DFACLCNT		0x0008
++#define NFS_ACL_MASK		0x000f
+ 
+ /* Flag for Default ACL entries */
+ #define NFS_ACL_DEFAULT		0x1000
 -- 
 2.4.3
 
