@@ -1,106 +1,72 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from youngberry.canonical.com ([91.189.89.112]:52756 "EHLO
-	youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752119AbbGFJpT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Jul 2015 05:45:19 -0400
-Date: Mon, 6 Jul 2015 10:45:16 +0100
-From: Luis Henriques <luis.henriques@canonical.com>
-To: Jeff Layton <jlayton@poochiereds.net>
-Cc: stable@vger.kernel.org, linux-nfs@vger.kernel.org,
-        William Dauchy <wdauchy@gmail.com>, jean@primarydata.com
-Subject: Re: [PATCH][stable] nfs: take extra reference to fl->fl_file when
- running a setlk
-Message-ID: <20150706094516.GB2165@ares>
-References: <1435833617-4562-1-git-send-email-jeff.layton@primarydata.com>
+Received: from mail-wg0-f49.google.com ([74.125.82.49]:36157 "EHLO
+	mail-wg0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750985AbbGFJqp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Jul 2015 05:46:45 -0400
+Received: by wguu7 with SMTP id u7so135276056wgu.3
+        for <linux-nfs@vger.kernel.org>; Mon, 06 Jul 2015 02:46:43 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-In-Reply-To: <1435833617-4562-1-git-send-email-jeff.layton@primarydata.com>
+In-Reply-To: <20150702060827.66fc27f1@tlielax.poochiereds.net>
+References: <1435687950-22037-1-git-send-email-jeff.layton@primarydata.com>
+ <20150701093547.116dd788@tlielax.poochiereds.net> <CAJ75kXYQ1+_1hRun-kUq=VH2Y3wM+2SEH0zd5-j7xsq9x+RSLA@mail.gmail.com>
+ <20150702060827.66fc27f1@tlielax.poochiereds.net>
+From: William Dauchy <wdauchy@gmail.com>
+Date: Mon, 6 Jul 2015 11:46:24 +0200
+Message-ID: <CAJ75kXYfpWSYxVw482Y48hf0AMvtRH12ROGTDOd3Tv03nxe0hw@mail.gmail.com>
+Subject: Re: [PATCH] nfs: take extra reference to fl->fl_file when running a
+ LOCKU operation
+To: Jeff Layton <jeff.layton@primarydata.com>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Jean Spector <jean@primarydata.com>,
+        Linux NFS mailing list <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jul 02, 2015 at 06:40:17AM -0400, Jeff Layton wrote:
-> From: Jeff Layton <jlayton@poochiereds.net>
-> 
-> We had a report of a crash while stress testing the NFS client:
-> 
->     BUG: unable to handle kernel NULL pointer dereference at 0000000000000150
->     IP: [<ffffffff8127b698>] locks_get_lock_context+0x8/0x90
->     PGD 0
->     Oops: 0000 [#1] SMP
->     Modules linked in: rpcsec_gss_krb5 nfsv4 dns_resolver nfs fscache ip6t_rpfilter ip6t_REJECT nf_reject_ipv6 xt_conntrack ebtable_nat ebtable_filter ebtable_broute bridge stp llc ebtables ip6table_security ip6table_mangle ip6table_nat nf_conntrack_ipv6 nf_defrag_ipv6 nf_nat_ipv6 ip6table_raw ip6table_filter ip6_tables iptable_security iptable_mangle iptable_nat nf_conntrack_ipv4 nf_defrag_ipv4 nf_nat_ipv4 nf_nat nf_conntrack iptable_raw coretemp crct10dif_pclmul ppdev crc32_pclmul crc32c_intel ghash_clmulni_intel vmw_balloon serio_raw vmw_vmci i2c_piix4 shpchp parport_pc acpi_cpufreq parport nfsd auth_rpcgss nfs_acl lockd grace sunrpc vmwgfx drm_kms_helper ttm drm mptspi scsi_transport_spi mptscsih mptbase e1000 ata_generic pata_acpi
->     CPU: 1 PID: 399 Comm: kworker/1:1H Not tainted 4.1.0-0.rc1.git0.1.fc23.x86_64 #1
->     Hardware name: VMware, Inc. VMware Virtual Platform/440BX Desktop Reference Platform, BIOS 6.00 07/30/2013
->     Workqueue: rpciod rpc_async_schedule [sunrpc]
->     task: ffff880036aea7c0 ti: ffff8800791f4000 task.ti: ffff8800791f4000
->     RIP: 0010:[<ffffffff8127b698>]  [<ffffffff8127b698>] locks_get_lock_context+0x8/0x90
->     RSP: 0018:ffff8800791f7c00  EFLAGS: 00010293
->     RAX: ffff8800791f7c40 RBX: ffff88001f2ad8c0 RCX: ffffe8ffffc80305
->     RDX: 0000000000000000 RSI: 0000000000000000 RDI: 0000000000000000
->     RBP: ffff8800791f7c88 R08: ffff88007fc971d8 R09: 279656d600000000
->     R10: 0000034a01000000 R11: 279656d600000000 R12: ffff88001f2ad918
->     R13: ffff88001f2ad8c0 R14: 0000000000000000 R15: 0000000100e73040
->     FS:  0000000000000000(0000) GS:ffff88007fc80000(0000) knlGS:0000000000000000
->     CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
->     CR2: 0000000000000150 CR3: 0000000001c0b000 CR4: 00000000000407e0
->     Stack:
->      ffffffff8127c5b0 ffff8800791f7c18 ffffffffa0171e29 ffff8800791f7c58
->      ffffffffa0171ef8 ffff8800791f7c78 0000000000000246 ffff88001ea0ba00
->      ffff8800791f7c40 ffff8800791f7c40 00000000ff5d86a3 ffff8800791f7ca8
->     Call Trace:
->      [<ffffffff8127c5b0>] ? __posix_lock_file+0x40/0x760
->      [<ffffffffa0171e29>] ? rpc_make_runnable+0x99/0xa0 [sunrpc]
->      [<ffffffffa0171ef8>] ? rpc_wake_up_task_queue_locked.part.35+0xc8/0x250 [sunrpc]
->      [<ffffffff8127cd3a>] posix_lock_file_wait+0x4a/0x120
->      [<ffffffffa03e4f12>] ? nfs41_wake_and_assign_slot+0x32/0x40 [nfsv4]
->      [<ffffffffa03bf108>] ? nfs41_sequence_done+0xd8/0x2d0 [nfsv4]
->      [<ffffffffa03c116d>] do_vfs_lock+0x2d/0x30 [nfsv4]
->      [<ffffffffa03c251d>] nfs4_lock_done+0x1ad/0x210 [nfsv4]
->      [<ffffffffa0171a30>] ? __rpc_sleep_on_priority+0x390/0x390 [sunrpc]
->      [<ffffffffa0171a30>] ? __rpc_sleep_on_priority+0x390/0x390 [sunrpc]
->      [<ffffffffa0171a5c>] rpc_exit_task+0x2c/0xa0 [sunrpc]
->      [<ffffffffa0167450>] ? call_refreshresult+0x150/0x150 [sunrpc]
->      [<ffffffffa0172640>] __rpc_execute+0x90/0x460 [sunrpc]
->      [<ffffffffa0172a25>] rpc_async_schedule+0x15/0x20 [sunrpc]
->      [<ffffffff810baa1b>] process_one_work+0x1bb/0x410
->      [<ffffffff810bacc3>] worker_thread+0x53/0x480
->      [<ffffffff810bac70>] ? process_one_work+0x410/0x410
->      [<ffffffff810bac70>] ? process_one_work+0x410/0x410
->      [<ffffffff810c0b38>] kthread+0xd8/0xf0
->      [<ffffffff810c0a60>] ? kthread_worker_fn+0x180/0x180
->      [<ffffffff817a1aa2>] ret_from_fork+0x42/0x70
->      [<ffffffff810c0a60>] ? kthread_worker_fn+0x180/0x180
-> 
-> Jean says:
-> 
-> "Running locktests with a large number of iterations resulted in a
->  client crash.  The test run took a while and hasn't finished after close
->  to 2 hours. The crash happened right after I gave up and killed the test
->  (after 107m) with Ctrl+C."
-> 
-> The crash happened because a NULL inode pointer got passed into
-> locks_get_lock_context. The call chain indicates that file_inode(filp)
-> returned NULL, which means that f_inode was NULL. Since that's zeroed
-> out in __fput, that suggests that this filp pointer outlived the last
-> reference.
-> 
-> Looking at the code, that seems possible. We copy the struct file_lock
-> that's passed in, but if the task is signalled at an inopportune time we
-> can end up trying to use that file_lock in rpciod context after the process
-> that requested it has already returned (and possibly put its filp
-> reference).
-> 
-> Fix this by taking an extra reference to the filp when we allocate the
-> lock info, and put it in nfs4_lock_release.
-> 
-> Reported-by: Jean Spector <jean@primarydata.com>
-> Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
-> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-> Cc: <stable@vger.kernel.org> # all stable-series kernels
-> Upstream commit: feaff8e5b2cfc3eae02cf65db7a400b0b9ffc596
+Hello,
 
-Thanks, I'm queuing it for the 3.16 kernel.
+I don't know if it's related but after applying these two patches, I
+got a crash; will try to get more info.
 
-Cheers,
---
-Luís
+BUG: unable to handle kernel NULL pointer dereference at            (nil)
+IP: [<ffffffff810ee2b3>] filemap_fault+0x23/0x430
+PGD 0
+Oops: 0000 [#1] PREEMPT SMP
+CPU: 2 PID: 32013 Comm: umount.nfs4 Tainted: G        W    3.14.46 #1
+task: ffff880f6044ecc0 ti: ffff880f6044f248 task.ti: ffff880f6044f248
+RIP: 0010:[<ffffffff810ee2b3>]  [<ffffffff810ee2b3>] filemap_fault+0x23/0x430
+RSP: 0000:ffff880f4e56fcc8  EFLAGS: 00010292
+RAX: 0000000000000000 RBX: ffff881ff95d4480 RCX: ffff880f4e5749c8
+RDX: ffffffff817b60c0 RSI: ffff880f4e56fd50 RDI: ffff881ff95d4480
+RBP: ffff880f4e56fd18 R08: 0000000000000007 R09: 00000000000000a8
+R10: 0000000000000000 R11: 0000000000000000 R12: 0000000000000007
+R13: ffff880f5b884700 R14: 000002d4a72be5fc R15: 0000000000000000
+FS:  000002d4a80c47e0(0000) GS:ffff88103fc40000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+CR2: 0000000000000000 CR3: 000000000160c000 CR4: 00000000001607f0
+Stack:
+ffff880f6044ecc0 0000000000000009 0000000000000082 0000000000000000
+ffff880f6044f448 ffff881ff95d4480 00000000000000a8 0000000000000007
+000002d4a72be5fc 0000000000000000 ffff880f4e56fd98 ffffffff81111f88
+Call Trace:
+[<ffffffff81111f88>] __do_fault+0x78/0x5e0
+[<ffffffff81116f0c>] handle_mm_fault+0x39c/0xcb0
+[<ffffffff81033e23>] __do_page_fault+0x1b3/0x620
+[<ffffffff815fc01e>] ? retint_swapgs_pax+0x10/0x15
+[<ffffffff810a889d>] ? trace_hardirqs_on_caller+0x13d/0x1e0
+[<ffffffff812c827e>] ? trace_hardirqs_off_thunk+0x41/0x43
+[<ffffffff812c8238>] ? trace_hardirqs_on_thunk+0x41/0x46
+[<ffffffff81178c8b>] ? SyS_umount+0x8b/0x4a0
+[<ffffffff815fca33>] ? system_call_fastpath+0x16/0x1b
+[<ffffffff810342cc>] do_page_fault+0xc/0x20
+[<ffffffff815fc272>] page_fault+0x22/0x30
+Code: fe ff ff 0f 1f 44 00 00 55 48 89 e5 41 57 41 56 41 55 41 54 53
+48 83 ec 28 4c 8b af a0 00 00 00 4c 8b 66 08 49 8b 85 b8 01 00 00 <4c>
+8b 38 48 89 45 c8 49 8b 47 40 48 8d 90 ff 0f 00 00 b8 02 00
+RIP  [<ffffffff810ee2b3>] filemap_fault+0x23/0x430
+RSP <ffff880f4e56fcc8>
+CR2: 0000000000000000
+---[ end trace 59f46e48035e53e4 ]---
 
+-- 
+William
