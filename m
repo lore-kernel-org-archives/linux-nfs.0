@@ -1,223 +1,58 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.opengridcomputing.com ([72.48.136.20]:51983 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750945AbbGFOjL convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 6 Jul 2015 10:39:11 -0400
-From: "Steve Wise" <swise@opengridcomputing.com>
-To: "'Sagi Grimberg'" <sagig@dev.mellanox.co.il>, <dledford@redhat.com>
-Cc: <sagig@mellanox.com>, <ogerlitz@mellanox.com>, <roid@mellanox.com>,
-        <linux-rdma@vger.kernel.org>, <eli@mellanox.com>,
-        <target-devel@vger.kernel.org>, <linux-nfs@vger.kernel.org>,
-        <trond.myklebust@primarydata.com>, <bfields@fieldses.org>
-References: <20150705231831.12029.80307.stgit@build2.ogc.int> <20150705232158.12029.25472.stgit@build2.ogc.int> <559A3536.3020807@dev.mellanox.co.il>
-In-Reply-To: <559A3536.3020807@dev.mellanox.co.il>
-Subject: RE: [PATCH V3 1/5] RDMA/core: Transport-independent access flags
-Date: Mon, 6 Jul 2015 09:39:12 -0500
-Message-ID: <001801d0b7f9$8673a550$935aeff0$@opengridcomputing.com>
-MIME-Version: 1.0
-Content-Type: text/plain;
-	charset="UTF-8"
+Received: from mx1.redhat.com ([209.132.183.28]:52903 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751412AbbGFOmb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 6 Jul 2015 10:42:31 -0400
+Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+	by mx1.redhat.com (Postfix) with ESMTPS id 0B87A85538
+	for <linux-nfs@vger.kernel.org>; Mon,  6 Jul 2015 14:42:31 +0000 (UTC)
+Received: from smallhat.boston.devel.redhat.com (vpn-62-169.rdu2.redhat.com [10.10.62.169])
+	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id t66EgUBZ020235
+	for <linux-nfs@vger.kernel.org>; Mon, 6 Jul 2015 10:42:30 -0400
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH] mount.nfs: Teach mount.nfs about the mountversion option
+Date: Mon,  6 Jul 2015 10:42:28 -0400
+Message-Id: <1436193748-4301-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+When the mountversion option is used, there should
+not be any mount negotiations with the server.
 
+Also, when the option is used, its know that the mount
+is a v4 mount and a V_SPECFIC type.
 
-> -----Original Message-----
-> From: Sagi Grimberg [mailto:sagig@dev.mellanox.co.il]
-> Sent: Monday, July 06, 2015 2:59 AM
-> To: Steve Wise; dledford@redhat.com
-> Cc: sagig@mellanox.com; ogerlitz@mellanox.com; roid@mellanox.com; linux-rdma@vger.kernel.org; eli@mellanox.com; target-
-> devel@vger.kernel.org; linux-nfs@vger.kernel.org; trond.myklebust@primarydata.com; bfields@fieldses.org
-> Subject: Re: [PATCH V3 1/5] RDMA/core: Transport-independent access flags
-> 
-> On 7/6/2015 2:22 AM, Steve Wise wrote:
-> > The semantics for MR access flags are not consistent across RDMA
-> > protocols.  So rather than have applications try and glean what they
-> > need, have them pass in the intended roles and attributes for the MR to
-> > be allocated and let the RDMA core select the appropriate access flags
-> > given the roles, attributes, and device capabilities.
-> >
-> > We introduce rdma_mr_roles and rdma_mr_attributes that enumerate the
-> > possible roles and attributes for a MR.  These are documented in the
-> > enums themselves.
-> >
-> > New services exported:
-> >
-> > rdma_device_access_flags() - given the intended MR roles and attributes
-> > passed in, return the ib_access_flags bits for the device.
-> >
-> > rdma_get_dma_mr() - allocate a dma mr using the applications intended
-> > MR roles and MR attributes.  This uses rdma_device_access_flags().
-> >
-> > rdma_fast_reg_access_flags() - return the ib_access_flags bits needed
-> > for a fast register WR given the applications intended MR roles and
-> > MR attributes.  This uses rdma_device_access_flags().
-> >
-> > Signed-off-by: Steve Wise <swise@opengridcomputing.com>
-> > ---
-> >
-> >   drivers/infiniband/core/verbs.c |   30 +++++++++++
-> >   include/rdma/ib_verbs.h         |  106 +++++++++++++++++++++++++++++++++++++++
-> >   2 files changed, 136 insertions(+), 0 deletions(-)
-> >
-> > diff --git a/drivers/infiniband/core/verbs.c b/drivers/infiniband/core/verbs.c
-> > index bac3fb4..f42595c 100644
-> > --- a/drivers/infiniband/core/verbs.c
-> > +++ b/drivers/infiniband/core/verbs.c
-> > @@ -1144,6 +1144,36 @@ struct ib_mr *ib_get_dma_mr(struct ib_pd *pd, int mr_access_flags)
-> >   }
-> >   EXPORT_SYMBOL(ib_get_dma_mr);
-> >
-> > +int rdma_device_access_flags(struct ib_pd *pd, int roles, int attrs)
-> > +{
-> > +	int access_flags = attrs;
-> > +
-> > +	if (roles & RDMA_MRR_RECV)
-> > +		access_flags |= IB_ACCESS_LOCAL_WRITE;
-> > +
-> > +	if (roles & RDMA_MRR_WRITE_DEST)
-> > +		access_flags |= IB_ACCESS_LOCAL_WRITE | IB_ACCESS_REMOTE_WRITE;
-> > +
-> > +	if (roles & RDMA_MRR_READ_DEST) {
-> > +		access_flags |= IB_ACCESS_LOCAL_WRITE;
-> > +		if (rdma_protocol_iwarp(pd->device,
-> > +					rdma_start_port(pd->device)))
-> > +			access_flags |= IB_ACCESS_REMOTE_WRITE;
-> > +	}
-> > +
-> > +	if (roles & RDMA_MRR_READ_SOURCE)
-> > +		access_flags |= IB_ACCESS_REMOTE_READ;
-> > +
-> > +	if (roles & RDMA_MRR_ATOMIC_DEST)
-> > +		access_flags |= IB_ACCESS_LOCAL_WRITE | IB_ACCESS_REMOTE_ATOMIC;
-> > +
-> > +	if (roles & RDMA_MRR_MW_BIND)
-> > +		access_flags |= IB_ACCESS_MW_BIND;
-> > +
-> > +	return access_flags;
-> > +}
-> > +EXPORT_SYMBOL(rdma_device_access_flags);
-> > +
-> >   struct ib_mr *ib_reg_phys_mr(struct ib_pd *pd,
-> >   			     struct ib_phys_buf *phys_buf_array,
-> >   			     int num_phys_buf,
-> > diff --git a/include/rdma/ib_verbs.h b/include/rdma/ib_verbs.h
-> > index 986fddb..da1eadf 100644
-> > --- a/include/rdma/ib_verbs.h
-> > +++ b/include/rdma/ib_verbs.h
-> > @@ -2494,6 +2494,112 @@ static inline int ib_req_ncomp_notif(struct ib_cq *cq, int wc_cnt)
-> >   struct ib_mr *ib_get_dma_mr(struct ib_pd *pd, int mr_access_flags);
-> >
-> >   /**
-> > + * rdma_mr_roles - possible roles an RDMA MR will be used for
-> > + *
-> > + * This allows a transport independent RDMA application to
-> > + * create MRs that are usable for all the desired roles w/o
-> > + * having to understand which access rights are needed.
-> > + */
-> > +enum {
-> > +
-> > +	/* lkey used in a ib_recv_wr sge */
-> > +	RDMA_MRR_RECV			= 1,
-> > +
-> > +	/* lkey used for IB_WR_SEND* ops in the ib_send_wr sge */
-> > +	RDMA_MRR_SEND			= (1<<1),
-> > +
-> > +	/* rkey used for IB_WR_RDMA_READ* ops in ib_send_wr wr.rdma.rkey */
-> > +	RDMA_MRR_READ_SOURCE		= (1<<2),
-> > +
-> > +	/* lkey used for IB_WR_RDMA_READ* ops in the ib_send_wr sge */
-> > +	RDMA_MRR_READ_DEST		= (1<<3),
-> > +
-> > +	/* lkey used for IB_WR_RDMA_WRITE* ops in the ib_send_wr sge */
-> > +	RDMA_MRR_WRITE_SOURCE		= (1<<4),
-> > +
-> > +	/* rkey used for IB_WR_RDMA_WRITE* ops in ib_send_wr wr.rdma.rkey */
-> > +	RDMA_MRR_WRITE_DEST		= (1<<5),
-> > +
-> > +	/*
-> > +	 * lkey used for IB_WR_ATOMIC/MASKED_ATOMIC* ops in the ib_send_wr sge
-> > +	 */
-> > +	RDMA_MRR_ATOMIC_SOURCE		= (1<<6),
-> > +
-> > +	/*
-> > +	 * rkey used for IB_WR_ATOMIC/MASKED_ATOMIC* ops in ib_send_wr
-> > +	 * wr.atomic.rkey
-> > +	 */
-> > +	RDMA_MRR_ATOMIC_DEST		= (1<<7),
-> > +
-> > +	/* MR used for a IB_WR_MW_BIND in ib_send_wr wr.bind_mw.bind_info.mr */
-> > +	RDMA_MRR_MW_BIND		= (1<<8),
-> > +};
-> > +
-> > +/**
-> > + * rdma_mr_attributes - attributes for rdma memory regions
-> > + */
-> > +enum {
-> > +	RDMA_MRA_ZERO_BASED		= IB_ZERO_BASED,
-> > +	RDMA_MRA_ACCESS_ON_DEMAND	= IB_ACCESS_ON_DEMAND,
-> > +};
-> > +
-> > +/**
-> > + * rdma_device_access_flags - Returns the device-specific MR access flags.
-> > + * @pd: The protection domain associated with the memory region.
-> > + * @roles: The intended roles of the MR
-> > + * @attrs: The desired attributes of the MR
-> > + *
-> > + * Use the intended roles from @roles along with @attrs and the device
-> > + * capabilities to generate the needed access rights.
-> > + *
-> > + * Return: the ib_access_flags value needed to allocate the MR.
-> > + */
-> > +int rdma_device_access_flags(struct ib_pd *pd, int roles, int attrs);
-> > +
-> > +/**
-> > + * rdma_get_dma_mr - Returns a memory region for system memory that is
-> > + * usable for DMA.
-> > + * @pd: The protection domain associated with the memory region.
-> > + * @roles: The intended roles of the MR
-> > + * @attrs: The desired attributes of the MR
-> > + *
-> > + * Use the intended roles from @roles along with @attrs and the device
-> > + * capabilities to define the needed access rights, and call
-> > + * ib_get_dma_mr() to allocate the MR.
-> > + *
-> > + * Note that the ib_dma_*() functions defined below must be used
-> > + * to create/destroy addresses used with the Lkey or Rkey returned
-> > + * by ib_get_dma_mr().
-> > + *
-> > + * Return: struct ib_mr pointer upon success, or a pointer encoded errno upon
-> > + * failure.
-> > + */
-> > +static inline struct ib_mr *rdma_get_dma_mr(struct ib_pd *pd, int roles,
-> > +					    int attrs)
-> > +{
-> > +	return ib_get_dma_mr(pd, rdma_device_access_flags(pd, roles, attrs));
-> > +}
-> > +
-> > +/**
-> > + * rdma_fast_reg_access_flags - Returns the access flags needed for a fast
-> > + * register operation.
-> > + * @pd: The protection domain associated with the memory region.
-> > + * @roles: The intended roles of the MR
-> > + * @attrs: The desired attributes of the MR
-> > + *
-> > + * Use the intended roles from @roles along with @attrs and the device
-> > + * capabilities to define the needed access rights for a fast registration
-> > + * work request.
-> > + *
-> > + * Return: the ib_access_flags value needed for fast registration.
-> > + */
-> > +static inline int rdma_fast_reg_access_flags(struct ib_pd *pd, int roles,
-> > +					     int attrs)
-> > +{
-> > +	return rdma_device_access_flags(pd, roles, attrs);
-> > +}
-> 
-> Why do we have rdma_fast_reg_access_flags() that just trampolines to
-> rdma_device_access_flags()? why do we need it?
+Signed-off-by: Steve Dickson <steved@redhat.com>
+---
+ utils/mount/network.c | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
 
-My initial thought was that fast_reg access flags might be different that general MR access flags for some devices.  But since that isn't the cases, I'll remove it.  
-
+diff --git a/utils/mount/network.c b/utils/mount/network.c
+index b5ed850..ebc39d3 100644
+--- a/utils/mount/network.c
++++ b/utils/mount/network.c
+@@ -92,6 +92,7 @@ static const char *nfs_version_opttbl[] = {
+ 	"v4",
+ 	"vers",
+ 	"nfsvers",
++	"minorversion",
+ 	NULL,
+ };
+ 
+@@ -1272,7 +1273,11 @@ nfs_nfs_version(struct mount_options *options, struct nfs_version *version)
+ 	if (!(version->major = strtol(version_val, &cptr, 10)))
+ 		goto ret_error;
+ 
+-	if (version->major < 4)
++	if (strcmp(nfs_version_opttbl[i], "minorversion") == 0) {
++		version->v_mode = V_SPECIFIC;
++		version->minor = version->major;
++		version->major = 4;
++	} else if (version->major < 4)
+ 		version->v_mode = V_SPECIFIC;
+ 
+ 	if (*cptr == '.') {
+-- 
+2.4.3
 
