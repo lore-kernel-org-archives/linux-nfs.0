@@ -1,210 +1,106 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wi0-f173.google.com ([209.85.212.173]:37485 "EHLO
-	mail-wi0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753494AbbGFH6f (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Jul 2015 03:58:35 -0400
-Received: by wiclp1 with SMTP id lp1so12819526wic.0
-        for <linux-nfs@vger.kernel.org>; Mon, 06 Jul 2015 00:58:34 -0700 (PDT)
-Subject: Re: [PATCH V3 1/5] RDMA/core: Transport-independent access flags
-To: Steve Wise <swise@opengridcomputing.com>, dledford@redhat.com
-References: <20150705231831.12029.80307.stgit@build2.ogc.int>
- <20150705232158.12029.25472.stgit@build2.ogc.int>
-Cc: sagig@mellanox.com, ogerlitz@mellanox.com, roid@mellanox.com,
-        linux-rdma@vger.kernel.org, eli@mellanox.com,
-        target-devel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        trond.myklebust@primarydata.com, bfields@fieldses.org
-From: Sagi Grimberg <sagig@dev.mellanox.co.il>
-Message-ID: <559A3536.3020807@dev.mellanox.co.il>
-Date: Mon, 6 Jul 2015 10:58:46 +0300
+Received: from youngberry.canonical.com ([91.189.89.112]:52756 "EHLO
+	youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752119AbbGFJpT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Jul 2015 05:45:19 -0400
+Date: Mon, 6 Jul 2015 10:45:16 +0100
+From: Luis Henriques <luis.henriques@canonical.com>
+To: Jeff Layton <jlayton@poochiereds.net>
+Cc: stable@vger.kernel.org, linux-nfs@vger.kernel.org,
+        William Dauchy <wdauchy@gmail.com>, jean@primarydata.com
+Subject: Re: [PATCH][stable] nfs: take extra reference to fl->fl_file when
+ running a setlk
+Message-ID: <20150706094516.GB2165@ares>
+References: <1435833617-4562-1-git-send-email-jeff.layton@primarydata.com>
 MIME-Version: 1.0
-In-Reply-To: <20150705232158.12029.25472.stgit@build2.ogc.int>
-Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Type: text/plain; charset=iso-8859-1
+In-Reply-To: <1435833617-4562-1-git-send-email-jeff.layton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 7/6/2015 2:22 AM, Steve Wise wrote:
-> The semantics for MR access flags are not consistent across RDMA
-> protocols.  So rather than have applications try and glean what they
-> need, have them pass in the intended roles and attributes for the MR to
-> be allocated and let the RDMA core select the appropriate access flags
-> given the roles, attributes, and device capabilities.
->
-> We introduce rdma_mr_roles and rdma_mr_attributes that enumerate the
-> possible roles and attributes for a MR.  These are documented in the
-> enums themselves.
->
-> New services exported:
->
-> rdma_device_access_flags() - given the intended MR roles and attributes
-> passed in, return the ib_access_flags bits for the device.
->
-> rdma_get_dma_mr() - allocate a dma mr using the applications intended
-> MR roles and MR attributes.  This uses rdma_device_access_flags().
->
-> rdma_fast_reg_access_flags() - return the ib_access_flags bits needed
-> for a fast register WR given the applications intended MR roles and
-> MR attributes.  This uses rdma_device_access_flags().
->
-> Signed-off-by: Steve Wise <swise@opengridcomputing.com>
-> ---
->
->   drivers/infiniband/core/verbs.c |   30 +++++++++++
->   include/rdma/ib_verbs.h         |  106 +++++++++++++++++++++++++++++++++++++++
->   2 files changed, 136 insertions(+), 0 deletions(-)
->
-> diff --git a/drivers/infiniband/core/verbs.c b/drivers/infiniband/core/verbs.c
-> index bac3fb4..f42595c 100644
-> --- a/drivers/infiniband/core/verbs.c
-> +++ b/drivers/infiniband/core/verbs.c
-> @@ -1144,6 +1144,36 @@ struct ib_mr *ib_get_dma_mr(struct ib_pd *pd, int mr_access_flags)
->   }
->   EXPORT_SYMBOL(ib_get_dma_mr);
->
-> +int rdma_device_access_flags(struct ib_pd *pd, int roles, int attrs)
-> +{
-> +	int access_flags = attrs;
-> +
-> +	if (roles & RDMA_MRR_RECV)
-> +		access_flags |= IB_ACCESS_LOCAL_WRITE;
-> +
-> +	if (roles & RDMA_MRR_WRITE_DEST)
-> +		access_flags |= IB_ACCESS_LOCAL_WRITE | IB_ACCESS_REMOTE_WRITE;
-> +
-> +	if (roles & RDMA_MRR_READ_DEST) {
-> +		access_flags |= IB_ACCESS_LOCAL_WRITE;
-> +		if (rdma_protocol_iwarp(pd->device,
-> +					rdma_start_port(pd->device)))
-> +			access_flags |= IB_ACCESS_REMOTE_WRITE;
-> +	}
-> +
-> +	if (roles & RDMA_MRR_READ_SOURCE)
-> +		access_flags |= IB_ACCESS_REMOTE_READ;
-> +
-> +	if (roles & RDMA_MRR_ATOMIC_DEST)
-> +		access_flags |= IB_ACCESS_LOCAL_WRITE | IB_ACCESS_REMOTE_ATOMIC;
-> +
-> +	if (roles & RDMA_MRR_MW_BIND)
-> +		access_flags |= IB_ACCESS_MW_BIND;
-> +
-> +	return access_flags;
-> +}
-> +EXPORT_SYMBOL(rdma_device_access_flags);
-> +
->   struct ib_mr *ib_reg_phys_mr(struct ib_pd *pd,
->   			     struct ib_phys_buf *phys_buf_array,
->   			     int num_phys_buf,
-> diff --git a/include/rdma/ib_verbs.h b/include/rdma/ib_verbs.h
-> index 986fddb..da1eadf 100644
-> --- a/include/rdma/ib_verbs.h
-> +++ b/include/rdma/ib_verbs.h
-> @@ -2494,6 +2494,112 @@ static inline int ib_req_ncomp_notif(struct ib_cq *cq, int wc_cnt)
->   struct ib_mr *ib_get_dma_mr(struct ib_pd *pd, int mr_access_flags);
->
->   /**
-> + * rdma_mr_roles - possible roles an RDMA MR will be used for
-> + *
-> + * This allows a transport independent RDMA application to
-> + * create MRs that are usable for all the desired roles w/o
-> + * having to understand which access rights are needed.
-> + */
-> +enum {
-> +
-> +	/* lkey used in a ib_recv_wr sge */
-> +	RDMA_MRR_RECV			= 1,
-> +
-> +	/* lkey used for IB_WR_SEND* ops in the ib_send_wr sge */
-> +	RDMA_MRR_SEND			= (1<<1),
-> +
-> +	/* rkey used for IB_WR_RDMA_READ* ops in ib_send_wr wr.rdma.rkey */
-> +	RDMA_MRR_READ_SOURCE		= (1<<2),
-> +
-> +	/* lkey used for IB_WR_RDMA_READ* ops in the ib_send_wr sge */
-> +	RDMA_MRR_READ_DEST		= (1<<3),
-> +
-> +	/* lkey used for IB_WR_RDMA_WRITE* ops in the ib_send_wr sge */
-> +	RDMA_MRR_WRITE_SOURCE		= (1<<4),
-> +
-> +	/* rkey used for IB_WR_RDMA_WRITE* ops in ib_send_wr wr.rdma.rkey */
-> +	RDMA_MRR_WRITE_DEST		= (1<<5),
-> +
-> +	/*
-> +	 * lkey used for IB_WR_ATOMIC/MASKED_ATOMIC* ops in the ib_send_wr sge
-> +	 */
-> +	RDMA_MRR_ATOMIC_SOURCE		= (1<<6),
-> +
-> +	/*
-> +	 * rkey used for IB_WR_ATOMIC/MASKED_ATOMIC* ops in ib_send_wr
-> +	 * wr.atomic.rkey
-> +	 */
-> +	RDMA_MRR_ATOMIC_DEST		= (1<<7),
-> +
-> +	/* MR used for a IB_WR_MW_BIND in ib_send_wr wr.bind_mw.bind_info.mr */
-> +	RDMA_MRR_MW_BIND		= (1<<8),
-> +};
-> +
-> +/**
-> + * rdma_mr_attributes - attributes for rdma memory regions
-> + */
-> +enum {
-> +	RDMA_MRA_ZERO_BASED		= IB_ZERO_BASED,
-> +	RDMA_MRA_ACCESS_ON_DEMAND	= IB_ACCESS_ON_DEMAND,
-> +};
-> +
-> +/**
-> + * rdma_device_access_flags - Returns the device-specific MR access flags.
-> + * @pd: The protection domain associated with the memory region.
-> + * @roles: The intended roles of the MR
-> + * @attrs: The desired attributes of the MR
-> + *
-> + * Use the intended roles from @roles along with @attrs and the device
-> + * capabilities to generate the needed access rights.
-> + *
-> + * Return: the ib_access_flags value needed to allocate the MR.
-> + */
-> +int rdma_device_access_flags(struct ib_pd *pd, int roles, int attrs);
-> +
-> +/**
-> + * rdma_get_dma_mr - Returns a memory region for system memory that is
-> + * usable for DMA.
-> + * @pd: The protection domain associated with the memory region.
-> + * @roles: The intended roles of the MR
-> + * @attrs: The desired attributes of the MR
-> + *
-> + * Use the intended roles from @roles along with @attrs and the device
-> + * capabilities to define the needed access rights, and call
-> + * ib_get_dma_mr() to allocate the MR.
-> + *
-> + * Note that the ib_dma_*() functions defined below must be used
-> + * to create/destroy addresses used with the Lkey or Rkey returned
-> + * by ib_get_dma_mr().
-> + *
-> + * Return: struct ib_mr pointer upon success, or a pointer encoded errno upon
-> + * failure.
-> + */
-> +static inline struct ib_mr *rdma_get_dma_mr(struct ib_pd *pd, int roles,
-> +					    int attrs)
-> +{
-> +	return ib_get_dma_mr(pd, rdma_device_access_flags(pd, roles, attrs));
-> +}
-> +
-> +/**
-> + * rdma_fast_reg_access_flags - Returns the access flags needed for a fast
-> + * register operation.
-> + * @pd: The protection domain associated with the memory region.
-> + * @roles: The intended roles of the MR
-> + * @attrs: The desired attributes of the MR
-> + *
-> + * Use the intended roles from @roles along with @attrs and the device
-> + * capabilities to define the needed access rights for a fast registration
-> + * work request.
-> + *
-> + * Return: the ib_access_flags value needed for fast registration.
-> + */
-> +static inline int rdma_fast_reg_access_flags(struct ib_pd *pd, int roles,
-> +					     int attrs)
-> +{
-> +	return rdma_device_access_flags(pd, roles, attrs);
-> +}
+On Thu, Jul 02, 2015 at 06:40:17AM -0400, Jeff Layton wrote:
+> From: Jeff Layton <jlayton@poochiereds.net>
+> 
+> We had a report of a crash while stress testing the NFS client:
+> 
+>     BUG: unable to handle kernel NULL pointer dereference at 0000000000000150
+>     IP: [<ffffffff8127b698>] locks_get_lock_context+0x8/0x90
+>     PGD 0
+>     Oops: 0000 [#1] SMP
+>     Modules linked in: rpcsec_gss_krb5 nfsv4 dns_resolver nfs fscache ip6t_rpfilter ip6t_REJECT nf_reject_ipv6 xt_conntrack ebtable_nat ebtable_filter ebtable_broute bridge stp llc ebtables ip6table_security ip6table_mangle ip6table_nat nf_conntrack_ipv6 nf_defrag_ipv6 nf_nat_ipv6 ip6table_raw ip6table_filter ip6_tables iptable_security iptable_mangle iptable_nat nf_conntrack_ipv4 nf_defrag_ipv4 nf_nat_ipv4 nf_nat nf_conntrack iptable_raw coretemp crct10dif_pclmul ppdev crc32_pclmul crc32c_intel ghash_clmulni_intel vmw_balloon serio_raw vmw_vmci i2c_piix4 shpchp parport_pc acpi_cpufreq parport nfsd auth_rpcgss nfs_acl lockd grace sunrpc vmwgfx drm_kms_helper ttm drm mptspi scsi_transport_spi mptscsih mptbase e1000 ata_generic pata_acpi
+>     CPU: 1 PID: 399 Comm: kworker/1:1H Not tainted 4.1.0-0.rc1.git0.1.fc23.x86_64 #1
+>     Hardware name: VMware, Inc. VMware Virtual Platform/440BX Desktop Reference Platform, BIOS 6.00 07/30/2013
+>     Workqueue: rpciod rpc_async_schedule [sunrpc]
+>     task: ffff880036aea7c0 ti: ffff8800791f4000 task.ti: ffff8800791f4000
+>     RIP: 0010:[<ffffffff8127b698>]  [<ffffffff8127b698>] locks_get_lock_context+0x8/0x90
+>     RSP: 0018:ffff8800791f7c00  EFLAGS: 00010293
+>     RAX: ffff8800791f7c40 RBX: ffff88001f2ad8c0 RCX: ffffe8ffffc80305
+>     RDX: 0000000000000000 RSI: 0000000000000000 RDI: 0000000000000000
+>     RBP: ffff8800791f7c88 R08: ffff88007fc971d8 R09: 279656d600000000
+>     R10: 0000034a01000000 R11: 279656d600000000 R12: ffff88001f2ad918
+>     R13: ffff88001f2ad8c0 R14: 0000000000000000 R15: 0000000100e73040
+>     FS:  0000000000000000(0000) GS:ffff88007fc80000(0000) knlGS:0000000000000000
+>     CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+>     CR2: 0000000000000150 CR3: 0000000001c0b000 CR4: 00000000000407e0
+>     Stack:
+>      ffffffff8127c5b0 ffff8800791f7c18 ffffffffa0171e29 ffff8800791f7c58
+>      ffffffffa0171ef8 ffff8800791f7c78 0000000000000246 ffff88001ea0ba00
+>      ffff8800791f7c40 ffff8800791f7c40 00000000ff5d86a3 ffff8800791f7ca8
+>     Call Trace:
+>      [<ffffffff8127c5b0>] ? __posix_lock_file+0x40/0x760
+>      [<ffffffffa0171e29>] ? rpc_make_runnable+0x99/0xa0 [sunrpc]
+>      [<ffffffffa0171ef8>] ? rpc_wake_up_task_queue_locked.part.35+0xc8/0x250 [sunrpc]
+>      [<ffffffff8127cd3a>] posix_lock_file_wait+0x4a/0x120
+>      [<ffffffffa03e4f12>] ? nfs41_wake_and_assign_slot+0x32/0x40 [nfsv4]
+>      [<ffffffffa03bf108>] ? nfs41_sequence_done+0xd8/0x2d0 [nfsv4]
+>      [<ffffffffa03c116d>] do_vfs_lock+0x2d/0x30 [nfsv4]
+>      [<ffffffffa03c251d>] nfs4_lock_done+0x1ad/0x210 [nfsv4]
+>      [<ffffffffa0171a30>] ? __rpc_sleep_on_priority+0x390/0x390 [sunrpc]
+>      [<ffffffffa0171a30>] ? __rpc_sleep_on_priority+0x390/0x390 [sunrpc]
+>      [<ffffffffa0171a5c>] rpc_exit_task+0x2c/0xa0 [sunrpc]
+>      [<ffffffffa0167450>] ? call_refreshresult+0x150/0x150 [sunrpc]
+>      [<ffffffffa0172640>] __rpc_execute+0x90/0x460 [sunrpc]
+>      [<ffffffffa0172a25>] rpc_async_schedule+0x15/0x20 [sunrpc]
+>      [<ffffffff810baa1b>] process_one_work+0x1bb/0x410
+>      [<ffffffff810bacc3>] worker_thread+0x53/0x480
+>      [<ffffffff810bac70>] ? process_one_work+0x410/0x410
+>      [<ffffffff810bac70>] ? process_one_work+0x410/0x410
+>      [<ffffffff810c0b38>] kthread+0xd8/0xf0
+>      [<ffffffff810c0a60>] ? kthread_worker_fn+0x180/0x180
+>      [<ffffffff817a1aa2>] ret_from_fork+0x42/0x70
+>      [<ffffffff810c0a60>] ? kthread_worker_fn+0x180/0x180
+> 
+> Jean says:
+> 
+> "Running locktests with a large number of iterations resulted in a
+>  client crash.  The test run took a while and hasn't finished after close
+>  to 2 hours. The crash happened right after I gave up and killed the test
+>  (after 107m) with Ctrl+C."
+> 
+> The crash happened because a NULL inode pointer got passed into
+> locks_get_lock_context. The call chain indicates that file_inode(filp)
+> returned NULL, which means that f_inode was NULL. Since that's zeroed
+> out in __fput, that suggests that this filp pointer outlived the last
+> reference.
+> 
+> Looking at the code, that seems possible. We copy the struct file_lock
+> that's passed in, but if the task is signalled at an inopportune time we
+> can end up trying to use that file_lock in rpciod context after the process
+> that requested it has already returned (and possibly put its filp
+> reference).
+> 
+> Fix this by taking an extra reference to the filp when we allocate the
+> lock info, and put it in nfs4_lock_release.
+> 
+> Reported-by: Jean Spector <jean@primarydata.com>
+> Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> Cc: <stable@vger.kernel.org> # all stable-series kernels
+> Upstream commit: feaff8e5b2cfc3eae02cf65db7a400b0b9ffc596
 
-Why do we have rdma_fast_reg_access_flags() that just trampolines to
-rdma_device_access_flags()? why do we need it?
+Thanks, I'm queuing it for the 3.16 kernel.
+
+Cheers,
+--
+Luís
+
