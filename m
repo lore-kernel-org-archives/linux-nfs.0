@@ -1,10 +1,10 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wi0-f176.google.com ([209.85.212.176]:35397 "EHLO
-	mail-wi0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754011AbbGFHxj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Jul 2015 03:53:39 -0400
-Received: by wiga1 with SMTP id a1so221012389wig.0
-        for <linux-nfs@vger.kernel.org>; Mon, 06 Jul 2015 00:53:38 -0700 (PDT)
+Received: from mail-wi0-f173.google.com ([209.85.212.173]:37485 "EHLO
+	mail-wi0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753494AbbGFH6f (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Jul 2015 03:58:35 -0400
+Received: by wiclp1 with SMTP id lp1so12819526wic.0
+        for <linux-nfs@vger.kernel.org>; Mon, 06 Jul 2015 00:58:34 -0700 (PDT)
 Subject: Re: [PATCH V3 1/5] RDMA/core: Transport-independent access flags
 To: Steve Wise <swise@opengridcomputing.com>, dledford@redhat.com
 References: <20150705231831.12029.80307.stgit@build2.ogc.int>
@@ -14,8 +14,8 @@ Cc: sagig@mellanox.com, ogerlitz@mellanox.com, roid@mellanox.com,
         target-devel@vger.kernel.org, linux-nfs@vger.kernel.org,
         trond.myklebust@primarydata.com, bfields@fieldses.org
 From: Sagi Grimberg <sagig@dev.mellanox.co.il>
-Message-ID: <559A340E.9000000@dev.mellanox.co.il>
-Date: Mon, 6 Jul 2015 10:53:50 +0300
+Message-ID: <559A3536.3020807@dev.mellanox.co.il>
+Date: Mon, 6 Jul 2015 10:58:46 +0300
 MIME-Version: 1.0
 In-Reply-To: <20150705232158.12029.25472.stgit@build2.ogc.int>
 Content-Type: text/plain; charset=utf-8; format=flowed
@@ -187,5 +187,24 @@ On 7/6/2015 2:22 AM, Steve Wise wrote:
 > +	return ib_get_dma_mr(pd, rdma_device_access_flags(pd, roles, attrs));
 > +}
 > +
+> +/**
+> + * rdma_fast_reg_access_flags - Returns the access flags needed for a fast
+> + * register operation.
+> + * @pd: The protection domain associated with the memory region.
+> + * @roles: The intended roles of the MR
+> + * @attrs: The desired attributes of the MR
+> + *
+> + * Use the intended roles from @roles along with @attrs and the device
+> + * capabilities to define the needed access rights for a fast registration
+> + * work request.
+> + *
+> + * Return: the ib_access_flags value needed for fast registration.
+> + */
+> +static inline int rdma_fast_reg_access_flags(struct ib_pd *pd, int roles,
+> +					     int attrs)
+> +{
+> +	return rdma_device_access_flags(pd, roles, attrs);
+> +}
 
-I still think this wrapper should go away...
+Why do we have rdma_fast_reg_access_flags() that just trampolines to
+rdma_device_access_flags()? why do we need it?
