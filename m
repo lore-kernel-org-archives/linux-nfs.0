@@ -1,117 +1,115 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-oi0-f43.google.com ([209.85.218.43]:35003 "EHLO
-	mail-oi0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932072AbbGFNgj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Jul 2015 09:36:39 -0400
-Received: by oihr66 with SMTP id r66so61777520oih.2
-        for <linux-nfs@vger.kernel.org>; Mon, 06 Jul 2015 06:36:38 -0700 (PDT)
+Received: from smtp.opengridcomputing.com ([72.48.136.20]:51918 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751009AbbGFOXm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Jul 2015 10:23:42 -0400
+From: "Steve Wise" <swise@opengridcomputing.com>
+To: "'Christoph Hellwig'" <hch@infradead.org>
+Cc: <dledford@redhat.com>, <sagig@mellanox.com>, <ogerlitz@mellanox.com>,
+        <roid@mellanox.com>, <linux-rdma@vger.kernel.org>, <eli@mellanox.com>,
+        <target-devel@vger.kernel.org>, <linux-nfs@vger.kernel.org>,
+        <trond.myklebust@primarydata.com>, <bfields@fieldses.org>
+References: <20150705231831.12029.80307.stgit@build2.ogc.int> <20150705232158.12029.25472.stgit@build2.ogc.int> <20150706052515.GA1109@infradead.org>
+In-Reply-To: <20150706052515.GA1109@infradead.org>
+Subject: RE: [PATCH V3 1/5] RDMA/core: Transport-independent access flags
+Date: Mon, 6 Jul 2015 09:23:42 -0500
+Message-ID: <000c01d0b7f7$5c5f02c0$151d0840$@opengridcomputing.com>
 MIME-Version: 1.0
-In-Reply-To: <20150706112647.2d4c3780@noble>
-References: <20150629142623.5afc0e6d@noble>
-	<1435931379-6654-1-git-send-email-trond.myklebust@primarydata.com>
-	<20150706112647.2d4c3780@noble>
-Date: Mon, 6 Jul 2015 09:36:38 -0400
-Message-ID: <CAHQdGtT2+KPj-210PNjqBZZsa8-Z+ov1cOfKSrVgTRNv2cALKA@mail.gmail.com>
-Subject: Re: [PATCH] SUNRPC: handle -EAGAIN from socket writes better.
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: NeilBrown <neilb@suse.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain;
+	charset="us-ascii"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Neil,
 
-On Sun, Jul 5, 2015 at 9:26 PM, NeilBrown <neilb@suse.com> wrote:
-> On Fri,  3 Jul 2015 09:49:37 -0400 Trond Myklebust
-> <trond.myklebust@primarydata.com> wrote:
->
->> Hi Neil,
->>
->> There should already be a handler for ENOBUFS in call_status, but
->> I can see that it has a couple of flaws. What say we try to fix that
->> instead?
->>
->> Cheers
->>   Trond
->>
->
-> Hi Trond,
->  your patches make sense I think, but they are only part of a solution.
-> In the problem case the error comes from sk_stream_wait_memory, and
-> that returns EAGAIN, never ENOBUFS.  So fixing the handling of ENOBUFS
-> won't be enough.
->
-> The call path is
-> xs_tcp_send_request -> xs_sendpages -> xs_send_pagedata ->
->    (sock->ops->sendpage == tcp_sendpage) -> do_tcp_sendpage ->
->      sk_stream_wait_memory
->
-> and EAGAIN travels all the way from bottom to top unmolested.
->
-> We could possibly change sk_stream_wait_memory to return ENOBUFS if
-> vm_wait is != 0, but:
->   - that could have other consequences so needs to go through netdev
->     and probably isn't a quick fix
->   - there could be other paths that don't return ENOBUFS - it really
->     don't seem that ENOBUFS appears all that much in 'net/' in places
->     where it would need to...
->
-> Maybe we could check and translate the error in xs_sendpages:
->
-> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-> index 66891e32c5e3..8474d79ec2b2 100644
-> --- a/net/sunrpc/xprtsock.c
-> +++ b/net/sunrpc/xprtsock.c
-> @@ -431,6 +431,14 @@ out:
->         if (err > 0) {
->                 *sent_p += err;
->                 err = 0;
-> +       } else if (err == -EAGAIN) {
-> +               /* Might be wrong error code. */
-> +               if (sock->sk->sk_write_space == xs_tcp_write_space &&
-> +                   sk_stream_is_writeable(sock->sk))
-> +                       err = -ENOBUFS;
-> +               if (sock->sk->sk_write_space == xs_udp_write_space &&
-> +                   sock_writeable(sock->sk))
-> +                       err = -ENOBUFS;
->         }
->         return err;
->  }
->
->
-> Though that is a bit of a hack.  If/when net-dev gets the correct error
-> returns, we can then remove that.
->
-> Though I'm beginning to wonder if ENOBUFS is the correct error code
-> anyway. "man 2 send" suggests ENOMEM, with ENOBUFS meaning:
->
->        The output queue for a network interface was full.   This
->        generally  indicates that the interface has stopped send-
->        ing, but may be caused by  transient  congestion.   (Nor-
->        mally,  this  does  not occur in Linux.  Packets are just
->        silently dropped when a device queue overflows.)
->
-> So I'm not sure I feel to comfortable about relying on the exact error
-> code.
->
-> What do you think?
 
-The latest POSIX base specifications at
+> -----Original Message-----
+> From: Christoph Hellwig [mailto:hch@infradead.org]
+> Sent: Monday, July 06, 2015 12:25 AM
+> To: Steve Wise
+> Cc: dledford@redhat.com; sagig@mellanox.com; ogerlitz@mellanox.com; roid@mellanox.com; linux-rdma@vger.kernel.org;
+> eli@mellanox.com; target-devel@vger.kernel.org; linux-nfs@vger.kernel.org; trond.myklebust@primarydata.com; bfields@fieldses.org
+> Subject: Re: [PATCH V3 1/5] RDMA/core: Transport-independent access flags
+> 
+> On Sun, Jul 05, 2015 at 06:22:00PM -0500, Steve Wise wrote:
+> > The semantics for MR access flags are not consistent across RDMA
+> > protocols.  So rather than have applications try and glean what they
+> > need, have them pass in the intended roles and attributes for the MR to
+> > be allocated and let the RDMA core select the appropriate access flags
+> > given the roles, attributes, and device capabilities.
+> >
+> > We introduce rdma_mr_roles and rdma_mr_attributes that enumerate the
+> > possible roles and attributes for a MR.  These are documented in the
+> > enums themselves.
+> >
+> > New services exported:
+> >
+> > rdma_device_access_flags() - given the intended MR roles and attributes
+> > passed in, return the ib_access_flags bits for the device.
+> >
+> > rdma_get_dma_mr() - allocate a dma mr using the applications intended
+> > MR roles and MR attributes.  This uses rdma_device_access_flags().
+> >
+> > rdma_fast_reg_access_flags() - return the ib_access_flags bits needed
+> > for a fast register WR given the applications intended MR roles and
+> > MR attributes.  This uses rdma_device_access_flags().
+> >
+> > Signed-off-by: Steve Wise <swise@opengridcomputing.com>
+> > ---
+> >
+> >  drivers/infiniband/core/verbs.c |   30 +++++++++++
+> >  include/rdma/ib_verbs.h         |  106 +++++++++++++++++++++++++++++++++++++++
+> >  2 files changed, 136 insertions(+), 0 deletions(-)
+> >
+> > diff --git a/drivers/infiniband/core/verbs.c b/drivers/infiniband/core/verbs.c
+> > index bac3fb4..f42595c 100644
+> > --- a/drivers/infiniband/core/verbs.c
+> > +++ b/drivers/infiniband/core/verbs.c
+> > @@ -1144,6 +1144,36 @@ struct ib_mr *ib_get_dma_mr(struct ib_pd *pd, int mr_access_flags)
+> >  }
+> >  EXPORT_SYMBOL(ib_get_dma_mr);
+> >
+> > +int rdma_device_access_flags(struct ib_pd *pd, int roles, int attrs)
+> > +{
+> > +	int access_flags = attrs;
+> 
+> Please add an assert for the values that are allowed for attrs.
+> 
+> It also would be highly useful to add a kerneldoc comment describing
+> the function and the parameters.  Also __bitwise sparse tricks
+> to ensure the right flags are passed wouldn't be a too bad idea.
+> 
 
-http://pubs.opengroup.org/onlinepubs/9699919799/functions/sendmsg.html
+Can you explain the "__bitwise sparse tricks"?  Or point me to an example.  
 
-state that sendmsg() "may fail" if:
+> > +/**
+> > + * rdma_mr_attributes - attributes for rdma memory regions
+> > + */
+> > +enum {
+> > +	RDMA_MRA_ZERO_BASED		= IB_ZERO_BASED,
+> > +	RDMA_MRA_ACCESS_ON_DEMAND	= IB_ACCESS_ON_DEMAND,
+> > +};
+> 
+> Why not specfiy these as separate nuerical namespace?
+> 
 
-[ENOBUFS]
-   Insufficient resources were available in the system to perform the operation.
-[ENOMEM]
-   Insufficient memory was available to fulfill the request.
+To avoid having to translate them. 
 
-which implies that there is no actual standard here. I therefore agree
-that we should just massage those error messages into something that
-works for us until the networking community figures out how they want
-to standardise.
+> > +/**
+> > + * rdma_device_access_flags - Returns the device-specific MR access flags.
+> > + * @pd: The protection domain associated with the memory region.
+> > + * @roles: The intended roles of the MR
+> > + * @attrs: The desired attributes of the MR
+> > + *
+> > + * Use the intended roles from @roles along with @attrs and the device
+> > + * capabilities to generate the needed access rights.
+> > + *
+> > + * Return: the ib_access_flags value needed to allocate the MR.
+> > + */
+> > +int rdma_device_access_flags(struct ib_pd *pd, int roles, int attrs);
+> 
+> Oh, here we have kerneldoc comments, just in the wrong place.  Please
+> move them to the function defintion.
 
-Cheers
-  Trond
+Ok.
+
+
