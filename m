@@ -1,86 +1,95 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.opengridcomputing.com ([72.48.136.20]:51068 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752799AbbGEXWZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 5 Jul 2015 19:22:25 -0400
-From: Steve Wise <swise@opengridcomputing.com>
-Subject: [PATCH V3 5/5] xprtrdma: Use transport independent MR allocation
-To: dledford@redhat.com
-Cc: sagig@mellanox.com, ogerlitz@mellanox.com, roid@mellanox.com,
-        linux-rdma@vger.kernel.org, eli@mellanox.com,
-        target-devel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        trond.myklebust@primarydata.com, bfields@fieldses.org
-Date: Sun, 05 Jul 2015 18:22:25 -0500
-Message-ID: <20150705232224.12029.12079.stgit@build2.ogc.int>
-In-Reply-To: <20150705231831.12029.80307.stgit@build2.ogc.int>
-References: <20150705231831.12029.80307.stgit@build2.ogc.int>
+Received: from cantor2.suse.de ([195.135.220.15]:39213 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753124AbbGFB05 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 5 Jul 2015 21:26:57 -0400
+Date: Mon, 6 Jul 2015 11:26:47 +1000
+From: NeilBrown <neilb@suse.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] SUNRPC: handle -EAGAIN from socket writes better.
+Message-ID: <20150706112647.2d4c3780@noble>
+In-Reply-To: <1435931379-6654-1-git-send-email-trond.myklebust@primarydata.com>
+References: <20150629142623.5afc0e6d@noble>
+	<1435931379-6654-1-git-send-email-trond.myklebust@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Use rdma_get_dma_mr() to allocat DMA MRs.
+On Fri,  3 Jul 2015 09:49:37 -0400 Trond Myklebust
+<trond.myklebust@primarydata.com> wrote:
 
-Use rdma_fast_reg_access_flags() to compute the needed access flags in
-fast register operations.
+> Hi Neil,
+> 
+> There should already be a handler for ENOBUFS in call_status, but
+> I can see that it has a couple of flaws. What say we try to fix that
+> instead?
+> 
+> Cheers
+>   Trond
+> 
 
-Signed-off-by: Steve Wise <swise@opengridcomputing.com>
----
+Hi Trond,
+ your patches make sense I think, but they are only part of a solution.
+In the problem case the error comes from sk_stream_wait_memory, and
+that returns EAGAIN, never ENOBUFS.  So fixing the handling of ENOBUFS
+won't be enough.
 
- net/sunrpc/xprtrdma/frwr_ops.c |    6 ++++--
- net/sunrpc/xprtrdma/verbs.c    |   11 +++++------
- 2 files changed, 9 insertions(+), 8 deletions(-)
+The call path is
+xs_tcp_send_request -> xs_sendpages -> xs_send_pagedata ->
+   (sock->ops->sendpage == tcp_sendpage) -> do_tcp_sendpage ->  
+     sk_stream_wait_memory
 
-diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
-index d234521..240880e 100644
---- a/net/sunrpc/xprtrdma/frwr_ops.c
-+++ b/net/sunrpc/xprtrdma/frwr_ops.c
-@@ -227,8 +227,10 @@ frwr_op_map(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
- 	fastreg_wr.wr.fast_reg.page_list_len = page_no;
- 	fastreg_wr.wr.fast_reg.length = len;
- 	fastreg_wr.wr.fast_reg.access_flags = writing ?
--				IB_ACCESS_REMOTE_WRITE | IB_ACCESS_LOCAL_WRITE :
--				IB_ACCESS_REMOTE_READ;
-+		rdma_fast_reg_access_flags(r_xprt->rx_ia.ri_pd,
-+					   RDMA_MRR_WRITE_DEST, 0) :
-+		rdma_fast_reg_access_flags(r_xprt->rx_ia.ri_pd,
-+					   RDMA_MRR_READ_SOURCE, 0);
- 	key = (u8)(mr->rkey & 0x000000FF);
- 	ib_update_fast_reg_key(mr, ++key);
- 	fastreg_wr.wr.fast_reg.rkey = mr->rkey;
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 52df265..4ab5dc9 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -499,7 +499,7 @@ rpcrdma_clean_cq(struct ib_cq *cq)
- int
- rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
- {
--	int rc, mem_priv;
-+	int rc, mem_roles;
- 	struct rpcrdma_ia *ia = &xprt->rx_ia;
- 	struct ib_device_attr *devattr = &ia->ri_devattr;
- 
-@@ -562,17 +562,16 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
- 		break;
- 	case RPCRDMA_ALLPHYSICAL:
- 		ia->ri_ops = &rpcrdma_physical_memreg_ops;
--		mem_priv = IB_ACCESS_LOCAL_WRITE |
--				IB_ACCESS_REMOTE_WRITE |
--				IB_ACCESS_REMOTE_READ;
-+		mem_roles = RDMA_MRR_SEND | RDMA_MRR_RECV |
-+			    RDMA_MRR_WRITE_DEST | RDMA_MRR_READ_SOURCE;
- 		goto register_setup;
- 	case RPCRDMA_MTHCAFMR:
- 		ia->ri_ops = &rpcrdma_fmr_memreg_ops;
- 		if (ia->ri_have_dma_lkey)
- 			break;
--		mem_priv = IB_ACCESS_LOCAL_WRITE;
-+		mem_roles = RDMA_MRR_SEND | RDMA_MRR_RECV;
- 	register_setup:
--		ia->ri_bind_mem = ib_get_dma_mr(ia->ri_pd, mem_priv);
-+		ia->ri_bind_mem = rdma_get_dma_mr(ia->ri_pd, mem_roles, 0);
- 		if (IS_ERR(ia->ri_bind_mem)) {
- 			printk(KERN_ALERT "%s: ib_get_dma_mr for "
- 				"phys register failed with %lX\n",
+and EAGAIN travels all the way from bottom to top unmolested.
 
+We could possibly change sk_stream_wait_memory to return ENOBUFS if
+vm_wait is != 0, but:
+  - that could have other consequences so needs to go through netdev
+    and probably isn't a quick fix
+  - there could be other paths that don't return ENOBUFS - it really
+    don't seem that ENOBUFS appears all that much in 'net/' in places
+    where it would need to...
+
+Maybe we could check and translate the error in xs_sendpages:
+
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 66891e32c5e3..8474d79ec2b2 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -431,6 +431,14 @@ out:
+ 	if (err > 0) {
+ 		*sent_p += err;
+ 		err = 0;
++	} else if (err == -EAGAIN) {
++		/* Might be wrong error code. */
++		if (sock->sk->sk_write_space == xs_tcp_write_space &&
++		    sk_stream_is_writeable(sock->sk))
++			err = -ENOBUFS;
++		if (sock->sk->sk_write_space == xs_udp_write_space &&
++		    sock_writeable(sock->sk))
++			err = -ENOBUFS;
+ 	}
+ 	return err;
+ }
+
+
+Though that is a bit of a hack.  If/when net-dev gets the correct error
+returns, we can then remove that.
+
+Though I'm beginning to wonder if ENOBUFS is the correct error code
+anyway. "man 2 send" suggests ENOMEM, with ENOBUFS meaning:
+
+       The output queue for a network interface was full.   This
+       generally  indicates that the interface has stopped send-
+       ing, but may be caused by  transient  congestion.   (Nor-
+       mally,  this  does  not occur in Linux.  Packets are just
+       silently dropped when a device queue overflows.)
+
+So I'm not sure I feel to comfortable about relying on the exact error
+code.
+
+What do you think?
+
+Thanks,
+NeilBrown
