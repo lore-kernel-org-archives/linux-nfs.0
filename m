@@ -1,34 +1,54 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([198.137.202.9]:34623 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754041AbbGGJBy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Jul 2015 05:01:54 -0400
-Date: Tue, 7 Jul 2015 02:01:51 -0700
-From: "'Christoph Hellwig'" <hch@infradead.org>
-To: Steve Wise <swise@opengridcomputing.com>
-Cc: "'Christoph Hellwig'" <hch@infradead.org>, dledford@redhat.com,
+Received: from mail-wi0-f176.google.com ([209.85.212.176]:35890 "EHLO
+	mail-wi0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752666AbbGGJPG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Jul 2015 05:15:06 -0400
+Received: by widjy10 with SMTP id jy10so182691416wid.1
+        for <linux-nfs@vger.kernel.org>; Tue, 07 Jul 2015 02:14:45 -0700 (PDT)
+Subject: Re: [PATCH V3 1/5] RDMA/core: Transport-independent access flags
+To: Christoph Hellwig <hch@infradead.org>
+References: <20150705231831.12029.80307.stgit@build2.ogc.int>
+ <20150705232158.12029.25472.stgit@build2.ogc.int>
+ <559A340E.9000000@dev.mellanox.co.il>
+ <001601d0b7f9$3e1d6d40$ba5847c0$@opengridcomputing.com>
+ <559AAA22.1000608@dev.mellanox.co.il> <20150707090001.GB11736@infradead.org>
+Cc: Steve Wise <swise@opengridcomputing.com>, dledford@redhat.com,
         sagig@mellanox.com, ogerlitz@mellanox.com, roid@mellanox.com,
         linux-rdma@vger.kernel.org, eli@mellanox.com,
         target-devel@vger.kernel.org, linux-nfs@vger.kernel.org,
         trond.myklebust@primarydata.com, bfields@fieldses.org
-Subject: Re: [PATCH V3 0/5] Transport-independent MRs
-Message-ID: <20150707090151.GC11736@infradead.org>
-References: <20150705231831.12029.80307.stgit@build2.ogc.int>
- <20150706052542.GB1109@infradead.org>
- <000e01d0b7f7$86f6f100$94e4d300$@opengridcomputing.com>
+From: Sagi Grimberg <sagig@dev.mellanox.co.il>
+Message-ID: <559B9891.8060907@dev.mellanox.co.il>
+Date: Tue, 7 Jul 2015 12:14:57 +0300
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <000e01d0b7f7$86f6f100$94e4d300$@opengridcomputing.com>
+In-Reply-To: <20150707090001.GB11736@infradead.org>
+Content-Type: text/plain; charset=windows-1252; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jul 06, 2015 at 09:24:54AM -0500, Steve Wise wrote:
-> I can.  These are the only "transport independent" ULPs at this point.
+On 7/7/2015 12:00 PM, Christoph Hellwig wrote:
+> On Mon, Jul 06, 2015 at 07:17:38PM +0300, Sagi Grimberg wrote:
+>>> Ok. I'll remove all uses of ib_get_dma_mr()...
+>>>
+>>>
+>>
+>> I meant that rdma_get_dma_mr can go away. I'd prefer to get the
+>> needed access_flags and just call existing verb.
+>
+> I strongly disagree.  As this series has shown the existing API is not
+> epressive enough for all transports.  It thus needs to go away and be
+> fully replaced by the new API introduced here.
+>
 
-And the only reason for that is that the current APIs are such a
-nighmare and require extra effort to be transport independent.  By
-removing APIs that encourage this and replacing them with APIs that
-get you transport independence automatically we're getting closer to
-something that looks like real Linux APIs rather than the current Verbs
-nightmare.
+Christoph,
 
+I wasn't arguing about having a transport independent API. I was
+referring to this wrapper specifically that trampolines to
+ib_get_dma_mr() with rdma_device_access_flags(pd, roles, attrs) helper.
+
+The rdma_device_access_flags() itself is fine. However, given that
+this helper is used elsewhere as well, I don't see the point of having
+yet another helper specifically just for the dma_mr case that does
+nothing more than trampolines with a call to rdma_device_access_flags().
+
+Sagi.
