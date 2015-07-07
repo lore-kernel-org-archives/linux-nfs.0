@@ -1,66 +1,126 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wi0-f182.google.com ([209.85.212.182]:33149 "EHLO
-	mail-wi0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757482AbbGGQ1f (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Jul 2015 12:27:35 -0400
-Received: by wiwl6 with SMTP id l6so319982871wiw.0
-        for <linux-nfs@vger.kernel.org>; Tue, 07 Jul 2015 09:27:34 -0700 (PDT)
-Subject: Re: [PATCH V3 1/5] RDMA/core: Transport-independent access flags
-To: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>,
-        Steve Wise <swise@opengridcomputing.com>
-References: <20150705231831.12029.80307.stgit@build2.ogc.int>
- <20150705232158.12029.25472.stgit@build2.ogc.int>
- <559A340E.9000000@dev.mellanox.co.il>
- <001601d0b7f9$3e1d6d40$ba5847c0$@opengridcomputing.com>
- <559AAA22.1000608@dev.mellanox.co.il> <20150707090001.GB11736@infradead.org>
- <559B9891.8060907@dev.mellanox.co.il>
- <000b01d0b8bd$f2bfcc10$d83f6430$@opengridcomputing.com>
- <20150707161751.GA623@obsidianresearch.com>
-Cc: "'Christoph Hellwig'" <hch@infradead.org>, dledford@redhat.com,
-        sagig@mellanox.com, ogerlitz@mellanox.com, roid@mellanox.com,
-        linux-rdma@vger.kernel.org, eli@mellanox.com,
-        target-devel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        trond.myklebust@primarydata.com, bfields@fieldses.org
-From: Sagi Grimberg <sagig@dev.mellanox.co.il>
-Message-ID: <559BFE03.4020709@dev.mellanox.co.il>
-Date: Tue, 7 Jul 2015 19:27:47 +0300
+Received: from cantor2.suse.de ([195.135.220.15]:35927 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933349AbbGGVBq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 Jul 2015 17:01:46 -0400
+Date: Wed, 8 Jul 2015 07:01:37 +1000
+From: NeilBrown <neilb@suse.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] SUNRPC: handle -EAGAIN from socket writes better.
+Message-ID: <20150708070137.7a56e33b@noble>
+In-Reply-To: <CAHQdGtT2+KPj-210PNjqBZZsa8-Z+ov1cOfKSrVgTRNv2cALKA@mail.gmail.com>
+References: <20150629142623.5afc0e6d@noble>
+	<1435931379-6654-1-git-send-email-trond.myklebust@primarydata.com>
+	<20150706112647.2d4c3780@noble>
+	<CAHQdGtT2+KPj-210PNjqBZZsa8-Z+ov1cOfKSrVgTRNv2cALKA@mail.gmail.com>
 MIME-Version: 1.0
-In-Reply-To: <20150707161751.GA623@obsidianresearch.com>
-Content-Type: text/plain; charset=windows-1252; format=flowed
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 7/7/2015 7:17 PM, Jason Gunthorpe wrote:
-> On Tue, Jul 07, 2015 at 09:05:15AM -0500, Steve Wise wrote:
->
->> I took the feedback from Christoph and Jason to mean I should remove
->> ib_get_dma_mr() entirely and pull its guts into rdma_get_dma_mr(),
->> and change all the users of ib_get_dma_mr() to use
->> rdma_get_dma_mr().  So the net result isn't a wrapper.  It would of
->> course still use rdma_device_access_flags()...
->
-> Right, to the greatest extent possible.
->
-> Keeping ib_get_dma_mr and the old flags around just means someone
-> could go back and use the old flags.
+On Mon, 6 Jul 2015 09:36:38 -0400 Trond Myklebust
+<trond.myklebust@primarydata.com> wrote:
 
-It looks strange to me that there is a helper to get a transport
-independent access_flags rdma_device_access_flags() that helps the
-user to choose the correct access_flags for MR creation and fast
-registration (which is more than OK), and having a wrapper that just
-hides it from the user...
+> Hi Neil,
+> 
+> On Sun, Jul 5, 2015 at 9:26 PM, NeilBrown <neilb@suse.com> wrote:
+> > On Fri,  3 Jul 2015 09:49:37 -0400 Trond Myklebust
+> > <trond.myklebust@primarydata.com> wrote:
+> >
+> >> Hi Neil,
+> >>
+> >> There should already be a handler for ENOBUFS in call_status, but
+> >> I can see that it has a couple of flaws. What say we try to fix that
+> >> instead?
+> >>
+> >> Cheers
+> >>   Trond
+> >>
+> >
+> > Hi Trond,
+> >  your patches make sense I think, but they are only part of a solution.
+> > In the problem case the error comes from sk_stream_wait_memory, and
+> > that returns EAGAIN, never ENOBUFS.  So fixing the handling of ENOBUFS
+> > won't be enough.
+> >
+> > The call path is
+> > xs_tcp_send_request -> xs_sendpages -> xs_send_pagedata ->
+> >    (sock->ops->sendpage == tcp_sendpage) -> do_tcp_sendpage ->
+> >      sk_stream_wait_memory
+> >
+> > and EAGAIN travels all the way from bottom to top unmolested.
+> >
+> > We could possibly change sk_stream_wait_memory to return ENOBUFS if
+> > vm_wait is != 0, but:
+> >   - that could have other consequences so needs to go through netdev
+> >     and probably isn't a quick fix
+> >   - there could be other paths that don't return ENOBUFS - it really
+> >     don't seem that ENOBUFS appears all that much in 'net/' in places
+> >     where it would need to...
+> >
+> > Maybe we could check and translate the error in xs_sendpages:
+> >
+> > diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+> > index 66891e32c5e3..8474d79ec2b2 100644
+> > --- a/net/sunrpc/xprtsock.c
+> > +++ b/net/sunrpc/xprtsock.c
+> > @@ -431,6 +431,14 @@ out:
+> >         if (err > 0) {
+> >                 *sent_p += err;
+> >                 err = 0;
+> > +       } else if (err == -EAGAIN) {
+> > +               /* Might be wrong error code. */
+> > +               if (sock->sk->sk_write_space == xs_tcp_write_space &&
+> > +                   sk_stream_is_writeable(sock->sk))
+> > +                       err = -ENOBUFS;
+> > +               if (sock->sk->sk_write_space == xs_udp_write_space &&
+> > +                   sock_writeable(sock->sk))
+> > +                       err = -ENOBUFS;
+> >         }
+> >         return err;
+> >  }
+> >
+> >
+> > Though that is a bit of a hack.  If/when net-dev gets the correct error
+> > returns, we can then remove that.
+> >
+> > Though I'm beginning to wonder if ENOBUFS is the correct error code
+> > anyway. "man 2 send" suggests ENOMEM, with ENOBUFS meaning:
+> >
+> >        The output queue for a network interface was full.   This
+> >        generally  indicates that the interface has stopped send-
+> >        ing, but may be caused by  transient  congestion.   (Nor-
+> >        mally,  this  does  not occur in Linux.  Packets are just
+> >        silently dropped when a device queue overflows.)
+> >
+> > So I'm not sure I feel to comfortable about relying on the exact error
+> > code.
+> >
+> > What do you think?
+> 
+> The latest POSIX base specifications at
+> 
+> http://pubs.opengroup.org/onlinepubs/9699919799/functions/sendmsg.html
+> 
+> state that sendmsg() "may fail" if:
+> 
+> [ENOBUFS]
+>    Insufficient resources were available in the system to perform the operation.
+> [ENOMEM]
+>    Insufficient memory was available to fulfill the request.
+> 
+> which implies that there is no actual standard here. I therefore agree
+> that we should just massage those error messages into something that
+> works for us until the networking community figures out how they want
+> to standardise.
+> 
 
-Doesn't it look odd to you?
+Works for me - thanks.
+I'll create some fault-injection so I can experiment with this code
+path properly and let you know how I go - probably based on the patches
+you sent.
 
->
-> I expect well need to keep the driver entry point for user space, but
-> we should be able to hide the API and flags from other modules.
+Thanks,
+NeilBrown
 
-dma_mr for user-space?? How can this be relevant for user-space?
-
->
-> A wrapper is a reasonable way to stage through that transition..
-
-I can't say that I completely agree here.
-
-Sagi.
