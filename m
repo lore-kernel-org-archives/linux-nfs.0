@@ -1,36 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-lb0-f181.google.com ([209.85.217.181]:34237 "EHLO
-	mail-lb0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758854AbbGHS0g (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Jul 2015 14:26:36 -0400
-Received: by lbnk3 with SMTP id k3so61445290lbn.1
-        for <linux-nfs@vger.kernel.org>; Wed, 08 Jul 2015 11:26:35 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] NFSv4.2/flexfiles: Fix a typo in the flexfiles layoutstats code
-Date: Wed,  8 Jul 2015 20:26:27 +0200
-Message-Id: <1436379987-4388-1-git-send-email-trond.myklebust@primarydata.com>
+Received: from fieldses.org ([173.255.197.46]:59215 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755439AbbGHSob (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 8 Jul 2015 14:44:31 -0400
+Date: Wed, 8 Jul 2015 14:44:31 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Kinglong Mee <kinglongmee@gmail.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH 1/3] nfsd: Set lc_size_chg before ops->proc_layoutcommit
+Message-ID: <20150708184431.GB19084@fieldses.org>
+References: <559B3573.4090307@gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <559B3573.4090307@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/flexfilelayout/flexfilelayout.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+On Tue, Jul 07, 2015 at 10:12:03AM +0800, Kinglong Mee wrote:
+> After proc_layoutcommit success, i_size_read(inode) always >= new_size.
+> Just set lc_size_chg before proc_layoutcommit, if proc_layoutcommit
+> failed, nfsd will skip the lc_size_chg, so it's no harm.
 
-diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
-index c12951b9551e..b3289d701eea 100644
---- a/fs/nfs/flexfilelayout/flexfilelayout.c
-+++ b/fs/nfs/flexfilelayout/flexfilelayout.c
-@@ -1852,7 +1852,7 @@ ff_layout_mirror_prepare_stats(struct nfs42_layoutstat_args *args,
- 	struct nfs42_layoutstat_devinfo *devinfo;
- 	int i;
- 
--	for (i = 0; i <= FF_LAYOUT_MIRROR_COUNT(pls); i++) {
-+	for (i = 0; i < FF_LAYOUT_MIRROR_COUNT(pls); i++) {
- 		if (*dev_count >= dev_limit)
- 			break;
- 		mirror = FF_LAYOUT_COMP(pls, i);
--- 
-2.4.3
+Looks right to me, though could probably use an ACK from Christoph.
 
+(But looking at the spec I'm confused about how the client is supposed
+to use this information.)
+
+--b.
+
+> 
+> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+> ---
+>  fs/nfsd/nfs4proc.c | 6 +-----
+>  1 file changed, 1 insertion(+), 5 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> index 90cfda7..d112c8a 100644
+> --- a/fs/nfsd/nfs4proc.c
+> +++ b/fs/nfsd/nfs4proc.c
+> @@ -1364,10 +1364,6 @@ nfsd4_layoutcommit(struct svc_rqst *rqstp,
+>  		goto out;
+>  	}
+>  
+> -	nfserr = ops->proc_layoutcommit(inode, lcp);
+> -	if (nfserr)
+> -		goto out_put_stid;
+> -
+>  	if (new_size > i_size_read(inode)) {
+>  		lcp->lc_size_chg = 1;
+>  		lcp->lc_newsize = new_size;
+> @@ -1375,7 +1371,7 @@ nfsd4_layoutcommit(struct svc_rqst *rqstp,
+>  		lcp->lc_size_chg = 0;
+>  	}
+>  
+> -out_put_stid:
+> +	nfserr = ops->proc_layoutcommit(inode, lcp);
+>  	nfs4_put_stid(&ls->ls_stid);
+>  out:
+>  	return nfserr;
+> -- 
+> 2.4.3
