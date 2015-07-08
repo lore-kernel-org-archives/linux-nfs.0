@@ -1,54 +1,125 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:59293 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:59297 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758785AbbGHVaP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 8 Jul 2015 17:30:15 -0400
-Date: Wed, 8 Jul 2015 17:30:15 -0400
+	id S1750915AbbGHVmh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 8 Jul 2015 17:42:37 -0400
+Date: Wed, 8 Jul 2015 17:42:37 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
 To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH 1/5] nfsd: Fix a file leak of ls_file if
- nfsd4_layout_setlease fail
-Message-ID: <20150708213015.GG19084@fieldses.org>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 4/5] nfsd: Check stateid generation in
+ nfsd4_lookup_stateid()
+Message-ID: <20150708214237.GH19084@fieldses.org>
 References: <559672B7.4010802@gmail.com>
+ <5596743C.7080609@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <559672B7.4010802@gmail.com>
+In-Reply-To: <5596743C.7080609@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jul 03, 2015 at 07:32:07PM +0800, Kinglong Mee wrote:
-> If nfsd4_layout_setlease fail, nfsd will not put ls->ls_file.
-> 
-> Fix commit c5c707f96f "nfsd: implement pNFS layout recalls".
-> 
-> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
-> ---
->  fs/nfsd/nfs4layouts.c | 3 +--
->  1 file changed, 1 insertion(+), 2 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4layouts.c b/fs/nfsd/nfs4layouts.c
-> index 6904213..367a65a 100644
-> --- a/fs/nfsd/nfs4layouts.c
-> +++ b/fs/nfsd/nfs4layouts.c
-> @@ -212,8 +212,7 @@ nfsd4_alloc_layout_stateid(struct nfsd4_compound_state *cstate,
->  	BUG_ON(!ls->ls_file);
->  
->  	if (nfsd4_layout_setlease(ls)) {
-> -		put_nfs4_file(fp);
-> -		kmem_cache_free(nfs4_layout_stateid_cache, ls);
-> +		nfs4_put_stid(stp);
-
-Hm, is the stateid really completely enough set up that this is safe?
-
-Looking at nfsd4_free_layout_stateid.... OK, the unnecessary lease
-unlock and tracepoint are a bit ugly bug I guess we can live with those.
+I think you overlooked preprocesse_seqid_op?  Does the reordering of the
+stateid generation checking matter there?  I'm not sure.
 
 --b.
 
->  		return NULL;
->  	}
+On Fri, Jul 03, 2015 at 07:38:36PM +0800, Kinglong Mee wrote:
+> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+> ---
+>  fs/nfsd/nfs4layouts.c |  2 --
+>  fs/nfsd/nfs4state.c   | 30 ++++++++++++++----------------
+>  2 files changed, 14 insertions(+), 18 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4layouts.c b/fs/nfsd/nfs4layouts.c
+> index 367a65a..ef63244 100644
+> --- a/fs/nfsd/nfs4layouts.c
+> +++ b/fs/nfsd/nfs4layouts.c
+> @@ -264,8 +264,6 @@ nfsd4_preprocess_layout_stateid(struct svc_rqst *rqstp,
+>  		ls = container_of(stid, struct nfs4_layout_stateid, ls_stid);
 >  
+>  		status = nfserr_bad_stateid;
+> -		if (stateid->si_generation > stid->sc_stateid.si_generation)
+> -			goto out_put_stid;
+>  		if (layout_type != ls->ls_layout_type)
+>  			goto out_put_stid;
+>  	}
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 61dfb33..53248cd 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -4555,6 +4555,7 @@ nfsd4_lookup_stateid(struct nfsd4_compound_state *cstate,
+>  		     stateid_t *stateid, unsigned char typemask,
+>  		     struct nfs4_stid **s, struct nfsd_net *nn)
+>  {
+> +	struct nfs4_stid *stid;
+>  	__be32 status;
+>  
+>  	if (ZERO_STATEID(stateid) || ONE_STATEID(stateid))
+> @@ -4567,10 +4568,18 @@ nfsd4_lookup_stateid(struct nfsd4_compound_state *cstate,
+>  	}
+>  	if (status)
+>  		return status;
+> -	*s = find_stateid_by_type(cstate->clp, stateid, typemask);
+> -	if (!*s)
+> +	stid = find_stateid_by_type(cstate->clp, stateid, typemask);
+> +	if (!stid)
+>  		return nfserr_bad_stateid;
+> -	return nfs_ok;
+> +
+> +	status = check_stateid_generation(stateid, &stid->sc_stateid,
+> +			nfsd4_has_session(cstate));
+> +	if (status)
+> +		nfs4_put_stid(stid);
+> +	else
+> +		*s = stid;
+> +
+> +	return status;
+>  }
+>  
+>  static struct file *
+> @@ -4673,10 +4682,6 @@ nfs4_preprocess_stateid_op(struct svc_rqst *rqstp,
+>  				&s, nn);
+>  	if (status)
+>  		return status;
+> -	status = check_stateid_generation(stateid, &s->sc_stateid,
+> -			nfsd4_has_session(cstate));
+> -	if (status)
+> -		goto out;
+>  
+>  	switch (s->sc_type) {
+>  	case NFS4_DELEG_STID:
+> @@ -4694,7 +4699,6 @@ nfs4_preprocess_stateid_op(struct svc_rqst *rqstp,
+>  done:
+>  	if (!status && filpp)
+>  		status = nfs4_check_file(rqstp, fhp, s, filpp, tmp_file, flags);
+> -out:
+>  	if (s)
+>  		nfs4_put_stid(s);
+>  	return status;
+> @@ -5021,7 +5025,6 @@ __be32
+>  nfsd4_delegreturn(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  		  struct nfsd4_delegreturn *dr)
+>  {
+> -	struct nfs4_delegation *dp;
+>  	stateid_t *stateid = &dr->dr_stateid;
+>  	struct nfs4_stid *s;
+>  	__be32 status;
+> @@ -5033,14 +5036,9 @@ nfsd4_delegreturn(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  	status = nfsd4_lookup_stateid(cstate, stateid, NFS4_DELEG_STID, &s, nn);
+>  	if (status)
+>  		goto out;
+> -	dp = delegstateid(s);
+> -	status = check_stateid_generation(stateid, &dp->dl_stid.sc_stateid, nfsd4_has_session(cstate));
+> -	if (status)
+> -		goto put_stateid;
+>  
+> -	destroy_delegation(dp);
+> -put_stateid:
+> -	nfs4_put_stid(&dp->dl_stid);
+> +	destroy_delegation(delegstateid(s));
+> +	nfs4_put_stid(s);
+>  out:
+>  	return status;
+>  }
 > -- 
 > 2.4.3
