@@ -1,67 +1,106 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from p3plsmtpa06-10.prod.phx3.secureserver.net ([173.201.192.111]:57339
-	"EHLO p3plsmtpa06-10.prod.phx3.secureserver.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751979AbbGHVpY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Jul 2015 17:45:24 -0400
-Message-ID: <559D983D.6000804@talpey.com>
-Date: Wed, 08 Jul 2015 17:38:05 -0400
-From: Tom Talpey <tom@talpey.com>
+Received: from fieldses.org ([173.255.197.46]:59299 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751979AbbGHVpf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 8 Jul 2015 17:45:35 -0400
+Date: Wed, 8 Jul 2015 17:45:34 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Kinglong Mee <kinglongmee@gmail.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 5/5] nfsd: Add macro NFS_ACL_MASK for ACL
+Message-ID: <20150708214534.GI19084@fieldses.org>
+References: <559672B7.4010802@gmail.com>
+ <55967456.3080908@gmail.com>
 MIME-Version: 1.0
-To: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>,
-        Sagi Grimberg <sagig@dev.mellanox.co.il>
-CC: Steve Wise <swise@opengridcomputing.com>,
-        "'Christoph Hellwig'" <hch@infradead.org>, dledford@redhat.com,
-        sagig@mellanox.com, ogerlitz@mellanox.com, roid@mellanox.com,
-        linux-rdma@vger.kernel.org, eli@mellanox.com,
-        target-devel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        trond.myklebust@primarydata.com, bfields@fieldses.org,
-        Oren Duer <oren@mellanox.com>
-Subject: Re: [PATCH V3 1/5] RDMA/core: Transport-independent access flags
-References: <559A340E.9000000@dev.mellanox.co.il> <001601d0b7f9$3e1d6d40$ba5847c0$@opengridcomputing.com> <559AAA22.1000608@dev.mellanox.co.il> <20150707090001.GB11736@infradead.org> <559B9891.8060907@dev.mellanox.co.il> <000b01d0b8bd$f2bfcc10$d83f6430$@opengridcomputing.com> <20150707161751.GA623@obsidianresearch.com> <559BFE03.4020709@dev.mellanox.co.il> <20150707213628.GA5661@obsidianresearch.com> <559CD174.4040901@dev.mellanox.co.il> <20150708190842.GB11740@obsidianresearch.com>
-In-Reply-To: <20150708190842.GB11740@obsidianresearch.com>
-Content-Type: text/plain; charset=windows-1252; format=flowed
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <55967456.3080908@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 7/8/2015 3:08 PM, Jason Gunthorpe wrote:
-> The MR stuff was never really designed, the HW people provided some
-> capability and the SW side just raw exposed it, thoughtlessly.
+On Fri, Jul 03, 2015 at 07:39:02PM +0800, Kinglong Mee wrote:
+> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
 
-Jason, I don't disagree that the API can be improved. I have some
-responses to your statements below though.
+OK, thanks.--b.
 
-> Why is code using iWarp calling ib_get_dma_mr with
-> RDMA_MRR_READ_DEST/IB_ACCESS_REMOTE_WRITE ? That is insecure.
-
-Because the iWARP protocol requires it, which was very much an
-intentional decision. It actually is not insecure, as discussed
-in detail in RFC5042. However, it is different from Infiniband.
-
-> Why on earth is NFS using frmr to create RDMA READ lkeys?
-
-Because NFS desires to have a single code path that works for all
-transports. In addition, using the IB dma_mr as an lkey means that
-large I/O (common with NFS) would require multiple RDMA Read
-operations, when the page list exceeded the local scatter/gather
-limit of the device.
-
-> I think when you do that, it quickly becomes clear that iWarp's
-> problem is not a seemingly minor issue with different flag bits, but
-> that iWarp *cannot* use local_dma_lkey as a RDMA READ local buffer.
-> Using ib_get_dma_mr(IB_ACCESS_REMOTE_WRITE) is an insecure work
-> around. So iWarp (and only iWarp) should take the pain of spinning up
-> temporary local MRs for RDMA READ.
-
-That is entirely the wrong layer to address this. It would prevent
-reuse of MRs, and require upper layers to be aware that this was
-the case - which is exactly the opposite of what you are trying
-to achieve.
-
-> This should all be hidden under a common API and it shouldn't be
-> sprinkled all over the place in NFS, iSER, etc.
-
-Are you arguing that all upper layer storage protocols take a single
-common approach to memory registration? That is a very different
-discussion.
-
-Tom.
+> ---
+>  fs/nfsd/nfs2acl.c           | 10 ++++------
+>  fs/nfsd/nfs3acl.c           |  4 ++--
+>  include/uapi/linux/nfsacl.h |  1 +
+>  3 files changed, 7 insertions(+), 8 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs2acl.c b/fs/nfsd/nfs2acl.c
+> index d54701f..1580ea6 100644
+> --- a/fs/nfsd/nfs2acl.c
+> +++ b/fs/nfsd/nfs2acl.c
+> @@ -44,13 +44,13 @@ static __be32 nfsacld_proc_getacl(struct svc_rqst * rqstp,
+>  
+>  	inode = d_inode(fh->fh_dentry);
+>  
+> -	if (argp->mask & ~(NFS_ACL|NFS_ACLCNT|NFS_DFACL|NFS_DFACLCNT))
+> +	if (argp->mask & ~NFS_ACL_MASK)
+>  		RETURN_STATUS(nfserr_inval);
+>  	resp->mask = argp->mask;
+>  
+>  	nfserr = fh_getattr(fh, &resp->stat);
+>  	if (nfserr)
+> -		goto fail;
+> +		RETURN_STATUS(nfserr);
+>  
+>  	if (resp->mask & (NFS_ACL|NFS_ACLCNT)) {
+>  		acl = get_acl(inode, ACL_TYPE_ACCESS);
+> @@ -202,7 +202,7 @@ static int nfsaclsvc_decode_setaclargs(struct svc_rqst *rqstp, __be32 *p,
+>  	if (!p)
+>  		return 0;
+>  	argp->mask = ntohl(*p++);
+> -	if (argp->mask & ~(NFS_ACL|NFS_ACLCNT|NFS_DFACL|NFS_DFACLCNT) ||
+> +	if (argp->mask & ~NFS_ACL_MASK ||
+>  	    !xdr_argsize_check(rqstp, p))
+>  		return 0;
+>  
+> @@ -293,9 +293,7 @@ static int nfsaclsvc_encode_getaclres(struct svc_rqst *rqstp, __be32 *p,
+>  				  resp->acl_default,
+>  				  resp->mask & NFS_DFACL,
+>  				  NFS_ACL_DEFAULT);
+> -	if (n <= 0)
+> -		return 0;
+> -	return 1;
+> +	return (n > 0);
+>  }
+>  
+>  static int nfsaclsvc_encode_attrstatres(struct svc_rqst *rqstp, __be32 *p,
+> diff --git a/fs/nfsd/nfs3acl.c b/fs/nfsd/nfs3acl.c
+> index 882b1a1..01df4cd 100644
+> --- a/fs/nfsd/nfs3acl.c
+> +++ b/fs/nfsd/nfs3acl.c
+> @@ -41,7 +41,7 @@ static __be32 nfsd3_proc_getacl(struct svc_rqst * rqstp,
+>  
+>  	inode = d_inode(fh->fh_dentry);
+>  
+> -	if (argp->mask & ~(NFS_ACL|NFS_ACLCNT|NFS_DFACL|NFS_DFACLCNT))
+> +	if (argp->mask & ~NFS_ACL_MASK)
+>  		RETURN_STATUS(nfserr_inval);
+>  	resp->mask = argp->mask;
+>  
+> @@ -148,7 +148,7 @@ static int nfs3svc_decode_setaclargs(struct svc_rqst *rqstp, __be32 *p,
+>  	if (!p)
+>  		return 0;
+>  	args->mask = ntohl(*p++);
+> -	if (args->mask & ~(NFS_ACL|NFS_ACLCNT|NFS_DFACL|NFS_DFACLCNT) ||
+> +	if (args->mask & ~NFS_ACL_MASK ||
+>  	    !xdr_argsize_check(rqstp, p))
+>  		return 0;
+>  
+> diff --git a/include/uapi/linux/nfsacl.h b/include/uapi/linux/nfsacl.h
+> index 9bb9771..5527266 100644
+> --- a/include/uapi/linux/nfsacl.h
+> +++ b/include/uapi/linux/nfsacl.h
+> @@ -22,6 +22,7 @@
+>  #define NFS_ACLCNT		0x0002
+>  #define NFS_DFACL		0x0004
+>  #define NFS_DFACLCNT		0x0008
+> +#define NFS_ACL_MASK		0x000f
+>  
+>  /* Flag for Default ACL entries */
+>  #define NFS_ACL_DEFAULT		0x1000
+> -- 
+> 2.4.3
