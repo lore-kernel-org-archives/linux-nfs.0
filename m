@@ -1,13 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f173.google.com ([209.85.220.173]:36309 "EHLO
-	mail-qk0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753616AbbGIUm7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jul 2015 16:42:59 -0400
-Subject: [PATCH v1 08/12] xprtrdma: Fix XDR tail buffer marshalling
+Received: from mail-qk0-f172.google.com ([209.85.220.172]:34786 "EHLO
+	mail-qk0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754014AbbGIUnJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jul 2015 16:43:09 -0400
+Subject: [PATCH v1 09/12] xprtrdma: Prepare rpcrdma_ep_post() for RDMA_NOMSG
+ calls
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Thu, 09 Jul 2015 16:42:56 -0400
-Message-ID: <20150709204256.26247.14336.stgit@manet.1015granger.net>
+Date: Thu, 09 Jul 2015 16:43:05 -0400
+Message-ID: <20150709204305.26247.39173.stgit@manet.1015granger.net>
 In-Reply-To: <20150709203242.26247.4848.stgit@manet.1015granger.net>
 References: <20150709203242.26247.4848.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -15,98 +16,122 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Currently xprtrdma appends an extra chunk element to the RPC/RDMA
-read chunk list of each NFSv4 WRITE compound. The extra element
-contains the final GETATTR operation in the compound.
+Only the RPC/RDMA header is sent when making an RDMA_NOMSG call.
+That header resides in the first element of the iovec array
+passed to rpcrdma_ep_post().
 
-The result is an extra RDMA READ operation to transfer a very short
-piece of each NFS WRITE compound (typically 16 bytes). This is
-inefficient.
-
-It is also incorrect. Although RFC 5667 is not precise about when
-using a read list with NFSv4 COMPOUND is allowed, the intent is that
-only data arguments not touched by the NFS client are to be sent
-using RDMA READ or WRITE. The NFS client constructs GETATTR
-arguments itself, and therefore is required to send the trailing
-GETATTR operation as additional inline content, not as a data
-payload.
-
-NB: This change is not backwards compatible. Some older servers do
-not accept inline content following the read list. The Linux NFS
-server should handle this content correctly as of commit
-a97c331f9aa9 ("svcrdma: Handle additional inline content").
+Instead of special casing the iovec element with the pad, just
+sync all the elements in the send iovec. Syncing the zero pad is
+not strictly necessary, but the pad is rarely if ever used these
+days, and the extra cost in that case is small.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/rpc_rdma.c |   43 +++++++++++++++++++++++++++++++++++++++-
- 1 file changed, 42 insertions(+), 1 deletion(-)
+ net/sunrpc/xprtrdma/rpc_rdma.c  |    4 ++++
+ net/sunrpc/xprtrdma/verbs.c     |   27 +++++++++++----------------
+ net/sunrpc/xprtrdma/xprt_rdma.h |   18 ++++++++++--------
+ 3 files changed, 25 insertions(+), 24 deletions(-)
 
 diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index 8ac1448c..cb05233 100644
+index cb05233..2e721f2 100644
 --- a/net/sunrpc/xprtrdma/rpc_rdma.c
 +++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -96,6 +96,42 @@ static bool rpcrdma_results_inline(struct rpc_rqst *rqst)
- 	return repsize <= RPCRDMA_INLINE_READ_THRESHOLD(rqst);
- }
+@@ -575,6 +575,10 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
+ 	req->rl_send_iov[0].length = hdrlen;
+ 	req->rl_send_iov[0].lkey = rdmab_lkey(req->rl_rdmabuf);
  
-+static int
-+rpcrdma_tail_pullup(struct xdr_buf *buf)
-+{
-+	size_t tlen = buf->tail[0].iov_len;
-+	size_t skip = tlen & 3;
-+
-+	/* Do not include the tail if it is only an XDR pad */
-+	if (tlen < 4)
++	req->rl_niovs = 1;
++	if (rtype == rpcrdma_areadch)
 +		return 0;
 +
-+	/* xdr_write_pages() adds a pad at the beginning of the tail
-+	 * if the content in "buf->pages" is unaligned. Force the
-+	 * tail's actual content to land at the next XDR position
-+	 * after the head instead.
-+	 */
-+	if (skip) {
-+		unsigned char *src, *dst;
-+		unsigned int count;
-+
-+		src = buf->tail[0].iov_base;
-+		dst = buf->head[0].iov_base;
-+		dst += buf->head[0].iov_len;
-+
-+		src += skip;
-+		tlen -= skip;
-+
-+		dprintk("RPC:       %s: skip=%zu, memmove(%p, %p, %zu)\n",
-+			__func__, skip, dst, src, tlen);
-+
-+		for (count = tlen; count; count--)
-+			*dst++ = *src++;
-+	}
-+
-+	return tlen;
-+}
-+
- /*
-  * Chunk assembly from upper layer xdr_buf.
-  *
-@@ -147,6 +183,10 @@ rpcrdma_convert_iovs(struct xdr_buf *xdrbuf, unsigned int pos,
- 	if (len && n == nsegs)
- 		return -EIO;
+ 	req->rl_send_iov[1].addr = rdmab_addr(req->rl_sendbuf);
+ 	req->rl_send_iov[1].length = rpclen;
+ 	req->rl_send_iov[1].lkey = rdmab_lkey(req->rl_sendbuf);
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index cdf5220..9199436 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -651,7 +651,7 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
+ 	if (rc)
+ 		return rc;
+ 	ep->rep_attr.cap.max_recv_wr = cdata->max_requests;
+-	ep->rep_attr.cap.max_send_sge = (cdata->padding ? 4 : 2);
++	ep->rep_attr.cap.max_send_sge = RPCRDMA_MAX_IOVS;
+ 	ep->rep_attr.cap.max_recv_sge = 1;
+ 	ep->rep_attr.cap.max_inline_data = 0;
+ 	ep->rep_attr.sq_sig_type = IB_SIGNAL_REQ_WR;
+@@ -1303,9 +1303,11 @@ rpcrdma_ep_post(struct rpcrdma_ia *ia,
+ 		struct rpcrdma_ep *ep,
+ 		struct rpcrdma_req *req)
+ {
++	struct ib_device *device = ia->ri_device;
+ 	struct ib_send_wr send_wr, *send_wr_fail;
+ 	struct rpcrdma_rep *rep = req->rl_reply;
+-	int rc;
++	struct ib_sge *iov = req->rl_send_iov;
++	int i, rc;
  
-+	/* When encoding the read list, the tail is always sent inline */
-+	if (type == rpcrdma_readch)
-+		return n;
-+
- 	if (xdrbuf->tail[0].iov_len) {
- 		/* the rpcrdma protocol allows us to omit any trailing
- 		 * xdr pad bytes, saving the server an RDMA operation. */
-@@ -504,7 +544,8 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
- 			/* new length after pullup */
- 			rpclen = rqst->rq_svec[0].iov_len;
- 		}
--	}
-+	} else if (rtype == rpcrdma_readch)
-+		rpclen += rpcrdma_tail_pullup(&rqst->rq_snd_buf);
+ 	if (rep) {
+ 		rc = rpcrdma_ep_post_recv(ia, ep, rep);
+@@ -1316,22 +1318,15 @@ rpcrdma_ep_post(struct rpcrdma_ia *ia,
  
- 	if (rtype != rpcrdma_noch) {
- 		hdrlen = rpcrdma_create_chunks(rqst, &rqst->rq_snd_buf,
+ 	send_wr.next = NULL;
+ 	send_wr.wr_id = RPCRDMA_IGNORE_COMPLETION;
+-	send_wr.sg_list = req->rl_send_iov;
++	send_wr.sg_list = iov;
+ 	send_wr.num_sge = req->rl_niovs;
+ 	send_wr.opcode = IB_WR_SEND;
+-	if (send_wr.num_sge == 4)	/* no need to sync any pad (constant) */
+-		ib_dma_sync_single_for_device(ia->ri_device,
+-					      req->rl_send_iov[3].addr,
+-					      req->rl_send_iov[3].length,
+-					      DMA_TO_DEVICE);
+-	ib_dma_sync_single_for_device(ia->ri_device,
+-				      req->rl_send_iov[1].addr,
+-				      req->rl_send_iov[1].length,
+-				      DMA_TO_DEVICE);
+-	ib_dma_sync_single_for_device(ia->ri_device,
+-				      req->rl_send_iov[0].addr,
+-				      req->rl_send_iov[0].length,
+-				      DMA_TO_DEVICE);
++
++	for (i = 0; i < send_wr.num_sge; i++)
++		ib_dma_sync_single_for_device(device, iov[i].addr,
++					      iov[i].length, DMA_TO_DEVICE);
++	dprintk("RPC:       %s: posting %d s/g entries\n",
++		__func__, send_wr.num_sge);
+ 
+ 	if (DECR_CQCOUNT(ep) > 0)
+ 		send_wr.send_flags = 0;
+diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+index ce4e79e..90da480 100644
+--- a/net/sunrpc/xprtrdma/xprt_rdma.h
++++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+@@ -256,16 +256,18 @@ struct rpcrdma_mr_seg {		/* chunk descriptors */
+ 	char		*mr_offset;	/* kva if no page, else offset */
+ };
+ 
++#define RPCRDMA_MAX_IOVS	(4)
++
+ struct rpcrdma_req {
+-	unsigned int	rl_niovs;	/* 0, 2 or 4 */
+-	unsigned int	rl_nchunks;	/* non-zero if chunks */
+-	unsigned int	rl_connect_cookie;	/* retry detection */
+-	struct rpcrdma_buffer *rl_buffer; /* home base for this structure */
++	unsigned int		rl_niovs;
++	unsigned int		rl_nchunks;
++	unsigned int		rl_connect_cookie;
++	struct rpcrdma_buffer	*rl_buffer;
+ 	struct rpcrdma_rep	*rl_reply;/* holder for reply buffer */
+-	struct ib_sge	rl_send_iov[4];	/* for active requests */
+-	struct rpcrdma_regbuf *rl_rdmabuf;
+-	struct rpcrdma_regbuf *rl_sendbuf;
+-	struct rpcrdma_mr_seg rl_segments[RPCRDMA_MAX_SEGS];
++	struct ib_sge		rl_send_iov[RPCRDMA_MAX_IOVS];
++	struct rpcrdma_regbuf	*rl_rdmabuf;
++	struct rpcrdma_regbuf	*rl_sendbuf;
++	struct rpcrdma_mr_seg	rl_segments[RPCRDMA_MAX_SEGS];
+ };
+ 
+ static inline struct rpcrdma_req *
 
