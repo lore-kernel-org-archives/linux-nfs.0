@@ -1,49 +1,28 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pa0-f42.google.com ([209.85.220.42]:35548 "EHLO
-	mail-pa0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750891AbbGIJie (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jul 2015 05:38:34 -0400
-Received: by pactm7 with SMTP id tm7so147894966pac.2
-        for <linux-nfs@vger.kernel.org>; Thu, 09 Jul 2015 02:38:34 -0700 (PDT)
-Message-ID: <559E4112.3070902@gmail.com>
-Date: Thu, 09 Jul 2015 17:38:26 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
+Received: from mailhost.fveritas.com.br ([200.230.82.5]:39368 "EHLO
+	mailhost.usc.br" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751301AbbGIJpB convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jul 2015 05:45:01 -0400
+Content-Type: text/plain; charset=US-ASCII
 MIME-Version: 1.0
-To: Christoph Hellwig <hch@infradead.org>,
-        "J. Bruce Fields" <bfields@fieldses.org>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        kinglongmee@gmail.com
-Subject: [PATCH v2] nfsd: Fix a file leak of ls_file if nfsd4_layout_setlease
- fail
-References: <559672B7.4010802@gmail.com> <20150708213015.GG19084@fieldses.org> <20150709081239.GB19291@infradead.org> <559E3F68.6090205@gmail.com>
-In-Reply-To: <559E3F68.6090205@gmail.com>
-Content-Type: text/plain; charset=windows-1252
+Subject: Re: your protracted and stalled funds transfer from the U.K.
+To: Recipients <adamwitkover56@gmail.com>
+From: adamwitkover56@gmail.com
+Date: Thu, 09 Jul 2015 11:38:24 +0200
+Reply-To: adamwitkover56@gmail.com
+Message-Id: <20150709093913.AC225209C1@mailhost.usc.br>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If nfsd4_layout_setlease fail, nfsd will not put ls->ls_file.
+Attention Pls,
 
-Fix commit c5c707f96f "nfsd: implement pNFS layout recalls".
+I am writing you with regards to your protracted and stalled funds transfer from the U.K. and would urge you to accord this correspondence your full indulgence and attention, as the authenticity and difference would be evident if you do so.
 
-v2, just put file using fput
+As a freelance, independent External Audit expert assisting a private financial institution here in Britain in all aspects of their work, your transfer file came to my attention just this morning, and I was compelled to take special interest in it owing to its peculiar history of procedural inconsistencies. Obviously all the persons you assigned to process your transfer have proved to be incompetent. Simply put it that they have given room to some management of the Bank to try and smuggle your fund through a non-existent back door.
 
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
----
- fs/nfsd/nfs4layouts.c | 1 +
- 1 file changed, 1 insertion(+)
+My intention is to quickly reactivate and sort out your transfer without any distraction through a simple, transparent and authoritative means where you will not be required to pay any unauthorized fees. You are forbidden to preempt anyone of this contact and I await your response at your earliest convenience.
 
-diff --git a/fs/nfsd/nfs4layouts.c b/fs/nfsd/nfs4layouts.c
-index 6904213..ebf90e4 100644
---- a/fs/nfsd/nfs4layouts.c
-+++ b/fs/nfsd/nfs4layouts.c
-@@ -212,6 +212,7 @@ nfsd4_alloc_layout_stateid(struct nfsd4_compound_state *cstate,
- 	BUG_ON(!ls->ls_file);
- 
- 	if (nfsd4_layout_setlease(ls)) {
-+		fput(ls->ls_file);
- 		put_nfs4_file(fp);
- 		kmem_cache_free(nfs4_layout_stateid_cache, ls);
- 		return NULL;
--- 
-2.4.3
+Thank you.
 
+Sincerely,
+Adam Witkover
