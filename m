@@ -1,76 +1,92 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f181.google.com ([209.85.220.181]:34897 "EHLO
+Received: from mail-qk0-f181.google.com ([209.85.220.181]:33341 "EHLO
 	mail-qk0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753982AbbGIUnh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jul 2015 16:43:37 -0400
-Subject: [PATCH v1 12/12] xprtrdma: Count RDMA_NOMSG type calls
+	with ESMTP id S1753777AbbGIUpV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jul 2015 16:45:21 -0400
 From: Chuck Lever <chuck.lever@oracle.com>
-To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Thu, 09 Jul 2015 16:43:34 -0400
-Message-ID: <20150709204334.26247.11629.stgit@manet.1015granger.net>
-In-Reply-To: <20150709203242.26247.4848.stgit@manet.1015granger.net>
-References: <20150709203242.26247.4848.stgit@manet.1015granger.net>
+Subject: [PATCH v1 2/5] svcrdma: Fix send_reply() scatter/gather set-up
+To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
+Date: Thu, 09 Jul 2015 16:45:18 -0400
+Message-ID: <20150709204518.8481.10431.stgit@klimt.1015granger.net>
+In-Reply-To: <20150709204230.8481.45457.stgit@klimt.1015granger.net>
+References: <20150709204230.8481.45457.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-RDMA_NOMSG type calls are less efficient than RDMA_MSG. Count NOMSG
-calls so administrators can tell if they happen to be used more than
-expected.
+The Linux NFS server returns garbage in the data payload of inline
+NFS/RDMA READ replies. These are READs of under 1000 bytes or so
+where the client has not provided either a reply chunk or a write
+list.
 
+The NFS server delivers the data payload for an NFS READ reply to
+the transport in an xdr_buf page list. If the NFS client did not
+provide a reply chunk or a write list, send_reply() is supposed to
+set up a separate sge for the page containing the READ data, and
+another sge for XDR padding if needed, then post all of the sges via
+a single SEND Work Request.
+
+The problem is send_reply() does not advance through the xdr_buf
+when setting up scatter/gather entries for SEND WR. It always calls
+dma_map_xdr with xdr_off set to zero. When there's more than one
+sge, dma_map_xdr() sets up the SEND sge's so they all point to the
+xdr_buf's head.
+
+The current Linux NFS/RDMA client always provides a reply chunk or
+a write list when performing an NFS READ over RDMA. Therefore, it
+does not exercise this particular case. The Linux server has never
+had to use more than one extra sge for building RPC/RDMA replies
+with a Linux client.
+
+However, an NFS/RDMA client _is_ allowed to send small NFS READs
+without setting up a write list or reply chunk. The NFS READ reply
+fits entirely within the inline reply buffer in this case. This is
+perhaps a more efficient way of performing NFS READs that the Linux
+NFS/RDMA client may some day adopt.
+
+Fixes: b432e6b3d9c1 ('svcrdma: Change DMA mapping logic to . . .')
+BugLink: https://bugzilla.linux-nfs.org/show_bug.cgi?id=285
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/rpc_rdma.c  |    1 +
- net/sunrpc/xprtrdma/transport.c |    5 +++--
- net/sunrpc/xprtrdma/xprt_rdma.h |    1 +
- 3 files changed, 5 insertions(+), 2 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index 64fc4b4..7c8808d 100644
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -498,6 +498,7 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
- 	} else if (rqst->rq_snd_buf.flags & XDRBUF_WRITE) {
- 		rtype = rpcrdma_readch;
- 	} else {
-+		r_xprt->rx_stats.nomsg_call_count++;
- 		headerp->rm_type = htonl(RDMA_NOMSG);
- 		rtype = rpcrdma_areadch;
- 		rpclen = 0;
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index 0985b2b..64443eb 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -659,7 +659,7 @@ static void xprt_rdma_print_stats(struct rpc_xprt *xprt, struct seq_file *seq)
- 		   xprt->stat.bad_xids,
- 		   xprt->stat.req_u,
- 		   xprt->stat.bklog_u);
--	seq_printf(seq, "%lu %lu %lu %llu %llu %llu %llu %lu %lu %lu\n",
-+	seq_printf(seq, "%lu %lu %lu %llu %llu %llu %llu %lu %lu %lu %lu\n",
- 		   r_xprt->rx_stats.read_chunk_count,
- 		   r_xprt->rx_stats.write_chunk_count,
- 		   r_xprt->rx_stats.reply_chunk_count,
-@@ -669,7 +669,8 @@ static void xprt_rdma_print_stats(struct rpc_xprt *xprt, struct seq_file *seq)
- 		   r_xprt->rx_stats.fixup_copy_count,
- 		   r_xprt->rx_stats.hardway_register_count,
- 		   r_xprt->rx_stats.failed_marshal_count,
--		   r_xprt->rx_stats.bad_reply_count);
-+		   r_xprt->rx_stats.bad_reply_count,
-+		   r_xprt->rx_stats.nomsg_call_count);
- }
+ net/sunrpc/xprtrdma/svc_rdma_sendto.c |   10 +++++++++-
+ 1 files changed, 9 insertions(+), 1 deletions(-)
+
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+index d25cd43..95412ab 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+@@ -384,6 +384,7 @@ static int send_reply(struct svcxprt_rdma *rdma,
+ 		      int byte_count)
+ {
+ 	struct ib_send_wr send_wr;
++	u32 xdr_off;
+ 	int sge_no;
+ 	int sge_bytes;
+ 	int page_no;
+@@ -418,8 +419,8 @@ static int send_reply(struct svcxprt_rdma *rdma,
+ 	ctxt->direction = DMA_TO_DEVICE;
  
- static int
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index 90da480..566c60b 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -342,6 +342,7 @@ struct rpcrdma_stats {
- 	unsigned long		hardway_register_count;
- 	unsigned long		failed_marshal_count;
- 	unsigned long		bad_reply_count;
-+	unsigned long		nomsg_call_count;
- };
+ 	/* Map the payload indicated by 'byte_count' */
++	xdr_off = 0;
+ 	for (sge_no = 1; byte_count && sge_no < vec->count; sge_no++) {
+-		int xdr_off = 0;
+ 		sge_bytes = min_t(size_t, vec->sge[sge_no].iov_len, byte_count);
+ 		byte_count -= sge_bytes;
+ 		ctxt->sge[sge_no].addr =
+@@ -457,6 +458,13 @@ static int send_reply(struct svcxprt_rdma *rdma,
+ 	}
+ 	rqstp->rq_next_page = rqstp->rq_respages + 1;
  
- /*
++	/* The loop above bumps sc_dma_used for each sge. The
++	 * xdr_buf.tail gets a separate sge, but resides in the
++	 * same page as xdr_buf.head. Don't count it twice.
++	 */
++	if (sge_no > ctxt->count)
++		atomic_dec(&rdma->sc_dma_used);
++
+ 	if (sge_no > rdma->sc_max_sge) {
+ 		pr_err("svcrdma: Too many sges (%d)\n", sge_no);
+ 		goto err;
 
