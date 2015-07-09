@@ -1,53 +1,37 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:59686 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751125AbbGIQTY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 9 Jul 2015 12:19:24 -0400
-Date: Thu, 9 Jul 2015 12:19:24 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: Christoph Hellwig <hch@infradead.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v2] nfsd: Fix a file leak of ls_file if
- nfsd4_layout_setlease fail
-Message-ID: <20150709161924.GB29703@fieldses.org>
-References: <559672B7.4010802@gmail.com>
- <20150708213015.GG19084@fieldses.org>
- <20150709081239.GB19291@infradead.org>
- <559E3F68.6090205@gmail.com>
- <559E4112.3070902@gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <559E4112.3070902@gmail.com>
+Received: from mail-yk0-f182.google.com ([209.85.160.182]:33655 "EHLO
+	mail-yk0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753126AbbGIQUQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jul 2015 12:20:16 -0400
+Received: by ykeo3 with SMTP id o3so119939440yke.0
+        for <linux-nfs@vger.kernel.org>; Thu, 09 Jul 2015 09:20:15 -0700 (PDT)
+From: Jeff Layton <jlayton@poochiereds.net>
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org, meir.leopold@primarydata.com
+Subject: [PATCH] nfs: plug rpc_task leak in layoutstats code
+Date: Thu,  9 Jul 2015 12:20:07 -0400
+Message-Id: <1436458807-27351-1-git-send-email-jeff.layton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jul 09, 2015 at 05:38:26PM +0800, Kinglong Mee wrote:
-> If nfsd4_layout_setlease fail, nfsd will not put ls->ls_file.
-> 
-> Fix commit c5c707f96f "nfsd: implement pNFS layout recalls".
-> 
-> v2, just put file using fput
+The caller of rpc_run_task also gets a reference that must be put.
 
-OK, thanks.--b.
+Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
+---
+ fs/nfs/nfs42proc.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-> 
-> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
-> ---
->  fs/nfsd/nfs4layouts.c | 1 +
->  1 file changed, 1 insertion(+)
-> 
-> diff --git a/fs/nfsd/nfs4layouts.c b/fs/nfsd/nfs4layouts.c
-> index 6904213..ebf90e4 100644
-> --- a/fs/nfsd/nfs4layouts.c
-> +++ b/fs/nfsd/nfs4layouts.c
-> @@ -212,6 +212,7 @@ nfsd4_alloc_layout_stateid(struct nfsd4_compound_state *cstate,
->  	BUG_ON(!ls->ls_file);
->  
->  	if (nfsd4_layout_setlease(ls)) {
-> +		fput(ls->ls_file);
->  		put_nfs4_file(fp);
->  		kmem_cache_free(nfs4_layout_stateid_cache, ls);
->  		return NULL;
-> -- 
-> 2.4.3
+diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
+index f486b80f927a..dd33a249f97e 100644
+--- a/fs/nfs/nfs42proc.c
++++ b/fs/nfs/nfs42proc.c
+@@ -250,5 +250,6 @@ int nfs42_proc_layoutstats_generic(struct nfs_server *server,
+ 	task = rpc_run_task(&task_setup);
+ 	if (IS_ERR(task))
+ 		return PTR_ERR(task);
++	rpc_put_task(task);
+ 	return 0;
+ }
+-- 
+2.4.3
+
