@@ -1,71 +1,59 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wi0-f178.google.com ([209.85.212.178]:37536 "EHLO
-	mail-wi0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750923AbbGII6s (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jul 2015 04:58:48 -0400
-Received: by wiclp1 with SMTP id lp1so103221621wic.0
-        for <linux-nfs@vger.kernel.org>; Thu, 09 Jul 2015 01:58:46 -0700 (PDT)
-Subject: Re: [PATCH V3 1/5] RDMA/core: Transport-independent access flags
-To: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>,
-        "'Christoph Hellwig'" <hch@infradead.org>
-References: <559AAA22.1000608@dev.mellanox.co.il>
- <20150707090001.GB11736@infradead.org> <559B9891.8060907@dev.mellanox.co.il>
- <000b01d0b8bd$f2bfcc10$d83f6430$@opengridcomputing.com>
- <20150707161751.GA623@obsidianresearch.com>
- <559BFE03.4020709@dev.mellanox.co.il>
- <20150707213628.GA5661@obsidianresearch.com>
- <559CD174.4040901@dev.mellanox.co.il>
- <20150708190842.GB11740@obsidianresearch.com>
- <20150708203205.GA21847@infradead.org>
- <20150709000337.GE16812@obsidianresearch.com>
-Cc: Steve Wise <swise@opengridcomputing.com>, dledford@redhat.com,
-        sagig@mellanox.com, ogerlitz@mellanox.com, roid@mellanox.com,
-        linux-rdma@vger.kernel.org, eli@mellanox.com,
-        target-devel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        trond.myklebust@primarydata.com, bfields@fieldses.org,
-        Oren Duer <oren@mellanox.com>
-From: Sagi Grimberg <sagig@dev.mellanox.co.il>
-Message-ID: <559E37D2.9090103@dev.mellanox.co.il>
-Date: Thu, 9 Jul 2015 11:58:58 +0300
+Received: from mail-pa0-f42.google.com ([209.85.220.42]:33316 "EHLO
+	mail-pa0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751842AbbGIJ2v (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jul 2015 05:28:51 -0400
+Received: by pacws9 with SMTP id ws9so149238075pac.0
+        for <linux-nfs@vger.kernel.org>; Thu, 09 Jul 2015 02:28:51 -0700 (PDT)
+Message-ID: <559E3ECA.6000606@gmail.com>
+Date: Thu, 09 Jul 2015 17:28:42 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
 MIME-Version: 1.0
-In-Reply-To: <20150709000337.GE16812@obsidianresearch.com>
-Content-Type: text/plain; charset=windows-1252; format=flowed
+To: Christoph Hellwig <hch@infradead.org>,
+        "J. Bruce Fields" <bfields@fieldses.org>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        kinglongmee@gmail.com
+Subject: Re: [PATCH 1/3] nfsd: Set lc_size_chg before ops->proc_layoutcommit
+References: <559B3573.4090307@gmail.com> <20150708184431.GB19084@fieldses.org> <20150709080419.GA19291@infradead.org>
+In-Reply-To: <20150709080419.GA19291@infradead.org>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 7/9/2015 3:03 AM, Jason Gunthorpe wrote:
-> On Wed, Jul 08, 2015 at 01:32:05PM -0700, 'Christoph Hellwig' wrote:
->> On Wed, Jul 08, 2015 at 01:08:42PM -0600, Jason Gunthorpe wrote:
->>> Then, what is left is all remote MRs and maybe it will be clearer what
->>> to do about them then...
+On 7/9/2015 16:04, Christoph Hellwig wrote:
+> On Wed, Jul 08, 2015 at 02:44:31PM -0400, J. Bruce Fields wrote:
+>> On Tue, Jul 07, 2015 at 10:12:03AM +0800, Kinglong Mee wrote:
+>>> After proc_layoutcommit success, i_size_read(inode) always >= new_size.
+>>> Just set lc_size_chg before proc_layoutcommit, if proc_layoutcommit
+>>> failed, nfsd will skip the lc_size_chg, so it's no harm.
 >>
->>  From looking at that for a while the APIs needed seem pretty simple
->> to me from a consumer perspective:
+>> Looks right to me, though could probably use an ACK from Christoph.
 >>
->> struct rdma_mr *rmda_alloc_mr(struct ib_pd *pd, unsigned int nr_pages);
->> void rdma_free_mr(struct rdma_mr *mr);
->
-> The major trouble with that is that the new MR types work by posting
-> work to the send queue, that work creates the MR.
->
-> I don't know all the details of how those schemes work, but it doesn't
-> look like it fits into this model ?
->
-> Maybe if rdma_register_sg was the only API and it accepted a QP, under
-> the hood it could re-use a pooled/create a non-queued (F)MR, or issue
-> FRMR, or work with indirect?
+>> (But looking at the spec I'm confused about how the client is supposed
+>> to use this information.)
+> 
+> I don;t think its possible to use, as there it is inherently racy.
+> 
+> If the test passes xfstests I'm fine with it.
 
-I think it's confusing to possibly do completely different registration
-methods which has different implications on the consumer RDMA channel.
+nfs client just drop this value directly in decode_layoutcommit(),
 
->
-> It would be nice if it is that simple :)
+        if (sizechanged) {
+                /* throw away new size */
+                p = xdr_inline_decode(xdr, 8);
+                if (unlikely(!p))
+                        goto out_overflow;
+        }
 
-It can be simple if we consolidate on a single method.
+The only problem is after ops->proc_layoutcommit(),  new_size will never
+larger than inode's size, at most it is equal to.
 
->
-> Sagi, are FMRs, FRMRs and Indirect MRs documented any place? I can't
-> recall off hand if FRMR was ever published by the IBTA?
+        if (new_size > i_size_read(inode)) {
+                lcp->lc_size_chg = 1;
+                lcp->lc_newsize = new_size;
+        } else {
+                lcp->lc_size_chg = 0;
+        }
 
-I don't know if FMRs are in IBTA.
-FRMRs are in under 10.6.3.7 FAST REGISTRATION (vol 1)
+thanks,
+Kinglong Mee
