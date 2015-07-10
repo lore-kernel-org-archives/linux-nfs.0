@@ -1,73 +1,105 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yk0-f169.google.com ([209.85.160.169]:36719 "EHLO
-	mail-yk0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932316AbbGJUvS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jul 2015 16:51:18 -0400
-Received: by ykey15 with SMTP id y15so76396763yke.3
-        for <linux-nfs@vger.kernel.org>; Fri, 10 Jul 2015 13:51:18 -0700 (PDT)
-Date: Fri, 10 Jul 2015 16:51:14 -0400
-From: Jeff Layton <jlayton@poochiereds.net>
-To: linux-nfs@vger.kernel.org
-Cc: linux-fsdevel@vger.kernel.org, william@gandi.net, bfields@fieldses.org,
-        trond.myklebust@primarydata.com, stable@vger.kernel.org,
-        Anna.Schumaker@netapp.com
-Subject: Re: [RFC PATCH 1/4] Revert "nfs: take extra reference to
- fl->fl_file when running a LOCKU operation"
-Message-ID: <20150710165114.7ebe9c53@tlielax.poochiereds.net>
-In-Reply-To: <1436560414-26306-2-git-send-email-jeff.layton@primarydata.com>
-References: <1436560414-26306-1-git-send-email-jeff.layton@primarydata.com>
-	<1436560414-26306-2-git-send-email-jeff.layton@primarydata.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail-qg0-f51.google.com ([209.85.192.51]:34564 "EHLO
+	mail-qg0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932243AbbGJUw1 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jul 2015 16:52:27 -0400
+Content-Type: text/plain; charset=utf-8
+Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2102\))
+Subject: Re: [PATCH v1 09/12] xprtrdma: Prepare rpcrdma_ep_post() for RDMA_NOMSG calls
+From: Chuck Lever <chucklever@gmail.com>
+In-Reply-To: <55A02E73.7000902@Netapp.com>
+Date: Fri, 10 Jul 2015 16:52:22 -0400
+Cc: Chuck Lever <chuck.lever@oracle.com>, linux-rdma@vger.kernel.org,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <9967E8B6-C9DE-4EE0-A50C-350B373BFD51@gmail.com>
+References: <20150709203242.26247.4848.stgit@manet.1015granger.net> <20150709204305.26247.39173.stgit@manet.1015granger.net> <55A02E73.7000902@Netapp.com>
+To: Anna Schumaker <Anna.Schumaker@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 10 Jul 2015 16:33:31 -0400
-Jeff Layton <jlayton@poochiereds.net> wrote:
 
-> This reverts commit db2efec0caba4f81a22d95a34da640b86c313c8e.
+> On Jul 10, 2015, at 4:43 PM, Anna Schumaker <Anna.Schumaker@netapp.com> wrote:
 > 
-> William reported that he was seeing instability with this patch, which
-> is likely due to the fact that it can cause the kernel to take a new
-> reference to a filp after the last reference has already been put.
+> Hi Chuck,
 > 
-> Revert this patch for now, as we'll need to fix this in another way.
+> On 07/09/2015 04:43 PM, Chuck Lever wrote:
+>> Only the RPC/RDMA header is sent when making an RDMA_NOMSG call.
+>> That header resides in the first element of the iovec array
+>> passed to rpcrdma_ep_post().
+>> 
+>> Instead of special casing the iovec element with the pad, just
+>> sync all the elements in the send iovec. Syncing the zero pad is
+>> not strictly necessary, but the pad is rarely if ever used these
+>> days, and the extra cost in that case is small.
+>> 
+>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+>> index cdf5220..9199436 100644
+>> --- a/net/sunrpc/xprtrdma/verbs.c
+>> +++ b/net/sunrpc/xprtrdma/verbs.c
+>> @@ -1316,22 +1318,15 @@ rpcrdma_ep_post(struct rpcrdma_ia *ia,
+>> 
+>> 	send_wr.next = NULL;
+>> 	send_wr.wr_id = RPCRDMA_IGNORE_COMPLETION;
+>> -	send_wr.sg_list = req->rl_send_iov;
+>> +	send_wr.sg_list = iov;
+>> 	send_wr.num_sge = req->rl_niovs;
+>> 	send_wr.opcode = IB_WR_SEND;
+>> -	if (send_wr.num_sge == 4)	/* no need to sync any pad (constant) */
+>> -		ib_dma_sync_single_for_device(ia->ri_device,
+>> -					      req->rl_send_iov[3].addr,
+>> -					      req->rl_send_iov[3].length,
+>> -					      DMA_TO_DEVICE);
+>> -	ib_dma_sync_single_for_device(ia->ri_device,
+>> -				      req->rl_send_iov[1].addr,
+>> -				      req->rl_send_iov[1].length,
+>> -				      DMA_TO_DEVICE);
+>> -	ib_dma_sync_single_for_device(ia->ri_device,
+>> -				      req->rl_send_iov[0].addr,
+>> -				      req->rl_send_iov[0].length,
+>> -				      DMA_TO_DEVICE);
+>> +
+>> +	for (i = 0; i < send_wr.num_sge; i++)
+>> +		ib_dma_sync_single_for_device(device, iov[i].addr,
+>> +					      iov[i].length, DMA_TO_DEVICE);
 > 
-> Cc: stable@vger.kernel.org
-> Reported-by: William Dauchy <william@gandi.net>
-> Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
-> ---
->  fs/nfs/nfs4proc.c | 2 --
->  1 file changed, 2 deletions(-)
-> 
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index 6f228b5af819..60be01f69b84 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -5484,7 +5484,6 @@ static struct nfs4_unlockdata *nfs4_alloc_unlockdata(struct file_lock *fl,
->  	atomic_inc(&lsp->ls_count);
->  	/* Ensure we don't close file until we're done freeing locks! */
->  	p->ctx = get_nfs_open_context(ctx);
-> -	get_file(fl->fl_file);
->  	memcpy(&p->fl, fl, sizeof(p->fl));
->  	p->server = NFS_SERVER(inode);
->  	return p;
-> @@ -5496,7 +5495,6 @@ static void nfs4_locku_release_calldata(void *data)
->  	nfs_free_seqid(calldata->arg.seqid);
->  	nfs4_put_lock_state(calldata->lsp);
->  	put_nfs_open_context(calldata->ctx);
-> -	fput(calldata->fl.fl_file);
->  	kfree(calldata);
->  }
->  
+> Two questions here:
+> 1) Is syncing order important?  The original code went 3 - 1 - 0, but now we're going 0 - 1 - 2 - 3.
 
-Even though the title says "RFC" here, we should probably go ahead and
-revert this patch in mainline and any stable series kernels in which it
-got applied.
+No, the syncing order isn’t important. What’s important is that
+the sge’s be synced _before_ the SEND Work Request is posted so
+that the HCA can see the freshly marshaled RPC.
 
-Let me know if I need to do anything further in order to make that
-happen.
 
-Thanks,
--- 
-Jeff Layton <jlayton@poochiereds.net>
+> 2) Is iov[2] the zero pad you mentioned in your commit message?
+
+Yes, it is.
+
+> If not, do you know why it wasn't already syncing?
+
+The pad always contains zeroes. Syncing it is optional, AFAICT.
+
+v2 of this series will have some changes in this area, and the
+zero pad will be gone entirely.
+
+
+> Thanks,
+> Anna
+> 
+>> +	dprintk("RPC:       %s: posting %d s/g entries\n",
+>> +		__func__, send_wr.num_sge);
+>> 
+>> 	if (DECR_CQCOUNT(ep) > 0)
+>> 		send_wr.send_flags = 0;
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+--
+Chuck Lever
+chucklever@gmail.com
+
+
+
