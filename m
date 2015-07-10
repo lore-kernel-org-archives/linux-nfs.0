@@ -1,112 +1,48 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:31803 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932579AbbGJU3E convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jul 2015 16:29:04 -0400
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
-Subject: Re: [PATCH v1 05/12] xprtrdma: Account for RPC/RDMA header size when deciding to inline
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <55A02650.1050809@Netapp.com>
-Date: Fri, 10 Jul 2015 16:28:56 -0400
-Cc: linux-rdma@vger.kernel.org,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <7D23C297-3DA3-4C44-836E-3A0671CB31ED@oracle.com>
-References: <20150709203242.26247.4848.stgit@manet.1015granger.net> <20150709204227.26247.51111.stgit@manet.1015granger.net> <55A02650.1050809@Netapp.com>
-To: Anna Schumaker <Anna.Schumaker@netapp.com>
+Received: from mail-yk0-f181.google.com ([209.85.160.181]:36087 "EHLO
+	mail-yk0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933500AbbGJUdm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jul 2015 16:33:42 -0400
+Received: by ykey15 with SMTP id y15so76063068yke.3
+        for <linux-nfs@vger.kernel.org>; Fri, 10 Jul 2015 13:33:41 -0700 (PDT)
+From: Jeff Layton <jlayton@poochiereds.net>
+To: linux-nfs@vger.kernel.org
+Cc: linux-fsdevel@vger.kernel.org, william@gandi.net, bfields@fieldses.org
+Subject: [RFC PATCH 0/4] locks/nfs: fix use-after-free problem in unlock codepath
+Date: Fri, 10 Jul 2015 16:33:30 -0400
+Message-Id: <1436560414-26306-1-git-send-email-jeff.layton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+William Dauchy reported some instability after trying to apply
+db2efec0caba to the v3.14 stable series kernels. The problem was that
+that patch had us taking an extra reference to the filp in the NFSv4
+unlock code. If we're unlocking locks on task exit though, then we may
+be taking a reference after the last reference had already been put.
 
-On Jul 10, 2015, at 4:08 PM, Anna Schumaker <Anna.Schumaker@netapp.com> wrote:
+This fixes the problem in a different way. Most of the locking code is
+not terribly concerned with the actual filp, but rather with the inode.
+So we can fix this by adding helpers {flock|posix}_inode_lock_wait
+helpers and using those from the NFSv4 code. We _know_ that we hold a
+reference to the inode by virtue of the NFS open context, so this should
+be safe.
 
-> Hi Chuck,
-> 
-> On 07/09/2015 04:42 PM, Chuck Lever wrote:
->> When marshaling RPC/RDMA requests, ensure the combined size of
->> RPC/RDMA header and RPC header do not exceed the inline threshold.
->> Endpoints typically reject RPC/RDMA messages that exceed the size
->> of their receive buffers.
->> 
->> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->> ---
->> net/sunrpc/xprtrdma/rpc_rdma.c |   29 +++++++++++++++++++++++++++--
->> 1 file changed, 27 insertions(+), 2 deletions(-)
->> 
->> diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
->> index 84ea37d..8cf9402 100644
->> --- a/net/sunrpc/xprtrdma/rpc_rdma.c
->> +++ b/net/sunrpc/xprtrdma/rpc_rdma.c
->> @@ -71,6 +71,31 @@ static const char transfertypes[][12] = {
->> };
->> #endif
->> 
->> +/* The client can send a request inline as long as the RPCRDMA header
->> + * plus the RPC call fit under the transport's inline limit. If the
->> + * combined call message size exceeds that limit, the client must use
->> + * the read chunk list for this operation.
->> + */
->> +static bool rpcrdma_args_inline(struct rpc_rqst *rqst)
->> +{
->> +	unsigned int callsize = RPCRDMA_HDRLEN_MIN + rqst->rq_snd_buf.len;
->> +
->> +	return callsize <= RPCRDMA_INLINE_WRITE_THRESHOLD(rqst);
->> +}
->> +
->> +/* The client can’t know how large the actual reply will be. Thus it
->                 ^^^^^
-> This is showing up as "can<80><99>t" in git-show, leading me to think that the apostrophe was replaced with a unicode-apostrophe.  Google might have made the switch, but can you double check the patch on your side just in case?
+I intend to do some more testing of this set over the weekend, but wanted
+to get this out there so we can go ahead and get the patch reverted and
+get some early feedback.
 
-Fixed.
+Jeff Layton (4):
+  Revert "nfs: take extra reference to fl->fl_file when running a LOCKU
+    operation"
+  locks: have flock_lock_file take an inode pointer instead of a filp
+  locks: new helpers - flock_lock_inode_wait and posix_lock_inode_wait
+  nfs4: have do_vfs_lock take an inode pointer
 
+ fs/locks.c         | 60 ++++++++++++++++++++++++++++++++++++++----------------
+ fs/nfs/nfs4proc.c  | 18 ++++++++--------
+ include/linux/fs.h | 14 +++++++++++++
+ 3 files changed, 65 insertions(+), 27 deletions(-)
 
-> 
-> Thanks,
-> Anna
-> 
->> + * plans for the largest possible reply for that particular ULP
->> + * operation. If the maximum combined reply message size exceeds that
->> + * limit, the client must provide a write list or a reply chunk for
->> + * this request.
->> + */
->> +static bool rpcrdma_results_inline(struct rpc_rqst *rqst)
->> +{
->> +	unsigned int repsize = RPCRDMA_HDRLEN_MIN + rqst->rq_rcv_buf.buflen;
->> +
->> +	return repsize <= RPCRDMA_INLINE_READ_THRESHOLD(rqst);
->> +}
->> +
->> /*
->>  * Chunk assembly from upper layer xdr_buf.
->>  *
->> @@ -418,7 +443,7 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
->> 	 * a READ, then use write chunks to separate the file data
->> 	 * into pages; otherwise use reply chunks.
->> 	 */
->> -	if (rqst->rq_rcv_buf.buflen <= RPCRDMA_INLINE_READ_THRESHOLD(rqst))
->> +	if (rpcrdma_results_inline(rqst))
->> 		wtype = rpcrdma_noch;
->> 	else if (rqst->rq_rcv_buf.page_len == 0)
->> 		wtype = rpcrdma_replych;
->> @@ -441,7 +466,7 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
->> 	 * implies the op is a write.
->> 	 * TBD check NFSv4 setacl
->> 	 */
->> -	if (rqst->rq_snd_buf.len <= RPCRDMA_INLINE_WRITE_THRESHOLD(rqst))
->> +	if (rpcrdma_args_inline(rqst))
->> 		rtype = rpcrdma_noch;
->> 	else if (rqst->rq_snd_buf.page_len == 0)
->> 		rtype = rpcrdma_areadch;
->> 
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->> 
-> 
-
---
-Chuck Lever
-
-
+-- 
+2.4.3
 
