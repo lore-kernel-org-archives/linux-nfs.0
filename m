@@ -1,80 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:56093 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([173.255.197.46]:60005 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751607AbbGJPty (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 10 Jul 2015 11:49:54 -0400
-Message-ID: <559FE9A1.9020406@RedHat.com>
-Date: Fri, 10 Jul 2015 11:49:53 -0400
-From: Steve Dickson <SteveD@redhat.com>
+	id S1754746AbbGJPyY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 10 Jul 2015 11:54:24 -0400
+Date: Fri, 10 Jul 2015 11:54:24 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        linux-rdma@vger.kernel.org
+Subject: Re: [PATCH v1 5/5] svcrdma: Boost NFS READ/WRITE payload size maximum
+Message-ID: <20150710155424.GD31121@fieldses.org>
+References: <20150709204230.8481.45457.stgit@klimt.1015granger.net>
+ <20150709204546.8481.65857.stgit@klimt.1015granger.net>
+ <20150710141814.GA31121@fieldses.org>
+ <11D08769-F6EB-4696-8910-8B207B20CC10@oracle.com>
 MIME-Version: 1.0
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Kinglong Mee <kinglongmee@gmail.com>
-CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] mount.nfs: Teach mount.nfs about the mountversion option
-References: <1436193748-4301-1-git-send-email-steved@redhat.com>	<CAHQdGtR8ag7UvqWAATAYJ2XhOZLq3i1pQ1yPEkNdxTTMb_G9aA@mail.gmail.com>	<559AFF61.9010606@gmail.com> <CAHQdGtTLA9rOtngX7Z1+4jv3jGQ+WkRekvMR1USk59bt9XYk1w@mail.gmail.com>
-In-Reply-To: <CAHQdGtTLA9rOtngX7Z1+4jv3jGQ+WkRekvMR1USk59bt9XYk1w@mail.gmail.com>
 Content-Type: text/plain; charset=utf-8
+In-Reply-To: <11D08769-F6EB-4696-8910-8B207B20CC10@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-On 07/06/2015 06:29 PM, Trond Myklebust wrote:
-> On Mon, Jul 6, 2015 at 6:21 PM, Kinglong Mee <kinglongmee@gmail.com> wrote:
->> On 7/6/2015 23:19, Trond Myklebust wrote:
->>> On Mon, Jul 6, 2015 at 10:42 AM, Steve Dickson <steved@redhat.com> wrote:
->>>> When the mountversion option is used, there should
->>>> not be any mount negotiations with the server.
->>>>
->>>> Also, when the option is used, its know that the mount
->>>> is a v4 mount and a V_SPECFIC type.
->>>>
->>>> Signed-off-by: Steve Dickson <steved@redhat.com>
->>>> ---
->>>>  utils/mount/network.c | 7 ++++++-
->>>>  1 file changed, 6 insertions(+), 1 deletion(-)
->>>>
->>>> diff --git a/utils/mount/network.c b/utils/mount/network.c
->>>> index b5ed850..ebc39d3 100644
->>>> --- a/utils/mount/network.c
->>>> +++ b/utils/mount/network.c
->>>> @@ -92,6 +92,7 @@ static const char *nfs_version_opttbl[] = {
->>>>         "v4",
->>>>         "vers",
->>>>         "nfsvers",
->>>> +       "minorversion",
->>>>         NULL,
->>>>  };
->>>>
->>>> @@ -1272,7 +1273,11 @@ nfs_nfs_version(struct mount_options *options, struct nfs_version *version)
->>>>         if (!(version->major = strtol(version_val, &cptr, 10)))
->>>>                 goto ret_error;
->>>>
->>>> -       if (version->major < 4)
->>>> +       if (strcmp(nfs_version_opttbl[i], "minorversion") == 0) {
->>>> +               version->v_mode = V_SPECIFIC;
->>>> +               version->minor = version->major;
->>>> +               version->major = 4;
->>>> +       } else if (version->major < 4)
->>>>                 version->v_mode = V_SPECIFIC;
->>>>
->>>>         if (*cptr == '.') {
->>>>
->>>
->>> Doesn't this cause a dependency on the ordering of 'nfsvers'/'vers'
->>> and 'minorversion' in your mount options string?
->>
->> Without this patch, there is a dependency on the ordering now.
->> mount with "-o minorversion=1", nfs gets strings as "minorversion=1,vers=4.2"
->>
->> If nfs-utils doesn't parse minorversion, the order dependency also exist.
->>
->> I agree with parsing minorversion in nfs-utils.
->>
+On Fri, Jul 10, 2015 at 10:59:48AM -0400, Chuck Lever wrote:
 > 
-> I was rather hoping we could get rid of 'minorversion' soon. It is a
-> wart, and we've already agreed to deprecate it.
-I agree with the deprecation, but I think that is a different issue...
+> On Jul 10, 2015, at 10:18 AM, bfields@fieldses.org wrote:
+> 
+> > On Thu, Jul 09, 2015 at 04:45:47PM -0400, Chuck Lever wrote:
+> >> Increased to 1 megabyte.
+> > 
+> > Why not more or less?
+> > 
+> > Why do we even have this constant, why shouldn't we just use
+> > RPCSVC_MAXPAYLOAD?
+> 
+> The payload size maximum for RDMA is based on RPCRDMA_MAX_SVC_SEGS.
+> We could reverse the relationship and make RPCRDMA_MAX_SVC_SEGS
+> based on RPCSVC_MAXPAYLOAD divided by the platform’s page size.
 
-steved.
+But there'd be no reason to do that, because we're not using
+RPCRDMA_MAX_SVC_SEGS anywhere.  Should we be?
 
+--b.
+
+> 
+> 
+> > --b.
+> > 
+> >> 
+> >> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> >> ---
+> >> 
+> >> include/linux/sunrpc/svc_rdma.h |    2 +-
+> >> 1 files changed, 1 insertions(+), 1 deletions(-)
+> >> 
+> >> diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
+> >> index 13af61b..1bca6dd 100644
+> >> --- a/include/linux/sunrpc/svc_rdma.h
+> >> +++ b/include/linux/sunrpc/svc_rdma.h
+> >> @@ -172,7 +172,7 @@ struct svcxprt_rdma {
+> >> #define RDMAXPRT_SQ_PENDING	2
+> >> #define RDMAXPRT_CONN_PENDING	3
+> >> 
+> >> -#define RPCRDMA_MAX_SVC_SEGS	(64)	/* server max scatter/gather */
+> >> +#define RPCRDMA_MAX_SVC_SEGS	(256)	/* server max scatter/gather */
+> >> #if RPCSVC_MAXPAYLOAD < (RPCRDMA_MAX_SVC_SEGS << PAGE_SHIFT)
+> >> #define RPCRDMA_MAXPAYLOAD	RPCSVC_MAXPAYLOAD
+> >> #else
+> >> 
+> >> --
+> >> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> >> the body of a message to majordomo@vger.kernel.org
+> >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> --
+> Chuck Lever
+> 
+> 
