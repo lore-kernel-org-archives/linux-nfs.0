@@ -1,79 +1,80 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yk0-f176.google.com ([209.85.160.176]:33514 "EHLO
-	mail-yk0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754033AbbGJPTD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jul 2015 11:19:03 -0400
-Received: by ykeo3 with SMTP id o3so145013530yke.0
-        for <linux-nfs@vger.kernel.org>; Fri, 10 Jul 2015 08:19:03 -0700 (PDT)
-Date: Fri, 10 Jul 2015 11:18:52 -0400
-From: Jeff Layton <jlayton@poochiereds.net>
-To: William Dauchy <william@gandi.net>
-Cc: Linux NFS mailing list <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>, jloup@gandi.net,
-        Jean Spector <jean@primarydata.com>
-Subject: Re: extra reference to fl->fl_file, possible regression
-Message-ID: <20150710111852.7f666ba1@tlielax.poochiereds.net>
-In-Reply-To: <20150710150659.GP15144@gandi.net>
-References: <20150710092910.GI15144@gandi.net>
-	<20150710072438.08b3417a@tlielax.poochiereds.net>
-	<20150710125444.GL15144@gandi.net>
-	<20150710103914.78189580@tlielax.poochiereds.net>
-	<20150710150659.GP15144@gandi.net>
+Received: from mx1.redhat.com ([209.132.183.28]:56093 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751607AbbGJPty (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 10 Jul 2015 11:49:54 -0400
+Message-ID: <559FE9A1.9020406@RedHat.com>
+Date: Fri, 10 Jul 2015 11:49:53 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha256;
- boundary="Sig_/P3ha9kDaVRA_gIck2qmHJ=v"; protocol="application/pgp-signature"
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Kinglong Mee <kinglongmee@gmail.com>
+CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] mount.nfs: Teach mount.nfs about the mountversion option
+References: <1436193748-4301-1-git-send-email-steved@redhat.com>	<CAHQdGtR8ag7UvqWAATAYJ2XhOZLq3i1pQ1yPEkNdxTTMb_G9aA@mail.gmail.com>	<559AFF61.9010606@gmail.com> <CAHQdGtTLA9rOtngX7Z1+4jv3jGQ+WkRekvMR1USk59bt9XYk1w@mail.gmail.com>
+In-Reply-To: <CAHQdGtTLA9rOtngX7Z1+4jv3jGQ+WkRekvMR1USk59bt9XYk1w@mail.gmail.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/P3ha9kDaVRA_gIck2qmHJ=v
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
 
-On Fri, 10 Jul 2015 17:06:59 +0200
-William Dauchy <william@gandi.net> wrote:
 
-> On Jul10 10:39, Jeff Layton wrote:
-> > So if a file happened to have some flock locks on it, then we could
-> > be taking a new reference to a file that has already had its refcount
-> > go to zero.
->=20
-> do you have any test case which may confirm that?
+On 07/06/2015 06:29 PM, Trond Myklebust wrote:
+> On Mon, Jul 6, 2015 at 6:21 PM, Kinglong Mee <kinglongmee@gmail.com> wrote:
+>> On 7/6/2015 23:19, Trond Myklebust wrote:
+>>> On Mon, Jul 6, 2015 at 10:42 AM, Steve Dickson <steved@redhat.com> wrote:
+>>>> When the mountversion option is used, there should
+>>>> not be any mount negotiations with the server.
+>>>>
+>>>> Also, when the option is used, its know that the mount
+>>>> is a v4 mount and a V_SPECFIC type.
+>>>>
+>>>> Signed-off-by: Steve Dickson <steved@redhat.com>
+>>>> ---
+>>>>  utils/mount/network.c | 7 ++++++-
+>>>>  1 file changed, 6 insertions(+), 1 deletion(-)
+>>>>
+>>>> diff --git a/utils/mount/network.c b/utils/mount/network.c
+>>>> index b5ed850..ebc39d3 100644
+>>>> --- a/utils/mount/network.c
+>>>> +++ b/utils/mount/network.c
+>>>> @@ -92,6 +92,7 @@ static const char *nfs_version_opttbl[] = {
+>>>>         "v4",
+>>>>         "vers",
+>>>>         "nfsvers",
+>>>> +       "minorversion",
+>>>>         NULL,
+>>>>  };
+>>>>
+>>>> @@ -1272,7 +1273,11 @@ nfs_nfs_version(struct mount_options *options, struct nfs_version *version)
+>>>>         if (!(version->major = strtol(version_val, &cptr, 10)))
+>>>>                 goto ret_error;
+>>>>
+>>>> -       if (version->major < 4)
+>>>> +       if (strcmp(nfs_version_opttbl[i], "minorversion") == 0) {
+>>>> +               version->v_mode = V_SPECIFIC;
+>>>> +               version->minor = version->major;
+>>>> +               version->major = 4;
+>>>> +       } else if (version->major < 4)
+>>>>                 version->v_mode = V_SPECIFIC;
+>>>>
+>>>>         if (*cptr == '.') {
+>>>>
+>>>
+>>> Doesn't this cause a dependency on the ordering of 'nfsvers'/'vers'
+>>> and 'minorversion' in your mount options string?
+>>
+>> Without this patch, there is a dependency on the ordering now.
+>> mount with "-o minorversion=1", nfs gets strings as "minorversion=1,vers=4.2"
+>>
+>> If nfs-utils doesn't parse minorversion, the order dependency also exist.
+>>
+>> I agree with parsing minorversion in nfs-utils.
+>>
+> 
+> I was rather hoping we could get rid of 'minorversion' soon. It is a
+> wart, and we've already agreed to deprecate it.
+I agree with the deprecation, but I think that is a different issue...
 
-Not right offhand, at least not with a stock kernel.
+steved.
 
-I was planning to turn that get_file call into an
-atomic_long_inc_return and then test the return value and WARN if it
-was 1. Then, set a flock lock on a file, and close it without
-explicitly unlocking. I suspect that would make the WARN pop.
-
-> in the commit messages, you also were refering to some tests; I wonder
-> if you could share it.
-
-Jean? Are those tests something you could share?
-
---=20
-Jeff Layton <jlayton@poochiereds.net>
-
---Sig_/P3ha9kDaVRA_gIck2qmHJ=v
-Content-Type: application/pgp-signature
-Content-Description: OpenPGP digital signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2
-
-iQIcBAEBCAAGBQJVn+JcAAoJEAAOaEEZVoIVUrAP/R7DqBOQ3kRmlORlVMJqE2hz
-qkIebEY7QeN1O+9Beb8BFJV+Yi9CyOArOv5P83JPK5PpKIMvIJ0l5wooTVdnFpZw
-zeeEzWVJM0sGfH6EYFi4SgofbvhlCW7qp7esS7R/rxQfDLFzF/Q9/15l+OnG4ppZ
-m39YknXdhJOWBIn6f27Qz+e7cVLkwYU1lC6jmZOJBsFWpe5qMSVmRCSXGZZLGhHP
-PJ6sTCUn/2WaMeetLFrLzl2DX8tjZuqXTgy+oAztxXGFddWCF2j1r8XlwcsvbkeH
-WmCUQ6qTzjmqR7YOecgorPO+MwSpTqn7oiT9yYamHmNWFVqyXryujEEQ9ikBU000
-gt/NBxiTAorpzgMjFw4fxEEbWLsJ4kJg1QAP7DELmjDCCqaqcSMVslPgl9pk1U+N
-o4lWCP5R2t6cVU/ItCP5yyOlHCdTJBrjZn3qMf1wJV2Us3Jd0fu6dnBz++sp8Zm+
-zgx397+7Qy0Ekq1TuM/fxIPNrdgNlO6dt43nV8u3zhP9si47xJaV/4cPwE8im3QB
-bN70DBFXm9x9rAF6aw8z3NbJBEToxDxea9PkDm5frybnpvsv8zyEopecFlQPnO4C
-7lpi79M3xOAqzpbioCKPISxu7KcmhwaRrni0xBsIorBe3GOdMvsA9msPobMyeOFu
-AK2yj6aRhR0cpouXBbbB
-=H4rR
------END PGP SIGNATURE-----
-
---Sig_/P3ha9kDaVRA_gIck2qmHJ=v--
