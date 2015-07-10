@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx143.netapp.com ([216.240.21.24]:5424 "EHLO mx143.netapp.com"
+Received: from mx141.netapp.com ([216.240.21.12]:30938 "EHLO mx141.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933278AbbGJU7W (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 10 Jul 2015 16:59:22 -0400
+	id S933170AbbGJU7N (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 10 Jul 2015 16:59:13 -0400
 From: Anna Schumaker <Anna.Schumaker@netapp.com>
 To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
 CC: <Anna.Schumaker@netapp.com>
-Subject: [PATCH 7/9] NFS: Remove nfs41_server_notify_{target|highest}_slotid_update()
-Date: Fri, 10 Jul 2015 16:58:15 -0400
-Message-ID: <1436561897-8051-8-git-send-email-Anna.Schumaker@Netapp.com>
+Subject: [PATCH 6/9] NFS: Remove nfs4_match_stateid()
+Date: Fri, 10 Jul 2015 16:58:14 -0400
+Message-ID: <1436561897-8051-7-git-send-email-Anna.Schumaker@Netapp.com>
 In-Reply-To: <1436561897-8051-1-git-send-email-Anna.Schumaker@Netapp.com>
 References: <1436561897-8051-1-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
@@ -16,88 +16,39 @@ Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-All these functions do is call nfs41_ping_server() without adding
-anything.  Let's remove them and give nfs41_ping_server() a better name
-instead.
+Let's just call nfs4_stateid_match() directly.
 
 Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 ---
- fs/nfs/callback_proc.c |  2 +-
- fs/nfs/nfs4_fs.h       |  4 +---
- fs/nfs/nfs4proc.c      |  2 +-
- fs/nfs/nfs4state.c     | 12 +-----------
- 4 files changed, 4 insertions(+), 16 deletions(-)
+ fs/nfs/nfs4proc.c | 8 +-------
+ 1 file changed, 1 insertion(+), 7 deletions(-)
 
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index 29e3c1b..624bef7 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -554,7 +554,7 @@ __be32 nfs4_callback_recallslot(struct cb_recallslotargs *args, void *dummy,
- 	status = htonl(NFS4_OK);
- 
- 	nfs41_set_target_slotid(fc_tbl, args->crsa_target_highest_slotid);
--	nfs41_server_notify_target_slotid_update(cps->clp);
-+	nfs41_notify_server(cps->clp);
- out:
- 	dprintk("%s: exit with status = %d\n", __func__, ntohl(status));
- 	return status;
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index ea3bee9..50cfc4c 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -405,9 +405,7 @@ int nfs40_discover_server_trunking(struct nfs_client *clp,
- int nfs41_discover_server_trunking(struct nfs_client *clp,
- 			struct nfs_client **, struct rpc_cred *);
- extern void nfs4_schedule_session_recovery(struct nfs4_session *, int);
--extern void nfs41_server_notify_target_slotid_update(struct nfs_client *clp);
--extern void nfs41_server_notify_highest_slotid_update(struct nfs_client *clp);
--
-+extern void nfs41_notify_server(struct nfs_client *);
- #else
- static inline void nfs4_schedule_session_recovery(struct nfs4_session *session, int err)
- {
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index b911fb0..b5a4f95 100644
+index 6f228b5..b911fb0 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -583,7 +583,7 @@ out_unlock:
- 	spin_unlock(&tbl->slot_tbl_lock);
- 	res->sr_slot = NULL;
- 	if (send_new_highest_used_slotid)
--		nfs41_server_notify_highest_slotid_update(session->clp);
-+		nfs41_notify_server(session->clp);
- }
+@@ -8514,12 +8514,6 @@ static bool nfs41_match_stateid(const nfs4_stateid *s1,
  
- int nfs41_sequence_done(struct rpc_task *task, struct nfs4_sequence_res *res)
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 605840d..6f51282 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -2152,23 +2152,13 @@ void nfs4_schedule_session_recovery(struct nfs4_session *session, int err)
- }
- EXPORT_SYMBOL_GPL(nfs4_schedule_session_recovery);
+ #endif /* CONFIG_NFS_V4_1 */
  
--static void nfs41_ping_server(struct nfs_client *clp)
-+void nfs41_notify_server(struct nfs_client *clp)
- {
- 	/* Use CHECK_LEASE to ping the server with a SEQUENCE */
- 	set_bit(NFS4CLNT_CHECK_LEASE, &clp->cl_state);
- 	nfs4_schedule_state_manager(clp);
- }
- 
--void nfs41_server_notify_target_slotid_update(struct nfs_client *clp)
+-static bool nfs4_match_stateid(const nfs4_stateid *s1,
+-		const nfs4_stateid *s2)
 -{
--	nfs41_ping_server(clp);
+-	return nfs4_stateid_match(s1, s2);
 -}
 -
--void nfs41_server_notify_highest_slotid_update(struct nfs_client *clp)
--{
--	nfs41_ping_server(clp);
--}
--
- static void nfs4_reset_all_state(struct nfs_client *clp)
- {
- 	if (test_and_set_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state) == 0) {
+ 
+ static const struct nfs4_state_recovery_ops nfs40_reboot_recovery_ops = {
+ 	.owner_flag_bit = NFS_OWNER_RECLAIM_REBOOT,
+@@ -8594,7 +8588,7 @@ static const struct nfs4_minor_version_ops nfs_v4_0_minor_ops = {
+ 		| NFS_CAP_POSIX_LOCK,
+ 	.init_client = nfs40_init_client,
+ 	.shutdown_client = nfs40_shutdown_client,
+-	.match_stateid = nfs4_match_stateid,
++	.match_stateid = nfs4_stateid_match,
+ 	.find_root_sec = nfs4_find_root_sec,
+ 	.free_lock_state = nfs4_release_lockowner,
+ 	.alloc_seqid = nfs_alloc_seqid,
 -- 
 2.4.5
 
