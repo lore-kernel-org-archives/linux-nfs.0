@@ -1,93 +1,104 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yk0-f171.google.com ([209.85.160.171]:34863 "EHLO
-	mail-yk0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933512AbbGJUdp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jul 2015 16:33:45 -0400
-Received: by ykee186 with SMTP id e186so72313039yke.2
-        for <linux-nfs@vger.kernel.org>; Fri, 10 Jul 2015 13:33:44 -0700 (PDT)
+Received: from mail-yk0-f181.google.com ([209.85.160.181]:34893 "EHLO
+	mail-yk0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933516AbbGJUds (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jul 2015 16:33:48 -0400
+Received: by ykee186 with SMTP id e186so72313857yke.2
+        for <linux-nfs@vger.kernel.org>; Fri, 10 Jul 2015 13:33:47 -0700 (PDT)
 From: Jeff Layton <jlayton@poochiereds.net>
 To: linux-nfs@vger.kernel.org
 Cc: linux-fsdevel@vger.kernel.org, william@gandi.net, bfields@fieldses.org
-Subject: [RFC PATCH 2/4] locks: have flock_lock_file take an inode pointer instead of a filp
-Date: Fri, 10 Jul 2015 16:33:32 -0400
-Message-Id: <1436560414-26306-3-git-send-email-jeff.layton@primarydata.com>
+Subject: [RFC PATCH 4/4] nfs4: have do_vfs_lock take an inode pointer
+Date: Fri, 10 Jul 2015 16:33:34 -0400
+Message-Id: <1436560414-26306-5-git-send-email-jeff.layton@primarydata.com>
 In-Reply-To: <1436560414-26306-1-git-send-email-jeff.layton@primarydata.com>
 References: <1436560414-26306-1-git-send-email-jeff.layton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-...and rename it to better describe how it works.
+Now that we have file locking helpers that can deal with an inode
+instead of a filp, we can change the NFSv4 locking code to use that
+instead.
 
-In order to fix a use-after-free in NFS, we need to be able to remove
-locks from an inode after the filp associated with them may have already
-been freed. flock_lock_file already only dereferences the filp to get to
-the inode, so just change it so the callers do that.
-
-All of the callers already pass in a lock request that has the fl_file
-set properly, so we don't need to pass it in individually. With that
-change it now only dereferences the filp to get to the inode, so just
-push that out to the callers.
+This should fix the case where we have a filp that is closed while flock
+or OFD locks are set on it, and the task is signaled so that it doesn't
+wait for the LOCKU reply to come in before the filp is freed. At that
+point we can end up with a use-after-free with the current code, which
+relies on dereferencing the fl_file in the lock request.
 
 Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
 ---
- fs/locks.c | 12 ++++++------
- 1 file changed, 6 insertions(+), 6 deletions(-)
+ fs/nfs/nfs4proc.c | 16 ++++++++--------
+ 1 file changed, 8 insertions(+), 8 deletions(-)
 
-diff --git a/fs/locks.c b/fs/locks.c
-index 653faabb07f4..4366b7c54e6d 100644
---- a/fs/locks.c
-+++ b/fs/locks.c
-@@ -862,12 +862,11 @@ static int posix_locks_deadlock(struct file_lock *caller_fl,
-  * whether or not a lock was successfully freed by testing the return
-  * value for -ENOENT.
-  */
--static int flock_lock_file(struct file *filp, struct file_lock *request)
-+static int flock_lock_inode(struct inode *inode, struct file_lock *request)
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 60be01f69b84..8bee93469617 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5439,15 +5439,15 @@ static int nfs4_proc_getlk(struct nfs4_state *state, int cmd, struct file_lock *
+ 	return err;
+ }
+ 
+-static int do_vfs_lock(struct file *file, struct file_lock *fl)
++static int do_vfs_lock(struct inode *inode, struct file_lock *fl)
  {
- 	struct file_lock *new_fl = NULL;
- 	struct file_lock *fl;
- 	struct file_lock_context *ctx;
--	struct inode *inode = file_inode(filp);
- 	int error = 0;
- 	bool found = false;
- 	LIST_HEAD(dispose);
-@@ -890,7 +889,7 @@ static int flock_lock_file(struct file *filp, struct file_lock *request)
- 		goto find_conflict;
- 
- 	list_for_each_entry(fl, &ctx->flc_flock, fl_list) {
--		if (filp != fl->fl_file)
-+		if (request->fl_file != fl->fl_file)
- 			continue;
- 		if (request->fl_type == fl->fl_type)
- 			goto out;
-@@ -1862,7 +1861,7 @@ int flock_lock_file_wait(struct file *filp, struct file_lock *fl)
- 	int error;
- 	might_sleep();
- 	for (;;) {
--		error = flock_lock_file(filp, fl);
-+		error = flock_lock_inode(file_inode(filp), fl);
- 		if (error != FILE_LOCK_DEFERRED)
+ 	int res = 0;
+ 	switch (fl->fl_flags & (FL_POSIX|FL_FLOCK)) {
+ 		case FL_POSIX:
+-			res = posix_lock_file_wait(file, fl);
++			res = posix_lock_inode_wait(inode, fl);
  			break;
- 		error = wait_event_interruptible(fl->fl_wait, !fl->fl_next);
-@@ -2401,7 +2400,8 @@ locks_remove_flock(struct file *filp)
- 		.fl_type = F_UNLCK,
- 		.fl_end = OFFSET_MAX,
- 	};
--	struct file_lock_context *flctx = file_inode(filp)->i_flctx;
-+	struct inode *inode = file_inode(filp);
-+	struct file_lock_context *flctx = inode->i_flctx;
- 
- 	if (list_empty(&flctx->flc_flock))
- 		return;
-@@ -2409,7 +2409,7 @@ locks_remove_flock(struct file *filp)
- 	if (filp->f_op->flock)
- 		filp->f_op->flock(filp, F_SETLKW, &fl);
- 	else
--		flock_lock_file(filp, &fl);
-+		flock_lock_inode(inode, &fl);
- 
- 	if (fl.fl_ops && fl.fl_ops->fl_release_private)
- 		fl.fl_ops->fl_release_private(&fl);
+ 		case FL_FLOCK:
+-			res = flock_lock_file_wait(file, fl);
++			res = flock_lock_inode_wait(inode, fl);
+ 			break;
+ 		default:
+ 			BUG();
+@@ -5507,7 +5507,7 @@ static void nfs4_locku_done(struct rpc_task *task, void *data)
+ 	switch (task->tk_status) {
+ 		case 0:
+ 			renew_lease(calldata->server, calldata->timestamp);
+-			do_vfs_lock(calldata->fl.fl_file, &calldata->fl);
++			do_vfs_lock(calldata->lsp->ls_state->inode, &calldata->fl);
+ 			if (nfs4_update_lock_stateid(calldata->lsp,
+ 					&calldata->res.stateid))
+ 				break;
+@@ -5615,7 +5615,7 @@ static int nfs4_proc_unlck(struct nfs4_state *state, int cmd, struct file_lock *
+ 	mutex_lock(&sp->so_delegreturn_mutex);
+ 	/* Exclude nfs4_reclaim_open_stateid() - note nesting! */
+ 	down_read(&nfsi->rwsem);
+-	if (do_vfs_lock(request->fl_file, request) == -ENOENT) {
++	if (do_vfs_lock(inode, request) == -ENOENT) {
+ 		up_read(&nfsi->rwsem);
+ 		mutex_unlock(&sp->so_delegreturn_mutex);
+ 		goto out;
+@@ -5756,7 +5756,7 @@ static void nfs4_lock_done(struct rpc_task *task, void *calldata)
+ 				data->timestamp);
+ 		if (data->arg.new_lock) {
+ 			data->fl.fl_flags &= ~(FL_SLEEP | FL_ACCESS);
+-			if (do_vfs_lock(data->fl.fl_file, &data->fl) < 0) {
++			if (do_vfs_lock(lsp->ls_state->inode, &data->fl) < 0) {
+ 				rpc_restart_call_prepare(task);
+ 				break;
+ 			}
+@@ -5998,7 +5998,7 @@ static int _nfs4_proc_setlk(struct nfs4_state *state, int cmd, struct file_lock
+ 	if (status != 0)
+ 		goto out;
+ 	request->fl_flags |= FL_ACCESS;
+-	status = do_vfs_lock(request->fl_file, request);
++	status = do_vfs_lock(state->inode, request);
+ 	if (status < 0)
+ 		goto out;
+ 	down_read(&nfsi->rwsem);
+@@ -6006,7 +6006,7 @@ static int _nfs4_proc_setlk(struct nfs4_state *state, int cmd, struct file_lock
+ 		/* Yes: cache locks! */
+ 		/* ...but avoid races with delegation recall... */
+ 		request->fl_flags = fl_flags & ~FL_SLEEP;
+-		status = do_vfs_lock(request->fl_file, request);
++		status = do_vfs_lock(state->inode, request);
+ 		up_read(&nfsi->rwsem);
+ 		goto out;
+ 	}
 -- 
 2.4.3
 
