@@ -1,59 +1,37 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail4.gandi.net ([217.70.183.210]:51997 "EHLO gandi.net"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S932122AbbGJMyr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 10 Jul 2015 08:54:47 -0400
-Date: Fri, 10 Jul 2015 14:54:44 +0200
-From: William Dauchy <william@gandi.net>
-To: Jeff Layton <jlayton@poochiereds.net>
-Cc: William Dauchy <william@gandi.net>,
-        Linux NFS mailing list <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>, jloup@gandi.net
-Subject: Re: extra reference to fl->fl_file, possible regression
-Message-ID: <20150710125444.GL15144@gandi.net>
-References: <20150710092910.GI15144@gandi.net>
- <20150710072438.08b3417a@tlielax.poochiereds.net>
+Received: from p3plsmtpa08-08.prod.phx3.secureserver.net ([173.201.193.109]:46526
+	"EHLO p3plsmtpa08-08.prod.phx3.secureserver.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S932295AbbGJNFq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jul 2015 09:05:46 -0400
+Message-ID: <559FC17A.7060502@talpey.com>
+Date: Fri, 10 Jul 2015 08:58:34 -0400
+From: Tom Talpey <tom@talpey.com>
 MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="ai3I8gwHc37+ASRI"
-In-Reply-To: <20150710072438.08b3417a@tlielax.poochiereds.net>
+To: Devesh Sharma <devesh.sharma@avagotech.com>,
+        Chuck Lever <chuck.lever@oracle.com>
+CC: linux-rdma@vger.kernel.org,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v1 09/12] xprtrdma: Prepare rpcrdma_ep_post() for RDMA_NOMSG
+ calls
+References: <20150709203242.26247.4848.stgit@manet.1015granger.net>	<20150709204305.26247.39173.stgit@manet.1015granger.net> <CANjDDBh38PrxGgWGuKYCYcbjqY9ELrpkGqaRZ_ueKfD7FEQP8g@mail.gmail.com>
+In-Reply-To: <CANjDDBh38PrxGgWGuKYCYcbjqY9ELrpkGqaRZ_ueKfD7FEQP8g@mail.gmail.com>
+Content-Type: text/plain; charset=utf-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On 7/10/2015 7:29 AM, Devesh Sharma wrote:
+> we need to honor the max limits of device by checking
+> dev_attr.max_sge? a vendor may not support 4 sges.
 
---ai3I8gwHc37+ASRI
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+iWARP requires a minimum of 4 send SGEs (draft-hilland-verbs 8.1.3.2)
 
-On Jul10 07:24, Jeff Layton wrote:
-> Huh. I'm stumped...
->=20
-> These patches are pretty straightforward. We're just taking an extra
-> reference to the filp when running lock operations so that it doesn't
-> disappear before the replies can be processed (typically in the event
-> that a signal comes in while waiting on the reply). Given the odd stack
-> trace above, I have to wonder if there's some sort of memory scribble
-> going on.
+    An RI MUST support at least four Scatter/Gather Elements per
+    Scatter/Gather List when the Scatter/Gather List refers to the Data
+    Source of a Send Operation Type or the Data Sink of a Receive
+    Operation. An RI is NOT REQUIRED to support more than one
+    Scatter/Gather Element per Scatter/Gather List when the
+    Scatter/Gather List refers to the Data Source of an RDMA Write.
 
-I also forgot to mention that I also had the following messgae before
-the trace:
+I'm not certain if IB and RoCE state a similar minimum requirement,
+but it seems a very bad idea to have fewer.
 
-VFS: Close: file count is 0
-
---=20
-William
-
---ai3I8gwHc37+ASRI
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: Digital signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1
-
-iEYEARECAAYFAlWfwJQACgkQ1I6eqOUidQEdTwCgn1vdFJJpYI8Ie7vkAYFwiXKQ
-3WwAoIPMm3vciCl2MjJxrcsHcj06pJrE
-=Fi0e
------END PGP SIGNATURE-----
-
---ai3I8gwHc37+ASRI--
