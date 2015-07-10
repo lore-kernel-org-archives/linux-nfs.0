@@ -1,115 +1,150 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yk0-f171.google.com ([209.85.160.171]:35260 "EHLO
-	mail-yk0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754100AbbGJLYx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jul 2015 07:24:53 -0400
-Received: by ykee186 with SMTP id e186so60149744yke.2
-        for <linux-nfs@vger.kernel.org>; Fri, 10 Jul 2015 04:24:53 -0700 (PDT)
-Date: Fri, 10 Jul 2015 07:24:38 -0400
-From: Jeff Layton <jlayton@poochiereds.net>
-To: William Dauchy <william@gandi.net>
-Cc: Linux NFS mailing list <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>, jloup@gandi.net
-Subject: Re: extra reference to fl->fl_file, possible regression
-Message-ID: <20150710072438.08b3417a@tlielax.poochiereds.net>
-In-Reply-To: <20150710092910.GI15144@gandi.net>
-References: <20150710092910.GI15144@gandi.net>
+Received: from mail-pd0-f170.google.com ([209.85.192.170]:36595 "EHLO
+	mail-pd0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753416AbbGJL3V (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jul 2015 07:29:21 -0400
+Received: by pdjr16 with SMTP id r16so21734403pdj.3
+        for <linux-nfs@vger.kernel.org>; Fri, 10 Jul 2015 04:29:21 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha256;
- boundary="Sig_/SXa0Vw44.rYlue09deOLl94"; protocol="application/pgp-signature"
+In-Reply-To: <20150709204305.26247.39173.stgit@manet.1015granger.net>
+References: <20150709203242.26247.4848.stgit@manet.1015granger.net>
+	<20150709204305.26247.39173.stgit@manet.1015granger.net>
+Date: Fri, 10 Jul 2015 16:59:21 +0530
+Message-ID: <CANjDDBh38PrxGgWGuKYCYcbjqY9ELrpkGqaRZ_ueKfD7FEQP8g@mail.gmail.com>
+Subject: Re: [PATCH v1 09/12] xprtrdma: Prepare rpcrdma_ep_post() for
+ RDMA_NOMSG calls
+From: Devesh Sharma <devesh.sharma@avagotech.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-rdma@vger.kernel.org,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/SXa0Vw44.rYlue09deOLl94
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: quoted-printable
+we need to honor the max limits of device by checking
+dev_attr.max_sge? a vendor may not support 4 sges.
 
-On Fri, 10 Jul 2015 11:29:10 +0200
-William Dauchy <william@gandi.net> wrote:
-
-> Hello,
->=20
-> We have been testing the two following patches on top of the last 3.14.x.
-> (they have been queued up for stable releases)
->=20
-> commit db2efec0caba4f81a22d95a34da640b86c313c8e
-> Author: Jeff Layton <jlayton@poochiereds.net>
-> Date: =C2=A0 Tue Jun 30 14:12:30 2015 -0400
->=20
-> =C2=A0 =C2=A0 nfs: take extra reference to fl->fl_file when running a LOC=
-KU operation
->=20
-> commit feaff8e5b2cfc3eae02cf65db7a400b0b9ffc596
-> Author: Jeff Layton <jlayton@poochiereds.net>
-> Date: =C2=A0 Tue May 12 15:48:10 2015 -0400
->=20
-> =C2=A0 =C2=A0 nfs: take extra reference to fl->fl_file when running a set=
-lk
->=20
->=20
-> It resulted in random instabilities; we are unable to reproduce it reliab=
-ly for now;
-> the only trace we got was the one below.
->=20
-> ------------[ cut here ]------------
-> WARNING: CPU: 0 PID: 8 at kernel/rcu/tree.c:2191 rcu_do_batch.isra.51+0x3=
-84/0x3d0()
-> CPU: 0 PID: 8 Comm: rcuc/0 Not tainted 3.14 #1
-> 0000000000000009 ffff88061e5dfd10 ffffffff815f5143 0000000000000000
-> ffff88061e5dfd48 ffffffff8105eece 000000000000002f ffff880627c0b600
-> 000000000000002f 0000000000000246 0000000000000000 ffff88061e5dfd58
-> Call Trace:
-> [<ffffffff815f5143>] dump_stack+0x4d/0x81
-> [<ffffffff8105eece>] warn_slowpath_common+0x6e/0x90
-> [<ffffffff8105efd5>] warn_slowpath_null+0x15/0x20
-> [<ffffffff810bc634>] rcu_do_batch.isra.51+0x384/0x3d0
-> [<ffffffff810bc42a>] ? rcu_do_batch.isra.51+0x17a/0x3d0
-> [<ffffffff810bc9ed>] rcu_cpu_kthread+0xed/0x130
-> [<ffffffff8108aabe>] smpboot_thread_fn+0x18e/0x2e0
-> [<ffffffff8108a930>] ? in_egroup_p+0x40/0x40
-> [<ffffffff8108358c>] kthread+0xec/0x110
-> [<ffffffff810834a0>] ? __kthread_parkme+0x80/0x80
-> [<ffffffff815fcb39>] ret_from_fork+0x49/0x80
-> [<ffffffff810834a0>] ? __kthread_parkme+0x80/0x80
-> ---[ end trace 27f9589ec4225b03 ]---
-
-Huh. I'm stumped...
-
-These patches are pretty straightforward. We're just taking an extra
-reference to the filp when running lock operations so that it doesn't
-disappear before the replies can be processed (typically in the event
-that a signal comes in while waiting on the reply). Given the odd stack
-trace above, I have to wonder if there's some sort of memory scribble
-going on.
-
-Just to be clear...you are mounting with NFSv4 and running something on
-the mount when you see this, right? If you don't use NFSv4, then is
-everything fine?
-
-Thanks,
---=20
-Jeff Layton <jlayton@poochiereds.net>
-
---Sig_/SXa0Vw44.rYlue09deOLl94
-Content-Type: application/pgp-signature
-Content-Description: OpenPGP digital signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2
-
-iQIcBAEBCAAGBQJVn6t4AAoJEAAOaEEZVoIViw4P/AisnzuPmYOo7mcYuipMCcOG
-pmGKbHPt2NokzFs4JXvzLWlcDEanHyu20Fow7Zaa2RuPnAlMvQj1YjUXmw9FE8Q4
-40LqJd88YwIUWW6L4Y3NDQytUZd9vC/eDOfhFfjhV8W74qThFEZaVAcXJ15aYOpa
-Ti1q9D1CCfY3j07x9xmeiRMqvygqMhvxl3MxSEI6rPATPW3qmhhpflO+NvxWvyIl
-1my6yOsaobD4dDJv9GGFMvnB5rJM+b5oSyy7QUq+ewWaPj0spBuCYAC5n663vfZq
-Oa0WAArSPQJIxDa1RHjHJs0rgpMVlLDs6wkj9bwwzm1T9sOh2xrP4z5wDX0HAuTV
-8x/fLLpR6oPhuuU/R7N+ThA6rn2rjUFUKdQXnNBzOwJ0wqAABg3wqw+2v5wW7CcD
-if4cDNPdDcJh5w34gDOHt+4WDkFQZVcGUnblpdtgOhTcVW82FpwJ615NrLEi4w6u
-RO7v1PbHx5ilyZILSPFLR77AHv7l1uR7JVDDOyR3FIl0e1KGHtcIcu6jLXADS9yq
-9XnpIzPPbm+Iq7ph6MuHppO3AGPiRW3o1zNXNkrSIO8rvRBMbyBflrDWw9Sa9mM+
-KwYdABmbjTWqQ87QRk+5rfIumk75ebDb4P8hn2DrXUhoOUyFFerGOM0dehvZ6qVi
-DW69PYn0cvns/b0bjqzL
-=a6Rx
------END PGP SIGNATURE-----
-
---Sig_/SXa0Vw44.rYlue09deOLl94--
+On Fri, Jul 10, 2015 at 2:13 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
+> Only the RPC/RDMA header is sent when making an RDMA_NOMSG call.
+> That header resides in the first element of the iovec array
+> passed to rpcrdma_ep_post().
+>
+> Instead of special casing the iovec element with the pad, just
+> sync all the elements in the send iovec. Syncing the zero pad is
+> not strictly necessary, but the pad is rarely if ever used these
+> days, and the extra cost in that case is small.
+>
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+>  net/sunrpc/xprtrdma/rpc_rdma.c  |    4 ++++
+>  net/sunrpc/xprtrdma/verbs.c     |   27 +++++++++++----------------
+>  net/sunrpc/xprtrdma/xprt_rdma.h |   18 ++++++++++--------
+>  3 files changed, 25 insertions(+), 24 deletions(-)
+>
+> diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+> index cb05233..2e721f2 100644
+> --- a/net/sunrpc/xprtrdma/rpc_rdma.c
+> +++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+> @@ -575,6 +575,10 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
+>         req->rl_send_iov[0].length = hdrlen;
+>         req->rl_send_iov[0].lkey = rdmab_lkey(req->rl_rdmabuf);
+>
+> +       req->rl_niovs = 1;
+> +       if (rtype == rpcrdma_areadch)
+> +               return 0;
+> +
+>         req->rl_send_iov[1].addr = rdmab_addr(req->rl_sendbuf);
+>         req->rl_send_iov[1].length = rpclen;
+>         req->rl_send_iov[1].lkey = rdmab_lkey(req->rl_sendbuf);
+> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+> index cdf5220..9199436 100644
+> --- a/net/sunrpc/xprtrdma/verbs.c
+> +++ b/net/sunrpc/xprtrdma/verbs.c
+> @@ -651,7 +651,7 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
+>         if (rc)
+>                 return rc;
+>         ep->rep_attr.cap.max_recv_wr = cdata->max_requests;
+> -       ep->rep_attr.cap.max_send_sge = (cdata->padding ? 4 : 2);
+> +       ep->rep_attr.cap.max_send_sge = RPCRDMA_MAX_IOVS;
+>         ep->rep_attr.cap.max_recv_sge = 1;
+>         ep->rep_attr.cap.max_inline_data = 0;
+>         ep->rep_attr.sq_sig_type = IB_SIGNAL_REQ_WR;
+> @@ -1303,9 +1303,11 @@ rpcrdma_ep_post(struct rpcrdma_ia *ia,
+>                 struct rpcrdma_ep *ep,
+>                 struct rpcrdma_req *req)
+>  {
+> +       struct ib_device *device = ia->ri_device;
+>         struct ib_send_wr send_wr, *send_wr_fail;
+>         struct rpcrdma_rep *rep = req->rl_reply;
+> -       int rc;
+> +       struct ib_sge *iov = req->rl_send_iov;
+> +       int i, rc;
+>
+>         if (rep) {
+>                 rc = rpcrdma_ep_post_recv(ia, ep, rep);
+> @@ -1316,22 +1318,15 @@ rpcrdma_ep_post(struct rpcrdma_ia *ia,
+>
+>         send_wr.next = NULL;
+>         send_wr.wr_id = RPCRDMA_IGNORE_COMPLETION;
+> -       send_wr.sg_list = req->rl_send_iov;
+> +       send_wr.sg_list = iov;
+>         send_wr.num_sge = req->rl_niovs;
+>         send_wr.opcode = IB_WR_SEND;
+> -       if (send_wr.num_sge == 4)       /* no need to sync any pad (constant) */
+> -               ib_dma_sync_single_for_device(ia->ri_device,
+> -                                             req->rl_send_iov[3].addr,
+> -                                             req->rl_send_iov[3].length,
+> -                                             DMA_TO_DEVICE);
+> -       ib_dma_sync_single_for_device(ia->ri_device,
+> -                                     req->rl_send_iov[1].addr,
+> -                                     req->rl_send_iov[1].length,
+> -                                     DMA_TO_DEVICE);
+> -       ib_dma_sync_single_for_device(ia->ri_device,
+> -                                     req->rl_send_iov[0].addr,
+> -                                     req->rl_send_iov[0].length,
+> -                                     DMA_TO_DEVICE);
+> +
+> +       for (i = 0; i < send_wr.num_sge; i++)
+> +               ib_dma_sync_single_for_device(device, iov[i].addr,
+> +                                             iov[i].length, DMA_TO_DEVICE);
+> +       dprintk("RPC:       %s: posting %d s/g entries\n",
+> +               __func__, send_wr.num_sge);
+>
+>         if (DECR_CQCOUNT(ep) > 0)
+>                 send_wr.send_flags = 0;
+> diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+> index ce4e79e..90da480 100644
+> --- a/net/sunrpc/xprtrdma/xprt_rdma.h
+> +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+> @@ -256,16 +256,18 @@ struct rpcrdma_mr_seg {           /* chunk descriptors */
+>         char            *mr_offset;     /* kva if no page, else offset */
+>  };
+>
+> +#define RPCRDMA_MAX_IOVS       (4)
+> +
+>  struct rpcrdma_req {
+> -       unsigned int    rl_niovs;       /* 0, 2 or 4 */
+> -       unsigned int    rl_nchunks;     /* non-zero if chunks */
+> -       unsigned int    rl_connect_cookie;      /* retry detection */
+> -       struct rpcrdma_buffer *rl_buffer; /* home base for this structure */
+> +       unsigned int            rl_niovs;
+> +       unsigned int            rl_nchunks;
+> +       unsigned int            rl_connect_cookie;
+> +       struct rpcrdma_buffer   *rl_buffer;
+>         struct rpcrdma_rep      *rl_reply;/* holder for reply buffer */
+> -       struct ib_sge   rl_send_iov[4]; /* for active requests */
+> -       struct rpcrdma_regbuf *rl_rdmabuf;
+> -       struct rpcrdma_regbuf *rl_sendbuf;
+> -       struct rpcrdma_mr_seg rl_segments[RPCRDMA_MAX_SEGS];
+> +       struct ib_sge           rl_send_iov[RPCRDMA_MAX_IOVS];
+> +       struct rpcrdma_regbuf   *rl_rdmabuf;
+> +       struct rpcrdma_regbuf   *rl_sendbuf;
+> +       struct rpcrdma_mr_seg   rl_segments[RPCRDMA_MAX_SEGS];
+>  };
+>
+>  static inline struct rpcrdma_req *
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
