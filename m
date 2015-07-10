@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx141.netapp.com ([216.240.21.12]:30938 "EHLO mx141.netapp.com"
+Received: from mx143.netapp.com ([216.240.21.24]:9341 "EHLO mx143.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933170AbbGJU7N (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 10 Jul 2015 16:59:13 -0400
+	id S933308AbbGJU74 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 10 Jul 2015 16:59:56 -0400
 From: Anna Schumaker <Anna.Schumaker@netapp.com>
 To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
 CC: <Anna.Schumaker@netapp.com>
-Subject: [PATCH 6/9] NFS: Remove nfs4_match_stateid()
-Date: Fri, 10 Jul 2015 16:58:14 -0400
-Message-ID: <1436561897-8051-7-git-send-email-Anna.Schumaker@Netapp.com>
+Subject: [PATCH 8/9] NFS: Rename nfs_commit_unstable_pages() to nfs_write_inode()
+Date: Fri, 10 Jul 2015 16:58:16 -0400
+Message-ID: <1436561897-8051-9-git-send-email-Anna.Schumaker@Netapp.com>
 In-Reply-To: <1436561897-8051-1-git-send-email-Anna.Schumaker@Netapp.com>
 References: <1436561897-8051-1-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
@@ -16,39 +16,40 @@ Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Let's just call nfs4_stateid_match() directly.
+All nfs_write_inode() does is pass its arguments to
+nfs_commit_unstable_pages().  Let's cut out the middle man and have
+nfs_write_pages() do the work directly.
 
 Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 ---
- fs/nfs/nfs4proc.c | 8 +-------
- 1 file changed, 1 insertion(+), 7 deletions(-)
+ fs/nfs/write.c | 7 +------
+ 1 file changed, 1 insertion(+), 6 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 6f228b5..b911fb0 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -8514,12 +8514,6 @@ static bool nfs41_match_stateid(const nfs4_stateid *s1,
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 359e9ad..c2dad4f 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -1789,7 +1789,7 @@ out_mark_dirty:
+ 	return res;
+ }
  
- #endif /* CONFIG_NFS_V4_1 */
- 
--static bool nfs4_match_stateid(const nfs4_stateid *s1,
--		const nfs4_stateid *s2)
--{
--	return nfs4_stateid_match(s1, s2);
--}
+-static int nfs_commit_unstable_pages(struct inode *inode, struct writeback_control *wbc)
++int nfs_write_inode(struct inode *inode, struct writeback_control *wbc)
+ {
+ 	struct nfs_inode *nfsi = NFS_I(inode);
+ 	int flags = FLUSH_SYNC;
+@@ -1824,11 +1824,6 @@ out_mark_dirty:
+ 	__mark_inode_dirty(inode, I_DIRTY_DATASYNC);
+ 	return ret;
+ }
 -
+-int nfs_write_inode(struct inode *inode, struct writeback_control *wbc)
+-{
+-	return nfs_commit_unstable_pages(inode, wbc);
+-}
+ EXPORT_SYMBOL_GPL(nfs_write_inode);
  
- static const struct nfs4_state_recovery_ops nfs40_reboot_recovery_ops = {
- 	.owner_flag_bit = NFS_OWNER_RECLAIM_REBOOT,
-@@ -8594,7 +8588,7 @@ static const struct nfs4_minor_version_ops nfs_v4_0_minor_ops = {
- 		| NFS_CAP_POSIX_LOCK,
- 	.init_client = nfs40_init_client,
- 	.shutdown_client = nfs40_shutdown_client,
--	.match_stateid = nfs4_match_stateid,
-+	.match_stateid = nfs4_stateid_match,
- 	.find_root_sec = nfs4_find_root_sec,
- 	.free_lock_state = nfs4_release_lockowner,
- 	.alloc_seqid = nfs_alloc_seqid,
+ /*
 -- 
 2.4.5
 
