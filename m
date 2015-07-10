@@ -1,105 +1,51 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qg0-f51.google.com ([209.85.192.51]:34564 "EHLO
-	mail-qg0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932243AbbGJUw1 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jul 2015 16:52:27 -0400
-Content-Type: text/plain; charset=utf-8
-Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2102\))
-Subject: Re: [PATCH v1 09/12] xprtrdma: Prepare rpcrdma_ep_post() for RDMA_NOMSG calls
-From: Chuck Lever <chucklever@gmail.com>
-In-Reply-To: <55A02E73.7000902@Netapp.com>
-Date: Fri, 10 Jul 2015 16:52:22 -0400
-Cc: Chuck Lever <chuck.lever@oracle.com>, linux-rdma@vger.kernel.org,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <9967E8B6-C9DE-4EE0-A50C-350B373BFD51@gmail.com>
-References: <20150709203242.26247.4848.stgit@manet.1015granger.net> <20150709204305.26247.39173.stgit@manet.1015granger.net> <55A02E73.7000902@Netapp.com>
-To: Anna Schumaker <Anna.Schumaker@netapp.com>
+Received: from quartz.orcorp.ca ([184.70.90.242]:34438 "EHLO quartz.orcorp.ca"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932253AbbGJU5R (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 10 Jul 2015 16:57:17 -0400
+Date: Fri, 10 Jul 2015 14:57:06 -0600
+From: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
+To: Doug Ledford <dledford@redhat.com>
+Cc: Tom Talpey <tom@talpey.com>, "'Christoph Hellwig'" <hch@infradead.org>,
+        Sagi Grimberg <sagig@dev.mellanox.co.il>,
+        Steve Wise <swise@opengridcomputing.com>, sagig@mellanox.com,
+        ogerlitz@mellanox.com, roid@mellanox.com, linux-rdma@vger.kernel.org,
+        eli@mellanox.com, target-devel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, trond.myklebust@primarydata.com,
+        bfields@fieldses.org, Oren Duer <oren@mellanox.com>
+Subject: Re: [PATCH V3 1/5] RDMA/core: Transport-independent access flags
+Message-ID: <20150710205706.GA7883@obsidianresearch.com>
+References: <20150707213628.GA5661@obsidianresearch.com>
+ <559CD174.4040901@dev.mellanox.co.il>
+ <20150708190842.GB11740@obsidianresearch.com>
+ <20150708203205.GA21847@infradead.org>
+ <20150709000337.GE16812@obsidianresearch.com>
+ <559EF332.7060103@redhat.com>
+ <20150709225306.GA30741@obsidianresearch.com>
+ <559FC710.1050307@talpey.com>
+ <20150710161108.GA19042@obsidianresearch.com>
+ <55A00754.4010009@redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <55A00754.4010009@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Fri, Jul 10, 2015 at 01:56:36PM -0400, Doug Ledford wrote:
 
-> On Jul 10, 2015, at 4:43 PM, Anna Schumaker <Anna.Schumaker@netapp.com> wrote:
-> 
-> Hi Chuck,
-> 
-> On 07/09/2015 04:43 PM, Chuck Lever wrote:
->> Only the RPC/RDMA header is sent when making an RDMA_NOMSG call.
->> That header resides in the first element of the iovec array
->> passed to rpcrdma_ep_post().
->> 
->> Instead of special casing the iovec element with the pad, just
->> sync all the elements in the send iovec. Syncing the zero pad is
->> not strictly necessary, but the pad is rarely if ever used these
->> days, and the extra cost in that case is small.
->> 
->> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
->> index cdf5220..9199436 100644
->> --- a/net/sunrpc/xprtrdma/verbs.c
->> +++ b/net/sunrpc/xprtrdma/verbs.c
->> @@ -1316,22 +1318,15 @@ rpcrdma_ep_post(struct rpcrdma_ia *ia,
->> 
->> 	send_wr.next = NULL;
->> 	send_wr.wr_id = RPCRDMA_IGNORE_COMPLETION;
->> -	send_wr.sg_list = req->rl_send_iov;
->> +	send_wr.sg_list = iov;
->> 	send_wr.num_sge = req->rl_niovs;
->> 	send_wr.opcode = IB_WR_SEND;
->> -	if (send_wr.num_sge == 4)	/* no need to sync any pad (constant) */
->> -		ib_dma_sync_single_for_device(ia->ri_device,
->> -					      req->rl_send_iov[3].addr,
->> -					      req->rl_send_iov[3].length,
->> -					      DMA_TO_DEVICE);
->> -	ib_dma_sync_single_for_device(ia->ri_device,
->> -				      req->rl_send_iov[1].addr,
->> -				      req->rl_send_iov[1].length,
->> -				      DMA_TO_DEVICE);
->> -	ib_dma_sync_single_for_device(ia->ri_device,
->> -				      req->rl_send_iov[0].addr,
->> -				      req->rl_send_iov[0].length,
->> -				      DMA_TO_DEVICE);
->> +
->> +	for (i = 0; i < send_wr.num_sge; i++)
->> +		ib_dma_sync_single_for_device(device, iov[i].addr,
->> +					      iov[i].length, DMA_TO_DEVICE);
-> 
-> Two questions here:
-> 1) Is syncing order important?  The original code went 3 - 1 - 0, but now we're going 0 - 1 - 2 - 3.
+> Are there security issues?  Yes.  Are we going to solve them in this
+> patch set?  No.  Especially since those security issues extend beyond
+> iSER + iWARP.
 
-No, the syncing order isn’t important. What’s important is that
-the sge’s be synced _before_ the SEND Work Request is posted so
-that the HCA can see the freshly marshaled RPC.
+I think my biggest concern is we don't inadvertently open a security
+hole on a machine that just happens to have an iwarp card installed,
+but has nothing to do with HPC.
 
+The clearest scary path I see is a server listening on a QP and using
+IB_ACCESS_REMOTE_WRITE. That sure looks easy to exploit.
 
-> 2) Is iov[2] the zero pad you mentioned in your commit message?
+A client doing this.. It is alot harder to exploit.. iSER is client
+only, so less worrying. Can anyone else think of a way to attack the
+client?
 
-Yes, it is.
-
-> If not, do you know why it wasn't already syncing?
-
-The pad always contains zeroes. Syncing it is optional, AFAICT.
-
-v2 of this series will have some changes in this area, and the
-zero pad will be gone entirely.
-
-
-> Thanks,
-> Anna
-> 
->> +	dprintk("RPC:       %s: posting %d s/g entries\n",
->> +		__func__, send_wr.num_sge);
->> 
->> 	if (DECR_CQCOUNT(ep) > 0)
->> 		send_wr.send_flags = 0;
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
---
-Chuck Lever
-chucklever@gmail.com
-
-
-
+Jason
