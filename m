@@ -1,51 +1,53 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from quartz.orcorp.ca ([184.70.90.242]:34438 "EHLO quartz.orcorp.ca"
+Received: from mx141.netapp.com ([216.240.21.12]:10615 "EHLO mx141.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932253AbbGJU5R (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 10 Jul 2015 16:57:17 -0400
-Date: Fri, 10 Jul 2015 14:57:06 -0600
-From: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
-To: Doug Ledford <dledford@redhat.com>
-Cc: Tom Talpey <tom@talpey.com>, "'Christoph Hellwig'" <hch@infradead.org>,
-        Sagi Grimberg <sagig@dev.mellanox.co.il>,
-        Steve Wise <swise@opengridcomputing.com>, sagig@mellanox.com,
-        ogerlitz@mellanox.com, roid@mellanox.com, linux-rdma@vger.kernel.org,
-        eli@mellanox.com, target-devel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, trond.myklebust@primarydata.com,
-        bfields@fieldses.org, Oren Duer <oren@mellanox.com>
-Subject: Re: [PATCH V3 1/5] RDMA/core: Transport-independent access flags
-Message-ID: <20150710205706.GA7883@obsidianresearch.com>
-References: <20150707213628.GA5661@obsidianresearch.com>
- <559CD174.4040901@dev.mellanox.co.il>
- <20150708190842.GB11740@obsidianresearch.com>
- <20150708203205.GA21847@infradead.org>
- <20150709000337.GE16812@obsidianresearch.com>
- <559EF332.7060103@redhat.com>
- <20150709225306.GA30741@obsidianresearch.com>
- <559FC710.1050307@talpey.com>
- <20150710161108.GA19042@obsidianresearch.com>
- <55A00754.4010009@redhat.com>
+	id S932443AbbGJU7B (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 10 Jul 2015 16:59:01 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
+CC: <Anna.Schumaker@netapp.com>
+Subject: [PATCH 0/9] NFS: Clean up unnecessary functions 
+Date: Fri, 10 Jul 2015 16:58:08 -0400
+Message-ID: <1436561897-8051-1-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <55A00754.4010009@redhat.com>
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jul 10, 2015 at 01:56:36PM -0400, Doug Ledford wrote:
+I went searching for functions that simply pass their arguments to another
+function without really adding anything useful.  I figure we can just call
+the other function directly instead.
 
-> Are there security issues?  Yes.  Are we going to solve them in this
-> patch set?  No.  Especially since those security issues extend beyond
-> iSER + iWARP.
+Let me know what you all think!
+Anna
 
-I think my biggest concern is we don't inadvertently open a security
-hole on a machine that just happens to have an iwarp card installed,
-but has nothing to do with HPC.
+Anna Schumaker (9):
+  NFS: Remove unused variable "pages_ptr"
+  NFS: Rename nfs_readdir_free_pagearray() and nfs_readdir_large_page()
+  SUNRPC: Drop double-underscores from rpc_cmp_addr{4|6}()
+  NFS: Use RPC functions for matching sockaddrs
+  NFS: Combine nfs_idmap_{init|quit}() and
+    nfs_idmap_{init|quit}_keyring()
+  NFS: Remove nfs4_match_stateid()
+  NFS: Remove nfs41_server_notify_{target|highest}_slotid_update()
+  NFS: Rename nfs_commit_unstable_pages() to nfs_write_inode()
+  NFS: Remove nfs_release()
 
-The clearest scary path I see is a server listening on a QP and using
-IB_ACCESS_REMOTE_WRITE. That sure looks easy to exploit.
+ fs/nfs/callback_proc.c      |  2 +-
+ fs/nfs/client.c             | 78 ++-------------------------------------------
+ fs/nfs/dir.c                | 20 ++++--------
+ fs/nfs/file.c               |  3 +-
+ fs/nfs/inode.c              |  8 +----
+ fs/nfs/internal.h           |  4 ---
+ fs/nfs/nfs4_fs.h            |  4 +--
+ fs/nfs/nfs4client.c         |  5 +--
+ fs/nfs/nfs4idmap.c          | 14 ++------
+ fs/nfs/nfs4proc.c           | 10 ++----
+ fs/nfs/nfs4state.c          | 12 +------
+ fs/nfs/write.c              |  7 +---
+ include/linux/sunrpc/addr.h | 12 +++----
+ 13 files changed, 27 insertions(+), 152 deletions(-)
 
-A client doing this.. It is alot harder to exploit.. iSER is client
-only, so less worrying. Can anyone else think of a way to attack the
-client?
+-- 
+2.4.5
 
-Jason
