@@ -1,61 +1,73 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from quartz.orcorp.ca ([184.70.90.242]:44158 "EHLO quartz.orcorp.ca"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932415AbbGJUst (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 10 Jul 2015 16:48:49 -0400
-Date: Fri, 10 Jul 2015 14:48:34 -0600
-From: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
-To: Tom Talpey <tom@talpey.com>
-Cc: Doug Ledford <dledford@redhat.com>,
-        "'Christoph Hellwig'" <hch@infradead.org>,
-        Sagi Grimberg <sagig@dev.mellanox.co.il>,
-        Steve Wise <swise@opengridcomputing.com>, sagig@mellanox.com,
-        ogerlitz@mellanox.com, roid@mellanox.com, linux-rdma@vger.kernel.org,
-        eli@mellanox.com, target-devel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, trond.myklebust@primarydata.com,
-        bfields@fieldses.org, Oren Duer <oren@mellanox.com>
-Subject: Re: [PATCH V3 1/5] RDMA/core: Transport-independent access flags
-Message-ID: <20150710204834.GA7345@obsidianresearch.com>
-References: <20150708190842.GB11740@obsidianresearch.com>
- <20150708203205.GA21847@infradead.org>
- <20150709000337.GE16812@obsidianresearch.com>
- <559EF332.7060103@redhat.com>
- <20150709225306.GA30741@obsidianresearch.com>
- <559FC710.1050307@talpey.com>
- <20150710161108.GA19042@obsidianresearch.com>
- <55A00754.4010009@redhat.com>
- <55A01225.9000000@talpey.com>
- <20150710195420.GA31500@obsidianresearch.com>
+Received: from mail-yk0-f169.google.com ([209.85.160.169]:36719 "EHLO
+	mail-yk0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932316AbbGJUvS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jul 2015 16:51:18 -0400
+Received: by ykey15 with SMTP id y15so76396763yke.3
+        for <linux-nfs@vger.kernel.org>; Fri, 10 Jul 2015 13:51:18 -0700 (PDT)
+Date: Fri, 10 Jul 2015 16:51:14 -0400
+From: Jeff Layton <jlayton@poochiereds.net>
+To: linux-nfs@vger.kernel.org
+Cc: linux-fsdevel@vger.kernel.org, william@gandi.net, bfields@fieldses.org,
+        trond.myklebust@primarydata.com, stable@vger.kernel.org,
+        Anna.Schumaker@netapp.com
+Subject: Re: [RFC PATCH 1/4] Revert "nfs: take extra reference to
+ fl->fl_file when running a LOCKU operation"
+Message-ID: <20150710165114.7ebe9c53@tlielax.poochiereds.net>
+In-Reply-To: <1436560414-26306-2-git-send-email-jeff.layton@primarydata.com>
+References: <1436560414-26306-1-git-send-email-jeff.layton@primarydata.com>
+	<1436560414-26306-2-git-send-email-jeff.layton@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20150710195420.GA31500@obsidianresearch.com>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jul 10, 2015 at 01:54:20PM -0600, Jason Gunthorpe wrote:
-> On Fri, Jul 10, 2015 at 02:42:45PM -0400, Tom Talpey wrote:
+On Fri, 10 Jul 2015 16:33:31 -0400
+Jeff Layton <jlayton@poochiereds.net> wrote:
+
+> This reverts commit db2efec0caba4f81a22d95a34da640b86c313c8e.
 > 
-> > >>For the proposed iSER patch the problem is very acute, iser makes a
-> > >>single PD and phys MR at boot time for each device. This means there
-> > >>is a single machine wide unchanging rkey that allows remote physical
-> > >>memory access. An attacker only has to repeatedly open QPs to iSER and
-> > >>guess rkey values until they find it. Add in likely non-crypto
-> > >>randomness for rkeys, and I bet it isn't even that hard to do.
-> > 
-> > The rkeys have a PD, wich cannot be forged, so it's not a matter of
-> > attacking, but it is most definitely a system integrity risk, as I
-> > mentioned earlier, a simple arithmetic offset mistake can overwrite
-> > anything.
+> William reported that he was seeing instability with this patch, which
+> is likely due to the fact that it can cause the kernel to take a new
+> reference to a filp after the last reference has already been put.
 > 
-> Can you explain this conclusion?
+> Revert this patch for now, as we'll need to fix this in another way.
+> 
+> Cc: stable@vger.kernel.org
+> Reported-by: William Dauchy <william@gandi.net>
+> Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
+> ---
+>  fs/nfs/nfs4proc.c | 2 --
+>  1 file changed, 2 deletions(-)
+> 
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index 6f228b5af819..60be01f69b84 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -5484,7 +5484,6 @@ static struct nfs4_unlockdata *nfs4_alloc_unlockdata(struct file_lock *fl,
+>  	atomic_inc(&lsp->ls_count);
+>  	/* Ensure we don't close file until we're done freeing locks! */
+>  	p->ctx = get_nfs_open_context(ctx);
+> -	get_file(fl->fl_file);
+>  	memcpy(&p->fl, fl, sizeof(p->fl));
+>  	p->server = NFS_SERVER(inode);
+>  	return p;
+> @@ -5496,7 +5495,6 @@ static void nfs4_locku_release_calldata(void *data)
+>  	nfs_free_seqid(calldata->arg.seqid);
+>  	nfs4_put_lock_state(calldata->lsp);
+>  	put_nfs_open_context(calldata->ctx);
+> -	fput(calldata->fl.fl_file);
+>  	kfree(calldata);
+>  }
+>  
 
-Okay, so I see, iser is client only, it doesn't create a listening QP,
-so you have to trick it into connecting to a malicious server, and
-that is just a trust issue as Doug points out. Presumably this patch
-doesn't impact isert?
+Even though the title says "RFC" here, we should probably go ahead and
+revert this patch in mainline and any stable series kernels in which it
+got applied.
 
-But what about NFS? It looks to me like all of the ib_get_dma_mr
-calls in NFS have the possibility of having IB_ACCESS_REMOTE_WRITE
-set, but only on older adaptors?
+Let me know if I need to do anything further in order to make that
+happen.
 
-Jason
+Thanks,
+-- 
+Jeff Layton <jlayton@poochiereds.net>
