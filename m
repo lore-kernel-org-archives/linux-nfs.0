@@ -1,52 +1,54 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pa0-f47.google.com ([209.85.220.47]:36603 "EHLO
-	mail-pa0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754893AbbGJOL0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jul 2015 10:11:26 -0400
-Received: by pacgz10 with SMTP id gz10so95775489pac.3
-        for <linux-nfs@vger.kernel.org>; Fri, 10 Jul 2015 07:11:25 -0700 (PDT)
+Received: from fieldses.org ([173.255.197.46]:59967 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932378AbbGJOSP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 10 Jul 2015 10:18:15 -0400
+Date: Fri, 10 Jul 2015 10:18:14 -0400
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
+Subject: Re: [PATCH v1 5/5] svcrdma: Boost NFS READ/WRITE payload size maximum
+Message-ID: <20150710141814.GA31121@fieldses.org>
+References: <20150709204230.8481.45457.stgit@klimt.1015granger.net>
+ <20150709204546.8481.65857.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
-In-Reply-To: <559FC17A.7060502@talpey.com>
-References: <20150709203242.26247.4848.stgit@manet.1015granger.net>
-	<20150709204305.26247.39173.stgit@manet.1015granger.net>
-	<CANjDDBh38PrxGgWGuKYCYcbjqY9ELrpkGqaRZ_ueKfD7FEQP8g@mail.gmail.com>
-	<559FC17A.7060502@talpey.com>
-Date: Fri, 10 Jul 2015 19:41:25 +0530
-Message-ID: <CANjDDBipaXMO7Z5wirG127E9kQ0aHdWJ1s6ZM21th5RWLNh-4Q@mail.gmail.com>
-Subject: Re: [PATCH v1 09/12] xprtrdma: Prepare rpcrdma_ep_post() for
- RDMA_NOMSG calls
-From: Devesh Sharma <devesh.sharma@avagotech.com>
-To: Tom Talpey <tom@talpey.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>, linux-rdma@vger.kernel.org,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20150709204546.8481.65857.stgit@klimt.1015granger.net>
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jul 10, 2015 at 6:28 PM, Tom Talpey <tom@talpey.com> wrote:
-> On 7/10/2015 7:29 AM, Devesh Sharma wrote:
->>
->> we need to honor the max limits of device by checking
->> dev_attr.max_sge? a vendor may not support 4 sges.
->
->
-> iWARP requires a minimum of 4 send SGEs (draft-hilland-verbs 8.1.3.2)
->
->    An RI MUST support at least four Scatter/Gather Elements per
->    Scatter/Gather List when the Scatter/Gather List refers to the Data
->    Source of a Send Operation Type or the Data Sink of a Receive
->    Operation. An RI is NOT REQUIRED to support more than one
->    Scatter/Gather Element per Scatter/Gather List when the
->    Scatter/Gather List refers to the Data Source of an RDMA Write.
->
-> I'm not certain if IB and RoCE state a similar minimum requirement,
-> but it seems a very bad idea to have fewer.
+On Thu, Jul 09, 2015 at 04:45:47PM -0400, Chuck Lever wrote:
+> Increased to 1 megabyte.
 
-To my knowledge IBTA Spec do not pose any such minimum requirement.
-RoCE also do not puts any minimum requirement. I think its fine if
-xprtrdma honors the device limits, thus covering iWARP devices because
-all iWARP devices would support minimum 4.
+Why not more or less?
 
-Chuck would correct me if xprtrdma do have any minimum requirements
+Why do we even have this constant, why shouldn't we just use
+RPCSVC_MAXPAYLOAD?
 
->
+--b.
+
+> 
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+> 
+>  include/linux/sunrpc/svc_rdma.h |    2 +-
+>  1 files changed, 1 insertions(+), 1 deletions(-)
+> 
+> diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
+> index 13af61b..1bca6dd 100644
+> --- a/include/linux/sunrpc/svc_rdma.h
+> +++ b/include/linux/sunrpc/svc_rdma.h
+> @@ -172,7 +172,7 @@ struct svcxprt_rdma {
+>  #define RDMAXPRT_SQ_PENDING	2
+>  #define RDMAXPRT_CONN_PENDING	3
+>  
+> -#define RPCRDMA_MAX_SVC_SEGS	(64)	/* server max scatter/gather */
+> +#define RPCRDMA_MAX_SVC_SEGS	(256)	/* server max scatter/gather */
+>  #if RPCSVC_MAXPAYLOAD < (RPCRDMA_MAX_SVC_SEGS << PAGE_SHIFT)
+>  #define RPCRDMA_MAXPAYLOAD	RPCSVC_MAXPAYLOAD
+>  #else
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
