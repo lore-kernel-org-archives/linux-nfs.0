@@ -1,101 +1,97 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yk0-f178.google.com ([209.85.160.178]:34741 "EHLO
-	mail-yk0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932598AbbGJOj0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jul 2015 10:39:26 -0400
-Received: by ykax123 with SMTP id x123so16945501yka.1
-        for <linux-nfs@vger.kernel.org>; Fri, 10 Jul 2015 07:39:26 -0700 (PDT)
-Date: Fri, 10 Jul 2015 10:39:14 -0400
-From: Jeff Layton <jlayton@poochiereds.net>
-To: William Dauchy <william@gandi.net>
-Cc: Linux NFS mailing list <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>, jloup@gandi.net
-Subject: Re: extra reference to fl->fl_file, possible regression
-Message-ID: <20150710103914.78189580@tlielax.poochiereds.net>
-In-Reply-To: <20150710125444.GL15144@gandi.net>
-References: <20150710092910.GI15144@gandi.net>
-	<20150710072438.08b3417a@tlielax.poochiereds.net>
-	<20150710125444.GL15144@gandi.net>
+Received: from mail-pd0-f175.google.com ([209.85.192.175]:35011 "EHLO
+	mail-pd0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932262AbbGJOrO convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jul 2015 10:47:14 -0400
+Received: by pdrg1 with SMTP id g1so53591971pdr.2
+        for <linux-nfs@vger.kernel.org>; Fri, 10 Jul 2015 07:47:13 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha256;
- boundary="Sig_/PnKP0Jv9UMNlzOdS+pELzop"; protocol="application/pgp-signature"
+In-Reply-To: <B6E6A65D-DE61-4A95-91D7-1E8A5132F7EE@oracle.com>
+References: <20150709203242.26247.4848.stgit@manet.1015granger.net>
+	<20150709204208.26247.52073.stgit@manet.1015granger.net>
+	<CANjDDBiMDM5VP5ev3LFfapX-5amqukH=dJdaEZVcZc9SSP2CCg@mail.gmail.com>
+	<B6E6A65D-DE61-4A95-91D7-1E8A5132F7EE@oracle.com>
+Date: Fri, 10 Jul 2015 20:17:13 +0530
+Message-ID: <CANjDDBgV8rFG0OifrCararytbo1ePW0wwtWU6qb4co78JhTjeQ@mail.gmail.com>
+Subject: Re: [PATCH v1 03/12] xprtrdma: Increase default credit limit
+From: Devesh Sharma <devesh.sharma@avagotech.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-rdma@vger.kernel.org,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/PnKP0Jv9UMNlzOdS+pELzop
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+Yes, we are covered here, I took reference of  4.1-rc4 and that series
+was pulled in 4.1-rc7.
 
-On Fri, 10 Jul 2015 14:54:44 +0200
-William Dauchy <william@gandi.net> wrote:
+I will update my test-bench and re-validate the numbers.
 
-> On Jul10 07:24, Jeff Layton wrote:
-> > Huh. I'm stumped...
-> >=20
-> > These patches are pretty straightforward. We're just taking an extra
-> > reference to the filp when running lock operations so that it doesn't
-> > disappear before the replies can be processed (typically in the event
-> > that a signal comes in while waiting on the reply). Given the odd stack
-> > trace above, I have to wonder if there's some sort of memory scribble
-> > going on.
->=20
-> I also forgot to mention that I also had the following messgae before
-> the trace:
->=20
-> VFS: Close: file count is 0
->=20
+-Regards
 
-Ok, that may be an important clue. From filp_close:
-
-        if (!file_count(filp)) {
-                printk(KERN_ERR "VFS: Close: file count is 0\n");
-                return 0;
-        }
-
-...so looks like there could be a use-after free going on? Somehow
-we're ending up with with an actual close being done after the last
-reference has already been put. I'm not s
-
-So, I suspect that the problem is with the second patch (the LOCKU
-one).
-
-I'm not sure if it's responsible for that message, but one of the
-things we do in __fput() is call locks_remove_flock, which can dip down
-into the NFS unlock codepath.
-
-So if a file happened to have some flock locks on it, then we could
-be taking a new reference to a file that has already had its refcount
-go to zero.
-
-I'll have to think about how best to deal with this as I totally missed
-this when I did the original analysis of the bug. For now it's probably
-best to revert that patch (though I think the one for the setlk is
-likely OK).
-
-Thanks,
---=20
-Jeff Layton <jlayton@poochiereds.net>
-
---Sig_/PnKP0Jv9UMNlzOdS+pELzop
-Content-Type: application/pgp-signature
-Content-Description: OpenPGP digital signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2
-
-iQIcBAEBCAAGBQJVn9kSAAoJEAAOaEEZVoIVa3AQAM0mWOytz5JDHVIetz/EGiWm
-DxbGDEiOzzIw2tOmWqHkJInTl6Er3+csBZcJL+NApsutUsJl4dG7PazXayGKi4AO
-W2DqxoX6VhyF+MzvtZVMm82XS8EoASuSy3xP8B8WXrvkFe1qoBplPRv9clOkn72E
-sr56f038uSKxtqvlvO/Um4ngIs6q3aH8PeWjThHFXN3DpPerjQr4R5nqxZt+9lQY
-5FbM2O4QwAyDURZJNgOz2Rc4yn+73lmZRURByi9vBZHRfgKOGrlw0JDPJFykW8Ov
-ZTNL+jb/ONGyL0nw81MlDXhz60bF12JQgcp/5o0ID8TyxZ65c7mtH/mLPC5noah8
-lpYH2w7VAD24ivhWPxlSTh3kVgoB74X+og8mlWgjIyfF8YStTNnaO4RzraYU7fEK
-N3SWOCTgEBV0hYZwHGMe/lAULLWznVqO7L+7ymt6EmuAurajxmzd/1aFLYC5BHTY
-8/dYUe/3+knCEfJyAJWKfnxmkRb695VKzwKj1Kf1q5DOd8EXhXkNVgd8mWbzDRFo
-7srsJwlEMBjjHvAJFlgQNUC6gLWPi9cy3MsjwA3JA/Wi16r/g2pWviuHUERMwKev
-5Y3vUo9krd7+qn1EMIqBeQ1r35VlpGDbcPf8IzXVh9HUdIOTvP2SlpL9fka0kGzF
-C2OrBF8B0bEkcdUhR5oW
-=qsdv
------END PGP SIGNATURE-----
-
---Sig_/PnKP0Jv9UMNlzOdS+pELzop--
+On Fri, Jul 10, 2015 at 8:03 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>
+> On Jul 10, 2015, at 6:45 AM, Devesh Sharma <devesh.sharma@avagotech.com> wrote:
+>
+>> Increasing the default slot table entries will increase the MR
+>> requirements per mount.
+>
+> Yes, but:
+>
+>> Currently, with 32 as default Client ends up allocating 2178 frmrs
+>> (ref: kernel 4.1-rc4) for a single mount. With 128 frmr requirement
+>> for startup would be 8448.
+>
+> Commit 40c6ed0c8a7f ("xprtrdma: Reduce per-transport MR allocation”)
+> is supposed to address this. This commit is in 4.1.
+>
+> The number of MRs per credit is now 256 divided by the HCA’s
+> max_fast_reg_page_list_len. See frwr_op_open().
+>
+> For mlx4 the number of MRs per credit is just 1, for example.
+>
+>
+>> 8K+ MRs per mount just for start-up, I am a little doubtful about this
+>> change. We can always release-note that "for better performance
+>> increase the slot table entries by echo 128 >
+>> /proc/sys/sunrpc/rdma_slot_table_entries"
+>>
+>> -Regards
+>> Devesh
+>>
+>> On Fri, Jul 10, 2015 at 2:12 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>>> In preparation for similar increases on NFS/RDMA servers, bump the
+>>> advertised credit limit for RPC/RDMA to 128. This allocates some
+>>> extra resources, but the client will continue to allow only the
+>>> number of RPCs in flight that the server requests via its advertised
+>>> credit limit.
+>>>
+>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>>> ---
+>>> include/linux/sunrpc/xprtrdma.h |    2 +-
+>>> 1 file changed, 1 insertion(+), 1 deletion(-)
+>>>
+>>> diff --git a/include/linux/sunrpc/xprtrdma.h b/include/linux/sunrpc/xprtrdma.h
+>>> index b176130..b7b279b 100644
+>>> --- a/include/linux/sunrpc/xprtrdma.h
+>>> +++ b/include/linux/sunrpc/xprtrdma.h
+>>> @@ -49,7 +49,7 @@
+>>>  * a single chunk type per message is supported currently.
+>>>  */
+>>> #define RPCRDMA_MIN_SLOT_TABLE (2U)
+>>> -#define RPCRDMA_DEF_SLOT_TABLE (32U)
+>>> +#define RPCRDMA_DEF_SLOT_TABLE (128U)
+>>> #define RPCRDMA_MAX_SLOT_TABLE (256U)
+>>>
+>>> #define RPCRDMA_DEF_INLINE  (1024)     /* default inline max */
+>>>
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+> --
+> Chuck Lever
+>
+>
+>
