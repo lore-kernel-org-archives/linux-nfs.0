@@ -1,104 +1,170 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yk0-f181.google.com ([209.85.160.181]:34893 "EHLO
-	mail-yk0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933516AbbGJUds (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jul 2015 16:33:48 -0400
-Received: by ykee186 with SMTP id e186so72313857yke.2
-        for <linux-nfs@vger.kernel.org>; Fri, 10 Jul 2015 13:33:47 -0700 (PDT)
+Received: from mail-yk0-f172.google.com ([209.85.160.172]:34432 "EHLO
+	mail-yk0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932519AbbGJUdr (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jul 2015 16:33:47 -0400
+Received: by ykax123 with SMTP id x123so24891076yka.1
+        for <linux-nfs@vger.kernel.org>; Fri, 10 Jul 2015 13:33:45 -0700 (PDT)
 From: Jeff Layton <jlayton@poochiereds.net>
 To: linux-nfs@vger.kernel.org
 Cc: linux-fsdevel@vger.kernel.org, william@gandi.net, bfields@fieldses.org
-Subject: [RFC PATCH 4/4] nfs4: have do_vfs_lock take an inode pointer
-Date: Fri, 10 Jul 2015 16:33:34 -0400
-Message-Id: <1436560414-26306-5-git-send-email-jeff.layton@primarydata.com>
+Subject: [RFC PATCH 3/4] locks: new helpers - flock_lock_inode_wait and posix_lock_inode_wait
+Date: Fri, 10 Jul 2015 16:33:33 -0400
+Message-Id: <1436560414-26306-4-git-send-email-jeff.layton@primarydata.com>
 In-Reply-To: <1436560414-26306-1-git-send-email-jeff.layton@primarydata.com>
 References: <1436560414-26306-1-git-send-email-jeff.layton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Now that we have file locking helpers that can deal with an inode
-instead of a filp, we can change the NFSv4 locking code to use that
-instead.
-
-This should fix the case where we have a filp that is closed while flock
-or OFD locks are set on it, and the task is signaled so that it doesn't
-wait for the LOCKU reply to come in before the filp is freed. At that
-point we can end up with a use-after-free with the current code, which
-relies on dereferencing the fl_file in the lock request.
+Allow callers to pass in an inode instead of a filp.
 
 Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
 ---
- fs/nfs/nfs4proc.c | 16 ++++++++--------
- 1 file changed, 8 insertions(+), 8 deletions(-)
+ fs/locks.c         | 50 ++++++++++++++++++++++++++++++++++++++------------
+ include/linux/fs.h | 14 ++++++++++++++
+ 2 files changed, 52 insertions(+), 12 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 60be01f69b84..8bee93469617 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5439,15 +5439,15 @@ static int nfs4_proc_getlk(struct nfs4_state *state, int cmd, struct file_lock *
- 	return err;
+diff --git a/fs/locks.c b/fs/locks.c
+index 4366b7c54e6d..ba268a503c1b 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -1163,20 +1163,19 @@ int posix_lock_file(struct file *filp, struct file_lock *fl,
+ EXPORT_SYMBOL(posix_lock_file);
+ 
+ /**
+- * posix_lock_file_wait - Apply a POSIX-style lock to a file
+- * @filp: The file to apply the lock to
++ * posix_lock_inode_wait - Apply a POSIX-style lock to a file
++ * @inode: inode of file to which lock request should be applied
+  * @fl: The lock to be applied
+  *
+- * Add a POSIX style lock to a file.
+- * We merge adjacent & overlapping locks whenever possible.
+- * POSIX locks are sorted by owner task, then by starting address
++ * Variant of posix_lock_file_wait that does not take a filp, and so can be
++ * used after the filp has already been torn down.
+  */
+-int posix_lock_file_wait(struct file *filp, struct file_lock *fl)
++int posix_lock_inode_wait(struct inode *inode, struct file_lock *fl)
+ {
+ 	int error;
+ 	might_sleep ();
+ 	for (;;) {
+-		error = posix_lock_file(filp, fl, NULL);
++		error = __posix_lock_file(inode, fl, NULL);
+ 		if (error != FILE_LOCK_DEFERRED)
+ 			break;
+ 		error = wait_event_interruptible(fl->fl_wait, !fl->fl_next);
+@@ -1188,6 +1187,21 @@ int posix_lock_file_wait(struct file *filp, struct file_lock *fl)
+ 	}
+ 	return error;
+ }
++EXPORT_SYMBOL(posix_lock_inode_wait);
++
++/**
++ * posix_lock_file_wait - Apply a POSIX-style lock to a file
++ * @filp: The file to apply the lock to
++ * @fl: The lock to be applied
++ *
++ * Add a POSIX style lock to a file.
++ * We merge adjacent & overlapping locks whenever possible.
++ * POSIX locks are sorted by owner task, then by starting address
++ */
++int posix_lock_file_wait(struct file *filp, struct file_lock *fl)
++{
++	return posix_lock_inode_wait(file_inode(filp), fl);
++}
+ EXPORT_SYMBOL(posix_lock_file_wait);
+ 
+ /**
+@@ -1850,18 +1864,18 @@ int fcntl_setlease(unsigned int fd, struct file *filp, long arg)
  }
  
--static int do_vfs_lock(struct file *file, struct file_lock *fl)
-+static int do_vfs_lock(struct inode *inode, struct file_lock *fl)
+ /**
+- * flock_lock_file_wait - Apply a FLOCK-style lock to a file
+- * @filp: The file to apply the lock to
++ * flock_lock_inode_wait - Apply a FLOCK-style lock to a file
++ * @inode: inode of the file to apply to
+  * @fl: The lock to be applied
+  *
+- * Add a FLOCK style lock to a file.
++ * Apply a FLOCK style lock request to an inode.
+  */
+-int flock_lock_file_wait(struct file *filp, struct file_lock *fl)
++int flock_lock_inode_wait(struct inode *inode, struct file_lock *fl)
  {
- 	int res = 0;
- 	switch (fl->fl_flags & (FL_POSIX|FL_FLOCK)) {
- 		case FL_POSIX:
--			res = posix_lock_file_wait(file, fl);
-+			res = posix_lock_inode_wait(inode, fl);
+ 	int error;
+ 	might_sleep();
+ 	for (;;) {
+-		error = flock_lock_inode(file_inode(filp), fl);
++		error = flock_lock_inode(inode, fl);
+ 		if (error != FILE_LOCK_DEFERRED)
  			break;
- 		case FL_FLOCK:
--			res = flock_lock_file_wait(file, fl);
-+			res = flock_lock_inode_wait(inode, fl);
- 			break;
- 		default:
- 			BUG();
-@@ -5507,7 +5507,7 @@ static void nfs4_locku_done(struct rpc_task *task, void *data)
- 	switch (task->tk_status) {
- 		case 0:
- 			renew_lease(calldata->server, calldata->timestamp);
--			do_vfs_lock(calldata->fl.fl_file, &calldata->fl);
-+			do_vfs_lock(calldata->lsp->ls_state->inode, &calldata->fl);
- 			if (nfs4_update_lock_stateid(calldata->lsp,
- 					&calldata->res.stateid))
- 				break;
-@@ -5615,7 +5615,7 @@ static int nfs4_proc_unlck(struct nfs4_state *state, int cmd, struct file_lock *
- 	mutex_lock(&sp->so_delegreturn_mutex);
- 	/* Exclude nfs4_reclaim_open_stateid() - note nesting! */
- 	down_read(&nfsi->rwsem);
--	if (do_vfs_lock(request->fl_file, request) == -ENOENT) {
-+	if (do_vfs_lock(inode, request) == -ENOENT) {
- 		up_read(&nfsi->rwsem);
- 		mutex_unlock(&sp->so_delegreturn_mutex);
- 		goto out;
-@@ -5756,7 +5756,7 @@ static void nfs4_lock_done(struct rpc_task *task, void *calldata)
- 				data->timestamp);
- 		if (data->arg.new_lock) {
- 			data->fl.fl_flags &= ~(FL_SLEEP | FL_ACCESS);
--			if (do_vfs_lock(data->fl.fl_file, &data->fl) < 0) {
-+			if (do_vfs_lock(lsp->ls_state->inode, &data->fl) < 0) {
- 				rpc_restart_call_prepare(task);
- 				break;
- 			}
-@@ -5998,7 +5998,7 @@ static int _nfs4_proc_setlk(struct nfs4_state *state, int cmd, struct file_lock
- 	if (status != 0)
- 		goto out;
- 	request->fl_flags |= FL_ACCESS;
--	status = do_vfs_lock(request->fl_file, request);
-+	status = do_vfs_lock(state->inode, request);
- 	if (status < 0)
- 		goto out;
- 	down_read(&nfsi->rwsem);
-@@ -6006,7 +6006,7 @@ static int _nfs4_proc_setlk(struct nfs4_state *state, int cmd, struct file_lock
- 		/* Yes: cache locks! */
- 		/* ...but avoid races with delegation recall... */
- 		request->fl_flags = fl_flags & ~FL_SLEEP;
--		status = do_vfs_lock(request->fl_file, request);
-+		status = do_vfs_lock(state->inode, request);
- 		up_read(&nfsi->rwsem);
- 		goto out;
+ 		error = wait_event_interruptible(fl->fl_wait, !fl->fl_next);
+@@ -1873,7 +1887,19 @@ int flock_lock_file_wait(struct file *filp, struct file_lock *fl)
  	}
+ 	return error;
+ }
++EXPORT_SYMBOL(flock_lock_inode_wait);
+ 
++/**
++ * flock_lock_file_wait - Apply a FLOCK-style lock to a file
++ * @filp: The file to apply the lock to
++ * @fl: The lock to be applied
++ *
++ * Add a FLOCK style lock to a file.
++ */
++int flock_lock_file_wait(struct file *filp, struct file_lock *fl)
++{
++	return flock_lock_inode_wait(file_inode(filp), fl);
++}
+ EXPORT_SYMBOL(flock_lock_file_wait);
+ 
+ /**
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index a0653e560c26..4c990edd1377 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1046,11 +1046,13 @@ extern void locks_remove_file(struct file *);
+ extern void locks_release_private(struct file_lock *);
+ extern void posix_test_lock(struct file *, struct file_lock *);
+ extern int posix_lock_file(struct file *, struct file_lock *, struct file_lock *);
++extern int posix_lock_inode_wait(struct inode *, struct file_lock *);
+ extern int posix_lock_file_wait(struct file *, struct file_lock *);
+ extern int posix_unblock_lock(struct file_lock *);
+ extern int vfs_test_lock(struct file *, struct file_lock *);
+ extern int vfs_lock_file(struct file *, unsigned int, struct file_lock *, struct file_lock *);
+ extern int vfs_cancel_lock(struct file *filp, struct file_lock *fl);
++extern int flock_lock_inode_wait(struct inode *inode, struct file_lock *fl);
+ extern int flock_lock_file_wait(struct file *filp, struct file_lock *fl);
+ extern int __break_lease(struct inode *inode, unsigned int flags, unsigned int type);
+ extern void lease_get_mtime(struct inode *, struct timespec *time);
+@@ -1137,6 +1139,12 @@ static inline int posix_lock_file(struct file *filp, struct file_lock *fl,
+ 	return -ENOLCK;
+ }
+ 
++static inline int posix_lock_inode_wait(struct inode *inode,
++					struct file_lock *fl)
++{
++	return -ENOLCK;
++}
++
+ static inline int posix_lock_file_wait(struct file *filp, struct file_lock *fl)
+ {
+ 	return -ENOLCK;
+@@ -1163,6 +1171,12 @@ static inline int vfs_cancel_lock(struct file *filp, struct file_lock *fl)
+ 	return 0;
+ }
+ 
++static inline int flock_lock_inode_wait(struct inode *inode,
++					struct file_lock *request)
++{
++	return -ENOLCK;
++}
++
+ static inline int flock_lock_file_wait(struct file *filp,
+ 				       struct file_lock *request)
+ {
 -- 
 2.4.3
 
