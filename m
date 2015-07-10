@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:36365 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:36847 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751420AbbGJWaW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 10 Jul 2015 18:30:22 -0400
-Message-ID: <55A04779.6080201@redhat.com>
-Date: Fri, 10 Jul 2015 18:30:17 -0400
+	id S1751296AbbGJWdp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 10 Jul 2015 18:33:45 -0400
+Message-ID: <55A04845.7040004@redhat.com>
+Date: Fri, 10 Jul 2015 18:33:41 -0400
 From: Doug Ledford <dledford@redhat.com>
 MIME-Version: 1.0
-To: Tom Talpey <tom@talpey.com>,
-        Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
+To: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>,
+        Tom Talpey <tom@talpey.com>
 CC: "'Christoph Hellwig'" <hch@infradead.org>,
         Sagi Grimberg <sagig@dev.mellanox.co.il>,
         Steve Wise <swise@opengridcomputing.com>, sagig@mellanox.com,
@@ -17,30 +17,45 @@ CC: "'Christoph Hellwig'" <hch@infradead.org>,
         linux-nfs@vger.kernel.org, trond.myklebust@primarydata.com,
         bfields@fieldses.org, Oren Duer <oren@mellanox.com>
 Subject: Re: [PATCH V3 1/5] RDMA/core: Transport-independent access flags
-References: <20150707161751.GA623@obsidianresearch.com> <559BFE03.4020709@dev.mellanox.co.il> <20150707213628.GA5661@obsidianresearch.com> <559CD174.4040901@dev.mellanox.co.il> <20150708190842.GB11740@obsidianresearch.com> <20150708203205.GA21847@infradead.org> <20150709000337.GE16812@obsidianresearch.com> <559EF332.7060103@redhat.com> <20150709225306.GA30741@obsidianresearch.com> <559FC710.1050307@talpey.com> <20150710161108.GA19042@obsidianresearch.com> <55A00754.4010009@redhat.com> <55A01225.9000000@talpey.com>
-In-Reply-To: <55A01225.9000000@talpey.com>
+References: <559CD174.4040901@dev.mellanox.co.il> <20150708190842.GB11740@obsidianresearch.com> <20150708203205.GA21847@infradead.org> <20150709000337.GE16812@obsidianresearch.com> <559EF332.7060103@redhat.com> <20150709225306.GA30741@obsidianresearch.com> <559FC710.1050307@talpey.com> <20150710161108.GA19042@obsidianresearch.com> <55A00754.4010009@redhat.com> <55A01225.9000000@talpey.com> <20150710195420.GA31500@obsidianresearch.com>
+In-Reply-To: <20150710195420.GA31500@obsidianresearch.com>
 Content-Type: multipart/signed; micalg=pgp-sha256;
  protocol="application/pgp-signature";
- boundary="efGwjwxgr24V1itLNu41345x8vNxn2UAG"
+ boundary="LIOIQ65hM7FnSPUA7Tpp5NsoTIVrHODMD"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 This is an OpenPGP/MIME signed message (RFC 4880 and 3156)
---efGwjwxgr24V1itLNu41345x8vNxn2UAG
+--LIOIQ65hM7FnSPUA7Tpp5NsoTIVrHODMD
 Content-Type: text/plain; charset=windows-1252
 Content-Transfer-Encoding: quoted-printable
 
-On 07/10/2015 02:42 PM, Tom Talpey wrote:
-> However, it's an extremely bad idea to codify writable privileged rmr's=
+On 07/10/2015 03:54 PM, Jason Gunthorpe wrote:
+> On Fri, Jul 10, 2015 at 02:42:45PM -0400, Tom Talpey wrote:
+>=20
+>>>> For the proposed iSER patch the problem is very acute, iser makes a
+>>>> single PD and phys MR at boot time for each device. This means there=
 
-> in the API as best practice. So under no circumstance should that becom=
-e
-> the long term plan.
+>>>> is a single machine wide unchanging rkey that allows remote physical=
 
-Agree 100%.  Which is why I requested a big warning in the dmesg output
-that pointed a big, accusatory finger at the offending module with the
-long term goal of reforming the memory registration models to a method
-that eliminates this problem in the kernel.
+>>>> memory access. An attacker only has to repeatedly open QPs to iSER a=
+nd
+>>>> guess rkey values until they find it. Add in likely non-crypto
+>>>> randomness for rkeys, and I bet it isn't even that hard to do.
+>>
+>> The rkeys have a PD, wich cannot be forged, so it's not a matter of
+>> attacking, but it is most definitely a system integrity risk, as I
+>> mentioned earlier, a simple arithmetic offset mistake can overwrite
+>> anything.
+>=20
+> Can you explain this conclusion?
+
+I think Tom's comment was referring to the fact that if you have a
+trusted client, then a third party attacker can't attack your rkey
+because they wouldn't have a QP in your PD and so the rkey would be
+invalid for them.  Your arguments have been centered around a malicious
+client, his presumed a trusted client and malicious third party.
+
 
 --=20
 Doug Ledford <dledford@redhat.com>
@@ -48,7 +63,7 @@ Doug Ledford <dledford@redhat.com>
 
 
 
---efGwjwxgr24V1itLNu41345x8vNxn2UAG
+--LIOIQ65hM7FnSPUA7Tpp5NsoTIVrHODMD
 Content-Type: application/pgp-signature; name="signature.asc"
 Content-Description: OpenPGP digital signature
 Content-Disposition: attachment; filename="signature.asc"
@@ -57,19 +72,19 @@ Content-Disposition: attachment; filename="signature.asc"
 Version: GnuPG v2
 Comment: Using GnuPG with Thunderbird - http://www.enigmail.net/
 
-iQIcBAEBCAAGBQJVoEd5AAoJELgmozMOVy/dF3cQAJU6aH5cHEKhFA6iwUlcZhZ8
-+Wer68w1fuYslUQSeGZ+9UQ3ewWy+T5rkT51QibryiZSXuqWcNrQJ2GErNowwb/F
-kK3WjKwI+26mSA3lOU7xHOTB8ZJEvzmA6bemOiKz7D3/rrYRvwEf54qaQqifyY7A
-1uLleycCFSzumiFPku1qfwQtvyXLEkpvBLDmn022lvRo24+QSVpXFWnumHgf684R
-1vpXeq1blTKakMwiHu18nmiMtuulhK6EH+8AD9lsNuhn+qMmgXhNPQwD7pZAE/10
-5kL+Kg2ohw6CqWK9+XVzSXVLRJ02AFTrNa+M2XWACaSW/kZHZO2UW+3zCMWICEcL
-e5PbUAhCszLFw6eMzQgTkYsguVL/g0gym9gd2UHMhOmRFvR09s8suilieqP5sryx
-RbL1iV7UWJ6tjh4oXYK7/7gC6CAPKuoeh4Rix2tAWU6AEDaD3RvDZZ8ctcMl6WZY
-RGFTN8tNyVofMaP2CbtH4ymo1tkLszJywZ5Xaup5iW4FtT01XUzgd0Ml4jFlA0o6
-aQoMob2T7q+iD1rNJinFviKH0imosM5RULdTVK24NcggeHZxi+1d+Hf6uozjqhrY
-5n/6f/O05YrHtAx63tHSJIzy0t+l2Kk7Ru2VBCv34ARzZpgmlwgHjOPC2tGUwpb2
-crSvEE5lpZUd31n1smXp
-=Yp3g
+iQIcBAEBCAAGBQJVoEhFAAoJELgmozMOVy/dXnkQAKkRDHbJ25BCPPxbuUlKNb6c
+MnGv38ns8OhmkB+k6d0VItIJ6MWvOiyg9zG4cN8QvkogJMON+EXptcNKX1xWXaVZ
+PnX0eLUZ8KL5hJ7XUBVORzRGkvRg3ZdC53IXKy3dqT+uE0VDdNvYNqsZ6DXS5bGJ
+Wb3rGe8aRSYIBf2TXakUYc+tTekXHlcfDQbyqrzEhCgYd+zvK4Xj+YI8ITPaSkN1
+geki3n78oZaW7ZfWANgv6G1L4ZReQVOXogJvi4qpCGjhroTkK2iPAfT7+N0k1nsh
+9QnLMUvQ2ibrfI3329Yd/9NJz44W8DxydxX1XJEzoqIV2PKST2vOQDQkwkYwK9qv
+P7k0T/khacM5kofQL+LtzbHoLEb32/G+P8IZqWPl4V3nHApV9TqoaMT2Y7/GIW8Z
+oVyqqPUNizVyJdt65oTg5gI+2ZbhD5sBwmzT2Aeg65tLxaMC0S0KDKBM1JCJsKSC
+WKRjpPdjPhoWqpADan8e4PmOSvz17JScHK72ziYHzkLgY+YlQQxFUbJQ7ZLQJfVd
+9N2Yrtq18tRAVh1A4m+7zR3yTkR+RPRLVscjzkhs9gUUuwTtIWGjAOlgBZBYdWcy
+bT8Cz0LBBMkmJyBupt2vC4PNRnHaNCiEdflmdN9Ef3TlyTSQQUztViN3E7BW6RL2
+qplXPGa6kwvj6Ef16kVt
+=1E32
 -----END PGP SIGNATURE-----
 
---efGwjwxgr24V1itLNu41345x8vNxn2UAG--
+--LIOIQ65hM7FnSPUA7Tpp5NsoTIVrHODMD--
