@@ -1,75 +1,46 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from linode.aoot.com ([69.164.194.13]:40866 "EHLO linode.aoot.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750967AbbGKQzG convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 11 Jul 2015 12:55:06 -0400
-Content-Type: text/plain;
-	charset=us-ascii
-Mime-Version: 1.0 (1.0)
-Subject: Re: [PATCH V3 1/5] RDMA/core: Transport-independent access flags
-From: Steve Wise <swise@ogc.us>
-In-Reply-To: <20150710161108.GA19042@obsidianresearch.com>
-Date: Sat, 11 Jul 2015 09:37:56 -0700
-Cc: Tom Talpey <tom@talpey.com>, Doug Ledford <dledford@redhat.com>,
-        Christoph Hellwig <hch@infradead.org>,
-        Sagi Grimberg <sagig@dev.mellanox.co.il>,
-        Steve Wise <swise@opengridcomputing.com>,
-        "sagig@mellanox.com" <sagig@mellanox.com>,
-        "ogerlitz@mellanox.com" <ogerlitz@mellanox.com>,
-        "roid@mellanox.com" <roid@mellanox.com>,
-        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
-        "eli@mellanox.com" <eli@mellanox.com>,
-        "target-devel@vger.kernel.org" <target-devel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "trond.myklebust@primarydata.com" <trond.myklebust@primarydata.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        Oren Duer <oren@mellanox.com>
-Message-Id: <CCB6E837-88FF-4DBB-976D-4CF56396A1A1@ogc.us>
-References: <20150707161751.GA623@obsidianresearch.com> <559BFE03.4020709@dev.mellanox.co.il> <20150707213628.GA5661@obsidianresearch.com> <559CD174.4040901@dev.mellanox.co.il> <20150708190842.GB11740@obsidianresearch.com> <20150708203205.GA21847@infradead.org> <20150709000337.GE16812@obsidianresearch.com> <559EF332.7060103@redhat.com> <20150709225306.GA30741@obsidianresearch.com> <559FC710.1050307@talpey.com> <20150710161108.GA19042@obsidianresearch.com>
-To: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
+Received: from mail-qg0-f51.google.com ([209.85.192.51]:36578 "EHLO
+	mail-qg0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751082AbbGKSvE convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 11 Jul 2015 14:51:04 -0400
+Content-Type: text/plain; charset=utf-8
+Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2102\))
+Subject: Re: [PATCH v1 04/12] xprtrdma: Remove last ib_reg_phys_mr() call site
+From: Chuck Lever <chucklever@gmail.com>
+In-Reply-To: <20150711103428.GD14741@infradead.org>
+Date: Sat, 11 Jul 2015 14:50:58 -0400
+Cc: Chuck Lever <chuck.lever@oracle.com>, linux-rdma@vger.kernel.org,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <682604AF-955A-44F8-86F9-EB7D403CABFF@gmail.com>
+References: <20150709203242.26247.4848.stgit@manet.1015granger.net> <20150709204218.26247.67243.stgit@manet.1015granger.net> <20150711103428.GD14741@infradead.org>
+To: Christoph Hellwig <hch@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-> On Jul 10, 2015, at 9:11 AM, Jason Gunthorpe <jgunthorpe@obsidianresearch.com> wrote:
+> On Jul 11, 2015, at 6:34 AM, Christoph Hellwig <hch@infradead.org> wrote:
 > 
->> On Fri, Jul 10, 2015 at 09:22:24AM -0400, Tom Talpey wrote:
->> and it is enabled only when the RDMA Read is active.
+> On Thu, Jul 09, 2015 at 04:42:18PM -0400, Chuck Lever wrote:
+>> All HCA providers have an ib_get_dma_mr() verb. Thus
+>> rpcrdma_ia_open() will either grab the device's local_dma_key if one
+>> is available, or it will call ib_get_dma_mr() which is a 100%
+>> guaranteed fallback. There is never any need to use the
+>> ib_reg_phys_mr() code path in rpcrdma_register_internal(), so it can
+>> be removed.
 > 
-> ??? How is that done? ib_get_dma_mr is defined to return a remote
-> usable rkey that is valid from when it it returns until the MR is
-> destroyed. NFS creates one mr early on, it does not seem to make one
-> per RDMA READ?
-> 
-> For the proposed iSER patch the problem is very acute, iser makes a
-> single PD and phys MR at boot time for each device. This means there
-> is a single machine wide unchanging rkey that allows remote physical
-> memory access. An attacker only has to repeatedly open QPs to iSER and
-> guess rkey values until they find it. Add in likely non-crypto
-> randomness for rkeys, and I bet it isn't even that hard to do.
-> 
-> So this seems to be a catastrophic security failing.
-> 
->>> From there, it is a logical wish: If Steve is going to FRMR'ize iSER
->>> to be acceptable security wise, I'd rather see that work done on in a
->>> general way. Hence the API discussion.
->> 
->> Well, it's important to realize that NFS already does the Right Thing.
->> So it isn't actually an urgent issue. There is time to discuss.
-> 
-> It depends on what is going on with iWarp iSER. If the iWarp community
-> thinks it should go ahead insecurely then fine, put a giant warning in
-> dmesg and go ahead, otherwise iWarp needs to address this difference
-> with a proper generic API, which appears, must wrapper
-> ib_post_send. Harder job :\
-> 
-> I'm sorry Steve for leading you down the wrong path with these flags,
-> I did not fully realize exactly what the iWarp difference was at the
-> start :(
-> 
-> Jason
+> Can you also send a follow-on to remove ib_reg_phys_mr entirely from
+> all core (= non-staging) code?
+
+I would prefer to run this by Doug Oucharek first, as a courtesy.
+Unless I’m mistaken, the Lustre client is supposed to be on its
+way into the kernel, not on its way out.
+
+Anyone have Doug’s e-mail address?
 
 
-No problem.  I'll work on iSER target FRMRs and repost the iSER series.  
+--
+Chuck Lever
+chucklever@gmail.com
 
-Sagi, right now isert only uses FRMRs along with signature mrs.  I'll need to separate the two, I think.  Does that sound right?
+
+
