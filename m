@@ -1,37 +1,101 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wg0-f45.google.com ([74.125.82.45]:33586 "EHLO
-	mail-wg0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751989AbbGLObt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 12 Jul 2015 10:31:49 -0400
-Received: by wgmn9 with SMTP id n9so25753707wgm.0
-        for <linux-nfs@vger.kernel.org>; Sun, 12 Jul 2015 07:31:48 -0700 (PDT)
-Subject: Re: [PATCH v1 04/12] xprtrdma: Remove last ib_reg_phys_mr() call site
+Received: from mail-wi0-f180.google.com ([209.85.212.180]:36277 "EHLO
+	mail-wi0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750901AbbGLOhV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 12 Jul 2015 10:37:21 -0400
+Received: by widjy10 with SMTP id jy10so48756375wid.1
+        for <linux-nfs@vger.kernel.org>; Sun, 12 Jul 2015 07:37:20 -0700 (PDT)
+Subject: Re: [PATCH v1 05/12] xprtrdma: Account for RPC/RDMA header size when
+ deciding to inline
 To: Chuck Lever <chuck.lever@oracle.com>, linux-rdma@vger.kernel.org,
         linux-nfs@vger.kernel.org
 References: <20150709203242.26247.4848.stgit@manet.1015granger.net>
- <20150709204218.26247.67243.stgit@manet.1015granger.net>
+ <20150709204227.26247.51111.stgit@manet.1015granger.net>
 From: Sagi Grimberg <sagig@dev.mellanox.co.il>
-Message-ID: <55A27A51.9010203@dev.mellanox.co.il>
-Date: Sun, 12 Jul 2015 17:31:45 +0300
+Message-ID: <55A27B9D.5010002@dev.mellanox.co.il>
+Date: Sun, 12 Jul 2015 17:37:17 +0300
 MIME-Version: 1.0
-In-Reply-To: <20150709204218.26247.67243.stgit@manet.1015granger.net>
+In-Reply-To: <20150709204227.26247.51111.stgit@manet.1015granger.net>
 Content-Type: text/plain; charset=utf-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 On 7/9/2015 11:42 PM, Chuck Lever wrote:
-> All HCA providers have an ib_get_dma_mr() verb. Thus
-> rpcrdma_ia_open() will either grab the device's local_dma_key if one
-> is available, or it will call ib_get_dma_mr() which is a 100%
-> guaranteed fallback. There is never any need to use the
-> ib_reg_phys_mr() code path in rpcrdma_register_internal(), so it can
-> be removed.
->
-> The remaining logic in rpcrdma_{de}register_internal() is folded
-> into rpcrdma_{alloc,free}_regbuf().
+> When marshaling RPC/RDMA requests, ensure the combined size of
+> RPC/RDMA header and RPC header do not exceed the inline threshold.
+> Endpoints typically reject RPC/RDMA messages that exceed the size
+> of their receive buffers.
+
+Did this solve a bug? because is seems like it does.
+Maybe it will be a good idea to describe this bug.
+
 >
 > Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+>   net/sunrpc/xprtrdma/rpc_rdma.c |   29 +++++++++++++++++++++++++++--
+>   1 file changed, 27 insertions(+), 2 deletions(-)
+>
+> diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+> index 84ea37d..8cf9402 100644
+> --- a/net/sunrpc/xprtrdma/rpc_rdma.c
+> +++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+> @@ -71,6 +71,31 @@ static const char transfertypes[][12] = {
+>   };
+>   #endif
+>
+> +/* The client can send a request inline as long as the RPCRDMA header
+> + * plus the RPC call fit under the transport's inline limit. If the
+> + * combined call message size exceeds that limit, the client must use
+> + * the read chunk list for this operation.
+> + */
+> +static bool rpcrdma_args_inline(struct rpc_rqst *rqst)
 
-Like,
+maybe static inline?
 
-Reviewed-By: Sagi Grimberg <sagig@mellanox.com>
+> +{
+> +	unsigned int callsize = RPCRDMA_HDRLEN_MIN + rqst->rq_snd_buf.len;
+> +
+> +	return callsize <= RPCRDMA_INLINE_WRITE_THRESHOLD(rqst);
+> +}
+> +
+> +/* The client can’t know how large the actual reply will be. Thus it
+> + * plans for the largest possible reply for that particular ULP
+> + * operation. If the maximum combined reply message size exceeds that
+> + * limit, the client must provide a write list or a reply chunk for
+> + * this request.
+> + */
+> +static bool rpcrdma_results_inline(struct rpc_rqst *rqst)
+> +{
+> +	unsigned int repsize = RPCRDMA_HDRLEN_MIN + rqst->rq_rcv_buf.buflen;
+> +
+> +	return repsize <= RPCRDMA_INLINE_READ_THRESHOLD(rqst);
+> +}
+> +
+>   /*
+>    * Chunk assembly from upper layer xdr_buf.
+>    *
+> @@ -418,7 +443,7 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
+>   	 * a READ, then use write chunks to separate the file data
+>   	 * into pages; otherwise use reply chunks.
+>   	 */
+> -	if (rqst->rq_rcv_buf.buflen <= RPCRDMA_INLINE_READ_THRESHOLD(rqst))
+> +	if (rpcrdma_results_inline(rqst))
+>   		wtype = rpcrdma_noch;
+>   	else if (rqst->rq_rcv_buf.page_len == 0)
+>   		wtype = rpcrdma_replych;
+> @@ -441,7 +466,7 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
+>   	 * implies the op is a write.
+>   	 * TBD check NFSv4 setacl
+>   	 */
+> -	if (rqst->rq_snd_buf.len <= RPCRDMA_INLINE_WRITE_THRESHOLD(rqst))
+> +	if (rpcrdma_args_inline(rqst))
+>   		rtype = rpcrdma_noch;
+>   	else if (rqst->rq_snd_buf.page_len == 0)
+>   		rtype = rpcrdma_areadch;
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+
