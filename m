@@ -1,62 +1,152 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pa0-f52.google.com ([209.85.220.52]:34504 "EHLO
-	mail-pa0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753050AbbGMKAD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jul 2015 06:00:03 -0400
-Received: by pacan13 with SMTP id an13so13450099pac.1
-        for <linux-nfs@vger.kernel.org>; Mon, 13 Jul 2015 03:00:02 -0700 (PDT)
-Message-ID: <55A38C1C.3030600@gmail.com>
-Date: Mon, 13 Jul 2015 17:59:56 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
-MIME-Version: 1.0
-To: Steve Dickson <SteveD@redhat.com>
-CC: Christoph Hellwig <hch@infradead.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        kinglongmee@gmail.com
-Subject: [PATCH v3] blkmapd: Skip the SCSI ID if data length is zero
-References: <55A2FEE4.6030201@gmail.com> <20150713064216.GA31842@infradead.org> <55A375A1.4000800@gmail.com> <20150713090142.GA28557@infradead.org> <55A380A5.20009@gmail.com>
-In-Reply-To: <55A380A5.20009@gmail.com>
-Content-Type: text/plain; charset=windows-1252
+Received: from mail-yk0-f181.google.com ([209.85.160.181]:33175 "EHLO
+	mail-yk0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751180AbbGMKWb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jul 2015 06:22:31 -0400
+Received: by ykeo3 with SMTP id o3so190396929yke.0
+        for <linux-nfs@vger.kernel.org>; Mon, 13 Jul 2015 03:22:30 -0700 (PDT)
+From: Jeff Layton <jlayton@poochiereds.net>
+To: linux-nfs@vger.kernel.org
+Cc: linux-fsdevel@vger.kernel.org, bfields@fieldses.org, william@gandi.net
+Subject: [PATCH 5/4] locks: inline posix_lock_file_wait and flock_lock_file_wait
+Date: Mon, 13 Jul 2015 06:22:21 -0400
+Message-Id: <1436782941-9569-1-git-send-email-jeff.layton@primarydata.com>
+In-Reply-To: <1436560414-26306-1-git-send-email-jeff.layton@primarydata.com>
+References: <1436560414-26306-1-git-send-email-jeff.layton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In vmware linux, the iscsi device contains more than one SCSI ID, 
-and the second one's data length is zero.
+They just call file_inode and then the corresponding *_inode_file_wait
+function. Just make them static inlines instead.
 
-If there are two iSCSI devices with the second SCSI ID's data length
-is zero, the first iSCSI device will record with an invalid SCSI ID
-as zero length, the second one will be treat as the first one for
-the SCSI ID is zero length too.
-
-It means the only the first iSCSI device is exist in blkmapd's cache,
-the request for the second iSCSI device will failed as,
-
-"blkmapd: Could not find disk for device" and,
-"bl_resolve_deviceid failed to decode device: 2".
-
-v2, update commit log
-v3, add a comment in the code
-
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
 ---
- utils/blkmapd/device-inq.c | 4 ++++
- 1 file changed, 4 insertions(+)
+ fs/locks.c         | 28 ----------------------------
+ include/linux/fs.h | 32 ++++++++++++++------------------
+ 2 files changed, 14 insertions(+), 46 deletions(-)
 
-diff --git a/utils/blkmapd/device-inq.c b/utils/blkmapd/device-inq.c
-index 6b56b67..60fe2d3 100644
---- a/utils/blkmapd/device-inq.c
-+++ b/utils/blkmapd/device-inq.c
-@@ -198,6 +198,10 @@ struct bl_serial *bldev_read_serial(int fd, const char *filename)
- 		dev_id = (struct bl_dev_id *)&(dev_root->data[pos]);
- 		pos += (dev_id->len + devid_len);
+diff --git a/fs/locks.c b/fs/locks.c
+index ba268a503c1b..d3d558ba4da7 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -1190,21 +1190,6 @@ int posix_lock_inode_wait(struct inode *inode, struct file_lock *fl)
+ EXPORT_SYMBOL(posix_lock_inode_wait);
  
-+		/* Needs an SCSI ID with unique date not zero length */
-+		if (!dev_id->len)
-+			continue;
+ /**
+- * posix_lock_file_wait - Apply a POSIX-style lock to a file
+- * @filp: The file to apply the lock to
+- * @fl: The lock to be applied
+- *
+- * Add a POSIX style lock to a file.
+- * We merge adjacent & overlapping locks whenever possible.
+- * POSIX locks are sorted by owner task, then by starting address
+- */
+-int posix_lock_file_wait(struct file *filp, struct file_lock *fl)
+-{
+-	return posix_lock_inode_wait(file_inode(filp), fl);
+-}
+-EXPORT_SYMBOL(posix_lock_file_wait);
+-
+-/**
+  * locks_mandatory_locked - Check for an active lock
+  * @file: the file to check
+  *
+@@ -1890,19 +1875,6 @@ int flock_lock_inode_wait(struct inode *inode, struct file_lock *fl)
+ EXPORT_SYMBOL(flock_lock_inode_wait);
+ 
+ /**
+- * flock_lock_file_wait - Apply a FLOCK-style lock to a file
+- * @filp: The file to apply the lock to
+- * @fl: The lock to be applied
+- *
+- * Add a FLOCK style lock to a file.
+- */
+-int flock_lock_file_wait(struct file *filp, struct file_lock *fl)
+-{
+-	return flock_lock_inode_wait(file_inode(filp), fl);
+-}
+-EXPORT_SYMBOL(flock_lock_file_wait);
+-
+-/**
+  *	sys_flock: - flock() system call.
+  *	@fd: the file descriptor to lock.
+  *	@cmd: the type of lock to apply.
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 4c990edd1377..cc008c338f5a 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1047,13 +1047,11 @@ extern void locks_release_private(struct file_lock *);
+ extern void posix_test_lock(struct file *, struct file_lock *);
+ extern int posix_lock_file(struct file *, struct file_lock *, struct file_lock *);
+ extern int posix_lock_inode_wait(struct inode *, struct file_lock *);
+-extern int posix_lock_file_wait(struct file *, struct file_lock *);
+ extern int posix_unblock_lock(struct file_lock *);
+ extern int vfs_test_lock(struct file *, struct file_lock *);
+ extern int vfs_lock_file(struct file *, unsigned int, struct file_lock *, struct file_lock *);
+ extern int vfs_cancel_lock(struct file *filp, struct file_lock *fl);
+ extern int flock_lock_inode_wait(struct inode *inode, struct file_lock *fl);
+-extern int flock_lock_file_wait(struct file *filp, struct file_lock *fl);
+ extern int __break_lease(struct inode *inode, unsigned int flags, unsigned int type);
+ extern void lease_get_mtime(struct inode *, struct timespec *time);
+ extern int generic_setlease(struct file *, long, struct file_lock **, void **priv);
+@@ -1145,11 +1143,6 @@ static inline int posix_lock_inode_wait(struct inode *inode,
+ 	return -ENOLCK;
+ }
+ 
+-static inline int posix_lock_file_wait(struct file *filp, struct file_lock *fl)
+-{
+-	return -ENOLCK;
+-}
+-
+ static inline int posix_unblock_lock(struct file_lock *waiter)
+ {
+ 	return -ENOENT;
+@@ -1177,12 +1170,6 @@ static inline int flock_lock_inode_wait(struct inode *inode,
+ 	return -ENOLCK;
+ }
+ 
+-static inline int flock_lock_file_wait(struct file *filp,
+-				       struct file_lock *request)
+-{
+-	return -ENOLCK;
+-}
+-
+ static inline int __break_lease(struct inode *inode, unsigned int mode, unsigned int type)
+ {
+ 	return 0;
+@@ -1216,6 +1203,20 @@ static inline void show_fd_locks(struct seq_file *f,
+ 			struct file *filp, struct files_struct *files) {}
+ #endif /* !CONFIG_FILE_LOCKING */
+ 
++static inline struct inode *file_inode(const struct file *f)
++{
++	return f->f_inode;
++}
 +
- 		if ((dev_id->ids & 0xf) < current_id)
- 			continue;
- 		switch (dev_id->ids & 0xf) {
++static inline int posix_lock_file_wait(struct file *filp, struct file_lock *fl)
++{
++	return posix_lock_inode_wait(file_inode(filp), fl);
++}
++
++static inline int flock_lock_file_wait(struct file *filp, struct file_lock *fl)
++{
++	return flock_lock_inode_wait(file_inode(filp), fl);
++}
+ 
+ struct fasync_struct {
+ 	spinlock_t		fa_lock;
+@@ -2025,11 +2026,6 @@ extern void ihold(struct inode * inode);
+ extern void iput(struct inode *);
+ extern int generic_update_time(struct inode *, struct timespec *, int);
+ 
+-static inline struct inode *file_inode(const struct file *f)
+-{
+-	return f->f_inode;
+-}
+-
+ /* /sys/fs */
+ extern struct kobject *fs_kobj;
+ 
 -- 
 2.4.3
 
