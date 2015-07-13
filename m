@@ -1,41 +1,58 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ie0-f172.google.com ([209.85.223.172]:35058 "EHLO
-	mail-ie0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750900AbbGMHyI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jul 2015 03:54:08 -0400
-Received: by iecuq6 with SMTP id uq6so229775048iec.2
-        for <linux-nfs@vger.kernel.org>; Mon, 13 Jul 2015 00:54:08 -0700 (PDT)
+Received: from mail-pa0-f53.google.com ([209.85.220.53]:36285 "EHLO
+	mail-pa0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751139AbbGMIYz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jul 2015 04:24:55 -0400
+Received: by pachj5 with SMTP id hj5so28299017pac.3
+        for <linux-nfs@vger.kernel.org>; Mon, 13 Jul 2015 01:24:55 -0700 (PDT)
+Message-ID: <55A375A1.4000800@gmail.com>
+Date: Mon, 13 Jul 2015 16:24:01 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
 MIME-Version: 1.0
-In-Reply-To: <20150713074139.GB23338@infradead.org>
-References: <1436766655-10696-1-git-send-email-tao.peng@primarydata.com>
- <20150713065851.GD26245@infradead.org> <CAKVebiXYYzL=yhMBUjxKk=7p+Aunm1UFPRCzXsqYi5R7Fj7=gg@mail.gmail.com>
- <20150713074139.GB23338@infradead.org>
-From: Peng Tao <tao.peng@primarydata.com>
-Date: Mon, 13 Jul 2015 15:53:48 +0800
-Message-ID: <CAKVebiVQ=pOVdUXzTBqqBGARWU2PUcUL8bYAaooJjfjOcOeRBw@mail.gmail.com>
-Subject: Re: [PATCH 0/7] nfs: minor cleanups and NFSv42 CLONE support
-To: Christoph Hellwig <hch@infradead.org>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>, Zach Brown <zab@zabbo.net>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>
-Content-Type: text/plain; charset=UTF-8
+To: Steve Dickson <SteveD@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+CC: Christoph Hellwig <hch@infradead.org>, kinglongmee@gmail.com
+Subject: [PATCH v2] blkmapd: Skip the SCSI ID if data length is zero
+References: <55A2FEE4.6030201@gmail.com> <20150713064216.GA31842@infradead.org>
+In-Reply-To: <20150713064216.GA31842@infradead.org>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jul 13, 2015 at 3:41 PM, Christoph Hellwig <hch@infradead.org> wrote:
-> On Mon, Jul 13, 2015 at 03:36:22PM +0800, Peng Tao wrote:
->> So the main change is .copy_file_range syscall. Was it rejected before
->> or can we just push it forward as it is?
->
-> It wasn't rejected, but we kept bikeshedding over the semantics insted
-> of moving it forward.
->
->> If there are objections against a new syscall, we can drop it and move
->> on with vfs helper and the new copy_file_range file operation, in
->> order to just make nfsd clone work.
->
-> I think everyone wants the syscall, but people don't agree on the
-> semantics.  For now maybe we should just add the method and move the
-> btrfs/xfs ioctl to common code.
-yeah, makes sense.
+In vmware linux, the iscsi device contains more than one SCSI ID,
+and, the second one's data length is zero.
+
+If there are two iSCSI devices with the second SCSI ID's data length
+is zero, the first iSCSI device will record with an invalid SCSI ID
+as zero length, the second one will be treat as the first one for
+the SCSI ID is zero length too.
+
+It means the only the first iSCSI device is exist in blkmapd's cache,
+the request for the second iSCSI device will failed as,
+
+"blkmapd: Could not find disk for device" and,
+"bl_resolve_deviceid failed to decode device: 2".
+
+v2, update comments
+
+Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+---
+ utils/blkmapd/device-inq.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/utils/blkmapd/device-inq.c b/utils/blkmapd/device-inq.c
+index 6b56b67..57fe7a3 100644
+--- a/utils/blkmapd/device-inq.c
++++ b/utils/blkmapd/device-inq.c
+@@ -198,7 +198,7 @@ struct bl_serial *bldev_read_serial(int fd, const char *filename)
+ 		dev_id = (struct bl_dev_id *)&(dev_root->data[pos]);
+ 		pos += (dev_id->len + devid_len);
+ 
+-		if ((dev_id->ids & 0xf) < current_id)
++		if ((dev_id->ids & 0xf) < current_id || !dev_id->len)
+ 			continue;
+ 		switch (dev_id->ids & 0xf) {
+ 			/* We process SCSI ID with four ID cases: 0, 1, 2 and 3.
+-- 
+2.4.3
+
