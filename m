@@ -1,62 +1,99 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:60345 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750724AbbGMFVr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 13 Jul 2015 01:21:47 -0400
-Date: Mon, 13 Jul 2015 15:21:33 +1000
-From: NeilBrown <neilb@suse.com>
-To: Al Viro <viro@ZenIV.linux.org.uk>
-Cc: Kinglong Mee <kinglongmee@gmail.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        linux-fsdevel@vger.kernel.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: Re: [PATCH 10/10 v7] nfsd: Allows user un-mounting filesystem where
- nfsd exports base on
-Message-ID: <20150713152133.571e0cb7@noble>
-In-Reply-To: <20150713044553.GN17109@ZenIV.linux.org.uk>
-References: <55A11010.6050005@gmail.com>
-	<55A111A8.2040701@gmail.com>
-	<20150713133934.6a4ef77d@noble>
-	<20150713142059.493a790e@noble>
-	<20150713044553.GN17109@ZenIV.linux.org.uk>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail-pd0-f170.google.com ([209.85.192.170]:34203 "EHLO
+	mail-pd0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750970AbbGMFvU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jul 2015 01:51:20 -0400
+Received: by pdbep18 with SMTP id ep18so219253605pdb.1
+        for <linux-nfs@vger.kernel.org>; Sun, 12 Jul 2015 22:51:19 -0700 (PDT)
+From: Peng Tao <tao.peng@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Peng Tao <tao.peng@primarydata.com>
+Subject: [PATCH 0/7] nfs: minor cleanups and NFSv42 CLONE support
+Date: Mon, 13 Jul 2015 13:50:48 +0800
+Message-Id: <1436766655-10696-1-git-send-email-tao.peng@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 13 Jul 2015 05:45:53 +0100 Al Viro <viro@ZenIV.linux.org.uk>
-wrote:
+Hi all,
 
-> On Mon, Jul 13, 2015 at 02:20:59PM +1000, NeilBrown wrote:
-> 
-> > Actually, with that change to pin_kill, this side of things becomes
-> > really easy.
-> > All expXXX_pin_kill needs to do is call your new cache_delete_entry.
-> > If that doesn't cause the entry to be put, then something else has a
-> > temporary reference which will be put soon.  In any case, pin_kill()
-> > will wait long enough, but not indefinitely.
-> > No need for kref_get_unless_zero() or any of that.
-> 
-> No.  You are seriously misunderstanding what ->kill() is for and what the
-> existing instances are doing.  Again, there is no promise whatsoever that
-> the object containing fs_pin instance will *survive* past ->kill().
-> At all.
+The first two patches are minor cleanups. The rest 5 added NFSv42 CLONE support via
+a new ioctl interface. There's a minor conflict between the cleanup and new functionality.
+So I ended up sending them together.
 
-Ah... I missed that rcu_read_unlock happened before ->kill.  Sorry
-about that.
+Tested with following program. cp command in coreutils can be patched similarly,
+which currently only supports btrfs CLONE ioctl.
 
-It still seems like the waiting that pin_kill does is exactly what we
-need.
+Cheers,
+Tao
 
-I'll think about it some more.
+[lear@tests]$cat copy_reflink.c
+#include <sys/ioctl.h>
+#include <stdio.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
 
-Thanks,
-NeilBrown
+void usage(const char *cmd)
+{
+	printf("%s: <src_file_name> <dst_file_name>\n", cmd);
+}
 
+int main(char argc, char** argv)
+{
+	int srcfd, dstfd;
 
-> 
-> RTFS, please.  What is sorely missing in this recurring patchset is a clear
-> description of lifetime rules and ordering (who waits for whom and how long).
-> For all the objects involved.
+	if (argc < 3) {
+		usage(argv[0]);
+		return -1;
+	}
+
+	srcfd = open(argv[1], O_RDONLY);
+	if (srcfd < 0) {
+		perror("open failed");
+		return -1;
+	}
+	dstfd = open(argv[2], O_WRONLY|O_CREAT, 0644);
+	if (dstfd < 0) {
+		perror("open failed");
+		return -1;
+	}
+
+#ifndef NFS_IOC_CLONE
+#define NFS_IOC_CLONE _IOW('n', 1, int)
+#endif
+	if (ioctl(dstfd, NFS_IOC_CLONE, srcfd) < 0)
+		perror("ioctl CLONE failed\n");
+
+	close(srcfd);
+	close(dstfd);
+	return 0;
+}
+
+Peng Tao (7):
+  nfs42: decode_layoutstats does not need res parameter
+  nfs42: remove unused declaration
+  nfs42: add CLONE xdr functions
+  nfs42: add CLONE proc functions
+  nfs42: add NFS_IOC_CLONE ioctl
+  nfs: get clone_blksize when probing fsinfo
+  nfs42: respect clone_blksize
+
+ fs/nfs/client.c           |   1 +
+ fs/nfs/nfs42.h            |   3 +-
+ fs/nfs/nfs42proc.c        |  71 +++++++++++++++++++++++++++++
+ fs/nfs/nfs42xdr.c         | 102 +++++++++++++++++++++++++++++++++++++++--
+ fs/nfs/nfs4file.c         | 113 ++++++++++++++++++++++++++++++++++++++++++++++
+ fs/nfs/nfs4proc.c         |   4 +-
+ fs/nfs/nfs4xdr.c          |  26 +++++++++++
+ include/linux/nfs4.h      |   3 ++
+ include/linux/nfs_fs_sb.h |   2 +
+ include/linux/nfs_xdr.h   |  20 ++++++++
+ include/uapi/linux/nfs.h  |   4 ++
+ 11 files changed, 342 insertions(+), 7 deletions(-)
+
+-- 
+1.8.3.1
 
