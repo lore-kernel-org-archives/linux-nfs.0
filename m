@@ -1,45 +1,306 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pd0-f172.google.com ([209.85.192.172]:36091 "EHLO
-	mail-pd0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751281AbbGLX53 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 12 Jul 2015 19:57:29 -0400
-Received: by pdjr16 with SMTP id r16so52249411pdj.3
-        for <linux-nfs@vger.kernel.org>; Sun, 12 Jul 2015 16:57:29 -0700 (PDT)
-Message-ID: <55A2FEE4.6030201@gmail.com>
-Date: Mon, 13 Jul 2015 07:57:24 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
+Received: from cantor2.suse.de ([195.135.220.15]:54597 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751397AbbGMBbG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 12 Jul 2015 21:31:06 -0400
+Date: Mon, 13 Jul 2015 11:30:55 +1000
+From: NeilBrown <neilb@suse.com>
+To: Kinglong Mee <kinglongmee@gmail.com>
+Cc: Al Viro <viro@zeniv.linux.org.uk>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        linux-fsdevel@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: Re: [PATCH 07/10 v7] sunrpc: Switch to using list_head instead
+ single list
+Message-ID: <20150713113055.2ccf9bcd@noble>
+In-Reply-To: <55A11112.8080502@gmail.com>
+References: <55A11010.6050005@gmail.com>
+	<55A11112.8080502@gmail.com>
 MIME-Version: 1.0
-To: Steve Dickson <SteveD@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-CC: Christoph Hellwig <hch@infradead.org>, kinglongmee@gmail.com
-Subject: [PATCH] blkmapd: Skip the SCSI ID if the data length is zero
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In vmware linux, the iscsi device contains more than one SCSI ID,
-and, the second one's data length is zero.
+On Sat, 11 Jul 2015 20:50:26 +0800 Kinglong Mee <kinglongmee@gmail.com>
+wrote:
 
-blkmapd must skip it, otherwise, some device will be treat as the above one.
+> Switch using list_head for cache_head in cache_detail,
+> it is useful of remove an cache_head entry directly from cache_detail.
+> 
+> v7, same as v6.
+> 
+> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+> ---
+>  include/linux/sunrpc/cache.h |  4 +--
+>  net/sunrpc/cache.c           | 74 ++++++++++++++++++++++++--------------------
+>  2 files changed, 43 insertions(+), 35 deletions(-)
+> 
+> diff --git a/include/linux/sunrpc/cache.h b/include/linux/sunrpc/cache.h
+> index 04ee5a2..ecc0ff6 100644
+> --- a/include/linux/sunrpc/cache.h
+> +++ b/include/linux/sunrpc/cache.h
+> @@ -46,7 +46,7 @@
+>   * 
+>   */
+>  struct cache_head {
+> -	struct cache_head * next;
+> +	struct list_head	cache_list;
+>  	time_t		expiry_time;	/* After time time, don't use the data */
+>  	time_t		last_refresh;   /* If CACHE_PENDING, this is when upcall 
+>  					 * was sent, else this is when update was received
+> @@ -73,7 +73,7 @@ struct cache_detail_pipefs {
+>  struct cache_detail {
+>  	struct module *		owner;
+>  	int			hash_size;
+> -	struct cache_head **	hash_table;
+> +	struct list_head *	hash_table;
+>  	rwlock_t		hash_lock;
 
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
----
- utils/blkmapd/device-inq.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Given that these lists are chains in a hash table, it would make more
+sense to use hlist_head rather than list_head.  They are designed for
+exactly that purpose - and are smaller.
 
-diff --git a/utils/blkmapd/device-inq.c b/utils/blkmapd/device-inq.c
-index 6b56b67..57fe7a3 100644
---- a/utils/blkmapd/device-inq.c
-+++ b/utils/blkmapd/device-inq.c
-@@ -198,7 +198,7 @@ struct bl_serial *bldev_read_serial(int fd, const char *filename)
- 		dev_id = (struct bl_dev_id *)&(dev_root->data[pos]);
- 		pos += (dev_id->len + devid_len);
- 
--		if ((dev_id->ids & 0xf) < current_id)
-+		if ((dev_id->ids & 0xf) < current_id || !dev_id->len)
- 			continue;
- 		switch (dev_id->ids & 0xf) {
- 			/* We process SCSI ID with four ID cases: 0, 1, 2 and 3.
--- 
-2.4.3
+Actually, I'd really like to see hlist_bl_head used - so there was one
+bit-spin-lock per chain, and use RCU for protecting searches.
+However that would have to be left for later - no point delaying this
+patch set for some minor performance gains.
+
+But as you need to change this, I think it would be best to change to
+hlist_head.
+
+By the way, I see lots of nice clean-ups in this series.  Thanks!
+
+NeilBrown
+
+
+>  
+>  	atomic_t		inuse; /* active user-space update or lookup */
+> diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
+> index 673c2fa..ad2155c 100644
+> --- a/net/sunrpc/cache.c
+> +++ b/net/sunrpc/cache.c
+> @@ -44,7 +44,7 @@ static void cache_revisit_request(struct cache_head *item);
+>  static void cache_init(struct cache_head *h)
+>  {
+>  	time_t now = seconds_since_boot();
+> -	h->next = NULL;
+> +	INIT_LIST_HEAD(&h->cache_list);
+>  	h->flags = 0;
+>  	kref_init(&h->ref);
+>  	h->expiry_time = now + CACHE_NEW_EXPIRY;
+> @@ -54,15 +54,16 @@ static void cache_init(struct cache_head *h)
+>  struct cache_head *sunrpc_cache_lookup(struct cache_detail *detail,
+>  				       struct cache_head *key, int hash)
+>  {
+> -	struct cache_head **head,  **hp;
+>  	struct cache_head *new = NULL, *freeme = NULL;
+> +	struct cache_head *tmp;
+> +	struct list_head *head, *pos, *tpos;
+>  
+>  	head = &detail->hash_table[hash];
+>  
+>  	read_lock(&detail->hash_lock);
+>  
+> -	for (hp=head; *hp != NULL ; hp = &(*hp)->next) {
+> -		struct cache_head *tmp = *hp;
+> +	list_for_each_safe(pos, tpos, head) {
+> +		tmp = list_entry(pos, struct cache_head, cache_list);
+>  		if (detail->match(tmp, key)) {
+>  			if (cache_is_expired(detail, tmp))
+>  				/* This entry is expired, we will discard it. */
+> @@ -88,12 +89,11 @@ struct cache_head *sunrpc_cache_lookup(struct cache_detail *detail,
+>  	write_lock(&detail->hash_lock);
+>  
+>  	/* check if entry appeared while we slept */
+> -	for (hp=head; *hp != NULL ; hp = &(*hp)->next) {
+> -		struct cache_head *tmp = *hp;
+> +	list_for_each_safe(pos, tpos, head) {
+> +		tmp = list_entry(pos, struct cache_head, cache_list);
+>  		if (detail->match(tmp, key)) {
+>  			if (cache_is_expired(detail, tmp)) {
+> -				*hp = tmp->next;
+> -				tmp->next = NULL;
+> +				list_del_init(&tmp->cache_list);
+>  				detail->entries --;
+>  				freeme = tmp;
+>  				break;
+> @@ -104,8 +104,8 @@ struct cache_head *sunrpc_cache_lookup(struct cache_detail *detail,
+>  			return tmp;
+>  		}
+>  	}
+> -	new->next = *head;
+> -	*head = new;
+> +
+> +	list_add(&new->cache_list, head);
+>  	detail->entries++;
+>  	cache_get(new);
+>  	write_unlock(&detail->hash_lock);
+> @@ -143,7 +143,6 @@ struct cache_head *sunrpc_cache_update(struct cache_detail *detail,
+>  	 * If 'old' is not VALID, we update it directly,
+>  	 * otherwise we need to replace it
+>  	 */
+> -	struct cache_head **head;
+>  	struct cache_head *tmp;
+>  
+>  	if (!test_bit(CACHE_VALID, &old->flags)) {
+> @@ -168,15 +167,13 @@ struct cache_head *sunrpc_cache_update(struct cache_detail *detail,
+>  	}
+>  	cache_init(tmp);
+>  	detail->init(tmp, old);
+> -	head = &detail->hash_table[hash];
+>  
+>  	write_lock(&detail->hash_lock);
+>  	if (test_bit(CACHE_NEGATIVE, &new->flags))
+>  		set_bit(CACHE_NEGATIVE, &tmp->flags);
+>  	else
+>  		detail->update(tmp, new);
+> -	tmp->next = *head;
+> -	*head = tmp;
+> +	list_add(&tmp->cache_list, &detail->hash_table[hash]);
+>  	detail->entries++;
+>  	cache_get(tmp);
+>  	cache_fresh_locked(tmp, new->expiry_time);
+> @@ -416,42 +413,44 @@ static int cache_clean(void)
+>  	/* find a non-empty bucket in the table */
+>  	while (current_detail &&
+>  	       current_index < current_detail->hash_size &&
+> -	       current_detail->hash_table[current_index] == NULL)
+> +	       list_empty(&current_detail->hash_table[current_index]))
+>  		current_index++;
+>  
+>  	/* find a cleanable entry in the bucket and clean it, or set to next bucket */
+>  
+>  	if (current_detail && current_index < current_detail->hash_size) {
+> -		struct cache_head *ch, **cp;
+> +		struct cache_head *ch = NULL, *putme = NULL;
+> +		struct list_head *head, *pos, *tpos;
+>  		struct cache_detail *d;
+>  
+>  		write_lock(&current_detail->hash_lock);
+>  
+>  		/* Ok, now to clean this strand */
+>  
+> -		cp = & current_detail->hash_table[current_index];
+> -		for (ch = *cp ; ch ; cp = & ch->next, ch = *cp) {
+> +		head = &current_detail->hash_table[current_index];
+> +		list_for_each_safe(pos, tpos, head) {
+> +			ch = list_entry(pos, struct cache_head, cache_list);
+>  			if (current_detail->nextcheck > ch->expiry_time)
+>  				current_detail->nextcheck = ch->expiry_time+1;
+>  			if (!cache_is_expired(current_detail, ch))
+>  				continue;
+>  
+> -			*cp = ch->next;
+> -			ch->next = NULL;
+> +			list_del_init(pos);
+>  			current_detail->entries--;
+> +			putme = ch;
+>  			rv = 1;
+>  			break;
+>  		}
+>  
+>  		write_unlock(&current_detail->hash_lock);
+>  		d = current_detail;
+> -		if (!ch)
+> +		if (!putme)
+>  			current_index ++;
+>  		spin_unlock(&cache_list_lock);
+> -		if (ch) {
+> -			set_bit(CACHE_CLEANED, &ch->flags);
+> -			cache_fresh_unlocked(ch, d);
+> -			cache_put(ch, d);
+> +		if (putme) {
+> +			set_bit(CACHE_CLEANED, &putme->flags);
+> +			cache_fresh_unlocked(putme, d);
+> +			cache_put(putme, d);
+>  		}
+>  	} else
+>  		spin_unlock(&cache_list_lock);
+> @@ -1277,6 +1276,7 @@ void *cache_seq_start(struct seq_file *m, loff_t *pos)
+>  	unsigned int hash, entry;
+>  	struct cache_head *ch;
+>  	struct cache_detail *cd = m->private;
+> +	struct list_head *ptr, *tptr;
+>  
+>  	read_lock(&cd->hash_lock);
+>  	if (!n--)
+> @@ -1284,19 +1284,22 @@ void *cache_seq_start(struct seq_file *m, loff_t *pos)
+>  	hash = n >> 32;
+>  	entry = n & ((1LL<<32) - 1);
+>  
+> -	for (ch=cd->hash_table[hash]; ch; ch=ch->next)
+> +	list_for_each_safe(ptr, tptr, &cd->hash_table[hash]) {
+> +		ch = list_entry(ptr, struct cache_head, cache_list);
+>  		if (!entry--)
+>  			return ch;
+> +	}
+>  	n &= ~((1LL<<32) - 1);
+>  	do {
+>  		hash++;
+>  		n += 1LL<<32;
+>  	} while(hash < cd->hash_size &&
+> -		cd->hash_table[hash]==NULL);
+> +		list_empty(&cd->hash_table[hash]));
+>  	if (hash >= cd->hash_size)
+>  		return NULL;
+>  	*pos = n+1;
+> -	return cd->hash_table[hash];
+> +	return list_first_entry_or_null(&cd->hash_table[hash],
+> +					struct cache_head, cache_list);
+>  }
+>  EXPORT_SYMBOL_GPL(cache_seq_start);
+>  
+> @@ -1308,23 +1311,24 @@ void *cache_seq_next(struct seq_file *m, void *p, loff_t *pos)
+>  
+>  	if (p == SEQ_START_TOKEN)
+>  		hash = 0;
+> -	else if (ch->next == NULL) {
+> +	else if (list_is_last(&ch->cache_list, &cd->hash_table[hash])) {
+>  		hash++;
+>  		*pos += 1LL<<32;
+>  	} else {
+>  		++*pos;
+> -		return ch->next;
+> +		return list_next_entry(ch, cache_list);
+>  	}
+>  	*pos &= ~((1LL<<32) - 1);
+>  	while (hash < cd->hash_size &&
+> -	       cd->hash_table[hash] == NULL) {
+> +	       list_empty(&cd->hash_table[hash])) {
+>  		hash++;
+>  		*pos += 1LL<<32;
+>  	}
+>  	if (hash >= cd->hash_size)
+>  		return NULL;
+>  	++*pos;
+> -	return cd->hash_table[hash];
+> +	return list_first_entry_or_null(&cd->hash_table[hash],
+> +					struct cache_head, cache_list);
+>  }
+>  EXPORT_SYMBOL_GPL(cache_seq_next);
+>  
+> @@ -1666,17 +1670,21 @@ EXPORT_SYMBOL_GPL(cache_unregister_net);
+>  struct cache_detail *cache_create_net(struct cache_detail *tmpl, struct net *net)
+>  {
+>  	struct cache_detail *cd;
+> +	int i;
+>  
+>  	cd = kmemdup(tmpl, sizeof(struct cache_detail), GFP_KERNEL);
+>  	if (cd == NULL)
+>  		return ERR_PTR(-ENOMEM);
+>  
+> -	cd->hash_table = kzalloc(cd->hash_size * sizeof(struct cache_head *),
+> +	cd->hash_table = kzalloc(cd->hash_size * sizeof(struct list_head),
+>  				 GFP_KERNEL);
+>  	if (cd->hash_table == NULL) {
+>  		kfree(cd);
+>  		return ERR_PTR(-ENOMEM);
+>  	}
+> +
+> +	for (i = 0; i < cd->hash_size; i++)
+> +		INIT_LIST_HEAD(&cd->hash_table[i]);
+>  	cd->net = net;
+>  	return cd;
+>  }
 
