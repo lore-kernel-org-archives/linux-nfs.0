@@ -1,18 +1,18 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pd0-f174.google.com ([209.85.192.174]:33703 "EHLO
-	mail-pd0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751267AbbGMJeA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jul 2015 05:34:00 -0400
-Received: by pdbqm3 with SMTP id qm3so77481100pdb.0
-        for <linux-nfs@vger.kernel.org>; Mon, 13 Jul 2015 02:33:59 -0700 (PDT)
-Message-ID: <55A38603.8030003@gmail.com>
-Date: Mon, 13 Jul 2015 17:33:55 +0800
+Received: from mail-pd0-f173.google.com ([209.85.192.173]:36377 "EHLO
+	mail-pd0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751195AbbGMJeZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jul 2015 05:34:25 -0400
+Received: by pdjr16 with SMTP id r16so60054337pdj.3
+        for <linux-nfs@vger.kernel.org>; Mon, 13 Jul 2015 02:34:25 -0700 (PDT)
+Message-ID: <55A3861B.9030005@gmail.com>
+Date: Mon, 13 Jul 2015 17:34:19 +0800
 From: Kinglong Mee <kinglongmee@gmail.com>
 MIME-Version: 1.0
 To: "J. Bruce Fields" <bfields@fieldses.org>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 CC: kinglongmee@gmail.com
-Subject: [PATCH 11/14] nfsd: Remove duplicate checking of nfsd_net in nfs4_laundromat()
+Subject: [PATCH 12/14] nfsd: Remove macro LOFF_OVERFLOW
 References: <55A384B1.8030207@gmail.com>
 In-Reply-To: <55A384B1.8030207@gmail.com>
 Content-Type: text/plain; charset=utf-8
@@ -21,22 +21,34 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
 ---
- fs/nfsd/nfs4state.c | 2 --
- 1 file changed, 2 deletions(-)
+ fs/nfsd/nfs4state.c | 7 ++-----
+ 1 file changed, 2 insertions(+), 5 deletions(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 8205542..d342769 100644
+index d342769..13df582 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -4335,8 +4335,6 @@ nfs4_laundromat(struct nfsd_net *nn)
- 	spin_lock(&state_lock);
- 	list_for_each_safe(pos, next, &nn->del_recall_lru) {
- 		dp = list_entry (pos, struct nfs4_delegation, dl_recall_lru);
--		if (net_generic(dp->dl_stid.sc_client->net, nfsd_net_id) != nn)
--			continue;
- 		if (time_after((unsigned long)dp->dl_time, (unsigned long)cutoff)) {
- 			t = dp->dl_time - cutoff;
- 			new_timeo = min(new_timeo, t);
+@@ -5040,9 +5040,6 @@ out:
+ 	return status;
+ }
+ 
+-
+-#define LOFF_OVERFLOW(start, len)      ((u64)(len) > ~(u64)(start))
+-
+ static inline u64
+ end_offset(u64 start, u64 len)
+ {
+@@ -5295,8 +5292,8 @@ find_or_create_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fi,
+ static int
+ check_lock_length(u64 offset, u64 length)
+ {
+-	return ((length == 0)  || ((length != NFS4_MAX_UINT64) &&
+-	     LOFF_OVERFLOW(offset, length)));
++	return ((length == 0) || ((length != NFS4_MAX_UINT64) &&
++		(length > ~offset)));
+ }
+ 
+ static void get_lock_access(struct nfs4_ol_stateid *lock_stp, u32 access)
 -- 
 2.4.3
 
