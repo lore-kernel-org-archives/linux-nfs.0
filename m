@@ -1,91 +1,47 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx143.netapp.com ([216.240.21.24]:35302 "EHLO mx143.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751671AbbGMSIw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 13 Jul 2015 14:08:52 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
-CC: <Anna.Schumaker@netapp.com>
-Subject: [PATCH v2 10/10] NFS: Remove nfs_release()
-Date: Mon, 13 Jul 2015 14:01:33 -0400
-Message-ID: <1436810493-22806-11-git-send-email-Anna.Schumaker@Netapp.com>
-In-Reply-To: <1436810493-22806-1-git-send-email-Anna.Schumaker@Netapp.com>
-References: <1436810493-22806-1-git-send-email-Anna.Schumaker@Netapp.com>
+Received: from p3plsmtpa12-09.prod.phx3.secureserver.net ([68.178.252.238]:35849
+	"EHLO p3plsmtpa12-09.prod.phx3.secureserver.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752038AbbGMTgu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jul 2015 15:36:50 -0400
+Message-ID: <55A4134C.2040301@talpey.com>
+Date: Mon, 13 Jul 2015 15:36:44 -0400
+From: Tom Talpey <tom@talpey.com>
 MIME-Version: 1.0
-Content-Type: text/plain
+To: "'Christoph Hellwig'" <hch@infradead.org>,
+        Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
+CC: Sagi Grimberg <sagig@dev.mellanox.co.il>,
+        Steve Wise <swise@opengridcomputing.com>, dledford@redhat.com,
+        sagig@mellanox.com, ogerlitz@mellanox.com, roid@mellanox.com,
+        linux-rdma@vger.kernel.org, eli@mellanox.com,
+        target-devel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        trond.myklebust@primarydata.com, bfields@fieldses.org,
+        Oren Duer <oren@mellanox.com>
+Subject: Re: [PATCH V3 1/5] RDMA/core: Transport-independent access flags
+References: <000b01d0b8bd$f2bfcc10$d83f6430$@opengridcomputing.com> <20150707161751.GA623@obsidianresearch.com> <559BFE03.4020709@dev.mellanox.co.il> <20150707213628.GA5661@obsidianresearch.com> <559CD174.4040901@dev.mellanox.co.il> <20150708190842.GB11740@obsidianresearch.com> <559D983D.6000804@talpey.com> <20150708233604.GA20765@obsidianresearch.com> <559E54AB.2010905@dev.mellanox.co.il> <20150709170142.GA21921@obsidianresearch.com> <20150711102538.GB14741@infradead.org>
+In-Reply-To: <20150711102538.GB14741@infradead.org>
+Content-Type: text/plain; charset=windows-1252; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-And call nfs_file_clear_open_context() directly.  This makes it obvious
-that nfs_file_release() will always return 0.
+On 7/11/2015 6:25 AM, 'Christoph Hellwig' wrote:
+> I think what we need to support for now is FRMR as the primary target,
+> and FMR as a secondar[y].
 
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
----
- fs/nfs/file.c          | 3 ++-
- fs/nfs/inode.c         | 8 +-------
- include/linux/nfs_fs.h | 2 +-
- 3 files changed, 4 insertions(+), 9 deletions(-)
+FMR is a *very* bad choice, for several reasons.
 
-diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index cc4fa1e..7538a85 100644
---- a/fs/nfs/file.c
-+++ b/fs/nfs/file.c
-@@ -82,7 +82,8 @@ nfs_file_release(struct inode *inode, struct file *filp)
- 	dprintk("NFS: release(%pD2)\n", filp);
- 
- 	nfs_inc_stats(inode, NFSIOS_VFSRELEASE);
--	return nfs_release(inode, filp);
-+	nfs_file_clear_open_context(filp);
-+	return 0;
- }
- EXPORT_SYMBOL_GPL(nfs_file_release);
- 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index b77b328..a0d195f 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -887,7 +887,7 @@ struct nfs_open_context *nfs_find_open_context(struct inode *inode, struct rpc_c
- 	return ctx;
- }
- 
--static void nfs_file_clear_open_context(struct file *filp)
-+void nfs_file_clear_open_context(struct file *filp)
- {
- 	struct nfs_open_context *ctx = nfs_file_open_context(filp);
- 
-@@ -918,12 +918,6 @@ int nfs_open(struct inode *inode, struct file *filp)
- 	return 0;
- }
- 
--int nfs_release(struct inode *inode, struct file *filp)
--{
--	nfs_file_clear_open_context(filp);
--	return 0;
--}
--
- /*
-  * This function is called whenever some part of NFS notices that
-  * the cached attributes have to be refreshed.
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index f91b5ad..9851f37 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -350,7 +350,6 @@ extern void nfs_access_add_cache(struct inode *, struct nfs_access_entry *);
- extern void nfs_access_set_mask(struct nfs_access_entry *, u32);
- extern int nfs_permission(struct inode *, int);
- extern int nfs_open(struct inode *, struct file *);
--extern int nfs_release(struct inode *, struct file *);
- extern int nfs_attribute_timeout(struct inode *inode);
- extern int nfs_attribute_cache_expired(struct inode *inode);
- extern int nfs_revalidate_inode(struct nfs_server *server, struct inode *inode);
-@@ -368,6 +367,7 @@ extern struct nfs_open_context *nfs_find_open_context(struct inode *inode, struc
- extern struct nfs_open_context *alloc_nfs_open_context(struct dentry *dentry, fmode_t f_mode);
- extern void nfs_inode_attach_open_context(struct nfs_open_context *ctx);
- extern void nfs_file_set_open_context(struct file *filp, struct nfs_open_context *ctx);
-+extern void nfs_file_clear_open_context(struct file *flip);
- extern struct nfs_lock_context *nfs_get_lock_context(struct nfs_open_context *ctx);
- extern void nfs_put_lock_context(struct nfs_lock_context *l_ctx);
- extern u64 nfs_compat_user_ino64(u64 fileid);
--- 
-2.4.5
+1) It's not supported by very many devices, in fact it might even
+be thought to be obsolete.
 
+2) It does not protect on byte boundaries, therefore it is unsafe
+to use for anything but page-sized, page-aligned RDMA operations.
+
+3) It is a synchronous API, i.e. it is not work-request based and
+therefore is not very high performance.
+
+4) It sometimes is used with a "pool", which defers deregistration
+in the hopes of amortizing overhead. However, this deferral further
+increases the risk of remote access, including altering of memory
+contents after the fact.
+
+Personally, I'd recommend ib_get_phys_mr() over FMR. It at least
+doesn't suffer from issues 1, 2 and 4.
