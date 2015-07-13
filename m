@@ -1,72 +1,60 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from quartz.orcorp.ca ([184.70.90.242]:58492 "EHLO quartz.orcorp.ca"
+Received: from mx141.netapp.com ([216.240.21.12]:4156 "EHLO mx141.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750792AbbGMRSp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 13 Jul 2015 13:18:45 -0400
-Date: Mon, 13 Jul 2015 11:18:33 -0600
-From: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
-To: Doug Ledford <dledford@redhat.com>
-Cc: Tom Talpey <tom@talpey.com>, "'Christoph Hellwig'" <hch@infradead.org>,
-        Sagi Grimberg <sagig@dev.mellanox.co.il>,
-        Steve Wise <swise@opengridcomputing.com>, sagig@mellanox.com,
-        ogerlitz@mellanox.com, roid@mellanox.com, linux-rdma@vger.kernel.org,
-        eli@mellanox.com, target-devel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, trond.myklebust@primarydata.com,
-        bfields@fieldses.org, Oren Duer <oren@mellanox.com>
-Subject: Re: [PATCH V3 1/5] RDMA/core: Transport-independent access flags
-Message-ID: <20150713171833.GF23832@obsidianresearch.com>
-References: <20150709000337.GE16812@obsidianresearch.com>
- <559EF332.7060103@redhat.com>
- <20150709225306.GA30741@obsidianresearch.com>
- <559FC710.1050307@talpey.com>
- <20150710161108.GA19042@obsidianresearch.com>
- <55A00754.4010009@redhat.com>
- <20150710205706.GA7883@obsidianresearch.com>
- <55A046EF.1060800@redhat.com>
- <20150710233417.GA8919@obsidianresearch.com>
- <55A0891F.4050105@redhat.com>
+	id S1752043AbbGMSCB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 13 Jul 2015 14:02:01 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
+CC: <Anna.Schumaker@netapp.com>
+Subject: [PATCH v2 00/10] NFS: Clean up unnecessary functions 
+Date: Mon, 13 Jul 2015 14:01:23 -0400
+Message-ID: <1436810493-22806-1-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <55A0891F.4050105@redhat.com>
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jul 10, 2015 at 11:10:23PM -0400, Doug Ledford wrote:
+I went searching for functions that simply pass their arguments to another
+function without really adding anything useful.  I figure we can just call
+the other function directly instead.
 
-> >> access controls and connection filtering.  The app/ULP itself doesn't
-> >> even need to be filter aware as you can do the filtering in the TCP
-> >> stack on the primary listening socket using the netfilter tools.
-> > 
-> > Does netfilter work for iWarp? I'm surprised to hear that.
-> 
-> iWARP requires a normal TCP socket to connect to, then the client must
-> initiate an RDMA transfer, then a new connection is opened for the RDMA
-> transfers.  Blocking the parent dst:port/*:* will prevent these
-> connections.  If you are referring to allowing an untrusted client in
-> TCP mode but blocking them in RDMA mode, that's more complex and
-> requires app/ULP support.
+Changes in v2:
+- Add rpc_cmp_addr_port() for comparing sockaddr addresses and port numbers.
+- Add missing changes to include/linux/nfs_fs.h in patch 10 (NFS: Remove nfs_release())
 
-Yes, that would be the use case here. If someone wishes to deploy
-auth-then-trust in TCP mode with NFS/iSCSI (which is a kernel
-supported TCP/IP mode) we need to be absolutely certain there is no
-way for anything untrusted to pivot a connection into a RDMA mode and
-exploit the RKEY problem.
+Let me know what you all think!
+Anna
 
-Out of the box this must be impossible. The surest way to guarentee
-that is to have this hack off by default.
 
-> Black hat server is beyond the scope of this discussion.
+Anna Schumaker (10):
+  NFS: Remove unused variable "pages_ptr"
+  NFS: Rename nfs_readdir_free_pagearray() and nfs_readdir_large_page()
+  SUNRPC: Drop double-underscores from rpc_cmp_addr{4|6}()
+  SUNRPC: Add an rpc_cmp_addr_port() function
+  NFS: Use RPC functions for matching sockaddrs
+  NFS: Combine nfs_idmap_{init|quit}() and
+    nfs_idmap_{init|quit}_keyring()
+  NFS: Remove nfs4_match_stateid()
+  NFS: Remove nfs41_server_notify_{target|highest}_slotid_update()
+  NFS: Rename nfs_commit_unstable_pages() to nfs_write_inode()
+  NFS: Remove nfs_release()
 
-We cannot assume an all-trusted model here, there are many
-configurations to deploy NFS/iSCSI that don't assume that. Even if you
-assume it for the RDMA cases (which I stronlgy disagree with), it
-still must be proven to not weaken the existing TCP/IP case.
+ fs/nfs/callback_proc.c      |   2 +-
+ fs/nfs/client.c             | 113 +-------------------------------------------
+ fs/nfs/dir.c                |  20 +++-----
+ fs/nfs/file.c               |   3 +-
+ fs/nfs/inode.c              |   8 +---
+ fs/nfs/internal.h           |   4 --
+ fs/nfs/nfs4_fs.h            |   4 +-
+ fs/nfs/nfs4client.c         |   5 +-
+ fs/nfs/nfs4idmap.c          |  14 +-----
+ fs/nfs/nfs4proc.c           |  10 +---
+ fs/nfs/nfs4state.c          |  12 +----
+ fs/nfs/write.c              |   7 +--
+ include/linux/nfs_fs.h      |   2 +-
+ include/linux/sunrpc/addr.h |  25 +++++++---
+ 14 files changed, 40 insertions(+), 189 deletions(-)
 
-So, a black hat server is on the table, attacking a client that the
-admin is not intending to use with RDMA, by forcing it to switch to
-RDMA before auth and exploiting the RDMA side.
+-- 
+2.4.5
 
-This is where the iwarp guys have to analyze and come back to say it
-is OK. Maybe iwarp can't get to rdma without auth or something...
-
-Jason
