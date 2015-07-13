@@ -1,200 +1,79 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f181.google.com ([209.85.213.181]:38363 "EHLO
-	mail-ig0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751483AbbGMPqp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jul 2015 11:46:45 -0400
-Received: by iggf3 with SMTP id f3so23547835igg.1
-        for <linux-nfs@vger.kernel.org>; Mon, 13 Jul 2015 08:46:44 -0700 (PDT)
+Received: from mail-qg0-f50.google.com ([209.85.192.50]:34608 "EHLO
+	mail-qg0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750919AbbGMQ3p (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jul 2015 12:29:45 -0400
+Subject: [PATCH v2 00/14] NFS/RDMA client side for Linux 4.3
+From: Chuck Lever <chuck.lever@oracle.com>
+To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Mon, 13 Jul 2015 12:29:41 -0400
+Message-ID: <20150713160617.17630.97475.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-In-Reply-To: <55A3C2EA.1060901@Netapp.com>
-References: <1436778368-65447-1-git-send-email-tao.peng@primarydata.com>
- <1436778368-65447-6-git-send-email-tao.peng@primarydata.com> <55A3C2EA.1060901@Netapp.com>
-From: Peng Tao <tao.peng@primarydata.com>
-Date: Mon, 13 Jul 2015 23:46:25 +0800
-Message-ID: <CAKVebiVGin1kw9=NcSYJY8ZcCzfhqwsoMnbn_O0HtpozSGH=fQ@mail.gmail.com>
-Subject: Re: [PATCH v2 5/8] nfs42: add NFS_IOC_CLONE ioctl
-To: Anna Schumaker <Anna.Schumaker@netapp.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jul 13, 2015 at 9:53 PM, Anna Schumaker
-<Anna.Schumaker@netapp.com> wrote:
-> Hi Tao,
->
-> One question inline (below):
->
-> On 07/13/2015 05:06 AM, Peng Tao wrote:
->> It can be called by user space to CLONE two files.
->> Follow btrfs lead and define NFS_IOC_CLONE same as BTRFS_IOC_CLONE.
->> Thus we don't mess up userspace with too many ioctls.
->>
->> Signed-off-by: Peng Tao <tao.peng@primarydata.com>
->> ---
->>  fs/nfs/nfs4file.c        | 102 +++++++++++++++++++++++++++++++++++++++++++++++
->>  include/uapi/linux/nfs.h |   4 ++
->>  2 files changed, 106 insertions(+)
->>
->> diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
->> index dcd39d4..dfa6620 100644
->> --- a/fs/nfs/nfs4file.c
->> +++ b/fs/nfs/nfs4file.c
->> @@ -4,6 +4,7 @@
->>   *  Copyright (C) 1992  Rick Sladkey
->>   */
->>  #include <linux/fs.h>
->> +#include <linux/file.h>
->>  #include <linux/falloc.h>
->>  #include <linux/nfs_fs.h>
->>  #include "internal.h"
->> @@ -166,8 +167,104 @@ static long nfs42_fallocate(struct file *filep, int mode, loff_t offset, loff_t
->>               return nfs42_proc_deallocate(filep, offset, len);
->>       return nfs42_proc_allocate(filep, offset, len);
->>  }
->> +
->> +static noinline long
->> +nfs42_ioctl_clone(struct file *dst_file, unsigned long srcfd,
->> +               u64 src_off, u64 dst_off, u64 count)
->> +{
->> +     struct inode *dst_inode = file_inode(dst_file);
->> +     struct fd src_file;
->> +     struct inode *src_inode;
->> +     int ret;
->> +
->> +     /* dst file must be opened for writing */
->> +     if (!(dst_file->f_mode & FMODE_WRITE))
->> +             return -EINVAL;
->> +
->> +     ret = mnt_want_write_file(dst_file);
->> +     if (ret)
->> +             return ret;
->> +
->> +     src_file = fdget(srcfd);
->> +     if (!src_file.file) {
->> +             ret = -EBADF;
->> +             goto out_drop_write;
->> +     }
->> +
->> +     src_inode = file_inode(src_file.file);
->> +
->> +     /* src and dst must be different files */
->> +     ret = -EINVAL;
->> +     if (src_inode == dst_inode)
->> +             goto out_fput;
->> +
->> +     /* src file must be opened for reading */
->> +     if (!(src_file.file->f_mode & FMODE_READ))
->> +             goto out_fput;
->> +
->> +     /* src and dst must be regular files */
->> +     ret = -EISDIR;
->> +     if (!S_ISREG(src_inode->i_mode) || !S_ISREG(dst_inode->i_mode))
->> +             goto out_fput;
->> +
->> +     ret = -EXDEV;
->> +     if (src_file.file->f_path.mnt != dst_file->f_path.mnt ||
->> +         src_inode->i_sb != dst_inode->i_sb)
->> +             goto out_fput;
->> +
->> +     /* XXX: do we lock at all? what if server needs CB_RECALL_LAYOUT? */
->> +     if (dst_inode < src_inode) {
->
-> Why is the order of inode numbers important?
-If we get two concurrent clone ioctls CLONE(foo,bar) and
-CLONE(bar,foo), the lock ordering avoids deadlock since we always lock
-smaller inode first.
+Several important client-side performance and scalability
+improvements are made in this series, proposed for the 4.3
+kernel, including:
 
-Cheers,
-Tao
+- Increase maximum RDMA credits to 128
+- Increase maximum NFS r/wsize to one megabyte
+- Prefer inline rather than reply chunk replies
 
->
-> Thanks,
-> Anna
->
->> +             mutex_lock_nested(&dst_inode->i_mutex, I_MUTEX_PARENT);
->> +             mutex_lock_nested(&src_inode->i_mutex, I_MUTEX_CHILD);
->> +     } else {
->> +             mutex_lock_nested(&src_inode->i_mutex, I_MUTEX_PARENT);
->> +             mutex_lock_nested(&dst_inode->i_mutex, I_MUTEX_CHILD);
->> +     }
->> +
->> +     /* flush all pending writes on both src and dst so that server
->> +      * has the latest data */
->> +     ret = nfs_sync_inode(src_inode);
->> +     if (ret)
->> +             goto out_unlock;
->> +     ret = nfs_sync_inode(dst_inode);
->> +     if (ret)
->> +             goto out_unlock;
->> +
->> +     ret = nfs42_proc_clone(src_file.file, dst_file, src_off, dst_off, count);
->> +
->> +     /* truncate inode page cache of the dst range so that future reads can fetch
->> +      * new data from server */
->> +     if (!ret)
->> +             truncate_inode_pages_range(&dst_inode->i_data, dst_off, dst_off + count - 1);
->> +
->> +out_unlock:
->> +     if (dst_inode < src_inode) {
->> +             mutex_unlock(&src_inode->i_mutex);
->> +             mutex_unlock(&dst_inode->i_mutex);
->> +     } else {
->> +             mutex_unlock(&dst_inode->i_mutex);
->> +             mutex_unlock(&src_inode->i_mutex);
->> +     }
->> +out_fput:
->> +     fdput(src_file);
->> +out_drop_write:
->> +     mnt_drop_write_file(dst_file);
->> +     return ret;
->> +}
->>  #endif /* CONFIG_NFS_V4_2 */
->>
->> +long nfs4_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
->> +{
->> +     switch (cmd) {
->> +#ifdef CONFIG_NFS_V4_2
->> +     case NFS_IOC_CLONE:
->> +             return nfs42_ioctl_clone(file, arg, 0, 0, 0);
->> +#endif
->> +     }
->> +
->> +     return -ENOTTY;
->> +}
->> +
->>  const struct file_operations nfs4_file_operations = {
->>  #ifdef CONFIG_NFS_V4_2
->>       .llseek         = nfs4_file_llseek,
->> @@ -190,4 +287,9 @@ const struct file_operations nfs4_file_operations = {
->>  #endif /* CONFIG_NFS_V4_2 */
->>       .check_flags    = nfs_check_flags,
->>       .setlease       = simple_nosetlease,
->> +#ifdef CONFIG_COMPAT
->> +     .unlocked_ioctl = nfs4_ioctl,
->> +#else
->> +     .compat_ioctl   = nfs4_ioctl,
->> +#endif /* CONFIG_COMPAT */
->>  };
->> diff --git a/include/uapi/linux/nfs.h b/include/uapi/linux/nfs.h
->> index 5199a36..d85748d 100644
->> --- a/include/uapi/linux/nfs.h
->> +++ b/include/uapi/linux/nfs.h
->> @@ -31,6 +31,10 @@
->>
->>  #define NFS_PIPE_DIRNAME "nfs"
->>
->> +/* NFS ioctls */
->> +/* Let's follow btrfs lead on CLONE to avoid messing userspace */
->> +#define NFS_IOC_CLONE        _IOW(0x94, 9, int)
->> +
->>  /*
->>   * NFS stats. The good thing with these values is that NFSv3 errors are
->>   * a superset of NFSv2 errors (with the exception of NFSERR_WFLUSH which
->>
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+And these fixes:
+
+- Send NFSv4 WRITE compounds correctly
+- Support RDMA_NOMSG calls
+- Fix large NFS symlink operations
+- Get inline threshold accounting right
+
+Also available in the "nfs-rdma-for-4.3" topic branch of this git repo:
+
+ git://git.linux-nfs.org/projects/cel/cel-2.6.git
+
+Or for browsing:
+
+ http://git.linux-nfs.org/?p=cel/cel-2.6.git;a=log;h=refs/heads/nfs-rdma-for-4.3
+
+
+Changes since v1:
+ - Rebased on Linux v4.2-rc2
+ - PHYSICAL registration, being insecure, must now be explicitly selected
+ - Further clean-ups were done because ib_reg_phys_mr() is gone
+ - Support for RDMA_MSGP type calls has been removed
+ - Some patch descriptions have been clarified
+
+---
+
+Chuck Lever (14):
+      xprtrdma: Make xprt_setup_rdma() agnostic to family of server address
+      xprtrdma: Raise maximum payload size to one megabyte
+      xprtrdma: Increase default credit limit
+      xprtrdma: Don't fall back to PHYSICAL memory registration
+      xprtrdma: Remove last ib_reg_phys_mr() call site
+      xprtrdma: Clean up rpcrdma_ia_open()
+      xprtrdma: Remove logic that constructs RDMA_MSGP type calls
+      xprtrdma: Account for RPC/RDMA header size when deciding to inline
+      xprtrdma: Always provide a write list when sending NFS READ
+      xprtrdma: Don't provide a reply chunk when expecting a short reply
+      xprtrdma: Fix XDR tail buffer marshalling
+      xprtrdma: Fix large NFS SYMLINK calls
+      xprtrdma: Clean up xprt_rdma_print_stats()
+      xprtrdma: Count RDMA_NOMSG type calls
+
+
+ fs/nfs/nfs3xdr.c                   |    1 
+ fs/nfs/nfs4xdr.c                   |    4 +
+ include/linux/sunrpc/xprtrdma.h    |    2 
+ net/sunrpc/xprtrdma/fmr_ops.c      |   19 +++
+ net/sunrpc/xprtrdma/frwr_ops.c     |    5 +
+ net/sunrpc/xprtrdma/physical_ops.c |   25 ++++-
+ net/sunrpc/xprtrdma/rpc_rdma.c     |  197 ++++++++++++++++++------------------
+ net/sunrpc/xprtrdma/transport.c    |   77 ++++++--------
+ net/sunrpc/xprtrdma/verbs.c        |  197 +++++++++---------------------------
+ net/sunrpc/xprtrdma/xprt_rdma.h    |   27 ++---
+ 10 files changed, 252 insertions(+), 302 deletions(-)
+
+--
+Chuck Lever
