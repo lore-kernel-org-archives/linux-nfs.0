@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx143.netapp.com ([216.240.21.24]:33030 "EHLO mx143.netapp.com"
+Received: from mx141.netapp.com ([216.240.21.12]:12344 "EHLO mx141.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751507AbbGMSCx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 13 Jul 2015 14:02:53 -0400
+	id S1751507AbbGMSIa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 13 Jul 2015 14:08:30 -0400
 From: Anna Schumaker <Anna.Schumaker@netapp.com>
 To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
 CC: <Anna.Schumaker@netapp.com>
-Subject: [PATCH v2 07/10] NFS: Remove nfs4_match_stateid()
-Date: Mon, 13 Jul 2015 14:01:30 -0400
-Message-ID: <1436810493-22806-8-git-send-email-Anna.Schumaker@Netapp.com>
+Subject: [PATCH v2 04/10] SUNRPC: Add an rpc_cmp_addr_port() function
+Date: Mon, 13 Jul 2015 14:01:27 -0400
+Message-ID: <1436810493-22806-5-git-send-email-Anna.Schumaker@Netapp.com>
 In-Reply-To: <1436810493-22806-1-git-send-email-Anna.Schumaker@Netapp.com>
 References: <1436810493-22806-1-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
@@ -16,39 +16,38 @@ Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Let's just call nfs4_stateid_match() directly.
+This function is to help determine if two sockaddrs are really the same
+socket.
 
 Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 ---
- fs/nfs/nfs4proc.c | 8 +-------
- 1 file changed, 1 insertion(+), 7 deletions(-)
+ include/linux/sunrpc/addr.h | 13 +++++++++++++
+ 1 file changed, 13 insertions(+)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 6f228b5..b911fb0 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -8514,12 +8514,6 @@ static bool nfs41_match_stateid(const nfs4_stateid *s1,
+diff --git a/include/linux/sunrpc/addr.h b/include/linux/sunrpc/addr.h
+index 772faef..9bc3538 100644
+--- a/include/linux/sunrpc/addr.h
++++ b/include/linux/sunrpc/addr.h
+@@ -131,6 +131,19 @@ static inline bool rpc_cmp_addr(const struct sockaddr *sap1,
+ }
  
- #endif /* CONFIG_NFS_V4_1 */
- 
--static bool nfs4_match_stateid(const nfs4_stateid *s1,
--		const nfs4_stateid *s2)
--{
--	return nfs4_stateid_match(s1, s2);
--}
--
- 
- static const struct nfs4_state_recovery_ops nfs40_reboot_recovery_ops = {
- 	.owner_flag_bit = NFS_OWNER_RECLAIM_REBOOT,
-@@ -8594,7 +8588,7 @@ static const struct nfs4_minor_version_ops nfs_v4_0_minor_ops = {
- 		| NFS_CAP_POSIX_LOCK,
- 	.init_client = nfs40_init_client,
- 	.shutdown_client = nfs40_shutdown_client,
--	.match_stateid = nfs4_match_stateid,
-+	.match_stateid = nfs4_stateid_match,
- 	.find_root_sec = nfs4_find_root_sec,
- 	.free_lock_state = nfs4_release_lockowner,
- 	.alloc_seqid = nfs_alloc_seqid,
+ /**
++ * rpc_cmp_addr_port - compare the address and port number of two sockaddrs.
++ * @sap1: first sockaddr
++ * @sap2: second sockaddr
++ */
++static inline bool rpc_cmp_addr_port(const struct sockaddr *sap1,
++				     const struct sockaddr *sap2)
++{
++	if (!rpc_cmp_addr(sap1, sap2))
++		return false;
++	return rpc_get_port(sap1) == rpc_get_port(sap2);
++}
++
++/**
+  * rpc_copy_addr - copy the address portion of one sockaddr to another
+  * @dst: destination sockaddr
+  * @src: source sockaddr
 -- 
 2.4.5
 
