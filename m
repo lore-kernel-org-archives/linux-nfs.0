@@ -1,14 +1,13 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qg0-f46.google.com ([209.85.192.46]:35012 "EHLO
-	mail-qg0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751630AbbGMQaE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jul 2015 12:30:04 -0400
-Subject: [PATCH v2 02/14] xprtrdma: Raise maximum payload size to one
- megabyte
+Received: from mail-qk0-f173.google.com ([209.85.220.173]:35929 "EHLO
+	mail-qk0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751669AbbGMQaN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jul 2015 12:30:13 -0400
+Subject: [PATCH v2 03/14] xprtrdma: Increase default credit limit
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 13 Jul 2015 12:30:01 -0400
-Message-ID: <20150713163001.17630.43320.stgit@manet.1015granger.net>
+Date: Mon, 13 Jul 2015 12:30:10 -0400
+Message-ID: <20150713163010.17630.18221.stgit@manet.1015granger.net>
 In-Reply-To: <20150713160617.17630.97475.stgit@manet.1015granger.net>
 References: <20150713160617.17630.97475.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -16,29 +15,29 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The point of larger rsize and wsize is to reduce the per-byte cost
-of memory registration and deregistration. Modern HCAs can typically
-handle a megabyte or more with a single registration operation.
+In preparation for similar increases on NFS/RDMA servers, bump the
+advertised credit limit for RPC/RDMA to 128. This allocates some
+extra resources, but the client will continue to allow only the
+number of RPCs in flight that the server requests via its advertised
+credit limit.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Reviewed-by: Devesh Sharma <devesh.sharma@avagotech.com>
 Reviewed-By: Sagi Grimberg <sagig@mellanox.com>
 ---
- net/sunrpc/xprtrdma/xprt_rdma.h |    3 +--
- 1 file changed, 1 insertion(+), 2 deletions(-)
+ include/linux/sunrpc/xprtrdma.h |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index f49dd8b..abee472 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -165,8 +165,7 @@ rdmab_to_msg(struct rpcrdma_regbuf *rb)
-  * struct rpcrdma_buffer. N is the max number of outstanding requests.
+diff --git a/include/linux/sunrpc/xprtrdma.h b/include/linux/sunrpc/xprtrdma.h
+index b176130..b7b279b 100644
+--- a/include/linux/sunrpc/xprtrdma.h
++++ b/include/linux/sunrpc/xprtrdma.h
+@@ -49,7 +49,7 @@
+  * a single chunk type per message is supported currently.
   */
+ #define RPCRDMA_MIN_SLOT_TABLE	(2U)
+-#define RPCRDMA_DEF_SLOT_TABLE	(32U)
++#define RPCRDMA_DEF_SLOT_TABLE	(128U)
+ #define RPCRDMA_MAX_SLOT_TABLE	(256U)
  
--/* temporary static scatter/gather max */
--#define RPCRDMA_MAX_DATA_SEGS	(64)	/* max scatter/gather */
-+#define RPCRDMA_MAX_DATA_SEGS	((1 * 1024 * 1024) / PAGE_SIZE)
- #define RPCRDMA_MAX_SEGS 	(RPCRDMA_MAX_DATA_SEGS + 2) /* head+tail = 2 */
- 
- struct rpcrdma_buffer;
+ #define RPCRDMA_DEF_INLINE  (1024)	/* default inline max */
 
