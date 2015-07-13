@@ -1,66 +1,47 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pa0-f49.google.com ([209.85.220.49]:33021 "EHLO
-	mail-pa0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751038AbbGMFvn (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jul 2015 01:51:43 -0400
-Received: by padck2 with SMTP id ck2so36790298pad.0
-        for <linux-nfs@vger.kernel.org>; Sun, 12 Jul 2015 22:51:43 -0700 (PDT)
-From: Peng Tao <tao.peng@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Peng Tao <tao.peng@primarydata.com>
-Subject: [PATCH 7/7] nfs42: respect clone_blksize
-Date: Mon, 13 Jul 2015 13:50:55 +0800
-Message-Id: <1436766655-10696-8-git-send-email-tao.peng@primarydata.com>
-In-Reply-To: <1436766655-10696-1-git-send-email-tao.peng@primarydata.com>
-References: <1436766655-10696-1-git-send-email-tao.peng@primarydata.com>
+Received: from zeniv.linux.org.uk ([195.92.253.2]:58629 "EHLO
+	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751113AbbGMGCp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jul 2015 02:02:45 -0400
+Date: Mon, 13 Jul 2015 07:02:40 +0100
+From: Al Viro <viro@ZenIV.linux.org.uk>
+To: NeilBrown <neilb@suse.com>
+Cc: Kinglong Mee <kinglongmee@gmail.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        linux-fsdevel@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: Re: [PATCH 10/10 v7] nfsd: Allows user un-mounting filesystem where
+ nfsd exports base on
+Message-ID: <20150713060240.GO17109@ZenIV.linux.org.uk>
+References: <55A11010.6050005@gmail.com>
+ <55A111A8.2040701@gmail.com>
+ <20150713133934.6a4ef77d@noble>
+ <20150713040258.GM17109@ZenIV.linux.org.uk>
+ <20150713151910.0f493f49@noble>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20150713151910.0f493f49@noble>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-draft-ietf-nfsv4-minorversion2-38.txt says:
-   Both cl_src_offset and
-   cl_dst_offset must be aligned to the clone block size Section 12.2.1.
-   The number of bytes to be cloned must be a multiple of the clone
-   block size, except in the case in which cl_src_offset plus the number
-   of bytes to be cloned is equal to the source file size.
+On Mon, Jul 13, 2015 at 03:19:10PM +1000, NeilBrown wrote:
+> > Hell, no.  Intended use is to have ->kill() free the damn thing, period.
+> 
+> It is not possible to revise that intention?
+> The apparent purpose of pin_kill() is to wait until the thing is freed,
+> or to trigger that freeing itself.  Why not do both: trigger then wait?
 
-Signed-off-by: Peng Tao <tao.peng@primarydata.com>
----
- fs/nfs/nfs4file.c | 11 +++++++++++
- 1 file changed, 11 insertions(+)
+Huh?  The first to come calls ->kill(); anybody coming between that and
+pin_remove() done by ->kill() waits until pin_remove() is called and
+buggers off.
 
-diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
-index dfa6620..e450a5f 100644
---- a/fs/nfs/nfs4file.c
-+++ b/fs/nfs/nfs4file.c
-@@ -173,8 +173,10 @@ nfs42_ioctl_clone(struct file *dst_file, unsigned long srcfd,
- 		  u64 src_off, u64 dst_off, u64 count)
- {
- 	struct inode *dst_inode = file_inode(dst_file);
-+	struct nfs_server *server = NFS_SERVER(dst_inode);
- 	struct fd src_file;
- 	struct inode *src_inode;
-+	unsigned int bs = server->clone_blksize;
- 	int ret;
- 
- 	/* dst file must be opened for writing */
-@@ -212,6 +214,15 @@ nfs42_ioctl_clone(struct file *dst_file, unsigned long srcfd,
- 	    src_inode->i_sb != dst_inode->i_sb)
- 		goto out_fput;
- 
-+	/* check alignment w.r.t. clone_blksize */
-+	ret = -EINVAL;
-+	if (bs) {
-+		if (!IS_ALIGNED(src_off, bs) || !IS_ALIGNED(dst_off, bs))
-+			goto out_fput;
-+		if (!IS_ALIGNED(count, bs) && i_size_read(src_inode) != (src_off + count))
-+			goto out_fput;
-+	}
-+
- 	/* XXX: do we lock at all? what if server needs CB_RECALL_LAYOUT? */
- 	if (dst_inode < src_inode) {
- 		mutex_lock_nested(&dst_inode->i_mutex, I_MUTEX_PARENT);
--- 
-1.8.3.1
+> Given that all current uses have ->kill() call pin_remove, and as
+> pin_remove sets ->done to 1, and as the patch makes no change to
+> behaviour when ->kill() completes with ->done set to 1, I don't see how
+> it can break anything.
+> 'rcu' ensures that it is still save to examine p->done, and it will be
+> '1'.
 
+RCU ensures no such thing.  Where's the rcu_read_lock() opening the
+RCU-critical area you need?
