@@ -1,74 +1,200 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx143.netapp.com ([216.240.21.24]:19088 "EHLO mx143.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751292AbbGMPFO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 13 Jul 2015 11:05:14 -0400
-Subject: Re: [PATCH 4/9] NFS: Use RPC functions for matching sockaddrs
-To: Chuck Lever <chuck.lever@oracle.com>,
-        Anna Schumaker <Anna.Schumaker@netapp.com>
-References: <1436561897-8051-1-git-send-email-Anna.Schumaker@Netapp.com>
- <1436561897-8051-5-git-send-email-Anna.Schumaker@Netapp.com>
- <20150713070311.GH26245@infradead.org> <55A3C976.20302@Netapp.com>
- <6CFC438A-9FED-49CC-A7BA-9C5AF757C916@oracle.com>
-CC: Christoph Hellwig <hch@infradead.org>,
-        Trond Myklebust <Trond.Myklebust@primarydata.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-From: Anna Schumaker <schumaker.anna@gmail.com>
-Message-ID: <55A3CFEF.4000009@gmail.com>
-Date: Mon, 13 Jul 2015 10:49:19 -0400
+Received: from mail-ig0-f181.google.com ([209.85.213.181]:38363 "EHLO
+	mail-ig0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751483AbbGMPqp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jul 2015 11:46:45 -0400
+Received: by iggf3 with SMTP id f3so23547835igg.1
+        for <linux-nfs@vger.kernel.org>; Mon, 13 Jul 2015 08:46:44 -0700 (PDT)
 MIME-Version: 1.0
-In-Reply-To: <6CFC438A-9FED-49CC-A7BA-9C5AF757C916@oracle.com>
-Content-Type: text/plain; charset="utf-8"
+In-Reply-To: <55A3C2EA.1060901@Netapp.com>
+References: <1436778368-65447-1-git-send-email-tao.peng@primarydata.com>
+ <1436778368-65447-6-git-send-email-tao.peng@primarydata.com> <55A3C2EA.1060901@Netapp.com>
+From: Peng Tao <tao.peng@primarydata.com>
+Date: Mon, 13 Jul 2015 23:46:25 +0800
+Message-ID: <CAKVebiVGin1kw9=NcSYJY8ZcCzfhqwsoMnbn_O0HtpozSGH=fQ@mail.gmail.com>
+Subject: Re: [PATCH v2 5/8] nfs42: add NFS_IOC_CLONE ioctl
+To: Anna Schumaker <Anna.Schumaker@netapp.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 07/13/2015 10:32 AM, Chuck Lever wrote:
-> 
-> On Jul 13, 2015, at 10:21 AM, Anna Schumaker <Anna.Schumaker@netapp.com> wrote:
-> 
->> On 07/13/2015 03:03 AM, Christoph Hellwig wrote:
->>>> static int nfs_sockaddr_cmp_ip6(const struct sockaddr *sa1,
->>>> 				const struct sockaddr *sa2)
->>>> {
->>>> 	const struct sockaddr_in6 *sin1 = (const struct sockaddr_in6 *)sa1;
->>>> 	const struct sockaddr_in6 *sin2 = (const struct sockaddr_in6 *)sa2;
->>>>
->>>> -	return nfs_sockaddr_match_ipaddr6(sa1, sa2) &&
->>>> -		(sin1->sin6_port == sin2->sin6_port);
->>>> +	return rpc_cmp_addr6(sa1, sa2) && (sin1->sin6_port == sin2->sin6_port);
->>>> }
->>>>
->>>> static int nfs_sockaddr_cmp_ip4(const struct sockaddr *sa1,
->>>> @@ -350,31 +301,8 @@ static int nfs_sockaddr_cmp_ip4(const struct sockaddr *sa1,
->>>> 	const struct sockaddr_in *sin1 = (const struct sockaddr_in *)sa1;
->>>> 	const struct sockaddr_in *sin2 = (const struct sockaddr_in *)sa2;
->>>>
->>>> -	return nfs_sockaddr_match_ipaddr4(sa1, sa2) &&
->>>> -		(sin1->sin_port == sin2->sin_port);
->>>> -}
->>>
->>> I'd say kill nfs_sockaddr_cmp as well and use rpc_cmp_addr in
->>> nfs_match_client.
->>>
+On Mon, Jul 13, 2015 at 9:53 PM, Anna Schumaker
+<Anna.Schumaker@netapp.com> wrote:
+> Hi Tao,
+>
+> One question inline (below):
+>
+> On 07/13/2015 05:06 AM, Peng Tao wrote:
+>> It can be called by user space to CLONE two files.
+>> Follow btrfs lead and define NFS_IOC_CLONE same as BTRFS_IOC_CLONE.
+>> Thus we don't mess up userspace with too many ioctls.
 >>
->> Okay, looking closer at the code now.  rpc_cmp_addr() explicitely doesn't check for port number, but nfs_sockaddr_cmp() does.  I could add port checking to rpc_cmp_addr(), but I don't know if it was left out intentionally when the code was written.
-> 
-> Consider adding rpc_cmp_addr_port() which does port checking too?
+>> Signed-off-by: Peng Tao <tao.peng@primarydata.com>
+>> ---
+>>  fs/nfs/nfs4file.c        | 102 +++++++++++++++++++++++++++++++++++++++++++++++
+>>  include/uapi/linux/nfs.h |   4 ++
+>>  2 files changed, 106 insertions(+)
+>>
+>> diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
+>> index dcd39d4..dfa6620 100644
+>> --- a/fs/nfs/nfs4file.c
+>> +++ b/fs/nfs/nfs4file.c
+>> @@ -4,6 +4,7 @@
+>>   *  Copyright (C) 1992  Rick Sladkey
+>>   */
+>>  #include <linux/fs.h>
+>> +#include <linux/file.h>
+>>  #include <linux/falloc.h>
+>>  #include <linux/nfs_fs.h>
+>>  #include "internal.h"
+>> @@ -166,8 +167,104 @@ static long nfs42_fallocate(struct file *filep, int mode, loff_t offset, loff_t
+>>               return nfs42_proc_deallocate(filep, offset, len);
+>>       return nfs42_proc_allocate(filep, offset, len);
+>>  }
+>> +
+>> +static noinline long
+>> +nfs42_ioctl_clone(struct file *dst_file, unsigned long srcfd,
+>> +               u64 src_off, u64 dst_off, u64 count)
+>> +{
+>> +     struct inode *dst_inode = file_inode(dst_file);
+>> +     struct fd src_file;
+>> +     struct inode *src_inode;
+>> +     int ret;
+>> +
+>> +     /* dst file must be opened for writing */
+>> +     if (!(dst_file->f_mode & FMODE_WRITE))
+>> +             return -EINVAL;
+>> +
+>> +     ret = mnt_want_write_file(dst_file);
+>> +     if (ret)
+>> +             return ret;
+>> +
+>> +     src_file = fdget(srcfd);
+>> +     if (!src_file.file) {
+>> +             ret = -EBADF;
+>> +             goto out_drop_write;
+>> +     }
+>> +
+>> +     src_inode = file_inode(src_file.file);
+>> +
+>> +     /* src and dst must be different files */
+>> +     ret = -EINVAL;
+>> +     if (src_inode == dst_inode)
+>> +             goto out_fput;
+>> +
+>> +     /* src file must be opened for reading */
+>> +     if (!(src_file.file->f_mode & FMODE_READ))
+>> +             goto out_fput;
+>> +
+>> +     /* src and dst must be regular files */
+>> +     ret = -EISDIR;
+>> +     if (!S_ISREG(src_inode->i_mode) || !S_ISREG(dst_inode->i_mode))
+>> +             goto out_fput;
+>> +
+>> +     ret = -EXDEV;
+>> +     if (src_file.file->f_path.mnt != dst_file->f_path.mnt ||
+>> +         src_inode->i_sb != dst_inode->i_sb)
+>> +             goto out_fput;
+>> +
+>> +     /* XXX: do we lock at all? what if server needs CB_RECALL_LAYOUT? */
+>> +     if (dst_inode < src_inode) {
+>
+> Why is the order of inode numbers important?
+If we get two concurrent clone ioctls CLONE(foo,bar) and
+CLONE(bar,foo), the lock ordering avoids deadlock since we always lock
+smaller inode first.
 
-I like this idea.  Thanks for the suggestion!
+Cheers,
+Tao
 
-Anna
-
-> 
-> 
-> --
-> Chuck Lever
-> 
-> 
-> 
+>
+> Thanks,
+> Anna
+>
+>> +             mutex_lock_nested(&dst_inode->i_mutex, I_MUTEX_PARENT);
+>> +             mutex_lock_nested(&src_inode->i_mutex, I_MUTEX_CHILD);
+>> +     } else {
+>> +             mutex_lock_nested(&src_inode->i_mutex, I_MUTEX_PARENT);
+>> +             mutex_lock_nested(&dst_inode->i_mutex, I_MUTEX_CHILD);
+>> +     }
+>> +
+>> +     /* flush all pending writes on both src and dst so that server
+>> +      * has the latest data */
+>> +     ret = nfs_sync_inode(src_inode);
+>> +     if (ret)
+>> +             goto out_unlock;
+>> +     ret = nfs_sync_inode(dst_inode);
+>> +     if (ret)
+>> +             goto out_unlock;
+>> +
+>> +     ret = nfs42_proc_clone(src_file.file, dst_file, src_off, dst_off, count);
+>> +
+>> +     /* truncate inode page cache of the dst range so that future reads can fetch
+>> +      * new data from server */
+>> +     if (!ret)
+>> +             truncate_inode_pages_range(&dst_inode->i_data, dst_off, dst_off + count - 1);
+>> +
+>> +out_unlock:
+>> +     if (dst_inode < src_inode) {
+>> +             mutex_unlock(&src_inode->i_mutex);
+>> +             mutex_unlock(&dst_inode->i_mutex);
+>> +     } else {
+>> +             mutex_unlock(&dst_inode->i_mutex);
+>> +             mutex_unlock(&src_inode->i_mutex);
+>> +     }
+>> +out_fput:
+>> +     fdput(src_file);
+>> +out_drop_write:
+>> +     mnt_drop_write_file(dst_file);
+>> +     return ret;
+>> +}
+>>  #endif /* CONFIG_NFS_V4_2 */
+>>
+>> +long nfs4_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+>> +{
+>> +     switch (cmd) {
+>> +#ifdef CONFIG_NFS_V4_2
+>> +     case NFS_IOC_CLONE:
+>> +             return nfs42_ioctl_clone(file, arg, 0, 0, 0);
+>> +#endif
+>> +     }
+>> +
+>> +     return -ENOTTY;
+>> +}
+>> +
+>>  const struct file_operations nfs4_file_operations = {
+>>  #ifdef CONFIG_NFS_V4_2
+>>       .llseek         = nfs4_file_llseek,
+>> @@ -190,4 +287,9 @@ const struct file_operations nfs4_file_operations = {
+>>  #endif /* CONFIG_NFS_V4_2 */
+>>       .check_flags    = nfs_check_flags,
+>>       .setlease       = simple_nosetlease,
+>> +#ifdef CONFIG_COMPAT
+>> +     .unlocked_ioctl = nfs4_ioctl,
+>> +#else
+>> +     .compat_ioctl   = nfs4_ioctl,
+>> +#endif /* CONFIG_COMPAT */
+>>  };
+>> diff --git a/include/uapi/linux/nfs.h b/include/uapi/linux/nfs.h
+>> index 5199a36..d85748d 100644
+>> --- a/include/uapi/linux/nfs.h
+>> +++ b/include/uapi/linux/nfs.h
+>> @@ -31,6 +31,10 @@
+>>
+>>  #define NFS_PIPE_DIRNAME "nfs"
+>>
+>> +/* NFS ioctls */
+>> +/* Let's follow btrfs lead on CLONE to avoid messing userspace */
+>> +#define NFS_IOC_CLONE        _IOW(0x94, 9, int)
+>> +
+>>  /*
+>>   * NFS stats. The good thing with these values is that NFSv3 errors are
+>>   * a superset of NFSv2 errors (with the exception of NFSERR_WFLUSH which
+>>
+>
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-
