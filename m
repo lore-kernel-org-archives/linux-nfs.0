@@ -1,65 +1,50 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qg0-f46.google.com ([209.85.192.46]:34624 "EHLO
-	mail-qg0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750777AbbGMO1j (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jul 2015 10:27:39 -0400
-Received: by qgep37 with SMTP id p37so64822819qge.1
-        for <linux-nfs@vger.kernel.org>; Mon, 13 Jul 2015 07:27:38 -0700 (PDT)
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2102\))
-Subject: Re: [PATCH] [patch]libtirpc: check the makefd_xprt return value
-From: Chuck Lever <chucklever@gmail.com>
-In-Reply-To: <CAHnGgyG-01Ga-U_tvVuwLvQD_d9dei57rHzGXZgtYir4U3V5tg@mail.gmail.com>
-Date: Mon, 13 Jul 2015 10:27:35 -0400
-Cc: Steve Dickson <steved@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <A44CA622-48B8-4D44-9D5B-4D770D7BBBDC@gmail.com>
-References: <CAHnGgyG-01Ga-U_tvVuwLvQD_d9dei57rHzGXZgtYir4U3V5tg@mail.gmail.com>
-To: ditang chen <ditang.c@gmail.com>
+Received: from mx142.netapp.com ([216.240.21.19]:59855 "EHLO mx142.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751451AbbGMO2G (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 13 Jul 2015 10:28:06 -0400
+Subject: Re: [PATCH 4/9] NFS: Use RPC functions for matching sockaddrs
+To: Christoph Hellwig <hch@infradead.org>
+References: <1436561897-8051-1-git-send-email-Anna.Schumaker@Netapp.com>
+ <1436561897-8051-5-git-send-email-Anna.Schumaker@Netapp.com>
+ <20150713070311.GH26245@infradead.org>
+CC: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+Message-ID: <55A3C976.20302@Netapp.com>
+Date: Mon, 13 Jul 2015 10:21:42 -0400
+MIME-Version: 1.0
+In-Reply-To: <20150713070311.GH26245@infradead.org>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-> On Jul 9, 2015, at 9:59 AM, ditang chen <ditang.c@gmail.com> wrote:
+On 07/13/2015 03:03 AM, Christoph Hellwig wrote:
+>>  static int nfs_sockaddr_cmp_ip6(const struct sockaddr *sa1,
+>>  				const struct sockaddr *sa2)
+>>  {
+>>  	const struct sockaddr_in6 *sin1 = (const struct sockaddr_in6 *)sa1;
+>>  	const struct sockaddr_in6 *sin2 = (const struct sockaddr_in6 *)sa2;
+>>  
+>> -	return nfs_sockaddr_match_ipaddr6(sa1, sa2) &&
+>> -		(sin1->sin6_port == sin2->sin6_port);
+>> +	return rpc_cmp_addr6(sa1, sa2) && (sin1->sin6_port == sin2->sin6_port);
+>>  }
+>>  
+>>  static int nfs_sockaddr_cmp_ip4(const struct sockaddr *sa1,
+>> @@ -350,31 +301,8 @@ static int nfs_sockaddr_cmp_ip4(const struct sockaddr *sa1,
+>>  	const struct sockaddr_in *sin1 = (const struct sockaddr_in *)sa1;
+>>  	const struct sockaddr_in *sin2 = (const struct sockaddr_in *)sa2;
+>>  
+>> -	return nfs_sockaddr_match_ipaddr4(sa1, sa2) &&
+>> -		(sin1->sin_port == sin2->sin_port);
+>> -}
 > 
-> xprt may return NULL, so check the return value is necessary.
-
-This would only happen if the malloc() calls in makefd_xprt() failed,
-which I think would be exceptionally rare?
-
-Otherwise, this change adds reasonable defensive coding.
-
-Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
-
-
-> Signed-off-by: Ditang Chen <ditang.c@gmail.com>
-> ---
-> src/svc_vc.c | 2 ++
-> 1 file changed, 2 insertions(+)
+> I'd say kill nfs_sockaddr_cmp as well and use rpc_cmp_addr in
+> nfs_match_client.
 > 
-> diff --git a/src/svc_vc.c b/src/svc_vc.c
-> index 9824631..f864951 100644
-> --- a/src/svc_vc.c
-> +++ b/src/svc_vc.c
-> @@ -337,6 +337,8 @@ again:
-> 	 */
-> 
-> 	newxprt = makefd_xprt(sock, r->sendsize, r->recvsize);
-> +	if (!newxprt)
-> +		return (FALSE);
-> 
-> 	if (!__rpc_set_netbuf(&newxprt->xp_rtaddr, &addr, len))
-> 		return (FALSE);
-> -- 
-> 1.9.3
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
---
-Chuck Lever
-chucklever@gmail.com
+Okay, looking closer at the code now.  rpc_cmp_addr() explicitely doesn't check for port number, but nfs_sockaddr_cmp() does.  I could add port checking to rpc_cmp_addr(), but I don't know if it was left out intentionally when the code was written.
 
+Trond?
 
-
+Anna
