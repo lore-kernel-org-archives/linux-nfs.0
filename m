@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx141.netapp.com ([216.240.21.12]:12344 "EHLO mx141.netapp.com"
+Received: from mx143.netapp.com ([216.240.21.24]:35302 "EHLO mx143.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751507AbbGMSIa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 13 Jul 2015 14:08:30 -0400
+	id S1751671AbbGMSIo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 13 Jul 2015 14:08:44 -0400
 From: Anna Schumaker <Anna.Schumaker@netapp.com>
 To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
 CC: <Anna.Schumaker@netapp.com>
-Subject: [PATCH v2 04/10] SUNRPC: Add an rpc_cmp_addr_port() function
-Date: Mon, 13 Jul 2015 14:01:27 -0400
-Message-ID: <1436810493-22806-5-git-send-email-Anna.Schumaker@Netapp.com>
+Subject: [PATCH v2 02/10] NFS: Rename nfs_readdir_free_pagearray() and nfs_readdir_large_page()
+Date: Mon, 13 Jul 2015 14:01:25 -0400
+Message-ID: <1436810493-22806-3-git-send-email-Anna.Schumaker@Netapp.com>
 In-Reply-To: <1436810493-22806-1-git-send-email-Anna.Schumaker@Netapp.com>
 References: <1436810493-22806-1-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
@@ -16,38 +16,68 @@ Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This function is to help determine if two sockaddrs are really the same
-socket.
+nfs_readdir_xdr_to_array() uses both a cache array and an array of
+pages, so I rename these functions to make it clearer how the code
+works.  nfs_readdir_large_page() becomes nfs_readdir_alloc_pages()
+because this function has absolutely nothing to do with setting up a
+large page.  nfs_readdir_free_pagearray() becomes
+nfs_readdir_free_pages() to stay consistent with the new alloc_pages()
+function.
 
 Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 ---
- include/linux/sunrpc/addr.h | 13 +++++++++++++
- 1 file changed, 13 insertions(+)
+ fs/nfs/dir.c | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
 
-diff --git a/include/linux/sunrpc/addr.h b/include/linux/sunrpc/addr.h
-index 772faef..9bc3538 100644
---- a/include/linux/sunrpc/addr.h
-+++ b/include/linux/sunrpc/addr.h
-@@ -131,6 +131,19 @@ static inline bool rpc_cmp_addr(const struct sockaddr *sap1,
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index ecb8ed5..c722212 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -583,7 +583,7 @@ out_nopages:
  }
  
- /**
-+ * rpc_cmp_addr_port - compare the address and port number of two sockaddrs.
-+ * @sap1: first sockaddr
-+ * @sap2: second sockaddr
-+ */
-+static inline bool rpc_cmp_addr_port(const struct sockaddr *sap1,
-+				     const struct sockaddr *sap2)
-+{
-+	if (!rpc_cmp_addr(sap1, sap2))
-+		return false;
-+	return rpc_get_port(sap1) == rpc_get_port(sap2);
-+}
-+
-+/**
-  * rpc_copy_addr - copy the address portion of one sockaddr to another
-  * @dst: destination sockaddr
-  * @src: source sockaddr
+ static
+-void nfs_readdir_free_pagearray(struct page **pages, unsigned int npages)
++void nfs_readdir_free_pages(struct page **pages, unsigned int npages)
+ {
+ 	unsigned int i;
+ 	for (i = 0; i < npages; i++)
+@@ -595,7 +595,7 @@ void nfs_readdir_free_pagearray(struct page **pages, unsigned int npages)
+  * to nfs_readdir_free_pagearray
+  */
+ static
+-int nfs_readdir_large_page(struct page **pages, unsigned int npages)
++int nfs_readdir_alloc_pages(struct page **pages, unsigned int npages)
+ {
+ 	unsigned int i;
+ 
+@@ -608,7 +608,7 @@ int nfs_readdir_large_page(struct page **pages, unsigned int npages)
+ 	return 0;
+ 
+ out_freepages:
+-	nfs_readdir_free_pagearray(pages, i);
++	nfs_readdir_free_pages(pages, i);
+ 	return -ENOMEM;
+ }
+ 
+@@ -645,7 +645,7 @@ int nfs_readdir_xdr_to_array(nfs_readdir_descriptor_t *desc, struct page *page,
+ 	memset(array, 0, sizeof(struct nfs_cache_array));
+ 	array->eof_index = -1;
+ 
+-	status = nfs_readdir_large_page(pages, array_size);
++	status = nfs_readdir_alloc_pages(pages, array_size);
+ 	if (status < 0)
+ 		goto out_release_array;
+ 	do {
+@@ -663,7 +663,7 @@ int nfs_readdir_xdr_to_array(nfs_readdir_descriptor_t *desc, struct page *page,
+ 		}
+ 	} while (array->eof_index < 0);
+ 
+-	nfs_readdir_free_pagearray(pages, array_size);
++	nfs_readdir_free_pages(pages, array_size);
+ out_release_array:
+ 	nfs_readdir_release_array(page);
+ out_label_free:
 -- 
 2.4.5
 
