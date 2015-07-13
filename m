@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qg0-f41.google.com ([209.85.192.41]:36423 "EHLO
-	mail-qg0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751483AbbGMQbB (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jul 2015 12:31:01 -0400
-Subject: [PATCH v2 08/14] xprtrdma: Account for RPC/RDMA header size when
- deciding to inline
+Received: from mail-qk0-f172.google.com ([209.85.220.172]:34194 "EHLO
+	mail-qk0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751808AbbGMQbL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jul 2015 12:31:11 -0400
+Subject: [PATCH v2 09/14] xprtrdma: Always provide a write list when sending
+ NFS READ
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 13 Jul 2015 12:30:57 -0400
-Message-ID: <20150713163057.17630.55930.stgit@manet.1015granger.net>
+Date: Mon, 13 Jul 2015 12:31:07 -0400
+Message-ID: <20150713163107.17630.60420.stgit@manet.1015granger.net>
 In-Reply-To: <20150713160617.17630.97475.stgit@manet.1015granger.net>
 References: <20150713160617.17630.97475.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -16,77 +16,56 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When the size of the RPC message is near the inline threshold (1KB),
-the client would allow messages to be sent that were a few bytes too
-large.
+The client has been setting up a reply chunk for NFS READs that are
+smaller than the inline threshold. This is not efficient: both the
+server and client CPUs have to copy the reply's data payload into
+and out of the memory region that is then transferred via RDMA.
 
-When marshaling RPC/RDMA requests, ensure the combined size of
-RPC/RDMA header and RPC header do not exceed the inline threshold.
-Endpoints typically reject RPC/RDMA messages that exceed the size
-of their receive buffers.
-
-The two server implementations I test with (Linux and Solaris) use
-receive buffers that are larger than the client’s inline threshold.
-Thus so far this has been benign, observed only by code inspection.
+Using the write list, the data payload is moved by the device and no
+extra data copying is necessary.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 Reviewed-by: Devesh Sharma <devesh.sharma@avagotech.com>
+Reviewed-By: Sagi Grimberg <sagig@mellanox.com>
 ---
- net/sunrpc/xprtrdma/rpc_rdma.c |   29 +++++++++++++++++++++++++++--
- 1 file changed, 27 insertions(+), 2 deletions(-)
+ net/sunrpc/xprtrdma/rpc_rdma.c |   21 ++++-----------------
+ 1 file changed, 4 insertions(+), 17 deletions(-)
 
 diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index 8e9c564..950b654 100644
+index 950b654..e7cf976 100644
 --- a/net/sunrpc/xprtrdma/rpc_rdma.c
 +++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -71,6 +71,31 @@ static const char transfertypes[][12] = {
- };
- #endif
- 
-+/* The client can send a request inline as long as the RPCRDMA header
-+ * plus the RPC call fit under the transport's inline limit. If the
-+ * combined call message size exceeds that limit, the client must use
-+ * the read chunk list for this operation.
-+ */
-+static bool rpcrdma_args_inline(struct rpc_rqst *rqst)
-+{
-+	unsigned int callsize = RPCRDMA_HDRLEN_MIN + rqst->rq_snd_buf.len;
-+
-+	return callsize <= RPCRDMA_INLINE_WRITE_THRESHOLD(rqst);
-+}
-+
-+/* The client can't know how large the actual reply will be. Thus it
-+ * plans for the largest possible reply for that particular ULP
-+ * operation. If the maximum combined reply message size exceeds that
-+ * limit, the client must provide a write list or a reply chunk for
-+ * this request.
-+ */
-+static bool rpcrdma_results_inline(struct rpc_rqst *rqst)
-+{
-+	unsigned int repsize = RPCRDMA_HDRLEN_MIN + rqst->rq_rcv_buf.buflen;
-+
-+	return repsize <= RPCRDMA_INLINE_READ_THRESHOLD(rqst);
-+}
-+
- /*
-  * Chunk assembly from upper layer xdr_buf.
-  *
-@@ -409,7 +434,7 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
- 	 * a READ, then use write chunks to separate the file data
- 	 * into pages; otherwise use reply chunks.
+@@ -418,28 +418,15 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
+ 	/*
+ 	 * Chunks needed for results?
+ 	 *
++	 * o Read ops return data as write chunk(s), header as inline.
+ 	 * o If the expected result is under the inline threshold, all ops
+ 	 *   return as inline (but see later).
+ 	 * o Large non-read ops return as a single reply chunk.
+-	 * o Large read ops return data as write chunk(s), header as inline.
+-	 *
+-	 * Note: the NFS code sending down multiple result segments implies
+-	 * the op is one of read, readdir[plus], readlink or NFSv4 getacl.
+-	 */
+-
+-	/*
+-	 * This code can handle read chunks, write chunks OR reply
+-	 * chunks -- only one type. If the request is too big to fit
+-	 * inline, then we will choose read chunks. If the request is
+-	 * a READ, then use write chunks to separate the file data
+-	 * into pages; otherwise use reply chunks.
  	 */
--	if (rqst->rq_rcv_buf.buflen <= RPCRDMA_INLINE_READ_THRESHOLD(rqst))
-+	if (rpcrdma_results_inline(rqst))
- 		wtype = rpcrdma_noch;
- 	else if (rqst->rq_rcv_buf.page_len == 0)
+-	if (rpcrdma_results_inline(rqst))
+-		wtype = rpcrdma_noch;
+-	else if (rqst->rq_rcv_buf.page_len == 0)
+-		wtype = rpcrdma_replych;
+-	else if (rqst->rq_rcv_buf.flags & XDRBUF_READ)
++	if (rqst->rq_rcv_buf.flags & XDRBUF_READ)
+ 		wtype = rpcrdma_writech;
++	else if (rpcrdma_results_inline(rqst))
++		wtype = rpcrdma_noch;
+ 	else
  		wtype = rpcrdma_replych;
-@@ -432,7 +457,7 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
- 	 * implies the op is a write.
- 	 * TBD check NFSv4 setacl
- 	 */
--	if (rqst->rq_snd_buf.len <= RPCRDMA_INLINE_WRITE_THRESHOLD(rqst))
-+	if (rpcrdma_args_inline(rqst))
- 		rtype = rpcrdma_noch;
- 	else if (rqst->rq_snd_buf.page_len == 0)
- 		rtype = rpcrdma_areadch;
+ 
 
