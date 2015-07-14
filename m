@@ -1,46 +1,122 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from p3plsmtpa06-04.prod.phx3.secureserver.net ([173.201.192.105]:40257
-	"EHLO p3plsmtpa06-04.prod.phx3.secureserver.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751691AbbGNPrS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Jul 2015 11:47:18 -0400
-Message-ID: <55A52F00.3090905@talpey.com>
-Date: Tue, 14 Jul 2015 11:47:12 -0400
-From: Tom Talpey <tom@talpey.com>
+Received: from mx142.netapp.com ([216.240.21.19]:62187 "EHLO mx142.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751968AbbGNQBd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 14 Jul 2015 12:01:33 -0400
+Subject: Re: [PATCH v1 10/12] xprtrdma: Fix large NFS SYMLINK calls
+To: Chuck Lever <chuck.lever@oracle.com>, <linux-rdma@vger.kernel.org>,
+        <linux-nfs@vger.kernel.org>
+References: <20150709203242.26247.4848.stgit@manet.1015granger.net>
+ <20150709204315.26247.47851.stgit@manet.1015granger.net>
+From: Anna Schumaker <schumaker.anna@gmail.com>
+Message-ID: <55A53259.8090606@gmail.com>
+Date: Tue, 14 Jul 2015 12:01:29 -0400
 MIME-Version: 1.0
-To: "'Christoph Hellwig'" <hch@infradead.org>,
-        Sagi Grimberg <sagig@dev.mellanox.co.il>
-CC: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>,
-        Steve Wise <swise@opengridcomputing.com>, dledford@redhat.com,
-        sagig@mellanox.com, ogerlitz@mellanox.com, roid@mellanox.com,
-        linux-rdma@vger.kernel.org, eli@mellanox.com,
-        target-devel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        trond.myklebust@primarydata.com, bfields@fieldses.org,
-        Oren Duer <oren@mellanox.com>
-Subject: Re: [PATCH V3 1/5] RDMA/core: Transport-independent access flags
-References: <559CD174.4040901@dev.mellanox.co.il> <20150708190842.GB11740@obsidianresearch.com> <559D983D.6000804@talpey.com> <20150708233604.GA20765@obsidianresearch.com> <559E54AB.2010905@dev.mellanox.co.il> <20150709170142.GA21921@obsidianresearch.com> <20150711102538.GB14741@infradead.org> <55A4134C.2040301@talpey.com> <20150713201538.GA11681@obsidianresearch.com> <55A4D20C.2000904@dev.mellanox.co.il> <20150714153619.GC11026@infradead.org>
-In-Reply-To: <20150714153619.GC11026@infradead.org>
-Content-Type: text/plain; charset=windows-1252; format=flowed
+In-Reply-To: <20150709204315.26247.47851.stgit@manet.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 7/14/2015 11:36 AM, 'Christoph Hellwig' wrote:
-> On Tue, Jul 14, 2015 at 12:10:36PM +0300, Sagi Grimberg wrote:
->> Having an API that does FRMR/FMR/PHYS_MR is even worse from the ULP
->> PoV. If you expose an API that might schedule (PHYS_MR) it limits the
->> context that the caller is allowed to call in.
->>
->> I'm 100% against an registration API that *might* schedule.
->
-> Oh, I had missed that PHYS_MR might sleep.  That might be the reasons
-> why everyone is avoiding them despite Tom preferring them over FMR.
+Hey Chuck,
 
-Any synchronous verb might sleep. They issue commands to the adapter
-across the PCIe bus, and need to wait for the result. FMR does, too.
-At least the work-request-based ones are explicit about waiting for
-the completion.
+On 07/09/2015 04:43 PM, Chuck Lever wrote:
+> Repair how rpcrdma_marshal_req() chooses which RDMA message type
+> to use for large non-WRITE operations so that it picks RDMA_NOMSG
+> in the correct situations, and sets up the marshaling logic to
+> SEND only the RPC/RDMA header.
+> 
+> Large NFSv2 SYMLINK requests now use RDMA_NOMSG calls. The Linux NFS
+> server XDR decoder for NFSv2 SYMLINK does not handle having the
+> pathname argument arrive in a separate buffer. The decoder could be
+> fixed, but this is simpler and RDMA_NOMSG can be used in a variety
+> of other situations.
+> 
+> Ensure that the Linux client continues to use "RDMA_MSG + read
+> list" when sending large NFSv3 SYMLINK requests, which is more
+> efficient than using RDMA_NOMSG.
+> 
+> Large NFSv4 CREATE(NF4LNK) requests are changed to use "RDMA_MSG +
+> read list" just like NFSv3 (see Section 5 of RFC 5667). Before,
+> these did not work at all.
+> 
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+>  fs/nfs/nfs3xdr.c               |    1 +
+>  fs/nfs/nfs4xdr.c               |    1 +
+>  net/sunrpc/xprtrdma/rpc_rdma.c |   21 ++++++++++++---------
+>  3 files changed, 14 insertions(+), 9 deletions(-)
 
-Are you saying you want an API that does memory registration without
-blocking AND without sending a work request to hardware, ever?
+It might be better to split this into separate patches for nfs and sunrpc, since Trond might want to accept the nfs changes separately.
 
+Anna
 
+> 
+> diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
+> index 9b04c2e..267126d 100644
+> --- a/fs/nfs/nfs3xdr.c
+> +++ b/fs/nfs/nfs3xdr.c
+> @@ -1103,6 +1103,7 @@ static void nfs3_xdr_enc_symlink3args(struct rpc_rqst *req,
+>  {
+>  	encode_diropargs3(xdr, args->fromfh, args->fromname, args->fromlen);
+>  	encode_symlinkdata3(xdr, args);
+> +	xdr->buf->flags |= XDRBUF_WRITE;
+>  }
+>  
+>  /*
+> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+> index 558cd65d..03a20ec 100644
+> --- a/fs/nfs/nfs4xdr.c
+> +++ b/fs/nfs/nfs4xdr.c
+> @@ -1155,6 +1155,7 @@ static void encode_create(struct xdr_stream *xdr, const struct nfs4_create_arg *
+>  		p = reserve_space(xdr, 4);
+>  		*p = cpu_to_be32(create->u.symlink.len);
+>  		xdr_write_pages(xdr, create->u.symlink.pages, 0, create->u.symlink.len);
+> +		xdr->buf->flags |= XDRBUF_WRITE;
+>  		break;
+>  
+>  	case NF4BLK: case NF4CHR:
+> diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+> index 2e721f2..64fc4b4 100644
+> --- a/net/sunrpc/xprtrdma/rpc_rdma.c
+> +++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+> @@ -484,21 +484,24 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
+>  	 *
+>  	 * o If the total request is under the inline threshold, all ops
+>  	 *   are sent as inline.
+> -	 * o Large non-write ops are sent with the entire message as a
+> -	 *   single read chunk (protocol 0-position special case).
+>  	 * o Large write ops transmit data as read chunk(s), header as
+>  	 *   inline.
+> +	 * o Large non-write ops are sent with the entire message as a
+> +	 *   single read chunk (protocol 0-position special case).
+>  	 *
+> -	 * Note: the NFS code sending down multiple argument segments
+> -	 * implies the op is a write.
+> -	 * TBD check NFSv4 setacl
+> +	 * This assumes that the upper layer does not present a request
+> +	 * that both has a data payload, and whose non-data arguments
+> +	 * by themselves are larger than the inline threshold.
+>  	 */
+> -	if (rpcrdma_args_inline(rqst))
+> +	if (rpcrdma_args_inline(rqst)) {
+>  		rtype = rpcrdma_noch;
+> -	else if (rqst->rq_snd_buf.page_len == 0)
+> -		rtype = rpcrdma_areadch;
+> -	else
+> +	} else if (rqst->rq_snd_buf.flags & XDRBUF_WRITE) {
+>  		rtype = rpcrdma_readch;
+> +	} else {
+> +		headerp->rm_type = htonl(RDMA_NOMSG);
+> +		rtype = rpcrdma_areadch;
+> +		rpclen = 0;
+> +	}
+>  
+>  	/* The following simplification is not true forever */
+>  	if (rtype != rpcrdma_noch && wtype == rpcrdma_replych)
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
 
