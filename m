@@ -1,66 +1,44 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pd0-f179.google.com ([209.85.192.179]:34116 "EHLO
-	mail-pd0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751843AbbGNOL2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Jul 2015 10:11:28 -0400
-Received: by pdbep18 with SMTP id ep18so6908059pdb.1
-        for <linux-nfs@vger.kernel.org>; Tue, 14 Jul 2015 07:11:27 -0700 (PDT)
-Message-ID: <55A51887.1050605@gmail.com>
-Date: Tue, 14 Jul 2015 22:11:19 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
+Received: from mx1.redhat.com ([209.132.183.28]:59488 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751777AbbGNOcO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 14 Jul 2015 10:32:14 -0400
+Message-ID: <55A51D6C.2010802@RedHat.com>
+Date: Tue, 14 Jul 2015 10:32:12 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-To: Steve Dickson <SteveD@redhat.com>
-CC: Christoph Hellwig <hch@infradead.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        kinglongmee@gmail.com
-Subject: [PATCH v4] blkmapd: Skip the SCSI ID if data length is zero
-References: <55A2FEE4.6030201@gmail.com> <20150713064216.GA31842@infradead.org> <55A375A1.4000800@gmail.com> <20150713090142.GA28557@infradead.org> <55A380A5.20009@gmail.com> <55A38C1C.3030600@gmail.com> <20150714071537.GB31117@infradead.org>
-In-Reply-To: <20150714071537.GB31117@infradead.org>
+To: Calvin Walton <calvin.walton@kepstin.ca>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfs-utils: Substitute sbindir in systemd unit files.
+References: <1429638029-13637-1-git-send-email-calvin.walton@kepstin.ca> <1429638223-13852-1-git-send-email-calvin.walton@kepstin.ca>
+In-Reply-To: <1429638223-13852-1-git-send-email-calvin.walton@kepstin.ca>
 Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In vmware linux, the iscsi device contains more than one SCSI ID,
-and the second one's data length is zero.
+Hello Calivn,
 
-If there are two iSCSI devices with the second SCSI ID's data length
-is zero, the first iSCSI device will record with an invalid SCSI ID
-as zero length, the second one will be treat as the first one for
-the SCSI ID is zero length too.
+I'm finally getting back to take a look at this...
 
-It means the only the first iSCSI device is exist in blkmapd's cache,
-the request for the second iSCSI device will failed as,
+On 04/21/2015 01:43 PM, Calvin Walton wrote:
+> The systemd unit files now include the correct full paths to the
+> executables when nfs-utils is configured with an alternate value
+> for e.g. --prefix or --sbindir
+> 
+> Signed-off-by: Calvin Walton <calvin.walton@kepstin.ca>
+> ---
+> 
+> Resend of the same patch, but this time generated with -M so the diff
+> includes file moves; this should make it a bit easier to review.
+I see what your are trying to do... Make the systemd scripts
+use @sbindir@ instead of a hard coded '/usr/sbin/' which 
+is fine. To do this you are renaming all the systemd 
+scripts to .in systemd scripts. 
 
-"blkmapd: Could not find disk for device" and,
-"bl_resolve_deviceid failed to decode device: 2".
+But what I'm missing is what actually generates the 
+systemd scripts with the correct path names?
 
-v2, update comments
-v3, add a comment in the code
-v4, update comment as Christoph's suggestion
+Since you took out the install-data-hook: rule from
+the Makefile.am file, when I do a make install none
+of the scripts get installed.... 
 
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
----
- utils/blkmapd/device-inq.c | 7 +++++++
- 1 file changed, 7 insertions(+)
-
-diff --git a/utils/blkmapd/device-inq.c b/utils/blkmapd/device-inq.c
-index 6b56b67..5c258bd 100644
---- a/utils/blkmapd/device-inq.c
-+++ b/utils/blkmapd/device-inq.c
-@@ -198,6 +198,13 @@ struct bl_serial *bldev_read_serial(int fd, const char *filename)
- 		dev_id = (struct bl_dev_id *)&(dev_root->data[pos]);
- 		pos += (dev_id->len + devid_len);
- 
-+		/* Some buggy targets (e.g. VMWare) export zero length
-+		 * EVPD pages, skip them to not confuse the device id
-+		 * cache.
-+		 */
-+		if (!dev_id->len)
-+			continue;
-+
- 		if ((dev_id->ids & 0xf) < current_id)
- 			continue;
- 		switch (dev_id->ids & 0xf) {
--- 
-2.4.3
-
+steved.
