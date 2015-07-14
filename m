@@ -1,68 +1,61 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:46570 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751644AbbGNOya (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 14 Jul 2015 10:54:30 -0400
-Message-ID: <55A522A5.40501@RedHat.com>
-Date: Tue, 14 Jul 2015 10:54:29 -0400
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Kinglong Mee <kinglongmee@gmail.com>
-CC: Christoph Hellwig <hch@infradead.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v4] blkmapd: Skip the SCSI ID if data length is zero
-References: <55A2FEE4.6030201@gmail.com> <20150713064216.GA31842@infradead.org> <55A375A1.4000800@gmail.com> <20150713090142.GA28557@infradead.org> <55A380A5.20009@gmail.com> <55A38C1C.3030600@gmail.com> <20150714071537.GB31117@infradead.org> <55A51887.1050605@gmail.com>
-In-Reply-To: <55A51887.1050605@gmail.com>
-Content-Type: text/plain; charset=windows-1252
+Received: from mail-ie0-f170.google.com ([209.85.223.170]:36252 "EHLO
+	mail-ie0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751719AbbGNPWw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Jul 2015 11:22:52 -0400
+Received: by ieik3 with SMTP id k3so13724716iei.3
+        for <linux-nfs@vger.kernel.org>; Tue, 14 Jul 2015 08:22:51 -0700 (PDT)
+Message-ID: <1436887369.25203.12.camel@kepstin.ca>
+Subject: Re: [PATCH] nfs-utils: Substitute sbindir in systemd unit files.
+From: Calvin Walton <calvin.walton@kepstin.ca>
+To: Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org
+Date: Tue, 14 Jul 2015 11:22:49 -0400
+In-Reply-To: <55A51D6C.2010802@RedHat.com>
+References: <1429638029-13637-1-git-send-email-calvin.walton@kepstin.ca>
+	 <1429638223-13852-1-git-send-email-calvin.walton@kepstin.ca>
+	 <55A51D6C.2010802@RedHat.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
+On Tue, 2015-07-14 at 10:32 -0400, Steve Dickson wrote:
+> Hello Calivn,
+> 
+> I'm finally getting back to take a look at this...
+> 
+> I see what your are trying to do... Make the systemd scripts
+> use @sbindir@ instead of a hard coded '/usr/sbin/' which 
+> is fine. To do this you are renaming all the systemd 
+> scripts to .in systemd scripts. 
 
-On 07/14/2015 10:11 AM, Kinglong Mee wrote:
-> In vmware linux, the iscsi device contains more than one SCSI ID,
-> and the second one's data length is zero.
-> 
-> If there are two iSCSI devices with the second SCSI ID's data length
-> is zero, the first iSCSI device will record with an invalid SCSI ID
-> as zero length, the second one will be treat as the first one for
-> the SCSI ID is zero length too.
-> 
-> It means the only the first iSCSI device is exist in blkmapd's cache,
-> the request for the second iSCSI device will failed as,
-> 
-> "blkmapd: Could not find disk for device" and,
-> "bl_resolve_deviceid failed to decode device: 2".
-> 
-> v2, update comments
-> v3, add a comment in the code
-> v4, update comment as Christoph's suggestion
-> 
-> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
-> ---
->  utils/blkmapd/device-inq.c | 7 +++++++
->  1 file changed, 7 insertions(+)
-> 
-> diff --git a/utils/blkmapd/device-inq.c b/utils/blkmapd/device-inq.c
-> index 6b56b67..5c258bd 100644
-> --- a/utils/blkmapd/device-inq.c
-> +++ b/utils/blkmapd/device-inq.c
-> @@ -198,6 +198,13 @@ struct bl_serial *bldev_read_serial(int fd, const char *filename)
->  		dev_id = (struct bl_dev_id *)&(dev_root->data[pos]);
->  		pos += (dev_id->len + devid_len);
->  
-> +		/* Some buggy targets (e.g. VMWare) export zero length
-> +		 * EVPD pages, skip them to not confuse the device id
-> +		 * cache.
-> +		 */
-I'll take care of this comment... No need to re-post. 
+Not all of them, there's a few I left untouched because they didn't
+need any directory substitutions.
 
-steved.
+> But what I'm missing is what actually generates the 
+> systemd scripts with the correct path names?
 
-> +		if (!dev_id->len)
-> +			continue;
-> +
->  		if ((dev_id->ids & 0xf) < current_id)
->  			continue;
->  		switch (dev_id->ids & 0xf) {
-> 
+At the bottom of the systemd/Makefile.am file, a rule is added to
+generate a ".service" file from a ".service.in" file, which gets called
+automatically by make to generate the files listed in the unit_DATA
+variable.
+
+> Since you took out the install-data-hook: rule from
+> the Makefile.am file, when I do a make install none
+> of the scripts get installed.... 
+
+Hmm. I took a look at this; the files don't get installed unless you
+pass "--with-systemd=/usr/lib/systemd/system" (or the equivalent path
+on your system). In particular, using "--with-systemd" with no
+parameter won't work, since they'll get installed to the directory
+"yes" (i.e. the value of the --with-systemd parameter).
+
+This is the same behaviour as before my patch, but it could be improved
+by reworking the configure script a bit (in particular, using pkg
+-config to ask for the system default systemd unit directory).
+
+Do you still want the patches split up between the Makefile changes and
+each individual modified unit file?
+
+-- 
+Calvin Walton <calvin.walton@kepstin.ca>
