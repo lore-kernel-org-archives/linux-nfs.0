@@ -1,71 +1,53 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:59596 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752014AbbGNPgg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 14 Jul 2015 11:36:36 -0400
-Message-ID: <55A52C83.7040501@RedHat.com>
-Date: Tue, 14 Jul 2015 11:36:35 -0400
-From: Steve Dickson <SteveD@redhat.com>
+Received: from bombadil.infradead.org ([198.137.202.9]:56031 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752038AbbGNPkg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Jul 2015 11:40:36 -0400
+Date: Tue, 14 Jul 2015 08:40:31 -0700
+From: "'Christoph Hellwig'" <hch@infradead.org>
+To: Sagi Grimberg <sagig@dev.mellanox.co.il>
+Cc: "'Christoph Hellwig'" <hch@infradead.org>, Tom Talpey <tom@talpey.com>,
+        Jason Gunthorpe <jgunthorpe@obsidianresearch.com>,
+        Steve Wise <swise@opengridcomputing.com>, dledford@redhat.com,
+        sagig@mellanox.com, ogerlitz@mellanox.com, roid@mellanox.com,
+        linux-rdma@vger.kernel.org, eli@mellanox.com,
+        target-devel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        trond.myklebust@primarydata.com, bfields@fieldses.org,
+        Oren Duer <oren@mellanox.com>
+Subject: Re: [PATCH V3 1/5] RDMA/core: Transport-independent access flags
+Message-ID: <20150714154031.GD11026@infradead.org>
+References: <559CD174.4040901@dev.mellanox.co.il>
+ <20150708190842.GB11740@obsidianresearch.com>
+ <559D983D.6000804@talpey.com>
+ <20150708233604.GA20765@obsidianresearch.com>
+ <559E54AB.2010905@dev.mellanox.co.il>
+ <20150709170142.GA21921@obsidianresearch.com>
+ <20150711102538.GB14741@infradead.org>
+ <55A4134C.2040301@talpey.com>
+ <20150714073756.GB7630@infradead.org>
+ <55A4D4C6.6040907@dev.mellanox.co.il>
 MIME-Version: 1.0
-To: Calvin Walton <calvin.walton@kepstin.ca>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfs-utils: Substitute sbindir in systemd unit files.
-References: <1429638029-13637-1-git-send-email-calvin.walton@kepstin.ca>	 <1429638223-13852-1-git-send-email-calvin.walton@kepstin.ca>	 <55A51D6C.2010802@RedHat.com> <1436887369.25203.12.camel@kepstin.ca>
-In-Reply-To: <1436887369.25203.12.camel@kepstin.ca>
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <55A4D4C6.6040907@dev.mellanox.co.il>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
+On Tue, Jul 14, 2015 at 12:22:14PM +0300, Sagi Grimberg wrote:
+> It's better if you want it fast. I can't stress it enough, but IMO, the
+> fallback should *not* be in the API, but rather in the ULP.
+> Ideally, at some point it won't need to fall back, and we can remove
+> the API.
 
-On 07/14/2015 11:22 AM, Calvin Walton wrote:
-> On Tue, 2015-07-14 at 10:32 -0400, Steve Dickson wrote:
->> Hello Calivn,
->>
->> I'm finally getting back to take a look at this...
->>
->> I see what your are trying to do... Make the systemd scripts
->> use @sbindir@ instead of a hard coded '/usr/sbin/' which 
->> is fine. To do this you are renaming all the systemd 
->> scripts to .in systemd scripts. 
-> 
-> Not all of them, there's a few I left untouched because they didn't
-> need any directory substitutions.
-> 
->> But what I'm missing is what actually generates the 
->> systemd scripts with the correct path names?
-> 
-> At the bottom of the systemd/Makefile.am file, a rule is added to
-> generate a ".service" file from a ".service.in" file, which gets called
-> automatically by make to generate the files listed in the unit_DATA
-> variable.
-> 
->> Since you took out the install-data-hook: rule from
->> the Makefile.am file, when I do a make install none
->> of the scripts get installed.... 
-> 
-> Hmm. I took a look at this; the files don't get installed unless you
-> pass "--with-systemd=/usr/lib/systemd/system" (or the equivalent path
-> on your system). In particular, using "--with-systemd" with no
-> parameter won't work, since they'll get installed to the directory
-> "yes" (i.e. the value of the --with-systemd parameter).
-I see this... using --with-systemd does get the files created
-and installed. 
+But if all driver need to impement the same dispatch between
+FR/FMR/ALLPHYS and having similar fast path hacks something is wrong.
 
-> 
-> This is the same behaviour as before my patch, but it could be improved
-> by reworking the configure script a bit (in particular, using pkg
-> -config to ask for the system default systemd unit directory).
-It would be nice if the files got created and install by 
-default (aka not having to specify --with-systemd) and 
-not created/install when --without-systemd is used (which
-does happen now).
+Maybe we should start but just implementing the helper you suggest in
+separae FR/FMR/ALLPHYS handlers while phasing out hacks like use
+ALLPHYS for single segment registrations or if other registrations
+fail.  And as a second step we can decide if their are similar enough
+to consolidate them, or if we should simply kick out FMR and/or ALLPHYS
+and thus not support any in-kernel consumers for old HCAs.
 
-> 
-> Do you still want the patches split up between the Makefile changes and
-> each individual modified unit file?
-> 
-No I'm good... just fix the default part and re-post... 
-
-tia!
-
-steved
+n the meantime let's kick off the now aready unuses memwindow in-kernel
+API (I fear the userlevel one will have to stay forever) and the
+about to be unused by proper in-kernel code PHYS MRs.
