@@ -1,41 +1,37 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:38855 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752089AbbGNOfR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 14 Jul 2015 10:35:17 -0400
-Message-ID: <55A51E24.6000502@RedHat.com>
-Date: Tue, 14 Jul 2015 10:35:16 -0400
-From: Steve Dickson <SteveD@redhat.com>
+Received: from smtp.opengridcomputing.com ([72.48.136.20]:35544 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751644AbbGNOpn (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Jul 2015 10:45:43 -0400
+From: "Steve Wise" <swise@opengridcomputing.com>
+To: "'Sagi Grimberg'" <sagig@dev.mellanox.co.il>,
+        "'Christoph Hellwig'" <hch@infradead.org>,
+        "'Tom Talpey'" <tom@talpey.com>
+Cc: "'Jason Gunthorpe'" <jgunthorpe@obsidianresearch.com>,
+        <dledford@redhat.com>, <sagig@mellanox.com>, <ogerlitz@mellanox.com>,
+        <roid@mellanox.com>, <linux-rdma@vger.kernel.org>, <eli@mellanox.com>,
+        <target-devel@vger.kernel.org>, <linux-nfs@vger.kernel.org>,
+        <trond.myklebust@primarydata.com>, <bfields@fieldses.org>,
+        "'Oren Duer'" <oren@mellanox.com>
+References: <559BFE03.4020709@dev.mellanox.co.il> <20150707213628.GA5661@obsidianresearch.com> <559CD174.4040901@dev.mellanox.co.il> <20150708190842.GB11740@obsidianresearch.com> <559D983D.6000804@talpey.com> <20150708233604.GA20765@obsidianresearch.com> <559E54AB.2010905@dev.mellanox.co.il> <20150709170142.GA21921@obsidianresearch.com> <20150711102538.GB14741@infradead.org> <55A4134C.2040301@talpey.com> <20150714073756.GB7630@infradead.org> <55A4D4C6.6040907@dev.mellanox.co.il>
+In-Reply-To: <55A4D4C6.6040907@dev.mellanox.co.il>
+Subject: RE: [PATCH V3 1/5] RDMA/core: Transport-independent access flags
+Date: Tue, 14 Jul 2015 09:45:45 -0500
+Message-ID: <001601d0be43$c41c0000$4c540000$@opengridcomputing.com>
 MIME-Version: 1.0
-To: Christoph Hellwig <hch@infradead.org>,
-        Kinglong Mee <kinglongmee@gmail.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v3] blkmapd: Skip the SCSI ID if data length is zero
-References: <55A2FEE4.6030201@gmail.com> <20150713064216.GA31842@infradead.org> <55A375A1.4000800@gmail.com> <20150713090142.GA28557@infradead.org> <55A380A5.20009@gmail.com> <55A38C1C.3030600@gmail.com> <20150714071537.GB31117@infradead.org>
-In-Reply-To: <20150714071537.GB31117@infradead.org>
-Content-Type: text/plain; charset=windows-1252
+Content-Type: text/plain;
+	charset="us-ascii"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
+> 
+> I'm willing to add a proper memory_registration.txt under
+> Documentation/infiniband/ which would capture the items that
+> were brought up here.
+>
 
-On 07/14/2015 03:15 AM, Christoph Hellwig wrote:
->> +		/* Needs an SCSI ID with unique date not zero length */
->> +		if (!dev_id->len)
->> +			continue;
-> 
-> That explains what the code does, not why it does so.
-> 
-> How about:
-> 
-> 		/*
-> 		 * Some buggy targets (e.g. VMWare) export zero length
-> 		 * EVPD pages, skip them to not confuse the device id
-> 		 * cache.
-> 		 */
-> 
-I'm not a big fan of calling out vendors in comments. I'm thinking
-dropping the "buggy" and "(e.g. VMWare)" would be appropriated.
-
-steved.
+This would be great.  Documentation/infiniband is very sparse...
  
+
+
