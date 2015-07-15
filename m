@@ -1,83 +1,108 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([198.137.202.9]:47264 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752193AbbGOGvH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Jul 2015 02:51:07 -0400
-Date: Tue, 14 Jul 2015 23:50:57 -0700
-From: "'Christoph Hellwig'" <hch@infradead.org>
-To: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
-Cc: "'Christoph Hellwig'" <hch@infradead.org>,
-        Steve Wise <swise@opengridcomputing.com>,
-        "'Sagi Grimberg'" <sagig@dev.mellanox.co.il>,
-        "'Steve Wise'" <swise@ogc.us>, "'Tom Talpey'" <tom@talpey.com>,
-        "'Doug Ledford'" <dledford@redhat.com>, sagig@mellanox.com,
-        ogerlitz@mellanox.com, roid@mellanox.com, linux-rdma@vger.kernel.org,
-        eli@mellanox.com, target-devel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, trond.myklebust@primarydata.com,
-        bfields@fieldses.org, "'Oren Duer'" <oren@mellanox.com>
-Subject: Re: [PATCH V3 1/5] RDMA/core: Transport-independent access flags
-Message-ID: <20150715065057.GA22113@infradead.org>
-References: <20150709225306.GA30741@obsidianresearch.com>
- <559FC710.1050307@talpey.com>
- <20150710161108.GA19042@obsidianresearch.com>
- <CCB6E837-88FF-4DBB-976D-4CF56396A1A1@ogc.us>
- <55A24571.60902@dev.mellanox.co.il>
- <00e201d0be6a$e49bc910$add35b30$@opengridcomputing.com>
- <20150714192941.GA26292@obsidianresearch.com>
- <00e401d0be6b$d3952750$7abf75f0$@opengridcomputing.com>
- <20150714195511.GB7716@infradead.org>
- <20150714202943.GB26927@obsidianresearch.com>
+Received: from cantor2.suse.de ([195.135.220.15]:45324 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752170AbbGOGv1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 15 Jul 2015 02:51:27 -0400
+Date: Wed, 15 Jul 2015 16:51:13 +1000
+From: NeilBrown <neilb@suse.com>
+To: Al Viro <viro@ZenIV.linux.org.uk>
+Cc: Kinglong Mee <kinglongmee@gmail.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        linux-fsdevel@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: Re: [PATCH 10/10 v7] nfsd: Allows user un-mounting filesystem where
+ nfsd exports base on
+Message-ID: <20150715165113.5e8b3fa2@noble>
+In-Reply-To: <20150715045756.GS17109@ZenIV.linux.org.uk>
+References: <55A111A8.2040701@gmail.com>
+	<20150713133934.6a4ef77d@noble>
+	<20150713142059.493a790e@noble>
+	<20150713044553.GN17109@ZenIV.linux.org.uk>
+	<20150713152133.571e0cb7@noble>
+	<20150713160243.6173a214@noble>
+	<20150713060802.GP17109@ZenIV.linux.org.uk>
+	<20150713163201.0e5eaf23@noble>
+	<20150713064353.GQ17109@ZenIV.linux.org.uk>
+	<20150715134948.3ebd0a70@noble>
+	<20150715045756.GS17109@ZenIV.linux.org.uk>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20150714202943.GB26927@obsidianresearch.com>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jul 14, 2015 at 02:29:43PM -0600, Jason Gunthorpe wrote:
-> local_dma_lkey appears to be global, it works with any PD.
+On Wed, 15 Jul 2015 05:57:56 +0100 Al Viro <viro@ZenIV.linux.org.uk>
+wrote:
+
+> On Wed, Jul 15, 2015 at 01:49:48PM +1000, NeilBrown wrote:
 > 
-> ib_get_dma_mr is tied to a PD, so it cannot replace local_dma_lkey at
-> the struct device level.
+> > > In any case, you have two possibilities - explicit unexport triggering that
+> > > dput(), etc. and umount(2) triggering the same.  Whoever comes second gets
+> > > to wait until it's done.  So why not make the point where we commit to
+> > > unexporting the sucker the place where we do pin_kill()?  And have ->kill()
+> > > of that thing prevent appearance of new entries, then wait for them to run
+> > > down.  Which is precisely the same thing you want to happen on umount...
+> > 
+> > The "wait for them to run down" part is the sticking point.  We don't
+> > have any easy way to wait for there to be no more references, so I'd
+> > really like to use the waiting that pin_kill() already does.
 > 
-> ib_alloc_pd is the in-kernel entry point, the UAPI calls
-> device->alloc_pd directly.. So how about the below patch as a starting
-> point?
-
-This looks perfect to me.  After this we can get rid of the
-ib_get_dma_mr calls outside of ib_alloc_pd, and eventuall move
-setting up ->local_dma_lkey into the HW driver and kill of
-ib_get_dma_mr, IB_DEVICE_LOCAL_DMA_LKEY and device->local_dma_lkey.
-
-> >  (2) now ULD can check for IB_DEVICE_LOCAL_DMA_LKEY and use local_dma_lkey
-> >      in that case, or will have to perform a per-IO MR with LOCAL and
-> >      REMOTE flags if not
+> > I want the ->kill function to just unhash the cache entry, and then
+> > wait for pin_delete() to be called.
 > 
-> If we do the above all ULPs simply use pd->local_dma_lkey and we drop
-> correct uses of ib_get_dma_mr completely ?
+> pin_remove, presumably?
 
-Yes, please, although:
+Presumably, yes.
 
-> >  (3) remove insecure remote uses of ib_get_dma_mr from ULDs
-
-I kept this separate as the I suspect the "optimizations" using 
-ib_get_dma_mr with remote flags will warrant a separate discussion.
-
-> >From 5a9799bf487d822daae5a8b8f3b197f1dda1db45 Mon Sep 17 00:00:00 2001
-> From: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
-> Date: Tue, 14 Jul 2015 14:27:37 -0600
-> Subject: [PATCH] IB/core: Guarantee that a local_dma_lkey is available
 > 
-> Every single ULP requires a local_dma_lkey to do anything with
-> a QP, so lets us ensure one exists for every PD created.
+> > The final 'put' on the cache entry calls dput on the dentry and then
+> > pin_remove().
+> > 
+> > The ->kill function can wait for that to happen by calling pin_kill().
 > 
-> If the driver can supply a global local_dma_lkey then use that, otherwise
-> ask the driver to create a local use all physical memory MR associated
-> with the new PD.
+> > I guess there is no real need for a return value from pin_remove().
+> > 
+> > So
+> >   static void expkey_pin_kill(struct fs_pin *pin)
+> >   {
+> >      struct svc_expkey *key = container_of(pin, ....);
+> > 
+> >      cache_delete_entry(key->cd, &key->h);
 > 
-> Signed-off-by: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
+> 
+> ... and another CPU drops the last reference, freeing the sucker.
+
+*That's* why I wanted pin_remove to return something.
+
+Why didn't you like that option again?
+
+To recap:
+pin_remove does:
+
+  tmp = pin->done;
+  pin->done = 1;
+  ...
+  return tmp;
+
+path_put_unpin() returns the return value of pin_remove()
+
+expkey_put() does:
+   auth_domain_put(key->ek_client);
+   if (test some bits)
+       if (path_put_unpin() < 0)
+          /* pin_kill has taken over */
+          return
+   kfree_rcu(key, rcu_head);
+}
+
+and expkey_pin_kill() does:
+
+   cache_delete_entry(key->cd, &key->h);
+   pin_kill(&key->ek_pin);
+   kfee_rcu(key, rcu_head);
+}
 
 
-Acked-by: Christoph Hellwig <hch@lst.de>
+Thanks,
+NeilBrown
 
-(especially together with patches removing all other callsites of
-"ib_get_dma_mr(pd, IB_ACCESS_LOCAL_WRITE)".
