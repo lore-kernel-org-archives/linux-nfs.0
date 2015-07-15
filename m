@@ -1,71 +1,83 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from zeniv.linux.org.uk ([195.92.253.2]:42454 "EHLO
-	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751800AbbGOE6B (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Jul 2015 00:58:01 -0400
-Date: Wed, 15 Jul 2015 05:57:56 +0100
-From: Al Viro <viro@ZenIV.linux.org.uk>
-To: NeilBrown <neilb@suse.com>
-Cc: Kinglong Mee <kinglongmee@gmail.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        linux-fsdevel@vger.kernel.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: Re: [PATCH 10/10 v7] nfsd: Allows user un-mounting filesystem where
- nfsd exports base on
-Message-ID: <20150715045756.GS17109@ZenIV.linux.org.uk>
-References: <55A111A8.2040701@gmail.com>
- <20150713133934.6a4ef77d@noble>
- <20150713142059.493a790e@noble>
- <20150713044553.GN17109@ZenIV.linux.org.uk>
- <20150713152133.571e0cb7@noble>
- <20150713160243.6173a214@noble>
- <20150713060802.GP17109@ZenIV.linux.org.uk>
- <20150713163201.0e5eaf23@noble>
- <20150713064353.GQ17109@ZenIV.linux.org.uk>
- <20150715134948.3ebd0a70@noble>
+Received: from bombadil.infradead.org ([198.137.202.9]:47264 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752193AbbGOGvH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Jul 2015 02:51:07 -0400
+Date: Tue, 14 Jul 2015 23:50:57 -0700
+From: "'Christoph Hellwig'" <hch@infradead.org>
+To: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
+Cc: "'Christoph Hellwig'" <hch@infradead.org>,
+        Steve Wise <swise@opengridcomputing.com>,
+        "'Sagi Grimberg'" <sagig@dev.mellanox.co.il>,
+        "'Steve Wise'" <swise@ogc.us>, "'Tom Talpey'" <tom@talpey.com>,
+        "'Doug Ledford'" <dledford@redhat.com>, sagig@mellanox.com,
+        ogerlitz@mellanox.com, roid@mellanox.com, linux-rdma@vger.kernel.org,
+        eli@mellanox.com, target-devel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, trond.myklebust@primarydata.com,
+        bfields@fieldses.org, "'Oren Duer'" <oren@mellanox.com>
+Subject: Re: [PATCH V3 1/5] RDMA/core: Transport-independent access flags
+Message-ID: <20150715065057.GA22113@infradead.org>
+References: <20150709225306.GA30741@obsidianresearch.com>
+ <559FC710.1050307@talpey.com>
+ <20150710161108.GA19042@obsidianresearch.com>
+ <CCB6E837-88FF-4DBB-976D-4CF56396A1A1@ogc.us>
+ <55A24571.60902@dev.mellanox.co.il>
+ <00e201d0be6a$e49bc910$add35b30$@opengridcomputing.com>
+ <20150714192941.GA26292@obsidianresearch.com>
+ <00e401d0be6b$d3952750$7abf75f0$@opengridcomputing.com>
+ <20150714195511.GB7716@infradead.org>
+ <20150714202943.GB26927@obsidianresearch.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20150715134948.3ebd0a70@noble>
+In-Reply-To: <20150714202943.GB26927@obsidianresearch.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jul 15, 2015 at 01:49:48PM +1000, NeilBrown wrote:
-
-> > In any case, you have two possibilities - explicit unexport triggering that
-> > dput(), etc. and umount(2) triggering the same.  Whoever comes second gets
-> > to wait until it's done.  So why not make the point where we commit to
-> > unexporting the sucker the place where we do pin_kill()?  And have ->kill()
-> > of that thing prevent appearance of new entries, then wait for them to run
-> > down.  Which is precisely the same thing you want to happen on umount...
+On Tue, Jul 14, 2015 at 02:29:43PM -0600, Jason Gunthorpe wrote:
+> local_dma_lkey appears to be global, it works with any PD.
 > 
-> The "wait for them to run down" part is the sticking point.  We don't
-> have any easy way to wait for there to be no more references, so I'd
-> really like to use the waiting that pin_kill() already does.
-
-> I want the ->kill function to just unhash the cache entry, and then
-> wait for pin_delete() to be called.
-
-pin_remove, presumably?
-
-> The final 'put' on the cache entry calls dput on the dentry and then
-> pin_remove().
+> ib_get_dma_mr is tied to a PD, so it cannot replace local_dma_lkey at
+> the struct device level.
 > 
-> The ->kill function can wait for that to happen by calling pin_kill().
+> ib_alloc_pd is the in-kernel entry point, the UAPI calls
+> device->alloc_pd directly.. So how about the below patch as a starting
+> point?
 
-> I guess there is no real need for a return value from pin_remove().
+This looks perfect to me.  After this we can get rid of the
+ib_get_dma_mr calls outside of ib_alloc_pd, and eventuall move
+setting up ->local_dma_lkey into the HW driver and kill of
+ib_get_dma_mr, IB_DEVICE_LOCAL_DMA_LKEY and device->local_dma_lkey.
+
+> >  (2) now ULD can check for IB_DEVICE_LOCAL_DMA_LKEY and use local_dma_lkey
+> >      in that case, or will have to perform a per-IO MR with LOCAL and
+> >      REMOTE flags if not
 > 
-> So
->   static void expkey_pin_kill(struct fs_pin *pin)
->   {
->      struct svc_expkey *key = container_of(pin, ....);
+> If we do the above all ULPs simply use pd->local_dma_lkey and we drop
+> correct uses of ib_get_dma_mr completely ?
+
+Yes, please, although:
+
+> >  (3) remove insecure remote uses of ib_get_dma_mr from ULDs
+
+I kept this separate as the I suspect the "optimizations" using 
+ib_get_dma_mr with remote flags will warrant a separate discussion.
+
+> >From 5a9799bf487d822daae5a8b8f3b197f1dda1db45 Mon Sep 17 00:00:00 2001
+> From: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
+> Date: Tue, 14 Jul 2015 14:27:37 -0600
+> Subject: [PATCH] IB/core: Guarantee that a local_dma_lkey is available
 > 
->      cache_delete_entry(key->cd, &key->h);
+> Every single ULP requires a local_dma_lkey to do anything with
+> a QP, so lets us ensure one exists for every PD created.
+> 
+> If the driver can supply a global local_dma_lkey then use that, otherwise
+> ask the driver to create a local use all physical memory MR associated
+> with the new PD.
+> 
+> Signed-off-by: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
 
 
-... and another CPU drops the last reference, freeing the sucker.
+Acked-by: Christoph Hellwig <hch@lst.de>
 
->      pin_kill(&key->ek_pin); /* recursive call will wait for
->                               * pin_delete() to be called */
-
-... oopsing on the spot.
+(especially together with patches removing all other callsites of
+"ib_get_dma_mr(pd, IB_ACCESS_LOCAL_WRITE)".
