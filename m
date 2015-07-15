@@ -1,55 +1,61 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([198.137.202.9]:46847 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752825AbbGOMTh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Jul 2015 08:19:37 -0400
-Date: Wed, 15 Jul 2015 05:19:26 -0700
-From: "'Christoph Hellwig'" <hch@infradead.org>
-To: Sagi Grimberg <sagig@dev.mellanox.co.il>
-Cc: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>,
-        "'Christoph Hellwig'" <hch@infradead.org>,
-        Steve Wise <swise@opengridcomputing.com>,
-        "'Steve Wise'" <swise@ogc.us>, "'Tom Talpey'" <tom@talpey.com>,
-        "'Doug Ledford'" <dledford@redhat.com>, sagig@mellanox.com,
-        ogerlitz@mellanox.com, roid@mellanox.com, linux-rdma@vger.kernel.org,
-        eli@mellanox.com, target-devel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, trond.myklebust@primarydata.com,
-        bfields@fieldses.org, "'Oren Duer'" <oren@mellanox.com>
-Subject: Re: [PATCH V3 1/5] RDMA/core: Transport-independent access flags
-Message-ID: <20150715121926.GB14993@infradead.org>
-References: <559FC710.1050307@talpey.com>
- <20150710161108.GA19042@obsidianresearch.com>
- <CCB6E837-88FF-4DBB-976D-4CF56396A1A1@ogc.us>
- <55A24571.60902@dev.mellanox.co.il>
- <00e201d0be6a$e49bc910$add35b30$@opengridcomputing.com>
- <20150714192941.GA26292@obsidianresearch.com>
- <00e401d0be6b$d3952750$7abf75f0$@opengridcomputing.com>
- <20150714195511.GB7716@infradead.org>
- <20150714202943.GB26927@obsidianresearch.com>
- <55A61E38.20201@dev.mellanox.co.il>
+Received: from fieldses.org ([173.255.197.46]:34940 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751863AbbGOPDL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 15 Jul 2015 11:03:11 -0400
+Date: Wed, 15 Jul 2015 11:03:11 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Kinglong Mee <kinglongmee@gmail.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 01/14] nfsd: Add layouts checking for state resources
+Message-ID: <20150715150311.GA19616@fieldses.org>
+References: <55A384B1.8030207@gmail.com>
+ <55A384DD.1000800@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <55A61E38.20201@dev.mellanox.co.il>
+In-Reply-To: <55A384DD.1000800@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jul 15, 2015 at 11:47:52AM +0300, Sagi Grimberg wrote:
-> >  struct ib_pd *ib_alloc_pd(struct ib_device *device)
-> >  {
-> >  	struct ib_pd *pd;
-> >+	struct ib_device_attr devattr;
-> >+	int rc;
-> >+
-> >+	rc = ib_query_device(device, &devattr);
-> >+	if (rc)
-> >+		return ERR_PTR(rc);
+On Mon, Jul 13, 2015 at 05:29:01PM +0800, Kinglong Mee wrote:
+> Layout is a state resource, nfsd should check it too.
 > 
-> Unrelated question,
-> Can we just cache the dev_attr in ib_device already? It's pretty
-> obvious that each consumer that opens a device will automatically
-> query its attributes...
+> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+> ---
+>  fs/nfsd/nfs4state.c | 6 ++++--
+>  1 file changed, 4 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 61dfb33..e0a4556 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -2241,6 +2241,7 @@ static bool client_has_state(struct nfs4_client *clp)
+>  	 * Also note we should probably be using this in 4.0 case too.
+>  	 */
+>  	return !list_empty(&clp->cl_openowners)
+> +		|| !list_empty(&clp->cl_lo_states)
+>  		|| !list_empty(&clp->cl_delegations)
+>  		|| !list_empty(&clp->cl_sessions);
+>  }
+> @@ -4257,8 +4258,9 @@ nfsd4_renew(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  		goto out;
+>  	clp = cstate->clp;
+>  	status = nfserr_cb_path_down;
+> -	if (!list_empty(&clp->cl_delegations)
+> -			&& clp->cl_cb_state != NFSD4_CB_UP)
+> +	if ((!list_empty(&clp->cl_delegations)
+> +	     || !list_empty(&clp->cl_lo_states))
 
-Instead of caching it I'd suggest to kill ib_device_attr and move
-the field into struct ib_device, similar to how all major kernel
-subsystems work.  Otherwise fully agreed.
+nfsd4_renew is NFSv4.0 only, so I don't think this part is necessary.
 
+That said, it's harmless--why don't we just call client_has_state() here
+instead?
+
+--b.
+
+> +	    && clp->cl_cb_state != NFSD4_CB_UP)
+>  		goto out;
+>  	status = nfs_ok;
+>  out:
+> -- 
+> 2.4.3
