@@ -1,102 +1,55 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:27126 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751923AbbGOLNT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Jul 2015 07:13:19 -0400
-Date: Wed, 15 Jul 2015 14:13:06 +0300
-From: Dan Carpenter <dan.carpenter@oracle.com>
-To: hch@lst.de
-Cc: linux-nfs@vger.kernel.org
-Subject: re: pnfs/blocklayout: allocate separate pages for the layoutcommit
- payload
-Message-ID: <20150715111305.GA16569@mwanda>
+Received: from bombadil.infradead.org ([198.137.202.9]:46847 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752825AbbGOMTh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Jul 2015 08:19:37 -0400
+Date: Wed, 15 Jul 2015 05:19:26 -0700
+From: "'Christoph Hellwig'" <hch@infradead.org>
+To: Sagi Grimberg <sagig@dev.mellanox.co.il>
+Cc: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>,
+        "'Christoph Hellwig'" <hch@infradead.org>,
+        Steve Wise <swise@opengridcomputing.com>,
+        "'Steve Wise'" <swise@ogc.us>, "'Tom Talpey'" <tom@talpey.com>,
+        "'Doug Ledford'" <dledford@redhat.com>, sagig@mellanox.com,
+        ogerlitz@mellanox.com, roid@mellanox.com, linux-rdma@vger.kernel.org,
+        eli@mellanox.com, target-devel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, trond.myklebust@primarydata.com,
+        bfields@fieldses.org, "'Oren Duer'" <oren@mellanox.com>
+Subject: Re: [PATCH V3 1/5] RDMA/core: Transport-independent access flags
+Message-ID: <20150715121926.GB14993@infradead.org>
+References: <559FC710.1050307@talpey.com>
+ <20150710161108.GA19042@obsidianresearch.com>
+ <CCB6E837-88FF-4DBB-976D-4CF56396A1A1@ogc.us>
+ <55A24571.60902@dev.mellanox.co.il>
+ <00e201d0be6a$e49bc910$add35b30$@opengridcomputing.com>
+ <20150714192941.GA26292@obsidianresearch.com>
+ <00e401d0be6b$d3952750$7abf75f0$@opengridcomputing.com>
+ <20150714195511.GB7716@infradead.org>
+ <20150714202943.GB26927@obsidianresearch.com>
+ <55A61E38.20201@dev.mellanox.co.il>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <55A61E38.20201@dev.mellanox.co.il>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello Christoph Hellwig,
+On Wed, Jul 15, 2015 at 11:47:52AM +0300, Sagi Grimberg wrote:
+> >  struct ib_pd *ib_alloc_pd(struct ib_device *device)
+> >  {
+> >  	struct ib_pd *pd;
+> >+	struct ib_device_attr devattr;
+> >+	int rc;
+> >+
+> >+	rc = ib_query_device(device, &devattr);
+> >+	if (rc)
+> >+		return ERR_PTR(rc);
+> 
+> Unrelated question,
+> Can we just cache the dev_attr in ib_device already? It's pretty
+> obvious that each consumer that opens a device will automatically
+> query its attributes...
 
-This is old, and since no one has complained it's probably not a bug
-but suspicious enough that I wanted to double check.
+Instead of caching it I'd suggest to kill ib_device_attr and move
+the field into struct ib_device, similar to how all major kernel
+subsystems work.  Otherwise fully agreed.
 
-The patch 34dc93c2fc04: "pnfs/blocklayout: allocate separate pages
-for the layoutcommit payload" from Sep 10, 2014, leads to the
-following static checker warning:
-
-	fs/nfs/blocklayout/extent_tree.c:559 ext_tree_prepare_commit()
-	warn: potential pointer math issue ('start_p' is a pointer to 'unsigned int')
-
-fs/nfs/blocklayout/extent_tree.c
-   512  int
-   513  ext_tree_prepare_commit(struct nfs4_layoutcommit_args *arg)
-   514  {
-   515          struct pnfs_block_layout *bl = BLK_LO2EXT(NFS_I(arg->inode)->layout);
-   516          size_t count = 0, buffer_size = PAGE_SIZE;
-   517          __be32 *start_p;
-                ^^^^^^^^^^^^^^^
-Declared here.
-
-   518          int ret;
-   519  
-   520          dprintk("%s enter\n", __func__);
-   521  
-   522          arg->layoutupdate_page = alloc_page(GFP_NOFS);
-   523          if (!arg->layoutupdate_page)
-   524                  return -ENOMEM;
-   525          start_p = page_address(arg->layoutupdate_page);
-   526          arg->layoutupdate_pages = &arg->layoutupdate_page;
-   527  
-   528  retry:
-   529          ret = ext_tree_encode_commit(bl, start_p + 1, buffer_size, &count);
-   530          if (unlikely(ret)) {
-   531                  ext_tree_free_commitdata(arg, buffer_size);
-   532  
-   533                  buffer_size = sizeof(__be32) + BL_EXTENT_SIZE * count;
-   534                  count = 0;
-   535  
-   536                  arg->layoutupdate_pages =
-   537                          kcalloc(DIV_ROUND_UP(buffer_size, PAGE_SIZE),
-   538                                  sizeof(struct page *), GFP_NOFS);
-   539                  if (!arg->layoutupdate_pages)
-   540                          return -ENOMEM;
-   541  
-   542                  start_p = __vmalloc(buffer_size, GFP_NOFS, PAGE_KERNEL);
-   543                  if (!start_p) {
-   544                          kfree(arg->layoutupdate_pages);
-   545                          return -ENOMEM;
-   546                  }
-   547  
-   548                  goto retry;
-   549          }
-   550  
-   551          *start_p = cpu_to_be32(count);
-   552          arg->layoutupdate_len = sizeof(__be32) + BL_EXTENT_SIZE * count;
-                ^^^^^^^^^^^^^^^^^^^^^
-->layoutupdate_len is the size in bytes
-
-   553  
-   554          if (unlikely(arg->layoutupdate_pages != &arg->layoutupdate_page)) {
-   555                  __be32 *p = start_p;
-   556                  int i = 0;
-   557  
-   558                  for (p = start_p;
-   559                       p < start_p + arg->layoutupdate_len;
-   560                       p += PAGE_SIZE) {
-                             ^^^^^^^^^^^^^^
-Since "p" is also a pointer to unsigned int, it means we iterate the
-correct number of times.
-
-   561                          arg->layoutupdate_pages[i++] = vmalloc_to_page(p);
-
-But it's possible that we are using the wrong value for "p" here.
-
-   562                  }
-   563          }
-   564  
-   565          dprintk("%s found %zu ranges\n", __func__, count);
-   566          return 0;
-   567  }
-
-regards,
-dan carpenter
