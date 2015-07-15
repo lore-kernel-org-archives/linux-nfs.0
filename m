@@ -1,61 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:34940 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751863AbbGOPDL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 15 Jul 2015 11:03:11 -0400
-Date: Wed, 15 Jul 2015 11:03:11 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 01/14] nfsd: Add layouts checking for state resources
-Message-ID: <20150715150311.GA19616@fieldses.org>
-References: <55A384B1.8030207@gmail.com>
- <55A384DD.1000800@gmail.com>
+Received: from mail-la0-f46.google.com ([209.85.215.46]:33051 "EHLO
+	mail-la0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752390AbbGOS0R (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Jul 2015 14:26:17 -0400
+Received: by laem6 with SMTP id m6so29863812lae.0
+        for <linux-nfs@vger.kernel.org>; Wed, 15 Jul 2015 11:26:15 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <55A384DD.1000800@gmail.com>
+In-Reply-To: <ED80C587-DFC7-4E4A-95E4-3ACBEC078D86@oracle.com>
+References: <20150713160617.17630.97475.stgit@manet.1015granger.net>
+	<20150713163048.17630.86326.stgit@manet.1015granger.net>
+	<55A55C63.50403@talpey.com>
+	<ED80C587-DFC7-4E4A-95E4-3ACBEC078D86@oracle.com>
+Date: Wed, 15 Jul 2015 23:56:15 +0530
+Message-ID: <CANjDDBgLX9pBWv5Jt6YwMFhRULWgfjSJNOvwa8L6kwkykRbnRw@mail.gmail.com>
+Subject: Re: [PATCH v2 07/14] xprtrdma: Remove logic that constructs RDMA_MSGP
+ type calls
+From: Devesh Sharma <devesh.sharma@avagotech.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Tom Talpey <tom@talpey.com>, linux-rdma@vger.kernel.org,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jul 13, 2015 at 05:29:01PM +0800, Kinglong Mee wrote:
-> Layout is a state resource, nfsd should check it too.
-> 
-> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
-> ---
->  fs/nfsd/nfs4state.c | 6 ++++--
->  1 file changed, 4 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 61dfb33..e0a4556 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -2241,6 +2241,7 @@ static bool client_has_state(struct nfs4_client *clp)
->  	 * Also note we should probably be using this in 4.0 case too.
->  	 */
->  	return !list_empty(&clp->cl_openowners)
-> +		|| !list_empty(&clp->cl_lo_states)
->  		|| !list_empty(&clp->cl_delegations)
->  		|| !list_empty(&clp->cl_sessions);
->  }
-> @@ -4257,8 +4258,9 @@ nfsd4_renew(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->  		goto out;
->  	clp = cstate->clp;
->  	status = nfserr_cb_path_down;
-> -	if (!list_empty(&clp->cl_delegations)
-> -			&& clp->cl_cb_state != NFSD4_CB_UP)
-> +	if ((!list_empty(&clp->cl_delegations)
-> +	     || !list_empty(&clp->cl_lo_states))
+with MAX_IOVS set to 2 iozone passes with ocrdma device. My testing
+includes both the series of svcrdma and xprtrdma.
 
-nfsd4_renew is NFSv4.0 only, so I don't think this part is necessary.
-
-That said, it's harmless--why don't we just call client_has_state() here
-instead?
-
---b.
-
-> +	    && clp->cl_cb_state != NFSD4_CB_UP)
->  		goto out;
->  	status = nfs_ok;
->  out:
-> -- 
-> 2.4.3
+On Wed, Jul 15, 2015 at 12:31 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>
+> On Jul 14, 2015, at 3:00 PM, Tom Talpey <tom@talpey.com> wrote:
+>
+>> On 7/13/2015 12:30 PM, Chuck Lever wrote:
+>>> RDMA_MSGP type calls insert a zero pad in the middle of the RPC
+>>> message to align the RPC request's data payload to the server's
+>>> alignment preferences. A server can then "page flip" the payload
+>>> into place to avoid a data copy in certain circumstances. However:
+>>> ...
+>>>
+>>> Clean up the marshaling code by removing the logic that constructs
+>>> RDMA_MSGP type calls. This also reduces the maximum send iovec size
+>>> from four to just two elements.
+>>>
+>>
+>>> diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+>>> index 8219011..0b50103 100644
+>>> --- a/net/sunrpc/xprtrdma/xprt_rdma.h
+>>> +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+>> ...>
+>>> +#define RPCRDMA_MAX_IOVS    (4)
+>>> +
+>>
+>> So, shouldn't this constant be "2"? The extra 2 iov's were used
+>> only for constructing the pad.
+>
+> Yes, thanks. I folded a couple of patches together into this
+> one, and forgot to update the constant.
+>
+>
+> --
+> Chuck Lever
+>
+>
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
