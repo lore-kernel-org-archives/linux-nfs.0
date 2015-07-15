@@ -1,60 +1,117 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from quartz.orcorp.ca ([184.70.90.242]:43703 "EHLO quartz.orcorp.ca"
+Received: from cantor2.suse.de ([195.135.220.15]:38471 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752781AbbGNVOM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 14 Jul 2015 17:14:12 -0400
-Date: Tue, 14 Jul 2015 15:14:00 -0600
-From: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
-To: Steve Wise <swise@opengridcomputing.com>
-Cc: "'Christoph Hellwig'" <hch@infradead.org>,
-        "'Sagi Grimberg'" <sagig@dev.mellanox.co.il>,
-        "'Steve Wise'" <swise@ogc.us>, "'Tom Talpey'" <tom@talpey.com>,
-        "'Doug Ledford'" <dledford@redhat.com>, sagig@mellanox.com,
-        ogerlitz@mellanox.com, roid@mellanox.com, linux-rdma@vger.kernel.org,
-        eli@mellanox.com, target-devel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, trond.myklebust@primarydata.com,
-        bfields@fieldses.org, "'Oren Duer'" <oren@mellanox.com>
-Subject: Re: [PATCH V3 1/5] RDMA/core: Transport-independent access flags
-Message-ID: <20150714211400.GA21502@obsidianresearch.com>
-References: <559FC710.1050307@talpey.com>
- <20150710161108.GA19042@obsidianresearch.com>
- <CCB6E837-88FF-4DBB-976D-4CF56396A1A1@ogc.us>
- <55A24571.60902@dev.mellanox.co.il>
- <00e201d0be6a$e49bc910$add35b30$@opengridcomputing.com>
- <20150714194512.GA25887@infradead.org>
- <00f901d0be6f$70c96b00$525c4100$@opengridcomputing.com>
- <20150714204145.GC26927@obsidianresearch.com>
- <010c01d0be76$dbb4c520$931e4f60$@opengridcomputing.com>
- <011001d0be78$32412ef0$96c38cd0$@opengridcomputing.com>
+	id S1751793AbbGODt7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 14 Jul 2015 23:49:59 -0400
+Date: Wed, 15 Jul 2015 13:49:48 +1000
+From: NeilBrown <neilb@suse.com>
+To: Al Viro <viro@ZenIV.linux.org.uk>
+Cc: Kinglong Mee <kinglongmee@gmail.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        linux-fsdevel@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: Re: [PATCH 10/10 v7] nfsd: Allows user un-mounting filesystem where
+ nfsd exports base on
+Message-ID: <20150715134948.3ebd0a70@noble>
+In-Reply-To: <20150713064353.GQ17109@ZenIV.linux.org.uk>
+References: <55A11010.6050005@gmail.com>
+ <55A111A8.2040701@gmail.com>
+ <20150713133934.6a4ef77d@noble>
+ <20150713142059.493a790e@noble>
+ <20150713044553.GN17109@ZenIV.linux.org.uk>
+ <20150713152133.571e0cb7@noble>
+ <20150713160243.6173a214@noble>
+ <20150713060802.GP17109@ZenIV.linux.org.uk>
+ <20150713163201.0e5eaf23@noble>
+ <20150713064353.GQ17109@ZenIV.linux.org.uk>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <011001d0be78$32412ef0$96c38cd0$@opengridcomputing.com>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jul 14, 2015 at 04:01:04PM -0500, Steve Wise wrote:
+On Mon, 13 Jul 2015 07:43:53 +0100 Al Viro <viro@ZenIV.linux.org.uk>
+wrote:
 
-> > Right, a local_dma_lkey is not an rkey, and iwarp requires the
-> > rkey for the read destination MR.  Further that rkey needs
-> > REMOTE_WRITE.
+> On Mon, Jul 13, 2015 at 04:32:01PM +1000, NeilBrown wrote:
+> > pin_remove() disconnects the pinning thing (sunrpc cache entry in this
+> > case) from the pinned thing (vfsmnt in this case).
+> > After it has run the pinned thing can do whatever it likes without any
+> > reference to the pinning thing, and the pinning thing just needs to wait
+> > an RCU grace period, and then can do whatever it likes.
+> > 
+> > The "cleanup" is, in this case, just a call to rcu_kfree().  There is
+> > no need for umount(2) to wait for it.
+> > 
+> > 
+> > Certainly any state that the pinning structure has that relates to the
+> > pinned structure must be cleaned up before calling pin_remove, so for
+> > example dput() must be called on path.dentry *before* pin_remove is
+> > called on path.mnt.  But other parts of the pinning structure can be
+> > handled as its owner chooses.
 > 
-> BTW: What use is an IB rkey with no REMOTE_ flags set?  Can it be
-> used somehow differently than the associated lkey?
+> Then what's the difference between that and what's getting done in ->kill()
+> triggered by cleanup_mnt()?
 
-Don't think so. Sagi?
+Uhm... probably nothing.  I'm not sure what you are getting at.
+I just need to do it at a different time to cleanup_mnt(), but also to
+be aware that doing it might race with clean_mnt().
 
-This looks like it is just an artifact of the sloppy API that treats a
-rkey MR and lkey MR as the same thing - they are clearly not, and we
-should start talking about APIs that return lkeys or rkeys, never both
-(and enforcing that lkey and rkey MRS have the right ACCESS flags).
 
-Having looked at this for a bit now, I am of the view that it is very
-hard to use a MR as both rkey and lkey without creating some kind of
-security problem. At least every place in current ULPs that does this
-is a security problem :) So the API should prevent it, IMHO.
+> 
+> In any case, you have two possibilities - explicit unexport triggering that
+> dput(), etc. and umount(2) triggering the same.  Whoever comes second gets
+> to wait until it's done.  So why not make the point where we commit to
+> unexporting the sucker the place where we do pin_kill()?  And have ->kill()
+> of that thing prevent appearance of new entries, then wait for them to run
+> down.  Which is precisely the same thing you want to happen on umount...
 
-local_dma_lkey is an excellent step, and if Sagi's MR unification
-patch is careful to have a lkey/rkey API entry point for the two
-usages we can maybe nuke this problem for good...
+The "wait for them to run down" part is the sticking point.  We don't
+have any easy way to wait for there to be no more references, so I'd
+really like to use the waiting that pin_kill() already does.
 
-Jason
+I want the ->kill function to just unhash the cache entry, and then
+wait for pin_delete() to be called.
+
+The final 'put' on the cache entry calls dput on the dentry and then
+pin_remove().
+
+The ->kill function can wait for that to happen by calling pin_kill().
+
+I guess there is no real need for a return value from pin_remove().
+
+So
+  static void expkey_pin_kill(struct fs_pin *pin)
+  {
+     struct svc_expkey *key = container_of(pin, ....);
+
+     cache_delete_entry(key->cd, &key->h);
+     pin_kill(&key->ek_pin); /* recursive call will wait for
+                              * pin_delete() to be called */
+  }
+
+and static void expkey_put(struct kref *ref)
+    {
+        struct svc_expkey *key = container_of(ref, ....); 
+
+        auth_domain_put(key->ek_client);
+        if (test_bit(CACHE_VALID, &key->h.flags) &&
+            !test_bit(CACHE_NEGATIVE, &key->h.flags))
+               path_put_unpin(&key->ek_path, &key->ek_pin);
+        kfree_rcu(key, rcu_head):
+    }
+
+We ensure that no new references are taken by svc_expkey_lookup()
+calling legitimize_mntget() and returning NULL if that fails.
+It should probably call cache_delete_entry() when that happens just to
+be on the safe side.
+cache_delete_entry() must check if the object is still in the hash
+table before deleting it.
+
+So I think it can work nicely without any changes to the fs_pin code.
+
+Can you see any further problems?
+
+Thanks,
+NeilBrown
+
