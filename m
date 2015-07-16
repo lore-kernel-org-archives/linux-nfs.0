@@ -1,68 +1,90 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:35704 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752150AbbGPUvt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 16 Jul 2015 16:51:49 -0400
-Date: Thu, 16 Jul 2015 16:51:48 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: NeilBrown <neilb@suse.com>
-Cc: Kinglong Mee <kinglongmee@gmail.com>, Al Viro <viro@zeniv.linux.org.uk>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        linux-fsdevel@vger.kernel.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: Re: [PATCH 10/10 v7] nfsd: Allows user un-mounting filesystem where
- nfsd exports base on
-Message-ID: <20150716205148.GC10673@fieldses.org>
-References: <55A11010.6050005@gmail.com>
- <55A111A8.2040701@gmail.com>
- <20150713133934.6a4ef77d@noble>
- <20150715210756.GE21669@fieldses.org>
- <20150716094046.445c038b@noble>
+Received: from mail-wi0-f176.google.com ([209.85.212.176]:35606 "EHLO
+	mail-wi0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752235AbbGPWF6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Jul 2015 18:05:58 -0400
+Received: by wibxm9 with SMTP id xm9so24716186wib.0
+        for <linux-nfs@vger.kernel.org>; Thu, 16 Jul 2015 15:05:56 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20150716094046.445c038b@noble>
+In-Reply-To: <CAEMJtDuOopoSUJup0Ux5myGOT0dCZG7=4Mu7f0K-gMStbNYhoA@mail.gmail.com>
+References: <CAEMJtDuOopoSUJup0Ux5myGOT0dCZG7=4Mu7f0K-gMStbNYhoA@mail.gmail.com>
+Date: Thu, 16 Jul 2015 15:05:56 -0700
+Message-ID: <CAEMJtDsF5Af3SH=wExbTL1OpkLoOeHTnr5_eBtUdemhjeXG40g@mail.gmail.com>
+Subject: Re: NFSv4 mount with fsid=0, clients CentOS6/7 show different mounts
+From: Steve Dainard <sdainard@spd1.com>
+To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jul 16, 2015 at 09:40:46AM +1000, NeilBrown wrote:
-> On Wed, 15 Jul 2015 17:07:56 -0400 "J. Bruce Fields"
-> <bfields@fieldses.org> wrote:
-> 
-> > > Wow.... this is turning out to be a lot more complex that I imagined at
-> > > first (isn't that always the way!).
-> > > 
-> > > There is a lot of good stuff here, but I think we can probably make it
-> > > simpler and so even better.
-> > 
-> > I'm still not convinced that the expkey
+Hello
 
-(Sorry, I meant an entry in the export cache, not the expkey cache.)
+I'm using CentOS 7 to export multiple filesystems under a root
+filesystem with fsid=0.
 
-> should have a dentry reference
-> > in the key in the first place.  Fixing that would fix the immediate
-> > problem.
-> 
-> ???  If we removed the dentry, how would you export a subdirectory of a
-> filesystem?
+eg:
+/etc/exports:
+/datasets    10.0.231.0/255.255.255.0(rw,fsid=0,no_root_squash,no_subtree_check)
+/datasets/home 10.0.231.0/255.255.255.0(rw,no_subtree_check,no_root_squash,no_subtree_check)
 
-I've been wondering if the export cache should really be keyed on the
-string representation of the path instead of the struct path.  That's
-what the userspace interface uses.
 
-There's a related bug: if there are mountpoints at both /a and /a/b,
-then thanks to the lookup-underneath-mountpoint behavior of the server,
-an NFSv3 client looking that up will end up going underneath the first
-mountpoint and doing an export cache lookup for
+On a CentOS 7 client, a mount command will show the NFS servers /
+(fsid=0) location. If I then descend into a subdirectory on the client
+side, the mount command will show that subdirectory mounted as well.
+This is very useful as df -h commands will show the different server
+filesystems free space.
 
-	(vfsmnt, dentry) == (/, /a/b)
+eg:
+/etc/fstab:
+10.0.231.56:/    /datasets    nfs    bg    0 0
 
-When the server gets a response that starts with "/a/b", it interprets
-that as applying to the path (/a, /a/b), so doesn't recognize it as
-resolving the query about (/, /a/b).
+# mount:
+10.0.231.56:/      6.8G  2.4G  4.4G  36% /datasets
 
-Well, at least I assume that's why I see "ls" hang if I run "ls
-/mnt/a/b" on the client.  And there may be some better fix, but I always
-figured the root (hah) problem here was due to indexing the cache on
-struct path while the upcall interface uses the full path string.
+# cd /datasets/home
 
---b.
+# mount
+10.0.231.56:/ on /datasets type nfs4
+(rw,relatime,vers=4.0,rsize=524288,wsize=524288,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=sys,clientaddr=10.0.231.205,local_lock=none,addr=10.0.231.56)
+
+10.0.231.56:/home on /datasets/home type nfs4
+(rw,relatime,vers=4.0,rsize=524288,wsize=524288,namlen=255,hard,proto=tcp,port=0,timeo=600,retrans=2,sec=sys,clientaddr=10.0.231.205,local_lock=none,addr=10.0.231.56)
+
+# df -h
+10.0.231.56:/      6.8G  2.4G  4.4G  36% /datasets
+10.0.231.56:/home  6.9T  507G  6.4T   8% /datasets/home
+
+
+On a CentOS 6.6 client, a mount command will only show the NFS
+server / (fsid=0) location mounted. After descending into a subdirectory on
+the client side, no change is shown with the mount command. Obviously
+this is then an issue when trying to see what the filesystems
+freespace under the NFS servers / (fsid=0) location is.
+
+eg:
+/etc/fstab:
+10.0.231.56:/    /datasets    nfs4    bg    0 0
+
+# mount:
+10.0.231.56:/ on /datasets type nfs4
+(rw,bg,addr=10.0.231.56,clientaddr=10.0.231.218)
+
+# cd /datasets/home
+
+# mount:
+10.0.231.56:/ on /datasets type nfs4
+(rw,bg,addr=10.0.231.56,clientaddr=10.0.231.218)
+
+# df -h
+10.0.231.56:/   6.8G  2.4G  4.4G  36% /datasets
+
+
+
+I've looked through the man pages but don't see any options that would
+make CentOS 6.6 show all the NFS subdirectory mountpoints.
+
+Is this just a difference between NFS client versions on CentOS 6 vs
+7? Any suggestions on how to deal with this?
+
+Thanks,
+Steve
