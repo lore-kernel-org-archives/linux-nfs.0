@@ -1,12 +1,13 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from quartz.orcorp.ca ([184.70.90.242]:38599 "EHLO quartz.orcorp.ca"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754001AbbGPGmI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 16 Jul 2015 02:42:08 -0400
-Date: Thu, 16 Jul 2015 00:41:41 -0600
-From: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
-To: "'Christoph Hellwig'" <hch@infradead.org>
-Cc: Steve Wise <swise@opengridcomputing.com>,
+Received: from bombadil.infradead.org ([198.137.202.9]:52225 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753147AbbGPIEH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Jul 2015 04:04:07 -0400
+Date: Thu, 16 Jul 2015 01:04:02 -0700
+From: "'Christoph Hellwig'" <hch@infradead.org>
+To: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
+Cc: "'Christoph Hellwig'" <hch@infradead.org>,
+        Steve Wise <swise@opengridcomputing.com>,
         "'Sagi Grimberg'" <sagig@dev.mellanox.co.il>,
         "'Steve Wise'" <swise@ogc.us>, "'Tom Talpey'" <tom@talpey.com>,
         "'Doug Ledford'" <dledford@redhat.com>, sagig@mellanox.com,
@@ -15,7 +16,7 @@ Cc: Steve Wise <swise@opengridcomputing.com>,
         linux-nfs@vger.kernel.org, trond.myklebust@primarydata.com,
         bfields@fieldses.org, "'Oren Duer'" <oren@mellanox.com>
 Subject: Re: [PATCH V3 1/5] RDMA/core: Transport-independent access flags
-Message-ID: <20150716064141.GA29049@obsidianresearch.com>
+Message-ID: <20150716080402.GC9093@infradead.org>
 References: <20150710161108.GA19042@obsidianresearch.com>
  <CCB6E837-88FF-4DBB-976D-4CF56396A1A1@ogc.us>
  <55A24571.60902@dev.mellanox.co.il>
@@ -33,27 +34,19 @@ Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 On Wed, Jul 15, 2015 at 01:12:57PM -0600, Jason Gunthorpe wrote:
+> > This looks perfect to me.  After this we can get rid of the
+> > ib_get_dma_mr calls outside of ib_alloc_pd, and eventuall move
+> > setting up ->local_dma_lkey into the HW driver and kill of
+> > ib_get_dma_mr, IB_DEVICE_LOCAL_DMA_LKEY and device->local_dma_lkey.
+> 
+> Just for clarity, again, we can never do this.
+> 
+> device->local_dma_lkey requires dedicated hardware support. We cannot
+> create it in software on old hardware. The only option I see is the
+> different-for-every-PD solution in my patch.
 
-> I might find time to type this in, but I won't be able to find time to
-> do any testing on the ULPs..
+I don't see how my sentence above contradicts this.
 
-Here is the typing, I'll look more carefully at it later and send it
-via email:
-
-https://github.com/jgunthorpe/linux/commits/remove-ib_get_dma_mr
-
-Jason Gunthorpe (9):
-      IB/core: Guarantee that a local_dma_lkey is available
-      IB/mad: Remove ib_get_dma_mr calls
-      IB/ipoib: Remove ib_get_dma_mr calls
-      IB/mlx4: Remove ib_get_dma_mr calls
-      IB/mlx5: Remove ib_get_dma_mr calls
-      iser-target: Remove ib_get_dma_mr calls
-      ib_srpt: Remove ib_get_dma_mr calls
-      net/9p: Remove ib_get_dma_mr calls
-      rds/ib: Remove ib_get_dma_mr calls
-
-The remaining calls are more complex as they are opening remote
-writable physical windows.
-
-Jason
+One we use pd->local_dma_lkey everywhere, we can kill of
+device->local_dma_lkey as an API - drivers either stick it straight
+into pd->local_dma_lkey or do the internal equivalent of ib_get_dma_mr.
