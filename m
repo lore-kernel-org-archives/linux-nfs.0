@@ -1,13 +1,13 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f180.google.com ([209.85.220.180]:36324 "EHLO
-	mail-qk0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755295AbbGTTEM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Jul 2015 15:04:12 -0400
-Subject: [PATCH v3 11/15] xprtrdma: Fix XDR tail buffer marshalling
+Received: from mail-qk0-f177.google.com ([209.85.220.177]:35623 "EHLO
+	mail-qk0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755295AbbGTTEV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Jul 2015 15:04:21 -0400
+Subject: [PATCH v3 12/15] xprtrdma: Fix large NFS SYMLINK calls
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 20 Jul 2015 15:04:08 -0400
-Message-ID: <20150720190408.10997.72742.stgit@manet.1015granger.net>
+Date: Mon, 20 Jul 2015 15:04:18 -0400
+Message-ID: <20150720190418.10997.84886.stgit@manet.1015granger.net>
 In-Reply-To: <20150720185624.10997.51574.stgit@manet.1015granger.net>
 References: <20150720185624.10997.51574.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -15,100 +15,107 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Currently xprtrdma appends an extra chunk element to the RPC/RDMA
-read chunk list of each NFSv4 WRITE compound. The extra element
-contains the final GETATTR operation in the compound.
+Repair how rpcrdma_marshal_req() chooses which RDMA message type
+to use for large non-WRITE operations so that it picks RDMA_NOMSG
+in the correct situations, and sets up the marshaling logic to
+SEND only the RPC/RDMA header.
 
-The result is an extra RDMA READ operation to transfer a very short
-piece of each NFS WRITE compound (typically 16 bytes). This is
-inefficient.
+Large NFSv2 SYMLINK requests now use RDMA_NOMSG calls. The Linux NFS
+server XDR decoder for NFSv2 SYMLINK does not handle having the
+pathname argument arrive in a separate buffer. The decoder could be
+fixed, but this is simpler and RDMA_NOMSG can be used in a variety
+of other situations.
 
-It is also incorrect. Although RFC 5667 is not precise about when
-using a read list with NFSv4 COMPOUND is allowed, the intent is that
-only data arguments not touched by NFS (ie, read and write payloads)
-are to be sent using RDMA READ or WRITE. The NFS client constructs
-GETATTR arguments itself, and therefore is required to send the
-trailing GETATTR operation as additional inline content, not as a
-data payload.
+Ensure that the Linux client continues to use "RDMA_MSG + read
+list" when sending large NFSv3 SYMLINK requests, which is more
+efficient than using RDMA_NOMSG.
 
-NB: This change is not backwards compatible. Some older servers do
-not accept inline content following the read list. The Linux NFS
-server should handle this content correctly as of commit
-a97c331f9aa9 ("svcrdma: Handle additional inline content").
+Large NFSv4 CREATE(NF4LNK) requests are changed to use "RDMA_MSG +
+read list" just like NFSv3 (see Section 5 of RFC 5667). Before,
+these did not work at all.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 Tested-by: Devesh Sharma <devesh.sharma@avagotech.com>
 ---
- net/sunrpc/xprtrdma/rpc_rdma.c |   44 ++++++++++++++++++++++++++++++++++++++--
- 1 file changed, 42 insertions(+), 2 deletions(-)
+ fs/nfs/nfs3xdr.c               |    1 +
+ fs/nfs/nfs4xdr.c               |    4 +++-
+ net/sunrpc/xprtrdma/rpc_rdma.c |   25 ++++++++++++++++---------
+ 3 files changed, 20 insertions(+), 10 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index 62150ae..1dd48f2 100644
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -96,6 +96,42 @@ static bool rpcrdma_results_inline(struct rpc_rqst *rqst)
- 	return repsize <= RPCRDMA_INLINE_READ_THRESHOLD(rqst);
+diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
+index 9b04c2e..267126d 100644
+--- a/fs/nfs/nfs3xdr.c
++++ b/fs/nfs/nfs3xdr.c
+@@ -1103,6 +1103,7 @@ static void nfs3_xdr_enc_symlink3args(struct rpc_rqst *req,
+ {
+ 	encode_diropargs3(xdr, args->fromfh, args->fromname, args->fromlen);
+ 	encode_symlinkdata3(xdr, args);
++	xdr->buf->flags |= XDRBUF_WRITE;
  }
  
-+static int
-+rpcrdma_tail_pullup(struct xdr_buf *buf)
-+{
-+	size_t tlen = buf->tail[0].iov_len;
-+	size_t skip = tlen & 3;
-+
-+	/* Do not include the tail if it is only an XDR pad */
-+	if (tlen < 4)
+ /*
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 558cd65d..c42459e 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -1154,7 +1154,9 @@ static void encode_create(struct xdr_stream *xdr, const struct nfs4_create_arg *
+ 	case NF4LNK:
+ 		p = reserve_space(xdr, 4);
+ 		*p = cpu_to_be32(create->u.symlink.len);
+-		xdr_write_pages(xdr, create->u.symlink.pages, 0, create->u.symlink.len);
++		xdr_write_pages(xdr, create->u.symlink.pages, 0,
++				create->u.symlink.len);
++		xdr->buf->flags |= XDRBUF_WRITE;
+ 		break;
+ 
+ 	case NF4BLK: case NF4CHR:
+diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+index 1dd48f2..2721586 100644
+--- a/net/sunrpc/xprtrdma/rpc_rdma.c
++++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+@@ -475,21 +475,24 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
+ 	 *
+ 	 * o If the total request is under the inline threshold, all ops
+ 	 *   are sent as inline.
+-	 * o Large non-write ops are sent with the entire message as a
+-	 *   single read chunk (protocol 0-position special case).
+ 	 * o Large write ops transmit data as read chunk(s), header as
+ 	 *   inline.
++	 * o Large non-write ops are sent with the entire message as a
++	 *   single read chunk (protocol 0-position special case).
+ 	 *
+-	 * Note: the NFS code sending down multiple argument segments
+-	 * implies the op is a write.
+-	 * TBD check NFSv4 setacl
++	 * This assumes that the upper layer does not present a request
++	 * that both has a data payload, and whose non-data arguments
++	 * by themselves are larger than the inline threshold.
+ 	 */
+-	if (rpcrdma_args_inline(rqst))
++	if (rpcrdma_args_inline(rqst)) {
+ 		rtype = rpcrdma_noch;
+-	else if (rqst->rq_snd_buf.page_len == 0)
+-		rtype = rpcrdma_areadch;
+-	else
++	} else if (rqst->rq_snd_buf.flags & XDRBUF_WRITE) {
+ 		rtype = rpcrdma_readch;
++	} else {
++		headerp->rm_type = htonl(RDMA_NOMSG);
++		rtype = rpcrdma_areadch;
++		rpclen = 0;
++	}
+ 
+ 	/* The following simplification is not true forever */
+ 	if (rtype != rpcrdma_noch && wtype == rpcrdma_replych)
+@@ -546,6 +549,10 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
+ 	req->rl_send_iov[0].length = hdrlen;
+ 	req->rl_send_iov[0].lkey = rdmab_lkey(req->rl_rdmabuf);
+ 
++	req->rl_niovs = 1;
++	if (rtype == rpcrdma_areadch)
 +		return 0;
 +
-+	/* xdr_write_pages() adds a pad at the beginning of the tail
-+	 * if the content in "buf->pages" is unaligned. Force the
-+	 * tail's actual content to land at the next XDR position
-+	 * after the head instead.
-+	 */
-+	if (skip) {
-+		unsigned char *src, *dst;
-+		unsigned int count;
-+
-+		src = buf->tail[0].iov_base;
-+		dst = buf->head[0].iov_base;
-+		dst += buf->head[0].iov_len;
-+
-+		src += skip;
-+		tlen -= skip;
-+
-+		dprintk("RPC:       %s: skip=%zu, memmove(%p, %p, %zu)\n",
-+			__func__, skip, dst, src, tlen);
-+
-+		for (count = tlen; count; count--)
-+			*dst++ = *src++;
-+	}
-+
-+	return tlen;
-+}
-+
- /*
-  * Chunk assembly from upper layer xdr_buf.
-  *
-@@ -147,6 +183,10 @@ rpcrdma_convert_iovs(struct xdr_buf *xdrbuf, unsigned int pos,
- 	if (len && n == nsegs)
- 		return -EIO;
- 
-+	/* When encoding the read list, the tail is always sent inline */
-+	if (type == rpcrdma_readch)
-+		return n;
-+
- 	if (xdrbuf->tail[0].iov_len) {
- 		/* the rpcrdma protocol allows us to omit any trailing
- 		 * xdr pad bytes, saving the server an RDMA operation. */
-@@ -476,8 +516,8 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
- 		headerp->rm_body.rm_nochunks.rm_empty[2] = xdr_zero;
- 		/* new length after pullup */
- 		rpclen = rqst->rq_svec[0].iov_len;
--	}
--
-+	} else if (rtype == rpcrdma_readch)
-+		rpclen += rpcrdma_tail_pullup(&rqst->rq_snd_buf);
- 	if (rtype != rpcrdma_noch) {
- 		hdrlen = rpcrdma_create_chunks(rqst, &rqst->rq_snd_buf,
- 					       headerp, rtype);
+ 	req->rl_send_iov[1].addr = rdmab_addr(req->rl_sendbuf);
+ 	req->rl_send_iov[1].length = rpclen;
+ 	req->rl_send_iov[1].lkey = rdmab_lkey(req->rl_sendbuf);
 
