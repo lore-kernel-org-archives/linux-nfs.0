@@ -1,75 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.opengridcomputing.com ([72.48.136.20]:44323 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752188AbbGTVQ5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Jul 2015 17:16:57 -0400
-From: "Steve Wise" <swise@opengridcomputing.com>
-To: "'Jason Gunthorpe'" <jgunthorpe@obsidianresearch.com>,
-        "'Tom Talpey'" <tom@talpey.com>
-Cc: "'Chuck Lever'" <chuck.lever@oracle.com>, <linux-rdma@vger.kernel.org>,
-        <linux-nfs@vger.kernel.org>
-References: <20150720185624.10997.51574.stgit@manet.1015granger.net> <20150720190311.10997.12636.stgit@manet.1015granger.net> <55AD5B48.3010906@talpey.com> <20150720210544.GA9655@obsidianresearch.com>
-In-Reply-To: <20150720210544.GA9655@obsidianresearch.com>
-Subject: RE: [PATCH v3 05/15] xprtrdma: Remove last ib_reg_phys_mr() call site
-Date: Mon, 20 Jul 2015 16:16:59 -0500
-Message-ID: <015101d0c331$69e31d10$3da95730$@opengridcomputing.com>
+Received: from fieldses.org ([173.255.197.46]:38115 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754048AbbGTVXG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 20 Jul 2015 17:23:06 -0400
+Date: Mon, 20 Jul 2015 17:23:05 -0400
+To: Frank Steiner <fsteiner-mail1@bio.ifi.lmu.de>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: Parallel file locking quite slow with vers=4.0 compared to vers=3
+Message-ID: <20150720212305.GB11050@fieldses.org>
+References: <55ACFF59.7040707@bio.ifi.lmu.de>
 MIME-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <55ACFF59.7040707@bio.ifi.lmu.de>
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-> -----Original Message-----
-> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Jason Gunthorpe
-> Sent: Monday, July 20, 2015 4:06 PM
-> To: Tom Talpey; Steve Wise
-> Cc: Chuck Lever; linux-rdma@vger.kernel.org; linux-nfs@vger.kernel.org
-> Subject: Re: [PATCH v3 05/15] xprtrdma: Remove last ib_reg_phys_mr() call site
+On Mon, Jul 20, 2015 at 04:02:01PM +0200, Frank Steiner wrote:
+> we ran into this when opening about a dozen "xterm ...&"  in an ~/.xinitrc on
+> a diskless client with /var mounted with NFS. The xterms popup one after
+> another and sometimes it takes up to 7 or 8 seconds until they are all
+> available.
 > 
-> On Mon, Jul 20, 2015 at 01:34:16PM -0700, Tom Talpey wrote:
-> > On 7/20/2015 12:03 PM, Chuck Lever wrote:
-> > >All HCA providers have an ib_get_dma_mr() verb. Thus
-> > >rpcrdma_ia_open() will either grab the device's local_dma_key if one
-> > >is available, or it will call ib_get_dma_mr() which is a 100%
-> > >guaranteed fallback.
-> >
-> > I recall that in the past, some providers did not support mapping
-> > all of the machine's potential physical memory with a single dma_mr.
-> > If an rnic did/does not support 44-ish bits of length per region,
-> > for example.
+> This works without any noticeable delay as long as /var was exported/mounted
+> with NFSv3. After switching to NFSv4 the delay showed up. It's caused
+> by the utempter processes called by xterm that are trying to write
+> (and thus lock) to /var/log/wtmp in parallel.
 > 
-> Looks like you are right, but the standard in kernel is to require
-> ib_get_dma_mr, if the HCA can't do that, then it cannot be used on a
-> big memory machine with kernel ULPs.
+> Making some little test with a c program doing nothing but 
+> "fcntl (fd, F_SETLKW, &lck);" with "lck.l_type = F_WRLCK" it turned out
+> that executing ten instances of this program on a NFSv3 share work
+> within one second, while on a NFSv4 share about 5 or 6 return immediately,
+> the remaining finish after up to 3 seconds. The more instances we
+> exec the more are delayed and the delays are getting bigger.
 > 
-> Looking deeper, both amso1100 and cxgb3 seem limited to 32 bits of
-> physical memory, and silently break all kernel ULPs if they are used
-> on a modern machine with > 4G.
+> With NFSv4 shares this always happens.
+> If the server exports with NFSv3, it matters which value for vers= 
+> the client uses. We mounted the same nfs3-export once with "vers=3" 
+> and once with "vers=4.0" on the same client. The test on the vers=3 
+> mount shows no delays even with 20 parallel runs, the vers=4.0 mount 
+> has the delays.
 > 
-> Is that right Steve?
->
+> I guess this is some kind of flodding protection for parallel operations,
+> but can it be tweaked on the server or the client side somehow? Apart
+> from the xinitrc setting we have some other (weird :-)) scenarions where
+> this delay are ugly and we would be happy to get rid of them (while still
+> using NFSv4).
 
-Yes.
- 
-> Based on that, should we remove the cxgb3 driver as well? Or at least
-> can you fix it up to at least fail get_dma_mr if there is too much
-> ram?
-> 
+NFSv4 clients poll for conflicting locks; NFSv3 clients instead wait for
+server callbacks.  That might explain the difference.
 
-I would like to keep cxgb3 around.  I can add code to fail if the memory is > 32b.  Do you know how I get the amount of available
-ram?
+One way to confirm that might be to run client kernels modified to make
+the polling behavior (controlled by
+fs/nfs/nfs4proc.c:nfs4_set_lock_task_retry()) more aggressive, and see
+if that removes the delays in your case.
 
-What is the process again to remove a driver?  I can remove amso...
+If that works, then it might also be worth considering implementing
+CB_NOTIFY_LOCK:
 
+	https://tools.ietf.org/html/rfc5661#page-593
 
- 
-> Everything else looked Ok.
-> 
-> Jason
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
+--b.
