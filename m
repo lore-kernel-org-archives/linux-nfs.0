@@ -1,72 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yk0-f170.google.com ([209.85.160.170]:36388 "EHLO
-	mail-yk0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750727AbbGRMQN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 18 Jul 2015 08:16:13 -0400
-Received: by ykay190 with SMTP id y190so108604930yka.3
-        for <linux-nfs@vger.kernel.org>; Sat, 18 Jul 2015 05:16:13 -0700 (PDT)
-Date: Sat, 18 Jul 2015 08:16:08 -0400
-From: Jeff Layton <jlayton@poochiereds.net>
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfsd: New counter for generating client confirm
- verifier
-Message-ID: <20150718081608.5a92fa6d@tlielax.poochiereds.net>
-In-Reply-To: <55A990CB.6020201@gmail.com>
-References: <55A384B1.8030207@gmail.com>
-	<55A38505.6040405@gmail.com>
-	<20150715204748.GA21669@fieldses.org>
-	<20150715204950.GB21669@fieldses.org>
-	<55A726A0.5090907@gmail.com>
-	<55A72A1F.7060507@gmail.com>
-	<20150717155846.GC6263@fieldses.org>
-	<20150717134243.7bf809fa@tlielax.poochiereds.net>
-	<55A990CB.6020201@gmail.com>
+Received: from acheron.ifi.lmu.de ([129.187.214.135]:38595 "EHLO
+	acheron.ifi.lmu.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751681AbbGTOKL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Jul 2015 10:10:11 -0400
+Received: from [IPv6:2001:4ca0:4000:1011:141:84:1:30] (galois.bio.ifi.lmu.de [IPv6:2001:4ca0:4000:1011:141:84:1:30])
+	(using TLSv1 with cipher DHE-RSA-AES128-SHA (128/128 bits))
+	(No client certificate requested)
+	(Authenticated sender: steiner.bio)
+	by acheron.ifi.lmu.de (Postfix) with ESMTPSA id A006694A204
+	for <linux-nfs@vger.kernel.org>; Mon, 20 Jul 2015 16:02:01 +0200 (CEST)
+Message-ID: <55ACFF59.7040707@bio.ifi.lmu.de>
+Date: Mon, 20 Jul 2015 16:02:01 +0200
+From: Frank Steiner <fsteiner-mail1@bio.ifi.lmu.de>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+To: linux-nfs@vger.kernel.org
+Subject: Parallel file locking quite slow with vers=4.0 compared to vers=3
+Content-Type: text/plain; charset=ISO-8859-15
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, 18 Jul 2015 07:33:31 +0800
-Kinglong Mee <kinglongmee@gmail.com> wrote:
+Hi,
 
-> If using clientid_counter, gen_confirm will generate same verifier
-> in one second.
-> 
-> A new counter for client confirm verifier make sure gen_confirm
-> generating different each calling for the same clientid.
-> 
-> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
-> ---
->  fs/nfsd/netns.h     | 1 +
->  fs/nfsd/nfs4state.c | 2 +-
->  2 files changed, 2 insertions(+), 1 deletion(-)
-> 
-> diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
-> index ea6749a..d8b16c2 100644
-> --- a/fs/nfsd/netns.h
-> +++ b/fs/nfsd/netns.h
-> @@ -110,6 +110,7 @@ struct nfsd_net {
->  	unsigned int max_connections;
->  
->  	u32 clientid_counter;
-> +	u32 clverifier_counter;
->  
->  	struct svc_serv *nfsd_serv;
->  };
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 61dfb33..5a64757e 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -1894,7 +1894,7 @@ static void gen_confirm(struct nfs4_client *clp, struct nfsd_net *nn)
->  	 * __force to keep sparse happy
->  	 */
->  	verf[0] = (__force __be32)get_seconds();
-> -	verf[1] = (__force __be32)nn->clientid_counter;
-> +	verf[1] = (__force __be32)nn->clverifier_counter++;
->  	memcpy(clp->cl_confirm.data, verf, sizeof(clp->cl_confirm.data));
->  }
->  
+we ran into this when opening about a dozen "xterm ...&"  in an ~/.xinitrc on
+a diskless client with /var mounted with NFS. The xterms popup one after
+another and sometimes it takes up to 7 or 8 seconds until they are all
+available.
 
-Reviewed-by: Jeff Layton <jlayton@poochiereds.net>
+This works without any noticeable delay as long as /var was exported/mounted
+with NFSv3. After switching to NFSv4 the delay showed up. It's caused
+by the utempter processes called by xterm that are trying to write
+(and thus lock) to /var/log/wtmp in parallel.
+
+Making some little test with a c program doing nothing but 
+"fcntl (fd, F_SETLKW, &lck);" with "lck.l_type = F_WRLCK" it turned out
+that executing ten instances of this program on a NFSv3 share work
+within one second, while on a NFSv4 share about 5 or 6 return immediately,
+the remaining finish after up to 3 seconds. The more instances we
+exec the more are delayed and the delays are getting bigger.
+
+With NFSv4 shares this always happens.
+If the server exports with NFSv3, it matters which value for vers= 
+the client uses. We mounted the same nfs3-export once with "vers=3" 
+and once with "vers=4.0" on the same client. The test on the vers=3 
+mount shows no delays even with 20 parallel runs, the vers=4.0 mount 
+has the delays.
+
+I guess this is some kind of flodding protection for parallel operations,
+but can it be tweaked on the server or the client side somehow? Apart
+from the xinitrc setting we have some other (weird :-)) scenarions where
+this delay are ugly and we would be happy to get rid of them (while still
+using NFSv4).
+
+cu,
+Frank
+
+-- 
+Dipl.-Inform. Frank Steiner   Web:  http://www.bio.ifi.lmu.de/~steiner/
+Lehrstuhl f. Bioinformatik    Mail: http://www.bio.ifi.lmu.de/~steiner/m/
+LMU, Amalienstr. 17           Phone: +49 89 2180-4049
+80333 Muenchen, Germany       Fax:   +49 89 2180-99-4049
+* Rekursion kann man erst verstehen, wenn man Rekursion verstanden hat. *
