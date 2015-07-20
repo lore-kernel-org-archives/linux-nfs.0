@@ -1,39 +1,89 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.opengridcomputing.com ([72.48.136.20]:43964 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752901AbbGTR1u (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Jul 2015 13:27:50 -0400
-From: "Steve Wise" <swise@opengridcomputing.com>
-To: "'Sagi Grimberg'" <sagig@mellanox.com>, <linux-nfs@vger.kernel.org>,
-        <linux-rdma@vger.kernel.org>
-Cc: "'Chuck Lever'" <chuck.lever@oracle.com>
-References: <1437411614-29722-1-git-send-email-sagig@mellanox.com>
-In-Reply-To: <1437411614-29722-1-git-send-email-sagig@mellanox.com>
-Subject: RE: [PATCH RFC] svcrdma: Fix possible over population fast_reg_page_list
-Date: Mon, 20 Jul 2015 12:27:51 -0500
-Message-ID: <011701d0c311$67d66ab0$37834010$@opengridcomputing.com>
+Received: from mail-qk0-f169.google.com ([209.85.220.169]:34917 "EHLO
+	mail-qk0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754818AbbGTTC1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Jul 2015 15:02:27 -0400
+Subject: [PATCH v3 00/15] NFS/RDMA client side for Linux 4.3
+From: Chuck Lever <chuck.lever@oracle.com>
+To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Mon, 20 Jul 2015 15:02:23 -0400
+Message-ID: <20150720185624.10997.51574.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Several important client-side performance and scalability
+improvements are made in this series, proposed for the 4.3
+kernel, including:
+
+- Increase maximum RPC/RDMA credits to 128
+- Increase maximum NFS/RDMA r/wsize to one megabyte
+- Prefer inline rather than reply chunk replies
+
+And these fixes:
+
+- Send NFSv4 WRITE compounds correctly
+- Support RDMA_NOMSG calls
+- Remove support for RDMA_MSGP calls
+- Fix large NFS symlink operations
+- Get inline threshold accounting right
+
+Also available in the "nfs-rdma-for-4.3" topic branch of this git repo:
+
+git://git.linux-nfs.org/projects/cel/cel-2.6.git
+
+Or for browsing:
+
+http://git.linux-nfs.org/?p=cel/cel-2.6.git;a=log;h=refs/heads/nfs-rdma-for-4.3
 
 
-> -----Original Message-----
-> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Sagi Grimberg
-> Sent: Monday, July 20, 2015 12:00 PM
-> To: linux-nfs@vger.kernel.org; linux-rdma@vger.kernel.org
-> Cc: Chuck Lever; Steve Wise
-> Subject: [PATCH RFC] svcrdma: Fix possible over population fast_reg_page_list
-> 
-> When accounting the needed_pages, we need to look into
-> the page_list->max_page_list_len and not the global
-> context xprt->sc_frmr_pg_list_len.
-> 
-> Signed-off-by: Sagi Grimberg <sagig@mellanox.com>
-
-Reviewed-by: Steve Wise <swise@opengridcomputing.com>
+Changes since v2:
+- Rebased on Linux v4.2-rc3
+- Corrected RPCRDMA_MAX_IOVS macro
+- Included patch to remove core ib_reg_phys_mr() API
 
 
+Changes since v1:
+- Rebased on Linux v4.2-rc2
+- PHYSICAL registration, being insecure, must now be explicitly selected
+- Further clean-ups were done because ib_reg_phys_mr() is gone
+- Support for RDMA_MSGP type calls has been removed
+- Some patch descriptions have been clarified
 
+---
+
+Chuck Lever (15):
+      xprtrdma: Make xprt_setup_rdma() agnostic to family of server address
+      xprtrdma: Raise maximum payload size to one megabyte
+      xprtrdma: Increase default credit limit
+      xprtrdma: Don't fall back to PHYSICAL memory registration
+      xprtrdma: Remove last ib_reg_phys_mr() call site
+      xprtrdma: Clean up rpcrdma_ia_open()
+      xprtrdma: Remove logic that constructs RDMA_MSGP type calls
+      xprtrdma: Account for RPC/RDMA header size when deciding to inline
+      xprtrdma: Always provide a write list when sending NFS READ
+      xprtrdma: Don't provide a reply chunk when expecting a short reply
+      xprtrdma: Fix XDR tail buffer marshalling
+      xprtrdma: Fix large NFS SYMLINK calls
+      xprtrdma: Clean up xprt_rdma_print_stats()
+      xprtrdma: Count RDMA_NOMSG type calls
+      core: Remove the ib_reg_phys_mr() and ib_rereg_phys_mr() verbs
+
+
+ drivers/infiniband/core/verbs.c    |   67 ------------
+ fs/nfs/nfs3xdr.c                   |    1 
+ fs/nfs/nfs4xdr.c                   |    4 +
+ include/linux/sunrpc/xprtrdma.h    |    2 
+ include/rdma/ib_verbs.h            |   46 --------
+ net/sunrpc/xprtrdma/fmr_ops.c      |   19 +++
+ net/sunrpc/xprtrdma/frwr_ops.c     |    5 +
+ net/sunrpc/xprtrdma/physical_ops.c |   25 ++++-
+ net/sunrpc/xprtrdma/rpc_rdma.c     |  197 ++++++++++++++++++------------------
+ net/sunrpc/xprtrdma/transport.c    |   77 ++++++--------
+ net/sunrpc/xprtrdma/verbs.c        |  197 +++++++++---------------------------
+ net/sunrpc/xprtrdma/xprt_rdma.h    |   27 ++---
+ 12 files changed, 252 insertions(+), 415 deletions(-)
+
+--
+Chuck Lever
