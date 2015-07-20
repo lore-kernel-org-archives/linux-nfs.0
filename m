@@ -1,168 +1,210 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qg0-f51.google.com ([209.85.192.51]:33011 "EHLO
-	mail-qg0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752739AbbGTTEu (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Jul 2015 15:04:50 -0400
-Subject: [PATCH v3 15/15] core: Remove the ib_reg_phys_mr() and
- ib_rereg_phys_mr() verbs
-From: Chuck Lever <chuck.lever@oracle.com>
-To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 20 Jul 2015 15:04:46 -0400
-Message-ID: <20150720190446.10997.83633.stgit@manet.1015granger.net>
-In-Reply-To: <20150720185624.10997.51574.stgit@manet.1015granger.net>
+Received: from p3plsmtpa07-08.prod.phx3.secureserver.net ([173.201.192.237]:38506
+	"EHLO p3plsmtpa07-08.prod.phx3.secureserver.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751847AbbGTUds (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Jul 2015 16:33:48 -0400
+Subject: Re: [PATCH v3 05/15] xprtrdma: Remove last ib_reg_phys_mr() call site
+To: Chuck Lever <chuck.lever@oracle.com>, linux-rdma@vger.kernel.org,
+        linux-nfs@vger.kernel.org
 References: <20150720185624.10997.51574.stgit@manet.1015granger.net>
+ <20150720190311.10997.12636.stgit@manet.1015granger.net>
+From: Tom Talpey <tom@talpey.com>
+Message-ID: <55AD5B48.3010906@talpey.com>
+Date: Mon, 20 Jul 2015 13:34:16 -0700
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+In-Reply-To: <20150720190311.10997.12636.stgit@manet.1015granger.net>
+Content-Type: text/plain; charset=utf-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The verbs are obsolete. The ib_rereg_phys_mr() verb is not used by
-kernel ULPs, and the last ib_reg_phys_mr() call site in the kernel
-tree has now been removed.
+On 7/20/2015 12:03 PM, Chuck Lever wrote:
+> All HCA providers have an ib_get_dma_mr() verb. Thus
+> rpcrdma_ia_open() will either grab the device's local_dma_key if one
+> is available, or it will call ib_get_dma_mr() which is a 100%
+> guaranteed fallback.
 
-Two staging tree call sites remain in the Lustre client. The Lustre
-team has been notified of the deprecation of reg_phys_mr.
+I recall that in the past, some providers did not support mapping
+all of the machine's potential physical memory with a single dma_mr.
+If an rnic did/does not support 44-ish bits of length per region,
+for example.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Acked-by: Doug Ledford <dledford@redhat.com>
----
- drivers/infiniband/core/verbs.c |   67 ---------------------------------------
- include/rdma/ib_verbs.h         |   46 ---------------------------
- 2 files changed, 113 deletions(-)
+Have you verified that all current providers do in fact support the
+necessary physical address range for this, and that the requirement
+is stated in the verbs going forward?
 
-diff --git a/drivers/infiniband/core/verbs.c b/drivers/infiniband/core/verbs.c
-index bac3fb4..30eb245 100644
---- a/drivers/infiniband/core/verbs.c
-+++ b/drivers/infiniband/core/verbs.c
-@@ -1144,73 +1144,6 @@ struct ib_mr *ib_get_dma_mr(struct ib_pd *pd, int mr_access_flags)
- }
- EXPORT_SYMBOL(ib_get_dma_mr);
- 
--struct ib_mr *ib_reg_phys_mr(struct ib_pd *pd,
--			     struct ib_phys_buf *phys_buf_array,
--			     int num_phys_buf,
--			     int mr_access_flags,
--			     u64 *iova_start)
--{
--	struct ib_mr *mr;
--	int err;
--
--	err = ib_check_mr_access(mr_access_flags);
--	if (err)
--		return ERR_PTR(err);
--
--	if (!pd->device->reg_phys_mr)
--		return ERR_PTR(-ENOSYS);
--
--	mr = pd->device->reg_phys_mr(pd, phys_buf_array, num_phys_buf,
--				     mr_access_flags, iova_start);
--
--	if (!IS_ERR(mr)) {
--		mr->device  = pd->device;
--		mr->pd      = pd;
--		mr->uobject = NULL;
--		atomic_inc(&pd->usecnt);
--		atomic_set(&mr->usecnt, 0);
--	}
--
--	return mr;
--}
--EXPORT_SYMBOL(ib_reg_phys_mr);
--
--int ib_rereg_phys_mr(struct ib_mr *mr,
--		     int mr_rereg_mask,
--		     struct ib_pd *pd,
--		     struct ib_phys_buf *phys_buf_array,
--		     int num_phys_buf,
--		     int mr_access_flags,
--		     u64 *iova_start)
--{
--	struct ib_pd *old_pd;
--	int ret;
--
--	ret = ib_check_mr_access(mr_access_flags);
--	if (ret)
--		return ret;
--
--	if (!mr->device->rereg_phys_mr)
--		return -ENOSYS;
--
--	if (atomic_read(&mr->usecnt))
--		return -EBUSY;
--
--	old_pd = mr->pd;
--
--	ret = mr->device->rereg_phys_mr(mr, mr_rereg_mask, pd,
--					phys_buf_array, num_phys_buf,
--					mr_access_flags, iova_start);
--
--	if (!ret && (mr_rereg_mask & IB_MR_REREG_PD)) {
--		atomic_dec(&old_pd->usecnt);
--		atomic_inc(&pd->usecnt);
--	}
--
--	return ret;
--}
--EXPORT_SYMBOL(ib_rereg_phys_mr);
--
- int ib_query_mr(struct ib_mr *mr, struct ib_mr_attr *mr_attr)
- {
- 	return mr->device->query_mr ?
-diff --git a/include/rdma/ib_verbs.h b/include/rdma/ib_verbs.h
-index b0f898e..43c1cf0 100644
---- a/include/rdma/ib_verbs.h
-+++ b/include/rdma/ib_verbs.h
-@@ -2760,52 +2760,6 @@ static inline void ib_dma_free_coherent(struct ib_device *dev,
- }
- 
- /**
-- * ib_reg_phys_mr - Prepares a virtually addressed memory region for use
-- *   by an HCA.
-- * @pd: The protection domain associated assigned to the registered region.
-- * @phys_buf_array: Specifies a list of physical buffers to use in the
-- *   memory region.
-- * @num_phys_buf: Specifies the size of the phys_buf_array.
-- * @mr_access_flags: Specifies the memory access rights.
-- * @iova_start: The offset of the region's starting I/O virtual address.
-- */
--struct ib_mr *ib_reg_phys_mr(struct ib_pd *pd,
--			     struct ib_phys_buf *phys_buf_array,
--			     int num_phys_buf,
--			     int mr_access_flags,
--			     u64 *iova_start);
--
--/**
-- * ib_rereg_phys_mr - Modifies the attributes of an existing memory region.
-- *   Conceptually, this call performs the functions deregister memory region
-- *   followed by register physical memory region.  Where possible,
-- *   resources are reused instead of deallocated and reallocated.
-- * @mr: The memory region to modify.
-- * @mr_rereg_mask: A bit-mask used to indicate which of the following
-- *   properties of the memory region are being modified.
-- * @pd: If %IB_MR_REREG_PD is set in mr_rereg_mask, this field specifies
-- *   the new protection domain to associated with the memory region,
-- *   otherwise, this parameter is ignored.
-- * @phys_buf_array: If %IB_MR_REREG_TRANS is set in mr_rereg_mask, this
-- *   field specifies a list of physical buffers to use in the new
-- *   translation, otherwise, this parameter is ignored.
-- * @num_phys_buf: If %IB_MR_REREG_TRANS is set in mr_rereg_mask, this
-- *   field specifies the size of the phys_buf_array, otherwise, this
-- *   parameter is ignored.
-- * @mr_access_flags: If %IB_MR_REREG_ACCESS is set in mr_rereg_mask, this
-- *   field specifies the new memory access rights, otherwise, this
-- *   parameter is ignored.
-- * @iova_start: The offset of the region's starting I/O virtual address.
-- */
--int ib_rereg_phys_mr(struct ib_mr *mr,
--		     int mr_rereg_mask,
--		     struct ib_pd *pd,
--		     struct ib_phys_buf *phys_buf_array,
--		     int num_phys_buf,
--		     int mr_access_flags,
--		     u64 *iova_start);
--
--/**
-  * ib_query_mr - Retrieves information about a specific memory region.
-  * @mr: The memory region to retrieve information about.
-  * @mr_attr: The attributes of the specified memory region.
 
+>
+> There is never any need to use the ib_reg_phys_mr() code path in
+> rpcrdma_register_internal(), so it can be removed. The remaining
+> logic in rpcrdma_{de}register_internal() is folded into
+> rpcrdma_{alloc,free}_regbuf().
+>
+> This is clean up only. No behavior change is expected.
+>
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> Reviewed-by: Devesh Sharma <devesh.sharma@avagotech.com>
+> Reviewed-By: Sagi Grimberg <sagig@mellanox.com>
+> Tested-by: Devesh Sharma <devesh.sharma@avagotech.com>
+> ---
+>   net/sunrpc/xprtrdma/verbs.c     |  102 ++++++++-------------------------------
+>   net/sunrpc/xprtrdma/xprt_rdma.h |    1
+>   2 files changed, 21 insertions(+), 82 deletions(-)
+>
+> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+> index 1065808..da184f9 100644
+> --- a/net/sunrpc/xprtrdma/verbs.c
+> +++ b/net/sunrpc/xprtrdma/verbs.c
+> @@ -1229,75 +1229,6 @@ rpcrdma_mapping_error(struct rpcrdma_mr_seg *seg)
+>   		(unsigned long long)seg->mr_dma, seg->mr_dmalen);
+>   }
+>
+> -static int
+> -rpcrdma_register_internal(struct rpcrdma_ia *ia, void *va, int len,
+> -				struct ib_mr **mrp, struct ib_sge *iov)
+> -{
+> -	struct ib_phys_buf ipb;
+> -	struct ib_mr *mr;
+> -	int rc;
+> -
+> -	/*
+> -	 * All memory passed here was kmalloc'ed, therefore phys-contiguous.
+> -	 */
+> -	iov->addr = ib_dma_map_single(ia->ri_device,
+> -			va, len, DMA_BIDIRECTIONAL);
+> -	if (ib_dma_mapping_error(ia->ri_device, iov->addr))
+> -		return -ENOMEM;
+> -
+> -	iov->length = len;
+> -
+> -	if (ia->ri_have_dma_lkey) {
+> -		*mrp = NULL;
+> -		iov->lkey = ia->ri_dma_lkey;
+> -		return 0;
+> -	} else if (ia->ri_bind_mem != NULL) {
+> -		*mrp = NULL;
+> -		iov->lkey = ia->ri_bind_mem->lkey;
+> -		return 0;
+> -	}
+> -
+> -	ipb.addr = iov->addr;
+> -	ipb.size = iov->length;
+> -	mr = ib_reg_phys_mr(ia->ri_pd, &ipb, 1,
+> -			IB_ACCESS_LOCAL_WRITE, &iov->addr);
+> -
+> -	dprintk("RPC:       %s: phys convert: 0x%llx "
+> -			"registered 0x%llx length %d\n",
+> -			__func__, (unsigned long long)ipb.addr,
+> -			(unsigned long long)iov->addr, len);
+> -
+> -	if (IS_ERR(mr)) {
+> -		*mrp = NULL;
+> -		rc = PTR_ERR(mr);
+> -		dprintk("RPC:       %s: failed with %i\n", __func__, rc);
+> -	} else {
+> -		*mrp = mr;
+> -		iov->lkey = mr->lkey;
+> -		rc = 0;
+> -	}
+> -
+> -	return rc;
+> -}
+> -
+> -static int
+> -rpcrdma_deregister_internal(struct rpcrdma_ia *ia,
+> -				struct ib_mr *mr, struct ib_sge *iov)
+> -{
+> -	int rc;
+> -
+> -	ib_dma_unmap_single(ia->ri_device,
+> -			    iov->addr, iov->length, DMA_BIDIRECTIONAL);
+> -
+> -	if (NULL == mr)
+> -		return 0;
+> -
+> -	rc = ib_dereg_mr(mr);
+> -	if (rc)
+> -		dprintk("RPC:       %s: ib_dereg_mr failed %i\n", __func__, rc);
+> -	return rc;
+> -}
+> -
+>   /**
+>    * rpcrdma_alloc_regbuf - kmalloc and register memory for SEND/RECV buffers
+>    * @ia: controlling rpcrdma_ia
+> @@ -1317,26 +1248,30 @@ struct rpcrdma_regbuf *
+>   rpcrdma_alloc_regbuf(struct rpcrdma_ia *ia, size_t size, gfp_t flags)
+>   {
+>   	struct rpcrdma_regbuf *rb;
+> -	int rc;
+> +	struct ib_sge *iov;
+>
+> -	rc = -ENOMEM;
+>   	rb = kmalloc(sizeof(*rb) + size, flags);
+>   	if (rb == NULL)
+>   		goto out;
+>
+> -	rb->rg_size = size;
+> -	rb->rg_owner = NULL;
+> -	rc = rpcrdma_register_internal(ia, rb->rg_base, size,
+> -				       &rb->rg_mr, &rb->rg_iov);
+> -	if (rc)
+> +	iov = &rb->rg_iov;
+> +	iov->addr = ib_dma_map_single(ia->ri_device,
+> +				      (void *)rb->rg_base, size,
+> +				      DMA_BIDIRECTIONAL);
+> +	if (ib_dma_mapping_error(ia->ri_device, iov->addr))
+>   		goto out_free;
+>
+> +	iov->length = size;
+> +	iov->lkey = ia->ri_have_dma_lkey ?
+> +				ia->ri_dma_lkey : ia->ri_bind_mem->lkey;
+> +	rb->rg_size = size;
+> +	rb->rg_owner = NULL;
+>   	return rb;
+>
+>   out_free:
+>   	kfree(rb);
+>   out:
+> -	return ERR_PTR(rc);
+> +	return ERR_PTR(-ENOMEM);
+>   }
+>
+>   /**
+> @@ -1347,10 +1282,15 @@ out:
+>   void
+>   rpcrdma_free_regbuf(struct rpcrdma_ia *ia, struct rpcrdma_regbuf *rb)
+>   {
+> -	if (rb) {
+> -		rpcrdma_deregister_internal(ia, rb->rg_mr, &rb->rg_iov);
+> -		kfree(rb);
+> -	}
+> +	struct ib_sge *iov;
+> +
+> +	if (!rb)
+> +		return;
+> +
+> +	iov = &rb->rg_iov;
+> +	ib_dma_unmap_single(ia->ri_device,
+> +			    iov->addr, iov->length, DMA_BIDIRECTIONAL);
+> +	kfree(rb);
+>   }
+>
+>   /*
+> diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+> index abee472..ce4e79e 100644
+> --- a/net/sunrpc/xprtrdma/xprt_rdma.h
+> +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+> @@ -119,7 +119,6 @@ struct rpcrdma_ep {
+>   struct rpcrdma_regbuf {
+>   	size_t			rg_size;
+>   	struct rpcrdma_req	*rg_owner;
+> -	struct ib_mr		*rg_mr;
+>   	struct ib_sge		rg_iov;
+>   	__be32			rg_base[0] __attribute__ ((aligned(256)));
+>   };
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+>
