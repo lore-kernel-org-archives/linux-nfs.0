@@ -1,69 +1,35 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from quartz.orcorp.ca ([184.70.90.242]:51988 "EHLO quartz.orcorp.ca"
+Received: from quartz.orcorp.ca ([184.70.90.242]:38371 "EHLO quartz.orcorp.ca"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753249AbbGTWlf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 20 Jul 2015 18:41:35 -0400
-Date: Mon, 20 Jul 2015 16:41:34 -0600
+	id S1753115AbbGTWmt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 20 Jul 2015 18:42:49 -0400
+Date: Mon, 20 Jul 2015 16:42:44 -0600
 From: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: linux-rdma <linux-rdma@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+To: Steve Wise <swise@opengridcomputing.com>
+Cc: "'Tom Talpey'" <tom@talpey.com>, "'Chuck Lever'" <chuck.lever@oracle.com>,
+        linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
 Subject: Re: [PATCH v3 05/15] xprtrdma: Remove last ib_reg_phys_mr() call site
-Message-ID: <20150720224134.GA12278@obsidianresearch.com>
+Message-ID: <20150720224244.GB12278@obsidianresearch.com>
 References: <20150720185624.10997.51574.stgit@manet.1015granger.net>
  <20150720190311.10997.12636.stgit@manet.1015granger.net>
- <20150720222608.GA12005@obsidianresearch.com>
- <73A27338-7EFC-4F54-A15E-09B9D5145242@oracle.com>
+ <55AD5B48.3010906@talpey.com>
+ <20150720210544.GA9655@obsidianresearch.com>
+ <015101d0c331$69e31d10$3da95730$@opengridcomputing.com>
+ <55AD7065.8040809@talpey.com>
+ <015701d0c33d$36b53110$a41f9330$@opengridcomputing.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <73A27338-7EFC-4F54-A15E-09B9D5145242@oracle.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <015701d0c33d$36b53110$a41f9330$@opengridcomputing.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jul 20, 2015 at 06:31:11PM -0400, Chuck Lever wrote:
+On Mon, Jul 20, 2015 at 05:41:27PM -0500, Steve Wise wrote:
+> > B) why bother to check? Are machines with <4GB interesting, and worth
+> > supporting a special optimization?
 > 
-> On Jul 20, 2015, at 6:26 PM, Jason Gunthorpe <jgunthorpe@obsidianresearch.com> wrote:
-> 
-> > On Mon, Jul 20, 2015 at 03:03:11PM -0400, Chuck Lever wrote:
-> >> +	iov->length = size;
-> >> +	iov->lkey = ia->ri_have_dma_lkey ?
-> >> +				ia->ri_dma_lkey : ia->ri_bind_mem->lkey;
-> >> +	rb->rg_size = size;
-> >> +	rb->rg_owner = NULL;
-> >> 	return rb;
-> > 
-> > There is something odd looking about this..
-> > 
-> > ri_bind_mem is only setup in the RPCRDMA_ALLPHYSICAL and
-> > RPCRDMA_MTHCAFMR cases.
-> > 
-> > RPCRDMA_FRMR doesn't set it up.
-> > 
-> > So this code in rpcrdma_alloc_regbuf is never called for the FRMR
-> > case?
-> > 
-> > If yes, then, how is FRMR working? There is absolutely no reason to
-> > use FRMR to register local send buffers, just use the global all
-> > memory lkey...
-> > 
-> > If no, then that is an oops?
-> 
-> I’ve tested this code, no oops.
-> 
-> FRWR always uses the DMA lkey. xprtrdma does not use FRWR if
-> IB_DEVICE_LOCAL_DMA_LKEY is not asserted.
+> No, but cxgb3 is still interesting to user applications, and perhaps NFSRDMA using FRMRs.
 
-Ah, I see. Ok.
-
-Is there a reason to link FRWR and LOCAL_DMA_LKEY together? Just use
-the code you have for fmr with frwr to get the lkey, probably move it
-to rpcrdma_ia_open .. Physical MR should create a 2nd MR dedicated for
-rkey use.
-
-That will work really well with the series I'm working on:
-
-https://github.com/jgunthorpe/linux/tree/remove-ib_get_dma_mr
-
-To just drop ib_get_dma_mr entirely.
+Doesn't look like the NFS client will work. It requires an all
+physical memory lkey for SEND and RECV buffers..
 
 Jason
