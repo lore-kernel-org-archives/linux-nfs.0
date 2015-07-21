@@ -1,43 +1,111 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.opengridcomputing.com ([72.48.136.20]:46050 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752203AbbGUVWt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Jul 2015 17:22:49 -0400
-From: "Steve Wise" <swise@opengridcomputing.com>
-To: "'Tom Talpey'" <tom@talpey.com>,
-        "'Jason Gunthorpe'" <jgunthorpe@obsidianresearch.com>
-Cc: "'Chuck Lever'" <chuck.lever@oracle.com>, <linux-rdma@vger.kernel.org>,
-        <linux-nfs@vger.kernel.org>, "'Doug Ledford'" <dledford@redhat.com>
-References: <20150720185624.10997.51574.stgit@manet.1015granger.net> <20150720190311.10997.12636.stgit@manet.1015granger.net> <55AD5B48.3010906@talpey.com> <20150720210544.GA9655@obsidianresearch.com> <015101d0c331$69e31d10$3da95730$@opengridcomputing.com> <55AD7065.8040809@talpey.com> <015701d0c33d$36b53110$a41f9330$@opengridcomputing.com> <55AD8F05.6070409@talpey.com> <000301d0c3c2$3f892a50$be9b7ef0$@opengridcomputing.com> <55AEAFCE.60207@talpey.com> 
-In-Reply-To: 
-Subject: RE: [PATCH v3 05/15] xprtrdma: Remove last ib_reg_phys_mr() call site
-Date: Tue, 21 Jul 2015 16:22:52 -0500
-Message-ID: <00c901d0c3fb$66e7cfa0$34b76ee0$@opengridcomputing.com>
+Received: from cantor2.suse.de ([195.135.220.15]:34781 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932148AbbGUV6f (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 21 Jul 2015 17:58:35 -0400
+Date: Wed, 22 Jul 2015 07:58:24 +1000
+From: NeilBrown <neilb@suse.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Kinglong Mee <kinglongmee@gmail.com>, Al Viro <viro@zeniv.linux.org.uk>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        linux-fsdevel@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: Re: [PATCH 10/10 v7] nfsd: Allows user un-mounting filesystem where
+ nfsd exports base on
+Message-ID: <20150722075824.3e7498ce@noble>
+In-Reply-To: <20150716205148.GC10673@fieldses.org>
+References: <55A11010.6050005@gmail.com>
+	<55A111A8.2040701@gmail.com>
+	<20150713133934.6a4ef77d@noble>
+	<20150715210756.GE21669@fieldses.org>
+	<20150716094046.445c038b@noble>
+	<20150716205148.GC10673@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> > >>>> B) why bother to check? Are machines with <4GB interesting, and worth
-> > >>>> supporting a special optimization?
-> > >>>
-> > >>> No, but cxgb3 is still interesting to user applications, and perhaps NFSRDMA using FRMRs.
-> > >>
-> > >> I'm obviously not making myself clear. I am suggesting that cxgb3 fail
-> > >> the ib_get_dma_mr() verb, regardless of installed memory.
-> > >>
-> > >> I am not suggesting it fail to load, or fail other memreg requests. It
-> > >> should work normally in all other respects.
-> > >
-> > > Even with its limitation, doesn't it have utility for someone using cxgb3 in an embedded 32b environment?
-> >
-> > Sure, do you mean making it conditional on #if sizeof(physaddr) <= 32?
-> > That would make sense I guess.
+On Thu, 16 Jul 2015 16:51:48 -0400 "J. Bruce Fields"
+<bfields@fieldses.org> wrote:
+
+> On Thu, Jul 16, 2015 at 09:40:46AM +1000, NeilBrown wrote:
+> > On Wed, 15 Jul 2015 17:07:56 -0400 "J. Bruce Fields"
+> > <bfields@fieldses.org> wrote:
+> > 
+> > > > Wow.... this is turning out to be a lot more complex that I imagined at
+> > > > first (isn't that always the way!).
+> > > > 
+> > > > There is a lot of good stuff here, but I think we can probably make it
+> > > > simpler and so even better.
+> > > 
+> > > I'm still not convinced that the expkey
 > 
-> No, a runtime check.  x64 platforms will work too if the mem size takes <= 32b to describe.
+> (Sorry, I meant an entry in the export cache, not the expkey cache.)
 
-Jason/Doug, do you think it should allow dma mr allocaton iff totalmem_pages < 4GB?  Or do a check on the sizeof totalmem_pages and
-only allow dma mrs if it is <= 4?
+They are very closely related.  An incoming filehandle has its 'fs'
+identifier mapped through the expkey cache to get an "export point".
+Then the "export point" plus "client identifier" are mapped through the
+export cache to get export options.
+
+So the "export point" thing in the expkey cache should really be the
+same as the thing in the export cache.
+
+> 
+> > should have a dentry reference
+> > > in the key in the first place.  Fixing that would fix the immediate
+> > > problem.
+> > 
+> > ???  If we removed the dentry, how would you export a subdirectory of a
+> > filesystem?
+> 
+> I've been wondering if the export cache should really be keyed on the
+> string representation of the path instead of the struct path.  That's
+> what the userspace interface uses.
+
+That makes sense for handling updates to the cache from user-space.
+I'm not sure it is so good for handling mapping from file-handle to
+export flags.
+
+> 
+> There's a related bug: if there are mountpoints at both /a and /a/b,
+
+Just to make sure I'm clear on what you are saying, this would be
+achieved by, e.g.
+
+ mkdir -p /a/b
+ mount /dev/sdX /a/b
+ mount /dev/sdY /a
+
+so the mount of /dev/sdX is complete unreachable from '/'.
+
+Correct?
+
+> then thanks to the lookup-underneath-mountpoint behavior of the server,
+> an NFSv3 client looking that up will end up going underneath the first
+> mountpoint and doing an export cache lookup for
+> 
+> 	(vfsmnt, dentry) == (/, /a/b)
+
+Maybe this step is where the bug is. "/a/b" is not really a valid name.
+Should d_path() check for paths that have been mounted over, and attach
+"(unreachable)" to the end of the path, similar to "(deleted)".
+
+sys_getcwd() can give you "(unreachable)" when in a filesystem that has
+e.g. been lazy-unmounted.  Maybe we want something similar for a
+mounted-over filesystem???
 
 
+> 
+> When the server gets a response that starts with "/a/b", it interprets
+> that as applying to the path (/a, /a/b), so doesn't recognize it as
+> resolving the query about (/, /a/b).
+> 
+> Well, at least I assume that's why I see "ls" hang if I run "ls
+> /mnt/a/b" on the client.  And there may be some better fix, but I always
+> figured the root (hah) problem here was due to indexing the cache on
+> struct path while the upcall interface uses the full path string.
+> 
+Sounds like a very odd corner case - how did you stumble on to it?
+
+Thanks,
+NeilBrown
