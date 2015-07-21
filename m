@@ -1,70 +1,43 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from 20.mo6.mail-out.ovh.net ([178.32.124.17]:47086 "EHLO
-	20.mo6.mail-out.ovh.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751997AbbGUJ3Z (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Jul 2015 05:29:25 -0400
-Received: from mail407.ha.ovh.net (gw6.ovh.net [213.251.189.206])
-	by mo6.mail-out.ovh.net (Postfix) with SMTP id ED5AFFFCC87
-	for <linux-nfs@vger.kernel.org>; Mon, 20 Jul 2015 23:41:38 +0200 (CEST)
-From: =?UTF-8?q?Aur=C3=A9lien=20Chabot?= <aurelien@chabot.fr>
-To: linux-nfs@vger.kernel.org
-Cc: =?UTF-8?q?Aur=C3=A9lien=20Chabot?= <aurelien@chabot.fr>
-Subject: [PATCH] Install only needed systemd unit file
-Date: Mon, 20 Jul 2015 23:41:20 +0200
-Message-Id: <1437428480-22951-1-git-send-email-aurelien@chabot.fr>
+Received: from acheron.ifi.lmu.de ([129.187.214.135]:53462 "EHLO
+	acheron.ifi.lmu.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754815AbbGUN53 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Jul 2015 09:57:29 -0400
+Received: from [IPv6:2001:4ca0:4000:1011:141:84:1:30] (galois.bio.ifi.lmu.de [IPv6:2001:4ca0:4000:1011:141:84:1:30])
+	(using TLSv1 with cipher DHE-RSA-AES128-SHA (128/128 bits))
+	(No client certificate requested)
+	(Authenticated sender: steiner.bio)
+	by acheron.ifi.lmu.de (Postfix) with ESMTPSA id 885BB94A25B
+	for <linux-nfs@vger.kernel.org>; Tue, 21 Jul 2015 15:57:26 +0200 (CEST)
+Message-ID: <55AE4FC6.6050001@bio.ifi.lmu.de>
+Date: Tue, 21 Jul 2015 15:57:26 +0200
+From: Frank Steiner <fsteiner-mail1@bio.ifi.lmu.de>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+To: linux-nfs@vger.kernel.org
+Subject: Are there really no server-side mount/umount message for NFSv4?
+Content-Type: text/plain; charset=ISO-8859-15
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Aurélien Chabot <aurelien@chabot.fr>
----
- systemd/Makefile.am | 22 +++++++++++++++++-----
- 1 file changed, 17 insertions(+), 5 deletions(-)
+Hi,
 
-diff --git a/systemd/Makefile.am b/systemd/Makefile.am
-index fbcabb1..0331926 100644
---- a/systemd/Makefile.am
-+++ b/systemd/Makefile.am
-@@ -5,21 +5,33 @@ MAINTAINERCLEANFILES = Makefile.in
- unit_files =  \
-     nfs-client.target \
-     \
--    auth-rpcgss-module.service \
--    nfs-blkmap.service \
-     nfs-config.service \
--    nfs-idmapd.service \
-     nfs-mountd.service \
-     nfs-server.service \
-     nfs-utils.service \
--    rpc-gssd.service \
-     rpc-statd-notify.service \
-     rpc-statd.service \
--    rpc-svcgssd.service \
-     \
-     proc-fs-nfsd.mount \
-     var-lib-nfs-rpc_pipefs.mount
- 
-+if CONFIG_NFSV4
-+unit_files += \
-+    nfs-idmapd.service
-+endif
-+
-+if CONFIG_NFSV41
-+unit_files += \
-+    nfs-blkmap.service
-+endif
-+
-+if CONFIG_GSS
-+unit_files += \
-+    auth-rpcgss-module.service \
-+    rpc-gssd.service \
-+    rpc-svcgssd.service
-+endif
-+
- EXTRA_DIST = $(unit_files)
- 
- unit_dir = /usr/lib/systemd/system
+we are missing the "authenticated u/mount request..." messages or 
+error messages like "refused mount request from /x (/): not exported"
+for NFSv4 servers. We were using the mount/umount messages e.g. to 
+detect when some reached a certain point of an installation etc.
+And the error messages on the server side often were more helpful
+than the ones on the client.
+
+Is there really no way to get these easy-to-understand messages? 
+Debugging shows a lot but nothing that e.g. gives an understandable
+error reason.
+
+cu,
+Frank
+
 -- 
-2.4.6
-
+Dipl.-Inform. Frank Steiner   Web:  http://www.bio.ifi.lmu.de/~steiner/
+Lehrstuhl f. Bioinformatik    Mail: http://www.bio.ifi.lmu.de/~steiner/m/
+LMU, Amalienstr. 17           Phone: +49 89 2180-4049
+80333 Muenchen, Germany       Fax:   +49 89 2180-99-4049
+* Rekursion kann man erst verstehen, wenn man Rekursion verstanden hat. *
