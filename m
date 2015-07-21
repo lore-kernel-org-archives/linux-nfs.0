@@ -1,43 +1,103 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from acheron.ifi.lmu.de ([129.187.214.135]:53462 "EHLO
-	acheron.ifi.lmu.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754815AbbGUN53 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Jul 2015 09:57:29 -0400
-Received: from [IPv6:2001:4ca0:4000:1011:141:84:1:30] (galois.bio.ifi.lmu.de [IPv6:2001:4ca0:4000:1011:141:84:1:30])
-	(using TLSv1 with cipher DHE-RSA-AES128-SHA (128/128 bits))
-	(No client certificate requested)
-	(Authenticated sender: steiner.bio)
-	by acheron.ifi.lmu.de (Postfix) with ESMTPSA id 885BB94A25B
-	for <linux-nfs@vger.kernel.org>; Tue, 21 Jul 2015 15:57:26 +0200 (CEST)
-Message-ID: <55AE4FC6.6050001@bio.ifi.lmu.de>
-Date: Tue, 21 Jul 2015 15:57:26 +0200
-From: Frank Steiner <fsteiner-mail1@bio.ifi.lmu.de>
+Received: from smtp.opengridcomputing.com ([72.48.136.20]:45454 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752861AbbGUOdn (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Jul 2015 10:33:43 -0400
+From: "Steve Wise" <swise@opengridcomputing.com>
+To: "'Tom Talpey'" <tom@talpey.com>,
+        "'Jason Gunthorpe'" <jgunthorpe@obsidianresearch.com>
+Cc: "'Chuck Lever'" <chuck.lever@oracle.com>, <linux-rdma@vger.kernel.org>,
+        <linux-nfs@vger.kernel.org>
+References: <20150720185624.10997.51574.stgit@manet.1015granger.net> <20150720190311.10997.12636.stgit@manet.1015granger.net> <55AD5B48.3010906@talpey.com> <20150720210544.GA9655@obsidianresearch.com> <015101d0c331$69e31d10$3da95730$@opengridcomputing.com> <55AD7065.8040809@talpey.com> <015701d0c33d$36b53110$a41f9330$@opengridcomputing.com> <55AD8F05.6070409@talpey.com>
+In-Reply-To: <55AD8F05.6070409@talpey.com>
+Subject: RE: [PATCH v3 05/15] xprtrdma: Remove last ib_reg_phys_mr() call site
+Date: Tue, 21 Jul 2015 09:33:44 -0500
+Message-ID: <000301d0c3c2$3f892a50$be9b7ef0$@opengridcomputing.com>
 MIME-Version: 1.0
-To: linux-nfs@vger.kernel.org
-Subject: Are there really no server-side mount/umount message for NFSv4?
-Content-Type: text/plain; charset=ISO-8859-15
+Content-Type: text/plain;
+	charset="us-ascii"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
 
-we are missing the "authenticated u/mount request..." messages or 
-error messages like "refused mount request from /x (/): not exported"
-for NFSv4 servers. We were using the mount/umount messages e.g. to 
-detect when some reached a certain point of an installation etc.
-And the error messages on the server side often were more helpful
-than the ones on the client.
 
-Is there really no way to get these easy-to-understand messages? 
-Debugging shows a lot but nothing that e.g. gives an understandable
-error reason.
+> -----Original Message-----
+> From: linux-rdma-owner@vger.kernel.org [mailto:linux-rdma-owner@vger.kernel.org] On Behalf Of Tom Talpey
+> Sent: Monday, July 20, 2015 7:15 PM
+> To: Steve Wise; 'Jason Gunthorpe'
+> Cc: 'Chuck Lever'; linux-rdma@vger.kernel.org; linux-nfs@vger.kernel.org
+> Subject: Re: [PATCH v3 05/15] xprtrdma: Remove last ib_reg_phys_mr() call site
+> 
+> On 7/20/2015 3:41 PM, Steve Wise wrote:
+> >
+> >
+> >> -----Original Message-----
+> >> From: Tom Talpey [mailto:tom@talpey.com]
+> >> Sent: Monday, July 20, 2015 5:04 PM
+> >> To: Steve Wise; 'Jason Gunthorpe'
+> >> Cc: 'Chuck Lever'; linux-rdma@vger.kernel.org; linux-nfs@vger.kernel.org
+> >> Subject: Re: [PATCH v3 05/15] xprtrdma: Remove last ib_reg_phys_mr() call site
+> >>
+> >> On 7/20/2015 2:16 PM, Steve Wise wrote:
+> >>>
+> >>>
+> >>>> -----Original Message-----
+> >>>> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Jason Gunthorpe
+> >>>> Sent: Monday, July 20, 2015 4:06 PM
+> >>>> To: Tom Talpey; Steve Wise
+> >>>> Cc: Chuck Lever; linux-rdma@vger.kernel.org; linux-nfs@vger.kernel.org
+> >>>> Subject: Re: [PATCH v3 05/15] xprtrdma: Remove last ib_reg_phys_mr() call site
+> >>>>
+> >>>> On Mon, Jul 20, 2015 at 01:34:16PM -0700, Tom Talpey wrote:
+> >>>>> On 7/20/2015 12:03 PM, Chuck Lever wrote:
+> >>>>>> All HCA providers have an ib_get_dma_mr() verb. Thus
+> >>>>>> rpcrdma_ia_open() will either grab the device's local_dma_key if one
+> >>>>>> is available, or it will call ib_get_dma_mr() which is a 100%
+> >>>>>> guaranteed fallback.
+> >>>>>
+> >>>>> I recall that in the past, some providers did not support mapping
+> >>>>> all of the machine's potential physical memory with a single dma_mr.
+> >>>>> If an rnic did/does not support 44-ish bits of length per region,
+> >>>>> for example.
+> >>>>
+> >>>> Looks like you are right, but the standard in kernel is to require
+> >>>> ib_get_dma_mr, if the HCA can't do that, then it cannot be used on a
+> >>>> big memory machine with kernel ULPs.
+> >>>>
+> >>>> Looking deeper, both amso1100 and cxgb3 seem limited to 32 bits of
+> >>>> physical memory, and silently break all kernel ULPs if they are used
+> >>>> on a modern machine with > 4G.
+> >>>>
+> >>>> Is that right Steve?
+> >>>>
+> >>>
+> >>> Yes.
+> >>>
+> >>>> Based on that, should we remove the cxgb3 driver as well? Or at least
+> >>>> can you fix it up to at least fail get_dma_mr if there is too much
+> >>>> ram?
+> >>>>
+> >>>
+> >>> I would like to keep cxgb3 around.  I can add code to fail if the memory is > 32b.  Do you know how I get the amount of
+> > available
+> >>> ram?
+> >>
+> >> A) are you sure it's an unsigned length, i.e. is it really 31 bits?
+> >>
+> >
+> > yes.
+> >
+> >> B) why bother to check? Are machines with <4GB interesting, and worth
+> >> supporting a special optimization?
+> >
+> > No, but cxgb3 is still interesting to user applications, and perhaps NFSRDMA using FRMRs.
+> 
+> I'm obviously not making myself clear. I am suggesting that cxgb3 fail
+> the ib_get_dma_mr() verb, regardless of installed memory.
+> 
+> I am not suggesting it fail to load, or fail other memreg requests. It
+> should work normally in all other respects.
 
-cu,
-Frank
+Even with its limitation, doesn't it have utility for someone using cxgb3 in an embedded 32b environment? 
 
--- 
-Dipl.-Inform. Frank Steiner   Web:  http://www.bio.ifi.lmu.de/~steiner/
-Lehrstuhl f. Bioinformatik    Mail: http://www.bio.ifi.lmu.de/~steiner/m/
-LMU, Amalienstr. 17           Phone: +49 89 2180-4049
-80333 Muenchen, Germany       Fax:   +49 89 2180-99-4049
-* Rekursion kann man erst verstehen, wenn man Rekursion verstanden hat. *
+
