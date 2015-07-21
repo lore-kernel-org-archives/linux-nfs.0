@@ -1,49 +1,41 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pd0-f175.google.com ([209.85.192.175]:36734 "EHLO
-	mail-pd0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750769AbbGUFJ1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Jul 2015 01:09:27 -0400
-Received: by pdjr16 with SMTP id r16so115152527pdj.3
-        for <linux-nfs@vger.kernel.org>; Mon, 20 Jul 2015 22:09:27 -0700 (PDT)
-Message-ID: <55ADD3FD.405@gmail.com>
-Date: Tue, 21 Jul 2015 13:09:17 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
+Received: from acheron.ifi.lmu.de ([129.187.214.135]:47407 "EHLO
+	acheron.ifi.lmu.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751211AbbGUGoq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Jul 2015 02:44:46 -0400
+Message-ID: <55ADEA5C.8020607@bio.ifi.lmu.de>
+Date: Tue, 21 Jul 2015 08:44:44 +0200
+From: Frank Steiner <fsteiner-mail1@bio.ifi.lmu.de>
 MIME-Version: 1.0
-To: Stephen Rothwell <sfr@canb.auug.org.au>,
-        "J. Bruce Fields" <bfields@fieldses.org>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        kinglongmee@gmail.com
-Subject: [PATCH v3] nfsd: Add layouts checking in client_has_state()
-References: <20150721095737.7411eb05@canb.auug.org.au>
-In-Reply-To: <20150721095737.7411eb05@canb.auug.org.au>
-Content-Type: text/plain; charset=windows-1252
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: Parallel file locking quite slow with vers=4.0 compared to vers=3
+References: <55ACFF59.7040707@bio.ifi.lmu.de> <20150720212305.GB11050@fieldses.org>
+In-Reply-To: <20150720212305.GB11050@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Layout is a state resource, nfsd should check it too.
+J. Bruce Fields wrote
 
-v2, drop unneeded updating in nfsd4_renew()
-v3, fix compile error without CONFIG_NFSD_PNFS
+> One way to confirm that might be to run client kernels modified to make
+> the polling behavior (controlled by
+> fs/nfs/nfs4proc.c:nfs4_set_lock_task_retry()) more aggressive, and see
+> if that removes the delays in your case.
+> 
+> If that works, then it might also be worth considering implementing
+> CB_NOTIFY_LOCK:
+> 
+> 	https://tools.ietf.org/html/rfc5661#page-593
 
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
----
- fs/nfsd/nfs4state.c | 3 +++
- 1 file changed, 3 insertions(+)
+I wouldn't mind to test any kind of patch if someone would find the time
+to provide some. Writing them myself is beyond my skills I'm afraid :-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 61dfb33..94a2980 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -2241,6 +2241,9 @@ static bool client_has_state(struct nfs4_client *clp)
- 	 * Also note we should probably be using this in 4.0 case too.
- 	 */
- 	return !list_empty(&clp->cl_openowners)
-+#ifdef CONFIG_NFSD_PNFS
-+		|| !list_empty(&clp->cl_lo_states)
-+#endif
- 		|| !list_empty(&clp->cl_delegations)
- 		|| !list_empty(&clp->cl_sessions);
- }
+cu,
+Frank
 -- 
-2.4.3
-
+Dipl.-Inform. Frank Steiner   Web:  http://www.bio.ifi.lmu.de/~steiner/
+Lehrstuhl f. Bioinformatik    Mail: http://www.bio.ifi.lmu.de/~steiner/m/
+LMU, Amalienstr. 17           Phone: +49 89 2180-4049
+80333 Muenchen, Germany       Fax:   +49 89 2180-99-4049
+* Rekursion kann man erst verstehen, wenn man Rekursion verstanden hat. *
