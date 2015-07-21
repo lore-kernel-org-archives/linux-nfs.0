@@ -1,103 +1,56 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.opengridcomputing.com ([72.48.136.20]:45454 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752861AbbGUOdn (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Jul 2015 10:33:43 -0400
-From: "Steve Wise" <swise@opengridcomputing.com>
-To: "'Tom Talpey'" <tom@talpey.com>,
-        "'Jason Gunthorpe'" <jgunthorpe@obsidianresearch.com>
-Cc: "'Chuck Lever'" <chuck.lever@oracle.com>, <linux-rdma@vger.kernel.org>,
-        <linux-nfs@vger.kernel.org>
-References: <20150720185624.10997.51574.stgit@manet.1015granger.net> <20150720190311.10997.12636.stgit@manet.1015granger.net> <55AD5B48.3010906@talpey.com> <20150720210544.GA9655@obsidianresearch.com> <015101d0c331$69e31d10$3da95730$@opengridcomputing.com> <55AD7065.8040809@talpey.com> <015701d0c33d$36b53110$a41f9330$@opengridcomputing.com> <55AD8F05.6070409@talpey.com>
-In-Reply-To: <55AD8F05.6070409@talpey.com>
-Subject: RE: [PATCH v3 05/15] xprtrdma: Remove last ib_reg_phys_mr() call site
-Date: Tue, 21 Jul 2015 09:33:44 -0500
-Message-ID: <000301d0c3c2$3f892a50$be9b7ef0$@opengridcomputing.com>
+Received: from fieldses.org ([173.255.197.46]:38567 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754146AbbGUPvp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 21 Jul 2015 11:51:45 -0400
+Date: Tue, 21 Jul 2015 11:51:44 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Frank Steiner <fsteiner-mail1@bio.ifi.lmu.de>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: Parallel file locking quite slow with vers=4.0 compared to vers=3
+Message-ID: <20150721155144.GC11050@fieldses.org>
+References: <55ACFF59.7040707@bio.ifi.lmu.de>
+ <20150720212305.GB11050@fieldses.org>
+ <55ADEA5C.8020607@bio.ifi.lmu.de>
 MIME-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <55ADEA5C.8020607@bio.ifi.lmu.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-> -----Original Message-----
-> From: linux-rdma-owner@vger.kernel.org [mailto:linux-rdma-owner@vger.kernel.org] On Behalf Of Tom Talpey
-> Sent: Monday, July 20, 2015 7:15 PM
-> To: Steve Wise; 'Jason Gunthorpe'
-> Cc: 'Chuck Lever'; linux-rdma@vger.kernel.org; linux-nfs@vger.kernel.org
-> Subject: Re: [PATCH v3 05/15] xprtrdma: Remove last ib_reg_phys_mr() call site
+On Tue, Jul 21, 2015 at 08:44:44AM +0200, Frank Steiner wrote:
+> J. Bruce Fields wrote
 > 
-> On 7/20/2015 3:41 PM, Steve Wise wrote:
-> >
-> >
-> >> -----Original Message-----
-> >> From: Tom Talpey [mailto:tom@talpey.com]
-> >> Sent: Monday, July 20, 2015 5:04 PM
-> >> To: Steve Wise; 'Jason Gunthorpe'
-> >> Cc: 'Chuck Lever'; linux-rdma@vger.kernel.org; linux-nfs@vger.kernel.org
-> >> Subject: Re: [PATCH v3 05/15] xprtrdma: Remove last ib_reg_phys_mr() call site
-> >>
-> >> On 7/20/2015 2:16 PM, Steve Wise wrote:
-> >>>
-> >>>
-> >>>> -----Original Message-----
-> >>>> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Jason Gunthorpe
-> >>>> Sent: Monday, July 20, 2015 4:06 PM
-> >>>> To: Tom Talpey; Steve Wise
-> >>>> Cc: Chuck Lever; linux-rdma@vger.kernel.org; linux-nfs@vger.kernel.org
-> >>>> Subject: Re: [PATCH v3 05/15] xprtrdma: Remove last ib_reg_phys_mr() call site
-> >>>>
-> >>>> On Mon, Jul 20, 2015 at 01:34:16PM -0700, Tom Talpey wrote:
-> >>>>> On 7/20/2015 12:03 PM, Chuck Lever wrote:
-> >>>>>> All HCA providers have an ib_get_dma_mr() verb. Thus
-> >>>>>> rpcrdma_ia_open() will either grab the device's local_dma_key if one
-> >>>>>> is available, or it will call ib_get_dma_mr() which is a 100%
-> >>>>>> guaranteed fallback.
-> >>>>>
-> >>>>> I recall that in the past, some providers did not support mapping
-> >>>>> all of the machine's potential physical memory with a single dma_mr.
-> >>>>> If an rnic did/does not support 44-ish bits of length per region,
-> >>>>> for example.
-> >>>>
-> >>>> Looks like you are right, but the standard in kernel is to require
-> >>>> ib_get_dma_mr, if the HCA can't do that, then it cannot be used on a
-> >>>> big memory machine with kernel ULPs.
-> >>>>
-> >>>> Looking deeper, both amso1100 and cxgb3 seem limited to 32 bits of
-> >>>> physical memory, and silently break all kernel ULPs if they are used
-> >>>> on a modern machine with > 4G.
-> >>>>
-> >>>> Is that right Steve?
-> >>>>
-> >>>
-> >>> Yes.
-> >>>
-> >>>> Based on that, should we remove the cxgb3 driver as well? Or at least
-> >>>> can you fix it up to at least fail get_dma_mr if there is too much
-> >>>> ram?
-> >>>>
-> >>>
-> >>> I would like to keep cxgb3 around.  I can add code to fail if the memory is > 32b.  Do you know how I get the amount of
-> > available
-> >>> ram?
-> >>
-> >> A) are you sure it's an unsigned length, i.e. is it really 31 bits?
-> >>
-> >
-> > yes.
-> >
-> >> B) why bother to check? Are machines with <4GB interesting, and worth
-> >> supporting a special optimization?
-> >
-> > No, but cxgb3 is still interesting to user applications, and perhaps NFSRDMA using FRMRs.
+> > One way to confirm that might be to run client kernels modified to make
+> > the polling behavior (controlled by
+> > fs/nfs/nfs4proc.c:nfs4_set_lock_task_retry()) more aggressive, and see
+> > if that removes the delays in your case.
+> > 
+> > If that works, then it might also be worth considering implementing
+> > CB_NOTIFY_LOCK:
+> > 
+> > 	https://tools.ietf.org/html/rfc5661#page-593
 > 
-> I'm obviously not making myself clear. I am suggesting that cxgb3 fail
-> the ib_get_dma_mr() verb, regardless of installed memory.
-> 
-> I am not suggesting it fail to load, or fail other memreg requests. It
-> should work normally in all other respects.
+> I wouldn't mind to test any kind of patch if someone would find the time
+> to provide some. Writing them myself is beyond my skills I'm afraid :-)
 
-Even with its limitation, doesn't it have utility for someone using cxgb3 in an embedded 32b environment? 
+Well, I was just thinking of something like this.
 
+(*Not* saying this is what we really want to do, but it might help
+confirm where your delay is coming from.)
 
+--b.
+
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 6f228b5..c119ba7 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5367,7 +5367,7 @@ int nfs4_proc_delegreturn(struct inode *inode, struct rpc_cred *cred, const nfs4
+ 	return err;
+ }
+ 
+-#define NFS4_LOCK_MINTIMEOUT (1 * HZ)
++#define NFS4_LOCK_MINTIMEOUT (1 * HZ / 10)
+ #define NFS4_LOCK_MAXTIMEOUT (30 * HZ)
+ 
+ /* 
