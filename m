@@ -1,56 +1,41 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:38567 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:38573 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754146AbbGUPvp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 21 Jul 2015 11:51:45 -0400
-Date: Tue, 21 Jul 2015 11:51:44 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1754146AbbGUQDj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 21 Jul 2015 12:03:39 -0400
+Date: Tue, 21 Jul 2015 12:03:38 -0400
 To: Frank Steiner <fsteiner-mail1@bio.ifi.lmu.de>
 Cc: linux-nfs@vger.kernel.org
-Subject: Re: Parallel file locking quite slow with vers=4.0 compared to vers=3
-Message-ID: <20150721155144.GC11050@fieldses.org>
-References: <55ACFF59.7040707@bio.ifi.lmu.de>
- <20150720212305.GB11050@fieldses.org>
- <55ADEA5C.8020607@bio.ifi.lmu.de>
+Subject: Re: Are there really no server-side mount/umount message for NFSv4?
+Message-ID: <20150721160338.GD11050@fieldses.org>
+References: <55AE4FC6.6050001@bio.ifi.lmu.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <55ADEA5C.8020607@bio.ifi.lmu.de>
+In-Reply-To: <55AE4FC6.6050001@bio.ifi.lmu.de>
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jul 21, 2015 at 08:44:44AM +0200, Frank Steiner wrote:
-> J. Bruce Fields wrote
+On Tue, Jul 21, 2015 at 03:57:26PM +0200, Frank Steiner wrote:
+> we are missing the "authenticated u/mount request..." messages or 
+> error messages like "refused mount request from /x (/): not exported"
+> for NFSv4 servers. We were using the mount/umount messages e.g. to 
+> detect when some reached a certain point of an installation etc.
+> And the error messages on the server side often were more helpful
+> than the ones on the client.
 > 
-> > One way to confirm that might be to run client kernels modified to make
-> > the polling behavior (controlled by
-> > fs/nfs/nfs4proc.c:nfs4_set_lock_task_retry()) more aggressive, and see
-> > if that removes the delays in your case.
-> > 
-> > If that works, then it might also be worth considering implementing
-> > CB_NOTIFY_LOCK:
-> > 
-> > 	https://tools.ietf.org/html/rfc5661#page-593
-> 
-> I wouldn't mind to test any kind of patch if someone would find the time
-> to provide some. Writing them myself is beyond my skills I'm afraid :-)
+> Is there really no way to get these easy-to-understand messages? 
+> Debugging shows a lot but nothing that e.g. gives an understandable
+> error reason.
 
-Well, I was just thinking of something like this.
+There aren't any mount or umount calls in the NFSv4 protocol.
 
-(*Not* saying this is what we really want to do, but it might help
-confirm where your delay is coming from.)
+(For example, an NFSv4 server typically wouldn't have any way to tell
+the difference between a client that has unmounted and one that just
+isn't using the filesystem right now.)
+
+If you could describe in more detail your use case, someone might be
+able to suggest a different solution.  Or it might influence what sort
+of information the nfs server exports to users in the future.
 
 --b.
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 6f228b5..c119ba7 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5367,7 +5367,7 @@ int nfs4_proc_delegreturn(struct inode *inode, struct rpc_cred *cred, const nfs4
- 	return err;
- }
- 
--#define NFS4_LOCK_MINTIMEOUT (1 * HZ)
-+#define NFS4_LOCK_MINTIMEOUT (1 * HZ / 10)
- #define NFS4_LOCK_MAXTIMEOUT (30 * HZ)
- 
- /* 
