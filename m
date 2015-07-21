@@ -1,50 +1,43 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:38688 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754804AbbGUVQk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 21 Jul 2015 17:16:40 -0400
-Date: Tue, 21 Jul 2015 17:16:39 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: Stephen Rothwell <sfr@canb.auug.org.au>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v3] nfsd: Add layouts checking in client_has_state()
-Message-ID: <20150721211639.GB22718@fieldses.org>
-References: <20150721095737.7411eb05@canb.auug.org.au>
- <55ADD3FD.405@gmail.com>
+Received: from smtp.opengridcomputing.com ([72.48.136.20]:46050 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752203AbbGUVWt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Jul 2015 17:22:49 -0400
+From: "Steve Wise" <swise@opengridcomputing.com>
+To: "'Tom Talpey'" <tom@talpey.com>,
+        "'Jason Gunthorpe'" <jgunthorpe@obsidianresearch.com>
+Cc: "'Chuck Lever'" <chuck.lever@oracle.com>, <linux-rdma@vger.kernel.org>,
+        <linux-nfs@vger.kernel.org>, "'Doug Ledford'" <dledford@redhat.com>
+References: <20150720185624.10997.51574.stgit@manet.1015granger.net> <20150720190311.10997.12636.stgit@manet.1015granger.net> <55AD5B48.3010906@talpey.com> <20150720210544.GA9655@obsidianresearch.com> <015101d0c331$69e31d10$3da95730$@opengridcomputing.com> <55AD7065.8040809@talpey.com> <015701d0c33d$36b53110$a41f9330$@opengridcomputing.com> <55AD8F05.6070409@talpey.com> <000301d0c3c2$3f892a50$be9b7ef0$@opengridcomputing.com> <55AEAFCE.60207@talpey.com> 
+In-Reply-To: 
+Subject: RE: [PATCH v3 05/15] xprtrdma: Remove last ib_reg_phys_mr() call site
+Date: Tue, 21 Jul 2015 16:22:52 -0500
+Message-ID: <00c901d0c3fb$66e7cfa0$34b76ee0$@opengridcomputing.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <55ADD3FD.405@gmail.com>
+Content-Type: text/plain;
+	charset="us-ascii"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jul 21, 2015 at 01:09:17PM +0800, Kinglong Mee wrote:
-> Layout is a state resource, nfsd should check it too.
+> > >>>> B) why bother to check? Are machines with <4GB interesting, and worth
+> > >>>> supporting a special optimization?
+> > >>>
+> > >>> No, but cxgb3 is still interesting to user applications, and perhaps NFSRDMA using FRMRs.
+> > >>
+> > >> I'm obviously not making myself clear. I am suggesting that cxgb3 fail
+> > >> the ib_get_dma_mr() verb, regardless of installed memory.
+> > >>
+> > >> I am not suggesting it fail to load, or fail other memreg requests. It
+> > >> should work normally in all other respects.
+> > >
+> > > Even with its limitation, doesn't it have utility for someone using cxgb3 in an embedded 32b environment?
+> >
+> > Sure, do you mean making it conditional on #if sizeof(physaddr) <= 32?
+> > That would make sense I guess.
 > 
-> v2, drop unneeded updating in nfsd4_renew()
-> v3, fix compile error without CONFIG_NFSD_PNFS
+> No, a runtime check.  x64 platforms will work too if the mem size takes <= 32b to describe.
 
-Got it, thanks.--b.
+Jason/Doug, do you think it should allow dma mr allocaton iff totalmem_pages < 4GB?  Or do a check on the sizeof totalmem_pages and
+only allow dma mrs if it is <= 4?
 
-> 
-> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
-> ---
->  fs/nfsd/nfs4state.c | 3 +++
->  1 file changed, 3 insertions(+)
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 61dfb33..94a2980 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -2241,6 +2241,9 @@ static bool client_has_state(struct nfs4_client *clp)
->  	 * Also note we should probably be using this in 4.0 case too.
->  	 */
->  	return !list_empty(&clp->cl_openowners)
-> +#ifdef CONFIG_NFSD_PNFS
-> +		|| !list_empty(&clp->cl_lo_states)
-> +#endif
->  		|| !list_empty(&clp->cl_delegations)
->  		|| !list_empty(&clp->cl_sessions);
->  }
-> -- 
-> 2.4.3
+
