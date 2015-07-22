@@ -1,39 +1,133 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from acheron.ifi.lmu.de ([129.187.214.135]:41157 "EHLO
-	acheron.ifi.lmu.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S934333AbbGVOxO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Jul 2015 10:53:14 -0400
-Message-ID: <55AFAE57.7050409@bio.ifi.lmu.de>
-Date: Wed, 22 Jul 2015 16:53:11 +0200
-From: Frank Steiner <fsteiner-mail1@bio.ifi.lmu.de>
+Received: from fieldses.org ([173.255.197.46]:39038 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932693AbbGVPIl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 22 Jul 2015 11:08:41 -0400
+Date: Wed, 22 Jul 2015 11:08:40 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: NeilBrown <neilb@suse.com>
+Cc: Kinglong Mee <kinglongmee@gmail.com>, Al Viro <viro@zeniv.linux.org.uk>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        linux-fsdevel@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: Re: [PATCH 10/10 v7] nfsd: Allows user un-mounting filesystem where
+ nfsd exports base on
+Message-ID: <20150722150840.GH22718@fieldses.org>
+References: <55A11010.6050005@gmail.com>
+ <55A111A8.2040701@gmail.com>
+ <20150713133934.6a4ef77d@noble>
+ <20150715210756.GE21669@fieldses.org>
+ <20150716094046.445c038b@noble>
+ <20150716205148.GC10673@fieldses.org>
+ <20150722075824.3e7498ce@noble>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: Parallel file locking quite slow with vers=4.0 compared to vers=3
-References: <55ACFF59.7040707@bio.ifi.lmu.de> <20150720212305.GB11050@fieldses.org> <55ADEA5C.8020607@bio.ifi.lmu.de> <20150721155144.GC11050@fieldses.org> <55AFAD60.7040607@bio.ifi.lmu.de>
-In-Reply-To: <55AFAD60.7040607@bio.ifi.lmu.de>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20150722075824.3e7498ce@noble>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Frank Steiner wrote
+On Wed, Jul 22, 2015 at 07:58:24AM +1000, NeilBrown wrote:
+> On Thu, 16 Jul 2015 16:51:48 -0400 "J. Bruce Fields"
+> <bfields@fieldses.org> wrote:
+> 
+> > On Thu, Jul 16, 2015 at 09:40:46AM +1000, NeilBrown wrote:
+> > > On Wed, 15 Jul 2015 17:07:56 -0400 "J. Bruce Fields"
+> > > <bfields@fieldses.org> wrote:
+> > > 
+> > > > > Wow.... this is turning out to be a lot more complex that I imagined at
+> > > > > first (isn't that always the way!).
+> > > > > 
+> > > > > There is a lot of good stuff here, but I think we can probably make it
+> > > > > simpler and so even better.
+> > > > 
+> > > > I'm still not convinced that the expkey
+> > 
+> > (Sorry, I meant an entry in the export cache, not the expkey cache.)
+> 
+> They are very closely related.  An incoming filehandle has its 'fs'
+> identifier mapped through the expkey cache to get an "export point".
+> Then the "export point" plus "client identifier" are mapped through the
+> export cache to get export options.
+> 
+> So the "export point" thing in the expkey cache should really be the
+> same as the thing in the export cache.
+> 
+> > 
+> > > should have a dentry reference
+> > > > in the key in the first place.  Fixing that would fix the immediate
+> > > > problem.
+> > > 
+> > > ???  If we removed the dentry, how would you export a subdirectory of a
+> > > filesystem?
+> > 
+> > I've been wondering if the export cache should really be keyed on the
+> > string representation of the path instead of the struct path.  That's
+> > what the userspace interface uses.
+> 
+> That makes sense for handling updates to the cache from user-space.
+> I'm not sure it is so good for handling mapping from file-handle to
+> export flags.
+> 
+> > 
+> > There's a related bug: if there are mountpoints at both /a and /a/b,
+> 
+> Just to make sure I'm clear on what you are saying, this would be
+> achieved by, e.g.
+> 
+>  mkdir -p /a/b
+>  mount /dev/sdX /a/b
+>  mount /dev/sdY /a
+> 
+> so the mount of /dev/sdX is complete unreachable from '/'.
+> 
+> Correct?
 
-> Thanks! I tried your patch and it goes way faster. The last 2 or 3
-> of 20 xterms that I start in parallel still take about 1-3 seconds,
-> but the rest is poping up immediately. NFS3 is still better as it
+Actually my reproducer used something like:
 
-The difference is still quite large when killing the xterms again. 
-"killall xterm" on NFSv3 takes half a second, on NFSv4 the last
-about 5 xterms are delayed and vanish one after another, the last one
-about 5-6 seconds after the killall was started.
+	server# mount --bind /a
+	server# mount --bind /a/b
 
-cu,
-Frank
+then a v3 mount of / and "ls /mnt/a/b" from the client.
 
+> > then thanks to the lookup-underneath-mountpoint behavior of the server,
+> > an NFSv3 client looking that up will end up going underneath the first
+> > mountpoint and doing an export cache lookup for
+> > 
+> > 	(vfsmnt, dentry) == (/, /a/b)
+> 
+> Maybe this step is where the bug is. "/a/b" is not really a valid name.
+> Should d_path() check for paths that have been mounted over, and attach
+> "(unreachable)" to the end of the path, similar to "(deleted)".
+> 
+> sys_getcwd() can give you "(unreachable)" when in a filesystem that has
+> e.g. been lazy-unmounted.  Maybe we want something similar for a
+> mounted-over filesystem???
+> 
+> 
+> > 
+> > When the server gets a response that starts with "/a/b", it interprets
+> > that as applying to the path (/a, /a/b), so doesn't recognize it as
+> > resolving the query about (/, /a/b).
+> > 
+> > Well, at least I assume that's why I see "ls" hang if I run "ls
+> > /mnt/a/b" on the client.  And there may be some better fix, but I always
+> > figured the root (hah) problem here was due to indexing the cache on
+> > struct path while the upcall interface uses the full path string.
+> > 
+> Sounds like a very odd corner case - how did you stumble on to it?
 
--- 
-Dipl.-Inform. Frank Steiner   Web:  http://www.bio.ifi.lmu.de/~steiner/
-Lehrstuhl f. Bioinformatik    Mail: http://www.bio.ifi.lmu.de/~steiner/m/
-LMU, Amalienstr. 17           Phone: +49 89 2180-4049
-80333 Muenchen, Germany       Fax:   +49 89 2180-99-4049
-* Rekursion kann man erst verstehen, wenn man Rekursion verstanden hat. *
+I dug through my old email, but that may be lost in the mists of
+time....
+
+My memory is that I ran across a similar hang while testing some mountd
+changes, but couldn't reproduce it.  (It might have involved a change to
+the exports?)  So came up with this case by inspection.
+
+I've had this nagging todo to work out if there are other interesting
+consequences of the fact that the cache is internally keyed on one thing
+and appears to mountd to be keyed on another.  (And that there's a
+complicated many<->many relationship between those two things.)  But I
+haven't gotten to it.  Could be all unlikely corner cases, for all I
+know.
+
+--b.
