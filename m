@@ -1,65 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from quartz.orcorp.ca ([184.70.90.242]:48572 "EHLO quartz.orcorp.ca"
+Received: from smtp-o-1.desy.de ([131.169.56.154]:35101 "EHLO smtp-o-1.desy.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932958AbbGUWyj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 21 Jul 2015 18:54:39 -0400
-Date: Tue, 21 Jul 2015 16:54:33 -0600
-From: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
-To: Steve Wise <swise@opengridcomputing.com>
-Cc: "'Tom Talpey'" <tom@talpey.com>, "'Chuck Lever'" <chuck.lever@oracle.com>,
-        linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v3 05/15] xprtrdma: Remove last ib_reg_phys_mr() call site
-Message-ID: <20150721225433.GA25724@obsidianresearch.com>
-References: <20150720185624.10997.51574.stgit@manet.1015granger.net>
- <20150720190311.10997.12636.stgit@manet.1015granger.net>
- <55AD5B48.3010906@talpey.com>
- <20150720210544.GA9655@obsidianresearch.com>
- <015101d0c331$69e31d10$3da95730$@opengridcomputing.com>
- <55AD7065.8040809@talpey.com>
- <015701d0c33d$36b53110$a41f9330$@opengridcomputing.com>
- <20150720224244.GB12278@obsidianresearch.com>
- <55AECA92.3040105@opengridcomputing.com>
+	id S1751953AbbGVHb3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 22 Jul 2015 03:31:29 -0400
+Received: from smtp-map-1.desy.de (smtp-map-1.desy.de [131.169.56.66])
+	by smtp-o-1.desy.de (DESY-O-1) with ESMTP id 1166F280739
+	for <linux-nfs@vger.kernel.org>; Wed, 22 Jul 2015 09:31:26 +0200 (CEST)
+Received: from ZITSWEEP1.win.desy.de (zitsweep1.win.desy.de [131.169.97.95])
+	by smtp-map-1.desy.de (DESY_MAP_1) with ESMTP id 04B4F13EAC
+	for <linux-nfs@vger.kernel.org>; Wed, 22 Jul 2015 09:31:25 +0200 (MEST)
+Date: Wed, 22 Jul 2015 09:31:24 +0200 (CEST)
+From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Frank Steiner <fsteiner-mail1@bio.ifi.lmu.de>, linux-nfs@vger.kernel.org
+Message-ID: <1412102138.7789329.1437550284656.JavaMail.zimbra@desy.de>
+In-Reply-To: <20150721160338.GD11050@fieldses.org>
+References: <55AE4FC6.6050001@bio.ifi.lmu.de> <20150721160338.GD11050@fieldses.org>
+Subject: Re: Are there really no server-side mount/umount message for NFSv4?
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <55AECA92.3040105@opengridcomputing.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jul 21, 2015 at 05:41:22PM -0500, Steve Wise wrote:
-> On 7/20/2015 5:42 PM, Jason Gunthorpe wrote:
-> >On Mon, Jul 20, 2015 at 05:41:27PM -0500, Steve Wise wrote:
-> >>>B) why bother to check? Are machines with <4GB interesting, and worth
-> >>>supporting a special optimization?
-> >>No, but cxgb3 is still interesting to user applications, and perhaps NFSRDMA using FRMRs.
-> >Doesn't look like the NFS client will work. It requires an all
-> >physical memory lkey for SEND and RECV buffers..
-> >
-> >Jason
+With NFSv4.1 there are indirect hints to mount/umount: create and
+destroy session.
+
+Tigran.
+
+----- Original Message -----
+> From: "J. Bruce Fields" <bfields@fieldses.org>
+> To: "Frank Steiner" <fsteiner-mail1@bio.ifi.lmu.de>
+> Cc: linux-nfs@vger.kernel.org
+> Sent: Tuesday, July 21, 2015 6:03:38 PM
+> Subject: Re: Are there really no server-side mount/umount message for NFSv4?
+
+> On Tue, Jul 21, 2015 at 03:57:26PM +0200, Frank Steiner wrote:
+>> we are missing the "authenticated u/mount request..." messages or
+>> error messages like "refused mount request from /x (/): not exported"
+>> for NFSv4 servers. We were using the mount/umount messages e.g. to
+>> detect when some reached a certain point of an installation etc.
+>> And the error messages on the server side often were more helpful
+>> than the ones on the client.
+>> 
+>> Is there really no way to get these easy-to-understand messages?
+>> Debugging shows a lot but nothing that e.g. gives an understandable
+>> error reason.
 > 
-> Looks like cxgb3 supports LOCAL_DMA_LKEY and MEM_MGT_EXTENSIONS so dma mrs
-> aren't required for NFSRDMA:
+> There aren't any mount or umount calls in the NFSv4 protocol.
 > 
-> t4:~/linux-2.6/drivers/infiniband/hw/cxgb3 # grep IB_DEVICE_ iwch_provider.c
->         strlcpy(dev->ibdev.name, "cxgb3_%d", IB_DEVICE_NAME_MAX);
->         dev->device_cap_flags = IB_DEVICE_LOCAL_DMA_LKEY |
->                                 IB_DEVICE_MEM_WINDOW |
->                                 IB_DEVICE_MEM_MGT_EXTENSIONS;
-
-Neat. Is the dma_mask set properly (I don't see any set at all)?
-
-> So cxgb3 can still support NFSRDMA and user verbs w/o get_dma_mr(). I'll
-> submit a patch soon to only support get_dma_mr() if unsigned long is 4
-> bytes...
-
-So, NFS and RDS seem to be the only iWarp compatible ULPs?
-
-NFS has worked, and will continue to work with the global lkey.
-
-RDS looks like it relies on an insecure all physical rkey, so it won't
-work until that is fixed.
-
-So, I'd just use sizeof(physaddr_t) > 4 as the test. The only people
-that could be impacted are RDS users using distro kernels on machines
-with less than 4G of ram. I somehow doubt there are any of those...
-
-Jason
+> (For example, an NFSv4 server typically wouldn't have any way to tell
+> the difference between a client that has unmounted and one that just
+> isn't using the filesystem right now.)
+> 
+> If you could describe in more detail your use case, someone might be
+> able to suggest a different solution.  Or it might influence what sort
+> of information the nfs server exports to users in the future.
+> 
+> --b.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
