@@ -1,158 +1,183 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wi0-f175.google.com ([209.85.212.175]:35832 "EHLO
-	mail-wi0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756567AbbGVNEI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Jul 2015 09:04:08 -0400
+Received: from mail-wi0-f178.google.com ([209.85.212.178]:35710 "EHLO
+	mail-wi0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755276AbbGVNEE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Jul 2015 09:04:04 -0400
 From: Andreas Gruenbacher <andreas.gruenbacher@gmail.com>
 To: linux-kernel@vger.kernel.org
 Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-api@vger.kernel.org, samba-technical@lists.samba.org,
         linux-security-module@vger.kernel.org,
         Andreas Gruenbacher <agruenba@redhat.com>
-Subject: [PATCH v5 05/39] vfs: Add permission flags for setting file attributes
-Date: Wed, 22 Jul 2015 15:02:55 +0200
-Message-Id: <1437570209-29832-6-git-send-email-andreas.gruenbacher@gmail.com>
-In-Reply-To: <1437570209-29832-1-git-send-email-andreas.gruenbacher@gmail.com>
-References: <1437570209-29832-1-git-send-email-andreas.gruenbacher@gmail.com>
+Subject: [PATCH v5 00/39] Richacls
+Date: Wed, 22 Jul 2015 15:02:50 +0200
+Message-Id: <1437570209-29832-1-git-send-email-andreas.gruenbacher@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andreas Gruenbacher <agruenba@redhat.com>
 
-Richacls support permissions that allow to take ownership of a file, change the
-file permissions, and set the file timestamps.  Support that by introducing new
-permission mask flags and by checking for those mask flags in
-inode_change_ok().
+Hello,
 
-Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
----
- fs/attr.c          | 79 +++++++++++++++++++++++++++++++++++++++++++++---------
- include/linux/fs.h |  3 +++
- 2 files changed, 70 insertions(+), 12 deletions(-)
+here's another update of the richacl patch queue.  Changes since the last
+posting (https://lwn.net/Articles/649287/):
 
-diff --git a/fs/attr.c b/fs/attr.c
-index 328be71..85483e0 100644
---- a/fs/attr.c
-+++ b/fs/attr.c
-@@ -17,6 +17,65 @@
- #include <linux/ima.h>
- 
- /**
-+ * inode_extended_permission  -  permissions beyond read/write/execute
-+ *
-+ * Check for permissions that only richacls can currently grant.
-+ */
-+static int inode_extended_permission(struct inode *inode, int mask)
-+{
-+	if (!IS_RICHACL(inode))
-+		return -EPERM;
-+	return inode_permission(inode, mask);
-+}
-+
-+static bool inode_uid_change_ok(struct inode *inode, kuid_t ia_uid)
-+{
-+	if (uid_eq(current_fsuid(), inode->i_uid) &&
-+	    uid_eq(ia_uid, inode->i_uid))
-+		return true;
-+	if (uid_eq(current_fsuid(), ia_uid) &&
-+	    inode_extended_permission(inode, MAY_TAKE_OWNERSHIP) == 0)
-+		return true;
-+	if (capable_wrt_inode_uidgid(inode, CAP_CHOWN))
-+		return true;
-+	return false;
-+}
-+
-+static bool inode_gid_change_ok(struct inode *inode, kgid_t ia_gid)
-+{
-+	int in_group = in_group_p(ia_gid);
-+	if (uid_eq(current_fsuid(), inode->i_uid) &&
-+	    (in_group || gid_eq(ia_gid, inode->i_gid)))
-+		return true;
-+	if (in_group && inode_extended_permission(inode, MAY_TAKE_OWNERSHIP) == 0)
-+		return true;
-+	if (capable_wrt_inode_uidgid(inode, CAP_CHOWN))
-+		return true;
-+	return false;
-+}
-+
-+/**
-+ * inode_owner_permitted_or_capable
-+ *
-+ * Check for permissions implicitly granted to the owner, like MAY_CHMOD or
-+ * MAY_SET_TIMES.  Equivalent to inode_owner_or_capable for file systems
-+ * without support for those permissions.
-+ */
-+static bool inode_owner_permitted_or_capable(struct inode *inode, int mask)
-+{
-+	struct user_namespace *ns;
-+
-+	if (uid_eq(current_fsuid(), inode->i_uid))
-+		return true;
-+	if (inode_extended_permission(inode, mask) == 0)
-+		return true;
-+	ns = current_user_ns();
-+	if (ns_capable(ns, CAP_FOWNER) && kuid_has_mapping(ns, inode->i_uid))
-+		return true;
-+	return false;
-+}
-+
-+/**
-  * inode_change_ok - check if attribute changes to an inode are allowed
-  * @inode:	inode to check
-  * @attr:	attributes to change
-@@ -47,22 +106,18 @@ int inode_change_ok(struct inode *inode, struct iattr *attr)
- 		return 0;
- 
- 	/* Make sure a caller can chown. */
--	if ((ia_valid & ATTR_UID) &&
--	    (!uid_eq(current_fsuid(), inode->i_uid) ||
--	     !uid_eq(attr->ia_uid, inode->i_uid)) &&
--	    !capable_wrt_inode_uidgid(inode, CAP_CHOWN))
--		return -EPERM;
-+	if (ia_valid & ATTR_UID)
-+		if (!inode_uid_change_ok(inode, attr->ia_uid))
-+			return -EPERM;
- 
- 	/* Make sure caller can chgrp. */
--	if ((ia_valid & ATTR_GID) &&
--	    (!uid_eq(current_fsuid(), inode->i_uid) ||
--	    (!in_group_p(attr->ia_gid) && !gid_eq(attr->ia_gid, inode->i_gid))) &&
--	    !capable_wrt_inode_uidgid(inode, CAP_CHOWN))
--		return -EPERM;
-+	if (ia_valid & ATTR_GID)
-+		if (!inode_gid_change_ok(inode, attr->ia_gid))
-+			return -EPERM;
- 
- 	/* Make sure a caller can chmod. */
- 	if (ia_valid & ATTR_MODE) {
--		if (!inode_owner_or_capable(inode))
-+		if (!inode_owner_permitted_or_capable(inode, MAY_CHMOD))
- 			return -EPERM;
- 		/* Also check the setgid bit! */
- 		if (!in_group_p((ia_valid & ATTR_GID) ? attr->ia_gid :
-@@ -73,7 +128,7 @@ int inode_change_ok(struct inode *inode, struct iattr *attr)
- 
- 	/* Check for setting the inode time. */
- 	if (ia_valid & (ATTR_MTIME_SET | ATTR_ATIME_SET | ATTR_TIMES_SET)) {
--		if (!inode_owner_or_capable(inode))
-+		if (!inode_owner_permitted_or_capable(inode, MAY_SET_TIMES))
- 			return -EPERM;
- 	}
- 
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index aae46e0..cfffdaf 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -85,6 +85,9 @@ typedef void (dax_iodone_t)(struct buffer_head *bh_map, int uptodate);
- #define MAY_CREATE_DIR		0x00000200
- #define MAY_DELETE_CHILD	0x00000400
- #define MAY_DELETE_SELF		0x00000800
-+#define MAY_TAKE_OWNERSHIP	0x00001000
-+#define MAY_CHMOD		0x00002000
-+#define MAY_SET_TIMES		0x00004000
- 
- /*
-  * flags in file.f_mode.  Note that FMODE_READ and FMODE_WRITE must correspond
+* Support for user and group identifiers which don't have a uid/gid
+  mapping. Those identifiers are only meaningful for nfs so far; smbfs
+  would be a logical next candidate (for Windows SIDs instead of NFSv4
+  identifiers in that case). Storing those identifiers on a local file system
+  is not allowed.
+
+* New xattr representation for supporting unmapped identifiers: they are stored
+  as a list of NUL-terminated strings at the end of the acl, with one string
+  for each acl entry that has an unmapped identifier.
+
+* Changes to the nfs patches: acls are now encoded above the sunrpc
+  layer. This means we can no longer encode small acls directly into the
+  scratch area of an xdr_buf, we always have to allocate extra memory.
+  But we also don't need to touch the nfs sunrpc code, which Trond objected
+  to.
+
+The complete patch queue is available here:
+
+  git://git.kernel.org/pub/scm/linux/kernel/git/agruen/linux-richacl.git \
+        richacl-2015-07-22
+
+Open issues in nfs:
+
+* When a user or group name cannot be mapped, nfs's idmapper always
+  maps it to nobody. That's good enough for mapping the file owner and
+  owning group, but not for identifiers in acls. For now, to get the nfs
+  richacl support somewhat working, I'm explicitly checking if mapping
+  has resulted in uid/gid 99 in the kernel.
+
+* nfs: When the nfs server replies with NFS4ERR_BADNAME for any
+  user or group name lookup, the client will stop sending numeric uids
+  and gids to the server even when the lookup wasn't numeric.
+  From then on, the client will translate uids and gids that have no
+  mapping to the string "nobody", and the server will reject them.
+  This problem is not specific to acls.
+
+Other open issues:
+
+ * It would be nice if the MAY_DELETE_SELF flag could override the sticky
+   directory check as it did in the previous version of this patch queue.  I
+   couldn't come up with a clean way of achieving that.
+
+Thanks,
+Andreas
+
+Andreas Gruenbacher (37):
+  vfs: Add IS_ACL() and IS_RICHACL() tests
+  vfs: Add MAY_CREATE_FILE and MAY_CREATE_DIR permission flags
+  vfs: Add MAY_DELETE_SELF and MAY_DELETE_CHILD permission flags
+  vfs: Make the inode passed to inode_change_ok non-const
+  vfs: Add permission flags for setting file attributes
+  richacl: In-memory representation and helper functions
+  richacl: Permission mapping functions
+  richacl: Compute maximum file masks from an acl
+  richacl: Update the file masks in chmod()
+  richacl: Permission check algorithm
+  vfs: Cache base_acl objects in inodes
+  vfs: Cache richacl in struct inode
+  richacl: Check if an acl is equivalent to a file mode
+  richacl: Create-time inheritance
+  richacl: Automatic Inheritance
+  richacl: xattr mapping functions
+  vfs: Add richacl permission checking
+  richacl: acl editing helper functions
+  richacl: Move everyone@ aces down the acl
+  richacl: Propagate everyone@ permissions to other aces
+  richacl: Set the owner permissions to the owner mask
+  richacl: Set the other permissions to the other mask
+  richacl: Isolate the owner and group classes
+  richacl: Apply the file masks to a richacl
+  richacl: Create richacl from mode values
+  nfsd: Keep list of acls to dispose of in compoundargs
+  nfsd: Use richacls as internal acl representation
+  nfsd: Add richacl support
+  nfsd: Add support for the v4.1 dacl attribute
+  richacl: Add support for unmapped identifiers
+  ext4: Don't allow unmapped identifiers in richacls
+  sunrpc: Allow to demand-allocate pages to encode into
+  sunrpc: Add xdr_init_encode_pages
+  nfs: Fix GETATTR bitmap verification
+  nfs: Remove unused xdr page offsets in getacl/setacl arguments
+  nfs: Add richacl support
+  nfs: Add support for the v4.1 dacl attribute
+
+Aneesh Kumar K.V (2):
+  ext4: Add richacl support
+  ext4: Add richacl feature flag
+
+ drivers/staging/lustre/lustre/llite/llite_lib.c |   2 +-
+ fs/Kconfig                                      |   9 +
+ fs/Makefile                                     |   3 +
+ fs/attr.c                                       |  81 ++-
+ fs/ext4/Kconfig                                 |  15 +
+ fs/ext4/Makefile                                |   1 +
+ fs/ext4/acl.c                                   |   6 +-
+ fs/ext4/acl.h                                   |  12 +-
+ fs/ext4/ext4.h                                  |   6 +-
+ fs/ext4/file.c                                  |   6 +-
+ fs/ext4/ialloc.c                                |   7 +-
+ fs/ext4/inode.c                                 |  10 +-
+ fs/ext4/namei.c                                 |  11 +-
+ fs/ext4/richacl.c                               | 217 ++++++
+ fs/ext4/richacl.h                               |  47 ++
+ fs/ext4/super.c                                 |  41 +-
+ fs/ext4/xattr.c                                 |   6 +
+ fs/ext4/xattr.h                                 |   1 +
+ fs/f2fs/acl.c                                   |   4 +-
+ fs/inode.c                                      |  15 +-
+ fs/namei.c                                      | 108 ++-
+ fs/nfs/inode.c                                  |   3 -
+ fs/nfs/nfs4proc.c                               | 696 +++++++++++++-----
+ fs/nfs/nfs4xdr.c                                | 259 ++++++-
+ fs/nfs/super.c                                  |   4 +-
+ fs/nfs_common/Makefile                          |   1 +
+ fs/nfs_common/nfs4acl.c                         |  41 ++
+ fs/nfsd/Kconfig                                 |   1 +
+ fs/nfsd/acl.h                                   |  23 +-
+ fs/nfsd/nfs4acl.c                               | 483 +++++++------
+ fs/nfsd/nfs4proc.c                              |  19 +-
+ fs/nfsd/nfs4xdr.c                               | 267 ++++---
+ fs/nfsd/nfsd.h                                  |   6 +-
+ fs/nfsd/xdr4.h                                  |  12 +-
+ fs/posix_acl.c                                  |  26 +-
+ fs/richacl_base.c                               | 669 ++++++++++++++++++
+ fs/richacl_compat.c                             | 901 ++++++++++++++++++++++++
+ fs/richacl_inode.c                              | 262 +++++++
+ fs/richacl_xattr.c                              | 249 +++++++
+ fs/xattr.c                                      |  34 +-
+ include/linux/fs.h                              |  50 +-
+ include/linux/nfs4.h                            |  24 +-
+ include/linux/nfs4acl.h                         |   7 +
+ include/linux/nfs_fs.h                          |   1 -
+ include/linux/nfs_fs_sb.h                       |   2 +
+ include/linux/nfs_xdr.h                         |  13 +-
+ include/linux/posix_acl.h                       |  12 +-
+ include/linux/richacl.h                         | 366 ++++++++++
+ include/linux/richacl_compat.h                  |  40 ++
+ include/linux/richacl_xattr.h                   |  52 ++
+ include/linux/sunrpc/xdr.h                      |   2 +
+ include/uapi/linux/fs.h                         |   3 +-
+ include/uapi/linux/nfs4.h                       |   3 +-
+ include/uapi/linux/xattr.h                      |   2 +
+ net/sunrpc/xdr.c                                |  33 +
+ 55 files changed, 4465 insertions(+), 709 deletions(-)
+ create mode 100644 fs/ext4/richacl.c
+ create mode 100644 fs/ext4/richacl.h
+ create mode 100644 fs/nfs_common/nfs4acl.c
+ create mode 100644 fs/richacl_base.c
+ create mode 100644 fs/richacl_compat.c
+ create mode 100644 fs/richacl_inode.c
+ create mode 100644 fs/richacl_xattr.c
+ create mode 100644 include/linux/nfs4acl.h
+ create mode 100644 include/linux/richacl.h
+ create mode 100644 include/linux/richacl_compat.h
+ create mode 100644 include/linux/richacl_xattr.h
+
 -- 
 2.4.3
 
