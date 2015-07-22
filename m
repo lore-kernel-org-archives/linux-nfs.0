@@ -1,7 +1,7 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wi0-f179.google.com ([209.85.212.179]:37203 "EHLO
-	mail-wi0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756558AbbGVNEH (ORCPT
+Received: from mail-wi0-f177.google.com ([209.85.212.177]:37173 "EHLO
+	mail-wi0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756164AbbGVNEH (ORCPT
 	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Jul 2015 09:04:07 -0400
 From: Andreas Gruenbacher <andreas.gruenbacher@gmail.com>
 To: linux-kernel@vger.kernel.org
@@ -9,9 +9,9 @@ Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-api@vger.kernel.org, samba-technical@lists.samba.org,
         linux-security-module@vger.kernel.org,
         Andreas Gruenbacher <agruenba@redhat.com>
-Subject: [PATCH v5 04/39] vfs: Make the inode passed to inode_change_ok non-const
-Date: Wed, 22 Jul 2015 15:02:54 +0200
-Message-Id: <1437570209-29832-5-git-send-email-andreas.gruenbacher@gmail.com>
+Subject: [PATCH v5 03/39] vfs: Add MAY_DELETE_SELF and MAY_DELETE_CHILD permission flags
+Date: Wed, 22 Jul 2015 15:02:53 +0200
+Message-Id: <1437570209-29832-4-git-send-email-andreas.gruenbacher@gmail.com>
 In-Reply-To: <1437570209-29832-1-git-send-email-andreas.gruenbacher@gmail.com>
 References: <1437570209-29832-1-git-send-email-andreas.gruenbacher@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -19,42 +19,76 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andreas Gruenbacher <agruenba@redhat.com>
 
-We will need to call iop->permission and iop->get_acl from
-inode_change_ok() for additional permission checks, and both take a
-non-const inode.
+Normally, deleting a file requires write and execute access to the parent
+directory.  With Richacls, a process with MAY_DELETE_SELF access to a file may
+delete the file even without write access to the parent directory.
+
+To support that, pass the MAY_DELETE_CHILD mask flag to inode_permission() when
+checking for delete access inside a directory, and MAY_DELETE_SELF when
+checking for delete access to a file itelf.
+
+The MAY_DELETE_SELF permission does not override the sticky directory check.
+It probably should.
 
 Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
 ---
- fs/attr.c          | 2 +-
- include/linux/fs.h | 2 +-
- 2 files changed, 2 insertions(+), 2 deletions(-)
+ fs/namei.c         | 15 +++++++++++----
+ include/linux/fs.h |  2 ++
+ 2 files changed, 13 insertions(+), 4 deletions(-)
 
-diff --git a/fs/attr.c b/fs/attr.c
-index 6530ced..328be71 100644
---- a/fs/attr.c
-+++ b/fs/attr.c
-@@ -28,7 +28,7 @@
-  * Should be called as the first thing in ->setattr implementations,
-  * possibly after taking additional locks.
+diff --git a/fs/namei.c b/fs/namei.c
+index 1e2b1fa..86be72c 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -454,7 +454,7 @@ static int sb_permission(struct super_block *sb, struct inode *inode, int mask)
+  * changing the "normal" UIDs which are used for other things.
+  *
+  * When checking for MAY_APPEND, MAY_CREATE_FILE, MAY_CREATE_DIR,
+- * MAY_WRITE must also be set in @mask.
++ * MAY_DELETE_CHILD, MAY_DELETE_SELF, MAY_WRITE must also be set in @mask.
   */
--int inode_change_ok(const struct inode *inode, struct iattr *attr)
-+int inode_change_ok(struct inode *inode, struct iattr *attr)
+ int inode_permission(struct inode *inode, int mask)
  {
- 	unsigned int ia_valid = attr->ia_valid;
+@@ -2522,7 +2522,7 @@ static int may_delete(struct inode *dir, struct dentry *victim,
+ 		      bool isdir, bool replace)
+ {
+ 	struct inode *inode = d_backing_inode(victim);
+-	int error, mask = MAY_WRITE | MAY_EXEC;
++	int error, mask = MAY_EXEC;
  
+ 	if (d_is_negative(victim))
+ 		return -ENOENT;
+@@ -2532,8 +2532,15 @@ static int may_delete(struct inode *dir, struct dentry *victim,
+ 	audit_inode_child(dir, victim, AUDIT_TYPE_CHILD_DELETE);
+ 
+ 	if (replace)
+-		mask |= isdir ? MAY_CREATE_DIR : MAY_CREATE_FILE;
+-	error = inode_permission(dir, mask);
++		mask |= MAY_WRITE | (isdir ? MAY_CREATE_DIR : MAY_CREATE_FILE);
++	error = inode_permission(dir, mask | MAY_WRITE | MAY_DELETE_CHILD);
++	if (error && IS_RICHACL(inode)) {
++		/* Deleting is also permitted with MAY_EXEC on the directory
++		 * and MAY_DELETE_SELF on the inode.  */
++		if (!inode_permission(inode, MAY_DELETE_SELF) &&
++		    !inode_permission(dir, mask))
++			error = 0;
++	}
+ 	if (error)
+ 		return error;
+ 	if (IS_APPEND(dir))
 diff --git a/include/linux/fs.h b/include/linux/fs.h
-index abf5b0e..aae46e0 100644
+index 9c44f27..abf5b0e 100644
 --- a/include/linux/fs.h
 +++ b/include/linux/fs.h
-@@ -2873,7 +2873,7 @@ extern int buffer_migrate_page(struct address_space *,
- #define buffer_migrate_page NULL
- #endif
+@@ -83,6 +83,8 @@ typedef void (dax_iodone_t)(struct buffer_head *bh_map, int uptodate);
+ #define MAY_NOT_BLOCK		0x00000080
+ #define MAY_CREATE_FILE		0x00000100
+ #define MAY_CREATE_DIR		0x00000200
++#define MAY_DELETE_CHILD	0x00000400
++#define MAY_DELETE_SELF		0x00000800
  
--extern int inode_change_ok(const struct inode *, struct iattr *);
-+extern int inode_change_ok(struct inode *, struct iattr *);
- extern int inode_newsize_ok(const struct inode *, loff_t offset);
- extern void setattr_copy(struct inode *inode, const struct iattr *attr);
- 
+ /*
+  * flags in file.f_mode.  Note that FMODE_READ and FMODE_WRITE must correspond
 -- 
 2.4.3
 
