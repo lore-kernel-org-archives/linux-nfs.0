@@ -1,17 +1,17 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wi0-f177.google.com ([209.85.212.177]:33891 "EHLO
-	mail-wi0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756730AbbGVNEW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Jul 2015 09:04:22 -0400
+Received: from mail-wi0-f169.google.com ([209.85.212.169]:36664 "EHLO
+	mail-wi0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756764AbbGVNE0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Jul 2015 09:04:26 -0400
 From: Andreas Gruenbacher <andreas.gruenbacher@gmail.com>
 To: linux-kernel@vger.kernel.org
 Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-api@vger.kernel.org, samba-technical@lists.samba.org,
         linux-security-module@vger.kernel.org,
         Andreas Gruenbacher <agruenba@redhat.com>
-Subject: [PATCH v5 14/39] richacl: Create-time inheritance
-Date: Wed, 22 Jul 2015 15:03:04 +0200
-Message-Id: <1437570209-29832-15-git-send-email-andreas.gruenbacher@gmail.com>
+Subject: [PATCH v5 17/39] vfs: Add richacl permission checking
+Date: Wed, 22 Jul 2015 15:03:07 +0200
+Message-Id: <1437570209-29832-18-git-send-email-andreas.gruenbacher@gmail.com>
 In-Reply-To: <1437570209-29832-1-git-send-email-andreas.gruenbacher@gmail.com>
 References: <1437570209-29832-1-git-send-email-andreas.gruenbacher@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -19,184 +19,115 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andreas Gruenbacher <agruenba@redhat.com>
 
-When a new file is created, it can inherit an acl from its parent
-directory; this is similar to how default acls work in POSIX (draft)
-ACLs.
-
-As with POSIX ACLs, if a file inherits an acl from its parent directory,
-the intersection between the create mode and the permissions granted by
-the inherited acl determines the file masks and file permission bits,
-and the umask is ignored.
+Hook the richacl permission checking function into the vfs.
 
 Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
 ---
- fs/richacl_base.c       | 69 +++++++++++++++++++++++++++++++++++++++++++++++++
- fs/richacl_inode.c      | 62 ++++++++++++++++++++++++++++++++++++++++++++
- include/linux/richacl.h |  2 ++
- 3 files changed, 133 insertions(+)
+ fs/namei.c     | 51 +++++++++++++++++++++++++++++++++++++++++++++++++--
+ fs/posix_acl.c |  6 +++---
+ 2 files changed, 52 insertions(+), 5 deletions(-)
 
-diff --git a/fs/richacl_base.c b/fs/richacl_base.c
-index 333faa9..ae224b1 100644
---- a/fs/richacl_base.c
-+++ b/fs/richacl_base.c
-@@ -469,3 +469,72 @@ richacl_equiv_mode(const struct richacl *acl, mode_t *mode_p)
- 	return 0;
+diff --git a/fs/namei.c b/fs/namei.c
+index 86be72c..fe73eaa 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -35,6 +35,7 @@
+ #include <linux/fs_struct.h>
+ #include <linux/posix_acl.h>
+ #include <linux/hash.h>
++#include <linux/richacl.h>
+ #include <asm/uaccess.h>
+ 
+ #include "internal.h"
+@@ -255,7 +256,40 @@ void putname(struct filename *name)
+ 		__putname(name);
  }
- EXPORT_SYMBOL_GPL(richacl_equiv_mode);
-+
-+/**
-+ * richacl_inherit  -  compute the inherited acl of a new file
-+ * @dir_acl:	acl of the containing directory
-+ * @isdir:	inherit by a directory or non-directory?
-+ *
-+ * A directory can have acl entries which files and/or directories created
-+ * inside the directory will inherit.  This function computes the acl for such
-+ * a new file.  If there is no inheritable acl, it will return %NULL.
-+ */
-+struct richacl *
-+richacl_inherit(const struct richacl *dir_acl, int isdir)
+ 
+-static int check_acl(struct inode *inode, int mask)
++static int check_richacl(struct inode *inode, int mask)
 +{
-+	const struct richace *dir_ace;
-+	struct richacl *acl = NULL;
-+	struct richace *ace;
-+	int count = 0;
++#ifdef CONFIG_FS_RICHACL
++	struct richacl *acl;
 +
-+	if (isdir) {
-+		richacl_for_each_entry(dir_ace, dir_acl) {
-+			if (!richace_is_inheritable(dir_ace))
-+				continue;
-+			count++;
-+		}
-+		if (!count)
-+			return NULL;
-+		acl = richacl_alloc(count, GFP_KERNEL);
++	if (mask & MAY_NOT_BLOCK) {
++		acl = get_cached_richacl_rcu(inode);
 +		if (!acl)
-+			return ERR_PTR(-ENOMEM);
-+		ace = acl->a_entries;
-+		richacl_for_each_entry(dir_ace, dir_acl) {
-+			if (!richace_is_inheritable(dir_ace))
-+				continue;
-+			richace_copy(ace, dir_ace);
-+			if (dir_ace->e_flags & RICHACE_NO_PROPAGATE_INHERIT_ACE)
-+				richace_clear_inheritance_flags(ace);
-+			if ((dir_ace->e_flags & RICHACE_FILE_INHERIT_ACE) &&
-+			    !(dir_ace->e_flags & RICHACE_DIRECTORY_INHERIT_ACE))
-+				ace->e_flags |= RICHACE_INHERIT_ONLY_ACE;
-+			ace++;
-+		}
-+	} else {
-+		richacl_for_each_entry(dir_ace, dir_acl) {
-+			if (!(dir_ace->e_flags & RICHACE_FILE_INHERIT_ACE))
-+				continue;
-+			count++;
-+		}
-+		if (!count)
-+			return NULL;
-+		acl = richacl_alloc(count, GFP_KERNEL);
-+		if (!acl)
-+			return ERR_PTR(-ENOMEM);
-+		ace = acl->a_entries;
-+		richacl_for_each_entry(dir_ace, dir_acl) {
-+			if (!(dir_ace->e_flags & RICHACE_FILE_INHERIT_ACE))
-+				continue;
-+			richace_copy(ace, dir_ace);
-+			richace_clear_inheritance_flags(ace);
-+			/*
-+			 * RICHACE_DELETE_CHILD is meaningless for
-+			 * non-directories, so clear it.
-+			 */
-+			ace->e_mask &= ~RICHACE_DELETE_CHILD;
-+			ace++;
-+		}
++			goto no_acl;
++		/* no ->get_richacl() calls in RCU mode... */
++		if (acl == ACL_NOT_CACHED)
++			return -ECHILD;
++		return richacl_permission(inode, acl, mask & ~MAY_NOT_BLOCK);
 +	}
 +
-+	return acl;
-+}
-diff --git a/fs/richacl_inode.c b/fs/richacl_inode.c
-index 72c461d..fd6f710 100644
---- a/fs/richacl_inode.c
-+++ b/fs/richacl_inode.c
-@@ -191,3 +191,65 @@ out:
- 	return denied ? -EACCES : 0;
- }
- EXPORT_SYMBOL_GPL(richacl_permission);
-+
-+/**
-+ * richacl_inherit_inode  -  compute inherited acl and file mode
-+ * @dir_acl:	acl of the containing directory
-+ * @inode:	inode of the new file (create mode in i_mode)
-+ *
-+ * The file permission bits in inode->i_mode must be set to the create mode by
-+ * the caller.
-+ *
-+ * If there is an inheritable acl, the maximum permissions that the acl grants
-+ * will be computed and permissions not granted by the acl will be removed from
-+ * inode->i_mode.  If there is no inheritable acl, the umask will be applied
-+ * instead.
-+ */
-+static struct richacl *
-+richacl_inherit_inode(const struct richacl *dir_acl, struct inode *inode)
-+{
-+	struct richacl *acl;
-+	mode_t mask;
-+
-+	acl = richacl_inherit(dir_acl, S_ISDIR(inode->i_mode));
++	acl = get_richacl(inode);
++	if (IS_ERR(acl))
++		return PTR_ERR(acl);
 +	if (acl) {
-+		mask = inode->i_mode;
-+		if (richacl_equiv_mode(acl, &mask) == 0) {
-+			richacl_put(acl);
-+			acl = NULL;
-+		} else {
-+			richacl_compute_max_masks(acl, inode->i_uid);
-+			/*
-+			 * Ensure that the acl will not grant any permissions
-+			 * beyond the create mode.
-+			 */
-+			acl->a_flags |= RICHACL_MASKED;
-+			acl->a_owner_mask &= richacl_mode_to_mask(inode->i_mode >> 6);
-+			acl->a_group_mask &= richacl_mode_to_mask(inode->i_mode >> 3);
-+			acl->a_other_mask &= richacl_mode_to_mask(inode->i_mode);
-+			mask = ~S_IRWXUGO | richacl_masks_to_mode(acl);
-+		}
-+	} else
-+		mask = ~current_umask();
-+
-+	inode->i_mode &= mask;
-+	return acl;
++		int error = richacl_permission(inode, acl, mask);
++		richacl_put(acl);
++		return error;
++	}
++no_acl:
++#endif
++	if (mask & (MAY_DELETE_SELF | MAY_TAKE_OWNERSHIP |
++		    MAY_CHMOD | MAY_SET_TIMES)) {
++		/* File permission bits cannot grant this. */
++		return -EACCES;
++	}
++	return -EAGAIN;
 +}
 +
-+struct richacl *richacl_create(struct inode *inode, struct inode *dir)
-+{
-+	struct richacl *dir_acl, *acl = NULL;
++static int check_posix_acl(struct inode *inode, int mask)
+ {
+ #ifdef CONFIG_FS_POSIX_ACL
+ 	struct posix_acl *acl;
+@@ -290,11 +324,24 @@ static int acl_permission_check(struct inode *inode, int mask)
+ {
+ 	unsigned int mode = inode->i_mode;
+ 
++	/*
++	 * With POSIX ACLs, the (mode & S_IRWXU) bits exactly match the owner
++	 * permissions, and we can skip checking posix acls for the owner.
++	 * With richacls, the owner may be granted fewer permissions than the
++	 * mode bits seem to suggest (for example, append but not write), and
++	 * we always need to check the richacl.
++	 */
 +
-+	if (S_ISLNK(inode->i_mode))
++	if (IS_RICHACL(inode)) {
++		int error = check_richacl(inode, mask);
++		if (error != -EAGAIN)
++			return error;
++	}
+ 	if (likely(uid_eq(current_fsuid(), inode->i_uid)))
+ 		mode >>= 6;
+ 	else {
+ 		if (IS_POSIXACL(inode) && (mode & S_IRWXG)) {
+-			int error = check_acl(inode, mask);
++			int error = check_posix_acl(inode, mask);
+ 			if (error != -EAGAIN)
+ 				return error;
+ 		}
+diff --git a/fs/posix_acl.c b/fs/posix_acl.c
+index 1d766a5..3459bd5 100644
+--- a/fs/posix_acl.c
++++ b/fs/posix_acl.c
+@@ -100,13 +100,13 @@ struct posix_acl *get_acl(struct inode *inode, int type)
+ {
+ 	struct posix_acl *acl;
+ 
++	if (!IS_POSIXACL(inode))
 +		return NULL;
-+	dir_acl = get_richacl(dir);
-+	if (dir_acl) {
-+		if (IS_ERR(dir_acl))
-+			return dir_acl;
-+		acl = richacl_inherit_inode(dir_acl, inode);
-+		richacl_put(dir_acl);
-+	} else
-+		inode->i_mode &= ~current_umask();
-+	return acl;
-+}
-+EXPORT_SYMBOL_GPL(richacl_create);
-diff --git a/include/linux/richacl.h b/include/linux/richacl.h
-index 03876cd..e00bcb4 100644
---- a/include/linux/richacl.h
-+++ b/include/linux/richacl.h
-@@ -309,8 +309,10 @@ extern unsigned int richacl_want_to_mask(unsigned int);
- extern void richacl_compute_max_masks(struct richacl *, kuid_t);
- extern struct richacl *richacl_chmod(struct richacl *, mode_t);
- extern int richacl_equiv_mode(const struct richacl *, mode_t *);
-+extern struct richacl *richacl_inherit(const struct richacl *, int);
++
+ 	acl = get_cached_acl(inode, type);
+ 	if (acl != ACL_NOT_CACHED)
+ 		return acl;
  
- /* richacl_inode.c */
- extern int richacl_permission(struct inode *, const struct richacl *, int);
-+extern struct richacl *richacl_create(struct inode *, struct inode *);
- 
- #endif /* __RICHACL_H */
+-	if (!IS_POSIXACL(inode))
+-		return NULL;
+-
+ 	/*
+ 	 * A filesystem can force a ACL callback by just never filling the
+ 	 * ACL cache. But normally you'd fill the cache either at inode
 -- 
 2.4.3
 
