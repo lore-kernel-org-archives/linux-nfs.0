@@ -1,85 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:53642 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755889AbbGVITc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 22 Jul 2015 04:19:32 -0400
-Date: Wed, 22 Jul 2015 04:19:30 -0400 (EDT)
-From: Benjamin Coddington <bcodding@redhat.com>
-To: Anna.Schumaker@netapp.com, trond.myklebust@primarydata.com
-cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] NFS: Handle exceptions for SEEK
-In-Reply-To: <e666c4a3bb9da72bffbf5ecb33daba4a25d78a5a.1434317690.git.bcodding@redhat.com>
-Message-ID: <alpine.OSX.2.19.9992.1507220415580.8461@planck.local>
-References: <e666c4a3bb9da72bffbf5ecb33daba4a25d78a5a.1434317690.git.bcodding@redhat.com>
+Received: from acheron.ifi.lmu.de ([129.187.214.135]:38120 "EHLO
+	acheron.ifi.lmu.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S934035AbbGVMOB (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Jul 2015 08:14:01 -0400
+Message-ID: <55AF8907.1090807@bio.ifi.lmu.de>
+Date: Wed, 22 Jul 2015 14:13:59 +0200
+From: Frank Steiner <fsteiner-mail1@bio.ifi.lmu.de>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: Are there really no server-side mount/umount message for NFSv4?
+References: <55AE4FC6.6050001@bio.ifi.lmu.de> <20150721160338.GD11050@fieldses.org>
+In-Reply-To: <20150721160338.GD11050@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Trond and Anna,
+J. Bruce Fields wrote
 
-Will you take this one?  I think I've been forgetting to use CC correctly..
+> There aren't any mount or umount calls in the NFSv4 protocol.
 
-Ben
+Ok.
+ 
+> (For example, an NFSv4 server typically wouldn't have any way to tell
+> the difference between a client that has unmounted and one that just
+> isn't using the filesystem right now.)
+> 
+> If you could describe in more detail your use case, someone might be
+> able to suggest a different solution.  Or it might influence what sort
+> of information the nfs server exports to users in the future.
 
-On Sun, 14 Jun 2015, Benjamin Coddington wrote:
+The case where we watched the log file is very very specific and nothing
+that could not be solved otherwise. My main point was that we sometimes 
+ran into "could not mount blabla" on the client, and then the server 
+often gave a more detailed messages pointing us to the error. E.g. in
+NFSv4 we made a mistake by exporting our /nfsv4/ root, bind-mounted
+/nfsv4/x/ and exported onlt /nfsv4/ and /nfsv4/x/y to some client.
+Without any helpful error messages it took us some time to figure
+out that we had to export the whole bind-mount /nfsv4/x to the
+client or make another bindmount only for the /x/y/ subdir. 
 
-> Don't pass along NFS4ERR_* exceptions to VFS and do recovery if needed.
-> These exceptions might look like offsets (even though they are negative) and
-> applications that used the previous behavior of seeking to eof for
-> SEEK_HOLE, and current offset for SEEK_DATA may be caught off-guard if the server
-> responds with transient errors such as NFS4ERR_GRACE.
->
-> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
-> ---
->  fs/nfs/nfs42proc.c |   23 +++++++++++++++--------
->  1 files changed, 15 insertions(+), 8 deletions(-)
->
-> diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
-> index 3a9e752..9c3c9d2 100644
-> --- a/fs/nfs/nfs42proc.c
-> +++ b/fs/nfs/nfs42proc.c
-> @@ -146,20 +146,27 @@ loff_t nfs42_proc_llseek(struct file *filep, loff_t offset, int whence)
->  		.rpc_resp = &res,
->  	};
->  	struct nfs_server *server = NFS_SERVER(inode);
-> +	struct nfs4_exception exception = { };
->  	int status;
->
->  	if (!nfs_server_capable(inode, NFS_CAP_SEEK))
->  		return -ENOTSUPP;
->
-> -	status = nfs42_set_rw_stateid(&args.sa_stateid, filep, FMODE_READ);
-> -	if (status)
-> -		return status;
-> -
->  	nfs_wb_all(inode);
-> -	status = nfs4_call_sync(server->client, server, &msg,
-> -				&args.seq_args, &res.seq_res, 0);
-> -	if (status == -ENOTSUPP)
-> -		server->caps &= ~NFS_CAP_SEEK;
-> +	do {
-> +		status = nfs42_set_rw_stateid(&args.sa_stateid, filep, FMODE_READ);
-> +		if (status)
-> +			return status;
-> +
-> +		status = nfs4_call_sync(server->client, server, &msg,
-> +					&args.seq_args, &res.seq_res, 0);
-> +		if (status == -ENOTSUPP) {
-> +			server->caps &= ~NFS_CAP_SEEK;
-> +			return status;
-> +		}
-> +		status = nfs4_handle_exception(server, status, &exception);
-> +	} while (exception.retry);
-> +
->  	if (status)
->  		return status;
->
-> --
-> 1.7.1
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
+cu,
+Frank
+
+
+-- 
+Dipl.-Inform. Frank Steiner   Web:  http://www.bio.ifi.lmu.de/~steiner/
+Lehrstuhl f. Bioinformatik    Mail: http://www.bio.ifi.lmu.de/~steiner/m/
+LMU, Amalienstr. 17           Phone: +49 89 2180-4049
+80333 Muenchen, Germany       Fax:   +49 89 2180-99-4049
+* Rekursion kann man erst verstehen, wenn man Rekursion verstanden hat. *
