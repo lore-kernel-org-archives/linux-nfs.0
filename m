@@ -1,48 +1,80 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-oi0-f47.google.com ([209.85.218.47]:34516 "EHLO
-	mail-oi0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752315AbbGVSU5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Jul 2015 14:20:57 -0400
-Received: by oigd21 with SMTP id d21so107050451oig.1
-        for <linux-nfs@vger.kernel.org>; Wed, 22 Jul 2015 11:20:57 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] NFSv4: We must set NFS_OPEN_STATE flag in nfs_resync_open_stateid_locked
-Date: Wed, 22 Jul 2015 13:59:13 -0400
-Message-Id: <1437587953-11120-1-git-send-email-trond.myklebust@primarydata.com>
+Received: from fieldses.org ([173.255.197.46]:56707 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750771AbbGVSW3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 22 Jul 2015 14:22:29 -0400
+Date: Wed, 22 Jul 2015 14:22:28 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Kinglong Mee <kinglongmee@gmail.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 05/14] nfsd: Use check_stateid_generation() for
+ generation checking
+Message-ID: <20150722182228.GA3168@fieldses.org>
+References: <55A384B1.8030207@gmail.com>
+ <55A38569.8070405@gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <55A38569.8070405@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Otherwise, nfs4_select_rw_stateid() will always return the zero stateid
-instead of the correct open stateid.
+I don't think layout stateid handling is the same as handling of other
+stateid's.  See
 
-Fixes: f95549cf24660 ("NFSv4: More CLOSE/OPEN races")
-Cc: stable@vger.kernel.org # 4.0+
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/nfs4proc.c | 3 +++
- 1 file changed, 3 insertions(+)
+	https://tools.ietf.org/html/rfc5661#section-12.5.3
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 4ec0c9524c1d..c85ffe67b5f3 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -1200,12 +1200,15 @@ static bool nfs_need_update_open_stateid(struct nfs4_state *state,
- 
- static void nfs_resync_open_stateid_locked(struct nfs4_state *state)
- {
-+	if (!(state->n_wronly || state->n_rdonly || state->n_rdwr))
-+		return;
- 	if (state->n_wronly)
- 		set_bit(NFS_O_WRONLY_STATE, &state->flags);
- 	if (state->n_rdonly)
- 		set_bit(NFS_O_RDONLY_STATE, &state->flags);
- 	if (state->n_rdwr)
- 		set_bit(NFS_O_RDWR_STATE, &state->flags);
-+	set_bit(NFS_OPEN_STATE, &state->flags);
- }
- 
- static void nfs_clear_open_stateid_locked(struct nfs4_state *state,
--- 
-2.4.3
+I haven't reviewed it in detail yet.
 
+--b.
+
+On Mon, Jul 13, 2015 at 05:31:21PM +0800, Kinglong Mee wrote:
+> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+> ---
+>  fs/nfsd/nfs4layouts.c | 5 ++---
+>  fs/nfsd/nfs4state.c   | 2 +-
+>  fs/nfsd/state.h       | 1 +
+>  3 files changed, 4 insertions(+), 4 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4layouts.c b/fs/nfsd/nfs4layouts.c
+> index 6904213..5c0f1d6 100644
+> --- a/fs/nfsd/nfs4layouts.c
+> +++ b/fs/nfsd/nfs4layouts.c
+> @@ -263,9 +263,8 @@ nfsd4_preprocess_layout_stateid(struct svc_rqst *rqstp,
+>  			goto out;
+>  	} else {
+>  		ls = container_of(stid, struct nfs4_layout_stateid, ls_stid);
+> -
+> -		status = nfserr_bad_stateid;
+> -		if (stateid->si_generation > stid->sc_stateid.si_generation)
+> +		status = check_stateid_generation(stateid, &stid->sc_stateid, 1);
+> +		if (status)
+>  			goto out_put_stid;
+>  		if (layout_type != ls->ls_layout_type)
+>  			goto out_put_stid;
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 998166d..2edfedc 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -4474,7 +4474,7 @@ static bool stateid_generation_after(stateid_t *a, stateid_t *b)
+>  	return (s32)(a->si_generation - b->si_generation) > 0;
+>  }
+>  
+> -static __be32 check_stateid_generation(stateid_t *in, stateid_t *ref, bool has_session)
+> +__be32 check_stateid_generation(stateid_t *in, stateid_t *ref, bool has_session)
+>  {
+>  	/*
+>  	 * When sessions are used the stateid generation number is ignored
+> diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+> index 4874ce5..18d015d 100644
+> --- a/fs/nfsd/state.h
+> +++ b/fs/nfsd/state.h
+> @@ -589,6 +589,7 @@ extern __be32 nfs4_preprocess_stateid_op(struct svc_rqst *rqstp,
+>  __be32 nfsd4_lookup_stateid(struct nfsd4_compound_state *cstate,
+>  		     stateid_t *stateid, unsigned char typemask,
+>  		     struct nfs4_stid **s, struct nfsd_net *nn);
+> +__be32 check_stateid_generation(stateid_t *in, stateid_t *ref, bool has_session);
+>  struct nfs4_stid *nfs4_alloc_stid(struct nfs4_client *cl,
+>  		struct kmem_cache *slab);
+>  void nfs4_unhash_stid(struct nfs4_stid *s);
+> -- 
+> 2.4.3
