@@ -1,84 +1,75 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:51110 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754631AbbGVNqZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 22 Jul 2015 09:46:25 -0400
-Message-ID: <55AF9EA8.6020102@redhat.com>
-Date: Wed, 22 Jul 2015 15:46:16 +0200
-From: Jerome Marchand <jmarchan@redhat.com>
+Received: from smtp.opengridcomputing.com ([72.48.136.20]:47164 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1756159AbbGVN6B (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Jul 2015 09:58:01 -0400
+From: "Steve Wise" <swise@opengridcomputing.com>
+To: "'Jason Gunthorpe'" <jgunthorpe@obsidianresearch.com>
+Cc: "'Tom Talpey'" <tom@talpey.com>, "'Chuck Lever'" <chuck.lever@oracle.com>,
+        <linux-rdma@vger.kernel.org>, <linux-nfs@vger.kernel.org>
+References: <20150720185624.10997.51574.stgit@manet.1015granger.net> <20150720190311.10997.12636.stgit@manet.1015granger.net> <55AD5B48.3010906@talpey.com> <20150720210544.GA9655@obsidianresearch.com> <015101d0c331$69e31d10$3da95730$@opengridcomputing.com> <55AD7065.8040809@talpey.com> <015701d0c33d$36b53110$a41f9330$@opengridcomputing.com> <20150720224244.GB12278@obsidianresearch.com> <55AECA92.3040105@opengridcomputing.com> <20150721225433.GA25724@obsidianresearch.com>
+In-Reply-To: <20150721225433.GA25724@obsidianresearch.com>
+Subject: RE: [PATCH v3 05/15] xprtrdma: Remove last ib_reg_phys_mr() call site
+Date: Wed, 22 Jul 2015 08:58:04 -0500
+Message-ID: <000001d0c486$6e2c8ea0$4a85abe0$@opengridcomputing.com>
 MIME-Version: 1.0
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-CC: Anna Schumaker <anna.schumaker@netapp.com>,
-        Christoph Hellwig <hch@infradead.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        Mel Gorman <mgorman@suse.de>
-Subject: Re: [RFC PATCH] nfs: avoid swap-over-NFS deadlock
-References: <1437552643-18774-1-git-send-email-jmarchan@redhat.com> <CAHQdGtRXhUi+=akuASUWo-tYy0YCWJtUts6fqGnA62fo1Jf5tA@mail.gmail.com>
-In-Reply-To: <CAHQdGtRXhUi+=akuASUWo-tYy0YCWJtUts6fqGnA62fo1Jf5tA@mail.gmail.com>
-Content-Type: multipart/signed; micalg=pgp-sha256;
- protocol="application/pgp-signature";
- boundary="vxvcjQMNQAkWoeoXVafnunD9cQfXL9h8h"
+Content-Type: text/plain;
+	charset="us-ascii"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is an OpenPGP/MIME signed message (RFC 4880 and 3156)
---vxvcjQMNQAkWoeoXVafnunD9cQfXL9h8h
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-
-On 07/22/2015 02:23 PM, Trond Myklebust wrote:
-> On Wed, Jul 22, 2015 at 4:10 AM, Jerome Marchand <jmarchan@redhat.com> =
-wrote:
->>
->> Lockdep warns about a inconsistent {RECLAIM_FS-ON-W} ->
->> {IN-RECLAIM_FS-W} usage. The culpritt is the inode->i_mutex taken in
->> nfs_file_direct_write(). This code was introduced by commit a9ab5e8406=
-69
->> ("nfs: page cache invalidation for dio").
->> This naive test patch avoid to take the mutex on a swapfile and makes
->> lockdep happy again. However I don't know much about NFS code and I
->> assume it's probably not the proper solution. Any thought?
->>
->> Signed-off-by: Jerome Marchand <jmarchan@redhat.com>
->=20
-> NFS is not the only O_DIRECT implementation to set the inode->i_mutex.
-> Why can't this be fixed in the generic swap code instead of adding
-> yet-another-exception-for-IS_SWAPFILE?
-
-I meant to cc Mel. Just added him.
-
-AFAIK NFS is the only filesystem that uses swap_activate. Other
-swapfiles are handled more or less like block device (divided in a set
-of contiguous ranges of disk block called swap extents), so there are
-not affected by this possible deadlock.
-
-Also nfs_direct_IO() is special in that it is called only from swap,
-nfs_file_direct_write() however has other users.
-
-Jerome
->=20
-> Cheers
->   Trond
->=20
 
 
+> -----Original Message-----
+> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Jason Gunthorpe
+> Sent: Tuesday, July 21, 2015 5:55 PM
+> To: Steve Wise
+> Cc: 'Tom Talpey'; 'Chuck Lever'; linux-rdma@vger.kernel.org; linux-nfs@vger.kernel.org
+> Subject: Re: [PATCH v3 05/15] xprtrdma: Remove last ib_reg_phys_mr() call site
+> 
+> On Tue, Jul 21, 2015 at 05:41:22PM -0500, Steve Wise wrote:
+> > On 7/20/2015 5:42 PM, Jason Gunthorpe wrote:
+> > >On Mon, Jul 20, 2015 at 05:41:27PM -0500, Steve Wise wrote:
+> > >>>B) why bother to check? Are machines with <4GB interesting, and worth
+> > >>>supporting a special optimization?
+> > >>No, but cxgb3 is still interesting to user applications, and perhaps NFSRDMA using FRMRs.
+> > >Doesn't look like the NFS client will work. It requires an all
+> > >physical memory lkey for SEND and RECV buffers..
+> > >
+> > >Jason
+> >
+> > Looks like cxgb3 supports LOCAL_DMA_LKEY and MEM_MGT_EXTENSIONS so dma mrs
+> > aren't required for NFSRDMA:
+> >
+> > t4:~/linux-2.6/drivers/infiniband/hw/cxgb3 # grep IB_DEVICE_ iwch_provider.c
+> >         strlcpy(dev->ibdev.name, "cxgb3_%d", IB_DEVICE_NAME_MAX);
+> >         dev->device_cap_flags = IB_DEVICE_LOCAL_DMA_LKEY |
+> >                                 IB_DEVICE_MEM_WINDOW |
+> >                                 IB_DEVICE_MEM_MGT_EXTENSIONS;
+> 
+> Neat. Is the dma_mask set properly (I don't see any set at all)?
+> 
 
---vxvcjQMNQAkWoeoXVafnunD9cQfXL9h8h
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: OpenPGP digital signature
-Content-Disposition: attachment; filename="signature.asc"
+iw_cxgb3 isn't a PCI driver.  It sits on top of cxgb3 which is the pci device driver and calls pci_set_dma_mask().
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2
+> > So cxgb3 can still support NFSRDMA and user verbs w/o get_dma_mr(). I'll
+> > submit a patch soon to only support get_dma_mr() if unsigned long is 4
+> > bytes...
+> 
+> So, NFS and RDS seem to be the only iWarp compatible ULPs?
+> 
+> NFS has worked, and will continue to work with the global lkey.
+> 
+> RDS looks like it relies on an insecure all physical rkey, so it won't
+> work until that is fixed.
+> 
+> So, I'd just use sizeof(physaddr_t) > 4 as the test. The only people
+> that could be impacted are RDS users using distro kernels on machines
+> with less than 4G of ram. I somehow doubt there are any of those...
+> 
+> Jason
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-iQEcBAEBCAAGBQJVr56tAAoJEHTzHJCtsuoCuJwH/1Kj2FMWV2a33fQse0hqMyNW
-/QgyXHq4YxuFSLhZNCdy9sUIHmpv8PV3o7F33VasqkDQwOR8rjsw6EdTSBYI4rLN
-tVuSO2Au/W5PHxOz0aHBzsyMsMxvAUSyjzy6k+4dGBELfY9e466Fjn5tvmDRXkZt
-SZWig0d2SKjAFFYSaYYY9RH+qWXw/B/qoeK5xgZ4dQNFmb/beqxERL6taY1Lk8bY
-wPZKbKTZvUe8zLFVVb7V872exmKXg8/iPtR60DT2qmtvIRvR3nqgjfiz/PIEz573
-NZjkdaiTL0AXeOwm8q1IKLgWqW8Dv1X60qCA8Sz+BTMNTWQ0ujbaJXpf6gPyUcA=
-=rvE4
------END PGP SIGNATURE-----
-
---vxvcjQMNQAkWoeoXVafnunD9cQfXL9h8h--
