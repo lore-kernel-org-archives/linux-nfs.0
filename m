@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wi0-f172.google.com ([209.85.212.172]:36809 "EHLO
-	mail-wi0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756846AbbGVNEc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Jul 2015 09:04:32 -0400
+Received: from mail-wi0-f175.google.com ([209.85.212.175]:34092 "EHLO
+	mail-wi0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756802AbbGVNEa (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Jul 2015 09:04:30 -0400
 From: Andreas Gruenbacher <andreas.gruenbacher@gmail.com>
 To: linux-kernel@vger.kernel.org
 Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
@@ -10,9 +10,9 @@ Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-security-module@vger.kernel.org,
         Andreas Gruenbacher <agruenba@redhat.com>,
         Andreas Gruenbacher <agruen@kernel.org>
-Subject: [PATCH v5 22/39] richacl: Propagate everyone@ permissions to other aces
-Date: Wed, 22 Jul 2015 15:03:12 +0200
-Message-Id: <1437570209-29832-23-git-send-email-andreas.gruenbacher@gmail.com>
+Subject: [PATCH v5 20/39] richacl: acl editing helper functions
+Date: Wed, 22 Jul 2015 15:03:10 +0200
+Message-Id: <1437570209-29832-21-git-send-email-andreas.gruenbacher@gmail.com>
 In-Reply-To: <1437570209-29832-1-git-send-email-andreas.gruenbacher@gmail.com>
 References: <1437570209-29832-1-git-send-email-andreas.gruenbacher@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -20,213 +20,250 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andreas Gruenbacher <agruenba@redhat.com>
 
-The trailing everyone@ allow ace can grant permissions to all file
-classes including the owner and group class.  Before we can apply the
-other mask to this entry to turn it into an "other class" entry, we need
-to ensure that members of the owner or group class will not lose any
-permissions from that ace.
+The file masks in richacls make chmod and creating new files more
+efficient than having to apply file permission bits to the acl directly.
+They also allow us to regain permissions from an acl even after a
+restrictive chmod, because the permissions in the acl itself are not
+being destroyed.  In POSIX ACLs, the mask entry has a similar function.
 
-Conceptually, we do this by inserting additional <who>:<allow>::allow
-entries before the trailing everyone@ allow ace with the same
-permissions as the trailing everyone@ allow ace for owner@, group@, and
-all explicitly mentioned users and groups.  (In practice, we will rarely
-need to insert any additional aces in this step.)
+Protocols like nfsv4 do not understand file masks.  For those protocols,
+we need to compute nfs4 acls which represent the effective permissions
+granted by a richacl: we need to "apply" the file masks to the acl.
+
+This is the first in a series of richacl transformation patches; it
+implements basic richacl editing functions.  The following patches
+implement algorithms for transforming a richacl so that it can be
+evaluated as a plain nfs4 acl, with identical permission check results.
 
 Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
 ---
- fs/richacl_compat.c | 182 ++++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 182 insertions(+)
+ fs/Makefile                    |   3 +-
+ fs/richacl_compat.c            | 154 +++++++++++++++++++++++++++++++++++++++++
+ include/linux/richacl_compat.h |  40 +++++++++++
+ 3 files changed, 196 insertions(+), 1 deletion(-)
+ create mode 100644 fs/richacl_compat.c
+ create mode 100644 include/linux/richacl_compat.h
 
+diff --git a/fs/Makefile b/fs/Makefile
+index baf385a..2d08c70 100644
+--- a/fs/Makefile
++++ b/fs/Makefile
+@@ -48,7 +48,8 @@ obj-$(CONFIG_SYSCTL)		+= drop_caches.o
+ 
+ obj-$(CONFIG_FHANDLE)		+= fhandle.o
+ obj-$(CONFIG_FS_RICHACL)	+= richacl.o
+-richacl-y			:= richacl_base.o richacl_inode.o richacl_xattr.o
++richacl-y			:= richacl_base.o richacl_inode.o \
++				   richacl_xattr.o richacl_compat.o
+ 
+ obj-y				+= quota/
+ 
 diff --git a/fs/richacl_compat.c b/fs/richacl_compat.c
-index e10ead3..b709cde 100644
---- a/fs/richacl_compat.c
+new file mode 100644
+index 0000000..5bbf993
+--- /dev/null
 +++ b/fs/richacl_compat.c
-@@ -217,3 +217,185 @@ richacl_move_everyone_aces_down(struct richacl_alloc *alloc)
- 	}
- 	return 0;
- }
+@@ -0,0 +1,154 @@
++/*
++ * Copyright (C) 2006, 2010  Novell, Inc.
++ * Copyright (C) 2015  Red Hat, Inc.
++ * Written by Andreas Gruenbacher <agruen@kernel.org>
++ *
++ * This program is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License as published by the
++ * Free Software Foundation; either version 2, or (at your option) any
++ * later version.
++ *
++ * This program is distributed in the hope that it will be useful, but
++ * WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * General Public License for more details.
++ */
++
++#include <linux/module.h>
++#include <linux/fs.h>
++#include <linux/slab.h>
++#include <linux/richacl_compat.h>
 +
 +/**
-+ * __richacl_propagate_everyone  -  propagate everyone@ permissions up for @who
-+ * @alloc:	acl and number of allocated entries
-+ * @who:	identifier to propagate permissions for
-+ * @allow:	permissions to propagate up
++ * richacl_prepare  -  allocate richacl being constructed
 + *
-+ * Propagate the permissions in @allow up from the end of the acl to the start
-+ * for the specified principal @who.
-+ *
-+ * The simplest possible approach to achieve this would be to insert a
-+ * "<who>:<allow>::allow" ace before the final everyone@ allow ace.  Since this
-+ * would often result in aces which are not needed or which could be merged
-+ * with an existing ace, we make the following optimizations:
-+ *
-+ *   - We go through the acl and determine which permissions are already
-+ *     allowed or denied to @who, and we remove those permissions from
-+ *     @allow.
-+ *
-+ *   - If the acl contains an allow ace for @who and no aces after this entry
-+ *     deny permissions in @allow, we add the permissions in @allow to this
-+ *     ace.  (Propagating permissions across a deny ace which can match the
-+ *     process can elevate permissions.)
-+ *
-+ * This transformation does not alter the permissions that the acl grants.
++ * Allocate a richacl which can hold @count entries but which is initially
++ * empty.
 + */
-+static int
-+__richacl_propagate_everyone(struct richacl_alloc *alloc, struct richace *who,
-+			  unsigned int allow)
++struct richacl *richacl_prepare(struct richacl_alloc *alloc, unsigned int count)
 +{
-+	struct richace *allow_last = NULL, *ace;
-+	struct richacl *acl = alloc->acl;
-+
-+	/*
-+	 * Remove the permissions from allow that are already determined for
-+	 * this who value, and figure out if there is an allow entry for
-+	 * this who value that is "reachable" from the trailing everyone@
-+	 * allow ace.
-+	 */
-+	richacl_for_each_entry(ace, acl) {
-+		if (richace_is_inherit_only(ace))
-+			continue;
-+		if (richace_is_allow(ace)) {
-+			if (richace_is_same_identifier(ace, who)) {
-+				allow &= ~ace->e_mask;
-+				allow_last = ace;
-+			}
-+		} else if (richace_is_deny(ace)) {
-+			if (richace_is_same_identifier(ace, who))
-+				allow &= ~ace->e_mask;
-+			else if (allow & ace->e_mask)
-+				allow_last = NULL;
-+		}
-+	}
-+	ace--;
-+
-+        /*
-+	 * If for group class entries, all the remaining permissions will
-+	 * remain granted by the trailing everyone@ ace, no additional entry is
-+	 * needed.
-+	 */
-+	if (!richace_is_owner(who) &&
-+	    richace_is_everyone(ace) && richace_is_allow(ace) &&
-+	    !(allow & ~(ace->e_mask & acl->a_other_mask)))
-+		allow = 0;
-+
-+	if (allow) {
-+		if (allow_last)
-+			return richace_change_mask(alloc, &allow_last,
-+						   allow_last->e_mask | allow);
-+		else {
-+			struct richace who_copy;
-+
-+			richace_copy(&who_copy, who);
-+			ace = acl->a_entries + acl->a_count - 1;
-+			if (richacl_insert_entry(alloc, &ace))
-+				return -1;
-+			richace_copy(ace, &who_copy);
-+			ace->e_type = RICHACE_ACCESS_ALLOWED_ACE_TYPE;
-+			richace_clear_inheritance_flags(ace);
-+			ace->e_mask = allow;
-+		}
-+	}
-+	return 0;
++	alloc->acl = richacl_alloc(count, GFP_KERNEL);
++	if (!alloc->acl)
++		return NULL;
++	alloc->acl->a_count = 0;
++	alloc->count = count;
++	return alloc->acl;
 +}
++EXPORT_SYMBOL_GPL(richacl_prepare);
 +
 +/**
-+ * richacl_propagate_everyone  -  propagate everyone@ permissions up the acl
++ * richacl_delete_entry  -  delete an entry in an acl
 + * @alloc:	acl and number of allocated entries
++ * @ace:	an entry in @alloc->acl
 + *
-+ * Make sure that group@ and all other users and groups mentioned in the acl
-+ * will not lose any permissions when finally applying the other mask to the
-+ * everyone@ allow ace at the end of the acl.  We modify the permissions of
-+ * existing entries or add new entries before the final everyone@ allow ace to
-+ * achieve that.
-+ *
-+ * Entries for owner@ are ignored here; see richacl_set_owner_permissions().
-+ *
-+ * For example, the following acl implicitly grants everyone rwpx access:
-+ *
-+ *    joe:r::allow
-+ *    everyone@:rwpx::allow
-+ *
-+ * When applying mode 0660 to this acl, group@ would lose rwp access, and joe
-+ * would lose wp access even though the mode does not exclude those
-+ * permissions.  After propagating the everyone@ permissions, the result for
-+ * applying mode 0660 becomes:
-+ *
-+ *    owner@:rwp::allow
-+ *    joe:rwp::allow
-+ *    group@:rwp::allow
-+ *
-+ * Deny aces complicate the matter.  For example, the following acl grants
-+ * everyone but joe write access:
-+ *
-+ *    joe:wp::deny
-+ *    everyone@:rwpx::allow
-+ *
-+ * When applying mode 0660 to this acl, group@ would lose rwp access, and joe
-+ * would lose r access.  After propagating the everyone@ permissions, the
-+ * result for applying mode 0660 becomes:
-+ *
-+ *    owner@:rwp::allow
-+ *    joe:w::deny
-+ *    group@:rwp::allow
-+ *    joe:r::allow
++ * Updates @ace so that it points to the entry before the deleted entry
++ * on return. (When deleting the first entry, @ace will point to the
++ * (non-existant) entry before the first entry). This behavior is the
++ * expected behavior when deleting entries while forward iterating over
++ * an acl.
 + */
-+static int
-+richacl_propagate_everyone(struct richacl_alloc *alloc)
++void
++richacl_delete_entry(struct richacl_alloc *alloc, struct richace **ace)
 +{
-+	struct richace who = { .e_flags = RICHACE_SPECIAL_WHO };
++	void *end = alloc->acl->a_entries + alloc->acl->a_count;
++
++	memmove(*ace, *ace + 1, end - (void *)(*ace + 1));
++	(*ace)--;
++	alloc->acl->a_count--;
++}
++EXPORT_SYMBOL_GPL(richacl_delete_entry);
++
++/**
++ * richacl_insert_entry  -  insert an entry in an acl
++ * @alloc:	acl and number of allocated entries
++ * @ace:	entry before which the new entry shall be inserted
++ *
++ * Insert a new entry in @alloc->acl at position @ace and zero-initialize
++ * it.  This may require reallocating @alloc->acl.
++ */
++int
++richacl_insert_entry(struct richacl_alloc *alloc, struct richace **ace)
++{
 +	struct richacl *acl = alloc->acl;
-+	struct richace *ace;
-+	unsigned int group_allow;
++	unsigned int index = *ace - acl->a_entries;
++	size_t tail_size = (acl->a_count - index) * sizeof(struct richace);
 +
-+	/*
-+	 * If the group mask contains permissions which are not in the other
-+	 * mask, we may need to propagate permissions up from the everyone@
-+	 * allow ace.
-+	 */
-+	if (!(acl->a_group_mask & ~acl->a_other_mask))
-+		return 0;
-+	if (!acl->a_count)
-+		return 0;
-+	ace = acl->a_entries + acl->a_count - 1;
-+	if (richace_is_inherit_only(ace) || !richace_is_everyone(ace))
-+		return 0;
++	if (alloc->count == acl->a_count) {
++		size_t new_size = sizeof(struct richacl) +
++			(acl->a_count + 1) * sizeof(struct richace);
 +
-+	group_allow = ace->e_mask & acl->a_group_mask;
-+	if (group_allow & ~acl->a_other_mask) {
-+		int n;
-+
-+		/* Propagate everyone@ permissions through to group@. */
-+		who.e_id.special = RICHACE_GROUP_SPECIAL_ID;
-+		if (__richacl_propagate_everyone(alloc, &who, group_allow))
++		acl = krealloc(acl, new_size, GFP_KERNEL);
++		if (!acl)
 +			return -1;
-+		acl = alloc->acl;
++		*ace = acl->a_entries + index;
++		alloc->acl = acl;
++		alloc->count++;
++	}
 +
-+		/*
-+		 * Start from the entry before the trailing everyone@ allow
-+		 * entry. We will not hit everyone@ entries in the loop.
-+		 */
-+		for (n = acl->a_count - 2; n != -1; n--) {
-+			ace = acl->a_entries + n;
++	memmove(*ace + 1, *ace, tail_size);
++	memset(*ace, 0, sizeof(**ace));
++	acl->a_count++;
++	return 0;
++}
++EXPORT_SYMBOL_GPL(richacl_insert_entry);
 +
-+			if (richace_is_inherit_only(ace) ||
-+			    richace_is_owner(ace) ||
-+			    richace_is_group(ace))
-+				continue;
-+			if (richace_is_allow(ace) || richace_is_deny(ace)) {
-+				/*
-+				 * Any inserted entry will end up below the
-+				 * current entry
-+				 */
-+				if (__richacl_propagate_everyone(alloc, ace,
-+								 group_allow))
-+					return -1;
-+			}
++/**
++ * richacl_append_entry  -  append an entry to an acl
++ * @alloc:		acl and number of allocated entries
++ *
++ * This may require reallocating @alloc->acl.
++ */
++struct richace *richacl_append_entry(struct richacl_alloc *alloc)
++{
++	struct richacl *acl = alloc->acl;
++	struct richace *ace = acl->a_entries + acl->a_count;
++
++	if (alloc->count > alloc->acl->a_count) {
++		acl->a_count++;
++		return ace;
++	}
++	return richacl_insert_entry(alloc, &ace) ? NULL : ace;
++}
++EXPORT_SYMBOL_GPL(richacl_append_entry);
++
++/**
++ * richace_change_mask  -  set the mask of @ace to @mask
++ * @alloc:	acl and number of allocated entries
++ * @ace:	entry to modify
++ * @mask:	new mask for @ace
++ *
++ * If @ace is inheritable, a inherit-only ace is inserted before @ace which
++ * includes the inheritable permissions of @ace and the inheritance flags of
++ * @ace are cleared before changing the mask.
++ *
++ * If @mask is 0, the original ace is turned into an inherit-only entry if
++ * there are any inheritable permissions, and removed otherwise.
++ *
++ * The returned @ace points to the modified or inserted effective-only acl
++ * entry if that entry exists, to the entry that has become inheritable-only,
++ * or else to the previous entry in the acl.
++ */
++static int
++richace_change_mask(struct richacl_alloc *alloc, struct richace **ace,
++			   unsigned int mask)
++{
++	if (mask && (*ace)->e_mask == mask)
++		(*ace)->e_flags &= ~RICHACE_INHERIT_ONLY_ACE;
++	else if (mask & ~RICHACE_POSIX_ALWAYS_ALLOWED) {
++		if (richace_is_inheritable(*ace)) {
++			if (richacl_insert_entry(alloc, ace))
++				return -1;
++			richace_copy(*ace, *ace + 1);
++			(*ace)->e_flags |= RICHACE_INHERIT_ONLY_ACE;
++			(*ace)++;
++			richace_clear_inheritance_flags(*ace);
 +		}
++		(*ace)->e_mask = mask;
++	} else {
++		if (richace_is_inheritable(*ace))
++			(*ace)->e_flags |= RICHACE_INHERIT_ONLY_ACE;
++		else
++			richacl_delete_entry(alloc, ace);
 +	}
 +	return 0;
 +}
+diff --git a/include/linux/richacl_compat.h b/include/linux/richacl_compat.h
+new file mode 100644
+index 0000000..a9ff630
+--- /dev/null
++++ b/include/linux/richacl_compat.h
+@@ -0,0 +1,40 @@
++/*
++ * Copyright (C) 2015  Red Hat, Inc.
++ * Written by Andreas Gruenbacher <agruenba@redhat.com>
++ *
++ * This program is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License as published by the
++ * Free Software Foundation; either version 2, or (at your option) any
++ * later version.
++ *
++ * This program is distributed in the hope that it will be useful, but
++ * WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * General Public License for more details.
++ */
++
++#ifndef __RICHACL_COMPAT_H
++#define __RICHACL_COMPAT_H
++
++#include <linux/richacl.h>
++
++/**
++ * struct richacl_alloc  -  remember how many entries are actually allocated
++ * @acl:	acl with a_count <= @count
++ * @count:	the actual number of entries allocated in @acl
++ *
++ * We pass around this structure while modifying an acl so that we do
++ * not have to reallocate when we remove existing entries followed by
++ * adding new entries.
++ */
++struct richacl_alloc {
++	struct richacl *acl;
++	unsigned int count;
++};
++
++struct richacl *richacl_prepare(struct richacl_alloc *, unsigned int);
++struct richace *richacl_append_entry(struct richacl_alloc *);
++int richacl_insert_entry(struct richacl_alloc *, struct richace **);
++void richacl_delete_entry(struct richacl_alloc *, struct richace **);
++
++#endif  /* __RICHACL_COMPAT_H */
 -- 
 2.4.3
 
