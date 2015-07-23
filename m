@@ -1,58 +1,96 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga14.intel.com ([192.55.52.115]:12486 "EHLO mga14.intel.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752589AbbGWAng convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Jul 2015 20:43:36 -0400
-From: "Hefty, Sean" <sean.hefty@intel.com>
-To: Tom Talpey <tom@talpey.com>, Sagi Grimberg <sagig@dev.mellanox.co.il>,
-        Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
-CC: Christoph Hellwig <hch@infradead.org>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        Steve Wise <swise@opengridcomputing.com>,
-        "dledford@redhat.com" <dledford@redhat.com>,
-        "sagig@mellanox.com" <sagig@mellanox.com>,
-        "ogerlitz@mellanox.com" <ogerlitz@mellanox.com>,
-        "roid@mellanox.com" <roid@mellanox.com>,
-        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
-        "eli@mellanox.com" <eli@mellanox.com>,
-        "target-devel@vger.kernel.org" <target-devel@vger.kernel.org>,
-        "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Oren Duer <oren@mellanox.com>
-Subject: RE: [PATCH V3 1/5] RDMA/core: Transport-independent access flags
-Date: Thu, 23 Jul 2015 00:43:34 +0000
-Message-ID: <1828884A29C6694DAF28B7E6B8A82373A9001297@ORSMSX109.amr.corp.intel.com>
-References: <559CD174.4040901@dev.mellanox.co.il>
- <20150708081320.GB24203@infradead.org> <559CF5E8.6080000@dev.mellanox.co.il>
- <20150708102035.GA28421@infradead.org> <559D0498.9050809@dev.mellanox.co.il>
- <1828884A29C6694DAF28B7E6B8A82373A8FFD4C0@ORSMSX109.amr.corp.intel.com>
- <559E34F8.4080507@dev.mellanox.co.il>
- <2189DB0A-DD00-4818-AC17-020FCE42D39B@oracle.com>
- <20150710193409.GA9815@infradead.org> <55A21BF4.7090601@dev.mellanox.co.il>
- <20150713165007.GD23832@obsidianresearch.com>
- <55A4C2FA.9060707@dev.mellanox.co.il> <55A4FF93.4090406@talpey.com>
-In-Reply-To: <55A4FF93.4090406@talpey.com>
-Content-Type: text/plain; charset="Windows-1252"
+Received: from mail-pd0-f174.google.com ([209.85.192.174]:34898 "EHLO
+	mail-pd0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752033AbbGWBJV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Jul 2015 21:09:21 -0400
+Received: by pdrg1 with SMTP id g1so147246628pdr.2
+        for <linux-nfs@vger.kernel.org>; Wed, 22 Jul 2015 18:09:21 -0700 (PDT)
+Message-ID: <55B03EB5.9080207@gmail.com>
+Date: Thu, 23 Jul 2015 09:09:09 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
 MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        kinglongmee@gmail.com
+Subject: Re: [PATCH 05/14] nfsd: Use check_stateid_generation() for generation
+ checking
+References: <55A384B1.8030207@gmail.com> <55A38569.8070405@gmail.com> <20150722182228.GA3168@fieldses.org>
+In-Reply-To: <20150722182228.GA3168@fieldses.org>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> > This just emphasizes why we need to converge to a single method.
+On 7/23/2015 02:22, J. Bruce Fields wrote:
+> I don't think layout stateid handling is the same as handling of other
+> stateid's.  See
 > 
-> In my opinion, we already have it.
+> 	https://tools.ietf.org/html/rfc5661#section-12.5.3
+
+Yes,
+
+  "Given the design goal of pNFS to provide parallelism, the layout
+   stateid differs from other stateid types in that the client is
+   expected to send LAYOUTGET and LAYOUTRETURN operations in parallel."
+
+Please ignore this patch.
+
+thanks,
+Kinglong Mee
+
 > 
-> For local registrations, ib_reg_phys_mr()/ib_get_dma_mr(). These are not
-> quite equivalent, btw.
-
-Personally, I would work to eliminate local registration as part of the API.
-
-> For remote registrations, ib_post_send(FRMR).
-
-I slightly agree here.  IMO, the rkey should be obtained by associating the memory buffer with the QP, but not explicitly as a 'send' operation.
-
-If queuing is a concern, we could expose max_active_registrations/max_total_registrations QP attributes.
-
-I would hide the protection domain concept entirely.  If needed, a provider can allocate one PD per QP, with memory registration going to the PD.
-
-- Sean
+> I haven't reviewed it in detail yet.
+> 
+> --b.
+> 
+> On Mon, Jul 13, 2015 at 05:31:21PM +0800, Kinglong Mee wrote:
+>> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+>> ---
+>>  fs/nfsd/nfs4layouts.c | 5 ++---
+>>  fs/nfsd/nfs4state.c   | 2 +-
+>>  fs/nfsd/state.h       | 1 +
+>>  3 files changed, 4 insertions(+), 4 deletions(-)
+>>
+>> diff --git a/fs/nfsd/nfs4layouts.c b/fs/nfsd/nfs4layouts.c
+>> index 6904213..5c0f1d6 100644
+>> --- a/fs/nfsd/nfs4layouts.c
+>> +++ b/fs/nfsd/nfs4layouts.c
+>> @@ -263,9 +263,8 @@ nfsd4_preprocess_layout_stateid(struct svc_rqst *rqstp,
+>>  			goto out;
+>>  	} else {
+>>  		ls = container_of(stid, struct nfs4_layout_stateid, ls_stid);
+>> -
+>> -		status = nfserr_bad_stateid;
+>> -		if (stateid->si_generation > stid->sc_stateid.si_generation)
+>> +		status = check_stateid_generation(stateid, &stid->sc_stateid, 1);
+>> +		if (status)
+>>  			goto out_put_stid;
+>>  		if (layout_type != ls->ls_layout_type)
+>>  			goto out_put_stid;
+>> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+>> index 998166d..2edfedc 100644
+>> --- a/fs/nfsd/nfs4state.c
+>> +++ b/fs/nfsd/nfs4state.c
+>> @@ -4474,7 +4474,7 @@ static bool stateid_generation_after(stateid_t *a, stateid_t *b)
+>>  	return (s32)(a->si_generation - b->si_generation) > 0;
+>>  }
+>>  
+>> -static __be32 check_stateid_generation(stateid_t *in, stateid_t *ref, bool has_session)
+>> +__be32 check_stateid_generation(stateid_t *in, stateid_t *ref, bool has_session)
+>>  {
+>>  	/*
+>>  	 * When sessions are used the stateid generation number is ignored
+>> diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+>> index 4874ce5..18d015d 100644
+>> --- a/fs/nfsd/state.h
+>> +++ b/fs/nfsd/state.h
+>> @@ -589,6 +589,7 @@ extern __be32 nfs4_preprocess_stateid_op(struct svc_rqst *rqstp,
+>>  __be32 nfsd4_lookup_stateid(struct nfsd4_compound_state *cstate,
+>>  		     stateid_t *stateid, unsigned char typemask,
+>>  		     struct nfs4_stid **s, struct nfsd_net *nn);
+>> +__be32 check_stateid_generation(stateid_t *in, stateid_t *ref, bool has_session);
+>>  struct nfs4_stid *nfs4_alloc_stid(struct nfs4_client *cl,
+>>  		struct kmem_cache *slab);
+>>  void nfs4_unhash_stid(struct nfs4_stid *s);
+>> -- 
+>> 2.4.3
+> 
