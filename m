@@ -1,70 +1,65 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:57214 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753149AbbGWPxq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 23 Jul 2015 11:53:46 -0400
-Date: Thu, 23 Jul 2015 11:53:45 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 02/14] nfsd: Add missing gen_confirm in
- nfsd4_setclientid()
-Message-ID: <20150723155345.GC13399@fieldses.org>
-References: <55A384B1.8030207@gmail.com>
- <55A38505.6040405@gmail.com>
- <55B0406B.7010009@gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <55B0406B.7010009@gmail.com>
+Received: from mail-ob0-f178.google.com ([209.85.214.178]:36533 "EHLO
+	mail-ob0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752977AbbGWStF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Jul 2015 14:49:05 -0400
+Received: by obnw1 with SMTP id w1so1279336obn.3
+        for <linux-nfs@vger.kernel.org>; Thu, 23 Jul 2015 11:49:05 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 2/5] NFS: Don't revalidate the mapping if both size and change attr are up to date
+Date: Thu, 23 Jul 2015 14:48:58 -0400
+Message-Id: <1437677341-2943-2-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1437677341-2943-1-git-send-email-trond.myklebust@primarydata.com>
+References: <1437677341-2943-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jul 23, 2015 at 09:16:27AM +0800, Kinglong Mee wrote:
-> This one needs be applied with
-> "nfsd: New counter for generating client confirm verifier"
-> that is only update client confirm verifier without fix this problem.
+If we've ensured that the size and the change attribute are both correct,
+then there is no point in marking those attributes as needing revalidation
+again. Only do so if we know the size is incorrect and was not updated.
 
-Oh, right, I forgot the original patch after the discussion; applying
-"nfsd: Add missing gen_confirm...".
+Fixes: f2467b6f64da ("NFS: Clear NFS_INO_REVAL_PAGECACHE when...")
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfs/inode.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
 
---b.
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index b77b328a06d7..d654661defb3 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -1244,9 +1244,11 @@ static int nfs_check_inode_attributes(struct inode *inode, struct nfs_fattr *fat
+ 	if (fattr->valid & NFS_ATTR_FATTR_SIZE) {
+ 		cur_size = i_size_read(inode);
+ 		new_isize = nfs_size_to_loff_t(fattr->size);
+-		if (cur_size != new_isize && nfsi->nrequests == 0)
++		if (cur_size != new_isize)
+ 			invalid |= NFS_INO_INVALID_ATTR|NFS_INO_REVAL_PAGECACHE;
+ 	}
++	if (nfsi->nrequests != 0)
++		invalid &= ~NFS_INO_REVAL_PAGECACHE;
+ 
+ 	/* Have any file permissions changed? */
+ 	if ((fattr->valid & NFS_ATTR_FATTR_MODE) && (inode->i_mode & S_IALLUGO) != (fattr->mode & S_IALLUGO))
+@@ -1684,8 +1686,7 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
+ 			invalid |= NFS_INO_INVALID_ATTR
+ 				| NFS_INO_INVALID_DATA
+ 				| NFS_INO_INVALID_ACCESS
+-				| NFS_INO_INVALID_ACL
+-				| NFS_INO_REVAL_PAGECACHE;
++				| NFS_INO_INVALID_ACL;
+ 			if (S_ISDIR(inode->i_mode))
+ 				nfs_force_lookup_revalidate(inode);
+ 			inode->i_version = fattr->change_attr;
+@@ -1717,7 +1718,6 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
+ 			if ((nfsi->nrequests == 0) || new_isize > cur_isize) {
+ 				i_size_write(inode, new_isize);
+ 				invalid |= NFS_INO_INVALID_ATTR|NFS_INO_INVALID_DATA;
+-				invalid &= ~NFS_INO_REVAL_PAGECACHE;
+ 			}
+ 			dprintk("NFS: isize change on server for file %s/%ld "
+ 					"(%Ld to %Ld)\n",
+-- 
+2.4.3
 
-> 
-> thanks,
-> Kinglong Mee
-> 
-> On 7/13/2015 17:29, Kinglong Mee wrote:
-> > Commit 294ac32e99 "nfsd: protect clid and verifier generation with client_lock"
-> > have moved gen_confirm() to gen_clid().
-> > 
-> > After it, setclientid will return a bad reply with all zero confirms
-> > after copy_clid().
-> > 
-> > Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
-> > ---
-> >  fs/nfsd/nfs4state.c | 5 +++--
-> >  1 file changed, 3 insertions(+), 2 deletions(-)
-> > 
-> > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> > index e0a4556..b1f84fc 100644
-> > --- a/fs/nfsd/nfs4state.c
-> > +++ b/fs/nfsd/nfs4state.c
-> > @@ -3042,10 +3042,11 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
-> >  	unconf = find_unconfirmed_client_by_name(&clname, nn);
-> >  	if (unconf)
-> >  		unhash_client_locked(unconf);
-> > -	if (conf && same_verf(&conf->cl_verifier, &clverifier))
-> > +	if (conf && same_verf(&conf->cl_verifier, &clverifier)) {
-> >  		/* case 1: probable callback update */
-> >  		copy_clid(new, conf);
-> > -	else /* case 4 (new client) or cases 2, 3 (client reboot): */
-> > +		gen_confirm(new, nn);
-> > +	} else /* case 4 (new client) or cases 2, 3 (client reboot): */
-> >  		gen_clid(new, nn);
-> >  	new->cl_minorversion = 0;
-> >  	gen_callback(new, setclid, rqstp);
-> > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
