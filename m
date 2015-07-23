@@ -1,104 +1,55 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:36212 "EHLO mx2.suse.de"
+Received: from quartz.orcorp.ca ([184.70.90.242]:37681 "EHLO quartz.orcorp.ca"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752615AbbGWXrM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 23 Jul 2015 19:47:12 -0400
-Date: Fri, 24 Jul 2015 09:46:57 +1000
-From: NeilBrown <neilb@suse.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Kinglong Mee <kinglongmee@gmail.com>, Al Viro <viro@zeniv.linux.org.uk>,
+	id S1752201AbbGWXxc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 23 Jul 2015 19:53:32 -0400
+Date: Thu, 23 Jul 2015 17:53:10 -0600
+From: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
+To: "Hefty, Sean" <sean.hefty@intel.com>,
+        "Marciniszyn, Mike" <mike.marciniszyn@intel.com>
+Cc: Steve Wise <swise@opengridcomputing.com>,
+        "'Christoph Hellwig'" <hch@infradead.org>,
+        "'Sagi Grimberg'" <sagig@dev.mellanox.co.il>,
+        "'Steve Wise'" <swise@ogc.us>, "'Tom Talpey'" <tom@talpey.com>,
+        "'Doug Ledford'" <dledford@redhat.com>,
+        "sagig@mellanox.com" <sagig@mellanox.com>,
+        "ogerlitz@mellanox.com" <ogerlitz@mellanox.com>,
+        "roid@mellanox.com" <roid@mellanox.com>,
+        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
+        "eli@mellanox.com" <eli@mellanox.com>,
+        "target-devel@vger.kernel.org" <target-devel@vger.kernel.org>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        linux-fsdevel@vger.kernel.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: Re: export table lookup: was [PATCH 10/10 v7] nfsd: Allows user
- un-mounting filesystem where nfsd exports base on
-Message-ID: <20150724094657.0ca793b4@noble>
-In-Reply-To: <20150722150840.GH22718@fieldses.org>
-References: <55A11010.6050005@gmail.com>
-	<55A111A8.2040701@gmail.com>
-	<20150713133934.6a4ef77d@noble>
-	<20150715210756.GE21669@fieldses.org>
-	<20150716094046.445c038b@noble>
-	<20150716205148.GC10673@fieldses.org>
-	<20150722075824.3e7498ce@noble>
-	<20150722150840.GH22718@fieldses.org>
+        "trond.myklebust@primarydata.com" <trond.myklebust@primarydata.com>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
+        "'Oren Duer'" <oren@mellanox.com>
+Subject: Re: [PATCH V3 1/5] RDMA/core: Transport-independent access flags
+Message-ID: <20150723235310.GA20537@obsidianresearch.com>
+References: <559FC710.1050307@talpey.com>
+ <20150710161108.GA19042@obsidianresearch.com>
+ <CCB6E837-88FF-4DBB-976D-4CF56396A1A1@ogc.us>
+ <55A24571.60902@dev.mellanox.co.il>
+ <00e201d0be6a$e49bc910$add35b30$@opengridcomputing.com>
+ <20150714194512.GA25887@infradead.org>
+ <00f901d0be6f$70c96b00$525c4100$@opengridcomputing.com>
+ <1828884A29C6694DAF28B7E6B8A82373A901C9A5@ORSMSX109.amr.corp.intel.com>
+ <009e01d0c57a$37d5b9e0$a7812da0$@opengridcomputing.com>
+ <1828884A29C6694DAF28B7E6B8A82373A901DB80@ORSMSX109.amr.corp.intel.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1828884A29C6694DAF28B7E6B8A82373A901DB80@ORSMSX109.amr.corp.intel.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 22 Jul 2015 11:08:40 -0400 "J. Bruce Fields"
-<bfields@fieldses.org> wrote:
+On Thu, Jul 23, 2015 at 11:30:08PM +0000, Hefty, Sean wrote:
 
+> I don't see where usnic, ipath, qib, or opa technically need an lkey
+> at all.
 
-> I've had this nagging todo to work out if there are other interesting
-> consequences of the fact that the cache is internally keyed on one thing
-> and appears to mountd to be keyed on another.  (And that there's a
-> complicated many<->many relationship between those two things.)  But I
-> haven't gotten to it.  Could be all unlikely corner cases, for all I
-> know.
+The lkey is possibly useful if someone wants to do single op transfers
+larger than the S/G limit of the SQE. I haven't noticed any ULPs doing
+that..
 
-Even corner cases are worth resolving - and you got me interested now:-)
+qib family may not technically need a lkey, but those drivers are the
+only modern drivers not to support IB_DEVICE_LOCAL_DMA_LKEY.
 
-I think the distinction between pathnames and mnt+dentry is not quite
-the important one.
-I think mnt+dentry is the primary object - it is what a filehandle maps
-to and what a pathname maps to.
-
-The problem is that some mnt+dentry pairs do not have matching path
-names.  If nfsd gets hold of one of these pairs, it shouldn't try
-asking mountd about it because there is no way to ask the question, and
-even if there was it isn't clear there is any way for mountd to answer.
-
-If think that nfsd should assume that any such mountpoint is not
-exported.
-
-So something vaguely like:
-
-diff --git a/fs/dcache.c b/fs/dcache.c
-index 5c8ea15e73a5..a0651872ae8e 100644
---- a/fs/dcache.c
-+++ b/fs/dcache.c
-@@ -2943,6 +2943,12 @@ restart:
- 		if (error)
- 			break;
- 
-+		if (unlikely(d_mountpoint(dentry))) {
-+			struct mount *mounted = __lookup_mnt(vfsmnt, dentry);
-+			if (mounted)
-+				prepend(&bptr, &blen, "//(unreachable)",15);
-+		}
-+
- 		dentry = parent;
- 	}
- 	if (!(seq & 1))
-
-Would mean that if I
-
-# cd /tmp/a/b/c
-# mount --bind /etc /tmp/a
-# /bin/pwd
-
-I get 
-
-/tmp//(unreachable)/a/b/c
-
-would could be checked for by nfsd to decide that there is no point asking user-space.
-I'm not at all certain that this is a good interface (or that the code isn't racy) - it is just
-a proof-of-concept.
-
-We should probably place the (unreachable) at the front rather than in the middle.
-
-Does that seem like a reasonable approach from your understanding of the problem?
-
-Thanks,
-NeilBrown
-
-
-
-
-
-
-
-
-
+Jason
