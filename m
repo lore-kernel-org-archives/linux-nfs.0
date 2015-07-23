@@ -1,79 +1,70 @@
-Return-Path: <Anna.Schumaker@netapp.com>
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-Subject: Re: [PATCH] NFSv4.2: handle NFS-specific llseek errors
-To: "J. Bruce Fields" <bfields@fieldses.org>,
-        Trond Myklebust
-	<trond.myklebust@primarydata.com>,
-        Anna Schumaker <schumakeranna@gmail.com>
-References: <20150723150843.GA12894@fieldses.org>
-CC: <linux-nfs@vger.kernel.org>, Benjamin Coddington <bcodding@redhat.com>
-Message-ID: <55B10763.3020203@Netapp.com>
-Date: Thu, 23 Jul 2015 11:25:23 -0400
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from fieldses.org ([173.255.197.46]:57214 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753149AbbGWPxq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 23 Jul 2015 11:53:46 -0400
+Date: Thu, 23 Jul 2015 11:53:45 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Kinglong Mee <kinglongmee@gmail.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 02/14] nfsd: Add missing gen_confirm in
+ nfsd4_setclientid()
+Message-ID: <20150723155345.GC13399@fieldses.org>
+References: <55A384B1.8030207@gmail.com>
+ <55A38505.6040405@gmail.com>
+ <55B0406B.7010009@gmail.com>
 MIME-Version: 1.0
-In-Reply-To: <20150723150843.GA12894@fieldses.org>
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <55B0406B.7010009@gmail.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Bruce,
+On Thu, Jul 23, 2015 at 09:16:27AM +0800, Kinglong Mee wrote:
+> This one needs be applied with
+> "nfsd: New counter for generating client confirm verifier"
+> that is only update client confirm verifier without fix this problem.
 
-On 07/23/2015 11:08 AM, J. Bruce Fields wrote:
-> From: "J. Bruce Fields" <bfields@redhat.com>
+Oh, right, I forgot the original patch after the discussion; applying
+"nfsd: Add missing gen_confirm...".
+
+--b.
+
 > 
-> Handle NFS-specific llseek errors instead of letting them leak out to
-> userspace.
+> thanks,
+> Kinglong Mee
 > 
-> Reported-by: Benjamin Coddington <bcodding@redhat.com>
-> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> ---
->  fs/nfs/nfs42proc.c | 19 ++++++++++++++++++-
->  1 file changed, 18 insertions(+), 1 deletion(-)
-> 
-> I don't actually have a test case for this, but it looks right....
-> 
-> diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
-> index f486b80f927a..2fec410bc50f 100644
-> --- a/fs/nfs/nfs42proc.c
-> +++ b/fs/nfs/nfs42proc.c
-> @@ -135,7 +135,7 @@ int nfs42_proc_deallocate(struct file *filep, loff_t offset, loff_t len)
->  	return err;
->  }
->  
-> -loff_t nfs42_proc_llseek(struct file *filep, loff_t offset, int whence)
-> +loff_t _nfs42_proc_llseek(struct file *filep, loff_t offset, int whence)
->  {
->  	struct inode *inode = file_inode(filep);
->  	struct nfs42_seek_args args = {
-> @@ -171,6 +171,23 @@ loff_t nfs42_proc_llseek(struct file *filep, loff_t offset, int whence)
->  	return vfs_setpos(filep, res.sr_offset, inode->i_sb->s_maxbytes);
->  }
->  
-> +loff_t nfs42_proc_llseek(struct file *filep, loff_t offset, int whence)
-> +{
-> +	struct nfs_server *server = NFS_SERVER(file_inode(filep));
-> +	struct nfs4_exception exception = { };
-> +	int err;
-
-Can you move the nfs_server_capable() check to before the do {} while loop?  I think it's cleaner if we check for support before ever trying to call _nfs42_proc_llseek().
-
-> +
-> +	do {
-> +		err = _nfs42_proc_llseek(filep, offset, whence);
-> +		if (err == -ENOTSUPP)
-> +			return -EOPNOTSUPP;
-
-With the change to check support moved to this function, we should also unset NFS_CAP_SEEK if we see -ENOTSUPP here.  I think you'll also need to change nfs4_file_llseek() (in nfs4file.c) to check for -EOPNOTSUPP instead of -ENOTSUPP.
-
-Thanks,
-Anna
-
-> +		err = nfs4_handle_exception(server, err, &exception);
-> +	} while (exception.retry);
-> +
-> +	return err;
-> +}
-> +
-> +
->  static void
->  nfs42_layoutstat_prepare(struct rpc_task *task, void *calldata)
->  {
-> 
+> On 7/13/2015 17:29, Kinglong Mee wrote:
+> > Commit 294ac32e99 "nfsd: protect clid and verifier generation with client_lock"
+> > have moved gen_confirm() to gen_clid().
+> > 
+> > After it, setclientid will return a bad reply with all zero confirms
+> > after copy_clid().
+> > 
+> > Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+> > ---
+> >  fs/nfsd/nfs4state.c | 5 +++--
+> >  1 file changed, 3 insertions(+), 2 deletions(-)
+> > 
+> > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> > index e0a4556..b1f84fc 100644
+> > --- a/fs/nfsd/nfs4state.c
+> > +++ b/fs/nfsd/nfs4state.c
+> > @@ -3042,10 +3042,11 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+> >  	unconf = find_unconfirmed_client_by_name(&clname, nn);
+> >  	if (unconf)
+> >  		unhash_client_locked(unconf);
+> > -	if (conf && same_verf(&conf->cl_verifier, &clverifier))
+> > +	if (conf && same_verf(&conf->cl_verifier, &clverifier)) {
+> >  		/* case 1: probable callback update */
+> >  		copy_clid(new, conf);
+> > -	else /* case 4 (new client) or cases 2, 3 (client reboot): */
+> > +		gen_confirm(new, nn);
+> > +	} else /* case 4 (new client) or cases 2, 3 (client reboot): */
+> >  		gen_clid(new, nn);
+> >  	new->cl_minorversion = 0;
+> >  	gen_callback(new, setclid, rqstp);
+> > 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
