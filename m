@@ -1,59 +1,35 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pd0-f173.google.com ([209.85.192.173]:35953 "EHLO
-	mail-pd0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751154AbbGWBQk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Jul 2015 21:16:40 -0400
-Received: by pdjr16 with SMTP id r16so149958873pdj.3
-        for <linux-nfs@vger.kernel.org>; Wed, 22 Jul 2015 18:16:39 -0700 (PDT)
-Message-ID: <55B0406B.7010009@gmail.com>
-Date: Thu, 23 Jul 2015 09:16:27 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
+Received: from mx1.redhat.com ([209.132.183.28]:56941 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752504AbbGWMtf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 23 Jul 2015 08:49:35 -0400
+Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+	by mx1.redhat.com (Postfix) with ESMTPS id 4C81F4C368
+	for <linux-nfs@vger.kernel.org>; Thu, 23 Jul 2015 12:49:35 +0000 (UTC)
+Received: from smallhat.boston.devel.redhat.com (vpn-59-108.rdu2.redhat.com [10.10.59.108])
+	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id t6NCnYo8029924
+	for <linux-nfs@vger.kernel.org>; Thu, 23 Jul 2015 08:49:34 -0400
+Message-ID: <55B0E2DD.1050605@RedHat.com>
+Date: Thu, 23 Jul 2015 08:49:33 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-CC: kinglongmee@gmail.com
-Subject: Re: [PATCH 02/14] nfsd: Add missing gen_confirm in nfsd4_setclientid()
-References: <55A384B1.8030207@gmail.com> <55A38505.6040405@gmail.com>
-In-Reply-To: <55A38505.6040405@gmail.com>
+To: NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Town Hall Meeting: Next Month
 Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This one needs be applied with
-"nfsd: New counter for generating client confirm verifier"
-that is only update client confirm verifier without fix this problem.
+Hello,
 
-thanks,
-Kinglong Mee
+I figured we could skip July's meeting 
+since its summertime, as least here in
+the states, and most people are probably 
+on holiday... enjoying the summer.. but
 
-On 7/13/2015 17:29, Kinglong Mee wrote:
-> Commit 294ac32e99 "nfsd: protect clid and verifier generation with client_lock"
-> have moved gen_confirm() to gen_clid().
-> 
-> After it, setclientid will return a bad reply with all zero confirms
-> after copy_clid().
-> 
-> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
-> ---
->  fs/nfsd/nfs4state.c | 5 +++--
->  1 file changed, 3 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index e0a4556..b1f84fc 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -3042,10 +3042,11 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->  	unconf = find_unconfirmed_client_by_name(&clname, nn);
->  	if (unconf)
->  		unhash_client_locked(unconf);
-> -	if (conf && same_verf(&conf->cl_verifier, &clverifier))
-> +	if (conf && same_verf(&conf->cl_verifier, &clverifier)) {
->  		/* case 1: probable callback update */
->  		copy_clid(new, conf);
-> -	else /* case 4 (new client) or cases 2, 3 (client reboot): */
-> +		gen_confirm(new, nn);
-> +	} else /* case 4 (new client) or cases 2, 3 (client reboot): */
->  		gen_clid(new, nn);
->  	new->cl_minorversion = 0;
->  	gen_callback(new, setclid, rqstp);
-> 
+I do plan on restarting these on the 
+first Thur of every month starting 
+in Aug. So please mark you calendars
+
+Enjoy the Summer!!!
+
+steved.
