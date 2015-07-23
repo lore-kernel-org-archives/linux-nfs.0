@@ -1,67 +1,104 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga14.intel.com ([192.55.52.115]:9787 "EHLO mga14.intel.com"
+Received: from mx2.suse.de ([195.135.220.15]:36212 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753698AbbGWXaK convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Jul 2015 19:30:10 -0400
-From: "Hefty, Sean" <sean.hefty@intel.com>
-To: Steve Wise <swise@opengridcomputing.com>,
-        "'Christoph Hellwig'" <hch@infradead.org>
-CC: "'Sagi Grimberg'" <sagig@dev.mellanox.co.il>,
-        "'Steve Wise'" <swise@ogc.us>,
-        "'Jason Gunthorpe'" <jgunthorpe@obsidianresearch.com>,
-        "'Tom Talpey'" <tom@talpey.com>,
-        "'Doug Ledford'" <dledford@redhat.com>,
-        "sagig@mellanox.com" <sagig@mellanox.com>,
-        "ogerlitz@mellanox.com" <ogerlitz@mellanox.com>,
-        "roid@mellanox.com" <roid@mellanox.com>,
-        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
-        "eli@mellanox.com" <eli@mellanox.com>,
-        "target-devel@vger.kernel.org" <target-devel@vger.kernel.org>,
+	id S1752615AbbGWXrM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 23 Jul 2015 19:47:12 -0400
+Date: Fri, 24 Jul 2015 09:46:57 +1000
+From: NeilBrown <neilb@suse.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Kinglong Mee <kinglongmee@gmail.com>, Al Viro <viro@zeniv.linux.org.uk>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "trond.myklebust@primarydata.com" <trond.myklebust@primarydata.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "'Oren Duer'" <oren@mellanox.com>
-Subject: RE: [PATCH V3 1/5] RDMA/core: Transport-independent access flags
-Date: Thu, 23 Jul 2015 23:30:08 +0000
-Message-ID: <1828884A29C6694DAF28B7E6B8A82373A901DB80@ORSMSX109.amr.corp.intel.com>
-References: <20150708190842.GB11740@obsidianresearch.com>
- <20150708203205.GA21847@infradead.org>
- <20150709000337.GE16812@obsidianresearch.com> <559EF332.7060103@redhat.com>
- <20150709225306.GA30741@obsidianresearch.com> <559FC710.1050307@talpey.com>
- <20150710161108.GA19042@obsidianresearch.com>
- <CCB6E837-88FF-4DBB-976D-4CF56396A1A1@ogc.us>
- <55A24571.60902@dev.mellanox.co.il>
- <00e201d0be6a$e49bc910$add35b30$@opengridcomputing.com>
- <20150714194512.GA25887@infradead.org>
- <00f901d0be6f$70c96b00$525c4100$@opengridcomputing.com>
- <1828884A29C6694DAF28B7E6B8A82373A901C9A5@ORSMSX109.amr.corp.intel.com>
- <009e01d0c57a$37d5b9e0$a7812da0$@opengridcomputing.com>
-In-Reply-To: <009e01d0c57a$37d5b9e0$a7812da0$@opengridcomputing.com>
-Content-Type: text/plain; charset="Windows-1252"
+        linux-fsdevel@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: Re: export table lookup: was [PATCH 10/10 v7] nfsd: Allows user
+ un-mounting filesystem where nfsd exports base on
+Message-ID: <20150724094657.0ca793b4@noble>
+In-Reply-To: <20150722150840.GH22718@fieldses.org>
+References: <55A11010.6050005@gmail.com>
+	<55A111A8.2040701@gmail.com>
+	<20150713133934.6a4ef77d@noble>
+	<20150715210756.GE21669@fieldses.org>
+	<20150716094046.445c038b@noble>
+	<20150716205148.GC10673@fieldses.org>
+	<20150722075824.3e7498ce@noble>
+	<20150722150840.GH22718@fieldses.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> > This may be a nit, but IMO, the use of the term 'rkey' versus 'stag'
-> matters.  They convey different ways of finding a data
-> buffer.  For
-> > example, do you locate a buffer using the stag, then verify that the
-> offset + length fits into the target buffer?
-> 
-> Yes.  HW always uses the stag to locate a record that contains the stag
-> state (valid or invalid), the access flags, the 8b key, the
-> va_base, length, PBL describing the host pages, etc.  HW validates all
-> that before using the buffer.  NOTE: An stag of 0 is the
-> special local-dma-lkey which HW treats differently: If the stag is 0, then
-> the address in the SGE is the bus/dma address itself and
-> no lookup of a MR/PBL/etc is needed.   Stag 0 can ONLY be used by kernel
-> users and MUST never be accepted/used from an ingress
-> packet and MUST never be emitted on the wire in a READ or WRITE.
-> 
-> > Or do you locate the buffer
-> > by address, then verify that the key matches?
-> >
-> 
-> This is never done.
+On Wed, 22 Jul 2015 11:08:40 -0400 "J. Bruce Fields"
+<bfields@fieldses.org> wrote:
 
-These were more rhetorical questions to highlight that stag is a better choice for the name than rkey.  Lkey seems better than stag, though I'd rather see lkey removed completely.  I don't see where usnic, ipath, qib, or opa technically need an lkey at all.
+
+> I've had this nagging todo to work out if there are other interesting
+> consequences of the fact that the cache is internally keyed on one thing
+> and appears to mountd to be keyed on another.  (And that there's a
+> complicated many<->many relationship between those two things.)  But I
+> haven't gotten to it.  Could be all unlikely corner cases, for all I
+> know.
+
+Even corner cases are worth resolving - and you got me interested now:-)
+
+I think the distinction between pathnames and mnt+dentry is not quite
+the important one.
+I think mnt+dentry is the primary object - it is what a filehandle maps
+to and what a pathname maps to.
+
+The problem is that some mnt+dentry pairs do not have matching path
+names.  If nfsd gets hold of one of these pairs, it shouldn't try
+asking mountd about it because there is no way to ask the question, and
+even if there was it isn't clear there is any way for mountd to answer.
+
+If think that nfsd should assume that any such mountpoint is not
+exported.
+
+So something vaguely like:
+
+diff --git a/fs/dcache.c b/fs/dcache.c
+index 5c8ea15e73a5..a0651872ae8e 100644
+--- a/fs/dcache.c
++++ b/fs/dcache.c
+@@ -2943,6 +2943,12 @@ restart:
+ 		if (error)
+ 			break;
+ 
++		if (unlikely(d_mountpoint(dentry))) {
++			struct mount *mounted = __lookup_mnt(vfsmnt, dentry);
++			if (mounted)
++				prepend(&bptr, &blen, "//(unreachable)",15);
++		}
++
+ 		dentry = parent;
+ 	}
+ 	if (!(seq & 1))
+
+Would mean that if I
+
+# cd /tmp/a/b/c
+# mount --bind /etc /tmp/a
+# /bin/pwd
+
+I get 
+
+/tmp//(unreachable)/a/b/c
+
+would could be checked for by nfsd to decide that there is no point asking user-space.
+I'm not at all certain that this is a good interface (or that the code isn't racy) - it is just
+a proof-of-concept.
+
+We should probably place the (unreachable) at the front rather than in the middle.
+
+Does that seem like a reasonable approach from your understanding of the problem?
+
+Thanks,
+NeilBrown
+
+
+
+
+
+
+
+
+
