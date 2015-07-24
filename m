@@ -1,62 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from quartz.orcorp.ca ([184.70.90.242]:39892 "EHLO quartz.orcorp.ca"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751456AbbGXErG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 24 Jul 2015 00:47:06 -0400
-Date: Thu, 23 Jul 2015 22:46:45 -0600
-From: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
-To: "Hefty, Sean" <sean.hefty@intel.com>
-Cc: "Marciniszyn, Mike" <mike.marciniszyn@intel.com>,
-        Steve Wise <swise@opengridcomputing.com>,
-        "'Christoph Hellwig'" <hch@infradead.org>,
-        "'Sagi Grimberg'" <sagig@dev.mellanox.co.il>,
-        "'Steve Wise'" <swise@ogc.us>, "'Tom Talpey'" <tom@talpey.com>,
-        "'Doug Ledford'" <dledford@redhat.com>,
-        "sagig@mellanox.com" <sagig@mellanox.com>,
-        "ogerlitz@mellanox.com" <ogerlitz@mellanox.com>,
-        "roid@mellanox.com" <roid@mellanox.com>,
-        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
-        "eli@mellanox.com" <eli@mellanox.com>,
-        "target-devel@vger.kernel.org" <target-devel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "trond.myklebust@primarydata.com" <trond.myklebust@primarydata.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "'Oren Duer'" <oren@mellanox.com>
-Subject: Re: [PATCH V3 1/5] RDMA/core: Transport-independent access flags
-Message-ID: <20150724044645.GA17482@obsidianresearch.com>
-References: <CCB6E837-88FF-4DBB-976D-4CF56396A1A1@ogc.us>
- <55A24571.60902@dev.mellanox.co.il>
- <00e201d0be6a$e49bc910$add35b30$@opengridcomputing.com>
- <20150714194512.GA25887@infradead.org>
- <00f901d0be6f$70c96b00$525c4100$@opengridcomputing.com>
- <1828884A29C6694DAF28B7E6B8A82373A901C9A5@ORSMSX109.amr.corp.intel.com>
- <009e01d0c57a$37d5b9e0$a7812da0$@opengridcomputing.com>
- <1828884A29C6694DAF28B7E6B8A82373A901DB80@ORSMSX109.amr.corp.intel.com>
- <20150723235310.GA20537@obsidianresearch.com>
- <1828884A29C6694DAF28B7E6B8A82373A901DBA9@ORSMSX109.amr.corp.intel.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1828884A29C6694DAF28B7E6B8A82373A901DBA9@ORSMSX109.amr.corp.intel.com>
+Received: from userp1040.oracle.com ([156.151.31.81]:23859 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752047AbbGXOnN convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Jul 2015 10:43:13 -0400
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
+Subject: Re: [PATCH] SUNRPC: Fix a backchannel deadlock
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <AE826EEC-0E23-49C3-B5CF-F25DBEB1A586@oracle.com>
+Date: Fri, 24 Jul 2015 10:42:36 -0400
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <61786D5B-C758-45E5-B6E2-69F14E3D86F2@oracle.com>
+References: <1437597373-19455-1-git-send-email-trond.myklebust@primarydata.com> <0E5E2AA6-6FCF-4A0E-94E3-91A2D529B58B@oracle.com> <CAHQdGtSdvM9J2fmHv5z72q0dtWW_LdOL4-9WsabPz6BFFEj=rg@mail.gmail.com> <AE826EEC-0E23-49C3-B5CF-F25DBEB1A586@oracle.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jul 24, 2015 at 12:18:41AM +0000, Hefty, Sean wrote:
-> > The lkey is possibly useful if someone wants to do single op transfers
-> > larger than the S/G limit of the SQE. I haven't noticed any ULPs doing
-> > that..
+
+On Jul 22, 2015, at 5:15 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+
 > 
-> That changes how the buffer is identified, which gets back to my
-> question of are we identifying local buffers by address or through
-> some sort of iova/tag/descriptor/mr/whatever.  Do we have this right
-> in the API?
+> On Jul 22, 2015, at 5:14 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+> 
+>> On Wed, Jul 22, 2015 at 4:40 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>>> Hi Trond-
+>>> 
+>>> 
+>>> On Jul 22, 2015, at 4:36 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+>>> 
+>>>> xprt_alloc_bc_request() cannot call xprt_free_bc_request() without
+>>>> deadlocking, since it already holds the xprt->bc_pa_lock.
+>>>> 
+>>>> Reported-by: Chuck Lever <chuck.lever@oracle.com>
+>>>> Fixes: 0d2a970d0ae55 ("SUNRPC: Fix a backchannel race")
+>>>> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+>>> 
+>>> That’s exactly what I did as a basic fix, and I can report that
+>>> it successfully avoids the deadlock.
+>>> 
+>>> If xprt_alloc_bc_request() no longer calls xprt_free_bc_request(),
+>>> are the accounting changes introduced by 0d2a970d0ae55 still
+>>> necessary?
+>> 
+>> The accounting changes are there to fix the race that Christoph
+>> reported in which a valid backchannel request can be rejected by the
+>> RPC layer if it happens to come in after the reply to the previous
+>> request was sent, but before xprt_free_bc_request has completed. I
+>> would therefore expect them still to be needed.
+>> 
+>> That said, I just noticed that the bc_free_count was being incorrectly
+>> maintained. Should be fixed with v2 of the patch series.
+> 
+> I will get v2 in front of the tester who found this issue.
 
-After Sagi's work, and my patchset, all ULPs will talk about local
-buffers in only two ways:
- - struct ib_sge w/ local_dma_lkey
- - struct scatterlist with memory registration to a simple ib_sge.
-   (only done for iWarp RDMA READ? Maybe iSER DIX as well?)
+The v2 fix appears solid. Thanks!
 
-Efforts to unify them have not been successful for fairly reasonable
-reasons :)
 
-Jason
+--
+Chuck Lever
+
+
+
