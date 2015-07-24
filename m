@@ -1,63 +1,108 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:23859 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752047AbbGXOnN convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Jul 2015 10:43:13 -0400
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
-Subject: Re: [PATCH] SUNRPC: Fix a backchannel deadlock
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <AE826EEC-0E23-49C3-B5CF-F25DBEB1A586@oracle.com>
-Date: Fri, 24 Jul 2015 10:42:36 -0400
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <61786D5B-C758-45E5-B6E2-69F14E3D86F2@oracle.com>
-References: <1437597373-19455-1-git-send-email-trond.myklebust@primarydata.com> <0E5E2AA6-6FCF-4A0E-94E3-91A2D529B58B@oracle.com> <CAHQdGtSdvM9J2fmHv5z72q0dtWW_LdOL4-9WsabPz6BFFEj=rg@mail.gmail.com> <AE826EEC-0E23-49C3-B5CF-F25DBEB1A586@oracle.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
+Received: from smtp.opengridcomputing.com ([72.48.136.20]:50930 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753511AbbGXQSQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Jul 2015 12:18:16 -0400
+From: Steve Wise <swise@opengridcomputing.com>
+Subject: [PATCH V6 0/9] iSER support for iWARP
+To: dledford@redhat.com
+Cc: infinipath@intel.com, sagig@mellanox.com, ogerlitz@mellanox.com,
+        roid@mellanox.com, linux-rdma@vger.kernel.org, eli@mellanox.com,
+        target-devel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        bfields@fieldses.org
+Date: Fri, 24 Jul 2015 11:18:15 -0500
+Message-ID: <20150724161331.25617.8475.stgit@build2.ogc.int>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+The following series implements support for iWARP transports in the iSER
+initiator and target.  This is based on v4.2-rc3.
 
-On Jul 22, 2015, at 5:15 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+I know we're in the middle of some API changes that will affect the isert
+patches in this series, but I wanted to get these out for another round
+of review.  I can merge the isert changes on top of the new API once
+it solidifies and we have a staging tree for them.  My goal is to get
+this series in for 4.3, so if the API changes don't gel fairly soon,
+I ask that we consider pulling this series in first.  But I'm definitly
+willing to help get this -and- the API stuff in for 4.3.
 
-> 
-> On Jul 22, 2015, at 5:14 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
-> 
->> On Wed, Jul 22, 2015 at 4:40 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
->>> Hi Trond-
->>> 
->>> 
->>> On Jul 22, 2015, at 4:36 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
->>> 
->>>> xprt_alloc_bc_request() cannot call xprt_free_bc_request() without
->>>> deadlocking, since it already holds the xprt->bc_pa_lock.
->>>> 
->>>> Reported-by: Chuck Lever <chuck.lever@oracle.com>
->>>> Fixes: 0d2a970d0ae55 ("SUNRPC: Fix a backchannel race")
->>>> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
->>> 
->>> That’s exactly what I did as a basic fix, and I can report that
->>> it successfully avoids the deadlock.
->>> 
->>> If xprt_alloc_bc_request() no longer calls xprt_free_bc_request(),
->>> are the accounting changes introduced by 0d2a970d0ae55 still
->>> necessary?
->> 
->> The accounting changes are there to fix the race that Christoph
->> reported in which a valid backchannel request can be rejected by the
->> RPC layer if it happens to come in after the reply to the previous
->> request was sent, but before xprt_free_bc_request has completed. I
->> would therefore expect them still to be needed.
->> 
->> That said, I just noticed that the bc_free_count was being incorrectly
->> maintained. Should be fixed with v2 of the patch series.
-> 
-> I will get v2 in front of the tester who found this issue.
+Changes since V5:
 
-The v2 fix appears solid. Thanks!
+The big change in V6 is to introduce new register/unregister functions in isert
+to use FRMRs + local dma lkey for devices that support this yet do not
+support DIF/PI.  So iWARP devices do not require a DMA-MR.
+
+svcrdma patch added to use max_sge_rd.
+
+reordered the series some:
+	patch 1 is the small iser changes to support iwarp
+	patches 2..5 fix drivers to set max_sge_rd and ULPs to use them
+	patches 6-9 enhance isert to support iwarp
+
+Changes since V4:
+
+iser: fixedcompiler warning
+
+isert: back to setting REMOTE_WRITE only for iWARP devices
+
+Changes since V3:
+
+Fixed commit messages based on feedback.
+
+iser: adjust max_sectors
+
+isert: split into 2 patches
+
+isert: always set REMOTE_WRITE for dma mrs
+
+Changes since V2:
+
+The transport independent work is removed from this series and will
+be submitted in a subsequent series.  This V3 series now enables iWARP
+using existing core services.
+
+Changes since V1:
+
+Introduce and use transport-independent RDMA core services for allocating
+DMA MRs and computing fast register access flags.
+
+Correctly set the device max_sge_rd capability in several rdma device
+drivers.
+
+isert: use device capability max_sge_rd for the read sge depth.
+
+isert: change max_sge to max_write_sge in struct isert_conn.
+
+---
+
+Sagi Grimberg (1):
+      mlx4, mlx5, mthca: Expose max_sge_rd correctly
+
+Steve Wise (8):
+      isert: Support iWARP transports using FRMRs
+      isert: Use local_dma_lkey whenever possible.
+      isert: Use the device's max fastreg page list depth
+      isert: Rename IO functions to more descriptive names
+      RDMA/isert: Limit read depth based on the device max_sge_rd capability
+      svcrdma: Use max_sge_rd for destination read depths
+      ipath,qib: Expose max_sge_rd correctly
+      RDMA/iser: Limit sg tablesize and max_sectors to device fastreg max depth
 
 
---
-Chuck Lever
+ drivers/infiniband/hw/ipath/ipath_verbs.c    |    1 
+ drivers/infiniband/hw/mlx4/main.c            |    1 
+ drivers/infiniband/hw/mlx5/main.c            |    1 
+ drivers/infiniband/hw/mthca/mthca_provider.c |    1 
+ drivers/infiniband/hw/qib/qib_verbs.c        |    1 
+ drivers/infiniband/ulp/iser/iscsi_iser.c     |    9 +
+ drivers/infiniband/ulp/isert/ib_isert.c      |  345 ++++++++++++++++++++++----
+ drivers/infiniband/ulp/isert/ib_isert.h      |    5 
+ include/linux/sunrpc/svc_rdma.h              |    1 
+ net/sunrpc/xprtrdma/svc_rdma_recvfrom.c      |   12 -
+ net/sunrpc/xprtrdma/svc_rdma_transport.c     |    4 
+ 11 files changed, 320 insertions(+), 61 deletions(-)
 
-
-
+-- 
+Steve
