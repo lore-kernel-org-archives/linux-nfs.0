@@ -1,17 +1,17 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.opengridcomputing.com ([72.48.136.20]:50987 "EHLO
+Received: from smtp.opengridcomputing.com ([72.48.136.20]:50945 "EHLO
 	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754393AbbGXQSy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Jul 2015 12:18:54 -0400
+	by vger.kernel.org with ESMTP id S1754091AbbGXQS1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Jul 2015 12:18:27 -0400
 From: Steve Wise <swise@opengridcomputing.com>
-Subject: [PATCH V6 7/9] isert: Use the device's max fastreg page list depth
+Subject: [PATCH V6 2/9] mlx4, mlx5, mthca: Expose max_sge_rd correctly
 To: dledford@redhat.com
 Cc: infinipath@intel.com, sagig@mellanox.com, ogerlitz@mellanox.com,
         roid@mellanox.com, linux-rdma@vger.kernel.org, eli@mellanox.com,
         target-devel@vger.kernel.org, linux-nfs@vger.kernel.org,
         bfields@fieldses.org
-Date: Fri, 24 Jul 2015 11:18:54 -0500
-Message-ID: <20150724161853.25617.11096.stgit@build2.ogc.int>
+Date: Fri, 24 Jul 2015 11:18:26 -0500
+Message-ID: <20150724161826.25617.39372.stgit@build2.ogc.int>
 In-Reply-To: <20150724161331.25617.8475.stgit@build2.ogc.int>
 References: <20150724161331.25617.8475.stgit@build2.ogc.int>
 MIME-Version: 1.0
@@ -19,91 +19,54 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Use the device's max_fast_reg_page_list_len attr to size the SQ
-and FRMR pool.
+From: Sagi Grimberg <sagig@mellanox.com>
 
-Signed-off-by: Steve Wise <swise@opengridcomputing.com>
+Applications must not assume that max_sge and max_sge_rd are the same,
+Hence expose max_sge_rd correctly as well.
+
+Reported-by: Steve Wise <swise@opengridcomputing.com>
+Signed-off-by: Sagi Grimberg <sagig@mellanox.com>
 ---
 
- drivers/infiniband/ulp/isert/ib_isert.c |   28 ++++++++++++++++++++++++----
- drivers/infiniband/ulp/isert/ib_isert.h |    1 +
- 2 files changed, 25 insertions(+), 4 deletions(-)
+ drivers/infiniband/hw/mlx4/main.c            |    1 +
+ drivers/infiniband/hw/mlx5/main.c            |    1 +
+ drivers/infiniband/hw/mthca/mthca_provider.c |    1 +
+ 3 files changed, 3 insertions(+), 0 deletions(-)
 
-diff --git a/drivers/infiniband/ulp/isert/ib_isert.c b/drivers/infiniband/ulp/isert/ib_isert.c
-index dcd3c55..8ae9208 100644
---- a/drivers/infiniband/ulp/isert/ib_isert.c
-+++ b/drivers/infiniband/ulp/isert/ib_isert.c
-@@ -141,6 +141,14 @@ isert_comp_put(struct isert_comp *comp)
- 	mutex_unlock(&device_list_mutex);
- }
- 
-+static int isert_max_send_wrs(struct isert_conn *isert_conn)
-+{
-+	if (isert_conn->max_frpl_len >= ISCSI_ISER_SG_TABLESIZE)
-+		return ISERT_QP_MAX_REQ_DTOS;
-+	return ISERT_QP_MAX_REQ_DTOS *
-+	       DIV_ROUND_UP(ISCSI_ISER_SG_TABLESIZE, isert_conn->max_frpl_len);
-+}
-+
- static struct ib_qp *
- isert_create_qp(struct isert_conn *isert_conn,
- 		struct isert_comp *comp,
-@@ -155,8 +163,6 @@ isert_create_qp(struct isert_conn *isert_conn,
- 	attr.qp_context = isert_conn;
- 	attr.send_cq = comp->cq;
- 	attr.recv_cq = comp->cq;
--	attr.cap.max_send_wr = ISERT_QP_MAX_REQ_DTOS;
--	attr.cap.max_recv_wr = ISERT_QP_MAX_RECV_DTOS + 1;
- 	/*
- 	 * FIXME: Use devattr.max_sge - 2 for max_send_sge as
- 	 * work-around for RDMA_READs with ConnectX-2.
-@@ -168,7 +174,13 @@ isert_create_qp(struct isert_conn *isert_conn,
- 	isert_conn->max_write_sge = attr.cap.max_send_sge;
- 	isert_conn->max_read_sge = min_t(u32, device->dev_attr.max_sge_rd,
- 					 attr.cap.max_send_sge);
-+	isert_conn->max_frpl_len = device->dev_attr.max_fast_reg_page_list_len;
-+	isert_info("max_write_sge %d max_read_sge %d max_frpl_len %d\n",
-+		   isert_conn->max_write_sge, isert_conn->max_read_sge,
-+		   isert_conn->max_frpl_len);
- 
-+	attr.cap.max_send_wr = isert_max_send_wrs(isert_conn);
-+	attr.cap.max_recv_wr = ISERT_QP_MAX_RECV_DTOS + 1;
- 	attr.cap.max_recv_sge = 1;
- 	attr.sq_sig_type = IB_SIGNAL_REQ_WR;
- 	attr.qp_type = IB_QPT_RC;
-@@ -606,12 +618,20 @@ isert_conn_create_fastreg_pool(struct isert_conn *isert_conn)
- 	struct se_session *se_sess = isert_conn->conn->sess->se_sess;
- 	struct se_node_acl *se_nacl = se_sess->se_node_acl;
- 	int i, ret, tag_num;
-+
- 	/*
- 	 * Setup the number of FRMRs based upon the number of tags
--	 * available to session in iscsi_target_locate_portal().
-+	 * available to session in iscsi_target_locate_portal(),
-+	 * whether pi is supported, and how many FRMRs are needed to
-+	 * map the largest possible IO given the rdma device limits.
- 	 */
- 	tag_num = max_t(u32, ISCSIT_MIN_TAGS, se_nacl->queue_depth);
--	tag_num = (tag_num * 2) + ISCSIT_EXTRA_TAGS;
-+	if (isert_conn->pi_support)
-+		tag_num *= 2;
-+	if (isert_conn->max_frpl_len < ISCSI_ISER_SG_TABLESIZE)
-+		tag_num *= DIV_ROUND_UP(ISCSI_ISER_SG_TABLESIZE,
-+				       isert_conn->max_frpl_len);
-+	tag_num += ISCSIT_EXTRA_TAGS;
- 
- 	isert_conn->fr_pool_size = 0;
- 	for (i = 0; i < tag_num; i++) {
-diff --git a/drivers/infiniband/ulp/isert/ib_isert.h b/drivers/infiniband/ulp/isert/ib_isert.h
-index 29fde27..11cd662 100644
---- a/drivers/infiniband/ulp/isert/ib_isert.h
-+++ b/drivers/infiniband/ulp/isert/ib_isert.h
-@@ -154,6 +154,7 @@ struct isert_conn {
- 	bool			pi_support;
- 	u32			max_write_sge;
- 	u32			max_read_sge;
-+	u32			max_frpl_len;
- 	char			*login_buf;
- 	char			*login_req_buf;
- 	char			*login_rsp_buf;
+diff --git a/drivers/infiniband/hw/mlx4/main.c b/drivers/infiniband/hw/mlx4/main.c
+index 8be6db8..05166b7 100644
+--- a/drivers/infiniband/hw/mlx4/main.c
++++ b/drivers/infiniband/hw/mlx4/main.c
+@@ -229,6 +229,7 @@ static int mlx4_ib_query_device(struct ib_device *ibdev,
+ 	props->max_qp_wr	   = dev->dev->caps.max_wqes - MLX4_IB_SQ_MAX_SPARE;
+ 	props->max_sge		   = min(dev->dev->caps.max_sq_sg,
+ 					 dev->dev->caps.max_rq_sg);
++	props->max_sge_rd = props->max_sge;
+ 	props->max_cq		   = dev->dev->quotas.cq;
+ 	props->max_cqe		   = dev->dev->caps.max_cqes;
+ 	props->max_mr		   = dev->dev->quotas.mpt;
+diff --git a/drivers/infiniband/hw/mlx5/main.c b/drivers/infiniband/hw/mlx5/main.c
+index 085c24b..bf27f21 100644
+--- a/drivers/infiniband/hw/mlx5/main.c
++++ b/drivers/infiniband/hw/mlx5/main.c
+@@ -273,6 +273,7 @@ static int mlx5_ib_query_device(struct ib_device *ibdev,
+ 		     sizeof(struct mlx5_wqe_ctrl_seg)) /
+ 		     sizeof(struct mlx5_wqe_data_seg);
+ 	props->max_sge = min(max_rq_sg, max_sq_sg);
++	props->max_sge_rd = props->max_sge;
+ 	props->max_cq		   = 1 << MLX5_CAP_GEN(mdev, log_max_cq);
+ 	props->max_cqe = (1 << MLX5_CAP_GEN(mdev, log_max_eq_sz)) - 1;
+ 	props->max_mr		   = 1 << MLX5_CAP_GEN(mdev, log_max_mkey);
+diff --git a/drivers/infiniband/hw/mthca/mthca_provider.c b/drivers/infiniband/hw/mthca/mthca_provider.c
+index 93ae51d..dc2d48c 100644
+--- a/drivers/infiniband/hw/mthca/mthca_provider.c
++++ b/drivers/infiniband/hw/mthca/mthca_provider.c
+@@ -97,6 +97,7 @@ static int mthca_query_device(struct ib_device *ibdev, struct ib_device_attr *pr
+ 	props->max_qp              = mdev->limits.num_qps - mdev->limits.reserved_qps;
+ 	props->max_qp_wr           = mdev->limits.max_wqes;
+ 	props->max_sge             = mdev->limits.max_sg;
++	props->max_sge_rd          = props->max_sge;
+ 	props->max_cq              = mdev->limits.num_cqs - mdev->limits.reserved_cqs;
+ 	props->max_cqe             = mdev->limits.max_cqes;
+ 	props->max_mr              = mdev->limits.num_mpts - mdev->limits.reserved_mrws;
 
