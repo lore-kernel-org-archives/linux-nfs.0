@@ -1,106 +1,84 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:57975 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750934AbbGXTsS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 24 Jul 2015 15:48:18 -0400
-Date: Fri, 24 Jul 2015 15:48:17 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: NeilBrown <neilb@suse.com>
-Cc: Kinglong Mee <kinglongmee@gmail.com>, Al Viro <viro@zeniv.linux.org.uk>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        linux-fsdevel@vger.kernel.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: Re: export table lookup: was [PATCH 10/10 v7] nfsd: Allows user
- un-mounting filesystem where nfsd exports base on
-Message-ID: <20150724194817.GA24619@fieldses.org>
-References: <55A11010.6050005@gmail.com>
- <55A111A8.2040701@gmail.com>
- <20150713133934.6a4ef77d@noble>
- <20150715210756.GE21669@fieldses.org>
- <20150716094046.445c038b@noble>
- <20150716205148.GC10673@fieldses.org>
- <20150722075824.3e7498ce@noble>
- <20150722150840.GH22718@fieldses.org>
- <20150724094657.0ca793b4@noble>
+Received: from smtp.opengridcomputing.com ([72.48.136.20]:51390 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751824AbbGXT5i (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Jul 2015 15:57:38 -0400
+From: "Steve Wise" <swise@opengridcomputing.com>
+To: "'Jason Gunthorpe'" <jgunthorpe@obsidianresearch.com>
+Cc: <dledford@redhat.com>, <infinipath@intel.com>, <sagig@mellanox.com>,
+        <ogerlitz@mellanox.com>, <roid@mellanox.com>,
+        <linux-rdma@vger.kernel.org>, <eli@mellanox.com>,
+        <target-devel@vger.kernel.org>, <linux-nfs@vger.kernel.org>,
+        <bfields@fieldses.org>
+References: <20150724161331.25617.8475.stgit@build2.ogc.int> <20150724161904.25617.85015.stgit@build2.ogc.int> <20150724165721.GC25480@obsidianresearch.com> <00ce01d0c641$493ea300$dbbbe900$@opengridcomputing.com> <20150724192411.GC26225@obsidianresearch.com>
+In-Reply-To: <20150724192411.GC26225@obsidianresearch.com>
+Subject: RE: [PATCH V6 9/9] isert: Support iWARP transports using FRMRs
+Date: Fri, 24 Jul 2015 14:57:45 -0500
+Message-ID: <00db01d0c64b$01f40300$05dc0900$@opengridcomputing.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20150724094657.0ca793b4@noble>
+Content-Type: text/plain;
+	charset="us-ascii"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jul 24, 2015 at 09:46:57AM +1000, NeilBrown wrote:
-> On Wed, 22 Jul 2015 11:08:40 -0400 "J. Bruce Fields"
-> <bfields@fieldses.org> wrote:
-> 
-> 
-> > I've had this nagging todo to work out if there are other interesting
-> > consequences of the fact that the cache is internally keyed on one thing
-> > and appears to mountd to be keyed on another.  (And that there's a
-> > complicated many<->many relationship between those two things.)  But I
-> > haven't gotten to it.  Could be all unlikely corner cases, for all I
-> > know.
-> 
-> Even corner cases are worth resolving - and you got me interested now:-)
-> 
-> I think the distinction between pathnames and mnt+dentry is not quite
-> the important one.
-> I think mnt+dentry is the primary object - it is what a filehandle maps
-> to and what a pathname maps to.
-> 
-> The problem is that some mnt+dentry pairs do not have matching path
-> names.  If nfsd gets hold of one of these pairs, it shouldn't try
-> asking mountd about it because there is no way to ask the question, and
-> even if there was it isn't clear there is any way for mountd to answer.
-> 
-> If think that nfsd should assume that any such mountpoint is not
-> exported.
-> 
-> So something vaguely like:
-> 
-> diff --git a/fs/dcache.c b/fs/dcache.c
-> index 5c8ea15e73a5..a0651872ae8e 100644
-> --- a/fs/dcache.c
-> +++ b/fs/dcache.c
-> @@ -2943,6 +2943,12 @@ restart:
->  		if (error)
->  			break;
->  
-> +		if (unlikely(d_mountpoint(dentry))) {
-> +			struct mount *mounted = __lookup_mnt(vfsmnt, dentry);
-> +			if (mounted)
-> +				prepend(&bptr, &blen, "//(unreachable)",15);
-> +		}
-> +
->  		dentry = parent;
->  	}
->  	if (!(seq & 1))
-> 
-> Would mean that if I
-> 
-> # cd /tmp/a/b/c
-> # mount --bind /etc /tmp/a
-> # /bin/pwd
-> 
-> I get 
-> 
-> /tmp//(unreachable)/a/b/c
-> 
-> would could be checked for by nfsd to decide that there is no point asking user-space.
-> I'm not at all certain that this is a good interface (or that the code isn't racy) - it is just
-> a proof-of-concept.
-> 
-> We should probably place the (unreachable) at the front rather than in the middle.
-> 
-> Does that seem like a reasonable approach from your understanding of the problem?
 
-So something like that could give us a way to prevent asking mountd
-about mounts that it can't see.
 
-Except when things change: it's possible a mount that would pass this
-test at the time we create the request is no longer by the time we get
-mountd's reply.
+> -----Original Message-----
+> From: Jason Gunthorpe [mailto:jgunthorpe@obsidianresearch.com]
+> Sent: Friday, July 24, 2015 2:24 PM
+> To: Steve Wise
+> Cc: dledford@redhat.com; infinipath@intel.com; sagig@mellanox.com; ogerlitz@mellanox.com; roid@mellanox.com; linux-
+> rdma@vger.kernel.org; eli@mellanox.com; target-devel@vger.kernel.org; linux-nfs@vger.kernel.org; bfields@fieldses.org
+> Subject: Re: [PATCH V6 9/9] isert: Support iWARP transports using FRMRs
+> 
+> On Fri, Jul 24, 2015 at 01:48:09PM -0500, Steve Wise wrote:
+> > > The use of FRWR for RDMA READ should be iWarp specific, IB shouldn't
+> > > pay that overhead. I am expecting to see a cap_rdma_read_rkey or
+> > > something in here ?
+> >
+> > Ok.  But cap_rdma_read_rkey() doesn't really describe the
+> > requirement.  The requirement is rkey + REMOTE_WRITE.  So it is more
+> > like rdma_cap_read_requires_remote_write() which is ugly and too
+> > long (but descriptive)...
+> 
+> I don't care much what name you pick, just jam something like this in
+> the description
+> 
+>  If set then RDMA_READ must be performed by mapping the local
+>  buffers through a rkey MR with ACCESS_REMOTE_WRITE enabled.
+>  The rkey of this MR should be passed in as the sg_lists's lkey for
+>  IB_WR_RDMA_READ_WITH_INV.
+> 
+>  FRWR should be used to register the buffer in the send queue,
+>  and the read should be issued using IB_WR_RDMA_READ_WITH_INV (xx
+>  can we just implicitly rely on this? Are there any iWarp cards that
+>  support FRWR but not WITH_INV?)
+>
 
-You can tell people not to do that.  It still bugs me to have the
-possibility of a unanswereable request.  
+No.  And iWARP devices must support READ_WITH_INV from my reading of the iWARP verbs spec.  
 
---b.
+I will add all these comments and make use of READ_WITH_INV.
+
+>  Finally, only a single SGE can be used with RDMA_READ, all scattering
+>  must be accomplished with the MR.
+> 
+> This quite dramatically changes what is an allowed scatter for the
+> transfer, IB can support arbitary unaligned S/G lists, while this is
+> now forced into gapless page aligned elements.
+> 
+> Your patch takes care of this? And only impacts IB?
+
+Did you mean "only impacts iWARP?"  
+
+Yes the patch takes care of sg->fr page list packing. And it uses the existing isert_map_fr_pagelist() to pack the sg into the
+fastreg page list.  This same routine is used by the IB FRMR/PI reg/unreg routines as well.
+
+None of this impacts isert over IB, assuming the suggested change above to only use the new reg/unreg functions for devices that
+need the iwarp style of read. IE IB devices will either use the existing FRMR/PI methods if they support FRMR/LOCAL_DMA_LKEY/PI
+(mlx5) or they will use the existing DMA_MR methods (all the rest of the IB devices).  IW devices will get my new reg/unreg
+methods...
+
+Steve.
+
+
+
