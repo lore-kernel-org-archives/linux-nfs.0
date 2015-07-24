@@ -1,48 +1,124 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga09.intel.com ([134.134.136.24]:41167 "EHLO mga09.intel.com"
+Received: from mx2.suse.de ([195.135.220.15]:40785 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752291AbbGXASm convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Jul 2015 20:18:42 -0400
-From: "Hefty, Sean" <sean.hefty@intel.com>
-To: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>,
-        "Marciniszyn, Mike" <mike.marciniszyn@intel.com>
-CC: Steve Wise <swise@opengridcomputing.com>,
-        "'Christoph Hellwig'" <hch@infradead.org>,
-        "'Sagi Grimberg'" <sagig@dev.mellanox.co.il>,
-        "'Steve Wise'" <swise@ogc.us>, "'Tom Talpey'" <tom@talpey.com>,
-        "'Doug Ledford'" <dledford@redhat.com>,
-        "sagig@mellanox.com" <sagig@mellanox.com>,
-        "ogerlitz@mellanox.com" <ogerlitz@mellanox.com>,
-        "roid@mellanox.com" <roid@mellanox.com>,
-        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
-        "eli@mellanox.com" <eli@mellanox.com>,
-        "target-devel@vger.kernel.org" <target-devel@vger.kernel.org>,
+	id S1752448AbbGXCFZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 23 Jul 2015 22:05:25 -0400
+Date: Fri, 24 Jul 2015 12:05:15 +1000
+From: NeilBrown <neilb@suse.com>
+To: Al Viro <viro@ZenIV.linux.org.uk>
+Cc: Kinglong Mee <kinglongmee@gmail.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "trond.myklebust@primarydata.com" <trond.myklebust@primarydata.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "'Oren Duer'" <oren@mellanox.com>
-Subject: RE: [PATCH V3 1/5] RDMA/core: Transport-independent access flags
-Date: Fri, 24 Jul 2015 00:18:41 +0000
-Message-ID: <1828884A29C6694DAF28B7E6B8A82373A901DBA9@ORSMSX109.amr.corp.intel.com>
-References: <559FC710.1050307@talpey.com>
- <20150710161108.GA19042@obsidianresearch.com>
- <CCB6E837-88FF-4DBB-976D-4CF56396A1A1@ogc.us>
- <55A24571.60902@dev.mellanox.co.il>
- <00e201d0be6a$e49bc910$add35b30$@opengridcomputing.com>
- <20150714194512.GA25887@infradead.org>
- <00f901d0be6f$70c96b00$525c4100$@opengridcomputing.com>
- <1828884A29C6694DAF28B7E6B8A82373A901C9A5@ORSMSX109.amr.corp.intel.com>
- <009e01d0c57a$37d5b9e0$a7812da0$@opengridcomputing.com>
- <1828884A29C6694DAF28B7E6B8A82373A901DB80@ORSMSX109.amr.corp.intel.com>
- <20150723235310.GA20537@obsidianresearch.com>
-In-Reply-To: <20150723235310.GA20537@obsidianresearch.com>
-Content-Type: text/plain; charset="Windows-1252"
+        linux-fsdevel@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: Re: [PATCH 10/10 v7] nfsd: Allows user un-mounting filesystem where
+ nfsd exports base on
+Message-ID: <20150724120515.023322d4@noble>
+In-Reply-To: <20150713044553.GN17109@ZenIV.linux.org.uk>
+References: <55A11010.6050005@gmail.com>
+	<55A111A8.2040701@gmail.com>
+	<20150713133934.6a4ef77d@noble>
+	<20150713142059.493a790e@noble>
+	<20150713044553.GN17109@ZenIV.linux.org.uk>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> The lkey is possibly useful if someone wants to do single op transfers
-> larger than the S/G limit of the SQE. I haven't noticed any ULPs doing
-> that..
+On Mon, 13 Jul 2015 05:45:53 +0100 Al Viro <viro@ZenIV.linux.org.uk>
+wrote:
 
-That changes how the buffer is identified, which gets back to my question of are we identifying local buffers by address or through some sort of iova/tag/descriptor/mr/whatever.  Do we have this right in the API?
+> On Mon, Jul 13, 2015 at 02:20:59PM +1000, NeilBrown wrote:
+> 
+> > Actually, with that change to pin_kill, this side of things becomes
+> > really easy.
+> > All expXXX_pin_kill needs to do is call your new cache_delete_entry.
+> > If that doesn't cause the entry to be put, then something else has a
+> > temporary reference which will be put soon.  In any case, pin_kill()
+> > will wait long enough, but not indefinitely.
+> > No need for kref_get_unless_zero() or any of that.
+> 
+> No.  You are seriously misunderstanding what ->kill() is for and what the
+> existing instances are doing.  Again, there is no promise whatsoever that
+> the object containing fs_pin instance will *survive* past ->kill().
+> At all.
+> 
+> RTFS, please.  What is sorely missing in this recurring patchset is a clear
+> description of lifetime rules and ordering (who waits for whom and how long).
+> For all the objects involved.
+
+Good point.  Let me try.
+
+Entries in the sunrpc 'cache' each contain some 'key' fields and some
+'content' fields.
+
+The key fields are set by the .init() method when the entry is
+created, which can happen in a call to sunrpc_cache_lookup() or to
+sunrpc_cache_update().
+
+The content fields are set by the .update() method when a value is
+provided for the cache entry.  This happens in sunrpc_cache_update();
+
+A cache entry can be not-valid, negative, or valid.
+It starts non-valid when sunrpc_cache_lookup() fails to find the search
+key and so creates a new entry (and sets up the key with .init).
+It then transitions to either negative or valid.
+This can happen through sunrpc_cache_update() or through an error when
+instigating an up-call, in which case it goes to negative.
+Once it is negative or valid, it stays that way until it is released.
+If sunrpc_cache_update is called on an entry that is not not-valid,
+then a new entry is created and the old one is marked as expired.
+A cache search will find the new one before the old.
+
+The vfsmount object is involved in two separate caches.
+It is part of the content of svc_expkey and part of the key of
+svc_export.
+
+An svc_expkey entry is only ever held transiently.  It is held while an
+update is being processed, and it is held briefly while mapping a
+filehandle to a mnt+dentry.
+Firstly part of the filehandle is used to acccess the svc_expkey cache
+to get the vfsmnt.  Then that vfsmnt plus the client identification is
+looked up in the svc_export cache to find the export options.  Then the
+svc_expkey cache entry is released.
+
+So it is only held during a lookup of another cache.  This can take an
+arbitrarily long time as the lookup can go to rpc.mountd in user-space.
+
+
+The svc_export cache entry can be held for the duration of a single NFS
+request.  It is stored in the 'struct svc_fh' file handle structure
+which is release at the end of handling the request.
+
+The vfsmnt and dentry are only "used" to validate the filehandle and
+then while that filehandle is still active.
+
+
+To avoid having unmount hang while nfsd is performing an upcall to
+mountd, we need to legitimize the vfsmnt in the svc_expkey.  If that
+fails, exp_find_key() can fail and we would never perform the lookup on
+svc_export.
+
+If it succeeds, then the legitimacy can be handed over to the svc_export
+cache entry, which could then continue to own it, or could hand it on
+to the svc_fh.
+
+The latter is *probably* cleanest.
+i.e. an svc_fh should always own a reference to exp->ex_path.mnt, and
+fh_put must put it.
+
+exp_find_key needs to legitimize ek->ek_path.mnt, so a successful
+return from exp_find implies an active refernece to ->ex_path.mnt.
+If exp_find fails, it needs to mnt_put(ek->ek_path.mnt).
+All callers of exp_find need to mnt_put(exp->ex_path.mnt) when they
+decide not to use the exp, and must otherwise store it in an svc_fh.
+
+With this, pin_kill() should only need to wait for  exp_find_key() to
+discover that it cannot legitimize the mount, or for expkey_path() to
+replace the key via sunrpc_cache_update(), or maybe for cache_clean()
+to discard an old entry.
+
+Hopefully that makes it all clear.
+
+Thanks,
+NeilBrown
