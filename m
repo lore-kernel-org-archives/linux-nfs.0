@@ -1,17 +1,17 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.opengridcomputing.com ([72.48.136.20]:50957 "EHLO
+Received: from smtp.opengridcomputing.com ([72.48.136.20]:50962 "EHLO
 	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753504AbbGXQSc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Jul 2015 12:18:32 -0400
+	by vger.kernel.org with ESMTP id S1754304AbbGXQSi (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Jul 2015 12:18:38 -0400
 From: Steve Wise <swise@opengridcomputing.com>
-Subject: [PATCH V6 3/9] ipath,qib: Expose max_sge_rd correctly
+Subject: [PATCH V6 4/9] svcrdma: Use max_sge_rd for destination read depths
 To: dledford@redhat.com
 Cc: infinipath@intel.com, sagig@mellanox.com, ogerlitz@mellanox.com,
         roid@mellanox.com, linux-rdma@vger.kernel.org, eli@mellanox.com,
         target-devel@vger.kernel.org, linux-nfs@vger.kernel.org,
         bfields@fieldses.org
-Date: Fri, 24 Jul 2015 11:18:32 -0500
-Message-ID: <20150724161831.25617.48115.stgit@build2.ogc.int>
+Date: Fri, 24 Jul 2015 11:18:37 -0500
+Message-ID: <20150724161837.25617.48584.stgit@build2.ogc.int>
 In-Reply-To: <20150724161331.25617.8475.stgit@build2.ogc.int>
 References: <20150724161331.25617.8475.stgit@build2.ogc.int>
 MIME-Version: 1.0
@@ -19,39 +19,83 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Applications must not assume that max_sge and max_sge_rd are the same,
-Hence expose max_sge_rd correctly as well.
-
 Signed-off-by: Steve Wise <swise@opengridcomputing.com>
-Acked-by: Mike Marciniszyn <mike.marciniszyn@intel.com>
 ---
 
- drivers/infiniband/hw/ipath/ipath_verbs.c |    1 +
- drivers/infiniband/hw/qib/qib_verbs.c     |    1 +
- 2 files changed, 2 insertions(+), 0 deletions(-)
+ include/linux/sunrpc/svc_rdma.h          |    1 +
+ net/sunrpc/xprtrdma/svc_rdma_recvfrom.c  |   12 +-----------
+ net/sunrpc/xprtrdma/svc_rdma_transport.c |    4 ++++
+ 3 files changed, 6 insertions(+), 11 deletions(-)
 
-diff --git a/drivers/infiniband/hw/ipath/ipath_verbs.c b/drivers/infiniband/hw/ipath/ipath_verbs.c
-index 30ba49c..ed2bbc2 100644
---- a/drivers/infiniband/hw/ipath/ipath_verbs.c
-+++ b/drivers/infiniband/hw/ipath/ipath_verbs.c
-@@ -1521,6 +1521,7 @@ static int ipath_query_device(struct ib_device *ibdev, struct ib_device_attr *pr
- 	props->max_qp = ib_ipath_max_qps;
- 	props->max_qp_wr = ib_ipath_max_qp_wrs;
- 	props->max_sge = ib_ipath_max_sges;
-+	props->max_sge_rd = ib_ipath_max_sges;
- 	props->max_cq = ib_ipath_max_cqs;
- 	props->max_ah = ib_ipath_max_ahs;
- 	props->max_cqe = ib_ipath_max_cqes;
-diff --git a/drivers/infiniband/hw/qib/qib_verbs.c b/drivers/infiniband/hw/qib/qib_verbs.c
-index a05d1a3..bc723b5 100644
---- a/drivers/infiniband/hw/qib/qib_verbs.c
-+++ b/drivers/infiniband/hw/qib/qib_verbs.c
-@@ -1574,6 +1574,7 @@ static int qib_query_device(struct ib_device *ibdev, struct ib_device_attr *prop
- 	props->max_qp = ib_qib_max_qps;
- 	props->max_qp_wr = ib_qib_max_qp_wrs;
- 	props->max_sge = ib_qib_max_sges;
-+	props->max_sge_rd = ib_qib_max_sges;
- 	props->max_cq = ib_qib_max_cqs;
- 	props->max_ah = ib_qib_max_ahs;
- 	props->max_cqe = ib_qib_max_cqes;
+diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
+index cb94ee4..83211bc 100644
+--- a/include/linux/sunrpc/svc_rdma.h
++++ b/include/linux/sunrpc/svc_rdma.h
+@@ -132,6 +132,7 @@ struct svcxprt_rdma {
+ 	struct list_head     sc_accept_q;	/* Conn. waiting accept */
+ 	int		     sc_ord;		/* RDMA read limit */
+ 	int                  sc_max_sge;
++	int                  sc_max_sge_rd;	/* max sge for read target */
+ 
+ 	int                  sc_sq_depth;	/* Depth of SQ */
+ 	atomic_t             sc_sq_count;	/* Number of SQ WR on queue */
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+index 2e1348b..cb51742 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+@@ -115,15 +115,6 @@ static void rdma_build_arg_xdr(struct svc_rqst *rqstp,
+ 	rqstp->rq_arg.tail[0].iov_len = 0;
+ }
+ 
+-static int rdma_read_max_sge(struct svcxprt_rdma *xprt, int sge_count)
+-{
+-	if (!rdma_cap_read_multi_sge(xprt->sc_cm_id->device,
+-				     xprt->sc_cm_id->port_num))
+-		return 1;
+-	else
+-		return min_t(int, sge_count, xprt->sc_max_sge);
+-}
+-
+ /* Issue an RDMA_READ using the local lkey to map the data sink */
+ int rdma_read_chunk_lcl(struct svcxprt_rdma *xprt,
+ 			struct svc_rqst *rqstp,
+@@ -144,8 +135,7 @@ int rdma_read_chunk_lcl(struct svcxprt_rdma *xprt,
+ 
+ 	ctxt->direction = DMA_FROM_DEVICE;
+ 	ctxt->read_hdr = head;
+-	pages_needed =
+-		min_t(int, pages_needed, rdma_read_max_sge(xprt, pages_needed));
++	pages_needed = min_t(int, pages_needed, xprt->sc_max_sge_rd);
+ 	read = min_t(int, pages_needed << PAGE_SHIFT, rs_length);
+ 
+ 	for (pno = 0; pno < pages_needed; pno++) {
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+index 6b36279..fdc850f 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+@@ -872,6 +872,8 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
+ 	 * capabilities of this particular device */
+ 	newxprt->sc_max_sge = min((size_t)devattr.max_sge,
+ 				  (size_t)RPCSVC_MAXPAGES);
++	newxprt->sc_max_sge_rd = min_t(size_t, devattr.max_sge_rd,
++				       RPCSVC_MAXPAGES);
+ 	newxprt->sc_max_requests = min((size_t)devattr.max_qp_wr,
+ 				   (size_t)svcrdma_max_requests);
+ 	newxprt->sc_sq_depth = RPCRDMA_SQ_DEPTH_MULT * newxprt->sc_max_requests;
+@@ -1046,6 +1048,7 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
+ 		"    remote_ip       : %pI4\n"
+ 		"    remote_port     : %d\n"
+ 		"    max_sge         : %d\n"
++		"    max_sge_rd      : %d\n"
+ 		"    sq_depth        : %d\n"
+ 		"    max_requests    : %d\n"
+ 		"    ord             : %d\n",
+@@ -1059,6 +1062,7 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
+ 		ntohs(((struct sockaddr_in *)&newxprt->sc_cm_id->
+ 		       route.addr.dst_addr)->sin_port),
+ 		newxprt->sc_max_sge,
++		newxprt->sc_max_sge_rd,
+ 		newxprt->sc_sq_depth,
+ 		newxprt->sc_max_requests,
+ 		newxprt->sc_ord);
 
