@@ -1,69 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from quartz.orcorp.ca ([184.70.90.242]:49835 "EHLO quartz.orcorp.ca"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752688AbbGXQ51 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 24 Jul 2015 12:57:27 -0400
-Date: Fri, 24 Jul 2015 10:57:21 -0600
-From: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
-To: Steve Wise <swise@opengridcomputing.com>
-Cc: dledford@redhat.com, infinipath@intel.com, sagig@mellanox.com,
-        ogerlitz@mellanox.com, roid@mellanox.com, linux-rdma@vger.kernel.org,
-        eli@mellanox.com, target-devel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, bfields@fieldses.org
-Subject: Re: [PATCH V6 9/9] isert: Support iWARP transports using FRMRs
-Message-ID: <20150724165721.GC25480@obsidianresearch.com>
-References: <20150724161331.25617.8475.stgit@build2.ogc.int>
- <20150724161904.25617.85015.stgit@build2.ogc.int>
+Received: from smtp.opengridcomputing.com ([72.48.136.20]:51249 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752630AbbGXSkL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Jul 2015 14:40:11 -0400
+From: "Steve Wise" <swise@opengridcomputing.com>
+To: "'Jason Gunthorpe'" <jgunthorpe@obsidianresearch.com>
+Cc: <dledford@redhat.com>, <infinipath@intel.com>, <sagig@mellanox.com>,
+        <ogerlitz@mellanox.com>, <roid@mellanox.com>,
+        <linux-rdma@vger.kernel.org>, <eli@mellanox.com>,
+        <target-devel@vger.kernel.org>, <linux-nfs@vger.kernel.org>,
+        <bfields@fieldses.org>
+References: <20150724161331.25617.8475.stgit@build2.ogc.int> <20150724161820.25617.63886.stgit@build2.ogc.int> <20150724164123.GA25480@obsidianresearch.com>
+In-Reply-To: <20150724164123.GA25480@obsidianresearch.com>
+Subject: RE: [PATCH V6 1/9] RDMA/iser: Limit sg tablesize and max_sectors to device fastreg max depth
+Date: Fri, 24 Jul 2015 13:40:17 -0500
+Message-ID: <00ca01d0c640$2f813d70$8e83b850$@opengridcomputing.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20150724161904.25617.85015.stgit@build2.ogc.int>
+Content-Type: text/plain;
+	charset="us-ascii"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jul 24, 2015 at 11:19:05AM -0500, Steve Wise wrote:
-> Add new register and unregister functions to be used with devices that
-> support FRMRs, provide a local dma lkey, yet do not support DIF/PI.
+
+
+> -----Original Message-----
+> From: Jason Gunthorpe [mailto:jgunthorpe@obsidianresearch.com]
+> Sent: Friday, July 24, 2015 11:41 AM
+> To: Steve Wise
+> Cc: dledford@redhat.com; infinipath@intel.com; sagig@mellanox.com; ogerlitz@mellanox.com; roid@mellanox.com; linux-
+> rdma@vger.kernel.org; eli@mellanox.com; target-devel@vger.kernel.org; linux-nfs@vger.kernel.org; bfields@fieldses.org
+> Subject: Re: [PATCH V6 1/9] RDMA/iser: Limit sg tablesize and max_sectors to device fastreg max depth
 > 
-> isert_reg_frmr() only needs to use FRMRs for RDMA READ since RDMA WRITE
-> can be handled entirely with the local dma lkey.  So for RDMA READ,
-> it calls isert_reg_read_frmr().  Otherwise is uses the lkey map service
-> isert_map_lkey() for RDMA WRITEs.
+> On Fri, Jul 24, 2015 at 11:18:21AM -0500, Steve Wise wrote:
+> > Currently the sg tablesize, which dictates fast register page list
+> > depth to use, does not take into account the limits of the rdma device.
+> > So adjust it once we discover the device fastreg max depth limit.  Also
+> > adjust the max_sectors based on the resulting sg tablesize.
 > 
-> isert_reg_read_frmr() will create a linked list of WR triplets of the
-> form: INV->FRWR->READ.  The number of these triplets is dependent on
-> the devices fast reg page list length limit.
+> Huh. How does this relate to the max_page_list_len argument:
+> 
+>  struct ib_mr *ib_alloc_fast_reg_mr(struct ib_pd *pd, int max_page_list_len)
+> 
+> Shouldn't max_fast_reg_page_list_len be checked during the above?
+> 
+> Ie does this still make sense:
+> 
+> drivers/infiniband/ulp/iser/iser_verbs.c:       desc->data_mr = ib_alloc_fast_reg_mr(pd, ISCSI_ISER_SG_TABLESIZE + 1);
+> 
+> ?
+> 
+> The only ULP that checks this is SRP, so basically, all our ULPs are
+> probably quietly broken? cxgb3 has a limit of 10 (!?!?!!)
+> 
 
-That ordering seems strange, surely it should be
+Yea seems like some drivers need to enforce this in ib_alloc_fast_reg_mr() as well as ib_alloc_fast_reg_page_list(), and ULPs need
+to not exceed the device max.
 
-FRWR->READ->INV
+I will fix iser to limit the mr and page_list allocation based on the device max.
 
-And use IB_WR_RDMA_READ_WITH_INV if possible?
+Steve.
 
-ACCESS_REMOTE rkey's should not be left open across the FROM_DEVICE
-DMA flush.
-
->  	/* assign function handlers */
-> -	if (dev_attr->device_cap_flags & IB_DEVICE_MEM_MGT_EXTENSIONS &&
-> -	    dev_attr->device_cap_flags & IB_DEVICE_LOCAL_DMA_LKEY &&
-> -	    dev_attr->device_cap_flags & IB_DEVICE_SIGNATURE_HANDOVER) {
-> -		device->use_fastreg = 1;
-> -		device->reg_rdma_mem = isert_reg_frmr_pi;
-> -		device->unreg_rdma_mem = isert_unreg_frmr_pi;
-> +	cap_flags = dev_attr->device_cap_flags;
-> +	if (cap_flags & IB_DEVICE_MEM_MGT_EXTENSIONS &&
-> +	    cap_flags & IB_DEVICE_LOCAL_DMA_LKEY) {
-> +		if (cap_flags & IB_DEVICE_SIGNATURE_HANDOVER) {
-> +			device->use_fastreg = 1;
-> +			device->reg_rdma_mem = isert_reg_frmr_pi;
-> +			device->unreg_rdma_mem = isert_unreg_frmr_pi;
-> +		} else {
-> +			device->use_fastreg = 1;
-> +			device->reg_rdma_mem = isert_reg_frmr;
-> +			device->unreg_rdma_mem = isert_unreg_frmr;
-> +		}
-
-The use of FRWR for RDMA READ should be iWarp specific, IB shouldn't
-pay that overhead. I am expecting to see a cap_rdma_read_rkey or
-something in here ?
-
-Jason
