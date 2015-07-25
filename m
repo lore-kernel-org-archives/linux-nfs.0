@@ -1,44 +1,81 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from quartz.orcorp.ca ([184.70.90.242]:43547 "EHLO quartz.orcorp.ca"
+Received: from mx2.suse.de ([195.135.220.15]:54096 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752030AbbGXWin (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 24 Jul 2015 18:38:43 -0400
-Date: Fri, 24 Jul 2015 16:38:35 -0600
-From: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
-To: Steve Wise <swise@opengridcomputing.com>
-Cc: dledford@redhat.com, infinipath@intel.com, sagig@mellanox.com,
-        ogerlitz@mellanox.com, roid@mellanox.com, linux-rdma@vger.kernel.org,
-        eli@mellanox.com, target-devel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, bfields@fieldses.org
-Subject: Re: [PATCH V6 9/9] isert: Support iWARP transports using FRMRs
-Message-ID: <20150724223835.GA29064@obsidianresearch.com>
-References: <20150724161331.25617.8475.stgit@build2.ogc.int>
- <20150724161904.25617.85015.stgit@build2.ogc.int>
- <20150724165721.GC25480@obsidianresearch.com>
- <00ce01d0c641$493ea300$dbbbe900$@opengridcomputing.com>
- <20150724192411.GC26225@obsidianresearch.com>
- <00db01d0c64b$01f40300$05dc0900$@opengridcomputing.com>
- <00ee01d0c65d$a1e03cf0$e5a0b6d0$@opengridcomputing.com>
+	id S1753083AbbGYAkm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 24 Jul 2015 20:40:42 -0400
+Date: Sat, 25 Jul 2015 10:40:33 +1000
+From: NeilBrown <neilb@suse.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Kinglong Mee <kinglongmee@gmail.com>, Al Viro <viro@zeniv.linux.org.uk>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        linux-fsdevel@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: Re: export table lookup: was [PATCH 10/10 v7] nfsd: Allows user
+ un-mounting filesystem where nfsd exports base on
+Message-ID: <20150725104033.38bf2f56@noble>
+In-Reply-To: <20150724194817.GA24619@fieldses.org>
+References: <55A11010.6050005@gmail.com>
+	<55A111A8.2040701@gmail.com>
+	<20150713133934.6a4ef77d@noble>
+	<20150715210756.GE21669@fieldses.org>
+	<20150716094046.445c038b@noble>
+	<20150716205148.GC10673@fieldses.org>
+	<20150722075824.3e7498ce@noble>
+	<20150722150840.GH22718@fieldses.org>
+	<20150724094657.0ca793b4@noble>
+	<20150724194817.GA24619@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <00ee01d0c65d$a1e03cf0$e5a0b6d0$@opengridcomputing.com>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jul 24, 2015 at 05:11:04PM -0500, Steve Wise wrote:
+On Fri, 24 Jul 2015 15:48:17 -0400 "J. Bruce Fields"
+<bfields@fieldses.org> wrote:
 
-> By the way, just to be clear: If you use a FRWR, you by definition
-> only have one SGE entry as the result of the registration.  So
-> regardless of what a device/protocol can do with the destination SGE
-> of an RDMA READ operation, if you use FRWR to register the
-> destination region, you need only 1 SGE in the RDMA READ WR.
+> On Fri, Jul 24, 2015 at 09:46:57AM +1000, NeilBrown wrote:
 
-FRWR's have horrible restrictions on the scatterlist. To realize
-arbitrary scatterlists requires multiple MRs, and thus multiple SGE
-entries.
+> > Does that seem like a reasonable approach from your understanding of the problem?
+> 
+> So something like that could give us a way to prevent asking mountd
+> about mounts that it can't see.
+> 
+> Except when things change: it's possible a mount that would pass this
+> test at the time we create the request is no longer by the time we get
+> mountd's reply.
+> 
+> You can tell people not to do that.  It still bugs me to have the
+> possibility of a unanswereable request.  
 
-The warning is for a reader who might be familiar with IB and think
-iWarp simply needs to have a MR wrapped around the memory and assume
-gaps/etc can be supported through a s/g list, like IB can.
+I can see three general ways to cope with the fact that things could
+change between creating a request and receiving the reply:
+ - lock to prevent the change
+ - refcounts to provide a stable reference to the thing of interest
+ - detect change and retry.
 
-Jason
+These correspond roughly to spinlock, kref, and seqlock.
+
+Trying to prevent changes in the filesystem over an upcall-and-reply is
+out of the question.
+
+A refcount could be implemented as a file descriptor. i.e. when nfsd
+finds a mountpoint at the end of a 'lookup', it creates a
+file descriptor for the target object and passes that to mountd.  mountd
+does what it does and sends the reply back with the same file
+descriptor.
+I think that is needlessly complex.
+
+detect-change-and-retry is, I think, the best.  The cache already has a
+retry mechanism.  It can often detect a change implicitly if it gets
+told about some filesystem object that it doesn't really care about.
+The only weakness is that it can't currently detect if its question can
+no longer be answered...
+
+I agree that an unanswerable request seems ugly.  But sometimes the
+best way to handle races is to let ugly things happen temporarily.
+
+I should probably double-check that the cache will retry the upcall in
+a reasonable time frame - I only have a vague recollection of how that
+works...
+
+NeilBrown
+
