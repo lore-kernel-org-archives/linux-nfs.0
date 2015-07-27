@@ -1,108 +1,180 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:38156 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754448AbbG0Azo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 26 Jul 2015 20:55:44 -0400
-Date: Mon, 27 Jul 2015 10:55:35 +1000
-From: NeilBrown <neilb@suse.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] sunrpc: translate -EAGAIN to -ENOBUFS when socket is
- writable.
-Message-ID: <20150727105535.50dff481@noble>
+Received: from mail-pa0-f45.google.com ([209.85.220.45]:36221 "EHLO
+	mail-pa0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754827AbbG0C3E (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 26 Jul 2015 22:29:04 -0400
+Message-ID: <55B59764.1020506@gmail.com>
+Date: Mon, 27 Jul 2015 10:28:52 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+To: NeilBrown <neilb@suse.com>, Al Viro <viro@ZenIV.linux.org.uk>
+CC: "J. Bruce Fields" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        linux-fsdevel@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        kinglongmee@gmail.com
+Subject: Re: [PATCH 10/10 v7] nfsd: Allows user un-mounting filesystem where
+ nfsd exports base on
+References: <55A11010.6050005@gmail.com>	<55A111A8.2040701@gmail.com>	<20150713133934.6a4ef77d@noble>	<20150713142059.493a790e@noble>	<20150713044553.GN17109@ZenIV.linux.org.uk> <20150724120515.023322d4@noble>
+In-Reply-To: <20150724120515.023322d4@noble>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On 7/24/2015 10:05, NeilBrown wrote:
+> On Mon, 13 Jul 2015 05:45:53 +0100 Al Viro <viro@ZenIV.linux.org.uk>
+> wrote:
+> 
+>> On Mon, Jul 13, 2015 at 02:20:59PM +1000, NeilBrown wrote:
+>>
+>>> Actually, with that change to pin_kill, this side of things becomes
+>>> really easy.
+>>> All expXXX_pin_kill needs to do is call your new cache_delete_entry.
+>>> If that doesn't cause the entry to be put, then something else has a
+>>> temporary reference which will be put soon.  In any case, pin_kill()
+>>> will wait long enough, but not indefinitely.
+>>> No need for kref_get_unless_zero() or any of that.
+>>
+>> No.  You are seriously misunderstanding what ->kill() is for and what the
+>> existing instances are doing.  Again, there is no promise whatsoever that
+>> the object containing fs_pin instance will *survive* past ->kill().
+>> At all.
+>>
+>> RTFS, please.  What is sorely missing in this recurring patchset is a clear
+>> description of lifetime rules and ordering (who waits for whom and how long).
+>> For all the objects involved.
+> 
+> Good point.  Let me try.
+> 
+> Entries in the sunrpc 'cache' each contain some 'key' fields and some
+> 'content' fields.
+> 
+> The key fields are set by the .init() method when the entry is
+> created, which can happen in a call to sunrpc_cache_lookup() or to
+> sunrpc_cache_update().
+> 
+> The content fields are set by the .update() method when a value is
+> provided for the cache entry.  This happens in sunrpc_cache_update();
+> 
+> A cache entry can be not-valid, negative, or valid.
+> It starts non-valid when sunrpc_cache_lookup() fails to find the search
+> key and so creates a new entry (and sets up the key with .init).
+> It then transitions to either negative or valid.
+> This can happen through sunrpc_cache_update() or through an error when
+> instigating an up-call, in which case it goes to negative.
+> Once it is negative or valid, it stays that way until it is released.
+> If sunrpc_cache_update is called on an entry that is not not-valid,
+> then a new entry is created and the old one is marked as expired.
+> A cache search will find the new one before the old.
+> 
+> The vfsmount object is involved in two separate caches.
+> It is part of the content of svc_expkey and part of the key of
+> svc_export.
+> 
+> An svc_expkey entry is only ever held transiently.  It is held while an
+> update is being processed, and it is held briefly while mapping a
+> filehandle to a mnt+dentry.
+> Firstly part of the filehandle is used to acccess the svc_expkey cache
+> to get the vfsmnt.  Then that vfsmnt plus the client identification is
+> looked up in the svc_export cache to find the export options.  Then the
+> svc_expkey cache entry is released.
+> 
+> So it is only held during a lookup of another cache.  This can take an
+> arbitrarily long time as the lookup can go to rpc.mountd in user-space.
+> 
+> 
+> The svc_export cache entry can be held for the duration of a single NFS
+> request.  It is stored in the 'struct svc_fh' file handle structure
+> which is release at the end of handling the request.
+> 
+> The vfsmnt and dentry are only "used" to validate the filehandle and
+> then while that filehandle is still active.
+> 
+> 
+> To avoid having unmount hang while nfsd is performing an upcall to
+> mountd, we need to legitimize the vfsmnt in the svc_expkey.  If that
+> fails, exp_find_key() can fail and we would never perform the lookup on
+> svc_export.
+> 
+> If it succeeds, then the legitimacy can be handed over to the svc_export
+> cache entry, which could then continue to own it, or could hand it on
+> to the svc_fh.
+> 
+> The latter is *probably* cleanest.
+> i.e. an svc_fh should always own a reference to exp->ex_path.mnt, and
+> fh_put must put it.
 
-The networking layer does not reliably report the distinction between
-a non-block write failing because:
- 1/ the queue is too full already and
- 2/ a memory allocation attempt failed.
+I don't agree adding new argument (eg, fh_vfsmnt) in svc_fh.
 
-The distinction is important because in the first case it is
-appropriate to retry as soon as the socket reports that it is
-writable, and in the second case a small delay is required as the
-socket will most likely report as writable but kmalloc could still
-fail.
+With it, should nfsd using fh_vfsmnt always, never using exp->ex_path.mnt
+outside of export.c/export.h ?
 
-sk_stream_wait_memory() exhibits this distinction nicely, setting
-'vm_wait' if a small wait is needed.  However in the non-blocking case
-it always returns -EAGAIN no matter the cause of the failure.  This
--EAGAIN call get all the way to sunrpc.
+If choose fh_vfsmnt, so many codes need be updated, especially functions.
+If exp->ex_path.mnt, the new argument fh_vfsmnt seems redundant.
 
-The sunrpc layer expects EAGAIN to indicate the first cause, and
-ENOBUFS to indicate the second.  Various documentation suggests that
-this is not unreasonable, but does not guarantee the desired error
-codes.
+Thanks for your work.
 
-The result of getting -EAGAIN when -ENOBUFS is expected is that the
-send is tried again in a tight loop and soft lockups are reported.
+It reminders a new method,
 
-so: add tests after calls to xs_sendpages() to translate -EAGAIN into
--ENOBUFS if the socket is writable.  This cannot happen inside
-xs_sendpages() as the test for "is socket writable" is different
-between TCP and UDP.
+1. There are only one outlet from each cache, exp_find_key() for expkey, 
+   exp_get_by_name() for export.
+2. Any fsid to export or filehandle to export will call the function.
+3. exp_get()/exp_put() increase/decrease the reference of export.
 
-With this change, the tight loop retrying xs_sendpages() becomes a
-loop which only retries every 250ms, and so will not trigger a
-soft-lockup warning.
+Like the fh_vfsmnt (not same), call legitimize_mntget() in the only
+outlet function exp_find_key()/exp_get_by_name(), if fail return STALE,
+otherwise, any valid expkey/export from the cache is validated (Have
+get the reference of vfsmnt).
 
-It is possible that the write did fail because the queue was too full
-and by the time xs_sendpages() completed, the queue was writable
-again.  In this case an extra 250ms delay is inserted that isn't
-really needed.  This circumstance suggests a degree of congestion so a
-delay is not necessarily a bad thing, and it can only cause a single
-250ms delay, not a series of them.
+Add mntget() in exp_get() and mntput() in exp_put(), because the export
+passed to exp_get/exp_put are returned from exp_find_key/exp_get_by_name.
 
-Signed-off-by: NeilBrown <neilb@suse.com>
+> 
+> exp_find_key needs to legitimize ek->ek_path.mnt, so a successful
+> return from exp_find implies an active refernece to ->ex_path.mnt.
+> If exp_find fails, it needs to mnt_put(ek->ek_path.mnt).
 
----
-Hi Trond,
-sorry for the delay in getting back to this.
-This patch on top of your
- [PATCH 1/2] SUNRPC: Don't reencode message if transmission failed with ENOBUFS
- [PATCH 2/2] SUNRPC: Don't confuse ENOBUFS with a write_space issue
+Yes, it's great.
 
-produces appropriate behaviour when sk_stream_alloc_skb() fails to allocate
-memory in do_tcp_sendpages.  The send is retried after 250ms instead of immediately.
+> All callers of exp_find need to mnt_put(exp->ex_path.mnt) when they
+> decide not to use the exp, and must otherwise store it in an svc_fh.
+> 
+> With this, pin_kill() should only need to wait for  exp_find_key() to
+> discover that it cannot legitimize the mount, or for expkey_path() to
+> replace the key via sunrpc_cache_update(), or maybe for cache_clean()
+> to discard an old entry.
+> 
+> Hopefully that makes it all clear.
 
-Thanks,
-NeilBrown
+Yes, thanks again.
 
+With my method, for expkey cache,
+1. At first, a fsid is passed to exp_find_key, and lookup a cache
+   in svc_expkey_lookup, if success, ekey->ek_path is pined to mount.
+2. Then call legitimize_mntget getting a reference of vfsmnt 
+   before return from exp_find_key.
+3. Any calling exp_find_key with valid cache must put the vfsmnt.
 
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index b9fe8459dc84..2d1cd3918390 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -527,6 +527,10 @@ static int xs_local_send_request(struct rpc_task *task)
- 			      true, &sent);
- 	dprintk("RPC:       %s(%u) = %d\n",
- 			__func__, xdr->len - req->rq_bytes_sent, status);
-+
-+	if (status == -EAGAIN && sock_writeable(transport->inet))
-+		status = -ENOBUFS;
-+
- 	if (likely(sent > 0) || status == 0) {
- 		req->rq_bytes_sent += sent;
- 		req->rq_xmit_bytes_sent += sent;
-@@ -590,6 +594,9 @@ static int xs_udp_send_request(struct rpc_task *task)
- 	if (status == -EPERM)
- 		goto process_status;
- 
-+	if (status == -EAGAIN && sock_writeable(transport->inet))
-+		status = -ENOBUFS;
-+
- 	if (sent > 0 || status == 0) {
- 		req->rq_xmit_bytes_sent += sent;
- 		if (sent >= req->rq_slen)
-@@ -687,6 +694,8 @@ static int xs_tcp_send_request(struct rpc_task *task)
- 		status = -EAGAIN;
- 		break;
- 	}
-+	if (status == -EAGAIN && sk_stream_is_writeable(transport->inet))
-+		status = -ENOBUFS;
- 
- 	switch (status) {
- 	case -ENOTSOCK:
+for export cache,
+1. At first, a path (returned from exp_find_key) with validate vfsmnt
+   is passed to exp_get_by_name, if success, exp->ex_path is pined to mount.
+2. Then call legitimize_mntget getting a reference of vfsmnt 
+   before return from exp_get_by_name.
+3. Any calling exp_get_by_name with valid cache must put the vfsmnt
+   by exp_put();
+4. Any using the exp returned from exp_get_by_name must call exp_get(),
+   will increase the reference of vfsmnt.
+
+So,
+a. After getting the reference in 2, any umount of filesystem will get -EBUSY.
+b. After put all reference after 4, or before get the reference in 2, 
+   any umount of filesystem will call pin_kill, and delete the cache directly,
+   also unpin the vfsmount.
+c. Between 1 and 2, have get the reference of exp/key cache, with invalidate vfsmnt.
+   As you said, umount of filesystem only wait exp_find_key/exp_get_by_name
+   put the reference of cache when legitimize_mntget fail.
+
+A new update of this patch site will be push later.
+
+thanks,
+Kinglong Mee
