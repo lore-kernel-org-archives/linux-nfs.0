@@ -1,494 +1,193 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pd0-f171.google.com ([209.85.192.171]:35855 "EHLO
-	mail-pd0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755243AbbG0DMR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 26 Jul 2015 23:12:17 -0400
-Message-ID: <55B5A186.7040004@gmail.com>
-Date: Mon, 27 Jul 2015 11:12:06 +0800
+Received: from mail-pa0-f50.google.com ([209.85.220.50]:34904 "EHLO
+	mail-pa0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753517AbbG0DRw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 26 Jul 2015 23:17:52 -0400
+Message-ID: <55B5A2D5.4000004@gmail.com>
+Date: Mon, 27 Jul 2015 11:17:41 +0800
 From: Kinglong Mee <kinglongmee@gmail.com>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>,
-        Al Viro <viro@zeniv.linux.org.uk>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        linux-fsdevel@vger.kernel.org, NeilBrown <neilb@suse.de>,
+To: NeilBrown <neilb@suse.com>
+CC: Al Viro <viro@ZenIV.linux.org.uk>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        linux-fsdevel@vger.kernel.org,
         Trond Myklebust <trond.myklebust@primarydata.com>,
         kinglongmee@gmail.com
-Subject: [PATCH 9/9 v8] nfsd: Allows user un-mounting filesystem where nfsd
- exports base on
-References: <55B5A012.1030006@gmail.com>
-In-Reply-To: <55B5A012.1030006@gmail.com>
-Content-Type: text/plain; charset=utf-8
+Subject: Re: [PATCH 10/10 v7] nfsd: Allows user un-mounting filesystem where
+ nfsd exports base on
+References: <55A11010.6050005@gmail.com>	<55A111A8.2040701@gmail.com>	<20150713133934.6a4ef77d@noble>	<20150713142059.493a790e@noble>	<20150713044553.GN17109@ZenIV.linux.org.uk>	<20150724120515.023322d4@noble>	<55B59764.1020506@gmail.com> <20150727125121.23655367@noble>
+In-Reply-To: <20150727125121.23655367@noble>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If there are some mount points(not exported for nfs) under pseudo root,
-after client's operation of those entry under the root,  anyone *can't*
-unmount those mount points until export cache expired.
 
-/nfs/xfs        *(rw,insecure,no_subtree_check,no_root_squash)
-/nfs/pnfs       *(rw,insecure,no_subtree_check,no_root_squash)
-total 0
-drwxr-xr-x. 3 root root 84 Apr 21 22:27 pnfs
-drwxr-xr-x. 3 root root 84 Apr 21 22:27 test
-drwxr-xr-x. 2 root root  6 Apr 20 22:01 xfs
-Filesystem                      1K-blocks    Used Available Use% Mounted on
-......
-/dev/sdd                          1038336   32944   1005392   4% /nfs/pnfs
-/dev/sdc                         10475520   32928  10442592   1% /nfs/xfs
-/dev/sde                           999320    1284    929224   1% /nfs/test
-/mnt/pnfs/:
-total 0
--rw-r--r--. 1 root root 0 Apr 21 22:23 attr
-drwxr-xr-x. 2 root root 6 Apr 21 22:19 tmp
+On 7/27/2015 10:51, NeilBrown wrote:
+> On Mon, 27 Jul 2015 10:28:52 +0800 Kinglong Mee <kinglongmee@gmail.com>
+> wrote:
+> 
+>> On 7/24/2015 10:05, NeilBrown wrote:
+>>> On Mon, 13 Jul 2015 05:45:53 +0100 Al Viro <viro@ZenIV.linux.org.uk>
+>>> wrote:
+>>>
+>>>> On Mon, Jul 13, 2015 at 02:20:59PM +1000, NeilBrown wrote:
+>>>>
+>>>>> Actually, with that change to pin_kill, this side of things becomes
+>>>>> really easy.
+>>>>> All expXXX_pin_kill needs to do is call your new cache_delete_entry.
+>>>>> If that doesn't cause the entry to be put, then something else has a
+>>>>> temporary reference which will be put soon.  In any case, pin_kill()
+>>>>> will wait long enough, but not indefinitely.
+>>>>> No need for kref_get_unless_zero() or any of that.
+>>>>
+>>>> No.  You are seriously misunderstanding what ->kill() is for and what the
+>>>> existing instances are doing.  Again, there is no promise whatsoever that
+>>>> the object containing fs_pin instance will *survive* past ->kill().
+>>>> At all.
+>>>>
+>>>> RTFS, please.  What is sorely missing in this recurring patchset is a clear
+>>>> description of lifetime rules and ordering (who waits for whom and how long).
+>>>> For all the objects involved.
+>>>
+>>> Good point.  Let me try.
+>>>
+>>> Entries in the sunrpc 'cache' each contain some 'key' fields and some
+>>> 'content' fields.
+>>>
+>>> The key fields are set by the .init() method when the entry is
+>>> created, which can happen in a call to sunrpc_cache_lookup() or to
+>>> sunrpc_cache_update().
+>>>
+>>> The content fields are set by the .update() method when a value is
+>>> provided for the cache entry.  This happens in sunrpc_cache_update();
+>>>
+>>> A cache entry can be not-valid, negative, or valid.
+>>> It starts non-valid when sunrpc_cache_lookup() fails to find the search
+>>> key and so creates a new entry (and sets up the key with .init).
+>>> It then transitions to either negative or valid.
+>>> This can happen through sunrpc_cache_update() or through an error when
+>>> instigating an up-call, in which case it goes to negative.
+>>> Once it is negative or valid, it stays that way until it is released.
+>>> If sunrpc_cache_update is called on an entry that is not not-valid,
+>>> then a new entry is created and the old one is marked as expired.
+>>> A cache search will find the new one before the old.
+>>>
+>>> The vfsmount object is involved in two separate caches.
+>>> It is part of the content of svc_expkey and part of the key of
+>>> svc_export.
+>>>
+>>> An svc_expkey entry is only ever held transiently.  It is held while an
+>>> update is being processed, and it is held briefly while mapping a
+>>> filehandle to a mnt+dentry.
+>>> Firstly part of the filehandle is used to acccess the svc_expkey cache
+>>> to get the vfsmnt.  Then that vfsmnt plus the client identification is
+>>> looked up in the svc_export cache to find the export options.  Then the
+>>> svc_expkey cache entry is released.
+>>>
+>>> So it is only held during a lookup of another cache.  This can take an
+>>> arbitrarily long time as the lookup can go to rpc.mountd in user-space.
+>>>
+>>>
+>>> The svc_export cache entry can be held for the duration of a single NFS
+>>> request.  It is stored in the 'struct svc_fh' file handle structure
+>>> which is release at the end of handling the request.
+>>>
+>>> The vfsmnt and dentry are only "used" to validate the filehandle and
+>>> then while that filehandle is still active.
+>>>
+>>>
+>>> To avoid having unmount hang while nfsd is performing an upcall to
+>>> mountd, we need to legitimize the vfsmnt in the svc_expkey.  If that
+>>> fails, exp_find_key() can fail and we would never perform the lookup on
+>>> svc_export.
+>>>
+>>> If it succeeds, then the legitimacy can be handed over to the svc_export
+>>> cache entry, which could then continue to own it, or could hand it on
+>>> to the svc_fh.
+>>>
+>>> The latter is *probably* cleanest.
+>>> i.e. an svc_fh should always own a reference to exp->ex_path.mnt, and
+>>> fh_put must put it.
+>>
+>> I don't agree adding new argument (eg, fh_vfsmnt) in svc_fh.
+> 
+> I wasn't suggesting that a new field be added to svc_fh.
+> Just that if svc_fh->fh_export was not NULL, then the svc_fh "owned" a
+> reference to svc_fh->fh_export->ex_path.mnt which it had to mnt_put()
+> when it released ->fh_export.
+> 
+> So fh_put would need to change, but not much else.
+> 
+> It isn't the only way to handle that references - it just seemed the
+> neatest as I was writing the description.  Something else might work
+> better in the code.
 
-/mnt/xfs/:
-total 0
-umount: /nfs/test/: target is busy
-        (In some cases useful info about processes that
-        use the device is found by lsof(8) or fuser(1).)
+Got it, thanks for your comments.
 
-It's caused by exports cache of nfsd holds the reference of
-the path (here is /nfs/test/), so, it can't be umounted.
+> 
+>>
+>> With it, should nfsd using fh_vfsmnt always, never using exp->ex_path.mnt
+>> outside of export.c/export.h ?
+>>
+>> If choose fh_vfsmnt, so many codes need be updated, especially functions.
+>> If exp->ex_path.mnt, the new argument fh_vfsmnt seems redundant.
+>>
+>> Thanks for your work.
+>>
+>> It reminders a new method,
+>>
+>> 1. There are only one outlet from each cache, exp_find_key() for expkey, 
+>>    exp_get_by_name() for export.
+>> 2. Any fsid to export or filehandle to export will call the function.
+>> 3. exp_get()/exp_put() increase/decrease the reference of export.
+>>
+>> Like the fh_vfsmnt (not same), call legitimize_mntget() in the only
+>> outlet function exp_find_key()/exp_get_by_name(), if fail return STALE,
+>> otherwise, any valid expkey/export from the cache is validated (Have
+>> get the reference of vfsmnt).
+>>
+>> Add mntget() in exp_get() and mntput() in exp_put(), because the export
+>> passed to exp_get/exp_put are returned from exp_find_key/exp_get_by_name.
+>>
+>>>
+>>> exp_find_key needs to legitimize ek->ek_path.mnt, so a successful
+>>> return from exp_find implies an active refernece to ->ex_path.mnt.
+>>> If exp_find fails, it needs to mnt_put(ek->ek_path.mnt).
+>>
+>> Yes, it's great.
+>>
+>>> All callers of exp_find need to mnt_put(exp->ex_path.mnt) when they
+>>> decide not to use the exp, and must otherwise store it in an svc_fh.
+>>>
+>>> With this, pin_kill() should only need to wait for  exp_find_key() to
+>>> discover that it cannot legitimize the mount, or for expkey_path() to
+>>> replace the key via sunrpc_cache_update(), or maybe for cache_clean()
+>>> to discard an old entry.
+>>>
+>>> Hopefully that makes it all clear.
+>>
+>> Yes, thanks again.
+>>
+>> With my method, for expkey cache,
+>> 1. At first, a fsid is passed to exp_find_key, and lookup a cache
+>>    in svc_expkey_lookup, if success, ekey->ek_path is pined to mount.
+>> 2. Then call legitimize_mntget getting a reference of vfsmnt 
+>>    before return from exp_find_key.
+>> 3. Any calling exp_find_key with valid cache must put the vfsmnt.
+>>
+>> for export cache,
+>> 1. At first, a path (returned from exp_find_key) with validate vfsmnt
+>>    is passed to exp_get_by_name, if success, exp->ex_path is pined to mount.
+>> 2. Then call legitimize_mntget getting a reference of vfsmnt 
+>>    before return from exp_get_by_name.
+> 
+> I don't see any point in calling legitimise_mntget here.  exp_find_key
+> already did the 'legitimize' bit so there is no need to do it again.
 
-I don't think that's user expect, they want umount /nfs/test/.
-Bruce think user can also umount /nfs/pnfs/ and /nfs/xfs.
+I just think they are in two logical.
 
-Also, using kzalloc for all memory allocating without kmalloc.
-Thanks for Al Viro's commets for the logic of fs_pin.
+But, does export cache contains a different vfsmnt as expkey exist?
 
-v3,
-1. using path_get_pin/path_put_unpin for path pin
-2. using kzalloc for memory allocating
-
-v5, v4,
-1. add a completion for pin_kill waiting the reference is decreased to zero.
-2. add a work_struct for pin_kill decreases the reference indirectly.
-3. free svc_export/svc_expkey in pin_kill, not svc_export_put/svc_expkey_put.
-4. svc_export_put/svc_expkey_put go though pin_kill logic.
-
-v6,
-1. Pin vfsmnt to mount point at first, when reference increace (==2),
-   grab a reference to vfsmnt by mntget. When decreace (==1),
-   drop the reference to vfsmnt, left pin.
-2. Delete cache_head directly from cache_detail.
-
-v7,
-implement self reference increase and decrease for nfsd exports/expkey
-
-v8,
-new method as,
-
-1. There are only one outlet from each cache, exp_find_key() for expkey,
-   exp_get_by_name() for export.
-2. Any fsid to export or filehandle to export will call the function.
-3. exp_get()/exp_put() increase/decrease the reference of export.
-
-Call legitimize_mntget() in the only outlet function exp_find_key()/
-exp_get_by_name(), if fail return STALE, otherwise, any valid
-expkey/export from the cache is validated (Have get the reference of vfsmnt).
-
-Add mntget() in exp_get() and mntput() in exp_put(), because the export
-passed to exp_get/exp_put are returned from exp_find_key/exp_get_by_name.
-
-For expkey cache,
-1. At first, a fsid is passed to exp_find_key, and lookup a cache
-   in svc_expkey_lookup, if success, ekey->ek_path is pined to mount.
-2. Then call legitimize_mntget getting a reference of vfsmnt 
-   before return from exp_find_key.
-3. Any calling exp_find_key with valid cache must put the vfsmnt.
-
-for export cache,
-1. At first, a path (returned from exp_find_key) with validate vfsmnt
-   is passed to exp_get_by_name, if success, exp->ex_path is pined to mount.
-2. Then call legitimize_mntget getting a reference of vfsmnt 
-   before return from exp_get_by_name.
-3. Any calling exp_get_by_name with valid cache must put the vfsmnt
-   by exp_put();
-4. Any using the exp returned from exp_get_by_name must call exp_get(),
-   will increase the reference of vfsmnt.
-
-So that,
-a. After getting the reference in 2, any umount of filesystem will get -EBUSY.
-b. After put all reference after 4, or before get the reference in 2, 
-   any umount of filesystem will call pin_kill, and delete the cache directly,
-   also unpin the vfsmount.
-c. Between 1 and 2, have get the reference of exp/key cache, with invalidate vfsmnt.
-   As you said, umount of filesystem only wait exp_find_key/exp_get_by_name
-   put the reference of cache when legitimize_mntget fail.
-
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
----
- fs/nfsd/export.c | 136 +++++++++++++++++++++++++++++++++++++++++++++----------
- fs/nfsd/export.h |  22 ++++++++-
- 2 files changed, 132 insertions(+), 26 deletions(-)
-
-diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
-index b4d84b5..7f4816d 100644
---- a/fs/nfsd/export.c
-+++ b/fs/nfsd/export.c
-@@ -37,15 +37,23 @@
- #define	EXPKEY_HASHMAX		(1 << EXPKEY_HASHBITS)
- #define	EXPKEY_HASHMASK		(EXPKEY_HASHMAX -1)
- 
-+static void expkey_destroy(struct svc_expkey *key)
-+{
-+	auth_domain_put(key->ek_client);
-+	kfree_rcu(key, rcu_head);
-+}
-+
- static void expkey_put(struct kref *ref)
- {
- 	struct svc_expkey *key = container_of(ref, struct svc_expkey, h.ref);
- 
- 	if (test_bit(CACHE_VALID, &key->h.flags) &&
--	    !test_bit(CACHE_NEGATIVE, &key->h.flags))
--		path_put(&key->ek_path);
--	auth_domain_put(key->ek_client);
--	kfree(key);
-+	    !test_bit(CACHE_NEGATIVE, &key->h.flags)) {
-+		rcu_read_lock();
-+		complete(&key->ek_done);
-+		pin_kill(&key->ek_pin);
-+	} else
-+		expkey_destroy(key);
- }
- 
- static void expkey_request(struct cache_detail *cd,
-@@ -83,7 +91,7 @@ static int expkey_parse(struct cache_detail *cd, char *mesg, int mlen)
- 		return -EINVAL;
- 	mesg[mlen-1] = 0;
- 
--	buf = kmalloc(PAGE_SIZE, GFP_KERNEL);
-+	buf = kzalloc(PAGE_SIZE, GFP_KERNEL);
- 	err = -ENOMEM;
- 	if (!buf)
- 		goto out;
-@@ -119,6 +127,7 @@ static int expkey_parse(struct cache_detail *cd, char *mesg, int mlen)
- 	if (key.h.expiry_time == 0)
- 		goto out;
- 
-+	key.cd = cd;
- 	key.ek_client = dom;	
- 	key.ek_fsidtype = fsidtype;
- 	memcpy(key.ek_fsid, buf, len);
-@@ -181,7 +190,11 @@ static int expkey_show(struct seq_file *m,
- 	if (test_bit(CACHE_VALID, &h->flags) && 
- 	    !test_bit(CACHE_NEGATIVE, &h->flags)) {
- 		seq_printf(m, " ");
--		seq_path(m, &ek->ek_path, "\\ \t\n");
-+		if (legitimize_mntget(ek->ek_path.mnt)) {
-+			seq_path(m, &ek->ek_path, "\\ \t\n");
-+			mntput(ek->ek_path.mnt);
-+		} else
-+			seq_printf(m, "Dir umounting");
- 	}
- 	seq_printf(m, "\n");
- 	return 0;
-@@ -210,6 +223,26 @@ static inline void expkey_init(struct cache_head *cnew,
- 	new->ek_fsidtype = item->ek_fsidtype;
- 
- 	memcpy(new->ek_fsid, item->ek_fsid, sizeof(new->ek_fsid));
-+	new->cd = item->cd;
-+}
-+
-+static void expkey_pin_kill(struct fs_pin *pin)
-+{
-+	struct svc_expkey *key = container_of(pin, struct svc_expkey, ek_pin);
-+
-+	if (!completion_done(&key->ek_done)) {
-+		schedule_work(&key->ek_work);
-+		wait_for_completion(&key->ek_done);
-+	}
-+
-+	path_put_unpin(&key->ek_path, &key->ek_pin);
-+	expkey_destroy(key);
-+}
-+
-+static void expkey_close_work(struct work_struct *work)
-+{
-+	struct svc_expkey *key = container_of(work, struct svc_expkey, ek_work);
-+	cache_delete_entry(key->cd, &key->h);
- }
- 
- static inline void expkey_update(struct cache_head *cnew,
-@@ -218,16 +251,19 @@ static inline void expkey_update(struct cache_head *cnew,
- 	struct svc_expkey *new = container_of(cnew, struct svc_expkey, h);
- 	struct svc_expkey *item = container_of(citem, struct svc_expkey, h);
- 
-+	init_fs_pin(&new->ek_pin, expkey_pin_kill);
- 	new->ek_path = item->ek_path;
--	path_get(&item->ek_path);
-+	path_get_pin(&new->ek_path, &new->ek_pin);
- }
- 
- static struct cache_head *expkey_alloc(void)
- {
--	struct svc_expkey *i = kmalloc(sizeof(*i), GFP_KERNEL);
--	if (i)
-+	struct svc_expkey *i = kzalloc(sizeof(*i), GFP_KERNEL);
-+	if (i) {
-+		INIT_WORK(&i->ek_work, expkey_close_work);
-+		init_completion(&i->ek_done);
- 		return &i->h;
--	else
-+	} else
- 		return NULL;
- }
- 
-@@ -306,14 +342,21 @@ static void nfsd4_fslocs_free(struct nfsd4_fs_locations *fsloc)
- 	fsloc->locations = NULL;
- }
- 
--static void svc_export_put(struct kref *ref)
-+static void svc_export_destroy(struct svc_export *exp)
- {
--	struct svc_export *exp = container_of(ref, struct svc_export, h.ref);
--	path_put(&exp->ex_path);
- 	auth_domain_put(exp->ex_client);
- 	nfsd4_fslocs_free(&exp->ex_fslocs);
- 	kfree(exp->ex_uuid);
--	kfree(exp);
-+	kfree_rcu(exp, rcu_head);
-+}
-+
-+static void svc_export_put(struct kref *ref)
-+{
-+	struct svc_export *exp = container_of(ref, struct svc_export, h.ref);
-+
-+	rcu_read_lock();
-+	complete(&exp->ex_done);
-+	pin_kill(&exp->ex_pin);
- }
- 
- static void svc_export_request(struct cache_detail *cd,
-@@ -520,7 +563,7 @@ static int svc_export_parse(struct cache_detail *cd, char *mesg, int mlen)
- 		return -EINVAL;
- 	mesg[mlen-1] = 0;
- 
--	buf = kmalloc(PAGE_SIZE, GFP_KERNEL);
-+	buf = kzalloc(PAGE_SIZE, GFP_KERNEL);
- 	if (!buf)
- 		return -ENOMEM;
- 
-@@ -636,7 +679,7 @@ static int svc_export_parse(struct cache_detail *cd, char *mesg, int mlen)
- 	if (expp == NULL)
- 		err = -ENOMEM;
- 	else
--		exp_put(expp);
-+		cache_put(&expp->h, expp->cd);
- out4:
- 	nfsd4_fslocs_free(&exp.ex_fslocs);
- 	kfree(exp.ex_uuid);
-@@ -664,7 +707,12 @@ static int svc_export_show(struct seq_file *m,
- 		return 0;
- 	}
- 	exp = container_of(h, struct svc_export, h);
--	seq_path(m, &exp->ex_path, " \t\n\\");
-+	if (legitimize_mntget(exp->ex_path.mnt)) {
-+		seq_path(m, &exp->ex_path, " \t\n\\");
-+		mntput(exp->ex_path.mnt);
-+	} else
-+		seq_printf(m, "Dir umounting");
-+
- 	seq_putc(m, '\t');
- 	seq_escape(m, exp->ex_client->name, " \t\n\\");
- 	seq_putc(m, '(');
-@@ -694,15 +742,35 @@ static int svc_export_match(struct cache_head *a, struct cache_head *b)
- 		path_equal(&orig->ex_path, &new->ex_path);
- }
- 
-+static void export_pin_kill(struct fs_pin *pin)
-+{
-+	struct svc_export *exp = container_of(pin, struct svc_export, ex_pin);
-+
-+	if (!completion_done(&exp->ex_done)) {
-+		schedule_work(&exp->ex_work);
-+		wait_for_completion(&exp->ex_done);
-+	}
-+
-+	path_put_unpin(&exp->ex_path, &exp->ex_pin);
-+	svc_export_destroy(exp);
-+}
-+
-+static void export_close_work(struct work_struct *work)
-+{
-+	struct svc_export *exp = container_of(work, struct svc_export, ex_work);
-+	cache_delete_entry(exp->cd, &exp->h);
-+}
-+
- static void svc_export_init(struct cache_head *cnew, struct cache_head *citem)
- {
- 	struct svc_export *new = container_of(cnew, struct svc_export, h);
- 	struct svc_export *item = container_of(citem, struct svc_export, h);
- 
-+	init_fs_pin(&new->ex_pin, export_pin_kill);
- 	kref_get(&item->ex_client->ref);
- 	new->ex_client = item->ex_client;
- 	new->ex_path = item->ex_path;
--	path_get(&item->ex_path);
-+	path_get_pin(&new->ex_path, &new->ex_pin);
- 	new->ex_fslocs.locations = NULL;
- 	new->ex_fslocs.locations_count = 0;
- 	new->ex_fslocs.migrated = 0;
-@@ -740,10 +808,12 @@ static void export_update(struct cache_head *cnew, struct cache_head *citem)
- 
- static struct cache_head *svc_export_alloc(void)
- {
--	struct svc_export *i = kmalloc(sizeof(*i), GFP_KERNEL);
--	if (i)
-+	struct svc_export *i = kzalloc(sizeof(*i), GFP_KERNEL);
-+	if (i) {
-+		INIT_WORK(&i->ex_work, export_close_work);
-+		init_completion(&i->ex_done);
- 		return &i->h;
--	else
-+	} else
- 		return NULL;
- }
- 
-@@ -798,6 +868,11 @@ svc_export_update(struct svc_export *new, struct svc_export *old)
- 		return NULL;
- }
- 
-+static void exp_put_key(struct svc_expkey *key)
-+{
-+	mntput(key->ek_path.mnt);
-+	cache_put(&key->h, key->cd);
-+}
- 
- static struct svc_expkey *
- exp_find_key(struct cache_detail *cd, struct auth_domain *clp, int fsid_type,
-@@ -809,6 +884,7 @@ exp_find_key(struct cache_detail *cd, struct auth_domain *clp, int fsid_type,
- 	if (!clp)
- 		return ERR_PTR(-ENOENT);
- 
-+	key.cd = cd;
- 	key.ek_client = clp;
- 	key.ek_fsidtype = fsid_type;
- 	memcpy(key.ek_fsid, fsidv, key_len(fsid_type));
-@@ -819,6 +895,12 @@ exp_find_key(struct cache_detail *cd, struct auth_domain *clp, int fsid_type,
- 	err = cache_check(cd, &ek->h, reqp);
- 	if (err)
- 		return ERR_PTR(err);
-+
-+	if (!legitimize_mntget(ek->ek_path.mnt)) {
-+		cache_put(&ek->h, ek->cd);
-+		return ERR_PTR(-ESTALE);
-+	}
-+
- 	return ek;
- }
- 
-@@ -842,6 +924,12 @@ exp_get_by_name(struct cache_detail *cd, struct auth_domain *clp,
- 	err = cache_check(cd, &exp->h, reqp);
- 	if (err)
- 		return ERR_PTR(err);
-+
-+	if (!legitimize_mntget(exp->ex_path.mnt)) {
-+		cache_put(&exp->h, exp->cd);
-+		return ERR_PTR(-ESTALE);
-+	}
-+
- 	return exp;
- }
- 
-@@ -928,7 +1016,7 @@ static struct svc_export *exp_find(struct cache_detail *cd,
- 		return ERR_CAST(ek);
- 
- 	exp = exp_get_by_name(cd, clp, &ek->ek_path, reqp);
--	cache_put(&ek->h, nn->svc_expkey_cache);
-+	exp_put_key(ek);
- 
- 	if (IS_ERR(exp))
- 		return ERR_CAST(exp);
-@@ -1195,10 +1283,10 @@ static int e_show(struct seq_file *m, void *p)
- 		return 0;
- 	}
- 
--	exp_get(exp);
-+	cache_get(&exp->h);
- 	if (cache_check(cd, &exp->h, NULL))
- 		return 0;
--	exp_put(exp);
-+	cache_put(&exp->h, exp->cd);
- 	return svc_export_show(m, cd, cp);
- }
- 
-diff --git a/fs/nfsd/export.h b/fs/nfsd/export.h
-index 1f52bfc..52210fb 100644
---- a/fs/nfsd/export.h
-+++ b/fs/nfsd/export.h
-@@ -4,6 +4,7 @@
- #ifndef NFSD_EXPORT_H
- #define NFSD_EXPORT_H
- 
-+#include <linux/fs_pin.h>
- #include <linux/sunrpc/cache.h>
- #include <uapi/linux/nfsd/export.h>
- 
-@@ -46,9 +47,10 @@ struct exp_flavor_info {
- 
- struct svc_export {
- 	struct cache_head	h;
-+	struct cache_detail	*cd;
-+
- 	struct auth_domain *	ex_client;
- 	int			ex_flags;
--	struct path		ex_path;
- 	kuid_t			ex_anon_uid;
- 	kgid_t			ex_anon_gid;
- 	int			ex_fsid;
-@@ -58,7 +60,14 @@ struct svc_export {
- 	struct exp_flavor_info	ex_flavors[MAX_SECINFO_LIST];
- 	enum pnfs_layouttype	ex_layout_type;
- 	struct nfsd4_deviceid_map *ex_devid_map;
--	struct cache_detail	*cd;
-+
-+	struct path		ex_path;
-+	struct fs_pin		ex_pin;
-+	struct rcu_head		rcu_head;
-+
-+	/* For svc_export_put and fs umounting window */
-+	struct completion	ex_done;
-+	struct work_struct	ex_work;
- };
- 
- /* an "export key" (expkey) maps a filehandlefragement to an
-@@ -67,12 +76,19 @@ struct svc_export {
-  */
- struct svc_expkey {
- 	struct cache_head	h;
-+	struct cache_detail	*cd;
- 
- 	struct auth_domain *	ek_client;
- 	int			ek_fsidtype;
- 	u32			ek_fsid[6];
- 
- 	struct path		ek_path;
-+	struct fs_pin		ek_pin;
-+	struct rcu_head		rcu_head;
-+
-+	/* For expkey_put and fs umounting window */
-+	struct completion	ek_done;
-+	struct work_struct	ek_work;
- };
- 
- #define EX_ISSYNC(exp)		(!((exp)->ex_flags & NFSEXP_ASYNC))
-@@ -100,12 +116,14 @@ __be32			nfserrno(int errno);
- 
- static inline void exp_put(struct svc_export *exp)
- {
-+	mntput(exp->ex_path.mnt);
- 	cache_put(&exp->h, exp->cd);
- }
- 
- static inline struct svc_export *exp_get(struct svc_export *exp)
- {
- 	cache_get(&exp->h);
-+	mntget(exp->ex_path.mnt);
- 	return exp;
- }
- struct svc_export * rqst_exp_find(struct svc_rqst *, int, u32 *);
--- 
-2.4.3
-
+thanks,
+Kinglong Mee
