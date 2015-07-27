@@ -1,54 +1,38 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f171.google.com ([209.85.213.171]:34236 "EHLO
-	mail-ig0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752574AbbG0Pfe (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 27 Jul 2015 11:35:34 -0400
-Received: by igk11 with SMTP id 11so66871185igk.1
-        for <linux-nfs@vger.kernel.org>; Mon, 27 Jul 2015 08:35:33 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] SUNRPC: Report TCP errors to the caller
-Date: Mon, 27 Jul 2015 11:35:30 -0400
-Message-Id: <1438011330-15715-1-git-send-email-trond.myklebust@primarydata.com>
+Received: from quartz.orcorp.ca ([184.70.90.242]:37892 "EHLO quartz.orcorp.ca"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751353AbbG0RH6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 27 Jul 2015 13:07:58 -0400
+Date: Mon, 27 Jul 2015 11:07:46 -0600
+From: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
+To: Sagi Grimberg <sagig@dev.mellanox.co.il>
+Cc: Steve Wise <swise@opengridcomputing.com>, dledford@redhat.com,
+        infinipath@intel.com, sagig@mellanox.com, ogerlitz@mellanox.com,
+        roid@mellanox.com, linux-rdma@vger.kernel.org, eli@mellanox.com,
+        target-devel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        bfields@fieldses.org
+Subject: Re: [PATCH V6 9/9] isert: Support iWARP transports using FRMRs
+Message-ID: <20150727170746.GB18348@obsidianresearch.com>
+References: <20150724161331.25617.8475.stgit@build2.ogc.int>
+ <20150724161904.25617.85015.stgit@build2.ogc.int>
+ <20150724165721.GC25480@obsidianresearch.com>
+ <00ce01d0c641$493ea300$dbbbe900$@opengridcomputing.com>
+ <20150724192411.GC26225@obsidianresearch.com>
+ <55B4B510.8050106@dev.mellanox.co.il>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <55B4B510.8050106@dev.mellanox.co.il>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- net/sunrpc/xprtsock.c | 13 ++++++-------
- 1 file changed, 6 insertions(+), 7 deletions(-)
+On Sun, Jul 26, 2015 at 01:23:12PM +0300, Sagi Grimberg wrote:
 
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 4f48b1a19e9f..6a21368bdd8e 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -677,9 +677,6 @@ static int xs_tcp_send_request(struct rpc_task *task)
- 		dprintk("RPC:       xs_tcp_send_request(%u) = %d\n",
- 				xdr->len - req->rq_bytes_sent, status);
- 
--		if (unlikely(sent == 0 && status < 0))
--			break;
--
- 		/* If we've sent the entire packet, immediately
- 		 * reset the count of bytes sent. */
- 		req->rq_bytes_sent += sent;
-@@ -689,10 +686,12 @@ static int xs_tcp_send_request(struct rpc_task *task)
- 			return 0;
- 		}
- 
--		if (sent != 0)
--			continue;
--		status = -EAGAIN;
--		break;
-+		if (status < 0)
-+			break;
-+		if (sent == 0) {
-+			status = -EAGAIN;
-+			break;
-+		}
- 	}
- 	if (status == -EAGAIN && sk_stream_is_writeable(transport->inet))
- 		status = -ENOBUFS;
--- 
-2.4.3
+> Question though, wouldn't it be better to do a single RDMA_READ to say
+> 4 registered keys rather than RDMA_READ_WITH_INV for each?
 
+RDMA READ is limted to 1 sg in iWarp.
+
+RDMA_READ_WITH_INV and 1 sg is really the only correct way to drive
+iWarp.
+
+Jason
