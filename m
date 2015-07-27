@@ -1,75 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qg0-f50.google.com ([209.85.192.50]:36490 "EHLO
-	mail-qg0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751723AbbG0LAK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 27 Jul 2015 07:00:10 -0400
-Received: by qges31 with SMTP id s31so1660290qge.3
-        for <linux-nfs@vger.kernel.org>; Mon, 27 Jul 2015 04:00:09 -0700 (PDT)
-From: Jeff Layton <jlayton@poochiereds.net>
-To: trond.myklebust@primarydata.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] nfs: hold state_lock when updating open stateid
-Date: Mon, 27 Jul 2015 06:59:49 -0400
-Message-Id: <1437994789-14133-1-git-send-email-jeff.layton@primarydata.com>
+Received: from outbound-smtp02.blacknight.com ([81.17.249.8]:33928 "EHLO
+	outbound-smtp02.blacknight.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752134AbbG0LAL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 27 Jul 2015 07:00:11 -0400
+Received: from mail.blacknight.com (pemlinmail04.blacknight.ie [81.17.254.17])
+	by outbound-smtp02.blacknight.com (Postfix) with ESMTPS id AFE0098B90
+	for <linux-nfs@vger.kernel.org>; Mon, 27 Jul 2015 10:52:18 +0000 (UTC)
+Date: Mon, 27 Jul 2015 11:52:16 +0100
+From: Mel Gorman <mgorman@techsingularity.net>
+To: Jerome Marchand <jmarchan@redhat.com>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Christoph Hellwig <hch@infradead.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        Mel Gorman <mgorman@suse.de>
+Subject: Re: [RFC PATCH] nfs: avoid swap-over-NFS deadlock
+Message-ID: <20150727105216.GD2660@techsingularity.net>
+References: <1437552643-18774-1-git-send-email-jmarchan@redhat.com>
+ <CAHQdGtRXhUi+=akuASUWo-tYy0YCWJtUts6fqGnA62fo1Jf5tA@mail.gmail.com>
+ <55AF9EA8.6020102@redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=iso-8859-15
+In-Reply-To: <55AF9EA8.6020102@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Currently, we check to see if an open stateid needs updating, and then
-update the stateid if so. The check and update however are not atomic,
-so it's easily possible to end up finding an old seqid when we check
-it only to have it updated by a newer one before we can get around to
-updating it ourselves.
+On Wed, Jul 22, 2015 at 03:46:16PM +0200, Jerome Marchand wrote:
+> On 07/22/2015 02:23 PM, Trond Myklebust wrote:
+> > On Wed, Jul 22, 2015 at 4:10 AM, Jerome Marchand <jmarchan@redhat.com> wrote:
+> >>
+> >> Lockdep warns about a inconsistent {RECLAIM_FS-ON-W} ->
+> >> {IN-RECLAIM_FS-W} usage. The culpritt is the inode->i_mutex taken in
+> >> nfs_file_direct_write(). This code was introduced by commit a9ab5e840669
+> >> ("nfs: page cache invalidation for dio").
+> >> This naive test patch avoid to take the mutex on a swapfile and makes
+> >> lockdep happy again. However I don't know much about NFS code and I
+> >> assume it's probably not the proper solution. Any thought?
+> >>
+> >> Signed-off-by: Jerome Marchand <jmarchan@redhat.com>
+> > 
+> > NFS is not the only O_DIRECT implementation to set the inode->i_mutex.
+> > Why can't this be fixed in the generic swap code instead of adding
+> > yet-another-exception-for-IS_SWAPFILE?
+> 
+> I meant to cc Mel. Just added him.
+> 
 
-We could try to play games with atomic ops here, but the simple fix
-is to just ensure that we hold the per-stateid state_lock when
-updating an open stateid.
+Can the full lockdep warning be included as it'll be easier to see then if
+the generic swap code can somehow special case this? Currently, generic
+swapping does not not need to care about how the filesystem locked.
+For most filesystems, it's writing directly to the blocks on disk and
+bypassing the FS. In the NFS case it'd be surprising to find that there
+also are dirty pages in page cache that belong to the swap file as it's
+going to cause corruption. If there is any special casing it would to only
+attempt the invalidation in the !swap case and warn if mapping->nrpages. It
+still would look a bit weird but safer than just not acquiring the mutex
+and then potentially attempting an invalidation.
 
-Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
----
- fs/nfs/nfs4proc.c | 15 ++++++++++-----
- 1 file changed, 10 insertions(+), 5 deletions(-)
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 780accb962dd..bc6a7b5d81aa 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -1234,14 +1234,17 @@ static void nfs_clear_open_stateid_locked(struct nfs4_state *state,
- 	if (stateid == NULL)
- 		return;
- 	/* Handle races with OPEN */
-+	spin_lock(&state->state_lock);
- 	if (!nfs4_stateid_match_other(stateid, &state->open_stateid) ||
- 	    !nfs4_stateid_is_newer(stateid, &state->open_stateid)) {
- 		nfs_resync_open_stateid_locked(state);
-+		spin_unlock(&state->state_lock);
- 		return;
- 	}
- 	if (test_bit(NFS_DELEGATED_STATE, &state->flags) == 0)
- 		nfs4_stateid_copy(&state->stateid, stateid);
- 	nfs4_stateid_copy(&state->open_stateid, stateid);
-+	spin_unlock(&state->state_lock);
- }
- 
- static void nfs_clear_open_stateid(struct nfs4_state *state, nfs4_stateid *stateid, fmode_t fmode)
-@@ -1265,11 +1268,13 @@ static void nfs_set_open_stateid_locked(struct nfs4_state *state, nfs4_stateid *
- 		case FMODE_READ|FMODE_WRITE:
- 			set_bit(NFS_O_RDWR_STATE, &state->flags);
- 	}
--	if (!nfs_need_update_open_stateid(state, stateid))
--		return;
--	if (test_bit(NFS_DELEGATED_STATE, &state->flags) == 0)
--		nfs4_stateid_copy(&state->stateid, stateid);
--	nfs4_stateid_copy(&state->open_stateid, stateid);
-+	spin_lock(&state->state_lock);
-+	if (nfs_need_update_open_stateid(state, stateid)) {
-+		if (test_bit(NFS_DELEGATED_STATE, &state->flags) == 0)
-+			nfs4_stateid_copy(&state->stateid, stateid);
-+		nfs4_stateid_copy(&state->open_stateid, stateid);
-+	}
-+	spin_unlock(&state->state_lock);
- }
- 
- static void __update_open_stateid(struct nfs4_state *state, nfs4_stateid *open_stateid, const nfs4_stateid *deleg_stateid, fmode_t fmode)
 -- 
-2.4.3
-
+Mel Gorman
+SUSE Labs
