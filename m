@@ -1,207 +1,159 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:41660 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755058AbbG0Cvc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 26 Jul 2015 22:51:32 -0400
-Date: Mon, 27 Jul 2015 12:51:21 +1000
-From: NeilBrown <neilb@suse.com>
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: Al Viro <viro@ZenIV.linux.org.uk>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        linux-fsdevel@vger.kernel.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: Re: [PATCH 10/10 v7] nfsd: Allows user un-mounting filesystem where
- nfsd exports base on
-Message-ID: <20150727125121.23655367@noble>
-In-Reply-To: <55B59764.1020506@gmail.com>
-References: <55A11010.6050005@gmail.com>
-	<55A111A8.2040701@gmail.com>
-	<20150713133934.6a4ef77d@noble>
-	<20150713142059.493a790e@noble>
-	<20150713044553.GN17109@ZenIV.linux.org.uk>
-	<20150724120515.023322d4@noble>
-	<55B59764.1020506@gmail.com>
+Received: from mail-pd0-f177.google.com ([209.85.192.177]:35143 "EHLO
+	mail-pd0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754071AbbG0DGG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 26 Jul 2015 23:06:06 -0400
+Message-ID: <55B5A012.1030006@gmail.com>
+Date: Mon, 27 Jul 2015 11:05:54 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+To: "J. Bruce Fields" <bfields@fieldses.org>,
+        Al Viro <viro@zeniv.linux.org.uk>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        linux-fsdevel@vger.kernel.org, NeilBrown <neilb@suse.de>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        kinglongmee@gmail.com
+Subject: [PATCH 0/9 v8] NFSD: Pin to vfsmount for nfsd exports cache
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 27 Jul 2015 10:28:52 +0800 Kinglong Mee <kinglongmee@gmail.com>
-wrote:
+If there are some mount points(not exported for nfs) under pseudo root,
+after client's operation of those entry under the root, anyone *can't*
+unmount those mount points until export cache expired.
 
-> On 7/24/2015 10:05, NeilBrown wrote:
-> > On Mon, 13 Jul 2015 05:45:53 +0100 Al Viro <viro@ZenIV.linux.org.uk>
-> > wrote:
-> > 
-> >> On Mon, Jul 13, 2015 at 02:20:59PM +1000, NeilBrown wrote:
-> >>
-> >>> Actually, with that change to pin_kill, this side of things becomes
-> >>> really easy.
-> >>> All expXXX_pin_kill needs to do is call your new cache_delete_entry.
-> >>> If that doesn't cause the entry to be put, then something else has a
-> >>> temporary reference which will be put soon.  In any case, pin_kill()
-> >>> will wait long enough, but not indefinitely.
-> >>> No need for kref_get_unless_zero() or any of that.
-> >>
-> >> No.  You are seriously misunderstanding what ->kill() is for and what the
-> >> existing instances are doing.  Again, there is no promise whatsoever that
-> >> the object containing fs_pin instance will *survive* past ->kill().
-> >> At all.
-> >>
-> >> RTFS, please.  What is sorely missing in this recurring patchset is a clear
-> >> description of lifetime rules and ordering (who waits for whom and how long).
-> >> For all the objects involved.
-> > 
-> > Good point.  Let me try.
-> > 
-> > Entries in the sunrpc 'cache' each contain some 'key' fields and some
-> > 'content' fields.
-> > 
-> > The key fields are set by the .init() method when the entry is
-> > created, which can happen in a call to sunrpc_cache_lookup() or to
-> > sunrpc_cache_update().
-> > 
-> > The content fields are set by the .update() method when a value is
-> > provided for the cache entry.  This happens in sunrpc_cache_update();
-> > 
-> > A cache entry can be not-valid, negative, or valid.
-> > It starts non-valid when sunrpc_cache_lookup() fails to find the search
-> > key and so creates a new entry (and sets up the key with .init).
-> > It then transitions to either negative or valid.
-> > This can happen through sunrpc_cache_update() or through an error when
-> > instigating an up-call, in which case it goes to negative.
-> > Once it is negative or valid, it stays that way until it is released.
-> > If sunrpc_cache_update is called on an entry that is not not-valid,
-> > then a new entry is created and the old one is marked as expired.
-> > A cache search will find the new one before the old.
-> > 
-> > The vfsmount object is involved in two separate caches.
-> > It is part of the content of svc_expkey and part of the key of
-> > svc_export.
-> > 
-> > An svc_expkey entry is only ever held transiently.  It is held while an
-> > update is being processed, and it is held briefly while mapping a
-> > filehandle to a mnt+dentry.
-> > Firstly part of the filehandle is used to acccess the svc_expkey cache
-> > to get the vfsmnt.  Then that vfsmnt plus the client identification is
-> > looked up in the svc_export cache to find the export options.  Then the
-> > svc_expkey cache entry is released.
-> > 
-> > So it is only held during a lookup of another cache.  This can take an
-> > arbitrarily long time as the lookup can go to rpc.mountd in user-space.
-> > 
-> > 
-> > The svc_export cache entry can be held for the duration of a single NFS
-> > request.  It is stored in the 'struct svc_fh' file handle structure
-> > which is release at the end of handling the request.
-> > 
-> > The vfsmnt and dentry are only "used" to validate the filehandle and
-> > then while that filehandle is still active.
-> > 
-> > 
-> > To avoid having unmount hang while nfsd is performing an upcall to
-> > mountd, we need to legitimize the vfsmnt in the svc_expkey.  If that
-> > fails, exp_find_key() can fail and we would never perform the lookup on
-> > svc_export.
-> > 
-> > If it succeeds, then the legitimacy can be handed over to the svc_export
-> > cache entry, which could then continue to own it, or could hand it on
-> > to the svc_fh.
-> > 
-> > The latter is *probably* cleanest.
-> > i.e. an svc_fh should always own a reference to exp->ex_path.mnt, and
-> > fh_put must put it.
-> 
-> I don't agree adding new argument (eg, fh_vfsmnt) in svc_fh.
+# cat /etc/exports
+/nfs/xfs        *(rw,insecure,no_subtree_check,no_root_squash)
+/nfs/pnfs       *(rw,insecure,no_subtree_check,no_root_squash)
+# ll /nfs/
+total 0
+drwxr-xr-x. 3 root root 84 Apr 21 22:27 pnfs
+drwxr-xr-x. 3 root root 84 Apr 21 22:27 test
+drwxr-xr-x. 2 root root  6 Apr 20 22:01 xfs
+# mount /dev/sde /nfs/test
+# df
+Filesystem                      1K-blocks    Used Available Use% Mounted on
+......
+/dev/sdd                          1038336   32944   1005392   4% /nfs/pnfs
+/dev/sdc                         10475520   32928  10442592   1% /nfs/xfs
+/dev/sde                           999320    1284    929224   1% /nfs/test
+# mount -t nfs 127.0.0.1:/nfs/ /mnt
+# ll /mnt/*/
+/mnt/pnfs/:
+total 0
+-rw-r--r--. 1 root root 0 Apr 21 22:23 attr
+drwxr-xr-x. 2 root root 6 Apr 21 22:19 tmp
 
-I wasn't suggesting that a new field be added to svc_fh.
-Just that if svc_fh->fh_export was not NULL, then the svc_fh "owned" a
-reference to svc_fh->fh_export->ex_path.mnt which it had to mnt_put()
-when it released ->fh_export.
+/mnt/xfs/:
+total 0
+# umount /nfs/test/
+umount: /nfs/test/: target is busy
+        (In some cases useful info about processes that
+         use the device is found by lsof(8) or fuser(1).)
 
-So fh_put would need to change, but not much else.
+It's caused by exports cache of nfsd holds the reference of
+the path (here is /nfs/test/), so, it can't be umounted.
 
-It isn't the only way to handle that references - it just seemed the
-neatest as I was writing the description.  Something else might work
-better in the code.
+I don't think that's user expect, they want umount /nfs/test/.
+Bruce think user can also umount /nfs/pnfs/ and /nfs/xfs.
 
-> 
-> With it, should nfsd using fh_vfsmnt always, never using exp->ex_path.mnt
-> outside of export.c/export.h ?
-> 
-> If choose fh_vfsmnt, so many codes need be updated, especially functions.
-> If exp->ex_path.mnt, the new argument fh_vfsmnt seems redundant.
-> 
-> Thanks for your work.
-> 
-> It reminders a new method,
-> 
-> 1. There are only one outlet from each cache, exp_find_key() for expkey, 
->    exp_get_by_name() for export.
-> 2. Any fsid to export or filehandle to export will call the function.
-> 3. exp_get()/exp_put() increase/decrease the reference of export.
-> 
-> Like the fh_vfsmnt (not same), call legitimize_mntget() in the only
-> outlet function exp_find_key()/exp_get_by_name(), if fail return STALE,
-> otherwise, any valid expkey/export from the cache is validated (Have
-> get the reference of vfsmnt).
-> 
-> Add mntget() in exp_get() and mntput() in exp_put(), because the export
-> passed to exp_get/exp_put are returned from exp_find_key/exp_get_by_name.
-> 
-> > 
-> > exp_find_key needs to legitimize ek->ek_path.mnt, so a successful
-> > return from exp_find implies an active refernece to ->ex_path.mnt.
-> > If exp_find fails, it needs to mnt_put(ek->ek_path.mnt).
-> 
-> Yes, it's great.
-> 
-> > All callers of exp_find need to mnt_put(exp->ex_path.mnt) when they
-> > decide not to use the exp, and must otherwise store it in an svc_fh.
-> > 
-> > With this, pin_kill() should only need to wait for  exp_find_key() to
-> > discover that it cannot legitimize the mount, or for expkey_path() to
-> > replace the key via sunrpc_cache_update(), or maybe for cache_clean()
-> > to discard an old entry.
-> > 
-> > Hopefully that makes it all clear.
-> 
-> Yes, thanks again.
-> 
-> With my method, for expkey cache,
-> 1. At first, a fsid is passed to exp_find_key, and lookup a cache
->    in svc_expkey_lookup, if success, ekey->ek_path is pined to mount.
-> 2. Then call legitimize_mntget getting a reference of vfsmnt 
->    before return from exp_find_key.
-> 3. Any calling exp_find_key with valid cache must put the vfsmnt.
-> 
-> for export cache,
-> 1. At first, a path (returned from exp_find_key) with validate vfsmnt
->    is passed to exp_get_by_name, if success, exp->ex_path is pined to mount.
-> 2. Then call legitimize_mntget getting a reference of vfsmnt 
->    before return from exp_get_by_name.
+This patch site lets nfsd exports pinning to vfsmount, 
+not using mntget, so user can umount any exports mountpoint now.
 
-I don't see any point in calling legitimise_mntget here.  exp_find_key
-already did the 'legitimize' bit so there is no need to do it again.
+v3, 
+1. New helpers path_get_pin/path_put_unpin for path pin.
+2. Use kzalloc for allocating memory.
 
-> 3. Any calling exp_get_by_name with valid cache must put the vfsmnt
->    by exp_put();
-> 4. Any using the exp returned from exp_get_by_name must call exp_get(),
->    will increase the reference of vfsmnt.
-> 
-> So,
-> a. After getting the reference in 2, any umount of filesystem will get -EBUSY.
-> b. After put all reference after 4, or before get the reference in 2, 
->    any umount of filesystem will call pin_kill, and delete the cache directly,
->    also unpin the vfsmount.
-> c. Between 1 and 2, have get the reference of exp/key cache, with invalidate vfsmnt.
->    As you said, umount of filesystem only wait exp_find_key/exp_get_by_name
->    put the reference of cache when legitimize_mntget fail.
-> 
-> A new update of this patch site will be push later.
+v4, Thanks for Al Viro's commets for the logic of fs_pin.
+1. add a completion for pin_kill waiting the reference is decreased to zero.
+2. add a work_struct for pin_kill decreases the reference indirectly.
+3. free svc_export/svc_expkey in pin_kill, not svc_export_put/svc_expkey_put.
+4. svc_export_put/svc_expkey_put go though pin_kill logic.
 
-I look forward to it.  Thanks,
+v5, 
+let killing fs_pin under a reference of vfsmnt.
 
-NeilBrown
+v6,
+1. revert the change of v5
+2. new helper legitimize_mntget() for nfsd exports/expkey cache
+   get vfsmount from fs_pin
+3. cleanup some codes of sunrpc's cache
+4. switch using list_head instead of single list for cache_head
+   in cache_detail
+5. new functions validate/invalidate for processing of reference
+   increase/decrease change (nfsd exports/expkey using grab the
+   reference of mnt)
+6. delete cache_head directly from cache_detail in pin_kill
+
+v7, 
+implement self reference increase and decrease for nfsd exports/expkey 
+
+When reference of cahce_head increase(>1), grab a reference of mnt once.
+and reference decrease to 1 (==1), drop the reference of mnt.
+
+v8, Use hash_list for sunrpc cachen and a new method for nfsd's pin,
+
+1. There are only one outlet from each cache, exp_find_key() for expkey, 
+   exp_get_by_name() for export.
+2. Any fsid to export or filehandle to export will call the function.
+3. exp_get()/exp_put() increase/decrease the reference of export.
+
+Call legitimize_mntget() in the only outlet function exp_find_key()/
+exp_get_by_name(), if fail return STALE, otherwise, any valid
+expkey/export from the cache is validated (Have get the reference of vfsmnt).
+
+Add mntget() in exp_get() and mntput() in exp_put(), because the export
+passed to exp_get/exp_put are returned from exp_find_key/exp_get_by_name.
+
+For expkey cache,
+1. At first, a fsid is passed to exp_find_key, and lookup a cache
+   in svc_expkey_lookup, if success, ekey->ek_path is pined to mount.
+2. Then call legitimize_mntget getting a reference of vfsmnt 
+   before return from exp_find_key.
+3. Any calling exp_find_key with valid cache must put the vfsmnt.
+
+for export cache,
+1. At first, a path (returned from exp_find_key) with validate vfsmnt
+   is passed to exp_get_by_name, if success, exp->ex_path is pined to mount.
+2. Then call legitimize_mntget getting a reference of vfsmnt 
+   before return from exp_get_by_name.
+3. Any calling exp_get_by_name with valid cache must put the vfsmnt
+   by exp_put();
+4. Any using the exp returned from exp_get_by_name must call exp_get(),
+   will increase the reference of vfsmnt.
+
+So that,
+a. After getting the reference in 2, any umount of filesystem will get -EBUSY.
+b. After put all reference after 4, or before get the reference in 2, 
+   any umount of filesystem will call pin_kill, and delete the cache directly,
+   also unpin the vfsmount.
+c. Between 1 and 2, have get the reference of exp/key cache, with invalidate vfsmnt.
+   As you said, umount of filesystem only wait exp_find_key/exp_get_by_name
+   put the reference of cache when legitimize_mntget fail.
+
+Kinglong Mee (9):
+  fs_pin: Initialize value for fs_pin explicitly
+  fs_pin: Export functions for specific filesystem
+  path: New helpers path_get_pin/path_put_unpin for path pin
+  fs: New helper legitimize_mntget() for getting a legitimize mnt
+  sunrpc: Store cache_detail in seq_file's private, directly
+  sunrpc/nfsd: Remove redundant code by exports seq_operations functions
+  sunrpc: Switch to using hash list instead single list
+  sunrpc: New helper cache_delete_entry for deleting cache_head directly
+  nfsd: Allows user un-mounting filesystem where nfsd exports base on
+
+ fs/fs_pin.c                  |   4 +
+ fs/namei.c                   |  26 ++++++
+ fs/namespace.c               |  19 ++++
+ fs/nfsd/export.c             | 209 ++++++++++++++++++++++++-------------------
+ fs/nfsd/export.h             |  22 ++++-
+ include/linux/fs_pin.h       |   6 ++
+ include/linux/mount.h        |   1 +
+ include/linux/path.h         |   4 +
+ include/linux/sunrpc/cache.h |  10 ++-
+ net/sunrpc/cache.c           | 133 ++++++++++++++++-----------
+ 10 files changed, 286 insertions(+), 148 deletions(-)
+
+-- 
+2.4.3
 
