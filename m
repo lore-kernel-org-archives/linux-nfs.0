@@ -1,193 +1,146 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pa0-f50.google.com ([209.85.220.50]:34904 "EHLO
-	mail-pa0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753517AbbG0DRw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 26 Jul 2015 23:17:52 -0400
-Message-ID: <55B5A2D5.4000004@gmail.com>
-Date: Mon, 27 Jul 2015 11:17:41 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
+Received: from mail-yk0-f171.google.com ([209.85.160.171]:36710 "EHLO
+	mail-yk0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750723AbbG0EIN convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 27 Jul 2015 00:08:13 -0400
+Received: by ykay190 with SMTP id y190so59987041yka.3
+        for <linux-nfs@vger.kernel.org>; Sun, 26 Jul 2015 21:08:12 -0700 (PDT)
 MIME-Version: 1.0
-To: NeilBrown <neilb@suse.com>
-CC: Al Viro <viro@ZenIV.linux.org.uk>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        linux-fsdevel@vger.kernel.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        kinglongmee@gmail.com
-Subject: Re: [PATCH 10/10 v7] nfsd: Allows user un-mounting filesystem where
- nfsd exports base on
-References: <55A11010.6050005@gmail.com>	<55A111A8.2040701@gmail.com>	<20150713133934.6a4ef77d@noble>	<20150713142059.493a790e@noble>	<20150713044553.GN17109@ZenIV.linux.org.uk>	<20150724120515.023322d4@noble>	<55B59764.1020506@gmail.com> <20150727125121.23655367@noble>
-In-Reply-To: <20150727125121.23655367@noble>
-Content-Type: text/plain; charset=windows-1252
+Date: Mon, 27 Jul 2015 12:08:12 +0800
+Message-ID: <CAB6yy34dK0zPTB=FyEGb=Ljc7jAc_xi7ci17LU3JA=nEeXdkUA@mail.gmail.com>
+Subject: Re: client oops in xdr_reserve_space in 4.0.0-rc4
+From: Kinglong Mee <kinglongmee@gmail.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Jeffrey Layton <jeff.layton@primarydata.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Tue, Mar 24, 2015 at 4:19 AM, Jeff Layton
+<jeff.layton@primarydata.com> wrote:
+> On Mon, 23 Mar 2015 16:16:01 -0400
+> Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+>
+>> Hi Jeff,
+>>
+>> On Sun, 2015-03-22 at 11:27 -0400, Jeff Layton wrote:
+>> > While trying to track down the use-after-free in nfsd in v4.0-rc
+>> > kernels, I hit this oops on the client. At the time, I had just
+>> > rebooted the server while xfstests generic/011 was running against it.
+>> > It oopsed just after the server came back up.
+>> >
+>> > Kernel is a stock fedora kernel. Looks like xdr_reserve_space failed,
+>> > which triggered a BUG:
+>> >
+>> > [ 9410.321698] run fstests generic/011 at 2015-03-22 11:13:50
+>> > [ 9737.567073] nfs: server rawhide not responding, still trying
+>> > [ 9839.007187] ------------[ cut here ]------------
+>> > [ 9839.007923] kernel BUG at fs/nfs/nfs4xdr.c:910!
+>> > [ 9839.008069] invalid opcode: 0000 [#1] SMP
+>> > [ 9839.008069] Modules linked in: blocklayoutdriver rpcsec_gss_krb5 nfsv4 dns_resolver nfs fscache snd_hda_codec_generic snd_hda_intel snd_hda_controller snd_hda_codec snd_hwdep snd_seq snd_seq_device snd_pcm joydev iosf_mbi crct10dif_pclmul snd_timer crc32_pclmul crc32c_intel ghash_clmulni_intel snd soundcore ppdev pvpanic parport_pc i2c_piix4 serio_raw virtio_balloon parport acpi_cpufreq nfsd nfs_acl lockd grace auth_rpcgss sunrpc qxl drm_kms_helper virtio_net virtio_console virtio_blk ttm drm virtio_pci virtio_ring virtio ata_generic pata_acpi
+>> > [ 9839.008069] CPU: 0 PID: 308 Comm: kworker/0:1H Not tainted 4.0.0-0.rc4.git1.3.fc23.x86_64 #1
+>> > [ 9839.008069] Hardware name: Bochs Bochs, BIOS Bochs 01/01/2011
+>> > [ 9839.008069] Workqueue: rpciod rpc_async_schedule [sunrpc]
+>> > [ 9839.008069] task: ffff8800d8b4d8e0 ti: ffff880036678000 task.ti: ffff880036678000
+>> > [ 9839.008069] RIP: 0010:[<ffffffffa0339cc9>]  [<ffffffffa0339cc9>] reserve_space.part.73+0x9/0x10 [nfsv4]
+>> > [ 9839.008069] RSP: 0018:ffff88003667ba58  EFLAGS: 00010246
+>> > [ 9839.008069] RAX: 0000000000000000 RBX: 000000001fc15e18 RCX: ffff8800c0193800
+>> > [ 9839.008069] RDX: ffff8800e4ae3f24 RSI: 000000001fc15e2c RDI: ffff88003667bcd0
+>> > [ 9839.008069] RBP: ffff88003667ba58 R08: ffff8800d9173008 R09: 0000000000000003
+>> > [ 9839.008069] R10: ffff88003667bcd0 R11: 000000000000000c R12: 0000000000010000
+>> > [ 9839.008069] R13: ffff8800d9173350 R14: 0000000000000000 R15: ffff8800c0067b98
+>> > [ 9839.008069] FS:  0000000000000000(0000) GS:ffff88011fc00000(0000) knlGS:0000000000000000
+>> > [ 9839.008069] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+>> > [ 9839.008069] CR2: 00007f988c9c8bb0 CR3: 00000000d99b6000 CR4: 00000000000407f0
+>> > [ 9839.008069] Stack:
+>> > [ 9839.008069]  ffff88003667bbc8 ffffffffa03412c5 00000000c6c55680 ffff880000000003
+>> > [ 9839.008069]  0000000000000088 00000010c6c55680 0001000000000002 ffffffff816e87e9
+>> > [ 9839.008069]  0000000000000000 00000000477290e2 ffff88003667bab8 ffffffff81327ba3
+>> > [ 9839.008069] Call Trace:
+>> > [ 9839.008069]  [<ffffffffa03412c5>] encode_attrs+0x435/0x530 [nfsv4]
+>> > [ 9839.008069]  [<ffffffff816e87e9>] ? inet_sendmsg+0x69/0xb0
+>> > [ 9839.008069]  [<ffffffff81327ba3>] ? selinux_socket_sendmsg+0x23/0x30
+>> > [ 9839.008069]  [<ffffffff8164c1df>] ? do_sock_sendmsg+0x9f/0xc0
+>> > [ 9839.008069]  [<ffffffff8164c278>] ? kernel_sendmsg+0x58/0x70
+>> > [ 9839.008069]  [<ffffffffa011acc0>] ? xdr_reserve_space+0x20/0x170 [sunrpc]
+>> > [ 9839.008069]  [<ffffffffa011acc0>] ? xdr_reserve_space+0x20/0x170 [sunrpc]
+>> > [ 9839.008069]  [<ffffffffa0341b40>] ? nfs4_xdr_enc_open_noattr+0x130/0x130 [nfsv4]
+>> > [ 9839.008069]  [<ffffffffa03419a5>] encode_open+0x2d5/0x340 [nfsv4]
+>> > [ 9839.008069]  [<ffffffffa0341b40>] ? nfs4_xdr_enc_open_noattr+0x130/0x130 [nfsv4]
+>> > [ 9839.008069]  [<ffffffffa011ab89>] ? xdr_encode_opaque+0x19/0x20 [sunrpc]
+>> > [ 9839.008069]  [<ffffffffa0339cfb>] ? encode_string+0x2b/0x40 [nfsv4]
+>> > [ 9839.008069]  [<ffffffffa0341bf3>] nfs4_xdr_enc_open+0xb3/0x140 [nfsv4]
+>> > [ 9839.008069]  [<ffffffffa0110a4c>] rpcauth_wrap_req+0xac/0xf0 [sunrpc]
+>> > [ 9839.008069]  [<ffffffffa01017db>] call_transmit+0x18b/0x2d0 [sunrpc]
+>> > [ 9839.008069]  [<ffffffffa0101650>] ? call_decode+0x860/0x860 [sunrpc]
+>> > [ 9839.008069]  [<ffffffffa0101650>] ? call_decode+0x860/0x860 [sunrpc]
+>> > [ 9839.008069]  [<ffffffffa010caa0>] __rpc_execute+0x90/0x460 [sunrpc]
+>> > [ 9839.008069]  [<ffffffffa010ce85>] rpc_async_schedule+0x15/0x20 [sunrpc]
+>> > [ 9839.008069]  [<ffffffff810b452b>] process_one_work+0x1bb/0x410
+>> > [ 9839.008069]  [<ffffffff810b47d3>] worker_thread+0x53/0x470
+>> > [ 9839.008069]  [<ffffffff810b4780>] ? process_one_work+0x410/0x410
+>> > [ 9839.008069]  [<ffffffff810b4780>] ? process_one_work+0x410/0x410
+>> > [ 9839.008069]  [<ffffffff810ba7b8>] kthread+0xd8/0xf0
+>> > [ 9839.008069]  [<ffffffff810ba6e0>] ? kthread_worker_fn+0x180/0x180
+>> > [ 9839.008069]  [<ffffffff81786418>] ret_from_fork+0x58/0x90
+>> > [ 9839.008069]  [<ffffffff810ba6e0>] ? kthread_worker_fn+0x180/0x180
+>> > [ 9839.008069] Code: 00 00 48 c7 c7 21 fa 37 a0 e8 94 1c d6 e0 c6 05 d2 17 05 00 01 8b 03 eb d7 66 0f 1f 84 00 00 00 00 00 66 66 66 66 90 55 48 89 e5 <0f> 0b 0f 1f 44 00 00 66 66 66 66 90 55 48 89 e5 41 54 53 89 f3
+>> > [ 9839.008069] RIP  [<ffffffffa0339cc9>] reserve_space.part.73+0x9/0x10 [nfsv4]
+>> > [ 9839.008069]  RSP <ffff88003667ba58>
+>> > [ 9839.071114] ---[ end trace cc14c03adb522e94 ]---
+>> >
+>>
+>> Could you please check if the following fixes it for you?
+>>
+>> Cheers
+>>   Trond
+>
+> Sure, I'll test it when I get some time. Unfortunately, I don't have a
+> way to reproduce this reliably. I just had it pop up a couple of times,
+> mostly when the server crashed and came back up.
+>
+> The fix looks plausible though...
 
-On 7/27/2015 10:51, NeilBrown wrote:
-> On Mon, 27 Jul 2015 10:28:52 +0800 Kinglong Mee <kinglongmee@gmail.com>
-> wrote:
-> 
->> On 7/24/2015 10:05, NeilBrown wrote:
->>> On Mon, 13 Jul 2015 05:45:53 +0100 Al Viro <viro@ZenIV.linux.org.uk>
->>> wrote:
->>>
->>>> On Mon, Jul 13, 2015 at 02:20:59PM +1000, NeilBrown wrote:
->>>>
->>>>> Actually, with that change to pin_kill, this side of things becomes
->>>>> really easy.
->>>>> All expXXX_pin_kill needs to do is call your new cache_delete_entry.
->>>>> If that doesn't cause the entry to be put, then something else has a
->>>>> temporary reference which will be put soon.  In any case, pin_kill()
->>>>> will wait long enough, but not indefinitely.
->>>>> No need for kref_get_unless_zero() or any of that.
->>>>
->>>> No.  You are seriously misunderstanding what ->kill() is for and what the
->>>> existing instances are doing.  Again, there is no promise whatsoever that
->>>> the object containing fs_pin instance will *survive* past ->kill().
->>>> At all.
->>>>
->>>> RTFS, please.  What is sorely missing in this recurring patchset is a clear
->>>> description of lifetime rules and ordering (who waits for whom and how long).
->>>> For all the objects involved.
->>>
->>> Good point.  Let me try.
->>>
->>> Entries in the sunrpc 'cache' each contain some 'key' fields and some
->>> 'content' fields.
->>>
->>> The key fields are set by the .init() method when the entry is
->>> created, which can happen in a call to sunrpc_cache_lookup() or to
->>> sunrpc_cache_update().
->>>
->>> The content fields are set by the .update() method when a value is
->>> provided for the cache entry.  This happens in sunrpc_cache_update();
->>>
->>> A cache entry can be not-valid, negative, or valid.
->>> It starts non-valid when sunrpc_cache_lookup() fails to find the search
->>> key and so creates a new entry (and sets up the key with .init).
->>> It then transitions to either negative or valid.
->>> This can happen through sunrpc_cache_update() or through an error when
->>> instigating an up-call, in which case it goes to negative.
->>> Once it is negative or valid, it stays that way until it is released.
->>> If sunrpc_cache_update is called on an entry that is not not-valid,
->>> then a new entry is created and the old one is marked as expired.
->>> A cache search will find the new one before the old.
->>>
->>> The vfsmount object is involved in two separate caches.
->>> It is part of the content of svc_expkey and part of the key of
->>> svc_export.
->>>
->>> An svc_expkey entry is only ever held transiently.  It is held while an
->>> update is being processed, and it is held briefly while mapping a
->>> filehandle to a mnt+dentry.
->>> Firstly part of the filehandle is used to acccess the svc_expkey cache
->>> to get the vfsmnt.  Then that vfsmnt plus the client identification is
->>> looked up in the svc_export cache to find the export options.  Then the
->>> svc_expkey cache entry is released.
->>>
->>> So it is only held during a lookup of another cache.  This can take an
->>> arbitrarily long time as the lookup can go to rpc.mountd in user-space.
->>>
->>>
->>> The svc_export cache entry can be held for the duration of a single NFS
->>> request.  It is stored in the 'struct svc_fh' file handle structure
->>> which is release at the end of handling the request.
->>>
->>> The vfsmnt and dentry are only "used" to validate the filehandle and
->>> then while that filehandle is still active.
->>>
->>>
->>> To avoid having unmount hang while nfsd is performing an upcall to
->>> mountd, we need to legitimize the vfsmnt in the svc_expkey.  If that
->>> fails, exp_find_key() can fail and we would never perform the lookup on
->>> svc_export.
->>>
->>> If it succeeds, then the legitimacy can be handed over to the svc_export
->>> cache entry, which could then continue to own it, or could hand it on
->>> to the svc_fh.
->>>
->>> The latter is *probably* cleanest.
->>> i.e. an svc_fh should always own a reference to exp->ex_path.mnt, and
->>> fh_put must put it.
->>
->> I don't agree adding new argument (eg, fh_vfsmnt) in svc_fh.
-> 
-> I wasn't suggesting that a new field be added to svc_fh.
-> Just that if svc_fh->fh_export was not NULL, then the svc_fh "owned" a
-> reference to svc_fh->fh_export->ex_path.mnt which it had to mnt_put()
-> when it released ->fh_export.
-> 
-> So fh_put would need to change, but not much else.
-> 
-> It isn't the only way to handle that references - it just seemed the
-> neatest as I was writing the description.  Something else might work
-> better in the code.
+With the following patch of 4.2.0-rc4 also oops here.
 
-Got it, thanks for your comments.
+p = reserve_space(xdr, 4 + (bmval_len << 2) + 4 + len);
+the bmval_len is so lager that reserve_space failed, and BUG_ON!
 
-> 
->>
->> With it, should nfsd using fh_vfsmnt always, never using exp->ex_path.mnt
->> outside of export.c/export.h ?
->>
->> If choose fh_vfsmnt, so many codes need be updated, especially functions.
->> If exp->ex_path.mnt, the new argument fh_vfsmnt seems redundant.
->>
->> Thanks for your work.
->>
->> It reminders a new method,
->>
->> 1. There are only one outlet from each cache, exp_find_key() for expkey, 
->>    exp_get_by_name() for export.
->> 2. Any fsid to export or filehandle to export will call the function.
->> 3. exp_get()/exp_put() increase/decrease the reference of export.
->>
->> Like the fh_vfsmnt (not same), call legitimize_mntget() in the only
->> outlet function exp_find_key()/exp_get_by_name(), if fail return STALE,
->> otherwise, any valid expkey/export from the cache is validated (Have
->> get the reference of vfsmnt).
->>
->> Add mntget() in exp_get() and mntput() in exp_put(), because the export
->> passed to exp_get/exp_put are returned from exp_find_key/exp_get_by_name.
->>
->>>
->>> exp_find_key needs to legitimize ek->ek_path.mnt, so a successful
->>> return from exp_find implies an active refernece to ->ex_path.mnt.
->>> If exp_find fails, it needs to mnt_put(ek->ek_path.mnt).
->>
->> Yes, it's great.
->>
->>> All callers of exp_find need to mnt_put(exp->ex_path.mnt) when they
->>> decide not to use the exp, and must otherwise store it in an svc_fh.
->>>
->>> With this, pin_kill() should only need to wait for  exp_find_key() to
->>> discover that it cannot legitimize the mount, or for expkey_path() to
->>> replace the key via sunrpc_cache_update(), or maybe for cache_clean()
->>> to discard an old entry.
->>>
->>> Hopefully that makes it all clear.
->>
->> Yes, thanks again.
->>
->> With my method, for expkey cache,
->> 1. At first, a fsid is passed to exp_find_key, and lookup a cache
->>    in svc_expkey_lookup, if success, ekey->ek_path is pined to mount.
->> 2. Then call legitimize_mntget getting a reference of vfsmnt 
->>    before return from exp_find_key.
->> 3. Any calling exp_find_key with valid cache must put the vfsmnt.
->>
->> for export cache,
->> 1. At first, a path (returned from exp_find_key) with validate vfsmnt
->>    is passed to exp_get_by_name, if success, exp->ex_path is pined to mount.
->> 2. Then call legitimize_mntget getting a reference of vfsmnt 
->>    before return from exp_get_by_name.
-> 
-> I don't see any point in calling legitimise_mntget here.  exp_find_key
-> already did the 'legitimize' bit so there is no need to do it again.
+I found, it is caused by the sunrpc async sending method,
+For the open of CRATE,  in nfs4_atomic_open(), a nfs4_label in stack is used!
 
-I just think they are in two logical.
+static struct inode *
+nfs4_atomic_open(struct inode *dir, struct nfs_open_context *ctx,
+                int open_flags, struct iattr *attr, int *opened)
+{
+        struct nfs4_state *state;
+        struct nfs4_label l = {0, 0, 0, NULL}, *label = NULL;
 
-But, does export cache contains a different vfsmnt as expkey exist?
+        label = nfs4_label_init_security(dir, ctx->dentry, attr, &l);
+
+        /* Protect against concurrent sillydeletes */
+        state = nfs4_do_open(dir, ctx, open_flags, attr, label, opened);
+
+        nfs4_label_release_security(label);
+
+        if (IS_ERR(state))
+                return ERR_CAST(state);
+        return state->inode;
+}
+
+and will be set to p->o_arg.label of nfs4_opendata in nfs4_opendata_alloc().
+nfs4_opendata will passed to the sunrpc async thread.
+
+But if before the async thread encoding the request, the nfs request
+break by Ctrl+C
+and nfs4_label_release_security, the async will call an invalidate nfs4_label.
+
+Oops!!!
+
+I have make a draft setting the nfs4_label in a malloced memory will
+solve this test,
+But I don't think it's safe for other async calling.
 
 thanks,
 Kinglong Mee
