@@ -1,122 +1,73 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yk0-f171.google.com ([209.85.160.171]:35282 "EHLO
-	mail-yk0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752576AbbG1NCM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Jul 2015 09:02:12 -0400
-Received: by ykdu72 with SMTP id u72so94411869ykd.2
-        for <linux-nfs@vger.kernel.org>; Tue, 28 Jul 2015 06:02:12 -0700 (PDT)
-Date: Tue, 28 Jul 2015 09:02:06 -0400
-From: Jeff Layton <jlayton@poochiereds.net>
-To: Andrew W Elble <aweits@rit.edu>
-Cc: <linux-nfs@vger.kernel.org>
-Subject: Re: list_del corruption / unhash_ol_stateid()
-Message-ID: <20150728090206.1331e476@tlielax.poochiereds.net>
-In-Reply-To: <m2zj2hwk4e.fsf@discipline.rit.edu>
-References: <m23809zl8z.fsf@discipline.rit.edu>
-	<m2zj2hwk4e.fsf@discipline.rit.edu>
+Received: from fieldses.org ([173.255.197.46]:60420 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932340AbbG1NmY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 28 Jul 2015 09:42:24 -0400
+Date: Tue, 28 Jul 2015 09:42:23 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Steve Wise <swise@opengridcomputing.com>
+Cc: dledford@redhat.com, infinipath@intel.com, sagig@mellanox.com,
+        linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH RESEND 0/4] Use max_sge_rd device capability
+Message-ID: <20150728134223.GC20951@fieldses.org>
+References: <20150727230906.10102.88491.stgit@build2.ogc.int>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20150727230906.10102.88491.stgit@build2.ogc.int>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 27 Jul 2015 14:06:25 -0400
-Andrew W Elble <aweits@rit.edu> wrote:
+On Mon, Jul 27, 2015 at 06:09:55PM -0500, Steve Wise wrote:
+> Resending because I forgot to cc linux-rdma :(
+> 
+> Some devices were not setting this capability, so fix those devices,
+> and svcrdma to use max_sge_rd.  Also remove rdma_cap_read_multi_sge()
+> since it isn't needed.
+> 
+> These patches were originally part of:
+> 
+> http://www.spinics.net/lists/linux-rdma/msg27436.html
+> 
+> They really aren't part of iSER/iWARP at all, so I've split 
+> them out.  
+> 
+> Bruce: This hits svcrdma, but I suggest they get merged via Doug's tree
+> to avoid any merge problems.
+
+Sounds fine.  I've got some changes to those files in my for-next as
+well, but they don't appear to conflict.
+
+Feel free to add my
+
+	Acked-by: J. Bruce Fields <bfields@redhat.com>
+
+to patch 3/4 if it helps.
+
+--b.
 
 > 
-> > [12492.273425] WARNING: CPU: 0 PID: 32238 at fs/nfsd/nfs4state.c:3937
-> > nfsd4_process_open2+0x120d/0x1230 [nfsd]()
+> ---
 > 
-> 3931          fl = nfs4_alloc_init_lease(fp, NFS4_OPEN_DELEGATE_READ);
-> 3932          if (!fl)
-> 3933                  return -ENOMEM;
-> 3934          filp = find_readable_file(fp);
-> 3935          if (!filp) {
-> 3936                  /* We should always have a readable file here */
-> 3937                  WARN_ON_ONCE(1);
-> 3938                  return -EBADF;
-> 3939          }
->           
-> We're at least leaking fl on return @3938 here? Can't yet speak to the
-> trigger from find_readable_file().
+> Sagi Grimberg (1):
+>       mlx4, mlx5, mthca: Expose max_sge_rd correctly
 > 
-
-Yeah, I think Kinglong fixed the file_lock leak recently. There's a
-patch for it in Bruce's tree, at least.
-
-Still, if you're going down that error path, then something seems quite
-wrong (hence the WARN_ON_ONCE). We've got a nfs4_file, and we should
-have already taken references to the read filp associated with it
-before trying to get a delegation.
-
-It might not hurt to roll up some extra some sanity checking before we
-get to this point and see if we can nail down whether we're failing to
-get a reference to the read filp altogether, or whether it's going away
-for some reason.
-
-> 1007  static void unhash_ol_stateid(struct nfs4_ol_stateid *stp)
-> 1008  {
-> 1009          struct nfs4_file *fp = stp->st_stid.sc_file;
-> 1010
-> 1011          lockdep_assert_held(&stp->st_stateowner->so_client->cl_lock);
-> 1012
-> 1013          spin_lock(&fp->fi_lock);
-> 1014          list_del(&stp->st_perfile);
-> 1015          spin_unlock(&fp->fi_lock);
-> 1016          list_del(&stp->st_perstateowner);
-> 1017  }
+> Steve Wise (3):
+>       RDMA/Core: remove rdma_cap_read_multi_sge() helper
+>       svcrdma: Use max_sge_rd for destination read depths
+>       ipath,qib: Expose max_sge_rd correctly
 > 
-> The list_del corruption warning is triggered from here:
 > 
-> 1014          list_del(&stp->st_perfile);
+>  drivers/infiniband/hw/ipath/ipath_verbs.c    |    1 +
+>  drivers/infiniband/hw/mlx4/main.c            |    1 +
+>  drivers/infiniband/hw/mlx5/main.c            |    1 +
+>  drivers/infiniband/hw/mthca/mthca_provider.c |    1 +
+>  drivers/infiniband/hw/qib/qib_verbs.c        |    1 +
+>  include/linux/sunrpc/svc_rdma.h              |    1 +
+>  include/rdma/ib_verbs.h                      |   28 --------------------------
+>  net/sunrpc/xprtrdma/svc_rdma_recvfrom.c      |   12 +----------
+>  net/sunrpc/xprtrdma/svc_rdma_transport.c     |    4 ++++
+>  9 files changed, 11 insertions(+), 39 deletions(-)
 > 
-
-Which probably means that this thing got list_del'ed twice. Hard to say
-whether that's related to the problem above though.
-
-> Actual crash looks like so:
+> -- 
 > 
-> PID: 32237  TASK: ffff881f391cdef0  CPU: 22  COMMAND: "nfsd"
->  #0 [ffff881f48ed36f0] machine_kexec at ffffffff8105bf3b
->  #1 [ffff881f48ed3760] crash_kexec at ffffffff81109b52
->  #2 [ffff881f48ed3830] oops_end at ffffffff81019768
->  #3 [ffff881f48ed3860] no_context at ffffffff8167e502
->  #4 [ffff881f48ed38c0] __bad_area_nosemaphore at ffffffff8167e5ed
->  #5 [ffff881f48ed3910] bad_area_nosemaphore at ffffffff8167e759
->  #6 [ffff881f48ed3920] __do_page_fault at ffffffff810687e6
->  #7 [ffff881f48ed3990] do_page_fault at ffffffff81068bb0
->  #8 [ffff881f48ed39d0] page_fault at ffffffff8168d398
->     [exception RIP: __kmalloc+150]
->     RIP: ffffffff811dab66  RSP: ffff881f48ed3a88  RFLAGS: 00010286
->     RAX: 0000000000000000  RBX: 000000000000000a  RCX: 00000000009f26fa
->     RDX: 00000000009f26f9  RSI: 0000000000000000  RDI: ffffffff8124cfc0
->     RBP: ffff881f48ed3ac8   R8: 000000000001ab00   R9: 0000000000000000
->     R10: ffff881f48ed3918  R11: ffffffffa0852070  R12: 0000000000000050
->     R13: 0000000000000068  R14: ffff881fff403900  R15: 00000000ffffffff
->     ORIG_RAX: ffffffffffffffff  CS: 0010  SS: 0018
->  #9 [ffff881f48ed3ad0] posix_acl_alloc at ffffffff8124cfc0
-> #10 [ffff881f48ed3af0] posix_acl_from_xattr at ffffffff8124da44
-> #11 [ffff881f48ed3b40] gfs2_get_acl at ffffffffa0852064 [gfs2]
-> #12 [ffff881f48ed3b70] get_acl at ffffffff8124d557
-> #13 [ffff881f48ed3b90] generic_permission at ffffffff811fb4a2
-> #14 [ffff881f48ed3bd0] gfs2_permission at ffffffffa086d98d [gfs2]
-> #15 [ffff881f48ed3c70] __inode_permission at ffffffff811fb572
-> #16 [ffff881f48ed3ca0] inode_permission at ffffffff811fb5e8
-> #17 [ffff881f48ed3cb0] nfsd_permission at ffffffffa05f6552 [nfsd]
-> #18 [ffff881f48ed3ce0] nfsd_access at ffffffffa05f77a8 [nfsd]
-> #19 [ffff881f48ed3d40] nfsd4_access at ffffffffa06022ec [nfsd]
-> #20 [ffff881f48ed3d50] nfsd4_proc_compound at ffffffffa0604147 [nfsd]
-> #21 [ffff881f48ed3db0] nfsd_dispatch at ffffffffa05efff3 [nfsd]
-> #22 [ffff881f48ed3df0] svc_process_common at ffffffffa019d483 [sunrpc]
-> #23 [ffff881f48ed3e60] svc_process at ffffffffa019d833 [sunrpc]
-> #24 [ffff881f48ed3e90] nfsd at ffffffffa05ef9ff [nfsd]
-> #25 [ffff881f48ed3ec0] kthread at ffffffff8109c8d8
-> #26 [ffff881f48ed3f50] ret_from_fork at ffffffff8168b7a2
-> 
-
-My guess is that that may be collateral damage from the double
-unhashing of the stateid. It certainly doesn't look directly related to
-anything in knfsd -- it's a crash down deep in the POSIX ACL code,
-apparently.
-
--- 
-Jeff Layton <jlayton@poochiereds.net>
+> Steve
