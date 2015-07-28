@@ -1,67 +1,79 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pd0-f176.google.com ([209.85.192.176]:34332 "EHLO
-	mail-pd0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755489AbbG1LNW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Jul 2015 07:13:22 -0400
-Received: by pdbbh15 with SMTP id bh15so69255721pdb.1
-        for <linux-nfs@vger.kernel.org>; Tue, 28 Jul 2015 04:13:22 -0700 (PDT)
-Message-ID: <55B763C8.1050408@gmail.com>
-Date: Tue, 28 Jul 2015 19:13:12 +0800
+Received: from mail-pa0-f49.google.com ([209.85.220.49]:34729 "EHLO
+	mail-pa0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932444AbbG1LN2 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Jul 2015 07:13:28 -0400
+Received: by pacan13 with SMTP id an13so69768784pac.1
+        for <linux-nfs@vger.kernel.org>; Tue, 28 Jul 2015 04:13:27 -0700 (PDT)
+Message-ID: <55B763CE.2040408@gmail.com>
+Date: Tue, 28 Jul 2015 19:13:18 +0800
 From: Kinglong Mee <kinglongmee@gmail.com>
 MIME-Version: 1.0
 To: Trond Myklebust <trond.myklebust@primarydata.com>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 CC: kinglongmee@gmail.com
-Subject: [PATCH 4/5] NFS: Send attributes in OPEN request for NFS4_CREATE_EXCLUSIVE4_1
+Subject: [PATCH 5/5] NFS: Let opened is optional in _nfs4_do_open
 Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Client sends a SETATTR request after OPEN for updating attributes.
-For create file with S_ISGID is set, the SETATTR will be not set S_ISGID
-as chmod of no PERMISSION.
-
 Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
 ---
- fs/nfs/nfs4proc.c | 2 +-
- fs/nfs/nfs4xdr.c  | 4 +---
- 2 files changed, 2 insertions(+), 4 deletions(-)
+ fs/nfs/nfs4file.c | 3 +--
+ fs/nfs/nfs4proc.c | 5 ++---
+ 2 files changed, 3 insertions(+), 5 deletions(-)
 
+diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
+index dcd39d4..43f1590 100644
+--- a/fs/nfs/nfs4file.c
++++ b/fs/nfs/nfs4file.c
+@@ -27,7 +27,6 @@ nfs4_file_open(struct inode *inode, struct file *filp)
+ 	struct inode *dir;
+ 	unsigned openflags = filp->f_flags;
+ 	struct iattr attr;
+-	int opened = 0;
+ 	int err;
+ 
+ 	/*
+@@ -66,7 +65,7 @@ nfs4_file_open(struct inode *inode, struct file *filp)
+ 		nfs_sync_inode(inode);
+ 	}
+ 
+-	inode = NFS_PROTO(dir)->open_context(dir, ctx, openflags, &attr, &opened);
++	inode = NFS_PROTO(dir)->open_context(dir, ctx, openflags, &attr, NULL);
+ 	if (IS_ERR(inode)) {
+ 		err = PTR_ERR(inode);
+ 		switch (err) {
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 8bee934..801f5f4 100644
+index 801f5f4..26fc817 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -2413,7 +2413,7 @@ static int _nfs4_do_open(struct inode *dir,
- 	state = ctx->state;
- 
- 	if ((opendata->o_arg.open_flags & O_EXCL) &&
--	    (opendata->o_arg.createmode != NFS4_CREATE_GUARDED)) {
-+	    (opendata->o_arg.createmode == NFS4_CREATE_EXCLUSIVE)) {
- 		nfs4_exclusive_attrset(opendata, sattr);
- 
- 		nfs_fattr_init(opendata->o_res.f_attr);
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 558cd65d..b5147bc 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -1382,7 +1382,6 @@ static inline void encode_openhdr(struct xdr_stream *xdr, const struct nfs_opena
- 
- static inline void encode_createmode(struct xdr_stream *xdr, const struct nfs_openargs *arg)
- {
--	struct iattr dummy;
- 	__be32 *p;
- 
- 	p = reserve_space(xdr, 4);
-@@ -1402,8 +1401,7 @@ static inline void encode_createmode(struct xdr_stream *xdr, const struct nfs_op
- 	case NFS4_CREATE_EXCLUSIVE4_1:
- 		*p = cpu_to_be32(NFS4_CREATE_EXCLUSIVE4_1);
- 		encode_nfs4_verifier(xdr, &arg->u.verifier);
--		dummy.ia_valid = 0;
--		encode_attrs(xdr, &dummy, arg->label, arg->server);
-+		encode_attrs(xdr, arg->u.attrs, arg->label, arg->server);
+@@ -2426,7 +2426,7 @@ static int _nfs4_do_open(struct inode *dir,
+ 			nfs_setsecurity(state->inode, opendata->o_res.f_attr, olabel);
+ 		}
  	}
- }
+-	if (opendata->file_created)
++	if (opened && opendata->file_created)
+ 		*opened |= FILE_CREATED;
  
+ 	if (pnfs_use_threshold(ctx_th, opendata->f_attr.mdsthreshold, server)) {
+@@ -3539,7 +3539,6 @@ nfs4_proc_create(struct inode *dir, struct dentry *dentry, struct iattr *sattr,
+ 	struct nfs4_label l, *ilabel = NULL;
+ 	struct nfs_open_context *ctx;
+ 	struct nfs4_state *state;
+-	int opened = 0;
+ 	int status = 0;
+ 
+ 	ctx = alloc_nfs_open_context(dentry, FMODE_READ);
+@@ -3549,7 +3548,7 @@ nfs4_proc_create(struct inode *dir, struct dentry *dentry, struct iattr *sattr,
+ 	ilabel = nfs4_label_init_security(dir, dentry, sattr, &l);
+ 
+ 	sattr->ia_mode &= ~current_umask();
+-	state = nfs4_do_open(dir, ctx, flags, sattr, ilabel, &opened);
++	state = nfs4_do_open(dir, ctx, flags, sattr, ilabel, NULL);
+ 	if (IS_ERR(state)) {
+ 		status = PTR_ERR(state);
+ 		goto out;
 -- 
 2.4.3
 
