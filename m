@@ -1,147 +1,113 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yk0-f169.google.com ([209.85.160.169]:36285 "EHLO
-	mail-yk0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751749AbbG1Ptj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Jul 2015 11:49:39 -0400
-Received: by ykay190 with SMTP id y190so98848652yka.3
-        for <linux-nfs@vger.kernel.org>; Tue, 28 Jul 2015 08:49:38 -0700 (PDT)
-Date: Tue, 28 Jul 2015 11:49:33 -0400
-From: Jeff Layton <jlayton@poochiereds.net>
-To: Andrew W Elble <aweits@rit.edu>
-Cc: <linux-nfs@vger.kernel.org>, bfields@fieldses.org
-Subject: Re: list_del corruption / unhash_ol_stateid()
-Message-ID: <20150728114933.6f917374@tlielax.poochiereds.net>
-In-Reply-To: <m2wpxktjfc.fsf@discipline.rit.edu>
-References: <m23809zl8z.fsf@discipline.rit.edu>
-	<m2zj2hwk4e.fsf@discipline.rit.edu>
-	<20150728090206.1331e476@tlielax.poochiereds.net>
-	<m2wpxktjfc.fsf@discipline.rit.edu>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail-ig0-f169.google.com ([209.85.213.169]:36721 "EHLO
+	mail-ig0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752664AbbG1QEF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Jul 2015 12:04:05 -0400
+Received: by igbij6 with SMTP id ij6so122447268igb.1
+        for <linux-nfs@vger.kernel.org>; Tue, 28 Jul 2015 09:04:04 -0700 (PDT)
+Message-ID: <1438099420.6682.3.camel@primarydata.com>
+Subject: [GIT PULL] Please pull NFS client bugfixes
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Date: Tue, 28 Jul 2015 12:03:40 -0400
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 28 Jul 2015 11:01:59 -0400
-Andrew W Elble <aweits@rit.edu> wrote:
+Hi Linus,
 
-> 
-> Still trying to develop some kind of test to reliably trigger this.
-> 
-> > My guess is that that may be collateral damage from the double
-> > unhashing of the stateid. It certainly doesn't look directly related to
-> > anything in knfsd -- it's a crash down deep in the POSIX ACL code,
-> > apparently.
-> 
-> Thinking that it's collateral - here's the backtrace from a similar
-> event.
-> 
-> (was preceded by both the WARN_ON_ONCE() and the list_del corruption messages)
-> 
-> running 3.18.9:
-> 
-> [846121.007040] general protection fault: 0000 [#1] SMP
-> [846121.013461] Modules linked in: nfnetlink_queue nfnetlink_log nfnetlink bluetooth gfs2 dlm sctp sg dm_service_time cts iscsi_tcp libiscsi_tcp libiscsi rpcsec_gss_
-> krb5 nfsv4 dns_resolver nfs scsi_transport_iscsi fscache 8021q nf_log_ipv4 nf_log_common garp xt_LOG mrp stp llc bonding xt_conntrack cfg80211 iptable_filter nf_conn
-> track_ftp nf_conntrack_ipv4 nf_defrag_ipv4 nf_conntrack rfkill ip_tables dm_multipath x86_pkg_temp_thermal coretemp kvm_intel kvm crct10dif_pclmul crc32_pclmul crc32
-> c_intel ghash_clmulni_intel mei_me mei aesni_intel lrw gf128mul glue_helper nfsd ablk_helper sb_edac iTCO_wdt ipmi_devintf pcspkr acpi_power_meter iTCO_vendor_suppor
-> t dcdbas ipmi_si edac_core cryptd lpc_ich mfd_core wmi shpchp ipmi_msghandler acpi_pad auth_rpcgss nfs_acl lockd grace sunrpc binfmt_misc xfs sr_mod cdrom mgag200 sy
-> scopyarea sd_mod sysfillrect sysimgblt i2c_algo_bit ixgbe drm_kms_helper mdio tg3 ttm ahci dca drm libahci ptp libata megaraid_sas i2c_core pps_core dm_mirror dm_region_hash dm_log dm_mod
-> [846121.119250] CPU: 8 PID: 46216 Comm: nfsd Tainted: G        W      3.18.9 #1
-> [846121.127982] Hardware name: Dell Inc. PowerEdge R720/0X3D66, BIOS 2.4.3 07/09/2014
-> [846121.137268] task: ffff881ecd854330 ti: ffff881ecebf4000 task.ti: ffff881ecebf4000
-> [846121.146540] RIP: 0010:[<ffffffff811c7595>]  [<ffffffff811c7595>] kmem_cache_alloc+0x65/0x140
-> [846121.156839] RSP: 0018:ffff881ecebf7c28  EFLAGS: 00010286
-> [846121.163626] RAX: 0000000000000000 RBX: ffff8811bd0cf3e0 RCX: 0000000000003a0c
-> [846121.172438] RDX: 0000000000003a0b RSI: 00000000000080d0 RDI: ffff881fff489000
-> [846121.181267] RBP: ffff881ecebf7c68 R08: 0000000000016ae0 R09: 00000000b9acddf8
-> [846121.190049] R10: ffff883fe43df000 R11: ffff881856038437 R12: ff88185603834800
-> [846121.198826] R13: 00000000000080d0 R14: ffff881fff489000 R15: ffffffffa0517b79
-> [846121.207623] FS:  0000000000000000(0000) GS:ffff881fffa80000(0000) knlGS:0000000000000000
-> [846121.217475] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-> [846121.224720] CR2: 00000000006e8360 CR3: 00000000019bc000 CR4: 00000000001407e0
-> [846121.233525] Stack:
-> [846121.236601]  0000000000000014 ffff881fff403c00 ffff881ecebf7c88 ffff8811bd0cf3e0
-> [846121.245723]  ffff883fe43df000 ffff8835d38afa80 0000000000000000 ffff881fff489000
-> [846121.254854]  ffff881ecebf7ca8 ffffffffa0517b79 0000000000000000 ffff8811bd0cf3e0
-> [846121.263984] Call Trace:
-> [846121.267559]  [<ffffffffa0517b79>] nfs4_alloc_stid+0x29/0xc0 [nfsd]
-> [846121.275355]  [<ffffffffa051fcf8>] nfsd4_lock+0x6f8/0xda0 [nfsd]
-> [846121.282870]  [<ffffffffa050cf07>] nfsd4_proc_compound+0x4d7/0x7f0 [nfsd]
-> [846121.291191]  [<ffffffffa04f8e43>] nfsd_dispatch+0xc3/0x210 [nfsd]
-> [846121.298869]  [<ffffffffa01c8e02>] ? svc_tcp_adjust_wspace+0x12/0x30 [sunrpc]
-> [846121.307590]  [<ffffffffa01c7d23>] svc_process_common+0x453/0x6f0 [sunrpc]
-> [846121.316018]  [<ffffffffa01c80c7>] svc_process+0x107/0x170 [sunrpc]
-> [846121.323764]  [<ffffffffa04f87c7>] nfsd+0xf7/0x160 [nfsd]
-> [846121.330541]  [<ffffffffa04f86d0>] ? nfsd_destroy+0x80/0x80 [nfsd]
-> [846121.338226]  [<ffffffff81093861>] kthread+0xe1/0x100
-> [846121.344624]  [<ffffffff81093780>] ? kthread_create_on_node+0x1b0/0x1b0
-> [846121.352776]  [<ffffffff816912fc>] ret_from_fork+0x7c/0xb0
-> [846121.359661]  [<ffffffff81093780>] ? kthread_create_on_node+0x1b0/0x1b0
-> [846121.367961] Code: cc 00 00 49 8b 50 08 4d 8b 20 49 8b 40 10 4d 85 e4 0f 84 a7 00 00 00 48 85 c0 0f 84 9e 00 00 00 49 63 46 20 48 8d 4a 01 4d 8b 06 <49> 8b 1c 04 4c 89 e0 65 49 0f c7 08 0f 94 c0 84 c0 74 b9 49 63
-> [846121.391248] RIP  [<ffffffff811c7595>] kmem_cache_alloc+0x65/0x140
-> [846121.398936]  RSP <ffff881ecebf7c28>
-> 
+The following changes since commit b4839ebe21fc5d543b933d83644981ea73e9ba36:
 
-I wonder if this could be the race. In nfsd4_process_open2:
+  nfs: Remove invalid tk_pid from debug message (2015-07-01 11:31:25 -0400)
 
--------------------[snip]-------------------
-        if (stp) {
-                /* Stateid was found, this is an OPEN upgrade */
-                status = nfs4_upgrade_open(rqstp, fp, current_fh, stp, open);
-                if (status)
-                        goto out;
-        } else {
-                stp = open->op_stp;
-                open->op_stp = NULL;
-                init_open_stateid(stp, fp, open);
-                status = nfs4_get_vfs_file(rqstp, fp, current_fh, stp, open);
-                if (status) {
-                        release_open_stateid(stp);
-                        goto out;
-                }
+are available in the git repository at:
 
-                stp->st_clnt_odstate = find_or_hash_clnt_odstate(fp,
-                                                        open->op_odstate);
-                if (stp->st_clnt_odstate == open->op_odstate)
-                        open->op_odstate = NULL;
-        }
--------------------[snip]-------------------
+  git://git.linux-nfs.org/projects/trondmy/linux-nfs.git tags/nfs-for-4.2-2
 
-init_open_stateid will hash the stateid, and then call
-nfs4_get_vfs_file, which does the actual dentry_open, sets the access
-mode, etc.
+for you to fetch changes up to a49c269111a5b3c1fd2a98f36fa27423b94549f8:
 
-If that fails, it calls release_open_stateid which basically
-unrolls the whole thing -- tears down the stateid, unhashing it in the
-process.
+  nfs: Fix an oops caused by using other thread's stack space in ASYNC mode (2015-07-28 09:07:03 -0400)
 
-In that window where it's hashed though, another open could come along
-and find that stateid. If it does, then it will call nfs4_upgrade_open.
-If it requests the same access as the first open then it won't try to
-actually open the file at all. It'll just assume that the stateid has
-the correct access and proceed.
+----------------------------------------------------------------
+NFS client bugfixes for Linux 4.2
 
-At that point, you may have all the access bits set in the nfs4_file,
-but no actual filp associated with it. That may explain the WARN
-popping.
+Highlights include:
 
-In a similar race, you could have two opens racing for different access
-(maybe one for read and one for write), or a race between an OPEN and
-CLOSE.
+Stable patches:
+- Fix a situation where the client uses the wrong (zero) stateid.
+- Fix a memory leak in nfs_do_recoalesce
 
-In short, I think that there are a couple of potential races here:
+Bugfixes:
+- Plug a memory leak when ->prepare_layoutcommit fails
+- Fix an Oops in the NFSv4 open code
+- Fix a backchannel deadlock
+- Fix a livelock in sunrpc when sendmsg fails due to low memory availability
+- Don't revalidate the mapping if both size and change attr are up to date
+- Ensure we don't miss a file extension when doing pNFS
+- Several fixes to handle NFSv4.1 sequence operation status bits correctly
+- Several pNFS layout return bugfixes
 
-1) That release_open_stateid could be problematic, simply because you
-could have another user of that stateid race in before it's fully set
-up. We probably need to do that a bit more gracefully though I'm a
-little unclear on the right solution.
+----------------------------------------------------------------
+J. Bruce Fields (1):
+      NFSv4.2: handle NFS-specific llseek errors
 
-2) We probably need nfs4_upgrade_open to block until the necessary
-fi->fi_fds field has been set up.
+Jeff Layton (1):
+      nfs: plug memory leak when ->prepare_layoutcommit fails
 
-OTOH, maybe this code needs a more fundamental rethink to close these
-races -- I'm not sure...
+Kinglong Mee (1):
+      nfs: Fix an oops caused by using other thread's stack space in ASYNC mode
 
-Bruce, any thoughts?
+NeilBrown (1):
+      sunrpc: translate -EAGAIN to -ENOBUFS when socket is writable.
+
+Trond Myklebust (24):
+      SUNRPC: Don't reencode message if transmission failed with ENOBUFS
+      SUNRPC: Don't confuse ENOBUFS with a write_space issue
+      NFSv4.1: Handle SEQ4_STATUS_EXPIRED_SOME_STATE_REVOKED status bit correctly.
+      NFSv4.1: Handle SEQ4_STATUS_RECALLABLE_STATE_REVOKED status bit correctly
+      NFSv4.1: Handle SEQ4_STATUS_BACKCHANNEL_FAULT correctly
+      NFSv4.1: nfs41_sequence_done should handle sequence flag errors
+      NFSv4: Leases are renewed in sequence_done when we have sessions
+      NFSv4.2/flexfiles: Fix a typo in the flexfiles layoutstats code
+      pNFS: Layoutreturn must invalidate all existing layout segments.
+      pNFS: pnfs_roc_drain should return 'true' when sleeping
+      pNFS: Fix races between return-on-close and layoutreturn.
+      pNFS: pnfs_roc_drain() fix a race with open
+      pNFS: Don't throw out valid layout segments
+      SUNRPC: Fix a backchannel deadlock
+      SUNRPC: xprt_complete_bc_request must also decrement the free slot count
+      NFSv4: We must set NFS_OPEN_STATE flag in nfs_resync_open_stateid_locked
+      NFSv4/pnfs: Ensure we don't miss a file extension
+      NFS: Don't revalidate the mapping if both size and change attr are up to date
+      NFS: Set NFS_INO_REVAL_PAGECACHE if the change attribute is uninitialised
+      NFS: Remove the "NFS_CAP_CHANGE_ATTR" capability
+      NFS: nfs_mark_for_revalidate should always set NFS_INO_REVAL_PAGECACHE
+      NFS: Fix a memory leak in nfs_do_recoalesce
+      NFS: Don't clear desc->pg_moreio in nfs_do_recoalesce()
+      SUNRPC: Report TCP errors to the caller
+
+ fs/nfs/client.c                        |   2 +-
+ fs/nfs/flexfilelayout/flexfilelayout.c |   2 +-
+ fs/nfs/inode.c                         |  15 ++---
+ fs/nfs/internal.h                      |  21 +++++++
+ fs/nfs/nfs42proc.c                     |  19 ++++++-
+ fs/nfs/nfs4proc.c                      |  36 +++++++-----
+ fs/nfs/nfs4state.c                     |  29 +++++++---
+ fs/nfs/pagelist.c                      |   7 ++-
+ fs/nfs/pnfs.c                          | 101 +++++++++++++++++++--------------
+ fs/nfs/write.c                         |  15 +++--
+ include/linux/nfs_fs.h                 |   7 ++-
+ include/linux/nfs_fs_sb.h              |   2 +-
+ net/sunrpc/backchannel_rqst.c          |   6 +-
+ net/sunrpc/clnt.c                      |   5 +-
+ net/sunrpc/xprtsock.c                  |  25 +++++---
+ 15 files changed, 189 insertions(+), 103 deletions(-)
 -- 
-Jeff Layton <jlayton@poochiereds.net>
+Trond Myklebust
+Linux NFS client maintainer, PrimaryData
+trond.myklebust@primarydata.com
+
+
