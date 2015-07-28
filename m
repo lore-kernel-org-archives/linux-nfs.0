@@ -1,40 +1,49 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pd0-f172.google.com ([209.85.192.172]:33407 "EHLO
-	mail-pd0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752434AbbG1Lqr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Jul 2015 07:46:47 -0400
-Received: by pdbnt7 with SMTP id nt7so69587410pdb.0
-        for <linux-nfs@vger.kernel.org>; Tue, 28 Jul 2015 04:46:47 -0700 (PDT)
-Message-ID: <55B76B9B.4090700@gmail.com>
-Date: Tue, 28 Jul 2015 19:46:35 +0800
+Received: from mail-pd0-f169.google.com ([209.85.192.169]:35793 "EHLO
+	mail-pd0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752434AbbG1Lqw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Jul 2015 07:46:52 -0400
+Received: by pdrg1 with SMTP id g1so69684658pdr.2
+        for <linux-nfs@vger.kernel.org>; Tue, 28 Jul 2015 04:46:51 -0700 (PDT)
+Message-ID: <55B76B9D.2090103@gmail.com>
+Date: Tue, 28 Jul 2015 19:46:37 +0800
 From: Kinglong Mee <kinglongmee@gmail.com>
 MIME-Version: 1.0
 To: "J. Bruce Fields" <bfields@fieldses.org>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 CC: tigran.mkrtchyan@desy.de, kinglongmee@gmail.com
-Subject: [PATCH 3/4] 4.1 xdrdef: Fix bad define of sec_label4
+Subject: [PATCH 4/4] 4.1 create_session: Skip test of CB_NULL for nfs4.1
 Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
 ---
- nfs4.1/xdrdef/nfs4.x | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ nfs4.1/server41tests/st_create_session.py | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/nfs4.1/xdrdef/nfs4.x b/nfs4.1/xdrdef/nfs4.x
-index 024e0b4..cb3db7e 100644
---- a/nfs4.1/xdrdef/nfs4.x
-+++ b/nfs4.1/xdrdef/nfs4.x
-@@ -852,7 +852,7 @@ typedef change_policy4  fattr4_change_policy;
- typedef uint64_t        fattr_space_freed;
- typedef change_attr_type4
-                 fattr4_change_attr_type;
--typedef sec_label4      fattr_sec_label<>;
-+typedef sec_label4      fattr4_sec_label;
+diff --git a/nfs4.1/server41tests/st_create_session.py b/nfs4.1/server41tests/st_create_session.py
+index b42e0ab..4c56bb4 100644
+--- a/nfs4.1/server41tests/st_create_session.py
++++ b/nfs4.1/server41tests/st_create_session.py
+@@ -333,7 +333,7 @@ def testManyClients(t, env):
+ def testCallbackProgram(t, env):
+     """Check server can handle random transient program number
  
- %/*
- % * REQUIRED Attributes
+-    FLAGS: create_session all
++    FLAGS:
+     CODE: CSESS20
+     """
+     cb_occurred = threading.Event()
+@@ -360,7 +360,7 @@ def testCallbackProgram(t, env):
+ def testCallbackVersion(t, env):
+     """Check server sends callback program with a version listed in nfs4client.py
+ 
+-    FLAGS: create_session all
++    FLAGS:
+     CODE: CSESS21
+     """
+     cb_occurred = threading.Event()
 -- 
 2.4.3
 
