@@ -1,91 +1,74 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:36682 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754053AbbG2Vsg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 29 Jul 2015 17:48:36 -0400
-Date: Thu, 30 Jul 2015 07:48:24 +1000
-From: NeilBrown <neilb@suse.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Kinglong Mee <kinglongmee@gmail.com>, Al Viro <viro@zeniv.linux.org.uk>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        linux-fsdevel@vger.kernel.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: Re: [PATCH 1/9 v8] fs_pin: Initialize value for fs_pin explicitly
-Message-ID: <20150730074824.6b7faedd@noble>
-In-Reply-To: <20150729194155.GC21949@fieldses.org>
-References: <55B5A012.1030006@gmail.com>
-	<55B5A04D.8090905@gmail.com>
-	<20150729102519.16f2f70d@noble>
-	<20150729194155.GC21949@fieldses.org>
+Received: from ipmail06.adl2.internode.on.net ([150.101.137.129]:56674 "EHLO
+	ipmail06.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753957AbbG2WOb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Jul 2015 18:14:31 -0400
+Date: Thu, 30 Jul 2015 08:13:56 +1000
+From: Dave Chinner <david@fromorbit.com>
+To: Michal Hocko <mhocko@kernel.org>
+Cc: Ming Lei <ming.lei@canonical.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <andreas.dilger@intel.com>,
+        Oleg Drokin <oleg.drokin@intel.com>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        Christoph Hellwig <hch@lst.de>, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, xfs@oss.sgi.com, linux-nfs@vger.kernel.org,
+        linux-cifs@vger.kernel.org
+Subject: Re: [regression 4.2-rc3] loop: xfstests xfs/073 deadlocked in low
+ memory conditions
+Message-ID: <20150729221356.GC16638@dastard>
+References: <20150721015934.GY7943@dastard>
+ <20150721085859.GG11967@dhcp22.suse.cz>
+ <20150729115411.GF15801@dhcp22.suse.cz>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20150729115411.GF15801@dhcp22.suse.cz>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 29 Jul 2015 15:41:55 -0400 "J. Bruce Fields"
-<bfields@fieldses.org> wrote:
-
-> On Wed, Jul 29, 2015 at 10:25:19AM +1000, NeilBrown wrote:
-> > On Mon, 27 Jul 2015 11:06:53 +0800 Kinglong Mee <kinglongmee@gmail.com>
-> > wrote:
-> > 
-> > > Without initialized, done in fs_pin at stack space may
-> > > contains strange value.
+On Wed, Jul 29, 2015 at 01:54:12PM +0200, Michal Hocko wrote:
+> On Tue 21-07-15 10:58:59, Michal Hocko wrote:
+> > [CCing more people from a potentially affected fs - the reference to the 
+> >  email thread is: http://marc.info/?l=linux-mm&m=143744398020147&w=2]
+...
+> > > The didn't used to happen, because the loop device used to issue
+> > > reads through the splice path and that does:
 > > > 
-> > > v8, same as v3
-> > > Adds macro for header file
+> > > 	error = add_to_page_cache_lru(page, mapping, index,
+> > > 			GFP_KERNEL & mapping_gfp_mask(mapping));
 > > > 
-> > > Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+> > > i.e. it pays attention to the allocation context placed on the
+> > > inode and so is doing GFP_NOFS allocations here and avoiding the
+> > > recursion problem.
+> > > 
+> > > [ CC'd Michal Hocko and the mm list because it's a clear exaple of
+> > > why ignoring the mapping gfp mask on any page cache allocation is
+> > > a landmine waiting to be tripped over. ]
 > > 
-> > Reviewed-by: NeilBrown <neilb@suse.com>
+> > Thank you for CCing me. I haven't noticed this one when checking for
+> > other similar hardcoded GFP_KERNEL users (6afdb859b710 ("mm: do not
+> > ignore mapping_gfp_mask in page cache allocation paths")). And there
+> > seem to be more of them now that I am looking closer.
 > > 
-> > It would be really good if some of these early patches could be applied
-> > to the relevant trees so they appear in -next and we only need to keep
-> > reviewing the more interesting code at the end.
+> > I am not sure what to do about fs/nfs/dir.c:nfs_symlink which doesn't
+> > require GFP_NOFS or mapping gfp mask for other allocations in the same
+> > context.
+> > 
+> > What do you think about this preliminary (and untested) patch?
 > 
-> This patch seems a little bikeshed-y.  I'd rather just drop it or save
-> it for some other day.  It's not necessary to the series.
+> Dave, did you have chance to test the patch in your environment? Is the
+> patch good to go or we want a larger refactoring?
 
-???
+No, I haven't had a chance to test it yet. I'll try to get somethign
+done by the end of the week, but I'm not able to reliably
+reproduce the hang I saw (i.e. the analysis I did was from the first
+deadlock and I've only seen it once since) so testing is likely to
+be inconclusive, anyway....
 
-I accept that:
+Cheers,
 
-
-> > > @@ -1,3 +1,6 @@
-> > > +#ifndef _LINUX_FS_PIN_H
-> > > +#define _LINUX_FS_PIN_H
-> > > +
-> > >  #include <linux/wait.h>
-
-could be a little bike-shed-y, not that I've seen much bike shedding
-going on.
-
-However:
-> > >  
-> > >  struct fs_pin {
-> > > @@ -16,9 +19,12 @@ static inline void init_fs_pin(struct fs_pin *p, void (*kill)(struct fs_pin *))
-> > >  	INIT_HLIST_NODE(&p->s_list);
-> > >  	INIT_HLIST_NODE(&p->m_list);
-> > >  	p->kill = kill;
-> > > +	p->done = 0;
-> > >  }
-> > >  
-
-is quite important.
-Without that assignment we would probably need to rename the function to
-   init_most_of_fs_pin
-or
-   init_fs_pin_if_already_zeroed
-or maybe just
-   __init_fs_pin
-with the time honoured interpretation that it sort-of does what the
-name says, but maybe not exactly how you think and please use with care.
-
-Then in nfsd code we would need to add the assignment ourselves, or use
-kzalloc where it would otherwise be completely unnecessary.
-
-
-Thanks for accepting the other patches!
-
-NeilBrown
-
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
