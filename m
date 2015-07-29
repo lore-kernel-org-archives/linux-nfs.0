@@ -1,309 +1,89 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:32968 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:32976 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753797AbbG2THj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 29 Jul 2015 15:07:39 -0400
-Date: Wed, 29 Jul 2015 15:07:38 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+	id S1753863AbbG2TPw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 29 Jul 2015 15:15:52 -0400
+Date: Wed, 29 Jul 2015 15:15:51 -0400
+From: "'J. Bruce Fields'" <bfields@fieldses.org>
+To: Frank Filz <ffilzlnx@mindspring.com>
+Cc: "'Kinglong Mee'" <kinglongmee@gmail.com>, linux-nfs@vger.kernel.org,
         tigran.mkrtchyan@desy.de
-Subject: Re: [PATCH 1/4] 4.0 setclientid: More cases for setclientid behavior
-Message-ID: <20150729190738.GA21742@fieldses.org>
-References: <55B76B94.4060208@gmail.com>
+Subject: Re: [PATCH 4/4] 4.1 create_session: Skip test of CB_NULL for nfs4.1
+Message-ID: <20150729191551.GB21742@fieldses.org>
+References: <55B76B9D.2090103@gmail.com>
+ <008401d0c94e$f90e7250$eb2b56f0$@mindspring.com>
+ <20150728175818.GD20951@fieldses.org>
+ <009601d0c961$91186490$b3492db0$@mindspring.com>
+ <20150728194730.GE20951@fieldses.org>
+ <009b01d0c96f$5c0a5c00$141f1400$@mindspring.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <55B76B94.4060208@gmail.com>
+In-Reply-To: <009b01d0c96f$5c0a5c00$141f1400$@mindspring.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jul 28, 2015 at 07:46:28PM +0800, Kinglong Mee wrote:
-> More cases of RFC 7530 16.33.5 setclientid/setclientid_confirm behavior.
-
-Thanks for doing these!  Just one nit:
-
+On Tue, Jul 28, 2015 at 12:55:26PM -0700, Frank Filz wrote:
+> > On Tue, Jul 28, 2015 at 11:16:21AM -0700, Frank Filz wrote:
+> > > > On Tue, Jul 28, 2015 at 09:03:38AM -0700, Frank Filz wrote:
+> > > > > Why are we removing these two test cases? The Ganesha NFS server
+> > > > > at
+> > > > least passes them.
+> > > >
+> > > > And there's nothing wrong with passing the tests, but unfortunately
+> > > there's
+> > > > not necessarily anything wrong with failing either: a 4.1 server
+> > > > isn't
+> > > required
+> > > > to do a NULL callback to probe the backchannel.
+> > > >
+> > > > There might be a better test (depend on delegation recalls instead
+> > > > of CB_NULL's?), till then I'm OK with turning them off by default.
+> > >
+> > > I guess I'd at least like to see some explanation of why we're turning
+> > > the tests off by default. I'm just resistant to removing testing for no
+> reason.
+> > 
+> > The story is: we turned off the CB_NULL probe in knfsd in the 4.1 case;
+> it's
+> > unnecessary, and it was causing some problems (due partly to other bugs,
+> > but why ask for trouble?).  So these tests started failing.  I'd fix the
+> server if
+> > there was an actual bug, but it's the tests that are wrong in this case,
+> so oh
+> > well.
 > 
-> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
-> ---
->  nfs4.0/servertests/st_setclientid.py | 245 ++++++++++++++++++++++++++++++++---
->  1 file changed, 227 insertions(+), 18 deletions(-)
+> Ah, ok. I'd love to understand the issues there better, maybe Ganesha
+> shouldn't be doing the CB_NULL either...
+
+I've actually forgotten; the patches are from April so linux-nfs
+archives from around there might have some discussion.  I think there
+was actually a bug in client callback handling that frequent unnecessary
+CB_NULL's were triggering.
+
+> > > If the test doesn't actually test anything useful, that would be one
+> > > explanation.
+> > >
+> > > If it's something that's not required and not all servers do it, then
+> > > that's another explanation.
+> > 
+> > Right, this is it, CB_NULL probes aren't required.
 > 
-> diff --git a/nfs4.0/servertests/st_setclientid.py b/nfs4.0/servertests/st_setclientid.py
-> index e9d0052..ca3e1d4 100644
-> --- a/nfs4.0/servertests/st_setclientid.py
-> +++ b/nfs4.0/servertests/st_setclientid.py
-> @@ -49,25 +49,7 @@ def testClientUpdateCallback(t, env):
->      c.init_connection(id, verf)
->      res = c.close_file(t.code, fh, stateid)
->      check(res, msg="Close after updating callback info")
-> -    
-> -def testInUse(t, env):
-> -    """SETCLIENTID with same nfs_client_id.id should return NFS4ERR_CLID_INUSE
->  
-> -    This requires NCL1 and NCL2 to have different principals (UIDs).
-> -    
-> -    FLAGS: setclientid setclientidconfirm all
-> -    DEPEND: _checkprinciples INIT
-> -    CODE: CID2
-> -    """
-> -    c1 = env.c1
-> -    c2 = env.c2
-> -    c1.init_connection("Badid_for_%s_pid=%i" % (t.code, os.getpid()),
-> -                       verifier=c1.verifier)
-> -    ops = [c2.setclientid(id="Badid_for_%s_pid=%i" % (t.code, os.getpid()),
-> -                          verifier=c1.verifier)]
-> -    res = c2.compound(ops)
-> -    check(res, NFS4ERR_CLID_INUSE, "SETCLIENTID with same nfs_client_id.id")
-> -    
->  def testLoseAnswer(t, env):
->      """SETCLIENTID after a client reboot could cause case not covered in RFC
->  
-> @@ -114,7 +96,234 @@ def testAllCases(t, env):
->      # (*xc*s), (*xd*t)
->      res = c.compound([c.setclientid(id=id, verifier='')])
->      check(res)
-> +
-> +def testInUse(t, env):
-> +    """SETCLIENTID with same nfs_client_id.id should return NFS4ERR_CLID_INUSE
-> +
-> +    This requires NCL1 and NCL2 to have different principals (UIDs).
->      
-> +    FLAGS: setclientid setclientidconfirm all
-> +    DEPEND: _checkprinciples INIT
-> +    CODE: CID4a
+> Ok, with this perspective, I'm cool with the test being removed from
+> default.
+> 
+> > We're testing something useful, but something you need a callback to test,
+> > so trying to get some other kind of callback (like a deleg recall) would
+> be
+> > another option.
+> 
+> Hmm, more to think about from testing Ganesha perspective. The "simple"
+> thing  (i.e. using FSAL_VFS) to test in Ganesha doesn't do delegations, so
+> the CB_NULL might be the only callback it makes, which might make it
+> somewhat useful to prove Ganesha's callback code isn't totally broken...
 
-So CID4a is more-or-less the same as CID2?
-
-I'd rather not change the test code from CID2 to CID4a.   That kind of
-change makes it hard to compare results across different versions of
-pynfs.
-
-Changes look fine otherwise.
+Yeah, for testing it's annoying that there's no reliable to provoke a
+callback.  pynfs could probably be smarter about trying various methods,
+and also about reporting the difference between "X failed" and "I
+couldn't test X because I couldn't get server to optional thing Y".
 
 --b.
-
-
-> +    """
-> +    c1 = env.c1
-> +    c2 = env.c2
-> +    clid = "Clid_for_%s_pid=%i" % (t.code, os.getpid())
-> +    c1.init_connection(clid, verifier=c1.verifier)
-> +    ops = [c2.setclientid(clid, verifier=c1.verifier)]
-> +    res = c2.compound(ops)
-> +    check(res, NFS4ERR_CLID_INUSE, "SETCLIENTID with same nfs_client_id.id")
-> +
-> +def testCallbackInfoUpdate(t, env):
-> +    """A probable callback information update and records
-> +       an unconfirmed { v, x, c, k, t } and leaves the
-> +       confirmed { v, x, c, l, s } in place, such that t != s.
-> +
-> +    FLAGS: setclientid all
-> +    DEPEND: INIT
-> +    CODE: CID4b
-> +    """
-> +    c1 = env.c1
-> +    clid = "Clid_for_%s_pid=%i" % (t.code, os.getpid())
-> +
-> +    # confirmed { v, x, c, l, s }
-> +    (cclientid, cconfirm) = c1.init_connection(clid, verifier=c1.verifier)
-> +
-> +    # request { v, x, c, k, s } --> unconfirmed { v, x, c, k, t }
-> +    ops = [c1.setclientid(clid, verifier=c1.verifier)]
-> +    res = c1.compound(ops)
-> +    check(res)
-> +
-> +    tclientid = res.resarray[0].switch.switch.clientid
-> +    tconfirm = res.resarray[0].switch.switch.setclientid_confirm
-> +
-> +    # (t != s)
-> +    if tconfirm == '\x00\x00\x00\x00\x00\x00\x00\x00':
-> +        t.fail("Got clientid confirm verifier with all zero!")
-> +
-> +    if cclientid != tclientid:
-> +        t.fail("Return a different clientID for callback information updating!")
-> +
-> +    if tconfirm == cconfirm:
-> +        t.fail("Return a same confirm for callback information updating!")
-> +
-> +def testConfirmedDiffVerifier(t, env):
-> +    """The server has previously recorded a confirmed { u, x, c, l, s }
-> +       record such that v != u, l may or may not equal k, and has not
-> +       recorded any unconfirmed { *, x, *, *, * } record for x.  The
-> +       server records an unconfirmed { v, x, d, k, t } (d != c, t != s).
-> +
-> +    FLAGS: setclientid all
-> +    DEPEND: INIT
-> +    CODE: CID4c
-> +    """
-> +    c1 = env.c1
-> +    clid = "Clid_for_%s_pid=%i" % (t.code, os.getpid())
-> +
-> +    # confirmed { u, x, c, l, s }
-> +    (cclientid, cconfirm) = c1.init_connection(clid, verifier=c1.verifier)
-> +
-> +    # request { v, x, c, k, s } --> unconfirmed { v, x, d, k, t }
-> +    ops = [c1.setclientid(clid, verifier="diff")]
-> +    res = c1.compound(ops)
-> +    check(res)
-> +
-> +    tclientid = res.resarray[0].switch.switch.clientid
-> +    tconfirm = res.resarray[0].switch.switch.setclientid_confirm
-> +
-> +    # (d != c, t != s)
-> +    if tconfirm == '\x00\x00\x00\x00\x00\x00\x00\x00':
-> +        t.fail("Got clientid confirm verifier with all zero!")
-> +
-> +    if cclientid == tclientid:
-> +        t.fail("Return a same clientID for different verifier!")
-> +
-> +    if tconfirm == cconfirm:
-> +        t.fail("Return a same confirm for different verifier!")
-> +
-> +def testConfUnConfDiffVerifier1(t, env):
-> +    """The server has previously recorded a confirmed { u, x, c, l, s }
-> +       record such that v != u, l may or may not equal k, and recorded an
-> +       unconfirmed { w, x, d, m, t } record such that c != d, t != s, m
-> +       may or may not equal k, m may or may not equal l, and k may or may
-> +       not equal l.  Whether w == v or w != v makes no difference.  The
-> +       server simply removes the unconfirmed { w, x, d, m, t } record and
-> +       replaces it with an unconfirmed { v, x, e, k, r } record, such
-> +       that e != d, e != c, r != t, r != s.
-> +
-> +    FLAGS: setclientid all
-> +    DEPEND: INIT
-> +    CODE: CID4d1
-> +    """
-> +    c1 = env.c1
-> +    clid = "Clid_for_%s_pid=%i" % (t.code, os.getpid())
-> +
-> +    # confirmed { u, x, c, l, s }
-> +    (cclientid, cconfirm) = c1.init_connection(clid, verifier=c1.verifier)
-> +
-> +    # unconfirmed { w, x, d, m, t }
-> +    ops = [c1.setclientid(clid, verifier="unconf")]
-> +    res = c1.compound(ops)
-> +    check(res)
-> +
-> +    uclientid = res.resarray[0].switch.switch.clientid
-> +    uconfirm = res.resarray[0].switch.switch.setclientid_confirm
-> +
-> +    # request { v, x, c, k, s } --> unconfirmed { v, x, e, k, r }
-> +    # (v == w)
-> +    ops = [c1.setclientid(clid, verifier="unconf")]
-> +    res = c1.compound(ops)
-> +    check(res)
-> +
-> +    tclientid = res.resarray[0].switch.switch.clientid
-> +    tconfirm = res.resarray[0].switch.switch.setclientid_confirm
-> +
-> +    # removes the unconfirmed { w, x, d, m, t }
-> +    ops = [c1.setclientid_confirm_op(uclientid, uconfirm)]
-> +    res = c1.compound(ops)
-> +    check(res, NFS4ERR_STALE_CLIENTID)
-> +
-> +    # (e != d, e != c, r != t, r != s)
-> +    if tconfirm == '\x00\x00\x00\x00\x00\x00\x00\x00':
-> +        t.fail("Got clientid confirm verifier with all zero!")
-> +
-> +    if cclientid == tclientid or uclientid == tclientid:
-> +        t.fail("Return a same clientID for different verifier!")
-> +
-> +    if tconfirm == cconfirm or tconfirm == uconfirm:
-> +        t.fail("Return a same confirm for different verifier!")
-> +
-> +def testConfUnConfDiffVerifier2(t, env):
-> +    """Whether w == v or w != v makes no difference.
-> +
-> +    FLAGS: setclientid all
-> +    DEPEND: INIT
-> +    CODE: CID4d2
-> +    """
-> +    c1 = env.c1
-> +    clid = "Clid_for_%s_pid=%i" % (t.code, os.getpid())
-> +
-> +    # confirmed { u, x, c, l, s }
-> +    (cclientid, cconfirm) = c1.init_connection(clid, verifier=c1.verifier)
-> +
-> +    # unconfirmed { w, x, d, m, t }
-> +    ops = [c1.setclientid(clid, verifier="unconf")]
-> +    res = c1.compound(ops)
-> +    check(res)
-> +
-> +    uclientid = res.resarray[0].switch.switch.clientid
-> +    uconfirm = res.resarray[0].switch.switch.setclientid_confirm
-> +
-> +    # request { v, x, c, k, s } --> unconfirmed { v, x, e, k, r }
-> +    # (v != w)
-> +    ops = [c1.setclientid(clid, verifier="testconf")]
-> +    res = c1.compound(ops)
-> +    check(res)
-> +
-> +    tclientid = res.resarray[0].switch.switch.clientid
-> +    tconfirm = res.resarray[0].switch.switch.setclientid_confirm
-> +
-> +    # removes the unconfirmed { w, x, d, m, t }
-> +    ops = [c1.setclientid_confirm_op(uclientid, uconfirm)]
-> +    res = c1.compound(ops)
-> +    check(res, NFS4ERR_STALE_CLIENTID)
-> +
-> +    # (e != d, e != c, r != t, r != s)
-> +    if tconfirm == '\x00\x00\x00\x00\x00\x00\x00\x00':
-> +        t.fail("Got clientid confirm verifier with all zero!")
-> +
-> +    if cclientid == tclientid or uclientid == tclientid:
-> +        t.fail("Return a same clientID for different verifier!")
-> +
-> +    if tconfirm == cconfirm or tconfirm == uconfirm:
-> +        t.fail("Return a same confirm for different verifier!")
-> +
-> +def testUnConfReplaced(t, env):
-> +    """The server has no confirmed { *, x, *, *, * } for x.  It may or
-> +       may not have recorded an unconfirmed { u, x, c, l, s }, where l
-> +       may or may not equal k, and u may or may not equal v.  Any
-> +       unconfirmed record { u, x, c, l, * }, regardless of whether u == v
-> +       or l == k, is replaced with an unconfirmed record { v, x, d, k, t}
-> +       where d != c, t != s.
-> +
-> +    FLAGS: setclientid all
-> +    DEPEND: INIT
-> +    CODE: CID4e
-> +    """
-> +    c1 = env.c1
-> +    clid = "Clid_for_%s_pid=%i" % (t.code, os.getpid())
-> +
-> +    # unconfirmed { w, x, d, m, t }
-> +    ops = [c1.setclientid(clid, verifier="unconf")]
-> +    res = c1.compound(ops)
-> +    check(res)
-> +
-> +    uclientid = res.resarray[0].switch.switch.clientid
-> +    uconfirm = res.resarray[0].switch.switch.setclientid_confirm
-> +
-> +    # request { v, x, c, k, s } --> unconfirmed { v, x, d, k, t }
-> +    ops = [c1.setclientid(clid, verifier="diff")]
-> +    res = c1.compound(ops)
-> +    check(res)
-> +
-> +    tclientid = res.resarray[0].switch.switch.clientid
-> +    tconfirm = res.resarray[0].switch.switch.setclientid_confirm
-> +
-> +    # removes the unconfirmed { w, x, d, m, t }
-> +    ops = [c1.setclientid_confirm_op(uclientid, uconfirm)]
-> +    res = c1.compound(ops)
-> +    check(res, NFS4ERR_STALE_CLIENTID)
-> +
-> +    # (d != c, t != s)
-> +    if tconfirm == '\x00\x00\x00\x00\x00\x00\x00\x00':
-> +        t.fail("Got clientid confirm verifier with all zero!")
-> +
-> +    if uclientid == tclientid:
-> +        t.fail("Return a same clientID for different verifier!")
-> +
-> +    if tconfirm == uconfirm:
-> +        t.fail("Return a same confirm for different verifier!")
-> +
->  def testLotsOfClients(t, env):
->      """SETCLIENTID called multiple times
->  
-> -- 
-> 2.4.3
