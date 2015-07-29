@@ -1,9 +1,9 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:33612 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:37623 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750791AbbG2AbK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 28 Jul 2015 20:31:10 -0400
-Date: Wed, 29 Jul 2015 10:30:59 +1000
+	id S1752307AbbG2CGO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 28 Jul 2015 22:06:14 -0400
+Date: Wed, 29 Jul 2015 12:06:04 +1000
 From: NeilBrown <neilb@suse.com>
 To: Kinglong Mee <kinglongmee@gmail.com>
 Cc: "J. Bruce Fields" <bfields@fieldses.org>,
@@ -11,73 +11,101 @@ Cc: "J. Bruce Fields" <bfields@fieldses.org>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
         linux-fsdevel@vger.kernel.org,
         Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: Re: [PATCH 2/9 v8] fs_pin: Export functions for specific filesystem
-Message-ID: <20150729103059.0523f7a5@noble>
-In-Reply-To: <55B5A06D.1070506@gmail.com>
+Subject: Re: [PATCH 4/9 v8] fs: New helper legitimize_mntget() for getting a
+ legitimize mnt
+Message-ID: <20150729120604.4512c2e5@noble>
+In-Reply-To: <55B5A0B0.7060604@gmail.com>
 References: <55B5A012.1030006@gmail.com>
-	<55B5A06D.1070506@gmail.com>
+	<55B5A0B0.7060604@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 27 Jul 2015 11:07:25 +0800 Kinglong Mee <kinglongmee@gmail.com>
+On Mon, 27 Jul 2015 11:08:32 +0800 Kinglong Mee <kinglongmee@gmail.com>
 wrote:
 
-> Exports functions for others who want pin to vfsmount,
-> eg, nfsd's export cache.
+> New helper legitimize_mntget for getting a mnt without setting
+> MNT_SYNC_UMOUNT | MNT_UMOUNT | MNT_DOOMED, otherwise return NULL.
 > 
-> v8, same as v4
-> add exporting of pin_kill.
+> v8, same as v6
 > 
 > Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+> ---
+>  fs/namespace.c        | 19 +++++++++++++++++++
+>  include/linux/mount.h |  1 +
+>  2 files changed, 20 insertions(+)
+> 
+> diff --git a/fs/namespace.c b/fs/namespace.c
+> index 2b8aa15..842cf57 100644
+> --- a/fs/namespace.c
+> +++ b/fs/namespace.c
+> @@ -1153,6 +1153,25 @@ struct vfsmount *mntget(struct vfsmount *mnt)
+>  }
+>  EXPORT_SYMBOL(mntget);
+>  
+> +struct vfsmount *legitimize_mntget(struct vfsmount *vfsmnt)
+> +{
+> +	struct mount *mnt;
+> +
+> +	if (vfsmnt == NULL)
+> +		return NULL;
+> +
+> +	read_seqlock_excl(&mount_lock);
+> +	mnt = real_mount(vfsmnt);
+> +	if (vfsmnt->mnt_flags & (MNT_SYNC_UMOUNT | MNT_UMOUNT | MNT_DOOMED))
+> +		vfsmnt = NULL;
+> +	else
+> +		mnt_add_count(mnt, 1);
+> +	read_sequnlock_excl(&mount_lock);
+> +
+> +	return vfsmnt;
+> +}
+> +EXPORT_SYMBOL(legitimize_mntget);
+> +
+>  struct vfsmount *mnt_clone_internal(struct path *path)
+>  {
+>  	struct mount *p;
+> diff --git a/include/linux/mount.h b/include/linux/mount.h
+> index f822c3c..8ae9dc0 100644
+> --- a/include/linux/mount.h
+> +++ b/include/linux/mount.h
+> @@ -79,6 +79,7 @@ extern void mnt_drop_write(struct vfsmount *mnt);
+>  extern void mnt_drop_write_file(struct file *file);
+>  extern void mntput(struct vfsmount *mnt);
+>  extern struct vfsmount *mntget(struct vfsmount *mnt);
+> +extern struct vfsmount *legitimize_mntget(struct vfsmount *vfsmnt);
+>  extern struct vfsmount *mnt_clone_internal(struct path *path);
+>  extern int __mnt_is_readonly(struct vfsmount *mnt);
+>  
 
-Reviewed-by: NeilBrown <neilb@suse.com>
+It is unfortunate that we seem to have to take the mount_lock global
+lock on every nfs request.  I wonder if we can avoid that....
 
-These are needed for any module to participate in pinning.
+What if we did:
 
-mnt_pin_kill() and group_pin_kill() are just helper-functions for
-unmount etc (and are in fs/internal.h) so don't need to be exported.
+  seq = 0;
+retry:
+  read_seqbegin_or_lock(&mount_lock, &seq);
+  if (vfsmnt->mnt_flags & (MNT_SYNC_UMOUNT | MNT_UMOUNT | MNT_DOOMED))
+      vfsmnt = NULL;
+  else if (need_seqretry(&mount_lock, seq);
+      goto retry;
+  else {
+	mnt_add_count(&mnt, 1);
+        if (need_seqretry(&mount_lock, seq) ||
+	    vfsmnt->mnt_flags & (MNT_SYNC_UMOUNT | MNT_UMOUNT |
+                                 MNT_DOOMED)) {
+             mnt_add_count(&mnt, -1);
+             goto retry;
+        }
+   }
+   done_seqretry(&mount_lock, seq);
+
+
+Is there any risk from having a temporarily elevated mnt_count there?
+I can't see one, but there is clearly some complexity in managing that
+count.
 
 Thanks,
 NeilBrown
-
-> ---
->  fs/fs_pin.c | 4 ++++
->  1 file changed, 4 insertions(+)
-> 
-> diff --git a/fs/fs_pin.c b/fs/fs_pin.c
-> index 611b540..a1a4eb2 100644
-> --- a/fs/fs_pin.c
-> +++ b/fs/fs_pin.c
-> @@ -17,6 +17,7 @@ void pin_remove(struct fs_pin *pin)
->  	wake_up_locked(&pin->wait);
->  	spin_unlock_irq(&pin->wait.lock);
->  }
-> +EXPORT_SYMBOL(pin_remove);
->  
->  void pin_insert_group(struct fs_pin *pin, struct vfsmount *m, struct hlist_head *p)
->  {
-> @@ -26,11 +27,13 @@ void pin_insert_group(struct fs_pin *pin, struct vfsmount *m, struct hlist_head
->  	hlist_add_head(&pin->m_list, &real_mount(m)->mnt_pins);
->  	spin_unlock(&pin_lock);
->  }
-> +EXPORT_SYMBOL(pin_insert_group);
->  
->  void pin_insert(struct fs_pin *pin, struct vfsmount *m)
->  {
->  	pin_insert_group(pin, m, &m->mnt_sb->s_pins);
->  }
-> +EXPORT_SYMBOL(pin_insert);
->  
->  void pin_kill(struct fs_pin *p)
->  {
-> @@ -72,6 +75,7 @@ void pin_kill(struct fs_pin *p)
->  	}
->  	rcu_read_unlock();
->  }
-> +EXPORT_SYMBOL(pin_kill);
->  
->  void mnt_pin_kill(struct mount *m)
->  {
-
