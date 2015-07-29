@@ -1,14 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cmrelayp1.emulex.com ([138.239.112.140]:63381 "EHLO
+Received: from cmrelayp1.emulex.com ([138.239.112.140]:63439 "EHLO
 	CMRELAYP1.ad.emulex.com" rhost-flags-OK-FAIL-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1752817AbbG2HXj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Jul 2015 03:23:39 -0400
+	by vger.kernel.org with ESMTP id S1751101AbbG2Hb7 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Jul 2015 03:31:59 -0400
 From: Devesh Sharma <devesh.sharma@avagotech.com>
 To: linux-rdma@vger.kernel.org
-Cc: linux-nfs@vger.kernel.org, Devesh Sharma <devesh.sharma@avagotech.com>
-Subject: [PATCH v1] xprtrdma: take vendor driver refcount at client
-Date: Wed, 29 Jul 2015 18:11:01 +0530
-Message-Id: <1438173661-12497-1-git-send-email-devesh.sharma@avagotech.com>
+Cc: Devesh Sharma <devesh.sharma@avagotech.com>, chuck.lever@oracle.com,
+        linux-nfs@vger.kernel.org
+Subject: [PATCH v1 RESEND] xprtrdma: take vendor driver refcount at client
+Date: Wed, 29 Jul 2015 18:19:34 +0530
+Message-Id: <1438174174-12915-1-git-send-email-devesh.sharma@avagotech.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
@@ -29,11 +30,11 @@ for DEVICE_REMOVAL event is a long chain of work, and is in plan.
 The community decided that preventing the hang right now is more
 important than waiting for architectural changes.
 
-Thus, this patch intorduces a temorary workaround to acquire module
+Thus, this patch introduces a temporary workaround to acquire module
 reference count during the mount of a nfs-rdma mount point.
 
-CC:chuck.lever@oracle.com
-CC:linux-nfs@vger.kernel.org
+Cc: chuck.lever@oracle.com
+Cc: linux-nfs@vger.kernel.org
 Signed-off-by: Devesh Sharma <devesh.sharma@avagotech.com>
 Reviewed-by: Sagi Grimberg <sagig@dev.mellanox.co.il>
 ---
