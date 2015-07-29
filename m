@@ -1,38 +1,91 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from discipline.rit.edu ([129.21.6.207]:40854 "HELO
-	discipline.rit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1753102AbbG2TwG (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Jul 2015 15:52:06 -0400
-From: Andrew W Elble <aweits@rit.edu>
+Received: from mx2.suse.de ([195.135.220.15]:36682 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754053AbbG2Vsg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 29 Jul 2015 17:48:36 -0400
+Date: Thu, 30 Jul 2015 07:48:24 +1000
+From: NeilBrown <neilb@suse.com>
 To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Jeff Layton <jlayton@poochiereds.net>, <linux-nfs@vger.kernel.org>,
-        "Anna Schumaker" <schumakeranna@gmail.com>
-Subject: Re: list_del corruption / unhash_ol_stateid()
-References: <m23809zl8z.fsf@discipline.rit.edu>
-	<m2zj2hwk4e.fsf@discipline.rit.edu>
-	<20150728090206.1331e476@tlielax.poochiereds.net>
-	<m2wpxktjfc.fsf@discipline.rit.edu>
-	<20150728114933.6f917374@tlielax.poochiereds.net>
-	<20150728210434.GC9349@fieldses.org>
-	<m24mknq9ga.fsf@discipline.rit.edu>
-Date: Wed, 29 Jul 2015 15:52:04 -0400
-In-Reply-To: <m24mknq9ga.fsf@discipline.rit.edu> (Andrew W. Elble's message of
-	"Wed, 29 Jul 2015 11:17:57 -0400")
-Message-ID: <m28u9yoi6z.fsf@discipline.rit.edu>
+Cc: Kinglong Mee <kinglongmee@gmail.com>, Al Viro <viro@zeniv.linux.org.uk>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        linux-fsdevel@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: Re: [PATCH 1/9 v8] fs_pin: Initialize value for fs_pin explicitly
+Message-ID: <20150730074824.6b7faedd@noble>
+In-Reply-To: <20150729194155.GC21949@fieldses.org>
+References: <55B5A012.1030006@gmail.com>
+	<55B5A04D.8090905@gmail.com>
+	<20150729102519.16f2f70d@noble>
+	<20150729194155.GC21949@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Wed, 29 Jul 2015 15:41:55 -0400 "J. Bruce Fields"
+<bfields@fieldses.org> wrote:
 
-> I started with this - not completely sure this covers all the cases
-> we're interested in.
+> On Wed, Jul 29, 2015 at 10:25:19AM +1000, NeilBrown wrote:
+> > On Mon, 27 Jul 2015 11:06:53 +0800 Kinglong Mee <kinglongmee@gmail.com>
+> > wrote:
+> > 
+> > > Without initialized, done in fs_pin at stack space may
+> > > contains strange value.
+> > > 
+> > > v8, same as v3
+> > > Adds macro for header file
+> > > 
+> > > Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+> > 
+> > Reviewed-by: NeilBrown <neilb@suse.com>
+> > 
+> > It would be really good if some of these early patches could be applied
+> > to the relevant trees so they appear in -next and we only need to keep
+> > reviewing the more interesting code at the end.
+> 
+> This patch seems a little bikeshed-y.  I'd rather just drop it or save
+> it for some other day.  It's not necessary to the series.
 
-Oops. Apparently I like to take lots of extra refs on files. Will redo this tomorrow.
+???
 
--- 
-Andrew W. Elble
-aweits@discipline.rit.edu
-Infrastructure Engineer, Communications Technical Lead
-Rochester Institute of Technology
-PGP: BFAD 8461 4CCF DC95 DA2C B0EB 965B 082E 863E C912
+I accept that:
+
+
+> > > @@ -1,3 +1,6 @@
+> > > +#ifndef _LINUX_FS_PIN_H
+> > > +#define _LINUX_FS_PIN_H
+> > > +
+> > >  #include <linux/wait.h>
+
+could be a little bike-shed-y, not that I've seen much bike shedding
+going on.
+
+However:
+> > >  
+> > >  struct fs_pin {
+> > > @@ -16,9 +19,12 @@ static inline void init_fs_pin(struct fs_pin *p, void (*kill)(struct fs_pin *))
+> > >  	INIT_HLIST_NODE(&p->s_list);
+> > >  	INIT_HLIST_NODE(&p->m_list);
+> > >  	p->kill = kill;
+> > > +	p->done = 0;
+> > >  }
+> > >  
+
+is quite important.
+Without that assignment we would probably need to rename the function to
+   init_most_of_fs_pin
+or
+   init_fs_pin_if_already_zeroed
+or maybe just
+   __init_fs_pin
+with the time honoured interpretation that it sort-of does what the
+name says, but maybe not exactly how you think and please use with care.
+
+Then in nfsd code we would need to add the assignment ourselves, or use
+kzalloc where it would otherwise be completely unnecessary.
+
+
+Thanks for accepting the other patches!
+
+NeilBrown
+
