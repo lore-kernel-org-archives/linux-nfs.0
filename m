@@ -1,122 +1,157 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:41544 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751775AbbG2D7Y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 28 Jul 2015 23:59:24 -0400
-Date: Wed, 29 Jul 2015 13:59:14 +1000
-From: NeilBrown <neilb@suse.com>
-To: Kinglong Mee <kinglongmee@gmail.com>, Al Viro <viro@zeniv.linux.org.uk>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        linux-fsdevel@vger.kernel.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: [PATCH] fs-pin: allow pin_remove() to be called other than from
- ->kill()
-Message-ID: <20150729135914.13cb0f86@noble>
-In-Reply-To: <55B5A186.7040004@gmail.com>
-References: <55B5A012.1030006@gmail.com>
-	<55B5A186.7040004@gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from cmrelayp1.emulex.com ([138.239.112.140]:63381 "EHLO
+	CMRELAYP1.ad.emulex.com" rhost-flags-OK-FAIL-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1752817AbbG2HXj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Jul 2015 03:23:39 -0400
+From: Devesh Sharma <devesh.sharma@avagotech.com>
+To: linux-rdma@vger.kernel.org
+Cc: linux-nfs@vger.kernel.org, Devesh Sharma <devesh.sharma@avagotech.com>
+Subject: [PATCH v1] xprtrdma: take vendor driver refcount at client
+Date: Wed, 29 Jul 2015 18:11:01 +0530
+Message-Id: <1438173661-12497-1-git-send-email-devesh.sharma@avagotech.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Thanks Chuck Lever for the valuable feedback and suggestions.
 
+This is a rework of the following patch sent almost a year back:
+http://www.mail-archive.com/linux-rdma%40vger.kernel.org/msg20730.html
 
-fs-pin currently assumes when either the vfsmount or the fs_pin wants
-to unpin, pin_kill() will be called.
-This requires that the ->kill() function can wait for any transient
-references to the fs_pin to be released.  If the structure containing
-the fs_pin doesn't already have the ability to wait for references,
-this can be a burden.
+In presence of active mount if someone tries to rmmod vendor-driver, the
+command remains stuck forever waiting for destruction of all rdma-cm-id.
+in worst case client can crash during shutdown with active mounts.
 
-As the fs_pin already has infrastructure for waiting, that can be
-leveraged to remove the burden.
+The existing code assumes that ia->ri_id->device cannot change during
+the lifetime of a transport. xprtrdma do not have support for
+DEVICE_REMOVAL event either. Lifting that assumption and adding support
+for DEVICE_REMOVAL event is a long chain of work, and is in plan.
 
-In this alternate scenario, only the vfsmount calls pin_kill() when it
-wants to unpin.  The owner of the fs_pin() instead calls pin_remove().
+The community decided that preventing the hang right now is more
+important than waiting for architectural changes.
 
-The ->kill() function removes any long-term references, and then calls
-pin_kill() (recursively).
-When the last reference on (the structure containing) the fs_pin is
-dropped, pin_remove() will be called and the (recursive) pin_kill()
-call will complete.
+Thus, this patch intorduces a temorary workaround to acquire module
+reference count during the mount of a nfs-rdma mount point.
 
-For this to be safe, the final "put" must *not* free the structure if
-pin_kill() has already been called, as that could leave ->kill()
-accessing freed data.
-
-So we provide a return value for pin_remove() which reports the old
-->done value.
-
-When final put calls pin_remove() it checks that value.
-If it was 0, then pin_kill() has not called ->kill and will not,
-so final put can free the data structure.
-If it was -1, then pin_kill() has called ->kill, and ->kill will
-free the data structure - final put must not touch it.
-
-This makes the 'wait' infrastructure of fs_pin available to any
-pinning client which wants to use it.
-
-Signed-Off-By: NeilBrown <neilb@suse.com>
-
+CC:chuck.lever@oracle.com
+CC:linux-nfs@vger.kernel.org
+Signed-off-by: Devesh Sharma <devesh.sharma@avagotech.com>
+Reviewed-by: Sagi Grimberg <sagig@dev.mellanox.co.il>
 ---
-Hi Al,
- do you see this as a workable solution?  I think it will improve the nfsd pining patch
-a lot.
+ net/sunrpc/xprtrdma/verbs.c |   38 ++++++++++++++++++++++++++++++--------
+ 1 files changed, 30 insertions(+), 8 deletions(-)
 
-Thanks,
-NeilBrown
-
-
-diff --git a/fs/fs_pin.c b/fs/fs_pin.c
-index 611b5408f6ec..b7954a9d17da 100644
---- a/fs/fs_pin.c
-+++ b/fs/fs_pin.c
-@@ -6,16 +6,32 @@
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 891c4ed..d59d638 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -52,6 +52,7 @@
+ #include <linux/prefetch.h>
+ #include <linux/sunrpc/addr.h>
+ #include <asm/bitops.h>
++#include <linux/module.h> /* try_module_get()/module_put() */
  
- static DEFINE_SPINLOCK(pin_lock);
+ #include "xprt_rdma.h"
  
--void pin_remove(struct fs_pin *pin)
-+/**
-+ * pin_remove - disconnect an fs_pin from the pinned structure.
-+ * @pin:	The struct fs_pin which is pinning something.
-+ *
-+ * Detach a 'pin' which was added by pin_insert().  A return value
-+ * of -1 implies that pin_kill() has already been called and that the
-+ * ->kill() function now owns the data structure containing @pin.
-+ * The function which called pin_remove() must not touch the data structure
-+ * again (unless it is the ->kill() function itself).
-+ * A return value of 0 implies an uneventful disconnect: pin_kill() has not called,
-+ * and will not call, the ->kill() function on this @pin.
-+ * Any other return value is a usage error - e.g. repeated call to pin_remove().
-+ */
-+int pin_remove(struct fs_pin *pin)
- {
-+	int ret;
- 	spin_lock(&pin_lock);
- 	hlist_del_init(&pin->m_list);
- 	hlist_del_init(&pin->s_list);
- 	spin_unlock(&pin_lock);
- 	spin_lock_irq(&pin->wait.lock);
-+	ret = pin->done;
- 	pin->done = 1;
- 	wake_up_locked(&pin->wait);
- 	spin_unlock_irq(&pin->wait.lock);
-+	return ret;
+@@ -414,6 +415,14 @@ connected:
+ 	return 0;
  }
  
- void pin_insert_group(struct fs_pin *pin, struct vfsmount *m, struct hlist_head *p)
-diff --git a/include/linux/fs_pin.h b/include/linux/fs_pin.h
-index 3886b3bffd7f..2fe9d3ba09e8 100644
---- a/include/linux/fs_pin.h
-+++ b/include/linux/fs_pin.h
-@@ -18,7 +18,7 @@ static inline void init_fs_pin(struct fs_pin *p, void (*kill)(struct fs_pin *))
- 	p->kill = kill;
- }
++static void rpcrdma_destroy_id(struct rdma_cm_id *id)
++{
++	if (id) {
++		module_put(id->device->owner);
++		rdma_destroy_id(id);
++	}
++}
++
+ static struct rdma_cm_id *
+ rpcrdma_create_id(struct rpcrdma_xprt *xprt,
+ 			struct rpcrdma_ia *ia, struct sockaddr *addr)
+@@ -440,6 +449,18 @@ rpcrdma_create_id(struct rpcrdma_xprt *xprt,
+ 	}
+ 	wait_for_completion_interruptible_timeout(&ia->ri_done,
+ 				msecs_to_jiffies(RDMA_RESOLVE_TIMEOUT) + 1);
++
++	/* FIXME: We hate to break the notion of ULP<-->Core<-->Provider
++	 * by calling try_module_get() on vendor driver. This is to prevent a
++	 * system hang or a possible crash during reboot with active nfs-rdma
++	 * mount. We will keep this workaround until xprtrdma comes back with a
++	 * massive architectural changes to have proper fix.
++	 */
++	if (!ia->ri_async_rc && !try_module_get(id->device->owner)) {
++		dprintk("RPC:       %s: Failed to get device module\n",
++			__func__);
++		ia->ri_async_rc = -ENODEV;
++	}
+ 	rc = ia->ri_async_rc;
+ 	if (rc)
+ 		goto out;
+@@ -449,16 +470,17 @@ rpcrdma_create_id(struct rpcrdma_xprt *xprt,
+ 	if (rc) {
+ 		dprintk("RPC:       %s: rdma_resolve_route() failed %i\n",
+ 			__func__, rc);
+-		goto out;
++		goto put;
+ 	}
+ 	wait_for_completion_interruptible_timeout(&ia->ri_done,
+ 				msecs_to_jiffies(RDMA_RESOLVE_TIMEOUT) + 1);
+ 	rc = ia->ri_async_rc;
+ 	if (rc)
+-		goto out;
++		goto put;
  
--void pin_remove(struct fs_pin *);
-+int pin_remove(struct fs_pin *);
- void pin_insert_group(struct fs_pin *, struct vfsmount *, struct hlist_head *);
- void pin_insert(struct fs_pin *, struct vfsmount *);
- void pin_kill(struct fs_pin *);
+ 	return id;
+-
++put:
++	module_put(id->device->owner);
+ out:
+ 	rdma_destroy_id(id);
+ 	return ERR_PTR(rc);
+@@ -592,7 +614,7 @@ out3:
+ 	ib_dealloc_pd(ia->ri_pd);
+ 	ia->ri_pd = NULL;
+ out2:
+-	rdma_destroy_id(ia->ri_id);
++	rpcrdma_destroy_id(ia->ri_id);
+ 	ia->ri_id = NULL;
+ out1:
+ 	return rc;
+@@ -618,7 +640,7 @@ rpcrdma_ia_close(struct rpcrdma_ia *ia)
+ 	if (ia->ri_id != NULL && !IS_ERR(ia->ri_id)) {
+ 		if (ia->ri_id->qp)
+ 			rdma_destroy_qp(ia->ri_id);
+-		rdma_destroy_id(ia->ri_id);
++		rpcrdma_destroy_id(ia->ri_id);
+ 		ia->ri_id = NULL;
+ 	}
+ 
+@@ -825,7 +847,7 @@ retry:
+ 		if (ia->ri_device != id->device) {
+ 			printk("RPC:       %s: can't reconnect on "
+ 				"different device!\n", __func__);
+-			rdma_destroy_id(id);
++			rpcrdma_destroy_id(id);
+ 			rc = -ENETUNREACH;
+ 			goto out;
+ 		}
+@@ -834,7 +856,7 @@ retry:
+ 		if (rc) {
+ 			dprintk("RPC:       %s: rdma_create_qp failed %i\n",
+ 				__func__, rc);
+-			rdma_destroy_id(id);
++			rpcrdma_destroy_id(id);
+ 			rc = -ENETUNREACH;
+ 			goto out;
+ 		}
+@@ -845,7 +867,7 @@ retry:
+ 		write_unlock(&ia->ri_qplock);
+ 
+ 		rdma_destroy_qp(old);
+-		rdma_destroy_id(old);
++		rpcrdma_destroy_id(old);
+ 	} else {
+ 		dprintk("RPC:       %s: connecting...\n", __func__);
+ 		rc = rdma_create_qp(ia->ri_id, ia->ri_pd, &ep->rep_attr);
+-- 
+1.7.1
+
