@@ -1,72 +1,33 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:33609 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750977AbbG3Psq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 30 Jul 2015 11:48:46 -0400
-Date: Thu, 30 Jul 2015 11:48:46 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        tigran.mkrtchyan@desy.de
-Subject: Re: [PATCH 3/4] 4.1 xdrdef: Fix bad define of sec_label4
-Message-ID: <20150730154846.GI9349@fieldses.org>
-References: <55B76B9B.4090700@gmail.com>
- <20150729193734.GB21949@fieldses.org>
- <55BA130C.1050604@gmail.com>
+Received: from bombadil.infradead.org ([198.137.202.9]:38436 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751142AbbG3Pvh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Jul 2015 11:51:37 -0400
+Date: Thu, 30 Jul 2015 08:51:35 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Jeff Layton <jlayton@poochiereds.net>
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfsd: do nfs4_check_fh in nfs4_check_file instead of
+ nfs4_check_olstateid
+Message-ID: <20150730155135.GB1073@infradead.org>
+References: <1438264341-18048-1-git-send-email-jeff.layton@primarydata.com>
+ <1438264341-18048-2-git-send-email-jeff.layton@primarydata.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <55BA130C.1050604@gmail.com>
+In-Reply-To: <1438264341-18048-2-git-send-email-jeff.layton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jul 30, 2015 at 08:05:32PM +0800, Kinglong Mee wrote:
-> On 7/30/2015 03:37, J. Bruce Fields wrote:
-> > On Tue, Jul 28, 2015 at 07:46:35PM +0800, Kinglong Mee wrote:
-> >> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
-> >> ---
-> > 
-> > See nfs4.1/xdrdef/README and please update that README and nfs4.x.diff
-> > too if necessary (and report to nfsv4@ietf.org if this is still a bug in
-> > the minorversion 2 draft).
-> 
-> Description at,
-> https://tools.ietf.org/html/draft-ietf-nfsv4-minorversion2-38#section-12.2.4
-> 
-> "The FATTR4_SEC_LABEL contains an array of two components with the
->  first component being an LFS."
-> 
-> It seems both nfs server and client have wrong implement, not the rfc's bug.
+>  		return status;
+> @@ -4628,6 +4625,10 @@ nfs4_check_file(struct svc_rqst *rqstp, struct svc_fh *fhp, struct nfs4_stid *s,
+>  	struct file *file;
+>  	__be32 status;
+>  
+> +	status = nfs4_check_fh(fhp, s);
+> +	if (status)
+> +		return status;
+> +
 
-It looks like an rfc bug to me.  Doesn't it have conflicting definitions
-for sec_label4?
-
---b.
-
-> 
-> xdrdef/nfs4.x is out of date, just update it.
-> 
-> thanks,
-> Kinglong Mee
-> 
-> > 
-> > --b.
-> > 
-> >>  nfs4.1/xdrdef/nfs4.x | 2 +-
-> >>  1 file changed, 1 insertion(+), 1 deletion(-)
-> >>
-> >> diff --git a/nfs4.1/xdrdef/nfs4.x b/nfs4.1/xdrdef/nfs4.x
-> >> index 024e0b4..cb3db7e 100644
-> >> --- a/nfs4.1/xdrdef/nfs4.x
-> >> +++ b/nfs4.1/xdrdef/nfs4.x
-> >> @@ -852,7 +852,7 @@ typedef change_policy4  fattr4_change_policy;
-> >>  typedef uint64_t        fattr_space_freed;
-> >>  typedef change_attr_type4
-> >>                  fattr4_change_attr_type;
-> >> -typedef sec_label4      fattr_sec_label<>;
-> >> +typedef sec_label4      fattr4_sec_label;
-> >>  
-> >>  %/*
-> >>  % * REQUIRED Attributes
-> >> -- 
-> >> 2.4.3
-> > 
+This means we check the file handle for all stateids now, not just
+open and lock stateids.  That seems reasonable to me but should be
+mentioned in the changelog.
