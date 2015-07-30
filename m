@@ -1,87 +1,88 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:33594 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750936AbbG3PQm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 30 Jul 2015 11:16:42 -0400
-Date: Thu, 30 Jul 2015 11:16:41 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@poochiereds.net>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsd: do nfs4_check_fh in nfs4_check_file instead of
- nfs4_check_olstateid
-Message-ID: <20150730151641.GE9349@fieldses.org>
-References: <1438253866-7393-1-git-send-email-jeff.layton@primarydata.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1438253866-7393-1-git-send-email-jeff.layton@primarydata.com>
+Received: from userp1040.oracle.com ([156.151.31.81]:26341 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752180AbbG3PRH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Jul 2015 11:17:07 -0400
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
+Subject: Re: managing the system's NFSv4 domain name
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <55BA2902.2020903@RedHat.com>
+Date: Thu, 30 Jul 2015 11:17:00 -0400
+Cc: Anna Schumaker <schumakeranna@gmail.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <CF4DF6BD-CACC-4C75-98CF-DE5E26F10AE7@oracle.com>
+References: <5E5505A2-44BA-4ED7-89A6-8639C0D068BF@oracle.com> <55BA2902.2020903@RedHat.com>
+To: Steve Dickson <SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jul 30, 2015 at 06:57:46AM -0400, Jeff Layton wrote:
-> Currently, preprocess_stateid_op calls nfs4_check_olstateid which
-> verifies that the open stateid corresponds to the current_fh in the
-> call by calling nfs4_check_fh.
-> 
-> If the stateid is a NFS4_DELEG_STID however, then no such check is
-> done. Move the call to nfs4_check_fh into nfs4_check_file instead
-> so that it can be done for all stateid types.
 
-Thanks, applying for 4.2 and -stable with a note that this can screw up
-permissions checking later in nfs4_check_file.
+On Jul 30, 2015, at 9:39 AM, Steve Dickson <SteveD@redhat.com> wrote:
 
---b.
+> On 07/29/2015 10:28 PM, Chuck Lever wrote:
+>> Hi-
+>> 
+>> At least for testing purposes, it would be great to be able to
+>> manage a system's NFSv4 domain name from the command line. I'm
+>> frequently asked how to determine a system's NFSv4 domain name,
+>> and I'm forced to answer something like this:
+>> 
+>>> Linux does not currently have a command line tool for managing
+>>> the system's NFSv4 idmapping domain. Use:
+>>> 
+>>> awk '/^Domain/ { print $3 }' < /etc/idmapd.conf
+>>> 
+>>> If that fails to find anything, then use `dnsdomainname` . That
+>>> won't be helpful if the system has multiple i/f's.
+>> 
+>> 
+>> This doesn't even get into /proc/keys, or what to do to change
+>> the NFSv4 domainname, or the differences between rpc.idmapd and
+>> the keyring-based idmapper.
+>> 
+>> Linux now has hostnamectl and other tools to manage a system's
+>> hostname and so on. Solaris has sharectl, which can display and
+>> update the nfs4mapid_domain.
+>> 
+>> Does it make sense to extend the nfsidmap command to display and
+>> modify the NFSv4 domain name?
+> I would think so... All the tools (aka conf_XXX() calls) are there 
+> and I think it would be relatively simple...
 
-> 
-> Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
-> ---
->  fs/nfsd/nfs4state.c | 13 +++++++------
->  1 file changed, 7 insertions(+), 6 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index cd8c33186e26..75f617a052cf 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -4406,9 +4406,9 @@ laundromat_main(struct work_struct *laundry)
->  	queue_delayed_work(laundry_wq, &nn->laundromat_work, t*HZ);
->  }
->  
-> -static inline __be32 nfs4_check_fh(struct svc_fh *fhp, struct nfs4_ol_stateid *stp)
-> +static inline __be32 nfs4_check_fh(struct svc_fh *fhp, struct nfs4_stid *stp)
->  {
-> -	if (!fh_match(&fhp->fh_handle, &stp->st_stid.sc_file->fi_fhandle))
-> +	if (!fh_match(&fhp->fh_handle, &stp->sc_file->fi_fhandle))
->  		return nfserr_bad_stateid;
->  	return nfs_ok;
->  }
-> @@ -4611,9 +4611,6 @@ nfs4_check_olstateid(struct svc_fh *fhp, struct nfs4_ol_stateid *ols, int flags)
->  {
->  	__be32 status;
->  
-> -	status = nfs4_check_fh(fhp, ols);
-> -	if (status)
-> -		return status;
->  	status = nfsd4_check_openowner_confirmed(ols);
->  	if (status)
->  		return status;
-> @@ -4628,6 +4625,10 @@ nfs4_check_file(struct svc_rqst *rqstp, struct svc_fh *fhp, struct nfs4_stid *s,
->  	struct file *file;
->  	__be32 status;
->  
-> +	status = nfs4_check_fh(fhp, s);
-> +	if (status)
-> +		return status;
-> +
->  	file = nfs4_find_file(s, flags);
->  	if (file) {
->  		status = nfsd_permission(rqstp, fhp->fh_export, fhp->fh_dentry,
-> @@ -4808,7 +4809,7 @@ static __be32 nfs4_seqid_op_checks(struct nfsd4_compound_state *cstate, stateid_
->  	status = check_stateid_generation(stateid, &stp->st_stid.sc_stateid, nfsd4_has_session(cstate));
->  	if (status)
->  		return status;
-> -	return nfs4_check_fh(current_fh, stp);
-> +	return nfs4_check_fh(current_fh, &stp->st_stid);
->  }
->  
->  /* 
-> -- 
-> 2.4.3
+Any opinions about what command line options to use? How about:
+
+To view:    nfsidmap -D
+
+To update:  [sudo] nfsidmap -U new.domain.name
+
+On the client, updating the domain name requires "nfsidmap -c"
+to clear the kernel idmap keyring. That can be built in to -U.
+
+On the server, I guess restarting rpc.idmapd would also be
+required. Would be nice if server and client idmapping both used
+request-key.
+
+
+> Another thing I always thought would be nice is a way 
+> to show the existing uid/gid keys in a human format.
+> Now to see what keys exist one has to cat /proc/keys
+> which is not very readable... 
+
+Or use keyctl.
+
+Either works for debugging and development, but neither are
+appropriate as an administrative interface, IMO.
+
+Something like "nfsidmap -l" would be simple, and could show
+both legacy and id_resolv keys, if we like.
+
+Btw, it looks like most recent kernels ignore the "-t" option.
+It should be fixed or removed.
+
+
+--
+Chuck Lever
+
+
+
