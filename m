@@ -1,158 +1,71 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cmrelayp1.emulex.com ([138.239.112.140]:58096 "EHLO
-	CMRELAYP1.ad.emulex.com" rhost-flags-OK-FAIL-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1751177AbbG3Fms (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Jul 2015 01:42:48 -0400
-From: Devesh Sharma <devesh.sharma@avagotech.com>
-To: linux-rdma@vger.kernel.org
-Cc: Devesh Sharma <devesh.sharma@avagotech.com>, chuck.lever@oracle.com,
-        linux-nfs@vger.kernel.org
-Subject: [PATCH v2] xprtrdma: take HCA driver refcount at client
-Date: Thu, 30 Jul 2015 16:30:18 +0530
-Message-Id: <1438254018-2816-1-git-send-email-devesh.sharma@avagotech.com>
+Received: from [193.47.165.129] ([193.47.165.129]:52668 "EHLO mellanox.co.il"
+	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1751074AbbG3HdN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 30 Jul 2015 03:33:13 -0400
+From: Sagi Grimberg <sagig@mellanox.com>
+To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org,
+        target-devel@vger.kernel.org
+Subject: [PATCH for-4.3 00/15] Modify MR allocation API
+Date: Thu, 30 Jul 2015 10:32:33 +0300
+Message-Id: <1438241568-3685-1-git-send-email-sagig@mellanox.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Thanks Chuck Lever for the valuable feedback and suggestions.
+This patch set is detached from my WIP for modifying our
+fast registration kernel API. I incorporated some comments
+from Jason and Christoph. The current set is a drop-in replacement
+of ib_alloc_fast_reg_mr to ib_alloc_mr which receives a memory
+region type (whcih can be IB_MR_TYPE_MEM_REG for normal memory
+registration, IB_MR_TYPE_SIGNATURE for a data-integrity capable
+memory region and future arbitrary SG support capable memory
+region).
 
-This is a rework of the following patch sent almost a year back:
-http://www.mail-archive.com/linux-rdma%40vger.kernel.org/msg20730.html
+Sagi Grimberg (15):
+  IB/core: Get rid of redundant verb ib_destroy_mr
+  IB: Modify ib_create_mr API
+  IB/iser: Convert to ib_alloc_mr
+  iser-target: Convert to ib_alloc_mr
+  IB/srp: Convert to ib_alloc_mr
+  xprtrdma, svcrdma: Convert to ib_alloc_mr
+  RDS: Convert to ib_alloc_mr
+  mlx5: Drop mlx5_ib_alloc_fast_reg_mr
+  mlx4: Support ib_alloc_mr verb
+  ocrdma: Support ib_alloc_mr verb
+  iw_cxgb4: Support ib_alloc_mr verb
+  cxgb3: Support ib_alloc_mr verb
+  nes: Support ib_alloc_mr verb
+  qib: Support ib_alloc_mr verb
+  IB/core: Drop ib_alloc_fast_reg_mr
 
-In presence of active mount if someone tries to rmmod vendor-driver, the
-command remains stuck forever waiting for destruction of all rdma-cm-id.
-in worst case client can crash during shutdown with active mounts.
+ drivers/infiniband/core/verbs.c             |  62 +++++------------
+ drivers/infiniband/hw/cxgb3/iwch_provider.c |  14 ++--
+ drivers/infiniband/hw/cxgb4/iw_cxgb4.h      |   4 +-
+ drivers/infiniband/hw/cxgb4/mem.c           |  12 +++-
+ drivers/infiniband/hw/cxgb4/provider.c      |   2 +-
+ drivers/infiniband/hw/mlx4/main.c           |   2 +-
+ drivers/infiniband/hw/mlx4/mlx4_ib.h        |   5 +-
+ drivers/infiniband/hw/mlx4/mr.c             |  11 ++-
+ drivers/infiniband/hw/mlx5/main.c           |   4 +-
+ drivers/infiniband/hw/mlx5/mlx5_ib.h        |   8 +--
+ drivers/infiniband/hw/mlx5/mr.c             | 104 +++++++---------------------
+ drivers/infiniband/hw/nes/nes_verbs.c       |  19 +++--
+ drivers/infiniband/hw/ocrdma/ocrdma_main.c  |   2 +-
+ drivers/infiniband/hw/ocrdma/ocrdma_verbs.c |  11 ++-
+ drivers/infiniband/hw/ocrdma/ocrdma_verbs.h |   4 +-
+ drivers/infiniband/hw/qib/qib_mr.c          |   9 ++-
+ drivers/infiniband/hw/qib/qib_verbs.c       |   2 +-
+ drivers/infiniband/hw/qib/qib_verbs.h       |   4 +-
+ drivers/infiniband/ulp/iser/iser_verbs.c    |  15 ++--
+ drivers/infiniband/ulp/isert/ib_isert.c     |  14 ++--
+ drivers/infiniband/ulp/srp/ib_srp.c         |   3 +-
+ include/rdma/ib_verbs.h                     |  58 ++++------------
+ net/rds/iw_rdma.c                           |   5 +-
+ net/rds/iw_send.c                           |   5 +-
+ net/sunrpc/xprtrdma/frwr_ops.c              |   6 +-
+ net/sunrpc/xprtrdma/svc_rdma_transport.c    |   2 +-
+ 26 files changed, 159 insertions(+), 228 deletions(-)
 
-The existing code assumes that ia->ri_id->device cannot change during
-the lifetime of a transport. xprtrdma do not have support for
-DEVICE_REMOVAL event either. Lifting that assumption and adding support
-for DEVICE_REMOVAL event is a long chain of work, and is in plan.
-
-The community decided that preventing the hang right now is more
-important than waiting for architectural changes.
-
-Thus, this patch introduces a temporary workaround to acquire HCA driver
-module reference count during the mount of a nfs-rdma mount point.
-
-Cc: chuck.lever@oracle.com
-Cc: linux-nfs@vger.kernel.org
-Signed-off-by: Devesh Sharma <devesh.sharma@avagotech.com>
-Reviewed-by: Sagi Grimberg <sagig@dev.mellanox.co.il>
----
- net/sunrpc/xprtrdma/verbs.c |   38 ++++++++++++++++++++++++++++++--------
- 1 files changed, 30 insertions(+), 8 deletions(-)
-
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 891c4ed..1c3c420 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -52,6 +52,7 @@
- #include <linux/prefetch.h>
- #include <linux/sunrpc/addr.h>
- #include <asm/bitops.h>
-+#include <linux/module.h> /* try_module_get()/module_put() */
- 
- #include "xprt_rdma.h"
- 
-@@ -414,6 +415,14 @@ connected:
- 	return 0;
- }
- 
-+static void rpcrdma_destroy_id(struct rdma_cm_id *id)
-+{
-+	if (id) {
-+		module_put(id->device->owner);
-+		rdma_destroy_id(id);
-+	}
-+}
-+
- static struct rdma_cm_id *
- rpcrdma_create_id(struct rpcrdma_xprt *xprt,
- 			struct rpcrdma_ia *ia, struct sockaddr *addr)
-@@ -440,6 +449,18 @@ rpcrdma_create_id(struct rpcrdma_xprt *xprt,
- 	}
- 	wait_for_completion_interruptible_timeout(&ia->ri_done,
- 				msecs_to_jiffies(RDMA_RESOLVE_TIMEOUT) + 1);
-+
-+	/* FIXME: We hate to break the notion of ULP<-->Core<-->Provider
-+	 * by calling try_module_get() on HCA driver. This is to prevent a
-+	 * system hang or a possible crash during reboot with active nfs-rdma
-+	 * mount. We will keep this workaround until xprtrdma comes back with a
-+	 * massive architectural changes to have proper fix.
-+	 */
-+	if (!ia->ri_async_rc && !try_module_get(id->device->owner)) {
-+		dprintk("RPC:       %s: Failed to get device module\n",
-+			__func__);
-+		ia->ri_async_rc = -ENODEV;
-+	}
- 	rc = ia->ri_async_rc;
- 	if (rc)
- 		goto out;
-@@ -449,16 +470,17 @@ rpcrdma_create_id(struct rpcrdma_xprt *xprt,
- 	if (rc) {
- 		dprintk("RPC:       %s: rdma_resolve_route() failed %i\n",
- 			__func__, rc);
--		goto out;
-+		goto put;
- 	}
- 	wait_for_completion_interruptible_timeout(&ia->ri_done,
- 				msecs_to_jiffies(RDMA_RESOLVE_TIMEOUT) + 1);
- 	rc = ia->ri_async_rc;
- 	if (rc)
--		goto out;
-+		goto put;
- 
- 	return id;
--
-+put:
-+	module_put(id->device->owner);
- out:
- 	rdma_destroy_id(id);
- 	return ERR_PTR(rc);
-@@ -592,7 +614,7 @@ out3:
- 	ib_dealloc_pd(ia->ri_pd);
- 	ia->ri_pd = NULL;
- out2:
--	rdma_destroy_id(ia->ri_id);
-+	rpcrdma_destroy_id(ia->ri_id);
- 	ia->ri_id = NULL;
- out1:
- 	return rc;
-@@ -618,7 +640,7 @@ rpcrdma_ia_close(struct rpcrdma_ia *ia)
- 	if (ia->ri_id != NULL && !IS_ERR(ia->ri_id)) {
- 		if (ia->ri_id->qp)
- 			rdma_destroy_qp(ia->ri_id);
--		rdma_destroy_id(ia->ri_id);
-+		rpcrdma_destroy_id(ia->ri_id);
- 		ia->ri_id = NULL;
- 	}
- 
-@@ -825,7 +847,7 @@ retry:
- 		if (ia->ri_device != id->device) {
- 			printk("RPC:       %s: can't reconnect on "
- 				"different device!\n", __func__);
--			rdma_destroy_id(id);
-+			rpcrdma_destroy_id(id);
- 			rc = -ENETUNREACH;
- 			goto out;
- 		}
-@@ -834,7 +856,7 @@ retry:
- 		if (rc) {
- 			dprintk("RPC:       %s: rdma_create_qp failed %i\n",
- 				__func__, rc);
--			rdma_destroy_id(id);
-+			rpcrdma_destroy_id(id);
- 			rc = -ENETUNREACH;
- 			goto out;
- 		}
-@@ -845,7 +867,7 @@ retry:
- 		write_unlock(&ia->ri_qplock);
- 
- 		rdma_destroy_qp(old);
--		rdma_destroy_id(old);
-+		rpcrdma_destroy_id(old);
- 	} else {
- 		dprintk("RPC:       %s: connecting...\n", __func__);
- 		rc = rdma_create_qp(ia->ri_id, ia->ri_pd, &ep->rep_attr);
 -- 
-1.7.1
+1.8.4.3
 
