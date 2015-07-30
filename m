@@ -1,18 +1,18 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pd0-f175.google.com ([209.85.192.175]:33673 "EHLO
-	mail-pd0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751871AbbG3Nmr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Jul 2015 09:42:47 -0400
-Received: by pdbnt7 with SMTP id nt7so24932846pdb.0
-        for <linux-nfs@vger.kernel.org>; Thu, 30 Jul 2015 06:42:47 -0700 (PDT)
-Message-ID: <55BA29C9.1090703@gmail.com>
-Date: Thu, 30 Jul 2015 21:42:33 +0800
+Received: from mail-pa0-f43.google.com ([209.85.220.43]:35612 "EHLO
+	mail-pa0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750901AbbG3Nmi (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Jul 2015 09:42:38 -0400
+Received: by pabkd10 with SMTP id kd10so23843644pab.2
+        for <linux-nfs@vger.kernel.org>; Thu, 30 Jul 2015 06:42:37 -0700 (PDT)
+Message-ID: <55BA29BF.5050300@gmail.com>
+Date: Thu, 30 Jul 2015 21:42:23 +0800
 From: Kinglong Mee <kinglongmee@gmail.com>
 MIME-Version: 1.0
 To: Trond Myklebust <trond.myklebust@primarydata.com>
 CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
         kinglongmee@gmail.com
-Subject: [PATCH 4/7 v2] NFS: Make opened as optional argument in _nfs4_do_open
+Subject: [PATCH 4/7] NFS: Make opened as optional argument in _nfs4_do_open
 References: <55BA290B.2020704@gmail.com> <55BA2936.4030404@gmail.com>
 In-Reply-To: <55BA2936.4030404@gmail.com>
 Content-Type: text/plain; charset=utf-8
