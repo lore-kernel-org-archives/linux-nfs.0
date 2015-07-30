@@ -1,54 +1,158 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:50813 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750734AbbG3DBZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 29 Jul 2015 23:01:25 -0400
-Date: Thu, 30 Jul 2015 13:00:56 +1000
-From: NeilBrown <neilb@suse.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: [PATCH] NFSv4: don't set SETATTR for O_RDONLY|O_EXCL
-Message-ID: <20150730130056.541f1a5e@noble>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from cmrelayp1.emulex.com ([138.239.112.140]:58096 "EHLO
+	CMRELAYP1.ad.emulex.com" rhost-flags-OK-FAIL-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1751177AbbG3Fms (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Jul 2015 01:42:48 -0400
+From: Devesh Sharma <devesh.sharma@avagotech.com>
+To: linux-rdma@vger.kernel.org
+Cc: Devesh Sharma <devesh.sharma@avagotech.com>, chuck.lever@oracle.com,
+        linux-nfs@vger.kernel.org
+Subject: [PATCH v2] xprtrdma: take HCA driver refcount at client
+Date: Thu, 30 Jul 2015 16:30:18 +0530
+Message-Id: <1438254018-2816-1-git-send-email-devesh.sharma@avagotech.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Thanks Chuck Lever for the valuable feedback and suggestions.
 
-It is unusual to combine the open flags O_RDONLY and O_EXCL, but
-it appears that libre-office does just that.
+This is a rework of the following patch sent almost a year back:
+http://www.mail-archive.com/linux-rdma%40vger.kernel.org/msg20730.html
 
-[pid  3250] stat("/home/USER/.config", {st_mode=S_IFDIR|0700, st_size=8192, ...}) = 0
-[pid  3250] open("/home/USER/.config/libreoffice/4-suse/user/extensions/buildid", O_RDONLY|O_EXCL <unfinished ...>
+In presence of active mount if someone tries to rmmod vendor-driver, the
+command remains stuck forever waiting for destruction of all rdma-cm-id.
+in worst case client can crash during shutdown with active mounts.
 
-NFSv4 takes O_EXCL as a sign that a setattr command should be sent,
-probably to reset the timestamps.
+The existing code assumes that ia->ri_id->device cannot change during
+the lifetime of a transport. xprtrdma do not have support for
+DEVICE_REMOVAL event either. Lifting that assumption and adding support
+for DEVICE_REMOVAL event is a long chain of work, and is in plan.
 
-When it was an O_RDONLY open, the SETATTR command does not
-identify any actual attributes to change.
-If no delegation was provided to the open, the SETATTR uses the
-all-zeros stateid and the request is accepted (at least by the
-Linux NFS server - no harm, no foul).
+The community decided that preventing the hang right now is more
+important than waiting for architectural changes.
 
-If a read-delegation was provided, this is used in the SETATTR
-request, and a Netapp filer will justifiably claim
-NFS4ERR_BAD_STATEID, which the Linux client takes as a sign
-to retry - indefinitely.
+Thus, this patch introduces a temporary workaround to acquire HCA driver
+module reference count during the mount of a nfs-rdma mount point.
 
-So only treat O_EXCL specially if O_CREAT was also given.
+Cc: chuck.lever@oracle.com
+Cc: linux-nfs@vger.kernel.org
+Signed-off-by: Devesh Sharma <devesh.sharma@avagotech.com>
+Reviewed-by: Sagi Grimberg <sagig@dev.mellanox.co.il>
+---
+ net/sunrpc/xprtrdma/verbs.c |   38 ++++++++++++++++++++++++++++++--------
+ 1 files changed, 30 insertions(+), 8 deletions(-)
 
-Signed-off-by: NeilBrown <neilb@suse.com>
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 8bee93469617..4c1c591103b1 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2412,7 +2412,7 @@ static int _nfs4_do_open(struct inode *dir,
- 		goto err_free_label;
- 	state = ctx->state;
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 891c4ed..1c3c420 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -52,6 +52,7 @@
+ #include <linux/prefetch.h>
+ #include <linux/sunrpc/addr.h>
+ #include <asm/bitops.h>
++#include <linux/module.h> /* try_module_get()/module_put() */
  
--	if ((opendata->o_arg.open_flags & O_EXCL) &&
-+	if ((opendata->o_arg.open_flags & (O_CREAT|O_EXCL)) == (O_CREAT|O_EXCL) &&
- 	    (opendata->o_arg.createmode != NFS4_CREATE_GUARDED)) {
- 		nfs4_exclusive_attrset(opendata, sattr);
+ #include "xprt_rdma.h"
  
+@@ -414,6 +415,14 @@ connected:
+ 	return 0;
+ }
+ 
++static void rpcrdma_destroy_id(struct rdma_cm_id *id)
++{
++	if (id) {
++		module_put(id->device->owner);
++		rdma_destroy_id(id);
++	}
++}
++
+ static struct rdma_cm_id *
+ rpcrdma_create_id(struct rpcrdma_xprt *xprt,
+ 			struct rpcrdma_ia *ia, struct sockaddr *addr)
+@@ -440,6 +449,18 @@ rpcrdma_create_id(struct rpcrdma_xprt *xprt,
+ 	}
+ 	wait_for_completion_interruptible_timeout(&ia->ri_done,
+ 				msecs_to_jiffies(RDMA_RESOLVE_TIMEOUT) + 1);
++
++	/* FIXME: We hate to break the notion of ULP<-->Core<-->Provider
++	 * by calling try_module_get() on HCA driver. This is to prevent a
++	 * system hang or a possible crash during reboot with active nfs-rdma
++	 * mount. We will keep this workaround until xprtrdma comes back with a
++	 * massive architectural changes to have proper fix.
++	 */
++	if (!ia->ri_async_rc && !try_module_get(id->device->owner)) {
++		dprintk("RPC:       %s: Failed to get device module\n",
++			__func__);
++		ia->ri_async_rc = -ENODEV;
++	}
+ 	rc = ia->ri_async_rc;
+ 	if (rc)
+ 		goto out;
+@@ -449,16 +470,17 @@ rpcrdma_create_id(struct rpcrdma_xprt *xprt,
+ 	if (rc) {
+ 		dprintk("RPC:       %s: rdma_resolve_route() failed %i\n",
+ 			__func__, rc);
+-		goto out;
++		goto put;
+ 	}
+ 	wait_for_completion_interruptible_timeout(&ia->ri_done,
+ 				msecs_to_jiffies(RDMA_RESOLVE_TIMEOUT) + 1);
+ 	rc = ia->ri_async_rc;
+ 	if (rc)
+-		goto out;
++		goto put;
+ 
+ 	return id;
+-
++put:
++	module_put(id->device->owner);
+ out:
+ 	rdma_destroy_id(id);
+ 	return ERR_PTR(rc);
+@@ -592,7 +614,7 @@ out3:
+ 	ib_dealloc_pd(ia->ri_pd);
+ 	ia->ri_pd = NULL;
+ out2:
+-	rdma_destroy_id(ia->ri_id);
++	rpcrdma_destroy_id(ia->ri_id);
+ 	ia->ri_id = NULL;
+ out1:
+ 	return rc;
+@@ -618,7 +640,7 @@ rpcrdma_ia_close(struct rpcrdma_ia *ia)
+ 	if (ia->ri_id != NULL && !IS_ERR(ia->ri_id)) {
+ 		if (ia->ri_id->qp)
+ 			rdma_destroy_qp(ia->ri_id);
+-		rdma_destroy_id(ia->ri_id);
++		rpcrdma_destroy_id(ia->ri_id);
+ 		ia->ri_id = NULL;
+ 	}
+ 
+@@ -825,7 +847,7 @@ retry:
+ 		if (ia->ri_device != id->device) {
+ 			printk("RPC:       %s: can't reconnect on "
+ 				"different device!\n", __func__);
+-			rdma_destroy_id(id);
++			rpcrdma_destroy_id(id);
+ 			rc = -ENETUNREACH;
+ 			goto out;
+ 		}
+@@ -834,7 +856,7 @@ retry:
+ 		if (rc) {
+ 			dprintk("RPC:       %s: rdma_create_qp failed %i\n",
+ 				__func__, rc);
+-			rdma_destroy_id(id);
++			rpcrdma_destroy_id(id);
+ 			rc = -ENETUNREACH;
+ 			goto out;
+ 		}
+@@ -845,7 +867,7 @@ retry:
+ 		write_unlock(&ia->ri_qplock);
+ 
+ 		rdma_destroy_qp(old);
+-		rdma_destroy_id(old);
++		rpcrdma_destroy_id(old);
+ 	} else {
+ 		dprintk("RPC:       %s: connecting...\n", __func__);
+ 		rc = rdma_create_qp(ia->ri_id, ia->ri_pd, &ep->rep_attr);
+-- 
+1.7.1
+
