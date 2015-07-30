@@ -1,47 +1,173 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pd0-f175.google.com ([209.85.192.175]:33234 "EHLO
-	mail-pd0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751301AbbG3Nny (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Jul 2015 09:43:54 -0400
-Received: by pdbnt7 with SMTP id nt7so24946687pdb.0
-        for <linux-nfs@vger.kernel.org>; Thu, 30 Jul 2015 06:43:54 -0700 (PDT)
-Message-ID: <55BA2A0C.1010303@gmail.com>
-Date: Thu, 30 Jul 2015 21:43:40 +0800
+Received: from mail-pa0-f43.google.com ([209.85.220.43]:33284 "EHLO
+	mail-pa0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750977AbbG3Noo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Jul 2015 09:44:44 -0400
+Received: by padck2 with SMTP id ck2so23964122pad.0
+        for <linux-nfs@vger.kernel.org>; Thu, 30 Jul 2015 06:44:44 -0700 (PDT)
+Message-ID: <55BA2A3F.1080209@gmail.com>
+Date: Thu, 30 Jul 2015 21:44:31 +0800
 From: Kinglong Mee <kinglongmee@gmail.com>
 MIME-Version: 1.0
 To: Trond Myklebust <trond.myklebust@primarydata.com>
 CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
         kinglongmee@gmail.com
-Subject: [PATCH 5/7 v2] NFS: Update NFS4_BITMAP_SIZE
+Subject: [PATCH 6/7 v2] NFS: Get suppattr_exclcreat when getting server, capabilities
 References: <55BA290B.2020704@gmail.com>
 In-Reply-To: <55BA290B.2020704@gmail.com>
 Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-v4.1/v4.2 have define attributes at word2, nfs client also support
-security label now.
+Create file with attributs as NFS4_CREATE_EXCLUSIVE4_1 mode
+depends on suppattr_exclcreat attribut.
 
 v2, new one.
 
 Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
 ---
- include/uapi/linux/nfs4.h | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/nfs/nfs4proc.c         | 14 +++++++++++++-
+ fs/nfs/nfs4xdr.c          | 26 +++++++++++++++++++++-----
+ include/linux/nfs_fs_sb.h |  5 +++++
+ include/linux/nfs_xdr.h   |  2 ++
+ 4 files changed, 41 insertions(+), 6 deletions(-)
 
-diff --git a/include/uapi/linux/nfs4.h b/include/uapi/linux/nfs4.h
-index 2119c7c..2b871e0 100644
---- a/include/uapi/linux/nfs4.h
-+++ b/include/uapi/linux/nfs4.h
-@@ -15,7 +15,7 @@
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 1e5a2fb..2a888cb 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2883,8 +2883,10 @@ static void nfs4_close_context(struct nfs_open_context *ctx, int is_sync)
  
- #include <linux/types.h>
+ static int _nfs4_server_capabilities(struct nfs_server *server, struct nfs_fh *fhandle)
+ {
++	u32 bitmask[3] = {}, minorversion = server->nfs_client->cl_minorversion;
+ 	struct nfs4_server_caps_arg args = {
+ 		.fhandle = fhandle,
++		.bitmask = bitmask,
+ 	};
+ 	struct nfs4_server_caps_res res = {};
+ 	struct rpc_message msg = {
+@@ -2894,10 +2896,18 @@ static int _nfs4_server_capabilities(struct nfs_server *server, struct nfs_fh *f
+ 	};
+ 	int status;
  
--#define NFS4_BITMAP_SIZE	2
-+#define NFS4_BITMAP_SIZE	3
- #define NFS4_VERIFIER_SIZE	8
- #define NFS4_STATEID_SEQID_SIZE 4
- #define NFS4_STATEID_OTHER_SIZE 12
++	bitmask[0] = FATTR4_WORD0_SUPPORTED_ATTRS |
++		     FATTR4_WORD0_FH_EXPIRE_TYPE |
++		     FATTR4_WORD0_LINK_SUPPORT |
++		     FATTR4_WORD0_SYMLINK_SUPPORT |
++		     FATTR4_WORD0_ACLSUPPORT;
++	if (minorversion)
++		bitmask[2] = FATTR4_WORD2_SUPPATTR_EXCLCREAT;
++
+ 	status = nfs4_call_sync(server->client, server, &msg, &args.seq_args, &res.seq_res, 0);
+ 	if (status == 0) {
+ 		/* Sanity check the server answers */
+-		switch (server->nfs_client->cl_minorversion) {
++		switch (minorversion) {
+ 		case 0:
+ 			res.attr_bitmask[1] &= FATTR4_WORD1_NFS40_MASK;
+ 			res.attr_bitmask[2] = 0;
+@@ -2950,6 +2960,8 @@ static int _nfs4_server_capabilities(struct nfs_server *server, struct nfs_fh *f
+ 		server->cache_consistency_bitmask[0] &= FATTR4_WORD0_CHANGE|FATTR4_WORD0_SIZE;
+ 		server->cache_consistency_bitmask[1] &= FATTR4_WORD1_TIME_METADATA|FATTR4_WORD1_TIME_MODIFY;
+ 		server->cache_consistency_bitmask[2] = 0;
++		memcpy(server->exclcreat_bitmask, res.exclcreat_bitmask,
++			sizeof(server->exclcreat_bitmask));
+ 		server->acl_bitmask = res.acl_bitmask;
+ 		server->fh_expire_type = res.fh_expire_type;
+ 	}
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 558cd65d..fc88fcf 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -2580,6 +2580,7 @@ static void nfs4_xdr_enc_server_caps(struct rpc_rqst *req,
+ 				     struct xdr_stream *xdr,
+ 				     struct nfs4_server_caps_arg *args)
+ {
++	const u32 *bitmask = args->bitmask;
+ 	struct compound_hdr hdr = {
+ 		.minorversion = nfs4_xdr_minorversion(&args->seq_args),
+ 	};
+@@ -2587,11 +2588,7 @@ static void nfs4_xdr_enc_server_caps(struct rpc_rqst *req,
+ 	encode_compound_hdr(xdr, req, &hdr);
+ 	encode_sequence(xdr, &args->seq_args, &hdr);
+ 	encode_putfh(xdr, args->fhandle, &hdr);
+-	encode_getattr_one(xdr, FATTR4_WORD0_SUPPORTED_ATTRS|
+-			   FATTR4_WORD0_FH_EXPIRE_TYPE|
+-			   FATTR4_WORD0_LINK_SUPPORT|
+-			   FATTR4_WORD0_SYMLINK_SUPPORT|
+-			   FATTR4_WORD0_ACLSUPPORT, &hdr);
++	encode_getattr_three(xdr, bitmask[0], bitmask[1], bitmask[2], &hdr);
+ 	encode_nops(&hdr);
+ }
+ 
+@@ -3368,6 +3365,22 @@ out_overflow:
+ 	return -EIO;
+ }
+ 
++static int decode_attr_exclcreat_supported(struct xdr_stream *xdr,
++				 uint32_t *bitmap, uint32_t *bitmask)
++{
++	if (likely(bitmap[2] & FATTR4_WORD2_SUPPATTR_EXCLCREAT)) {
++		int ret;
++		ret = decode_attr_bitmap(xdr, bitmask);
++		if (unlikely(ret < 0))
++			return ret;
++		bitmap[2] &= ~FATTR4_WORD2_SUPPATTR_EXCLCREAT;
++	} else
++		bitmask[0] = bitmask[1] = bitmask[2] = 0;
++	dprintk("%s: bitmask=%08x:%08x:%08x\n", __func__,
++		bitmask[0], bitmask[1], bitmask[2]);
++	return 0;
++}
++
+ static int decode_attr_filehandle(struct xdr_stream *xdr, uint32_t *bitmap, struct nfs_fh *fh)
+ {
+ 	__be32 *p;
+@@ -4321,6 +4334,9 @@ static int decode_server_caps(struct xdr_stream *xdr, struct nfs4_server_caps_re
+ 		goto xdr_error;
+ 	if ((status = decode_attr_aclsupport(xdr, bitmap, &res->acl_bitmask)) != 0)
+ 		goto xdr_error;
++	if ((status = decode_attr_exclcreat_supported(xdr, bitmap,
++				res->exclcreat_bitmask)) != 0)
++		goto xdr_error;
+ 	status = verify_attr_len(xdr, savep, attrlen);
+ xdr_error:
+ 	dprintk("%s: xdr returned %d!\n", __func__, -status);
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index 20bc8e5..570a7df 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -173,6 +173,11 @@ struct nfs_server {
+ 						   set of attributes supported
+ 						   on this filesystem excluding
+ 						   the label support bit. */
++	u32			exclcreat_bitmask[3];
++						/* V4 bitmask representing the
++						   set of attributes supported
++						   on this filesystem for the
++						   exclusive create. */
+ 	u32			cache_consistency_bitmask[3];
+ 						/* V4 bitmask representing the subset
+ 						   of change attribute, size, ctime
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 7bbe505..aac795b 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1057,11 +1057,13 @@ struct nfs4_statfs_res {
+ struct nfs4_server_caps_arg {
+ 	struct nfs4_sequence_args	seq_args;
+ 	struct nfs_fh		       *fhandle;
++	const u32 *			bitmask;
+ };
+ 
+ struct nfs4_server_caps_res {
+ 	struct nfs4_sequence_res	seq_res;
+ 	u32				attr_bitmask[3];
++	u32				exclcreat_bitmask[3];
+ 	u32				acl_bitmask;
+ 	u32				has_links;
+ 	u32				has_symlinks;
 -- 
 2.4.3
 
