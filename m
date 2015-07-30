@@ -1,60 +1,46 @@
-Return-Path: <chuck.lever@oracle.com>
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
-Subject: Re: managing the system's NFSv4 domain name
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <55BA2902.2020903@RedHat.com>
-Date: Thu, 30 Jul 2015 16:05:27 -0400
-Cc: Anna Schumaker <schumakeranna@gmail.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Benjamin Coddington <bcodding@redhat.com>
-Message-Id: <DE4C7506-6323-4559-B884-4E8E4DB3114B@oracle.com>
-References: <5E5505A2-44BA-4ED7-89A6-8639C0D068BF@oracle.com> <55BA2902.2020903@RedHat.com>
-To: Steve Dickson <SteveD@redhat.com>
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:40333 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750938AbbG3VPT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 30 Jul 2015 17:15:19 -0400
+Received: from int-mx14.intmail.prod.int.phx2.redhat.com (int-mx14.intmail.prod.int.phx2.redhat.com [10.5.11.27])
+	by mx1.redhat.com (Postfix) with ESMTPS id 95CBCA2C0A
+	for <linux-nfs@vger.kernel.org>; Thu, 30 Jul 2015 21:15:18 +0000 (UTC)
+Received: from smallhat.boston.devel.redhat.com (vpn-48-41.rdu2.redhat.com [10.10.48.41])
+	by int-mx14.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id t6ULFHr8026405
+	for <linux-nfs@vger.kernel.org>; Thu, 30 Jul 2015 17:15:18 -0400
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH] rpc.gssd: Only clear the retval if it has not been set
+Date: Thu, 30 Jul 2015 17:15:16 -0400
+Message-Id: <1438290916-12071-1-git-send-email-steved@redhat.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+In gssd_search_krb5_keytab() an error code can be
+cleared by blindly setting retval to zero.
 
-On Jul 30, 2015, at 9:39 AM, Steve Dickson <SteveD@redhat.com> wrote:
+Reported-by: Jianhong Yin <jiyin@redhat.com>
+Signed-off-by: Steve Dickson <steved@redhat.com>
+---
+ utils/gssd/krb5_util.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
-> 
-> 
-> On 07/29/2015 10:28 PM, Chuck Lever wrote:
->> Hi-
->> 
->> At least for testing purposes, it would be great to be able to
->> manage a system's NFSv4 domain name from the command line. I'm
->> frequently asked how to determine a system's NFSv4 domain name,
->> and I'm forced to answer something like this:
->> 
->>> Linux does not currently have a command line tool for managing
->>> the system's NFSv4 idmapping domain. Use:
->>> 
->>> awk '/^Domain/ { print $3 }' < /etc/idmapd.conf
->>> 
->>> If that fails to find anything, then use `dnsdomainname` . That
->>> won't be helpful if the system has multiple i/f's.
->> 
->> 
->> This doesn't even get into /proc/keys, or what to do to change
->> the NFSv4 domainname, or the differences between rpc.idmapd and
->> the keyring-based idmapper.
->> 
->> Linux now has hostnamectl and other tools to manage a system's
->> hostname and so on. Solaris has sharectl, which can display and
->> update the nfs4mapid_domain.
->> 
->> Does it make sense to extend the nfsidmap command to display and
->> modify the NFSv4 domain name?
-> I would think so... All the tools (aka conf_XXX() calls) are there 
-> and I think it would be relatively simple...
+diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
+index f1ebc0d..ecf17a2 100644
+--- a/utils/gssd/krb5_util.c
++++ b/utils/gssd/krb5_util.c
+@@ -772,7 +772,9 @@ gssd_search_krb5_keytab(krb5_context context, krb5_keytab kt,
+ 			    "keytab '%s'\n", k5err, kt_name);
+ 	}
+ 
+-	retval = 0;
++	/* Only clear the retval if has not been set */
++	if (retval < 0)
++		retval = 0;
+   out:
+ 	free(k5err);
+ 	return retval;
+-- 
+2.4.3
 
-Displaying the effective NFSv4 domain name is easy, but I don't
-see anything in libnfsidmap's cfg.c that can write an updated
-idmapd.conf file. As far as I can tell, cfg.c is only for reading
-and parsing an existing config file.
-
-Is anyone aware of extensions to cfg.c that can update a conf file?
-
-
---
-Chuck Lever
