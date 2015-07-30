@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from [193.47.165.129] ([193.47.165.129]:52768 "EHLO mellanox.co.il"
+Received: from [193.47.165.129] ([193.47.165.129]:52789 "EHLO mellanox.co.il"
 	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1754628AbbG3Hdx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 30 Jul 2015 03:33:53 -0400
+	id S1754669AbbG3HeA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 30 Jul 2015 03:34:00 -0400
 From: Sagi Grimberg <sagig@mellanox.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org,
         target-devel@vger.kernel.org
-Subject: [PATCH for-4.3 09/15] mlx4: Support ib_alloc_mr verb
-Date: Thu, 30 Jul 2015 10:32:42 +0300
-Message-Id: <1438241568-3685-10-git-send-email-sagig@mellanox.com>
+Subject: [PATCH for-4.3 13/15] nes: Support ib_alloc_mr verb
+Date: Thu, 30 Jul 2015 10:32:46 +0300
+Message-Id: <1438241568-3685-14-git-send-email-sagig@mellanox.com>
 In-Reply-To: <1438241568-3685-1-git-send-email-sagig@mellanox.com>
 References: <1438241568-3685-1-git-send-email-sagig@mellanox.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -16,71 +16,64 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 Signed-off-by: Sagi Grimberg <sagig@mellanox.com>
 ---
- drivers/infiniband/hw/mlx4/main.c    |  2 +-
- drivers/infiniband/hw/mlx4/mlx4_ib.h |  5 +++--
- drivers/infiniband/hw/mlx4/mr.c      | 11 ++++++++---
- 3 files changed, 12 insertions(+), 6 deletions(-)
+ drivers/infiniband/hw/nes/nes_verbs.c | 19 ++++++++++++++-----
+ 1 file changed, 14 insertions(+), 5 deletions(-)
 
-diff --git a/drivers/infiniband/hw/mlx4/main.c b/drivers/infiniband/hw/mlx4/main.c
-index 05166b7..9ab73a4 100644
---- a/drivers/infiniband/hw/mlx4/main.c
-+++ b/drivers/infiniband/hw/mlx4/main.c
-@@ -2294,7 +2294,7 @@ static void *mlx4_ib_add(struct mlx4_dev *dev)
- 	ibdev->ib_dev.reg_user_mr	= mlx4_ib_reg_user_mr;
- 	ibdev->ib_dev.rereg_user_mr	= mlx4_ib_rereg_user_mr;
- 	ibdev->ib_dev.dereg_mr		= mlx4_ib_dereg_mr;
--	ibdev->ib_dev.alloc_fast_reg_mr = mlx4_ib_alloc_fast_reg_mr;
-+	ibdev->ib_dev.alloc_mr		= mlx4_ib_alloc_mr;
- 	ibdev->ib_dev.alloc_fast_reg_page_list = mlx4_ib_alloc_fast_reg_page_list;
- 	ibdev->ib_dev.free_fast_reg_page_list  = mlx4_ib_free_fast_reg_page_list;
- 	ibdev->ib_dev.attach_mcast	= mlx4_ib_mcg_attach;
-diff --git a/drivers/infiniband/hw/mlx4/mlx4_ib.h b/drivers/infiniband/hw/mlx4/mlx4_ib.h
-index 9066fc2..80228b2 100644
---- a/drivers/infiniband/hw/mlx4/mlx4_ib.h
-+++ b/drivers/infiniband/hw/mlx4/mlx4_ib.h
-@@ -679,8 +679,9 @@ struct ib_mw *mlx4_ib_alloc_mw(struct ib_pd *pd, enum ib_mw_type type);
- int mlx4_ib_bind_mw(struct ib_qp *qp, struct ib_mw *mw,
- 		    struct ib_mw_bind *mw_bind);
- int mlx4_ib_dealloc_mw(struct ib_mw *mw);
--struct ib_mr *mlx4_ib_alloc_fast_reg_mr(struct ib_pd *pd,
--					int max_page_list_len);
-+struct ib_mr *mlx4_ib_alloc_mr(struct ib_pd *pd,
-+			       enum ib_mr_type mr_type,
-+			       u32 max_num_sg);
- struct ib_fast_reg_page_list *mlx4_ib_alloc_fast_reg_page_list(struct ib_device *ibdev,
- 							       int page_list_len);
- void mlx4_ib_free_fast_reg_page_list(struct ib_fast_reg_page_list *page_list);
-diff --git a/drivers/infiniband/hw/mlx4/mr.c b/drivers/infiniband/hw/mlx4/mr.c
-index e0d2717..2542fd3 100644
---- a/drivers/infiniband/hw/mlx4/mr.c
-+++ b/drivers/infiniband/hw/mlx4/mr.c
-@@ -350,19 +350,24 @@ int mlx4_ib_dealloc_mw(struct ib_mw *ibmw)
- 	return 0;
+diff --git a/drivers/infiniband/hw/nes/nes_verbs.c b/drivers/infiniband/hw/nes/nes_verbs.c
+index fbc43e5..44cb513 100644
+--- a/drivers/infiniband/hw/nes/nes_verbs.c
++++ b/drivers/infiniband/hw/nes/nes_verbs.c
+@@ -375,9 +375,11 @@ static int alloc_fast_reg_mr(struct nes_device *nesdev, struct nes_pd *nespd,
  }
  
--struct ib_mr *mlx4_ib_alloc_fast_reg_mr(struct ib_pd *pd,
--					int max_page_list_len)
-+struct ib_mr *mlx4_ib_alloc_mr(struct ib_pd *pd,
-+			       enum ib_mr_type mr_type,
-+			       u32 max_num_sg)
+ /*
+- * nes_alloc_fast_reg_mr
++ * nes_alloc_mr
+  */
+-static struct ib_mr *nes_alloc_fast_reg_mr(struct ib_pd *ibpd, int max_page_list_len)
++static struct ib_mr *nes_alloc_mr(struct ib_pd *ibpd,
++				  enum ib_mr_type mr_type,
++				  u32 max_num_sg)
  {
- 	struct mlx4_ib_dev *dev = to_mdev(pd->device);
- 	struct mlx4_ib_mr *mr;
- 	int err;
- 
-+	if (mr_type != IB_MR_TYPE_MEM_REG ||
-+	    max_num_sg > MLX4_MAX_FAST_REG_PAGES)
+ 	struct nes_pd *nespd = to_nespd(ibpd);
+ 	struct nes_vnic *nesvnic = to_nesvnic(ibpd->device);
+@@ -393,11 +395,18 @@ static struct ib_mr *nes_alloc_fast_reg_mr(struct ib_pd *ibpd, int max_page_list
+ 	u32 stag;
+ 	int ret;
+ 	struct ib_mr *ibmr;
++
++	if (mr_type != IB_MR_TYPE_MEM_REG)
 +		return ERR_PTR(-EINVAL);
 +
- 	mr = kmalloc(sizeof *mr, GFP_KERNEL);
- 	if (!mr)
- 		return ERR_PTR(-ENOMEM);
++	if (max_num_sg > (NES_4K_PBL_CHUNK_SIZE / sizeof(u64)))
++		return ERR_PTR(-E2BIG);
++
+ /*
+  * Note:  Set to always use a fixed length single page entry PBL.  This is to allow
+  *	 for the fast_reg_mr operation to always know the size of the PBL.
+  */
+-	if (max_page_list_len > (NES_4K_PBL_CHUNK_SIZE / sizeof(u64)))
++	if (max_num_sg > (NES_4K_PBL_CHUNK_SIZE / sizeof(u64)))
+ 		return ERR_PTR(-E2BIG);
  
- 	err = mlx4_mr_alloc(dev->dev, to_mpd(pd)->pdn, 0, 0, 0,
--			    max_page_list_len, 0, &mr->mmr);
-+			    max_num_sg, 0, &mr->mmr);
- 	if (err)
- 		goto err_free;
+ 	get_random_bytes(&next_stag_index, sizeof(next_stag_index));
+@@ -424,7 +433,7 @@ static struct ib_mr *nes_alloc_fast_reg_mr(struct ib_pd *ibpd, int max_page_list
+ 	nes_debug(NES_DBG_MR, "Allocating STag 0x%08X index = 0x%08X\n",
+ 		  stag, stag_index);
+ 
+-	ret = alloc_fast_reg_mr(nesdev, nespd, stag, max_page_list_len);
++	ret = alloc_fast_reg_mr(nesdev, nespd, stag, max_num_sg);
+ 
+ 	if (ret == 0) {
+ 		nesmr->ibmr.rkey = stag;
+@@ -3929,7 +3938,7 @@ struct nes_ib_device *nes_init_ofa_device(struct net_device *netdev)
+ 	nesibdev->ibdev.dealloc_mw = nes_dealloc_mw;
+ 	nesibdev->ibdev.bind_mw = nes_bind_mw;
+ 
+-	nesibdev->ibdev.alloc_fast_reg_mr = nes_alloc_fast_reg_mr;
++	nesibdev->ibdev.alloc_mr = nes_alloc_mr;
+ 	nesibdev->ibdev.alloc_fast_reg_page_list = nes_alloc_fast_reg_page_list;
+ 	nesibdev->ibdev.free_fast_reg_page_list = nes_free_fast_reg_page_list;
  
 -- 
 1.8.4.3
