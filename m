@@ -1,145 +1,97 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yk0-f181.google.com ([209.85.160.181]:36729 "EHLO
-	mail-yk0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753295AbbG3Nwk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Jul 2015 09:52:40 -0400
-Received: by ykay190 with SMTP id y190so34256972yka.3
-        for <linux-nfs@vger.kernel.org>; Thu, 30 Jul 2015 06:52:39 -0700 (PDT)
+Received: from mail-yk0-f178.google.com ([209.85.160.178]:34573 "EHLO
+	mail-yk0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753344AbbG3Nwe (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Jul 2015 09:52:34 -0400
+Received: by ykax123 with SMTP id x123so34371036yka.1
+        for <linux-nfs@vger.kernel.org>; Thu, 30 Jul 2015 06:52:33 -0700 (PDT)
 From: Jeff Layton <jlayton@poochiereds.net>
 To: bfields@fieldses.org
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 8/9] nfsd: add a ->flush routine to svc_export_cache
-Date: Thu, 30 Jul 2015 09:52:20 -0400
-Message-Id: <1438264341-18048-10-git-send-email-jeff.layton@primarydata.com>
+Subject: [PATCH 2/9] nfsd: move some file caching helpers to a common header
+Date: Thu, 30 Jul 2015 09:52:14 -0400
+Message-Id: <1438264341-18048-4-git-send-email-jeff.layton@primarydata.com>
 In-Reply-To: <1438264341-18048-1-git-send-email-jeff.layton@primarydata.com>
 References: <1438264341-18048-1-git-send-email-jeff.layton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-...to purge the nfsd_file table. This should help ensure that
-filesystems are unmountable very soon after unexporting them.
-
-Note that we take the nfsd_mutex in this code to ensure that we can't
-race with a concurrent shutdown of nfsd that might destroy the cache.
+We'll want to reuse some of this for common open file caching
+infrastructure.
 
 Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
 ---
- fs/nfsd/export.c    | 14 ++++++++++++++
- fs/nfsd/filecache.c | 39 +++++++++++++++++++++++++--------------
- fs/nfsd/filecache.h |  1 +
- 3 files changed, 40 insertions(+), 14 deletions(-)
+ fs/nfsd/filecache.h | 25 +++++++++++++++++++++++++
+ fs/nfsd/nfs4state.c | 17 ++---------------
+ 2 files changed, 27 insertions(+), 15 deletions(-)
+ create mode 100644 fs/nfsd/filecache.h
 
-diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
-index f79521a59747..be80ff370072 100644
---- a/fs/nfsd/export.c
-+++ b/fs/nfsd/export.c
-@@ -21,6 +21,7 @@
- #include "nfsfh.h"
+diff --git a/fs/nfsd/filecache.h b/fs/nfsd/filecache.h
+new file mode 100644
+index 000000000000..9051ee54faa3
+--- /dev/null
++++ b/fs/nfsd/filecache.h
+@@ -0,0 +1,25 @@
++#ifndef _FS_NFSD_FILECACHE_H
++#define _FS_NFSD_FILECACHE_H
++
++#include <linux/jhash.h>
++#include <linux/sunrpc/xdr.h>
++
++#include "export.h"
++
++/* hash table for nfs4_file */
++#define NFSD_FILE_HASH_BITS                   8
++#define NFSD_FILE_HASH_SIZE                  (1 << NFSD_FILE_HASH_BITS)
++
++static inline unsigned int
++nfsd_fh_hashval(struct knfsd_fh *fh)
++{
++	return jhash2(fh->fh_base.fh_pad, XDR_QUADLEN(fh->fh_size), 0);
++}
++
++static inline unsigned int
++file_hashval(struct knfsd_fh *fh)
++{
++	return nfsd_fh_hashval(fh) & (NFSD_FILE_HASH_SIZE - 1);
++}
++
++#endif /* _FS_NFSD_FILECACHE_H */
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 75f617a052cf..79795c898dd1 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -49,6 +49,7 @@
+ 
  #include "netns.h"
  #include "pnfs.h"
 +#include "filecache.h"
  
- #define NFSDDBG_FACILITY	NFSDDBG_EXPORT
+ #define NFSDDBG_FACILITY                NFSDDBG_PROC
  
-@@ -231,6 +232,18 @@ static struct cache_head *expkey_alloc(void)
- 		return NULL;
+@@ -381,21 +382,7 @@ static unsigned int ownerstr_hashval(struct xdr_netobj *ownername)
+ 	return ret & OWNER_HASH_MASK;
  }
  
-+static void
-+expkey_flush(void)
-+{
-+	/*
-+	 * Take the nfsd_mutex here to ensure that the file cache is not
-+	 * destroyed while we're in the middle of flushing.
-+	 */
-+	mutex_lock(&nfsd_mutex);
-+	nfsd_file_cache_purge();
-+	mutex_unlock(&nfsd_mutex);
-+}
-+
- static struct cache_detail svc_expkey_cache_template = {
- 	.owner		= THIS_MODULE,
- 	.hash_size	= EXPKEY_HASHMAX,
-@@ -243,6 +256,7 @@ static struct cache_detail svc_expkey_cache_template = {
- 	.init		= expkey_init,
- 	.update       	= expkey_update,
- 	.alloc		= expkey_alloc,
-+	.flush		= expkey_flush,
- };
+-/* hash table for nfs4_file */
+-#define FILE_HASH_BITS                   8
+-#define FILE_HASH_SIZE                  (1 << FILE_HASH_BITS)
+-
+-static unsigned int nfsd_fh_hashval(struct knfsd_fh *fh)
+-{
+-	return jhash2(fh->fh_base.fh_pad, XDR_QUADLEN(fh->fh_size), 0);
+-}
+-
+-static unsigned int file_hashval(struct knfsd_fh *fh)
+-{
+-	return nfsd_fh_hashval(fh) & (FILE_HASH_SIZE - 1);
+-}
+-
+-static struct hlist_head file_hashtbl[FILE_HASH_SIZE];
++static struct hlist_head file_hashtbl[NFSD_FILE_HASH_SIZE];
  
- static int
-diff --git a/fs/nfsd/filecache.c b/fs/nfsd/filecache.c
-index 564b4eec0350..55930995a1ec 100644
---- a/fs/nfsd/filecache.c
-+++ b/fs/nfsd/filecache.c
-@@ -124,6 +124,30 @@ nfsd_file_dispose_list(struct list_head *dispose)
- 	}
- }
- 
-+void
-+nfsd_file_cache_purge(void)
-+{
-+	unsigned int		i;
-+	struct nfsd_file	*nf;
-+	LIST_HEAD(dispose);
-+
-+	if (!atomic_read(&nfsd_file_count))
-+		return;
-+
-+	for (i = 0; i < NFSD_FILE_HASH_SIZE; i++) {
-+		spin_lock(&nfsd_file_hashtbl[i].nfb_lock);
-+		while(!hlist_empty(&nfsd_file_hashtbl[i].nfb_head)) {
-+			nf = hlist_entry(nfsd_file_hashtbl[i].nfb_head.first,
-+					 struct nfsd_file, nf_node);
-+			nfsd_file_unhash(nf);
-+			/* put the hash reference */
-+			nfsd_file_put_locked(nf, &dispose);
-+		}
-+		spin_unlock(&nfsd_file_hashtbl[i].nfb_lock);
-+		nfsd_file_dispose_list(&dispose);
-+	}
-+}
-+
  static void
- nfsd_file_cache_prune(void)
- {
-@@ -200,23 +224,10 @@ out_nomem:
- void
- nfsd_file_cache_shutdown(void)
- {
--	unsigned int		i;
--	struct nfsd_file	*nf;
- 	LIST_HEAD(dispose);
- 
- 	cancel_delayed_work_sync(&nfsd_file_cache_clean_work);
--	for (i = 0; i < NFSD_FILE_HASH_SIZE; i++) {
--		spin_lock(&nfsd_file_hashtbl[i].nfb_lock);
--		while(!hlist_empty(&nfsd_file_hashtbl[i].nfb_head)) {
--			nf = hlist_entry(nfsd_file_hashtbl[i].nfb_head.first,
--					 struct nfsd_file, nf_node);
--			nfsd_file_unhash(nf);
--			/* put the hash reference */
--			nfsd_file_put_locked(nf, &dispose);
--		}
--		spin_unlock(&nfsd_file_hashtbl[i].nfb_lock);
--		nfsd_file_dispose_list(&dispose);
--	}
-+	nfsd_file_cache_purge();
- 	kfree(nfsd_file_hashtbl);
- 	nfsd_file_hashtbl = NULL;
- }
-diff --git a/fs/nfsd/filecache.h b/fs/nfsd/filecache.h
-index adf7e78b8e43..98976f71caa8 100644
---- a/fs/nfsd/filecache.h
-+++ b/fs/nfsd/filecache.h
-@@ -39,6 +39,7 @@ struct nfsd_file {
- };
- 
- int nfsd_file_cache_init(void);
-+void nfsd_file_cache_purge(void);
- void nfsd_file_cache_shutdown(void);
- void nfsd_file_put(struct nfsd_file *nf);
- __be32 nfsd_file_acquire(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ __nfs4_file_get_access(struct nfs4_file *fp, u32 access)
 -- 
 2.4.3
 
