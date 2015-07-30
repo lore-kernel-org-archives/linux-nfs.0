@@ -1,97 +1,82 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yk0-f178.google.com ([209.85.160.178]:34573 "EHLO
+Received: from mail-yk0-f178.google.com ([209.85.160.178]:34679 "EHLO
 	mail-yk0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753344AbbG3Nwe (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Jul 2015 09:52:34 -0400
-Received: by ykax123 with SMTP id x123so34371036yka.1
-        for <linux-nfs@vger.kernel.org>; Thu, 30 Jul 2015 06:52:33 -0700 (PDT)
+	with ESMTP id S1753367AbbG3Nwl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Jul 2015 09:52:41 -0400
+Received: by ykax123 with SMTP id x123so34373697yka.1
+        for <linux-nfs@vger.kernel.org>; Thu, 30 Jul 2015 06:52:40 -0700 (PDT)
 From: Jeff Layton <jlayton@poochiereds.net>
 To: bfields@fieldses.org
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 2/9] nfsd: move some file caching helpers to a common header
-Date: Thu, 30 Jul 2015 09:52:14 -0400
-Message-Id: <1438264341-18048-4-git-send-email-jeff.layton@primarydata.com>
+Subject: [PATCH 9/9] nfsd: allow the file cache expire time to be tunable
+Date: Thu, 30 Jul 2015 09:52:21 -0400
+Message-Id: <1438264341-18048-11-git-send-email-jeff.layton@primarydata.com>
 In-Reply-To: <1438264341-18048-1-git-send-email-jeff.layton@primarydata.com>
 References: <1438264341-18048-1-git-send-email-jeff.layton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We'll want to reuse some of this for common open file caching
-infrastructure.
+This is primarily for testing purposes, but this may also be useful
+until we have a better idea for a sensible default here.
 
 Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
 ---
- fs/nfsd/filecache.h | 25 +++++++++++++++++++++++++
- fs/nfsd/nfs4state.c | 17 ++---------------
- 2 files changed, 27 insertions(+), 15 deletions(-)
- create mode 100644 fs/nfsd/filecache.h
+ fs/nfsd/filecache.c | 14 +++++++++-----
+ 1 file changed, 9 insertions(+), 5 deletions(-)
 
-diff --git a/fs/nfsd/filecache.h b/fs/nfsd/filecache.h
-new file mode 100644
-index 000000000000..9051ee54faa3
---- /dev/null
-+++ b/fs/nfsd/filecache.h
-@@ -0,0 +1,25 @@
-+#ifndef _FS_NFSD_FILECACHE_H
-+#define _FS_NFSD_FILECACHE_H
-+
-+#include <linux/jhash.h>
-+#include <linux/sunrpc/xdr.h>
-+
-+#include "export.h"
-+
-+/* hash table for nfs4_file */
-+#define NFSD_FILE_HASH_BITS                   8
-+#define NFSD_FILE_HASH_SIZE                  (1 << NFSD_FILE_HASH_BITS)
-+
-+static inline unsigned int
-+nfsd_fh_hashval(struct knfsd_fh *fh)
-+{
-+	return jhash2(fh->fh_base.fh_pad, XDR_QUADLEN(fh->fh_size), 0);
-+}
-+
-+static inline unsigned int
-+file_hashval(struct knfsd_fh *fh)
-+{
-+	return nfsd_fh_hashval(fh) & (NFSD_FILE_HASH_SIZE - 1);
-+}
-+
-+#endif /* _FS_NFSD_FILECACHE_H */
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 75f617a052cf..79795c898dd1 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -49,6 +49,7 @@
+diff --git a/fs/nfsd/filecache.c b/fs/nfsd/filecache.c
+index 55930995a1ec..0f0272cc3683 100644
+--- a/fs/nfsd/filecache.c
++++ b/fs/nfsd/filecache.c
+@@ -8,6 +8,7 @@
+ #include <linux/hash.h>
+ #include <linux/file.h>
+ #include <linux/sched.h>
++#include <linux/module.h>
  
- #include "netns.h"
- #include "pnfs.h"
-+#include "filecache.h"
+ #include "vfs.h"
+ #include "nfsd.h"
+@@ -16,8 +17,10 @@
  
- #define NFSDDBG_FACILITY                NFSDDBG_PROC
+ #define NFSDDBG_FACILITY	NFSDDBG_VFS
  
-@@ -381,21 +382,7 @@ static unsigned int ownerstr_hashval(struct xdr_netobj *ownername)
- 	return ret & OWNER_HASH_MASK;
+-/* Min time we should keep around a file cache entry */
+-#define NFSD_FILE_EXPIRE	(HZ)
++/* Min time we should keep around a file cache entry (in jiffies) */
++static unsigned int			nfsd_file_cache_expiry = HZ;
++module_param(nfsd_file_cache_expiry, uint, 0644);
++MODULE_PARM_DESC(nfsd_file_cache_expiry, "Expire time for open file cache (in jiffies)");
+ 
+ /* We only care about NFSD_MAY_READ/WRITE for this cache */
+ #define NFSD_FILE_MAY_MASK	(NFSD_MAY_READ|NFSD_MAY_WRITE)
+@@ -40,7 +43,7 @@ nfsd_file_count_inc(void)
+ {
+ 	if (atomic_inc_return(&nfsd_file_count) == 1)
+ 		queue_delayed_work(nfsd_laundry_wq, &nfsd_file_cache_clean_work,
+-					NFSD_FILE_EXPIRE);
++					nfsd_file_cache_expiry);
  }
  
--/* hash table for nfs4_file */
--#define FILE_HASH_BITS                   8
--#define FILE_HASH_SIZE                  (1 << FILE_HASH_BITS)
--
--static unsigned int nfsd_fh_hashval(struct knfsd_fh *fh)
--{
--	return jhash2(fh->fh_base.fh_pad, XDR_QUADLEN(fh->fh_size), 0);
--}
--
--static unsigned int file_hashval(struct knfsd_fh *fh)
--{
--	return nfsd_fh_hashval(fh) & (FILE_HASH_SIZE - 1);
--}
--
--static struct hlist_head file_hashtbl[FILE_HASH_SIZE];
-+static struct hlist_head file_hashtbl[NFSD_FILE_HASH_SIZE];
- 
  static void
- __nfs4_file_get_access(struct nfs4_file *fp, u32 access)
+@@ -169,7 +172,8 @@ nfsd_file_cache_prune(void)
+ 				continue;
+ 
+ 			/* Was this file touched recently? */
+-			if (time_before(nf->nf_time + NFSD_FILE_EXPIRE, jiffies))
++			if (time_before(nf->nf_time + nfsd_file_cache_expiry,
++					jiffies))
+ 				continue;
+ 
+ 			/* Ok, it's expired...unhash it */
+@@ -193,7 +197,7 @@ nfsd_file_cache_cleaner(struct work_struct *work)
+ 
+ 	if (atomic_read(&nfsd_file_count))
+ 		queue_delayed_work(nfsd_laundry_wq, &nfsd_file_cache_clean_work,
+-					NFSD_FILE_EXPIRE);
++					nfsd_file_cache_expiry);
+ }
+ 
+ int
 -- 
 2.4.3
 
