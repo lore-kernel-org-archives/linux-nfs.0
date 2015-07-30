@@ -1,36 +1,92 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pa0-f43.google.com ([209.85.220.43]:34818 "EHLO
-	mail-pa0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750937AbbG3NtI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Jul 2015 09:49:08 -0400
-Received: by pabkd10 with SMTP id kd10so23922024pab.2
-        for <linux-nfs@vger.kernel.org>; Thu, 30 Jul 2015 06:49:08 -0700 (PDT)
-Message-ID: <55BA2B46.90204@gmail.com>
-Date: Thu, 30 Jul 2015 21:48:54 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        kinglongmee@gmail.com
-Subject: [PATCH 0/5] NFSD: some bugfixes and updates
-Content-Type: text/plain; charset=utf-8
+Received: from mail-yk0-f172.google.com ([209.85.160.172]:32996 "EHLO
+	mail-yk0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753295AbbG3Nwa (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Jul 2015 09:52:30 -0400
+Received: by ykba194 with SMTP id a194so34420650ykb.0
+        for <linux-nfs@vger.kernel.org>; Thu, 30 Jul 2015 06:52:30 -0700 (PDT)
+From: Jeff Layton <jlayton@poochiereds.net>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 0/9] nfsd: open file caching for v2/3
+Date: Thu, 30 Jul 2015 09:52:11 -0400
+Message-Id: <1438264341-18048-1-git-send-email-jeff.layton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The first three are bugfixes, the last two are updates for EXCLUSIVE4_1.
+Hi Bruce!
 
-Kinglong Mee (5):
-  NFSD: Store parent's stat in a sperate value
-  NFSD: Fix a encode bug of FS_LAYOUT_TYPES and LAYOUT_TYPES
-  NFSD: SUPPATTR_EXCLCREAT must be encoded before SECURITY_LABEL.
-  NFSD: Set the attributes used to store the verifier for EXCLUSIVE4_1
-  NFSD: Return word2 bitmask if setting security label in OPEN/CREATE
+This patchset adds a new open file cache for knfsd. As you well know,
+nfsd basically does an open() - read/write() - close() cycle for every
+nfsv3 READ or WRITE. It's also common for clients to "spray" several
+read and write requests in parallel or in quick succession, so we could
+skip a lot of that by simply caching these open filps.
 
- fs/nfsd/nfs4proc.c |  12 ++--
- fs/nfsd/nfs4xdr.c  | 158 +++++++++++++++++++++++++++++++++--------------------
- fs/nfsd/vfs.c      |   6 --
- fs/nfsd/vfs.h      |   6 ++
- 4 files changed, 112 insertions(+), 70 deletions(-)
+The idea here is to cache them in a hashtable for a little while (1s by
+default) in the expectation that clients may try to issue more reads or
+writes in quick succession. When there are any entries in the hashtable,
+there is a recurring workqueue job that will clean the cache.
+
+I've also added some hooks into sunrpc cache code that should allow us
+to purge the cache on an unexport event, so this shouldn't cause any
+problems with unmounting once you've unexported the fs.
+
+I did a little testing with it, but my test rig is pretty slow, and I
+couldn't measure much of a performance difference on a bog standard
+local fs.
+
+We do have some patches that allow the reexporting of NFSv4.1 via knfsd.
+Since NFS has a relatively slow open routine, this provides a rather
+large speedup.
+
+Without these patches:
+$ dd if=/dev/urandom of=/mnt/dp01/ddfile bs=4k count=256 oflag=direct
+256+0 records in
+256+0 records out
+1048576 bytes (1.0 MB) copied, 54.3109 s, 19.3 kB/s
+
+With these patches:
+$ dd if=/dev/urandom of=/mnt/dp01/ddfile bs=4k count=256 oflag=direct
+256+0 records in
+256+0 records out
+1048576 bytes (1.0 MB) copied, 1.05437 s, 995 kB/s
+
+It should also be possible to hook this code up to the nfs4_file too,
+but I haven't done that in this set. I'd like to get this in and settled
+before we start looking at that, since it'll mean a bit of reengineering
+of the NFSv4 code not to pass around struct file pointers.
+
+I'd like to have these considered for the v4.3 merge window if they look
+reasonable.
+
+Jeff Layton (9):
+  nfsd: include linux/nfs4.h in export.h
+  nfsd: move some file caching helpers to a common header
+  nfsd: convert laundry_wq to something less nfsd4 specific
+  nfsd: add a new struct file caching facility to nfsd
+  nfsd: hook up nfsd_write to the new nfsd_file cache
+  nfsd: hook up nfsd_read to the nfsd_file cache
+  sunrpc: add a new cache_detail operation for when a cache is flushed
+  nfsd: add a ->flush routine to svc_export_cache
+  nfsd: allow the file cache expire time to be tunable
+
+ fs/nfsd/Makefile             |   3 +-
+ fs/nfsd/export.c             |  14 ++
+ fs/nfsd/export.h             |   1 +
+ fs/nfsd/filecache.c          | 348 +++++++++++++++++++++++++++++++++++++++++++
+ fs/nfsd/filecache.h          |  47 ++++++
+ fs/nfsd/nfs3proc.c           |   2 +-
+ fs/nfsd/nfs4state.c          |  40 +----
+ fs/nfsd/nfsd.h               |   1 +
+ fs/nfsd/nfsproc.c            |   2 +-
+ fs/nfsd/nfssvc.c             |  22 ++-
+ fs/nfsd/vfs.c                |  56 +++----
+ fs/nfsd/vfs.h                |   2 +-
+ include/linux/sunrpc/cache.h |   1 +
+ net/sunrpc/cache.c           |   3 +
+ 14 files changed, 467 insertions(+), 75 deletions(-)
+ create mode 100644 fs/nfsd/filecache.c
+ create mode 100644 fs/nfsd/filecache.h
 
 -- 
 2.4.3
