@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from [193.47.165.129] ([193.47.165.129]:52754 "EHLO mellanox.co.il"
+Received: from [193.47.165.129] ([193.47.165.129]:52759 "EHLO mellanox.co.il"
 	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1754630AbbG3Hdp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 30 Jul 2015 03:33:45 -0400
+	id S1754639AbbG3Hdu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 30 Jul 2015 03:33:50 -0400
 From: Sagi Grimberg <sagig@mellanox.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org,
         target-devel@vger.kernel.org
-Subject: [PATCH for-4.3 10/15] ocrdma: Support ib_alloc_mr verb
-Date: Thu, 30 Jul 2015 10:32:43 +0300
-Message-Id: <1438241568-3685-11-git-send-email-sagig@mellanox.com>
+Subject: [PATCH for-4.3 14/15] qib: Support ib_alloc_mr verb
+Date: Thu, 30 Jul 2015 10:32:47 +0300
+Message-Id: <1438241568-3685-15-git-send-email-sagig@mellanox.com>
 In-Reply-To: <1438241568-3685-1-git-send-email-sagig@mellanox.com>
 References: <1438241568-3685-1-git-send-email-sagig@mellanox.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -16,73 +16,62 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 Signed-off-by: Sagi Grimberg <sagig@mellanox.com>
 ---
- drivers/infiniband/hw/ocrdma/ocrdma_main.c  |  2 +-
- drivers/infiniband/hw/ocrdma/ocrdma_verbs.c | 11 ++++++++---
- drivers/infiniband/hw/ocrdma/ocrdma_verbs.h |  4 +++-
- 3 files changed, 12 insertions(+), 5 deletions(-)
+ drivers/infiniband/hw/qib/qib_mr.c    | 9 +++++++--
+ drivers/infiniband/hw/qib/qib_verbs.c | 2 +-
+ drivers/infiniband/hw/qib/qib_verbs.h | 4 +++-
+ 3 files changed, 11 insertions(+), 4 deletions(-)
 
-diff --git a/drivers/infiniband/hw/ocrdma/ocrdma_main.c b/drivers/infiniband/hw/ocrdma/ocrdma_main.c
-index d98a707..62086ba 100644
---- a/drivers/infiniband/hw/ocrdma/ocrdma_main.c
-+++ b/drivers/infiniband/hw/ocrdma/ocrdma_main.c
-@@ -294,7 +294,7 @@ static int ocrdma_register_device(struct ocrdma_dev *dev)
- 	dev->ibdev.dereg_mr = ocrdma_dereg_mr;
- 	dev->ibdev.reg_user_mr = ocrdma_reg_user_mr;
- 
--	dev->ibdev.alloc_fast_reg_mr = ocrdma_alloc_frmr;
-+	dev->ibdev.alloc_mr = ocrdma_alloc_mr;
- 	dev->ibdev.alloc_fast_reg_page_list = ocrdma_alloc_frmr_page_list;
- 	dev->ibdev.free_fast_reg_page_list = ocrdma_free_frmr_page_list;
- 
-diff --git a/drivers/infiniband/hw/ocrdma/ocrdma_verbs.c b/drivers/infiniband/hw/ocrdma/ocrdma_verbs.c
-index 5bb61eb..7a5260f 100644
---- a/drivers/infiniband/hw/ocrdma/ocrdma_verbs.c
-+++ b/drivers/infiniband/hw/ocrdma/ocrdma_verbs.c
-@@ -2983,21 +2983,26 @@ int ocrdma_arm_cq(struct ib_cq *ibcq, enum ib_cq_notify_flags cq_flags)
- 	return 0;
- }
- 
--struct ib_mr *ocrdma_alloc_frmr(struct ib_pd *ibpd, int max_page_list_len)
-+struct ib_mr *ocrdma_alloc_mr(struct ib_pd *ibpd,
-+			      enum ib_mr_type mr_type,
-+			      u32 max_num_sg)
+diff --git a/drivers/infiniband/hw/qib/qib_mr.c b/drivers/infiniband/hw/qib/qib_mr.c
+index c4473db..19220dc 100644
+--- a/drivers/infiniband/hw/qib/qib_mr.c
++++ b/drivers/infiniband/hw/qib/qib_mr.c
+@@ -327,11 +327,16 @@ out:
+  *
+  * Return the memory region on success, otherwise return an errno.
+  */
+-struct ib_mr *qib_alloc_fast_reg_mr(struct ib_pd *pd, int max_page_list_len)
++struct ib_mr *qib_alloc_mr(struct ib_pd *pd,
++			   enum ib_mr_type mr_type,
++			   u32 max_num_sg)
  {
- 	int status;
- 	struct ocrdma_mr *mr;
- 	struct ocrdma_pd *pd = get_ocrdma_pd(ibpd);
- 	struct ocrdma_dev *dev = get_ocrdma_dev(ibpd->device);
+ 	struct qib_mr *mr;
  
--	if (max_page_list_len > dev->attr.max_pages_per_frmr)
+-	mr = alloc_mr(max_page_list_len, pd);
 +	if (mr_type != IB_MR_TYPE_MEM_REG)
 +		return ERR_PTR(-EINVAL);
 +
-+	if (max_num_sg > dev->attr.max_pages_per_frmr)
- 		return ERR_PTR(-EINVAL);
++	mr = alloc_mr(max_num_sg, pd);
+ 	if (IS_ERR(mr))
+ 		return (struct ib_mr *)mr;
  
- 	mr = kzalloc(sizeof(*mr), GFP_KERNEL);
- 	if (!mr)
- 		return ERR_PTR(-ENOMEM);
+diff --git a/drivers/infiniband/hw/qib/qib_verbs.c b/drivers/infiniband/hw/qib/qib_verbs.c
+index a05d1a3..ef022a1 100644
+--- a/drivers/infiniband/hw/qib/qib_verbs.c
++++ b/drivers/infiniband/hw/qib/qib_verbs.c
+@@ -2235,7 +2235,7 @@ int qib_register_ib_device(struct qib_devdata *dd)
+ 	ibdev->reg_phys_mr = qib_reg_phys_mr;
+ 	ibdev->reg_user_mr = qib_reg_user_mr;
+ 	ibdev->dereg_mr = qib_dereg_mr;
+-	ibdev->alloc_fast_reg_mr = qib_alloc_fast_reg_mr;
++	ibdev->alloc_mr = qib_alloc_mr;
+ 	ibdev->alloc_fast_reg_page_list = qib_alloc_fast_reg_page_list;
+ 	ibdev->free_fast_reg_page_list = qib_free_fast_reg_page_list;
+ 	ibdev->alloc_fmr = qib_alloc_fmr;
+diff --git a/drivers/infiniband/hw/qib/qib_verbs.h b/drivers/infiniband/hw/qib/qib_verbs.h
+index 1635572..3bc0caf 100644
+--- a/drivers/infiniband/hw/qib/qib_verbs.h
++++ b/drivers/infiniband/hw/qib/qib_verbs.h
+@@ -1032,7 +1032,9 @@ struct ib_mr *qib_reg_user_mr(struct ib_pd *pd, u64 start, u64 length,
  
--	status = ocrdma_get_pbl_info(dev, mr, max_page_list_len);
-+	status = ocrdma_get_pbl_info(dev, mr, max_num_sg);
- 	if (status)
- 		goto pbl_err;
- 	mr->hwmr.fr_mr = 1;
-diff --git a/drivers/infiniband/hw/ocrdma/ocrdma_verbs.h b/drivers/infiniband/hw/ocrdma/ocrdma_verbs.h
-index b15c608..50d8d47 100644
---- a/drivers/infiniband/hw/ocrdma/ocrdma_verbs.h
-+++ b/drivers/infiniband/hw/ocrdma/ocrdma_verbs.h
-@@ -96,7 +96,9 @@ struct ib_mr *ocrdma_reg_kernel_mr(struct ib_pd *,
- 				   int num_phys_buf, int acc, u64 *iova_start);
- struct ib_mr *ocrdma_reg_user_mr(struct ib_pd *, u64 start, u64 length,
- 				 u64 virt, int acc, struct ib_udata *);
--struct ib_mr *ocrdma_alloc_frmr(struct ib_pd *pd, int max_page_list_len);
-+struct ib_mr *ocrdma_alloc_mr(struct ib_pd *pd,
-+			      enum ib_mr_type mr_type,
-+			      u32 max_num_sg);
- struct ib_fast_reg_page_list *ocrdma_alloc_frmr_page_list(struct ib_device
- 							*ibdev,
- 							int page_list_len);
+ int qib_dereg_mr(struct ib_mr *ibmr);
+ 
+-struct ib_mr *qib_alloc_fast_reg_mr(struct ib_pd *pd, int max_page_list_len);
++struct ib_mr *qib_alloc_mr(struct ib_pd *pd,
++			   enum ib_mr_type mr_type,
++			   u32 max_entries);
+ 
+ struct ib_fast_reg_page_list *qib_alloc_fast_reg_page_list(
+ 				struct ib_device *ibdev, int page_list_len);
 -- 
 1.8.4.3
 
