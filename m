@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from [193.47.165.129] ([193.47.165.129]:52789 "EHLO mellanox.co.il"
+Received: from [193.47.165.129] ([193.47.165.129]:52740 "EHLO mellanox.co.il"
 	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1754669AbbG3HeA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 30 Jul 2015 03:34:00 -0400
+	id S1754000AbbG3Hdd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 30 Jul 2015 03:33:33 -0400
 From: Sagi Grimberg <sagig@mellanox.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org,
         target-devel@vger.kernel.org
-Subject: [PATCH for-4.3 13/15] nes: Support ib_alloc_mr verb
-Date: Thu, 30 Jul 2015 10:32:46 +0300
-Message-Id: <1438241568-3685-14-git-send-email-sagig@mellanox.com>
+Subject: [PATCH for-4.3 06/15] xprtrdma, svcrdma: Convert to ib_alloc_mr
+Date: Thu, 30 Jul 2015 10:32:39 +0300
+Message-Id: <1438241568-3685-7-git-send-email-sagig@mellanox.com>
 In-Reply-To: <1438241568-3685-1-git-send-email-sagig@mellanox.com>
 References: <1438241568-3685-1-git-send-email-sagig@mellanox.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -16,64 +16,53 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 Signed-off-by: Sagi Grimberg <sagig@mellanox.com>
 ---
- drivers/infiniband/hw/nes/nes_verbs.c | 19 ++++++++++++++-----
- 1 file changed, 14 insertions(+), 5 deletions(-)
+ net/sunrpc/xprtrdma/frwr_ops.c           | 6 +++---
+ net/sunrpc/xprtrdma/svc_rdma_transport.c | 2 +-
+ 2 files changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/drivers/infiniband/hw/nes/nes_verbs.c b/drivers/infiniband/hw/nes/nes_verbs.c
-index fbc43e5..44cb513 100644
---- a/drivers/infiniband/hw/nes/nes_verbs.c
-+++ b/drivers/infiniband/hw/nes/nes_verbs.c
-@@ -375,9 +375,11 @@ static int alloc_fast_reg_mr(struct nes_device *nesdev, struct nes_pd *nespd,
- }
+diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
+index 63f282e..d6653f5 100644
+--- a/net/sunrpc/xprtrdma/frwr_ops.c
++++ b/net/sunrpc/xprtrdma/frwr_ops.c
+@@ -117,7 +117,7 @@ __frwr_recovery_worker(struct work_struct *work)
+ 	if (ib_dereg_mr(r->r.frmr.fr_mr))
+ 		goto out_fail;
  
- /*
-- * nes_alloc_fast_reg_mr
-+ * nes_alloc_mr
-  */
--static struct ib_mr *nes_alloc_fast_reg_mr(struct ib_pd *ibpd, int max_page_list_len)
-+static struct ib_mr *nes_alloc_mr(struct ib_pd *ibpd,
-+				  enum ib_mr_type mr_type,
-+				  u32 max_num_sg)
- {
- 	struct nes_pd *nespd = to_nespd(ibpd);
- 	struct nes_vnic *nesvnic = to_nesvnic(ibpd->device);
-@@ -393,11 +395,18 @@ static struct ib_mr *nes_alloc_fast_reg_mr(struct ib_pd *ibpd, int max_page_list
- 	u32 stag;
- 	int ret;
- 	struct ib_mr *ibmr;
-+
-+	if (mr_type != IB_MR_TYPE_MEM_REG)
-+		return ERR_PTR(-EINVAL);
-+
-+	if (max_num_sg > (NES_4K_PBL_CHUNK_SIZE / sizeof(u64)))
-+		return ERR_PTR(-E2BIG);
-+
- /*
-  * Note:  Set to always use a fixed length single page entry PBL.  This is to allow
-  *	 for the fast_reg_mr operation to always know the size of the PBL.
-  */
--	if (max_page_list_len > (NES_4K_PBL_CHUNK_SIZE / sizeof(u64)))
-+	if (max_num_sg > (NES_4K_PBL_CHUNK_SIZE / sizeof(u64)))
- 		return ERR_PTR(-E2BIG);
+-	r->r.frmr.fr_mr = ib_alloc_fast_reg_mr(pd, depth);
++	r->r.frmr.fr_mr = ib_alloc_mr(pd, IB_MR_TYPE_MEM_REG, depth);
+ 	if (IS_ERR(r->r.frmr.fr_mr))
+ 		goto out_fail;
  
- 	get_random_bytes(&next_stag_index, sizeof(next_stag_index));
-@@ -424,7 +433,7 @@ static struct ib_mr *nes_alloc_fast_reg_mr(struct ib_pd *ibpd, int max_page_list
- 	nes_debug(NES_DBG_MR, "Allocating STag 0x%08X index = 0x%08X\n",
- 		  stag, stag_index);
+@@ -148,7 +148,7 @@ __frwr_init(struct rpcrdma_mw *r, struct ib_pd *pd, struct ib_device *device,
+ 	struct rpcrdma_frmr *f = &r->r.frmr;
+ 	int rc;
  
--	ret = alloc_fast_reg_mr(nesdev, nespd, stag, max_page_list_len);
-+	ret = alloc_fast_reg_mr(nesdev, nespd, stag, max_num_sg);
+-	f->fr_mr = ib_alloc_fast_reg_mr(pd, depth);
++	f->fr_mr = ib_alloc_mr(pd, IB_MR_TYPE_MEM_REG, depth);
+ 	if (IS_ERR(f->fr_mr))
+ 		goto out_mr_err;
+ 	f->fr_pgl = ib_alloc_fast_reg_page_list(device, depth);
+@@ -158,7 +158,7 @@ __frwr_init(struct rpcrdma_mw *r, struct ib_pd *pd, struct ib_device *device,
  
- 	if (ret == 0) {
- 		nesmr->ibmr.rkey = stag;
-@@ -3929,7 +3938,7 @@ struct nes_ib_device *nes_init_ofa_device(struct net_device *netdev)
- 	nesibdev->ibdev.dealloc_mw = nes_dealloc_mw;
- 	nesibdev->ibdev.bind_mw = nes_bind_mw;
+ out_mr_err:
+ 	rc = PTR_ERR(f->fr_mr);
+-	dprintk("RPC:       %s: ib_alloc_fast_reg_mr status %i\n",
++	dprintk("RPC:       %s: ib_alloc_mr status %i\n",
+ 		__func__, rc);
+ 	return rc;
  
--	nesibdev->ibdev.alloc_fast_reg_mr = nes_alloc_fast_reg_mr;
-+	nesibdev->ibdev.alloc_mr = nes_alloc_mr;
- 	nesibdev->ibdev.alloc_fast_reg_page_list = nes_alloc_fast_reg_page_list;
- 	nesibdev->ibdev.free_fast_reg_page_list = nes_free_fast_reg_page_list;
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+index 6b36279..adcf904 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+@@ -738,7 +738,7 @@ static struct svc_rdma_fastreg_mr *rdma_alloc_frmr(struct svcxprt_rdma *xprt)
+ 	if (!frmr)
+ 		goto err;
+ 
+-	mr = ib_alloc_fast_reg_mr(xprt->sc_pd, RPCSVC_MAXPAGES);
++	mr = ib_alloc_mr(xprt->sc_pd, IB_MR_TYPE_MEM_REG, RPCSVC_MAXPAGES);
+ 	if (IS_ERR(mr))
+ 		goto err_free_frmr;
  
 -- 
 1.8.4.3
