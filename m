@@ -1,132 +1,182 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qg0-f48.google.com ([209.85.192.48]:33323 "EHLO
-	mail-qg0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751726AbbGaWO0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 31 Jul 2015 18:14:26 -0400
-Received: by qged69 with SMTP id d69so55525777qge.0
-        for <linux-nfs@vger.kernel.org>; Fri, 31 Jul 2015 15:14:25 -0700 (PDT)
-Subject: [PATCH 6/6] nfsidmap: Clean up other exit status cases
-From: Chuck Lever <chuck.lever@oracle.com>
-To: linux-nfs@vger.kernel.org
-Cc: dhowells@redhat.com
-Date: Fri, 31 Jul 2015 15:14:23 -0700
-Message-ID: <20150731221423.50685.40853.stgit@seurat.1015granger.net>
-In-Reply-To: <20150731220914.50685.32887.stgit@seurat.1015granger.net>
-References: <20150731220914.50685.32887.stgit@seurat.1015granger.net>
+Received: from mail-yk0-f177.google.com ([209.85.160.177]:32961 "EHLO
+	mail-yk0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750744AbbGaW16 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 31 Jul 2015 18:27:58 -0400
+Received: by ykdv124 with SMTP id v124so29766511ykd.0
+        for <linux-nfs@vger.kernel.org>; Fri, 31 Jul 2015 15:27:57 -0700 (PDT)
+Date: Fri, 31 Jul 2015 18:27:54 -0400
+From: Jeff Layton <jlayton@poochiereds.net>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 3/9] nfsd: convert laundry_wq to something less nfsd4
+ specific
+Message-ID: <20150731182754.3d35e3fc@synchrony.poochiereds.net>
+In-Reply-To: <20150731213250.GB20543@fieldses.org>
+References: <1438264341-18048-1-git-send-email-jeff.layton@primarydata.com>
+	<1438264341-18048-5-git-send-email-jeff.layton@primarydata.com>
+	<20150731213250.GB20543@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Make it unambiguous where 0 or 1 represent an exit status.
+On Fri, 31 Jul 2015 17:32:50 -0400
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- utils/nfsidmap/nfsidmap.c |   29 ++++++++++++++---------------
- 1 file changed, 14 insertions(+), 15 deletions(-)
+> On Thu, Jul 30, 2015 at 09:52:15AM -0400, Jeff Layton wrote:
+> > Currently, nfsd uses a singlethread workqueue for this, but that's
+> > probably not necessary. If we have multiple namespaces, then there's no
+> > need to serialize the laundromat runs. They can run in parallel.
+> 
+> Running a singled-threaded workqueue for each namespace is one thing,
+> but if we're allowing multiple work items for one namespace to run
+> simultaneously then this would need more of an argument.
+> 
+> However...  I guess we only requeue this from the end of the work
+> itself, so there's no risk of concurrent execution here, OK, fine.
+> 
+> --b.
+> 
 
-diff --git a/utils/nfsidmap/nfsidmap.c b/utils/nfsidmap/nfsidmap.c
-index e9941b4..88e5c1e 100644
---- a/utils/nfsidmap/nfsidmap.c
-+++ b/utils/nfsidmap/nfsidmap.c
-@@ -286,7 +286,7 @@ static int key_invalidate(char *keystr, int keymask)
- 
- 	if ((fp = fopen(PROCKEYS, "r")) == NULL) {
- 		xlog_err("fopen(%s) failed: %m", PROCKEYS);
--		return 1;
-+		return EXIT_FAILURE;
- 	}
- 
- 	while(fgets(buf, BUFSIZ, fp) != NULL) {
-@@ -325,13 +325,13 @@ static int key_invalidate(char *keystr, int keymask)
- 			if (errno != EOPNOTSUPP) {
- 				xlog_err("keyctl_invalidate(0x%x) failed: %m", key);
- 				fclose(fp);
--				return 1;
-+				return EXIT_FAILURE;
- 			} else {
- 				/* older kernel compatibility attempt: */
- 				if (keyctl_revoke(key) < 0) {
- 					xlog_err("keyctl_revoke(0x%x) failed: %m", key);
- 					fclose(fp);
--					return 1;
-+					return EXIT_FAILURE;
- 				}
- 			}
- 		}
-@@ -339,12 +339,12 @@ static int key_invalidate(char *keystr, int keymask)
- 		keymask &= ~mask;
- 		if (keymask == 0) {
- 			fclose(fp);
--			return 0;
-+			return EXIT_SUCCESS;
- 		}
- 	}
- 	xlog_err("'%s' key was not found.", keystr);
- 	fclose(fp);
--	return 1;
-+	return EXIT_FAILURE;
- }
- 
- int main(int argc, char **argv)
-@@ -403,7 +403,7 @@ int main(int argc, char **argv)
- 
- 	if ((rc = nfs4_init_name_mapping(PATH_IDMAPDCONF)))  {
- 		xlog_errno(rc, "Unable to create name to user id mappings.");
--		return 1;
-+		return EXIT_FAILURE;
- 	}
- 	if (!verbose)
- 		verbose = conf_get_num("General", "Verbosity", 0);
-@@ -414,20 +414,18 @@ int main(int argc, char **argv)
- 		return list_keyring(DEFAULT_KEYRING);
- 
- 	if (keystr) {
--		rc = key_invalidate(keystr, keymask);
--		return rc;		
-+		return key_invalidate(keystr, keymask);
- 	}
- 	if (clearing) {
- 		xlog_syslog(0);
--		rc = keyring_clear(DEFAULT_KEYRING);
--		return rc;		
-+		return keyring_clear(DEFAULT_KEYRING);
- 	}
- 
- 	xlog_stderr(0);
- 	if ((argc - optind) != 2) {
- 		xlog_err("Bad arg count. Check /etc/request-key.conf");
- 		xlog_warn(usage, progname);
--		return 1;
-+		return EXIT_FAILURE;
- 	}
- 
- 	if (verbose)
-@@ -438,13 +436,14 @@ int main(int argc, char **argv)
- 	arg = strdup(argv[optind]);
- 	if (arg == NULL) {
- 		xlog_err("strdup failed: %m");
--		return 1;
-+		return EXIT_FAILURE;
- 	}
- 	type = strtok(arg, ":");
- 	value = strtok(NULL, ":");
--    if (value == NULL) {
-+	if (value == NULL) {
-+		free(arg);
- 		xlog_err("Error: Null uid/gid value.");
--		return 1;
-+		return EXIT_FAILURE;
- 	}
- 	if (verbose) {
- 		xlog_warn("key: 0x%lx type: %s value: %s timeout %ld",
-@@ -464,7 +463,7 @@ int main(int argc, char **argv)
- 		rc = name_lookup(value, key, GROUP);
- 
- 	/* Set timeout to 10 (600 seconds) minutes */
--	if (rc == 0)
-+	if (rc == EXIT_SUCCESS)
- 		keyctl_set_timeout(key, timeout);
- 
- 	free(arg);
+Yes, it should be safe, given that. I should have made it clear in the
+changelog. I'll update that for the next respin.
 
+> > 
+> > Also, create_singlethread_workqueue adds the WQ_MEM_RECLAIM flag, which
+> > doesn't really seem to be necessary. The laundromat jobs are always
+> > kicked off via a timer, and not from memory reclaim paths. There's no
+> > need for a rescuer thread.
+> > 
+> > Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
+> > ---
+> >  fs/nfsd/nfs4state.c | 23 +++++------------------
+> >  fs/nfsd/nfsd.h      |  1 +
+> >  fs/nfsd/nfssvc.c    | 14 +++++++++++++-
+> >  3 files changed, 19 insertions(+), 19 deletions(-)
+> > 
+> > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> > index 79795c898dd1..977a8aee9122 100644
+> > --- a/fs/nfsd/nfs4state.c
+> > +++ b/fs/nfsd/nfs4state.c
+> > @@ -4376,7 +4376,6 @@ nfs4_laundromat(struct nfsd_net *nn)
+> >  	return new_timeo;
+> >  }
+> >  
+> > -static struct workqueue_struct *laundry_wq;
+> >  static void laundromat_main(struct work_struct *);
+> >  
+> >  static void
+> > @@ -4390,7 +4389,7 @@ laundromat_main(struct work_struct *laundry)
+> >  
+> >  	t = nfs4_laundromat(nn);
+> >  	dprintk("NFSD: laundromat_main - sleeping for %ld seconds\n", t);
+> > -	queue_delayed_work(laundry_wq, &nn->laundromat_work, t*HZ);
+> > +	queue_delayed_work(nfsd_laundry_wq, &nn->laundromat_work, t*HZ);
+> >  }
+> >  
+> >  static inline __be32 nfs4_check_fh(struct svc_fh *fhp, struct nfs4_stid *stp)
+> > @@ -6587,7 +6586,8 @@ nfs4_state_start_net(struct net *net)
+> >  	nfsd4_client_tracking_init(net);
+> >  	printk(KERN_INFO "NFSD: starting %ld-second grace period (net %p)\n",
+> >  	       nn->nfsd4_grace, net);
+> > -	queue_delayed_work(laundry_wq, &nn->laundromat_work, nn->nfsd4_grace * HZ);
+> > +	queue_delayed_work(nfsd_laundry_wq, &nn->laundromat_work,
+> > +				nn->nfsd4_grace * HZ);
+> >  	return 0;
+> >  }
+> >  
+> > @@ -6601,22 +6601,10 @@ nfs4_state_start(void)
+> >  	ret = set_callback_cred();
+> >  	if (ret)
+> >  		return -ENOMEM;
+> > -	laundry_wq = create_singlethread_workqueue("nfsd4");
+> > -	if (laundry_wq == NULL) {
+> > -		ret = -ENOMEM;
+> > -		goto out_recovery;
+> > -	}
+> >  	ret = nfsd4_create_callback_queue();
+> > -	if (ret)
+> > -		goto out_free_laundry;
+> > -
+> > -	set_max_delegations();
+> > -
+> > -	return 0;
+> > +	if (!ret)
+> > +		set_max_delegations();
+> >  
+> > -out_free_laundry:
+> > -	destroy_workqueue(laundry_wq);
+> > -out_recovery:
+> >  	return ret;
+> >  }
+> >  
+> > @@ -6653,7 +6641,6 @@ nfs4_state_shutdown_net(struct net *net)
+> >  void
+> >  nfs4_state_shutdown(void)
+> >  {
+> > -	destroy_workqueue(laundry_wq);
+> >  	nfsd4_destroy_callback_queue();
+> >  }
+> >  
+> > diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
+> > index cf980523898b..0199415344ff 100644
+> > --- a/fs/nfsd/nfsd.h
+> > +++ b/fs/nfsd/nfsd.h
+> > @@ -62,6 +62,7 @@ struct readdir_cd {
+> >  extern struct svc_program	nfsd_program;
+> >  extern struct svc_version	nfsd_version2, nfsd_version3,
+> >  				nfsd_version4;
+> > +extern struct workqueue_struct	*nfsd_laundry_wq;
+> >  extern struct mutex		nfsd_mutex;
+> >  extern spinlock_t		nfsd_drc_lock;
+> >  extern unsigned long		nfsd_drc_max_mem;
+> > diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+> > index ad4e2377dd63..ced9944201a0 100644
+> > --- a/fs/nfsd/nfssvc.c
+> > +++ b/fs/nfsd/nfssvc.c
+> > @@ -17,6 +17,7 @@
+> >  #include <linux/lockd/bind.h>
+> >  #include <linux/nfsacl.h>
+> >  #include <linux/seq_file.h>
+> > +#include <linux/workqueue.h>
+> >  #include <net/net_namespace.h>
+> >  #include "nfsd.h"
+> >  #include "cache.h"
+> > @@ -28,6 +29,9 @@
+> >  extern struct svc_program	nfsd_program;
+> >  static int			nfsd(void *vrqstp);
+> >  
+> > +/* A workqueue for nfsd-related cleanup tasks */
+> > +struct workqueue_struct		*nfsd_laundry_wq;
+> > +
+> >  /*
+> >   * nfsd_mutex protects nn->nfsd_serv -- both the pointer itself and the members
+> >   * of the svc_serv struct. In particular, ->sv_nrthreads but also to some
+> > @@ -224,11 +228,19 @@ static int nfsd_startup_generic(int nrservs)
+> >  	if (ret)
+> >  		goto dec_users;
+> >  
+> > +	ret = -ENOMEM;
+> > +	nfsd_laundry_wq = alloc_workqueue("%s", WQ_UNBOUND, 0, "nfsd-laundry");
+> > +	if (!nfsd_laundry_wq)
+> > +		goto out_racache;
+> > +
+> >  	ret = nfs4_state_start();
+> >  	if (ret)
+> > -		goto out_racache;
+> > +		goto out_wq;
+> >  	return 0;
+> >  
+> > +out_wq:
+> > +	destroy_workqueue(nfsd_laundry_wq);
+> > +	nfsd_laundry_wq = NULL;
+> >  out_racache:
+> >  	nfsd_racache_shutdown();
+> >  dec_users:
+> > -- 
+> > 2.4.3
+
+
+-- 
+Jeff Layton <jlayton@poochiereds.net>
