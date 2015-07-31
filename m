@@ -1,30 +1,54 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga09.intel.com ([134.134.136.24]:24081 "EHLO mga09.intel.com"
+Received: from mx1.redhat.com ([209.132.183.28]:52030 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751070AbbGaLlJ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 31 Jul 2015 07:41:09 -0400
-From: "Marciniszyn, Mike" <mike.marciniszyn@intel.com>
-To: Doug Ledford <dledford@redhat.com>
-CC: Sagi Grimberg <sagig@mellanox.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "target-devel@vger.kernel.org" <target-devel@vger.kernel.org>,
-        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>
-Subject: RE: [PATCH for-4.3 14/15] qib: Support ib_alloc_mr verb
-Date: Fri, 31 Jul 2015 11:41:06 +0000
-Message-ID: <32E1700B9017364D9B60AED9960492BC257782EE@fmsmsx120.amr.corp.intel.com>
-References: <1438241568-3685-1-git-send-email-sagig@mellanox.com>
- <1438241568-3685-15-git-send-email-sagig@mellanox.com>
-In-Reply-To: <1438241568-3685-15-git-send-email-sagig@mellanox.com>
-Content-Type: text/plain; charset="us-ascii"
+	id S1750780AbbGaMSW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 31 Jul 2015 08:18:22 -0400
+Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
+	by mx1.redhat.com (Postfix) with ESMTPS id 538CEB72B2
+	for <linux-nfs@vger.kernel.org>; Fri, 31 Jul 2015 12:18:22 +0000 (UTC)
+Received: from smallhat.boston.devel.redhat.com (vpn-48-157.rdu2.redhat.com [10.10.48.157])
+	by int-mx11.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id t6VCILQj003544
+	for <linux-nfs@vger.kernel.org>; Fri, 31 Jul 2015 08:18:21 -0400
+Message-ID: <55BB678C.3050803@RedHat.com>
+Date: Fri, 31 Jul 2015 08:18:20 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] rpc.gssd: Only clear the retval if it has not been set
+References: <1438290916-12071-1-git-send-email-steved@redhat.com>
+In-Reply-To: <1438290916-12071-1-git-send-email-steved@redhat.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> Subject: [PATCH for-4.3 14/15] qib: Support ib_alloc_mr verb
+
+
+On 07/30/2015 05:15 PM, Steve Dickson wrote:
+> In gssd_search_krb5_keytab() an error code can be
+> cleared by blindly setting retval to zero.
 > 
+> Reported-by: Jianhong Yin <jiyin@redhat.com>
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+Committed... 
 
-Doug,
-
-Have you staged this anywhere?
-
-Mike
+steved.
+> ---
+>  utils/gssd/krb5_util.c | 4 +++-
+>  1 file changed, 3 insertions(+), 1 deletion(-)
+> 
+> diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
+> index f1ebc0d..ecf17a2 100644
+> --- a/utils/gssd/krb5_util.c
+> +++ b/utils/gssd/krb5_util.c
+> @@ -772,7 +772,9 @@ gssd_search_krb5_keytab(krb5_context context, krb5_keytab kt,
+>  			    "keytab '%s'\n", k5err, kt_name);
+>  	}
+>  
+> -	retval = 0;
+> +	/* Only clear the retval if has not been set */
+> +	if (retval < 0)
+> +		retval = 0;
+>    out:
+>  	free(k5err);
+>  	return retval;
+> 
