@@ -1,99 +1,183 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from out02.mta.xmission.com ([166.70.13.232]:41826 "EHLO
-	out02.mta.xmission.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750804AbbGaOe3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 31 Jul 2015 10:34:29 -0400
-From: ebiederm@xmission.com (Eric W. Biederman)
-To: Sven Geggus <lists@fuchsschwanzdomain.de>
-Cc: linux-kernel@vger.kernel.org, trond.myklebust@primarydata.com,
-        linux-nfs@vger.kernel.org
-References: <20150731114230.GA31037@geggus.net>
-Date: Fri, 31 Jul 2015 09:27:51 -0500
-In-Reply-To: <20150731114230.GA31037@geggus.net> (Sven Geggus's message of
-	"Fri, 31 Jul 2015 13:42:30 +0200")
-Message-ID: <87r3noieqg.fsf@x220.int.ebiederm.org>
+Received: from mail-qg0-f51.google.com ([209.85.192.51]:35686 "EHLO
+	mail-qg0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751015AbbGaPVF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 31 Jul 2015 11:21:05 -0400
+Received: by qgii95 with SMTP id i95so47800766qgi.2
+        for <linux-nfs@vger.kernel.org>; Fri, 31 Jul 2015 08:21:03 -0700 (PDT)
+Received: from seurat.1015granger.net ([2604:8800:100:81fc:20c:29ff:fe44:ec31])
+        by smtp.gmail.com with ESMTPSA id 188sm2340453qha.41.2015.07.31.08.21.02
+        for <linux-nfs@vger.kernel.org>
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Fri, 31 Jul 2015 08:21:03 -0700 (PDT)
+Subject: [PATCH] nfsidmap: Display the effective NFSv4 domain name
+From: Chuck Lever <chuck.lever@oracle.com>
+To: linux-nfs@vger.kernel.org
+Date: Fri, 31 Jul 2015 08:21:00 -0700
+Message-ID: <20150731150854.1665.50459.stgit@seurat.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain
-Subject: Re: nfs-root: destructive call to __detach_mounts /dev
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Sorry for the extensive man page changes. I added the description
+for the new "-d" option, then realized there was no explanation
+about what an "NFSv4 domain name" is.
 
-I have added the linux-nfs list to hopefully add a wider interested audience.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ utils/nfsidmap/nfsidmap.c   |   24 ++++++++++++++++-
+ utils/nfsidmap/nfsidmap.man |   59 +++++++++++++++++++++++++++++++++++--------
+ 2 files changed, 70 insertions(+), 13 deletions(-)
 
-Sven Geggus <lists@fuchsschwanzdomain.de> writes:
 
-> Hello,
->
-> I have a couple of machines running Debian GNU/Linux 8 using an NFS-ro-mounted
-> root filesystem.
->
-> The systems seem to get bitten by VFS changes in some (unfortunaly
-> somewhat difficult to reproduce) circumstances.
->
-> The effect is, that /dev (dectmpfs) gets unmounted for some strange reason.
->
-> I added the following debug code to fs/namespace.c
->
-> printk(KERN_DEBUG "%s: %s\n", __func__, dentry->d_name.name);
-> dump_stack();
->
-> And this is what I get if one of those events happen:
+Also, I noticed the error checking around the invocations of
+keyctl_instantiate() in id_lookup() appear to be incorrect. The rc
+returned by keyctl_instantiate() is a 0 or a -1, not a negative
+errno. Someone with a regression test suite should sort this out.
 
-The only way to get to d_invalidate in lookup_fast is if d_revalidate
-fails.
 
-Which yields two functions to look at:
-nfs_lookup_revalidate and nfs4_lookup_revalidate
+diff --git a/utils/nfsidmap/nfsidmap.c b/utils/nfsidmap/nfsidmap.c
+index 1f5ba67..45d57c4 100644
+--- a/utils/nfsidmap/nfsidmap.c
++++ b/utils/nfsidmap/nfsidmap.c
+@@ -37,6 +37,21 @@ static int keyring_clear(char *keyring);
+ #define UIDKEYS 0x1
+ #define GIDKEYS 0x2
+ 
++static int display_default_domain(void)
++{
++	char domain[NFS4_MAX_DOMAIN_LEN];
++	int rc;
++
++	rc = nfs4_get_default_domain(NULL, domain, NFS4_MAX_DOMAIN_LEN);
++	if (rc) {
++		xlog_errno(rc, "name_lookup: nfs4_get_default_domain failed: %m");
++		return 1;
++	}
++
++	printf("%s\n", domain);
++	return 0;
++}
++
+ /*
+  * Find either a user or group id based on the name@domain string
+  */
+@@ -248,7 +263,7 @@ int main(int argc, char **argv)
+ 	int timeout = 600;
+ 	key_serial_t key;
+ 	char *progname, *keystr = NULL;
+-	int clearing = 0, keymask = 0;
++	int clearing = 0, keymask = 0, display = 0;
+ 
+ 	/* Set the basename */
+ 	if ((progname = strrchr(argv[0], '/')) != NULL)
+@@ -258,8 +273,11 @@ int main(int argc, char **argv)
+ 
+ 	xlog_open(progname);
+ 
+-	while ((opt = getopt(argc, argv, "u:g:r:ct:v")) != -1) {
++	while ((opt = getopt(argc, argv, "du:g:r:ct:v")) != -1) {
+ 		switch (opt) {
++		case 'd':
++			display++;
++			break;
+ 		case 'u':
+ 			keymask = UIDKEYS;
+ 			keystr = strdup(optarg);
+@@ -294,6 +312,8 @@ int main(int argc, char **argv)
+ 	if (!verbose)
+ 		verbose = conf_get_num("General", "Verbosity", 0);
+ 
++	if (display)
++		return display_default_domain();
+ 	if (keystr) {
+ 		rc = key_invalidate(keystr, keymask);
+ 		return rc;		
+diff --git a/utils/nfsidmap/nfsidmap.man b/utils/nfsidmap/nfsidmap.man
+index 3a3a523..04ddff6 100644
+--- a/utils/nfsidmap/nfsidmap.man
++++ b/utils/nfsidmap/nfsidmap.man
+@@ -11,27 +11,54 @@ nfsidmap \- The NFS idmapper upcall program
+ .B "nfsidmap [-v] [-c]"
+ .br
+ .B "nfsidmap [-v] [-u|-g|-r user]"
++.br
++.B "nfsidmap -d"
+ .SH DESCRIPTION
+-The file
++The NFSv4 protocol represents the local system's UID and GID values
++on the wire as strings of the form
++.IR user@domain .
++The process of translating from UID to string and string to UID is
++referred to as "ID mapping."
++.PP
++The system derives the
++.I user
++part of the string by performing a password or group lookup.
++The lookup mechanism is configured in
++.IR /etc/idmapd.conf .
++.PP
++By default, the
++.I domain
++part of the string is the system's DNS domain name.
++It can also be specified in
++.I /etc/idmapd.conf
++if the system is multi-homed,
++or if the system's DNS domain name does
++not match the name of the system's Kerberos realm.
++.PP
++The
+ .I /usr/sbin/nfsidmap
+-is used by the NFS idmapper to translate user and group ids into names, and to
+-translate user and group names into ids. Idmapper uses request-key to perform
+-the upcall and cache the result.
++program performs translations on behalf of the kernel.
++The kernel uses the request-key mechanism to perform
++an upcall.
+ .I /usr/sbin/nfsidmap
+-is called by /sbin/request-key, and will perform the translation and
+-initialize a key with the resulting information.
++is invoked by /sbin/request-key, performs the translation,
++and initializes a key with the resulting information.
++The kernel then caches the translation results in the key.
+ .PP
+ .I nfsidmap
+-can also used to clear the keyring of all the keys or 
+-revoke one particular key.  
+-This is useful when the id mappings have failed to due 
+-to a lookup error resulting in all the cached uids/gids to be set 
+-to the user id nobody.
++can also clear cached ID map results in the kernel,
++or revoke one particular key.
++An incorrect cached key can result in file and directory ownership
++reverting to "nobody" on NFSv4 mount points.
+ .SH OPTIONS
+ .TP
+ .B -c 
+ Clear the keyring of all the keys.
+ .TP
++.B -d
++Display the system's effective NFSv4 domain name on
++.IR stdout .
++.TP
+ .B -g user
+ Revoke the gid key of the given user.
+ .TP
+@@ -89,5 +116,15 @@ Notice that the new line was added above the line for the generic program.
+ request-key will find the first matching line and run the corresponding program.
+ In this case, /some/other/program will handle all uid lookups, and
+ /usr/sbin/nfsidmap will handle gid, user, and group lookups.
++.SH FILES
++.TP
++.I /etc/idmapd.conf
++ID mapping configuration file
++.TP
++.I /etc/request-key.conf
++Request key configuration file
++.SH "SEE ALSO"
++.BR idmapd.conf (5),
++.BR request-key (8)
+ .SH AUTHOR
+ Bryan Schumaker, <bjschuma@netapp.com>
 
-If what is being revalidated is a mount point nfs4_lookup_revalidate
-calls nfs_lookup_revalidate.  So nfs_lookup_revalidate is the only
-interesting function.
-
-The last round of this was with readdir having problems and invalidating
-the dcache.  So now apparently we are down to something weird happening
-in revalidate.
-
-I don't understand the what nfs_lookup_revalidate is doing particularly
-well.  However it appears that if you enable the kconfig SUNRPC_DEBUG
-option there will be more relevant information.
-
-I am not certain what more to print out that SUNRPC_DEBUG won't, but I
-have verified that SUNRPC_DEBUG will report when a failure path is hit
-in nfs_lookup_revalidate and which failure path was hit (out_bad or
-out_error).
-
-Which should be sufficient to start narrowing down what is happening
-even further.
-
-I hope that helps a little bit in tracking down what is happening.
-
-Eric
-
-> __detach_mounts: dev
-> CPU: 1 PID: 5551 Comm: modtrack Not tainted 4.1.3-debug-00287-g0fe8050-dirty #1
-> Hardware name: Dell Inc. Precision WorkStation T3400  /0TP412, BIOS A03 01/31/2008
->  ffff880127183c18 ffff880127183bc8 ffffffff815605f8 ffff88012bc4fcb0
->  ffff880126c16198 ffff880127183bf8 ffffffff81106cf7 000000000000000f
->  ffff880126c16198 ffff880127183c18 ffff880127183d00 ffff880127183c48
-> Call Trace:
->  [<ffffffff815605f8>] dump_stack+0x4c/0x6e
->  [<ffffffff81106cf7>] __detach_mounts+0x2b/0x12c
->  [<ffffffff810ffbb6>] d_invalidate+0x9a/0xc8
->  [<ffffffff810f6b13>] lookup_fast+0x1f5/0x26f
->  [<ffffffff810f6dba>] do_last.isra.43+0xd6/0x9fb
->  [<ffffffff810f916e>] path_openat+0x1d1/0x53e
->  [<ffffffff810f9f41>] ? user_path_at_empty+0x63/0x93
->  [<ffffffff810f9fe6>] do_filp_open+0x35/0x85
->  [<ffffffff811f1893>] ? find_next_zero_bit+0x17/0x1d
->  [<ffffffff81104225>] ? __alloc_fd+0xdd/0xef
->  [<ffffffff810ec966>] do_sys_open+0x146/0x1d5
->  [<ffffffff810eca1f>] SyS_openat+0xf/0x11
->  [<ffffffff81565a17>] system_call_fastpath+0x12/0x6a
->
-> Regards
->
-> Sven
->
-> P.S.: Kernel is vanilla 4.1.3 with aufs patches, but aufs is not related in
-> this problem.
