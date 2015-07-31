@@ -1,75 +1,132 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yk0-f177.google.com ([209.85.160.177]:33901 "EHLO
-	mail-yk0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1946192AbbGaU24 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 31 Jul 2015 16:28:56 -0400
-Received: by ykax123 with SMTP id x123so68526603yka.1
-        for <linux-nfs@vger.kernel.org>; Fri, 31 Jul 2015 13:28:55 -0700 (PDT)
-Date: Fri, 31 Jul 2015 16:28:51 -0400
-From: Jeff Layton <jlayton@poochiereds.net>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from mail-io0-f182.google.com ([209.85.223.182]:34633 "EHLO
+	mail-io0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755232AbbGaUhz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 31 Jul 2015 16:37:55 -0400
+Received: by ioea135 with SMTP id a135so96671398ioe.1
+        for <linux-nfs@vger.kernel.org>; Fri, 31 Jul 2015 13:37:54 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Tom Haynes <thomas.haynes@primarydata.com>
 Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsd: do nfs4_check_fh in nfs4_check_file instead of
- nfs4_check_olstateid
-Message-ID: <20150731162851.6b727863@tlielax.poochiereds.net>
-In-Reply-To: <20150731200534.GA20543@fieldses.org>
-References: <1438253866-7393-1-git-send-email-jeff.layton@primarydata.com>
-	<20150730151641.GE9349@fieldses.org>
-	<20150731200534.GA20543@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Subject: [PATCH] NFSv4.1/pnfs: Fix atomicity of commit list updates
+Date: Fri, 31 Jul 2015 16:37:50 -0400
+Message-Id: <1438375070-4262-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 31 Jul 2015 16:05:34 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
+pnfs_layout_mark_request_commit() needs to ensure that it adds the
+request to the commit list atomically with all the other updates
+in order to prevent corruption to buckets[ds_commit_idx].wlseg
+due to races with pnfs_generic_clear_request_commit().
 
-> On Thu, Jul 30, 2015 at 11:16:41AM -0400, J. Bruce Fields wrote:
-> > On Thu, Jul 30, 2015 at 06:57:46AM -0400, Jeff Layton wrote:
-> > > Currently, preprocess_stateid_op calls nfs4_check_olstateid which
-> > > verifies that the open stateid corresponds to the current_fh in the
-> > > call by calling nfs4_check_fh.
-> > > 
-> > > If the stateid is a NFS4_DELEG_STID however, then no such check is
-> > > done. Move the call to nfs4_check_fh into nfs4_check_file instead
-> > > so that it can be done for all stateid types.
-> > 
-> > Thanks, applying for 4.2 and -stable with a note that this can screw up
-> > permissions checking later in nfs4_check_file.
-> 
-> By the way I also had to apply the following to avoid a NULL dereference
-> in the special-stateid case (when we'll jump to the "done:" label with
-> "s" still NULL).  Thanks to pynfs4.0 RD1 for catching that....
-> 
-> --b.
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 5cee7f2c4802..95202719a1fd 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -4615,10 +4615,6 @@ nfs4_check_file(struct svc_rqst *rqstp, struct svc_fh *fhp, struct nfs4_stid *s,
->  	struct file *file;
->  	__be32 status;
->  
-> -	status = nfs4_check_fh(fhp, s);
-> -	if (status)
-> -		return status;
-> -
->  	file = nfs4_find_file(s, flags);
->  	if (file) {
->  		status = nfsd_permission(rqstp, fhp->fh_export, fhp->fh_dentry,
-> @@ -4691,6 +4687,9 @@ nfs4_preprocess_stateid_op(struct svc_rqst *rqstp,
->  		status = nfserr_bad_stateid;
->  		break;
->  	}
-> +	if (status)
-> +		goto out;
-> +	status = nfs4_check_fh(fhp, s);
->  
->  done:
->  	if (!status && filpp)
+Fixes: 338d00cfef07d ("pnfs: Refactor the *_layout_mark_request_commit...")
+Cc: stable@vger.kernel.org # v4.0+
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfs/internal.h | 13 +++++++++----
+ fs/nfs/pnfs_nfs.c |  5 +++--
+ fs/nfs/write.c    | 28 +++++++++++++++++++++++-----
+ 3 files changed, 35 insertions(+), 11 deletions(-)
 
-Good catch. My bad for not running pynfs against it! If you're adding
-this as a separate patch you can add my:
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 9b372b845f6a..9553e024fa7d 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -490,6 +490,9 @@ void nfs_retry_commit(struct list_head *page_list,
+ void nfs_commitdata_release(struct nfs_commit_data *data);
+ void nfs_request_add_commit_list(struct nfs_page *req, struct list_head *dst,
+ 				 struct nfs_commit_info *cinfo);
++void nfs_request_add_commit_list_locked(struct nfs_page *req,
++		struct list_head *dst,
++		struct nfs_commit_info *cinfo);
+ void nfs_request_remove_commit_list(struct nfs_page *req,
+ 				    struct nfs_commit_info *cinfo);
+ void nfs_init_cinfo(struct nfs_commit_info *cinfo,
+@@ -623,13 +626,15 @@ void nfs_super_set_maxbytes(struct super_block *sb, __u64 maxfilesize)
+  * Record the page as unstable and mark its inode as dirty.
+  */
+ static inline
+-void nfs_mark_page_unstable(struct page *page)
++void nfs_mark_page_unstable(struct page *page, struct nfs_commit_info *cinfo)
+ {
+ 	struct inode *inode = page_file_mapping(page)->host;
+ 
+-	inc_zone_page_state(page, NR_UNSTABLE_NFS);
+-	inc_wb_stat(&inode_to_bdi(inode)->wb, WB_RECLAIMABLE);
+-	 __mark_inode_dirty(inode, I_DIRTY_DATASYNC);
++	if (!cinfo->dreq) {
++		inc_zone_page_state(page, NR_UNSTABLE_NFS);
++		inc_wb_stat(&inode_to_bdi(inode)->wb, WB_RECLAIMABLE);
++		__mark_inode_dirty(inode, I_DIRTY_DATASYNC);
++	}
+ }
+ 
+ /*
+diff --git a/fs/nfs/pnfs_nfs.c b/fs/nfs/pnfs_nfs.c
+index f37e25b6311c..7a282876662f 100644
+--- a/fs/nfs/pnfs_nfs.c
++++ b/fs/nfs/pnfs_nfs.c
+@@ -863,9 +863,10 @@ pnfs_layout_mark_request_commit(struct nfs_page *req,
+ 	}
+ 	set_bit(PG_COMMIT_TO_DS, &req->wb_flags);
+ 	cinfo->ds->nwritten++;
+-	spin_unlock(cinfo->lock);
+ 
+-	nfs_request_add_commit_list(req, list, cinfo);
++	nfs_request_add_commit_list_locked(req, list, cinfo);
++	spin_unlock(cinfo->lock);
++	nfs_mark_page_unstable(req->wb_page, cinfo);
+ }
+ EXPORT_SYMBOL_GPL(pnfs_layout_mark_request_commit);
+ 
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 75a35a1afa79..135a6b3aa4fb 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -768,6 +768,27 @@ nfs_page_search_commits_for_head_request_locked(struct nfs_inode *nfsi,
+ }
+ 
+ /**
++ * nfs_request_add_commit_list_locked - add request to a commit list
++ * @req: pointer to a struct nfs_page
++ * @dst: commit list head
++ * @cinfo: holds list lock and accounting info
++ *
++ * This sets the PG_CLEAN bit, updates the cinfo count of
++ * number of outstanding requests requiring a commit as well as
++ * the MM page stats.
++ *
++ * The caller must hold the cinfo->lock, and the nfs_page lock.
++ */
++void
++nfs_request_add_commit_list_locked(struct nfs_page *req, struct list_head *dst,
++			    struct nfs_commit_info *cinfo)
++{
++	set_bit(PG_CLEAN, &req->wb_flags);
++	nfs_list_add_request(req, dst);
++	cinfo->mds->ncommit++;
++}
++
++/**
+  * nfs_request_add_commit_list - add request to a commit list
+  * @req: pointer to a struct nfs_page
+  * @dst: commit list head
+@@ -784,13 +805,10 @@ void
+ nfs_request_add_commit_list(struct nfs_page *req, struct list_head *dst,
+ 			    struct nfs_commit_info *cinfo)
+ {
+-	set_bit(PG_CLEAN, &(req)->wb_flags);
+ 	spin_lock(cinfo->lock);
+-	nfs_list_add_request(req, dst);
+-	cinfo->mds->ncommit++;
++	nfs_request_add_commit_list_locked(req, dst, cinfo);
+ 	spin_unlock(cinfo->lock);
+-	if (!cinfo->dreq)
+-		nfs_mark_page_unstable(req->wb_page);
++	nfs_mark_page_unstable(req->wb_page, cinfo);
+ }
+ EXPORT_SYMBOL_GPL(nfs_request_add_commit_list);
+ 
+-- 
+2.4.3
 
-Reviewed-by: Jeff Layton <jlayton@poochiereds.net>
