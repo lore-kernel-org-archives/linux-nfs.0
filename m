@@ -1,64 +1,64 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qg0-f44.google.com ([209.85.192.44]:33015 "EHLO
-	mail-qg0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753664AbbGaTrR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 31 Jul 2015 15:47:17 -0400
-Received: by qged69 with SMTP id d69so53130406qge.0
-        for <linux-nfs@vger.kernel.org>; Fri, 31 Jul 2015 12:47:16 -0700 (PDT)
+Received: from fieldses.org ([173.255.197.46]:34495 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751183AbbGaUFf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 31 Jul 2015 16:05:35 -0400
+Date: Fri, 31 Jul 2015 16:05:34 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@poochiereds.net>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfsd: do nfs4_check_fh in nfs4_check_file instead of
+ nfs4_check_olstateid
+Message-ID: <20150731200534.GA20543@fieldses.org>
+References: <1438253866-7393-1-git-send-email-jeff.layton@primarydata.com>
+ <20150730151641.GE9349@fieldses.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2102\))
-Subject: Re: [PATCH] nfsidmap: Enumerate kernel cache of ID mapping results
-From: Chuck Lever <chucklever@gmail.com>
-In-Reply-To: <6788.1438371183@warthog.procyon.org.uk>
-Date: Fri, 31 Jul 2015 15:47:10 -0400
-Cc: Chuck Lever <chuck.lever@oracle.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <BA520196-CB02-4C4F-A779-FA83B1C538FC@gmail.com>
-References: <20150731175414.8708.69775.stgit@seurat.1015granger.net> <6788.1438371183@warthog.procyon.org.uk>
-To: David Howells <dhowells@redhat.com>
+In-Reply-To: <20150730151641.GE9349@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-> On Jul 31, 2015, at 3:33 PM, David Howells <dhowells@redhat.com> wrote:
+On Thu, Jul 30, 2015 at 11:16:41AM -0400, J. Bruce Fields wrote:
+> On Thu, Jul 30, 2015 at 06:57:46AM -0400, Jeff Layton wrote:
+> > Currently, preprocess_stateid_op calls nfs4_check_olstateid which
+> > verifies that the open stateid corresponds to the current_fh in the
+> > call by calling nfs4_check_fh.
+> > 
+> > If the stateid is a NFS4_DELEG_STID however, then no such check is
+> > done. Move the call to nfs4_check_fh into nfs4_check_file instead
+> > so that it can be done for all stateid types.
 > 
-> Chuck Lever <chuck.lever@oracle.com> wrote:
-> 
->> +	if ((fp = fopen(PROCKEYS, "r")) == NULL) {
->> +		xlog_err("fopen(%s) failed: %m", PROCKEYS);
->> +		return 1;
->> +	}
->> +
->> +	rc = 1;
->> +	while(fgets(buf, BUFSIZ, fp) != NULL) {
->> +		unsigned int id;
->> +
->> +		if (strstr(buf, "keyring") == NULL)
->> +			continue;
->> +		if (strstr(buf, keyring) == NULL)
->> +			continue;
->> +		if (sscanf(buf, "%x %*s", &id) != 1)
->> +			continue;
->> +
->> +		list_keys(keyring, (key_serial_t)id);
->> +		rc = 0;
->> +		break;
->> +	}
->> +
-> 
-> Did you want find_key_by_type_and_desc() in libkeyutils?
+> Thanks, applying for 4.2 and -stable with a note that this can screw up
+> permissions checking later in nfs4_check_file.
 
-Yes, but find_key_by_type_and_desc() does not appear in older
-versions of /usr/include/keyutils.h.
+By the way I also had to apply the following to avoid a NULL dereference
+in the special-stateid case (when we'll jump to the "done:" label with
+"s" still NULL).  Thanks to pynfs4.0 RD1 for catching that....
 
-Well, I think this logic can be factored out (it is also used
-in keyring_clear) and used if find_key_by_type_and_desc()
-does not exist.
+--b.
 
-
---
-Chuck Lever
-chucklever@gmail.com
-
-
-
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 5cee7f2c4802..95202719a1fd 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4615,10 +4615,6 @@ nfs4_check_file(struct svc_rqst *rqstp, struct svc_fh *fhp, struct nfs4_stid *s,
+ 	struct file *file;
+ 	__be32 status;
+ 
+-	status = nfs4_check_fh(fhp, s);
+-	if (status)
+-		return status;
+-
+ 	file = nfs4_find_file(s, flags);
+ 	if (file) {
+ 		status = nfsd_permission(rqstp, fhp->fh_export, fhp->fh_dentry,
+@@ -4691,6 +4687,9 @@ nfs4_preprocess_stateid_op(struct svc_rqst *rqstp,
+ 		status = nfserr_bad_stateid;
+ 		break;
+ 	}
++	if (status)
++		goto out;
++	status = nfs4_check_fh(fhp, s);
+ 
+ done:
+ 	if (!status && filpp)
