@@ -1,132 +1,168 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f182.google.com ([209.85.223.182]:34633 "EHLO
-	mail-io0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755232AbbGaUhz (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 31 Jul 2015 16:37:55 -0400
-Received: by ioea135 with SMTP id a135so96671398ioe.1
-        for <linux-nfs@vger.kernel.org>; Fri, 31 Jul 2015 13:37:54 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Tom Haynes <thomas.haynes@primarydata.com>
+Received: from fieldses.org ([173.255.197.46]:34555 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754476AbbGaVcv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 31 Jul 2015 17:32:51 -0400
+Date: Fri, 31 Jul 2015 17:32:50 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@poochiereds.net>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] NFSv4.1/pnfs: Fix atomicity of commit list updates
-Date: Fri, 31 Jul 2015 16:37:50 -0400
-Message-Id: <1438375070-4262-1-git-send-email-trond.myklebust@primarydata.com>
+Subject: Re: [PATCH 3/9] nfsd: convert laundry_wq to something less nfsd4
+ specific
+Message-ID: <20150731213250.GB20543@fieldses.org>
+References: <1438264341-18048-1-git-send-email-jeff.layton@primarydata.com>
+ <1438264341-18048-5-git-send-email-jeff.layton@primarydata.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1438264341-18048-5-git-send-email-jeff.layton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-pnfs_layout_mark_request_commit() needs to ensure that it adds the
-request to the commit list atomically with all the other updates
-in order to prevent corruption to buckets[ds_commit_idx].wlseg
-due to races with pnfs_generic_clear_request_commit().
+On Thu, Jul 30, 2015 at 09:52:15AM -0400, Jeff Layton wrote:
+> Currently, nfsd uses a singlethread workqueue for this, but that's
+> probably not necessary. If we have multiple namespaces, then there's no
+> need to serialize the laundromat runs. They can run in parallel.
 
-Fixes: 338d00cfef07d ("pnfs: Refactor the *_layout_mark_request_commit...")
-Cc: stable@vger.kernel.org # v4.0+
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/internal.h | 13 +++++++++----
- fs/nfs/pnfs_nfs.c |  5 +++--
- fs/nfs/write.c    | 28 +++++++++++++++++++++++-----
- 3 files changed, 35 insertions(+), 11 deletions(-)
+Running a singled-threaded workqueue for each namespace is one thing,
+but if we're allowing multiple work items for one namespace to run
+simultaneously then this would need more of an argument.
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 9b372b845f6a..9553e024fa7d 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -490,6 +490,9 @@ void nfs_retry_commit(struct list_head *page_list,
- void nfs_commitdata_release(struct nfs_commit_data *data);
- void nfs_request_add_commit_list(struct nfs_page *req, struct list_head *dst,
- 				 struct nfs_commit_info *cinfo);
-+void nfs_request_add_commit_list_locked(struct nfs_page *req,
-+		struct list_head *dst,
-+		struct nfs_commit_info *cinfo);
- void nfs_request_remove_commit_list(struct nfs_page *req,
- 				    struct nfs_commit_info *cinfo);
- void nfs_init_cinfo(struct nfs_commit_info *cinfo,
-@@ -623,13 +626,15 @@ void nfs_super_set_maxbytes(struct super_block *sb, __u64 maxfilesize)
-  * Record the page as unstable and mark its inode as dirty.
-  */
- static inline
--void nfs_mark_page_unstable(struct page *page)
-+void nfs_mark_page_unstable(struct page *page, struct nfs_commit_info *cinfo)
- {
- 	struct inode *inode = page_file_mapping(page)->host;
- 
--	inc_zone_page_state(page, NR_UNSTABLE_NFS);
--	inc_wb_stat(&inode_to_bdi(inode)->wb, WB_RECLAIMABLE);
--	 __mark_inode_dirty(inode, I_DIRTY_DATASYNC);
-+	if (!cinfo->dreq) {
-+		inc_zone_page_state(page, NR_UNSTABLE_NFS);
-+		inc_wb_stat(&inode_to_bdi(inode)->wb, WB_RECLAIMABLE);
-+		__mark_inode_dirty(inode, I_DIRTY_DATASYNC);
-+	}
- }
- 
- /*
-diff --git a/fs/nfs/pnfs_nfs.c b/fs/nfs/pnfs_nfs.c
-index f37e25b6311c..7a282876662f 100644
---- a/fs/nfs/pnfs_nfs.c
-+++ b/fs/nfs/pnfs_nfs.c
-@@ -863,9 +863,10 @@ pnfs_layout_mark_request_commit(struct nfs_page *req,
- 	}
- 	set_bit(PG_COMMIT_TO_DS, &req->wb_flags);
- 	cinfo->ds->nwritten++;
--	spin_unlock(cinfo->lock);
- 
--	nfs_request_add_commit_list(req, list, cinfo);
-+	nfs_request_add_commit_list_locked(req, list, cinfo);
-+	spin_unlock(cinfo->lock);
-+	nfs_mark_page_unstable(req->wb_page, cinfo);
- }
- EXPORT_SYMBOL_GPL(pnfs_layout_mark_request_commit);
- 
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 75a35a1afa79..135a6b3aa4fb 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -768,6 +768,27 @@ nfs_page_search_commits_for_head_request_locked(struct nfs_inode *nfsi,
- }
- 
- /**
-+ * nfs_request_add_commit_list_locked - add request to a commit list
-+ * @req: pointer to a struct nfs_page
-+ * @dst: commit list head
-+ * @cinfo: holds list lock and accounting info
-+ *
-+ * This sets the PG_CLEAN bit, updates the cinfo count of
-+ * number of outstanding requests requiring a commit as well as
-+ * the MM page stats.
-+ *
-+ * The caller must hold the cinfo->lock, and the nfs_page lock.
-+ */
-+void
-+nfs_request_add_commit_list_locked(struct nfs_page *req, struct list_head *dst,
-+			    struct nfs_commit_info *cinfo)
-+{
-+	set_bit(PG_CLEAN, &req->wb_flags);
-+	nfs_list_add_request(req, dst);
-+	cinfo->mds->ncommit++;
-+}
-+
-+/**
-  * nfs_request_add_commit_list - add request to a commit list
-  * @req: pointer to a struct nfs_page
-  * @dst: commit list head
-@@ -784,13 +805,10 @@ void
- nfs_request_add_commit_list(struct nfs_page *req, struct list_head *dst,
- 			    struct nfs_commit_info *cinfo)
- {
--	set_bit(PG_CLEAN, &(req)->wb_flags);
- 	spin_lock(cinfo->lock);
--	nfs_list_add_request(req, dst);
--	cinfo->mds->ncommit++;
-+	nfs_request_add_commit_list_locked(req, dst, cinfo);
- 	spin_unlock(cinfo->lock);
--	if (!cinfo->dreq)
--		nfs_mark_page_unstable(req->wb_page);
-+	nfs_mark_page_unstable(req->wb_page, cinfo);
- }
- EXPORT_SYMBOL_GPL(nfs_request_add_commit_list);
- 
--- 
-2.4.3
+However...  I guess we only requeue this from the end of the work
+itself, so there's no risk of concurrent execution here, OK, fine.
 
+--b.
+
+> 
+> Also, create_singlethread_workqueue adds the WQ_MEM_RECLAIM flag, which
+> doesn't really seem to be necessary. The laundromat jobs are always
+> kicked off via a timer, and not from memory reclaim paths. There's no
+> need for a rescuer thread.
+> 
+> Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
+> ---
+>  fs/nfsd/nfs4state.c | 23 +++++------------------
+>  fs/nfsd/nfsd.h      |  1 +
+>  fs/nfsd/nfssvc.c    | 14 +++++++++++++-
+>  3 files changed, 19 insertions(+), 19 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 79795c898dd1..977a8aee9122 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -4376,7 +4376,6 @@ nfs4_laundromat(struct nfsd_net *nn)
+>  	return new_timeo;
+>  }
+>  
+> -static struct workqueue_struct *laundry_wq;
+>  static void laundromat_main(struct work_struct *);
+>  
+>  static void
+> @@ -4390,7 +4389,7 @@ laundromat_main(struct work_struct *laundry)
+>  
+>  	t = nfs4_laundromat(nn);
+>  	dprintk("NFSD: laundromat_main - sleeping for %ld seconds\n", t);
+> -	queue_delayed_work(laundry_wq, &nn->laundromat_work, t*HZ);
+> +	queue_delayed_work(nfsd_laundry_wq, &nn->laundromat_work, t*HZ);
+>  }
+>  
+>  static inline __be32 nfs4_check_fh(struct svc_fh *fhp, struct nfs4_stid *stp)
+> @@ -6587,7 +6586,8 @@ nfs4_state_start_net(struct net *net)
+>  	nfsd4_client_tracking_init(net);
+>  	printk(KERN_INFO "NFSD: starting %ld-second grace period (net %p)\n",
+>  	       nn->nfsd4_grace, net);
+> -	queue_delayed_work(laundry_wq, &nn->laundromat_work, nn->nfsd4_grace * HZ);
+> +	queue_delayed_work(nfsd_laundry_wq, &nn->laundromat_work,
+> +				nn->nfsd4_grace * HZ);
+>  	return 0;
+>  }
+>  
+> @@ -6601,22 +6601,10 @@ nfs4_state_start(void)
+>  	ret = set_callback_cred();
+>  	if (ret)
+>  		return -ENOMEM;
+> -	laundry_wq = create_singlethread_workqueue("nfsd4");
+> -	if (laundry_wq == NULL) {
+> -		ret = -ENOMEM;
+> -		goto out_recovery;
+> -	}
+>  	ret = nfsd4_create_callback_queue();
+> -	if (ret)
+> -		goto out_free_laundry;
+> -
+> -	set_max_delegations();
+> -
+> -	return 0;
+> +	if (!ret)
+> +		set_max_delegations();
+>  
+> -out_free_laundry:
+> -	destroy_workqueue(laundry_wq);
+> -out_recovery:
+>  	return ret;
+>  }
+>  
+> @@ -6653,7 +6641,6 @@ nfs4_state_shutdown_net(struct net *net)
+>  void
+>  nfs4_state_shutdown(void)
+>  {
+> -	destroy_workqueue(laundry_wq);
+>  	nfsd4_destroy_callback_queue();
+>  }
+>  
+> diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
+> index cf980523898b..0199415344ff 100644
+> --- a/fs/nfsd/nfsd.h
+> +++ b/fs/nfsd/nfsd.h
+> @@ -62,6 +62,7 @@ struct readdir_cd {
+>  extern struct svc_program	nfsd_program;
+>  extern struct svc_version	nfsd_version2, nfsd_version3,
+>  				nfsd_version4;
+> +extern struct workqueue_struct	*nfsd_laundry_wq;
+>  extern struct mutex		nfsd_mutex;
+>  extern spinlock_t		nfsd_drc_lock;
+>  extern unsigned long		nfsd_drc_max_mem;
+> diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+> index ad4e2377dd63..ced9944201a0 100644
+> --- a/fs/nfsd/nfssvc.c
+> +++ b/fs/nfsd/nfssvc.c
+> @@ -17,6 +17,7 @@
+>  #include <linux/lockd/bind.h>
+>  #include <linux/nfsacl.h>
+>  #include <linux/seq_file.h>
+> +#include <linux/workqueue.h>
+>  #include <net/net_namespace.h>
+>  #include "nfsd.h"
+>  #include "cache.h"
+> @@ -28,6 +29,9 @@
+>  extern struct svc_program	nfsd_program;
+>  static int			nfsd(void *vrqstp);
+>  
+> +/* A workqueue for nfsd-related cleanup tasks */
+> +struct workqueue_struct		*nfsd_laundry_wq;
+> +
+>  /*
+>   * nfsd_mutex protects nn->nfsd_serv -- both the pointer itself and the members
+>   * of the svc_serv struct. In particular, ->sv_nrthreads but also to some
+> @@ -224,11 +228,19 @@ static int nfsd_startup_generic(int nrservs)
+>  	if (ret)
+>  		goto dec_users;
+>  
+> +	ret = -ENOMEM;
+> +	nfsd_laundry_wq = alloc_workqueue("%s", WQ_UNBOUND, 0, "nfsd-laundry");
+> +	if (!nfsd_laundry_wq)
+> +		goto out_racache;
+> +
+>  	ret = nfs4_state_start();
+>  	if (ret)
+> -		goto out_racache;
+> +		goto out_wq;
+>  	return 0;
+>  
+> +out_wq:
+> +	destroy_workqueue(nfsd_laundry_wq);
+> +	nfsd_laundry_wq = NULL;
+>  out_racache:
+>  	nfsd_racache_shutdown();
+>  dec_users:
+> -- 
+> 2.4.3
