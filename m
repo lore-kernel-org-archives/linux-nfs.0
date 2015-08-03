@@ -1,13 +1,13 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qg0-f54.google.com ([209.85.192.54]:36007 "EHLO
-	mail-qg0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753866AbbHCRFH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Aug 2015 13:05:07 -0400
-Subject: [PATCH v4 16/16] xprtrdma: take HCA driver refcount at client
+Received: from mail-qg0-f51.google.com ([209.85.192.51]:33023 "EHLO
+	mail-qg0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753524AbbHCRE3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Aug 2015 13:04:29 -0400
+Subject: [PATCH v4 12/16] xprtrdma: Fix large NFS SYMLINK calls
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 03 Aug 2015 13:05:04 -0400
-Message-ID: <20150803170504.9115.48166.stgit@manet.1015granger.net>
+Date: Mon, 03 Aug 2015 13:04:26 -0400
+Message-ID: <20150803170426.9115.31004.stgit@manet.1015granger.net>
 In-Reply-To: <20150803165807.9115.23842.stgit@manet.1015granger.net>
 References: <20150803165807.9115.23842.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -15,148 +15,107 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Devesh Sharma <devesh.sharma@avagotech.com>
+Repair how rpcrdma_marshal_req() chooses which RDMA message type
+to use for large non-WRITE operations so that it picks RDMA_NOMSG
+in the correct situations, and sets up the marshaling logic to
+SEND only the RPC/RDMA header.
 
-This is a rework of the following patch sent almost a year back:
-http://www.mail-archive.com/linux-rdma%40vger.kernel.org/msg20730.html
+Large NFSv2 SYMLINK requests now use RDMA_NOMSG calls. The Linux NFS
+server XDR decoder for NFSv2 SYMLINK does not handle having the
+pathname argument arrive in a separate buffer. The decoder could be
+fixed, but this is simpler and RDMA_NOMSG can be used in a variety
+of other situations.
 
-In presence of active mount if someone tries to rmmod vendor-driver, the
-command remains stuck forever waiting for destruction of all rdma-cm-id.
-in worst case client can crash during shutdown with active mounts.
+Ensure that the Linux client continues to use "RDMA_MSG + read
+list" when sending large NFSv3 SYMLINK requests, which is more
+efficient than using RDMA_NOMSG.
 
-The existing code assumes that ia->ri_id->device cannot change during
-the lifetime of a transport. xprtrdma do not have support for
-DEVICE_REMOVAL event either. Lifting that assumption and adding support
-for DEVICE_REMOVAL event is a long chain of work, and is in plan.
+Large NFSv4 CREATE(NF4LNK) requests are changed to use "RDMA_MSG +
+read list" just like NFSv3 (see Section 5 of RFC 5667). Before,
+these did not work at all.
 
-The community decided that preventing the hang right now is more
-important than waiting for architectural changes.
-
-Thus, this patch introduces a temporary workaround to acquire HCA driver
-module reference count during the mount of a nfs-rdma mount point.
-
-Signed-off-by: Devesh Sharma <devesh.sharma@avagotech.com>
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Reviewed-by: Sagi Grimberg <sagig@dev.mellanox.co.il>
+Tested-by: Devesh Sharma <devesh.sharma@avagotech.com>
 ---
- net/sunrpc/xprtrdma/verbs.c |   41 +++++++++++++++++++++++++++++++++--------
- 1 file changed, 33 insertions(+), 8 deletions(-)
+ fs/nfs/nfs3xdr.c               |    1 +
+ fs/nfs/nfs4xdr.c               |    4 +++-
+ net/sunrpc/xprtrdma/rpc_rdma.c |   25 ++++++++++++++++---------
+ 3 files changed, 20 insertions(+), 10 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index b4d4f63..b98fb3b 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -52,6 +52,7 @@
- #include <linux/prefetch.h>
- #include <linux/sunrpc/addr.h>
- #include <asm/bitops.h>
-+#include <linux/module.h> /* try_module_get()/module_put() */
- 
- #include "xprt_rdma.h"
- 
-@@ -414,6 +415,16 @@ connected:
- 	return 0;
+diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
+index 9b04c2e..267126d 100644
+--- a/fs/nfs/nfs3xdr.c
++++ b/fs/nfs/nfs3xdr.c
+@@ -1103,6 +1103,7 @@ static void nfs3_xdr_enc_symlink3args(struct rpc_rqst *req,
+ {
+ 	encode_diropargs3(xdr, args->fromfh, args->fromname, args->fromlen);
+ 	encode_symlinkdata3(xdr, args);
++	xdr->buf->flags |= XDRBUF_WRITE;
  }
  
-+static void rpcrdma_destroy_id(struct rdma_cm_id *id)
-+{
-+	if (id) {
-+		pr_warn("%s: releasing provider for id %p\n",
-+			__func__, id);
-+		module_put(id->device->owner);
-+		rdma_destroy_id(id);
+ /*
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 558cd65d..c42459e 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -1154,7 +1154,9 @@ static void encode_create(struct xdr_stream *xdr, const struct nfs4_create_arg *
+ 	case NF4LNK:
+ 		p = reserve_space(xdr, 4);
+ 		*p = cpu_to_be32(create->u.symlink.len);
+-		xdr_write_pages(xdr, create->u.symlink.pages, 0, create->u.symlink.len);
++		xdr_write_pages(xdr, create->u.symlink.pages, 0,
++				create->u.symlink.len);
++		xdr->buf->flags |= XDRBUF_WRITE;
+ 		break;
+ 
+ 	case NF4BLK: case NF4CHR:
+diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+index 1dd48f2..2721586 100644
+--- a/net/sunrpc/xprtrdma/rpc_rdma.c
++++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+@@ -475,21 +475,24 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
+ 	 *
+ 	 * o If the total request is under the inline threshold, all ops
+ 	 *   are sent as inline.
+-	 * o Large non-write ops are sent with the entire message as a
+-	 *   single read chunk (protocol 0-position special case).
+ 	 * o Large write ops transmit data as read chunk(s), header as
+ 	 *   inline.
++	 * o Large non-write ops are sent with the entire message as a
++	 *   single read chunk (protocol 0-position special case).
+ 	 *
+-	 * Note: the NFS code sending down multiple argument segments
+-	 * implies the op is a write.
+-	 * TBD check NFSv4 setacl
++	 * This assumes that the upper layer does not present a request
++	 * that both has a data payload, and whose non-data arguments
++	 * by themselves are larger than the inline threshold.
+ 	 */
+-	if (rpcrdma_args_inline(rqst))
++	if (rpcrdma_args_inline(rqst)) {
+ 		rtype = rpcrdma_noch;
+-	else if (rqst->rq_snd_buf.page_len == 0)
+-		rtype = rpcrdma_areadch;
+-	else
++	} else if (rqst->rq_snd_buf.flags & XDRBUF_WRITE) {
+ 		rtype = rpcrdma_readch;
++	} else {
++		headerp->rm_type = htonl(RDMA_NOMSG);
++		rtype = rpcrdma_areadch;
++		rpclen = 0;
 +	}
-+}
+ 
+ 	/* The following simplification is not true forever */
+ 	if (rtype != rpcrdma_noch && wtype == rpcrdma_replych)
+@@ -546,6 +549,10 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
+ 	req->rl_send_iov[0].length = hdrlen;
+ 	req->rl_send_iov[0].lkey = rdmab_lkey(req->rl_rdmabuf);
+ 
++	req->rl_niovs = 1;
++	if (rtype == rpcrdma_areadch)
++		return 0;
 +
- static struct rdma_cm_id *
- rpcrdma_create_id(struct rpcrdma_xprt *xprt,
- 			struct rpcrdma_ia *ia, struct sockaddr *addr)
-@@ -440,25 +451,39 @@ rpcrdma_create_id(struct rpcrdma_xprt *xprt,
- 	}
- 	wait_for_completion_interruptible_timeout(&ia->ri_done,
- 				msecs_to_jiffies(RDMA_RESOLVE_TIMEOUT) + 1);
-+
-+	/* FIXME:
-+	 * Until xprtrdma supports DEVICE_REMOVAL, the provider must
-+	 * be pinned while there are active NFS/RDMA mounts to prevent
-+	 * hangs and crashes at umount time.
-+	 */
-+	if (!ia->ri_async_rc && !try_module_get(id->device->owner)) {
-+		dprintk("RPC:       %s: Failed to get device module\n",
-+			__func__);
-+		ia->ri_async_rc = -ENODEV;
-+	}
- 	rc = ia->ri_async_rc;
- 	if (rc)
- 		goto out;
- 
-+	pr_warn("%s: pinning provider for id %p\n", __func__, id);
-+
- 	ia->ri_async_rc = -ETIMEDOUT;
- 	rc = rdma_resolve_route(id, RDMA_RESOLVE_TIMEOUT);
- 	if (rc) {
- 		dprintk("RPC:       %s: rdma_resolve_route() failed %i\n",
- 			__func__, rc);
--		goto out;
-+		goto put;
- 	}
- 	wait_for_completion_interruptible_timeout(&ia->ri_done,
- 				msecs_to_jiffies(RDMA_RESOLVE_TIMEOUT) + 1);
- 	rc = ia->ri_async_rc;
- 	if (rc)
--		goto out;
-+		goto put;
- 
- 	return id;
--
-+put:
-+	module_put(id->device->owner);
- out:
- 	rdma_destroy_id(id);
- 	return ERR_PTR(rc);
-@@ -566,7 +591,7 @@ out3:
- 	ib_dealloc_pd(ia->ri_pd);
- 	ia->ri_pd = NULL;
- out2:
--	rdma_destroy_id(ia->ri_id);
-+	rpcrdma_destroy_id(ia->ri_id);
- 	ia->ri_id = NULL;
- out1:
- 	return rc;
-@@ -584,7 +609,7 @@ rpcrdma_ia_close(struct rpcrdma_ia *ia)
- 	if (ia->ri_id != NULL && !IS_ERR(ia->ri_id)) {
- 		if (ia->ri_id->qp)
- 			rdma_destroy_qp(ia->ri_id);
--		rdma_destroy_id(ia->ri_id);
-+		rpcrdma_destroy_id(ia->ri_id);
- 		ia->ri_id = NULL;
- 	}
- 
-@@ -794,7 +819,7 @@ retry:
- 		if (ia->ri_device != id->device) {
- 			printk("RPC:       %s: can't reconnect on "
- 				"different device!\n", __func__);
--			rdma_destroy_id(id);
-+			rpcrdma_destroy_id(id);
- 			rc = -ENETUNREACH;
- 			goto out;
- 		}
-@@ -803,7 +828,7 @@ retry:
- 		if (rc) {
- 			dprintk("RPC:       %s: rdma_create_qp failed %i\n",
- 				__func__, rc);
--			rdma_destroy_id(id);
-+			rpcrdma_destroy_id(id);
- 			rc = -ENETUNREACH;
- 			goto out;
- 		}
-@@ -814,7 +839,7 @@ retry:
- 		write_unlock(&ia->ri_qplock);
- 
- 		rdma_destroy_qp(old);
--		rdma_destroy_id(old);
-+		rpcrdma_destroy_id(old);
- 	} else {
- 		dprintk("RPC:       %s: connecting...\n", __func__);
- 		rc = rdma_create_qp(ia->ri_id, ia->ri_pd, &ep->rep_attr);
+ 	req->rl_send_iov[1].addr = rdmab_addr(req->rl_sendbuf);
+ 	req->rl_send_iov[1].length = rpclen;
+ 	req->rl_send_iov[1].lkey = rdmab_lkey(req->rl_sendbuf);
 
