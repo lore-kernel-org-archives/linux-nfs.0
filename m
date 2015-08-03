@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qg0-f50.google.com ([209.85.192.50]:34448 "EHLO
-	mail-qg0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753195AbbHCRCx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Aug 2015 13:02:53 -0400
-Subject: [PATCH v4 02/16] xprtrdma: Raise maximum payload size to one
- megabyte
+Received: from mail-qg0-f48.google.com ([209.85.192.48]:34779 "EHLO
+	mail-qg0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754637AbbHCRDO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Aug 2015 13:03:14 -0400
+Subject: [PATCH v4 04/16] xprtrdma: Don't fall back to PHYSICAL memory
+ registration
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 03 Aug 2015 13:02:50 -0400
-Message-ID: <20150803170250.9115.64462.stgit@manet.1015granger.net>
+Date: Mon, 03 Aug 2015 13:03:09 -0400
+Message-ID: <20150803170309.9115.44522.stgit@manet.1015granger.net>
 In-Reply-To: <20150803165807.9115.23842.stgit@manet.1015granger.net>
 References: <20150803165807.9115.23842.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -16,30 +16,36 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The point of larger rsize and wsize is to reduce the per-byte cost
-of memory registration and deregistration. Modern HCAs can typically
-handle a megabyte or more with a single registration operation.
+PHYSICAL memory registration uses a single rkey for all of the
+client's memory, thus is insecure. It is still useful in some cases
+for testing.
+
+Retain the ability to select PHYSICAL memory registration capability
+via /proc/sys/sunrpc/rdma_memreg_strategy, but don't fall back to it
+if the HCA does not support FRWR or FMR.
+
+This means amso1100 no longer works out of the box with NFS/RDMA.
+When using amso1100 HCAs, set the memreg_strategy sysctl to 6 before
+performing NFS/RDMA mounts.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Reviewed-by: Devesh Sharma <devesh.sharma@avagotech.com>
-Reviewed-By: Sagi Grimberg <sagig@mellanox.com>
 Tested-by: Devesh Sharma <devesh.sharma@avagotech.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
 ---
- net/sunrpc/xprtrdma/xprt_rdma.h |    3 +--
- 1 file changed, 1 insertion(+), 2 deletions(-)
+ net/sunrpc/xprtrdma/verbs.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index f49dd8b..abee472 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -165,8 +165,7 @@ rdmab_to_msg(struct rpcrdma_regbuf *rb)
-  * struct rpcrdma_buffer. N is the max number of outstanding requests.
-  */
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 891c4ed..1065808 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -539,7 +539,7 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
+ 		if (!ia->ri_device->alloc_fmr) {
+ 			dprintk("RPC:       %s: MTHCAFMR registration "
+ 				"not supported by HCA\n", __func__);
+-			memreg = RPCRDMA_ALLPHYSICAL;
++			goto out3;
+ 		}
+ 	}
  
--/* temporary static scatter/gather max */
--#define RPCRDMA_MAX_DATA_SEGS	(64)	/* max scatter/gather */
-+#define RPCRDMA_MAX_DATA_SEGS	((1 * 1024 * 1024) / PAGE_SIZE)
- #define RPCRDMA_MAX_SEGS 	(RPCRDMA_MAX_DATA_SEGS + 2) /* head+tail = 2 */
- 
- struct rpcrdma_buffer;
 
