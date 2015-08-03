@@ -1,42 +1,142 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.opengridcomputing.com ([72.48.136.20]:36318 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1755074AbbHCTcf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Aug 2015 15:32:35 -0400
-From: "Steve Wise" <swise@opengridcomputing.com>
-To: "'Sagi Grimberg'" <sagig@dev.mellanox.co.il>, <dledford@redhat.com>
-Cc: <infinipath@intel.com>, <sagig@mellanox.com>, <ogerlitz@mellanox.com>,
-        <roid@mellanox.com>, <linux-rdma@vger.kernel.org>, <eli@mellanox.com>,
-        <target-devel@vger.kernel.org>, <linux-nfs@vger.kernel.org>,
-        <bfields@fieldses.org>
-References: <20150724161331.25617.8475.stgit@build2.ogc.int> <20150724161848.25617.26092.stgit@build2.ogc.int> <55B4B190.7070305@dev.mellanox.co.il> <55B5404F.5040404@opengridcomputing.com>
-In-Reply-To: <55B5404F.5040404@opengridcomputing.com>
-Subject: RE: [PATCH V6 6/9] isert: Rename IO functions to more descriptive names
-Date: Mon, 3 Aug 2015 14:32:35 -0500
-Message-ID: <000001d0ce23$27048810$750d9830$@opengridcomputing.com>
-MIME-Version: 1.0
-Content-Type: text/plain;
-	charset="utf-8"
+Received: from mail-ig0-f174.google.com ([209.85.213.174]:35613 "EHLO
+	mail-ig0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754315AbbHCV7d (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Aug 2015 17:59:33 -0400
+Received: by igr7 with SMTP id 7so63132317igr.0
+        for <linux-nfs@vger.kernel.org>; Mon, 03 Aug 2015 14:59:32 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] pNFS: Tighten up locking around DS commit buckets
+Date: Mon,  3 Aug 2015 17:59:30 -0400
+Message-Id: <1438639170-12855-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+I'm not aware of any bugreports around this issue, but the locking
+around the pnfs_commit_bucket is inconsistent at best. This patch
+tightens it up by ensuring that the 'bucket->committing' list is always
+changed atomically w.r.t. the 'bucket->clseg' layout segment tracking.
 
-> > Steve,
-> >
-> > I've given this some thought and I think we should avoid splitting
-> > logic from PI and iWARP. The reason (other than code duplication) is
-> > that currently the iser target support only up to 1MB IOs. I have some
-> > code (not done yet) to support larger IOs by using multiple
-> > registrations  per IO (with or without PI).
-> > With a little tweaking I think we can get iwarp to fit in too...
-> >
-> > So, do you mind if I take a crack at it?
-> 
-> Sure, go ahead.  Let me know how I can help.  Certainly I can test it
-> for you.  I'm very keen to get this in for 4.3 if possible...
-> 
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfs/pnfs_nfs.c | 50 ++++++++++++++++++++++++++++++++------------------
+ 1 file changed, 32 insertions(+), 18 deletions(-)
 
-Hey Sagi, how is this coming along?  How can I help?
-
-Steve.
+diff --git a/fs/nfs/pnfs_nfs.c b/fs/nfs/pnfs_nfs.c
+index 7a282876662f..cd3c0403101b 100644
+--- a/fs/nfs/pnfs_nfs.c
++++ b/fs/nfs/pnfs_nfs.c
+@@ -124,11 +124,12 @@ pnfs_generic_scan_ds_commit_list(struct pnfs_commit_bucket *bucket,
+ 	if (ret) {
+ 		cinfo->ds->nwritten -= ret;
+ 		cinfo->ds->ncommitting += ret;
+-		bucket->clseg = bucket->wlseg;
+-		if (list_empty(src))
++		if (bucket->clseg == NULL)
++			bucket->clseg = pnfs_get_lseg(bucket->wlseg);
++		if (list_empty(src)) {
++			pnfs_put_lseg_locked(bucket->wlseg);
+ 			bucket->wlseg = NULL;
+-		else
+-			pnfs_get_lseg(bucket->clseg);
++		}
+ 	}
+ 	return ret;
+ }
+@@ -182,19 +183,23 @@ static void pnfs_generic_retry_commit(struct nfs_commit_info *cinfo, int idx)
+ 	struct pnfs_ds_commit_info *fl_cinfo = cinfo->ds;
+ 	struct pnfs_commit_bucket *bucket;
+ 	struct pnfs_layout_segment *freeme;
++	LIST_HEAD(pages);
+ 	int i;
+ 
++	spin_lock(cinfo->lock);
+ 	for (i = idx; i < fl_cinfo->nbuckets; i++) {
+ 		bucket = &fl_cinfo->buckets[i];
+ 		if (list_empty(&bucket->committing))
+ 			continue;
+-		nfs_retry_commit(&bucket->committing, bucket->clseg, cinfo, i);
+-		spin_lock(cinfo->lock);
+ 		freeme = bucket->clseg;
+ 		bucket->clseg = NULL;
++		list_splice_init(&bucket->committing, &pages);
+ 		spin_unlock(cinfo->lock);
++		nfs_retry_commit(&pages, freeme, cinfo, i);
+ 		pnfs_put_lseg(freeme);
++		spin_lock(cinfo->lock);
+ 	}
++	spin_unlock(cinfo->lock);
+ }
+ 
+ static unsigned int
+@@ -216,10 +221,6 @@ pnfs_generic_alloc_ds_commits(struct nfs_commit_info *cinfo,
+ 		if (!data)
+ 			break;
+ 		data->ds_commit_index = i;
+-		spin_lock(cinfo->lock);
+-		data->lseg = bucket->clseg;
+-		bucket->clseg = NULL;
+-		spin_unlock(cinfo->lock);
+ 		list_add(&data->pages, list);
+ 		nreq++;
+ 	}
+@@ -229,6 +230,22 @@ pnfs_generic_alloc_ds_commits(struct nfs_commit_info *cinfo,
+ 	return nreq;
+ }
+ 
++static inline
++void pnfs_fetch_commit_bucket_list(struct list_head *pages,
++		struct nfs_commit_data *data,
++		struct nfs_commit_info *cinfo)
++{
++	struct pnfs_commit_bucket *bucket;
++
++	bucket = &cinfo->ds->buckets[data->ds_commit_index];
++	spin_lock(cinfo->lock);
++	list_splice_init(pages, &bucket->committing);
++	data->lseg = bucket->clseg;
++	bucket->clseg = NULL;
++	spin_unlock(cinfo->lock);
++
++}
++
+ /* This follows nfs_commit_list pretty closely */
+ int
+ pnfs_generic_commit_pagelist(struct inode *inode, struct list_head *mds_pages,
+@@ -243,7 +260,7 @@ pnfs_generic_commit_pagelist(struct inode *inode, struct list_head *mds_pages,
+ 	if (!list_empty(mds_pages)) {
+ 		data = nfs_commitdata_alloc();
+ 		if (data != NULL) {
+-			data->lseg = NULL;
++			data->ds_commit_index = -1;
+ 			list_add(&data->pages, &list);
+ 			nreq++;
+ 		} else {
+@@ -265,19 +282,16 @@ pnfs_generic_commit_pagelist(struct inode *inode, struct list_head *mds_pages,
+ 
+ 	list_for_each_entry_safe(data, tmp, &list, pages) {
+ 		list_del_init(&data->pages);
+-		if (!data->lseg) {
++		if (data->ds_commit_index < 0) {
+ 			nfs_init_commit(data, mds_pages, NULL, cinfo);
+ 			nfs_initiate_commit(NFS_CLIENT(inode), data,
+ 					    NFS_PROTO(data->inode),
+ 					    data->mds_ops, how, 0);
+ 		} else {
+-			struct pnfs_commit_bucket *buckets;
++			LIST_HEAD(pages);
+ 
+-			buckets = cinfo->ds->buckets;
+-			nfs_init_commit(data,
+-					&buckets[data->ds_commit_index].committing,
+-					data->lseg,
+-					cinfo);
++			pnfs_fetch_commit_bucket_list(&pages, data, cinfo);
++			nfs_init_commit(data, &pages, data->lseg, cinfo);
+ 			initiate_commit(data, how);
+ 		}
+ 	}
+-- 
+2.4.3
 
