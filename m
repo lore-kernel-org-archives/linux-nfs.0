@@ -1,93 +1,185 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qg0-f54.google.com ([209.85.192.54]:35893 "EHLO
-	mail-qg0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753459AbbHCRDw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Aug 2015 13:03:52 -0400
-Subject: [PATCH v4 08/16] xprtrdma: Account for RPC/RDMA header size when
- deciding to inline
+Received: from aserp1040.oracle.com ([141.146.126.69]:34922 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754704AbbHCRHh convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Aug 2015 13:07:37 -0400
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
+Subject: Re: [PATCH v4 16/16] xprtrdma: take HCA driver refcount at client
 From: Chuck Lever <chuck.lever@oracle.com>
-To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 03 Aug 2015 13:03:49 -0400
-Message-ID: <20150803170349.9115.26879.stgit@manet.1015granger.net>
-In-Reply-To: <20150803165807.9115.23842.stgit@manet.1015granger.net>
-References: <20150803165807.9115.23842.stgit@manet.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+In-Reply-To: <20150803170504.9115.48166.stgit@manet.1015granger.net>
+Date: Mon, 3 Aug 2015 13:07:33 -0400
+Message-Id: <C441D0D2-CA30-48FA-9675-9E360B169879@oracle.com>
+References: <20150803165807.9115.23842.stgit@manet.1015granger.net> <20150803170504.9115.48166.stgit@manet.1015granger.net>
+To: linux-rdma@vger.kernel.org,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When the size of the RPC message is near the inline threshold (1KB),
-the client would allow messages to be sent that were a few bytes too
-large.
 
-When marshaling RPC/RDMA requests, ensure the combined size of
-RPC/RDMA header and RPC header do not exceed the inline threshold.
-Endpoints typically reject RPC/RDMA messages that exceed the size
-of their receive buffers.
+On Aug 3, 2015, at 1:05 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
 
-The two server implementations I test with (Linux and Solaris) use
-receive buffers that are larger than the client’s inline threshold.
-Thus so far this has been benign, observed only by code inspection.
+> From: Devesh Sharma <devesh.sharma@avagotech.com>
+> 
+> This is a rework of the following patch sent almost a year back:
+> http://www.mail-archive.com/linux-rdma%40vger.kernel.org/msg20730.html
+> 
+> In presence of active mount if someone tries to rmmod vendor-driver, the
+> command remains stuck forever waiting for destruction of all rdma-cm-id.
+> in worst case client can crash during shutdown with active mounts.
+> 
+> The existing code assumes that ia->ri_id->device cannot change during
+> the lifetime of a transport. xprtrdma do not have support for
+> DEVICE_REMOVAL event either. Lifting that assumption and adding support
+> for DEVICE_REMOVAL event is a long chain of work, and is in plan.
+> 
+> The community decided that preventing the hang right now is more
+> important than waiting for architectural changes.
+> 
+> Thus, this patch introduces a temporary workaround to acquire HCA driver
+> module reference count during the mount of a nfs-rdma mount point.
+> 
+> Signed-off-by: Devesh Sharma <devesh.sharma@avagotech.com>
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> Reviewed-by: Sagi Grimberg <sagig@dev.mellanox.co.il>
+> ---
+> net/sunrpc/xprtrdma/verbs.c |   41 +++++++++++++++++++++++++++++++++--------
+> 1 file changed, 33 insertions(+), 8 deletions(-)
+> 
+> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+> index b4d4f63..b98fb3b 100644
+> --- a/net/sunrpc/xprtrdma/verbs.c
+> +++ b/net/sunrpc/xprtrdma/verbs.c
+> @@ -52,6 +52,7 @@
+> #include <linux/prefetch.h>
+> #include <linux/sunrpc/addr.h>
+> #include <asm/bitops.h>
+> +#include <linux/module.h> /* try_module_get()/module_put() */
+> 
+> #include "xprt_rdma.h"
+> 
+> @@ -414,6 +415,16 @@ connected:
+> 	return 0;
+> }
+> 
+> +static void rpcrdma_destroy_id(struct rdma_cm_id *id)
+> +{
+> +	if (id) {
+> +		pr_warn("%s: releasing provider for id %p\n",
+> +			__func__, id);
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Reviewed-by: Devesh Sharma <devesh.sharma@avagotech.com>
-Tested-by: Devesh Sharma <devesh.sharma@avagotech.com>
----
- net/sunrpc/xprtrdma/rpc_rdma.c |   29 +++++++++++++++++++++++++++--
- 1 file changed, 27 insertions(+), 2 deletions(-)
+Oops, that pr_warn() was added for testing. I've removed this
+in the git repo.
 
-diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index 8e9c564..950b654 100644
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -71,6 +71,31 @@ static const char transfertypes[][12] = {
- };
- #endif
- 
-+/* The client can send a request inline as long as the RPCRDMA header
-+ * plus the RPC call fit under the transport's inline limit. If the
-+ * combined call message size exceeds that limit, the client must use
-+ * the read chunk list for this operation.
-+ */
-+static bool rpcrdma_args_inline(struct rpc_rqst *rqst)
-+{
-+	unsigned int callsize = RPCRDMA_HDRLEN_MIN + rqst->rq_snd_buf.len;
-+
-+	return callsize <= RPCRDMA_INLINE_WRITE_THRESHOLD(rqst);
-+}
-+
-+/* The client can't know how large the actual reply will be. Thus it
-+ * plans for the largest possible reply for that particular ULP
-+ * operation. If the maximum combined reply message size exceeds that
-+ * limit, the client must provide a write list or a reply chunk for
-+ * this request.
-+ */
-+static bool rpcrdma_results_inline(struct rpc_rqst *rqst)
-+{
-+	unsigned int repsize = RPCRDMA_HDRLEN_MIN + rqst->rq_rcv_buf.buflen;
-+
-+	return repsize <= RPCRDMA_INLINE_READ_THRESHOLD(rqst);
-+}
-+
- /*
-  * Chunk assembly from upper layer xdr_buf.
-  *
-@@ -409,7 +434,7 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
- 	 * a READ, then use write chunks to separate the file data
- 	 * into pages; otherwise use reply chunks.
- 	 */
--	if (rqst->rq_rcv_buf.buflen <= RPCRDMA_INLINE_READ_THRESHOLD(rqst))
-+	if (rpcrdma_results_inline(rqst))
- 		wtype = rpcrdma_noch;
- 	else if (rqst->rq_rcv_buf.page_len == 0)
- 		wtype = rpcrdma_replych;
-@@ -432,7 +457,7 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
- 	 * implies the op is a write.
- 	 * TBD check NFSv4 setacl
- 	 */
--	if (rqst->rq_snd_buf.len <= RPCRDMA_INLINE_WRITE_THRESHOLD(rqst))
-+	if (rpcrdma_args_inline(rqst))
- 		rtype = rpcrdma_noch;
- 	else if (rqst->rq_snd_buf.page_len == 0)
- 		rtype = rpcrdma_areadch;
+
+> +		module_put(id->device->owner);
+> +		rdma_destroy_id(id);
+> +	}
+> +}
+> +
+> static struct rdma_cm_id *
+> rpcrdma_create_id(struct rpcrdma_xprt *xprt,
+> 			struct rpcrdma_ia *ia, struct sockaddr *addr)
+> @@ -440,25 +451,39 @@ rpcrdma_create_id(struct rpcrdma_xprt *xprt,
+> 	}
+> 	wait_for_completion_interruptible_timeout(&ia->ri_done,
+> 				msecs_to_jiffies(RDMA_RESOLVE_TIMEOUT) + 1);
+> +
+> +	/* FIXME:
+> +	 * Until xprtrdma supports DEVICE_REMOVAL, the provider must
+> +	 * be pinned while there are active NFS/RDMA mounts to prevent
+> +	 * hangs and crashes at umount time.
+> +	 */
+> +	if (!ia->ri_async_rc && !try_module_get(id->device->owner)) {
+> +		dprintk("RPC:       %s: Failed to get device module\n",
+> +			__func__);
+> +		ia->ri_async_rc = -ENODEV;
+> +	}
+> 	rc = ia->ri_async_rc;
+> 	if (rc)
+> 		goto out;
+> 
+> +	pr_warn("%s: pinning provider for id %p\n", __func__, id);
+
+Ditto.
+
+
+> +
+> 	ia->ri_async_rc = -ETIMEDOUT;
+> 	rc = rdma_resolve_route(id, RDMA_RESOLVE_TIMEOUT);
+> 	if (rc) {
+> 		dprintk("RPC:       %s: rdma_resolve_route() failed %i\n",
+> 			__func__, rc);
+> -		goto out;
+> +		goto put;
+> 	}
+> 	wait_for_completion_interruptible_timeout(&ia->ri_done,
+> 				msecs_to_jiffies(RDMA_RESOLVE_TIMEOUT) + 1);
+> 	rc = ia->ri_async_rc;
+> 	if (rc)
+> -		goto out;
+> +		goto put;
+> 
+> 	return id;
+> -
+> +put:
+> +	module_put(id->device->owner);
+> out:
+> 	rdma_destroy_id(id);
+> 	return ERR_PTR(rc);
+> @@ -566,7 +591,7 @@ out3:
+> 	ib_dealloc_pd(ia->ri_pd);
+> 	ia->ri_pd = NULL;
+> out2:
+> -	rdma_destroy_id(ia->ri_id);
+> +	rpcrdma_destroy_id(ia->ri_id);
+> 	ia->ri_id = NULL;
+> out1:
+> 	return rc;
+> @@ -584,7 +609,7 @@ rpcrdma_ia_close(struct rpcrdma_ia *ia)
+> 	if (ia->ri_id != NULL && !IS_ERR(ia->ri_id)) {
+> 		if (ia->ri_id->qp)
+> 			rdma_destroy_qp(ia->ri_id);
+> -		rdma_destroy_id(ia->ri_id);
+> +		rpcrdma_destroy_id(ia->ri_id);
+> 		ia->ri_id = NULL;
+> 	}
+> 
+> @@ -794,7 +819,7 @@ retry:
+> 		if (ia->ri_device != id->device) {
+> 			printk("RPC:       %s: can't reconnect on "
+> 				"different device!\n", __func__);
+> -			rdma_destroy_id(id);
+> +			rpcrdma_destroy_id(id);
+> 			rc = -ENETUNREACH;
+> 			goto out;
+> 		}
+> @@ -803,7 +828,7 @@ retry:
+> 		if (rc) {
+> 			dprintk("RPC:       %s: rdma_create_qp failed %i\n",
+> 				__func__, rc);
+> -			rdma_destroy_id(id);
+> +			rpcrdma_destroy_id(id);
+> 			rc = -ENETUNREACH;
+> 			goto out;
+> 		}
+> @@ -814,7 +839,7 @@ retry:
+> 		write_unlock(&ia->ri_qplock);
+> 
+> 		rdma_destroy_qp(old);
+> -		rdma_destroy_id(old);
+> +		rpcrdma_destroy_id(old);
+> 	} else {
+> 		dprintk("RPC:       %s: connecting...\n", __func__);
+> 		rc = rdma_create_qp(ia->ri_id, ia->ri_pd, &ep->rep_attr);
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+--
+Chuck Lever
+
+
 
