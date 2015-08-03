@@ -1,14 +1,13 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qg0-f42.google.com ([209.85.192.42]:33614 "EHLO
-	mail-qg0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754732AbbHCREC (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Aug 2015 13:04:02 -0400
-Subject: [PATCH v4 09/16] xprtrdma: Always provide a write list when sending
- NFS READ
+Received: from mail-qg0-f47.google.com ([209.85.192.47]:34787 "EHLO
+	mail-qg0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753524AbbHCREU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Aug 2015 13:04:20 -0400
+Subject: [PATCH v4 11/16] xprtrdma: Fix XDR tail buffer marshalling
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 03 Aug 2015 13:03:58 -0400
-Message-ID: <20150803170358.9115.81548.stgit@manet.1015granger.net>
+Date: Mon, 03 Aug 2015 13:04:17 -0400
+Message-ID: <20150803170417.9115.23960.stgit@manet.1015granger.net>
 In-Reply-To: <20150803165807.9115.23842.stgit@manet.1015granger.net>
 References: <20150803165807.9115.23842.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -16,57 +15,112 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The client has been setting up a reply chunk for NFS READs that are
-smaller than the inline threshold. This is not efficient: both the
-server and client CPUs have to copy the reply's data payload into
-and out of the memory region that is then transferred via RDMA.
+Currently xprtrdma appends an extra chunk element to the RPC/RDMA
+read chunk list of each NFSv4 WRITE compound. The extra element
+contains the final GETATTR operation in the compound.
 
-Using the write list, the data payload is moved by the device and no
-extra data copying is necessary.
+The result is an extra RDMA READ operation to transfer a very short
+piece of each NFS WRITE compound (typically 16 bytes). This is
+inefficient.
+
+It is also incorrect.
+
+The client is sending the trailing GETATTR at the same Position as
+the preceding WRITE data payload. Whether or not RFC 5667 allows
+the GETATTR to appear in a read chunk, RFC 5666 requires that these
+two separate RPC arguments appear at two distinct Positions.
+
+It can also be argued that the GETATTR operation is not bulk data,
+and therefore RFC 5667 forbids its appearance in a read chunk at
+all.
+
+Although RFC 5667 is not precise about when using a read list with
+NFSv4 COMPOUND is allowed, the intent is that only data arguments
+not touched by NFS (ie, read and write payloads) are to be sent
+using RDMA READ or WRITE.
+
+The NFS client constructs GETATTR arguments itself, and therefore is
+required to send the trailing GETATTR operation as additional inline
+content, not as a data payload.
+
+NB: This change is not backwards compatible. Some older servers do
+not accept inline content following the read list. The Linux NFS
+server should handle this content correctly as of commit
+a97c331f9aa9 ("svcrdma: Handle additional inline content").
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Reviewed-by: Devesh Sharma <devesh.sharma@avagotech.com>
-Reviewed-By: Sagi Grimberg <sagig@mellanox.com>
 Tested-by: Devesh Sharma <devesh.sharma@avagotech.com>
 ---
- net/sunrpc/xprtrdma/rpc_rdma.c |   21 ++++-----------------
- 1 file changed, 4 insertions(+), 17 deletions(-)
+ net/sunrpc/xprtrdma/rpc_rdma.c |   44 ++++++++++++++++++++++++++++++++++++++--
+ 1 file changed, 42 insertions(+), 2 deletions(-)
 
 diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index 950b654..e7cf976 100644
+index 62150ae..1dd48f2 100644
 --- a/net/sunrpc/xprtrdma/rpc_rdma.c
 +++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -418,28 +418,15 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
- 	/*
- 	 * Chunks needed for results?
- 	 *
-+	 * o Read ops return data as write chunk(s), header as inline.
- 	 * o If the expected result is under the inline threshold, all ops
- 	 *   return as inline (but see later).
- 	 * o Large non-read ops return as a single reply chunk.
--	 * o Large read ops return data as write chunk(s), header as inline.
--	 *
--	 * Note: the NFS code sending down multiple result segments implies
--	 * the op is one of read, readdir[plus], readlink or NFSv4 getacl.
--	 */
--
--	/*
--	 * This code can handle read chunks, write chunks OR reply
--	 * chunks -- only one type. If the request is too big to fit
--	 * inline, then we will choose read chunks. If the request is
--	 * a READ, then use write chunks to separate the file data
--	 * into pages; otherwise use reply chunks.
- 	 */
--	if (rpcrdma_results_inline(rqst))
--		wtype = rpcrdma_noch;
--	else if (rqst->rq_rcv_buf.page_len == 0)
--		wtype = rpcrdma_replych;
--	else if (rqst->rq_rcv_buf.flags & XDRBUF_READ)
-+	if (rqst->rq_rcv_buf.flags & XDRBUF_READ)
- 		wtype = rpcrdma_writech;
-+	else if (rpcrdma_results_inline(rqst))
-+		wtype = rpcrdma_noch;
- 	else
- 		wtype = rpcrdma_replych;
+@@ -96,6 +96,42 @@ static bool rpcrdma_results_inline(struct rpc_rqst *rqst)
+ 	return repsize <= RPCRDMA_INLINE_READ_THRESHOLD(rqst);
+ }
  
++static int
++rpcrdma_tail_pullup(struct xdr_buf *buf)
++{
++	size_t tlen = buf->tail[0].iov_len;
++	size_t skip = tlen & 3;
++
++	/* Do not include the tail if it is only an XDR pad */
++	if (tlen < 4)
++		return 0;
++
++	/* xdr_write_pages() adds a pad at the beginning of the tail
++	 * if the content in "buf->pages" is unaligned. Force the
++	 * tail's actual content to land at the next XDR position
++	 * after the head instead.
++	 */
++	if (skip) {
++		unsigned char *src, *dst;
++		unsigned int count;
++
++		src = buf->tail[0].iov_base;
++		dst = buf->head[0].iov_base;
++		dst += buf->head[0].iov_len;
++
++		src += skip;
++		tlen -= skip;
++
++		dprintk("RPC:       %s: skip=%zu, memmove(%p, %p, %zu)\n",
++			__func__, skip, dst, src, tlen);
++
++		for (count = tlen; count; count--)
++			*dst++ = *src++;
++	}
++
++	return tlen;
++}
++
+ /*
+  * Chunk assembly from upper layer xdr_buf.
+  *
+@@ -147,6 +183,10 @@ rpcrdma_convert_iovs(struct xdr_buf *xdrbuf, unsigned int pos,
+ 	if (len && n == nsegs)
+ 		return -EIO;
+ 
++	/* When encoding the read list, the tail is always sent inline */
++	if (type == rpcrdma_readch)
++		return n;
++
+ 	if (xdrbuf->tail[0].iov_len) {
+ 		/* the rpcrdma protocol allows us to omit any trailing
+ 		 * xdr pad bytes, saving the server an RDMA operation. */
+@@ -476,8 +516,8 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
+ 		headerp->rm_body.rm_nochunks.rm_empty[2] = xdr_zero;
+ 		/* new length after pullup */
+ 		rpclen = rqst->rq_svec[0].iov_len;
+-	}
+-
++	} else if (rtype == rpcrdma_readch)
++		rpclen += rpcrdma_tail_pullup(&rqst->rq_snd_buf);
+ 	if (rtype != rpcrdma_noch) {
+ 		hdrlen = rpcrdma_create_chunks(rqst, &rqst->rq_snd_buf,
+ 					       headerp, rtype);
 
