@@ -1,54 +1,156 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ob0-f174.google.com ([209.85.214.174]:36471 "EHLO
-	mail-ob0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752054AbbHDQQP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Aug 2015 12:16:15 -0400
-Received: by obnw1 with SMTP id w1so10797473obn.3
-        for <linux-nfs@vger.kernel.org>; Tue, 04 Aug 2015 09:16:14 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <A0DBB287-CF36-42D7-8EB3-69327DA48544@oracle.com>
-References: <A0DBB287-CF36-42D7-8EB3-69327DA48544@oracle.com>
-Date: Tue, 4 Aug 2015 12:16:14 -0400
-Message-ID: <CAHQdGtQhjNzZjFtj8sSsGr7uT7ha4hgnVULiJP3ZP20oWCZDJQ@mail.gmail.com>
-Subject: Re: TEST_STATEID during lock recovery
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Anna Schumaker <schumakeranna@gmail.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-ig0-f181.google.com ([209.85.213.181]:35815 "EHLO
+	mail-ig0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752316AbbHDRKK convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Aug 2015 13:10:10 -0400
+Received: by igr7 with SMTP id 7so78869305igr.0
+        for <linux-nfs@vger.kernel.org>; Tue, 04 Aug 2015 10:10:09 -0700 (PDT)
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2102\))
+Subject: Re: [PATCH] pNFS: Tighten up locking around DS commit buckets
+From: Weston Andros Adamson <dros@primarydata.com>
+In-Reply-To: <1438639170-12855-1-git-send-email-trond.myklebust@primarydata.com>
+Date: Tue, 4 Aug 2015 13:10:05 -0400
+Cc: linux-nfs list <linux-nfs@vger.kernel.org>
+Message-Id: <5214025D-154C-40E2-953A-70CC08B85EEA@primarydata.com>
+References: <1438639170-12855-1-git-send-email-trond.myklebust@primarydata.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Aug 4, 2015 at 11:04 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
-> Hi-
->
-> One of our testers stumbled on an interesting phenomenon yesterday.
-> He purposely caused a client to run out the grace period clock
-> during lock recovery on an NFSv4.1 mount. He did this by taking
-> thousands of two-byte locks on the same file, and then rebooting
-> his server.
->
-> The client detects the reboot and starts reclaiming locks. When
-> the grace period expires, the server replies NO_GRACE to the
-> current LOCK(reclaim). The client responds with RECLAIM_COMPLETE,
-> then goes into a hard TEST_STATEID loop.
->
-> If I understand the recovery logic, this is trying a TEST_STATEID
-> on every lock that was held by the client. The thing is, all the
-> locks use the same stateid, since they are on the same file.
->
-> So the client is sending TEST_STATEID with the same stateid
-> argument over and over and over. All work on the client's mount
-> point stops until that loop completes (which it eventually does).
->
-> Is there room for some optimization here? Performing one
-> TEST_STATEID per lockowner/FH pair is probably better, but I'm
-> not clear on how post-grace period recovery is supposed to work.
->
+Looks good to me.
 
-We probably can optimise this, but there hasn't really been too much
-manpower put onto it since I'm not aware of any workloads that require
-applications to establish lots of lock ranges on the same file.
+-dros
 
-Cheers
-  Trond
+
+
+> On Aug 3, 2015, at 5:59 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+> 
+> I'm not aware of any bugreports around this issue, but the locking
+> around the pnfs_commit_bucket is inconsistent at best. This patch
+> tightens it up by ensuring that the 'bucket->committing' list is always
+> changed atomically w.r.t. the 'bucket->clseg' layout segment tracking.
+> 
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> ---
+> fs/nfs/pnfs_nfs.c | 50 ++++++++++++++++++++++++++++++++------------------
+> 1 file changed, 32 insertions(+), 18 deletions(-)
+> 
+> diff --git a/fs/nfs/pnfs_nfs.c b/fs/nfs/pnfs_nfs.c
+> index 7a282876662f..cd3c0403101b 100644
+> --- a/fs/nfs/pnfs_nfs.c
+> +++ b/fs/nfs/pnfs_nfs.c
+> @@ -124,11 +124,12 @@ pnfs_generic_scan_ds_commit_list(struct pnfs_commit_bucket *bucket,
+> 	if (ret) {
+> 		cinfo->ds->nwritten -= ret;
+> 		cinfo->ds->ncommitting += ret;
+> -		bucket->clseg = bucket->wlseg;
+> -		if (list_empty(src))
+> +		if (bucket->clseg == NULL)
+> +			bucket->clseg = pnfs_get_lseg(bucket->wlseg);
+> +		if (list_empty(src)) {
+> +			pnfs_put_lseg_locked(bucket->wlseg);
+> 			bucket->wlseg = NULL;
+> -		else
+> -			pnfs_get_lseg(bucket->clseg);
+> +		}
+> 	}
+> 	return ret;
+> }
+> @@ -182,19 +183,23 @@ static void pnfs_generic_retry_commit(struct nfs_commit_info *cinfo, int idx)
+> 	struct pnfs_ds_commit_info *fl_cinfo = cinfo->ds;
+> 	struct pnfs_commit_bucket *bucket;
+> 	struct pnfs_layout_segment *freeme;
+> +	LIST_HEAD(pages);
+> 	int i;
+> 
+> +	spin_lock(cinfo->lock);
+> 	for (i = idx; i < fl_cinfo->nbuckets; i++) {
+> 		bucket = &fl_cinfo->buckets[i];
+> 		if (list_empty(&bucket->committing))
+> 			continue;
+> -		nfs_retry_commit(&bucket->committing, bucket->clseg, cinfo, i);
+> -		spin_lock(cinfo->lock);
+> 		freeme = bucket->clseg;
+> 		bucket->clseg = NULL;
+> +		list_splice_init(&bucket->committing, &pages);
+> 		spin_unlock(cinfo->lock);
+> +		nfs_retry_commit(&pages, freeme, cinfo, i);
+> 		pnfs_put_lseg(freeme);
+> +		spin_lock(cinfo->lock);
+> 	}
+> +	spin_unlock(cinfo->lock);
+> }
+> 
+> static unsigned int
+> @@ -216,10 +221,6 @@ pnfs_generic_alloc_ds_commits(struct nfs_commit_info *cinfo,
+> 		if (!data)
+> 			break;
+> 		data->ds_commit_index = i;
+> -		spin_lock(cinfo->lock);
+> -		data->lseg = bucket->clseg;
+> -		bucket->clseg = NULL;
+> -		spin_unlock(cinfo->lock);
+> 		list_add(&data->pages, list);
+> 		nreq++;
+> 	}
+> @@ -229,6 +230,22 @@ pnfs_generic_alloc_ds_commits(struct nfs_commit_info *cinfo,
+> 	return nreq;
+> }
+> 
+> +static inline
+> +void pnfs_fetch_commit_bucket_list(struct list_head *pages,
+> +		struct nfs_commit_data *data,
+> +		struct nfs_commit_info *cinfo)
+> +{
+> +	struct pnfs_commit_bucket *bucket;
+> +
+> +	bucket = &cinfo->ds->buckets[data->ds_commit_index];
+> +	spin_lock(cinfo->lock);
+> +	list_splice_init(pages, &bucket->committing);
+> +	data->lseg = bucket->clseg;
+> +	bucket->clseg = NULL;
+> +	spin_unlock(cinfo->lock);
+> +
+> +}
+> +
+> /* This follows nfs_commit_list pretty closely */
+> int
+> pnfs_generic_commit_pagelist(struct inode *inode, struct list_head *mds_pages,
+> @@ -243,7 +260,7 @@ pnfs_generic_commit_pagelist(struct inode *inode, struct list_head *mds_pages,
+> 	if (!list_empty(mds_pages)) {
+> 		data = nfs_commitdata_alloc();
+> 		if (data != NULL) {
+> -			data->lseg = NULL;
+> +			data->ds_commit_index = -1;
+> 			list_add(&data->pages, &list);
+> 			nreq++;
+> 		} else {
+> @@ -265,19 +282,16 @@ pnfs_generic_commit_pagelist(struct inode *inode, struct list_head *mds_pages,
+> 
+> 	list_for_each_entry_safe(data, tmp, &list, pages) {
+> 		list_del_init(&data->pages);
+> -		if (!data->lseg) {
+> +		if (data->ds_commit_index < 0) {
+> 			nfs_init_commit(data, mds_pages, NULL, cinfo);
+> 			nfs_initiate_commit(NFS_CLIENT(inode), data,
+> 					    NFS_PROTO(data->inode),
+> 					    data->mds_ops, how, 0);
+> 		} else {
+> -			struct pnfs_commit_bucket *buckets;
+> +			LIST_HEAD(pages);
+> 
+> -			buckets = cinfo->ds->buckets;
+> -			nfs_init_commit(data,
+> -					&buckets[data->ds_commit_index].committing,
+> -					data->lseg,
+> -					cinfo);
+> +			pnfs_fetch_commit_bucket_list(&pages, data, cinfo);
+> +			nfs_init_commit(data, &pages, data->lseg, cinfo);
+> 			initiate_commit(data, how);
+> 		}
+> 	}
+> -- 
+> 2.4.3
+> 
+
