@@ -1,102 +1,58 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wi0-f170.google.com ([209.85.212.170]:37458 "EHLO
-	mail-wi0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933423AbbHDLyr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Aug 2015 07:54:47 -0400
+Received: from mail-wi0-f177.google.com ([209.85.212.177]:34498 "EHLO
+	mail-wi0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933511AbbHDLyg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Aug 2015 07:54:36 -0400
 From: Andreas Gruenbacher <andreas.gruenbacher@gmail.com>
 To: linux-kernel@vger.kernel.org
 Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-api@vger.kernel.org, linux-cifs@vger.kernel.org,
         linux-security-module@vger.kernel.org,
         Andreas Gruenbacher <agruenba@redhat.com>
-Subject: [RFC v6 09/40] richacl: Update the file masks in chmod()
-Date: Tue,  4 Aug 2015 13:53:07 +0200
-Message-Id: <1438689218-6921-10-git-send-email-agruenba@redhat.com>
+Subject: [RFC v6 04/40] vfs: Make the inode passed to inode_change_ok non-const
+Date: Tue,  4 Aug 2015 13:53:02 +0200
+Message-Id: <1438689218-6921-5-git-send-email-agruenba@redhat.com>
 In-Reply-To: <1438689218-6921-1-git-send-email-agruenba@redhat.com>
 References: <1438689218-6921-1-git-send-email-agruenba@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Doing a chmod() sets the file mode, which includes the file permission
-bits.  When a file has a richacl, the permissions that the richacl
-grants need to be limited to what the new file permission bits allow.
-
-This is done by setting the file masks in the richacl to what the file
-permission bits map to.  The richacl access check algorithm takes the
-file masks into account, which ensures that the richacl cannot grant too
-many permissions.
-
-It is possible to explicitly add permissions to the file masks which go
-beyond what the file permission bits can grant (like the
-RICHACE_WRITE_ACL permission).  The POSIX.1 standard calls this an
-alternate file access control mechanism.  A subsequent chmod() would
-ensure that those permissions are disabled again.
+We will need to call iop->permission and iop->get_acl from
+inode_change_ok() for additional permission checks, and both take a
+non-const inode.
 
 Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
 ---
- fs/richacl_base.c       | 40 ++++++++++++++++++++++++++++++++++++++++
- include/linux/richacl.h |  1 +
- 2 files changed, 41 insertions(+)
+ fs/attr.c          | 2 +-
+ include/linux/fs.h | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/fs/richacl_base.c b/fs/richacl_base.c
-index 8426600..fd81158 100644
---- a/fs/richacl_base.c
-+++ b/fs/richacl_base.c
-@@ -338,3 +338,43 @@ restart:
- 	acl->a_flags &= ~(RICHACL_WRITE_THROUGH | RICHACL_MASKED);
- }
- EXPORT_SYMBOL_GPL(richacl_compute_max_masks);
-+
-+/**
-+ * richacl_chmod  -  update the file masks to reflect the new mode
-+ * @mode:	new file permission bits including the file type
-+ *
-+ * Return a copy of @acl where the file masks have been replaced by the file
-+ * masks corresponding to the file permission bits in @mode, or returns @acl
-+ * itself if the file masks are already up to date.  Takes over a reference
-+ * to @acl.
-+ */
-+struct richacl *
-+richacl_chmod(struct richacl *acl, mode_t mode)
-+{
-+	unsigned int x = S_ISDIR(mode) ? 0 : RICHACE_DELETE_CHILD;
-+	unsigned int owner_mask, group_mask, other_mask;
-+	struct richacl *clone;
-+
-+	owner_mask = richacl_mode_to_mask(mode >> 6) & ~x;
-+	group_mask = richacl_mode_to_mask(mode >> 3) & ~x;
-+	other_mask = richacl_mode_to_mask(mode)      & ~x;
-+
-+	if (acl->a_owner_mask == owner_mask &&
-+	    acl->a_group_mask == group_mask &&
-+	    acl->a_other_mask == other_mask &&
-+	    (acl->a_flags & RICHACL_MASKED))
-+		return acl;
-+
-+	clone = richacl_clone(acl, GFP_KERNEL);
-+	richacl_put(acl);
-+	if (!clone)
-+		return ERR_PTR(-ENOMEM);
-+
-+	clone->a_flags |= (RICHACL_WRITE_THROUGH | RICHACL_MASKED);
-+	clone->a_owner_mask = owner_mask;
-+	clone->a_group_mask = group_mask;
-+	clone->a_other_mask = other_mask;
-+
-+	return clone;
-+}
-+EXPORT_SYMBOL_GPL(richacl_chmod);
-diff --git a/include/linux/richacl.h b/include/linux/richacl.h
-index 3d719db..8df6d93 100644
---- a/include/linux/richacl.h
-+++ b/include/linux/richacl.h
-@@ -304,5 +304,6 @@ extern int richacl_masks_to_mode(const struct richacl *);
- extern unsigned int richacl_mode_to_mask(mode_t);
- extern unsigned int richacl_want_to_mask(unsigned int);
- extern void richacl_compute_max_masks(struct richacl *, kuid_t);
-+extern struct richacl *richacl_chmod(struct richacl *, mode_t);
+diff --git a/fs/attr.c b/fs/attr.c
+index 6530ced..328be71 100644
+--- a/fs/attr.c
++++ b/fs/attr.c
+@@ -28,7 +28,7 @@
+  * Should be called as the first thing in ->setattr implementations,
+  * possibly after taking additional locks.
+  */
+-int inode_change_ok(const struct inode *inode, struct iattr *attr)
++int inode_change_ok(struct inode *inode, struct iattr *attr)
+ {
+ 	unsigned int ia_valid = attr->ia_valid;
  
- #endif /* __RICHACL_H */
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index abf5b0e..aae46e0 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -2873,7 +2873,7 @@ extern int buffer_migrate_page(struct address_space *,
+ #define buffer_migrate_page NULL
+ #endif
+ 
+-extern int inode_change_ok(const struct inode *, struct iattr *);
++extern int inode_change_ok(struct inode *, struct iattr *);
+ extern int inode_newsize_ok(const struct inode *, loff_t offset);
+ extern void setattr_copy(struct inode *inode, const struct iattr *attr);
+ 
 -- 
 2.5.0
 
