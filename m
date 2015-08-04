@@ -1,52 +1,65 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.opengridcomputing.com ([72.48.136.20]:38169 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753915AbbHDRoi convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 4 Aug 2015 13:44:38 -0400
-From: "Steve Wise" <swise@opengridcomputing.com>
-To: "'Sagi Grimberg'" <sagig@dev.mellanox.co.il>, <dledford@redhat.com>
-Cc: <infinipath@intel.com>, <sagig@mellanox.com>, <ogerlitz@mellanox.com>,
-        <roid@mellanox.com>, <linux-rdma@vger.kernel.org>, <eli@mellanox.com>,
-        <target-devel@vger.kernel.org>, <linux-nfs@vger.kernel.org>,
-        <bfields@fieldses.org>
-References: <20150724161331.25617.8475.stgit@build2.ogc.int> <20150724161848.25617.26092.stgit@build2.ogc.int> <55B4B190.7070305@dev.mellanox.co.il> <55B5404F.5040404@opengridcomputing.com> <000001d0ce23$27048810$750d9830$@opengridcomputing.com> <55C0F5B7.4040100@dev.mellanox.co.il>
-In-Reply-To: <55C0F5B7.4040100@dev.mellanox.co.il>
-Subject: RE: [PATCH V6 6/9] isert: Rename IO functions to more descriptive names
-Date: Tue, 4 Aug 2015 12:44:40 -0500
-Message-ID: <008a01d0cedd$3d382b90$b7a882b0$@opengridcomputing.com>
+Received: from discipline.rit.edu ([129.21.6.207]:63020 "HELO
+	discipline.rit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1751598AbbHDUSL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Aug 2015 16:18:11 -0400
+From: Andrew W Elble <aweits@rit.edu>
+To: Jeff Layton <jlayton@poochiereds.net>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, <linux-nfs@vger.kernel.org>,
+        Anna Schumaker <schumakeranna@gmail.com>
+Subject: Re: list_del corruption / unhash_ol_stateid()
+References: <m23809zl8z.fsf@discipline.rit.edu>
+	<m2zj2hwk4e.fsf@discipline.rit.edu>
+	<20150728090206.1331e476@tlielax.poochiereds.net>
+	<m2wpxktjfc.fsf@discipline.rit.edu>
+	<20150728114933.6f917374@tlielax.poochiereds.net>
+	<20150728210434.GC9349@fieldses.org>
+	<m24mknq9ga.fsf@discipline.rit.edu>
+	<m28u9yoi6z.fsf@discipline.rit.edu>
+	<m2bnetnbme.fsf@discipline.rit.edu>
+	<20150730085723.0ab8e76c@tlielax.poochiereds.net>
+Date: Tue, 04 Aug 2015 16:18:10 -0400
+In-Reply-To: <20150730085723.0ab8e76c@tlielax.poochiereds.net> (Jeff Layton's
+	message of "Thu, 30 Jul 2015 08:57:23 -0400")
+Message-ID: <m2bnemg64d.fsf@discipline.rit.edu>
 MIME-Version: 1.0
-Content-Type: text/plain;
-	charset="UTF-8"
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
+> In any case, I think this explains where the "no readable file" warning
+> is coming from, but I'm not sure yet about the mem corruption...
 
-> -----Original Message-----
-> From: Sagi Grimberg [mailto:sagig@dev.mellanox.co.il]
-> Sent: Tuesday, August 04, 2015 12:26 PM
-> To: Steve Wise; dledford@redhat.com
-> Cc: infinipath@intel.com; sagig@mellanox.com; ogerlitz@mellanox.com; roid@mellanox.com; linux-rdma@vger.kernel.org;
-> eli@mellanox.com; target-devel@vger.kernel.org; linux-nfs@vger.kernel.org; bfields@fieldses.org
-> Subject: Re: [PATCH V6 6/9] isert: Rename IO functions to more descriptive names
-> 
-> > Hey Sagi, how is this coming along?  How can I help?
-> >
-> 
-> Hi Steve,
-> 
-> This is taking longer than I expected, the changes needed seem
-> pretty extensive throughout the IO path. I don't think it will be ready
-> for 4.3
->
+Forgive my shorthand, but I think this is what we're seeing:
 
-Perhaps then we should go with my version that adds iwarp-only FRMR IO handlers for 4.3.  Then they can be phased out as the rework matures.  Thoughts?
- 
-> I'll try to send you soon a preliminary version to play with.
-> Acceptable?
+open2              close
+ create 1 (idr)
+ init 2 (hashed)
 
-I can test the iwarp parts once you think the code is ready to try.
+                   close preprocess_seqid 3 (local ref in nfsd4_close)
+		   close_open_stateid 2 -> unhashed (unhashed)
 
-Steve.
+ release_open_stateid 1 -> list_del corruption (because unhashed already
+                        -> should still be refcount 2?)
 
+                   nfs4_put_stid 0 -> destroyed
+
+ nfs4_put_stid 0 -> use after free
+
+This also explains the '6a' as the first byte, as the final
+nfs4_put_stid will decrement sc_count first. There are other permutations.
+
+Also, the return-with-status from nfs_get_vfs_file() appears to be break_lease()
+(much further down) returning -EWOULDBLOCK (in both cases, memory
+corruption and the simple warning case)
+
+Thanks,
+
+Andy
+-- 
+Andrew W. Elble
+aweits@discipline.rit.edu
+Infrastructure Engineer, Communications Technical Lead
+Rochester Institute of Technology
+PGP: BFAD 8461 4CCF DC95 DA2C B0EB 965B 082E 863E C912
