@@ -1,400 +1,92 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wi0-f173.google.com ([209.85.212.173]:37307 "EHLO
-	mail-wi0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933543AbbHDLyk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Aug 2015 07:54:40 -0400
+Received: from mail-wi0-f171.google.com ([209.85.212.171]:32781 "EHLO
+	mail-wi0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932776AbbHDLyd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Aug 2015 07:54:33 -0400
 From: Andreas Gruenbacher <andreas.gruenbacher@gmail.com>
 To: linux-kernel@vger.kernel.org
 Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-api@vger.kernel.org, linux-cifs@vger.kernel.org,
         linux-security-module@vger.kernel.org,
         Andreas Gruenbacher <agruenba@redhat.com>
-Subject: [RFC v6 06/40] richacl: In-memory representation and helper functions
-Date: Tue,  4 Aug 2015 13:53:04 +0200
-Message-Id: <1438689218-6921-7-git-send-email-agruenba@redhat.com>
+Subject: [RFC v6 03/40] vfs: Add MAY_DELETE_SELF and MAY_DELETE_CHILD permission flags
+Date: Tue,  4 Aug 2015 13:53:01 +0200
+Message-Id: <1438689218-6921-4-git-send-email-agruenba@redhat.com>
 In-Reply-To: <1438689218-6921-1-git-send-email-agruenba@redhat.com>
 References: <1438689218-6921-1-git-send-email-agruenba@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-A richacl consists of an NFSv4 acl and an owner, group, and other mask.
-These three masks correspond to the owner, group, and other file
-permission bits, but they contain NFSv4 permissions instead of POSIX
-permissions.
+Normally, deleting a file requires write and execute access to the parent
+directory.  With Richacls, a process with MAY_DELETE_SELF access to a file
+may delete the file even without write access to the parent directory.
 
-Each entry in the NFSv4 acl applies to the file owner (OWNER@), the
-owning group (GROUP@), everyone (EVERYONE@), or to a specific uid or
-gid.
+To support that, pass the MAY_DELETE_CHILD mask flag to inode_permission()
+when checking for delete access inside a directory, and MAY_DELETE_SELF
+when checking for delete access to a file itelf.
 
-As in the standard POSIX file permission model, each process is the
-owner, group, or other file class.  A richacl grants a requested access
-only if the NFSv4 acl in the richacl grants the access (according to the
-NFSv4 permission check algorithm), and the file mask that applies to the
-process includes the requested permissions.
+The MAY_DELETE_SELF permission does not override the sticky directory
+check.  It probably should.
 
 Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
 ---
- fs/Makefile             |   2 +
- fs/richacl_base.c       |  67 +++++++++++++
- include/linux/richacl.h | 262 ++++++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 331 insertions(+)
- create mode 100644 fs/richacl_base.c
- create mode 100644 include/linux/richacl.h
+ fs/namei.c         | 15 +++++++++++----
+ include/linux/fs.h |  2 ++
+ 2 files changed, 13 insertions(+), 4 deletions(-)
 
-diff --git a/fs/Makefile b/fs/Makefile
-index cb20e4b..ddc43d8 100644
---- a/fs/Makefile
-+++ b/fs/Makefile
-@@ -47,6 +47,8 @@ obj-$(CONFIG_COREDUMP)		+= coredump.o
- obj-$(CONFIG_SYSCTL)		+= drop_caches.o
+diff --git a/fs/namei.c b/fs/namei.c
+index 3504d36..2ac759c 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -454,7 +454,7 @@ static int sb_permission(struct super_block *sb, struct inode *inode, int mask)
+  * changing the "normal" UIDs which are used for other things.
+  *
+  * When checking for MAY_APPEND, MAY_CREATE_FILE, MAY_CREATE_DIR,
+- * MAY_WRITE must also be set in @mask.
++ * MAY_DELETE_CHILD, MAY_DELETE_SELF, MAY_WRITE must also be set in @mask.
+  */
+ int inode_permission(struct inode *inode, int mask)
+ {
+@@ -2527,7 +2527,7 @@ static int may_delete(struct inode *dir, struct dentry *victim,
+ 		      bool isdir, bool replace)
+ {
+ 	struct inode *inode = d_backing_inode(victim);
+-	int error, mask = MAY_WRITE | MAY_EXEC;
++	int error, mask = MAY_EXEC;
  
- obj-$(CONFIG_FHANDLE)		+= fhandle.o
-+obj-$(CONFIG_FS_RICHACL)	+= richacl.o
-+richacl-y			:= richacl_base.o
+ 	if (d_is_negative(victim))
+ 		return -ENOENT;
+@@ -2537,8 +2537,15 @@ static int may_delete(struct inode *dir, struct dentry *victim,
+ 	audit_inode_child(dir, victim, AUDIT_TYPE_CHILD_DELETE);
  
- obj-y				+= quota/
- 
-diff --git a/fs/richacl_base.c b/fs/richacl_base.c
-new file mode 100644
-index 0000000..6d9a073
---- /dev/null
-+++ b/fs/richacl_base.c
-@@ -0,0 +1,67 @@
-+/*
-+ * Copyright (C) 2006, 2010  Novell, Inc.
-+ * Copyright (C) 2015  Red Hat, Inc.
-+ * Written by Andreas Gruenbacher <agruen@kernel.org>
-+ *
-+ * This program is free software; you can redistribute it and/or modify it
-+ * under the terms of the GNU General Public License as published by the
-+ * Free Software Foundation; either version 2, or (at your option) any
-+ * later version.
-+ *
-+ * This program is distributed in the hope that it will be useful, but
-+ * WITHOUT ANY WARRANTY; without even the implied warranty of
-+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-+ * General Public License for more details.
-+ */
-+
-+#include <linux/sched.h>
-+#include <linux/module.h>
-+#include <linux/fs.h>
-+#include <linux/slab.h>
-+#include <linux/richacl.h>
-+
-+MODULE_LICENSE("GPL");
-+
-+/**
-+ * richacl_alloc  -  allocate a richacl
-+ * @count:	number of entries
-+ */
-+struct richacl *
-+richacl_alloc(int count, gfp_t gfp)
-+{
-+	size_t size = sizeof(struct richacl) + count * sizeof(struct richace);
-+	struct richacl *acl = kzalloc(size, gfp);
-+
-+	if (acl) {
-+		atomic_set(&acl->a_refcount, 1);
-+		acl->a_count = count;
+ 	if (replace)
+-		mask |= isdir ? MAY_CREATE_DIR : MAY_CREATE_FILE;
+-	error = inode_permission(dir, mask);
++		mask |= MAY_WRITE | (isdir ? MAY_CREATE_DIR : MAY_CREATE_FILE);
++	error = inode_permission(dir, mask | MAY_WRITE | MAY_DELETE_CHILD);
++	if (error && IS_RICHACL(inode)) {
++		/* Deleting is also permitted with MAY_EXEC on the directory
++		 * and MAY_DELETE_SELF on the inode.  */
++		if (!inode_permission(inode, MAY_DELETE_SELF) &&
++		    !inode_permission(dir, mask))
++			error = 0;
 +	}
-+	return acl;
-+}
-+EXPORT_SYMBOL_GPL(richacl_alloc);
-+
-+/**
-+ * richacl_clone  -  create a copy of a richacl
-+ */
-+struct richacl *
-+richacl_clone(const struct richacl *acl, gfp_t gfp)
-+{
-+	int count = acl->a_count;
-+	size_t size = sizeof(struct richacl) + count * sizeof(struct richace);
-+	struct richacl *dup = kmalloc(size, gfp);
-+
-+	if (dup) {
-+		memcpy(dup, acl, size);
-+		atomic_set(&dup->a_refcount, 1);
-+	}
-+	return dup;
-+}
-+
-+/**
-+ * richace_copy  -  copy an acl entry
-+ */
-+void
-+richace_copy(struct richace *to, const struct richace *from)
-+{
-+	memcpy(to, from, sizeof(struct richace));
-+}
-diff --git a/include/linux/richacl.h b/include/linux/richacl.h
-new file mode 100644
-index 0000000..ed487b2
---- /dev/null
-+++ b/include/linux/richacl.h
-@@ -0,0 +1,262 @@
-+/*
-+ * Copyright (C) 2006, 2010  Novell, Inc.
-+ * Copyright (C) 2015  Red Hat, Inc.
-+ * Written by Andreas Gruenbacher <agruen@kernel.org>
-+ *
-+ * This program is free software; you can redistribute it and/or modify it
-+ * under the terms of the GNU General Public License as published by the
-+ * Free Software Foundation; either version 2, or (at your option) any
-+ * later version.
-+ *
-+ * This program is distributed in the hope that it will be useful, but
-+ * WITHOUT ANY WARRANTY; without even the implied warranty of
-+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-+ * General Public License for more details.
-+ */
-+
-+#ifndef __RICHACL_H
-+#define __RICHACL_H
-+
-+#define RICHACE_OWNER_SPECIAL_ID	0
-+#define RICHACE_GROUP_SPECIAL_ID	1
-+#define RICHACE_EVERYONE_SPECIAL_ID	2
-+
-+struct richace {
-+	unsigned short	e_type;
-+	unsigned short	e_flags;
-+	unsigned int	e_mask;
-+	union {
-+		kuid_t		uid;
-+		kgid_t		gid;
-+		unsigned int	special;
-+	} e_id;
-+};
-+
-+struct richacl {
-+	atomic_t	a_refcount;
-+	unsigned int	a_owner_mask;
-+	unsigned int	a_group_mask;
-+	unsigned int	a_other_mask;
-+	unsigned short	a_count;
-+	unsigned short	a_flags;
-+	struct richace	a_entries[0];
-+};
-+
-+#define richacl_for_each_entry(_ace, _acl) \
-+	for (_ace = (_acl)->a_entries; \
-+	     _ace != (_acl)->a_entries + (_acl)->a_count; \
-+	     _ace++)
-+
-+#define richacl_for_each_entry_reverse(_ace, _acl) \
-+	for (_ace = (_acl)->a_entries + (_acl)->a_count - 1; \
-+	     _ace != (_acl)->a_entries - 1; \
-+	     _ace--)
-+
-+/* a_flag values */
-+#define RICHACL_WRITE_THROUGH			0x40
-+#define RICHACL_MASKED				0x80
-+
-+#define RICHACL_VALID_FLAGS (					\
-+		RICHACL_WRITE_THROUGH |				\
-+		RICHACL_MASKED)
-+
-+/* e_type values */
-+#define RICHACE_ACCESS_ALLOWED_ACE_TYPE		0x0000
-+#define RICHACE_ACCESS_DENIED_ACE_TYPE		0x0001
-+
-+/* e_flags bitflags */
-+#define RICHACE_FILE_INHERIT_ACE		0x0001
-+#define RICHACE_DIRECTORY_INHERIT_ACE		0x0002
-+#define RICHACE_NO_PROPAGATE_INHERIT_ACE	0x0004
-+#define RICHACE_INHERIT_ONLY_ACE		0x0008
-+#define RICHACE_IDENTIFIER_GROUP		0x0040
-+#define RICHACE_SPECIAL_WHO			0x4000
-+
-+#define RICHACE_VALID_FLAGS (					\
-+	RICHACE_FILE_INHERIT_ACE |				\
-+	RICHACE_DIRECTORY_INHERIT_ACE |				\
-+	RICHACE_NO_PROPAGATE_INHERIT_ACE |			\
-+	RICHACE_INHERIT_ONLY_ACE |				\
-+	RICHACE_IDENTIFIER_GROUP |				\
-+	RICHACE_SPECIAL_WHO)
-+
-+/* e_mask bitflags */
-+#define RICHACE_READ_DATA			0x00000001
-+#define RICHACE_LIST_DIRECTORY			0x00000001
-+#define RICHACE_WRITE_DATA			0x00000002
-+#define RICHACE_ADD_FILE			0x00000002
-+#define RICHACE_APPEND_DATA			0x00000004
-+#define RICHACE_ADD_SUBDIRECTORY		0x00000004
-+#define RICHACE_READ_NAMED_ATTRS		0x00000008
-+#define RICHACE_WRITE_NAMED_ATTRS		0x00000010
-+#define RICHACE_EXECUTE				0x00000020
-+#define RICHACE_DELETE_CHILD			0x00000040
-+#define RICHACE_READ_ATTRIBUTES			0x00000080
-+#define RICHACE_WRITE_ATTRIBUTES		0x00000100
-+#define RICHACE_WRITE_RETENTION			0x00000200
-+#define RICHACE_WRITE_RETENTION_HOLD		0x00000400
-+#define RICHACE_DELETE				0x00010000
-+#define RICHACE_READ_ACL			0x00020000
-+#define RICHACE_WRITE_ACL			0x00040000
-+#define RICHACE_WRITE_OWNER			0x00080000
-+#define RICHACE_SYNCHRONIZE			0x00100000
-+
-+/* Valid RICHACE_* flags for directories and non-directories */
-+#define RICHACE_VALID_MASK (					\
-+	RICHACE_READ_DATA | RICHACE_LIST_DIRECTORY |		\
-+	RICHACE_WRITE_DATA | RICHACE_ADD_FILE |			\
-+	RICHACE_APPEND_DATA | RICHACE_ADD_SUBDIRECTORY |	\
-+	RICHACE_READ_NAMED_ATTRS |				\
-+	RICHACE_WRITE_NAMED_ATTRS |				\
-+	RICHACE_EXECUTE |					\
-+	RICHACE_DELETE_CHILD |					\
-+	RICHACE_READ_ATTRIBUTES |				\
-+	RICHACE_WRITE_ATTRIBUTES |				\
-+	RICHACE_WRITE_RETENTION |				\
-+	RICHACE_WRITE_RETENTION_HOLD |				\
-+	RICHACE_DELETE |					\
-+	RICHACE_READ_ACL |					\
-+	RICHACE_WRITE_ACL |					\
-+	RICHACE_WRITE_OWNER |					\
-+	RICHACE_SYNCHRONIZE)
-+
-+/**
-+ * richacl_get  -  grab another reference to a richacl handle
-+ */
-+static inline struct richacl *
-+richacl_get(struct richacl *acl)
-+{
-+	if (acl)
-+		atomic_inc(&acl->a_refcount);
-+	return acl;
-+}
-+
-+/**
-+ * richacl_put  -  free a richacl handle
-+ */
-+static inline void
-+richacl_put(struct richacl *acl)
-+{
-+	if (acl && atomic_dec_and_test(&acl->a_refcount))
-+		kfree(acl);
-+}
-+
-+/**
-+ * richace_is_owner  -  check if @ace is an OWNER@ entry
-+ */
-+static inline bool
-+richace_is_owner(const struct richace *ace)
-+{
-+	return (ace->e_flags & RICHACE_SPECIAL_WHO) &&
-+	       ace->e_id.special == RICHACE_OWNER_SPECIAL_ID;
-+}
-+
-+/**
-+ * richace_is_group  -  check if @ace is a GROUP@ entry
-+ */
-+static inline bool
-+richace_is_group(const struct richace *ace)
-+{
-+	return (ace->e_flags & RICHACE_SPECIAL_WHO) &&
-+	       ace->e_id.special == RICHACE_GROUP_SPECIAL_ID;
-+}
-+
-+/**
-+ * richace_is_everyone  -  check if @ace is an EVERYONE@ entry
-+ */
-+static inline bool
-+richace_is_everyone(const struct richace *ace)
-+{
-+	return (ace->e_flags & RICHACE_SPECIAL_WHO) &&
-+	       ace->e_id.special == RICHACE_EVERYONE_SPECIAL_ID;
-+}
-+
-+/**
-+ * richace_is_unix_user  -  check if @ace applies to a specific user
-+ */
-+static inline bool
-+richace_is_unix_user(const struct richace *ace)
-+{
-+	return !(ace->e_flags & RICHACE_SPECIAL_WHO) &&
-+	       !(ace->e_flags & RICHACE_IDENTIFIER_GROUP);
-+}
-+
-+/**
-+ * richace_is_unix_group  -  check if @ace applies to a specific group
-+ */
-+static inline bool
-+richace_is_unix_group(const struct richace *ace)
-+{
-+	return !(ace->e_flags & RICHACE_SPECIAL_WHO) &&
-+	       (ace->e_flags & RICHACE_IDENTIFIER_GROUP);
-+}
-+
-+/**
-+ * richace_is_inherit_only  -  check if @ace is for inheritance only
-+ *
-+ * ACEs with the %RICHACE_INHERIT_ONLY_ACE flag set have no effect during
-+ * permission checking.
-+ */
-+static inline bool
-+richace_is_inherit_only(const struct richace *ace)
-+{
-+	return ace->e_flags & RICHACE_INHERIT_ONLY_ACE;
-+}
-+
-+/**
-+ * richace_is_inheritable  -  check if @ace is inheritable
-+ */
-+static inline bool
-+richace_is_inheritable(const struct richace *ace)
-+{
-+	return ace->e_flags & (RICHACE_FILE_INHERIT_ACE |
-+			       RICHACE_DIRECTORY_INHERIT_ACE);
-+}
-+
-+/**
-+ * richace_clear_inheritance_flags  - clear all inheritance flags in @ace
-+ */
-+static inline void
-+richace_clear_inheritance_flags(struct richace *ace)
-+{
-+	ace->e_flags &= ~(RICHACE_FILE_INHERIT_ACE |
-+			  RICHACE_DIRECTORY_INHERIT_ACE |
-+			  RICHACE_NO_PROPAGATE_INHERIT_ACE |
-+			  RICHACE_INHERIT_ONLY_ACE);
-+}
-+
-+/**
-+ * richace_is_allow  -  check if @ace is an %ALLOW type entry
-+ */
-+static inline bool
-+richace_is_allow(const struct richace *ace)
-+{
-+	return ace->e_type == RICHACE_ACCESS_ALLOWED_ACE_TYPE;
-+}
-+
-+/**
-+ * richace_is_deny  -  check if @ace is a %DENY type entry
-+ */
-+static inline bool
-+richace_is_deny(const struct richace *ace)
-+{
-+	return ace->e_type == RICHACE_ACCESS_DENIED_ACE_TYPE;
-+}
-+
-+/**
-+ * richace_is_same_identifier  -  are both identifiers the same?
-+ */
-+static inline bool
-+richace_is_same_identifier(const struct richace *a, const struct richace *b)
-+{
-+	return !((a->e_flags ^ b->e_flags) &
-+		 (RICHACE_SPECIAL_WHO | RICHACE_IDENTIFIER_GROUP)) &&
-+	       !memcmp(&a->e_id, &b->e_id, sizeof(a->e_id));
-+}
-+
-+extern struct richacl *richacl_alloc(int, gfp_t);
-+extern struct richacl *richacl_clone(const struct richacl *, gfp_t);
-+extern void richace_copy(struct richace *, const struct richace *);
-+
-+
-+#endif /* __RICHACL_H */
+ 	if (error)
+ 		return error;
+ 	if (IS_APPEND(dir))
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 9c44f27..abf5b0e 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -83,6 +83,8 @@ typedef void (dax_iodone_t)(struct buffer_head *bh_map, int uptodate);
+ #define MAY_NOT_BLOCK		0x00000080
+ #define MAY_CREATE_FILE		0x00000100
+ #define MAY_CREATE_DIR		0x00000200
++#define MAY_DELETE_CHILD	0x00000400
++#define MAY_DELETE_SELF		0x00000800
+ 
+ /*
+  * flags in file.f_mode.  Note that FMODE_READ and FMODE_WRITE must correspond
 -- 
 2.5.0
 
