@@ -1,142 +1,212 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wi0-f169.google.com ([209.85.212.169]:33696 "EHLO
-	mail-wi0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933160AbbHDLy2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Aug 2015 07:54:28 -0400
+Received: from mail-wi0-f178.google.com ([209.85.212.178]:35454 "EHLO
+	mail-wi0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933577AbbHDLyu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Aug 2015 07:54:50 -0400
 From: Andreas Gruenbacher <andreas.gruenbacher@gmail.com>
 To: linux-kernel@vger.kernel.org
 Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-api@vger.kernel.org, linux-cifs@vger.kernel.org,
         linux-security-module@vger.kernel.org,
         Andreas Gruenbacher <agruenba@redhat.com>
-Subject: [RFC v6 01/40] vfs: Add IS_ACL() and IS_RICHACL() tests
-Date: Tue,  4 Aug 2015 13:52:59 +0200
-Message-Id: <1438689218-6921-2-git-send-email-agruenba@redhat.com>
+Subject: [RFC v6 10/40] richacl: Permission check algorithm
+Date: Tue,  4 Aug 2015 13:53:08 +0200
+Message-Id: <1438689218-6921-11-git-send-email-agruenba@redhat.com>
 In-Reply-To: <1438689218-6921-1-git-send-email-agruenba@redhat.com>
 References: <1438689218-6921-1-git-send-email-agruenba@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The vfs does not apply the umask for file systems that support acls. The
-test used for this used to be called IS_POSIXACL(). Switch to a new
-IS_ACL() test to check for either posix acls or richacls instead. Add a new
-MS_RICHACL flag and IS_RICHACL() test for richacls alone. The IS_POSIXACL()
-test is still needed by file systems that specifically support POSIX ACLs,
-like nfsd.
+A richacl roughly grants a requested access if the NFSv4 acl in the
+richacl grants the requested permissions according to the NFSv4
+permission check algorithm and the file mask that applies to the process
+includes the requested permissions.
 
 Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
 ---
- fs/Kconfig              |  3 +++
- fs/namei.c              |  8 ++++----
- include/linux/fs.h      | 12 ++++++++++++
- include/uapi/linux/fs.h |  3 ++-
- 4 files changed, 21 insertions(+), 5 deletions(-)
+ fs/Makefile             |   2 +-
+ fs/richacl_inode.c      | 146 ++++++++++++++++++++++++++++++++++++++++++++++++
+ include/linux/richacl.h |   3 +
+ 3 files changed, 150 insertions(+), 1 deletion(-)
+ create mode 100644 fs/richacl_inode.c
 
-diff --git a/fs/Kconfig b/fs/Kconfig
-index 011f433..3e09c06 100644
---- a/fs/Kconfig
-+++ b/fs/Kconfig
-@@ -59,6 +59,9 @@ endif # BLOCK
- config FS_POSIX_ACL
- 	def_bool n
+diff --git a/fs/Makefile b/fs/Makefile
+index ddc43d8..1305047 100644
+--- a/fs/Makefile
++++ b/fs/Makefile
+@@ -48,7 +48,7 @@ obj-$(CONFIG_SYSCTL)		+= drop_caches.o
  
-+config FS_RICHACL
-+	def_bool n
-+
- config EXPORTFS
- 	tristate
+ obj-$(CONFIG_FHANDLE)		+= fhandle.o
+ obj-$(CONFIG_FS_RICHACL)	+= richacl.o
+-richacl-y			:= richacl_base.o
++richacl-y			:= richacl_base.o richacl_inode.o
  
-diff --git a/fs/namei.c b/fs/namei.c
-index fbbcf09..8f3db24 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -2771,7 +2771,7 @@ static int atomic_open(struct nameidata *nd, struct dentry *dentry,
- 	}
+ obj-y				+= quota/
  
- 	mode = op->mode;
--	if ((open_flag & O_CREAT) && !IS_POSIXACL(dir))
-+	if ((open_flag & O_CREAT) && !IS_ACL(dir))
- 		mode &= ~current_umask();
- 
- 	excl = (open_flag & (O_EXCL | O_CREAT)) == (O_EXCL | O_CREAT);
-@@ -2955,7 +2955,7 @@ static int lookup_open(struct nameidata *nd, struct path *path,
- 	/* Negative dentry, just create the file */
- 	if (!dentry->d_inode && (op->open_flag & O_CREAT)) {
- 		umode_t mode = op->mode;
--		if (!IS_POSIXACL(dir->d_inode))
-+		if (!IS_ACL(dir->d_inode))
- 			mode &= ~current_umask();
- 		/*
- 		 * This write is needed to ensure that a
-@@ -3526,7 +3526,7 @@ retry:
- 	if (IS_ERR(dentry))
- 		return PTR_ERR(dentry);
- 
--	if (!IS_POSIXACL(path.dentry->d_inode))
-+	if (!IS_ACL(path.dentry->d_inode))
- 		mode &= ~current_umask();
- 	error = security_path_mknod(&path, dentry, mode, dev);
- 	if (error)
-@@ -3595,7 +3595,7 @@ retry:
- 	if (IS_ERR(dentry))
- 		return PTR_ERR(dentry);
- 
--	if (!IS_POSIXACL(path.dentry->d_inode))
-+	if (!IS_ACL(path.dentry->d_inode))
- 		mode &= ~current_umask();
- 	error = security_path_mkdir(&path, dentry, mode);
- 	if (!error)
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index cc008c3..44e696e 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1770,6 +1770,12 @@ struct super_operations {
- #define IS_IMMUTABLE(inode)	((inode)->i_flags & S_IMMUTABLE)
- #define IS_POSIXACL(inode)	__IS_FLG(inode, MS_POSIXACL)
- 
-+#ifdef CONFIG_FS_RICHACL
-+#define IS_RICHACL(inode)	__IS_FLG(inode, MS_RICHACL)
-+#else
-+#define IS_RICHACL(inode)	0
-+#endif
-+
- #define IS_DEADDIR(inode)	((inode)->i_flags & S_DEAD)
- #define IS_NOCMTIME(inode)	((inode)->i_flags & S_NOCMTIME)
- #define IS_SWAPFILE(inode)	((inode)->i_flags & S_SWAPFILE)
-@@ -1783,6 +1789,12 @@ struct super_operations {
- 				 (inode)->i_rdev == WHITEOUT_DEV)
- 
- /*
-+ * IS_ACL() tells the VFS to not apply the umask
-+ * and use check_acl for acl permission checks when defined.
-+ */
-+#define IS_ACL(inode)		__IS_FLG(inode, MS_POSIXACL | MS_RICHACL)
-+
+diff --git a/fs/richacl_inode.c b/fs/richacl_inode.c
+new file mode 100644
+index 0000000..6d94e064
+--- /dev/null
++++ b/fs/richacl_inode.c
+@@ -0,0 +1,146 @@
 +/*
-  * Inode state bits.  Protected by inode->i_lock
-  *
-  * Three bits determine the dirty state of the inode, I_DIRTY_SYNC,
-diff --git a/include/uapi/linux/fs.h b/include/uapi/linux/fs.h
-index 9b964a5..6ac6bc9 100644
---- a/include/uapi/linux/fs.h
-+++ b/include/uapi/linux/fs.h
-@@ -81,7 +81,7 @@ struct inodes_stat_t {
- #define MS_VERBOSE	32768	/* War is peace. Verbosity is silence.
- 				   MS_VERBOSE is deprecated. */
- #define MS_SILENT	32768
--#define MS_POSIXACL	(1<<16)	/* VFS does not apply the umask */
-+#define MS_POSIXACL	(1<<16)	/* Supports POSIX ACLs */
- #define MS_UNBINDABLE	(1<<17)	/* change to unbindable */
- #define MS_PRIVATE	(1<<18)	/* change to private */
- #define MS_SLAVE	(1<<19)	/* change to slave */
-@@ -91,6 +91,7 @@ struct inodes_stat_t {
- #define MS_I_VERSION	(1<<23) /* Update inode I_version field */
- #define MS_STRICTATIME	(1<<24) /* Always perform atime updates */
- #define MS_LAZYTIME	(1<<25) /* Update the on-disk [acm]times lazily */
-+#define MS_RICHACL	(1<<26) /* Supports richacls */
++ * Copyright (C) 2010  Novell, Inc.
++ * Copyright (C) 2015  Red Hat, Inc.
++ * Written by Andreas Gruenbacher <agruen@kernel.org>
++ *
++ * This program is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License as published by the
++ * Free Software Foundation; either version 2, or (at your option) any
++ * later version.
++ *
++ * This program is distributed in the hope that it will be useful, but
++ * WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * General Public License for more details.
++ */
++
++#include <linux/sched.h>
++#include <linux/module.h>
++#include <linux/fs.h>
++#include <linux/slab.h>
++#include <linux/richacl.h>
++
++/**
++ * richacl_permission  -  richacl permission check algorithm
++ * @inode:	inode to check
++ * @acl:	rich acl of the inode
++ * @want:	requested access (MAY_* flags)
++ *
++ * Checks if the current process is granted @mask flags in @acl.
++ */
++int
++richacl_permission(struct inode *inode, const struct richacl *acl,
++		   int want)
++{
++	const struct richace *ace;
++	unsigned int mask = richacl_want_to_mask(want);
++	unsigned int requested = mask, denied = 0;
++	int in_owning_group = in_group_p(inode->i_gid);
++	int in_owner_or_group_class = in_owning_group;
++
++	/*
++	 * A process is
++	 *   - in the owner file class if it owns the file,
++	 *   - in the group file class if it is in the file's owning group or
++	 *     it matches any of the user or group entries, and
++	 *   - in the other file class otherwise.
++	 * The file class is only relevant for determining which file mask to
++	 * apply, which only happens for masked acls.
++	 */
++	if (acl->a_flags & RICHACL_MASKED) {
++		if ((acl->a_flags & RICHACL_WRITE_THROUGH) &&
++		    uid_eq(current_fsuid(), inode->i_uid)) {
++			denied = requested & ~acl->a_owner_mask;
++			goto out;
++		}
++	} else {
++		/*
++		 * We don't care which class the process is in when the acl is
++		 * not masked.
++		 */
++		in_owner_or_group_class = 1;
++	}
++
++	/*
++	 * Check if the acl grants the requested access and determine which
++	 * file class the process is in.
++	 */
++	richacl_for_each_entry(ace, acl) {
++		unsigned int ace_mask = ace->e_mask;
++
++		if (richace_is_inherit_only(ace))
++			continue;
++		if (richace_is_owner(ace)) {
++			if (!uid_eq(current_fsuid(), inode->i_uid))
++				continue;
++			goto entry_matches_owner;
++		} else if (richace_is_group(ace)) {
++			if (!in_owning_group)
++				continue;
++		} else if (richace_is_unix_user(ace)) {
++			if (!uid_eq(current_fsuid(), ace->e_id.uid))
++				continue;
++		} else if (richace_is_unix_group(ace)) {
++			if (!in_group_p(ace->e_id.gid))
++				continue;
++		} else
++			goto entry_matches_everyone;
++
++		/*
++		 * Apply the group file mask to entries other than owner@ and
++		 * everyone@ or user entries matching the owner.  This ensures
++		 * that we grant the same permissions as the acl computed by
++		 * richacl_apply_masks().
++		 *
++		 * Without this restriction, the following richacl would grant
++		 * rw access to processes which are both the owner and in the
++		 * owning group, but not to other users in the owning group,
++		 * which could not be represented without masks:
++		 *
++		 *  owner:rw::mask
++		 *  group@:rw::allow
++		 */
++		if ((acl->a_flags & RICHACL_MASKED) && richace_is_allow(ace))
++			ace_mask &= acl->a_group_mask;
++
++entry_matches_owner:
++		/* The process is in the owner or group file class. */
++		in_owner_or_group_class = 1;
++
++entry_matches_everyone:
++		/* Check which mask flags the ACE allows or denies. */
++		if (richace_is_deny(ace))
++			denied |= ace_mask & mask;
++		mask &= ~ace_mask;
++
++		/*
++		 * Keep going until we know which file class
++		 * the process is in.
++		 */
++		if (!mask && in_owner_or_group_class)
++			break;
++	}
++	denied |= mask;
++
++	if (acl->a_flags & RICHACL_MASKED) {
++		/*
++		 * The file class a process is in determines which file mask
++		 * applies.  Check if that file mask also grants the requested
++		 * access.
++		 */
++		if (uid_eq(current_fsuid(), inode->i_uid))
++			denied |= requested & ~acl->a_owner_mask;
++		else if (in_owner_or_group_class)
++			denied |= requested & ~acl->a_group_mask;
++		else {
++			if (acl->a_flags & RICHACL_WRITE_THROUGH)
++				denied = requested & ~acl->a_other_mask;
++			else
++				denied |= requested & ~acl->a_other_mask;
++		}
++	}
++
++out:
++	return denied ? -EACCES : 0;
++}
++EXPORT_SYMBOL_GPL(richacl_permission);
+diff --git a/include/linux/richacl.h b/include/linux/richacl.h
+index 8df6d93..756b711 100644
+--- a/include/linux/richacl.h
++++ b/include/linux/richacl.h
+@@ -306,4 +306,7 @@ extern unsigned int richacl_want_to_mask(unsigned int);
+ extern void richacl_compute_max_masks(struct richacl *, kuid_t);
+ extern struct richacl *richacl_chmod(struct richacl *, mode_t);
  
- /* These sb flags are internal to the kernel */
- #define MS_NOSEC	(1<<28)
++/* richacl_inode.c */
++extern int richacl_permission(struct inode *, const struct richacl *, int);
++
+ #endif /* __RICHACL_H */
 -- 
 2.5.0
 
