@@ -1,86 +1,248 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:18314 "EHLO
+Received: from userp1040.oracle.com ([156.151.31.81]:19920 "EHLO
 	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756344AbbHDO2x (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Aug 2015 10:28:53 -0400
+	with ESMTP id S1752760AbbHDOad convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Aug 2015 10:30:33 -0400
 Content-Type: text/plain; charset=us-ascii
 Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
-Subject: Re: Automatically loading svcrdma causes reboot hang on systemd
+Subject: Re: [PATCH 3/6] nfsidmap: List cached ID mapping results
 From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <CA+X5Wn5tYN1ScawJFQzt+SZz61S_PYEbCC=6cdbxr_M6GLzuPw@mail.gmail.com>
-Date: Tue, 4 Aug 2015 10:28:44 -0400
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <93820DB5-C825-4A9E-BF67-4BB2AD0FA122@oracle.com>
-References: <CA+X5Wn5tYN1ScawJFQzt+SZz61S_PYEbCC=6cdbxr_M6GLzuPw@mail.gmail.com>
-To: james harvey <jamespharvey20@gmail.com>
+In-Reply-To: <1AECCCCC-893E-4DD4-9415-EACC056AF724@oracle.com>
+Date: Tue, 4 Aug 2015 10:30:24 -0400
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        David Howells <dhowells@redhat.com>
+Message-Id: <110B6500-374B-47A6-A4CA-27F019339C44@oracle.com>
+References: <20150731220914.50685.32887.stgit@seurat.1015granger.net> <20150731221355.50685.82639.stgit@seurat.1015granger.net> <55C0BE4D.4060709@RedHat.com> <1AECCCCC-893E-4DD4-9415-EACC056AF724@oracle.com>
+To: Steve Dickson <SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-On Aug 3, 2015, at 10:23 PM, james harvey <jamespharvey20@gmail.com> wrote:
+On Aug 4, 2015, at 10:15 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
 
-> Fresh minimal Arch system, on kernel 4.1.3 (-1 Arch).  nfs-utils 1.3.2
-> (-6 Arch).  Mellanox ConnectX MT25418 card, using latest firmware.
-> systemd 223 (-1 Arch).
 > 
-> If I boot the system, log in, and manually "modprobe svcrdma" and
-> "echo rdma 20049 > /proc/fs/nfsd/portlist", I can "systemctl reboot"
-> or "systemctl shutdown" just fine.  Regardless of whether I do so as
-> quickly as possible (kernel uptime 30-40sec) or wait several minutes.
+> On Aug 4, 2015, at 9:29 AM, Steve Dickson <SteveD@redhat.com> wrote:
 > 
-> If svcrdma is loaded and portlist is set through systemd with
-> "Before=remote-fs-pre.target" and "After=nfs-server.target", I can
-> reboot or shutdown just fine.  But, if I wait until the kernel has
-> been up for about 60 seconds or more (I give it 2 min in testing to be
-> sure), any reboot or shutdown hangs after everything is unmounted,
-> services are stopped, and it's actually time to "hit" the power
-> switch.  (Using sysrq-trigger does forces it to reboot.)
+>> Hello,
+>> 
+>> On 07/31/2015 06:13 PM, Chuck Lever wrote:
+>>> User space can see the keys, but not their contents.
+>>> 
+>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>>> ---
+>>> utils/nfsidmap/nfsidmap.c   |   85 ++++++++++++++++++++++++++++++++++++++++++-
+>>> utils/nfsidmap/nfsidmap.man |   15 ++++++++
+>>> 2 files changed, 98 insertions(+), 2 deletions(-)
+>>> 
+>>> diff --git a/utils/nfsidmap/nfsidmap.c b/utils/nfsidmap/nfsidmap.c
+>>> index 44b8b4b..ed397c6 100644
+>>> --- a/utils/nfsidmap/nfsidmap.c
+>>> +++ b/utils/nfsidmap/nfsidmap.c
+>>> @@ -108,6 +108,81 @@ static int display_default_domain(void)
+>>> 	return EXIT_SUCCESS;
+>>> }
+>>> 
+>>> +static void list_key(key_serial_t key)
+>>> +{
+>>> +	char *buffer, *c;
+>>> +	int rc;
+>>> +
+>>> +	rc = keyctl_describe_alloc(key, &buffer);
+>>> +	if (rc < 0) {
+>>> +		switch (errno) {
+>>> +		case EKEYEXPIRED:
+>>> +			printf("Expired key not displayed\n");
+>>> +			break;
+>>> +		default:
+>>> +			xlog_err("Failed to describe key: %m");
+>>> +		}
+>>> +		return;
+>>> +	}
+>>> +
+>>> +	c = strrchr(buffer, ';');
+>>> +	if (!c) {
+>>> +		xlog_err("Unparsable key not displayed\n");
+>>> +		goto out_free;
+>>> +	}
+>>> +	printf("  %s\n", ++c);
+>>> +
+>>> +out_free:
+>>> +	free(buffer);
+>>> +}
+>>> +
+>>> +static void list_keys(const char *ring_name, key_serial_t ring_id)
+>>> +{
+>>> +	key_serial_t *key;
+>>> +	void *keylist;
+>>> +	int count;
+>>> +
+>>> +	count = keyctl_read_alloc(ring_id, &keylist);
+>>> +	if (count < 0) {
+>>> +		xlog_err("Failed to read keyring %s: %m", ring_name);
+>>> +		return;
+>>> +	}
+>>> +	count /= (int)sizeof(*key);
+>>> +
+>>> +	switch (count) {
+>>> +	case 0:
+>>> +		printf("No %s keys found.\n", ring_name);
+>>> +		break;
+>>> +	case 1:
+>>> +		printf("1 %s key found:\n", ring_name);
+>>> +		break;
+>>> +	default:
+>>> +		printf("%u %s keys found:\n", count, ring_name);
+>>> +	}
+>>> +
+>>> +	for (key = keylist; count--; key++)
+>>> +		list_key(*key);
+>>> +
+>>> +	free(keylist);
+>>> +}
+>>> +
+>>> +/*
+>>> + * List all keys on a keyring
+>>> + */
+>>> +static int list_keyring(const char *keyring)
+>>> +{
+>>> +	key_serial_t key;
+>>> +
+>>> +	key = find_key_by_type_and_desc("keyring", keyring, 0);
+>>> +	if (key == -1) {
+>>> +		xlog_err("'%s' keyring was not found.", keyring);
+>>> +		return EXIT_FAILURE;
+>>> +	}
+>>> +
+>>> +	list_keys(keyring, key);
+>>> +	return EXIT_SUCCESS;
+>>> +}
+>>> +
+>>> /*
+>>> * Find either a user or group id based on the name@domain string
+>>> */
+>>> @@ -277,7 +352,7 @@ int main(int argc, char **argv)
+>>> 	int timeout = 600;
+>>> 	key_serial_t key;
+>>> 	char *progname, *keystr = NULL;
+>>> -	int clearing = 0, keymask = 0, display = 0;
+>>> +	int clearing = 0, keymask = 0, display = 0, list = 0;
+>>> 
+>>> 	/* Set the basename */
+>>> 	if ((progname = strrchr(argv[0], '/')) != NULL)
+>>> @@ -287,11 +362,14 @@ int main(int argc, char **argv)
+>>> 
+>>> 	xlog_open(progname);
+>>> 
+>>> -	while ((opt = getopt(argc, argv, "du:g:r:ct:v")) != -1) {
+>>> +	while ((opt = getopt(argc, argv, "du:g:r:ct:vl")) != -1) {
+>>> 		switch (opt) {
+>>> 		case 'd':
+>>> 			display++;
+>>> 			break;
+>>> +		case 'l':
+>>> +			list++;
+>>> +			break;
+>>> 		case 'u':
+>>> 			keymask = UIDKEYS;
+>>> 			keystr = strdup(optarg);
+>>> @@ -328,6 +406,9 @@ int main(int argc, char **argv)
+>>> 
+>>> 	if (display)
+>>> 		return display_default_domain();
+>>> +	else if (list)
+>>> +		return list_keyring(DEFAULT_KEYRING);
+>>> +
+>> Just curious as to why the else clause... Are you
+>> thinking it does not make sense to display the 
+>> domain and list out the key ring?
 > 
-> If I modify the systemd service, so it is after "network.target
-> rdma.service auth-rpcgss-module.service nfs-blkmap.service
-> nfs-config.service nfs-imapd.service nfs-mountd.service
-> nfs-server.service nfs-server.target nfs-utils.service
-> rpc-gssd.service rpc-statd-notify.service rpc-statd.service
-> rpc-svcgssd.service", I can wait as long as I want, and
-> reboot/shutdown works fine.
-> 
-> This is all without any NFS exports defined - so no NFS clients
-> actually connected.
-> 
-> As crazy as this sounds (to me anyway), this shows that
-> svcrdma/portlist will cause a reboot/shutdown lockup if it is loaded
-> before or during when the RDMA or NFS kernel modules are being
-> loaded... And works fine if it waits until they are all done.
-> 
-> I would expect modprobe or setting portlist would fail if it wasn't
-> ready to be loaded, rather than come up, work, and later mysteriously
-> hanging a reboot/shutdown.
-> 
-> I put about 20 hours into diagnosing this, and the results are 100%
-> repeatable, even if the above conclusion sounds weird.
-> 
-> I haven't tried out if xprtrdma has the same effect.
-> 
-> If you also run arch, you can see/download the new AUR4 package that
-> loads the kernel module and sets portlist at:
-> https://aur4.archlinux.org/packages/nfs-utils-rdma-server/  and the
-> client version at:
-> https://aur4.archlinux.org/packages/nfs-utils-rdma-client/
-> 
-> If you "View Changes" on that page, you can see the previous version
-> which causes the lockup.
+> Well, display already has a hard "return display_default_domain()".
+> If you specify "-l" you're not getting anything else. The "else"
 
-I'm not an Arch user, so I don't entirely understand what is
-going on (whether this is an issue unique to Arch, a problem
-with the NFS systemd scripts, or a problem with resource
-management in the kernel).
+Sorry, I meant "if you specify "-d" you're not getting anything else."
 
-However, let's start with this:
-
-http://marc.info/?l=linux-nfs&m=143647487532461&w=2
-
-Can you apply this patch to your kernel, and see if it helps?
-
+> can probably be removed.
+> 
+> The idea is that "nfsidmap -l" or "nfsidmap -d" can be used
+> in scripts too. In that context, specifying both would make
+> parsing the output more difficult. And I think you would use
+> these in different situations. "-l" might be used a lot. "-d"
+> might be used once to check the configuration.
+> 
+> And IMO these new options should be careful to avoid updating
+> or revoking any key, so the logic exits right there, as a
+> defensive precaution.
+> 
+> We're overloading a kernel API here, after all. Maybe this kind
+> of debugging belongs in a separate command. But this seems safe
+> enough.
+> 
+> 
+>> steved.
+>> 
+>>> 	if (keystr) {
+>>> 		rc = key_invalidate(keystr, keymask);
+>>> 		return rc;		
+>>> diff --git a/utils/nfsidmap/nfsidmap.man b/utils/nfsidmap/nfsidmap.man
+>>> index 04ddff6..0275bdf 100644
+>>> --- a/utils/nfsidmap/nfsidmap.man
+>>> +++ b/utils/nfsidmap/nfsidmap.man
+>>> @@ -13,6 +13,8 @@ nfsidmap \- The NFS idmapper upcall program
+>>> .B "nfsidmap [-v] [-u|-g|-r user]"
+>>> .br
+>>> .B "nfsidmap -d"
+>>> +.br
+>>> +.B "nfsidmap -l"
+>>> .SH DESCRIPTION
+>>> The NFSv4 protocol represents the local system's UID and GID values
+>>> on the wire as strings of the form
+>>> @@ -50,6 +52,13 @@ can also clear cached ID map results in the kernel,
+>>> or revoke one particular key.
+>>> An incorrect cached key can result in file and directory ownership
+>>> reverting to "nobody" on NFSv4 mount points.
+>>> +.PP
+>>> +In addition, the
+>>> +.B -d
+>>> +and
+>>> +.B -l
+>>> +options are available to help diagnose misconfigurations.
+>>> +They have no effect on the keyring containing ID mapping results.
+>>> .SH OPTIONS
+>>> .TP
+>>> .B -c 
+>>> @@ -62,6 +71,12 @@ Display the system's effective NFSv4 domain name on
+>>> .B -g user
+>>> Revoke the gid key of the given user.
+>>> .TP
+>>> +.B -l
+>>> +Display on
+>>> +.I stdout
+>>> +all keys currently in the keyring used to cache ID mapping results.
+>>> +These keys are visible only to the superuser.
+>>> +.TP
+>>> .B -r user
+>>> Revoke both the uid and gid key of the given user.
+>>> .TP
+>>> 
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>> 
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> --
+> Chuck Lever
+> 
+> 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
 --
 Chuck Lever
