@@ -1,67 +1,61 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-la0-f53.google.com ([209.85.215.53]:33447 "EHLO
-	mail-la0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751256AbbHDCXX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Aug 2015 22:23:23 -0400
-Received: by labix3 with SMTP id ix3so12342115lab.0
-        for <linux-nfs@vger.kernel.org>; Mon, 03 Aug 2015 19:23:21 -0700 (PDT)
+Received: from mail-pa0-f41.google.com ([209.85.220.41]:34109 "EHLO
+	mail-pa0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932655AbbHDKna (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Aug 2015 06:43:30 -0400
+Received: by pawu10 with SMTP id u10so5640276paw.1
+        for <linux-nfs@vger.kernel.org>; Tue, 04 Aug 2015 03:43:29 -0700 (PDT)
+Subject: Re: [PATCH 3/7 v2] NFS: Check size by inode_newsize_ok in nfs_setattr
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+References: <55BA290B.2020704@gmail.com> <55BA2936.4030404@gmail.com>
+ <55BA2996.9030804@gmail.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        kinglongmee@gmail.com
+From: Kinglong Mee <kinglongmee@gmail.com>
+Message-ID: <55C0973A.5020700@gmail.com>
+Date: Tue, 4 Aug 2015 18:43:06 +0800
 MIME-Version: 1.0
-Date: Tue, 4 Aug 2015 02:23:21 +0000
-Message-ID: <CA+X5Wn5tYN1ScawJFQzt+SZz61S_PYEbCC=6cdbxr_M6GLzuPw@mail.gmail.com>
-Subject: Automatically loading svcrdma causes reboot hang on systemd
-From: james harvey <jamespharvey20@gmail.com>
-To: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=UTF-8
+In-Reply-To: <55BA2996.9030804@gmail.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Fresh minimal Arch system, on kernel 4.1.3 (-1 Arch).  nfs-utils 1.3.2
-(-6 Arch).  Mellanox ConnectX MT25418 card, using latest firmware.
-systemd 223 (-1 Arch).
+On 7/30/2015 21:41, Kinglong Mee wrote:
+> Set rlimit for NFS's files is useless right now.
+> For local process's rlimit, it should be checked by nfs client.
+> 
+> The same, CIFS also call inode_change_ok checking rlimit at its client
+> in cifs_setattr_nounix() and cifs_setattr_unix().
+> 
+> v2, same as v1.
+> 
+> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+> ---
+>  fs/nfs/inode.c | 11 +++++------
+>  1 file changed, 5 insertions(+), 6 deletions(-)
+> 
+> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+> index 0adc7d2..9304dfd 100644
+> --- a/fs/nfs/inode.c
+> +++ b/fs/nfs/inode.c
+> @@ -513,15 +513,14 @@ nfs_setattr(struct dentry *dentry, struct iattr *attr)
+>  		attr->ia_valid &= ~ATTR_MODE;
+>  
+>  	if (attr->ia_valid & ATTR_SIZE) {
+> -		loff_t i_size;
+> -
+>  		BUG_ON(!S_ISREG(inode->i_mode));
+>  
+> -		i_size = i_size_read(inode);
+> -		if (attr->ia_size == i_size)
+> +		error = inode_newsize_ok(inode, attr->ia_size);
+> +		if (error)
+> +			return error;
 
-If I boot the system, log in, and manually "modprobe svcrdma" and
-"echo rdma 20049 > /proc/fs/nfsd/portlist", I can "systemctl reboot"
-or "systemctl shutdown" just fine.  Regardless of whether I do so as
-quickly as possible (kernel uptime 30-40sec) or wait several minutes.
+So sorry!
 
-If svcrdma is loaded and portlist is set through systemd with
-"Before=remote-fs-pre.target" and "After=nfs-server.target", I can
-reboot or shutdown just fine.  But, if I wait until the kernel has
-been up for about 60 seconds or more (I give it 2 min in testing to be
-sure), any reboot or shutdown hangs after everything is unmounted,
-services are stopped, and it's actually time to "hit" the power
-switch.  (Using sysrq-trigger does forces it to reboot.)
+Use "error" will cause a bug for the following code of error out.
+I will update it in the new version.
 
-If I modify the systemd service, so it is after "network.target
-rdma.service auth-rpcgss-module.service nfs-blkmap.service
-nfs-config.service nfs-imapd.service nfs-mountd.service
-nfs-server.service nfs-server.target nfs-utils.service
-rpc-gssd.service rpc-statd-notify.service rpc-statd.service
-rpc-svcgssd.service", I can wait as long as I want, and
-reboot/shutdown works fine.
-
-This is all without any NFS exports defined - so no NFS clients
-actually connected.
-
-As crazy as this sounds (to me anyway), this shows that
-svcrdma/portlist will cause a reboot/shutdown lockup if it is loaded
-before or during when the RDMA or NFS kernel modules are being
-loaded... And works fine if it waits until they are all done.
-
-I would expect modprobe or setting portlist would fail if it wasn't
-ready to be loaded, rather than come up, work, and later mysteriously
-hanging a reboot/shutdown.
-
-I put about 20 hours into diagnosing this, and the results are 100%
-repeatable, even if the above conclusion sounds weird.
-
-I haven't tried out if xprtrdma has the same effect.
-
-If you also run arch, you can see/download the new AUR4 package that
-loads the kernel module and sets portlist at:
-https://aur4.archlinux.org/packages/nfs-utils-rdma-server/  and the
-client version at:
-https://aur4.archlinux.org/packages/nfs-utils-rdma-client/
-
-If you "View Changes" on that page, you can see the previous version
-which causes the lockup.
+thanks,
+Kinglong Mee
