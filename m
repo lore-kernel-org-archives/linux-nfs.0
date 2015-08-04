@@ -1,142 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f174.google.com ([209.85.213.174]:35613 "EHLO
-	mail-ig0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754315AbbHCV7d (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Aug 2015 17:59:33 -0400
-Received: by igr7 with SMTP id 7so63132317igr.0
-        for <linux-nfs@vger.kernel.org>; Mon, 03 Aug 2015 14:59:32 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+Received: from mail-la0-f53.google.com ([209.85.215.53]:33447 "EHLO
+	mail-la0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751256AbbHDCXX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Aug 2015 22:23:23 -0400
+Received: by labix3 with SMTP id ix3so12342115lab.0
+        for <linux-nfs@vger.kernel.org>; Mon, 03 Aug 2015 19:23:21 -0700 (PDT)
+MIME-Version: 1.0
+Date: Tue, 4 Aug 2015 02:23:21 +0000
+Message-ID: <CA+X5Wn5tYN1ScawJFQzt+SZz61S_PYEbCC=6cdbxr_M6GLzuPw@mail.gmail.com>
+Subject: Automatically loading svcrdma causes reboot hang on systemd
+From: james harvey <jamespharvey20@gmail.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH] pNFS: Tighten up locking around DS commit buckets
-Date: Mon,  3 Aug 2015 17:59:30 -0400
-Message-Id: <1438639170-12855-1-git-send-email-trond.myklebust@primarydata.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I'm not aware of any bugreports around this issue, but the locking
-around the pnfs_commit_bucket is inconsistent at best. This patch
-tightens it up by ensuring that the 'bucket->committing' list is always
-changed atomically w.r.t. the 'bucket->clseg' layout segment tracking.
+Fresh minimal Arch system, on kernel 4.1.3 (-1 Arch).  nfs-utils 1.3.2
+(-6 Arch).  Mellanox ConnectX MT25418 card, using latest firmware.
+systemd 223 (-1 Arch).
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/pnfs_nfs.c | 50 ++++++++++++++++++++++++++++++++------------------
- 1 file changed, 32 insertions(+), 18 deletions(-)
+If I boot the system, log in, and manually "modprobe svcrdma" and
+"echo rdma 20049 > /proc/fs/nfsd/portlist", I can "systemctl reboot"
+or "systemctl shutdown" just fine.  Regardless of whether I do so as
+quickly as possible (kernel uptime 30-40sec) or wait several minutes.
 
-diff --git a/fs/nfs/pnfs_nfs.c b/fs/nfs/pnfs_nfs.c
-index 7a282876662f..cd3c0403101b 100644
---- a/fs/nfs/pnfs_nfs.c
-+++ b/fs/nfs/pnfs_nfs.c
-@@ -124,11 +124,12 @@ pnfs_generic_scan_ds_commit_list(struct pnfs_commit_bucket *bucket,
- 	if (ret) {
- 		cinfo->ds->nwritten -= ret;
- 		cinfo->ds->ncommitting += ret;
--		bucket->clseg = bucket->wlseg;
--		if (list_empty(src))
-+		if (bucket->clseg == NULL)
-+			bucket->clseg = pnfs_get_lseg(bucket->wlseg);
-+		if (list_empty(src)) {
-+			pnfs_put_lseg_locked(bucket->wlseg);
- 			bucket->wlseg = NULL;
--		else
--			pnfs_get_lseg(bucket->clseg);
-+		}
- 	}
- 	return ret;
- }
-@@ -182,19 +183,23 @@ static void pnfs_generic_retry_commit(struct nfs_commit_info *cinfo, int idx)
- 	struct pnfs_ds_commit_info *fl_cinfo = cinfo->ds;
- 	struct pnfs_commit_bucket *bucket;
- 	struct pnfs_layout_segment *freeme;
-+	LIST_HEAD(pages);
- 	int i;
- 
-+	spin_lock(cinfo->lock);
- 	for (i = idx; i < fl_cinfo->nbuckets; i++) {
- 		bucket = &fl_cinfo->buckets[i];
- 		if (list_empty(&bucket->committing))
- 			continue;
--		nfs_retry_commit(&bucket->committing, bucket->clseg, cinfo, i);
--		spin_lock(cinfo->lock);
- 		freeme = bucket->clseg;
- 		bucket->clseg = NULL;
-+		list_splice_init(&bucket->committing, &pages);
- 		spin_unlock(cinfo->lock);
-+		nfs_retry_commit(&pages, freeme, cinfo, i);
- 		pnfs_put_lseg(freeme);
-+		spin_lock(cinfo->lock);
- 	}
-+	spin_unlock(cinfo->lock);
- }
- 
- static unsigned int
-@@ -216,10 +221,6 @@ pnfs_generic_alloc_ds_commits(struct nfs_commit_info *cinfo,
- 		if (!data)
- 			break;
- 		data->ds_commit_index = i;
--		spin_lock(cinfo->lock);
--		data->lseg = bucket->clseg;
--		bucket->clseg = NULL;
--		spin_unlock(cinfo->lock);
- 		list_add(&data->pages, list);
- 		nreq++;
- 	}
-@@ -229,6 +230,22 @@ pnfs_generic_alloc_ds_commits(struct nfs_commit_info *cinfo,
- 	return nreq;
- }
- 
-+static inline
-+void pnfs_fetch_commit_bucket_list(struct list_head *pages,
-+		struct nfs_commit_data *data,
-+		struct nfs_commit_info *cinfo)
-+{
-+	struct pnfs_commit_bucket *bucket;
-+
-+	bucket = &cinfo->ds->buckets[data->ds_commit_index];
-+	spin_lock(cinfo->lock);
-+	list_splice_init(pages, &bucket->committing);
-+	data->lseg = bucket->clseg;
-+	bucket->clseg = NULL;
-+	spin_unlock(cinfo->lock);
-+
-+}
-+
- /* This follows nfs_commit_list pretty closely */
- int
- pnfs_generic_commit_pagelist(struct inode *inode, struct list_head *mds_pages,
-@@ -243,7 +260,7 @@ pnfs_generic_commit_pagelist(struct inode *inode, struct list_head *mds_pages,
- 	if (!list_empty(mds_pages)) {
- 		data = nfs_commitdata_alloc();
- 		if (data != NULL) {
--			data->lseg = NULL;
-+			data->ds_commit_index = -1;
- 			list_add(&data->pages, &list);
- 			nreq++;
- 		} else {
-@@ -265,19 +282,16 @@ pnfs_generic_commit_pagelist(struct inode *inode, struct list_head *mds_pages,
- 
- 	list_for_each_entry_safe(data, tmp, &list, pages) {
- 		list_del_init(&data->pages);
--		if (!data->lseg) {
-+		if (data->ds_commit_index < 0) {
- 			nfs_init_commit(data, mds_pages, NULL, cinfo);
- 			nfs_initiate_commit(NFS_CLIENT(inode), data,
- 					    NFS_PROTO(data->inode),
- 					    data->mds_ops, how, 0);
- 		} else {
--			struct pnfs_commit_bucket *buckets;
-+			LIST_HEAD(pages);
- 
--			buckets = cinfo->ds->buckets;
--			nfs_init_commit(data,
--					&buckets[data->ds_commit_index].committing,
--					data->lseg,
--					cinfo);
-+			pnfs_fetch_commit_bucket_list(&pages, data, cinfo);
-+			nfs_init_commit(data, &pages, data->lseg, cinfo);
- 			initiate_commit(data, how);
- 		}
- 	}
--- 
-2.4.3
+If svcrdma is loaded and portlist is set through systemd with
+"Before=remote-fs-pre.target" and "After=nfs-server.target", I can
+reboot or shutdown just fine.  But, if I wait until the kernel has
+been up for about 60 seconds or more (I give it 2 min in testing to be
+sure), any reboot or shutdown hangs after everything is unmounted,
+services are stopped, and it's actually time to "hit" the power
+switch.  (Using sysrq-trigger does forces it to reboot.)
 
+If I modify the systemd service, so it is after "network.target
+rdma.service auth-rpcgss-module.service nfs-blkmap.service
+nfs-config.service nfs-imapd.service nfs-mountd.service
+nfs-server.service nfs-server.target nfs-utils.service
+rpc-gssd.service rpc-statd-notify.service rpc-statd.service
+rpc-svcgssd.service", I can wait as long as I want, and
+reboot/shutdown works fine.
+
+This is all without any NFS exports defined - so no NFS clients
+actually connected.
+
+As crazy as this sounds (to me anyway), this shows that
+svcrdma/portlist will cause a reboot/shutdown lockup if it is loaded
+before or during when the RDMA or NFS kernel modules are being
+loaded... And works fine if it waits until they are all done.
+
+I would expect modprobe or setting portlist would fail if it wasn't
+ready to be loaded, rather than come up, work, and later mysteriously
+hanging a reboot/shutdown.
+
+I put about 20 hours into diagnosing this, and the results are 100%
+repeatable, even if the above conclusion sounds weird.
+
+I haven't tried out if xprtrdma has the same effect.
+
+If you also run arch, you can see/download the new AUR4 package that
+loads the kernel module and sets portlist at:
+https://aur4.archlinux.org/packages/nfs-utils-rdma-server/  and the
+client version at:
+https://aur4.archlinux.org/packages/nfs-utils-rdma-client/
+
+If you "View Changes" on that page, you can see the previous version
+which causes the lockup.
