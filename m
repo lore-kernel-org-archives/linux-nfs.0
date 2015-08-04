@@ -1,71 +1,114 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wi0-f170.google.com ([209.85.212.170]:35973 "EHLO
-	mail-wi0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933662AbbHDLzX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Aug 2015 07:55:23 -0400
+Received: from mail-wi0-f175.google.com ([209.85.212.175]:36830 "EHLO
+	mail-wi0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933484AbbHDLzQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Aug 2015 07:55:16 -0400
 From: Andreas Gruenbacher <andreas.gruenbacher@gmail.com>
 To: linux-kernel@vger.kernel.org
 Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-api@vger.kernel.org, linux-cifs@vger.kernel.org,
         linux-security-module@vger.kernel.org,
-        Andreas Gruenbacher <agruenba@redhat.com>
-Subject: [RFC v6 24/40] richacl: Set the other permissions to the other mask
-Date: Tue,  4 Aug 2015 13:53:22 +0200
-Message-Id: <1438689218-6921-25-git-send-email-agruenba@redhat.com>
+        Andreas Gruenbacher <agruenba@redhat.com>,
+        Andreas Gruenbacher <agruen@kernel.org>
+Subject: [RFC v6 21/40] richacl: Move everyone@ aces down the acl
+Date: Tue,  4 Aug 2015 13:53:19 +0200
+Message-Id: <1438689218-6921-22-git-send-email-agruenba@redhat.com>
 In-Reply-To: <1438689218-6921-1-git-send-email-agruenba@redhat.com>
 References: <1438689218-6921-1-git-send-email-agruenba@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Change the acl so that everyone@ is granted the permissions set in the
-other mask.
+The POSIX standard puts processes which are not the owner or a member in
+the owning group or which match any ace other then everyone@ on the
+other file class.  We only know if a process is in the other class after
+processing the entire acl.
 
-Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
+Move all everyone@ aces in the acl down in the acl so that at most a
+single everyone@ allow ace remains at the end.  Permissions which are
+not explicitly allowed are implicitly denied, so an everyone@ deny ace
+is unneeded.
+
+The everyone@ aces can be moved down the acl without changing the
+permissions that the acl grants.  This transformation simplifies the
+following algorithms, and eventually allows us to turn the final
+everyone@ allow ace into an entry for the other class.
+
+Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
 ---
- fs/richacl_compat.c | 35 +++++++++++++++++++++++++++++++++++
- 1 file changed, 35 insertions(+)
+ fs/richacl_compat.c | 65 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 65 insertions(+)
 
 diff --git a/fs/richacl_compat.c b/fs/richacl_compat.c
-index 807372d..76d5ab9 100644
+index 6ea3f57..5295c1c 100644
 --- a/fs/richacl_compat.c
 +++ b/fs/richacl_compat.c
-@@ -458,3 +458,38 @@ richacl_set_owner_permissions(struct richacl_alloc *alloc)
+@@ -152,3 +152,68 @@ richace_change_mask(struct richacl_alloc *alloc, struct richace **ace,
  	}
  	return 0;
  }
 +
 +/**
-+ * richacl_set_other_permissions  -  set the other permissions to the other mask
++ * richacl_move_everyone_aces_down  -  move everyone@ aces to the end of the acl
++ * @alloc:	acl and number of allocated entries
 + *
-+ * Change the acl so that everyone@ is granted the permissions set in the other
-+ * mask.  This leaves at most one efective everyone@ allow entry at the end of
-+ * the acl.
++ * Move all everyone aces to the end of the acl so that only a single everyone@
++ * allow ace remains at the end, and update the mask fields of all aces on the
++ * way.  The last ace of the resulting acl will be an everyone@ allow ace only
++ * if @acl grants any permissions to @everyone.  No @everyone deny aces will
++ * remain.
++ *
++ * This transformation does not alter the permissions that the acl grants.
++ * Having at most one everyone@ allow ace at the end of the acl helps us in the
++ * following algorithms.
 + */
 +static int
-+richacl_set_other_permissions(struct richacl_alloc *alloc)
++richacl_move_everyone_aces_down(struct richacl_alloc *alloc)
 +{
-+	struct richacl *acl = alloc->acl;
-+	unsigned int x = RICHACE_POSIX_ALWAYS_ALLOWED;
-+	unsigned int other_mask = acl->a_other_mask & ~x;
-+	struct richace *ace = acl->a_entries + acl->a_count - 1;
++	struct richace *ace;
++	unsigned int allowed = 0, denied = 0;
 +
-+	if (!(other_mask &&
-+	      (acl->a_flags & RICHACL_WRITE_THROUGH) &&
-+	      (acl->a_flags & RICHACL_MASKED)))
-+		return 0;
++	richacl_for_each_entry(ace, alloc->acl) {
++		if (richace_is_inherit_only(ace))
++			continue;
++		if (richace_is_everyone(ace)) {
++			if (richace_is_allow(ace))
++				allowed |= (ace->e_mask & ~denied);
++			else if (richace_is_deny(ace))
++				denied |= (ace->e_mask & ~allowed);
++			else
++				continue;
++			if (richace_change_mask(alloc, &ace, 0))
++				return -1;
++		} else {
++			if (richace_is_allow(ace)) {
++				if (richace_change_mask(alloc, &ace, allowed |
++						(ace->e_mask & ~denied)))
++					return -1;
++			} else if (richace_is_deny(ace)) {
++				if (richace_change_mask(alloc, &ace, denied |
++						(ace->e_mask & ~allowed)))
++					return -1;
++			}
++		}
++	}
++	if (allowed & ~RICHACE_POSIX_ALWAYS_ALLOWED) {
++		struct richace *last_ace = ace - 1;
 +
-+	if (acl->a_count == 0 ||
-+	    !richace_is_everyone(ace) ||
-+	    richace_is_inherit_only(ace)) {
-+		ace++;
-+		if (richacl_insert_entry(alloc, &ace))
-+			return -1;
-+		ace->e_type = RICHACE_ACCESS_ALLOWED_ACE_TYPE;
-+		ace->e_flags = RICHACE_SPECIAL_WHO;
-+		ace->e_mask = other_mask;
-+		ace->e_id.special = RICHACE_EVERYONE_SPECIAL_ID;
-+	} else
-+		richace_change_mask(alloc, &ace, other_mask);
++		if (alloc->acl->a_entries &&
++		    richace_is_everyone(last_ace) &&
++		    richace_is_allow(last_ace) &&
++		    richace_is_inherit_only(last_ace) &&
++		    last_ace->e_mask == allowed)
++			last_ace->e_flags &= ~RICHACE_INHERIT_ONLY_ACE;
++		else {
++			if (richacl_insert_entry(alloc, &ace))
++				return -1;
++			ace->e_type = RICHACE_ACCESS_ALLOWED_ACE_TYPE;
++			ace->e_flags = RICHACE_SPECIAL_WHO;
++			ace->e_mask = allowed;
++			ace->e_id.special = RICHACE_EVERYONE_SPECIAL_ID;
++		}
++	}
 +	return 0;
 +}
 -- 
