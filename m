@@ -1,67 +1,54 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wi0-f170.google.com ([209.85.212.170]:37010 "EHLO
-	mail-wi0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933643AbbHDLzO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Aug 2015 07:55:14 -0400
+Received: from mail-wi0-f180.google.com ([209.85.212.180]:33478 "EHLO
+	mail-wi0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933643AbbHDLzE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Aug 2015 07:55:04 -0400
 From: Andreas Gruenbacher <andreas.gruenbacher@gmail.com>
 To: linux-kernel@vger.kernel.org
 Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-api@vger.kernel.org, linux-cifs@vger.kernel.org,
         linux-security-module@vger.kernel.org,
-        Andreas Gruenbacher <agruenba@redhat.com>,
-        Andreas Gruenbacher <agruen@kernel.org>
-Subject: [RFC v6 20/40] richacl: acl editing helper functions
-Date: Tue,  4 Aug 2015 13:53:18 +0200
-Message-Id: <1438689218-6921-21-git-send-email-agruenba@redhat.com>
+        Andreas Gruenbacher <agruenba@redhat.com>
+Subject: [RFC v6 16/40] richacl: xattr mapping functions
+Date: Tue,  4 Aug 2015 13:53:14 +0200
+Message-Id: <1438689218-6921-17-git-send-email-agruenba@redhat.com>
 In-Reply-To: <1438689218-6921-1-git-send-email-agruenba@redhat.com>
 References: <1438689218-6921-1-git-send-email-agruenba@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The file masks in richacls make chmod and creating new files more
-efficient than having to apply file permission bits to the acl directly.
-They also allow us to regain permissions from an acl even after a
-restrictive chmod, because the permissions in the acl itself are not
-being destroyed.  In POSIX ACLs, the mask entry has a similar function.
+Map between "system.richacl" xattrs and the in-kernel representation.
 
-Protocols like nfsv4 do not understand file masks.  For those protocols,
-we need to compute nfs4 acls which represent the effective permissions
-granted by a richacl: we need to "apply" the file masks to the acl.
-
-This is the first in a series of richacl transformation patches; it
-implements basic richacl editing functions.  The following patches
-implement algorithms for transforming a richacl so that it can be
-evaluated as a plain nfs4 acl, with identical permission check results.
-
-Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
+Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
 ---
- fs/Makefile                    |   3 +-
- fs/richacl_compat.c            | 154 +++++++++++++++++++++++++++++++++++++++++
- include/linux/richacl_compat.h |  40 +++++++++++
- 3 files changed, 196 insertions(+), 1 deletion(-)
- create mode 100644 fs/richacl_compat.c
- create mode 100644 include/linux/richacl_compat.h
+ fs/Makefile                   |   2 +-
+ fs/richacl_xattr.c            | 220 ++++++++++++++++++++++++++++++++++++++++++
+ fs/xattr.c                    |  34 +++++--
+ include/linux/richacl_xattr.h |  64 ++++++++++++
+ include/uapi/linux/xattr.h    |   2 +
+ 5 files changed, 315 insertions(+), 7 deletions(-)
+ create mode 100644 fs/richacl_xattr.c
+ create mode 100644 include/linux/richacl_xattr.h
 
 diff --git a/fs/Makefile b/fs/Makefile
-index baf385a..2d08c70 100644
+index 1305047..baf385a 100644
 --- a/fs/Makefile
 +++ b/fs/Makefile
-@@ -48,7 +48,8 @@ obj-$(CONFIG_SYSCTL)		+= drop_caches.o
+@@ -48,7 +48,7 @@ obj-$(CONFIG_SYSCTL)		+= drop_caches.o
  
  obj-$(CONFIG_FHANDLE)		+= fhandle.o
  obj-$(CONFIG_FS_RICHACL)	+= richacl.o
--richacl-y			:= richacl_base.o richacl_inode.o richacl_xattr.o
-+richacl-y			:= richacl_base.o richacl_inode.o \
-+				   richacl_xattr.o richacl_compat.o
+-richacl-y			:= richacl_base.o richacl_inode.o
++richacl-y			:= richacl_base.o richacl_inode.o richacl_xattr.o
  
  obj-y				+= quota/
  
-diff --git a/fs/richacl_compat.c b/fs/richacl_compat.c
+diff --git a/fs/richacl_xattr.c b/fs/richacl_xattr.c
 new file mode 100644
-index 0000000..6ea3f57
+index 0000000..cd9979d
 --- /dev/null
-+++ b/fs/richacl_compat.c
-@@ -0,0 +1,154 @@
++++ b/fs/richacl_xattr.c
+@@ -0,0 +1,220 @@
 +/*
 + * Copyright (C) 2006, 2010  Novell, Inc.
 + * Copyright (C) 2015  Red Hat, Inc.
@@ -78,153 +65,293 @@ index 0000000..6ea3f57
 + * General Public License for more details.
 + */
 +
-+#include <linux/module.h>
++#include <linux/sched.h>
 +#include <linux/fs.h>
 +#include <linux/slab.h>
-+#include <linux/richacl_compat.h>
++#include <linux/module.h>
++#include <linux/richacl_xattr.h>
++
++MODULE_LICENSE("GPL");
 +
 +/**
-+ * richacl_prepare  -  allocate richacl being constructed
-+ *
-+ * Allocate a richacl which can hold @count entries but which is initially
-+ * empty.
++ * richacl_from_xattr  -  convert a richacl xattr into the in-memory representation
 + */
-+struct richacl *richacl_prepare(struct richacl_alloc *alloc, unsigned int count)
++struct richacl *
++richacl_from_xattr(struct user_namespace *user_ns,
++		   const void *value, size_t size)
 +{
-+	alloc->acl = richacl_alloc(count, GFP_KERNEL);
-+	if (!alloc->acl)
-+		return NULL;
-+	alloc->acl->a_count = 0;
-+	alloc->count = count;
-+	return alloc->acl;
++	const struct richacl_xattr *xattr_acl = value;
++	const struct richace_xattr *xattr_ace = (void *)(xattr_acl + 1);
++	struct richacl *acl;
++	struct richace *ace;
++	int count;
++
++	if (size < sizeof(*xattr_acl) ||
++	    xattr_acl->a_version != RICHACL_XATTR_VERSION ||
++	    (xattr_acl->a_flags & ~RICHACL_VALID_FLAGS))
++		return ERR_PTR(-EINVAL);
++	size -= sizeof(*xattr_acl);
++	count = le16_to_cpu(xattr_acl->a_count);
++	if (count > RICHACL_XATTR_MAX_COUNT)
++		return ERR_PTR(-EINVAL);
++	if (size != count * sizeof(*xattr_ace))
++		return ERR_PTR(-EINVAL);
++
++	acl = richacl_alloc(count, GFP_NOFS);
++	if (!acl)
++		return ERR_PTR(-ENOMEM);
++
++	acl->a_flags = xattr_acl->a_flags;
++	acl->a_owner_mask = le32_to_cpu(xattr_acl->a_owner_mask);
++	if (acl->a_owner_mask & ~RICHACE_VALID_MASK)
++		goto fail_einval;
++	acl->a_group_mask = le32_to_cpu(xattr_acl->a_group_mask);
++	if (acl->a_group_mask & ~RICHACE_VALID_MASK)
++		goto fail_einval;
++	acl->a_other_mask = le32_to_cpu(xattr_acl->a_other_mask);
++	if (acl->a_other_mask & ~RICHACE_VALID_MASK)
++		goto fail_einval;
++
++	richacl_for_each_entry(ace, acl) {
++		ace->e_type  = le16_to_cpu(xattr_ace->e_type);
++		ace->e_flags = le16_to_cpu(xattr_ace->e_flags);
++		ace->e_mask  = le32_to_cpu(xattr_ace->e_mask);
++
++		if (ace->e_flags & ~RICHACE_VALID_FLAGS)
++			goto fail_einval;
++		if (ace->e_flags & RICHACE_SPECIAL_WHO) {
++			ace->e_id.special = le32_to_cpu(xattr_ace->e_id);
++			if (ace->e_id.special > RICHACE_EVERYONE_SPECIAL_ID)
++				goto fail_einval;
++		} else if (ace->e_flags & RICHACE_IDENTIFIER_GROUP) {
++			u32 id = le32_to_cpu(xattr_ace->e_id);
++
++			ace->e_id.gid = make_kgid(user_ns, id);
++			if (!gid_valid(ace->e_id.gid))
++				goto fail_einval;
++		} else {
++			u32 id = le32_to_cpu(xattr_ace->e_id);
++
++			ace->e_id.uid = make_kuid(user_ns, id);
++			if (!uid_valid(ace->e_id.uid))
++				goto fail_einval;
++		}
++		if (ace->e_type > RICHACE_ACCESS_DENIED_ACE_TYPE ||
++		    (ace->e_mask & ~RICHACE_VALID_MASK))
++			goto fail_einval;
++
++		xattr_ace++;
++	}
++
++	return acl;
++
++fail_einval:
++	richacl_put(acl);
++	return ERR_PTR(-EINVAL);
 +}
-+EXPORT_SYMBOL_GPL(richacl_prepare);
++EXPORT_SYMBOL_GPL(richacl_from_xattr);
 +
 +/**
-+ * richacl_delete_entry  -  delete an entry in an acl
-+ * @alloc:	acl and number of allocated entries
-+ * @ace:	an entry in @alloc->acl
-+ *
-+ * Updates @ace so that it points to the entry before the deleted entry
-+ * on return. (When deleting the first entry, @ace will point to the
-+ * (non-existent) entry before the first entry). This behavior is the
-+ * expected behavior when deleting entries while forward iterating over
-+ * an acl.
++ * richacl_xattr_size  -  compute the size of the xattr representation of @acl
 + */
-+void
-+richacl_delete_entry(struct richacl_alloc *alloc, struct richace **ace)
++size_t
++richacl_xattr_size(const struct richacl *acl)
 +{
-+	void *end = alloc->acl->a_entries + alloc->acl->a_count;
++	size_t size = sizeof(struct richacl_xattr);
 +
-+	memmove(*ace, *ace + 1, end - (void *)(*ace + 1));
-+	(*ace)--;
-+	alloc->acl->a_count--;
++	size += sizeof(struct richace_xattr) * acl->a_count;
++	return size;
 +}
-+EXPORT_SYMBOL_GPL(richacl_delete_entry);
++EXPORT_SYMBOL_GPL(richacl_xattr_size);
 +
 +/**
-+ * richacl_insert_entry  -  insert an entry in an acl
-+ * @alloc:	acl and number of allocated entries
-+ * @ace:	entry before which the new entry shall be inserted
-+ *
-+ * Insert a new entry in @alloc->acl at position @ace and zero-initialize
-+ * it.  This may require reallocating @alloc->acl.
++ * richacl_to_xattr  -  convert @acl into its xattr representation
++ * @acl:	the richacl to convert
++ * @buffer:	buffer for the result
++ * @size:	size of @buffer
 + */
 +int
-+richacl_insert_entry(struct richacl_alloc *alloc, struct richace **ace)
++richacl_to_xattr(struct user_namespace *user_ns,
++		 const struct richacl *acl, void *buffer, size_t size)
 +{
-+	struct richacl *acl = alloc->acl;
-+	unsigned int index = *ace - acl->a_entries;
-+	size_t tail_size = (acl->a_count - index) * sizeof(struct richace);
++	struct richacl_xattr *xattr_acl = buffer;
++	struct richace_xattr *xattr_ace;
++	const struct richace *ace;
++	size_t real_size;
 +
-+	if (alloc->count == acl->a_count) {
-+		size_t new_size = sizeof(struct richacl) +
-+			(acl->a_count + 1) * sizeof(struct richace);
++	real_size = richacl_xattr_size(acl);
++	if (!buffer)
++		return real_size;
++	if (real_size > size)
++		return -ERANGE;
 +
-+		acl = krealloc(acl, new_size, GFP_KERNEL);
-+		if (!acl)
-+			return -1;
-+		*ace = acl->a_entries + index;
-+		alloc->acl = acl;
-+		alloc->count++;
-+	}
++	xattr_acl->a_version = RICHACL_XATTR_VERSION;
++	xattr_acl->a_flags = acl->a_flags;
++	xattr_acl->a_count = cpu_to_le16(acl->a_count);
 +
-+	memmove(*ace + 1, *ace, tail_size);
-+	memset(*ace, 0, sizeof(**ace));
-+	acl->a_count++;
-+	return 0;
-+}
-+EXPORT_SYMBOL_GPL(richacl_insert_entry);
++	xattr_acl->a_owner_mask = cpu_to_le32(acl->a_owner_mask);
++	xattr_acl->a_group_mask = cpu_to_le32(acl->a_group_mask);
++	xattr_acl->a_other_mask = cpu_to_le32(acl->a_other_mask);
 +
-+/**
-+ * richacl_append_entry  -  append an entry to an acl
-+ * @alloc:		acl and number of allocated entries
-+ *
-+ * This may require reallocating @alloc->acl.
-+ */
-+struct richace *richacl_append_entry(struct richacl_alloc *alloc)
-+{
-+	struct richacl *acl = alloc->acl;
-+	struct richace *ace = acl->a_entries + acl->a_count;
-+
-+	if (alloc->count > alloc->acl->a_count) {
-+		acl->a_count++;
-+		return ace;
-+	}
-+	return richacl_insert_entry(alloc, &ace) ? NULL : ace;
-+}
-+EXPORT_SYMBOL_GPL(richacl_append_entry);
-+
-+/**
-+ * richace_change_mask  -  set the mask of @ace to @mask
-+ * @alloc:	acl and number of allocated entries
-+ * @ace:	entry to modify
-+ * @mask:	new mask for @ace
-+ *
-+ * If @ace is inheritable, a inherit-only ace is inserted before @ace which
-+ * includes the inheritable permissions of @ace and the inheritance flags of
-+ * @ace are cleared before changing the mask.
-+ *
-+ * If @mask is 0, the original ace is turned into an inherit-only entry if
-+ * there are any inheritable permissions, and removed otherwise.
-+ *
-+ * The returned @ace points to the modified or inserted effective-only acl
-+ * entry if that entry exists, to the entry that has become inheritable-only,
-+ * or else to the previous entry in the acl.
-+ */
-+static int
-+richace_change_mask(struct richacl_alloc *alloc, struct richace **ace,
-+			   unsigned int mask)
-+{
-+	if (mask && (*ace)->e_mask == mask)
-+		(*ace)->e_flags &= ~RICHACE_INHERIT_ONLY_ACE;
-+	else if (mask & ~RICHACE_POSIX_ALWAYS_ALLOWED) {
-+		if (richace_is_inheritable(*ace)) {
-+			if (richacl_insert_entry(alloc, ace))
-+				return -1;
-+			richace_copy(*ace, *ace + 1);
-+			(*ace)->e_flags |= RICHACE_INHERIT_ONLY_ACE;
-+			(*ace)++;
-+			richace_clear_inheritance_flags(*ace);
-+		}
-+		(*ace)->e_mask = mask;
-+	} else {
-+		if (richace_is_inheritable(*ace))
-+			(*ace)->e_flags |= RICHACE_INHERIT_ONLY_ACE;
++	xattr_ace = (void *)(xattr_acl + 1);
++	richacl_for_each_entry(ace, acl) {
++		xattr_ace->e_type = cpu_to_le16(ace->e_type);
++		xattr_ace->e_flags = cpu_to_le16(ace->e_flags);
++		xattr_ace->e_mask = cpu_to_le32(ace->e_mask);
++		if (ace->e_flags & RICHACE_SPECIAL_WHO)
++			xattr_ace->e_id = cpu_to_le32(ace->e_id.special);
++		else if (ace->e_flags & RICHACE_IDENTIFIER_GROUP)
++			xattr_ace->e_id =
++				cpu_to_le32(from_kgid(user_ns, ace->e_id.gid));
 +		else
-+			richacl_delete_entry(alloc, ace);
++			xattr_ace->e_id =
++				cpu_to_le32(from_kuid(user_ns, ace->e_id.uid));
++		xattr_ace++;
 +	}
-+	return 0;
++	return real_size;
 +}
-diff --git a/include/linux/richacl_compat.h b/include/linux/richacl_compat.h
-new file mode 100644
-index 0000000..a9ff630
---- /dev/null
-+++ b/include/linux/richacl_compat.h
-@@ -0,0 +1,40 @@
++EXPORT_SYMBOL_GPL(richacl_to_xattr);
++
 +/*
++ * Fix up the uids and gids in richacl extended attributes in place.
++ */
++static void richacl_fix_xattr_userns(
++	struct user_namespace *to, struct user_namespace *from,
++	void *value, size_t size)
++{
++	struct richacl_xattr *xattr_acl = value;
++	struct richace_xattr *xattr_ace =
++		(struct richace_xattr *)(xattr_acl + 1);
++	unsigned int count;
++
++	if (!value)
++		return;
++	if (size < sizeof(*xattr_acl))
++		return;
++	if (xattr_acl->a_version != cpu_to_le32(RICHACL_XATTR_VERSION))
++		return;
++	size -= sizeof(*xattr_acl);
++	if (size % sizeof(*xattr_ace))
++		return;
++	count = size / sizeof(*xattr_ace);
++	for (; count; count--, xattr_ace++) {
++		if (xattr_ace->e_flags & cpu_to_le16(RICHACE_SPECIAL_WHO))
++			continue;
++		if (xattr_ace->e_flags &
++		    cpu_to_le16(RICHACE_IDENTIFIER_GROUP)) {
++			u32 id = le32_to_cpu(xattr_ace->e_id);
++			kgid_t gid = make_kgid(from, id);
++
++			xattr_ace->e_id = cpu_to_le32(from_kgid(to, gid));
++		} else {
++			u32 id = le32_to_cpu(xattr_ace->e_id);
++			kuid_t uid = make_kuid(from, id);
++
++			xattr_ace->e_id = cpu_to_le32(from_kuid(to, uid));
++		}
++	}
++}
++
++void richacl_fix_xattr_from_user(void *value, size_t size)
++{
++	struct user_namespace *user_ns = current_user_ns();
++
++	if (user_ns == &init_user_ns)
++		return;
++	richacl_fix_xattr_userns(&init_user_ns, user_ns, value, size);
++}
++
++void richacl_fix_xattr_to_user(void *value, size_t size)
++{
++	struct user_namespace *user_ns = current_user_ns();
++
++	if (user_ns == &init_user_ns)
++		return;
++	richacl_fix_xattr_userns(user_ns, &init_user_ns, value, size);
++}
+diff --git a/fs/xattr.c b/fs/xattr.c
+index 072fee1..f2313c6 100644
+--- a/fs/xattr.c
++++ b/fs/xattr.c
+@@ -21,6 +21,7 @@
+ #include <linux/audit.h>
+ #include <linux/vmalloc.h>
+ #include <linux/posix_acl_xattr.h>
++#include <linux/richacl_xattr.h>
+ 
+ #include <asm/uaccess.h>
+ 
+@@ -314,6 +315,18 @@ out:
+ }
+ EXPORT_SYMBOL_GPL(vfs_removexattr);
+ 
++static void
++fix_xattr_from_user(const char *kname, void *kvalue, size_t size)
++{
++	if (strncmp(kname, XATTR_SYSTEM_PREFIX, XATTR_SYSTEM_PREFIX_LEN))
++		return;
++	kname += XATTR_SYSTEM_PREFIX_LEN;
++	if (!strcmp(kname, XATTR_POSIX_ACL_ACCESS) ||
++	    !strcmp(kname, XATTR_POSIX_ACL_DEFAULT))
++		posix_acl_fix_xattr_from_user(kvalue, size);
++	else if (!strcmp(kname, XATTR_RICHACL))
++		richacl_fix_xattr_from_user(kvalue, size);
++}
+ 
+ /*
+  * Extended attribute SET operations
+@@ -350,9 +363,7 @@ setxattr(struct dentry *d, const char __user *name, const void __user *value,
+ 			error = -EFAULT;
+ 			goto out;
+ 		}
+-		if ((strcmp(kname, XATTR_NAME_POSIX_ACL_ACCESS) == 0) ||
+-		    (strcmp(kname, XATTR_NAME_POSIX_ACL_DEFAULT) == 0))
+-			posix_acl_fix_xattr_from_user(kvalue, size);
++		fix_xattr_from_user(kname, kvalue, size);
+ 	}
+ 
+ 	error = vfs_setxattr(d, kname, kvalue, size, flags);
+@@ -419,6 +430,19 @@ SYSCALL_DEFINE5(fsetxattr, int, fd, const char __user *, name,
+ 	return error;
+ }
+ 
++static void
++fix_xattr_to_user(const char *kname, void *kvalue, size_t size)
++{
++	if (strncmp(kname, XATTR_SYSTEM_PREFIX, XATTR_SYSTEM_PREFIX_LEN))
++		return;
++	kname += XATTR_SYSTEM_PREFIX_LEN;
++	if (!strcmp(kname, XATTR_POSIX_ACL_ACCESS) ||
++	    !strcmp(kname, XATTR_POSIX_ACL_DEFAULT))
++		posix_acl_fix_xattr_to_user(kvalue, size);
++	else if (!strcmp(kname, XATTR_RICHACL))
++		richacl_fix_xattr_to_user(kvalue, size);
++}
++
+ /*
+  * Extended attribute GET operations
+  */
+@@ -451,9 +475,7 @@ getxattr(struct dentry *d, const char __user *name, void __user *value,
+ 
+ 	error = vfs_getxattr(d, kname, kvalue, size);
+ 	if (error > 0) {
+-		if ((strcmp(kname, XATTR_NAME_POSIX_ACL_ACCESS) == 0) ||
+-		    (strcmp(kname, XATTR_NAME_POSIX_ACL_DEFAULT) == 0))
+-			posix_acl_fix_xattr_to_user(kvalue, size);
++		fix_xattr_to_user(kname, kvalue, size);
+ 		if (size && copy_to_user(value, kvalue, error))
+ 			error = -EFAULT;
+ 	} else if (error == -ERANGE && size >= XATTR_SIZE_MAX) {
+diff --git a/include/linux/richacl_xattr.h b/include/linux/richacl_xattr.h
+new file mode 100644
+index 0000000..e6d85a0
+--- /dev/null
++++ b/include/linux/richacl_xattr.h
+@@ -0,0 +1,64 @@
++/*
++ * Copyright (C) 2006, 2010  Novell, Inc.
 + * Copyright (C) 2015  Red Hat, Inc.
-+ * Written by Andreas Gruenbacher <agruenba@redhat.com>
++ * Written by Andreas Gruenbacher <agruen@kernel.org>
 + *
 + * This program is free software; you can redistribute it and/or modify it
 + * under the terms of the GNU General Public License as published by the
@@ -237,31 +364,66 @@ index 0000000..a9ff630
 + * General Public License for more details.
 + */
 +
-+#ifndef __RICHACL_COMPAT_H
-+#define __RICHACL_COMPAT_H
++#ifndef __RICHACL_XATTR_H
++#define __RICHACL_XATTR_H
 +
 +#include <linux/richacl.h>
 +
-+/**
-+ * struct richacl_alloc  -  remember how many entries are actually allocated
-+ * @acl:	acl with a_count <= @count
-+ * @count:	the actual number of entries allocated in @acl
-+ *
-+ * We pass around this structure while modifying an acl so that we do
-+ * not have to reallocate when we remove existing entries followed by
-+ * adding new entries.
-+ */
-+struct richacl_alloc {
-+	struct richacl *acl;
-+	unsigned int count;
++#define RICHACL_XATTR "system.richacl"
++
++struct richace_xattr {
++	__le16		e_type;
++	__le16		e_flags;
++	__le32		e_mask;
++	__le32		e_id;
 +};
 +
-+struct richacl *richacl_prepare(struct richacl_alloc *, unsigned int);
-+struct richace *richacl_append_entry(struct richacl_alloc *);
-+int richacl_insert_entry(struct richacl_alloc *, struct richace **);
-+void richacl_delete_entry(struct richacl_alloc *, struct richace **);
++struct richacl_xattr {
++	unsigned char	a_version;
++	unsigned char	a_flags;
++	__le16		a_count;
++	__le32		a_owner_mask;
++	__le32		a_group_mask;
++	__le32		a_other_mask;
++};
 +
-+#endif  /* __RICHACL_COMPAT_H */
++#define RICHACL_XATTR_VERSION	0
++#define RICHACL_XATTR_MAX_COUNT \
++	((XATTR_SIZE_MAX - sizeof(struct richacl_xattr)) / \
++	 sizeof(struct richace_xattr))
++
++extern struct richacl *richacl_from_xattr(struct user_namespace *, const void *,
++					  size_t);
++extern size_t richacl_xattr_size(const struct richacl *);
++extern int richacl_to_xattr(struct user_namespace *, const struct richacl *,
++			    void *, size_t);
++
++#ifdef CONFIG_FS_RICHACL
++extern void richacl_fix_xattr_from_user(void *, size_t);
++extern void richacl_fix_xattr_to_user(void *, size_t);
++#else
++static inline void richacl_fix_xattr_from_user(void *value, size_t size)
++{
++}
++
++static inline void richacl_fix_xattr_to_user(void *value, size_t size)
++{
++}
++#endif
++
++#endif /* __RICHACL_XATTR_H */
+diff --git a/include/uapi/linux/xattr.h b/include/uapi/linux/xattr.h
+index 1590c49..1996903 100644
+--- a/include/uapi/linux/xattr.h
++++ b/include/uapi/linux/xattr.h
+@@ -73,5 +73,7 @@
+ #define XATTR_POSIX_ACL_DEFAULT  "posix_acl_default"
+ #define XATTR_NAME_POSIX_ACL_DEFAULT XATTR_SYSTEM_PREFIX XATTR_POSIX_ACL_DEFAULT
+ 
++#define XATTR_RICHACL "richacl"
++#define XATTR_NAME_RICHACL XATTR_SYSTEM_PREFIX XATTR_RICHACL
+ 
+ #endif /* _UAPI_LINUX_XATTR_H */
 -- 
 2.5.0
 
