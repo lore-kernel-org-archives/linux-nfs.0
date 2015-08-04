@@ -1,243 +1,147 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wi0-f169.google.com ([209.85.212.169]:37105 "EHLO
-	mail-wi0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933683AbbHDLzS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Aug 2015 07:55:18 -0400
+Received: from mail-wi0-f178.google.com ([209.85.212.178]:36957 "EHLO
+	mail-wi0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933662AbbHDLzM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Aug 2015 07:55:12 -0400
 From: Andreas Gruenbacher <andreas.gruenbacher@gmail.com>
 To: linux-kernel@vger.kernel.org
 Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-api@vger.kernel.org, linux-cifs@vger.kernel.org,
         linux-security-module@vger.kernel.org,
-        Andreas Gruenbacher <agruenba@redhat.com>,
-        Andreas Gruenbacher <agruen@kernel.org>
-Subject: [RFC v6 22/40] richacl: Propagate everyone@ permissions to other aces
-Date: Tue,  4 Aug 2015 13:53:20 +0200
-Message-Id: <1438689218-6921-23-git-send-email-agruenba@redhat.com>
+        "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+        Andreas Gruenbacher <agruenba@redhat.com>
+Subject: [RFC v6 19/40] ext4: Add richacl feature flag
+Date: Tue,  4 Aug 2015 13:53:17 +0200
+Message-Id: <1438689218-6921-20-git-send-email-agruenba@redhat.com>
 In-Reply-To: <1438689218-6921-1-git-send-email-agruenba@redhat.com>
 References: <1438689218-6921-1-git-send-email-agruenba@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The trailing everyone@ allow ace can grant permissions to all file
-classes including the owner and group class.  Before we can apply the
-other mask to this entry to turn it into an "other class" entry, we need
-to ensure that members of the owner or group class will not lose any
-permissions from that ace.
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 
-Conceptually, we do this by inserting additional <who>:<allow>::allow
-entries before the trailing everyone@ allow ace with the same
-permissions as the trailing everyone@ allow ace for owner@, group@, and
-all explicitly mentioned users and groups.  (In practice, we will rarely
-need to insert any additional aces in this step.)
+This feature flag selects richacl instead of posix acl support on the
+file system. In addition, the "acl" mount option is needed for enabling
+either of the two kinds of acls.
 
-Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
+Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
 ---
- fs/richacl_compat.c | 195 ++++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 195 insertions(+)
+ fs/ext4/ext4.h  |  6 ++++--
+ fs/ext4/super.c | 42 +++++++++++++++++++++++++++++++++---------
+ 2 files changed, 37 insertions(+), 11 deletions(-)
 
-diff --git a/fs/richacl_compat.c b/fs/richacl_compat.c
-index 5295c1c..e9c350e 100644
---- a/fs/richacl_compat.c
-+++ b/fs/richacl_compat.c
-@@ -217,3 +217,198 @@ richacl_move_everyone_aces_down(struct richacl_alloc *alloc)
- 	}
- 	return 0;
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index f5e9f04..e69c8ea 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -991,7 +991,7 @@ struct ext4_inode_info {
+ #define EXT4_MOUNT_UPDATE_JOURNAL	0x01000	/* Update the journal format */
+ #define EXT4_MOUNT_NO_UID32		0x02000  /* Disable 32-bit UIDs */
+ #define EXT4_MOUNT_XATTR_USER		0x04000	/* Extended user attributes */
+-#define EXT4_MOUNT_POSIX_ACL		0x08000	/* POSIX Access Control Lists */
++#define EXT4_MOUNT_ACL			0x08000	/* Access Control Lists */
+ #define EXT4_MOUNT_NO_AUTO_DA_ALLOC	0x10000	/* No auto delalloc mapping */
+ #define EXT4_MOUNT_BARRIER		0x20000 /* Use block barriers */
+ #define EXT4_MOUNT_QUOTA		0x80000 /* Some quota option set */
+@@ -1582,6 +1582,7 @@ static inline int ext4_encrypted_inode(struct inode *inode)
+ #define EXT4_FEATURE_INCOMPAT_LARGEDIR		0x4000 /* >2GB or 3-lvl htree */
+ #define EXT4_FEATURE_INCOMPAT_INLINE_DATA	0x8000 /* data in inode */
+ #define EXT4_FEATURE_INCOMPAT_ENCRYPT		0x10000
++#define EXT4_FEATURE_INCOMPAT_RICHACL		0x20000
+ 
+ #define EXT2_FEATURE_COMPAT_SUPP	EXT4_FEATURE_COMPAT_EXT_ATTR
+ #define EXT2_FEATURE_INCOMPAT_SUPP	(EXT4_FEATURE_INCOMPAT_FILETYPE| \
+@@ -1607,7 +1608,8 @@ static inline int ext4_encrypted_inode(struct inode *inode)
+ 					 EXT4_FEATURE_INCOMPAT_FLEX_BG| \
+ 					 EXT4_FEATURE_INCOMPAT_MMP | \
+ 					 EXT4_FEATURE_INCOMPAT_INLINE_DATA | \
+-					 EXT4_FEATURE_INCOMPAT_ENCRYPT)
++					 EXT4_FEATURE_INCOMPAT_ENCRYPT | \
++					 EXT4_FEATURE_INCOMPAT_RICHACL)
+ #define EXT4_FEATURE_RO_COMPAT_SUPP	(EXT4_FEATURE_RO_COMPAT_SPARSE_SUPER| \
+ 					 EXT4_FEATURE_RO_COMPAT_LARGE_FILE| \
+ 					 EXT4_FEATURE_RO_COMPAT_GDT_CSUM| \
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 58987b5..05d6537 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1257,6 +1257,28 @@ static ext4_fsblk_t get_sb_block(void **data)
+ 	return sb_block;
  }
-+
-+/**
-+ * __richacl_propagate_everyone  -  propagate everyone@ permissions up for @who
-+ * @alloc:	acl and number of allocated entries
-+ * @who:	identifier to propagate permissions for
-+ * @allow:	permissions to propagate up
-+ *
-+ * Propagate the permissions in @allow up from the end of the acl to the start
-+ * for the specified principal @who.
-+ *
-+ * The simplest possible approach to achieve this would be to insert a
-+ * "<who>:<allow>::allow" ace before the final everyone@ allow ace.  Since this
-+ * would often result in aces which are not needed or which could be merged
-+ * with an existing ace, we make the following optimizations:
-+ *
-+ *   - We go through the acl and determine which permissions are already
-+ *     allowed or denied to @who, and we remove those permissions from
-+ *     @allow.
-+ *
-+ *   - If the acl contains an allow ace for @who and no aces after this entry
-+ *     deny permissions in @allow, we add the permissions in @allow to this
-+ *     ace.  (Propagating permissions across a deny ace which can match the
-+ *     process can elevate permissions.)
-+ *
-+ * This transformation does not alter the permissions that the acl grants.
-+ */
-+static int
-+__richacl_propagate_everyone(struct richacl_alloc *alloc, struct richace *who,
-+			  unsigned int allow)
+ 
++static int enable_acl(struct super_block *sb)
 +{
-+	struct richace *allow_last = NULL, *ace;
-+	struct richacl *acl = alloc->acl;
-+
-+	/*
-+	 * Remove the permissions from allow that are already determined for
-+	 * this who value, and figure out if there is an allow entry for
-+	 * this who value that is "reachable" from the trailing everyone@
-+	 * allow ace.
-+	 */
-+	richacl_for_each_entry(ace, acl) {
-+		if (richace_is_inherit_only(ace))
-+			continue;
-+		if (richace_is_allow(ace)) {
-+			if (richace_is_same_identifier(ace, who)) {
-+				allow &= ~ace->e_mask;
-+				allow_last = ace;
-+			}
-+		} else if (richace_is_deny(ace)) {
-+			if (richace_is_same_identifier(ace, who))
-+				allow &= ~ace->e_mask;
-+			else if (allow & ace->e_mask)
-+				allow_last = NULL;
-+		}
-+	}
-+	ace--;
-+
-+	/*
-+	 * If for group class entries, all the remaining permissions will
-+	 * remain granted by the trailing everyone@ ace, no additional entry is
-+	 * needed.
-+	 */
-+	if (!richace_is_owner(who) &&
-+	    richace_is_everyone(ace) && richace_is_allow(ace) &&
-+	    !(allow & ~(ace->e_mask & acl->a_other_mask)))
-+		allow = 0;
-+
-+	if (allow) {
-+		if (allow_last)
-+			return richace_change_mask(alloc, &allow_last,
-+						   allow_last->e_mask | allow);
-+		else {
-+			struct richace who_copy;
-+
-+			richace_copy(&who_copy, who);
-+			ace = acl->a_entries + acl->a_count - 1;
-+			if (richacl_insert_entry(alloc, &ace))
-+				return -1;
-+			richace_copy(ace, &who_copy);
-+			ace->e_type = RICHACE_ACCESS_ALLOWED_ACE_TYPE;
-+			richace_clear_inheritance_flags(ace);
-+			ace->e_mask = allow;
++	sb->s_flags &= ~(MS_POSIXACL | MS_RICHACL);
++	if (test_opt(sb, ACL)) {
++		if (EXT4_HAS_INCOMPAT_FEATURE(sb,
++					      EXT4_FEATURE_INCOMPAT_RICHACL)) {
++#ifdef CONFIG_EXT4_FS_RICHACL
++			sb->s_flags |= MS_RICHACL;
++#else
++			return -EOPNOTSUPP;
++#endif
++		} else {
++#ifdef CONFIG_EXT4_FS_POSIX_ACL
++			sb->s_flags |= MS_POSIXACL;
++#else
++			return -EOPNOTSUPP;
++#endif
 +		}
 +	}
 +	return 0;
 +}
 +
-+/**
-+ * richacl_propagate_everyone  -  propagate everyone@ permissions up the acl
-+ * @alloc:	acl and number of allocated entries
-+ *
-+ * Make sure that group@ and all other users and groups mentioned in the acl
-+ * will not lose any permissions when finally applying the other mask to the
-+ * everyone@ allow ace at the end of the acl.  We modify the permissions of
-+ * existing entries or add new entries before the final everyone@ allow ace to
-+ * achieve that.
-+ *
-+ * For example, the following acl implicitly grants everyone rwpx access:
-+ *
-+ *    joe:r::allow
-+ *    everyone@:rwpx::allow
-+ *
-+ * When applying mode 0660 to this acl, group@ would lose rwp access, and joe
-+ * would lose wp access even though the mode does not exclude those
-+ * permissions.  After propagating the everyone@ permissions, the result for
-+ * applying mode 0660 becomes:
-+ *
-+ *    owner@:rwp::allow
-+ *    joe:rwp::allow
-+ *    group@:rwp::allow
-+ *
-+ * Deny aces complicate the matter.  For example, the following acl grants
-+ * everyone but joe write access:
-+ *
-+ *    joe:wp::deny
-+ *    everyone@:rwpx::allow
-+ *
-+ * When applying mode 0660 to this acl, group@ would lose rwp access, and joe
-+ * would lose r access.  After propagating the everyone@ permissions, the
-+ * result for applying mode 0660 becomes:
-+ *
-+ *    owner@:rwp::allow
-+ *    joe:w::deny
-+ *    group@:rwp::allow
-+ *    joe:r::allow
-+ */
-+static int
-+richacl_propagate_everyone(struct richacl_alloc *alloc)
-+{
-+	struct richace who = { .e_flags = RICHACE_SPECIAL_WHO };
-+	struct richacl *acl = alloc->acl;
-+	struct richace *ace;
-+	unsigned int owner_allow, group_allow;
-+
-+	/*
-+	 * If the owner mask contains permissions which are not in the group
-+	 * mask, the group mask contains permissions which are not in the other
-+	 * mask, or the owner class contains permissions which are not in the
-+	 * other mask, we may need to propagate permissions up from the
-+	 * everyone@ allow ace.  The third condition is implied by the first
-+	 * two.
-+	 */
-+	if (!((acl->a_owner_mask & ~acl->a_group_mask) ||
-+	      (acl->a_group_mask & ~acl->a_other_mask)))
-+		return 0;
-+	if (!acl->a_count)
-+		return 0;
-+	ace = acl->a_entries + acl->a_count - 1;
-+	if (richace_is_inherit_only(ace) || !richace_is_everyone(ace))
-+		return 0;
-+
-+	owner_allow = ace->e_mask & acl->a_owner_mask;
-+	group_allow = ace->e_mask & acl->a_group_mask;
-+
-+	if (owner_allow & ~(acl->a_group_mask & acl->a_other_mask)) {
-+		/* Propagate everyone@ permissions through to owner@. */
-+		who.e_id.special = RICHACE_OWNER_SPECIAL_ID;
-+		if (__richacl_propagate_everyone(alloc, &who, owner_allow))
-+			return -1;
-+		acl = alloc->acl;
-+	}
-+
-+	if (group_allow & ~acl->a_other_mask) {
-+		int n;
-+
-+		/* Propagate everyone@ permissions through to group@. */
-+		who.e_id.special = RICHACE_GROUP_SPECIAL_ID;
-+		if (__richacl_propagate_everyone(alloc, &who, group_allow))
-+			return -1;
-+		acl = alloc->acl;
-+
-+		/*
-+		 * Start from the entry before the trailing everyone@ allow
-+		 * entry. We will not hit everyone@ entries in the loop.
-+		 */
-+		for (n = acl->a_count - 2; n != -1; n--) {
-+			ace = acl->a_entries + n;
-+
-+			if (richace_is_inherit_only(ace) ||
-+			    richace_is_owner(ace) ||
-+			    richace_is_group(ace))
-+				continue;
-+			if (richace_is_allow(ace) || richace_is_deny(ace)) {
-+				/*
-+				 * Any inserted entry will end up below the
-+				 * current entry
-+				 */
-+				if (__richacl_propagate_everyone(alloc, ace,
-+								 group_allow))
-+					return -1;
-+				acl = alloc->acl;
-+			}
-+		}
-+	}
-+	return 0;
-+}
+ #define DEFAULT_JOURNAL_IOPRIO (IOPRIO_PRIO_VALUE(IOPRIO_CLASS_BE, 3))
+ static char deprecated_msg[] = "Mount option \"%s\" will be removed by %s\n"
+ 	"Contact linux-ext4@vger.kernel.org if you think we should keep it.\n";
+@@ -1403,9 +1425,9 @@ static const struct mount_opts {
+ 	 MOPT_NO_EXT2 | MOPT_DATAJ},
+ 	{Opt_user_xattr, EXT4_MOUNT_XATTR_USER, MOPT_SET},
+ 	{Opt_nouser_xattr, EXT4_MOUNT_XATTR_USER, MOPT_CLEAR},
+-#ifdef CONFIG_EXT4_FS_POSIX_ACL
+-	{Opt_acl, EXT4_MOUNT_POSIX_ACL, MOPT_SET},
+-	{Opt_noacl, EXT4_MOUNT_POSIX_ACL, MOPT_CLEAR},
++#if defined(CONFIG_EXT4_FS_POSIX_ACL) || defined(CONFIG_EXT4_FS_RICHACL)
++	{Opt_acl, EXT4_MOUNT_ACL, MOPT_SET},
++	{Opt_noacl, EXT4_MOUNT_ACL, MOPT_CLEAR},
+ #else
+ 	{Opt_acl, 0, MOPT_NOSUPPORT},
+ 	{Opt_noacl, 0, MOPT_NOSUPPORT},
+@@ -3563,8 +3585,8 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 		set_opt(sb, NO_UID32);
+ 	/* xattr user namespace & acls are now defaulted on */
+ 	set_opt(sb, XATTR_USER);
+-#ifdef CONFIG_EXT4_FS_POSIX_ACL
+-	set_opt(sb, POSIX_ACL);
++#if defined(CONFIG_EXT4_FS_POSIX_ACL) || defined(CONFIG_EXT4_FS_RICHACL)
++	set_opt(sb, ACL);
+ #endif
+ 	/* don't forget to enable journal_csum when metadata_csum is enabled. */
+ 	if (ext4_has_metadata_csum(sb))
+@@ -3645,8 +3667,9 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 			clear_opt(sb, DELALLOC);
+ 	}
+ 
+-	sb->s_flags = (sb->s_flags & ~MS_POSIXACL) |
+-		(test_opt(sb, POSIX_ACL) ? MS_POSIXACL : 0);
++	err = enable_acl(sb);
++	if (err)
++		goto failed_mount;
+ 
+ 	if (le32_to_cpu(es->s_rev_level) == EXT4_GOOD_OLD_REV &&
+ 	    (EXT4_HAS_COMPAT_FEATURE(sb, ~0U) ||
+@@ -4960,8 +4983,9 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
+ 	if (sbi->s_mount_flags & EXT4_MF_FS_ABORTED)
+ 		ext4_abort(sb, "Abort forced by user");
+ 
+-	sb->s_flags = (sb->s_flags & ~MS_POSIXACL) |
+-		(test_opt(sb, POSIX_ACL) ? MS_POSIXACL : 0);
++	err = enable_acl(sb);
++	if (err)
++		goto restore_opts;
+ 
+ 	es = sbi->s_es;
+ 
 -- 
 2.5.0
 
