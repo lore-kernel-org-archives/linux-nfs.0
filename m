@@ -1,30 +1,22 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f173.google.com ([209.85.213.173]:37158 "EHLO
-	mail-ig0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751955AbbHEJBy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Aug 2015 05:01:54 -0400
+Received: from tamar.safe-mail.net ([212.29.227.229]:35656 "EHLO
+	tamar.safe-mail.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752438AbbHEOGt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Aug 2015 10:06:49 -0400
+Received: by tamar.safe-mail.net with Safe-mail (Exim 4.66)
+	(envelope-from <jhopper@Safe-mail.net>)
+	id 1ZMwdy-0007Ty-S2
+	for linux-nfs@vger.kernel.org; Wed, 05 Aug 2015 07:13:58 -0400
+Subject: extremely slow v4 performance on gigabit link
+Date: Wed, 5 Aug 2015 07:13:58 -0400
+From: jhopper@Safe-mail.net
+To: linux-nfs@vger.kernel.org
+Message-Id: <N1B-heRnt8zOCE@Safe-mail.net>
 MIME-Version: 1.0
-In-Reply-To: <20150804210958.GA10729@fieldses.org>
-References: <20150804210958.GA10729@fieldses.org>
-Date: Wed, 5 Aug 2015 11:01:53 +0200
-Message-ID: <CA+55aFyh=hT8id4LOgVhrE7GTGtgqRCtfCewhm83yLcFEYQPxg@mail.gmail.com>
-Subject: Re: [GIT PULL] nfsd bugfixes for 4.2
-From: Linus Torvalds <torvalds@linux-foundation.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Aug 4, 2015 at 11:09 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> Please pull a few nfsd bugfixes for 4.2 from:
+I have a very slow (less than 1MB/s) performance with nfsv4 TCP, rsize/wsize have no effect, server is a kernel 3.19 x86 100hz no preempt exporting async nfsv4 TCP on nfs-utils 1.2.7, client is a kernel 4.1.3 x64 1000hz full preempt with nfs-utils 1.3.2 , physical link is 1 gigabit full duplex, I mounted a few cifs shares to check, the cifs shares are working at 30 MB/s and higher
 
-Pulled. However, I wonder if you could start making signed tag pull
-requests. I don't know how linux-nfs.org is maintained, and it's
-probably all really good and private, but it still makes me go
-"Wouldn't it be nice if..."
-
-Thanks,
-
-                Linus
+is it possible that preempt has an effect on NFS performance ? does timeslice have effect on performance ?
