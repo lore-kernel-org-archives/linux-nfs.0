@@ -1,44 +1,72 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.opengridcomputing.com ([72.48.136.20]:40134 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750968AbbHEVXY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Aug 2015 17:23:24 -0400
-From: "Steve Wise" <swise@opengridcomputing.com>
-To: "'Sagi Grimberg'" <sagig@dev.mellanox.co.il>, <dledford@redhat.com>
-Cc: <infinipath@intel.com>, <sagig@mellanox.com>, <ogerlitz@mellanox.com>,
-        <roid@mellanox.com>, <linux-rdma@vger.kernel.org>, <eli@mellanox.com>,
-        <target-devel@vger.kernel.org>, <linux-nfs@vger.kernel.org>,
-        <bfields@fieldses.org>
-References: <20150724161331.25617.8475.stgit@build2.ogc.int> <20150724161848.25617.26092.stgit@build2.ogc.int> <55B4B190.7070305@dev.mellanox.co.il> <55B5404F.5040404@opengridcomputing.com> <000001d0ce23$27048810$750d9830$@opengridcomputing.com> <55C0F5B7.4040100@dev.mellanox.co.il> 
-In-Reply-To: 
-Subject: RE: [PATCH V6 6/9] isert: Rename IO functions to more descriptive names
-Date: Wed, 5 Aug 2015 16:23:27 -0500
-Message-ID: <00b001d0cfc4$f83a14c0$e8ae3e40$@opengridcomputing.com>
+Received: from mail-ob0-f172.google.com ([209.85.214.172]:34950 "EHLO
+	mail-ob0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753761AbbHEW1y (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Aug 2015 18:27:54 -0400
+Received: by obbop1 with SMTP id op1so42756628obb.2
+        for <linux-nfs@vger.kernel.org>; Wed, 05 Aug 2015 15:27:54 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain;
-	charset="UTF-8"
+In-Reply-To: <359CCE70-6056-418F-B627-688BE27C7EA8@oracle.com>
+References: <20150805182305.11796.75476.stgit@manet.1015granger.net>
+	<359CCE70-6056-418F-B627-688BE27C7EA8@oracle.com>
+Date: Wed, 5 Aug 2015 18:27:53 -0400
+Message-ID: <CAHQdGtQz1EqZLt-i=uAhFONpnyfUBSFyWHnjWdjgU8kOmnrR6Q@mail.gmail.com>
+Subject: Re: [PATCH] NFS: Add OTW write barrier before may-open test
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Wed, Aug 5, 2015 at 2:44 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>
+> On Aug 5, 2015, at 2:34 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>
+>> Commit 14546c337588 ("NFS: Don't do a full flush to disk on close()
+>> if we hold a delegation") added an optimization. When an NFSv4 write
+>> delegation is present, close(2) does not wait while a file's dirty
+>> data is flushed to the NFS server.
+>>
+>> However, if the application workload immediately re-opens that file,
+>> nfs_may_open() can perform an ACCESS and GETATTR which runs
+>> concurrently with the flushing WRITE. If the flushing WRITE and
+>> GETATTR complete out of order on the server, the file size cached on
+>> the client will go backwards, possibly resulting in new writes going
+>> to the wrong file offset.
+>>
+>> Add a write barrier before the access check to ensure the server's
+>> idea of the file's size is properly up to date.
+>>
+>> The downside of this approach is that each fresh open(2) of a dirty
+>> file results in an extra flush. It seems to me that _any_ open(2)
+>> done while there is dirty data waiting on the client could result in
+>> a file size roll back. However, I see bad behavior only when the
+>> client holds a write delegation.
+>>
+>> Fixes: 14546c337588 ("NFS: Don't do a full flush to disk on . . .")
+>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>> ---
+>> fs/nfs/dir.c |    9 +++++++++
+>> 1 file changed, 9 insertions(+)
+>>
+>> I'm not certain this is a good long term fix. Some other possible
+>> solutions include:
+>>
+>> - Not performing the access check if the client holds a delegation
+>> - Not performing a GETATTR as part of the ACCESS check
+>> - Simply marking the file attributes stale instead of using the
+>>   returned file size
+>> - Reverting commit 14546c337588
+>
+> OK. If the client holds a write delegation, then it shouldn't care
+> about the server's file size at all until it has flushed all dirty
+> data and returned the delegation. So flushing here is probably wrong.
+>
+> But the incoming file size in the GETATTR is definitely screwing up
+> the cached file size.
+>
 
-> >
-> > > Hey Sagi, how is this coming along?  How can I help?
-> > >
-> >
-> > Hi Steve,
-> >
-> > This is taking longer than I expected, the changes needed seem
-> > pretty extensive throughout the IO path. I don't think it will be ready
-> > for 4.3
-> >
-> 
-> Perhaps then we should go with my version that adds iwarp-only FRMR IO handlers for 4.3.  Then they can be phased out as the rework
-> matures.  Thoughts?
-> 
-
-Shall I send out the series again for merging into 4.3?
-
-Thanks,
-
-Steve.
-
+In which kernels are you seeing the race? For recent kernels (v4.0+)
+the write code should be calling nfs_fattr_set_barrier() in order to
+prevent the result from the ACCESS from overwriting the new file size.
