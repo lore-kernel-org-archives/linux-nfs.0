@@ -1,164 +1,146 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yk0-f172.google.com ([209.85.160.172]:35031 "EHLO
-	mail-yk0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751495AbbHEVNv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Aug 2015 17:13:51 -0400
-Received: by ykcq64 with SMTP id q64so41666507ykc.2
-        for <linux-nfs@vger.kernel.org>; Wed, 05 Aug 2015 14:13:50 -0700 (PDT)
+Received: from mail-yk0-f177.google.com ([209.85.160.177]:33880 "EHLO
+	mail-yk0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752471AbbHEVNt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Aug 2015 17:13:49 -0400
+Received: by ykax123 with SMTP id x123so46811560yka.1
+        for <linux-nfs@vger.kernel.org>; Wed, 05 Aug 2015 14:13:49 -0700 (PDT)
 From: Jeff Layton <jlayton@poochiereds.net>
 To: bfields@fieldses.org
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 10/18] nfsd: handle NFSD_MAY_NOT_BREAK_LEASE in open file cache
-Date: Wed,  5 Aug 2015 17:13:28 -0400
-Message-Id: <1438809216-4846-11-git-send-email-jeff.layton@primarydata.com>
+Subject: [PATCH v2 08/18] nfsd: add a ->flush routine to svc_export_cache
+Date: Wed,  5 Aug 2015 17:13:26 -0400
+Message-Id: <1438809216-4846-9-git-send-email-jeff.layton@primarydata.com>
 In-Reply-To: <1438809216-4846-1-git-send-email-jeff.layton@primarydata.com>
 References: <1438264341-18048-1-git-send-email-jeff.layton@primarydata.com>
  <1438809216-4846-1-git-send-email-jeff.layton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The NFSD_MAY_NOT_BREAK_LEASE flag needs special handling. If we open a
-file in order to do (e.g.) a COMMIT then we don't want to break any
-leases, but subsequent READ/WRITE operations must break the leases.
+...to purge the nfsd_file table. This should help ensure that
+filesystems are unmountable very soon after unexporting them.
 
-If we construct a new cache entry with a set of may flags that have
-NFSD_MAY_NOT_BREAK_LEASE set, then set flags in the cache entry that
-indicate that subsequent users of this file must break leases before
-using it if they do not have NFSD_MAY_NOT_BREAK_LEASE set.
-
-Note that because NFSD_MAY_READ opens do not break read leases, we
-must track what sort of lease breaks have been done. If we're breaking
-leases for read, then we still need to do a lease break for write if
-it's a R/W open and a writer comes along. Lease breaks for write
-however imply a read lease break so we can clear both flags in that
-event.
+Note that we take the nfsd_mutex in this code to ensure that we can't
+race with a concurrent shutdown of nfsd that might destroy the cache.
 
 Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
 ---
- fs/nfsd/filecache.c | 40 ++++++++++++++++++++++++++++++++++++----
- fs/nfsd/filecache.h |  2 ++
- fs/nfsd/vfs.c       |  3 ++-
- fs/nfsd/vfs.h       |  1 +
- 4 files changed, 41 insertions(+), 5 deletions(-)
+ fs/nfsd/export.c    | 14 ++++++++++++++
+ fs/nfsd/filecache.c | 39 +++++++++++++++++++++++++--------------
+ fs/nfsd/filecache.h |  1 +
+ 3 files changed, 40 insertions(+), 14 deletions(-)
 
+diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
+index f79521a59747..be80ff370072 100644
+--- a/fs/nfsd/export.c
++++ b/fs/nfsd/export.c
+@@ -21,6 +21,7 @@
+ #include "nfsfh.h"
+ #include "netns.h"
+ #include "pnfs.h"
++#include "filecache.h"
+ 
+ #define NFSDDBG_FACILITY	NFSDDBG_EXPORT
+ 
+@@ -231,6 +232,18 @@ static struct cache_head *expkey_alloc(void)
+ 		return NULL;
+ }
+ 
++static void
++expkey_flush(void)
++{
++	/*
++	 * Take the nfsd_mutex here to ensure that the file cache is not
++	 * destroyed while we're in the middle of flushing.
++	 */
++	mutex_lock(&nfsd_mutex);
++	nfsd_file_cache_purge();
++	mutex_unlock(&nfsd_mutex);
++}
++
+ static struct cache_detail svc_expkey_cache_template = {
+ 	.owner		= THIS_MODULE,
+ 	.hash_size	= EXPKEY_HASHMAX,
+@@ -243,6 +256,7 @@ static struct cache_detail svc_expkey_cache_template = {
+ 	.init		= expkey_init,
+ 	.update       	= expkey_update,
+ 	.alloc		= expkey_alloc,
++	.flush		= expkey_flush,
+ };
+ 
+ static int
 diff --git a/fs/nfsd/filecache.c b/fs/nfsd/filecache.c
-index 084e56726318..0adcc674441d 100644
+index 5278b8d9e79a..a3782cf7b352 100644
 --- a/fs/nfsd/filecache.c
 +++ b/fs/nfsd/filecache.c
-@@ -68,6 +68,12 @@ nfsd_file_alloc(struct knfsd_fh *fh, unsigned int may, unsigned int hashval)
- 		nf->nf_hashval = hashval;
- 		atomic_set(&nf->nf_ref, 1);
- 		nf->nf_may = NFSD_FILE_MAY_MASK & may;
-+		if (may & NFSD_MAY_NOT_BREAK_LEASE) {
-+			if (may & NFSD_MAY_WRITE)
-+				__set_bit(NFSD_FILE_BREAK_WRITE, &nf->nf_flags);
-+			if (may & NFSD_MAY_READ)
-+				__set_bit(NFSD_FILE_BREAK_READ, &nf->nf_flags);
-+		}
+@@ -124,6 +124,30 @@ nfsd_file_dispose_list(struct list_head *dispose)
  	}
- 	return nf;
  }
-@@ -269,8 +275,6 @@ nfsd_file_acquire(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 	struct knfsd_fh *fh = &fhp->fh_handle;
- 	unsigned int hashval = file_hashval(fh);
  
--	/* Mask off any extraneous bits */
--	may_flags &= NFSD_FILE_MAY_MASK;
- retry:
- 	rcu_read_lock();
- 	nf = nfsd_file_find_locked(fh, may_flags, hashval);
-@@ -311,7 +315,7 @@ wait_for_construction:
- 		 * MAY flags are equal. Otherwise, we put the reference and try
- 		 * again.
- 		 */
--		if (may_flags != nf->nf_may) {
-+		if ((may_flags & NFSD_FILE_MAY_MASK) != nf->nf_may) {
- 			nfsd_file_put(nf);
- 			goto retry;
- 		}
-@@ -319,6 +323,18 @@ wait_for_construction:
- 		/* try to take over construction for this file */
- 		if (test_and_set_bit(NFSD_FILE_PENDING, &nf->nf_flags))
- 			goto wait_for_construction;
++void
++nfsd_file_cache_purge(void)
++{
++	unsigned int		i;
++	struct nfsd_file	*nf;
++	LIST_HEAD(dispose);
 +
-+		/* sync up the BREAK_* flags with our may_flags */
-+		if (may_flags & NFSD_MAY_NOT_BREAK_LEASE) {
-+			if (may_flags & NFSD_MAY_WRITE)
-+				set_bit(NFSD_FILE_BREAK_WRITE, &nf->nf_flags);
-+			if (may_flags & NFSD_MAY_READ)
-+				set_bit(NFSD_FILE_BREAK_READ, &nf->nf_flags);
-+		} else {
-+			clear_bit(NFSD_FILE_BREAK_WRITE, &nf->nf_flags);
-+			clear_bit(NFSD_FILE_BREAK_READ, &nf->nf_flags);
++	if (!atomic_read(&nfsd_file_count))
++		return;
++
++	for (i = 0; i < NFSD_FILE_HASH_SIZE; i++) {
++		spin_lock(&nfsd_file_hashtbl[i].nfb_lock);
++		while(!hlist_empty(&nfsd_file_hashtbl[i].nfb_head)) {
++			nf = hlist_entry(nfsd_file_hashtbl[i].nfb_head.first,
++					 struct nfsd_file, nf_node);
++			nfsd_file_unhash(nf);
++			/* put the hash reference */
++			nfsd_file_put_locked(nf, &dispose);
 +		}
-+
- 		goto open_file;
- 	}
- 
-@@ -330,7 +346,23 @@ wait_for_construction:
- 	status = fh_verify(rqstp, fhp, S_IFREG, may_flags);
- 	if (status == nfs_ok)
- 		status = nfsd_permission(rqstp, fhp->fh_export, fhp->fh_dentry,
--						may_flags|NFSD_MAY_OWNER_OVERRIDE);
-+					may_flags|NFSD_MAY_OWNER_OVERRIDE);
-+
-+	if (status == nfs_ok && !(may_flags & NFSD_MAY_NOT_BREAK_LEASE)) {
-+		bool write = (may_flags & NFSD_MAY_WRITE);
-+
-+		if (test_bit(NFSD_FILE_BREAK_READ, &nf->nf_flags) ||
-+		    (test_bit(NFSD_FILE_BREAK_WRITE, &nf->nf_flags) && write)) {
-+			status = nfserrno(nfsd_open_break_lease(
-+					file_inode(nf->nf_file), may_flags));
-+			if (status == nfs_ok) {
-+				clear_bit(NFSD_FILE_BREAK_READ, &nf->nf_flags);
-+				if (write)
-+					clear_bit(NFSD_FILE_BREAK_WRITE,
-+						  &nf->nf_flags);
-+			}
-+		}
++		spin_unlock(&nfsd_file_hashtbl[i].nfb_lock);
++		nfsd_file_dispose_list(&dispose);
 +	}
- out:
- 	if (status == nfs_ok)
- 		*pnf = nf;
++}
++
+ static void
+ nfsd_file_cache_prune(void)
+ {
+@@ -200,23 +224,10 @@ out_nomem:
+ void
+ nfsd_file_cache_shutdown(void)
+ {
+-	unsigned int		i;
+-	struct nfsd_file	*nf;
+ 	LIST_HEAD(dispose);
+ 
+ 	cancel_delayed_work_sync(&nfsd_file_cache_clean_work);
+-	for (i = 0; i < NFSD_FILE_HASH_SIZE; i++) {
+-		spin_lock(&nfsd_file_hashtbl[i].nfb_lock);
+-		while(!hlist_empty(&nfsd_file_hashtbl[i].nfb_head)) {
+-			nf = hlist_entry(nfsd_file_hashtbl[i].nfb_head.first,
+-					 struct nfsd_file, nf_node);
+-			nfsd_file_unhash(nf);
+-			/* put the hash reference */
+-			nfsd_file_put_locked(nf, &dispose);
+-		}
+-		spin_unlock(&nfsd_file_hashtbl[i].nfb_lock);
+-		nfsd_file_dispose_list(&dispose);
+-	}
++	nfsd_file_cache_purge();
+ 	kfree(nfsd_file_hashtbl);
+ 	nfsd_file_hashtbl = NULL;
+ }
 diff --git a/fs/nfsd/filecache.h b/fs/nfsd/filecache.h
-index 98976f71caa8..b8a59d615729 100644
+index adf7e78b8e43..98976f71caa8 100644
 --- a/fs/nfsd/filecache.h
 +++ b/fs/nfsd/filecache.h
-@@ -31,6 +31,8 @@ struct nfsd_file {
- 	unsigned long		nf_time;
- #define NFSD_FILE_HASHED	(0)
- #define NFSD_FILE_PENDING	(1)
-+#define NFSD_FILE_BREAK_READ	(2)
-+#define NFSD_FILE_BREAK_WRITE	(3)
- 	unsigned long		nf_flags;
- 	struct knfsd_fh		nf_handle;
- 	unsigned int		nf_hashval;
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index fd688c86af66..79a881589ca7 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -618,7 +618,8 @@ nfsd_access(struct svc_rqst *rqstp, struct svc_fh *fhp, u32 *access, u32 *suppor
- }
- #endif /* CONFIG_NFSD_V3 */
+@@ -39,6 +39,7 @@ struct nfsd_file {
+ };
  
--static int nfsd_open_break_lease(struct inode *inode, int access)
-+int
-+nfsd_open_break_lease(struct inode *inode, int access)
- {
- 	unsigned int mode;
- 
-diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
-index 78b5527cba93..a3ec59830297 100644
---- a/fs/nfsd/vfs.h
-+++ b/fs/nfsd/vfs.h
-@@ -69,6 +69,7 @@ __be32		do_nfsd_create(struct svc_rqst *, struct svc_fh *,
- __be32		nfsd_commit(struct svc_rqst *, struct svc_fh *,
- 				loff_t, unsigned long);
- #endif /* CONFIG_NFSD_V3 */
-+int		nfsd_open_break_lease(struct inode *, int);
- __be32		nfsd_open(struct svc_rqst *, struct svc_fh *, umode_t,
- 				int, struct file **);
- struct raparms;
+ int nfsd_file_cache_init(void);
++void nfsd_file_cache_purge(void);
+ void nfsd_file_cache_shutdown(void);
+ void nfsd_file_put(struct nfsd_file *nf);
+ __be32 nfsd_file_acquire(struct svc_rqst *rqstp, struct svc_fh *fhp,
 -- 
 2.4.3
 
