@@ -1,18 +1,13 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yk0-f174.google.com ([209.85.160.174]:34125 "EHLO
-	mail-yk0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751657AbbHEPLg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Aug 2015 11:11:36 -0400
-Received: by ykax123 with SMTP id x123so37970655yka.1
-        for <linux-nfs@vger.kernel.org>; Wed, 05 Aug 2015 08:11:36 -0700 (PDT)
-Date: Wed, 5 Aug 2015 11:11:32 -0400
-From: Jeff Layton <jlayton@poochiereds.net>
-To: Andrew W Elble <aweits@rit.edu>
+Received: from discipline.rit.edu ([129.21.6.207]:15214 "HELO
+	discipline.rit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1753235AbbHEQdR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Aug 2015 12:33:17 -0400
+From: Andrew W Elble <aweits@rit.edu>
+To: Jeff Layton <jlayton@poochiereds.net>
 Cc: "J. Bruce Fields" <bfields@fieldses.org>, <linux-nfs@vger.kernel.org>,
         Anna Schumaker <schumakeranna@gmail.com>
 Subject: Re: list_del corruption / unhash_ol_stateid()
-Message-ID: <20150805111132.01a14348@tlielax.poochiereds.net>
-In-Reply-To: <m2bnemg64d.fsf@discipline.rit.edu>
 References: <m23809zl8z.fsf@discipline.rit.edu>
 	<m2zj2hwk4e.fsf@discipline.rit.edu>
 	<20150728090206.1331e476@tlielax.poochiereds.net>
@@ -24,78 +19,108 @@ References: <m23809zl8z.fsf@discipline.rit.edu>
 	<m2bnetnbme.fsf@discipline.rit.edu>
 	<20150730085723.0ab8e76c@tlielax.poochiereds.net>
 	<m2bnemg64d.fsf@discipline.rit.edu>
+	<20150805111132.01a14348@tlielax.poochiereds.net>
+Date: Wed, 05 Aug 2015 12:33:16 -0400
+In-Reply-To: <20150805111132.01a14348@tlielax.poochiereds.net> (Jeff Layton's
+	message of "Wed, 5 Aug 2015 11:11:32 -0400")
+Message-ID: <m2pp31bsqb.fsf@discipline.rit.edu>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 04 Aug 2015 16:18:10 -0400
-Andrew W Elble <aweits@rit.edu> wrote:
 
-> 
-> > In any case, I think this explains where the "no readable file" warning
-> > is coming from, but I'm not sure yet about the mem corruption...
-> 
-> Forgive my shorthand, but I think this is what we're seeing:
-> 
-> open2              close
->  create 1 (idr)
->  init 2 (hashed)
-> 
+> I'm not sure I'm following your shorthand correctly, but, I'm guessing
+> the above is that you're creating a stateid and then calling
+> init_open_stateid on it to hash it?
+>
+> If you can flesh out the description of the race, it might be more
+> clear.
 
-I'm not sure I'm following your shorthand correctly, but, I'm guessing
-the above is that you're creating a stateid and then calling
-init_open_stateid on it to hash it?
+Sorry, knew that was a bit terse.
 
-If you can flesh out the description of the race, it might be more
-clear.
+nfsd4_process_open2                    nfsd4_close
 
->                    close preprocess_seqid 3 (local ref in nfsd4_close)
-> 		   close_open_stateid 2 -> unhashed (unhashed)
-> 
+stp = open->op_stp;
+ nfs4_alloc_stid, refcount is 1
 
-Ok, so here we have the client sending a simultaneous close for the
-same stateid? How did it get it in the first place? We won't have sent
-the reply yet to the OPEN that this CLOSE is racing with.
+init_open_stateid(stp, fp, open);
+ is hashed, refcount is 2
 
-Unless...the initial task that created the stateid got _really_
-stalled, and another OPEN raced in, found that stateid and was able to
-reply quickly. Then the client could send a CLOSE for that second OPEN
-before the first opener ever finished.
+                                 nfs4_preprocess_seqid_op()
+				 finds the same stateid,
+				 refcount is 3
 
-In any case, we really do need to make subsequent openers of a nfs4_file
-wait until it's fully constructed before using it.
+                                 nfsd4_close_open_stateid()
+                                 unhashes stateid,
+                                 put_ol_stateid_locked() drops refcount
+                                 refcount is 2
+nfs4_get_vfs_file() returns
+with status due to:
+ nfsd_open()
+  nfsd_open_break_lease()
+   break_lease() returning
+    -EWOULDBLOCK
 
->  release_open_stateid 1 -> list_del corruption (because unhashed already
->                         -> should still be refcount 2?)
-> 
+release_open_stateid()
+ calls unhash_open_stateid()
+ attempts to unhash,
+ WARN generated for list_del
 
-...regardless, I do agree that the release_open_stateid call here is
-probably making some assumptions that it shouldn't, and that is probably
-where the list corruption is coming in. 
+ proceeds to call put_ol_stateid_locked()
+ decrements refcount inappropriately
+ refcount is now 1.
 
-If you had multiple racing OPENs then one could find the stateid that
-was previously hashed. A simple fix might be to just use list_del_init
-calls in unhash_ol_stateid. That should make any second list_del's a
-no-op.
+                                 nfs4_put_stid()
+				 refcount is 0, memory is freed
 
-Whether that's sufficient to fix the mem corruption, I'm not sure...
+ nfs4_put_stid
+ calls atomic_dec_and_lock()
+ use after free
+ first corrupt byte is 6a
+ because of atomic decrement
+ with slub_debug on
 
->                    nfs4_put_stid 0 -> destroyed
-> 
->  nfs4_put_stid 0 -> use after free
-> 
-> This also explains the '6a' as the first byte, as the final
-> nfs4_put_stid will decrement sc_count first. There are other permutations.
-> 
-> Also, the return-with-status from nfs_get_vfs_file() appears to be break_lease()
-> (much further down) returning -EWOULDBLOCK (in both cases, memory
-> corruption and the simple warning case)
-> 
-> Thanks,
-> 
-> Andy
+> Unless...the initial task that created the stateid got _really_
+> stalled, and another OPEN raced in, found that stateid and was able to
+> reply quickly. Then the client could send a CLOSE for that second OPEN
+> before the first opener ever finished.
 
+Sounds plausible given the environment. Would take more effort to
+directly prove. I have directly observed the same stateid being used in
+the above race.
+
+> If you had multiple racing OPENs then one could find the stateid that
+> was previously hashed. A simple fix might be to just use list_del_init
+> calls in unhash_ol_stateid. That should make any second list_del's a
+> no-op.
+>
+> Whether that's sufficient to fix the mem corruption, I'm not sure...
+
+It's sc_count decrementing when the unhashing "fails" or is going to
+fail. For instance, this kind of construct will prevent one of the
+possible use-after-free scenarios.
+
+static void release_open_stateid(struct nfs4_ol_stateid *stp)
+{
+        LIST_HEAD(reaplist);
+
+        spin_lock(&stp->st_stid.sc_client->cl_lock);
+        if (stp->st_perfile->next != LIST_POISON1) {
+         unhash_open_stateid(stp, &reaplist);
+         put_ol_stateid_locked(stp, &reaplist);
+        }
+        spin_unlock(&stp->st_stid.sc_client->cl_lock);
+        free_ol_stateid_reaplist(&reaplist);
+}
+
+Thanks,
+
+Andy
 
 -- 
-Jeff Layton <jlayton@poochiereds.net>
+Andrew W. Elble
+aweits@discipline.rit.edu
+Infrastructure Engineer, Communications Technical Lead
+Rochester Institute of Technology
+PGP: BFAD 8461 4CCF DC95 DA2C B0EB 965B 082E 863E C912
