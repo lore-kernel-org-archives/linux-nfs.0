@@ -1,127 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yk0-f171.google.com ([209.85.160.171]:33269 "EHLO
-	mail-yk0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752472AbbHEVNr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Aug 2015 17:13:47 -0400
-Received: by ykoo205 with SMTP id o205so46664100yko.0
-        for <linux-nfs@vger.kernel.org>; Wed, 05 Aug 2015 14:13:46 -0700 (PDT)
+Received: from mail-yk0-f169.google.com ([209.85.160.169]:36549 "EHLO
+	mail-yk0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751495AbbHEVNs (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Aug 2015 17:13:48 -0400
+Received: by ykeo23 with SMTP id o23so46444389yke.3
+        for <linux-nfs@vger.kernel.org>; Wed, 05 Aug 2015 14:13:48 -0700 (PDT)
 From: Jeff Layton <jlayton@poochiereds.net>
 To: bfields@fieldses.org
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 05/18] nfsd: hook up nfsd_write to the new nfsd_file cache
-Date: Wed,  5 Aug 2015 17:13:23 -0400
-Message-Id: <1438809216-4846-6-git-send-email-jeff.layton@primarydata.com>
+Subject: [PATCH v2 07/18] sunrpc: add a new cache_detail operation for when a cache is flushed
+Date: Wed,  5 Aug 2015 17:13:25 -0400
+Message-Id: <1438809216-4846-8-git-send-email-jeff.layton@primarydata.com>
 In-Reply-To: <1438809216-4846-1-git-send-email-jeff.layton@primarydata.com>
 References: <1438264341-18048-1-git-send-email-jeff.layton@primarydata.com>
  <1438809216-4846-1-git-send-email-jeff.layton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Note that all callers currently pass in NULL for "file" anyway, so
-there was already some dead code in here. Just eliminate that parm
-and have it use the file cache instead of dealing directly with a
-filp.
+When the exports table is changed, exportfs will usually write a new
+time to the "flush" file in the nfsd.export cache procfile. This tells
+the kernel to flush any entries that are older than that value.
+
+This gives us a mechanism to tell whether an unexport might have
+occurred. Add a new ->flush cache_detail operation that is called after
+flushing the cache whenever someone writes to a "flush" file.
 
 Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
 ---
- fs/nfsd/nfs3proc.c |  2 +-
- fs/nfsd/nfsproc.c  |  2 +-
- fs/nfsd/vfs.c      | 34 +++++++++++-----------------------
- fs/nfsd/vfs.h      |  2 +-
- 4 files changed, 14 insertions(+), 26 deletions(-)
+ include/linux/sunrpc/cache.h | 1 +
+ net/sunrpc/cache.c           | 3 +++
+ 2 files changed, 4 insertions(+)
 
-diff --git a/fs/nfsd/nfs3proc.c b/fs/nfsd/nfs3proc.c
-index 7b755b7f785c..4e46ac511479 100644
---- a/fs/nfsd/nfs3proc.c
-+++ b/fs/nfsd/nfs3proc.c
-@@ -192,7 +192,7 @@ nfsd3_proc_write(struct svc_rqst *rqstp, struct nfsd3_writeargs *argp,
+diff --git a/include/linux/sunrpc/cache.h b/include/linux/sunrpc/cache.h
+index 437ddb6c4aef..29033421aa0c 100644
+--- a/include/linux/sunrpc/cache.h
++++ b/include/linux/sunrpc/cache.h
+@@ -98,6 +98,7 @@ struct cache_detail {
+ 					      int has_died);
  
- 	fh_copy(&resp->fh, &argp->fh);
- 	resp->committed = argp->stable;
--	nfserr = nfsd_write(rqstp, &resp->fh, NULL,
-+	nfserr = nfsd_write(rqstp, &resp->fh,
- 				   argp->offset,
- 				   rqstp->rq_vec, argp->vlen,
- 				   &cnt,
-diff --git a/fs/nfsd/nfsproc.c b/fs/nfsd/nfsproc.c
-index 4cd78ef4c95c..9893095cbee1 100644
---- a/fs/nfsd/nfsproc.c
-+++ b/fs/nfsd/nfsproc.c
-@@ -213,7 +213,7 @@ nfsd_proc_write(struct svc_rqst *rqstp, struct nfsd_writeargs *argp,
- 		SVCFH_fmt(&argp->fh),
- 		argp->len, argp->offset);
+ 	struct cache_head *	(*alloc)(void);
++	void			(*flush)(void);
+ 	int			(*match)(struct cache_head *orig, struct cache_head *new);
+ 	void			(*init)(struct cache_head *orig, struct cache_head *new);
+ 	void			(*update)(struct cache_head *orig, struct cache_head *new);
+diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
+index 2928afffbb81..19dc71ccc706 100644
+--- a/net/sunrpc/cache.c
++++ b/net/sunrpc/cache.c
+@@ -1452,6 +1452,9 @@ static ssize_t write_flush(struct file *file, const char __user *buf,
+ 	cd->nextcheck = seconds_since_boot();
+ 	cache_flush();
  
--	nfserr = nfsd_write(rqstp, fh_copy(&resp->fh, &argp->fh), NULL,
-+	nfserr = nfsd_write(rqstp, fh_copy(&resp->fh, &argp->fh),
- 				   argp->offset,
- 				   rqstp->rq_vec, argp->vlen,
- 			           &cnt,
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index b5e077a6e7d4..59234d1d8d8e 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -42,6 +42,7 @@
- 
- #include "nfsd.h"
- #include "vfs.h"
-+#include "filecache.h"
- 
- #define NFSDDBG_FACILITY		NFSDDBG_FILEOP
- 
-@@ -1002,30 +1003,17 @@ __be32 nfsd_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
-  * N.B. After this call fhp needs an fh_put
-  */
- __be32
--nfsd_write(struct svc_rqst *rqstp, struct svc_fh *fhp, struct file *file,
--		loff_t offset, struct kvec *vec, int vlen, unsigned long *cnt,
--		int *stablep)
-+nfsd_write(struct svc_rqst *rqstp, struct svc_fh *fhp, loff_t offset,
-+	   struct kvec *vec, int vlen, unsigned long *cnt, int *stablep)
- {
--	__be32			err = 0;
--
--	if (file) {
--		err = nfsd_permission(rqstp, fhp->fh_export, fhp->fh_dentry,
--				NFSD_MAY_WRITE|NFSD_MAY_OWNER_OVERRIDE);
--		if (err)
--			goto out;
--		err = nfsd_vfs_write(rqstp, fhp, file, offset, vec, vlen, cnt,
--				stablep);
--	} else {
--		err = nfsd_open(rqstp, fhp, S_IFREG, NFSD_MAY_WRITE, &file);
--		if (err)
--			goto out;
--
--		if (cnt)
--			err = nfsd_vfs_write(rqstp, fhp, file, offset, vec, vlen,
--					     cnt, stablep);
--		fput(file);
--	}
--out:
-+	__be32			err;
-+	struct nfsd_file	*nf;
++	if (cd->flush)
++		cd->flush();
 +
-+	err = nfsd_file_acquire(rqstp, fhp, NFSD_MAY_WRITE, &nf);
-+	if (err == nfs_ok)
-+		err = nfsd_vfs_write(rqstp, fhp, nf->nf_file, offset, vec,
-+					vlen, cnt, stablep);
-+	nfsd_file_put(nf);
- 	return err;
+ 	*ppos += count;
+ 	return count;
  }
- 
-diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
-index 5be875e3e638..78b5527cba93 100644
---- a/fs/nfsd/vfs.h
-+++ b/fs/nfsd/vfs.h
-@@ -78,7 +78,7 @@ __be32		nfsd_readv(struct file *, loff_t, struct kvec *, int,
- 				unsigned long *);
- __be32 		nfsd_read(struct svc_rqst *, struct svc_fh *,
- 				loff_t, struct kvec *, int, unsigned long *);
--__be32 		nfsd_write(struct svc_rqst *, struct svc_fh *,struct file *,
-+__be32 		nfsd_write(struct svc_rqst *, struct svc_fh *,
- 				loff_t, struct kvec *,int, unsigned long *, int *);
- __be32		nfsd_vfs_write(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 				struct file *file, loff_t offset,
 -- 
 2.4.3
 
