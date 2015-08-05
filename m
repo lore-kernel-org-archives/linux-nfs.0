@@ -1,62 +1,83 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yk0-f169.google.com ([209.85.160.169]:36549 "EHLO
-	mail-yk0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751495AbbHEVNs (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Aug 2015 17:13:48 -0400
-Received: by ykeo23 with SMTP id o23so46444389yke.3
-        for <linux-nfs@vger.kernel.org>; Wed, 05 Aug 2015 14:13:48 -0700 (PDT)
+Received: from mail-yk0-f181.google.com ([209.85.160.181]:33888 "EHLO
+	mail-yk0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752472AbbHEVNu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Aug 2015 17:13:50 -0400
+Received: by ykax123 with SMTP id x123so46811791yka.1
+        for <linux-nfs@vger.kernel.org>; Wed, 05 Aug 2015 14:13:49 -0700 (PDT)
 From: Jeff Layton <jlayton@poochiereds.net>
 To: bfields@fieldses.org
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 07/18] sunrpc: add a new cache_detail operation for when a cache is flushed
-Date: Wed,  5 Aug 2015 17:13:25 -0400
-Message-Id: <1438809216-4846-8-git-send-email-jeff.layton@primarydata.com>
+Subject: [PATCH v2 09/18] nfsd: allow the file cache expire time to be tunable
+Date: Wed,  5 Aug 2015 17:13:27 -0400
+Message-Id: <1438809216-4846-10-git-send-email-jeff.layton@primarydata.com>
 In-Reply-To: <1438809216-4846-1-git-send-email-jeff.layton@primarydata.com>
 References: <1438264341-18048-1-git-send-email-jeff.layton@primarydata.com>
  <1438809216-4846-1-git-send-email-jeff.layton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When the exports table is changed, exportfs will usually write a new
-time to the "flush" file in the nfsd.export cache procfile. This tells
-the kernel to flush any entries that are older than that value.
-
-This gives us a mechanism to tell whether an unexport might have
-occurred. Add a new ->flush cache_detail operation that is called after
-flushing the cache whenever someone writes to a "flush" file.
+This is primarily for testing purposes, but this may also be useful
+until we have a better idea for a sensible default here.
 
 Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
 ---
- include/linux/sunrpc/cache.h | 1 +
- net/sunrpc/cache.c           | 3 +++
- 2 files changed, 4 insertions(+)
+ fs/nfsd/filecache.c | 14 +++++++++-----
+ 1 file changed, 9 insertions(+), 5 deletions(-)
 
-diff --git a/include/linux/sunrpc/cache.h b/include/linux/sunrpc/cache.h
-index 437ddb6c4aef..29033421aa0c 100644
---- a/include/linux/sunrpc/cache.h
-+++ b/include/linux/sunrpc/cache.h
-@@ -98,6 +98,7 @@ struct cache_detail {
- 					      int has_died);
+diff --git a/fs/nfsd/filecache.c b/fs/nfsd/filecache.c
+index a3782cf7b352..084e56726318 100644
+--- a/fs/nfsd/filecache.c
++++ b/fs/nfsd/filecache.c
+@@ -8,6 +8,7 @@
+ #include <linux/hash.h>
+ #include <linux/file.h>
+ #include <linux/sched.h>
++#include <linux/module.h>
  
- 	struct cache_head *	(*alloc)(void);
-+	void			(*flush)(void);
- 	int			(*match)(struct cache_head *orig, struct cache_head *new);
- 	void			(*init)(struct cache_head *orig, struct cache_head *new);
- 	void			(*update)(struct cache_head *orig, struct cache_head *new);
-diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-index 2928afffbb81..19dc71ccc706 100644
---- a/net/sunrpc/cache.c
-+++ b/net/sunrpc/cache.c
-@@ -1452,6 +1452,9 @@ static ssize_t write_flush(struct file *file, const char __user *buf,
- 	cd->nextcheck = seconds_since_boot();
- 	cache_flush();
+ #include "vfs.h"
+ #include "nfsd.h"
+@@ -16,8 +17,10 @@
  
-+	if (cd->flush)
-+		cd->flush();
-+
- 	*ppos += count;
- 	return count;
+ #define NFSDDBG_FACILITY	NFSDDBG_FH
+ 
+-/* Min time we should keep around a file cache entry */
+-#define NFSD_FILE_EXPIRE	(HZ)
++/* Min time we should keep around a file cache entry (in jiffies) */
++static unsigned int			nfsd_file_cache_expiry = HZ;
++module_param(nfsd_file_cache_expiry, uint, 0644);
++MODULE_PARM_DESC(nfsd_file_cache_expiry, "Expire time for open file cache (in jiffies)");
+ 
+ /* We only care about NFSD_MAY_READ/WRITE for this cache */
+ #define NFSD_FILE_MAY_MASK	(NFSD_MAY_READ|NFSD_MAY_WRITE)
+@@ -40,7 +43,7 @@ nfsd_file_count_inc(void)
+ {
+ 	if (atomic_inc_return(&nfsd_file_count) == 1)
+ 		queue_delayed_work(nfsd_laundry_wq, &nfsd_file_cache_clean_work,
+-					NFSD_FILE_EXPIRE);
++					nfsd_file_cache_expiry);
  }
+ 
+ static void
+@@ -169,7 +172,8 @@ nfsd_file_cache_prune(void)
+ 				continue;
+ 
+ 			/* Was this file touched recently? */
+-			if (time_before(nf->nf_time + NFSD_FILE_EXPIRE, jiffies))
++			if (time_before(nf->nf_time + nfsd_file_cache_expiry,
++					jiffies))
+ 				continue;
+ 
+ 			/* Ok, it's expired...unhash it */
+@@ -193,7 +197,7 @@ nfsd_file_cache_cleaner(struct work_struct *work)
+ 
+ 	if (atomic_read(&nfsd_file_count))
+ 		queue_delayed_work(nfsd_laundry_wq, &nfsd_file_cache_clean_work,
+-					NFSD_FILE_EXPIRE);
++					nfsd_file_cache_expiry);
+ }
+ 
+ int
 -- 
 2.4.3
 
