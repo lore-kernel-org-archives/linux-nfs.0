@@ -1,83 +1,71 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yk0-f181.google.com ([209.85.160.181]:33888 "EHLO
-	mail-yk0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752472AbbHEVNu (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Aug 2015 17:13:50 -0400
-Received: by ykax123 with SMTP id x123so46811791yka.1
-        for <linux-nfs@vger.kernel.org>; Wed, 05 Aug 2015 14:13:49 -0700 (PDT)
+Received: from mail-yk0-f180.google.com ([209.85.160.180]:36587 "EHLO
+	mail-yk0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752472AbbHEVNv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Aug 2015 17:13:51 -0400
+Received: by ykeo23 with SMTP id o23so46445421yke.3
+        for <linux-nfs@vger.kernel.org>; Wed, 05 Aug 2015 14:13:51 -0700 (PDT)
 From: Jeff Layton <jlayton@poochiereds.net>
 To: bfields@fieldses.org
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 09/18] nfsd: allow the file cache expire time to be tunable
-Date: Wed,  5 Aug 2015 17:13:27 -0400
-Message-Id: <1438809216-4846-10-git-send-email-jeff.layton@primarydata.com>
+Subject: [PATCH v2 11/18] nfsd: hook nfsd_commit up to the nfsd_file cache
+Date: Wed,  5 Aug 2015 17:13:29 -0400
+Message-Id: <1438809216-4846-12-git-send-email-jeff.layton@primarydata.com>
 In-Reply-To: <1438809216-4846-1-git-send-email-jeff.layton@primarydata.com>
 References: <1438264341-18048-1-git-send-email-jeff.layton@primarydata.com>
  <1438809216-4846-1-git-send-email-jeff.layton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is primarily for testing purposes, but this may also be useful
-until we have a better idea for a sensible default here.
+Use cached filps if possible instead of opening a new one every time.
 
 Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
 ---
- fs/nfsd/filecache.c | 14 +++++++++-----
- 1 file changed, 9 insertions(+), 5 deletions(-)
+ fs/nfsd/vfs.c | 14 +++++++-------
+ 1 file changed, 7 insertions(+), 7 deletions(-)
 
-diff --git a/fs/nfsd/filecache.c b/fs/nfsd/filecache.c
-index a3782cf7b352..084e56726318 100644
---- a/fs/nfsd/filecache.c
-+++ b/fs/nfsd/filecache.c
-@@ -8,6 +8,7 @@
- #include <linux/hash.h>
- #include <linux/file.h>
- #include <linux/sched.h>
-+#include <linux/module.h>
- 
- #include "vfs.h"
- #include "nfsd.h"
-@@ -16,8 +17,10 @@
- 
- #define NFSDDBG_FACILITY	NFSDDBG_FH
- 
--/* Min time we should keep around a file cache entry */
--#define NFSD_FILE_EXPIRE	(HZ)
-+/* Min time we should keep around a file cache entry (in jiffies) */
-+static unsigned int			nfsd_file_cache_expiry = HZ;
-+module_param(nfsd_file_cache_expiry, uint, 0644);
-+MODULE_PARM_DESC(nfsd_file_cache_expiry, "Expire time for open file cache (in jiffies)");
- 
- /* We only care about NFSD_MAY_READ/WRITE for this cache */
- #define NFSD_FILE_MAY_MASK	(NFSD_MAY_READ|NFSD_MAY_WRITE)
-@@ -40,7 +43,7 @@ nfsd_file_count_inc(void)
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index 79a881589ca7..8308d786c1e2 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -1026,9 +1026,9 @@ __be32
+ nfsd_commit(struct svc_rqst *rqstp, struct svc_fh *fhp,
+                loff_t offset, unsigned long count)
  {
- 	if (atomic_inc_return(&nfsd_file_count) == 1)
- 		queue_delayed_work(nfsd_laundry_wq, &nfsd_file_cache_clean_work,
--					NFSD_FILE_EXPIRE);
-+					nfsd_file_cache_expiry);
+-	struct file	*file;
+-	loff_t		end = LLONG_MAX;
+-	__be32		err = nfserr_inval;
++	struct nfsd_file	*nf;
++	loff_t			end = LLONG_MAX;
++	__be32			err = nfserr_inval;
+ 
+ 	if (offset < 0)
+ 		goto out;
+@@ -1038,12 +1038,12 @@ nfsd_commit(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 			goto out;
+ 	}
+ 
+-	err = nfsd_open(rqstp, fhp, S_IFREG,
+-			NFSD_MAY_WRITE|NFSD_MAY_NOT_BREAK_LEASE, &file);
++	err = nfsd_file_acquire(rqstp, fhp,
++			NFSD_MAY_WRITE|NFSD_MAY_NOT_BREAK_LEASE, &nf);
+ 	if (err)
+ 		goto out;
+ 	if (EX_ISSYNC(fhp->fh_export)) {
+-		int err2 = vfs_fsync_range(file, offset, end, 0);
++		int err2 = vfs_fsync_range(nf->nf_file, offset, end, 0);
+ 
+ 		if (err2 != -EINVAL)
+ 			err = nfserrno(err2);
+@@ -1051,7 +1051,7 @@ nfsd_commit(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 			err = nfserr_notsupp;
+ 	}
+ 
+-	fput(file);
++	nfsd_file_put(nf);
+ out:
+ 	return err;
  }
- 
- static void
-@@ -169,7 +172,8 @@ nfsd_file_cache_prune(void)
- 				continue;
- 
- 			/* Was this file touched recently? */
--			if (time_before(nf->nf_time + NFSD_FILE_EXPIRE, jiffies))
-+			if (time_before(nf->nf_time + nfsd_file_cache_expiry,
-+					jiffies))
- 				continue;
- 
- 			/* Ok, it's expired...unhash it */
-@@ -193,7 +197,7 @@ nfsd_file_cache_cleaner(struct work_struct *work)
- 
- 	if (atomic_read(&nfsd_file_count))
- 		queue_delayed_work(nfsd_laundry_wq, &nfsd_file_cache_clean_work,
--					NFSD_FILE_EXPIRE);
-+					nfsd_file_cache_expiry);
- }
- 
- int
 -- 
 2.4.3
 
