@@ -1,222 +1,154 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yk0-f177.google.com ([209.85.160.177]:35801 "EHLO
-	mail-yk0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752949AbbHFWYr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Aug 2015 18:24:47 -0400
-Received: by ykcq64 with SMTP id q64so69983027ykc.2
-        for <linux-nfs@vger.kernel.org>; Thu, 06 Aug 2015 15:24:44 -0700 (PDT)
-Date: Thu, 6 Aug 2015 18:24:42 -0400
-From: Jeff Layton <jeff.layton@primarydata.com>
-To: bfields@fieldses.org (J. Bruce Fields)
-Cc: Jeff Layton <jlayton@primarydata.com>, linux-nfs@vger.kernel.org
-Subject: Re: grace-period ending & NLM
-Message-ID: <20150806182442.13f19d7e@tlielax.poochiereds.net>
-In-Reply-To: <20150806202336.GA7235@fieldses.org>
-References: <20150806202336.GA7235@fieldses.org>
+Received: from mail-oi0-f46.google.com ([209.85.218.46]:36081 "EHLO
+	mail-oi0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751780AbbHFVkF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Aug 2015 17:40:05 -0400
+Received: by oiev193 with SMTP id v193so16158596oie.3
+        for <linux-nfs@vger.kernel.org>; Thu, 06 Aug 2015 14:40:04 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+In-Reply-To: <913A1219-4719-4E0E-ACF5-A6F7C79215C8@oracle.com>
+References: <20150805182305.11796.75476.stgit@manet.1015granger.net>
+	<359CCE70-6056-418F-B627-688BE27C7EA8@oracle.com>
+	<CAHQdGtQz1EqZLt-i=uAhFONpnyfUBSFyWHnjWdjgU8kOmnrR6Q@mail.gmail.com>
+	<8F6C1893-11A1-485C-A9EA-0ABBCC4D4286@oracle.com>
+	<CAHQdGtTB3uxbGsN1WXVJh3vdLabW5pOr5wuyS59a-WK2dM-yPw@mail.gmail.com>
+	<913A1219-4719-4E0E-ACF5-A6F7C79215C8@oracle.com>
+Date: Thu, 6 Aug 2015 17:40:04 -0400
+Message-ID: <CAHQdGtTKs-BptOCfpAdpAOqVY4FczAYKdH8=w3iyp9_UNK1whA@mail.gmail.com>
+Subject: Re: [PATCH] NFS: Add OTW write barrier before may-open test
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 6 Aug 2015 16:23:36 -0400
-bfields@fieldses.org (J. Bruce Fields) wrote:
+On Thu, Aug 6, 2015 at 12:56 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>
+>
+> On Aug 5, 2015, at 10:50 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+>
+> > On Wed, Aug 5, 2015 at 8:15 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+> >>
+> >> On Aug 5, 2015, at 6:27 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+> >>
+> >>> On Wed, Aug 5, 2015 at 2:44 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+> >>>>
+> >>>> On Aug 5, 2015, at 2:34 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+> >>>>
+> >>>>> Commit 14546c337588 ("NFS: Don't do a full flush to disk on close()
+> >>>>> if we hold a delegation") added an optimization. When an NFSv4 write
+> >>>>> delegation is present, close(2) does not wait while a file's dirty
+> >>>>> data is flushed to the NFS server.
+> >>>>>
+> >>>>> However, if the application workload immediately re-opens that file,
+> >>>>> nfs_may_open() can perform an ACCESS and GETATTR which runs
+> >>>>> concurrently with the flushing WRITE. If the flushing WRITE and
+> >>>>> GETATTR complete out of order on the server, the file size cached on
+> >>>>> the client will go backwards, possibly resulting in new writes going
+> >>>>> to the wrong file offset.
+> >>>>>
+> >>>>> Add a write barrier before the access check to ensure the server's
+> >>>>> idea of the file's size is properly up to date.
+> >>>>>
+> >>>>> The downside of this approach is that each fresh open(2) of a dirty
+> >>>>> file results in an extra flush. It seems to me that _any_ open(2)
+> >>>>> done while there is dirty data waiting on the client could result in
+> >>>>> a file size roll back. However, I see bad behavior only when the
+> >>>>> client holds a write delegation.
+> >>>>>
+> >>>>> Fixes: 14546c337588 ("NFS: Don't do a full flush to disk on . . .")
+> >>>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> >>>>> ---
+> >>>>> fs/nfs/dir.c |    9 +++++++++
+> >>>>> 1 file changed, 9 insertions(+)
+> >>>>>
+> >>>>> I'm not certain this is a good long term fix. Some other possible
+> >>>>> solutions include:
+> >>>>>
+> >>>>> - Not performing the access check if the client holds a delegation
+> >>>>> - Not performing a GETATTR as part of the ACCESS check
+> >>>>> - Simply marking the file attributes stale instead of using the
+> >>>>> returned file size
+> >>>>> - Reverting commit 14546c337588
+> >>>>
+> >>>> OK. If the client holds a write delegation, then it shouldn't care
+> >>>> about the server's file size at all until it has flushed all dirty
+> >>>> data and returned the delegation. So flushing here is probably wrong.
+> >>>>
+> >>>> But the incoming file size in the GETATTR is definitely screwing up
+> >>>> the cached file size.
+> >>>>
+> >>>
+> >>> In which kernels are you seeing the race? For recent kernels (v4.0+)
+> >>> the write code should be calling nfs_fattr_set_barrier() in order to
+> >>> prevent the result from the ACCESS from overwriting the new file size.
+> >>
+> >> I'm testing on 4.2-rc4.
+> >>
+> >
+> > OK. Does turning off the check for nfs_ctime_need_update() in
+> > nfs_inode_attrs_need_update() fix the problem?
+>
+> I am not able to reproduce the issue when I remove
+> nfs_ctime_need_update().
+>
+> The test I'm running does this: unpack git onto an NFSv4.0
+> mount point, build it, then run "make -j8 test".
+>
+> Doing "make -j1 test" always works. The test always works
+> against Linux NFS servers.
+>
+> With Solaris, which aggressively offers write delegations,
+> the test fails reliably after -j3, at random points during
+> the "make test" step.
+>
+> A network trace was captured during a failure, which
+> happened to occur during t6030-bisect-porcelain.sh this
+> time through.
+>
+> Here's an excerpt which shows the problem. The failing
+> script seems to be:
+>
+>  98         echo "  master" > branch.expect &&
+>  99         echo "* other" >> branch.expect &&
+>
+> Frame 29091: SETATTR call set size to 0
+> Frame 29095: SETATTR reply
+>
+> Frame 29097: WRITE call offset 0, "  master\n"
+> Frame 29097: ACCESS/GETATTR call
+>
+> [NB: the ACCESS call appears after the WRITE call in the
+> same TCP frame]
+>
+> Frame 29101: ACCESS/GETATTR reply size 0 <<<<
+> Frame 29102: WRITE reply 9 bytes written
+>
+> Frame 29112: WRITE call offset 0, "* other\n"
+> Frame 29115: WRITE reply 8 bytes written
+>
+> The successful case shows the ACCESS and first WRITE replies
+> in the reverse order; the ACCESS reply shows the file size
+> is 9; the second WRITE then sends the correct data, which is
+> "  master\n* other\n" .
+>
+> Since nfs_may_open() is called only if the client is holding
+> a delegation, I wonder if that GETATTR is needed? The only
+> thing may_open is checking is whether the caller is allowed
+> to use the existing delegation. Shouldn't the GETATTR results
+> be ignored in every case?
 
-> We have two grace periods, one for NLM and one for NFSv4+, and don't
-> permit normal locking until both are over.
-> 
-> As far as I can tell nfsdcltrack doesn't understand statd/NSM state; it
-> only concerns itself with NFSv4+.  It can end the NFSv4 grace period
-> early, but that still leaves the server returning GRACE errors until NSM
-> exits its grace period.
-> 
-> The server has never had any smarts to end the NSM grace period early,
-> even though there are common cases (e.g., no clients at all) where it
-> easily could.  We could fix that.
-> 
+We could do that, but I can't really see how this can be particular to
+delegations. We can always hit this kind of race if a GETATTR and a
+WRITE happen to race, and the WRITE happens not to return an updated
+ctime. I can, for instance, see this happening both with NFSv3 servers
+that don't return post-op attributes, as well as with O_DIRECT and
+pNFS writes.
 
-Erm...but it does have those smarts. statd should end the grace period
-early if there were no clients to be notified when it starts. That's
-done by writing to /proc/fs/lockd/nlm_end_grace. Those patches were
-merged upstream in the kernel and nfs-utils around the same time as the
-other early grace lifting patches.
+IOW: I think it is time to attempt to jettison the ctime crutch and
+attempt to rely only on the attribute barriers. Note also that ctime
+isn't even listed as a NFSv4 mandatory attribute and so we may
+eventually hit other cases anyway.
 
-> But one quick thing we can do to limit the impact of the NLM grace
-> period is just to note that NLM locks have never conflicted with NFSv4
-> opens, so NFSv4 opens don't really need to be waiting.
-> 
-> Am I missing anything?
-> 
-> --b.
-> 
-> commit d2ab7fe05cd0
-> Author: J. Bruce Fields <bfields@redhat.com>
-> Date:   Thu Aug 6 12:47:02 2015 -0400
-> 
->     lockd: NLM grace period shouldn't block NFSv4 opens
->     
->     NLM locks don't conflict with NFSv4 share reservations, so we're not
->     going to learn anything new by watiting for them.
->     
->     They do conflict with NFSv4 locks and with delegations.
->     
->     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> 
-> diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-> index 530914b5c455..d678bcc3cbcb 100644
-> --- a/fs/lockd/svc.c
-> +++ b/fs/lockd/svc.c
-> @@ -591,6 +591,7 @@ static int lockd_init_net(struct net *net)
->  
->  	INIT_DELAYED_WORK(&ln->grace_period_end, grace_ender);
->  	INIT_LIST_HEAD(&ln->lockd_manager.list);
-> +	ln->lockd_manager.block_opens = false;
->  	spin_lock_init(&ln->nsm_clnt_lock);
->  	return 0;
->  }
-> diff --git a/fs/nfs_common/grace.c b/fs/nfs_common/grace.c
-> index ae6e58ea4de5..fd8c9a5bcac4 100644
-> --- a/fs/nfs_common/grace.c
-> +++ b/fs/nfs_common/grace.c
-> @@ -63,14 +63,33 @@ EXPORT_SYMBOL_GPL(locks_end_grace);
->   * lock reclaims.
->   */
->  int
-> -locks_in_grace(struct net *net)
-> +__state_in_grace(struct net *net, bool open)
->  {
->  	struct list_head *grace_list = net_generic(net, grace_net_id);
-> +	struct lock_manager *lm;
->  
-> -	return !list_empty(grace_list);
-> +	if (!open)
-> +		return !list_empty(grace_list);
-> +
-> +	list_for_each_entry(lm, grace_list, list) {
-> +		if (lm->block_opens)
-> +			return true;
-> +	}
-> +	return false;
-> +}
-> +
-> +int locks_in_grace(struct net *net)
-> +{
-> +	return __state_in_grace(net, 0);
-
-nit: 0 -> false (since the arg is a bool)
-
->  }
->  EXPORT_SYMBOL_GPL(locks_in_grace);
->  
-> +int opens_in_grace(struct net *net)
-> +{
-> +	return __state_in_grace(net, 1);
-> +}
-> +EXPORT_SYMBOL_GPL(opens_in_grace);
-> +
->  static int __net_init
->  grace_init_net(struct net *net)
->  {
-> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> index e779d7db24b0..b9681ee0ed19 100644
-> --- a/fs/nfsd/nfs4proc.c
-> +++ b/fs/nfsd/nfs4proc.c
-> @@ -415,10 +415,10 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->  	/* Openowner is now set, so sequence id will get bumped.  Now we need
->  	 * these checks before we do any creates: */
->  	status = nfserr_grace;
-> -	if (locks_in_grace(net) && open->op_claim_type != NFS4_OPEN_CLAIM_PREVIOUS)
-> +	if (opens_in_grace(net) && open->op_claim_type != NFS4_OPEN_CLAIM_PREVIOUS)
->  		goto out;
->  	status = nfserr_no_grace;
-> -	if (!locks_in_grace(net) && open->op_claim_type == NFS4_OPEN_CLAIM_PREVIOUS)
-> +	if (!opens_in_grace(net) && open->op_claim_type == NFS4_OPEN_CLAIM_PREVIOUS)
->  		goto out;
->  
->  	switch (open->op_claim_type) {
-> @@ -827,7 +827,7 @@ nfsd4_remove(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->  {
->  	__be32 status;
->  
-> -	if (locks_in_grace(SVC_NET(rqstp)))
-> +	if (opens_in_grace(SVC_NET(rqstp)))
->  		return nfserr_grace;
->  	status = nfsd_unlink(rqstp, &cstate->current_fh, 0,
->  			     remove->rm_name, remove->rm_namelen);
-> @@ -846,7 +846,7 @@ nfsd4_rename(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->  
->  	if (!cstate->save_fh.fh_dentry)
->  		return status;
-> -	if (locks_in_grace(SVC_NET(rqstp)) &&
-> +	if (opens_in_grace(SVC_NET(rqstp)) &&
->  		!(cstate->save_fh.fh_export->ex_flags & NFSEXP_NOSUBTREECHECK))
->  		return nfserr_grace;
->  	status = nfsd_rename(rqstp, &cstate->save_fh, rename->rn_sname,
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index c94859122e6f..97fe7c8c6a8e 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -4052,7 +4052,8 @@ nfs4_open_delegation(struct svc_fh *fh, struct nfsd4_open *open,
->  		case NFS4_OPEN_CLAIM_FH:
->  			/*
->  			 * Let's not give out any delegations till everyone's
-> -			 * had the chance to reclaim theirs....
-> +			 * had the chance to reclaim theirs, *and* until
-> +			 * NLM locks have all been reclaimed:
->  			 */
->  			if (locks_in_grace(clp->net))
->  				goto out_no_deleg;
-> @@ -4426,7 +4427,7 @@ check_special_stateids(struct net *net, svc_fh *current_fh, stateid_t *stateid,
->  {
->  	if (ONE_STATEID(stateid) && (flags & RD_STATE))
->  		return nfs_ok;
-> -	else if (locks_in_grace(net)) {
-> +	else if (opens_in_grace(net)) {
->  		/* Answer in remaining cases depends on existence of
->  		 * conflicting state; so we must wait out the grace period. */
->  		return nfserr_grace;
-> @@ -4445,7 +4446,7 @@ check_special_stateids(struct net *net, svc_fh *current_fh, stateid_t *stateid,
->  static inline int
->  grace_disallows_io(struct net *net, struct inode *inode)
->  {
-> -	return locks_in_grace(net) && mandatory_lock(inode);
-> +	return opens_in_grace(net) && mandatory_lock(inode);
->  }
->  
->  /* Returns true iff a is later than b: */
-> @@ -6564,6 +6565,7 @@ nfs4_state_start_net(struct net *net)
->  		return ret;
->  	nn->boot_time = get_seconds();
->  	nn->grace_ended = false;
-> +	nn->nfsd4_manager.block_opens = true;
->  	locks_start_grace(net, &nn->nfsd4_manager);
->  	nfsd4_client_tracking_init(net);
->  	printk(KERN_INFO "NFSD: starting %ld-second grace period (net %p)\n",
-> diff --git a/include/linux/fs.h b/include/linux/fs.h
-> index cc008c338f5a..9a9d314f7b27 100644
-> --- a/include/linux/fs.h
-> +++ b/include/linux/fs.h
-> @@ -942,12 +942,18 @@ struct lock_manager_operations {
->  
->  struct lock_manager {
->  	struct list_head list;
-> +	/*
-> +	 * NFSv4 and up also want opens blocked during the grace period;
-> +	 * NLM doesn't care:
-> +	 */
-> +	bool block_opens;
->  };
->  
->  struct net;
->  void locks_start_grace(struct net *, struct lock_manager *);
->  void locks_end_grace(struct lock_manager *);
->  int locks_in_grace(struct net *);
-> +int opens_in_grace(struct net *);
->  
->  /* that will die - we need it for nfs_lock_info */
->  #include <linux/nfs_fs_i.h>
-
-
-Looks reasonable to me. I can't think of any reason for NLM to block v4
-opens.
-
-Acked-by: Jeff Layton <jeff.layton@primarydata.com>
+I'll run some tests to see if I can catch that generating any new races...
