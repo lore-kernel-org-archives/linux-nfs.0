@@ -1,199 +1,232 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:58133 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752406AbbHFUXh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 6 Aug 2015 16:23:37 -0400
-Date: Thu, 6 Aug 2015 16:23:36 -0400
-To: Jeff Layton <jlayton@primarydata.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: grace-period ending & NLM
-Message-ID: <20150806202336.GA7235@fieldses.org>
+Received: from elasmtp-galgo.atl.sa.earthlink.net ([209.86.89.61]:58427 "EHLO
+	elasmtp-galgo.atl.sa.earthlink.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751464AbbHFXsm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Aug 2015 19:48:42 -0400
+From: "Frank Filz" <ffilzlnx@mindspring.com>
+To: "'J. Bruce Fields'" <bfields@fieldses.org>,
+        "'Jeff Layton'" <jlayton@primarydata.com>
+Cc: <linux-nfs@vger.kernel.org>
+References: <20150806202336.GA7235@fieldses.org>
+In-Reply-To: <20150806202336.GA7235@fieldses.org>
+Subject: RE: grace-period ending & NLM
+Date: Thu, 6 Aug 2015 16:48:23 -0700
+Message-ID: <034901d0d0a2$629adce0$27d096a0$@mindspring.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-From: bfields@fieldses.org (J. Bruce Fields)
+Content-Type: text/plain;
+	charset="us-ascii"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We have two grace periods, one for NLM and one for NFSv4+, and don't
-permit normal locking until both are over.
+> We have two grace periods, one for NLM and one for NFSv4+, and don't
+> permit normal locking until both are over.
+> 
+> As far as I can tell nfsdcltrack doesn't understand statd/NSM state; it
+only
+> concerns itself with NFSv4+.  It can end the NFSv4 grace period early, but
+that
+> still leaves the server returning GRACE errors until NSM exits its grace
+period.
+> 
+> The server has never had any smarts to end the NSM grace period early,
+> even though there are common cases (e.g., no clients at all) where it
+easily
+> could.  We could fix that.
+> 
+> But one quick thing we can do to limit the impact of the NLM grace period
+is
+> just to note that NLM locks have never conflicted with NFSv4 opens, so
+> NFSv4 opens don't really need to be waiting.
+> 
+> Am I missing anything?
 
-As far as I can tell nfsdcltrack doesn't understand statd/NSM state; it
-only concerns itself with NFSv4+.  It can end the NFSv4 grace period
-early, but that still leaves the server returning GRACE errors until NSM
-exits its grace period.
+Yea, that would be interesting to allow NFS 4 OPEN while still in NLM grace.
 
-The server has never had any smarts to end the NSM grace period early,
-even though there are common cases (e.g., no clients at all) where it
-easily could.  We could fix that.
+I also like the idea of tracking if there are any NLM clients at all to even
+require grace in the first place.
 
-But one quick thing we can do to limit the impact of the NLM grace
-period is just to note that NLM locks have never conflicted with NFSv4
-opens, so NFSv4 opens don't really need to be waiting.
+I'm also inclined to think that NLM grace need not block any other non-lock
+V4 operations such as I/O.
 
-Am I missing anything?
+Frank
 
---b.
+> commit d2ab7fe05cd0
+> Author: J. Bruce Fields <bfields@redhat.com>
+> Date:   Thu Aug 6 12:47:02 2015 -0400
+> 
+>     lockd: NLM grace period shouldn't block NFSv4 opens
+> 
+>     NLM locks don't conflict with NFSv4 share reservations, so we're not
+>     going to learn anything new by watiting for them.
+> 
+>     They do conflict with NFSv4 locks and with delegations.
+> 
+>     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> 
+> diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c index
+530914b5c455..d678bcc3cbcb
+> 100644
+> --- a/fs/lockd/svc.c
+> +++ b/fs/lockd/svc.c
+> @@ -591,6 +591,7 @@ static int lockd_init_net(struct net *net)
+> 
+>  	INIT_DELAYED_WORK(&ln->grace_period_end, grace_ender);
+>  	INIT_LIST_HEAD(&ln->lockd_manager.list);
+> +	ln->lockd_manager.block_opens = false;
+>  	spin_lock_init(&ln->nsm_clnt_lock);
+>  	return 0;
+>  }
+> diff --git a/fs/nfs_common/grace.c b/fs/nfs_common/grace.c index
+> ae6e58ea4de5..fd8c9a5bcac4 100644
+> --- a/fs/nfs_common/grace.c
+> +++ b/fs/nfs_common/grace.c
+> @@ -63,14 +63,33 @@ EXPORT_SYMBOL_GPL(locks_end_grace);
+>   * lock reclaims.
+>   */
+>  int
+> -locks_in_grace(struct net *net)
+> +__state_in_grace(struct net *net, bool open)
+>  {
+>  	struct list_head *grace_list = net_generic(net, grace_net_id);
+> +	struct lock_manager *lm;
+> 
+> -	return !list_empty(grace_list);
+> +	if (!open)
+> +		return !list_empty(grace_list);
+> +
+> +	list_for_each_entry(lm, grace_list, list) {
+> +		if (lm->block_opens)
+> +			return true;
+> +	}
+> +	return false;
+> +}
+> +
+> +int locks_in_grace(struct net *net)
+> +{
+> +	return __state_in_grace(net, 0);
+>  }
+>  EXPORT_SYMBOL_GPL(locks_in_grace);
+> 
+> +int opens_in_grace(struct net *net)
+> +{
+> +	return __state_in_grace(net, 1);
+> +}
+> +EXPORT_SYMBOL_GPL(opens_in_grace);
+> +
+>  static int __net_init
+>  grace_init_net(struct net *net)
+>  {
+> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c index
+> e779d7db24b0..b9681ee0ed19 100644
+> --- a/fs/nfsd/nfs4proc.c
+> +++ b/fs/nfsd/nfs4proc.c
+> @@ -415,10 +415,10 @@ nfsd4_open(struct svc_rqst *rqstp, struct
+> nfsd4_compound_state *cstate,
+>  	/* Openowner is now set, so sequence id will get bumped.  Now we
+> need
+>  	 * these checks before we do any creates: */
+>  	status = nfserr_grace;
+> -	if (locks_in_grace(net) && open->op_claim_type !=
+> NFS4_OPEN_CLAIM_PREVIOUS)
+> +	if (opens_in_grace(net) && open->op_claim_type !=
+> +NFS4_OPEN_CLAIM_PREVIOUS)
+>  		goto out;
+>  	status = nfserr_no_grace;
+> -	if (!locks_in_grace(net) && open->op_claim_type ==
+> NFS4_OPEN_CLAIM_PREVIOUS)
+> +	if (!opens_in_grace(net) && open->op_claim_type ==
+> +NFS4_OPEN_CLAIM_PREVIOUS)
+>  		goto out;
+> 
+>  	switch (open->op_claim_type) {
+> @@ -827,7 +827,7 @@ nfsd4_remove(struct svc_rqst *rqstp, struct
+> nfsd4_compound_state *cstate,  {
+>  	__be32 status;
+> 
+> -	if (locks_in_grace(SVC_NET(rqstp)))
+> +	if (opens_in_grace(SVC_NET(rqstp)))
+>  		return nfserr_grace;
+>  	status = nfsd_unlink(rqstp, &cstate->current_fh, 0,
+>  			     remove->rm_name, remove->rm_namelen); @@
+> -846,7 +846,7 @@ nfsd4_rename(struct svc_rqst *rqstp, struct
+> nfsd4_compound_state *cstate,
+> 
+>  	if (!cstate->save_fh.fh_dentry)
+>  		return status;
+> -	if (locks_in_grace(SVC_NET(rqstp)) &&
+> +	if (opens_in_grace(SVC_NET(rqstp)) &&
+>  		!(cstate->save_fh.fh_export->ex_flags &
+> NFSEXP_NOSUBTREECHECK))
+>  		return nfserr_grace;
+>  	status = nfsd_rename(rqstp, &cstate->save_fh, rename->rn_sname,
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c index
+> c94859122e6f..97fe7c8c6a8e 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -4052,7 +4052,8 @@ nfs4_open_delegation(struct svc_fh *fh, struct
+> nfsd4_open *open,
+>  		case NFS4_OPEN_CLAIM_FH:
+>  			/*
+>  			 * Let's not give out any delegations till
+everyone's
+> -			 * had the chance to reclaim theirs....
+> +			 * had the chance to reclaim theirs, *and* until
+> +			 * NLM locks have all been reclaimed:
+>  			 */
+>  			if (locks_in_grace(clp->net))
+>  				goto out_no_deleg;
+> @@ -4426,7 +4427,7 @@ check_special_stateids(struct net *net, svc_fh
+> *current_fh, stateid_t *stateid,  {
+>  	if (ONE_STATEID(stateid) && (flags & RD_STATE))
+>  		return nfs_ok;
+> -	else if (locks_in_grace(net)) {
+> +	else if (opens_in_grace(net)) {
+>  		/* Answer in remaining cases depends on existence of
+>  		 * conflicting state; so we must wait out the grace period.
+*/
+>  		return nfserr_grace;
+> @@ -4445,7 +4446,7 @@ check_special_stateids(struct net *net, svc_fh
+> *current_fh, stateid_t *stateid,  static inline int
+grace_disallows_io(struct
+> net *net, struct inode *inode)  {
+> -	return locks_in_grace(net) && mandatory_lock(inode);
+> +	return opens_in_grace(net) && mandatory_lock(inode);
+>  }
+> 
+>  /* Returns true iff a is later than b: */ @@ -6564,6 +6565,7 @@
+> nfs4_state_start_net(struct net *net)
+>  		return ret;
+>  	nn->boot_time = get_seconds();
+>  	nn->grace_ended = false;
+> +	nn->nfsd4_manager.block_opens = true;
+>  	locks_start_grace(net, &nn->nfsd4_manager);
+>  	nfsd4_client_tracking_init(net);
+>  	printk(KERN_INFO "NFSD: starting %ld-second grace period (net
+> %p)\n", diff --git a/include/linux/fs.h b/include/linux/fs.h index
+> cc008c338f5a..9a9d314f7b27 100644
+> --- a/include/linux/fs.h
+> +++ b/include/linux/fs.h
+> @@ -942,12 +942,18 @@ struct lock_manager_operations {
+> 
+>  struct lock_manager {
+>  	struct list_head list;
+> +	/*
+> +	 * NFSv4 and up also want opens blocked during the grace period;
+> +	 * NLM doesn't care:
+> +	 */
+> +	bool block_opens;
+>  };
+> 
+>  struct net;
+>  void locks_start_grace(struct net *, struct lock_manager *);  void
+> locks_end_grace(struct lock_manager *);  int locks_in_grace(struct net *);
+> +int opens_in_grace(struct net *);
+> 
+>  /* that will die - we need it for nfs_lock_info */  #include
+<linux/nfs_fs_i.h>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the
+> body of a message to majordomo@vger.kernel.org More majordomo info at
+> http://vger.kernel.org/majordomo-info.html
 
-commit d2ab7fe05cd0
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Thu Aug 6 12:47:02 2015 -0400
-
-    lockd: NLM grace period shouldn't block NFSv4 opens
-    
-    NLM locks don't conflict with NFSv4 share reservations, so we're not
-    going to learn anything new by watiting for them.
-    
-    They do conflict with NFSv4 locks and with delegations.
-    
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-
-diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-index 530914b5c455..d678bcc3cbcb 100644
---- a/fs/lockd/svc.c
-+++ b/fs/lockd/svc.c
-@@ -591,6 +591,7 @@ static int lockd_init_net(struct net *net)
- 
- 	INIT_DELAYED_WORK(&ln->grace_period_end, grace_ender);
- 	INIT_LIST_HEAD(&ln->lockd_manager.list);
-+	ln->lockd_manager.block_opens = false;
- 	spin_lock_init(&ln->nsm_clnt_lock);
- 	return 0;
- }
-diff --git a/fs/nfs_common/grace.c b/fs/nfs_common/grace.c
-index ae6e58ea4de5..fd8c9a5bcac4 100644
---- a/fs/nfs_common/grace.c
-+++ b/fs/nfs_common/grace.c
-@@ -63,14 +63,33 @@ EXPORT_SYMBOL_GPL(locks_end_grace);
-  * lock reclaims.
-  */
- int
--locks_in_grace(struct net *net)
-+__state_in_grace(struct net *net, bool open)
- {
- 	struct list_head *grace_list = net_generic(net, grace_net_id);
-+	struct lock_manager *lm;
- 
--	return !list_empty(grace_list);
-+	if (!open)
-+		return !list_empty(grace_list);
-+
-+	list_for_each_entry(lm, grace_list, list) {
-+		if (lm->block_opens)
-+			return true;
-+	}
-+	return false;
-+}
-+
-+int locks_in_grace(struct net *net)
-+{
-+	return __state_in_grace(net, 0);
- }
- EXPORT_SYMBOL_GPL(locks_in_grace);
- 
-+int opens_in_grace(struct net *net)
-+{
-+	return __state_in_grace(net, 1);
-+}
-+EXPORT_SYMBOL_GPL(opens_in_grace);
-+
- static int __net_init
- grace_init_net(struct net *net)
- {
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index e779d7db24b0..b9681ee0ed19 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -415,10 +415,10 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	/* Openowner is now set, so sequence id will get bumped.  Now we need
- 	 * these checks before we do any creates: */
- 	status = nfserr_grace;
--	if (locks_in_grace(net) && open->op_claim_type != NFS4_OPEN_CLAIM_PREVIOUS)
-+	if (opens_in_grace(net) && open->op_claim_type != NFS4_OPEN_CLAIM_PREVIOUS)
- 		goto out;
- 	status = nfserr_no_grace;
--	if (!locks_in_grace(net) && open->op_claim_type == NFS4_OPEN_CLAIM_PREVIOUS)
-+	if (!opens_in_grace(net) && open->op_claim_type == NFS4_OPEN_CLAIM_PREVIOUS)
- 		goto out;
- 
- 	switch (open->op_claim_type) {
-@@ -827,7 +827,7 @@ nfsd4_remove(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- {
- 	__be32 status;
- 
--	if (locks_in_grace(SVC_NET(rqstp)))
-+	if (opens_in_grace(SVC_NET(rqstp)))
- 		return nfserr_grace;
- 	status = nfsd_unlink(rqstp, &cstate->current_fh, 0,
- 			     remove->rm_name, remove->rm_namelen);
-@@ -846,7 +846,7 @@ nfsd4_rename(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 
- 	if (!cstate->save_fh.fh_dentry)
- 		return status;
--	if (locks_in_grace(SVC_NET(rqstp)) &&
-+	if (opens_in_grace(SVC_NET(rqstp)) &&
- 		!(cstate->save_fh.fh_export->ex_flags & NFSEXP_NOSUBTREECHECK))
- 		return nfserr_grace;
- 	status = nfsd_rename(rqstp, &cstate->save_fh, rename->rn_sname,
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index c94859122e6f..97fe7c8c6a8e 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4052,7 +4052,8 @@ nfs4_open_delegation(struct svc_fh *fh, struct nfsd4_open *open,
- 		case NFS4_OPEN_CLAIM_FH:
- 			/*
- 			 * Let's not give out any delegations till everyone's
--			 * had the chance to reclaim theirs....
-+			 * had the chance to reclaim theirs, *and* until
-+			 * NLM locks have all been reclaimed:
- 			 */
- 			if (locks_in_grace(clp->net))
- 				goto out_no_deleg;
-@@ -4426,7 +4427,7 @@ check_special_stateids(struct net *net, svc_fh *current_fh, stateid_t *stateid,
- {
- 	if (ONE_STATEID(stateid) && (flags & RD_STATE))
- 		return nfs_ok;
--	else if (locks_in_grace(net)) {
-+	else if (opens_in_grace(net)) {
- 		/* Answer in remaining cases depends on existence of
- 		 * conflicting state; so we must wait out the grace period. */
- 		return nfserr_grace;
-@@ -4445,7 +4446,7 @@ check_special_stateids(struct net *net, svc_fh *current_fh, stateid_t *stateid,
- static inline int
- grace_disallows_io(struct net *net, struct inode *inode)
- {
--	return locks_in_grace(net) && mandatory_lock(inode);
-+	return opens_in_grace(net) && mandatory_lock(inode);
- }
- 
- /* Returns true iff a is later than b: */
-@@ -6564,6 +6565,7 @@ nfs4_state_start_net(struct net *net)
- 		return ret;
- 	nn->boot_time = get_seconds();
- 	nn->grace_ended = false;
-+	nn->nfsd4_manager.block_opens = true;
- 	locks_start_grace(net, &nn->nfsd4_manager);
- 	nfsd4_client_tracking_init(net);
- 	printk(KERN_INFO "NFSD: starting %ld-second grace period (net %p)\n",
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index cc008c338f5a..9a9d314f7b27 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -942,12 +942,18 @@ struct lock_manager_operations {
- 
- struct lock_manager {
- 	struct list_head list;
-+	/*
-+	 * NFSv4 and up also want opens blocked during the grace period;
-+	 * NLM doesn't care:
-+	 */
-+	bool block_opens;
- };
- 
- struct net;
- void locks_start_grace(struct net *, struct lock_manager *);
- void locks_end_grace(struct lock_manager *);
- int locks_in_grace(struct net *);
-+int opens_in_grace(struct net *);
- 
- /* that will die - we need it for nfs_lock_info */
- #include <linux/nfs_fs_i.h>
