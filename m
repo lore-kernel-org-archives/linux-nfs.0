@@ -1,57 +1,79 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.aixigo.de ([5.145.142.10]:3941 "EHLO mail.aixigo.de"
+Received: from mx141.netapp.com ([216.240.21.12]:27002 "EHLO mx141.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752361AbbHFGrZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 6 Aug 2015 02:47:25 -0400
-Received: from srvvm01.ac.aixigo.de (mail.ac.aixigo.de [172.19.96.11]);
-	by gate5a.ac.aixigo.de (OpenSMTPD) with ESMTPS id 488f7b7f;
-	TLS version=TLSv1/SSLv3 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NO;
-	for <linux-nfs@vger.kernel.org>;
-	Thu, 6 Aug 2015 08:40:43 +0200 (CEST)
-From: Harald Dunkel <harald.dunkel@aixigo.de>
-Subject: Debian kernel: "Server nfs-home reports our clientid is in use"
-To: linux-nfs@vger.kernel.org
-Message-ID: <55C3016A.9000509@aixigo.de>
-Date: Thu, 6 Aug 2015 08:40:42 +0200
+	id S1755036AbbHFOXF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 6 Aug 2015 10:23:05 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+Subject: Re: [PATCH for-4.3 06/15] xprtrdma, svcrdma: Convert to ib_alloc_mr
+To: Sagi Grimberg <sagig@mellanox.com>, <linux-rdma@vger.kernel.org>,
+        <linux-nfs@vger.kernel.org>, <target-devel@vger.kernel.org>
+References: <1438241568-3685-1-git-send-email-sagig@mellanox.com>
+ <1438241568-3685-7-git-send-email-sagig@mellanox.com>
+Message-ID: <55C36D9F.1040705@Netapp.com>
+Date: Thu, 6 Aug 2015 10:22:23 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+In-Reply-To: <1438241568-3685-7-git-send-email-sagig@mellanox.com>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi folks,
+This looks good to me:
 
-I have to admit I am running Wheezy and a Debian backport kernel
-(3.16.7-ckt11-1~bpo70+1) on my NFServer and the clients, but maybe
-somebody on this list can help.
+	Signed-off-by:  Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-Problem: Since the kernel upgrade it happens that a client looses
-the NFS connection sometimes. The error message in kern.log on the
-client says
+Thanks,
+Anna
 
-Jul 30 15:53:57 dpcl082 kernel: [2880660.867248] NFS: Server nfs-home reports our clientid is in use
-Jul 30 15:53:57 dpcl082 kernel: [2880660.867254] NFS: state manager: lease expired failed on NFSv4 server nfs-home with
-Jul 30 15:54:54 dpcl082 kernel: [2880717.424872] NFS: Server nfs-home reports our clientid is in use
-Jul 30 15:54:54 dpcl082 kernel: [2880717.424878] NFS: state manager: lease expired failed on NFSv4 server nfs-home with
-Jul 30 15:55:01 dpcl082 kernel: [2880724.526741] NFS: Server nfs-home reports our clientid is in use
-Jul 30 15:55:01 dpcl082 kernel: [2880724.526748] NFS: state manager: lease expired failed on NFSv4 server nfs-home with
-:
-:
+On 07/30/2015 03:32 AM, Sagi Grimberg wrote:
+> Signed-off-by: Sagi Grimberg <sagig@mellanox.com>
+> ---
+>  net/sunrpc/xprtrdma/frwr_ops.c           | 6 +++---
+>  net/sunrpc/xprtrdma/svc_rdma_transport.c | 2 +-
+>  2 files changed, 4 insertions(+), 4 deletions(-)
+> 
+> diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
+> index 63f282e..d6653f5 100644
+> --- a/net/sunrpc/xprtrdma/frwr_ops.c
+> +++ b/net/sunrpc/xprtrdma/frwr_ops.c
+> @@ -117,7 +117,7 @@ __frwr_recovery_worker(struct work_struct *work)
+>  	if (ib_dereg_mr(r->r.frmr.fr_mr))
+>  		goto out_fail;
+>  
+> -	r->r.frmr.fr_mr = ib_alloc_fast_reg_mr(pd, depth);
+> +	r->r.frmr.fr_mr = ib_alloc_mr(pd, IB_MR_TYPE_MEM_REG, depth);
+>  	if (IS_ERR(r->r.frmr.fr_mr))
+>  		goto out_fail;
+>  
+> @@ -148,7 +148,7 @@ __frwr_init(struct rpcrdma_mw *r, struct ib_pd *pd, struct ib_device *device,
+>  	struct rpcrdma_frmr *f = &r->r.frmr;
+>  	int rc;
+>  
+> -	f->fr_mr = ib_alloc_fast_reg_mr(pd, depth);
+> +	f->fr_mr = ib_alloc_mr(pd, IB_MR_TYPE_MEM_REG, depth);
+>  	if (IS_ERR(f->fr_mr))
+>  		goto out_mr_err;
+>  	f->fr_pgl = ib_alloc_fast_reg_page_list(device, depth);
+> @@ -158,7 +158,7 @@ __frwr_init(struct rpcrdma_mw *r, struct ib_pd *pd, struct ib_device *device,
+>  
+>  out_mr_err:
+>  	rc = PTR_ERR(f->fr_mr);
+> -	dprintk("RPC:       %s: ib_alloc_fast_reg_mr status %i\n",
+> +	dprintk("RPC:       %s: ib_alloc_mr status %i\n",
+>  		__func__, rc);
+>  	return rc;
+>  
+> diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> index 6b36279..adcf904 100644
+> --- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> +++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> @@ -738,7 +738,7 @@ static struct svc_rdma_fastreg_mr *rdma_alloc_frmr(struct svcxprt_rdma *xprt)
+>  	if (!frmr)
+>  		goto err;
+>  
+> -	mr = ib_alloc_fast_reg_mr(xprt->sc_pd, RPCSVC_MAXPAGES);
+> +	mr = ib_alloc_mr(xprt->sc_pd, IB_MR_TYPE_MEM_REG, RPCSVC_MAXPAGES);
+>  	if (IS_ERR(mr))
+>  		goto err_free_frmr;
+>  
+> 
 
-
-The problem does not go away on its own. I have to umount and mount
-/home on the client to get write access again. /var/log/kern.log on
-the server doesn't mention this incident.
-
-Since I saw "NFSv4.1: Fix client id trunking on Linux" introduced
-early this year in the official kernel and included with 3.16.7-ckt7-1
-into Debian's kernel I wonder if this rings a bell somewhere?
-
-By now I saw this problem 4 times within the last week. I have more
-than 100 NFS clients running 24/7, using a static NFS mount of /home
-and /data. The problem appears to be hard to reproduce.
-
-
-Every helpful comment is highly appreciated.
-
-Regards
-Harri
