@@ -1,79 +1,53 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx141.netapp.com ([216.240.21.12]:27002 "EHLO mx141.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755036AbbHFOXF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 6 Aug 2015 10:23:05 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-Subject: Re: [PATCH for-4.3 06/15] xprtrdma, svcrdma: Convert to ib_alloc_mr
-To: Sagi Grimberg <sagig@mellanox.com>, <linux-rdma@vger.kernel.org>,
-        <linux-nfs@vger.kernel.org>, <target-devel@vger.kernel.org>
-References: <1438241568-3685-1-git-send-email-sagig@mellanox.com>
- <1438241568-3685-7-git-send-email-sagig@mellanox.com>
-Message-ID: <55C36D9F.1040705@Netapp.com>
-Date: Thu, 6 Aug 2015 10:22:23 -0400
+Received: from tamar.safe-mail.net ([212.29.227.229]:55708 "EHLO
+	tamar.safe-mail.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753176AbbHFOtV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Aug 2015 10:49:21 -0400
+Subject: Re: extremely slow v4 performance on gigabit link
+Date: Thu, 6 Aug 2015 10:48:21 -0400
+From: jhopper@Safe-mail.net
+To: bfields@fieldses.org
+CC: linux-nfs@vger.kernel.org
+Message-Id: <N1B-bi9fdBdoAp@Safe-mail.net>
 MIME-Version: 1.0
-In-Reply-To: <1438241568-3685-7-git-send-email-sagig@mellanox.com>
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This looks good to me:
+the problem is also present when vers=3 and vers=2
+I think I found the problem, vers=2,udp transfers at 50 MB/s and vers=3,udp transfers at 90 MB/s (when exported async, but when exported sync - the udp mode rates are <5MB/s)
+all vers in tcp mode are limited to <1MB/s
+I am afraid running in udp mode, the docs say udp can cause silent data corruption on gigabit links :x
+but I did take care of the possible problems - reduced the fragmentation time to 2 seconds and enable 9000 mtu with rsize/wsize=8192
 
-	Signed-off-by:  Anna Schumaker <Anna.Schumaker@Netapp.com>
+I see the data transfer speed in the file manager (worker)
 
-Thanks,
-Anna
+-------- Original Message --------
+From: bfields@fieldses.org (J. Bruce Fields)
+To: jhopper@Safe-mail.net
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: extremely slow v4 performance on gigabit link
+Date: Wed, 5 Aug 2015 14:24:00 -0400
 
-On 07/30/2015 03:32 AM, Sagi Grimberg wrote:
-> Signed-off-by: Sagi Grimberg <sagig@mellanox.com>
-> ---
->  net/sunrpc/xprtrdma/frwr_ops.c           | 6 +++---
->  net/sunrpc/xprtrdma/svc_rdma_transport.c | 2 +-
->  2 files changed, 4 insertions(+), 4 deletions(-)
+> On Wed, Aug 05, 2015 at 07:13:58AM -0400, jhopper@Safe-mail.net wrote:
+> > I have a very slow (less than 1MB/s) performance with nfsv4 TCP,
 > 
-> diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
-> index 63f282e..d6653f5 100644
-> --- a/net/sunrpc/xprtrdma/frwr_ops.c
-> +++ b/net/sunrpc/xprtrdma/frwr_ops.c
-> @@ -117,7 +117,7 @@ __frwr_recovery_worker(struct work_struct *work)
->  	if (ib_dereg_mr(r->r.frmr.fr_mr))
->  		goto out_fail;
->  
-> -	r->r.frmr.fr_mr = ib_alloc_fast_reg_mr(pd, depth);
-> +	r->r.frmr.fr_mr = ib_alloc_mr(pd, IB_MR_TYPE_MEM_REG, depth);
->  	if (IS_ERR(r->r.frmr.fr_mr))
->  		goto out_fail;
->  
-> @@ -148,7 +148,7 @@ __frwr_init(struct rpcrdma_mw *r, struct ib_pd *pd, struct ib_device *device,
->  	struct rpcrdma_frmr *f = &r->r.frmr;
->  	int rc;
->  
-> -	f->fr_mr = ib_alloc_fast_reg_mr(pd, depth);
-> +	f->fr_mr = ib_alloc_mr(pd, IB_MR_TYPE_MEM_REG, depth);
->  	if (IS_ERR(f->fr_mr))
->  		goto out_mr_err;
->  	f->fr_pgl = ib_alloc_fast_reg_page_list(device, depth);
-> @@ -158,7 +158,7 @@ __frwr_init(struct rpcrdma_mw *r, struct ib_pd *pd, struct ib_device *device,
->  
->  out_mr_err:
->  	rc = PTR_ERR(f->fr_mr);
-> -	dprintk("RPC:       %s: ib_alloc_fast_reg_mr status %i\n",
-> +	dprintk("RPC:       %s: ib_alloc_mr status %i\n",
->  		__func__, rc);
->  	return rc;
->  
-> diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-> index 6b36279..adcf904 100644
-> --- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
-> +++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-> @@ -738,7 +738,7 @@ static struct svc_rdma_fastreg_mr *rdma_alloc_frmr(struct svcxprt_rdma *xprt)
->  	if (!frmr)
->  		goto err;
->  
-> -	mr = ib_alloc_fast_reg_mr(xprt->sc_pd, RPCSVC_MAXPAGES);
-> +	mr = ib_alloc_mr(xprt->sc_pd, IB_MR_TYPE_MEM_REG, RPCSVC_MAXPAGES);
->  	if (IS_ERR(mr))
->  		goto err_free_frmr;
->  
+> How are you measuring this?
 > 
-
+> > rsize/wsize have no effect, server is a kernel 3.19 x86 100hz no
+> > preempt exporting async nfsv4 TCP on nfs-utils 1.2.7,
+> 
+> The "async" export option isn't normally recommended, though it's
+> unlikely to have anything to do with this problem.
+> 
+> > client is a
+> > kernel 4.1.3 x64 1000hz full preempt with nfs-utils 1.3.2 , physical
+> > link is 1 gigabit full duplex, I mounted a few cifs shares to check,
+> > the cifs shares are working at 30 MB/s and higher
+> > 
+> > is it possible that preempt has an effect on NFS performance ? does
+> > timeslice have effect on performance ?
+> 
+> I think those are unlikely to be relevant.
+> 
+> --b.
