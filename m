@@ -1,91 +1,79 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yk0-f171.google.com ([209.85.160.171]:33588 "EHLO
-	mail-yk0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932419AbbHGR0x (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 7 Aug 2015 13:26:53 -0400
-Received: by ykoo205 with SMTP id o205so94169881yko.0
-        for <linux-nfs@vger.kernel.org>; Fri, 07 Aug 2015 10:26:52 -0700 (PDT)
-Date: Fri, 7 Aug 2015 13:26:49 -0400
-From: Jeff Layton <jlayton@poochiereds.net>
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2 06/18] nfsd: hook up nfsd_read to the nfsd_file cache
-Message-ID: <20150807132649.47f05970@synchrony.poochiereds.net>
-In-Reply-To: <55C4CEF0.6040004@gmail.com>
-References: <1438264341-18048-1-git-send-email-jeff.layton@primarydata.com>
-	<1438809216-4846-1-git-send-email-jeff.layton@primarydata.com>
-	<1438809216-4846-7-git-send-email-jeff.layton@primarydata.com>
-	<55C4CEF0.6040004@gmail.com>
+Received: from fieldses.org ([173.255.197.46]:58740 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1945898AbbHGRgR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 7 Aug 2015 13:36:17 -0400
+Date: Fri, 7 Aug 2015 13:36:16 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Steve Wise <swise@opengridcomputing.com>
+Cc: dledford@redhat.com, linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] svcrdma: limit FRMR page list lengths to device max
+Message-ID: <20150807173616.GD15313@fieldses.org>
+References: <20150807163539.EFDEFE0ACC@smtp.ogc.us>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20150807163539.EFDEFE0ACC@smtp.ogc.us>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 7 Aug 2015 23:29:52 +0800
-Kinglong Mee <kinglongmee@gmail.com> wrote:
-
+On Fri, Aug 07, 2015 at 11:11:20AM -0500, Steve Wise wrote:
+> Svcrdma was incorrectly allocating fastreg MRs and page lists using
+> RPCSVC_MAXPAGES, which can exceed the device capabilities.  So limit
+> the depth to the minimum of RPCSVC_MAXPAGES and xprt->sc_frmr_pg_list_len.
 > 
-> On 8/6/2015 05:13, Jeff Layton wrote:
-> > Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
-> > ---
-> >  fs/nfsd/vfs.c | 20 +++++++-------------
-> >  1 file changed, 7 insertions(+), 13 deletions(-)
-> > 
-> > diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-> > index 59234d1d8d8e..fd688c86af66 100644
-> > --- a/fs/nfsd/vfs.c
-> > +++ b/fs/nfsd/vfs.c
-> > @@ -980,20 +980,14 @@ out_nfserr:
-> >  __be32 nfsd_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
-> >  	loff_t offset, struct kvec *vec, int vlen, unsigned long *count)
-> >  {
-> > -	struct file *file;
-> > -	struct raparms	*ra;
-> > -	__be32 err;
-> > -
-> > -	err = nfsd_open(rqstp, fhp, S_IFREG, NFSD_MAY_READ, &file);
-> > -	if (err)
-> > -		return err;
-> > -
-> > -	ra = nfsd_init_raparms(file);
-> > -	err = nfsd_vfs_read(rqstp, file, offset, vec, vlen, count);
-> > -	if (ra)
-> > -		nfsd_put_raparams(file, ra);
+> Signed-off-by: Steve Wise <swise@opengridcomputing.com>
+> ---
+> Doug, this patch needs to be added after this commit:
 > 
-> Drop the raparms here ?
+> e20684a xprtrdma, svcrdma: Convert to ib_alloc_mr
 > 
+> and before these commits:
 > 
+> af78181 cxgb3: Support ib_alloc_mr verb
+> b7e06cd iw_cxgb4: Support ib_alloc_mr verb
+> 
+> This will avoid a bisect window where NFSRDMA over cxgb4 is broken.
+> 
+> Bruce, please ACK if this commit looks good, and also if you're ok with
+> this flowing through Doug's rdma tree due to the dependencies.
 
-I'm not sure I understand your question. Are you asking why I dropped
-the raparms from this code?
+Fine by me.  On a quick check the only pending change in my tree nearby
+there is 31193fe5f6fb "svcrdma: Remove svc_rdma_fastreg()", which
+shouldn't conflict.
 
-If so, the reason is that we shouldn't need it any longer. We only keep
-that cache now because we do an open for every READ RPC. With this, a
-streaming read should end up using the same struct file, at least as
-long as there's not _too_ long a delay between READ RPCs. The normal
-vfs readahead machinery should work properly with this change.
+	Acked-by: J. Bruce Fields <bfields@redhat.com>
 
-I'd like to eventually have us hook this up to the nfs4_file cache as
-well. I stopped short of that here since I didn't need that immediately
-for what I'm working on, but it should be possible to make the
-nfs4_file cache use the nfsd_file cache instead of calling dentry_open
-directly. Once we do that, then I don't think we'll need the raparms
-cache at all anymore.
+--b.
 
-> > -	fput(file);
-> > +	__be32			err;
-> > +	struct nfsd_file	*nf;
-> >  
-> > +	err = nfsd_file_acquire(rqstp, fhp, NFSD_MAY_READ, &nf);
-> > +	if (err == nfs_ok)
-> > +		err = nfsd_vfs_read(rqstp, nf->nf_file, offset, vec, vlen,
-> > +					count);
-> > +	nfsd_file_put(nf);
-> >  	return err;
-> >  }
-> >  
-> > 
-
-
--- 
-Jeff Layton <jlayton@poochiereds.net>
+> ---
+>  net/sunrpc/xprtrdma/svc_rdma_transport.c |    6 ++++--
+>  1 files changed, 4 insertions(+), 2 deletions(-)
+> 
+> diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> index 8752a2d..11d5133 100644
+> --- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> +++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> @@ -733,17 +733,19 @@ static struct svc_rdma_fastreg_mr *rdma_alloc_frmr(struct svcxprt_rdma *xprt)
+>  	struct ib_mr *mr;
+>  	struct ib_fast_reg_page_list *pl;
+>  	struct svc_rdma_fastreg_mr *frmr;
+> +	u32 num_sg;
+>  
+>  	frmr = kmalloc(sizeof(*frmr), GFP_KERNEL);
+>  	if (!frmr)
+>  		goto err;
+>  
+> -	mr = ib_alloc_mr(xprt->sc_pd, IB_MR_TYPE_MEM_REG, RPCSVC_MAXPAGES);
+> +	num_sg = min_t(u32, RPCSVC_MAXPAGES, xprt->sc_frmr_pg_list_len);
+> +	mr = ib_alloc_mr(xprt->sc_pd, IB_MR_TYPE_MEM_REG, num_sg);
+>  	if (IS_ERR(mr))
+>  		goto err_free_frmr;
+>  
+>  	pl = ib_alloc_fast_reg_page_list(xprt->sc_cm_id->device,
+> -					 RPCSVC_MAXPAGES);
+> +					 num_sg);
+>  	if (IS_ERR(pl))
+>  		goto err_free_mr;
+>  
+> -- 
+> 1.7.1
