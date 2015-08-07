@@ -1,15 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx144.netapp.com ([216.240.21.25]:20093 "EHLO mx144.netapp.com"
+Received: from mx142.netapp.com ([216.240.21.19]:7454 "EHLO mx142.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1946207AbbHGUie (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	id S1946136AbbHGUie (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
 	Fri, 7 Aug 2015 16:38:34 -0400
 From: Anna Schumaker <Anna.Schumaker@netapp.com>
 To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>,
         <bfields@fieldses.org>
 CC: <Anna.Schumaker@netapp.com>
-Subject: [PATCH 5/7] nfsd: Pass filehandle to nfs4_preprocess_stateid_op()
-Date: Fri, 7 Aug 2015 16:38:21 -0400
-Message-ID: <1438979904-8775-6-git-send-email-Anna.Schumaker@Netapp.com>
+Subject: [PATCH 1/7] vfs: add copy_file_range syscall and vfs helper
+Date: Fri, 7 Aug 2015 16:38:17 -0400
+Message-ID: <1438979904-8775-2-git-send-email-Anna.Schumaker@Netapp.com>
 In-Reply-To: <1438979904-8775-1-git-send-email-Anna.Schumaker@Netapp.com>
 References: <1438979904-8775-1-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
@@ -17,103 +17,230 @@ Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This will be needed so COPY can look up the saved_fh in addition to the
-current_fh.
+From: Zach Brown <zab@redhat.com>
 
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Add a copy_file_range() system call for offloading copies between
+regular files.
+
+This gives an interface to underlying layers of the storage stack which
+can copy without reading and writing all the data.  There are a few
+candidates that should support copy offloading in the nearer term:
+
+- btrfs shares extent references with its clone ioctl
+- NFS has patches to add a COPY command which copies on the server
+- SCSI has a family of XCOPY commands which copy in the device
+
+This system call avoids the complexity of also accelerating the creation
+of the destination file by operating on an existing destination file
+descriptor, not a path.
+
+Currently the high level vfs entry point limits copy offloading to files
+on the same mount and super (and not in the same file).  This can be
+relaxed if we get implementations which can copy between file systems
+safely.
+
+Signed-off-by: Zach Brown <zab@redhat.com>
 ---
- fs/nfsd/nfs4proc.c  | 16 +++++++++-------
- fs/nfsd/nfs4state.c |  5 ++---
- fs/nfsd/state.h     |  4 ++--
- 3 files changed, 13 insertions(+), 12 deletions(-)
+ fs/read_write.c                   | 129 ++++++++++++++++++++++++++++++++++++++
+ include/linux/fs.h                |   3 +
+ include/uapi/asm-generic/unistd.h |   4 +-
+ kernel/sys_ni.c                   |   1 +
+ 4 files changed, 136 insertions(+), 1 deletion(-)
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 90cfda7..d34c967 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -776,8 +776,9 @@ nfsd4_read(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		clear_bit(RQ_SPLICE_OK, &rqstp->rq_flags);
+diff --git a/fs/read_write.c b/fs/read_write.c
+index 819ef3f..3804547 100644
+--- a/fs/read_write.c
++++ b/fs/read_write.c
+@@ -16,6 +16,7 @@
+ #include <linux/pagemap.h>
+ #include <linux/splice.h>
+ #include <linux/compat.h>
++#include <linux/mount.h>
+ #include "internal.h"
  
- 	/* check stateid */
--	status = nfs4_preprocess_stateid_op(rqstp, cstate, &read->rd_stateid,
--			RD_STATE, &read->rd_filp, &read->rd_tmp_file);
-+	status = nfs4_preprocess_stateid_op(rqstp, cstate, &cstate->current_fh,
-+					&read->rd_stateid, RD_STATE,
-+					&read->rd_filp, &read->rd_tmp_file);
- 	if (status) {
- 		dprintk("NFSD: nfsd4_read: couldn't process stateid!\n");
- 		goto out;
-@@ -923,7 +924,8 @@ nfsd4_setattr(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ #include <asm/uaccess.h>
+@@ -1327,3 +1328,131 @@ COMPAT_SYSCALL_DEFINE4(sendfile64, int, out_fd, int, in_fd,
+ 	return do_sendfile(out_fd, in_fd, NULL, count, 0);
+ }
+ #endif
++
++/*
++ * copy_file_range() differs from regular file read and write in that it
++ * specifically allows return partial success.  When it does so is up to
++ * the copy_file_range method.
++ */
++ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
++			    struct file *file_out, loff_t pos_out,
++			    size_t len, int flags)
++{
++	struct inode *inode_in;
++	struct inode *inode_out;
++	ssize_t ret;
++
++	if (flags)
++		return -EINVAL;
++
++	if (len == 0)
++		return 0;
++
++	/* copy_file_range allows full ssize_t len, ignoring MAX_RW_COUNT  */
++	ret = rw_verify_area(READ, file_in, &pos_in, len);
++	if (ret >= 0)
++		ret = rw_verify_area(WRITE, file_out, &pos_out, len);
++	if (ret < 0)
++		return ret;
++
++	if (!(file_in->f_mode & FMODE_READ) ||
++	    !(file_out->f_mode & FMODE_WRITE) ||
++	    (file_out->f_flags & O_APPEND) ||
++	    !file_in->f_op || !file_in->f_op->copy_file_range)
++		return -EINVAL;
++
++	inode_in = file_inode(file_in);
++	inode_out = file_inode(file_out);
++
++	/* make sure offsets don't wrap and the input is inside i_size */
++	if (pos_in + len < pos_in || pos_out + len < pos_out ||
++	    pos_in + len > i_size_read(inode_in))
++		return -EINVAL;
++
++	/* this could be relaxed once a method supports cross-fs copies */
++	if (inode_in->i_sb != inode_out->i_sb ||
++	    file_in->f_path.mnt != file_out->f_path.mnt)
++		return -EXDEV;
++
++	/* forbid ranges in the same file */
++	if (inode_in == inode_out)
++		return -EINVAL;
++
++	ret = mnt_want_write_file(file_out);
++	if (ret)
++		return ret;
++
++	ret = file_in->f_op->copy_file_range(file_in, pos_in, file_out, pos_out,
++					     len, flags);
++	if (ret > 0) {
++		fsnotify_access(file_in);
++		add_rchar(current, ret);
++		fsnotify_modify(file_out);
++		add_wchar(current, ret);
++	}
++	inc_syscr(current);
++	inc_syscw(current);
++
++	mnt_drop_write_file(file_out);
++
++	return ret;
++}
++EXPORT_SYMBOL(vfs_copy_file_range);
++
++SYSCALL_DEFINE6(copy_file_range, int, fd_in, loff_t __user *, off_in,
++		int, fd_out, loff_t __user *, off_out,
++		size_t, len, unsigned int, flags)
++{
++	loff_t pos_in;
++	loff_t pos_out;
++	struct fd f_in;
++	struct fd f_out;
++	ssize_t ret;
++
++	f_in = fdget(fd_in);
++	f_out = fdget(fd_out);
++	if (!f_in.file || !f_out.file) {
++		ret = -EBADF;
++		goto out;
++	}
++
++	ret = -EFAULT;
++	if (off_in) {
++		if (copy_from_user(&pos_in, off_in, sizeof(loff_t)))
++			goto out;
++	} else {
++		pos_in = f_in.file->f_pos;
++	}
++
++	if (off_out) {
++		if (copy_from_user(&pos_out, off_out, sizeof(loff_t)))
++			goto out;
++	} else {
++		pos_out = f_out.file->f_pos;
++	}
++
++	ret = vfs_copy_file_range(f_in.file, pos_in, f_out.file, pos_out, len,
++				  flags);
++	if (ret > 0) {
++		pos_in += ret;
++		pos_out += ret;
++
++		if (off_in) {
++			if (copy_to_user(off_in, &pos_in, sizeof(loff_t)))
++				ret = -EFAULT;
++		} else {
++			f_in.file->f_pos = pos_in;
++		}
++
++		if (off_out) {
++			if (copy_to_user(off_out, &pos_out, sizeof(loff_t)))
++				ret = -EFAULT;
++		} else {
++			f_out.file->f_pos = pos_out;
++		}
++	}
++out:
++	fdput(f_in);
++	fdput(f_out);
++	return ret;
++}
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index cc008c3..c97aed8 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1631,6 +1631,7 @@ struct file_operations {
+ #ifndef CONFIG_MMU
+ 	unsigned (*mmap_capabilities)(struct file *);
+ #endif
++	ssize_t (*copy_file_range)(struct file *, loff_t, struct file *, loff_t, size_t, int);
+ };
  
- 	if (setattr->sa_iattr.ia_valid & ATTR_SIZE) {
- 		status = nfs4_preprocess_stateid_op(rqstp, cstate,
--			&setattr->sa_stateid, WR_STATE, NULL, NULL);
-+				&cstate->current_fh, &setattr->sa_stateid,
-+				WR_STATE, NULL, NULL);
- 		if (status) {
- 			dprintk("NFSD: nfsd4_setattr: couldn't process stateid!\n");
- 			return status;
-@@ -987,8 +989,8 @@ nfsd4_write(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	if (write->wr_offset >= OFFSET_MAX)
- 		return nfserr_inval;
+ struct inode_operations {
+@@ -1684,6 +1685,8 @@ extern ssize_t vfs_readv(struct file *, const struct iovec __user *,
+ 		unsigned long, loff_t *);
+ extern ssize_t vfs_writev(struct file *, const struct iovec __user *,
+ 		unsigned long, loff_t *);
++extern ssize_t vfs_copy_file_range(struct file *, loff_t , struct file *,
++				   loff_t, size_t, int);
  
--	status = nfs4_preprocess_stateid_op(rqstp, cstate, stateid, WR_STATE,
--			&filp, NULL);
-+	status = nfs4_preprocess_stateid_op(rqstp, cstate, &cstate->current_fh,
-+						stateid, WR_STATE, &filp, NULL);
- 	if (status) {
- 		dprintk("NFSD: nfsd4_write: couldn't process stateid!\n");
- 		return status;
-@@ -1018,7 +1020,7 @@ nfsd4_fallocate(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	__be32 status = nfserr_notsupp;
- 	struct file *file;
+ struct super_operations {
+    	struct inode *(*alloc_inode)(struct super_block *sb);
+diff --git a/include/uapi/asm-generic/unistd.h b/include/uapi/asm-generic/unistd.h
+index e016bd9..2b60f0c 100644
+--- a/include/uapi/asm-generic/unistd.h
++++ b/include/uapi/asm-generic/unistd.h
+@@ -709,9 +709,11 @@ __SYSCALL(__NR_memfd_create, sys_memfd_create)
+ __SYSCALL(__NR_bpf, sys_bpf)
+ #define __NR_execveat 281
+ __SC_COMP(__NR_execveat, sys_execveat, compat_sys_execveat)
++#define __NR_copy_file_range 282
++__SYSCALL(__NR_copy_file_range, sys_copy_file_range)
  
--	status = nfs4_preprocess_stateid_op(rqstp, cstate,
-+	status = nfs4_preprocess_stateid_op(rqstp, cstate, &cstate->current_fh,
- 					    &fallocate->falloc_stateid,
- 					    WR_STATE, &file, NULL);
- 	if (status != nfs_ok) {
-@@ -1057,7 +1059,7 @@ nfsd4_seek(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	__be32 status;
- 	struct file *file;
+ #undef __NR_syscalls
+-#define __NR_syscalls 282
++#define __NR_syscalls 283
  
--	status = nfs4_preprocess_stateid_op(rqstp, cstate,
-+	status = nfs4_preprocess_stateid_op(rqstp, cstate, &cstate->current_fh,
- 					    &seek->seek_stateid,
- 					    RD_STATE, &file, NULL);
- 	if (status) {
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 61dfb33..7b0059d 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4645,10 +4645,9 @@ nfs4_check_file(struct svc_rqst *rqstp, struct svc_fh *fhp, struct nfs4_stid *s,
-  */
- __be32
- nfs4_preprocess_stateid_op(struct svc_rqst *rqstp,
--		struct nfsd4_compound_state *cstate, stateid_t *stateid,
--		int flags, struct file **filpp, bool *tmp_file)
-+		struct nfsd4_compound_state *cstate, struct svc_fh *fhp,
-+		stateid_t *stateid, int flags, struct file **filpp, bool *tmp_file)
- {
--	struct svc_fh *fhp = &cstate->current_fh;
- 	struct inode *ino = d_inode(fhp->fh_dentry);
- 	struct net *net = SVC_NET(rqstp);
- 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 4874ce5..d3e81ce 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -584,8 +584,8 @@ struct nfsd4_compound_state;
- struct nfsd_net;
+ /*
+  * All syscalls below here should go away really,
+diff --git a/kernel/sys_ni.c b/kernel/sys_ni.c
+index 7995ef5..4e01cd9 100644
+--- a/kernel/sys_ni.c
++++ b/kernel/sys_ni.c
+@@ -173,6 +173,7 @@ cond_syscall(sys_setfsuid);
+ cond_syscall(sys_setfsgid);
+ cond_syscall(sys_capget);
+ cond_syscall(sys_capset);
++cond_syscall(sys_copy_file_range);
  
- extern __be32 nfs4_preprocess_stateid_op(struct svc_rqst *rqstp,
--		struct nfsd4_compound_state *cstate, stateid_t *stateid,
--		int flags, struct file **filp, bool *tmp_file);
-+		struct nfsd4_compound_state *cstate, struct svc_fh *fhp,
-+		stateid_t *stateid, int flags, struct file **filp, bool *tmp_file);
- __be32 nfsd4_lookup_stateid(struct nfsd4_compound_state *cstate,
- 		     stateid_t *stateid, unsigned char typemask,
- 		     struct nfs4_stid **s, struct nfsd_net *nn);
+ /* arch-specific weak syscall entries */
+ cond_syscall(sys_pciconfig_read);
 -- 
 2.5.0
 
