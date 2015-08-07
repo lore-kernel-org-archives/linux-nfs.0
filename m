@@ -1,175 +1,151 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yk0-f170.google.com ([209.85.160.170]:35539 "EHLO
-	mail-yk0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932432AbbHGRMD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 7 Aug 2015 13:12:03 -0400
-Received: by ykcq64 with SMTP id q64so88839385ykc.2
-        for <linux-nfs@vger.kernel.org>; Fri, 07 Aug 2015 10:12:02 -0700 (PDT)
-Date: Fri, 7 Aug 2015 13:12:00 -0400
+Received: from mail-yk0-f178.google.com ([209.85.160.178]:35057 "EHLO
+	mail-yk0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932495AbbHGRTA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 7 Aug 2015 13:19:00 -0400
+Received: by ykcq64 with SMTP id q64so88988909ykc.2
+        for <linux-nfs@vger.kernel.org>; Fri, 07 Aug 2015 10:18:59 -0700 (PDT)
+Date: Fri, 7 Aug 2015 13:18:57 -0400
 From: Jeff Layton <jlayton@poochiereds.net>
 To: Kinglong Mee <kinglongmee@gmail.com>
 Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2 03/18] nfsd: convert laundry_wq to something less
- nfsd4 specific
-Message-ID: <20150807131200.0ee2951d@tlielax.poochiereds.net>
-In-Reply-To: <55C4CE0A.7080401@gmail.com>
+Subject: Re: [PATCH v2 04/18] nfsd: add a new struct file caching facility
+ to nfsd
+Message-ID: <20150807131857.0a94bdfe@synchrony.poochiereds.net>
+In-Reply-To: <55C4CEA9.306@gmail.com>
 References: <1438264341-18048-1-git-send-email-jeff.layton@primarydata.com>
 	<1438809216-4846-1-git-send-email-jeff.layton@primarydata.com>
-	<1438809216-4846-4-git-send-email-jeff.layton@primarydata.com>
-	<55C4CE0A.7080401@gmail.com>
+	<1438809216-4846-5-git-send-email-jeff.layton@primarydata.com>
+	<55C4CEA9.306@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 7 Aug 2015 23:26:02 +0800
+On Fri, 7 Aug 2015 23:28:41 +0800
 Kinglong Mee <kinglongmee@gmail.com> wrote:
 
 > On 8/6/2015 05:13, Jeff Layton wrote:
-> > Currently, nfsd uses a singlethread workqueue for this, but that's not
-> > necessary. If we have multiple namespaces, then there's no need to
-> > serialize the laundromat runs since they are only requeued at the end of
-> > the work itself.
+> > Currently, NFSv2/3 reads and writes have to open a file, do the read or
+> > write and then close it again for each RPC. This is highly inefficient,
+> > especially when the underlying filesystem has a relatively slow open
+> > routine.
 > > 
-> > Also, create_singlethread_workqueue adds the WQ_MEM_RECLAIM flag, which
-> > doesn't really seem to be necessary. The laundromat jobs are always
-> > kicked off via a timer, and not from memory reclaim paths. There's no
-> > need for a rescuer thread.
+> > This patch adds a new open file cache to knfsd. Rather than doing an
+> > open for each RPC, the read/write handlers can call into this cache to
+> > see if there is one already there for the correct filehandle and
+> > NFS_MAY_READ/WRITE flags.
+> > 
+> > If there isn't an entry, then we create a new one and attempt to
+> > perform the open. If there is, then we wait until the entry is fully
+> > instantiated and return it if it is at the end of the wait. If it's
+> > not, then we attempt to take over construction.
+> > 
+> > Since the main goal is to speed up NFSv2/3 I/O, we don't want to
+> > close these files on last put of these objects. We need to keep them
+> > around for a little while since we never know when the next READ/WRITE
+> > will come in.
+> > 
+> > Cache entries have a hardcoded 1s timeout, and we have a recurring
+> > workqueue job that walks the cache and purges any entries that have
+> > expired.
 > > 
 > > Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
-> > ---
-> >  fs/nfsd/nfs4state.c | 23 +++++------------------
-> >  fs/nfsd/nfsd.h      |  1 +
-> >  fs/nfsd/nfssvc.c    | 14 +++++++++++++-
-> >  3 files changed, 19 insertions(+), 19 deletions(-)
-> > 
-> > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> > index b3b306bd1830..c94859122e6f 100644
-> > --- a/fs/nfsd/nfs4state.c
-> > +++ b/fs/nfsd/nfs4state.c
-> > @@ -4366,7 +4366,6 @@ nfs4_laundromat(struct nfsd_net *nn)
-> >  	return new_timeo;
+> ... snip ... 
+> > diff --git a/fs/nfsd/filecache.h b/fs/nfsd/filecache.h
+> > index 9051ee54faa3..adf7e78b8e43 100644
+> > --- a/fs/nfsd/filecache.h
+> > +++ b/fs/nfsd/filecache.h
+> > @@ -4,6 +4,7 @@
+> >  #include <linux/jhash.h>
+> >  #include <linux/sunrpc/xdr.h>
+> >  
+> > +#include "nfsfh.h"
+> >  #include "export.h"
+> >  
+> >  /* hash table for nfs4_file */
+> > @@ -22,4 +23,24 @@ file_hashval(struct knfsd_fh *fh)
+> >  	return nfsd_fh_hashval(fh) & (NFSD_FILE_HASH_SIZE - 1);
 > >  }
 > >  
-> > -static struct workqueue_struct *laundry_wq;
-> >  static void laundromat_main(struct work_struct *);
-> >  
-> >  static void
-> > @@ -4380,7 +4379,7 @@ laundromat_main(struct work_struct *laundry)
-> >  
-> >  	t = nfs4_laundromat(nn);
-> >  	dprintk("NFSD: laundromat_main - sleeping for %ld seconds\n", t);
-> > -	queue_delayed_work(laundry_wq, &nn->laundromat_work, t*HZ);
-> > +	queue_delayed_work(nfsd_laundry_wq, &nn->laundromat_work, t*HZ);
-> >  }
-> >  
-> >  static inline __be32 nfs4_check_fh(struct svc_fh *fhp, struct nfs4_stid *stp)
-> > @@ -6569,7 +6568,8 @@ nfs4_state_start_net(struct net *net)
-> >  	nfsd4_client_tracking_init(net);
-> >  	printk(KERN_INFO "NFSD: starting %ld-second grace period (net %p)\n",
-> >  	       nn->nfsd4_grace, net);
-> > -	queue_delayed_work(laundry_wq, &nn->laundromat_work, nn->nfsd4_grace * HZ);
-> > +	queue_delayed_work(nfsd_laundry_wq, &nn->laundromat_work,
-> > +				nn->nfsd4_grace * HZ);
-> >  	return 0;
-> >  }
-> >  
-> > @@ -6583,22 +6583,10 @@ nfs4_state_start(void)
-> >  	ret = set_callback_cred();
-> >  	if (ret)
-> >  		return -ENOMEM;
-> > -	laundry_wq = create_singlethread_workqueue("nfsd4");
-> > -	if (laundry_wq == NULL) {
-> > -		ret = -ENOMEM;
-> > -		goto out_recovery;
-> > -	}
-> >  	ret = nfsd4_create_callback_queue();
-> > -	if (ret)
-> > -		goto out_free_laundry;
-> > -
-> > -	set_max_delegations();
-> > -
-> > -	return 0;
-> > +	if (!ret)
-> > +		set_max_delegations();
-> >  
-> > -out_free_laundry:
-> > -	destroy_workqueue(laundry_wq);
-> > -out_recovery:
-> >  	return ret;
-> >  }
-> >  
-> > @@ -6635,7 +6623,6 @@ nfs4_state_shutdown_net(struct net *net)
-> >  void
-> >  nfs4_state_shutdown(void)
-> >  {
-> > -	destroy_workqueue(laundry_wq);
-> >  	nfsd4_destroy_callback_queue();
-> >  }
-> >  
-> > diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
-> > index cf980523898b..0199415344ff 100644
-> > --- a/fs/nfsd/nfsd.h
-> > +++ b/fs/nfsd/nfsd.h
-> > @@ -62,6 +62,7 @@ struct readdir_cd {
-> >  extern struct svc_program	nfsd_program;
-> >  extern struct svc_version	nfsd_version2, nfsd_version3,
-> >  				nfsd_version4;
-> > +extern struct workqueue_struct	*nfsd_laundry_wq;
-> >  extern struct mutex		nfsd_mutex;
-> >  extern spinlock_t		nfsd_drc_lock;
-> >  extern unsigned long		nfsd_drc_max_mem;
+> > +struct nfsd_file {
+> 
+> There is a nfs4_file in nfsd, it's not easy to distinguish them for a new folk.
+> More comments or a meaningful name is better.
+> 
+
+Maybe. Again, any suggestions? My hope was that eventually we can unify
+the two caches somehow but maybe that's naive.
+
+> > +	struct hlist_node	nf_node;
+> > +	struct list_head	nf_dispose;
+> > +	struct rcu_head		nf_rcu;
+> > +	struct file		*nf_file;
+> > +	unsigned long		nf_time;
+> > +#define NFSD_FILE_HASHED	(0)
+> 
+> Why not using hlist_unhashed()? 
+> 
+
+These entries are removed from the list using hlist_del_rcu(), and
+hlist_unhashed will not return true after that.
+
+
+> > +#define NFSD_FILE_PENDING	(1)
+> > +	unsigned long		nf_flags;
+> > +	struct knfsd_fh		nf_handle;
+> > +	unsigned int		nf_hashval;
+> > +	atomic_t		nf_ref;
+> > +	unsigned char		nf_may;
+> > +};
+> > +
+> > +int nfsd_file_cache_init(void);
+> > +void nfsd_file_cache_shutdown(void);
+> > +void nfsd_file_put(struct nfsd_file *nf);
+> > +__be32 nfsd_file_acquire(struct svc_rqst *rqstp, struct svc_fh *fhp,
+> > +		  unsigned int may_flags, struct nfsd_file **nfp);
+> >  #endif /* _FS_NFSD_FILECACHE_H */
 > > diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-> > index ad4e2377dd63..ced9944201a0 100644
+> > index ced9944201a0..0572441e23ec 100644
 > > --- a/fs/nfsd/nfssvc.c
 > > +++ b/fs/nfsd/nfssvc.c
-> > @@ -17,6 +17,7 @@
-> >  #include <linux/lockd/bind.h>
-> >  #include <linux/nfsacl.h>
-> >  #include <linux/seq_file.h>
-> > +#include <linux/workqueue.h>
-> >  #include <net/net_namespace.h>
-> >  #include "nfsd.h"
+> > @@ -23,6 +23,7 @@
 > >  #include "cache.h"
-> > @@ -28,6 +29,9 @@
-> >  extern struct svc_program	nfsd_program;
-> >  static int			nfsd(void *vrqstp);
+> >  #include "vfs.h"
+> >  #include "netns.h"
+> > +#include "filecache.h"
 > >  
-> > +/* A workqueue for nfsd-related cleanup tasks */
-> > +struct workqueue_struct		*nfsd_laundry_wq;
-> > +
-> >  /*
-> >   * nfsd_mutex protects nn->nfsd_serv -- both the pointer itself and the members
-> >   * of the svc_serv struct. In particular, ->sv_nrthreads but also to some
-> > @@ -224,11 +228,19 @@ static int nfsd_startup_generic(int nrservs)
-> >  	if (ret)
-> >  		goto dec_users;
+> >  #define NFSDDBG_FACILITY	NFSDDBG_SVC
 > >  
-> > +	ret = -ENOMEM;
-> > +	nfsd_laundry_wq = alloc_workqueue("%s", WQ_UNBOUND, 0, "nfsd-laundry");
-> > +	if (!nfsd_laundry_wq)
-> > +		goto out_racache;
-> > +
-> >  	ret = nfs4_state_start();
+> > @@ -233,11 +234,17 @@ static int nfsd_startup_generic(int nrservs)
+> >  	if (!nfsd_laundry_wq)
+> >  		goto out_racache;
+> >  
+> > -	ret = nfs4_state_start();
+> > +	ret = nfsd_file_cache_init();
 > >  	if (ret)
-> > -		goto out_racache;
-> > +		goto out_wq;
+> >  		goto out_wq;
+> > +
+> > +	ret = nfs4_state_start();
+> > +	if (ret)
+> > +		goto out_nfsd_file;
 > >  	return 0;
 > >  
-> > +out_wq:
-> > +	destroy_workqueue(nfsd_laundry_wq);
-> > +	nfsd_laundry_wq = NULL;
-> >  out_racache:
+> > +out_nfsd_file:
+> > +	nfsd_file_cache_shutdown();
+> >  out_wq:
+> >  	destroy_workqueue(nfsd_laundry_wq);
+> >  	nfsd_laundry_wq = NULL;
+> > @@ -254,6 +261,7 @@ static void nfsd_shutdown_generic(void)
+> >  		return;
+> >  
+> >  	nfs4_state_shutdown();
+> > +	nfsd_file_cache_shutdown();
 > >  	nfsd_racache_shutdown();
-> >  dec_users:
-> 
-> Is a destroy_workqueue(nfsd_laundry_wq) needed in nfsd_shutdown_generic() ?
-> 
-> thanks,
-> Kinglong Mee
+> >  }
+> >  
+> > 
 
-Yes! I had that in an earlier version of this, but somehow it got
-dropped. Good catch. I'll fix that for the next respin.
 
 -- 
 Jeff Layton <jlayton@poochiereds.net>
