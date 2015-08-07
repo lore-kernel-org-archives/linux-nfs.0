@@ -1,67 +1,119 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.opengridcomputing.com ([72.48.136.20]:43113 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S932143AbbHGQfk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 7 Aug 2015 12:35:40 -0400
-From: Steve Wise <swise@opengridcomputing.com>
-Date: Fri, 7 Aug 2015 11:11:20 -0500
-Subject: [PATCH] svcrdma: limit FRMR page list lengths to device max
-To: dledford@redhat.com
-Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org,
-        bfields@fieldses.org
-Message-Id: <20150807163539.EFDEFE0ACC@smtp.ogc.us>
+Received: from mail-yk0-f181.google.com ([209.85.160.181]:34260 "EHLO
+	mail-yk0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932315AbbHGRHM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 7 Aug 2015 13:07:12 -0400
+Received: by ykdt205 with SMTP id t205so13211668ykd.1
+        for <linux-nfs@vger.kernel.org>; Fri, 07 Aug 2015 10:07:11 -0700 (PDT)
+Date: Fri, 7 Aug 2015 13:07:08 -0400
+From: Jeff Layton <jlayton@poochiereds.net>
+To: Kinglong Mee <kinglongmee@gmail.com>
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2 02/18] nfsd: move some file caching helpers to a
+ common header
+Message-ID: <20150807130708.3ac1da4b@tlielax.poochiereds.net>
+In-Reply-To: <55C4CDE7.1080101@gmail.com>
+References: <1438264341-18048-1-git-send-email-jeff.layton@primarydata.com>
+	<1438809216-4846-1-git-send-email-jeff.layton@primarydata.com>
+	<1438809216-4846-3-git-send-email-jeff.layton@primarydata.com>
+	<55C4CDE7.1080101@gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Svcrdma was incorrectly allocating fastreg MRs and page lists using
-RPCSVC_MAXPAGES, which can exceed the device capabilities.  So limit
-the depth to the minimum of RPCSVC_MAXPAGES and xprt->sc_frmr_pg_list_len.
+On Fri, 7 Aug 2015 23:25:27 +0800
+Kinglong Mee <kinglongmee@gmail.com> wrote:
 
-Signed-off-by: Steve Wise <swise@opengridcomputing.com>
----
-Doug, this patch needs to be added after this commit:
+> On 8/6/2015 05:13, Jeff Layton wrote:
+> > We'll want to reuse some of this for common open file caching
+> > infrastructure.
+> > 
+> > Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
+> > ---
+> >  fs/nfsd/filecache.h | 25 +++++++++++++++++++++++++
+> >  fs/nfsd/nfs4state.c | 17 ++---------------
+> >  2 files changed, 27 insertions(+), 15 deletions(-)
+> >  create mode 100644 fs/nfsd/filecache.h
+> > 
+> > diff --git a/fs/nfsd/filecache.h b/fs/nfsd/filecache.h
+> > new file mode 100644
+> > index 000000000000..9051ee54faa3
+> > --- /dev/null
+> > +++ b/fs/nfsd/filecache.h
+> > @@ -0,0 +1,25 @@
+> > +#ifndef _FS_NFSD_FILECACHE_H
+> > +#define _FS_NFSD_FILECACHE_H
+> > +
+> > +#include <linux/jhash.h>
+> > +#include <linux/sunrpc/xdr.h>
+> > +
+> > +#include "export.h"
+> > +
+> > +/* hash table for nfs4_file */
+> > +#define NFSD_FILE_HASH_BITS                   8
+> > +#define NFSD_FILE_HASH_SIZE                  (1 << NFSD_FILE_HASH_BITS)
+> > +
+> > +static inline unsigned int
+> > +nfsd_fh_hashval(struct knfsd_fh *fh)
+> > +{
+> > +	return jhash2(fh->fh_base.fh_pad, XDR_QUADLEN(fh->fh_size), 0);
+> > +}
+> > +
+> > +static inline unsigned int
+> > +file_hashval(struct knfsd_fh *fh)
+> 
+> Update to nfsd_file_hashval maybe better ?
+> 
+> thanks,
+> Kinglong Mee
+> 
 
-e20684a xprtrdma, svcrdma: Convert to ib_alloc_mr
+Suggestions? Both hashtables are hashing on the filehandle, so I'm not
+sure what would be better...
 
-and before these commits:
+> > +{
+> > +	return nfsd_fh_hashval(fh) & (NFSD_FILE_HASH_SIZE - 1);
+> > +}
+> > +
+> > +#endif /* _FS_NFSD_FILECACHE_H */
+> > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> > index 43903abd6189..b3b306bd1830 100644
+> > --- a/fs/nfsd/nfs4state.c
+> > +++ b/fs/nfsd/nfs4state.c
+> > @@ -49,6 +49,7 @@
+> >  
+> >  #include "netns.h"
+> >  #include "pnfs.h"
+> > +#include "filecache.h"
+> >  
+> >  #define NFSDDBG_FACILITY                NFSDDBG_PROC
+> >  
+> > @@ -381,21 +382,7 @@ static unsigned int ownerstr_hashval(struct xdr_netobj *ownername)
+> >  	return ret & OWNER_HASH_MASK;
+> >  }
+> >  
+> > -/* hash table for nfs4_file */
+> > -#define FILE_HASH_BITS                   8
+> > -#define FILE_HASH_SIZE                  (1 << FILE_HASH_BITS)
+> > -
+> > -static unsigned int nfsd_fh_hashval(struct knfsd_fh *fh)
+> > -{
+> > -	return jhash2(fh->fh_base.fh_pad, XDR_QUADLEN(fh->fh_size), 0);
+> > -}
+> > -
+> > -static unsigned int file_hashval(struct knfsd_fh *fh)
+> > -{
+> > -	return nfsd_fh_hashval(fh) & (FILE_HASH_SIZE - 1);
+> > -}
+> > -
+> > -static struct hlist_head file_hashtbl[FILE_HASH_SIZE];
+> > +static struct hlist_head file_hashtbl[NFSD_FILE_HASH_SIZE];
+> >  
+> >  static void
+> >  __nfs4_file_get_access(struct nfs4_file *fp, u32 access)
+> > 
 
-af78181 cxgb3: Support ib_alloc_mr verb
-b7e06cd iw_cxgb4: Support ib_alloc_mr verb
 
-This will avoid a bisect window where NFSRDMA over cxgb4 is broken.
-
-Bruce, please ACK if this commit looks good, and also if you're ok with
-this flowing through Doug's rdma tree due to the dependencies.
----
- net/sunrpc/xprtrdma/svc_rdma_transport.c |    6 ++++--
- 1 files changed, 4 insertions(+), 2 deletions(-)
-
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-index 8752a2d..11d5133 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-@@ -733,17 +733,19 @@ static struct svc_rdma_fastreg_mr *rdma_alloc_frmr(struct svcxprt_rdma *xprt)
- 	struct ib_mr *mr;
- 	struct ib_fast_reg_page_list *pl;
- 	struct svc_rdma_fastreg_mr *frmr;
-+	u32 num_sg;
- 
- 	frmr = kmalloc(sizeof(*frmr), GFP_KERNEL);
- 	if (!frmr)
- 		goto err;
- 
--	mr = ib_alloc_mr(xprt->sc_pd, IB_MR_TYPE_MEM_REG, RPCSVC_MAXPAGES);
-+	num_sg = min_t(u32, RPCSVC_MAXPAGES, xprt->sc_frmr_pg_list_len);
-+	mr = ib_alloc_mr(xprt->sc_pd, IB_MR_TYPE_MEM_REG, num_sg);
- 	if (IS_ERR(mr))
- 		goto err_free_frmr;
- 
- 	pl = ib_alloc_fast_reg_page_list(xprt->sc_cm_id->device,
--					 RPCSVC_MAXPAGES);
-+					 num_sg);
- 	if (IS_ERR(pl))
- 		goto err_free_mr;
- 
 -- 
-1.7.1
-
+Jeff Layton <jlayton@poochiereds.net>
