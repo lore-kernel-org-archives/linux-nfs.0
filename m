@@ -1,174 +1,124 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yk0-f177.google.com ([209.85.160.177]:34017 "EHLO
-	mail-yk0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1945991AbbHGSZA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 7 Aug 2015 14:25:00 -0400
-Received: by ykdt205 with SMTP id t205so14900539ykd.1
-        for <linux-nfs@vger.kernel.org>; Fri, 07 Aug 2015 11:25:00 -0700 (PDT)
-Date: Fri, 7 Aug 2015 14:24:57 -0400
-From: Jeff Layton <jlayton@poochiereds.net>
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2 16/18] nfsd: add a fh_compose_shallow
-Message-ID: <20150807142457.49d60500@synchrony.poochiereds.net>
-In-Reply-To: <20150807135610.2990d1ac@synchrony.poochiereds.net>
-References: <1438264341-18048-1-git-send-email-jeff.layton@primarydata.com>
-	<1438809216-4846-1-git-send-email-jeff.layton@primarydata.com>
-	<1438809216-4846-17-git-send-email-jeff.layton@primarydata.com>
-	<55C4CFE6.1080300@gmail.com>
-	<20150807135610.2990d1ac@synchrony.poochiereds.net>
+Received: from mx144.netapp.com ([216.240.21.25]:10403 "EHLO mx144.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754028AbbHGUia (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 7 Aug 2015 16:38:30 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>,
+        <bfields@fieldses.org>
+CC: <Anna.Schumaker@netapp.com>
+Subject: [PATCH 0/7] NFSv4.2: Add support for the COPY operation
+Date: Fri, 7 Aug 2015 16:38:16 -0400
+Message-ID: <1438979904-8775-1-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 7 Aug 2015 13:56:10 -0400
-Jeff Layton <jlayton@poochiereds.net> wrote:
+These patches add client and server support for the NFS v4.2 COPY operation.
+Unlike the similar CLONE operation, COPY can support both acceleration through
+and reflink and a full copy of data from one file into another.  These patches
+make use of Zach Brown's vfs_copy_file_range() syscall, and the first three
+patches in this series are simply a reposting of the patches that add the
+syscall.
 
-> On Fri, 7 Aug 2015 23:33:58 +0800
-> Kinglong Mee <kinglongmee@gmail.com> wrote:
-> 
-> > On 8/6/2015 05:13, Jeff Layton wrote:
-> > > In a later patch, we'll need to be able to cook up a knfsd_fh from a
-> > > dentry/export combo. Usually nfsd works with svc_fh's, but that takes
-> > > a lot of extra baggage that we don't really need here.
-> > > 
-> > > Add a routine that encodes the filehandle directly into a knfsd_fh
-> > > instead. Much like we have a fh_copy_shallow, the new routine is called
-> > > fh_compose_shallow.
-> > > 
-> > > Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
-> > > ---
-> > >  fs/nfsd/nfsfh.c | 112 +++++++++++++++++++++++++++++---------------------------
-> > >  fs/nfsd/nfsfh.h |   2 +
-> > >  2 files changed, 60 insertions(+), 54 deletions(-)
-> > > 
-> > > diff --git a/fs/nfsd/nfsfh.c b/fs/nfsd/nfsfh.c
-> > > index b601f291d825..ee6d4b746467 100644
-> > > --- a/fs/nfsd/nfsfh.c
-> > > +++ b/fs/nfsd/nfsfh.c
-> > > @@ -511,32 +511,64 @@ retry:
-> > >  }
-> > >  
-> > >  __be32
-> > > -fh_compose(struct svc_fh *fhp, struct svc_export *exp, struct dentry *dentry,
-> > > -	   struct svc_fh *ref_fh)
-> > > +fh_compose_shallow(struct knfsd_fh *kfh, int maxsize, struct svc_export *exp,
-> > > +			struct dentry *dentry, struct svc_fh *ref_fh)
-> > >  {
-> > > -	/* ref_fh is a reference file handle.
-> > > -	 * if it is non-null and for the same filesystem, then we should compose
-> > > -	 * a filehandle which is of the same version, where possible.
-> > > -	 * Currently, that means that if ref_fh->fh_handle.fh_version == 0xca
-> > > -	 * Then create a 32byte filehandle using nfs_fhbase_old
-> > > -	 *
-> > > -	 */
-> > > +	struct inode	*inode = d_inode(dentry);
-> > > +	dev_t		ex_dev = exp_sb(exp)->s_dev;
-> > >  
-> > > -	struct inode * inode = d_inode(dentry);
-> > > -	dev_t ex_dev = exp_sb(exp)->s_dev;
-> > > -
-> > > -	dprintk("nfsd: fh_compose(exp %02x:%02x/%ld %pd2, ino=%ld)\n",
-> > > -		MAJOR(ex_dev), MINOR(ex_dev),
-> > > +	dprintk("nfsd: %s(exp %02x:%02x/%ld %pd2, ino=%ld)\n",
-> > > +		__func__, MAJOR(ex_dev), MINOR(ex_dev),
-> > >  		(long) d_inode(exp->ex_path.dentry)->i_ino,
-> > > -		dentry,
-> > > -		(inode ? inode->i_ino : 0));
-> > > +		dentry, (inode ? inode->i_ino : 0));
-> > >  
-> > > -	/* Choose filehandle version and fsid type based on
-> > > -	 * the reference filehandle (if it is in the same export)
-> > > -	 * or the export options.
-> > > +	/*
-> > > +	 * Choose filehandle version and fsid type based on the reference
-> > > +	 * filehandle (if it is in the same export) or the export options.
-> > >  	 */
-> > > -	 set_version_and_fsid_type(&fhp->fh_handle, fhp->fh_maxsize,
-> > > -				   exp, ref_fh);
-> > > +	set_version_and_fsid_type(kfh, maxsize, exp, ref_fh);
-> > > +	if (kfh->fh_version == 0xca) {
-> > > +		/* old style filehandle please */
-> > > +		memset(&kfh->fh_base, 0, NFS_FHSIZE);
-> > > +		kfh->fh_size = NFS_FHSIZE;
-> > > +		kfh->ofh_dcookie = 0xfeebbaca;
-> > > +		kfh->ofh_dev =  old_encode_dev(ex_dev);
-> > > +		kfh->ofh_xdev = kfh->ofh_dev;
-> > > +		kfh->ofh_xino =
-> > > +			ino_t_to_u32(d_inode(exp->ex_path.dentry)->i_ino);
-> > > +		kfh->ofh_dirino = ino_t_to_u32(parent_ino(dentry));
-> > > +		if (inode)
-> > > +			_fh_update_old(dentry, exp, kfh);
-> > > +	} else {
-> > > +		kfh->fh_size = key_len(kfh->fh_fsid_type) + 4;
-> > > +		kfh->fh_auth_type = 0;
-> > > +
-> > > +		mk_fsid(kfh->fh_fsid_type, kfh->fh_fsid, ex_dev,
-> > > +			d_inode(exp->ex_path.dentry)->i_ino,
-> > > +			exp->ex_fsid, exp->ex_uuid);
-> > > +
-> > > +		if (inode)
-> > > +			_fh_update(kfh, maxsize, exp, dentry);
-> > > +
-> > > +		if (kfh->fh_fileid_type == FILEID_INVALID)
-> > > +			return nfserr_opnotsupp;
-> > > +	}
-> > > +	return nfs_ok;
-> > > +}
-> > > +
-> > > +/*
-> > > + * ref_fh is a reference file handle.
-> > > + * if it is non-null and for the same filesystem, then we should compose
-> > > + * a filehandle which is of the same version, where possible.
-> > > + * Currently, that means that if ref_fh->fh_handle.fh_version == 0xca
-> > > + * Then create a 32byte filehandle using nfs_fhbase_old
-> > > + *
-> > > + */
-> > > +__be32
-> > > +fh_compose(struct svc_fh *fhp, struct svc_export *exp, struct dentry *dentry,
-> > > +	   struct svc_fh *ref_fh)
-> > > +{
-> > > +	__be32		status;
-> > >  
-> > >  	if (ref_fh == fhp)
-> > >  		fh_put(ref_fh);
-> > 
-> > set_version_and_fsid_type will use fh_dentry in ref_fh, 
-> > So it *must* be used with a valid ref_fh.
-> > 
-> > With this patch, fh_put(ref_fh) will put fh_dentry and set to NULL!!!
-> > 
-> > Also, pynfs4.1's LKPP1d failed as, 
-> > LKPP1d   st_lookupp.testLookupp                                   : FAILURE
-> >            LOOKUPP returned
-> >            '\x01\x00\x07\x00\x02\x00\x00\x00\x00\x00\x00\x004\x93\x1f\x04L*C\x9b\x95L]\x83\x0f\xa4\xbe\x8c',
-> >            expected '\x01\x00\x01\x00\x00\x00\x00\x00'
-> > 
-> > Move set_version_and_fsid_type back, before fh_put(ref_fh).
-> > 
-> > thanks,
-> > Kinglong Mee
-> > 
-> 
-> Ahh ok, it took me a minute but I see what you're saying now. Yes, this
-> is broken. I'll fix it, but I'm yet convinced that that is the best way.
-> 
-> Thanks,
-> Jeff
-> 
+Patch 4 expands vfs_copy_file_range() to fall back on the splice interface for
+copies where the filesystem does not support copy accelerations.  This behavior
+is useful for NFSD, since we'll still want to copy the file even if we can't
+do a reflink.  Additionally, this opens up the possibility of in-kernel copies
+for all filesystems without needing to do frequent switches between kernel and
+user space.  The only potential drawback I've noticed is that splice will write
+out data in PAGE_SIZE chunks, even if wsize > PAGE_SIZE.  This leads to a few
+more writes over the wire, but I have not noticed a significant timing
+difference.  Still, I wonder if there is a better way to optimize this for NFS.
 
-Ok, I think this may be a better fix. I'll roll this into the original
-patch before I send the next respin, but wanted to send it along first
-to see whether you see any issue with it
+The remaining patches implement the COPY operation for both the client and the
+server.  The program I used for testing is included as an RFC as the last patch
+in the series.  I gathered performance information by comparing the runtime and
+RPC count of this program against /usr/bin/cp for various file sizes.
 
-The idea here is to instead encode the filehandle first, and only do
-the fh_put for the ref_fh and take dentry/export references if that
-succeeds.
+/usr/bin/cp:
+                      size:    513MB   1024MB   1536MB   2048MB
+------------- ------------- -------- -------- -------- --------
+nfs v4 client        total:     8203    16396    24588    32780
+------------- ------------- -------- -------- -------- --------
+nfs v4 client         read:     4096     8192    12288    16384
+nfs v4 client        write:     4096     8192    12288    16384
+nfs v4 client       commit:        1        1        1        1
+nfs v4 client         open:        1        1        1        1
+nfs v4 client    open_noat:        2        2        2        2
+nfs v4 client        close:        1        1        1        1
+nfs v4 client      setattr:        2        2        2        2
+nfs v4 client       access:        2        3        3        3
+nfs v4 client      getattr:        2        2        2        2
 
-Does that look like a reasonable fix to you, or am I missing something?
-I'll also make sure I run pynfs against this before I submit the next
-iteration of the series.
+/usr/bin/cp /nfs/test-512  /nfs/test-copy  0.00s user 0.32s system 14% cpu 2.209 total
+/usr/bin/cp /nfs/test-1024 /nfs/test-copy  0.00s user 0.66s system 18% cpu 3.651 total
+/usr/bin/cp /nfs/test-1536 /nfs/test-copy  0.02s user 0.97s system 18% cpu 5.477 total
+/usr/bin/cp /nfs/test-2048 /nfs/test-copy  0.00s user 1.38s system 15% cpu 9.085 total
+
+
+Copy system call:
+                      size:    512MB   1024MB   1536MB   2048MB
+------------- ------------- -------- -------- -------- --------
+nfs v4 client        total:        6        6        6        6
+------------- ------------- -------- -------- -------- --------
+nfs v4 client         open:        2        2        2        2
+nfs v4 client        close:        2        2        2        2
+nfs v4 client       access:        1        1        1        1
+nfs v4 client         copy:        1        1        1        1
+
+
+./nfscopy /nfs/test-512  /nfs/test-copy  0.00s user 0.00s system 0% cpu 1.148 total
+./nfscopy /nfs/test-1024 /nfs/test-copy  0.00s user 0.00s system 0% cpu 2.293 total
+./nfscopy /nfs/test-1536 /nfs/test-copy  0.00s user 0.00s system 0% cpu 3.037 total
+./nfscopy /nfs/test-2048 /nfs/test-copy  0.00s user 0.00s system 0% cpu 4.045 total
+
+
+Questions, comments, and other testing ideas would be greatly appreciated!
+
+Thanks,
+Anna
+
+
+Anna Schumaker (4):
+  VFS: Fall back on splice if no copy function defined
+  nfsd: Pass filehandle to nfs4_preprocess_stateid_op()
+  NFSD: Implement the COPY call
+  NFS: Add COPY nfs operation
+
+Zach Brown (3):
+  vfs: add copy_file_range syscall and vfs helper
+  x86: add sys_copy_file_range to syscall tables
+  btrfs: add .copy_file_range file operation
+
+ arch/x86/entry/syscalls/syscall_32.tbl |   1 +
+ arch/x86/entry/syscalls/syscall_64.tbl |   1 +
+ fs/btrfs/ctree.h                       |   3 +
+ fs/btrfs/file.c                        |   1 +
+ fs/btrfs/ioctl.c                       |  91 ++++++++++++----------
+ fs/nfs/nfs42.h                         |   1 +
+ fs/nfs/nfs42proc.c                     |  40 ++++++++++
+ fs/nfs/nfs42xdr.c                      | 136 +++++++++++++++++++++++++++++++++
+ fs/nfs/nfs4file.c                      |   8 ++
+ fs/nfs/nfs4proc.c                      |   1 +
+ fs/nfs/nfs4xdr.c                       |   1 +
+ fs/nfsd/nfs4proc.c                     |  79 +++++++++++++++++--
+ fs/nfsd/nfs4state.c                    |   5 +-
+ fs/nfsd/nfs4xdr.c                      |  62 ++++++++++++++-
+ fs/nfsd/state.h                        |   4 +-
+ fs/nfsd/vfs.c                          |  13 ++++
+ fs/nfsd/vfs.h                          |   1 +
+ fs/nfsd/xdr4.h                         |  23 ++++++
+ fs/read_write.c                        | 133 ++++++++++++++++++++++++++++++++
+ include/linux/fs.h                     |   3 +
+ include/linux/nfs4.h                   |   1 +
+ include/linux/nfs_fs_sb.h              |   1 +
+ include/linux/nfs_xdr.h                |  27 +++++++
+ include/uapi/asm-generic/unistd.h      |   4 +-
+ kernel/sys_ni.c                        |   1 +
+ 25 files changed, 587 insertions(+), 54 deletions(-)
 
 -- 
-Jeff Layton <jlayton@poochiereds.net>
+2.5.0
+
