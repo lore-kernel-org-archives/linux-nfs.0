@@ -1,77 +1,107 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:58673 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753234AbbHGPTh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 7 Aug 2015 11:19:37 -0400
-Date: Fri, 7 Aug 2015 11:19:36 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jeff.layton@primarydata.com>
-Cc: Jeff Layton <jlayton@primarydata.com>, linux-nfs@vger.kernel.org
-Subject: Re: grace-period ending & NLM
-Message-ID: <20150807151936.GC15313@fieldses.org>
-References: <20150806202336.GA7235@fieldses.org>
- <20150806182442.13f19d7e@tlielax.poochiereds.net>
- <20150807010234.GA8747@fieldses.org>
- <20150807071058.689d83e9@tlielax.poochiereds.net>
+Received: from mail-pa0-f43.google.com ([209.85.220.43]:33581 "EHLO
+	mail-pa0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754114AbbHGPZ6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 7 Aug 2015 11:25:58 -0400
+Received: by pabyb7 with SMTP id yb7so58055809pab.0
+        for <linux-nfs@vger.kernel.org>; Fri, 07 Aug 2015 08:25:57 -0700 (PDT)
+From: Kinglong Mee <kinglongmee@gmail.com>
+Subject: Re: [PATCH v2 02/18] nfsd: move some file caching helpers to a common
+ header
+To: Jeff Layton <jlayton@poochiereds.net>, bfields@fieldses.org
+References: <1438264341-18048-1-git-send-email-jeff.layton@primarydata.com>
+ <1438809216-4846-1-git-send-email-jeff.layton@primarydata.com>
+ <1438809216-4846-3-git-send-email-jeff.layton@primarydata.com>
+Cc: linux-nfs@vger.kernel.org, kinglongmee@gmail.com
+Message-ID: <55C4CDE7.1080101@gmail.com>
+Date: Fri, 7 Aug 2015 23:25:27 +0800
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20150807071058.689d83e9@tlielax.poochiereds.net>
+In-Reply-To: <1438809216-4846-3-git-send-email-jeff.layton@primarydata.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Aug 07, 2015 at 07:10:58AM -0400, Jeff Layton wrote:
-> On Thu, 6 Aug 2015 21:02:34 -0400
-> "J. Bruce Fields" <bfields@fieldses.org> wrote:
+On 8/6/2015 05:13, Jeff Layton wrote:
+> We'll want to reuse some of this for common open file caching
+> infrastructure.
 > 
-> > On Thu, Aug 06, 2015 at 06:24:42PM -0400, Jeff Layton wrote:
-> > > On Thu, 6 Aug 2015 16:23:36 -0400
-> > > bfields@fieldses.org (J. Bruce Fields) wrote:
-> > > 
-> > > > We have two grace periods, one for NLM and one for NFSv4+, and don't
-> > > > permit normal locking until both are over.
-> > > > 
-> > > > As far as I can tell nfsdcltrack doesn't understand statd/NSM state; it
-> > > > only concerns itself with NFSv4+.  It can end the NFSv4 grace period
-> > > > early, but that still leaves the server returning GRACE errors until NSM
-> > > > exits its grace period.
-> > > > 
-> > > > The server has never had any smarts to end the NSM grace period early,
-> > > > even though there are common cases (e.g., no clients at all) where it
-> > > > easily could.  We could fix that.
-> > > > 
-> > > 
-> > > Erm...but it does have those smarts. statd should end the grace period
-> > > early if there were no clients to be notified when it starts. That's
-> > > done by writing to /proc/fs/lockd/nlm_end_grace. Those patches were
-> > > merged upstream in the kernel and nfs-utils around the same time as the
-> > > other early grace lifting patches.
-> > 
-> > Yeah, I don't know how I forgot that.  Thanks for the reminder.  That
-> > doesn't seem to be working for me on Fedora 21.  I'll take another look.
-> > 
-> > (I may still apply ths patch if you don't see a problem with it.)
-> > 
-> > --b.
-> > 
+> Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
+> ---
+>  fs/nfsd/filecache.h | 25 +++++++++++++++++++++++++
+>  fs/nfsd/nfs4state.c | 17 ++---------------
+>  2 files changed, 27 insertions(+), 15 deletions(-)
+>  create mode 100644 fs/nfsd/filecache.h
 > 
-> No objection. I think it looks reasonable.
-> 
-> I'd also be interested to know why the NLM grace period isn't being
-> lifted early for you. That did work when I tested it last.
-> 
-> Oh, and I misstated earlier...it's not statd that lifts the grace
-> period early, it's sm-notify. sm-notify is in charge of notifying hosts
-> after a reboot and if it has none to notify it'll write "Y" to that file
-> (if it exists).
+> diff --git a/fs/nfsd/filecache.h b/fs/nfsd/filecache.h
+> new file mode 100644
+> index 000000000000..9051ee54faa3
+> --- /dev/null
+> +++ b/fs/nfsd/filecache.h
+> @@ -0,0 +1,25 @@
+> +#ifndef _FS_NFSD_FILECACHE_H
+> +#define _FS_NFSD_FILECACHE_H
+> +
+> +#include <linux/jhash.h>
+> +#include <linux/sunrpc/xdr.h>
+> +
+> +#include "export.h"
+> +
+> +/* hash table for nfs4_file */
+> +#define NFSD_FILE_HASH_BITS                   8
+> +#define NFSD_FILE_HASH_SIZE                  (1 << NFSD_FILE_HASH_BITS)
+> +
+> +static inline unsigned int
+> +nfsd_fh_hashval(struct knfsd_fh *fh)
+> +{
+> +	return jhash2(fh->fh_base.fh_pad, XDR_QUADLEN(fh->fh_size), 0);
+> +}
+> +
+> +static inline unsigned int
+> +file_hashval(struct knfsd_fh *fh)
 
-Yes, sorry, and I just wasn't running the test right: sm-notify only
-gets run on a real reboot.  (nfs-server.service does start it, but it
-exits immediately if it sees the pid file it wrote before).  Adding
-SMNOTIFYARGS='-f' to /etc/sysconfig/nfs makes this work as expected.
+Update to nfsd_file_hashval maybe better ?
 
-(In my defense, that's kind of weird behavior: but as I understand it
-statd lumps together all clients and servers on the same machine, so a
-a notify would cause us to lose locks on any nfs mounts?  In which case
-maybe this is the only safe thing to do.)
+thanks,
+Kinglong Mee
 
---b.
+> +{
+> +	return nfsd_fh_hashval(fh) & (NFSD_FILE_HASH_SIZE - 1);
+> +}
+> +
+> +#endif /* _FS_NFSD_FILECACHE_H */
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 43903abd6189..b3b306bd1830 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -49,6 +49,7 @@
+>  
+>  #include "netns.h"
+>  #include "pnfs.h"
+> +#include "filecache.h"
+>  
+>  #define NFSDDBG_FACILITY                NFSDDBG_PROC
+>  
+> @@ -381,21 +382,7 @@ static unsigned int ownerstr_hashval(struct xdr_netobj *ownername)
+>  	return ret & OWNER_HASH_MASK;
+>  }
+>  
+> -/* hash table for nfs4_file */
+> -#define FILE_HASH_BITS                   8
+> -#define FILE_HASH_SIZE                  (1 << FILE_HASH_BITS)
+> -
+> -static unsigned int nfsd_fh_hashval(struct knfsd_fh *fh)
+> -{
+> -	return jhash2(fh->fh_base.fh_pad, XDR_QUADLEN(fh->fh_size), 0);
+> -}
+> -
+> -static unsigned int file_hashval(struct knfsd_fh *fh)
+> -{
+> -	return nfsd_fh_hashval(fh) & (FILE_HASH_SIZE - 1);
+> -}
+> -
+> -static struct hlist_head file_hashtbl[FILE_HASH_SIZE];
+> +static struct hlist_head file_hashtbl[NFSD_FILE_HASH_SIZE];
+>  
+>  static void
+>  __nfs4_file_get_access(struct nfs4_file *fp, u32 access)
+> 
