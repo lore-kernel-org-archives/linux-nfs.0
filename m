@@ -1,200 +1,58 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yk0-f178.google.com ([209.85.160.178]:36822 "EHLO
-	mail-yk0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932495AbbHHKiU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 8 Aug 2015 06:38:20 -0400
-Received: by ykeo23 with SMTP id o23so106646070yke.3
-        for <linux-nfs@vger.kernel.org>; Sat, 08 Aug 2015 03:38:19 -0700 (PDT)
-Date: Sat, 8 Aug 2015 06:38:17 -0400
-From: Jeff Layton <jlayton@poochiereds.net>
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2 16/18] nfsd: add a fh_compose_shallow
-Message-ID: <20150808063817.25b80bd5@tlielax.poochiereds.net>
-In-Reply-To: <55C54D03.2050908@gmail.com>
-References: <1438264341-18048-1-git-send-email-jeff.layton@primarydata.com>
-	<1438809216-4846-1-git-send-email-jeff.layton@primarydata.com>
-	<1438809216-4846-17-git-send-email-jeff.layton@primarydata.com>
-	<55C4CFE6.1080300@gmail.com>
-	<20150807135610.2990d1ac@synchrony.poochiereds.net>
-	<20150807142457.49d60500@synchrony.poochiereds.net>
-	<55C54D03.2050908@gmail.com>
+Received: from verein.lst.de ([213.95.11.211]:58104 "EHLO newverein.lst.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754102AbbHHOUm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 8 Aug 2015 10:20:42 -0400
+Date: Sat, 8 Aug 2015 16:20:40 +0200
+From: Christoph Hellwig <hch@lst.de>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: xfstests crash with trond/testing
+Message-ID: <20150808142040.GA9456@lst.de>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, 8 Aug 2015 08:27:47 +0800
-Kinglong Mee <kinglongmee@gmail.com> wrote:
+Running against a local pnfs block layout server.  4.2-rc5 is fine.
 
-> On 8/8/2015 02:24, Jeff Layton wrote:
-> > On Fri, 7 Aug 2015 13:56:10 -0400
-> > Jeff Layton <jlayton@poochiereds.net> wrote:
-> > 
-> >> On Fri, 7 Aug 2015 23:33:58 +0800
-> >> Kinglong Mee <kinglongmee@gmail.com> wrote:
-> >>
-> >>> On 8/6/2015 05:13, Jeff Layton wrote:
-> >>>> In a later patch, we'll need to be able to cook up a knfsd_fh from a
-> >>>> dentry/export combo. Usually nfsd works with svc_fh's, but that takes
-> >>>> a lot of extra baggage that we don't really need here.
-> >>>>
-> >>>> Add a routine that encodes the filehandle directly into a knfsd_fh
-> >>>> instead. Much like we have a fh_copy_shallow, the new routine is called
-> >>>> fh_compose_shallow.
-> >>>>
-> >>>> Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
-> >>>> ---
-> >>>>  fs/nfsd/nfsfh.c | 112 +++++++++++++++++++++++++++++---------------------------
-> >>>>  fs/nfsd/nfsfh.h |   2 +
-> >>>>  2 files changed, 60 insertions(+), 54 deletions(-)
-> >>>>
-> >>>> diff --git a/fs/nfsd/nfsfh.c b/fs/nfsd/nfsfh.c
-> >>>> index b601f291d825..ee6d4b746467 100644
-> >>>> --- a/fs/nfsd/nfsfh.c
-> >>>> +++ b/fs/nfsd/nfsfh.c
-> >>>> @@ -511,32 +511,64 @@ retry:
-> >>>>  }
-> >>>>  
-> >>>>  __be32
-> >>>> -fh_compose(struct svc_fh *fhp, struct svc_export *exp, struct dentry *dentry,
-> >>>> -	   struct svc_fh *ref_fh)
-> >>>> +fh_compose_shallow(struct knfsd_fh *kfh, int maxsize, struct svc_export *exp,
-> >>>> +			struct dentry *dentry, struct svc_fh *ref_fh)
-> >>>>  {
-> >>>> -	/* ref_fh is a reference file handle.
-> >>>> -	 * if it is non-null and for the same filesystem, then we should compose
-> >>>> -	 * a filehandle which is of the same version, where possible.
-> >>>> -	 * Currently, that means that if ref_fh->fh_handle.fh_version == 0xca
-> >>>> -	 * Then create a 32byte filehandle using nfs_fhbase_old
-> >>>> -	 *
-> >>>> -	 */
-> >>>> +	struct inode	*inode = d_inode(dentry);
-> >>>> +	dev_t		ex_dev = exp_sb(exp)->s_dev;
-> >>>>  
-> >>>> -	struct inode * inode = d_inode(dentry);
-> >>>> -	dev_t ex_dev = exp_sb(exp)->s_dev;
-> >>>> -
-> >>>> -	dprintk("nfsd: fh_compose(exp %02x:%02x/%ld %pd2, ino=%ld)\n",
-> >>>> -		MAJOR(ex_dev), MINOR(ex_dev),
-> >>>> +	dprintk("nfsd: %s(exp %02x:%02x/%ld %pd2, ino=%ld)\n",
-> >>>> +		__func__, MAJOR(ex_dev), MINOR(ex_dev),
-> >>>>  		(long) d_inode(exp->ex_path.dentry)->i_ino,
-> >>>> -		dentry,
-> >>>> -		(inode ? inode->i_ino : 0));
-> >>>> +		dentry, (inode ? inode->i_ino : 0));
-> >>>>  
-> >>>> -	/* Choose filehandle version and fsid type based on
-> >>>> -	 * the reference filehandle (if it is in the same export)
-> >>>> -	 * or the export options.
-> >>>> +	/*
-> >>>> +	 * Choose filehandle version and fsid type based on the reference
-> >>>> +	 * filehandle (if it is in the same export) or the export options.
-> >>>>  	 */
-> >>>> -	 set_version_and_fsid_type(&fhp->fh_handle, fhp->fh_maxsize,
-> >>>> -				   exp, ref_fh);
-> >>>> +	set_version_and_fsid_type(kfh, maxsize, exp, ref_fh);
-> >>>> +	if (kfh->fh_version == 0xca) {
-> >>>> +		/* old style filehandle please */
-> >>>> +		memset(&kfh->fh_base, 0, NFS_FHSIZE);
-> >>>> +		kfh->fh_size = NFS_FHSIZE;
-> >>>> +		kfh->ofh_dcookie = 0xfeebbaca;
-> >>>> +		kfh->ofh_dev =  old_encode_dev(ex_dev);
-> >>>> +		kfh->ofh_xdev = kfh->ofh_dev;
-> >>>> +		kfh->ofh_xino =
-> >>>> +			ino_t_to_u32(d_inode(exp->ex_path.dentry)->i_ino);
-> >>>> +		kfh->ofh_dirino = ino_t_to_u32(parent_ino(dentry));
-> >>>> +		if (inode)
-> >>>> +			_fh_update_old(dentry, exp, kfh);
-> >>>> +	} else {
-> >>>> +		kfh->fh_size = key_len(kfh->fh_fsid_type) + 4;
-> >>>> +		kfh->fh_auth_type = 0;
-> >>>> +
-> >>>> +		mk_fsid(kfh->fh_fsid_type, kfh->fh_fsid, ex_dev,
-> >>>> +			d_inode(exp->ex_path.dentry)->i_ino,
-> >>>> +			exp->ex_fsid, exp->ex_uuid);
-> >>>> +
-> >>>> +		if (inode)
-> >>>> +			_fh_update(kfh, maxsize, exp, dentry);
-> >>>> +
-> >>>> +		if (kfh->fh_fileid_type == FILEID_INVALID)
-> >>>> +			return nfserr_opnotsupp;
-> >>>> +	}
-> >>>> +	return nfs_ok;
-> >>>> +}
-> >>>> +
-> >>>> +/*
-> >>>> + * ref_fh is a reference file handle.
-> >>>> + * if it is non-null and for the same filesystem, then we should compose
-> >>>> + * a filehandle which is of the same version, where possible.
-> >>>> + * Currently, that means that if ref_fh->fh_handle.fh_version == 0xca
-> >>>> + * Then create a 32byte filehandle using nfs_fhbase_old
-> >>>> + *
-> >>>> + */
-> >>>> +__be32
-> >>>> +fh_compose(struct svc_fh *fhp, struct svc_export *exp, struct dentry *dentry,
-> >>>> +	   struct svc_fh *ref_fh)
-> >>>> +{
-> >>>> +	__be32		status;
-> >>>>  
-> >>>>  	if (ref_fh == fhp)
-> >>>>  		fh_put(ref_fh);
-> >>>
-> >>> set_version_and_fsid_type will use fh_dentry in ref_fh, 
-> >>> So it *must* be used with a valid ref_fh.
-> >>>
-> >>> With this patch, fh_put(ref_fh) will put fh_dentry and set to NULL!!!
-> >>>
-> >>> Also, pynfs4.1's LKPP1d failed as, 
-> >>> LKPP1d   st_lookupp.testLookupp                                   : FAILURE
-> >>>            LOOKUPP returned
-> >>>            '\x01\x00\x07\x00\x02\x00\x00\x00\x00\x00\x00\x004\x93\x1f\x04L*C\x9b\x95L]\x83\x0f\xa4\xbe\x8c',
-> >>>            expected '\x01\x00\x01\x00\x00\x00\x00\x00'
-> >>>
-> >>> Move set_version_and_fsid_type back, before fh_put(ref_fh).
-> >>>
-> >>> thanks,
-> >>> Kinglong Mee
-> >>>
-> >>
-> >> Ahh ok, it took me a minute but I see what you're saying now. Yes, this
-> >> is broken. I'll fix it, but I'm yet convinced that that is the best way.
-> >>
-> >> Thanks,
-> >> Jeff
-> >>
-> > 
-> > Ok, I think this may be a better fix. I'll roll this into the original
-> > patch before I send the next respin, but wanted to send it along first
-> > to see whether you see any issue with it
-> > 
-> > The idea here is to instead encode the filehandle first, and only do
-> > the fh_put for the ref_fh and take dentry/export references if that
-> > succeeds.
-> 
-> Must make sure the order as following,
-> 
-> set_version_and_fsid_type(fhp, exp, ref_fh);
-> if (ref_fh == fhp)
->                 fh_put(ref_fh);
-> fhp->fh_dentry = dget(dentry); /* our internal copy */
->         fhp->fh_export = exp_get(exp);
-> 
 
-Ok, I think this change should satisfy that requirement.
-
-> > 
-> > Does that look like a reasonable fix to you, or am I missing something?
-> > I'll also make sure I run pynfs against this before I submit the next
-> > iteration of the series.
-> 
-> I will look forward to it.
-> 
-
-I ran pynfs against my original patches and saw the breakage you saw.
-This patch seems to have fixed it. I'll roll that change into v3 of the
-series.
-
-Thanks for the review so far!
--- 
-Jeff Layton <jlayton@poochiereds.net>
+generic/208 files ...
+[ 4230.992608] BUG: unable to handle kernel NULL pointer dereference at           (null)
+[ 4230.992923] IP: [<ffffffff81370509>] nfs_request_add_commit_list+0x59/0x140
+[ 4230.992923] PGD 6eaa7067 PUD 7a30f067 PMD 0 
+[ 4230.992923] Oops: 0000 [#1] SMP 
+[ 4230.992923] Modules linked in:
+[ 4230.992923] CPU: 3 PID: 22263 Comm: kworker/3:3 Not tainted 4.2.0-rc5+ #1718
+[ 4230.992923] Hardware name: Bochs Bochs, BIOS Bochs 01/01/2007
+[ 4230.992923] Workqueue: nfsiod rpc_async_release
+[ 4230.992923] task: ffff88006dd64d40 ti: ffff88006efc8000 task.ti: ffff88006efc8000
+[ 4230.992923] RIP: 0010:[<ffffffff81370509>]  [<ffffffff81370509>] nfs_request_add_commit_list+0x59/0x140
+[ 4230.992923] RSP: 0018:ffff88006efcbc68  EFLAGS: 00010282
+[ 4230.992923] RAX: 0000000000000000 RBX: ffff88006efcbcb0 RCX: 0000000000000001
+[ 4230.992923] RDX: 0000000000000003 RSI: ffff88003ffa3aa0 RDI: ffff88003ffa3a88
+[ 4230.992923] RBP: ffff88006efcbc88 R08: 0000000000000001 R09: 0000000000000000
+[ 4230.992923] R10: 0000000000000000 R11: 0000000000000000 R12: ffff88007dc807e0
+[ 4230.992923] R13: ffff88001c99ad78 R14: ffff88006de28490 R15: 0000000000000001
+[ 4230.992923] FS:  0000000000000000(0000) GS:ffff88007fd80000(0000) knlGS:0000000000000000
+[ 4230.992923] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+[ 4230.992923] CR2: 0000000000000000 CR3: 000000007af3e000 CR4: 00000000000006e0
+[ 4230.992923] Stack:
+[ 4230.992923]  ffff88006de28490 ffff88007a2584c0 ffff88006de28480 ffff88001c99ac08
+[ 4230.992923]  ffff88006efcbc98 ffffffff81371154 ffff88006efcbd08 ffffffff8136aced
+[ 4230.992923]  ffff88006efcbcc8 ffff88003ffa3a88 ffff88001c99ad68 ffff88001c99ad88
+[ 4230.992923] Call Trace:
+[ 4230.992923]  [<ffffffff81371154>] nfs_mark_request_commit+0x44/0x50
+[ 4230.992923]  [<ffffffff8136aced>] nfs_direct_write_completion+0xdd/0x230
+[ 4230.992923]  [<ffffffff8136baab>] nfs_pgio_release+0x1b/0x30
+[ 4230.992923]  [<ffffffff81d3143e>] rpc_free_task+0x2e/0x70
+[ 4230.992923]  [<ffffffff81d318f0>] rpc_async_release+0x10/0x20
+[ 4230.992923]  [<ffffffff810e06f9>] process_one_work+0x1a9/0x460
+[ 4230.992923]  [<ffffffff810e0683>] ? process_one_work+0x133/0x460
+[ 4230.992923]  [<ffffffff810e0b07>] worker_thread+0x117/0x420
+[ 4230.992923]  [<ffffffff810e09f0>] ? process_scheduled_works+0x40/0x40
+[ 4230.992923]  [<ffffffff810e6b1f>] kthread+0xdf/0x100
+[ 4230.992923]  [<ffffffff810e6a40>] ? __init_kthread_worker+0x70/0x70
+[ 4230.992923]  [<ffffffff81d8129f>] ret_from_fork+0x3f/0x70
+[ 4230.992923]  [<ffffffff810e6a40>] ? __init_kthread_worker+0x70/0x70
+[ 4230.992923] Code: e8 1d f0 ff ff 48 8b 3b e8 f5 04 a1 00 4d 8b 64 24 10 49 8b 04 24 a9 00 00 01 00 0f 85 e1 00 00 00 49 8b 44 24 08 48 83 7b 18 00 <4c> 8b 28 74 0e 48 8b 5d e8 4c 8b 65 f0 4c 8b 6d f8 c9 c3 4c 89 
