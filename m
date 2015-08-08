@@ -1,100 +1,187 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pa0-f43.google.com ([209.85.220.43]:35671 "EHLO
-	mail-pa0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1946426AbbHHAUX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 7 Aug 2015 20:20:23 -0400
-Received: by pabxd6 with SMTP id xd6so79944785pab.2
-        for <linux-nfs@vger.kernel.org>; Fri, 07 Aug 2015 17:20:23 -0700 (PDT)
-Subject: Re: [PATCH v2 06/18] nfsd: hook up nfsd_read to the nfsd_file cache
+Received: from mail-pa0-f42.google.com ([209.85.220.42]:33470 "EHLO
+	mail-pa0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1946435AbbHHA2R (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 7 Aug 2015 20:28:17 -0400
+Received: by pabyb7 with SMTP id yb7so65791841pab.0
+        for <linux-nfs@vger.kernel.org>; Fri, 07 Aug 2015 17:28:17 -0700 (PDT)
+Subject: Re: [PATCH v2 16/18] nfsd: add a fh_compose_shallow
 To: Jeff Layton <jlayton@poochiereds.net>
 References: <1438264341-18048-1-git-send-email-jeff.layton@primarydata.com>
  <1438809216-4846-1-git-send-email-jeff.layton@primarydata.com>
- <1438809216-4846-7-git-send-email-jeff.layton@primarydata.com>
- <55C4CEF0.6040004@gmail.com>
- <20150807132649.47f05970@synchrony.poochiereds.net>
+ <1438809216-4846-17-git-send-email-jeff.layton@primarydata.com>
+ <55C4CFE6.1080300@gmail.com>
+ <20150807135610.2990d1ac@synchrony.poochiereds.net>
+ <20150807142457.49d60500@synchrony.poochiereds.net>
 Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org, kinglongmee@gmail.com
 From: Kinglong Mee <kinglongmee@gmail.com>
-Message-ID: <55C54B2A.40804@gmail.com>
-Date: Sat, 8 Aug 2015 08:19:54 +0800
+Message-ID: <55C54D03.2050908@gmail.com>
+Date: Sat, 8 Aug 2015 08:27:47 +0800
 MIME-Version: 1.0
-In-Reply-To: <20150807132649.47f05970@synchrony.poochiereds.net>
+In-Reply-To: <20150807142457.49d60500@synchrony.poochiereds.net>
 Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 8/8/2015 01:26, Jeff Layton wrote:
-> On Fri, 7 Aug 2015 23:29:52 +0800
-> Kinglong Mee <kinglongmee@gmail.com> wrote:
+On 8/8/2015 02:24, Jeff Layton wrote:
+> On Fri, 7 Aug 2015 13:56:10 -0400
+> Jeff Layton <jlayton@poochiereds.net> wrote:
 > 
+>> On Fri, 7 Aug 2015 23:33:58 +0800
+>> Kinglong Mee <kinglongmee@gmail.com> wrote:
 >>
->> On 8/6/2015 05:13, Jeff Layton wrote:
->>> Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
->>> ---
->>>  fs/nfsd/vfs.c | 20 +++++++-------------
->>>  1 file changed, 7 insertions(+), 13 deletions(-)
+>>> On 8/6/2015 05:13, Jeff Layton wrote:
+>>>> In a later patch, we'll need to be able to cook up a knfsd_fh from a
+>>>> dentry/export combo. Usually nfsd works with svc_fh's, but that takes
+>>>> a lot of extra baggage that we don't really need here.
+>>>>
+>>>> Add a routine that encodes the filehandle directly into a knfsd_fh
+>>>> instead. Much like we have a fh_copy_shallow, the new routine is called
+>>>> fh_compose_shallow.
+>>>>
+>>>> Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
+>>>> ---
+>>>>  fs/nfsd/nfsfh.c | 112 +++++++++++++++++++++++++++++---------------------------
+>>>>  fs/nfsd/nfsfh.h |   2 +
+>>>>  2 files changed, 60 insertions(+), 54 deletions(-)
+>>>>
+>>>> diff --git a/fs/nfsd/nfsfh.c b/fs/nfsd/nfsfh.c
+>>>> index b601f291d825..ee6d4b746467 100644
+>>>> --- a/fs/nfsd/nfsfh.c
+>>>> +++ b/fs/nfsd/nfsfh.c
+>>>> @@ -511,32 +511,64 @@ retry:
+>>>>  }
+>>>>  
+>>>>  __be32
+>>>> -fh_compose(struct svc_fh *fhp, struct svc_export *exp, struct dentry *dentry,
+>>>> -	   struct svc_fh *ref_fh)
+>>>> +fh_compose_shallow(struct knfsd_fh *kfh, int maxsize, struct svc_export *exp,
+>>>> +			struct dentry *dentry, struct svc_fh *ref_fh)
+>>>>  {
+>>>> -	/* ref_fh is a reference file handle.
+>>>> -	 * if it is non-null and for the same filesystem, then we should compose
+>>>> -	 * a filehandle which is of the same version, where possible.
+>>>> -	 * Currently, that means that if ref_fh->fh_handle.fh_version == 0xca
+>>>> -	 * Then create a 32byte filehandle using nfs_fhbase_old
+>>>> -	 *
+>>>> -	 */
+>>>> +	struct inode	*inode = d_inode(dentry);
+>>>> +	dev_t		ex_dev = exp_sb(exp)->s_dev;
+>>>>  
+>>>> -	struct inode * inode = d_inode(dentry);
+>>>> -	dev_t ex_dev = exp_sb(exp)->s_dev;
+>>>> -
+>>>> -	dprintk("nfsd: fh_compose(exp %02x:%02x/%ld %pd2, ino=%ld)\n",
+>>>> -		MAJOR(ex_dev), MINOR(ex_dev),
+>>>> +	dprintk("nfsd: %s(exp %02x:%02x/%ld %pd2, ino=%ld)\n",
+>>>> +		__func__, MAJOR(ex_dev), MINOR(ex_dev),
+>>>>  		(long) d_inode(exp->ex_path.dentry)->i_ino,
+>>>> -		dentry,
+>>>> -		(inode ? inode->i_ino : 0));
+>>>> +		dentry, (inode ? inode->i_ino : 0));
+>>>>  
+>>>> -	/* Choose filehandle version and fsid type based on
+>>>> -	 * the reference filehandle (if it is in the same export)
+>>>> -	 * or the export options.
+>>>> +	/*
+>>>> +	 * Choose filehandle version and fsid type based on the reference
+>>>> +	 * filehandle (if it is in the same export) or the export options.
+>>>>  	 */
+>>>> -	 set_version_and_fsid_type(&fhp->fh_handle, fhp->fh_maxsize,
+>>>> -				   exp, ref_fh);
+>>>> +	set_version_and_fsid_type(kfh, maxsize, exp, ref_fh);
+>>>> +	if (kfh->fh_version == 0xca) {
+>>>> +		/* old style filehandle please */
+>>>> +		memset(&kfh->fh_base, 0, NFS_FHSIZE);
+>>>> +		kfh->fh_size = NFS_FHSIZE;
+>>>> +		kfh->ofh_dcookie = 0xfeebbaca;
+>>>> +		kfh->ofh_dev =  old_encode_dev(ex_dev);
+>>>> +		kfh->ofh_xdev = kfh->ofh_dev;
+>>>> +		kfh->ofh_xino =
+>>>> +			ino_t_to_u32(d_inode(exp->ex_path.dentry)->i_ino);
+>>>> +		kfh->ofh_dirino = ino_t_to_u32(parent_ino(dentry));
+>>>> +		if (inode)
+>>>> +			_fh_update_old(dentry, exp, kfh);
+>>>> +	} else {
+>>>> +		kfh->fh_size = key_len(kfh->fh_fsid_type) + 4;
+>>>> +		kfh->fh_auth_type = 0;
+>>>> +
+>>>> +		mk_fsid(kfh->fh_fsid_type, kfh->fh_fsid, ex_dev,
+>>>> +			d_inode(exp->ex_path.dentry)->i_ino,
+>>>> +			exp->ex_fsid, exp->ex_uuid);
+>>>> +
+>>>> +		if (inode)
+>>>> +			_fh_update(kfh, maxsize, exp, dentry);
+>>>> +
+>>>> +		if (kfh->fh_fileid_type == FILEID_INVALID)
+>>>> +			return nfserr_opnotsupp;
+>>>> +	}
+>>>> +	return nfs_ok;
+>>>> +}
+>>>> +
+>>>> +/*
+>>>> + * ref_fh is a reference file handle.
+>>>> + * if it is non-null and for the same filesystem, then we should compose
+>>>> + * a filehandle which is of the same version, where possible.
+>>>> + * Currently, that means that if ref_fh->fh_handle.fh_version == 0xca
+>>>> + * Then create a 32byte filehandle using nfs_fhbase_old
+>>>> + *
+>>>> + */
+>>>> +__be32
+>>>> +fh_compose(struct svc_fh *fhp, struct svc_export *exp, struct dentry *dentry,
+>>>> +	   struct svc_fh *ref_fh)
+>>>> +{
+>>>> +	__be32		status;
+>>>>  
+>>>>  	if (ref_fh == fhp)
+>>>>  		fh_put(ref_fh);
 >>>
->>> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
->>> index 59234d1d8d8e..fd688c86af66 100644
->>> --- a/fs/nfsd/vfs.c
->>> +++ b/fs/nfsd/vfs.c
->>> @@ -980,20 +980,14 @@ out_nfserr:
->>>  __be32 nfsd_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
->>>  	loff_t offset, struct kvec *vec, int vlen, unsigned long *count)
->>>  {
->>> -	struct file *file;
->>> -	struct raparms	*ra;
->>> -	__be32 err;
->>> -
->>> -	err = nfsd_open(rqstp, fhp, S_IFREG, NFSD_MAY_READ, &file);
->>> -	if (err)
->>> -		return err;
->>> -
->>> -	ra = nfsd_init_raparms(file);
->>> -	err = nfsd_vfs_read(rqstp, file, offset, vec, vlen, count);
->>> -	if (ra)
->>> -		nfsd_put_raparams(file, ra);
+>>> set_version_and_fsid_type will use fh_dentry in ref_fh, 
+>>> So it *must* be used with a valid ref_fh.
+>>>
+>>> With this patch, fh_put(ref_fh) will put fh_dentry and set to NULL!!!
+>>>
+>>> Also, pynfs4.1's LKPP1d failed as, 
+>>> LKPP1d   st_lookupp.testLookupp                                   : FAILURE
+>>>            LOOKUPP returned
+>>>            '\x01\x00\x07\x00\x02\x00\x00\x00\x00\x00\x00\x004\x93\x1f\x04L*C\x9b\x95L]\x83\x0f\xa4\xbe\x8c',
+>>>            expected '\x01\x00\x01\x00\x00\x00\x00\x00'
+>>>
+>>> Move set_version_and_fsid_type back, before fh_put(ref_fh).
+>>>
+>>> thanks,
+>>> Kinglong Mee
+>>>
 >>
->> Drop the raparms here ?
+>> Ahh ok, it took me a minute but I see what you're saying now. Yes, this
+>> is broken. I'll fix it, but I'm yet convinced that that is the best way.
 >>
+>> Thanks,
+>> Jeff
 >>
 > 
-> I'm not sure I understand your question. Are you asking why I dropped
-> the raparms from this code?
+> Ok, I think this may be a better fix. I'll roll this into the original
+> patch before I send the next respin, but wanted to send it along first
+> to see whether you see any issue with it
+> 
+> The idea here is to instead encode the filehandle first, and only do
+> the fh_put for the ref_fh and take dentry/export references if that
+> succeeds.
 
-Sorry. Yes, I'm asking why you dropped the raparms.
+Must make sure the order as following,
+
+set_version_and_fsid_type(fhp, exp, ref_fh);
+if (ref_fh == fhp)
+                fh_put(ref_fh);
+fhp->fh_dentry = dget(dentry); /* our internal copy */
+        fhp->fh_export = exp_get(exp);
 
 > 
-> If so, the reason is that we shouldn't need it any longer. We only keep
-> that cache now because we do an open for every READ RPC. With this, a
-> streaming read should end up using the same struct file, at least as
-> long as there's not _too_ long a delay between READ RPCs. The normal
-> vfs readahead machinery should work properly with this change.
-> 
-> I'd like to eventually have us hook this up to the nfs4_file cache as
-> well. I stopped short of that here since I didn't need that immediately
-> for what I'm working on, but it should be possible to make the
-> nfs4_file cache use the nfsd_file cache instead of calling dentry_open
-> directly. Once we do that, then I don't think we'll need the raparms
-> cache at all anymore.
+> Does that look like a reasonable fix to you, or am I missing something?
+> I'll also make sure I run pynfs against this before I submit the next
+> iteration of the series.
 
-Got it.
+I will look forward to it.
 
 thanks,
 Kinglong Mee
-
-> 
->>> -	fput(file);
->>> +	__be32			err;
->>> +	struct nfsd_file	*nf;
->>>  
->>> +	err = nfsd_file_acquire(rqstp, fhp, NFSD_MAY_READ, &nf);
->>> +	if (err == nfs_ok)
->>> +		err = nfsd_vfs_read(rqstp, nf->nf_file, offset, vec, vlen,
->>> +					count);
->>> +	nfsd_file_put(nf);
->>>  	return err;
->>>  }
->>>  
->>>
-> 
-> 
