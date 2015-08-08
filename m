@@ -1,239 +1,200 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yk0-f175.google.com ([209.85.160.175]:35407 "EHLO
-	mail-yk0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932495AbbHHKg2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 8 Aug 2015 06:36:28 -0400
-Received: by ykcq64 with SMTP id q64so101920102ykc.2
-        for <linux-nfs@vger.kernel.org>; Sat, 08 Aug 2015 03:36:27 -0700 (PDT)
-Date: Sat, 8 Aug 2015 06:36:24 -0400
+Received: from mail-yk0-f178.google.com ([209.85.160.178]:36822 "EHLO
+	mail-yk0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932495AbbHHKiU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 8 Aug 2015 06:38:20 -0400
+Received: by ykeo23 with SMTP id o23so106646070yke.3
+        for <linux-nfs@vger.kernel.org>; Sat, 08 Aug 2015 03:38:19 -0700 (PDT)
+Date: Sat, 8 Aug 2015 06:38:17 -0400
 From: Jeff Layton <jlayton@poochiereds.net>
 To: Kinglong Mee <kinglongmee@gmail.com>
 Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2 04/18] nfsd: add a new struct file caching facility
- to nfsd
-Message-ID: <20150808063624.24b6fcc3@tlielax.poochiereds.net>
-In-Reply-To: <55C549D6.4030104@gmail.com>
+Subject: Re: [PATCH v2 16/18] nfsd: add a fh_compose_shallow
+Message-ID: <20150808063817.25b80bd5@tlielax.poochiereds.net>
+In-Reply-To: <55C54D03.2050908@gmail.com>
 References: <1438264341-18048-1-git-send-email-jeff.layton@primarydata.com>
 	<1438809216-4846-1-git-send-email-jeff.layton@primarydata.com>
-	<1438809216-4846-5-git-send-email-jeff.layton@primarydata.com>
-	<55C4CEA9.306@gmail.com>
-	<20150807131857.0a94bdfe@synchrony.poochiereds.net>
-	<55C549D6.4030104@gmail.com>
+	<1438809216-4846-17-git-send-email-jeff.layton@primarydata.com>
+	<55C4CFE6.1080300@gmail.com>
+	<20150807135610.2990d1ac@synchrony.poochiereds.net>
+	<20150807142457.49d60500@synchrony.poochiereds.net>
+	<55C54D03.2050908@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, 8 Aug 2015 08:14:14 +0800
+On Sat, 8 Aug 2015 08:27:47 +0800
 Kinglong Mee <kinglongmee@gmail.com> wrote:
 
-> On 8/8/2015 01:18, Jeff Layton wrote:
-> > On Fri, 7 Aug 2015 23:28:41 +0800
-> > Kinglong Mee <kinglongmee@gmail.com> wrote:
+> On 8/8/2015 02:24, Jeff Layton wrote:
+> > On Fri, 7 Aug 2015 13:56:10 -0400
+> > Jeff Layton <jlayton@poochiereds.net> wrote:
 > > 
-> >> On 8/6/2015 05:13, Jeff Layton wrote:
-> >>> Currently, NFSv2/3 reads and writes have to open a file, do the read or
-> >>> write and then close it again for each RPC. This is highly inefficient,
-> >>> especially when the underlying filesystem has a relatively slow open
-> >>> routine.
-> >>>
-> >>> This patch adds a new open file cache to knfsd. Rather than doing an
-> >>> open for each RPC, the read/write handlers can call into this cache to
-> >>> see if there is one already there for the correct filehandle and
-> >>> NFS_MAY_READ/WRITE flags.
-> >>>
-> >>> If there isn't an entry, then we create a new one and attempt to
-> >>> perform the open. If there is, then we wait until the entry is fully
-> >>> instantiated and return it if it is at the end of the wait. If it's
-> >>> not, then we attempt to take over construction.
-> >>>
-> >>> Since the main goal is to speed up NFSv2/3 I/O, we don't want to
-> >>> close these files on last put of these objects. We need to keep them
-> >>> around for a little while since we never know when the next READ/WRITE
-> >>> will come in.
-> >>>
-> >>> Cache entries have a hardcoded 1s timeout, and we have a recurring
-> >>> workqueue job that walks the cache and purges any entries that have
-> >>> expired.
-> >>>
-> >>> Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
-> >> ... snip ... 
-> >>> diff --git a/fs/nfsd/filecache.h b/fs/nfsd/filecache.h
-> >>> index 9051ee54faa3..adf7e78b8e43 100644
-> >>> --- a/fs/nfsd/filecache.h
-> >>> +++ b/fs/nfsd/filecache.h
-> >>> @@ -4,6 +4,7 @@
-> >>>  #include <linux/jhash.h>
-> >>>  #include <linux/sunrpc/xdr.h>
-> >>>  
-> >>> +#include "nfsfh.h"
-> >>>  #include "export.h"
-> >>>  
-> >>>  /* hash table for nfs4_file */
-> >>> @@ -22,4 +23,24 @@ file_hashval(struct knfsd_fh *fh)
-> >>>  	return nfsd_fh_hashval(fh) & (NFSD_FILE_HASH_SIZE - 1);
-> >>>  }
-> >>>  
-> >>> +struct nfsd_file {
+> >> On Fri, 7 Aug 2015 23:33:58 +0800
+> >> Kinglong Mee <kinglongmee@gmail.com> wrote:
 > >>
-> >> There is a nfs4_file in nfsd, it's not easy to distinguish them for a new folk.
-> >> More comments or a meaningful name is better.
-> >>
-> > 
-> > Maybe. Again, any suggestions? My hope was that eventually we can unify
-> > the two caches somehow but maybe that's naive.
-> 
-> I cannot find a better name for the new file cache. More comments.
-> 
-> I don't agree with merging those two into one cache.
-> 
-> nfsv4's file cache is a state resource of client which will exist since close
-> or lease expire. But nfsd_file cache is a temporary resource for nfsv2/v3 client
-> without state. 
-> 
-
-You're probably right here. It was idle thought from when I first
-started this work. What we probably would want to do however is to
-layer the nfs4_file cache on top of this cache instead of having it
-manage filps on its own.
-
-I tried to design this cache so that it can handle O_RDWR opens, even
-though the current callers don't actually ever request those. It should
-be possible to hook up the nfs4_file cache to it, though I'd prefer to
-wait until we have this code in place first and then do that later.
-
-> Also, for nfsv4's conflict checking, should we check the temporary file cache
-> for nfsv2/v3 too?
-> 
-
-You mean for share/deny modes? We traditionally have not done that, and
-I don't see a compelling reason to start now. That would be a separate
-project in its own right, IMO. We'd need to lift the share/deny mode
-handling into this new cache.
-
-There's also the problem of there not being any protocol support for
-that in NFSv2/3. What would we return to the client if there's a deny
-mode conflict when it's trying to do (e.g.) a READ?
-
-
-> > 
-> >>> +	struct hlist_node	nf_node;
-> >>> +	struct list_head	nf_dispose;
-> >>> +	struct rcu_head		nf_rcu;
-> >>> +	struct file		*nf_file;
-> >>> +	unsigned long		nf_time;
-> >>> +#define NFSD_FILE_HASHED	(0)
-> >>
-> >> Why not using hlist_unhashed()? 
-> >>
-> > 
-> > These entries are removed from the list using hlist_del_rcu(), and
-> > hlist_unhashed will not return true after that.
-> 
-> As I understand, NFSD_FILE_HASHED means the file cache is added to 
-> nfsd_file_hashtbl, and increased the global file count.
-> 
-> With calling hlist_del_rcu, file cache has be deleted from the hashtbl,
-> and clear the NFSD_FILE_HASHED bit. 
-> 
-
-That's correct.
-
-> As using in the codes, the bit and hlist_unhashed have the same meaning.
-> Any mistake of my understand?
-> 
-
-hlist_unhashed() won't work here:
-
-static inline int hlist_unhashed(const struct hlist_node *h)
-{
-        return !h->pprev;
-}
-
-...but:
-
-static inline void hlist_del_rcu(struct hlist_node *n)
-{
-        __hlist_del(n);
-        n->pprev = LIST_POISON2;
-}
-
-...so after a hlist_del_rcu, hlist_unhashed will still return false. In
-order to get it to return true, we'd need to use hlist_del_init, but
-that would mean that we couldn't safely traverse the hash chain under
-the rcu_read_lock.
-
-> +static void
-> +nfsd_file_unhash(struct nfsd_file *nf)
-> +{
-> +	if (test_and_clear_bit(NFSD_FILE_HASHED, &nf->nf_flags)) {
-> +		hlist_del_rcu(&nf->nf_node);
-> +		nfsd_file_count_dec();
-> +	}
-> +}
-> 
-> thanks,
-> Kinglong Mee
-> 
-> > 
-> > 
-> >>> +#define NFSD_FILE_PENDING	(1)
-> >>> +	unsigned long		nf_flags;
-> >>> +	struct knfsd_fh		nf_handle;
-> >>> +	unsigned int		nf_hashval;
-> >>> +	atomic_t		nf_ref;
-> >>> +	unsigned char		nf_may;
-> >>> +};
-> >>> +
-> >>> +int nfsd_file_cache_init(void);
-> >>> +void nfsd_file_cache_shutdown(void);
-> >>> +void nfsd_file_put(struct nfsd_file *nf);
-> >>> +__be32 nfsd_file_acquire(struct svc_rqst *rqstp, struct svc_fh *fhp,
-> >>> +		  unsigned int may_flags, struct nfsd_file **nfp);
-> >>>  #endif /* _FS_NFSD_FILECACHE_H */
-> >>> diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-> >>> index ced9944201a0..0572441e23ec 100644
-> >>> --- a/fs/nfsd/nfssvc.c
-> >>> +++ b/fs/nfsd/nfssvc.c
-> >>> @@ -23,6 +23,7 @@
-> >>>  #include "cache.h"
-> >>>  #include "vfs.h"
-> >>>  #include "netns.h"
-> >>> +#include "filecache.h"
-> >>>  
-> >>>  #define NFSDDBG_FACILITY	NFSDDBG_SVC
-> >>>  
-> >>> @@ -233,11 +234,17 @@ static int nfsd_startup_generic(int nrservs)
-> >>>  	if (!nfsd_laundry_wq)
-> >>>  		goto out_racache;
-> >>>  
-> >>> -	ret = nfs4_state_start();
-> >>> +	ret = nfsd_file_cache_init();
-> >>>  	if (ret)
-> >>>  		goto out_wq;
-> >>> +
-> >>> +	ret = nfs4_state_start();
-> >>> +	if (ret)
-> >>> +		goto out_nfsd_file;
-> >>>  	return 0;
-> >>>  
-> >>> +out_nfsd_file:
-> >>> +	nfsd_file_cache_shutdown();
-> >>>  out_wq:
-> >>>  	destroy_workqueue(nfsd_laundry_wq);
-> >>>  	nfsd_laundry_wq = NULL;
-> >>> @@ -254,6 +261,7 @@ static void nfsd_shutdown_generic(void)
-> >>>  		return;
-> >>>  
-> >>>  	nfs4_state_shutdown();
-> >>> +	nfsd_file_cache_shutdown();
-> >>>  	nfsd_racache_shutdown();
-> >>>  }
-> >>>  
+> >>> On 8/6/2015 05:13, Jeff Layton wrote:
+> >>>> In a later patch, we'll need to be able to cook up a knfsd_fh from a
+> >>>> dentry/export combo. Usually nfsd works with svc_fh's, but that takes
+> >>>> a lot of extra baggage that we don't really need here.
+> >>>>
+> >>>> Add a routine that encodes the filehandle directly into a knfsd_fh
+> >>>> instead. Much like we have a fh_copy_shallow, the new routine is called
+> >>>> fh_compose_shallow.
+> >>>>
+> >>>> Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
+> >>>> ---
+> >>>>  fs/nfsd/nfsfh.c | 112 +++++++++++++++++++++++++++++---------------------------
+> >>>>  fs/nfsd/nfsfh.h |   2 +
+> >>>>  2 files changed, 60 insertions(+), 54 deletions(-)
+> >>>>
+> >>>> diff --git a/fs/nfsd/nfsfh.c b/fs/nfsd/nfsfh.c
+> >>>> index b601f291d825..ee6d4b746467 100644
+> >>>> --- a/fs/nfsd/nfsfh.c
+> >>>> +++ b/fs/nfsd/nfsfh.c
+> >>>> @@ -511,32 +511,64 @@ retry:
+> >>>>  }
+> >>>>  
+> >>>>  __be32
+> >>>> -fh_compose(struct svc_fh *fhp, struct svc_export *exp, struct dentry *dentry,
+> >>>> -	   struct svc_fh *ref_fh)
+> >>>> +fh_compose_shallow(struct knfsd_fh *kfh, int maxsize, struct svc_export *exp,
+> >>>> +			struct dentry *dentry, struct svc_fh *ref_fh)
+> >>>>  {
+> >>>> -	/* ref_fh is a reference file handle.
+> >>>> -	 * if it is non-null and for the same filesystem, then we should compose
+> >>>> -	 * a filehandle which is of the same version, where possible.
+> >>>> -	 * Currently, that means that if ref_fh->fh_handle.fh_version == 0xca
+> >>>> -	 * Then create a 32byte filehandle using nfs_fhbase_old
+> >>>> -	 *
+> >>>> -	 */
+> >>>> +	struct inode	*inode = d_inode(dentry);
+> >>>> +	dev_t		ex_dev = exp_sb(exp)->s_dev;
+> >>>>  
+> >>>> -	struct inode * inode = d_inode(dentry);
+> >>>> -	dev_t ex_dev = exp_sb(exp)->s_dev;
+> >>>> -
+> >>>> -	dprintk("nfsd: fh_compose(exp %02x:%02x/%ld %pd2, ino=%ld)\n",
+> >>>> -		MAJOR(ex_dev), MINOR(ex_dev),
+> >>>> +	dprintk("nfsd: %s(exp %02x:%02x/%ld %pd2, ino=%ld)\n",
+> >>>> +		__func__, MAJOR(ex_dev), MINOR(ex_dev),
+> >>>>  		(long) d_inode(exp->ex_path.dentry)->i_ino,
+> >>>> -		dentry,
+> >>>> -		(inode ? inode->i_ino : 0));
+> >>>> +		dentry, (inode ? inode->i_ino : 0));
+> >>>>  
+> >>>> -	/* Choose filehandle version and fsid type based on
+> >>>> -	 * the reference filehandle (if it is in the same export)
+> >>>> -	 * or the export options.
+> >>>> +	/*
+> >>>> +	 * Choose filehandle version and fsid type based on the reference
+> >>>> +	 * filehandle (if it is in the same export) or the export options.
+> >>>>  	 */
+> >>>> -	 set_version_and_fsid_type(&fhp->fh_handle, fhp->fh_maxsize,
+> >>>> -				   exp, ref_fh);
+> >>>> +	set_version_and_fsid_type(kfh, maxsize, exp, ref_fh);
+> >>>> +	if (kfh->fh_version == 0xca) {
+> >>>> +		/* old style filehandle please */
+> >>>> +		memset(&kfh->fh_base, 0, NFS_FHSIZE);
+> >>>> +		kfh->fh_size = NFS_FHSIZE;
+> >>>> +		kfh->ofh_dcookie = 0xfeebbaca;
+> >>>> +		kfh->ofh_dev =  old_encode_dev(ex_dev);
+> >>>> +		kfh->ofh_xdev = kfh->ofh_dev;
+> >>>> +		kfh->ofh_xino =
+> >>>> +			ino_t_to_u32(d_inode(exp->ex_path.dentry)->i_ino);
+> >>>> +		kfh->ofh_dirino = ino_t_to_u32(parent_ino(dentry));
+> >>>> +		if (inode)
+> >>>> +			_fh_update_old(dentry, exp, kfh);
+> >>>> +	} else {
+> >>>> +		kfh->fh_size = key_len(kfh->fh_fsid_type) + 4;
+> >>>> +		kfh->fh_auth_type = 0;
+> >>>> +
+> >>>> +		mk_fsid(kfh->fh_fsid_type, kfh->fh_fsid, ex_dev,
+> >>>> +			d_inode(exp->ex_path.dentry)->i_ino,
+> >>>> +			exp->ex_fsid, exp->ex_uuid);
+> >>>> +
+> >>>> +		if (inode)
+> >>>> +			_fh_update(kfh, maxsize, exp, dentry);
+> >>>> +
+> >>>> +		if (kfh->fh_fileid_type == FILEID_INVALID)
+> >>>> +			return nfserr_opnotsupp;
+> >>>> +	}
+> >>>> +	return nfs_ok;
+> >>>> +}
+> >>>> +
+> >>>> +/*
+> >>>> + * ref_fh is a reference file handle.
+> >>>> + * if it is non-null and for the same filesystem, then we should compose
+> >>>> + * a filehandle which is of the same version, where possible.
+> >>>> + * Currently, that means that if ref_fh->fh_handle.fh_version == 0xca
+> >>>> + * Then create a 32byte filehandle using nfs_fhbase_old
+> >>>> + *
+> >>>> + */
+> >>>> +__be32
+> >>>> +fh_compose(struct svc_fh *fhp, struct svc_export *exp, struct dentry *dentry,
+> >>>> +	   struct svc_fh *ref_fh)
+> >>>> +{
+> >>>> +	__be32		status;
+> >>>>  
+> >>>>  	if (ref_fh == fhp)
+> >>>>  		fh_put(ref_fh);
 > >>>
+> >>> set_version_and_fsid_type will use fh_dentry in ref_fh, 
+> >>> So it *must* be used with a valid ref_fh.
+> >>>
+> >>> With this patch, fh_put(ref_fh) will put fh_dentry and set to NULL!!!
+> >>>
+> >>> Also, pynfs4.1's LKPP1d failed as, 
+> >>> LKPP1d   st_lookupp.testLookupp                                   : FAILURE
+> >>>            LOOKUPP returned
+> >>>            '\x01\x00\x07\x00\x02\x00\x00\x00\x00\x00\x00\x004\x93\x1f\x04L*C\x9b\x95L]\x83\x0f\xa4\xbe\x8c',
+> >>>            expected '\x01\x00\x01\x00\x00\x00\x00\x00'
+> >>>
+> >>> Move set_version_and_fsid_type back, before fh_put(ref_fh).
+> >>>
+> >>> thanks,
+> >>> Kinglong Mee
+> >>>
+> >>
+> >> Ahh ok, it took me a minute but I see what you're saying now. Yes, this
+> >> is broken. I'll fix it, but I'm yet convinced that that is the best way.
+> >>
+> >> Thanks,
+> >> Jeff
+> >>
 > > 
+> > Ok, I think this may be a better fix. I'll roll this into the original
+> > patch before I send the next respin, but wanted to send it along first
+> > to see whether you see any issue with it
 > > 
+> > The idea here is to instead encode the filehandle first, and only do
+> > the fh_put for the ref_fh and take dentry/export references if that
+> > succeeds.
+> 
+> Must make sure the order as following,
+> 
+> set_version_and_fsid_type(fhp, exp, ref_fh);
+> if (ref_fh == fhp)
+>                 fh_put(ref_fh);
+> fhp->fh_dentry = dget(dentry); /* our internal copy */
+>         fhp->fh_export = exp_get(exp);
+> 
 
+Ok, I think this change should satisfy that requirement.
 
+> > 
+> > Does that look like a reasonable fix to you, or am I missing something?
+> > I'll also make sure I run pynfs against this before I submit the next
+> > iteration of the series.
+> 
+> I will look forward to it.
+> 
+
+I ran pynfs against my original patches and saw the breakage you saw.
+This patch seems to have fixed it. I'll roll that change into v3 of the
+series.
+
+Thanks for the review so far!
 -- 
 Jeff Layton <jlayton@poochiereds.net>
