@@ -1,175 +1,135 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pd0-f169.google.com ([209.85.192.169]:34964 "EHLO
-	mail-pd0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751612AbbHJLgt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Aug 2015 07:36:49 -0400
-Received: by pdrg1 with SMTP id g1so70785674pdr.2
-        for <linux-nfs@vger.kernel.org>; Mon, 10 Aug 2015 04:36:49 -0700 (PDT)
-Subject: Re: [PATCH v2 04/18] nfsd: add a new struct file caching facility to
- nfsd
-To: Jeff Layton <jlayton@poochiereds.net>
-References: <1438264341-18048-1-git-send-email-jeff.layton@primarydata.com>
- <1438809216-4846-1-git-send-email-jeff.layton@primarydata.com>
- <1438809216-4846-5-git-send-email-jeff.layton@primarydata.com>
- <55C4CEA9.306@gmail.com> <20150807131857.0a94bdfe@synchrony.poochiereds.net>
- <55C549D6.4030104@gmail.com>
- <20150808063624.24b6fcc3@tlielax.poochiereds.net>
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org, kinglongmee@gmail.com
+Received: from mail-pa0-f44.google.com ([209.85.220.44]:36313 "EHLO
+	mail-pa0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751710AbbHJLhV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Aug 2015 07:37:21 -0400
+Subject: Re: [PATCH] fs-pin: allow pin_remove() to be called other than from
+ ->kill()
+To: Al Viro <viro@zeniv.linux.org.uk>
+References: <55B5A012.1030006@gmail.com> <55B5A186.7040004@gmail.com>
+ <20150729135914.13cb0f86@noble>
+Cc: NeilBrown <neilb@suse.com>, "J. Bruce Fields" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        linux-fsdevel@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        kinglongmee@gmail.com
 From: Kinglong Mee <kinglongmee@gmail.com>
-Message-ID: <55C88CB9.2050306@gmail.com>
-Date: Mon, 10 Aug 2015 19:36:25 +0800
+Message-ID: <55C88CE8.9020500@gmail.com>
+Date: Mon, 10 Aug 2015 19:37:12 +0800
 MIME-Version: 1.0
-In-Reply-To: <20150808063624.24b6fcc3@tlielax.poochiereds.net>
+In-Reply-To: <20150729135914.13cb0f86@noble>
 Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 8/8/2015 18:36, Jeff Layton wrote:
-> On Sat, 8 Aug 2015 08:14:14 +0800
-> Kinglong Mee <kinglongmee@gmail.com> wrote:
-> 
->> On 8/8/2015 01:18, Jeff Layton wrote:
->>> On Fri, 7 Aug 2015 23:28:41 +0800
->>> Kinglong Mee <kinglongmee@gmail.com> wrote:
->>>
->>>> On 8/6/2015 05:13, Jeff Layton wrote:
->>>>> Currently, NFSv2/3 reads and writes have to open a file, do the read or
->>>>> write and then close it again for each RPC. This is highly inefficient,
->>>>> especially when the underlying filesystem has a relatively slow open
->>>>> routine.
->>>>>
->>>>> This patch adds a new open file cache to knfsd. Rather than doing an
->>>>> open for each RPC, the read/write handlers can call into this cache to
->>>>> see if there is one already there for the correct filehandle and
->>>>> NFS_MAY_READ/WRITE flags.
->>>>>
->>>>> If there isn't an entry, then we create a new one and attempt to
->>>>> perform the open. If there is, then we wait until the entry is fully
->>>>> instantiated and return it if it is at the end of the wait. If it's
->>>>> not, then we attempt to take over construction.
->>>>>
->>>>> Since the main goal is to speed up NFSv2/3 I/O, we don't want to
->>>>> close these files on last put of these objects. We need to keep them
->>>>> around for a little while since we never know when the next READ/WRITE
->>>>> will come in.
->>>>>
->>>>> Cache entries have a hardcoded 1s timeout, and we have a recurring
->>>>> workqueue job that walks the cache and purges any entries that have
->>>>> expired.
->>>>>
->>>>> Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
->>>> ... snip ... 
->>>>> diff --git a/fs/nfsd/filecache.h b/fs/nfsd/filecache.h
->>>>> index 9051ee54faa3..adf7e78b8e43 100644
->>>>> --- a/fs/nfsd/filecache.h
->>>>> +++ b/fs/nfsd/filecache.h
->>>>> @@ -4,6 +4,7 @@
->>>>>  #include <linux/jhash.h>
->>>>>  #include <linux/sunrpc/xdr.h>
->>>>>  
->>>>> +#include "nfsfh.h"
->>>>>  #include "export.h"
->>>>>  
->>>>>  /* hash table for nfs4_file */
->>>>> @@ -22,4 +23,24 @@ file_hashval(struct knfsd_fh *fh)
->>>>>  	return nfsd_fh_hashval(fh) & (NFSD_FILE_HASH_SIZE - 1);
->>>>>  }
->>>>>  
->>>>> +struct nfsd_file {
->>>>
->>>> There is a nfs4_file in nfsd, it's not easy to distinguish them for a new folk.
->>>> More comments or a meaningful name is better.
->>>>
->>>
->>> Maybe. Again, any suggestions? My hope was that eventually we can unify
->>> the two caches somehow but maybe that's naive.
->>
->> I cannot find a better name for the new file cache. More comments.
->>
->> I don't agree with merging those two into one cache.
->>
->> nfsv4's file cache is a state resource of client which will exist since close
->> or lease expire. But nfsd_file cache is a temporary resource for nfsv2/v3 client
->> without state. 
->>
-> 
-> You're probably right here. It was idle thought from when I first
-> started this work. What we probably would want to do however is to
-> layer the nfs4_file cache on top of this cache instead of having it
-> manage filps on its own.
-> 
-> I tried to design this cache so that it can handle O_RDWR opens, even
-> though the current callers don't actually ever request those. It should
-> be possible to hook up the nfs4_file cache to it, though I'd prefer to
-> wait until we have this code in place first and then do that later.
-> 
->> Also, for nfsv4's conflict checking, should we check the temporary file cache
->> for nfsv2/v3 too?
->>
-> 
-> You mean for share/deny modes? We traditionally have not done that, and
-> I don't see a compelling reason to start now. That would be a separate
-> project in its own right, IMO. We'd need to lift the share/deny mode
-> handling into this new cache.
+Ping ...
 
-OK.
-I will look forward to the new project.
+Hello Viro,
+What's your opinion at this patch ?
 
-> 
-> There's also the problem of there not being any protocol support for
-> that in NFSv2/3. What would we return to the client if there's a deny
-> mode conflict when it's trying to do (e.g.) a READ?
-> 
-
-It's my worry too.
-Without this cache, this case only influence an NFSv2/3 RPC process time,
-but, with this cache, it's more than 1s at worst.
-
-> 
->>>
->>>>> +	struct hlist_node	nf_node;
->>>>> +	struct list_head	nf_dispose;
->>>>> +	struct rcu_head		nf_rcu;
->>>>> +	struct file		*nf_file;
->>>>> +	unsigned long		nf_time;
->>>>> +#define NFSD_FILE_HASHED	(0)
->>>>
->>>> Why not using hlist_unhashed()? 
->>>>
->>>
->>> These entries are removed from the list using hlist_del_rcu(), and
->>> hlist_unhashed will not return true after that.
->>
->> As I understand, NFSD_FILE_HASHED means the file cache is added to 
->> nfsd_file_hashtbl, and increased the global file count.
->>
->> With calling hlist_del_rcu, file cache has be deleted from the hashtbl,
->> and clear the NFSD_FILE_HASHED bit. 
->>
-> 
-> That's correct.
-> 
->> As using in the codes, the bit and hlist_unhashed have the same meaning.
->> Any mistake of my understand?
->>
-> 
-> hlist_unhashed() won't work here:
-> 
-> static inline int hlist_unhashed(const struct hlist_node *h)
-> {
->         return !h->pprev;
-> }
-> 
-> ...but:
-> 
-> static inline void hlist_del_rcu(struct hlist_node *n)
-> {
->         __hlist_del(n);
->         n->pprev = LIST_POISON2;
-> }
-
-Got it.
-You are right.
+If Okay, I will update those patches based on this one.
 
 thanks,
 Kinglong Mee
+
+On 7/29/2015 11:59, NeilBrown wrote:
+> 
+> 
+> fs-pin currently assumes when either the vfsmount or the fs_pin wants
+> to unpin, pin_kill() will be called.
+> This requires that the ->kill() function can wait for any transient
+> references to the fs_pin to be released.  If the structure containing
+> the fs_pin doesn't already have the ability to wait for references,
+> this can be a burden.
+> 
+> As the fs_pin already has infrastructure for waiting, that can be
+> leveraged to remove the burden.
+> 
+> In this alternate scenario, only the vfsmount calls pin_kill() when it
+> wants to unpin.  The owner of the fs_pin() instead calls pin_remove().
+> 
+> The ->kill() function removes any long-term references, and then calls
+> pin_kill() (recursively).
+> When the last reference on (the structure containing) the fs_pin is
+> dropped, pin_remove() will be called and the (recursive) pin_kill()
+> call will complete.
+> 
+> For this to be safe, the final "put" must *not* free the structure if
+> pin_kill() has already been called, as that could leave ->kill()
+> accessing freed data.
+> 
+> So we provide a return value for pin_remove() which reports the old
+> ->done value.
+> 
+> When final put calls pin_remove() it checks that value.
+> If it was 0, then pin_kill() has not called ->kill and will not,
+> so final put can free the data structure.
+> If it was -1, then pin_kill() has called ->kill, and ->kill will
+> free the data structure - final put must not touch it.
+> 
+> This makes the 'wait' infrastructure of fs_pin available to any
+> pinning client which wants to use it.
+> 
+> Signed-Off-By: NeilBrown <neilb@suse.com>
+> 
+> ---
+> Hi Al,
+>  do you see this as a workable solution?  I think it will improve the nfsd pining patch
+> a lot.
+> 
+> Thanks,
+> NeilBrown
+> 
+> 
+> diff --git a/fs/fs_pin.c b/fs/fs_pin.c
+> index 611b5408f6ec..b7954a9d17da 100644
+> --- a/fs/fs_pin.c
+> +++ b/fs/fs_pin.c
+> @@ -6,16 +6,32 @@
+>  
+>  static DEFINE_SPINLOCK(pin_lock);
+>  
+> -void pin_remove(struct fs_pin *pin)
+> +/**
+> + * pin_remove - disconnect an fs_pin from the pinned structure.
+> + * @pin:	The struct fs_pin which is pinning something.
+> + *
+> + * Detach a 'pin' which was added by pin_insert().  A return value
+> + * of -1 implies that pin_kill() has already been called and that the
+> + * ->kill() function now owns the data structure containing @pin.
+> + * The function which called pin_remove() must not touch the data structure
+> + * again (unless it is the ->kill() function itself).
+> + * A return value of 0 implies an uneventful disconnect: pin_kill() has not called,
+> + * and will not call, the ->kill() function on this @pin.
+> + * Any other return value is a usage error - e.g. repeated call to pin_remove().
+> + */
+> +int pin_remove(struct fs_pin *pin)
+>  {
+> +	int ret;
+>  	spin_lock(&pin_lock);
+>  	hlist_del_init(&pin->m_list);
+>  	hlist_del_init(&pin->s_list);
+>  	spin_unlock(&pin_lock);
+>  	spin_lock_irq(&pin->wait.lock);
+> +	ret = pin->done;
+>  	pin->done = 1;
+>  	wake_up_locked(&pin->wait);
+>  	spin_unlock_irq(&pin->wait.lock);
+> +	return ret;
+>  }
+>  
+>  void pin_insert_group(struct fs_pin *pin, struct vfsmount *m, struct hlist_head *p)
+> diff --git a/include/linux/fs_pin.h b/include/linux/fs_pin.h
+> index 3886b3bffd7f..2fe9d3ba09e8 100644
+> --- a/include/linux/fs_pin.h
+> +++ b/include/linux/fs_pin.h
+> @@ -18,7 +18,7 @@ static inline void init_fs_pin(struct fs_pin *p, void (*kill)(struct fs_pin *))
+>  	p->kill = kill;
+>  }
+>  
+> -void pin_remove(struct fs_pin *);
+> +int pin_remove(struct fs_pin *);
+>  void pin_insert_group(struct fs_pin *, struct vfsmount *, struct hlist_head *);
+>  void pin_insert(struct fs_pin *, struct vfsmount *);
+>  void pin_kill(struct fs_pin *);
+> 
