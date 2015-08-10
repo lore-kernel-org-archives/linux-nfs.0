@@ -1,76 +1,70 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:60386 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:60414 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752767AbbHJOdu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 10 Aug 2015 10:33:50 -0400
-Date: Mon, 10 Aug 2015 10:33:49 -0400
+	id S1752843AbbHJPXN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 10 Aug 2015 11:23:13 -0400
+Date: Mon, 10 Aug 2015 11:23:13 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@poochiereds.net>
-Cc: Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2 03/18] nfsd: convert laundry_wq to something less
- nfsd4 specific
-Message-ID: <20150810143349.GC9066@fieldses.org>
-References: <1438264341-18048-1-git-send-email-jeff.layton@primarydata.com>
- <1438809216-4846-1-git-send-email-jeff.layton@primarydata.com>
- <1438809216-4846-4-git-send-email-jeff.layton@primarydata.com>
- <20150809071438.GC9772@infradead.org>
- <20150809071137.28ca8f19@tlielax.poochiereds.net>
- <20150810082622.GA18624@infradead.org>
- <20150810072351.39b1b189@tlielax.poochiereds.net>
- <20150810121035.GA19713@infradead.org>
- <20150810081456.48c60112@tlielax.poochiereds.net>
+To: jhopper@Safe-mail.net
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: extremely slow v4 performance on gigabit link
+Message-ID: <20150810152313.GE9066@fieldses.org>
+References: <N1B-bi9fdBdoAp@Safe-mail.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20150810081456.48c60112@tlielax.poochiereds.net>
+In-Reply-To: <N1B-bi9fdBdoAp@Safe-mail.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Aug 10, 2015 at 08:14:56AM -0400, Jeff Layton wrote:
-> On Mon, 10 Aug 2015 05:10:35 -0700
-> Christoph Hellwig <hch@infradead.org> wrote:
-> 
-> > On Mon, Aug 10, 2015 at 07:23:51AM -0400, Jeff Layton wrote:
-> > > I did consider a shrinker and LRU list for this. The problem there is
-> > > that shrinkers are triggered on memory pressure. Keeping these files
-> > > open after they've been idle for a long period of time would prevent
-> > > the kernel from handing out leases on them, so closing them after a
-> > > reasonable idle period seemed like the right thing to do.
-> > 
-> > True.
-> > 
-> > > I suppose however we could use a shrinker/LRU _and_ add a mechanism
-> > > that would cause the kernel to close idle nfsd_files for an inode when
-> > > there is an attempt to do a F_SETLEASE. That would probably work,
-> > > unless I'm missing other reasons that keeping unused files open might
-> > > be problematic. Are there any?
-> > 
-> > That seems reasonable.  Keepign the file open also will prevent
-> > unmounting the file system, although currently any NFS export already
-> > causes that as well.
-> 
-> Yes, though that's the reason for the new ->flush hook in the sunrpc
-> cache code. On any export table change, we'll clean out the nfsd_file
-> cache to help ensure that you'll be able to unmount soon after
-> unexporting a filesystem.
+On Thu, Aug 06, 2015 at 10:48:21AM -0400, jhopper@Safe-mail.net wrote:
+> the problem is also present when vers=3 and vers=2
+> I think I found the problem, vers=2,udp transfers at 50 MB/s and vers=3,udp transfers at 90 MB/s (when exported async, but when exported sync - the udp mode rates are <5MB/s)
+> all vers in tcp mode are limited to <1MB/s
+> I am afraid running in udp mode, the docs say udp can cause silent data corruption on gigabit links :x
+> but I did take care of the possible problems - reduced the fragmentation time to 2 seconds and enable 9000 mtu with rsize/wsize=8192
 
-There are definitely people with scripts that try to unexport and then
-immediately unmount, e.g. to migrate a filesystem elsewhere.  They
-already run into problems thanks to export caches, locks, and v4 state.
-A complete shutdown of nfsd is currently the only supported way to
-unmount.  Still, I wouldn't be surprised if there are people who
-(possibly just out of luck) have a working setup now that will start
-failing after we take these additional references.
+Neither udp nor the async export option are generally recommended.
 
-Extending the unlock_* interfaces or getting Kinglong's stuff working
-would help.
+Again, we need more information about what exactly you're measuring:
+
+> I see the data transfer speed in the file manager (worker)
+
+Sorry, that's not enough detail to understand what you're doing and
+where you're getting these numbers from.
 
 --b.
 
 > 
-> In any case, I'll look at the shrinker/lru thing for the next respin
-> and see whether adding a hook into the setlease code might be
-> reasonable.
+> -------- Original Message --------
+> From: bfields@fieldses.org (J. Bruce Fields)
+> To: jhopper@Safe-mail.net
+> Cc: linux-nfs@vger.kernel.org
+> Subject: Re: extremely slow v4 performance on gigabit link
+> Date: Wed, 5 Aug 2015 14:24:00 -0400
 > 
-> Thanks for the review so far,
-> -- 
-> Jeff Layton <jlayton@poochiereds.net>
+> > On Wed, Aug 05, 2015 at 07:13:58AM -0400, jhopper@Safe-mail.net wrote:
+> > > I have a very slow (less than 1MB/s) performance with nfsv4 TCP,
+> > 
+> > How are you measuring this?
+> > 
+> > > rsize/wsize have no effect, server is a kernel 3.19 x86 100hz no
+> > > preempt exporting async nfsv4 TCP on nfs-utils 1.2.7,
+> > 
+> > The "async" export option isn't normally recommended, though it's
+> > unlikely to have anything to do with this problem.
+> > 
+> > > client is a
+> > > kernel 4.1.3 x64 1000hz full preempt with nfs-utils 1.3.2 , physical
+> > > link is 1 gigabit full duplex, I mounted a few cifs shares to check,
+> > > the cifs shares are working at 30 MB/s and higher
+> > > 
+> > > is it possible that preempt has an effect on NFS performance ? does
+> > > timeslice have effect on performance ?
+> > 
+> > I think those are unlikely to be relevant.
+> > 
+> > --b.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
