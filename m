@@ -1,121 +1,133 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:60556 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:60558 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932992AbbHJVF6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 10 Aug 2015 17:05:58 -0400
-Date: Mon, 10 Aug 2015 17:05:57 -0400
+	id S932757AbbHJVH6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 10 Aug 2015 17:07:58 -0400
+Date: Mon, 10 Aug 2015 17:07:58 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] svcrdma: Change maximum server payload back to
- RPCSVC_MAXPAYLOAD
-Message-ID: <20150810210557.GC10455@fieldses.org>
-References: <20150807205325.1887.53743.stgit@klimt.1015granger.net>
+To: Anna Schumaker <Anna.Schumaker@netapp.com>
+Cc: Trond.Myklebust@primarydata.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 0/7] NFSv4.2: Add support for the COPY operation
+Message-ID: <20150810210758.GD10455@fieldses.org>
+References: <1438979904-8775-1-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20150807205325.1887.53743.stgit@klimt.1015granger.net>
+In-Reply-To: <1438979904-8775-1-git-send-email-Anna.Schumaker@Netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Aug 07, 2015 at 04:55:46PM -0400, Chuck Lever wrote:
-> Both commit 0380a3f375 ("svcrdma: Add a separate "max data segs"
-> macro for svcrdma") and commit 7e5be28827bf ("svcrdma: advertise
-> the correct max payload") are incorrect. This commit reverts both
-> changes, restoring the server's maximum payload size to 1MB.
+On Fri, Aug 07, 2015 at 04:38:16PM -0400, Anna Schumaker wrote:
+> These patches add client and server support for the NFS v4.2 COPY operation.
+> Unlike the similar CLONE operation, COPY can support both acceleration through
+> and reflink and a full copy of data from one file into another.  These patches
+> make use of Zach Brown's vfs_copy_file_range() syscall, and the first three
+> patches in this series are simply a reposting of the patches that add the
+> syscall.
 > 
-> Commit 7e5be28827bf based the server's maximum payload on the
-> _client's_ RPCRDMA_MAX_DATA_SEGS value. That was wrong.
-> 
-> Commit 0380a3f375 tried to fix this so that the client maximum
-> payload size could be raised without affecting the server, but
-> managed to confuse matters more on the server side.
-> 
-> More importantly, limiting the advertised maximum payload size was
-> meant to be a workaround, not the actual fix. We need to revisit
-> 
->   https://bugzilla.linux-nfs.org/show_bug.cgi?id=270
-> 
-> A Linux client on a platform with 64KB pages can overrun and crash
-> an x86_64 NFS/RDMA server when the r/wsize is 1MB. An x86/64 Linux
-> client seems to work fine using 1MB reads and writes when the Linux
-> server's maximum payload size is restored to 1MB.
-> 
-> BugLink: https://bugzilla.linux-nfs.org/show_bug.cgi?id=270
-> Fixes: 0380a3f375 ("svcrdma: Add a separate "max data segs" macro")
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
-> 
-> Hi Bruce-
-> 
-> I notice you still have "svcrdma: Boost NFS READ/WRITE payload
-> size maximum" in both your nfsd-next and for-4.3 branches. Can
-> you please replace that patch with this one? This patch uses
-> the approach we agreed on several weeks ago.
-> 
-> Thanks!
+> Patch 4 expands vfs_copy_file_range() to fall back on the splice interface for
+> copies where the filesystem does not support copy accelerations.  This behavior
+> is useful for NFSD, since we'll still want to copy the file even if we can't
+> do a reflink.  Additionally, this opens up the possibility of in-kernel copies
+> for all filesystems without needing to do frequent switches between kernel and
+> user space.  The only potential drawback I've noticed is that splice will write
 
-Gah, I don't like rebasing those for-XXX branches, but OK, done.  In the
-future I'd prefer incremental patches against those branches if at all
-possible.
+Also on the server side it means the copy can potentially take
+arbitrarily long, right?  (And tie up a protocol slot and server thread
+the whole time?)
 
---b.
+> out data in PAGE_SIZE chunks, even if wsize > PAGE_SIZE.  This leads to a few
+> more writes over the wire, but I have not noticed a significant timing
+> difference.  Still, I wonder if there is a better way to optimize this for NFS.
+
+Ideally, write-behind and readahead should paper over this?
 
 > 
+> The remaining patches implement the COPY operation for both the client and the
+> server.  The program I used for testing is included as an RFC as the last patch
+> in the series.  I gathered performance information by comparing the runtime and
+> RPC count of this program against /usr/bin/cp for various file sizes.
 > 
->  include/linux/sunrpc/svc_rdma.h          |    9 ++-------
->  net/sunrpc/xprtrdma/svc_rdma_transport.c |    2 +-
->  net/sunrpc/xprtrdma/xprt_rdma.h          |    1 -
->  3 files changed, 3 insertions(+), 9 deletions(-)
+> /usr/bin/cp:
+>                       size:    513MB   1024MB   1536MB   2048MB
+> ------------- ------------- -------- -------- -------- --------
+> nfs v4 client        total:     8203    16396    24588    32780
+> ------------- ------------- -------- -------- -------- --------
+> nfs v4 client         read:     4096     8192    12288    16384
+> nfs v4 client        write:     4096     8192    12288    16384
+> nfs v4 client       commit:        1        1        1        1
+> nfs v4 client         open:        1        1        1        1
+> nfs v4 client    open_noat:        2        2        2        2
+> nfs v4 client        close:        1        1        1        1
+> nfs v4 client      setattr:        2        2        2        2
+> nfs v4 client       access:        2        3        3        3
+> nfs v4 client      getattr:        2        2        2        2
 > 
-> diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
-> index 13af61b..d5ee6d8 100644
-> --- a/include/linux/sunrpc/svc_rdma.h
-> +++ b/include/linux/sunrpc/svc_rdma.h
-> @@ -172,13 +172,6 @@ struct svcxprt_rdma {
->  #define RDMAXPRT_SQ_PENDING	2
->  #define RDMAXPRT_CONN_PENDING	3
->  
-> -#define RPCRDMA_MAX_SVC_SEGS	(64)	/* server max scatter/gather */
-> -#if RPCSVC_MAXPAYLOAD < (RPCRDMA_MAX_SVC_SEGS << PAGE_SHIFT)
-> -#define RPCRDMA_MAXPAYLOAD	RPCSVC_MAXPAYLOAD
-> -#else
-> -#define RPCRDMA_MAXPAYLOAD	(RPCRDMA_MAX_SVC_SEGS << PAGE_SHIFT)
-> -#endif
-> -
->  #define RPCRDMA_LISTEN_BACKLOG  10
->  /* The default ORD value is based on two outstanding full-size writes with a
->   * page size of 4k, or 32k * 2 ops / 4k = 16 outstanding RDMA_READ.  */
-> @@ -187,6 +180,8 @@ struct svcxprt_rdma {
->  #define RPCRDMA_MAX_REQUESTS    32
->  #define RPCRDMA_MAX_REQ_SIZE    4096
->  
-> +#define RPCSVC_MAXPAYLOAD_RDMA	RPCSVC_MAXPAYLOAD
-> +
->  /* svc_rdma_marshal.c */
->  extern int svc_rdma_xdr_decode_req(struct rpcrdma_msg **, struct svc_rqst *);
->  extern int svc_rdma_xdr_encode_error(struct svcxprt_rdma *,
-> diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-> index 4054a9d..21e4036 100644
-> --- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
-> +++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-> @@ -91,7 +91,7 @@ struct svc_xprt_class svc_rdma_class = {
->  	.xcl_name = "rdma",
->  	.xcl_owner = THIS_MODULE,
->  	.xcl_ops = &svc_rdma_ops,
-> -	.xcl_max_payload = RPCRDMA_MAXPAYLOAD,
-> +	.xcl_max_payload = RPCSVC_MAXPAYLOAD_RDMA,
->  	.xcl_ident = XPRT_TRANSPORT_RDMA,
->  };
->  
-> diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-> index f49dd8b..e718d09 100644
-> --- a/net/sunrpc/xprtrdma/xprt_rdma.h
-> +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-> @@ -51,7 +51,6 @@
->  #include <linux/sunrpc/clnt.h> 		/* rpc_xprt */
->  #include <linux/sunrpc/rpc_rdma.h> 	/* RPC/RDMA protocol */
->  #include <linux/sunrpc/xprtrdma.h> 	/* xprt parameters */
-> -#include <linux/sunrpc/svc.h>		/* RPCSVC_MAXPAYLOAD */
->  
->  #define RDMA_RESOLVE_TIMEOUT	(5000)	/* 5 seconds */
->  #define RDMA_CONNECT_RETRY_MAX	(2)	/* retries if no listener backlog */
+> /usr/bin/cp /nfs/test-512  /nfs/test-copy  0.00s user 0.32s system 14% cpu 2.209 total
+> /usr/bin/cp /nfs/test-1024 /nfs/test-copy  0.00s user 0.66s system 18% cpu 3.651 total
+> /usr/bin/cp /nfs/test-1536 /nfs/test-copy  0.02s user 0.97s system 18% cpu 5.477 total
+> /usr/bin/cp /nfs/test-2048 /nfs/test-copy  0.00s user 1.38s system 15% cpu 9.085 total
+> 
+> 
+> Copy system call:
+>                       size:    512MB   1024MB   1536MB   2048MB
+> ------------- ------------- -------- -------- -------- --------
+> nfs v4 client        total:        6        6        6        6
+> ------------- ------------- -------- -------- -------- --------
+> nfs v4 client         open:        2        2        2        2
+> nfs v4 client        close:        2        2        2        2
+> nfs v4 client       access:        1        1        1        1
+> nfs v4 client         copy:        1        1        1        1
+> 
+> 
+> ./nfscopy /nfs/test-512  /nfs/test-copy  0.00s user 0.00s system 0% cpu 1.148 total
+> ./nfscopy /nfs/test-1024 /nfs/test-copy  0.00s user 0.00s system 0% cpu 2.293 total
+> ./nfscopy /nfs/test-1536 /nfs/test-copy  0.00s user 0.00s system 0% cpu 3.037 total
+> ./nfscopy /nfs/test-2048 /nfs/test-copy  0.00s user 0.00s system 0% cpu 4.045 total
+> 
+> 
+> Questions, comments, and other testing ideas would be greatly appreciated!
+> 
+> Thanks,
+> Anna
+> 
+> 
+> Anna Schumaker (4):
+>   VFS: Fall back on splice if no copy function defined
+>   nfsd: Pass filehandle to nfs4_preprocess_stateid_op()
+>   NFSD: Implement the COPY call
+>   NFS: Add COPY nfs operation
+> 
+> Zach Brown (3):
+>   vfs: add copy_file_range syscall and vfs helper
+>   x86: add sys_copy_file_range to syscall tables
+>   btrfs: add .copy_file_range file operation
+> 
+>  arch/x86/entry/syscalls/syscall_32.tbl |   1 +
+>  arch/x86/entry/syscalls/syscall_64.tbl |   1 +
+>  fs/btrfs/ctree.h                       |   3 +
+>  fs/btrfs/file.c                        |   1 +
+>  fs/btrfs/ioctl.c                       |  91 ++++++++++++----------
+>  fs/nfs/nfs42.h                         |   1 +
+>  fs/nfs/nfs42proc.c                     |  40 ++++++++++
+>  fs/nfs/nfs42xdr.c                      | 136 +++++++++++++++++++++++++++++++++
+>  fs/nfs/nfs4file.c                      |   8 ++
+>  fs/nfs/nfs4proc.c                      |   1 +
+>  fs/nfs/nfs4xdr.c                       |   1 +
+>  fs/nfsd/nfs4proc.c                     |  79 +++++++++++++++++--
+>  fs/nfsd/nfs4state.c                    |   5 +-
+>  fs/nfsd/nfs4xdr.c                      |  62 ++++++++++++++-
+>  fs/nfsd/state.h                        |   4 +-
+>  fs/nfsd/vfs.c                          |  13 ++++
+>  fs/nfsd/vfs.h                          |   1 +
+>  fs/nfsd/xdr4.h                         |  23 ++++++
+>  fs/read_write.c                        | 133 ++++++++++++++++++++++++++++++++
+>  include/linux/fs.h                     |   3 +
+>  include/linux/nfs4.h                   |   1 +
+>  include/linux/nfs_fs_sb.h              |   1 +
+>  include/linux/nfs_xdr.h                |  27 +++++++
+>  include/uapi/asm-generic/unistd.h      |   4 +-
+>  kernel/sys_ni.c                        |   1 +
+>  25 files changed, 587 insertions(+), 54 deletions(-)
+> 
+> -- 
+> 2.5.0
