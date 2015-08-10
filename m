@@ -1,19 +1,21 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:50285 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751570AbbHJNCz convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Aug 2015 09:02:55 -0400
-Received: from relay1.suse.de (charybdis-ext.suse.de [195.135.220.254])
-	by mx2.suse.de (Postfix) with ESMTP id 4E4F4AD07
-	for <linux-nfs@vger.kernel.org>; Mon, 10 Aug 2015 13:02:54 +0000 (UTC)
-From: Olaf Kirch <okir@suse.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] Fix memory corruption in PMAP_CALLIT code
-Date: Mon, 10 Aug 2015 15:02:52 +0200
+Received: from bombadil.infradead.org ([198.137.202.9]:38361 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753779AbbHJNN6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Aug 2015 09:13:58 -0400
+Date: Mon, 10 Aug 2015 06:13:58 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Steve Dickson <steved@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: nfs-utils regression on IPv6-less kernels
+Message-ID: <20150810131358.GA19466@infradead.org>
 MIME-Version: 1.0
-Content-Type: Text/Plain;
-  charset="iso-8859-1"
-Message-Id: <201508101502.53019.okir@suse.com>
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hi Steve,
+
+since commit "ipv6: Enable IPv6 support by default." rpc.mountd
+fails to start on a kernel without IPv6 support.  Seems like it
+doesn't have a proper fallback if an address family isn't implemented.
