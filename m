@@ -1,48 +1,36 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wi0-f177.google.com ([209.85.212.177]:36567 "EHLO
-	mail-wi0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933704AbbHKJag (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Aug 2015 05:30:36 -0400
-Received: by wicja10 with SMTP id ja10so67696818wic.1
-        for <linux-nfs@vger.kernel.org>; Tue, 11 Aug 2015 02:30:35 -0700 (PDT)
-From: Andreas Gruenbacher <andreas.gruenbacher@gmail.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] nfsd: Fix two typos in comments
-Date: Tue, 11 Aug 2015 11:30:31 +0200
-Message-Id: <1439285431-16215-1-git-send-email-agruenba@redhat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:36235 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754992AbbHKKsW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 11 Aug 2015 06:48:22 -0400
+Message-ID: <55C9D2F2.1020300@RedHat.com>
+Date: Tue, 11 Aug 2015 06:48:18 -0400
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: Christoph Hellwig <hch@infradead.org>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: nfs-utils regression on IPv6-less kernels
+References: <20150810131358.GA19466@infradead.org>
+In-Reply-To: <20150810131358.GA19466@infradead.org>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-(espect -> expect) and (no -> know)
+Hey,
 
-Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
----
- fs/nfsd/nfs4acl.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+On 08/10/2015 09:13 AM, Christoph Hellwig wrote:
+> Hi Steve,
+> 
+> since commit "ipv6: Enable IPv6 support by default." rpc.mountd
+> fails to start on a kernel without IPv6 support.  Seems like it
+> doesn't have a proper fallback if an address family isn't implemented.
+> 
+hmm... What do you mean "fails to start"...  are there any error messages?
+If nfs-utils is compiled with the --disable_ipv6 flag, does
+the same problem happen?
 
-diff --git a/fs/nfsd/nfs4acl.c b/fs/nfsd/nfs4acl.c
-index eb5accf..9c17bcd7 100644
---- a/fs/nfsd/nfs4acl.c
-+++ b/fs/nfsd/nfs4acl.c
-@@ -100,7 +100,7 @@ deny_mask_from_posix(unsigned short perm, u32 flags)
- /* We only map from NFSv4 to POSIX ACLs when setting ACLs, when we err on the
-  * side of being more restrictive, so the mode bit mapping below is
-  * pessimistic.  An optimistic version would be needed to handle DENY's,
-- * but we espect to coalesce all ALLOWs and DENYs before mapping to mode
-+ * but we expect to coalesce all ALLOWs and DENYs before mapping to mode
-  * bits. */
- 
- static void
-@@ -458,7 +458,7 @@ init_state(struct posix_acl_state *state, int cnt)
- 	state->empty = 1;
- 	/*
- 	 * In the worst case, each individual acl could be for a distinct
--	 * named user or group, but we don't no which, so we allocate
-+	 * named user or group, but we don't know which, so we allocate
- 	 * enough space for either:
- 	 */
- 	alloc = sizeof(struct posix_ace_state_array)
--- 
-2.4.2
+Note, I'm going on holiday for the next couple weeks so my
+response time might be a bit spotty... 
+
+steved.
 
