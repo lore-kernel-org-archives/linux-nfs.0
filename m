@@ -1,36 +1,25 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:36235 "EHLO mx1.redhat.com"
+Received: from verein.lst.de ([213.95.11.211]:40030 "EHLO newverein.lst.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754992AbbHKKsW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 11 Aug 2015 06:48:22 -0400
-Message-ID: <55C9D2F2.1020300@RedHat.com>
-Date: Tue, 11 Aug 2015 06:48:18 -0400
-From: Steve Dickson <SteveD@redhat.com>
+	id S934184AbbHKMoR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 11 Aug 2015 08:44:17 -0400
+Date: Tue, 11 Aug 2015 14:44:15 +0200
+From: Christoph Hellwig <hch@lst.de>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Christoph Hellwig <hch@lst.de>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: xfstests crash with trond/testing
+Message-ID: <20150811124415.GA3313@lst.de>
+References: <20150808142040.GA9456@lst.de> <20150810120820.GA11618@lst.de> <CAHQdGtTbStw1OinHNPVAFtGfFyNZ+estxD+RZ1B+a6oEB+O83w@mail.gmail.com> <1439224487.5233.2.camel@primarydata.com>
 MIME-Version: 1.0
-To: Christoph Hellwig <hch@infradead.org>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: nfs-utils regression on IPv6-less kernels
-References: <20150810131358.GA19466@infradead.org>
-In-Reply-To: <20150810131358.GA19466@infradead.org>
-Content-Type: text/plain; charset=windows-1252
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1439224487.5233.2.camel@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hey,
+On Mon, Aug 10, 2015 at 12:34:47PM -0400, Trond Myklebust wrote:
+> The following patch should fix it. Do you mind if I just squash it in
+> to the existing one?
 
-On 08/10/2015 09:13 AM, Christoph Hellwig wrote:
-> Hi Steve,
-> 
-> since commit "ipv6: Enable IPv6 support by default." rpc.mountd
-> fails to start on a kernel without IPv6 support.  Seems like it
-> doesn't have a proper fallback if an address family isn't implemented.
-> 
-hmm... What do you mean "fails to start"...  are there any error messages?
-If nfs-utils is compiled with the --disable_ipv6 flag, does
-the same problem happen?
-
-Note, I'm going on holiday for the next couple weeks so my
-response time might be a bit spotty... 
-
-steved.
+Fine with me.
 
