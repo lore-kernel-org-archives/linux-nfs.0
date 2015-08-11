@@ -1,61 +1,56 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from 216-82-208-22.static.grandenetworks.net ([216.82.208.22]:45227
-	"EHLO mx1.mthode.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S965317AbbHKQAr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Aug 2015 12:00:47 -0400
-Reply-To: mthode@mthode.org
-To: trond.myklebust@primarydata.com, anna.schumaker@netapp.com,
-        linux-nfs@vger.kernel.org
-From: Matthew Thode <mthode@mthode.org>
-Subject: is it possible to set CONFIG_PNFS_FLEXFILE_LAYOUT=y ?
-Message-ID: <55CA1941.3070007@mthode.org>
-Date: Tue, 11 Aug 2015 10:48:17 -0500
-MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha512;
- protocol="application/pgp-signature";
- boundary="D7DWO7M1En9uq2kUwQafNwxMlwq8EBsUK"
+Received: from mail-yk0-f172.google.com ([209.85.160.172]:33920 "EHLO
+	mail-yk0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S965269AbbHKROH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Aug 2015 13:14:07 -0400
+Received: by ykdt205 with SMTP id t205so92069487ykd.1
+        for <linux-nfs@vger.kernel.org>; Tue, 11 Aug 2015 10:14:05 -0700 (PDT)
+From: Jeff Layton <jlayton@poochiereds.net>
+To: trond.myklebust@primarydata.com
+Cc: Anna.Schumaker@netapp.com, linux-nfs@vger.kernel.org
+Subject: [PATCH] nfs: allow nfs4_label_free to ignore a PTR_ERR value
+Date: Tue, 11 Aug 2015 13:13:59 -0400
+Message-Id: <1439313239-30593-1-git-send-email-jeff.layton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is an OpenPGP/MIME signed message (RFC 4880 and 3156)
---D7DWO7M1En9uq2kUwQafNwxMlwq8EBsUK
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
+nfs4_label_alloc is a little odd in that a NULL return means "label is
+not needed" and a PTR_ERR return means an actual error. In at least one
+place however (nfs_lookup_revalidate) we can end up passing an error
+value to nfs4_label_free, which will likely lead to an oops.
 
-All the requirements seem to be set but it won't seem to set itself to
-be built-in.  Even when set manually it resets itself.
+We could fix that one caller, but I think just allowing the free to
+accept and ignore PTR_ERR values is probably appropriate given how the
+allocation works.
 
-Here's the search on it from menuconfig, as you can see, it seems like
-all requirements are met.
+Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
+---
+ fs/nfs/internal.h | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
 
-Depends on: NETWORK_FILESYSTEMS [=3Dy] && NFS_V4_1 [=3Dy] && NFS_V3 [=3Dy=
-]
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 9b372b845f6a..44bc298f6216 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -312,13 +312,13 @@ nfs4_label_copy(struct nfs4_label *dst, struct nfs4_label *src)
+ 
+ 	return dst;
+ }
++
+ static inline void nfs4_label_free(struct nfs4_label *label)
+ {
+-	if (label) {
+-		kfree(label->label);
+-		kfree(label);
+-	}
+-	return;
++	if (IS_ERR_OR_NULL(label))
++		return;
++	kfree(label->label);
++	kfree(label);
+ }
+ 
+ static inline void nfs_zap_label_cache_locked(struct nfs_inode *nfsi)
+-- 
+2.4.3
 
-Thanks,
---=20
-Matthew Thode
-
-
---D7DWO7M1En9uq2kUwQafNwxMlwq8EBsUK
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: OpenPGP digital signature
-Content-Disposition: attachment; filename="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQIcBAEBCgAGBQJVyhlJAAoJEGSje+quGaTo/1oQAJT6hxWlVKyhktlEWBUszHqG
-M2qdBF+1ZA+vooDKcaEm4zO2S/268dX0P8KIhUgx/OBKHAngIFL7uSn91/Wk/y7g
-ecxaB91XeJ5tmH4a+YiKReH+i8XjEkzwJIy0iYZQIjpOBiL3cCCYwawjVoGlZQg1
-dONf0gWpYsRqoBJsuPa/IxpbwKOB1unt9INBsKfi2KFqwiTekrug/1uIFmTLpvvz
-3Wnq3lXtdk7OJ9Hl0Y0y6Q2F69mgao6wGLnNERbQ8POa59iG/lpvPhDcDv3y8cRD
-qZcFq8YayreaSCpNKQKusaJMnH4SkVHWF6LexxJJlNsMwgimqvRY841G/ICrkN6N
-XNH9Ov24heIcXD6VA2WJFrVlrQdt7mFt2H+QPGXPdkAr0FpI5A2W27N/A18bJhVi
-PhdwfPyPw7FlhxZjOjHxHfABL8mLNP5tnmDnvZh1LxQ4Ia/6OK7a+PKeEmUFMDQW
-osYd1lJtbCOtmxcgoFwtxOLmkr5e/RfIEH0d5L2iXMKjDHexj/F6TQUHW4zMLPvs
-L2hutngF7vFxC9zSp08eBpLCxzrl0MaOWERSPYkIgoVwfvZyAXTopUBLDvPzaWGo
-C5zDhvtj/4wr2oOc83Rv6wQHxVkM4oJyBpL/XKDM385yaQf2zxvg2W5IPInNH7Bi
-Low5nBCrWw2Id+Lo2b8H
-=3cmj
------END PGP SIGNATURE-----
-
---D7DWO7M1En9uq2kUwQafNwxMlwq8EBsUK--
