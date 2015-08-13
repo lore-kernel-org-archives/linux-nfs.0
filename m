@@ -1,54 +1,72 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.opengridcomputing.com ([72.48.136.20]:49506 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750953AbbHLWPl convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 12 Aug 2015 18:15:41 -0400
-From: "Steve Wise" <swise@opengridcomputing.com>
-To: "'Sagi Grimberg'" <sagig@dev.mellanox.co.il>, <dledford@redhat.com>
-Cc: <infinipath@intel.com>, <sagig@mellanox.com>, <ogerlitz@mellanox.com>,
-        <roid@mellanox.com>, <linux-rdma@vger.kernel.org>, <eli@mellanox.com>,
-        <target-devel@vger.kernel.org>, <linux-nfs@vger.kernel.org>,
-        <bfields@fieldses.org>
-References: <20150724161331.25617.8475.stgit@build2.ogc.int> <20150724161848.25617.26092.stgit@build2.ogc.int> <55B4B190.7070305@dev.mellanox.co.il> <55B5404F.5040404@opengridcomputing.com> <000001d0ce23$27048810$750d9830$@opengridcomputing.com> <55C0F5B7.4040100@dev.mellanox.co.il> <00b001d0cfc4$f83a14c0$e8ae3e40$@opengridcomputing.com> <55C37F43.6080106@dev.mellanox.co.il>
-In-Reply-To: <55C37F43.6080106@dev.mellanox.co.il>
-Subject: RE: [PATCH V6 6/9] isert: Rename IO functions to more descriptive names
-Date: Wed, 12 Aug 2015 17:15:43 -0500
-Message-ID: <005801d0d54c$6e1dc560$4a595020$@opengridcomputing.com>
+Received: from mail-pd0-f179.google.com ([209.85.192.179]:34922 "EHLO
+	mail-pd0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751460AbbHMNEA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 13 Aug 2015 09:04:00 -0400
+Received: by pdrg1 with SMTP id g1so19386223pdr.2
+        for <linux-nfs@vger.kernel.org>; Thu, 13 Aug 2015 06:04:00 -0700 (PDT)
+Subject: Re: [PATCH 4/7] VFS: Fall back on splice if no copy function defined
+To: Anna Schumaker <Anna.Schumaker@netapp.com>,
+        Trond.Myklebust@primarydata.com, linux-nfs@vger.kernel.org,
+        "J. Bruce Fields" <bfields@fieldses.org>, kinglongmee@gmail.com
+References: <1438979904-8775-1-git-send-email-Anna.Schumaker@Netapp.com>
+ <1438979904-8775-5-git-send-email-Anna.Schumaker@Netapp.com>
+From: Kinglong Mee <kinglongmee@gmail.com>
+Message-ID: <55CC95B1.3040502@gmail.com>
+Date: Thu, 13 Aug 2015 21:03:45 +0800
 MIME-Version: 1.0
-Content-Type: text/plain;
-	charset="UTF-8"
+In-Reply-To: <1438979904-8775-5-git-send-email-Anna.Schumaker@Netapp.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> >>>> Hey Sagi, how is this coming along?  How can I help?
-> >>>>
-> >>>
-> >>> Hi Steve,
-> >>>
-> >>> This is taking longer than I expected, the changes needed seem
-> >>> pretty extensive throughout the IO path. I don't think it will be ready
-> >>> for 4.3
-> >>>
-> >>
-> >> Perhaps then we should go with my version that adds iwarp-only FRMR IO handlers for 4.3.  Then they can be phased out as the rework
-> >> matures.  Thoughts?
-> >>
-> >
-> > Shall I send out the series again for merging into 4.3?
+On 8/8/2015 04:38, Anna Schumaker wrote:
+> The NFS server will need a fallback for filesystems that don't have any
+> kind of copy acceleration yet.  Let's handle this by having
+> vfs_copy_range() fall back to splice, enabling an in-kernel fallback for
+> all filesystems.
+
+I'd like do the job in nfsd_copy_range().
+
+If user only want call the underlay filesystem's copy_file_range()?
+want get an error if not support. But, this patch lets the syscall
+to another logical of calling do_splice_direct().
+
+thanks,
+Kinglong Mee
+
 > 
-> Hi Steve,
+> Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+> ---
+>  fs/read_write.c | 10 +++++++---
+>  1 file changed, 7 insertions(+), 3 deletions(-)
 > 
-> Not sure about that.. I'm a bit reluctant in adding a code that
-> branches the isert code even more than it already is.
+> diff --git a/fs/read_write.c b/fs/read_write.c
+> index 3804547..e564a6b 100644
+> --- a/fs/read_write.c
+> +++ b/fs/read_write.c
+> @@ -1358,7 +1358,7 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
+>  	if (!(file_in->f_mode & FMODE_READ) ||
+>  	    !(file_out->f_mode & FMODE_WRITE) ||
+>  	    (file_out->f_flags & O_APPEND) ||
+> -	    !file_in->f_op || !file_in->f_op->copy_file_range)
+> +	    !file_in->f_op)
+>  		return -EINVAL;
+>  
+>  	inode_in = file_inode(file_in);
+> @@ -1382,8 +1382,12 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
+>  	if (ret)
+>  		return ret;
+>  
+> -	ret = file_in->f_op->copy_file_range(file_in, pos_in, file_out, pos_out,
+> -					     len, flags);
+> +	ret = -ENOTSUPP;
+> +	if (file_in->f_op->copy_file_range)
+> +		ret = file_in->f_op->copy_file_range(file_in, pos_in, file_out,
+> +						     pos_out, len, flags);
+> +	if (ret == -ENOTSUPP)
+> +		ret = do_splice_direct(file_in, &pos_in, file_out, &pos_out, len, flags);
+>  	if (ret > 0) {
+>  		fsnotify_access(file_in);
+>  		add_rchar(current, ret);
 > 
-> Nic, WDYT?
-
-Nic is silent... 
-
-Sagi, do you have an ETA on when you can have the recode ready for detailed review and test? If we can't make linux-4.3, can we be early in staging it for linux-4.4?
-
-Thanks,
-
-Steve.
-
