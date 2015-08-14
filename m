@@ -1,168 +1,95 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from out01.mta.xmission.com ([166.70.13.231]:38953 "EHLO
-	out01.mta.xmission.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754153AbbHNPOK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Aug 2015 11:14:10 -0400
-From: ebiederm@xmission.com (Eric W. Biederman)
-To: Sven Geggus <lists@fuchsschwanzdomain.de>
-Cc: linux-kernel@vger.kernel.org, trond.myklebust@primarydata.com,
-        linux-nfs@vger.kernel.org
-References: <20150731114230.GA31037@geggus.net>
-	<87r3noieqg.fsf@x220.int.ebiederm.org>
-	<20150814110140.GA25799@geggus.net>
-Date: Fri, 14 Aug 2015 10:07:19 -0500
-In-Reply-To: <20150814110140.GA25799@geggus.net> (Sven Geggus's message of
-	"Fri, 14 Aug 2015 13:01:40 +0200")
-Message-ID: <87lhddhpso.fsf@x220.int.ebiederm.org>
-MIME-Version: 1.0
-Content-Type: text/plain
-Subject: Re: nfs-root: destructive call to __detach_mounts /dev
+Received: from mail-ig0-f172.google.com ([209.85.213.172]:33597 "EHLO
+	mail-ig0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750940AbbHNU7o (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Aug 2015 16:59:44 -0400
+Received: by igfj19 with SMTP id j19so21154503igf.0
+        for <linux-nfs@vger.kernel.org>; Fri, 14 Aug 2015 13:59:44 -0700 (PDT)
+Message-ID: <1439585961.82927.6.camel@primarydata.com>
+Subject: Global protection fault in netfilter code
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Linux Network Devel Mailing List <netdev@vger.kernel.org>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Date: Fri, 14 Aug 2015 16:59:21 -0400
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Sven Geggus <lists@fuchsschwanzdomain.de> writes:
+Hi,
 
-> On 31-07-15 09:27 Eric W. Biederman wrote:
->
->> I have added the linux-nfs list to hopefully add a wider interested
->> audience.
->
-> ... which made your mail get burried in my linux-nfs mailinglist folder :(
-> But I finaly found it.
->
->> If what is being revalidated is a mount point nfs4_lookup_revalidate
->> calls nfs_lookup_revalidate.  So nfs_lookup_revalidate is the only
->> interesting function.
->
-> OK.
->
->> I don't understand the what nfs_lookup_revalidate is doing particularly
->> well.  
->
-> Neither do I.
->
-> Here is what I get from a broken machine (Kernel 4.1.5) using
-> "rpcdebug -m nfs -s lookupcache":
->
-> The mountpoint which got unmounted in this case is /proc not /dev, but the
-> stack-trace points to the same place.
->
-> Aug 14 11:49:37 banthonytwarog kernel: NFS: nfs_lookup_revalidate(/proc) is valid
-> Aug 14 11:49:37 banthonytwarog kernel: NFS: nfs_lookup_revalidate(/proc) is invalid
-> Aug 14 11:49:37 banthonytwarog kernel: NFSROOT __detach_mounts: proc
-> Aug 14 11:49:37 banthonytwarog kernel: CPU: 2 PID: 28350 Comm: modtrack Tainted: P        W  O    4.1.5-lomac3-00293-gfdd763a #6
-> Aug 14 11:49:37 banthonytwarog kernel: Hardware name: System manufacturer System Product Name/P8H67, BIOS 3506 03/02/2012
-> Aug 14 11:49:37 banthonytwarog kernel: ffff8800d9b93bb8 ffff8800d9b93b78 ffffffff81560488 00000000446c446c
-> Aug 14 11:49:37 banthonytwarog kernel: ffff88040c427d98 ffff8800d9b93b98 ffffffff81106d36 00000000000000a2
-> Aug 14 11:49:37 banthonytwarog kernel: ffff88040c427d98 ffff8800d9b93be8 ffffffff810ffc0c 00000000d9b93c08
-> Aug 14 11:49:37 banthonytwarog kernel: Call Trace:
-> Aug 14 11:49:37 banthonytwarog kernel: [<ffffffff81560488>] dump_stack+0x4c/0x6e
-> Aug 14 11:49:37 banthonytwarog kernel: [<ffffffff81106d36>] __detach_mounts+0x20/0xdf
-> Aug 14 11:49:37 banthonytwarog kernel: [<ffffffff810ffc0c>] d_invalidate+0x9a/0xc8
-> Aug 14 11:49:37 banthonytwarog kernel: [<ffffffff810f6b60>] lookup_fast+0x1f5/0x26f
-> Aug 14 11:49:37 banthonytwarog kernel: [<ffffffff810f5a44>] ? __inode_permission+0x37/0x95
-> Aug 14 11:49:37 banthonytwarog kernel: [<ffffffff810f7c02>] link_path_walk+0x204/0x749
-> Aug 14 11:49:37 banthonytwarog kernel: [<ffffffff810f4db2>] ? terminate_walk+0x10/0x2e
-> Aug 14 11:49:37 banthonytwarog kernel: [<ffffffff810f75e7>] ? do_last.isra.43+0x8b6/0x9fb
-> Aug 14 11:49:37 banthonytwarog kernel: [<ffffffff810f846f>] path_init+0x328/0x337
-> Aug 14 11:49:37 banthonytwarog kernel: [<ffffffff810f919a>] path_openat+0x1b0/0x53e
-> Aug 14 11:49:37 banthonytwarog kernel: [<ffffffff810fa073>] do_filp_open+0x75/0x85
-> Aug 14 11:49:37 banthonytwarog kernel: [<ffffffff8110427b>] ? __alloc_fd+0xdd/0xef
-> Aug 14 11:49:37 banthonytwarog kernel: [<ffffffff810ec9b3>] do_sys_open+0x146/0x1d5
-> Aug 14 11:49:37 banthonytwarog kernel: [<ffffffff810d1c5c>] ? vm_munmap+0x4b/0x59
-> Aug 14 11:49:37 banthonytwarog kernel: [<ffffffff810eca5b>] SyS_open+0x19/0x1b
-> Aug 14 11:49:37 banthonytwarog kernel: [<ffffffff81565897>] system_call_fastpath+0x12/0x6a
->
-> I suppose, that the first two lines are particularly interesting as we have
-> "is valid" and a fraction of a second later we have "is invalid" at the same
-> mountpoint.
+When doing NFS stress tests in a VM with a recent kernel (yesterday's
+commit 7ddab73346a1 "Merge branch 'fixes' of git
+://ftp.arm.linux.org.uk/~rmk/linux-arm"), I've been seeing the
+following General Protection Fault code apparently in the nf_conntrack
+code:
 
-That does sound interesting.
 
-> To me this looks like a job for the NFS client maintainers now, right?
+PID: 358    TASK: ffff88003630cb80  CPU: 0   COMMAND: "kworker/0:1H"
+ #0 [ffff88013a603680] die at ffffffff81007608
+ #1 [ffff88013a6036b0] do_general_protection at ffffffff8100407a
+ #2 [ffff88013a6036e0] general_protection at ffffffff817888c8
+    [exception RIP: detach_if_pending+103]
+    RIP: ffffffff81101b37  RSP: ffff88013a603798  RFLAGS: 00010086
+    RAX: dead000000200200  RBX: ffff8800b9771bd8  RCX: 000000000000000f
+    RDX: ffff88013a60e818  RSI: ffff88013a60d980  RDI: 0000000000000046
+    RBP: ffff88013a6037b8   R8: 0000000000000000   R9: 0000000000000001
+    R10: ffff88013a60d998  R11: 0000000000000001  R12: ffff8800b9771bd8
+    R13: ffff88013a60d980  R14: 0000000000000000  R15: 0000000000000001
+    ORIG_RAX: ffffffffffffffff  CS: 0010  SS: 0018
+ #3 [ffff88013a6037c0] mod_timer_pending at ffffffff81101fd2
+ #4 [ffff88013a603820] __nf_ct_refresh_acct at ffffffffa055891b [nf_conntrack]
+ #5 [ffff88013a603850] tcp_packet at ffffffffa056232e [nf_conntrack]
+ #6 [ffff88013a603970] nf_conntrack_in at ffffffffa055b70a [nf_conntrack]
+ #7 [ffff88013a603a40] ipv4_conntrack_in at ffffffffa0576326 [nf_conntrack_ipv4]
+ #8 [ffff88013a603a50] nf_iterate at ffffffff81688dad
+ #9 [ffff88013a603aa0] nf_hook_slow at ffffffff81688e42
+#10 [ffff88013a603af0] ip_rcv at ffffffff81695ca3
+#11 [ffff88013a603b60] __netif_receive_skb_core at ffffffff8164d688
+#12 [ffff88013a603c00] __netif_receive_skb at ffffffff8164e108
+#13 [ffff88013a603c20] netif_receive_skb_internal at ffffffff8164f7f6
+#14 [ffff88013a603c60] napi_gro_complete at ffffffff8164fbf7
+#15 [ffff88013a603cb0] dev_gro_receive at ffffffff81650508
+#16 [ffff88013a603d20] napi_gro_receive at ffffffff81650a6b
+#17 [ffff88013a603d50] e1000_clean_rx_irq at ffffffffa00308db [e1000]
+#18 [ffff88013a603e00] e1000_clean at ffffffffa0030f3d [e1000]
+#19 [ffff88013a603ec0] net_rx_action at ffffffff8164ffda
+#20 [ffff88013a603f40] __do_softirq at ffffffff81087a18
+#21 [ffff88013a603fb0] do_softirq_own_stack at ffffffff8178875c
+--- <IRQ stack> ---
+#22 [ffff880035fabaf0] do_softirq_own_stack at ffffffff8178875c
+    [exception RIP: unknown or invalid address]
+    RIP: ffff88007d7a6108  RSP: ffff88007d7a60d0  RFLAGS: ffffffffa02827e5
+    RAX: ffffffff810868a9  RBX: ffff880035fabb38  RCX: ffff88007d7a6108
+    RDX: ffff880136e56a00  RSI: ffff880035fabb78  RDI: ffffffff81786209
+    RBP: ffffffff810d662d   R8: ffff880035fabb58   R9: 00000000fffffe00
+    R10: 0000000000000046  R11: ffffffff810867e5  R12: 0000000000000046
+    R13: ffffffff810ce565  R14: ffff880035fabb18  R15: 0000000000000000
+    ORIG_RAX: ffff8800a4408840  CS: ffff880035fabbc8  SS: 0001
+WARNING: possibly bogus exception frame
+#23 [ffff880035fabbd0] nfs41_wake_and_assign_slot at ffffffffa06c7a9d [nfsv4]
+#24 [ffff880035fabbe0] nfs41_sequence_done at ffffffffa069c7c0 [nfsv4]
+#25 [ffff880035fabc30] nfs4_sequence_done at ffffffffa069caaf [nfsv4]
+#26 [ffff880035fabc40] nfs4_read_done at ffffffffa06a2c0e [nfsv4]
+#27 [ffff880035fabc60] nfs_readpage_done at ffffffffa0654736 [nfs]
+#28 [ffff880035fabc90] nfs_pgio_result at ffffffffa0653414 [nfs]
+#29 [ffff880035fabcc0] rpc_exit_task at ffffffffa027f10c [sunrpc]
+#30 [ffff880035fabce0] __rpc_execute at ffffffffa02820dd [sunrpc]
+#31 [ffff880035fabd60] rpc_async_schedule at ffffffffa0282725 [sunrpc]
+#32 [ffff880035fabd70] process_one_work at ffffffff8109fe89
+#33 [ffff880035fabdf0] worker_thread at ffffffff810a04ae
+#34 [ffff880035fabe60] kthread at ffffffff810a6aef
+#35 [ffff880035fabf50] ret_from_fork at ffffffff81786f5f
 
-My educated but unsupported guess would be that there is likely
-something funny going on with attributes somewhere like there was with
-nfs_prime_dcache.
+I do not see that in vanilla Linux-4.1, so it seems to be a 4.2 cycle
+thing.
 
-At a quick look the failure possibilities are:
-nfs_lookup_verify_inode failing,
-NFS_STALE(inode) being true,
-NFS_PROTO(dir)->lookup failing,
-nfs_compare_fh failing,
-nfs_refresh_inode failing,
+Is anyone else seeing this, and is it being looked at by the netfilter
+folks?
 
-I expect what needs to happen now is to drill down into
-nfs_lookup_revalidate especially into the branches that can lead to
-out_bad and add some print statments so that it becomes clear just
-what conditions are causing nfs_lookup_invalidate to fail.
+-- 
+Trond Myklebust
+Linux NFS client maintainer, PrimaryData
+trond.myklebust@primarydata.com
 
-I don't have a clue what the issue would be but I would start with
-something like the patch below.  That will help narrow it down even
-further.  And there are still enough possibilities that I don't think
-anyone has enough information yet to figure out what is going on from
-first principles.
-
-Eric
-
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 547308a5ec6f..97c70c887b23 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -1167,7 +1167,7 @@ static int nfs_lookup_revalidate(struct dentry *dentry, unsigned int flags)
- 		return -ECHILD;
- 
- 	if (NFS_STALE(inode))
--		goto out_bad;
-+		goto out_bad1;
- 
- 	error = -ENOMEM;
- 	fhandle = nfs_alloc_fhandle();
-@@ -1183,11 +1183,11 @@ static int nfs_lookup_revalidate(struct dentry *dentry, unsigned int flags)
- 	error = NFS_PROTO(dir)->lookup(dir, &dentry->d_name, fhandle, fattr, label);
- 	trace_nfs_lookup_revalidate_exit(dir, dentry, flags, error);
- 	if (error)
--		goto out_bad;
-+		goto out_bad2;
- 	if (nfs_compare_fh(NFS_FH(inode), fhandle))
--		goto out_bad;
-+		goto out_bad3;
- 	if ((error = nfs_refresh_inode(inode, fattr)) != 0)
--		goto out_bad;
-+		goto out_bad4;
- 
- 	nfs_setsecurity(inode, fattr, label);
- 
-@@ -1210,6 +1210,8 @@ out_set_verifier:
- 			__func__, dentry);
- 	return 1;
- out_zap_parent:
-+	dfprintk(LOOKUPCACHE "NFS: %s(%pd2): nfs_lookup_verify_inode() failed\n",
-+		 __func__, dentry);
- 	nfs_zap_caches(dir);
-  out_bad:
- 	WARN_ON(flags & LOOKUP_RCU);
-@@ -1233,6 +1235,22 @@ out_zap_parent:
- 	dfprintk(LOOKUPCACHE, "NFS: %s(%pd2) is invalid\n",
- 			__func__, dentry);
- 	return 0;
-+out_bad1:
-+	dfprintk(LOOKUPCACHE, "NFS: %s(%pd2): NFS_STALE(inode)\n",
-+		 __func__, dentry);
-+	goto out_bad;
-+out_bad2:
-+	dfprintk(LOOKUPCACHE, "NFS: %s(%pd2): NFS_PROTO(dir)->lookup -> %u\n",
-+		 __func__, dentry, error);
-+	goto out_bad;
-+out_bad3:
-+	dfprintk(LOOKUPCACHE, "NFS: %s(%pd2): nfs_compare_fh() failed\n",
-+		 __func__, dentry);
-+	goto out_bad;
-+out_bad4:
-+	dfprintk(LOOKUPCACHE "NFS: %s(%pd2): nfs_refresh_inode() -> %u\n",
-+		 __func__, dentry, error);
-+	goto out_bad;
- out_error:
- 	WARN_ON(flags & LOOKUP_RCU);
- 	nfs_free_fattr(fattr);
 
