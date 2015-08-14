@@ -1,95 +1,84 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yk0-f181.google.com ([209.85.160.181]:33582 "EHLO
-	mail-yk0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751993AbbHMS0i (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 13 Aug 2015 14:26:38 -0400
-Received: by ykaz130 with SMTP id z130so48862340yka.0
-        for <linux-nfs@vger.kernel.org>; Thu, 13 Aug 2015 11:26:38 -0700 (PDT)
-Date: Thu, 13 Aug 2015 14:26:35 -0400
-From: Jeff Layton <jeff.layton@primarydata.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] NFSv4.1/pNFS: Fix borken function
- _same_data_server_addrs_locked()
-Message-ID: <20150813142635.4368011b@tlielax.poochiereds.net>
-In-Reply-To: <1439480749-54600-1-git-send-email-trond.myklebust@primarydata.com>
-References: <1439480749-54600-1-git-send-email-trond.myklebust@primarydata.com>
+Received: from mx.gnuher.de ([144.76.235.56]:59751 "EHLO mx.gnuher.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755082AbbHNLXs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 14 Aug 2015 07:23:48 -0400
+Date: Fri, 14 Aug 2015 13:01:40 +0200
+From: Sven Geggus <lists@fuchsschwanzdomain.de>
+To: "Eric W. Biederman" <ebiederm@xmission.com>
+Cc: linux-kernel@vger.kernel.org, trond.myklebust@primarydata.com,
+        linux-nfs@vger.kernel.org
+Subject: Re: nfs-root: destructive call to __detach_mounts /dev
+Message-ID: <20150814110140.GA25799@geggus.net>
+References: <20150731114230.GA31037@geggus.net>
+ <87r3noieqg.fsf@x220.int.ebiederm.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <87r3noieqg.fsf@x220.int.ebiederm.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 13 Aug 2015 11:45:49 -0400
-Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+On 31-07-15 09:27 Eric W. Biederman wrote:
 
-> - Switch back to using list_for_each_entry(). To fix an incorrect test
->   for list NULL termination.
-> - Do not assume that lists are sorted.
-> - Finally, consider an existing entry to match if it consists of a subset
->   of the addresses in the new entry.
-> 
-> Cc: stable@vger.kernel.org # 4.0+
-> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-> ---
->  fs/nfs/pnfs_nfs.c | 33 +++++++++++++++++++--------------
->  1 file changed, 19 insertions(+), 14 deletions(-)
-> 
-> diff --git a/fs/nfs/pnfs_nfs.c b/fs/nfs/pnfs_nfs.c
-> index cd3c0403101b..bbd407b6bc1f 100644
-> --- a/fs/nfs/pnfs_nfs.c
-> +++ b/fs/nfs/pnfs_nfs.c
-> @@ -373,26 +373,31 @@ same_sockaddr(struct sockaddr *addr1, struct sockaddr *addr2)
->  	return false;
->  }
->  
-> +/*
-> + * Checks if 'dsaddrs1' contains a subset of 'dsaddrs2'. If it does,
-> + * declare a match.
-> + */
->  static bool
->  _same_data_server_addrs_locked(const struct list_head *dsaddrs1,
->  			       const struct list_head *dsaddrs2)
->  {
->  	struct nfs4_pnfs_ds_addr *da1, *da2;
-> -
-> -	/* step through both lists, comparing as we go */
-> -	for (da1 = list_first_entry(dsaddrs1, typeof(*da1), da_node),
-> -	     da2 = list_first_entry(dsaddrs2, typeof(*da2), da_node);
-> -	     da1 != NULL && da2 != NULL;
-> -	     da1 = list_entry(da1->da_node.next, typeof(*da1), da_node),
-> -	     da2 = list_entry(da2->da_node.next, typeof(*da2), da_node)) {
-> -		if (!same_sockaddr((struct sockaddr *)&da1->da_addr,
-> -				   (struct sockaddr *)&da2->da_addr))
-> -			return false;
-> +	struct sockaddr *sa1, *sa2;
-> +	bool match = false;
-> +
-> +	list_for_each_entry(da1, dsaddrs1, da_node) {
-> +		sa1 = (struct sockaddr *)&da1->da_addr;
-> +		match = false;
-> +		list_for_each_entry(da2, dsaddrs2, da_node) {
-> +			sa2 = (struct sockaddr *)&da2->da_addr;
-> +			match = same_sockaddr(sa1, sa2);
-> +			if (match)
-> +				break;
+> I have added the linux-nfs list to hopefully add a wider interested
+> audience.
 
-Sure would be nice to consolidate some of these "same_sockaddr"
-functions at some point. We also have nfs_sockaddr_cmp which does the
-exact same thing, and probably some similar ones in the RPC layer.
+... which made your mail get burried in my linux-nfs mailinglist folder :(
+But I finaly found it.
 
-> +		}
-> +		if (!match)
-> +			break;
->  	}
-> -	if (da1 == NULL && da2 == NULL)
-> -		return true;
-> -
-> -	return false;
-> +	return match;
->  }
->  
->  /*
+> If what is being revalidated is a mount point nfs4_lookup_revalidate
+> calls nfs_lookup_revalidate.  So nfs_lookup_revalidate is the only
+> interesting function.
 
-Nice catch:
+OK.
 
-Reviewed-by: Jeff Layton <jeff.layton@primarydata.com>
+> I don't understand the what nfs_lookup_revalidate is doing particularly
+> well.  
+
+Neither do I.
+
+Here is what I get from a broken machine (Kernel 4.1.5) using
+"rpcdebug -m nfs -s lookupcache":
+
+The mountpoint which got unmounted in this case is /proc not /dev, but the
+stack-trace points to the same place.
+
+Aug 14 11:49:37 banthonytwarog kernel: NFS: nfs_lookup_revalidate(/proc) is valid
+Aug 14 11:49:37 banthonytwarog kernel: NFS: nfs_lookup_revalidate(/proc) is invalid
+Aug 14 11:49:37 banthonytwarog kernel: NFSROOT __detach_mounts: proc
+Aug 14 11:49:37 banthonytwarog kernel: CPU: 2 PID: 28350 Comm: modtrack Tainted: P        W  O    4.1.5-lomac3-00293-gfdd763a #6
+Aug 14 11:49:37 banthonytwarog kernel: Hardware name: System manufacturer System Product Name/P8H67, BIOS 3506 03/02/2012
+Aug 14 11:49:37 banthonytwarog kernel: ffff8800d9b93bb8 ffff8800d9b93b78 ffffffff81560488 00000000446c446c
+Aug 14 11:49:37 banthonytwarog kernel: ffff88040c427d98 ffff8800d9b93b98 ffffffff81106d36 00000000000000a2
+Aug 14 11:49:37 banthonytwarog kernel: ffff88040c427d98 ffff8800d9b93be8 ffffffff810ffc0c 00000000d9b93c08
+Aug 14 11:49:37 banthonytwarog kernel: Call Trace:
+Aug 14 11:49:37 banthonytwarog kernel: [<ffffffff81560488>] dump_stack+0x4c/0x6e
+Aug 14 11:49:37 banthonytwarog kernel: [<ffffffff81106d36>] __detach_mounts+0x20/0xdf
+Aug 14 11:49:37 banthonytwarog kernel: [<ffffffff810ffc0c>] d_invalidate+0x9a/0xc8
+Aug 14 11:49:37 banthonytwarog kernel: [<ffffffff810f6b60>] lookup_fast+0x1f5/0x26f
+Aug 14 11:49:37 banthonytwarog kernel: [<ffffffff810f5a44>] ? __inode_permission+0x37/0x95
+Aug 14 11:49:37 banthonytwarog kernel: [<ffffffff810f7c02>] link_path_walk+0x204/0x749
+Aug 14 11:49:37 banthonytwarog kernel: [<ffffffff810f4db2>] ? terminate_walk+0x10/0x2e
+Aug 14 11:49:37 banthonytwarog kernel: [<ffffffff810f75e7>] ? do_last.isra.43+0x8b6/0x9fb
+Aug 14 11:49:37 banthonytwarog kernel: [<ffffffff810f846f>] path_init+0x328/0x337
+Aug 14 11:49:37 banthonytwarog kernel: [<ffffffff810f919a>] path_openat+0x1b0/0x53e
+Aug 14 11:49:37 banthonytwarog kernel: [<ffffffff810fa073>] do_filp_open+0x75/0x85
+Aug 14 11:49:37 banthonytwarog kernel: [<ffffffff8110427b>] ? __alloc_fd+0xdd/0xef
+Aug 14 11:49:37 banthonytwarog kernel: [<ffffffff810ec9b3>] do_sys_open+0x146/0x1d5
+Aug 14 11:49:37 banthonytwarog kernel: [<ffffffff810d1c5c>] ? vm_munmap+0x4b/0x59
+Aug 14 11:49:37 banthonytwarog kernel: [<ffffffff810eca5b>] SyS_open+0x19/0x1b
+Aug 14 11:49:37 banthonytwarog kernel: [<ffffffff81565897>] system_call_fastpath+0x12/0x6a
+
+I suppose, that the first two lines are particularly interesting as we have
+"is valid" and a fraction of a second later we have "is invalid" at the same
+mountpoint.
+
+To me this looks like a job for the NFS client maintainers now, right?
+
+Sven
+
+-- 
+Exploits and holes are a now a necessary protection against large
+corporate interests. (Alan Cox)
+
+/me is giggls@ircnet, http://sven.gegg.us/ on the Web
