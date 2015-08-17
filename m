@@ -1,97 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pd0-f178.google.com ([209.85.192.178]:34032 "EHLO
-	mail-pd0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754684AbbHQLJF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Aug 2015 07:09:05 -0400
-Received: by pdbfa8 with SMTP id fa8so54830706pdb.1
-        for <linux-nfs@vger.kernel.org>; Mon, 17 Aug 2015 04:09:05 -0700 (PDT)
-From: Kinglong Mee <kinglongmee@gmail.com>
-Subject: [PATCH] SUNRPC: Change WARN_ON to an warn message in rpc_exit_task
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        kinglongmee@gmail.com
-Message-ID: <55D1C0C7.4040005@gmail.com>
-Date: Mon, 17 Aug 2015 19:08:55 +0800
+Received: from mx.gnuher.de ([144.76.235.56]:54355 "EHLO mx.gnuher.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754671AbbHQMhJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 17 Aug 2015 08:37:09 -0400
+Date: Mon, 17 Aug 2015 14:37:04 +0200
+From: Sven Geggus <lists@fuchsschwanzdomain.de>
+To: "Eric W. Biederman" <ebiederm@xmission.com>
+Cc: linux-kernel@vger.kernel.org, trond.myklebust@primarydata.com,
+        linux-nfs@vger.kernel.org
+Subject: Re: nfs-root: destructive call to __detach_mounts /dev
+Message-ID: <20150817123703.GA25546@geggus.net>
+References: <20150731114230.GA31037@geggus.net>
+ <87r3noieqg.fsf@x220.int.ebiederm.org>
+ <20150814110140.GA25799@geggus.net>
+ <87lhddhpso.fsf@x220.int.ebiederm.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=utf-8
+In-Reply-To: <87lhddhpso.fsf@x220.int.ebiederm.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When testing nfs4.0 lock, I get WARN_ON message as below,
-[  278.733391] ------------[ cut here ]------------
-[  278.734496] WARNING: CPU: 0 PID: 263 at /root/linux-nfs/net/sunrpc/sched.c:692
-rpc_exit_task+0x85/0x90 [sunrpc]()
-[  278.736771] Modules linked in: nfsv4(OE) nfs(OE) nfsd(E) bnep bluetooth ip6t_rpfilter ip6t_REJECT
-xt_conntrack cfg80211 rfkill ebtable_nat ebtable_broute bridge stp llc ebtable_filter ebtables
-ip6table_nat nf_conntrack_ipv6 nf_defrag_ipv6 nf_nat_ipv6 ip6table_mangle ip6table_security
-ip6table_raw ip6table_filter ip6_tables iptable_nat nf_conntrack_ipv4 nf_defrag_ipv4
-nf_nat_ipv4 nf_nat nf_conntrack iptable_mangle iptable_security iptable_raw btrfs ppdev xfs
-microcode xor serio_raw libcrc32c pcspkr raid6_pq e1000 parport_pc parport i2c_piix4 i2c_core
-auth_rpcgss nfs_acl lockd sunrpc(OE) ata_generic pata_acpi [last unloaded: nfsd]
-[  278.751462] CPU: 0 PID: 263 Comm: kworker/0:4 Tainted: G           OE 3.16.0-rc2+ #28
-[  278.753364] Hardware name: VMware, Inc. VMware Virtual Platform/440BX Desktop Reference Platform,
-BIOS 6.00 07/31/2013
-[  278.755710] Workqueue: rpciod rpc_async_schedule [sunrpc]
-[  278.757112]  0000000000000000 00000000f6173352 ffff880072e5fd30 ffffffff816eacfa
-[  278.758811]  0000000000000000 ffff880072e5fd68 ffffffff8108bf3d ffff88005997f180
-[  278.760527]  ffff88003ae44830 ffffffffa001a860 ffffffffa001a860 0000000000000000
-[  278.762271] Call Trace:
-[  278.762802]  [<ffffffff816eacfa>] dump_stack+0x45/0x56
-[  278.763906]  [<ffffffff8108bf3d>] warn_slowpath_common+0x7d/0xa0
-[  278.765419]  [<ffffffffa001a860>] ? rpc_destroy_wait_queue+0x20/0x20 [sunrpc]
-[  278.767243]  [<ffffffffa001a860>] ? rpc_destroy_wait_queue+0x20/0x20 [sunrpc]
-[  278.768758]  [<ffffffff8108c06a>] warn_slowpath_null+0x1a/0x20
-[  278.770080]  [<ffffffffa001a8e5>] rpc_exit_task+0x85/0x90 [sunrpc]
-[  278.771439]  [<ffffffffa001b204>] __rpc_execute+0x94/0x420 [sunrpc]
-[  278.772829]  [<ffffffffa001b5b6>] rpc_async_schedule+0x26/0x30 [sunrpc]
-[  278.774276]  [<ffffffff810a7f95>] process_one_work+0x175/0x430
-[  278.775573]  [<ffffffff810a866d>] worker_thread+0x11d/0x530
-[  278.776824]  [<ffffffff810a8550>] ? rescuer_thread+0x300/0x300
-[  278.778069]  [<ffffffff810aee18>] kthread+0xd8/0xf0
-[  278.779114]  [<ffffffff810aed40>] ? insert_kthread_work+0x40/0x40
-[  278.780448]  [<ffffffff816f22bc>] ret_from_fork+0x7c/0xb0
-[  278.781621]  [<ffffffff810aed40>] ? insert_kthread_work+0x40/0x40
-[  278.782972] ---[ end trace 3350394592832e42 ]---
+Eric W. Biederman wrote:
 
-task1 (lock/unlock):
-  --> call_decode
-    --> rpc_exit_task (-10008)
-      --> nfs4_release_lockowner_done
-        --> rpc_restart_call_prepare
-            task->tk_action = call_start;
-task2 (umount):
-      --> rpc_shutdown_client
-        --> rpc_killall_tasks
-            rovr->tk_flags |= RPC_TASK_KILLED; (set task1 to KILLED)
-task1:
-    --> rpc_exit_task
-        WARN_ON(RPC_ASSASSINATED(task));
+> I don't have a clue what the issue would be but I would start with
+> something like the patch below.
 
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
----
- net/sunrpc/sched.c | 9 ++++++++-
- 1 file changed, 8 insertions(+), 1 deletion(-)
+OK using it I got the following...
+This time with /dev on another machine (same nfs root-fs):
 
-diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
-index 337ca85..562db0a 100644
---- a/net/sunrpc/sched.c
-+++ b/net/sunrpc/sched.c
-@@ -689,7 +689,14 @@ void rpc_exit_task(struct rpc_task *task)
- 	if (task->tk_ops->rpc_call_done != NULL) {
- 		task->tk_ops->rpc_call_done(task, task->tk_calldata);
- 		if (task->tk_action != NULL) {
--			WARN_ON(RPC_ASSASSINATED(task));
-+			/*
-+			 * A known case here is,
-+			 * The RPC_TASK_KILLED is set in rpc_killall_tasks by
-+			 * another process.
-+			 */
-+			if (RPC_ASSASSINATED(task))
-+				printk(KERN_WARNING "RPC: dead task tried to"
-+					" walk away.\n");
- 			/* Always release the RPC slot and buffer memory */
- 			xprt_release(task);
- 			rpc_reset_task_statistics(task);
+Aug 17 13:57:04 dhcp195 kernel: NFS: nfs_lookup_revalidate(/dev): nfs_lookup_verify_inode() failed
+Aug 17 13:57:04 dhcp195 kernel: NFS: nfs_lookup_revalidate(/dev) is invalid
+Aug 17 13:57:04 dhcp195 kernel: NFSROOT __detach_mounts: dev
+Aug 17 13:57:04 dhcp195 kernel: CPU: 3 PID: 32644 Comm: modtrack Tainted: P O    4.1.6-lomac1-00296-gfeae456 #7
+Aug 17 13:57:04 dhcp195 kernel: Hardware name: System manufacturer System Product Name/P7P55D, BIOS 1807    07/22/2010
+Aug 17 13:57:04 dhcp195 kernel: ffff88021315bc18 ffff88021315bbd8 ffffffff81560638 000000000000b413
+Aug 17 13:57:04 dhcp195 kernel: ffff880216460f18 ffff88021315bbf8 ffffffff81106e1f 000000000000001b
+Aug 17 13:57:04 dhcp195 kernel: ffff880216460f18 ffff88021315bc48 ffffffff810ffcf5 0000000005dd05dd
+Aug 17 13:57:04 dhcp195 kernel: Call Trace:
+Aug 17 13:57:04 dhcp195 kernel: [<ffffffff81560638>] dump_stack+0x4c/0x6e
+Aug 17 13:57:04 dhcp195 kernel: [<ffffffff81106e1f>] __detach_mounts+0x20/0xdf
+Aug 17 13:57:04 dhcp195 kernel: [<ffffffff810ffcf5>] d_invalidate+0x9a/0xc8
+Aug 17 13:57:04 dhcp195 kernel: [<ffffffff810f6c49>] lookup_fast+0x1f5/0x26f
+Aug 17 13:57:04 dhcp195 kernel: [<ffffffff810f6ef0>] do_last.isra.43+0xd6/0x9fb
+Aug 17 13:57:04 dhcp195 kernel: [<ffffffff810f92a4>] path_openat+0x1d1/0x53e
+Aug 17 13:57:04 dhcp195 kernel: [<ffffffff810fa077>] ? user_path_at_empty+0x63/0x93
+Aug 17 13:57:04 dhcp195 kernel: [<ffffffff810fa11c>] do_filp_open+0x35/0x85
+Aug 17 13:57:04 dhcp195 kernel: [<ffffffff811f1aa9>] ? find_next_zero_bit+0x17/0x1d
+Aug 17 13:57:04 dhcp195 kernel: [<ffffffff81104364>] ? __alloc_fd+0xdd/0xef
+Aug 17 13:57:04 dhcp195 kernel: [<ffffffff810eca9c>] do_sys_open+0x146/0x1d5
+Aug 17 13:57:04 dhcp195 kernel: [<ffffffff810ecb55>] SyS_openat+0xf/0x11
+Aug 17 13:57:04 dhcp195 kernel: [<ffffffff81565a57>] system_call_fastpath+0x12/0x6a
+
+So this looks like I would need to add some debug output to
+"nfs_lookup_verify_inode" then right?
+
+Sven
+
 -- 
-2.4.3
-
+Why are there so many Unix-haters-handbooks and not even one
+Microsoft-Windows-haters handbook?
+Gurer vf ab arrq sbe n unaqobbx gb ungr Zvpebfbsg Jvaqbjf!
+/me is giggls@ircnet, http://sven.gegg.us/ on the Web
