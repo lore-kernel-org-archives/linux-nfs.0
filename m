@@ -1,58 +1,78 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:38038 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755719AbbHQPk7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Aug 2015 11:40:59 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
+Received: from bombadil.infradead.org ([198.137.202.9]:52619 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755625AbbHQQGk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Aug 2015 12:06:40 -0400
+Date: Mon, 17 Aug 2015 09:06:39 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Steve Dickson <SteveD@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
 Subject: Re: nfs-utils regression on IPv6-less kernels
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20150817124220.GA17877@infradead.org>
-Date: Mon, 17 Aug 2015 08:40:25 -0700
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <F810C54A-A075-40D1-9912-80A85A7A0D63@oracle.com>
-References: <20150810131358.GA19466@infradead.org> <55C9D2F2.1020300@RedHat.com> <20150817124220.GA17877@infradead.org>
-To: Christoph Hellwig <hch@infradead.org>, Steve Dickson <SteveD@redhat.com>
+Message-ID: <20150817160639.GA1173@infradead.org>
+References: <20150810131358.GA19466@infradead.org>
+ <55C9D2F2.1020300@RedHat.com>
+ <20150817124220.GA17877@infradead.org>
+ <F810C54A-A075-40D1-9912-80A85A7A0D63@oracle.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <F810C54A-A075-40D1-9912-80A85A7A0D63@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Aug 17, 2015, at 5:42 AM, Christoph Hellwig <hch@infradead.org> wrote:
-
-> On Tue, Aug 11, 2015 at 06:48:18AM -0400, Steve Dickson wrote:
->> hmm... What do you mean "fails to start"...  are there any error messages?
+On Mon, Aug 17, 2015 at 08:40:25AM -0700, Chuck Lever wrote:
+> Probably stopped working with "rpc.nfsd: Squelch DNS errors when
+> using --host option".
 > 
-> [....] Starting NFS kernel daemon: nfsdrpc.nfsd: address family AF_INET6
-> not supported by protocol TCP
-> rpc.nfsd: unable to set any sockets for nfsd
-> failed!
+> getaddrinfo(3) returns a list of addresses, some of which are
+> IPv6 addresses. It gets the list from /etc/hosts, or DNS. Even
+> on kernels which do not support IPv6, there may be at least one
+> IPv6 address in the list.
 > 
-> And then any attempts to mount from this machine fail.
+> nfssvc_setfds() then loops over this list. The error handling
+> in nfssvc_setfds() causes the loop to exit if the socket(2)
+> call fails. It should "continue" if the error is EAFNOSUPPORT.
+> In fact, that xlog notice can also be removed.
 > 
->> If nfs-utils is compiled with the --disable_ipv6 flag, does
->> the same problem happen?
-> 
-> No, that fixes it.
+> I'm traveling this week. Is this enough for you to generate a
+> fix?
 
-Probably stopped working with "rpc.nfsd: Squelch DNS errors when
-using --host option".
+Yes, that works:
 
-getaddrinfo(3) returns a list of addresses, some of which are
-IPv6 addresses. It gets the list from /etc/hosts, or DNS. Even
-on kernels which do not support IPv6, there may be at least one
-IPv6 address in the list.
+---
+From: Christoph Hellwig <hch@lst.de>
+Subject: nfsd: ignore unsupported address types in nfssvc_setfds
 
-nfssvc_setfds() then loops over this list. The error handling
-in nfssvc_setfds() causes the loop to exit if the socket(2)
-call fails. It should "continue" if the error is EAFNOSUPPORT.
-In fact, that xlog notice can also be removed.
+Just continue and try a different record returned from getaddrinfo
+if the kernel does not support an address family.  This fixes nfsd
+startup on kernels without IPv6 support.
 
-I'm traveling this week. Is this enough for you to generate a
-fix?
+Suggested-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Christoph Hellwig <hch@lst.de>
 
-
---
-Chuck Lever
-
-
-
+diff --git a/utils/nfsd/nfssvc.c b/utils/nfsd/nfssvc.c
+index a2b11d8..fc11d23 100644
+--- a/utils/nfsd/nfssvc.c
++++ b/utils/nfsd/nfssvc.c
+@@ -174,15 +174,14 @@ nfssvc_setfds(const struct addrinfo *hints, const char *node, const char *port)
+ 		sockfd = socket(addr->ai_family, addr->ai_socktype,
+ 				addr->ai_protocol);
+ 		if (sockfd < 0) {
+-			if (errno == EAFNOSUPPORT)
+-				xlog(L_NOTICE, "address family %s not "
+-						"supported by protocol %s",
+-						family, proto);
+-			else
++			if (errno != EAFNOSUPPORT) {
+ 				xlog(L_ERROR, "unable to create %s %s socket: "
+ 				     "errno %d (%m)", family, proto, errno);
+-			rc = errno;
+-			goto error;
++				rc = errno;
++				goto error;
++			}
++			addr = addr->ai_next;
++			continue;
+ 		}
+ #ifdef IPV6_SUPPORTED
+ 		if (addr->ai_family == AF_INET6 &&
