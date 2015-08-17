@@ -1,33 +1,118 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([198.137.202.9]:33117 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751427AbbHQMmU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Aug 2015 08:42:20 -0400
-Date: Mon, 17 Aug 2015 05:42:20 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: nfs-utils regression on IPv6-less kernels
-Message-ID: <20150817124220.GA17877@infradead.org>
-References: <20150810131358.GA19466@infradead.org>
- <55C9D2F2.1020300@RedHat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:46065 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750975AbbHQNfh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 17 Aug 2015 09:35:37 -0400
+Date: Mon, 17 Aug 2015 09:35:35 -0400
+From: Scott Mayhew <smayhew@redhat.com>
+To: Kinglong Mee <kinglongmee@gmail.com>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] SUNRPC: Change WARN_ON to an warn message in
+ rpc_exit_task
+Message-ID: <20150817133535.GA5192@tonberry.usersys.redhat.com>
+References: <55D1C0C7.4040005@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <55C9D2F2.1020300@RedHat.com>
+In-Reply-To: <55D1C0C7.4040005@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Aug 11, 2015 at 06:48:18AM -0400, Steve Dickson wrote:
-> hmm... What do you mean "fails to start"...  are there any error messages?
+On Mon, 17 Aug 2015, Kinglong Mee wrote:
 
-[....] Starting NFS kernel daemon: nfsdrpc.nfsd: address family AF_INET6
-not supported by protocol TCP
-rpc.nfsd: unable to set any sockets for nfsd
- failed!
+> When testing nfs4.0 lock, I get WARN_ON message as below,
+> [  278.733391] ------------[ cut here ]------------
+> [  278.734496] WARNING: CPU: 0 PID: 263 at /root/linux-nfs/net/sunrpc/sched.c:692
+> rpc_exit_task+0x85/0x90 [sunrpc]()
+> [  278.736771] Modules linked in: nfsv4(OE) nfs(OE) nfsd(E) bnep bluetooth ip6t_rpfilter ip6t_REJECT
+> xt_conntrack cfg80211 rfkill ebtable_nat ebtable_broute bridge stp llc ebtable_filter ebtables
+> ip6table_nat nf_conntrack_ipv6 nf_defrag_ipv6 nf_nat_ipv6 ip6table_mangle ip6table_security
+> ip6table_raw ip6table_filter ip6_tables iptable_nat nf_conntrack_ipv4 nf_defrag_ipv4
+> nf_nat_ipv4 nf_nat nf_conntrack iptable_mangle iptable_security iptable_raw btrfs ppdev xfs
+> microcode xor serio_raw libcrc32c pcspkr raid6_pq e1000 parport_pc parport i2c_piix4 i2c_core
+> auth_rpcgss nfs_acl lockd sunrpc(OE) ata_generic pata_acpi [last unloaded: nfsd]
+> [  278.751462] CPU: 0 PID: 263 Comm: kworker/0:4 Tainted: G           OE 3.16.0-rc2+ #28
+> [  278.753364] Hardware name: VMware, Inc. VMware Virtual Platform/440BX Desktop Reference Platform,
+> BIOS 6.00 07/31/2013
+> [  278.755710] Workqueue: rpciod rpc_async_schedule [sunrpc]
+> [  278.757112]  0000000000000000 00000000f6173352 ffff880072e5fd30 ffffffff816eacfa
+> [  278.758811]  0000000000000000 ffff880072e5fd68 ffffffff8108bf3d ffff88005997f180
+> [  278.760527]  ffff88003ae44830 ffffffffa001a860 ffffffffa001a860 0000000000000000
+> [  278.762271] Call Trace:
+> [  278.762802]  [<ffffffff816eacfa>] dump_stack+0x45/0x56
+> [  278.763906]  [<ffffffff8108bf3d>] warn_slowpath_common+0x7d/0xa0
+> [  278.765419]  [<ffffffffa001a860>] ? rpc_destroy_wait_queue+0x20/0x20 [sunrpc]
+> [  278.767243]  [<ffffffffa001a860>] ? rpc_destroy_wait_queue+0x20/0x20 [sunrpc]
+> [  278.768758]  [<ffffffff8108c06a>] warn_slowpath_null+0x1a/0x20
+> [  278.770080]  [<ffffffffa001a8e5>] rpc_exit_task+0x85/0x90 [sunrpc]
+> [  278.771439]  [<ffffffffa001b204>] __rpc_execute+0x94/0x420 [sunrpc]
+> [  278.772829]  [<ffffffffa001b5b6>] rpc_async_schedule+0x26/0x30 [sunrpc]
+> [  278.774276]  [<ffffffff810a7f95>] process_one_work+0x175/0x430
+> [  278.775573]  [<ffffffff810a866d>] worker_thread+0x11d/0x530
+> [  278.776824]  [<ffffffff810a8550>] ? rescuer_thread+0x300/0x300
+> [  278.778069]  [<ffffffff810aee18>] kthread+0xd8/0xf0
+> [  278.779114]  [<ffffffff810aed40>] ? insert_kthread_work+0x40/0x40
+> [  278.780448]  [<ffffffff816f22bc>] ret_from_fork+0x7c/0xb0
+> [  278.781621]  [<ffffffff810aed40>] ? insert_kthread_work+0x40/0x40
+> [  278.782972] ---[ end trace 3350394592832e42 ]---
+> 
+> task1 (lock/unlock):
+>   --> call_decode
+>     --> rpc_exit_task (-10008)
+>       --> nfs4_release_lockowner_done
+>         --> rpc_restart_call_prepare
+>             task->tk_action = call_start;
+> task2 (umount):
+>       --> rpc_shutdown_client
+>         --> rpc_killall_tasks
+>             rovr->tk_flags |= RPC_TASK_KILLED; (set task1 to KILLED)
+> task1:
+>     --> rpc_exit_task
+>         WARN_ON(RPC_ASSASSINATED(task));
+> 
+> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+> ---
+>  net/sunrpc/sched.c | 9 ++++++++-
+>  1 file changed, 8 insertions(+), 1 deletion(-)
+> 
+> diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
+> index 337ca85..562db0a 100644
+> --- a/net/sunrpc/sched.c
+> +++ b/net/sunrpc/sched.c
+> @@ -689,7 +689,14 @@ void rpc_exit_task(struct rpc_task *task)
+>  	if (task->tk_ops->rpc_call_done != NULL) {
+>  		task->tk_ops->rpc_call_done(task, task->tk_calldata);
+>  		if (task->tk_action != NULL) {
+> -			WARN_ON(RPC_ASSASSINATED(task));
+> +			/*
+> +			 * A known case here is,
+> +			 * The RPC_TASK_KILLED is set in rpc_killall_tasks by
+> +			 * another process.
+> +			 */
+> +			if (RPC_ASSASSINATED(task))
+> +				printk(KERN_WARNING "RPC: dead task tried to"
+> +					" walk away.\n");
+>  			/* Always release the RPC slot and buffer memory */
+>  			xprt_release(task);
+>  			rpc_reset_task_statistics(task);
+> -- 
+> 2.4.3
+> 
 
-And then any attempts to mount from this machine fail.
+If this is going to be changed anyway, could we maybe have some more
+useful debugging information added to the message?  Something like:
 
-> If nfs-utils is compiled with the --disable_ipv6 flag, does
-> the same problem happen?
+        printk(KERN_WARNING "RPC: %s to %s was killed\n", 
+                task->tk_msg.rpc_proc->p_name, 
+                rpc_peeraddr2str(task->tk_client, RPC_DISPLAY_ADDR));
 
-No, that fixes it.
+I recently had a case where this warning was popping several times per
+minute.  The machine was both a client and a server... it turns out
+that it was actually CB_NULLs that were causing the warning, and the
+trigger for that was that several clients had the same value for the
+clientaddr mount option.
+
+Having some more useful info from the warning message would have saved
+some time there.
+
+-Scott
