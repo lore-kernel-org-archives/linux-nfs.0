@@ -1,94 +1,97 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pa0-f47.google.com ([209.85.220.47]:36503 "EHLO
-	mail-pa0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751772AbbHONwc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 15 Aug 2015 09:52:32 -0400
+Received: from mail-pd0-f178.google.com ([209.85.192.178]:34032 "EHLO
+	mail-pd0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754684AbbHQLJF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Aug 2015 07:09:05 -0400
+Received: by pdbfa8 with SMTP id fa8so54830706pdb.1
+        for <linux-nfs@vger.kernel.org>; Mon, 17 Aug 2015 04:09:05 -0700 (PDT)
 From: Kinglong Mee <kinglongmee@gmail.com>
-Subject: [PATCH] NFS: Fix a NULL pointer dereference of migration recovery ops
- for v4.2 client
+Subject: [PATCH] SUNRPC: Change WARN_ON to an warn message in rpc_exit_task
 To: Trond Myklebust <trond.myklebust@primarydata.com>
 Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        stable@vger.kernel.org, kinglongmee@gmail.com
-Message-ID: <55CF440A.5040201@gmail.com>
-Date: Sat, 15 Aug 2015 21:52:10 +0800
+        kinglongmee@gmail.com
+Message-ID: <55D1C0C7.4040005@gmail.com>
+Date: Mon, 17 Aug 2015 19:08:55 +0800
 MIME-Version: 1.0
 Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
----Steps to Reproduce--
-<nfs-server>
-# cat /etc/exports
-/nfs/referal  *(rw,insecure,no_subtree_check,no_root_squash,crossmnt)
-/nfs/old      *(ro,insecure,subtree_check,root_squash,crossmnt)
+When testing nfs4.0 lock, I get WARN_ON message as below,
+[  278.733391] ------------[ cut here ]------------
+[  278.734496] WARNING: CPU: 0 PID: 263 at /root/linux-nfs/net/sunrpc/sched.c:692
+rpc_exit_task+0x85/0x90 [sunrpc]()
+[  278.736771] Modules linked in: nfsv4(OE) nfs(OE) nfsd(E) bnep bluetooth ip6t_rpfilter ip6t_REJECT
+xt_conntrack cfg80211 rfkill ebtable_nat ebtable_broute bridge stp llc ebtable_filter ebtables
+ip6table_nat nf_conntrack_ipv6 nf_defrag_ipv6 nf_nat_ipv6 ip6table_mangle ip6table_security
+ip6table_raw ip6table_filter ip6_tables iptable_nat nf_conntrack_ipv4 nf_defrag_ipv4
+nf_nat_ipv4 nf_nat nf_conntrack iptable_mangle iptable_security iptable_raw btrfs ppdev xfs
+microcode xor serio_raw libcrc32c pcspkr raid6_pq e1000 parport_pc parport i2c_piix4 i2c_core
+auth_rpcgss nfs_acl lockd sunrpc(OE) ata_generic pata_acpi [last unloaded: nfsd]
+[  278.751462] CPU: 0 PID: 263 Comm: kworker/0:4 Tainted: G           OE 3.16.0-rc2+ #28
+[  278.753364] Hardware name: VMware, Inc. VMware Virtual Platform/440BX Desktop Reference Platform,
+BIOS 6.00 07/31/2013
+[  278.755710] Workqueue: rpciod rpc_async_schedule [sunrpc]
+[  278.757112]  0000000000000000 00000000f6173352 ffff880072e5fd30 ffffffff816eacfa
+[  278.758811]  0000000000000000 ffff880072e5fd68 ffffffff8108bf3d ffff88005997f180
+[  278.760527]  ffff88003ae44830 ffffffffa001a860 ffffffffa001a860 0000000000000000
+[  278.762271] Call Trace:
+[  278.762802]  [<ffffffff816eacfa>] dump_stack+0x45/0x56
+[  278.763906]  [<ffffffff8108bf3d>] warn_slowpath_common+0x7d/0xa0
+[  278.765419]  [<ffffffffa001a860>] ? rpc_destroy_wait_queue+0x20/0x20 [sunrpc]
+[  278.767243]  [<ffffffffa001a860>] ? rpc_destroy_wait_queue+0x20/0x20 [sunrpc]
+[  278.768758]  [<ffffffff8108c06a>] warn_slowpath_null+0x1a/0x20
+[  278.770080]  [<ffffffffa001a8e5>] rpc_exit_task+0x85/0x90 [sunrpc]
+[  278.771439]  [<ffffffffa001b204>] __rpc_execute+0x94/0x420 [sunrpc]
+[  278.772829]  [<ffffffffa001b5b6>] rpc_async_schedule+0x26/0x30 [sunrpc]
+[  278.774276]  [<ffffffff810a7f95>] process_one_work+0x175/0x430
+[  278.775573]  [<ffffffff810a866d>] worker_thread+0x11d/0x530
+[  278.776824]  [<ffffffff810a8550>] ? rescuer_thread+0x300/0x300
+[  278.778069]  [<ffffffff810aee18>] kthread+0xd8/0xf0
+[  278.779114]  [<ffffffff810aed40>] ? insert_kthread_work+0x40/0x40
+[  278.780448]  [<ffffffff816f22bc>] ret_from_fork+0x7c/0xb0
+[  278.781621]  [<ffffffff810aed40>] ? insert_kthread_work+0x40/0x40
+[  278.782972] ---[ end trace 3350394592832e42 ]---
 
-<nfs-client>
-# mount -t nfs nfs-server:/nfs/ /mnt/
-# ll /mnt/*/
+task1 (lock/unlock):
+  --> call_decode
+    --> rpc_exit_task (-10008)
+      --> nfs4_release_lockowner_done
+        --> rpc_restart_call_prepare
+            task->tk_action = call_start;
+task2 (umount):
+      --> rpc_shutdown_client
+        --> rpc_killall_tasks
+            rovr->tk_flags |= RPC_TASK_KILLED; (set task1 to KILLED)
+task1:
+    --> rpc_exit_task
+        WARN_ON(RPC_ASSASSINATED(task));
 
-<nfs-server>
-# cat /etc/exports
-/nfs/referal   *(rw,insecure,no_subtree_check,no_root_squash,crossmnt,refer=/nfs/old/@nfs-server)
-/nfs/old       *(ro,insecure,subtree_check,root_squash,crossmnt)
-# service nfs restart
-
-<nfs-client>
-# ll /mnt/*/    --->>>>> oops here
-
-[ 5123.102925] BUG: unable to handle kernel NULL pointer dereference at           (null)
-[ 5123.103363] IP: [<ffffffffa03ed38b>] nfs4_proc_get_locations+0x9b/0x120 [nfsv4]
-[ 5123.103752] PGD 587b9067 PUD 3cbf5067 PMD 0
-[ 5123.104131] Oops: 0000 [#1]
-[ 5123.104529] Modules linked in: nfsv4(OE) nfs(OE) fscache(E) nfsd(OE) xfs libcrc32c iscsi_tcp libiscsi_tcp libiscsi scsi_transport_iscsi coretemp crct10dif_pclmul crc32_pclmul crc32c_intel ghash_clmulni_intel ppdev vmw_balloon parport_pc parport i2c_piix4 shpchp auth_rpcgss nfs_acl vmw_vmci lockd grace sunrpc vmwgfx drm_kms_helper ttm drm mptspi serio_raw scsi_transport_spi e1000 mptscsih mptbase ata_generic pata_acpi [last unloaded: nfsd]
-[ 5123.105887] CPU: 0 PID: 15853 Comm: ::1-manager Tainted: G           OE   4.2.0-rc6+ #214
-[ 5123.106358] Hardware name: VMware, Inc. VMware Virtual Platform/440BX Desktop Reference Platform, BIOS 6.00 05/20/2014
-[ 5123.106860] task: ffff88007620f300 ti: ffff88005877c000 task.ti: ffff88005877c000
-[ 5123.107363] RIP: 0010:[<ffffffffa03ed38b>]  [<ffffffffa03ed38b>] nfs4_proc_get_locations+0x9b/0x120 [nfsv4]
-[ 5123.107909] RSP: 0018:ffff88005877fdb8  EFLAGS: 00010246
-[ 5123.108435] RAX: ffff880053f3bc00 RBX: ffff88006ce6c908 RCX: ffff880053a0d240
-[ 5123.108968] RDX: ffffea0000e6d940 RSI: ffff8800399a0000 RDI: ffff88006ce6c908
-[ 5123.109503] RBP: ffff88005877fe28 R08: ffffffff81c708a0 R09: 0000000000000000
-[ 5123.110045] R10: 00000000000001a2 R11: ffff88003ba7f5c8 R12: ffff880054c55800
-[ 5123.110618] R13: 0000000000000000 R14: ffff880053a0d240 R15: ffff880053a0d240
-[ 5123.111169] FS:  0000000000000000(0000) GS:ffffffff81c27000(0000) knlGS:0000000000000000
-[ 5123.111726] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-[ 5123.112286] CR2: 0000000000000000 CR3: 0000000054cac000 CR4: 00000000001406f0
-[ 5123.112888] Stack:
-[ 5123.113458]  ffffea0000e6d940 ffff8800399a0000 00000000000167d0 0000000000000000
-[ 5123.114049]  0000000000000000 0000000000000000 0000000000000000 00000000a7ec82c6
-[ 5123.114662]  ffff88005877fe18 ffffea0000e6d940 ffff8800399a0000 ffff880054c55800
-[ 5123.115264] Call Trace:
-[ 5123.115868]  [<ffffffffa03fb44b>] nfs4_try_migration+0xbb/0x220 [nfsv4]
-[ 5123.116487]  [<ffffffffa03fcb3b>] nfs4_run_state_manager+0x4ab/0x7b0 [nfsv4]
-[ 5123.117104]  [<ffffffffa03fc690>] ? nfs4_do_reclaim+0x510/0x510 [nfsv4]
-[ 5123.117813]  [<ffffffff810a4527>] kthread+0xd7/0xf0
-[ 5123.118456]  [<ffffffff810a4450>] ? kthread_worker_fn+0x160/0x160
-[ 5123.119108]  [<ffffffff816d9cdf>] ret_from_fork+0x3f/0x70
-[ 5123.119723]  [<ffffffff810a4450>] ? kthread_worker_fn+0x160/0x160
-[ 5123.120329] Code: 4c 8b 6a 58 74 17 eb 52 48 8d 55 a8 89 c6 4c 89 e7 e8 4a b5 ff ff 8b 45 b0 85 c0 74 1c 4c 89 f9 48 8b 55 90 48 8b 75 98 48 89 df <41> ff 55 00 3d e8 d8 ff ff 41 89 c6 74 cf 48 8b 4d c8 65 48 33
-[ 5123.121643] RIP  [<ffffffffa03ed38b>] nfs4_proc_get_locations+0x9b/0x120 [nfsv4]
-[ 5123.122308]  RSP <ffff88005877fdb8>
-[ 5123.122942] CR2: 0000000000000000
-
-Fixes: ec011fe847 ("NFS: Introduce a vector of migration recovery ops")
-Cc: stable@vger.kernel.org # v3.13+
 Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
 ---
- fs/nfs/nfs4proc.c | 1 +
- 1 file changed, 1 insertion(+)
+ net/sunrpc/sched.c | 9 ++++++++-
+ 1 file changed, 8 insertions(+), 1 deletion(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 3acb1eb..f21d0df 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -8661,6 +8661,7 @@ static const struct nfs4_minor_version_ops nfs_v4_2_minor_ops = {
- 	.reboot_recovery_ops = &nfs41_reboot_recovery_ops,
- 	.nograce_recovery_ops = &nfs41_nograce_recovery_ops,
- 	.state_renewal_ops = &nfs41_state_renewal_ops,
-+	.mig_recovery_ops = &nfs41_mig_recovery_ops,
- };
- #endif
- 
+diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
+index 337ca85..562db0a 100644
+--- a/net/sunrpc/sched.c
++++ b/net/sunrpc/sched.c
+@@ -689,7 +689,14 @@ void rpc_exit_task(struct rpc_task *task)
+ 	if (task->tk_ops->rpc_call_done != NULL) {
+ 		task->tk_ops->rpc_call_done(task, task->tk_calldata);
+ 		if (task->tk_action != NULL) {
+-			WARN_ON(RPC_ASSASSINATED(task));
++			/*
++			 * A known case here is,
++			 * The RPC_TASK_KILLED is set in rpc_killall_tasks by
++			 * another process.
++			 */
++			if (RPC_ASSASSINATED(task))
++				printk(KERN_WARNING "RPC: dead task tried to"
++					" walk away.\n");
+ 			/* Always release the RPC slot and buffer memory */
+ 			xprt_release(task);
+ 			rpc_reset_task_statistics(task);
 -- 
 2.4.3
 
