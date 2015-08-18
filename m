@@ -1,262 +1,248 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:34982 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:34986 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753117AbbHRTK2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 18 Aug 2015 15:10:28 -0400
-Date: Tue, 18 Aug 2015 15:10:28 -0400
+	id S1750780AbbHRT1d (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 18 Aug 2015 15:27:33 -0400
+Date: Tue, 18 Aug 2015 15:27:33 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: NeilBrown <neilb@suse.de>
-Cc: Kinglong Mee <kinglongmee@gmail.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Al Viro <viro@zeniv.linux.org.uk>, linux-fsdevel@vger.kernel.org
-Subject: Re: [PATCH] nfsd: don't hold i_mutex over userspace upcalls
-Message-ID: <20150818191028.GA3957@fieldses.org>
-References: <20150430213602.GB9509@fieldses.org>
- <20150501115326.51f5613a@notabene.brown>
- <20150504220130.GB16827@fieldses.org>
- <5548CBA3.9080608@gmail.com>
- <20150505141801.GB27106@fieldses.org>
- <20150505155203.GD27106@fieldses.org>
- <20150506082628.0dd049c7@notabene.brown>
- <20150508161558.GA18851@fieldses.org>
- <20150508200133.GC18851@fieldses.org>
- <20150603151819.GA8441@fieldses.org>
+To: Kinglong Mee <kinglongmee@gmail.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        tigran.mkrtchyan@desy.de
+Subject: Re: [PATCH v2] 4.1 xdrdef: Update nfs4.x to the latest dot-x-38.txt
+Message-ID: <20150818192733.GB3957@fieldses.org>
+References: <55B76B9B.4090700@gmail.com>
+ <20150729193734.GB21949@fieldses.org>
+ <55BA130C.1050604@gmail.com>
+ <55BA14E2.60407@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20150603151819.GA8441@fieldses.org>
+In-Reply-To: <55BA14E2.60407@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Al, can I get an ACK/NACK for this?
+On Thu, Jul 30, 2015 at 08:13:22PM +0800, Kinglong Mee wrote:
+> There are some updates and bugfixes between draft-ietf-nfsv4-minorversion2-dot-x-38.txt
+>  and draft-ietf-nfsv4-minorversion2-dot-x-30.txt.
 
---b.
+Applied, thanks.--b.
 
-commit 5494e10316e3
-Author: NeilBrown <neilb@suse.de>
-Date:   Fri May 1 11:53:26 2015 +1000
-
-    nfsd: don't hold i_mutex over userspace upcalls
-    
-    We need information about exports when crossing mountpoints during
-    lookup or NFSv4 readdir.  If we don't already have that information
-    cached, we may have to ask (and wait for) rpc.mountd.
-    
-    In both cases we currently hold the i_mutex on the parent of the
-    directory we're asking rpc.mountd about.  We've seen situations where
-    rpc.mountd performs some operation on that directory that tries to take
-    the i_mutex again, resulting in deadlock.
-    
-    With some care, we may be able to avoid that in rpc.mountd.  But it
-    seems better just to avoid holding a mutex while waiting on userspace.
-    
-    It appears that lookup_one_len is pretty much the only operation that
-    needs the i_mutex.  So we could just drop the i_mutex elsewhere and do
-    something like
-    
-    	mutex_lock()
-    	lookup_one_len()
-    	mutex_unlock()
-    
-    In many cases though the lookup would have been cached and not required
-    the i_mutex, so it's more efficient to create a lookup_one_len() variant
-    that only takes the i_mutex when necessary.
-    
-    Signed-off-by: NeilBrown <neilb@suse.de>
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-
-diff --git a/fs/namei.c b/fs/namei.c
-index ae4e4c18b2ac..1627d0302a59 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -2250,6 +2250,8 @@ EXPORT_SYMBOL(vfs_path_lookup);
-  *
-  * Note that this routine is purely a helper for filesystem usage and should
-  * not be called by generic code.
-+ *
-+ * The caller must hold base->i_mutex.
-  */
- struct dentry *lookup_one_len(const char *name, struct dentry *base, int len)
- {
-@@ -2293,6 +2295,78 @@ struct dentry *lookup_one_len(const char *name, struct dentry *base, int len)
- }
- EXPORT_SYMBOL(lookup_one_len);
- 
-+/**
-+ * lookup_one_len_unlocked - filesystem helper to lookup single pathname component
-+ * @name:	pathname component to lookup
-+ * @base:	base directory to lookup from
-+ * @len:	maximum length @len should be interpreted to
-+ *
-+ * Note that this routine is purely a helper for filesystem usage and should
-+ * not be called by generic code.
-+ *
-+ * Unlike lookup_one_len, it should be called without the parent
-+ * i_mutex held, and will take the i_mutex itself if necessary.
-+ */
-+struct dentry *lookup_one_len_unlocked(const char *name,
-+				       struct dentry *base, int len)
-+{
-+	struct qstr this;
-+	unsigned int c;
-+	int err;
-+	struct dentry *ret;
-+
-+	this.name = name;
-+	this.len = len;
-+	this.hash = full_name_hash(name, len);
-+	if (!len)
-+		return ERR_PTR(-EACCES);
-+
-+	if (unlikely(name[0] == '.')) {
-+		if (len < 2 || (len == 2 && name[1] == '.'))
-+			return ERR_PTR(-EACCES);
-+	}
-+
-+	while (len--) {
-+		c = *(const unsigned char *)name++;
-+		if (c == '/' || c == '\0')
-+			return ERR_PTR(-EACCES);
-+	}
-+	/*
-+	 * See if the low-level filesystem might want
-+	 * to use its own hash..
-+	 */
-+	if (base->d_flags & DCACHE_OP_HASH) {
-+		int err = base->d_op->d_hash(base, &this);
-+		if (err < 0)
-+			return ERR_PTR(err);
-+	}
-+
-+	err = inode_permission(base->d_inode, MAY_EXEC);
-+	if (err)
-+		return ERR_PTR(err);
-+
-+	ret = __d_lookup(base, &this);
-+	if (ret)
-+		return ret;
-+	/*
-+	 * __d_lookup() is used to try to get a quick answer and avoid the
-+	 * mutex.  A false-negative does no harm.
-+	 */
-+	ret = __d_lookup(base, &this);
-+	if (ret && ret->d_flags & DCACHE_OP_REVALIDATE) {
-+		dput(ret);
-+		ret = NULL;
-+	}
-+	if (ret)
-+		return ret;
-+
-+	mutex_lock(&base->d_inode->i_mutex);
-+	ret =  __lookup_hash(&this, base, 0);
-+	mutex_unlock(&base->d_inode->i_mutex);
-+	return ret;
-+}
-+EXPORT_SYMBOL(lookup_one_len_unlocked);
-+
- int user_path_at_empty(int dfd, const char __user *name, unsigned flags,
- 		 struct path *path, int *empty)
- {
-diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
-index f6e7cbabac5a..01dcd494f781 100644
---- a/fs/nfsd/nfs3xdr.c
-+++ b/fs/nfsd/nfs3xdr.c
-@@ -823,7 +823,7 @@ compose_entry_fh(struct nfsd3_readdirres *cd, struct svc_fh *fhp,
- 		} else
- 			dchild = dget(dparent);
- 	} else
--		dchild = lookup_one_len(name, dparent, namlen);
-+		dchild = lookup_one_len_unlocked(name, dparent, namlen);
- 	if (IS_ERR(dchild))
- 		return rv;
- 	if (d_mountpoint(dchild))
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 51c9e9ca39a4..325521ce389a 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -2838,14 +2838,14 @@ nfsd4_encode_dirent_fattr(struct xdr_stream *xdr, struct nfsd4_readdir *cd,
- 	__be32 nfserr;
- 	int ignore_crossmnt = 0;
- 
--	dentry = lookup_one_len(name, cd->rd_fhp->fh_dentry, namlen);
-+	dentry = lookup_one_len_unlocked(name, cd->rd_fhp->fh_dentry, namlen);
- 	if (IS_ERR(dentry))
- 		return nfserrno(PTR_ERR(dentry));
- 	if (d_really_is_negative(dentry)) {
- 		/*
--		 * nfsd_buffered_readdir drops the i_mutex between
--		 * readdir and calling this callback, leaving a window
--		 * where this directory entry could have gone away.
-+		 * we're not holding the i_mutex here, so there's
-+		 * a window where this directory entry could have gone
-+		 * away.
- 		 */
- 		dput(dentry);
- 		return nfserr_noent;
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 45c04979e7b3..2ea6c6a37364 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -217,10 +217,16 @@ nfsd_lookup_dentry(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 		host_err = PTR_ERR(dentry);
- 		if (IS_ERR(dentry))
- 			goto out_nfserr;
--		/*
--		 * check if we have crossed a mount point ...
--		 */
- 		if (nfsd_mountpoint(dentry, exp)) {
-+			/*
-+			 * We don't need the i_mutex after all.  It's
-+			 * still possible we could open this (regular
-+			 * files can be mountpoints too), but the
-+			 * i_mutex is just there to prevent renames of
-+			 * something that we might be about to delegate,
-+			 * and a mountpoint won't be renamed:
-+			 */
-+			fh_unlock(fhp);
- 			if ((host_err = nfsd_cross_mnt(rqstp, &dentry, &exp))) {
- 				dput(dentry);
- 				goto out_nfserr;
-@@ -1809,7 +1815,6 @@ static __be32 nfsd_buffered_readdir(struct file *file, nfsd_filldir_t func,
- 	offset = *offsetp;
- 
- 	while (1) {
--		struct inode *dir_inode = file_inode(file);
- 		unsigned int reclen;
- 
- 		cdp->err = nfserr_eof; /* will be cleared on successful read */
-@@ -1828,15 +1833,6 @@ static __be32 nfsd_buffered_readdir(struct file *file, nfsd_filldir_t func,
- 		if (!size)
- 			break;
- 
--		/*
--		 * Various filldir functions may end up calling back into
--		 * lookup_one_len() and the file system's ->lookup() method.
--		 * These expect i_mutex to be held, as it would within readdir.
--		 */
--		host_err = mutex_lock_killable(&dir_inode->i_mutex);
--		if (host_err)
--			break;
--
- 		de = (struct buffered_dirent *)buf.dirent;
- 		while (size > 0) {
- 			offset = de->offset;
-@@ -1853,7 +1849,6 @@ static __be32 nfsd_buffered_readdir(struct file *file, nfsd_filldir_t func,
- 			size -= reclen;
- 			de = (struct buffered_dirent *)((char *)de + reclen);
- 		}
--		mutex_unlock(&dir_inode->i_mutex);
- 		if (size > 0) /* We bailed out early */
- 			break;
- 
-diff --git a/include/linux/namei.h b/include/linux/namei.h
-index d8c6334cd150..d0f25d81b46a 100644
---- a/include/linux/namei.h
-+++ b/include/linux/namei.h
-@@ -77,6 +77,7 @@ extern struct dentry *kern_path_locked(const char *, struct path *);
- extern int kern_path_mountpoint(int, const char *, struct path *, unsigned int);
- 
- extern struct dentry *lookup_one_len(const char *, struct dentry *, int);
-+extern struct dentry *lookup_one_len_unlocked(const char *, struct dentry *, int);
- 
- extern int follow_down_one(struct path *);
- extern int follow_down(struct path *);
+> 
+> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+> ---
+>  nfs4.1/xdrdef/README |   2 +-
+>  nfs4.1/xdrdef/nfs4.x | 108 +++++++++++++++++++++++++++++++++++++++++++--------
+>  2 files changed, 92 insertions(+), 18 deletions(-)
+> 
+> diff --git a/nfs4.1/xdrdef/README b/nfs4.1/xdrdef/README
+> index 2d57ee1..c39fd43 100644
+> --- a/nfs4.1/xdrdef/README
+> +++ b/nfs4.1/xdrdef/README
+> @@ -1,4 +1,4 @@
+>  # Note nfs4.x was created using:
+>  
+> -curl http://www.ietf.org/id/draft-ietf-nfsv4-minorversion2-dot-x-30.txt|grep "^  *///" | sed 's?^  */// ??' | sed 's?^  *///$??' >nfs4.1/xdrdef/nfs4.x
+> +curl http://www.ietf.org/id/draft-ietf-nfsv4-minorversion2-dot-x-38.txt|grep "^  *///" | sed 's?^  */// ??' | sed 's?^  *///$??' >nfs4.1/xdrdef/nfs4.x
+>  patch nfs4.1/xdrdef/nfs4.x <nfs4.1/xdrdef/nfs4.x.diff 
+> diff --git a/nfs4.1/xdrdef/nfs4.x b/nfs4.1/xdrdef/nfs4.x
+> index 024e0b4..23c6d7c 100644
+> --- a/nfs4.1/xdrdef/nfs4.x
+> +++ b/nfs4.1/xdrdef/nfs4.x
+> @@ -1,8 +1,53 @@
+>  /*
+> - * This file was machine generated for
+> - *  draft-ietf-nfsv4-minorversion2-30
+> - * Last updated Wed Jan 21 09:59:04 PST 2015
+> + * This file was machine generated for [draft-ietf-nfsv4-minorversion2-38].
+> + *
+> + * Last updated Tue Apr 28 09:46:23 PDT 2015
+>   */
+> +
+> +/*
+> + * Copyright (c) 2015 IETF Trust and the persons identified
+> + * as the document authors.  All rights reserved.
+> + *
+> + * The Redistribution and use in source and binary forms, with
+> + * or without modification, are permitted provided that the
+> + * following conditions are met:
+> + *
+> + * - Redistributions of source code must retain the above
+> + *   copyright notice, this list of conditions and the
+> + *   following disclaimer.
+> + *
+> + * - Redistributions in binary form must reproduce the above
+> + *   copyright notice, this list of conditions and the
+> + *   following disclaimer in the documentation and/or other
+> + *   materials provided with the distribution.
+> + *
+> + * - Neither the name of Internet Society Society, IETF or IETF
+> + *   Trust, nor the names of specific contributors, may be
+> + *   used to endorse or promote products derived from this
+> + *   software without specific prior written permission.
+> + *
+> + *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS
+> + *   AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
+> + *   WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+> + *   IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+> + *   FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO
+> + *   EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+> + *   LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+> + *   EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+> + *   NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+> + *   SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+> + *   INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+> + *   LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+> + *   OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+> + *   IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+> + *   ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+> +
+> + */
+> +
+> +/*
+> + * This code was derived from [draft-ietf-nfsv4-minorversion2-dot-x-38].
+> + */
+> +
+>  /*
+>   *  Copyright (C) The IETF Trust (2007-2014)
+>   *  All Rights Reserved.
+> @@ -667,9 +712,9 @@ typedef uint32_t        fs_charset_cap4;
+>   */
+>  
+>  enum netloc_type4 {
+> -        NL4_NAME        = 0,
+> -        NL4_URL         = 1,
+> -        NL4_NETADDR     = 2
+> +        NL4_NAME        = 1,
+> +        NL4_URL         = 2,
+> +        NL4_NETADDR     = 3
+>  };
+>  union netloc4 switch (netloc_type4 nl_type) {
+>          case NL4_NAME:          utf8str_cis nl_name;
+> @@ -849,10 +894,11 @@ typedef change_policy4  fattr4_change_policy;
+>  /*
+>   * attributes new to NFSv4.2
+>   */
+> -typedef uint64_t        fattr_space_freed;
+> +typedef uint64_t        fattr4_space_freed;
+>  typedef change_attr_type4
+>                  fattr4_change_attr_type;
+> -typedef sec_label4      fattr_sec_label<>;
+> +typedef sec_label4      fattr4_sec_label<>;
+> +typedef uint32_t        fattr4_clone_blksize;
+>  
+>  %/*
+>  % * REQUIRED Attributes
+> @@ -931,10 +977,6 @@ const FATTR4_DIRENT_NOTIF_DELAY = 57;
+>  const FATTR4_DACL               = 58;
+>  const FATTR4_SACL               = 59;
+>  const FATTR4_CHANGE_POLICY      = 60;
+> -
+> -%/*
+> -% * new to NFSV4.2
+> -% */
+>  const FATTR4_FS_STATUS          = 61;
+>  const FATTR4_FS_LAYOUT_TYPES    = 62;
+>  const FATTR4_LAYOUT_HINT        = 63;
+> @@ -950,7 +992,11 @@ const FATTR4_RETENTEVT_SET      = 72;
+>  const FATTR4_RETENTION_HOLD     = 73;
+>  const FATTR4_MODE_SET_MASKED    = 74;
+>  const FATTR4_FS_CHARSET_CAP     = 76;
+> -/* 77 is currently unused */
+> +
+> +%/*
+> +% * new to NFSV4.2
+> +% */
+> +const FATTR4_CLONE_BLKSIZE      = 77;
+>  const FATTR4_SPACE_FREED        = 78;
+>  const FATTR4_CHANGE_ATTR_TYPE   = 79;
+>  const FATTR4_SEC_LABEL          = 80;
+> @@ -1287,6 +1333,7 @@ enum nfs_opnum4 {
+>   OP_READ_PLUS           = 68,
+>   OP_SEEK                = 69,
+>   OP_WRITE_SAME          = 70,
+> + OP_CLONE               = 71,
+>   OP_ILLEGAL             = 10044
+>  };
+>  
+> @@ -1316,6 +1363,19 @@ union ACCESS4res switch (nfsstat4 status) {
+>          void;
+>  };
+>  
+> +struct CLONE4args {
+> +        /* SAVED_FH: source file */
+> +        /* CURRENT_FH: destination file */
+> +        stateid4        cl_src_stateid;
+> +        stateid4        cl_dst_stateid;
+> +        offset4         cl_src_offset;
+> +        offset4         cl_dst_offset;
+> +        length4         cl_count;
+> +};
+> +
+> +struct CLONE4res {
+> +        nfsstat4        cl_status;
+> +};
+>  struct CLOSE4args {
+>          /* CURRENT_FH: object */
+>          seqid4          seqid;
+> @@ -2759,13 +2819,24 @@ struct COPY4args {
+>  };
+>  
+>  
+> -struct COPY4res {
+> -        nfsstat4        cr_status;
+> -        write_response4 cr_response;
+> +struct copy_requirements4 {
+>          bool            cr_consecutive;
+>          bool            cr_synchronous;
+>  };
+>  
+> +struct COPY4resok {
+> +        write_response4         cr_response;
+> +        copy_requirements4      cr_requirements;
+> +};
+> +
+> +union COPY4res switch (nfsstat4 cr_status) {
+> +case NFS4_OK:
+> +        COPY4resok              cr_resok4;
+> +case NFS4ERR_OFFLOAD_NO_REQS:
+> +        copy_requirements4      cr_requirements;
+> +default:
+> +        void;
+> +};
+>  
+>  struct COPY_NOTIFY4args {
+>          /* CURRENT_FH: source file */
+> @@ -2775,6 +2846,7 @@ struct COPY_NOTIFY4args {
+>  
+>  struct COPY_NOTIFY4resok {
+>          nfstime4        cnr_lease_time;
+> +        stateid4        cnr_stateid;
+>          netloc4         cnr_source_server<>;
+>  };
+>  
+> @@ -2887,7 +2959,7 @@ struct LAYOUTERROR4res {
+>  };
+>  
+>  struct io_info4 {
+> -        uint32_t        ii_count;
+> +        uint64_t        ii_count;
+>          uint64_t        ii_bytes;
+>  };
+>  
+> @@ -3088,6 +3160,7 @@ union nfs_argop4 switch (nfs_opnum4 argop) {
+>   case OP_READ_PLUS:     READ_PLUS4args opread_plus;
+>   case OP_SEEK:          SEEK4args opseek;
+>   case OP_WRITE_SAME:    WRITE_SAME4args opwrite_same;
+> + case OP_CLONE:         CLONE4args opclone;
+>  
+>   /* Operations not new to NFSv4.1 */
+>   case OP_ILLEGAL:       void;
+> @@ -3216,6 +3289,7 @@ union nfs_resop4 switch (nfs_opnum4 resop) {
+>   case OP_READ_PLUS:     READ_PLUS4res opread_plus;
+>   case OP_SEEK:          SEEK4res opseek;
+>   case OP_WRITE_SAME:    WRITE_SAME4res opwrite_same;
+> + case OP_CLONE:         CLONE4res opclone;
+>  
+>   /* Operations not new to NFSv4.1 */
+>   case OP_ILLEGAL:       ILLEGAL4res opillegal;
+> -- 
+> 2.4.3
