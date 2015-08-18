@@ -1,248 +1,61 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:34986 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750780AbbHRT1d (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 18 Aug 2015 15:27:33 -0400
-Date: Tue, 18 Aug 2015 15:27:33 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        tigran.mkrtchyan@desy.de
-Subject: Re: [PATCH v2] 4.1 xdrdef: Update nfs4.x to the latest dot-x-38.txt
-Message-ID: <20150818192733.GB3957@fieldses.org>
-References: <55B76B9B.4090700@gmail.com>
- <20150729193734.GB21949@fieldses.org>
- <55BA130C.1050604@gmail.com>
- <55BA14E2.60407@gmail.com>
+Received: from mail-ig0-f177.google.com ([209.85.213.177]:34942 "EHLO
+	mail-ig0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751403AbbHRUiN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Aug 2015 16:38:13 -0400
+Received: by igbjg10 with SMTP id jg10so90026074igb.0
+        for <linux-nfs@vger.kernel.org>; Tue, 18 Aug 2015 13:38:13 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <55BA14E2.60407@gmail.com>
+In-Reply-To: <1419021845-96747-2-git-send-email-trond.myklebust@primarydata.com>
+References: <CAHQdGtTqO02BWwTOsXn2s641_KBdawBexG5+kGwmJKWaAmewtA@mail.gmail.com>
+	<1419021845-96747-1-git-send-email-trond.myklebust@primarydata.com>
+	<1419021845-96747-2-git-send-email-trond.myklebust@primarydata.com>
+Date: Tue, 18 Aug 2015 16:38:13 -0400
+Message-ID: <CAN-5tyFki0cgkUGj-_+9vTdpv0oWnLPjFLOVQ_AB-h_AfBwkwg@mail.gmail.com>
+Subject: Re: [PATCH v3 2/2] NFSv4: Remove incorrect check in can_open_delegated()
+From: Olga Kornievskaia <aglo@umich.edu>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jul 30, 2015 at 08:13:22PM +0800, Kinglong Mee wrote:
-> There are some updates and bugfixes between draft-ietf-nfsv4-minorversion2-dot-x-38.txt
->  and draft-ietf-nfsv4-minorversion2-dot-x-30.txt.
+This is the patch that breaks recovery of opens upon server reboot.
 
-Applied, thanks.--b.
+I have a test that open a file and gets a write delegation and tried
+to do a write. At this point, I reboot my server so that write fails
+with bad_session and then stale_clientid. Upon completing the
+exchange_id, create_session, and putrootfh, the client no longer sends
+the open to be recovered and instead resends the failed write. It
+would use all 0s stateid (this is 4.1) for the write and for the close
+that follows it.
 
-> 
-> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+Reverting the patch fixes the problem.
+
+On Fri, Dec 19, 2014 at 3:44 PM, Trond Myklebust
+<trond.myklebust@primarydata.com> wrote:
+> Remove an incorrect check for NFS_DELEGATION_NEED_RECLAIM in
+> can_open_delegated(). We are allowed to cache opens even in
+> a situation where we're doing reboot recovery.
+>
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 > ---
->  nfs4.1/xdrdef/README |   2 +-
->  nfs4.1/xdrdef/nfs4.x | 108 +++++++++++++++++++++++++++++++++++++++++++--------
->  2 files changed, 92 insertions(+), 18 deletions(-)
-> 
-> diff --git a/nfs4.1/xdrdef/README b/nfs4.1/xdrdef/README
-> index 2d57ee1..c39fd43 100644
-> --- a/nfs4.1/xdrdef/README
-> +++ b/nfs4.1/xdrdef/README
-> @@ -1,4 +1,4 @@
->  # Note nfs4.x was created using:
->  
-> -curl http://www.ietf.org/id/draft-ietf-nfsv4-minorversion2-dot-x-30.txt|grep "^  *///" | sed 's?^  */// ??' | sed 's?^  *///$??' >nfs4.1/xdrdef/nfs4.x
-> +curl http://www.ietf.org/id/draft-ietf-nfsv4-minorversion2-dot-x-38.txt|grep "^  *///" | sed 's?^  */// ??' | sed 's?^  *///$??' >nfs4.1/xdrdef/nfs4.x
->  patch nfs4.1/xdrdef/nfs4.x <nfs4.1/xdrdef/nfs4.x.diff 
-> diff --git a/nfs4.1/xdrdef/nfs4.x b/nfs4.1/xdrdef/nfs4.x
-> index 024e0b4..23c6d7c 100644
-> --- a/nfs4.1/xdrdef/nfs4.x
-> +++ b/nfs4.1/xdrdef/nfs4.x
-> @@ -1,8 +1,53 @@
->  /*
-> - * This file was machine generated for
-> - *  draft-ietf-nfsv4-minorversion2-30
-> - * Last updated Wed Jan 21 09:59:04 PST 2015
-> + * This file was machine generated for [draft-ietf-nfsv4-minorversion2-38].
-> + *
-> + * Last updated Tue Apr 28 09:46:23 PDT 2015
->   */
-> +
-> +/*
-> + * Copyright (c) 2015 IETF Trust and the persons identified
-> + * as the document authors.  All rights reserved.
-> + *
-> + * The Redistribution and use in source and binary forms, with
-> + * or without modification, are permitted provided that the
-> + * following conditions are met:
-> + *
-> + * - Redistributions of source code must retain the above
-> + *   copyright notice, this list of conditions and the
-> + *   following disclaimer.
-> + *
-> + * - Redistributions in binary form must reproduce the above
-> + *   copyright notice, this list of conditions and the
-> + *   following disclaimer in the documentation and/or other
-> + *   materials provided with the distribution.
-> + *
-> + * - Neither the name of Internet Society Society, IETF or IETF
-> + *   Trust, nor the names of specific contributors, may be
-> + *   used to endorse or promote products derived from this
-> + *   software without specific prior written permission.
-> + *
-> + *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS
-> + *   AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
-> + *   WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-> + *   IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
-> + *   FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO
-> + *   EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
-> + *   LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-> + *   EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-> + *   NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-> + *   SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-> + *   INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-> + *   LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-> + *   OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
-> + *   IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
-> + *   ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-> +
-> + */
-> +
-> +/*
-> + * This code was derived from [draft-ietf-nfsv4-minorversion2-dot-x-38].
-> + */
-> +
->  /*
->   *  Copyright (C) The IETF Trust (2007-2014)
->   *  All Rights Reserved.
-> @@ -667,9 +712,9 @@ typedef uint32_t        fs_charset_cap4;
->   */
->  
->  enum netloc_type4 {
-> -        NL4_NAME        = 0,
-> -        NL4_URL         = 1,
-> -        NL4_NETADDR     = 2
-> +        NL4_NAME        = 1,
-> +        NL4_URL         = 2,
-> +        NL4_NETADDR     = 3
->  };
->  union netloc4 switch (netloc_type4 nl_type) {
->          case NL4_NAME:          utf8str_cis nl_name;
-> @@ -849,10 +894,11 @@ typedef change_policy4  fattr4_change_policy;
->  /*
->   * attributes new to NFSv4.2
->   */
-> -typedef uint64_t        fattr_space_freed;
-> +typedef uint64_t        fattr4_space_freed;
->  typedef change_attr_type4
->                  fattr4_change_attr_type;
-> -typedef sec_label4      fattr_sec_label<>;
-> +typedef sec_label4      fattr4_sec_label<>;
-> +typedef uint32_t        fattr4_clone_blksize;
->  
->  %/*
->  % * REQUIRED Attributes
-> @@ -931,10 +977,6 @@ const FATTR4_DIRENT_NOTIF_DELAY = 57;
->  const FATTR4_DACL               = 58;
->  const FATTR4_SACL               = 59;
->  const FATTR4_CHANGE_POLICY      = 60;
-> -
-> -%/*
-> -% * new to NFSV4.2
-> -% */
->  const FATTR4_FS_STATUS          = 61;
->  const FATTR4_FS_LAYOUT_TYPES    = 62;
->  const FATTR4_LAYOUT_HINT        = 63;
-> @@ -950,7 +992,11 @@ const FATTR4_RETENTEVT_SET      = 72;
->  const FATTR4_RETENTION_HOLD     = 73;
->  const FATTR4_MODE_SET_MASKED    = 74;
->  const FATTR4_FS_CHARSET_CAP     = 76;
-> -/* 77 is currently unused */
-> +
-> +%/*
-> +% * new to NFSV4.2
-> +% */
-> +const FATTR4_CLONE_BLKSIZE      = 77;
->  const FATTR4_SPACE_FREED        = 78;
->  const FATTR4_CHANGE_ATTR_TYPE   = 79;
->  const FATTR4_SEC_LABEL          = 80;
-> @@ -1287,6 +1333,7 @@ enum nfs_opnum4 {
->   OP_READ_PLUS           = 68,
->   OP_SEEK                = 69,
->   OP_WRITE_SAME          = 70,
-> + OP_CLONE               = 71,
->   OP_ILLEGAL             = 10044
->  };
->  
-> @@ -1316,6 +1363,19 @@ union ACCESS4res switch (nfsstat4 status) {
->          void;
->  };
->  
-> +struct CLONE4args {
-> +        /* SAVED_FH: source file */
-> +        /* CURRENT_FH: destination file */
-> +        stateid4        cl_src_stateid;
-> +        stateid4        cl_dst_stateid;
-> +        offset4         cl_src_offset;
-> +        offset4         cl_dst_offset;
-> +        length4         cl_count;
-> +};
-> +
-> +struct CLONE4res {
-> +        nfsstat4        cl_status;
-> +};
->  struct CLOSE4args {
->          /* CURRENT_FH: object */
->          seqid4          seqid;
-> @@ -2759,13 +2819,24 @@ struct COPY4args {
->  };
->  
->  
-> -struct COPY4res {
-> -        nfsstat4        cr_status;
-> -        write_response4 cr_response;
-> +struct copy_requirements4 {
->          bool            cr_consecutive;
->          bool            cr_synchronous;
->  };
->  
-> +struct COPY4resok {
-> +        write_response4         cr_response;
-> +        copy_requirements4      cr_requirements;
-> +};
-> +
-> +union COPY4res switch (nfsstat4 cr_status) {
-> +case NFS4_OK:
-> +        COPY4resok              cr_resok4;
-> +case NFS4ERR_OFFLOAD_NO_REQS:
-> +        copy_requirements4      cr_requirements;
-> +default:
-> +        void;
-> +};
->  
->  struct COPY_NOTIFY4args {
->          /* CURRENT_FH: source file */
-> @@ -2775,6 +2846,7 @@ struct COPY_NOTIFY4args {
->  
->  struct COPY_NOTIFY4resok {
->          nfstime4        cnr_lease_time;
-> +        stateid4        cnr_stateid;
->          netloc4         cnr_source_server<>;
->  };
->  
-> @@ -2887,7 +2959,7 @@ struct LAYOUTERROR4res {
->  };
->  
->  struct io_info4 {
-> -        uint32_t        ii_count;
-> +        uint64_t        ii_count;
->          uint64_t        ii_bytes;
->  };
->  
-> @@ -3088,6 +3160,7 @@ union nfs_argop4 switch (nfs_opnum4 argop) {
->   case OP_READ_PLUS:     READ_PLUS4args opread_plus;
->   case OP_SEEK:          SEEK4args opseek;
->   case OP_WRITE_SAME:    WRITE_SAME4args opwrite_same;
-> + case OP_CLONE:         CLONE4args opclone;
->  
->   /* Operations not new to NFSv4.1 */
->   case OP_ILLEGAL:       void;
-> @@ -3216,6 +3289,7 @@ union nfs_resop4 switch (nfs_opnum4 resop) {
->   case OP_READ_PLUS:     READ_PLUS4res opread_plus;
->   case OP_SEEK:          SEEK4res opseek;
->   case OP_WRITE_SAME:    WRITE_SAME4res opwrite_same;
-> + case OP_CLONE:         CLONE4res opclone;
->  
->   /* Operations not new to NFSv4.1 */
->   case OP_ILLEGAL:       ILLEGAL4res opillegal;
-> -- 
-> 2.4.3
+>  fs/nfs/nfs4proc.c | 2 --
+>  1 file changed, 2 deletions(-)
+>
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index 8514b59a8c30..002c7dfedb08 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -1119,8 +1119,6 @@ static int can_open_delegated(struct nfs_delegation *delegation, fmode_t fmode)
+>                 return 0;
+>         if ((delegation->type & fmode) != fmode)
+>                 return 0;
+> -       if (test_bit(NFS_DELEGATION_NEED_RECLAIM, &delegation->flags))
+> -               return 0;
+>         if (test_bit(NFS_DELEGATION_RETURNING, &delegation->flags))
+>                 return 0;
+>         nfs_mark_delegation_referenced(delegation);
+> --
+> 2.1.0
+>
