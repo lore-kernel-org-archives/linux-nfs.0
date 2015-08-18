@@ -1,193 +1,169 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pa0-f49.google.com ([209.85.220.49]:33753 "EHLO
-	mail-pa0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750791AbbHRGhb (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Aug 2015 02:37:31 -0400
-Subject: Re: [PATCH] fs-pin: allow pin_remove() to be called other than from
- ->kill()
-To: NeilBrown <neilb@suse.com>
-References: <55B5A012.1030006@gmail.com> <55B5A186.7040004@gmail.com>
- <20150729135914.13cb0f86@noble> <55D2CBBE.9080807@gmail.com>
- <20150818162139.3c214136@noble>
-Cc: Al Viro <viro@zeniv.linux.org.uk>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        linux-fsdevel@vger.kernel.org,
+Received: from mail-pd0-f182.google.com ([209.85.192.182]:34947 "EHLO
+	mail-pd0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751773AbbHRHR1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Aug 2015 03:17:27 -0400
+From: Kinglong Mee <kinglongmee@gmail.com>
+Subject: [PATCH 0/6 v9] NFSD: Pin to vfsmount for nfsd exports cache
+To: "J. Bruce Fields" <bfields@fieldses.org>,
+        Al Viro <viro@zeniv.linux.org.uk>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        linux-fsdevel@vger.kernel.org, NeilBrown <neilb@suse.de>,
         Trond Myklebust <trond.myklebust@primarydata.com>,
         kinglongmee@gmail.com
-From: Kinglong Mee <kinglongmee@gmail.com>
-Message-ID: <55D2D29E.30706@gmail.com>
-Date: Tue, 18 Aug 2015 14:37:18 +0800
+Message-ID: <55D2DBF6.3010406@gmail.com>
+Date: Tue, 18 Aug 2015 15:17:10 +0800
 MIME-Version: 1.0
-In-Reply-To: <20150818162139.3c214136@noble>
-Content-Type: text/plain; charset=windows-1252
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 8/18/2015 14:21, NeilBrown wrote:
-> On Tue, 18 Aug 2015 14:07:58 +0800 Kinglong Mee <kinglongmee@gmail.com>
-> wrote:
-> 
->> Sorry for my so late reply.
->>
->> On 7/29/2015 11:59, NeilBrown wrote:
->>> fs-pin currently assumes when either the vfsmount or the fs_pin wants
->>> to unpin, pin_kill() will be called.
->>> This requires that the ->kill() function can wait for any transient
->>> references to the fs_pin to be released.  If the structure containing
->>> the fs_pin doesn't already have the ability to wait for references,
->>> this can be a burden.
->>>
->>> As the fs_pin already has infrastructure for waiting, that can be
->>> leveraged to remove the burden.
->>>
->>> In this alternate scenario, only the vfsmount calls pin_kill() when it
->>> wants to unpin.  The owner of the fs_pin() instead calls pin_remove().
->>>
->>> The ->kill() function removes any long-term references, and then calls
->>> pin_kill() (recursively).
->>> When the last reference on (the structure containing) the fs_pin is
->>> dropped, pin_remove() will be called and the (recursive) pin_kill()
->>> call will complete.
->>>
->>> For this to be safe, the final "put" must *not* free the structure if
->>> pin_kill() has already been called, as that could leave ->kill()
->>> accessing freed data.
->>>
->>> So we provide a return value for pin_remove() which reports the old
->>> ->done value.
->>>
->>> When final put calls pin_remove() it checks that value.
->>> If it was 0, then pin_kill() has not called ->kill and will not,
->>> so final put can free the data structure.
->>> If it was -1, then pin_kill() has called ->kill, and ->kill will
->>> free the data structure - final put must not touch it.
->>
->> I find another problem, 
->> how can xxx_pin_kill known the last reference of the data have be put?
->>
->> eg,
->> static void expkey_pin_kill(struct fs_pin *pin)
->> {
->>         struct svc_expkey *key = container_of(pin, struct svc_expkey, ek_pin);
->>         cache_delete_entry(key->cd, &key->h);
->>         expkey_destroy(key);
->> }
->>
->> expkey_pin_kill has call cache_delete_entry() but doesn't know whether
->> the last reference has be put (here expkey_put is called)? 
->>
->> Before the cache_list is deleted from the cache, a third user gets
->> the reference, so that, the third user will be the last put of the cache
->> by calling expkey_put, xxx_pin_kill only decrease the reference.
-> 
-> expkey_pin_kill() should call:
->   cache_delete_entry()
->   pin_kill()
->   expkey_destroy()
-> 
-> The "cache_delete_entry()" call removes the only long-term reference.
-> Any other reference will be transient so it is safe to wait for those.
-> 
-> The 'pin_kill()' call will wait of pin_remove() to be called (it
-> already does that).
+If there are some mount points(not exported for nfs) under pseudo root,
+after client's operation of those entry under the root, anyone *can't*
+unmount those mount points until export cache expired.
 
-Sorry for my missing of calling pin_kill() here.
+# cat /etc/exports
+/nfs/xfs        *(rw,insecure,no_subtree_check,no_root_squash)
+/nfs/pnfs       *(rw,insecure,no_subtree_check,no_root_squash)
+# ll /nfs/
+total 0
+drwxr-xr-x. 3 root root 84 Apr 21 22:27 pnfs
+drwxr-xr-x. 3 root root 84 Apr 21 22:27 test
+drwxr-xr-x. 2 root root  6 Apr 20 22:01 xfs
+# mount /dev/sde /nfs/test
+# df
+Filesystem                      1K-blocks    Used Available Use% Mounted on
+......
+/dev/sdd                          1038336   32944   1005392   4% /nfs/pnfs
+/dev/sdc                         10475520   32928  10442592   1% /nfs/xfs
+/dev/sde                           999320    1284    929224   1% /nfs/test
+# mount -t nfs 127.0.0.1:/nfs/ /mnt
+# ll /mnt/*/
+/mnt/pnfs/:
+total 0
+-rw-r--r--. 1 root root 0 Apr 21 22:23 attr
+drwxr-xr-x. 2 root root 6 Apr 21 22:19 tmp
 
-> pin_remove() will be called when the last reference is dropped.  As
-> described above, that pin_remove call will return -1 and so the 'put'
-> function will not have called expkey_destroy.
-> 
-> Finally the expkey_destroy() function actually frees the data
-> structure.  No other code can be touching at this point.
+/mnt/xfs/:
+total 0
+# umount /nfs/test/
+umount: /nfs/test/: target is busy
+        (In some cases useful info about processes that
+         use the device is found by lsof(8) or fuser(1).)
 
-With calling pin_kill() again in expkey_pin_kill makes every clear now.
-Thanks again.
+It's caused by exports cache of nfsd holds the reference of
+the path (here is /nfs/test/), so, it can't be umounted.
 
-The only thing is waiting Al's opinion. 
+I don't think that's user expect, they want umount /nfs/test/.
+Bruce think user can also umount /nfs/pnfs/ and /nfs/xfs.
 
-thanks,
-Kinglong Mee
+This patch site lets nfsd exports pinning to vfsmount, 
+not using mntget, so user can umount any exports mountpoint now.
 
-> 
-> Thanks,
-> NeilBrown
-> 
-> 
->>
->> thanks,
->> Kinglong Mee
->>
->>>
->>> This makes the 'wait' infrastructure of fs_pin available to any
->>> pinning client which wants to use it.
->>>
->>> Signed-Off-By: NeilBrown <neilb@suse.com>
->>>
->>> ---
->>> Hi Al,
->>>  do you see this as a workable solution?  I think it will improve the nfsd pining patch
->>> a lot.
->>>
->>> Thanks,
->>> NeilBrown
->>>
->>>
->>> diff --git a/fs/fs_pin.c b/fs/fs_pin.c
->>> index 611b5408f6ec..b7954a9d17da 100644
->>> --- a/fs/fs_pin.c
->>> +++ b/fs/fs_pin.c
->>> @@ -6,16 +6,32 @@
->>>  
->>>  static DEFINE_SPINLOCK(pin_lock);
->>>  
->>> -void pin_remove(struct fs_pin *pin)
->>> +/**
->>> + * pin_remove - disconnect an fs_pin from the pinned structure.
->>> + * @pin:	The struct fs_pin which is pinning something.
->>> + *
->>> + * Detach a 'pin' which was added by pin_insert().  A return value
->>> + * of -1 implies that pin_kill() has already been called and that the
->>> + * ->kill() function now owns the data structure containing @pin.
->>> + * The function which called pin_remove() must not touch the data structure
->>> + * again (unless it is the ->kill() function itself).
->>> + * A return value of 0 implies an uneventful disconnect: pin_kill() has not called,
->>> + * and will not call, the ->kill() function on this @pin.
->>> + * Any other return value is a usage error - e.g. repeated call to pin_remove().
->>> + */
->>> +int pin_remove(struct fs_pin *pin)
->>>  {
->>> +	int ret;
->>>  	spin_lock(&pin_lock);
->>>  	hlist_del_init(&pin->m_list);
->>>  	hlist_del_init(&pin->s_list);
->>>  	spin_unlock(&pin_lock);
->>>  	spin_lock_irq(&pin->wait.lock);
->>> +	ret = pin->done;
->>>  	pin->done = 1;
->>>  	wake_up_locked(&pin->wait);
->>>  	spin_unlock_irq(&pin->wait.lock);
->>> +	return ret;
->>>  }
->>>  
->>>  void pin_insert_group(struct fs_pin *pin, struct vfsmount *m, struct hlist_head *p)
->>> diff --git a/include/linux/fs_pin.h b/include/linux/fs_pin.h
->>> index 3886b3bffd7f..2fe9d3ba09e8 100644
->>> --- a/include/linux/fs_pin.h
->>> +++ b/include/linux/fs_pin.h
->>> @@ -18,7 +18,7 @@ static inline void init_fs_pin(struct fs_pin *p, void (*kill)(struct fs_pin *))
->>>  	p->kill = kill;
->>>  }
->>>  
->>> -void pin_remove(struct fs_pin *);
->>> +int pin_remove(struct fs_pin *);
->>>  void pin_insert_group(struct fs_pin *, struct vfsmount *, struct hlist_head *);
->>>  void pin_insert(struct fs_pin *, struct vfsmount *);
->>>  void pin_kill(struct fs_pin *);
->>>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> 
+v3, 
+1. New helpers path_get_pin/path_put_unpin for path pin.
+2. Use kzalloc for allocating memory.
+
+v4, Thanks for Al Viro's commets for the logic of fs_pin.
+1. add a completion for pin_kill waiting the reference is decreased to zero.
+2. add a work_struct for pin_kill decreases the reference indirectly.
+3. free svc_export/svc_expkey in pin_kill, not svc_export_put/svc_expkey_put.
+4. svc_export_put/svc_expkey_put go though pin_kill logic.
+
+v5, 
+let killing fs_pin under a reference of vfsmnt.
+
+v6,
+1. revert the change of v5
+2. new helper legitimize_mntget() for nfsd exports/expkey cache
+   get vfsmount from fs_pin
+3. cleanup some codes of sunrpc's cache
+4. switch using list_head instead of single list for cache_head
+   in cache_detail
+5. new functions validate/invalidate for processing of reference
+   increase/decrease change (nfsd exports/expkey using grab the
+   reference of mnt)
+6. delete cache_head directly from cache_detail in pin_kill
+
+v7, 
+implement self reference increase and decrease for nfsd exports/expkey 
+
+When reference of cahce_head increase(>1), grab a reference of mnt once.
+and reference decrease to 1 (==1), drop the reference of mnt.
+
+v8, Use hash_list for sunrpc cachen and a new method for nfsd's pin,
+
+1. There are only one outlet from each cache, exp_find_key() for expkey, 
+   exp_get_by_name() for export.
+2. Any fsid to export or filehandle to export will call the function.
+3. exp_get()/exp_put() increase/decrease the reference of export.
+
+Call legitimize_mntget() in the only outlet function exp_find_key()/
+exp_get_by_name(), if fail return STALE, otherwise, any valid
+expkey/export from the cache is validated (Have get the reference of vfsmnt).
+
+Add mntget() in exp_get() and mntput() in exp_put(), because the export
+passed to exp_get/exp_put are returned from exp_find_key/exp_get_by_name.
+
+For expkey cache,
+1. At first, a fsid is passed to exp_find_key, and lookup a cache
+   in svc_expkey_lookup, if success, ekey->ek_path is pined to mount.
+2. Then call legitimize_mntget getting a reference of vfsmnt 
+   before return from exp_find_key.
+3. Any calling exp_find_key with valid cache must put the vfsmnt.
+
+for export cache,
+1. At first, a path (returned from exp_find_key) with validate vfsmnt
+   is passed to exp_get_by_name, if success, exp->ex_path is pined to mount.
+2. Then call legitimize_mntget getting a reference of vfsmnt 
+   before return from exp_get_by_name.
+3. Any calling exp_get_by_name with valid cache must put the vfsmnt
+   by exp_put();
+4. Any using the exp returned from exp_get_by_name must call exp_get(),
+   will increase the reference of vfsmnt.
+
+So that,
+a. After getting the reference in 2, any umount of filesystem will get -EBUSY.
+b. After put all reference after 4, or before get the reference in 2, 
+   any umount of filesystem will call pin_kill, and delete the cache directly,
+   also unpin the vfsmount.
+c. Between 1 and 2, have get the reference of exp/key cache, with invalidate vfsmnt.
+   Umount of filesystem only wait exp_find_key/exp_get_by_name put the reference of
+   cache when legitimize_mntget fail.
+
+v9, thanks for NeilBrown's comments and update
+1. Drop the initialing of p->done in the old version,
+2. Remove three patches of cleanup sunrpc cache that have applied by Bruce,
+3. Update using seqlock in legitimize_mntget instead read_seqlock_excl
+4. Update some bugs commented from Neil,
+5. New logical of pin_kill from Neil, 
+   "allow pin_remove() to be called other than from ->kill()"
+
+Besides the logical of pin_kill (only the part of waiting the last reference),
+others are same as v8.
+
+Kinglong Mee (5):
+  fs_pin: Export functions for specific filesystem
+  path: New helpers path_get_pin/path_put_unpin for path pin
+  fs: New helper legitimize_mntget() for getting a legitimize mnt
+  sunrpc: New helper cache_delete_entry for deleting cache_head directly
+  nfsd: Allows user un-mounting filesystem where nfsd exports base on
+
+NeilBrown (1):
+  fs-pin: allow pin_remove() to be called other than from ->kill()
+
+ fs/fs_pin.c                  | 22 +++++++++-
+ fs/namei.c                   | 26 ++++++++++++
+ fs/namespace.c               | 30 ++++++++++++++
+ fs/nfsd/export.c             | 96 +++++++++++++++++++++++++++++++++++---------
+ fs/nfsd/export.h             | 14 ++++++-
+ include/linux/fs_pin.h       |  2 +-
+ include/linux/mount.h        |  1 +
+ include/linux/path.h         |  4 ++
+ include/linux/sunrpc/cache.h |  1 +
+ net/sunrpc/cache.c           | 20 +++++++++
+ 10 files changed, 194 insertions(+), 22 deletions(-)
+
+-- 
+2.4.3
+
