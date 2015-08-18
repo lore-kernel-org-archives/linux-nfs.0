@@ -1,10 +1,10 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pd0-f173.google.com ([209.85.192.173]:35292 "EHLO
-	mail-pd0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750962AbbHRHUo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Aug 2015 03:20:44 -0400
-Subject: [PATCH 3/6 v9] path: New helpers path_get_pin/path_put_unpin for path
- pin
+Received: from mail-pa0-f41.google.com ([209.85.220.41]:33806 "EHLO
+	mail-pa0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750855AbbHRHWN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Aug 2015 03:22:13 -0400
+Subject: [PATCH 4/6 v9] fs: New helper legitimize_mntget() for getting a
+ legitimize mnt
 To: "J. Bruce Fields" <bfields@fieldses.org>,
         Al Viro <viro@zeniv.linux.org.uk>
 References: <55D2DBF6.3010406@gmail.com>
@@ -13,83 +13,78 @@ Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
         Trond Myklebust <trond.myklebust@primarydata.com>,
         kinglongmee@gmail.com
 From: Kinglong Mee <kinglongmee@gmail.com>
-Message-ID: <55D2DCBF.3070106@gmail.com>
-Date: Tue, 18 Aug 2015 15:20:31 +0800
+Message-ID: <55D2DD17.7050504@gmail.com>
+Date: Tue, 18 Aug 2015 15:21:59 +0800
 MIME-Version: 1.0
 In-Reply-To: <55D2DBF6.3010406@gmail.com>
 Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Two helpers for filesystem pining to vfsmnt, not mntget.
+New helper legitimize_mntget for getting a mnt without setting
+MNT_SYNC_UMOUNT | MNT_UMOUNT | MNT_DOOMED, otherwise return NULL.
 
-v9, Update base on NeilBrown's new patch
+v9, Update using read_seqbegin_or_lock instead read_seqlock_excl
 
 Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
 ---
- fs/namei.c           | 26 ++++++++++++++++++++++++++
- include/linux/path.h |  4 ++++
- 2 files changed, 30 insertions(+)
+ fs/namespace.c        | 30 ++++++++++++++++++++++++++++++
+ include/linux/mount.h |  1 +
+ 2 files changed, 31 insertions(+)
 
-diff --git a/fs/namei.c b/fs/namei.c
-index 1c2105e..4f95e16 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -492,6 +492,32 @@ void path_put(const struct path *path)
+diff --git a/fs/namespace.c b/fs/namespace.c
+index 2b8aa15..bf4a9f5 100644
+--- a/fs/namespace.c
++++ b/fs/namespace.c
+@@ -1153,6 +1153,36 @@ struct vfsmount *mntget(struct vfsmount *mnt)
  }
- EXPORT_SYMBOL(path_put);
+ EXPORT_SYMBOL(mntget);
  
-+/**
-+ * path_get_pin - get a reference to a path's dentry
-+ *                and pin to path's vfsmnt
-+ * @path: path to get the reference to
-+ * @p: the fs_pin pin to vfsmnt
-+ */
-+void path_get_pin(struct path *path, struct fs_pin *p)
++struct vfsmount *legitimize_mntget(struct vfsmount *vfsmnt)
 +{
-+	dget(path->dentry);
-+	pin_insert_group(p, path->mnt, NULL);
++	struct mount *mnt;
++	unsigned seq = 0;
++
++	if (vfsmnt == NULL)
++		return NULL;
++retry:
++	read_seqbegin_or_lock(&mount_lock, &seq);
++
++	if (vfsmnt->mnt_flags & (MNT_SYNC_UMOUNT | MNT_UMOUNT | MNT_DOOMED))
++		vfsmnt = NULL;
++	else if (need_seqretry(&mount_lock, seq))
++		goto retry;
++	else {
++		mnt = real_mount(vfsmnt);
++		mnt_add_count(mnt, 1);
++		if (need_seqretry(&mount_lock, seq) ||
++		    vfsmnt->mnt_flags & (MNT_SYNC_UMOUNT | MNT_UMOUNT |
++					 MNT_DOOMED)) {
++			mnt_add_count(mnt, -1);
++			goto retry;
++		}
++	}
++
++	done_seqretry(&mount_lock, seq);
++	return vfsmnt;
 +}
-+EXPORT_SYMBOL(path_get_pin);
++EXPORT_SYMBOL(legitimize_mntget);
 +
-+/**
-+ * path_put_unpin - put a reference to a path's dentry
-+ *                  and remove pin to path's vfsmnt
-+ * @path: path to put the reference to
-+ * @p: the fs_pin removed from vfsmnt
-+ */
-+int path_put_unpin(struct path *path, struct fs_pin *p)
-+{
-+	dput(path->dentry);
-+	return pin_remove(p);
-+}
-+EXPORT_SYMBOL(path_put_unpin);
-+
- #define EMBEDDED_LEVELS 2
- struct nameidata {
- 	struct path	path;
-diff --git a/include/linux/path.h b/include/linux/path.h
-index d137218..40d376a 100644
---- a/include/linux/path.h
-+++ b/include/linux/path.h
-@@ -3,6 +3,7 @@
- 
- struct dentry;
- struct vfsmount;
-+struct fs_pin;
- 
- struct path {
- 	struct vfsmount *mnt;
-@@ -12,6 +13,9 @@ struct path {
- extern void path_get(const struct path *);
- extern void path_put(const struct path *);
- 
-+extern void path_get_pin(struct path *, struct fs_pin *);
-+extern int path_put_unpin(struct path *, struct fs_pin *);
-+
- static inline int path_equal(const struct path *path1, const struct path *path2)
+ struct vfsmount *mnt_clone_internal(struct path *path)
  {
- 	return path1->mnt == path2->mnt && path1->dentry == path2->dentry;
+ 	struct mount *p;
+diff --git a/include/linux/mount.h b/include/linux/mount.h
+index f822c3c..8ae9dc0 100644
+--- a/include/linux/mount.h
++++ b/include/linux/mount.h
+@@ -79,6 +79,7 @@ extern void mnt_drop_write(struct vfsmount *mnt);
+ extern void mnt_drop_write_file(struct file *file);
+ extern void mntput(struct vfsmount *mnt);
+ extern struct vfsmount *mntget(struct vfsmount *mnt);
++extern struct vfsmount *legitimize_mntget(struct vfsmount *vfsmnt);
+ extern struct vfsmount *mnt_clone_internal(struct path *path);
+ extern int __mnt_is_readonly(struct vfsmount *mnt);
+ 
 -- 
 2.4.3
 
