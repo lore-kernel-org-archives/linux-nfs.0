@@ -1,80 +1,31 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-oi0-f54.google.com ([209.85.218.54]:36101 "EHLO
-	mail-oi0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752777AbbHRVSH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Aug 2015 17:18:07 -0400
-Received: by oiev193 with SMTP id v193so108140061oie.3
-        for <linux-nfs@vger.kernel.org>; Tue, 18 Aug 2015 14:18:05 -0700 (PDT)
+Received: from mail-wi0-f179.google.com ([209.85.212.179]:33758 "EHLO
+	mail-wi0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753984AbbHRV6Z (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Aug 2015 17:58:25 -0400
+Received: by wijp15 with SMTP id p15so111433615wij.0
+        for <linux-nfs@vger.kernel.org>; Tue, 18 Aug 2015 14:58:24 -0700 (PDT)
+Received: from [192.168.1.188] (ipbcc14f0f.dynamic.kabel-deutschland.de. [188.193.79.15])
+        by smtp.gmail.com with ESMTPSA id l13sm28226394wjr.18.2015.08.18.14.58.23
+        for <linux-nfs@vger.kernel.org>
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Tue, 18 Aug 2015 14:58:23 -0700 (PDT)
+To: linux-nfs@vger.kernel.org
+From: Tastky <tastky@gmail.com>
+Subject: [BUG] nfs-utils broken with musl
+Message-ID: <55D3AA7E.2050606@gmail.com>
+Date: Tue, 18 Aug 2015 23:58:22 +0200
 MIME-Version: 1.0
-In-Reply-To: <CAN-5tyHLL8t2BsR7qatz=vZrw9+QEADZAMwcmD2QZB80O_iiog@mail.gmail.com>
-References: <CAHQdGtTqO02BWwTOsXn2s641_KBdawBexG5+kGwmJKWaAmewtA@mail.gmail.com>
-	<1419021845-96747-1-git-send-email-trond.myklebust@primarydata.com>
-	<1419021845-96747-2-git-send-email-trond.myklebust@primarydata.com>
-	<CAN-5tyFki0cgkUGj-_+9vTdpv0oWnLPjFLOVQ_AB-h_AfBwkwg@mail.gmail.com>
-	<CAHQdGtS3d6+sqgGQpY822hc4AZM+zzihc=CGb43ihfDC6Bh1Qw@mail.gmail.com>
-	<CAN-5tyHLL8t2BsR7qatz=vZrw9+QEADZAMwcmD2QZB80O_iiog@mail.gmail.com>
-Date: Tue, 18 Aug 2015 14:18:05 -0700
-Message-ID: <CAHQdGtRPdKvm730OgkWAt4EHUTwSHFdf-ObOjgzt10AVqFxoyQ@mail.gmail.com>
-Subject: Re: [PATCH v3 2/2] NFSv4: Remove incorrect check in can_open_delegated()
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Olga Kornievskaia <aglo@umich.edu>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=utf-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Aug 18, 2015 at 2:13 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
-> On Tue, Aug 18, 2015 at 5:07 PM, Trond Myklebust
-> <trond.myklebust@primarydata.com> wrote:
->> On Tue, Aug 18, 2015 at 1:38 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
->>>
->>> This is the patch that breaks recovery of opens upon server reboot.
->>>
->>> I have a test that open a file and gets a write delegation and tried
->>> to do a write. At this point, I reboot my server so that write fails
->>> with bad_session and then stale_clientid. Upon completing the
->>> exchange_id, create_session, and putrootfh, the client no longer sends
->>> the open to be recovered and instead resends the failed write. It
->>> would use all 0s stateid (this is 4.1) for the write and for the close
->>> that follows it.
->>
->> Why is the client not attempting to recover the open? That's a bug,
->> whether or not this patch is correct.
->
-> I added printks in the path of nfs4_do_reclaim(). Client does
-> "attempt" to recover the open. OPEN never goes on the wire because
-> can_open_delegated() returned true and no action of adding an rpc task
-> gets done.
+As currently being discussed on musl's mailing list, there appears to be 
+a bug in nfs-utils exposed by musl, which makes rpc.statd loop with:
 
-Ahh... OK. I'll fix that.
+my_svc_run() - select: Bad file descriptor
 
-Thanks Olga!
-
->>
->>> On Fri, Dec 19, 2014 at 3:44 PM, Trond Myklebust
->>> <trond.myklebust@primarydata.com> wrote:
->>> > Remove an incorrect check for NFS_DELEGATION_NEED_RECLAIM in
->>> > can_open_delegated(). We are allowed to cache opens even in
->>> > a situation where we're doing reboot recovery.
->>> >
->>> > Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
->>> > ---
->>> >  fs/nfs/nfs4proc.c | 2 --
->>> >  1 file changed, 2 deletions(-)
->>> >
->>> > diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->>> > index 8514b59a8c30..002c7dfedb08 100644
->>> > --- a/fs/nfs/nfs4proc.c
->>> > +++ b/fs/nfs/nfs4proc.c
->>> > @@ -1119,8 +1119,6 @@ static int can_open_delegated(struct nfs_delegation *delegation, fmode_t fmode)
->>> >                 return 0;
->>> >         if ((delegation->type & fmode) != fmode)
->>> >                 return 0;
->>> > -       if (test_bit(NFS_DELEGATION_NEED_RECLAIM, &delegation->flags))
->>> > -               return 0;
->>> >         if (test_bit(NFS_DELEGATION_RETURNING, &delegation->flags))
->>> >                 return 0;
->>> >         nfs_mark_delegation_referenced(delegation);
->>> > --
->>> > 2.1.0
->>> >
+URL to list:
+http://www.openwall.com/lists/musl/2015/08
+The relevant messages begin at August 18 and have 'nfs-utils broken with 
+musl: "select: Bad file descriptor"' in their titles.
