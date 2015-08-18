@@ -1,179 +1,127 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:36739 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751202AbbHRGVv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 18 Aug 2015 02:21:51 -0400
-Date: Tue, 18 Aug 2015 16:21:39 +1000
-From: NeilBrown <neilb@suse.com>
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: Al Viro <viro@zeniv.linux.org.uk>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        linux-fsdevel@vger.kernel.org,
+Received: from mail-pa0-f43.google.com ([209.85.220.43]:36608 "EHLO
+	mail-pa0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750822AbbHRGZ5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Aug 2015 02:25:57 -0400
+Received: by pawq9 with SMTP id q9so28099147paw.3
+        for <linux-nfs@vger.kernel.org>; Mon, 17 Aug 2015 23:25:57 -0700 (PDT)
+Subject: Re: [PATCH] SUNRPC: Change WARN_ON to an warn message in
+ rpc_exit_task
+To: Scott Mayhew <smayhew@redhat.com>,
         Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: Re: [PATCH] fs-pin: allow pin_remove() to be called other than from
- ->kill()
-Message-ID: <20150818162139.3c214136@noble>
-In-Reply-To: <55D2CBBE.9080807@gmail.com>
-References: <55B5A012.1030006@gmail.com>
-	<55B5A186.7040004@gmail.com>
-	<20150729135914.13cb0f86@noble>
-	<55D2CBBE.9080807@gmail.com>
+References: <55D1C0C7.4040005@gmail.com>
+ <20150817133535.GA5192@tonberry.usersys.redhat.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        kinglongmee@gmail.com
+From: Kinglong Mee <kinglongmee@gmail.com>
+Message-ID: <55D2CFE7.8050805@gmail.com>
+Date: Tue, 18 Aug 2015 14:25:43 +0800
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+In-Reply-To: <20150817133535.GA5192@tonberry.usersys.redhat.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 18 Aug 2015 14:07:58 +0800 Kinglong Mee <kinglongmee@gmail.com>
-wrote:
-
-> Sorry for my so late reply.
+On 8/17/2015 21:35, Scott Mayhew wrote:
+> On Mon, 17 Aug 2015, Kinglong Mee wrote:
 > 
-> On 7/29/2015 11:59, NeilBrown wrote:
-> > fs-pin currently assumes when either the vfsmount or the fs_pin wants
-> > to unpin, pin_kill() will be called.
-> > This requires that the ->kill() function can wait for any transient
-> > references to the fs_pin to be released.  If the structure containing
-> > the fs_pin doesn't already have the ability to wait for references,
-> > this can be a burden.
-> > 
-> > As the fs_pin already has infrastructure for waiting, that can be
-> > leveraged to remove the burden.
-> > 
-> > In this alternate scenario, only the vfsmount calls pin_kill() when it
-> > wants to unpin.  The owner of the fs_pin() instead calls pin_remove().
-> > 
-> > The ->kill() function removes any long-term references, and then calls
-> > pin_kill() (recursively).
-> > When the last reference on (the structure containing) the fs_pin is
-> > dropped, pin_remove() will be called and the (recursive) pin_kill()
-> > call will complete.
-> > 
-> > For this to be safe, the final "put" must *not* free the structure if
-> > pin_kill() has already been called, as that could leave ->kill()
-> > accessing freed data.
-> > 
-> > So we provide a return value for pin_remove() which reports the old
-> > ->done value.
-> > 
-> > When final put calls pin_remove() it checks that value.
-> > If it was 0, then pin_kill() has not called ->kill and will not,
-> > so final put can free the data structure.
-> > If it was -1, then pin_kill() has called ->kill, and ->kill will
-> > free the data structure - final put must not touch it.
+>> When testing nfs4.0 lock, I get WARN_ON message as below,
+>> [  278.733391] ------------[ cut here ]------------
+>> [  278.734496] WARNING: CPU: 0 PID: 263 at /root/linux-nfs/net/sunrpc/sched.c:692
+>> rpc_exit_task+0x85/0x90 [sunrpc]()
+>> [  278.736771] Modules linked in: nfsv4(OE) nfs(OE) nfsd(E) bnep bluetooth ip6t_rpfilter ip6t_REJECT
+>> xt_conntrack cfg80211 rfkill ebtable_nat ebtable_broute bridge stp llc ebtable_filter ebtables
+>> ip6table_nat nf_conntrack_ipv6 nf_defrag_ipv6 nf_nat_ipv6 ip6table_mangle ip6table_security
+>> ip6table_raw ip6table_filter ip6_tables iptable_nat nf_conntrack_ipv4 nf_defrag_ipv4
+>> nf_nat_ipv4 nf_nat nf_conntrack iptable_mangle iptable_security iptable_raw btrfs ppdev xfs
+>> microcode xor serio_raw libcrc32c pcspkr raid6_pq e1000 parport_pc parport i2c_piix4 i2c_core
+>> auth_rpcgss nfs_acl lockd sunrpc(OE) ata_generic pata_acpi [last unloaded: nfsd]
+>> [  278.751462] CPU: 0 PID: 263 Comm: kworker/0:4 Tainted: G           OE 3.16.0-rc2+ #28
+>> [  278.753364] Hardware name: VMware, Inc. VMware Virtual Platform/440BX Desktop Reference Platform,
+>> BIOS 6.00 07/31/2013
+>> [  278.755710] Workqueue: rpciod rpc_async_schedule [sunrpc]
+>> [  278.757112]  0000000000000000 00000000f6173352 ffff880072e5fd30 ffffffff816eacfa
+>> [  278.758811]  0000000000000000 ffff880072e5fd68 ffffffff8108bf3d ffff88005997f180
+>> [  278.760527]  ffff88003ae44830 ffffffffa001a860 ffffffffa001a860 0000000000000000
+>> [  278.762271] Call Trace:
+>> [  278.762802]  [<ffffffff816eacfa>] dump_stack+0x45/0x56
+>> [  278.763906]  [<ffffffff8108bf3d>] warn_slowpath_common+0x7d/0xa0
+>> [  278.765419]  [<ffffffffa001a860>] ? rpc_destroy_wait_queue+0x20/0x20 [sunrpc]
+>> [  278.767243]  [<ffffffffa001a860>] ? rpc_destroy_wait_queue+0x20/0x20 [sunrpc]
+>> [  278.768758]  [<ffffffff8108c06a>] warn_slowpath_null+0x1a/0x20
+>> [  278.770080]  [<ffffffffa001a8e5>] rpc_exit_task+0x85/0x90 [sunrpc]
+>> [  278.771439]  [<ffffffffa001b204>] __rpc_execute+0x94/0x420 [sunrpc]
+>> [  278.772829]  [<ffffffffa001b5b6>] rpc_async_schedule+0x26/0x30 [sunrpc]
+>> [  278.774276]  [<ffffffff810a7f95>] process_one_work+0x175/0x430
+>> [  278.775573]  [<ffffffff810a866d>] worker_thread+0x11d/0x530
+>> [  278.776824]  [<ffffffff810a8550>] ? rescuer_thread+0x300/0x300
+>> [  278.778069]  [<ffffffff810aee18>] kthread+0xd8/0xf0
+>> [  278.779114]  [<ffffffff810aed40>] ? insert_kthread_work+0x40/0x40
+>> [  278.780448]  [<ffffffff816f22bc>] ret_from_fork+0x7c/0xb0
+>> [  278.781621]  [<ffffffff810aed40>] ? insert_kthread_work+0x40/0x40
+>> [  278.782972] ---[ end trace 3350394592832e42 ]---
+>>
+>> task1 (lock/unlock):
+>>   --> call_decode
+>>     --> rpc_exit_task (-10008)
+>>       --> nfs4_release_lockowner_done
+>>         --> rpc_restart_call_prepare
+>>             task->tk_action = call_start;
+>> task2 (umount):
+>>       --> rpc_shutdown_client
+>>         --> rpc_killall_tasks
+>>             rovr->tk_flags |= RPC_TASK_KILLED; (set task1 to KILLED)
+>> task1:
+>>     --> rpc_exit_task
+>>         WARN_ON(RPC_ASSASSINATED(task));
+>>
+>> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+>> ---
+>>  net/sunrpc/sched.c | 9 ++++++++-
+>>  1 file changed, 8 insertions(+), 1 deletion(-)
+>>
+>> diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
+>> index 337ca85..562db0a 100644
+>> --- a/net/sunrpc/sched.c
+>> +++ b/net/sunrpc/sched.c
+>> @@ -689,7 +689,14 @@ void rpc_exit_task(struct rpc_task *task)
+>>  	if (task->tk_ops->rpc_call_done != NULL) {
+>>  		task->tk_ops->rpc_call_done(task, task->tk_calldata);
+>>  		if (task->tk_action != NULL) {
+>> -			WARN_ON(RPC_ASSASSINATED(task));
+>> +			/*
+>> +			 * A known case here is,
+>> +			 * The RPC_TASK_KILLED is set in rpc_killall_tasks by
+>> +			 * another process.
+>> +			 */
+>> +			if (RPC_ASSASSINATED(task))
+>> +				printk(KERN_WARNING "RPC: dead task tried to"
+>> +					" walk away.\n");
+>>  			/* Always release the RPC slot and buffer memory */
+>>  			xprt_release(task);
+>>  			rpc_reset_task_statistics(task);
+>> -- 
+>> 2.4.3
+>>
 > 
-> I find another problem, 
-> how can xxx_pin_kill known the last reference of the data have be put?
+> If this is going to be changed anyway, could we maybe have some more
+> useful debugging information added to the message?  Something like:
 > 
-> eg,
-> static void expkey_pin_kill(struct fs_pin *pin)
-> {
->         struct svc_expkey *key = container_of(pin, struct svc_expkey, ek_pin);
->         cache_delete_entry(key->cd, &key->h);
->         expkey_destroy(key);
-> }
+>         printk(KERN_WARNING "RPC: %s to %s was killed\n", 
+>                 task->tk_msg.rpc_proc->p_name, 
+>                 rpc_peeraddr2str(task->tk_client, RPC_DISPLAY_ADDR));
 > 
-> expkey_pin_kill has call cache_delete_entry() but doesn't know whether
-> the last reference has be put (here expkey_put is called)? 
+> I recently had a case where this warning was popping several times per
+> minute.  The machine was both a client and a server... it turns out
+> that it was actually CB_NULLs that were causing the warning, and the
+> trigger for that was that several clients had the same value for the
+> clientaddr mount option.
 > 
-> Before the cache_list is deleted from the cache, a third user gets
-> the reference, so that, the third user will be the last put of the cache
-> by calling expkey_put, xxx_pin_kill only decrease the reference.
+> Having some more useful info from the warning message would have saved
+> some time there.
 
-expkey_pin_kill() should call:
-  cache_delete_entry()
-  pin_kill()
-  expkey_destroy()
+If it's harmless of this case, remove the WARN_ON directly maybe better.
+What's your opinion, Trond? 
 
-The "cache_delete_entry()" call removes the only long-term reference.
-Any other reference will be transient so it is safe to wait for those.
-
-The 'pin_kill()' call will wait of pin_remove() to be called (it
-already does that).
-pin_remove() will be called when the last reference is dropped.  As
-described above, that pin_remove call will return -1 and so the 'put'
-function will not have called expkey_destroy.
-
-Finally the expkey_destroy() function actually frees the data
-structure.  No other code can be touching at this point.
-
-Thanks,
-NeilBrown
-
-
-> 
-> thanks,
-> Kinglong Mee
-> 
-> > 
-> > This makes the 'wait' infrastructure of fs_pin available to any
-> > pinning client which wants to use it.
-> > 
-> > Signed-Off-By: NeilBrown <neilb@suse.com>
-> > 
-> > ---
-> > Hi Al,
-> >  do you see this as a workable solution?  I think it will improve the nfsd pining patch
-> > a lot.
-> > 
-> > Thanks,
-> > NeilBrown
-> > 
-> > 
-> > diff --git a/fs/fs_pin.c b/fs/fs_pin.c
-> > index 611b5408f6ec..b7954a9d17da 100644
-> > --- a/fs/fs_pin.c
-> > +++ b/fs/fs_pin.c
-> > @@ -6,16 +6,32 @@
-> >  
-> >  static DEFINE_SPINLOCK(pin_lock);
-> >  
-> > -void pin_remove(struct fs_pin *pin)
-> > +/**
-> > + * pin_remove - disconnect an fs_pin from the pinned structure.
-> > + * @pin:	The struct fs_pin which is pinning something.
-> > + *
-> > + * Detach a 'pin' which was added by pin_insert().  A return value
-> > + * of -1 implies that pin_kill() has already been called and that the
-> > + * ->kill() function now owns the data structure containing @pin.
-> > + * The function which called pin_remove() must not touch the data structure
-> > + * again (unless it is the ->kill() function itself).
-> > + * A return value of 0 implies an uneventful disconnect: pin_kill() has not called,
-> > + * and will not call, the ->kill() function on this @pin.
-> > + * Any other return value is a usage error - e.g. repeated call to pin_remove().
-> > + */
-> > +int pin_remove(struct fs_pin *pin)
-> >  {
-> > +	int ret;
-> >  	spin_lock(&pin_lock);
-> >  	hlist_del_init(&pin->m_list);
-> >  	hlist_del_init(&pin->s_list);
-> >  	spin_unlock(&pin_lock);
-> >  	spin_lock_irq(&pin->wait.lock);
-> > +	ret = pin->done;
-> >  	pin->done = 1;
-> >  	wake_up_locked(&pin->wait);
-> >  	spin_unlock_irq(&pin->wait.lock);
-> > +	return ret;
-> >  }
-> >  
-> >  void pin_insert_group(struct fs_pin *pin, struct vfsmount *m, struct hlist_head *p)
-> > diff --git a/include/linux/fs_pin.h b/include/linux/fs_pin.h
-> > index 3886b3bffd7f..2fe9d3ba09e8 100644
-> > --- a/include/linux/fs_pin.h
-> > +++ b/include/linux/fs_pin.h
-> > @@ -18,7 +18,7 @@ static inline void init_fs_pin(struct fs_pin *p, void (*kill)(struct fs_pin *))
-> >  	p->kill = kill;
-> >  }
-> >  
-> > -void pin_remove(struct fs_pin *);
-> > +int pin_remove(struct fs_pin *);
-> >  void pin_insert_group(struct fs_pin *, struct vfsmount *, struct hlist_head *);
-> >  void pin_insert(struct fs_pin *, struct vfsmount *);
-> >  void pin_kill(struct fs_pin *);
-> > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
+thanks,
+Kinglong Mee
