@@ -1,10 +1,10 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pa0-f41.google.com ([209.85.220.41]:33806 "EHLO
-	mail-pa0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750855AbbHRHWN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Aug 2015 03:22:13 -0400
-Subject: [PATCH 4/6 v9] fs: New helper legitimize_mntget() for getting a
- legitimize mnt
+Received: from mail-pa0-f51.google.com ([209.85.220.51]:35392 "EHLO
+	mail-pa0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751157AbbHRHXC (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Aug 2015 03:23:02 -0400
+Subject: [PATCH 5/6 v9] sunrpc: New helper cache_delete_entry for deleting
+ cache_head directly
 To: "J. Bruce Fields" <bfields@fieldses.org>,
         Al Viro <viro@zeniv.linux.org.uk>
 References: <55D2DBF6.3010406@gmail.com>
@@ -13,78 +13,74 @@ Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
         Trond Myklebust <trond.myklebust@primarydata.com>,
         kinglongmee@gmail.com
 From: Kinglong Mee <kinglongmee@gmail.com>
-Message-ID: <55D2DD17.7050504@gmail.com>
-Date: Tue, 18 Aug 2015 15:21:59 +0800
+Message-ID: <55D2DD44.70403@gmail.com>
+Date: Tue, 18 Aug 2015 15:22:44 +0800
 MIME-Version: 1.0
 In-Reply-To: <55D2DBF6.3010406@gmail.com>
 Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-New helper legitimize_mntget for getting a mnt without setting
-MNT_SYNC_UMOUNT | MNT_UMOUNT | MNT_DOOMED, otherwise return NULL.
+A new helper cache_delete_entry() for delete cache_head from
+cache_detail directly.
 
-v9, Update using read_seqbegin_or_lock instead read_seqlock_excl
+It will be used by pin_kill, so make sure the cache_detail is valid
+before deleting is needed.
+
+Because pin_kill is not many times, so the influence of performance
+is accepted.
+
+v9, delete duplicate checking of cache_detail
 
 Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
 ---
- fs/namespace.c        | 30 ++++++++++++++++++++++++++++++
- include/linux/mount.h |  1 +
- 2 files changed, 31 insertions(+)
+ include/linux/sunrpc/cache.h |  1 +
+ net/sunrpc/cache.c           | 20 ++++++++++++++++++++
+ 2 files changed, 21 insertions(+)
 
-diff --git a/fs/namespace.c b/fs/namespace.c
-index 2b8aa15..bf4a9f5 100644
---- a/fs/namespace.c
-+++ b/fs/namespace.c
-@@ -1153,6 +1153,36 @@ struct vfsmount *mntget(struct vfsmount *mnt)
+diff --git a/include/linux/sunrpc/cache.h b/include/linux/sunrpc/cache.h
+index 03d3b4c..2824db5 100644
+--- a/include/linux/sunrpc/cache.h
++++ b/include/linux/sunrpc/cache.h
+@@ -210,6 +210,7 @@ extern int cache_check(struct cache_detail *detail,
+ 		       struct cache_head *h, struct cache_req *rqstp);
+ extern void cache_flush(void);
+ extern void cache_purge(struct cache_detail *detail);
++extern void cache_delete_entry(struct cache_detail *cd, struct cache_head *h);
+ #define NEVER (0x7FFFFFFF)
+ extern void __init cache_initialize(void);
+ extern int cache_register_net(struct cache_detail *cd, struct net *net);
+diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
+index 4a2340a..430b5fa 100644
+--- a/net/sunrpc/cache.c
++++ b/net/sunrpc/cache.c
+@@ -454,6 +454,26 @@ static int cache_clean(void)
+ 	return rv;
  }
- EXPORT_SYMBOL(mntget);
  
-+struct vfsmount *legitimize_mntget(struct vfsmount *vfsmnt)
++void cache_delete_entry(struct cache_detail *detail, struct cache_head *h)
 +{
-+	struct mount *mnt;
-+	unsigned seq = 0;
++	if (!detail || !h)
++		return;
 +
-+	if (vfsmnt == NULL)
-+		return NULL;
-+retry:
-+	read_seqbegin_or_lock(&mount_lock, &seq);
-+
-+	if (vfsmnt->mnt_flags & (MNT_SYNC_UMOUNT | MNT_UMOUNT | MNT_DOOMED))
-+		vfsmnt = NULL;
-+	else if (need_seqretry(&mount_lock, seq))
-+		goto retry;
-+	else {
-+		mnt = real_mount(vfsmnt);
-+		mnt_add_count(mnt, 1);
-+		if (need_seqretry(&mount_lock, seq) ||
-+		    vfsmnt->mnt_flags & (MNT_SYNC_UMOUNT | MNT_UMOUNT |
-+					 MNT_DOOMED)) {
-+			mnt_add_count(mnt, -1);
-+			goto retry;
-+		}
++	write_lock(&detail->hash_lock);
++	if (hlist_unhashed(&h->cache_list)) {
++		write_unlock(&detail->hash_lock);
++		return ;
 +	}
 +
-+	done_seqretry(&mount_lock, seq);
-+	return vfsmnt;
-+}
-+EXPORT_SYMBOL(legitimize_mntget);
++	hlist_del_init(&h->cache_list);
++	detail->entries--;
++	set_bit(CACHE_CLEANED, &h->flags);
++	write_unlock(&detail->hash_lock);
 +
- struct vfsmount *mnt_clone_internal(struct path *path)
- {
- 	struct mount *p;
-diff --git a/include/linux/mount.h b/include/linux/mount.h
-index f822c3c..8ae9dc0 100644
---- a/include/linux/mount.h
-+++ b/include/linux/mount.h
-@@ -79,6 +79,7 @@ extern void mnt_drop_write(struct vfsmount *mnt);
- extern void mnt_drop_write_file(struct file *file);
- extern void mntput(struct vfsmount *mnt);
- extern struct vfsmount *mntget(struct vfsmount *mnt);
-+extern struct vfsmount *legitimize_mntget(struct vfsmount *vfsmnt);
- extern struct vfsmount *mnt_clone_internal(struct path *path);
- extern int __mnt_is_readonly(struct vfsmount *mnt);
- 
++	cache_put(h, detail);
++}
++EXPORT_SYMBOL_GPL(cache_delete_entry);
++
+ /*
+  * We want to regularly clean the cache, so we need to schedule some work ...
+  */
 -- 
 2.4.3
 
