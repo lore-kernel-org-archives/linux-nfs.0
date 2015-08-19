@@ -1,31 +1,71 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wi0-f182.google.com ([209.85.212.182]:37832 "EHLO
-	mail-wi0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751336AbbHSAdw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Aug 2015 20:33:52 -0400
-Received: by wibhh20 with SMTP id hh20so122422525wib.0
-        for <linux-nfs@vger.kernel.org>; Tue, 18 Aug 2015 17:33:51 -0700 (PDT)
-Subject: Re: [BUG] nfs-utils broken with musl
-To: Chuck Lever <chuck.lever@oracle.com>
-References: <55D3AA7E.2050606@gmail.com>
- <F1351211-433D-4386-889B-BA023442CC13@oracle.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-From: Tastky <tastky@gmail.com>
-Message-ID: <55D3CEEE.4050303@gmail.com>
-Date: Wed, 19 Aug 2015 02:33:50 +0200
+Received: from mx2.suse.de ([195.135.220.15]:42076 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751778AbbHSDzH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 18 Aug 2015 23:55:07 -0400
+Date: Wed, 19 Aug 2015 13:54:56 +1000
+From: NeilBrown <neilb@suse.com>
+To: Kinglong Mee <kinglongmee@gmail.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Al Viro <viro@zeniv.linux.org.uk>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        linux-fsdevel@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: Re: [PATCH 6/6 v9] nfsd: Allows user un-mounting filesystem where
+ nfsd exports base on
+Message-ID: <20150819135456.0294a334@noble>
+In-Reply-To: <55D2DD8F.6070501@gmail.com>
+References: <55D2DBF6.3010406@gmail.com>
+	<55D2DD8F.6070501@gmail.com>
 MIME-Version: 1.0
-In-Reply-To: <F1351211-433D-4386-889B-BA023442CC13@oracle.com>
-Content-Type: text/plain; charset=windows-1252; format=flowed
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-OpenWrt does not use libtirpc and disables it via the utils compile 
-configuration.
+On Tue, 18 Aug 2015 15:23:59 +0800 Kinglong Mee <kinglongmee@gmail.com>
+wrote:
 
-I'm really not sure about a lot regarding this issue though.
+>  static void expkey_put(struct kref *ref)
+>  {
+>  	struct svc_expkey *key = container_of(ref, struct svc_expkey, h.ref);
+>  
+>  	if (test_bit(CACHE_VALID, &key->h.flags) &&
+> -	    !test_bit(CACHE_NEGATIVE, &key->h.flags))
+> -		path_put(&key->ek_path);
+> -	auth_domain_put(key->ek_client);
+> -	kfree(key);
+> +	    !test_bit(CACHE_NEGATIVE, &key->h.flags)) {
+> +		rcu_read_lock();
+> +		if (path_put_unpin(&key->ek_path, &key->ek_pin))
+> +			return ;
+> +	}
 
-Anyway, I'd suggest keeping this discussion limited on the musl list, 
-it'll quickly get confusing otherwise.
+That rcu_read_lock() is unbalanced and not needed.
 
-On 19.08.2015 01:59, Chuck Lever wrote:
- > Are you sure this isn't a libtirpc issue?> > > --> Chuck Lever
+Comment applies below in svc_export code too.
+
+
+> +static void expkey_pin_kill(struct fs_pin *pin)
+> +{
+> +	struct svc_expkey *key = container_of(pin, struct svc_expkey, ek_pin);
+> +	cache_delete_entry(key->cd, &key->h);
+> +	/* Must call pin_kill to wait the last reference be put */
+> +	pin_kill(&key->ek_pin);
+> +	expkey_destroy(key);
+>  }
+
+This, on the other hand, needs rcu_read_lock().  pin_kill() expected
+rcu to be readlocked, and will drop the lock.
+
+Same comment for svc_export code.
+
+
+Did you test with lockdep enabled?  That should have caught these
+issues.
+
+Otherwise it looks good.
+
+Reviewed-by: NeilBrown <neilb@suse.com>
+
+Thanks,
+NeilBrown
