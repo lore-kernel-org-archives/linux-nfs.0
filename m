@@ -1,105 +1,149 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from zeniv.linux.org.uk ([195.92.253.2]:49671 "EHLO
-	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751413AbbHSEvD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Aug 2015 00:51:03 -0400
-Date: Wed, 19 Aug 2015 05:50:59 +0100
-From: Al Viro <viro@ZenIV.linux.org.uk>
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        linux-fsdevel@vger.kernel.org, NeilBrown <neilb@suse.de>,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: Re: [PATCH 6/6 v9] nfsd: Allows user un-mounting filesystem where
- nfsd exports base on
-Message-ID: <20150819045059.GB18890@ZenIV.linux.org.uk>
-References: <55D2DBF6.3010406@gmail.com>
- <55D2DD8F.6070501@gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <55D2DD8F.6070501@gmail.com>
+Received: from mail-pa0-f45.google.com ([209.85.220.45]:35834 "EHLO
+	mail-pa0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750995AbbHSE4Y (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Aug 2015 00:56:24 -0400
+Received: by pacgr6 with SMTP id gr6so148463349pac.2
+        for <linux-nfs@vger.kernel.org>; Tue, 18 Aug 2015 21:56:24 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 1/2] NFSv4.1/pnfs: Fix a close/delegreturn hang when return-on-close is set
+Date: Tue, 18 Aug 2015 23:56:19 -0500
+Message-Id: <1439960180-19450-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Aug 18, 2015 at 03:23:59PM +0800, Kinglong Mee wrote:
-> @@ -181,7 +191,11 @@ static int expkey_show(struct seq_file *m,
->  	if (test_bit(CACHE_VALID, &h->flags) && 
->  	    !test_bit(CACHE_NEGATIVE, &h->flags)) {
->  		seq_printf(m, " ");
-> -		seq_path(m, &ek->ek_path, "\\ \t\n");
-> +		if (legitimize_mntget(ek->ek_path.mnt)) {
-> +			seq_path(m, &ek->ek_path, "\\ \t\n");
-> +			mntput(ek->ek_path.mnt);
-> +		} else
-> +			seq_printf(m, "Dir-unmounting");
+The helper pnfs_roc() has already verified that we have no delegations,
+and no further open files, hence no outstanding I/O and it has marked
+all the return-on-close lsegs as being invalid.
+Furthermore, it sets the NFS_LAYOUT_RETURN bit, thus serialising the
+close/delegreturn with all future layoutget calls on this inode.
 
-IDGI...  What locking environment do you have here?  Note that use
-of mnt_add_count(mnt, -1) in MNT_SYNC_UMOUNT case in __legitimize_mnt()
-is OK only because we
-	a) are under rcu_read_lock() and
-	b) have synchronize_rcu() in namespace_unlock().
+The checks in pnfs_roc_drain() for valid layout segments are therefore
+redundant: those cannot exist until another layoutget completes.
+The other check for whether or not NFS_LAYOUT_RETURN is set, actually
+causes a hang, since we already know that we hold that flag.
 
-You don't seem to be under rcu_read_lock() here, so what's to stop that
-from racing with the final mntput()?  IOW, suppose that on the first
-pass through legitimize_mntget() you read mount_lock, bump refcount,
-recheck the lock and notice that it has been touched.  You proceed to
-decrement refcount.  Fine, except that what would've been the final
-mntput() has just noticed that refcount hadn't reached 0 and buggered
-off.  And in the meanwhile, MNT_UMOUNT had been set.  Now you decrement
-the refcount to zero, notice that MNT_UMOUNT and go away.  Have a nice
-leak...
+To fix, we therefore strip out all the functionality in pnfs_roc_drain()
+except the retrieval of the barrier state, and then rename the function
+accordingly.
 
-The only reason why we are able to get away with mnt_add_count(mnt, -1) in
-that specific case in legitimize_mnt() is that MNT_SYNC_UMOUNT must have
-been set after we'd got rcu_read_lock() (otherwise we would've either hit
-a mismatch on mount_lock before incrementing refcount or wouldn't have
-run into that vfsmount at all) and thus we _know_ that the process that
-has set MNT_SYNC_UMOUNT couldn't have passed through synchronize_rcu()
-in namespace_unlock(), so it couldn't reach mntput_no_expire() until our
-caller does rcu_read_unlock() and we are free to decrement the refcount and
-leave - we won't be dropping the last reference here.
+Reported-by: Christoph Hellwig <hch@infradead.org>
+Fixes: 5c4a79fb2b1c ("Don't prevent layoutgets when doing return-on-close")
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfs/nfs4proc.c | 12 ++++--------
+ fs/nfs/pnfs.c     | 24 +-----------------------
+ fs/nfs/pnfs.h     |  7 +++----
+ 3 files changed, 8 insertions(+), 35 deletions(-)
 
-Without MNT_SYNC_UMOUNT the callers of __legitimize_mnt() must use mntput()
-to drop the mistakenly acquired reference.  Exactly because they can't
-rely on that syncronize_rcu() delaying the final mntput().
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index f4e5816a77b0..bda7837dfe6b 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2737,11 +2737,8 @@ static void nfs4_close_prepare(struct rpc_task *task, void *data)
+ 
+ 	if (calldata->arg.fmode == 0) {
+ 		task->tk_msg.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_CLOSE];
+-		if (calldata->roc &&
+-		    pnfs_roc_drain(inode, &calldata->roc_barrier, task)) {
+-			nfs_release_seqid(calldata->arg.seqid);
+-			goto out_wait;
+-		    }
++		if (calldata->roc)
++			pnfs_roc_get_barrier(inode, &calldata->roc_barrier);
+ 	}
+ 	calldata->arg.share_access =
+ 		nfs4_map_atomic_open_share(NFS_SERVER(inode),
+@@ -5289,9 +5286,8 @@ static void nfs4_delegreturn_prepare(struct rpc_task *task, void *data)
+ 
+ 	d_data = (struct nfs4_delegreturndata *)data;
+ 
+-	if (d_data->roc &&
+-	    pnfs_roc_drain(d_data->inode, &d_data->roc_barrier, task))
+-		return;
++	if (d_data->roc)
++		pnfs_roc_get_barrier(d_data->inode, &d_data->roc_barrier);
+ 
+ 	nfs4_setup_sequence(d_data->res.server,
+ 			&d_data->args.seq_args,
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 6151f39c8291..6aabbb654021 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1141,25 +1141,14 @@ void pnfs_roc_set_barrier(struct inode *ino, u32 barrier)
+ 	spin_unlock(&ino->i_lock);
+ }
+ 
+-bool pnfs_roc_drain(struct inode *ino, u32 *barrier, struct rpc_task *task)
++void pnfs_roc_get_barrier(struct inode *ino, u32 *barrier)
+ {
+ 	struct nfs_inode *nfsi = NFS_I(ino);
+ 	struct pnfs_layout_hdr *lo;
+-	struct pnfs_layout_segment *lseg;
+ 	nfs4_stateid stateid;
+ 	u32 current_seqid;
+-	bool layoutreturn = false;
+ 
+ 	spin_lock(&ino->i_lock);
+-	list_for_each_entry(lseg, &nfsi->layout->plh_segs, pls_list) {
+-		if (!test_bit(NFS_LSEG_ROC, &lseg->pls_flags))
+-			continue;
+-		if (test_bit(NFS_LSEG_VALID, &lseg->pls_flags))
+-			continue;
+-		rpc_sleep_on(&NFS_SERVER(ino)->roc_rpcwaitq, task, NULL);
+-		spin_unlock(&ino->i_lock);
+-		return true;
+-	}
+ 	lo = nfsi->layout;
+ 	current_seqid = be32_to_cpu(lo->plh_stateid.seqid);
+ 
+@@ -1168,18 +1157,7 @@ bool pnfs_roc_drain(struct inode *ino, u32 *barrier, struct rpc_task *task)
+ 	 */
+ 	*barrier = current_seqid + atomic_read(&lo->plh_outstanding);
+ 	stateid = lo->plh_stateid;
+-	if (test_and_clear_bit(NFS_LAYOUT_RETURN_BEFORE_CLOSE,
+-					   &lo->plh_flags))
+-		layoutreturn = pnfs_prepare_layoutreturn(lo);
+-	if (test_bit(NFS_LAYOUT_RETURN, &lo->plh_flags))
+-		rpc_sleep_on(&NFS_SERVER(ino)->roc_rpcwaitq, task, NULL);
+-
+ 	spin_unlock(&ino->i_lock);
+-	if (layoutreturn) {
+-		pnfs_send_layoutreturn(lo, stateid, IOMODE_ANY, false);
+-		return true;
+-	}
+-	return false;
+ }
+ 
+ /*
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 738672a0f8da..a3d57a8fac76 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -267,7 +267,7 @@ int pnfs_mark_matching_lsegs_invalid(struct pnfs_layout_hdr *lo,
+ bool pnfs_roc(struct inode *ino);
+ void pnfs_roc_release(struct inode *ino);
+ void pnfs_roc_set_barrier(struct inode *ino, u32 barrier);
+-bool pnfs_roc_drain(struct inode *ino, u32 *barrier, struct rpc_task *task);
++void pnfs_roc_get_barrier(struct inode *ino, u32 *barrier);
+ void pnfs_set_layoutcommit(struct inode *, struct pnfs_layout_segment *, loff_t);
+ void pnfs_cleanup_layoutcommit(struct nfs4_layoutcommit_data *data);
+ int pnfs_layoutcommit_inode(struct inode *inode, bool sync);
+@@ -605,10 +605,9 @@ pnfs_roc_set_barrier(struct inode *ino, u32 barrier)
+ {
+ }
+ 
+-static inline bool
+-pnfs_roc_drain(struct inode *ino, u32 *barrier, struct rpc_task *task)
++static inline void
++pnfs_roc_get_barrier(struct inode *ino, u32 *barrier)
+ {
+-	return false;
+ }
+ 
+ static inline void set_pnfs_layoutdriver(struct nfs_server *s,
+-- 
+2.4.3
 
-> @@ -664,7 +696,12 @@ static int svc_export_show(struct seq_file *m,
->  		return 0;
->  	}
->  	exp = container_of(h, struct svc_export, h);
-> -	seq_path(m, &exp->ex_path, " \t\n\\");
-> +	if (legitimize_mntget(exp->ex_path.mnt)) {
-> +		seq_path(m, &exp->ex_path, " \t\n\\");
-> +		mntput(exp->ex_path.mnt);
-> +	} else
-> +		seq_printf(m, "Dir-unmounting");
-
-Ditto.  And grabbing/dropping references here seems to be an overkill...
-
-> @@ -819,6 +867,12 @@ exp_find_key(struct cache_detail *cd, struct auth_domain *clp, int fsid_type,
->  	err = cache_check(cd, &ek->h, reqp);
->  	if (err)
->  		return ERR_PTR(err);
-> +
-> +	if (!legitimize_mntget(ek->ek_path.mnt)) {
-> +		cache_put(&ek->h, ek->cd);
-> +		return ERR_PTR(-ENOENT);
-> +	}
-
-Ditto.
-
-> @@ -842,6 +896,8 @@ exp_get_by_name(struct cache_detail *cd, struct auth_domain *clp,
->  	err = cache_check(cd, &exp->h, reqp);
->  	if (err)
->  		return ERR_PTR(err);
-> +
-> +	mntget(exp->ex_path.mnt);
-
-What's to make that mntget() legitimate?
-
->  static inline struct svc_export *exp_get(struct svc_export *exp)
->  {
->  	cache_get(&exp->h);
-> +	mntget(exp->ex_path.mnt);
-
-Ditto.
