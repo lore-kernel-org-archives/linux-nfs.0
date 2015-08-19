@@ -1,37 +1,31 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:45237 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750928AbbHRX76 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Aug 2015 19:59:58 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
+Received: from mail-wi0-f182.google.com ([209.85.212.182]:37832 "EHLO
+	mail-wi0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751336AbbHSAdw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Aug 2015 20:33:52 -0400
+Received: by wibhh20 with SMTP id hh20so122422525wib.0
+        for <linux-nfs@vger.kernel.org>; Tue, 18 Aug 2015 17:33:51 -0700 (PDT)
 Subject: Re: [BUG] nfs-utils broken with musl
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <55D3AA7E.2050606@gmail.com>
-Date: Tue, 18 Aug 2015 16:59:51 -0700
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <F1351211-433D-4386-889B-BA023442CC13@oracle.com>
+To: Chuck Lever <chuck.lever@oracle.com>
 References: <55D3AA7E.2050606@gmail.com>
-To: Tastky <tastky@gmail.com>
+ <F1351211-433D-4386-889B-BA023442CC13@oracle.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+From: Tastky <tastky@gmail.com>
+Message-ID: <55D3CEEE.4050303@gmail.com>
+Date: Wed, 19 Aug 2015 02:33:50 +0200
+MIME-Version: 1.0
+In-Reply-To: <F1351211-433D-4386-889B-BA023442CC13@oracle.com>
+Content-Type: text/plain; charset=windows-1252; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+OpenWrt does not use libtirpc and disables it via the utils compile 
+configuration.
 
-On Aug 18, 2015, at 2:58 PM, Tastky <tastky@gmail.com> wrote:
+I'm really not sure about a lot regarding this issue though.
 
-> As currently being discussed on musl's mailing list, there appears to be a bug in nfs-utils exposed by musl, which makes rpc.statd loop with:
-> 
-> my_svc_run() - select: Bad file descriptor
-> 
-> URL to list:
-> http://www.openwall.com/lists/musl/2015/08
-> The relevant messages begin at August 18 and have 'nfs-utils broken with musl: "select: Bad file descriptor"' in their titles.
+Anyway, I'd suggest keeping this discussion limited on the musl list, 
+it'll quickly get confusing otherwise.
 
-Are you sure this isn't a libtirpc issue?
-
-
---
-Chuck Lever
-
-
-
+On 19.08.2015 01:59, Chuck Lever wrote:
+ > Are you sure this isn't a libtirpc issue?> > > --> Chuck Lever
