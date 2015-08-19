@@ -1,59 +1,129 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pa0-f41.google.com ([209.85.220.41]:36442 "EHLO
-	mail-pa0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751016AbbHSE40 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Aug 2015 00:56:26 -0400
-Received: by pawq9 with SMTP id q9so51645776paw.3
-        for <linux-nfs@vger.kernel.org>; Tue, 18 Aug 2015 21:56:26 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 2/2] NFSv4.1/pnfs: Play safe w.r.t. close() races when return-on-close is set
-Date: Tue, 18 Aug 2015 23:56:20 -0500
-Message-Id: <1439960180-19450-2-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1439960180-19450-1-git-send-email-trond.myklebust@primarydata.com>
-References: <1439960180-19450-1-git-send-email-trond.myklebust@primarydata.com>
+Received: from mx2.suse.de ([195.135.220.15]:43517 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751016AbbHSE5A (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 19 Aug 2015 00:57:00 -0400
+Date: Wed, 19 Aug 2015 14:56:50 +1000
+From: NeilBrown <neilb@suse.com>
+To: Kinglong Mee <kinglongmee@gmail.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Al Viro <viro@zeniv.linux.org.uk>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        linux-fsdevel@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: Re: [PATCH 4/6 v9] fs: New helper legitimize_mntget() for getting a
+ legitimize mnt
+Message-ID: <20150819145650.46352023@noble>
+In-Reply-To: <55D2DD17.7050504@gmail.com>
+References: <55D2DBF6.3010406@gmail.com>
+	<55D2DD17.7050504@gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If we have an OPEN_DOWNGRADE and CLOSE race with one another, we want
-to ensure that the layout is forgotten by the client, so that we
-start afresh with a new layoutget.
+On Tue, 18 Aug 2015 15:21:59 +0800 Kinglong Mee <kinglongmee@gmail.com>
+wrote:
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/nfs4proc.c | 10 +++++-----
- 1 file changed, 5 insertions(+), 5 deletions(-)
+> New helper legitimize_mntget for getting a mnt without setting
+> MNT_SYNC_UMOUNT | MNT_UMOUNT | MNT_DOOMED, otherwise return NULL.
+> 
+> v9, Update using read_seqbegin_or_lock instead read_seqlock_excl
+> 
+> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+> ---
+>  fs/namespace.c        | 30 ++++++++++++++++++++++++++++++
+>  include/linux/mount.h |  1 +
+>  2 files changed, 31 insertions(+)
+> 
+> diff --git a/fs/namespace.c b/fs/namespace.c
+> index 2b8aa15..bf4a9f5 100644
+> --- a/fs/namespace.c
+> +++ b/fs/namespace.c
+> @@ -1153,6 +1153,36 @@ struct vfsmount *mntget(struct vfsmount *mnt)
+>  }
+>  EXPORT_SYMBOL(mntget);
+>  
+> +struct vfsmount *legitimize_mntget(struct vfsmount *vfsmnt)
+> +{
+> +	struct mount *mnt;
+> +	unsigned seq = 0;
+> +
+> +	if (vfsmnt == NULL)
+> +		return NULL;
+> +retry:
+> +	read_seqbegin_or_lock(&mount_lock, &seq);
+> +
+> +	if (vfsmnt->mnt_flags & (MNT_SYNC_UMOUNT | MNT_UMOUNT | MNT_DOOMED))
+> +		vfsmnt = NULL;
+> +	else if (need_seqretry(&mount_lock, seq))
+> +		goto retry;
+> +	else {
+> +		mnt = real_mount(vfsmnt);
+> +		mnt_add_count(mnt, 1);
+> +		if (need_seqretry(&mount_lock, seq) ||
+> +		    vfsmnt->mnt_flags & (MNT_SYNC_UMOUNT | MNT_UMOUNT |
+> +					 MNT_DOOMED)) {
+> +			mnt_add_count(mnt, -1);
+> +			goto retry;
+> +		}
+> +	}
+> +
+> +	done_seqretry(&mount_lock, seq);
+> +	return vfsmnt;
+> +}
+> +EXPORT_SYMBOL(legitimize_mntget);
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index bda7837dfe6b..9e9f7816cf24 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2661,7 +2661,7 @@ static void nfs4_close_done(struct rpc_task *task, void *data)
- 	switch (task->tk_status) {
- 		case 0:
- 			res_stateid = &calldata->res.stateid;
--			if (calldata->arg.fmode == 0 && calldata->roc)
-+			if (calldata->roc)
- 				pnfs_roc_set_barrier(state->inode,
- 						     calldata->roc_barrier);
- 			renew_lease(server, calldata->timestamp);
-@@ -2735,11 +2735,11 @@ static void nfs4_close_prepare(struct rpc_task *task, void *data)
- 		goto out_no_action;
- 	}
- 
--	if (calldata->arg.fmode == 0) {
-+	if (calldata->arg.fmode == 0)
- 		task->tk_msg.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_CLOSE];
--		if (calldata->roc)
--			pnfs_roc_get_barrier(inode, &calldata->roc_barrier);
--	}
-+	if (calldata->roc)
-+		pnfs_roc_get_barrier(inode, &calldata->roc_barrier);
-+
- 	calldata->arg.share_access =
- 		nfs4_map_atomic_open_share(NFS_SERVER(inode),
- 				calldata->arg.fmode, 0);
--- 
-2.4.3
+I'm struggling with this.  I know I wrote the above, but I'm no longer
+sure it is correct .. at all.
+
+All three of those flags are only set while mount_lock is held for
+writing, so if the second need_seqretry() returns zero, then we can
+be certain that none of the flags have changed yet, so there is no point
+testing them again.
+
+Ahh...  looking back at __legitimize_mnt I think I see the important
+point now - or at least I now see that point which I saw before more
+clearly.
+
+After the mnt_add_count, if need_seqretry() returns zero, we are done.
+If not, we need to clean up and try again.
+To do this we need to check MNT_SYNC_UMOUNT.
+If that is clear it is safe and best to call mntput() on the mnt.
+If it is set, then we just do the mnt_add_count(mnt, -1) and give up
+completely.
+
+Also, the usage for read_seqbegin_or_lock is all wrong.  I'm sure I
+copied something but I got it badly wrong.
+When you retry, you need to set 'seq' to 1, otherwise it never locks.
+I thought it would be more "clever" than at.
+
+So maybe:
+
+retry:
+  read_seqbegin_or_lock(&mount_lock, &seq);
+
+  if (vfsmnt->mnt_flags & (....))
+        vfs_mnt = NULL;
+  else {
+        mnt = real_mount(vfsmnt);
+        mnt_add_count(mnt, 1);
+        if (need_seqretry(&mount_lock, seq)) {
+             /* lost the race, need to try again */
+             if (vfsmnt->mnt_flags & MNT_SYNC_UMOUNT) {
+                  /* no point trying... */
+                  mnt_add_count(mnt, -1):
+                  vfsmnt = NULL;
+             } else {
+                  mntput(vfsmnt);
+                  seq = 1;
+                  goto retry;
+             }
+        }
+  }
+  done_seqretry(&mount_lock, seq);
+  return vfsmnt;
+
+
+NeilBrown
 
