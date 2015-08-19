@@ -1,68 +1,83 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f182.google.com ([209.85.213.182]:36385 "EHLO
-	mail-ig0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751056AbbHSNBW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Aug 2015 09:01:22 -0400
-Received: by igxp17 with SMTP id p17so104546840igx.1
-        for <linux-nfs@vger.kernel.org>; Wed, 19 Aug 2015 06:01:21 -0700 (PDT)
+Received: from mail-io0-f177.google.com ([209.85.223.177]:34452 "EHLO
+	mail-io0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751115AbbHSRvQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Aug 2015 13:51:16 -0400
+Received: by iodb91 with SMTP id b91so17904273iod.1
+        for <linux-nfs@vger.kernel.org>; Wed, 19 Aug 2015 10:51:15 -0700 (PDT)
 MIME-Version: 1.0
-In-Reply-To: <1439961497-22176-1-git-send-email-trond.myklebust@primarydata.com>
-References: <1439961497-22176-1-git-send-email-trond.myklebust@primarydata.com>
-Date: Wed, 19 Aug 2015 09:01:21 -0400
-Message-ID: <CAN-5tyFZPkK9F1HzRup1xNC841YJc3m5Zt-S4P6z1z+KPoH0HQ@mail.gmail.com>
-Subject: Re: [PATCH] Revert "NFSv4: Remove incorrect check in can_open_delegated()"
-From: Olga Kornievskaia <aglo@umich.edu>
+In-Reply-To: <1437677341-2943-1-git-send-email-trond.myklebust@primarydata.com>
+References: <1437677341-2943-1-git-send-email-trond.myklebust@primarydata.com>
+From: Peng Tao <bergwolf@primarydata.com>
+Date: Wed, 19 Aug 2015 10:50:56 -0700
+Message-ID: <CAKVebiUqbUHCAALFJ4hnMbqYhkPFVZyeAe9z80YRWtcVMg3bjg@mail.gmail.com>
+Subject: Re: [PATCH 1/5] NFSv4/pnfs: Ensure we don't miss a file extension
 To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Alternatively, I think the following would fix the problem too. If
-this open for CLAIM_PREVIOUS, we don't need to check if it can be open
-delegated.
+Hi Trond,
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 3acb1eb..b53cb10 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -1866,7 +1866,8 @@ static void nfs4_open_prepare(struct rpc_task *task, void
-                        goto out_no_action;
-                rcu_read_lock();
-                delegation = rcu_dereference(NFS_I(data->state->inode)->delegati
--               if (data->o_arg.claim != NFS4_OPEN_CLAIM_DELEGATE_CUR &&
-+               if (data->o_arg.claim != NFS4_OPEN_CLAIM_PREVIOUS &&
-+                   data->o_arg.claim != NFS4_OPEN_CLAIM_DELEGATE_CUR &&
-                    data->o_arg.claim != NFS4_OPEN_CLAIM_DELEG_CUR_FH &&
-                    can_open_delegated(delegation, data->o_arg.fmode))
-                        goto unlock_no_action;
+Can we please add following patch to stable as well? It not only fixes
+pnfs write, but also fixes in band writes when delegations are
+enabled. Without it, I can always get fstest read_write/mctime.t
+failure with in band IO.
 
-On Wed, Aug 19, 2015 at 1:18 AM, Trond Myklebust
+Thanks,
+Tao
+
+On Thu, Jul 23, 2015 at 11:48 AM, Trond Myklebust
 <trond.myklebust@primarydata.com> wrote:
-> This reverts commit 4e379d36c050b0117b5d10048be63a44f5036115.
+> pNFS writes don't return attributes, however that doesn't mean that we
+> should ignore the fact that they may be extending the file. This patch
+> ensures that if a write is seen to extend the file, then we always set
+> an attribute barrier, and update the cached file size.
 >
-> This commit opens up a race between the recovery code and the open code.
->
-> Reported-by: Olga Kornievskaia <aglo@umich.edu>
-> Cc: stable@vger.kernel # v4.0+
 > Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 > ---
->  fs/nfs/nfs4proc.c | 2 ++
->  1 file changed, 2 insertions(+)
+>  fs/nfs/write.c | 15 +++++++++------
+>  1 file changed, 9 insertions(+), 6 deletions(-)
 >
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index 9e9f7816cf24..95c5e8d39bef 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -1156,6 +1156,8 @@ static int can_open_delegated(struct nfs_delegation *delegation, fmode_t fmode)
->                 return 0;
->         if ((delegation->type & fmode) != fmode)
->                 return 0;
-> +       if (test_bit(NFS_DELEGATION_NEED_RECLAIM, &delegation->flags))
-> +               return 0;
->         if (test_bit(NFS_DELEGATION_RETURNING, &delegation->flags))
->                 return 0;
->         nfs_mark_delegation_referenced(delegation);
+> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+> index 359e9ad596c9..0e6a2b8786b4 100644
+> --- a/fs/nfs/write.c
+> +++ b/fs/nfs/write.c
+> @@ -1378,24 +1378,27 @@ static void nfs_writeback_check_extend(struct nfs_pgio_header *hdr,
+>  {
+>         struct nfs_pgio_args *argp = &hdr->args;
+>         struct nfs_pgio_res *resp = &hdr->res;
+> +       u64 size = argp->offset + resp->count;
+>
+>         if (!(fattr->valid & NFS_ATTR_FATTR_SIZE))
+> +               fattr->size = size;
+> +       if (nfs_size_to_loff_t(fattr->size) < i_size_read(hdr->inode)) {
+> +               fattr->valid &= ~NFS_ATTR_FATTR_SIZE;
+>                 return;
+> -       if (argp->offset + resp->count != fattr->size)
+> -               return;
+> -       if (nfs_size_to_loff_t(fattr->size) < i_size_read(hdr->inode))
+> +       }
+> +       if (size != fattr->size)
+>                 return;
+>         /* Set attribute barrier */
+>         nfs_fattr_set_barrier(fattr);
+> +       /* ...and update size */
+> +       fattr->valid |= NFS_ATTR_FATTR_SIZE;
+>  }
+>
+>  void nfs_writeback_update_inode(struct nfs_pgio_header *hdr)
+>  {
+> -       struct nfs_fattr *fattr = hdr->res.fattr;
+> +       struct nfs_fattr *fattr = &hdr->fattr;
+>         struct inode *inode = hdr->inode;
+>
+> -       if (fattr == NULL)
+> -               return;
+>         spin_lock(&inode->i_lock);
+>         nfs_writeback_check_extend(hdr, fattr);
+>         nfs_post_op_update_inode_force_wcc_locked(inode, fattr);
 > --
 > 2.4.3
 >
