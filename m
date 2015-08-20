@@ -1,59 +1,61 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yk0-f169.google.com ([209.85.160.169]:35792 "EHLO
-	mail-yk0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751759AbbHTLRf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Aug 2015 07:17:35 -0400
-Received: by ykbi184 with SMTP id i184so33653531ykb.2
-        for <linux-nfs@vger.kernel.org>; Thu, 20 Aug 2015 04:17:34 -0700 (PDT)
+Received: from mail-yk0-f182.google.com ([209.85.160.182]:35803 "EHLO
+	mail-yk0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751831AbbHTLRg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Aug 2015 07:17:36 -0400
+Received: by ykbi184 with SMTP id i184so33653846ykb.2
+        for <linux-nfs@vger.kernel.org>; Thu, 20 Aug 2015 04:17:35 -0700 (PDT)
 From: Jeff Layton <jlayton@poochiereds.net>
 To: bfields@fieldses.org
 Cc: linux-nfs@vger.kernel.org, hch@lst.de, kinglongmee@gmail.com
-Subject: [PATCH v3 08/20] nfsd: hook up nfsd_read to the nfsd_file cache
-Date: Thu, 20 Aug 2015 07:17:08 -0400
-Message-Id: <1440069440-27454-9-git-send-email-jeff.layton@primarydata.com>
+Subject: [PATCH v3 09/20] sunrpc: add a new cache_detail operation for when a cache is flushed
+Date: Thu, 20 Aug 2015 07:17:09 -0400
+Message-Id: <1440069440-27454-10-git-send-email-jeff.layton@primarydata.com>
 In-Reply-To: <1440069440-27454-1-git-send-email-jeff.layton@primarydata.com>
 References: <1440069440-27454-1-git-send-email-jeff.layton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+When the exports table is changed, exportfs will usually write a new
+time to the "flush" file in the nfsd.export cache procfile. This tells
+the kernel to flush any entries that are older than that value.
+
+This gives us a mechanism to tell whether an unexport might have
+occurred. Add a new ->flush cache_detail operation that is called after
+flushing the cache whenever someone writes to a "flush" file.
+
 Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
 ---
- fs/nfsd/vfs.c | 21 ++++++++-------------
- 1 file changed, 8 insertions(+), 13 deletions(-)
+ include/linux/sunrpc/cache.h | 1 +
+ net/sunrpc/cache.c           | 3 +++
+ 2 files changed, 4 insertions(+)
 
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 7c1e7866fec9..eb64597f3bde 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -980,20 +980,15 @@ out_nfserr:
- __be32 nfsd_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 	loff_t offset, struct kvec *vec, int vlen, unsigned long *count)
- {
--	struct file *file;
--	struct raparms	*ra;
--	__be32 err;
--
--	err = nfsd_open(rqstp, fhp, S_IFREG, NFSD_MAY_READ, &file);
--	if (err)
--		return err;
--
--	ra = nfsd_init_raparms(file);
--	err = nfsd_vfs_read(rqstp, file, offset, vec, vlen, count);
--	if (ra)
--		nfsd_put_raparams(file, ra);
--	fput(file);
-+	__be32			err;
-+	struct nfsd_file	*nf;
+diff --git a/include/linux/sunrpc/cache.h b/include/linux/sunrpc/cache.h
+index 03d3b4c92d9f..d1c10a978bb2 100644
+--- a/include/linux/sunrpc/cache.h
++++ b/include/linux/sunrpc/cache.h
+@@ -98,6 +98,7 @@ struct cache_detail {
+ 					      int has_died);
  
-+	err = nfsd_file_acquire(rqstp, fhp, NFSD_MAY_READ, &nf);
-+	if (err == nfs_ok) {
-+		err = nfsd_vfs_read(rqstp, nf->nf_file, offset, vec, vlen,
-+					count);
-+		nfsd_file_put(nf);
-+	}
- 	return err;
+ 	struct cache_head *	(*alloc)(void);
++	void			(*flush)(void);
+ 	int			(*match)(struct cache_head *orig, struct cache_head *new);
+ 	void			(*init)(struct cache_head *orig, struct cache_head *new);
+ 	void			(*update)(struct cache_head *orig, struct cache_head *new);
+diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
+index 4a2340a54401..60da9aa2bdc5 100644
+--- a/net/sunrpc/cache.c
++++ b/net/sunrpc/cache.c
+@@ -1451,6 +1451,9 @@ static ssize_t write_flush(struct file *file, const char __user *buf,
+ 	cd->nextcheck = seconds_since_boot();
+ 	cache_flush();
+ 
++	if (cd->flush)
++		cd->flush();
++
+ 	*ppos += count;
+ 	return count;
  }
- 
 -- 
 2.4.3
 
