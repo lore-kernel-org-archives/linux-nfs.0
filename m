@@ -1,263 +1,193 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yk0-f182.google.com ([209.85.160.182]:36040 "EHLO
-	mail-yk0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751876AbbHTLRp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Aug 2015 07:17:45 -0400
-Received: by ykfw73 with SMTP id w73so33708972ykf.3
-        for <linux-nfs@vger.kernel.org>; Thu, 20 Aug 2015 04:17:45 -0700 (PDT)
-From: Jeff Layton <jlayton@poochiereds.net>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, hch@lst.de, kinglongmee@gmail.com
-Subject: [PATCH v3 20/20] nfsd: rip out the raparms cache
-Date: Thu, 20 Aug 2015 07:17:20 -0400
-Message-Id: <1440069440-27454-21-git-send-email-jeff.layton@primarydata.com>
-In-Reply-To: <1440069440-27454-1-git-send-email-jeff.layton@primarydata.com>
-References: <1440069440-27454-1-git-send-email-jeff.layton@primarydata.com>
+Received: from outbound-smtp04.blacknight.com ([81.17.249.35]:52082 "EHLO
+	outbound-smtp04.blacknight.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751114AbbHTMYJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Aug 2015 08:24:09 -0400
+Received: from mail.blacknight.com (pemlinmail01.blacknight.ie [81.17.254.10])
+	by outbound-smtp04.blacknight.com (Postfix) with ESMTPS id C6959F4066
+	for <linux-nfs@vger.kernel.org>; Thu, 20 Aug 2015 12:24:01 +0000 (UTC)
+Date: Thu, 20 Aug 2015 13:23:59 +0100
+From: Mel Gorman <mgorman@techsingularity.net>
+To: Jerome Marchand <jmarchan@redhat.com>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Christoph Hellwig <hch@infradead.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        Mel Gorman <mgorman@suse.de>
+Subject: Re: [RFC PATCH] nfs: avoid swap-over-NFS deadlock
+Message-ID: <20150820122359.GB12432@techsingularity.net>
+References: <1437552643-18774-1-git-send-email-jmarchan@redhat.com>
+ <CAHQdGtRXhUi+=akuASUWo-tYy0YCWJtUts6fqGnA62fo1Jf5tA@mail.gmail.com>
+ <55AF9EA8.6020102@redhat.com>
+ <20150727105216.GD2660@techsingularity.net>
+ <55B6153B.1070604@redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=iso-8859-15
+In-Reply-To: <55B6153B.1070604@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Nothing uses it anymore.
+On Mon, Jul 27, 2015 at 01:25:47PM +0200, Jerome Marchand wrote:
+> On 07/27/2015 12:52 PM, Mel Gorman wrote:
+> > On Wed, Jul 22, 2015 at 03:46:16PM +0200, Jerome Marchand wrote:
+> >> On 07/22/2015 02:23 PM, Trond Myklebust wrote:
+> >>> On Wed, Jul 22, 2015 at 4:10 AM, Jerome Marchand <jmarchan@redhat.com> wrote:
+> >>>>
+> >>>> Lockdep warns about a inconsistent {RECLAIM_FS-ON-W} ->
+> >>>> {IN-RECLAIM_FS-W} usage. The culpritt is the inode->i_mutex taken in
+> >>>> nfs_file_direct_write(). This code was introduced by commit a9ab5e840669
+> >>>> ("nfs: page cache invalidation for dio").
+> >>>> This naive test patch avoid to take the mutex on a swapfile and makes
+> >>>> lockdep happy again. However I don't know much about NFS code and I
+> >>>> assume it's probably not the proper solution. Any thought?
+> >>>>
+> >>>> Signed-off-by: Jerome Marchand <jmarchan@redhat.com>
+> >>>
+> >>> NFS is not the only O_DIRECT implementation to set the inode->i_mutex.
+> >>> Why can't this be fixed in the generic swap code instead of adding
+> >>> yet-another-exception-for-IS_SWAPFILE?
+> >>
+> >> I meant to cc Mel. Just added him.
+> >>
+> > 
+> > Can the full lockdep warning be included as it'll be easier to see then if
+> > the generic swap code can somehow special case this? Currently, generic
+> > swapping does not not need to care about how the filesystem locked.
+> > For most filesystems, it's writing directly to the blocks on disk and
+> > bypassing the FS. In the NFS case it'd be surprising to find that there
+> > also are dirty pages in page cache that belong to the swap file as it's
+> > going to cause corruption. If there is any special casing it would to only
+> > attempt the invalidation in the !swap case and warn if mapping->nrpages. It
+> > still would look a bit weird but safer than just not acquiring the mutex
+> > and then potentially attempting an invalidation.
+> > 
+> 
+> [ 6819.501009] =================================
+> [ 6819.501009] [ INFO: inconsistent lock state ]
+> [ 6819.501009] 4.2.0-rc1-shmacct-babka-v2-next-20150709+ #255 Not tainted
+> [ 6819.501009] ---------------------------------
 
-Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
+Thanks. Sorry for the long delay but I finally got back to the bug this
+week. NFS can be modified to special case the swapfile but I was not happy
+with the result for multiple reasons. It took me a while to see a way for
+the core VM to deal with it. What do you think of the following
+approach? More importantly, does it work for you?
+
+---8<---
+nfs: Use swap_lock to prevent parallel swapon activations
+
+Jerome Marchand reported a lockdep warning as follows
+
+    [ 6819.501009] =================================
+    [ 6819.501009] [ INFO: inconsistent lock state ]
+    [ 6819.501009] 4.2.0-rc1-shmacct-babka-v2-next-20150709+ #255 Not tainted
+    [ 6819.501009] ---------------------------------
+    [ 6819.501009] inconsistent {RECLAIM_FS-ON-W} -> {IN-RECLAIM_FS-W} usage.
+    [ 6819.501009] kswapd0/38 [HC0[0]:SC0[0]:HE1:SE1] takes:
+    [ 6819.501009]  (&sb->s_type->i_mutex_key#17){+.+.?.}, at: [<ffffffffa03772a5>] nfs_file_direct_write+0x85/0x3f0 [nfs]
+    [ 6819.501009] {RECLAIM_FS-ON-W} state was registered at:
+    [ 6819.501009]   [<ffffffff81107f51>] mark_held_locks+0x71/0x90
+    [ 6819.501009]   [<ffffffff8110b775>] lockdep_trace_alloc+0x75/0xe0
+    [ 6819.501009]   [<ffffffff81245529>] kmem_cache_alloc_node_trace+0x39/0x440
+    [ 6819.501009]   [<ffffffff81225b8f>] __get_vm_area_node+0x7f/0x160
+    [ 6819.501009]   [<ffffffff81226eb2>] __vmalloc_node_range+0x72/0x2c0
+    [ 6819.501009]   [<ffffffff81227424>] vzalloc+0x54/0x60
+    [ 6819.501009]   [<ffffffff8122c7c8>] SyS_swapon+0x628/0xfc0
+    [ 6819.501009]   [<ffffffff81867772>] entry_SYSCALL_64_fastpath+0x12/0x76
+
+It's due to NFS acquiring i_mutex since a9ab5e840669 ("nfs: page
+cache invalidation for dio") to invalidate page cache before direct I/O.
+Filesystems may safely acquire i_mutex during direct writes but NFS is unique
+in its treatment of swap files. Ordinarily swap files are supported by the
+core VM looking up the physical block for a given offset in advance. There
+is no physical block for NFS and the direct write paths are used after
+calling mapping->swap_activate.
+
+The lockdep warning is triggered by swapon(), which is not in reclaim
+context, acquiring the i_mutex to ensure a swapfile is not activated twice.
+
+swapon does not need the i_mutex for this purpose.  There is a requirement
+that fallocate not be used on swapfiles but this is protected by the inode
+flag S_SWAPFILE and nothing to do with i_mutex. In fact, the current
+protection does nothing for block devices. This patch expands the role
+of swap_lock to protect against parallel activations of block devices and
+swapfiles and removes the use of i_mutex. This both improves the protection
+for swapon and avoids the lockdep warning.
+
+Reported-by: Jerome Marchand <jmarchan@redhat.com>
+Signed-off-by: Mel Gorman <mgorman@techsingularity.net>
 ---
- fs/nfsd/nfssvc.c |  14 +-----
- fs/nfsd/vfs.c    | 147 -------------------------------------------------------
- fs/nfsd/vfs.h    |   5 --
- 3 files changed, 1 insertion(+), 165 deletions(-)
+ mm/swapfile.c | 16 +++++++---------
+ 1 file changed, 7 insertions(+), 9 deletions(-)
 
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index d816bb3faa6e..d1034d119afb 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -216,18 +216,9 @@ static int nfsd_startup_generic(int nrservs)
- 	if (nfsd_users++)
- 		return 0;
+diff --git a/mm/swapfile.c b/mm/swapfile.c
+index 41e4581af7c5..d58ed6833fa3 100644
+--- a/mm/swapfile.c
++++ b/mm/swapfile.c
+@@ -1928,9 +1928,9 @@ SYSCALL_DEFINE1(swapoff, const char __user *, specialfile)
+ 		set_blocksize(bdev, old_block_size);
+ 		blkdev_put(bdev, FMODE_READ | FMODE_WRITE | FMODE_EXCL);
+ 	} else {
+-		mutex_lock(&inode->i_mutex);
++		spin_lock(&swap_lock);
+ 		inode->i_flags &= ~S_SWAPFILE;
+-		mutex_unlock(&inode->i_mutex);
++		spin_unlock(&swap_lock);
+ 	}
+ 	filp_close(swap_file, NULL);
  
--	/*
--	 * Readahead param cache - will no-op if it already exists.
--	 * (Note therefore results will be suboptimal if number of
--	 * threads is modified after nfsd start.)
--	 */
--	ret = nfsd_racache_init(2*nrservs);
--	if (ret)
--		goto dec_users;
--
- 	ret = nfsd_file_cache_init();
- 	if (ret)
--		goto out_racache;
-+		goto dec_users;
+@@ -2156,7 +2156,6 @@ static int claim_swapfile(struct swap_info_struct *p, struct inode *inode)
+ 		p->flags |= SWP_BLKDEV;
+ 	} else if (S_ISREG(inode->i_mode)) {
+ 		p->bdev = inode->i_sb->s_bdev;
+-		mutex_lock(&inode->i_mutex);
+ 		if (IS_SWAPFILE(inode))
+ 			return -EBUSY;
+ 	} else
+@@ -2386,6 +2385,8 @@ SYSCALL_DEFINE2(swapon, const char __user *, specialfile, int, swap_flags)
+ 		goto bad_swap;
+ 	}
  
- 	ret = nfs4_state_start();
- 	if (ret)
-@@ -236,8 +227,6 @@ static int nfsd_startup_generic(int nrservs)
++	/* prevent parallel swapons */
++	spin_lock(&swap_lock);
+ 	p->swap_file = swap_file;
+ 	mapping = swap_file->f_mapping;
  
- out_file_cache:
- 	nfsd_file_cache_shutdown();
--out_racache:
--	nfsd_racache_shutdown();
- dec_users:
- 	nfsd_users--;
- 	return ret;
-@@ -250,7 +239,6 @@ static void nfsd_shutdown_generic(void)
+@@ -2396,13 +2397,14 @@ SYSCALL_DEFINE2(swapon, const char __user *, specialfile, int, swap_flags)
+ 			continue;
+ 		if (mapping == q->swap_file->f_mapping) {
+ 			error = -EBUSY;
++			spin_unlock(&swap_lock);
+ 			goto bad_swap;
+ 		}
+ 	}
  
- 	nfs4_state_shutdown();
- 	nfsd_file_cache_shutdown();
--	nfsd_racache_shutdown();
- }
+ 	inode = mapping->host;
+-	/* If S_ISREG(inode->i_mode) will do mutex_lock(&inode->i_mutex); */
+ 	error = claim_swapfile(p, inode);
++	spin_unlock(&swap_lock);
+ 	if (unlikely(error))
+ 		goto bad_swap;
  
- static bool nfsd_needs_lockd(void)
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 4cc78a4ec694..9d9e734d1176 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -46,34 +46,6 @@
- 
- #define NFSDDBG_FACILITY		NFSDDBG_FILEOP
- 
--
--/*
-- * This is a cache of readahead params that help us choose the proper
-- * readahead strategy. Initially, we set all readahead parameters to 0
-- * and let the VFS handle things.
-- * If you increase the number of cached files very much, you'll need to
-- * add a hash table here.
-- */
--struct raparms {
--	struct raparms		*p_next;
--	unsigned int		p_count;
--	ino_t			p_ino;
--	dev_t			p_dev;
--	int			p_set;
--	struct file_ra_state	p_ra;
--	unsigned int		p_hindex;
--};
--
--struct raparm_hbucket {
--	struct raparms		*pb_head;
--	spinlock_t		pb_lock;
--} ____cacheline_aligned_in_smp;
--
--#define RAPARM_HASH_BITS	4
--#define RAPARM_HASH_SIZE	(1<<RAPARM_HASH_BITS)
--#define RAPARM_HASH_MASK	(RAPARM_HASH_SIZE-1)
--static struct raparm_hbucket	raparm_hash[RAPARM_HASH_SIZE];
--
- /* 
-  * Called from nfsd_lookup and encode_dirent. Check if we have crossed 
-  * a mount point.
-@@ -722,65 +694,6 @@ out:
- 	return err;
- }
- 
--struct raparms *
--nfsd_init_raparms(struct file *file)
--{
--	struct inode *inode = file_inode(file);
--	dev_t dev = inode->i_sb->s_dev;
--	ino_t ino = inode->i_ino;
--	struct raparms	*ra, **rap, **frap = NULL;
--	int depth = 0;
--	unsigned int hash;
--	struct raparm_hbucket *rab;
--
--	hash = jhash_2words(dev, ino, 0xfeedbeef) & RAPARM_HASH_MASK;
--	rab = &raparm_hash[hash];
--
--	spin_lock(&rab->pb_lock);
--	for (rap = &rab->pb_head; (ra = *rap); rap = &ra->p_next) {
--		if (ra->p_ino == ino && ra->p_dev == dev)
--			goto found;
--		depth++;
--		if (ra->p_count == 0)
--			frap = rap;
--	}
--	depth = nfsdstats.ra_size;
--	if (!frap) {	
--		spin_unlock(&rab->pb_lock);
--		return NULL;
--	}
--	rap = frap;
--	ra = *frap;
--	ra->p_dev = dev;
--	ra->p_ino = ino;
--	ra->p_set = 0;
--	ra->p_hindex = hash;
--found:
--	if (rap != &rab->pb_head) {
--		*rap = ra->p_next;
--		ra->p_next   = rab->pb_head;
--		rab->pb_head = ra;
--	}
--	ra->p_count++;
--	nfsdstats.ra_depth[depth*10/nfsdstats.ra_size]++;
--	spin_unlock(&rab->pb_lock);
--
--	if (ra->p_set)
--		file->f_ra = ra->p_ra;
--	return ra;
--}
--
--void nfsd_put_raparams(struct file *file, struct raparms *ra)
--{
--	struct raparm_hbucket *rab = &raparm_hash[ra->p_hindex];
--
--	spin_lock(&rab->pb_lock);
--	ra->p_ra = file->f_ra;
--	ra->p_set = 1;
--	ra->p_count--;
--	spin_unlock(&rab->pb_lock);
--}
--
- /*
-  * Grab and keep cached pages associated with a file in the svc_rqst
-  * so that they can be passed to the network sendmsg/sendpage routines
-@@ -2051,63 +1964,3 @@ nfsd_permission(struct svc_rqst *rqstp, struct svc_export *exp,
- 
- 	return err? nfserrno(err) : 0;
- }
--
--void
--nfsd_racache_shutdown(void)
--{
--	struct raparms *raparm, *last_raparm;
--	unsigned int i;
--
--	dprintk("nfsd: freeing readahead buffers.\n");
--
--	for (i = 0; i < RAPARM_HASH_SIZE; i++) {
--		raparm = raparm_hash[i].pb_head;
--		while(raparm) {
--			last_raparm = raparm;
--			raparm = raparm->p_next;
--			kfree(last_raparm);
+@@ -2543,10 +2545,8 @@ SYSCALL_DEFINE2(swapon, const char __user *, specialfile, int, swap_flags)
+ 	vfree(swap_map);
+ 	vfree(cluster_info);
+ 	if (swap_file) {
+-		if (inode && S_ISREG(inode->i_mode)) {
+-			mutex_unlock(&inode->i_mutex);
++		if (inode && S_ISREG(inode->i_mode))
+ 			inode = NULL;
 -		}
--		raparm_hash[i].pb_head = NULL;
--	}
--}
--/*
-- * Initialize readahead param cache
-- */
--int
--nfsd_racache_init(int cache_size)
--{
--	int	i;
--	int	j = 0;
--	int	nperbucket;
--	struct raparms **raparm = NULL;
--
--
--	if (raparm_hash[0].pb_head)
--		return 0;
--	nperbucket = DIV_ROUND_UP(cache_size, RAPARM_HASH_SIZE);
--	nperbucket = max(2, nperbucket);
--	cache_size = nperbucket * RAPARM_HASH_SIZE;
--
--	dprintk("nfsd: allocating %d readahead buffers.\n", cache_size);
--
--	for (i = 0; i < RAPARM_HASH_SIZE; i++) {
--		spin_lock_init(&raparm_hash[i].pb_lock);
--
--		raparm = &raparm_hash[i].pb_head;
--		for (j = 0; j < nperbucket; j++) {
--			*raparm = kzalloc(sizeof(struct raparms), GFP_KERNEL);
--			if (!*raparm)
--				goto out_nomem;
--			raparm = &(*raparm)->p_next;
--		}
--		*raparm = NULL;
--	}
--
--	nfsdstats.ra_size = cache_size;
--	return 0;
--
--out_nomem:
--	dprintk("nfsd: kmalloc failed, freeing readahead buffers\n");
--	nfsd_racache_shutdown();
--	return -ENOMEM;
--}
-diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
-index a3ec59830297..8b4deac64011 100644
---- a/fs/nfsd/vfs.h
-+++ b/fs/nfsd/vfs.h
-@@ -39,8 +39,6 @@
- typedef int (*nfsd_filldir_t)(void *, const char *, int, loff_t, u64, unsigned);
+ 		filp_close(swap_file, NULL);
+ 	}
+ out:
+@@ -2556,8 +2556,6 @@ SYSCALL_DEFINE2(swapon, const char __user *, specialfile, int, swap_flags)
+ 	}
+ 	if (name)
+ 		putname(name);
+-	if (inode && S_ISREG(inode->i_mode))
+-		mutex_unlock(&inode->i_mutex);
+ 	return error;
+ }
  
- /* nfsd/vfs.c */
--int		nfsd_racache_init(int);
--void		nfsd_racache_shutdown(void);
- int		nfsd_cross_mnt(struct svc_rqst *rqstp, struct dentry **dpp,
- 		                struct svc_export **expp);
- __be32		nfsd_lookup(struct svc_rqst *, struct svc_fh *,
-@@ -105,9 +103,6 @@ __be32		nfsd_statfs(struct svc_rqst *, struct svc_fh *,
- __be32		nfsd_permission(struct svc_rqst *, struct svc_export *,
- 				struct dentry *, int);
- 
--struct raparms *nfsd_init_raparms(struct file *file);
--void		nfsd_put_raparams(struct file *file, struct raparms *ra);
--
- static inline int fh_want_write(struct svc_fh *fh)
- {
- 	int ret = mnt_want_write(fh->fh_export->ex_path.mnt);
--- 
-2.4.3
-
