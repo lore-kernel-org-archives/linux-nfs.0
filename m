@@ -1,57 +1,123 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pa0-f49.google.com ([209.85.220.49]:36818 "EHLO
-	mail-pa0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750874AbbHTCyN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Aug 2015 22:54:13 -0400
-Received: by pawq9 with SMTP id q9so16806149paw.3
-        for <linux-nfs@vger.kernel.org>; Wed, 19 Aug 2015 19:54:13 -0700 (PDT)
+Received: from mail-pd0-f177.google.com ([209.85.192.177]:33255 "EHLO
+	mail-pd0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751094AbbHTEGv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Aug 2015 00:06:51 -0400
+Received: by pdrh1 with SMTP id h1so9326577pdr.0
+        for <linux-nfs@vger.kernel.org>; Wed, 19 Aug 2015 21:06:50 -0700 (PDT)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] SUNRPC: Allow sockets to do GFP_NOIO allocations
-Date: Wed, 19 Aug 2015 21:54:10 -0500
-Message-Id: <1440039250-21009-1-git-send-email-trond.myklebust@primarydata.com>
+To: Olga Kornievskaia <aglo@umich.edu>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] NFSv4: Enable delegated opens even when reboot recovery is pending
+Date: Wed, 19 Aug 2015 23:06:48 -0500
+Message-Id: <1440043608-37453-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Follow up to commit c4a7ca774949 ("SUNRPC: Allow waiting on memory
-allocation"). Allows the RPC socket code to do non-IO blocking.
+Unlike the previous attempt, this takes into account the fact that
+we may be calling it from the recovery thread itself. Detect this
+by looking at what kind of open we're doing, and checking the state
+of the NFS_DELEGATION_NEED_RECLAIM if it turns out we're doing a
+reboot reclaim-type open.
 
+Cc: Olga Kornievskaia <aglo@umich.edu>
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- net/sunrpc/xprtsock.c | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+ fs/nfs/nfs4proc.c       | 27 +++++++++++++++++++--------
+ include/linux/nfs_xdr.h |  2 +-
+ 2 files changed, 20 insertions(+), 9 deletions(-)
 
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 86ed778bb18b..723df7cb096d 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -1866,7 +1866,7 @@ static int xs_local_finish_connecting(struct rpc_xprt *xprt,
- 		sk->sk_data_ready = xs_local_data_ready;
- 		sk->sk_write_space = xs_udp_write_space;
- 		sk->sk_error_report = xs_error_report;
--		sk->sk_allocation = GFP_ATOMIC;
-+		sk->sk_allocation = GFP_NOIO;
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 95c5e8d39bef..6e988fd92f69 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -1150,16 +1150,25 @@ out:
+ 	return ret;
+ }
  
- 		xprt_clear_connected(xprt);
+-static int can_open_delegated(struct nfs_delegation *delegation, fmode_t fmode)
++static int can_open_delegated(struct nfs_delegation *delegation, fmode_t fmode,
++		enum open_claim_type4 claim)
+ {
+ 	if (delegation == NULL)
+ 		return 0;
+ 	if ((delegation->type & fmode) != fmode)
+ 		return 0;
+-	if (test_bit(NFS_DELEGATION_NEED_RECLAIM, &delegation->flags))
+-		return 0;
+ 	if (test_bit(NFS_DELEGATION_RETURNING, &delegation->flags))
+ 		return 0;
++	switch (claim) {
++	case NFS4_OPEN_CLAIM_NULL:
++	case NFS4_OPEN_CLAIM_FH:
++		break;
++	case NFS4_OPEN_CLAIM_PREVIOUS:
++		if (!test_bit(NFS_DELEGATION_NEED_RECLAIM, &delegation->flags))
++			break;
++	default:
++		return 0;
++	}
+ 	nfs_mark_delegation_referenced(delegation);
+ 	return 1;
+ }
+@@ -1378,6 +1387,7 @@ static struct nfs4_state *nfs4_try_open_cached(struct nfs4_opendata *opendata)
+ 	struct nfs_delegation *delegation;
+ 	int open_mode = opendata->o_arg.open_flags;
+ 	fmode_t fmode = opendata->o_arg.fmode;
++	enum open_claim_type4 claim = opendata->o_arg.claim;
+ 	nfs4_stateid stateid;
+ 	int ret = -EAGAIN;
  
-@@ -2051,7 +2051,7 @@ static void xs_udp_finish_connecting(struct rpc_xprt *xprt, struct socket *sock)
- 		sk->sk_user_data = xprt;
- 		sk->sk_data_ready = xs_udp_data_ready;
- 		sk->sk_write_space = xs_udp_write_space;
--		sk->sk_allocation = GFP_ATOMIC;
-+		sk->sk_allocation = GFP_NOIO;
+@@ -1391,7 +1401,7 @@ static struct nfs4_state *nfs4_try_open_cached(struct nfs4_opendata *opendata)
+ 		spin_unlock(&state->owner->so_lock);
+ 		rcu_read_lock();
+ 		delegation = rcu_dereference(nfsi->delegation);
+-		if (!can_open_delegated(delegation, fmode)) {
++		if (!can_open_delegated(delegation, fmode, claim)) {
+ 			rcu_read_unlock();
+ 			break;
+ 		}
+@@ -1854,6 +1864,7 @@ static void nfs4_open_prepare(struct rpc_task *task, void *calldata)
+ 	struct nfs4_opendata *data = calldata;
+ 	struct nfs4_state_owner *sp = data->owner;
+ 	struct nfs_client *clp = sp->so_server->nfs_client;
++	enum open_claim_type4 claim = data->o_arg.claim;
  
- 		xprt_set_connected(xprt);
- 
-@@ -2153,7 +2153,7 @@ static int xs_tcp_finish_connecting(struct rpc_xprt *xprt, struct socket *sock)
- 		sk->sk_state_change = xs_tcp_state_change;
- 		sk->sk_write_space = xs_tcp_write_space;
- 		sk->sk_error_report = xs_error_report;
--		sk->sk_allocation = GFP_ATOMIC;
-+		sk->sk_allocation = GFP_NOIO;
- 
- 		/* socket options */
- 		sock_reset_flag(sk, SOCK_LINGER);
+ 	if (nfs_wait_on_sequence(data->o_arg.seqid, task) != 0)
+ 		goto out_wait;
+@@ -1868,15 +1879,15 @@ static void nfs4_open_prepare(struct rpc_task *task, void *calldata)
+ 			goto out_no_action;
+ 		rcu_read_lock();
+ 		delegation = rcu_dereference(NFS_I(data->state->inode)->delegation);
+-		if (data->o_arg.claim != NFS4_OPEN_CLAIM_DELEGATE_CUR &&
+-		    data->o_arg.claim != NFS4_OPEN_CLAIM_DELEG_CUR_FH &&
+-		    can_open_delegated(delegation, data->o_arg.fmode))
++		if (can_open_delegated(delegation, data->o_arg.fmode, claim))
+ 			goto unlock_no_action;
+ 		rcu_read_unlock();
+ 	}
+ 	/* Update client id. */
+ 	data->o_arg.clientid = clp->cl_clientid;
+-	switch (data->o_arg.claim) {
++	switch (claim) {
++	default:
++		break;
+ 	case NFS4_OPEN_CLAIM_PREVIOUS:
+ 	case NFS4_OPEN_CLAIM_DELEG_CUR_FH:
+ 	case NFS4_OPEN_CLAIM_DELEG_PREV_FH:
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 7bbe50504211..b9b530409ff7 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -389,7 +389,7 @@ struct nfs_openargs {
+ 	const struct nfs_server *server;	 /* Needed for ID mapping */
+ 	const u32 *		bitmask;
+ 	const u32 *		open_bitmap;
+-	__u32			claim;
++	enum open_claim_type4	claim;
+ 	enum createmode4	createmode;
+ 	const struct nfs4_label *label;
+ };
 -- 
 2.4.3
 
