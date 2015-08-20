@@ -1,314 +1,263 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yk0-f182.google.com ([209.85.160.182]:33960 "EHLO
+Received: from mail-yk0-f182.google.com ([209.85.160.182]:36040 "EHLO
 	mail-yk0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751844AbbHTLRp (ORCPT
+	with ESMTP id S1751876AbbHTLRp (ORCPT
 	<rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Aug 2015 07:17:45 -0400
-Received: by ykdt205 with SMTP id t205so33876873ykd.1
-        for <linux-nfs@vger.kernel.org>; Thu, 20 Aug 2015 04:17:44 -0700 (PDT)
+Received: by ykfw73 with SMTP id w73so33708972ykf.3
+        for <linux-nfs@vger.kernel.org>; Thu, 20 Aug 2015 04:17:45 -0700 (PDT)
 From: Jeff Layton <jlayton@poochiereds.net>
 To: bfields@fieldses.org
 Cc: linux-nfs@vger.kernel.org, hch@lst.de, kinglongmee@gmail.com
-Subject: [PATCH v3 19/20] nfsd: hook up nfs4_preprocess_stateid_op to the nfsd_file cache
-Date: Thu, 20 Aug 2015 07:17:19 -0400
-Message-Id: <1440069440-27454-20-git-send-email-jeff.layton@primarydata.com>
+Subject: [PATCH v3 20/20] nfsd: rip out the raparms cache
+Date: Thu, 20 Aug 2015 07:17:20 -0400
+Message-Id: <1440069440-27454-21-git-send-email-jeff.layton@primarydata.com>
 In-Reply-To: <1440069440-27454-1-git-send-email-jeff.layton@primarydata.com>
 References: <1440069440-27454-1-git-send-email-jeff.layton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Have nfs4_preprocess_stateid_op pass back a nfsd_file instead of a filp.
-Since we now presume that the struct file will be persistent in most
-cases, we can stop fiddling with the raparms in the read code. This
-also means that we don't really care about the rd_tmp_file field
-anymore.
+Nothing uses it anymore.
 
 Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
 ---
- fs/nfsd/nfs4proc.c  | 32 ++++++++++++++++----------------
- fs/nfsd/nfs4state.c | 20 +++++++-------------
- fs/nfsd/nfs4xdr.c   | 16 +++++-----------
- fs/nfsd/state.h     |  2 +-
- fs/nfsd/xdr4.h      | 15 +++++++--------
- 5 files changed, 36 insertions(+), 49 deletions(-)
+ fs/nfsd/nfssvc.c |  14 +-----
+ fs/nfsd/vfs.c    | 147 -------------------------------------------------------
+ fs/nfsd/vfs.h    |   5 --
+ 3 files changed, 1 insertion(+), 165 deletions(-)
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index b9681ee0ed19..42a3f8b50814 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -758,7 +758,7 @@ nfsd4_read(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- {
- 	__be32 status;
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index d816bb3faa6e..d1034d119afb 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -216,18 +216,9 @@ static int nfsd_startup_generic(int nrservs)
+ 	if (nfsd_users++)
+ 		return 0;
  
--	read->rd_filp = NULL;
-+	read->rd_nf = NULL;
- 	if (read->rd_offset >= OFFSET_MAX)
- 		return nfserr_inval;
+-	/*
+-	 * Readahead param cache - will no-op if it already exists.
+-	 * (Note therefore results will be suboptimal if number of
+-	 * threads is modified after nfsd start.)
+-	 */
+-	ret = nfsd_racache_init(2*nrservs);
+-	if (ret)
+-		goto dec_users;
+-
+ 	ret = nfsd_file_cache_init();
+ 	if (ret)
+-		goto out_racache;
++		goto dec_users;
  
-@@ -775,7 +775,7 @@ nfsd4_read(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	ret = nfs4_state_start();
+ 	if (ret)
+@@ -236,8 +227,6 @@ static int nfsd_startup_generic(int nrservs)
  
- 	/* check stateid */
- 	status = nfs4_preprocess_stateid_op(rqstp, cstate, &read->rd_stateid,
--			RD_STATE, &read->rd_filp, &read->rd_tmp_file);
-+			RD_STATE, &read->rd_nf);
- 	if (status) {
- 		dprintk("NFSD: nfsd4_read: couldn't process stateid!\n");
- 		goto out;
-@@ -921,7 +921,7 @@ nfsd4_setattr(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ out_file_cache:
+ 	nfsd_file_cache_shutdown();
+-out_racache:
+-	nfsd_racache_shutdown();
+ dec_users:
+ 	nfsd_users--;
+ 	return ret;
+@@ -250,7 +239,6 @@ static void nfsd_shutdown_generic(void)
  
- 	if (setattr->sa_iattr.ia_valid & ATTR_SIZE) {
- 		status = nfs4_preprocess_stateid_op(rqstp, cstate,
--			&setattr->sa_stateid, WR_STATE, NULL, NULL);
-+			&setattr->sa_stateid, WR_STATE, NULL);
- 		if (status) {
- 			dprintk("NFSD: nfsd4_setattr: couldn't process stateid!\n");
- 			return status;
-@@ -977,7 +977,7 @@ nfsd4_write(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	    struct nfsd4_write *write)
- {
- 	stateid_t *stateid = &write->wr_stateid;
--	struct file *filp = NULL;
-+	struct nfsd_file *nf = NULL;
- 	__be32 status = nfs_ok;
- 	unsigned long cnt;
- 	int nvecs;
-@@ -986,7 +986,7 @@ nfsd4_write(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		return nfserr_inval;
- 
- 	status = nfs4_preprocess_stateid_op(rqstp, cstate, stateid, WR_STATE,
--			&filp, NULL);
-+			&nf);
- 	if (status) {
- 		dprintk("NFSD: nfsd4_write: couldn't process stateid!\n");
- 		return status;
-@@ -999,10 +999,10 @@ nfsd4_write(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	nvecs = fill_in_write_vector(rqstp->rq_vec, write);
- 	WARN_ON_ONCE(nvecs > ARRAY_SIZE(rqstp->rq_vec));
- 
--	status = nfsd_vfs_write(rqstp, &cstate->current_fh, filp,
-+	status = nfsd_vfs_write(rqstp, &cstate->current_fh, nf->nf_file,
- 				write->wr_offset, rqstp->rq_vec, nvecs, &cnt,
- 				&write->wr_how_written);
--	fput(filp);
-+	nfsd_file_put(nf);
- 
- 	write->wr_bytes_written = cnt;
- 
-@@ -1014,21 +1014,21 @@ nfsd4_fallocate(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		struct nfsd4_fallocate *fallocate, int flags)
- {
- 	__be32 status = nfserr_notsupp;
--	struct file *file;
-+	struct nfsd_file *nf;
- 
- 	status = nfs4_preprocess_stateid_op(rqstp, cstate,
- 					    &fallocate->falloc_stateid,
--					    WR_STATE, &file, NULL);
-+					    WR_STATE, &nf);
- 	if (status != nfs_ok) {
- 		dprintk("NFSD: nfsd4_fallocate: couldn't process stateid!\n");
- 		return status;
- 	}
- 
--	status = nfsd4_vfs_fallocate(rqstp, &cstate->current_fh, file,
-+	status = nfsd4_vfs_fallocate(rqstp, &cstate->current_fh, nf->nf_file,
- 				     fallocate->falloc_offset,
- 				     fallocate->falloc_length,
- 				     flags);
--	fput(file);
-+	nfsd_file_put(nf);
- 	return status;
+ 	nfs4_state_shutdown();
+ 	nfsd_file_cache_shutdown();
+-	nfsd_racache_shutdown();
  }
  
-@@ -1053,11 +1053,11 @@ nfsd4_seek(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- {
- 	int whence;
- 	__be32 status;
--	struct file *file;
-+	struct nfsd_file *nf;
+ static bool nfsd_needs_lockd(void)
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index 4cc78a4ec694..9d9e734d1176 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -46,34 +46,6 @@
  
- 	status = nfs4_preprocess_stateid_op(rqstp, cstate,
- 					    &seek->seek_stateid,
--					    RD_STATE, &file, NULL);
-+					    RD_STATE, &nf);
- 	if (status) {
- 		dprintk("NFSD: nfsd4_seek: couldn't process stateid!\n");
- 		return status;
-@@ -1079,14 +1079,14 @@ nfsd4_seek(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	 * Note:  This call does change file->f_pos, but nothing in NFSD
- 	 *        should ever file->f_pos.
- 	 */
--	seek->seek_pos = vfs_llseek(file, seek->seek_offset, whence);
-+	seek->seek_pos = vfs_llseek(nf->nf_file, seek->seek_offset, whence);
- 	if (seek->seek_pos < 0)
- 		status = nfserrno(seek->seek_pos);
--	else if (seek->seek_pos >= i_size_read(file_inode(file)))
-+	else if (seek->seek_pos >= i_size_read(file_inode(nf->nf_file)))
- 		seek->seek_eof = true;
+ #define NFSDDBG_FACILITY		NFSDDBG_FILEOP
  
- out:
--	fput(file);
-+	nfsd_file_put(nf);
- 	return status;
+-
+-/*
+- * This is a cache of readahead params that help us choose the proper
+- * readahead strategy. Initially, we set all readahead parameters to 0
+- * and let the VFS handle things.
+- * If you increase the number of cached files very much, you'll need to
+- * add a hash table here.
+- */
+-struct raparms {
+-	struct raparms		*p_next;
+-	unsigned int		p_count;
+-	ino_t			p_ino;
+-	dev_t			p_dev;
+-	int			p_set;
+-	struct file_ra_state	p_ra;
+-	unsigned int		p_hindex;
+-};
+-
+-struct raparm_hbucket {
+-	struct raparms		*pb_head;
+-	spinlock_t		pb_lock;
+-} ____cacheline_aligned_in_smp;
+-
+-#define RAPARM_HASH_BITS	4
+-#define RAPARM_HASH_SIZE	(1<<RAPARM_HASH_BITS)
+-#define RAPARM_HASH_MASK	(RAPARM_HASH_SIZE-1)
+-static struct raparm_hbucket	raparm_hash[RAPARM_HASH_SIZE];
+-
+ /* 
+  * Called from nfsd_lookup and encode_dirent. Check if we have crossed 
+  * a mount point.
+@@ -722,65 +694,6 @@ out:
+ 	return err;
  }
  
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index f8394a4cd126..c626358c2bad 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4615,7 +4615,7 @@ nfs4_check_olstateid(struct svc_fh *fhp, struct nfs4_ol_stateid *ols, int flags)
- 
- static __be32
- nfs4_check_file(struct svc_rqst *rqstp, struct svc_fh *fhp, struct nfs4_stid *s,
--		struct file **filpp, bool *tmp_file, int flags)
-+		struct nfsd_file **nfp, int flags)
- {
- 	int acc = (flags & RD_STATE) ? NFSD_MAY_READ : NFSD_MAY_WRITE;
- 	struct nfsd_file *nf;
-@@ -4631,14 +4631,10 @@ nfs4_check_file(struct svc_rqst *rqstp, struct svc_fh *fhp, struct nfs4_stid *s,
- 		status = nfsd_file_acquire(rqstp, fhp, acc, &nf);
- 		if (status)
- 			return status;
+-struct raparms *
+-nfsd_init_raparms(struct file *file)
+-{
+-	struct inode *inode = file_inode(file);
+-	dev_t dev = inode->i_sb->s_dev;
+-	ino_t ino = inode->i_ino;
+-	struct raparms	*ra, **rap, **frap = NULL;
+-	int depth = 0;
+-	unsigned int hash;
+-	struct raparm_hbucket *rab;
 -
--		if (tmp_file)
--			*tmp_file = true;
- 	}
+-	hash = jhash_2words(dev, ino, 0xfeedbeef) & RAPARM_HASH_MASK;
+-	rab = &raparm_hash[hash];
+-
+-	spin_lock(&rab->pb_lock);
+-	for (rap = &rab->pb_head; (ra = *rap); rap = &ra->p_next) {
+-		if (ra->p_ino == ino && ra->p_dev == dev)
+-			goto found;
+-		depth++;
+-		if (ra->p_count == 0)
+-			frap = rap;
+-	}
+-	depth = nfsdstats.ra_size;
+-	if (!frap) {	
+-		spin_unlock(&rab->pb_lock);
+-		return NULL;
+-	}
+-	rap = frap;
+-	ra = *frap;
+-	ra->p_dev = dev;
+-	ra->p_ino = ino;
+-	ra->p_set = 0;
+-	ra->p_hindex = hash;
+-found:
+-	if (rap != &rab->pb_head) {
+-		*rap = ra->p_next;
+-		ra->p_next   = rab->pb_head;
+-		rab->pb_head = ra;
+-	}
+-	ra->p_count++;
+-	nfsdstats.ra_depth[depth*10/nfsdstats.ra_size]++;
+-	spin_unlock(&rab->pb_lock);
+-
+-	if (ra->p_set)
+-		file->f_ra = ra->p_ra;
+-	return ra;
+-}
+-
+-void nfsd_put_raparams(struct file *file, struct raparms *ra)
+-{
+-	struct raparm_hbucket *rab = &raparm_hash[ra->p_hindex];
+-
+-	spin_lock(&rab->pb_lock);
+-	ra->p_ra = file->f_ra;
+-	ra->p_set = 1;
+-	ra->p_count--;
+-	spin_unlock(&rab->pb_lock);
+-}
+-
+ /*
+  * Grab and keep cached pages associated with a file in the svc_rqst
+  * so that they can be passed to the network sendmsg/sendpage routines
+@@ -2051,63 +1964,3 @@ nfsd_permission(struct svc_rqst *rqstp, struct svc_export *exp,
  
--	*filpp = get_file(nf->nf_file);
-+	*nfp = nf;
- out:
--	nfsd_file_put(nf);
- 	return status;
+ 	return err? nfserrno(err) : 0;
  }
+-
+-void
+-nfsd_racache_shutdown(void)
+-{
+-	struct raparms *raparm, *last_raparm;
+-	unsigned int i;
+-
+-	dprintk("nfsd: freeing readahead buffers.\n");
+-
+-	for (i = 0; i < RAPARM_HASH_SIZE; i++) {
+-		raparm = raparm_hash[i].pb_head;
+-		while(raparm) {
+-			last_raparm = raparm;
+-			raparm = raparm->p_next;
+-			kfree(last_raparm);
+-		}
+-		raparm_hash[i].pb_head = NULL;
+-	}
+-}
+-/*
+- * Initialize readahead param cache
+- */
+-int
+-nfsd_racache_init(int cache_size)
+-{
+-	int	i;
+-	int	j = 0;
+-	int	nperbucket;
+-	struct raparms **raparm = NULL;
+-
+-
+-	if (raparm_hash[0].pb_head)
+-		return 0;
+-	nperbucket = DIV_ROUND_UP(cache_size, RAPARM_HASH_SIZE);
+-	nperbucket = max(2, nperbucket);
+-	cache_size = nperbucket * RAPARM_HASH_SIZE;
+-
+-	dprintk("nfsd: allocating %d readahead buffers.\n", cache_size);
+-
+-	for (i = 0; i < RAPARM_HASH_SIZE; i++) {
+-		spin_lock_init(&raparm_hash[i].pb_lock);
+-
+-		raparm = &raparm_hash[i].pb_head;
+-		for (j = 0; j < nperbucket; j++) {
+-			*raparm = kzalloc(sizeof(struct raparms), GFP_KERNEL);
+-			if (!*raparm)
+-				goto out_nomem;
+-			raparm = &(*raparm)->p_next;
+-		}
+-		*raparm = NULL;
+-	}
+-
+-	nfsdstats.ra_size = cache_size;
+-	return 0;
+-
+-out_nomem:
+-	dprintk("nfsd: kmalloc failed, freeing readahead buffers\n");
+-	nfsd_racache_shutdown();
+-	return -ENOMEM;
+-}
+diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
+index a3ec59830297..8b4deac64011 100644
+--- a/fs/nfsd/vfs.h
++++ b/fs/nfsd/vfs.h
+@@ -39,8 +39,6 @@
+ typedef int (*nfsd_filldir_t)(void *, const char *, int, loff_t, u64, unsigned);
  
-@@ -4648,7 +4644,7 @@ out:
- __be32
- nfs4_preprocess_stateid_op(struct svc_rqst *rqstp,
- 		struct nfsd4_compound_state *cstate, stateid_t *stateid,
--		int flags, struct file **filpp, bool *tmp_file)
-+		int flags, struct nfsd_file **nfp)
+ /* nfsd/vfs.c */
+-int		nfsd_racache_init(int);
+-void		nfsd_racache_shutdown(void);
+ int		nfsd_cross_mnt(struct svc_rqst *rqstp, struct dentry **dpp,
+ 		                struct svc_export **expp);
+ __be32		nfsd_lookup(struct svc_rqst *, struct svc_fh *,
+@@ -105,9 +103,6 @@ __be32		nfsd_statfs(struct svc_rqst *, struct svc_fh *,
+ __be32		nfsd_permission(struct svc_rqst *, struct svc_export *,
+ 				struct dentry *, int);
+ 
+-struct raparms *nfsd_init_raparms(struct file *file);
+-void		nfsd_put_raparams(struct file *file, struct raparms *ra);
+-
+ static inline int fh_want_write(struct svc_fh *fh)
  {
- 	struct svc_fh *fhp = &cstate->current_fh;
- 	struct inode *ino = d_inode(fhp->fh_dentry);
-@@ -4657,10 +4653,8 @@ nfs4_preprocess_stateid_op(struct svc_rqst *rqstp,
- 	struct nfs4_stid *s = NULL;
- 	__be32 status;
- 
--	if (filpp)
--		*filpp = NULL;
--	if (tmp_file)
--		*tmp_file = false;
-+	if (nfp)
-+		*nfp = NULL;
- 
- 	if (grace_disallows_io(net, ino))
- 		return nfserr_grace;
-@@ -4697,8 +4691,8 @@ nfs4_preprocess_stateid_op(struct svc_rqst *rqstp,
- 	status = nfs4_check_fh(fhp, s);
- 
- done:
--	if (!status && filpp)
--		status = nfs4_check_file(rqstp, fhp, s, filpp, tmp_file, flags);
-+	if (status == nfs_ok && nfp)
-+		status = nfs4_check_file(rqstp, fhp, s, nfp, flags);
- out:
- 	if (s)
- 		nfs4_put_stid(s);
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 75e0563c09d1..7e25a31f8e60 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -49,6 +49,7 @@
- #include "cache.h"
- #include "netns.h"
- #include "pnfs.h"
-+#include "filecache.h"
- 
- #ifdef CONFIG_NFSD_V4_SECURITY_LABEL
- #include <linux/security.h>
-@@ -3418,14 +3419,14 @@ nfsd4_encode_read(struct nfsd4_compoundres *resp, __be32 nfserr,
- {
- 	unsigned long maxcount;
- 	struct xdr_stream *xdr = &resp->xdr;
--	struct file *file = read->rd_filp;
-+	struct file *file;
- 	int starting_len = xdr->buf->len;
--	struct raparms *ra = NULL;
- 	__be32 *p;
- 
- 	if (nfserr)
- 		goto out;
- 
-+	file = read->rd_nf->nf_file;
- 	p = xdr_reserve_space(xdr, 8); /* eof flag and byte count */
- 	if (!p) {
- 		WARN_ON_ONCE(test_bit(RQ_SPLICE_OK, &resp->rqstp->rq_flags));
-@@ -3445,24 +3446,17 @@ nfsd4_encode_read(struct nfsd4_compoundres *resp, __be32 nfserr,
- 			 (xdr->buf->buflen - xdr->buf->len));
- 	maxcount = min_t(unsigned long, maxcount, read->rd_length);
- 
--	if (read->rd_tmp_file)
--		ra = nfsd_init_raparms(file);
--
- 	if (file->f_op->splice_read &&
- 	    test_bit(RQ_SPLICE_OK, &resp->rqstp->rq_flags))
- 		nfserr = nfsd4_encode_splice_read(resp, read, file, maxcount);
- 	else
- 		nfserr = nfsd4_encode_readv(resp, read, file, maxcount);
- 
--	if (ra)
--		nfsd_put_raparams(file, ra);
--
- 	if (nfserr)
- 		xdr_truncate_encode(xdr, starting_len);
--
- out:
--	if (file)
--		fput(file);
-+	if (read->rd_nf)
-+		nfsd_file_put(read->rd_nf);
- 	return nfserr;
- }
- 
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 8a317de773b9..cf7e27199507 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -585,7 +585,7 @@ struct nfsd_net;
- 
- extern __be32 nfs4_preprocess_stateid_op(struct svc_rqst *rqstp,
- 		struct nfsd4_compound_state *cstate, stateid_t *stateid,
--		int flags, struct file **filp, bool *tmp_file);
-+		int flags, struct nfsd_file **filp);
- __be32 nfsd4_lookup_stateid(struct nfsd4_compound_state *cstate,
- 		     stateid_t *stateid, unsigned char typemask,
- 		     struct nfs4_stid **s, struct nfsd_net *nn);
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index 9f991007a578..ea016fb24675 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -268,15 +268,14 @@ struct nfsd4_open_downgrade {
- 
- 
- struct nfsd4_read {
--	stateid_t	rd_stateid;         /* request */
--	u64		rd_offset;          /* request */
--	u32		rd_length;          /* request */
--	int		rd_vlen;
--	struct file     *rd_filp;
--	bool		rd_tmp_file;
-+	stateid_t		rd_stateid;         /* request */
-+	u64			rd_offset;          /* request */
-+	u32			rd_length;          /* request */
-+	int			rd_vlen;
-+	struct nfsd_file	*rd_nf;
- 	
--	struct svc_rqst *rd_rqstp;          /* response */
--	struct svc_fh * rd_fhp;             /* response */
-+	struct svc_rqst		*rd_rqstp;          /* response */
-+	struct svc_fh		*rd_fhp;             /* response */
- };
- 
- struct nfsd4_readdir {
+ 	int ret = mnt_want_write(fh->fh_export->ex_path.mnt);
 -- 
 2.4.3
 
