@@ -1,193 +1,209 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from outbound-smtp04.blacknight.com ([81.17.249.35]:52082 "EHLO
-	outbound-smtp04.blacknight.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751114AbbHTMYJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Aug 2015 08:24:09 -0400
-Received: from mail.blacknight.com (pemlinmail01.blacknight.ie [81.17.254.10])
-	by outbound-smtp04.blacknight.com (Postfix) with ESMTPS id C6959F4066
-	for <linux-nfs@vger.kernel.org>; Thu, 20 Aug 2015 12:24:01 +0000 (UTC)
-Date: Thu, 20 Aug 2015 13:23:59 +0100
-From: Mel Gorman <mgorman@techsingularity.net>
-To: Jerome Marchand <jmarchan@redhat.com>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Christoph Hellwig <hch@infradead.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        Mel Gorman <mgorman@suse.de>
-Subject: Re: [RFC PATCH] nfs: avoid swap-over-NFS deadlock
-Message-ID: <20150820122359.GB12432@techsingularity.net>
-References: <1437552643-18774-1-git-send-email-jmarchan@redhat.com>
- <CAHQdGtRXhUi+=akuASUWo-tYy0YCWJtUts6fqGnA62fo1Jf5tA@mail.gmail.com>
- <55AF9EA8.6020102@redhat.com>
- <20150727105216.GD2660@techsingularity.net>
- <55B6153B.1070604@redhat.com>
+Received: from mail-io0-f179.google.com ([209.85.223.179]:36699 "EHLO
+	mail-io0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751510AbbHTQJO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Aug 2015 12:09:14 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-15
-In-Reply-To: <55B6153B.1070604@redhat.com>
+In-Reply-To: <20150812142815.27968b32@tlielax.poochiereds.net>
+References: <cover.1439375087.git.viresh.kumar@linaro.org> <2efb962cb72884f625116cba24fc4fb203c6621f.1439375087.git.viresh.kumar@linaro.org>
+ <20150812142815.27968b32@tlielax.poochiereds.net>
+From: Steve French <smfrench@gmail.com>
+Date: Thu, 20 Aug 2015 11:08:53 -0500
+Message-ID: <CAH2r5mvUC2WO6sVqhe_QCgiCJbRbahDsSj=-Uzk7LB_peTqjLQ@mail.gmail.com>
+Subject: Re: [PATCH V1 Resend 07/10] fs: Drop unlikely before IS_ERR(_OR_NULL)
+To: Jeff Layton <jlayton@poochiereds.net>
+Cc: Viresh Kumar <viresh.kumar@linaro.org>, Boaz Harrosh <ooo@electrozaur.com>,
+        <linux-nfs@vger.kernel.org>, linaro-kernel@lists.linaro.org,
+        Jiri Kosina <trivial@kernel.org>,
+        "open list:COMMON INTERNET FILE SYSTEM CIFS"
+	<linux-cifs@vger.kernel.org>,
+        "open list:ECRYPT FILE SYSTEM" <ecryptfs@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>, Christoph Hellwig <hch@lst.de>,
+        David Howells <dhowells@redhat.com>,
+        "open list:FILESYSTEMS VFS and infrastructure"
+	<linux-fsdevel@vger.kernel.org>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        Fabian Frederick <fabf@skynet.be>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        "open list:EXT4 FILE SYSTEM" <linux-ext4@vger.kernel.org>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        "Eric W. Biederman" <ebiederm@xmission.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jul 27, 2015 at 01:25:47PM +0200, Jerome Marchand wrote:
-> On 07/27/2015 12:52 PM, Mel Gorman wrote:
-> > On Wed, Jul 22, 2015 at 03:46:16PM +0200, Jerome Marchand wrote:
-> >> On 07/22/2015 02:23 PM, Trond Myklebust wrote:
-> >>> On Wed, Jul 22, 2015 at 4:10 AM, Jerome Marchand <jmarchan@redhat.com> wrote:
-> >>>>
-> >>>> Lockdep warns about a inconsistent {RECLAIM_FS-ON-W} ->
-> >>>> {IN-RECLAIM_FS-W} usage. The culpritt is the inode->i_mutex taken in
-> >>>> nfs_file_direct_write(). This code was introduced by commit a9ab5e840669
-> >>>> ("nfs: page cache invalidation for dio").
-> >>>> This naive test patch avoid to take the mutex on a swapfile and makes
-> >>>> lockdep happy again. However I don't know much about NFS code and I
-> >>>> assume it's probably not the proper solution. Any thought?
-> >>>>
-> >>>> Signed-off-by: Jerome Marchand <jmarchan@redhat.com>
-> >>>
-> >>> NFS is not the only O_DIRECT implementation to set the inode->i_mutex.
-> >>> Why can't this be fixed in the generic swap code instead of adding
-> >>> yet-another-exception-for-IS_SWAPFILE?
-> >>
-> >> I meant to cc Mel. Just added him.
-> >>
-> > 
-> > Can the full lockdep warning be included as it'll be easier to see then if
-> > the generic swap code can somehow special case this? Currently, generic
-> > swapping does not not need to care about how the filesystem locked.
-> > For most filesystems, it's writing directly to the blocks on disk and
-> > bypassing the FS. In the NFS case it'd be surprising to find that there
-> > also are dirty pages in page cache that belong to the swap file as it's
-> > going to cause corruption. If there is any special casing it would to only
-> > attempt the invalidation in the !swap case and warn if mapping->nrpages. It
-> > still would look a bit weird but safer than just not acquiring the mutex
-> > and then potentially attempting an invalidation.
-> > 
-> 
-> [ 6819.501009] =================================
-> [ 6819.501009] [ INFO: inconsistent lock state ]
-> [ 6819.501009] 4.2.0-rc1-shmacct-babka-v2-next-20150709+ #255 Not tainted
-> [ 6819.501009] ---------------------------------
+On Wed, Aug 12, 2015 at 1:28 PM, Jeff Layton <jlayton@poochiereds.net> wrote:
+> On Wed, 12 Aug 2015 15:59:44 +0530
+> Viresh Kumar <viresh.kumar@linaro.org> wrote:
+>
+>> IS_ERR(_OR_NULL) already contain an 'unlikely' compiler flag and there
+>> is no need to do that again from its callers. Drop it.
+>>
+>> Reviewed-by: David Howells <dhowells@redhat.com>
+>> Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+>> ---
+>>  fs/cifs/readdir.c            | 2 +-
+>>  fs/ecryptfs/inode.c          | 2 +-
+>>  fs/ext4/extents.c            | 6 +++---
+>>  fs/ext4/namei.c              | 2 +-
+>>  fs/namei.c                   | 4 ++--
+>>  fs/ncpfs/dir.c               | 2 +-
+>>  fs/nfs/objlayout/objio_osd.c | 2 +-
+>>  fs/proc/proc_sysctl.c        | 2 +-
+>>  8 files changed, 11 insertions(+), 11 deletions(-)
+>>
+>> diff --git a/fs/cifs/readdir.c b/fs/cifs/readdir.c
+>> index b1eede3678a9..0557c45e9c33 100644
+>> --- a/fs/cifs/readdir.c
+>> +++ b/fs/cifs/readdir.c
+>> @@ -84,7 +84,7 @@ cifs_prime_dcache(struct dentry *parent, struct qstr *name,
+>>       cifs_dbg(FYI, "%s: for %s\n", __func__, name->name);
+>>
+>>       dentry = d_hash_and_lookup(parent, name);
+>> -     if (unlikely(IS_ERR(dentry)))
+>> +     if (IS_ERR(dentry))
+>>               return;
+>>
+>>       if (dentry) {
+>> diff --git a/fs/ecryptfs/inode.c b/fs/ecryptfs/inode.c
+>> index 3c4db1172d22..e2e47ba5d313 100644
+>> --- a/fs/ecryptfs/inode.c
+>> +++ b/fs/ecryptfs/inode.c
+>> @@ -270,7 +270,7 @@ ecryptfs_create(struct inode *directory_inode, struct dentry *ecryptfs_dentry,
+>>
+>>       ecryptfs_inode = ecryptfs_do_create(directory_inode, ecryptfs_dentry,
+>>                                           mode);
+>> -     if (unlikely(IS_ERR(ecryptfs_inode))) {
+>> +     if (IS_ERR(ecryptfs_inode)) {
+>>               ecryptfs_printk(KERN_WARNING, "Failed to create file in"
+>>                               "lower filesystem\n");
+>>               rc = PTR_ERR(ecryptfs_inode);
+>> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+>> index 2553aa8b608d..799f01714767 100644
+>> --- a/fs/ext4/extents.c
+>> +++ b/fs/ext4/extents.c
+>> @@ -899,7 +899,7 @@ ext4_find_extent(struct inode *inode, ext4_lblk_t block,
+>>
+>>               bh = read_extent_tree_block(inode, path[ppos].p_block, --i,
+>>                                           flags);
+>> -             if (unlikely(IS_ERR(bh))) {
+>> +             if (IS_ERR(bh)) {
+>>                       ret = PTR_ERR(bh);
+>>                       goto err;
+>>               }
+>> @@ -5792,7 +5792,7 @@ ext4_swap_extents(handle_t *handle, struct inode *inode1,
+>>               int split = 0;
+>>
+>>               path1 = ext4_find_extent(inode1, lblk1, NULL, EXT4_EX_NOCACHE);
+>> -             if (unlikely(IS_ERR(path1))) {
+>> +             if (IS_ERR(path1)) {
+>>                       *erp = PTR_ERR(path1);
+>>                       path1 = NULL;
+>>               finish:
+>> @@ -5800,7 +5800,7 @@ ext4_swap_extents(handle_t *handle, struct inode *inode1,
+>>                       goto repeat;
+>>               }
+>>               path2 = ext4_find_extent(inode2, lblk2, NULL, EXT4_EX_NOCACHE);
+>> -             if (unlikely(IS_ERR(path2))) {
+>> +             if (IS_ERR(path2)) {
+>>                       *erp = PTR_ERR(path2);
+>>                       path2 = NULL;
+>>                       goto finish;
+>> diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+>> index 9f61e7679a6d..f12b277ad2af 100644
+>> --- a/fs/ext4/namei.c
+>> +++ b/fs/ext4/namei.c
+>> @@ -1429,7 +1429,7 @@ static struct buffer_head * ext4_find_entry (struct inode *dir,
+>>                               }
+>>                               num++;
+>>                               bh = ext4_getblk(NULL, dir, b++, 0);
+>> -                             if (unlikely(IS_ERR(bh))) {
+>> +                             if (IS_ERR(bh)) {
+>>                                       if (ra_max == 0) {
+>>                                               ret = bh;
+>>                                               goto cleanup_and_exit;
+>> diff --git a/fs/namei.c b/fs/namei.c
+>> index cacc51ddcf54..67d419e55547 100644
+>> --- a/fs/namei.c
+>> +++ b/fs/namei.c
+>> @@ -1942,7 +1942,7 @@ static int link_path_walk(const char *name, struct nameidata *nd)
+>>               if (err) {
+>>                       const char *s = get_link(nd);
+>>
+>> -                     if (unlikely(IS_ERR(s)))
+>> +                     if (IS_ERR(s))
+>>                               return PTR_ERR(s);
+>>                       err = 0;
+>>                       if (unlikely(!s)) {
+>> @@ -3430,7 +3430,7 @@ struct file *do_file_open_root(struct dentry *dentry, struct vfsmount *mnt,
+>>               return ERR_PTR(-ELOOP);
+>>
+>>       filename = getname_kernel(name);
+>> -     if (unlikely(IS_ERR(filename)))
+>> +     if (IS_ERR(filename))
+>>               return ERR_CAST(filename);
+>>
+>>       set_nameidata(&nd, -1, filename);
+>> diff --git a/fs/ncpfs/dir.c b/fs/ncpfs/dir.c
+>> index 93575e91a7aa..356816e7bc90 100644
+>> --- a/fs/ncpfs/dir.c
+>> +++ b/fs/ncpfs/dir.c
+>> @@ -597,7 +597,7 @@ ncp_fill_cache(struct file *file, struct dir_context *ctx,
+>>       qname.name = __name;
+>>
+>>       newdent = d_hash_and_lookup(dentry, &qname);
+>> -     if (unlikely(IS_ERR(newdent)))
+>> +     if (IS_ERR(newdent))
+>>               goto end_advance;
+>>       if (!newdent) {
+>>               newdent = d_alloc(dentry, &qname);
+>> diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
+>> index 5aaed363556a..5c0c6b58157f 100644
+>> --- a/fs/nfs/objlayout/objio_osd.c
+>> +++ b/fs/nfs/objlayout/objio_osd.c
+>> @@ -124,7 +124,7 @@ objio_alloc_deviceid_node(struct nfs_server *server, struct pnfs_device *pdev,
+>>
+>>  retry_lookup:
+>>       od = osduld_info_lookup(&odi);
+>> -     if (unlikely(IS_ERR(od))) {
+>> +     if (IS_ERR(od)) {
+>>               err = PTR_ERR(od);
+>>               dprintk("%s: osduld_info_lookup => %d\n", __func__, err);
+>>               if (err == -ENODEV && retry_flag) {
+>> diff --git a/fs/proc/proc_sysctl.c b/fs/proc/proc_sysctl.c
+>> index fdda62e6115e..fe5b6e6c4671 100644
+>> --- a/fs/proc/proc_sysctl.c
+>> +++ b/fs/proc/proc_sysctl.c
+>> @@ -948,7 +948,7 @@ static struct ctl_dir *get_subdir(struct ctl_dir *dir,
+>>  found:
+>>       subdir->header.nreg++;
+>>  failed:
+>> -     if (unlikely(IS_ERR(subdir))) {
+>> +     if (IS_ERR(subdir)) {
+>>               pr_err("sysctl could not get directory: ");
+>>               sysctl_print_dir(dir);
+>>               pr_cont("/%*.*s %ld\n",
+>
+> Looks fine to me. You can add:
+>
+>     Reviewed-by: Jeff Layton <jlayton@poochiereds.net>
+>
+> ...but the problem is that you have a patch here that touches several
+> different filesystems. You'll have to find someone willing to take it
+> into some overarching tree (Al's perhaps, or maybe Andrew's?), or break
+> it up into several per-fs patches and shepherd it into different
+> maintainers' trees.
 
-Thanks. Sorry for the long delay but I finally got back to the bug this
-week. NFS can be modified to special case the swapfile but I was not happy
-with the result for multiple reasons. It took me a while to see a way for
-the core VM to deal with it. What do you think of the following
-approach? More importantly, does it work for you?
+Reviewed-by: Steve French <smfrench@gmail.com>
 
----8<---
-nfs: Use swap_lock to prevent parallel swapon activations
+Do you want me to merge the fs/cifs part of this independently (into
+cifs-2.6.git staging tree) or are you going to merge all of this
+(which changes multiple fs) at one time through someone else's tree?
 
-Jerome Marchand reported a lockdep warning as follows
 
-    [ 6819.501009] =================================
-    [ 6819.501009] [ INFO: inconsistent lock state ]
-    [ 6819.501009] 4.2.0-rc1-shmacct-babka-v2-next-20150709+ #255 Not tainted
-    [ 6819.501009] ---------------------------------
-    [ 6819.501009] inconsistent {RECLAIM_FS-ON-W} -> {IN-RECLAIM_FS-W} usage.
-    [ 6819.501009] kswapd0/38 [HC0[0]:SC0[0]:HE1:SE1] takes:
-    [ 6819.501009]  (&sb->s_type->i_mutex_key#17){+.+.?.}, at: [<ffffffffa03772a5>] nfs_file_direct_write+0x85/0x3f0 [nfs]
-    [ 6819.501009] {RECLAIM_FS-ON-W} state was registered at:
-    [ 6819.501009]   [<ffffffff81107f51>] mark_held_locks+0x71/0x90
-    [ 6819.501009]   [<ffffffff8110b775>] lockdep_trace_alloc+0x75/0xe0
-    [ 6819.501009]   [<ffffffff81245529>] kmem_cache_alloc_node_trace+0x39/0x440
-    [ 6819.501009]   [<ffffffff81225b8f>] __get_vm_area_node+0x7f/0x160
-    [ 6819.501009]   [<ffffffff81226eb2>] __vmalloc_node_range+0x72/0x2c0
-    [ 6819.501009]   [<ffffffff81227424>] vzalloc+0x54/0x60
-    [ 6819.501009]   [<ffffffff8122c7c8>] SyS_swapon+0x628/0xfc0
-    [ 6819.501009]   [<ffffffff81867772>] entry_SYSCALL_64_fastpath+0x12/0x76
 
-It's due to NFS acquiring i_mutex since a9ab5e840669 ("nfs: page
-cache invalidation for dio") to invalidate page cache before direct I/O.
-Filesystems may safely acquire i_mutex during direct writes but NFS is unique
-in its treatment of swap files. Ordinarily swap files are supported by the
-core VM looking up the physical block for a given offset in advance. There
-is no physical block for NFS and the direct write paths are used after
-calling mapping->swap_activate.
+-- 
+Thanks,
 
-The lockdep warning is triggered by swapon(), which is not in reclaim
-context, acquiring the i_mutex to ensure a swapfile is not activated twice.
-
-swapon does not need the i_mutex for this purpose.  There is a requirement
-that fallocate not be used on swapfiles but this is protected by the inode
-flag S_SWAPFILE and nothing to do with i_mutex. In fact, the current
-protection does nothing for block devices. This patch expands the role
-of swap_lock to protect against parallel activations of block devices and
-swapfiles and removes the use of i_mutex. This both improves the protection
-for swapon and avoids the lockdep warning.
-
-Reported-by: Jerome Marchand <jmarchan@redhat.com>
-Signed-off-by: Mel Gorman <mgorman@techsingularity.net>
----
- mm/swapfile.c | 16 +++++++---------
- 1 file changed, 7 insertions(+), 9 deletions(-)
-
-diff --git a/mm/swapfile.c b/mm/swapfile.c
-index 41e4581af7c5..d58ed6833fa3 100644
---- a/mm/swapfile.c
-+++ b/mm/swapfile.c
-@@ -1928,9 +1928,9 @@ SYSCALL_DEFINE1(swapoff, const char __user *, specialfile)
- 		set_blocksize(bdev, old_block_size);
- 		blkdev_put(bdev, FMODE_READ | FMODE_WRITE | FMODE_EXCL);
- 	} else {
--		mutex_lock(&inode->i_mutex);
-+		spin_lock(&swap_lock);
- 		inode->i_flags &= ~S_SWAPFILE;
--		mutex_unlock(&inode->i_mutex);
-+		spin_unlock(&swap_lock);
- 	}
- 	filp_close(swap_file, NULL);
- 
-@@ -2156,7 +2156,6 @@ static int claim_swapfile(struct swap_info_struct *p, struct inode *inode)
- 		p->flags |= SWP_BLKDEV;
- 	} else if (S_ISREG(inode->i_mode)) {
- 		p->bdev = inode->i_sb->s_bdev;
--		mutex_lock(&inode->i_mutex);
- 		if (IS_SWAPFILE(inode))
- 			return -EBUSY;
- 	} else
-@@ -2386,6 +2385,8 @@ SYSCALL_DEFINE2(swapon, const char __user *, specialfile, int, swap_flags)
- 		goto bad_swap;
- 	}
- 
-+	/* prevent parallel swapons */
-+	spin_lock(&swap_lock);
- 	p->swap_file = swap_file;
- 	mapping = swap_file->f_mapping;
- 
-@@ -2396,13 +2397,14 @@ SYSCALL_DEFINE2(swapon, const char __user *, specialfile, int, swap_flags)
- 			continue;
- 		if (mapping == q->swap_file->f_mapping) {
- 			error = -EBUSY;
-+			spin_unlock(&swap_lock);
- 			goto bad_swap;
- 		}
- 	}
- 
- 	inode = mapping->host;
--	/* If S_ISREG(inode->i_mode) will do mutex_lock(&inode->i_mutex); */
- 	error = claim_swapfile(p, inode);
-+	spin_unlock(&swap_lock);
- 	if (unlikely(error))
- 		goto bad_swap;
- 
-@@ -2543,10 +2545,8 @@ SYSCALL_DEFINE2(swapon, const char __user *, specialfile, int, swap_flags)
- 	vfree(swap_map);
- 	vfree(cluster_info);
- 	if (swap_file) {
--		if (inode && S_ISREG(inode->i_mode)) {
--			mutex_unlock(&inode->i_mutex);
-+		if (inode && S_ISREG(inode->i_mode))
- 			inode = NULL;
--		}
- 		filp_close(swap_file, NULL);
- 	}
- out:
-@@ -2556,8 +2556,6 @@ SYSCALL_DEFINE2(swapon, const char __user *, specialfile, int, swap_flags)
- 	}
- 	if (name)
- 		putname(name);
--	if (inode && S_ISREG(inode->i_mode))
--		mutex_unlock(&inode->i_mutex);
- 	return error;
- }
- 
+Steve
