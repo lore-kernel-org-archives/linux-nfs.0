@@ -1,181 +1,88 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pa0-f50.google.com ([209.85.220.50]:36863 "EHLO
-	mail-pa0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751473AbbHTSZ5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Aug 2015 14:25:57 -0400
-Received: by pawq9 with SMTP id q9so33528291paw.3
-        for <linux-nfs@vger.kernel.org>; Thu, 20 Aug 2015 11:25:57 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] NFSv4.1/pnfs: Ensure the flexfiles layoutstats timers are consistent
-Date: Thu, 20 Aug 2015 13:25:54 -0500
-Message-Id: <1440095154-11492-1-git-send-email-trond.myklebust@primarydata.com>
+Received: from mail-pd0-f172.google.com ([209.85.192.172]:35433 "EHLO
+	mail-pd0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751631AbbHTSdB (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Aug 2015 14:33:01 -0400
+Received: by pdob1 with SMTP id b1so17016753pdo.2
+        for <linux-nfs@vger.kernel.org>; Thu, 20 Aug 2015 11:33:00 -0700 (PDT)
+From: Peng Tao <tao.peng@primarydata.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: linux-nfs@vger.kernel.org, Peng Tao <tao.peng@primarydata.com>
+Subject: [PATCH] NFS41: fix list splice type
+Date: Fri, 21 Aug 2015 10:32:50 +0800
+Message-Id: <1440124370-12716-1-git-send-email-tao.peng@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We want to ensure that the stopwatches for the busy timer and the
-aggregate timer are consistent. This means that they need to use
-the same start/stop times.
+We want to move commiting pages to pages list instead.
+Otherwise it causes pnfs small writes crash like:
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+[34560.037692] BUG: unable to handle kernel NULL pointer dereference at 0000000000000068
+[34560.038557] IP: [<ffffffffa05423d6>] nfs_init_commit+0x26/0x130 [nfs]
+[34560.039400] PGD 69f5a067 PUD 69f59067 PMD 0
+[34560.040207] Oops: 0000 [#1] SMP
+[34560.041014] Modules linked in: nfsv3(OE) nfs_layout_flexfiles(OE) nfsv4(OE) nfs(OE) fscache(E) rpcsec_gss_krb5(E) xt_addrtype(E) xt_conntrack(E) ipt_MASQUERADE(E) nf_nat_masquerade_ipv4(E) iptable_nat(E) nf_conntrack_ipv4(E) nf_defrag_ipv4(E) nf_nat_ipv4(E) iptable_filter(E) ip_tables(E) x_tables(E) nf_nat(E) nf_conntrack(E) bridge(E) stp(E) llc(E) dm_thin_pool(E) dm_persistent_data(E) dm_bio_prison(E) dm_bufio(E) ppdev(E) vmw_balloon(E) coretemp(E) crc32_pclmul(E) ghash_clmulni_intel(E) aesni_intel(E) aes_x86_64(E) glue_helper(E) lrw(E) gf128mul(E) ablk_helper(E) cryptd(E) psmouse(E) serio_raw(E) vmw_vmci(E) i2c_piix4(E) shpchp(E) parport_pc(E) parport(E) mac_hid(E) nfsd(E) auth_rpcgss(E) nfs_acl(E) lockd(E) grace(E) sunrpc(E) xfs(E) libcrc32c(E) hid_generic(E) usbhid(E) hid(E) e1000(E) mptspi(E)
+[34560.045106]  mptscsih(E) mptbase(E) vmwgfx(E) drm_kms_helper(E) ttm(E) drm(E) autofs4(E) [last unloaded: fscache]
+[34560.045897] CPU: 0 PID: 130543 Comm: bash Tainted: G           OE   4.2.0-rc5-dp-00057-gf993a93 #11
+[34560.046699] Hardware name: VMware, Inc. VMware Virtual Platform/440BX Desktop Reference Platform, BIOS 6.00 05/20/2014
+[34560.047525] task: ffff880031b0a980 ti: ffff880045fec000 task.ti: ffff880045fec000
+[34560.048264] RIP: 0010:[<ffffffffa05423d6>]  [<ffffffffa05423d6>] nfs_init_commit+0x26/0x130 [nfs]
+[34560.049000] RSP: 0018:ffff880045fefc18  EFLAGS: 00010246
+[34560.049717] RAX: 0000000000000000 RBX: ffff8800208fbc80 RCX: ffff880045fefd50
+[34560.050396] RDX: ffff880031c19ec0 RSI: ffff880045fefc88 RDI: ffff8800208fbc80
+[34560.051041] RBP: ffff880045fefc28 R08: ffff8800208fbe68 R09: ffff880045fefc88
+[34560.051666] R10: 0000000000000000 R11: 0000000000000000 R12: ffff880045fefc78
+[34560.052247] R13: ffff880045fefc88 R14: ffff880045fefa90 R15: ffff880045fefd50
+[34560.052825] FS:  00007fa02d58c740(0000) GS:ffff88006d600000(0000) knlGS:0000000000000000
+[34560.053410] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+[34560.053992] CR2: 0000000000000068 CR3: 000000003b37a000 CR4: 00000000001406f0
+[34560.054615] Stack:
+[34560.055200]  ffff8800208fbc80 ffff8800208fbc80 ffff880045fefcc8 ffffffffa05c1a5b
+[34560.055800]  ffff880045fefcc8 ffff880045fefd50 0000000045fefcb8 ffff880045fefd40
+[34560.056418]  ffff8800420608e0 ffffffffa04f3910 0000000100000001 ffff880045fefd50
+[34560.057013] Call Trace:
+[34560.057672]  [<ffffffffa05c1a5b>] pnfs_generic_commit_pagelist+0x1cb/0x300 [nfsv4]
+[34560.058277]  [<ffffffffa04f3910>] ? ff_layout_commit_pagelist+0x20/0x20 [nfs_layout_flexfiles]
+[34560.058907]  [<ffffffffa04f3905>] ff_layout_commit_pagelist+0x15/0x20 [nfs_layout_flexfiles]
+[34560.059557]  [<ffffffffa0543fc1>] nfs_generic_commit_list+0xb1/0xf0 [nfs]
+[34560.060214]  [<ffffffffa0543e47>] ? nfs_scan_commit+0x37/0xa0 [nfs]
+[34560.060825]  [<ffffffffa0544081>] nfs_commit_inode+0x81/0x150 [nfs]
+[34560.061432]  [<ffffffffa05443ae>] nfs_wb_all+0x1ae/0x400 [nfs]
+[34560.062035]  [<ffffffffa05380ad>] nfs_getattr+0x33d/0x510 [nfs]
+[34560.062630]  [<ffffffff8122499c>] vfs_getattr_nosec+0x2c/0x40
+[34560.063223]  [<ffffffff81224a66>] vfs_getattr+0x26/0x30
+[34560.063818]  [<ffffffff81224b35>] vfs_fstatat+0x65/0xa0
+[34560.064413]  [<ffffffff81224f3f>] SYSC_newstat+0x1f/0x40
+[34560.065016]  [<ffffffff8102b176>] ? do_audit_syscall_entry+0x66/0x70
+[34560.065626]  [<ffffffff8102c773>] ? syscall_trace_enter_phase1+0x113/0x170
+[34560.066245]  [<ffffffff81003017>] ? trace_hardirqs_on_thunk+0x17/0x19
+[34560.066868]  [<ffffffff812251ae>] SyS_newstat+0xe/0x10
+[34560.067533]  [<ffffffff817a5df2>] entry_SYSCALL_64_fastpath+0x16/0x7a
+[34560.068173] Code: 0f 1f 44 00 00 0f 1f 44 00 00 55 4c 8d 87 e8 01 00 00 48 89 e5 53 48 89 fb 48 83 ec 08 4c 8b 0e 49 8b 41 18 4c 39 ce 48 8b 40 40 <4c> 8b 50 68 74 24 48 8b 87 e8 01 00 00 48 8b 7e 08 4d 89 41 08
+[34560.069609] RIP  [<ffffffffa05423d6>] nfs_init_commit+0x26/0x130 [nfs]
+[34560.070295]  RSP <ffff880045fefc18>
+[34560.071008] CR2: 0000000000000068
+[34560.073207] ---[ end trace f85f873260977406 ]---
+
+[fixes 27571297a7e(pNFS: Tighten up locking around DS commit buckets)]
+Signed-off-by: Peng Tao <tao.peng@primarydata.com>
 ---
- fs/nfs/flexfilelayout/flexfilelayout.c | 51 ++++++++++++++++------------------
- 1 file changed, 24 insertions(+), 27 deletions(-)
+ fs/nfs/pnfs_nfs.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
-index 4bd3cff94190..0fcb8670f25f 100644
---- a/fs/nfs/flexfilelayout/flexfilelayout.c
-+++ b/fs/nfs/flexfilelayout/flexfilelayout.c
-@@ -419,42 +419,35 @@ ff_layout_get_lseg_count(struct nfs4_ff_layout_segment *fls)
- }
+diff --git a/fs/nfs/pnfs_nfs.c b/fs/nfs/pnfs_nfs.c
+index bbd407b..24655b8 100644
+--- a/fs/nfs/pnfs_nfs.c
++++ b/fs/nfs/pnfs_nfs.c
+@@ -239,7 +239,7 @@ void pnfs_fetch_commit_bucket_list(struct list_head *pages,
  
- static void
--nfs4_ff_start_busy_timer(struct nfs4_ff_busy_timer *timer)
-+nfs4_ff_start_busy_timer(struct nfs4_ff_busy_timer *timer, ktime_t now)
- {
- 	/* first IO request? */
- 	if (atomic_inc_return(&timer->n_ops) == 1) {
--		timer->start_time = ktime_get();
-+		timer->start_time = now;
- 	}
- }
- 
- static ktime_t
--nfs4_ff_end_busy_timer(struct nfs4_ff_busy_timer *timer)
-+nfs4_ff_end_busy_timer(struct nfs4_ff_busy_timer *timer, ktime_t now)
- {
--	ktime_t start, now;
-+	ktime_t start;
- 
- 	if (atomic_dec_return(&timer->n_ops) < 0)
- 		WARN_ON_ONCE(1);
- 
--	now = ktime_get();
- 	start = timer->start_time;
- 	timer->start_time = now;
- 	return ktime_sub(now, start);
- }
- 
--static ktime_t
--nfs4_ff_layout_calc_completion_time(struct rpc_task *task)
--{
--	return ktime_sub(ktime_get(), task->tk_start);
--}
--
- static bool
- nfs4_ff_layoutstat_start_io(struct nfs4_ff_layout_mirror *mirror,
--			    struct nfs4_ff_layoutstat *layoutstat)
-+			    struct nfs4_ff_layoutstat *layoutstat,
-+			    ktime_t now)
- {
- 	static const ktime_t notime = {0};
--	ktime_t now = ktime_get();
- 
--	nfs4_ff_start_busy_timer(&layoutstat->busy_timer);
-+	nfs4_ff_start_busy_timer(&layoutstat->busy_timer, now);
- 	if (ktime_equal(mirror->start_time, notime))
- 		mirror->start_time = now;
- 	if (ktime_equal(mirror->last_report_time, notime))
-@@ -482,30 +475,33 @@ static void
- nfs4_ff_layout_stat_io_update_completed(struct nfs4_ff_layoutstat *layoutstat,
- 		__u64 requested,
- 		__u64 completed,
--		ktime_t time_completed)
-+		ktime_t time_completed,
-+		ktime_t time_started)
- {
- 	struct nfs4_ff_io_stat *iostat = &layoutstat->io_stat;
-+	ktime_t completion_time = ktime_sub(time_completed, time_started);
- 	ktime_t timer;
- 
- 	iostat->ops_completed++;
- 	iostat->bytes_completed += completed;
- 	iostat->bytes_not_delivered += requested - completed;
- 
--	timer = nfs4_ff_end_busy_timer(&layoutstat->busy_timer);
-+	timer = nfs4_ff_end_busy_timer(&layoutstat->busy_timer, time_completed);
- 	iostat->total_busy_time =
- 			ktime_add(iostat->total_busy_time, timer);
- 	iostat->aggregate_completion_time =
--			ktime_add(iostat->aggregate_completion_time, time_completed);
-+			ktime_add(iostat->aggregate_completion_time,
-+					completion_time);
- }
- 
- static void
- nfs4_ff_layout_stat_io_start_read(struct nfs4_ff_layout_mirror *mirror,
--		__u64 requested)
-+		__u64 requested, ktime_t now)
- {
- 	bool report;
- 
- 	spin_lock(&mirror->lock);
--	report = nfs4_ff_layoutstat_start_io(mirror, &mirror->read_stat);
-+	report = nfs4_ff_layoutstat_start_io(mirror, &mirror->read_stat, now);
- 	nfs4_ff_layout_stat_io_update_requested(&mirror->read_stat, requested);
- 	spin_unlock(&mirror->lock);
- 
-@@ -523,18 +519,18 @@ nfs4_ff_layout_stat_io_end_read(struct rpc_task *task,
- 	spin_lock(&mirror->lock);
- 	nfs4_ff_layout_stat_io_update_completed(&mirror->read_stat,
- 			requested, completed,
--			nfs4_ff_layout_calc_completion_time(task));
-+			ktime_get(), task->tk_start);
- 	spin_unlock(&mirror->lock);
- }
- 
- static void
- nfs4_ff_layout_stat_io_start_write(struct nfs4_ff_layout_mirror *mirror,
--		__u64 requested)
-+		__u64 requested, ktime_t now)
- {
- 	bool report;
- 
- 	spin_lock(&mirror->lock);
--	report = nfs4_ff_layoutstat_start_io(mirror , &mirror->write_stat);
-+	report = nfs4_ff_layoutstat_start_io(mirror , &mirror->write_stat, now);
- 	nfs4_ff_layout_stat_io_update_requested(&mirror->write_stat, requested);
- 	spin_unlock(&mirror->lock);
- 
-@@ -555,8 +551,7 @@ nfs4_ff_layout_stat_io_end_write(struct rpc_task *task,
- 
- 	spin_lock(&mirror->lock);
- 	nfs4_ff_layout_stat_io_update_completed(&mirror->write_stat,
--			requested, completed,
--			nfs4_ff_layout_calc_completion_time(task));
-+			requested, completed, ktime_get(), task->tk_start);
- 	spin_unlock(&mirror->lock);
- }
- 
-@@ -1063,7 +1058,8 @@ static int ff_layout_read_prepare_common(struct rpc_task *task,
- {
- 	nfs4_ff_layout_stat_io_start_read(
- 			FF_LAYOUT_COMP(hdr->lseg, hdr->pgio_mirror_idx),
--			hdr->args.count);
-+			hdr->args.count,
-+			task->tk_start);
- 
- 	if (unlikely(test_bit(NFS_CONTEXT_BAD, &hdr->args.context->flags))) {
- 		rpc_exit(task, -EIO);
-@@ -1249,7 +1245,8 @@ static int ff_layout_write_prepare_common(struct rpc_task *task,
- {
- 	nfs4_ff_layout_stat_io_start_write(
- 			FF_LAYOUT_COMP(hdr->lseg, hdr->pgio_mirror_idx),
--			hdr->args.count);
-+			hdr->args.count,
-+			task->tk_start);
- 
- 	if (unlikely(test_bit(NFS_CONTEXT_BAD, &hdr->args.context->flags))) {
- 		rpc_exit(task, -EIO);
-@@ -1330,7 +1327,7 @@ static void ff_layout_commit_prepare_common(struct rpc_task *task,
- {
- 	nfs4_ff_layout_stat_io_start_write(
- 			FF_LAYOUT_COMP(cdata->lseg, cdata->ds_commit_index),
--			0);
-+			0, task->tk_start);
- }
- 
- static void ff_layout_commit_prepare_v3(struct rpc_task *task, void *data)
+ 	bucket = &cinfo->ds->buckets[data->ds_commit_index];
+ 	spin_lock(cinfo->lock);
+-	list_splice_init(pages, &bucket->committing);
++	list_splice_init(&bucket->committing, pages);
+ 	data->lseg = bucket->clseg;
+ 	bucket->clseg = NULL;
+ 	spin_unlock(cinfo->lock);
 -- 
-2.4.3
+1.8.3.1
 
