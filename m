@@ -1,291 +1,372 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yk0-f175.google.com ([209.85.160.175]:35849 "EHLO
-	mail-yk0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752193AbbHULVX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Aug 2015 07:21:23 -0400
-Received: by ykfw73 with SMTP id w73so66655681ykf.3
-        for <linux-nfs@vger.kernel.org>; Fri, 21 Aug 2015 04:21:22 -0700 (PDT)
-Date: Fri, 21 Aug 2015 07:21:18 -0400
+Received: from mail-yk0-f180.google.com ([209.85.160.180]:36741 "EHLO
+	mail-yk0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752604AbbHULXs (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Aug 2015 07:23:48 -0400
+Received: by ykfw73 with SMTP id w73so66703635ykf.3
+        for <linux-nfs@vger.kernel.org>; Fri, 21 Aug 2015 04:23:47 -0700 (PDT)
+Date: Fri, 21 Aug 2015 07:23:44 -0400
 From: Jeff Layton <jlayton@poochiereds.net>
 To: Peng Tao <bergwolf@primarydata.com>
 Cc: Bruce Fields <bfields@fieldses.org>,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
         Christoph Hellwig <hch@lst.de>, Kinglong Mee <kinglongmee@gmail.com>
-Subject: Re: [PATCH v3 15/20] nfsd: call flush_delayed_fput from
- nfsd_file_close_fh
-Message-ID: <20150821072118.6c3a65b2@tlielax.poochiereds.net>
-In-Reply-To: <CAKVebiUnKdkv9U24Xb-YaXpRuONXCULh7HBD89E3Cr4mxKgZvg@mail.gmail.com>
+Subject: Re: [PATCH v3 19/20] nfsd: hook up nfs4_preprocess_stateid_op to
+ the nfsd_file cache
+Message-ID: <20150821072344.25b70af6@tlielax.poochiereds.net>
+In-Reply-To: <CAKVebiUdyX8+dVnq4nyBT5BzQaGp-9-aBwR+PpUPQHdonkiqxA@mail.gmail.com>
 References: <1440069440-27454-1-git-send-email-jeff.layton@primarydata.com>
-	<1440069440-27454-16-git-send-email-jeff.layton@primarydata.com>
-	<CAKVebiVBceP97rhy6ZMv9zOP5oMkKxzcV=OYscp1XvNkvuVJVQ@mail.gmail.com>
-	<CAKVebiUnKdkv9U24Xb-YaXpRuONXCULh7HBD89E3Cr4mxKgZvg@mail.gmail.com>
+	<1440069440-27454-20-git-send-email-jeff.layton@primarydata.com>
+	<CAKVebiUdyX8+dVnq4nyBT5BzQaGp-9-aBwR+PpUPQHdonkiqxA@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 20 Aug 2015 19:18:25 -0700
+On Thu, 20 Aug 2015 18:28:05 -0700
 Peng Tao <bergwolf@primarydata.com> wrote:
 
-> On Thu, Aug 20, 2015 at 6:01 PM, Peng Tao <bergwolf@primarydata.com> wrote:
-> > On Thu, Aug 20, 2015 at 4:17 AM, Jeff Layton <jlayton@poochiereds.net> wrote:
-> >> ...when there are open files to be closed.
-> >>
-> >> When knfsd does an fput(), it gets queued to a list and a workqueue job
-> >> is then scheduled to do the actual __fput work. In the case of knfsd
-> >> closing down the file prior to a REMOVE or RENAME, we really want to
-> >> ensure that those files are closed prior to returning. When there are
-> >> files to be closed, call flush_delayed_fput to ensure this.
-> >>
-> >> There are deadlock possibilities if you call flush_delayed_fput while
-> >> holding locks, however. In the case of nfsd_rename, we don't even do the
-> >> lookups of the dentries to be renamed until we've locked for rename.
-> >>
-> >> Once we've figured out what the target dentry is for a rename, check to
-> >> see whether there are cached open files associated with it. If there
-> >> are, then unwind all of the locking, close them all, and then reattempt
-> >> the rename.
-> >>
-> >> Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
-> >> ---
-> >>  fs/file_table.c     |  1 +
-> >>  fs/nfsd/filecache.c | 33 ++++++++++++++++++++++++++++++++-
-> >>  fs/nfsd/filecache.h |  1 +
-> >>  fs/nfsd/trace.h     | 10 +++++++++-
-> >>  fs/nfsd/vfs.c       | 47 +++++++++++++++++++++++++++++++++++++++--------
-> >>  5 files changed, 82 insertions(+), 10 deletions(-)
-> >>
-> >> diff --git a/fs/file_table.c b/fs/file_table.c
-> >> index 7f9d407c7595..33898e72618c 100644
-> >> --- a/fs/file_table.c
-> >> +++ b/fs/file_table.c
-> >> @@ -257,6 +257,7 @@ void flush_delayed_fput(void)
-> >>  {
-> >>         delayed_fput(NULL);
-> >>  }
-> >> +EXPORT_SYMBOL_GPL(flush_delayed_fput);
-> >>
-> >>  static DECLARE_DELAYED_WORK(delayed_fput_work, delayed_fput);
-> >>
-> >> diff --git a/fs/nfsd/filecache.c b/fs/nfsd/filecache.c
-> >> index 4bd683f03b6e..b62942ba6e7b 100644
-> >> --- a/fs/nfsd/filecache.c
-> >> +++ b/fs/nfsd/filecache.c
-> >> @@ -284,6 +284,34 @@ nfsd_file_find_locked(struct inode *inode, unsigned int may_flags,
-> >>  }
-> >>
-> >>  /**
-> >> + * nfsd_file_is_cached - are there any cached open files for this fh?
-> >> + * @inode: inode of the file to check
-> >> + *
-> >> + * Scan the hashtable for open files that match this fh. Returns true if there
-> >> + * are any, and false if not.
-> >> + */
-> >> +bool
-> >> +nfsd_file_is_cached(struct inode *inode)
-> >> +{
-> >> +       bool                    ret = false;
-> >> +       struct nfsd_file        *nf;
-> >> +       unsigned int            hashval = (unsigned int)hash_ptr(inode, NFSD_FILE_HASH_BITS);
-> >> +
-> >> +       rcu_read_lock();
-> >> +       hlist_for_each_entry_rcu(nf, &nfsd_file_hashtbl[hashval].nfb_head,
-> >> +                                nf_node) {
-> >> +               if (inode == nf->nf_inode) {
-> >> +                       ret = true;
-> >> +                       break;
-> >> +               }
-> >> +       }
-> >> +       rcu_read_unlock();
-> >> +       trace_nfsd_file_is_cached(hashval, inode, (int)ret);
-> >> +       return ret;
-> >> +}
-> >> +
-> >> +
-> >> +/**
-> >>   * nfsd_file_close_inode - attempt to forcibly close a nfsd_file
-> >>   * @inode: inode of the file to attempt to remove
-> >>   *
-> >> @@ -305,7 +333,10 @@ nfsd_file_close_inode(struct inode *inode)
-> >>         }
-> >>         spin_unlock(&nfsd_file_hashtbl[hashval].nfb_lock);
-> >>         trace_nfsd_file_close_inode(hashval, inode, !list_empty(&dispose));
-> >> -       nfsd_file_dispose_list(&dispose);
-> >> +       if (!list_empty(&dispose)) {
-> >> +               nfsd_file_dispose_list(&dispose);
-> >> +               flush_delayed_fput();
-> > It looks like flush_delayed_fput() is not exported symbol?
+> On Thu, Aug 20, 2015 at 4:17 AM, Jeff Layton <jlayton@poochiereds.net> wrote:
+> > Have nfs4_preprocess_stateid_op pass back a nfsd_file instead of a filp.
+> > Since we now presume that the struct file will be persistent in most
+> > cases, we can stop fiddling with the raparms in the read code. This
+> > also means that we don't really care about the rd_tmp_file field
+> > anymore.
 > >
-> > And if flush_delayed_fput() is acceptable, it looks like __fput_sync()
-> > is a better fit, because knfsd would not try to do all the delayed
-> > fput() work, just the dispose list...
-> oh, just saw that flush_delayed_fput() is exported in this patch!
-> sorry for the noise. But I still think __fput_sync() might be a better
-> fit, despite the assertion there... I'm fine with settling with
-> flush_delayed_fput() though since calling __fput_sync() from a kernel
-> thread might get more objections.
+> > Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
+> > ---
+> >  fs/nfsd/nfs4proc.c  | 32 ++++++++++++++++----------------
+> >  fs/nfsd/nfs4state.c | 20 +++++++-------------
+> >  fs/nfsd/nfs4xdr.c   | 16 +++++-----------
+> >  fs/nfsd/state.h     |  2 +-
+> >  fs/nfsd/xdr4.h      | 15 +++++++--------
+> >  5 files changed, 36 insertions(+), 49 deletions(-)
+> >
+> > diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> > index b9681ee0ed19..42a3f8b50814 100644
+> > --- a/fs/nfsd/nfs4proc.c
+> > +++ b/fs/nfsd/nfs4proc.c
+> > @@ -758,7 +758,7 @@ nfsd4_read(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+> >  {
+> >         __be32 status;
+> >
+> > -       read->rd_filp = NULL;
+> > +       read->rd_nf = NULL;
+> >         if (read->rd_offset >= OFFSET_MAX)
+> >                 return nfserr_inval;
+> >
+> > @@ -775,7 +775,7 @@ nfsd4_read(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+> >
+> >         /* check stateid */
+> >         status = nfs4_preprocess_stateid_op(rqstp, cstate, &read->rd_stateid,
+> > -                       RD_STATE, &read->rd_filp, &read->rd_tmp_file);
+> > +                       RD_STATE, &read->rd_nf);
+> >         if (status) {
+> >                 dprintk("NFSD: nfsd4_read: couldn't process stateid!\n");
+> >                 goto out;
+> > @@ -921,7 +921,7 @@ nfsd4_setattr(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+> >
+> >         if (setattr->sa_iattr.ia_valid & ATTR_SIZE) {
+> >                 status = nfs4_preprocess_stateid_op(rqstp, cstate,
+> > -                       &setattr->sa_stateid, WR_STATE, NULL, NULL);
+> > +                       &setattr->sa_stateid, WR_STATE, NULL);
+> >                 if (status) {
+> >                         dprintk("NFSD: nfsd4_setattr: couldn't process stateid!\n");
+> >                         return status;
+> > @@ -977,7 +977,7 @@ nfsd4_write(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+> >             struct nfsd4_write *write)
+> >  {
+> >         stateid_t *stateid = &write->wr_stateid;
+> > -       struct file *filp = NULL;
+> > +       struct nfsd_file *nf = NULL;
+> >         __be32 status = nfs_ok;
+> >         unsigned long cnt;
+> >         int nvecs;
+> > @@ -986,7 +986,7 @@ nfsd4_write(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+> >                 return nfserr_inval;
+> >
+> >         status = nfs4_preprocess_stateid_op(rqstp, cstate, stateid, WR_STATE,
+> > -                       &filp, NULL);
+> > +                       &nf);
+> >         if (status) {
+> >                 dprintk("NFSD: nfsd4_write: couldn't process stateid!\n");
+> >                 return status;
+> > @@ -999,10 +999,10 @@ nfsd4_write(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+> >         nvecs = fill_in_write_vector(rqstp->rq_vec, write);
+> >         WARN_ON_ONCE(nvecs > ARRAY_SIZE(rqstp->rq_vec));
+> >
+> > -       status = nfsd_vfs_write(rqstp, &cstate->current_fh, filp,
+> > +       status = nfsd_vfs_write(rqstp, &cstate->current_fh, nf->nf_file,
+> >                                 write->wr_offset, rqstp->rq_vec, nvecs, &cnt,
+> >                                 &write->wr_how_written);
+> > -       fput(filp);
+> > +       nfsd_file_put(nf);
+> >
+> >         write->wr_bytes_written = cnt;
+> >
+> > @@ -1014,21 +1014,21 @@ nfsd4_fallocate(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+> >                 struct nfsd4_fallocate *fallocate, int flags)
+> >  {
+> >         __be32 status = nfserr_notsupp;
+> > -       struct file *file;
+> > +       struct nfsd_file *nf;
+> >
+> >         status = nfs4_preprocess_stateid_op(rqstp, cstate,
+> >                                             &fallocate->falloc_stateid,
+> > -                                           WR_STATE, &file, NULL);
+> > +                                           WR_STATE, &nf);
+> >         if (status != nfs_ok) {
+> >                 dprintk("NFSD: nfsd4_fallocate: couldn't process stateid!\n");
+> >                 return status;
+> >         }
+> >
+> > -       status = nfsd4_vfs_fallocate(rqstp, &cstate->current_fh, file,
+> > +       status = nfsd4_vfs_fallocate(rqstp, &cstate->current_fh, nf->nf_file,
+> >                                      fallocate->falloc_offset,
+> >                                      fallocate->falloc_length,
+> >                                      flags);
+> > -       fput(file);
+> > +       nfsd_file_put(nf);
+> >         return status;
+> >  }
+> >
+> > @@ -1053,11 +1053,11 @@ nfsd4_seek(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+> >  {
+> >         int whence;
+> >         __be32 status;
+> > -       struct file *file;
+> > +       struct nfsd_file *nf;
+> >
+> >         status = nfs4_preprocess_stateid_op(rqstp, cstate,
+> >                                             &seek->seek_stateid,
+> > -                                           RD_STATE, &file, NULL);
+> > +                                           RD_STATE, &nf);
+> >         if (status) {
+> >                 dprintk("NFSD: nfsd4_seek: couldn't process stateid!\n");
+> >                 return status;
+> > @@ -1079,14 +1079,14 @@ nfsd4_seek(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+> >          * Note:  This call does change file->f_pos, but nothing in NFSD
+> >          *        should ever file->f_pos.
+> >          */
+> > -       seek->seek_pos = vfs_llseek(file, seek->seek_offset, whence);
+> > +       seek->seek_pos = vfs_llseek(nf->nf_file, seek->seek_offset, whence);
+> >         if (seek->seek_pos < 0)
+> >                 status = nfserrno(seek->seek_pos);
+> > -       else if (seek->seek_pos >= i_size_read(file_inode(file)))
+> > +       else if (seek->seek_pos >= i_size_read(file_inode(nf->nf_file)))
+> >                 seek->seek_eof = true;
+> >
+> >  out:
+> > -       fput(file);
+> > +       nfsd_file_put(nf);
+> >         return status;
+> >  }
+> >
+> > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> > index f8394a4cd126..c626358c2bad 100644
+> > --- a/fs/nfsd/nfs4state.c
+> > +++ b/fs/nfsd/nfs4state.c
+> > @@ -4615,7 +4615,7 @@ nfs4_check_olstateid(struct svc_fh *fhp, struct nfs4_ol_stateid *ols, int flags)
+> >
+> >  static __be32
+> >  nfs4_check_file(struct svc_rqst *rqstp, struct svc_fh *fhp, struct nfs4_stid *s,
+> > -               struct file **filpp, bool *tmp_file, int flags)
+> > +               struct nfsd_file **nfp, int flags)
+> >  {
+> >         int acc = (flags & RD_STATE) ? NFSD_MAY_READ : NFSD_MAY_WRITE;
+> >         struct nfsd_file *nf;
+> > @@ -4631,14 +4631,10 @@ nfs4_check_file(struct svc_rqst *rqstp, struct svc_fh *fhp, struct nfs4_stid *s,
+> >                 status = nfsd_file_acquire(rqstp, fhp, acc, &nf);
+> >                 if (status)
+> >                         return status;
+> > -
+> > -               if (tmp_file)
+> > -                       *tmp_file = true;
+> >         }
+> >
+> > -       *filpp = get_file(nf->nf_file);
+> > +       *nfp = nf;
+> >  out:
+> > -       nfsd_file_put(nf);
+> If nfsd_permission() fails, nf is leaked. Previous patch has:
+> 
+> @@ -4614,21 +4618,17 @@ nfs4_check_file(struct svc_rqst *rqstp, struct
+> svc_fh *fhp, struct nfs4_stid *s,
+>                 struct file **filpp, bool *tmp_file, int flags)
+>  {
+>         int acc = (flags & RD_STATE) ? NFSD_MAY_READ : NFSD_MAY_WRITE;
+> -       struct file *file;
+> +       struct nfsd_file *nf;
+>         __be32 status;
+> 
+> -       file = nfs4_find_file(s, flags);
+> -       if (file) {
+> +       nf = nfs4_find_file(s, flags);
+> +       if (nf) {
+>                 status = nfsd_permission(rqstp, fhp->fh_export, fhp->fh_dentry,
+>                                 acc | NFSD_MAY_OWNER_OVERRIDE);
+> -               if (status) {
+> -                       fput(file);
+> -                       return status;
+> -               }
+> -
+> -               *filpp = file;
+> +               if (status)
+> +                       goto out;
+>         } else {
+> -               status = nfsd_open(rqstp, fhp, S_IFREG, acc, filpp);
+> +               status = nfsd_file_acquire(rqstp, fhp, acc, &nf);
+>                 if (status)
+>                         return status;
 > 
 > Cheers,
 > Tao
 > 
 
-I looked at __fput_sync when I first rolled this patch, but it's a
-little less convenient to use. __fput_sync is a synchronous analogue to
-fput -- so you have to ensure that you use it instead of fput.
+Good catch. I'll fix that.
 
-To make that work here, we'd need a separate set of destruction
-routines that uses __fput_sync instead of fput. Certainly we can do
-that if necessary, but I don't think it's really worth it.
+Thanks,
+Jeff
 
-The downside of course is that we might end up with this thread doing a
-little extra __fput work if there happened to be other things queued
-onto the delayed_fput_list, but I'm not too concerned about that.
-
+> >         return status;
+> >  }
 > >
-> > Cheers,
-> > Tao
+> > @@ -4648,7 +4644,7 @@ out:
+> >  __be32
+> >  nfs4_preprocess_stateid_op(struct svc_rqst *rqstp,
+> >                 struct nfsd4_compound_state *cstate, stateid_t *stateid,
+> > -               int flags, struct file **filpp, bool *tmp_file)
+> > +               int flags, struct nfsd_file **nfp)
+> >  {
+> >         struct svc_fh *fhp = &cstate->current_fh;
+> >         struct inode *ino = d_inode(fhp->fh_dentry);
+> > @@ -4657,10 +4653,8 @@ nfs4_preprocess_stateid_op(struct svc_rqst *rqstp,
+> >         struct nfs4_stid *s = NULL;
+> >         __be32 status;
 > >
-> >> +       }
-> >>  }
-> >>
-> >>  __be32
-> >> diff --git a/fs/nfsd/filecache.h b/fs/nfsd/filecache.h
-> >> index 191cdb25aa66..4a873efb7953 100644
-> >> --- a/fs/nfsd/filecache.h
-> >> +++ b/fs/nfsd/filecache.h
-> >> @@ -27,6 +27,7 @@ void nfsd_file_cache_shutdown(void);
-> >>  void nfsd_file_put(struct nfsd_file *nf);
-> >>  struct nfsd_file *nfsd_file_get(struct nfsd_file *nf);
-> >>  void nfsd_file_close_inode(struct inode *inode);
-> >> +bool nfsd_file_is_cached(struct inode *inode);
-> >>  __be32 nfsd_file_acquire(struct svc_rqst *rqstp, struct svc_fh *fhp,
-> >>                   unsigned int may_flags, struct nfsd_file **nfp);
-> >>  #endif /* _FS_NFSD_FILECACHE_H */
-> >> diff --git a/fs/nfsd/trace.h b/fs/nfsd/trace.h
-> >> index 95af3b9c7b66..fc6d8ee51a00 100644
-> >> --- a/fs/nfsd/trace.h
-> >> +++ b/fs/nfsd/trace.h
-> >> @@ -140,7 +140,7 @@ TRACE_EVENT(nfsd_file_acquire,
-> >>                         be32_to_cpu(__entry->status))
-> >>  );
-> >>
-> >> -TRACE_EVENT(nfsd_file_close_inode,
-> >> +DECLARE_EVENT_CLASS(nfsd_file_search_class,
-> >>         TP_PROTO(unsigned int hash, struct inode *inode, int found),
-> >>         TP_ARGS(hash, inode, found),
-> >>         TP_STRUCT__entry(
-> >> @@ -156,6 +156,14 @@ TRACE_EVENT(nfsd_file_close_inode,
-> >>         TP_printk("hash=0x%x inode=0x%p found=%d", __entry->hash,
-> >>                         __entry->inode, __entry->found)
-> >>  );
-> >> +
-> >> +#define DEFINE_NFSD_FILE_SEARCH_EVENT(name)                            \
-> >> +DEFINE_EVENT(nfsd_file_search_class, name,                             \
-> >> +       TP_PROTO(unsigned int hash, struct inode *inode, int found),    \
-> >> +       TP_ARGS(hash, inode, found))
-> >> +
-> >> +DEFINE_NFSD_FILE_SEARCH_EVENT(nfsd_file_close_inode);
-> >> +DEFINE_NFSD_FILE_SEARCH_EVENT(nfsd_file_is_cached);
-> >>  #endif /* _NFSD_TRACE_H */
-> >>
-> >>  #undef TRACE_INCLUDE_PATH
-> >> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-> >> index 98d3b9d96480..4cc78a4ec694 100644
-> >> --- a/fs/nfsd/vfs.c
-> >> +++ b/fs/nfsd/vfs.c
-> >> @@ -1592,6 +1592,17 @@ nfsd_close_cached_files(struct dentry *dentry)
-> >>                 nfsd_file_close_inode(inode);
-> >>  }
-> >>
-> >> +static bool
-> >> +nfsd_has_cached_files(struct dentry *dentry)
-> >> +{
-> >> +       bool            ret = false;
-> >> +       struct inode *inode = d_inode(dentry);
-> >> +
-> >> +       if (inode && S_ISREG(inode->i_mode))
-> >> +               ret = nfsd_file_is_cached(inode);
-> >> +       return ret;
-> >> +}
-> >> +
-> >>  /*
-> >>   * Rename a file
-> >>   * N.B. After this call _both_ ffhp and tfhp need an fh_put
-> >> @@ -1604,6 +1615,7 @@ nfsd_rename(struct svc_rqst *rqstp, struct svc_fh *ffhp, char *fname, int flen,
-> >>         struct inode    *fdir, *tdir;
-> >>         __be32          err;
-> >>         int             host_err;
-> >> +       bool            has_cached = false;
-> >>
-> >>         err = fh_verify(rqstp, ffhp, S_IFDIR, NFSD_MAY_REMOVE);
-> >>         if (err)
-> >> @@ -1622,6 +1634,7 @@ nfsd_rename(struct svc_rqst *rqstp, struct svc_fh *ffhp, char *fname, int flen,
-> >>         if (!flen || isdotent(fname, flen) || !tlen || isdotent(tname, tlen))
-> >>                 goto out;
-> >>
-> >> +retry:
-> >>         host_err = fh_want_write(ffhp);
-> >>         if (host_err) {
-> >>                 err = nfserrno(host_err);
-> >> @@ -1661,12 +1674,16 @@ nfsd_rename(struct svc_rqst *rqstp, struct svc_fh *ffhp, char *fname, int flen,
-> >>         if (ffhp->fh_export->ex_path.dentry != tfhp->fh_export->ex_path.dentry)
-> >>                 goto out_dput_new;
-> >>
-> >> -       nfsd_close_cached_files(ndentry);
-> >> -       host_err = vfs_rename(fdir, odentry, tdir, ndentry, NULL, 0);
-> >> -       if (!host_err) {
-> >> -               host_err = commit_metadata(tfhp);
-> >> -               if (!host_err)
-> >> -                       host_err = commit_metadata(ffhp);
-> >> +       if (nfsd_has_cached_files(ndentry)) {
-> >> +               has_cached = true;
-> >> +               goto out_dput_old;
-> >> +       } else {
-> >> +               host_err = vfs_rename(fdir, odentry, tdir, ndentry, NULL, 0);
-> >> +               if (!host_err) {
-> >> +                       host_err = commit_metadata(tfhp);
-> >> +                       if (!host_err)
-> >> +                               host_err = commit_metadata(ffhp);
-> >> +               }
-> >>         }
-> >>   out_dput_new:
-> >>         dput(ndentry);
-> >> @@ -1679,12 +1696,26 @@ nfsd_rename(struct svc_rqst *rqstp, struct svc_fh *ffhp, char *fname, int flen,
-> >>          * as that would do the wrong thing if the two directories
-> >>          * were the same, so again we do it by hand.
-> >>          */
-> >> -       fill_post_wcc(ffhp);
-> >> -       fill_post_wcc(tfhp);
-> >> +       if (!has_cached) {
-> >> +               fill_post_wcc(ffhp);
-> >> +               fill_post_wcc(tfhp);
-> >> +       }
-> >>         unlock_rename(tdentry, fdentry);
-> >>         ffhp->fh_locked = tfhp->fh_locked = 0;
-> >>         fh_drop_write(ffhp);
-> >>
-> >> +       /*
-> >> +        * If the target dentry has cached open files, then we need to try to
-> >> +        * close them prior to doing the rename. Flushing delayed fput
-> >> +        * shouldn't be done with locks held however, so we delay it until this
-> >> +        * point and then reattempt the whole shebang.
-> >> +        */
-> >> +       if (has_cached) {
-> >> +               has_cached = false;
-> >> +               nfsd_close_cached_files(ndentry);
-> >> +               dput(ndentry);
-> >> +               goto retry;
-> >> +       }
-> >>  out:
-> >>         return err;
-> >>  }
-> >> --
-> >> 2.4.3
-> >>
-> >> --
-> >> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> >> the body of a message to majordomo@vger.kernel.org
-> >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > -       if (filpp)
+> > -               *filpp = NULL;
+> > -       if (tmp_file)
+> > -               *tmp_file = false;
+> > +       if (nfp)
+> > +               *nfp = NULL;
+> >
+> >         if (grace_disallows_io(net, ino))
+> >                 return nfserr_grace;
+> > @@ -4697,8 +4691,8 @@ nfs4_preprocess_stateid_op(struct svc_rqst *rqstp,
+> >         status = nfs4_check_fh(fhp, s);
+> >
+> >  done:
+> > -       if (!status && filpp)
+> > -               status = nfs4_check_file(rqstp, fhp, s, filpp, tmp_file, flags);
+> > +       if (status == nfs_ok && nfp)
+> > +               status = nfs4_check_file(rqstp, fhp, s, nfp, flags);
+> >  out:
+> >         if (s)
+> >                 nfs4_put_stid(s);
+> > diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> > index 75e0563c09d1..7e25a31f8e60 100644
+> > --- a/fs/nfsd/nfs4xdr.c
+> > +++ b/fs/nfsd/nfs4xdr.c
+> > @@ -49,6 +49,7 @@
+> >  #include "cache.h"
+> >  #include "netns.h"
+> >  #include "pnfs.h"
+> > +#include "filecache.h"
+> >
+> >  #ifdef CONFIG_NFSD_V4_SECURITY_LABEL
+> >  #include <linux/security.h>
+> > @@ -3418,14 +3419,14 @@ nfsd4_encode_read(struct nfsd4_compoundres *resp, __be32 nfserr,
+> >  {
+> >         unsigned long maxcount;
+> >         struct xdr_stream *xdr = &resp->xdr;
+> > -       struct file *file = read->rd_filp;
+> > +       struct file *file;
+> >         int starting_len = xdr->buf->len;
+> > -       struct raparms *ra = NULL;
+> >         __be32 *p;
+> >
+> >         if (nfserr)
+> >                 goto out;
+> >
+> > +       file = read->rd_nf->nf_file;
+> >         p = xdr_reserve_space(xdr, 8); /* eof flag and byte count */
+> >         if (!p) {
+> >                 WARN_ON_ONCE(test_bit(RQ_SPLICE_OK, &resp->rqstp->rq_flags));
+> > @@ -3445,24 +3446,17 @@ nfsd4_encode_read(struct nfsd4_compoundres *resp, __be32 nfserr,
+> >                          (xdr->buf->buflen - xdr->buf->len));
+> >         maxcount = min_t(unsigned long, maxcount, read->rd_length);
+> >
+> > -       if (read->rd_tmp_file)
+> > -               ra = nfsd_init_raparms(file);
+> > -
+> >         if (file->f_op->splice_read &&
+> >             test_bit(RQ_SPLICE_OK, &resp->rqstp->rq_flags))
+> >                 nfserr = nfsd4_encode_splice_read(resp, read, file, maxcount);
+> >         else
+> >                 nfserr = nfsd4_encode_readv(resp, read, file, maxcount);
+> >
+> > -       if (ra)
+> > -               nfsd_put_raparams(file, ra);
+> > -
+> >         if (nfserr)
+> >                 xdr_truncate_encode(xdr, starting_len);
+> > -
+> >  out:
+> > -       if (file)
+> > -               fput(file);
+> > +       if (read->rd_nf)
+> > +               nfsd_file_put(read->rd_nf);
+> >         return nfserr;
+> >  }
+> >
+> > diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+> > index 8a317de773b9..cf7e27199507 100644
+> > --- a/fs/nfsd/state.h
+> > +++ b/fs/nfsd/state.h
+> > @@ -585,7 +585,7 @@ struct nfsd_net;
+> >
+> >  extern __be32 nfs4_preprocess_stateid_op(struct svc_rqst *rqstp,
+> >                 struct nfsd4_compound_state *cstate, stateid_t *stateid,
+> > -               int flags, struct file **filp, bool *tmp_file);
+> > +               int flags, struct nfsd_file **filp);
+> >  __be32 nfsd4_lookup_stateid(struct nfsd4_compound_state *cstate,
+> >                      stateid_t *stateid, unsigned char typemask,
+> >                      struct nfs4_stid **s, struct nfsd_net *nn);
+> > diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+> > index 9f991007a578..ea016fb24675 100644
+> > --- a/fs/nfsd/xdr4.h
+> > +++ b/fs/nfsd/xdr4.h
+> > @@ -268,15 +268,14 @@ struct nfsd4_open_downgrade {
+> >
+> >
+> >  struct nfsd4_read {
+> > -       stateid_t       rd_stateid;         /* request */
+> > -       u64             rd_offset;          /* request */
+> > -       u32             rd_length;          /* request */
+> > -       int             rd_vlen;
+> > -       struct file     *rd_filp;
+> > -       bool            rd_tmp_file;
+> > +       stateid_t               rd_stateid;         /* request */
+> > +       u64                     rd_offset;          /* request */
+> > +       u32                     rd_length;          /* request */
+> > +       int                     rd_vlen;
+> > +       struct nfsd_file        *rd_nf;
+> >
+> > -       struct svc_rqst *rd_rqstp;          /* response */
+> > -       struct svc_fh * rd_fhp;             /* response */
+> > +       struct svc_rqst         *rd_rqstp;          /* response */
+> > +       struct svc_fh           *rd_fhp;             /* response */
+> >  };
+> >
+> >  struct nfsd4_readdir {
+> > --
+> > 2.4.3
+> >
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
 
 -- 
