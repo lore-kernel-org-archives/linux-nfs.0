@@ -1,29 +1,30 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from verein.lst.de ([213.95.11.211]:49231 "EHLO newverein.lst.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750798AbbHUHP7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 21 Aug 2015 03:15:59 -0400
-Date: Fri, 21 Aug 2015 09:15:52 +0200
-From: Christoph Hellwig <hch@lst.de>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: misc blocklayout updates
-Message-ID: <20150821071552.GA15048@lst.de>
-References: <1439829661-1505-1-git-send-email-hch@lst.de> <20150821070424.GA14942@lst.de> <CAHQdGtRj3Lef6FDpa6ZMht-i8c8+o4RBrPsz4dLiVdLCHZ8gYA@mail.gmail.com>
+Received: from mx2.parallels.com ([199.115.105.18]:46434 "EHLO
+	mx2.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751842AbbHUJgs (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Aug 2015 05:36:48 -0400
+Date: Fri, 21 Aug 2015 12:36:31 +0300
+From: Vladimir Davydov <vdavydov@parallels.com>
+To: Jeff Layton <jlayton@poochiereds.net>
+CC: <bfields@fieldses.org>, <linux-nfs@vger.kernel.org>, <hch@lst.de>,
+        <kinglongmee@gmail.com>, Andrew Morton <akpm@linux-foundation.org>,
+        <linux-mm@kvack.org>
+Subject: Re: [PATCH v3 03/20] list_lru: add list_lru_rotate
+Message-ID: <20150821093631.GK2797@esperanza>
+References: <1440069440-27454-1-git-send-email-jeff.layton@primarydata.com>
+ <1440069440-27454-4-git-send-email-jeff.layton@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAHQdGtRj3Lef6FDpa6ZMht-i8c8+o4RBrPsz4dLiVdLCHZ8gYA@mail.gmail.com>
+Content-Type: text/plain; charset="us-ascii"
+In-Reply-To: <1440069440-27454-4-git-send-email-jeff.layton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Aug 21, 2015 at 12:11:55AM -0700, Trond Myklebust wrote:
-> On Fri, Aug 21, 2015 at 12:04 AM, Christoph Hellwig <hch@lst.de> wrote:
-> > Any chance you could look over them?  There's been a steady trickle
-> > of more recently posted patches to your tree and the merge window is
-> > about to end, so I'll ping unusually early.
+On Thu, Aug 20, 2015 at 07:17:03AM -0400, Jeff Layton wrote:
+> Add a function that can move an entry to the MRU end of the list.
 > 
-> I thought i merged those into the linux-next+testing branches 2-3 days
-> ago. Are they missing?
+> Cc: Andrew Morton <akpm@linux-foundation.org>
+> Cc: Vladimir Davydov <vdavydov@parallels.com>
+> Cc: linux-mm@kvack.org
+> Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
 
-Oops, sorry.  The are there, but you rebased other patches that were
-in earlier on top.  Sorry for not looking close enough!
+Reviewed-by: Vladimir Davydov <vdavydov@parallels.com>
