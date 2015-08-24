@@ -1,60 +1,83 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-oi0-f41.google.com ([209.85.218.41]:34422 "EHLO
-	mail-oi0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932640AbbHXNRB (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Aug 2015 09:17:01 -0400
-Received: by oiey141 with SMTP id y141so79643489oie.1
-        for <linux-nfs@vger.kernel.org>; Mon, 24 Aug 2015 06:17:00 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <1440282873-19972-1-git-send-email-xerofoify@gmail.com>
-References: <1440282873-19972-1-git-send-email-xerofoify@gmail.com>
-Date: Mon, 24 Aug 2015 09:17:00 -0400
-Message-ID: <CAHQdGtRZ46fg06cd4e7SdDMbyLQekfw7iG=XYvHoXumnfEa3vQ@mail.gmail.com>
-Subject: Re: [PATCH] nfs:Fix error handling in the function nfs_vm_page_mkwrite
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Nicholas Krause <xerofoify@gmail.com>
-Cc: Anna Schumaker <anna.schumaker@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from [193.47.165.129] ([193.47.165.129]:38164 "EHLO mellanox.co.il"
+	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1750904AbbHXP70 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 24 Aug 2015 11:59:26 -0400
+From: Sagi Grimberg <sagig@mellanox.com>
+To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Cc: Chuck Lever <chuck.lever@oracle.com>,
+        Steve Wise <swise@opengridcomputing.com>
+Subject: [PATCH] svcrdma: remove dead code
+Date: Mon, 24 Aug 2015 18:58:51 +0300
+Message-Id: <1440431931-24738-1-git-send-email-sagig@mellanox.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Aug 22, 2015 at 6:34 PM, Nicholas Krause <xerofoify@gmail.com> wrote:
-> This fixes error handling in the function nfs_vm_page_mkwrite to
-> properly check if the function wait_on_bit_action returned something
-> other then zero as if so return to the caller of nfs_vm_page_mkwrite
-> to signal that a internal failure has occurred when calling this
-> function and should be handled by the caller.
->
-> Signed-off-by: Nicholas Krause <xerofoify@gmail.com>
-> ---
->  fs/nfs/file.c | 6 ++++--
->  1 file changed, 4 insertions(+), 2 deletions(-)
->
-> diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-> index cc4fa1e..698851a 100644
-> --- a/fs/nfs/file.c
-> +++ b/fs/nfs/file.c
-> @@ -612,8 +612,10 @@ static int nfs_vm_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
->         /* make sure the cache has finished storing the page */
->         nfs_fscache_wait_on_page_write(NFS_I(inode), page);
->
-> -       wait_on_bit_action(&NFS_I(inode)->flags, NFS_INO_INVALIDATING,
-> -                       nfs_wait_bit_killable, TASK_KILLABLE);
-> +       ret = wait_on_bit_action(&NFS_I(inode)->flags, NFS_INO_INVALIDATING,
-> +                                nfs_wait_bit_killable, TASK_KILLABLE);
-> +       if (ret)
-> +               goto out;
->
->         lock_page(page);
->         mapping = page_file_mapping(page);
-> --
-> 2.1.4
->
+No one is calling svc_rdma_fastreg. remove it.
 
-nfs_vm_page_mkwrite() is only allowed to return the value '0' or one
-or more of the VM_FAULT_* flags. It may not return kernel error
-values.
+Signed-off-by: Sagi Grimberg <sagig@mellanox.com>
+---
+ include/linux/sunrpc/svc_rdma.h          |    1 -
+ net/sunrpc/xprtrdma/svc_rdma_transport.c |   34 ------------------------------
+ 2 files changed, 0 insertions(+), 35 deletions(-)
 
-Trond
+diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
+index cb94ee4..fa5b5eb 100644
+--- a/include/linux/sunrpc/svc_rdma.h
++++ b/include/linux/sunrpc/svc_rdma.h
+@@ -225,7 +225,6 @@ extern void svc_rdma_put_context(struct svc_rdma_op_ctxt *, int);
+ extern void svc_rdma_unmap_dma(struct svc_rdma_op_ctxt *ctxt);
+ extern struct svc_rdma_req_map *svc_rdma_get_req_map(void);
+ extern void svc_rdma_put_req_map(struct svc_rdma_req_map *);
+-extern int svc_rdma_fastreg(struct svcxprt_rdma *, struct svc_rdma_fastreg_mr *);
+ extern struct svc_rdma_fastreg_mr *svc_rdma_get_frmr(struct svcxprt_rdma *);
+ extern void svc_rdma_put_frmr(struct svcxprt_rdma *,
+ 			      struct svc_rdma_fastreg_mr *);
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+index a0aa2d7..0e010fe 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+@@ -1201,40 +1201,6 @@ static int svc_rdma_secure_port(struct svc_rqst *rqstp)
+ 	return 1;
+ }
+ 
+-/*
+- * Attempt to register the kvec representing the RPC memory with the
+- * device.
+- *
+- * Returns:
+- *  NULL : The device does not support fastreg or there were no more
+- *         fastreg mr.
+- *  frmr : The kvec register request was successfully posted.
+- *    <0 : An error was encountered attempting to register the kvec.
+- */
+-int svc_rdma_fastreg(struct svcxprt_rdma *xprt,
+-		     struct svc_rdma_fastreg_mr *frmr)
+-{
+-	struct ib_fast_reg_wr fastreg_wr;
+-	u8 key;
+-
+-	/* Bump the key */
+-	key = (u8)(frmr->mr->lkey & 0x000000FF);
+-	ib_update_fast_reg_key(frmr->mr, ++key);
+-
+-	/* Prepare FASTREG WR */
+-	memset(&fastreg_wr, 0, sizeof fastreg_wr);
+-	fastreg_wr.wr.opcode = IB_WR_FAST_REG_MR;
+-	fastreg_wr.wr.send_flags = IB_SEND_SIGNALED;
+-	fastreg_wr.iova_start = (unsigned long)frmr->kva;
+-	fastreg_wr.page_list = frmr->page_list;
+-	fastreg_wr.page_list_len = frmr->page_list_len;
+-	fastreg_wr.page_shift = PAGE_SHIFT;
+-	fastreg_wr.length = frmr->map_len;
+-	fastreg_wr.access_flags = frmr->access_flags;
+-	fastreg_wr.rkey = frmr->mr->lkey;
+-	return svc_rdma_send(xprt, &fastreg_wr.wr);
+-}
+-
+ int svc_rdma_send(struct svcxprt_rdma *xprt, struct ib_send_wr *wr)
+ {
+ 	struct ib_send_wr *bad_wr, *n_wr;
+-- 
+1.7.1
+
