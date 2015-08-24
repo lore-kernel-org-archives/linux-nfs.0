@@ -1,56 +1,69 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailsrv.ikr.uni-stuttgart.de ([129.69.170.2]:59224 "EHLO
-	mailsrv.ikr.uni-stuttgart.de" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754264AbbHXNCs (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Aug 2015 09:02:48 -0400
-Received: from netsrv1.ikr.uni-stuttgart.de (netsrv1-c [10.11.12.12])
-	by mailsrv.ikr.uni-stuttgart.de (Postfix) with ESMTP id D296B60204
-	for <linux-nfs@vger.kernel.org>; Mon, 24 Aug 2015 14:52:57 +0200 (CEST)
-Received: from ikr.uni-stuttgart.de (pc041 [10.21.21.41])
-	by netsrv1.ikr.uni-stuttgart.de (Postfix) with SMTP id B95B660203
-	for <linux-nfs@vger.kernel.org>; Mon, 24 Aug 2015 14:52:57 +0200 (CEST)
-From: Ulrich Gemkow <ulrich.gemkow@ikr.uni-stuttgart.de>
-To: linux-nfs@vger.kernel.org
-Subject: NFSv4 mount fails on Sun Solaris 10 after reboot of client
-Date: Mon, 24 Aug 2015 14:52:55 +0200
+Received: from mail-ob0-f175.google.com ([209.85.214.175]:33997 "EHLO
+	mail-ob0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754447AbbHXNMI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Aug 2015 09:12:08 -0400
+Received: by obbfr1 with SMTP id fr1so112216485obb.1
+        for <linux-nfs@vger.kernel.org>; Mon, 24 Aug 2015 06:12:08 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: Text/Plain;
-  charset="iso-8859-1"
-Message-Id: <201508241452.57718.ulrich.gemkow@ikr.uni-stuttgart.de>
+In-Reply-To: <1440292628-22461-1-git-send-email-xerofoify@gmail.com>
+References: <1440292628-22461-1-git-send-email-xerofoify@gmail.com>
+Date: Mon, 24 Aug 2015 09:12:07 -0400
+Message-ID: <CAHQdGtT3bh03QAWU2V3fTc1O-1+MKm-X5JEZhzHO_sAV=ABT_w@mail.gmail.com>
+Subject: Re: [PATCH] nfs:Fix deadlock occurrence issue on error path in the
+ function nfs_vm_page_mkwrite
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Nicholas Krause <xerofoify@gmail.com>
+Cc: Anna Schumaker <anna.schumaker@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
+On Sat, Aug 22, 2015 at 9:17 PM, Nicholas Krause <xerofoify@gmail.com> wrote:
+>
+> This fixes a possible deadlock occurrence issue on the error path
+> in the function nfs_vm_page_mkwrite for checking if the calls to
+> the functions nfs_flus_incompatible and nfs_updatepage have failed
+> by incorrectly not jumping to the correct goto label out_unlock
+> for unlocking the locked structure page pointer thus causing a
+> deadlock due to not correctly unlocking the internal structure
+> page pointer used by the function nfs_vm_page_mkwrite that had
+> been previously locked with the function lock_page. Further more
+> we also remove the goto label out as no error paths in this function
+> now use this label and this label should be removed to avoid build
+> warnings related to having a undefined label.
+>
+> Signed-off-by: Nicholas Krause <xerofoify@gmail.com>
+> ---
+>  fs/nfs/file.c | 3 +--
+>  1 file changed, 1 insertion(+), 2 deletions(-)
+>
+> diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+> index cc4fa1e..fe68ecc 100644
+> --- a/fs/nfs/file.c
+> +++ b/fs/nfs/file.c
+> @@ -629,12 +629,11 @@ static int nfs_vm_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
+>         ret = VM_FAULT_LOCKED;
+>         if (nfs_flush_incompatible(filp, page) == 0 &&
+>             nfs_updatepage(filp, page, 0, pagelen) == 0)
+> -               goto out;
+> +               goto out_unlock;
+>
+>         ret = VM_FAULT_SIGBUS;
+>  out_unlock:
+>         unlock_page(page);
+> -out:
+>         return ret;
+>  }
+>
+>
 
-we have a weired problem with Linux NFSv4.0 Server (Vanilla
-Kernel 4.1.6) and a Sun Solaris 10 client (all patches applied):
+That's the success path that you are modifying, not the error path.
+Furthermore, the return value is still VM_FAULT_LOCKED, which means
+the caller expects the page to be returned in the locked state.
 
-When mounting a share on the Solaris client and then rebooting
-the client without unmounting the share first, after the reboot
-every attempt to mount the share again gives an I/O error on
-the client and the mount fails.
+So NACK....
 
-After a long time (serveral hours) the v4 mount suddenly works
-again.
-
-Mounting a share with vers=2 works always even in times when
-the v4 mount fails.
-
-So it seems the Linux NFSv4 server holds a state for the client
-which prevents the re-mounting of the share and gives the
-I/O-error on the client.
-
-We use NFSv4 without idmapd.
-
-Is there any tip how to debug or solve this?
-
-Thank you and best regards
-
--Ulrich
-
--- 
-|-----------------------------------------------------------------------
-| Ulrich Gemkow
-| University of Stuttgart, Germany
-| Institute of Communication Networks and Computer Engineering (IKR)
-|-----------------------------------------------------------------------
+Trond
