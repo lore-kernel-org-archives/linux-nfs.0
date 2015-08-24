@@ -1,51 +1,42 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:45802 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753894AbbHXRvc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 24 Aug 2015 13:51:32 -0400
-Subject: Re: [PATCH] rpc.gssd: Replace exit(0) by return in
- process_krb5_upcall
-To: andros@netapp.com
-References: <1440014300-1502-1-git-send-email-andros@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-From: Steve Dickson <SteveD@redhat.com>
-Message-ID: <55DB59A2.6060209@RedHat.com>
-Date: Mon, 24 Aug 2015 13:51:30 -0400
+Received: from discipline.rit.edu ([129.21.6.207]:18451 "HELO
+	discipline.rit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1753993AbbHXTyU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Aug 2015 15:54:20 -0400
+From: Andrew W Elble <aweits@rit.edu>
+To: Jeff Layton <jlayton@poochiereds.net>
+Cc: <bfields@fieldses.org>, Anna Schumaker <Anna.Schumaker@netapp.com>,
+        <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v2 0/2] nfsd: fix unhashing races in nfsv4 stateid handling
+References: <1440434508-16046-1-git-send-email-jeff.layton@primarydata.com>
+Date: Mon, 24 Aug 2015 15:54:19 -0400
+In-Reply-To: <1440434508-16046-1-git-send-email-jeff.layton@primarydata.com>
+	(Jeff Layton's message of "Mon, 24 Aug 2015 12:41:46 -0400")
+Message-ID: <m2vbc47990.fsf@discipline.rit.edu>
 MIME-Version: 1.0
-In-Reply-To: <1440014300-1502-1-git-send-email-andros@netapp.com>
-Content-Type: text/plain; charset=windows-1252
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Jeff Layton <jlayton@poochiereds.net> writes:
 
+> v2:
+> - fix the fault injection code to handle the prototype change to
+>   unhash_lock_stateid
 
-On 08/19/2015 03:58 PM, andros@netapp.com wrote:
-> From: Andy Adamson <andros@netapp.com>
-> 
-> exit(0) silenty reaps the gssd_k5_kt_princ struct, the in-memory
-> rpc.gssd cache which means that rpc.gssd will get a new TGT and TGS for
-> each upcall, ignoring a valid TGT in the kerberos credential cache.
-> 
-> Signed-off-by: Andy Adamson <andros@netapp.com>
-Committed... 
+Jeff,
 
-steved.
+   We're running with this in place now. It definitely covers the same
+  bases my quick hack was covering, so I don't foresee any issues with
+  it - But I'll give a definitive answer tomorrow.
 
-> ---
->  utils/gssd/gssd_proc.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
-> index 03afc8b..3fc7bba 100644
-> --- a/utils/gssd/gssd_proc.c
-> +++ b/utils/gssd/gssd_proc.c
-> @@ -684,7 +684,7 @@ out:
->  		AUTH_DESTROY(auth);
->  	if (rpc_clnt)
->  		clnt_destroy(rpc_clnt);
-> -	exit(0);
-> +	return;
->  
->  out_return_error:
->  	do_error_downcall(fd, uid, downcall_err);
-> 
+Thanks,
+
+Andy
+
+-- 
+Andrew W. Elble
+aweits@discipline.rit.edu
+Infrastructure Engineer, Communications Technical Lead
+Rochester Institute of Technology
+PGP: BFAD 8461 4CCF DC95 DA2C B0EB 965B 082E 863E C912
