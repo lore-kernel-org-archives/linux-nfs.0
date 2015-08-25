@@ -1,67 +1,44 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:51960 "EHLO mx1.redhat.com"
+Received: from smtp-o-3.desy.de ([131.169.56.156]:47471 "EHLO smtp-o-3.desy.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754584AbbHYGFt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 25 Aug 2015 02:05:49 -0400
-From: Pratyush Anand <panand@redhat.com>
+	id S1751726AbbHYNMR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 25 Aug 2015 09:12:17 -0400
+Received: from smtp-map-3.desy.de (smtp-map-3.desy.de [131.169.56.68])
+	by smtp-o-3.desy.de (DESY-O-3) with ESMTP id 8F1732808DB
+	for <linux-nfs@vger.kernel.org>; Tue, 25 Aug 2015 15:12:15 +0200 (CEST)
+Received: from ZITSWEEP4.win.desy.de (zitsweep4.win.desy.de [131.169.97.98])
+	by smtp-map-3.desy.de (DESY_MAP_3) with ESMTP id 834B212BE
+	for <linux-nfs@vger.kernel.org>; Tue, 25 Aug 2015 15:12:15 +0200 (MEST)
+From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
 To: bfields@fieldses.org
-Cc: rostedt@goodmis.org, linux-nfs@vger.kernel.org,
-        Pratyush Anand <panand@redhat.com>, Ingo Molnar <mingo@redhat.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        Jeff Layton <jlayton@primarydata.com>,
-        linux-kernel@vger.kernel.org (open list),
-        Masami Hiramatsu <masami.hiramatsu.pt@hitachi.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: [PATCH 2/2] net: sunrpc: fix trace print of &xprt->xpt_remote
-Date: Tue, 25 Aug 2015 11:34:20 +0530
-Message-Id: <3e2f763f7701d7ff6915b52a3c80fd1f550ae951.1440482404.git.panand@redhat.com>
-In-Reply-To: <cover.1440482404.git.panand@redhat.com>
-References: <cover.1440482404.git.panand@redhat.com>
-In-Reply-To: <cover.1440482404.git.panand@redhat.com>
-References: <cover.1440482404.git.panand@redhat.com>
+Cc: linux-nfs@vger.kernel.org, Gil Amsalem <gil.amsalem@primarydata.com>,
+        Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+Subject: [PATCH] When trying to establish privileged source port number of tcp connection, use 1 instead of 0 as start port, as 0 means that the kernel will choose the port number
+Date: Tue, 25 Aug 2015 15:12:07 +0200
+Message-Id: <1440508327-6221-1-git-send-email-tigran.mkrtchyan@desy.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-TP_printk() for svc_xprt_dequeue intends to print address of
-xprt->xpt_remote, however it prints address of another structure where
-xprt->xpt_remote has been copied.
+From: Gil Amsalem <gil.amsalem@primarydata.com>
 
-This patch fixes the above behaviour.
-
-Signed-off-by: Pratyush Anand <panand@redhat.com>
+Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
 ---
- include/trace/events/sunrpc.h | 10 +++++-----
- 1 file changed, 5 insertions(+), 5 deletions(-)
+ rpc/rpc.py | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/include/trace/events/sunrpc.h b/include/trace/events/sunrpc.h
-index 937e482d80e9..37b6af1a911a 100644
---- a/include/trace/events/sunrpc.h
-+++ b/include/trace/events/sunrpc.h
-@@ -556,19 +556,19 @@ TRACE_EVENT(svc_xprt_dequeue,
+diff --git a/rpc/rpc.py b/rpc/rpc.py
+index 83a0222..1a3ca38 100644
+--- a/rpc/rpc.py
++++ b/rpc/rpc.py
+@@ -824,7 +824,7 @@ class ConnectionHandler(object):
+         defer.wait()
+         return pipe
  
- 	TP_STRUCT__entry(
- 		__field(struct svc_xprt *, xprt)
--		__field_struct(struct sockaddr_storage, ss)
-+		__field(struct sockaddr *, addr)
- 		__field(unsigned long, flags)
- 	),
- 
- 	TP_fast_assign(
--		__entry->xprt = xprt,
--		xprt ? memcpy(&__entry->ss, &xprt->xpt_remote, sizeof(__entry->ss)) : memset(&__entry->ss, 0, sizeof(__entry->ss));
-+		__entry->xprt = xprt;
-+		__entry->addr =
-+			xprt ? (struct sockaddr *)&xprt->xpt_remote : NULL;
- 		__entry->flags = xprt ? xprt->xpt_flags : 0;
- 	),
- 
- 	TP_printk("xprt=0x%p addr=%pIScp flags=%s", __entry->xprt,
--		(struct sockaddr *)&__entry->ss,
--		show_svc_xprt_flags(__entry->flags))
-+		__entry->addr, show_svc_xprt_flags(__entry->flags))
- );
- 
- TRACE_EVENT(svc_wake_up,
+-    def bindsocket(self, s, port=0):
++    def bindsocket(self, s, port=1):
+         """Scan up through ports, looking for one we can bind to"""
+         # This is necessary when we need to use a 'secure' port
+         using = port
 -- 
 2.4.3
 
