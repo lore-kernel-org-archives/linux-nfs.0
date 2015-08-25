@@ -1,15 +1,18 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f175.google.com ([209.85.213.175]:33365 "EHLO
-	mail-ig0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751738AbbHYQHe (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Aug 2015 12:07:34 -0400
-Received: by igfj19 with SMTP id j19so15310421igf.0
-        for <linux-nfs@vger.kernel.org>; Tue, 25 Aug 2015 09:07:34 -0700 (PDT)
+Received: from mail-io0-f181.google.com ([209.85.223.181]:32974 "EHLO
+	mail-io0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751562AbbHYQJF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Aug 2015 12:09:05 -0400
+Received: by iods203 with SMTP id s203so192374926iod.0
+        for <linux-nfs@vger.kernel.org>; Tue, 25 Aug 2015 09:09:04 -0700 (PDT)
 MIME-Version: 1.0
+In-Reply-To: <55DC924A.7050702@Netapp.com>
+References: <1440516829-116041-1-git-send-email-tao.peng@primarydata.com>
+ <1440516829-116041-5-git-send-email-tao.peng@primarydata.com> <55DC924A.7050702@Netapp.com>
 From: Peng Tao <tao.peng@primarydata.com>
-Date: Wed, 26 Aug 2015 00:07:14 +0800
-Message-ID: <CAKVebiUqZCuWyetzVKg4332EnayyM+jWKO+9dEj8m=23z_db=w@mail.gmail.com>
-Subject: Re: [PATCH RFC 00/11] NFS/NFSD: add NFSv42 CLONE operation support
+Date: Wed, 26 Aug 2015 00:08:44 +0800
+Message-ID: <CAKVebiW82MCd2C8repUXafZF1PJ6+1g9O=QR1eqvBL=R9PUeKw@mail.gmail.com>
+Subject: Re: [PATCH RFC 04/11] nfs42: remove unused declaration
 To: Anna Schumaker <Anna.Schumaker@netapp.com>
 Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
         Trond Myklebust <trond.myklebust@primarydata.com>,
@@ -21,96 +24,40 @@ Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Aug 26, 2015 at 12:01 AM, Anna Schumaker
+On Wed, Aug 26, 2015 at 12:05 AM, Anna Schumaker
 <Anna.Schumaker@netapp.com> wrote:
-> Hey Tao,
+> Hi Tao,
 >
-> On 08/25/2015 11:42 AM, Peng Tao wrote:
->> On Tue, Aug 25, 2015 at 11:33 PM, Peng Tao <tao.peng@primarydata.com> wrote:
->>> Hi all,
->>>
->>> This patchset adds NFSv42 COPY support to nfs and nfsd. As suggested by Christoph,
->>> it pulls btrfs BTRFS_IOC_CLONE/BTRFS_IOC_CLONE_RANGE ioctls to generic layer and
->>> adds a new file operation to call down to file systems. Then the CLONE ioctl
->>> is implemented for NFS and NFSD.
->>>
->>> I took a slightly different approach from Anna's NFS42 COPY implementation
->>> (http://www.spinics.net/lists/linux-nfs/msg53009.html) mainly because CLONE
->>> has different requirements than COPY. And the main differences between the two are:
->>> 1. well, CLONE is supported rather than COPY.
->>> 2. vfs_file_clone_range() does not expect file systems to do data copy, and thus
->>> no rw_verify_area() required.
->>> 3. clone does not expect partial success.
->>> 4. clone does not fall back to data copy if underlying storage does not support it.
->>> 5. no new system call required. We reuse existing BTRFS_IOC_CLONE/BTRFS_IOC_CLONE_RANGE
->>> and make it generic to all file systems.
->> I should have mentioned that this overlaps with Anna's COPY work.
->> We'll deal with the conflicts after figuring out what to do with both.
+> On 08/25/2015 11:33 AM, Peng Tao wrote:
+>> Reviewed-by: Christoph Hellwig <hch@lst.de>
+>> Signed-off-by: Peng Tao <tao.peng@primarydata.com>
+>> ---
+>>  fs/nfs/nfs42.h | 2 --
+>>  1 file changed, 2 deletions(-)
+>>
+>> diff --git a/fs/nfs/nfs42.h b/fs/nfs/nfs42.h
+>> index ff66ae7..814c125 100644
+>> --- a/fs/nfs/nfs42.h
+>> +++ b/fs/nfs/nfs42.h
+>> @@ -17,7 +17,5 @@ int nfs42_proc_deallocate(struct file *, loff_t, loff_t);
+>>  loff_t nfs42_proc_llseek(struct file *, loff_t, int);
+>>  int nfs42_proc_layoutstats_generic(struct nfs_server *,
+>>                                  struct nfs42_layoutstat_data *);
+>> -/* nfs4.2xdr.h */
+>> -extern struct rpc_procinfo nfs4_2_procedures[];
 >
-> Since we're both working on this at the same time, can you change the title of this patch series to "NFSv42 CLONE"?  I got confused when I saw these patches :)
+> Same thing here.  Maybe submit both patches together as a cleanup patch series?
 >
-oh, sorry my bad. I definitely was thinking about CLONE when typing
-COPY in the mail subject line... now fixed.
+Will do. Thanks!
 
-Thanks,
+Cheers,
 Tao
-
 > Thanks,
 > Anna
 >
 >>
->> Cheers,
->> Tao
+>>  #endif /* __LINUX_FS_NFS_NFS4_2_H */
 >>
->>>
->>> Cheers,
->>> Tao
->>>
->>> Anna Schumaker (2):
->>>   nfsd: Pass filehandle to nfs4_preprocess_stateid_op()
->>>   NFSD: Implement the CLONE call
->>>
->>> Peng Tao (9):
->>>   vfs: pull btrfs clone API to vfs layer
->>>   vfs/btrfs: add .clone_range file operation
->>>   nfs42: decode_layoutstats does not need res parameter
->>>   nfs42: remove unused declaration
->>>   nfs42: add CLONE xdr functions
->>>   nfs42: add CLONE proc functions
->>>   nfs42: add .copy_range file operation
->>>   nfs: get clone_blksize when probing fsinfo
->>>   nfs42: respect clone_blksize
->>>
->>>  fs/btrfs/ctree.h           |   2 +
->>>  fs/btrfs/file.c            |   1 +
->>>  fs/btrfs/ioctl.c           |  68 ++++--------------------------
->>>  fs/ioctl.c                 |  30 +++++++++++++
->>>  fs/nfs/client.c            |   1 +
->>>  fs/nfs/nfs42.h             |   3 +-
->>>  fs/nfs/nfs42proc.c         |  71 +++++++++++++++++++++++++++++++
->>>  fs/nfs/nfs42xdr.c          | 102 +++++++++++++++++++++++++++++++++++++++++++--
->>>  fs/nfs/nfs4file.c          |  58 ++++++++++++++++++++++++++
->>>  fs/nfs/nfs4proc.c          |   4 +-
->>>  fs/nfs/nfs4xdr.c           |  26 ++++++++++++
->>>  fs/nfsd/nfs4proc.c         |  91 ++++++++++++++++++++++++++++++++++++----
->>>  fs/nfsd/nfs4state.c        |   5 +--
->>>  fs/nfsd/nfs4xdr.c          |  21 ++++++++++
->>>  fs/nfsd/state.h            |   4 +-
->>>  fs/nfsd/vfs.c              |   7 ++++
->>>  fs/nfsd/vfs.h              |   1 +
->>>  fs/nfsd/xdr4.h             |  10 +++++
->>>  fs/read_write.c            |  45 ++++++++++++++++++++
->>>  include/linux/fs.h         |   4 ++
->>>  include/linux/nfs4.h       |   7 +++-
->>>  include/linux/nfs_fs_sb.h  |   2 +
->>>  include/linux/nfs_xdr.h    |  20 +++++++++
->>>  include/uapi/linux/btrfs.h |  10 -----
->>>  include/uapi/linux/fs.h    |   9 ++++
->>>  25 files changed, 510 insertions(+), 92 deletions(-)
->>>
->>> --
->>> 1.8.3.1
->>>
 >
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
