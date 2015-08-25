@@ -1,155 +1,139 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f180.google.com ([209.85.223.180]:33208 "EHLO
-	mail-io0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755448AbbHYXxv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Aug 2015 19:53:51 -0400
-Received: by iods203 with SMTP id s203so207097544iod.0
-        for <linux-nfs@vger.kernel.org>; Tue, 25 Aug 2015 16:53:50 -0700 (PDT)
+Received: from mail-io0-f179.google.com ([209.85.223.179]:35309 "EHLO
+	mail-io0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755474AbbHYXxw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Aug 2015 19:53:52 -0400
+Received: by iodt126 with SMTP id t126so207555268iod.2
+        for <linux-nfs@vger.kernel.org>; Tue, 25 Aug 2015 16:53:51 -0700 (PDT)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH 3/4] NFSv4.1/pnfs: Allow pNFS device drivers to customise layout segment insertion
-Date: Tue, 25 Aug 2015 19:53:45 -0400
-Message-Id: <1440546826-51922-3-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1440546826-51922-2-git-send-email-trond.myklebust@primarydata.com>
+Subject: [PATCH 4/4] NFSv4.1/flexfiles: Allow coalescing of new layout segments and existing ones
+Date: Tue, 25 Aug 2015 19:53:46 -0400
+Message-Id: <1440546826-51922-4-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1440546826-51922-3-git-send-email-trond.myklebust@primarydata.com>
 References: <1440546826-51922-1-git-send-email-trond.myklebust@primarydata.com>
  <1440546826-51922-2-git-send-email-trond.myklebust@primarydata.com>
+ <1440546826-51922-3-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is needed in order to allow merging of contiguous layout segments,
-and also to correct the ordering of layouts for those device drivers that
-don't necessarily want to place the read-write layouts first.
+In order to ensure atomicity of updates, we merge the old layout segments
+into the new ones, and then invalidate the old ones.
+
+Also ensure that we order the list of layout segments so that
+RO segments are preferred over RW.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/pnfs.c | 59 ++++++++++++++++++++++++++++++++++++++++++++++++++---------
- fs/nfs/pnfs.h | 11 +++++++++++
- 2 files changed, 61 insertions(+), 9 deletions(-)
+ fs/nfs/flexfilelayout/flexfilelayout.c | 60 ++++++++++++++++++++++++++++++++++
+ fs/nfs/pnfs.h                          | 16 +++++++++
+ 2 files changed, 76 insertions(+)
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 68cc4b169769..914c1daf08df 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1188,16 +1188,41 @@ pnfs_lseg_range_cmp(const struct pnfs_layout_range *l1,
- 	return (int)(l1->iomode == IOMODE_READ) - (int)(l2->iomode == IOMODE_READ);
+diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
+index 7fefa8ad9578..4ec624cfcf8b 100644
+--- a/fs/nfs/flexfilelayout/flexfilelayout.c
++++ b/fs/nfs/flexfilelayout/flexfilelayout.c
+@@ -265,6 +265,65 @@ static void _ff_layout_free_lseg(struct nfs4_ff_layout_segment *fls)
+ 	}
  }
  
--static void
--pnfs_layout_insert_lseg(struct pnfs_layout_hdr *lo,
--		   struct pnfs_layout_segment *lseg)
 +static bool
-+pnfs_lseg_range_is_after(const struct pnfs_layout_range *l1,
++ff_lseg_range_is_after(const struct pnfs_layout_range *l1,
 +		const struct pnfs_layout_range *l2)
 +{
-+	return pnfs_lseg_range_cmp(l1, l2) > 0;
++	u64 end1, end2;
++
++	if (l1->iomode != l2->iomode)
++		return l1->iomode != IOMODE_READ;
++	end1 = pnfs_calc_offset_end(l1->offset, l1->length);
++	end2 = pnfs_calc_offset_end(l2->offset, l2->length);
++	if (end1 < l2->offset)
++		return false;
++	if (end2 < l1->offset)
++		return true;
++	return l2->offset <= l1->offset;
 +}
 +
 +static bool
-+pnfs_lseg_no_merge(struct pnfs_layout_segment *lseg,
++ff_lseg_merge(struct pnfs_layout_segment *new,
 +		struct pnfs_layout_segment *old)
 +{
-+	return false;
-+}
++	u64 new_end, old_end;
 +
-+void
-+pnfs_generic_layout_insert_lseg(struct pnfs_layout_hdr *lo,
-+		   struct pnfs_layout_segment *lseg,
-+		   bool (*is_after)(const struct pnfs_layout_range *,
-+			   const struct pnfs_layout_range *),
-+		   bool (*do_merge)(struct pnfs_layout_segment *,
-+			   struct pnfs_layout_segment *),
-+		   struct list_head *free_me)
- {
--	struct pnfs_layout_segment *lp;
-+	struct pnfs_layout_segment *lp, *tmp;
- 
- 	dprintk("%s:Begin\n", __func__);
- 
--	list_for_each_entry(lp, &lo->plh_segs, pls_list) {
--		if (pnfs_lseg_range_cmp(&lseg->pls_range, &lp->pls_range) > 0)
-+	list_for_each_entry_safe(lp, tmp, &lo->plh_segs, pls_list) {
-+		if (test_bit(NFS_LSEG_VALID, &lp->pls_flags) == 0)
-+			continue;
-+		if (do_merge(lseg, lp)) {
-+			mark_lseg_invalid(lp, free_me);
-+			continue;
-+		}
-+		if (is_after(&lseg->pls_range, &lp->pls_range))
- 			continue;
- 		list_add_tail(&lseg->pls_list, &lp->pls_list);
- 		dprintk("%s: inserted lseg %p "
-@@ -1219,6 +1244,24 @@ out:
- 
- 	dprintk("%s:Return\n", __func__);
- }
-+EXPORT_SYMBOL_GPL(pnfs_generic_layout_insert_lseg);
++	if (new->pls_range.iomode != old->pls_range.iomode)
++		return false;
++	old_end = pnfs_calc_offset_end(old->pls_range.offset,
++			old->pls_range.length);
++	if (old_end < new->pls_range.offset)
++		return false;
++	new_end = pnfs_calc_offset_end(new->pls_range.offset,
++			new->pls_range.length);
++	if (new_end < old->pls_range.offset)
++		return false;
++
++	/* Mergeable: copy info from 'old' to 'new' */
++	if (new_end < old_end)
++		new_end = old_end;
++	if (new->pls_range.offset < old->pls_range.offset)
++		new->pls_range.offset = old->pls_range.offset;
++	new->pls_range.length = pnfs_calc_offset_length(new->pls_range.offset,
++			new_end);
++	if (test_bit(NFS_LSEG_ROC, &old->pls_flags))
++		set_bit(NFS_LSEG_ROC, &new->pls_flags);
++	if (test_bit(NFS_LSEG_LAYOUTRETURN, &old->pls_flags))
++		set_bit(NFS_LSEG_LAYOUTRETURN, &new->pls_flags);
++	return true;
++}
 +
 +static void
-+pnfs_layout_insert_lseg(struct pnfs_layout_hdr *lo,
-+		   struct pnfs_layout_segment *lseg,
-+		   struct list_head *free_me)
++ff_layout_add_lseg(struct pnfs_layout_hdr *lo,
++		struct pnfs_layout_segment *lseg,
++		struct list_head *free_me)
 +{
-+	struct inode *inode = lo->plh_inode;
-+	struct pnfs_layoutdriver_type *ld = NFS_SERVER(inode)->pnfs_curr_ld;
-+
-+	if (ld->add_lseg != NULL)
-+		ld->add_lseg(lo, lseg, free_me);
-+	else
-+		pnfs_generic_layout_insert_lseg(lo, lseg,
-+				pnfs_lseg_range_is_after,
-+				pnfs_lseg_no_merge,
-+				free_me);
++	pnfs_generic_layout_insert_lseg(lo, lseg,
++			ff_lseg_range_is_after,
++			ff_lseg_merge,
++			free_me);
 +}
- 
- static struct pnfs_layout_hdr *
- alloc_init_layout_hdr(struct inode *ino,
-@@ -1311,8 +1354,6 @@ pnfs_find_lseg(struct pnfs_layout_hdr *lo,
- 			ret = pnfs_get_lseg(lseg);
- 			break;
- 		}
--		if (lseg->pls_range.offset > range->offset)
--			break;
- 	}
- 
- 	dprintk("%s:Return lseg %p ref %d\n",
-@@ -1637,7 +1678,7 @@ pnfs_layout_process(struct nfs4_layoutget *lgp)
- 	clear_bit(NFS_LAYOUT_INVALID_STID, &lo->plh_flags);
- 
- 	pnfs_get_lseg(lseg);
--	pnfs_layout_insert_lseg(lo, lseg);
-+	pnfs_layout_insert_lseg(lo, lseg, &free_me);
- 
- 	if (res->return_on_close)
- 		set_bit(NFS_LSEG_ROC, &lseg->pls_flags);
++
+ static void ff_layout_sort_mirrors(struct nfs4_ff_layout_segment *fls)
+ {
+ 	int i, j;
+@@ -2046,6 +2105,7 @@ static struct pnfs_layoutdriver_type flexfilelayout_type = {
+ 	.free_layout_hdr	= ff_layout_free_layout_hdr,
+ 	.alloc_lseg		= ff_layout_alloc_lseg,
+ 	.free_lseg		= ff_layout_free_lseg,
++	.add_lseg		= ff_layout_add_lseg,
+ 	.pg_read_ops		= &ff_layout_pg_read_ops,
+ 	.pg_write_ops		= &ff_layout_pg_write_ops,
+ 	.get_ds_info		= ff_layout_get_ds_info,
 diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 4df87ef3dccc..869069d8b996 100644
+index 869069d8b996..78c9351ff117 100644
 --- a/fs/nfs/pnfs.h
 +++ b/fs/nfs/pnfs.h
-@@ -128,6 +128,9 @@ struct pnfs_layoutdriver_type {
+@@ -539,6 +539,22 @@ pnfs_use_threshold(struct nfs4_threshold **dst, struct nfs4_threshold *src,
+ 					nfss->pnfs_curr_ld->id == src->l_type);
+ }
  
- 	struct pnfs_layout_segment * (*alloc_lseg) (struct pnfs_layout_hdr *layoutid, struct nfs4_layoutget_res *lgr, gfp_t gfp_flags);
- 	void (*free_lseg) (struct pnfs_layout_segment *lseg);
-+	void (*add_lseg) (struct pnfs_layout_hdr *layoutid,
-+			struct pnfs_layout_segment *lseg,
-+			struct list_head *free_me);
- 
- 	void (*return_range) (struct pnfs_layout_hdr *lo,
- 			      struct pnfs_layout_range *range);
-@@ -285,6 +288,14 @@ struct pnfs_layout_segment *pnfs_update_layout(struct inode *ino,
- 					       gfp_t gfp_flags);
- void pnfs_clear_layoutreturn_waitbit(struct pnfs_layout_hdr *lo);
- 
-+void pnfs_generic_layout_insert_lseg(struct pnfs_layout_hdr *lo,
-+		   struct pnfs_layout_segment *lseg,
-+		   bool (*is_after)(const struct pnfs_layout_range *lseg_range,
-+			   const struct pnfs_layout_range *old),
-+		   bool (*do_merge)(struct pnfs_layout_segment *lseg,
-+			   struct pnfs_layout_segment *old),
-+		   struct list_head *free_me);
++static inline u64
++pnfs_calc_offset_end(u64 offset, u64 len)
++{
++	if (len == NFS4_MAX_UINT64 || len >= NFS4_MAX_UINT64 - offset)
++		return NFS4_MAX_UINT64;
++	return offset + len - 1;
++}
 +
- void nfs4_deviceid_mark_client_invalid(struct nfs_client *clp);
- int pnfs_read_done_resend_to_mds(struct nfs_pgio_header *);
- int pnfs_write_done_resend_to_mds(struct nfs_pgio_header *);
++static inline u64
++pnfs_calc_offset_length(u64 offset, u64 end)
++{
++	if (end == NFS4_MAX_UINT64 || end <= offset)
++		return NFS4_MAX_UINT64;
++	return 1 + end - offset;
++}
++
+ extern unsigned int layoutstats_timer;
+ 
+ #ifdef NFS_DEBUG
 -- 
 2.4.3
 
