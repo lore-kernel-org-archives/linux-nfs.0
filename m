@@ -1,83 +1,87 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp4-g21.free.fr ([212.27.42.4]:50978 "EHLO smtp4-g21.free.fr"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751467AbbHYPQR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 25 Aug 2015 11:16:17 -0400
-Date: Tue, 25 Aug 2015 17:16:14 +0200
-From: Guillaume Morin <guillaume@morinfr.org>
-To: Chuck Lever <chucklever@gmail.com>,
-        Guillaume Morin <guillaume@morinfr.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Chris Mason <clm@fb.com>
-Subject: Re: [BUG] nfs3 client stops retrying to connect
-Message-ID: <20150825151614.GA31127@bender.morinfr.org>
-References: <20150521012155.GA19680@bender.morinfr.org>
- <DAF3CB64-5777-4F74-A31E-4F3FE55D14AD@gmail.com>
- <20150604200621.GA10335@bender.morinfr.org>
- <1E6DAEB8-754B-4F88-8301-4A1A9134922A@gmail.com>
- <20150604221404.GA20363@bender.morinfr.org>
- <22109174-5489-46AB-8C0A-62840D63DC97@gmail.com>
- <20150608171006.GA13396@bender.morinfr.org>
- <21A8A567-1EB4-4E3A-8DB8-BD07212044D0@gmail.com>
- <20150608181210.GA18244@bender.morinfr.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20150608181210.GA18244@bender.morinfr.org>
+Received: from mail-pa0-f43.google.com ([209.85.220.43]:35468 "EHLO
+	mail-pa0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751924AbbHYPew (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Aug 2015 11:34:52 -0400
+Received: by pacdd16 with SMTP id dd16so127511040pac.2
+        for <linux-nfs@vger.kernel.org>; Tue, 25 Aug 2015 08:34:52 -0700 (PDT)
+From: Peng Tao <tao.peng@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Christoph Hellwig <hch@infradead.org>, Zach Brown <zab@zabbo.net>,
+        Darren Hart <dvhart@linux.intel.com>, bfields@fieldses.org,
+        Jeff Layton <jeff.layton@primarydata.com>,
+        Peng Tao <tao.peng@primarydata.com>
+Subject: [PATCH RFC 00/11] NFS/NFSD: add NFSv42 COPY operation support
+Date: Tue, 25 Aug 2015 23:33:38 +0800
+Message-Id: <1440516829-116041-1-git-send-email-tao.peng@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 08 Jun 20:12, Guillaume Morin wrote:
->
-> On 08 Jun 13:50, Chuck Lever wrote:
-> > The linger timer is started by FIN_WAIT1 or LAST_ACK, and
-> > xs_tcp_schedule_linger_timeout sets XPRT_CONNECTING and
-> > XPRT_CONNECTION_ABORT.
-> > 
-> > At a guess there could be a race between xs_tcp_cancel_linger_timeout
-> > and the connect worker clearing those flags.
-> 
-> The connect worker is xs_tcp_setup_socket().  It clears the connecting
-> bit in all code paths.  So the only kind of race I can see here is
-> another function cancelling it before it runs without clearing the bit.
-> 
-> xs_tcp_cancel_linger_timeout() does the right thing afaict.  It clears
-> the bit if cancel_delayed_work() returns a non-zero value.
-> 
-> The only other place where the worker is cancelled is xs_close() but it
-> does not clear the bit. So if it cancels the worker before it had
-> started running, the bit will stay up.
+Hi all,
 
-FWIW I patched our production kernel a couple months ago to clear the
-connecting bit in xs_close(). Since then we've had a few nfs server
-downtime and the problem has never reoccured while before the change we
-always had a few machines that could not reconnect.  I feel fairly
-confident this was the bug.
+This patchset adds NFSv42 COPY support to nfs and nfsd. As suggested by Christoph,
+it pulls btrfs BTRFS_IOC_CLONE/BTRFS_IOC_CLONE_RANGE ioctls to generic layer and
+adds a new file operation to call down to file systems. Then the CLONE ioctl
+is implemented for NFS and NFSD.
 
-I am posting the change in case it helps someone running one of the
-stable kernels
+I took a slightly different approach from Anna's NFS42 COPY implementation
+(http://www.spinics.net/lists/linux-nfs/msg53009.html) mainly because CLONE
+has different requirements than COPY. And the main differences between the two are:
+1. well, CLONE is supported rather than COPY.
+2. vfs_file_clone_range() does not expect file systems to do data copy, and thus
+no rw_verify_area() required.
+3. clone does not expect partial success.
+4. clone does not fall back to data copy if underlying storage does not support it.
+5. no new system call required. We reuse existing BTRFS_IOC_CLONE/BTRFS_IOC_CLONE_RANGE
+and make it generic to all file systems.
 
-    sunrpc: call xprt_clear_connecting in xs_close
-    
-    It closes the race where the CONNECTING bit in the xprt
-    is left on while the kernel is not trying to connect
+Cheers,
+Tao
 
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 41c2f9d..1b71c59 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -891,6 +891,7 @@ static void xs_close(struct rpc_xprt *xprt)
- 	dprintk("RPC:       xs_close xprt %p\n", xprt);
- 
- 	cancel_delayed_work_sync(&transport->connect_worker);
-+	xprt_clear_connecting(xprt);
- 
- 	xs_reset_transport(transport);
- 	xprt->reestablish_timeout = 0;
+Anna Schumaker (2):
+  nfsd: Pass filehandle to nfs4_preprocess_stateid_op()
+  NFSD: Implement the CLONE call
 
+Peng Tao (9):
+  vfs: pull btrfs clone API to vfs layer
+  vfs/btrfs: add .clone_range file operation
+  nfs42: decode_layoutstats does not need res parameter
+  nfs42: remove unused declaration
+  nfs42: add CLONE xdr functions
+  nfs42: add CLONE proc functions
+  nfs42: add .copy_range file operation
+  nfs: get clone_blksize when probing fsinfo
+  nfs42: respect clone_blksize
 
-Another option would be is to call clear_bit a few lines later but
-clear_bit is never used for CONNECTING so I went with this.
+ fs/btrfs/ctree.h           |   2 +
+ fs/btrfs/file.c            |   1 +
+ fs/btrfs/ioctl.c           |  68 ++++--------------------------
+ fs/ioctl.c                 |  30 +++++++++++++
+ fs/nfs/client.c            |   1 +
+ fs/nfs/nfs42.h             |   3 +-
+ fs/nfs/nfs42proc.c         |  71 +++++++++++++++++++++++++++++++
+ fs/nfs/nfs42xdr.c          | 102 +++++++++++++++++++++++++++++++++++++++++++--
+ fs/nfs/nfs4file.c          |  58 ++++++++++++++++++++++++++
+ fs/nfs/nfs4proc.c          |   4 +-
+ fs/nfs/nfs4xdr.c           |  26 ++++++++++++
+ fs/nfsd/nfs4proc.c         |  91 ++++++++++++++++++++++++++++++++++++----
+ fs/nfsd/nfs4state.c        |   5 +--
+ fs/nfsd/nfs4xdr.c          |  21 ++++++++++
+ fs/nfsd/state.h            |   4 +-
+ fs/nfsd/vfs.c              |   7 ++++
+ fs/nfsd/vfs.h              |   1 +
+ fs/nfsd/xdr4.h             |  10 +++++
+ fs/read_write.c            |  45 ++++++++++++++++++++
+ include/linux/fs.h         |   4 ++
+ include/linux/nfs4.h       |   7 +++-
+ include/linux/nfs_fs_sb.h  |   2 +
+ include/linux/nfs_xdr.h    |  20 +++++++++
+ include/uapi/linux/btrfs.h |  10 -----
+ include/uapi/linux/fs.h    |   9 ++++
+ 25 files changed, 510 insertions(+), 92 deletions(-)
 
 -- 
-Guillaume Morin <guillaume@morinfr.org>
+1.8.3.1
+
