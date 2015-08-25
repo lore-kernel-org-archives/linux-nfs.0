@@ -1,9 +1,9 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:46589 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:46597 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755766AbbHYWJU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 25 Aug 2015 18:09:20 -0400
-Date: Tue, 25 Aug 2015 18:09:19 -0400
+	id S1751315AbbHYWLV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 25 Aug 2015 18:11:21 -0400
+Date: Tue, 25 Aug 2015 18:11:21 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
 To: Peng Tao <tao.peng@primarydata.com>
 Cc: linux-nfs@vger.kernel.org,
@@ -14,7 +14,7 @@ Cc: linux-nfs@vger.kernel.org,
         Jeff Layton <jeff.layton@primarydata.com>,
         Anna Schumaker <bjschuma@netapp.com>, Christoph Hellwig <hch@lst.de>
 Subject: Re: [PATCH RFC 11/11] NFSD: Implement the CLONE call
-Message-ID: <20150825220919.GG8579@fieldses.org>
+Message-ID: <20150825221121.GH8579@fieldses.org>
 References: <1440516829-116041-1-git-send-email-tao.peng@primarydata.com>
  <1440516829-116041-12-git-send-email-tao.peng@primarydata.com>
 MIME-Version: 1.0
@@ -67,13 +67,6 @@ On Tue, Aug 25, 2015 at 11:33:49PM +0800, Peng Tao wrote:
 > +	status = nfs4_preprocess_stateid_op(rqstp, cstate, &cstate->current_fh,
 > +					    &clone->cl_dst_stateid, WR_STATE,
 > +					    dst, NULL);
-
-I think this is the first case where we have to verify two stateid's....
-But, OK, I think this works, and you're correct that putting the
-file is all that should be needed.
-
---b.
-
 > +	if (status) {
 > +		dprintk("NFSD: %s: couldn't process dst stateid!\n", __func__);
 > +		fput(*src);
@@ -123,6 +116,13 @@ file is all that should be needed.
 > +		status = nfserrno(ret);
 > +	else
 > +		status = nfs_ok;
+
+Can ret be positive, then?  If so are we discarding some information?
+(E.g. can clone_range return a success having cloned only part of the
+range?)
+
+--b.
+
 > +
 > +	fput(src);
 > +	fput(dst);
