@@ -1,72 +1,36 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:42381 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751210AbbHYSzK convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Aug 2015 14:55:10 -0400
+Received: from fieldses.org ([173.255.197.46]:46494 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751400AbbHYTR4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 25 Aug 2015 15:17:56 -0400
+Date: Tue, 25 Aug 2015 15:17:55 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Andrew W Elble <aweits@rit.edu>
+Cc: Jeff Layton <jlayton@poochiereds.net>,
+        Anna Schumaker <Anna.Schumaker@netapp.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2 0/2] nfsd: fix unhashing races in nfsv4 stateid
+ handling
+Message-ID: <20150825191755.GA8579@fieldses.org>
+References: <1440434508-16046-1-git-send-email-jeff.layton@primarydata.com>
+ <m2vbc47990.fsf@discipline.rit.edu>
+ <m2fv3743sb.fsf@discipline.rit.edu>
+MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
-Subject: Re: [PATCH] NFSv4: Force a post-op attribute update when holding a delegation
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <CAHQdGtRXc-ZcULrkzB3SWefEtFCXsfoV13yiUDp7pnDSnwVHKA@mail.gmail.com>
-Date: Tue, 25 Aug 2015 14:55:05 -0400
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <75349B18-11A8-4292-BA21-8AD57905DA6E@oracle.com>
-References: <1440122378-30452-1-git-send-email-trond.myklebust@primarydata.com> <0BEC962F-39D5-410E-9B75-ED9EE98FFC56@oracle.com> <CAHQdGtRsWchQG9ct-Prxy7-PZyw8-jRC6f8fMJvkzxpd58WWpA@mail.gmail.com> <8C420AF0-BD66-4FFD-B3FF-660A264A03B0@oracle.com> <CAHQdGtSUazMz3P4c5SEaQV7bsg_DQnFU+FVbwF8vOP30JG8Nbw@mail.gmail.com> <BA97AFA6-F2ED-4A35-8A28-CC9378CA6B03@oracle.com> <CAHQdGtRXc-ZcULrkzB3SWefEtFCXsfoV13yiUDp7pnDSnwVHKA@mail.gmail.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
+In-Reply-To: <m2fv3743sb.fsf@discipline.rit.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Aug 25, 2015, at 2:53 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
-
-> On Tue, Aug 25, 2015 at 2:46 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
->> 
->> On Aug 25, 2015, at 2:41 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
->> 
->>> On Tue, Aug 25, 2015 at 2:18 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
->>>> 
->>>> On Aug 25, 2015, at 1:04 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
->>>> 
->>>>> On Tue, Aug 25, 2015 at 12:31 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
->>>>>> 
->>>>>> On Aug 20, 2015, at 9:59 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
->>>>>> 
->>>>>>> If the ctime or mtime or change attribute have changed because
->>>>>>> of an operation we initiated, we should make sure that we force
->>>>>>> an attribute update. However we do not want to mark the page cache
->>>>>>> for revalidation.
->>>>>> 
->>>>>> I've tested your linux-next branch (tip is aebbe9d73169
->>>>>> ("NFS41/flexfiles: zero out DS write wcc") against Solaris 12
->>>>>> with write delegation enabled (over RDMA, even!).
->>>>>> 
->>>>>> I was not able to reproduce the write append failures I saw
->>>>>> before.
->>>>>> 
->>>>> 
->>>>> Perfect. Thanks for testing!
->>>> 
->>>> Would it be possible to label some of these for stable?
->>>> 
->>> 
->>> I think this one is the only one that is missing such a label. I've
->>> reworded the commit message and pushed out a revised patch.
->> 
->> Not related to the write append problem, but I've also seen
->> missing opens on delegated files during reboot recovery in
->> 4.0 kernels. Olga reported it before I got to it.
->> 
->> Is that one also appropriate for stable?
->> 
+On Tue, Aug 25, 2015 at 02:32:52PM -0400, Andrew W Elble wrote:
+> >> v2:
+> >> - fix the fault injection code to handle the prototype change to
+> >>   unhash_lock_stateid
+> >
+> > Jeff,
+> >
+> >    We're running with this in place now. It definitely covers the same
+> >   bases my quick hack was covering, so I don't foresee any issues with
+> >   it - But I'll give a definitive answer tomorrow.
 > 
-> I 've queued the revert of the patch that broke things for stable, but
-> I didn't want to queue the new attempt at ensuring that we cache opens
-> during a reboot reclaim...
+> It's good, no server crashes or memory corruption.
 
-Understood, thank you!
-
---
-Chuck Lever
-
-
-
+Thanks!--b.
