@@ -1,10 +1,10 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pa0-f43.google.com ([209.85.220.43]:34471 "EHLO
-	mail-pa0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751924AbbHYPfW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Aug 2015 11:35:22 -0400
-Received: by pabzx8 with SMTP id zx8so36950909pab.1
-        for <linux-nfs@vger.kernel.org>; Tue, 25 Aug 2015 08:35:22 -0700 (PDT)
+Received: from mail-pa0-f47.google.com ([209.85.220.47]:33352 "EHLO
+	mail-pa0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932416AbbHYPfc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Aug 2015 11:35:32 -0400
+Received: by pacti10 with SMTP id ti10so54532074pac.0
+        for <linux-nfs@vger.kernel.org>; Tue, 25 Aug 2015 08:35:31 -0700 (PDT)
 From: Peng Tao <tao.peng@primarydata.com>
 To: linux-nfs@vger.kernel.org
 Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
@@ -13,137 +13,129 @@ Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
         Darren Hart <dvhart@linux.intel.com>, bfields@fieldses.org,
         Jeff Layton <jeff.layton@primarydata.com>,
         Peng Tao <tao.peng@primarydata.com>
-Subject: [PATCH RFC 06/11] nfs42: add CLONE proc functions
-Date: Tue, 25 Aug 2015 23:33:44 +0800
-Message-Id: <1440516829-116041-7-git-send-email-tao.peng@primarydata.com>
+Subject: [PATCH RFC 08/11] nfs: get clone_blksize when probing fsinfo
+Date: Tue, 25 Aug 2015 23:33:46 +0800
+Message-Id: <1440516829-116041-9-git-send-email-tao.peng@primarydata.com>
 In-Reply-To: <1440516829-116041-1-git-send-email-tao.peng@primarydata.com>
 References: <1440516829-116041-1-git-send-email-tao.peng@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+NFSv42 CLONE operation is supposed to respect it.
+
 Signed-off-by: Peng Tao <tao.peng@primarydata.com>
 ---
- fs/nfs/nfs42.h            |  1 +
- fs/nfs/nfs42proc.c        | 71 +++++++++++++++++++++++++++++++++++++++++++++++
- fs/nfs/nfs4proc.c         |  3 +-
+ fs/nfs/client.c           |  1 +
+ fs/nfs/nfs4proc.c         |  1 +
+ fs/nfs/nfs4xdr.c          | 25 +++++++++++++++++++++++++
+ include/linux/nfs4.h      |  1 +
  include/linux/nfs_fs_sb.h |  1 +
- 4 files changed, 75 insertions(+), 1 deletion(-)
+ include/linux/nfs_xdr.h   |  1 +
+ 6 files changed, 30 insertions(+)
 
-diff --git a/fs/nfs/nfs42.h b/fs/nfs/nfs42.h
-index 814c125..b587ccd 100644
---- a/fs/nfs/nfs42.h
-+++ b/fs/nfs/nfs42.h
-@@ -17,5 +17,6 @@ int nfs42_proc_deallocate(struct file *, loff_t, loff_t);
- loff_t nfs42_proc_llseek(struct file *, loff_t, int);
- int nfs42_proc_layoutstats_generic(struct nfs_server *,
- 				   struct nfs42_layoutstat_data *);
-+int nfs42_proc_clone(struct file *, struct file *, loff_t, loff_t, loff_t);
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 57c5a02..d6d5d2a 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -764,6 +764,7 @@ static void nfs_server_set_fsinfo(struct nfs_server *server,
  
- #endif /* __LINUX_FS_NFS_NFS4_2_H */
-diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
-index d731bbf..baa3141 100644
---- a/fs/nfs/nfs42proc.c
-+++ b/fs/nfs/nfs42proc.c
-@@ -269,3 +269,74 @@ int nfs42_proc_layoutstats_generic(struct nfs_server *server,
- 		return PTR_ERR(task);
- 	return 0;
+ 	server->time_delta = fsinfo->time_delta;
+ 
++	server->clone_blksize = fsinfo->clone_blksize;
+ 	/* We're airborne Set socket buffersize */
+ 	rpc_setbufsize(server->client, server->wsize + 100, server->rsize + 100);
  }
-+
-+static int _nfs42_proc_clone(struct rpc_message *msg, struct file *src_f,
-+			     struct file *dst_f, loff_t src_offset,
-+			     loff_t dst_offset, loff_t count)
-+{
-+	struct inode *src_inode = file_inode(src_f);
-+	struct inode *dst_inode = file_inode(dst_f);
-+	struct nfs_server *server = NFS_SERVER(dst_inode);
-+	struct nfs42_clone_args args = {
-+		.src_fh = NFS_FH(src_inode),
-+		.dst_fh = NFS_FH(dst_inode),
-+		.src_offset = src_offset,
-+		.dst_offset = dst_offset,
-+		.dst_bitmask = server->cache_consistency_bitmask,
-+	};
-+	struct nfs42_clone_res res = {
-+		.server	= server,
-+	};
-+	int status;
-+
-+	msg->rpc_argp = &args;
-+	msg->rpc_resp = &res;
-+
-+	status = nfs42_set_rw_stateid(&args.src_stateid, src_f, FMODE_READ);
-+	if (status)
-+		return status;
-+
-+	status = nfs42_set_rw_stateid(&args.dst_stateid, dst_f, FMODE_WRITE);
-+	if (status)
-+		return status;
-+
-+	res.dst_fattr = nfs_alloc_fattr();
-+	if (!res.dst_fattr)
-+		return -ENOMEM;
-+
-+	status = nfs4_call_sync(server->client, server, msg,
-+				&args.seq_args, &res.seq_res, 0);
-+	if (status == 0)
-+		status = nfs_post_op_update_inode(dst_inode, res.dst_fattr);
-+
-+	kfree(res.dst_fattr);
-+	return status;
-+}
-+
-+int nfs42_proc_clone(struct file *src_f, struct file *dst_f,
-+		     loff_t src_offset, loff_t dst_offset, loff_t count)
-+{
-+	struct rpc_message msg = {
-+		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_CLONE],
-+	};
-+	struct inode *inode = file_inode(src_f);
-+	struct nfs_server *server = NFS_SERVER(file_inode(src_f));
-+	struct nfs4_exception exception = { };
-+	int err;
-+
-+	if (!nfs_server_capable(inode, NFS_CAP_CLONE))
-+		return -EOPNOTSUPP;
-+
-+	do {
-+		err = _nfs42_proc_clone(&msg, src_f, dst_f, src_offset,
-+					dst_offset, count);
-+		if (err == -ENOTSUPP || err == -EOPNOTSUPP) {
-+			NFS_SERVER(inode)->caps &= ~NFS_CAP_CLONE;
-+			return -EOPNOTSUPP;
-+		}
-+		err = nfs4_handle_exception(server, err, &exception);
-+	} while (exception.retry);
-+
-+	return err;
-+
-+}
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 6e988fd..fb51b75 100644
+index fb51b75..ecf792c 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -8659,7 +8659,8 @@ static const struct nfs4_minor_version_ops nfs_v4_2_minor_ops = {
- 		| NFS_CAP_ALLOCATE
- 		| NFS_CAP_DEALLOCATE
- 		| NFS_CAP_SEEK
--		| NFS_CAP_LAYOUTSTATS,
-+		| NFS_CAP_LAYOUTSTATS
-+		| NFS_CAP_CLONE,
- 	.init_client = nfs41_init_client,
- 	.shutdown_client = nfs41_shutdown_client,
- 	.match_stateid = nfs41_match_stateid,
+@@ -239,6 +239,7 @@ const u32 nfs4_fsinfo_bitmap[3] = { FATTR4_WORD0_MAXFILESIZE
+ 			FATTR4_WORD1_TIME_DELTA
+ 			| FATTR4_WORD1_FS_LAYOUT_TYPES,
+ 			FATTR4_WORD2_LAYOUT_BLKSIZE
++			| FATTR4_WORD2_CLONE_BLKSIZE
+ };
+ 
+ const u32 nfs4_fs_locations_bitmap[3] = {
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index a453bd1..f0dce533 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -4737,6 +4737,28 @@ static int decode_attr_layout_blksize(struct xdr_stream *xdr, uint32_t *bitmap,
+ 	return 0;
+ }
+ 
++/*
++ * The granularity of a CLONE operation.
++ */
++static int decode_attr_clone_blksize(struct xdr_stream *xdr, uint32_t *bitmap,
++				     uint32_t *res)
++{
++	__be32 *p;
++
++	dprintk("%s: bitmap is %x\n", __func__, bitmap[2]);
++	*res = 0;
++	if (bitmap[2] & FATTR4_WORD2_CLONE_BLKSIZE) {
++		p = xdr_inline_decode(xdr, 4);
++		if (unlikely(!p)) {
++			print_overflow_msg(__func__, xdr);
++			return -EIO;
++		}
++		*res = be32_to_cpup(p);
++		bitmap[2] &= ~FATTR4_WORD2_CLONE_BLKSIZE;
++	}
++	return 0;
++}
++
+ static int decode_fsinfo(struct xdr_stream *xdr, struct nfs_fsinfo *fsinfo)
+ {
+ 	unsigned int savep;
+@@ -4771,6 +4793,9 @@ static int decode_fsinfo(struct xdr_stream *xdr, struct nfs_fsinfo *fsinfo)
+ 	status = decode_attr_layout_blksize(xdr, bitmap, &fsinfo->blksize);
+ 	if (status)
+ 		goto xdr_error;
++	status = decode_attr_clone_blksize(xdr, bitmap, &fsinfo->clone_blksize);
++	if (status)
++		goto xdr_error;
+ 
+ 	status = verify_attr_len(xdr, savep, attrlen);
+ xdr_error:
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index c0c695b..e7e7853 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -422,6 +422,7 @@ enum lock_type4 {
+ #define FATTR4_WORD2_LAYOUT_TYPES       (1UL << 0)
+ #define FATTR4_WORD2_LAYOUT_BLKSIZE     (1UL << 1)
+ #define FATTR4_WORD2_MDSTHRESHOLD       (1UL << 4)
++#define FATTR4_WORD2_CLONE_BLKSIZE	(1UL << 13)
+ #define FATTR4_WORD2_SECURITY_LABEL     (1UL << 16)
+ 
+ /* MDS threshold bitmap bits */
 diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 20bc8e5..2fb163a 100644
+index 2fb163a..db00311 100644
 --- a/include/linux/nfs_fs_sb.h
 +++ b/include/linux/nfs_fs_sb.h
-@@ -238,5 +238,6 @@ struct nfs_server {
- #define NFS_CAP_ALLOCATE	(1U << 20)
- #define NFS_CAP_DEALLOCATE	(1U << 21)
- #define NFS_CAP_LAYOUTSTATS	(1U << 22)
-+#define NFS_CAP_CLONE		(1U << 23)
+@@ -147,6 +147,7 @@ struct nfs_server {
+ 	unsigned int		acdirmax;
+ 	unsigned int		namelen;
+ 	unsigned int		options;	/* extra options enabled by mount */
++	unsigned int		clone_blksize;	/* granularity of a CLONE operation */
+ #define NFS_OPTION_FSCACHE	0x00000001	/* - local caching enabled */
+ #define NFS_OPTION_MIGRATION	0x00000002	/* - NFSv4 migration enabled */
  
- #endif
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 79918d6..e89dafd 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -141,6 +141,7 @@ struct nfs_fsinfo {
+ 	__u32			lease_time; /* in seconds */
+ 	__u32			layouttype; /* supported pnfs layout driver */
+ 	__u32			blksize; /* preferred pnfs io block size */
++	__u32			clone_blksize; /* granularity of a CLONE operation */
+ };
+ 
+ struct nfs_fsstat {
 -- 
 1.8.3.1
 
