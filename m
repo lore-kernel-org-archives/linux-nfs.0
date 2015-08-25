@@ -1,43 +1,51 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from discipline.rit.edu ([129.21.6.207]:57164 "HELO
-	discipline.rit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1755799AbbHYScx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Aug 2015 14:32:53 -0400
-From: Andrew W Elble <aweits@rit.edu>
-To: Jeff Layton <jlayton@poochiereds.net>
-Cc: <bfields@fieldses.org>, Anna Schumaker <Anna.Schumaker@netapp.com>,
-        <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v2 0/2] nfsd: fix unhashing races in nfsv4 stateid handling
-References: <1440434508-16046-1-git-send-email-jeff.layton@primarydata.com>
-	<m2vbc47990.fsf@discipline.rit.edu>
-Date: Tue, 25 Aug 2015 14:32:52 -0400
-In-Reply-To: <m2vbc47990.fsf@discipline.rit.edu> (Andrew W. Elble's message of
-	"Mon, 24 Aug 2015 15:54:19 -0400")
-Message-ID: <m2fv3743sb.fsf@discipline.rit.edu>
+Received: from mail-ob0-f180.google.com ([209.85.214.180]:34436 "EHLO
+	mail-ob0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750981AbbHYSlt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Aug 2015 14:41:49 -0400
+Received: by obbfr1 with SMTP id fr1so150055266obb.1
+        for <linux-nfs@vger.kernel.org>; Tue, 25 Aug 2015 11:41:49 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain
+In-Reply-To: <8C420AF0-BD66-4FFD-B3FF-660A264A03B0@oracle.com>
+References: <1440122378-30452-1-git-send-email-trond.myklebust@primarydata.com>
+	<0BEC962F-39D5-410E-9B75-ED9EE98FFC56@oracle.com>
+	<CAHQdGtRsWchQG9ct-Prxy7-PZyw8-jRC6f8fMJvkzxpd58WWpA@mail.gmail.com>
+	<8C420AF0-BD66-4FFD-B3FF-660A264A03B0@oracle.com>
+Date: Tue, 25 Aug 2015 14:41:48 -0400
+Message-ID: <CAHQdGtSUazMz3P4c5SEaQV7bsg_DQnFU+FVbwF8vOP30JG8Nbw@mail.gmail.com>
+Subject: Re: [PATCH] NFSv4: Force a post-op attribute update when holding a delegation
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
->> v2:
->> - fix the fault injection code to handle the prototype change to
->>   unhash_lock_stateid
+On Tue, Aug 25, 2015 at 2:18 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
 >
-> Jeff,
+> On Aug 25, 2015, at 1:04 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
 >
->    We're running with this in place now. It definitely covers the same
->   bases my quick hack was covering, so I don't foresee any issues with
->   it - But I'll give a definitive answer tomorrow.
+>> On Tue, Aug 25, 2015 at 12:31 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>>>
+>>> On Aug 20, 2015, at 9:59 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+>>>
+>>>> If the ctime or mtime or change attribute have changed because
+>>>> of an operation we initiated, we should make sure that we force
+>>>> an attribute update. However we do not want to mark the page cache
+>>>> for revalidation.
+>>>
+>>> I've tested your linux-next branch (tip is aebbe9d73169
+>>> ("NFS41/flexfiles: zero out DS write wcc") against Solaris 12
+>>> with write delegation enabled (over RDMA, even!).
+>>>
+>>> I was not able to reproduce the write append failures I saw
+>>> before.
+>>>
+>>
+>> Perfect. Thanks for testing!
+>
+> Would it be possible to label some of these for stable?
+>
 
-It's good, no server crashes or memory corruption.
-
-Thanks,
-
-Andy
-
--- 
-Andrew W. Elble
-aweits@discipline.rit.edu
-Infrastructure Engineer, Communications Technical Lead
-Rochester Institute of Technology
-PGP: BFAD 8461 4CCF DC95 DA2C B0EB 965B 082E 863E C912
+I think this one is the only one that is missing such a label. I've
+reworded the commit message and pushed out a revised patch.
