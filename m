@@ -1,118 +1,61 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtprelay0047.hostedemail.com ([216.40.44.47]:48493 "EHLO
-	smtprelay.hostedemail.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1752518AbbHYOKv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Aug 2015 10:10:51 -0400
-Received: from smtprelay.hostedemail.com (10.5.19.251.rfc1918.com [10.5.19.251])
-	by smtpgrave08.hostedemail.com (Postfix) with ESMTP id 8CABE212AE1
-	for <linux-nfs@vger.kernel.org>; Tue, 25 Aug 2015 14:03:04 +0000 (UTC)
-Date: Tue, 25 Aug 2015 10:02:59 -0400
-From: Steven Rostedt <rostedt@goodmis.org>
-To: Pratyush Anand <panand@redhat.com>
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org,
-        Ingo Molnar <mingo@redhat.com>, "J. Bruce Fields" <bfields@redhat.com>,
-        Jeff Layton <jlayton@primarydata.com>,
-        linux-kernel@vger.kernel.org (open list),
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: Re: [PATCH 1/2] net: sunrpc: fix tracepoint Warning: unknown op
- '->'
-Message-ID: <20150825100259.1b0f6b00@gandalf.local.home>
-In-Reply-To: <edc9697b5140015b15c96cc1b505b3c53169e634.1440482404.git.panand@redhat.com>
-References: <cover.1440482404.git.panand@redhat.com>
-	<edc9697b5140015b15c96cc1b505b3c53169e634.1440482404.git.panand@redhat.com>
+Received: from mail-ob0-f182.google.com ([209.85.214.182]:35473 "EHLO
+	mail-ob0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755512AbbHYPBt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Aug 2015 11:01:49 -0400
+Received: by obbwr7 with SMTP id wr7so144368771obb.2
+        for <linux-nfs@vger.kernel.org>; Tue, 25 Aug 2015 08:01:48 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+In-Reply-To: <1440513995-22942-1-git-send-email-xerofoify@gmail.com>
+References: <1440513995-22942-1-git-send-email-xerofoify@gmail.com>
+Date: Tue, 25 Aug 2015 11:01:48 -0400
+Message-ID: <CAHQdGtQ6-e0-P36-omFmCQ+rHmV4rCfLLkAh3KNojBPhcEOTLg@mail.gmail.com>
+Subject: Re: [PATCH] nfs:Fix variable assignment for return value to caller in
+ the function _nfs4_proc_delegreturn
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Nicholas Krause <xerofoify@gmail.com>
+Cc: Anna Schumaker <anna.schumaker@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 25 Aug 2015 11:34:19 +0530
-Pratyush Anand <panand@redhat.com> wrote:
-
-> `perf stat  -e sunrpc:svc_xprt_do_enqueue true` results in
-> 
-> Warning: unknown op '->'
-> Warning: [sunrpc:svc_xprt_do_enqueue] unknown op '->'
-> 
-> Similar warning for svc_handle_xprt as well.
-> 
-> Actually TP_printk() should never dereference an address saved in the ring
-> buffer that points somewhere in the kernel. There's no guarantee that that
-> object still exists (with the exception of static strings).
-
-Right, that is very dangerous. It has caused kernel panics in the past.
-
-> 
-> Therefore change all the arguments for TP_printk(), so that it references
-> values existing in the ring buffer only.
-> 
-> While doing that, also fix another possible bug when argument xprt could be
-> NULL and TP_fast_assign() tries to access it's elements.
-> 
-> Signed-off-by: Pratyush Anand <panand@redhat.com>
-> Cc: Steven Rostedt <rostedt@goodmis.org>
-
-Acked-by: Steven Rostedt <rostedt@goodmis.org>
-
--- Steve
-
+On Tue, Aug 25, 2015 at 10:46 AM, Nicholas Krause <xerofoify@gmail.com> wrote:
+> This fixes incorrect variable assignment in the function
+> _nfs4_proc_delegreturn for when calling either one of the
+> functions nfs_post_op_update_inode_force_wcc or the function
+> nfs_refresh_inode due to the variable status which the
+> function _nfs_proc_delegreturn uses for failure to instead
+> properly assign to the variable status used for this function's
+> return statement to properly signal to the caller when a failure
+> occurs when calling here of these functions internally.
+>
+> Signed-off-by: Nicholas Krause <xerofoify@gmail.com>
 > ---
->  include/trace/events/sunrpc.h | 21 ++++++++++++++++-----
->  1 file changed, 16 insertions(+), 5 deletions(-)
-> 
-> diff --git a/include/trace/events/sunrpc.h b/include/trace/events/sunrpc.h
-> index fd1a02cb3c82..937e482d80e9 100644
-> --- a/include/trace/events/sunrpc.h
-> +++ b/include/trace/events/sunrpc.h
-> @@ -529,18 +529,24 @@ TRACE_EVENT(svc_xprt_do_enqueue,
->  
->  	TP_STRUCT__entry(
->  		__field(struct svc_xprt *, xprt)
-> +		__field(struct sockaddr *, addr)
->  		__field(struct svc_rqst *, rqst)
-> +		__field(int, pid)
-> +		__field(unsigned long, flags)
->  	),
->  
->  	TP_fast_assign(
->  		__entry->xprt = xprt;
-> +		__entry->addr =
-> +			xprt ? (struct sockaddr *)&xprt->xpt_remote : NULL;
->  		__entry->rqst = rqst;
-> +		__entry->pid = rqst? rqst->rq_task->pid : 0;
-> +		__entry->flags = xprt ? xprt->xpt_flags : 0;
->  	),
->  
->  	TP_printk("xprt=0x%p addr=%pIScp pid=%d flags=%s", __entry->xprt,
-> -		(struct sockaddr *)&__entry->xprt->xpt_remote,
-> -		__entry->rqst ? __entry->rqst->rq_task->pid : 0,
-> -		show_svc_xprt_flags(__entry->xprt->xpt_flags))
-> +		__entry->addr, __entry->pid,
-> +		show_svc_xprt_flags(__entry->flags))
->  );
->  
->  TRACE_EVENT(svc_xprt_dequeue,
-> @@ -589,16 +595,21 @@ TRACE_EVENT(svc_handle_xprt,
->  	TP_STRUCT__entry(
->  		__field(struct svc_xprt *, xprt)
->  		__field(int, len)
-> +		__field(struct sockaddr *, addr)
-> +		__field(unsigned long, flags)
->  	),
->  
->  	TP_fast_assign(
->  		__entry->xprt = xprt;
-> +		__entry->addr =
-> +			xprt ? (struct sockaddr *)&xprt->xpt_remote : NULL;
->  		__entry->len = len;
-> +		__entry->flags = xprt ? xprt->xpt_flags : 0;
->  	),
->  
->  	TP_printk("xprt=0x%p addr=%pIScp len=%d flags=%s", __entry->xprt,
-> -		(struct sockaddr *)&__entry->xprt->xpt_remote, __entry->len,
-> -		show_svc_xprt_flags(__entry->xprt->xpt_flags))
-> +		__entry->addr, __entry->len,
-> +		show_svc_xprt_flags(__entry->flags))
->  );
->  #endif /* _TRACE_SUNRPC_H */
->  
+>  fs/nfs/nfs4proc.c | 4 ++--
+>  1 file changed, 2 insertions(+), 2 deletions(-)
+>
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index 3acb1eb..3a94a6e 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -5353,9 +5353,9 @@ static int _nfs4_proc_delegreturn(struct inode *inode, struct rpc_cred *cred, co
+>                 goto out;
+>         status = data->rpc_status;
+>         if (status == 0)
+> -               nfs_post_op_update_inode_force_wcc(inode, &data->fattr);
+> +               status = nfs_post_op_update_inode_force_wcc(inode, &data->fattr);
+>         else
+> -               nfs_refresh_inode(inode, &data->fattr);
+> +               status = nfs_refresh_inode(inode, &data->fattr);
+>  out:
+>         rpc_put_task(task);
+>         return status;
+> --
+> 2.1.4
+>
 
+NACK. The success or failure of those 2 operations is completely
+immaterial to the success or failure of delegreturn, which is why we
+don't test their return values.
