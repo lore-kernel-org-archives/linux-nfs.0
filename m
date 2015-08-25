@@ -1,34 +1,27 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:41706 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751681AbbHYGDx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Aug 2015 02:03:53 -0400
-Date: Tue, 25 Aug 2015 09:03:45 +0300
-From: Dan Carpenter <dan.carpenter@oracle.com>
-To: Jeff Layton <jlayton@poochiereds.net>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: knfsd: clean up nfsd filesystem interfaces
-Message-ID: <20150825060345.GV5610@mwanda>
-References: <20150822195814.GA20768@mwanda>
- <20150822185618.41d20096@tlielax.poochiereds.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20150822185618.41d20096@tlielax.poochiereds.net>
+Received: from mx1.redhat.com ([209.132.183.28]:51782 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752039AbbHYGEm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 25 Aug 2015 02:04:42 -0400
+From: Pratyush Anand <panand@redhat.com>
+To: bfields@fieldses.org
+Cc: rostedt@goodmis.org, linux-nfs@vger.kernel.org,
+        Pratyush Anand <panand@redhat.com>
+Subject: [PATCH 0/2] net: sunrpc: trace fixes
+Date: Tue, 25 Aug 2015 11:34:18 +0530
+Message-Id: <cover.1440482404.git.panand@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Aug 22, 2015 at 06:56:18PM -0400, Jeff Layton wrote:
-> I think we need to keep that check there (or something like it), even if
-> just to future-proof this code. But, I am open to suggestions on ways to
-> make the static checker happy.
-> 
+This patchset fixes few bugs with sunrpc trace implementation.
 
-Eventually (and not too far into the future actually) I will fix Smatch
-so that it knows that the callers never use size more than
-SIMPLE_TRANSACTION_LIMIT so it won't print this error.
+Pratyush Anand (2):
+  net: sunrpc: fix tracepoint Warning: unknown op '->'
+  net: sunrpc: fix trace print of &xprt->xpt_remote
 
-So I guess we can keep the check.
+ include/trace/events/sunrpc.h | 31 +++++++++++++++++++++----------
+ 1 file changed, 21 insertions(+), 10 deletions(-)
 
-regards,
-dan carpenter
+-- 
+2.4.3
 
