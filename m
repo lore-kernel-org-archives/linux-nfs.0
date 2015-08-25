@@ -1,47 +1,43 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:30196 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750981AbbHYSSS convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Aug 2015 14:18:18 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
-Subject: Re: [PATCH] NFSv4: Force a post-op attribute update when holding a delegation
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <CAHQdGtRsWchQG9ct-Prxy7-PZyw8-jRC6f8fMJvkzxpd58WWpA@mail.gmail.com>
-Date: Tue, 25 Aug 2015 14:18:10 -0400
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <8C420AF0-BD66-4FFD-B3FF-660A264A03B0@oracle.com>
-References: <1440122378-30452-1-git-send-email-trond.myklebust@primarydata.com> <0BEC962F-39D5-410E-9B75-ED9EE98FFC56@oracle.com> <CAHQdGtRsWchQG9ct-Prxy7-PZyw8-jRC6f8fMJvkzxpd58WWpA@mail.gmail.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
+Received: from discipline.rit.edu ([129.21.6.207]:57164 "HELO
+	discipline.rit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1755799AbbHYScx (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Aug 2015 14:32:53 -0400
+From: Andrew W Elble <aweits@rit.edu>
+To: Jeff Layton <jlayton@poochiereds.net>
+Cc: <bfields@fieldses.org>, Anna Schumaker <Anna.Schumaker@netapp.com>,
+        <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v2 0/2] nfsd: fix unhashing races in nfsv4 stateid handling
+References: <1440434508-16046-1-git-send-email-jeff.layton@primarydata.com>
+	<m2vbc47990.fsf@discipline.rit.edu>
+Date: Tue, 25 Aug 2015 14:32:52 -0400
+In-Reply-To: <m2vbc47990.fsf@discipline.rit.edu> (Andrew W. Elble's message of
+	"Mon, 24 Aug 2015 15:54:19 -0400")
+Message-ID: <m2fv3743sb.fsf@discipline.rit.edu>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+>> v2:
+>> - fix the fault injection code to handle the prototype change to
+>>   unhash_lock_stateid
+>
+> Jeff,
+>
+>    We're running with this in place now. It definitely covers the same
+>   bases my quick hack was covering, so I don't foresee any issues with
+>   it - But I'll give a definitive answer tomorrow.
 
-On Aug 25, 2015, at 1:04 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+It's good, no server crashes or memory corruption.
 
-> On Tue, Aug 25, 2015 at 12:31 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
->> 
->> On Aug 20, 2015, at 9:59 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
->> 
->>> If the ctime or mtime or change attribute have changed because
->>> of an operation we initiated, we should make sure that we force
->>> an attribute update. However we do not want to mark the page cache
->>> for revalidation.
->> 
->> I've tested your linux-next branch (tip is aebbe9d73169
->> ("NFS41/flexfiles: zero out DS write wcc") against Solaris 12
->> with write delegation enabled (over RDMA, even!).
->> 
->> I was not able to reproduce the write append failures I saw
->> before.
->> 
-> 
-> Perfect. Thanks for testing!
+Thanks,
 
-Would it be possible to label some of these for stable?
+Andy
 
---
-Chuck Lever
-
-
-
+-- 
+Andrew W. Elble
+aweits@discipline.rit.edu
+Infrastructure Engineer, Communications Technical Lead
+Rochester Institute of Technology
+PGP: BFAD 8461 4CCF DC95 DA2C B0EB 965B 082E 863E C912
