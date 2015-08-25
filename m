@@ -1,59 +1,105 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx141.netapp.com ([216.240.21.12]:33823 "EHLO mx141.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755098AbbHXVZx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 24 Aug 2015 17:25:53 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-Subject: Re: [PATCH v2 0/2] nfsd: fix unhashing races in nfsv4 stateid
- handling
-To: Jeff Layton <jlayton@poochiereds.net>, <bfields@fieldses.org>
-References: <1440434508-16046-1-git-send-email-jeff.layton@primarydata.com>
-CC: Anna Schumaker <Anna.Schumaker@netapp.com>,
-        Andrew W Elble <aweits@rit.edu>, <linux-nfs@vger.kernel.org>
-Message-ID: <55DB8BD9.7090109@Netapp.com>
-Date: Mon, 24 Aug 2015 17:25:45 -0400
-MIME-Version: 1.0
-In-Reply-To: <1440434508-16046-1-git-send-email-jeff.layton@primarydata.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-io0-f175.google.com ([209.85.223.175]:34610 "EHLO
+	mail-io0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751839AbbHYBnJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Aug 2015 21:43:09 -0400
+Received: by iodb91 with SMTP id b91so169540753iod.1
+        for <linux-nfs@vger.kernel.org>; Mon, 24 Aug 2015 18:43:09 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 1/4] NFSv4.1/flexfiles: Add refcounting to struct nfs4_ff_layout_mirror
+Date: Mon, 24 Aug 2015 21:43:03 -0400
+Message-Id: <1440466986-36826-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Jeff,
+We do want to share mirrors between layout segments, so add a refcount
+to enable that.
 
-On 08/24/2015 12:41 PM, Jeff Layton wrote:
-> v2:
-> - fix the fault injection code to handle the prototype change to
->   unhash_lock_stateid
-> 
-> Slightly updated set, to fix a problem that Wu found when enabling the
-> nfsd fault injection code. Original cover-letter follows:
-> 
-> -------------------------[snip]-------------------
-> 
-> I hadn't heard from Andrew in a while so I'm not 100% clear on whether
-> his patches had fixed the race that he had spotted in the NFSv4
-> unhashing code.
-> 
-> Still, once he had done the analysis, the problem was clear. I think
-> this patchset should fix the problem in a relatively clean way. I've
-> run some tests against this and it seems to not have broken anything,
-> but I haven't been able to reproduce the actual race so I can't
-> verify that this fixes it.
-> 
-> Andrew, Anna, if you are able to do so could you test these patches
-> and let us know whether this fixes those races?
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfs/flexfilelayout/flexfilelayout.c | 36 +++++++++++++++++++++++++---------
+ fs/nfs/flexfilelayout/flexfilelayout.h |  1 +
+ 2 files changed, 28 insertions(+), 9 deletions(-)
 
-I just did a quick test, and it looks like my problem has been fixed.  I'll do more in-depth testing tomorrow, just to make sure.
-
-Thanks for working on this!
-
-Anna
-> 
-> Jeff Layton (2):
->   nfsd: ensure that the ol stateid hash reference is only put once
->   nfsd: ensure that delegation stateid hash references are only put once
-> 
->  fs/nfsd/nfs4state.c | 84 +++++++++++++++++++++++++++++++++--------------------
->  1 file changed, 53 insertions(+), 31 deletions(-)
-> 
+diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
+index cc2c5f7f2bc1..62de0b8038c8 100644
+--- a/fs/nfs/flexfilelayout/flexfilelayout.c
++++ b/fs/nfs/flexfilelayout/flexfilelayout.c
+@@ -135,6 +135,31 @@ decode_name(struct xdr_stream *xdr, u32 *id)
+ 	return 0;
+ }
+ 
++static struct nfs4_ff_layout_mirror *ff_layout_alloc_mirror(gfp_t gfp_flags)
++{
++	struct nfs4_ff_layout_mirror *mirror;
++
++	mirror = kzalloc(sizeof(*mirror), gfp_flags);
++	if (mirror != NULL) {
++		spin_lock_init(&mirror->lock);
++		atomic_set(&mirror->ref, 1);
++	}
++	return mirror;
++}
++
++static void ff_layout_free_mirror(struct nfs4_ff_layout_mirror *mirror)
++{
++	kfree(mirror->fh_versions);
++	nfs4_ff_layout_put_deviceid(mirror->mirror_ds);
++	kfree(mirror);
++}
++
++static void ff_layout_put_mirror(struct nfs4_ff_layout_mirror *mirror)
++{
++	if (mirror != NULL && atomic_dec_and_test(&mirror->ref))
++		ff_layout_free_mirror(mirror);
++}
++
+ static void ff_layout_free_mirror_array(struct nfs4_ff_layout_segment *fls)
+ {
+ 	int i;
+@@ -144,11 +169,7 @@ static void ff_layout_free_mirror_array(struct nfs4_ff_layout_segment *fls)
+ 			/* normally mirror_ds is freed in
+ 			 * .free_deviceid_node but we still do it here
+ 			 * for .alloc_lseg error path */
+-			if (fls->mirror_array[i]) {
+-				kfree(fls->mirror_array[i]->fh_versions);
+-				nfs4_ff_layout_put_deviceid(fls->mirror_array[i]->mirror_ds);
+-				kfree(fls->mirror_array[i]);
+-			}
++			ff_layout_put_mirror(fls->mirror_array[i]);
+ 		}
+ 		kfree(fls->mirror_array);
+ 		fls->mirror_array = NULL;
+@@ -262,15 +283,12 @@ ff_layout_alloc_lseg(struct pnfs_layout_hdr *lh,
+ 		if (ds_count != 1)
+ 			goto out_err_free;
+ 
+-		fls->mirror_array[i] =
+-			kzalloc(sizeof(struct nfs4_ff_layout_mirror),
+-				gfp_flags);
++		fls->mirror_array[i] = ff_layout_alloc_mirror(gfp_flags);
+ 		if (fls->mirror_array[i] == NULL) {
+ 			rc = -ENOMEM;
+ 			goto out_err_free;
+ 		}
+ 
+-		spin_lock_init(&fls->mirror_array[i]->lock);
+ 		fls->mirror_array[i]->ds_count = ds_count;
+ 		fls->mirror_array[i]->lseg = &fls->generic_hdr;
+ 
+diff --git a/fs/nfs/flexfilelayout/flexfilelayout.h b/fs/nfs/flexfilelayout/flexfilelayout.h
+index f92f9a0a856b..26b8258e256f 100644
+--- a/fs/nfs/flexfilelayout/flexfilelayout.h
++++ b/fs/nfs/flexfilelayout/flexfilelayout.h
+@@ -77,6 +77,7 @@ struct nfs4_ff_layout_mirror {
+ 	u32				uid;
+ 	u32				gid;
+ 	struct rpc_cred			*cred;
++	atomic_t			ref;
+ 	spinlock_t			lock;
+ 	struct nfs4_ff_layoutstat	read_stat;
+ 	struct nfs4_ff_layoutstat	write_stat;
+-- 
+2.4.3
 
