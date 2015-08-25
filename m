@@ -1,74 +1,81 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f180.google.com ([209.85.213.180]:33691 "EHLO
-	mail-ig0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755780AbbHYVQI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Aug 2015 17:16:08 -0400
-Received: by igfj19 with SMTP id j19so22411496igf.0
-        for <linux-nfs@vger.kernel.org>; Tue, 25 Aug 2015 14:16:07 -0700 (PDT)
+Received: from fieldses.org ([173.255.197.46]:46580 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751816AbbHYVQT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 25 Aug 2015 17:16:19 -0400
+Date: Tue, 25 Aug 2015 17:16:18 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Paul Gortmaker <paul.gortmaker@windriver.com>
+Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfsd: don't WARN/backtrace for invalid container
+ deployment.
+Message-ID: <20150825211618.GE8579@fieldses.org>
+References: <1440536356-2634-1-git-send-email-paul.gortmaker@windriver.com>
+ <20150825210642.GG3560@windriver.com>
 MIME-Version: 1.0
-In-Reply-To: <CAHQdGtQu4_Z2XOAtA2GFTsQF8whvfOnfExonq9sp0JAJu30SBQ@mail.gmail.com>
-References: <CAN-5tyFs3j2tNqm4rgsWrzO9KcFDQBfCrtNG7TNgMHrTzs9p5w@mail.gmail.com>
-	<CAHQdGtQu4_Z2XOAtA2GFTsQF8whvfOnfExonq9sp0JAJu30SBQ@mail.gmail.com>
-Date: Tue, 25 Aug 2015 17:16:07 -0400
-Message-ID: <CAN-5tyGmzkz0e27Gt3thfjL4JNi5f1DgSZQYvSHx4u+z08KmPw@mail.gmail.com>
-Subject: Re: evict inode + new open race
-From: Olga Kornievskaia <aglo@umich.edu>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20150825210642.GG3560@windriver.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Aug 25, 2015 at 4:48 PM, Trond Myklebust
-<trond.myklebust@primarydata.com> wrote:
-> On Tue, Aug 25, 2015 at 4:24 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
->> Hi folks,
->>
->> I have brought up earlier an existence of a race between evict inode
->> and an open where a new open happens after a delegation was removed
->> from the inode but the rpc tasks/network packets of DELEGRETURN and
->> OPEN arrive at the server in reverse order (OPEN before DELEGRETURN).
->> This particular case can be 'handled' by the server. However, there is
->> a different race that can't be.
->>
->> There is a race between an ACCESS call and a DELEGRETURN. If a cached
->> open is used but we need to check permissions, then ACCESS code will
->> go on the wire. If at the same time the evict inode process is
->> happening, ACCESS code is returned and DELEGRETURN leaves the client
->> without an open stateid or delegation stateid. There might be a race
->> between a DELEGRETURN and an OPEN when it's just cached open and
->> permissions aren't checked.
->
-> If the client is doing a cached open, then how could there be a
-> simultaneous evict_inode() for that inode? The dentry will be
-> refcounted by the open() process, pinning the inode refcount to a
-> value > 0, and preventing it from being evicted.
+On Tue, Aug 25, 2015 at 05:06:43PM -0400, Paul Gortmaker wrote:
+> [[PATCH] nfsd: don't WARN/backtrace for invalid container deployment.] On 25/08/2015 (Tue 16:59) Paul Gortmaker wrote:
+> 
+> > These messages, combined with the backtrace they trigger, makes it seem
+> > like a serious problem, though a quick search shows distros marking
+> > it as a "won't fix" non-issue when the problem is reported by users.
+> 
+> Ah crap, didn't notice I was on a slightly older kernel when generating
+> this ; it still applies to master with minor fuzz.  I can resend if need
+> be, and if folks are OK with the general approach.
 
-A very good question and I don't have a good answer. I don't fully
-understand why. I'm only have proof by existence demonstrated by
-Jorge. I'm staring at the code and I see i_lock is being used very
-infrequently. It's possible that as the last close happened and iput()
-has changed the value to 0, then before the evict() is called already
-not holding the i_lock() at that time, then there is a new open
-coming. while that open changes i_count, i think evict() will no
-longer check i_count.
+Well, this really is something we need to fix, but given that it's going
+to take a while, OK, maybe toning this down is best.
 
->
->> I noticed that before evict inode is called, the VFS layer will first
->> call drop_inode() function (if implemented) and based on that decision
->> it will instead of evicting put the inode back on the LRU list and
->> mark it REFERENCED.
->
-> Doing so would break 'umount' in the case where there are delegations.
-> It might also cause resource problems on the client, since it can no
-> longer evict inodes in order to reclaim memory.
+--b.
 
-yes resource constraint problem is a problem. as for unmount, i think
-that might change the superblock from being active and no longer
-having MS_ACTIVE set, then the iput_final() code still proceeds to
-evict the inode.
-
+> 
+> Paul.
 > --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> > 
+> > The backtrace is overkill, and only really manages to show that if
+> > you follow the code path, you can't really avoid it with bootargs
+> > or configuration settings in the container.
+> > 
+> > Given that, lets tone it down a bit and get rid of the WARN severity,
+> > and the associated backtrace, so people aren't needlessly alarmed.
+> > 
+> > Also, lets drop the split printk line, since they are grep unfriendly.
+> > 
+> > Cc: "J. Bruce Fields" <bfields@fieldses.org>
+> > Cc: linux-nfs@vger.kernel.org
+> > Signed-off-by: Paul Gortmaker <paul.gortmaker@windriver.com>
+> > 
+> > diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
+> > index 9c271f42604a..fe8a3da5eb63 100644
+> > --- a/fs/nfsd/nfs4recover.c
+> > +++ b/fs/nfsd/nfs4recover.c
+> > @@ -526,8 +526,7 @@ nfsd4_legacy_tracking_init(struct net *net)
+> >  
+> >  	/* XXX: The legacy code won't work in a container */
+> >  	if (net != &init_net) {
+> > -		WARN(1, KERN_ERR "NFSD: attempt to initialize legacy client "
+> > -			"tracking in a container!\n");
+> > +		pr_warn("NFSD: attempt to initialize legacy client tracking in a container ignored.\n");
+> >  		return -EINVAL;
+> >  	}
+> >  
+> > @@ -1191,8 +1190,7 @@ nfsd4_umh_cltrack_init(struct net __attribute__((unused)) *net)
+> >  {
+> >  	/* XXX: The usermode helper s not working in container yet. */
+> >  	if (net != &init_net) {
+> > -		WARN(1, KERN_ERR "NFSD: attempt to initialize umh client "
+> > -			"tracking in a container!\n");
+> > +		pr_warn("NFSD: attempt to initialize umh client tracking in a container ignored.\n");
+> >  		return -EINVAL;
+> >  	}
+> >  	return nfsd4_umh_cltrack_upcall("init", NULL, NULL);
+> > -- 
+> > 2.1.0
+> > 
