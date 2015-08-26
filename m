@@ -1,162 +1,92 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yk0-f177.google.com ([209.85.160.177]:34621 "EHLO
-	mail-yk0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752689AbbHZWkf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 26 Aug 2015 18:40:35 -0400
-Received: by ykdt205 with SMTP id t205so2028548ykd.1
-        for <linux-nfs@vger.kernel.org>; Wed, 26 Aug 2015 15:40:34 -0700 (PDT)
-Date: Wed, 26 Aug 2015 18:40:32 -0400
-From: Jeff Layton <jlayton@poochiereds.net>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org, hch@lst.de, kinglongmee@gmail.com
-Subject: Re: [PATCH v3 07/20] nfsd: hook up nfsd_write to the new nfsd_file
- cache
-Message-ID: <20150826184032.0269e614@synchrony.poochiereds.net>
-In-Reply-To: <20150826195337.GC4161@fieldses.org>
-References: <1440069440-27454-1-git-send-email-jeff.layton@primarydata.com>
-	<1440069440-27454-8-git-send-email-jeff.layton@primarydata.com>
-	<20150826195337.GC4161@fieldses.org>
+Received: from ipmail07.adl2.internode.on.net ([150.101.137.131]:38688 "EHLO
+	ipmail07.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751363AbbHZWtL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 26 Aug 2015 18:49:11 -0400
+Date: Thu, 27 Aug 2015 08:48:53 +1000
+From: Dave Chinner <david@fromorbit.com>
+To: Peng Tao <tao.peng@primarydata.com>
+Cc: linux-fsdevel@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Christoph Hellwig <hch@infradead.org>, Zach Brown <zab@zabbo.net>,
+        Darren Hart <dvhart@linux.intel.com>, bfields@fieldses.org,
+        Jeff Layton <jeff.layton@primarydata.com>, linux-nfs@vger.kernel.org,
+        "Darrick J. Wong" <darrick.wong@oracle.com>,
+        linux-btrfs@vger.kernel.org
+Subject: Re: [PATCH-RFC-RESEND 5/9] nfs42: add .copy_range file operation
+Message-ID: <20150826224853.GW714@dastard>
+References: <1440577010-122867-1-git-send-email-tao.peng@primarydata.com>
+ <1440577010-122867-6-git-send-email-tao.peng@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1440577010-122867-6-git-send-email-tao.peng@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 26 Aug 2015 15:53:37 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
-
-> On Thu, Aug 20, 2015 at 07:17:07AM -0400, Jeff Layton wrote:
-> > Note that all callers currently pass in NULL for "file" anyway, so
-> > there was already some dead code in here. Just eliminate that parm
-> > and have it use the file cache instead of dealing directly with a
-> > filp.
+On Wed, Aug 26, 2015 at 04:16:46PM +0800, Peng Tao wrote:
+> Signed-off-by: Peng Tao <tao.peng@primarydata.com>
+> ---
+>  fs/nfs/nfs4file.c | 50 ++++++++++++++++++++++++++++++++++++++++++++++++++
+>  1 file changed, 50 insertions(+)
 > 
-> So this is the first time the cache is actually used, right?  (Most of
-> the code introduced by previous patches looks dead until this patch.)
-> 
+> diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
+> index dcd39d4..c335cb0 100644
+> --- a/fs/nfs/nfs4file.c
+> +++ b/fs/nfs/nfs4file.c
+> @@ -4,6 +4,7 @@
+>   *  Copyright (C) 1992  Rick Sladkey
+>   */
+>  #include <linux/fs.h>
+> +#include <linux/file.h>
+>  #include <linux/falloc.h>
+>  #include <linux/nfs_fs.h>
+>  #include "internal.h"
+> @@ -166,6 +167,54 @@ static long nfs42_fallocate(struct file *filep, int mode, loff_t offset, loff_t
+>  		return nfs42_proc_deallocate(filep, offset, len);
+>  	return nfs42_proc_allocate(filep, offset, len);
+>  }
+> +
+> +static noinline int
+> +nfs42_file_clone_range(struct file *src_file, struct file *dst_file,
+> +		       loff_t src_off, size_t dst_off, loff_t count)
+> +{
+> +	struct inode *dst_inode = file_inode(dst_file);
+> +	struct inode *src_inode = file_inode(src_file);
+> +	int ret;
+> +
+> +	/* src and dst must be different files */
+> +	if (src_inode == dst_inode)
+> +		return -EINVAL;
+> +
+> +	/* XXX: do we lock at all? what if server needs CB_RECALL_LAYOUT? */
+> +	if (dst_inode < src_inode) {
+> +		mutex_lock_nested(&dst_inode->i_mutex, I_MUTEX_PARENT);
+> +		mutex_lock_nested(&src_inode->i_mutex, I_MUTEX_CHILD);
+> +	} else {
+> +		mutex_lock_nested(&src_inode->i_mutex, I_MUTEX_PARENT);
+> +		mutex_lock_nested(&dst_inode->i_mutex, I_MUTEX_CHILD);
+> +	}
 
-Yes! I should have made that clear in the patch descriptions. I'll do
-that for the next respin.
+Is that safe? Between two operations, the inode code be reclaimed
+and re-instantiated, resulting in the second operation having a
+different locking order for the same files compared to the
+first operation...
 
-Thanks,
-Jeff
+> +out_unlock:
+> +	if (dst_inode < src_inode) {
+> +		mutex_unlock(&src_inode->i_mutex);
+> +		mutex_unlock(&dst_inode->i_mutex);
+> +	} else {
+> +		mutex_unlock(&dst_inode->i_mutex);
+> +		mutex_unlock(&src_inode->i_mutex);
+> +	}
 
-> --b.
-> 
-> > 
-> > Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
-> > ---
-> >  fs/nfsd/nfs3proc.c |  2 +-
-> >  fs/nfsd/nfsproc.c  |  2 +-
-> >  fs/nfsd/vfs.c      | 33 +++++++++++----------------------
-> >  fs/nfsd/vfs.h      |  2 +-
-> >  4 files changed, 14 insertions(+), 25 deletions(-)
-> > 
-> > diff --git a/fs/nfsd/nfs3proc.c b/fs/nfsd/nfs3proc.c
-> > index 7b755b7f785c..4e46ac511479 100644
-> > --- a/fs/nfsd/nfs3proc.c
-> > +++ b/fs/nfsd/nfs3proc.c
-> > @@ -192,7 +192,7 @@ nfsd3_proc_write(struct svc_rqst *rqstp, struct
-> > nfsd3_writeargs *argp, 
-> >  	fh_copy(&resp->fh, &argp->fh);
-> >  	resp->committed = argp->stable;
-> > -	nfserr = nfsd_write(rqstp, &resp->fh, NULL,
-> > +	nfserr = nfsd_write(rqstp, &resp->fh,
-> >  				   argp->offset,
-> >  				   rqstp->rq_vec, argp->vlen,
-> >  				   &cnt,
-> > diff --git a/fs/nfsd/nfsproc.c b/fs/nfsd/nfsproc.c
-> > index 4cd78ef4c95c..9893095cbee1 100644
-> > --- a/fs/nfsd/nfsproc.c
-> > +++ b/fs/nfsd/nfsproc.c
-> > @@ -213,7 +213,7 @@ nfsd_proc_write(struct svc_rqst *rqstp, struct
-> > nfsd_writeargs *argp, SVCFH_fmt(&argp->fh),
-> >  		argp->len, argp->offset);
-> >  
-> > -	nfserr = nfsd_write(rqstp, fh_copy(&resp->fh, &argp->fh),
-> > NULL,
-> > +	nfserr = nfsd_write(rqstp, fh_copy(&resp->fh, &argp->fh),
-> >  				   argp->offset,
-> >  				   rqstp->rq_vec, argp->vlen,
-> >  			           &cnt,
-> > diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-> > index b5e077a6e7d4..7c1e7866fec9 100644
-> > --- a/fs/nfsd/vfs.c
-> > +++ b/fs/nfsd/vfs.c
-> > @@ -42,6 +42,7 @@
-> >  
-> >  #include "nfsd.h"
-> >  #include "vfs.h"
-> > +#include "filecache.h"
-> >  
-> >  #define NFSDDBG_FACILITY		NFSDDBG_FILEOP
-> >  
-> > @@ -1002,30 +1003,18 @@ __be32 nfsd_read(struct svc_rqst *rqstp,
-> > struct svc_fh *fhp,
-> >   * N.B. After this call fhp needs an fh_put
-> >   */
-> >  __be32
-> > -nfsd_write(struct svc_rqst *rqstp, struct svc_fh *fhp, struct file
-> > *file,
-> > -		loff_t offset, struct kvec *vec, int vlen,
-> > unsigned long *cnt,
-> > -		int *stablep)
-> > +nfsd_write(struct svc_rqst *rqstp, struct svc_fh *fhp, loff_t
-> > offset,
-> > +	   struct kvec *vec, int vlen, unsigned long *cnt, int
-> > *stablep) {
-> > -	__be32			err = 0;
-> > -
-> > -	if (file) {
-> > -		err = nfsd_permission(rqstp, fhp->fh_export,
-> > fhp->fh_dentry,
-> > -
-> > NFSD_MAY_WRITE|NFSD_MAY_OWNER_OVERRIDE);
-> > -		if (err)
-> > -			goto out;
-> > -		err = nfsd_vfs_write(rqstp, fhp, file, offset,
-> > vec, vlen, cnt,
-> > -				stablep);
-> > -	} else {
-> > -		err = nfsd_open(rqstp, fhp, S_IFREG,
-> > NFSD_MAY_WRITE, &file);
-> > -		if (err)
-> > -			goto out;
-> > -
-> > -		if (cnt)
-> > -			err = nfsd_vfs_write(rqstp, fhp, file,
-> > offset, vec, vlen,
-> > -					     cnt, stablep);
-> > -		fput(file);
-> > +	__be32			err;
-> > +	struct nfsd_file	*nf;
-> > +
-> > +	err = nfsd_file_acquire(rqstp, fhp, NFSD_MAY_WRITE, &nf);
-> > +	if (err == nfs_ok) {
-> > +		err = nfsd_vfs_write(rqstp, fhp, nf->nf_file,
-> > offset, vec,
-> > +					vlen, cnt, stablep);
-> > +		nfsd_file_put(nf);
-> >  	}
-> > -out:
-> >  	return err;
-> >  }
-> >  
-> > diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
-> > index 5be875e3e638..78b5527cba93 100644
-> > --- a/fs/nfsd/vfs.h
-> > +++ b/fs/nfsd/vfs.h
-> > @@ -78,7 +78,7 @@ __be32		nfsd_readv(struct file *,
-> > loff_t, struct kvec *, int, unsigned long *);
-> >  __be32 		nfsd_read(struct svc_rqst *, struct svc_fh
-> > *, loff_t, struct kvec *, int, unsigned long *);
-> > -__be32 		nfsd_write(struct svc_rqst *, struct svc_fh
-> > *,struct file *, +__be32 		nfsd_write(struct svc_rqst
-> > *, struct svc_fh *, loff_t, struct kvec *,int, unsigned long *, int
-> > *); __be32		nfsd_vfs_write(struct svc_rqst *rqstp,
-> > struct svc_fh *fhp, struct file *file, loff_t offset,
-> > -- 
-> > 2.4.3
+You don't have to care about lock order on unlock.
 
+Cheers,
 
+Dave.
 -- 
-Jeff Layton <jlayton@poochiereds.net>
+Dave Chinner
+david@fromorbit.com
