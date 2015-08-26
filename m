@@ -1,39 +1,46 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([198.137.202.9]:36810 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752552AbbHZNHU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 26 Aug 2015 09:07:20 -0400
-Date: Wed, 26 Aug 2015 06:07:12 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: dsterba@suse.cz, Peng Tao <tao.peng@primarydata.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Christoph Hellwig <hch@infradead.org>, Zach Brown <zab@zabbo.net>,
-        Darren Hart <dvhart@linux.intel.com>,
-        Bruce Fields <bfields@fieldses.org>,
-        Jeff Layton <jeff.layton@primarydata.com>, linux-btrfs@vger.kernel.org,
-        Devel FS Linux <linux-fsdevel@vger.kernel.org>
-Subject: Re: [PATCH RFC 02/11] vfs/btrfs: add .clone_range file operation
-Message-ID: <20150826130712.GA6958@infradead.org>
-References: <1440516829-116041-1-git-send-email-tao.peng@primarydata.com>
- <1440516829-116041-3-git-send-email-tao.peng@primarydata.com>
- <20150826080111.GV10756@twin.jikos.cz>
- <CAKVebiWy6S4ri8_V+SuT+mnyTKjiubPS49k3LHF2Csh2TVf_SQ@mail.gmail.com>
- <20150826130057.GW10756@suse.cz>
+Received: from mail-pa0-f46.google.com ([209.85.220.46]:35543 "EHLO
+	mail-pa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751982AbbHZNKH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 26 Aug 2015 09:10:07 -0400
+Received: by pacdd16 with SMTP id dd16so160558394pac.2
+        for <linux-nfs@vger.kernel.org>; Wed, 26 Aug 2015 06:10:07 -0700 (PDT)
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        kinglongmee@gmail.com
+From: Kinglong Mee <kinglongmee@gmail.com>
+Subject: =?UTF-8?Q?[PATCH_0/5_v3]_Some_updates_and_exclcreat_supports?=
+ =?UTF-8?B?4oCL?=
+Message-ID: <55DDBA9E.1040008@gmail.com>
+Date: Wed, 26 Aug 2015 21:09:50 +0800
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20150826130057.GW10756@suse.cz>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Aug 26, 2015 at 03:00:57PM +0200, David Sterba wrote:
-> > I thought it breaks ABI if we choose a different value for the type
-> > field of the ioctl. Am I misunderstanding it?
-> 
-> The ioctl is now private to btrfs, you're going to define the new ABI so
-> it IMHO should use the generic filesystem ioctl magic/namespace.
+The first one is a bugfix, second is an update,
+the last 3 are for supporting exclcreat.
 
-No, that's completly backwards.  We move up ioctls that have prooven
-to be generally useful to common code, and we've done that with various
-extN and XFS ones already.
+v3, 
+Drop the first two patches that have be committed by Trond.
+Fix the bad using of error value in nfs_setattr.
+
+Kinglong Mee (5):
+  NFS: Check size by inode_newsize_ok in nfs_setattr
+  NFS: Make opened as optional argument in _nfs4_do_open
+  NFS: Update NFS4_BITMAP_SIZE
+  NFS: Get suppattr_exclcreat when getting server, capabilities
+  NFS: Send attributes in OPEN request for NFS4_CREATE_EXCLUSIVE4_1
+
+ fs/nfs/inode.c            | 18 ++++++++--------
+ fs/nfs/nfs4file.c         |  3 +--
+ fs/nfs/nfs4proc.c         | 37 +++++++++++++++++++++++++--------
+ fs/nfs/nfs4xdr.c          | 52 +++++++++++++++++++++++++++++++++++------------
+ include/linux/nfs_fs_sb.h |  5 +++++
+ include/linux/nfs_xdr.h   |  4 +++-
+ include/uapi/linux/nfs4.h |  2 +-
+ 7 files changed, 88 insertions(+), 33 deletions(-)
+
+-- 
+2.4.3
+
