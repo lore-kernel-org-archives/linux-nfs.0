@@ -1,174 +1,174 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pa0-f46.google.com ([209.85.220.46]:35644 "EHLO
-	mail-pa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932969AbbHZNNI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 26 Aug 2015 09:13:08 -0400
-Received: by pacdd16 with SMTP id dd16so160632289pac.2
-        for <linux-nfs@vger.kernel.org>; Wed, 26 Aug 2015 06:13:08 -0700 (PDT)
-Subject: [PATCH 4/5 v3] NFS: Get suppattr_exclcreat when getting server
- capabilities
+Received: from mail-pa0-f41.google.com ([209.85.220.41]:36202 "EHLO
+	mail-pa0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752134AbbHZNNr (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 26 Aug 2015 09:13:47 -0400
+Received: by pacgr6 with SMTP id gr6so8848414pac.3
+        for <linux-nfs@vger.kernel.org>; Wed, 26 Aug 2015 06:13:46 -0700 (PDT)
+Subject: [PATCH 5/5 v3] NFS: Send attributes in OPEN request for
+ NFS4_CREATE_EXCLUSIVE4_1
 To: Trond Myklebust <trond.myklebust@primarydata.com>
 References: <55DDBA9E.1040008@gmail.com>
 Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
         kinglongmee@gmail.com
 From: Kinglong Mee <kinglongmee@gmail.com>
-Message-ID: <55DDBB5A.6070500@gmail.com>
-Date: Wed, 26 Aug 2015 21:12:58 +0800
+Message-ID: <55DDBB81.2070809@gmail.com>
+Date: Wed, 26 Aug 2015 21:13:37 +0800
 MIME-Version: 1.0
 In-Reply-To: <55DDBA9E.1040008@gmail.com>
 Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Create file with attributs as NFS4_CREATE_EXCLUSIVE4_1 mode
-depends on suppattr_exclcreat attribut.
+Client sends a SETATTR request after OPEN for updating attributes.
+For create file with S_ISGID is set, the S_ISGID in SETATTR will be
+ignored at nfs server as chmod of no PERMISSION.
 
 v3, same as v2.
 
 Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
 ---
- fs/nfs/nfs4proc.c         | 14 +++++++++++++-
- fs/nfs/nfs4xdr.c          | 26 +++++++++++++++++++++-----
- include/linux/nfs_fs_sb.h |  5 +++++
- include/linux/nfs_xdr.h   |  2 ++
- 4 files changed, 41 insertions(+), 6 deletions(-)
+ fs/nfs/nfs4proc.c       | 18 ++++++++++++++----
+ fs/nfs/nfs4xdr.c        | 26 ++++++++++++++++++--------
+ include/linux/nfs_xdr.h |  2 +-
+ 3 files changed, 33 insertions(+), 13 deletions(-)
 
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 1e5a2fb..2a888cb 100644
+index 2a888cb..74ef70c3 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -2883,8 +2883,10 @@ static void nfs4_close_context(struct nfs_open_context *ctx, int is_sync)
- 
- static int _nfs4_server_capabilities(struct nfs_server *server, struct nfs_fh *fhandle)
+@@ -2294,15 +2294,25 @@ static int nfs41_open_expired(struct nfs4_state_owner *sp, struct nfs4_state *st
+  * fields corresponding to attributes that were used to store the verifier.
+  * Make sure we clobber those fields in the later setattr call
+  */
+-static inline void nfs4_exclusive_attrset(struct nfs4_opendata *opendata, struct iattr *sattr)
++static inline void nfs4_exclusive_attrset(struct nfs4_opendata *opendata,
++				struct iattr *sattr, struct nfs4_label **label)
  {
-+	u32 bitmask[3] = {}, minorversion = server->nfs_client->cl_minorversion;
- 	struct nfs4_server_caps_arg args = {
- 		.fhandle = fhandle,
-+		.bitmask = bitmask,
- 	};
- 	struct nfs4_server_caps_res res = {};
- 	struct rpc_message msg = {
-@@ -2894,10 +2896,18 @@ static int _nfs4_server_capabilities(struct nfs_server *server, struct nfs_fh *f
- 	};
- 	int status;
- 
-+	bitmask[0] = FATTR4_WORD0_SUPPORTED_ATTRS |
-+		     FATTR4_WORD0_FH_EXPIRE_TYPE |
-+		     FATTR4_WORD0_LINK_SUPPORT |
-+		     FATTR4_WORD0_SYMLINK_SUPPORT |
-+		     FATTR4_WORD0_ACLSUPPORT;
-+	if (minorversion)
-+		bitmask[2] = FATTR4_WORD2_SUPPATTR_EXCLCREAT;
+-	if ((opendata->o_res.attrset[1] & FATTR4_WORD1_TIME_ACCESS) &&
++	const u32 *attrset = opendata->o_res.attrset;
 +
- 	status = nfs4_call_sync(server->client, server, &msg, &args.seq_args, &res.seq_res, 0);
- 	if (status == 0) {
- 		/* Sanity check the server answers */
--		switch (server->nfs_client->cl_minorversion) {
-+		switch (minorversion) {
- 		case 0:
- 			res.attr_bitmask[1] &= FATTR4_WORD1_NFS40_MASK;
- 			res.attr_bitmask[2] = 0;
-@@ -2950,6 +2960,8 @@ static int _nfs4_server_capabilities(struct nfs_server *server, struct nfs_fh *f
- 		server->cache_consistency_bitmask[0] &= FATTR4_WORD0_CHANGE|FATTR4_WORD0_SIZE;
- 		server->cache_consistency_bitmask[1] &= FATTR4_WORD1_TIME_METADATA|FATTR4_WORD1_TIME_MODIFY;
- 		server->cache_consistency_bitmask[2] = 0;
-+		memcpy(server->exclcreat_bitmask, res.exclcreat_bitmask,
-+			sizeof(server->exclcreat_bitmask));
- 		server->acl_bitmask = res.acl_bitmask;
- 		server->fh_expire_type = res.fh_expire_type;
- 	}
++	if ((attrset[1] & FATTR4_WORD1_TIME_ACCESS) &&
+ 	    !(sattr->ia_valid & ATTR_ATIME_SET))
+ 		sattr->ia_valid |= ATTR_ATIME;
+ 
+-	if ((opendata->o_res.attrset[1] & FATTR4_WORD1_TIME_MODIFY) &&
++	if ((attrset[1] & FATTR4_WORD1_TIME_MODIFY) &&
+ 	    !(sattr->ia_valid & ATTR_MTIME_SET))
+ 		sattr->ia_valid |= ATTR_MTIME;
++
++	/* Except MODE, it seems harmless of setting twice. */
++	if ((attrset[1] & FATTR4_WORD1_MODE))
++		sattr->ia_valid &= ~ATTR_MODE;
++
++	if (attrset[2] & FATTR4_WORD2_SECURITY_LABEL)
++		*label = NULL;
+ }
+ 
+ static int _nfs4_open_and_get_state(struct nfs4_opendata *opendata,
+@@ -2427,7 +2437,7 @@ static int _nfs4_do_open(struct inode *dir,
+ 
+ 	if ((opendata->o_arg.open_flags & O_EXCL) &&
+ 	    (opendata->o_arg.createmode != NFS4_CREATE_GUARDED)) {
+-		nfs4_exclusive_attrset(opendata, sattr);
++		nfs4_exclusive_attrset(opendata, sattr, &label);
+ 
+ 		nfs_fattr_init(opendata->o_res.f_attr);
+ 		status = nfs4_do_setattr(state->inode, cred,
 diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 558cd65d..fc88fcf 100644
+index fc88fcf..7dfeff4 100644
 --- a/fs/nfs/nfs4xdr.c
 +++ b/fs/nfs/nfs4xdr.c
-@@ -2580,6 +2580,7 @@ static void nfs4_xdr_enc_server_caps(struct rpc_rqst *req,
- 				     struct xdr_stream *xdr,
- 				     struct nfs4_server_caps_arg *args)
+@@ -1001,7 +1001,8 @@ static void encode_nfs4_verifier(struct xdr_stream *xdr, const nfs4_verifier *ve
+ 
+ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap,
+ 				const struct nfs4_label *label,
+-				const struct nfs_server *server)
++				const struct nfs_server *server,
++				bool excl_check)
  {
-+	const u32 *bitmask = args->bitmask;
- 	struct compound_hdr hdr = {
- 		.minorversion = nfs4_xdr_minorversion(&args->seq_args),
- 	};
-@@ -2587,11 +2588,7 @@ static void nfs4_xdr_enc_server_caps(struct rpc_rqst *req,
- 	encode_compound_hdr(xdr, req, &hdr);
- 	encode_sequence(xdr, &args->seq_args, &hdr);
- 	encode_putfh(xdr, args->fhandle, &hdr);
--	encode_getattr_one(xdr, FATTR4_WORD0_SUPPORTED_ATTRS|
--			   FATTR4_WORD0_FH_EXPIRE_TYPE|
--			   FATTR4_WORD0_LINK_SUPPORT|
--			   FATTR4_WORD0_SYMLINK_SUPPORT|
--			   FATTR4_WORD0_ACLSUPPORT, &hdr);
-+	encode_getattr_three(xdr, bitmask[0], bitmask[1], bitmask[2], &hdr);
- 	encode_nops(&hdr);
- }
- 
-@@ -3368,6 +3365,22 @@ out_overflow:
- 	return -EIO;
- }
- 
-+static int decode_attr_exclcreat_supported(struct xdr_stream *xdr,
-+				 uint32_t *bitmap, uint32_t *bitmask)
-+{
-+	if (likely(bitmap[2] & FATTR4_WORD2_SUPPATTR_EXCLCREAT)) {
-+		int ret;
-+		ret = decode_attr_bitmap(xdr, bitmask);
-+		if (unlikely(ret < 0))
-+			return ret;
-+		bitmap[2] &= ~FATTR4_WORD2_SUPPATTR_EXCLCREAT;
-+	} else
-+		bitmask[0] = bitmask[1] = bitmask[2] = 0;
-+	dprintk("%s: bitmask=%08x:%08x:%08x\n", __func__,
-+		bitmask[0], bitmask[1], bitmask[2]);
-+	return 0;
-+}
+ 	char owner_name[IDMAP_NAMESZ];
+ 	char owner_group[IDMAP_NAMESZ];
+@@ -1067,6 +1068,17 @@ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap,
+ 		bmval[1] |= FATTR4_WORD1_TIME_MODIFY_SET;
+ 		len += 4;
+ 	}
 +
- static int decode_attr_filehandle(struct xdr_stream *xdr, uint32_t *bitmap, struct nfs_fh *fh)
++	if (excl_check) {
++		const u32 *excl_bmval = server->exclcreat_bitmask;
++		bmval[0] &= excl_bmval[0];
++		bmval[1] &= excl_bmval[1];
++		bmval[2] &= excl_bmval[2];
++
++		if (!(excl_bmval[2] & FATTR4_WORD2_SECURITY_LABEL))
++			label = NULL;
++	}
++
+ 	if (label) {
+ 		len += 4 + 4 + 4 + (XDR_QUADLEN(label->len) << 2);
+ 		bmval[2] |= FATTR4_WORD2_SECURITY_LABEL;
+@@ -1168,7 +1180,7 @@ static void encode_create(struct xdr_stream *xdr, const struct nfs4_create_arg *
+ 	}
+ 
+ 	encode_string(xdr, create->name->len, create->name->name);
+-	encode_attrs(xdr, create->attrs, create->label, create->server);
++	encode_attrs(xdr, create->attrs, create->label, create->server, false);
+ }
+ 
+ static void encode_getattr_one(struct xdr_stream *xdr, uint32_t bitmap, struct compound_hdr *hdr)
+@@ -1382,18 +1394,17 @@ static inline void encode_openhdr(struct xdr_stream *xdr, const struct nfs_opena
+ 
+ static inline void encode_createmode(struct xdr_stream *xdr, const struct nfs_openargs *arg)
  {
+-	struct iattr dummy;
  	__be32 *p;
-@@ -4321,6 +4334,9 @@ static int decode_server_caps(struct xdr_stream *xdr, struct nfs4_server_caps_re
- 		goto xdr_error;
- 	if ((status = decode_attr_aclsupport(xdr, bitmap, &res->acl_bitmask)) != 0)
- 		goto xdr_error;
-+	if ((status = decode_attr_exclcreat_supported(xdr, bitmap,
-+				res->exclcreat_bitmask)) != 0)
-+		goto xdr_error;
- 	status = verify_attr_len(xdr, savep, attrlen);
- xdr_error:
- 	dprintk("%s: xdr returned %d!\n", __func__, -status);
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 20bc8e5..570a7df 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -173,6 +173,11 @@ struct nfs_server {
- 						   set of attributes supported
- 						   on this filesystem excluding
- 						   the label support bit. */
-+	u32			exclcreat_bitmask[3];
-+						/* V4 bitmask representing the
-+						   set of attributes supported
-+						   on this filesystem for the
-+						   exclusive create. */
- 	u32			cache_consistency_bitmask[3];
- 						/* V4 bitmask representing the subset
- 						   of change attribute, size, ctime
+ 
+ 	p = reserve_space(xdr, 4);
+ 	switch(arg->createmode) {
+ 	case NFS4_CREATE_UNCHECKED:
+ 		*p = cpu_to_be32(NFS4_CREATE_UNCHECKED);
+-		encode_attrs(xdr, arg->u.attrs, arg->label, arg->server);
++		encode_attrs(xdr, arg->u.attrs, arg->label, arg->server, false);
+ 		break;
+ 	case NFS4_CREATE_GUARDED:
+ 		*p = cpu_to_be32(NFS4_CREATE_GUARDED);
+-		encode_attrs(xdr, arg->u.attrs, arg->label, arg->server);
++		encode_attrs(xdr, arg->u.attrs, arg->label, arg->server, false);
+ 		break;
+ 	case NFS4_CREATE_EXCLUSIVE:
+ 		*p = cpu_to_be32(NFS4_CREATE_EXCLUSIVE);
+@@ -1402,8 +1413,7 @@ static inline void encode_createmode(struct xdr_stream *xdr, const struct nfs_op
+ 	case NFS4_CREATE_EXCLUSIVE4_1:
+ 		*p = cpu_to_be32(NFS4_CREATE_EXCLUSIVE4_1);
+ 		encode_nfs4_verifier(xdr, &arg->u.verifier);
+-		dummy.ia_valid = 0;
+-		encode_attrs(xdr, &dummy, arg->label, arg->server);
++		encode_attrs(xdr, arg->u.attrs, arg->label, arg->server, true);
+ 	}
+ }
+ 
+@@ -1659,7 +1669,7 @@ static void encode_setattr(struct xdr_stream *xdr, const struct nfs_setattrargs
+ {
+ 	encode_op_hdr(xdr, OP_SETATTR, decode_setattr_maxsz, hdr);
+ 	encode_nfs4_stateid(xdr, &arg->stateid);
+-	encode_attrs(xdr, arg->iap, arg->label, server);
++	encode_attrs(xdr, arg->iap, arg->label, server, false);
+ }
+ 
+ static void encode_setclientid(struct xdr_stream *xdr, const struct nfs4_setclientid *setclientid, struct compound_hdr *hdr)
 diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 7bbe505..aac795b 100644
+index aac795b..ba28126 100644
 --- a/include/linux/nfs_xdr.h
 +++ b/include/linux/nfs_xdr.h
-@@ -1057,11 +1057,13 @@ struct nfs4_statfs_res {
- struct nfs4_server_caps_arg {
- 	struct nfs4_sequence_args	seq_args;
- 	struct nfs_fh		       *fhandle;
-+	const u32 *			bitmask;
- };
- 
- struct nfs4_server_caps_res {
- 	struct nfs4_sequence_res	seq_res;
- 	u32				attr_bitmask[3];
-+	u32				exclcreat_bitmask[3];
- 	u32				acl_bitmask;
- 	u32				has_links;
- 	u32				has_symlinks;
+@@ -379,7 +379,7 @@ struct nfs_openargs {
+ 	struct stateowner_id	id;
+ 	union {
+ 		struct {
+-			struct iattr *  attrs;    /* UNCHECKED, GUARDED */
++			struct iattr *  attrs;    /* UNCHECKED, GUARDED, EXCLUSIVE4_1 */
+ 			nfs4_verifier   verifier; /* EXCLUSIVE */
+ 		};
+ 		nfs4_stateid	delegation;		/* CLAIM_DELEGATE_CUR */
 -- 
 2.4.3
 
