@@ -1,10 +1,10 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pa0-f49.google.com ([209.85.220.49]:35921 "EHLO
-	mail-pa0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756407AbbHZITB (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 26 Aug 2015 04:19:01 -0400
-Received: by pacgr6 with SMTP id gr6so1406745pac.3
-        for <linux-nfs@vger.kernel.org>; Wed, 26 Aug 2015 01:18:59 -0700 (PDT)
+Received: from mail-pa0-f53.google.com ([209.85.220.53]:36846 "EHLO
+	mail-pa0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756399AbbHZISz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 26 Aug 2015 04:18:55 -0400
+Received: by pacgr6 with SMTP id gr6so1404610pac.3
+        for <linux-nfs@vger.kernel.org>; Wed, 26 Aug 2015 01:18:55 -0700 (PDT)
 From: Peng Tao <tao.peng@primarydata.com>
 To: linux-fsdevel@vger.kernel.org
 Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
@@ -14,138 +14,227 @@ Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
         Jeff Layton <jeff.layton@primarydata.com>, linux-nfs@vger.kernel.org,
         "Darrick J. Wong" <darrick.wong@oracle.com>,
         linux-btrfs@vger.kernel.org, Peng Tao <tao.peng@primarydata.com>
-Subject: [PATCH-RFC-RESEND 4/9] nfs42: add CLONE proc functions
-Date: Wed, 26 Aug 2015 16:16:45 +0800
-Message-Id: <1440577010-122867-5-git-send-email-tao.peng@primarydata.com>
+Subject: [PATCH-RFC-RESEND 3/9] nfs42: add CLONE xdr functions
+Date: Wed, 26 Aug 2015 16:16:44 +0800
+Message-Id: <1440577010-122867-4-git-send-email-tao.peng@primarydata.com>
 In-Reply-To: <1440577010-122867-1-git-send-email-tao.peng@primarydata.com>
 References: <1440577010-122867-1-git-send-email-tao.peng@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+xdr definitions per draft-ietf-nfsv4-minorversion2-38.txt
+
 Signed-off-by: Peng Tao <tao.peng@primarydata.com>
 ---
- fs/nfs/nfs42.h            |  1 +
- fs/nfs/nfs42proc.c        | 71 +++++++++++++++++++++++++++++++++++++++++++++++
- fs/nfs/nfs4proc.c         |  3 +-
- include/linux/nfs_fs_sb.h |  1 +
- 4 files changed, 75 insertions(+), 1 deletion(-)
+ fs/nfs/nfs42xdr.c       | 97 ++++++++++++++++++++++++++++++++++++++++++++++++-
+ fs/nfs/nfs4xdr.c        |  1 +
+ include/linux/nfs4.h    |  2 +
+ include/linux/nfs_xdr.h | 19 ++++++++++
+ 4 files changed, 118 insertions(+), 1 deletion(-)
 
-diff --git a/fs/nfs/nfs42.h b/fs/nfs/nfs42.h
-index ff66ae7..3585f3c 100644
---- a/fs/nfs/nfs42.h
-+++ b/fs/nfs/nfs42.h
-@@ -17,6 +17,7 @@ int nfs42_proc_deallocate(struct file *, loff_t, loff_t);
- loff_t nfs42_proc_llseek(struct file *, loff_t, int);
- int nfs42_proc_layoutstats_generic(struct nfs_server *,
- 				   struct nfs42_layoutstat_data *);
-+int nfs42_proc_clone(struct file *, struct file *, loff_t, loff_t, loff_t);
- /* nfs4.2xdr.h */
- extern struct rpc_procinfo nfs4_2_procedures[];
+diff --git a/fs/nfs/nfs42xdr.c b/fs/nfs/nfs42xdr.c
+index a6bd27d..a761421 100644
+--- a/fs/nfs/nfs42xdr.c
++++ b/fs/nfs/nfs42xdr.c
+@@ -34,6 +34,12 @@
+ 					1 /* opaque devaddr4 length */ + \
+ 					XDR_QUADLEN(PNFS_LAYOUTSTATS_MAXSIZE))
+ #define decode_layoutstats_maxsz	(op_decode_hdr_maxsz)
++#define encode_clone_maxsz		(encode_stateid_maxsz + \
++					encode_stateid_maxsz + \
++					2 /* src offset */ + \
++					2 /* dst offset */ + \
++					2 /* count */)
++#define decode_clone_maxsz		(op_decode_hdr_maxsz)
  
-diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
-index d731bbf..baa3141 100644
---- a/fs/nfs/nfs42proc.c
-+++ b/fs/nfs/nfs42proc.c
-@@ -269,3 +269,74 @@ int nfs42_proc_layoutstats_generic(struct nfs_server *server,
- 		return PTR_ERR(task);
- 	return 0;
+ #define NFS4_enc_allocate_sz		(compound_encode_hdr_maxsz + \
+ 					 encode_putfh_maxsz + \
+@@ -65,7 +71,20 @@
+ 					 decode_sequence_maxsz + \
+ 					 decode_putfh_maxsz + \
+ 					 PNFS_LAYOUTSTATS_MAXDEV * decode_layoutstats_maxsz)
+-
++#define NFS4_enc_clone_sz		(compound_encode_hdr_maxsz + \
++					 encode_sequence_maxsz + \
++					 encode_putfh_maxsz + \
++					 encode_savefh_maxsz + \
++					 encode_putfh_maxsz + \
++					 encode_clone_maxsz + \
++					 encode_getattr_maxsz)
++#define NFS4_dec_clone_sz		(compound_decode_hdr_maxsz + \
++					 decode_sequence_maxsz + \
++					 decode_putfh_maxsz + \
++					 decode_savefh_maxsz + \
++					 decode_putfh_maxsz + \
++					 decode_clone_maxsz + \
++					 decode_getattr_maxsz)
+ 
+ static void encode_fallocate(struct xdr_stream *xdr,
+ 			     struct nfs42_falloc_args *args)
+@@ -128,6 +147,21 @@ static void encode_layoutstats(struct xdr_stream *xdr,
+ 		encode_uint32(xdr, 0);
  }
-+
-+static int _nfs42_proc_clone(struct rpc_message *msg, struct file *src_f,
-+			     struct file *dst_f, loff_t src_offset,
-+			     loff_t dst_offset, loff_t count)
+ 
++static void encode_clone(struct xdr_stream *xdr,
++			 struct nfs42_clone_args *args,
++			 struct compound_hdr *hdr)
 +{
-+	struct inode *src_inode = file_inode(src_f);
-+	struct inode *dst_inode = file_inode(dst_f);
-+	struct nfs_server *server = NFS_SERVER(dst_inode);
-+	struct nfs42_clone_args args = {
-+		.src_fh = NFS_FH(src_inode),
-+		.dst_fh = NFS_FH(dst_inode),
-+		.src_offset = src_offset,
-+		.dst_offset = dst_offset,
-+		.dst_bitmask = server->cache_consistency_bitmask,
++	__be32 *p;
++
++	encode_op_hdr(xdr, OP_CLONE, decode_clone_maxsz, hdr);
++	encode_nfs4_stateid(xdr, &args->src_stateid);
++	encode_nfs4_stateid(xdr, &args->dst_stateid);
++	p = reserve_space(xdr, 3*8);
++	p = xdr_encode_hyper(p, args->src_offset);
++	p = xdr_encode_hyper(p, args->dst_offset);
++	xdr_encode_hyper(p, args->count);
++}
++
+ /*
+  * Encode ALLOCATE request
+  */
+@@ -206,6 +240,27 @@ static void nfs4_xdr_enc_layoutstats(struct rpc_rqst *req,
+ 	encode_nops(&hdr);
+ }
+ 
++/*
++ * Encode CLONE request
++ */
++static void nfs4_xdr_enc_clone(struct rpc_rqst *req,
++			       struct xdr_stream *xdr,
++			       struct nfs42_clone_args *args)
++{
++	struct compound_hdr hdr = {
++		.minorversion = nfs4_xdr_minorversion(&args->seq_args),
 +	};
-+	struct nfs42_clone_res res = {
-+		.server	= server,
-+	};
++
++	encode_compound_hdr(xdr, req, &hdr);
++	encode_sequence(xdr, &args->seq_args, &hdr);
++	encode_putfh(xdr, args->src_fh, &hdr);
++	encode_savefh(xdr, &hdr);
++	encode_putfh(xdr, args->dst_fh, &hdr);
++	encode_clone(xdr, args, &hdr);
++	encode_getfattr(xdr, args->dst_bitmask, &hdr);
++	encode_nops(&hdr);
++}
++
+ static int decode_allocate(struct xdr_stream *xdr, struct nfs42_falloc_res *res)
+ {
+ 	return decode_op_hdr(xdr, OP_ALLOCATE);
+@@ -244,6 +299,11 @@ static int decode_layoutstats(struct xdr_stream *xdr,
+ 	return decode_op_hdr(xdr, OP_LAYOUTSTATS);
+ }
+ 
++static int decode_clone(struct xdr_stream *xdr)
++{
++	return decode_op_hdr(xdr, OP_CLONE);
++}
++
+ /*
+  * Decode ALLOCATE request
+  */
+@@ -352,4 +412,39 @@ out:
+ 	return status;
+ }
+ 
++/*
++ * Decode CLONE request
++ */
++static int nfs4_xdr_dec_clone(struct rpc_rqst *rqstp,
++			      struct xdr_stream *xdr,
++			      struct nfs42_clone_res *res)
++{
++	struct compound_hdr hdr;
 +	int status;
 +
-+	msg->rpc_argp = &args;
-+	msg->rpc_resp = &res;
-+
-+	status = nfs42_set_rw_stateid(&args.src_stateid, src_f, FMODE_READ);
++	status = decode_compound_hdr(xdr, &hdr);
 +	if (status)
-+		return status;
-+
-+	status = nfs42_set_rw_stateid(&args.dst_stateid, dst_f, FMODE_WRITE);
++		goto out;
++	status = decode_sequence(xdr, &res->seq_res, rqstp);
 +	if (status)
-+		return status;
++		goto out;
++	status = decode_putfh(xdr);
++	if (status)
++		goto out;
++	status = decode_savefh(xdr);
++	if (status)
++		goto out;
++	status = decode_putfh(xdr);
++	if (status)
++		goto out;
++	status = decode_clone(xdr);
++	if (status)
++		goto out;
++	status = decode_getfattr(xdr, res->dst_fattr, res->server);
 +
-+	res.dst_fattr = nfs_alloc_fattr();
-+	if (!res.dst_fattr)
-+		return -ENOMEM;
-+
-+	status = nfs4_call_sync(server->client, server, msg,
-+				&args.seq_args, &res.seq_res, 0);
-+	if (status == 0)
-+		status = nfs_post_op_update_inode(dst_inode, res.dst_fattr);
-+
-+	kfree(res.dst_fattr);
++out:
++	res->rpc_status = status;
 +	return status;
 +}
 +
-+int nfs42_proc_clone(struct file *src_f, struct file *dst_f,
-+		     loff_t src_offset, loff_t dst_offset, loff_t count)
-+{
-+	struct rpc_message msg = {
-+		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_CLONE],
-+	};
-+	struct inode *inode = file_inode(src_f);
-+	struct nfs_server *server = NFS_SERVER(file_inode(src_f));
-+	struct nfs4_exception exception = { };
-+	int err;
-+
-+	if (!nfs_server_capable(inode, NFS_CAP_CLONE))
-+		return -EOPNOTSUPP;
-+
-+	do {
-+		err = _nfs42_proc_clone(&msg, src_f, dst_f, src_offset,
-+					dst_offset, count);
-+		if (err == -ENOTSUPP || err == -EOPNOTSUPP) {
-+			NFS_SERVER(inode)->caps &= ~NFS_CAP_CLONE;
-+			return -EOPNOTSUPP;
-+		}
-+		err = nfs4_handle_exception(server, err, &exception);
-+	} while (exception.retry);
-+
-+	return err;
-+
-+}
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 6e988fd..fb51b75 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -8659,7 +8659,8 @@ static const struct nfs4_minor_version_ops nfs_v4_2_minor_ops = {
- 		| NFS_CAP_ALLOCATE
- 		| NFS_CAP_DEALLOCATE
- 		| NFS_CAP_SEEK
--		| NFS_CAP_LAYOUTSTATS,
-+		| NFS_CAP_LAYOUTSTATS
-+		| NFS_CAP_CLONE,
- 	.init_client = nfs41_init_client,
- 	.shutdown_client = nfs41_shutdown_client,
- 	.match_stateid = nfs41_match_stateid,
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 20bc8e5..2fb163a 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -238,5 +238,6 @@ struct nfs_server {
- #define NFS_CAP_ALLOCATE	(1U << 20)
- #define NFS_CAP_DEALLOCATE	(1U << 21)
- #define NFS_CAP_LAYOUTSTATS	(1U << 22)
-+#define NFS_CAP_CLONE		(1U << 23)
+ #endif /* __LINUX_FS_NFS_NFS4_2XDR_H */
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index c42459e..a453bd1 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -7434,6 +7434,7 @@ struct rpc_procinfo	nfs4_procedures[] = {
+ 	PROC(ALLOCATE,		enc_allocate,		dec_allocate),
+ 	PROC(DEALLOCATE,	enc_deallocate,		dec_deallocate),
+ 	PROC(LAYOUTSTATS,	enc_layoutstats,	dec_layoutstats),
++	PROC(CLONE,		enc_clone,		dec_clone),
+ #endif /* CONFIG_NFS_V4_2 */
+ };
  
- #endif
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index 00121f2..c0c695b 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -130,6 +130,7 @@ enum nfs_opnum4 {
+ 	OP_READ_PLUS = 68,
+ 	OP_SEEK = 69,
+ 	OP_WRITE_SAME = 70,
++	OP_CLONE = 71,
+ 
+ 	OP_ILLEGAL = 10044,
+ };
+@@ -501,6 +502,7 @@ enum {
+ 	NFSPROC4_CLNT_ALLOCATE,
+ 	NFSPROC4_CLNT_DEALLOCATE,
+ 	NFSPROC4_CLNT_LAYOUTSTATS,
++	NFSPROC4_CLNT_CLONE,
+ };
+ 
+ /* nfs41 types */
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index b9b5304..79918d6 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -359,6 +359,25 @@ struct nfs42_layoutstat_data {
+ 	struct nfs42_layoutstat_res res;
+ };
+ 
++struct nfs42_clone_args {
++	struct nfs4_sequence_args	seq_args;
++	struct nfs_fh			*src_fh;
++	struct nfs_fh			*dst_fh;
++	nfs4_stateid			src_stateid;
++	nfs4_stateid			dst_stateid;
++	__u64				src_offset;
++	__u64				dst_offset;
++	__u64				count;
++	const u32			*dst_bitmask;
++};
++
++struct nfs42_clone_res {
++	struct nfs4_sequence_res	seq_res;
++	unsigned int			rpc_status;
++	struct nfs_fattr		*dst_fattr;
++	const struct nfs_server		*server;
++};
++
+ struct stateowner_id {
+ 	__u64	create_time;
+ 	__u32	uniquifier;
 -- 
 1.8.3.1
 
