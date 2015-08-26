@@ -1,158 +1,134 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:45074 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:45077 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751608AbbHZTtY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 26 Aug 2015 15:49:24 -0400
-Date: Wed, 26 Aug 2015 15:49:23 -0400
+	id S1751608AbbHZTxh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 26 Aug 2015 15:53:37 -0400
+Date: Wed, 26 Aug 2015 15:53:37 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
 To: Jeff Layton <jlayton@poochiereds.net>
 Cc: linux-nfs@vger.kernel.org, hch@lst.de, kinglongmee@gmail.com
-Subject: Re: [PATCH v3 06/20] locks/nfsd: create a new notifier chain for
- lease attempts
-Message-ID: <20150826194923.GB4161@fieldses.org>
+Subject: Re: [PATCH v3 07/20] nfsd: hook up nfsd_write to the new nfsd_file
+ cache
+Message-ID: <20150826195337.GC4161@fieldses.org>
 References: <1440069440-27454-1-git-send-email-jeff.layton@primarydata.com>
- <1440069440-27454-7-git-send-email-jeff.layton@primarydata.com>
+ <1440069440-27454-8-git-send-email-jeff.layton@primarydata.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1440069440-27454-7-git-send-email-jeff.layton@primarydata.com>
+In-Reply-To: <1440069440-27454-8-git-send-email-jeff.layton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Aug 20, 2015 at 07:17:06AM -0400, Jeff Layton wrote:
-> With the new file caching infrastructure in nfsd, we can end up holding
-> files open for an indefinite period of time, even when they are still
-> idle. This may prevent the kernel from handing out leases on the file,
-> which we don't really want to block.
-> 
-> Fix this by running a blocking notifier call chain whenever on any
-> lease attempt. nfsd can then purge the cache for that inode before
-> returning.
+On Thu, Aug 20, 2015 at 07:17:07AM -0400, Jeff Layton wrote:
+> Note that all callers currently pass in NULL for "file" anyway, so
+> there was already some dead code in here. Just eliminate that parm
+> and have it use the file cache instead of dealing directly with a
+> filp.
 
-Could this be expensive?  There's potentially a lease attempt on every
-NFSv4 open.
-
-Could we use the cache to decide whether a delegation's a good idea?
-(So, skip requesting the delegation if the cache gives evidence of
-recent activity on the file that would have conflicted with the
-delegation we're about to grant.)  That might avoid unnecessary cache
-purges too.
+So this is the first time the cache is actually used, right?  (Most of
+the code introduced by previous patches looks dead until this patch.)
 
 --b.
 
 > 
 > Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
 > ---
->  fs/locks.c          | 15 +++++++++++++++
->  fs/nfsd/filecache.c | 27 +++++++++++++++++++++++++++
->  include/linux/fs.h  |  1 +
->  3 files changed, 43 insertions(+)
+>  fs/nfsd/nfs3proc.c |  2 +-
+>  fs/nfsd/nfsproc.c  |  2 +-
+>  fs/nfsd/vfs.c      | 33 +++++++++++----------------------
+>  fs/nfsd/vfs.h      |  2 +-
+>  4 files changed, 14 insertions(+), 25 deletions(-)
 > 
-> diff --git a/fs/locks.c b/fs/locks.c
-> index d3d558ba4da7..c81b96159e5c 100644
-> --- a/fs/locks.c
-> +++ b/fs/locks.c
-> @@ -167,6 +167,13 @@ DEFINE_STATIC_LGLOCK(file_lock_lglock);
->  static DEFINE_PER_CPU(struct hlist_head, file_lock_list);
+> diff --git a/fs/nfsd/nfs3proc.c b/fs/nfsd/nfs3proc.c
+> index 7b755b7f785c..4e46ac511479 100644
+> --- a/fs/nfsd/nfs3proc.c
+> +++ b/fs/nfsd/nfs3proc.c
+> @@ -192,7 +192,7 @@ nfsd3_proc_write(struct svc_rqst *rqstp, struct nfsd3_writeargs *argp,
 >  
->  /*
-> + * Some subsystems would like to be notified if someone attempts to set a
-> + * lease on a file. This notifier chain will be called whenever this occurs.
-> + */
-> +BLOCKING_NOTIFIER_HEAD(lease_notifier_chain);
-> +EXPORT_SYMBOL_GPL(lease_notifier_chain);
-> +
-> +/*
->   * The blocked_hash is used to find POSIX lock loops for deadlock detection.
->   * It is protected by blocked_lock_lock.
->   *
-> @@ -1795,10 +1802,18 @@ EXPORT_SYMBOL(generic_setlease);
->   *
->   * The "priv" pointer is passed directly to the lm_setup function as-is. It
->   * may be NULL if the lm_setup operation doesn't require it.
-> + *
-> + * Kernel subsystems can also register to be notified on any attempt to set
-> + * a new lease with the lease_notifier_chain. This is used by (e.g.) nfsd
-> + * to close files that it may have cached when there is an attempt to set a
-> + * conflicting lease.
+>  	fh_copy(&resp->fh, &argp->fh);
+>  	resp->committed = argp->stable;
+> -	nfserr = nfsd_write(rqstp, &resp->fh, NULL,
+> +	nfserr = nfsd_write(rqstp, &resp->fh,
+>  				   argp->offset,
+>  				   rqstp->rq_vec, argp->vlen,
+>  				   &cnt,
+> diff --git a/fs/nfsd/nfsproc.c b/fs/nfsd/nfsproc.c
+> index 4cd78ef4c95c..9893095cbee1 100644
+> --- a/fs/nfsd/nfsproc.c
+> +++ b/fs/nfsd/nfsproc.c
+> @@ -213,7 +213,7 @@ nfsd_proc_write(struct svc_rqst *rqstp, struct nfsd_writeargs *argp,
+>  		SVCFH_fmt(&argp->fh),
+>  		argp->len, argp->offset);
+>  
+> -	nfserr = nfsd_write(rqstp, fh_copy(&resp->fh, &argp->fh), NULL,
+> +	nfserr = nfsd_write(rqstp, fh_copy(&resp->fh, &argp->fh),
+>  				   argp->offset,
+>  				   rqstp->rq_vec, argp->vlen,
+>  			           &cnt,
+> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+> index b5e077a6e7d4..7c1e7866fec9 100644
+> --- a/fs/nfsd/vfs.c
+> +++ b/fs/nfsd/vfs.c
+> @@ -42,6 +42,7 @@
+>  
+>  #include "nfsd.h"
+>  #include "vfs.h"
+> +#include "filecache.h"
+>  
+>  #define NFSDDBG_FACILITY		NFSDDBG_FILEOP
+>  
+> @@ -1002,30 +1003,18 @@ __be32 nfsd_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
+>   * N.B. After this call fhp needs an fh_put
 >   */
->  int
->  vfs_setlease(struct file *filp, long arg, struct file_lock **lease, void **priv)
+>  __be32
+> -nfsd_write(struct svc_rqst *rqstp, struct svc_fh *fhp, struct file *file,
+> -		loff_t offset, struct kvec *vec, int vlen, unsigned long *cnt,
+> -		int *stablep)
+> +nfsd_write(struct svc_rqst *rqstp, struct svc_fh *fhp, loff_t offset,
+> +	   struct kvec *vec, int vlen, unsigned long *cnt, int *stablep)
 >  {
-> +	if (arg != F_UNLCK)
-> +		blocking_notifier_call_chain(&lease_notifier_chain, arg, *lease);
+> -	__be32			err = 0;
+> -
+> -	if (file) {
+> -		err = nfsd_permission(rqstp, fhp->fh_export, fhp->fh_dentry,
+> -				NFSD_MAY_WRITE|NFSD_MAY_OWNER_OVERRIDE);
+> -		if (err)
+> -			goto out;
+> -		err = nfsd_vfs_write(rqstp, fhp, file, offset, vec, vlen, cnt,
+> -				stablep);
+> -	} else {
+> -		err = nfsd_open(rqstp, fhp, S_IFREG, NFSD_MAY_WRITE, &file);
+> -		if (err)
+> -			goto out;
+> -
+> -		if (cnt)
+> -			err = nfsd_vfs_write(rqstp, fhp, file, offset, vec, vlen,
+> -					     cnt, stablep);
+> -		fput(file);
+> +	__be32			err;
+> +	struct nfsd_file	*nf;
 > +
->  	if (filp->f_op->setlease)
->  		return filp->f_op->setlease(filp, arg, lease, priv);
->  	else
-> diff --git a/fs/nfsd/filecache.c b/fs/nfsd/filecache.c
-> index 669e62f6f4f6..77041967d8ff 100644
-> --- a/fs/nfsd/filecache.c
-> +++ b/fs/nfsd/filecache.c
-> @@ -158,6 +158,22 @@ static struct shrinker	nfsd_file_shrinker = {
->  	.seeks = 1,
->  };
->  
-> +static int
-> +nfsd_file_lease_notifier_call(struct notifier_block *nb, unsigned long arg,
-> +			    void *data)
-> +{
-> +	struct file_lock *fl = data;
-> +
-> +	/* Don't close files if we're the one trying to set the lease */
-> +	if (fl->fl_type == FL_LEASE)
-> +		nfsd_file_close_inode(file_inode(fl->fl_file));
-> +	return 0;
-> +}
-> +
-> +static struct notifier_block nfsd_file_lease_notifier = {
-> +	.notifier_call = nfsd_file_lease_notifier_call,
-> +};
-> +
->  int
->  nfsd_file_cache_init(void)
->  {
-> @@ -186,12 +202,21 @@ nfsd_file_cache_init(void)
->  		goto out_lru;
+> +	err = nfsd_file_acquire(rqstp, fhp, NFSD_MAY_WRITE, &nf);
+> +	if (err == nfs_ok) {
+> +		err = nfsd_vfs_write(rqstp, fhp, nf->nf_file, offset, vec,
+> +					vlen, cnt, stablep);
+> +		nfsd_file_put(nf);
 >  	}
+> -out:
+>  	return err;
+>  }
 >  
-> +	ret = blocking_notifier_chain_register(&lease_notifier_chain,
-> +				&nfsd_file_lease_notifier);
-> +	if (ret) {
-> +		pr_err("nfsd: unable to register lease notifier: %d\n", ret);
-> +		goto out_shrinker;
-> +	}
-> +
->  	for (i = 0; i < NFSD_FILE_HASH_SIZE; i++) {
->  		INIT_HLIST_HEAD(&nfsd_file_hashtbl[i].nfb_head);
->  		spin_lock_init(&nfsd_file_hashtbl[i].nfb_lock);
->  	}
->  out:
->  	return ret;
-> +out_shrinker:
-> +	unregister_shrinker(&nfsd_file_shrinker);
->  out_lru:
->  	list_lru_destroy(&nfsd_file_lru);
->  out_err:
-> @@ -207,6 +232,8 @@ nfsd_file_cache_shutdown(void)
->  	struct nfsd_file	*nf;
->  	LIST_HEAD(dispose);
->  
-> +	blocking_notifier_chain_unregister(&lease_notifier_chain,
-> +				&nfsd_file_lease_notifier);
->  	unregister_shrinker(&nfsd_file_shrinker);
->  	for (i = 0; i < NFSD_FILE_HASH_SIZE; i++) {
->  		spin_lock(&nfsd_file_hashtbl[i].nfb_lock);
-> diff --git a/include/linux/fs.h b/include/linux/fs.h
-> index 9a9d314f7b27..01bb82eae684 100644
-> --- a/include/linux/fs.h
-> +++ b/include/linux/fs.h
-> @@ -1041,6 +1041,7 @@ extern int fcntl_setlease(unsigned int fd, struct file *filp, long arg);
->  extern int fcntl_getlease(struct file *filp);
->  
->  /* fs/locks.c */
-> +extern struct blocking_notifier_head	lease_notifier_chain;
->  void locks_free_lock_context(struct file_lock_context *ctx);
->  void locks_free_lock(struct file_lock *fl);
->  extern void locks_init_lock(struct file_lock *);
+> diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
+> index 5be875e3e638..78b5527cba93 100644
+> --- a/fs/nfsd/vfs.h
+> +++ b/fs/nfsd/vfs.h
+> @@ -78,7 +78,7 @@ __be32		nfsd_readv(struct file *, loff_t, struct kvec *, int,
+>  				unsigned long *);
+>  __be32 		nfsd_read(struct svc_rqst *, struct svc_fh *,
+>  				loff_t, struct kvec *, int, unsigned long *);
+> -__be32 		nfsd_write(struct svc_rqst *, struct svc_fh *,struct file *,
+> +__be32 		nfsd_write(struct svc_rqst *, struct svc_fh *,
+>  				loff_t, struct kvec *,int, unsigned long *, int *);
+>  __be32		nfsd_vfs_write(struct svc_rqst *rqstp, struct svc_fh *fhp,
+>  				struct file *file, loff_t offset,
 > -- 
 > 2.4.3
