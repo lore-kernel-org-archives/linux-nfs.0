@@ -1,39 +1,125 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f181.google.com ([209.85.213.181]:34909 "EHLO
-	mail-ig0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753253AbbH0GYb (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Aug 2015 02:24:31 -0400
-Received: by igbjg10 with SMTP id jg10so59492919igb.0
-        for <linux-nfs@vger.kernel.org>; Wed, 26 Aug 2015 23:24:31 -0700 (PDT)
+Received: from smtp-o-3.desy.de ([131.169.56.156]:37640 "EHLO smtp-o-3.desy.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751563AbbH0Gny (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 27 Aug 2015 02:43:54 -0400
+Received: from smtp-map-3.desy.de (smtp-map-3.desy.de [131.169.56.68])
+	by smtp-o-3.desy.de (DESY-O-3) with ESMTP id BD23D280738
+	for <linux-nfs@vger.kernel.org>; Thu, 27 Aug 2015 08:43:52 +0200 (CEST)
+Received: from ZITSWEEP1.win.desy.de (zitsweep1.win.desy.de [131.169.97.95])
+	by smtp-map-3.desy.de (DESY_MAP_3) with ESMTP id AE75F1271
+	for <linux-nfs@vger.kernel.org>; Thu, 27 Aug 2015 08:43:52 +0200 (MEST)
+Date: Thu, 27 Aug 2015 08:43:51 +0200 (CEST)
+From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Ulrich Gemkow <ulrich.gemkow@ikr.uni-stuttgart.de>,
+        linux-nfs@vger.kernel.org
+Message-ID: <824431189.4182121.1440657831497.JavaMail.zimbra@desy.de>
+In-Reply-To: <20150825215456.GF8579@fieldses.org>
+References: <201508241452.57718.ulrich.gemkow@ikr.uni-stuttgart.de> <20150824201401.GA401@fieldses.org> <201508251928.06201.ulrich.gemkow@ikr.uni-stuttgart.de> <20150825215456.GF8579@fieldses.org>
+Subject: Re: NFSv4 mount fails on Sun Solaris 10 after reboot of client
 MIME-Version: 1.0
-In-Reply-To: <20150826131156.GA9948@infradead.org>
-References: <1440577010-122867-1-git-send-email-tao.peng@primarydata.com> <20150826131156.GA9948@infradead.org>
-From: Peng Tao <tao.peng@primarydata.com>
-Date: Thu, 27 Aug 2015 14:24:11 +0800
-Message-ID: <CAKVebiVh2Aker6pL2krtt-ovqiC5tc3EV-ph8fO6q5Ui3dBF8w@mail.gmail.com>
-Subject: Re: [PATCH-RFC-RESEND 0/9] NFS/NFSD: add NFSv42 CLONE operation support
-To: Christoph Hellwig <hch@infradead.org>
-Cc: Devel FS Linux <linux-fsdevel@vger.kernel.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>, Zach Brown <zab@zabbo.net>,
-        Darren Hart <dvhart@linux.intel.com>,
-        Bruce Fields <bfields@fieldses.org>,
-        Jeff Layton <jeff.layton@primarydata.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>,
-        linux-btrfs@vger.kernel.org
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Aug 26, 2015 at 9:11 PM, Christoph Hellwig <hch@infradead.org> wrote:
-> On Wed, Aug 26, 2015 at 04:16:41PM +0800, Peng Tao wrote:
->> 2. vfs_file_clone_range() does not expect file systems to do data copy, and thus
->> no rw_verify_area() required.
->
-> While there is no physical copy involved, the data logically is copied from
-> file A to file B.  So we still need all the checks from rw_verify_area.
-I see. Will add the checks.
 
-Cheers,
-Tao
+
+----- Original Message -----
+> From: "J. Bruce Fields" <bfields@fieldses.org>
+> To: "Ulrich Gemkow" <ulrich.gemkow@ikr.uni-stuttgart.de>
+> Cc: linux-nfs@vger.kernel.org
+> Sent: Tuesday, August 25, 2015 11:54:56 PM
+> Subject: Re: NFSv4 mount fails on Sun Solaris 10 after reboot of client
+
+> On Tue, Aug 25, 2015 at 07:28:03PM +0200, Ulrich Gemkow wrote:
+>> Hello Bruce,
+>> 
+>> On Monday 24 August 2015 22:14:01 J. Bruce Fields wrote:
+>> > On Mon, Aug 24, 2015 at 02:52:55PM +0200, Ulrich Gemkow wrote:
+>> > > we have a weired problem with Linux NFSv4.0 Server (Vanilla
+>> > > Kernel 4.1.6) and a Sun Solaris 10 client (all patches applied):
+>> > > 
+>> > > When mounting a share on the Solaris client and then rebooting
+>> > > the client without unmounting the share first, after the reboot
+>> > > every attempt to mount the share again gives an I/O error on
+>> > > the client and the mount fails.
+>> > > 
+>> > > After a long time (serveral hours) the v4 mount suddenly works
+>> > > again.
+>> > > 
+>> > > Mounting a share with vers=2 works always even in times when
+>> > > the v4 mount fails.
+>> > > 
+>> > > So it seems the Linux NFSv4 server holds a state for the client
+>> > > which prevents the re-mounting of the share and gives the
+>> > > I/O-error on the client.
+>> > > 
+>> > > We use NFSv4 without idmapd.
+>> > > 
+>> > > Is there any tip how to debug or solve this?
+>> > 
+>> > Best is probably to get a packet trace.  So something like:
+>> > 
+>> > 	tcpdump -s0 -iem0 -wtmp.pcap
+>> > 
+>> > and then try the client mount, then kill the tcpdump after the mount
+>> > fails, and send us tmp.pcap.  (And/or take a look at tmp.pcap yourself
+>> > with wireshark.  The interesting question is what kind of error the
+>> > server is returning when the client tries the mount after reboot.)
+>> 
+>> Thank you for your reply. The tcpdump is attached, the relevant
+>> packets are 49..52. The error seems to be a SERVERFAULT. Can you
+>> see more from the dump?
+>> 
+>> Thanks again and best regards
+> 
+> The SERVERFAULT is on SETCLIENTID_CONFIRM.
+> 
+> In nfsd4_setclientid_confirm():
+> 
+>	conf = find_confirmed_client(clid, false, nn);
+>	unconf = find_unconfirmed_client(clid, false, nn);
+>	/*
+>         * We try hard to give out unique clientid's, so if we get an
+>         * attempt to confirm the same clientid with a different cred,
+>         * there's a bug somewhere.  Let's charitably assume it's our
+>         * bug.
+>         */
+>        status = nfserr_serverfault;
+>        if (unconf && !same_creds(&unconf->cl_cred, &rqstp->rq_cred))
+>                goto out;
+>        if (conf && !same_creds(&conf->cl_cred, &rqstp->rq_cred))
+>                goto out;
+> 
+> The SETCLIENTID and SETCLIENTID_CONFIRM are done with identical
+> auth_unix creds.
+> 
+> The clientid that were looking up there was returned from the previous
+> SETCLIENTID, generated by this logic:
+> 
+>	if (conf && same_verf(&conf->cl_verifier, &clverifier))
+>                /* case 1: probable callback update */
+>                copy_clid(new, conf);
+>        else /* case 4 (new client) or cases 2, 3 (client reboot): */
+>                gen_clid(new, nn);
+> 
+> So it should be a brand new clientid, unless the client was reusing the old
+> verifier.
+> 
+> So perhaps the client is sending the SETCLIENTID with a verifier set to what it
+> used on the previous boot?  That sounds like a client bug.  The linux
+> client uses a timestamp for the verifier, looks like the Solaris client
+> might too.  Is there some reason the clock on this client isn't
+> advancing on reboot?
+
+probably NFS4ERR_STALE_CLIENTID is a better error code for this scenario.
+
+Tigran.
+
+> 
+> --b.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
