@@ -1,109 +1,41 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:57182 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750709AbbH0EcJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 27 Aug 2015 00:32:09 -0400
-From: Pratyush Anand <panand@redhat.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, Pratyush Anand <panand@redhat.com>,
+Received: from mail-ig0-f169.google.com ([209.85.213.169]:33355 "EHLO
+	mail-ig0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751151AbbH0GQL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Aug 2015 02:16:11 -0400
+Received: by igbjg10 with SMTP id jg10so9873956igb.0
+        for <linux-nfs@vger.kernel.org>; Wed, 26 Aug 2015 23:16:10 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <20150826131741.GA22249@infradead.org>
+References: <1440577010-122867-1-git-send-email-tao.peng@primarydata.com>
+ <1440577010-122867-3-git-send-email-tao.peng@primarydata.com> <20150826131741.GA22249@infradead.org>
+From: Peng Tao <tao.peng@primarydata.com>
+Date: Thu, 27 Aug 2015 14:15:51 +0800
+Message-ID: <CAKVebiWewEd_jdVz=NwMgabZieNSfQhpJ=JYE1c6yJ85SQSFDA@mail.gmail.com>
+Subject: Re: [PATCH-RFC-RESEND 2/9] vfs/btrfs: add .clone_range file operation
+To: Christoph Hellwig <hch@infradead.org>
+Cc: Devel FS Linux <linux-fsdevel@vger.kernel.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>, Zach Brown <zab@zabbo.net>,
+        Darren Hart <dvhart@linux.intel.com>,
+        Bruce Fields <bfields@fieldses.org>,
         Jeff Layton <jeff.layton@primarydata.com>,
-        Steven Rostedt <rostedt@goodmis.org>, Ingo Molnar <mingo@redhat.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        Jeff Layton <jlayton@primarydata.com>,
-        linux-kernel@vger.kernel.org (open list),
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: [PATCH V3] net: sunrpc: fix tracepoint Warning: unknown op '->'
-Date: Thu, 27 Aug 2015 10:01:33 +0530
-Message-Id: <26296332fcef5466c2d38c5009efbc6c3e808d11.1440608659.git.panand@redhat.com>
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        "Darrick J. Wong" <darrick.wong@oracle.com>,
+        linux-btrfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-`perf stat  -e sunrpc:svc_xprt_do_enqueue true` results in
+On Wed, Aug 26, 2015 at 9:17 PM, Christoph Hellwig <hch@infradead.org> wrote:
+> You need to eep the existing defintion, either as a duplicate with a
+> comment, or by including the uapi fs.h and defininin it to the new name.
+OK. will keep it.
 
-Warning: unknown op '->'
-Warning: [sunrpc:svc_xprt_do_enqueue] unknown op '->'
+>
+> Also this will break cifs, which uses the BTRFS_IOC_CLONE defintion
+> already.
+I'll look into it as well.
 
-Similar warning for svc_handle_xprt as well.
-
-Actually TP_printk() should never dereference an address saved in the ring
-buffer that points somewhere in the kernel. There's no guarantee that that
-object still exists (with the exception of static strings).
-
-Therefore change all the arguments for TP_printk(), so that it references
-values existing in the ring buffer only.
-
-While doing that, also fix another possible bug when argument xprt could be
-NULL and TP_fast_assign() tries to access it's elements.
-
-Signed-off-by: Pratyush Anand <panand@redhat.com>
-Reviewed-by: Jeff Layton <jeff.layton@primarydata.com>
-Acked-by: Steven Rostedt <rostedt@goodmis.org>
----
-Changes since V2:
-- removed storing of "rqst" now
-- removed replacement of , to ; at the end of statement __entry->xprt =
-  xprt
-Changes since V1:
-- struct sockaddr memcopied to ring buffer so that its internal element can
-be accessed while printing %pIS.
-
- include/trace/events/sunrpc.h | 21 ++++++++++++++-------
- 1 file changed, 14 insertions(+), 7 deletions(-)
-
-diff --git a/include/trace/events/sunrpc.h b/include/trace/events/sunrpc.h
-index fd1a02cb3c82..003dca933803 100644
---- a/include/trace/events/sunrpc.h
-+++ b/include/trace/events/sunrpc.h
-@@ -529,18 +529,21 @@ TRACE_EVENT(svc_xprt_do_enqueue,
- 
- 	TP_STRUCT__entry(
- 		__field(struct svc_xprt *, xprt)
--		__field(struct svc_rqst *, rqst)
-+		__field_struct(struct sockaddr_storage, ss)
-+		__field(int, pid)
-+		__field(unsigned long, flags)
- 	),
- 
- 	TP_fast_assign(
- 		__entry->xprt = xprt;
--		__entry->rqst = rqst;
-+		xprt ? memcpy(&__entry->ss, &xprt->xpt_remote, sizeof(__entry->ss)) : memset(&__entry->ss, 0, sizeof(__entry->ss));
-+		__entry->pid = rqst? rqst->rq_task->pid : 0;
-+		__entry->flags = xprt ? xprt->xpt_flags : 0;
- 	),
- 
- 	TP_printk("xprt=0x%p addr=%pIScp pid=%d flags=%s", __entry->xprt,
--		(struct sockaddr *)&__entry->xprt->xpt_remote,
--		__entry->rqst ? __entry->rqst->rq_task->pid : 0,
--		show_svc_xprt_flags(__entry->xprt->xpt_flags))
-+		(struct sockaddr *)&__entry->ss,
-+		__entry->pid, show_svc_xprt_flags(__entry->flags))
- );
- 
- TRACE_EVENT(svc_xprt_dequeue,
-@@ -589,16 +592,20 @@ TRACE_EVENT(svc_handle_xprt,
- 	TP_STRUCT__entry(
- 		__field(struct svc_xprt *, xprt)
- 		__field(int, len)
-+		__field_struct(struct sockaddr_storage, ss)
-+		__field(unsigned long, flags)
- 	),
- 
- 	TP_fast_assign(
- 		__entry->xprt = xprt;
-+		xprt ? memcpy(&__entry->ss, &xprt->xpt_remote, sizeof(__entry->ss)) : memset(&__entry->ss, 0, sizeof(__entry->ss));
- 		__entry->len = len;
-+		__entry->flags = xprt ? xprt->xpt_flags : 0;
- 	),
- 
- 	TP_printk("xprt=0x%p addr=%pIScp len=%d flags=%s", __entry->xprt,
--		(struct sockaddr *)&__entry->xprt->xpt_remote, __entry->len,
--		show_svc_xprt_flags(__entry->xprt->xpt_flags))
-+		(struct sockaddr *)&__entry->ss,
-+		__entry->len, show_svc_xprt_flags(__entry->flags))
- );
- #endif /* _TRACE_SUNRPC_H */
- 
--- 
-2.4.3
-
+Thanks,
+Tao
