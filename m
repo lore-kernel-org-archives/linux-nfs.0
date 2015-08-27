@@ -1,121 +1,133 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:45763 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:45766 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751186AbbH0SQo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 27 Aug 2015 14:16:44 -0400
-Date: Thu, 27 Aug 2015 14:16:43 -0400
+	id S1752009AbbH0S3W (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 27 Aug 2015 14:29:22 -0400
+Date: Thu, 27 Aug 2015 14:29:22 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Pratyush Anand <panand@redhat.com>
-Cc: linux-nfs@vger.kernel.org, Jeff Layton <jeff.layton@primarydata.com>,
-        Steven Rostedt <rostedt@goodmis.org>, Ingo Molnar <mingo@redhat.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        Jeff Layton <jlayton@primarydata.com>,
-        open list <linux-kernel@vger.kernel.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: Re: [PATCH V3] net: sunrpc: fix tracepoint Warning: unknown op '->'
-Message-ID: <20150827181643.GA11819@fieldses.org>
-References: <26296332fcef5466c2d38c5009efbc6c3e808d11.1440608659.git.panand@redhat.com>
+To: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+Cc: Ulrich Gemkow <ulrich.gemkow@ikr.uni-stuttgart.de>,
+        linux-nfs@vger.kernel.org
+Subject: Re: NFSv4 mount fails on Sun Solaris 10 after reboot of client
+Message-ID: <20150827182922.GB11819@fieldses.org>
+References: <201508241452.57718.ulrich.gemkow@ikr.uni-stuttgart.de>
+ <20150824201401.GA401@fieldses.org>
+ <201508251928.06201.ulrich.gemkow@ikr.uni-stuttgart.de>
+ <20150825215456.GF8579@fieldses.org>
+ <824431189.4182121.1440657831497.JavaMail.zimbra@desy.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <26296332fcef5466c2d38c5009efbc6c3e808d11.1440608659.git.panand@redhat.com>
+In-Reply-To: <824431189.4182121.1440657831497.JavaMail.zimbra@desy.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Thanks, applying, with:
+On Thu, Aug 27, 2015 at 08:43:51AM +0200, Mkrtchyan, Tigran wrote:
+> 
+> 
+> ----- Original Message -----
+> > From: "J. Bruce Fields" <bfields@fieldses.org>
+> > To: "Ulrich Gemkow" <ulrich.gemkow@ikr.uni-stuttgart.de>
+> > Cc: linux-nfs@vger.kernel.org
+> > Sent: Tuesday, August 25, 2015 11:54:56 PM
+> > Subject: Re: NFSv4 mount fails on Sun Solaris 10 after reboot of client
+> 
+> > On Tue, Aug 25, 2015 at 07:28:03PM +0200, Ulrich Gemkow wrote:
+> >> Hello Bruce,
+> >> 
+> >> On Monday 24 August 2015 22:14:01 J. Bruce Fields wrote:
+> >> > On Mon, Aug 24, 2015 at 02:52:55PM +0200, Ulrich Gemkow wrote:
+> >> > > we have a weired problem with Linux NFSv4.0 Server (Vanilla
+> >> > > Kernel 4.1.6) and a Sun Solaris 10 client (all patches applied):
+> >> > > 
+> >> > > When mounting a share on the Solaris client and then rebooting
+> >> > > the client without unmounting the share first, after the reboot
+> >> > > every attempt to mount the share again gives an I/O error on
+> >> > > the client and the mount fails.
+> >> > > 
+> >> > > After a long time (serveral hours) the v4 mount suddenly works
+> >> > > again.
+> >> > > 
+> >> > > Mounting a share with vers=2 works always even in times when
+> >> > > the v4 mount fails.
+> >> > > 
+> >> > > So it seems the Linux NFSv4 server holds a state for the client
+> >> > > which prevents the re-mounting of the share and gives the
+> >> > > I/O-error on the client.
+> >> > > 
+> >> > > We use NFSv4 without idmapd.
+> >> > > 
+> >> > > Is there any tip how to debug or solve this?
+> >> > 
+> >> > Best is probably to get a packet trace.  So something like:
+> >> > 
+> >> > 	tcpdump -s0 -iem0 -wtmp.pcap
+> >> > 
+> >> > and then try the client mount, then kill the tcpdump after the mount
+> >> > fails, and send us tmp.pcap.  (And/or take a look at tmp.pcap yourself
+> >> > with wireshark.  The interesting question is what kind of error the
+> >> > server is returning when the client tries the mount after reboot.)
+> >> 
+> >> Thank you for your reply. The tcpdump is attached, the relevant
+> >> packets are 49..52. The error seems to be a SERVERFAULT. Can you
+> >> see more from the dump?
+> >> 
+> >> Thanks again and best regards
+> > 
+> > The SERVERFAULT is on SETCLIENTID_CONFIRM.
+> > 
+> > In nfsd4_setclientid_confirm():
+> > 
+> >	conf = find_confirmed_client(clid, false, nn);
+> >	unconf = find_unconfirmed_client(clid, false, nn);
+> >	/*
+> >         * We try hard to give out unique clientid's, so if we get an
+> >         * attempt to confirm the same clientid with a different cred,
+> >         * there's a bug somewhere.  Let's charitably assume it's our
+> >         * bug.
+> >         */
+> >        status = nfserr_serverfault;
+> >        if (unconf && !same_creds(&unconf->cl_cred, &rqstp->rq_cred))
+> >                goto out;
+> >        if (conf && !same_creds(&conf->cl_cred, &rqstp->rq_cred))
+> >                goto out;
+> > 
+> > The SETCLIENTID and SETCLIENTID_CONFIRM are done with identical
+> > auth_unix creds.
+> > 
+> > The clientid that were looking up there was returned from the previous
+> > SETCLIENTID, generated by this logic:
+> > 
+> >	if (conf && same_verf(&conf->cl_verifier, &clverifier))
+> >                /* case 1: probable callback update */
+> >                copy_clid(new, conf);
+> >        else /* case 4 (new client) or cases 2, 3 (client reboot): */
+> >                gen_clid(new, nn);
+> > 
+> > So it should be a brand new clientid, unless the client was reusing the old
+> > verifier.
+> > 
+> > So perhaps the client is sending the SETCLIENTID with a verifier set to what it
+> > used on the previous boot?  That sounds like a client bug.  The linux
+> > client uses a timestamp for the verifier, looks like the Solaris client
+> > might too.  Is there some reason the clock on this client isn't
+> > advancing on reboot?
+> 
+> probably NFS4ERR_STALE_CLIENTID is a better error code for this scenario.
 
-	Cc: stable@vger.kernel.org
-	Fixes: 83a712e0afef "sunrpc: add some tracepoints around ..."
+SERVERFAULT is obviously lame, but I don't know that STALE_CLIENTID is
+right either.
 
-(let me know if that's not right.)
+Another thing that's weird is:
+
+	> After a long time (serveral hours) the v4 mount suddenly works
+	> again.
+
+I'd expect the clent to expire after a lease period (default 90
+seconds), I don't know what could be happening that would take hours.
+
+Also I don't know why those creds would change after a reboot.
+
+Anyway I think a trace covering the reboot is still the best hope of an
+explanation.
 
 --b.
-
-On Thu, Aug 27, 2015 at 10:01:33AM +0530, Pratyush Anand wrote:
-> `perf stat  -e sunrpc:svc_xprt_do_enqueue true` results in
-> 
-> Warning: unknown op '->'
-> Warning: [sunrpc:svc_xprt_do_enqueue] unknown op '->'
-> 
-> Similar warning for svc_handle_xprt as well.
-> 
-> Actually TP_printk() should never dereference an address saved in the ring
-> buffer that points somewhere in the kernel. There's no guarantee that that
-> object still exists (with the exception of static strings).
-> 
-> Therefore change all the arguments for TP_printk(), so that it references
-> values existing in the ring buffer only.
-> 
-> While doing that, also fix another possible bug when argument xprt could be
-> NULL and TP_fast_assign() tries to access it's elements.
-> 
-> Signed-off-by: Pratyush Anand <panand@redhat.com>
-> Reviewed-by: Jeff Layton <jeff.layton@primarydata.com>
-> Acked-by: Steven Rostedt <rostedt@goodmis.org>
-> ---
-> Changes since V2:
-> - removed storing of "rqst" now
-> - removed replacement of , to ; at the end of statement __entry->xprt =
->   xprt
-> Changes since V1:
-> - struct sockaddr memcopied to ring buffer so that its internal element can
-> be accessed while printing %pIS.
-> 
->  include/trace/events/sunrpc.h | 21 ++++++++++++++-------
->  1 file changed, 14 insertions(+), 7 deletions(-)
-> 
-> diff --git a/include/trace/events/sunrpc.h b/include/trace/events/sunrpc.h
-> index fd1a02cb3c82..003dca933803 100644
-> --- a/include/trace/events/sunrpc.h
-> +++ b/include/trace/events/sunrpc.h
-> @@ -529,18 +529,21 @@ TRACE_EVENT(svc_xprt_do_enqueue,
->  
->  	TP_STRUCT__entry(
->  		__field(struct svc_xprt *, xprt)
-> -		__field(struct svc_rqst *, rqst)
-> +		__field_struct(struct sockaddr_storage, ss)
-> +		__field(int, pid)
-> +		__field(unsigned long, flags)
->  	),
->  
->  	TP_fast_assign(
->  		__entry->xprt = xprt;
-> -		__entry->rqst = rqst;
-> +		xprt ? memcpy(&__entry->ss, &xprt->xpt_remote, sizeof(__entry->ss)) : memset(&__entry->ss, 0, sizeof(__entry->ss));
-> +		__entry->pid = rqst? rqst->rq_task->pid : 0;
-> +		__entry->flags = xprt ? xprt->xpt_flags : 0;
->  	),
->  
->  	TP_printk("xprt=0x%p addr=%pIScp pid=%d flags=%s", __entry->xprt,
-> -		(struct sockaddr *)&__entry->xprt->xpt_remote,
-> -		__entry->rqst ? __entry->rqst->rq_task->pid : 0,
-> -		show_svc_xprt_flags(__entry->xprt->xpt_flags))
-> +		(struct sockaddr *)&__entry->ss,
-> +		__entry->pid, show_svc_xprt_flags(__entry->flags))
->  );
->  
->  TRACE_EVENT(svc_xprt_dequeue,
-> @@ -589,16 +592,20 @@ TRACE_EVENT(svc_handle_xprt,
->  	TP_STRUCT__entry(
->  		__field(struct svc_xprt *, xprt)
->  		__field(int, len)
-> +		__field_struct(struct sockaddr_storage, ss)
-> +		__field(unsigned long, flags)
->  	),
->  
->  	TP_fast_assign(
->  		__entry->xprt = xprt;
-> +		xprt ? memcpy(&__entry->ss, &xprt->xpt_remote, sizeof(__entry->ss)) : memset(&__entry->ss, 0, sizeof(__entry->ss));
->  		__entry->len = len;
-> +		__entry->flags = xprt ? xprt->xpt_flags : 0;
->  	),
->  
->  	TP_printk("xprt=0x%p addr=%pIScp len=%d flags=%s", __entry->xprt,
-> -		(struct sockaddr *)&__entry->xprt->xpt_remote, __entry->len,
-> -		show_svc_xprt_flags(__entry->xprt->xpt_flags))
-> +		(struct sockaddr *)&__entry->ss,
-> +		__entry->len, show_svc_xprt_flags(__entry->flags))
->  );
->  #endif /* _TRACE_SUNRPC_H */
->  
-> -- 
-> 2.4.3
