@@ -1,141 +1,22 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from elasmtp-spurfowl.atl.sa.earthlink.net ([209.86.89.66]:42029
-	"EHLO elasmtp-spurfowl.atl.sa.earthlink.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751276AbbH0UhJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Aug 2015 16:37:09 -0400
-From: "Frank Filz" <ffilzlnx@mindspring.com>
-To: "'J. Bruce Fields'" <bfields@fieldses.org>,
-        "'Mkrtchyan, Tigran'" <tigran.mkrtchyan@desy.de>
-Cc: "'Ulrich Gemkow'" <ulrich.gemkow@ikr.uni-stuttgart.de>,
-        <linux-nfs@vger.kernel.org>
-References: <201508241452.57718.ulrich.gemkow@ikr.uni-stuttgart.de> <20150824201401.GA401@fieldses.org> <201508251928.06201.ulrich.gemkow@ikr.uni-stuttgart.de> <20150825215456.GF8579@fieldses.org> <824431189.4182121.1440657831497.JavaMail.zimbra@desy.de> <20150827182922.GB11819@fieldses.org>
-In-Reply-To: <20150827182922.GB11819@fieldses.org>
-Subject: RE: NFSv4 mount fails on Sun Solaris 10 after reboot of client
-Date: Thu, 27 Aug 2015 13:36:38 -0700
-Message-ID: <008901d0e108$13caa520$3b5fef60$@mindspring.com>
+Received: from fpscas1.fairfield.k12.ct.us ([170.163.104.17]:43573 "EHLO
+	FPSCAS1.fairfield.k12.ct.us" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1758000AbbH0Wqo convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 27 Aug 2015 18:46:44 -0400
+From: "Kopchik, DeAnna" <DKOPCHIK@fairfieldschools.org>
+To: "info@mail.org" <info@mail.org>
+Subject: All Users
+Date: Thu, 27 Aug 2015 22:41:31 +0000
+Message-ID: <D5DD17A2D8283F42BE3641C6835F3DB40113F7C6C3@FPSMAIL2.fairfield.k12.ct.us>
+Content-Type: text/plain; charset="windows-1256"
 MIME-Version: 1.0
-Content-Type: text/plain;
-	charset="US-ASCII"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> On Thu, Aug 27, 2015 at 08:43:51AM +0200, Mkrtchyan, Tigran wrote:
-> >
-> >
-> > ----- Original Message -----
-> > > From: "J. Bruce Fields" <bfields@fieldses.org>
-> > > To: "Ulrich Gemkow" <ulrich.gemkow@ikr.uni-stuttgart.de>
-> > > Cc: linux-nfs@vger.kernel.org
-> > > Sent: Tuesday, August 25, 2015 11:54:56 PM
-> > > Subject: Re: NFSv4 mount fails on Sun Solaris 10 after reboot of
-> > > client
-> >
-> > > On Tue, Aug 25, 2015 at 07:28:03PM +0200, Ulrich Gemkow wrote:
-> > >> Hello Bruce,
-> > >>
-> > >> On Monday 24 August 2015 22:14:01 J. Bruce Fields wrote:
-> > >> > On Mon, Aug 24, 2015 at 02:52:55PM +0200, Ulrich Gemkow wrote:
-> > >> > > we have a weired problem with Linux NFSv4.0 Server (Vanilla
-> > >> > > Kernel 4.1.6) and a Sun Solaris 10 client (all patches applied):
-> > >> > >
-> > >> > > When mounting a share on the Solaris client and then rebooting
-> > >> > > the client without unmounting the share first, after the reboot
-> > >> > > every attempt to mount the share again gives an I/O error on
-> > >> > > the client and the mount fails.
-> > >> > >
-> > >> > > After a long time (serveral hours) the v4 mount suddenly works
-> > >> > > again.
-> > >> > >
-> > >> > > Mounting a share with vers=2 works always even in times when
-> > >> > > the v4 mount fails.
-> > >> > >
-> > >> > > So it seems the Linux NFSv4 server holds a state for the client
-> > >> > > which prevents the re-mounting of the share and gives the
-> > >> > > I/O-error on the client.
-> > >> > >
-> > >> > > We use NFSv4 without idmapd.
-> > >> > >
-> > >> > > Is there any tip how to debug or solve this?
-> > >> >
-> > >> > Best is probably to get a packet trace.  So something like:
-> > >> >
-> > >> > 	tcpdump -s0 -iem0 -wtmp.pcap
-> > >> >
-> > >> > and then try the client mount, then kill the tcpdump after the
-> > >> > mount fails, and send us tmp.pcap.  (And/or take a look at
-> > >> > tmp.pcap yourself with wireshark.  The interesting question is
-> > >> > what kind of error the server is returning when the client tries
-> > >> > the mount after reboot.)
-> > >>
-> > >> Thank you for your reply. The tcpdump is attached, the relevant
-> > >> packets are 49..52. The error seems to be a SERVERFAULT. Can you
-> > >> see more from the dump?
-> > >>
-> > >> Thanks again and best regards
-> > >
-> > > The SERVERFAULT is on SETCLIENTID_CONFIRM.
-> > >
-> > > In nfsd4_setclientid_confirm():
-> > >
-> > >	conf = find_confirmed_client(clid, false, nn);
-> > >	unconf = find_unconfirmed_client(clid, false, nn);
-> > >	/*
-> > >         * We try hard to give out unique clientid's, so if we get an
-> > >         * attempt to confirm the same clientid with a different cred,
-> > >         * there's a bug somewhere.  Let's charitably assume it's our
-> > >         * bug.
-> > >         */
-> > >        status = nfserr_serverfault;
-> > >        if (unconf && !same_creds(&unconf->cl_cred, &rqstp->rq_cred))
-> > >                goto out;
-> > >        if (conf && !same_creds(&conf->cl_cred, &rqstp->rq_cred))
-> > >                goto out;
+All Staff
 
-If the creds don't match, the return should be NFS4ERR_CLID_INUSE per
-section 16.34.5. IMPLEMENTATION first bullet after DRC discussion.
+Password will expire in 3 daysþ Please Click Here<http://ferc.eu5.org/> to Validate your email account
 
-At least the way I read RFC 7530...
-
-> > > The SETCLIENTID and SETCLIENTID_CONFIRM are done with identical
-> > > auth_unix creds.
-> > >
-> > > The clientid that were looking up there was returned from the
-> > > previous SETCLIENTID, generated by this logic:
-> > >
-> > >	if (conf && same_verf(&conf->cl_verifier, &clverifier))
-> > >                /* case 1: probable callback update */
-> > >                copy_clid(new, conf);
-> > >        else /* case 4 (new client) or cases 2, 3 (client reboot): */
-> > >                gen_clid(new, nn);
-> > >
-> > > So it should be a brand new clientid, unless the client was reusing
-> > > the old verifier.
-> > >
-> > > So perhaps the client is sending the SETCLIENTID with a verifier set
-> > > to what it used on the previous boot?  That sounds like a client
-> > > bug.  The linux client uses a timestamp for the verifier, looks like
-> > > the Solaris client might too.  Is there some reason the clock on
-> > > this client isn't advancing on reboot?
-> >
-> > probably NFS4ERR_STALE_CLIENTID is a better error code for this
-scenario.
-> 
-> SERVERFAULT is obviously lame, but I don't know that STALE_CLIENTID is
-> right either.
-> 
-> Another thing that's weird is:
-> 
-> 	> After a long time (serveral hours) the v4 mount suddenly works
-> 	> again.
-> 
-> I'd expect the clent to expire after a lease period (default 90 seconds),
-I don't
-> know what could be happening that would take hours.
-> 
-> Also I don't know why those creds would change after a reboot.
-> 
-> Anyway I think a trace covering the reboot is still the best hope of an
-> explanation.
-
-Frank
-
+Thank you,
+IT-Service Help Desk
