@@ -1,107 +1,39 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:46518 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752625AbbH1UoP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 28 Aug 2015 16:44:15 -0400
-Date: Fri, 28 Aug 2015 16:44:13 -0400
-To: Andreas Gruenbacher <andreas.gruenbacher@gmail.com>
-Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-api@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-security-module@vger.kernel.org,
-        Andreas Gruenbacher <agruenba@redhat.com>
+Received: from mail-lb0-f182.google.com ([209.85.217.182]:33330 "EHLO
+	mail-lb0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752841AbbH1VID (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 28 Aug 2015 17:08:03 -0400
+Received: by lbbsx3 with SMTP id sx3so36874801lbb.0
+        for <linux-nfs@vger.kernel.org>; Fri, 28 Aug 2015 14:08:00 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <20150828204413.GB23326@fieldses.org>
+References: <1438689218-6921-1-git-send-email-agruenba@redhat.com>
+	<1438689218-6921-4-git-send-email-agruenba@redhat.com>
+	<20150828204413.GB23326@fieldses.org>
+Date: Fri, 28 Aug 2015 23:08:00 +0200
+Message-ID: <CAHc6FU41cZWJZ=4EZmBKwfhM4HPDBG9Gxuq9DUeLt2t0Lq4B=Q@mail.gmail.com>
 Subject: Re: [RFC v6 03/40] vfs: Add MAY_DELETE_SELF and MAY_DELETE_CHILD
  permission flags
-Message-ID: <20150828204413.GB23326@fieldses.org>
-References: <1438689218-6921-1-git-send-email-agruenba@redhat.com>
- <1438689218-6921-4-git-send-email-agruenba@redhat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1438689218-6921-4-git-send-email-agruenba@redhat.com>
-From: bfields@fieldses.org (J. Bruce Fields)
+From: Andreas Gruenbacher <agruenba@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Andreas Gruenbacher <andreas.gruenbacher@gmail.com>,
+        linux-kernel@vger.kernel.org,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-nfs@vger.kernel.org, linux-api@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-security-module@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Aug 04, 2015 at 01:53:01PM +0200, Andreas Gruenbacher wrote:
-> Normally, deleting a file requires write and execute access to the parent
-> directory.  With Richacls, a process with MAY_DELETE_SELF access to a file
-> may delete the file even without write access to the parent directory.
-> 
-> To support that, pass the MAY_DELETE_CHILD mask flag to inode_permission()
-> when checking for delete access inside a directory, and MAY_DELETE_SELF
-> when checking for delete access to a file itelf.
-> 
-> The MAY_DELETE_SELF permission does not override the sticky directory
-> check.  It probably should.
+2015-08-28 22:44 GMT+02:00 J. Bruce Fields <bfields@fieldses.org>:
+>> The MAY_DELETE_SELF permission does not override the sticky
+>> directory check.  It probably should.
+>
+> I guess it would basically just let the file owner delegate permission
+> to delete your file to a non-owner?  Makes sense to me to allow that.
 
-I guess it would basically just let the file owner delegate permission
-to delete your file to a non-owner?  Makes sense to me to allow that.
+Yes, independent of whether or not the process has MAY_DELETE_CHILD
+access on the directory but not independent of the sticky directory
+check, which is a bit of a weird combination.
 
---b.
-
-> 
-> Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
-> ---
->  fs/namei.c         | 15 +++++++++++----
->  include/linux/fs.h |  2 ++
->  2 files changed, 13 insertions(+), 4 deletions(-)
-> 
-> diff --git a/fs/namei.c b/fs/namei.c
-> index 3504d36..2ac759c 100644
-> --- a/fs/namei.c
-> +++ b/fs/namei.c
-> @@ -454,7 +454,7 @@ static int sb_permission(struct super_block *sb, struct inode *inode, int mask)
->   * changing the "normal" UIDs which are used for other things.
->   *
->   * When checking for MAY_APPEND, MAY_CREATE_FILE, MAY_CREATE_DIR,
-> - * MAY_WRITE must also be set in @mask.
-> + * MAY_DELETE_CHILD, MAY_DELETE_SELF, MAY_WRITE must also be set in @mask.
->   */
->  int inode_permission(struct inode *inode, int mask)
->  {
-> @@ -2527,7 +2527,7 @@ static int may_delete(struct inode *dir, struct dentry *victim,
->  		      bool isdir, bool replace)
->  {
->  	struct inode *inode = d_backing_inode(victim);
-> -	int error, mask = MAY_WRITE | MAY_EXEC;
-> +	int error, mask = MAY_EXEC;
->  
->  	if (d_is_negative(victim))
->  		return -ENOENT;
-> @@ -2537,8 +2537,15 @@ static int may_delete(struct inode *dir, struct dentry *victim,
->  	audit_inode_child(dir, victim, AUDIT_TYPE_CHILD_DELETE);
->  
->  	if (replace)
-> -		mask |= isdir ? MAY_CREATE_DIR : MAY_CREATE_FILE;
-> -	error = inode_permission(dir, mask);
-> +		mask |= MAY_WRITE | (isdir ? MAY_CREATE_DIR : MAY_CREATE_FILE);
-> +	error = inode_permission(dir, mask | MAY_WRITE | MAY_DELETE_CHILD);
-> +	if (error && IS_RICHACL(inode)) {
-> +		/* Deleting is also permitted with MAY_EXEC on the directory
-> +		 * and MAY_DELETE_SELF on the inode.  */
-> +		if (!inode_permission(inode, MAY_DELETE_SELF) &&
-> +		    !inode_permission(dir, mask))
-> +			error = 0;
-> +	}
->  	if (error)
->  		return error;
->  	if (IS_APPEND(dir))
-> diff --git a/include/linux/fs.h b/include/linux/fs.h
-> index 9c44f27..abf5b0e 100644
-> --- a/include/linux/fs.h
-> +++ b/include/linux/fs.h
-> @@ -83,6 +83,8 @@ typedef void (dax_iodone_t)(struct buffer_head *bh_map, int uptodate);
->  #define MAY_NOT_BLOCK		0x00000080
->  #define MAY_CREATE_FILE		0x00000100
->  #define MAY_CREATE_DIR		0x00000200
-> +#define MAY_DELETE_CHILD	0x00000400
-> +#define MAY_DELETE_SELF		0x00000800
->  
->  /*
->   * flags in file.f_mode.  Note that FMODE_READ and FMODE_WRITE must correspond
-> -- 
-> 2.5.0
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Andreas
