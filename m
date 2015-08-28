@@ -1,228 +1,38 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:46531 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752909AbbH1VtT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 28 Aug 2015 17:49:19 -0400
-Date: Fri, 28 Aug 2015 17:49:17 -0400
-To: Andreas Gruenbacher <andreas.gruenbacher@gmail.com>
-Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-api@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-security-module@vger.kernel.org,
-        Andreas Gruenbacher <agruenba@redhat.com>
-Subject: Re: [RFC v6 10/40] richacl: Permission check algorithm
-Message-ID: <20150828214917.GC23326@fieldses.org>
-References: <1438689218-6921-1-git-send-email-agruenba@redhat.com>
- <1438689218-6921-11-git-send-email-agruenba@redhat.com>
+Received: from mail-la0-f45.google.com ([209.85.215.45]:36194 "EHLO
+	mail-la0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752647AbbH1VyN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 28 Aug 2015 17:54:13 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1438689218-6921-11-git-send-email-agruenba@redhat.com>
-From: bfields@fieldses.org (J. Bruce Fields)
+In-Reply-To: <CALCETrUoBnPyEGExpoDzHOCgnHh5=a1ROALmb63LLJZG+L=aQA@mail.gmail.com>
+References: <1438689218-6921-1-git-send-email-agruenba@redhat.com>
+	<1438689218-6921-4-git-send-email-agruenba@redhat.com>
+	<CALCETrUoBnPyEGExpoDzHOCgnHh5=a1ROALmb63LLJZG+L=aQA@mail.gmail.com>
+Date: Fri, 28 Aug 2015 23:54:11 +0200
+Message-ID: <CAHpGcM+i887PJ07_CNZ38aK0DhRWgmyYbAGrDN2i1xXkH+1rUg@mail.gmail.com>
+Subject: Re: [RFC v6 03/40] vfs: Add MAY_DELETE_SELF and MAY_DELETE_CHILD
+ permission flags
+From: =?UTF-8?Q?Andreas_Gr=C3=BCnbacher?= <andreas.gruenbacher@gmail.com>
+To: Andy Lutomirski <luto@amacapital.net>
+Cc: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        Linux FS Devel <linux-fsdevel@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Linux API <linux-api@vger.kernel.org>, linux-cifs@vger.kernel.org,
+        LSM List <linux-security-module@vger.kernel.org>,
+        Andreas Gruenbacher <agruenba@redhat.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Aug 04, 2015 at 01:53:08PM +0200, Andreas Gruenbacher wrote:
-> A richacl roughly grants a requested access if the NFSv4 acl in the
-> richacl grants the requested permissions according to the NFSv4
-> permission check algorithm and the file mask that applies to the process
-> includes the requested permissions.
-> 
-> Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
-> ---
->  fs/Makefile             |   2 +-
->  fs/richacl_inode.c      | 146 ++++++++++++++++++++++++++++++++++++++++++++++++
->  include/linux/richacl.h |   3 +
->  3 files changed, 150 insertions(+), 1 deletion(-)
->  create mode 100644 fs/richacl_inode.c
-> 
-> diff --git a/fs/Makefile b/fs/Makefile
-> index ddc43d8..1305047 100644
-> --- a/fs/Makefile
-> +++ b/fs/Makefile
-> @@ -48,7 +48,7 @@ obj-$(CONFIG_SYSCTL)		+= drop_caches.o
->  
->  obj-$(CONFIG_FHANDLE)		+= fhandle.o
->  obj-$(CONFIG_FS_RICHACL)	+= richacl.o
-> -richacl-y			:= richacl_base.o
-> +richacl-y			:= richacl_base.o richacl_inode.o
->  
->  obj-y				+= quota/
->  
-> diff --git a/fs/richacl_inode.c b/fs/richacl_inode.c
-> new file mode 100644
-> index 0000000..6d94e064
-> --- /dev/null
-> +++ b/fs/richacl_inode.c
-> @@ -0,0 +1,146 @@
-> +/*
-> + * Copyright (C) 2010  Novell, Inc.
-> + * Copyright (C) 2015  Red Hat, Inc.
-> + * Written by Andreas Gruenbacher <agruen@kernel.org>
-> + *
-> + * This program is free software; you can redistribute it and/or modify it
-> + * under the terms of the GNU General Public License as published by the
-> + * Free Software Foundation; either version 2, or (at your option) any
-> + * later version.
-> + *
-> + * This program is distributed in the hope that it will be useful, but
-> + * WITHOUT ANY WARRANTY; without even the implied warranty of
-> + * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-> + * General Public License for more details.
-> + */
-> +
-> +#include <linux/sched.h>
-> +#include <linux/module.h>
-> +#include <linux/fs.h>
-> +#include <linux/slab.h>
-> +#include <linux/richacl.h>
-> +
-> +/**
-> + * richacl_permission  -  richacl permission check algorithm
-> + * @inode:	inode to check
-> + * @acl:	rich acl of the inode
-> + * @want:	requested access (MAY_* flags)
-> + *
-> + * Checks if the current process is granted @mask flags in @acl.
-> + */
-> +int
-> +richacl_permission(struct inode *inode, const struct richacl *acl,
-> +		   int want)
-> +{
-> +	const struct richace *ace;
-> +	unsigned int mask = richacl_want_to_mask(want);
-> +	unsigned int requested = mask, denied = 0;
-> +	int in_owning_group = in_group_p(inode->i_gid);
-> +	int in_owner_or_group_class = in_owning_group;
-> +
-> +	/*
-> +	 * A process is
-> +	 *   - in the owner file class if it owns the file,
-> +	 *   - in the group file class if it is in the file's owning group or
-> +	 *     it matches any of the user or group entries, and
-> +	 *   - in the other file class otherwise.
-> +	 * The file class is only relevant for determining which file mask to
-> +	 * apply, which only happens for masked acls.
-> +	 */
-> +	if (acl->a_flags & RICHACL_MASKED) {
-> +		if ((acl->a_flags & RICHACL_WRITE_THROUGH) &&
-> +		    uid_eq(current_fsuid(), inode->i_uid)) {
-> +			denied = requested & ~acl->a_owner_mask;
-> +			goto out;
-> +		}
-> +	} else {
-> +		/*
-> +		 * We don't care which class the process is in when the acl is
-> +		 * not masked.
-> +		 */
-> +		in_owner_or_group_class = 1;
+2015-08-28 23:36 GMT+02:00 Andy Lutomirski <luto@amacapital.net>:
+> Silly question from the peanut gallery: is there any such thing as
+> opening an fd pointing at a file such that the "open file description"
+> (i.e. the struct file) captures the right to delete the file?
+>
+> IOW do we need FMODE_DELETE_SELF?
 
-So why bother setting it at all, then?  Oh, I see, it lets you break out
-of the loop below earlier.  OK.
+When would that permission be checked, what syscall would you use to
+unlink an open file descriptor?
 
-Patch makes sense to me, ACK.
-
---b.
-
-> +	}
-> +
-> +	/*
-> +	 * Check if the acl grants the requested access and determine which
-> +	 * file class the process is in.
-> +	 */
-> +	richacl_for_each_entry(ace, acl) {
-> +		unsigned int ace_mask = ace->e_mask;
-> +
-> +		if (richace_is_inherit_only(ace))
-> +			continue;
-> +		if (richace_is_owner(ace)) {
-> +			if (!uid_eq(current_fsuid(), inode->i_uid))
-> +				continue;
-> +			goto entry_matches_owner;
-> +		} else if (richace_is_group(ace)) {
-> +			if (!in_owning_group)
-> +				continue;
-> +		} else if (richace_is_unix_user(ace)) {
-> +			if (!uid_eq(current_fsuid(), ace->e_id.uid))
-> +				continue;
-> +		} else if (richace_is_unix_group(ace)) {
-> +			if (!in_group_p(ace->e_id.gid))
-> +				continue;
-> +		} else
-> +			goto entry_matches_everyone;
-> +
-> +		/*
-> +		 * Apply the group file mask to entries other than owner@ and
-> +		 * everyone@ or user entries matching the owner.  This ensures
-> +		 * that we grant the same permissions as the acl computed by
-> +		 * richacl_apply_masks().
-> +		 *
-> +		 * Without this restriction, the following richacl would grant
-> +		 * rw access to processes which are both the owner and in the
-> +		 * owning group, but not to other users in the owning group,
-> +		 * which could not be represented without masks:
-> +		 *
-> +		 *  owner:rw::mask
-> +		 *  group@:rw::allow
-> +		 */
-> +		if ((acl->a_flags & RICHACL_MASKED) && richace_is_allow(ace))
-> +			ace_mask &= acl->a_group_mask;
-> +
-> +entry_matches_owner:
-> +		/* The process is in the owner or group file class. */
-> +		in_owner_or_group_class = 1;
-> +
-> +entry_matches_everyone:
-> +		/* Check which mask flags the ACE allows or denies. */
-> +		if (richace_is_deny(ace))
-> +			denied |= ace_mask & mask;
-> +		mask &= ~ace_mask;
-> +
-> +		/*
-> +		 * Keep going until we know which file class
-> +		 * the process is in.
-> +		 */
-> +		if (!mask && in_owner_or_group_class)
-> +			break;
-> +	}
-> +	denied |= mask;
-> +
-> +	if (acl->a_flags & RICHACL_MASKED) {
-> +		/*
-> +		 * The file class a process is in determines which file mask
-> +		 * applies.  Check if that file mask also grants the requested
-> +		 * access.
-> +		 */
-> +		if (uid_eq(current_fsuid(), inode->i_uid))
-> +			denied |= requested & ~acl->a_owner_mask;
-> +		else if (in_owner_or_group_class)
-> +			denied |= requested & ~acl->a_group_mask;
-> +		else {
-> +			if (acl->a_flags & RICHACL_WRITE_THROUGH)
-> +				denied = requested & ~acl->a_other_mask;
-> +			else
-> +				denied |= requested & ~acl->a_other_mask;
-> +		}
-> +	}
-> +
-> +out:
-> +	return denied ? -EACCES : 0;
-> +}
-> +EXPORT_SYMBOL_GPL(richacl_permission);
-> diff --git a/include/linux/richacl.h b/include/linux/richacl.h
-> index 8df6d93..756b711 100644
-> --- a/include/linux/richacl.h
-> +++ b/include/linux/richacl.h
-> @@ -306,4 +306,7 @@ extern unsigned int richacl_want_to_mask(unsigned int);
->  extern void richacl_compute_max_masks(struct richacl *, kuid_t);
->  extern struct richacl *richacl_chmod(struct richacl *, mode_t);
->  
-> +/* richacl_inode.c */
-> +extern int richacl_permission(struct inode *, const struct richacl *, int);
-> +
->  #endif /* __RICHACL_H */
-> -- 
-> 2.5.0
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Thanks,
+Andreas
