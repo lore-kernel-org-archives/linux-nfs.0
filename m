@@ -1,115 +1,155 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:46448 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:46515 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752389AbbH1SGP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 28 Aug 2015 14:06:15 -0400
-Date: Fri, 28 Aug 2015 14:06:12 -0400
-From: "'J. Bruce Fields'" <bfields@fieldses.org>
-To: Frank Filz <ffilzlnx@mindspring.com>
-Cc: "'Mkrtchyan, Tigran'" <tigran.mkrtchyan@desy.de>,
-        "'Ulrich Gemkow'" <ulrich.gemkow@ikr.uni-stuttgart.de>,
-        linux-nfs@vger.kernel.org
-Subject: Re: NFSv4 mount fails on Sun Solaris 10 after reboot of client
-Message-ID: <20150828180612.GC10468@fieldses.org>
-References: <201508241452.57718.ulrich.gemkow@ikr.uni-stuttgart.de>
- <20150824201401.GA401@fieldses.org>
- <201508251928.06201.ulrich.gemkow@ikr.uni-stuttgart.de>
- <20150825215456.GF8579@fieldses.org>
- <824431189.4182121.1440657831497.JavaMail.zimbra@desy.de>
- <20150827182922.GB11819@fieldses.org>
- <008901d0e108$13caa520$3b5fef60$@mindspring.com>
+	id S1751965AbbH1Uey (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 28 Aug 2015 16:34:54 -0400
+Date: Fri, 28 Aug 2015 16:34:52 -0400
+To: Andreas Gruenbacher <andreas.gruenbacher@gmail.com>
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-api@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-security-module@vger.kernel.org,
+        Andreas Gruenbacher <agruenba@redhat.com>
+Subject: Re: [RFC v6 01/40] vfs: Add IS_ACL() and IS_RICHACL() tests
+Message-ID: <20150828203452.GA23326@fieldses.org>
+References: <1438689218-6921-1-git-send-email-agruenba@redhat.com>
+ <1438689218-6921-2-git-send-email-agruenba@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <008901d0e108$13caa520$3b5fef60$@mindspring.com>
+In-Reply-To: <1438689218-6921-2-git-send-email-agruenba@redhat.com>
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Aug 27, 2015 at 01:36:38PM -0700, Frank Filz wrote:
-> > On Thu, Aug 27, 2015 at 08:43:51AM +0200, Mkrtchyan, Tigran wrote:
-> > >
-> > >
-> > > ----- Original Message -----
-> > > > From: "J. Bruce Fields" <bfields@fieldses.org>
-> > > > To: "Ulrich Gemkow" <ulrich.gemkow@ikr.uni-stuttgart.de>
-> > > > Cc: linux-nfs@vger.kernel.org
-> > > > Sent: Tuesday, August 25, 2015 11:54:56 PM
-> > > > Subject: Re: NFSv4 mount fails on Sun Solaris 10 after reboot of
-> > > > client
-> > >
-> > > > On Tue, Aug 25, 2015 at 07:28:03PM +0200, Ulrich Gemkow wrote:
-> > > >> Hello Bruce,
-> > > >>
-> > > >> On Monday 24 August 2015 22:14:01 J. Bruce Fields wrote:
-> > > >> > On Mon, Aug 24, 2015 at 02:52:55PM +0200, Ulrich Gemkow wrote:
-> > > >> > > we have a weired problem with Linux NFSv4.0 Server (Vanilla
-> > > >> > > Kernel 4.1.6) and a Sun Solaris 10 client (all patches applied):
-> > > >> > >
-> > > >> > > When mounting a share on the Solaris client and then rebooting
-> > > >> > > the client without unmounting the share first, after the reboot
-> > > >> > > every attempt to mount the share again gives an I/O error on
-> > > >> > > the client and the mount fails.
-> > > >> > >
-> > > >> > > After a long time (serveral hours) the v4 mount suddenly works
-> > > >> > > again.
-> > > >> > >
-> > > >> > > Mounting a share with vers=2 works always even in times when
-> > > >> > > the v4 mount fails.
-> > > >> > >
-> > > >> > > So it seems the Linux NFSv4 server holds a state for the client
-> > > >> > > which prevents the re-mounting of the share and gives the
-> > > >> > > I/O-error on the client.
-> > > >> > >
-> > > >> > > We use NFSv4 without idmapd.
-> > > >> > >
-> > > >> > > Is there any tip how to debug or solve this?
-> > > >> >
-> > > >> > Best is probably to get a packet trace.  So something like:
-> > > >> >
-> > > >> > 	tcpdump -s0 -iem0 -wtmp.pcap
-> > > >> >
-> > > >> > and then try the client mount, then kill the tcpdump after the
-> > > >> > mount fails, and send us tmp.pcap.  (And/or take a look at
-> > > >> > tmp.pcap yourself with wireshark.  The interesting question is
-> > > >> > what kind of error the server is returning when the client tries
-> > > >> > the mount after reboot.)
-> > > >>
-> > > >> Thank you for your reply. The tcpdump is attached, the relevant
-> > > >> packets are 49..52. The error seems to be a SERVERFAULT. Can you
-> > > >> see more from the dump?
-> > > >>
-> > > >> Thanks again and best regards
-> > > >
-> > > > The SERVERFAULT is on SETCLIENTID_CONFIRM.
-> > > >
-> > > > In nfsd4_setclientid_confirm():
-> > > >
-> > > >	conf = find_confirmed_client(clid, false, nn);
-> > > >	unconf = find_unconfirmed_client(clid, false, nn);
-> > > >	/*
-> > > >         * We try hard to give out unique clientid's, so if we get an
-> > > >         * attempt to confirm the same clientid with a different cred,
-> > > >         * there's a bug somewhere.  Let's charitably assume it's our
-> > > >         * bug.
-> > > >         */
-> > > >        status = nfserr_serverfault;
-> > > >        if (unconf && !same_creds(&unconf->cl_cred, &rqstp->rq_cred))
-> > > >                goto out;
-> > > >        if (conf && !same_creds(&conf->cl_cred, &rqstp->rq_cred))
-> > > >                goto out;
-> 
-> If the creds don't match, the return should be NFS4ERR_CLID_INUSE per
-> section 16.34.5. IMPLEMENTATION first bullet after DRC discussion.
-> 
-> At least the way I read RFC 7530...
+On Tue, Aug 04, 2015 at 01:52:59PM +0200, Andreas Gruenbacher wrote:
+> The vfs does not apply the umask for file systems that support acls. The
+> test used for this used to be called IS_POSIXACL(). Switch to a new
+> IS_ACL() test to check for either posix acls or richacls instead. Add a new
+> MS_RICHACL flag and IS_RICHACL() test for richacls alone. The IS_POSIXACL()
+> test is still needed by file systems that specifically support POSIX ACLs,
+> like nfsd.
 
-I assumed that was only the case when the long-form client-provided
-client identifier matched, but here we're looking at records matched by
-the shorthand server-generated clientid.  Very weird that that we'd get
-to this case (and without hitting CLID_INUSE on the setclientid?).
-There's something we don't understand.
-
-Anyway, looking at the SETCLIENTID_CONFIRM description in 7530, I think
-you're right, they're recommending CLIDN_INUSE for this case.  Doubt
-that would actually help in Ulrich's case, though.
+Nit: nfsd's not a filesystem.  Maybe just list the users instead.
 
 --b.
+
+> 
+> Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
+> ---
+>  fs/Kconfig              |  3 +++
+>  fs/namei.c              |  8 ++++----
+>  include/linux/fs.h      | 12 ++++++++++++
+>  include/uapi/linux/fs.h |  3 ++-
+>  4 files changed, 21 insertions(+), 5 deletions(-)
+> 
+> diff --git a/fs/Kconfig b/fs/Kconfig
+> index 011f433..3e09c06 100644
+> --- a/fs/Kconfig
+> +++ b/fs/Kconfig
+> @@ -59,6 +59,9 @@ endif # BLOCK
+>  config FS_POSIX_ACL
+>  	def_bool n
+>  
+> +config FS_RICHACL
+> +	def_bool n
+> +
+>  config EXPORTFS
+>  	tristate
+>  
+> diff --git a/fs/namei.c b/fs/namei.c
+> index fbbcf09..8f3db24 100644
+> --- a/fs/namei.c
+> +++ b/fs/namei.c
+> @@ -2771,7 +2771,7 @@ static int atomic_open(struct nameidata *nd, struct dentry *dentry,
+>  	}
+>  
+>  	mode = op->mode;
+> -	if ((open_flag & O_CREAT) && !IS_POSIXACL(dir))
+> +	if ((open_flag & O_CREAT) && !IS_ACL(dir))
+>  		mode &= ~current_umask();
+>  
+>  	excl = (open_flag & (O_EXCL | O_CREAT)) == (O_EXCL | O_CREAT);
+> @@ -2955,7 +2955,7 @@ static int lookup_open(struct nameidata *nd, struct path *path,
+>  	/* Negative dentry, just create the file */
+>  	if (!dentry->d_inode && (op->open_flag & O_CREAT)) {
+>  		umode_t mode = op->mode;
+> -		if (!IS_POSIXACL(dir->d_inode))
+> +		if (!IS_ACL(dir->d_inode))
+>  			mode &= ~current_umask();
+>  		/*
+>  		 * This write is needed to ensure that a
+> @@ -3526,7 +3526,7 @@ retry:
+>  	if (IS_ERR(dentry))
+>  		return PTR_ERR(dentry);
+>  
+> -	if (!IS_POSIXACL(path.dentry->d_inode))
+> +	if (!IS_ACL(path.dentry->d_inode))
+>  		mode &= ~current_umask();
+>  	error = security_path_mknod(&path, dentry, mode, dev);
+>  	if (error)
+> @@ -3595,7 +3595,7 @@ retry:
+>  	if (IS_ERR(dentry))
+>  		return PTR_ERR(dentry);
+>  
+> -	if (!IS_POSIXACL(path.dentry->d_inode))
+> +	if (!IS_ACL(path.dentry->d_inode))
+>  		mode &= ~current_umask();
+>  	error = security_path_mkdir(&path, dentry, mode);
+>  	if (!error)
+> diff --git a/include/linux/fs.h b/include/linux/fs.h
+> index cc008c3..44e696e 100644
+> --- a/include/linux/fs.h
+> +++ b/include/linux/fs.h
+> @@ -1770,6 +1770,12 @@ struct super_operations {
+>  #define IS_IMMUTABLE(inode)	((inode)->i_flags & S_IMMUTABLE)
+>  #define IS_POSIXACL(inode)	__IS_FLG(inode, MS_POSIXACL)
+>  
+> +#ifdef CONFIG_FS_RICHACL
+> +#define IS_RICHACL(inode)	__IS_FLG(inode, MS_RICHACL)
+> +#else
+> +#define IS_RICHACL(inode)	0
+> +#endif
+> +
+>  #define IS_DEADDIR(inode)	((inode)->i_flags & S_DEAD)
+>  #define IS_NOCMTIME(inode)	((inode)->i_flags & S_NOCMTIME)
+>  #define IS_SWAPFILE(inode)	((inode)->i_flags & S_SWAPFILE)
+> @@ -1783,6 +1789,12 @@ struct super_operations {
+>  				 (inode)->i_rdev == WHITEOUT_DEV)
+>  
+>  /*
+> + * IS_ACL() tells the VFS to not apply the umask
+> + * and use check_acl for acl permission checks when defined.
+> + */
+> +#define IS_ACL(inode)		__IS_FLG(inode, MS_POSIXACL | MS_RICHACL)
+> +
+> +/*
+>   * Inode state bits.  Protected by inode->i_lock
+>   *
+>   * Three bits determine the dirty state of the inode, I_DIRTY_SYNC,
+> diff --git a/include/uapi/linux/fs.h b/include/uapi/linux/fs.h
+> index 9b964a5..6ac6bc9 100644
+> --- a/include/uapi/linux/fs.h
+> +++ b/include/uapi/linux/fs.h
+> @@ -81,7 +81,7 @@ struct inodes_stat_t {
+>  #define MS_VERBOSE	32768	/* War is peace. Verbosity is silence.
+>  				   MS_VERBOSE is deprecated. */
+>  #define MS_SILENT	32768
+> -#define MS_POSIXACL	(1<<16)	/* VFS does not apply the umask */
+> +#define MS_POSIXACL	(1<<16)	/* Supports POSIX ACLs */
+>  #define MS_UNBINDABLE	(1<<17)	/* change to unbindable */
+>  #define MS_PRIVATE	(1<<18)	/* change to private */
+>  #define MS_SLAVE	(1<<19)	/* change to slave */
+> @@ -91,6 +91,7 @@ struct inodes_stat_t {
+>  #define MS_I_VERSION	(1<<23) /* Update inode I_version field */
+>  #define MS_STRICTATIME	(1<<24) /* Always perform atime updates */
+>  #define MS_LAZYTIME	(1<<25) /* Update the on-disk [acm]times lazily */
+> +#define MS_RICHACL	(1<<26) /* Supports richacls */
+>  
+>  /* These sb flags are internal to the kernel */
+>  #define MS_NOSEC	(1<<28)
+> -- 
+> 2.5.0
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
