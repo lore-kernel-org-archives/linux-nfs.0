@@ -1,98 +1,115 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:46442 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:46448 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751725AbbH1R6f (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 28 Aug 2015 13:58:35 -0400
-Date: Fri, 28 Aug 2015 13:58:34 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@poochiereds.net>
-Cc: linux-nfs@vger.kernel.org, hch@lst.de, kinglongmee@gmail.com
-Subject: Re: [PATCH v3 14/20] nfsd: close cached files prior to a REMOVE or
- RENAME that would replace target
-Message-ID: <20150828175834.GB10468@fieldses.org>
-References: <1440069440-27454-1-git-send-email-jeff.layton@primarydata.com>
- <1440069440-27454-15-git-send-email-jeff.layton@primarydata.com>
- <20150826200032.GD4161@fieldses.org>
- <20150826185331.74977119@synchrony.poochiereds.net>
- <20150827133806.GA10468@fieldses.org>
- <20150828081947.37d4f018@synchrony.poochiereds.net>
+	id S1752389AbbH1SGP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 28 Aug 2015 14:06:15 -0400
+Date: Fri, 28 Aug 2015 14:06:12 -0400
+From: "'J. Bruce Fields'" <bfields@fieldses.org>
+To: Frank Filz <ffilzlnx@mindspring.com>
+Cc: "'Mkrtchyan, Tigran'" <tigran.mkrtchyan@desy.de>,
+        "'Ulrich Gemkow'" <ulrich.gemkow@ikr.uni-stuttgart.de>,
+        linux-nfs@vger.kernel.org
+Subject: Re: NFSv4 mount fails on Sun Solaris 10 after reboot of client
+Message-ID: <20150828180612.GC10468@fieldses.org>
+References: <201508241452.57718.ulrich.gemkow@ikr.uni-stuttgart.de>
+ <20150824201401.GA401@fieldses.org>
+ <201508251928.06201.ulrich.gemkow@ikr.uni-stuttgart.de>
+ <20150825215456.GF8579@fieldses.org>
+ <824431189.4182121.1440657831497.JavaMail.zimbra@desy.de>
+ <20150827182922.GB11819@fieldses.org>
+ <008901d0e108$13caa520$3b5fef60$@mindspring.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20150828081947.37d4f018@synchrony.poochiereds.net>
+In-Reply-To: <008901d0e108$13caa520$3b5fef60$@mindspring.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Aug 28, 2015 at 08:19:46AM -0400, Jeff Layton wrote:
-> On Thu, 27 Aug 2015 09:38:06 -0400
-> "J. Bruce Fields" <bfields@fieldses.org> wrote:
+On Thu, Aug 27, 2015 at 01:36:38PM -0700, Frank Filz wrote:
+> > On Thu, Aug 27, 2015 at 08:43:51AM +0200, Mkrtchyan, Tigran wrote:
+> > >
+> > >
+> > > ----- Original Message -----
+> > > > From: "J. Bruce Fields" <bfields@fieldses.org>
+> > > > To: "Ulrich Gemkow" <ulrich.gemkow@ikr.uni-stuttgart.de>
+> > > > Cc: linux-nfs@vger.kernel.org
+> > > > Sent: Tuesday, August 25, 2015 11:54:56 PM
+> > > > Subject: Re: NFSv4 mount fails on Sun Solaris 10 after reboot of
+> > > > client
+> > >
+> > > > On Tue, Aug 25, 2015 at 07:28:03PM +0200, Ulrich Gemkow wrote:
+> > > >> Hello Bruce,
+> > > >>
+> > > >> On Monday 24 August 2015 22:14:01 J. Bruce Fields wrote:
+> > > >> > On Mon, Aug 24, 2015 at 02:52:55PM +0200, Ulrich Gemkow wrote:
+> > > >> > > we have a weired problem with Linux NFSv4.0 Server (Vanilla
+> > > >> > > Kernel 4.1.6) and a Sun Solaris 10 client (all patches applied):
+> > > >> > >
+> > > >> > > When mounting a share on the Solaris client and then rebooting
+> > > >> > > the client without unmounting the share first, after the reboot
+> > > >> > > every attempt to mount the share again gives an I/O error on
+> > > >> > > the client and the mount fails.
+> > > >> > >
+> > > >> > > After a long time (serveral hours) the v4 mount suddenly works
+> > > >> > > again.
+> > > >> > >
+> > > >> > > Mounting a share with vers=2 works always even in times when
+> > > >> > > the v4 mount fails.
+> > > >> > >
+> > > >> > > So it seems the Linux NFSv4 server holds a state for the client
+> > > >> > > which prevents the re-mounting of the share and gives the
+> > > >> > > I/O-error on the client.
+> > > >> > >
+> > > >> > > We use NFSv4 without idmapd.
+> > > >> > >
+> > > >> > > Is there any tip how to debug or solve this?
+> > > >> >
+> > > >> > Best is probably to get a packet trace.  So something like:
+> > > >> >
+> > > >> > 	tcpdump -s0 -iem0 -wtmp.pcap
+> > > >> >
+> > > >> > and then try the client mount, then kill the tcpdump after the
+> > > >> > mount fails, and send us tmp.pcap.  (And/or take a look at
+> > > >> > tmp.pcap yourself with wireshark.  The interesting question is
+> > > >> > what kind of error the server is returning when the client tries
+> > > >> > the mount after reboot.)
+> > > >>
+> > > >> Thank you for your reply. The tcpdump is attached, the relevant
+> > > >> packets are 49..52. The error seems to be a SERVERFAULT. Can you
+> > > >> see more from the dump?
+> > > >>
+> > > >> Thanks again and best regards
+> > > >
+> > > > The SERVERFAULT is on SETCLIENTID_CONFIRM.
+> > > >
+> > > > In nfsd4_setclientid_confirm():
+> > > >
+> > > >	conf = find_confirmed_client(clid, false, nn);
+> > > >	unconf = find_unconfirmed_client(clid, false, nn);
+> > > >	/*
+> > > >         * We try hard to give out unique clientid's, so if we get an
+> > > >         * attempt to confirm the same clientid with a different cred,
+> > > >         * there's a bug somewhere.  Let's charitably assume it's our
+> > > >         * bug.
+> > > >         */
+> > > >        status = nfserr_serverfault;
+> > > >        if (unconf && !same_creds(&unconf->cl_cred, &rqstp->rq_cred))
+> > > >                goto out;
+> > > >        if (conf && !same_creds(&conf->cl_cred, &rqstp->rq_cred))
+> > > >                goto out;
 > 
-> > On Wed, Aug 26, 2015 at 06:53:31PM -0400, Jeff Layton wrote:
-> > > On Wed, 26 Aug 2015 16:00:32 -0400
-> > > "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > > 
-> > > > On Thu, Aug 20, 2015 at 07:17:14AM -0400, Jeff Layton wrote:
-> > > > > It's not uncommon for some workloads to do a bunch of I/O to a file and
-> > > > > delete it just afterward. If knfsd has a cached open file however, then
-> > > > > the file may still be open when the dentry is unlinked. If the
-> > > > > underlying filesystem is nfs, then that could trigger it to do a
-> > > > > sillyrename.
-> > > > 
-> > > > Possibly worth noting that situation doesn't currently occur upstream.
-> > > > 
-> > > > (And, another justification worth noting: space used by a file should be
-> > > > deallocated on last unlink or close.  People do sometimes notice if it's
-> > > > not, especially if the file is large.)
-> > > > 
-> > > 
-> > > Good points.
-> > > 
-> > > > > On a REMOVE or RENAME scan the nfsd_file cache for open files that
-> > > > > correspond to the inode, and proactively unhash and put their
-> > > > > references. This should prevent any delete-on-last-close activity from
-> > > > > occurring, solely due to knfsd's open file cache.
-> > > > 
-> > > > Is there anything here to prevent a new cache entry being added after
-> > > > nfsd_file_close_inode and before the file is actually removed?
-> > > > 
-> > > 
-> > > No, nothing -- it's strictly best effort.
-> > 
-> > Unfortunately I think this is something we really want to guarantee.
-> > 
+> If the creds don't match, the return should be NFS4ERR_CLID_INUSE per
+> section 16.34.5. IMPLEMENTATION first bullet after DRC discussion.
 > 
-> That should be doable.
-> 
-> One question though -- if we hit this race, what's the right way to
-> handle it?
-> 
-> We don't want to return nfserr_stale or anything since we won't know if
-> the inode will really be stale after the remove completes. We could
-> just be removing one link from a multiply-linked inode.
-> 
-> We also don't want to make the caller wait out nfsd_file_acquire, as the
-> file could be open via NFSv4 and those references might not get put for
-> quite some time.
-> 
-> What semantics should we be aiming for?
+> At least the way I read RFC 7530...
 
-Hm.
+I assumed that was only the case when the long-form client-provided
+client identifier matched, but here we're looking at records matched by
+the shorthand server-generated clientid.  Very weird that that we'd get
+to this case (and without hitting CLID_INUSE on the setclientid?).
+There's something we don't understand.
 
-The RENAME or REMOVE has to succeed regardless.
-
-If the other operation is an open or something lookup-like, then it has
-to succeed or see ENOENT.  If it's a filehandle-based operation like
-READ or WRITE then it's got to succeed or get STALE, and if the latter
-then it better be really and truly gone.  Continuing to process a READ
-or WRITE after the REMOVE continues is fine, I think, it just means some
-application on some other v3 client has an open that we're honoring a
-moment longer than we're required to.
-
-Now I'd have to look back at your code....  If the caching were just an
-optimization, we could just it off temporarily, but I don't think we
-can.
-
-Marking the file dead somehow and failing further attempts to use it
-might work.  I guess that's equivalent to your suggestion to unhash it
-in this case.
+Anyway, looking at the SETCLIENTID_CONFIRM description in 7530, I think
+you're right, they're recommending CLIDN_INUSE for this case.  Doubt
+that would actually help in Ulrich's case, though.
 
 --b.
