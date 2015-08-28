@@ -1,41 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f176.google.com ([209.85.213.176]:34679 "EHLO
-	mail-ig0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752006AbbH1Apu (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Aug 2015 20:45:50 -0400
-Received: by igui7 with SMTP id i7so7122770igu.1
-        for <linux-nfs@vger.kernel.org>; Thu, 27 Aug 2015 17:45:50 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 2/2] NFSv4.1/pnfs: Ensure layoutreturn reserves space for the opaque payload
-Date: Thu, 27 Aug 2015 20:45:47 -0400
-Message-Id: <1440722747-124599-2-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1440722747-124599-1-git-send-email-trond.myklebust@primarydata.com>
-References: <1440722747-124599-1-git-send-email-trond.myklebust@primarydata.com>
+Received: from mail-ig0-f171.google.com ([209.85.213.171]:38779 "EHLO
+	mail-ig0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751313AbbH1DJl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Aug 2015 23:09:41 -0400
+Received: by igyq3 with SMTP id q3so4222566igy.1
+        for <linux-nfs@vger.kernel.org>; Thu, 27 Aug 2015 20:09:40 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <20150826133723.GX10756@twin.jikos.cz>
+References: <1440577010-122867-1-git-send-email-tao.peng@primarydata.com>
+ <1440577010-122867-2-git-send-email-tao.peng@primarydata.com> <20150826133723.GX10756@twin.jikos.cz>
+From: Peng Tao <tao.peng@primarydata.com>
+Date: Fri, 28 Aug 2015 11:09:20 +0800
+Message-ID: <CAKVebiWCGNsrcUB8ZYbuD=bc6-kdb=sE0hUbSpAQHUZLfA_buA@mail.gmail.com>
+Subject: Re: [PATCH-RFC-RESEND 1/9] vfs: pull btrfs clone API to vfs layer
+To: dsterba@suse.cz, Peng Tao <tao.peng@primarydata.com>,
+        Devel FS Linux <linux-fsdevel@vger.kernel.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Christoph Hellwig <hch@infradead.org>, Zach Brown <zab@zabbo.net>,
+        Darren Hart <dvhart@linux.intel.com>,
+        Bruce Fields <bfields@fieldses.org>,
+        Jeff Layton <jeff.layton@primarydata.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        "Darrick J. Wong" <darrick.wong@oracle.com>,
+        linux-btrfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The "FIXME" is outdated. Flexfiles does add a payload.
+On Wed, Aug 26, 2015 at 9:37 PM, David Sterba <dsterba@suse.cz> wrote:
+> On Wed, Aug 26, 2015 at 04:16:42PM +0800, Peng Tao wrote:
+>> +struct file_clone_range {
+>> +     __s64 src_fd;
+>> +     __u64 src_offset;
+>> +     __u64 src_length;
+>> +     __u64 dest_offset;
+>> +};
+>
+> Might be a good idea to add some spare bytes to the structure.
+>
+>>  struct fstrim_range {
+>>       __u64 start;
+>>       __u64 len;
+>> @@ -159,6 +166,8 @@ struct inodes_stat_t {
+>>  #define FIFREEZE     _IOWR('X', 119, int)    /* Freeze */
+>>  #define FITHAW               _IOWR('X', 120, int)    /* Thaw */
+>>  #define FITRIM               _IOWR('X', 121, struct fstrim_range)    /* Trim */
+>> +#define FICLONE              _IOW(0x94, 9, int)      /* Clone */
+>> +#define FICLONERANGE _IOW(0x94, 13, struct file_clone_range) /* Clone range */
+>
+> FICLONE is a special case of FICLONERANGE. The whole file clone had come
+> historically first and then was refined, I don't think this needs to be
+> copied to the generic API. A zeroed file_clone_range is simple to use
+> for that purpose.
+oh, sorry I missed this one...
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/nfs4xdr.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+BTRFS_IOC_CLONE is being used by cp(1) and widely shipped with
+distros. So we cannot just abandon the API. And my intention is to
+keep the clone ioctl "JUST WORK" (TM) with cp(1).
 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index a7be571c1666..ff4784c54e04 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -400,7 +400,8 @@ static int nfs4_stat_to_errno(int);
- #define decode_layoutcommit_maxsz (op_decode_hdr_maxsz + 3)
- #define encode_layoutreturn_maxsz (8 + op_encode_hdr_maxsz + \
- 				encode_stateid_maxsz + \
--				1 /* FIXME: opaque lrf_body always empty at the moment */)
-+				1 + \
-+				XDR_QUADLEN(NFS4_OPAQUE_LIMIT))
- #define decode_layoutreturn_maxsz (op_decode_hdr_maxsz + \
- 				1 + decode_stateid_maxsz)
- #define encode_secinfo_no_name_maxsz (op_encode_hdr_maxsz + 1)
--- 
-2.4.3
-
+Cheers,
+Tao
