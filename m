@@ -1,15 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx144.netapp.com ([216.240.21.25]:36911 "EHLO mx144.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754105AbbHaTux (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	id S1753065AbbHaTux (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
 	Mon, 31 Aug 2015 15:50:53 -0400
 From: <andros@netapp.com>
 To: <Trond.Myklebust@primarydata.com>
 CC: <Anna.Schumaker@netapp.com>, <bfields@fieldses.org>,
         <linux-nfs@vger.kernel.org>, Andy Adamson <andros@netapp.com>
-Subject: [PATCH 10/16] NFS add ca_source_server<> to COPY
-Date: Mon, 31 Aug 2015 15:50:00 -0400
-Message-ID: <1441050606-40897-11-git-send-email-andros@netapp.com>
+Subject: [PATCH 12/16] NFSD: allow inter server COPY to have a STALE source server fh
+Date: Mon, 31 Aug 2015 15:50:02 -0400
+Message-ID: <1441050606-40897-13-git-send-email-andros@netapp.com>
 In-Reply-To: <1441050606-40897-1-git-send-email-andros@netapp.com>
 References: <1441050606-40897-1-git-send-email-andros@netapp.com>
 MIME-Version: 1.0
@@ -19,123 +19,240 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andy Adamson <andros@netapp.com>
 
-Support only one source server address: the same address that
-the client and source server use.
-
 Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- fs/nfs/nfs42proc.c      | 22 ++++++++++++++++++++--
- fs/nfs/nfs42xdr.c       | 27 +++++++++++++++++++++++++--
- include/linux/nfs_xdr.h |  3 +++
- 3 files changed, 48 insertions(+), 4 deletions(-)
+ fs/nfsd/nfs4proc.c | 51 ++++++++++++++++++++++++++++++++++++++++++++++++++-
+ fs/nfsd/nfs4xdr.c  | 26 +++++++++++++++++++++++++-
+ fs/nfsd/nfsd.h     |  2 ++
+ fs/nfsd/xdr4.h     |  4 ++++
+ 4 files changed, 81 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
-index 92b5d5a..42cab7e 100644
---- a/fs/nfs/nfs42proc.c
-+++ b/fs/nfs/nfs42proc.c
-@@ -157,8 +157,12 @@ int nfs42_proc_deallocate(struct file *filep, loff_t offset, loff_t len)
- 	return err;
- }
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 4fb82f5..7807aba4 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -36,6 +36,7 @@
+ #include <linux/falloc.h>
+ #include <linux/slab.h>
+ #include <linux/sunrpc/addr.h>
++#include <linux/module.h>
  
-+/**
-+ * Support one source address for now.
-+ */
- static ssize_t nfs42_proc_copy(struct file *src, loff_t pos_src,
--			       struct file *dst, loff_t pos_dst, size_t count)
-+			       struct file *dst, loff_t pos_dst, size_t count,
-+			       struct nfs42_copy_notify_res *cn_res)
+ #include "idmap.h"
+ #include "cache.h"
+@@ -512,11 +513,20 @@ static __be32
+ nfsd4_putfh(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	    struct nfsd4_putfh *putfh)
  {
- 	struct nfs42_copy_args args = {
- 		.src_fh		= NFS_FH(file_inode(src)),
-@@ -176,6 +180,19 @@ static ssize_t nfs42_proc_copy(struct file *src, loff_t pos_src,
- 	struct nfs_server *server = NFS_SERVER(file_inode(dst));
- 	int status;
- 
-+	if (cn_res) {
-+		args.cp_nsrc = 1; /* support for one NL4_NETADDR for now */
-+		args.cp_src[0].nl4_type = cn_res->cnr_src[0].nl4_type;
-+		args.cp_src[0].u.nl4_addr = cn_res->cnr_src[0].u.nl4_addr;
++	__be32 ret;
 +
-+		dprintk("--> %s nl4_type %d cp_addr netid %d:%s uaddr %d:%s\n",
-+			__func__, args.cp_src[0].nl4_type,
-+			args.cp_src[0].u.nl4_addr.na_netid_len,
-+			args.cp_src[0].u.nl4_addr.na_netid,
-+			args.cp_src[0].u.nl4_addr.na_uaddr_len,
-+			args.cp_src[0].u.nl4_addr.na_uaddr);
+ 	fh_put(&cstate->current_fh);
+ 	cstate->current_fh.fh_handle.fh_size = putfh->pf_fhlen;
+ 	memcpy(&cstate->current_fh.fh_handle.fh_base, putfh->pf_fhval,
+ 	       putfh->pf_fhlen);
+-	return fh_verify(rqstp, &cstate->current_fh, 0, NFSD_MAY_BYPASS_GSS);
++	ret = fh_verify(rqstp, &cstate->current_fh, 0, NFSD_MAY_BYPASS_GSS);
++	if (ret == nfserr_stale && HAS_CSTATE_FLAG(cstate, NO_VERIFY_FH)) {
++		dprintk("%s SET IS_STALE_FH\n", __func__);
++		CLEAR_CSTATE_FLAG(cstate, NO_VERIFY_FH);
++		SET_CSTATE_FLAG(cstate, IS_STALE_FH);
++		ret = 0;
 +	}
-+
- 	if (!(server->caps & NFS_CAP_COPY))
- 		return -ENOTSUPP;
- 
-@@ -297,7 +314,8 @@ ssize_t nfs42_do_copy(struct file *src, loff_t pos_src, struct file *dst,
- 		if (ret)
- 			goto out_err;
- 	}
--	ret = nfs42_proc_copy(src, pos_src, dst, pos_dst, count);
-+	 /* NULL nfs42_copy_notify_res pointer signals intra ssc */
-+	ret = nfs42_proc_copy(src, pos_src, dst, pos_dst, count, cn_resp);
- 
- out_err:
- 	kfree(cn_resp);
-diff --git a/fs/nfs/nfs42xdr.c b/fs/nfs/nfs42xdr.c
-index feb29af..060d4eb 100644
---- a/fs/nfs/nfs42xdr.c
-+++ b/fs/nfs/nfs42xdr.c
-@@ -20,7 +20,10 @@
- #define encode_copy_maxsz		(op_encode_hdr_maxsz +          \
- 					 XDR_QUADLEN(NFS4_STATEID_SIZE) + \
- 					 XDR_QUADLEN(NFS4_STATEID_SIZE) + \
--					 2 + 2 + 2 + 1 + 1 + 1)
-+					 2 + 2 + 2 + 1 + 1 + 1 +\
-+					 1 + /* One cnr_source_server */\
-+					 1 + /* nl4_type */ \
-+					 1 + XDR_QUADLEN(NFS4_OPAQUE_LIMIT))
- #define decode_copy_maxsz		(op_decode_hdr_maxsz + \
- 					 NFS42_WRITE_RES_SIZE + \
- 					 1 /* cr_consecutive */ + \
-@@ -136,7 +139,27 @@ static void encode_copy(struct xdr_stream *xdr,
- 
- 	encode_uint32(xdr, 1); /* consecutive = true */
- 	encode_uint32(xdr, 1); /* synchronous = true */
--	encode_uint32(xdr, 0); /* src server list */
-+	encode_uint32(xdr, args->cp_nsrc); /* set to 1 for inter-ssc*/
-+	if (args->cp_nsrc == 0) /* intra-ssc */
-+		return;
-+
-+	encode_uint32(xdr, args->cp_src[0].nl4_type);
-+	/* Support one src server in list for now */
-+	switch (args->cp_src[0].nl4_type) {
-+	case NL4_NAME:
-+	case NL4_URL:
-+		encode_string(xdr, args->cp_src[0].u.nl4_str_sz,
-+			      args->cp_src[0].u.nl4_str);
-+		break;
-+	case NL4_NETADDR:
-+		encode_string(xdr, args->cp_src[0].u.nl4_addr.na_netid_len,
-+			      args->cp_src[0].u.nl4_addr.na_netid);
-+		encode_string(xdr, args->cp_src[0].u.nl4_addr.na_uaddr_len,
-+			      args->cp_src[0].u.nl4_addr.na_uaddr);
-+		break;
-+	default:
-+		WARN_ON_ONCE(1);
-+	}
++	return ret;
  }
  
- static void encode_copy_notify(struct xdr_stream *xdr,
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index a7f63fb..dd9009a 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1339,6 +1339,9 @@ struct nfs42_copy_args {
- 	u64				dst_pos;
+ static __be32
+@@ -549,6 +559,18 @@ static __be32
+ nfsd4_savefh(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	     void *arg)
+ {
++	/**
++	* This is either an inter COPY (most likely) or an intra COPY with a
++	* stale file handle. If the latter, nfsd4_copy will reset the PUTFH to
++	* return * nfserr_stale. No fh_dentry, just copy the file handle
++	* to use with the inter COPY READ.
++	* XXX For debug only:
++	*/
++	if (HAS_CSTATE_FLAG(cstate, IS_STALE_FH)) {
++		dprintk("%s IS_STALE_FH\n", __func__);
++		cstate->save_fh = cstate->current_fh;
++		return nfs_ok;
++	}
+ 	if (!cstate->current_fh.fh_dentry)
+ 		return nfserr_nofilehandle;
  
- 	u64				count;
-+	/* Support one source server */
-+	int				cp_nsrc;
-+	struct nl4_server		cp_src[NFS42_MAX_SSC_SRC];
- };
+@@ -1051,6 +1073,13 @@ nfsd4_copy(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	if (status)
+ 		return status;
  
- struct nfs42_write_res {
++	/* Intra copy source fh is stale */
++	if (HAS_CSTATE_FLAG(cstate, IS_STALE_FH)) {
++		CLEAR_CSTATE_FLAG(cstate, IS_STALE_FH);
++		cstate->status = nfserr_copy_stalefh;
++		goto out;
++	}
++
+ 	bytes = nfsd_copy_range(src, copy->cp_src_pos,
+ 				 dst, copy->cp_dst_pos,
+ 				 copy->cp_count);
+@@ -1068,6 +1097,7 @@ nfsd4_copy(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 
+ 	fput(src);
+ 	fput(dst);
++out:
+ 	return status;
+ }
+ 
+@@ -1750,6 +1780,7 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
+ 	struct nfsd4_compound_state *cstate = &resp->cstate;
+ 	struct svc_fh *current_fh = &cstate->current_fh;
+ 	struct svc_fh *save_fh = &cstate->save_fh;
++	int		i;
+ 	__be32		status;
+ 
+ 	svcxdr_init_encode(rqstp, resp);
+@@ -1782,6 +1813,12 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
+ 		goto encode_op;
+ 	}
+ 
++	/* NFSv4.2 COPY source file handle may be from a different server */
++	for (i = 0; i < args->opcnt; i++) {
++		op = &args->ops[i];
++		if (op->opnum == OP_COPY)
++			SET_CSTATE_FLAG(cstate, NO_VERIFY_FH);
++	}
+ 	while (!status && resp->opcnt < args->opcnt) {
+ 		op = &args->ops[resp->opcnt++];
+ 
+@@ -1801,6 +1838,9 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
+ 
+ 		opdesc = OPDESC(op);
+ 
++		if (HAS_CSTATE_FLAG(cstate, IS_STALE_FH))
++			goto call_op;
++
+ 		if (!current_fh->fh_dentry) {
+ 			if (!(opdesc->op_flags & ALLOWED_WITHOUT_FH)) {
+ 				op->status = nfserr_nofilehandle;
+@@ -1835,6 +1875,7 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
+ 
+ 		if (opdesc->op_get_currentstateid)
+ 			opdesc->op_get_currentstateid(cstate, &op->u);
++call_op:
+ 		op->status = opdesc->op_func(rqstp, cstate, &op->u);
+ 
+ 		if (!op->status) {
+@@ -1855,6 +1896,14 @@ encode_op:
+ 			status = op->status;
+ 			goto out;
+ 		}
++		/* Only from intra COPY */
++		if (cstate->status == nfserr_copy_stalefh) {
++			dprintk("%s NFS4.2 intra COPY stale src filehandle\n",
++				__func__);
++			status = nfserr_stale;
++			nfsd4_adjust_encode(resp);
++			goto out;
++		}
+ 		if (op->status == nfserr_replay_me) {
+ 			op->replay = &cstate->replay_owner->so_replay;
+ 			nfsd4_encode_replay(&resp->xdr, op);
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 833305c..4c91e24 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -4507,15 +4507,28 @@ __be32 nfsd4_check_resp_size(struct nfsd4_compoundres *resp, u32 respsize)
+ 	return nfserr_rep_too_big;
+ }
+ 
++/** Rewind the encoding to return nfserr_stale on the PUTFH
++ * in this failed Intra COPY compound
++ */
++void
++nfsd4_adjust_encode(struct nfsd4_compoundres *resp)
++{
++	__be32 *p;
++
++	p = resp->cstate.putfh_errp;
++	*p++ = nfserr_stale;
++}
++
+ void
+ nfsd4_encode_operation(struct nfsd4_compoundres *resp, struct nfsd4_op *op)
+ {
+ 	struct xdr_stream *xdr = &resp->xdr;
+ 	struct nfs4_stateowner *so = resp->cstate.replay_owner;
++	struct nfsd4_compound_state *cstate = &resp->cstate;
+ 	struct svc_rqst *rqstp = resp->rqstp;
+ 	int post_err_offset;
+ 	nfsd4_enc encoder;
+-	__be32 *p;
++	__be32 *p, *statp;
+ 
+ 	p = xdr_reserve_space(xdr, 8);
+ 	if (!p) {
+@@ -4524,9 +4537,20 @@ nfsd4_encode_operation(struct nfsd4_compoundres *resp, struct nfsd4_op *op)
+ 	}
+ 	*p++ = cpu_to_be32(op->opnum);
+ 	post_err_offset = xdr->buf->len;
++	statp = p;
+ 
+ 	if (op->opnum == OP_ILLEGAL)
+ 		goto status;
++
++	/** This is a COPY compound with a stale source server file handle.
++	 * If OP_COPY processing determines that this is an intra server to
++	 * server COPY, then this PUTFH should return nfserr_ stale so the
++	 * putfh_errp will be set to nfserr_stale. If this is an inter server
++	 * to server COPY, ignore the nfserr_stale.
++	 */
++	if (op->opnum == OP_PUTFH && HAS_CSTATE_FLAG(cstate, IS_STALE_FH))
++		cstate->putfh_errp = statp;
++
+ 	BUG_ON(op->opnum < 0 || op->opnum >= ARRAY_SIZE(nfsd4_enc_ops) ||
+ 	       !nfsd4_enc_ops[op->opnum]);
+ 	encoder = nfsd4_enc_ops[op->opnum];
+diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
+index cf98052..84d9a61 100644
+--- a/fs/nfsd/nfsd.h
++++ b/fs/nfsd/nfsd.h
+@@ -267,6 +267,8 @@ void		nfsd_lockd_shutdown(void);
+ #define	nfserr_replay_me	cpu_to_be32(11001)
+ /* nfs41 replay detected */
+ #define	nfserr_replay_cache	cpu_to_be32(11002)
++/* nfs42 intra copy failed with nfserr_stale */
++#define nfserr_copy_stalefh	cpu_to_be32(1103)
+ 
+ /* Check for dir entries '.' and '..' */
+ #define isdotent(n, l)	(l < 3 && n[0] == '.' && (l == 1 || n[1] == '.'))
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index 4a631a1..e406276 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -46,6 +46,8 @@
+ 
+ #define CURRENT_STATE_ID_FLAG (1<<0)
+ #define SAVED_STATE_ID_FLAG (1<<1)
++#define NO_VERIFY_FH (1<<2)
++#define IS_STALE_FH  (1<<3)
+ 
+ #define SET_CSTATE_FLAG(c, f) ((c)->sid_flags |= (f))
+ #define HAS_CSTATE_FLAG(c, f) ((c)->sid_flags & (f))
+@@ -63,6 +65,7 @@ struct nfsd4_compound_state {
+ 	size_t			iovlen;
+ 	u32			minorversion;
+ 	__be32			status;
++	__be32			*putfh_errp;
+ 	stateid_t	current_stateid;
+ 	stateid_t	save_stateid;
+ 	/* to indicate current and saved state id presents */
+@@ -692,6 +695,7 @@ int nfs4svc_decode_compoundargs(struct svc_rqst *, __be32 *,
+ int nfs4svc_encode_compoundres(struct svc_rqst *, __be32 *,
+ 		struct nfsd4_compoundres *);
+ __be32 nfsd4_check_resp_size(struct nfsd4_compoundres *, u32);
++void nfsd4_adjust_encode(struct nfsd4_compoundres *);
+ void nfsd4_encode_operation(struct nfsd4_compoundres *, struct nfsd4_op *);
+ void nfsd4_encode_replay(struct xdr_stream *xdr, struct nfsd4_op *op);
+ __be32 nfsd4_encode_fattr_to_buf(__be32 **p, int words,
 -- 
 1.8.3.1
 
