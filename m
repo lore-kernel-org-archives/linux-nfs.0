@@ -1,15 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx144.netapp.com ([216.240.21.25]:13094 "EHLO mx144.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752309AbbHaTuX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 31 Aug 2015 15:50:23 -0400
+	id S1753667AbbHaTuY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 31 Aug 2015 15:50:24 -0400
 From: <andros@netapp.com>
 To: <Trond.Myklebust@primarydata.com>
 CC: <Anna.Schumaker@netapp.com>, <bfields@fieldses.org>,
-        <linux-nfs@vger.kernel.org>, Andy Adamson <andros@netapp.com>
-Subject: [PATCH 03/16] VFS SQUASH use file_out instead of file_in for copy_file_range
-Date: Mon, 31 Aug 2015 15:49:53 -0400
-Message-ID: <1441050606-40897-4-git-send-email-andros@netapp.com>
+        <linux-nfs@vger.kernel.org>, Olga Kornievskaia <kolga@netapp.com>
+Subject: [PATCH 04/16] NFS COPY xdr changes
+Date: Mon, 31 Aug 2015 15:49:54 -0400
+Message-ID: <1441050606-40897-5-git-send-email-andros@netapp.com>
 In-Reply-To: <1441050606-40897-1-git-send-email-andros@netapp.com>
 References: <1441050606-40897-1-git-send-email-andros@netapp.com>
 MIME-Version: 1.0
@@ -17,43 +17,75 @@ Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+From: Olga Kornievskaia <kolga@netapp.com>
 
-Calling file_in->copy_file_range file operations function will not work for
-NFS inter-server to server COPY. In the intra-ssc case, when the destination
-server calls vfs_copy_file_range (from nfsd_copy_range) to perform the
-copy offload, it uses an NFS client file_in struct file setup to let the
-destination server (acting as an NFS client) NFS READ the data to be copied
-from the source server. Using the NFS file_in thus results in calling
-the NFS client copy_file_range f-ops, nfs4_copy_file_range, which results in
-the destination server trying to start a new COPY (calling COPY_NOTIFY etc)
-causing a circular call mess.
+add support for decoding NFS4ERR_OFFLOAD_NO_REQS status and corresponding
+copy_requirements structure.
 
-Instead, vfs_copy_file_range should use the file_out f_ops->copy_file_range
-proceedure if it has one.  The vfs_copy_file_range is a destination based
-operation as the source is simply being read, while the destination is being
-written and can therefore utilize a copy_file_range call if provided.
-
-Signed-off-by: Andy Adamson <andros@netapp.com>
+Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
 ---
- fs/read_write.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ fs/nfs/nfs42xdr.c | 35 ++++++++++++++++++++++-------------
+ 1 file changed, 22 insertions(+), 13 deletions(-)
 
-diff --git a/fs/read_write.c b/fs/read_write.c
-index da28205..2a4b7bd 100644
---- a/fs/read_write.c
-+++ b/fs/read_write.c
-@@ -1395,8 +1395,8 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
- 		return ret;
+diff --git a/fs/nfs/nfs42xdr.c b/fs/nfs/nfs42xdr.c
+index 489bbf3..ae260d3 100644
+--- a/fs/nfs/nfs42xdr.c
++++ b/fs/nfs/nfs42xdr.c
+@@ -290,19 +290,9 @@ out_overflow:
+ 	print_overflow_msg(__func__, xdr);
+ 	return -EIO;
+ }
+-
+-static int decode_copy(struct xdr_stream *xdr, struct nfs42_copy_res *res)
+-{
++static int decode_copy_requirements(struct xdr_stream *xdr,
++				    struct nfs42_copy_res *res) {
+ 	__be32 *p;
+-	int status;
+-
+-	status = decode_op_hdr(xdr, OP_COPY);
+-	if (status)
+-		return status;
+-
+-	status = decode_write_response(xdr, &res->write_res);
+-	if (status)
+-		return status;
  
- 	ret = -ENOTSUPP;
--	if (file_in->f_op->copy_file_range)
--		ret = file_in->f_op->copy_file_range(file_in, pos_in, file_out,
-+	if (file_out->f_op->copy_file_range)
-+		ret = file_out->f_op->copy_file_range(file_in, pos_in, file_out,
- 						     pos_out, len, flags);
- 	if (ret == -ENOTSUPP)
- 		ret = do_splice_direct(file_in, &pos_in, file_out, &pos_out, len, flags);
+ 	p = xdr_inline_decode(xdr, 4 + 4);
+ 	if (unlikely(!p))
+@@ -311,12 +301,31 @@ static int decode_copy(struct xdr_stream *xdr, struct nfs42_copy_res *res)
+ 	res->consecutive = be32_to_cpup(p++);
+ 	res->synchronous = be32_to_cpup(p++);
+ 	return 0;
+-
+ out_overflow:
+ 	print_overflow_msg(__func__, xdr);
+ 	return -EIO;
+ }
+ 
++static int decode_copy(struct xdr_stream *xdr, struct nfs42_copy_res *res)
++{
++	int status;
++
++	status = decode_op_hdr(xdr, OP_COPY);
++	if (status == NFS4ERR_OFFLOAD_NO_REQS) {
++		status = decode_copy_requirements(xdr, res);
++		if (status)
++			return status;
++		return NFS4ERR_OFFLOAD_NO_REQS;
++	} else if (status)
++		return status;
++
++	status = decode_write_response(xdr, &res->write_res);
++	if (status)
++		return status;
++
++	return decode_copy_requirements(xdr, res);
++}
++
+ static int decode_deallocate(struct xdr_stream *xdr, struct nfs42_falloc_res *res)
+ {
+ 	return decode_op_hdr(xdr, OP_DEALLOCATE);
 -- 
 1.8.3.1
 
