@@ -1,66 +1,59 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pa0-f43.google.com ([209.85.220.43]:35578 "EHLO
-	mail-pa0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752631AbbHaJII (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 31 Aug 2015 05:08:08 -0400
-Received: by pacdd16 with SMTP id dd16so133078613pac.2
-        for <linux-nfs@vger.kernel.org>; Mon, 31 Aug 2015 02:08:08 -0700 (PDT)
+Received: from mail-pa0-f48.google.com ([209.85.220.48]:34557 "EHLO
+	mail-pa0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752180AbbHaJIJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 31 Aug 2015 05:08:09 -0400
+Received: by pabzx8 with SMTP id zx8so133251940pab.1
+        for <linux-nfs@vger.kernel.org>; Mon, 31 Aug 2015 02:08:09 -0700 (PDT)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 2/3] NFSv4.1/pnfs: Handle LAYOUTGET return values correctly
-Date: Mon, 31 Aug 2015 02:08:04 -0700
-Message-Id: <1441012085-4071-2-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1441012085-4071-1-git-send-email-trond.myklebust@primarydata.com>
+Subject: [PATCH v2 3/3] NFSv4.1/pNFS: Don't request a minimal read layout beyond the end of file
+Date: Mon, 31 Aug 2015 02:08:05 -0700
+Message-Id: <1441012085-4071-3-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1441012085-4071-2-git-send-email-trond.myklebust@primarydata.com>
 References: <1441012085-4071-1-git-send-email-trond.myklebust@primarydata.com>
+ <1441012085-4071-2-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-According to RFC5661 section 18.43.3, if the server cannot satisfy
-the loga_minlength argument to LAYOUTGET, there are 2 cases:
-1) If loga_minlength == 0, it returns NFS4ERR_LAYOUTTRYLATER
-2) If loga_minlength != 0, it returns NFS4ERR_BADLAYOUT
+If we have a read layout, then sanity check the minimal layout length
+so that it does not extend beyond the end of file.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/nfs4proc.c | 15 ++++++++++++++-
- 1 file changed, 14 insertions(+), 1 deletion(-)
+ fs/nfs/pnfs.c | 9 +++++++++
+ 1 file changed, 9 insertions(+)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 366b81c185f6..51c7164abd1a 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -7781,10 +7781,19 @@ static void nfs4_layoutget_done(struct rpc_task *task, void *calldata)
- 	case 0:
- 		goto out;
- 	/*
-+	 * NFS4ERR_BADLAYOUT means the MDS cannot return a layout of
-+	 * length lgp->args.minlength != 0 (see RFC5661 section 18.43.3).
-+	 */
-+	case -NFS4ERR_BADLAYOUT:
-+		goto out_overflow;
-+	/*
- 	 * NFS4ERR_LAYOUTTRYLATER is a conflict with another client
--	 * (or clients) writing to the same RAID stripe
-+	 * (or clients) writing to the same RAID stripe except when
-+	 * the minlength argument is 0 (see RFC5661 section 18.43.3).
- 	 */
- 	case -NFS4ERR_LAYOUTTRYLATER:
-+		if (lgp->args.minlength == 0)
-+			goto out_overflow;
- 	/*
- 	 * NFS4ERR_RECALLCONFLICT is when conflict with self (must recall
- 	 * existing layout before getting a new one).
-@@ -7840,6 +7849,10 @@ static void nfs4_layoutget_done(struct rpc_task *task, void *calldata)
- 		rpc_restart_call_prepare(task);
- out:
- 	dprintk("<-- %s\n", __func__);
-+	return;
-+out_overflow:
-+	task->tk_status = -EOVERFLOW;
-+	goto out;
- }
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index c4f918eca3d2..ba1246433794 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -868,6 +868,7 @@ send_layoutget(struct pnfs_layout_hdr *lo,
+ 	struct nfs_server *server = NFS_SERVER(ino);
+ 	struct nfs4_layoutget *lgp;
+ 	struct pnfs_layout_segment *lseg;
++	loff_t i_size;
  
- static size_t max_response_pages(struct nfs_server *server)
+ 	dprintk("--> %s\n", __func__);
+ 
+@@ -875,9 +876,17 @@ send_layoutget(struct pnfs_layout_hdr *lo,
+ 	if (lgp == NULL)
+ 		return NULL;
+ 
++	i_size = i_size_read(ino);
++
+ 	lgp->args.minlength = PAGE_CACHE_SIZE;
+ 	if (lgp->args.minlength > range->length)
+ 		lgp->args.minlength = range->length;
++	if (range->iomode == IOMODE_READ) {
++		if (range->offset >= i_size)
++			lgp->args.minlength = 0;
++		else if (i_size - range->offset < lgp->args.minlength)
++			lgp->args.minlength = i_size - range->offset;
++	}
+ 	lgp->args.maxcount = PNFS_LAYOUT_MAXSIZE;
+ 	lgp->args.range = *range;
+ 	lgp->args.type = server->pnfs_curr_ld->id;
 -- 
 2.4.3
 
