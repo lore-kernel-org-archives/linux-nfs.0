@@ -1,15 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx144.netapp.com ([216.240.21.25]:36911 "EHLO mx144.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753065AbbHaTuw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 31 Aug 2015 15:50:52 -0400
+	id S1754105AbbHaTux (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 31 Aug 2015 15:50:53 -0400
 From: <andros@netapp.com>
 To: <Trond.Myklebust@primarydata.com>
 CC: <Anna.Schumaker@netapp.com>, <bfields@fieldses.org>,
         <linux-nfs@vger.kernel.org>, Andy Adamson <andros@netapp.com>
-Subject: [PATCH 09/16] NFSD add COPY_NOTIFY operation
-Date: Mon, 31 Aug 2015 15:49:59 -0400
-Message-ID: <1441050606-40897-10-git-send-email-andros@netapp.com>
+Subject: [PATCH 10/16] NFS add ca_source_server<> to COPY
+Date: Mon, 31 Aug 2015 15:50:00 -0400
+Message-ID: <1441050606-40897-11-git-send-email-andros@netapp.com>
 In-Reply-To: <1441050606-40897-1-git-send-email-andros@netapp.com>
 References: <1441050606-40897-1-git-send-email-andros@netapp.com>
 MIME-Version: 1.0
@@ -19,332 +19,123 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andy Adamson <andros@netapp.com>
 
+Support only one source server address: the same address that
+the client and source server use.
+
 Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- fs/nfsd/nfs4proc.c | 103 ++++++++++++++++++++++++++++++++++++++++++
- fs/nfsd/nfs4xdr.c  | 128 ++++++++++++++++++++++++++++++++++++++++++++++++++++-
- fs/nfsd/xdr4.h     |  13 ++++++
- 3 files changed, 242 insertions(+), 2 deletions(-)
+ fs/nfs/nfs42proc.c      | 22 ++++++++++++++++++++--
+ fs/nfs/nfs42xdr.c       | 27 +++++++++++++++++++++++++--
+ include/linux/nfs_xdr.h |  3 +++
+ 3 files changed, 48 insertions(+), 4 deletions(-)
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 725ce0f..94e34e0 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -35,6 +35,7 @@
- #include <linux/file.h>
- #include <linux/falloc.h>
- #include <linux/slab.h>
-+#include <linux/sunrpc/addr.h>
- 
- #include "idmap.h"
- #include "cache.h"
-@@ -1070,6 +1071,92 @@ nfsd4_copy(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	return status;
+diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
+index 92b5d5a..42cab7e 100644
+--- a/fs/nfs/nfs42proc.c
++++ b/fs/nfs/nfs42proc.c
+@@ -157,8 +157,12 @@ int nfs42_proc_deallocate(struct file *filep, loff_t offset, loff_t len)
+ 	return err;
  }
  
-+static int
-+nfsd4_set_src_nl4_netaddr(struct svc_rqst *rqstp, struct nfs42_netaddr *naddr)
-+{
-+	const struct sockaddr *addr = (struct sockaddr *)&rqstp->rq_daddr;
-+	const struct sockaddr_in *sin = (const struct sockaddr_in *)addr;
-+	const struct sockaddr_in6 *sin6 = (const struct sockaddr_in6 *)addr;
-+	int uaddr_len = rqstp->rq_daddrlen + 4 + 1; /* port (4) and '\0' (1) */
-+	size_t ret;
-+	unsigned short port;
++/**
++ * Support one source address for now.
++ */
+ static ssize_t nfs42_proc_copy(struct file *src, loff_t pos_src,
+-			       struct file *dst, loff_t pos_dst, size_t count)
++			       struct file *dst, loff_t pos_dst, size_t count,
++			       struct nfs42_copy_notify_res *cn_res)
+ {
+ 	struct nfs42_copy_args args = {
+ 		.src_fh		= NFS_FH(file_inode(src)),
+@@ -176,6 +180,19 @@ static ssize_t nfs42_proc_copy(struct file *src, loff_t pos_src,
+ 	struct nfs_server *server = NFS_SERVER(file_inode(dst));
+ 	int status;
+ 
++	if (cn_res) {
++		args.cp_nsrc = 1; /* support for one NL4_NETADDR for now */
++		args.cp_src[0].nl4_type = cn_res->cnr_src[0].nl4_type;
++		args.cp_src[0].u.nl4_addr = cn_res->cnr_src[0].u.nl4_addr;
 +
-+	switch (addr->sa_family) {
-+	case AF_INET:
-+		port = ntohs(sin->sin_port);
-+		ret = rpc_ntop(addr, naddr->na_uaddr, sizeof(naddr->na_uaddr));
-+		snprintf(naddr->na_uaddr + ret, uaddr_len, ".%u.%u",
-+			 port >> 8, port & 255);
-+		naddr->na_uaddr_len = strlen(naddr->na_uaddr);
-+
-+		snprintf(naddr->na_netid, 4, "%s", "tcp");
-+			naddr->na_netid_len = 3;
-+		break;
-+	case AF_INET6:
-+		port = ntohs(sin6->sin6_port);
-+		ret = rpc_ntop(addr, naddr->na_uaddr, sizeof(naddr->na_uaddr));
-+		snprintf(naddr->na_uaddr + ret, uaddr_len, ".%u.%u",
-+			 port >> 8, port & 255);
-+		naddr->na_uaddr_len = strlen(naddr->na_uaddr);
-+
-+		snprintf(naddr->na_netid, 5, "%s", "tcp6");
-+			naddr->na_netid_len = 4;
-+		break;
-+	default:
-+		dprintk("NFSD  nfsd4_set_notify_src: unknown address type: %d",
-+			addr->sa_family);
-+		return -EINVAL;
++		dprintk("--> %s nl4_type %d cp_addr netid %d:%s uaddr %d:%s\n",
++			__func__, args.cp_src[0].nl4_type,
++			args.cp_src[0].u.nl4_addr.na_netid_len,
++			args.cp_src[0].u.nl4_addr.na_netid,
++			args.cp_src[0].u.nl4_addr.na_uaddr_len,
++			args.cp_src[0].u.nl4_addr.na_uaddr);
 +	}
-+	return 0;
-+}
 +
-+static __be32
-+nfsd4_copy_notify(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
-+		  struct nfsd4_copy_notify *cp_notify)
-+{
-+	__be32 status;
-+	struct file *src = NULL;
-+	struct nfs42_netaddr *naddr;
-+
-+	status = nfs4_preprocess_stateid_op(rqstp, cstate,
-+					&cstate->current_fh,
-+					&cp_notify->cpn_src_stateid,
-+					RD_STATE, &src, NULL);
-+	if (status)
-+		return status;
-+
-+	/* XXX Set lease time in cp_notify cpn_sec and cpn_nsec */
-+
-+	/** XXX Save cpn_src_statid, cpn_src, and any other returned source
-+	 * server addresses on which the source server is williing to accept
-+	 * connections from the destination e.g. what is returned in cpn_src,
-+	 * to verify READ from dest server.
-+	 */
-+
-+	/**
-+	 * For now, only return one source server address, the address used
-+	 * by the client in the static cpn_src.
-+	 */
-+	cp_notify->cpn_nsrc = 1;
-+	cp_notify->cpn_src[0].nl4_type = NL4_NETADDR;
-+	naddr = &cp_notify->cpn_src[0].u.nl4_addr;
-+
-+	status = nfsd4_set_src_nl4_netaddr(rqstp, naddr);
-+	if (status != 0)
-+		goto out;
-+
-+	cp_notify->cpn_nsrc = 1;
-+
-+	dprintk("<-- %s cpn_dst %s:%s cpn_nsrc %d cpn_src %s:%s\n", __func__,
-+		cp_notify->cpn_dst.u.nl4_addr.na_netid,
-+		cp_notify->cpn_dst.u.nl4_addr.na_uaddr,
-+		cp_notify->cpn_nsrc,
-+		cp_notify->cpn_src[0].u.nl4_addr.na_netid,
-+		cp_notify->cpn_src[0].u.nl4_addr.na_uaddr);
-+out:
-+	return status;
-+}
-+
- static __be32
- nfsd4_fallocate(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		struct nfsd4_fallocate *fallocate, int flags)
-@@ -2022,6 +2109,16 @@ static inline u32 nfsd4_copy_rsize(struct svc_rqst *rqstp, struct nfsd4_op *op)
- 		XDR_QUADLEN(NFS4_OPAQUE_LIMIT) + 1); /*nl4_loc + nl4_loc_sz */
- }
+ 	if (!(server->caps & NFS_CAP_COPY))
+ 		return -ENOTSUPP;
  
-+static inline u32 nfsd4_copy_notify_rsize(struct svc_rqst *rqstp,
-+					struct nfsd4_op *op)
-+{
-+	return (op_encode_hdr_size + 3 /* cnr_lease_time */ +
-+		1 /* We support one cnr_source_server */ +
-+		XDR_QUADLEN(NFS4_STATEID_SIZE) /* cnr_stateid */ +
-+		1 /* nl4_type */ +
-+		XDR_QUADLEN(NFS4_OPAQUE_LIMIT) + 1); /*nl4_loc + nl4_loc_sz */
-+}
-+
- static struct nfsd4_operation nfsd4_ops[] = {
- 	[OP_ACCESS] = {
- 		.op_func = (nfsd4op_func)nfsd4_access,
-@@ -2358,6 +2455,12 @@ static struct nfsd4_operation nfsd4_ops[] = {
- 		.op_func = (nfsd4op_func)nfsd4_seek,
- 		.op_name = "OP_SEEK",
- 	},
-+	[OP_COPY_NOTIFY] = {
-+		.op_func = (nfsd4op_func)nfsd4_copy_notify,
-+		.op_flags = OP_MODIFIES_SOMETHING | OP_CACHEME,
-+		.op_name = "OP_COPY_NOTIFY",
-+		.op_rsize_bop = (nfsd4op_rsize)nfsd4_copy_notify_rsize,
-+	},
- };
+@@ -297,7 +314,8 @@ ssize_t nfs42_do_copy(struct file *src, loff_t pos_src, struct file *dst,
+ 		if (ret)
+ 			goto out_err;
+ 	}
+-	ret = nfs42_proc_copy(src, pos_src, dst, pos_dst, count);
++	 /* NULL nfs42_copy_notify_res pointer signals intra ssc */
++	ret = nfs42_proc_copy(src, pos_src, dst, pos_dst, count, cn_resp);
  
- int nfsd4_max_reply(struct svc_rqst *rqstp, struct nfsd4_op *op)
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 26df40e..833305c 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -1744,6 +1744,54 @@ intra:
- }
+ out_err:
+ 	kfree(cn_resp);
+diff --git a/fs/nfs/nfs42xdr.c b/fs/nfs/nfs42xdr.c
+index feb29af..060d4eb 100644
+--- a/fs/nfs/nfs42xdr.c
++++ b/fs/nfs/nfs42xdr.c
+@@ -20,7 +20,10 @@
+ #define encode_copy_maxsz		(op_encode_hdr_maxsz +          \
+ 					 XDR_QUADLEN(NFS4_STATEID_SIZE) + \
+ 					 XDR_QUADLEN(NFS4_STATEID_SIZE) + \
+-					 2 + 2 + 2 + 1 + 1 + 1)
++					 2 + 2 + 2 + 1 + 1 + 1 +\
++					 1 + /* One cnr_source_server */\
++					 1 + /* nl4_type */ \
++					 1 + XDR_QUADLEN(NFS4_OPAQUE_LIMIT))
+ #define decode_copy_maxsz		(op_decode_hdr_maxsz + \
+ 					 NFS42_WRITE_RES_SIZE + \
+ 					 1 /* cr_consecutive */ + \
+@@ -136,7 +139,27 @@ static void encode_copy(struct xdr_stream *xdr,
  
- static __be32
-+nfsd4_decode_copy_notify(struct nfsd4_compoundargs *argp,
-+			 struct nfsd4_copy_notify *cp_notify)
-+{
-+	DECODE_HEAD;
-+	struct nfs42_netaddr *naddr;
+ 	encode_uint32(xdr, 1); /* consecutive = true */
+ 	encode_uint32(xdr, 1); /* synchronous = true */
+-	encode_uint32(xdr, 0); /* src server list */
++	encode_uint32(xdr, args->cp_nsrc); /* set to 1 for inter-ssc*/
++	if (args->cp_nsrc == 0) /* intra-ssc */
++		return;
 +
-+	status = nfsd4_decode_stateid(argp, &cp_notify->cpn_src_stateid);
-+	if (status)
-+		return status;
-+
-+	READ_BUF(4);
-+	cp_notify->cpn_dst.nl4_type = be32_to_cpup(p++);
-+	switch (cp_notify->cpn_dst.nl4_type) {
++	encode_uint32(xdr, args->cp_src[0].nl4_type);
++	/* Support one src server in list for now */
++	switch (args->cp_src[0].nl4_type) {
 +	case NL4_NAME:
 +	case NL4_URL:
-+		READ_BUF(4);
-+		cp_notify->cpn_dst.u.nl4_str_sz = be32_to_cpup(p++);
-+		if (cp_notify->cpn_dst.u.nl4_str_sz > NFS4_OPAQUE_LIMIT)
-+			goto xdr_error;
-+		READ_BUF(cp_notify->cpn_dst.u.nl4_str_sz);
-+		COPYMEM(cp_notify->cpn_dst.u.nl4_str,
-+			cp_notify->cpn_dst.u.nl4_str_sz);
++		encode_string(xdr, args->cp_src[0].u.nl4_str_sz,
++			      args->cp_src[0].u.nl4_str);
 +		break;
 +	case NL4_NETADDR:
-+		naddr = &cp_notify->cpn_dst.u.nl4_addr;
-+
-+		READ_BUF(4);
-+		naddr->na_netid_len = be32_to_cpup(p++);
-+		if (naddr->na_netid_len > RPCBIND_MAXNETIDLEN)
-+			goto xdr_error;
-+		/* 4 for uaddr len */
-+		READ_BUF(naddr->na_netid_len + 4);
-+		COPYMEM(naddr->na_netid, naddr->na_netid_len);
-+
-+		naddr->na_uaddr_len = be32_to_cpup(p++);
-+		if (naddr->na_uaddr_len > RPCBIND_MAXUADDRLEN)
-+			goto xdr_error;
-+		READ_BUF(naddr->na_uaddr_len);
-+		COPYMEM(naddr->na_uaddr, naddr->na_uaddr_len);
++		encode_string(xdr, args->cp_src[0].u.nl4_addr.na_netid_len,
++			      args->cp_src[0].u.nl4_addr.na_netid);
++		encode_string(xdr, args->cp_src[0].u.nl4_addr.na_uaddr_len,
++			      args->cp_src[0].u.nl4_addr.na_uaddr);
 +		break;
 +	default:
-+		goto xdr_error;
++		WARN_ON_ONCE(1);
 +	}
-+
-+	DECODE_TAIL;
-+}
-+
-+static __be32
- nfsd4_decode_seek(struct nfsd4_compoundargs *argp, struct nfsd4_seek *seek)
- {
- 	DECODE_HEAD;
-@@ -1844,7 +1892,7 @@ static nfsd4_dec nfsd4_dec_ops[] = {
- 	/* new operations for NFSv4.2 */
- 	[OP_ALLOCATE]		= (nfsd4_dec)nfsd4_decode_fallocate,
- 	[OP_COPY]		= (nfsd4_dec)nfsd4_decode_copy,
--	[OP_COPY_NOTIFY]	= (nfsd4_dec)nfsd4_decode_notsupp,
-+	[OP_COPY_NOTIFY]	= (nfsd4_dec)nfsd4_decode_copy_notify,
- 	[OP_DEALLOCATE]		= (nfsd4_dec)nfsd4_decode_fallocate,
- 	[OP_IO_ADVISE]		= (nfsd4_dec)nfsd4_decode_notsupp,
- 	[OP_LAYOUTERROR]	= (nfsd4_dec)nfsd4_decode_notsupp,
-@@ -4243,6 +4291,82 @@ nfsd4_encode_copy(struct nfsd4_compoundres *resp, __be32 nfserr,
  }
  
- static __be32
-+nfsd4_encode_copy_notify(struct nfsd4_compoundres *resp, __be32 nfserr,
-+			 struct nfsd4_copy_notify *cp_notify)
-+{
-+	struct xdr_stream *xdr = &resp->xdr;
-+	struct nfs42_netaddr *addr;
-+	__be32 *p;
-+	int i;
-+
-+	if (nfserr)
-+		return nfserr;
-+
-+	/* 8 sec, 4 nsec */
-+	p = xdr_reserve_space(xdr, 12);
-+	if (!p)
-+		return nfserr_resource;
-+
-+	/* cnr_lease_time */
-+	p = xdr_encode_hyper(p, cp_notify->cpn_sec);
-+	*p++ = cpu_to_be32(cp_notify->cpn_nsec);
-+
-+	/* cnr_stateid */
-+	nfserr = nfsd4_encode_stateid(xdr, &cp_notify->cp_stateid);
-+	if (nfserr)
-+		return nfserr;
-+
-+	/* cnr_nsrc */
-+	p = xdr_reserve_space(xdr, 4);
-+	if (!p)
-+		return nfserr_resource;
-+
-+	/* support a single NL4_NETADDR src address for now */
-+	*p++ = cpu_to_be32(cp_notify->cpn_nsrc); /* set to 1 */
-+	for (i = 0; i < NFSD4_MAX_SSC_SRC; i++) {
-+		p = xdr_reserve_space(xdr, 4);
-+		*p++ = cpu_to_be32(cp_notify->cpn_src[i].nl4_type);
-+
-+		switch (cp_notify->cpn_src[i].nl4_type) {
-+		case NL4_NAME:
-+		case NL4_URL:
-+			p = xdr_reserve_space(xdr,
-+				4 /* url or name len */ +
-+				(XDR_QUADLEN(cp_notify->cpn_src[i].u.nl4_str_sz) * 4));
-+			if (!p)
-+				return nfserr_resource;
-+			*p++ = cpu_to_be32(cp_notify->cpn_src[i].u.nl4_str_sz);
-+			p = xdr_encode_opaque_fixed(p,
-+					cp_notify->cpn_src[i].u.nl4_str,
-+					cp_notify->cpn_src[i].u.nl4_str_sz);
-+			break;
-+		case NL4_NETADDR:
-+			addr = &cp_notify->cpn_src[i].u.nl4_addr;
-+
-+			/* netid_len, netid, uaddr_len, uaddr (port included
-+			 * in RPCBIND_MAXUADDRLEN) */
-+			p = xdr_reserve_space(xdr,
-+				4 /* netid len */ +
-+				(XDR_QUADLEN(RPCBIND_MAXNETIDLEN) * 4) +
-+				4 /* uaddr len */ +
-+				(XDR_QUADLEN(RPCBIND_MAXUADDRLEN) * 4));
-+			if (!p)
-+				return nfserr_resource;
-+
-+			*p++ = cpu_to_be32(addr->na_netid_len);
-+			p = xdr_encode_opaque_fixed(p, addr->na_netid,
-+						    addr->na_netid_len);
-+			*p++ = cpu_to_be32(addr->na_uaddr_len);
-+			p = xdr_encode_opaque_fixed(p, addr->na_uaddr,
-+						    addr->na_uaddr_len);
-+			break;
-+		}
-+	}
-+
-+	return nfserr;
-+}
-+
-+static __be32
- nfsd4_encode_seek(struct nfsd4_compoundres *resp, __be32 nfserr,
- 		  struct nfsd4_seek *seek)
- {
-@@ -4342,7 +4466,7 @@ static nfsd4_enc nfsd4_enc_ops[] = {
- 	/* NFSv4.2 operations */
- 	[OP_ALLOCATE]		= (nfsd4_enc)nfsd4_encode_noop,
- 	[OP_COPY]		= (nfsd4_enc)nfsd4_encode_copy,
--	[OP_COPY_NOTIFY]	= (nfsd4_enc)nfsd4_encode_noop,
-+	[OP_COPY_NOTIFY]	= (nfsd4_enc)nfsd4_encode_copy_notify,
- 	[OP_DEALLOCATE]		= (nfsd4_enc)nfsd4_encode_noop,
- 	[OP_IO_ADVISE]		= (nfsd4_enc)nfsd4_encode_noop,
- 	[OP_LAYOUTERROR]	= (nfsd4_enc)nfsd4_encode_noop,
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index a018c3d..89b1b5b 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -530,6 +530,19 @@ struct nfsd4_seek {
- 	loff_t		seek_pos;
+ static void encode_copy_notify(struct xdr_stream *xdr,
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index a7f63fb..dd9009a 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1339,6 +1339,9 @@ struct nfs42_copy_args {
+ 	u64				dst_pos;
+ 
+ 	u64				count;
++	/* Support one source server */
++	int				cp_nsrc;
++	struct nl4_server		cp_src[NFS42_MAX_SSC_SRC];
  };
  
-+struct nfsd4_copy_notify {
-+	/* request */
-+	stateid_t		cpn_src_stateid;
-+	struct nl4_server	cpn_dst;
-+
-+	/* response */
-+	stateid_t		cp_stateid;
-+	u64			cpn_sec;
-+	u32			cpn_nsec;
-+	u32			cpn_nsrc;
-+	struct nl4_server	cpn_src[NFSD4_MAX_SSC_SRC];
-+};
-+
- struct nfsd4_op {
- 	int					opnum;
- 	__be32					status;
+ struct nfs42_write_res {
 -- 
 1.8.3.1
 
