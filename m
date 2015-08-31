@@ -1,55 +1,139 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:47766 "EHLO fieldses.org"
+Received: from smtp-o-1.desy.de ([131.169.56.154]:57396 "EHLO smtp-o-1.desy.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752858AbbHaPXF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 31 Aug 2015 11:23:05 -0400
-Date: Mon, 31 Aug 2015 11:23:04 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Andreas =?utf-8?Q?Gr=C3=BCnbacher?=
-	<andreas.gruenbacher@gmail.com>
-Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        Linux FS-devel Mailing List <linux-fsdevel@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Linux API Mailing List <linux-api@vger.kernel.org>,
-        linux-cifs@vger.kernel.org,
-        LSM List <linux-security-module@vger.kernel.org>,
-        Andreas Gruenbacher <agruenba@redhat.com>
-Subject: Re: [RFC v6 10/40] richacl: Permission check algorithm
-Message-ID: <20150831152304.GE17812@fieldses.org>
-References: <1438689218-6921-1-git-send-email-agruenba@redhat.com>
- <1438689218-6921-11-git-send-email-agruenba@redhat.com>
- <20150828214917.GC23326@fieldses.org>
- <CAHpGcMJT0kQyrvCkur0csCmRn-LwUOJcRWqAfLaqCpNd2b8UXA@mail.gmail.com>
+	id S1752568AbbHaPwl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 31 Aug 2015 11:52:41 -0400
+Received: from smtp-map-1.desy.de (smtp-map-1.desy.de [131.169.56.66])
+	by smtp-o-1.desy.de (DESY-O-1) with ESMTP id 908BF2809B0
+	for <linux-nfs@vger.kernel.org>; Mon, 31 Aug 2015 17:52:39 +0200 (CEST)
+Received: from ZITSWEEP4.win.desy.de (zitsweep4.win.desy.de [131.169.97.98])
+	by smtp-map-1.desy.de (DESY_MAP_1) with ESMTP id 82F2413E89
+	for <linux-nfs@vger.kernel.org>; Mon, 31 Aug 2015 17:52:38 +0200 (MEST)
+Date: Mon, 31 Aug 2015 17:52:37 +0200 (CEST)
+From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Ulrich Gemkow <ulrich.gemkow@ikr.uni-stuttgart.de>,
+        linux-nfs@vger.kernel.org
+Message-ID: <1738066646.4791126.1441036357343.JavaMail.zimbra@desy.de>
+In-Reply-To: <20150831145148.GB17812@fieldses.org>
+References: <201508241452.57718.ulrich.gemkow@ikr.uni-stuttgart.de> <201508262154.24455.ulrich.gemkow@ikr.uni-stuttgart.de> <20150826200940.GE4161@fieldses.org> <201508311408.10693.ulrich.gemkow@ikr.uni-stuttgart.de> <20150831145148.GB17812@fieldses.org>
+Subject: Re: NFSv4 mount fails on Sun Solaris 10 after reboot of client
 MIME-Version: 1.0
 Content-Type: text/plain; charset=utf-8
-In-Reply-To: <CAHpGcMJT0kQyrvCkur0csCmRn-LwUOJcRWqAfLaqCpNd2b8UXA@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Aug 29, 2015 at 12:06:22AM +0200, Andreas Grünbacher wrote:
-> 2015-08-28 23:49 GMT+02:00 J. Bruce Fields <bfields@fieldses.org>:
-> > On Tue, Aug 04, 2015 at 01:53:08PM +0200, Andreas Gruenbacher wrote:
-> >> +             /*
-> >> +              * We don't care which class the process is in when the acl is
-> >> +              * not masked.
-> >> +              */
-> >> +             in_owner_or_group_class = 1;
-> >
-> > So why bother setting it at all, then?  Oh, I see, it lets you break out
-> > of the loop below earlier.  OK.
-> 
-> Comment changed to:
-> 
->                 /*
->                  * When the acl is not masked, there is no need to determine if
->                  * the process is in the group class and we can earlier break
->                  * out of the loop below.
->                  */
 
-makes sense, just replace "earlier break out" by "break out earlier".
+
+----- Original Message -----
+> From: "J. Bruce Fields" <bfields@fieldses.org>
+> To: "Ulrich Gemkow" <ulrich.gemkow@ikr.uni-stuttgart.de>
+> Cc: linux-nfs@vger.kernel.org
+> Sent: Monday, August 31, 2015 4:51:48 PM
+> Subject: Re: NFSv4 mount fails on Sun Solaris 10 after reboot of client
+
+> On Mon, Aug 31, 2015 at 02:08:08PM +0200, Ulrich Gemkow wrote:
+>> Hallo Bruce,
+>> 
+>> On Wednesday 26 August 2015 22:09:40 you wrote:
+>> > On Wed, Aug 26, 2015 at 09:54:22PM +0200, Ulrich Gemkow wrote:
+>> > > Hello Bruce,
+>> > > 
+>> > > On Tuesday 25 August 2015 23:54:56 J. Bruce Fields wrote:
+>> > > > The SERVERFAULT is on SETCLIENTID_CONFIRM.
+>> > > > 
+>> > > > In nfsd4_setclientid_confirm():
+>> > > > 
+>> > > > 	conf = find_confirmed_client(clid, false, nn);
+>> > > > 	unconf = find_unconfirmed_client(clid, false, nn);
+>> > > > 	/*
+>> > > >          * We try hard to give out unique clientid's, so if we get an
+>> > > >          * attempt to confirm the same clientid with a different cred,
+>> > > >          * there's a bug somewhere.  Let's charitably assume it's our
+>> > > >          * bug.
+>> > > >          */
+>> > > >         status = nfserr_serverfault;
+>> > > >         if (unconf && !same_creds(&unconf->cl_cred, &rqstp->rq_cred))
+>> > > >                 goto out;
+>> > > >         if (conf && !same_creds(&conf->cl_cred, &rqstp->rq_cred))
+>> > > >                 goto out;
+>> > > > 
+>> > > > The SETCLIENTID and SETCLIENTID_CONFIRM are done with identical
+>> > > > auth_unix creds.
+>> > > > 
+>> > > > The clientid that were looking up there was returned from the previous
+>> > > > SETCLIENTID, generated by this logic:
+>> > > > 
+>> > > > 	if (conf && same_verf(&conf->cl_verifier, &clverifier))
+>> > > >                 /* case 1: probable callback update */
+>> > > >                 copy_clid(new, conf);
+>> > > >         else /* case 4 (new client) or cases 2, 3 (client reboot): */
+>> > > >                 gen_clid(new, nn);
+>> > > > 
+>> > > > So it should be a brand new clientid, unless the client was reusing the old
+>> > > > verifier.
+>> > > > 
+>> > > > So perhaps the client is sending the SETCLIENTID with a verifier set to what it
+>> > > > used on the previous boot?  That sounds like a client bug.  The linux
+>> > > > client uses a timestamp for the verifier, looks like the Solaris client
+>> > > > might too.  Is there some reason the clock on this client isn't
+>> > > > advancing on reboot?
+>> > > 
+>> > > Thank you for the analysis. But the clock of the client advances
+>> > > regularely and as one would expect.
+>> > 
+>> > OK, thanks for checking that.
+>> > 
+>> > > The client is SPARC Solaris 10 with the latest patches
+>> > > applied - I cannot believe that this client has such a
+>> > > basic NFS bug.
+>> > 
+>> > To confirm or deny my hypothesis, I think what we want is a longer
+>> > capture that gets the failing SETCLIENTID_CONFIRM (as seen in the
+>> > previous capture) but also shows what clientid the client was using
+>> > before the reboot.  So ideal might be something like:
+>> > 
+>> > 	- start the capture
+>> > 	- mount
+>> > 	- create a file (I just want to make sure the client does at
+>> > 	  least one open)
+>> > 	- reboot the client
+>> > 	- mount again, see the failure
+>> > 	- stop the capture
+>> 
+>> I tried but probably made a mistake: To be sure to have a
+>> defined state for the test I rebooted the server while clearing
+>> all its NFS state and I reinstalled the client - both with the
+>> exact same configuration as before.
+>> 
+>> And now the bug unfortunately does not happen again, the mount
+>> always succeeds. I did the reinstall of the client also before
+>> my first mail to be sure so it seems that the server may have
+>> reached an invalid state before - whatever this may has caused.
+> 
+> That's interesting!
+> 
+>> I can only wait until the bug happens again (hoping not :-).
+>> 
+>> Maybe you are able to find a reason from the information
+>> given before. I regret to be of no more help. If I can do
+>> something please tell me.
+> 
+> I'm not coming up with any ideas right now.  Do let us know if you get
+> into that state again.
+
+
+To me it sounds like server still has a reference by client's  ownerid and fails
+to detect that verifier is not valid any more. Some kind of leak in client
+disconnect/reboot detection code (although code looks like doing the right thing).
+I don't have much inside Linux server to verify that.
+
+Tigran.
+
 
 > 
-> > Patch makes sense to me, ACK.
-> 
-> Thanks,
-> Andreas
+> --b.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
