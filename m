@@ -1,44 +1,115 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from discipline.rit.edu ([129.21.6.207]:14841 "HELO
-	discipline.rit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1753307AbbHaQTp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 31 Aug 2015 12:19:45 -0400
-From: Andrew Elble <aweits@rit.edu>
-To: linux-nfs@vger.kernel.org, etmsys@rit.edu
-Cc: Andrew Elble <aweits@rit.edu>
-Subject: [PATCH] nfsd: deal with DELEGRETURN racing with CB_RECALL
-Date: Mon, 31 Aug 2015 12:06:41 -0400
-Message-Id: <1441037201-78787-1-git-send-email-aweits@rit.edu>
+Received: from mail-qg0-f41.google.com ([209.85.192.41]:36781 "EHLO
+	mail-qg0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753415AbbHaQuz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 31 Aug 2015 12:50:55 -0400
+Received: by qgeb6 with SMTP id b6so69231107qge.3
+        for <linux-nfs@vger.kernel.org>; Mon, 31 Aug 2015 09:50:54 -0700 (PDT)
+Date: Mon, 31 Aug 2015 12:50:51 -0400
+From: Jeff Layton <jlayton@poochiereds.net>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org, hch@lst.de, kinglongmee@gmail.com
+Subject: Re: [PATCH v3 14/20] nfsd: close cached files prior to a REMOVE or
+ RENAME that would replace target
+Message-ID: <20150831125051.12c4b379@tlielax.poochiereds.net>
+In-Reply-To: <20150828175834.GB10468@fieldses.org>
+References: <1440069440-27454-1-git-send-email-jeff.layton@primarydata.com>
+	<1440069440-27454-15-git-send-email-jeff.layton@primarydata.com>
+	<20150826200032.GD4161@fieldses.org>
+	<20150826185331.74977119@synchrony.poochiereds.net>
+	<20150827133806.GA10468@fieldses.org>
+	<20150828081947.37d4f018@synchrony.poochiereds.net>
+	<20150828175834.GB10468@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We have observed the server sending recalls for delegation stateids
-that have already been successfully returned. Change
-nfsd4_cb_recall_done() to return success if the client has returned
-the delegation. While this does not completely eliminate the sending
-of recalls for delegations that have already been returned, this
-does prevent unnecessarily declaring the callback path to be down.
+On Fri, 28 Aug 2015 13:58:34 -0400
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-Reported-by: Eric Meddaugh <etmsys@rit.edu>
-Signed-off-by: Andrew Elble <aweits@rit.edu>
----
- fs/nfsd/nfs4state.c | 3 +++
- 1 file changed, 3 insertions(+)
+> On Fri, Aug 28, 2015 at 08:19:46AM -0400, Jeff Layton wrote:
+> > On Thu, 27 Aug 2015 09:38:06 -0400
+> > "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > 
+> > > On Wed, Aug 26, 2015 at 06:53:31PM -0400, Jeff Layton wrote:
+> > > > On Wed, 26 Aug 2015 16:00:32 -0400
+> > > > "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > > > 
+> > > > > On Thu, Aug 20, 2015 at 07:17:14AM -0400, Jeff Layton wrote:
+> > > > > > It's not uncommon for some workloads to do a bunch of I/O to a file and
+> > > > > > delete it just afterward. If knfsd has a cached open file however, then
+> > > > > > the file may still be open when the dentry is unlinked. If the
+> > > > > > underlying filesystem is nfs, then that could trigger it to do a
+> > > > > > sillyrename.
+> > > > > 
+> > > > > Possibly worth noting that situation doesn't currently occur upstream.
+> > > > > 
+> > > > > (And, another justification worth noting: space used by a file should be
+> > > > > deallocated on last unlink or close.  People do sometimes notice if it's
+> > > > > not, especially if the file is large.)
+> > > > > 
+> > > > 
+> > > > Good points.
+> > > > 
+> > > > > > On a REMOVE or RENAME scan the nfsd_file cache for open files that
+> > > > > > correspond to the inode, and proactively unhash and put their
+> > > > > > references. This should prevent any delete-on-last-close activity from
+> > > > > > occurring, solely due to knfsd's open file cache.
+> > > > > 
+> > > > > Is there anything here to prevent a new cache entry being added after
+> > > > > nfsd_file_close_inode and before the file is actually removed?
+> > > > > 
+> > > > 
+> > > > No, nothing -- it's strictly best effort.
+> > > 
+> > > Unfortunately I think this is something we really want to guarantee.
+> > > 
+> > 
+> > That should be doable.
+> > 
+> > One question though -- if we hit this race, what's the right way to
+> > handle it?
+> > 
+> > We don't want to return nfserr_stale or anything since we won't know if
+> > the inode will really be stale after the remove completes. We could
+> > just be removing one link from a multiply-linked inode.
+> > 
+> > We also don't want to make the caller wait out nfsd_file_acquire, as the
+> > file could be open via NFSv4 and those references might not get put for
+> > quite some time.
+> > 
+> > What semantics should we be aiming for?
+> 
+> Hm.
+> 
+> The RENAME or REMOVE has to succeed regardless.
+> 
+> If the other operation is an open or something lookup-like, then it has
+> to succeed or see ENOENT.  If it's a filehandle-based operation like
+> READ or WRITE then it's got to succeed or get STALE, and if the latter
+> then it better be really and truly gone.  Continuing to process a READ
+> or WRITE after the REMOVE continues is fine, I think, it just means some
+> application on some other v3 client has an open that we're honoring a
+> moment longer than we're required to.
+> 
+> Now I'd have to look back at your code....  If the caching were just an
+> optimization, we could just it off temporarily, but I don't think we
+> can.
+> 
+> Marking the file dead somehow and failing further attempts to use it
+> might work.  I guess that's equivalent to your suggestion to unhash it
+> in this case.
+> 
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index de45c2de1668..ac235a7470e3 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -3509,6 +3509,9 @@ static int nfsd4_cb_recall_done(struct nfsd4_callback *cb,
- {
- 	struct nfs4_delegation *dp = cb_to_delegation(cb);
- 
-+	if (dp->dl_stid.sc_type == NFS4_CLOSED_DELEG_STID)
-+	        return 1;
-+
- 	switch (task->tk_status) {
- 	case 0:
- 		return 1;
+Yeah, though that is a rather substantive change. Right now, we just
+tear these things down when we put the last reference. If we have to
+prevent new references from being acquired during the duration of the
+unlink, then that changes the entire semantics of the cache.
+
+We'll need to allow some sort of object to persist in the cache (to act
+as a placeholder), but still allow the struct file to be closed. I'll
+have to think about how we can make that work. It'll probably make this
+quite a bit more complex...
 -- 
-2.4.6
-
+Jeff Layton <jlayton@poochiereds.net>
