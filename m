@@ -1,15 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx142.netapp.com ([216.240.21.19]:14279 "EHLO mx142.netapp.com"
+Received: from mx144.netapp.com ([216.240.21.25]:13094 "EHLO mx144.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754039AbbHaTu2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 31 Aug 2015 15:50:28 -0400
+	id S1753667AbbHaTuX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 31 Aug 2015 15:50:23 -0400
 From: <andros@netapp.com>
 To: <Trond.Myklebust@primarydata.com>
 CC: <Anna.Schumaker@netapp.com>, <bfields@fieldses.org>,
         <linux-nfs@vger.kernel.org>, Andy Adamson <andros@netapp.com>
-Subject: [PATCH 08/16] NFSD add ca_source_server<> to COPY
-Date: Mon, 31 Aug 2015 15:49:58 -0400
-Message-ID: <1441050606-40897-9-git-send-email-andros@netapp.com>
+Subject: [PATCH 02/16] BTRFS: Use VFS copy offload helper
+Date: Mon, 31 Aug 2015 15:49:52 -0400
+Message-ID: <1441050606-40897-3-git-send-email-andros@netapp.com>
 In-Reply-To: <1441050606-40897-1-git-send-email-andros@netapp.com>
 References: <1441050606-40897-1-git-send-email-andros@netapp.com>
 MIME-Version: 1.0
@@ -21,145 +21,23 @@ From: Andy Adamson <andros@netapp.com>
 
 Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- fs/nfsd/nfs4proc.c | 10 +++++++++-
- fs/nfsd/nfs4xdr.c  | 49 +++++++++++++++++++++++++++++++++++++++++++++++--
- fs/nfsd/xdr4.h     |  6 ++++++
- 3 files changed, 62 insertions(+), 3 deletions(-)
+ fs/btrfs/ioctl.c | 3 +++
+ 1 file changed, 3 insertions(+)
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index fbfb509..725ce0f 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -2014,6 +2014,14 @@ static inline u32 nfsd4_layoutreturn_rsize(struct svc_rqst *rqstp, struct nfsd4_
- }
- #endif /* CONFIG_NFSD_PNFS */
- 
-+static inline u32 nfsd4_copy_rsize(struct svc_rqst *rqstp, struct nfsd4_op *op)
-+{
-+	return (op_encode_hdr_size + op_encode_verifier_maxsz +
-+		1 /* One cnr_source_server */ +
-+		1 /* nl4_type */ +
-+		XDR_QUADLEN(NFS4_OPAQUE_LIMIT) + 1); /*nl4_loc + nl4_loc_sz */
-+}
-+
- static struct nfsd4_operation nfsd4_ops[] = {
- 	[OP_ACCESS] = {
- 		.op_func = (nfsd4op_func)nfsd4_access,
-@@ -2344,7 +2352,7 @@ static struct nfsd4_operation nfsd4_ops[] = {
- 		.op_func = (nfsd4op_func)nfsd4_copy,
- 		.op_flags = OP_MODIFIES_SOMETHING | OP_CACHEME,
- 		.op_name = "OP_COPY",
--		.op_rsize_bop = (nfsd4op_rsize)nfsd4_write_rsize,
-+		.op_rsize_bop = (nfsd4op_rsize)nfsd4_copy_rsize,
- 	},
- 	[OP_SEEK] = {
- 		.op_func = (nfsd4op_func)nfsd4_seek,
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 3a78c7f..26df40e 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -40,6 +40,7 @@
- #include <linux/utsname.h>
- #include <linux/pagemap.h>
- #include <linux/sunrpc/svcauth_gss.h>
-+#include <linux/sunrpc/addr.h>
- 
- #include "idmap.h"
- #include "acl.h"
-@@ -1678,7 +1679,8 @@ static __be32
- nfsd4_decode_copy(struct nfsd4_compoundargs *argp, struct nfsd4_copy *copy)
+diff --git a/fs/btrfs/ioctl.c b/fs/btrfs/ioctl.c
+index 62ae286..f8fa11f 100644
+--- a/fs/btrfs/ioctl.c
++++ b/fs/btrfs/ioctl.c
+@@ -3856,6 +3856,9 @@ ssize_t btrfs_copy_file_range(struct file *file_in, loff_t pos_in,
  {
- 	DECODE_HEAD;
--	unsigned int tmp;
-+	struct nfs42_netaddr *naddr;
-+	int i;
+ 	ssize_t ret;
  
- 	status = nfsd4_decode_stateid(argp, &copy->cp_src_stateid);
- 	if (status)
-@@ -1693,8 +1695,51 @@ nfsd4_decode_copy(struct nfsd4_compoundargs *argp, struct nfsd4_copy *copy)
- 	p = xdr_decode_hyper(p, &copy->cp_count);
- 	copy->cp_consecutive = be32_to_cpup(p++);
- 	copy->cp_synchronous = be32_to_cpup(p++);
--	tmp = be32_to_cpup(p); /* Source server list not supported */
-+	copy->cp_nsrc = be32_to_cpup(p++);
-+
-+	if (copy->cp_nsrc == 0) /* intra-server copy */
-+		goto intra;
-+
-+	for (i = 0; i < NFSD4_MAX_SSC_SRC; i++) {
-+		READ_BUF(4);
-+		copy->cp_src[i].nl4_type = be32_to_cpup(p++);
-+
-+		/* currently support for 1 inter-server source server */
-+		switch (copy->cp_src[i].nl4_type) {
-+		case NL4_NAME:
-+		case NL4_URL:
-+			READ_BUF(4);
-+			copy->cp_src[i].u.nl4_str_sz = be32_to_cpup(p++);
-+			if (copy->cp_src[i].u.nl4_str_sz > NFS4_OPAQUE_LIMIT)
-+				goto xdr_error;
-+
-+			READ_BUF(copy->cp_src[i].u.nl4_str_sz);
-+			COPYMEM(copy->cp_src[i].u.nl4_str,
-+				copy->cp_src[i].u.nl4_str_sz);
-+			break;
-+		case NL4_NETADDR:
-+			naddr = &copy->cp_src[i].u.nl4_addr;
-+
-+			READ_BUF(4);
-+			naddr->na_netid_len = be32_to_cpup(p++);
-+			if (naddr->na_netid_len > RPCBIND_MAXNETIDLEN)
-+				goto xdr_error;
-+
-+			READ_BUF(naddr->na_netid_len + 4); /* 4 for uaddr len */
-+			COPYMEM(naddr->na_netid, naddr->na_netid_len);
-+
-+			naddr->na_uaddr_len = be32_to_cpup(p++);
-+			if (naddr->na_uaddr_len > RPCBIND_MAXUADDRLEN)
-+				goto xdr_error;
- 
-+			READ_BUF(naddr->na_uaddr_len);
-+			COPYMEM(naddr->na_uaddr, naddr->na_uaddr_len);
-+			break;
-+		default:
-+			goto xdr_error;
-+		}
-+	}
-+intra:
- 	DECODE_TAIL;
- }
- 
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index 9e83f95..a018c3d 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -37,6 +37,7 @@
- #ifndef _LINUX_NFSD_XDR4_H
- #define _LINUX_NFSD_XDR4_H
- 
-+#include <linux/nfs4intercopy.h>
- #include "state.h"
- #include "nfsd.h"
- 
-@@ -497,6 +498,9 @@ struct nfsd42_write_res {
- 	nfs4_verifier		wr_verifier;
- };
- 
-+/*  support 1 source server for now */
-+#define NFSD4_MAX_SSC_SRC       1
-+
- struct nfsd4_copy {
- 	/* request */
- 	stateid_t	cp_src_stateid;
-@@ -504,6 +508,8 @@ struct nfsd4_copy {
- 	u64		cp_src_pos;
- 	u64		cp_dst_pos;
- 	u64		cp_count;
-+	int		cp_nsrc;
-+	struct nl4_server cp_src[NFSD4_MAX_SSC_SRC];
- 
- 	/* both */
- 	bool		cp_consecutive;
++	ret = copy_offload_same_fs(file_in, file_out);
++	if (ret != 0)
++		return ret;
+ 	ret = btrfs_clone_files(file_out, file_in, pos_in, len, pos_out);
+ 	if (ret == 0)
+ 		ret = len;
 -- 
 1.8.3.1
 
