@@ -1,163 +1,102 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx144.netapp.com ([216.240.21.25]:36911 "EHLO mx144.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754105AbbHaTuy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 31 Aug 2015 15:50:54 -0400
-From: <andros@netapp.com>
-To: <Trond.Myklebust@primarydata.com>
-CC: <Anna.Schumaker@netapp.com>, <bfields@fieldses.org>,
-        <linux-nfs@vger.kernel.org>, Olga Kornievskaia <kolga@netapp.com>
-Subject: [PATCH 16/16] NFSD: extra stateid checking in read for interserver copy
-Date: Mon, 31 Aug 2015 15:50:06 -0400
-Message-ID: <1441050606-40897-17-git-send-email-andros@netapp.com>
-In-Reply-To: <1441050606-40897-1-git-send-email-andros@netapp.com>
-References: <1441050606-40897-1-git-send-email-andros@netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+Received: from mail-pa0-f47.google.com ([209.85.220.47]:33137 "EHLO
+	mail-pa0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755211AbbIAIRR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Sep 2015 04:17:17 -0400
+Received: by paczk9 with SMTP id zk9so21005632pac.0
+        for <linux-nfs@vger.kernel.org>; Tue, 01 Sep 2015 01:17:17 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] NFSv4.1/flexfiles: Mark layout for return if the mirrors are invalid
+Date: Tue,  1 Sep 2015 01:17:14 -0700
+Message-Id: <1441095434-11195-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Olga Kornievskaia <kolga@netapp.com>
+If a read-write layout has an invalid mirror, then we should
+mark it as invalid, and return it.
+If a read-only layout has an invalid mirror, then mark it as invalid
+and check if there is still at least one valid mirror before we return
+it.
 
-Expand stateid structure to store a mark signifying this stateid is a COPY
-stateid and special to pass stateid check on READ operation coming from
-a different clientid.
-
-In COPY_NOTIFY, mark the stateid stored under the clientid as 'special' by
-setting boolean is_copy field to true.
-
-If we received a READ and check for the stateid fails, we need to look
-for the stateid under all other clientid structures and their corresponding
-stateid lists. Make sure the stateid was previously marked for use READ
-from a COPY operation.
-
-Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfsd/nfs4proc.c  | 43 ++++++++++++++++++++++++++++++++++++++++---
- fs/nfsd/nfs4state.c |  8 +-------
- fs/nfsd/state.h     |  8 ++++++++
- 3 files changed, 49 insertions(+), 10 deletions(-)
+ fs/nfs/flexfilelayout/flexfilelayoutdev.c | 45 ++++++++++++++++++++-----------
+ 1 file changed, 30 insertions(+), 15 deletions(-)
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 0213f91..38e8554 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -803,8 +803,37 @@ nfsd4_read(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 					&read->rd_stateid, RD_STATE,
- 					&read->rd_filp, &read->rd_tmp_file);
- 	if (status) {
--		dprintk("NFSD: nfsd4_read: couldn't process stateid!\n");
--		goto out;
-+		/* if clientid in rd_stateid is different from current,
-+		 * find corresponding clientid and look for stateid there
-+		 */
-+		struct net *net = SVC_NET(rqstp);
-+		struct nfsd_net *nn = net_generic(net, nfsd_net_id);
-+		struct nfs4_client *clp = NULL;
-+
-+		spin_lock(&nn->client_lock);
-+		list_for_each_entry(clp, &nn->client_lru, cl_lru) {
-+			if (same_clid(&clp->cl_clientid,
-+			    &read->rd_stateid.si_opaque.so_clid)) {
-+				struct nfs4_stid *stid = NULL;
-+
-+				stid = find_stateid_by_type(clp,
-+						&read->rd_stateid,
-+						NFS4_DELEG_STID|NFS4_OPEN_STID|
-+						NFS4_LOCK_STID);
-+				if (stid) {
-+					nfs4_put_stid(stid);
-+					if (stid->is_copy)
-+						status = nfs_ok;
-+					break;
-+				}
-+			}
-+		}
-+		spin_unlock(&nn->client_lock);
-+		if (status != nfs_ok) {
-+			dprintk("NFSD: %s: couldn't process stateid!\n",
-+				__func__);
-+			goto out;
-+		}
- 	}
- 	status = nfs_ok;
- out:
-@@ -1397,6 +1426,7 @@ nfsd4_copy_notify(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	__be32 status;
- 	struct file *src = NULL;
- 	struct nfs42_netaddr *naddr;
-+	struct nfs4_stid *stid = NULL;
- 
- 	status = nfs4_preprocess_stateid_op(rqstp, cstate,
- 					&cstate->current_fh,
-@@ -1412,7 +1442,14 @@ nfsd4_copy_notify(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	 * connections from the destination e.g. what is returned in cpn_src,
- 	 * to verify READ from dest server.
- 	 */
--
-+	/* mark the original open stateid special */
-+	stid = find_stateid_by_type(cstate->session->se_client,
-+		&cp_notify->cpn_src_stateid, NFS4_DELEG_STID|NFS4_OPEN_STID|
-+		NFS4_LOCK_STID);
-+	if (stid) {
-+		stid->is_copy = 1;
-+		nfs4_put_stid(stid);
-+	}
- 	/**
- 	 * For now, only return one source server address, the address used
- 	 * by the client in the static cpn_src.
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 96de0d3..109aecb 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1809,12 +1809,6 @@ same_verf(nfs4_verifier *v1, nfs4_verifier *v2)
- 	return 0 == memcmp(v1->data, v2->data, sizeof(v1->data));
+diff --git a/fs/nfs/flexfilelayout/flexfilelayoutdev.c b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
+index b28fa4cbea52..1da9f0c4445d 100644
+--- a/fs/nfs/flexfilelayout/flexfilelayoutdev.c
++++ b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
+@@ -172,6 +172,32 @@ out_err:
+ 	return NULL;
  }
  
--static int
--same_clid(clientid_t *cl1, clientid_t *cl2)
--{
--	return (cl1->cl_boot == cl2->cl_boot) && (cl1->cl_id == cl2->cl_id);
--}
--
- static bool groups_equal(struct group_info *g1, struct group_info *g2)
- {
- 	int i;
-@@ -1916,7 +1910,7 @@ find_stateid_locked(struct nfs4_client *cl, stateid_t *t)
- 	return ret;
- }
- 
--static struct nfs4_stid *
-+struct nfs4_stid *
- find_stateid_by_type(struct nfs4_client *cl, stateid_t *t, char typemask)
- {
- 	struct nfs4_stid *s;
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index d3e81ce..5c98514 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -94,6 +94,7 @@ struct nfs4_stid {
- #define NFS4_REVOKED_DELEG_STID 16
- #define NFS4_CLOSED_DELEG_STID 32
- #define NFS4_LAYOUT_STID 64
-+	bool is_copy;
- 	unsigned char sc_type;
- 	stateid_t sc_stateid;
- 	struct nfs4_client *sc_client;
-@@ -583,6 +584,13 @@ enum nfsd4_cb_op {
- struct nfsd4_compound_state;
- struct nfsd_net;
- 
-+static inline int same_clid(clientid_t *cl1, clientid_t *cl2)
++static void ff_layout_mark_devid_invalid(struct pnfs_layout_segment *lseg,
++		struct nfs4_deviceid_node *devid)
 +{
-+	return (cl1->cl_boot == cl2->cl_boot) && (cl1->cl_id == cl2->cl_id);
++	pnfs_generic_mark_devid_invalid(devid);
++	if (lseg->pls_range.iomode != IOMODE_READ ||
++	    !ff_layout_has_available_ds(lseg))
++		pnfs_error_mark_layout_for_return(lseg->pls_layout->plh_inode, lseg);
 +}
 +
-+extern struct nfs4_stid *find_stateid_by_type(struct nfs4_client *cl,
-+	stateid_t *t, char typemask);
- extern __be32 nfs4_preprocess_stateid_op(struct svc_rqst *rqstp,
- 		struct nfsd4_compound_state *cstate, struct svc_fh *fhp,
- 		stateid_t *stateid, int flags, struct file **filp, bool *tmp_file);
++static bool ff_layout_mirror_valid(struct pnfs_layout_segment *lseg,
++		struct nfs4_ff_layout_mirror *mirror)
++{
++	if (mirror == NULL || mirror->mirror_ds == NULL ||
++	    mirror->mirror_ds->ds == NULL) {
++		if (mirror && mirror->mirror_ds) {
++			struct nfs4_deviceid_node *devid;
++			devid = &mirror->mirror_ds->id_node;
++			ff_layout_mark_devid_invalid(lseg, devid);
++		} else
++			pnfs_error_mark_layout_for_return(lseg->pls_layout->plh_inode,
++					lseg);
++		return false;
++	}
++	return true;
++}
++
+ static u64
+ end_offset(u64 start, u64 len)
+ {
+@@ -336,16 +362,10 @@ nfs4_ff_layout_select_ds_fh(struct pnfs_layout_segment *lseg, u32 mirror_idx)
+ {
+ 	struct nfs4_ff_layout_mirror *mirror = FF_LAYOUT_COMP(lseg, mirror_idx);
+ 	struct nfs_fh *fh = NULL;
+-	struct nfs4_deviceid_node *devid;
+ 
+-	if (mirror == NULL || mirror->mirror_ds == NULL ||
+-	    mirror->mirror_ds->ds == NULL) {
+-		printk(KERN_ERR "NFS: %s: No data server for mirror offset index %d\n",
++	if (!ff_layout_mirror_valid(lseg, mirror)) {
++		pr_err_ratelimited("NFS: %s: No data server for mirror offset index %d\n",
+ 			__func__, mirror_idx);
+-		if (mirror && mirror->mirror_ds) {
+-			devid = &mirror->mirror_ds->id_node;
+-			pnfs_generic_mark_devid_invalid(devid);
+-		}
+ 		goto out;
+ 	}
+ 
+@@ -368,14 +388,9 @@ nfs4_ff_layout_prepare_ds(struct pnfs_layout_segment *lseg, u32 ds_idx,
+ 	unsigned int max_payload;
+ 	rpc_authflavor_t flavor;
+ 
+-	if (mirror == NULL || mirror->mirror_ds == NULL ||
+-	    mirror->mirror_ds->ds == NULL) {
+-		printk(KERN_ERR "NFS: %s: No data server for offset index %d\n",
++	if (!ff_layout_mirror_valid(lseg, mirror)) {
++		pr_err_ratelimited("NFS: %s: No data server for offset index %d\n",
+ 			__func__, ds_idx);
+-		if (mirror && mirror->mirror_ds) {
+-			devid = &mirror->mirror_ds->id_node;
+-			pnfs_generic_mark_devid_invalid(devid);
+-		}
+ 		goto out;
+ 	}
+ 
 -- 
-1.8.3.1
+2.4.3
 
