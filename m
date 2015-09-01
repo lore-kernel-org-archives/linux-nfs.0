@@ -1,102 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pa0-f47.google.com ([209.85.220.47]:33137 "EHLO
-	mail-pa0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755211AbbIAIRR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Sep 2015 04:17:17 -0400
-Received: by paczk9 with SMTP id zk9so21005632pac.0
-        for <linux-nfs@vger.kernel.org>; Tue, 01 Sep 2015 01:17:17 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] NFSv4.1/flexfiles: Mark layout for return if the mirrors are invalid
-Date: Tue,  1 Sep 2015 01:17:14 -0700
-Message-Id: <1441095434-11195-1-git-send-email-trond.myklebust@primarydata.com>
+Received: from mail-qk0-f176.google.com ([209.85.220.176]:36591 "EHLO
+	mail-qk0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752251AbbIANSu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Sep 2015 09:18:50 -0400
+Received: by qkbp67 with SMTP id p67so38001395qkb.3
+        for <linux-nfs@vger.kernel.org>; Tue, 01 Sep 2015 06:18:49 -0700 (PDT)
+Date: Tue, 1 Sep 2015 09:18:42 -0400
+From: Jeff Layton <jlayton@poochiereds.net>
+To: Andrew Elble <aweits@rit.edu>
+Cc: linux-nfs@vger.kernel.org, etmsys@rit.edu
+Subject: Re: [PATCH] nfsd: deal with DELEGRETURN racing with CB_RECALL
+Message-ID: <20150901091842.7c40adf3@tlielax.poochiereds.net>
+In-Reply-To: <1441037201-78787-1-git-send-email-aweits@rit.edu>
+References: <1441037201-78787-1-git-send-email-aweits@rit.edu>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If a read-write layout has an invalid mirror, then we should
-mark it as invalid, and return it.
-If a read-only layout has an invalid mirror, then mark it as invalid
-and check if there is still at least one valid mirror before we return
-it.
+On Mon, 31 Aug 2015 12:06:41 -0400
+Andrew Elble <aweits@rit.edu> wrote:
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/flexfilelayout/flexfilelayoutdev.c | 45 ++++++++++++++++++++-----------
- 1 file changed, 30 insertions(+), 15 deletions(-)
+> We have observed the server sending recalls for delegation stateids
+> that have already been successfully returned. Change
+> nfsd4_cb_recall_done() to return success if the client has returned
+> the delegation. While this does not completely eliminate the sending
+> of recalls for delegations that have already been returned, this
+> does prevent unnecessarily declaring the callback path to be down.
+> 
+> Reported-by: Eric Meddaugh <etmsys@rit.edu>
+> Signed-off-by: Andrew Elble <aweits@rit.edu>
+> ---
+>  fs/nfsd/nfs4state.c | 3 +++
+>  1 file changed, 3 insertions(+)
+> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index de45c2de1668..ac235a7470e3 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -3509,6 +3509,9 @@ static int nfsd4_cb_recall_done(struct nfsd4_callback *cb,
+>  {
+>  	struct nfs4_delegation *dp = cb_to_delegation(cb);
+>  
+> +	if (dp->dl_stid.sc_type == NFS4_CLOSED_DELEG_STID)
+> +	        return 1;
+> +
+>  	switch (task->tk_status) {
+>  	case 0:
+>  		return 1;
 
-diff --git a/fs/nfs/flexfilelayout/flexfilelayoutdev.c b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
-index b28fa4cbea52..1da9f0c4445d 100644
---- a/fs/nfs/flexfilelayout/flexfilelayoutdev.c
-+++ b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
-@@ -172,6 +172,32 @@ out_err:
- 	return NULL;
- }
- 
-+static void ff_layout_mark_devid_invalid(struct pnfs_layout_segment *lseg,
-+		struct nfs4_deviceid_node *devid)
-+{
-+	pnfs_generic_mark_devid_invalid(devid);
-+	if (lseg->pls_range.iomode != IOMODE_READ ||
-+	    !ff_layout_has_available_ds(lseg))
-+		pnfs_error_mark_layout_for_return(lseg->pls_layout->plh_inode, lseg);
-+}
-+
-+static bool ff_layout_mirror_valid(struct pnfs_layout_segment *lseg,
-+		struct nfs4_ff_layout_mirror *mirror)
-+{
-+	if (mirror == NULL || mirror->mirror_ds == NULL ||
-+	    mirror->mirror_ds->ds == NULL) {
-+		if (mirror && mirror->mirror_ds) {
-+			struct nfs4_deviceid_node *devid;
-+			devid = &mirror->mirror_ds->id_node;
-+			ff_layout_mark_devid_invalid(lseg, devid);
-+		} else
-+			pnfs_error_mark_layout_for_return(lseg->pls_layout->plh_inode,
-+					lseg);
-+		return false;
-+	}
-+	return true;
-+}
-+
- static u64
- end_offset(u64 start, u64 len)
- {
-@@ -336,16 +362,10 @@ nfs4_ff_layout_select_ds_fh(struct pnfs_layout_segment *lseg, u32 mirror_idx)
- {
- 	struct nfs4_ff_layout_mirror *mirror = FF_LAYOUT_COMP(lseg, mirror_idx);
- 	struct nfs_fh *fh = NULL;
--	struct nfs4_deviceid_node *devid;
- 
--	if (mirror == NULL || mirror->mirror_ds == NULL ||
--	    mirror->mirror_ds->ds == NULL) {
--		printk(KERN_ERR "NFS: %s: No data server for mirror offset index %d\n",
-+	if (!ff_layout_mirror_valid(lseg, mirror)) {
-+		pr_err_ratelimited("NFS: %s: No data server for mirror offset index %d\n",
- 			__func__, mirror_idx);
--		if (mirror && mirror->mirror_ds) {
--			devid = &mirror->mirror_ds->id_node;
--			pnfs_generic_mark_devid_invalid(devid);
--		}
- 		goto out;
- 	}
- 
-@@ -368,14 +388,9 @@ nfs4_ff_layout_prepare_ds(struct pnfs_layout_segment *lseg, u32 ds_idx,
- 	unsigned int max_payload;
- 	rpc_authflavor_t flavor;
- 
--	if (mirror == NULL || mirror->mirror_ds == NULL ||
--	    mirror->mirror_ds->ds == NULL) {
--		printk(KERN_ERR "NFS: %s: No data server for offset index %d\n",
-+	if (!ff_layout_mirror_valid(lseg, mirror)) {
-+		pr_err_ratelimited("NFS: %s: No data server for offset index %d\n",
- 			__func__, ds_idx);
--		if (mirror && mirror->mirror_ds) {
--			devid = &mirror->mirror_ds->id_node;
--			pnfs_generic_mark_devid_invalid(devid);
--		}
- 		goto out;
- 	}
- 
--- 
-2.4.3
+Yeah, there will always be some potential for a CB_RECALL/DELEGRETURN
+race since the former is driven by the server and the latter by the
+client.
 
+What error are you usually getting back from the client when you see
+this happen? NFS4ERR_BAD_STATEID? If so, then maybe we should confine
+this check to that error case?
+
+OTOH, maybe there's no harm in just ignoring the error if the
+delegation is already returned...
+
+Acked-by: Jeff Layton <jlayton@poochiereds.net>
