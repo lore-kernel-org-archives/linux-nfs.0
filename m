@@ -1,48 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:48357 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752823AbbIASIt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 1 Sep 2015 14:08:49 -0400
-Date: Tue, 1 Sep 2015 14:08:49 -0400
-To: Andrew W Elble <aweits@rit.edu>
-Cc: Jeff Layton <jlayton@poochiereds.net>, linux-nfs@vger.kernel.org,
-        etmsys@rit.edu
-Subject: Re: [PATCH] nfsd: deal with DELEGRETURN racing with CB_RECALL
-Message-ID: <20150901180849.GB1948@fieldses.org>
-References: <1441037201-78787-1-git-send-email-aweits@rit.edu>
- <20150901091842.7c40adf3@tlielax.poochiereds.net>
- <m2mvx6jlbj.fsf@discipline.rit.edu>
- <m27foajiv8.fsf@discipline.rit.edu>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <m27foajiv8.fsf@discipline.rit.edu>
-From: bfields@fieldses.org (J. Bruce Fields)
+Received: from mail-pa0-f53.google.com ([209.85.220.53]:36603 "EHLO
+	mail-pa0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753569AbbIATOd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Sep 2015 15:14:33 -0400
+Received: by pacwi10 with SMTP id wi10so4822108pac.3
+        for <linux-nfs@vger.kernel.org>; Tue, 01 Sep 2015 12:14:33 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] NFSv4.1/flexfiles: Fix freeing of mirrors
+Date: Tue,  1 Sep 2015 12:14:29 -0700
+Message-Id: <1441134869-3887-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Sep 01, 2015 at 10:48:27AM -0400, Andrew W Elble wrote:
-> 
-> I should probably state what I'm currently chasing:
-> 
-> 1.) Somehow, delegations wind up on the cl_revoked list at the server.
-> 2.) The server continually asserts SEQ4_STATUS_RECALLABLE_STATE_REVOKED.
-> 3.) The client for some reason doesn't have anything to give the server
->     to satisfy it.
-> 
-> I speculate that this patch will assist in making this go away - I'm
-> just not 100% sure of all the conditions that result in making #1 possible.
-> (Enough recalls backed up on the callback slot on the same filehandle
-> stacking timeouts/retries and resultant path down errors to exceed lease
-> time?).
+Mirrors are now shared objects, so we should not be freeing them directly
+inside ff_layout_free_lseg(). We should already be doing the right thing
+in _ff_layout_free_lseg(), so just let it handle things.
 
-Even in the worst case where the client never gets the recall, in theory
-it should take the RECALLABLE_STATE_REVOKED as a sign that it's missed
-one and return its delegations.  Is the client attempting any such
-recovery when it sees that flag?
+Also ensure that ff_layout_free_mirror() frees the RPC credential if it
+is set.
 
-> Unfortunately this problem seems to always occur at ~1AM - and
-> obtaining a network capture of the problem in action has been elusive.
+Fixes: 28a0d72c6867 ("Add refcounting to struct nfs4_ff_layout_mirror")
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfs/flexfilelayout/flexfilelayout.c | 13 ++-----------
+ 1 file changed, 2 insertions(+), 11 deletions(-)
 
-Anyway, sounds interesting, let us know what you find....
+diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
+index 61ccf1122494..beb14e55c217 100644
+--- a/fs/nfs/flexfilelayout/flexfilelayout.c
++++ b/fs/nfs/flexfilelayout/flexfilelayout.c
+@@ -213,6 +213,8 @@ static void ff_layout_free_mirror(struct nfs4_ff_layout_mirror *mirror)
+ {
+ 	ff_layout_remove_mirror(mirror);
+ 	kfree(mirror->fh_versions);
++	if (mirror->cred)
++		put_rpccred(mirror->cred);
+ 	nfs4_ff_layout_put_deviceid(mirror->mirror_ds);
+ 	kfree(mirror);
+ }
+@@ -529,17 +531,6 @@ ff_layout_free_lseg(struct pnfs_layout_segment *lseg)
+ 
+ 	dprintk("--> %s\n", __func__);
+ 
+-	for (i = 0; i < fls->mirror_array_cnt; i++) {
+-		if (fls->mirror_array[i]) {
+-			nfs4_ff_layout_put_deviceid(fls->mirror_array[i]->mirror_ds);
+-			fls->mirror_array[i]->mirror_ds = NULL;
+-			if (fls->mirror_array[i]->cred) {
+-				put_rpccred(fls->mirror_array[i]->cred);
+-				fls->mirror_array[i]->cred = NULL;
+-			}
+-		}
+-	}
+-
+ 	if (lseg->pls_range.iomode == IOMODE_RW) {
+ 		struct nfs4_flexfile_layout *ffl;
+ 		struct inode *inode;
+-- 
+2.4.3
 
---b.
