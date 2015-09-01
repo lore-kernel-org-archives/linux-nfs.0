@@ -1,66 +1,115 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pa0-f48.google.com ([209.85.220.48]:34379 "EHLO
-	mail-pa0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751501AbbIATTp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Sep 2015 15:19:45 -0400
-Received: by padhy1 with SMTP id hy1so5055935pad.1
-        for <linux-nfs@vger.kernel.org>; Tue, 01 Sep 2015 12:19:44 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH v2] NFSv4.1/flexfiles: Fix freeing of mirrors
-Date: Tue,  1 Sep 2015 12:19:42 -0700
-Message-Id: <1441135182-6075-1-git-send-email-trond.myklebust@primarydata.com>
+Received: from fieldses.org ([173.255.197.46]:48486 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752376AbbIAViT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 1 Sep 2015 17:38:19 -0400
+Date: Tue, 1 Sep 2015 17:38:16 -0400
+To: Andreas Gruenbacher <andreas.gruenbacher@gmail.com>
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-api@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-security-module@vger.kernel.org,
+        Andreas Gruenbacher <agruenba@redhat.com>
+Subject: Re: [RFC v6 09/40] richacl: Update the file masks in chmod()
+Message-ID: <20150901213816.GH10468@fieldses.org>
+References: <1438689218-6921-1-git-send-email-agruenba@redhat.com>
+ <1438689218-6921-10-git-send-email-agruenba@redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1438689218-6921-10-git-send-email-agruenba@redhat.com>
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Mirrors are now shared objects, so we should not be freeing them directly
-inside ff_layout_free_lseg(). We should already be doing the right thing
-in _ff_layout_free_lseg(), so just let it handle things.
+On Tue, Aug 04, 2015 at 01:53:07PM +0200, Andreas Gruenbacher wrote:
+> Doing a chmod() sets the file mode, which includes the file permission
+> bits.  When a file has a richacl, the permissions that the richacl
+> grants need to be limited to what the new file permission bits allow.
+> 
+> This is done by setting the file masks in the richacl to what the file
+> permission bits map to.  The richacl access check algorithm takes the
+> file masks into account, which ensures that the richacl cannot grant too
+> many permissions.
+> 
+> It is possible to explicitly add permissions to the file masks which go
+> beyond what the file permission bits can grant (like the
+> RICHACE_WRITE_ACL permission).  The POSIX.1 standard calls this an
+> alternate file access control mechanism.  A subsequent chmod() would
+> ensure that those permissions are disabled again.
+> 
+> Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
+> ---
+>  fs/richacl_base.c       | 40 ++++++++++++++++++++++++++++++++++++++++
+>  include/linux/richacl.h |  1 +
+>  2 files changed, 41 insertions(+)
+> 
+> diff --git a/fs/richacl_base.c b/fs/richacl_base.c
+> index 8426600..fd81158 100644
+> --- a/fs/richacl_base.c
+> +++ b/fs/richacl_base.c
+> @@ -338,3 +338,43 @@ restart:
+>  	acl->a_flags &= ~(RICHACL_WRITE_THROUGH | RICHACL_MASKED);
+>  }
+>  EXPORT_SYMBOL_GPL(richacl_compute_max_masks);
+> +
+> +/**
+> + * richacl_chmod  -  update the file masks to reflect the new mode
+> + * @mode:	new file permission bits including the file type
+> + *
+> + * Return a copy of @acl where the file masks have been replaced by the file
+> + * masks corresponding to the file permission bits in @mode, or returns @acl
+> + * itself if the file masks are already up to date.  Takes over a reference
+> + * to @acl.
+> + */
+> +struct richacl *
+> +richacl_chmod(struct richacl *acl, mode_t mode)
+> +{
+> +	unsigned int x = S_ISDIR(mode) ? 0 : RICHACE_DELETE_CHILD;
+> +	unsigned int owner_mask, group_mask, other_mask;
+> +	struct richacl *clone;
+> +
+> +	owner_mask = richacl_mode_to_mask(mode >> 6) & ~x;
+> +	group_mask = richacl_mode_to_mask(mode >> 3) & ~x;
+> +	other_mask = richacl_mode_to_mask(mode)      & ~x;
+> +
+> +	if (acl->a_owner_mask == owner_mask &&
+> +	    acl->a_group_mask == group_mask &&
+> +	    acl->a_other_mask == other_mask &&
+> +	    (acl->a_flags & RICHACL_MASKED))
 
-Also ensure that ff_layout_free_mirror() frees the RPC credential if it
-is set.
+Do you need to require WRITE_THROUGH here too?
 
-Fixes: 28a0d72c6867 ("Add refcounting to struct nfs4_ff_layout_mirror")
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/flexfilelayout/flexfilelayout.c | 14 ++------------
- 1 file changed, 2 insertions(+), 12 deletions(-)
+--b.
 
-diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
-index 61ccf1122494..ee8e7013454f 100644
---- a/fs/nfs/flexfilelayout/flexfilelayout.c
-+++ b/fs/nfs/flexfilelayout/flexfilelayout.c
-@@ -213,6 +213,8 @@ static void ff_layout_free_mirror(struct nfs4_ff_layout_mirror *mirror)
- {
- 	ff_layout_remove_mirror(mirror);
- 	kfree(mirror->fh_versions);
-+	if (mirror->cred)
-+		put_rpccred(mirror->cred);
- 	nfs4_ff_layout_put_deviceid(mirror->mirror_ds);
- 	kfree(mirror);
- }
-@@ -525,21 +527,9 @@ static void
- ff_layout_free_lseg(struct pnfs_layout_segment *lseg)
- {
- 	struct nfs4_ff_layout_segment *fls = FF_LAYOUT_LSEG(lseg);
--	int i;
- 
- 	dprintk("--> %s\n", __func__);
- 
--	for (i = 0; i < fls->mirror_array_cnt; i++) {
--		if (fls->mirror_array[i]) {
--			nfs4_ff_layout_put_deviceid(fls->mirror_array[i]->mirror_ds);
--			fls->mirror_array[i]->mirror_ds = NULL;
--			if (fls->mirror_array[i]->cred) {
--				put_rpccred(fls->mirror_array[i]->cred);
--				fls->mirror_array[i]->cred = NULL;
--			}
--		}
--	}
--
- 	if (lseg->pls_range.iomode == IOMODE_RW) {
- 		struct nfs4_flexfile_layout *ffl;
- 		struct inode *inode;
--- 
-2.4.3
-
+> +		return acl;
+> +
+> +	clone = richacl_clone(acl, GFP_KERNEL);
+> +	richacl_put(acl);
+> +	if (!clone)
+> +		return ERR_PTR(-ENOMEM);
+> +
+> +	clone->a_flags |= (RICHACL_WRITE_THROUGH | RICHACL_MASKED);
+> +	clone->a_owner_mask = owner_mask;
+> +	clone->a_group_mask = group_mask;
+> +	clone->a_other_mask = other_mask;
+> +
+> +	return clone;
+> +}
+> +EXPORT_SYMBOL_GPL(richacl_chmod);
+> diff --git a/include/linux/richacl.h b/include/linux/richacl.h
+> index 3d719db..8df6d93 100644
+> --- a/include/linux/richacl.h
+> +++ b/include/linux/richacl.h
+> @@ -304,5 +304,6 @@ extern int richacl_masks_to_mode(const struct richacl *);
+>  extern unsigned int richacl_mode_to_mask(mode_t);
+>  extern unsigned int richacl_want_to_mask(unsigned int);
+>  extern void richacl_compute_max_masks(struct richacl *, kuid_t);
+> +extern struct richacl *richacl_chmod(struct richacl *, mode_t);
+>  
+>  #endif /* __RICHACL_H */
+> -- 
+> 2.5.0
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
