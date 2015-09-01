@@ -1,15 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pa0-f53.google.com ([209.85.220.53]:36603 "EHLO
-	mail-pa0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753569AbbIATOd (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Sep 2015 15:14:33 -0400
-Received: by pacwi10 with SMTP id wi10so4822108pac.3
-        for <linux-nfs@vger.kernel.org>; Tue, 01 Sep 2015 12:14:33 -0700 (PDT)
+Received: from mail-pa0-f48.google.com ([209.85.220.48]:34379 "EHLO
+	mail-pa0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751501AbbIATTp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Sep 2015 15:19:45 -0400
+Received: by padhy1 with SMTP id hy1so5055935pad.1
+        for <linux-nfs@vger.kernel.org>; Tue, 01 Sep 2015 12:19:44 -0700 (PDT)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH] NFSv4.1/flexfiles: Fix freeing of mirrors
-Date: Tue,  1 Sep 2015 12:14:29 -0700
-Message-Id: <1441134869-3887-1-git-send-email-trond.myklebust@primarydata.com>
+Subject: [PATCH v2] NFSv4.1/flexfiles: Fix freeing of mirrors
+Date: Tue,  1 Sep 2015 12:19:42 -0700
+Message-Id: <1441135182-6075-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
@@ -23,11 +23,11 @@ is set.
 Fixes: 28a0d72c6867 ("Add refcounting to struct nfs4_ff_layout_mirror")
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/flexfilelayout/flexfilelayout.c | 13 ++-----------
- 1 file changed, 2 insertions(+), 11 deletions(-)
+ fs/nfs/flexfilelayout/flexfilelayout.c | 14 ++------------
+ 1 file changed, 2 insertions(+), 12 deletions(-)
 
 diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
-index 61ccf1122494..beb14e55c217 100644
+index 61ccf1122494..ee8e7013454f 100644
 --- a/fs/nfs/flexfilelayout/flexfilelayout.c
 +++ b/fs/nfs/flexfilelayout/flexfilelayout.c
 @@ -213,6 +213,8 @@ static void ff_layout_free_mirror(struct nfs4_ff_layout_mirror *mirror)
@@ -39,7 +39,11 @@ index 61ccf1122494..beb14e55c217 100644
  	nfs4_ff_layout_put_deviceid(mirror->mirror_ds);
  	kfree(mirror);
  }
-@@ -529,17 +531,6 @@ ff_layout_free_lseg(struct pnfs_layout_segment *lseg)
+@@ -525,21 +527,9 @@ static void
+ ff_layout_free_lseg(struct pnfs_layout_segment *lseg)
+ {
+ 	struct nfs4_ff_layout_segment *fls = FF_LAYOUT_LSEG(lseg);
+-	int i;
  
  	dprintk("--> %s\n", __func__);
  
