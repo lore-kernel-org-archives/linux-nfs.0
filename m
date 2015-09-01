@@ -1,79 +1,65 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:48348 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:48352 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753933AbbIARnh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 1 Sep 2015 13:43:37 -0400
-Date: Tue, 1 Sep 2015 13:43:35 -0400
-From: "'J. Bruce Fields'" <bfields@fieldses.org>
-To: Frank Filz <ffilzlnx@mindspring.com>
-Cc: "'Mkrtchyan, Tigran'" <tigran.mkrtchyan@desy.de>,
-        "'Ulrich Gemkow'" <ulrich.gemkow@ikr.uni-stuttgart.de>,
-        linux-nfs@vger.kernel.org
-Subject: Re: NFSv4 mount fails on Sun Solaris 10 after reboot of client
-Message-ID: <20150901174335.GB32692@fieldses.org>
-References: <201508241452.57718.ulrich.gemkow@ikr.uni-stuttgart.de>
- <20150824201401.GA401@fieldses.org>
- <201508251928.06201.ulrich.gemkow@ikr.uni-stuttgart.de>
- <20150825215456.GF8579@fieldses.org>
- <824431189.4182121.1440657831497.JavaMail.zimbra@desy.de>
- <20150827182922.GB11819@fieldses.org>
- <008901d0e108$13caa520$3b5fef60$@mindspring.com>
- <20150828180612.GC10468@fieldses.org>
+	id S1754849AbbIASEP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 1 Sep 2015 14:04:15 -0400
+Date: Tue, 1 Sep 2015 14:04:14 -0400
+To: Jeff Layton <jlayton@poochiereds.net>
+Cc: Andrew Elble <aweits@rit.edu>, linux-nfs@vger.kernel.org, etmsys@rit.edu
+Subject: Re: [PATCH] nfsd: deal with DELEGRETURN racing with CB_RECALL
+Message-ID: <20150901180414.GA1948@fieldses.org>
+References: <1441037201-78787-1-git-send-email-aweits@rit.edu>
+ <20150901091842.7c40adf3@tlielax.poochiereds.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20150828180612.GC10468@fieldses.org>
+In-Reply-To: <20150901091842.7c40adf3@tlielax.poochiereds.net>
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Aug 28, 2015 at 02:06:12PM -0400, 'J. Bruce Fields' wrote:
-> On Thu, Aug 27, 2015 at 01:36:38PM -0700, Frank Filz wrote:
-> > If the creds don't match, the return should be NFS4ERR_CLID_INUSE per
-> > section 16.34.5. IMPLEMENTATION first bullet after DRC discussion.
+On Tue, Sep 01, 2015 at 09:18:42AM -0400, Jeff Layton wrote:
+> On Mon, 31 Aug 2015 12:06:41 -0400
+> Andrew Elble <aweits@rit.edu> wrote:
+> 
+> > We have observed the server sending recalls for delegation stateids
+> > that have already been successfully returned. Change
+> > nfsd4_cb_recall_done() to return success if the client has returned
+> > the delegation. While this does not completely eliminate the sending
+> > of recalls for delegations that have already been returned, this
+> > does prevent unnecessarily declaring the callback path to be down.
 > > 
-> > At least the way I read RFC 7530...
+> > Reported-by: Eric Meddaugh <etmsys@rit.edu>
+> > Signed-off-by: Andrew Elble <aweits@rit.edu>
+> > ---
+> >  fs/nfsd/nfs4state.c | 3 +++
+> >  1 file changed, 3 insertions(+)
+> > 
+> > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> > index de45c2de1668..ac235a7470e3 100644
+> > --- a/fs/nfsd/nfs4state.c
+> > +++ b/fs/nfsd/nfs4state.c
+> > @@ -3509,6 +3509,9 @@ static int nfsd4_cb_recall_done(struct nfsd4_callback *cb,
+> >  {
+> >  	struct nfs4_delegation *dp = cb_to_delegation(cb);
+> >  
+> > +	if (dp->dl_stid.sc_type == NFS4_CLOSED_DELEG_STID)
+> > +	        return 1;
+> > +
+> >  	switch (task->tk_status) {
+> >  	case 0:
+> >  		return 1;
 > 
-> I assumed that was only the case when the long-form client-provided
-> client identifier matched, but here we're looking at records matched by
-> the shorthand server-generated clientid.  Very weird that that we'd get
-> to this case (and without hitting CLID_INUSE on the setclientid?).
-> There's something we don't understand.
+> Yeah, there will always be some potential for a CB_RECALL/DELEGRETURN
+> race since the former is driven by the server and the latter by the
+> client.
 > 
-> Anyway, looking at the SETCLIENTID_CONFIRM description in 7530, I think
-> you're right, they're recommending CLIDN_INUSE for this case.  Doubt
-> that would actually help in Ulrich's case, though.
+> What error are you usually getting back from the client when you see
+> this happen? NFS4ERR_BAD_STATEID? If so, then maybe we should confine
+> this check to that error case?
+> 
+> OTOH, maybe there's no harm in just ignoring the error if the
+> delegation is already returned...
+> 
+> Acked-by: Jeff Layton <jlayton@poochiereds.net>
 
-May as well fix that anyway, I guess.--b.
-
-commit 3d70e158ea9b
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Tue Sep 1 13:40:53 2015 -0400
-
-    nfsd: return CLID_INUSE for unexpected SETCLIENTID_CONFIRM case
-    
-    Somebody with a Solaris client was hitting this case.  We haven't
-    figured out why yet, and don't have a reproducer.  Meanwhile Frank
-    noticed that RFC 7530 actually recommends CLID_INUSE for this case.
-    Unlikely to help the original reporter, but may as well fix it.
-    
-    Reported-by: Frank Filz <ffilzlnx@mindspring.com>
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 416f32e34a33..08746ec1d44a 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -3111,10 +3111,11 @@ nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
- 	/*
- 	 * We try hard to give out unique clientid's, so if we get an
- 	 * attempt to confirm the same clientid with a different cred,
--	 * there's a bug somewhere.  Let's charitably assume it's our
--	 * bug.
-+	 * the client may be buggy; this should never happen.
-+	 *
-+	 * Nevertheless, RFC 7530 recommends INUSE for this case:
- 	 */
--	status = nfserr_serverfault;
-+	status = nfserr_clid_inuse;
- 	if (unconf && !same_creds(&unconf->cl_cred, &rqstp->rq_cred))
- 		goto out;
- 	if (conf && !same_creds(&conf->cl_cred, &rqstp->rq_cred))
+Agreed, applying--thanks.--b.
