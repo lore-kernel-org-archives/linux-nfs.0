@@ -1,56 +1,233 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:40800 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:40808 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753060AbbIBTUK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 2 Sep 2015 15:20:10 -0400
-Date: Wed, 2 Sep 2015 15:20:08 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Andreas Gruenbacher <agruenba@redhat.com>
-Cc: Andreas Gruenbacher <andreas.gruenbacher@gmail.com>,
-        linux-kernel@vger.kernel.org,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	id S1752597AbbIBTyK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 2 Sep 2015 15:54:10 -0400
+Date: Wed, 2 Sep 2015 15:54:08 -0400
+To: Andreas Gruenbacher <andreas.gruenbacher@gmail.com>
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-nfs@vger.kernel.org, linux-api@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-security-module@vger.kernel.org
-Subject: Re: [RFC v6 02/40] vfs: Add MAY_CREATE_FILE and MAY_CREATE_DIR
- permission flags
-Message-ID: <20150902192008.GB3319@fieldses.org>
+        linux-cifs@vger.kernel.org, linux-security-module@vger.kernel.org,
+        Andreas Gruenbacher <agruenba@redhat.com>
+Subject: Re: [RFC v6 08/40] richacl: Compute maximum file masks from an acl
+Message-ID: <20150902195408.GC3319@fieldses.org>
 References: <1438689218-6921-1-git-send-email-agruenba@redhat.com>
- <1438689218-6921-3-git-send-email-agruenba@redhat.com>
- <20150902185300.GA3319@fieldses.org>
- <CAHc6FU62LQ8xnEbjsBprnud36AURg_ggifFoHOVM51-9vRJeDg@mail.gmail.com>
+ <1438689218-6921-9-git-send-email-agruenba@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAHc6FU62LQ8xnEbjsBprnud36AURg_ggifFoHOVM51-9vRJeDg@mail.gmail.com>
+In-Reply-To: <1438689218-6921-9-git-send-email-agruenba@redhat.com>
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Sep 02, 2015 at 09:06:32PM +0200, Andreas Gruenbacher wrote:
-> 2015-09-02 20:53 GMT+02:00 J. Bruce Fields <bfields@fieldses.org>:
-> >> @@ -453,7 +453,8 @@ static int sb_permission(struct super_block *sb, struct inode *inode, int mask)
-> >>   * this, letting us set arbitrary permissions for filesystem access without
-> >>   * changing the "normal" UIDs which are used for other things.
-> >>   *
-> >> - * When checking for MAY_APPEND, MAY_WRITE must also be set in @mask.
-> >> + * When checking for MAY_APPEND, MAY_CREATE_FILE, MAY_CREATE_DIR,
-> >> + * MAY_WRITE must also be set in @mask.
-> >
-> > Why?
+On Tue, Aug 04, 2015 at 01:53:06PM +0200, Andreas Gruenbacher wrote:
+> Compute upper bound owner, group, and other file masks with as few
+> permissions as possible without denying any permissions that the NFSv4
+> acl in a richacl grants.
 > 
-> So that file systems that don't support MAY_APPEND can ignore the flag
-> and will then automatically check for MAY_WRITE instead.
+> This algorithm is used when a file inherits an acl at create time and
+> when an acl is set via a mechanism that does not provide file masks
+> (such as setting an acl via nfsd).  When user-space sets an acl via
+> setxattr, the extended attribute already includes the file masks.
+> 
+> Setting an acl also sets the file mode permission bits: they are
+> determined by the file masks; see richacl_masks_to_mode().
+> 
+> Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
+> Reviewed-by: J. Bruce Fields <bfields@redhat.com>
+> ---
+>  fs/richacl_base.c       | 156 ++++++++++++++++++++++++++++++++++++++++++++++++
+>  include/linux/richacl.h |   1 +
+>  2 files changed, 157 insertions(+)
+> 
+> diff --git a/fs/richacl_base.c b/fs/richacl_base.c
+> index 063dbe4..8426600 100644
+> --- a/fs/richacl_base.c
+> +++ b/fs/richacl_base.c
+> @@ -182,3 +182,159 @@ richacl_want_to_mask(unsigned int want)
+>  	return mask;
+>  }
+>  EXPORT_SYMBOL_GPL(richacl_want_to_mask);
+> +
+> +/*
+> + * Note: functions like richacl_allowed_to_who(), richacl_group_class_allowed(),
+> + * and richacl_compute_max_masks() iterate through the entire acl in reverse
+> + * order as an optimization.
+> + *
+> + * In the standard algorithm, aces are considered in forward order.  When a
+> + * process matches an ace, the permissions in the ace are either allowed or
+> + * denied depending on the ace type.  Once a permission has been allowed or
+> + * denied, it is no longer considered in further aces.
+> + *
+> + * By iterating through the acl in reverse order, we can compute the same
+> + * result without having to keep track of which permissions have been allowed
+> + * and denied already.
+> + */
+> +
+> +/**
+> + * richacl_allowed_to_who  -  permissions allowed to a specific who value
+> + *
+> + * Compute the maximum mask values allowed to a specific who value, taking
+> + * everyone@ aces into account.
+> + */
+> +static unsigned int richacl_allowed_to_who(struct richacl *acl,
+> +					   struct richace *who)
+> +{
+> +	struct richace *ace;
+> +	unsigned int allowed = 0;
+> +
+> +	richacl_for_each_entry_reverse(ace, acl) {
+> +		if (richace_is_inherit_only(ace))
+> +			continue;
+> +		if (richace_is_same_identifier(ace, who) ||
+> +		    richace_is_everyone(ace)) {
+> +			if (richace_is_allow(ace))
+> +				allowed |= ace->e_mask;
+> +			else if (richace_is_deny(ace))
+> +				allowed &= ~ace->e_mask;
+> +		}
+> +	}
+> +	return allowed;
+> +}
+> +
+> +/**
+> + * richacl_group_class_allowed  -  maximum permissions of the group class
+> + *
+> + * Compute the maximum mask values allowed to a process in the group class
+> + * (i.e., a process which is not the owner but is in the owning group or
+> + * matches a user or group acl entry).  This includes permissions granted or
+> + * denied by everyone@ aces.
+> + *
+> + * See richacl_compute_max_masks().
+> + */
+> +static unsigned int richacl_group_class_allowed(struct richacl *acl)
+> +{
+> +	struct richace *ace;
+> +	unsigned int everyone_allowed = 0, group_class_allowed = 0;
+> +	int had_group_ace = 0;
+> +
+> +	richacl_for_each_entry_reverse(ace, acl) {
+> +		if (richace_is_inherit_only(ace) ||
+> +		    richace_is_owner(ace))
+> +			continue;
+> +
+> +		if (richace_is_everyone(ace)) {
+> +			if (richace_is_allow(ace))
+> +				everyone_allowed |= ace->e_mask;
+> +			else if (richace_is_deny(ace))
+> +				everyone_allowed &= ~ace->e_mask;
+> +		} else {
+> +			group_class_allowed |=
+> +				richacl_allowed_to_who(acl, ace);
+> +
+> +			if (richace_is_group(ace))
+> +				had_group_ace = 1;
+> +		}
+> +	}
+> +	/*
+> +	 * If the acl doesn't contain any group@ aces, richacl_allowed_to_who()
+> +	 * wasn't called for the owning group.  We could make that call now, but
+> +	 * we already know the result (everyone_allowed).
+> +	 */
+> +	if (!had_group_ace)
+> +		group_class_allowed |= everyone_allowed;
+> +	return group_class_allowed;
+> +}
+> +
+> +/**
+> + * richacl_compute_max_masks  -  compute upper bound masks
+> + *
+> + * Computes upper bound owner, group, and other masks so that none of
+> + * the mask flags allowed by the acl are disabled (for any user with any
+> + * group membership).
+> + */
+> +void richacl_compute_max_masks(struct richacl *acl, kuid_t owner)
+> +{
+> +	unsigned int gmask = ~0;
+> +	struct richace *ace;
+> +
+> +	/*
+> +	 * @gmask contains all permissions which the group class is ever
+> +	 * allowed.  We use it to avoid adding permissions to the group mask
+> +	 * from everyone@ allow aces which the group class is always denied
+> +	 * through other aces.  For example, the following acl would otherwise
+> +	 * result in a group mask of rw:
+> +	 *
+> +	 *	group@:w::deny
+> +	 *	everyone@:rw::allow
+> +	 *
+> +	 * Avoid computing @gmask for acls which do not include any group class
+> +	 * deny aces: in such acls, the group class is never denied any
+> +	 * permissions from everyone@ allow aces, and the group class cannot
+> +	 * have fewer permissions than the other class.
+> +	 */
+> +
+> +restart:
+> +	acl->a_owner_mask = 0;
+> +	acl->a_group_mask = 0;
+> +	acl->a_other_mask = 0;
+> +
+> +	richacl_for_each_entry_reverse(ace, acl) {
+> +		if (richace_is_inherit_only(ace))
+> +			continue;
+> +
+> +		if (richace_is_owner(ace) ||
+> +		    (richace_is_unix_user(ace) &&
+> +		     uid_eq(ace->e_id.uid, owner))) {
+> +			if (richace_is_allow(ace))
+> +				acl->a_owner_mask |= ace->e_mask;
+> +			else if (richace_is_deny(ace))
+> +				acl->a_owner_mask &= ~ace->e_mask;
+> +		} else if (richace_is_everyone(ace)) {
+> +			if (richace_is_allow(ace)) {
+> +				acl->a_owner_mask |= ace->e_mask;
+> +				acl->a_group_mask |= ace->e_mask & gmask;
+> +				acl->a_other_mask |= ace->e_mask;
+> +			} else if (richace_is_deny(ace)) {
+> +				acl->a_owner_mask &= ~ace->e_mask;
+> +				acl->a_group_mask &= ~ace->e_mask;
+> +				acl->a_other_mask &= ~ace->e_mask;
+> +			}
+> +		} else {
+> +			if (richace_is_allow(ace)) {
+> +				acl->a_owner_mask |= ace->e_mask & gmask;
+> +				acl->a_group_mask |= ace->e_mask & gmask;
 
-Got it.  And maybe it should be obvious, but it might be worth a
-sentence in the changelog if it's not already explained elsewhere.--b.
+I think we do that because we don't (we can't) know whether the owner
+might match this ace, so we assume that it will match, as that's what
+gives us the maximum.
 
+But on first glance this is a little counterintuitive and maybe worth a
+comment.
+
+--b.
+
+> +			} else if (richace_is_deny(ace) && gmask == ~0) {
+> +				gmask = richacl_group_class_allowed(acl);
+> +				if (likely(gmask != ~0))
+> +					/* should always be true */
+> +					goto restart;
+> +			}
+> +		}
+> +	}
+> +
+> +	acl->a_flags &= ~(RICHACL_WRITE_THROUGH | RICHACL_MASKED);
+> +}
+> +EXPORT_SYMBOL_GPL(richacl_compute_max_masks);
+> diff --git a/include/linux/richacl.h b/include/linux/richacl.h
+> index f4ba113..3d719db 100644
+> --- a/include/linux/richacl.h
+> +++ b/include/linux/richacl.h
+> @@ -303,5 +303,6 @@ extern void richace_copy(struct richace *, const struct richace *);
+>  extern int richacl_masks_to_mode(const struct richacl *);
+>  extern unsigned int richacl_mode_to_mask(mode_t);
+>  extern unsigned int richacl_want_to_mask(unsigned int);
+> +extern void richacl_compute_max_masks(struct richacl *, kuid_t);
+>  
+>  #endif /* __RICHACL_H */
+> -- 
+> 2.5.0
 > 
-> > (Also: written as a simple list like that, it's a ambiguous how to
-> > parse that comment: I think you mean that MAY_WRITE must be set whenever
-> > MAY_APPEND, MAY_CREATE_FILE, or MAY_CREATE_DIR are set.)
-> 
-> Yes, that's better.
-> 
-> Thanks,
-> Andreas
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 > the body of a message to majordomo@vger.kernel.org
