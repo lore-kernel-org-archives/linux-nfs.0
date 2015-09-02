@@ -1,33 +1,54 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-lb0-f181.google.com ([209.85.217.181]:36333 "EHLO
-	mail-lb0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750939AbbIBGIq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 2 Sep 2015 02:08:46 -0400
+Received: from mx1.redhat.com ([209.132.183.28]:54756 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753823AbbIBPYq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 2 Sep 2015 11:24:46 -0400
+Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
+	by mx1.redhat.com (Postfix) with ESMTPS id 7417291D06
+	for <linux-nfs@vger.kernel.org>; Wed,  2 Sep 2015 15:24:46 +0000 (UTC)
+Received: from smallhat.boston.devel.redhat.com (vpn-58-174.rdu2.redhat.com [10.10.58.174])
+	by int-mx11.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id t82FOjsM016893
+	for <linux-nfs@vger.kernel.org>; Wed, 2 Sep 2015 11:24:46 -0400
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Monthly Linux NFS Town Hall meeting: Tomorrow - Thur Sept 3
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Message-ID: <55E714BD.7060309@RedHat.com>
+Date: Wed, 2 Sep 2015 11:24:45 -0400
 MIME-Version: 1.0
-In-Reply-To: <20150901213816.GH10468@fieldses.org>
-References: <1438689218-6921-1-git-send-email-agruenba@redhat.com>
-	<1438689218-6921-10-git-send-email-agruenba@redhat.com>
-	<20150901213816.GH10468@fieldses.org>
-Date: Wed, 2 Sep 2015 08:08:43 +0200
-Message-ID: <CAHpGcMK2rp4SCtNzkhWoHZWBWr2GRMTNxwtP3_VsN__WCeGtFA@mail.gmail.com>
-Subject: Re: [RFC v6 09/40] richacl: Update the file masks in chmod()
-From: =?UTF-8?Q?Andreas_Gr=C3=BCnbacher?= <andreas.gruenbacher@gmail.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        Linux FS-devel Mailing List <linux-fsdevel@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Linux API Mailing List <linux-api@vger.kernel.org>,
-        linux-cifs@vger.kernel.org,
-        LSM List <linux-security-module@vger.kernel.org>,
-        Andreas Gruenbacher <agruenba@redhat.com>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-2015-09-01 23:38 GMT+02:00 J. Bruce Fields <bfields@fieldses.org>:
-> Do you need to require WRITE_THROUGH here too?
+Hello,
 
-Yes, indeed.
+Its that time again... the NFS town hall meeting
+will be tomorrow 
 
-Thanks,
-Andreas
+   *Thur Sept 3rd at 01:00 pm EST (10:00am PST)*
+
+The usual agenda will apply. The maintainers will give
+a quick status of what is happening in their worlds.
+
+Next we'll get updates from major contributors on what
+they have been doing and are planing on doing.
+  
+Finally, we'll open the floor to questions, comments, 
+concerns from the community.  
+
+Generally the meeting lasts between 30 to 45 mins, with 
+a very hard stop at 60mins. 
+
+Please feel to attend and participate!
+
+Again the Time: 10:00 am PST (01:00 pm EST)
+
+The call in numbers are:
+
+U.S. and Canada: (800) 451-8679
+World wide toll free numbers
+   https://www.intercallonline.com/listNumbersByCode.action?confCode=5642721552
+
+Conference code: 564.272.1552
+
+steved.
+
