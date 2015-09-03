@@ -1,50 +1,63 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:53883 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755433AbbICOBX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 3 Sep 2015 10:01:23 -0400
-Date: Thu, 3 Sep 2015 15:01:17 +0100
-From: Mel Gorman <mgorman@suse.de>
-To: Jerome Marchand <jmarchan@redhat.com>
-Cc: Mel Gorman <mgorman@techsingularity.net>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Christoph Hellwig <hch@infradead.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
-Subject: Re: [RFC PATCH] nfs: avoid swap-over-NFS deadlock
-Message-ID: <20150903140117.GE25655@suse.de>
-References: <1437552643-18774-1-git-send-email-jmarchan@redhat.com>
- <CAHQdGtRXhUi+=akuASUWo-tYy0YCWJtUts6fqGnA62fo1Jf5tA@mail.gmail.com>
- <55AF9EA8.6020102@redhat.com>
- <20150727105216.GD2660@techsingularity.net>
- <55B6153B.1070604@redhat.com>
- <20150820122359.GB12432@techsingularity.net>
- <55E5D0B6.10307@redhat.com>
+Return-Path: <shawn.starr@rogers.com>
+From: Shawn Starr <shawn.starr@rogers.com>
+To: Benjamin Coddington <bcodding@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [NFSv4.1] Deadlock on writes - RHEL 7.1 kernel - nfs_pageio_doio?
+Date: Thu, 03 Sep 2015 11:54:40 -0400
+Message-ID: <2932091.5g0LhYZZI5@segfault>
+In-Reply-To: <alpine.OSX.2.19.9992.1509030643490.71803@planck.local>
+References: <2535588.ljdrthqrNr@segfault> <alpine.OSX.2.19.9992.1509030643490.71803@planck.local>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-15
-In-Reply-To: <55E5D0B6.10307@redhat.com>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Sep 01, 2015 at 06:22:14PM +0200, Jerome Marchand wrote:
-> > Thanks. Sorry for the long delay but I finally got back to the bug this
-> > week. NFS can be modified to special case the swapfile but I was not happy
-> > with the result for multiple reasons. It took me a while to see a way for
-> > the core VM to deal with it. What do you think of the following
-> > approach?
+On Thursday, September 03, 2015 06:47:26 AM Benjamin Coddington wrote:
+> Hi Shawn,
 > 
-> Seems sound to me.
+> This doesn't look like a deadlock to me, just processes waiting for their
+> writes to complete.  They've been waiting for a long time, so the hung task
+> warning is triggered.
 > 
-> > More importantly, does it work for you?
+> There might be a network problem that's preventing that NFS client from
+> communicating with the server, or the server is taking a very long time
+> to complete the operation.  A network capture between the client and server
+> might show what's actually happening.
 > 
-> Yes.
+> Ben
 > 
+Hi Ben,
 
-Sweet, thanks. It's the merge window now so it won't get fixed now and I
-know there is already a collision with the mm merge. I'll rebase and
-repost after 4.3-rc1 comes out.
+While that might be the case, this does not happen on our RHEL6 and CentOS 6.x VMs
+so, I'm hesitant to say it's network related fully.
 
--- 
-Mel Gorman
-SUSE Labs
+If EL7 changed some timeouts for NFS then this might explain the hung task warning, however,
+leaving the VMs stuck they never recover, they appear deadlocked in VFS subsystem in the fact I can't login into them
+via SSH or from the KVM console session itself. So all writes not on local disk are deadlocked
+writes to remote syslog appear fine as this isn't going though VFS.
+
+Thanks,
+Shawn
+
+> On Wed, 2 Sep 2015, Shawn Starr wrote:
+> > Hello NFS devs,
+> > 
+> > While this is a CentOS/RHEL kernel: 3.10.0-229.4.2.el7.x86_64 (and old)
+> > 
+> > I was wondering your take on this deadlock, I cannot reproduce this and it
+> > seems to happen in our KVM VM images randomly so far only once. When we
+> > configure a VM it does two reboots, first sets up things then a final
+> > reboot where we have a fresh bootup with settings in place.
+> > 
+> > 
+> > This could be from a cron thats running, but the VMs in question is pretty
+> > much idle, CPU skyrockets and they deadlock, can't ssh into them to
+> > examine why. We have remote syslog capturing, so I would never see this
+> > otherwise.
+> > 
+> > If anyone has ideas on how I can test this? This has been reported in the
+> > CentOS bugtracker by someone else also, I couldn't use their methods for
+> > reproduction.
+> > 
+> > below is the trace from kernel:
+> > 
+<snip>
