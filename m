@@ -1,136 +1,213 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yk0-f173.google.com ([209.85.160.173]:36188 "EHLO
-	mail-yk0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751483AbbICUAO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Sep 2015 16:00:14 -0400
-Received: by ykcf206 with SMTP id f206so332011ykc.3
-        for <linux-nfs@vger.kernel.org>; Thu, 03 Sep 2015 13:00:14 -0700 (PDT)
-Date: Thu, 3 Sep 2015 16:00:11 -0400
-From: Jeff Layton <jlayton@poochiereds.net>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: steved@redhat.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] exportfs: add support for "nowcc" option
-Message-ID: <20150903160011.1104a3d3@tlielax.poochiereds.net>
-In-Reply-To: <20150903194255.GG10088@fieldses.org>
-References: <1441301785-17602-1-git-send-email-jeff.layton@primarydata.com>
-	<20150903183103.GB10088@fieldses.org>
-	<20150903144544.58cfd728@tlielax.poochiereds.net>
-	<20150903190548.GE10088@fieldses.org>
-	<20150903194255.GG10088@fieldses.org>
+Received: from mx1.redhat.com ([209.132.183.28]:41277 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750708AbbICUL6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 3 Sep 2015 16:11:58 -0400
+Subject: Re: [PATCH v2] xprtrdma: take HCA driver refcount at client
+To: Devesh Sharma <devesh.sharma@avagotech.com>, linux-rdma@vger.kernel.org
+References: <1438254018-2816-1-git-send-email-devesh.sharma@avagotech.com>
+Cc: chuck.lever@oracle.com, linux-nfs@vger.kernel.org
+From: Doug Ledford <dledford@redhat.com>
+Message-ID: <55E8A98D.5060903@redhat.com>
+Date: Thu, 3 Sep 2015 16:11:57 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+In-Reply-To: <1438254018-2816-1-git-send-email-devesh.sharma@avagotech.com>
+Content-Type: multipart/signed; micalg=pgp-sha256;
+ protocol="application/pgp-signature";
+ boundary="D8uehQBap84PGb1eLFTRrAdpkCQpR64lA"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 3 Sep 2015 15:42:55 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
+This is an OpenPGP/MIME signed message (RFC 4880 and 3156)
+--D8uehQBap84PGb1eLFTRrAdpkCQpR64lA
+Content-Type: text/plain; charset=windows-1252
+Content-Transfer-Encoding: quoted-printable
 
-> On Thu, Sep 03, 2015 at 03:05:48PM -0400, J. Bruce Fields wrote:
-> > On Thu, Sep 03, 2015 at 02:45:44PM -0400, Jeff Layton wrote:
-> > > On Thu, 3 Sep 2015 14:31:03 -0400
-> > > "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > > 
-> > > > On Thu, Sep 03, 2015 at 01:36:25PM -0400, Jeff Layton wrote:
-> > > > > This is the userland companion patch for the patch to add a "nowcc"
-> > > > > option to knfsd. This just adds the necessary code to allow userspace
-> > > > > to set that option.
-> > > > > 
-> > > > > Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
-> > > > > ---
-> > > > >  support/include/nfs/export.h |  3 ++-
-> > > > >  support/nfs/exports.c        |  5 +++++
-> > > > >  utils/exportfs/exportfs.c    |  2 ++
-> > > > >  utils/exportfs/exports.man   | 14 ++++++++++++++
-> > > > >  4 files changed, 23 insertions(+), 1 deletion(-)
-> > > > > 
-> > > > > diff --git a/support/include/nfs/export.h b/support/include/nfs/export.h
-> > > > > index 1194255899bd..68bee5c2f305 100644
-> > > > > --- a/support/include/nfs/export.h
-> > > > > +++ b/support/include/nfs/export.h
-> > > > > @@ -26,7 +26,8 @@
-> > > > >  #define	NFSEXP_CROSSMOUNT	0x4000
-> > > > >  #define NFSEXP_NOACL		0x8000 /* reserved for possible ACL related use */
-> > > > >  #define NFSEXP_V4ROOT		0x10000
-> > > > > -#define NFSEXP_PNFS            0x20000
-> > > > > +#define NFSEXP_PNFS		0x20000
-> > > > > +#define NFSEXP_NOWCC		0x40000
-> > > > >  /*
-> > > > >   * All flags supported by the kernel before addition of the
-> > > > >   * export_features interface:
-> > > > > diff --git a/support/nfs/exports.c b/support/nfs/exports.c
-> > > > > index 0aea6f154f09..791b5f756c9c 100644
-> > > > > --- a/support/nfs/exports.c
-> > > > > +++ b/support/nfs/exports.c
-> > > > > @@ -276,6 +276,7 @@ putexportent(struct exportent *ep)
-> > > > >  	if (ep->e_flags & NFSEXP_NOREADDIRPLUS)
-> > > > >  		fprintf(fp, "nordirplus,");
-> > > > >  	fprintf(fp, "%spnfs,", (ep->e_flags & NFSEXP_PNFS)? "" : "no_");
-> > > > > +	fprintf(fp, "%swcc,", (ep->e_flags & NFSEXP_NOWCC) ? "no" : "");
-> > > > >  	if (ep->e_flags & NFSEXP_FSID) {
-> > > > >  		fprintf(fp, "fsid=%d,", ep->e_fsid);
-> > > > >  	}
-> > > > > @@ -586,6 +587,10 @@ parseopts(char *cp, struct exportent *ep, int warn, int *had_subtree_opt_ptr)
-> > > > >  			setflags(NFSEXP_PNFS, active, ep);
-> > > > >  		else if (!strcmp(opt, "no_pnfs"))
-> > > > >  			clearflags(NFSEXP_PNFS, active, ep);
-> > > > > +		else if (!strcmp(opt, "wcc"))
-> > > > > +			clearflags(NFSEXP_NOWCC, active, ep);
-> > > > > +		else if (!strcmp(opt, "nowcc"))
-> > > > > +			setflags(NFSEXP_NOWCC, active, ep);
-> > > > >  		else if (strncmp(opt, "anonuid=", 8) == 0) {
-> > > > >  			char *oe;
-> > > > >  			ep->e_anonuid = strtol(opt+8, &oe, 10);
-> > > > > diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
-> > > > > index 87582316b086..a2afc80ee6ea 100644
-> > > > > --- a/utils/exportfs/exportfs.c
-> > > > > +++ b/utils/exportfs/exportfs.c
-> > > > > @@ -823,6 +823,8 @@ dump(int verbose, int export_format)
-> > > > >  				c = dumpopt(c, "no_acl");
-> > > > >  			if (ep->e_flags & NFSEXP_PNFS)
-> > > > >  				c = dumpopt(c, "pnfs");
-> > > > > +			if (ep->e_flags & NFSEXP_NOWCC)
-> > > > > +				c = dumpopt(c, "nowcc");
-> > > > >  			if (ep->e_flags & NFSEXP_FSID)
-> > > > >  				c = dumpopt(c, "fsid=%d", ep->e_fsid);
-> > > > >  			if (ep->e_uuid)
-> > > > > diff --git a/utils/exportfs/exports.man b/utils/exportfs/exports.man
-> > > > > index 93092463153b..9213a228bb04 100644
-> > > > > --- a/utils/exportfs/exports.man
-> > > > > +++ b/utils/exportfs/exports.man
-> > > > > @@ -417,6 +417,20 @@ devices. The default can be explicitly requested with the
-> > > > >  .I no_pnfs
-> > > > >  option.
-> > > > >  
-> > > > > +.TP
-> > > > > +.IR nowcc
-> > > > > +This option disables the collection and reporting of WCC (weak cache
-> > > > > +consistency) data in NFSv3 requests.  RFC 1813 recommends that all
-> > > > > +servers report this information to the clients as it allows the client
-> > > > > +to avoid some extra round trips to the server.  In some underlying
-> > > > > +filesystems however, collecting this data can be cost prohibitive and
-> > > > > +atomicity is difficult to guarantee.
-> 
-> By the way, independently of this change, maybe we should by default
-> disable the pre-op attribute on distributed filesystems?  As I
-> understand it we're just depending on the i_mutex for atomicity, which
-> can't be right in that case.
-> 
-> --b.
+On 07/30/2015 07:00 AM, Devesh Sharma wrote:
+> Thanks Chuck Lever for the valuable feedback and suggestions.
+>=20
+> This is a rework of the following patch sent almost a year back:
+> http://www.mail-archive.com/linux-rdma%40vger.kernel.org/msg20730.html
+>=20
+> In presence of active mount if someone tries to rmmod vendor-driver, th=
+e
+> command remains stuck forever waiting for destruction of all rdma-cm-id=
+=2E
+> in worst case client can crash during shutdown with active mounts.
+>=20
+> The existing code assumes that ia->ri_id->device cannot change during
+> the lifetime of a transport. xprtrdma do not have support for
+> DEVICE_REMOVAL event either. Lifting that assumption and adding support=
 
-Right. In the case of something like a clustered or network filesystem
-you really can't guarantee atomicity, so why even try?
+> for DEVICE_REMOVAL event is a long chain of work, and is in plan.
+>=20
+> The community decided that preventing the hang right now is more
+> important than waiting for architectural changes.
+>=20
+> Thus, this patch introduces a temporary workaround to acquire HCA drive=
+r
+> module reference count during the mount of a nfs-rdma mount point.
+>=20
+> Cc: chuck.lever@oracle.com
+> Cc: linux-nfs@vger.kernel.org
+> Signed-off-by: Devesh Sharma <devesh.sharma@avagotech.com>
+> Reviewed-by: Sagi Grimberg <sagig@dev.mellanox.co.il>
 
-So, that is another option...we could add a flags field to the
-export_operations struct and use one flag to indicate whether to send
-wcc attrs. That'd give us the ability to add other flags in the future
-as well.
+Chuck, was this given final approval, and if so, who's tree is it
+expected to go through?  Just trying to make sure I don't need to do
+anything here as I don't see a rejection in my linux-rdma folder, but I
+also didn't see it in the initial 4.3 nfs merge.
 
-The reason I went with the export option is that I didn't really want
-to add the flags field, and I figured the flexibility of being able to
-do that on any filesystem might be helpful.
+> ---
+>  net/sunrpc/xprtrdma/verbs.c |   38 ++++++++++++++++++++++++++++++-----=
+---
+>  1 files changed, 30 insertions(+), 8 deletions(-)
+>=20
+> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+> index 891c4ed..1c3c420 100644
+> --- a/net/sunrpc/xprtrdma/verbs.c
+> +++ b/net/sunrpc/xprtrdma/verbs.c
+> @@ -52,6 +52,7 @@
+>  #include <linux/prefetch.h>
+>  #include <linux/sunrpc/addr.h>
+>  #include <asm/bitops.h>
+> +#include <linux/module.h> /* try_module_get()/module_put() */
+> =20
+>  #include "xprt_rdma.h"
+> =20
+> @@ -414,6 +415,14 @@ connected:
+>  	return 0;
+>  }
+> =20
+> +static void rpcrdma_destroy_id(struct rdma_cm_id *id)
+> +{
+> +	if (id) {
+> +		module_put(id->device->owner);
+> +		rdma_destroy_id(id);
+> +	}
+> +}
+> +
+>  static struct rdma_cm_id *
+>  rpcrdma_create_id(struct rpcrdma_xprt *xprt,
+>  			struct rpcrdma_ia *ia, struct sockaddr *addr)
+> @@ -440,6 +449,18 @@ rpcrdma_create_id(struct rpcrdma_xprt *xprt,
+>  	}
+>  	wait_for_completion_interruptible_timeout(&ia->ri_done,
+>  				msecs_to_jiffies(RDMA_RESOLVE_TIMEOUT) + 1);
+> +
+> +	/* FIXME: We hate to break the notion of ULP<-->Core<-->Provider
+> +	 * by calling try_module_get() on HCA driver. This is to prevent a
+> +	 * system hang or a possible crash during reboot with active nfs-rdma=
 
-That said, I'm open to doing it that way instead of (or in addition to)
-the export option if you think it would be better.
+> +	 * mount. We will keep this workaround until xprtrdma comes back with=
+ a
+> +	 * massive architectural changes to have proper fix.
+> +	 */
+> +	if (!ia->ri_async_rc && !try_module_get(id->device->owner)) {
+> +		dprintk("RPC:       %s: Failed to get device module\n",
+> +			__func__);
+> +		ia->ri_async_rc =3D -ENODEV;
+> +	}
+>  	rc =3D ia->ri_async_rc;
+>  	if (rc)
+>  		goto out;
+> @@ -449,16 +470,17 @@ rpcrdma_create_id(struct rpcrdma_xprt *xprt,
+>  	if (rc) {
+>  		dprintk("RPC:       %s: rdma_resolve_route() failed %i\n",
+>  			__func__, rc);
+> -		goto out;
+> +		goto put;
+>  	}
+>  	wait_for_completion_interruptible_timeout(&ia->ri_done,
+>  				msecs_to_jiffies(RDMA_RESOLVE_TIMEOUT) + 1);
+>  	rc =3D ia->ri_async_rc;
+>  	if (rc)
+> -		goto out;
+> +		goto put;
+> =20
+>  	return id;
+> -
+> +put:
+> +	module_put(id->device->owner);
+>  out:
+>  	rdma_destroy_id(id);
+>  	return ERR_PTR(rc);
+> @@ -592,7 +614,7 @@ out3:
+>  	ib_dealloc_pd(ia->ri_pd);
+>  	ia->ri_pd =3D NULL;
+>  out2:
+> -	rdma_destroy_id(ia->ri_id);
+> +	rpcrdma_destroy_id(ia->ri_id);
+>  	ia->ri_id =3D NULL;
+>  out1:
+>  	return rc;
+> @@ -618,7 +640,7 @@ rpcrdma_ia_close(struct rpcrdma_ia *ia)
+>  	if (ia->ri_id !=3D NULL && !IS_ERR(ia->ri_id)) {
+>  		if (ia->ri_id->qp)
+>  			rdma_destroy_qp(ia->ri_id);
+> -		rdma_destroy_id(ia->ri_id);
+> +		rpcrdma_destroy_id(ia->ri_id);
+>  		ia->ri_id =3D NULL;
+>  	}
+> =20
+> @@ -825,7 +847,7 @@ retry:
+>  		if (ia->ri_device !=3D id->device) {
+>  			printk("RPC:       %s: can't reconnect on "
+>  				"different device!\n", __func__);
+> -			rdma_destroy_id(id);
+> +			rpcrdma_destroy_id(id);
+>  			rc =3D -ENETUNREACH;
+>  			goto out;
+>  		}
+> @@ -834,7 +856,7 @@ retry:
+>  		if (rc) {
+>  			dprintk("RPC:       %s: rdma_create_qp failed %i\n",
+>  				__func__, rc);
+> -			rdma_destroy_id(id);
+> +			rpcrdma_destroy_id(id);
+>  			rc =3D -ENETUNREACH;
+>  			goto out;
+>  		}
+> @@ -845,7 +867,7 @@ retry:
+>  		write_unlock(&ia->ri_qplock);
+> =20
+>  		rdma_destroy_qp(old);
+> -		rdma_destroy_id(old);
+> +		rpcrdma_destroy_id(old);
+>  	} else {
+>  		dprintk("RPC:       %s: connecting...\n", __func__);
+>  		rc =3D rdma_create_qp(ia->ri_id, ia->ri_pd, &ep->rep_attr);
+>=20
 
--- 
-Jeff Layton <jlayton@poochiereds.net>
+
+--=20
+Doug Ledford <dledford@redhat.com>
+              GPG KeyID: 0E572FDD
+
+
+
+--D8uehQBap84PGb1eLFTRrAdpkCQpR64lA
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: OpenPGP digital signature
+Content-Disposition: attachment; filename="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2
+Comment: Using GnuPG with Thunderbird - http://www.enigmail.net/
+
+iQIcBAEBCAAGBQJV6KmNAAoJELgmozMOVy/d2mkP/2Wb7q2dpRQOObrNKaPzXhnC
+RLWgXsfQKZtbBLCeAE3wD/ebtFsOSVCx1aLaS5xpJLkFibuQKPEdmTsj7wirAjrM
+D8LqFETWmmwxbNjFcfO4mxZ3mKfVrNqBFXPKnePc7L0X05Jmu9DU+Y+mrp6FmESg
+2eXganIa5zyBcF/FHb0SRkU4oLPDWbFvhrPm4HPh8xUVEPqU+w94WdC3HpivDTq7
+tMDGELbxk7mg8QpE4eFeYhXlW+HEcCzTu2UkmmZUCvo8q72JORmgpfHQhmD/6pyT
+NhlWiXMz/ydzRAOXzIe+rqY9uTZ6V94VWcGWUz1gnJgLCGeDj6WlzExaXGGcBVa0
+CJj24GW20u/Sxw8lBN3hk6PeS7XT8r+S2xcMty8HNmK3X0WGXcmTCHPtzwGxo3Ib
+Ove9U+xv5YsZlvSL9ljAm2IyBTXnZmt7oPTb3Hqr1eRgiTMM+QJjJmM5cwYlwx43
+Sp1y8X8l0LpVoQLRuq4e7ho7jOuxa+qr8j54woPleGDOXzURkNEknwCgZdzbSC3w
++0eKBXCx1Mv6DpcRSNkbThI8lZ1Rjpe8YxsgULdDXSNqer9mdrN2bgnm5sqHmgmg
+xQp9d2Ea7jph1yIreleQBOOKcABJtHxwijBGRfI6w3I9W4z7BOrtrGnBYsjp0lGw
+VVhwSojfuK7e3I0ryAG8
+=mk7c
+-----END PGP SIGNATURE-----
+
+--D8uehQBap84PGb1eLFTRrAdpkCQpR64lA--
