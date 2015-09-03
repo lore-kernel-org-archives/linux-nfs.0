@@ -1,252 +1,182 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:41486 "EHLO fieldses.org"
+Received: from mx142.netapp.com ([216.240.21.19]:45409 "EHLO mx142.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750818AbbICUUS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 3 Sep 2015 16:20:18 -0400
-Date: Thu, 3 Sep 2015 16:20:16 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@poochiereds.net>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsd: add a new nowcc export option to disable WCC attrs
- in v3 replies
-Message-ID: <20150903202016.GH10088@fieldses.org>
-References: <1441301594-17293-1-git-send-email-jeff.layton@primarydata.com>
- <20150903184327.GC10088@fieldses.org>
- <20150903145225.3a3a3776@tlielax.poochiereds.net>
- <20150903191914.GF10088@fieldses.org>
- <20150903155417.468aaca0@tlielax.poochiereds.net>
+	id S1750749AbbICUY4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 3 Sep 2015 16:24:56 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+Subject: Re: [PATCH v2] xprtrdma: take HCA driver refcount at client
+To: Doug Ledford <dledford@redhat.com>,
+        Devesh Sharma <devesh.sharma@avagotech.com>,
+        <linux-rdma@vger.kernel.org>
+References: <1438254018-2816-1-git-send-email-devesh.sharma@avagotech.com>
+ <55E8A98D.5060903@redhat.com>
+CC: <chuck.lever@oracle.com>, <linux-nfs@vger.kernel.org>
+Message-ID: <55E8AC91.2050208@Netapp.com>
+Date: Thu, 3 Sep 2015 16:24:49 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20150903155417.468aaca0@tlielax.poochiereds.net>
+In-Reply-To: <55E8A98D.5060903@redhat.com>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Sep 03, 2015 at 03:54:17PM -0400, Jeff Layton wrote:
-> On Thu, 3 Sep 2015 15:19:14 -0400
-> "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> 
-> > On Thu, Sep 03, 2015 at 02:52:25PM -0400, Jeff Layton wrote:
-> > > On Thu, 3 Sep 2015 14:43:27 -0400
-> > > "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > > 
-> > > > On Thu, Sep 03, 2015 at 01:33:14PM -0400, Jeff Layton wrote:
-> > > > > There are cases with NFSv3 where the client doesn't actually care about
-> > > > > WCC attributes in replies. If the server is mainly acting as a DS for
-> > > > > flexfiles, then the client just throws out those attributes anyway.
-> > > > > Also, in the case where the client is primarily doing direct I/O, post
-> > > > > op attributes aren't terribly useful
-> > > > >
-> > > > > Another reason to allow turning these off is that NFS will flush all
-> > > > > buffered writes prior to issuing a GETATTR, and it also takes the
-> > > > > i_mutex in its ->getattr operation.
-> > > > >
-> > > > > If we're doing a vfs_getattr after most RPCs, then we can end up
-> > > > > deadlocking or (at best) prematurely flushing buffered writes, which
-> > > > > kills performance.
-> > > > 
-> > > > So you're talking about the NFS re-export case?  Do we know of any other
-> > > > case when a ->getattr is so expensive?
-> > > > 
-> > > 
-> > > That's the main one that I have experience with, but getattr can be
-> > > pretty expensive in clustered filesystems. For instance, on ceph:
-> > > 
-> > >         err = ceph_do_getattr(inode, CEPH_STAT_CAP_INODE_ALL, false);
-> > >         if (!err) {
-> > >                 generic_fillattr(inode, stat);
-> > >                 stat->ino = ceph_translate_ino(inode->i_sb, inode->i_ino);
-> > > 
-> > > 
-> > > ...and it looks like ceph_do_getattr can issue a request on the network
-> > > (though I'm not familiar with that code and I imagine that it's
-> > > sometimes optimized out).
-> > 
-> > OK.  Could we get something like that in the changelog?  The change
-> > really needs to stand on the non-NFS case alone as long as NFS
-> > reexport's not upstream.  For that reason (and because without the
-> > context that second paragraph's kind of confusing), it'd be helpful to
-> > preface the NFS discussion by smoething like "In the (out-of-tree) NFS
-> > re-export case".
-> > 
-> 
-> Yeah, no problem. I'll respin the changelog on both patches and resend
-> within the next day or two.
-> 
-> > What's keeping that out of upstream, anyway?  Apparently there's some
-> > use case, and if it's inspiring a lot of changes in generic code, then
-> > it'd simplify life to have it upstream.
-> > 
-> > 
-> 
-> There are several problems. Here are few but there are others:
-> 
-> 1) it is at least somewhat of a potential security concern. By mounting
-> on a box that has access and then reexporting it, you can circumvent
-> the export restrictions on the original server. Granted you can do that
-> today with samba or something, but still -- it's a little sketchy.
+Hi Doug,
 
-Or with ganesha, or you could run a web server, or just mail the file
-contents to someone....  This just isn't the way to enforce anything.
+On 09/03/2015 04:11 PM, Doug Ledford wrote:
+> On 07/30/2015 07:00 AM, Devesh Sharma wrote:
+>> Thanks Chuck Lever for the valuable feedback and suggestions.
+>>
+>> This is a rework of the following patch sent almost a year back:
+>> http://www.mail-archive.com/linux-rdma%40vger.kernel.org/msg20730.html
+>>
+>> In presence of active mount if someone tries to rmmod vendor-driver, the
+>> command remains stuck forever waiting for destruction of all rdma-cm-id.
+>> in worst case client can crash during shutdown with active mounts.
+>>
+>> The existing code assumes that ia->ri_id->device cannot change during
+>> the lifetime of a transport. xprtrdma do not have support for
+>> DEVICE_REMOVAL event either. Lifting that assumption and adding support
+>> for DEVICE_REMOVAL event is a long chain of work, and is in plan.
+>>
+>> The community decided that preventing the hang right now is more
+>> important than waiting for architectural changes.
+>>
+>> Thus, this patch introduces a temporary workaround to acquire HCA driver
+>> module reference count during the mount of a nfs-rdma mount point.
+>>
+>> Cc: chuck.lever@oracle.com
+>> Cc: linux-nfs@vger.kernel.org
+>> Signed-off-by: Devesh Sharma <devesh.sharma@avagotech.com>
+>> Reviewed-by: Sagi Grimberg <sagig@dev.mellanox.co.il>
+> 
+> Chuck, was this given final approval, and if so, who's tree is it
+> expected to go through?  Just trying to make sure I don't need to do
+> anything here as I don't see a rejection in my linux-rdma folder, but I
+> also didn't see it in the initial 4.3 nfs merge.
 
-I've hard Trond argue something like this before, but I think his point
-was a little different: not that we have to deny reexports for security
-reasons, but just that such a policy-circumventing use case isn't worth
-supporting.  So he wasn't interested in reexports as long as that was
-the only use case he'd heard about.
+This was approved and went through my tree to Trond.  I don't think he's sent out the v4.3 pull request yet, but hopefully it won't be too much longer!
 
-> 2) getattrs: We're working around the problem with this new export
-> option, but if you don't use that then you can potentially deadlock
-> with NFS. It wants to take the i_mutex in its ->getattr operation but
-> knfsd calls vfs_getattr with that held to do post-op attrs. My initial
-> workaround was to drop the i_mutex before calling fh_getattr instead of
-> after, but then I hit the performance problem I described.
-> 
-> 3) locking: proxying v3 locking is a painful mess. If the reexporter
-> reboots, it'll lose its lease on the main server, which will kick out
-> all of its state. At that point you can end up with another client
-> racing and getting your lock before the reexporter can come back up and
-> reclaim it.
-> 
-> Our main use-case for this is pretty limited and doesn't involve file
-> locking (so far!).
+Thanks,
+Anna
 
-So this is the interest part, I guess.--b.
 
-> We'll probably have to code up some mechanism to
-> deal with that at some point, but that won't be an in-kernel solution.
 > 
-> Once we ship this thing, the kernel changes will be GPLed of course for
-> anyone who wants to use them, but I'm not sure any of us really want the
-> headache of merging this upstream as a first-class feature.
-> 
-> > > 
-> > > 
-> > > > 
-> > > > > This patch adds a new export option -- "nowcc" that disables the
-> > > > > return of WCC attributes in NFSv3 replies. I also have a userland
-> > > > > patch that adds support for the same option to nfs-utils that I'll
-> > > > > send along as well.
-> > > > > 
-> > > > > Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
-> > > > > ---
-> > > > >  fs/nfsd/export.c                 | 1 +
-> > > > >  fs/nfsd/nfs3xdr.c                | 5 ++++-
-> > > > >  fs/nfsd/nfsfh.c                  | 4 ++++
-> > > > >  fs/nfsd/nfsfh.h                  | 5 ++++-
-> > > > >  include/uapi/linux/nfsd/export.h | 3 ++-
-> > > > >  5 files changed, 15 insertions(+), 3 deletions(-)
-> > > > > 
-> > > > > diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
-> > > > > index b4d84b579f20..97258009ce1e 100644
-> > > > > --- a/fs/nfsd/export.c
-> > > > > +++ b/fs/nfsd/export.c
-> > > > > @@ -1092,6 +1092,7 @@ static struct flags {
-> > > > >  	{ NFSEXP_NOAUTHNLM, {"insecure_locks", ""}},
-> > > > >  	{ NFSEXP_V4ROOT, {"v4root", ""}},
-> > > > >  	{ NFSEXP_PNFS, {"pnfs", ""}},
-> > > > > +	{ NFSEXP_NOWCC, {"nowcc", ""}},
-> > > > >  	{ 0, {"", ""}}
-> > > > >  };
-> > > > >  
-> > > > > diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
-> > > > > index 01dcd494f781..c30c8c604e2a 100644
-> > > > > --- a/fs/nfsd/nfs3xdr.c
-> > > > > +++ b/fs/nfsd/nfs3xdr.c
-> > > > > @@ -203,7 +203,7 @@ static __be32 *
-> > > > >  encode_post_op_attr(struct svc_rqst *rqstp, __be32 *p, struct
-> > > > > svc_fh *fhp) {
-> > > > >  	struct dentry *dentry = fhp->fh_dentry;
-> > > > > -	if (dentry && d_really_is_positive(dentry)) {
-> > > > > +	if (!fhp->fh_no_wcc && dentry &&
-> > > > > d_really_is_positive(dentry)) { __be32 err;
-> > > > >  		struct kstat stat;
-> > > > >  
-> > > > > @@ -256,6 +256,9 @@ void fill_post_wcc(struct svc_fh *fhp)
-> > > > >  {
-> > > > >  	__be32 err;
-> > > > >  
-> > > > > +	if (fhp->fh_no_wcc)
-> > > > > +		return;
-> > > > > +
-> > > > >  	if (fhp->fh_post_saved)
-> > > > >  		printk("nfsd: inode locked twice during
-> > > > > operation.\n"); 
-> > > > > diff --git a/fs/nfsd/nfsfh.c b/fs/nfsd/nfsfh.c
-> > > > > index 350041a40fe5..32093b7dce55 100644
-> > > > > --- a/fs/nfsd/nfsfh.c
-> > > > > +++ b/fs/nfsd/nfsfh.c
-> > > > > @@ -267,6 +267,9 @@ static __be32 nfsd_set_fh_dentry(struct
-> > > > > svc_rqst *rqstp, struct svc_fh *fhp) 
-> > > > >  	fhp->fh_dentry = dentry;
-> > > > >  	fhp->fh_export = exp;
-> > > > > +	if (exp->ex_flags & NFSEXP_NOWCC && rqstp->rq_vers == 3)
-> > > > > +		fhp->fh_no_wcc = true;
-> > > > > +
-> > > > >  	return 0;
-> > > > >  out:
-> > > > >  	exp_put(exp);
-> > > > > @@ -641,6 +644,7 @@ fh_put(struct svc_fh *fhp)
-> > > > >  		exp_put(exp);
-> > > > >  		fhp->fh_export = NULL;
-> > > > >  	}
-> > > > > +	fhp->fh_no_wcc = false;
-> > > > >  	return;
-> > > > >  }
-> > > > >  
-> > > > > diff --git a/fs/nfsd/nfsfh.h b/fs/nfsd/nfsfh.h
-> > > > > index 1e90dad4926b..9ddead4d98f8 100644
-> > > > > --- a/fs/nfsd/nfsfh.h
-> > > > > +++ b/fs/nfsd/nfsfh.h
-> > > > > @@ -32,6 +32,7 @@ typedef struct svc_fh {
-> > > > >  
-> > > > >  	unsigned char		fh_locked;	/* inode
-> > > > > locked by us */ unsigned char
-> > > > > fh_want_write;	/* remount protection taken */
-> > > > > +	bool			fh_no_wcc;	/* no wcc
-> > > > > data needed */ 
-> > > > >  #ifdef CONFIG_NFSD_V3
-> > > > >  	unsigned char		fh_post_saved;	/*
-> > > > > post-op attrs saved */ @@ -51,7 +52,6 @@ typedef struct svc_fh {
-> > > > >  	struct kstat		fh_post_attr;	/* full
-> > > > > attrs after operation */ u64
-> > > > > fh_post_change; /* nfsv4 change; see above */ #endif /*
-> > > > > CONFIG_NFSD_V3 */ -
-> > > > >  } svc_fh;
-> > > > >  
-> > > > >  enum nfsd_fsid {
-> > > > > @@ -225,6 +225,9 @@ fill_pre_wcc(struct svc_fh *fhp)
-> > > > >  {
-> > > > >  	struct inode    *inode;
-> > > > >  
-> > > > > +	if (fhp->fh_no_wcc)
-> > > > > +		return;
-> > > > > +
-> > > > >  	inode = d_inode(fhp->fh_dentry);
-> > > > >  	if (!fhp->fh_pre_saved) {
-> > > > >  		fhp->fh_pre_mtime = inode->i_mtime;
-> > > > > diff --git a/include/uapi/linux/nfsd/export.h
-> > > > > b/include/uapi/linux/nfsd/export.h index 0df7bd5d2fb1..4c132290f414
-> > > > > 100644 --- a/include/uapi/linux/nfsd/export.h
-> > > > > +++ b/include/uapi/linux/nfsd/export.h
-> > > > > @@ -51,9 +51,10 @@
-> > > > >   */
-> > > > >  #define	NFSEXP_V4ROOT		0x10000
-> > > > >  #define NFSEXP_PNFS		0x20000
-> > > > > +#define NFSEXP_NOWCC		0x40000
-> > > > >  
-> > > > >  /* All flags that we claim to support.  (Note we don't support
-> > > > > NOACL.) */ -#define NFSEXP_ALLFLAGS		0x3FE7F
-> > > > > +#define NFSEXP_ALLFLAGS		0x7FE7F
-> > > > >  
-> > > > >  /* The flags that may vary depending on security flavor: */
-> > > > >  #define NFSEXP_SECINFO_FLAGS	(NFSEXP_READONLY |
-> > > > > NFSEXP_ROOTSQUASH \ -- 
-> > > > > 2.4.3
-> > > 
-> > > 
-> > > -- 
-> > > Jeff Layton <jlayton@poochiereds.net>
+>> ---
+>>  net/sunrpc/xprtrdma/verbs.c |   38 ++++++++++++++++++++++++++++++--------
+>>  1 files changed, 30 insertions(+), 8 deletions(-)
+>>
+>> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+>> index 891c4ed..1c3c420 100644
+>> --- a/net/sunrpc/xprtrdma/verbs.c
+>> +++ b/net/sunrpc/xprtrdma/verbs.c
+>> @@ -52,6 +52,7 @@
+>>  #include <linux/prefetch.h>
+>>  #include <linux/sunrpc/addr.h>
+>>  #include <asm/bitops.h>
+>> +#include <linux/module.h> /* try_module_get()/module_put() */
+>>  
+>>  #include "xprt_rdma.h"
+>>  
+>> @@ -414,6 +415,14 @@ connected:
+>>  	return 0;
+>>  }
+>>  
+>> +static void rpcrdma_destroy_id(struct rdma_cm_id *id)
+>> +{
+>> +	if (id) {
+>> +		module_put(id->device->owner);
+>> +		rdma_destroy_id(id);
+>> +	}
+>> +}
+>> +
+>>  static struct rdma_cm_id *
+>>  rpcrdma_create_id(struct rpcrdma_xprt *xprt,
+>>  			struct rpcrdma_ia *ia, struct sockaddr *addr)
+>> @@ -440,6 +449,18 @@ rpcrdma_create_id(struct rpcrdma_xprt *xprt,
+>>  	}
+>>  	wait_for_completion_interruptible_timeout(&ia->ri_done,
+>>  				msecs_to_jiffies(RDMA_RESOLVE_TIMEOUT) + 1);
+>> +
+>> +	/* FIXME: We hate to break the notion of ULP<-->Core<-->Provider
+>> +	 * by calling try_module_get() on HCA driver. This is to prevent a
+>> +	 * system hang or a possible crash during reboot with active nfs-rdma
+>> +	 * mount. We will keep this workaround until xprtrdma comes back with a
+>> +	 * massive architectural changes to have proper fix.
+>> +	 */
+>> +	if (!ia->ri_async_rc && !try_module_get(id->device->owner)) {
+>> +		dprintk("RPC:       %s: Failed to get device module\n",
+>> +			__func__);
+>> +		ia->ri_async_rc = -ENODEV;
+>> +	}
+>>  	rc = ia->ri_async_rc;
+>>  	if (rc)
+>>  		goto out;
+>> @@ -449,16 +470,17 @@ rpcrdma_create_id(struct rpcrdma_xprt *xprt,
+>>  	if (rc) {
+>>  		dprintk("RPC:       %s: rdma_resolve_route() failed %i\n",
+>>  			__func__, rc);
+>> -		goto out;
+>> +		goto put;
+>>  	}
+>>  	wait_for_completion_interruptible_timeout(&ia->ri_done,
+>>  				msecs_to_jiffies(RDMA_RESOLVE_TIMEOUT) + 1);
+>>  	rc = ia->ri_async_rc;
+>>  	if (rc)
+>> -		goto out;
+>> +		goto put;
+>>  
+>>  	return id;
+>> -
+>> +put:
+>> +	module_put(id->device->owner);
+>>  out:
+>>  	rdma_destroy_id(id);
+>>  	return ERR_PTR(rc);
+>> @@ -592,7 +614,7 @@ out3:
+>>  	ib_dealloc_pd(ia->ri_pd);
+>>  	ia->ri_pd = NULL;
+>>  out2:
+>> -	rdma_destroy_id(ia->ri_id);
+>> +	rpcrdma_destroy_id(ia->ri_id);
+>>  	ia->ri_id = NULL;
+>>  out1:
+>>  	return rc;
+>> @@ -618,7 +640,7 @@ rpcrdma_ia_close(struct rpcrdma_ia *ia)
+>>  	if (ia->ri_id != NULL && !IS_ERR(ia->ri_id)) {
+>>  		if (ia->ri_id->qp)
+>>  			rdma_destroy_qp(ia->ri_id);
+>> -		rdma_destroy_id(ia->ri_id);
+>> +		rpcrdma_destroy_id(ia->ri_id);
+>>  		ia->ri_id = NULL;
+>>  	}
+>>  
+>> @@ -825,7 +847,7 @@ retry:
+>>  		if (ia->ri_device != id->device) {
+>>  			printk("RPC:       %s: can't reconnect on "
+>>  				"different device!\n", __func__);
+>> -			rdma_destroy_id(id);
+>> +			rpcrdma_destroy_id(id);
+>>  			rc = -ENETUNREACH;
+>>  			goto out;
+>>  		}
+>> @@ -834,7 +856,7 @@ retry:
+>>  		if (rc) {
+>>  			dprintk("RPC:       %s: rdma_create_qp failed %i\n",
+>>  				__func__, rc);
+>> -			rdma_destroy_id(id);
+>> +			rpcrdma_destroy_id(id);
+>>  			rc = -ENETUNREACH;
+>>  			goto out;
+>>  		}
+>> @@ -845,7 +867,7 @@ retry:
+>>  		write_unlock(&ia->ri_qplock);
+>>  
+>>  		rdma_destroy_qp(old);
+>> -		rdma_destroy_id(old);
+>> +		rpcrdma_destroy_id(old);
+>>  	} else {
+>>  		dprintk("RPC:       %s: connecting...\n", __func__);
+>>  		rc = rdma_create_qp(ia->ri_id, ia->ri_pd, &ep->rep_attr);
+>>
 > 
 > 
-> -- 
-> Jeff Layton <jlayton@poochiereds.net>
+
