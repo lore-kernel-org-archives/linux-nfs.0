@@ -1,108 +1,147 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:44520 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([173.255.197.46]:41491 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755043AbbICUZ3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 3 Sep 2015 16:25:29 -0400
-Subject: Re: [PATCH v2] xprtrdma: take HCA driver refcount at client
-To: Anna Schumaker <Anna.Schumaker@netapp.com>,
-        Devesh Sharma <devesh.sharma@avagotech.com>,
-        linux-rdma@vger.kernel.org
-References: <1438254018-2816-1-git-send-email-devesh.sharma@avagotech.com>
- <55E8A98D.5060903@redhat.com> <55E8AC91.2050208@Netapp.com>
-Cc: chuck.lever@oracle.com, linux-nfs@vger.kernel.org
-From: Doug Ledford <dledford@redhat.com>
-Message-ID: <55E8ACB8.8080809@redhat.com>
-Date: Thu, 3 Sep 2015 16:25:28 -0400
+	id S1750818AbbICUcC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 3 Sep 2015 16:32:02 -0400
+Date: Thu, 3 Sep 2015 16:32:00 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@poochiereds.net>
+Cc: steved@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] exportfs: add support for "nowcc" option
+Message-ID: <20150903203200.GI10088@fieldses.org>
+References: <1441301785-17602-1-git-send-email-jeff.layton@primarydata.com>
+ <20150903183103.GB10088@fieldses.org>
+ <20150903144544.58cfd728@tlielax.poochiereds.net>
+ <20150903190548.GE10088@fieldses.org>
+ <20150903194255.GG10088@fieldses.org>
+ <20150903160011.1104a3d3@tlielax.poochiereds.net>
 MIME-Version: 1.0
-In-Reply-To: <55E8AC91.2050208@Netapp.com>
-Content-Type: multipart/signed; micalg=pgp-sha256;
- protocol="application/pgp-signature";
- boundary="wvmEDFlIs4eUTRM1mPCGk7HmRnf2p6MKF"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20150903160011.1104a3d3@tlielax.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is an OpenPGP/MIME signed message (RFC 4880 and 3156)
---wvmEDFlIs4eUTRM1mPCGk7HmRnf2p6MKF
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
+On Thu, Sep 03, 2015 at 04:00:11PM -0400, Jeff Layton wrote:
+> On Thu, 3 Sep 2015 15:42:55 -0400
+> "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> 
+> > On Thu, Sep 03, 2015 at 03:05:48PM -0400, J. Bruce Fields wrote:
+> > > On Thu, Sep 03, 2015 at 02:45:44PM -0400, Jeff Layton wrote:
+> > > > On Thu, 3 Sep 2015 14:31:03 -0400
+> > > > "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > > > 
+> > > > > On Thu, Sep 03, 2015 at 01:36:25PM -0400, Jeff Layton wrote:
+> > > > > > This is the userland companion patch for the patch to add a "nowcc"
+> > > > > > option to knfsd. This just adds the necessary code to allow userspace
+> > > > > > to set that option.
+> > > > > > 
+> > > > > > Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
+> > > > > > ---
+> > > > > >  support/include/nfs/export.h |  3 ++-
+> > > > > >  support/nfs/exports.c        |  5 +++++
+> > > > > >  utils/exportfs/exportfs.c    |  2 ++
+> > > > > >  utils/exportfs/exports.man   | 14 ++++++++++++++
+> > > > > >  4 files changed, 23 insertions(+), 1 deletion(-)
+> > > > > > 
+> > > > > > diff --git a/support/include/nfs/export.h b/support/include/nfs/export.h
+> > > > > > index 1194255899bd..68bee5c2f305 100644
+> > > > > > --- a/support/include/nfs/export.h
+> > > > > > +++ b/support/include/nfs/export.h
+> > > > > > @@ -26,7 +26,8 @@
+> > > > > >  #define	NFSEXP_CROSSMOUNT	0x4000
+> > > > > >  #define NFSEXP_NOACL		0x8000 /* reserved for possible ACL related use */
+> > > > > >  #define NFSEXP_V4ROOT		0x10000
+> > > > > > -#define NFSEXP_PNFS            0x20000
+> > > > > > +#define NFSEXP_PNFS		0x20000
+> > > > > > +#define NFSEXP_NOWCC		0x40000
+> > > > > >  /*
+> > > > > >   * All flags supported by the kernel before addition of the
+> > > > > >   * export_features interface:
+> > > > > > diff --git a/support/nfs/exports.c b/support/nfs/exports.c
+> > > > > > index 0aea6f154f09..791b5f756c9c 100644
+> > > > > > --- a/support/nfs/exports.c
+> > > > > > +++ b/support/nfs/exports.c
+> > > > > > @@ -276,6 +276,7 @@ putexportent(struct exportent *ep)
+> > > > > >  	if (ep->e_flags & NFSEXP_NOREADDIRPLUS)
+> > > > > >  		fprintf(fp, "nordirplus,");
+> > > > > >  	fprintf(fp, "%spnfs,", (ep->e_flags & NFSEXP_PNFS)? "" : "no_");
+> > > > > > +	fprintf(fp, "%swcc,", (ep->e_flags & NFSEXP_NOWCC) ? "no" : "");
+> > > > > >  	if (ep->e_flags & NFSEXP_FSID) {
+> > > > > >  		fprintf(fp, "fsid=%d,", ep->e_fsid);
+> > > > > >  	}
+> > > > > > @@ -586,6 +587,10 @@ parseopts(char *cp, struct exportent *ep, int warn, int *had_subtree_opt_ptr)
+> > > > > >  			setflags(NFSEXP_PNFS, active, ep);
+> > > > > >  		else if (!strcmp(opt, "no_pnfs"))
+> > > > > >  			clearflags(NFSEXP_PNFS, active, ep);
+> > > > > > +		else if (!strcmp(opt, "wcc"))
+> > > > > > +			clearflags(NFSEXP_NOWCC, active, ep);
+> > > > > > +		else if (!strcmp(opt, "nowcc"))
+> > > > > > +			setflags(NFSEXP_NOWCC, active, ep);
+> > > > > >  		else if (strncmp(opt, "anonuid=", 8) == 0) {
+> > > > > >  			char *oe;
+> > > > > >  			ep->e_anonuid = strtol(opt+8, &oe, 10);
+> > > > > > diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
+> > > > > > index 87582316b086..a2afc80ee6ea 100644
+> > > > > > --- a/utils/exportfs/exportfs.c
+> > > > > > +++ b/utils/exportfs/exportfs.c
+> > > > > > @@ -823,6 +823,8 @@ dump(int verbose, int export_format)
+> > > > > >  				c = dumpopt(c, "no_acl");
+> > > > > >  			if (ep->e_flags & NFSEXP_PNFS)
+> > > > > >  				c = dumpopt(c, "pnfs");
+> > > > > > +			if (ep->e_flags & NFSEXP_NOWCC)
+> > > > > > +				c = dumpopt(c, "nowcc");
+> > > > > >  			if (ep->e_flags & NFSEXP_FSID)
+> > > > > >  				c = dumpopt(c, "fsid=%d", ep->e_fsid);
+> > > > > >  			if (ep->e_uuid)
+> > > > > > diff --git a/utils/exportfs/exports.man b/utils/exportfs/exports.man
+> > > > > > index 93092463153b..9213a228bb04 100644
+> > > > > > --- a/utils/exportfs/exports.man
+> > > > > > +++ b/utils/exportfs/exports.man
+> > > > > > @@ -417,6 +417,20 @@ devices. The default can be explicitly requested with the
+> > > > > >  .I no_pnfs
+> > > > > >  option.
+> > > > > >  
+> > > > > > +.TP
+> > > > > > +.IR nowcc
+> > > > > > +This option disables the collection and reporting of WCC (weak cache
+> > > > > > +consistency) data in NFSv3 requests.  RFC 1813 recommends that all
+> > > > > > +servers report this information to the clients as it allows the client
+> > > > > > +to avoid some extra round trips to the server.  In some underlying
+> > > > > > +filesystems however, collecting this data can be cost prohibitive and
+> > > > > > +atomicity is difficult to guarantee.
+> > 
+> > By the way, independently of this change, maybe we should by default
+> > disable the pre-op attribute on distributed filesystems?  As I
+> > understand it we're just depending on the i_mutex for atomicity, which
+> > can't be right in that case.
+> > 
+> > --b.
+> 
+> Right. In the case of something like a clustered or network filesystem
+> you really can't guarantee atomicity, so why even try?
+> 
+> So, that is another option...we could add a flags field to the
+> export_operations struct and use one flag to indicate whether to send
+> wcc attrs. That'd give us the ability to add other flags in the future
+> as well.
+> 
+> The reason I went with the export option is that I didn't really want
+> to add the flags field, and I figured the flexibility of being able to
+> do that on any filesystem might be helpful.
+> 
+> That said, I'm open to doing it that way instead of (or in addition to)
+> the export option if you think it would be better.
 
-On 09/03/2015 04:24 PM, Anna Schumaker wrote:
-> Hi Doug,
->=20
-> On 09/03/2015 04:11 PM, Doug Ledford wrote:
->> On 07/30/2015 07:00 AM, Devesh Sharma wrote:
->>> Thanks Chuck Lever for the valuable feedback and suggestions.
->>>
->>> This is a rework of the following patch sent almost a year back:
->>> http://www.mail-archive.com/linux-rdma%40vger.kernel.org/msg20730.htm=
-l
->>>
->>> In presence of active mount if someone tries to rmmod vendor-driver, =
-the
->>> command remains stuck forever waiting for destruction of all rdma-cm-=
-id.
->>> in worst case client can crash during shutdown with active mounts.
->>>
->>> The existing code assumes that ia->ri_id->device cannot change during=
+Well, it's sounding so far like:
 
->>> the lifetime of a transport. xprtrdma do not have support for
->>> DEVICE_REMOVAL event either. Lifting that assumption and adding suppo=
-rt
->>> for DEVICE_REMOVAL event is a long chain of work, and is in plan.
->>>
->>> The community decided that preventing the hang right now is more
->>> important than waiting for architectural changes.
->>>
->>> Thus, this patch introduces a temporary workaround to acquire HCA dri=
-ver
->>> module reference count during the mount of a nfs-rdma mount point.
->>>
->>> Cc: chuck.lever@oracle.com
->>> Cc: linux-nfs@vger.kernel.org
->>> Signed-off-by: Devesh Sharma <devesh.sharma@avagotech.com>
->>> Reviewed-by: Sagi Grimberg <sagig@dev.mellanox.co.il>
->>
->> Chuck, was this given final approval, and if so, who's tree is it
->> expected to go through?  Just trying to make sure I don't need to do
->> anything here as I don't see a rejection in my linux-rdma folder, but =
-I
->> also didn't see it in the initial 4.3 nfs merge.
->=20
-> This was approved and went through my tree to Trond.  I don't think he'=
-s sent out the v4.3 pull request yet, but hopefully it won't be too much =
-longer!
+	- nobody will want this on a non-distributed filesystem (hard to
+	  see what the benefit would be; and it might cost).
+	- people probably *do* want this on any distributed filesystem.
+	- we could save users some trouble by not giving them another
+	  export option which they might just set wrong.
 
-Perfect, thanks!
+Eh, but I think I'm wrong about #2.  Dropping the pre-op attribute is
+arguably necessary for correctness, but dropping the post-op attribute
+as well isn't necessary and might hurt, right?  OK.
 
-
---=20
-Doug Ledford <dledford@redhat.com>
-              GPG KeyID: 0E572FDD
-
-
-
---wvmEDFlIs4eUTRM1mPCGk7HmRnf2p6MKF
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: OpenPGP digital signature
-Content-Disposition: attachment; filename="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2
-Comment: Using GnuPG with Thunderbird - http://www.enigmail.net/
-
-iQIcBAEBCAAGBQJV6Ky4AAoJELgmozMOVy/d5bQP/0wcqrjgarVfQD8R46LYd9KS
-bLA/aQq2v+vvwstJnTdeqbz5ZRPDPQhLNfDUOceN+mfWLiLsDQ8X4dzdql87Tdm/
-TWw7AefLUld7cSZY5q4psOEUZ6LR4/KvC0GZ6TUEa3NsFMjuzl7v83BUB+iREz3B
-QWjEnireK1CZZU6ZYc6CMxM8FL4na7wmyK5vS7DML+Y3ceD6r9LOl47vFCHlUfcU
-P4kxdBOHZiwRi6ICiUQE/vpbtMCJsa8EblRsIFORTbTWgppUR3DSCEnkGhnPz4R6
-gvMBKzaR0/u3uP59vQZAoBmMCyWUcVqkG7YtYuOsax5XAzI75o+Jx4VdflUtb/DG
-WpxO//cInPTfflO5RxMPbaSnRtydKmvGUoQNb2ENUXXh0N83p1a3rn4U86jg4vUq
-8PMVrlOSOAiyun7Qvz5DVGRNH50b1srWJ1emxIL9wiK+uRwxCwVsBzfVvTCHqhVv
-khdh7Px9xbF+qwDK/fgcQEiIEivKqNkLjnW3U/inz+pqAjEK+yqbi3DyYM6vDauN
-wjJRO9gsmWA1e3VnnKixrHvU1QTDocZM5fl0j5K5QNSi4xP6rL83uj5M+EWcSH9S
-NDNzlCCqRVbJPQrWdNp8HjiCL979CcDCt0/sqkmO0hwhAJxcjCeu3Bnc8Ogn4C1N
-9Fdsl6LQhnZvYAVrADev
-=IL6P
------END PGP SIGNATURE-----
-
---wvmEDFlIs4eUTRM1mPCGk7HmRnf2p6MKF--
+--b.
