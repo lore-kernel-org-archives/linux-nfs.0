@@ -1,63 +1,67 @@
-Return-Path: <shawn.starr@rogers.com>
-From: Shawn Starr <shawn.starr@rogers.com>
-To: Benjamin Coddington <bcodding@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [NFSv4.1] Deadlock on writes - RHEL 7.1 kernel - nfs_pageio_doio?
-Date: Thu, 03 Sep 2015 11:54:40 -0400
-Message-ID: <2932091.5g0LhYZZI5@segfault>
-In-Reply-To: <alpine.OSX.2.19.9992.1509030643490.71803@planck.local>
-References: <2535588.ljdrthqrNr@segfault> <alpine.OSX.2.19.9992.1509030643490.71803@planck.local>
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:41059 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752339AbbICQsn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 3 Sep 2015 12:48:43 -0400
+Received: from int-mx14.intmail.prod.int.phx2.redhat.com (int-mx14.intmail.prod.int.phx2.redhat.com [10.5.11.27])
+	by mx1.redhat.com (Postfix) with ESMTPS id 0AC54AED2E
+	for <linux-nfs@vger.kernel.org>; Thu,  3 Sep 2015 16:48:43 +0000 (UTC)
+Received: from smallhat.boston.devel.redhat.com (smallhat.boston.devel.redhat.com [10.19.60.65])
+	by int-mx14.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id t83Gmg66016000
+	for <linux-nfs@vger.kernel.org>; Thu, 3 Sep 2015 12:48:42 -0400
+Subject: Re: Monthly Linux NFS Town Hall meeting: Tomorrow - Thur Sept 3
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+References: <55E714BD.7060309@RedHat.com>
+From: Steve Dickson <SteveD@redhat.com>
+Message-ID: <55E879EA.7080201@RedHat.com>
+Date: Thu, 3 Sep 2015 12:48:42 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+In-Reply-To: <55E714BD.7060309@RedHat.com>
+Content-Type: text/plain; charset=windows-1252
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thursday, September 03, 2015 06:47:26 AM Benjamin Coddington wrote:
-> Hi Shawn,
-> 
-> This doesn't look like a deadlock to me, just processes waiting for their
-> writes to complete.  They've been waiting for a long time, so the hung task
-> warning is triggered.
-> 
-> There might be a network problem that's preventing that NFS client from
-> communicating with the server, or the server is taking a very long time
-> to complete the operation.  A network capture between the client and server
-> might show what's actually happening.
-> 
-> Ben
-> 
-Hi Ben,
+Just a quick reminder.... This will be starting
+in 10min... if interested.
 
-While that might be the case, this does not happen on our RHEL6 and CentOS 6.x VMs
-so, I'm hesitant to say it's network related fully.
+steved.
 
-If EL7 changed some timeouts for NFS then this might explain the hung task warning, however,
-leaving the VMs stuck they never recover, they appear deadlocked in VFS subsystem in the fact I can't login into them
-via SSH or from the KVM console session itself. So all writes not on local disk are deadlocked
-writes to remote syslog appear fine as this isn't going though VFS.
-
-Thanks,
-Shawn
-
-> On Wed, 2 Sep 2015, Shawn Starr wrote:
-> > Hello NFS devs,
-> > 
-> > While this is a CentOS/RHEL kernel: 3.10.0-229.4.2.el7.x86_64 (and old)
-> > 
-> > I was wondering your take on this deadlock, I cannot reproduce this and it
-> > seems to happen in our KVM VM images randomly so far only once. When we
-> > configure a VM it does two reboots, first sets up things then a final
-> > reboot where we have a fresh bootup with settings in place.
-> > 
-> > 
-> > This could be from a cron thats running, but the VMs in question is pretty
-> > much idle, CPU skyrockets and they deadlock, can't ssh into them to
-> > examine why. We have remote syslog capturing, so I would never see this
-> > otherwise.
-> > 
-> > If anyone has ideas on how I can test this? This has been reported in the
-> > CentOS bugtracker by someone else also, I couldn't use their methods for
-> > reproduction.
-> > 
-> > below is the trace from kernel:
-> > 
-<snip>
+On 09/02/2015 11:24 AM, Steve Dickson wrote:
+> Hello,
+> 
+> Its that time again... the NFS town hall meeting
+> will be tomorrow 
+> 
+>    *Thur Sept 3rd at 01:00 pm EST (10:00am PST)*
+> 
+> The usual agenda will apply. The maintainers will give
+> a quick status of what is happening in their worlds.
+> 
+> Next we'll get updates from major contributors on what
+> they have been doing and are planing on doing.
+>   
+> Finally, we'll open the floor to questions, comments, 
+> concerns from the community.  
+> 
+> Generally the meeting lasts between 30 to 45 mins, with 
+> a very hard stop at 60mins. 
+> 
+> Please feel to attend and participate!
+> 
+> Again the Time: 10:00 am PST (01:00 pm EST)
+> 
+> The call in numbers are:
+> 
+> U.S. and Canada: (800) 451-8679
+> World wide toll free numbers
+>    https://www.intercallonline.com/listNumbersByCode.action?confCode=5642721552
+> 
+> Conference code: 564.272.1552
+> 
+> steved.
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
