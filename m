@@ -1,79 +1,239 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:26695 "EHLO
+Received: from userp1040.oracle.com ([156.151.31.81]:37094 "EHLO
 	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933638AbbIDVOz convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Sep 2015 17:14:55 -0400
+	with ESMTP id S1751033AbbIDVjb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Sep 2015 17:39:31 -0400
+Date: Fri, 4 Sep 2015 14:38:56 -0700
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+To: Anna Schumaker <Anna.Schumaker@netapp.com>
+Cc: linux-nfs@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-api@vger.kernel.org,
+        zab@zabbo.net, viro@zeniv.linux.org.uk, clm@fb.com,
+        mtk.manpages@gmail.com, andros@netapp.com, hch@infradead.org
+Subject: Re: [PATCH v1 9/8] copy_file_range.2: New page documenting
+ copy_file_range()
+Message-ID: <20150904213856.GC10391@birch.djwong.org>
+References: <1441397823-1203-1-git-send-email-Anna.Schumaker@Netapp.com>
+ <1441397823-1203-10-git-send-email-Anna.Schumaker@Netapp.com>
+MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
-Subject: Re: [PATCH v2 2/2] Revert "NFS: Make close(2) asynchronous when closing NFS O_DIRECT files"
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1441400510-19688-2-git-send-email-trond.myklebust@primarydata.com>
-Date: Fri, 4 Sep 2015 17:14:43 -0400
-Cc: Olga Kornievskaia <aglo@umich.edu>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <FEB469CD-AF68-4F60-B8D1-C1BF163D7DAC@oracle.com>
-References: <1441400510-19688-1-git-send-email-trond.myklebust@primarydata.com> <1441400510-19688-2-git-send-email-trond.myklebust@primarydata.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
+In-Reply-To: <1441397823-1203-10-git-send-email-Anna.Schumaker@Netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Sep 4, 2015, at 5:01 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
-
-> This reverts commit f895c53f8ace3c3e49ebf9def90e63fc6d46d2bf.
+On Fri, Sep 04, 2015 at 04:17:03PM -0400, Anna Schumaker wrote:
+> copy_file_range() is a new system call for copying ranges of data
+> completely in the kernel.  This gives filesystems an opportunity to
+> implement some kind of "copy acceleration", such as reflinks or
+> server-side-copy (in the case of NFS).
 > 
-> This commit causes a NFSv4 regression in that close()+unlink() can end
-> up failing. The reason is that we no longer have a guarantee that the
-> CLOSE has completed on the server, meaning that the subsequent call to
-> REMOVE may fail with NFS4ERR_FILE_OPEN if the server implements Windows
-> unlink() semantics.
-> 
-> Reported-by: <Olga Kornievskaia <aglo@umich.edu>
-> Cc: Chuck Lever <chuck.lever@oracle.com>
-
-I'm fine with this as long as the current NFSv3 behavior stays
-the same. I haven't tested, but I believe 1/2 will guarantee
-that NFSv3 close(2) behavior does not change.
-
-Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
-
-
-> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 > ---
-> fs/nfs/inode.c | 7 ++++++-
-> 1 file changed, 6 insertions(+), 1 deletion(-)
+>  man2/copy_file_range.2 | 168 +++++++++++++++++++++++++++++++++++++++++++++++++
+>  1 file changed, 168 insertions(+)
+>  create mode 100644 man2/copy_file_range.2
 > 
-> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-> index 6307d8de103d..326d9e10d833 100644
-> --- a/fs/nfs/inode.c
-> +++ b/fs/nfs/inode.c
-> @@ -853,6 +853,11 @@ void put_nfs_open_context(struct nfs_open_context *ctx)
-> }
-> EXPORT_SYMBOL_GPL(put_nfs_open_context);
-> 
-> +static void put_nfs_open_context_sync(struct nfs_open_context *ctx)
-> +{
-> +	__put_nfs_open_context(ctx, 1);
-> +}
+> diff --git a/man2/copy_file_range.2 b/man2/copy_file_range.2
+> new file mode 100644
+> index 0000000..4a4cb73
+> --- /dev/null
+> +++ b/man2/copy_file_range.2
+> @@ -0,0 +1,168 @@
+> +.\"This manpage is Copyright (C) 2015 Anna Schumaker <Anna.Schumaker@Netapp.com>
+> +.TH COPY 2 2015-8-31 "Linux" "Linux Programmer's Manual"
+> +.SH NAME
+> +copy_file_range \- Copy a range of data from one file to another
+> +.SH SYNOPSIS
+> +.nf
+> +.B #include <linux/copy.h>
+> +.B #include <sys/syscall.h>
+> +.B #include <unistd.h>
 > +
-> /*
->  * Ensure that mmap has a recent RPC credential for use when writing out
->  * shared pages
-> @@ -908,7 +913,7 @@ void nfs_file_clear_open_context(struct file *filp)
-> 		spin_lock(&inode->i_lock);
-> 		list_move_tail(&ctx->list, &NFS_I(inode)->open_files);
-> 		spin_unlock(&inode->i_lock);
-> -		__put_nfs_open_context(ctx, filp->f_flags & O_DIRECT ? 0 : 1);
-> +		put_nfs_open_context_sync(ctx);
-> 	}
-> }
-> 
+> +.BI "ssize_t syscall(__NR_copy_file_range, int " fd_in ", loff_t * " off_in ",
+> +.BI "                int " fd_out ", loff_t * " off_out ", size_t " len ",
+> +.BI "                unsigned int " flags );
+> +.fi
+> +.SH DESCRIPTION
+> +The
+> +.BR copy_file_range ()
+> +system call performs an in-kernel copy between two file descriptors
+> +without all that tedious mucking about in userspace.
+
+;)
+
+> +It copies up to
+> +.I len
+> +bytes of data from file descriptor
+> +.I fd_in
+> +to file descriptor
+> +.I fd_out
+> +at
+> +.IR off_out .
+> +The file descriptors must not refer to the same file.
+
+Why?  btrfs (and XFS) reflink can handle the case of a file sharing blocks
+with itself.
+
+> +
+> +The following semantics apply for
+> +.IR fd_in ,
+> +and similar statements apply to
+> +.IR off_out :
+> +.IP * 3
+> +If
+> +.I off_in
+> +is NULL, then bytes are read from
+> +.I fd_in
+> +starting from the current file offset and the current
+> +file offset is adjusted appropriately.
+> +.IP *
+> +If
+> +.I off_in
+> +is not NULL, then
+> +.I off_in
+> +must point to a buffer that specifies the starting
+> +offset where bytes from
+> +.I fd_in
+> +will be read.  The current file offset of
+> +.I fd_in
+> +is not changed, but
+> +.I off_in
+> +is adjusted appropriately.
+> +.PP
+> +The default behavior of
+> +.BR copy_file_range ()
+> +is filesystem specific, and might result in creating a
+> +copy-on-write reflink.
+> +In the event that a given filesystem does not implement
+> +any form of copy acceleration, the kernel will perform
+> +a deep copy of the requested range by reading bytes from
+
+I wonder if it's wise to allow deep copies -- what happens if len == 1T?
+Will this syscall just block for a really long time?
+
+> +.I fd_in
+> +and writing them to
+> +.IR fd_out .
+
+"...if COPY_REFLINK is not set in flags."
+
+> +
+> +Currently, Linux only supports the following flag:
+> +.TP 1.9i
+> +.B COPY_REFLINK
+> +Only perform the copy if the filesystem can do it as a reflink.
+> +Do not fall back on performing a deep copy.
+> +.SH RETURN VALUE
+> +Upon successful completion,
+> +.BR copy_file_range ()
+> +will return the number of bytes copied between files.
+> +This could be less than the length originally requested.
+> +
+> +On error,
+> +.BR copy_file_range ()
+> +returns \-1 and
+> +.I errno
+> +is set to indicate the error.
+> +.SH ERRORS
+> +.TP
+> +.B EBADF
+> +One or more file descriptors are not valid,
+> +or do not have proper read-write mode.
+
+"or fd_out is not opened for writing"?
+
+> +.TP
+> +.B EINVAL
+> +Requested range extends beyond the end of the file;
+> +.I flags
+> +argument is set to an invalid value.
+> +.TP
+> +.B EOPNOTSUPP
+> +.B COPY_REFLINK
+> +was specified in
+> +.IR flags ,
+> +but the target filesystem does not support reflinks.
+> +.TP
+> +.B EXDEV
+> +Target filesystem doesn't support cross-filesystem copies.
+> +.SH VERSIONS
+
+Perhaps this ought to list a few more errors (EIO, ENOSPC, ENOSYS, EPERM...)
+that can be returned?  (I was looking at the fallocate manpage.)
+
+--D
+
+> +The
+> +.BR copy_file_range ()
+> +system call first appeared in Linux 4.3.
+> +.SH CONFORMING TO
+> +The
+> +.BR copy_file_range ()
+> +system call is a nonstandard Linux extension.
+> +.SH EXAMPLE
+> +.nf
+> +
+> +#define _GNU_SOURCE
+> +#include <fcntl.h>
+> +#include <linux/copy.h>
+> +#include <stdio.h>
+> +#include <stdlib.h>
+> +#include <sys/stat.h>
+> +#include <sys/syscall.h>
+> +#include <unistd.h>
+> +
+> +
+> +int main(int argc, char **argv)
+> +{
+> +    int fd_in, fd_out;
+> +    struct stat stat;
+> +    loff_t len, ret;
+> +
+> +    if (argc != 3) {
+> +        fprintf(stderr, "Usage: %s <pathname> <pathname>\n", argv[0]);
+> +        exit(EXIT_FAILURE);
+> +    }
+> +
+> +    fd_in = open(argv[1], O_RDONLY);
+> +    if (fd_in == -1) {
+> +        perror("open (argv[1])");
+> +        exit(EXIT_FAILURE);
+> +    }
+> +
+> +    if (fstat(fd_in, &stat) == -1) {
+> +        perror("fstat");
+> +        exit(EXIT_FAILURE);
+> +    }
+> +    len = stat.st_size;
+> +
+> +    fd_out = open(argv[2], O_WRONLY | O_CREAT, 0644);
+> +    if (fd_out == -1) {
+> +        perror("open (argv[2])");
+> +        exit(EXIT_FAILURE);
+> +    }
+> +
+> +    do {
+> +        ret = syscall(__NR_copy_file_range, fd_in, NULL,
+> +                      fd_out, NULL, len, 0);
+> +        if (ret == -1) {
+> +            perror("copy_file_range");
+> +            exit(EXIT_FAILURE);
+> +        }
+> +
+> +        len -= ret;
+> +    } while (len > 0);
+> +
+> +    close(fd_in);
+> +    close(fd_out);
+> +    exit(EXIT_SUCCESS);
+> +}
+> +.fi
+> +.SH SEE ALSO
+> +.BR splice (2)
 > -- 
-> 2.4.3
+> 2.5.1
 > 
-
---
-Chuck Lever
-
-
-
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
