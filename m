@@ -1,17 +1,17 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx144.netapp.com ([216.240.21.25]:4785 "EHLO mx144.netapp.com"
+Received: from mx142.netapp.com ([216.240.21.19]:52316 "EHLO mx142.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760576AbbIDURU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 4 Sep 2015 16:17:20 -0400
+	id S1760608AbbIDUR0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 4 Sep 2015 16:17:26 -0400
 From: Anna Schumaker <Anna.Schumaker@netapp.com>
 To: <linux-nfs@vger.kernel.org>, <linux-btrfs@vger.kernel.org>,
         <linux-fsdevel@vger.kernel.org>, <linux-api@vger.kernel.org>,
         <zab@zabbo.net>, <viro@zeniv.linux.org.uk>, <clm@fb.com>,
         <darrick.wong@oracle.com>, <mtk.manpages@gmail.com>,
         <andros@netapp.com>, <hch@infradead.org>
-Subject: [PATCH v1 7/8] vfs: Copy should use file_out rather than file_in
-Date: Fri, 4 Sep 2015 16:17:01 -0400
-Message-ID: <1441397823-1203-8-git-send-email-Anna.Schumaker@Netapp.com>
+Subject: [PATCH v1 4/8] btrfs: Add mountpoint checking during btrfs_copy_file_range
+Date: Fri, 4 Sep 2015 16:16:58 -0400
+Message-ID: <1441397823-1203-5-git-send-email-Anna.Schumaker@Netapp.com>
 In-Reply-To: <1441397823-1203-1-git-send-email-Anna.Schumaker@Netapp.com>
 References: <1441397823-1203-1-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
@@ -19,40 +19,29 @@ Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The way to think about this is that the destination filesystem reads the
-data from the source file and processes it accordingly.  This is
-especially important to avoid an infinate loop when doing a "server to
-server" copy on NFS.
+We need to verify that both the source and the destination files are
+part of the same filesystem, otherwise we can't create a reflink.
 
 Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 ---
- fs/read_write.c | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+ fs/btrfs/ioctl.c | 4 ++++
+ 1 file changed, 4 insertions(+)
 
-diff --git a/fs/read_write.c b/fs/read_write.c
-index 59637ed..9dafb7f 100644
---- a/fs/read_write.c
-+++ b/fs/read_write.c
-@@ -1355,7 +1355,7 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
- 	if (!(file_in->f_mode & FMODE_READ) ||
- 	    !(file_out->f_mode & FMODE_WRITE) ||
- 	    (file_out->f_flags & O_APPEND) ||
--	    !file_in->f_op || !file_in->f_op->copy_file_range)
-+	    !file_out->f_op || !file_out->f_op->copy_file_range)
- 		return -EBADF;
+diff --git a/fs/btrfs/ioctl.c b/fs/btrfs/ioctl.c
+index 62ae286..9c0c955 100644
+--- a/fs/btrfs/ioctl.c
++++ b/fs/btrfs/ioctl.c
+@@ -3856,6 +3856,10 @@ ssize_t btrfs_copy_file_range(struct file *file_in, loff_t pos_in,
+ {
+ 	ssize_t ret;
  
- 	inode_in = file_inode(file_in);
-@@ -1377,8 +1377,8 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
- 	if (ret)
- 		return ret;
- 
--	ret = file_in->f_op->copy_file_range(file_in, pos_in, file_out, pos_out,
--					     len, flags);
-+	ret = file_out->f_op->copy_file_range(file_in, pos_in, file_out, pos_out,
-+					      len, flags);
- 	if (ret > 0) {
- 		fsnotify_access(file_in);
- 		add_rchar(current, ret);
++	if (inode_in->i_sb != inode_out->i_sb ||
++	    file_in->f_path.mnt != file_out->f_path.mnt)
++		return -EXDEV;
++
+ 	ret = btrfs_clone_files(file_out, file_in, pos_in, len, pos_out);
+ 	if (ret == 0)
+ 		ret = len;
 -- 
 2.5.1
 
