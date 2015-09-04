@@ -1,15 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx142.netapp.com ([216.240.21.19]:61117 "EHLO mx142.netapp.com"
+Received: from mx141.netapp.com ([216.240.21.12]:2138 "EHLO mx141.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932865AbbIDRaE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 4 Sep 2015 13:30:04 -0400
+	id S932892AbbIDRaG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 4 Sep 2015 13:30:06 -0400
 From: <andros@netapp.com>
 To: <trond.myklebust@primarydata.com>
 CC: <anna.schumaker@netapp.com>, <bfields@fieldses.org>,
-        <linux-nfs@vger.kernel.org>, Andy Adamson <andros@netapp.com>
-Subject: [PATCH Version 2 11/16] NFSD generalize nfsd4_compound_state flag names
-Date: Fri, 4 Sep 2015 13:29:33 -0400
-Message-ID: <1441387778-16465-12-git-send-email-andros@netapp.com>
+        <linux-nfs@vger.kernel.org>, Olga Kornievskaia <kolga@netapp.com>
+Subject: [PATCH Version 2 14/16] NFS in copy use stateid returned by copy_notify
+Date: Fri, 4 Sep 2015 13:29:36 -0400
+Message-ID: <1441387778-16465-15-git-send-email-andros@netapp.com>
 In-Reply-To: <1441387778-16465-1-git-send-email-andros@netapp.com>
 References: <1441387778-16465-1-git-send-email-andros@netapp.com>
 MIME-Version: 1.0
@@ -17,93 +17,39 @@ Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+From: Olga Kornievskaia <kolga@netapp.com>
 
-Allow for sid_flag field non-stateid use.
-
-Signed-off-by: Andy Adamson <andros@netapp.com>
+Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
 ---
- fs/nfsd/nfs4proc.c  | 8 ++++----
- fs/nfsd/nfs4state.c | 7 ++++---
- fs/nfsd/xdr4.h      | 6 +++---
- 3 files changed, 11 insertions(+), 10 deletions(-)
+ fs/nfs/nfs42proc.c | 10 ++++++----
+ 1 file changed, 6 insertions(+), 4 deletions(-)
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index ef6409e..f81d050 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -538,9 +538,9 @@ nfsd4_restorefh(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		return nfserr_restorefh;
- 
- 	fh_dup2(&cstate->current_fh, &cstate->save_fh);
--	if (HAS_STATE_ID(cstate, SAVED_STATE_ID_FLAG)) {
-+	if (HAS_CSTATE_FLAG(cstate, SAVED_STATE_ID_FLAG)) {
- 		memcpy(&cstate->current_stateid, &cstate->save_stateid, sizeof(stateid_t));
--		SET_STATE_ID(cstate, CURRENT_STATE_ID_FLAG);
-+		SET_CSTATE_FLAG(cstate, CURRENT_STATE_ID_FLAG);
+diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
+index 42cab7e..e33734d 100644
+--- a/fs/nfs/nfs42proc.c
++++ b/fs/nfs/nfs42proc.c
+@@ -191,15 +191,17 @@ static ssize_t nfs42_proc_copy(struct file *src, loff_t pos_src,
+ 			args.cp_src[0].u.nl4_addr.na_netid,
+ 			args.cp_src[0].u.nl4_addr.na_uaddr_len,
+ 			args.cp_src[0].u.nl4_addr.na_uaddr);
++
++		nfs4_stateid_copy(&args.src_stateid, &cn_res->cnr_stateid);
++	} else {
++		status = nfs42_set_rw_stateid(&args.src_stateid, src, FMODE_READ);
++		if (status)
++			return status;
  	}
- 	return nfs_ok;
- }
-@@ -553,9 +553,9 @@ nfsd4_savefh(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		return nfserr_nofilehandle;
  
- 	fh_dup2(&cstate->save_fh, &cstate->current_fh);
--	if (HAS_STATE_ID(cstate, CURRENT_STATE_ID_FLAG)) {
-+	if (HAS_CSTATE_FLAG(cstate, CURRENT_STATE_ID_FLAG)) {
- 		memcpy(&cstate->save_stateid, &cstate->current_stateid, sizeof(stateid_t));
--		SET_STATE_ID(cstate, SAVED_STATE_ID_FLAG);
-+		SET_CSTATE_FLAG(cstate, SAVED_STATE_ID_FLAG);
- 	}
- 	return nfs_ok;
- }
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 7b0059d..96de0d3 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -6660,7 +6660,8 @@ nfs4_state_shutdown(void)
- static void
- get_stateid(struct nfsd4_compound_state *cstate, stateid_t *stateid)
- {
--	if (HAS_STATE_ID(cstate, CURRENT_STATE_ID_FLAG) && CURRENT_STATEID(stateid))
-+	if (HAS_CSTATE_FLAG(cstate, CURRENT_STATE_ID_FLAG) &&
-+	    CURRENT_STATEID(stateid))
- 		memcpy(stateid, &cstate->current_stateid, sizeof(stateid_t));
- }
+ 	if (!(server->caps & NFS_CAP_COPY))
+ 		return -ENOTSUPP;
  
-@@ -6669,14 +6670,14 @@ put_stateid(struct nfsd4_compound_state *cstate, stateid_t *stateid)
- {
- 	if (cstate->minorversion) {
- 		memcpy(&cstate->current_stateid, stateid, sizeof(stateid_t));
--		SET_STATE_ID(cstate, CURRENT_STATE_ID_FLAG);
-+		SET_CSTATE_FLAG(cstate, CURRENT_STATE_ID_FLAG);
- 	}
- }
- 
- void
- clear_current_stateid(struct nfsd4_compound_state *cstate)
- {
--	CLEAR_STATE_ID(cstate, CURRENT_STATE_ID_FLAG);
-+	CLEAR_CSTATE_FLAG(cstate, CURRENT_STATE_ID_FLAG);
- }
- 
- /*
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index e4461f1..2471e34 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -47,9 +47,9 @@
- #define CURRENT_STATE_ID_FLAG (1<<0)
- #define SAVED_STATE_ID_FLAG (1<<1)
- 
--#define SET_STATE_ID(c, f) ((c)->sid_flags |= (f))
--#define HAS_STATE_ID(c, f) ((c)->sid_flags & (f))
--#define CLEAR_STATE_ID(c, f) ((c)->sid_flags &= ~(f))
-+#define SET_CSTATE_FLAG(c, f) ((c)->sid_flags |= (f))
-+#define HAS_CSTATE_FLAG(c, f) ((c)->sid_flags & (f))
-+#define CLEAR_CSTATE_FLAG(c, f) ((c)->sid_flags &= ~(f))
- 
- struct nfsd4_compound_state {
- 	struct svc_fh		current_fh;
+-	status = nfs42_set_rw_stateid(&args.src_stateid, src, FMODE_READ);
+-	if (status)
+-		return status;
+-
+ 	status = nfs42_set_rw_stateid(&args.dst_stateid, dst, FMODE_WRITE);
+ 	if (status)
+ 		return status;
 -- 
 1.8.3.1
 
