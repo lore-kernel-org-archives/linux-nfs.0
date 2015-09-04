@@ -1,17 +1,17 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx142.netapp.com ([216.240.21.19]:10583 "EHLO mx142.netapp.com"
+Received: from mx144.netapp.com ([216.240.21.25]:20051 "EHLO mx144.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760607AbbIDURZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 4 Sep 2015 16:17:25 -0400
+	id S1760576AbbIDURN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 4 Sep 2015 16:17:13 -0400
 From: Anna Schumaker <Anna.Schumaker@netapp.com>
 To: <linux-nfs@vger.kernel.org>, <linux-btrfs@vger.kernel.org>,
         <linux-fsdevel@vger.kernel.org>, <linux-api@vger.kernel.org>,
         <zab@zabbo.net>, <viro@zeniv.linux.org.uk>, <clm@fb.com>,
         <darrick.wong@oracle.com>, <mtk.manpages@gmail.com>,
         <andros@netapp.com>, <hch@infradead.org>
-Subject: [PATCH v1 8/8] vfs: Fall back on splice if no copy function defined
-Date: Fri, 4 Sep 2015 16:17:02 -0400
-Message-ID: <1441397823-1203-9-git-send-email-Anna.Schumaker@Netapp.com>
+Subject: [PATCH v1 3/8] btrfs: add .copy_file_range file operation
+Date: Fri, 4 Sep 2015 16:16:57 -0400
+Message-ID: <1441397823-1203-4-git-send-email-Anna.Schumaker@Netapp.com>
 In-Reply-To: <1441397823-1203-1-git-send-email-Anna.Schumaker@Netapp.com>
 References: <1441397823-1203-1-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
@@ -19,106 +19,180 @@ Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The NFS server will need a fallback for filesystems that don't have any
-kind of copy acceleration yet, and it should be generally useful to have
-an in-kernel copy to avoid lots of switches between kernel and
-user space.  Users who only want a reflink can pass the COPY_REFLINK
-flag to disable the fallback.
+From: Zach Brown <zab@redhat.com>
 
+This rearranges the existing COPY_RANGE ioctl implementation so that the
+.copy_file_range file operation can call the core loop that copies file
+data extent items.
+
+The extent copying loop is lifted up into its own function.  It retains
+the core btrfs error checks that should be shared.
+
+Signed-off-by: Zach Brown <zab@redhat.com>
 Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 ---
- fs/read_write.c           | 16 ++++++++++++----
- include/linux/copy.h      |  6 ++++++
- include/uapi/linux/Kbuild |  1 +
- include/uapi/linux/copy.h |  6 ++++++
- 4 files changed, 25 insertions(+), 4 deletions(-)
- create mode 100644 include/linux/copy.h
- create mode 100644 include/uapi/linux/copy.h
+ fs/btrfs/ctree.h |  3 ++
+ fs/btrfs/file.c  |  1 +
+ fs/btrfs/ioctl.c | 91 ++++++++++++++++++++++++++++++++------------------------
+ 3 files changed, 56 insertions(+), 39 deletions(-)
 
-diff --git a/fs/read_write.c b/fs/read_write.c
-index 9dafb7f..bd7e7e2 100644
---- a/fs/read_write.c
-+++ b/fs/read_write.c
-@@ -7,6 +7,7 @@
- #include <linux/slab.h> 
- #include <linux/stat.h>
- #include <linux/fcntl.h>
-+#include <linux/copy.h>
- #include <linux/file.h>
- #include <linux/uio.h>
- #include <linux/fsnotify.h>
-@@ -1342,7 +1343,7 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
- 	struct inode *inode_out;
- 	ssize_t ret;
+diff --git a/fs/btrfs/ctree.h b/fs/btrfs/ctree.h
+index aac314e..e09d4e2 100644
+--- a/fs/btrfs/ctree.h
++++ b/fs/btrfs/ctree.h
+@@ -4000,6 +4000,9 @@ int btrfs_dirty_pages(struct btrfs_root *root, struct inode *inode,
+ 		      loff_t pos, size_t write_bytes,
+ 		      struct extent_state **cached);
+ int btrfs_fdatawrite_range(struct inode *inode, loff_t start, loff_t end);
++ssize_t btrfs_copy_file_range(struct file *file_in, loff_t pos_in,
++			      struct file *file_out, loff_t pos_out,
++			      size_t len, int flags);
  
--	if (flags)
-+	if (!((flags == 0) || (flags == COPY_REFLINK)))
- 		return -EINVAL;
+ /* tree-defrag.c */
+ int btrfs_defrag_leaves(struct btrfs_trans_handle *trans,
+diff --git a/fs/btrfs/file.c b/fs/btrfs/file.c
+index b823fac..b05449c 100644
+--- a/fs/btrfs/file.c
++++ b/fs/btrfs/file.c
+@@ -2816,6 +2816,7 @@ const struct file_operations btrfs_file_operations = {
+ #ifdef CONFIG_COMPAT
+ 	.compat_ioctl	= btrfs_ioctl,
+ #endif
++	.copy_file_range = btrfs_copy_file_range,
+ };
  
- 	/* copy_file_range allows full ssize_t len, ignoring MAX_RW_COUNT  */
-@@ -1355,7 +1356,7 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
- 	if (!(file_in->f_mode & FMODE_READ) ||
- 	    !(file_out->f_mode & FMODE_WRITE) ||
- 	    (file_out->f_flags & O_APPEND) ||
--	    !file_out->f_op || !file_out->f_op->copy_file_range)
-+	    !file_in->f_op)
- 		return -EBADF;
+ void btrfs_auto_defrag_exit(void)
+diff --git a/fs/btrfs/ioctl.c b/fs/btrfs/ioctl.c
+index 0770c91..62ae286 100644
+--- a/fs/btrfs/ioctl.c
++++ b/fs/btrfs/ioctl.c
+@@ -3719,17 +3719,16 @@ out:
+ 	return ret;
+ }
  
- 	inode_in = file_inode(file_in);
-@@ -1377,8 +1378,15 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
- 	if (ret)
- 		return ret;
+-static noinline long btrfs_ioctl_clone(struct file *file, unsigned long srcfd,
+-				       u64 off, u64 olen, u64 destoff)
++static noinline int btrfs_clone_files(struct file *file, struct file *file_src,
++					u64 off, u64 olen, u64 destoff)
+ {
+ 	struct inode *inode = file_inode(file);
++	struct inode *src = file_inode(file_src);
+ 	struct btrfs_root *root = BTRFS_I(inode)->root;
+-	struct fd src_file;
+-	struct inode *src;
+ 	int ret;
+ 	u64 len = olen;
+ 	u64 bs = root->fs_info->sb->s_blocksize;
+-	int same_inode = 0;
++	int same_inode = src == inode;
  
--	ret = file_out->f_op->copy_file_range(file_in, pos_in, file_out, pos_out,
--					      len, flags);
-+	ret = -EOPNOTSUPP;
-+	if (file_out->f_op->copy_file_range)
-+		ret = file_out->f_op->copy_file_range(file_in, pos_in, file_out,
-+						      pos_out, len, flags);
-+	if ((ret < 0) && !(flags & COPY_REFLINK)) {
-+		file_start_write(file_out);
-+		ret = do_splice_direct(file_in, &pos_in, file_out, &pos_out, len, 0);
-+		file_end_write(file_out);
+ 	/*
+ 	 * TODO:
+@@ -3742,49 +3741,20 @@ static noinline long btrfs_ioctl_clone(struct file *file, unsigned long srcfd,
+ 	 *   be either compressed or non-compressed.
+ 	 */
+ 
+-	/* the destination must be opened for writing */
+-	if (!(file->f_mode & FMODE_WRITE) || (file->f_flags & O_APPEND))
+-		return -EINVAL;
+-
+ 	if (btrfs_root_readonly(root))
+ 		return -EROFS;
+ 
+-	ret = mnt_want_write_file(file);
+-	if (ret)
+-		return ret;
+-
+-	src_file = fdget(srcfd);
+-	if (!src_file.file) {
+-		ret = -EBADF;
+-		goto out_drop_write;
+-	}
+-
+-	ret = -EXDEV;
+-	if (src_file.file->f_path.mnt != file->f_path.mnt)
+-		goto out_fput;
+-
+-	src = file_inode(src_file.file);
+-
+-	ret = -EINVAL;
+-	if (src == inode)
+-		same_inode = 1;
+-
+-	/* the src must be open for reading */
+-	if (!(src_file.file->f_mode & FMODE_READ))
+-		goto out_fput;
++	if (file_src->f_path.mnt != file->f_path.mnt ||
++	    src->i_sb != inode->i_sb)
++		return -EXDEV;
+ 
+ 	/* don't make the dst file partly checksummed */
+ 	if ((BTRFS_I(src)->flags & BTRFS_INODE_NODATASUM) !=
+ 	    (BTRFS_I(inode)->flags & BTRFS_INODE_NODATASUM))
+-		goto out_fput;
++		return -EINVAL;
+ 
+-	ret = -EISDIR;
+ 	if (S_ISDIR(src->i_mode) || S_ISDIR(inode->i_mode))
+-		goto out_fput;
+-
+-	ret = -EXDEV;
+-	if (src->i_sb != inode->i_sb)
+-		goto out_fput;
++		return -EISDIR;
+ 
+ 	if (!same_inode) {
+ 		if (inode < src) {
+@@ -3877,6 +3847,49 @@ out_unlock:
+ 	} else {
+ 		mutex_unlock(&src->i_mutex);
+ 	}
++	return ret;
++}
++
++ssize_t btrfs_copy_file_range(struct file *file_in, loff_t pos_in,
++			      struct file *file_out, loff_t pos_out,
++			      size_t len, int flags)
++{
++	ssize_t ret;
++
++	ret = btrfs_clone_files(file_out, file_in, pos_in, len, pos_out);
++	if (ret == 0)
++		ret = len;
++	return ret;
++}
++
++static noinline long btrfs_ioctl_clone(struct file *file, unsigned long srcfd,
++				       u64 off, u64 olen, u64 destoff)
++{
++	struct fd src_file;
++	int ret;
++
++	/* the destination must be opened for writing */
++	if (!(file->f_mode & FMODE_WRITE) || (file->f_flags & O_APPEND))
++		return -EINVAL;
++
++	ret = mnt_want_write_file(file);
++	if (ret)
++		return ret;
++
++	src_file = fdget(srcfd);
++	if (!src_file.file) {
++		ret = -EBADF;
++		goto out_drop_write;
 +	}
- 	if (ret > 0) {
- 		fsnotify_access(file_in);
- 		add_rchar(current, ret);
-diff --git a/include/linux/copy.h b/include/linux/copy.h
-new file mode 100644
-index 0000000..fd54543
---- /dev/null
-+++ b/include/linux/copy.h
-@@ -0,0 +1,6 @@
-+#ifndef _LINUX_COPY_H
-+#define _LINUX_COPY_H
 +
-+#include <uapi/linux/copy.h>
++	/* the src must be open for reading */
++	if (!(src_file.file->f_mode & FMODE_READ)) {
++		ret = -EINVAL;
++		goto out_fput;
++	}
 +
-+#endif /* _LINUX_COPY_H */
-diff --git a/include/uapi/linux/Kbuild b/include/uapi/linux/Kbuild
-index 1ff9942..b6109f3 100644
---- a/include/uapi/linux/Kbuild
-+++ b/include/uapi/linux/Kbuild
-@@ -90,6 +90,7 @@ header-y += coda_psdev.h
- header-y += coff.h
- header-y += connector.h
- header-y += const.h
-+header-y += copy.h
- header-y += cramfs_fs.h
- header-y += cuda.h
- header-y += cyclades.h
-diff --git a/include/uapi/linux/copy.h b/include/uapi/linux/copy.h
-new file mode 100644
-index 0000000..68f3d65
---- /dev/null
-+++ b/include/uapi/linux/copy.h
-@@ -0,0 +1,6 @@
-+#ifndef _UAPI_LINUX_COPY_H
-+#define _UAPI_LINUX_COPY_H
++	ret = btrfs_clone_files(file, src_file.file, off, olen, destoff);
 +
-+#define COPY_REFLINK	1	/* only perform a reflink */
-+
-+#endif /* _UAPI_LINUX_COPY_H */
+ out_fput:
+ 	fdput(src_file);
+ out_drop_write:
 -- 
 2.5.1
 
