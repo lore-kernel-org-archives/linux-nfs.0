@@ -1,203 +1,73 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx143.netapp.com ([216.240.21.24]:38404 "EHLO mx143.netapp.com"
+Received: from mx144.netapp.com ([216.240.21.25]:44044 "EHLO mx144.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933109AbbIDTH5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 4 Sep 2015 15:07:57 -0400
+	id S932596AbbIDTIJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 4 Sep 2015 15:08:09 -0400
 From: Anna Schumaker <Anna.Schumaker@netapp.com>
 To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
 CC: <Anna.Schumaker@netapp.com>
-Subject: [PATCH v1 4/5] SUNRPC: Add the ability to shift data to a specific offset
-Date: Fri, 4 Sep 2015 15:07:48 -0400
-Message-ID: <1441393669-30280-5-git-send-email-Anna.Schumaker@Netapp.com>
-In-Reply-To: <1441393669-30280-1-git-send-email-Anna.Schumaker@Netapp.com>
-References: <1441393669-30280-1-git-send-email-Anna.Schumaker@Netapp.com>
+Subject: [PATCH v1 0/5] NFS: Add READ_PLUS support
+Date: Fri, 4 Sep 2015 15:07:44 -0400
+Message-ID: <1441393669-30280-1-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
 Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Expanding holes tends to put the data content a few bytes to the right
-of where we want it.  This patch implements a left-shift operation to
-line everything up properly.
+This is an updated posting of my NFS v4.2 READ_PLUS patches from several
+months ago, and it should apply against current development trees.
 
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
----
- include/linux/sunrpc/xdr.h |   1 +
- net/sunrpc/xdr.c           | 135 +++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 136 insertions(+)
+I tested this code  using dd to read a file between two KVMs, and I compared
+the reported transfer rates against various NFS versions and the local XFS
+filesystem.  I tested using four 5 GB files, the first two simply entirely
+data or entirely hole.  The others alternate between data and hole pages, at
+either 4 KB (one page) or 8 KB (two page) intervals.
 
-diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
-index 81c5a3f..3670bf6 100644
---- a/include/linux/sunrpc/xdr.h
-+++ b/include/linux/sunrpc/xdr.h
-@@ -230,6 +230,7 @@ extern unsigned int xdr_read_pages(struct xdr_stream *xdr, unsigned int len);
- extern void xdr_enter_page(struct xdr_stream *xdr, unsigned int len);
- extern int xdr_process_buf(struct xdr_buf *buf, unsigned int offset, unsigned int len, int (*actor)(struct scatterlist *, void *), void *data);
- extern size_t xdr_expand_hole(struct xdr_stream *, size_t, size_t);
-+extern uint64_t xdr_align_data(struct xdr_stream *, uint64_t, uint64_t);
- 
- #endif /* __KERNEL__ */
- 
-diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
-index be154e7..7f64274 100644
---- a/net/sunrpc/xdr.c
-+++ b/net/sunrpc/xdr.c
-@@ -16,6 +16,9 @@
- #include <linux/sunrpc/xdr.h>
- #include <linux/sunrpc/msg_prot.h>
- 
-+static void _copy_to_pages(struct page **, size_t, const char *, size_t);
-+
-+
- /*
-  * XDR functions for basic NFS types
-  */
-@@ -253,6 +256,117 @@ _shift_data_right(struct xdr_buf *buf, size_t to, size_t from, size_t len)
- 				shift);
- }
- 
-+
-+/**
-+ * _shift_data_left_pages
-+ * @pages: vector of pages containing both the source and dest memory area.
-+ * @pgto_base: page vector address of destination
-+ * @pgfrom_base: page vector address of source
-+ * @len: number of bytes to copy
-+ *
-+ * Note: the addresses pgto_base and pgfrom_base are both calculated in
-+ *       the same way:
-+ *            if a memory area starts at byte 'base' in page 'pages[i]',
-+ *            then its address is given as (i << PAGE_CACHE_SHIFT) + base
-+ * Alse note: pgto_base must be < pgfrom_base, but the memory areas
-+ * 	they point to may overlap.
-+ */
-+static void
-+_shift_data_left_pages(struct page **pages, size_t pgto_base,
-+			size_t pgfrom_base, size_t len)
-+{
-+	struct page **pgfrom, **pgto;
-+	char *vfrom, *vto;
-+	size_t copy;
-+
-+	BUG_ON(pgfrom_base <= pgto_base);
-+
-+	pgto = pages + (pgto_base >> PAGE_CACHE_SHIFT);
-+	pgfrom = pages + (pgfrom_base >> PAGE_CACHE_SHIFT);
-+
-+	pgto_base = pgto_base % PAGE_CACHE_SIZE;
-+	pgfrom_base = pgfrom_base % PAGE_CACHE_SIZE;
-+
-+	do {
-+		if (pgto_base >= PAGE_CACHE_SIZE) {
-+			pgto_base = 0;
-+			pgto++;
-+		}
-+		if (pgfrom_base >= PAGE_CACHE_SIZE){
-+			pgfrom_base = 0;
-+			pgfrom++;
-+		}
-+
-+		copy = len;
-+		if (copy > (PAGE_CACHE_SIZE - pgto_base))
-+			copy = PAGE_CACHE_SIZE - pgto_base;
-+		if (copy > (PAGE_CACHE_SIZE - pgfrom_base))
-+			copy = PAGE_CACHE_SIZE - pgfrom_base;
-+
-+		if (pgto_base == 131056)
-+			break;
-+
-+		vto = kmap_atomic(*pgto);
-+		if (*pgto != *pgfrom) {
-+			vfrom = kmap_atomic(*pgfrom);
-+			memcpy(vto + pgto_base, vfrom + pgfrom_base, copy);
-+			kunmap_atomic(vfrom);
-+		} else
-+			memmove(vto + pgto_base, vto + pgfrom_base, copy);
-+		flush_dcache_page(*pgto);
-+		kunmap_atomic(vto);
-+
-+		pgto_base += copy;
-+		pgfrom_base += copy;
-+
-+	} while ((len -= copy) != 0);
-+}
-+
-+static void
-+_shift_data_left_tail(struct xdr_buf *buf, size_t pgto_base,
-+		      size_t tail_from, size_t len)
-+{
-+	struct kvec *tail = buf->tail;
-+	size_t shift = len;
-+
-+	if (len == 0)
-+		return;
-+	if (pgto_base + len > buf->page_len)
-+		shift = buf->page_len - pgto_base;
-+
-+	_copy_to_pages(buf->pages,
-+			buf->page_base + pgto_base,
-+			(char *)(tail->iov_base + tail_from),
-+			shift);
-+
-+	memmove((char *)tail->iov_base, tail->iov_base + tail_from + shift, shift);
-+	tail->iov_len -= (tail_from + shift);
-+}
-+
-+static void
-+_shift_data_left(struct xdr_buf *buf, size_t to, size_t from, size_t len)
-+{
-+	size_t shift = len;
-+
-+	if (from < buf->page_len) {
-+		shift = min(len, buf->page_len - from);
-+		_shift_data_left_pages(buf->pages,
-+					buf->page_base + to,
-+					buf->page_base + from,
-+					shift);
-+		to += shift;
-+		from += shift;
-+		shift = len - shift;
-+	}
-+
-+	if (shift == 0)
-+		return;
-+	if (from >= buf->page_len)
-+		from -= buf->page_len;
-+
-+	_shift_data_left_tail(buf, to, from, shift);
-+}
-+
- /**
-  * _copy_to_pages
-  * @pages: array of pages
-@@ -1075,6 +1189,27 @@ size_t xdr_expand_hole(struct xdr_stream *xdr, size_t offset, size_t length)
- }
- EXPORT_SYMBOL_GPL(xdr_expand_hole);
- 
-+uint64_t xdr_align_data(struct xdr_stream *xdr, uint64_t offset, uint64_t length)
-+{
-+	struct xdr_buf *buf = xdr->buf;
-+	size_t from = offset;
-+
-+	if (offset + length > buf->page_len)
-+		length = buf->page_len - offset;
-+
-+	if (offset == 0)
-+		xdr_align_pages(xdr, xdr->nwords << 2);
-+	else {
-+		from = xdr_page_pos(xdr);
-+		_shift_data_left(buf, offset, from, length);
-+	}
-+
-+	xdr->nwords -= XDR_QUADLEN(length);
-+	xdr_set_page(xdr, from + length);
-+	return length;
-+}
-+EXPORT_SYMBOL_GPL(xdr_align_data);
-+
- /**
-  * xdr_enter_page - decode data from the XDR page
-  * @xdr: pointer to xdr_stream struct
+I found that dd uses a default block size of 512 bytes, which could cause
+reads over NFS to take forever.  I bumped this up to 128K during my testing
+by passing the argument "bs=128K" to dd.  My results are below:
+
+       |    XFS     |   NFS v3   |  NFS v4.0  |  NFS v4.1  |  NFS v4.2
+-------|------------|------------|------------|------------|------------
+  Data |  2.7 GB/s  |  845 MB/s  |  864 MB/s  |  847 MB/s  |  807 MB/s
+  Hole |  4.1 GB/s  |  980 MB/s  |  1.1 GB/s  |  989 MB/s  |  2.3 GB/s
+1 Page |  1.6 GB/s  |  681 MB/s  |  683 MB/s  |  688 MB/s  |  672 MB/s
+2 Page |  2.5 GB/s  |  760 MB/s  |  760 MB/s  |  755 MB/s  |  836 MB/s
+
+The pure data case is slightly slower on NFS v4.2, most likely due to
+additional server-side lseeks while reading.  The alternating 1 page
+regions test didn't see as large a slowdown, most likely because of to
+the additional savings by not transferring zeroes over the wire.  Any
+slowdown caused by additional seeks is more than made up for by the time
+we reach 2 page intervals.
+
+These patches and the corresponding server changes are available in the
+[read_plus] branch of
+
+	git://git.linux-nfs.org/projects/anna/linux-nfs.git
+
+Questions?  Comments?  Thoughts?
+
+Anna
+
+
+Anna Schumaker (5):
+  SUNRPC: Split out a function for setting current page
+  SUNRPC: Add the ability to expand holes in data pages
+  NFS: Add basic READ_PLUS support
+  SUNRPC: Add the ability to shift data to a specific offset
+  NFS: Add support for decoding multiple segments
+
+ fs/nfs/nfs42xdr.c          | 162 ++++++++++++++++++++++++++++++
+ fs/nfs/nfs4proc.c          |  32 +++++-
+ fs/nfs/nfs4xdr.c           |   1 +
+ include/linux/nfs4.h       |   1 +
+ include/linux/nfs_fs_sb.h  |   1 +
+ include/linux/nfs_xdr.h    |   2 +-
+ include/linux/sunrpc/xdr.h |   2 +
+ net/sunrpc/xdr.c           | 243 ++++++++++++++++++++++++++++++++++++++++++++-
+ 8 files changed, 438 insertions(+), 6 deletions(-)
+
 -- 
 2.5.1
 
