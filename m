@@ -1,56 +1,36 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx144.netapp.com ([216.240.21.25]:20051 "EHLO mx144.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760370AbbIDURL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 4 Sep 2015 16:17:11 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-To: <linux-nfs@vger.kernel.org>, <linux-btrfs@vger.kernel.org>,
-        <linux-fsdevel@vger.kernel.org>, <linux-api@vger.kernel.org>,
-        <zab@zabbo.net>, <viro@zeniv.linux.org.uk>, <clm@fb.com>,
-        <darrick.wong@oracle.com>, <mtk.manpages@gmail.com>,
-        <andros@netapp.com>, <hch@infradead.org>
-Subject: [PATCH v1 2/8] x86: add sys_copy_file_range to syscall tables
-Date: Fri, 4 Sep 2015 16:16:56 -0400
-Message-ID: <1441397823-1203-3-git-send-email-Anna.Schumaker@Netapp.com>
-In-Reply-To: <1441397823-1203-1-git-send-email-Anna.Schumaker@Netapp.com>
-References: <1441397823-1203-1-git-send-email-Anna.Schumaker@Netapp.com>
+Received: from mail-ob0-f180.google.com ([209.85.214.180]:34653 "EHLO
+	mail-ob0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1760286AbbIDUjp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Sep 2015 16:39:45 -0400
+Received: by obcts10 with SMTP id ts10so26129475obc.1
+        for <linux-nfs@vger.kernel.org>; Fri, 04 Sep 2015 13:39:45 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain
+In-Reply-To: <DA83C389-2E91-4A35-ACF5-F14F33D50944@oracle.com>
+References: <1441394647-16412-1-git-send-email-trond.myklebust@primarydata.com>
+	<DA83C389-2E91-4A35-ACF5-F14F33D50944@oracle.com>
+Date: Fri, 4 Sep 2015 16:39:44 -0400
+Message-ID: <CAHQdGtQJEvrwQP_J1xEnzg96YmHbK2LKHDrkYOsaE+pna4Z78w@mail.gmail.com>
+Subject: Re: [PATCH 1/2] NFS: Optimise away the close-to-open getattr if there
+ is no cached data
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Olga Kornievskaia <aglo@umich.edu>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Zach Brown <zab@redhat.com>
+On Fri, Sep 4, 2015 at 3:38 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>
+> On Sep 4, 2015, at 3:24 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+>
+>> If there is no cached data, then there is no need to track the file
+>> change attribute on close.
+>
+> This makes sense. nfs_close_context() is only used by NFSv2
+> and NFSv3.
+>
+> Should you update the documenting comment?
 
-Add sys_copy_file_range to the x86 syscall tables.
-
-Signed-off-by: Zach Brown <zab@redhat.com>
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
----
- arch/x86/entry/syscalls/syscall_32.tbl | 1 +
- arch/x86/entry/syscalls/syscall_64.tbl | 1 +
- 2 files changed, 2 insertions(+)
-
-diff --git a/arch/x86/entry/syscalls/syscall_32.tbl b/arch/x86/entry/syscalls/syscall_32.tbl
-index ef8187f..2f5e1e0 100644
---- a/arch/x86/entry/syscalls/syscall_32.tbl
-+++ b/arch/x86/entry/syscalls/syscall_32.tbl
-@@ -365,3 +365,4 @@
- 356	i386	memfd_create		sys_memfd_create
- 357	i386	bpf			sys_bpf
- 358	i386	execveat		sys_execveat			stub32_execveat
-+359	i386	copy_file_range		sys_copy_file_range
-diff --git a/arch/x86/entry/syscalls/syscall_64.tbl b/arch/x86/entry/syscalls/syscall_64.tbl
-index 9ef32d5..b2101de 100644
---- a/arch/x86/entry/syscalls/syscall_64.tbl
-+++ b/arch/x86/entry/syscalls/syscall_64.tbl
-@@ -329,6 +329,7 @@
- 320	common	kexec_file_load		sys_kexec_file_load
- 321	common	bpf			sys_bpf
- 322	64	execveat		stub_execveat
-+323	common	copy_file_range		sys_copy_file_range
- 
- #
- # x32-specific system call numbers start at 512 to avoid cache impact
--- 
-2.5.1
-
+Good point. I'll do that...
