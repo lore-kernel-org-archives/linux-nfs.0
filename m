@@ -1,229 +1,197 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yk0-f177.google.com ([209.85.160.177]:33126 "EHLO
-	mail-yk0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757849AbbIDKlW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Sep 2015 06:41:22 -0400
-Received: by ykei199 with SMTP id i199so16581218yke.0
-        for <linux-nfs@vger.kernel.org>; Fri, 04 Sep 2015 03:41:21 -0700 (PDT)
-Date: Fri, 4 Sep 2015 06:41:17 -0400
+Received: from mail-yk0-f173.google.com ([209.85.160.173]:33659 "EHLO
+	mail-yk0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758620AbbIDQ1t (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Sep 2015 12:27:49 -0400
+Received: by ykei199 with SMTP id i199so25937378yke.0
+        for <linux-nfs@vger.kernel.org>; Fri, 04 Sep 2015 09:27:48 -0700 (PDT)
 From: Jeff Layton <jlayton@poochiereds.net>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: steved@redhat.com, Bruce James Fields <bfields@fieldses.org>,
+To: bfields@fieldses.org
+Cc: trond.myklbust@primarydata.com, chuck.lever@oracle.com,
         linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] exportfs: add support for "nowcc" option
-Message-ID: <20150904064117.1a011f45@tlielax.poochiereds.net>
-In-Reply-To: <CAHQdGtS=ZCnG+YgNZAT0+DqpBQs30OQOZLsvTEDNsxA6x7EUEg@mail.gmail.com>
-References: <1441301785-17602-1-git-send-email-jeff.layton@primarydata.com>
-	<20150903183103.GB10088@fieldses.org>
-	<20150903144544.58cfd728@tlielax.poochiereds.net>
-	<20150903190548.GE10088@fieldses.org>
-	<20150903194255.GG10088@fieldses.org>
-	<20150903160011.1104a3d3@tlielax.poochiereds.net>
-	<20150903203200.GI10088@fieldses.org>
-	<20150903164330.7c050480@tlielax.poochiereds.net>
-	<CAHQdGtS=ZCnG+YgNZAT0+DqpBQs30OQOZLsvTEDNsxA6x7EUEg@mail.gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Subject: [PATCH] nfsd: add a new EXPORT_OP_NOWCC flag to struct export_operations
+Date: Fri,  4 Sep 2015 12:27:40 -0400
+Message-Id: <1441384060-22308-1-git-send-email-jeff.layton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 3 Sep 2015 15:27:52 -0700
-Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+With NFSv3 nfsd will always attempt to send along WCC data to the
+client. This generally involves saving off the in-core inode information
+prior to doing the operation on the given filehandle, and then issuing a
+vfs_getattr to it after the op.
 
-> On Sep 3, 2015 16:43, "Jeff Layton" <jlayton@poochiereds.net> wrote:
-> >
-> > On Thu, 3 Sep 2015 16:32:00 -0400
-> > "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> >
-> > > On Thu, Sep 03, 2015 at 04:00:11PM -0400, Jeff Layton wrote:
-> > > > On Thu, 3 Sep 2015 15:42:55 -0400
-> > > > "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > > >
-> > > > > On Thu, Sep 03, 2015 at 03:05:48PM -0400, J. Bruce Fields wrote:
-> > > > > > On Thu, Sep 03, 2015 at 02:45:44PM -0400, Jeff Layton wrote:
-> > > > > > > On Thu, 3 Sep 2015 14:31:03 -0400
-> > > > > > > "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > > > > > >
-> > > > > > > > On Thu, Sep 03, 2015 at 01:36:25PM -0400, Jeff Layton wrote:
-> > > > > > > > > This is the userland companion patch for the patch to add a
-> "nowcc"
-> > > > > > > > > option to knfsd. This just adds the necessary code to allow
-> userspace
-> > > > > > > > > to set that option.
-> > > > > > > > >
-> > > > > > > > > Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
-> > > > > > > > > ---
-> > > > > > > > >  support/include/nfs/export.h |  3 ++-
-> > > > > > > > >  support/nfs/exports.c        |  5 +++++
-> > > > > > > > >  utils/exportfs/exportfs.c    |  2 ++
-> > > > > > > > >  utils/exportfs/exports.man   | 14 ++++++++++++++
-> > > > > > > > >  4 files changed, 23 insertions(+), 1 deletion(-)
-> > > > > > > > >
-> > > > > > > > > diff --git a/support/include/nfs/export.h
-> b/support/include/nfs/export.h
-> > > > > > > > > index 1194255899bd..68bee5c2f305 100644
-> > > > > > > > > --- a/support/include/nfs/export.h
-> > > > > > > > > +++ b/support/include/nfs/export.h
-> > > > > > > > > @@ -26,7 +26,8 @@
-> > > > > > > > >  #define  NFSEXP_CROSSMOUNT       0x4000
-> > > > > > > > >  #define NFSEXP_NOACL             0x8000 /* reserved for
-> possible ACL related use */
-> > > > > > > > >  #define NFSEXP_V4ROOT            0x10000
-> > > > > > > > > -#define NFSEXP_PNFS            0x20000
-> > > > > > > > > +#define NFSEXP_PNFS              0x20000
-> > > > > > > > > +#define NFSEXP_NOWCC             0x40000
-> > > > > > > > >  /*
-> > > > > > > > >   * All flags supported by the kernel before addition of the
-> > > > > > > > >   * export_features interface:
-> > > > > > > > > diff --git a/support/nfs/exports.c b/support/nfs/exports.c
-> > > > > > > > > index 0aea6f154f09..791b5f756c9c 100644
-> > > > > > > > > --- a/support/nfs/exports.c
-> > > > > > > > > +++ b/support/nfs/exports.c
-> > > > > > > > > @@ -276,6 +276,7 @@ putexportent(struct exportent *ep)
-> > > > > > > > >   if (ep->e_flags & NFSEXP_NOREADDIRPLUS)
-> > > > > > > > >           fprintf(fp, "nordirplus,");
-> > > > > > > > >   fprintf(fp, "%spnfs,", (ep->e_flags & NFSEXP_PNFS)? "" :
-> "no_");
-> > > > > > > > > + fprintf(fp, "%swcc,", (ep->e_flags & NFSEXP_NOWCC) ? "no"
-> : "");
-> > > > > > > > >   if (ep->e_flags & NFSEXP_FSID) {
-> > > > > > > > >           fprintf(fp, "fsid=%d,", ep->e_fsid);
-> > > > > > > > >   }
-> > > > > > > > > @@ -586,6 +587,10 @@ parseopts(char *cp, struct exportent
-> *ep, int warn, int *had_subtree_opt_ptr)
-> > > > > > > > >                   setflags(NFSEXP_PNFS, active, ep);
-> > > > > > > > >           else if (!strcmp(opt, "no_pnfs"))
-> > > > > > > > >                   clearflags(NFSEXP_PNFS, active, ep);
-> > > > > > > > > +         else if (!strcmp(opt, "wcc"))
-> > > > > > > > > +                 clearflags(NFSEXP_NOWCC, active, ep);
-> > > > > > > > > +         else if (!strcmp(opt, "nowcc"))
-> > > > > > > > > +                 setflags(NFSEXP_NOWCC, active, ep);
-> > > > > > > > >           else if (strncmp(opt, "anonuid=", 8) == 0) {
-> > > > > > > > >                   char *oe;
-> > > > > > > > >                   ep->e_anonuid = strtol(opt+8, &oe, 10);
-> > > > > > > > > diff --git a/utils/exportfs/exportfs.c
-> b/utils/exportfs/exportfs.c
-> > > > > > > > > index 87582316b086..a2afc80ee6ea 100644
-> > > > > > > > > --- a/utils/exportfs/exportfs.c
-> > > > > > > > > +++ b/utils/exportfs/exportfs.c
-> > > > > > > > > @@ -823,6 +823,8 @@ dump(int verbose, int export_format)
-> > > > > > > > >                           c = dumpopt(c, "no_acl");
-> > > > > > > > >                   if (ep->e_flags & NFSEXP_PNFS)
-> > > > > > > > >                           c = dumpopt(c, "pnfs");
-> > > > > > > > > +                 if (ep->e_flags & NFSEXP_NOWCC)
-> > > > > > > > > +                         c = dumpopt(c, "nowcc");
-> > > > > > > > >                   if (ep->e_flags & NFSEXP_FSID)
-> > > > > > > > >                           c = dumpopt(c, "fsid=%d",
-> ep->e_fsid);
-> > > > > > > > >                   if (ep->e_uuid)
-> > > > > > > > > diff --git a/utils/exportfs/exports.man
-> b/utils/exportfs/exports.man
-> > > > > > > > > index 93092463153b..9213a228bb04 100644
-> > > > > > > > > --- a/utils/exportfs/exports.man
-> > > > > > > > > +++ b/utils/exportfs/exports.man
-> > > > > > > > > @@ -417,6 +417,20 @@ devices. The default can be explicitly
-> requested with the
-> > > > > > > > >  .I no_pnfs
-> > > > > > > > >  option.
-> > > > > > > > >
-> > > > > > > > > +.TP
-> > > > > > > > > +.IR nowcc
-> > > > > > > > > +This option disables the collection and reporting of WCC
-> (weak cache
-> > > > > > > > > +consistency) data in NFSv3 requests.  RFC 1813 recommends
-> that all
-> > > > > > > > > +servers report this information to the clients as it
-> allows the client
-> > > > > > > > > +to avoid some extra round trips to the server.  In some
-> underlying
-> > > > > > > > > +filesystems however, collecting this data can be cost
-> prohibitive and
-> > > > > > > > > +atomicity is difficult to guarantee.
-> > > > >
-> > > > > By the way, independently of this change, maybe we should by default
-> > > > > disable the pre-op attribute on distributed filesystems?  As I
-> > > > > understand it we're just depending on the i_mutex for atomicity,
-> which
-> > > > > can't be right in that case.
-> > > > >
-> > > > > --b.
-> > > >
-> > > > Right. In the case of something like a clustered or network filesystem
-> > > > you really can't guarantee atomicity, so why even try?
-> > > >
-> > > > So, that is another option...we could add a flags field to the
-> > > > export_operations struct and use one flag to indicate whether to send
-> > > > wcc attrs. That'd give us the ability to add other flags in the future
-> > > > as well.
-> > > >
-> > > > The reason I went with the export option is that I didn't really want
-> > > > to add the flags field, and I figured the flexibility of being able to
-> > > > do that on any filesystem might be helpful.
-> > > >
-> > > > That said, I'm open to doing it that way instead of (or in addition
-> to)
-> > > > the export option if you think it would be better.
-> > >
-> > > Well, it's sounding so far like:
-> > >
-> > >       - nobody will want this on a non-distributed filesystem (hard to
-> > >         see what the benefit would be; and it might cost).
-> > >       - people probably *do* want this on any distributed filesystem.
-> > >       - we could save users some trouble by not giving them another
-> > >         export option which they might just set wrong.
-> > >
-> > > Eh, but I think I'm wrong about #2.  Dropping the pre-op attribute is
-> > > arguably necessary for correctness, but dropping the post-op attribute
-> > > as well isn't necessary and might hurt, right?  OK.
-> > >
-> >
-> > Oh, hmmm.
-> >
-> > The pre-op attrs are generally pretty lightweight. It just scrapes the
-> > info out of the in-core inode. The post-op attrs require a vfs_getattr
-> > call though, and that's where the expensive part comes in. I guess I
-> > looked at them as a unit. You either want both pre and post attrs or
-> > none. The patch disables both when you add the nowcc option.
-> >
-> > So I guess this means you're leaning toward a flags field in the export
-> > operations instead of an export option? If so, I'm fine with that and I
-> > can respin the patch accordingly.
-> 
-> Agreed that this is desirable. Which filesystems are going to turn this on
-> by default?
-> 
+Some filesystems (particularly clustered or networked ones) have an
+expensive ->getattr inode operation. Also atomicitiy is often difficult
+or impossible to guarantee on such filesystems. For those, we're best
+off not trying to provide WCC information to the client at all, and to
+simply allow it to poll for that information as needed with a GETATTR
+RPC.
 
-Good question. I'll certainly do it for NFS in the reexporting code
-that we're working on, but I'd be a little leery of adding this to
-others without some OK by their maintainers and some testing. I'd
-expect that ceph, lustre, gfs2, and ocfs2 would probably be good places
-to consider enabling it though.
+This patch adds a new flags field to struct export_operations, and
+defines a new EXPORT_OP_NOWCC flag that filesystems can use to indicate
+that nfsd should not attempt to provide WCC info in NFSv3 replies. It
+also adds a blurb about the new flags field and flag to the exporting
+documentation.
 
-What I'll probably do is add the flag and drop a note to those
-maintainers mentioning that they may want to consider enabling it. I'll
-also plan to document this in Documentation/filesystems/nfs/Exporting
-to help them make an informed decision about it.
+The server will also now skip collecting this information for NFSv2
+as well, since that info is never used there anyway.
 
-> > There is probably some micro-optimization in turning them off on local
-> > filesystems when you are doing DIO or having it act as a DS for
-> > flexfiles, but I doubt it's significant enough to bother with.
-> 
-> Disagree. There are quite a few workloads where the wcc mainly results in
-> unnecessary cache flushes on the client due to out of order RPC replies.
-> I.e. the sysadmin knows there is only one client accessing the file at a
-> time, but the OOO replies lead to clients believing there are multiple
-> accesses to the same file.
-> 
+Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
+---
+ Documentation/filesystems/nfs/Exporting | 27 +++++++++++++++++++++++++++
+ fs/nfsd/nfs3xdr.c                       |  5 ++++-
+ fs/nfsd/nfsfh.c                         | 14 ++++++++++++++
+ fs/nfsd/nfsfh.h                         |  5 ++++-
+ include/linux/exportfs.h                |  2 ++
+ 5 files changed, 51 insertions(+), 2 deletions(-)
 
-Ahh...apples and oranges. I was referring to the performance impact of
-doing the actual vfs_getattr call on the underlying fs, not the effect
-on the client. For filesystems that have a cheap getattr routine, there
-really is little harm to the server in sending the data along.
-
-OOO replies are a different problem entirely though. It seems like that
-might be better addressed by a  "nowcc" mount option on the client?
-Having to set that on the server seems a bit too coarse-grained if the
-admin has to make that decision based on workload.
-
+diff --git a/Documentation/filesystems/nfs/Exporting b/Documentation/filesystems/nfs/Exporting
+index 520a4becb75c..fa636cde3907 100644
+--- a/Documentation/filesystems/nfs/Exporting
++++ b/Documentation/filesystems/nfs/Exporting
+@@ -138,6 +138,11 @@ struct which has the following members:
+     to find potential names, and matches inode numbers to find the correct
+     match.
+ 
++  flags
++    Some filesystems may need to be handled differently than others. The
++    export_operations struct also includes a flags field that allows the
++    filesystem to communicate such information to nfsd. See the Export
++    Operations Flags section below for more explanation.
+ 
+ A filehandle fragment consists of an array of 1 or more 4byte words,
+ together with a one byte "type".
+@@ -147,3 +152,25 @@ generated by encode_fh, in which case it will have been padded with
+ nuls.  Rather, the encode_fh routine should choose a "type" which
+ indicates the decode_fh how much of the filehandle is valid, and how
+ it should be interpreted.
++
++Export Operations Flags
++-----------------------
++In addition to the operation vector pointers, struct export_operations also
++contains a "flags" field that allows the filesystem to communicate to nfsd
++that it may want to do things differently when dealing with it. The
++following flags are defined:
++
++  EXPORT_OP_NOWCC
++    RFC 1813 recommends that servers always send weak cache consistency
++    (WCC) data to the client after each operation. The server should
++    atomically collect attributes about the inode, do an operation on it,
++    and then collect the attributes afterward. This allows the client to
++    skip issuing GETATTRs in some situations but means that the server
++    is calling vfs_getattr for almost all RPCs. On some filesystems
++    (particularly those that are clustered or networked) this is expensive
++    and atomicity is difficult to guarantee. This flag indicates to nfsd
++    that it should skip providing WCC attributes to the client in NFSv3
++    replies when doing operations on this filesystem. Consider enabling
++    this on filesystems that have an expensive ->getattr inode operation,
++    or when atomicity between pre and post operation attribute collection
++    is impossible to guarantee.
+diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
+index 01dcd494f781..c30c8c604e2a 100644
+--- a/fs/nfsd/nfs3xdr.c
++++ b/fs/nfsd/nfs3xdr.c
+@@ -203,7 +203,7 @@ static __be32 *
+ encode_post_op_attr(struct svc_rqst *rqstp, __be32 *p, struct svc_fh *fhp)
+ {
+ 	struct dentry *dentry = fhp->fh_dentry;
+-	if (dentry && d_really_is_positive(dentry)) {
++	if (!fhp->fh_no_wcc && dentry && d_really_is_positive(dentry)) {
+ 	        __be32 err;
+ 		struct kstat stat;
+ 
+@@ -256,6 +256,9 @@ void fill_post_wcc(struct svc_fh *fhp)
+ {
+ 	__be32 err;
+ 
++	if (fhp->fh_no_wcc)
++		return;
++
+ 	if (fhp->fh_post_saved)
+ 		printk("nfsd: inode locked twice during operation.\n");
+ 
+diff --git a/fs/nfsd/nfsfh.c b/fs/nfsd/nfsfh.c
+index 350041a40fe5..29ae37f62b9b 100644
+--- a/fs/nfsd/nfsfh.c
++++ b/fs/nfsd/nfsfh.c
+@@ -267,6 +267,16 @@ static __be32 nfsd_set_fh_dentry(struct svc_rqst *rqstp, struct svc_fh *fhp)
+ 
+ 	fhp->fh_dentry = dentry;
+ 	fhp->fh_export = exp;
++
++	switch (rqstp->rq_vers) {
++	case 3:
++		if (!(dentry->d_sb->s_export_op->flags & EXPORT_OP_NOWCC))
++			break;
++		/* Fallthrough */
++	case 2:
++		fhp->fh_no_wcc = true;
++	}
++
+ 	return 0;
+ out:
+ 	exp_put(exp);
+@@ -535,6 +545,9 @@ fh_compose(struct svc_fh *fhp, struct svc_export *exp, struct dentry *dentry,
+ 	 */
+ 	 set_version_and_fsid_type(fhp, exp, ref_fh);
+ 
++	/* If we have a ref_fh, then copy the fh_no_wcc setting from it. */
++	fhp->fh_no_wcc = ref_fh ? ref_fh->fh_no_wcc : false;
++
+ 	if (ref_fh == fhp)
+ 		fh_put(ref_fh);
+ 
+@@ -641,6 +654,7 @@ fh_put(struct svc_fh *fhp)
+ 		exp_put(exp);
+ 		fhp->fh_export = NULL;
+ 	}
++	fhp->fh_no_wcc = false;
+ 	return;
+ }
+ 
+diff --git a/fs/nfsd/nfsfh.h b/fs/nfsd/nfsfh.h
+index 1e90dad4926b..9ddead4d98f8 100644
+--- a/fs/nfsd/nfsfh.h
++++ b/fs/nfsd/nfsfh.h
+@@ -32,6 +32,7 @@ typedef struct svc_fh {
+ 
+ 	unsigned char		fh_locked;	/* inode locked by us */
+ 	unsigned char		fh_want_write;	/* remount protection taken */
++	bool			fh_no_wcc;	/* no wcc data needed */
+ 
+ #ifdef CONFIG_NFSD_V3
+ 	unsigned char		fh_post_saved;	/* post-op attrs saved */
+@@ -51,7 +52,6 @@ typedef struct svc_fh {
+ 	struct kstat		fh_post_attr;	/* full attrs after operation */
+ 	u64			fh_post_change; /* nfsv4 change; see above */
+ #endif /* CONFIG_NFSD_V3 */
+-
+ } svc_fh;
+ 
+ enum nfsd_fsid {
+@@ -225,6 +225,9 @@ fill_pre_wcc(struct svc_fh *fhp)
+ {
+ 	struct inode    *inode;
+ 
++	if (fhp->fh_no_wcc)
++		return;
++
+ 	inode = d_inode(fhp->fh_dentry);
+ 	if (!fhp->fh_pre_saved) {
+ 		fhp->fh_pre_mtime = inode->i_mtime;
+diff --git a/include/linux/exportfs.h b/include/linux/exportfs.h
+index fa05e04c5531..600c3fccc999 100644
+--- a/include/linux/exportfs.h
++++ b/include/linux/exportfs.h
+@@ -214,6 +214,8 @@ struct export_operations {
+ 			  bool write, u32 *device_generation);
+ 	int (*commit_blocks)(struct inode *inode, struct iomap *iomaps,
+ 			     int nr_iomaps, struct iattr *iattr);
++#define	EXPORT_OP_NOWCC		(0x1)	/* Don't collect wcc data for NFSv3 replies */
++	unsigned long	flags;
+ };
+ 
+ extern int exportfs_encode_inode_fh(struct inode *inode, struct fid *fid,
 -- 
-Jeff Layton <jlayton@poochiereds.net>
+2.4.3
+
