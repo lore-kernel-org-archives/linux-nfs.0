@@ -1,59 +1,75 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qg0-f53.google.com ([209.85.192.53]:34169 "EHLO
-	mail-qg0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932992AbbIDTYM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Sep 2015 15:24:12 -0400
-Received: by qgez77 with SMTP id z77so24132370qge.1
-        for <linux-nfs@vger.kernel.org>; Fri, 04 Sep 2015 12:24:11 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Olga Kornievskaia <aglo@umich.edu>
-Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
-Subject: [PATCH 2/2] Revert "NFS: Make close(2) asynchronous when closing NFS O_DIRECT files"
-Date: Fri,  4 Sep 2015 15:24:07 -0400
-Message-Id: <1441394647-16412-2-git-send-email-trond.myklebust@primarydata.com>
+Received: from userp1040.oracle.com ([156.151.31.81]:20745 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759995AbbIDTii convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Sep 2015 15:38:38 -0400
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
+Subject: Re: [PATCH 1/2] NFS: Optimise away the close-to-open getattr if there is no cached data
+From: Chuck Lever <chuck.lever@oracle.com>
 In-Reply-To: <1441394647-16412-1-git-send-email-trond.myklebust@primarydata.com>
+Date: Fri, 4 Sep 2015 15:38:30 -0400
+Cc: Olga Kornievskaia <aglo@umich.edu>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <DA83C389-2E91-4A35-ACF5-F14F33D50944@oracle.com>
 References: <1441394647-16412-1-git-send-email-trond.myklebust@primarydata.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This reverts commit f895c53f8ace3c3e49ebf9def90e63fc6d46d2bf.
 
-This commit causes a NFSv4 regression in that close()+unlink() can end
-up failing. The reason is that we no longer have a guarantee that the
-CLOSE has completed on the server, meaning that the subsequent call to
-REMOVE may fail with NFS4ERR_FILE_OPEN if the server implements Windows
-unlink() semantics.
+On Sep 4, 2015, at 3:24 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/inode.c | 7 ++++++-
- 1 file changed, 6 insertions(+), 1 deletion(-)
+> If there is no cached data, then there is no need to track the file
+> change attribute on close.
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index ebaf991e4b02..54eb47799a41 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -852,6 +852,11 @@ void put_nfs_open_context(struct nfs_open_context *ctx)
- }
- EXPORT_SYMBOL_GPL(put_nfs_open_context);
- 
-+static void put_nfs_open_context_sync(struct nfs_open_context *ctx)
-+{
-+	__put_nfs_open_context(ctx, 1);
-+}
-+
- /*
-  * Ensure that mmap has a recent RPC credential for use when writing out
-  * shared pages
-@@ -907,7 +912,7 @@ void nfs_file_clear_open_context(struct file *filp)
- 		spin_lock(&inode->i_lock);
- 		list_move_tail(&ctx->list, &NFS_I(inode)->open_files);
- 		spin_unlock(&inode->i_lock);
--		__put_nfs_open_context(ctx, filp->f_flags & O_DIRECT ? 0 : 1);
-+		put_nfs_open_context_sync(ctx);
- 	}
- }
- 
--- 
-2.4.3
+This makes sense. nfs_close_context() is only used by NFSv2
+and NFSv3.
+
+Should you update the documenting comment?
+
+
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> ---
+> fs/nfs/inode.c | 8 +++++++-
+> 1 file changed, 7 insertions(+), 1 deletion(-)
+> 
+> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+> index 99a68bd9c178..ebaf991e4b02 100644
+> --- a/fs/nfs/inode.c
+> +++ b/fs/nfs/inode.c
+> @@ -766,6 +766,7 @@ EXPORT_SYMBOL_GPL(nfs_put_lock_context);
+>  */
+> void nfs_close_context(struct nfs_open_context *ctx, int is_sync)
+> {
+> +	struct nfs_inode *nfsi;
+> 	struct inode *inode;
+> 	struct nfs_server *server;
+> 
+> @@ -774,7 +775,12 @@ void nfs_close_context(struct nfs_open_context *ctx, int is_sync)
+> 	if (!is_sync)
+> 		return;
+> 	inode = d_inode(ctx->dentry);
+> -	if (!list_empty(&NFS_I(inode)->open_files))
+> +	nfsi = NFS_I(inode);
+> +	if (inode->i_mapping->nrpages == 0)
+> +		return;
+> +	if (nfsi->cache_validity & NFS_INO_INVALID_DATA)
+> +		return;
+> +	if (!list_empty(&nfsi->open_files))
+> 		return;
+> 	server = NFS_SERVER(inode);
+> 	if (server->flags & NFS_MOUNT_NOCTO)
+> -- 
+> 2.4.3
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+--
+Chuck Lever
+
+
 
