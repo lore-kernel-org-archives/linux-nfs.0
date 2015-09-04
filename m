@@ -1,73 +1,157 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx144.netapp.com ([216.240.21.25]:44044 "EHLO mx144.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932596AbbIDTIJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 4 Sep 2015 15:08:09 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
-CC: <Anna.Schumaker@netapp.com>
-Subject: [PATCH v1 0/5] NFS: Add READ_PLUS support
-Date: Fri, 4 Sep 2015 15:07:44 -0400
-Message-ID: <1441393669-30280-1-git-send-email-Anna.Schumaker@Netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+Received: from aserp1040.oracle.com ([141.146.126.69]:45499 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932596AbbIDTIi convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Sep 2015 15:08:38 -0400
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
+Subject: Re: async CLOSE creates a race with a DELEGRETURN followed by a REMOVE
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <CAN-5tyE8Ln4WMJYjtxt_D3HqhrHzoFqMHczHMuVWdP1+aG2KYg@mail.gmail.com>
+Date: Fri, 4 Sep 2015 15:08:30 -0400
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <E6391B3F-D510-4C9B-AB78-016C8B139C4E@oracle.com>
+References: <CAN-5tyEmSD2wwu+M9UURq5MWOZTDqdp18TnmTSiQCc04mSvJmA@mail.gmail.com> <CE95E4A1-90F0-4AF4-A3A7-252B043E6677@oracle.com> <CAN-5tyF_3wTtNTmff=VSE5a4ExEKjiqB+kc4KrqqpEciW4J5Rg@mail.gmail.com> <CAHQdGtR9A=iO3NCsqZy2w0qFq6ka5Y8sP-J7jj9Jj1SF0TiYtA@mail.gmail.com> <CAN-5tyF0a2VnQprT-PFXjEmnCwaXcC5q=btYmoLFY9nvbHQ2HQ@mail.gmail.com> <5163FEAE-9DBF-46BE-AC7B-E276069CE893@oracle.com> <CAN-5tyE8Ln4WMJYjtxt_D3HqhrHzoFqMHczHMuVWdP1+aG2KYg@mail.gmail.com>
+To: Olga Kornievskaia <aglo@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is an updated posting of my NFS v4.2 READ_PLUS patches from several
-months ago, and it should apply against current development trees.
 
-I tested this code  using dd to read a file between two KVMs, and I compared
-the reported transfer rates against various NFS versions and the local XFS
-filesystem.  I tested using four 5 GB files, the first two simply entirely
-data or entirely hole.  The others alternate between data and hole pages, at
-either 4 KB (one page) or 8 KB (two page) intervals.
+On Sep 4, 2015, at 2:09 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
 
-I found that dd uses a default block size of 512 bytes, which could cause
-reads over NFS to take forever.  I bumped this up to 128K during my testing
-by passing the argument "bs=128K" to dd.  My results are below:
+> On Thu, Sep 3, 2015 at 8:31 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>> 
+>> On Sep 3, 2015, at 8:18 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
+>> 
+>>> On Thu, Sep 3, 2015 at 6:37 PM, Trond Myklebust
+>>> <trond.myklebust@primarydata.com> wrote:
+>>>> 
+>>>> On Sep 3, 2015 18:08, "Olga Kornievskaia" <aglo@umich.edu> wrote:
+>>>>> 
+>>>>> On Thu, Sep 3, 2015 at 3:34 PM, Chuck Lever <chuck.lever@oracle.com>
+>>>>> wrote:
+>>>>>> 
+>>>>>> On Sep 3, 2015, at 3:26 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
+>>>>>> 
+>>>>>>> When file is opened with O_DIRECT, sending asynchronous CLOSE creates
+>>>>>>> a race condition between CLOSE and DELEGRETURN followed REMOVE. Next
+>>>>>>> operations are sent before the reply for CLOSE comes back which is
+>>>>>>> according to the spec is not allowed (section 10.4.4). Server can get
+>>>>>>> a REMOVE before the CLOSE and it causes EACCESS error to be returned
+>>>>>>> because server thinks there is open state left.
+>>>>>>> 
+>>>>>>> According to the spec: "...whenever a client chooses to return a
+>>>>>>> delegation voluntarily.  The following items of state need to be dealt
+>>>>>>> with:
+>>>>>>> 
+>>>>>>> o  If the file associated with the delegation is no longer open and
+>>>>>>>    no previous CLOSE operation has been sent to the server, a CLOSE
+>>>>>>>    operation must be sent to the server."
+>>>>>>> 
+>>>>>>> So i'm not sure if it will be argued that it doesn't say that a reply
+>>>>>>> must be received before sending the DELEGRETURN. However, if it's not
+>>>>>>> mandated then a race as I'm mentioning occurs.
+>>>>>>> 
+>>>>>>> The following patch introduces making close async:
+>>>>>>> commit f895c53f8ace3c3e49ebf9def90e63fc6d46d2bf
+>>>>>>> Author: Chuck Lever <chuck.lever@oracle.com>
+>>>>>>> Date:   Mon Feb 1 14:17:50 2010 -0500
+>>>>>>> 
+>>>>>>>  NFS: Make close(2) asynchronous when closing NFS O_DIRECT files
+>>>>>>> 
+>>>>>>>  For NFSv2 and v3:
+>>>>>>> 
+>>>>>>>  O_DIRECT writes are always synchronous, and aren't cached, so
+>>>>>>> nothing
+>>>>>>>  should be flushed when closing an NFS O_DIRECT file descriptor.
+>>>>>>> Thus
+>>>>>>>  there are no write errors to report on close(2).
+>>>>>>> 
+>>>>>>>  In addition, there's no cached data to verify on the next open(2),
+>>>>>>>  so we don't need clean GETATTR results at close time to compare
+>>>>>>> with.
+>>>>>>> 
+>>>>>>>  Thus, there's no need for the nfs_revalidate_inode() call when
+>>>>>>> closing
+>>>>>>>  an NFS O_DIRECT file.  This reduces the number of synchronous
+>>>>>>>  on-the-wire requests for a simple open-write-close of an NFS
+>>>>>>> O_DIRECT
+>>>>>>>  file by roughly 20%.
+>>>>>>> 
+>>>>>>>  For NFSv4:
+>>>>>>> 
+>>>>>>>  Call nfs4_do_close() with wait set to zero when closing an NFS
+>>>>>>>  O_DIRECT file.  The CLOSE will go on the wire, but the application
+>>>>>>>  won't wait for it to complete.
+>>>>>>> 
+>>>>>>> I'd like to suggest to revert the use of this patch.
+>>>>>> 
+>>>>>> DELEGRETURN can be made to wait for the CLOSE reply.
+>>>>>> 
+>>>>>> Or, maybe the client should return an offered delegation
+>>>>>> immediately when a file is open O_DIRECT. I don't see much
+>>>>>> use in keeping the delegation if the application wants
+>>>>>> GETATTR, READ and WRITE always flushed to the server
+>>>>>> immediately.
+>>>>> 
+>>>>> Yes i think somehow a delegreturn should be made to wait for close.
+>>>>> Because this race also happens for other opens when close is sent
+>>>>> async but I haven't pinned pointed the case. It looks like async write
+>>>>> calls async close so perhaps that's it.
+>>>>> 
+>>>>> Though how much are we saving by making CLOSE async vs making the code
+>>>>> more complicated?
+>>>>> 
+>>>> I'd far prefer reverting the asynchronous close if it is causing problems.
+>>>> Serialisation is harder to get right. Particularly so when we need to do it
+>>>> from within the context of the state manager thread....
+>>>> 
+>>> 
+>>> Agreed.
+>>> 
+>>> Also I'd like to point out that coordination with CLOSE needs to be
+>>> done not only with DELEGRETURN but with REMOVE as well. In the current
+>>> kernel, if open is done with O_DIRECT, then the code sets
+>>> WANT_NO_DELEGATION flag and server does not give one. However, the
+>>> close being asynchronous if followed by a REMOVE will cause EACCESS
+>>> error if CLOSE arrives after the REMOVE.
+>> 
+>> NFS4ERR_ACCESS is allowed for REMOVE, but why would a server
+>> return ACCESS in this case?
+> 
+> Because client has open state left.
 
-       |    XFS     |   NFS v3   |  NFS v4.0  |  NFS v4.1  |  NFS v4.2
--------|------------|------------|------------|------------|------------
-  Data |  2.7 GB/s  |  845 MB/s  |  864 MB/s  |  847 MB/s  |  807 MB/s
-  Hole |  4.1 GB/s  |  980 MB/s  |  1.1 GB/s  |  989 MB/s  |  2.3 GB/s
-1 Page |  1.6 GB/s  |  681 MB/s  |  683 MB/s  |  688 MB/s  |  672 MB/s
-2 Page |  2.5 GB/s  |  760 MB/s  |  760 MB/s  |  755 MB/s  |  836 MB/s
+NFS4ERR_ACCESS does not mean "there is open state left." I think
+the correct status should be NFS4ERR_FILE_OPEN, but it's optional
+whether a server can remove an open file. See RFC 7530 Section
+13.1.4.5.
 
-The pure data case is slightly slower on NFS v4.2, most likely due to
-additional server-side lseeks while reading.  The alternating 1 page
-regions test didn't see as large a slowdown, most likely because of to
-the additional savings by not transferring zeroes over the wire.  Any
-slowdown caused by additional seeks is more than made up for by the time
-we reach 2 page intervals.
-
-These patches and the corresponding server changes are available in the
-[read_plus] branch of
-
-	git://git.linux-nfs.org/projects/anna/linux-nfs.git
-
-Questions?  Comments?  Thoughts?
-
-Anna
+ACCESS is plausible if the client had opened the file with a
+deny mode, but I didn't think Linux did that.
 
 
-Anna Schumaker (5):
-  SUNRPC: Split out a function for setting current page
-  SUNRPC: Add the ability to expand holes in data pages
-  NFS: Add basic READ_PLUS support
-  SUNRPC: Add the ability to shift data to a specific offset
-  NFS: Add support for decoding multiple segments
+>>> I have a test case and setup where I delay the CLOSE via proxy and I
+>>> have an open with O_DIRECT. I get no delegation and after I do close()
+>>> and remove(), the latter fails.
+>> 
+>> Can this be fixed without causing a performance regression
+>> for NFSv3, which is not afflicted by any of these ordering
+>> requirements?
+> 
+> Since there is no CLOSE in NFSv3 why would it cause performance regression?
 
- fs/nfs/nfs42xdr.c          | 162 ++++++++++++++++++++++++++++++
- fs/nfs/nfs4proc.c          |  32 +++++-
- fs/nfs/nfs4xdr.c           |   1 +
- include/linux/nfs4.h       |   1 +
- include/linux/nfs_fs_sb.h  |   1 +
- include/linux/nfs_xdr.h    |   2 +-
- include/linux/sunrpc/xdr.h |   2 +
- net/sunrpc/xdr.c           | 243 ++++++++++++++++++++++++++++++++++++++++++++-
- 8 files changed, 438 insertions(+), 6 deletions(-)
+NFSv3 does a synchronous GETATTR during close(2). The commit
+you want to revert, in addition to altering NFSv4 CLOSE
+behavior, eliminates that synchronous GETATTR when the file
+is open with O_DIRECT.
 
--- 
-2.5.1
+Thus, if you revert that commit, it will result in a performance
+regression for NFSv3.
+
+
+--
+Chuck Lever
+
+
 
