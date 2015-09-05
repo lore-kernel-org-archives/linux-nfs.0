@@ -1,188 +1,392 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:49028 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:48618 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751765AbbIEK2H (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 5 Sep 2015 06:28:07 -0400
+	id S1752472AbbIEK2z (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 5 Sep 2015 06:28:55 -0400
 From: Andreas Gruenbacher <agruenba@redhat.com>
 To: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-nfs@vger.kernel.org, linux-api@vger.kernel.org,
         linux-cifs@vger.kernel.org, linux-security-module@vger.kernel.org
-Subject: [RFC v7 15/41] richacl: Automatic Inheritance
-Date: Sat,  5 Sep 2015 12:27:10 +0200
-Message-Id: <1441448856-13478-16-git-send-email-agruenba@redhat.com>
+Subject: [RFC v7 41/41] richacl: uapi header split
+Date: Sat,  5 Sep 2015 12:27:36 +0200
+Message-Id: <1441448856-13478-42-git-send-email-agruenba@redhat.com>
 In-Reply-To: <1441448856-13478-1-git-send-email-agruenba@redhat.com>
 References: <1441448856-13478-1-git-send-email-agruenba@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Automatic Inheritance (AI) allows changes to the acl of a directory to
-propagate down to children.
-
-This is mostly implemented in user space: when a process changes the
-permissions of a directory and Automatic Inheritance is enabled for that
-directory, the process must propagate those changes to all children,
-recursively.
-
-The kernel enables this by keeping track of which permissions have been
-inherited at file create time.  In addition, it makes sure that
-permission propagation is turned off when the permissions of a file are
-set explicitly (for example, upon create or chmod).
-
-Automatic Inheritance works as follows:
-
- - When the RICHACL_AUTO_INHERIT flag in the acl of a file is not set,
-   the file is not affected by AI.
-
- - When the RICHACL_AUTO_INHERIT flag in the acl of a directory is set
-   and a file or subdirectory is created in that directory, the
-   inherited acl will have the RICHACL_AUTO_INHERIT flag set, and all
-   inherited aces will have the RICHACE_INHERITED_ACE flag set.  This
-   allows user space to distinguish between aces which have been
-   inherited and aces which have been explicitly added.
-
- - When the RICHACL_PROTECTED acl flag in the acl of a file is set, AI
-   will not modify the acl of the file.  This does not affect
-   propagation of permissions from the file to its children (if the file
-   is a directory).
-
-Linux does not have a way of creating files without setting the file
-permission bits, so all files created inside a directory with
-RICHACL_AUTO_INHERIT set will have the RICHACL_PROTECTED flag set.  This
-effectively disables Automatic Inheritance.
-
-Protocols which support creating files without specifying permissions
-can explicitly clear the RICHACL_PROTECTED flag after creating a file
-and reset the file masks to "undo" applying the create mode; see
-richacl_compute_max_masks().  They should set the RICHACL_DEFAULTED
-flag.  This is a workaround; a mechanism that would allow a process to
-indicate to the kernel to ignore the create mode when there are
-inherited permissions would fix this problem.
-
 Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
 ---
- fs/richacl_base.c       | 10 +++++++++-
- fs/richacl_inode.c      |  7 +++++++
- include/linux/richacl.h | 23 ++++++++++++++++++++++-
- 3 files changed, 38 insertions(+), 2 deletions(-)
+ include/linux/richacl.h            | 119 +++++--------------------------------
+ include/linux/richacl_xattr.h      |  17 +-----
+ include/uapi/linux/Kbuild          |   2 +
+ include/uapi/linux/richacl.h       | 111 ++++++++++++++++++++++++++++++++++
+ include/uapi/linux/richacl_xattr.h |  43 ++++++++++++++
+ 5 files changed, 173 insertions(+), 119 deletions(-)
+ create mode 100644 include/uapi/linux/richacl.h
+ create mode 100644 include/uapi/linux/richacl_xattr.h
 
-diff --git a/fs/richacl_base.c b/fs/richacl_base.c
-index fda407d..a85b7a3 100644
---- a/fs/richacl_base.c
-+++ b/fs/richacl_base.c
-@@ -363,7 +363,8 @@ richacl_chmod(struct richacl *acl, mode_t mode)
- 	if (acl->a_owner_mask == owner_mask &&
- 	    acl->a_group_mask == group_mask &&
- 	    acl->a_other_mask == other_mask &&
--	    (acl->a_flags & (RICHACL_WRITE_THROUGH | RICHACL_MASKED)))
-+	    (acl->a_flags & (RICHACL_WRITE_THROUGH | RICHACL_MASKED)) &&
-+	    (!richacl_is_auto_inherit(acl) || richacl_is_protected(acl)))
- 		return acl;
- 
- 	clone = richacl_clone(acl, GFP_KERNEL);
-@@ -375,6 +376,8 @@ richacl_chmod(struct richacl *acl, mode_t mode)
- 	clone->a_owner_mask = owner_mask;
- 	clone->a_group_mask = group_mask;
- 	clone->a_other_mask = other_mask;
-+	if (richacl_is_auto_inherit(clone))
-+		clone->a_flags |= RICHACL_PROTECTED;
- 
- 	return clone;
- }
-@@ -549,6 +552,11 @@ richacl_inherit(const struct richacl *dir_acl, int isdir)
- 			ace++;
- 		}
- 	}
-+	if (richacl_is_auto_inherit(dir_acl)) {
-+		acl->a_flags = RICHACL_AUTO_INHERIT;
-+		richacl_for_each_entry(ace, acl)
-+			ace->e_flags |= RICHACE_INHERITED_ACE;
-+	}
- 
- 	return acl;
- }
-diff --git a/fs/richacl_inode.c b/fs/richacl_inode.c
-index f3f1f84..df175c1 100644
---- a/fs/richacl_inode.c
-+++ b/fs/richacl_inode.c
-@@ -247,6 +247,13 @@ richacl_inherit_inode(const struct richacl *dir_acl, struct inode *inode)
- 			richacl_put(acl);
- 			acl = NULL;
- 		} else {
-+			/*
-+			 * We need to set RICHACL_PROTECTED because we are
-+			 * doing an implicit chmod
-+			 */
-+			if (richacl_is_auto_inherit(acl))
-+				acl->a_flags |= RICHACL_PROTECTED;
-+
- 			richacl_compute_max_masks(acl);
- 			/*
- 			 * Ensure that the acl will not grant any permissions
 diff --git a/include/linux/richacl.h b/include/linux/richacl.h
-index 9bf95c2..832b06c 100644
+index 1822666..8875941 100644
 --- a/include/linux/richacl.h
 +++ b/include/linux/richacl.h
-@@ -53,10 +53,16 @@ struct richacl {
- 	     _ace--)
+@@ -17,9 +17,7 @@
+ #ifndef __RICHACL_H
+ #define __RICHACL_H
  
- /* a_flags values */
+-#define RICHACE_OWNER_SPECIAL_ID	0
+-#define RICHACE_GROUP_SPECIAL_ID	1
+-#define RICHACE_EVERYONE_SPECIAL_ID	2
++#include <uapi/linux/richacl.h>
+ 
+ struct richace {
+ 	unsigned short	e_type;
+@@ -44,43 +42,12 @@ struct richacl {
+ 	struct richace	a_entries[0];
+ };
+ 
+-#define richacl_for_each_entry(_ace, _acl) \
+-	for (_ace = (_acl)->a_entries; \
+-	     _ace != (_acl)->a_entries + (_acl)->a_count; \
+-	     _ace++)
+-
+-#define richacl_for_each_entry_reverse(_ace, _acl) \
+-	for (_ace = (_acl)->a_entries + (_acl)->a_count - 1; \
+-	     _ace != (_acl)->a_entries - 1; \
+-	     _ace--)
+-
+-/* a_flags values */
+-#define RICHACL_AUTO_INHERIT			0x01
+-#define RICHACL_PROTECTED			0x02
+-#define RICHACL_DEFAULTED			0x04
+-#define RICHACL_WRITE_THROUGH			0x40
+-#define RICHACL_MASKED				0x80
+-
+ #define RICHACL_VALID_FLAGS (					\
+-		RICHACL_AUTO_INHERIT |				\
+-		RICHACL_PROTECTED |				\
+-		RICHACL_DEFAULTED |				\
+-		RICHACL_WRITE_THROUGH |				\
+-		RICHACL_MASKED)
+-
+-/* e_type values */
+-#define RICHACE_ACCESS_ALLOWED_ACE_TYPE		0x0000
+-#define RICHACE_ACCESS_DENIED_ACE_TYPE		0x0001
+-
+-/* e_flags bitflags */
+-#define RICHACE_FILE_INHERIT_ACE		0x0001
+-#define RICHACE_DIRECTORY_INHERIT_ACE		0x0002
+-#define RICHACE_NO_PROPAGATE_INHERIT_ACE	0x0004
+-#define RICHACE_INHERIT_ONLY_ACE		0x0008
+-#define RICHACE_IDENTIFIER_GROUP		0x0040
+-#define RICHACE_INHERITED_ACE			0x0080
+-#define RICHACE_UNMAPPED_WHO			0x2000
+-#define RICHACE_SPECIAL_WHO			0x4000
++	RICHACL_AUTO_INHERIT |					\
++	RICHACL_PROTECTED |					\
++	RICHACL_DEFAULTED |					\
++	RICHACL_WRITE_THROUGH |					\
++	RICHACL_MASKED)
+ 
+ #define RICHACE_VALID_FLAGS (					\
+ 	RICHACE_FILE_INHERIT_ACE |				\
+@@ -99,27 +66,6 @@ struct richacl {
+ 	RICHACE_INHERIT_ONLY_ACE |				\
+ 	RICHACE_INHERITED_ACE )
+ 
+-/* e_mask bitflags */
+-#define RICHACE_READ_DATA			0x00000001
+-#define RICHACE_LIST_DIRECTORY			0x00000001
+-#define RICHACE_WRITE_DATA			0x00000002
+-#define RICHACE_ADD_FILE			0x00000002
+-#define RICHACE_APPEND_DATA			0x00000004
+-#define RICHACE_ADD_SUBDIRECTORY		0x00000004
+-#define RICHACE_READ_NAMED_ATTRS		0x00000008
+-#define RICHACE_WRITE_NAMED_ATTRS		0x00000010
+-#define RICHACE_EXECUTE				0x00000020
+-#define RICHACE_DELETE_CHILD			0x00000040
+-#define RICHACE_READ_ATTRIBUTES			0x00000080
+-#define RICHACE_WRITE_ATTRIBUTES		0x00000100
+-#define RICHACE_WRITE_RETENTION			0x00000200
+-#define RICHACE_WRITE_RETENTION_HOLD		0x00000400
+-#define RICHACE_DELETE				0x00010000
+-#define RICHACE_READ_ACL			0x00020000
+-#define RICHACE_WRITE_ACL			0x00040000
+-#define RICHACE_WRITE_OWNER			0x00080000
+-#define RICHACE_SYNCHRONIZE			0x00100000
+-
+ /* Valid RICHACE_* flags for directories and non-directories */
+ #define RICHACE_VALID_MASK (					\
+ 	RICHACE_READ_DATA | RICHACE_LIST_DIRECTORY |		\
+@@ -139,49 +85,16 @@ struct richacl {
+ 	RICHACE_WRITE_OWNER |					\
+ 	RICHACE_SYNCHRONIZE)
+ 
+-/*
+- * The POSIX permissions are supersets of the following NFSv4 permissions:
+- *
+- *  - MAY_READ maps to READ_DATA or LIST_DIRECTORY, depending on the type
+- *    of the file system object.
+- *
+- *  - MAY_WRITE maps to WRITE_DATA or RICHACE_APPEND_DATA for files, and to
+- *    ADD_FILE, RICHACE_ADD_SUBDIRECTORY, or RICHACE_DELETE_CHILD for directories.
+- *
+- *  - MAY_EXECUTE maps to RICHACE_EXECUTE.
+- *
+- *  (Some of these NFSv4 permissions have the same bit values.)
+- */
+-#define RICHACE_POSIX_MODE_READ (			\
+-		RICHACE_READ_DATA |		\
+-		RICHACE_LIST_DIRECTORY)
+-#define RICHACE_POSIX_MODE_WRITE (			\
+-		RICHACE_WRITE_DATA |		\
+-		RICHACE_ADD_FILE |			\
+-		RICHACE_APPEND_DATA |		\
+-		RICHACE_ADD_SUBDIRECTORY |		\
+-		RICHACE_DELETE_CHILD)
+-#define RICHACE_POSIX_MODE_EXEC RICHACE_EXECUTE
+-#define RICHACE_POSIX_MODE_ALL (			\
+-		RICHACE_POSIX_MODE_READ |		\
+-		RICHACE_POSIX_MODE_WRITE |		\
+-		RICHACE_POSIX_MODE_EXEC)
+-/*
+- * These permissions are always allowed
+- * no matter what the acl says.
+- */
+-#define RICHACE_POSIX_ALWAYS_ALLOWED (	\
+-		RICHACE_SYNCHRONIZE |	\
+-		RICHACE_READ_ATTRIBUTES |	\
+-		RICHACE_READ_ACL)
+-/*
+- * The owner is implicitly granted
+- * these permissions under POSIX.
+- */
+-#define RICHACE_POSIX_OWNER_ALLOWED (		\
+-		RICHACE_WRITE_ATTRIBUTES |		\
+-		RICHACE_WRITE_OWNER |		\
+-		RICHACE_WRITE_ACL)
++#define richacl_for_each_entry(_ace, _acl) \
++	for (_ace = (_acl)->a_entries; \
++	     _ace != (_acl)->a_entries + (_acl)->a_count; \
++	     _ace++)
++
++#define richacl_for_each_entry_reverse(_ace, _acl) \
++	for (_ace = (_acl)->a_entries + (_acl)->a_count - 1; \
++	     _ace != (_acl)->a_entries - 1; \
++	     _ace--)
++
+ /**
+  * richacl_get  -  grab another reference to a richacl handle
+  */
+diff --git a/include/linux/richacl_xattr.h b/include/linux/richacl_xattr.h
+index f84cc21..eff36a3 100644
+--- a/include/linux/richacl_xattr.h
++++ b/include/linux/richacl_xattr.h
+@@ -17,24 +17,9 @@
+ #ifndef __RICHACL_XATTR_H
+ #define __RICHACL_XATTR_H
+ 
++#include <uapi/linux/richacl_xattr.h>
+ #include <linux/richacl.h>
+ 
+-struct richace_xattr {
+-	__le16		e_type;
+-	__le16		e_flags;
+-	__le32		e_mask;
+-	__le32		e_id;
+-};
+-
+-struct richacl_xattr {
+-	unsigned char	a_version;
+-	unsigned char	a_flags;
+-	__le16		a_count;
+-	__le32		a_owner_mask;
+-	__le32		a_group_mask;
+-	__le32		a_other_mask;
+-};
+-
+ #define RICHACL_XATTR_VERSION	0
+ #define RICHACL_XATTR_MAX_COUNT \
+ 	((XATTR_SIZE_MAX - sizeof(struct richacl_xattr)) / \
+diff --git a/include/uapi/linux/Kbuild b/include/uapi/linux/Kbuild
+index 1ff9942..3f278fa 100644
+--- a/include/uapi/linux/Kbuild
++++ b/include/uapi/linux/Kbuild
+@@ -346,6 +346,8 @@ header-y += reboot.h
+ header-y += reiserfs_fs.h
+ header-y += reiserfs_xattr.h
+ header-y += resource.h
++header-y += richacl.h
++header-y += richacl_xattr.h
+ header-y += rfkill.h
+ header-y += romfs_fs.h
+ header-y += rose.h
+diff --git a/include/uapi/linux/richacl.h b/include/uapi/linux/richacl.h
+new file mode 100644
+index 0000000..6887f88
+--- /dev/null
++++ b/include/uapi/linux/richacl.h
+@@ -0,0 +1,111 @@
++/*
++ * Copyright (C) 2006, 2010  Novell, Inc.
++ * Copyright (C) 2015  Red Hat, Inc.
++ * Written by Andreas Gruenbacher <agruen@kernel.org>
++ *
++ * This program is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License as published by the
++ * Free Software Foundation; either version 2, or (at your option) any
++ * later version.
++ *
++ * This program is distributed in the hope that it will be useful, but
++ * WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * General Public License for more details.
++ */
++
++#ifndef __UAPI_RICHACL_H
++#define __UAPI_RICHACL_H
++
++/* a_flags values */
 +#define RICHACL_AUTO_INHERIT			0x01
 +#define RICHACL_PROTECTED			0x02
 +#define RICHACL_DEFAULTED			0x04
- #define RICHACL_WRITE_THROUGH			0x40
- #define RICHACL_MASKED				0x80
- 
- #define RICHACL_VALID_FLAGS (					\
-+		RICHACL_AUTO_INHERIT |				\
-+		RICHACL_PROTECTED |				\
-+		RICHACL_DEFAULTED |				\
- 		RICHACL_WRITE_THROUGH |				\
- 		RICHACL_MASKED)
- 
-@@ -70,6 +76,7 @@ struct richacl {
- #define RICHACE_NO_PROPAGATE_INHERIT_ACE	0x0004
- #define RICHACE_INHERIT_ONLY_ACE		0x0008
- #define RICHACE_IDENTIFIER_GROUP		0x0040
++#define RICHACL_WRITE_THROUGH			0x40
++#define RICHACL_MASKED				0x80
++
++/* e_type values */
++#define RICHACE_ACCESS_ALLOWED_ACE_TYPE		0x0000
++#define RICHACE_ACCESS_DENIED_ACE_TYPE		0x0001
++
++/* e_flags bitflags */
++#define RICHACE_FILE_INHERIT_ACE		0x0001
++#define RICHACE_DIRECTORY_INHERIT_ACE		0x0002
++#define RICHACE_NO_PROPAGATE_INHERIT_ACE	0x0004
++#define RICHACE_INHERIT_ONLY_ACE		0x0008
++#define RICHACE_IDENTIFIER_GROUP		0x0040
 +#define RICHACE_INHERITED_ACE			0x0080
- #define RICHACE_SPECIAL_WHO			0x4000
- 
- #define RICHACE_VALID_FLAGS (					\
-@@ -78,13 +85,15 @@ struct richacl {
- 	RICHACE_NO_PROPAGATE_INHERIT_ACE |			\
- 	RICHACE_INHERIT_ONLY_ACE |				\
- 	RICHACE_IDENTIFIER_GROUP |				\
-+	RICHACE_INHERITED_ACE |					\
- 	RICHACE_SPECIAL_WHO)
- 
- #define RICHACE_INHERITANCE_FLAGS (				\
- 	RICHACE_FILE_INHERIT_ACE |				\
- 	RICHACE_DIRECTORY_INHERIT_ACE |				\
- 	RICHACE_NO_PROPAGATE_INHERIT_ACE |			\
--	RICHACE_INHERIT_ONLY_ACE )
-+	RICHACE_INHERIT_ONLY_ACE |				\
-+	RICHACE_INHERITED_ACE )
- 
- /* e_mask bitflags */
- #define RICHACE_READ_DATA			0x00000001
-@@ -195,6 +204,18 @@ extern void set_cached_richacl(struct inode *, struct richacl *);
- extern void forget_cached_richacl(struct inode *);
- extern struct richacl *get_richacl(struct inode *);
- 
-+static inline int
-+richacl_is_auto_inherit(const struct richacl *acl)
-+{
-+	return acl->a_flags & RICHACL_AUTO_INHERIT;
-+}
++#define RICHACE_UNMAPPED_WHO			0x2000
++#define RICHACE_SPECIAL_WHO			0x4000
 +
-+static inline int
-+richacl_is_protected(const struct richacl *acl)
-+{
-+	return acl->a_flags & RICHACL_PROTECTED;
-+}
++/* e_mask bitflags */
++#define RICHACE_READ_DATA			0x00000001
++#define RICHACE_LIST_DIRECTORY			0x00000001
++#define RICHACE_WRITE_DATA			0x00000002
++#define RICHACE_ADD_FILE			0x00000002
++#define RICHACE_APPEND_DATA			0x00000004
++#define RICHACE_ADD_SUBDIRECTORY		0x00000004
++#define RICHACE_READ_NAMED_ATTRS		0x00000008
++#define RICHACE_WRITE_NAMED_ATTRS		0x00000010
++#define RICHACE_EXECUTE				0x00000020
++#define RICHACE_DELETE_CHILD			0x00000040
++#define RICHACE_READ_ATTRIBUTES			0x00000080
++#define RICHACE_WRITE_ATTRIBUTES		0x00000100
++#define RICHACE_WRITE_RETENTION			0x00000200
++#define RICHACE_WRITE_RETENTION_HOLD		0x00000400
++#define RICHACE_DELETE				0x00010000
++#define RICHACE_READ_ACL			0x00020000
++#define RICHACE_WRITE_ACL			0x00040000
++#define RICHACE_WRITE_OWNER			0x00080000
++#define RICHACE_SYNCHRONIZE			0x00100000
 +
- /**
-  * richace_is_owner  -  check if @ace is an OWNER@ entry
-  */
++/* e_id values */
++#define RICHACE_OWNER_SPECIAL_ID		0
++#define RICHACE_GROUP_SPECIAL_ID		1
++#define RICHACE_EVERYONE_SPECIAL_ID		2
++
++/*
++ * The POSIX permissions are supersets of the following richacl permissions:
++ *
++ *  - MAY_READ maps to READ_DATA or LIST_DIRECTORY, depending on the type
++ *    of the file system object.
++ *
++ *  - MAY_WRITE maps to WRITE_DATA or RICHACE_APPEND_DATA for files, and to
++ *    ADD_FILE, RICHACE_ADD_SUBDIRECTORY, or RICHACE_DELETE_CHILD for directories.
++ *
++ *  - MAY_EXECUTE maps to RICHACE_EXECUTE.
++ *
++ *  (Some of these richacl permissions have the same bit values.)
++ */
++#define RICHACE_POSIX_MODE_READ (			\
++		RICHACE_READ_DATA |			\
++		RICHACE_LIST_DIRECTORY)
++#define RICHACE_POSIX_MODE_WRITE (			\
++		RICHACE_WRITE_DATA |			\
++		RICHACE_ADD_FILE |			\
++		RICHACE_APPEND_DATA |			\
++		RICHACE_ADD_SUBDIRECTORY |		\
++		RICHACE_DELETE_CHILD)
++#define RICHACE_POSIX_MODE_EXEC RICHACE_EXECUTE
++#define RICHACE_POSIX_MODE_ALL (			\
++		RICHACE_POSIX_MODE_READ |		\
++		RICHACE_POSIX_MODE_WRITE |		\
++		RICHACE_POSIX_MODE_EXEC)
++
++/*
++ * These permissions are always allowed no matter what the acl says.
++ */
++#define RICHACE_POSIX_ALWAYS_ALLOWED (			\
++		RICHACE_SYNCHRONIZE |			\
++		RICHACE_READ_ATTRIBUTES |		\
++		RICHACE_READ_ACL)
++
++/*
++ * The owner is implicitly granted these permissions under POSIX.
++ */
++#define RICHACE_POSIX_OWNER_ALLOWED (			\
++		RICHACE_WRITE_ATTRIBUTES |		\
++		RICHACE_WRITE_OWNER |			\
++		RICHACE_WRITE_ACL)
++
++#endif /* __UAPI_RICHACL_H */
+diff --git a/include/uapi/linux/richacl_xattr.h b/include/uapi/linux/richacl_xattr.h
+new file mode 100644
+index 0000000..6f96bc0
+--- /dev/null
++++ b/include/uapi/linux/richacl_xattr.h
+@@ -0,0 +1,43 @@
++/*
++ * Copyright (C) 2006, 2010  Novell, Inc.
++ * Copyright (C) 2015  Red Hat, Inc.
++ * Written by Andreas Gruenbacher <agruen@kernel.org>
++ *
++ * This program is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License as published by the
++ * Free Software Foundation; either version 2, or (at your option) any
++ * later version.
++ *
++ * This program is distributed in the hope that it will be useful, but
++ * WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * General Public License for more details.
++ */
++
++#ifndef __UAPI_RICHACL_XATTR_H
++#define __UAPI_RICHACL_XATTR_H
++
++#include <linux/types.h>
++#include <linux/xattr.h>
++
++struct richace_xattr {
++	__le16		e_type;
++	__le16		e_flags;
++	__le32		e_mask;
++	__le32		e_id;
++};
++
++struct richacl_xattr {
++	unsigned char	a_version;
++	unsigned char	a_flags;
++	__le16		a_count;
++	__le32		a_owner_mask;
++	__le32		a_group_mask;
++	__le32		a_other_mask;
++};
++
++#define RICHACL_XATTR_MAX_COUNT \
++	((XATTR_SIZE_MAX - sizeof(struct richacl_xattr)) / \
++	 sizeof(struct richace_xattr))
++
++#endif  /* __UAPI_RICHACL_XATTR_H */
 -- 
 2.4.3
 
