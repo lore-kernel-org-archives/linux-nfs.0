@@ -1,95 +1,195 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:48989 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:57473 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750893AbbIEK1p (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 5 Sep 2015 06:27:45 -0400
+	id S1750780AbbIEK1k (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 5 Sep 2015 06:27:40 -0400
 From: Andreas Gruenbacher <agruenba@redhat.com>
 To: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-nfs@vger.kernel.org, linux-api@vger.kernel.org,
         linux-cifs@vger.kernel.org, linux-security-module@vger.kernel.org
-Subject: [RFC v7 03/41] vfs: Add MAY_DELETE_SELF and MAY_DELETE_CHILD permission flags
-Date: Sat,  5 Sep 2015 12:26:58 +0200
-Message-Id: <1441448856-13478-4-git-send-email-agruenba@redhat.com>
-In-Reply-To: <1441448856-13478-1-git-send-email-agruenba@redhat.com>
-References: <1441448856-13478-1-git-send-email-agruenba@redhat.com>
+Subject: [RFC v7 00/41] Richacls
+Date: Sat,  5 Sep 2015 12:26:55 +0200
+Message-Id: <1441448856-13478-1-git-send-email-agruenba@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Normally, deleting a file requires MAY_WRITE access to the parent
-directory.  With richacls, a file may be deleted with MAY_DELETE_CHILD access
-to the parent directory or with MAY_DELETE_SELF access to the file.
+Hello,
 
-To support that, pass the MAY_DELETE_CHILD mask flag to inode_permission()
-when checking for delete access inside a directory, and MAY_DELETE_SELF
-when checking for delete access to a file itelf.
+here's another update of the richacl patch queue.  Changes since the last
+posting (https://lwn.net/Articles/653459/):
 
-The MAY_DELETE_SELF permission does not override the sticky directory
-check.  It probably should.
+ * The owner argument of richacl_compute_max_masks() has been
+   removed; the maximum file masks are computed independent of
+   the current file owner; with the previous version, the group mask
+   could have ended up being too restrictive after an owner change.
 
-Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
-Reviewed-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/namei.c         | 19 +++++++++++++------
- include/linux/fs.h |  2 ++
- 2 files changed, 15 insertions(+), 6 deletions(-)
+ * Function richace_clear_inheritance_flags() has been replaced
+   by the RICHACE_INHERITANCE_FLAGS define.
 
-diff --git a/fs/namei.c b/fs/namei.c
-index 428b4a6..d7bd134 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -453,9 +453,9 @@ static int sb_permission(struct super_block *sb, struct inode *inode, int mask)
-  * this, letting us set arbitrary permissions for filesystem access without
-  * changing the "normal" UIDs which are used for other things.
-  *
-- * MAY_WRITE must be set in @mask whenever MAY_APPEND, MAY_CREATE_FILE, or
-- * MAY_CREATE_DIR are set.  That way, file systems that don't support these
-- * permissions will check for MAY_WRITE instead.
-+ * MAY_WRITE must be set in @mask whenever MAY_APPEND, MAY_CREATE_FILE,
-+ * MAY_CREATE_DIR, or MAY_DELETE_CHILD are set.  That way, file systems that
-+ * don't support these permissions will check for MAY_WRITE instead.
-  */
- int inode_permission(struct inode *inode, int mask)
- {
-@@ -2528,7 +2528,7 @@ static int may_delete(struct inode *dir, struct dentry *victim,
- 		      bool isdir, bool replace)
- {
- 	struct inode *inode = d_backing_inode(victim);
--	int error, mask = MAY_WRITE | MAY_EXEC;
-+	int error, mask = MAY_EXEC;
- 
- 	if (d_is_negative(victim))
- 		return -ENOENT;
-@@ -2538,8 +2538,15 @@ static int may_delete(struct inode *dir, struct dentry *victim,
- 	audit_inode_child(dir, victim, AUDIT_TYPE_CHILD_DELETE);
- 
- 	if (replace)
--		mask |= isdir ? MAY_CREATE_DIR : MAY_CREATE_FILE;
--	error = inode_permission(dir, mask);
-+		mask |= MAY_WRITE | (isdir ? MAY_CREATE_DIR : MAY_CREATE_FILE);
-+	error = inode_permission(dir, mask | MAY_WRITE | MAY_DELETE_CHILD);
-+	if (error && IS_RICHACL(inode)) {
-+		/* Deleting is also permitted with MAY_EXEC on the directory
-+		 * and MAY_DELETE_SELF on the inode.  */
-+		if (!inode_permission(inode, MAY_DELETE_SELF) &&
-+		    !inode_permission(dir, mask))
-+			error = 0;
-+	}
- 	if (error)
- 		return error;
- 	if (IS_APPEND(dir))
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index e4d701c..8e130e1 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -84,6 +84,8 @@ typedef void (dax_iodone_t)(struct buffer_head *bh_map, int uptodate);
- #define MAY_NOT_BLOCK		0x00000080
- #define MAY_CREATE_FILE		0x00000100
- #define MAY_CREATE_DIR		0x00000200
-+#define MAY_DELETE_CHILD	0x00000400
-+#define MAY_DELETE_SELF		0x00000800
- 
- /*
-  * flags in file.f_mode.  Note that FMODE_READ and FMODE_WRITE must correspond
+ * Definitions common to the kernel and to user space have been
+    moved into uapi header files.
+
+ * A few other minor fixes and clarifications.
+
+In addition, the user-space utilitites now include a man page describing how
+richacls work:
+
+  https://github.com/andreas-gruenbacher/richacl/blob/master/man/richacl.7
+
+The complete patch queue is available here:
+
+  git://git.kernel.org/pub/scm/linux/kernel/git/agruen/linux-richacl.git \
+        richacl-2015-09-xx
+
+Open issues:
+
+ * nfs: When a user or group name cannot be mapped, nfs's idmapper
+   always maps it to nobody. That's good enough for mapping the file
+   owner and owning group, but not for identifiers in acls. For now, to get
+   the nfs richacl support somewhat working, I'm explicitly checking if
+   mapping has resulted in uid/gid 99 in the kernel.
+
+ * nfs: When the nfs server replies with NFS4ERR_BADNAME for any
+   user or group name lookup, the client will stop sending numeric uids
+   and gids to the server even when the lookup wasn't numeric.
+   From then on, the client will translate uids and gids that have no
+   mapping to the string "nobody", and the server will reject them.
+   This problem is not specific to acls.
+
+ * nfsd could implement creating a file without applying a file mode;
+   this would make Automatic Inheritance work as intended. Right
+   now, when no mode is specified, the file permission bits are set
+   to 0.
+
+ * It would be nice if the MAY_DELETE_SELF flag could override the
+   sticky directory check as it did in the previous version of this patch
+   queue.  I couldn't come up with a clean way of achieving that.
+
+Thanks,
+Andreas
+
+Andreas Gruenbacher (39):
+  vfs: Add IS_ACL() and IS_RICHACL() tests
+  vfs: Add MAY_CREATE_FILE and MAY_CREATE_DIR permission flags
+  vfs: Add MAY_DELETE_SELF and MAY_DELETE_CHILD permission flags
+  vfs: Make the inode passed to inode_change_ok non-const
+  vfs: Add permission flags for setting file attributes
+  richacl: In-memory representation and helper functions
+  richacl: Permission mapping functions
+  richacl: Compute maximum file masks from an acl
+  richacl: Update the file masks in chmod()
+  richacl: Permission check algorithm
+  vfs: Cache base_acl objects in inodes
+  vfs: Cache richacl in struct inode
+  richacl: Check if an acl is equivalent to a file mode
+  richacl: Create-time inheritance
+  richacl: Automatic Inheritance
+  richacl: xattr mapping functions
+  vfs: Add richacl permission checking
+  richacl: acl editing helper functions
+  richacl: Move everyone@ aces down the acl
+  richacl: Propagate everyone@ permissions to other aces
+  richacl: Set the owner permissions to the owner mask
+  richacl: Set the other permissions to the other mask
+  richacl: Isolate the owner and group classes
+  richacl: Apply the file masks to a richacl
+  richacl: Create richacl from mode values
+  nfsd: Keep list of acls to dispose of in compoundargs
+  nfsd: Use richacls as internal acl representation
+  nfsd: Add richacl support
+  nfsd: Add support for the v4.1 dacl attribute
+  nfsd: Add support for the MAY_CREATE_{FILE,DIR} permissions
+  richacl: Add support for unmapped identifiers
+  ext4: Don't allow unmapped identifiers in richacls
+  sunrpc: Allow to demand-allocate pages to encode into
+  sunrpc: Add xdr_init_encode_pages
+  nfs: Fix GETATTR bitmap verification
+  nfs: Remove unused xdr page offsets in getacl/setacl arguments
+  nfs: Add richacl support
+  nfs: Add support for the v4.1 dacl attribute
+  richacl: uapi header split
+
+Aneesh Kumar K.V (2):
+  ext4: Add richacl support
+  ext4: Add richacl feature flag
+
+ drivers/staging/lustre/lustre/llite/llite_lib.c |   2 +-
+ fs/Kconfig                                      |   9 +
+ fs/Makefile                                     |   3 +
+ fs/attr.c                                       |  81 ++-
+ fs/ext4/Kconfig                                 |  15 +
+ fs/ext4/Makefile                                |   1 +
+ fs/ext4/acl.c                                   |   6 +-
+ fs/ext4/acl.h                                   |  12 +-
+ fs/ext4/ext4.h                                  |   6 +-
+ fs/ext4/file.c                                  |   6 +-
+ fs/ext4/ialloc.c                                |   7 +-
+ fs/ext4/inode.c                                 |  10 +-
+ fs/ext4/namei.c                                 |  11 +-
+ fs/ext4/richacl.c                               | 218 ++++++
+ fs/ext4/richacl.h                               |  47 ++
+ fs/ext4/super.c                                 |  42 +-
+ fs/ext4/xattr.c                                 |   6 +
+ fs/ext4/xattr.h                                 |   1 +
+ fs/f2fs/acl.c                                   |   4 +-
+ fs/inode.c                                      |  15 +-
+ fs/jffs2/acl.c                                  |   6 +-
+ fs/namei.c                                      | 109 ++-
+ fs/nfs/inode.c                                  |   3 -
+ fs/nfs/nfs4proc.c                               | 701 +++++++++++++-----
+ fs/nfs/nfs4xdr.c                                | 257 ++++++-
+ fs/nfs/super.c                                  |   4 +-
+ fs/nfs_common/Makefile                          |   1 +
+ fs/nfs_common/nfs4acl.c                         |  44 ++
+ fs/nfsd/Kconfig                                 |   1 +
+ fs/nfsd/acl.h                                   |  23 +-
+ fs/nfsd/nfs4acl.c                               | 481 ++++++------
+ fs/nfsd/nfs4proc.c                              |  24 +-
+ fs/nfsd/nfs4xdr.c                               | 268 ++++---
+ fs/nfsd/nfsd.h                                  |   6 +-
+ fs/nfsd/nfsfh.c                                 |   8 +-
+ fs/nfsd/vfs.c                                   |  28 +-
+ fs/nfsd/vfs.h                                   |  17 +-
+ fs/nfsd/xdr4.h                                  |  12 +-
+ fs/posix_acl.c                                  |  26 +-
+ fs/richacl_base.c                               | 683 +++++++++++++++++
+ fs/richacl_compat.c                             | 928 ++++++++++++++++++++++++
+ fs/richacl_inode.c                              | 296 ++++++++
+ fs/richacl_xattr.c                              | 267 +++++++
+ fs/xattr.c                                      |  34 +-
+ include/linux/fs.h                              |  50 +-
+ include/linux/nfs4.h                            |  24 +-
+ include/linux/nfs4acl.h                         |   7 +
+ include/linux/nfs_fs.h                          |   1 -
+ include/linux/nfs_fs_sb.h                       |   2 +
+ include/linux/nfs_xdr.h                         |  13 +-
+ include/linux/posix_acl.h                       |  12 +-
+ include/linux/richacl.h                         | 275 +++++++
+ include/linux/richacl_compat.h                  |  40 +
+ include/linux/richacl_xattr.h                   |  47 ++
+ include/linux/sunrpc/xdr.h                      |   2 +
+ include/uapi/linux/Kbuild                       |   2 +
+ include/uapi/linux/fs.h                         |   3 +-
+ include/uapi/linux/nfs4.h                       |   3 +-
+ include/uapi/linux/richacl.h                    | 111 +++
+ include/uapi/linux/richacl_xattr.h              |  43 ++
+ include/uapi/linux/xattr.h                      |   2 +
+ net/sunrpc/xdr.c                                |  34 +
+ 62 files changed, 4672 insertions(+), 728 deletions(-)
+ create mode 100644 fs/ext4/richacl.c
+ create mode 100644 fs/ext4/richacl.h
+ create mode 100644 fs/nfs_common/nfs4acl.c
+ create mode 100644 fs/richacl_base.c
+ create mode 100644 fs/richacl_compat.c
+ create mode 100644 fs/richacl_inode.c
+ create mode 100644 fs/richacl_xattr.c
+ create mode 100644 include/linux/nfs4acl.h
+ create mode 100644 include/linux/richacl.h
+ create mode 100644 include/linux/richacl_compat.h
+ create mode 100644 include/linux/richacl_xattr.h
+ create mode 100644 include/uapi/linux/richacl.h
+ create mode 100644 include/uapi/linux/richacl_xattr.h
+
 -- 
 2.4.3
 
