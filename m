@@ -1,201 +1,154 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:58410 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:38359 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751636AbbIEK2F (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 5 Sep 2015 06:28:05 -0400
+	id S1752428AbbIEK2x (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 5 Sep 2015 06:28:53 -0400
 From: Andreas Gruenbacher <agruenba@redhat.com>
 To: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-nfs@vger.kernel.org, linux-api@vger.kernel.org,
         linux-cifs@vger.kernel.org, linux-security-module@vger.kernel.org
-Subject: [RFC v7 14/41] richacl: Create-time inheritance
-Date: Sat,  5 Sep 2015 12:27:09 +0200
-Message-Id: <1441448856-13478-15-git-send-email-agruenba@redhat.com>
+Subject: [RFC v7 40/41] nfs: Add support for the v4.1 dacl attribute
+Date: Sat,  5 Sep 2015 12:27:35 +0200
+Message-Id: <1441448856-13478-41-git-send-email-agruenba@redhat.com>
 In-Reply-To: <1441448856-13478-1-git-send-email-agruenba@redhat.com>
 References: <1441448856-13478-1-git-send-email-agruenba@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When a new file is created, it can inherit an acl from its parent
-directory; this is similar to how default acls work in POSIX (draft)
-ACLs.
+The dacl attribute includes Automatic Inheritance flags not supported by
+the acl attribute.  it is only supported in NFS version 4.1 and higher.
+On systems where NFS version 4.0 is still the default, an additional
+mount option is needed:
 
-As with POSIX ACLs, if a file inherits an acl from its parent directory,
-the intersection between the create mode and the permissions granted by
-the inherited acl determines the file masks and file permission bits,
-and the umask is ignored.
+    mount -t nfs4 -o vers=4.1 [...]
 
 Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
 ---
- fs/richacl_base.c       | 69 +++++++++++++++++++++++++++++++++++++++++++++++++
- fs/richacl_inode.c      | 65 ++++++++++++++++++++++++++++++++++++++++++++++
- include/linux/richacl.h |  2 ++
- 3 files changed, 136 insertions(+)
+ fs/nfs/nfs4proc.c       |  2 +-
+ fs/nfs/nfs4xdr.c        | 55 ++++++++++++++++++++++++++++++++++++++++++-------
+ include/linux/nfs_xdr.h |  2 +-
+ 3 files changed, 50 insertions(+), 9 deletions(-)
 
-diff --git a/fs/richacl_base.c b/fs/richacl_base.c
-index 106e988..fda407d 100644
---- a/fs/richacl_base.c
-+++ b/fs/richacl_base.c
-@@ -483,3 +483,72 @@ richacl_equiv_mode(const struct richacl *acl, mode_t *mode_p)
- 	return 0;
- }
- EXPORT_SYMBOL_GPL(richacl_equiv_mode);
-+
-+/**
-+ * richacl_inherit  -  compute the inherited acl of a new file
-+ * @dir_acl:	acl of the containing directory
-+ * @isdir:	inherit by a directory or non-directory?
-+ *
-+ * A directory can have acl entries which files and/or directories created
-+ * inside the directory will inherit.  This function computes the acl for such
-+ * a new file.  If there is no inheritable acl, it will return %NULL.
-+ */
-+struct richacl *
-+richacl_inherit(const struct richacl *dir_acl, int isdir)
-+{
-+	const struct richace *dir_ace;
-+	struct richacl *acl = NULL;
-+	struct richace *ace;
-+	int count = 0;
-+
-+	if (isdir) {
-+		richacl_for_each_entry(dir_ace, dir_acl) {
-+			if (!richace_is_inheritable(dir_ace))
-+				continue;
-+			count++;
-+		}
-+		if (!count)
-+			return NULL;
-+		acl = richacl_alloc(count, GFP_KERNEL);
-+		if (!acl)
-+			return ERR_PTR(-ENOMEM);
-+		ace = acl->a_entries;
-+		richacl_for_each_entry(dir_ace, dir_acl) {
-+			if (!richace_is_inheritable(dir_ace))
-+				continue;
-+			richace_copy(ace, dir_ace);
-+			if (dir_ace->e_flags & RICHACE_NO_PROPAGATE_INHERIT_ACE)
-+				ace->e_flags &= ~RICHACE_INHERITANCE_FLAGS;
-+			else if ((dir_ace->e_flags & RICHACE_FILE_INHERIT_ACE) &&
-+				 !(dir_ace->e_flags & RICHACE_DIRECTORY_INHERIT_ACE))
-+				ace->e_flags |= RICHACE_INHERIT_ONLY_ACE;
-+			ace++;
-+		}
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index f680364..b17e7c9 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -4482,7 +4482,7 @@ static struct richacl *__nfs4_get_acl_uncached(struct inode *inode)
+ 	struct nfs_server *server = NFS_SERVER(inode);
+ 	struct page *pages[DIV_ROUND_UP(NFS4ACL_SIZE_MAX, PAGE_SIZE)] = {};
+ 	struct nfs_getaclargs args = {
+-		.fh = NFS_FH(inode),
++		.inode = inode,
+ 		.acl_pages = pages,
+ 		.acl_len = ARRAY_SIZE(pages) * PAGE_SIZE,
+ 	};
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 78a9fbd..bfb4d49 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -1648,9 +1648,16 @@ encode_setacl(struct xdr_stream *xdr, struct nfs_setaclargs *arg, struct compoun
+ 	encode_nfs4_stateid(xdr, &zero_stateid);
+ 
+ 	/* Encode attribute bitmap. */
+-	p = reserve_space(xdr, 2*4);
+-	*p++ = cpu_to_be32(1);
+-	*p = cpu_to_be32(FATTR4_WORD0_ACL);
++	if (arg->server->attr_bitmask[1] & FATTR4_WORD1_DACL) {
++		p = reserve_space(xdr, 3*4);
++		*p++ = cpu_to_be32(2);
++		*p++ = 0;
++		*p = cpu_to_be32(FATTR4_WORD1_DACL);
 +	} else {
-+		richacl_for_each_entry(dir_ace, dir_acl) {
-+			if (!(dir_ace->e_flags & RICHACE_FILE_INHERIT_ACE))
-+				continue;
-+			count++;
-+		}
-+		if (!count)
-+			return NULL;
-+		acl = richacl_alloc(count, GFP_KERNEL);
-+		if (!acl)
-+			return ERR_PTR(-ENOMEM);
-+		ace = acl->a_entries;
-+		richacl_for_each_entry(dir_ace, dir_acl) {
-+			if (!(dir_ace->e_flags & RICHACE_FILE_INHERIT_ACE))
-+				continue;
-+			richace_copy(ace, dir_ace);
-+			ace->e_flags &= ~RICHACE_INHERITANCE_FLAGS;
-+			/*
-+			 * RICHACE_DELETE_CHILD is meaningless for
-+			 * non-directories, so clear it.
-+			 */
-+			ace->e_mask &= ~RICHACE_DELETE_CHILD;
-+			ace++;
-+		}
++		p = reserve_space(xdr, 2*4);
++		*p++ = cpu_to_be32(1);
++		*p = cpu_to_be32(FATTR4_WORD0_ACL);
 +	}
+ 
+ 	attrlen_offset = xdr->buf->len;
+ 	xdr_reserve_space(xdr, 4);  /* to be backfilled later */
+@@ -2485,9 +2492,12 @@ static void nfs4_xdr_enc_getacl(struct rpc_rqst *req, struct xdr_stream *xdr,
+ 
+ 	encode_compound_hdr(xdr, req, &hdr);
+ 	encode_sequence(xdr, &args->seq_args, &hdr);
+-	encode_putfh(xdr, args->fh, &hdr);
++	encode_putfh(xdr, NFS_FH(args->inode), &hdr);
+ 	replen = hdr.replen + op_decode_hdr_maxsz + 1;
+-	encode_getattr_two(xdr, FATTR4_WORD0_ACL, FATTR4_WORD1_MODE, &hdr);
++	if (NFS_SERVER(args->inode)->attr_bitmask[1] & FATTR4_WORD1_DACL)
++		encode_getattr_two(xdr, 0, FATTR4_WORD1_MODE | FATTR4_WORD1_DACL, &hdr);
++	else
++		encode_getattr_two(xdr, FATTR4_WORD0_ACL, FATTR4_WORD1_MODE, &hdr);
+ 
+ 	xdr_inline_pages(&req->rq_rcv_buf, replen << 2,
+ 		args->acl_pages, 0, args->acl_len);
+@@ -5375,14 +5385,28 @@ static int decode_getacl(struct xdr_stream *xdr, struct rpc_rqst *req,
+ 
+ 	if (unlikely(bitmap[0] & (FATTR4_WORD0_ACL - 1U)))
+ 		return -EIO;
+-	if (likely(bitmap[0] & FATTR4_WORD0_ACL)) {
 +
-+	return acl;
-+}
-diff --git a/fs/richacl_inode.c b/fs/richacl_inode.c
-index dc2a69f..f3f1f84 100644
---- a/fs/richacl_inode.c
-+++ b/fs/richacl_inode.c
-@@ -220,3 +220,68 @@ out:
- 	return denied ? -EACCES : 0;
- }
- EXPORT_SYMBOL_GPL(richacl_permission);
++	if (bitmap[0] & FATTR4_WORD0_ACL) {
++		struct richace *ace;
 +
-+/**
-+ * richacl_inherit_inode  -  compute inherited acl and file mode
-+ * @dir_acl:	acl of the containing directory
-+ * @inode:	inode of the new file (create mode in i_mode)
-+ *
-+ * The file permission bits in inode->i_mode must be set to the create mode by
-+ * the caller.
-+ *
-+ * If there is an inheritable acl, the maximum permissions that the acl grants
-+ * will be computed and permissions not granted by the acl will be removed from
-+ * inode->i_mode.  If there is no inheritable acl, the umask will be applied
-+ * instead.
-+ */
-+static struct richacl *
-+richacl_inherit_inode(const struct richacl *dir_acl, struct inode *inode)
-+{
-+	struct richacl *acl;
-+	mode_t mask;
++		if (bitmap[1] & FATTR4_WORD1_DACL)
++			return -EIO;
 +
-+	acl = richacl_inherit(dir_acl, S_ISDIR(inode->i_mode));
-+	if (acl) {
-+		mask = inode->i_mode;
-+		if (richacl_equiv_mode(acl, &mask) == 0) {
-+			richacl_put(acl);
-+			acl = NULL;
-+		} else {
-+			richacl_compute_max_masks(acl);
-+			/*
-+			 * Ensure that the acl will not grant any permissions
-+			 * beyond the create mode.
-+			 */
-+			acl->a_flags |= RICHACL_MASKED;
-+			acl->a_owner_mask &=
-+				richacl_mode_to_mask(inode->i_mode >> 6);
-+			acl->a_group_mask &=
-+				richacl_mode_to_mask(inode->i_mode >> 3);
-+			acl->a_other_mask &=
-+				richacl_mode_to_mask(inode->i_mode);
-+			mask = ~S_IRWXUGO | richacl_masks_to_mode(acl);
+ 		acl = decode_acl_entries(xdr, res->server);
+ 		status = PTR_ERR(acl);
+ 		if (IS_ERR(acl))
+ 			goto out;
++
++		status = -EIO;
++		richacl_for_each_entry(ace, acl) {
++			if (ace->e_flags & RICHACE_INHERITED_ACE)
++				goto out;
 +		}
-+	} else
-+		mask = ~current_umask();
-+
-+	inode->i_mode &= mask;
-+	return acl;
-+}
-+
-+struct richacl *richacl_create(struct inode *inode, struct inode *dir)
-+{
-+	struct richacl *dir_acl, *acl = NULL;
-+
-+	if (S_ISLNK(inode->i_mode))
-+		return NULL;
-+	dir_acl = get_richacl(dir);
-+	if (dir_acl) {
-+		if (IS_ERR(dir_acl))
-+			return dir_acl;
-+		acl = richacl_inherit_inode(dir_acl, inode);
-+		richacl_put(dir_acl);
-+	} else
-+		inode->i_mode &= ~current_umask();
-+	return acl;
-+}
-+EXPORT_SYMBOL_GPL(richacl_create);
-diff --git a/include/linux/richacl.h b/include/linux/richacl.h
-index 6535ce5..9bf95c2 100644
---- a/include/linux/richacl.h
-+++ b/include/linux/richacl.h
-@@ -305,8 +305,10 @@ extern unsigned int richacl_want_to_mask(unsigned int);
- extern void richacl_compute_max_masks(struct richacl *);
- extern struct richacl *richacl_chmod(struct richacl *, mode_t);
- extern int richacl_equiv_mode(const struct richacl *, mode_t *);
-+extern struct richacl *richacl_inherit(const struct richacl *, int);
+ 		bitmap[0] &= ~FATTR4_WORD0_ACL;
+-	} else
++	} else if (!(bitmap[1] & FATTR4_WORD1_DACL)) {
+ 		status = -EOPNOTSUPP;
++		goto out;
++	}
  
- /* richacl_inode.c */
- extern int richacl_permission(struct inode *, const struct richacl *, int);
-+extern struct richacl *richacl_create(struct inode *, struct inode *);
+ 	status = -EIO;
+ 	if (unlikely(bitmap[0]))
+@@ -5391,6 +5415,23 @@ static int decode_getacl(struct xdr_stream *xdr, struct rpc_rqst *req,
+ 	status = decode_attr_mode(xdr, bitmap, &res->mode);
+ 	if (status < 0)
+ 		goto out;
++	if (bitmap[1] & FATTR4_WORD1_DACL) {
++		unsigned int flags;
++		__be32 *p;
++
++		p = xdr_inline_decode(xdr, 4);
++		status = -EIO;
++		if (unlikely(!p))
++			goto out;
++		flags = be32_to_cpup(p);
++
++		acl = decode_acl_entries(xdr, res->server);
++		status = PTR_ERR(acl);
++		if (IS_ERR(acl))
++			goto out;
++		acl->a_flags = flags;
++		bitmap[1] &= ~FATTR4_WORD1_DACL;
++	}
+ 	status = 0;
  
- #endif /* __RICHACL_H */
+ out:
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index f1c8f93..abe0b66 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -695,7 +695,7 @@ struct nfs_setaclres {
+ 
+ struct nfs_getaclargs {
+ 	struct nfs4_sequence_args 	seq_args;
+-	struct nfs_fh *			fh;
++	struct inode *			inode;
+ 	size_t				acl_len;
+ 	struct page **			acl_pages;
+ };
 -- 
 2.4.3
 
