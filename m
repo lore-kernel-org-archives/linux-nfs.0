@@ -1,127 +1,179 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qg0-f49.google.com ([209.85.192.49]:35525 "EHLO
-	mail-qg0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750743AbbIEXHB (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 5 Sep 2015 19:07:01 -0400
-Received: by qgt47 with SMTP id 47so40923337qgt.2
-        for <linux-nfs@vger.kernel.org>; Sat, 05 Sep 2015 16:07:00 -0700 (PDT)
+Received: from mail-qg0-f52.google.com ([209.85.192.52]:33931 "EHLO
+	mail-qg0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751222AbbIEXHC (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 5 Sep 2015 19:07:02 -0400
+Received: by qgez77 with SMTP id z77so41158044qge.1
+        for <linux-nfs@vger.kernel.org>; Sat, 05 Sep 2015 16:07:01 -0700 (PDT)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH 1/2] NFSv4: Express delegation limit in units of pages
-Date: Sat,  5 Sep 2015 19:06:57 -0400
-Message-Id: <1441494418-53583-1-git-send-email-trond.myklebust@primarydata.com>
+Subject: [PATCH 2/2] NFSv4: Respect the server imposed limit on how many changes we may cache
+Date: Sat,  5 Sep 2015 19:06:58 -0400
+Message-Id: <1441494418-53583-2-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1441494418-53583-1-git-send-email-trond.myklebust@primarydata.com>
+References: <1441494418-53583-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Since we're tracking modifications to the page cache on a per-page
-basis, it makes sense to express the limit to how much we may cache
-in units of pages.
+The NFSv4 delegation spec allows the server to tell a client to limit how
+much data it cache after the file is closed. In return, the server
+guarantees enough free space to avoid ENOSPC situations, etc.
+Prior to this patch, we assumed we could always cache aggressively after
+close. Unfortunately, this causes problems with servers that set the
+limit to 0 and therefore do not offer any ENOSPC guarantees.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/delegation.c     |  5 +++--
- fs/nfs/delegation.h     |  2 +-
- fs/nfs/nfs4xdr.c        | 16 ++++++++++------
- include/linux/nfs_xdr.h |  2 +-
- 4 files changed, 15 insertions(+), 10 deletions(-)
+ fs/nfs/delegation.c | 25 +++++++++++++++++++++++++
+ fs/nfs/delegation.h |  1 +
+ fs/nfs/file.c       | 10 +---------
+ fs/nfs/internal.h   |  1 -
+ fs/nfs/nfs4file.c   | 29 ++++++++++++++++++++++++++++-
+ 5 files changed, 55 insertions(+), 11 deletions(-)
 
 diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
-index 029d688a969f..4817f66c8d47 100644
+index 4817f66c8d47..a08c5c2ebddd 100644
 --- a/fs/nfs/delegation.c
 +++ b/fs/nfs/delegation.c
-@@ -175,7 +175,8 @@ void nfs_inode_reclaim_delegation(struct inode *inode, struct rpc_cred *cred,
- 		if (delegation->inode != NULL) {
- 			nfs4_stateid_copy(&delegation->stateid, &res->delegation);
- 			delegation->type = res->delegation_type;
--			delegation->maxsize = res->maxsize;
-+			delegation->pagemod_limit = res->pagemod_limit;
-+				;
- 			oldcred = delegation->cred;
- 			delegation->cred = get_rpccred(cred);
- 			clear_bit(NFS_DELEGATION_NEED_RECLAIM,
-@@ -337,7 +338,7 @@ int nfs_inode_set_delegation(struct inode *inode, struct rpc_cred *cred, struct
- 		return -ENOMEM;
- 	nfs4_stateid_copy(&delegation->stateid, &res->delegation);
- 	delegation->type = res->delegation_type;
--	delegation->maxsize = res->maxsize;
-+	delegation->pagemod_limit = res->pagemod_limit;
- 	delegation->change_attr = inode->i_version;
- 	delegation->cred = get_rpccred(cred);
- 	delegation->inode = inode;
+@@ -901,3 +901,28 @@ bool nfs4_copy_delegation_stateid(nfs4_stateid *dst, struct inode *inode,
+ 	rcu_read_unlock();
+ 	return ret;
+ }
++
++/**
++ * nfs4_delegation_flush_on_close - Check if we must flush file on close
++ * @inode: inode to check
++ *
++ * This function checks the number of outstanding writes to the file
++ * against the delegation 'space_limit' field to see if
++ * the spec requires us to flush the file on close.
++ */
++bool nfs4_delegation_flush_on_close(const struct inode *inode)
++{
++	struct nfs_inode *nfsi = NFS_I(inode);
++	struct nfs_delegation *delegation;
++	bool ret = true;
++
++	rcu_read_lock();
++	delegation = rcu_dereference(nfsi->delegation);
++	if (delegation == NULL || !(delegation->type & FMODE_WRITE))
++		goto out;
++	if (nfsi->nrequests < delegation->pagemod_limit)
++		ret = false;
++out:
++	rcu_read_unlock();
++	return ret;
++}
 diff --git a/fs/nfs/delegation.h b/fs/nfs/delegation.h
-index e3c20a3ccc93..554178a17376 100644
+index 554178a17376..a44829173e57 100644
 --- a/fs/nfs/delegation.h
 +++ b/fs/nfs/delegation.h
-@@ -18,7 +18,7 @@ struct nfs_delegation {
- 	struct inode *inode;
- 	nfs4_stateid stateid;
- 	fmode_t type;
--	loff_t maxsize;
-+	unsigned long pagemod_limit;
- 	__u64 change_attr;
- 	unsigned long flags;
- 	spinlock_t lock;
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index ff4784c54e04..788adf3897c7 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -4932,24 +4932,28 @@ static int decode_lookup(struct xdr_stream *xdr)
+@@ -61,6 +61,7 @@ bool nfs4_copy_delegation_stateid(nfs4_stateid *dst, struct inode *inode, fmode_
+ void nfs_mark_delegation_referenced(struct nfs_delegation *delegation);
+ int nfs4_have_delegation(struct inode *inode, fmode_t flags);
+ int nfs4_check_delegation(struct inode *inode, fmode_t flags);
++bool nfs4_delegation_flush_on_close(const struct inode *inode);
+ 
+ #endif
+ 
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index 526a2681d975..c0f9b1ed12b9 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -142,7 +142,7 @@ EXPORT_SYMBOL_GPL(nfs_file_llseek);
+ /*
+  * Flush all dirty pages, and check for write errors.
+  */
+-int
++static int
+ nfs_file_flush(struct file *file, fl_owner_t id)
+ {
+ 	struct inode	*inode = file_inode(file);
+@@ -153,17 +153,9 @@ nfs_file_flush(struct file *file, fl_owner_t id)
+ 	if ((file->f_mode & FMODE_WRITE) == 0)
+ 		return 0;
+ 
+-	/*
+-	 * If we're holding a write delegation, then just start the i/o
+-	 * but don't wait for completion (or send a commit).
+-	 */
+-	if (NFS_PROTO(inode)->have_delegation(inode, FMODE_WRITE))
+-		return filemap_fdatawrite(file->f_mapping);
+-
+ 	/* Flush writes to the server and return any errors */
+ 	return vfs_fsync(file, 0);
+ }
+-EXPORT_SYMBOL_GPL(nfs_file_flush);
+ 
+ ssize_t
+ nfs_file_read(struct kiocb *iocb, struct iov_iter *to)
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 9ab3b1c21bb4..56cfde26fb9c 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -360,7 +360,6 @@ int nfs_rename(struct inode *, struct dentry *, struct inode *, struct dentry *)
+ /* file.c */
+ int nfs_file_fsync_commit(struct file *, loff_t, loff_t, int);
+ loff_t nfs_file_llseek(struct file *, loff_t, int);
+-int nfs_file_flush(struct file *, fl_owner_t);
+ ssize_t nfs_file_read(struct kiocb *, struct iov_iter *);
+ ssize_t nfs_file_splice_read(struct file *, loff_t *, struct pipe_inode_info *,
+ 			     size_t, unsigned int);
+diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
+index 43f1590b9240..b0dbe0abed53 100644
+--- a/fs/nfs/nfs4file.c
++++ b/fs/nfs/nfs4file.c
+@@ -6,7 +6,9 @@
+ #include <linux/fs.h>
+ #include <linux/falloc.h>
+ #include <linux/nfs_fs.h>
++#include "delegation.h"
+ #include "internal.h"
++#include "iostat.h"
+ #include "fscache.h"
+ #include "pnfs.h"
+ 
+@@ -99,6 +101,31 @@ out_drop:
+ 	goto out_put_ctx;
  }
  
- /* This is too sick! */
--static int decode_space_limit(struct xdr_stream *xdr, u64 *maxsize)
-+static int decode_space_limit(struct xdr_stream *xdr,
-+		unsigned long *pagemod_limit)
++/*
++ * Flush all dirty pages, and check for write errors.
++ */
++static int
++nfs4_file_flush(struct file *file, fl_owner_t id)
++{
++	struct inode	*inode = file_inode(file);
++
++	dprintk("NFS: flush(%pD2)\n", file);
++
++	nfs_inc_stats(inode, NFSIOS_VFSFLUSH);
++	if ((file->f_mode & FMODE_WRITE) == 0)
++		return 0;
++
++	/*
++	 * If we're holding a write delegation, then check if we're required
++	 * to flush the i/o on close. If not, then just start the i/o now.
++	 */
++	if (!nfs4_delegation_flush_on_close(inode))
++		return filemap_fdatawrite(file->f_mapping);
++
++	/* Flush writes to the server and return any errors */
++	return vfs_fsync(file, 0);
++}
++
+ static int
+ nfs4_file_fsync(struct file *file, loff_t start, loff_t end, int datasync)
  {
- 	__be32 *p;
- 	uint32_t limit_type, nblocks, blocksize;
-+	u64 maxsize = 0;
- 
- 	p = xdr_inline_decode(xdr, 12);
- 	if (unlikely(!p))
- 		goto out_overflow;
- 	limit_type = be32_to_cpup(p++);
- 	switch (limit_type) {
--	case 1:
--		xdr_decode_hyper(p, maxsize);
-+	case NFS4_LIMIT_SIZE:
-+		xdr_decode_hyper(p, &maxsize);
- 		break;
--	case 2:
-+	case NFS4_LIMIT_BLOCKS:
- 		nblocks = be32_to_cpup(p++);
- 		blocksize = be32_to_cpup(p);
--		*maxsize = (uint64_t)nblocks * (uint64_t)blocksize;
-+		maxsize = (uint64_t)nblocks * (uint64_t)blocksize;
- 	}
-+	maxsize >>= PAGE_CACHE_SHIFT;
-+	*pagemod_limit = min_t(u64, maxsize, ULONG_MAX);
- 	return 0;
- out_overflow:
- 	print_overflow_msg(__func__, xdr);
-@@ -4977,7 +4981,7 @@ static int decode_rw_delegation(struct xdr_stream *xdr,
- 		break;
- 	case NFS4_OPEN_DELEGATE_WRITE:
- 		res->delegation_type = FMODE_WRITE|FMODE_READ;
--		if (decode_space_limit(xdr, &res->maxsize) < 0)
-+		if (decode_space_limit(xdr, &res->pagemod_limit) < 0)
- 				return -EIO;
- 	}
- 	return decode_ace(xdr, NULL, res->server->nfs_client);
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index b4392d86d157..52faf7e96c65 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -406,8 +406,8 @@ struct nfs_openres {
- 	const struct nfs_server *server;
- 	fmode_t			delegation_type;
- 	nfs4_stateid		delegation;
-+	unsigned long		pagemod_limit;
- 	__u32			do_recall;
--	__u64			maxsize;
- 	__u32			attrset[NFS4_BITMAP_SIZE];
- 	struct nfs4_string	*owner;
- 	struct nfs4_string	*group_owner;
+@@ -177,7 +204,7 @@ const struct file_operations nfs4_file_operations = {
+ 	.write_iter	= nfs_file_write,
+ 	.mmap		= nfs_file_mmap,
+ 	.open		= nfs4_file_open,
+-	.flush		= nfs_file_flush,
++	.flush		= nfs4_file_flush,
+ 	.release	= nfs_file_release,
+ 	.fsync		= nfs4_file_fsync,
+ 	.lock		= nfs_lock,
 -- 
 2.4.3
 
