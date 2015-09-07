@@ -1,155 +1,170 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp-o-1.desy.de ([131.169.56.154]:55154 "EHLO smtp-o-1.desy.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751489AbbIGJSu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 7 Sep 2015 05:18:50 -0400
-Received: from smtp-map-1.desy.de (smtp-map-1.desy.de [131.169.56.66])
-	by smtp-o-1.desy.de (DESY-O-1) with ESMTP id ADE88280AB7
-	for <linux-nfs@vger.kernel.org>; Mon,  7 Sep 2015 11:18:48 +0200 (CEST)
-Received: from ZITSWEEP2.win.desy.de (zitsweep2.win.desy.de [131.169.97.96])
-	by smtp-map-1.desy.de (DESY_MAP_1) with ESMTP id A365013EA7
-	for <linux-nfs@vger.kernel.org>; Mon,  7 Sep 2015 11:18:48 +0200 (MEST)
-Date: Mon, 7 Sep 2015 11:18:48 +0200 (CEST)
-From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: linux-nfs@vger.kernel.org
-Message-ID: <1343580857.5999807.1441617528019.JavaMail.zimbra@desy.de>
-In-Reply-To: <1441494418-53583-1-git-send-email-trond.myklebust@primarydata.com>
-References: <1441494418-53583-1-git-send-email-trond.myklebust@primarydata.com>
-Subject: Re: [PATCH 1/2] NFSv4: Express delegation limit in units of pages
+Received: from mail-pa0-f51.google.com ([209.85.220.51]:34649 "EHLO
+	mail-pa0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750839AbbIGOBN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Sep 2015 10:01:13 -0400
+To: "J. Bruce Fields" <bfields@fieldses.org>,
+        Al Viro <viro@zeniv.linux.org.uk>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        linux-fsdevel@vger.kernel.org, NeilBrown <neilb@suse.de>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        kinglongmee@gmail.com
+From: Kinglong Mee <kinglongmee@gmail.com>
+Subject: [PATCH 0/6 v10] NFSD: Pin to vfsmount for nfsd exports cache
+Message-ID: <55ED9899.9010401@gmail.com>
+Date: Mon, 7 Sep 2015 22:00:57 +0800
 MIME-Version: 1.0
 Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+If there are some mount points(not exported for nfs) under pseudo root,
+after client's operation of those entry under the root, anyone *can't*
+unmount those mount points until export cache expired.
 
+# cat /etc/exports
+/nfs/xfs        *(rw,insecure,no_subtree_check,no_root_squash)
+/nfs/pnfs       *(rw,insecure,no_subtree_check,no_root_squash)
+# ll /nfs/
+total 0
+drwxr-xr-x. 3 root root 84 Apr 21 22:27 pnfs
+drwxr-xr-x. 3 root root 84 Apr 21 22:27 test
+drwxr-xr-x. 2 root root  6 Apr 20 22:01 xfs
+# mount /dev/sde /nfs/test
+# df
+Filesystem                      1K-blocks    Used Available Use% Mounted on
+......
+/dev/sdd                          1038336   32944   1005392   4% /nfs/pnfs
+/dev/sdc                         10475520   32928  10442592   1% /nfs/xfs
+/dev/sde                           999320    1284    929224   1% /nfs/test
+# mount -t nfs 127.0.0.1:/nfs/ /mnt
+# ll /mnt/*/
+/mnt/pnfs/:
+total 0
+-rw-r--r--. 1 root root 0 Apr 21 22:23 attr
+drwxr-xr-x. 2 root root 6 Apr 21 22:19 tmp
 
------ Original Message -----
-> From: "Trond Myklebust" <trond.myklebust@primarydata.com>
-> To: linux-nfs@vger.kernel.org
-> Sent: Sunday, September 6, 2015 1:06:57 AM
-> Subject: [PATCH 1/2] NFSv4: Express delegation limit in units of pages
+/mnt/xfs/:
+total 0
+# umount /nfs/test/
+umount: /nfs/test/: target is busy
+        (In some cases useful info about processes that
+         use the device is found by lsof(8) or fuser(1).)
 
-> Since we're tracking modifications to the page cache on a per-page
-> basis, it makes sense to express the limit to how much we may cache
-> in units of pages.
-> 
-> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-> ---
-> fs/nfs/delegation.c     |  5 +++--
-> fs/nfs/delegation.h     |  2 +-
-> fs/nfs/nfs4xdr.c        | 16 ++++++++++------
-> include/linux/nfs_xdr.h |  2 +-
-> 4 files changed, 15 insertions(+), 10 deletions(-)
-> 
-> diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
-> index 029d688a969f..4817f66c8d47 100644
-> --- a/fs/nfs/delegation.c
-> +++ b/fs/nfs/delegation.c
-> @@ -175,7 +175,8 @@ void nfs_inode_reclaim_delegation(struct inode *inode,
-> struct rpc_cred *cred,
-> 		if (delegation->inode != NULL) {
-> 			nfs4_stateid_copy(&delegation->stateid, &res->delegation);
-> 			delegation->type = res->delegation_type;
-> -			delegation->maxsize = res->maxsize;
-> +			delegation->pagemod_limit = res->pagemod_limit;
-> +				;
+It's caused by exports cache of nfsd holds the reference of
+the path (here is /nfs/test/), so, it can't be umounted.
 
-is this extra line with semicolon intended or a typo?
+I don't think that's user expect, they want umount /nfs/test/.
+Bruce think user can also umount /nfs/pnfs/ and /nfs/xfs.
 
-Tigran.
+This patch site lets nfsd exports pinning to vfsmount, 
+not using mntget, so user can umount any exports mountpoint now.
 
-> 			oldcred = delegation->cred;
-> 			delegation->cred = get_rpccred(cred);
-> 			clear_bit(NFS_DELEGATION_NEED_RECLAIM,
-> @@ -337,7 +338,7 @@ int nfs_inode_set_delegation(struct inode *inode, struct
-> rpc_cred *cred, struct
-> 		return -ENOMEM;
-> 	nfs4_stateid_copy(&delegation->stateid, &res->delegation);
-> 	delegation->type = res->delegation_type;
-> -	delegation->maxsize = res->maxsize;
-> +	delegation->pagemod_limit = res->pagemod_limit;
-> 	delegation->change_attr = inode->i_version;
-> 	delegation->cred = get_rpccred(cred);
-> 	delegation->inode = inode;
-> diff --git a/fs/nfs/delegation.h b/fs/nfs/delegation.h
-> index e3c20a3ccc93..554178a17376 100644
-> --- a/fs/nfs/delegation.h
-> +++ b/fs/nfs/delegation.h
-> @@ -18,7 +18,7 @@ struct nfs_delegation {
-> 	struct inode *inode;
-> 	nfs4_stateid stateid;
-> 	fmode_t type;
-> -	loff_t maxsize;
-> +	unsigned long pagemod_limit;
-> 	__u64 change_attr;
-> 	unsigned long flags;
-> 	spinlock_t lock;
-> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-> index ff4784c54e04..788adf3897c7 100644
-> --- a/fs/nfs/nfs4xdr.c
-> +++ b/fs/nfs/nfs4xdr.c
-> @@ -4932,24 +4932,28 @@ static int decode_lookup(struct xdr_stream *xdr)
-> }
-> 
-> /* This is too sick! */
-> -static int decode_space_limit(struct xdr_stream *xdr, u64 *maxsize)
-> +static int decode_space_limit(struct xdr_stream *xdr,
-> +		unsigned long *pagemod_limit)
-> {
-> 	__be32 *p;
-> 	uint32_t limit_type, nblocks, blocksize;
-> +	u64 maxsize = 0;
-> 
-> 	p = xdr_inline_decode(xdr, 12);
-> 	if (unlikely(!p))
-> 		goto out_overflow;
-> 	limit_type = be32_to_cpup(p++);
-> 	switch (limit_type) {
-> -	case 1:
-> -		xdr_decode_hyper(p, maxsize);
-> +	case NFS4_LIMIT_SIZE:
-> +		xdr_decode_hyper(p, &maxsize);
-> 		break;
-> -	case 2:
-> +	case NFS4_LIMIT_BLOCKS:
-> 		nblocks = be32_to_cpup(p++);
-> 		blocksize = be32_to_cpup(p);
-> -		*maxsize = (uint64_t)nblocks * (uint64_t)blocksize;
-> +		maxsize = (uint64_t)nblocks * (uint64_t)blocksize;
-> 	}
-> +	maxsize >>= PAGE_CACHE_SHIFT;
-> +	*pagemod_limit = min_t(u64, maxsize, ULONG_MAX);
-> 	return 0;
-> out_overflow:
-> 	print_overflow_msg(__func__, xdr);
-> @@ -4977,7 +4981,7 @@ static int decode_rw_delegation(struct xdr_stream *xdr,
-> 		break;
-> 	case NFS4_OPEN_DELEGATE_WRITE:
-> 		res->delegation_type = FMODE_WRITE|FMODE_READ;
-> -		if (decode_space_limit(xdr, &res->maxsize) < 0)
-> +		if (decode_space_limit(xdr, &res->pagemod_limit) < 0)
-> 				return -EIO;
-> 	}
-> 	return decode_ace(xdr, NULL, res->server->nfs_client);
-> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-> index b4392d86d157..52faf7e96c65 100644
-> --- a/include/linux/nfs_xdr.h
-> +++ b/include/linux/nfs_xdr.h
-> @@ -406,8 +406,8 @@ struct nfs_openres {
-> 	const struct nfs_server *server;
-> 	fmode_t			delegation_type;
-> 	nfs4_stateid		delegation;
-> +	unsigned long		pagemod_limit;
-> 	__u32			do_recall;
-> -	__u64			maxsize;
-> 	__u32			attrset[NFS4_BITMAP_SIZE];
-> 	struct nfs4_string	*owner;
-> 	struct nfs4_string	*group_owner;
-> --
-> 2.4.3
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+v3, 
+1. New helpers path_get_pin/path_put_unpin for path pin.
+2. Use kzalloc for allocating memory.
+
+v4, Thanks for Al Viro's commets for the logic of fs_pin.
+1. add a completion for pin_kill waiting the reference is decreased to zero.
+2. add a work_struct for pin_kill decreases the reference indirectly.
+3. free svc_export/svc_expkey in pin_kill, not svc_export_put/svc_expkey_put.
+4. svc_export_put/svc_expkey_put go though pin_kill logic.
+
+v5, 
+let killing fs_pin under a reference of vfsmnt.
+
+v6,
+1. revert the change of v5
+2. new helper legitimize_mntget() for nfsd exports/expkey cache
+   get vfsmount from fs_pin
+3. cleanup some codes of sunrpc's cache
+4. switch using list_head instead of single list for cache_head
+   in cache_detail
+5. new functions validate/invalidate for processing of reference
+   increase/decrease change (nfsd exports/expkey using grab the
+   reference of mnt)
+6. delete cache_head directly from cache_detail in pin_kill
+
+v7, 
+implement self reference increase and decrease for nfsd exports/expkey 
+
+When reference of cahce_head increase(>1), grab a reference of mnt once.
+and reference decrease to 1 (==1), drop the reference of mnt.
+
+v8, Use hash_list for sunrpc cachen and a new method for nfsd's pin,
+
+1. There are only one outlet from each cache, exp_find_key() for expkey, 
+   exp_get_by_name() for export.
+2. Any fsid to export or filehandle to export will call the function.
+3. exp_get()/exp_put() increase/decrease the reference of export.
+
+Call legitimize_mntget() in the only outlet function exp_find_key()/
+exp_get_by_name(), if fail return STALE, otherwise, any valid
+expkey/export from the cache is validated (Have get the reference of vfsmnt).
+
+Add mntget() in exp_get() and mntput() in exp_put(), because the export
+passed to exp_get/exp_put are returned from exp_find_key/exp_get_by_name.
+
+For expkey cache,
+1. At first, a fsid is passed to exp_find_key, and lookup a cache
+   in svc_expkey_lookup, if success, ekey->ek_path is pined to mount.
+2. Then call legitimize_mntget getting a reference of vfsmnt 
+   before return from exp_find_key.
+3. Any calling exp_find_key with valid cache must put the vfsmnt.
+
+for export cache,
+1. At first, a path (returned from exp_find_key) with validate vfsmnt
+   is passed to exp_get_by_name, if success, exp->ex_path is pined to mount.
+2. Then call legitimize_mntget getting a reference of vfsmnt 
+   before return from exp_get_by_name.
+3. Any calling exp_get_by_name with valid cache must put the vfsmnt
+   by exp_put();
+4. Any using the exp returned from exp_get_by_name must call exp_get(),
+   will increase the reference of vfsmnt.
+
+So that,
+a. After getting the reference in 2, any umount of filesystem will get -EBUSY.
+b. After put all reference after 4, or before get the reference in 2, 
+   any umount of filesystem will call pin_kill, and delete the cache directly,
+   also unpin the vfsmount.
+c. Between 1 and 2, have get the reference of exp/key cache, with invalidate vfsmnt.
+   Umount of filesystem only wait exp_find_key/exp_get_by_name put the reference of
+   cache when legitimize_mntget fail.
+
+v9, thanks for NeilBrown's comments and update
+1. Drop the initialing of p->done in the old version,
+2. Remove three patches of cleanup sunrpc cache that have applied by Bruce,
+3. Update using seqlock in legitimize_mntget instead read_seqlock_excl
+4. Update some bugs commented from Neil,
+5. New logical of pin_kill from Neil, 
+   "allow pin_remove() to be called other than from ->kill()"
+
+v10,
+Fix the bad using of read_seqbegin_or_lock,
+and a bad using of rcu_read_lock.
+
+Kinglong Mee (5):
+  fs_pin: Export functions for specific filesystem
+  path: New helpers path_get_pin/path_put_unpin for path pin
+  fs: New helper legitimize_mntget() for getting a legitimize mnt
+  sunrpc: New helper cache_delete_entry for deleting cache_head directly
+  nfsd: Allows user un-mounting filesystem where nfsd exports base on
+
+NeilBrown (1):
+  fs-pin: allow pin_remove() to be called other than from->kill()
+
+ fs/fs_pin.c                  | 22 +++++++++-
+ fs/namei.c                   | 26 ++++++++++++
+ fs/namespace.c               | 38 ++++++++++++++++++
+ fs/nfsd/export.c             | 96 +++++++++++++++++++++++++++++++++++---------
+ fs/nfsd/export.h             | 14 ++++++-
+ include/linux/fs_pin.h       |  2 +-
+ include/linux/mount.h        |  1 +
+ include/linux/path.h         |  4 ++
+ include/linux/sunrpc/cache.h |  1 +
+ net/sunrpc/cache.c           | 20 +++++++++
+ 10 files changed, 202 insertions(+), 22 deletions(-)
+
+-- 
+2.4.3
+
