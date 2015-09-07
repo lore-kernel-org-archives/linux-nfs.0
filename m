@@ -1,102 +1,155 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:51148 "EHLO mx1.redhat.com"
+Received: from smtp-o-1.desy.de ([131.169.56.154]:55154 "EHLO smtp-o-1.desy.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751952AbbIFIOL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 6 Sep 2015 04:14:11 -0400
-From: Andreas Gruenbacher <agruenba@redhat.com>
-To: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-api@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-security-module@vger.kernel.org
-Subject: [PATCH] vfs: Add MAY_DELETE_SELF and MAY_DELETE_CHILD permission flags
-Date: Sun,  6 Sep 2015 10:14:06 +0200
-Message-Id: <1441527246-18189-1-git-send-email-agruenba@redhat.com>
-In-Reply-To: <1441448856-13478-4-git-send-email-agruenba@redhat.com>
-References: <1441448856-13478-4-git-send-email-agruenba@redhat.com>
+	id S1751489AbbIGJSu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 7 Sep 2015 05:18:50 -0400
+Received: from smtp-map-1.desy.de (smtp-map-1.desy.de [131.169.56.66])
+	by smtp-o-1.desy.de (DESY-O-1) with ESMTP id ADE88280AB7
+	for <linux-nfs@vger.kernel.org>; Mon,  7 Sep 2015 11:18:48 +0200 (CEST)
+Received: from ZITSWEEP2.win.desy.de (zitsweep2.win.desy.de [131.169.97.96])
+	by smtp-map-1.desy.de (DESY_MAP_1) with ESMTP id A365013EA7
+	for <linux-nfs@vger.kernel.org>; Mon,  7 Sep 2015 11:18:48 +0200 (MEST)
+Date: Mon, 7 Sep 2015 11:18:48 +0200 (CEST)
+From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Message-ID: <1343580857.5999807.1441617528019.JavaMail.zimbra@desy.de>
+In-Reply-To: <1441494418-53583-1-git-send-email-trond.myklebust@primarydata.com>
+References: <1441494418-53583-1-git-send-email-trond.myklebust@primarydata.com>
+Subject: Re: [PATCH 1/2] NFSv4: Express delegation limit in units of pages
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-[This replaces v7 of this patch; MAY_DELETE_SELF now properly overrides the
-sticky check.]
 
-Normally, deleting a file requires MAY_WRITE access to the parent
-directory.  With richacls, a file may be deleted with MAY_DELETE_CHILD access
-to the parent directory or with MAY_DELETE_SELF access to the file.
 
-To support that, pass the MAY_DELETE_CHILD mask flag to inode_permission()
-when checking for delete access inside a directory, and MAY_DELETE_SELF
-when checking for delete access to a file itelf.
+----- Original Message -----
+> From: "Trond Myklebust" <trond.myklebust@primarydata.com>
+> To: linux-nfs@vger.kernel.org
+> Sent: Sunday, September 6, 2015 1:06:57 AM
+> Subject: [PATCH 1/2] NFSv4: Express delegation limit in units of pages
 
-The MAY_DELETE_SELF permission overrides the sticky directory check.
+> Since we're tracking modifications to the page cache on a per-page
+> basis, it makes sense to express the limit to how much we may cache
+> in units of pages.
+> 
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> ---
+> fs/nfs/delegation.c     |  5 +++--
+> fs/nfs/delegation.h     |  2 +-
+> fs/nfs/nfs4xdr.c        | 16 ++++++++++------
+> include/linux/nfs_xdr.h |  2 +-
+> 4 files changed, 15 insertions(+), 10 deletions(-)
+> 
+> diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
+> index 029d688a969f..4817f66c8d47 100644
+> --- a/fs/nfs/delegation.c
+> +++ b/fs/nfs/delegation.c
+> @@ -175,7 +175,8 @@ void nfs_inode_reclaim_delegation(struct inode *inode,
+> struct rpc_cred *cred,
+> 		if (delegation->inode != NULL) {
+> 			nfs4_stateid_copy(&delegation->stateid, &res->delegation);
+> 			delegation->type = res->delegation_type;
+> -			delegation->maxsize = res->maxsize;
+> +			delegation->pagemod_limit = res->pagemod_limit;
+> +				;
 
-Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
----
- fs/namei.c         | 21 ++++++++++++---------
- include/linux/fs.h |  2 ++
- 2 files changed, 14 insertions(+), 9 deletions(-)
+is this extra line with semicolon intended or a typo?
 
-diff --git a/fs/namei.c b/fs/namei.c
-index 428b4a6..1a3f0d8 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -453,9 +453,9 @@ static int sb_permission(struct super_block *sb, struct inode *inode, int mask)
-  * this, letting us set arbitrary permissions for filesystem access without
-  * changing the "normal" UIDs which are used for other things.
-  *
-- * MAY_WRITE must be set in @mask whenever MAY_APPEND, MAY_CREATE_FILE, or
-- * MAY_CREATE_DIR are set.  That way, file systems that don't support these
-- * permissions will check for MAY_WRITE instead.
-+ * MAY_WRITE must be set in @mask whenever MAY_APPEND, MAY_CREATE_FILE,
-+ * MAY_CREATE_DIR, or MAY_DELETE_CHILD are set.  That way, file systems that
-+ * don't support these permissions will check for MAY_WRITE instead.
-  */
- int inode_permission(struct inode *inode, int mask)
- {
-@@ -2528,7 +2528,7 @@ static int may_delete(struct inode *dir, struct dentry *victim,
- 		      bool isdir, bool replace)
- {
- 	struct inode *inode = d_backing_inode(victim);
--	int error, mask = MAY_WRITE | MAY_EXEC;
-+	int error, mask = MAY_EXEC;
- 
- 	if (d_is_negative(victim))
- 		return -ENOENT;
-@@ -2538,15 +2538,18 @@ static int may_delete(struct inode *dir, struct dentry *victim,
- 	audit_inode_child(dir, victim, AUDIT_TYPE_CHILD_DELETE);
- 
- 	if (replace)
--		mask |= isdir ? MAY_CREATE_DIR : MAY_CREATE_FILE;
--	error = inode_permission(dir, mask);
-+		mask |= MAY_WRITE | (isdir ? MAY_CREATE_DIR : MAY_CREATE_FILE);
-+	error = inode_permission(dir, mask | MAY_WRITE | MAY_DELETE_CHILD);
-+	if (!error && check_sticky(dir, inode))
-+		error = -EPERM;
-+	if (error && IS_RICHACL(inode) &&
-+	    inode_permission(inode, MAY_DELETE_SELF) == 0)
-+		error = 0;
- 	if (error)
- 		return error;
- 	if (IS_APPEND(dir))
- 		return -EPERM;
--
--	if (check_sticky(dir, inode) || IS_APPEND(inode) ||
--	    IS_IMMUTABLE(inode) || IS_SWAPFILE(inode))
-+	if (IS_APPEND(inode) || IS_IMMUTABLE(inode) || IS_SWAPFILE(inode))
- 		return -EPERM;
- 	if (isdir) {
- 		if (!d_is_dir(victim))
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index b2f1b1b..99c95d1 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -84,6 +84,8 @@ typedef void (dax_iodone_t)(struct buffer_head *bh_map, int uptodate);
- #define MAY_NOT_BLOCK		0x00000080
- #define MAY_CREATE_FILE		0x00000100
- #define MAY_CREATE_DIR		0x00000200
-+#define MAY_DELETE_CHILD	0x00000400
-+#define MAY_DELETE_SELF		0x00000800
- 
- /*
-  * flags in file.f_mode.  Note that FMODE_READ and FMODE_WRITE must correspond
--- 
-2.4.3
+Tigran.
 
+> 			oldcred = delegation->cred;
+> 			delegation->cred = get_rpccred(cred);
+> 			clear_bit(NFS_DELEGATION_NEED_RECLAIM,
+> @@ -337,7 +338,7 @@ int nfs_inode_set_delegation(struct inode *inode, struct
+> rpc_cred *cred, struct
+> 		return -ENOMEM;
+> 	nfs4_stateid_copy(&delegation->stateid, &res->delegation);
+> 	delegation->type = res->delegation_type;
+> -	delegation->maxsize = res->maxsize;
+> +	delegation->pagemod_limit = res->pagemod_limit;
+> 	delegation->change_attr = inode->i_version;
+> 	delegation->cred = get_rpccred(cred);
+> 	delegation->inode = inode;
+> diff --git a/fs/nfs/delegation.h b/fs/nfs/delegation.h
+> index e3c20a3ccc93..554178a17376 100644
+> --- a/fs/nfs/delegation.h
+> +++ b/fs/nfs/delegation.h
+> @@ -18,7 +18,7 @@ struct nfs_delegation {
+> 	struct inode *inode;
+> 	nfs4_stateid stateid;
+> 	fmode_t type;
+> -	loff_t maxsize;
+> +	unsigned long pagemod_limit;
+> 	__u64 change_attr;
+> 	unsigned long flags;
+> 	spinlock_t lock;
+> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+> index ff4784c54e04..788adf3897c7 100644
+> --- a/fs/nfs/nfs4xdr.c
+> +++ b/fs/nfs/nfs4xdr.c
+> @@ -4932,24 +4932,28 @@ static int decode_lookup(struct xdr_stream *xdr)
+> }
+> 
+> /* This is too sick! */
+> -static int decode_space_limit(struct xdr_stream *xdr, u64 *maxsize)
+> +static int decode_space_limit(struct xdr_stream *xdr,
+> +		unsigned long *pagemod_limit)
+> {
+> 	__be32 *p;
+> 	uint32_t limit_type, nblocks, blocksize;
+> +	u64 maxsize = 0;
+> 
+> 	p = xdr_inline_decode(xdr, 12);
+> 	if (unlikely(!p))
+> 		goto out_overflow;
+> 	limit_type = be32_to_cpup(p++);
+> 	switch (limit_type) {
+> -	case 1:
+> -		xdr_decode_hyper(p, maxsize);
+> +	case NFS4_LIMIT_SIZE:
+> +		xdr_decode_hyper(p, &maxsize);
+> 		break;
+> -	case 2:
+> +	case NFS4_LIMIT_BLOCKS:
+> 		nblocks = be32_to_cpup(p++);
+> 		blocksize = be32_to_cpup(p);
+> -		*maxsize = (uint64_t)nblocks * (uint64_t)blocksize;
+> +		maxsize = (uint64_t)nblocks * (uint64_t)blocksize;
+> 	}
+> +	maxsize >>= PAGE_CACHE_SHIFT;
+> +	*pagemod_limit = min_t(u64, maxsize, ULONG_MAX);
+> 	return 0;
+> out_overflow:
+> 	print_overflow_msg(__func__, xdr);
+> @@ -4977,7 +4981,7 @@ static int decode_rw_delegation(struct xdr_stream *xdr,
+> 		break;
+> 	case NFS4_OPEN_DELEGATE_WRITE:
+> 		res->delegation_type = FMODE_WRITE|FMODE_READ;
+> -		if (decode_space_limit(xdr, &res->maxsize) < 0)
+> +		if (decode_space_limit(xdr, &res->pagemod_limit) < 0)
+> 				return -EIO;
+> 	}
+> 	return decode_ace(xdr, NULL, res->server->nfs_client);
+> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+> index b4392d86d157..52faf7e96c65 100644
+> --- a/include/linux/nfs_xdr.h
+> +++ b/include/linux/nfs_xdr.h
+> @@ -406,8 +406,8 @@ struct nfs_openres {
+> 	const struct nfs_server *server;
+> 	fmode_t			delegation_type;
+> 	nfs4_stateid		delegation;
+> +	unsigned long		pagemod_limit;
+> 	__u32			do_recall;
+> -	__u64			maxsize;
+> 	__u32			attrset[NFS4_BITMAP_SIZE];
+> 	struct nfs4_string	*owner;
+> 	struct nfs4_string	*group_owner;
+> --
+> 2.4.3
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
