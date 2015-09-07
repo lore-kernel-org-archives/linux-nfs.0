@@ -1,9 +1,10 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pa0-f54.google.com ([209.85.220.54]:36367 "EHLO
-	mail-pa0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751152AbbIGODP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Sep 2015 10:03:15 -0400
-Subject: [PATCH 2/6 v10] fs_pin: Export functions for specific filesystem
+Received: from mail-pa0-f53.google.com ([209.85.220.53]:35374 "EHLO
+	mail-pa0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752394AbbIGOES (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Sep 2015 10:04:18 -0400
+Subject: [PATCH 3/6 v10] path: New helpers path_get_pin/path_put_unpin for
+ path,pin
 To: "J. Bruce Fields" <bfields@fieldses.org>,
         Al Viro <viro@zeniv.linux.org.uk>
 References: <55ED9899.9010401@gmail.com>
@@ -12,64 +13,84 @@ Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
         Trond Myklebust <trond.myklebust@primarydata.com>,
         kinglongmee@gmail.com
 From: Kinglong Mee <kinglongmee@gmail.com>
-Message-ID: <55ED9918.4040306@gmail.com>
-Date: Mon, 7 Sep 2015 22:03:04 +0800
+Message-ID: <55ED9955.2040209@gmail.com>
+Date: Mon, 7 Sep 2015 22:04:05 +0800
 MIME-Version: 1.0
 In-Reply-To: <55ED9899.9010401@gmail.com>
 Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Exports functions for others who want pin to vfsmount,
-eg, nfsd's export cache.
+Two helpers for filesystem pining to vfsmnt, not mntget.
 
-These are needed for any module to participate in pinning.
-
-mnt_pin_kill() and group_pin_kill() are just helper-functions for
-unmount etc (and are in fs/internal.h) so don't need to be exported.
-
-v10, same as v4
-add exporting of pin_kill.
+v9, Update base on NeilBrown's new patch
+v10, same as v9
 
 Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
 ---
- fs/fs_pin.c | 4 ++++
- 1 file changed, 4 insertions(+)
+ fs/namei.c           | 26 ++++++++++++++++++++++++++
+ include/linux/path.h |  4 ++++
+ 2 files changed, 30 insertions(+)
 
-diff --git a/fs/fs_pin.c b/fs/fs_pin.c
-index b7954a9..b1a9654 100644
---- a/fs/fs_pin.c
-+++ b/fs/fs_pin.c
-@@ -33,6 +33,7 @@ int pin_remove(struct fs_pin *pin)
- 	spin_unlock_irq(&pin->wait.lock);
- 	return ret;
+diff --git a/fs/namei.c b/fs/namei.c
+index 29b9279..3a5b0eb 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -492,6 +492,32 @@ void path_put(const struct path *path)
  }
-+EXPORT_SYMBOL(pin_remove);
+ EXPORT_SYMBOL(path_put);
  
- void pin_insert_group(struct fs_pin *pin, struct vfsmount *m, struct hlist_head *p)
- {
-@@ -42,11 +43,13 @@ void pin_insert_group(struct fs_pin *pin, struct vfsmount *m, struct hlist_head
- 	hlist_add_head(&pin->m_list, &real_mount(m)->mnt_pins);
- 	spin_unlock(&pin_lock);
- }
-+EXPORT_SYMBOL(pin_insert_group);
++/**
++ * path_get_pin - get a reference to a path's dentry
++ *                and pin to path's vfsmnt
++ * @path: path to get the reference to
++ * @p: the fs_pin pin to vfsmnt
++ */
++void path_get_pin(struct path *path, struct fs_pin *p)
++{
++	dget(path->dentry);
++	pin_insert_group(p, path->mnt, NULL);
++}
++EXPORT_SYMBOL(path_get_pin);
++
++/**
++ * path_put_unpin - put a reference to a path's dentry
++ *                  and remove pin to path's vfsmnt
++ * @path: path to put the reference to
++ * @p: the fs_pin removed from vfsmnt
++ */
++int path_put_unpin(struct path *path, struct fs_pin *p)
++{
++	dput(path->dentry);
++	return pin_remove(p);
++}
++EXPORT_SYMBOL(path_put_unpin);
++
+ #define EMBEDDED_LEVELS 2
+ struct nameidata {
+ 	struct path	path;
+diff --git a/include/linux/path.h b/include/linux/path.h
+index d137218..40d376a 100644
+--- a/include/linux/path.h
++++ b/include/linux/path.h
+@@ -3,6 +3,7 @@
  
- void pin_insert(struct fs_pin *pin, struct vfsmount *m)
- {
- 	pin_insert_group(pin, m, &m->mnt_sb->s_pins);
- }
-+EXPORT_SYMBOL(pin_insert);
+ struct dentry;
+ struct vfsmount;
++struct fs_pin;
  
- void pin_kill(struct fs_pin *p)
- {
-@@ -88,6 +91,7 @@ void pin_kill(struct fs_pin *p)
- 	}
- 	rcu_read_unlock();
- }
-+EXPORT_SYMBOL(pin_kill);
+ struct path {
+ 	struct vfsmount *mnt;
+@@ -12,6 +13,9 @@ struct path {
+ extern void path_get(const struct path *);
+ extern void path_put(const struct path *);
  
- void mnt_pin_kill(struct mount *m)
++extern void path_get_pin(struct path *, struct fs_pin *);
++extern int path_put_unpin(struct path *, struct fs_pin *);
++
+ static inline int path_equal(const struct path *path1, const struct path *path2)
  {
+ 	return path1->mnt == path2->mnt && path1->dentry == path2->dentry;
 -- 
 2.4.3
 
