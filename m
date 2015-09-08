@@ -1,57 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-oi0-f54.google.com ([209.85.218.54]:36379 "EHLO
-	mail-oi0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752407AbbIHTLB convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Sep 2015 15:11:01 -0400
-Received: by oibi136 with SMTP id i136so65094733oib.3
-        for <linux-nfs@vger.kernel.org>; Tue, 08 Sep 2015 12:11:00 -0700 (PDT)
+Received: from mail1.vodafone.ie ([213.233.128.43]:33197 "EHLO
+	mail1.vodafone.ie" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751862AbbIHUDN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Sep 2015 16:03:13 -0400
+Message-ID: <55EF3EFD.3080302@draigBrady.com>
+Date: Tue, 08 Sep 2015 21:03:09 +0100
+From: =?UTF-8?B?UMOhZHJhaWcgQnJhZHk=?= <P@draigBrady.com>
 MIME-Version: 1.0
-In-Reply-To: <55EF279B.3020101@Netapp.com>
-References: <1441397823-1203-1-git-send-email-Anna.Schumaker@Netapp.com>
- <55EEFCEE.5090000@draigBrady.com> <55EF279B.3020101@Netapp.com>
-From: Andy Lutomirski <luto@amacapital.net>
-Date: Tue, 8 Sep 2015 12:10:41 -0700
-Message-ID: <CALCETrXxRB-LXVb+=nkwfj0zEjWuXXTctkSAc9Oec0fgyOQ5Yg@mail.gmail.com>
-Subject: Re: [PATCH v1 0/8] VFS: In-kernel copy system call
-To: Anna Schumaker <Anna.Schumaker@netapp.com>
-Cc: =?UTF-8?Q?P=C3=A1draig_Brady?= <P@draigbrady.com>,
-        linux-nfs@vger.kernel.org,
+To: Andy Lutomirski <luto@amacapital.net>,
+        Anna Schumaker <Anna.Schumaker@netapp.com>
+CC: linux-nfs@vger.kernel.org,
         Linux btrfs Developers List <linux-btrfs@vger.kernel.org>,
         Linux FS Devel <linux-fsdevel@vger.kernel.org>,
         Linux API <linux-api@vger.kernel.org>, Zach Brown <zab@zabbo.net>,
         Al Viro <viro@zeniv.linux.org.uk>, Chris Mason <clm@fb.com>,
         "Darrick J. Wong" <darrick.wong@oracle.com>,
         Michael Kerrisk-manpages <mtk.manpages@gmail.com>, andros@netapp.com,
-        Christoph Hellwig <hch@infradead.org>
-Content-Type: text/plain; charset=UTF-8
+        Christoph Hellwig <hch@infradead.org>, Coreutils <coreutils@gnu.org>
+Subject: Re: [PATCH v1 0/8] VFS: In-kernel copy system call
+References: <1441397823-1203-1-git-send-email-Anna.Schumaker@Netapp.com> <55EEFCEE.5090000@draigBrady.com> <55EF279B.3020101@Netapp.com> <CALCETrXxRB-LXVb+=nkwfj0zEjWuXXTctkSAc9Oec0fgyOQ5Yg@mail.gmail.com>
+In-Reply-To: <CALCETrXxRB-LXVb+=nkwfj0zEjWuXXTctkSAc9Oec0fgyOQ5Yg@mail.gmail.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Sep 8, 2015 at 11:23 AM, Anna Schumaker
-<Anna.Schumaker@netapp.com> wrote:
-> On 09/08/2015 11:21 AM, Pádraig Brady wrote:
->> I see copy_file_range() is a reflink() on BTRFS?
->> That's a bit surprising, as it avoids the copy completely.
->> cp(1) for example considered doing a BTRFS clone by default,
->> but didn't due to expectations that users actually wanted
->> the data duplicated on disk for resilience reasons,
->> and for performance reasons so that write latencies were
->> restricted to the copy operation, rather than being
->> introduced at usage time as the dest file is CoW'd.
+On 08/09/15 20:10, Andy Lutomirski wrote:
+> On Tue, Sep 8, 2015 at 11:23 AM, Anna Schumaker
+> <Anna.Schumaker@netapp.com> wrote:
+>> On 09/08/2015 11:21 AM, Pádraig Brady wrote:
+>>> I see copy_file_range() is a reflink() on BTRFS?
+>>> That's a bit surprising, as it avoids the copy completely.
+>>> cp(1) for example considered doing a BTRFS clone by default,
+>>> but didn't due to expectations that users actually wanted
+>>> the data duplicated on disk for resilience reasons,
+>>> and for performance reasons so that write latencies were
+>>> restricted to the copy operation, rather than being
+>>> introduced at usage time as the dest file is CoW'd.
+>>>
+>>> If reflink() is a possibility for copy_file_range()
+>>> then could it be done optionally with a flag?
 >>
->> If reflink() is a possibility for copy_file_range()
->> then could it be done optionally with a flag?
->
-> The idea is that filesystems get to choose how to handle copies in the default case.  BTRFS could do a reflink, but NFS could do a server side copy instead.  I can change the default behavior to only do a data copy (unless the reflink flag is specified) instead, if that is desirable.
->
-> What does everybody think?
+>> The idea is that filesystems get to choose how to handle copies in the default case.  BTRFS could do a reflink, but NFS could do a server side copy instead.  I can change the default behavior to only do a data copy (unless the reflink flag is specified) instead, if that is desirable.
+>>
+>> What does everybody think?
+> 
+> I think the best you could do is to have a hint asking politely for
+> the data to be deep-copied.  After all, some filesystems reserve the
+> right to transparently deduplicate.
+> 
+> Also, on a true COW filesystem (e.g. btrfs sometimes), there may be no
+> advantage to deep copying unless you actually want two copies for
+> locality reasons.
 
-I think the best you could do is to have a hint asking politely for
-the data to be deep-copied.  After all, some filesystems reserve the
-right to transparently deduplicate.
+Agreed. The relink and server side copy are separate things.
+There's no advantage to not doing a server side copy,
+but as mentioned there may be advantages to doing deep copies on BTRFS
+(another reason not previous mentioned in this thread, would be
+to avoid ENOSPC errors at some time in the future).
 
-Also, on a true COW filesystem (e.g. btrfs sometimes), there may be no
-advantage to deep copying unless you actually want two copies for
-locality reasons.
+So having control over the deep copy seems useful.
+It's debatable whether ALLOW_REFLINK should be on/off by default
+for copy_file_range().  I'd be inclined to have such a setting off by default,
+but cp(1) at least will work with whatever is chosen.
 
---Andy
+thanks,
+Pádraig.
