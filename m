@@ -1,193 +1,262 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx142.netapp.com ([216.240.21.19]:22487 "EHLO mx142.netapp.com"
+Received: from mx143.netapp.com ([216.240.21.24]:31209 "EHLO mx143.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754677AbbIHO5U (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 8 Sep 2015 10:57:20 -0400
-Subject: Re: [PATCH v1 8/8] vfs: Fall back on splice if no copy function
- defined
+	id S1754671AbbIHPEI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 8 Sep 2015 11:04:08 -0400
+Subject: Re: [PATCH v1 9/8] copy_file_range.2: New page documenting
+ copy_file_range()
 To: "Darrick J. Wong" <darrick.wong@oracle.com>
 References: <1441397823-1203-1-git-send-email-Anna.Schumaker@Netapp.com>
- <1441397823-1203-9-git-send-email-Anna.Schumaker@Netapp.com>
- <20150904210813.GA30681@birch.djwong.org>
+ <1441397823-1203-10-git-send-email-Anna.Schumaker@Netapp.com>
+ <20150904213856.GC10391@birch.djwong.org>
 CC: <linux-nfs@vger.kernel.org>, <linux-btrfs@vger.kernel.org>,
         <linux-fsdevel@vger.kernel.org>, <linux-api@vger.kernel.org>,
         <zab@zabbo.net>, <viro@zeniv.linux.org.uk>, <clm@fb.com>,
         <mtk.manpages@gmail.com>, <andros@netapp.com>, <hch@infradead.org>
 From: Anna Schumaker <Anna.Schumaker@netapp.com>
-Message-ID: <55EEF749.6050605@Netapp.com>
-Date: Tue, 8 Sep 2015 10:57:13 -0400
+Message-ID: <55EEF8E3.8030501@Netapp.com>
+Date: Tue, 8 Sep 2015 11:04:03 -0400
 MIME-Version: 1.0
-In-Reply-To: <20150904210813.GA30681@birch.djwong.org>
+In-Reply-To: <20150904213856.GC10391@birch.djwong.org>
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 09/04/2015 05:08 PM, Darrick J. Wong wrote:
-> On Fri, Sep 04, 2015 at 04:17:02PM -0400, Anna Schumaker wrote:
->> The NFS server will need a fallback for filesystems that don't have any
->> kind of copy acceleration yet, and it should be generally useful to have
->> an in-kernel copy to avoid lots of switches between kernel and
->> user space.  Users who only want a reflink can pass the COPY_REFLINK
->> flag to disable the fallback.
+On 09/04/2015 05:38 PM, Darrick J. Wong wrote:
+> On Fri, Sep 04, 2015 at 04:17:03PM -0400, Anna Schumaker wrote:
+>> copy_file_range() is a new system call for copying ranges of data
+>> completely in the kernel.  This gives filesystems an opportunity to
+>> implement some kind of "copy acceleration", such as reflinks or
+>> server-side-copy (in the case of NFS).
 >>
 >> Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 >> ---
->>  fs/read_write.c           | 16 ++++++++++++----
->>  include/linux/copy.h      |  6 ++++++
->>  include/uapi/linux/Kbuild |  1 +
->>  include/uapi/linux/copy.h |  6 ++++++
->>  4 files changed, 25 insertions(+), 4 deletions(-)
->>  create mode 100644 include/linux/copy.h
->>  create mode 100644 include/uapi/linux/copy.h
+>>  man2/copy_file_range.2 | 168 +++++++++++++++++++++++++++++++++++++++++++++++++
+>>  1 file changed, 168 insertions(+)
+>>  create mode 100644 man2/copy_file_range.2
 >>
->> diff --git a/fs/read_write.c b/fs/read_write.c
->> index 9dafb7f..bd7e7e2 100644
->> --- a/fs/read_write.c
->> +++ b/fs/read_write.c
->> @@ -7,6 +7,7 @@
->>  #include <linux/slab.h> 
->>  #include <linux/stat.h>
->>  #include <linux/fcntl.h>
->> +#include <linux/copy.h>
->>  #include <linux/file.h>
->>  #include <linux/uio.h>
->>  #include <linux/fsnotify.h>
->> @@ -1342,7 +1343,7 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
->>  	struct inode *inode_out;
->>  	ssize_t ret;
->>  
->> -	if (flags)
->> +	if (!((flags == 0) || (flags == COPY_REFLINK)))
+>> diff --git a/man2/copy_file_range.2 b/man2/copy_file_range.2
+>> new file mode 100644
+>> index 0000000..4a4cb73
+>> --- /dev/null
+>> +++ b/man2/copy_file_range.2
+>> @@ -0,0 +1,168 @@
+>> +.\"This manpage is Copyright (C) 2015 Anna Schumaker <Anna.Schumaker@Netapp.com>
+>> +.TH COPY 2 2015-8-31 "Linux" "Linux Programmer's Manual"
+>> +.SH NAME
+>> +copy_file_range \- Copy a range of data from one file to another
+>> +.SH SYNOPSIS
+>> +.nf
+>> +.B #include <linux/copy.h>
+>> +.B #include <sys/syscall.h>
+>> +.B #include <unistd.h>
+>> +
+>> +.BI "ssize_t syscall(__NR_copy_file_range, int " fd_in ", loff_t * " off_in ",
+>> +.BI "                int " fd_out ", loff_t * " off_out ", size_t " len ",
+>> +.BI "                unsigned int " flags );
+>> +.fi
+>> +.SH DESCRIPTION
+>> +The
+>> +.BR copy_file_range ()
+>> +system call performs an in-kernel copy between two file descriptors
+>> +without all that tedious mucking about in userspace.
 > 
-> I think it's a good idea for the copy_file_range flags to have the name of
-> the syscall in them at the beginning, both to try to avoid namespace collisions
-> and also to make it clear where the flag comes from.  So, could we prefix the
-> values with "COPY_FILE_RANGE_" instead of just "COPY_"?
+> ;)
+> 
+>> +It copies up to
+>> +.I len
+>> +bytes of data from file descriptor
+>> +.I fd_in
+>> +to file descriptor
+>> +.I fd_out
+>> +at
+>> +.IR off_out .
+>> +The file descriptors must not refer to the same file.
+> 
+> Why?  btrfs (and XFS) reflink can handle the case of a file sharing blocks
+> with itself.
 
-Sure, that makes sense!
+I've never really thought about it... Zach had that in his initial submission, so mentioned it in the man page.  Should I remove that bit?
+
 
 > 
-> Also... I'm confused by what the structure of check implies about 'flags' --
-> are each of 'flags's values supposed to be mutually exclusive, or is it a
-> straight bitset like flags arguments tend to be?
+>> +
+>> +The following semantics apply for
+>> +.IR fd_in ,
+>> +and similar statements apply to
+>> +.IR off_out :
+>> +.IP * 3
+>> +If
+>> +.I off_in
+>> +is NULL, then bytes are read from
+>> +.I fd_in
+>> +starting from the current file offset and the current
+>> +file offset is adjusted appropriately.
+>> +.IP *
+>> +If
+>> +.I off_in
+>> +is not NULL, then
+>> +.I off_in
+>> +must point to a buffer that specifies the starting
+>> +offset where bytes from
+>> +.I fd_in
+>> +will be read.  The current file offset of
+>> +.I fd_in
+>> +is not changed, but
+>> +.I off_in
+>> +is adjusted appropriately.
+>> +.PP
+>> +The default behavior of
+>> +.BR copy_file_range ()
+>> +is filesystem specific, and might result in creating a
+>> +copy-on-write reflink.
+>> +In the event that a given filesystem does not implement
+>> +any form of copy acceleration, the kernel will perform
+>> +a deep copy of the requested range by reading bytes from
+> 
+> I wonder if it's wise to allow deep copies -- what happens if len == 1T?
+> Will this syscall just block for a really long time?
 
-I was expecting this to be a bitset, but that's not the easiest to communicate when there is (currently) only one flag.  I'll take a look at other functions to see how I should be validating this!
+We use rw_verify_area(), (similar to read and write) so we won't allow a value of len that long.  I can mention this in an updated version of this man page!
 
-Thanks for the comments,
+
+> 
+>> +.I fd_in
+>> +and writing them to
+>> +.IR fd_out .
+> 
+> "...if COPY_REFLINK is not set in flags."
+
+Sure.
+
+> 
+>> +
+>> +Currently, Linux only supports the following flag:
+>> +.TP 1.9i
+>> +.B COPY_REFLINK
+>> +Only perform the copy if the filesystem can do it as a reflink.
+>> +Do not fall back on performing a deep copy.
+>> +.SH RETURN VALUE
+>> +Upon successful completion,
+>> +.BR copy_file_range ()
+>> +will return the number of bytes copied between files.
+>> +This could be less than the length originally requested.
+>> +
+>> +On error,
+>> +.BR copy_file_range ()
+>> +returns \-1 and
+>> +.I errno
+>> +is set to indicate the error.
+>> +.SH ERRORS
+>> +.TP
+>> +.B EBADF
+>> +One or more file descriptors are not valid,
+>> +or do not have proper read-write mode.
+> 
+> "or fd_out is not opened for writing"?
+
+I'll add that.
+
+> 
+>> +.TP
+>> +.B EINVAL
+>> +Requested range extends beyond the end of the file;
+>> +.I flags
+>> +argument is set to an invalid value.
+>> +.TP
+>> +.B EOPNOTSUPP
+>> +.B COPY_REFLINK
+>> +was specified in
+>> +.IR flags ,
+>> +but the target filesystem does not support reflinks.
+>> +.TP
+>> +.B EXDEV
+>> +Target filesystem doesn't support cross-filesystem copies.
+>> +.SH VERSIONS
+> 
+> Perhaps this ought to list a few more errors (EIO, ENOSPC, ENOSYS, EPERM...)
+> that can be returned?  (I was looking at the fallocate manpage.)
+
+Okay.  I'll poke around for what else could be returned!
+
+Thanks,
 Anna
 
 > 
-> Say we want to add dedupe and ponies as potential behavioral variants.  Then
-> we'd end up with something like:
-> 
-> /* raw flags */
-> #define	COPY_FILE_RANGE_SHARE_BLOCKS	(1)
-> #define COPY_FILE_RANGE_CHECK_SAME	(2)
-> #define COPY_FILE_RANGE_PONIES		(4)
-> 
-> /* syntactic sugar */
-> #define COPY_FILE_RANGE_DEDUPE		(COPY_FILE_RANGE_SHARE_BLOCKS | \
-> 					 COPY_FILE_RANGE_CHECK_SAME)
-> #define COPY_FILE_RANGE_ALL		(COPY_FILE_RANGE_SHARE_BLOCKS | \
-> 					 COPY_FILE_RANGE_CHECK_SAME | \
-> 					 COPY_FILE_RANGE_PONIES)
-> 
-> and in copy_file_range():
-> 
-> if (flags & ~COPY_FILE_RANGE_ALL)
-> 	return -EINVAL;
-> if ((flags & COPY_FILE_RANGE_CHECK_SAME) && 
->     !(flags & COPY_FILE_RANGE_SHARE_BLOCKS))
-> 	return -EINVAL;	/* or is it return 0? */
-> 
-> if (flags & COPY_FILE_RANGE_PONIES)
-> 	panic();
-> if (flags & COPY_FILE_RANGE_CHECK_SAME)
-> 	check_same_contents(...);
-> err = vfs_copy_range(...);
-> if (err < 0 && !(flags & COPY_FILE_RANGE_SHARE_BLOCKS))
-> 	err = splice(...);
-> 
-> One hard part is figuring out just what actions we want userland to be able to
-> ask for.  I can think of three: "share blocks via remapping" (i.e.  reflink),
-> "share blocks via remapping but only if they're identical" (i.e. dedupe), and
-> "classic copy via pagecache".  I lean towards giving each variant its own bit
-> and only allowing through the cases that make sense, rather than giving each
-> valid combination its own unique number, but maybe I misinterpreted the intent
-> behind the code.
-> 
-> (I guess there could also be 'do it with hardware assist' but that's digging
-> myself a pretty deep hole.)
-> 
 > --D
 > 
->>  		return -EINVAL;
->>  
->>  	/* copy_file_range allows full ssize_t len, ignoring MAX_RW_COUNT  */
->> @@ -1355,7 +1356,7 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
->>  	if (!(file_in->f_mode & FMODE_READ) ||
->>  	    !(file_out->f_mode & FMODE_WRITE) ||
->>  	    (file_out->f_flags & O_APPEND) ||
->> -	    !file_out->f_op || !file_out->f_op->copy_file_range)
->> +	    !file_in->f_op)
->>  		return -EBADF;
->>  
->>  	inode_in = file_inode(file_in);
->> @@ -1377,8 +1378,15 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
->>  	if (ret)
->>  		return ret;
->>  
->> -	ret = file_out->f_op->copy_file_range(file_in, pos_in, file_out, pos_out,
->> -					      len, flags);
->> +	ret = -EOPNOTSUPP;
->> +	if (file_out->f_op->copy_file_range)
->> +		ret = file_out->f_op->copy_file_range(file_in, pos_in, file_out,
->> +						      pos_out, len, flags);
->> +	if ((ret < 0) && !(flags & COPY_REFLINK)) {
->> +		file_start_write(file_out);
->> +		ret = do_splice_direct(file_in, &pos_in, file_out, &pos_out, len, 0);
->> +		file_end_write(file_out);
->> +	}
->>  	if (ret > 0) {
->>  		fsnotify_access(file_in);
->>  		add_rchar(current, ret);
->> diff --git a/include/linux/copy.h b/include/linux/copy.h
->> new file mode 100644
->> index 0000000..fd54543
->> --- /dev/null
->> +++ b/include/linux/copy.h
->> @@ -0,0 +1,6 @@
->> +#ifndef _LINUX_COPY_H
->> +#define _LINUX_COPY_H
+>> +The
+>> +.BR copy_file_range ()
+>> +system call first appeared in Linux 4.3.
+>> +.SH CONFORMING TO
+>> +The
+>> +.BR copy_file_range ()
+>> +system call is a nonstandard Linux extension.
+>> +.SH EXAMPLE
+>> +.nf
 >> +
->> +#include <uapi/linux/copy.h>
+>> +#define _GNU_SOURCE
+>> +#include <fcntl.h>
+>> +#include <linux/copy.h>
+>> +#include <stdio.h>
+>> +#include <stdlib.h>
+>> +#include <sys/stat.h>
+>> +#include <sys/syscall.h>
+>> +#include <unistd.h>
 >> +
->> +#endif /* _LINUX_COPY_H */
->> diff --git a/include/uapi/linux/Kbuild b/include/uapi/linux/Kbuild
->> index 1ff9942..b6109f3 100644
->> --- a/include/uapi/linux/Kbuild
->> +++ b/include/uapi/linux/Kbuild
->> @@ -90,6 +90,7 @@ header-y += coda_psdev.h
->>  header-y += coff.h
->>  header-y += connector.h
->>  header-y += const.h
->> +header-y += copy.h
->>  header-y += cramfs_fs.h
->>  header-y += cuda.h
->>  header-y += cyclades.h
->> diff --git a/include/uapi/linux/copy.h b/include/uapi/linux/copy.h
->> new file mode 100644
->> index 0000000..68f3d65
->> --- /dev/null
->> +++ b/include/uapi/linux/copy.h
->> @@ -0,0 +1,6 @@
->> +#ifndef _UAPI_LINUX_COPY_H
->> +#define _UAPI_LINUX_COPY_H
 >> +
->> +#define COPY_REFLINK	1	/* only perform a reflink */
+>> +int main(int argc, char **argv)
+>> +{
+>> +    int fd_in, fd_out;
+>> +    struct stat stat;
+>> +    loff_t len, ret;
 >> +
->> +#endif /* _UAPI_LINUX_COPY_H */
+>> +    if (argc != 3) {
+>> +        fprintf(stderr, "Usage: %s <pathname> <pathname>\n", argv[0]);
+>> +        exit(EXIT_FAILURE);
+>> +    }
+>> +
+>> +    fd_in = open(argv[1], O_RDONLY);
+>> +    if (fd_in == -1) {
+>> +        perror("open (argv[1])");
+>> +        exit(EXIT_FAILURE);
+>> +    }
+>> +
+>> +    if (fstat(fd_in, &stat) == -1) {
+>> +        perror("fstat");
+>> +        exit(EXIT_FAILURE);
+>> +    }
+>> +    len = stat.st_size;
+>> +
+>> +    fd_out = open(argv[2], O_WRONLY | O_CREAT, 0644);
+>> +    if (fd_out == -1) {
+>> +        perror("open (argv[2])");
+>> +        exit(EXIT_FAILURE);
+>> +    }
+>> +
+>> +    do {
+>> +        ret = syscall(__NR_copy_file_range, fd_in, NULL,
+>> +                      fd_out, NULL, len, 0);
+>> +        if (ret == -1) {
+>> +            perror("copy_file_range");
+>> +            exit(EXIT_FAILURE);
+>> +        }
+>> +
+>> +        len -= ret;
+>> +    } while (len > 0);
+>> +
+>> +    close(fd_in);
+>> +    close(fd_out);
+>> +    exit(EXIT_SUCCESS);
+>> +}
+>> +.fi
+>> +.SH SEE ALSO
+>> +.BR splice (2)
 >> -- 
 >> 2.5.1
 >>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
