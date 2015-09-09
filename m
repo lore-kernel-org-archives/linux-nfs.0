@@ -1,133 +1,356 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yk0-f181.google.com ([209.85.160.181]:35388 "EHLO
-	mail-yk0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751545AbbIITSF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Sep 2015 15:18:05 -0400
-Received: by ykdu9 with SMTP id u9so31795415ykd.2
-        for <linux-nfs@vger.kernel.org>; Wed, 09 Sep 2015 12:18:04 -0700 (PDT)
-Date: Wed, 9 Sep 2015 15:18:01 -0400
-From: Jeff Layton <jeff.layton@primarydata.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Andrew W Elble <aweits@rit.edu>, Bruce James Fields <bfields@fieldses.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: upgrade/downgrade race
-Message-ID: <20150909151801.3fd2243f@tlielax.poochiereds.net>
-In-Reply-To: <CAHQdGtS2BL+d9NvV5adG=Mts0Qx6_=5Fwo34+nbz-eMVepnnKg@mail.gmail.com>
-References: <m2h9n3btno.fsf@discipline.rit.edu>
-	<CAHQdGtQ84tUFEXaUwSngAmQst3NbjZDCSwB2jtqRqR29R4wBWg@mail.gmail.com>
-	<CAHQdGtTvPPXjSm8Aq6AefMec4UEUwL6+swwav8SSFMQJMDchCA@mail.gmail.com>
-	<20150909144935.51e3653b@tlielax.poochiereds.net>
-	<CAHQdGtS2BL+d9NvV5adG=Mts0Qx6_=5Fwo34+nbz-eMVepnnKg@mail.gmail.com>
+Received: from mx144.netapp.com ([216.240.21.25]:20002 "EHLO mx144.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752093AbbIITZk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 9 Sep 2015 15:25:40 -0400
+Subject: Re: [PATCH v1 9/8] copy_file_range.2: New page documenting
+ copy_file_range()
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
+References: <1441397823-1203-1-git-send-email-Anna.Schumaker@Netapp.com>
+ <1441397823-1203-10-git-send-email-Anna.Schumaker@Netapp.com>
+ <20150904213856.GC10391@birch.djwong.org> <55EEF8E3.8030501@Netapp.com>
+ <20150908203918.GB30681@birch.djwong.org> <55F01A26.7070706@gmail.com>
+ <20150909171757.GE10391@birch.djwong.org> <55F06CEC.5040208@Netapp.com>
+ <20150909181244.GH30681@birch.djwong.org>
+CC: Austin S Hemmelgarn <ahferroin7@gmail.com>, <linux-nfs@vger.kernel.org>,
+        <linux-btrfs@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>,
+        <linux-api@vger.kernel.org>, <zab@zabbo.net>,
+        <viro@zeniv.linux.org.uk>, <clm@fb.com>, <mtk.manpages@gmail.com>,
+        <andros@netapp.com>, <hch@infradead.org>
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+Message-ID: <55F087B0.4090008@Netapp.com>
+Date: Wed, 9 Sep 2015 15:25:36 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+In-Reply-To: <20150909181244.GH30681@birch.djwong.org>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 9 Sep 2015 15:01:54 -0400
-Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+On 09/09/2015 02:12 PM, Darrick J. Wong wrote:
+> On Wed, Sep 09, 2015 at 01:31:24PM -0400, Anna Schumaker wrote:
+>> On 09/09/2015 01:17 PM, Darrick J. Wong wrote:
+>>> On Wed, Sep 09, 2015 at 07:38:14AM -0400, Austin S Hemmelgarn wrote:
+>>>> On 2015-09-08 16:39, Darrick J. Wong wrote:
+>>>>> On Tue, Sep 08, 2015 at 11:04:03AM -0400, Anna Schumaker wrote:
+>>>>>> On 09/04/2015 05:38 PM, Darrick J. Wong wrote:
+>>>>>>> On Fri, Sep 04, 2015 at 04:17:03PM -0400, Anna Schumaker wrote:
+>>>>>>>> copy_file_range() is a new system call for copying ranges of data
+>>>>>>>> completely in the kernel.  This gives filesystems an opportunity to
+>>>>>>>> implement some kind of "copy acceleration", such as reflinks or
+>>>>>>>> server-side-copy (in the case of NFS).
+>>>>>>>>
+>>>>>>>> Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+>>>>>>>> ---
+>>>>>>>>  man2/copy_file_range.2 | 168 +++++++++++++++++++++++++++++++++++++++++++++++++
+>>>>>>>>  1 file changed, 168 insertions(+)
+>>>>>>>>  create mode 100644 man2/copy_file_range.2
+>>>>>>>>
+>>>>>>>> diff --git a/man2/copy_file_range.2 b/man2/copy_file_range.2
+>>>>>>>> new file mode 100644
+>>>>>>>> index 0000000..4a4cb73
+>>>>>>>> --- /dev/null
+>>>>>>>> +++ b/man2/copy_file_range.2
+>>>>>>>> @@ -0,0 +1,168 @@
+>>>>>>>> +.\"This manpage is Copyright (C) 2015 Anna Schumaker <Anna.Schumaker@Netapp.com>
+>>>>>>>> +.TH COPY 2 2015-8-31 "Linux" "Linux Programmer's Manual"
+>>>>>>>> +.SH NAME
+>>>>>>>> +copy_file_range \- Copy a range of data from one file to another
+>>>>>>>> +.SH SYNOPSIS
+>>>>>>>> +.nf
+>>>>>>>> +.B #include <linux/copy.h>
+>>>>>>>> +.B #include <sys/syscall.h>
+>>>>>>>> +.B #include <unistd.h>
+>>>>>>>> +
+>>>>>>>> +.BI "ssize_t syscall(__NR_copy_file_range, int " fd_in ", loff_t * " off_in ",
+>>>>>>>> +.BI "                int " fd_out ", loff_t * " off_out ", size_t " len ",
+>>>>>>>> +.BI "                unsigned int " flags );
+>>>>>>>> +.fi
+>>>>>>>> +.SH DESCRIPTION
+>>>>>>>> +The
+>>>>>>>> +.BR copy_file_range ()
+>>>>>>>> +system call performs an in-kernel copy between two file descriptors
+>>>>>>>> +without all that tedious mucking about in userspace.
+>>>>>>>
+>>>>>>> ;)
+>>>>>>>
+>>>>>>>> +It copies up to
+>>>>>>>> +.I len
+>>>>>>>> +bytes of data from file descriptor
+>>>>>>>> +.I fd_in
+>>>>>>>> +to file descriptor
+>>>>>>>> +.I fd_out
+>>>>>>>> +at
+>>>>>>>> +.IR off_out .
+>>>>>>>> +The file descriptors must not refer to the same file.
+>>>>>>>
+>>>>>>> Why?  btrfs (and XFS) reflink can handle the case of a file sharing blocks
+>>>>>>> with itself.
+>>>>>>
+>>>>>> I've never really thought about it... Zach had that in his initial
+>>>>>> submission, so mentioned it in the man page.  Should I remove that bit?
+>>>>>
+>>>>> Yes, please!
+>>>>>
+>>>>> I could be wrong, but I think btrfs only started supporting files that share
+>>>>> blocks with themselves relatively recently(?)
+>>>>>
+>>>>> I'm not sure why zab added this; was hoping he'd speak up. ;)
+>>>>>
+>>>>>>
+>>>>>>>
+>>>>>>>> +
+>>>>>>>> +The following semantics apply for
+>>>>>>>> +.IR fd_in ,
+>>>>>>>> +and similar statements apply to
+>>>>>>>> +.IR off_out :
+>>>>>>>> +.IP * 3
+>>>>>>>> +If
+>>>>>>>> +.I off_in
+>>>>>>>> +is NULL, then bytes are read from
+>>>>>>>> +.I fd_in
+>>>>>>>> +starting from the current file offset and the current
+>>>>>>>> +file offset is adjusted appropriately.
+>>>>>>>> +.IP *
+>>>>>>>> +If
+>>>>>>>> +.I off_in
+>>>>>>>> +is not NULL, then
+>>>>>>>> +.I off_in
+>>>>>>>> +must point to a buffer that specifies the starting
+>>>>>>>> +offset where bytes from
+>>>>>>>> +.I fd_in
+>>>>>>>> +will be read.  The current file offset of
+>>>>>>>> +.I fd_in
+>>>>>>>> +is not changed, but
+>>>>>>>> +.I off_in
+>>>>>>>> +is adjusted appropriately.
+>>>>>>>> +.PP
+>>>>>>>> +The default behavior of
+>>>>>>>> +.BR copy_file_range ()
+>>>>>>>> +is filesystem specific, and might result in creating a
+>>>>>>>> +copy-on-write reflink.
+>>>>>>>> +In the event that a given filesystem does not implement
+>>>>>>>> +any form of copy acceleration, the kernel will perform
+>>>>>>>> +a deep copy of the requested range by reading bytes from
+>>>>>>>
+>>>>>>> I wonder if it's wise to allow deep copies -- what happens if len == 1T?
+>>>>>>> Will this syscall just block for a really long time?
+>>>>>>
+>>>>>> We use rw_verify_area(), (similar to read and write) so we won't allow a
+>>>>>> value of len that long.  I can mention this in an updated version of this man
+>>>>>> page!
+>>>>>
+>>>>> Ok.  I guess MAX_RW_COUNT limits us to about 4G at once, which for a splice
+>>>
+>>> Heh, INT_MAX, so 2GB at once.
+>>>
+>>>>> copy is probably reasonable.
+>>>>>
+>>>>> The reason why I asked about len == 1T specifically is that I can (with
+>>>>> somewhat long delays) reflink about 260 million extents at a time on XFS,
+>>>>> which is about 1TB.  Given that locks get held for the duration, it's probably
+>>>>> not a bad thing to limit userspace to 4G at a time.
+>>>>
+>>>> I'd personally love to see that be tunable by a sysctl (kind of like
+>>>> how you can control the maximum number of AIO requests in flight),
+>>>> and for that matter we might want to be able to limit the number of
+>>>> in-progress copies going on.
+>>>
+>>> Now that I think about it, btrfs' reflink ioctl doesn't seem to have any
+>>> particular limit on how much you can reflink in a single call.  XFS doesn't
+>>> have a limit either.  Given that reflink should create a tiny amount of IO
+>>> compared to the number of bytes being manipulated, should we allow a higher
+>>> limit when ssize_t is large enough?
+>>>
+>>> Copy-through-the-pagecache should stick to MAX_RW_COUNT.
+>>
+>> Should I keep rejecting pagecache copies if len > MAX_RW_COUNT?  Or would it
+>> be okay to change the value of len to MAX_RW_COUNT in this case?
+> 
+> OH.  Heh.
+> 
+> rw_verify_area returns either an error code or a len that's been clamped to
+> MAX_RW_COUNT.  However, the syscall code only checks for errors, and otherwise
+> ignores the clamp.  So I guess the length has never been clamped.
+> 
+> Since the syscall returns ssize_t, I think it's fine to keep around the return
+> value from rw_verify_area and use it to clamp len if we have to fall back on
+> pagecache copy.  Otherwise we'll let each FS' copy routine decide its maximum.
 
-> On Wed, Sep 9, 2015 at 2:49 PM, Jeff Layton <jeff.layton@primarydata.com> wrote:
-> > On Wed, 9 Sep 2015 13:49:44 -0400
-> > Trond Myklebust <trond.myklebust@primarydata.com> wrote:
-> >
-> >> +Bruce, +Jeff...
-> >>
-> >> On Wed, Sep 9, 2015 at 1:12 PM, Trond Myklebust
-> >> <trond.myklebust@primarydata.com> wrote:
-> >> > On Wed, Sep 9, 2015 at 9:37 AM, Andrew W Elble <aweits@rit.edu> wrote:
-> >> >>
-> >> >> In attempting to troubleshoot other issues, we've run into this race
-> >> >> with 4.1.4 (both client and server) with a few cherry-picked patches
-> >> >> from upstream. This is my attempt at a redacted packet-capture.
-> >> >>
-> >> >> These all affect the same fh/stateid:
-> >> >>
-> >> >> 116 -> OPEN (will be an upgrade / for write)
-> >> >> 117 -> OPEN_DOWNGRADE (to read for the existing stateid / seqid = 0x6
-> >> >>
-> >> >> 121 -> OPEN_DOWNGRADE (completed last / seqid = 0x8)
-> >> >> 122 -> OPEN (completed first / seqid = 0x7)
-> >> >>
-> >> >> Attempts to write using that stateid fail because the stateid doesn't
-> >> >> have write access.
-> >> >>
-> >> >> Any thoughts? I can share more data from the capture if needed.
-> >> >
-> >> > Bruce & Jeff,
-> >> >
-> >> > Given that the client sent a non-zero seqid, why is the OPEN_DOWNGRADE
-> >> > being executed after the OPEN here? Surely, if that is the case, the
-> >> > server should be returning NFS4ERR_OLD_STATEID and failing the
-> >> > OPEN_DOWNGRADE operation?
-> >> >
-> >
-> > The problem there is that we do the seqid checks at the beginning of
-> > the operation. In this case it's likely that it was 0x6 when the
-> > OPEN_DOWNGRADE started. The OPEN completed first though and bumped the
-> > seqid, and then the downgrade finished and bumped it again. When we bump
-> > the seqid we don't verify it against what came in originally.
-> >
-> > The question is whether that's wrong from the POV of the spec. RFC5661
-> > doesn't seem to explicitly require that we serialize such operations on
-> > the server. The closest thing I can find is this in 3.3.12:
-> 
-> RFC5661, section 8.2.2
->   Except for layout stateids (Section 12.5.3), when a client sends a
->    stateid to the server, it has two choices with regard to the seqid
->    sent.  It may set the seqid to zero to indicate to the server that it
->    wishes the most up-to-date seqid for that stateid's "other" field to
->    be used.  This would be the common choice in the case of a stateid
->    sent with a READ or WRITE operation.  It also may set a non-zero
->    value, in which case the server checks if that seqid is the correct
->    one.  In that case, the server is required to return
->    NFS4ERR_OLD_STATEID if the seqid is lower than the most current value
->    and NFS4ERR_BAD_STATEID if the seqid is greater than the most current
->    value.  This would be the common choice in the case of stateids sent
->    with a CLOSE or OPEN_DOWNGRADE.  Because OPENs may be sent in
->    parallel for the same owner, a client might close a file without
->    knowing that an OPEN upgrade had been done by the server, changing
->    the lock in question.  If CLOSE were sent with a zero seqid, the OPEN
->    upgrade would be cancelled before the client even received an
->    indication that an upgrade had happened.
-> 
-> The suggestion there is clearly that the client can rely on the server
-> not reordering those CLOSE/OPEN_DOWNGRADE operations w.r.t. a parallel
-> OPEN. Otherwise, what is the difference between sending a non-zero
-> seqid and zero?
-> 
-> > "The server is required to increment the "seqid" field by
-> >  one at each transition of the stateid.  This is important since the
-> >  client will inspect the seqid in OPEN stateids to determine the order
-> >  of OPEN processing done by the server."
-> >
-> > If we do need to fix this on the server, it's likely to be pretty ugly:
-> >
-> > We'd either need to serialize seqid morphing operations (ugh), or make
-> > update_stateid do an cmpxchg to swap it into place (or add some extra
-> > locking around it), and then have some way to unwind all of the changes
-> > if that fails. That may be impossible however -- we're likely closing
-> > struct files after all.
-> 
-> Updates to the state are already required to be atomic. You can't have
-> a stateid where an OPEN_DOWNGRADE or CLOSE only partially succeeded.
-> 
-> >
-> > Now, all of that said, I think the client has some bugs in its seqid
-> > handling as well. It should have realized that the stateid was a r/o
-> > one after the OPEN_DOWNGRADE came back with the higher seqid, but it
-> > still issued a WRITE just afterward. That seems wrong.
-> 
-> No. The client is relying on the server not reordering the
-> OPEN_DOWNGRADE. It expects either for the OPEN to happen first, and
-> the OPEN_DOWNGRADE to fail, or for the OPEN_DOWNGRADE to happen first,
-> and for both operations to succeed.
-> 
-> Trond
+Okay.  I'll use the return value to clamp the copy length, but move this code so that it's only for pagecache copies.  Thanks!
 
-In that case, the "simple" fix would be to add a mutex to
-nfs4_ol_stateid. Lock that in nfs4_preprocess_seqid_op, and ensure that
-we unlock it after bumping the seqid (or on error).
+Anna
 
-Bruce, any thoughts?
--- 
-Jeff Layton <jeff.layton@primarydata.com>
+> 
+> --D
+> 
+>>
+>> Anna
+>>
+>>>
+>>> I noticed that btrfs won't dedupe more than 16M per call.  Any thoughts?
+>>>
+>>> --D
+>>>
+>>>>>
+>>>>> (But hey, it's fun to stress-test once in a while. :))
+>>>>>
+>>>>> --D
+>>>>>
+>>>>>>
+>>>>>>
+>>>>>>>
+>>>>>>>> +.I fd_in
+>>>>>>>> +and writing them to
+>>>>>>>> +.IR fd_out .
+>>>>>>>
+>>>>>>> "...if COPY_REFLINK is not set in flags."
+>>>>>>
+>>>>>> Sure.
+>>>>>>
+>>>>>>>
+>>>>>>>> +
+>>>>>>>> +Currently, Linux only supports the following flag:
+>>>>>>>> +.TP 1.9i
+>>>>>>>> +.B COPY_REFLINK
+>>>>>>>> +Only perform the copy if the filesystem can do it as a reflink.
+>>>>>>>> +Do not fall back on performing a deep copy.
+>>>>>>>> +.SH RETURN VALUE
+>>>>>>>> +Upon successful completion,
+>>>>>>>> +.BR copy_file_range ()
+>>>>>>>> +will return the number of bytes copied between files.
+>>>>>>>> +This could be less than the length originally requested.
+>>>>>>>> +
+>>>>>>>> +On error,
+>>>>>>>> +.BR copy_file_range ()
+>>>>>>>> +returns \-1 and
+>>>>>>>> +.I errno
+>>>>>>>> +is set to indicate the error.
+>>>>>>>> +.SH ERRORS
+>>>>>>>> +.TP
+>>>>>>>> +.B EBADF
+>>>>>>>> +One or more file descriptors are not valid,
+>>>>>>>> +or do not have proper read-write mode.
+>>>>>>>
+>>>>>>> "or fd_out is not opened for writing"?
+>>>>>>
+>>>>>> I'll add that.
+>>>>>>
+>>>>>>>
+>>>>>>>> +.TP
+>>>>>>>> +.B EINVAL
+>>>>>>>> +Requested range extends beyond the end of the file;
+>>>>>>>> +.I flags
+>>>>>>>> +argument is set to an invalid value.
+>>>>>>>> +.TP
+>>>>>>>> +.B EOPNOTSUPP
+>>>>>>>> +.B COPY_REFLINK
+>>>>>>>> +was specified in
+>>>>>>>> +.IR flags ,
+>>>>>>>> +but the target filesystem does not support reflinks.
+>>>>>>>> +.TP
+>>>>>>>> +.B EXDEV
+>>>>>>>> +Target filesystem doesn't support cross-filesystem copies.
+>>>>>>>> +.SH VERSIONS
+>>>>>>>
+>>>>>>> Perhaps this ought to list a few more errors (EIO, ENOSPC, ENOSYS, EPERM...)
+>>>>>>> that can be returned?  (I was looking at the fallocate manpage.)
+>>>>>>
+>>>>>> Okay.  I'll poke around for what else could be returned!
+>>>>>>
+>>>>>> Thanks,
+>>>>>> Anna
+>>>>>>
+>>>>>>>
+>>>>>>> --D
+>>>>>>>
+>>>>>>>> +The
+>>>>>>>> +.BR copy_file_range ()
+>>>>>>>> +system call first appeared in Linux 4.3.
+>>>>>>>> +.SH CONFORMING TO
+>>>>>>>> +The
+>>>>>>>> +.BR copy_file_range ()
+>>>>>>>> +system call is a nonstandard Linux extension.
+>>>>>>>> +.SH EXAMPLE
+>>>>>>>> +.nf
+>>>>>>>> +
+>>>>>>>> +#define _GNU_SOURCE
+>>>>>>>> +#include <fcntl.h>
+>>>>>>>> +#include <linux/copy.h>
+>>>>>>>> +#include <stdio.h>
+>>>>>>>> +#include <stdlib.h>
+>>>>>>>> +#include <sys/stat.h>
+>>>>>>>> +#include <sys/syscall.h>
+>>>>>>>> +#include <unistd.h>
+>>>>>>>> +
+>>>>>>>> +
+>>>>>>>> +int main(int argc, char **argv)
+>>>>>>>> +{
+>>>>>>>> +    int fd_in, fd_out;
+>>>>>>>> +    struct stat stat;
+>>>>>>>> +    loff_t len, ret;
+>>>>>>>> +
+>>>>>>>> +    if (argc != 3) {
+>>>>>>>> +        fprintf(stderr, "Usage: %s <pathname> <pathname>\n", argv[0]);
+>>>>>>>> +        exit(EXIT_FAILURE);
+>>>>>>>> +    }
+>>>>>>>> +
+>>>>>>>> +    fd_in = open(argv[1], O_RDONLY);
+>>>>>>>> +    if (fd_in == -1) {
+>>>>>>>> +        perror("open (argv[1])");
+>>>>>>>> +        exit(EXIT_FAILURE);
+>>>>>>>> +    }
+>>>>>>>> +
+>>>>>>>> +    if (fstat(fd_in, &stat) == -1) {
+>>>>>>>> +        perror("fstat");
+>>>>>>>> +        exit(EXIT_FAILURE);
+>>>>>>>> +    }
+>>>>>>>> +    len = stat.st_size;
+>>>>>>>> +
+>>>>>>>> +    fd_out = open(argv[2], O_WRONLY | O_CREAT, 0644);
+>>>>>>>> +    if (fd_out == -1) {
+>>>>>>>> +        perror("open (argv[2])");
+>>>>>>>> +        exit(EXIT_FAILURE);
+>>>>>>>> +    }
+>>>>>>>> +
+>>>>>>>> +    do {
+>>>>>>>> +        ret = syscall(__NR_copy_file_range, fd_in, NULL,
+>>>>>>>> +                      fd_out, NULL, len, 0);
+>>>>>>>> +        if (ret == -1) {
+>>>>>>>> +            perror("copy_file_range");
+>>>>>>>> +            exit(EXIT_FAILURE);
+>>>>>>>> +        }
+>>>>>>>> +
+>>>>>>>> +        len -= ret;
+>>>>>>>> +    } while (len > 0);
+>>>>>>>> +
+>>>>>>>> +    close(fd_in);
+>>>>>>>> +    close(fd_out);
+>>>>>>>> +    exit(EXIT_SUCCESS);
+>>>>>>>> +}
+>>>>>>>> +.fi
+>>>>>>>> +.SH SEE ALSO
+>>>>>>>> +.BR splice (2)
+>>>>>>>> --
+>>>>>>>> 2.5.1
+>>>>>>>>
+>>>>>>>> --
+>>>>>>>> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
+>>>>>>>> the body of a message to majordomo@vger.kernel.org
+>>>>>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>>>>>
+>>>>> --
+>>>>> To unsubscribe from this list: send the line "unsubscribe linux-btrfs" in
+>>>>> the body of a message to majordomo@vger.kernel.org
+>>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>>>>
+>>>>
+>>>>
+>>>
+>>>
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>>
+>>
+
