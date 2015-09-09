@@ -1,104 +1,51 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pa0-f53.google.com ([209.85.220.53]:35627 "EHLO
-	mail-pa0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751464AbbIIJSf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Sep 2015 05:18:35 -0400
-Received: by pacfv12 with SMTP id fv12so4921194pac.2
-        for <linux-nfs@vger.kernel.org>; Wed, 09 Sep 2015 02:18:35 -0700 (PDT)
-From: Peng Tao <tao.peng@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Peng Tao <tao.peng@primarydata.com>
-Subject: [PATCH] nfs: remove roc_rpcwaitq
-Date: Wed,  9 Sep 2015 17:17:40 +0800
-Message-Id: <1441790260-35583-1-git-send-email-tao.peng@primarydata.com>
+Received: from mx2.suse.de ([195.135.220.15]:39814 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752986AbbIIJT0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 9 Sep 2015 05:19:26 -0400
+Date: Wed, 9 Sep 2015 11:18:39 +0200
+From: David Sterba <dsterba@suse.cz>
+To: Anna Schumaker <Anna.Schumaker@netapp.com>
+Cc: linux-nfs@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-api@vger.kernel.org,
+        zab@zabbo.net, viro@zeniv.linux.org.uk, clm@fb.com,
+        darrick.wong@oracle.com, mtk.manpages@gmail.com, andros@netapp.com,
+        hch@infradead.org
+Subject: Re: [PATCH v1 4/8] btrfs: Add mountpoint checking during
+ btrfs_copy_file_range
+Message-ID: <20150909091838.GE8891@twin.jikos.cz>
+Reply-To: dsterba@suse.cz
+References: <1441397823-1203-1-git-send-email-Anna.Schumaker@Netapp.com>
+ <1441397823-1203-5-git-send-email-Anna.Schumaker@Netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1441397823-1203-5-git-send-email-Anna.Schumaker@Netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-There are no users of it after we remove pnfs_roc_drain.
+On Fri, Sep 04, 2015 at 04:16:58PM -0400, Anna Schumaker wrote:
+> We need to verify that both the source and the destination files are
+> part of the same filesystem, otherwise we can't create a reflink.
+> 
+> Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+> ---
+>  fs/btrfs/ioctl.c | 4 ++++
+>  1 file changed, 4 insertions(+)
+> 
+> diff --git a/fs/btrfs/ioctl.c b/fs/btrfs/ioctl.c
+> index 62ae286..9c0c955 100644
+> --- a/fs/btrfs/ioctl.c
+> +++ b/fs/btrfs/ioctl.c
+> @@ -3856,6 +3856,10 @@ ssize_t btrfs_copy_file_range(struct file *file_in, loff_t pos_in,
+>  {
+>  	ssize_t ret;
+>  
+> +	if (inode_in->i_sb != inode_out->i_sb ||
+> +	    file_in->f_path.mnt != file_out->f_path.mnt)
+> +		return -EXDEV;
 
-Signed-off-by: Peng Tao <tao.peng@primarydata.com>
----
- fs/nfs/client.c           | 10 ----------
- fs/nfs/pnfs.c             |  4 ----
- include/linux/nfs_fs_sb.h |  1 -
- 3 files changed, 15 deletions(-)
+The same check exists in btrfs_clone_files (added in the previous
+patch), what's the reason to add it here again?
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 57c5a02..46ce7bf 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -215,11 +215,6 @@ static void nfs_cb_idr_remove_locked(struct nfs_client *clp)
- 		idr_remove(&nn->cb_ident_idr, clp->cl_cb_ident);
- }
- 
--static void pnfs_init_server(struct nfs_server *server)
--{
--	rpc_init_wait_queue(&server->roc_rpcwaitq, "pNFS ROC");
--}
--
- #else
- void nfs_cleanup_cb_ident_idr(struct net *net)
- {
-@@ -229,10 +224,6 @@ static void nfs_cb_idr_remove_locked(struct nfs_client *clp)
- {
- }
- 
--static void pnfs_init_server(struct nfs_server *server)
--{
--}
--
- #endif /* CONFIG_NFS_V4 */
- 
- /*
-@@ -900,7 +891,6 @@ struct nfs_server *nfs_alloc_server(void)
- 
- 	ida_init(&server->openowner_id);
- 	ida_init(&server->lockowner_id);
--	pnfs_init_server(server);
- 
- 	return server;
- }
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index ba12464..dcc3571 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -334,15 +334,12 @@ static void
- pnfs_layout_remove_lseg(struct pnfs_layout_hdr *lo,
- 		struct pnfs_layout_segment *lseg)
- {
--	struct inode *inode = lo->plh_inode;
--
- 	WARN_ON(test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
- 	list_del_init(&lseg->pls_list);
- 	/* Matched by pnfs_get_layout_hdr in pnfs_layout_insert_lseg */
- 	atomic_dec(&lo->plh_refcount);
- 	if (list_empty(&lo->plh_segs))
- 		clear_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags);
--	rpc_wake_up(&NFS_SERVER(inode)->roc_rpcwaitq);
- }
- 
- /* Return true if layoutreturn is needed */
-@@ -936,7 +933,6 @@ void pnfs_clear_layoutreturn_waitbit(struct pnfs_layout_hdr *lo)
- 	clear_bit_unlock(NFS_LAYOUT_RETURN, &lo->plh_flags);
- 	smp_mb__after_atomic();
- 	wake_up_bit(&lo->plh_flags, NFS_LAYOUT_RETURN);
--	rpc_wake_up(&NFS_SERVER(lo->plh_inode)->roc_rpcwaitq);
- }
- 
- static int
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 570a7df..fad6b61 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -190,7 +190,6 @@ struct nfs_server {
- 						   handle volatility type for
- 						   this filesystem */
- 	struct pnfs_layoutdriver_type  *pnfs_curr_ld; /* Active layout driver */
--	struct rpc_wait_queue	roc_rpcwaitq;
- 	void			*pnfs_ld_data;	/* per mount point data */
- 
- 	/* the following fields are protected by nfs_client->cl_lock */
--- 
-1.8.3.1
-
+> +
+>  	ret = btrfs_clone_files(file_out, file_in, pos_in, len, pos_out);
