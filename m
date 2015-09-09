@@ -1,59 +1,51 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx143.netapp.com ([216.240.21.24]:44415 "EHLO mx143.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752988AbbIIP4T (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 9 Sep 2015 11:56:19 -0400
-Subject: Re: [PATCH v1 4/8] btrfs: Add mountpoint checking during
- btrfs_copy_file_range
-To: <dsterba@suse.cz>, <linux-nfs@vger.kernel.org>,
-        <linux-btrfs@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>,
-        <linux-api@vger.kernel.org>, <zab@zabbo.net>,
-        <viro@zeniv.linux.org.uk>, <clm@fb.com>, <darrick.wong@oracle.com>,
-        <mtk.manpages@gmail.com>, <andros@netapp.com>, <hch@infradead.org>
-References: <1441397823-1203-1-git-send-email-Anna.Schumaker@Netapp.com>
- <1441397823-1203-5-git-send-email-Anna.Schumaker@Netapp.com>
- <20150909091838.GE8891@twin.jikos.cz>
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-Message-ID: <55F0569C.5030904@Netapp.com>
-Date: Wed, 9 Sep 2015 11:56:12 -0400
+Received: from discipline.rit.edu ([129.21.6.207]:65348 "HELO
+	discipline.rit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1751495AbbIIP6j (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Sep 2015 11:58:39 -0400
+From: Andrew W Elble <aweits@rit.edu>
+To: linux-nfs@vger.kernel.org
+Subject: Re: upgrade/downgrade race
+References: <m2h9n3btno.fsf@discipline.rit.edu>
+Date: Wed, 09 Sep 2015 11:58:38 -0400
+In-Reply-To: <m2h9n3btno.fsf@discipline.rit.edu> (Andrew W. Elble's message of
+	"Wed, 09 Sep 2015 09:37:31 -0400")
+Message-ID: <m27fnza8k1.fsf@discipline.rit.edu>
 MIME-Version: 1.0
-In-Reply-To: <20150909091838.GE8891@twin.jikos.cz>
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 09/09/2015 05:18 AM, David Sterba wrote:
-> On Fri, Sep 04, 2015 at 04:16:58PM -0400, Anna Schumaker wrote:
->> We need to verify that both the source and the destination files are
->> part of the same filesystem, otherwise we can't create a reflink.
->>
->> Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
->> ---
->>  fs/btrfs/ioctl.c | 4 ++++
->>  1 file changed, 4 insertions(+)
->>
->> diff --git a/fs/btrfs/ioctl.c b/fs/btrfs/ioctl.c
->> index 62ae286..9c0c955 100644
->> --- a/fs/btrfs/ioctl.c
->> +++ b/fs/btrfs/ioctl.c
->> @@ -3856,6 +3856,10 @@ ssize_t btrfs_copy_file_range(struct file *file_in, loff_t pos_in,
->>  {
->>  	ssize_t ret;
->>  
->> +	if (inode_in->i_sb != inode_out->i_sb ||
->> +	    file_in->f_path.mnt != file_out->f_path.mnt)
->> +		return -EXDEV;
-> 
-> The same check exists in btrfs_clone_files (added in the previous
-> patch), what's the reason to add it here again?
 
-To be really, really sure that it's not a cross-device copy?  :)
+Or, put into really half-baked (I've only spent an evening looking at
+nfs client code) terms, isn't something like this required?
 
-In reality, it was an oversight and I'll drop the patch.  Thanks for letting me know!
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 11fe5d7..15b8150 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -1923,8 +1923,16 @@ static void nfs4_open_done(struct rpc_task *task, void *calldata)
+ 		renew_lease(data->o_res.server, data->timestamp);
+ 		if (!(data->o_res.rflags & NFS4_OPEN_RESULT_CONFIRM))
+ 			nfs_confirm_seqid(&data->owner->so_seqid, 0);
++
++		if (nfs4_stateid_is_newer(&data->state->open_stateid, &data->o_res.stateid) &&
++		    !can_open_cached(data->state, data->o_arg.fmode, data->o_arg.open_flags)) {
++		    rpc_restart_call_prepare(task);
++		    goto out;
++	        }
+ 	}
+ 	data->rpc_done = 1;
++out:
++	return;
+ }
+ 
+ static void nfs4_open_release(void *calldata)
 
-Anna
 
-> 
->> +
->>  	ret = btrfs_clone_files(file_out, file_in, pos_in, len, pos_out);
-
+-- 
+Andrew W. Elble
+aweits@discipline.rit.edu
+Infrastructure Engineer, Communications Technical Lead
+Rochester Institute of Technology
+PGP: BFAD 8461 4CCF DC95 DA2C B0EB 965B 082E 863E C912
