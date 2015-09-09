@@ -1,86 +1,59 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:46191 "EHLO mx1.redhat.com"
+Received: from mx143.netapp.com ([216.240.21.24]:44415 "EHLO mx143.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752147AbbIIPri (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 9 Sep 2015 11:47:38 -0400
-Subject: Re: nfs-utils regression on IPv6-less kernels
-To: Christoph Hellwig <hch@infradead.org>,
-        Chuck Lever <chuck.lever@oracle.com>
-References: <20150810131358.GA19466@infradead.org>
- <55C9D2F2.1020300@RedHat.com> <20150817124220.GA17877@infradead.org>
- <F810C54A-A075-40D1-9912-80A85A7A0D63@oracle.com>
- <20150817160639.GA1173@infradead.org>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-From: Steve Dickson <SteveD@redhat.com>
-Message-ID: <55F05499.3090505@RedHat.com>
-Date: Wed, 9 Sep 2015 11:47:37 -0400
+	id S1752988AbbIIP4T (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 9 Sep 2015 11:56:19 -0400
+Subject: Re: [PATCH v1 4/8] btrfs: Add mountpoint checking during
+ btrfs_copy_file_range
+To: <dsterba@suse.cz>, <linux-nfs@vger.kernel.org>,
+        <linux-btrfs@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>,
+        <linux-api@vger.kernel.org>, <zab@zabbo.net>,
+        <viro@zeniv.linux.org.uk>, <clm@fb.com>, <darrick.wong@oracle.com>,
+        <mtk.manpages@gmail.com>, <andros@netapp.com>, <hch@infradead.org>
+References: <1441397823-1203-1-git-send-email-Anna.Schumaker@Netapp.com>
+ <1441397823-1203-5-git-send-email-Anna.Schumaker@Netapp.com>
+ <20150909091838.GE8891@twin.jikos.cz>
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+Message-ID: <55F0569C.5030904@Netapp.com>
+Date: Wed, 9 Sep 2015 11:56:12 -0400
 MIME-Version: 1.0
-In-Reply-To: <20150817160639.GA1173@infradead.org>
-Content-Type: text/plain; charset=windows-1252
+In-Reply-To: <20150909091838.GE8891@twin.jikos.cz>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-On 08/17/2015 12:06 PM, Christoph Hellwig wrote:
-> On Mon, Aug 17, 2015 at 08:40:25AM -0700, Chuck Lever wrote:
->> Probably stopped working with "rpc.nfsd: Squelch DNS errors when
->> using --host option".
+On 09/09/2015 05:18 AM, David Sterba wrote:
+> On Fri, Sep 04, 2015 at 04:16:58PM -0400, Anna Schumaker wrote:
+>> We need to verify that both the source and the destination files are
+>> part of the same filesystem, otherwise we can't create a reflink.
 >>
->> getaddrinfo(3) returns a list of addresses, some of which are
->> IPv6 addresses. It gets the list from /etc/hosts, or DNS. Even
->> on kernels which do not support IPv6, there may be at least one
->> IPv6 address in the list.
+>> Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+>> ---
+>>  fs/btrfs/ioctl.c | 4 ++++
+>>  1 file changed, 4 insertions(+)
 >>
->> nfssvc_setfds() then loops over this list. The error handling
->> in nfssvc_setfds() causes the loop to exit if the socket(2)
->> call fails. It should "continue" if the error is EAFNOSUPPORT.
->> In fact, that xlog notice can also be removed.
->>
->> I'm traveling this week. Is this enough for you to generate a
->> fix?
+>> diff --git a/fs/btrfs/ioctl.c b/fs/btrfs/ioctl.c
+>> index 62ae286..9c0c955 100644
+>> --- a/fs/btrfs/ioctl.c
+>> +++ b/fs/btrfs/ioctl.c
+>> @@ -3856,6 +3856,10 @@ ssize_t btrfs_copy_file_range(struct file *file_in, loff_t pos_in,
+>>  {
+>>  	ssize_t ret;
+>>  
+>> +	if (inode_in->i_sb != inode_out->i_sb ||
+>> +	    file_in->f_path.mnt != file_out->f_path.mnt)
+>> +		return -EXDEV;
 > 
-> Yes, that works:
-> 
-> ---
-> From: Christoph Hellwig <hch@lst.de>
-> Subject: nfsd: ignore unsupported address types in nfssvc_setfds
-> 
-> Just continue and try a different record returned from getaddrinfo
-> if the kernel does not support an address family.  This fixes nfsd
-> startup on kernels without IPv6 support.
-> 
-> Suggested-by: Chuck Lever <chuck.lever@oracle.com>
-> Signed-off-by: Christoph Hellwig <hch@lst.de>
-Sorry it took so long... committed!
+> The same check exists in btrfs_clone_files (added in the previous
+> patch), what's the reason to add it here again?
 
-steved.
+To be really, really sure that it's not a cross-device copy?  :)
+
+In reality, it was an oversight and I'll drop the patch.  Thanks for letting me know!
+
+Anna
 
 > 
-> diff --git a/utils/nfsd/nfssvc.c b/utils/nfsd/nfssvc.c
-> index a2b11d8..fc11d23 100644
-> --- a/utils/nfsd/nfssvc.c
-> +++ b/utils/nfsd/nfssvc.c
-> @@ -174,15 +174,14 @@ nfssvc_setfds(const struct addrinfo *hints, const char *node, const char *port)
->  		sockfd = socket(addr->ai_family, addr->ai_socktype,
->  				addr->ai_protocol);
->  		if (sockfd < 0) {
-> -			if (errno == EAFNOSUPPORT)
-> -				xlog(L_NOTICE, "address family %s not "
-> -						"supported by protocol %s",
-> -						family, proto);
-> -			else
-> +			if (errno != EAFNOSUPPORT) {
->  				xlog(L_ERROR, "unable to create %s %s socket: "
->  				     "errno %d (%m)", family, proto, errno);
-> -			rc = errno;
-> -			goto error;
-> +				rc = errno;
-> +				goto error;
-> +			}
-> +			addr = addr->ai_next;
-> +			continue;
->  		}
->  #ifdef IPV6_SUPPORTED
->  		if (addr->ai_family == AF_INET6 &&
-> 
+>> +
+>>  	ret = btrfs_clone_files(file_out, file_in, pos_in, len, pos_out);
+
