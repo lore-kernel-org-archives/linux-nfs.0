@@ -1,120 +1,159 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:47283 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752119AbbIIU7c (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 9 Sep 2015 16:59:32 -0400
-Date: Wed, 9 Sep 2015 16:59:30 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-Subject: Re: readdir and old cookie verifier
-Message-ID: <20150909205930.GE25750@fieldses.org>
-References: <267164181.6444770.1441717712553.JavaMail.zimbra@desy.de>
- <20150909190308.GB25750@fieldses.org>
- <1769158187.6826766.1441829428223.JavaMail.zimbra@desy.de>
+Received: from mail-yk0-f172.google.com ([209.85.160.172]:35502 "EHLO
+	mail-yk0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751119AbbIIVAl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Sep 2015 17:00:41 -0400
+Received: by ykdu9 with SMTP id u9so36353176ykd.2
+        for <linux-nfs@vger.kernel.org>; Wed, 09 Sep 2015 14:00:40 -0700 (PDT)
+Date: Wed, 9 Sep 2015 17:00:37 -0400
+From: Jeff Layton <jeff.layton@primarydata.com>
+To: Bruce James Fields <bfields@fieldses.org>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Andrew W Elble <aweits@rit.edu>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: upgrade/downgrade race
+Message-ID: <20150909170037.77776b5a@tlielax.poochiereds.net>
+In-Reply-To: <20150909204036.GD25750@fieldses.org>
+References: <m2h9n3btno.fsf@discipline.rit.edu>
+	<CAHQdGtQ84tUFEXaUwSngAmQst3NbjZDCSwB2jtqRqR29R4wBWg@mail.gmail.com>
+	<CAHQdGtTvPPXjSm8Aq6AefMec4UEUwL6+swwav8SSFMQJMDchCA@mail.gmail.com>
+	<20150909144935.51e3653b@tlielax.poochiereds.net>
+	<CAHQdGtS2BL+d9NvV5adG=Mts0Qx6_=5Fwo34+nbz-eMVepnnKg@mail.gmail.com>
+	<20150909151801.3fd2243f@tlielax.poochiereds.net>
+	<20150909204036.GD25750@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1769158187.6826766.1441829428223.JavaMail.zimbra@desy.de>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Sep 09, 2015 at 10:10:28PM +0200, Mkrtchyan, Tigran wrote:
-> 
-> 
-> ----- Original Message -----
-> > From: "J. Bruce Fields" <bfields@fieldses.org>
-> > To: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
-> > Cc: "linux-nfs" <linux-nfs@vger.kernel.org>
-> > Sent: Wednesday, September 9, 2015 9:03:08 PM
-> > Subject: Re: readdir and old cookie verifier
-> 
-> > On Tue, Sep 08, 2015 at 03:08:32PM +0200, Mkrtchyan, Tigran wrote:
-> >> 
-> >> Dear NFS gurus,
-> >> 
-> >> we run into situation, where client gets BAD_COOKIE on a readdir.
-> >> Before I go and try to adopt our server to handle it, let me describe
-> >> the situation.
-> >> 
-> >> A client node (we have seen it with RHEL6 and Ubuntu 12.04, but probably
-> >> others affected as well) send a bunch of readdirs to the server. After some
-> >> time (this many be hours, days ) client sends an other set of readdirs.
-> > 
-> > Starting over with cookie zero, or resuming using some cached cookie?
-> 
-> It resuming with a cached cookie. Looks like the client still has a first portion
-> of the listing, and want's to fetch the rest. At least in one case we found that
-> application does a opendir and series of readdirs but with a big delay (iterates over
-> files in a directory).
-> 
-> > 
-> >> But
-> >> it reuses cookie verifier from the first readdir sequence. Server sends back
-> >> BAD_COOKIE, but client never starts over with a cookie and verifier being zero.
-> > 
-> > I don't think it's really required to do that.  7530 suggests that might
-> > indeed result in an error:
-> > 
-> >	It should be a rare occurrence that a server is unable to
-> >	continue properly reading a directory with the provided
-> >	cookie/cookieverf pair.  The server should make every effort to
-> >	avoid this condition since the application at the client may not
-> >	be able to properly handle this type of failure.
-> > 
-> > (Also, RFC 7530 16.24.4 says NOT_SAME is the error in this case.  Is
-> > that really correct?  I would have expected BAD_COOKIE too.)
-> 
-> Well, it makes sense to me. If a client asks for a content of a directory
-> which is changed, how one can provide that listing?
+On Wed, 9 Sep 2015 16:40:36 -0400
+Bruce James Fields <bfields@fieldses.org> wrote:
 
-My understanding of the traditional approach: the directory is treated
-as an array of entries, and the cookie is an index into that array.
-Entries in the array are never moved; if an entry in the middle is
-removed it's marked absent somehow to prevent having to shift later
-entries back.  This guarantees that iterating over the directory will
-get every unchanged entry exactly once.  (It's hazier what will hapen to
-removed or added entries, but posix is OK with that.) In practice
-filesystems do something more complicated than this (the "array" is
-probably some virtual index on the side?).
-
-> On the other hand,
-> if we always return NOT_SAME, then client will never the that listing and
-> endup with infinite READDIR loop.
-> 
+> On Wed, Sep 09, 2015 at 03:18:01PM -0400, Jeff Layton wrote:
+> > On Wed, 9 Sep 2015 15:01:54 -0400
+> > Trond Myklebust <trond.myklebust@primarydata.com> wrote:
 > > 
-> >> As a result, inconsistent listing and anhappy user:
-> >> 
-> >> 
-> >> [exflserv04] ~ $ ls /pnfs/desy.de/exfel/disk/LCLS/2015/RAW/XCS/xcsh8215/xtc/
-> >> ls: reading directory /pnfs/desy.de/exfel/disk/LCLS/2015/RAW/XCS/xcsh8215/xtc/:
-> >> Unknown error 523
+> > > On Wed, Sep 9, 2015 at 2:49 PM, Jeff Layton <jeff.layton@primarydata.com> wrote:
+> > > > On Wed, 9 Sep 2015 13:49:44 -0400
+> > > > Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+> > > >
+> > > >> +Bruce, +Jeff...
+> > > >>
+> > > >> On Wed, Sep 9, 2015 at 1:12 PM, Trond Myklebust
+> > > >> <trond.myklebust@primarydata.com> wrote:
+> > > >> > On Wed, Sep 9, 2015 at 9:37 AM, Andrew W Elble <aweits@rit.edu> wrote:
+> > > >> >>
+> > > >> >> In attempting to troubleshoot other issues, we've run into this race
+> > > >> >> with 4.1.4 (both client and server) with a few cherry-picked patches
+> > > >> >> from upstream. This is my attempt at a redacted packet-capture.
+> > > >> >>
+> > > >> >> These all affect the same fh/stateid:
+> > > >> >>
+> > > >> >> 116 -> OPEN (will be an upgrade / for write)
+> > > >> >> 117 -> OPEN_DOWNGRADE (to read for the existing stateid / seqid = 0x6
+> > > >> >>
+> > > >> >> 121 -> OPEN_DOWNGRADE (completed last / seqid = 0x8)
+> > > >> >> 122 -> OPEN (completed first / seqid = 0x7)
+> > > >> >>
+> > > >> >> Attempts to write using that stateid fail because the stateid doesn't
+> > > >> >> have write access.
+> > > >> >>
+> > > >> >> Any thoughts? I can share more data from the capture if needed.
+> > > >> >
+> > > >> > Bruce & Jeff,
+> > > >> >
+> > > >> > Given that the client sent a non-zero seqid, why is the OPEN_DOWNGRADE
+> > > >> > being executed after the OPEN here? Surely, if that is the case, the
+> > > >> > server should be returning NFS4ERR_OLD_STATEID and failing the
+> > > >> > OPEN_DOWNGRADE operation?
+> > > >> >
+> > > >
+> > > > The problem there is that we do the seqid checks at the beginning of
+> > > > the operation. In this case it's likely that it was 0x6 when the
+> > > > OPEN_DOWNGRADE started. The OPEN completed first though and bumped the
+> > > > seqid, and then the downgrade finished and bumped it again. When we bump
+> > > > the seqid we don't verify it against what came in originally.
+> > > >
+> > > > The question is whether that's wrong from the POV of the spec. RFC5661
+> > > > doesn't seem to explicitly require that we serialize such operations on
+> > > > the server. The closest thing I can find is this in 3.3.12:
+> > > 
+> > > RFC5661, section 8.2.2
+> > >   Except for layout stateids (Section 12.5.3), when a client sends a
+> > >    stateid to the server, it has two choices with regard to the seqid
+> > >    sent.  It may set the seqid to zero to indicate to the server that it
+> > >    wishes the most up-to-date seqid for that stateid's "other" field to
+> > >    be used.  This would be the common choice in the case of a stateid
+> > >    sent with a READ or WRITE operation.  It also may set a non-zero
+> > >    value, in which case the server checks if that seqid is the correct
+> > >    one.  In that case, the server is required to return
+> > >    NFS4ERR_OLD_STATEID if the seqid is lower than the most current value
+> > >    and NFS4ERR_BAD_STATEID if the seqid is greater than the most current
+> > >    value.  This would be the common choice in the case of stateids sent
+> > >    with a CLOSE or OPEN_DOWNGRADE.  Because OPENs may be sent in
+> > >    parallel for the same owner, a client might close a file without
+> > >    knowing that an OPEN upgrade had been done by the server, changing
+> > >    the lock in question.  If CLOSE were sent with a zero seqid, the OPEN
+> > >    upgrade would be cancelled before the client even received an
+> > >    indication that an upgrade had happened.
+> > > 
+> > > The suggestion there is clearly that the client can rely on the server
+> > > not reordering those CLOSE/OPEN_DOWNGRADE operations w.r.t. a parallel
+> > > OPEN. Otherwise, what is the difference between sending a non-zero
+> > > seqid and zero?
+> > > 
+> > > > "The server is required to increment the "seqid" field by
+> > > >  one at each transition of the stateid.  This is important since the
+> > > >  client will inspect the seqid in OPEN stateids to determine the order
+> > > >  of OPEN processing done by the server."
+> > > >
+> > > > If we do need to fix this on the server, it's likely to be pretty ugly:
+> > > >
+> > > > We'd either need to serialize seqid morphing operations (ugh), or make
+> > > > update_stateid do an cmpxchg to swap it into place (or add some extra
+> > > > locking around it), and then have some way to unwind all of the changes
+> > > > if that fails. That may be impossible however -- we're likely closing
+> > > > struct files after all.
+> > > 
+> > > Updates to the state are already required to be atomic. You can't have
+> > > a stateid where an OPEN_DOWNGRADE or CLOSE only partially succeeded.
+> > > 
+> > > >
+> > > > Now, all of that said, I think the client has some bugs in its seqid
+> > > > handling as well. It should have realized that the stateid was a r/o
+> > > > one after the OPEN_DOWNGRADE came back with the higher seqid, but it
+> > > > still issued a WRITE just afterward. That seems wrong.
+> > > 
+> > > No. The client is relying on the server not reordering the
+> > > OPEN_DOWNGRADE. It expects either for the OPEN to happen first, and
+> > > the OPEN_DOWNGRADE to fail, or for the OPEN_DOWNGRADE to happen first,
+> > > and for both operations to succeed.
+> > > 
+> > > Trond
 > > 
-> > That's EBADCOOKIE.
+> > In that case, the "simple" fix would be to add a mutex to
+> > nfs4_ol_stateid. Lock that in nfs4_preprocess_seqid_op, and ensure that
+> > we unlock it after bumping the seqid (or on error).
 > > 
-> >> Is this behavior of the client correct?
-> > 
-> > I think so.  It's a huge pain for filesystems, but unfortunately readdir
-> > cookies (like filehandles) are forever.
+> > Bruce, any thoughts?
 > 
-> I already have raised this issue.
+> Why isn't nfsd4_cstate_assign_replay()/nfsd4_cstate_clear_replay()
+> already doing this with the so_replay.rp_mutex lock?
 > 
-> https://www.ietf.org/mail-archive/web/nfsv4/current/msg07267.html
+> Looking at it.... OK, sorry, that's 4.0 only.  I don't know if that
+> should be shared in the session case.
 > 
-> Probably I have to bring it once again. Specs (v3, v4,+) doesn't
-> talk about permanent cookies.
-> 
-> My guess is that client assumes that old verifier is ok as it didn't detect
-> any changes in attributes. For now, we will update our server to generate a new
-> listing (in our system, directory listings are virtual objects and generated on
-> demand) with a hope, that we will get the same result (and the same verifier).
 
-The resulting behavior probably still won't be posix-compliant.  I don't
-know in practice to what extent applications depend on those guarantees.
+Yeah, that's probably a bit heavyweight for v4.1. That mutex is in the
+stateowner struct. The same stateowner could be opening different
+files, and we wouldn't want to serialize those. I think we'd need
+something in the stateid struct itself.
 
-If you need to keep some sort of state around to handle future readdirs,
-then I guess you need some way for that to be expressed in the protocol?
-So clients need to be able to open/close directories, or somehow tell
-you when they're done reading a directory, so that you know when it's
-safe to throw away that state.
+Trond also pointed out that we don't really need to serialize OPEN
+calls, so we might be best off with something like a rw semaphore. Take
+the read lock in OPEN, and the write lock for OPEN_DOWNGRADE/CLOSE.
+LOCK/LOCKU will also need similar treatment of course. I'm not sure
+about LAYOUTGET/LAYOUTRETURN/CLOSE though.
 
---b.
+-- 
+Jeff Layton <jeff.layton@primarydata.com>
