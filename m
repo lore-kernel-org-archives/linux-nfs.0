@@ -1,46 +1,54 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pa0-f54.google.com ([209.85.220.54]:33870 "EHLO
-	mail-pa0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752093AbbIIRpL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Sep 2015 13:45:11 -0400
-Received: by padhy16 with SMTP id hy16so16560536pad.1
-        for <linux-nfs@vger.kernel.org>; Wed, 09 Sep 2015 10:45:11 -0700 (PDT)
-Date: Wed, 9 Sep 2015 10:45:08 -0700
-From: Tom Haynes <thomas.haynes@primarydata.com>
-To: nfsv4@ietf.org, linux-nfs@vger.kernel.org
-Subject: NFSv4.2 wireshark
-Message-ID: <20150909174508.GA2445@skull>
+Received: from mail-oi0-f46.google.com ([209.85.218.46]:36162 "EHLO
+	mail-oi0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751469AbbIIRtp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Sep 2015 13:49:45 -0400
+Received: by oibi136 with SMTP id i136so10186249oib.3
+        for <linux-nfs@vger.kernel.org>; Wed, 09 Sep 2015 10:49:45 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAHQdGtQ84tUFEXaUwSngAmQst3NbjZDCSwB2jtqRqR29R4wBWg@mail.gmail.com>
+References: <m2h9n3btno.fsf@discipline.rit.edu>
+	<CAHQdGtQ84tUFEXaUwSngAmQst3NbjZDCSwB2jtqRqR29R4wBWg@mail.gmail.com>
+Date: Wed, 9 Sep 2015 13:49:44 -0400
+Message-ID: <CAHQdGtTvPPXjSm8Aq6AefMec4UEUwL6+swwav8SSFMQJMDchCA@mail.gmail.com>
+Subject: Re: upgrade/downgrade race
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Andrew W Elble <aweits@rit.edu>, Bruce James Fields <bfields@fieldses.org>,
+        Jeffrey Layton <jeff.layton@primarydata.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
++Bruce, +Jeff...
 
-I've contributed the remaining changes needed to have wireshark decode NFSv4.2:
-
-8a8a82d nfs: Add NFSv4.2 op LAYOUTERROR
-0c6b54e nfs: Add support for the Flex File Layout Type in LAYOUTRETURN
-0f89e42 nfs: Add NFSv4.2 op LAYOUTSTATS
-6b59566 nfs: Add NFSv4.2 op WRITE_SAME
-0fdd702 nfs: Add NFSv4.2 op READ_PLUS
-720a759 nfs: Add NFSv4.2 cb op CB_OFFLOAD
-9e07406 nfs: Add NFSv4.2 op IO_ADVISE
-b5aa0ff nfs: Add NFSv4.2 ops OFFLOAD_CANCEL and OFFLOAD_STATUS
-c782824 nfs: Add NFSv4.2 op CLONE
-2160e9c nfs: Add NFSv4.2 ops COPY and COPY_NOTIFY
-79b88aa nfs: Cleanup of FlexFiles Layout Type
-6e82854 nfs: Add new attributes for NFSv4.2
-a79967f nfs: Add new error codes for NFSv4.2
-
-These are in the bleeding edge 1.99.9:
-
-git clone https://code.wireshark.org/review/wireshark
-
-I have no idea when these will pop into the mainstream.
-
-Note, they do build on earlier changes I provided and those
-also are in the bleeding edge and not in the mainstream.
-
-Enjoy,
-Tom
+On Wed, Sep 9, 2015 at 1:12 PM, Trond Myklebust
+<trond.myklebust@primarydata.com> wrote:
+> On Wed, Sep 9, 2015 at 9:37 AM, Andrew W Elble <aweits@rit.edu> wrote:
+>>
+>> In attempting to troubleshoot other issues, we've run into this race
+>> with 4.1.4 (both client and server) with a few cherry-picked patches
+>> from upstream. This is my attempt at a redacted packet-capture.
+>>
+>> These all affect the same fh/stateid:
+>>
+>> 116 -> OPEN (will be an upgrade / for write)
+>> 117 -> OPEN_DOWNGRADE (to read for the existing stateid / seqid = 0x6
+>>
+>> 121 -> OPEN_DOWNGRADE (completed last / seqid = 0x8)
+>> 122 -> OPEN (completed first / seqid = 0x7)
+>>
+>> Attempts to write using that stateid fail because the stateid doesn't
+>> have write access.
+>>
+>> Any thoughts? I can share more data from the capture if needed.
+>
+> Bruce & Jeff,
+>
+> Given that the client sent a non-zero seqid, why is the OPEN_DOWNGRADE
+> being executed after the OPEN here? Surely, if that is the case, the
+> server should be returning NFS4ERR_OLD_STATEID and failing the
+> OPEN_DOWNGRADE operation?
+>
+> Cheers
+>   Trond
