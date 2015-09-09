@@ -1,43 +1,38 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ob0-f182.google.com ([209.85.214.182]:34663 "EHLO
-	mail-ob0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752676AbbIIU07 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Sep 2015 16:26:59 -0400
-Received: by obbda8 with SMTP id da8so17900330obb.1
-        for <linux-nfs@vger.kernel.org>; Wed, 09 Sep 2015 13:26:58 -0700 (PDT)
+Received: from mail-oi0-f44.google.com ([209.85.218.44]:33924 "EHLO
+	mail-oi0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751119AbbIIUiF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Sep 2015 16:38:05 -0400
+Received: by oiev17 with SMTP id v17so12936403oie.1
+        for <linux-nfs@vger.kernel.org>; Wed, 09 Sep 2015 13:38:04 -0700 (PDT)
 MIME-Version: 1.0
 In-Reply-To: <20150909200921.GD9511@ret.masoncoding.com>
 References: <1441397823-1203-1-git-send-email-Anna.Schumaker@Netapp.com>
-	<55EEFCEE.5090000@draigBrady.com>
-	<55EF279B.3020101@Netapp.com>
-	<CALCETrXxRB-LXVb+=nkwfj0zEjWuXXTctkSAc9Oec0fgyOQ5Yg@mail.gmail.com>
-	<55EF3EFD.3080302@draigBrady.com>
-	<20150908212907.GD30681@birch.djwong.org>
-	<CALCETrWAotvN+MBsxq4QLQBr_WAyydqMnipcaTM88rM8sSx43w@mail.gmail.com>
-	<20150908223959.GE30681@birch.djwong.org>
-	<CALCETrVsWBdqvAgwxHcG=gbcWRNPG2ZziWUg1g=siKDrDu7S2Q@mail.gmail.com>
-	<20150909200921.GD9511@ret.masoncoding.com>
-Date: Wed, 9 Sep 2015 16:26:58 -0400
-Message-ID: <CAHQdGtTSZ1beMMF4DJv=OuA1j2ww0xzJj3+9HMRAf3UpCCLaZg@mail.gmail.com>
+ <55EEFCEE.5090000@draigBrady.com> <55EF279B.3020101@Netapp.com>
+ <CALCETrXxRB-LXVb+=nkwfj0zEjWuXXTctkSAc9Oec0fgyOQ5Yg@mail.gmail.com>
+ <55EF3EFD.3080302@draigBrady.com> <20150908212907.GD30681@birch.djwong.org>
+ <CALCETrWAotvN+MBsxq4QLQBr_WAyydqMnipcaTM88rM8sSx43w@mail.gmail.com>
+ <20150908223959.GE30681@birch.djwong.org> <CALCETrVsWBdqvAgwxHcG=gbcWRNPG2ZziWUg1g=siKDrDu7S2Q@mail.gmail.com>
+ <20150909200921.GD9511@ret.masoncoding.com>
+From: Andy Lutomirski <luto@amacapital.net>
+Date: Wed, 9 Sep 2015 13:37:44 -0700
+Message-ID: <CALCETrXPcxHWGwqhtkGStVabWDOsRbBy+VzrN+XxVZA_F9O0qA@mail.gmail.com>
 Subject: Re: [PATCH v1 0/8] VFS: In-kernel copy system call
-From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: Chris Mason <clm@fb.com>, Andy Lutomirski <luto@amacapital.net>,
         "Darrick J. Wong" <darrick.wong@oracle.com>,
         =?UTF-8?Q?P=C3=A1draig_Brady?= <P@draigbrady.com>,
-        Anna Schumaker <Anna.Schumaker@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Anna Schumaker <Anna.Schumaker@netapp.com>, linux-nfs@vger.kernel.org,
         Linux btrfs Developers List <linux-btrfs@vger.kernel.org>,
         Linux FS Devel <linux-fsdevel@vger.kernel.org>,
         Linux API <linux-api@vger.kernel.org>, Zach Brown <zab@zabbo.net>,
         Al Viro <viro@zeniv.linux.org.uk>,
-        Michael Kerrisk-manpages <mtk.manpages@gmail.com>,
-        William Andros Adamson <andros@netapp.com>,
+        Michael Kerrisk-manpages <mtk.manpages@gmail.com>, andros@netapp.com,
         Christoph Hellwig <hch@infradead.org>, Coreutils <coreutils@gnu.org>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Sep 9, 2015 at 4:09 PM, Chris Mason <clm@fb.com> wrote:
+On Wed, Sep 9, 2015 at 1:09 PM, Chris Mason <clm@fb.com> wrote:
 > On Tue, Sep 08, 2015 at 04:08:43PM -0700, Andy Lutomirski wrote:
 >> On Tue, Sep 8, 2015 at 3:39 PM, Darrick J. Wong <darrick.wong@oracle.com> wrote:
 >> > On Tue, Sep 08, 2015 at 02:45:39PM -0700, Andy Lutomirski wrote:
@@ -63,8 +58,14 @@ On Wed, Sep 9, 2015 at 4:09 PM, Chris Mason <clm@fb.com> wrote:
 >
 > I'd almost rather have a separate call, maybe unshare_file_range()?
 >
+> Is that the end goal to the sharing check?
 
-Doesn't it make more sense to put that functionality in fallocate()?
+My use case was archival.  I can reflink data between a working copy
+and some archived copy and then I can very efficiently tell if the
+working copy has been changed by checking if the reflink is still
+linked.
 
-Cheers
-  Trond
+It would be even better if I could enumerate which parts of one file
+match which parts of another file.
+
+--Andy
