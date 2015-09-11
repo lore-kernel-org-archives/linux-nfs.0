@@ -1,17 +1,17 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx141.netapp.com ([216.240.21.12]:57334 "EHLO mx141.netapp.com"
+Received: from mx144.netapp.com ([216.240.21.25]:49777 "EHLO mx144.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754103AbbIKUao (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 11 Sep 2015 16:30:44 -0400
+	id S1754080AbbIKUak (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 11 Sep 2015 16:30:40 -0400
 From: Anna Schumaker <Anna.Schumaker@netapp.com>
 To: <linux-nfs@vger.kernel.org>, <linux-btrfs@vger.kernel.org>,
         <linux-fsdevel@vger.kernel.org>, <linux-api@vger.kernel.org>,
         <zab@zabbo.net>, <viro@zeniv.linux.org.uk>, <clm@fb.com>,
         <darrick.wong@oracle.com>, <mtk.manpages@gmail.com>,
         <andros@netapp.com>, <hch@infradead.org>
-Subject: [PATCH v2 9/9] btrfs: btrfs_copy_file_range() only supports reflinks
-Date: Fri, 11 Sep 2015 16:30:22 -0400
-Message-ID: <1442003423-6884-10-git-send-email-Anna.Schumaker@Netapp.com>
+Subject: [PATCH v2 7/9] vfs: Remove copy_file_range mountpoint checks
+Date: Fri, 11 Sep 2015 16:30:20 -0400
+Message-ID: <1442003423-6884-8-git-send-email-Anna.Schumaker@Netapp.com>
 In-Reply-To: <1442003423-6884-1-git-send-email-Anna.Schumaker@Netapp.com>
 References: <1442003423-6884-1-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
@@ -19,35 +19,32 @@ Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Reject copies that don't have the COPY_FR_REFLINK flag set.
+I still want to do an in-kernel copy even if the files are on different
+mountpoints, and NFS has a "server to server" copy that expects two
+files on different mountpoints.  Let's have individual filesystems
+implement this check instead.
 
 Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 ---
- fs/btrfs/ioctl.c | 4 ++++
- 1 file changed, 4 insertions(+)
+ fs/read_write.c | 5 -----
+ 1 file changed, 5 deletions(-)
 
-diff --git a/fs/btrfs/ioctl.c b/fs/btrfs/ioctl.c
-index 4311554..2e14b91 100644
---- a/fs/btrfs/ioctl.c
-+++ b/fs/btrfs/ioctl.c
-@@ -44,6 +44,7 @@
- #include <linux/uuid.h>
- #include <linux/btrfs.h>
- #include <linux/uaccess.h>
-+#include <linux/copy.h>
- #include "ctree.h"
- #include "disk-io.h"
- #include "transaction.h"
-@@ -3848,6 +3849,9 @@ ssize_t btrfs_copy_file_range(struct file *file_in, loff_t pos_in,
- {
- 	ssize_t ret;
+diff --git a/fs/read_write.c b/fs/read_write.c
+index ac32388..363bd3e 100644
+--- a/fs/read_write.c
++++ b/fs/read_write.c
+@@ -1366,11 +1366,6 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
+ 	    pos_in + len > i_size_read(inode_in))
+ 		return -EINVAL;
  
-+	if (!(flags & COPY_FR_REFLINK))
-+		return -EOPNOTSUPP;
-+
- 	ret = btrfs_clone_files(file_out, file_in, pos_in, len, pos_out);
- 	if (ret == 0)
- 		ret = len;
+-	/* this could be relaxed once a method supports cross-fs copies */
+-	if (inode_in->i_sb != inode_out->i_sb ||
+-	    file_in->f_path.mnt != file_out->f_path.mnt)
+-		return -EXDEV;
+-
+ 	if (len == 0)
+ 		return 0;
+ 
 -- 
 2.5.1
 
