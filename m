@@ -1,102 +1,112 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx144.netapp.com ([216.240.21.25]:49777 "EHLO mx144.netapp.com"
+Received: from fieldses.org ([173.255.197.46]:48545 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754009AbbIKUa2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 11 Sep 2015 16:30:28 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-To: <linux-nfs@vger.kernel.org>, <linux-btrfs@vger.kernel.org>,
-        <linux-fsdevel@vger.kernel.org>, <linux-api@vger.kernel.org>,
-        <zab@zabbo.net>, <viro@zeniv.linux.org.uk>, <clm@fb.com>,
-        <darrick.wong@oracle.com>, <mtk.manpages@gmail.com>,
-        <andros@netapp.com>, <hch@infradead.org>
-Subject: [PATCH v2 0/9] VFS: In-kernel copy system call
-Date: Fri, 11 Sep 2015 16:30:13 -0400
-Message-ID: <1442003423-6884-1-git-send-email-Anna.Schumaker@Netapp.com>
+	id S1752661AbbIKUfb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 11 Sep 2015 16:35:31 -0400
+Date: Fri, 11 Sep 2015 16:35:30 -0400
+To: Andreas Gruenbacher <agruenba@redhat.com>
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-api@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-security-module@vger.kernel.org
+Subject: Re: [RFC v7 09/41] richacl: Update the file masks in chmod()
+Message-ID: <20150911203530.GE11677@fieldses.org>
+References: <1441448856-13478-1-git-send-email-agruenba@redhat.com>
+ <1441448856-13478-10-git-send-email-agruenba@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1441448856-13478-10-git-send-email-agruenba@redhat.com>
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Copy system calls came up during Plumbers a couple of weeks ago, because
-several filesystems (including NFS and XFS) are currently working on copy
-acceleration implementations.  We haven't heard from Zach Brown in a while,
-so I volunteered to push his patches upstream so individual filesystems
-don't need to keep writing their own ioctls.
+On Sat, Sep 05, 2015 at 12:27:04PM +0200, Andreas Gruenbacher wrote:
+> Doing a chmod() sets the file mode, which includes the file permission
+> bits.  When a file has a richacl, the permissions that the richacl
+> grants need to be limited to what the new file permission bits allow.
+> 
+> This is done by setting the file masks in the richacl to what the file
+> permission bits map to.  The richacl access check algorithm takes the
+> file masks into account, which ensures that the richacl cannot grant too
+> many permissions.
+> 
+> It is possible to explicitly add permissions to the file masks which go
+> beyond what the file permission bits can grant (like the
+> RICHACE_WRITE_ACL permission).  The POSIX.1 standard calls this an
+> alternate file access control mechanism.  A subsequent chmod() would
+> ensure that those permissions are disabled again.
+> 
 
-Changes in v2:
-- Update against the most recent Linus kernel
-  - Fix conflicts due to new system calls
-- Remove requirement that inode_in == inode_out
-- Drop patch to add mountpoint checking to btrfs
-  - btrfs already did this check
-- Rename COPY_REFLINK -> COPY_FR_REFLINK
-- Add COPY_FR_COPY flag
-- Expand flags == 0 to (COPY_FR_COPY | COPY_FR_REFLINK)
-- Remove checking for invalid flags
-- Create a new function for handling pagecache copies
-- Move rw_verify_area() checks into the new pagecache-copy function
-  - Use the return value from rw_verify_area() to set amount of data to copy
-- Update man page
+Reviewed-by: J. Bruce Fields <bfields@redhat.com>
 
-I tested the COPY_FR_COPY flag by using /dev/urandom to generate files of
-varying sizes and copying them.  I compared the output from `time` against
-that of `cp` to see if there is any noticable difference.  I think there
-have been some libvirt changes since my first set of trials, because this
-time around cpu usage was down significantly.  This time around, VFS copy
-was slightly faster than /usr/bin/cp in all cases.  Values in the tables
-below are averages across multiple trials.
-
-
- /usr/bin/cp |   512  |  1024  |  1536  |  2048  |  2560  |  3072  |  5120
--------------|--------|--------|--------|--------|--------|--------|--------
-        user |  0.00s |  0.01s |  0.01s |  0.01s |  0.01s |  0.01s |  0.02s
-      system |  0.68s |  0.48s |  0.74s |  0.99s |  1.25s |  1.50s |  2.51s
-         cpu |    34% |    14% |    14% |    15% |    14% |    14% |    15%
-       total |  1.993 |  3.314 |  4.994 |  6.599 |  8.627 | 10.079 | 16.852
-
-
-    VFS copy |   512  |  1024  |  1536  |  2048  |  2560  |  3072  |  5120
--------------|--------|--------|--------|--------|--------|--------|--------
-        user |  0.00s |  0.00s |  0.00s |  0.00s |  0.00s |  0.00s |  0.00s
-      system |  0.65s |  0.46s |  0.70s |  0.93s |  1.18s |  1.41s |  2.37s
-         cpu |    35% |    14% |    15% |    14% |    14% |    14% |    14%
-       total |  1.870 |  3.084 |  4.613 |  6.206 |  7.884 |  9.372 | 15.904
-
-
-Questions?  Comments?  Thoughts?
-
-Anna
-
-
-Anna Schumaker (6):
-  vfs: Copy should check len after file open mode
-  vfs: Copy shouldn't forbid ranges inside the same file
-  vfs: Copy should use file_out rather than file_in
-  vfs: Remove copy_file_range mountpoint checks
-  vfs: copy_file_range() can do a pagecache copy with splice
-  btrfs: btrfs_copy_file_range() only supports reflinks
-
-Zach Brown (3):
-  vfs: add copy_file_range syscall and vfs helper
-  x86: add sys_copy_file_range to syscall tables
-  btrfs: add .copy_file_range file operation
-
- arch/x86/entry/syscalls/syscall_32.tbl |   1 +
- arch/x86/entry/syscalls/syscall_64.tbl |   1 +
- fs/btrfs/ctree.h                       |   3 +
- fs/btrfs/file.c                        |   1 +
- fs/btrfs/ioctl.c                       |  95 ++++++++++++++----------
- fs/read_write.c                        | 132 +++++++++++++++++++++++++++++++++
- include/linux/copy.h                   |   6 ++
- include/linux/fs.h                     |   3 +
- include/uapi/asm-generic/unistd.h      |   4 +-
- include/uapi/linux/Kbuild              |   1 +
- include/uapi/linux/copy.h              |   7 ++
- kernel/sys_ni.c                        |   1 +
- 12 files changed, 215 insertions(+), 40 deletions(-)
- create mode 100644 include/linux/copy.h
- create mode 100644 include/uapi/linux/copy.h
-
--- 
-2.5.1
-
+> Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
+> ---
+>  fs/richacl_base.c       | 40 ++++++++++++++++++++++++++++++++++++++++
+>  include/linux/richacl.h |  1 +
+>  2 files changed, 41 insertions(+)
+> 
+> diff --git a/fs/richacl_base.c b/fs/richacl_base.c
+> index fc544f7..6c69234 100644
+> --- a/fs/richacl_base.c
+> +++ b/fs/richacl_base.c
+> @@ -339,3 +339,43 @@ restart:
+>  	acl->a_flags &= ~(RICHACL_WRITE_THROUGH | RICHACL_MASKED);
+>  }
+>  EXPORT_SYMBOL_GPL(richacl_compute_max_masks);
+> +
+> +/**
+> + * richacl_chmod  -  update the file masks to reflect the new mode
+> + * @mode:	new file permission bits including the file type
+> + *
+> + * Return a copy of @acl where the file masks have been replaced by the file
+> + * masks corresponding to the file permission bits in @mode, or returns @acl
+> + * itself if the file masks are already up to date.  Takes over a reference
+> + * to @acl.
+> + */
+> +struct richacl *
+> +richacl_chmod(struct richacl *acl, mode_t mode)
+> +{
+> +	unsigned int x = S_ISDIR(mode) ? 0 : RICHACE_DELETE_CHILD;
+> +	unsigned int owner_mask, group_mask, other_mask;
+> +	struct richacl *clone;
+> +
+> +	owner_mask = richacl_mode_to_mask(mode >> 6) & ~x;
+> +	group_mask = richacl_mode_to_mask(mode >> 3) & ~x;
+> +	other_mask = richacl_mode_to_mask(mode)      & ~x;
+> +
+> +	if (acl->a_owner_mask == owner_mask &&
+> +	    acl->a_group_mask == group_mask &&
+> +	    acl->a_other_mask == other_mask &&
+> +	    (acl->a_flags & (RICHACL_WRITE_THROUGH | RICHACL_MASKED)))
+> +		return acl;
+> +
+> +	clone = richacl_clone(acl, GFP_KERNEL);
+> +	richacl_put(acl);
+> +	if (!clone)
+> +		return ERR_PTR(-ENOMEM);
+> +
+> +	clone->a_flags |= (RICHACL_WRITE_THROUGH | RICHACL_MASKED);
+> +	clone->a_owner_mask = owner_mask;
+> +	clone->a_group_mask = group_mask;
+> +	clone->a_other_mask = other_mask;
+> +
+> +	return clone;
+> +}
+> +EXPORT_SYMBOL_GPL(richacl_chmod);
+> diff --git a/include/linux/richacl.h b/include/linux/richacl.h
+> index e81144a..e00f313 100644
+> --- a/include/linux/richacl.h
+> +++ b/include/linux/richacl.h
+> @@ -298,5 +298,6 @@ extern int richacl_masks_to_mode(const struct richacl *);
+>  extern unsigned int richacl_mode_to_mask(mode_t);
+>  extern unsigned int richacl_want_to_mask(unsigned int);
+>  extern void richacl_compute_max_masks(struct richacl *);
+> +extern struct richacl *richacl_chmod(struct richacl *, mode_t);
+>  
+>  #endif /* __RICHACL_H */
+> -- 
+> 2.4.3
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
