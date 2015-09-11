@@ -1,232 +1,97 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:48571 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:48575 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752853AbbIKVQT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 11 Sep 2015 17:16:19 -0400
-Date: Fri, 11 Sep 2015 17:16:17 -0400
-To: Andreas Gruenbacher <agruenba@redhat.com>
-Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-api@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-security-module@vger.kernel.org
-Subject: Re: [RFC v7 10/41] richacl: Permission check algorithm
-Message-ID: <20150911211617.GF11677@fieldses.org>
-References: <1441448856-13478-1-git-send-email-agruenba@redhat.com>
- <1441448856-13478-11-git-send-email-agruenba@redhat.com>
+	id S1752735AbbIKVXV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 11 Sep 2015 17:23:21 -0400
+Date: Fri, 11 Sep 2015 17:23:20 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Kinglong Mee <kinglongmee@gmail.com>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] Sunrpc: Supports hexadecimal number for sysctl files of
+ sunrpc debug
+Message-ID: <20150911212320.GG11677@fieldses.org>
+References: <55F17A7E.50406@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1441448856-13478-11-git-send-email-agruenba@redhat.com>
-From: bfields@fieldses.org (J. Bruce Fields)
+In-Reply-To: <55F17A7E.50406@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Sep 05, 2015 at 12:27:05PM +0200, Andreas Gruenbacher wrote:
-> A richacl roughly grants a requested access if the NFSv4 acl in the
-> richacl grants the requested permissions according to the NFSv4
-> permission check algorithm and the file mask that applies to the process
-> includes the requested permissions.
+On Thu, Sep 10, 2015 at 08:41:34PM +0800, Kinglong Mee wrote:
+> The sunrpc debug sysctl files only accept decimal number right now.
+> But all the XXXDBUG_XXX macros are defined as hexadecimal.
+> It is not easy to set or check an separate flag.
 > 
-> Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
-> Acked-by: "J. Bruce Fields" <bfields@fieldses.org>
-> ---
->  fs/Makefile             |   2 +-
->  fs/richacl_inode.c      | 147 ++++++++++++++++++++++++++++++++++++++++++++++++
->  include/linux/richacl.h |   3 +
->  3 files changed, 151 insertions(+), 1 deletion(-)
->  create mode 100644 fs/richacl_inode.c
-> 
-> diff --git a/fs/Makefile b/fs/Makefile
-> index ddc43d8..1305047 100644
-> --- a/fs/Makefile
-> +++ b/fs/Makefile
-> @@ -48,7 +48,7 @@ obj-$(CONFIG_SYSCTL)		+= drop_caches.o
->  
->  obj-$(CONFIG_FHANDLE)		+= fhandle.o
->  obj-$(CONFIG_FS_RICHACL)	+= richacl.o
-> -richacl-y			:= richacl_base.o
-> +richacl-y			:= richacl_base.o richacl_inode.o
->  
->  obj-y				+= quota/
->  
-> diff --git a/fs/richacl_inode.c b/fs/richacl_inode.c
-> new file mode 100644
-> index 0000000..ba05993
-> --- /dev/null
-> +++ b/fs/richacl_inode.c
-> @@ -0,0 +1,147 @@
-> +/*
-> + * Copyright (C) 2010  Novell, Inc.
-> + * Copyright (C) 2015  Red Hat, Inc.
-> + * Written by Andreas Gruenbacher <agruen@kernel.org>
-> + *
-> + * This program is free software; you can redistribute it and/or modify it
-> + * under the terms of the GNU General Public License as published by the
-> + * Free Software Foundation; either version 2, or (at your option) any
-> + * later version.
-> + *
-> + * This program is distributed in the hope that it will be useful, but
-> + * WITHOUT ANY WARRANTY; without even the implied warranty of
-> + * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-> + * General Public License for more details.
-> + */
-> +
-> +#include <linux/sched.h>
-> +#include <linux/module.h>
-> +#include <linux/fs.h>
-> +#include <linux/slab.h>
-> +#include <linux/richacl.h>
-> +
-> +/**
-> + * richacl_permission  -  richacl permission check algorithm
-> + * @inode:	inode to check
-> + * @acl:	rich acl of the inode
-> + * @want:	requested access (MAY_* flags)
-> + *
-> + * Checks if the current process is granted @mask flags in @acl.
-> + */
-> +int
-> +richacl_permission(struct inode *inode, const struct richacl *acl,
-> +		   int want)
-> +{
-> +	const struct richace *ace;
-> +	unsigned int mask = richacl_want_to_mask(want);
-> +	unsigned int requested = mask, denied = 0;
-> +	int in_owning_group = in_group_p(inode->i_gid);
-> +	int in_owner_or_group_class = in_owning_group;
-> +
-> +	/*
-> +	 * A process is
-> +	 *   - in the owner file class if it owns the file,
-> +	 *   - in the group file class if it is in the file's owning group or
-> +	 *     it matches any of the user or group entries, and
-> +	 *   - in the other file class otherwise.
-> +	 * The file class is only relevant for determining which file mask to
-> +	 * apply, which only happens for masked acls.
-> +	 */
-> +	if (acl->a_flags & RICHACL_MASKED) {
-> +		if ((acl->a_flags & RICHACL_WRITE_THROUGH) &&
-> +		    uid_eq(current_fsuid(), inode->i_uid)) {
-> +			denied = requested & ~acl->a_owner_mask;
-> +			goto out;
-> +		}
-> +	} else {
-> +		/*
-> +		 * When the acl is not masked, there is no need to determine if
-> +		 * the process is in the group class and we can break out
-> +		 * earlier of the loop below.
-> +		 */
-> +		in_owner_or_group_class = 1;
-> +	}
-> +
-> +	/*
-> +	 * Check if the acl grants the requested access and determine which
-> +	 * file class the process is in.
-> +	 */
-> +	richacl_for_each_entry(ace, acl) {
-> +		unsigned int ace_mask = ace->e_mask;
-> +
-> +		if (richace_is_inherit_only(ace))
-> +			continue;
-> +		if (richace_is_owner(ace)) {
-> +			if (!uid_eq(current_fsuid(), inode->i_uid))
-> +				continue;
-> +			goto entry_matches_owner;
-> +		} else if (richace_is_group(ace)) {
-> +			if (!in_owning_group)
-> +				continue;
-> +		} else if (richace_is_unix_user(ace)) {
-> +			if (!uid_eq(current_fsuid(), ace->e_id.uid))
-> +				continue;
-> +		} else if (richace_is_unix_group(ace)) {
-> +			if (!in_group_p(ace->e_id.gid))
-> +				continue;
-> +		} else
-> +			goto entry_matches_everyone;
-> +
-> +		/*
-> +		 * Apply the group file mask to entries other than owner@ and
-> +		 * everyone@ or user entries matching the owner.  This ensures
-> +		 * that we grant the same permissions as the acl computed by
-> +		 * richacl_apply_masks().
-> +		 *
-> +		 * Without this restriction, the following richacl would grant
-> +		 * rw access to processes which are both the owner and in the
-> +		 * owning group, but not to other users in the owning group,
-> +		 * which could not be represented without masks:
-> +		 *
-> +		 *  owner:rw::mask
-> +		 *  group@:rw::allow
-> +		 */
-> +		if ((acl->a_flags & RICHACL_MASKED) && richace_is_allow(ace))
-> +			ace_mask &= acl->a_group_mask;
+> This patch let those files support accepting hexadecimal number,
+> (decimal number is also supported). Also, display it as hexadecimal.
 
-I'm having trouble understanding this.  I think the problem is that I
-don't really understand the notation in your example.  Is a_group_mask
-zero in that example?  I think it must be, in which case, OK I think I
-get it.
+That potentially breaks backwards-compatibility if an program that reads
+this file isn't prepared to accept a hexadecimal value.
 
-(Though I still have to think about it a little more to convince myself
-that richacl_apply_masks() always gets the same result.)
+That said, rpcdebug seems OK (it uses strtoul(.,.,0), which I think
+should parse that fine?), and it may well be the only program that
+actually parses this, so....  I suppose it's OK with me if it's OK with
+Trond.
 
 --b.
 
-> +
-> +entry_matches_owner:
-> +		/* The process is in the owner or group file class. */
-> +		in_owner_or_group_class = 1;
-> +
-> +entry_matches_everyone:
-> +		/* Check which mask flags the ACE allows or denies. */
-> +		if (richace_is_deny(ace))
-> +			denied |= ace_mask & mask;
-> +		mask &= ~ace_mask;
-> +
-> +		/*
-> +		 * Keep going until we know which file class
-> +		 * the process is in.
-> +		 */
-> +		if (!mask && in_owner_or_group_class)
-> +			break;
-> +	}
-> +	denied |= mask;
-> +
-> +	if (acl->a_flags & RICHACL_MASKED) {
-> +		/*
-> +		 * The file class a process is in determines which file mask
-> +		 * applies.  Check if that file mask also grants the requested
-> +		 * access.
-> +		 */
-> +		if (uid_eq(current_fsuid(), inode->i_uid))
-> +			denied |= requested & ~acl->a_owner_mask;
-> +		else if (in_owner_or_group_class)
-> +			denied |= requested & ~acl->a_group_mask;
-> +		else {
-> +			if (acl->a_flags & RICHACL_WRITE_THROUGH)
-> +				denied = requested & ~acl->a_other_mask;
-> +			else
-> +				denied |= requested & ~acl->a_other_mask;
-> +		}
-> +	}
-> +
-> +out:
-> +	return denied ? -EACCES : 0;
-> +}
-> +EXPORT_SYMBOL_GPL(richacl_permission);
-> diff --git a/include/linux/richacl.h b/include/linux/richacl.h
-> index e00f313..9768eeb 100644
-> --- a/include/linux/richacl.h
-> +++ b/include/linux/richacl.h
-> @@ -300,4 +300,7 @@ extern unsigned int richacl_want_to_mask(unsigned int);
->  extern void richacl_compute_max_masks(struct richacl *);
->  extern struct richacl *richacl_chmod(struct richacl *, mode_t);
->  
-> +/* richacl_inode.c */
-> +extern int richacl_permission(struct inode *, const struct richacl *, int);
-> +
->  #endif /* __RICHACL_H */
-> -- 
-> 2.4.3
 > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+> ---
+>  net/sunrpc/sysctl.c | 26 +++++++++++++++-----------
+>  1 file changed, 15 insertions(+), 11 deletions(-)
+> 
+> diff --git a/net/sunrpc/sysctl.c b/net/sunrpc/sysctl.c
+> index 887f018..8e85e6f 100644
+> --- a/net/sunrpc/sysctl.c
+> +++ b/net/sunrpc/sysctl.c
+> @@ -76,7 +76,7 @@ static int
+>  proc_dodebug(struct ctl_table *table, int write,
+>  				void __user *buffer, size_t *lenp, loff_t *ppos)
+>  {
+> -	char		tmpbuf[20], c, *s;
+> +	char		tmpbuf[20], c, *s = NULL;
+>  	char __user *p;
+>  	unsigned int	value;
+>  	size_t		left, len;
+> @@ -103,23 +103,27 @@ proc_dodebug(struct ctl_table *table, int write,
+>  			return -EFAULT;
+>  		tmpbuf[left] = '\0';
+>  
+> -		for (s = tmpbuf, value = 0; '0' <= *s && *s <= '9'; s++, left--)
+> -			value = 10 * value + (*s - '0');
+> -		if (*s && !isspace(*s))
+> -			return -EINVAL;
+> -		while (left && isspace(*s))
+> -			left--, s++;
+> +		if (tmpbuf[0] == '0' && tmpbuf[1] == 'x')
+> +			value = simple_strtol(tmpbuf, &s, 16);
+> +		else
+> +			value = simple_strtol(tmpbuf, &s, 0);
+> +		if (s) {
+> +			if (!isspace(*s))
+> +				return -EINVAL;
+> +			left -= (s - tmpbuf);
+> +			while (left && isspace(*s))
+> +				left--, s++;
+> +		} else
+> +			left = 0;
+>  		*(unsigned int *) table->data = value;
+>  		/* Display the RPC tasks on writing to rpc_debug */
+>  		if (strcmp(table->procname, "rpc_debug") == 0)
+>  			rpc_show_tasks(&init_net);
+>  	} else {
+> -		if (!access_ok(VERIFY_WRITE, buffer, left))
+> -			return -EFAULT;
+> -		len = sprintf(tmpbuf, "%d", *(unsigned int *) table->data);
+> +		len = sprintf(tmpbuf, "0x%04x", *(unsigned int *) table->data);
+>  		if (len > left)
+>  			len = left;
+> -		if (__copy_to_user(buffer, tmpbuf, len))
+> +		if (copy_to_user(buffer, tmpbuf, len))
+>  			return -EFAULT;
+>  		if ((left -= len) > 0) {
+>  			if (put_user('\n', (char __user *)buffer + len))
+> -- 
+> 2.5.0
