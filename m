@@ -1,216 +1,108 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yk0-f174.google.com ([209.85.160.174]:33317 "EHLO
-	mail-yk0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751273AbbIKKUh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Sep 2015 06:20:37 -0400
-Received: by ykei199 with SMTP id i199so86302216yke.0
-        for <linux-nfs@vger.kernel.org>; Fri, 11 Sep 2015 03:20:36 -0700 (PDT)
-From: Jeff Layton <jlayton@poochiereds.net>
-To: bfields@fieldses.org
-Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, HPDD-discuss@ml01.01.org,
-        ceph-devel@vger.kernel.org, cluster-devel@redhat.com,
-        fuse-devel@lists.sourceforge.net, ocfs2-devel@oss.oracle.com
-Subject: [PATCH] nfsd: add a new EXPORT_OP_NOWCC flag to struct export_operations
-Date: Fri, 11 Sep 2015 06:20:30 -0400
-Message-Id: <1441966830-5517-1-git-send-email-jeff.layton@primarydata.com>
+Received: from mx1.redhat.com ([209.132.183.28]:47043 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751499AbbIKKpW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 11 Sep 2015 06:45:22 -0400
+Date: Fri, 11 Sep 2015 11:45:17 +0100
+From: Stefan Hajnoczi <stefanha@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: nfsd leaks 3 sunrpc module references
+Message-ID: <20150911104517.GA4947@stefanha-thinkpad.home>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-With NFSv3 nfsd will always attempt to send along WCC data to the
-client. This generally involves saving off the in-core inode information
-prior to doing the operation on the given filehandle, and then issuing a
-vfs_getattr to it after the op.
+I'm having a little trouble debugging this sunrpc module refcnt leak in
+nfsd.  Perhaps a fresh pair of eyes can help.
 
-Some filesystems (particularly clustered or networked ones) have an
-expensive ->getattr inode operation. Atomicitiy is also often difficult
-or impossible to guarantee on such filesystems. For those, we're best
-off not trying to provide WCC information to the client at all, and to
-simply allow it to poll for that information as needed with a GETATTR
-RPC.
+nfsd leaks 3 references to the sunrpc module here:
 
-This patch adds a new flags field to struct export_operations, and
-defines a new EXPORT_OP_NOWCC flag that filesystems can use to indicate
-that nfsd should not attempt to provide WCC info in NFSv3 replies. It
-also adds a blurb about the new flags field and flag to the exporting
-documentation.
+  # echo -n "asdf 1234" >/proc/fs/nfsd/portlist
+  bash: echo: write error: Protocol not supported
 
-The server will also now skip collecting this information for NFSv2 as
-well, since that info is never used there anyway.
+Now stop nfsd and try unloading the kernel modules:
 
-Note that this patch does not add this flag to any filesystem
-export_operations structures. This was originally developed to allow
-reexporting nfs via nfsd. That code is not (and may never be) suitable
-for merging into mainline.
+  # systemctl stop nfs-server
+  # systemctl stop nfs
+  # systemctl stop proc-fs-nfsd.mount
+  # systemctl stop var-lib-nfs-rpc_pipefs.mount
+  # rmmod nfsd
+  # rmmod nfs_acl
+  # rmmod lockd
+  # rmmod auth_rpcgss
+  # rmmod sunrpc
+  rmmod: ERROR: Module sunrpc is in use
+  # lsmod | grep rpc
+  sunrpc                315392  3
 
-Other filesystems may want to consider enabling this flag too. It's hard
-to tell however which ones have export operations to enable export via
-knfsd and which ones mostly rely on them for open-by-filehandle support,
-so I'm leaving that up to the individual maintainers to decide. I am
-cc'ing the relevant lists for those filesystems that I think may want to
-consider adding this though.
+I have reproduced this from source with a tree based on Linux 4.2-rc3
+and also with Linux 4.1.6-200.fc22.x86_64.
 
-Cc: HPDD-discuss@lists.01.org
-Cc: ceph-devel@vger.kernel.org
-Cc: cluster-devel@redhat.com
-Cc: fuse-devel@lists.sourceforge.net
-Cc: ocfs2-devel@oss.oracle.com
-Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
----
- Documentation/filesystems/nfs/Exporting | 27 +++++++++++++++++++++++++++
- fs/nfsd/nfs3xdr.c                       |  5 ++++-
- fs/nfsd/nfsfh.c                         | 14 ++++++++++++++
- fs/nfsd/nfsfh.h                         |  5 ++++-
- include/linux/exportfs.h                |  2 ++
- 5 files changed, 51 insertions(+), 2 deletions(-)
+The following unmatched module_get() calls are recorded by perf record
+-e module:module_get -e module:module_put.  Perhaps the backtrace is a
+little mangled because I don't see xdr_reserve_space() calls in
+svc_create_pooled() (even indirectly):
 
-diff --git a/Documentation/filesystems/nfs/Exporting b/Documentation/filesystems/nfs/Exporting
-index 520a4becb75c..fa636cde3907 100644
---- a/Documentation/filesystems/nfs/Exporting
-+++ b/Documentation/filesystems/nfs/Exporting
-@@ -138,6 +138,11 @@ struct which has the following members:
-     to find potential names, and matches inode numbers to find the correct
-     match.
- 
-+  flags
-+    Some filesystems may need to be handled differently than others. The
-+    export_operations struct also includes a flags field that allows the
-+    filesystem to communicate such information to nfsd. See the Export
-+    Operations Flags section below for more explanation.
- 
- A filehandle fragment consists of an array of 1 or more 4byte words,
- together with a one byte "type".
-@@ -147,3 +152,25 @@ generated by encode_fh, in which case it will have been padded with
- nuls.  Rather, the encode_fh routine should choose a "type" which
- indicates the decode_fh how much of the filehandle is valid, and how
- it should be interpreted.
-+
-+Export Operations Flags
-+-----------------------
-+In addition to the operation vector pointers, struct export_operations also
-+contains a "flags" field that allows the filesystem to communicate to nfsd
-+that it may want to do things differently when dealing with it. The
-+following flags are defined:
-+
-+  EXPORT_OP_NOWCC
-+    RFC 1813 recommends that servers always send weak cache consistency
-+    (WCC) data to the client after each operation. The server should
-+    atomically collect attributes about the inode, do an operation on it,
-+    and then collect the attributes afterward. This allows the client to
-+    skip issuing GETATTRs in some situations but means that the server
-+    is calling vfs_getattr for almost all RPCs. On some filesystems
-+    (particularly those that are clustered or networked) this is expensive
-+    and atomicity is difficult to guarantee. This flag indicates to nfsd
-+    that it should skip providing WCC attributes to the client in NFSv3
-+    replies when doing operations on this filesystem. Consider enabling
-+    this on filesystems that have an expensive ->getattr inode operation,
-+    or when atomicity between pre and post operation attribute collection
-+    is impossible to guarantee.
-diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
-index 01dcd494f781..c30c8c604e2a 100644
---- a/fs/nfsd/nfs3xdr.c
-+++ b/fs/nfsd/nfs3xdr.c
-@@ -203,7 +203,7 @@ static __be32 *
- encode_post_op_attr(struct svc_rqst *rqstp, __be32 *p, struct svc_fh *fhp)
- {
- 	struct dentry *dentry = fhp->fh_dentry;
--	if (dentry && d_really_is_positive(dentry)) {
-+	if (!fhp->fh_no_wcc && dentry && d_really_is_positive(dentry)) {
- 	        __be32 err;
- 		struct kstat stat;
- 
-@@ -256,6 +256,9 @@ void fill_post_wcc(struct svc_fh *fhp)
- {
- 	__be32 err;
- 
-+	if (fhp->fh_no_wcc)
-+		return;
-+
- 	if (fhp->fh_post_saved)
- 		printk("nfsd: inode locked twice during operation.\n");
- 
-diff --git a/fs/nfsd/nfsfh.c b/fs/nfsd/nfsfh.c
-index 350041a40fe5..29ae37f62b9b 100644
---- a/fs/nfsd/nfsfh.c
-+++ b/fs/nfsd/nfsfh.c
-@@ -267,6 +267,16 @@ static __be32 nfsd_set_fh_dentry(struct svc_rqst *rqstp, struct svc_fh *fhp)
- 
- 	fhp->fh_dentry = dentry;
- 	fhp->fh_export = exp;
-+
-+	switch (rqstp->rq_vers) {
-+	case 3:
-+		if (!(dentry->d_sb->s_export_op->flags & EXPORT_OP_NOWCC))
-+			break;
-+		/* Fallthrough */
-+	case 2:
-+		fhp->fh_no_wcc = true;
-+	}
-+
- 	return 0;
- out:
- 	exp_put(exp);
-@@ -535,6 +545,9 @@ fh_compose(struct svc_fh *fhp, struct svc_export *exp, struct dentry *dentry,
- 	 */
- 	 set_version_and_fsid_type(fhp, exp, ref_fh);
- 
-+	/* If we have a ref_fh, then copy the fh_no_wcc setting from it. */
-+	fhp->fh_no_wcc = ref_fh ? ref_fh->fh_no_wcc : false;
-+
- 	if (ref_fh == fhp)
- 		fh_put(ref_fh);
- 
-@@ -641,6 +654,7 @@ fh_put(struct svc_fh *fhp)
- 		exp_put(exp);
- 		fhp->fh_export = NULL;
- 	}
-+	fhp->fh_no_wcc = false;
- 	return;
- }
- 
-diff --git a/fs/nfsd/nfsfh.h b/fs/nfsd/nfsfh.h
-index 1e90dad4926b..9ddead4d98f8 100644
---- a/fs/nfsd/nfsfh.h
-+++ b/fs/nfsd/nfsfh.h
-@@ -32,6 +32,7 @@ typedef struct svc_fh {
- 
- 	unsigned char		fh_locked;	/* inode locked by us */
- 	unsigned char		fh_want_write;	/* remount protection taken */
-+	bool			fh_no_wcc;	/* no wcc data needed */
- 
- #ifdef CONFIG_NFSD_V3
- 	unsigned char		fh_post_saved;	/* post-op attrs saved */
-@@ -51,7 +52,6 @@ typedef struct svc_fh {
- 	struct kstat		fh_post_attr;	/* full attrs after operation */
- 	u64			fh_post_change; /* nfsv4 change; see above */
- #endif /* CONFIG_NFSD_V3 */
--
- } svc_fh;
- 
- enum nfsd_fsid {
-@@ -225,6 +225,9 @@ fill_pre_wcc(struct svc_fh *fhp)
- {
- 	struct inode    *inode;
- 
-+	if (fhp->fh_no_wcc)
-+		return;
-+
- 	inode = d_inode(fhp->fh_dentry);
- 	if (!fhp->fh_pre_saved) {
- 		fhp->fh_pre_mtime = inode->i_mtime;
-diff --git a/include/linux/exportfs.h b/include/linux/exportfs.h
-index fa05e04c5531..600c3fccc999 100644
---- a/include/linux/exportfs.h
-+++ b/include/linux/exportfs.h
-@@ -214,6 +214,8 @@ struct export_operations {
- 			  bool write, u32 *device_generation);
- 	int (*commit_blocks)(struct inode *inode, struct iomap *iomaps,
- 			     int nr_iomaps, struct iattr *iattr);
-+#define	EXPORT_OP_NOWCC		(0x1)	/* Don't collect wcc data for NFSv3 replies */
-+	unsigned long	flags;
- };
- 
- extern int exportfs_encode_inode_fh(struct inode *inode, struct fid *fid,
--- 
-2.4.3
+nfsd  4291 [002]    87.914752: module:module_get: sunrpc call_site=0xffffffffa031c86as refcnt=7
+                  318d93 try_module_get (vmlinux)
+                    98da xs_tcp_setup_socket ([sunrpc])
+                    5ca5 xprt_create_transport ([sunrpc])
+                    34ad rpc_create ([sunrpc])
+                   1892a rpcb_getport_async ([sunrpc])
+                   196ea xdr_reserve_space ([sunrpc])
+                   128dc svc_create_pooled ([sunrpc])
+                     686 nfsd_create_serv ([nfsd])
+                    1be9 write_ports ([nfsd])
+                    182c nfsctl_transaction_write ([nfsd])
+                  410d87 __vfs_write (vmlinux)
+                  411706 vfs_write (vmlinux)
+                  4123f5 sys_write (vmlinux)
+                  95ed95 tracesys_phase2 (vmlinux)
+                   f2ff0 __GI___libc_write (/usr/lib64/libc-2.21.so)
 
+nfsd  4291 [002]    87.914775: module:module_get: sunrpc call_site=0xffffffffa03228a5s refcnt=8
+                  318d93 try_module_get (vmlinux)
+                    f915 rpcauth_cache_do_shrink ([sunrpc])
+                    2bbd rpc_new_client ([sunrpc])
+                    337a rpc_create_xprt ([sunrpc])
+                    34d6 rpc_create ([sunrpc])
+                   1892a rpcb_getport_async ([sunrpc])
+                   196ea xdr_reserve_space ([sunrpc])
+                   128dc svc_create_pooled ([sunrpc])
+                     686 nfsd_create_serv ([nfsd])
+                    1be9 write_ports ([nfsd])
+                    182c nfsctl_transaction_write ([nfsd])
+                  410d87 __vfs_write (vmlinux)
+                  411706 vfs_write (vmlinux)
+                  4123f5 sys_write (vmlinux)
+                  95ed95 tracesys_phase2 (vmlinux)
+                   f2ff0 __GI___libc_write (/usr/lib64/libc-2.21.so)
+
+nfsd  4291 [002]    87.914936: module:module_get: sunrpc call_site=0xffffffffa03228a5s refcnt=9
+                  318d93 try_module_get (vmlinux)
+                    f915 rpcauth_cache_do_shrink ([sunrpc])
+                    2bbd rpc_new_client ([sunrpc])
+                    2ead __rpc_clone_client ([sunrpc])
+                    35e7 rpc_bind_new_program ([sunrpc])
+                   18949 rpcb_getport_async ([sunrpc])
+                   196ea xdr_reserve_space ([sunrpc])
+                   128dc svc_create_pooled ([sunrpc])
+                     686 nfsd_create_serv ([nfsd])
+                    1be9 write_ports ([nfsd])
+                    182c nfsctl_transaction_write ([nfsd])
+                  410d87 __vfs_write (vmlinux)
+                  411706 vfs_write (vmlinux)
+                  4123f5 sys_write (vmlinux)
+                  95ed95 tracesys_phase2 (vmlinux)
+                   f2ff0 __GI___libc_write (/usr/lib64/libc-2.21.so)
+
+In this trace I modified nfs-utils nfsd to write to portlist but you get
+the same result with echo from a shell (as shown above).
+
+Any ideas?
+
+Stefan
