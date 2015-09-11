@@ -1,126 +1,121 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yk0-f170.google.com ([209.85.160.170]:34908 "EHLO
-	mail-yk0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752789AbbIKKzC (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Sep 2015 06:55:02 -0400
-Received: by ykdu9 with SMTP id u9so87604583ykd.2
-        for <linux-nfs@vger.kernel.org>; Fri, 11 Sep 2015 03:55:02 -0700 (PDT)
+Received: from mail-yk0-f177.google.com ([209.85.160.177]:36745 "EHLO
+	mail-yk0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752775AbbIKKy4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Sep 2015 06:54:56 -0400
+Received: by ykdt18 with SMTP id t18so66772259ykd.3
+        for <linux-nfs@vger.kernel.org>; Fri, 11 Sep 2015 03:54:56 -0700 (PDT)
 From: Jeff Layton <jlayton@poochiereds.net>
 To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: [PATCH v4 09/16] nfsd: hook up nfsd_write to the new nfsd_file cache
-Date: Fri, 11 Sep 2015 06:54:35 -0400
-Message-Id: <1441968882-7851-10-git-send-email-jeff.layton@primarydata.com>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        Al Viro <viro@ZenIV.linux.org.uk>
+Subject: [PATCH v4 03/16] fs: allow __fput_sync to be used by non-kthreads and in modules
+Date: Fri, 11 Sep 2015 06:54:29 -0400
+Message-Id: <1441968882-7851-4-git-send-email-jeff.layton@primarydata.com>
 In-Reply-To: <1441968882-7851-1-git-send-email-jeff.layton@primarydata.com>
 References: <1441968882-7851-1-git-send-email-jeff.layton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Note that all callers currently pass in NULL for "file" anyway, so
-there was already some dead code in here. Just eliminate that parm
-and have it use the file cache instead of dealing directly with a
-filp.
+We want nfsd to keep a cache of open files, but that would potentially
+block userland callers from obtaining leases on them. To fix this,
+we'll be adding a new notifier chain to the lease code that will call
+back into nfsd on any attempt to set a FL_LEASE. nfsd can then close
+any open files for that inode in advance of that.
 
+The problem however is that since that notifier will run in normal
+process context, the final __fput will be delayed a'la task_work and we
+are still unable to set a lease. What we need to do is to put the struct
+file synchronously so that the __fput runs before returning from the
+notifier call.
+
+The comments over __fput_sync and the BUG_ON in there mandate that it
+should only be used in kthread context, but I see no reason why that
+should be so. As long as the caller avoids holding locks that may be
+problematic, it should be OK to use it from normal process context as
+well.
+
+Remove the __ prefix and the BUG_ON from that function and update the
+comments over it. Also export it so that it can be used from nfsd code,
+and move the export of fput just below the function definition.
+
+Cc: Al Viro <viro@ZenIV.linux.org.uk>
 Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
 ---
- fs/nfsd/nfs3proc.c |  2 +-
- fs/nfsd/nfsproc.c  |  2 +-
- fs/nfsd/vfs.c      | 33 +++++++++++----------------------
- fs/nfsd/vfs.h      |  2 +-
- 4 files changed, 14 insertions(+), 25 deletions(-)
+ fs/file_table.c      | 27 ++++++++++++++-------------
+ include/linux/file.h |  2 +-
+ kernel/acct.c        |  2 +-
+ 3 files changed, 16 insertions(+), 15 deletions(-)
 
-diff --git a/fs/nfsd/nfs3proc.c b/fs/nfsd/nfs3proc.c
-index 7b755b7f785c..4e46ac511479 100644
---- a/fs/nfsd/nfs3proc.c
-+++ b/fs/nfsd/nfs3proc.c
-@@ -192,7 +192,7 @@ nfsd3_proc_write(struct svc_rqst *rqstp, struct nfsd3_writeargs *argp,
- 
- 	fh_copy(&resp->fh, &argp->fh);
- 	resp->committed = argp->stable;
--	nfserr = nfsd_write(rqstp, &resp->fh, NULL,
-+	nfserr = nfsd_write(rqstp, &resp->fh,
- 				   argp->offset,
- 				   rqstp->rq_vec, argp->vlen,
- 				   &cnt,
-diff --git a/fs/nfsd/nfsproc.c b/fs/nfsd/nfsproc.c
-index 4cd78ef4c95c..9893095cbee1 100644
---- a/fs/nfsd/nfsproc.c
-+++ b/fs/nfsd/nfsproc.c
-@@ -213,7 +213,7 @@ nfsd_proc_write(struct svc_rqst *rqstp, struct nfsd_writeargs *argp,
- 		SVCFH_fmt(&argp->fh),
- 		argp->len, argp->offset);
- 
--	nfserr = nfsd_write(rqstp, fh_copy(&resp->fh, &argp->fh), NULL,
-+	nfserr = nfsd_write(rqstp, fh_copy(&resp->fh, &argp->fh),
- 				   argp->offset,
- 				   rqstp->rq_vec, argp->vlen,
- 			           &cnt,
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 4ce447e56155..0a9bffe5ba97 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -42,6 +42,7 @@
- 
- #include "nfsd.h"
- #include "vfs.h"
-+#include "filecache.h"
- 
- #define NFSDDBG_FACILITY		NFSDDBG_FILEOP
- 
-@@ -1009,30 +1010,18 @@ __be32 nfsd_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
-  * N.B. After this call fhp needs an fh_put
-  */
- __be32
--nfsd_write(struct svc_rqst *rqstp, struct svc_fh *fhp, struct file *file,
--		loff_t offset, struct kvec *vec, int vlen, unsigned long *cnt,
--		int *stablep)
-+nfsd_write(struct svc_rqst *rqstp, struct svc_fh *fhp, loff_t offset,
-+	   struct kvec *vec, int vlen, unsigned long *cnt, int *stablep)
- {
--	__be32			err = 0;
--
--	if (file) {
--		err = nfsd_permission(rqstp, fhp->fh_export, fhp->fh_dentry,
--				NFSD_MAY_WRITE|NFSD_MAY_OWNER_OVERRIDE);
--		if (err)
--			goto out;
--		err = nfsd_vfs_write(rqstp, fhp, file, offset, vec, vlen, cnt,
--				stablep);
--	} else {
--		err = nfsd_open(rqstp, fhp, S_IFREG, NFSD_MAY_WRITE, &file);
--		if (err)
--			goto out;
--
--		if (cnt)
--			err = nfsd_vfs_write(rqstp, fhp, file, offset, vec, vlen,
--					     cnt, stablep);
--		fput(file);
-+	__be32			err;
-+	struct nfsd_file	*nf;
-+
-+	err = nfsd_file_acquire(rqstp, fhp, NFSD_MAY_WRITE, &nf);
-+	if (err == nfs_ok) {
-+		err = nfsd_vfs_write(rqstp, fhp, nf->nf_file, offset, vec,
-+					vlen, cnt, stablep);
-+		nfsd_file_put(nf);
+diff --git a/fs/file_table.c b/fs/file_table.c
+index f4833af62eae..6769ed45c35f 100644
+--- a/fs/file_table.c
++++ b/fs/file_table.c
+@@ -280,25 +280,26 @@ void fput(struct file *file)
+ 			schedule_delayed_work(&delayed_fput_work, 1);
  	}
--out:
- 	return err;
+ }
++EXPORT_SYMBOL(fput);
+ 
+ /*
+- * synchronous analog of fput(); for kernel threads that might be needed
+- * in some umount() (and thus can't use flush_delayed_fput() without
+- * risking deadlocks), need to wait for completion of __fput() and know
+- * for this specific struct file it won't involve anything that would
+- * need them.  Use only if you really need it - at the very least,
+- * don't blindly convert fput() by kernel thread to that.
++ * synchronous analog of fput(); this is necessary for tasks
++ * that might be needed in some umount() (and thus can't use
++ * flush_delayed_fput() without risking deadlocks), need to wait for
++ * completion of __fput() and know for this specific struct file it
++ * won't involve anything that would need them. It's also necessary
++ * for nfsd, which needs to be able to synchronously close files
++ * on which userspace programs are trying to set leases.
++ *
++ * Use only if you really need it - at the very least, don't blindly
++ * convert fput() to this.
+  */
+-void __fput_sync(struct file *file)
++void fput_sync(struct file *file)
+ {
+-	if (atomic_long_dec_and_test(&file->f_count)) {
+-		struct task_struct *task = current;
+-		BUG_ON(!(task->flags & PF_KTHREAD));
++	if (atomic_long_dec_and_test(&file->f_count))
+ 		__fput(file);
+-	}
+ }
+-
+-EXPORT_SYMBOL(fput);
++EXPORT_SYMBOL(fput_sync);
+ 
+ void put_filp(struct file *file)
+ {
+diff --git a/include/linux/file.h b/include/linux/file.h
+index f87d30882a24..046a8c477b9a 100644
+--- a/include/linux/file.h
++++ b/include/linux/file.h
+@@ -71,6 +71,6 @@ extern void put_unused_fd(unsigned int fd);
+ extern void fd_install(unsigned int fd, struct file *file);
+ 
+ extern void flush_delayed_fput(void);
+-extern void __fput_sync(struct file *);
++extern void fput_sync(struct file *);
+ 
+ #endif /* __LINUX_FILE_H */
+diff --git a/kernel/acct.c b/kernel/acct.c
+index 74963d192c5d..b58300ebd819 100644
+--- a/kernel/acct.c
++++ b/kernel/acct.c
+@@ -183,7 +183,7 @@ static void close_work(struct work_struct *work)
+ 	struct file *file = acct->file;
+ 	if (file->f_op->flush)
+ 		file->f_op->flush(file, NULL);
+-	__fput_sync(file);
++	fput_sync(file);
+ 	complete(&acct->done);
  }
  
-diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
-index 4bc127e0ca15..303db66dca0a 100644
---- a/fs/nfsd/vfs.h
-+++ b/fs/nfsd/vfs.h
-@@ -79,7 +79,7 @@ __be32		nfsd_readv(struct file *, loff_t, struct kvec *, int,
- 				unsigned long *);
- __be32 		nfsd_read(struct svc_rqst *, struct svc_fh *,
- 				loff_t, struct kvec *, int, unsigned long *);
--__be32 		nfsd_write(struct svc_rqst *, struct svc_fh *,struct file *,
-+__be32 		nfsd_write(struct svc_rqst *, struct svc_fh *,
- 				loff_t, struct kvec *,int, unsigned long *, int *);
- __be32		nfsd_vfs_write(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 				struct file *file, loff_t offset,
 -- 
 2.4.3
 
