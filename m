@@ -1,108 +1,121 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:47043 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751499AbbIKKpW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 11 Sep 2015 06:45:22 -0400
-Date: Fri, 11 Sep 2015 11:45:17 +0100
-From: Stefan Hajnoczi <stefanha@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: nfsd leaks 3 sunrpc module references
-Message-ID: <20150911104517.GA4947@stefanha-thinkpad.home>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Received: from mail-yk0-f170.google.com ([209.85.160.170]:34857 "EHLO
+	mail-yk0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751915AbbIKKy6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Sep 2015 06:54:58 -0400
+Received: by ykdu9 with SMTP id u9so87603316ykd.2
+        for <linux-nfs@vger.kernel.org>; Fri, 11 Sep 2015 03:54:57 -0700 (PDT)
+From: Jeff Layton <jlayton@poochiereds.net>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Subject: [PATCH v4 05/16] locks: create a new notifier chain for lease attempts
+Date: Fri, 11 Sep 2015 06:54:31 -0400
+Message-Id: <1441968882-7851-6-git-send-email-jeff.layton@primarydata.com>
+In-Reply-To: <1441968882-7851-1-git-send-email-jeff.layton@primarydata.com>
+References: <1441968882-7851-1-git-send-email-jeff.layton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I'm having a little trouble debugging this sunrpc module refcnt leak in
-nfsd.  Perhaps a fresh pair of eyes can help.
+With the new file caching infrastructure in nfsd, we can end up holding
+files open for an indefinite period of time, even when they are still
+idle. This may prevent the kernel from handing out leases on the file,
+which is something we don't want to block.
 
-nfsd leaks 3 references to the sunrpc module here:
+Fix this by running a SRCU notifier call chain whenever on any
+lease attempt. nfsd can then purge the cache for that inode before
+returning.
 
-  # echo -n "asdf 1234" >/proc/fs/nfsd/portlist
-  bash: echo: write error: Protocol not supported
+Since SRCU is only conditionally compiled in, we must only define the
+new chain if it's enabled, and users of the chain must ensure that
+SRCU is enabled.
 
-Now stop nfsd and try unloading the kernel modules:
+Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
+---
+ fs/locks.c         | 37 +++++++++++++++++++++++++++++++++++++
+ include/linux/fs.h |  1 +
+ 2 files changed, 38 insertions(+)
 
-  # systemctl stop nfs-server
-  # systemctl stop nfs
-  # systemctl stop proc-fs-nfsd.mount
-  # systemctl stop var-lib-nfs-rpc_pipefs.mount
-  # rmmod nfsd
-  # rmmod nfs_acl
-  # rmmod lockd
-  # rmmod auth_rpcgss
-  # rmmod sunrpc
-  rmmod: ERROR: Module sunrpc is in use
-  # lsmod | grep rpc
-  sunrpc                315392  3
+diff --git a/fs/locks.c b/fs/locks.c
+index 2a54c800a223..a2d5794d713a 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -166,6 +166,7 @@ int lease_break_time = 45;
+ DEFINE_STATIC_LGLOCK(file_lock_lglock);
+ static DEFINE_PER_CPU(struct hlist_head, file_lock_list);
+ 
++
+ /*
+  * The blocked_hash is used to find POSIX lock loops for deadlock detection.
+  * It is protected by blocked_lock_lock.
+@@ -1780,6 +1781,40 @@ int generic_setlease(struct file *filp, long arg, struct file_lock **flp,
+ }
+ EXPORT_SYMBOL(generic_setlease);
+ 
++#if IS_ENABLED(CONFIG_SRCU)
++/*
++ * Kernel subsystems can register to be notified on any attempt to set
++ * a new lease with the lease_notifier_chain. This is used by (e.g.) nfsd
++ * to close files that it may have cached when there is an attempt to set a
++ * conflicting lease.
++ */
++struct srcu_notifier_head lease_notifier_chain;
++EXPORT_SYMBOL_GPL(lease_notifier_chain);
++
++static inline void
++lease_notifier_chain_init(void)
++{
++	srcu_init_notifier_head(&lease_notifier_chain);
++}
++
++static inline void
++setlease_notifier(long arg, struct file_lock *lease)
++{
++	if (arg != F_UNLCK)
++		srcu_notifier_call_chain(&lease_notifier_chain, arg, lease);
++}
++#else /* !IS_ENABLED(CONFIG_SRCU) */
++static inline void
++lease_notifier_chain_init(void)
++{
++}
++
++static inline void
++setlease_notifier(long arg, struct file_lock *lease)
++{
++}
++#endif /* IS_ENABLED(CONFIG_SRCU) */
++
+ /**
+  * vfs_setlease        -       sets a lease on an open file
+  * @filp:	file pointer
+@@ -1800,6 +1835,7 @@ EXPORT_SYMBOL(generic_setlease);
+ int
+ vfs_setlease(struct file *filp, long arg, struct file_lock **lease, void **priv)
+ {
++	setlease_notifier(arg, *lease);
+ 	if (filp->f_op->setlease)
+ 		return filp->f_op->setlease(filp, arg, lease, priv);
+ 	else
+@@ -2696,6 +2732,7 @@ static int __init filelock_init(void)
+ 	for_each_possible_cpu(i)
+ 		INIT_HLIST_HEAD(per_cpu_ptr(&file_lock_list, i));
+ 
++	lease_notifier_chain_init();
+ 	return 0;
+ }
+ 
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 9a9d314f7b27..e5fcf56c5ba1 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1041,6 +1041,7 @@ extern int fcntl_setlease(unsigned int fd, struct file *filp, long arg);
+ extern int fcntl_getlease(struct file *filp);
+ 
+ /* fs/locks.c */
++extern struct srcu_notifier_head	lease_notifier_chain;
+ void locks_free_lock_context(struct file_lock_context *ctx);
+ void locks_free_lock(struct file_lock *fl);
+ extern void locks_init_lock(struct file_lock *);
+-- 
+2.4.3
 
-I have reproduced this from source with a tree based on Linux 4.2-rc3
-and also with Linux 4.1.6-200.fc22.x86_64.
-
-The following unmatched module_get() calls are recorded by perf record
--e module:module_get -e module:module_put.  Perhaps the backtrace is a
-little mangled because I don't see xdr_reserve_space() calls in
-svc_create_pooled() (even indirectly):
-
-nfsd  4291 [002]    87.914752: module:module_get: sunrpc call_site=0xffffffffa031c86as refcnt=7
-                  318d93 try_module_get (vmlinux)
-                    98da xs_tcp_setup_socket ([sunrpc])
-                    5ca5 xprt_create_transport ([sunrpc])
-                    34ad rpc_create ([sunrpc])
-                   1892a rpcb_getport_async ([sunrpc])
-                   196ea xdr_reserve_space ([sunrpc])
-                   128dc svc_create_pooled ([sunrpc])
-                     686 nfsd_create_serv ([nfsd])
-                    1be9 write_ports ([nfsd])
-                    182c nfsctl_transaction_write ([nfsd])
-                  410d87 __vfs_write (vmlinux)
-                  411706 vfs_write (vmlinux)
-                  4123f5 sys_write (vmlinux)
-                  95ed95 tracesys_phase2 (vmlinux)
-                   f2ff0 __GI___libc_write (/usr/lib64/libc-2.21.so)
-
-nfsd  4291 [002]    87.914775: module:module_get: sunrpc call_site=0xffffffffa03228a5s refcnt=8
-                  318d93 try_module_get (vmlinux)
-                    f915 rpcauth_cache_do_shrink ([sunrpc])
-                    2bbd rpc_new_client ([sunrpc])
-                    337a rpc_create_xprt ([sunrpc])
-                    34d6 rpc_create ([sunrpc])
-                   1892a rpcb_getport_async ([sunrpc])
-                   196ea xdr_reserve_space ([sunrpc])
-                   128dc svc_create_pooled ([sunrpc])
-                     686 nfsd_create_serv ([nfsd])
-                    1be9 write_ports ([nfsd])
-                    182c nfsctl_transaction_write ([nfsd])
-                  410d87 __vfs_write (vmlinux)
-                  411706 vfs_write (vmlinux)
-                  4123f5 sys_write (vmlinux)
-                  95ed95 tracesys_phase2 (vmlinux)
-                   f2ff0 __GI___libc_write (/usr/lib64/libc-2.21.so)
-
-nfsd  4291 [002]    87.914936: module:module_get: sunrpc call_site=0xffffffffa03228a5s refcnt=9
-                  318d93 try_module_get (vmlinux)
-                    f915 rpcauth_cache_do_shrink ([sunrpc])
-                    2bbd rpc_new_client ([sunrpc])
-                    2ead __rpc_clone_client ([sunrpc])
-                    35e7 rpc_bind_new_program ([sunrpc])
-                   18949 rpcb_getport_async ([sunrpc])
-                   196ea xdr_reserve_space ([sunrpc])
-                   128dc svc_create_pooled ([sunrpc])
-                     686 nfsd_create_serv ([nfsd])
-                    1be9 write_ports ([nfsd])
-                    182c nfsctl_transaction_write ([nfsd])
-                  410d87 __vfs_write (vmlinux)
-                  411706 vfs_write (vmlinux)
-                  4123f5 sys_write (vmlinux)
-                  95ed95 tracesys_phase2 (vmlinux)
-                   f2ff0 __GI___libc_write (/usr/lib64/libc-2.21.so)
-
-In this trace I modified nfs-utils nfsd to write to portlist but you get
-the same result with echo from a shell (as shown above).
-
-Any ideas?
-
-Stefan
