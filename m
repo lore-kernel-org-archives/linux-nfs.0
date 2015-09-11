@@ -1,61 +1,83 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yk0-f169.google.com ([209.85.160.169]:34883 "EHLO
-	mail-yk0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752790AbbIKKzA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Sep 2015 06:55:00 -0400
-Received: by ykdu9 with SMTP id u9so87603961ykd.2
-        for <linux-nfs@vger.kernel.org>; Fri, 11 Sep 2015 03:55:00 -0700 (PDT)
+Received: from mail-yk0-f173.google.com ([209.85.160.173]:36722 "EHLO
+	mail-yk0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751908AbbIKKyy (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Sep 2015 06:54:54 -0400
+Received: by ykdt18 with SMTP id t18so66771680ykd.3
+        for <linux-nfs@vger.kernel.org>; Fri, 11 Sep 2015 03:54:53 -0700 (PDT)
 From: Jeff Layton <jlayton@poochiereds.net>
 To: bfields@fieldses.org
 Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: [PATCH v4 07/16] sunrpc: add a new cache_detail operation for when a cache is flushed
-Date: Fri, 11 Sep 2015 06:54:33 -0400
-Message-Id: <1441968882-7851-8-git-send-email-jeff.layton@primarydata.com>
+Subject: [PATCH v4 01/16] locks: change tracepoint for generic_add_lease
+Date: Fri, 11 Sep 2015 06:54:27 -0400
+Message-Id: <1441968882-7851-2-git-send-email-jeff.layton@primarydata.com>
 In-Reply-To: <1441968882-7851-1-git-send-email-jeff.layton@primarydata.com>
 References: <1441968882-7851-1-git-send-email-jeff.layton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When the exports table is changed, exportfs will usually write a new
-time to the "flush" file in the nfsd.export cache procfile. This tells
-the kernel to flush any entries that are older than that value.
-
-This gives us a mechanism to tell whether an unexport might have
-occurred. Add a new ->flush cache_detail operation that is called after
-flushing the cache whenever someone writes to a "flush" file.
+...add some more helpful info.
 
 Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
 ---
- include/linux/sunrpc/cache.h | 1 +
- net/sunrpc/cache.c           | 3 +++
- 2 files changed, 4 insertions(+)
+ include/trace/events/filelock.h | 38 +++++++++++++++++++++++++++++++++++---
+ 1 file changed, 35 insertions(+), 3 deletions(-)
 
-diff --git a/include/linux/sunrpc/cache.h b/include/linux/sunrpc/cache.h
-index 03d3b4c92d9f..d1c10a978bb2 100644
---- a/include/linux/sunrpc/cache.h
-+++ b/include/linux/sunrpc/cache.h
-@@ -98,6 +98,7 @@ struct cache_detail {
- 					      int has_died);
+diff --git a/include/trace/events/filelock.h b/include/trace/events/filelock.h
+index a0d008070962..c72f2dc01d0b 100644
+--- a/include/trace/events/filelock.h
++++ b/include/trace/events/filelock.h
+@@ -81,15 +81,47 @@ DEFINE_EVENT(filelock_lease, break_lease_block, TP_PROTO(struct inode *inode, st
+ DEFINE_EVENT(filelock_lease, break_lease_unblock, TP_PROTO(struct inode *inode, struct file_lock *fl),
+ 		TP_ARGS(inode, fl));
  
- 	struct cache_head *	(*alloc)(void);
-+	void			(*flush)(void);
- 	int			(*match)(struct cache_head *orig, struct cache_head *new);
- 	void			(*init)(struct cache_head *orig, struct cache_head *new);
- 	void			(*update)(struct cache_head *orig, struct cache_head *new);
-diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-index 4a2340a54401..60da9aa2bdc5 100644
---- a/net/sunrpc/cache.c
-+++ b/net/sunrpc/cache.c
-@@ -1451,6 +1451,9 @@ static ssize_t write_flush(struct file *file, const char __user *buf,
- 	cd->nextcheck = seconds_since_boot();
- 	cache_flush();
+-DEFINE_EVENT(filelock_lease, generic_add_lease, TP_PROTO(struct inode *inode, struct file_lock *fl),
+-		TP_ARGS(inode, fl));
+-
+ DEFINE_EVENT(filelock_lease, generic_delete_lease, TP_PROTO(struct inode *inode, struct file_lock *fl),
+ 		TP_ARGS(inode, fl));
  
-+	if (cd->flush)
-+		cd->flush();
+ DEFINE_EVENT(filelock_lease, time_out_leases, TP_PROTO(struct inode *inode, struct file_lock *fl),
+ 		TP_ARGS(inode, fl));
+ 
++TRACE_EVENT(generic_add_lease,
++	TP_PROTO(struct inode *inode, struct file_lock *fl),
 +
- 	*ppos += count;
- 	return count;
- }
++	TP_ARGS(inode, fl),
++
++	TP_STRUCT__entry(
++		__field(unsigned long, i_ino)
++		__field(int, wcount)
++		__field(int, dcount)
++		__field(int, icount)
++		__field(dev_t, s_dev)
++		__field(fl_owner_t, fl_owner)
++		__field(unsigned int, fl_flags)
++		__field(unsigned char, fl_type)
++	),
++
++	TP_fast_assign(
++		__entry->s_dev = inode->i_sb->s_dev;
++		__entry->i_ino = inode->i_ino;
++		__entry->wcount = atomic_read(&inode->i_writecount);
++		__entry->dcount = d_count(fl->fl_file->f_path.dentry);
++		__entry->icount = atomic_read(&inode->i_count);
++		__entry->fl_owner = fl ? fl->fl_owner : NULL;
++		__entry->fl_flags = fl ? fl->fl_flags : 0;
++		__entry->fl_type = fl ? fl->fl_type : 0;
++	),
++
++	TP_printk("dev=0x%x:0x%x ino=0x%lx wcount=%d dcount=%d icount=%d fl_owner=0x%p fl_flags=%s fl_type=%s",
++		MAJOR(__entry->s_dev), MINOR(__entry->s_dev),
++		__entry->i_ino, __entry->wcount, __entry->dcount,
++		__entry->icount, __entry->fl_owner,
++		show_fl_flags(__entry->fl_flags),
++		show_fl_type(__entry->fl_type))
++);
++
+ #endif /* _TRACE_FILELOCK_H */
+ 
+ /* This part must be outside protection */
 -- 
 2.4.3
 
