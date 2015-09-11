@@ -1,115 +1,47 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:48540 "EHLO fieldses.org"
+Received: from mx142.netapp.com ([216.240.21.19]:45875 "EHLO mx142.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751841AbbIKUaT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 11 Sep 2015 16:30:19 -0400
-Date: Fri, 11 Sep 2015 16:30:16 -0400
-To: Andreas Gruenbacher <agruenba@redhat.com>
-Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-api@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-security-module@vger.kernel.org
-Subject: Re: [PATCH] vfs: Add MAY_DELETE_SELF and MAY_DELETE_CHILD permission
- flags
-Message-ID: <20150911203016.GD11677@fieldses.org>
-References: <1441448856-13478-4-git-send-email-agruenba@redhat.com>
- <1441527246-18189-1-git-send-email-agruenba@redhat.com>
+	id S1754103AbbIKUau (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 11 Sep 2015 16:30:50 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+To: <linux-nfs@vger.kernel.org>, <linux-btrfs@vger.kernel.org>,
+        <linux-fsdevel@vger.kernel.org>, <linux-api@vger.kernel.org>,
+        <zab@zabbo.net>, <viro@zeniv.linux.org.uk>, <clm@fb.com>,
+        <darrick.wong@oracle.com>, <mtk.manpages@gmail.com>,
+        <andros@netapp.com>, <hch@infradead.org>
+Subject: [PATCH v2 5/9] vfs: Copy shouldn't forbid ranges inside the same file
+Date: Fri, 11 Sep 2015 16:30:18 -0400
+Message-ID: <1442003423-6884-6-git-send-email-Anna.Schumaker@Netapp.com>
+In-Reply-To: <1442003423-6884-1-git-send-email-Anna.Schumaker@Netapp.com>
+References: <1442003423-6884-1-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1441527246-18189-1-git-send-email-agruenba@redhat.com>
-From: bfields@fieldses.org (J. Bruce Fields)
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Sep 06, 2015 at 10:14:06AM +0200, Andreas Gruenbacher wrote:
-> [This replaces v7 of this patch; MAY_DELETE_SELF now properly overrides the
-> sticky check.]
-> 
-> Normally, deleting a file requires MAY_WRITE access to the parent
-> directory.  With richacls, a file may be deleted with MAY_DELETE_CHILD access
-> to the parent directory or with MAY_DELETE_SELF access to the file.
-> 
-> To support that, pass the MAY_DELETE_CHILD mask flag to inode_permission()
-> when checking for delete access inside a directory, and MAY_DELETE_SELF
-> when checking for delete access to a file itelf.
-> 
-> The MAY_DELETE_SELF permission overrides the sticky directory check.
-> 
+This is perfectly valid for BTRFS and XFS, so let's leave this up to
+filesystems to check.
 
-Reviewed-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+---
+ fs/read_write.c | 4 ----
+ 1 file changed, 4 deletions(-)
 
-> Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
-> ---
->  fs/namei.c         | 21 ++++++++++++---------
->  include/linux/fs.h |  2 ++
->  2 files changed, 14 insertions(+), 9 deletions(-)
-> 
-> diff --git a/fs/namei.c b/fs/namei.c
-> index 428b4a6..1a3f0d8 100644
-> --- a/fs/namei.c
-> +++ b/fs/namei.c
-> @@ -453,9 +453,9 @@ static int sb_permission(struct super_block *sb, struct inode *inode, int mask)
->   * this, letting us set arbitrary permissions for filesystem access without
->   * changing the "normal" UIDs which are used for other things.
->   *
-> - * MAY_WRITE must be set in @mask whenever MAY_APPEND, MAY_CREATE_FILE, or
-> - * MAY_CREATE_DIR are set.  That way, file systems that don't support these
-> - * permissions will check for MAY_WRITE instead.
-> + * MAY_WRITE must be set in @mask whenever MAY_APPEND, MAY_CREATE_FILE,
-> + * MAY_CREATE_DIR, or MAY_DELETE_CHILD are set.  That way, file systems that
-> + * don't support these permissions will check for MAY_WRITE instead.
->   */
->  int inode_permission(struct inode *inode, int mask)
->  {
-> @@ -2528,7 +2528,7 @@ static int may_delete(struct inode *dir, struct dentry *victim,
->  		      bool isdir, bool replace)
->  {
->  	struct inode *inode = d_backing_inode(victim);
-> -	int error, mask = MAY_WRITE | MAY_EXEC;
-> +	int error, mask = MAY_EXEC;
->  
->  	if (d_is_negative(victim))
->  		return -ENOENT;
-> @@ -2538,15 +2538,18 @@ static int may_delete(struct inode *dir, struct dentry *victim,
->  	audit_inode_child(dir, victim, AUDIT_TYPE_CHILD_DELETE);
->  
->  	if (replace)
-> -		mask |= isdir ? MAY_CREATE_DIR : MAY_CREATE_FILE;
-> -	error = inode_permission(dir, mask);
-> +		mask |= MAY_WRITE | (isdir ? MAY_CREATE_DIR : MAY_CREATE_FILE);
-> +	error = inode_permission(dir, mask | MAY_WRITE | MAY_DELETE_CHILD);
-> +	if (!error && check_sticky(dir, inode))
-> +		error = -EPERM;
-> +	if (error && IS_RICHACL(inode) &&
-> +	    inode_permission(inode, MAY_DELETE_SELF) == 0)
-> +		error = 0;
->  	if (error)
->  		return error;
->  	if (IS_APPEND(dir))
->  		return -EPERM;
-> -
-> -	if (check_sticky(dir, inode) || IS_APPEND(inode) ||
-> -	    IS_IMMUTABLE(inode) || IS_SWAPFILE(inode))
-> +	if (IS_APPEND(inode) || IS_IMMUTABLE(inode) || IS_SWAPFILE(inode))
->  		return -EPERM;
->  	if (isdir) {
->  		if (!d_is_dir(victim))
-> diff --git a/include/linux/fs.h b/include/linux/fs.h
-> index b2f1b1b..99c95d1 100644
-> --- a/include/linux/fs.h
-> +++ b/include/linux/fs.h
-> @@ -84,6 +84,8 @@ typedef void (dax_iodone_t)(struct buffer_head *bh_map, int uptodate);
->  #define MAY_NOT_BLOCK		0x00000080
->  #define MAY_CREATE_FILE		0x00000100
->  #define MAY_CREATE_DIR		0x00000200
-> +#define MAY_DELETE_CHILD	0x00000400
-> +#define MAY_DELETE_SELF		0x00000800
->  
->  /*
->   * flags in file.f_mode.  Note that FMODE_READ and FMODE_WRITE must correspond
-> -- 
-> 2.4.3
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/fs/read_write.c b/fs/read_write.c
+index 38cc251..d32549b 100644
+--- a/fs/read_write.c
++++ b/fs/read_write.c
+@@ -1371,10 +1371,6 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
+ 	    file_in->f_path.mnt != file_out->f_path.mnt)
+ 		return -EXDEV;
+ 
+-	/* forbid ranges in the same file */
+-	if (inode_in == inode_out)
+-		return -EINVAL;
+-
+ 	if (len == 0)
+ 		return 0;
+ 
+-- 
+2.5.1
+
