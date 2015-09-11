@@ -1,83 +1,83 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yk0-f173.google.com ([209.85.160.173]:36722 "EHLO
-	mail-yk0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751908AbbIKKyy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Sep 2015 06:54:54 -0400
-Received: by ykdt18 with SMTP id t18so66771680ykd.3
-        for <linux-nfs@vger.kernel.org>; Fri, 11 Sep 2015 03:54:53 -0700 (PDT)
+Received: from mail-yk0-f172.google.com ([209.85.160.172]:32836 "EHLO
+	mail-yk0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752766AbbIKKyz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Sep 2015 06:54:55 -0400
+Received: by ykei199 with SMTP id i199so86956117yke.0
+        for <linux-nfs@vger.kernel.org>; Fri, 11 Sep 2015 03:54:54 -0700 (PDT)
 From: Jeff Layton <jlayton@poochiereds.net>
 To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: [PATCH v4 01/16] locks: change tracepoint for generic_add_lease
-Date: Fri, 11 Sep 2015 06:54:27 -0400
-Message-Id: <1441968882-7851-2-git-send-email-jeff.layton@primarydata.com>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        Andrew Morton <akpm@linux-foundation.org>, linux-mm@kvack.org
+Subject: [PATCH v4 02/16] list_lru: add list_lru_rotate
+Date: Fri, 11 Sep 2015 06:54:28 -0400
+Message-Id: <1441968882-7851-3-git-send-email-jeff.layton@primarydata.com>
 In-Reply-To: <1441968882-7851-1-git-send-email-jeff.layton@primarydata.com>
 References: <1441968882-7851-1-git-send-email-jeff.layton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-...add some more helpful info.
+Add a function that can move an entry to the MRU end of the list.
 
+Cc: Andrew Morton <akpm@linux-foundation.org>
+Cc: linux-mm@kvack.org
+Reviewed-by: Vladimir Davydov <vdavydov@parallels.com>
 Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
 ---
- include/trace/events/filelock.h | 38 +++++++++++++++++++++++++++++++++++---
- 1 file changed, 35 insertions(+), 3 deletions(-)
+ include/linux/list_lru.h | 13 +++++++++++++
+ mm/list_lru.c            | 15 +++++++++++++++
+ 2 files changed, 28 insertions(+)
 
-diff --git a/include/trace/events/filelock.h b/include/trace/events/filelock.h
-index a0d008070962..c72f2dc01d0b 100644
---- a/include/trace/events/filelock.h
-+++ b/include/trace/events/filelock.h
-@@ -81,15 +81,47 @@ DEFINE_EVENT(filelock_lease, break_lease_block, TP_PROTO(struct inode *inode, st
- DEFINE_EVENT(filelock_lease, break_lease_unblock, TP_PROTO(struct inode *inode, struct file_lock *fl),
- 		TP_ARGS(inode, fl));
+diff --git a/include/linux/list_lru.h b/include/linux/list_lru.h
+index 2a6b9947aaa3..4534b1b34d2d 100644
+--- a/include/linux/list_lru.h
++++ b/include/linux/list_lru.h
+@@ -96,6 +96,19 @@ bool list_lru_add(struct list_lru *lru, struct list_head *item);
+ bool list_lru_del(struct list_lru *lru, struct list_head *item);
  
--DEFINE_EVENT(filelock_lease, generic_add_lease, TP_PROTO(struct inode *inode, struct file_lock *fl),
--		TP_ARGS(inode, fl));
--
- DEFINE_EVENT(filelock_lease, generic_delete_lease, TP_PROTO(struct inode *inode, struct file_lock *fl),
- 		TP_ARGS(inode, fl));
+ /**
++ * list_lru_rotate: rotate an element to the end of an lru list
++ * @list_lru: the lru pointer
++ * @item: the item to be rotated
++ *
++ * This function moves an entry to the end of an LRU list. Should be used when
++ * an entry that is on the LRU is used, and should be moved to the MRU end of
++ * the list. If the item is not on a list, then this function has no effect.
++ * The comments about an element already pertaining to a list are also valid
++ * for list_lru_rotate.
++ */
++void list_lru_rotate(struct list_lru *lru, struct list_head *item);
++
++/**
+  * list_lru_count_one: return the number of objects currently held by @lru
+  * @lru: the lru pointer.
+  * @nid: the node id to count from.
+diff --git a/mm/list_lru.c b/mm/list_lru.c
+index e1da19fac1b3..66718c2a9a7b 100644
+--- a/mm/list_lru.c
++++ b/mm/list_lru.c
+@@ -130,6 +130,21 @@ bool list_lru_del(struct list_lru *lru, struct list_head *item)
+ }
+ EXPORT_SYMBOL_GPL(list_lru_del);
  
- DEFINE_EVENT(filelock_lease, time_out_leases, TP_PROTO(struct inode *inode, struct file_lock *fl),
- 		TP_ARGS(inode, fl));
- 
-+TRACE_EVENT(generic_add_lease,
-+	TP_PROTO(struct inode *inode, struct file_lock *fl),
++void list_lru_rotate(struct list_lru *lru, struct list_head *item)
++{
++	int nid = page_to_nid(virt_to_page(item));
++	struct list_lru_node *nlru = &lru->node[nid];
++	struct list_lru_one *l;
 +
-+	TP_ARGS(inode, fl),
++	spin_lock(&nlru->lock);
++	if (!list_empty(item)) {
++		l = list_lru_from_kmem(nlru, item);
++		list_move_tail(item, &l->list);
++	}
++	spin_unlock(&nlru->lock);
++}
++EXPORT_SYMBOL_GPL(list_lru_rotate);
 +
-+	TP_STRUCT__entry(
-+		__field(unsigned long, i_ino)
-+		__field(int, wcount)
-+		__field(int, dcount)
-+		__field(int, icount)
-+		__field(dev_t, s_dev)
-+		__field(fl_owner_t, fl_owner)
-+		__field(unsigned int, fl_flags)
-+		__field(unsigned char, fl_type)
-+	),
-+
-+	TP_fast_assign(
-+		__entry->s_dev = inode->i_sb->s_dev;
-+		__entry->i_ino = inode->i_ino;
-+		__entry->wcount = atomic_read(&inode->i_writecount);
-+		__entry->dcount = d_count(fl->fl_file->f_path.dentry);
-+		__entry->icount = atomic_read(&inode->i_count);
-+		__entry->fl_owner = fl ? fl->fl_owner : NULL;
-+		__entry->fl_flags = fl ? fl->fl_flags : 0;
-+		__entry->fl_type = fl ? fl->fl_type : 0;
-+	),
-+
-+	TP_printk("dev=0x%x:0x%x ino=0x%lx wcount=%d dcount=%d icount=%d fl_owner=0x%p fl_flags=%s fl_type=%s",
-+		MAJOR(__entry->s_dev), MINOR(__entry->s_dev),
-+		__entry->i_ino, __entry->wcount, __entry->dcount,
-+		__entry->icount, __entry->fl_owner,
-+		show_fl_flags(__entry->fl_flags),
-+		show_fl_type(__entry->fl_type))
-+);
-+
- #endif /* _TRACE_FILELOCK_H */
- 
- /* This part must be outside protection */
+ void list_lru_isolate(struct list_lru_one *list, struct list_head *item)
+ {
+ 	list_del_init(item);
 -- 
 2.4.3
 
