@@ -1,56 +1,51 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:48351 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752788AbbIKNff (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 11 Sep 2015 09:35:35 -0400
-Date: Fri, 11 Sep 2015 09:35:34 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from zeniv.linux.org.uk ([195.92.253.2]:46335 "EHLO
+	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751795AbbIKOAw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Sep 2015 10:00:52 -0400
+Date: Fri, 11 Sep 2015 15:00:49 +0100
+From: Al Viro <viro@ZenIV.linux.org.uk>
 To: Jeff Layton <jlayton@poochiereds.net>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsd: add a new nowcc export option to disable WCC attrs
- in v3 replies
-Message-ID: <20150911133534.GB11677@fieldses.org>
-References: <1441301594-17293-1-git-send-email-jeff.layton@primarydata.com>
- <20150903184327.GC10088@fieldses.org>
- <20150903145225.3a3a3776@tlielax.poochiereds.net>
- <20150903191914.GF10088@fieldses.org>
- <20150903155417.468aaca0@tlielax.poochiereds.net>
- <20150903202016.GH10088@fieldses.org>
- <20150903163537.3f6d9292@tlielax.poochiereds.net>
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org
+Subject: Re: [PATCH v4 03/16] fs: allow __fput_sync to be used by
+ non-kthreads and in modules
+Message-ID: <20150911140049.GN22011@ZenIV.linux.org.uk>
+References: <1441968882-7851-1-git-send-email-jeff.layton@primarydata.com>
+ <1441968882-7851-4-git-send-email-jeff.layton@primarydata.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20150903163537.3f6d9292@tlielax.poochiereds.net>
+In-Reply-To: <1441968882-7851-4-git-send-email-jeff.layton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Sep 03, 2015 at 04:35:37PM -0400, Jeff Layton wrote:
-> On Thu, 3 Sep 2015 16:20:16 -0400
-> "J. Bruce Fields" <bfields@fieldses.org> wrote:
+On Fri, Sep 11, 2015 at 06:54:29AM -0400, Jeff Layton wrote:
+> We want nfsd to keep a cache of open files, but that would potentially
+> block userland callers from obtaining leases on them. To fix this,
+> we'll be adding a new notifier chain to the lease code that will call
+> back into nfsd on any attempt to set a FL_LEASE. nfsd can then close
+> any open files for that inode in advance of that.
 > 
-> > On Thu, Sep 03, 2015 at 03:54:17PM -0400, Jeff Layton wrote:
-> > > 2) getattrs: We're working around the problem with this new export
-> > > option, but if you don't use that then you can potentially deadlock
-> > > with NFS. It wants to take the i_mutex in its ->getattr operation but
-> > > knfsd calls vfs_getattr with that held to do post-op attrs. My initial
-> > > workaround was to drop the i_mutex before calling fh_getattr instead of
-> > > after, but then I hit the performance problem I described.
-> > > 
-> > > 3) locking: proxying v3 locking is a painful mess. If the reexporter
-> > > reboots, it'll lose its lease on the main server, which will kick out
-> > > all of its state. At that point you can end up with another client
-> > > racing and getting your lock before the reexporter can come back up and
-> > > reclaim it.
-> > > 
-> > > Our main use-case for this is pretty limited and doesn't involve file
-> > > locking (so far!).
-> > 
-> > So this is the interest part, I guess.--b.
-> > 
+> The problem however is that since that notifier will run in normal
+> process context, the final __fput will be delayed a'la task_work and we
+> are still unable to set a lease. What we need to do is to put the struct
+> file synchronously so that the __fput runs before returning from the
+> notifier call.
 > 
-> Yeah. The locking one is a real bugger. We have a potential design for
-> a solution, but I'm not sure it'll be something we can open source.
+> The comments over __fput_sync and the BUG_ON in there mandate that it
+> should only be used in kthread context, but I see no reason why that
+> should be so. As long as the caller avoids holding locks that may be
+> problematic, it should be OK to use it from normal process context as
+> well.
+> 
+> Remove the __ prefix and the BUG_ON from that function and update the
+> comments over it. Also export it so that it can be used from nfsd code,
+> and move the export of fput just below the function definition.
 
-Actually it wasn't the locking I was curious about so much as the use
-case and whether it's something anyone else would care about.
+I really don't like that.
+	a) how deep in kernel stack will that thing run?
+	b) what locking environment is expected in your case?
 
---b.
+And opening it for use by any random driver that just feels like e.g.
+using it to go parse its config over there in /lib/we/are/special/wank.conf
+with 5Kb worth of kernel stack already eaten is a really bad idea.
