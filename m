@@ -1,277 +1,193 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yk0-f174.google.com ([209.85.160.174]:34502 "EHLO
-	mail-yk0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751059AbbILKY7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 12 Sep 2015 06:24:59 -0400
-Received: by ykdg206 with SMTP id g206so113994387ykd.1
-        for <linux-nfs@vger.kernel.org>; Sat, 12 Sep 2015 03:24:58 -0700 (PDT)
-Date: Sat, 12 Sep 2015 06:24:54 -0400
-From: Jeff Layton <jlayton@poochiereds.net>
-To: "Dilger, Andreas" <andreas.dilger@intel.com>
-Cc: "bfields@fieldses.org" <bfields@fieldses.org>,
-        "cluster-devel@redhat.com" <cluster-devel@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "fuse-devel@lists.sourceforge.net" <fuse-devel@lists.sourceforge.net>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "HPDD-discuss@lists.01.org" <HPDD-discuss@ml01.01.org>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        "ceph-devel@vger.kernel.org" <ceph-devel@vger.kernel.org>,
-        "ocfs2-devel@oss.oracle.com" <ocfs2-devel@oss.oracle.com>
-Subject: Re: [HPDD-discuss] [PATCH] nfsd: add a new EXPORT_OP_NOWCC flag to
- struct export_operations
-Message-ID: <20150912062454.2283d4b6@tlielax.poochiereds.net>
-In-Reply-To: <D21906EE.10A741%andreas.dilger@intel.com>
-References: <1441966830-5517-1-git-send-email-jeff.layton@primarydata.com>
-	<D21906EE.10A741%andreas.dilger@intel.com>
+Received: from mail-yk0-f179.google.com ([209.85.160.179]:33909 "EHLO
+	mail-yk0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754474AbbILMKl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 12 Sep 2015 08:10:41 -0400
+Received: by ykdg206 with SMTP id g206so115199370ykd.1
+        for <linux-nfs@vger.kernel.org>; Sat, 12 Sep 2015 05:10:40 -0700 (PDT)
+Date: Sat, 12 Sep 2015 08:10:37 -0400
+From: Jeff Layton <jeff.layton@primarydata.com>
+To: Bruce James Fields <bfields@fieldses.org>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Andrew W Elble <aweits@rit.edu>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: upgrade/downgrade race
+Message-ID: <20150912081037.6658649c@tlielax.poochiereds.net>
+In-Reply-To: <20150909213907.GF25750@fieldses.org>
+References: <m2h9n3btno.fsf@discipline.rit.edu>
+	<CAHQdGtQ84tUFEXaUwSngAmQst3NbjZDCSwB2jtqRqR29R4wBWg@mail.gmail.com>
+	<CAHQdGtTvPPXjSm8Aq6AefMec4UEUwL6+swwav8SSFMQJMDchCA@mail.gmail.com>
+	<20150909144935.51e3653b@tlielax.poochiereds.net>
+	<CAHQdGtS2BL+d9NvV5adG=Mts0Qx6_=5Fwo34+nbz-eMVepnnKg@mail.gmail.com>
+	<20150909151801.3fd2243f@tlielax.poochiereds.net>
+	<20150909204036.GD25750@fieldses.org>
+	<20150909170037.77776b5a@tlielax.poochiereds.net>
+	<20150909213907.GF25750@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: multipart/mixed; boundary="MP_/WuXl/4dwz0UysgsxNCrqJTN"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, 12 Sep 2015 04:41:33 +0000
-"Dilger, Andreas" <andreas.dilger@intel.com> wrote:
+--MP_/WuXl/4dwz0UysgsxNCrqJTN
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
-> On 2015/09/11, 4:20 AM, "HPDD-discuss on behalf of Jeff Layton"
-> <hpdd-discuss-bounces@lists.01.org on behalf of jlayton@poochiereds.net>
-> wrote:
-> 
-> >With NFSv3 nfsd will always attempt to send along WCC data to the
-> >client. This generally involves saving off the in-core inode information
-> >prior to doing the operation on the given filehandle, and then issuing a
-> >vfs_getattr to it after the op.
-> >
-> >Some filesystems (particularly clustered or networked ones) have an
-> >expensive ->getattr inode operation. Atomicitiy is also often difficult
-> >or impossible to guarantee on such filesystems. For those, we're best
-> >off not trying to provide WCC information to the client at all, and to
-> >simply allow it to poll for that information as needed with a GETATTR
-> >RPC.
-> >
-> >This patch adds a new flags field to struct export_operations, and
-> >defines a new EXPORT_OP_NOWCC flag that filesystems can use to indicate
-> >that nfsd should not attempt to provide WCC info in NFSv3 replies. It
-> >also adds a blurb about the new flags field and flag to the exporting
-> >documentation.
-> >
-> >The server will also now skip collecting this information for NFSv2 as
-> >well, since that info is never used there anyway.
-> >
-> >Note that this patch does not add this flag to any filesystem
-> >export_operations structures. This was originally developed to allow
-> >reexporting nfs via nfsd. That code is not (and may never be) suitable
-> >for merging into mainline.
-> >
-> >Other filesystems may want to consider enabling this flag too. It's hard
-> >to tell however which ones have export operations to enable export via
-> >knfsd and which ones mostly rely on them for open-by-filehandle support,
-> >so I'm leaving that up to the individual maintainers to decide. I am
-> >cc'ing the relevant lists for those filesystems that I think may want to
-> >consider adding this though.
-> >
-> >Cc: HPDD-discuss@lists.01.org
-> >Cc: ceph-devel@vger.kernel.org
-> >Cc: cluster-devel@redhat.com
-> >Cc: fuse-devel@lists.sourceforge.net
-> >Cc: ocfs2-devel@oss.oracle.com
-> >Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
-> >---
-> > Documentation/filesystems/nfs/Exporting | 27 +++++++++++++++++++++++++++
-> > fs/nfsd/nfs3xdr.c                       |  5 ++++-
-> > fs/nfsd/nfsfh.c                         | 14 ++++++++++++++
-> > fs/nfsd/nfsfh.h                         |  5 ++++-
-> > include/linux/exportfs.h                |  2 ++
-> > 5 files changed, 51 insertions(+), 2 deletions(-)
-> >
-> >diff --git a/Documentation/filesystems/nfs/Exporting
-> >b/Documentation/filesystems/nfs/Exporting
-> >index 520a4becb75c..fa636cde3907 100644
-> >--- a/Documentation/filesystems/nfs/Exporting
-> >+++ b/Documentation/filesystems/nfs/Exporting
-> >@@ -138,6 +138,11 @@ struct which has the following members:
-> >     to find potential names, and matches inode numbers to find the
-> >correct
-> >     match.
-> > 
-> >+  flags
-> >+    Some filesystems may need to be handled differently than others. The
-> >+    export_operations struct also includes a flags field that allows the
-> >+    filesystem to communicate such information to nfsd. See the Export
-> >+    Operations Flags section below for more explanation.
-> > 
-> > A filehandle fragment consists of an array of 1 or more 4byte words,
-> > together with a one byte "type".
-> >@@ -147,3 +152,25 @@ generated by encode_fh, in which case it will have
-> >been padded with
-> > nuls.  Rather, the encode_fh routine should choose a "type" which
-> > indicates the decode_fh how much of the filehandle is valid, and how
-> > it should be interpreted.
-> >+
-> >+Export Operations Flags
-> >+-----------------------
-> >+In addition to the operation vector pointers, struct export_operations
-> >also
-> >+contains a "flags" field that allows the filesystem to communicate to
-> >nfsd
-> >+that it may want to do things differently when dealing with it. The
-> >+following flags are defined:
-> >+
-> >+  EXPORT_OP_NOWCC
-> >+    RFC 1813 recommends that servers always send weak cache consistency
-> >+    (WCC) data to the client after each operation. The server should
-> >+    atomically collect attributes about the inode, do an operation on it,
-> >+    and then collect the attributes afterward. This allows the client to
-> >+    skip issuing GETATTRs in some situations but means that the server
-> >+    is calling vfs_getattr for almost all RPCs. On some filesystems
-> >+    (particularly those that are clustered or networked) this is
-> >expensive
-> >+    and atomicity is difficult to guarantee. This flag indicates to nfsd
-> >+    that it should skip providing WCC attributes to the client in NFSv3
-> >+    replies when doing operations on this filesystem. Consider enabling
-> >+    this on filesystems that have an expensive ->getattr inode operation,
-> >+    or when atomicity between pre and post operation attribute collection
-> >+    is impossible to guarantee.
-> >diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
-> >index 01dcd494f781..c30c8c604e2a 100644
-> >--- a/fs/nfsd/nfs3xdr.c
-> >+++ b/fs/nfsd/nfs3xdr.c
-> >@@ -203,7 +203,7 @@ static __be32 *
-> > encode_post_op_attr(struct svc_rqst *rqstp, __be32 *p, struct svc_fh
-> >*fhp)
-> > {
-> > 	struct dentry *dentry = fhp->fh_dentry;
-> >-	if (dentry && d_really_is_positive(dentry)) {
-> >+	if (!fhp->fh_no_wcc && dentry && d_really_is_positive(dentry)) {
-> > 	        __be32 err;
-> > 		struct kstat stat;
-> > 
-> >@@ -256,6 +256,9 @@ void fill_post_wcc(struct svc_fh *fhp)
-> > {
-> > 	__be32 err;
-> > 
-> >+	if (fhp->fh_no_wcc)
-> >+		return;
-> >+
-> > 	if (fhp->fh_post_saved)
-> > 		printk("nfsd: inode locked twice during operation.\n");
-> > 
-> >diff --git a/fs/nfsd/nfsfh.c b/fs/nfsd/nfsfh.c
-> >index 350041a40fe5..29ae37f62b9b 100644
-> >--- a/fs/nfsd/nfsfh.c
-> >+++ b/fs/nfsd/nfsfh.c
-> >@@ -267,6 +267,16 @@ static __be32 nfsd_set_fh_dentry(struct svc_rqst
-> >*rqstp, struct svc_fh *fhp)
-> > 
-> > 	fhp->fh_dentry = dentry;
-> > 	fhp->fh_export = exp;
-> >+
-> >+	switch (rqstp->rq_vers) {
-> >+	case 3:
-> >+		if (!(dentry->d_sb->s_export_op->flags & EXPORT_OP_NOWCC))
-> >+			break;
-> >+		/* Fallthrough */
-> >+	case 2:
-> >+		fhp->fh_no_wcc = true;
-> >+	}
-> >+
-> > 	return 0;
-> > out:
-> > 	exp_put(exp);
-> >@@ -535,6 +545,9 @@ fh_compose(struct svc_fh *fhp, struct svc_export
-> >*exp, struct dentry *dentry,
-> > 	 */
-> > 	 set_version_and_fsid_type(fhp, exp, ref_fh);
-> > 
-> >+	/* If we have a ref_fh, then copy the fh_no_wcc setting from it. */
-> >+	fhp->fh_no_wcc = ref_fh ? ref_fh->fh_no_wcc : false;
-> >+
-> > 	if (ref_fh == fhp)
-> > 		fh_put(ref_fh);
-> > 
-> >@@ -641,6 +654,7 @@ fh_put(struct svc_fh *fhp)
-> > 		exp_put(exp);
-> > 		fhp->fh_export = NULL;
-> > 	}
-> >+	fhp->fh_no_wcc = false;
-> > 	return;
-> > }
-> > 
-> >diff --git a/fs/nfsd/nfsfh.h b/fs/nfsd/nfsfh.h
-> >index 1e90dad4926b..9ddead4d98f8 100644
-> >--- a/fs/nfsd/nfsfh.h
-> >+++ b/fs/nfsd/nfsfh.h
-> >@@ -32,6 +32,7 @@ typedef struct svc_fh {
-> > 
-> > 	unsigned char		fh_locked;	/* inode locked by us */
-> > 	unsigned char		fh_want_write;	/* remount protection taken */
-> >+	bool			fh_no_wcc;	/* no wcc data needed */
-> 
-> This increases the size of svc_fh because it splits the four unsigned
-> chars.
-> You could change all of these (fh_locked, fh_want_write,
-> fh_{pre,post}saved)
-> to be bools to avoid that and make it more clear they are only used as
-> booleans (I verified that they all are only assigned 0 or 1).
-> 
+On Wed, 9 Sep 2015 17:39:07 -0400
+Bruce James Fields <bfields@fieldses.org> wrote:
 
-I don't think it matters, at least not on x86_64. bools and chars both
-require a byte. pahole does show this adding a new hole, but that's
-just because this brings the code up to 5 flags and the next field
-(fh_pre_size) needs to be aligned.
-
-I do agree that replacing those other unsigned chars with bools is more
-clear however. Maybe we should even replace them all with a single
-unsigned int and use bitops to set flags in there. That would be more
-space efficient now that we're at 5 flags.
-
-> Cheers, Andreas
+> On Wed, Sep 09, 2015 at 05:00:37PM -0400, Jeff Layton wrote:
+> > On Wed, 9 Sep 2015 16:40:36 -0400
+> > Bruce James Fields <bfields@fieldses.org> wrote:
+> > 
+> > > On Wed, Sep 09, 2015 at 03:18:01PM -0400, Jeff Layton wrote:
+> > > > On Wed, 9 Sep 2015 15:01:54 -0400
+> > > > Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+> > > > 
+> > > > > On Wed, Sep 9, 2015 at 2:49 PM, Jeff Layton <jeff.layton@primarydata.com> wrote:
+> > > > > > On Wed, 9 Sep 2015 13:49:44 -0400
+> > > > > > Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+> > > > > >
+> > > > > >> +Bruce, +Jeff...
+> > > > > >>
+> > > > > >> On Wed, Sep 9, 2015 at 1:12 PM, Trond Myklebust
+> > > > > >> <trond.myklebust@primarydata.com> wrote:
+> > > > > >> > On Wed, Sep 9, 2015 at 9:37 AM, Andrew W Elble <aweits@rit.edu> wrote:
+> > > > > >> >>
+> > > > > >> >> In attempting to troubleshoot other issues, we've run into this race
+> > > > > >> >> with 4.1.4 (both client and server) with a few cherry-picked patches
+> > > > > >> >> from upstream. This is my attempt at a redacted packet-capture.
+> > > > > >> >>
+> > > > > >> >> These all affect the same fh/stateid:
+> > > > > >> >>
+> > > > > >> >> 116 -> OPEN (will be an upgrade / for write)
+> > > > > >> >> 117 -> OPEN_DOWNGRADE (to read for the existing stateid / seqid = 0x6
+> > > > > >> >>
+> > > > > >> >> 121 -> OPEN_DOWNGRADE (completed last / seqid = 0x8)
+> > > > > >> >> 122 -> OPEN (completed first / seqid = 0x7)
+> > > > > >> >>
+> > > > > >> >> Attempts to write using that stateid fail because the stateid doesn't
+> > > > > >> >> have write access.
+> > > > > >> >>
+> > > > > >> >> Any thoughts? I can share more data from the capture if needed.
+> > > > > >> >
+> > > > > >> > Bruce & Jeff,
+> > > > > >> >
+> > > > > >> > Given that the client sent a non-zero seqid, why is the OPEN_DOWNGRADE
+> > > > > >> > being executed after the OPEN here? Surely, if that is the case, the
+> > > > > >> > server should be returning NFS4ERR_OLD_STATEID and failing the
+> > > > > >> > OPEN_DOWNGRADE operation?
+> > > > > >> >
+> > > > > >
+> > > > > > The problem there is that we do the seqid checks at the beginning of
+> > > > > > the operation. In this case it's likely that it was 0x6 when the
+> > > > > > OPEN_DOWNGRADE started. The OPEN completed first though and bumped the
+> > > > > > seqid, and then the downgrade finished and bumped it again. When we bump
+> > > > > > the seqid we don't verify it against what came in originally.
+> > > > > >
+> > > > > > The question is whether that's wrong from the POV of the spec. RFC5661
+> > > > > > doesn't seem to explicitly require that we serialize such operations on
+> > > > > > the server. The closest thing I can find is this in 3.3.12:
+> > > > > 
+> > > > > RFC5661, section 8.2.2
+> > > > >   Except for layout stateids (Section 12.5.3), when a client sends a
+> > > > >    stateid to the server, it has two choices with regard to the seqid
+> > > > >    sent.  It may set the seqid to zero to indicate to the server that it
+> > > > >    wishes the most up-to-date seqid for that stateid's "other" field to
+> > > > >    be used.  This would be the common choice in the case of a stateid
+> > > > >    sent with a READ or WRITE operation.  It also may set a non-zero
+> > > > >    value, in which case the server checks if that seqid is the correct
+> > > > >    one.  In that case, the server is required to return
+> > > > >    NFS4ERR_OLD_STATEID if the seqid is lower than the most current value
+> > > > >    and NFS4ERR_BAD_STATEID if the seqid is greater than the most current
+> > > > >    value.  This would be the common choice in the case of stateids sent
+> > > > >    with a CLOSE or OPEN_DOWNGRADE.  Because OPENs may be sent in
+> > > > >    parallel for the same owner, a client might close a file without
+> > > > >    knowing that an OPEN upgrade had been done by the server, changing
+> > > > >    the lock in question.  If CLOSE were sent with a zero seqid, the OPEN
+> > > > >    upgrade would be cancelled before the client even received an
+> > > > >    indication that an upgrade had happened.
+> > > > > 
+> > > > > The suggestion there is clearly that the client can rely on the server
+> > > > > not reordering those CLOSE/OPEN_DOWNGRADE operations w.r.t. a parallel
+> > > > > OPEN. Otherwise, what is the difference between sending a non-zero
+> > > > > seqid and zero?
+> > > > > 
+> > > > > > "The server is required to increment the "seqid" field by
+> > > > > >  one at each transition of the stateid.  This is important since the
+> > > > > >  client will inspect the seqid in OPEN stateids to determine the order
+> > > > > >  of OPEN processing done by the server."
+> > > > > >
+> > > > > > If we do need to fix this on the server, it's likely to be pretty ugly:
+> > > > > >
+> > > > > > We'd either need to serialize seqid morphing operations (ugh), or make
+> > > > > > update_stateid do an cmpxchg to swap it into place (or add some extra
+> > > > > > locking around it), and then have some way to unwind all of the changes
+> > > > > > if that fails. That may be impossible however -- we're likely closing
+> > > > > > struct files after all.
+> > > > > 
+> > > > > Updates to the state are already required to be atomic. You can't have
+> > > > > a stateid where an OPEN_DOWNGRADE or CLOSE only partially succeeded.
+> > > > > 
+> > > > > >
+> > > > > > Now, all of that said, I think the client has some bugs in its seqid
+> > > > > > handling as well. It should have realized that the stateid was a r/o
+> > > > > > one after the OPEN_DOWNGRADE came back with the higher seqid, but it
+> > > > > > still issued a WRITE just afterward. That seems wrong.
+> > > > > 
+> > > > > No. The client is relying on the server not reordering the
+> > > > > OPEN_DOWNGRADE. It expects either for the OPEN to happen first, and
+> > > > > the OPEN_DOWNGRADE to fail, or for the OPEN_DOWNGRADE to happen first,
+> > > > > and for both operations to succeed.
+> > > > > 
+> > > > > Trond
+> > > > 
+> > > > In that case, the "simple" fix would be to add a mutex to
+> > > > nfs4_ol_stateid. Lock that in nfs4_preprocess_seqid_op, and ensure that
+> > > > we unlock it after bumping the seqid (or on error).
+> > > > 
+> > > > Bruce, any thoughts?
+> > > 
+> > > Why isn't nfsd4_cstate_assign_replay()/nfsd4_cstate_clear_replay()
+> > > already doing this with the so_replay.rp_mutex lock?
+> > > 
+> > > Looking at it.... OK, sorry, that's 4.0 only.  I don't know if that
+> > > should be shared in the session case.
+> > > 
+> > 
+> > Yeah, that's probably a bit heavyweight for v4.1. That mutex is in the
+> > stateowner struct. The same stateowner could be opening different
+> > files, and we wouldn't want to serialize those. I think we'd need
+> > something in the stateid struct itself.
+> > 
+> > Trond also pointed out that we don't really need to serialize OPEN
+> > calls, so we might be best off with something like a rw semaphore. Take
+> > the read lock in OPEN, and the write lock for OPEN_DOWNGRADE/CLOSE.
+> > LOCK/LOCKU will also need similar treatment of course.
 > 
-> > 
-> > #ifdef CONFIG_NFSD_V3
-> > 	unsigned char		fh_post_saved;	/* post-op attrs saved */
-> >@@ -51,7 +52,6 @@ typedef struct svc_fh {
-> > 	struct kstat		fh_post_attr;	/* full attrs after operation */
-> > 	u64			fh_post_change; /* nfsv4 change; see above */
-> > #endif /* CONFIG_NFSD_V3 */
-> >-
-> > } svc_fh;
-> > 
-> > enum nfsd_fsid {
-> >@@ -225,6 +225,9 @@ fill_pre_wcc(struct svc_fh *fhp)
-> > {
-> > 	struct inode    *inode;
-> > 
-> >+	if (fhp->fh_no_wcc)
-> >+		return;
-> >+
-> > 	inode = d_inode(fhp->fh_dentry);
-> > 	if (!fhp->fh_pre_saved) {
-> > 		fhp->fh_pre_mtime = inode->i_mtime;
-> >diff --git a/include/linux/exportfs.h b/include/linux/exportfs.h
-> >index fa05e04c5531..600c3fccc999 100644
-> >--- a/include/linux/exportfs.h
-> >+++ b/include/linux/exportfs.h
-> >@@ -214,6 +214,8 @@ struct export_operations {
-> > 			  bool write, u32 *device_generation);
-> > 	int (*commit_blocks)(struct inode *inode, struct iomap *iomaps,
-> > 			     int nr_iomaps, struct iattr *iattr);
-> >+#define	EXPORT_OP_NOWCC		(0x1)	/* Don't collect wcc data for NFSv3
-> >replies */
-> >+	unsigned long	flags;
-> > };
-> > 
-> > extern int exportfs_encode_inode_fh(struct inode *inode, struct fid *fid,
-> >-- 
-> >2.4.3
-> >
-> >_______________________________________________
-> >HPDD-discuss mailing list
-> >HPDD-discuss@lists.01.org
-> >https://lists.01.org/mailman/listinfo/hpdd-discuss
-> >
+> OK, I think I agree.  LOCK and LOCKU both need exclusive locks, right?
 > 
+> > I'm not sure about LAYOUTGET/LAYOUTRETURN/CLOSE though.
 > 
-> Cheers, Andreas
+> Me neither.
+> 
+> --b.
 
+Andrew, could you test this patch out? This just covers open and lock
+stateids. If it works, I'll clean up the comments and resend it to the
+list as a PATCH email.
+
+Assuming that it does, we'll need to consider what (if anything) to do
+about layout stateids...
 
 -- 
-Jeff Layton <jlayton@poochiereds.net>
+Jeff Layton <jeff.layton@primarydata.com>
+
+--MP_/WuXl/4dwz0UysgsxNCrqJTN
+Content-Type: text/x-patch
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename=0001-nfsd-serialize-state-seqid-morphing-operations.patch
+
+
+--MP_/WuXl/4dwz0UysgsxNCrqJTN--
