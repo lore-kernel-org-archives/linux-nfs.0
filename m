@@ -1,61 +1,117 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-lb0-f177.google.com ([209.85.217.177]:36446 "EHLO
-	mail-lb0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752735AbbIKWMT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Sep 2015 18:12:19 -0400
-MIME-Version: 1.0
-In-Reply-To: <20150911211617.GF11677@fieldses.org>
-References: <1441448856-13478-1-git-send-email-agruenba@redhat.com>
-	<1441448856-13478-11-git-send-email-agruenba@redhat.com>
-	<20150911211617.GF11677@fieldses.org>
-Date: Sat, 12 Sep 2015 00:12:16 +0200
-Message-ID: <CAHpGcMJofUKKumcUe=6LOFZrVcJRM5APchbCQpfQzbMK7N1FYg@mail.gmail.com>
-Subject: Re: [RFC v7 10/41] richacl: Permission check algorithm
-From: =?UTF-8?Q?Andreas_Gr=C3=BCnbacher?= <andreas.gruenbacher@gmail.com>
+Received: from mail-pa0-f53.google.com ([209.85.220.53]:35609 "EHLO
+	mail-pa0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752100AbbILBey (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Sep 2015 21:34:54 -0400
+Received: by pacfv12 with SMTP id fv12so90942327pac.2
+        for <linux-nfs@vger.kernel.org>; Fri, 11 Sep 2015 18:34:53 -0700 (PDT)
+Subject: Re: [PATCH] Sunrpc: Supports hexadecimal number for sysctl files of
+ sunrpc debug
 To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Andreas Gruenbacher <agruenba@redhat.com>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        Linux FS-devel Mailing List <linux-fsdevel@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Linux API Mailing List <linux-api@vger.kernel.org>,
-        linux-cifs@vger.kernel.org,
-        LSM List <linux-security-module@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+References: <55F17A7E.50406@gmail.com> <20150911212320.GG11677@fieldses.org>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        kinglongmee@gmail.com
+From: Kinglong Mee <kinglongmee@gmail.com>
+Message-ID: <55F38130.7020802@gmail.com>
+Date: Sat, 12 Sep 2015 09:34:40 +0800
+MIME-Version: 1.0
+In-Reply-To: <20150911212320.GG11677@fieldses.org>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-2015-09-11 23:16 GMT+02:00 J. Bruce Fields <bfields@fieldses.org>:
-> On Sat, Sep 05, 2015 at 12:27:05PM +0200, Andreas Gruenbacher wrote:
->> +             /*
->> +              * Apply the group file mask to entries other than owner@ and
->> +              * everyone@ or user entries matching the owner.  This ensures
->> +              * that we grant the same permissions as the acl computed by
->> +              * richacl_apply_masks().
->> +              *
->> +              * Without this restriction, the following richacl would grant
->> +              * rw access to processes which are both the owner and in the
->> +              * owning group, but not to other users in the owning group,
->> +              * which could not be represented without masks:
->> +              *
->> +              *  owner:rw::mask
->> +              *  group@:rw::allow
->> +              */
->> +             if ((acl->a_flags & RICHACL_MASKED) && richace_is_allow(ace))
->> +                     ace_mask &= acl->a_group_mask;
->
-> I'm having trouble understanding this.  I think the problem is that I
-> don't really understand the notation in your example.  Is a_group_mask
-> zero in that example?  I think it must be, in which case, OK I think I
-> get it.
+On 9/12/2015 05:23, J. Bruce Fields wrote:
+> On Thu, Sep 10, 2015 at 08:41:34PM +0800, Kinglong Mee wrote:
+>> The sunrpc debug sysctl files only accept decimal number right now.
+>> But all the XXXDBUG_XXX macros are defined as hexadecimal.
+>> It is not easy to set or check an separate flag.
+>>
+>> This patch let those files support accepting hexadecimal number,
+>> (decimal number is also supported). Also, display it as hexadecimal.
+> 
+> That potentially breaks backwards-compatibility if an program that reads
+> this file isn't prepared to accept a hexadecimal value.
+> 
+> That said, rpcdebug seems OK (it uses strtoul(.,.,0), which I think
+> should parse that fine?), and it may well be the only program that
+> actually parses this, so....  I suppose it's OK with me if it's OK with
+> Trond.
 
-Yes. I'm not sure if the example becomes easier to understand when the
-empty group mask and perhaps also the other mask is included.
+Thanks for your comments.
+I have test of rpcdebug, it's OK when showing the debug flags.
 
-> (Though I still have to think about it a little more to convince myself
-> that richacl_apply_masks() always gets the same result.)
+> 
+> --b.
+> 
+>>
+>> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+>> ---
+>>  net/sunrpc/sysctl.c | 26 +++++++++++++++-----------
+>>  1 file changed, 15 insertions(+), 11 deletions(-)
+>>
+>> diff --git a/net/sunrpc/sysctl.c b/net/sunrpc/sysctl.c
+>> index 887f018..8e85e6f 100644
+>> --- a/net/sunrpc/sysctl.c
+>> +++ b/net/sunrpc/sysctl.c
+>> @@ -76,7 +76,7 @@ static int
+>>  proc_dodebug(struct ctl_table *table, int write,
+>>  				void __user *buffer, size_t *lenp, loff_t *ppos)
+>>  {
+>> -	char		tmpbuf[20], c, *s;
+>> +	char		tmpbuf[20], c, *s = NULL;
+>>  	char __user *p;
+>>  	unsigned int	value;
+>>  	size_t		left, len;
+>> @@ -103,23 +103,27 @@ proc_dodebug(struct ctl_table *table, int write,
+>>  			return -EFAULT;
+>>  		tmpbuf[left] = '\0';
+>>  
+>> -		for (s = tmpbuf, value = 0; '0' <= *s && *s <= '9'; s++, left--)
+>> -			value = 10 * value + (*s - '0');
+>> -		if (*s && !isspace(*s))
+>> -			return -EINVAL;
+>> -		while (left && isspace(*s))
+>> -			left--, s++;
+>> +		if (tmpbuf[0] == '0' && tmpbuf[1] == 'x')
+>> +			value = simple_strtol(tmpbuf, &s, 16);
 
-I have tried to break the algorithm into digestible pieces. Do you see
-another way to make things easier to understand?
+It's a duplicate of this.
 
-Thanks,
-Andreas
+>> +		else
+>> +			value = simple_strtol(tmpbuf, &s, 0);
+>> +		if (s) {
+>> +			if (!isspace(*s))
+
+It's a bug of checking '\0' here.
+
+I will fix those problems in new version.
+
+thanks,
+Kinglong Mee
+
+>> +				return -EINVAL;
+>> +			left -= (s - tmpbuf);
+>> +			while (left && isspace(*s))
+>> +				left--, s++;
+>> +		} else
+>> +			left = 0;
+>>  		*(unsigned int *) table->data = value;
+>>  		/* Display the RPC tasks on writing to rpc_debug */
+>>  		if (strcmp(table->procname, "rpc_debug") == 0)
+>>  			rpc_show_tasks(&init_net);
+>>  	} else {
+>> -		if (!access_ok(VERIFY_WRITE, buffer, left))
+>> -			return -EFAULT;
+>> -		len = sprintf(tmpbuf, "%d", *(unsigned int *) table->data);
+>> +		len = sprintf(tmpbuf, "0x%04x", *(unsigned int *) table->data);
+>>  		if (len > left)
+>>  			len = left;
+>> -		if (__copy_to_user(buffer, tmpbuf, len))
+>> +		if (copy_to_user(buffer, tmpbuf, len))
+>>  			return -EFAULT;
+>>  		if ((left -= len) > 0) {
+>>  			if (put_user('\n', (char __user *)buffer + len))
+>> -- 
+>> 2.5.0
+> 
