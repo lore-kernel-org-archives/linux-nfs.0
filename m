@@ -1,19 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yk0-f179.google.com ([209.85.160.179]:33909 "EHLO
-	mail-yk0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754474AbbILMKl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 12 Sep 2015 08:10:41 -0400
-Received: by ykdg206 with SMTP id g206so115199370ykd.1
-        for <linux-nfs@vger.kernel.org>; Sat, 12 Sep 2015 05:10:40 -0700 (PDT)
-Date: Sat, 12 Sep 2015 08:10:37 -0400
-From: Jeff Layton <jeff.layton@primarydata.com>
-To: Bruce James Fields <bfields@fieldses.org>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Andrew W Elble <aweits@rit.edu>,
+Received: from discipline.rit.edu ([129.21.6.207]:13098 "HELO
+	discipline.rit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1754507AbbILM1P (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 12 Sep 2015 08:27:15 -0400
+From: Andrew W Elble <aweits@rit.edu>
+To: Jeff Layton <jeff.layton@primarydata.com>
+Cc: Bruce James Fields <bfields@fieldses.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>
 Subject: Re: upgrade/downgrade race
-Message-ID: <20150912081037.6658649c@tlielax.poochiereds.net>
-In-Reply-To: <20150909213907.GF25750@fieldses.org>
 References: <m2h9n3btno.fsf@discipline.rit.edu>
 	<CAHQdGtQ84tUFEXaUwSngAmQst3NbjZDCSwB2jtqRqR29R4wBWg@mail.gmail.com>
 	<CAHQdGtTvPPXjSm8Aq6AefMec4UEUwL6+swwav8SSFMQJMDchCA@mail.gmail.com>
@@ -23,171 +18,28 @@ References: <m2h9n3btno.fsf@discipline.rit.edu>
 	<20150909204036.GD25750@fieldses.org>
 	<20150909170037.77776b5a@tlielax.poochiereds.net>
 	<20150909213907.GF25750@fieldses.org>
+	<20150912081037.6658649c@tlielax.poochiereds.net>
+Date: Sat, 12 Sep 2015 08:27:14 -0400
+In-Reply-To: <20150912081037.6658649c@tlielax.poochiereds.net> (Jeff Layton's
+	message of "Sat, 12 Sep 2015 08:10:37 -0400")
+Message-ID: <m27fnvx1p9.fsf@discipline.rit.edu>
 MIME-Version: 1.0
-Content-Type: multipart/mixed; boundary="MP_/WuXl/4dwz0UysgsxNCrqJTN"
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---MP_/WuXl/4dwz0UysgsxNCrqJTN
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+> Andrew, could you test this patch out? This just covers open and lock
+> stateids. If it works, I'll clean up the comments and resend it to the
+> list as a PATCH email.
 
-On Wed, 9 Sep 2015 17:39:07 -0400
-Bruce James Fields <bfields@fieldses.org> wrote:
+Will do, thank you!
 
-> On Wed, Sep 09, 2015 at 05:00:37PM -0400, Jeff Layton wrote:
-> > On Wed, 9 Sep 2015 16:40:36 -0400
-> > Bruce James Fields <bfields@fieldses.org> wrote:
-> > 
-> > > On Wed, Sep 09, 2015 at 03:18:01PM -0400, Jeff Layton wrote:
-> > > > On Wed, 9 Sep 2015 15:01:54 -0400
-> > > > Trond Myklebust <trond.myklebust@primarydata.com> wrote:
-> > > > 
-> > > > > On Wed, Sep 9, 2015 at 2:49 PM, Jeff Layton <jeff.layton@primarydata.com> wrote:
-> > > > > > On Wed, 9 Sep 2015 13:49:44 -0400
-> > > > > > Trond Myklebust <trond.myklebust@primarydata.com> wrote:
-> > > > > >
-> > > > > >> +Bruce, +Jeff...
-> > > > > >>
-> > > > > >> On Wed, Sep 9, 2015 at 1:12 PM, Trond Myklebust
-> > > > > >> <trond.myklebust@primarydata.com> wrote:
-> > > > > >> > On Wed, Sep 9, 2015 at 9:37 AM, Andrew W Elble <aweits@rit.edu> wrote:
-> > > > > >> >>
-> > > > > >> >> In attempting to troubleshoot other issues, we've run into this race
-> > > > > >> >> with 4.1.4 (both client and server) with a few cherry-picked patches
-> > > > > >> >> from upstream. This is my attempt at a redacted packet-capture.
-> > > > > >> >>
-> > > > > >> >> These all affect the same fh/stateid:
-> > > > > >> >>
-> > > > > >> >> 116 -> OPEN (will be an upgrade / for write)
-> > > > > >> >> 117 -> OPEN_DOWNGRADE (to read for the existing stateid / seqid = 0x6
-> > > > > >> >>
-> > > > > >> >> 121 -> OPEN_DOWNGRADE (completed last / seqid = 0x8)
-> > > > > >> >> 122 -> OPEN (completed first / seqid = 0x7)
-> > > > > >> >>
-> > > > > >> >> Attempts to write using that stateid fail because the stateid doesn't
-> > > > > >> >> have write access.
-> > > > > >> >>
-> > > > > >> >> Any thoughts? I can share more data from the capture if needed.
-> > > > > >> >
-> > > > > >> > Bruce & Jeff,
-> > > > > >> >
-> > > > > >> > Given that the client sent a non-zero seqid, why is the OPEN_DOWNGRADE
-> > > > > >> > being executed after the OPEN here? Surely, if that is the case, the
-> > > > > >> > server should be returning NFS4ERR_OLD_STATEID and failing the
-> > > > > >> > OPEN_DOWNGRADE operation?
-> > > > > >> >
-> > > > > >
-> > > > > > The problem there is that we do the seqid checks at the beginning of
-> > > > > > the operation. In this case it's likely that it was 0x6 when the
-> > > > > > OPEN_DOWNGRADE started. The OPEN completed first though and bumped the
-> > > > > > seqid, and then the downgrade finished and bumped it again. When we bump
-> > > > > > the seqid we don't verify it against what came in originally.
-> > > > > >
-> > > > > > The question is whether that's wrong from the POV of the spec. RFC5661
-> > > > > > doesn't seem to explicitly require that we serialize such operations on
-> > > > > > the server. The closest thing I can find is this in 3.3.12:
-> > > > > 
-> > > > > RFC5661, section 8.2.2
-> > > > >   Except for layout stateids (Section 12.5.3), when a client sends a
-> > > > >    stateid to the server, it has two choices with regard to the seqid
-> > > > >    sent.  It may set the seqid to zero to indicate to the server that it
-> > > > >    wishes the most up-to-date seqid for that stateid's "other" field to
-> > > > >    be used.  This would be the common choice in the case of a stateid
-> > > > >    sent with a READ or WRITE operation.  It also may set a non-zero
-> > > > >    value, in which case the server checks if that seqid is the correct
-> > > > >    one.  In that case, the server is required to return
-> > > > >    NFS4ERR_OLD_STATEID if the seqid is lower than the most current value
-> > > > >    and NFS4ERR_BAD_STATEID if the seqid is greater than the most current
-> > > > >    value.  This would be the common choice in the case of stateids sent
-> > > > >    with a CLOSE or OPEN_DOWNGRADE.  Because OPENs may be sent in
-> > > > >    parallel for the same owner, a client might close a file without
-> > > > >    knowing that an OPEN upgrade had been done by the server, changing
-> > > > >    the lock in question.  If CLOSE were sent with a zero seqid, the OPEN
-> > > > >    upgrade would be cancelled before the client even received an
-> > > > >    indication that an upgrade had happened.
-> > > > > 
-> > > > > The suggestion there is clearly that the client can rely on the server
-> > > > > not reordering those CLOSE/OPEN_DOWNGRADE operations w.r.t. a parallel
-> > > > > OPEN. Otherwise, what is the difference between sending a non-zero
-> > > > > seqid and zero?
-> > > > > 
-> > > > > > "The server is required to increment the "seqid" field by
-> > > > > >  one at each transition of the stateid.  This is important since the
-> > > > > >  client will inspect the seqid in OPEN stateids to determine the order
-> > > > > >  of OPEN processing done by the server."
-> > > > > >
-> > > > > > If we do need to fix this on the server, it's likely to be pretty ugly:
-> > > > > >
-> > > > > > We'd either need to serialize seqid morphing operations (ugh), or make
-> > > > > > update_stateid do an cmpxchg to swap it into place (or add some extra
-> > > > > > locking around it), and then have some way to unwind all of the changes
-> > > > > > if that fails. That may be impossible however -- we're likely closing
-> > > > > > struct files after all.
-> > > > > 
-> > > > > Updates to the state are already required to be atomic. You can't have
-> > > > > a stateid where an OPEN_DOWNGRADE or CLOSE only partially succeeded.
-> > > > > 
-> > > > > >
-> > > > > > Now, all of that said, I think the client has some bugs in its seqid
-> > > > > > handling as well. It should have realized that the stateid was a r/o
-> > > > > > one after the OPEN_DOWNGRADE came back with the higher seqid, but it
-> > > > > > still issued a WRITE just afterward. That seems wrong.
-> > > > > 
-> > > > > No. The client is relying on the server not reordering the
-> > > > > OPEN_DOWNGRADE. It expects either for the OPEN to happen first, and
-> > > > > the OPEN_DOWNGRADE to fail, or for the OPEN_DOWNGRADE to happen first,
-> > > > > and for both operations to succeed.
-> > > > > 
-> > > > > Trond
-> > > > 
-> > > > In that case, the "simple" fix would be to add a mutex to
-> > > > nfs4_ol_stateid. Lock that in nfs4_preprocess_seqid_op, and ensure that
-> > > > we unlock it after bumping the seqid (or on error).
-> > > > 
-> > > > Bruce, any thoughts?
-> > > 
-> > > Why isn't nfsd4_cstate_assign_replay()/nfsd4_cstate_clear_replay()
-> > > already doing this with the so_replay.rp_mutex lock?
-> > > 
-> > > Looking at it.... OK, sorry, that's 4.0 only.  I don't know if that
-> > > should be shared in the session case.
-> > > 
-> > 
-> > Yeah, that's probably a bit heavyweight for v4.1. That mutex is in the
-> > stateowner struct. The same stateowner could be opening different
-> > files, and we wouldn't want to serialize those. I think we'd need
-> > something in the stateid struct itself.
-> > 
-> > Trond also pointed out that we don't really need to serialize OPEN
-> > calls, so we might be best off with something like a rw semaphore. Take
-> > the read lock in OPEN, and the write lock for OPEN_DOWNGRADE/CLOSE.
-> > LOCK/LOCKU will also need similar treatment of course.
-> 
-> OK, I think I agree.  LOCK and LOCKU both need exclusive locks, right?
-> 
-> > I'm not sure about LAYOUTGET/LAYOUTRETURN/CLOSE though.
-> 
-> Me neither.
-> 
-> --b.
-
-Andrew, could you test this patch out? This just covers open and lock
-stateids. If it works, I'll clean up the comments and resend it to the
-list as a PATCH email.
-
-Assuming that it does, we'll need to consider what (if anything) to do
-about layout stateids...
+> Assuming that it does, we'll need to consider what (if anything) to do
+> about layout stateids...
 
 -- 
-Jeff Layton <jeff.layton@primarydata.com>
-
---MP_/WuXl/4dwz0UysgsxNCrqJTN
-Content-Type: text/x-patch
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
- filename=0001-nfsd-serialize-state-seqid-morphing-operations.patch
-
-
---MP_/WuXl/4dwz0UysgsxNCrqJTN--
+Andrew W. Elble
+aweits@discipline.rit.edu
+Infrastructure Engineer, Communications Technical Lead
+Rochester Institute of Technology
+PGP: BFAD 8461 4CCF DC95 DA2C B0EB 965B 082E 863E C912
