@@ -1,58 +1,61 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from ipmail05.adl6.internode.on.net ([150.101.137.143]:39944 "EHLO
-	ipmail05.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751417AbbIMXZc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 13 Sep 2015 19:25:32 -0400
-Date: Mon, 14 Sep 2015 09:25:29 +1000
-From: Dave Chinner <david@fromorbit.com>
-To: Andy Lutomirski <luto@amacapital.net>
-Cc: "Darrick J. Wong" <darrick.wong@oracle.com>,
-        =?iso-8859-1?Q?P=E1draig?= Brady <P@draigbrady.com>,
-        Anna Schumaker <Anna.Schumaker@netapp.com>, linux-nfs@vger.kernel.org,
-        Linux btrfs Developers List <linux-btrfs@vger.kernel.org>,
-        Linux FS Devel <linux-fsdevel@vger.kernel.org>,
-        Linux API <linux-api@vger.kernel.org>, Zach Brown <zab@zabbo.net>,
-        Al Viro <viro@zeniv.linux.org.uk>, Chris Mason <clm@fb.com>,
-        Michael Kerrisk-manpages <mtk.manpages@gmail.com>, andros@netapp.com,
-        Christoph Hellwig <hch@infradead.org>, Coreutils <coreutils@gnu.org>
-Subject: Re: [PATCH v1 0/8] VFS: In-kernel copy system call
-Message-ID: <20150913232529.GT26895@dastard>
-References: <1441397823-1203-1-git-send-email-Anna.Schumaker@Netapp.com>
- <55EEFCEE.5090000@draigBrady.com>
- <55EF279B.3020101@Netapp.com>
- <CALCETrXxRB-LXVb+=nkwfj0zEjWuXXTctkSAc9Oec0fgyOQ5Yg@mail.gmail.com>
- <55EF3EFD.3080302@draigBrady.com>
- <20150908212907.GD30681@birch.djwong.org>
- <CALCETrWAotvN+MBsxq4QLQBr_WAyydqMnipcaTM88rM8sSx43w@mail.gmail.com>
- <20150908223959.GE30681@birch.djwong.org>
- <CALCETrVsWBdqvAgwxHcG=gbcWRNPG2ZziWUg1g=siKDrDu7S2Q@mail.gmail.com>
+Received: from mout.web.de ([212.227.17.12]:55656 "EHLO mout.web.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754162AbbINL4k (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 14 Sep 2015 07:56:40 -0400
+Subject: Re: [PATCH 00/39] drop null test before destroy functions
+To: Julia Lawall <Julia.Lawall@lip6.fr>, kernel-janitors@vger.kernel.org
+References: <1442146532-9100-1-git-send-email-Julia.Lawall@lip6.fr>
+Cc: iommu@lists.linux-foundation.org, dccp@vger.kernel.org,
+        dri-devel@lists.freedesktop.org, intel-gfx@lists.freedesktop.org,
+        ecryptfs@vger.kernel.org, dmaengine@vger.kernel.org,
+        sergey.senozhatsky@gmail.com, Dan Williams <dan.j.williams@intel.com>,
+        cluster-devel@redhat.com, intel-wired-lan@lists.osuosl.org,
+        Mitch Williams <mitch.a.williams@intel.com>,
+        John Ronciak <john.ronciak@intel.com>,
+        Matthew Vick <matthew.vick@intel.com>,
+        Don Skidmore <donald.c.skidmore@intel.com>,
+        Carolyn Wyborny <carolyn.wyborny@intel.com>,
+        Shannon Nelson <shannon.nelson@intel.com>,
+        Jesse Brandeburg <jesse.brandeburg@intel.com>,
+        linux-nfs@vger.kernel.org, linux-raid@vger.kernel.org,
+        netdev@vger.kernel.org, linux-atm-general@lists.sourceforge.net,
+        linux-btrfs@vger.kernel.org, linux-nilfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-mtd@lists.infradead.org,
+        linux-usb@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-rdma@vger.kernel.org, devel@driverdev.osuosl.org,
+        HPDD-discuss@ml01.01.org, linux-bcache@vger.kernel.org,
+        drbd-user@lists.linbit.com, ocfs2-devel@oss.oracle.com,
+        kvm@vger.kernel.org, ceph-devel@vger.kernel.org,
+        Chao Yu <chao2.yu@samsung.com>, linux-f2fs-devel@lists.sourceforge.net
+From: SF Markus Elfring <elfring@users.sourceforge.net>
+Message-ID: <55F6B59A.4040104@users.sourceforge.net>
+Date: Mon, 14 Sep 2015 13:55:06 +0200
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CALCETrVsWBdqvAgwxHcG=gbcWRNPG2ZziWUg1g=siKDrDu7S2Q@mail.gmail.com>
+In-Reply-To: <1442146532-9100-1-git-send-email-Julia.Lawall@lip6.fr>
+Content-Type: text/plain; charset=iso-8859-15
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Sep 08, 2015 at 04:08:43PM -0700, Andy Lutomirski wrote:
-> Can we have a clean way to figure out whether two file ranges are the
-> same in a way that allows false negatives?  I.e. return 1 if the
-> ranges are reflinks of each other and 0 if not?  Pretty please?  I've
-> implemented that in the past on btrfs by syncing the ranges and then
-> comparing FIEMAP output, but that's hideous.
+> Recent commits to kernel/git/torvalds/linux.git have made the following
+> functions able to tolerate NULL arguments:
+>
+> kmem_cache_destroy (commit 3942d29918522)
+> mempool_destroy (commit 4e3ca3e033d1)
+> dma_pool_destroy (commit 44d7175da6ea)
 
-That fundamentally doesn't work for userspace, because the moment
-the filesystem drops it's locks on the inodes in the kernel after
-doing the comparison the mappings can change.  IOWs, by the time the
-information gets back to userspace, it's already wrong. e.g. cp made
-this mistake by trying to use FIEMAP to optimise hole detection in
-files and ended up with corrupt copies.
+How do you think about to extend an other SmPL script?
 
-It really doesn't matter what the syscall/ioctl interface is, trying
-to make application logic decisions based on inode block mappings
-from userspace is racy and not safe and will go wrong...
+Related topic:
+scripts/coccinelle/free: Delete NULL test before freeing functions
+https://systeme.lip6.fr/pipermail/cocci/2015-May/001960.html
+https://www.mail-archive.com/cocci@systeme.lip6.fr/msg01855.html
 
-Cheers,
 
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+> If these changes are OK, I will address the remainder later.
+
+Would anybody like to reuse my general SmPL approach for similar source
+code clean-up?
+
+Regards,
+Markus
