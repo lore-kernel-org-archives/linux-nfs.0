@@ -1,45 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yk0-f169.google.com ([209.85.160.169]:34216 "EHLO
-	mail-yk0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751789AbbINOTW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Sep 2015 10:19:22 -0400
-Received: by ykdg206 with SMTP id g206so153680948ykd.1
-        for <linux-nfs@vger.kernel.org>; Mon, 14 Sep 2015 07:19:21 -0700 (PDT)
-Date: Mon, 14 Sep 2015 10:19:18 -0400
-From: Jeff Layton <jlayton@poochiereds.net>
-To: Al Viro <viro@ZenIV.linux.org.uk>
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org,
+Received: from fieldses.org ([173.255.197.46]:50247 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752190AbbINOsi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 14 Sep 2015 10:48:38 -0400
+Date: Mon, 14 Sep 2015 10:48:37 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@poochiereds.net>
+Cc: Al Viro <viro@ZenIV.linux.org.uk>, linux-nfs@vger.kernel.org,
         linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH 3/4] fs: add fput_queue
-Message-ID: <20150914101918.3d9c9235@tlielax.poochiereds.net>
-In-Reply-To: <20150914141539.GS22011@ZenIV.linux.org.uk>
+Subject: Re: [PATCH 0/4] fs: allow userland tasks to use delayed_fput
+ infrastructure
+Message-ID: <20150914144837.GA4332@fieldses.org>
 References: <1442238355-8203-1-git-send-email-jeff.layton@primarydata.com>
-	<1442238355-8203-4-git-send-email-jeff.layton@primarydata.com>
-	<20150914141539.GS22011@ZenIV.linux.org.uk>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1442238355-8203-1-git-send-email-jeff.layton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 14 Sep 2015 15:15:39 +0100
-Al Viro <viro@ZenIV.linux.org.uk> wrote:
-
-> On Mon, Sep 14, 2015 at 09:45:54AM -0400, Jeff Layton wrote:
-> > +/**
-> > + * fput_queue - do an fput without using task_work
-> > + * @file: file of which to put the reference
-> > + *
-> > + * If we need to ensure that the final __fput is done on a file before
-> > + * returning to userland, then we can't queue it to task_work. For that we
->                                                        ?????????
-> > + * borrow the infrastructure used by kthreads, and the task can then just
-> > + * called flush_delayed_fput to ensure that the final fput has completed.
+On Mon, Sep 14, 2015 at 09:45:51AM -0400, Jeff Layton wrote:
+> I'm breaking this piece out of the open file cache work for nfsd to see
+> if we can get this piece settled before I re-post the whole set. If this
+> looks like a reasonable approach we can sort out how it should be merged
+> (either by you directly, or via Bruce's tree with the rest of the open
+> file cache patches).
 > 
-> Are you sure that it's not a typo?
+> For those just joining in, some background:
+> 
+> We want to add an open file cache for nfsd to reduce the open/close
+> overhead on READ/WRITE RPCs, and so we can eliminate the raparm cache.
+> The basic idea is to keep a cache of open files, and close them down on
+> certain sorts of activity -- primarily, after an unlink that takes the
+> link count to 0, or before setting a lease.
+> 
+> The setlease part is problematic though. The plan is to have a notifier
+> callback into nfsd from vfs_setlease that will tell nfsd to close any
+> open files that are associated with the inode so we don't block lease
+> attempts solely due to cached but otherwise idle nfsd files. That means
+> that we need to be able to close out the files and ensure that the final
+> __fput runs before we try to set a lease.
 
-I don't think so, but it could be clearer. Something like this maybe?
+I think I probably asked something similar before, but just to be sure I
+understand....  Do leases really need to be 100% reliable, or can we get
+away with saying "sorry, I don't feel like granting one right now".  An
+entry in the filehandle cache suggests we're likely to recall the thing
+soon anyway.  We use that option to get out of corner cases in the
+delegation case, but I don't know if it makes sense for oplocks.
 
-     "then we can't queue it via task_work_add."
+--b.
 
--- 
-Jeff Layton <jlayton@poochiereds.net>
+> 
+> My latest pass involved making __fput_sync available to userland tasks,
+> but Al had concerns that that could lead to stack blowouts. This
+> patchset is an alternative approach that allows userland tasks to use
+> the delayed_fput infrastructure instead. The idea is that we'd have the
+> pre-setlease notifier do a fput_queue() and then call flush_delayed_fput
+> to ensure that any queued __fput() calls complete before setting the
+> lease.
+> 
+> There's also a fix for a potential race in flush_delayed_fput in here
+> and some doc comment cleanups.
+> 
+> Al, does this look more acceptable than using __fput_sync?
+> 
+> Jeff Layton (4):
+>   fs: have flush_delayed_fput flush the workqueue job
+>   fs: add a kerneldoc header to fput
+>   fs: add fput_queue
+>   fs: export flush_delayed_fput
+> 
+>  fs/file_table.c      | 57 +++++++++++++++++++++++++++++++++++++++++-----------
+>  include/linux/file.h |  1 +
+>  2 files changed, 46 insertions(+), 12 deletions(-)
+> 
+> -- 
+> 2.4.3
