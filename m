@@ -1,101 +1,88 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from elasmtp-banded.atl.sa.earthlink.net ([209.86.89.70]:50945 "EHLO
-	elasmtp-banded.atl.sa.earthlink.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751652AbbIORl0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Sep 2015 13:41:26 -0400
-From: "Frank Filz" <ffilzlnx@mindspring.com>
-To: "'Chuck Lever'" <chuck.lever@oracle.com>
-Cc: "'Linux NFS Mailing List'" <linux-nfs@vger.kernel.org>
-References: <7A550B5E-9EAB-4431-BBBA-1C77EE86539F@oracle.com> <019501d0efd4$401f4240$c05dc6c0$@mindspring.com> <E19B018D-1578-4964-B29F-FC7BF361F977@oracle.com>
-In-Reply-To: <E19B018D-1578-4964-B29F-FC7BF361F977@oracle.com>
-Subject: RE: NFSv4 security negotiation issue
-Date: Tue, 15 Sep 2015 10:41:08 -0700
-Message-ID: <01a301d0efdd$b8106f00$28314d00$@mindspring.com>
+Received: from mx1.redhat.com ([209.132.183.28]:49835 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751807AbbIOS0y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 15 Sep 2015 14:26:54 -0400
+Subject: Re: [PATCH] Install only needed systemd unit file
+To: =?UTF-8?Q?Aur=c3=a9lien_Chabot?= <aurelien@chabot.fr>,
+        linux-nfs@vger.kernel.org
+References: <1437428480-22951-1-git-send-email-aurelien@chabot.fr>
+From: Steve Dickson <SteveD@redhat.com>
+Message-ID: <55F862ED.4060900@RedHat.com>
+Date: Tue, 15 Sep 2015 14:26:53 -0400
 MIME-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
+In-Reply-To: <1437428480-22951-1-git-send-email-aurelien@chabot.fr>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> On Sep 15, 2015, at 12:33 PM, Frank Filz <ffilzlnx@mindspring.com> wrote:
+
+
+On 07/20/2015 05:41 PM, Aurélien Chabot wrote:
+> Signed-off-by: Aurélien Chabot <aurelien@chabot.fr>
+> ---
+>  systemd/Makefile.am | 22 +++++++++++++++++-----
+>  1 file changed, 17 insertions(+), 5 deletions(-)
+Committed.... 
+
+Note, I also found an issue with the --with-systemd flag
+which was fixed by:
+
+commit 017164521b94018bd143b879b0e858d98cca83e8
+Author: Steve Dickson <steved@redhat.com>
+Date:   Tue Sep 15 14:16:42 2015 -0400
+
+    configure.ac: with-systemd flag not using default directory
+    
+    The with-systemd config flag was not using the
+    default directory when a directory was not given
+    
+    Signed-off-by: Steve Dickson <steved@redhat.com>
+
+steved.
+
 > 
-> >> We've found an unexpected behavior with mount security negotiation in
-> >> the current Linux NFS client.
-> >>
-> >> Given two real shares on an NFS server: one is a sys-only share, and
-> >> the other is a krb5-only share. When we try to mount the sys-only
-> >> share
-> > without
-> >> specifying a sec= option, it fails. Specifying sec=sys is successful.
-> >>
-> >> What is seen on the wire:
-> >>
-> >> 1. The client attempts to access the pseudofs, and negotiates
-> >> krb5
-> >>
-> >> 2. The client walks down the pseudofs namespace to the sys-only share
-> >>
-> >> 3. The client attempts to access the sys-only share with krb5 and
-> >> gets WRONGSEC
-> >>
-> >> 4. The client negotiates sys, and continues setting up the mount
-> >>
-> >> 5. nfs_fs_mount_common() invokes nfs_get_root(), but it uses the
-> >> pseudofs superblock, so it does a GETATTR on the share's root
-> >> directory
-> > with
-> >> krb5, and that fails
-> >>
-> >> At this point the client gives up, and the mount attempt fails.
-> >>
-> >> We could alter the server to allow a GETATTR with the same flavor as
-> >> the underlying directory. But seems like the problem is on the
-> >> client: it
-> > should
-> >> use the negotiated flavor that is appropriate to the share, not the
-> >> flavor appropriate for the pseudofs.
-> >>
-> >> Any thoughts?
-> >
-> > Hmm, I thought maybe this was a scenario I had not tested, but I think
-> > I'm misunderstanding the sequence. Could you summarize the ops and
-> > response for each COMPOUND request?
+> diff --git a/systemd/Makefile.am b/systemd/Makefile.am
+> index fbcabb1..0331926 100644
+> --- a/systemd/Makefile.am
+> +++ b/systemd/Makefile.am
+> @@ -5,21 +5,33 @@ MAINTAINERCLEANFILES = Makefile.in
+>  unit_files =  \
+>      nfs-client.target \
+>      \
+> -    auth-rpcgss-module.service \
+> -    nfs-blkmap.service \
+>      nfs-config.service \
+> -    nfs-idmapd.service \
+>      nfs-mountd.service \
+>      nfs-server.service \
+>      nfs-utils.service \
+> -    rpc-gssd.service \
+>      rpc-statd-notify.service \
+>      rpc-statd.service \
+> -    rpc-svcgssd.service \
+>      \
+>      proc-fs-nfsd.mount \
+>      var-lib-nfs-rpc_pipefs.mount
+>  
+> +if CONFIG_NFSV4
+> +unit_files += \
+> +    nfs-idmapd.service
+> +endif
+> +
+> +if CONFIG_NFSV41
+> +unit_files += \
+> +    nfs-blkmap.service
+> +endif
+> +
+> +if CONFIG_GSS
+> +unit_files += \
+> +    auth-rpcgss-module.service \
+> +    rpc-gssd.service \
+> +    rpc-svcgssd.service
+> +endif
+> +
+>  EXTRA_DIST = $(unit_files)
+>  
+>  unit_dir = /usr/lib/systemd/system
 > 
-> There are two shares on the server.
-> 
-> The share being mounted is /export/CTHON. It is a sys-only share. No
-"sec="
-> option is used on the mount command. The expected outcome is that the
-> mount will succeed and use sec=sys.
-> 
-> The share that is not being mounted here is /export/KRB5.
-> It is shared with at least krb5i, which means the set of flavors the
-server
-> accepts for the pseudofs includes both krb5i and sys.
-> 
-> The client has already negotiated krb5i to access the pseudofs. I see a
-> PUTROOTFH using krb5i and it is successful. The negotiation is not in the
-trace
-> I have.
-> 
-> I see a number of GETATTRs then a LOOKUP /export, all with krb5i, all
-> successful.
-> 
-> Using krb5i, LOOKUP /CTHON, which fails with WRONGSEC.
-> 
-> Client recovers with SECINFO on /CTHON using krb5i. The server responds
-> with a list containing just AUTH_UNIX.
-> 
-> Client tries the LOOKUP /CTHON again, now with sys. It works.
-> 
-> Similar GETATTR activity using sys as the client mounts this share.
-> 
-> Then one last GETATTR, this time using krb5i. The FH is the /export/CTHON
-> directory. This fails with WRONGSEC.
-> 
-> The attr mask here is Supported Attrs, FH_Expire_type, Link_Support,
-> Symlink_Support, ACLSupport. This is from nfs4_server_capabilities(),
-which
-> is invoked only in nfs4_proc_get_rootfh() and nfs4_proc_get_root().
-> 
-> The next operation OTW is a RENEW that happens a minute later.
