@@ -1,81 +1,218 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ob0-f172.google.com ([209.85.214.172]:35720 "EHLO
-	mail-ob0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753481AbbIOPtF convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Sep 2015 11:49:05 -0400
-Received: by obbzf10 with SMTP id zf10so82872228obb.2
-        for <linux-nfs@vger.kernel.org>; Tue, 15 Sep 2015 08:49:04 -0700 (PDT)
+Received: from mx141.netapp.com ([216.240.21.12]:17103 "EHLO mx141.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751797AbbIOP6J (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 15 Sep 2015 11:58:09 -0400
+Subject: Re: [PATCH v2 8/9] vfs: copy_file_range() can do a pagecache copy
+ with splice
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
+References: <1442003423-6884-1-git-send-email-Anna.Schumaker@Netapp.com>
+ <1442003423-6884-9-git-send-email-Anna.Schumaker@Netapp.com>
+ <20150915033217.GG10391@birch.djwong.org>
+CC: <linux-nfs@vger.kernel.org>, <linux-btrfs@vger.kernel.org>,
+        <linux-fsdevel@vger.kernel.org>, <linux-api@vger.kernel.org>,
+        <zab@zabbo.net>, <viro@zeniv.linux.org.uk>, <clm@fb.com>,
+        <mtk.manpages@gmail.com>, <andros@netapp.com>, <hch@infradead.org>
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+Message-ID: <55F8400C.3000402@Netapp.com>
+Date: Tue, 15 Sep 2015 11:58:04 -0400
 MIME-Version: 1.0
-In-Reply-To: <CAN-5tyFM2WVdGUSEAp27GXe_52DrJWGGQrxuniJqOqDf-6wiUg@mail.gmail.com>
-References: <CAN-5tyF_cHmiPvEqv8N8S_J-TBymOZV+-A0Vh+GCnP3czFB-wg@mail.gmail.com>
-	<CAHQdGtTeOx3SZSmC4JEAA7jfQRnB=tDjMamW5-amyT3mCq4zOw@mail.gmail.com>
-	<CAN-5tyFM2WVdGUSEAp27GXe_52DrJWGGQrxuniJqOqDf-6wiUg@mail.gmail.com>
-Date: Tue, 15 Sep 2015 11:49:04 -0400
-Message-ID: <CAHQdGtTkiTnQXB6Jf0GBZT1xQjc64hz3b+oUt-0ZOyQiSgZ8cQ@mail.gmail.com>
-Subject: Re: Failing to send a CLOSE if file is opened WRONLY and server
- reboots on a 4.x mount
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Olga Kornievskaia <aglo@umich.edu>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+In-Reply-To: <20150915033217.GG10391@birch.djwong.org>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Sep 15, 2015 at 10:27 AM, Olga Kornievskaia <aglo@umich.edu> wrote:
-> On Tue, Sep 15, 2015 at 9:39 AM, Trond Myklebust
-> <trond.myklebust@primarydata.com> wrote:
->> On Mon, Sep 14, 2015 at 7:54 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
->>> A test case is as the description says:
->>> open(foobar, O_WRONLY);
->>> sleep()  --> reboot the server
->>> close(foobar)
->>>
->>> The bug is because in nfs4state.c in nfs4_reclaim_open_state() a few
->>> line before going to restart, there is
->>> clear_bit(NFS4CLNT_RECLAIM_NOGRACE, &state->flags).
->>>
->>> NFS4CLNT_RECLAIM_NOGRACE is a flag for the client states not open
->>> owner states. Value of NFS4CLNT_RECLAIM_NOGRACE is 4 which is the
->>> value of NFS_O_WRONLY_STATE in nfs4_state->flags. So clearing it wipes
->>> out state and when we go to close it, “call_close” doesn’t get set as
->>> state flag is not set and CLOSE doesn’t go on the wire.
->>>
->>> That line was introduced to fix an infinite loop for OPEN recovery
->>> upon receiving a BAD_STATEID error: commit e8d975e73. I have tested
->>> injecting BAD_STATEID error using the patch below and the code
->>> recovers without problems. However, I'm not sure the clearing of the
->>> bit is needed any more. I have tested for infinite loop by reverting
->>> the patch and didn't hit the infinite loop.
->>>
->>> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
->>> index da73bc4..5db3246 100644
->>> --- a/fs/nfs/nfs4state.c
->>> +++ b/fs/nfs/nfs4state.c
->>> @@ -1481,7 +1481,7 @@ restart:
->>>                                         spin_unlock(&state->state_lock);
->>>                                 }
->>>                                 nfs4_put_open_state(state);
->>> -                               clear_bit(NFS4CLNT_RECLAIM_NOGRACE,
->>> +                               clear_bit(NFS_STATE_RECLAIM_NOGRACE,
->>>                                         &state->flags);
->>>                                 spin_lock(&sp->so_lock);
->>>                                 goto restart;
+On 09/14/2015 11:32 PM, Darrick J. Wong wrote:
+> On Fri, Sep 11, 2015 at 04:30:21PM -0400, Anna Schumaker wrote:
+>> The NFS server will need some kind offallback for filesystems that don't
+>> have any kind of copy acceleration, and it should be generally useful to
+>> have an in-kernel copy to avoid lots of switches between kernel and user
+>> space.
 >>
->> That's an obvious typo. Thanks for spotting it!
+>> I make this configurable by adding two new flags.  Users who only want a
+>> reflink can pass COPY_FR_REFLINK, and users who want a full data copy can
+>> pass COPY_FR_COPY.  The default (flags=0) means to first attempt a
+>> reflink, but use the pagecache if that fails.
 >>
->> As for whether or not the bit clear is needed at all, I think it is
->> for NFSv4 on older kernels. On newer kernels, we do have the NFSv4
->> state recovery drain the slot table (just like we've always done for
->> NFSv4.1) and so I agree that those kernels probably won't be
->> afflicted.
+>> I moved the rw_verify_area() calls into the fallback code since some
+>> filesystems can handle reflinking a large range.
 >>
->
-> Thanks Trond. Do you need me to resubmit it without the last paragraph
-> or is the patch ok as is?
->
+>> Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+>> ---
+>> v2:
+>> - Rename COPY_REFLINK -> COPY_FR_REFLINK
+>> - Introduce COPY_FR_COPY flag
+>> - Flags == 0 is really COPY_FR_COPY|COPY_FR_REFLINK
+>> - Drop check for invalid flags
+>> - Move call to do_splice_direct() into a new function
+>> - Move rw_verify_area() checks into the new fallback function
+>> ---
+>>  fs/read_write.c           | 56 ++++++++++++++++++++++++++++-------------------
+>>  include/linux/copy.h      |  6 +++++
+>>  include/uapi/linux/Kbuild |  1 +
+>>  include/uapi/linux/copy.h |  7 ++++++
+>>  4 files changed, 48 insertions(+), 22 deletions(-)
+>>  create mode 100644 include/linux/copy.h
+>>  create mode 100644 include/uapi/linux/copy.h
+>>
+>> diff --git a/fs/read_write.c b/fs/read_write.c
+>> index 363bd3e..ba24884 100644
+>> --- a/fs/read_write.c
+>> +++ b/fs/read_write.c
+>> @@ -7,6 +7,7 @@
+>>  #include <linux/slab.h> 
+>>  #include <linux/stat.h>
+>>  #include <linux/fcntl.h>
+>> +#include <linux/copy.h>
+>>  #include <linux/file.h>
+>>  #include <linux/uio.h>
+>>  #include <linux/fsnotify.h>
+>> @@ -1329,6 +1330,29 @@ COMPAT_SYSCALL_DEFINE4(sendfile64, int, out_fd, int, in_fd,
+>>  }
+>>  #endif
+>>  
+>> +static ssize_t vfs_copy_file_pagecache(struct file *file_in, loff_t pos_in,
+>> +				       struct file *file_out, loff_t pos_out,
+>> +				       size_t len)
+>> +{
+>> +	ssize_t ret;
+>> +
+>> +	ret = rw_verify_area(READ, file_in, &pos_in, len);
+>> +	if (ret >= 0) {
+>> +		len = ret;
+>> +		ret = rw_verify_area(WRITE, file_out, &pos_out, len);
+>> +		if (ret >= 0)
+>> +			len = ret;
+>> +	}
+>> +	if (ret < 0)
+>> +		return ret;
+>> +
+>> +	file_start_write(file_out);
+>> +	ret = do_splice_direct(file_in, &pos_in, file_out, &pos_out, len, 0);
+>> +	file_end_write(file_out);
+>> +
+>> +	return ret;
+>> +}
+>> +
+>>  /*
+>>   * copy_file_range() differs from regular file read and write in that it
+>>   * specifically allows return partial success.  When it does so is up to
+>> @@ -1338,34 +1362,17 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
+>>  			    struct file *file_out, loff_t pos_out,
+>>  			    size_t len, int flags)
+>>  {
+>> -	struct inode *inode_in;
+>> -	struct inode *inode_out;
+>>  	ssize_t ret;
+>>  
+>> -	if (flags)
+>> -		return -EINVAL;
+>> -
+>> -	/* copy_file_range allows full ssize_t len, ignoring MAX_RW_COUNT  */
+>> -	ret = rw_verify_area(READ, file_in, &pos_in, len);
+>> -	if (ret >= 0)
+>> -		ret = rw_verify_area(WRITE, file_out, &pos_out, len);
+>> -	if (ret < 0)
+>> -		return ret;
+>> +	if (flags == 0)
+>> +		flags = COPY_FR_COPY | COPY_FR_REFLINK;
+> 
+> This function must return -EINVAL if any of the undefined flags bits are
+> set.
 
-I can easily remove that paragraph when applying the patch, if you
-agree that it is superfluous.
+Sure, I'll add that.
 
-Cheers
-  Trond
+> 
+>>  
+>>  	if (!(file_in->f_mode & FMODE_READ) ||
+>>  	    !(file_out->f_mode & FMODE_WRITE) ||
+>>  	    (file_out->f_flags & O_APPEND) ||
+>> -	    !file_out->f_op || !file_out->f_op->copy_file_range)
+>> +	    !file_in->f_op)
+>>  		return -EBADF;
+>>  
+>> -	inode_in = file_inode(file_in);
+>> -	inode_out = file_inode(file_out);
+>> -
+>> -	/* make sure offsets don't wrap and the input is inside i_size */
+>> -	if (pos_in + len < pos_in || pos_out + len < pos_out ||
+>> -	    pos_in + len > i_size_read(inode_in))
+>> -		return -EINVAL;
+>> -
+>>  	if (len == 0)
+>>  		return 0;
+>>  
+>> @@ -1373,8 +1380,13 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
+>>  	if (ret)
+>>  		return ret;
+>>  
+>> -	ret = file_out->f_op->copy_file_range(file_in, pos_in, file_out, pos_out,
+>> -					      len, flags);
+>> +	ret = -EOPNOTSUPP;
+>> +	if (file_out->f_op->copy_file_range)
+>> +		ret = file_out->f_op->copy_file_range(file_in, pos_in, file_out,
+>> +						      pos_out, len, flags);
+>> +	if ((ret < 0) && (flags & COPY_FR_COPY))
+>> +		ret = vfs_copy_file_pagecache(file_in, pos_in, file_out,
+>> +					      pos_out, len);
+>>  	if (ret > 0) {
+>>  		fsnotify_access(file_in);
+>>  		add_rchar(current, ret);
+>> diff --git a/include/linux/copy.h b/include/linux/copy.h
+>> new file mode 100644
+>> index 0000000..fd54543
+>> --- /dev/null
+>> +++ b/include/linux/copy.h
+>> @@ -0,0 +1,6 @@
+>> +#ifndef _LINUX_COPY_H
+>> +#define _LINUX_COPY_H
+>> +
+>> +#include <uapi/linux/copy.h>
+>> +
+>> +#endif /* _LINUX_COPY_H */
+>> diff --git a/include/uapi/linux/Kbuild b/include/uapi/linux/Kbuild
+>> index 70ff1d9..d46830a 100644
+>> --- a/include/uapi/linux/Kbuild
+>> +++ b/include/uapi/linux/Kbuild
+>> @@ -90,6 +90,7 @@ header-y += coda_psdev.h
+>>  header-y += coff.h
+>>  header-y += connector.h
+>>  header-y += const.h
+>> +header-y += copy.h
+>>  header-y += cramfs_fs.h
+>>  header-y += cuda.h
+>>  header-y += cyclades.h
+>> diff --git a/include/uapi/linux/copy.h b/include/uapi/linux/copy.h
+>> new file mode 100644
+>> index 0000000..2da59a8
+>> --- /dev/null
+>> +++ b/include/uapi/linux/copy.h
+>> @@ -0,0 +1,7 @@
+>> +#ifndef _UAPI_LINUX_COPY_H
+>> +#define _UAPI_LINUX_COPY_H
+>> +
+>> +#define COPY_FR_COPY		(1 << 0)  /* Only do a pagecache copy.  */
+>> +#define COPY_FR_REFLINK		(1 << 1)  /* Only make a reflink.       */
+> 
+> Could I have a COPY_FR_DEDUPE flag too, please?
+> 
+> (I don't mind adding it myself when I get around to hooking up XFS, but I
+> was hoping to get it in during the first round).
+
+I guess I can, but only iff everybody has agreed on using copy for dedupes instead of somethink like fallocate.
+
+Anna
+
+> 
+> --D
+> 
+>> +
+>> +#endif /* _UAPI_LINUX_COPY_H */
+>> -- 
+>> 2.5.1
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
