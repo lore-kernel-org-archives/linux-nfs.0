@@ -1,71 +1,149 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:25330 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752715AbbIOPw3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Sep 2015 11:52:29 -0400
-Received: from aserv0021.oracle.com (aserv0021.oracle.com [141.146.126.233])
-	by userp1040.oracle.com (Sentrion-MTA-4.3.2/Sentrion-MTA-4.3.2) with ESMTP id t8FFqSnR032443
-	(version=TLSv1 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Tue, 15 Sep 2015 15:52:29 GMT
-Received: from userv0121.oracle.com (userv0121.oracle.com [156.151.31.72])
-	by aserv0021.oracle.com (8.13.8/8.13.8) with ESMTP id t8FFqSM4022564
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=FAIL)
-	for <linux-nfs@vger.kernel.org>; Tue, 15 Sep 2015 15:52:28 GMT
-Received: from abhmp0015.oracle.com (abhmp0015.oracle.com [141.146.116.21])
-	by userv0121.oracle.com (8.13.8/8.13.8) with ESMTP id t8FFqRjl009823
-	for <linux-nfs@vger.kernel.org>; Tue, 15 Sep 2015 15:52:27 GMT
-From: Chuck Lever <chuck.lever@oracle.com>
-Content-Type: text/plain; charset=us-ascii
-Subject: NFSv4 security negotiation issue
-Message-Id: <7A550B5E-9EAB-4431-BBBA-1C77EE86539F@oracle.com>
-Date: Tue, 15 Sep 2015 11:52:25 -0400
-To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
+Received: from eu-smtp-delivery-143.mimecast.com ([146.101.78.143]:5246 "EHLO
+	eu-smtp-delivery-143.mimecast.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752817AbbIOPt1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Sep 2015 11:49:27 -0400
+From: "Suzuki K. Poulose" <suzuki.poulose@arm.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Anna Schumaker <anna.schumaker@netapp.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        "David S. Miller" <davem@davemloft.net>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org,
+        "Suzuki K. Poulose" <suzuki.poulose@arm.com>
+Subject: [PATCH] SUNRPC: Fix a race in xs_reset_transport
+Date: Tue, 15 Sep 2015 16:49:23 +0100
+Message-Id: <1442332163-9230-1-git-send-email-suzuki.poulose@arm.com>
+Content-Type: text/plain; charset=WINDOWS-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi-
+From: "Suzuki K. Poulose" <suzuki.poulose@arm.com>
 
-We've found an unexpected behavior with mount security
-negotiation in the current Linux NFS client.
+Encountered the following BUG() with 4.3-rc1 on a fast model
+for arm64 with NFS root filesystem.
 
-Given two real shares on an NFS server: one is a sys-only
-share, and the other is a krb5-only share. When we try to
-mount the sys-only share without specifying a sec= option,
-it fails. Specifying sec=sys is successful.
+------------[ cut here ]------------
+kernel BUG at fs/inode.c:1493!
 
-What is seen on the wire:
+Internal error: Oops - BUG: 0 [#1] PREEMPT SMP
+Modules linked in:
+CPU: 2 PID: 1 Comm: swapper/0 Not tainted 4.3.0-rc1+ #855
+Hardware name: FVP Base (DT)
+task: ffffc000760b0000 ti: ffffc00076070000 task.ti: ffffc00076070000
+PC is at iput+0x144/0x170
+LR is at sock_release+0xbc/0xdc
+pc : [<ffffc000001b4920>] lr : [<ffffc000004d1974>] pstate: 40000045
+sp : ffffc00076073790
+x29: ffffc00076073790 x28: ffffc00076073b40
+x27: 00000000000003e8 x26: ffffc00076955000
+x25: 000000000000000c x24: ffffc00076637200
+x23: ffffc00076073930 x22: ffffc000769b8180
+x21: ffffc000740500a8 x20: ffffc00074050158
+x19: ffffc00074050030 x18: 000000009fcef6bf
+x17: 00000000593e3df5 x16: 00000000b597f71d
+x15: 00000000e2f9d3f6 x14: 0ffffffffffffffe
+x13: 0000000000000020 x12: 0101010101010101
+x11: 00000000000001c9 x10: 0000000000000750
+x9 : ffffc00076073670 x8 : ffffc000760b07b0
+x7 : 0000000000000001 x6 : 0000000000000001
+x5 : 0000000000000000 x4 : 00000000ffffffff
+x3 : 0000000000000000 x2 : ffffffffffffffff
+x1 : ffffc00076070000 x0 : 0000000000000060
 
-1. The client attempts to access the pseudofs, and negotiates
-krb5
+Process swapper/0 (pid: 1, stack limit =3D 0xffffc00076070020)
+Stack: (0xffffc00076073790 to 0xffffc00076074000)
 
-2. The client walks down the pseudofs namespace to the
-sys-only share
+ [ stack contents stripped ]
 
-3. The client attempts to access the sys-only share with krb5
-and gets WRONGSEC
+Call trace:
+[<ffffc000001b4920>] iput+0x144/0x170
+[<ffffc000004d1970>] sock_release+0xb8/0xdc
+[<ffffc00000578df0>] xs_reset_transport+0x8c/0xac
+[<ffffc00000578e60>] xs_close+0x50/0x6c
+[<ffffc00000578e9c>] xs_destroy+0x20/0x5c
+[<ffffc00000575f70>] xprt_destroy+0x68/0x8c
+[<ffffc0000057777c>] xprt_put+0x24/0x30
+[<ffffc000005726c4>] rpc_free_client+0x78/0xd8
+[<ffffc0000057288c>] rpc_release_client+0x94/0xec
+[<ffffc00000572aac>] rpc_shutdown_client+0x58/0x118
+[<ffffc00000278588>] nfs_mount+0x100/0x234
+[<ffffc0000026cc88>] nfs_request_mount+0xa8/0x12c
+[<ffffc0000026e564>] nfs_try_mount+0x54/0x2b4
+[<ffffc0000026f140>] nfs_fs_mount+0x5cc/0xac0
+[<ffffc0000019f1a0>] mount_fs+0x38/0x158
+[<ffffc000001b81a8>] vfs_kern_mount+0x48/0x11c
+[<ffffc000001bb390>] do_mount+0x208/0xc04
+[<ffffc000001bc0b0>] SyS_mount+0x78/0xd0
+[<ffffc000007f0fa8>] mount_root+0x80/0x148
+[<ffffc000007f11a8>] prepare_namespace+0x138/0x184
+[<ffffc000007f0b20>] kernel_init_freeable+0x1cc/0x1f4
+[<ffffc000005a2914>] kernel_init+0xc/0xd8
+Code: b5fffc00 17ffffed d4210000 17ffffd7 (d4210000)
+---[ end trace 02951451f1831f54 ]---
 
-4. The client negotiates sys, and continues setting up the
-mount
+With rpc_debug enabled here is the log :
 
-5. nfs_fs_mount_common() invokes nfs_get_root(), but it
-uses the pseudofs superblock, so it does a GETATTR on the
-share's root directory with krb5, and that fails
+RPC:       shutting down mount client for your.nfs.server
+RPC:       rpc_release_client(ffffc00076637800)
+RPC:       destroying UNIX authenticator ffffc000008f48c8
+RPC:       destroying mount client for your.nfs.server
+RPC:       destroying transport ffffc00076226000
+RPC:       xs_destroy xprt ffffc00076226000
+RPC:       xs_close xprt ffffc00076226000
+RPC:       xs_tcp_state_change client ffffc00076226000...
+RPC:       state 4 conn 1 dead 0 zapped 1 sk_shutdown 3
+RPC:       xs_tcp_state_change client ffffc00076226000...
+RPC:       state 5 conn 0 dead 0 zapped 1 sk_shutdown 3
+RPC:       xs_tcp_state_change client ffffc00076226000...
+RPC:       state 7 conn 0 dead 0 zapped 1 sk_shutdown 3
+RPC:       disconnected transport ffffc00076226000
+RPC:       xs_tcp_state_change client ffffc00076226000...
+RPC:       state 7 conn 0 dead 0 zapped 1 sk_shutdown 3
+RPC:       disconnected transport ffffc00076226000
+RPC:       xs_tcp_data_ready...
+RPC:       xs_tcp_state_change client ffffc00076226000...
+RPC:       state 7 conn 0 dead 0 zapped 1 sk_shutdown 3
+RPC:       disconnected transport ffffc00076226000
+RPC:       wake_up_first(ffffc00076226170 "xprt_sending")
 
-At this point the client gives up, and the mount attempt
-fails.
+So it looks like just before we lock the callbacks in xs_reset_transport,
+a few of the callbacks got through and issued the reset before we could
+lock it. And we end up repeating the cleanups, ending up in the above
+BUG() due to multiple sock_release().
 
-We could alter the server to allow a GETATTR with the
-same flavor as the underlying directory. But seems like
-the problem is on the client: it should use the negotiated
-flavor that is appropriate to the share, not the flavor
-appropriate for the pseudofs.
+This patch fixes the race by confirming that somebody else hasn't performed
+the reset while we were waiting for the lock. Also, the kernel_shutdown()
+is performed only if the sock is non-NULL to avoid a possible race.
 
-Any thoughts?
+Signed-off-by: Suzuki K. Poulose <suzuki.poulose@arm.com>
+---
+ net/sunrpc/xprtsock.c |    9 ++++++++-
+ 1 file changed, 8 insertions(+), 1 deletion(-)
 
-
---
-Chuck Lever
-
-
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 7be90bc..6f4789d 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -822,9 +822,16 @@ static void xs_reset_transport(struct sock_xprt *trans=
+port)
+ =09if (atomic_read(&transport->xprt.swapper))
+ =09=09sk_clear_memalloc(sk);
+=20
+-=09kernel_sock_shutdown(sock, SHUT_RDWR);
++=09if (sock)
++=09=09kernel_sock_shutdown(sock, SHUT_RDWR);
+=20
+ =09write_lock_bh(&sk->sk_callback_lock);
++=09/* Check someone has already done the job, while we were waiting */
++=09if (!transport->inet) {
++=09=09write_unlock_bh(&sk->sk_callback_lock);
++=09=09return;
++=09}
++
+ =09transport->inet =3D NULL;
+ =09transport->sock =3D NULL;
+=20
+--=20
+1.7.9.5
 
