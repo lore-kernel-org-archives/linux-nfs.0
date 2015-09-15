@@ -1,52 +1,36 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:58837 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:58768 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751468AbbIOOBX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 15 Sep 2015 10:01:23 -0400
-Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
-	by mx1.redhat.com (Postfix) with ESMTPS id D146E8F305
-	for <linux-nfs@vger.kernel.org>; Tue, 15 Sep 2015 14:01:21 +0000 (UTC)
-From: Scott Mayhew <smayhew@redhat.com>
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [nfs-utils PATCH] mountstats.man:  Remove a few bogus .R macros
-Date: Tue, 15 Sep 2015 10:01:18 -0400
-Message-Id: <1442325678-52516-1-git-send-email-smayhew@redhat.com>
+	id S1751635AbbIOOKd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 15 Sep 2015 10:10:33 -0400
+Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
+	by mx1.redhat.com (Postfix) with ESMTPS id 57499AB0
+	for <linux-nfs@vger.kernel.org>; Tue, 15 Sep 2015 14:10:32 +0000 (UTC)
+Received: from [10.10.55.163] (vpn-55-163.rdu2.redhat.com [10.10.55.163])
+	by int-mx11.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id t8FEAU6M003864
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NO)
+	for <linux-nfs@vger.kernel.org>; Tue, 15 Sep 2015 10:10:31 -0400
+Date: Tue, 15 Sep 2015 10:10:21 -0400 (EDT)
+From: Benjamin Coddington <bcodding@redhat.com>
+To: linux-nfs@vger.kernel.org
+Subject: NFSv2,3 tcp_retries2 exhausted -> TCP_CLOSED
+Message-ID: <alpine.OSX.2.19.9992.1509150959120.71803@planck.local>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-These have no effect on the rendering of the man page, but they do cause
-the following error if you try to pipe or redirect the output:
+If tcp_retries2 is exhausted the transport's socket is transitioned to
+TCP_CLOSED without sending FIN,RST.  That's perfectly fine behavior until
+you have a middle-box that silently drops the re-connection's SYNs because
+it keeps an established state around until torn down by a FIN or RST.
 
-`R' is a string (producing the registered sign), not a macro.
+NFSv4 won't usually make it to tcp_retries2 since it sets
+RPC_CLNT_CREATE_DISCRTRY to tear the socket down after a minor timeout,
+thus avoiding this particular problem with this particularly stupid
+middle-box.
 
-Signed-off-by: Scott Mayhew <smayhew@redhat.com>
----
- tools/mountstats/mountstats.man | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
+Can anyone tell me if there is a reason not to set RPC_CLNT_CREATE_DISCRTRY
+for NFSv3, or make it configurable?
 
-diff --git a/tools/mountstats/mountstats.man b/tools/mountstats/mountstats.man
-index bfc4c46..a55130b 100644
---- a/tools/mountstats/mountstats.man
-+++ b/tools/mountstats/mountstats.man
-@@ -13,13 +13,13 @@ mountstats \- Displays various NFS client per-mount statistics
- .RB [ \-S | \-\-since
- .IR sincefile ]
- .\" .RB [ \-n | \-\-nfs | \-r | \-\-rpc | \-R | \-\-raw ]
--.R [
-+[
- .RB [ \-n | \-\-nfs ]
--.R |
-+|
- .RB [ \-r | \-\-rpc ]
--.R |
-+|
- .RB  [ \-R | \-\-raw ]
--.R ]
-+]
- .RI [ mountpoint ] ...
- .P
- .B mountstats iostat
--- 
-1.9.3
-
+Ben
