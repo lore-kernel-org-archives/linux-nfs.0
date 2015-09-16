@@ -1,61 +1,59 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:36930 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752746AbbIPTJ3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Sep 2015 15:09:29 -0400
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (Postfix) with ESMTPS id 7589F8E689
-	for <linux-nfs@vger.kernel.org>; Wed, 16 Sep 2015 19:09:29 +0000 (UTC)
-Subject: Re: [nfs-utils PATCH] mountstats.man: Remove a few bogus .R macros
-To: Scott Mayhew <smayhew@redhat.com>
-References: <1442325678-52516-1-git-send-email-smayhew@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-From: Steve Dickson <SteveD@redhat.com>
-Message-ID: <55F9BE68.6010906@RedHat.com>
-Date: Wed, 16 Sep 2015 15:09:28 -0400
+Received: from mail-ob0-f181.google.com ([209.85.214.181]:36192 "EHLO
+	mail-ob0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752931AbbIPUwe (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Sep 2015 16:52:34 -0400
+Received: by obqa2 with SMTP id a2so159719761obq.3
+        for <linux-nfs@vger.kernel.org>; Wed, 16 Sep 2015 13:52:34 -0700 (PDT)
 MIME-Version: 1.0
-In-Reply-To: <1442325678-52516-1-git-send-email-smayhew@redhat.com>
-Content-Type: text/plain; charset=windows-1252
+In-Reply-To: <1442429367.24127.6.camel@localhost.localdomain>
+References: <1442429367.24127.6.camel@localhost.localdomain>
+Date: Wed, 16 Sep 2015 16:52:34 -0400
+Message-ID: <CAHQdGtSWaeAyjeKFV5AxJPou_94esPnso5sQrA=wfep6m5qP5Q@mail.gmail.com>
+Subject: Re: [PATCH] Use a separate superblock if mount requires a different
+ security flavor
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Frank Filz <ffilzlnx@mindspring.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-On 09/15/2015 10:01 AM, Scott Mayhew wrote:
-> These have no effect on the rendering of the man page, but they do cause
-> the following error if you try to pipe or redirect the output:
-> 
-> `R' is a string (producing the registered sign), not a macro.
-> 
-> Signed-off-by: Scott Mayhew <smayhew@redhat.com>
-Committed... 
-
-steved.
-
+On Wed, Sep 16, 2015 at 2:49 PM, Frank Filz <ffilzlnx@mindspring.com> wrote:
+> If a server has two exports from the same filesystem but with different
+> security flavors allowed, when the client mounts first one and then the
+> second, the same super block was being used. This resulted in the
+> security flavor for the first export being applied to access to the
+> second export.
+>
+> The fix is simply to check the security flavor of the nfs_server
+> temporarily constructed for the second mount within nfs_compare_super.
+>
+> Signed-off-by: Frank S. Filz <ffilzlnx@mindspring.com>
 > ---
->  tools/mountstats/mountstats.man | 8 ++++----
->  1 file changed, 4 insertions(+), 4 deletions(-)
-> 
-> diff --git a/tools/mountstats/mountstats.man b/tools/mountstats/mountstats.man
-> index bfc4c46..a55130b 100644
-> --- a/tools/mountstats/mountstats.man
-> +++ b/tools/mountstats/mountstats.man
-> @@ -13,13 +13,13 @@ mountstats \- Displays various NFS client per-mount statistics
->  .RB [ \-S | \-\-since
->  .IR sincefile ]
->  .\" .RB [ \-n | \-\-nfs | \-r | \-\-rpc | \-R | \-\-raw ]
-> -.R [
-> +[
->  .RB [ \-n | \-\-nfs ]
-> -.R |
-> +|
->  .RB [ \-r | \-\-rpc ]
-> -.R |
-> +|
->  .RB  [ \-R | \-\-raw ]
-> -.R ]
-> +]
->  .RI [ mountpoint ] ...
->  .P
->  .B mountstats iostat
-> 
+>  fs/nfs/super.c | 3 +++
+>  1 file changed, 3 insertions(+)
+>
+> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+> index 084af10..44d60f1 100644
+> --- a/fs/nfs/super.c
+> +++ b/fs/nfs/super.c
+> @@ -2455,6 +2455,9 @@ static int nfs_compare_super(struct super_block
+> *sb, void *data)
+>         struct nfs_server *server = sb_mntdata->server, *old =
+> NFS_SB(sb);
+>         int mntflags = sb_mntdata->mntflags;
+>
+> +       if(old->client->cl_auth->au_flavor
+> +          != server->client->cl_auth->au_flavor)
+> +               return 0;
+
+Isn't this check already being performed in
+nfs_compare_mount_options()? As far as I can see, the difference is
+that you are checking unconditionally, whereas
+nfs_compare_mount_options only does so if there was a 'sec=' line
+specified in the mount options.
+
+Cheers
+  Trond
