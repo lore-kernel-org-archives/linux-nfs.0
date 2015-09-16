@@ -1,84 +1,40 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from wtarreau.pck.nerim.net ([62.212.114.60]:13339 "EHLO 1wt.eu"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753064AbbIPHcL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Sep 2015 03:32:11 -0400
-Date: Wed, 16 Sep 2015 09:31:15 +0200
-From: Willy Tarreau <w@1wt.eu>
-To: Damien =?iso-8859-1?Q?Th=E9bault?= <damien.thebault@vitec.com>
-Cc: "linux@arm.linux.org.uk" <linux@arm.linux.org.uk>,
+Received: from mail-db3on0073.outbound.protection.outlook.com ([157.55.234.73]:65216
+	"EHLO emea01-db3-obe.outbound.protection.outlook.com"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1751822AbbIPHjV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Sep 2015 03:39:21 -0400
+From: =?utf-8?B?RGFtaWVuIFRow6liYXVsdA==?= <damien.thebault@vitec.com>
+To: "gregory.clement@free-electrons.com"
+	<gregory.clement@free-electrons.com>
+CC: "linux-arm-kernel@lists.infradead.org"
+	<linux-arm-kernel@lists.infradead.org>,
         "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
         "trond.myklebust@primarydata.com" <trond.myklebust@primarydata.com>,
-        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "linux-arm-kernel@lists.infradead.org"
-	<linux-arm-kernel@lists.infradead.org>
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux@arm.linux.org.uk" <linux@arm.linux.org.uk>,
+        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>
 Subject: Re: NFS/TCP/IPv6 acting strangely in 4.2
-Message-ID: <20150916073115.GB29740@1wt.eu>
-References: <20150911113839.GO21084@n2100.arm.linux.org.uk> <1442386435.3756.282.camel@vitec.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-In-Reply-To: <1442386435.3756.282.camel@vitec.com>
+Date: Wed, 16 Sep 2015 07:39:17 +0000
+Message-ID: <1442389156.3756.285.camel@vitec.com>
+References: <20150911113839.GO21084@n2100.arm.linux.org.uk>
+	 <1442386435.3756.282.camel@vitec.com> <87zj0mbzsj.fsf@free-electrons.com>
+In-Reply-To: <87zj0mbzsj.fsf@free-electrons.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
-
-On Wed, Sep 16, 2015 at 06:53:57AM +0000, Damien Thébault wrote:
-> On Fri, 2015-09-11 at 12:38 +0100, Russell King - ARM Linux wrote:
-> > I have a recent Marvell Armada 388 board here which uses the mvneta
-> > driver.  I'm seeing some weird effects with NFS with it acting as a
-> > client.
-> 
-> Hello,
-> 
-> I'm upgrading a Marvelle Armada 370 board using the mvneta driver from
-> 4.0 to 4.2 and noticed issues with NFS booting.
-> Basically, most of the time init returns with an error code, or
-> programs segfault or throw illegal instructions.
-> 
-> Since it worked fine on 4.0 I bisected until I found commit
-> a84e32894191cfcbffa54180d78d7d4654d56c20 "net: mvneta: fix refilling
-> for Rx DMA buffers".
-> 
-> If I revert this commit, everything seems to get back to normal.
-> Could you try it ? The two issues look very similar.
-
-I'm not sure but I'm seeing that the accounting was changed by this
-patch without being certain of the implications; if the revert above
-works, it would be nice to try to only apply this just to see if
-that's indeed an accounting error or not :
-
-diff --git a/drivers/net/ethernet/marvell/mvneta.c b/drivers/net/ethernet/marvell/mvneta.c
-index 62e48bc..4205867 100644
---- a/drivers/net/ethernet/marvell/mvneta.c
-+++ b/drivers/net/ethernet/marvell/mvneta.c
-@@ -1463,6 +1463,7 @@ static int mvneta_rx(struct mvneta_port *pp, int rx_todo,
- {
- 	struct net_device *dev = pp->dev;
- 	int rx_done;
-+	int missed = 0;
- 	u32 rcvd_pkts = 0;
- 	u32 rcvd_bytes = 0;
- 
-@@ -1527,6 +1528,7 @@ static int mvneta_rx(struct mvneta_port *pp, int rx_todo,
- 		if (err) {
- 			netdev_err(dev, "Linux processing - Can't refill\n");
- 			rxq->missed++;
-+			missed++;
- 			goto err_drop_frame;
- 		}
- 
-@@ -1561,7 +1563,7 @@ static int mvneta_rx(struct mvneta_port *pp, int rx_todo,
- 	}
- 
- 	/* Update rxq management counters */
--	mvneta_rxq_desc_num_update(pp, rxq, rx_done, rx_done);
-+	mvneta_rxq_desc_num_update(pp, rxq, rx_done, rx_done - missed);
- 
- 	return rx_done;
- }
-
-Regards,
-Willy
-
+T24gV2VkLCAyMDE1LTA5LTE2IGF0IDA5OjE1ICswMjAwLCBHcmVnb3J5IENMRU1FTlQgd3JvdGU6
+DQo+ID4gU2luY2UgaXQgd29ya2VkIGZpbmUgb24gNC4wIEkgYmlzZWN0ZWQgdW50aWwgSSBmb3Vu
+ZCBjb21taXQNCj4gPiBhODRlMzI4OTQxOTFjZmNiZmZhNTQxODBkNzhkN2Q0NjU0ZDU2YzIwICJu
+ZXQ6IG12bmV0YTogZml4DQo+ID4gcmVmaWxsaW5nDQo+ID4gZm9yIFJ4IERNQSBidWZmZXJzIi4N
+Cj4gPiANCj4gPiBJZiBJIHJldmVydCB0aGlzIGNvbW1pdCwgZXZlcnl0aGluZyBzZWVtcyB0byBn
+ZXQgYmFjayB0byBub3JtYWwuDQo+ID4gQ291bGQgeW91IHRyeSBpdCA/IFRoZSB0d28gaXNzdWVz
+IGxvb2sgdmVyeSBzaW1pbGFyLg0KPiBBY3R1YWxseSB0aGVyZSB3YXMgYSBidWcgd2l0aCB0aGlz
+IGNvbW1pdCwgYnV0IGEgZml4IGhhZCBiZWVuDQo+IHN1Ym1pdHRlZA0KPiBhbmQgYWNjZXB0ZWQg
+eWVzdGVyZGF5LCB5b3UgY2FuIGZpbmQgaGltIGhlcmU6DQo+IGh0dHBzOi8vcGF0Y2h3b3JrLm96
+bGFicy5vcmcvcGF0Y2gvNTE4MTExLy4NCg0KSGVsbG8sIHRoaXMgaW5kZWVkIGZpeGVzIHRoZSBp
+c3N1ZSBmb3IgbWUsIHRoYW5rcy4NCi0tIA0KRGFtaWVuIFRow6liYXVsdA0KUiZEIEVuZ2luZWVy
+DQpWSVRFQw0KDQpULiArMzMgMSA0NiA3MyAwNiAwNg0KRi4gKzMzIDkgNTkgODUgOTkgOTINCkUu
+IGRhbWllbi50aGViYXVsdEB2aXRlYy5jb20NCmh0dHA6Ly93d3cudml0ZWMuY29tDQoNCg==
