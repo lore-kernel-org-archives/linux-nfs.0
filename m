@@ -1,69 +1,93 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:57956 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752354AbbIPVap (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Sep 2015 17:30:45 -0400
-Date: Wed, 16 Sep 2015 17:30:44 -0400
-From: "bfields@fieldses.org" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@poochiereds.net>
-Cc: "Dilger, Andreas" <andreas.dilger@intel.com>,
-        "cluster-devel@redhat.com" <cluster-devel@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "fuse-devel@lists.sourceforge.net" <fuse-devel@lists.sourceforge.net>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "HPDD-discuss@lists.01.org" <HPDD-discuss@ml01.01.org>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        "ceph-devel@vger.kernel.org" <ceph-devel@vger.kernel.org>,
-        "ocfs2-devel@oss.oracle.com" <ocfs2-devel@oss.oracle.com>
-Subject: Re: [HPDD-discuss] [PATCH] nfsd: add a new EXPORT_OP_NOWCC flag to
- struct export_operations
-Message-ID: <20150916213044.GB5169@fieldses.org>
-References: <1441966830-5517-1-git-send-email-jeff.layton@primarydata.com>
- <D21906EE.10A741%andreas.dilger@intel.com>
- <20150912062454.2283d4b6@tlielax.poochiereds.net>
- <20150914161015.GC5338@fieldses.org>
- <20150916131829.6cbf5657@tlielax.poochiereds.net>
+Received: from elasmtp-junco.atl.sa.earthlink.net ([209.86.89.63]:51836 "EHLO
+	elasmtp-junco.atl.sa.earthlink.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752468AbbIPVhF convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Sep 2015 17:37:05 -0400
+From: "Frank Filz" <ffilzlnx@mindspring.com>
+To: "'Trond Myklebust'" <trond.myklebust@primarydata.com>,
+        "'Chuck Lever'" <chuck.lever@oracle.com>
+Cc: "'Linux NFS Mailing List'" <linux-nfs@vger.kernel.org>
+References: <1442429367.24127.6.camel@localhost.localdomain>	<CAHQdGtSWaeAyjeKFV5AxJPou_94esPnso5sQrA=wfep6m5qP5Q@mail.gmail.com>	<08D9E2B0-B4A8-4DF0-9BB7-B19B2D260E97@oracle.com> <CAHQdGtTJdVf1UU7H=R-VdZPxT=BAKA04bB-WGbPqR38JkUpwMA@mail.gmail.com>
+In-Reply-To: <CAHQdGtTJdVf1UU7H=R-VdZPxT=BAKA04bB-WGbPqR38JkUpwMA@mail.gmail.com>
+Subject: RE: [PATCH] Use a separate superblock if mount requires a different security flavor
+Date: Wed, 16 Sep 2015 14:36:46 -0700
+Message-ID: <001a01d0f0c7$ca84e6d0$5f8eb470$@mindspring.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20150916131829.6cbf5657@tlielax.poochiereds.net>
+Content-Type: text/plain;
+	charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Sep 16, 2015 at 01:18:29PM -0400, Jeff Layton wrote:
-> On Mon, 14 Sep 2015 12:10:15 -0400
-> "bfields@fieldses.org" <bfields@fieldses.org> wrote:
+> On Wed, Sep 16, 2015 at 4:55 PM, Chuck Lever <chuck.lever@oracle.com>
+> wrote:
+> >
+> > On Sep 16, 2015, at 4:52 PM, Trond Myklebust
+> <trond.myklebust@primarydata.com> wrote:
+> >
+> >> On Wed, Sep 16, 2015 at 2:49 PM, Frank Filz <ffilzlnx@mindspring.com>
+> wrote:
+> >>> If a server has two exports from the same filesystem but with
+> >>> different security flavors allowed, when the client mounts first one
+> >>> and then the second, the same super block was being used. This
+> >>> resulted in the security flavor for the first export being applied
+> >>> to access to the second export.
+> >>>
+> >>> The fix is simply to check the security flavor of the nfs_server
+> >>> temporarily constructed for the second mount within
+> nfs_compare_super.
+> >>>
+> >>> Signed-off-by: Frank S. Filz <ffilzlnx@mindspring.com>
+> >>> ---
+> >>> fs/nfs/super.c | 3 +++
+> >>> 1 file changed, 3 insertions(+)
+> >>>
+> >>> diff --git a/fs/nfs/super.c b/fs/nfs/super.c index 084af10..44d60f1
+> >>> 100644
+> >>> --- a/fs/nfs/super.c
+> >>> +++ b/fs/nfs/super.c
+> >>> @@ -2455,6 +2455,9 @@ static int nfs_compare_super(struct
+> >>> super_block *sb, void *data)
+> >>>        struct nfs_server *server = sb_mntdata->server, *old =
+> >>> NFS_SB(sb);
+> >>>        int mntflags = sb_mntdata->mntflags;
+> >>>
+> >>> +       if(old->client->cl_auth->au_flavor
+> >>> +          != server->client->cl_auth->au_flavor)
+> >>> +               return 0;
+> >>
+> >> Isn't this check already being performed in
+> >> nfs_compare_mount_options()? As far as I can see, the difference is
+> >> that you are checking unconditionally, whereas
+> >> nfs_compare_mount_options only does so if there was a 'sec=' line
+> >> specified in the mount options.
+> >
+> > Right. If the user doesn't provide a sec=, the security flavor is
+> > autonegotiated. In the case Frank describes, there are two directories
+> > shared on the server, each from the same FSID but using distinct
+> > security policies.
+> >
+> > So the mount options comparison is inadequate if no sec= is specified
+> > on the mount command line.
 > 
-> > On Sat, Sep 12, 2015 at 06:24:54AM -0400, Jeff Layton wrote:
-> > > I don't think it matters, at least not on x86_64. bools and chars both
-> > > require a byte. pahole does show this adding a new hole, but that's
-> > > just because this brings the code up to 5 flags and the next field
-> > > (fh_pre_size) needs to be aligned.
-> > > 
-> > > I do agree that replacing those other unsigned chars with bools is more
-> > > clear however. Maybe we should even replace them all with a single
-> > > unsigned int and use bitops to set flags in there. That would be more
-> > > space efficient now that we're at 5 flags.
-> > 
-> > Makes sense to me.--b.
+> We don't claim to support autonegotiation of multiple security policies per
+> filesystem, in general. We only claim to support one auth flavour per super
+> block.
 > 
-> I played around with this a little today, and it turns out not to make
-> a lot of difference. Here's what pahole says about the existing code
-> (once I moved fh_maxsize to snuggle up to fh_handle to plug a hole):
-...
-> I used an unsigned long for fh_flags since we might as well. Making it
-> smaller just adds a hole in there since the compiler wants to align the
-> fh_pre_size. Moving it around doesn't help either as it just moves the
-> hole around. Note that this is x86_64. It might look different on a
-> 32-bit arch, but I doubt it really matters much in the big scheme of
-> things.
-> 
-> Bruce, I'll send out the patches that change this if you like, but I'm
-> inclined to just leave this alone since it doesn't seem to have a
-> tangible benefit.
+> If I understand you correctly, you are knowingly trying to work around that
+> limitation by performing multiple mounts of the same filesystem and force it
+> to use multiple super blocks. Why can't you then also specify the 'sec='?
 
-Unless more flags are imminent I guess it's just a question of which is
-more readable.  Arguably there's some value to making it more obvious
-that these are each just a bit.  I'll accept your judgement on that
-question.
+I see that point, but why not just make this case work smoothly rather than force the user to go back and specify -o sec on the mount?
 
---b.
+Actually all that is necessary is SOME difference in mount options (or use -o nosharedcache, which could be used on all the mounts so all can have the same mount options...) and allow security negotiation to work.
+
+An interesting question is if there are any servers out there that don't typically provide different FSID for different portions of the namespace, but also provide a mechanism to specify different security policies for different portions of the namespace?
+
+Frank
+
+
+---
+This email has been checked for viruses by Avast antivirus software.
+https://www.avast.com/antivirus
+
