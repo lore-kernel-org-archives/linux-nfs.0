@@ -1,122 +1,61 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:36875 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:36930 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752636AbbIPTJD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Sep 2015 15:09:03 -0400
-Subject: Re: [PATCH] statd: statd_get_socket() should return open fds
-To: Chuck Lever <chuck.lever@oracle.com>
-References: <20150824160538.1402.26833.stgit@seurat.1015granger.net>
+	id S1752746AbbIPTJ3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Sep 2015 15:09:29 -0400
+Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+	by mx1.redhat.com (Postfix) with ESMTPS id 7589F8E689
+	for <linux-nfs@vger.kernel.org>; Wed, 16 Sep 2015 19:09:29 +0000 (UTC)
+Subject: Re: [nfs-utils PATCH] mountstats.man: Remove a few bogus .R macros
+To: Scott Mayhew <smayhew@redhat.com>
+References: <1442325678-52516-1-git-send-email-smayhew@redhat.com>
 Cc: linux-nfs@vger.kernel.org
 From: Steve Dickson <SteveD@redhat.com>
-Message-ID: <55F9BE4C.7030707@RedHat.com>
-Date: Wed, 16 Sep 2015 15:09:00 -0400
+Message-ID: <55F9BE68.6010906@RedHat.com>
+Date: Wed, 16 Sep 2015 15:09:28 -0400
 MIME-Version: 1.0
-In-Reply-To: <20150824160538.1402.26833.stgit@seurat.1015granger.net>
-Content-Type: text/plain; charset=utf-8
+In-Reply-To: <1442325678-52516-1-git-send-email-smayhew@redhat.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
 
-On 08/24/2015 12:05 PM, Chuck Lever wrote:
-> Tastky <tastky@gmail.com> reports:
->> There appears to be a bug in nfs-utils exposed by musl, which
->> makes rpc.statd loop with:
->>
->> my_svc_run() - select: Bad file descriptor
+On 09/15/2015 10:01 AM, Scott Mayhew wrote:
+> These have no effect on the rendering of the man page, but they do cause
+> the following error if you try to pipe or redirect the output:
 > 
-> OpenGroup says getservbyport(3) is supposed to return NULL when
-> no entry exists for the specified port. But musl's getservbyport(3)
-> never returns NULL (likely a bug).
+> `R' is a string (producing the registered sign), not a macro.
 > 
-> Thus statd_get_socket() tries bindresvport(3) 100 times, then gives
-> up and returns the last socket it created. This should work fine,
-> but there's a bug in the retry loop:
-> 
-> Rich Felker <dalias@libc.org> says:
->> The logic bug is the count-down loop that closes all the temp
->> sockets. In the case where the loop terminates via break, it
->> leaves the last one open and only closes the extras. But in the
->> case where where the loop terminates via the end condition in the
->> for statement, the close loop closes all the sockets _including_
->> the one it intends to use.
-> 
-> (emphasis mine). The closed socket fd is then passed to select(2).
-> 
-> See also: http://www.openwall.com/lists/musl/2015/08
-> 
-> The fix is to perform the loop termination test before adding sockfd
-> to the set of fds to be closed. As additional clean ups, remove the
-> use of the variable-length stack array, and switch to variable names
-> that better document the purpose of this logic.
-> 
-> Reported-by: Tastky <tastky@gmail.com>
-> Fixes: eb8229338f06 ("rpc.statd: Fix socket binding loop.")
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> Signed-off-by: Scott Mayhew <smayhew@redhat.com>
 Committed... 
 
 steved.
 
 > ---
->  utils/statd/rmtcall.c |   27 ++++++++++++++++++---------
->  1 file changed, 18 insertions(+), 9 deletions(-)
+>  tools/mountstats/mountstats.man | 8 ++++----
+>  1 file changed, 4 insertions(+), 4 deletions(-)
 > 
-> diff --git a/utils/statd/rmtcall.c b/utils/statd/rmtcall.c
-> index dc620a9..d2255a1 100644
-> --- a/utils/statd/rmtcall.c
-> +++ b/utils/statd/rmtcall.c
-> @@ -52,6 +52,9 @@
->  
->  static int		sockfd = -1;	/* notify socket */
->  
-> +/* How many times to try looking for an unused privileged port */
-> +#define MAX_BRP_RETRIES	100
-> +
->  /*
->   * Initialize socket used to notify lockd of peer reboots.
->   *
-> @@ -68,14 +71,14 @@ statd_get_socket(void)
->  {
->  	struct sockaddr_in	sin;
->  	struct servent *se;
-> -	const int loopcnt = 100;
-> -	int i, tmp_sockets[loopcnt];
-> +	static int prevsocks[MAX_BRP_RETRIES];
-> +	unsigned int retries;
->  
->  	if (sockfd >= 0)
->  		return sockfd;
->  
-> -	for (i = 0; i < loopcnt; ++i) {
-> -
-> +	retries = 0;
-> +	do {
->  		if ((sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0) {
->  			xlog(L_ERROR, "%s: Can't create socket: %m", __func__);
->  			break;
-> @@ -96,13 +99,19 @@ statd_get_socket(void)
->  		se = getservbyport(sin.sin_port, "udp");
->  		if (se == NULL)
->  			break;
-> -		/* rather not use that port, try again */
->  
-> -		tmp_sockets[i] = sockfd;
-> -	}
-> +		if (retries == MAX_BRP_RETRIES) {
-> +			xlog(D_GENERAL, "%s: No unused privileged ports",
-> +					__func__);
-> +			break;
-> +		}
-> +
-> +		/* rather not use that port, try again */
-> +		prevsocks[retries++] = sockfd;
-> +	} while (1);
->  
-> -	while (--i >= 0)
-> -		close(tmp_sockets[i]);
-> +	while (retries)
-> +		close(prevsocks[--retries]);
->  
->  	if (sockfd < 0)
->  		return -1;
+> diff --git a/tools/mountstats/mountstats.man b/tools/mountstats/mountstats.man
+> index bfc4c46..a55130b 100644
+> --- a/tools/mountstats/mountstats.man
+> +++ b/tools/mountstats/mountstats.man
+> @@ -13,13 +13,13 @@ mountstats \- Displays various NFS client per-mount statistics
+>  .RB [ \-S | \-\-since
+>  .IR sincefile ]
+>  .\" .RB [ \-n | \-\-nfs | \-r | \-\-rpc | \-R | \-\-raw ]
+> -.R [
+> +[
+>  .RB [ \-n | \-\-nfs ]
+> -.R |
+> +|
+>  .RB [ \-r | \-\-rpc ]
+> -.R |
+> +|
+>  .RB  [ \-R | \-\-raw ]
+> -.R ]
+> +]
+>  .RI [ mountpoint ] ...
+>  .P
+>  .B mountstats iostat
 > 
