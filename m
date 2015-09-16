@@ -1,38 +1,84 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-db3on0080.outbound.protection.outlook.com ([157.55.234.80]:27968
-	"EHLO emea01-db3-obe.outbound.protection.outlook.com"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1752198AbbIPHZ3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Sep 2015 03:25:29 -0400
-From: =?utf-8?B?RGFtaWVuIFRow6liYXVsdA==?= <damien.thebault@vitec.com>
-To: "linux@arm.linux.org.uk" <linux@arm.linux.org.uk>
-CC: "linux-arm-kernel@lists.infradead.org"
-	<linux-arm-kernel@lists.infradead.org>,
-        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "trond.myklebust@primarydata.com" <trond.myklebust@primarydata.com>,
+Received: from wtarreau.pck.nerim.net ([62.212.114.60]:13339 "EHLO 1wt.eu"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753064AbbIPHcL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Sep 2015 03:32:11 -0400
+Date: Wed, 16 Sep 2015 09:31:15 +0200
+From: Willy Tarreau <w@1wt.eu>
+To: Damien =?iso-8859-1?Q?Th=E9bault?= <damien.thebault@vitec.com>
+Cc: "linux@arm.linux.org.uk" <linux@arm.linux.org.uk>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>
+        "trond.myklebust@primarydata.com" <trond.myklebust@primarydata.com>,
+        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "linux-arm-kernel@lists.infradead.org"
+	<linux-arm-kernel@lists.infradead.org>
 Subject: Re: NFS/TCP/IPv6 acting strangely in 4.2
-Date: Wed, 16 Sep 2015 06:53:57 +0000
-Message-ID: <1442386435.3756.282.camel@vitec.com>
-References: <20150911113839.GO21084@n2100.arm.linux.org.uk>
-In-Reply-To: <20150911113839.GO21084@n2100.arm.linux.org.uk>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Message-ID: <20150916073115.GB29740@1wt.eu>
+References: <20150911113839.GO21084@n2100.arm.linux.org.uk> <1442386435.3756.282.camel@vitec.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=iso-8859-1
+In-Reply-To: <1442386435.3756.282.camel@vitec.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDE1LTA5LTExIGF0IDEyOjM4ICswMTAwLCBSdXNzZWxsIEtpbmcgLSBBUk0gTGlu
-dXggd3JvdGU6DQo+IEkgaGF2ZSBhIHJlY2VudCBNYXJ2ZWxsIEFybWFkYSAzODggYm9hcmQgaGVy
-ZSB3aGljaCB1c2VzIHRoZSBtdm5ldGENCj4gZHJpdmVyLiAgSSdtIHNlZWluZyBzb21lIHdlaXJk
-IGVmZmVjdHMgd2l0aCBORlMgd2l0aCBpdCBhY3RpbmcgYXMgYQ0KPiBjbGllbnQuDQoNCkhlbGxv
-LA0KDQpJJ20gdXBncmFkaW5nIGEgTWFydmVsbGUgQXJtYWRhIDM3MCBib2FyZCB1c2luZyB0aGUg
-bXZuZXRhIGRyaXZlciBmcm9tDQo0LjAgdG8gNC4yIGFuZCBub3RpY2VkIGlzc3VlcyB3aXRoIE5G
-UyBib290aW5nLg0KQmFzaWNhbGx5LCBtb3N0IG9mIHRoZSB0aW1lIGluaXQgcmV0dXJucyB3aXRo
-IGFuIGVycm9yIGNvZGUsIG9yDQpwcm9ncmFtcyBzZWdmYXVsdCBvciB0aHJvdyBpbGxlZ2FsIGlu
-c3RydWN0aW9ucy4NCg0KU2luY2UgaXQgd29ya2VkIGZpbmUgb24gNC4wIEkgYmlzZWN0ZWQgdW50
-aWwgSSBmb3VuZCBjb21taXQNCmE4NGUzMjg5NDE5MWNmY2JmZmE1NDE4MGQ3OGQ3ZDQ2NTRkNTZj
-MjAgIm5ldDogbXZuZXRhOiBmaXggcmVmaWxsaW5nDQpmb3IgUnggRE1BIGJ1ZmZlcnMiLg0KDQpJ
-ZiBJIHJldmVydCB0aGlzIGNvbW1pdCwgZXZlcnl0aGluZyBzZWVtcyB0byBnZXQgYmFjayB0byBu
-b3JtYWwuDQpDb3VsZCB5b3UgdHJ5IGl0ID8gVGhlIHR3byBpc3N1ZXMgbG9vayB2ZXJ5IHNpbWls
-YXIuDQoNClJlZ2FyZHMNCi0tIA0KRGFtaWVuIFRow6liYXVsdA0KDQo=
+Hi,
+
+On Wed, Sep 16, 2015 at 06:53:57AM +0000, Damien Thébault wrote:
+> On Fri, 2015-09-11 at 12:38 +0100, Russell King - ARM Linux wrote:
+> > I have a recent Marvell Armada 388 board here which uses the mvneta
+> > driver.  I'm seeing some weird effects with NFS with it acting as a
+> > client.
+> 
+> Hello,
+> 
+> I'm upgrading a Marvelle Armada 370 board using the mvneta driver from
+> 4.0 to 4.2 and noticed issues with NFS booting.
+> Basically, most of the time init returns with an error code, or
+> programs segfault or throw illegal instructions.
+> 
+> Since it worked fine on 4.0 I bisected until I found commit
+> a84e32894191cfcbffa54180d78d7d4654d56c20 "net: mvneta: fix refilling
+> for Rx DMA buffers".
+> 
+> If I revert this commit, everything seems to get back to normal.
+> Could you try it ? The two issues look very similar.
+
+I'm not sure but I'm seeing that the accounting was changed by this
+patch without being certain of the implications; if the revert above
+works, it would be nice to try to only apply this just to see if
+that's indeed an accounting error or not :
+
+diff --git a/drivers/net/ethernet/marvell/mvneta.c b/drivers/net/ethernet/marvell/mvneta.c
+index 62e48bc..4205867 100644
+--- a/drivers/net/ethernet/marvell/mvneta.c
++++ b/drivers/net/ethernet/marvell/mvneta.c
+@@ -1463,6 +1463,7 @@ static int mvneta_rx(struct mvneta_port *pp, int rx_todo,
+ {
+ 	struct net_device *dev = pp->dev;
+ 	int rx_done;
++	int missed = 0;
+ 	u32 rcvd_pkts = 0;
+ 	u32 rcvd_bytes = 0;
+ 
+@@ -1527,6 +1528,7 @@ static int mvneta_rx(struct mvneta_port *pp, int rx_todo,
+ 		if (err) {
+ 			netdev_err(dev, "Linux processing - Can't refill\n");
+ 			rxq->missed++;
++			missed++;
+ 			goto err_drop_frame;
+ 		}
+ 
+@@ -1561,7 +1563,7 @@ static int mvneta_rx(struct mvneta_port *pp, int rx_todo,
+ 	}
+ 
+ 	/* Update rxq management counters */
+-	mvneta_rxq_desc_num_update(pp, rxq, rx_done, rx_done);
++	mvneta_rxq_desc_num_update(pp, rxq, rx_done, rx_done - missed);
+ 
+ 	return rx_done;
+ }
+
+Regards,
+Willy
+
