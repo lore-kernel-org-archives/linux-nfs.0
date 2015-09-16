@@ -1,153 +1,151 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pa0-f53.google.com ([209.85.220.53]:36859 "EHLO
-	mail-pa0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751985AbbIPIu1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Sep 2015 04:50:27 -0400
-Received: by padhk3 with SMTP id hk3so203262455pad.3
-        for <linux-nfs@vger.kernel.org>; Wed, 16 Sep 2015 01:50:26 -0700 (PDT)
-From: Peng Tao <tao.peng@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Peng Tao <tao.peng@primarydata.com>
-Subject: [PATCH] NFS41: make close wait for layoutreturn
-Date: Thu, 17 Sep 2015 00:49:19 +0800
-Message-Id: <1442422159-9621-1-git-send-email-tao.peng@primarydata.com>
+Received: from eu-smtp-delivery-143.mimecast.com ([146.101.78.143]:64394 "EHLO
+	eu-smtp-delivery-143.mimecast.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753271AbbIPJEq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Sep 2015 05:04:46 -0400
+From: "Suzuki K. Poulose" <suzuki.poulose@arm.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Anna Schumaker <anna.schumaker@netapp.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        "David S. Miller" <davem@davemloft.net>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, marc.zyngier@arm.com,
+        "Suzuki K. Poulose" <suzuki.poulose@arm.com>
+Subject: [PATCHv2] SUNRPC: Fix a race in xs_reset_transport
+Date: Wed, 16 Sep 2015 10:04:40 +0100
+Message-Id: <1442394280-24280-1-git-send-email-suzuki.poulose@arm.com>
+In-Reply-To: <20150915145229.4e69d5f7@synchrony.poochiereds.net>
+References: <20150915145229.4e69d5f7@synchrony.poochiereds.net>
+Content-Type: text/plain; charset=WINDOWS-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If we send a layoutreturn asynchronously before close, the close
-might reach server first and layoutreturn would fail with BADSTATEID
-because there is nothing keeping the layout stateid alive.
+From: "Suzuki K. Poulose" <suzuki.poulose@arm.com>
 
-Also do not pretend sending layoutreturn if we are not.
+Encountered the following BUG() with 4.3-rc1 on a fast model
+for arm64 with NFS root filesystem.
 
-Signed-off-by: Peng Tao <tao.peng@primarydata.com>
+------------[ cut here ]------------
+kernel BUG at fs/inode.c:1493!
+
+Internal error: Oops - BUG: 0 [#1] PREEMPT SMP
+Modules linked in:
+CPU: 2 PID: 1 Comm: swapper/0 Not tainted 4.3.0-rc1+ #855
+Hardware name: FVP Base (DT)
+task: ffffc000760b0000 ti: ffffc00076070000 task.ti: ffffc00076070000
+PC is at iput+0x144/0x170
+LR is at sock_release+0xbc/0xdc
+pc : [<ffffc000001b4920>] lr : [<ffffc000004d1974>] pstate: 40000045
+sp : ffffc00076073790
+x29: ffffc00076073790 x28: ffffc00076073b40
+x27: 00000000000003e8 x26: ffffc00076955000
+x25: 000000000000000c x24: ffffc00076637200
+x23: ffffc00076073930 x22: ffffc000769b8180
+x21: ffffc000740500a8 x20: ffffc00074050158
+x19: ffffc00074050030 x18: 000000009fcef6bf
+x17: 00000000593e3df5 x16: 00000000b597f71d
+x15: 00000000e2f9d3f6 x14: 0ffffffffffffffe
+x13: 0000000000000020 x12: 0101010101010101
+x11: 00000000000001c9 x10: 0000000000000750
+x9 : ffffc00076073670 x8 : ffffc000760b07b0
+x7 : 0000000000000001 x6 : 0000000000000001
+x5 : 0000000000000000 x4 : 00000000ffffffff
+x3 : 0000000000000000 x2 : ffffffffffffffff
+x1 : ffffc00076070000 x0 : 0000000000000060
+
+Process swapper/0 (pid: 1, stack limit =3D 0xffffc00076070020)
+Stack: (0xffffc00076073790 to 0xffffc00076074000)
+
+ [ stack contents stripped ]
+
+Call trace:
+[<ffffc000001b4920>] iput+0x144/0x170
+[<ffffc000004d1970>] sock_release+0xb8/0xdc
+[<ffffc00000578df0>] xs_reset_transport+0x8c/0xac
+[<ffffc00000578e60>] xs_close+0x50/0x6c
+[<ffffc00000578e9c>] xs_destroy+0x20/0x5c
+[<ffffc00000575f70>] xprt_destroy+0x68/0x8c
+[<ffffc0000057777c>] xprt_put+0x24/0x30
+[<ffffc000005726c4>] rpc_free_client+0x78/0xd8
+[<ffffc0000057288c>] rpc_release_client+0x94/0xec
+[<ffffc00000572aac>] rpc_shutdown_client+0x58/0x118
+[<ffffc00000278588>] nfs_mount+0x100/0x234
+[<ffffc0000026cc88>] nfs_request_mount+0xa8/0x12c
+[<ffffc0000026e564>] nfs_try_mount+0x54/0x2b4
+[<ffffc0000026f140>] nfs_fs_mount+0x5cc/0xac0
+[<ffffc0000019f1a0>] mount_fs+0x38/0x158
+[<ffffc000001b81a8>] vfs_kern_mount+0x48/0x11c
+[<ffffc000001bb390>] do_mount+0x208/0xc04
+[<ffffc000001bc0b0>] SyS_mount+0x78/0xd0
+[<ffffc000007f0fa8>] mount_root+0x80/0x148
+[<ffffc000007f11a8>] prepare_namespace+0x138/0x184
+[<ffffc000007f0b20>] kernel_init_freeable+0x1cc/0x1f4
+[<ffffc000005a2914>] kernel_init+0xc/0xd8
+Code: b5fffc00 17ffffed d4210000 17ffffd7 (d4210000)
+---[ end trace 02951451f1831f54 ]---
+
+With rpc_debug enabled here is the log :
+
+RPC:       shutting down mount client for your.nfs.server
+RPC:       rpc_release_client(ffffc00076637800)
+RPC:       destroying UNIX authenticator ffffc000008f48c8
+RPC:       destroying mount client for your.nfs.server
+RPC:       destroying transport ffffc00076226000
+RPC:       xs_destroy xprt ffffc00076226000
+RPC:       xs_close xprt ffffc00076226000
+RPC:       xs_tcp_state_change client ffffc00076226000...
+RPC:       state 4 conn 1 dead 0 zapped 1 sk_shutdown 3
+RPC:       xs_tcp_state_change client ffffc00076226000...
+RPC:       state 5 conn 0 dead 0 zapped 1 sk_shutdown 3
+RPC:       xs_tcp_state_change client ffffc00076226000...
+RPC:       state 7 conn 0 dead 0 zapped 1 sk_shutdown 3
+RPC:       disconnected transport ffffc00076226000
+RPC:       xs_tcp_state_change client ffffc00076226000...
+RPC:       state 7 conn 0 dead 0 zapped 1 sk_shutdown 3
+RPC:       disconnected transport ffffc00076226000
+RPC:       xs_tcp_data_ready...
+RPC:       xs_tcp_state_change client ffffc00076226000...
+RPC:       state 7 conn 0 dead 0 zapped 1 sk_shutdown 3
+RPC:       disconnected transport ffffc00076226000
+RPC:       wake_up_first(ffffc00076226170 "xprt_sending")
+
+So it looks like just before we lock the callbacks in xs_reset_transport,
+a few of the callbacks got through and issued the reset before we could
+lock it. And we end up repeating the cleanups, ending up in the above
+BUG() due to multiple sock_release().
+
+This patch fixes the race by confirming that somebody else hasn't performed
+the reset while we were waiting for the lock. Also, the kernel_shutdown()
+is performed only if the sock is non-NULL to avoid a possible race.
+
+Signed-off-by: Suzuki K. Poulose <suzuki.poulose@arm.com>
 ---
- fs/nfs/nfs4proc.c | 17 +++++++++++++++++
- fs/nfs/pnfs.c     | 32 ++++++++++++++++++++++----------
- fs/nfs/pnfs.h     |  7 +++++++
- 3 files changed, 46 insertions(+), 10 deletions(-)
+ net/sunrpc/xprtsock.c |    9 ++++++++-
+ 1 file changed, 8 insertions(+), 1 deletion(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 693b903..05f2da4 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2645,6 +2645,15 @@ out:
- 	return err;
- }
- 
-+static bool
-+nfs4_wait_on_layoutreturn(struct inode *inode, struct rpc_task *task)
-+{
-+	if (!nfs_have_layout(inode))
-+		return false;
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 7be90bc..6f4789d 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -822,9 +822,16 @@ static void xs_reset_transport(struct sock_xprt *trans=
+port)
+ =09if (atomic_read(&transport->xprt.swapper))
+ =09=09sk_clear_memalloc(sk);
+=20
+-=09kernel_sock_shutdown(sock, SHUT_RDWR);
++=09if (sock)
++=09=09kernel_sock_shutdown(sock, SHUT_RDWR);
+=20
+ =09write_lock_bh(&sk->sk_callback_lock);
++=09/* Check someone has already done the job, while we were waiting */
++=09if (!transport->inet) {
++=09=09write_unlock_bh(&sk->sk_callback_lock);
++=09=09return;
++=09}
 +
-+	return pnfs_wait_on_layoutreturn(inode, task);
-+}
-+
- struct nfs4_closedata {
- 	struct inode *inode;
- 	struct nfs4_state *state;
-@@ -2763,6 +2772,11 @@ static void nfs4_close_prepare(struct rpc_task *task, void *data)
- 		goto out_no_action;
- 	}
- 
-+	if (nfs4_wait_on_layoutreturn(inode, task)) {
-+		nfs_release_seqid(calldata->arg.seqid);
-+		goto out_wait;
-+	}
-+
- 	if (calldata->arg.fmode == 0)
- 		task->tk_msg.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_CLOSE];
- 	if (calldata->roc)
-@@ -5308,6 +5322,9 @@ static void nfs4_delegreturn_prepare(struct rpc_task *task, void *data)
- 
- 	d_data = (struct nfs4_delegreturndata *)data;
- 
-+	if (nfs4_wait_on_layoutreturn(d_data->inode, task))
-+		return;
-+
- 	if (d_data->roc)
- 		pnfs_roc_get_barrier(d_data->inode, &d_data->roc_barrier);
- 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index ba12464..84e87bf 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1104,19 +1104,11 @@ bool pnfs_roc(struct inode *ino)
- 			mark_lseg_invalid(lseg, &tmp_list);
- 			found = true;
- 		}
--	/* pnfs_prepare_layoutreturn() grabs lo ref and it will be put
--	 * in pnfs_roc_release(). We don't really send a layoutreturn but
--	 * still want others to view us like we are sending one!
--	 *
--	 * If pnfs_prepare_layoutreturn() fails, it means someone else is doing
--	 * LAYOUTRETURN, so we proceed like there are no layouts to return.
--	 *
--	 * ROC in three conditions:
-+	/* ROC in two conditions:
- 	 * 1. there are ROC lsegs
- 	 * 2. we don't send layoutreturn
--	 * 3. no others are sending layoutreturn
- 	 */
--	if (found && !layoutreturn && pnfs_prepare_layoutreturn(lo))
-+	if (found && !layoutreturn)
- 		roc = true;
- 
- out_noroc:
-@@ -1172,6 +1164,26 @@ void pnfs_roc_get_barrier(struct inode *ino, u32 *barrier)
- 	spin_unlock(&ino->i_lock);
- }
- 
-+bool pnfs_wait_on_layoutreturn(struct inode *ino, struct rpc_task *task)
-+{
-+	struct nfs_inode *nfsi = NFS_I(ino);
-+        struct pnfs_layout_hdr *lo;
-+        bool sleep = false;
-+
-+	/* we might not have grabbed lo reference. so need to check under
-+	 * i_lock */
-+        spin_lock(&ino->i_lock);
-+        lo = nfsi->layout;
-+        if (lo && test_bit(NFS_LAYOUT_RETURN, &lo->plh_flags))
-+                sleep = true;
-+        spin_unlock(&ino->i_lock);
-+
-+        if (sleep)
-+                rpc_sleep_on(&NFS_SERVER(ino)->roc_rpcwaitq, task, NULL);
-+
-+        return sleep;
-+}
-+
- /*
-  * Compare two layout segments for sorting into layout cache.
-  * We want to preferentially return RW over RO layouts, so ensure those
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 78c9351..d1990e9 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -270,6 +270,7 @@ bool pnfs_roc(struct inode *ino);
- void pnfs_roc_release(struct inode *ino);
- void pnfs_roc_set_barrier(struct inode *ino, u32 barrier);
- void pnfs_roc_get_barrier(struct inode *ino, u32 *barrier);
-+bool pnfs_wait_on_layoutreturn(struct inode *ino, struct rpc_task *task);
- void pnfs_set_layoutcommit(struct inode *, struct pnfs_layout_segment *, loff_t);
- void pnfs_cleanup_layoutcommit(struct nfs4_layoutcommit_data *data);
- int pnfs_layoutcommit_inode(struct inode *inode, bool sync);
-@@ -639,6 +640,12 @@ pnfs_roc_get_barrier(struct inode *ino, u32 *barrier)
- {
- }
- 
-+static inline bool
-+pnfs_wait_on_layoutreturn(struct inode *ino, struct rpc_task *task)
-+{
-+	return false;
-+}
-+
- static inline void set_pnfs_layoutdriver(struct nfs_server *s,
- 					 const struct nfs_fh *mntfh, u32 id)
- {
--- 
-1.8.3.1
+ =09transport->inet =3D NULL;
+ =09transport->sock =3D NULL;
+=20
+--=20
+1.7.9.5
 
