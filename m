@@ -1,76 +1,122 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:36816 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:36875 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752560AbbIPTIs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Sep 2015 15:08:48 -0400
-Subject: Re: [PATCH] mountd: fix mount issue due to comparison with
- uninitialized uuid
-To: Vivek Trivedi <t.vivek@samsung.com>, linux-nfs@vger.kernel.org
-References: <1438949454-12216-1-git-send-email-t.vivek@samsung.com>
-Cc: a.sahrawat@samsung.com, pankaj.m@samsung.com
+	id S1752636AbbIPTJD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Sep 2015 15:09:03 -0400
+Subject: Re: [PATCH] statd: statd_get_socket() should return open fds
+To: Chuck Lever <chuck.lever@oracle.com>
+References: <20150824160538.1402.26833.stgit@seurat.1015granger.net>
+Cc: linux-nfs@vger.kernel.org
 From: Steve Dickson <SteveD@redhat.com>
-Message-ID: <55F9BE37.8070400@RedHat.com>
-Date: Wed, 16 Sep 2015 15:08:39 -0400
+Message-ID: <55F9BE4C.7030707@RedHat.com>
+Date: Wed, 16 Sep 2015 15:09:00 -0400
 MIME-Version: 1.0
-In-Reply-To: <1438949454-12216-1-git-send-email-t.vivek@samsung.com>
-Content-Type: text/plain; charset=windows-1252
+In-Reply-To: <20150824160538.1402.26833.stgit@seurat.1015granger.net>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
 
-On 08/07/2015 08:10 AM, Vivek Trivedi wrote:
-> fix mount issue due to comparison of uninitialized variable
-> u(uuid) with parsed->fhuuid when uuid_by_path return 0.
+On 08/24/2015 12:05 PM, Chuck Lever wrote:
+> Tastky <tastky@gmail.com> reports:
+>> There appears to be a bug in nfs-utils exposed by musl, which
+>> makes rpc.statd loop with:
+>>
+>> my_svc_run() - select: Bad file descriptor
 > 
-> /tmp/usb            192.168.1.0/16(ro,no_root_squash,no_subtree_check,fsid=0)
-> /tmp/usb/sda1       192.168.1.0/16(ro,no_root_squash,no_subtree_check)
-> /tmp/usb/sdb1       192.168.1.0/16(ro,no_root_squash,no_subtree_check)
+> OpenGroup says getservbyport(3) is supposed to return NULL when
+> no entry exists for the specified port. But musl's getservbyport(3)
+> never returns NULL (likely a bug).
 > 
-> mount -t nfs -o nolock,nfsvers=3 192.168.1.2:/tmp/usb/sda1 /tmp/sda1
-> mount -t nfs -o nolock,nfsvers=3 192.168.1.2:/tmp/usb/sdb1 /tmp/sdb1
+> Thus statd_get_socket() tries bindresvport(3) 100 times, then gives
+> up and returns the last socket it created. This should work fine,
+> but there's a bug in the retry loop:
 > 
-> results in below mountd error:
-> mountd: /tmp/usb and /tmp/usb/sdb1 have same filehandle for 192.168.1.0/16, using first
+> Rich Felker <dalias@libc.org> says:
+>> The logic bug is the count-down loop that closes all the temp
+>> sockets. In the case where the loop terminates via break, it
+>> leaves the last one open and only closes the extras. But in the
+>> case where where the loop terminates via the end condition in the
+>> for statement, the close loop closes all the sockets _including_
+>> the one it intends to use.
 > 
-> when uuid_by_path returned 0, by chance, garbage value of u was same as
-> parsed->fhuuid(of sdb1), and comparison of these resulted in above error.
+> (emphasis mine). The closed socket fd is then passed to select(2).
 > 
-> Signed-off-by: Vivek Trivedi <t.vivek@samsung.com>
-> Reviewed-by: Amit Sahrawat <a.sahrawat@samsung.com>
+> See also: http://www.openwall.com/lists/musl/2015/08
+> 
+> The fix is to perform the loop termination test before adding sockfd
+> to the set of fds to be closed. As additional clean ups, remove the
+> use of the variable-length stack array, and switch to variable names
+> that better document the purpose of this logic.
+> 
+> Reported-by: Tastky <tastky@gmail.com>
+> Fixes: eb8229338f06 ("rpc.statd: Fix socket binding loop.")
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 Committed... 
 
 steved.
 
 > ---
->  utils/mountd/cache.c |    9 ++++-----
->  1 file changed, 4 insertions(+), 5 deletions(-)
+>  utils/statd/rmtcall.c |   27 ++++++++++++++++++---------
+>  1 file changed, 18 insertions(+), 9 deletions(-)
 > 
-> diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-> index 7d250f9..7847446 100644
-> --- a/utils/mountd/cache.c
-> +++ b/utils/mountd/cache.c
-> @@ -638,18 +638,17 @@ static bool match_fsid(struct parsed_fsid *parsed, nfs_export *exp, char *path)
->  		if (!is_mountpoint(path))
->  			return false;
->  	check_uuid:
-> -		if (exp->m_export.e_uuid)
-> +		if (exp->m_export.e_uuid) {
->  			get_uuid(exp->m_export.e_uuid, parsed->uuidlen, u);
-> +			if (memcmp(u, parsed->fhuuid, parsed->uuidlen) == 0)
-> +				return true;
-> +		}
->  		else
->  			for (type = 0;
->  			     uuid_by_path(path, type, parsed->uuidlen, u);
->  			     type++)
->  				if (memcmp(u, parsed->fhuuid, parsed->uuidlen) == 0)
->  					return true;
+> diff --git a/utils/statd/rmtcall.c b/utils/statd/rmtcall.c
+> index dc620a9..d2255a1 100644
+> --- a/utils/statd/rmtcall.c
+> +++ b/utils/statd/rmtcall.c
+> @@ -52,6 +52,9 @@
+>  
+>  static int		sockfd = -1;	/* notify socket */
+>  
+> +/* How many times to try looking for an unused privileged port */
+> +#define MAX_BRP_RETRIES	100
+> +
+>  /*
+>   * Initialize socket used to notify lockd of peer reboots.
+>   *
+> @@ -68,14 +71,14 @@ statd_get_socket(void)
+>  {
+>  	struct sockaddr_in	sin;
+>  	struct servent *se;
+> -	const int loopcnt = 100;
+> -	int i, tmp_sockets[loopcnt];
+> +	static int prevsocks[MAX_BRP_RETRIES];
+> +	unsigned int retries;
+>  
+>  	if (sockfd >= 0)
+>  		return sockfd;
+>  
+> -	for (i = 0; i < loopcnt; ++i) {
 > -
-> -		if (memcmp(u, parsed->fhuuid, parsed->uuidlen) != 0)
-> -			return false;
-> -		return true;
->  	}
->  	/* Well, unreachable, actually: */
->  	return false;
+> +	retries = 0;
+> +	do {
+>  		if ((sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0) {
+>  			xlog(L_ERROR, "%s: Can't create socket: %m", __func__);
+>  			break;
+> @@ -96,13 +99,19 @@ statd_get_socket(void)
+>  		se = getservbyport(sin.sin_port, "udp");
+>  		if (se == NULL)
+>  			break;
+> -		/* rather not use that port, try again */
+>  
+> -		tmp_sockets[i] = sockfd;
+> -	}
+> +		if (retries == MAX_BRP_RETRIES) {
+> +			xlog(D_GENERAL, "%s: No unused privileged ports",
+> +					__func__);
+> +			break;
+> +		}
+> +
+> +		/* rather not use that port, try again */
+> +		prevsocks[retries++] = sockfd;
+> +	} while (1);
+>  
+> -	while (--i >= 0)
+> -		close(tmp_sockets[i]);
+> +	while (retries)
+> +		close(prevsocks[--retries]);
+>  
+>  	if (sockfd < 0)
+>  		return -1;
 > 
