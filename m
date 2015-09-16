@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from eu-smtp-delivery-143.mimecast.com ([146.101.78.143]:64394 "EHLO
+Received: from eu-smtp-delivery-143.mimecast.com ([146.101.78.143]:27121 "EHLO
 	eu-smtp-delivery-143.mimecast.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753271AbbIPJEq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Sep 2015 05:04:46 -0400
+	by vger.kernel.org with ESMTP id S1752110AbbIPJf6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Sep 2015 05:35:58 -0400
 From: "Suzuki K. Poulose" <suzuki.poulose@arm.com>
 To: Trond Myklebust <trond.myklebust@primarydata.com>
 Cc: Anna Schumaker <anna.schumaker@netapp.com>,
@@ -12,15 +12,19 @@ Cc: Anna Schumaker <anna.schumaker@netapp.com>,
         linux-kernel@vger.kernel.org, marc.zyngier@arm.com,
         "Suzuki K. Poulose" <suzuki.poulose@arm.com>
 Subject: [PATCHv2] SUNRPC: Fix a race in xs_reset_transport
-Date: Wed, 16 Sep 2015 10:04:40 +0100
-Message-Id: <1442394280-24280-1-git-send-email-suzuki.poulose@arm.com>
-In-Reply-To: <20150915145229.4e69d5f7@synchrony.poochiereds.net>
-References: <20150915145229.4e69d5f7@synchrony.poochiereds.net>
+Date: Wed, 16 Sep 2015 10:35:49 +0100
+Message-Id: <1442396149-24775-1-git-send-email-suzuki.poulose@arm.com>
+In-Reply-To: <1442394280-24280-1-git-send-email-suzuki.poulose@arm.com>
+References: <1442394280-24280-1-git-send-email-suzuki.poulose@arm.com>
 Content-Type: text/plain; charset=WINDOWS-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: "Suzuki K. Poulose" <suzuki.poulose@arm.com>
+
+Ignore the previous patch, which was really v1.
+
+---
 
 Encountered the following BUG() with 4.3-rc1 on a fast model
 for arm64 with NFS root filesystem.
@@ -115,37 +119,61 @@ lock it. And we end up repeating the cleanups, ending up in the above
 BUG() due to multiple sock_release().
 
 This patch fixes the race by confirming that somebody else hasn't performed
-the reset while we were waiting for the lock. Also, the kernel_shutdown()
-is performed only if the sock is non-NULL to avoid a possible race.
+the reset while we were waiting for the lock. Also, the transport->sock is
+only accessed within the lock to prevent using a stale sock for kernel_sock=
+_shutdown().
 
 Signed-off-by: Suzuki K. Poulose <suzuki.poulose@arm.com>
 ---
- net/sunrpc/xprtsock.c |    9 ++++++++-
- 1 file changed, 8 insertions(+), 1 deletion(-)
+Changes since V1:
+  - Prevent race in accessing sock.
+---
+ net/sunrpc/xprtsock.c |   15 ++++++++++++---
+ 1 file changed, 12 insertions(+), 3 deletions(-)
 
 diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 7be90bc..6f4789d 100644
+index 7be90bc..b95f5d0 100644
 --- a/net/sunrpc/xprtsock.c
 +++ b/net/sunrpc/xprtsock.c
-@@ -822,9 +822,16 @@ static void xs_reset_transport(struct sock_xprt *trans=
+@@ -812,7 +812,7 @@ static void xs_error_report(struct sock *sk)
+=20
+ static void xs_reset_transport(struct sock_xprt *transport)
+ {
+-=09struct socket *sock =3D transport->sock;
++=09struct socket *sock;
+ =09struct sock *sk =3D transport->inet;
+ =09struct rpc_xprt *xprt =3D &transport->xprt;
+=20
+@@ -822,9 +822,14 @@ static void xs_reset_transport(struct sock_xprt *trans=
 port)
  =09if (atomic_read(&transport->xprt.swapper))
  =09=09sk_clear_memalloc(sk);
 =20
 -=09kernel_sock_shutdown(sock, SHUT_RDWR);
-+=09if (sock)
-+=09=09kernel_sock_shutdown(sock, SHUT_RDWR);
-=20
+-
  =09write_lock_bh(&sk->sk_callback_lock);
 +=09/* Check someone has already done the job, while we were waiting */
 +=09if (!transport->inet) {
 +=09=09write_unlock_bh(&sk->sk_callback_lock);
 +=09=09return;
 +=09}
++=09sock =3D transport->sock;
 +
  =09transport->inet =3D NULL;
  =09transport->sock =3D NULL;
 =20
+@@ -833,6 +838,10 @@ static void xs_reset_transport(struct sock_xprt *trans=
+port)
+ =09xs_restore_old_callbacks(transport, sk);
+ =09xprt_clear_connected(xprt);
+ =09write_unlock_bh(&sk->sk_callback_lock);
++
++=09if (sock)
++=09=09kernel_sock_shutdown(sock, SHUT_RDWR);
++
+ =09xs_sock_reset_connection_flags(xprt);
+=20
+ =09trace_rpc_socket_close(xprt, sock);
 --=20
 1.7.9.5
 
