@@ -1,88 +1,302 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:49001 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752110AbbIPOTh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Sep 2015 10:19:37 -0400
-Date: Wed, 16 Sep 2015 10:19:36 -0400 (EDT)
-From: Benjamin Coddington <bcodding@redhat.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] SUNRPC: Fix transport reset race while TCP is
- connecting
-In-Reply-To: <CAHQdGtRQ9RZNrJeYBykQLx1FsWenebQa35MBEHUiCY9EVedwXw@mail.gmail.com>
-Message-ID: <alpine.OSX.2.19.9992.1509161018490.71803@planck.local>
-References: <d858d15746eeb224f4fb27554771e14b58f31306.1442411712.git.bcodding@redhat.com> <CAHQdGtRQ9RZNrJeYBykQLx1FsWenebQa35MBEHUiCY9EVedwXw@mail.gmail.com>
+Received: from mail-yk0-f170.google.com ([209.85.160.170]:35286 "EHLO
+	mail-yk0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753955AbbIPRSd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Sep 2015 13:18:33 -0400
+Received: by ykdu9 with SMTP id u9so226823859ykd.2
+        for <linux-nfs@vger.kernel.org>; Wed, 16 Sep 2015 10:18:33 -0700 (PDT)
+Date: Wed, 16 Sep 2015 13:18:29 -0400
+From: Jeff Layton <jlayton@poochiereds.net>
+To: "bfields@fieldses.org" <bfields@fieldses.org>
+Cc: "Dilger, Andreas" <andreas.dilger@intel.com>,
+        "cluster-devel@redhat.com" <cluster-devel@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "fuse-devel@lists.sourceforge.net" <fuse-devel@lists.sourceforge.net>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "HPDD-discuss@lists.01.org" <HPDD-discuss@ml01.01.org>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        "ceph-devel@vger.kernel.org" <ceph-devel@vger.kernel.org>,
+        "ocfs2-devel@oss.oracle.com" <ocfs2-devel@oss.oracle.com>
+Subject: Re: [HPDD-discuss] [PATCH] nfsd: add a new EXPORT_OP_NOWCC flag to
+ struct export_operations
+Message-ID: <20150916131829.6cbf5657@tlielax.poochiereds.net>
+In-Reply-To: <20150914161015.GC5338@fieldses.org>
+References: <1441966830-5517-1-git-send-email-jeff.layton@primarydata.com>
+	<D21906EE.10A741%andreas.dilger@intel.com>
+	<20150912062454.2283d4b6@tlielax.poochiereds.net>
+	<20150914161015.GC5338@fieldses.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 16 Sep 2015, Trond Myklebust wrote:
+On Mon, 14 Sep 2015 12:10:15 -0400
+"bfields@fieldses.org" <bfields@fieldses.org> wrote:
 
-> On Wed, Sep 16, 2015 at 9:58 AM, Benjamin Coddington
-> <bcodding@redhat.com> wrote:
-> > After a network segmentation that times out the socket, we can get stuck in
-> > a loop where the client repeatedly sends a SYN, then a RST, with the result
-> > that the client will never successfully reconnect to the server.
-> >
-> > When there's a need to re-establish a TCP connection, the scheduled
-> > connect_worker does xs_tcp_setup_socket(), which sends a SYN, then
-> > immediately wakes the waiting task to call_connect_status with a status of
-> > EAGAIN, which proceeds to xprt_connect() and kernel_sock_shutdown() which
-> > will send a RST.
-> >
-> > Fix this loop by deferring xprt_clear_connecting() until the TCP state
-> > change of ESTALISHED or CLOSED, thereby ensuring that we do not race into
-> > xs_connect() while waiting for SYN,ACK from the server.
-> >
-> > Fixes: 099392048c (SUNRPC: Prevent SYN+SYNACK+RST storms)
-> > Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
-> > ---
-> >  net/sunrpc/xprtsock.c |    6 ++++--
-> >  1 files changed, 4 insertions(+), 2 deletions(-)
-> >
-> > diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-> > index 7be90bc..6df51df 100644
-> > --- a/net/sunrpc/xprtsock.c
-> > +++ b/net/sunrpc/xprtsock.c
-> > @@ -1450,6 +1450,7 @@ static void xs_tcp_state_change(struct sock *sk)
-> >         switch (sk->sk_state) {
-> >         case TCP_ESTABLISHED:
-> >                 spin_lock(&xprt->transport_lock);
-> > +               xprt_clear_connecting(xprt);
-> >                 if (!xprt_test_and_set_connected(xprt)) {
-> >                         struct sock_xprt *transport = container_of(xprt,
-> >                                         struct sock_xprt, xprt);
-> > @@ -1496,6 +1497,7 @@ static void xs_tcp_state_change(struct sock *sk)
-> >                 smp_mb__after_atomic();
-> >                 break;
-> >         case TCP_CLOSE:
-> > +               xprt_clear_connecting(xprt);
-> >                 xs_sock_mark_closed(xprt);
-> >         }
-> >   out:
-> > @@ -2237,10 +2239,10 @@ static void xs_tcp_setup_socket(struct work_struct *work)
-> >                 xs_tcp_force_close(xprt);
-> >                 break;
-> >         case 0:
-> > -       case -EINPROGRESS:
-> > +               xprt_clear_connecting(xprt);
-> >         case -EALREADY:
-> > +       case -EINPROGRESS:
-> >                 xprt_unlock_connect(xprt, transport);
-> > -               xprt_clear_connecting(xprt);
-> >                 return;
-> >         case -EINVAL:
-> >                 /* Happens, for instance, if the user specified a link
-> >
->
-> This introduces races. The call to xprt_clear_connecting in TCP_CLOSE
-> can trigger pretty much at any time, and so could interfere with a
-> subsequent connection attempt.
+> On Sat, Sep 12, 2015 at 06:24:54AM -0400, Jeff Layton wrote:
+> > On Sat, 12 Sep 2015 04:41:33 +0000
+> > "Dilger, Andreas" <andreas.dilger@intel.com> wrote:
+> > 
+> > > On 2015/09/11, 4:20 AM, "HPDD-discuss on behalf of Jeff Layton"
+> > > <hpdd-discuss-bounces@lists.01.org on behalf of jlayton@poochiereds.net>
+> > > wrote:
+> > > 
+> > > >With NFSv3 nfsd will always attempt to send along WCC data to the
+> > > >client. This generally involves saving off the in-core inode information
+> > > >prior to doing the operation on the given filehandle, and then issuing a
+> > > >vfs_getattr to it after the op.
+> > > >
+> > > >Some filesystems (particularly clustered or networked ones) have an
+> > > >expensive ->getattr inode operation. Atomicitiy is also often difficult
+> > > >or impossible to guarantee on such filesystems. For those, we're best
+> > > >off not trying to provide WCC information to the client at all, and to
+> > > >simply allow it to poll for that information as needed with a GETATTR
+> > > >RPC.
+> > > >
+> > > >This patch adds a new flags field to struct export_operations, and
+> > > >defines a new EXPORT_OP_NOWCC flag that filesystems can use to indicate
+> > > >that nfsd should not attempt to provide WCC info in NFSv3 replies. It
+> > > >also adds a blurb about the new flags field and flag to the exporting
+> > > >documentation.
+> > > >
+> > > >The server will also now skip collecting this information for NFSv2 as
+> > > >well, since that info is never used there anyway.
+> > > >
+> > > >Note that this patch does not add this flag to any filesystem
+> > > >export_operations structures. This was originally developed to allow
+> > > >reexporting nfs via nfsd. That code is not (and may never be) suitable
+> > > >for merging into mainline.
+> > > >
+> > > >Other filesystems may want to consider enabling this flag too. It's hard
+> > > >to tell however which ones have export operations to enable export via
+> > > >knfsd and which ones mostly rely on them for open-by-filehandle support,
+> > > >so I'm leaving that up to the individual maintainers to decide. I am
+> > > >cc'ing the relevant lists for those filesystems that I think may want to
+> > > >consider adding this though.
+> > > >
+> > > >Cc: HPDD-discuss@lists.01.org
+> > > >Cc: ceph-devel@vger.kernel.org
+> > > >Cc: cluster-devel@redhat.com
+> > > >Cc: fuse-devel@lists.sourceforge.net
+> > > >Cc: ocfs2-devel@oss.oracle.com
+> > > >Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
+> > > >---
+> > > > Documentation/filesystems/nfs/Exporting | 27 +++++++++++++++++++++++++++
+> > > > fs/nfsd/nfs3xdr.c                       |  5 ++++-
+> > > > fs/nfsd/nfsfh.c                         | 14 ++++++++++++++
+> > > > fs/nfsd/nfsfh.h                         |  5 ++++-
+> > > > include/linux/exportfs.h                |  2 ++
+> > > > 5 files changed, 51 insertions(+), 2 deletions(-)
+> > > >
+> > > >diff --git a/Documentation/filesystems/nfs/Exporting
+> > > >b/Documentation/filesystems/nfs/Exporting
+> > > >index 520a4becb75c..fa636cde3907 100644
+> > > >--- a/Documentation/filesystems/nfs/Exporting
+> > > >+++ b/Documentation/filesystems/nfs/Exporting
+> > > >@@ -138,6 +138,11 @@ struct which has the following members:
+> > > >     to find potential names, and matches inode numbers to find the
+> > > >correct
+> > > >     match.
+> > > > 
+> > > >+  flags
+> > > >+    Some filesystems may need to be handled differently than others. The
+> > > >+    export_operations struct also includes a flags field that allows the
+> > > >+    filesystem to communicate such information to nfsd. See the Export
+> > > >+    Operations Flags section below for more explanation.
+> > > > 
+> > > > A filehandle fragment consists of an array of 1 or more 4byte words,
+> > > > together with a one byte "type".
+> > > >@@ -147,3 +152,25 @@ generated by encode_fh, in which case it will have
+> > > >been padded with
+> > > > nuls.  Rather, the encode_fh routine should choose a "type" which
+> > > > indicates the decode_fh how much of the filehandle is valid, and how
+> > > > it should be interpreted.
+> > > >+
+> > > >+Export Operations Flags
+> > > >+-----------------------
+> > > >+In addition to the operation vector pointers, struct export_operations
+> > > >also
+> > > >+contains a "flags" field that allows the filesystem to communicate to
+> > > >nfsd
+> > > >+that it may want to do things differently when dealing with it. The
+> > > >+following flags are defined:
+> > > >+
+> > > >+  EXPORT_OP_NOWCC
+> > > >+    RFC 1813 recommends that servers always send weak cache consistency
+> > > >+    (WCC) data to the client after each operation. The server should
+> > > >+    atomically collect attributes about the inode, do an operation on it,
+> > > >+    and then collect the attributes afterward. This allows the client to
+> > > >+    skip issuing GETATTRs in some situations but means that the server
+> > > >+    is calling vfs_getattr for almost all RPCs. On some filesystems
+> > > >+    (particularly those that are clustered or networked) this is
+> > > >expensive
+> > > >+    and atomicity is difficult to guarantee. This flag indicates to nfsd
+> > > >+    that it should skip providing WCC attributes to the client in NFSv3
+> > > >+    replies when doing operations on this filesystem. Consider enabling
+> > > >+    this on filesystems that have an expensive ->getattr inode operation,
+> > > >+    or when atomicity between pre and post operation attribute collection
+> > > >+    is impossible to guarantee.
+> > > >diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
+> > > >index 01dcd494f781..c30c8c604e2a 100644
+> > > >--- a/fs/nfsd/nfs3xdr.c
+> > > >+++ b/fs/nfsd/nfs3xdr.c
+> > > >@@ -203,7 +203,7 @@ static __be32 *
+> > > > encode_post_op_attr(struct svc_rqst *rqstp, __be32 *p, struct svc_fh
+> > > >*fhp)
+> > > > {
+> > > > 	struct dentry *dentry = fhp->fh_dentry;
+> > > >-	if (dentry && d_really_is_positive(dentry)) {
+> > > >+	if (!fhp->fh_no_wcc && dentry && d_really_is_positive(dentry)) {
+> > > > 	        __be32 err;
+> > > > 		struct kstat stat;
+> > > > 
+> > > >@@ -256,6 +256,9 @@ void fill_post_wcc(struct svc_fh *fhp)
+> > > > {
+> > > > 	__be32 err;
+> > > > 
+> > > >+	if (fhp->fh_no_wcc)
+> > > >+		return;
+> > > >+
+> > > > 	if (fhp->fh_post_saved)
+> > > > 		printk("nfsd: inode locked twice during operation.\n");
+> > > > 
+> > > >diff --git a/fs/nfsd/nfsfh.c b/fs/nfsd/nfsfh.c
+> > > >index 350041a40fe5..29ae37f62b9b 100644
+> > > >--- a/fs/nfsd/nfsfh.c
+> > > >+++ b/fs/nfsd/nfsfh.c
+> > > >@@ -267,6 +267,16 @@ static __be32 nfsd_set_fh_dentry(struct svc_rqst
+> > > >*rqstp, struct svc_fh *fhp)
+> > > > 
+> > > > 	fhp->fh_dentry = dentry;
+> > > > 	fhp->fh_export = exp;
+> > > >+
+> > > >+	switch (rqstp->rq_vers) {
+> > > >+	case 3:
+> > > >+		if (!(dentry->d_sb->s_export_op->flags & EXPORT_OP_NOWCC))
+> > > >+			break;
+> > > >+		/* Fallthrough */
+> > > >+	case 2:
+> > > >+		fhp->fh_no_wcc = true;
+> > > >+	}
+> > > >+
+> > > > 	return 0;
+> > > > out:
+> > > > 	exp_put(exp);
+> > > >@@ -535,6 +545,9 @@ fh_compose(struct svc_fh *fhp, struct svc_export
+> > > >*exp, struct dentry *dentry,
+> > > > 	 */
+> > > > 	 set_version_and_fsid_type(fhp, exp, ref_fh);
+> > > > 
+> > > >+	/* If we have a ref_fh, then copy the fh_no_wcc setting from it. */
+> > > >+	fhp->fh_no_wcc = ref_fh ? ref_fh->fh_no_wcc : false;
+> > > >+
+> > > > 	if (ref_fh == fhp)
+> > > > 		fh_put(ref_fh);
+> > > > 
+> > > >@@ -641,6 +654,7 @@ fh_put(struct svc_fh *fhp)
+> > > > 		exp_put(exp);
+> > > > 		fhp->fh_export = NULL;
+> > > > 	}
+> > > >+	fhp->fh_no_wcc = false;
+> > > > 	return;
+> > > > }
+> > > > 
+> > > >diff --git a/fs/nfsd/nfsfh.h b/fs/nfsd/nfsfh.h
+> > > >index 1e90dad4926b..9ddead4d98f8 100644
+> > > >--- a/fs/nfsd/nfsfh.h
+> > > >+++ b/fs/nfsd/nfsfh.h
+> > > >@@ -32,6 +32,7 @@ typedef struct svc_fh {
+> > > > 
+> > > > 	unsigned char		fh_locked;	/* inode locked by us */
+> > > > 	unsigned char		fh_want_write;	/* remount protection taken */
+> > > >+	bool			fh_no_wcc;	/* no wcc data needed */
+> > > 
+> > > This increases the size of svc_fh because it splits the four unsigned
+> > > chars.
+> > > You could change all of these (fh_locked, fh_want_write,
+> > > fh_{pre,post}saved)
+> > > to be bools to avoid that and make it more clear they are only used as
+> > > booleans (I verified that they all are only assigned 0 or 1).
+> > > 
+> > 
+> > I don't think it matters, at least not on x86_64. bools and chars both
+> > require a byte. pahole does show this adding a new hole, but that's
+> > just because this brings the code up to 5 flags and the next field
+> > (fh_pre_size) needs to be aligned.
+> > 
+> > I do agree that replacing those other unsigned chars with bools is more
+> > clear however. Maybe we should even replace them all with a single
+> > unsigned int and use bitops to set flags in there. That would be more
+> > space efficient now that we're at 5 flags.
+> 
+> Makes sense to me.--b.
 
-Oh, yeah.  I see that now.
+I played around with this a little today, and it turns out not to make
+a lot of difference. Here's what pahole says about the existing code
+(once I moved fh_maxsize to snuggle up to fh_handle to plug a hole):
 
-> I have an alternative patch which addresses this problem and which is
-> undergoing testing.
+struct svc_fh {
+	struct knfsd_fh            fh_handle;            /*     0   132 */
+	/* --- cacheline 2 boundary (128 bytes) was 4 bytes ago --- */
+	int                        fh_maxsize;           /*   132     4 */
+	struct dentry *            fh_dentry;            /*   136     8 */
+	struct svc_export *        fh_export;            /*   144     8 */
+	unsigned char              fh_locked;            /*   152     1 */
+	unsigned char              fh_want_write;        /*   153     1 */
+	unsigned char              fh_post_saved;        /*   154     1 */
+	unsigned char              fh_pre_saved;         /*   155     1 */
 
-Great!
+	/* XXX 4 bytes hole, try to pack */
+
+	__u64                      fh_pre_size;          /*   160     8 */
+	struct timespec            fh_pre_mtime;         /*   168    16 */
+	struct timespec            fh_pre_ctime;         /*   184    16 */
+	/* --- cacheline 3 boundary (192 bytes) was 8 bytes ago --- */
+	u64                        fh_pre_change;        /*   200     8 */
+	struct kstat               fh_post_attr;         /*   208   104 */
+	/* --- cacheline 4 boundary (256 bytes) was 56 bytes ago --- */
+	u64                        fh_post_change;       /*   312     8 */
+	/* --- cacheline 5 boundary (320 bytes) --- */
+
+	/* size: 320, cachelines: 5, members: 14 */
+	/* sum members: 316, holes: 1, sum holes: 4 */
+};
+
+...and here's what it looks like with everything converted to a
+fh_flags field:
+
+struct svc_fh {
+	struct knfsd_fh            fh_handle;            /*     0   132 */
+	/* --- cacheline 2 boundary (128 bytes) was 4 bytes ago --- */
+	int                        fh_maxsize;           /*   132     4 */
+	struct dentry *            fh_dentry;            /*   136     8 */
+	struct svc_export *        fh_export;            /*   144     8 */
+	long unsigned int          fh_flags;             /*   152     8 */
+	__u64                      fh_pre_size;          /*   160     8 */
+	struct timespec            fh_pre_mtime;         /*   168    16 */
+	struct timespec            fh_pre_ctime;         /*   184    16 */
+	/* --- cacheline 3 boundary (192 bytes) was 8 bytes ago --- */
+	u64                        fh_pre_change;        /*   200     8 */
+	struct kstat               fh_post_attr;         /*   208   104 */
+	/* --- cacheline 4 boundary (256 bytes) was 56 bytes ago --- */
+	u64                        fh_post_change;       /*   312     8 */
+	/* --- cacheline 5 boundary (320 bytes) --- */
+
+	/* size: 320, cachelines: 5, members: 11 */
+};
+
+...no change in size.
+
+I used an unsigned long for fh_flags since we might as well. Making it
+smaller just adds a hole in there since the compiler wants to align the
+fh_pre_size. Moving it around doesn't help either as it just moves the
+hole around. Note that this is x86_64. It might look different on a
+32-bit arch, but I doubt it really matters much in the big scheme of
+things.
+
+Bruce, I'll send out the patches that change this if you like, but I'm
+inclined to just leave this alone since it doesn't seem to have a
+tangible benefit.
+
+-- 
+Jeff Layton <jlayton@poochiereds.net>
