@@ -1,66 +1,38 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from down.free-electrons.com ([37.187.137.238]:33976 "EHLO
-	mail.free-electrons.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751960AbbIPHP1 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Sep 2015 03:15:27 -0400
-From: Gregory CLEMENT <gregory.clement@free-electrons.com>
-To: Damien =?utf-8?Q?Th=C3=A9bault?= <damien.thebault@vitec.com>
-Cc: "linux\@arm.linux.org.uk" <linux@arm.linux.org.uk>,
-        "netdev\@vger.kernel.org" <netdev@vger.kernel.org>,
-        "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "trond.myklebust\@primarydata.com" <trond.myklebust@primarydata.com>,
-        "anna.schumaker\@netapp.com" <anna.schumaker@netapp.com>,
-        "linux-arm-kernel\@lists.infradead.org"
-	<linux-arm-kernel@lists.infradead.org>
+Received: from mail-db3on0080.outbound.protection.outlook.com ([157.55.234.80]:27968
+	"EHLO emea01-db3-obe.outbound.protection.outlook.com"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1752198AbbIPHZ3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Sep 2015 03:25:29 -0400
+From: =?utf-8?B?RGFtaWVuIFRow6liYXVsdA==?= <damien.thebault@vitec.com>
+To: "linux@arm.linux.org.uk" <linux@arm.linux.org.uk>
+CC: "linux-arm-kernel@lists.infradead.org"
+	<linux-arm-kernel@lists.infradead.org>,
+        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "trond.myklebust@primarydata.com" <trond.myklebust@primarydata.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>
 Subject: Re: NFS/TCP/IPv6 acting strangely in 4.2
+Date: Wed, 16 Sep 2015 06:53:57 +0000
+Message-ID: <1442386435.3756.282.camel@vitec.com>
 References: <20150911113839.GO21084@n2100.arm.linux.org.uk>
-	<1442386435.3756.282.camel@vitec.com>
-Date: Wed, 16 Sep 2015 09:15:24 +0200
-In-Reply-To: <1442386435.3756.282.camel@vitec.com> ("Damien =?utf-8?Q?Th?=
- =?utf-8?Q?=C3=A9bault=22's?=
-	message of "Wed, 16 Sep 2015 06:53:57 +0000")
-Message-ID: <87zj0mbzsj.fsf@free-electrons.com>
+In-Reply-To: <20150911113839.GO21084@n2100.arm.linux.org.uk>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Damien,
- 
- On mer., sept. 16 2015, Damien Thébault <damien.thebault@vitec.com> wrote:
-
-> On Fri, 2015-09-11 at 12:38 +0100, Russell King - ARM Linux wrote:
->> I have a recent Marvell Armada 388 board here which uses the mvneta
->> driver.  I'm seeing some weird effects with NFS with it acting as a
->> client.
->
-> Hello,
->
-> I'm upgrading a Marvelle Armada 370 board using the mvneta driver from
-> 4.0 to 4.2 and noticed issues with NFS booting.
-> Basically, most of the time init returns with an error code, or
-> programs segfault or throw illegal instructions.
->
-> Since it worked fine on 4.0 I bisected until I found commit
-> a84e32894191cfcbffa54180d78d7d4654d56c20 "net: mvneta: fix refilling
-> for Rx DMA buffers".
->
-> If I revert this commit, everything seems to get back to normal.
-> Could you try it ? The two issues look very similar.
-
-Actually there was a bug with this commit, but a fix had been submitted
-and accepted yesterday, you can find him here:
-https://patchwork.ozlabs.org/patch/518111/.
-
-Thanks,
-
-Gregory
-
->
-> Regards
-
--- 
-Gregory Clement, Free Electrons
-Kernel, drivers, real-time and embedded Linux
-development, consulting, training and support.
-http://free-electrons.com
+T24gRnJpLCAyMDE1LTA5LTExIGF0IDEyOjM4ICswMTAwLCBSdXNzZWxsIEtpbmcgLSBBUk0gTGlu
+dXggd3JvdGU6DQo+IEkgaGF2ZSBhIHJlY2VudCBNYXJ2ZWxsIEFybWFkYSAzODggYm9hcmQgaGVy
+ZSB3aGljaCB1c2VzIHRoZSBtdm5ldGENCj4gZHJpdmVyLiAgSSdtIHNlZWluZyBzb21lIHdlaXJk
+IGVmZmVjdHMgd2l0aCBORlMgd2l0aCBpdCBhY3RpbmcgYXMgYQ0KPiBjbGllbnQuDQoNCkhlbGxv
+LA0KDQpJJ20gdXBncmFkaW5nIGEgTWFydmVsbGUgQXJtYWRhIDM3MCBib2FyZCB1c2luZyB0aGUg
+bXZuZXRhIGRyaXZlciBmcm9tDQo0LjAgdG8gNC4yIGFuZCBub3RpY2VkIGlzc3VlcyB3aXRoIE5G
+UyBib290aW5nLg0KQmFzaWNhbGx5LCBtb3N0IG9mIHRoZSB0aW1lIGluaXQgcmV0dXJucyB3aXRo
+IGFuIGVycm9yIGNvZGUsIG9yDQpwcm9ncmFtcyBzZWdmYXVsdCBvciB0aHJvdyBpbGxlZ2FsIGlu
+c3RydWN0aW9ucy4NCg0KU2luY2UgaXQgd29ya2VkIGZpbmUgb24gNC4wIEkgYmlzZWN0ZWQgdW50
+aWwgSSBmb3VuZCBjb21taXQNCmE4NGUzMjg5NDE5MWNmY2JmZmE1NDE4MGQ3OGQ3ZDQ2NTRkNTZj
+MjAgIm5ldDogbXZuZXRhOiBmaXggcmVmaWxsaW5nDQpmb3IgUnggRE1BIGJ1ZmZlcnMiLg0KDQpJ
+ZiBJIHJldmVydCB0aGlzIGNvbW1pdCwgZXZlcnl0aGluZyBzZWVtcyB0byBnZXQgYmFjayB0byBu
+b3JtYWwuDQpDb3VsZCB5b3UgdHJ5IGl0ID8gVGhlIHR3byBpc3N1ZXMgbG9vayB2ZXJ5IHNpbWls
+YXIuDQoNClJlZ2FyZHMNCi0tIA0KRGFtaWVuIFRow6liYXVsdA0KDQo=
