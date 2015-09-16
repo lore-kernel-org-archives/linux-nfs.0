@@ -1,52 +1,60 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from elasmtp-spurfowl.atl.sa.earthlink.net ([209.86.89.66]:48576
-	"EHLO elasmtp-spurfowl.atl.sa.earthlink.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752786AbbIPSuS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Sep 2015 14:50:18 -0400
-Message-ID: <1442429367.24127.6.camel@localhost.localdomain>
-Subject: [PATCH] Use a separate superblock if mount requires a different
- security flavor
-From: Frank Filz <ffilzlnx@mindspring.com>
-To: linux-nfs@vger.kernel.org
-Cc: trond.myklebust@primarydata.com, Chuck Lever <chuck.lever@oracle.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 16 Sep 2015 11:49:27 -0700
-Mime-Version: 1.0
+Received: from mx1.redhat.com ([209.132.183.28]:57788 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752750AbbIPTIS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Sep 2015 15:08:18 -0400
+Subject: Re: [PATCH v2 0/6] nfsidmap enhancements
+To: Chuck Lever <chuck.lever@oracle.com>
+References: <20150805143258.13266.92369.stgit@manet.1015granger.net>
+Cc: linux-nfs@vger.kernel.org
+From: Steve Dickson <SteveD@redhat.com>
+Message-ID: <55F9BE20.6030802@RedHat.com>
+Date: Wed, 16 Sep 2015 15:08:16 -0400
+MIME-Version: 1.0
+In-Reply-To: <20150805143258.13266.92369.stgit@manet.1015granger.net>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If a server has two exports from the same filesystem but with different
-security flavors allowed, when the client mounts first one and then the
-second, the same super block was being used. This resulted in the
-security flavor for the first export being applied to access to the
-second export.
-
-The fix is simply to check the security flavor of the nfs_server
-temporarily constructed for the second mount within nfs_compare_super.
-
-Signed-off-by: Frank S. Filz <ffilzlnx@mindspring.com>
----
- fs/nfs/super.c | 3 +++
- 1 file changed, 3 insertions(+)
-
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 084af10..44d60f1 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -2455,6 +2455,9 @@ static int nfs_compare_super(struct super_block
-*sb, void *data)
-        struct nfs_server *server = sb_mntdata->server, *old =
-NFS_SB(sb);
-        int mntflags = sb_mntdata->mntflags;
- 
-+       if(old->client->cl_auth->au_flavor
-+          != server->client->cl_auth->au_flavor)
-+               return 0;
-        if (!nfs_compare_super_address(old, server))
-                return 0;
-        /* Note: NFS_MOUNT_UNSHARED == NFS4_MOUNT_UNSHARED */
--- 
-1.9.3
 
 
+On 08/05/2015 10:45 AM, Chuck Lever wrote:
+> Add "-d" and "-l" options, and clean up some error handling
+> problems.
+> 
+> I've decided to think more about the mechanism which sets the NFSv4
+> domain. Neither conf_ nor libnfsidmap has any support for modifying
+> a configuration file. The naive approach is to open-code editing the
+> configuration file, which is kind of ugly.
+> 
+> Build and basic operational testing on Fedora 22 and on RHEL 6
+> passes. Steve, IMO these are ready to be merged.
+> 
+> 
+> Changes since the first version:
+> - Tested
+> - Various small clean ups
+> - "else" is gone
+> 
+> ---
+> 
+> Chuck Lever (6):
+>       nfsidmap: Display the effective NFSv4 domain name
+>       nfsidmap: Use find_key_by_type_and_desc() if available
+>       nfsidmap: List cached ID mapping results
+>       nfsidmap: Fix error handling in id_lookup()
+>       nfsidmap: Fix error handling in name_lookup()
+>       nfsidmap: Clean up other exit status cases
+> 
+> 
+>  utils/nfsidmap/nfsidmap.c   |  299 ++++++++++++++++++++++++++++++-------------
+>  utils/nfsidmap/nfsidmap.man |   74 +++++++++--
+>  2 files changed, 271 insertions(+), 102 deletions(-)
+All six committed... 
 
+steved.
+
+> 
+> --
+> Chuck Lever
+> 
