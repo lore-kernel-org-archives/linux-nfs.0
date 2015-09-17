@@ -1,107 +1,268 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ob0-f170.google.com ([209.85.214.170]:36432 "EHLO
-	mail-ob0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751708AbbIQDcB convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Sep 2015 23:32:01 -0400
-Received: by obqa2 with SMTP id a2so4223787obq.3
-        for <linux-nfs@vger.kernel.org>; Wed, 16 Sep 2015 20:32:00 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <001a01d0f0c7$ca84e6d0$5f8eb470$@mindspring.com>
-References: <1442429367.24127.6.camel@localhost.localdomain>
-	<CAHQdGtSWaeAyjeKFV5AxJPou_94esPnso5sQrA=wfep6m5qP5Q@mail.gmail.com>
-	<08D9E2B0-B4A8-4DF0-9BB7-B19B2D260E97@oracle.com>
-	<CAHQdGtTJdVf1UU7H=R-VdZPxT=BAKA04bB-WGbPqR38JkUpwMA@mail.gmail.com>
-	<001a01d0f0c7$ca84e6d0$5f8eb470$@mindspring.com>
-Date: Wed, 16 Sep 2015 23:32:00 -0400
-Message-ID: <CAHQdGtSB6XwQme2GBsQzfjxZf4qJRPhsWSMf+mWbE5501HVBzw@mail.gmail.com>
-Subject: Re: [PATCH] Use a separate superblock if mount requires a different
- security flavor
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Frank Filz <ffilzlnx@mindspring.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from [193.47.165.129] ([193.47.165.129]:49155 "EHLO mellanox.co.il"
+	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1751714AbbIQJm4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 17 Sep 2015 05:42:56 -0400
+From: Sagi Grimberg <sagig@mellanox.com>
+To: linux-rdma@vger.kernel.org
+Cc: linux-nfs@vger.kernel.org, "Nicholas A. Bellinger" <nab@linux-iscsi.org>
+Subject: [PATCH v1 04/24] IB/mlx4: Support the new memory registration API
+Date: Thu, 17 Sep 2015 12:42:07 +0300
+Message-Id: <1442482947-27785-5-git-send-email-sagig@mellanox.com>
+In-Reply-To: <1442482947-27785-1-git-send-email-sagig@mellanox.com>
+References: <1442482947-27785-1-git-send-email-sagig@mellanox.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Sep 16, 2015 at 5:36 PM, Frank Filz <ffilzlnx@mindspring.com> wrote:
->> On Wed, Sep 16, 2015 at 4:55 PM, Chuck Lever <chuck.lever@oracle.com>
->> wrote:
->> >
->> > On Sep 16, 2015, at 4:52 PM, Trond Myklebust
->> <trond.myklebust@primarydata.com> wrote:
->> >
->> >> On Wed, Sep 16, 2015 at 2:49 PM, Frank Filz <ffilzlnx@mindspring.com>
->> wrote:
->> >>> If a server has two exports from the same filesystem but with
->> >>> different security flavors allowed, when the client mounts first one
->> >>> and then the second, the same super block was being used. This
->> >>> resulted in the security flavor for the first export being applied
->> >>> to access to the second export.
->> >>>
->> >>> The fix is simply to check the security flavor of the nfs_server
->> >>> temporarily constructed for the second mount within
->> nfs_compare_super.
->> >>>
->> >>> Signed-off-by: Frank S. Filz <ffilzlnx@mindspring.com>
->> >>> ---
->> >>> fs/nfs/super.c | 3 +++
->> >>> 1 file changed, 3 insertions(+)
->> >>>
->> >>> diff --git a/fs/nfs/super.c b/fs/nfs/super.c index 084af10..44d60f1
->> >>> 100644
->> >>> --- a/fs/nfs/super.c
->> >>> +++ b/fs/nfs/super.c
->> >>> @@ -2455,6 +2455,9 @@ static int nfs_compare_super(struct
->> >>> super_block *sb, void *data)
->> >>>        struct nfs_server *server = sb_mntdata->server, *old =
->> >>> NFS_SB(sb);
->> >>>        int mntflags = sb_mntdata->mntflags;
->> >>>
->> >>> +       if(old->client->cl_auth->au_flavor
->> >>> +          != server->client->cl_auth->au_flavor)
->> >>> +               return 0;
->> >>
->> >> Isn't this check already being performed in
->> >> nfs_compare_mount_options()? As far as I can see, the difference is
->> >> that you are checking unconditionally, whereas
->> >> nfs_compare_mount_options only does so if there was a 'sec=' line
->> >> specified in the mount options.
->> >
->> > Right. If the user doesn't provide a sec=, the security flavor is
->> > autonegotiated. In the case Frank describes, there are two directories
->> > shared on the server, each from the same FSID but using distinct
->> > security policies.
->> >
->> > So the mount options comparison is inadequate if no sec= is specified
->> > on the mount command line.
->>
->> We don't claim to support autonegotiation of multiple security policies per
->> filesystem, in general. We only claim to support one auth flavour per super
->> block.
->>
->> If I understand you correctly, you are knowingly trying to work around that
->> limitation by performing multiple mounts of the same filesystem and force it
->> to use multiple super blocks. Why can't you then also specify the 'sec='?
->
-> I see that point, but why not just make this case work smoothly rather than force the user to go back and specify -o sec on the mount?
+Support the new memory registration API by allocating a
+private page list array in mlx4_ib_mr and populate it when
+mlx4_ib_map_mr_sg is invoked. Also, support IB_WR_REG_MR
+by setting the exact WQE as IB_WR_FAST_REG_MR, just take the
+needed information from different places:
+- page_size, iova, length, access flags (ib_mr)
+- page array (mlx4_ib_mr)
+- key (ib_reg_wr)
 
-The main issue is that it violates the policy that we must try our
-best not to set up situations where the client has cache consistency
-issues due to the existence of multiple superblocks that all have page
-caches for the same file.
+The IB_WR_FAST_REG_MR handlers will be removed later when
+all the ULPs will be converted.
 
-> Actually all that is necessary is SOME difference in mount options (or use -o nosharedcache, which could be used on all the mounts so all can have the same mount options...) and allow security negotiation to work.
+Signed-off-by: Sagi Grimberg <sagig@mellanox.com>
+---
+ drivers/infiniband/hw/mlx4/cq.c      |  1 +
+ drivers/infiniband/hw/mlx4/main.c    |  1 +
+ drivers/infiniband/hw/mlx4/mlx4_ib.h |  7 ++++
+ drivers/infiniband/hw/mlx4/mr.c      | 72 +++++++++++++++++++++++++++++++++---
+ drivers/infiniband/hw/mlx4/qp.c      | 25 +++++++++++++
+ 5 files changed, 100 insertions(+), 6 deletions(-)
 
-I'd expect there to be no problems if the admin specifies -o
-nosharedcache. Please do let me know if that fails to work.
+diff --git a/drivers/infiniband/hw/mlx4/cq.c b/drivers/infiniband/hw/mlx4/cq.c
+index 2f4259525bb1..b62236e24708 100644
+--- a/drivers/infiniband/hw/mlx4/cq.c
++++ b/drivers/infiniband/hw/mlx4/cq.c
+@@ -819,6 +819,7 @@ repoll:
+ 			break;
+ 		case MLX4_OPCODE_FMR:
+ 			wc->opcode    = IB_WC_FAST_REG_MR;
++			/* TODO: wc->opcode    = IB_WC_REG_MR; */
+ 			break;
+ 		case MLX4_OPCODE_LOCAL_INVAL:
+ 			wc->opcode    = IB_WC_LOCAL_INV;
+diff --git a/drivers/infiniband/hw/mlx4/main.c b/drivers/infiniband/hw/mlx4/main.c
+index efecdf0216d8..bb82f5fa1612 100644
+--- a/drivers/infiniband/hw/mlx4/main.c
++++ b/drivers/infiniband/hw/mlx4/main.c
+@@ -2247,6 +2247,7 @@ static void *mlx4_ib_add(struct mlx4_dev *dev)
+ 	ibdev->ib_dev.rereg_user_mr	= mlx4_ib_rereg_user_mr;
+ 	ibdev->ib_dev.dereg_mr		= mlx4_ib_dereg_mr;
+ 	ibdev->ib_dev.alloc_mr		= mlx4_ib_alloc_mr;
++	ibdev->ib_dev.map_mr_sg		= mlx4_ib_map_mr_sg;
+ 	ibdev->ib_dev.alloc_fast_reg_page_list = mlx4_ib_alloc_fast_reg_page_list;
+ 	ibdev->ib_dev.free_fast_reg_page_list  = mlx4_ib_free_fast_reg_page_list;
+ 	ibdev->ib_dev.attach_mcast	= mlx4_ib_mcg_attach;
+diff --git a/drivers/infiniband/hw/mlx4/mlx4_ib.h b/drivers/infiniband/hw/mlx4/mlx4_ib.h
+index 1e7b23bb2eb0..07fcf3a49256 100644
+--- a/drivers/infiniband/hw/mlx4/mlx4_ib.h
++++ b/drivers/infiniband/hw/mlx4/mlx4_ib.h
+@@ -131,6 +131,10 @@ struct mlx4_ib_cq {
+ 
+ struct mlx4_ib_mr {
+ 	struct ib_mr		ibmr;
++	__be64			*pages;
++	dma_addr_t		page_map;
++	u32			npages;
++	u32			max_pages;
+ 	struct mlx4_mr		mmr;
+ 	struct ib_umem	       *umem;
+ };
+@@ -706,6 +710,9 @@ int mlx4_ib_dealloc_mw(struct ib_mw *mw);
+ struct ib_mr *mlx4_ib_alloc_mr(struct ib_pd *pd,
+ 			       enum ib_mr_type mr_type,
+ 			       u32 max_num_sg);
++int mlx4_ib_map_mr_sg(struct ib_mr *ibmr,
++		      struct scatterlist *sg,
++		      unsigned int sg_nents);
+ struct ib_fast_reg_page_list *mlx4_ib_alloc_fast_reg_page_list(struct ib_device *ibdev,
+ 							       int page_list_len);
+ void mlx4_ib_free_fast_reg_page_list(struct ib_fast_reg_page_list *page_list);
+diff --git a/drivers/infiniband/hw/mlx4/mr.c b/drivers/infiniband/hw/mlx4/mr.c
+index 5bba176e9dfa..6ed745798ad3 100644
+--- a/drivers/infiniband/hw/mlx4/mr.c
++++ b/drivers/infiniband/hw/mlx4/mr.c
+@@ -59,7 +59,7 @@ struct ib_mr *mlx4_ib_get_dma_mr(struct ib_pd *pd, int acc)
+ 	struct mlx4_ib_mr *mr;
+ 	int err;
+ 
+-	mr = kmalloc(sizeof *mr, GFP_KERNEL);
++	mr = kzalloc(sizeof *mr, GFP_KERNEL);
+ 	if (!mr)
+ 		return ERR_PTR(-ENOMEM);
+ 
+@@ -140,7 +140,7 @@ struct ib_mr *mlx4_ib_reg_user_mr(struct ib_pd *pd, u64 start, u64 length,
+ 	int err;
+ 	int n;
+ 
+-	mr = kmalloc(sizeof *mr, GFP_KERNEL);
++	mr = kzalloc(sizeof *mr, GFP_KERNEL);
+ 	if (!mr)
+ 		return ERR_PTR(-ENOMEM);
+ 
+@@ -271,11 +271,41 @@ release_mpt_entry:
+ 	return err;
+ }
+ 
++static int
++mlx4_alloc_priv_pages(struct ib_device *device,
++		      struct mlx4_ib_mr *mr,
++		      int max_pages)
++{
++	int size = max_pages * sizeof(u64);
++
++	mr->pages = dma_alloc_coherent(device->dma_device, size,
++				       &mr->page_map, GFP_KERNEL);
++	if (!mr->pages)
++		return -ENOMEM;
++
++	return 0;
++}
++
++static void
++mlx4_free_priv_pages(struct mlx4_ib_mr *mr)
++{
++	struct ib_device *device = mr->ibmr.device;
++	int size = mr->max_pages * sizeof(u64);
++
++	if (mr->pages) {
++		dma_free_coherent(device->dma_device, size,
++				  mr->pages, mr->page_map);
++		mr->pages = NULL;
++	}
++}
++
+ int mlx4_ib_dereg_mr(struct ib_mr *ibmr)
+ {
+ 	struct mlx4_ib_mr *mr = to_mmr(ibmr);
+ 	int ret;
+ 
++	mlx4_free_priv_pages(mr);
++
+ 	ret = mlx4_mr_free(to_mdev(ibmr->device)->dev, &mr->mmr);
+ 	if (ret)
+ 		return ret;
+@@ -362,7 +392,7 @@ struct ib_mr *mlx4_ib_alloc_mr(struct ib_pd *pd,
+ 	    max_num_sg > MLX4_MAX_FAST_REG_PAGES)
+ 		return ERR_PTR(-EINVAL);
+ 
+-	mr = kmalloc(sizeof *mr, GFP_KERNEL);
++	mr = kzalloc(sizeof *mr, GFP_KERNEL);
+ 	if (!mr)
+ 		return ERR_PTR(-ENOMEM);
+ 
+@@ -371,18 +401,25 @@ struct ib_mr *mlx4_ib_alloc_mr(struct ib_pd *pd,
+ 	if (err)
+ 		goto err_free;
+ 
++	err = mlx4_alloc_priv_pages(pd->device, mr, max_num_sg);
++	if (err)
++		goto err_free_mr;
++
++	mr->max_pages = max_num_sg;
++
+ 	err = mlx4_mr_enable(dev->dev, &mr->mmr);
+ 	if (err)
+-		goto err_mr;
++		goto err_free_pl;
+ 
+ 	mr->ibmr.rkey = mr->ibmr.lkey = mr->mmr.key;
+ 	mr->umem = NULL;
+ 
+ 	return &mr->ibmr;
+ 
+-err_mr:
++err_free_pl:
++	mlx4_free_priv_pages(mr);
++err_free_mr:
+ 	(void) mlx4_mr_free(dev->dev, &mr->mmr);
+-
+ err_free:
+ 	kfree(mr);
+ 	return ERR_PTR(err);
+@@ -528,3 +565,26 @@ int mlx4_ib_fmr_dealloc(struct ib_fmr *ibfmr)
+ 
+ 	return err;
+ }
++
++static int mlx4_set_page(struct ib_mr *ibmr, u64 addr)
++{
++	struct mlx4_ib_mr *mr = to_mmr(ibmr);
++
++	if (unlikely(mr->npages == mr->max_pages))
++		return -ENOMEM;
++
++	mr->pages[mr->npages++] = cpu_to_be64(addr | MLX4_MTT_FLAG_PRESENT);
++
++	return 0;
++}
++
++int mlx4_ib_map_mr_sg(struct ib_mr *ibmr,
++		      struct scatterlist *sg,
++		      unsigned int sg_nents)
++{
++	struct mlx4_ib_mr *mr = to_mmr(ibmr);
++
++	mr->npages = 0;
++
++	return ib_sg_to_pages(ibmr, sg, sg_nents, mlx4_set_page);
++}
+diff --git a/drivers/infiniband/hw/mlx4/qp.c b/drivers/infiniband/hw/mlx4/qp.c
+index 3831cddb551f..75097151fc16 100644
+--- a/drivers/infiniband/hw/mlx4/qp.c
++++ b/drivers/infiniband/hw/mlx4/qp.c
+@@ -112,6 +112,7 @@ static const __be32 mlx4_ib_opcode[] = {
+ 	[IB_WR_SEND_WITH_INV]			= cpu_to_be32(MLX4_OPCODE_SEND_INVAL),
+ 	[IB_WR_LOCAL_INV]			= cpu_to_be32(MLX4_OPCODE_LOCAL_INVAL),
+ 	[IB_WR_FAST_REG_MR]			= cpu_to_be32(MLX4_OPCODE_FMR),
++	[IB_WR_REG_MR]				= cpu_to_be32(MLX4_OPCODE_FMR),
+ 	[IB_WR_MASKED_ATOMIC_CMP_AND_SWP]	= cpu_to_be32(MLX4_OPCODE_MASKED_ATOMIC_CS),
+ 	[IB_WR_MASKED_ATOMIC_FETCH_AND_ADD]	= cpu_to_be32(MLX4_OPCODE_MASKED_ATOMIC_FA),
+ 	[IB_WR_BIND_MW]				= cpu_to_be32(MLX4_OPCODE_BIND_MW),
+@@ -2405,6 +2406,22 @@ static __be32 convert_access(int acc)
+ 		cpu_to_be32(MLX4_WQE_FMR_PERM_LOCAL_READ);
+ }
+ 
++static void set_reg_seg(struct mlx4_wqe_fmr_seg *fseg,
++			struct ib_reg_wr *wr)
++{
++	struct mlx4_ib_mr *mr = to_mmr(wr->mr);
++
++	fseg->flags		= convert_access(wr->access);
++	fseg->mem_key		= cpu_to_be32(wr->key);
++	fseg->buf_list		= cpu_to_be64(mr->page_map);
++	fseg->start_addr	= cpu_to_be64(mr->ibmr.iova);
++	fseg->reg_len		= cpu_to_be64(mr->ibmr.length);
++	fseg->offset		= 0; /* XXX -- is this just for ZBVA? */
++	fseg->page_size		= cpu_to_be32(ilog2(mr->ibmr.page_size));
++	fseg->reserved[0]	= 0;
++	fseg->reserved[1]	= 0;
++}
++
+ static void set_fmr_seg(struct mlx4_wqe_fmr_seg *fseg,
+ 		struct ib_fast_reg_wr *wr)
+ {
+@@ -2766,6 +2783,14 @@ int mlx4_ib_post_send(struct ib_qp *ibqp, struct ib_send_wr *wr,
+ 				size += sizeof (struct mlx4_wqe_fmr_seg) / 16;
+ 				break;
+ 
++			case IB_WR_REG_MR:
++				ctrl->srcrb_flags |=
++					cpu_to_be32(MLX4_WQE_CTRL_STRONG_ORDER);
++				set_reg_seg(wqe, reg_wr(wr));
++				wqe  += sizeof (struct mlx4_wqe_fmr_seg);
++				size += sizeof (struct mlx4_wqe_fmr_seg) / 16;
++				break;
++
+ 			case IB_WR_BIND_MW:
+ 				ctrl->srcrb_flags |=
+ 					cpu_to_be32(MLX4_WQE_CTRL_STRONG_ORDER);
+-- 
+1.8.4.3
 
-> An interesting question is if there are any servers out there that don't typically provide different FSID for different portions of the namespace, but also provide a mechanism to specify different security policies for different portions of the namespace?
-
-That sort of situation is difficult to manage. How do you deal with
-hard links that cross the security policy boundary? I haven't seen any
-discussion of how that sort of case is expected to work, and of what
-requirements it imposes on clients and servers.
-
-Cheers
-  Trond
