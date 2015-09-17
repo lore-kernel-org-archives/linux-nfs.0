@@ -1,13 +1,13 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qg0-f45.google.com ([209.85.192.45]:35486 "EHLO
-	mail-qg0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751752AbbIQUo3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Sep 2015 16:44:29 -0400
-Subject: [PATCH v1 02/18] xprtrdma: Replace global lkey with lkey local to PD
+Received: from mail-qg0-f54.google.com ([209.85.192.54]:35616 "EHLO
+	mail-qg0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751752AbbIQUoh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Sep 2015 16:44:37 -0400
+Subject: [PATCH v1 03/18] xprtrdma: Remove completion polling budgets
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Thu, 17 Sep 2015 16:44:27 -0400
-Message-ID: <20150917204427.19671.53527.stgit@manet.1015granger.net>
+Date: Thu, 17 Sep 2015 16:44:35 -0400
+Message-ID: <20150917204435.19671.56195.stgit@manet.1015granger.net>
 In-Reply-To: <20150917202829.19671.90044.stgit@manet.1015granger.net>
 References: <20150917202829.19671.90044.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -15,122 +15,211 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The core API has changed so that devices that do not have a global
-DMA lkey automatically create an mr, per-PD, and make that lkey
-available. The global DMA lkey interface is going away in favor of
-the per-PD DMA lkey.
+Commit 8301a2c047cc ("xprtrdma: Limit work done by completion
+handler") was supposed to prevent xprtrdma's upcall handlers from
+starving other softIRQ work by letting them return to the provider
+before all CQEs have been polled.
 
-The per-PD DMA lkey is always available. Convert xprtrdma to use the
-device's per-PD DMA lkey for regbufs, no matter which memory
-registration scheme is in use.
+The logic assumes the provider will call the upcall handler again
+immediately if the CQ is re-armed while there are still queued CQEs.
 
+This assumption is invalid. The IBTA spec says that after a CQ is
+armed, the hardware must interrupt only when a new CQE is inserted.
+xprtrdma can't rely on the provider calling again, even though some
+providers do.
+
+Therefore, leaving CQEs on queue makes sense only when there is
+another mechanism that ensures all remaining CQEs are consumed in a
+timely fashion. xprtrdma does not have such a mechanism. If a CQE
+remains queued, the transport can wait forever to send the next RPC.
+
+Finally, move the wcs array back onto the stack to ensure that the
+poll array is always local to the CPU where the completion upcall is
+running.
+
+Fixes: 8301a2c047cc ("xprtrdma: Limit work done by completion ...")
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/fmr_ops.c      |   19 -------------------
- net/sunrpc/xprtrdma/frwr_ops.c     |    5 -----
- net/sunrpc/xprtrdma/physical_ops.c |   10 +---------
- net/sunrpc/xprtrdma/verbs.c        |    2 +-
- net/sunrpc/xprtrdma/xprt_rdma.h    |    1 -
- 5 files changed, 2 insertions(+), 35 deletions(-)
+ net/sunrpc/xprtrdma/verbs.c     |  100 ++++++++++++++++++---------------------
+ net/sunrpc/xprtrdma/xprt_rdma.h |    5 --
+ 2 files changed, 45 insertions(+), 60 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/fmr_ops.c b/net/sunrpc/xprtrdma/fmr_ops.c
-index cb25c89..f1e8daf 100644
---- a/net/sunrpc/xprtrdma/fmr_ops.c
-+++ b/net/sunrpc/xprtrdma/fmr_ops.c
-@@ -39,25 +39,6 @@ static int
- fmr_op_open(struct rpcrdma_ia *ia, struct rpcrdma_ep *ep,
- 	    struct rpcrdma_create_data_internal *cdata)
- {
--	struct ib_device_attr *devattr = &ia->ri_devattr;
--	struct ib_mr *mr;
--
--	/* Obtain an lkey to use for the regbufs, which are
--	 * protected from remote access.
--	 */
--	if (devattr->device_cap_flags & IB_DEVICE_LOCAL_DMA_LKEY) {
--		ia->ri_dma_lkey = ia->ri_device->local_dma_lkey;
--	} else {
--		mr = ib_get_dma_mr(ia->ri_pd, IB_ACCESS_LOCAL_WRITE);
--		if (IS_ERR(mr)) {
--			pr_err("%s: ib_get_dma_mr for failed with %lX\n",
--			       __func__, PTR_ERR(mr));
--			return -ENOMEM;
--		}
--		ia->ri_dma_lkey = ia->ri_dma_mr->lkey;
--		ia->ri_dma_mr = mr;
--	}
--
- 	return 0;
- }
- 
-diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
-index 21b3efb..004f1ad 100644
---- a/net/sunrpc/xprtrdma/frwr_ops.c
-+++ b/net/sunrpc/xprtrdma/frwr_ops.c
-@@ -189,11 +189,6 @@ frwr_op_open(struct rpcrdma_ia *ia, struct rpcrdma_ep *ep,
- 	struct ib_device_attr *devattr = &ia->ri_devattr;
- 	int depth, delta;
- 
--	/* Obtain an lkey to use for the regbufs, which are
--	 * protected from remote access.
--	 */
--	ia->ri_dma_lkey = ia->ri_device->local_dma_lkey;
--
- 	ia->ri_max_frmr_depth =
- 			min_t(unsigned int, RPCRDMA_MAX_DATA_SEGS,
- 			      devattr->max_fast_reg_page_list_len);
-diff --git a/net/sunrpc/xprtrdma/physical_ops.c b/net/sunrpc/xprtrdma/physical_ops.c
-index 72cf8b1..617b76f 100644
---- a/net/sunrpc/xprtrdma/physical_ops.c
-+++ b/net/sunrpc/xprtrdma/physical_ops.c
-@@ -23,7 +23,6 @@ static int
- physical_op_open(struct rpcrdma_ia *ia, struct rpcrdma_ep *ep,
- 		 struct rpcrdma_create_data_internal *cdata)
- {
--	struct ib_device_attr *devattr = &ia->ri_devattr;
- 	struct ib_mr *mr;
- 
- 	/* Obtain an rkey to use for RPC data payloads.
-@@ -37,15 +36,8 @@ physical_op_open(struct rpcrdma_ia *ia, struct rpcrdma_ep *ep,
- 		       __func__, PTR_ERR(mr));
- 		return -ENOMEM;
- 	}
--	ia->ri_dma_mr = mr;
--
--	/* Obtain an lkey to use for regbufs.
--	 */
--	if (devattr->device_cap_flags & IB_DEVICE_LOCAL_DMA_LKEY)
--		ia->ri_dma_lkey = ia->ri_device->local_dma_lkey;
--	else
--		ia->ri_dma_lkey = ia->ri_dma_mr->lkey;
- 
-+	ia->ri_dma_mr = mr;
- 	return 0;
- }
- 
 diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 01a314a..8a477e2 100644
+index 8a477e2..f2e3863 100644
 --- a/net/sunrpc/xprtrdma/verbs.c
 +++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -1255,7 +1255,7 @@ rpcrdma_alloc_regbuf(struct rpcrdma_ia *ia, size_t size, gfp_t flags)
- 		goto out_free;
+@@ -158,34 +158,37 @@ rpcrdma_sendcq_process_wc(struct ib_wc *wc)
+ 	}
+ }
  
- 	iov->length = size;
--	iov->lkey = ia->ri_dma_lkey;
-+	iov->lkey = ia->ri_pd->local_dma_lkey;
- 	rb->rg_size = size;
- 	rb->rg_owner = NULL;
- 	return rb;
+-static int
++/* The wc array is on stack: automatic memory is always CPU-local.
++ *
++ * The common case is a single completion is ready. By asking
++ * for two entries, a return code of 1 means there is exactly
++ * one completion and no more. We don't have to poll again to
++ * know that the CQ is now empty.
++ */
++static void
+ rpcrdma_sendcq_poll(struct ib_cq *cq, struct rpcrdma_ep *ep)
+ {
+-	struct ib_wc *wcs;
+-	int budget, count, rc;
++	struct ib_wc *pos, wcs[2];
++	int count, rc;
+ 
+-	budget = RPCRDMA_WC_BUDGET / RPCRDMA_POLLSIZE;
+ 	do {
+-		wcs = ep->rep_send_wcs;
++		pos = wcs;
+ 
+-		rc = ib_poll_cq(cq, RPCRDMA_POLLSIZE, wcs);
+-		if (rc <= 0)
+-			return rc;
++		rc = ib_poll_cq(cq, ARRAY_SIZE(wcs), pos);
++		if (rc < 0)
++			goto out_warn;
+ 
+ 		count = rc;
+ 		while (count-- > 0)
+-			rpcrdma_sendcq_process_wc(wcs++);
+-	} while (rc == RPCRDMA_POLLSIZE && --budget);
+-	return 0;
++			rpcrdma_sendcq_process_wc(pos++);
++	} while (rc == ARRAY_SIZE(wcs));
++	return;
++
++out_warn:
++	pr_warn("RPC:       %s: ib_poll_cq() failed %i\n", __func__, rc);
+ }
+ 
+-/*
+- * Handle send, fast_reg_mr, and local_inv completions.
+- *
+- * Send events are typically suppressed and thus do not result
+- * in an upcall. Occasionally one is signaled, however. This
+- * prevents the provider's completion queue from wrapping and
+- * losing a completion.
++/* Handle provider send completion upcalls.
+  */
+ static void
+ rpcrdma_sendcq_upcall(struct ib_cq *cq, void *cq_context)
+@@ -193,12 +196,7 @@ rpcrdma_sendcq_upcall(struct ib_cq *cq, void *cq_context)
+ 	struct rpcrdma_ep *ep = (struct rpcrdma_ep *)cq_context;
+ 	int rc;
+ 
+-	rc = rpcrdma_sendcq_poll(cq, ep);
+-	if (rc) {
+-		dprintk("RPC:       %s: ib_poll_cq failed: %i\n",
+-			__func__, rc);
+-		return;
+-	}
++	rpcrdma_sendcq_poll(cq, ep);
+ 
+ 	rc = ib_req_notify_cq(cq,
+ 			IB_CQ_NEXT_COMP | IB_CQ_REPORT_MISSED_EVENTS);
+@@ -247,44 +245,41 @@ out_fail:
+ 	goto out_schedule;
+ }
+ 
+-static int
++/* The wc array is on stack: automatic memory is always CPU-local.
++ *
++ * struct ib_wc is 64 bytes, making the poll array potentially
++ * large. But this is at the bottom of the call chain. Further
++ * substantial work is done in another thread.
++ */
++static void
+ rpcrdma_recvcq_poll(struct ib_cq *cq, struct rpcrdma_ep *ep)
+ {
+-	struct list_head sched_list;
+-	struct ib_wc *wcs;
+-	int budget, count, rc;
++	struct ib_wc *pos, wcs[4];
++	LIST_HEAD(sched_list);
++	int count, rc;
+ 
+-	INIT_LIST_HEAD(&sched_list);
+-	budget = RPCRDMA_WC_BUDGET / RPCRDMA_POLLSIZE;
+ 	do {
+-		wcs = ep->rep_recv_wcs;
++		pos = wcs;
+ 
+-		rc = ib_poll_cq(cq, RPCRDMA_POLLSIZE, wcs);
+-		if (rc <= 0)
+-			goto out_schedule;
++		rc = ib_poll_cq(cq, ARRAY_SIZE(wcs), pos);
++		if (rc < 0)
++			goto out_warn;
+ 
+ 		count = rc;
+ 		while (count-- > 0)
+-			rpcrdma_recvcq_process_wc(wcs++, &sched_list);
+-	} while (rc == RPCRDMA_POLLSIZE && --budget);
+-	rc = 0;
++			rpcrdma_recvcq_process_wc(pos++, &sched_list);
++	} while (rc == ARRAY_SIZE(wcs));
+ 
+ out_schedule:
+ 	rpcrdma_schedule_tasklet(&sched_list);
+-	return rc;
++	return;
++
++out_warn:
++	pr_warn("RPC:       %s: ib_poll_cq() failed %i\n", __func__, rc);
++	goto out_schedule;
+ }
+ 
+-/*
+- * Handle receive completions.
+- *
+- * It is reentrant but processes single events in order to maintain
+- * ordering of receives to keep server credits.
+- *
+- * It is the responsibility of the scheduled tasklet to return
+- * recv buffers to the pool. NOTE: this affects synchronization of
+- * connection shutdown. That is, the structures required for
+- * the completion of the reply handler must remain intact until
+- * all memory has been reclaimed.
++/* Handle provider receive completion upcalls.
+  */
+ static void
+ rpcrdma_recvcq_upcall(struct ib_cq *cq, void *cq_context)
+@@ -292,12 +287,7 @@ rpcrdma_recvcq_upcall(struct ib_cq *cq, void *cq_context)
+ 	struct rpcrdma_ep *ep = (struct rpcrdma_ep *)cq_context;
+ 	int rc;
+ 
+-	rc = rpcrdma_recvcq_poll(cq, ep);
+-	if (rc) {
+-		dprintk("RPC:       %s: ib_poll_cq failed: %i\n",
+-			__func__, rc);
+-		return;
+-	}
++	rpcrdma_recvcq_poll(cq, ep);
+ 
+ 	rc = ib_req_notify_cq(cq,
+ 			IB_CQ_NEXT_COMP | IB_CQ_REPORT_MISSED_EVENTS);
 diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index 0251222..c09414e 100644
+index c09414e..42c8d44 100644
 --- a/net/sunrpc/xprtrdma/xprt_rdma.h
 +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -65,7 +65,6 @@ struct rpcrdma_ia {
- 	struct rdma_cm_id 	*ri_id;
- 	struct ib_pd		*ri_pd;
- 	struct ib_mr		*ri_dma_mr;
--	u32			ri_dma_lkey;
- 	struct completion	ri_done;
- 	int			ri_async_rc;
- 	unsigned int		ri_max_frmr_depth;
+@@ -77,9 +77,6 @@ struct rpcrdma_ia {
+  * RDMA Endpoint -- one per transport instance
+  */
+ 
+-#define RPCRDMA_WC_BUDGET	(128)
+-#define RPCRDMA_POLLSIZE	(16)
+-
+ struct rpcrdma_ep {
+ 	atomic_t		rep_cqcount;
+ 	int			rep_cqinit;
+@@ -89,8 +86,6 @@ struct rpcrdma_ep {
+ 	struct rdma_conn_param	rep_remote_cma;
+ 	struct sockaddr_storage	rep_remote_addr;
+ 	struct delayed_work	rep_connect_worker;
+-	struct ib_wc		rep_send_wcs[RPCRDMA_POLLSIZE];
+-	struct ib_wc		rep_recv_wcs[RPCRDMA_POLLSIZE];
+ };
+ 
+ /*
 
