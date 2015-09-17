@@ -1,125 +1,103 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:49678 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751868AbbIQSBT convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Sep 2015 14:01:19 -0400
+Received: from fieldses.org ([173.255.197.46]:58560 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751738AbbIQSPp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 17 Sep 2015 14:15:45 -0400
+Date: Thu, 17 Sep 2015 14:15:45 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Anna Schumaker <Anna.Schumaker@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v1 0/3] NFSD: Add READ_PLUS support
+Message-ID: <20150917181545.GA13825@fieldses.org>
+References: <1441393641-30152-1-git-send-email-Anna.Schumaker@Netapp.com>
+MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
-Subject: Re: [PATCH] Use a separate superblock if mount requires a different security flavor
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <CAHQdGtSB6XwQme2GBsQzfjxZf4qJRPhsWSMf+mWbE5501HVBzw@mail.gmail.com>
-Date: Thu, 17 Sep 2015 14:01:08 -0400
-Cc: Frank Filz <ffilzlnx@mindspring.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <3E2CC450-BB4D-4F08-957D-EB78FE3665BE@oracle.com>
-References: <1442429367.24127.6.camel@localhost.localdomain> <CAHQdGtSWaeAyjeKFV5AxJPou_94esPnso5sQrA=wfep6m5qP5Q@mail.gmail.com> <08D9E2B0-B4A8-4DF0-9BB7-B19B2D260E97@oracle.com> <CAHQdGtTJdVf1UU7H=R-VdZPxT=BAKA04bB-WGbPqR38JkUpwMA@mail.gmail.com> <001a01d0f0c7$ca84e6d0$5f8eb470$@mindspring.com> <CAHQdGtSB6XwQme2GBsQzfjxZf4qJRPhsWSMf+mWbE5501HVBzw@mail.gmail.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
+In-Reply-To: <1441393641-30152-1-git-send-email-Anna.Schumaker@Netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Sep 16, 2015, at 11:32 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
-
-> On Wed, Sep 16, 2015 at 5:36 PM, Frank Filz <ffilzlnx@mindspring.com> wrote:
->>> On Wed, Sep 16, 2015 at 4:55 PM, Chuck Lever <chuck.lever@oracle.com>
->>> wrote:
->>>> 
->>>> On Sep 16, 2015, at 4:52 PM, Trond Myklebust
->>> <trond.myklebust@primarydata.com> wrote:
->>>> 
->>>>> On Wed, Sep 16, 2015 at 2:49 PM, Frank Filz <ffilzlnx@mindspring.com>
->>> wrote:
->>>>>> If a server has two exports from the same filesystem but with
->>>>>> different security flavors allowed, when the client mounts first one
->>>>>> and then the second, the same super block was being used. This
->>>>>> resulted in the security flavor for the first export being applied
->>>>>> to access to the second export.
->>>>>> 
->>>>>> The fix is simply to check the security flavor of the nfs_server
->>>>>> temporarily constructed for the second mount within
->>> nfs_compare_super.
->>>>>> 
->>>>>> Signed-off-by: Frank S. Filz <ffilzlnx@mindspring.com>
->>>>>> ---
->>>>>> fs/nfs/super.c | 3 +++
->>>>>> 1 file changed, 3 insertions(+)
->>>>>> 
->>>>>> diff --git a/fs/nfs/super.c b/fs/nfs/super.c index 084af10..44d60f1
->>>>>> 100644
->>>>>> --- a/fs/nfs/super.c
->>>>>> +++ b/fs/nfs/super.c
->>>>>> @@ -2455,6 +2455,9 @@ static int nfs_compare_super(struct
->>>>>> super_block *sb, void *data)
->>>>>>       struct nfs_server *server = sb_mntdata->server, *old =
->>>>>> NFS_SB(sb);
->>>>>>       int mntflags = sb_mntdata->mntflags;
->>>>>> 
->>>>>> +       if(old->client->cl_auth->au_flavor
->>>>>> +          != server->client->cl_auth->au_flavor)
->>>>>> +               return 0;
->>>>> 
->>>>> Isn't this check already being performed in
->>>>> nfs_compare_mount_options()? As far as I can see, the difference is
->>>>> that you are checking unconditionally, whereas
->>>>> nfs_compare_mount_options only does so if there was a 'sec=' line
->>>>> specified in the mount options.
->>>> 
->>>> Right. If the user doesn't provide a sec=, the security flavor is
->>>> autonegotiated. In the case Frank describes, there are two directories
->>>> shared on the server, each from the same FSID but using distinct
->>>> security policies.
->>>> 
->>>> So the mount options comparison is inadequate if no sec= is specified
->>>> on the mount command line.
->>> 
->>> We don't claim to support autonegotiation of multiple security policies per
->>> filesystem, in general. We only claim to support one auth flavour per super
->>> block.
->>> 
->>> If I understand you correctly, you are knowingly trying to work around that
->>> limitation by performing multiple mounts of the same filesystem and force it
->>> to use multiple super blocks. Why can't you then also specify the 'sec='?
->> 
->> I see that point, but why not just make this case work smoothly rather than force the user to go back and specify -o sec on the mount?
+On Fri, Sep 04, 2015 at 03:07:18PM -0400, Anna Schumaker wrote:
+> This is an updated posting of my NFS v4.2 READ_PLUS patches from several
+> months ago, and it should apply against current development trees.
 > 
-> The main issue is that it violates the policy that we must try our
-> best not to set up situations where the client has cache consistency
-> issues due to the existence of multiple superblocks that all have page
-> caches for the same file.
+> I tested this code  using dd to read a file between two KVMs, and I compared
+> the reported transfer rates against various NFS versions and the local XFS
+> filesystem.  I tested using four 5 GB files, the first two simply entirely
+> data or entirely hole.  The others alternate between data and hole pages, at
+> either 4 KB (one page) or 8 KB (two page) intervals.
 
-The parts of the physical FS's namespace that are accessible
-by each security flavor are disjoint. Aside from hardlinks, is
-there any possibility for cache aliasing in this scenario?
+The exports are over XFS too, right?
 
+I seem to remember a more severe regression in the ext4 case--am I
+remembering right, and is that still an issue?
 
->> Actually all that is necessary is SOME difference in mount options (or use -o nosharedcache, which could be used on all the mounts so all can have the same mount options...) and allow security negotiation to work.
+My main concern is to avoid significant performance regressions.
+Without that we'll be stuck having to make people manually tune use of
+READ_PLUS for their specific workload, and I think we'd rather avoid
+that at least for common cases.
+
+So your numbers show about a 5% performance drop in the (probably very
+common) case of a non-sparse file.  I guess that on its own doesn't look
+like a deal-breaker to me.
+
+But we don't know how much of these results are noise, and if your setup
+is really representative.  It would be more reassuring to have:
+
+	- some information about variance of these results across runs.
+
+	- results on a wider variety of setups.  (E.g at least one case
+	  involving "real" server and client and network, not just VMs.)
+
+	- some profiling to understand exactly where the time is going
+	  if there still appears to be any significant loss.
+
+But this certainly seems promising.
+
+--b.
+
 > 
-> I'd expect there to be no problems if the admin specifies -o
-> nosharedcache. Please do let me know if that fails to work.
+> I found that dd uses a default block size of 512 bytes, which could cause
+> reads over NFS to take forever.  I bumped this up to 128K during my testing
+> by passing the argument "bs=128K" to dd.  My results are below:
 > 
->> An interesting question is if there are any servers out there that don't typically provide different FSID for different portions of the namespace, but also provide a mechanism to specify different security policies for different portions of the namespace?
+>        |    XFS     |   NFS v3   |  NFS v4.0  |  NFS v4.1  |  NFS v4.2
+> -------|------------|------------|------------|------------|------------
+>   Data |  2.7 GB/s  |  845 MB/s  |  864 MB/s  |  847 MB/s  |  807 MB/s
+>   Hole |  4.1 GB/s  |  980 MB/s  |  1.1 GB/s  |  989 MB/s  |  2.3 GB/s
+> 1 Page |  1.6 GB/s  |  681 MB/s  |  683 MB/s  |  688 MB/s  |  672 MB/s
+> 2 Page |  2.5 GB/s  |  760 MB/s  |  760 MB/s  |  755 MB/s  |  836 MB/s
 > 
-> That sort of situation is difficult to manage.
-
-But appears to be allowed by Solaris, and likely also by Linux
-and Ganesha. I think we are going to have to consider it,
-particularly if there is no prohibition against it in the RFCs.
-
-Meanwhile, I need to document this behavior (internally) and
-thus need to understand if this is a server bug, a client bug,
-or a protocol bug. Thoughts about which?
-
-
-> How do you deal with
-> hard links that cross the security policy boundary? I haven't seen any
-> discussion of how that sort of case is expected to work, and of what
-> requirements it imposes on clients and servers.
+> The pure data case is slightly slower on NFS v4.2, most likely due to
+> additional server-side lseeks while reading.  The alternating 1 page
+> regions test didn't see as large a slowdown, most likely because of to
+> the additional savings by not transferring zeroes over the wire.  Any
+> slowdown caused by additional seeks is more than made up for by the time
+> we reach 2 page intervals.
 > 
-> Cheers
->  Trond
-
---
-Chuck Lever
-
-
-
+> These patches and the corresponding client changes are available in the
+> [read_plus] branch of
+> 
+> 	git://git.linux-nfs.org/projects/anna/linux-nfs.git
+> 
+> Questions?  Comments?  Thoughts?
+> 
+> Anna
+> 
+> 
+> 
+> Anna Schumaker (3):
+>   NFSD: nfsd4_encode_read{v}() should encode eof and maxcount
+>   NFSD: Add basic READ_PLUS support
+>   NFSD: Add support for encoding multiple segments
+> 
+>  fs/nfsd/nfs4proc.c |  16 +++++
+>  fs/nfsd/nfs4xdr.c  | 183 ++++++++++++++++++++++++++++++++++++++++++-----------
+>  2 files changed, 161 insertions(+), 38 deletions(-)
+> 
+> -- 
+> 2.5.1
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
