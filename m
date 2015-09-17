@@ -1,129 +1,160 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yk0-f180.google.com ([209.85.160.180]:34225 "EHLO
-	mail-yk0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751604AbbIQO7N (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Sep 2015 10:59:13 -0400
-Received: by ykdg206 with SMTP id g206so19249657ykd.1
-        for <linux-nfs@vger.kernel.org>; Thu, 17 Sep 2015 07:59:13 -0700 (PDT)
-Date: Thu, 17 Sep 2015 10:59:09 -0400
-From: Jeff Layton <jlayton@poochiereds.net>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: "Suzuki K. Poulose" <suzuki.poulose@arm.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        "David S. Miller" <davem@davemloft.net>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
-Subject: Re: [PATCH] SUNRPC: Fix a race in xs_reset_transport
-Message-ID: <20150917105909.14f06a6d@synchrony.poochiereds.net>
-In-Reply-To: <1442501401.12852.1.camel@primarydata.com>
-References: <1442332163-9230-1-git-send-email-suzuki.poulose@arm.com>
-	<20150915145229.4e69d5f7@synchrony.poochiereds.net>
-	<CAHQdGtTzHbuBQTdW7vfxpOzET8hOQrXV-AE1Px7rNwu1zBMKNw@mail.gmail.com>
-	<20150917101847.74ee85ac@synchrony.poochiereds.net>
-	<1442501401.12852.1.camel@primarydata.com>
+Received: from mail-ob0-f175.google.com ([209.85.214.175]:36648 "EHLO
+	mail-ob0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752534AbbIQPTd convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Sep 2015 11:19:33 -0400
+Received: by obqa2 with SMTP id a2so15819533obq.3
+        for <linux-nfs@vger.kernel.org>; Thu, 17 Sep 2015 08:19:32 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+In-Reply-To: <55F6B9A5.7020306@gmail.com>
+References: <55F6B9A5.7020306@gmail.com>
+Date: Thu, 17 Sep 2015 11:19:32 -0400
+Message-ID: <CAHQdGtQ3y885UHwiB8HBeSEwJX6wXRp631rehsb48=kBxo9Faw@mail.gmail.com>
+Subject: Re: [PATCH] nfs/filelayout: Fix NULL reference caused by double
+ freeing of fh_array
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Kinglong Mee <kinglongmee@gmail.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 17 Sep 2015 10:50:01 -0400
-Trond Myklebust <trond.myklebust@primarydata.com> wrote:
-
-> On Thu, 2015-09-17 at 10:18 -0400, Jeff Layton wrote:
-> > On Thu, 17 Sep 2015 09:38:33 -0400
-> > Trond Myklebust <trond.myklebust@primarydata.com> wrote:
-> > 
-> > > On Tue, Sep 15, 2015 at 2:52 PM, Jeff Layton <
-> > > jlayton@poochiereds.net> wrote:
-> > > > On Tue, 15 Sep 2015 16:49:23 +0100
-> > > > "Suzuki K. Poulose" <suzuki.poulose@arm.com> wrote:
-> > > > 
-> > > > >  net/sunrpc/xprtsock.c |    9 ++++++++-
-> > > > >  1 file changed, 8 insertions(+), 1 deletion(-)
-> > > > > 
-> > > > > diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-> > > > > index 7be90bc..6f4789d 100644
-> > > > > --- a/net/sunrpc/xprtsock.c
-> > > > > +++ b/net/sunrpc/xprtsock.c
-> > > > > @@ -822,9 +822,16 @@ static void xs_reset_transport(struct
-> > > > > sock_xprt *transport)
-> > > > >       if (atomic_read(&transport->xprt.swapper))
-> > > > >               sk_clear_memalloc(sk);
-> > > > > 
-> > > > > -     kernel_sock_shutdown(sock, SHUT_RDWR);
-> > > > > +     if (sock)
-> > > > > +             kernel_sock_shutdown(sock, SHUT_RDWR);
-> > > > > 
-> > > > 
-> > > > Good catch, but...isn't this still racy? What prevents transport
-> > > > ->sock
-> > > > being set to NULL after you assign it to "sock" but before
-> > > > calling
-> > > > kernel_sock_shutdown?
-> > > 
-> > > The XPRT_LOCKED state.
-> > > 
-> > 
-> > IDGI -- if the XPRT_LOCKED bit was supposed to prevent that, then
-> > how could you hit the original race? There should be no concurrent
-> > callers to xs_reset_transport on the same xprt, right?
-> 
-> Correct. The only exception is xs_destroy.
-> 
-> > AFAICT, that bit is not set in the xprt_destroy codepath, which may
-> > be
-> > the root cause of the problem. How would we take it there anyway?
-> > xprt_destroy is void return, and may not be called in the context of
-> > a
-> > rpc_task. If it's contended,  what do we do? Sleep until it's
-> > cleared?
-> > 
-> 
-> How about the following.
-> 
-> 8<-----------------------------------------------------------------
-> From e2e68218e66c6b0715fd6b8f1b3092694a7c0e62 Mon Sep 17 00:00:00 2001
-> From: Trond Myklebust <trond.myklebust@primarydata.com>
-> Date: Thu, 17 Sep 2015 10:42:27 -0400
-> Subject: [PATCH] SUNRPC: Fix races between socket connection and destroy code
-> 
-> When we're destroying the socket transport, we need to ensure that
-> we cancel any existing delayed connection attempts, and order them
-> w.r.t. the call to xs_close().
-> 
-> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+On Mon, Sep 14, 2015 at 8:12 AM, Kinglong Mee <kinglongmee@gmail.com> wrote:
+> If filelayout_decode_layout fail, _filelayout_free_lseg will causes
+> a double freeing of fh_array.
+>
+> [ 1179.279800] BUG: unable to handle kernel NULL pointer dereference at           (null)
+> [ 1179.280198] IP: [<ffffffffa027222d>] filelayout_free_fh_array.isra.11+0x1d/0x70 [nfs_layout_nfsv41_files]
+> [ 1179.281010] PGD 0
+> [ 1179.281443] Oops: 0000 [#1]
+> [ 1179.281831] Modules linked in: nfs_layout_nfsv41_files(OE) nfsv4(OE) nfs(OE) fscache(E) xfs libcrc32c coretemp nfsd crct10dif_pclmul ppdev crc32_pclmul crc32c_intel auth_rpcgss ghash_clmulni_intel nfs_acl lockd vmw_balloon grace sunrpc parport_pc vmw_vmci parport shpchp i2c_piix4 vmwgfx drm_kms_helper ttm drm serio_raw mptspi scsi_transport_spi mptscsih e1000 mptbase ata_generic pata_acpi [last unloaded: fscache]
+> [ 1179.283891] CPU: 0 PID: 13336 Comm: cat Tainted: G           OE   4.3.0-rc1-pnfs+ #244
+> [ 1179.284323] Hardware name: VMware, Inc. VMware Virtual Platform/440BX Desktop Reference Platform, BIOS 6.00 05/20/2014
+> [ 1179.285206] task: ffff8800501d48c0 ti: ffff88003e3c4000 task.ti: ffff88003e3c4000
+> [ 1179.285668] RIP: 0010:[<ffffffffa027222d>]  [<ffffffffa027222d>] filelayout_free_fh_array.isra.11+0x1d/0x70 [nfs_layout_nfsv41_files]
+> [ 1179.286612] RSP: 0018:ffff88003e3c77f8  EFLAGS: 00010202
+> [ 1179.287092] RAX: 0000000000000000 RBX: ffff88001fe78900 RCX: 0000000000000000
+> [ 1179.287731] RDX: ffffea0000f40760 RSI: ffff88001fe789c8 RDI: ffff88001fe789c0
+> [ 1179.288383] RBP: ffff88003e3c7810 R08: ffffea0000f40760 R09: 0000000000000000
+> [ 1179.289170] R10: 0000000000000000 R11: 0000000000000001 R12: ffff88001fe789c8
+> [ 1179.289959] R13: ffff88001fe789c0 R14: ffff88004ec05a80 R15: ffff88004f935b88
+> [ 1179.290791] FS:  00007f4e66bb5700(0000) GS:ffffffff81c29000(0000) knlGS:0000000000000000
+> [ 1179.291580] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+> [ 1179.292209] CR2: 0000000000000000 CR3: 00000000203f8000 CR4: 00000000001406f0
+> [ 1179.292731] Stack:
+> [ 1179.293195]  ffff88001fe78900 00000000000000d0 ffff88001fe78178 ffff88003e3c7868
+> [ 1179.293676]  ffffffffa0272737 0000000000000001 0000000000000001 ffff88001fe78800
+> [ 1179.294151]  00000000614fffce ffffffff81727671 ffff88001fe78100 ffff88001fe78100
+> [ 1179.294623] Call Trace:
+> [ 1179.295092]  [<ffffffffa0272737>] filelayout_alloc_lseg+0xa7/0x2d0 [nfs_layout_nfsv41_files]
+> [ 1179.295625]  [<ffffffff81727671>] ? out_of_line_wait_on_bit+0x81/0xb0
+> [ 1179.296133]  [<ffffffffa040407e>] pnfs_layout_process+0xae/0x320 [nfsv4]
+> [ 1179.296632]  [<ffffffffa03e0a01>] nfs4_proc_layoutget+0x2b1/0x360 [nfsv4]
+> [ 1179.297134]  [<ffffffffa0402983>] pnfs_update_layout+0x853/0xb30 [nfsv4]
+> [ 1179.297632]  [<ffffffffa039db24>] ? nfs_get_lock_context+0x74/0x170 [nfs]
+> [ 1179.298158]  [<ffffffffa0271807>] filelayout_pg_init_read+0x37/0x50 [nfs_layout_nfsv41_files]
+> [ 1179.298834]  [<ffffffffa03a72d9>] __nfs_pageio_add_request+0x119/0x460 [nfs]
+> [ 1179.299385]  [<ffffffffa03a6bd7>] ? nfs_create_request.part.9+0x37/0x2e0 [nfs]
+> [ 1179.299872]  [<ffffffffa03a7cc3>] nfs_pageio_add_request+0xa3/0x1b0 [nfs]
+> [ 1179.300362]  [<ffffffffa03a8635>] readpage_async_filler+0x85/0x260 [nfs]
+> [ 1179.300907]  [<ffffffff81180cb1>] read_cache_pages+0x91/0xd0
+> [ 1179.301391]  [<ffffffffa03a85b0>] ? nfs_read_completion+0x220/0x220 [nfs]
+> [ 1179.301867]  [<ffffffffa03a8dc8>] nfs_readpages+0x128/0x200 [nfs]
+> [ 1179.302330]  [<ffffffff81180ef3>] __do_page_cache_readahead+0x203/0x280
+> [ 1179.302784]  [<ffffffff81180dc8>] ? __do_page_cache_readahead+0xd8/0x280
+> [ 1179.303413]  [<ffffffff81181116>] ondemand_readahead+0x1a6/0x2f0
+> [ 1179.303855]  [<ffffffff81181371>] page_cache_sync_readahead+0x31/0x50
+> [ 1179.304286]  [<ffffffff811750a6>] generic_file_read_iter+0x4a6/0x5c0
+> [ 1179.304711]  [<ffffffffa03a0316>] ? __nfs_revalidate_mapping+0x1f6/0x240 [nfs]
+> [ 1179.305132]  [<ffffffffa039ccf2>] nfs_file_read+0x52/0xa0 [nfs]
+> [ 1179.305540]  [<ffffffff811e343c>] __vfs_read+0xcc/0x100
+> [ 1179.305936]  [<ffffffff811e3d15>] vfs_read+0x85/0x130
+> [ 1179.306326]  [<ffffffff811e4a98>] SyS_read+0x58/0xd0
+> [ 1179.306708]  [<ffffffff8172caaf>] entry_SYSCALL_64_fastpath+0x12/0x76
+> [ 1179.307094] Code: c4 66 66 66 66 2e 0f 1f 84 00 00 00 00 00 0f 1f 44 00 00 55 48 89 e5 41 55 41 54 53 8b 07 49 89 f4 85 c0 74 47 48 8b 06 49 89 fd <48> 8b 38 48 85 ff 74 22 31 db eb 0c 48 63 d3 48 8b 3c d0 48 85
+> [ 1179.308357] RIP  [<ffffffffa027222d>] filelayout_free_fh_array.isra.11+0x1d/0x70 [nfs_layout_nfsv41_files]
+> [ 1179.309177]  RSP <ffff88003e3c77f8>
+> [ 1179.309582] CR2: 0000000000000000
+>
+> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
 > ---
->  net/sunrpc/xprtsock.c | 3 +++
->  1 file changed, 3 insertions(+)
-> 
-> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-> index 7be90bc1a7c2..d2dfbd043bea 100644
-> --- a/net/sunrpc/xprtsock.c
-> +++ b/net/sunrpc/xprtsock.c
-> @@ -881,8 +881,11 @@ static void xs_xprt_free(struct rpc_xprt *xprt)
->   */
->  static void xs_destroy(struct rpc_xprt *xprt)
+>  fs/nfs/filelayout/filelayout.c | 31 ++++++++++++-------------------
+>  1 file changed, 12 insertions(+), 19 deletions(-)
+>
+> diff --git a/fs/nfs/filelayout/filelayout.c b/fs/nfs/filelayout/filelayout.c
+> index b34f2e2..02ec079 100644
+> --- a/fs/nfs/filelayout/filelayout.c
+> +++ b/fs/nfs/filelayout/filelayout.c
+> @@ -629,23 +629,18 @@ out_put:
+>         goto out;
+>  }
+>
+> -static void filelayout_free_fh_array(struct nfs4_filelayout_segment *fl)
+> +static void _filelayout_free_lseg(struct nfs4_filelayout_segment *fl)
 >  {
-> +	struct sock_xprt *transport = container_of(xprt,
-> +			struct sock_xprt, xprt);
->  	dprintk("RPC:       xs_destroy xprt %p\n", xprt);
->  
-> +	cancel_delayed_work_sync(&transport->connect_worker);
->  	xs_close(xprt);
->  	xs_xprt_free(xprt);
->  	module_put(THIS_MODULE);
+>         int i;
+>
+> -       for (i = 0; i < fl->num_fh; i++) {
+> -               if (!fl->fh_array[i])
+> -                       break;
+> -               kfree(fl->fh_array[i]);
+> +       if (fl->fh_array) {
+> +               for (i = 0; i < fl->num_fh; i++) {
+> +                       if (!fl->fh_array[i])
+> +                               break;
+> +                       kfree(fl->fh_array[i]);
+> +               }
+> +               kfree(fl->fh_array);
+>         }
+> -       kfree(fl->fh_array);
+> -       fl->fh_array = NULL;
+> -}
+> -
+> -static void
+> -_filelayout_free_lseg(struct nfs4_filelayout_segment *fl)
+> -{
+> -       filelayout_free_fh_array(fl);
+>         kfree(fl);
+>  }
+>
+> @@ -716,21 +711,21 @@ filelayout_decode_layout(struct pnfs_layout_hdr *flo,
+>                 /* Do we want to use a mempool here? */
+>                 fl->fh_array[i] = kmalloc(sizeof(struct nfs_fh), gfp_flags);
 
-Yeah, that looks like it might do it. The only other xs_destroy callers
-are in the connect codepath so canceling the work should prevent the
-race. So...
+Doesn't this need to be a kzalloc() for the freeing to work correctly?
 
-Acked-by: Jeff Layton <jlayton@poochiereds.net>
-
-It wouldn't hurt to update the comments over xs_close too for
-posterity. They currently say:
-
- * The caller _must_ be holding XPRT_LOCKED in order to avoid issues with
- * xs_reset_transport() zeroing the socket from underneath a writer.
-
-...but that rule is clearly broken here.
+>                 if (!fl->fh_array[i])
+> -                       goto out_err_free;
+> +                       goto out_err;
+>
+>                 p = xdr_inline_decode(&stream, 4);
+>                 if (unlikely(!p))
+> -                       goto out_err_free;
+> +                       goto out_err;
+>                 fl->fh_array[i]->size = be32_to_cpup(p++);
+>                 if (sizeof(struct nfs_fh) < fl->fh_array[i]->size) {
+>                         printk(KERN_ERR "NFS: Too big fh %d received %d\n",
+>                                i, fl->fh_array[i]->size);
+> -                       goto out_err_free;
+> +                       goto out_err;
+>                 }
+>
+>                 p = xdr_inline_decode(&stream, fl->fh_array[i]->size);
+>                 if (unlikely(!p))
+> -                       goto out_err_free;
+> +                       goto out_err;
+>                 memcpy(fl->fh_array[i]->data, p, fl->fh_array[i]->size);
+>                 dprintk("DEBUG: %s: fh len %d\n", __func__,
+>                         fl->fh_array[i]->size);
+> @@ -739,8 +734,6 @@ filelayout_decode_layout(struct pnfs_layout_hdr *flo,
+>         __free_page(scratch);
+>         return 0;
+>
+> -out_err_free:
+> -       filelayout_free_fh_array(fl);
+>  out_err:
+>         __free_page(scratch);
+>         return -EIO;
+> --
+> 2.5.0
+>
