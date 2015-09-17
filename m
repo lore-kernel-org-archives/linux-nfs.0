@@ -1,132 +1,132 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-oi0-f46.google.com ([209.85.218.46]:35641 "EHLO
-	mail-oi0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752645AbbIQWDv convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Sep 2015 18:03:51 -0400
-Received: by oiww128 with SMTP id w128so17397251oiw.2
-        for <linux-nfs@vger.kernel.org>; Thu, 17 Sep 2015 15:03:51 -0700 (PDT)
+Received: from mail-ob0-f171.google.com ([209.85.214.171]:34965 "EHLO
+	mail-ob0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751849AbbIQWJJ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Sep 2015 18:09:09 -0400
+Received: by obbzf10 with SMTP id zf10so24461815obb.2
+        for <linux-nfs@vger.kernel.org>; Thu, 17 Sep 2015 15:09:08 -0700 (PDT)
 MIME-Version: 1.0
-In-Reply-To: <alpine.OSX.2.19.9992.1509171224520.17945@planck.local>
-References: <20150911113839.GO21084@n2100.arm.linux.org.uk>
-	<1441976691.4619.58.camel@edumazet-glaptop2.roam.corp.google.com>
-	<20150911143347.GQ21084@n2100.arm.linux.org.uk>
-	<20150911150613.GR21084@n2100.arm.linux.org.uk>
-	<1441984723.4619.61.camel@edumazet-glaptop2.roam.corp.google.com>
-	<20150911162416.GV21084@n2100.arm.linux.org.uk>
-	<20150911164937.GW21084@n2100.arm.linux.org.uk>
-	<20150917135705.GQ21084@n2100.arm.linux.org.uk>
-	<1442499509.2865.16.camel@primarydata.com>
-	<alpine.OSX.2.19.9992.1509171224520.17945@planck.local>
-Date: Thu, 17 Sep 2015 18:03:50 -0400
-Message-ID: <CAHQdGtS3YHy6_sEhYn=3Tgzdi4WMranoyRirfY+vN_srGDC0wg@mail.gmail.com>
-Subject: Re: NFS/TCP/IPv6 acting strangely in 4.2
+In-Reply-To: <CAHQdGtQ3y885UHwiB8HBeSEwJX6wXRp631rehsb48=kBxo9Faw@mail.gmail.com>
+References: <55F6B9A5.7020306@gmail.com>
+	<CAHQdGtQ3y885UHwiB8HBeSEwJX6wXRp631rehsb48=kBxo9Faw@mail.gmail.com>
+Date: Thu, 17 Sep 2015 18:09:08 -0400
+Message-ID: <CAHQdGtSP6XJE+s=Q5nmv5GXMWXPW1W0L7wx5MyhRKvw7YC011A@mail.gmail.com>
+Subject: Re: [PATCH] nfs/filelayout: Fix NULL reference caused by double
+ freeing of fh_array
 From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Benjamin Coddington <bcodding@redhat.com>
-Cc: Russell King - ARM Linux <linux@arm.linux.org.uk>,
-        AnnaSchumaker <anna.schumaker@netapp.com>,
-        Linux Network Devel Mailing List <netdev@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Linux ARM Kernel Mailing List
-	<linux-arm-kernel@lists.infradead.org>,
-        Eric Dumazet <eric.dumazet@gmail.com>
+To: Kinglong Mee <kinglongmee@gmail.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Sep 17, 2015 at 12:27 PM, Benjamin Coddington
-<bcodding@redhat.com> wrote:
-> On Thu, 17 Sep 2015, Trond Myklebust wrote:
+On Thu, Sep 17, 2015 at 11:19 AM, Trond Myklebust
+<trond.myklebust@primarydata.com> wrote:
+> On Mon, Sep 14, 2015 at 8:12 AM, Kinglong Mee <kinglongmee@gmail.com> wrote:
+>> If filelayout_decode_layout fail, _filelayout_free_lseg will causes
+>> a double freeing of fh_array.
+>>
+>> [ 1179.279800] BUG: unable to handle kernel NULL pointer dereference at           (null)
+>> [ 1179.280198] IP: [<ffffffffa027222d>] filelayout_free_fh_array.isra.11+0x1d/0x70 [nfs_layout_nfsv41_files]
+>> [ 1179.281010] PGD 0
+>> [ 1179.281443] Oops: 0000 [#1]
+>> [ 1179.281831] Modules linked in: nfs_layout_nfsv41_files(OE) nfsv4(OE) nfs(OE) fscache(E) xfs libcrc32c coretemp nfsd crct10dif_pclmul ppdev crc32_pclmul crc32c_intel auth_rpcgss ghash_clmulni_intel nfs_acl lockd vmw_balloon grace sunrpc parport_pc vmw_vmci parport shpchp i2c_piix4 vmwgfx drm_kms_helper ttm drm serio_raw mptspi scsi_transport_spi mptscsih e1000 mptbase ata_generic pata_acpi [last unloaded: fscache]
+>> [ 1179.283891] CPU: 0 PID: 13336 Comm: cat Tainted: G           OE   4.3.0-rc1-pnfs+ #244
+>> [ 1179.284323] Hardware name: VMware, Inc. VMware Virtual Platform/440BX Desktop Reference Platform, BIOS 6.00 05/20/2014
+>> [ 1179.285206] task: ffff8800501d48c0 ti: ffff88003e3c4000 task.ti: ffff88003e3c4000
+>> [ 1179.285668] RIP: 0010:[<ffffffffa027222d>]  [<ffffffffa027222d>] filelayout_free_fh_array.isra.11+0x1d/0x70 [nfs_layout_nfsv41_files]
+>> [ 1179.286612] RSP: 0018:ffff88003e3c77f8  EFLAGS: 00010202
+>> [ 1179.287092] RAX: 0000000000000000 RBX: ffff88001fe78900 RCX: 0000000000000000
+>> [ 1179.287731] RDX: ffffea0000f40760 RSI: ffff88001fe789c8 RDI: ffff88001fe789c0
+>> [ 1179.288383] RBP: ffff88003e3c7810 R08: ffffea0000f40760 R09: 0000000000000000
+>> [ 1179.289170] R10: 0000000000000000 R11: 0000000000000001 R12: ffff88001fe789c8
+>> [ 1179.289959] R13: ffff88001fe789c0 R14: ffff88004ec05a80 R15: ffff88004f935b88
+>> [ 1179.290791] FS:  00007f4e66bb5700(0000) GS:ffffffff81c29000(0000) knlGS:0000000000000000
+>> [ 1179.291580] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+>> [ 1179.292209] CR2: 0000000000000000 CR3: 00000000203f8000 CR4: 00000000001406f0
+>> [ 1179.292731] Stack:
+>> [ 1179.293195]  ffff88001fe78900 00000000000000d0 ffff88001fe78178 ffff88003e3c7868
+>> [ 1179.293676]  ffffffffa0272737 0000000000000001 0000000000000001 ffff88001fe78800
+>> [ 1179.294151]  00000000614fffce ffffffff81727671 ffff88001fe78100 ffff88001fe78100
+>> [ 1179.294623] Call Trace:
+>> [ 1179.295092]  [<ffffffffa0272737>] filelayout_alloc_lseg+0xa7/0x2d0 [nfs_layout_nfsv41_files]
+>> [ 1179.295625]  [<ffffffff81727671>] ? out_of_line_wait_on_bit+0x81/0xb0
+>> [ 1179.296133]  [<ffffffffa040407e>] pnfs_layout_process+0xae/0x320 [nfsv4]
+>> [ 1179.296632]  [<ffffffffa03e0a01>] nfs4_proc_layoutget+0x2b1/0x360 [nfsv4]
+>> [ 1179.297134]  [<ffffffffa0402983>] pnfs_update_layout+0x853/0xb30 [nfsv4]
+>> [ 1179.297632]  [<ffffffffa039db24>] ? nfs_get_lock_context+0x74/0x170 [nfs]
+>> [ 1179.298158]  [<ffffffffa0271807>] filelayout_pg_init_read+0x37/0x50 [nfs_layout_nfsv41_files]
+>> [ 1179.298834]  [<ffffffffa03a72d9>] __nfs_pageio_add_request+0x119/0x460 [nfs]
+>> [ 1179.299385]  [<ffffffffa03a6bd7>] ? nfs_create_request.part.9+0x37/0x2e0 [nfs]
+>> [ 1179.299872]  [<ffffffffa03a7cc3>] nfs_pageio_add_request+0xa3/0x1b0 [nfs]
+>> [ 1179.300362]  [<ffffffffa03a8635>] readpage_async_filler+0x85/0x260 [nfs]
+>> [ 1179.300907]  [<ffffffff81180cb1>] read_cache_pages+0x91/0xd0
+>> [ 1179.301391]  [<ffffffffa03a85b0>] ? nfs_read_completion+0x220/0x220 [nfs]
+>> [ 1179.301867]  [<ffffffffa03a8dc8>] nfs_readpages+0x128/0x200 [nfs]
+>> [ 1179.302330]  [<ffffffff81180ef3>] __do_page_cache_readahead+0x203/0x280
+>> [ 1179.302784]  [<ffffffff81180dc8>] ? __do_page_cache_readahead+0xd8/0x280
+>> [ 1179.303413]  [<ffffffff81181116>] ondemand_readahead+0x1a6/0x2f0
+>> [ 1179.303855]  [<ffffffff81181371>] page_cache_sync_readahead+0x31/0x50
+>> [ 1179.304286]  [<ffffffff811750a6>] generic_file_read_iter+0x4a6/0x5c0
+>> [ 1179.304711]  [<ffffffffa03a0316>] ? __nfs_revalidate_mapping+0x1f6/0x240 [nfs]
+>> [ 1179.305132]  [<ffffffffa039ccf2>] nfs_file_read+0x52/0xa0 [nfs]
+>> [ 1179.305540]  [<ffffffff811e343c>] __vfs_read+0xcc/0x100
+>> [ 1179.305936]  [<ffffffff811e3d15>] vfs_read+0x85/0x130
+>> [ 1179.306326]  [<ffffffff811e4a98>] SyS_read+0x58/0xd0
+>> [ 1179.306708]  [<ffffffff8172caaf>] entry_SYSCALL_64_fastpath+0x12/0x76
+>> [ 1179.307094] Code: c4 66 66 66 66 2e 0f 1f 84 00 00 00 00 00 0f 1f 44 00 00 55 48 89 e5 41 55 41 54 53 8b 07 49 89 f4 85 c0 74 47 48 8b 06 49 89 fd <48> 8b 38 48 85 ff 74 22 31 db eb 0c 48 63 d3 48 8b 3c d0 48 85
+>> [ 1179.308357] RIP  [<ffffffffa027222d>] filelayout_free_fh_array.isra.11+0x1d/0x70 [nfs_layout_nfsv41_files]
+>> [ 1179.309177]  RSP <ffff88003e3c77f8>
+>> [ 1179.309582] CR2: 0000000000000000
+>>
+>> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+>> ---
+>>  fs/nfs/filelayout/filelayout.c | 31 ++++++++++++-------------------
+>>  1 file changed, 12 insertions(+), 19 deletions(-)
+>>
+>> diff --git a/fs/nfs/filelayout/filelayout.c b/fs/nfs/filelayout/filelayout.c
+>> index b34f2e2..02ec079 100644
+>> --- a/fs/nfs/filelayout/filelayout.c
+>> +++ b/fs/nfs/filelayout/filelayout.c
+>> @@ -629,23 +629,18 @@ out_put:
+>>         goto out;
+>>  }
+>>
+>> -static void filelayout_free_fh_array(struct nfs4_filelayout_segment *fl)
+>> +static void _filelayout_free_lseg(struct nfs4_filelayout_segment *fl)
+>>  {
+>>         int i;
+>>
+>> -       for (i = 0; i < fl->num_fh; i++) {
+>> -               if (!fl->fh_array[i])
+>> -                       break;
+>> -               kfree(fl->fh_array[i]);
+>> +       if (fl->fh_array) {
+>> +               for (i = 0; i < fl->num_fh; i++) {
+>> +                       if (!fl->fh_array[i])
+>> +                               break;
+>> +                       kfree(fl->fh_array[i]);
+>> +               }
+>> +               kfree(fl->fh_array);
+>>         }
+>> -       kfree(fl->fh_array);
+>> -       fl->fh_array = NULL;
+>> -}
+>> -
+>> -static void
+>> -_filelayout_free_lseg(struct nfs4_filelayout_segment *fl)
+>> -{
+>> -       filelayout_free_fh_array(fl);
+>>         kfree(fl);
+>>  }
+>>
+>> @@ -716,21 +711,21 @@ filelayout_decode_layout(struct pnfs_layout_hdr *flo,
+>>                 /* Do we want to use a mempool here? */
+>>                 fl->fh_array[i] = kmalloc(sizeof(struct nfs_fh), gfp_flags);
 >
->> Hi Russell,
->>
->> On Thu, 2015-09-17 at 14:57 +0100, Russell King - ARM Linux wrote:
->> > On Fri, Sep 11, 2015 at 05:49:38PM +0100, Russell King - ARM Linux
->> > wrote:
->> > > Following that idea, I just tried the patch below, and it seems to
->> > > work.
->> > > I don't know whether it handles all cases after a call to
->> > > kernel_connect(),
->> > > but it stops the multiple connection attempts:
->> > >
->> > >   1   0.000000 armada388 -> n2100 TCP 1009→nfs [SYN] Seq=3794066539
->> > > Win=28560 Len=0 MSS=1440 SACK_PERM=1 TSval=15712 TSecr=870317691
->> > > WS=128
->> > >   2   0.000414 n2100 -> armada388 TCP nfs→1009 [SYN, ACK]
->> > > Seq=1884476522 Ack=3794066540 Win=28560 Len=0 MSS=1440 SACK_PERM=1
->> > > TSval=870318939 TSecr=15712 WS=64
->> > >   3   0.000787 armada388 -> n2100 TCP 1009→nfs [ACK] Seq=3794066540
->> > > Ack=1884476523 Win=28672 Len=0 TSval=15712 TSecr=870318939
->> > >   4   0.001304 armada388 -> n2100 NFS V3 ACCESS Call, FH:
->> > > 0x905379cc, [Check: RD LU MD XT DL]
->> > >   5   0.001566 n2100 -> armada388 TCP nfs→1009 [ACK] Seq=1884476523
->> > > Ack=3794066660 Win=28608 Len=0 TSval=870318939 TSecr=15712
->> > >   6   0.001640 armada388 -> n2100 NFS V3 ACCESS Call, FH:
->> > > 0x905379cc, [Check: RD LU MD XT DL]
->> > >   7   0.001866 n2100 -> armada388 TCP nfs→1009 [ACK] Seq=1884476523
->> > > Ack=3794066780 Win=28608 Len=0 TSval=870318939 TSecr=15712
->> > >   8   0.003070 n2100 -> armada388 NFS V3 ACCESS Reply (Call In 4),
->> > > [Allowed: RD LU MD XT DL]
->> > >   9   0.003415 armada388 -> n2100 TCP 1009→nfs [ACK] Seq=3794066780
->> > > Ack=1884476647 Win=28672 Len=0 TSval=15712 TSecr=870318939
->> > >  10   0.003592 armada388 -> n2100 NFS V3 ACCESS Call, FH:
->> > > 0xe15fc9c9, [Check: RD LU MD XT DL]
->> > >  11   0.004354 n2100 -> armada388 NFS V3 ACCESS Reply (Call In 6),
->> > > [Allowed: RD LU MD XT DL]
->> > >  12   0.004682 armada388 -> n2100 NFS V3 ACCESS Call, FH:
->> > > 0xe15fc9c9, [Check: RD LU MD XT DL]
->> > >  13   0.005365 n2100 -> armada388 NFS V3 ACCESS Reply (Call In 10),
->> > > [Allowed: RD LU MD XT DL]
->> > >  14   0.005701 armada388 -> n2100 NFS V3 GETATTR Call, FH:
->> > > 0xe15fc9c9
->> > > ...
->> >
->> > NFS people - any comments on this patch?  Is it the correct way to
->> > solve
->> > this problem (please see the first message in this thread for the
->> > problem.)
->> > Without this patch, NFS is unusable as it tries to launch multiple
->> > new
->> > connections from the same port to the NFS server without giving the
->> > NFS
->> > server time to respond and establish the TCP connection.
->>
->> I agree that it addresses a real problem here, however there are a
->> couple of issues with the patch itself:
->>
->> AFAICS, the 2 possible next states for SYN_SENT are TCP_ESTABLISHED and
->> TCP_CLOSE, so if the connection attempt fails, this patch leaves the
->> XPRT_CONNECTING flag set.
->> There is also the issue that clearing XPRT_CONNECTING in TCP_FIN_WAIT1,
->> TCP_CLOSE_WAIT and TCP_CLOSING could interfere with another connection
->> attempt by canceling the XPRT_CONNECTING state.
->>
->> How about the following? It is based on your patch, but adds a check to
->> ensure that xs_tcp_state_change() doesn't clear the 'connecting' state
->> more than once (which could otherwise still happen in the TCP_CLOSE
->> case).
->>
->> 8<-------------------------------------------------------------------
->> From 4dbfdebbc09982a9248866f8256549456e2b2efd Mon Sep 17 00:00:00 2001
->> From: Trond Myklebust <trond.myklebust@primarydata.com>
->> Date: Wed, 16 Sep 2015 23:43:17 -0400
->> Subject: [PATCH] SUNRPC: Ensure that we wait for connections to complete
->>  before retrying
->>
->> Commit 718ba5b87343, moved the responsibility for unlocking the socket to
->> xs_tcp_setup_socket, meaning that the socket will be unlocked before we
->> know that it has finished trying to connect. The following patch is based on
->> an initial patch by Russell King to ensure that we delay clearing the
->> XPRT_SOCK_CONNECTING flag until we either know that we failed to initiate
->> a connection attempt, or the connection attempt itself failed.
->>
->> Fixes: 718ba5b87343 ("SUNRPC: Add helpers to prevent socket create from racing")
->> Reported-by: Russell King <linux@arm.linux.org.uk>
->> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
->
-> This fixes up my network segmentation problem, tested on top of your "Fix
-> races between socket connection and destroy code".
->
-> Tested-by: Benjamin Coddington <bcodding@redhat.com>
->
+> Doesn't this need to be a kzalloc() for the freeing to work correctly?
 
-Thanks Ben!
+Never mind. I was confusing this with the allocation of the array
+itself. Sorry for the noise...
+
+Trond
