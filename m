@@ -1,80 +1,92 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:58393 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751104AbbIQNZx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 17 Sep 2015 09:25:53 -0400
-Date: Thu, 17 Sep 2015 09:25:52 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Anna Schumaker <Anna.Schumaker@netapp.com>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <schumakeranna@gmail.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfs: fix v4.2 SEEK on files over 2 gigs
-Message-ID: <20150917132552.GD9870@fieldses.org>
-References: <20150916212127.GA5169@fieldses.org>
- <55FABA40.6010406@Netapp.com>
+Received: from mail-oi0-f41.google.com ([209.85.218.41]:35647 "EHLO
+	mail-oi0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751175AbbIQNes convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Sep 2015 09:34:48 -0400
+Received: by oiww128 with SMTP id w128so9381646oiw.2
+        for <linux-nfs@vger.kernel.org>; Thu, 17 Sep 2015 06:34:48 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <55FABA40.6010406@Netapp.com>
+In-Reply-To: <CAN-5tyHKSPm6-BERVMExhrpMbg2cipD=WifcZyybvFDmtpQaWQ@mail.gmail.com>
+References: <CAN-5tyF_cHmiPvEqv8N8S_J-TBymOZV+-A0Vh+GCnP3czFB-wg@mail.gmail.com>
+	<CAHQdGtTeOx3SZSmC4JEAA7jfQRnB=tDjMamW5-amyT3mCq4zOw@mail.gmail.com>
+	<CAN-5tyFM2WVdGUSEAp27GXe_52DrJWGGQrxuniJqOqDf-6wiUg@mail.gmail.com>
+	<CAHQdGtTkiTnQXB6Jf0GBZT1xQjc64hz3b+oUt-0ZOyQiSgZ8cQ@mail.gmail.com>
+	<CAN-5tyHKSPm6-BERVMExhrpMbg2cipD=WifcZyybvFDmtpQaWQ@mail.gmail.com>
+Date: Thu, 17 Sep 2015 09:34:47 -0400
+Message-ID: <CAHQdGtSO3skVYq+0LUBCbDqorOESJ2mjqC=FQ+7Y98P5mQpEAw@mail.gmail.com>
+Subject: Re: Failing to send a CLOSE if file is opened WRONLY and server
+ reboots on a 4.x mount
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Olga Kornievskaia <aglo@umich.edu>
+Cc: linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Sep 17, 2015 at 09:04:00AM -0400, Anna Schumaker wrote:
-> Hey Bruce,
-> 
-> I actually worked on a version of this patch on my own yesterday, too.  Looks like you beat me to submitting it!  :)
+On Tue, Sep 15, 2015 at 12:52 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
+> On Tue, Sep 15, 2015 at 11:49 AM, Trond Myklebust
+> <trond.myklebust@primarydata.com> wrote:
+>> On Tue, Sep 15, 2015 at 10:27 AM, Olga Kornievskaia <aglo@umich.edu> wrote:
+>>> On Tue, Sep 15, 2015 at 9:39 AM, Trond Myklebust
+>>> <trond.myklebust@primarydata.com> wrote:
+>>>> On Mon, Sep 14, 2015 at 7:54 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
+>>>>> A test case is as the description says:
+>>>>> open(foobar, O_WRONLY);
+>>>>> sleep()  --> reboot the server
+>>>>> close(foobar)
+>>>>>
+>>>>> The bug is because in nfs4state.c in nfs4_reclaim_open_state() a few
+>>>>> line before going to restart, there is
+>>>>> clear_bit(NFS4CLNT_RECLAIM_NOGRACE, &state->flags).
+>>>>>
+>>>>> NFS4CLNT_RECLAIM_NOGRACE is a flag for the client states not open
+>>>>> owner states. Value of NFS4CLNT_RECLAIM_NOGRACE is 4 which is the
+>>>>> value of NFS_O_WRONLY_STATE in nfs4_state->flags. So clearing it wipes
+>>>>> out state and when we go to close it, “call_close” doesn’t get set as
+>>>>> state flag is not set and CLOSE doesn’t go on the wire.
+>>>>>
+>>>>> That line was introduced to fix an infinite loop for OPEN recovery
+>>>>> upon receiving a BAD_STATEID error: commit e8d975e73. I have tested
+>>>>> injecting BAD_STATEID error using the patch below and the code
+>>>>> recovers without problems. However, I'm not sure the clearing of the
+>>>>> bit is needed any more. I have tested for infinite loop by reverting
+>>>>> the patch and didn't hit the infinite loop.
+>>>>>
+>>>>> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+>>>>> index da73bc4..5db3246 100644
+>>>>> --- a/fs/nfs/nfs4state.c
+>>>>> +++ b/fs/nfs/nfs4state.c
+>>>>> @@ -1481,7 +1481,7 @@ restart:
+>>>>>                                         spin_unlock(&state->state_lock);
+>>>>>                                 }
+>>>>>                                 nfs4_put_open_state(state);
+>>>>> -                               clear_bit(NFS4CLNT_RECLAIM_NOGRACE,
+>>>>> +                               clear_bit(NFS_STATE_RECLAIM_NOGRACE,
+>>>>>                                         &state->flags);
+>>>>>                                 spin_lock(&sp->so_lock);
+>>>>>                                 goto restart;
+>>>>
+>>>> That's an obvious typo. Thanks for spotting it!
+>>>>
+>>>> As for whether or not the bit clear is needed at all, I think it is
+>>>> for NFSv4 on older kernels. On newer kernels, we do have the NFSv4
+>>>> state recovery drain the slot table (just like we've always done for
+>>>> NFSv4.1) and so I agree that those kernels probably won't be
+>>>> afflicted.
+>>>>
+>>>
+>>> Thanks Trond. Do you need me to resubmit it without the last paragraph
+>>> or is the patch ok as is?
+>>>
+>>
+>> I can easily remove that paragraph when applying the patch, if you
+>> agree that it is superfluous.
+>
+> Thanks. Works for me.
+>
 
-Oh, OK, well feel free to credit it however you'd like.
+May I also add a signed-off-by line from you? I can't really apply
+this (or any other patches) without it.
 
-> On 09/16/2015 05:21 PM, J. Bruce Fields wrote:
-> > From: "J. Bruce Fields" <bfields@redhat.com>
-> > 
-> > We're incorrectly assigning a loff_t return to an int.  If SEEK_HOLE or
-> > SEEK_DATA returns an offset over 2^31 then the application will see a
-> > weird lseek() result (usually -EIO).
-> 
-> I saw roughly the same thing with xfstests generic/285.
-
-I maybe should have included my reproducer in the changelog, which was:
-
-	git clone git://git.infradead.org/users/dedekind/bmap-tools.git
-	cd bmap-tools
-
-	mount overs=4.2 localhost:/exports /mnt/
-	dd if=/dev/zero of=/mnt/test1.image seek=2097152 bs=1K count=1
-
-	./bmaptool  create  /mnt/test1.image
-
-In the good case it outputs some xml, in the bad case it aborts with an
-IO error.
-
---b.
-
-> > Cc: stable@vger.kernel.org
-> > Fixes: bdcc2cd14e4e "NFSv4.2: handle NFS-specific llseek errors"
-> > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> 
-> Reviewed-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
-> 
-> > ---
-> >  fs/nfs/nfs42proc.c | 4 +++-
-> >  1 file changed, 3 insertions(+), 1 deletion(-)
-> > 
-> > diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
-> > index d731bbf974aa..0f020e4d8421 100644
-> > --- a/fs/nfs/nfs42proc.c
-> > +++ b/fs/nfs/nfs42proc.c
-> > @@ -175,10 +175,12 @@ loff_t nfs42_proc_llseek(struct file *filep, loff_t offset, int whence)
-> >  {
-> >  	struct nfs_server *server = NFS_SERVER(file_inode(filep));
-> >  	struct nfs4_exception exception = { };
-> > -	int err;
-> > +	loff_t err;
-> >  
-> >  	do {
-> >  		err = _nfs42_proc_llseek(filep, offset, whence);
-> > +		if (err >= 0)
-> > +			break;
-> >  		if (err == -ENOTSUPP)
-> >  			return -EOPNOTSUPP;
-> >  		err = nfs4_handle_exception(server, err, &exception);
-> > 
+Cheers
+  Trond
