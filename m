@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qg0-f52.google.com ([209.85.192.52]:34288 "EHLO
-	mail-qg0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752078AbbIQUpS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Sep 2015 16:45:18 -0400
-Subject: [PATCH v1 08/18] xprtrdma: Pre-allocate Work Requests for
- backchannel
+Received: from mail-qk0-f180.google.com ([209.85.220.180]:36315 "EHLO
+	mail-qk0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752121AbbIQUp1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Sep 2015 16:45:27 -0400
+Subject: [PATCH v1 09/18] xprtrdma: Add support for sending backward
+ direction RPC replies
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Thu, 17 Sep 2015 16:45:16 -0400
-Message-ID: <20150917204516.19671.34390.stgit@manet.1015granger.net>
+Date: Thu, 17 Sep 2015 16:45:25 -0400
+Message-ID: <20150917204525.19671.82652.stgit@manet.1015granger.net>
 In-Reply-To: <20150917202829.19671.90044.stgit@manet.1015granger.net>
 References: <20150917202829.19671.90044.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -16,105 +16,99 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Pre-allocate extra send and receive Work Requests needed to handle
-backchannel receives and sends.
-
-The transport doesn't know how many extra WRs to pre-allocate until
-the xprt_setup_backchannel() call, but that's long after the WRs are
-allocated during forechannel setup.
-
-So, use a fixed value for now.
+Backward direction RPC replies are sent via the client transport's
+send_request method, the same way forward direction RPC calls are
+sent.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/backchannel.c |    4 ++++
- net/sunrpc/xprtrdma/verbs.c       |   14 ++++++++++++--
- net/sunrpc/xprtrdma/xprt_rdma.h   |   10 ++++++++++
- 3 files changed, 26 insertions(+), 2 deletions(-)
+ net/sunrpc/xprtrdma/backchannel.c |   45 +++++++++++++++++++++++++++++++++++++
+ net/sunrpc/xprtrdma/rpc_rdma.c    |    5 ++++
+ net/sunrpc/xprtrdma/xprt_rdma.h   |    1 +
+ 3 files changed, 51 insertions(+)
 
 diff --git a/net/sunrpc/xprtrdma/backchannel.c b/net/sunrpc/xprtrdma/backchannel.c
-index c0a42ad..f5c7122 100644
+index f5c7122..cc9c762 100644
 --- a/net/sunrpc/xprtrdma/backchannel.c
 +++ b/net/sunrpc/xprtrdma/backchannel.c
-@@ -123,6 +123,9 @@ int xprt_rdma_bc_setup(struct rpc_xprt *xprt, unsigned int reqs)
- 	 * Twice as many rpc_rqsts are prepared to ensure there is
- 	 * always an rpc_rqst available as soon as a reply is sent.
- 	 */
-+	if (reqs > RPCRDMA_BACKWARD_WRS >> 1)
-+		goto out_err;
-+
- 	for (i = 0; i < (reqs << 1); i++) {
- 		rqst = kzalloc(sizeof(*rqst), GFP_KERNEL);
- 		if (!rqst) {
-@@ -159,6 +162,7 @@ int xprt_rdma_bc_setup(struct rpc_xprt *xprt, unsigned int reqs)
- out_free:
- 	xprt_rdma_bc_destroy(xprt, reqs);
- 
-+out_err:
- 	pr_err("RPC:       %s: setup backchannel transport failed\n", __func__);
- 	return -ENOMEM;
+@@ -168,6 +168,51 @@ out_err:
  }
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 1e4a948..133c720 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -614,6 +614,7 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
- 	struct ib_device_attr *devattr = &ia->ri_devattr;
- 	struct ib_cq *sendcq, *recvcq;
- 	struct ib_cq_init_attr cq_attr = {};
-+	unsigned int max_qp_wr;
- 	int rc, err;
  
- 	if (devattr->max_sge < RPCRDMA_MAX_IOVS) {
-@@ -622,18 +623,27 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
- 		return -ENOMEM;
- 	}
- 
-+	if (devattr->max_qp_wr <= RPCRDMA_BACKWARD_WRS) {
-+		dprintk("RPC:       %s: insufficient wqe's available\n",
-+			__func__);
-+		return -ENOMEM;
-+	}
-+	max_qp_wr = devattr->max_qp_wr - RPCRDMA_BACKWARD_WRS;
-+
- 	/* check provider's send/recv wr limits */
--	if (cdata->max_requests > devattr->max_qp_wr)
--		cdata->max_requests = devattr->max_qp_wr;
-+	if (cdata->max_requests > max_qp_wr)
-+		cdata->max_requests = max_qp_wr;
- 
- 	ep->rep_attr.event_handler = rpcrdma_qp_async_error_upcall;
- 	ep->rep_attr.qp_context = ep;
- 	ep->rep_attr.srq = NULL;
- 	ep->rep_attr.cap.max_send_wr = cdata->max_requests;
-+	ep->rep_attr.cap.max_send_wr += RPCRDMA_BACKWARD_WRS;
- 	rc = ia->ri_ops->ro_open(ia, ep, cdata);
- 	if (rc)
- 		return rc;
- 	ep->rep_attr.cap.max_recv_wr = cdata->max_requests;
-+	ep->rep_attr.cap.max_recv_wr += RPCRDMA_BACKWARD_WRS;
- 	ep->rep_attr.cap.max_send_sge = RPCRDMA_MAX_IOVS;
- 	ep->rep_attr.cap.max_recv_sge = 1;
- 	ep->rep_attr.cap.max_inline_data = 0;
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index 2ca0567..37d0d7f 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -101,6 +101,16 @@ struct rpcrdma_ep {
-  */
- #define RPCRDMA_IGNORE_COMPLETION	(0ULL)
- 
-+/* Pre-allocate extra Work Requests for handling backward receives
-+ * and sends. This is a fixed value because the Work Queues are
-+ * allocated when the forward channel is set up.
+ /**
++ * rpcrdma_bc_marshal_reply - Send backwards direction reply
++ * @rqst: buffer containing RPC reply data
++ *
++ * Returns zero on success.
 + */
++int rpcrdma_bc_marshal_reply(struct rpc_rqst *rqst)
++{
++	struct rpc_xprt *xprt = rqst->rq_xprt;
++	struct rpcrdma_xprt *r_xprt = rpcx_to_rdmax(xprt);
++	struct rpcrdma_req *req = rpcr_to_rdmar(rqst);
++	struct rpcrdma_msg *headerp;
++	size_t rpclen;
++
++	headerp = rdmab_to_msg(req->rl_rdmabuf);
++	headerp->rm_xid = rqst->rq_xid;
++	headerp->rm_vers = rpcrdma_version;
++	headerp->rm_credit =
++			cpu_to_be32(r_xprt->rx_buf.rb_bc_srv_max_requests);
++	headerp->rm_type = rdma_msg;
++	headerp->rm_body.rm_chunks[0] = xdr_zero;
++	headerp->rm_body.rm_chunks[1] = xdr_zero;
++	headerp->rm_body.rm_chunks[2] = xdr_zero;
++
++	rpclen = rqst->rq_svec[0].iov_len;
++
++	pr_info("RPC:       %s: rpclen %zd headerp 0x%p lkey 0x%x\n",
++		__func__, rpclen, headerp, rdmab_lkey(req->rl_rdmabuf));
++	pr_info("RPC:       %s: RPC/RDMA: %*ph\n",
++		__func__, (int)RPCRDMA_HDRLEN_MIN, headerp);
++	pr_info("RPC:       %s:      RPC: %*ph\n",
++		__func__, (int)rpclen, rqst->rq_svec[0].iov_base);
++
++	req->rl_send_iov[0].addr = rdmab_addr(req->rl_rdmabuf);
++	req->rl_send_iov[0].length = RPCRDMA_HDRLEN_MIN;
++	req->rl_send_iov[0].lkey = rdmab_lkey(req->rl_rdmabuf);
++
++	req->rl_send_iov[1].addr = rdmab_addr(req->rl_sendbuf);
++	req->rl_send_iov[1].length = rpclen;
++	req->rl_send_iov[1].lkey = rdmab_lkey(req->rl_sendbuf);
++
++	req->rl_niovs = 2;
++	return 0;
++}
++
++/**
+  * xprt_rdma_bc_destroy - Release resources for handling backchannel requests
+  * @xprt: transport associated with these backchannel resources
+  * @reqs: number of incoming requests to destroy; ignored
+diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+index 287c874..d0dbbf7 100644
+--- a/net/sunrpc/xprtrdma/rpc_rdma.c
++++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+@@ -441,6 +441,11 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
+ 	enum rpcrdma_chunktype rtype, wtype;
+ 	struct rpcrdma_msg *headerp;
+ 
 +#if defined(CONFIG_SUNRPC_BACKCHANNEL)
-+#define RPCRDMA_BACKWARD_WRS		(8)
-+#else
-+#define RPCRDMA_BACKWARD_WRS		(0)
++	if (test_bit(RPC_BC_PA_IN_USE, &rqst->rq_bc_pa_state))
++		return rpcrdma_bc_marshal_reply(rqst);
 +#endif
 +
- /* Registered buffer -- registered kmalloc'd memory for RDMA SEND/RECV
-  *
-  * The below structure appears at the front of a large region of kmalloc'd
+ 	/*
+ 	 * rpclen gets amount of data in first buffer, which is the
+ 	 * pre-registered buffer.
+diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+index 37d0d7f..a59ce18 100644
+--- a/net/sunrpc/xprtrdma/xprt_rdma.h
++++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+@@ -516,6 +516,7 @@ void xprt_rdma_cleanup(void);
+ #if defined(CONFIG_SUNRPC_BACKCHANNEL)
+ int xprt_rdma_bc_setup(struct rpc_xprt *, unsigned int);
+ int rpcrdma_bc_post_recv(struct rpcrdma_xprt *, unsigned int);
++int rpcrdma_bc_marshal_reply(struct rpc_rqst *);
+ void xprt_rdma_bc_free_rqst(struct rpc_rqst *);
+ void xprt_rdma_bc_destroy(struct rpc_xprt *, unsigned int);
+ #endif	/* CONFIG_SUNRPC_BACKCHANNEL */
 
