@@ -1,147 +1,189 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from [193.47.165.129] ([193.47.165.129]:49591 "EHLO mellanox.co.il"
+Received: from [193.47.165.129] ([193.47.165.129]:49567 "EHLO mellanox.co.il"
 	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1753446AbbIQJn7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 17 Sep 2015 05:43:59 -0400
+	id S1753383AbbIQJnz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 17 Sep 2015 05:43:55 -0400
 From: Sagi Grimberg <sagig@mellanox.com>
 To: linux-rdma@vger.kernel.org
 Cc: linux-nfs@vger.kernel.org, "Nicholas A. Bellinger" <nab@linux-iscsi.org>
-Subject: [PATCH v1 24/24] IB/core: Remove old fast registration API
-Date: Thu, 17 Sep 2015 12:42:27 +0300
-Message-Id: <1442482947-27785-25-git-send-email-sagig@mellanox.com>
+Subject: [PATCH v1 18/24] RDMA/ocrdma: Remove old FRWR API
+Date: Thu, 17 Sep 2015 12:42:21 +0300
+Message-Id: <1442482947-27785-19-git-send-email-sagig@mellanox.com>
 In-Reply-To: <1442482947-27785-1-git-send-email-sagig@mellanox.com>
 References: <1442482947-27785-1-git-send-email-sagig@mellanox.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-No callers and no providers left, go ahead and remove it.
+No ULP uses it anymore, go ahead and remove it.
 
 Signed-off-by: Sagi Grimberg <sagig@mellanox.com>
 ---
- drivers/infiniband/core/verbs.c | 25 --------------------
- include/rdma/ib_verbs.h         | 52 -----------------------------------------
- 2 files changed, 77 deletions(-)
+ drivers/infiniband/hw/ocrdma/ocrdma_main.c  |   2 -
+ drivers/infiniband/hw/ocrdma/ocrdma_verbs.c | 102 ----------------------------
+ drivers/infiniband/hw/ocrdma/ocrdma_verbs.h |   4 --
+ 3 files changed, 108 deletions(-)
 
-diff --git a/drivers/infiniband/core/verbs.c b/drivers/infiniband/core/verbs.c
-index d99f57f1f737..bbbfd597f060 100644
---- a/drivers/infiniband/core/verbs.c
-+++ b/drivers/infiniband/core/verbs.c
-@@ -1253,31 +1253,6 @@ struct ib_mr *ib_alloc_mr(struct ib_pd *pd,
- }
- EXPORT_SYMBOL(ib_alloc_mr);
+diff --git a/drivers/infiniband/hw/ocrdma/ocrdma_main.c b/drivers/infiniband/hw/ocrdma/ocrdma_main.c
+index 874beb4b07a1..9bf430ef8eb6 100644
+--- a/drivers/infiniband/hw/ocrdma/ocrdma_main.c
++++ b/drivers/infiniband/hw/ocrdma/ocrdma_main.c
+@@ -183,8 +183,6 @@ static int ocrdma_register_device(struct ocrdma_dev *dev)
  
--struct ib_fast_reg_page_list *ib_alloc_fast_reg_page_list(struct ib_device *device,
--							  int max_page_list_len)
+ 	dev->ibdev.alloc_mr = ocrdma_alloc_mr;
+ 	dev->ibdev.map_mr_sg = ocrdma_map_mr_sg;
+-	dev->ibdev.alloc_fast_reg_page_list = ocrdma_alloc_frmr_page_list;
+-	dev->ibdev.free_fast_reg_page_list = ocrdma_free_frmr_page_list;
+ 
+ 	/* mandatory to support user space verbs consumer. */
+ 	dev->ibdev.alloc_ucontext = ocrdma_alloc_ucontext;
+diff --git a/drivers/infiniband/hw/ocrdma/ocrdma_verbs.c b/drivers/infiniband/hw/ocrdma/ocrdma_verbs.c
+index 853746e17d5c..2deaa2ac4a1c 100644
+--- a/drivers/infiniband/hw/ocrdma/ocrdma_verbs.c
++++ b/drivers/infiniband/hw/ocrdma/ocrdma_verbs.c
+@@ -2133,41 +2133,6 @@ static void ocrdma_build_read(struct ocrdma_qp *qp, struct ocrdma_hdr_wqe *hdr,
+ 	ext_rw->len = hdr->total_len;
+ }
+ 
+-static void build_frmr_pbes(struct ib_fast_reg_wr *wr,
+-			    struct ocrdma_pbl *pbl_tbl,
+-			    struct ocrdma_hw_mr *hwmr)
 -{
--	struct ib_fast_reg_page_list *page_list;
+-	int i;
+-	u64 buf_addr = 0;
+-	int num_pbes;
+-	struct ocrdma_pbe *pbe;
 -
--	if (!device->alloc_fast_reg_page_list)
--		return ERR_PTR(-ENOSYS);
+-	pbe = (struct ocrdma_pbe *)pbl_tbl->va;
+-	num_pbes = 0;
 -
--	page_list = device->alloc_fast_reg_page_list(device, max_page_list_len);
+-	/* go through the OS phy regions & fill hw pbe entries into pbls. */
+-	for (i = 0; i < wr->page_list_len; i++) {
+-		/* number of pbes can be more for one OS buf, when
+-		 * buffers are of different sizes.
+-		 * split the ib_buf to one or more pbes.
+-		 */
+-		buf_addr = wr->page_list->page_list[i];
+-		pbe->pa_lo = cpu_to_le32((u32) (buf_addr & PAGE_MASK));
+-		pbe->pa_hi = cpu_to_le32((u32) upper_32_bits(buf_addr));
+-		num_pbes += 1;
+-		pbe++;
 -
--	if (!IS_ERR(page_list)) {
--		page_list->device = device;
--		page_list->max_page_list_len = max_page_list_len;
+-		/* if the pbl is full storing the pbes,
+-		 * move to next pbl.
+-		*/
+-		if (num_pbes == (hwmr->pbl_size/sizeof(u64))) {
+-			pbl_tbl++;
+-			pbe = (struct ocrdma_pbe *)pbl_tbl->va;
+-		}
 -	}
--
--	return page_list;
+-	return;
 -}
--EXPORT_SYMBOL(ib_alloc_fast_reg_page_list);
 -
--void ib_free_fast_reg_page_list(struct ib_fast_reg_page_list *page_list)
--{
--	page_list->device->free_fast_reg_page_list(page_list);
--}
--EXPORT_SYMBOL(ib_free_fast_reg_page_list);
--
- /* Memory windows */
- 
- struct ib_mw *ib_alloc_mw(struct ib_pd *pd, enum ib_mw_type type)
-diff --git a/include/rdma/ib_verbs.h b/include/rdma/ib_verbs.h
-index 97c73359ade8..ed3f181407ff 100644
---- a/include/rdma/ib_verbs.h
-+++ b/include/rdma/ib_verbs.h
-@@ -1068,12 +1068,6 @@ struct ib_sge {
- 	u32	lkey;
- };
- 
--struct ib_fast_reg_page_list {
--	struct ib_device       *device;
--	u64		       *page_list;
--	unsigned int		max_page_list_len;
--};
--
- /**
-  * struct ib_mw_bind_info - Parameters for a memory window bind operation.
-  * @mr: A memory region to bind the memory window to.
-@@ -1147,22 +1141,6 @@ static inline struct ib_ud_wr *ud_wr(struct ib_send_wr *wr)
- 	return container_of(wr, struct ib_ud_wr, wr);
+ static int get_encoded_page_size(int pg_sz)
+ {
+ 	/* Max size is 256M 4096 << 16 */
+@@ -2233,50 +2198,6 @@ static int ocrdma_build_reg(struct ocrdma_qp *qp,
+ 	return 0;
  }
  
--struct ib_fast_reg_wr {
--	struct ib_send_wr	wr;
--	u64			iova_start;
--	struct ib_fast_reg_page_list *page_list;
--	unsigned int		page_shift;
--	unsigned int		page_list_len;
--	u32			length;
--	int			access_flags;
--	u32			rkey;
--};
--
--static inline struct ib_fast_reg_wr *fast_reg_wr(struct ib_send_wr *wr)
+-static int ocrdma_build_fr(struct ocrdma_qp *qp, struct ocrdma_hdr_wqe *hdr,
+-			   struct ib_send_wr *send_wr)
 -{
--	return container_of(wr, struct ib_fast_reg_wr, wr);
+-	u64 fbo;
+-	struct ib_fast_reg_wr *wr = fast_reg_wr(send_wr);
+-	struct ocrdma_ewqe_fr *fast_reg = (struct ocrdma_ewqe_fr *)(hdr + 1);
+-	struct ocrdma_mr *mr;
+-	struct ocrdma_dev *dev = get_ocrdma_dev(qp->ibqp.device);
+-	u32 wqe_size = sizeof(*fast_reg) + sizeof(*hdr);
+-
+-	wqe_size = roundup(wqe_size, OCRDMA_WQE_ALIGN_BYTES);
+-
+-	if (wr->page_list_len > dev->attr.max_pages_per_frmr)
+-		return -EINVAL;
+-
+-	hdr->cw |= (OCRDMA_FR_MR << OCRDMA_WQE_OPCODE_SHIFT);
+-	hdr->cw |= ((wqe_size / OCRDMA_WQE_STRIDE) << OCRDMA_WQE_SIZE_SHIFT);
+-
+-	if (wr->page_list_len == 0)
+-		BUG();
+-	if (wr->access_flags & IB_ACCESS_LOCAL_WRITE)
+-		hdr->rsvd_lkey_flags |= OCRDMA_LKEY_FLAG_LOCAL_WR;
+-	if (wr->access_flags & IB_ACCESS_REMOTE_WRITE)
+-		hdr->rsvd_lkey_flags |= OCRDMA_LKEY_FLAG_REMOTE_WR;
+-	if (wr->access_flags & IB_ACCESS_REMOTE_READ)
+-		hdr->rsvd_lkey_flags |= OCRDMA_LKEY_FLAG_REMOTE_RD;
+-	hdr->lkey = wr->rkey;
+-	hdr->total_len = wr->length;
+-
+-	fbo = wr->iova_start - (wr->page_list->page_list[0] & PAGE_MASK);
+-
+-	fast_reg->va_hi = upper_32_bits(wr->iova_start);
+-	fast_reg->va_lo = (u32) (wr->iova_start & 0xffffffff);
+-	fast_reg->fbo_hi = upper_32_bits(fbo);
+-	fast_reg->fbo_lo = (u32) fbo & 0xffffffff;
+-	fast_reg->num_sges = wr->page_list_len;
+-	fast_reg->size_sge =
+-		get_encoded_page_size(1 << wr->page_shift);
+-	mr = (struct ocrdma_mr *) (unsigned long)
+-		dev->stag_arr[(hdr->lkey >> 8) & (OCRDMA_MAX_STAG - 1)];
+-	build_frmr_pbes(wr, mr->hwmr.pbl_table, &mr->hwmr);
+-	return 0;
 -}
 -
- struct ib_reg_wr {
- 	struct ib_send_wr	wr;
- 	struct ib_mr		*mr;
-@@ -1777,9 +1755,6 @@ struct ib_device {
- 	int                        (*map_mr_sg)(struct ib_mr *mr,
- 						struct scatterlist *sg,
- 						unsigned int sg_nents);
--	struct ib_fast_reg_page_list * (*alloc_fast_reg_page_list)(struct ib_device *device,
--								   int page_list_len);
--	void			   (*free_fast_reg_page_list)(struct ib_fast_reg_page_list *page_list);
- 	int                        (*rereg_phys_mr)(struct ib_mr *mr,
- 						    int mr_rereg_mask,
- 						    struct ib_pd *pd,
-@@ -2888,33 +2863,6 @@ struct ib_mr *ib_alloc_mr(struct ib_pd *pd,
- 			  u32 max_num_sg);
+ static void ocrdma_ring_sq_db(struct ocrdma_qp *qp)
+ {
+ 	u32 val = qp->sq.dbid | (1 << OCRDMA_DB_SQ_SHIFT);
+@@ -2356,9 +2277,6 @@ int ocrdma_post_send(struct ib_qp *ibqp, struct ib_send_wr *wr,
+ 				OCRDMA_WQE_STRIDE) << OCRDMA_WQE_SIZE_SHIFT;
+ 			hdr->lkey = wr->ex.invalidate_rkey;
+ 			break;
+-		case IB_WR_FAST_REG_MR:
+-			status = ocrdma_build_fr(qp, hdr, wr);
+-			break;
+ 		case IB_WR_REG_MR:
+ 			status = ocrdma_build_reg(qp, hdr, reg_wr(wr));
+ 			break;
+@@ -3152,26 +3070,6 @@ pl_err:
+ 	return ERR_PTR(-ENOMEM);
+ }
  
- /**
-- * ib_alloc_fast_reg_page_list - Allocates a page list array
-- * @device - ib device pointer.
-- * @page_list_len - size of the page list array to be allocated.
-- *
-- * This allocates and returns a struct ib_fast_reg_page_list * and a
-- * page_list array that is at least page_list_len in size.  The actual
-- * size is returned in max_page_list_len.  The caller is responsible
-- * for initializing the contents of the page_list array before posting
-- * a send work request with the IB_WC_FAST_REG_MR opcode.
-- *
-- * The page_list array entries must be translated using one of the
-- * ib_dma_*() functions just like the addresses passed to
-- * ib_map_phys_fmr().  Once the ib_post_send() is issued, the struct
-- * ib_fast_reg_page_list must not be modified by the caller until the
-- * IB_WC_FAST_REG_MR work request completes.
-- */
--struct ib_fast_reg_page_list *ib_alloc_fast_reg_page_list(
--				struct ib_device *device, int page_list_len);
+-struct ib_fast_reg_page_list *ocrdma_alloc_frmr_page_list(struct ib_device
+-							  *ibdev,
+-							  int page_list_len)
+-{
+-	struct ib_fast_reg_page_list *frmr_list;
+-	int size;
 -
--/**
-- * ib_free_fast_reg_page_list - Deallocates a previously allocated
-- *   page list array.
-- * @page_list - struct ib_fast_reg_page_list pointer to be deallocated.
-- */
--void ib_free_fast_reg_page_list(struct ib_fast_reg_page_list *page_list);
+-	size = sizeof(*frmr_list) + (page_list_len * sizeof(u64));
+-	frmr_list = kzalloc(size, GFP_KERNEL);
+-	if (!frmr_list)
+-		return ERR_PTR(-ENOMEM);
+-	frmr_list->page_list = (u64 *)(frmr_list + 1);
+-	return frmr_list;
+-}
 -
--/**
-  * ib_update_fast_reg_key - updates the key portion of the fast_reg MR
-  *   R_Key and L_Key.
-  * @mr - struct ib_mr pointer to be updated.
+-void ocrdma_free_frmr_page_list(struct ib_fast_reg_page_list *page_list)
+-{
+-	kfree(page_list);
+-}
+-
+ #define MAX_KERNEL_PBE_SIZE 65536
+ static inline int count_kernel_pbes(struct ib_phys_buf *buf_list,
+ 				    int buf_cnt, u32 *pbe_size)
+diff --git a/drivers/infiniband/hw/ocrdma/ocrdma_verbs.h b/drivers/infiniband/hw/ocrdma/ocrdma_verbs.h
+index 4edf63f9c6c7..62d6608830cb 100644
+--- a/drivers/infiniband/hw/ocrdma/ocrdma_verbs.h
++++ b/drivers/infiniband/hw/ocrdma/ocrdma_verbs.h
+@@ -128,9 +128,5 @@ struct ib_mr *ocrdma_alloc_mr(struct ib_pd *pd,
+ int ocrdma_map_mr_sg(struct ib_mr *ibmr,
+ 		     struct scatterlist *sg,
+ 		     unsigned int sg_nents);
+-struct ib_fast_reg_page_list *ocrdma_alloc_frmr_page_list(struct ib_device
+-							*ibdev,
+-							int page_list_len);
+-void ocrdma_free_frmr_page_list(struct ib_fast_reg_page_list *page_list);
+ 
+ #endif				/* __OCRDMA_VERBS_H__ */
 -- 
 1.8.4.3
 
