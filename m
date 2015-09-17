@@ -1,12 +1,12 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ob0-f176.google.com ([209.85.214.176]:33711 "EHLO
-	mail-ob0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752103AbbIQWDV convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Sep 2015 18:03:21 -0400
-Received: by obbbh8 with SMTP id bh8so24429206obb.0
-        for <linux-nfs@vger.kernel.org>; Thu, 17 Sep 2015 15:03:20 -0700 (PDT)
+Received: from mail-oi0-f46.google.com ([209.85.218.46]:35641 "EHLO
+	mail-oi0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752645AbbIQWDv convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Sep 2015 18:03:51 -0400
+Received: by oiww128 with SMTP id w128so17397251oiw.2
+        for <linux-nfs@vger.kernel.org>; Thu, 17 Sep 2015 15:03:51 -0700 (PDT)
 MIME-Version: 1.0
-In-Reply-To: <20150917214758.GW21084@n2100.arm.linux.org.uk>
+In-Reply-To: <alpine.OSX.2.19.9992.1509171224520.17945@planck.local>
 References: <20150911113839.GO21084@n2100.arm.linux.org.uk>
 	<1441976691.4619.58.camel@edumazet-glaptop2.roam.corp.google.com>
 	<20150911143347.GQ21084@n2100.arm.linux.org.uk>
@@ -16,13 +16,14 @@ References: <20150911113839.GO21084@n2100.arm.linux.org.uk>
 	<20150911164937.GW21084@n2100.arm.linux.org.uk>
 	<20150917135705.GQ21084@n2100.arm.linux.org.uk>
 	<1442499509.2865.16.camel@primarydata.com>
-	<20150917214758.GW21084@n2100.arm.linux.org.uk>
-Date: Thu, 17 Sep 2015 18:03:20 -0400
-Message-ID: <CAHQdGtRy3_DSrUNNBy7+mSxC=a5X=yHME84mp2rVrYk9KhsMVg@mail.gmail.com>
+	<alpine.OSX.2.19.9992.1509171224520.17945@planck.local>
+Date: Thu, 17 Sep 2015 18:03:50 -0400
+Message-ID: <CAHQdGtS3YHy6_sEhYn=3Tgzdi4WMranoyRirfY+vN_srGDC0wg@mail.gmail.com>
 Subject: Re: NFS/TCP/IPv6 acting strangely in 4.2
 From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Russell King - ARM Linux <linux@arm.linux.org.uk>
-Cc: AnnaSchumaker <anna.schumaker@netapp.com>,
+To: Benjamin Coddington <bcodding@redhat.com>
+Cc: Russell King - ARM Linux <linux@arm.linux.org.uk>,
+        AnnaSchumaker <anna.schumaker@netapp.com>,
         Linux Network Devel Mailing List <netdev@vger.kernel.org>,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
         Linux ARM Kernel Mailing List
@@ -32,9 +33,10 @@ Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Sep 17, 2015 at 5:47 PM, Russell King - ARM Linux
-<linux@arm.linux.org.uk> wrote:
-> On Thu, Sep 17, 2015 at 10:18:29AM -0400, Trond Myklebust wrote:
+On Thu, Sep 17, 2015 at 12:27 PM, Benjamin Coddington
+<bcodding@redhat.com> wrote:
+> On Thu, 17 Sep 2015, Trond Myklebust wrote:
+>
 >> Hi Russell,
 >>
 >> On Thu, 2015-09-17 at 14:57 +0100, Russell King - ARM Linux wrote:
@@ -102,18 +104,9 @@ On Thu, Sep 17, 2015 at 5:47 PM, Russell King - ARM Linux
 >> ensure that xs_tcp_state_change() doesn't clear the 'connecting' state
 >> more than once (which could otherwise still happen in the TCP_CLOSE
 >> case).
->
-> This patch also seems to fix the problem I've been seeing.
->
-> Yes, I wasn't sure about my patch - I didn't spend much time properly
-> reading and understanding the sunrpc code, beyond analysing what was
-> going on to cause the problem and deciding on a way to stop it happening.
-> I really wasn't sure that clearing the connecting flag everywhere I did
-> was the right thing, which is why I didn't send the patch properly
-> dressed up.
->
+>>
 >> 8<-------------------------------------------------------------------
->> >From 4dbfdebbc09982a9248866f8256549456e2b2efd Mon Sep 17 00:00:00 2001
+>> From 4dbfdebbc09982a9248866f8256549456e2b2efd Mon Sep 17 00:00:00 2001
 >> From: Trond Myklebust <trond.myklebust@primarydata.com>
 >> Date: Wed, 16 Sep 2015 23:43:17 -0400
 >> Subject: [PATCH] SUNRPC: Ensure that we wait for connections to complete
@@ -128,9 +121,12 @@ On Thu, Sep 17, 2015 at 5:47 PM, Russell King - ARM Linux
 >>
 >> Fixes: 718ba5b87343 ("SUNRPC: Add helpers to prevent socket create from racing")
 >> Reported-by: Russell King <linux@arm.linux.org.uk>
+>> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 >
-> Reported-by: Russell King <rmk+kernel@arm.linux.org.uk>
-> Tested-by: Russell King <rmk+kernel@arm.linux.org.uk>
+> This fixes up my network segmentation problem, tested on top of your "Fix
+> races between socket connection and destroy code".
+>
+> Tested-by: Benjamin Coddington <bcodding@redhat.com>
 >
 
-Thanks Russell!
+Thanks Ben!
