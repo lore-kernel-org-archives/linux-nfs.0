@@ -1,64 +1,64 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yk0-f170.google.com ([209.85.160.170]:35769 "EHLO
-	mail-yk0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751487AbbIQMjy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Sep 2015 08:39:54 -0400
-Received: by ykdu9 with SMTP id u9so15110818ykd.2
-        for <linux-nfs@vger.kernel.org>; Thu, 17 Sep 2015 05:39:54 -0700 (PDT)
-From: Jeff Layton <jlayton@poochiereds.net>
-To: Al Viro <viro@ZenIV.linux.org.uk>
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH v2 1/4] fs: have flush_delayed_fput flush the workqueue job
-Date: Thu, 17 Sep 2015 08:39:44 -0400
-Message-Id: <1442493587-32499-2-git-send-email-jeff.layton@primarydata.com>
-In-Reply-To: <1442493587-32499-1-git-send-email-jeff.layton@primarydata.com>
-References: <1442493587-32499-1-git-send-email-jeff.layton@primarydata.com>
+Received: from mx142.netapp.com ([216.240.21.19]:33001 "EHLO mx142.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752471AbbIQNEJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 17 Sep 2015 09:04:09 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+Subject: Re: [PATCH] nfs: fix v4.2 SEEK on files over 2 gigs
+To: "J. Bruce Fields" <bfields@fieldses.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <schumakeranna@gmail.com>
+References: <20150916212127.GA5169@fieldses.org>
+CC: <linux-nfs@vger.kernel.org>
+Message-ID: <55FABA40.6010406@Netapp.com>
+Date: Thu, 17 Sep 2015 09:04:00 -0400
+MIME-Version: 1.0
+In-Reply-To: <20150916212127.GA5169@fieldses.org>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I think there's a potential race in flush_delayed_fput. A kthread does
-an fput() and that file gets added to the list and the delayed work is
-scheduled. More than 1 jiffy passes, and the workqueue thread picks up
-the work and starts running it. Then the kthread calls
-flush_delayed_work.  It sees that the list is empty and returns
-immediately, even though the __fput for its file may not have run yet.
+Hey Bruce,
 
-Close this by making flush_delayed_fput use flush_delayed_work instead,
-which should immediately schedule the work to run if it's not already,
-and block until the workqueue job completes.
+I actually worked on a version of this patch on my own yesterday, too.  Looks like you beat me to submitting it!  :)
 
-Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
----
- fs/file_table.c | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+On 09/16/2015 05:21 PM, J. Bruce Fields wrote:
+> From: "J. Bruce Fields" <bfields@redhat.com>
+> 
+> We're incorrectly assigning a loff_t return to an int.  If SEEK_HOLE or
+> SEEK_DATA returns an offset over 2^31 then the application will see a
+> weird lseek() result (usually -EIO).
 
-diff --git a/fs/file_table.c b/fs/file_table.c
-index ad17e05ebf95..52cc6803c07a 100644
---- a/fs/file_table.c
-+++ b/fs/file_table.c
-@@ -244,6 +244,8 @@ static void ____fput(struct callback_head *work)
- 	__fput(container_of(work, struct file, f_u.fu_rcuhead));
- }
- 
-+static DECLARE_DELAYED_WORK(delayed_fput_work, delayed_fput);
-+
- /*
-  * If kernel thread really needs to have the final fput() it has done
-  * to complete, call this.  The only user right now is the boot - we
-@@ -256,11 +258,9 @@ static void ____fput(struct callback_head *work)
-  */
- void flush_delayed_fput(void)
- {
--	delayed_fput(NULL);
-+	flush_delayed_work(&delayed_fput_work);
- }
- 
--static DECLARE_DELAYED_WORK(delayed_fput_work, delayed_fput);
--
- void fput(struct file *file)
- {
- 	if (atomic_long_dec_and_test(&file->f_count)) {
--- 
-2.4.3
+I saw roughly the same thing with xfstests generic/285.
+
+> 
+> Cc: stable@vger.kernel.org
+> Fixes: bdcc2cd14e4e "NFSv4.2: handle NFS-specific llseek errors"
+> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+
+Reviewed-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+
+> ---
+>  fs/nfs/nfs42proc.c | 4 +++-
+>  1 file changed, 3 insertions(+), 1 deletion(-)
+> 
+> diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
+> index d731bbf974aa..0f020e4d8421 100644
+> --- a/fs/nfs/nfs42proc.c
+> +++ b/fs/nfs/nfs42proc.c
+> @@ -175,10 +175,12 @@ loff_t nfs42_proc_llseek(struct file *filep, loff_t offset, int whence)
+>  {
+>  	struct nfs_server *server = NFS_SERVER(file_inode(filep));
+>  	struct nfs4_exception exception = { };
+> -	int err;
+> +	loff_t err;
+>  
+>  	do {
+>  		err = _nfs42_proc_llseek(filep, offset, whence);
+> +		if (err >= 0)
+> +			break;
+>  		if (err == -ENOTSUPP)
+>  			return -EOPNOTSUPP;
+>  		err = nfs4_handle_exception(server, err, &exception);
+> 
 
