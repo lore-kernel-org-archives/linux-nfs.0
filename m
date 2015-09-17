@@ -1,187 +1,210 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from [193.47.165.129] ([193.47.165.129]:49165 "EHLO mellanox.co.il"
+Received: from [193.47.165.129] ([193.47.165.129]:49173 "EHLO mellanox.co.il"
 	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1752721AbbIQJm4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	id S1752864AbbIQJm4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
 	Thu, 17 Sep 2015 05:42:56 -0400
 From: Sagi Grimberg <sagig@mellanox.com>
 To: linux-rdma@vger.kernel.org
 Cc: linux-nfs@vger.kernel.org, "Nicholas A. Bellinger" <nab@linux-iscsi.org>
-Subject: [PATCH v1 06/24] RDMA/cxgb3: Support the new memory registration API
-Date: Thu, 17 Sep 2015 12:42:09 +0300
-Message-Id: <1442482947-27785-7-git-send-email-sagig@mellanox.com>
+Subject: [PATCH v1 05/24] RDMA/ocrdma: Support the new memory registration API
+Date: Thu, 17 Sep 2015 12:42:08 +0300
+Message-Id: <1442482947-27785-6-git-send-email-sagig@mellanox.com>
 In-Reply-To: <1442482947-27785-1-git-send-email-sagig@mellanox.com>
 References: <1442482947-27785-1-git-send-email-sagig@mellanox.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 Support the new memory registration API by allocating a
-private page list array in iwch_mr and populate it when
-iwch_map_mr_sg is invoked. Also, support IB_WR_REG_MR
-by duplicating build_fastreg just take the needed information
-from different places:
-- page_size, iova, length (ib_mr)
-- page array (iwch_mr)
-- key, access flags (ib_reg_wr)
+private page list array in ocrdma_mr and populate it when
+ocrdma_map_mr_sg is invoked. Also, support IB_WR_REG_MR
+by duplicating IB_WR_FAST_REG_MR, but take the needed
+information from different places:
+- page_size, iova, length, access flags (ib_mr)
+- page array (ocrdma_mr)
+- key (ib_reg_wr)
 
 The IB_WR_FAST_REG_MR handlers will be removed later when
 all the ULPs will be converted.
 
 Signed-off-by: Sagi Grimberg <sagig@mellanox.com>
 ---
- drivers/infiniband/hw/cxgb3/iwch_provider.c | 33 ++++++++++++++++++++
- drivers/infiniband/hw/cxgb3/iwch_provider.h |  2 ++
- drivers/infiniband/hw/cxgb3/iwch_qp.c       | 48 +++++++++++++++++++++++++++++
- 3 files changed, 83 insertions(+)
+ drivers/infiniband/hw/ocrdma/ocrdma.h       |  2 +
+ drivers/infiniband/hw/ocrdma/ocrdma_main.c  |  1 +
+ drivers/infiniband/hw/ocrdma/ocrdma_verbs.c | 89 +++++++++++++++++++++++++++++
+ drivers/infiniband/hw/ocrdma/ocrdma_verbs.h |  3 +
+ 4 files changed, 95 insertions(+)
 
-diff --git a/drivers/infiniband/hw/cxgb3/iwch_provider.c b/drivers/infiniband/hw/cxgb3/iwch_provider.c
-index 93308c45f298..ee3d5ca7de6c 100644
---- a/drivers/infiniband/hw/cxgb3/iwch_provider.c
-+++ b/drivers/infiniband/hw/cxgb3/iwch_provider.c
-@@ -463,6 +463,7 @@ static int iwch_dereg_mr(struct ib_mr *ib_mr)
- 		return -EINVAL;
- 
- 	mhp = to_iwch_mr(ib_mr);
-+	kfree(mhp->pages);
- 	rhp = mhp->rhp;
- 	mmid = mhp->attr.stag >> 8;
- 	cxio_dereg_mem(&rhp->rdev, mhp->attr.stag, mhp->attr.pbl_size,
-@@ -821,6 +822,12 @@ static struct ib_mr *iwch_alloc_mr(struct ib_pd *pd,
- 	if (!mhp)
- 		goto err;
- 
-+	mhp->pages = kcalloc(max_num_sg, sizeof(u64), GFP_KERNEL);
-+	if (!mhp->pages) {
-+		ret = -ENOMEM;
-+		goto pl_err;
-+	}
-+
- 	mhp->rhp = rhp;
- 	ret = iwch_alloc_pbl(mhp, max_num_sg);
- 	if (ret)
-@@ -847,11 +854,36 @@ err3:
- err2:
- 	iwch_free_pbl(mhp);
- err1:
-+	kfree(mhp->pages);
-+pl_err:
- 	kfree(mhp);
- err:
- 	return ERR_PTR(ret);
- }
- 
-+static int iwch_set_page(struct ib_mr *ibmr, u64 addr)
-+{
-+	struct iwch_mr *mhp = to_iwch_mr(ibmr);
-+
-+	if (unlikely(mhp->npages == mhp->attr.pbl_size))
-+		return -ENOMEM;
-+
-+	mhp->pages[mhp->npages++] = addr;
-+
-+	return 0;
-+}
-+
-+static int iwch_map_mr_sg(struct ib_mr *ibmr,
-+			  struct scatterlist *sg,
-+			  unsigned int sg_nents)
-+{
-+	struct iwch_mr *mhp = to_iwch_mr(ibmr);
-+
-+	mhp->npages = 0;
-+
-+	return ib_sg_to_pages(ibmr, sg, sg_nents, iwch_set_page);
-+}
-+
- static struct ib_fast_reg_page_list *iwch_alloc_fastreg_pbl(
- 					struct ib_device *device,
- 					int page_list_len)
-@@ -1450,6 +1482,7 @@ int iwch_register_device(struct iwch_dev *dev)
- 	dev->ibdev.bind_mw = iwch_bind_mw;
- 	dev->ibdev.dealloc_mw = iwch_dealloc_mw;
- 	dev->ibdev.alloc_mr = iwch_alloc_mr;
-+	dev->ibdev.map_mr_sg = iwch_map_mr_sg;
- 	dev->ibdev.alloc_fast_reg_page_list = iwch_alloc_fastreg_pbl;
- 	dev->ibdev.free_fast_reg_page_list = iwch_free_fastreg_pbl;
- 	dev->ibdev.attach_mcast = iwch_multicast_attach;
-diff --git a/drivers/infiniband/hw/cxgb3/iwch_provider.h b/drivers/infiniband/hw/cxgb3/iwch_provider.h
-index 87c14b0c5ac0..2ac85b86a680 100644
---- a/drivers/infiniband/hw/cxgb3/iwch_provider.h
-+++ b/drivers/infiniband/hw/cxgb3/iwch_provider.h
-@@ -77,6 +77,8 @@ struct iwch_mr {
- 	struct iwch_dev *rhp;
- 	u64 kva;
- 	struct tpt_attributes attr;
+diff --git a/drivers/infiniband/hw/ocrdma/ocrdma.h b/drivers/infiniband/hw/ocrdma/ocrdma.h
+index b4091ab48db0..c2f3af5d5194 100644
+--- a/drivers/infiniband/hw/ocrdma/ocrdma.h
++++ b/drivers/infiniband/hw/ocrdma/ocrdma.h
+@@ -193,6 +193,8 @@ struct ocrdma_mr {
+ 	struct ib_mr ibmr;
+ 	struct ib_umem *umem;
+ 	struct ocrdma_hw_mr hwmr;
 +	u64 *pages;
 +	u32 npages;
  };
  
- typedef struct iwch_mw iwch_mw_handle;
-diff --git a/drivers/infiniband/hw/cxgb3/iwch_qp.c b/drivers/infiniband/hw/cxgb3/iwch_qp.c
-index bac0508fedd9..a09ea538e990 100644
---- a/drivers/infiniband/hw/cxgb3/iwch_qp.c
-+++ b/drivers/infiniband/hw/cxgb3/iwch_qp.c
-@@ -146,6 +146,49 @@ static int build_rdma_read(union t3_wr *wqe, struct ib_send_wr *wr,
- 	return 0;
+ struct ocrdma_stats {
+diff --git a/drivers/infiniband/hw/ocrdma/ocrdma_main.c b/drivers/infiniband/hw/ocrdma/ocrdma_main.c
+index 87aa55df7c82..874beb4b07a1 100644
+--- a/drivers/infiniband/hw/ocrdma/ocrdma_main.c
++++ b/drivers/infiniband/hw/ocrdma/ocrdma_main.c
+@@ -182,6 +182,7 @@ static int ocrdma_register_device(struct ocrdma_dev *dev)
+ 	dev->ibdev.reg_user_mr = ocrdma_reg_user_mr;
+ 
+ 	dev->ibdev.alloc_mr = ocrdma_alloc_mr;
++	dev->ibdev.map_mr_sg = ocrdma_map_mr_sg;
+ 	dev->ibdev.alloc_fast_reg_page_list = ocrdma_alloc_frmr_page_list;
+ 	dev->ibdev.free_fast_reg_page_list = ocrdma_free_frmr_page_list;
+ 
+diff --git a/drivers/infiniband/hw/ocrdma/ocrdma_verbs.c b/drivers/infiniband/hw/ocrdma/ocrdma_verbs.c
+index eb09e224acb9..853746e17d5c 100644
+--- a/drivers/infiniband/hw/ocrdma/ocrdma_verbs.c
++++ b/drivers/infiniband/hw/ocrdma/ocrdma_verbs.c
+@@ -1013,6 +1013,7 @@ int ocrdma_dereg_mr(struct ib_mr *ib_mr)
+ 
+ 	(void) ocrdma_mbx_dealloc_lkey(dev, mr->hwmr.fr_mr, mr->hwmr.lkey);
+ 
++	kfree(mr->pages);
+ 	ocrdma_free_mr_pbl_tbl(dev, &mr->hwmr);
+ 
+ 	/* it could be user registered memory. */
+@@ -2177,6 +2178,60 @@ static int get_encoded_page_size(int pg_sz)
+ 	return i;
  }
  
-+static int build_memreg(union t3_wr *wqe, struct ib_reg_wr *wr,
-+			  u8 *flit_cnt, int *wr_cnt, struct t3_wq *wq)
++static int ocrdma_build_reg(struct ocrdma_qp *qp,
++			    struct ocrdma_hdr_wqe *hdr,
++			    struct ib_reg_wr *wr)
 +{
-+	struct iwch_mr *mhp = to_iwch_mr(wr->mr);
-+	int i;
-+	__be64 *p;
++	u64 fbo;
++	struct ocrdma_ewqe_fr *fast_reg = (struct ocrdma_ewqe_fr *)(hdr + 1);
++	struct ocrdma_mr *mr = get_ocrdma_mr(wr->mr);
++	struct ocrdma_pbl *pbl_tbl = mr->hwmr.pbl_table;
++	struct ocrdma_pbe *pbe;
++	u32 wqe_size = sizeof(*fast_reg) + sizeof(*hdr);
++	int num_pbes = 0, i;
 +
-+	if (mhp->npages > T3_MAX_FASTREG_DEPTH)
-+		return -EINVAL;
-+	*wr_cnt = 1;
-+	wqe->fastreg.stag = cpu_to_be32(wr->key);
-+	wqe->fastreg.len = cpu_to_be32(mhp->ibmr.length);
-+	wqe->fastreg.va_base_hi = cpu_to_be32(mhp->ibmr.iova >> 32);
-+	wqe->fastreg.va_base_lo_fbo =
-+				cpu_to_be32(mhp->ibmr.iova & 0xffffffff);
-+	wqe->fastreg.page_type_perms = cpu_to_be32(
-+		V_FR_PAGE_COUNT(mhp->npages) |
-+		V_FR_PAGE_SIZE(ilog2(wr->mr->page_size) - 12) |
-+		V_FR_TYPE(TPT_VATO) |
-+		V_FR_PERMS(iwch_ib_to_tpt_access(wr->access)));
-+	p = &wqe->fastreg.pbl_addrs[0];
-+	for (i = 0; i < mhp->npages; i++, p++) {
++	wqe_size = roundup(wqe_size, OCRDMA_WQE_ALIGN_BYTES);
 +
-+		/* If we need a 2nd WR, then set it up */
-+		if (i == T3_MAX_FASTREG_FRAG) {
-+			*wr_cnt = 2;
-+			wqe = (union t3_wr *)(wq->queue +
-+				Q_PTR2IDX((wq->wptr+1), wq->size_log2));
-+			build_fw_riwrh((void *)wqe, T3_WR_FASTREG, 0,
-+			       Q_GENBIT(wq->wptr + 1, wq->size_log2),
-+			       0, 1 + mhp->npages - T3_MAX_FASTREG_FRAG,
-+			       T3_EOP);
++	hdr->cw |= (OCRDMA_FR_MR << OCRDMA_WQE_OPCODE_SHIFT);
++	hdr->cw |= ((wqe_size / OCRDMA_WQE_STRIDE) << OCRDMA_WQE_SIZE_SHIFT);
 +
-+			p = &wqe->pbl_frag.pbl_addrs[0];
++	if (wr->access & IB_ACCESS_LOCAL_WRITE)
++		hdr->rsvd_lkey_flags |= OCRDMA_LKEY_FLAG_LOCAL_WR;
++	if (wr->access & IB_ACCESS_REMOTE_WRITE)
++		hdr->rsvd_lkey_flags |= OCRDMA_LKEY_FLAG_REMOTE_WR;
++	if (wr->access & IB_ACCESS_REMOTE_READ)
++		hdr->rsvd_lkey_flags |= OCRDMA_LKEY_FLAG_REMOTE_RD;
++	hdr->lkey = wr->key;
++	hdr->total_len = mr->ibmr.length;
++
++	fbo = mr->ibmr.iova - mr->pages[0];
++
++	fast_reg->va_hi = upper_32_bits(mr->ibmr.iova);
++	fast_reg->va_lo = (u32) (mr->ibmr.iova & 0xffffffff);
++	fast_reg->fbo_hi = upper_32_bits(fbo);
++	fast_reg->fbo_lo = (u32) fbo & 0xffffffff;
++	fast_reg->num_sges = mr->npages;
++	fast_reg->size_sge = get_encoded_page_size(mr->ibmr.page_size);
++
++	pbe = pbl_tbl->va;
++	for (i = 0; i < mr->npages; i++) {
++		u64 buf_addr = mr->pages[i];
++		pbe->pa_lo = cpu_to_le32((u32) (buf_addr & PAGE_MASK));
++		pbe->pa_hi = cpu_to_le32((u32) upper_32_bits(buf_addr));
++		num_pbes += 1;
++		pbe++;
++
++		/* if the pbl is full storing the pbes,
++		 * move to next pbl.
++		*/
++		if (num_pbes == (mr->hwmr.pbl_size/sizeof(u64))) {
++			pbl_tbl++;
++			pbe = (struct ocrdma_pbe *)pbl_tbl->va;
 +		}
-+		*p = cpu_to_be64((u64)mhp->pages[i]);
 +	}
-+	*flit_cnt = 5 + mhp->npages;
-+	if (*flit_cnt > 15)
-+		*flit_cnt = 15;
++
++	return 0;
++}
+ 
+ static int ocrdma_build_fr(struct ocrdma_qp *qp, struct ocrdma_hdr_wqe *hdr,
+ 			   struct ib_send_wr *send_wr)
+@@ -2304,6 +2359,9 @@ int ocrdma_post_send(struct ib_qp *ibqp, struct ib_send_wr *wr,
+ 		case IB_WR_FAST_REG_MR:
+ 			status = ocrdma_build_fr(qp, hdr, wr);
+ 			break;
++		case IB_WR_REG_MR:
++			status = ocrdma_build_reg(qp, hdr, reg_wr(wr));
++			break;
+ 		default:
+ 			status = -EINVAL;
+ 			break;
+@@ -3059,6 +3117,12 @@ struct ib_mr *ocrdma_alloc_mr(struct ib_pd *ibpd,
+ 	if (!mr)
+ 		return ERR_PTR(-ENOMEM);
+ 
++	mr->pages = kcalloc(max_num_sg, sizeof(u64), GFP_KERNEL);
++	if (!mr->pages) {
++		status = -ENOMEM;
++		goto pl_err;
++	}
++
+ 	status = ocrdma_get_pbl_info(dev, mr, max_num_sg);
+ 	if (status)
+ 		goto pbl_err;
+@@ -3082,6 +3146,8 @@ struct ib_mr *ocrdma_alloc_mr(struct ib_pd *ibpd,
+ mbx_err:
+ 	ocrdma_free_mr_pbl_tbl(dev, &mr->hwmr);
+ pbl_err:
++	kfree(mr->pages);
++pl_err:
+ 	kfree(mr);
+ 	return ERR_PTR(-ENOMEM);
+ }
+@@ -3268,3 +3334,26 @@ pbl_err:
+ 	kfree(mr);
+ 	return ERR_PTR(status);
+ }
++
++static int ocrdma_set_page(struct ib_mr *ibmr, u64 addr)
++{
++	struct ocrdma_mr *mr = get_ocrdma_mr(ibmr);
++
++	if (unlikely(mr->npages == mr->hwmr.num_pbes))
++		return -ENOMEM;
++
++	mr->pages[mr->npages++] = addr;
++
 +	return 0;
 +}
 +
- static int build_fastreg(union t3_wr *wqe, struct ib_send_wr *send_wr,
- 				u8 *flit_cnt, int *wr_cnt, struct t3_wq *wq)
- {
-@@ -419,6 +462,11 @@ int iwch_post_send(struct ib_qp *ibqp, struct ib_send_wr *wr,
- 			err = build_fastreg(wqe, wr, &t3_wr_flit_cnt,
- 						 &wr_cnt, &qhp->wq);
- 			break;
-+		case IB_WR_REG_MR:
-+			t3_wr_opcode = T3_WR_FASTREG;
-+			err = build_memreg(wqe, reg_wr(wr), &t3_wr_flit_cnt,
-+					   &wr_cnt, &qhp->wq);
-+			break;
- 		case IB_WR_LOCAL_INV:
- 			if (wr->send_flags & IB_SEND_FENCE)
- 				t3_wr_flags |= T3_LOCAL_FENCE_FLAG;
++int ocrdma_map_mr_sg(struct ib_mr *ibmr,
++		     struct scatterlist *sg,
++		     unsigned int sg_nents)
++{
++	struct ocrdma_mr *mr = get_ocrdma_mr(ibmr);
++
++	mr->npages = 0;
++
++	return ib_sg_to_pages(ibmr, sg, sg_nents, ocrdma_set_page);
++}
+diff --git a/drivers/infiniband/hw/ocrdma/ocrdma_verbs.h b/drivers/infiniband/hw/ocrdma/ocrdma_verbs.h
+index 308c16857a5d..4edf63f9c6c7 100644
+--- a/drivers/infiniband/hw/ocrdma/ocrdma_verbs.h
++++ b/drivers/infiniband/hw/ocrdma/ocrdma_verbs.h
+@@ -125,6 +125,9 @@ struct ib_mr *ocrdma_reg_user_mr(struct ib_pd *, u64 start, u64 length,
+ struct ib_mr *ocrdma_alloc_mr(struct ib_pd *pd,
+ 			      enum ib_mr_type mr_type,
+ 			      u32 max_num_sg);
++int ocrdma_map_mr_sg(struct ib_mr *ibmr,
++		     struct scatterlist *sg,
++		     unsigned int sg_nents);
+ struct ib_fast_reg_page_list *ocrdma_alloc_frmr_page_list(struct ib_device
+ 							*ibdev,
+ 							int page_list_len);
 -- 
 1.8.4.3
 
