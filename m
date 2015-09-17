@@ -1,218 +1,164 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yk0-f175.google.com ([209.85.160.175]:33806 "EHLO
-	mail-yk0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750951AbbIQLrP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Sep 2015 07:47:15 -0400
-Received: by ykdg206 with SMTP id g206so13970058ykd.1
-        for <linux-nfs@vger.kernel.org>; Thu, 17 Sep 2015 04:47:15 -0700 (PDT)
+Received: from mail-yk0-f171.google.com ([209.85.160.171]:36767 "EHLO
+	mail-yk0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751786AbbIQL6a (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Sep 2015 07:58:30 -0400
+Received: by ykdt18 with SMTP id t18so14100411ykd.3
+        for <linux-nfs@vger.kernel.org>; Thu, 17 Sep 2015 04:58:30 -0700 (PDT)
 From: Jeff Layton <jlayton@poochiereds.net>
 To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, Andrew W Elble <aweits@rit.edu>
-Subject: [PATCH] nfsd: serialize state seqid morphing operations
-Date: Thu, 17 Sep 2015 07:47:08 -0400
-Message-Id: <1442490428-29487-1-git-send-email-jeff.layton@primarydata.com>
+Cc: Christoph Hellwig <hch@lst.de>, linux-nfs@vger.kernel.org
+Subject: [PATCH RFC] nfsd: serialize layout stateid morphing operations
+Date: Thu, 17 Sep 2015 07:58:24 -0400
+Message-Id: <1442491104-30080-1-git-send-email-jeff.layton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Andrew was seeing a race occur when an OPEN and OPEN_DOWNGRADE were
-running in parallel. The server would receive the OPEN_DOWNGRADE first
-and check its seqid, but then an OPEN would race in and bump it. The
-OPEN_DOWNGRADE would then complete and bump the seqid again.  The result
-was that the OPEN_DOWNGRADE would be applied after the OPEN, even though
-it should have been rejected since the seqid changed.
+In order to allow the client to make a sane determination of what
+happened with racing LAYOUTGET/LAYOUTRETURN/CB_LAYOUTRECALL calls, we
+must ensure that the seqids return accurately represent the order of
+operations. The simplest way to do that is to ensure that operations on
+a single stateid are serialized.
 
-The only recourse we have here I think is to serialize operations that
-bump the seqid in a stateid, particularly when we're given a seqid in
-the call. To address this, we add a new rw_semaphore to the
-nfs4_ol_stateid struct. We do a down_write prior to checking the seqid
-after looking up the stateid to ensure that nothing else is going to
-bump it while we're operating on it.
+This patch adds a mutex to the layout stateid, and locks it when
+checking the layout stateid's seqid. The mutex is held over the entire
+operation and released after the seqid is bumped.
 
-In the case of OPEN, we do a down_read, as the call doesn't contain a
-seqid. Those can run in parallel -- we just need to serialize them when
-there is a concurrent OPEN_DOWNGRADE or CLOSE.
+Note that in the case of CB_LAYOUTRECALL we must move the increment of
+the seqid and setting into a new cb "prepare" operation. The lease
+infrastructure will call the lm_break callback with a spinlock held, so
+and we can't take the mutex in that codepath.
 
-LOCK and LOCKU however always take the write lock as there is no
-opportunity for parallelizing those.
-
-Reported-and-Tested-by: Andrew W Elble <aweits@rit.edu>
+Cc: Christoph Hellwig <hch@lst.de>
 Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
 ---
- fs/nfsd/nfs4state.c | 33 ++++++++++++++++++++++++++++-----
- fs/nfsd/state.h     | 19 ++++++++++---------
- 2 files changed, 38 insertions(+), 14 deletions(-)
+ fs/nfsd/nfs4layouts.c | 25 +++++++++++++++++++++----
+ fs/nfsd/nfs4proc.c    |  4 ++++
+ fs/nfsd/state.h       |  1 +
+ 3 files changed, 26 insertions(+), 4 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 0f1d5691b795..1b39edf10b67 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -3360,6 +3360,7 @@ static void init_open_stateid(struct nfs4_ol_stateid *stp, struct nfs4_file *fp,
- 	stp->st_access_bmap = 0;
- 	stp->st_deny_bmap = 0;
- 	stp->st_openstp = NULL;
-+	init_rwsem(&stp->st_rwsem);
- 	spin_lock(&oo->oo_owner.so_client->cl_lock);
- 	list_add(&stp->st_perstateowner, &oo->oo_owner.so_stateids);
- 	spin_lock(&fp->fi_lock);
-@@ -4187,15 +4188,20 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
- 	 */
- 	if (stp) {
- 		/* Stateid was found, this is an OPEN upgrade */
-+		down_read(&stp->st_rwsem);
- 		status = nfs4_upgrade_open(rqstp, fp, current_fh, stp, open);
--		if (status)
-+		if (status) {
-+			up_read(&stp->st_rwsem);
+diff --git a/fs/nfsd/nfs4layouts.c b/fs/nfsd/nfs4layouts.c
+index ebf90e487c75..4a68ab901b4b 100644
+--- a/fs/nfsd/nfs4layouts.c
++++ b/fs/nfsd/nfs4layouts.c
+@@ -201,6 +201,7 @@ nfsd4_alloc_layout_stateid(struct nfsd4_compound_state *cstate,
+ 	INIT_LIST_HEAD(&ls->ls_perfile);
+ 	spin_lock_init(&ls->ls_lock);
+ 	INIT_LIST_HEAD(&ls->ls_layouts);
++	mutex_init(&ls->ls_mutex);
+ 	ls->ls_layout_type = layout_type;
+ 	nfsd4_init_cb(&ls->ls_recall, clp, &nfsd4_cb_layout_ops,
+ 			NFSPROC4_CLNT_CB_LAYOUT);
+@@ -262,19 +263,23 @@ nfsd4_preprocess_layout_stateid(struct svc_rqst *rqstp,
+ 		status = nfserr_jukebox;
+ 		if (!ls)
  			goto out;
-+		}
++		mutex_lock(&ls->ls_mutex);
  	} else {
- 		stp = open->op_stp;
- 		open->op_stp = NULL;
- 		init_open_stateid(stp, fp, open);
-+		down_read(&stp->st_rwsem);
- 		status = nfs4_get_vfs_file(rqstp, fp, current_fh, stp, open);
- 		if (status) {
-+			up_read(&stp->st_rwsem);
- 			release_open_stateid(stp);
- 			goto out;
- 		}
-@@ -4207,6 +4213,7 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
- 	}
- 	update_stateid(&stp->st_stid.sc_stateid);
- 	memcpy(&open->op_stateid, &stp->st_stid.sc_stateid, sizeof(stateid_t));
-+	up_read(&stp->st_rwsem);
+ 		ls = container_of(stid, struct nfs4_layout_stateid, ls_stid);
  
- 	if (nfsd4_has_session(&resp->cstate)) {
- 		if (open->op_deleg_want & NFS4_SHARE_WANT_NO_DELEG) {
-@@ -4819,10 +4826,13 @@ static __be32 nfs4_seqid_op_checks(struct nfsd4_compound_state *cstate, stateid_
- 		 * revoked delegations are kept only for free_stateid.
- 		 */
- 		return nfserr_bad_stateid;
-+	down_write(&stp->st_rwsem);
- 	status = check_stateid_generation(stateid, &stp->st_stid.sc_stateid, nfsd4_has_session(cstate));
--	if (status)
--		return status;
--	return nfs4_check_fh(current_fh, &stp->st_stid);
-+	if (status == nfs_ok)
-+		status = nfs4_check_fh(current_fh, &stp->st_stid);
-+	if (status != nfs_ok)
-+		up_write(&stp->st_rwsem);
-+	return status;
+ 		status = nfserr_bad_stateid;
++		mutex_lock(&ls->ls_mutex);
+ 		if (stateid->si_generation > stid->sc_stateid.si_generation)
+-			goto out_put_stid;
++			goto out_unlock_stid;
+ 		if (layout_type != ls->ls_layout_type)
+-			goto out_put_stid;
++			goto out_unlock_stid;
+ 	}
+ 
+ 	*lsp = ls;
+ 	return 0;
+ 
++out_unlock_stid:
++	mutex_unlock(&ls->ls_mutex);
+ out_put_stid:
+ 	nfs4_put_stid(stid);
+ out:
+@@ -296,8 +301,6 @@ nfsd4_recall_file_layout(struct nfs4_layout_stateid *ls)
+ 	trace_layout_recall(&ls->ls_stid.sc_stateid);
+ 
+ 	atomic_inc(&ls->ls_stid.sc_count);
+-	update_stateid(&ls->ls_stid.sc_stateid);
+-	memcpy(&ls->ls_recall_sid, &ls->ls_stid.sc_stateid, sizeof(stateid_t));
+ 	nfsd4_run_cb(&ls->ls_recall);
+ 
+ out_unlock:
+@@ -494,6 +497,7 @@ nfsd4_return_file_layouts(struct svc_rqst *rqstp,
+ 	}
+ 	spin_unlock(&ls->ls_lock);
+ 
++	mutex_unlock(&ls->ls_mutex);
+ 	nfs4_put_stid(&ls->ls_stid);
+ 	nfsd4_free_layouts(&reaplist);
+ 	return nfs_ok;
+@@ -608,6 +612,17 @@ nfsd4_cb_layout_fail(struct nfs4_layout_stateid *ls)
+ 	}
  }
  
- /* 
-@@ -4869,6 +4879,7 @@ static __be32 nfs4_preprocess_confirmed_seqid_op(struct nfsd4_compound_state *cs
- 		return status;
- 	oo = openowner(stp->st_stateowner);
- 	if (!(oo->oo_flags & NFS4_OO_CONFIRMED)) {
-+		up_write(&stp->st_rwsem);
- 		nfs4_put_stid(&stp->st_stid);
- 		return nfserr_bad_stateid;
- 	}
-@@ -4899,11 +4910,14 @@ nfsd4_open_confirm(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		goto out;
- 	oo = openowner(stp->st_stateowner);
- 	status = nfserr_bad_stateid;
--	if (oo->oo_flags & NFS4_OO_CONFIRMED)
-+	if (oo->oo_flags & NFS4_OO_CONFIRMED) {
-+		up_write(&stp->st_rwsem);
- 		goto put_stateid;
-+	}
- 	oo->oo_flags |= NFS4_OO_CONFIRMED;
- 	update_stateid(&stp->st_stid.sc_stateid);
- 	memcpy(&oc->oc_resp_stateid, &stp->st_stid.sc_stateid, sizeof(stateid_t));
-+	up_write(&stp->st_rwsem);
- 	dprintk("NFSD: %s: success, seqid=%d stateid=" STATEID_FMT "\n",
- 		__func__, oc->oc_seqid, STATEID_VAL(&stp->st_stid.sc_stateid));
- 
-@@ -4982,6 +4996,7 @@ nfsd4_open_downgrade(struct svc_rqst *rqstp,
- 	memcpy(&od->od_stateid, &stp->st_stid.sc_stateid, sizeof(stateid_t));
- 	status = nfs_ok;
- put_stateid:
-+	up_write(&stp->st_rwsem);
- 	nfs4_put_stid(&stp->st_stid);
- out:
- 	nfsd4_bump_seqid(cstate, status);
-@@ -5035,6 +5050,7 @@ nfsd4_close(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		goto out; 
- 	update_stateid(&stp->st_stid.sc_stateid);
- 	memcpy(&close->cl_stateid, &stp->st_stid.sc_stateid, sizeof(stateid_t));
-+	up_write(&stp->st_rwsem);
- 
- 	nfsd4_close_open_stateid(stp);
- 
-@@ -5260,6 +5276,7 @@ init_lock_stateid(struct nfs4_ol_stateid *stp, struct nfs4_lockowner *lo,
- 	stp->st_access_bmap = 0;
- 	stp->st_deny_bmap = open_stp->st_deny_bmap;
- 	stp->st_openstp = open_stp;
-+	init_rwsem(&stp->st_rwsem);
- 	list_add(&stp->st_locks, &open_stp->st_locks);
- 	list_add(&stp->st_perstateowner, &lo->lo_owner.so_stateids);
- 	spin_lock(&fp->fi_lock);
-@@ -5428,6 +5445,7 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 					&open_stp, nn);
- 		if (status)
- 			goto out;
-+		up_write(&open_stp->st_rwsem);
- 		open_sop = openowner(open_stp->st_stateowner);
- 		status = nfserr_bad_stateid;
- 		if (!same_clid(&open_sop->oo_owner.so_client->cl_clientid,
-@@ -5435,6 +5453,8 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 			goto out;
- 		status = lookup_or_create_lock_state(cstate, open_stp, lock,
- 							&lock_stp, &new);
-+		if (status == nfs_ok)
-+			down_write(&lock_stp->st_rwsem);
- 	} else {
- 		status = nfs4_preprocess_seqid_op(cstate,
- 				       lock->lk_old_lock_seqid,
-@@ -5540,6 +5560,8 @@ out:
- 		    seqid_mutating_err(ntohl(status)))
- 			lock_sop->lo_owner.so_seqid++;
- 
-+		up_write(&lock_stp->st_rwsem);
++static void
++nfsd4_cb_layout_prepare(struct nfsd4_callback *cb)
++{
++	struct nfs4_layout_stateid *ls =
++		container_of(cb, struct nfs4_layout_stateid, ls_recall);
 +
- 		/*
- 		 * If this is a new, never-before-used stateid, and we are
- 		 * returning an error, then just go ahead and release it.
-@@ -5709,6 +5731,7 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- fput:
- 	fput(filp);
- put_stateid:
-+	up_write(&stp->st_rwsem);
- 	nfs4_put_stid(&stp->st_stid);
++	mutex_lock(&ls->ls_mutex);
++	update_stateid(&ls->ls_stid.sc_stateid);
++	memcpy(&ls->ls_recall_sid, &ls->ls_stid.sc_stateid, sizeof(stateid_t));
++}
++
+ static int
+ nfsd4_cb_layout_done(struct nfsd4_callback *cb, struct rpc_task *task)
+ {
+@@ -649,12 +664,14 @@ nfsd4_cb_layout_release(struct nfsd4_callback *cb)
+ 
+ 	trace_layout_recall_release(&ls->ls_stid.sc_stateid);
+ 
++	mutex_unlock(&ls->ls_mutex);
+ 	nfsd4_return_all_layouts(ls, &reaplist);
+ 	nfsd4_free_layouts(&reaplist);
+ 	nfs4_put_stid(&ls->ls_stid);
+ }
+ 
+ static struct nfsd4_callback_ops nfsd4_cb_layout_ops = {
++	.prepare	= nfsd4_cb_layout_prepare,
+ 	.done		= nfsd4_cb_layout_done,
+ 	.release	= nfsd4_cb_layout_release,
+ };
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 4ce6b97b31ad..a9f096c7e99f 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1309,6 +1309,7 @@ nfsd4_layoutget(struct svc_rqst *rqstp,
+ 	nfserr = nfsd4_insert_layout(lgp, ls);
+ 
+ out_put_stid:
++	mutex_unlock(&ls->ls_mutex);
+ 	nfs4_put_stid(&ls->ls_stid);
  out:
- 	nfsd4_bump_seqid(cstate, status);
+ 	return nfserr;
+@@ -1362,6 +1363,9 @@ nfsd4_layoutcommit(struct svc_rqst *rqstp,
+ 		goto out;
+ 	}
+ 
++	/* LAYOUTCOMMIT does not require any serialization */
++	mutex_unlock(&ls->ls_mutex);
++
+ 	if (new_size > i_size_read(inode)) {
+ 		lcp->lc_size_chg = 1;
+ 		lcp->lc_newsize = new_size;
 diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 583ffc13cae2..31bde12feefe 100644
+index 31bde12feefe..1fa0f3848d4e 100644
 --- a/fs/nfsd/state.h
 +++ b/fs/nfsd/state.h
-@@ -534,15 +534,16 @@ struct nfs4_file {
-  * Better suggestions welcome.
-  */
- struct nfs4_ol_stateid {
--	struct nfs4_stid    st_stid; /* must be first field */
--	struct list_head              st_perfile;
--	struct list_head              st_perstateowner;
--	struct list_head              st_locks;
--	struct nfs4_stateowner      * st_stateowner;
--	struct nfs4_clnt_odstate    * st_clnt_odstate;
--	unsigned char                 st_access_bmap;
--	unsigned char                 st_deny_bmap;
--	struct nfs4_ol_stateid         * st_openstp;
-+	struct nfs4_stid		st_stid;
-+	struct list_head		st_perfile;
-+	struct list_head		st_perstateowner;
-+	struct list_head		st_locks;
-+	struct nfs4_stateowner		*st_stateowner;
-+	struct nfs4_clnt_odstate	*st_clnt_odstate;
-+	unsigned char			st_access_bmap;
-+	unsigned char			st_deny_bmap;
-+	struct nfs4_ol_stateid		*st_openstp;
-+	struct rw_semaphore		st_rwsem;
+@@ -562,6 +562,7 @@ struct nfs4_layout_stateid {
+ 	struct nfsd4_callback		ls_recall;
+ 	stateid_t			ls_recall_sid;
+ 	bool				ls_recalled;
++	struct mutex			ls_mutex;
  };
  
- static inline struct nfs4_ol_stateid *openlockstateid(struct nfs4_stid *s)
+ static inline struct nfs4_layout_stateid *layoutstateid(struct nfs4_stid *s)
 -- 
 2.4.3
 
