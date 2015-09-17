@@ -1,71 +1,75 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yk0-f179.google.com ([209.85.160.179]:35751 "EHLO
-	mail-yk0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751387AbbIQMjx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Sep 2015 08:39:53 -0400
-Received: by ykdu9 with SMTP id u9so15110366ykd.2
-        for <linux-nfs@vger.kernel.org>; Thu, 17 Sep 2015 05:39:53 -0700 (PDT)
+Received: from mail-yk0-f170.google.com ([209.85.160.170]:35787 "EHLO
+	mail-yk0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751884AbbIQMj4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Sep 2015 08:39:56 -0400
+Received: by ykdu9 with SMTP id u9so15111321ykd.2
+        for <linux-nfs@vger.kernel.org>; Thu, 17 Sep 2015 05:39:55 -0700 (PDT)
 From: Jeff Layton <jlayton@poochiereds.net>
 To: Al Viro <viro@ZenIV.linux.org.uk>
 Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org,
         linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH v2 0/4] fs: allow userland tasks to use delayed_fput infrastructure
-Date: Thu, 17 Sep 2015 08:39:43 -0400
-Message-Id: <1442493587-32499-1-git-send-email-jeff.layton@primarydata.com>
+Subject: [PATCH v2 2/4] fs: add a kerneldoc header to fput
+Date: Thu, 17 Sep 2015 08:39:45 -0400
+Message-Id: <1442493587-32499-3-git-send-email-jeff.layton@primarydata.com>
+In-Reply-To: <1442493587-32499-1-git-send-email-jeff.layton@primarydata.com>
+References: <1442493587-32499-1-git-send-email-jeff.layton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-v2:
-- kerneldoc header cleanups. Hopefully they are more clear now
-- make fput_queue return bool, telling whether the final reference was
-  put. Caller can use that to tell whether it should call
-  flush_delayed_fput.
+...and move its EXPORT_SYMBOL just below the function.
 
-Only minor changes since the last set. Al, does this look any more
-reasonable? Original cover letter follows:
+Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
+---
+ fs/file_table.c | 21 ++++++++++++++++++++-
+ 1 file changed, 20 insertions(+), 1 deletion(-)
 
-I'm breaking this piece out of the open file cache work for nfsd to see
-if we can get this piece settled before I re-post the whole set. If this
-looks like a reasonable approach we can sort out how it should be merged
-(either by you directly, or via Bruce's tree with the rest of the open
-file cache patches).
-
-For those just joining in, some background:
-
-We want to add an open file cache for nfsd to reduce the open/close
-overhead on READ/WRITE RPCs, and so we can eliminate the raparm cache.
-The basic idea is to keep a cache of open files, and close them down on
-certain sorts of activity -- primarily, after an unlink that takes the
-link count to 0, or before setting a lease.
-
-The setlease part is problematic though. The plan is to have a notifier
-callback into nfsd from vfs_setlease that will tell nfsd to close any
-open files that are associated with the inode so we don't block lease
-attempts solely due to cached but otherwise idle nfsd files. That means
-that we need to be able to close out the files and ensure that the final
-__fput runs before we try to set a lease.
-
-My latest pass involved making __fput_sync available to userland tasks,
-but Al had concerns that that could lead to stack blowouts and locking
-issues. This patchset is an alternative approach that allows userland
-tasks to use the delayed_fput infrastructure instead. The idea is that
-we'd have the pre-setlease notifier do a fput_queue() and then call
-flush_delayed_fput to ensure that any queued __fput() calls complete
-before setting the lease.
-
-There's also a fix for a potential race in flush_delayed_fput in here
-and some doc comment cleanups.
-
-Jeff Layton (4):
-  fs: have flush_delayed_fput flush the workqueue job
-  fs: add a kerneldoc header to fput
-  fs: add fput_queue
-  fs: export flush_delayed_fput
-
- fs/file_table.c      | 76 +++++++++++++++++++++++++++++++++++++++++++---------
- include/linux/file.h |  1 +
- 2 files changed, 64 insertions(+), 13 deletions(-)
-
+diff --git a/fs/file_table.c b/fs/file_table.c
+index 52cc6803c07a..8cfeaee6323f 100644
+--- a/fs/file_table.c
++++ b/fs/file_table.c
+@@ -261,6 +261,25 @@ void flush_delayed_fput(void)
+ 	flush_delayed_work(&delayed_fput_work);
+ }
+ 
++/**
++ * fput - put a struct file reference
++ * @file: file of which to put the reference
++ *
++ * This function decrements the reference count for the struct file reference,
++ * and queues it up for destruction if the count goes to zero. In the case of
++ * most tasks we queue it to the task_work infrastructure, which will be run
++ * just before the task returns back to userspace. kthreads however never
++ * return to userspace, so for those we add them to a global list and schedule
++ * a delayed workqueue job to do the final cleanup work.
++ *
++ * Why not just do it synchronously? __fput can involve taking locks of all
++ * sorts, and doing it synchronously means that the callers must take extra care
++ * not to deadlock. That can be very difficult to ensure, so by deferring it
++ * until just before return to userland or to the workqueue, we sidestep that
++ * nastiness. Also, __fput can be quite stack intensive, so doing a final fput
++ * has the possibility of blowing up if we don't take steps to ensure that we
++ * have enough stack space to make it work.
++ */
+ void fput(struct file *file)
+ {
+ 	if (atomic_long_dec_and_test(&file->f_count)) {
+@@ -281,6 +300,7 @@ void fput(struct file *file)
+ 			schedule_delayed_work(&delayed_fput_work, 1);
+ 	}
+ }
++EXPORT_SYMBOL(fput);
+ 
+ /*
+  * synchronous analog of fput(); for kernel threads that might be needed
+@@ -299,7 +319,6 @@ void __fput_sync(struct file *file)
+ 	}
+ }
+ 
+-EXPORT_SYMBOL(fput);
+ 
+ void put_filp(struct file *file)
+ {
 -- 
 2.4.3
 
