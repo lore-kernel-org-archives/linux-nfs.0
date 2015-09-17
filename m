@@ -1,68 +1,64 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yk0-f177.google.com ([209.85.160.177]:36451 "EHLO
-	mail-yk0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751907AbbIQMj5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Sep 2015 08:39:57 -0400
-Received: by ykdt18 with SMTP id t18so15060507ykd.3
-        for <linux-nfs@vger.kernel.org>; Thu, 17 Sep 2015 05:39:57 -0700 (PDT)
+Received: from mail-yk0-f170.google.com ([209.85.160.170]:35769 "EHLO
+	mail-yk0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751487AbbIQMjy (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Sep 2015 08:39:54 -0400
+Received: by ykdu9 with SMTP id u9so15110818ykd.2
+        for <linux-nfs@vger.kernel.org>; Thu, 17 Sep 2015 05:39:54 -0700 (PDT)
 From: Jeff Layton <jlayton@poochiereds.net>
 To: Al Viro <viro@ZenIV.linux.org.uk>
 Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org,
         linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH v2 4/4] fs: export flush_delayed_fput
-Date: Thu, 17 Sep 2015 08:39:47 -0400
-Message-Id: <1442493587-32499-5-git-send-email-jeff.layton@primarydata.com>
+Subject: [PATCH v2 1/4] fs: have flush_delayed_fput flush the workqueue job
+Date: Thu, 17 Sep 2015 08:39:44 -0400
+Message-Id: <1442493587-32499-2-git-send-email-jeff.layton@primarydata.com>
 In-Reply-To: <1442493587-32499-1-git-send-email-jeff.layton@primarydata.com>
 References: <1442493587-32499-1-git-send-email-jeff.layton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-...and clean up the comments over it a bit. The nfsd code will need to
-be able to call back into this.
+I think there's a potential race in flush_delayed_fput. A kthread does
+an fput() and that file gets added to the list and the delayed work is
+scheduled. More than 1 jiffy passes, and the workqueue thread picks up
+the work and starts running it. Then the kthread calls
+flush_delayed_work.  It sees that the list is empty and returns
+immediately, even though the __fput for its file may not have run yet.
+
+Close this by making flush_delayed_fput use flush_delayed_work instead,
+which should immediately schedule the work to run if it's not already,
+and block until the workqueue job completes.
 
 Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
 ---
- fs/file_table.c | 22 +++++++++++++---------
- 1 file changed, 13 insertions(+), 9 deletions(-)
+ fs/file_table.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
 diff --git a/fs/file_table.c b/fs/file_table.c
-index 95361d2b8a08..899c19687cfa 100644
+index ad17e05ebf95..52cc6803c07a 100644
 --- a/fs/file_table.c
 +++ b/fs/file_table.c
-@@ -246,20 +246,24 @@ static void ____fput(struct callback_head *work)
+@@ -244,6 +244,8 @@ static void ____fput(struct callback_head *work)
+ 	__fput(container_of(work, struct file, f_u.fu_rcuhead));
+ }
  
- static DECLARE_DELAYED_WORK(delayed_fput_work, delayed_fput);
- 
--/*
-- * If kernel thread really needs to have the final fput() it has done
-- * to complete, call this.  The only user right now is the boot - we
-- * *do* need to make sure our writes to binaries on initramfs has
-- * not left us with opened struct file waiting for __fput() - execve()
-- * won't work without that.  Please, don't add more callers without
-- * very good reasons; in particular, never call that with locks
-- * held and never call that from a thread that might need to do
-- * some work on any kind of umount.
-+/**
-+ * flush_delayed_fput - ensure that all delayed_fput work is complete
-+ *
-+ * If kernel thread or task that has used fput_queue really needs to have the
-+ * final fput() it has done to complete, call this. One of the main users is
-+ * the boot - we *do* need to make sure our writes to binaries on initramfs has
-+ * not left us with opened struct file waiting for __fput() - execve() won't
-+ * work without that.
-+ *
-+ * Please, don't add more callers without very good reasons; in particular,
-+ * never call that with locks held and never from a thread that might need to
-+ * do some work on any kind of umount.
++static DECLARE_DELAYED_WORK(delayed_fput_work, delayed_fput);
++
+ /*
+  * If kernel thread really needs to have the final fput() it has done
+  * to complete, call this.  The only user right now is the boot - we
+@@ -256,11 +258,9 @@ static void ____fput(struct callback_head *work)
   */
  void flush_delayed_fput(void)
  {
- 	flush_delayed_work(&delayed_fput_work);
+-	delayed_fput(NULL);
++	flush_delayed_work(&delayed_fput_work);
  }
-+EXPORT_SYMBOL(flush_delayed_fput);
  
- /**
-  * fput - put a struct file reference
+-static DECLARE_DELAYED_WORK(delayed_fput_work, delayed_fput);
+-
+ void fput(struct file *file)
+ {
+ 	if (atomic_long_dec_and_test(&file->f_count)) {
 -- 
 2.4.3
 
