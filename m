@@ -1,97 +1,122 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx144.netapp.com ([216.240.21.25]:11768 "EHLO mx144.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751478AbbIQNor (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 17 Sep 2015 09:44:47 -0400
-Subject: Re: [PATCH] nfs: fix v4.2 SEEK on files over 2 gigs
-To: "J. Bruce Fields" <bfields@fieldses.org>
-References: <20150916212127.GA5169@fieldses.org> <55FABA40.6010406@Netapp.com>
- <20150917132552.GD9870@fieldses.org>
-CC: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <schumakeranna@gmail.com>, <linux-nfs@vger.kernel.org>
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-Message-ID: <55FAC3CA.3050205@Netapp.com>
-Date: Thu, 17 Sep 2015 09:44:42 -0400
+Received: from pandora.arm.linux.org.uk ([78.32.30.218]:55424 "EHLO
+	pandora.arm.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751059AbbIQN5U (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Sep 2015 09:57:20 -0400
+Date: Thu, 17 Sep 2015 14:57:07 +0100
+From: Russell King - ARM Linux <linux@arm.linux.org.uk>
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        AnnaSchumaker <anna.schumaker@netapp.com>
+Cc: netdev@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-arm-kernel@lists.infradead.org,
+        Eric Dumazet <eric.dumazet@gmail.com>
+Subject: Re: NFS/TCP/IPv6 acting strangely in 4.2
+Message-ID: <20150917135705.GQ21084@n2100.arm.linux.org.uk>
+References: <20150911113839.GO21084@n2100.arm.linux.org.uk>
+ <1441976691.4619.58.camel@edumazet-glaptop2.roam.corp.google.com>
+ <20150911143347.GQ21084@n2100.arm.linux.org.uk>
+ <20150911150613.GR21084@n2100.arm.linux.org.uk>
+ <1441984723.4619.61.camel@edumazet-glaptop2.roam.corp.google.com>
+ <20150911162416.GV21084@n2100.arm.linux.org.uk>
+ <20150911164937.GW21084@n2100.arm.linux.org.uk>
 MIME-Version: 1.0
-In-Reply-To: <20150917132552.GD9870@fieldses.org>
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <20150911164937.GW21084@n2100.arm.linux.org.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 09/17/2015 09:25 AM, J. Bruce Fields wrote:
-> On Thu, Sep 17, 2015 at 09:04:00AM -0400, Anna Schumaker wrote:
->> Hey Bruce,
->>
->> I actually worked on a version of this patch on my own yesterday, too.  Looks like you beat me to submitting it!  :)
+On Fri, Sep 11, 2015 at 05:49:38PM +0100, Russell King - ARM Linux wrote:
+> Following that idea, I just tried the patch below, and it seems to work.
+> I don't know whether it handles all cases after a call to kernel_connect(),
+> but it stops the multiple connection attempts:
 > 
-> Oh, OK, well feel free to credit it however you'd like.
-> 
->> On 09/16/2015 05:21 PM, J. Bruce Fields wrote:
->>> From: "J. Bruce Fields" <bfields@redhat.com>
->>>
->>> We're incorrectly assigning a loff_t return to an int.  If SEEK_HOLE or
->>> SEEK_DATA returns an offset over 2^31 then the application will see a
->>> weird lseek() result (usually -EIO).
->>
->> I saw roughly the same thing with xfstests generic/285.
-> 
-> I maybe should have included my reproducer in the changelog, which was:
-> 
-> 	git clone git://git.infradead.org/users/dedekind/bmap-tools.git
-> 	cd bmap-tools
-> 
-> 	mount overs=4.2 localhost:/exports /mnt/
-> 	dd if=/dev/zero of=/mnt/test1.image seek=2097152 bs=1K count=1
-> 
-> 	./bmaptool  create  /mnt/test1.image
-> 
-> In the good case it outputs some xml, in the bad case it aborts with an
-> IO error.
+>   1   0.000000 armada388 -> n2100 TCP 1009→nfs [SYN] Seq=3794066539 Win=28560 Len=0 MSS=1440 SACK_PERM=1 TSval=15712 TSecr=870317691 WS=128
+>   2   0.000414 n2100 -> armada388 TCP nfs→1009 [SYN, ACK] Seq=1884476522 Ack=3794066540 Win=28560 Len=0 MSS=1440 SACK_PERM=1 TSval=870318939 TSecr=15712 WS=64
+>   3   0.000787 armada388 -> n2100 TCP 1009→nfs [ACK] Seq=3794066540 Ack=1884476523 Win=28672 Len=0 TSval=15712 TSecr=870318939
+>   4   0.001304 armada388 -> n2100 NFS V3 ACCESS Call, FH: 0x905379cc, [Check: RD LU MD XT DL]
+>   5   0.001566 n2100 -> armada388 TCP nfs→1009 [ACK] Seq=1884476523 Ack=3794066660 Win=28608 Len=0 TSval=870318939 TSecr=15712
+>   6   0.001640 armada388 -> n2100 NFS V3 ACCESS Call, FH: 0x905379cc, [Check: RD LU MD XT DL]
+>   7   0.001866 n2100 -> armada388 TCP nfs→1009 [ACK] Seq=1884476523 Ack=3794066780 Win=28608 Len=0 TSval=870318939 TSecr=15712
+>   8   0.003070 n2100 -> armada388 NFS V3 ACCESS Reply (Call In 4), [Allowed: RD LU MD XT DL]
+>   9   0.003415 armada388 -> n2100 TCP 1009→nfs [ACK] Seq=3794066780 Ack=1884476647 Win=28672 Len=0 TSval=15712 TSecr=870318939
+>  10   0.003592 armada388 -> n2100 NFS V3 ACCESS Call, FH: 0xe15fc9c9, [Check: RD LU MD XT DL]
+>  11   0.004354 n2100 -> armada388 NFS V3 ACCESS Reply (Call In 6), [Allowed: RD LU MD XT DL]
+>  12   0.004682 armada388 -> n2100 NFS V3 ACCESS Call, FH: 0xe15fc9c9, [Check: RD LU MD XT DL]
+>  13   0.005365 n2100 -> armada388 NFS V3 ACCESS Reply (Call In 10), [Allowed: RD LU MD XT DL]
+>  14   0.005701 armada388 -> n2100 NFS V3 GETATTR Call, FH: 0xe15fc9c9
+> ...
 
-That's roughly what I see, too:
-
-$ cat results/generic/285.out.bad
-...
-10. Test a huge file for offset overflow              
-10.01 SEEK_HOLE expected 2097152 or 8589934592, got 2097152.      succ
-10.02 SEEK_HOLE expected 2097152 or 8589934592, got 2097152.      succ
-10.03 SEEK_DATA expected 0 or 0, got 0.                           succ
-10.04 SEEK_DATA expected 1 or 1, got 1.                           succ
-10.05 SEEK_HOLE expected 8589934592 or 8589934592, got 0.         FAIL
-10.06 SEEK_DATA expected 8587837440 or 8587837440, got -1.        FAIL
-10.07 SEEK_DATA expected 8587837441 or 8587837441, got -1.        FAIL
-10.08 SEEK_DATA expected 8587837440 or 8587837440, got -1.        FAIL
+NFS people - any comments on this patch?  Is it the correct way to solve
+this problem (please see the first message in this thread for the problem.)
+Without this patch, NFS is unusable as it tries to launch multiple new
+connections from the same port to the NFS server without giving the NFS
+server time to respond and establish the TCP connection.
 
 > 
-> --b.
+>  net/sunrpc/xprtsock.c | 8 +++++++-
+>  1 file changed, 7 insertions(+), 1 deletion(-)
 > 
->>> Cc: stable@vger.kernel.org
->>> Fixes: bdcc2cd14e4e "NFSv4.2: handle NFS-specific llseek errors"
->>> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
->>
->> Reviewed-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
->>
->>> ---
->>>  fs/nfs/nfs42proc.c | 4 +++-
->>>  1 file changed, 3 insertions(+), 1 deletion(-)
->>>
->>> diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
->>> index d731bbf974aa..0f020e4d8421 100644
->>> --- a/fs/nfs/nfs42proc.c
->>> +++ b/fs/nfs/nfs42proc.c
->>> @@ -175,10 +175,12 @@ loff_t nfs42_proc_llseek(struct file *filep, loff_t offset, int whence)
->>>  {
->>>  	struct nfs_server *server = NFS_SERVER(file_inode(filep));
->>>  	struct nfs4_exception exception = { };
->>> -	int err;
->>> +	loff_t err;
->>>  
->>>  	do {
->>>  		err = _nfs42_proc_llseek(filep, offset, whence);
->>> +		if (err >= 0)
->>> +			break;
->>>  		if (err == -ENOTSUPP)
->>>  			return -EOPNOTSUPP;
->>>  		err = nfs4_handle_exception(server, err, &exception);
->>>
+> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+> index ff5b6a2e62c3..c456d6e51c56 100644
+> --- a/net/sunrpc/xprtsock.c
+> +++ b/net/sunrpc/xprtsock.c
+> @@ -1450,6 +1450,7 @@ static void xs_tcp_state_change(struct sock *sk)
+>  	switch (sk->sk_state) {
+>  	case TCP_ESTABLISHED:
+>  		spin_lock(&xprt->transport_lock);
+> +		xprt_clear_connecting(xprt);
+>  		if (!xprt_test_and_set_connected(xprt)) {
+>  			struct sock_xprt *transport = container_of(xprt,
+>  					struct sock_xprt, xprt);
+> @@ -1474,12 +1475,14 @@ static void xs_tcp_state_change(struct sock *sk)
+>  		smp_mb__before_atomic();
+>  		clear_bit(XPRT_CONNECTED, &xprt->state);
+>  		clear_bit(XPRT_CLOSE_WAIT, &xprt->state);
+> +		clear_bit(XPRT_CONNECTING, &xprt->state);		
+>  		smp_mb__after_atomic();
+>  		break;
+>  	case TCP_CLOSE_WAIT:
+>  		/* The server initiated a shutdown of the socket */
+>  		xprt->connect_cookie++;
+>  		clear_bit(XPRT_CONNECTED, &xprt->state);
+> +		clear_bit(XPRT_CONNECTING, &xprt->state);
+>  		xs_tcp_force_close(xprt);
+>  	case TCP_CLOSING:
+>  		/*
+> @@ -1493,6 +1496,7 @@ static void xs_tcp_state_change(struct sock *sk)
+>  		set_bit(XPRT_CLOSING, &xprt->state);
+>  		smp_mb__before_atomic();
+>  		clear_bit(XPRT_CONNECTED, &xprt->state);
+> +		clear_bit(XPRT_CONNECTING, &xprt->state);
+>  		smp_mb__after_atomic();
+>  		break;
+>  	case TCP_CLOSE:
+> @@ -2237,11 +2241,13 @@ static void xs_tcp_setup_socket(struct work_struct *work)
+>  		xs_tcp_force_close(xprt);
+>  		break;
+>  	case 0:
+> -	case -EINPROGRESS:
+>  	case -EALREADY:
+>  		xprt_unlock_connect(xprt, transport);
+>  		xprt_clear_connecting(xprt);
+>  		return;
+> +	case -EINPROGRESS:
+> +		xprt_unlock_connect(xprt, transport);
+> +		return;
+>  	case -EINVAL:
+>  		/* Happens, for instance, if the user specified a link
+>  		 * local IPv6 address without a scope-id.
+> 
+> 
+> -- 
+> FTTC broadband for 0.8mile line: currently at 9.6Mbps down 400kbps up
+> according to speedtest.net.
+> 
+> _______________________________________________
+> linux-arm-kernel mailing list
+> linux-arm-kernel@lists.infradead.org
+> http://lists.infradead.org/mailman/listinfo/linux-arm-kernel
 
+-- 
+FTTC broadband for 0.8mile line: currently at 9.6Mbps down 400kbps up
+according to speedtest.net.
