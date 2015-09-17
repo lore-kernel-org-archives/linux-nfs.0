@@ -1,397 +1,231 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qg0-f42.google.com ([209.85.192.42]:34568 "EHLO
-	mail-qg0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751939AbbIQUql (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Sep 2015 16:46:41 -0400
-Subject: [PATCH v1 18/18] xprtrdma: Add class for RDMA backwards direction
- transport
-From: Chuck Lever <chuck.lever@oracle.com>
-To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Thu, 17 Sep 2015 16:46:39 -0400
-Message-ID: <20150917204639.19671.49626.stgit@manet.1015granger.net>
-In-Reply-To: <20150917202829.19671.90044.stgit@manet.1015granger.net>
-References: <20150917202829.19671.90044.stgit@manet.1015granger.net>
+Received: from pandora.arm.linux.org.uk ([78.32.30.218]:56251 "EHLO
+	pandora.arm.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751702AbbIQVsM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Sep 2015 17:48:12 -0400
+Date: Thu, 17 Sep 2015 22:47:58 +0100
+From: Russell King - ARM Linux <linux@arm.linux.org.uk>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: AnnaSchumaker <anna.schumaker@netapp.com>, netdev@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
+        Eric Dumazet <eric.dumazet@gmail.com>
+Subject: Re: NFS/TCP/IPv6 acting strangely in 4.2
+Message-ID: <20150917214758.GW21084@n2100.arm.linux.org.uk>
+References: <20150911113839.GO21084@n2100.arm.linux.org.uk>
+ <1441976691.4619.58.camel@edumazet-glaptop2.roam.corp.google.com>
+ <20150911143347.GQ21084@n2100.arm.linux.org.uk>
+ <20150911150613.GR21084@n2100.arm.linux.org.uk>
+ <1441984723.4619.61.camel@edumazet-glaptop2.roam.corp.google.com>
+ <20150911162416.GV21084@n2100.arm.linux.org.uk>
+ <20150911164937.GW21084@n2100.arm.linux.org.uk>
+ <20150917135705.GQ21084@n2100.arm.linux.org.uk>
+ <1442499509.2865.16.camel@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <1442499509.2865.16.camel@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-To support the server-side of an NFSv4.1 backchannel on RDMA
-connections, add a transport class for backwards direction
-operation.
+On Thu, Sep 17, 2015 at 10:18:29AM -0400, Trond Myklebust wrote:
+> Hi Russell,
+> 
+> On Thu, 2015-09-17 at 14:57 +0100, Russell King - ARM Linux wrote:
+> > On Fri, Sep 11, 2015 at 05:49:38PM +0100, Russell King - ARM Linux
+> > wrote:
+> > > Following that idea, I just tried the patch below, and it seems to
+> > > work.
+> > > I don't know whether it handles all cases after a call to
+> > > kernel_connect(),
+> > > but it stops the multiple connection attempts:
+> > > 
+> > >   1   0.000000 armada388 -> n2100 TCP 1009→nfs [SYN] Seq=3794066539
+> > > Win=28560 Len=0 MSS=1440 SACK_PERM=1 TSval=15712 TSecr=870317691
+> > > WS=128
+> > >   2   0.000414 n2100 -> armada388 TCP nfs→1009 [SYN, ACK]
+> > > Seq=1884476522 Ack=3794066540 Win=28560 Len=0 MSS=1440 SACK_PERM=1
+> > > TSval=870318939 TSecr=15712 WS=64
+> > >   3   0.000787 armada388 -> n2100 TCP 1009→nfs [ACK] Seq=3794066540
+> > > Ack=1884476523 Win=28672 Len=0 TSval=15712 TSecr=870318939
+> > >   4   0.001304 armada388 -> n2100 NFS V3 ACCESS Call, FH:
+> > > 0x905379cc, [Check: RD LU MD XT DL]
+> > >   5   0.001566 n2100 -> armada388 TCP nfs→1009 [ACK] Seq=1884476523
+> > > Ack=3794066660 Win=28608 Len=0 TSval=870318939 TSecr=15712
+> > >   6   0.001640 armada388 -> n2100 NFS V3 ACCESS Call, FH:
+> > > 0x905379cc, [Check: RD LU MD XT DL]
+> > >   7   0.001866 n2100 -> armada388 TCP nfs→1009 [ACK] Seq=1884476523
+> > > Ack=3794066780 Win=28608 Len=0 TSval=870318939 TSecr=15712
+> > >   8   0.003070 n2100 -> armada388 NFS V3 ACCESS Reply (Call In 4),
+> > > [Allowed: RD LU MD XT DL]
+> > >   9   0.003415 armada388 -> n2100 TCP 1009→nfs [ACK] Seq=3794066780
+> > > Ack=1884476647 Win=28672 Len=0 TSval=15712 TSecr=870318939
+> > >  10   0.003592 armada388 -> n2100 NFS V3 ACCESS Call, FH:
+> > > 0xe15fc9c9, [Check: RD LU MD XT DL]
+> > >  11   0.004354 n2100 -> armada388 NFS V3 ACCESS Reply (Call In 6),
+> > > [Allowed: RD LU MD XT DL]
+> > >  12   0.004682 armada388 -> n2100 NFS V3 ACCESS Call, FH:
+> > > 0xe15fc9c9, [Check: RD LU MD XT DL]
+> > >  13   0.005365 n2100 -> armada388 NFS V3 ACCESS Reply (Call In 10),
+> > > [Allowed: RD LU MD XT DL]
+> > >  14   0.005701 armada388 -> n2100 NFS V3 GETATTR Call, FH:
+> > > 0xe15fc9c9
+> > > ...
+> > 
+> > NFS people - any comments on this patch?  Is it the correct way to
+> > solve
+> > this problem (please see the first message in this thread for the
+> > problem.)
+> > Without this patch, NFS is unusable as it tries to launch multiple
+> > new
+> > connections from the same port to the NFS server without giving the
+> > NFS
+> > server time to respond and establish the TCP connection.
+> 
+> I agree that it addresses a real problem here, however there are a
+> couple of issues with the patch itself:
+> 
+> AFAICS, the 2 possible next states for SYN_SENT are TCP_ESTABLISHED and
+> TCP_CLOSE, so if the connection attempt fails, this patch leaves the
+> XPRT_CONNECTING flag set.
+> There is also the issue that clearing XPRT_CONNECTING in TCP_FIN_WAIT1,
+> TCP_CLOSE_WAIT and TCP_CLOSING could interfere with another connection
+> attempt by canceling the XPRT_CONNECTING state.
+> 
+> How about the following? It is based on your patch, but adds a check to
+> ensure that xs_tcp_state_change() doesn't clear the 'connecting' state
+> more than once (which could otherwise still happen in the TCP_CLOSE
+> case).
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- include/linux/sunrpc/xprt.h              |    1 
- net/sunrpc/xprt.c                        |    1 
- net/sunrpc/xprtrdma/svc_rdma_transport.c |   14 +-
- net/sunrpc/xprtrdma/transport.c          |  243 ++++++++++++++++++++++++++++++
- net/sunrpc/xprtrdma/xprt_rdma.h          |    2 
- 5 files changed, 256 insertions(+), 5 deletions(-)
+This patch also seems to fix the problem I've been seeing.
 
-diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
-index 6156491..4f1b0b6 100644
---- a/include/linux/sunrpc/xprt.h
-+++ b/include/linux/sunrpc/xprt.h
-@@ -83,6 +83,7 @@ struct rpc_rqst {
- 	__u32 *			rq_buffer;	/* XDR encode buffer */
- 	size_t			rq_callsize,
- 				rq_rcvsize;
-+	void *			rq_privdata; /* xprt-specific per-rqst data */
- 	size_t			rq_xmit_bytes_sent;	/* total bytes sent */
- 	size_t			rq_reply_bytes_recvd;	/* total reply bytes */
- 							/* received */
-diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-index ab5dd62..9480354 100644
---- a/net/sunrpc/xprt.c
-+++ b/net/sunrpc/xprt.c
-@@ -1419,3 +1419,4 @@ void xprt_put(struct rpc_xprt *xprt)
- 	if (atomic_dec_and_test(&xprt->count))
- 		xprt_destroy(xprt);
- }
-+EXPORT_SYMBOL_GPL(xprt_put);
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-index c4083a3..6bd4c1e 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-@@ -1194,12 +1194,14 @@ static void __svc_rdma_free(struct work_struct *work)
- {
- 	struct svcxprt_rdma *rdma =
- 		container_of(work, struct svcxprt_rdma, sc_work);
--	dprintk("svcrdma: svc_rdma_free(%p)\n", rdma);
-+	struct svc_xprt *xprt = &rdma->sc_xprt;
-+
-+	dprintk("svcrdma: %s(%p)\n", __func__, rdma);
- 
- 	/* We should only be called from kref_put */
--	if (atomic_read(&rdma->sc_xprt.xpt_ref.refcount) != 0)
-+	if (atomic_read(&xprt->xpt_ref.refcount) != 0)
- 		pr_err("svcrdma: sc_xprt still in use? (%d)\n",
--		       atomic_read(&rdma->sc_xprt.xpt_ref.refcount));
-+		       atomic_read(&xprt->xpt_ref.refcount));
- 
- 	/*
- 	 * Destroy queued, but not processed read completions. Note
-@@ -1234,6 +1236,12 @@ static void __svc_rdma_free(struct work_struct *work)
- 		pr_err("svcrdma: dma still in use? (%d)\n",
- 		       atomic_read(&rdma->sc_dma_used));
- 
-+	/* Final put of backchannel client transport */
-+	if (xprt->xpt_bc_xprt) {
-+		xprt_put(xprt->xpt_bc_xprt);
-+		xprt->xpt_bc_xprt = NULL;
-+	}
-+
- 	/* De-allocate fastreg mr */
- 	rdma_dealloc_frmr_q(rdma);
- 
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index 7d6c06f..1030425 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -51,6 +51,7 @@
- #include <linux/slab.h>
- #include <linux/seq_file.h>
- #include <linux/sunrpc/addr.h>
-+#include <linux/sunrpc/svc_rdma.h>
- 
- #include "xprt_rdma.h"
- 
-@@ -148,7 +149,10 @@ static struct ctl_table sunrpc_table[] = {
- #define RPCRDMA_MAX_REEST_TO	(30U * HZ)
- #define RPCRDMA_IDLE_DISC_TO	(5U * 60 * HZ)
- 
--static struct rpc_xprt_ops xprt_rdma_procs;	/* forward reference */
-+static struct rpc_xprt_ops xprt_rdma_procs;
-+#if defined(CONFIG_SUNRPC_BACKCHANNEL)
-+static struct rpc_xprt_ops xprt_rdma_bc_procs;
-+#endif
- 
- static void
- xprt_rdma_format_addresses4(struct rpc_xprt *xprt, struct sockaddr *sap)
-@@ -500,7 +504,7 @@ xprt_rdma_allocate(struct rpc_task *task, size_t size)
- 	if (req == NULL)
- 		return NULL;
- 
--	flags = GFP_NOIO | __GFP_NOWARN;
-+	flags = RPCRDMA_DEF_GFP;
- 	if (RPC_IS_SWAPPER(task))
- 		flags = __GFP_MEMALLOC | GFP_NOWAIT | __GFP_NOWARN;
- 
-@@ -685,6 +689,199 @@ xprt_rdma_disable_swap(struct rpc_xprt *xprt)
- {
- }
- 
-+#if defined(CONFIG_SUNRPC_BACKCHANNEL)
-+
-+/* Server-side transport endpoint wants a whole page for its send
-+ * buffer. The client RPC code constructs the RPC header in this
-+ * buffer before it invokes ->send_request.
-+ */
-+static void *
-+xprt_rdma_bc_allocate(struct rpc_task *task, size_t size)
-+{
-+	struct rpc_rqst *rqst = task->tk_rqstp;
-+	struct svc_rdma_op_ctxt *ctxt;
-+	struct svcxprt_rdma *rdma;
-+	struct svc_xprt *sxprt;
-+	struct page *page;
-+
-+	if (size > PAGE_SIZE) {
-+		WARN_ONCE(1, "failed to handle buffer allocation (size %zu)\n",
-+			  size);
-+		return NULL;
-+	}
-+
-+	page = alloc_page(RPCRDMA_DEF_GFP);
-+	if (!page)
-+		return NULL;
-+
-+	sxprt = rqst->rq_xprt->bc_xprt;
-+	rdma = container_of(sxprt, struct svcxprt_rdma, sc_xprt);
-+	ctxt = svc_rdma_get_context_gfp(rdma, RPCRDMA_DEF_GFP);
-+	if (!ctxt) {
-+		put_page(page);
-+		return NULL;
-+	}
-+
-+	rqst->rq_privdata = ctxt;
-+	ctxt->pages[0] = page;
-+	ctxt->count = 1;
-+	return page_address(page);
-+}
-+
-+static void
-+xprt_rdma_bc_free(void *buffer)
-+{
-+	/* No-op: ctxt and page have already been freed. */
-+}
-+
-+static int
-+rpcrdma_bc_send_request(struct svcxprt_rdma *rdma, struct rpc_rqst *rqst)
-+{
-+	struct rpc_xprt *xprt = rqst->rq_xprt;
-+	struct rpcrdma_xprt *r_xprt = rpcx_to_rdmax(xprt);
-+	struct rpcrdma_msg *headerp = (struct rpcrdma_msg *)rqst->rq_buffer;
-+	struct svc_rdma_op_ctxt *ctxt;
-+	int rc;
-+
-+	/* Space in the send buffer for an RPC/RDMA header is reserved
-+	 * via xprt->tsh_size */
-+	headerp->rm_xid = rqst->rq_xid;
-+	headerp->rm_vers = rpcrdma_version;
-+	headerp->rm_credit = cpu_to_be32(r_xprt->rx_buf.rb_bc_max_requests);
-+	headerp->rm_type = rdma_msg;
-+	headerp->rm_body.rm_chunks[0] = xdr_zero;
-+	headerp->rm_body.rm_chunks[1] = xdr_zero;
-+	headerp->rm_body.rm_chunks[2] = xdr_zero;
-+
-+	pr_info("%s: %*ph\n", __func__, 64, rqst->rq_buffer);
-+
-+	ctxt = (struct svc_rdma_op_ctxt *)rqst->rq_privdata;
-+	rc = svc_rdma_bc_post_send(rdma, ctxt, &rqst->rq_snd_buf);
-+	if (rc)
-+		goto drop_connection;
-+	return rc;
-+
-+drop_connection:
-+	pr_info("Failed to send backwards request\n");
-+	svc_rdma_put_context(ctxt, 1);
-+	xprt_disconnect_done(xprt);
-+	return -ENOTCONN;
-+}
-+
-+/* Take an RPC request and sent it on the passive end of a
-+ * transport connection.
-+ */
-+static int
-+xprt_rdma_bc_send_request(struct rpc_task *task)
-+{
-+	struct rpc_rqst *rqst = task->tk_rqstp;
-+	struct svc_xprt *sxprt = rqst->rq_xprt->bc_xprt;
-+	struct svcxprt_rdma *rdma;
-+	u32 len;
-+
-+	pr_info("%s: sending request with xid: %08x\n",
-+		__func__, be32_to_cpu(rqst->rq_xid));
-+
-+	if (!mutex_trylock(&sxprt->xpt_mutex)) {
-+		rpc_sleep_on(&sxprt->xpt_bc_pending, task, NULL);
-+		if (!mutex_trylock(&sxprt->xpt_mutex))
-+			return -EAGAIN;
-+		rpc_wake_up_queued_task(&sxprt->xpt_bc_pending, task);
-+	}
-+
-+	len = -ENOTCONN;
-+	rdma = container_of(sxprt, struct svcxprt_rdma, sc_xprt);
-+	if (!test_bit(XPT_DEAD, &sxprt->xpt_flags))
-+		len = rpcrdma_bc_send_request(rdma, rqst);
-+
-+	mutex_unlock(&sxprt->xpt_mutex);
-+
-+	if (len < 0)
-+		return len;
-+	return 0;
-+}
-+
-+static void
-+xprt_rdma_bc_close(struct rpc_xprt *xprt)
-+{
-+	pr_info("RPC:       %s: xprt %p\n", __func__, xprt);
-+}
-+
-+static void
-+xprt_rdma_bc_put(struct rpc_xprt *xprt)
-+{
-+	pr_info("RPC:       %s: xprt %p\n", __func__, xprt);
-+
-+	xprt_free(xprt);
-+	module_put(THIS_MODULE);
-+}
-+
-+/* It shouldn't matter if the number of backchannel session slots
-+ * doesn't match the number of RPC/RDMA credits. That just means
-+ * one or the other will have extra slots that aren't used.
-+ */
-+static struct rpc_xprt *
-+xprt_setup_rdma_bc(struct xprt_create *args)
-+{
-+	struct rpc_xprt *xprt;
-+	struct rpcrdma_xprt *new_xprt;
-+
-+	if (args->addrlen > sizeof(xprt->addr)) {
-+		dprintk("RPC:       %s: address too large\n", __func__);
-+		return ERR_PTR(-EBADF);
-+	}
-+
-+	xprt = xprt_alloc(args->net, sizeof(*new_xprt),
-+			  RPCRDMA_MAX_BC_REQUESTS,
-+			  RPCRDMA_MAX_BC_REQUESTS);
-+	if (xprt == NULL) {
-+		dprintk("RPC:       %s: couldn't allocate rpc_xprt\n",
-+			__func__);
-+		return ERR_PTR(-ENOMEM);
-+	}
-+
-+	xprt->timeout = &xprt_rdma_default_timeout;
-+	xprt_set_bound(xprt);
-+	xprt_set_connected(xprt);
-+	xprt->bind_timeout = RPCRDMA_BIND_TO;
-+	xprt->reestablish_timeout = RPCRDMA_INIT_REEST_TO;
-+	xprt->idle_timeout = RPCRDMA_IDLE_DISC_TO;
-+
-+	xprt->prot = XPRT_TRANSPORT_BC_RDMA;
-+	xprt->tsh_size = RPCRDMA_HDRLEN_MIN / sizeof(__be32);
-+	xprt->ops = &xprt_rdma_bc_procs;
-+
-+	memcpy(&xprt->addr, args->dstaddr, args->addrlen);
-+	xprt->addrlen = args->addrlen;
-+	xprt_rdma_format_addresses(xprt, (struct sockaddr *)&xprt->addr);
-+	xprt->resvport = 0;
-+
-+	xprt->max_payload = xprt_rdma_max_inline_read;
-+
-+	new_xprt = rpcx_to_rdmax(xprt);
-+	new_xprt->rx_buf.rb_bc_max_requests = xprt->max_reqs;
-+
-+	xprt_get(xprt);
-+	args->bc_xprt->xpt_bc_xprt = xprt;
-+	xprt->bc_xprt = args->bc_xprt;
-+
-+	if (!try_module_get(THIS_MODULE))
-+		goto out_fail;
-+
-+	/* Final put for backchannel xprt is in __svc_rdma_free */
-+	xprt_get(xprt);
-+	return xprt;
-+
-+out_fail:
-+	xprt_rdma_free_addresses(xprt);
-+	args->bc_xprt->xpt_bc_xprt = NULL;
-+	xprt_put(xprt);
-+	xprt_free(xprt);
-+	return ERR_PTR(-EINVAL);
-+}
-+
-+#endif	/* CONFIG_SUNRPC_BACKCHANNEL */
-+
- /*
-  * Plumbing for rpc transport switch and kernel module
-  */
-@@ -722,6 +919,32 @@ static struct xprt_class xprt_rdma = {
- 	.setup			= xprt_setup_rdma,
- };
- 
-+#if defined(CONFIG_SUNRPC_BACKCHANNEL)
-+
-+static struct rpc_xprt_ops xprt_rdma_bc_procs = {
-+	.reserve_xprt		= xprt_reserve_xprt_cong,
-+	.release_xprt		= xprt_release_xprt_cong,
-+	.alloc_slot		= xprt_alloc_slot,
-+	.release_request	= xprt_release_rqst_cong,
-+	.buf_alloc		= xprt_rdma_bc_allocate,
-+	.buf_free		= xprt_rdma_bc_free,
-+	.send_request		= xprt_rdma_bc_send_request,
-+	.set_retrans_timeout	= xprt_set_retrans_timeout_def,
-+	.close			= xprt_rdma_bc_close,
-+	.destroy		= xprt_rdma_bc_put,
-+	.print_stats		= xprt_rdma_print_stats
-+};
-+
-+static struct xprt_class xprt_rdma_bc = {
-+	.list			= LIST_HEAD_INIT(xprt_rdma_bc.list),
-+	.name			= "rdma backchannel",
-+	.owner			= THIS_MODULE,
-+	.ident			= XPRT_TRANSPORT_BC_RDMA,
-+	.setup			= xprt_setup_rdma_bc,
-+};
-+
-+#endif	/* CONFIG_SUNRPC_BACKCHANNEL */
-+
- void xprt_rdma_cleanup(void)
- {
- 	int rc;
-@@ -739,6 +962,13 @@ void xprt_rdma_cleanup(void)
- 			__func__, rc);
- 
- 	frwr_destroy_recovery_wq();
-+
-+#if defined(CONFIG_SUNRPC_BACKCHANNEL)
-+	rc = xprt_unregister_transport(&xprt_rdma_bc);
-+	if (rc)
-+		dprintk("RPC:       %s: xprt_unregister(bc) returned %i\n",
-+			__func__, rc);
-+#endif
- }
- 
- int xprt_rdma_init(void)
-@@ -755,6 +985,15 @@ int xprt_rdma_init(void)
- 		return rc;
- 	}
- 
-+#if defined(CONFIG_SUNRPC_BACKCHANNEL)
-+	rc = xprt_register_transport(&xprt_rdma_bc);
-+	if (rc) {
-+		xprt_unregister_transport(&xprt_rdma);
-+		frwr_destroy_recovery_wq();
-+		return rc;
-+	}
-+#endif
-+
- 	dprintk("RPCRDMA Module Init, register RPC RDMA transport\n");
- 
- 	dprintk("Defaults:\n");
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index 45a8b70..b4855de 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -148,6 +148,8 @@ rdmab_to_msg(struct rpcrdma_regbuf *rb)
- 	return (struct rpcrdma_msg *)rb->rg_base;
- }
- 
-+#define RPCRDMA_DEF_GFP		(GFP_NOIO | __GFP_NOWARN)
-+
- /*
-  * struct rpcrdma_rep -- this structure encapsulates state required to recv
-  * and complete a reply, asychronously. It needs several pieces of
+Yes, I wasn't sure about my patch - I didn't spend much time properly
+reading and understanding the sunrpc code, beyond analysing what was
+going on to cause the problem and deciding on a way to stop it happening.
+I really wasn't sure that clearing the connecting flag everywhere I did
+was the right thing, which is why I didn't send the patch properly
+dressed up.
 
+> 8<-------------------------------------------------------------------
+> >From 4dbfdebbc09982a9248866f8256549456e2b2efd Mon Sep 17 00:00:00 2001
+> From: Trond Myklebust <trond.myklebust@primarydata.com>
+> Date: Wed, 16 Sep 2015 23:43:17 -0400
+> Subject: [PATCH] SUNRPC: Ensure that we wait for connections to complete
+>  before retrying
+> 
+> Commit 718ba5b87343, moved the responsibility for unlocking the socket to
+> xs_tcp_setup_socket, meaning that the socket will be unlocked before we
+> know that it has finished trying to connect. The following patch is based on
+> an initial patch by Russell King to ensure that we delay clearing the
+> XPRT_SOCK_CONNECTING flag until we either know that we failed to initiate
+> a connection attempt, or the connection attempt itself failed.
+> 
+> Fixes: 718ba5b87343 ("SUNRPC: Add helpers to prevent socket create from racing")
+> Reported-by: Russell King <linux@arm.linux.org.uk>
+
+Reported-by: Russell King <rmk+kernel@arm.linux.org.uk>
+Tested-by: Russell King <rmk+kernel@arm.linux.org.uk>
+
+Thanks.
+
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> ---
+>  include/linux/sunrpc/xprtsock.h |  3 +++
+>  net/sunrpc/xprtsock.c           | 11 ++++++++---
+>  2 files changed, 11 insertions(+), 3 deletions(-)
+> 
+> diff --git a/include/linux/sunrpc/xprtsock.h b/include/linux/sunrpc/xprtsock.h
+> index 7591788e9fbf..357e44c1a46b 100644
+> --- a/include/linux/sunrpc/xprtsock.h
+> +++ b/include/linux/sunrpc/xprtsock.h
+> @@ -42,6 +42,7 @@ struct sock_xprt {
+>  	/*
+>  	 * Connection of transports
+>  	 */
+> +	unsigned long		sock_state;
+>  	struct delayed_work	connect_worker;
+>  	struct sockaddr_storage	srcaddr;
+>  	unsigned short		srcport;
+> @@ -76,6 +77,8 @@ struct sock_xprt {
+>   */
+>  #define TCP_RPC_REPLY		(1UL << 6)
+>  
+> +#define XPRT_SOCK_CONNECTING	1U
+> +
+>  #endif /* __KERNEL__ */
+>  
+>  #endif /* _LINUX_SUNRPC_XPRTSOCK_H */
+> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+> index 7be90bc1a7c2..5bac27983e2a 100644
+> --- a/net/sunrpc/xprtsock.c
+> +++ b/net/sunrpc/xprtsock.c
+> @@ -1435,6 +1435,7 @@ out:
+>  static void xs_tcp_state_change(struct sock *sk)
+>  {
+>  	struct rpc_xprt *xprt;
+> +	struct sock_xprt *transport;
+>  
+>  	read_lock_bh(&sk->sk_callback_lock);
+>  	if (!(xprt = xprt_from_sock(sk)))
+> @@ -1446,13 +1447,12 @@ static void xs_tcp_state_change(struct sock *sk)
+>  			sock_flag(sk, SOCK_ZAPPED),
+>  			sk->sk_shutdown);
+>  
+> +	transport = container_of(xprt, struct sock_xprt, xprt);
+>  	trace_rpc_socket_state_change(xprt, sk->sk_socket);
+>  	switch (sk->sk_state) {
+>  	case TCP_ESTABLISHED:
+>  		spin_lock(&xprt->transport_lock);
+>  		if (!xprt_test_and_set_connected(xprt)) {
+> -			struct sock_xprt *transport = container_of(xprt,
+> -					struct sock_xprt, xprt);
+>  
+>  			/* Reset TCP record info */
+>  			transport->tcp_offset = 0;
+> @@ -1461,6 +1461,8 @@ static void xs_tcp_state_change(struct sock *sk)
+>  			transport->tcp_flags =
+>  				TCP_RCV_COPY_FRAGHDR | TCP_RCV_COPY_XID;
+>  			xprt->connect_cookie++;
+> +			clear_bit(XPRT_SOCK_CONNECTING, &transport->sock_state);
+> +			xprt_clear_connecting(xprt);
+>  
+>  			xprt_wake_pending_tasks(xprt, -EAGAIN);
+>  		}
+> @@ -1496,6 +1498,9 @@ static void xs_tcp_state_change(struct sock *sk)
+>  		smp_mb__after_atomic();
+>  		break;
+>  	case TCP_CLOSE:
+> +		if (test_and_clear_bit(XPRT_SOCK_CONNECTING,
+> +					&transport->sock_state))
+> +			xprt_clear_connecting(xprt);
+>  		xs_sock_mark_closed(xprt);
+>  	}
+>   out:
+> @@ -2179,6 +2184,7 @@ static int xs_tcp_finish_connecting(struct rpc_xprt *xprt, struct socket *sock)
+>  	/* Tell the socket layer to start connecting... */
+>  	xprt->stat.connect_count++;
+>  	xprt->stat.connect_start = jiffies;
+> +	set_bit(XPRT_SOCK_CONNECTING, &transport->sock_state);
+>  	ret = kernel_connect(sock, xs_addr(xprt), xprt->addrlen, O_NONBLOCK);
+>  	switch (ret) {
+>  	case 0:
+> @@ -2240,7 +2246,6 @@ static void xs_tcp_setup_socket(struct work_struct *work)
+>  	case -EINPROGRESS:
+>  	case -EALREADY:
+>  		xprt_unlock_connect(xprt, transport);
+> -		xprt_clear_connecting(xprt);
+>  		return;
+>  	case -EINVAL:
+>  		/* Happens, for instance, if the user specified a link
+> -- 
+> 2.4.3
+> 
+> -- 
+> Trond Myklebust
+> Linux NFS client maintainer, PrimaryData
+> trond.myklebust@primarydata.com
+> 
+> 
+> 
+
+-- 
+FTTC broadband for 0.8mile line: currently at 9.6Mbps down 400kbps up
+according to speedtest.net.
