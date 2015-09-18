@@ -1,270 +1,167 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:59204 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753375AbbIRV4N (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 18 Sep 2015 17:56:13 -0400
-Date: Fri, 18 Sep 2015 17:56:11 -0400
-To: Andreas Gruenbacher <agruenba@redhat.com>
-Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-api@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-security-module@vger.kernel.org,
-        Andreas Gruenbacher <agruen@kernel.org>
-Subject: Re: [RFC v7 22/41] richacl: Propagate everyone@ permissions to other
- aces
-Message-ID: <20150918215611.GD22671@fieldses.org>
-References: <1441448856-13478-1-git-send-email-agruenba@redhat.com>
- <1441448856-13478-23-git-send-email-agruenba@redhat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1441448856-13478-23-git-send-email-agruenba@redhat.com>
-From: bfields@fieldses.org (J. Bruce Fields)
+Received: from mail-yk0-f180.google.com ([209.85.160.180]:34598 "EHLO
+	mail-yk0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753375AbbIRWAa (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Sep 2015 18:00:30 -0400
+Received: by ykdg206 with SMTP id g206so58988173ykd.1
+        for <linux-nfs@vger.kernel.org>; Fri, 18 Sep 2015 15:00:29 -0700 (PDT)
+Message-ID: <1442613607.11370.18.camel@primarydata.com>
+Subject: Re: [PATCHv2] SUNRPC: Fix a race in xs_reset_transport
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: "Suzuki K. Poulose" <Suzuki.Poulose@arm.com>,
+        Jeff Layton <jlayton@poochiereds.net>
+Cc: Anna Schumaker <anna.schumaker@netapp.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        "David S. Miller" <davem@davemloft.net>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        Marc Zyngier <Marc.Zyngier@arm.com>
+Date: Fri, 18 Sep 2015 18:00:07 -0400
+In-Reply-To: <1442595095.11370.13.camel@primarydata.com>
+References: <1442394280-24280-1-git-send-email-suzuki.poulose@arm.com>
+	 <1442396149-24775-1-git-send-email-suzuki.poulose@arm.com>
+	 <20150916071730.052af53d@tlielax.poochiereds.net>
+	 <55FBF32C.7030107@arm.com> <1442595095.11370.13.camel@primarydata.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Sep 05, 2015 at 12:27:17PM +0200, Andreas Gruenbacher wrote:
-> The trailing everyone@ allow ace can grant permissions to all file
-> classes including the owner and group class.  Before we can apply the
-> other mask to this entry to turn it into an "other class" entry, we need
-> to ensure that members of the owner or group class will not lose any
-> permissions from that ace.
+On Fri, 2015-09-18 at 12:51 -0400, Trond Myklebust wrote:
+> On Fri, 2015-09-18 at 12:19 +0100, Suzuki K. Poulose wrote:
+> > On 16/09/15 12:17, Jeff Layton wrote:
+> > > On Wed, 16 Sep 2015 10:35:49 +0100
+> > > "Suzuki K. Poulose" <suzuki.poulose@arm.com> wrote:
+> > > 
+> > > > From: "Suzuki K. Poulose" <suzuki.poulose@arm.com>
+> > > > 
+> > 
+> > ...
+> > 
+> > > > +		write_unlock_bh(&sk->sk_callback_lock);
+> > > > +		return;
+> > > > +	}
+> > > > +	sock = transport->sock;
+> > > > +
+> > > >   	transport->inet = NULL;
+> > > >   	transport->sock = NULL;
+> > > > 
+> > > > @@ -833,6 +838,10 @@ static void xs_reset_transport(struct
+> > > > sock_xprt *transport)
+> > > >   	xs_restore_old_callbacks(transport, sk);
+> > > >   	xprt_clear_connected(xprt);
+> > > >   	write_unlock_bh(&sk->sk_callback_lock);
+> > > > +
+> > > > +	if (sock)
+> > > > +		kernel_sock_shutdown(sock, SHUT_RDWR);
+> > > > +
+> > > >   	xs_sock_reset_connection_flags(xprt);
+> > > > 
+> > > >   	trace_rpc_socket_close(xprt, sock);
+> > > 
+> > > Better, but now I'm wondering...is it problematic to restore the
+> > > old
+> > > callbacks before calling kernel_sock_shutdown? I can't quite tell
+> > > whether it matters in all cases.
+> > > 
+> > > It might be best to just go ahead and take the spinlock twice
+> > > here.
+> > > Do
+> > > it once to clear the transport->sock pointer, call
+> > > kernel_sock_shutdown, and then take it again to restore the old
+> > > callbacks, etc.
+> > > 
+> > > I don't know though...I get the feeling there are races all over
+> > > the
+> > > place in this code. It seems like there's a similar one wrt to
+> > > the
+> > > transport->inet pointer. It seems a little silly that we clear it
+> > > under
+> > > the sk->sk_callback_lock. You have to dereference that pointer
+> > > in order to get to the lock.
+> > > 
+> > > Maybe the right solution is to use an xchg to swap the inet
+> > > pointer
+> > > with NULL so it can act as a gatekeeper. Whoever gets there first
+> > > does
+> > > the rest of the shutdown.
+> > > 
+> > > Something like this maybe? Would this also fix the original
+> > > problem?
+> > > Note that this patch is untested...
+> > > 
+> > > [PATCH] sunrpc: use xchg to fetch and clear the transport->inet
+> > > pointer in xs_reset_transport
+> > > 
+> > > Reported-by: "Suzuki K. Poulose" <Suzuki.Poulose@arm.com>
+> > > Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
+> > > ---
+> > >   net/sunrpc/xprtsock.c | 4 ++--
+> > >   1 file changed, 2 insertions(+), 2 deletions(-)
+> > > 
+> > > diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+> > > index 7be90bc1a7c2..57f79dcab493 100644
+> > > --- a/net/sunrpc/xprtsock.c
+> > > +++ b/net/sunrpc/xprtsock.c
+> > > @@ -813,9 +813,10 @@ static void xs_error_report(struct sock *sk)
+> > >   static void xs_reset_transport(struct sock_xprt *transport)
+> > >   {
+> > >   	struct socket *sock = transport->sock;
+> > > -	struct sock *sk = transport->inet;
+> > > +	struct sock *sk;
+> > >   	struct rpc_xprt *xprt = &transport->xprt;
+> > > 
+> > > +	sk = xchg(&transport->inet, NULL);
+> > >   	if (sk == NULL)
+> > >   		return;
+> > > 
+> > > @@ -825,7 +826,6 @@ static void xs_reset_transport(struct
+> > > sock_xprt
+> > > *transport)
+> > >   	kernel_sock_shutdown(sock, SHUT_RDWR);
+> > > 
+> > >   	write_lock_bh(&sk->sk_callback_lock);
+> > > -	transport->inet = NULL;
+> > >   	transport->sock = NULL;
+> > > 
+> > >   	sk->sk_user_data = NULL;
+> > > 
+> > 
+> > 
+> > This one seemed to fix it, so if it matters :
+> > 
+> > Tested-by: Suzuki K. Poulose <suzuki.poulose@arm.com>
 > 
-> Conceptually, we do this by inserting additional <who>:<allow>::allow
-> entries before the trailing everyone@ allow ace with the same
-> permissions as the trailing everyone@ allow ace for owner@, group@, and
-> all explicitly mentioned users and groups.  (In practice, we will rarely
-> need to insert any additional aces in this step.)
 > 
-> Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
-> ---
->  fs/richacl_compat.c | 195 ++++++++++++++++++++++++++++++++++++++++++++++++++++
->  1 file changed, 195 insertions(+)
+> I don't think it does. It addresses a symptom, but the actual problem
+> is that we're running 2 parallel close() calls on the same socket
+> during a shutdown. That must not happen because it means we have
+> something else trying to use the socket while it is being freed.
 > 
-> diff --git a/fs/richacl_compat.c b/fs/richacl_compat.c
-> index 4f0acf5..9b76fc0 100644
-> --- a/fs/richacl_compat.c
-> +++ b/fs/richacl_compat.c
-> @@ -218,3 +218,198 @@ richacl_move_everyone_aces_down(struct richacl_alloc *alloc)
->  	}
->  	return 0;
->  }
-> +
-> +/**
-> + * __richacl_propagate_everyone  -  propagate everyone@ permissions up for @who
-> + * @alloc:	acl and number of allocated entries
-> + * @who:	identifier to propagate permissions for
-> + * @allow:	permissions to propagate up
-> + *
-> + * Propagate the permissions in @allow up from the end of the acl to the start
-> + * for the specified principal @who.
-> + *
-> + * The simplest possible approach to achieve this would be to insert a
-> + * "<who>:<allow>::allow" ace before the final everyone@ allow ace.  Since this
-> + * would often result in aces which are not needed or which could be merged
-> + * with an existing ace, we make the following optimizations:
-> + *
-> + *   - We go through the acl and determine which permissions are already
-> + *     allowed or denied to @who, and we remove those permissions from
-> + *     @allow.
-> + *
-> + *   - If the acl contains an allow ace for @who and no aces after this entry
-> + *     deny permissions in @allow, we add the permissions in @allow to this
-> + *     ace.  (Propagating permissions across a deny ace which can match the
-> + *     process can elevate permissions.)
-> + *
-> + * This transformation does not alter the permissions that the acl grants.
-> + */
-> +static int
-> +__richacl_propagate_everyone(struct richacl_alloc *alloc, struct richace *who,
-> +			     unsigned int allow)
-> +{
-> +	struct richace *allow_last = NULL, *ace;
-> +	struct richacl *acl = alloc->acl;
-> +
-> +	/*
-> +	 * Remove the permissions from allow that are already determined for
-> +	 * this who value, and figure out if there is an allow entry for
-> +	 * this who value that is "reachable" from the trailing everyone@
-> +	 * allow ace.
-> +	 */
-> +	richacl_for_each_entry(ace, acl) {
-> +		if (richace_is_inherit_only(ace))
-> +			continue;
-> +		if (richace_is_allow(ace)) {
-> +			if (richace_is_same_identifier(ace, who)) {
-> +				allow &= ~ace->e_mask;
-> +				allow_last = ace;
-> +			}
-> +		} else if (richace_is_deny(ace)) {
-> +			if (richace_is_same_identifier(ace, who))
-> +				allow &= ~ace->e_mask;
-> +			else if (allow & ace->e_mask)
-> +				allow_last = NULL;
-> +		}
-> +	}
-> +	ace--;
-> +
-> +	/*
-> +	 * If for group class entries, all the remaining permissions will
-> +	 * remain granted by the trailing everyone@ ace, no additional entry is
-> +	 * needed.
-> +	 */
-> +	if (!richace_is_owner(who) &&
-> +	    richace_is_everyone(ace) && richace_is_allow(ace) &&
-> +	    !(allow & ~(ace->e_mask & acl->a_other_mask)))
-> +		allow = 0;
-> +
-> +	if (allow) {
-> +		if (allow_last)
-> +			return richace_change_mask(alloc, &allow_last,
-> +						   allow_last->e_mask | allow);
-> +		else {
-> +			struct richace who_copy;
-> +
-> +			richace_copy(&who_copy, who);
-> +			ace = acl->a_entries + acl->a_count - 1;
-> +			if (richacl_insert_entry(alloc, &ace))
-> +				return -1;
-> +			richace_copy(ace, &who_copy);
-> +			ace->e_type = RICHACE_ACCESS_ALLOWED_ACE_TYPE;
-> +			ace->e_flags &= ~RICHACE_INHERITANCE_FLAGS;
-> +			ace->e_mask = allow;
-> +		}
-> +	}
-> +	return 0;
-> +}
-> +
-> +/**
-> + * richacl_propagate_everyone  -  propagate everyone@ permissions up the acl
-> + * @alloc:	acl and number of allocated entries
-> + *
-> + * Make sure that group@ and all other users and groups mentioned in the acl
-> + * will not lose any permissions when finally applying the other mask to the
-> + * everyone@ allow ace at the end of the acl.  We modify the permissions of
-> + * existing entries or add new entries before the final everyone@ allow ace to
-> + * achieve that.
-> + *
-> + * For example, the following acl implicitly grants everyone rwpx access:
-> + *
-> + *    joe:r::allow
-> + *    everyone@:rwpx::allow
-> + *
-> + * When applying mode 0660 to this acl, group@ would lose rwp access, and joe
-> + * would lose wp access even though the mode does not exclude those
-> + * permissions.  After propagating the everyone@ permissions, the result for
-> + * applying mode 0660 becomes:
-> + *
-> + *    owner@:rwp::allow
-> + *    joe:rwp::allow
-> + *    group@:rwp::allow
-> + *
-> + * Deny aces complicate the matter.  For example, the following acl grants
-> + * everyone but joe write access:
-> + *
-> + *    joe:wp::deny
-> + *    everyone@:rwpx::allow
-> + *
-> + * When applying mode 0660 to this acl, group@ would lose rwp access, and joe
-> + * would lose r access.  After propagating the everyone@ permissions, the
-> + * result for applying mode 0660 becomes:
-> + *
-> + *    owner@:rwp::allow
-> + *    joe:w::deny
-> + *    group@:rwp::allow
-> + *    joe:r::allow
-> + */
-> +static int
-> +richacl_propagate_everyone(struct richacl_alloc *alloc)
-> +{
-> +	struct richace who = { .e_flags = RICHACE_SPECIAL_WHO };
-> +	struct richacl *acl = alloc->acl;
-> +	struct richace *ace;
-> +	unsigned int owner_allow, group_allow;
-> +
-> +	/*
-> +	 * If the owner mask contains permissions which are not in the group
-> +	 * mask, the group mask contains permissions which are not in the other
-> +	 * mask, or the owner class contains permissions which are not in the
-
-s/owner class/owner mask?
-
-> +	 * other mask, we may need to propagate permissions up from the
-> +	 * everyone@ allow ace.  The third condition is implied by the first
-> +	 * two.
-> +	 */
-> +	if (!((acl->a_owner_mask & ~acl->a_group_mask) ||
-> +	      (acl->a_group_mask & ~acl->a_other_mask)))
-> +		return 0;
-
-The code looks right, but I don't understand the preceding comment.
-
-For example, 
-
-	owner mask: rw
-	group mask:  wx
-	other mask: rw
-
-satisfies the first two conditions, but not the third.
-
-Also, I don't understand why the first condition would imply that we
-might need to propagate permissions.
-
---b.
-
-> +	if (!acl->a_count)
-> +		return 0;
-> +	ace = acl->a_entries + acl->a_count - 1;
-> +	if (richace_is_inherit_only(ace) || !richace_is_everyone(ace))
-> +		return 0;
-> +
-> +	owner_allow = ace->e_mask & acl->a_owner_mask;
-> +	group_allow = ace->e_mask & acl->a_group_mask;
-> +
-> +	if (owner_allow & ~(acl->a_group_mask & acl->a_other_mask)) {
-> +		/* Propagate everyone@ permissions through to owner@. */
-> +		who.e_id.special = RICHACE_OWNER_SPECIAL_ID;
-> +		if (__richacl_propagate_everyone(alloc, &who, owner_allow))
-> +			return -1;
-> +		acl = alloc->acl;
-> +	}
-> +
-> +	if (group_allow & ~acl->a_other_mask) {
-> +		int n;
-> +
-> +		/* Propagate everyone@ permissions through to group@. */
-> +		who.e_id.special = RICHACE_GROUP_SPECIAL_ID;
-> +		if (__richacl_propagate_everyone(alloc, &who, group_allow))
-> +			return -1;
-> +		acl = alloc->acl;
-> +
-> +		/*
-> +		 * Start from the entry before the trailing everyone@ allow
-> +		 * entry. We will not hit everyone@ entries in the loop.
-> +		 */
-> +		for (n = acl->a_count - 2; n != -1; n--) {
-> +			ace = acl->a_entries + n;
-> +
-> +			if (richace_is_inherit_only(ace) ||
-> +			    richace_is_owner(ace) ||
-> +			    richace_is_group(ace))
-> +				continue;
-> +			if (richace_is_allow(ace) || richace_is_deny(ace)) {
-> +				/*
-> +				 * Any inserted entry will end up below the
-> +				 * current entry
-> +				 */
-> +				if (__richacl_propagate_everyone(alloc, ace,
-> +								 group_allow))
-> +					return -1;
-> +				acl = alloc->acl;
-> +			}
-> +		}
-> +	}
-> +	return 0;
-> +}
-> -- 
-> 2.4.3
+> I think what is happening is that we're triggering the socket
+> autoclose
+> mechanism from the state change callback. You're seeing the problem
+> more frequently because we added the call to kernel_sock_shutdown()
+> as
+> part of the socket shutdown, but AFAICS, it could still be triggered
+> from some external event such as a server-initiated shutdown that
+> happened at the same time.
+> In fact, looking at the code, it could even be triggered from the
+> data
+> receive side of things.
+> Both of these things are bad, because autoclose puts the transport
+> struct that is being freed onto a workqueue. That again can lead to a
+> really bad use-after-free situation if the timing is just a little
+> different.
 > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> So how about the following patch? It should apply cleanly on top of
+> the
+> first one (which is still needed, btw).
+
+Having thought some more about this, I think the safest thing in order
+to avoid races is simply to have the shutdown set XPRT_LOCKED. That way
+we can keep the current desirable behaviour of closing the socket
+automatically any time the server initiates a close, while still
+preventing it during shutdown.
+
+8<-------------------------------------------------------------------
