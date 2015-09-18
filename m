@@ -1,132 +1,192 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ob0-f171.google.com ([209.85.214.171]:34965 "EHLO
-	mail-ob0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751849AbbIQWJJ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Sep 2015 18:09:09 -0400
-Received: by obbzf10 with SMTP id zf10so24461815obb.2
-        for <linux-nfs@vger.kernel.org>; Thu, 17 Sep 2015 15:09:08 -0700 (PDT)
+Received: from fieldses.org ([173.255.197.46]:58680 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752043AbbIRA4K (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 17 Sep 2015 20:56:10 -0400
+Date: Thu, 17 Sep 2015 20:56:07 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Andreas Gruenbacher <agruenba@redhat.com>
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-api@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-security-module@vger.kernel.org
+Subject: Re: [RFC v7 13/41] richacl: Check if an acl is equivalent to a file
+ mode
+Message-ID: <20150918005607.GB16699@fieldses.org>
+References: <1441448856-13478-1-git-send-email-agruenba@redhat.com>
+ <1441448856-13478-14-git-send-email-agruenba@redhat.com>
+ <20150917182219.GB13825@fieldses.org>
 MIME-Version: 1.0
-In-Reply-To: <CAHQdGtQ3y885UHwiB8HBeSEwJX6wXRp631rehsb48=kBxo9Faw@mail.gmail.com>
-References: <55F6B9A5.7020306@gmail.com>
-	<CAHQdGtQ3y885UHwiB8HBeSEwJX6wXRp631rehsb48=kBxo9Faw@mail.gmail.com>
-Date: Thu, 17 Sep 2015 18:09:08 -0400
-Message-ID: <CAHQdGtSP6XJE+s=Q5nmv5GXMWXPW1W0L7wx5MyhRKvw7YC011A@mail.gmail.com>
-Subject: Re: [PATCH] nfs/filelayout: Fix NULL reference caused by double
- freeing of fh_array
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20150917182219.GB13825@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Sep 17, 2015 at 11:19 AM, Trond Myklebust
-<trond.myklebust@primarydata.com> wrote:
-> On Mon, Sep 14, 2015 at 8:12 AM, Kinglong Mee <kinglongmee@gmail.com> wrote:
->> If filelayout_decode_layout fail, _filelayout_free_lseg will causes
->> a double freeing of fh_array.
->>
->> [ 1179.279800] BUG: unable to handle kernel NULL pointer dereference at           (null)
->> [ 1179.280198] IP: [<ffffffffa027222d>] filelayout_free_fh_array.isra.11+0x1d/0x70 [nfs_layout_nfsv41_files]
->> [ 1179.281010] PGD 0
->> [ 1179.281443] Oops: 0000 [#1]
->> [ 1179.281831] Modules linked in: nfs_layout_nfsv41_files(OE) nfsv4(OE) nfs(OE) fscache(E) xfs libcrc32c coretemp nfsd crct10dif_pclmul ppdev crc32_pclmul crc32c_intel auth_rpcgss ghash_clmulni_intel nfs_acl lockd vmw_balloon grace sunrpc parport_pc vmw_vmci parport shpchp i2c_piix4 vmwgfx drm_kms_helper ttm drm serio_raw mptspi scsi_transport_spi mptscsih e1000 mptbase ata_generic pata_acpi [last unloaded: fscache]
->> [ 1179.283891] CPU: 0 PID: 13336 Comm: cat Tainted: G           OE   4.3.0-rc1-pnfs+ #244
->> [ 1179.284323] Hardware name: VMware, Inc. VMware Virtual Platform/440BX Desktop Reference Platform, BIOS 6.00 05/20/2014
->> [ 1179.285206] task: ffff8800501d48c0 ti: ffff88003e3c4000 task.ti: ffff88003e3c4000
->> [ 1179.285668] RIP: 0010:[<ffffffffa027222d>]  [<ffffffffa027222d>] filelayout_free_fh_array.isra.11+0x1d/0x70 [nfs_layout_nfsv41_files]
->> [ 1179.286612] RSP: 0018:ffff88003e3c77f8  EFLAGS: 00010202
->> [ 1179.287092] RAX: 0000000000000000 RBX: ffff88001fe78900 RCX: 0000000000000000
->> [ 1179.287731] RDX: ffffea0000f40760 RSI: ffff88001fe789c8 RDI: ffff88001fe789c0
->> [ 1179.288383] RBP: ffff88003e3c7810 R08: ffffea0000f40760 R09: 0000000000000000
->> [ 1179.289170] R10: 0000000000000000 R11: 0000000000000001 R12: ffff88001fe789c8
->> [ 1179.289959] R13: ffff88001fe789c0 R14: ffff88004ec05a80 R15: ffff88004f935b88
->> [ 1179.290791] FS:  00007f4e66bb5700(0000) GS:ffffffff81c29000(0000) knlGS:0000000000000000
->> [ 1179.291580] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
->> [ 1179.292209] CR2: 0000000000000000 CR3: 00000000203f8000 CR4: 00000000001406f0
->> [ 1179.292731] Stack:
->> [ 1179.293195]  ffff88001fe78900 00000000000000d0 ffff88001fe78178 ffff88003e3c7868
->> [ 1179.293676]  ffffffffa0272737 0000000000000001 0000000000000001 ffff88001fe78800
->> [ 1179.294151]  00000000614fffce ffffffff81727671 ffff88001fe78100 ffff88001fe78100
->> [ 1179.294623] Call Trace:
->> [ 1179.295092]  [<ffffffffa0272737>] filelayout_alloc_lseg+0xa7/0x2d0 [nfs_layout_nfsv41_files]
->> [ 1179.295625]  [<ffffffff81727671>] ? out_of_line_wait_on_bit+0x81/0xb0
->> [ 1179.296133]  [<ffffffffa040407e>] pnfs_layout_process+0xae/0x320 [nfsv4]
->> [ 1179.296632]  [<ffffffffa03e0a01>] nfs4_proc_layoutget+0x2b1/0x360 [nfsv4]
->> [ 1179.297134]  [<ffffffffa0402983>] pnfs_update_layout+0x853/0xb30 [nfsv4]
->> [ 1179.297632]  [<ffffffffa039db24>] ? nfs_get_lock_context+0x74/0x170 [nfs]
->> [ 1179.298158]  [<ffffffffa0271807>] filelayout_pg_init_read+0x37/0x50 [nfs_layout_nfsv41_files]
->> [ 1179.298834]  [<ffffffffa03a72d9>] __nfs_pageio_add_request+0x119/0x460 [nfs]
->> [ 1179.299385]  [<ffffffffa03a6bd7>] ? nfs_create_request.part.9+0x37/0x2e0 [nfs]
->> [ 1179.299872]  [<ffffffffa03a7cc3>] nfs_pageio_add_request+0xa3/0x1b0 [nfs]
->> [ 1179.300362]  [<ffffffffa03a8635>] readpage_async_filler+0x85/0x260 [nfs]
->> [ 1179.300907]  [<ffffffff81180cb1>] read_cache_pages+0x91/0xd0
->> [ 1179.301391]  [<ffffffffa03a85b0>] ? nfs_read_completion+0x220/0x220 [nfs]
->> [ 1179.301867]  [<ffffffffa03a8dc8>] nfs_readpages+0x128/0x200 [nfs]
->> [ 1179.302330]  [<ffffffff81180ef3>] __do_page_cache_readahead+0x203/0x280
->> [ 1179.302784]  [<ffffffff81180dc8>] ? __do_page_cache_readahead+0xd8/0x280
->> [ 1179.303413]  [<ffffffff81181116>] ondemand_readahead+0x1a6/0x2f0
->> [ 1179.303855]  [<ffffffff81181371>] page_cache_sync_readahead+0x31/0x50
->> [ 1179.304286]  [<ffffffff811750a6>] generic_file_read_iter+0x4a6/0x5c0
->> [ 1179.304711]  [<ffffffffa03a0316>] ? __nfs_revalidate_mapping+0x1f6/0x240 [nfs]
->> [ 1179.305132]  [<ffffffffa039ccf2>] nfs_file_read+0x52/0xa0 [nfs]
->> [ 1179.305540]  [<ffffffff811e343c>] __vfs_read+0xcc/0x100
->> [ 1179.305936]  [<ffffffff811e3d15>] vfs_read+0x85/0x130
->> [ 1179.306326]  [<ffffffff811e4a98>] SyS_read+0x58/0xd0
->> [ 1179.306708]  [<ffffffff8172caaf>] entry_SYSCALL_64_fastpath+0x12/0x76
->> [ 1179.307094] Code: c4 66 66 66 66 2e 0f 1f 84 00 00 00 00 00 0f 1f 44 00 00 55 48 89 e5 41 55 41 54 53 8b 07 49 89 f4 85 c0 74 47 48 8b 06 49 89 fd <48> 8b 38 48 85 ff 74 22 31 db eb 0c 48 63 d3 48 8b 3c d0 48 85
->> [ 1179.308357] RIP  [<ffffffffa027222d>] filelayout_free_fh_array.isra.11+0x1d/0x70 [nfs_layout_nfsv41_files]
->> [ 1179.309177]  RSP <ffff88003e3c77f8>
->> [ 1179.309582] CR2: 0000000000000000
->>
->> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
->> ---
->>  fs/nfs/filelayout/filelayout.c | 31 ++++++++++++-------------------
->>  1 file changed, 12 insertions(+), 19 deletions(-)
->>
->> diff --git a/fs/nfs/filelayout/filelayout.c b/fs/nfs/filelayout/filelayout.c
->> index b34f2e2..02ec079 100644
->> --- a/fs/nfs/filelayout/filelayout.c
->> +++ b/fs/nfs/filelayout/filelayout.c
->> @@ -629,23 +629,18 @@ out_put:
->>         goto out;
->>  }
->>
->> -static void filelayout_free_fh_array(struct nfs4_filelayout_segment *fl)
->> +static void _filelayout_free_lseg(struct nfs4_filelayout_segment *fl)
->>  {
->>         int i;
->>
->> -       for (i = 0; i < fl->num_fh; i++) {
->> -               if (!fl->fh_array[i])
->> -                       break;
->> -               kfree(fl->fh_array[i]);
->> +       if (fl->fh_array) {
->> +               for (i = 0; i < fl->num_fh; i++) {
->> +                       if (!fl->fh_array[i])
->> +                               break;
->> +                       kfree(fl->fh_array[i]);
->> +               }
->> +               kfree(fl->fh_array);
->>         }
->> -       kfree(fl->fh_array);
->> -       fl->fh_array = NULL;
->> -}
->> -
->> -static void
->> -_filelayout_free_lseg(struct nfs4_filelayout_segment *fl)
->> -{
->> -       filelayout_free_fh_array(fl);
->>         kfree(fl);
->>  }
->>
->> @@ -716,21 +711,21 @@ filelayout_decode_layout(struct pnfs_layout_hdr *flo,
->>                 /* Do we want to use a mempool here? */
->>                 fl->fh_array[i] = kmalloc(sizeof(struct nfs_fh), gfp_flags);
->
-> Doesn't this need to be a kzalloc() for the freeing to work correctly?
+On Thu, Sep 17, 2015 at 02:22:19PM -0400, bfields wrote:
+> On Sat, Sep 05, 2015 at 12:27:08PM +0200, Andreas Gruenbacher wrote:
+> > ACLs are considered equivalent to file modes if they only consist of
+> > owner@, group@, and everyone@ entries, the owner@ permissions do not
+> > depend on whether the owner is a member in the owning group, and no
+> > inheritance flags are set.  This test is used to avoid storing richacls
+> > if the acl can be computed from the file permission bits.
+> 
+> We're assuming here that it's OK for us to silently rearrange an ACL as
+> long as the result is still equivalent (in the sense that the permission
+> algorithm would always produce the same result).
+> 
+> I guess that's OK by me, but it might violate user expectations in some
+> simple common cases, so may be worth mentioning in documentation
+> someplace if we don't already.
 
-Never mind. I was confusing this with the allocation of the array
-itself. Sorry for the noise...
+Also your notion of mode-equivalence here is interesting, it's actually
+a strict subset of the ACLs that produce the same permission results as
+a mode.  (For example, everyone:rwx,bfields:rwx is equivalent to 0777
+but won't be considered mode-equivalent by this algorithm.)
 
-Trond
+I think the choices you've made probably make the most sense, they just
+wouldn't have been obvious to me.  Anyway, so, OK by me:
+
+	Reviewed-by: J. Bruce Fields <bfields@redhat.com>
+
+--b.
+
+> 
+> --b.
+> 
+> > 
+> > Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
+> > ---
+> >  fs/richacl_base.c       | 104 ++++++++++++++++++++++++++++++++++++++++++++++++
+> >  include/linux/richacl.h |   1 +
+> >  2 files changed, 105 insertions(+)
+> > 
+> > diff --git a/fs/richacl_base.c b/fs/richacl_base.c
+> > index 3163152..106e988 100644
+> > --- a/fs/richacl_base.c
+> > +++ b/fs/richacl_base.c
+> > @@ -379,3 +379,107 @@ richacl_chmod(struct richacl *acl, mode_t mode)
+> >  	return clone;
+> >  }
+> >  EXPORT_SYMBOL_GPL(richacl_chmod);
+> > +
+> > +/**
+> > + * richacl_equiv_mode  -  compute the mode equivalent of @acl
+> > + *
+> > + * An acl is considered equivalent to a file mode if it only consists of
+> > + * owner@, group@, and everyone@ entries and the owner@ permissions do not
+> > + * depend on whether the owner is a member in the owning group.
+> > + */
+> > +int
+> > +richacl_equiv_mode(const struct richacl *acl, mode_t *mode_p)
+> > +{
+> > +	mode_t mode = *mode_p;
+> > +
+> > +	/*
+> > +	 * The RICHACE_DELETE_CHILD flag is meaningless for non-directories, so
+> > +	 * we ignore it.
+> > +	 */
+> > +	unsigned int x = S_ISDIR(mode) ? 0 : RICHACE_DELETE_CHILD;
+> > +	struct {
+> > +		unsigned int allowed;
+> > +		unsigned int defined;  /* allowed or denied */
+> > +	} owner = {
+> > +		.defined = RICHACE_POSIX_ALWAYS_ALLOWED |
+> > +			   RICHACE_POSIX_OWNER_ALLOWED  | x,
+> > +	}, group = {
+> > +		.defined = RICHACE_POSIX_ALWAYS_ALLOWED | x,
+> > +	}, everyone = {
+> > +		.defined = RICHACE_POSIX_ALWAYS_ALLOWED | x,
+> > +	};
+> > +	const struct richace *ace;
+> > +
+> > +	if (acl->a_flags & ~(RICHACL_WRITE_THROUGH | RICHACL_MASKED))
+> > +		return -1;
+> > +
+> > +	richacl_for_each_entry(ace, acl) {
+> > +		if (ace->e_flags & ~RICHACE_SPECIAL_WHO)
+> > +			return -1;
+> > +
+> > +		if (richace_is_owner(ace) || richace_is_everyone(ace)) {
+> > +			x = ace->e_mask & ~owner.defined;
+> > +			if (richace_is_allow(ace)) {
+> > +				unsigned int group_denied =
+> > +					group.defined & ~group.allowed;
+> > +
+> > +				if (x & group_denied)
+> > +					return -1;
+> > +				owner.allowed |= x;
+> > +			} else /* if (richace_is_deny(ace)) */ {
+> > +				if (x & group.allowed)
+> > +					return -1;
+> > +			}
+> > +			owner.defined |= x;
+> > +
+> > +			if (richace_is_everyone(ace)) {
+> > +				x = ace->e_mask;
+> > +				if (richace_is_allow(ace)) {
+> > +					group.allowed |=
+> > +						x & ~group.defined;
+> > +					everyone.allowed |=
+> > +						x & ~everyone.defined;
+> > +				}
+> > +				group.defined |= x;
+> > +				everyone.defined |= x;
+> > +			}
+> > +		} else if (richace_is_group(ace)) {
+> > +			x = ace->e_mask & ~group.defined;
+> > +			if (richace_is_allow(ace))
+> > +				group.allowed |= x;
+> > +			group.defined |= x;
+> > +		} else
+> > +			return -1;
+> > +	}
+> > +
+> > +	if (group.allowed & ~owner.defined)
+> > +		return -1;
+> > +
+> > +	if (acl->a_flags & RICHACL_MASKED) {
+> > +		if (acl->a_flags & RICHACL_WRITE_THROUGH) {
+> > +			owner.allowed = acl->a_owner_mask;
+> > +			everyone.allowed = acl->a_other_mask;
+> > +		} else {
+> > +			owner.allowed &= acl->a_owner_mask;
+> > +			everyone.allowed &= acl->a_other_mask;
+> > +		}
+> > +		group.allowed &= acl->a_group_mask;
+> > +	}
+> > +
+> > +	mode = (mode & ~S_IRWXUGO) |
+> > +	       (richacl_mask_to_mode(owner.allowed) << 6) |
+> > +	       (richacl_mask_to_mode(group.allowed) << 3) |
+> > +		richacl_mask_to_mode(everyone.allowed);
+> > +
+> > +	/* Mask flags we can ignore */
+> > +	x = S_ISDIR(mode) ? 0 : RICHACE_DELETE_CHILD;
+> > +
+> > +	if (((richacl_mode_to_mask(mode >> 6) ^ owner.allowed)    & ~x) ||
+> > +	    ((richacl_mode_to_mask(mode >> 3) ^ group.allowed)    & ~x) ||
+> > +	    ((richacl_mode_to_mask(mode)      ^ everyone.allowed) & ~x))
+> > +		return -1;
+> > +
+> > +	*mode_p = mode;
+> > +	return 0;
+> > +}
+> > +EXPORT_SYMBOL_GPL(richacl_equiv_mode);
+> > diff --git a/include/linux/richacl.h b/include/linux/richacl.h
+> > index d4a576c..6535ce5 100644
+> > --- a/include/linux/richacl.h
+> > +++ b/include/linux/richacl.h
+> > @@ -304,6 +304,7 @@ extern unsigned int richacl_mode_to_mask(mode_t);
+> >  extern unsigned int richacl_want_to_mask(unsigned int);
+> >  extern void richacl_compute_max_masks(struct richacl *);
+> >  extern struct richacl *richacl_chmod(struct richacl *, mode_t);
+> > +extern int richacl_equiv_mode(const struct richacl *, mode_t *);
+> >  
+> >  /* richacl_inode.c */
+> >  extern int richacl_permission(struct inode *, const struct richacl *, int);
+> > -- 
+> > 2.4.3
+> > 
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
