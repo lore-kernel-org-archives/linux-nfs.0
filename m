@@ -1,9 +1,9 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:59196 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:59204 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754486AbbIRVgN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 18 Sep 2015 17:36:13 -0400
-Date: Fri, 18 Sep 2015 17:36:11 -0400
+	id S1753375AbbIRV4N (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 18 Sep 2015 17:56:13 -0400
+Date: Fri, 18 Sep 2015 17:56:11 -0400
 To: Andreas Gruenbacher <agruenba@redhat.com>
 Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-nfs@vger.kernel.org, linux-api@vger.kernel.org,
@@ -11,7 +11,7 @@ Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         Andreas Gruenbacher <agruen@kernel.org>
 Subject: Re: [RFC v7 22/41] richacl: Propagate everyone@ permissions to other
  aces
-Message-ID: <20150918213611.GC22671@fieldses.org>
+Message-ID: <20150918215611.GD22671@fieldses.org>
 References: <1441448856-13478-1-git-send-email-agruenba@redhat.com>
  <1441448856-13478-23-git-send-email-agruenba@redhat.com>
 MIME-Version: 1.0
@@ -110,14 +110,7 @@ On Sat, Sep 05, 2015 at 12:27:17PM +0200, Andreas Gruenbacher wrote:
 > +	 */
 > +	if (!richace_is_owner(who) &&
 > +	    richace_is_everyone(ace) && richace_is_allow(ace) &&
-
-That richace_is_allow(ace) check is redundant at this point, isn't it?
-
 > +	    !(allow & ~(ace->e_mask & acl->a_other_mask)))
-
-Uh, I wish C had a subset-of operator, that construct took me longer to
-work out than I should admit.
-
 > +		allow = 0;
 > +
 > +	if (allow) {
@@ -129,11 +122,6 @@ work out than I should admit.
 > +
 > +			richace_copy(&who_copy, who);
 > +			ace = acl->a_entries + acl->a_count - 1;
-
-Isn't ace already set to the last ace?
-
---b.
-
 > +			if (richacl_insert_entry(alloc, &ace))
 > +				return -1;
 > +			richace_copy(ace, &who_copy);
@@ -196,6 +184,9 @@ Isn't ace already set to the last ace?
 > +	 * If the owner mask contains permissions which are not in the group
 > +	 * mask, the group mask contains permissions which are not in the other
 > +	 * mask, or the owner class contains permissions which are not in the
+
+s/owner class/owner mask?
+
 > +	 * other mask, we may need to propagate permissions up from the
 > +	 * everyone@ allow ace.  The third condition is implied by the first
 > +	 * two.
@@ -203,6 +194,22 @@ Isn't ace already set to the last ace?
 > +	if (!((acl->a_owner_mask & ~acl->a_group_mask) ||
 > +	      (acl->a_group_mask & ~acl->a_other_mask)))
 > +		return 0;
+
+The code looks right, but I don't understand the preceding comment.
+
+For example, 
+
+	owner mask: rw
+	group mask:  wx
+	other mask: rw
+
+satisfies the first two conditions, but not the third.
+
+Also, I don't understand why the first condition would imply that we
+might need to propagate permissions.
+
+--b.
+
 > +	if (!acl->a_count)
 > +		return 0;
 > +	ace = acl->a_entries + acl->a_count - 1;
