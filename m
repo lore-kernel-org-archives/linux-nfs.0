@@ -1,192 +1,244 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:58680 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752043AbbIRA4K (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 17 Sep 2015 20:56:10 -0400
-Date: Thu, 17 Sep 2015 20:56:07 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Andreas Gruenbacher <agruenba@redhat.com>
-Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-api@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-security-module@vger.kernel.org
-Subject: Re: [RFC v7 13/41] richacl: Check if an acl is equivalent to a file
- mode
-Message-ID: <20150918005607.GB16699@fieldses.org>
-References: <1441448856-13478-1-git-send-email-agruenba@redhat.com>
- <1441448856-13478-14-git-send-email-agruenba@redhat.com>
- <20150917182219.GB13825@fieldses.org>
+Received: from mail-yk0-f174.google.com ([209.85.160.174]:35103 "EHLO
+	mail-yk0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751433AbbIRGwo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Sep 2015 02:52:44 -0400
+Received: by ykdu9 with SMTP id u9so38797177ykd.2
+        for <linux-nfs@vger.kernel.org>; Thu, 17 Sep 2015 23:52:43 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20150917182219.GB13825@fieldses.org>
+In-Reply-To: <20150917204435.19671.56195.stgit@manet.1015granger.net>
+References: <20150917202829.19671.90044.stgit@manet.1015granger.net> <20150917204435.19671.56195.stgit@manet.1015granger.net>
+From: Devesh Sharma <devesh.sharma@avagotech.com>
+Date: Fri, 18 Sep 2015 12:22:04 +0530
+Message-ID: <CANjDDBgokeHEZ7jWhRKRRU4Usr655zRoYY-qUHc9jeuyjYBzpA@mail.gmail.com>
+Subject: Re: [PATCH v1 03/18] xprtrdma: Remove completion polling budgets
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-rdma@vger.kernel.org,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Sep 17, 2015 at 02:22:19PM -0400, bfields wrote:
-> On Sat, Sep 05, 2015 at 12:27:08PM +0200, Andreas Gruenbacher wrote:
-> > ACLs are considered equivalent to file modes if they only consist of
-> > owner@, group@, and everyone@ entries, the owner@ permissions do not
-> > depend on whether the owner is a member in the owning group, and no
-> > inheritance flags are set.  This test is used to avoid storing richacls
-> > if the acl can be computed from the file permission bits.
-> 
-> We're assuming here that it's OK for us to silently rearrange an ACL as
-> long as the result is still equivalent (in the sense that the permission
-> algorithm would always produce the same result).
-> 
-> I guess that's OK by me, but it might violate user expectations in some
-> simple common cases, so may be worth mentioning in documentation
-> someplace if we don't already.
+On Fri, Sep 18, 2015 at 2:14 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>
+> Commit 8301a2c047cc ("xprtrdma: Limit work done by completion
+> handler") was supposed to prevent xprtrdma's upcall handlers from
+> starving other softIRQ work by letting them return to the provider
+> before all CQEs have been polled.
+>
+> The logic assumes the provider will call the upcall handler again
+> immediately if the CQ is re-armed while there are still queued CQEs.
+>
+> This assumption is invalid. The IBTA spec says that after a CQ is
+> armed, the hardware must interrupt only when a new CQE is inserted.
+> xprtrdma can't rely on the provider calling again, even though some
+> providers do.
+>
+> Therefore, leaving CQEs on queue makes sense only when there is
+> another mechanism that ensures all remaining CQEs are consumed in a
+> timely fashion. xprtrdma does not have such a mechanism. If a CQE
+> remains queued, the transport can wait forever to send the next RPC.
+>
+> Finally, move the wcs array back onto the stack to ensure that the
+> poll array is always local to the CPU where the completion upcall is
+> running.
+>
+> Fixes: 8301a2c047cc ("xprtrdma: Limit work done by completion ...")
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+>  net/sunrpc/xprtrdma/verbs.c     |  100 ++++++++++++++++++---------------------
+>  net/sunrpc/xprtrdma/xprt_rdma.h |    5 --
+>  2 files changed, 45 insertions(+), 60 deletions(-)
+>
+> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+> index 8a477e2..f2e3863 100644
+> --- a/net/sunrpc/xprtrdma/verbs.c
+> +++ b/net/sunrpc/xprtrdma/verbs.c
+> @@ -158,34 +158,37 @@ rpcrdma_sendcq_process_wc(struct ib_wc *wc)
+>         }
+>  }
+>
+> -static int
+> +/* The wc array is on stack: automatic memory is always CPU-local.
+> + *
+> + * The common case is a single completion is ready. By asking
+> + * for two entries, a return code of 1 means there is exactly
+> + * one completion and no more. We don't have to poll again to
+> + * know that the CQ is now empty.
+> + */
+> +static void
+>  rpcrdma_sendcq_poll(struct ib_cq *cq, struct rpcrdma_ep *ep)
+>  {
+> -       struct ib_wc *wcs;
+> -       int budget, count, rc;
+> +       struct ib_wc *pos, wcs[2];
+> +       int count, rc;
+>
+> -       budget = RPCRDMA_WC_BUDGET / RPCRDMA_POLLSIZE;
+>         do {
+> -               wcs = ep->rep_send_wcs;
+> +               pos = wcs;
+>
+> -               rc = ib_poll_cq(cq, RPCRDMA_POLLSIZE, wcs);
+> -               if (rc <= 0)
+> -                       return rc;
+> +               rc = ib_poll_cq(cq, ARRAY_SIZE(wcs), pos);
+> +               if (rc < 0)
+> +                       goto out_warn;
+>
+>                 count = rc;
+>                 while (count-- > 0)
+> -                       rpcrdma_sendcq_process_wc(wcs++);
+> -       } while (rc == RPCRDMA_POLLSIZE && --budget);
+> -       return 0;
+> +                       rpcrdma_sendcq_process_wc(pos++);
+> +       } while (rc == ARRAY_SIZE(wcs));
 
-Also your notion of mode-equivalence here is interesting, it's actually
-a strict subset of the ACLs that produce the same permission results as
-a mode.  (For example, everyone:rwx,bfields:rwx is equivalent to 0777
-but won't be considered mode-equivalent by this algorithm.)
+I think I have missed something and not able to understand the reason
+for polling 2 CQEs in one poll? It is possible that in a given poll_cq
+call you end up getting on 1 completion, the other completion is
+delayed due to some reason. Would it be better to poll for 1 in every
+poll call Or
+otherwise have this
+while ( rc <= ARRAY_SIZE(wcs) && rc);
 
-I think the choices you've made probably make the most sense, they just
-wouldn't have been obvious to me.  Anyway, so, OK by me:
-
-	Reviewed-by: J. Bruce Fields <bfields@redhat.com>
-
---b.
-
-> 
-> --b.
-> 
-> > 
-> > Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
-> > ---
-> >  fs/richacl_base.c       | 104 ++++++++++++++++++++++++++++++++++++++++++++++++
-> >  include/linux/richacl.h |   1 +
-> >  2 files changed, 105 insertions(+)
-> > 
-> > diff --git a/fs/richacl_base.c b/fs/richacl_base.c
-> > index 3163152..106e988 100644
-> > --- a/fs/richacl_base.c
-> > +++ b/fs/richacl_base.c
-> > @@ -379,3 +379,107 @@ richacl_chmod(struct richacl *acl, mode_t mode)
-> >  	return clone;
-> >  }
-> >  EXPORT_SYMBOL_GPL(richacl_chmod);
-> > +
-> > +/**
-> > + * richacl_equiv_mode  -  compute the mode equivalent of @acl
-> > + *
-> > + * An acl is considered equivalent to a file mode if it only consists of
-> > + * owner@, group@, and everyone@ entries and the owner@ permissions do not
-> > + * depend on whether the owner is a member in the owning group.
-> > + */
-> > +int
-> > +richacl_equiv_mode(const struct richacl *acl, mode_t *mode_p)
-> > +{
-> > +	mode_t mode = *mode_p;
-> > +
-> > +	/*
-> > +	 * The RICHACE_DELETE_CHILD flag is meaningless for non-directories, so
-> > +	 * we ignore it.
-> > +	 */
-> > +	unsigned int x = S_ISDIR(mode) ? 0 : RICHACE_DELETE_CHILD;
-> > +	struct {
-> > +		unsigned int allowed;
-> > +		unsigned int defined;  /* allowed or denied */
-> > +	} owner = {
-> > +		.defined = RICHACE_POSIX_ALWAYS_ALLOWED |
-> > +			   RICHACE_POSIX_OWNER_ALLOWED  | x,
-> > +	}, group = {
-> > +		.defined = RICHACE_POSIX_ALWAYS_ALLOWED | x,
-> > +	}, everyone = {
-> > +		.defined = RICHACE_POSIX_ALWAYS_ALLOWED | x,
-> > +	};
-> > +	const struct richace *ace;
-> > +
-> > +	if (acl->a_flags & ~(RICHACL_WRITE_THROUGH | RICHACL_MASKED))
-> > +		return -1;
-> > +
-> > +	richacl_for_each_entry(ace, acl) {
-> > +		if (ace->e_flags & ~RICHACE_SPECIAL_WHO)
-> > +			return -1;
-> > +
-> > +		if (richace_is_owner(ace) || richace_is_everyone(ace)) {
-> > +			x = ace->e_mask & ~owner.defined;
-> > +			if (richace_is_allow(ace)) {
-> > +				unsigned int group_denied =
-> > +					group.defined & ~group.allowed;
-> > +
-> > +				if (x & group_denied)
-> > +					return -1;
-> > +				owner.allowed |= x;
-> > +			} else /* if (richace_is_deny(ace)) */ {
-> > +				if (x & group.allowed)
-> > +					return -1;
-> > +			}
-> > +			owner.defined |= x;
-> > +
-> > +			if (richace_is_everyone(ace)) {
-> > +				x = ace->e_mask;
-> > +				if (richace_is_allow(ace)) {
-> > +					group.allowed |=
-> > +						x & ~group.defined;
-> > +					everyone.allowed |=
-> > +						x & ~everyone.defined;
-> > +				}
-> > +				group.defined |= x;
-> > +				everyone.defined |= x;
-> > +			}
-> > +		} else if (richace_is_group(ace)) {
-> > +			x = ace->e_mask & ~group.defined;
-> > +			if (richace_is_allow(ace))
-> > +				group.allowed |= x;
-> > +			group.defined |= x;
-> > +		} else
-> > +			return -1;
-> > +	}
-> > +
-> > +	if (group.allowed & ~owner.defined)
-> > +		return -1;
-> > +
-> > +	if (acl->a_flags & RICHACL_MASKED) {
-> > +		if (acl->a_flags & RICHACL_WRITE_THROUGH) {
-> > +			owner.allowed = acl->a_owner_mask;
-> > +			everyone.allowed = acl->a_other_mask;
-> > +		} else {
-> > +			owner.allowed &= acl->a_owner_mask;
-> > +			everyone.allowed &= acl->a_other_mask;
-> > +		}
-> > +		group.allowed &= acl->a_group_mask;
-> > +	}
-> > +
-> > +	mode = (mode & ~S_IRWXUGO) |
-> > +	       (richacl_mask_to_mode(owner.allowed) << 6) |
-> > +	       (richacl_mask_to_mode(group.allowed) << 3) |
-> > +		richacl_mask_to_mode(everyone.allowed);
-> > +
-> > +	/* Mask flags we can ignore */
-> > +	x = S_ISDIR(mode) ? 0 : RICHACE_DELETE_CHILD;
-> > +
-> > +	if (((richacl_mode_to_mask(mode >> 6) ^ owner.allowed)    & ~x) ||
-> > +	    ((richacl_mode_to_mask(mode >> 3) ^ group.allowed)    & ~x) ||
-> > +	    ((richacl_mode_to_mask(mode)      ^ everyone.allowed) & ~x))
-> > +		return -1;
-> > +
-> > +	*mode_p = mode;
-> > +	return 0;
-> > +}
-> > +EXPORT_SYMBOL_GPL(richacl_equiv_mode);
-> > diff --git a/include/linux/richacl.h b/include/linux/richacl.h
-> > index d4a576c..6535ce5 100644
-> > --- a/include/linux/richacl.h
-> > +++ b/include/linux/richacl.h
-> > @@ -304,6 +304,7 @@ extern unsigned int richacl_mode_to_mask(mode_t);
-> >  extern unsigned int richacl_want_to_mask(unsigned int);
-> >  extern void richacl_compute_max_masks(struct richacl *);
-> >  extern struct richacl *richacl_chmod(struct richacl *, mode_t);
-> > +extern int richacl_equiv_mode(const struct richacl *, mode_t *);
-> >  
-> >  /* richacl_inode.c */
-> >  extern int richacl_permission(struct inode *, const struct richacl *, int);
-> > -- 
-> > 2.4.3
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> +       return;
+> +
+> +out_warn:
+> +       pr_warn("RPC:       %s: ib_poll_cq() failed %i\n", __func__, rc);
+>  }
+>
+> -/*
+> - * Handle send, fast_reg_mr, and local_inv completions.
+> - *
+> - * Send events are typically suppressed and thus do not result
+> - * in an upcall. Occasionally one is signaled, however. This
+> - * prevents the provider's completion queue from wrapping and
+> - * losing a completion.
+> +/* Handle provider send completion upcalls.
+>   */
+>  static void
+>  rpcrdma_sendcq_upcall(struct ib_cq *cq, void *cq_context)
+> @@ -193,12 +196,7 @@ rpcrdma_sendcq_upcall(struct ib_cq *cq, void *cq_context)
+>         struct rpcrdma_ep *ep = (struct rpcrdma_ep *)cq_context;
+>         int rc;
+>
+> -       rc = rpcrdma_sendcq_poll(cq, ep);
+> -       if (rc) {
+> -               dprintk("RPC:       %s: ib_poll_cq failed: %i\n",
+> -                       __func__, rc);
+> -               return;
+> -       }
+> +       rpcrdma_sendcq_poll(cq, ep);
+>
+>         rc = ib_req_notify_cq(cq,
+>                         IB_CQ_NEXT_COMP | IB_CQ_REPORT_MISSED_EVENTS);
+> @@ -247,44 +245,41 @@ out_fail:
+>         goto out_schedule;
+>  }
+>
+> -static int
+> +/* The wc array is on stack: automatic memory is always CPU-local.
+> + *
+> + * struct ib_wc is 64 bytes, making the poll array potentially
+> + * large. But this is at the bottom of the call chain. Further
+> + * substantial work is done in another thread.
+> + */
+> +static void
+>  rpcrdma_recvcq_poll(struct ib_cq *cq, struct rpcrdma_ep *ep)
+>  {
+> -       struct list_head sched_list;
+> -       struct ib_wc *wcs;
+> -       int budget, count, rc;
+> +       struct ib_wc *pos, wcs[4];
+> +       LIST_HEAD(sched_list);
+> +       int count, rc;
+>
+> -       INIT_LIST_HEAD(&sched_list);
+> -       budget = RPCRDMA_WC_BUDGET / RPCRDMA_POLLSIZE;
+>         do {
+> -               wcs = ep->rep_recv_wcs;
+> +               pos = wcs;
+>
+> -               rc = ib_poll_cq(cq, RPCRDMA_POLLSIZE, wcs);
+> -               if (rc <= 0)
+> -                       goto out_schedule;
+> +               rc = ib_poll_cq(cq, ARRAY_SIZE(wcs), pos);
+> +               if (rc < 0)
+> +                       goto out_warn;
+>
+>                 count = rc;
+>                 while (count-- > 0)
+> -                       rpcrdma_recvcq_process_wc(wcs++, &sched_list);
+> -       } while (rc == RPCRDMA_POLLSIZE && --budget);
+> -       rc = 0;
+> +                       rpcrdma_recvcq_process_wc(pos++, &sched_list);
+> +       } while (rc == ARRAY_SIZE(wcs));
+>
+>  out_schedule:
+>         rpcrdma_schedule_tasklet(&sched_list);
+> -       return rc;
+> +       return;
+> +
+> +out_warn:
+> +       pr_warn("RPC:       %s: ib_poll_cq() failed %i\n", __func__, rc);
+> +       goto out_schedule;
+>  }
+>
+> -/*
+> - * Handle receive completions.
+> - *
+> - * It is reentrant but processes single events in order to maintain
+> - * ordering of receives to keep server credits.
+> - *
+> - * It is the responsibility of the scheduled tasklet to return
+> - * recv buffers to the pool. NOTE: this affects synchronization of
+> - * connection shutdown. That is, the structures required for
+> - * the completion of the reply handler must remain intact until
+> - * all memory has been reclaimed.
+> +/* Handle provider receive completion upcalls.
+>   */
+>  static void
+>  rpcrdma_recvcq_upcall(struct ib_cq *cq, void *cq_context)
+> @@ -292,12 +287,7 @@ rpcrdma_recvcq_upcall(struct ib_cq *cq, void *cq_context)
+>         struct rpcrdma_ep *ep = (struct rpcrdma_ep *)cq_context;
+>         int rc;
+>
+> -       rc = rpcrdma_recvcq_poll(cq, ep);
+> -       if (rc) {
+> -               dprintk("RPC:       %s: ib_poll_cq failed: %i\n",
+> -                       __func__, rc);
+> -               return;
+> -       }
+> +       rpcrdma_recvcq_poll(cq, ep);
+>
+>         rc = ib_req_notify_cq(cq,
+>                         IB_CQ_NEXT_COMP | IB_CQ_REPORT_MISSED_EVENTS);
+> diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+> index c09414e..42c8d44 100644
+> --- a/net/sunrpc/xprtrdma/xprt_rdma.h
+> +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+> @@ -77,9 +77,6 @@ struct rpcrdma_ia {
+>   * RDMA Endpoint -- one per transport instance
+>   */
+>
+> -#define RPCRDMA_WC_BUDGET      (128)
+> -#define RPCRDMA_POLLSIZE       (16)
+> -
+>  struct rpcrdma_ep {
+>         atomic_t                rep_cqcount;
+>         int                     rep_cqinit;
+> @@ -89,8 +86,6 @@ struct rpcrdma_ep {
+>         struct rdma_conn_param  rep_remote_cma;
+>         struct sockaddr_storage rep_remote_addr;
+>         struct delayed_work     rep_connect_worker;
+> -       struct ib_wc            rep_send_wcs[RPCRDMA_POLLSIZE];
+> -       struct ib_wc            rep_recv_wcs[RPCRDMA_POLLSIZE];
+>  };
+>
+>  /*
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
