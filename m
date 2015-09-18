@@ -1,152 +1,231 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yk0-f172.google.com ([209.85.160.172]:33908 "EHLO
-	mail-yk0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754051AbbIRQv6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Sep 2015 12:51:58 -0400
-Received: by ykdg206 with SMTP id g206so51945215ykd.1
-        for <linux-nfs@vger.kernel.org>; Fri, 18 Sep 2015 09:51:57 -0700 (PDT)
-Message-ID: <1442595095.11370.13.camel@primarydata.com>
-Subject: Re: [PATCHv2] SUNRPC: Fix a race in xs_reset_transport
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: "Suzuki K. Poulose" <Suzuki.Poulose@arm.com>,
-        Jeff Layton <jlayton@poochiereds.net>
-Cc: Anna Schumaker <anna.schumaker@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        "David S. Miller" <davem@davemloft.net>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        Marc Zyngier <Marc.Zyngier@arm.com>
-Date: Fri, 18 Sep 2015 12:51:35 -0400
-In-Reply-To: <55FBF32C.7030107@arm.com>
-References: <1442394280-24280-1-git-send-email-suzuki.poulose@arm.com>
-		<1442396149-24775-1-git-send-email-suzuki.poulose@arm.com>
-	 <20150916071730.052af53d@tlielax.poochiereds.net>
-	 <55FBF32C.7030107@arm.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from fieldses.org ([173.255.197.46]:59090 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751613AbbIRR6m (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 18 Sep 2015 13:58:42 -0400
+Date: Fri, 18 Sep 2015 13:58:40 -0400
+To: Andreas Gruenbacher <agruenba@redhat.com>
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-api@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-security-module@vger.kernel.org
+Subject: Re: [RFC v7 14/41] richacl: Create-time inheritance
+Message-ID: <20150918175840.GA21506@fieldses.org>
+References: <1441448856-13478-1-git-send-email-agruenba@redhat.com>
+ <1441448856-13478-15-git-send-email-agruenba@redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1441448856-13478-15-git-send-email-agruenba@redhat.com>
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2015-09-18 at 12:19 +0100, Suzuki K. Poulose wrote:
-> On 16/09/15 12:17, Jeff Layton wrote:
-> > On Wed, 16 Sep 2015 10:35:49 +0100
-> > "Suzuki K. Poulose" <suzuki.poulose@arm.com> wrote:
-> > 
-> > > From: "Suzuki K. Poulose" <suzuki.poulose@arm.com>
-> > > 
+On Sat, Sep 05, 2015 at 12:27:09PM +0200, Andreas Gruenbacher wrote:
+> When a new file is created, it can inherit an acl from its parent
+> directory; this is similar to how default acls work in POSIX (draft)
+> ACLs.
 > 
-> ...
+> As with POSIX ACLs, if a file inherits an acl from its parent directory,
+> the intersection between the create mode and the permissions granted by
+> the inherited acl determines the file masks and file permission bits,
+> and the umask is ignored.
 > 
-> > > +		write_unlock_bh(&sk->sk_callback_lock);
-> > > +		return;
-> > > +	}
-> > > +	sock = transport->sock;
-> > > +
-> > >   	transport->inet = NULL;
-> > >   	transport->sock = NULL;
-> > > 
-> > > @@ -833,6 +838,10 @@ static void xs_reset_transport(struct
-> > > sock_xprt *transport)
-> > >   	xs_restore_old_callbacks(transport, sk);
-> > >   	xprt_clear_connected(xprt);
-> > >   	write_unlock_bh(&sk->sk_callback_lock);
-> > > +
-> > > +	if (sock)
-> > > +		kernel_sock_shutdown(sock, SHUT_RDWR);
-> > > +
-> > >   	xs_sock_reset_connection_flags(xprt);
-> > > 
-> > >   	trace_rpc_socket_close(xprt, sock);
-> > 
-> > Better, but now I'm wondering...is it problematic to restore the
-> > old
-> > callbacks before calling kernel_sock_shutdown? I can't quite tell
-> > whether it matters in all cases.
-> > 
-> > It might be best to just go ahead and take the spinlock twice here.
-> > Do
-> > it once to clear the transport->sock pointer, call
-> > kernel_sock_shutdown, and then take it again to restore the old
-> > callbacks, etc.
-> > 
-> > I don't know though...I get the feeling there are races all over
-> > the
-> > place in this code. It seems like there's a similar one wrt to the
-> > transport->inet pointer. It seems a little silly that we clear it
-> > under
-> > the sk->sk_callback_lock. You have to dereference that pointer
-> > in order to get to the lock.
-> > 
-> > Maybe the right solution is to use an xchg to swap the inet pointer
-> > with NULL so it can act as a gatekeeper. Whoever gets there first
-> > does
-> > the rest of the shutdown.
-> > 
-> > Something like this maybe? Would this also fix the original
-> > problem?
-> > Note that this patch is untested...
-> > 
-> > [PATCH] sunrpc: use xchg to fetch and clear the transport->inet
-> > pointer in xs_reset_transport
-> > 
-> > Reported-by: "Suzuki K. Poulose" <Suzuki.Poulose@arm.com>
-> > Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
-> > ---
-> >   net/sunrpc/xprtsock.c | 4 ++--
-> >   1 file changed, 2 insertions(+), 2 deletions(-)
-> > 
-> > diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-> > index 7be90bc1a7c2..57f79dcab493 100644
-> > --- a/net/sunrpc/xprtsock.c
-> > +++ b/net/sunrpc/xprtsock.c
-> > @@ -813,9 +813,10 @@ static void xs_error_report(struct sock *sk)
-> >   static void xs_reset_transport(struct sock_xprt *transport)
-> >   {
-> >   	struct socket *sock = transport->sock;
-> > -	struct sock *sk = transport->inet;
-> > +	struct sock *sk;
-> >   	struct rpc_xprt *xprt = &transport->xprt;
-> > 
-> > +	sk = xchg(&transport->inet, NULL);
-> >   	if (sk == NULL)
-> >   		return;
-> > 
-> > @@ -825,7 +826,6 @@ static void xs_reset_transport(struct sock_xprt
-> > *transport)
-> >   	kernel_sock_shutdown(sock, SHUT_RDWR);
-> > 
-> >   	write_lock_bh(&sk->sk_callback_lock);
-> > -	transport->inet = NULL;
-> >   	transport->sock = NULL;
-> > 
-> >   	sk->sk_user_data = NULL;
-> > 
+> Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
+> ---
+>  fs/richacl_base.c       | 69 +++++++++++++++++++++++++++++++++++++++++++++++++
+>  fs/richacl_inode.c      | 65 ++++++++++++++++++++++++++++++++++++++++++++++
+>  include/linux/richacl.h |  2 ++
+>  3 files changed, 136 insertions(+)
 > 
+> diff --git a/fs/richacl_base.c b/fs/richacl_base.c
+> index 106e988..fda407d 100644
+> --- a/fs/richacl_base.c
+> +++ b/fs/richacl_base.c
+> @@ -483,3 +483,72 @@ richacl_equiv_mode(const struct richacl *acl, mode_t *mode_p)
+>  	return 0;
+>  }
+>  EXPORT_SYMBOL_GPL(richacl_equiv_mode);
+> +
+> +/**
+> + * richacl_inherit  -  compute the inherited acl of a new file
+> + * @dir_acl:	acl of the containing directory
+> + * @isdir:	inherit by a directory or non-directory?
+> + *
+> + * A directory can have acl entries which files and/or directories created
+> + * inside the directory will inherit.  This function computes the acl for such
+> + * a new file.  If there is no inheritable acl, it will return %NULL.
+> + */
+> +struct richacl *
+> +richacl_inherit(const struct richacl *dir_acl, int isdir)
+> +{
+> +	const struct richace *dir_ace;
+> +	struct richacl *acl = NULL;
+> +	struct richace *ace;
+> +	int count = 0;
+> +
+> +	if (isdir) {
+> +		richacl_for_each_entry(dir_ace, dir_acl) {
+> +			if (!richace_is_inheritable(dir_ace))
+> +				continue;
+> +			count++;
+> +		}
+> +		if (!count)
+> +			return NULL;
+> +		acl = richacl_alloc(count, GFP_KERNEL);
+> +		if (!acl)
+> +			return ERR_PTR(-ENOMEM);
+> +		ace = acl->a_entries;
+> +		richacl_for_each_entry(dir_ace, dir_acl) {
+> +			if (!richace_is_inheritable(dir_ace))
+> +				continue;
+> +			richace_copy(ace, dir_ace);
+> +			if (dir_ace->e_flags & RICHACE_NO_PROPAGATE_INHERIT_ACE)
+> +				ace->e_flags &= ~RICHACE_INHERITANCE_FLAGS;
+> +			else if ((dir_ace->e_flags & RICHACE_FILE_INHERIT_ACE) &&
+> +				 !(dir_ace->e_flags & RICHACE_DIRECTORY_INHERIT_ACE))
+
+The FILE_INHERIT_ACE check there is redundant since we already know
+dir_ace is inheritable.
+
+(So, OK, it isn't wrong to check it again but let's not make this
+condition any more complicated than necessary.)
+
+> +				ace->e_flags |= RICHACE_INHERIT_ONLY_ACE;
+> +			ace++;
+> +		}
+> +	} else {
+> +		richacl_for_each_entry(dir_ace, dir_acl) {
+> +			if (!(dir_ace->e_flags & RICHACE_FILE_INHERIT_ACE))
+> +				continue;
+> +			count++;
+> +		}
+> +		if (!count)
+> +			return NULL;
+> +		acl = richacl_alloc(count, GFP_KERNEL);
+> +		if (!acl)
+> +			return ERR_PTR(-ENOMEM);
+> +		ace = acl->a_entries;
+> +		richacl_for_each_entry(dir_ace, dir_acl) {
+> +			if (!(dir_ace->e_flags & RICHACE_FILE_INHERIT_ACE))
+> +				continue;
+> +			richace_copy(ace, dir_ace);
+> +			ace->e_flags &= ~RICHACE_INHERITANCE_FLAGS;
+> +			/*
+> +			 * RICHACE_DELETE_CHILD is meaningless for
+> +			 * non-directories, so clear it.
+> +			 */
+> +			ace->e_mask &= ~RICHACE_DELETE_CHILD;
+> +			ace++;
+> +		}
+> +	}
+> +
+> +	return acl;
+> +}
+> diff --git a/fs/richacl_inode.c b/fs/richacl_inode.c
+> index dc2a69f..f3f1f84 100644
+> --- a/fs/richacl_inode.c
+> +++ b/fs/richacl_inode.c
+> @@ -220,3 +220,68 @@ out:
+>  	return denied ? -EACCES : 0;
+>  }
+>  EXPORT_SYMBOL_GPL(richacl_permission);
+> +
+> +/**
+> + * richacl_inherit_inode  -  compute inherited acl and file mode
+> + * @dir_acl:	acl of the containing directory
+> + * @inode:	inode of the new file (create mode in i_mode)
+> + *
+> + * The file permission bits in inode->i_mode must be set to the create mode by
+> + * the caller.
+> + *
+> + * If there is an inheritable acl, the maximum permissions that the acl grants
+> + * will be computed and permissions not granted by the acl will be removed from
+> + * inode->i_mode.  If there is no inheritable acl, the umask will be applied
+> + * instead.
+> + */
+> +static struct richacl *
+> +richacl_inherit_inode(const struct richacl *dir_acl, struct inode *inode)
+> +{
+> +	struct richacl *acl;
+> +	mode_t mask;
+> +
+> +	acl = richacl_inherit(dir_acl, S_ISDIR(inode->i_mode));
+> +	if (acl) {
+> +		mask = inode->i_mode;
+> +		if (richacl_equiv_mode(acl, &mask) == 0) {
+> +			richacl_put(acl);
+> +			acl = NULL;
+
+Why is it correct to ignore entirely the inherited acl in this case?
+
+Oh, I see, I'm forgetting that richacl_equiv_mode is setting the mask,
+which will get applied at the end of this function.  In my defense,
+maybe it's easy to overlook a side effect in an if condition.... But I
+don't have a better idea.  OK.
+
+So, nits aside:
+
+	Reviewed-by: J. Bruce Fields <bfields@redhat.com>
+
+--b.
+
+> +		} else {
+> +			richacl_compute_max_masks(acl);
+> +			/*
+> +			 * Ensure that the acl will not grant any permissions
+> +			 * beyond the create mode.
+> +			 */
+> +			acl->a_flags |= RICHACL_MASKED;
+> +			acl->a_owner_mask &=
+> +				richacl_mode_to_mask(inode->i_mode >> 6);
+> +			acl->a_group_mask &=
+> +				richacl_mode_to_mask(inode->i_mode >> 3);
+> +			acl->a_other_mask &=
+> +				richacl_mode_to_mask(inode->i_mode);
+> +			mask = ~S_IRWXUGO | richacl_masks_to_mode(acl);
+> +		}
+> +	} else
+> +		mask = ~current_umask();
+> +
+> +	inode->i_mode &= mask;
+> +	return acl;
+> +}
+> +
+> +struct richacl *richacl_create(struct inode *inode, struct inode *dir)
+> +{
+> +	struct richacl *dir_acl, *acl = NULL;
+> +
+> +	if (S_ISLNK(inode->i_mode))
+> +		return NULL;
+> +	dir_acl = get_richacl(dir);
+> +	if (dir_acl) {
+> +		if (IS_ERR(dir_acl))
+> +			return dir_acl;
+> +		acl = richacl_inherit_inode(dir_acl, inode);
+> +		richacl_put(dir_acl);
+> +	} else
+> +		inode->i_mode &= ~current_umask();
+> +	return acl;
+> +}
+> +EXPORT_SYMBOL_GPL(richacl_create);
+> diff --git a/include/linux/richacl.h b/include/linux/richacl.h
+> index 6535ce5..9bf95c2 100644
+> --- a/include/linux/richacl.h
+> +++ b/include/linux/richacl.h
+> @@ -305,8 +305,10 @@ extern unsigned int richacl_want_to_mask(unsigned int);
+>  extern void richacl_compute_max_masks(struct richacl *);
+>  extern struct richacl *richacl_chmod(struct richacl *, mode_t);
+>  extern int richacl_equiv_mode(const struct richacl *, mode_t *);
+> +extern struct richacl *richacl_inherit(const struct richacl *, int);
+>  
+>  /* richacl_inode.c */
+>  extern int richacl_permission(struct inode *, const struct richacl *, int);
+> +extern struct richacl *richacl_create(struct inode *, struct inode *);
+>  
+>  #endif /* __RICHACL_H */
+> -- 
+> 2.4.3
 > 
-> This one seemed to fix it, so if it matters :
-> 
-> Tested-by: Suzuki K. Poulose <suzuki.poulose@arm.com>
-
-
-I don't think it does. It addresses a symptom, but the actual problem
-is that we're running 2 parallel close() calls on the same socket
-during a shutdown. That must not happen because it means we have
-something else trying to use the socket while it is being freed.
-
-I think what is happening is that we're triggering the socket autoclose
-mechanism from the state change callback. You're seeing the problem
-more frequently because we added the call to kernel_sock_shutdown() as
-part of the socket shutdown, but AFAICS, it could still be triggered
-from some external event such as a server-initiated shutdown that
-happened at the same time.
-In fact, looking at the code, it could even be triggered from the data
-receive side of things.
-Both of these things are bad, because autoclose puts the transport
-struct that is being freed onto a workqueue. That again can lead to a
-really bad use-after-free situation if the timing is just a little
-different.
-
-So how about the following patch? It should apply cleanly on top of the
-first one (which is still needed, btw).
-
-8<--------------------------------------------------------------------
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
