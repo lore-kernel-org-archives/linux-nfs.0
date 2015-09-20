@@ -1,121 +1,155 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from [193.47.165.129] ([193.47.165.129]:44458 "EHLO mellanox.co.il"
-	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1754363AbbITJxP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 20 Sep 2015 05:53:15 -0400
-From: Sagi Grimberg <sagig@mellanox.com>
-To: Doug Ledford <dledford@redhat.com>
-Cc: linux-rdma@vger.kernel.org, Chuck Lever <chuck.lever@oracle.com>,
-        Eli Cohen <eli@mellanox.com>, linux-nfs <linux-nfs@vger.kernel.org>
-Subject: [PATCH rdma-rc 1/4] xprtrdma: Remove ib_get_dma_mr calls
-Date: Sun, 20 Sep 2015 12:52:44 +0300
-Message-Id: <1442742767-8755-2-git-send-email-sagig@mellanox.com>
-In-Reply-To: <1442742767-8755-1-git-send-email-sagig@mellanox.com>
-References: <1442742767-8755-1-git-send-email-sagig@mellanox.com>
+Received: from mail-pa0-f45.google.com ([209.85.220.45]:33878 "EHLO
+	mail-pa0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753969AbbITJ4z (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 20 Sep 2015 05:56:55 -0400
+Received: by padhy16 with SMTP id hy16so89605151pad.1
+        for <linux-nfs@vger.kernel.org>; Sun, 20 Sep 2015 02:56:54 -0700 (PDT)
+Subject: Re: [PATCH] nfs: Fix open state losing after delegation return
+To: Neil Brown <neilb@suse.de>,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+References: <55FA8D22.2010003@gmail.com>
+ <87fv294r5u.fsf@notabene.neil.brown.name>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        kinglongmee@gmail.com
+From: Kinglong Mee <kinglongmee@gmail.com>
+Message-ID: <55FE82D9.4040305@gmail.com>
+Date: Sun, 20 Sep 2015 17:56:41 +0800
+MIME-Version: 1.0
+In-Reply-To: <87fv294r5u.fsf@notabene.neil.brown.name>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-since commit 96249d70dd70 ("IB/core:
-Guarantee that a local_dma_lkey is available") The PD now
-has a local_dma_lkey member which completely replaces
-ib_get_dma_mr, use it instead.
+On 9/20/2015 13:05, Neil Brown wrote:
+> Kinglong Mee <kinglongmee@gmail.com> writes:
+> 
+>> After delegation return caused by setting file mode, 
+>> client lost the open state,  DESTROY_CLIENTID will 
+>> get error NFS4ERR_CLIENTID_BUSY from server.
+>>
+>> The delegation_type passed to nfs4_open_recover_helper
+>> with NFS4_OPEN_CLAIM_DELEG_CUR_FH is never set.
+>>
+>> Reproduce steps,
+>> # mount -t nfs nfs-server:/ /mnt/
 
-In FRWR memreg mode, we assumed that the device local_dma_lkey
-is available.
+Missing a step, 
+# touch /mnt/test1 /mnt/test2
 
-Signed-off-by: Sagi Grimberg <sagig@mellanox.com>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
----
- net/sunrpc/xprtrdma/fmr_ops.c      | 19 -------------------
- net/sunrpc/xprtrdma/frwr_ops.c     |  5 -----
- net/sunrpc/xprtrdma/physical_ops.c |  8 --------
- net/sunrpc/xprtrdma/verbs.c        |  1 +
- 4 files changed, 1 insertion(+), 32 deletions(-)
+>> # ./delegation_test /mnt/
+>> # umount /mnt    <--- costs 10 seconds
+>>
+>> The delegation_test.c is,
+>> #include <stdio.h>
+>> #include <stdlib.h>
+>> #include <sys/types.h>
+>> #include <unistd.h>
+>> #include <sys/stat.h>
+>> #include <fcntl.h>
+>> #include <error.h>
+>>
+>> int main(int argc, char **argv)
+>> {
+>>         int fd1, fd2;
+>>         char fname1[1024], fname2[1024];
+>>         struct stat sb;
+>>
+>>         if (argc < 2)
+>>                 return -1;
+>>
+>>         sprintf(fname1, "%s/test1", argv[1]);
+>>         sprintf(fname2, "%s/test2", argv[1]);
+>>
+>>         fd1 = open(fname1, O_RDONLY);
+>>         fd2 = open(fname2, O_RDONLY);
+>>
+>>         fstat(fd1, &sb);
+>>         fchmod(fd1, sb.st_mode + 1);
+>>
+>>         close(fd1);
+>>         close(fd2);
+>>
+>>         return 0;
+>> }
+>>
+>> Fixes: 39f897fdbd ("NFSv4: When returning a delegation, don't reclaim an incompatible open mode.")
+>> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+>> ---
+>>  fs/nfs/nfs4proc.c | 3 +--
+>>  1 file changed, 1 insertion(+), 2 deletions(-)
+>>
+>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+>> index 693b903..472a52f 100644
+>> --- a/fs/nfs/nfs4proc.c
+>> +++ b/fs/nfs/nfs4proc.c
+>> @@ -1576,8 +1576,7 @@ static int nfs4_open_recover_helper(struct nfs4_opendata *opendata, fmode_t fmod
+>>  	struct nfs4_state *newstate;
+>>  	int ret;
+>>  
+>> -	if ((opendata->o_arg.claim == NFS4_OPEN_CLAIM_DELEGATE_CUR ||
+>> -	     opendata->o_arg.claim == NFS4_OPEN_CLAIM_DELEG_CUR_FH) &&
+>> +	if (opendata->o_arg.claim == NFS4_OPEN_CLAIM_DELEGATE_CUR &&
+>>  	    (opendata->o_arg.u.delegation_type & fmode) != fmode)
+>>  		/* This mode can't have been delegated, so we must have
+>>  		 * a valid open_stateid to cover it - not need to reclaim.
+>> -- 
+>> 2.5.0
+> 
+> This patches doesn't look right to me.  It isn't at all clear why the
+> change given addresses the symptoms described.
 
-diff --git a/net/sunrpc/xprtrdma/fmr_ops.c b/net/sunrpc/xprtrdma/fmr_ops.c
-index cb25c89da623..f1e8dafbd507 100644
---- a/net/sunrpc/xprtrdma/fmr_ops.c
-+++ b/net/sunrpc/xprtrdma/fmr_ops.c
-@@ -39,25 +39,6 @@ static int
- fmr_op_open(struct rpcrdma_ia *ia, struct rpcrdma_ep *ep,
- 	    struct rpcrdma_create_data_internal *cdata)
- {
--	struct ib_device_attr *devattr = &ia->ri_devattr;
--	struct ib_mr *mr;
--
--	/* Obtain an lkey to use for the regbufs, which are
--	 * protected from remote access.
--	 */
--	if (devattr->device_cap_flags & IB_DEVICE_LOCAL_DMA_LKEY) {
--		ia->ri_dma_lkey = ia->ri_device->local_dma_lkey;
--	} else {
--		mr = ib_get_dma_mr(ia->ri_pd, IB_ACCESS_LOCAL_WRITE);
--		if (IS_ERR(mr)) {
--			pr_err("%s: ib_get_dma_mr for failed with %lX\n",
--			       __func__, PTR_ERR(mr));
--			return -ENOMEM;
--		}
--		ia->ri_dma_lkey = ia->ri_dma_mr->lkey;
--		ia->ri_dma_mr = mr;
--	}
--
- 	return 0;
- }
- 
-diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
-index d6653f5d0830..5318951b3b53 100644
---- a/net/sunrpc/xprtrdma/frwr_ops.c
-+++ b/net/sunrpc/xprtrdma/frwr_ops.c
-@@ -189,11 +189,6 @@ frwr_op_open(struct rpcrdma_ia *ia, struct rpcrdma_ep *ep,
- 	struct ib_device_attr *devattr = &ia->ri_devattr;
- 	int depth, delta;
- 
--	/* Obtain an lkey to use for the regbufs, which are
--	 * protected from remote access.
--	 */
--	ia->ri_dma_lkey = ia->ri_device->local_dma_lkey;
--
- 	ia->ri_max_frmr_depth =
- 			min_t(unsigned int, RPCRDMA_MAX_DATA_SEGS,
- 			      devattr->max_fast_reg_page_list_len);
-diff --git a/net/sunrpc/xprtrdma/physical_ops.c b/net/sunrpc/xprtrdma/physical_ops.c
-index 72cf8b15bbb4..5feb63afdb03 100644
---- a/net/sunrpc/xprtrdma/physical_ops.c
-+++ b/net/sunrpc/xprtrdma/physical_ops.c
-@@ -23,7 +23,6 @@ static int
- physical_op_open(struct rpcrdma_ia *ia, struct rpcrdma_ep *ep,
- 		 struct rpcrdma_create_data_internal *cdata)
- {
--	struct ib_device_attr *devattr = &ia->ri_devattr;
- 	struct ib_mr *mr;
- 
- 	/* Obtain an rkey to use for RPC data payloads.
-@@ -39,13 +38,6 @@ physical_op_open(struct rpcrdma_ia *ia, struct rpcrdma_ep *ep,
- 	}
- 	ia->ri_dma_mr = mr;
- 
--	/* Obtain an lkey to use for regbufs.
--	 */
--	if (devattr->device_cap_flags & IB_DEVICE_LOCAL_DMA_LKEY)
--		ia->ri_dma_lkey = ia->ri_device->local_dma_lkey;
--	else
--		ia->ri_dma_lkey = ia->ri_dma_mr->lkey;
--
- 	return 0;
- }
- 
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 682996779970..4f405bcad39a 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -640,6 +640,7 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
- 	ep->rep_attr.qp_context = ep;
- 	ep->rep_attr.srq = NULL;
- 	ep->rep_attr.cap.max_send_wr = cdata->max_requests;
-+	ia->ri_dma_lkey = ia->ri_pd->local_dma_lkey;
- 	rc = ia->ri_ops->ro_open(ia, ep, cdata);
- 	if (rc)
- 		return rc;
--- 
-1.8.4.3
+There are three places calling nfs4_open_recover(), those open_claim_type
+are, NFS4_OPEN_CLAIM_PREVIOUS, NFS4_OPEN_CLAIM_DELEG_CUR_FH and 
+NFS4_OPEN_CLAIM_FH.
 
+Only set delegation_type with NFS4_OPEN_CLAIM_PREVIOUS.
+
+So the checking seems wrong here.
+
+> 
+> However looking back at my patch (39f897fdbd) it looks really wrong and
+> I cannot imagine how I missed the problem when I submitted it.
+> 
+> nfs4_open_recover assumes that if nfs4_open_recover_helper returns zero,
+> the 'newstate' has been given a value and if that doesn't match 'state'
+> it returns -ESTALE.
+> 
+> However with my patch, nfs4_open_recovery_helper can return zero and
+> leave 'newstate' uniitialised.  I cannot even see how that passed
+> testing :-(
+
+Yes, it's strange.
+But it does not affect the problem I reported.
+You can send it as a separate patch.
+
+> 
+> You could maybe fix with
+> 
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index 693b903b48bd..6899197ff1c3 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -1604,7 +1604,7 @@ static int nfs4_open_recover_helper(struct nfs4_opendata *opendata, fmode_t fmod
+>  
+>  static int nfs4_open_recover(struct nfs4_opendata *opendata, struct nfs4_state *state)
+>  {
+> -	struct nfs4_state *newstate;
+> +	struct nfs4_state *newstate = state;
+>  	int ret;
+>  
+>  	/* Don't trigger recovery in nfs_test_and_clear_all_open_stateid */
+> 
+> but I'm not at all sure I like that.  I'll try to find time to look at
+> the code properly and make a more concrete proposal - and to test with
+> your test case too.  However you didn't give details on the mount: I
+> assume it was a 4.1 mount?  Was it against the Linux nfs server or
+> something else?
+
+My default nfs mount is 4.2, 
+nfs-server:/ /mnt nfs4 rw,seclabel,relatime,vers=4.2,rsize=262144,wsize=262144,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=sys,clientaddr=192.168.8.128,local_lock=none,addr=192.168.8.128 0 0
+
+The nfs server is a linux with latest kernel 4.3.0-rc1.
+
+thanks,
+Kinglong Mee
