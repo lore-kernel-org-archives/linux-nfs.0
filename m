@@ -1,116 +1,148 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:25476 "EHLO
+Received: from userp1040.oracle.com ([156.151.31.81]:28459 "EHLO
 	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932105AbbIUWeL convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Sep 2015 18:34:11 -0400
+	with ESMTP id S932736AbbIUWm3 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Sep 2015 18:42:29 -0400
 Content-Type: text/plain; charset=utf-8
 Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2104\))
-Subject: Re: [PATCH v1 15/18] svcrdma: Add svc_rdma_get_context() API that is allowed to fail
+Subject: Re: [PATCH v1 08/18] xprtrdma: Pre-allocate Work Requests for backchannel
 From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <55FEA951.8000106@dev.mellanox.co.il>
-Date: Mon, 21 Sep 2015 15:34:07 -0700
+In-Reply-To: <CANjDDBgD02fG4gLW53XnAaVHk7-6qzRwvjZb=TkZrLBGXSO7Nw@mail.gmail.com>
+Date: Mon, 21 Sep 2015 15:41:55 -0700
 Cc: linux-rdma@vger.kernel.org,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <958B9B71-C068-4ED2-8928-E93BCC537102@oracle.com>
-References: <20150917202829.19671.90044.stgit@manet.1015granger.net> <20150917204614.19671.61606.stgit@manet.1015granger.net> <55FEA951.8000106@dev.mellanox.co.il>
-To: Sagi Grimberg <sagig@dev.mellanox.co.il>
+Message-Id: <99C6B545-1F74-44F7-893A-9FA4F91F1FB1@oracle.com>
+References: <20150917202829.19671.90044.stgit@manet.1015granger.net> <20150917204516.19671.34390.stgit@manet.1015granger.net> <CANjDDBgD02fG4gLW53XnAaVHk7-6qzRwvjZb=TkZrLBGXSO7Nw@mail.gmail.com>
+To: Devesh Sharma <devesh.sharma@avagotech.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-> On Sep 20, 2015, at 5:40 AM, Sagi Grimberg <sagig@dev.mellanox.co.il> wrote:
+> On Sep 21, 2015, at 3:33 AM, Devesh Sharma <devesh.sharma@avagotech.com> wrote:
 > 
-> On 9/17/2015 11:46 PM, Chuck Lever wrote:
->> To support backward direction calls, I'm going to add an
->> svc_rdma_get_context() call in the client RDMA transport.
+> On Fri, Sep 18, 2015 at 2:15 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>> Pre-allocate extra send and receive Work Requests needed to handle
+>> backchannel receives and sends.
 >> 
->> Called from ->buf_alloc(), we can't sleep waiting for memory.
->> So add an API that can get a server op_ctxt but won't sleep.
+>> The transport doesn't know how many extra WRs to pre-allocate until
+>> the xprt_setup_backchannel() call, but that's long after the WRs are
+>> allocated during forechannel setup.
+>> 
+>> So, use a fixed value for now.
 >> 
 >> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 >> ---
->>  include/linux/sunrpc/svc_rdma.h          |    2 ++
->>  net/sunrpc/xprtrdma/svc_rdma_transport.c |   28 +++++++++++++++++++++++-----
->>  2 files changed, 25 insertions(+), 5 deletions(-)
+>> net/sunrpc/xprtrdma/backchannel.c |    4 ++++
+>> net/sunrpc/xprtrdma/verbs.c       |   14 ++++++++++++--
+>> net/sunrpc/xprtrdma/xprt_rdma.h   |   10 ++++++++++
+>> 3 files changed, 26 insertions(+), 2 deletions(-)
 >> 
->> diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
->> index 6ce7495..2500dd1 100644
->> --- a/include/linux/sunrpc/svc_rdma.h
->> +++ b/include/linux/sunrpc/svc_rdma.h
->> @@ -224,6 +224,8 @@ extern void svc_rdma_send_error(struct svcxprt_rdma *, struct rpcrdma_msg *,
->>  extern int svc_rdma_post_recv(struct svcxprt_rdma *);
->>  extern int svc_rdma_create_listen(struct svc_serv *, int, struct sockaddr *);
->>  extern struct svc_rdma_op_ctxt *svc_rdma_get_context(struct svcxprt_rdma *);
->> +extern struct svc_rdma_op_ctxt *svc_rdma_get_context_gfp(struct svcxprt_rdma *,
->> +							 gfp_t);
->>  extern void svc_rdma_put_context(struct svc_rdma_op_ctxt *, int);
->>  extern void svc_rdma_unmap_dma(struct svc_rdma_op_ctxt *ctxt);
->>  extern struct svc_rdma_req_map *svc_rdma_get_req_map(void);
->> diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
->> index 23aba30..c4083a3 100644
->> --- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
->> +++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
->> @@ -153,17 +153,35 @@ static void svc_rdma_bc_free(struct svc_xprt *xprt)
->>  }
->>  #endif	/* CONFIG_SUNRPC_BACKCHANNEL */
+>> diff --git a/net/sunrpc/xprtrdma/backchannel.c b/net/sunrpc/xprtrdma/backchannel.c
+>> index c0a42ad..f5c7122 100644
+>> --- a/net/sunrpc/xprtrdma/backchannel.c
+>> +++ b/net/sunrpc/xprtrdma/backchannel.c
+>> @@ -123,6 +123,9 @@ int xprt_rdma_bc_setup(struct rpc_xprt *xprt, unsigned int reqs)
+>>         * Twice as many rpc_rqsts are prepared to ensure there is
+>>         * always an rpc_rqst available as soon as a reply is sent.
+>>         */
+>> +       if (reqs > RPCRDMA_BACKWARD_WRS >> 1)
+>> +               goto out_err;
+>> +
+>>        for (i = 0; i < (reqs << 1); i++) {
+>>                rqst = kzalloc(sizeof(*rqst), GFP_KERNEL);
+>>                if (!rqst) {
+>> @@ -159,6 +162,7 @@ int xprt_rdma_bc_setup(struct rpc_xprt *xprt, unsigned int reqs)
+>> out_free:
+>>        xprt_rdma_bc_destroy(xprt, reqs);
 >> 
->> -struct svc_rdma_op_ctxt *svc_rdma_get_context(struct svcxprt_rdma *xprt)
->> +static void svc_rdma_init_context(struct svcxprt_rdma *xprt,
->> +				  struct svc_rdma_op_ctxt *ctxt)
->>  {
->> -	struct svc_rdma_op_ctxt *ctxt;
->> -
->> -	ctxt = kmem_cache_alloc(svc_rdma_ctxt_cachep,
->> -				GFP_KERNEL | __GFP_NOFAIL);
->>  	ctxt->xprt = xprt;
->>  	INIT_LIST_HEAD(&ctxt->dto_q);
->>  	ctxt->count = 0;
->>  	ctxt->frmr = NULL;
->>  	atomic_inc(&xprt->sc_ctxt_used);
->> +}
+>> +out_err:
+>>        pr_err("RPC:       %s: setup backchannel transport failed\n", __func__);
+>>        return -ENOMEM;
+>> }
+>> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+>> index 1e4a948..133c720 100644
+>> --- a/net/sunrpc/xprtrdma/verbs.c
+>> +++ b/net/sunrpc/xprtrdma/verbs.c
+>> @@ -614,6 +614,7 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
+>>        struct ib_device_attr *devattr = &ia->ri_devattr;
+>>        struct ib_cq *sendcq, *recvcq;
+>>        struct ib_cq_init_attr cq_attr = {};
+>> +       unsigned int max_qp_wr;
+>>        int rc, err;
+>> 
+>>        if (devattr->max_sge < RPCRDMA_MAX_IOVS) {
+>> @@ -622,18 +623,27 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
+>>                return -ENOMEM;
+>>        }
+>> 
+>> +       if (devattr->max_qp_wr <= RPCRDMA_BACKWARD_WRS) {
+>> +               dprintk("RPC:       %s: insufficient wqe's available\n",
+>> +                       __func__);
+>> +               return -ENOMEM;
+>> +       }
+>> +       max_qp_wr = devattr->max_qp_wr - RPCRDMA_BACKWARD_WRS;
 >> +
->> +struct svc_rdma_op_ctxt *svc_rdma_get_context_gfp(struct svcxprt_rdma *xprt,
->> +						  gfp_t flags)
->> +{
->> +	struct svc_rdma_op_ctxt *ctxt;
->> +
->> +	ctxt = kmem_cache_alloc(svc_rdma_ctxt_cachep, flags);
->> +	if (!ctxt)
->> +		return NULL;
->> +	svc_rdma_init_context(xprt, ctxt);
->> +	return ctxt;
->> +}
->> +
->> +struct svc_rdma_op_ctxt *svc_rdma_get_context(struct svcxprt_rdma *xprt)
->> +{
+>>        /* check provider's send/recv wr limits */
+>> -       if (cdata->max_requests > devattr->max_qp_wr)
+>> -               cdata->max_requests = devattr->max_qp_wr;
+>> +       if (cdata->max_requests > max_qp_wr)
+>> +               cdata->max_requests = max_qp_wr;
 > 
-> Why not:
->       return svc_rdma_get_context_gfp(xprt, GFP_KERNEL | __GFP_NOFAIL);
+> should we
+> cdata->max_request = max_qp_wr - RPCRDMA_BACKWARD_WRS?
 
-The “if (!ctxt) return NULL;” is unneeded if __GFP_NOFAIL is
-specified.
-
-I’ll wait for additional comments on this one, I could go
-either way.
+cdata->max_request is an input parameter to rpcrdma_ep_create().
+We can’t simply overwrite it here with a new larger value.
 
 
-> ?
+>>        ep->rep_attr.event_handler = rpcrdma_qp_async_error_upcall;
+>>        ep->rep_attr.qp_context = ep;
+>>        ep->rep_attr.srq = NULL;
+>>        ep->rep_attr.cap.max_send_wr = cdata->max_requests;
+>> +       ep->rep_attr.cap.max_send_wr += RPCRDMA_BACKWARD_WRS;
 > 
->> +	struct svc_rdma_op_ctxt *ctxt;
->> +
->> +	ctxt = kmem_cache_alloc(svc_rdma_ctxt_cachep,
->> +				GFP_KERNEL | __GFP_NOFAIL);
->> +	svc_rdma_init_context(xprt, ctxt);
->>  	return ctxt;
->>  }
+> Looks like will cause a qp-create failure if any hypothetical device
+> supports devattr->max_qp_wr = cdata->max_requests
+
+We’ve already capped cdata->max_requests at
+“devattr->max_qp_wr - RPCRDMA_BACKWARD_WRS” above. So, the logic
+should prevent that, unless I’ve made a mistake.
+
+
+>>        rc = ia->ri_ops->ro_open(ia, ep, cdata);
+>>        if (rc)
+>>                return rc;
+>>        ep->rep_attr.cap.max_recv_wr = cdata->max_requests;
+>> +       ep->rep_attr.cap.max_recv_wr += RPCRDMA_BACKWARD_WRS;
+>>        ep->rep_attr.cap.max_send_sge = RPCRDMA_MAX_IOVS;
+>>        ep->rep_attr.cap.max_recv_sge = 1;
+>>        ep->rep_attr.cap.max_inline_data = 0;
+>> diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+>> index 2ca0567..37d0d7f 100644
+>> --- a/net/sunrpc/xprtrdma/xprt_rdma.h
+>> +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+>> @@ -101,6 +101,16 @@ struct rpcrdma_ep {
+>>  */
+>> #define RPCRDMA_IGNORE_COMPLETION      (0ULL)
 >> 
+>> +/* Pre-allocate extra Work Requests for handling backward receives
+>> + * and sends. This is a fixed value because the Work Queues are
+>> + * allocated when the forward channel is set up.
+>> + */
+>> +#if defined(CONFIG_SUNRPC_BACKCHANNEL)
+>> +#define RPCRDMA_BACKWARD_WRS           (8)
+>> +#else
+>> +#define RPCRDMA_BACKWARD_WRS           (0)
+>> +#endif
+>> +
+>> /* Registered buffer -- registered kmalloc'd memory for RDMA SEND/RECV
+>>  *
+>>  * The below structure appears at the front of a large region of kmalloc'd
 >> 
 >> --
 >> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
 >> the body of a message to majordomo@vger.kernel.org
 >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->> 
-> 
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
 > the body of a message to majordomo@vger.kernel.org
