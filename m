@@ -1,73 +1,55 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-la0-f51.google.com ([209.85.215.51]:33445 "EHLO
-	mail-la0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753345AbbIUUh1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Sep 2015 16:37:27 -0400
-Received: by lamp12 with SMTP id p12so74574271lam.0
-        for <linux-nfs@vger.kernel.org>; Mon, 21 Sep 2015 13:37:26 -0700 (PDT)
+Received: from mx143.netapp.com ([216.240.21.24]:62996 "EHLO mx143.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752306AbbIUUun (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 21 Sep 2015 16:50:43 -0400
+From: <andros@netapp.com>
+To: <steved@redhat.com>
+CC: <jlayton@poochiereds.net>, <linux-nfs@vger.kernel.org>,
+        Andy Adamson <andros@netapp.com>
+Subject: [PATCH 0/4] GSSD: Do not fork when UID = 0
+Date: Mon, 21 Sep 2015 16:50:05 -0400
+Message-ID: <1442868609-1812-1-git-send-email-andros@netapp.com>
 MIME-Version: 1.0
-In-Reply-To: <20150918175840.GA21506@fieldses.org>
-References: <1441448856-13478-1-git-send-email-agruenba@redhat.com>
-	<1441448856-13478-15-git-send-email-agruenba@redhat.com>
-	<20150918175840.GA21506@fieldses.org>
-Date: Mon, 21 Sep 2015 22:37:25 +0200
-Message-ID: <CAHc6FU4kK5fj6Xgyb1vPsnsQ079EpTfkxYC6XAiT1vEQvikBrw@mail.gmail.com>
-Subject: Re: [RFC v7 14/41] richacl: Create-time inheritance
-From: Andreas Gruenbacher <agruenba@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-kernel@vger.kernel.org,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-nfs@vger.kernel.org, linux-api@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-security-module@vger.kernel.org
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-2015-09-18 19:58 GMT+02:00 J. Bruce Fields <bfields@fieldses.org>:
-> On Sat, Sep 05, 2015 at 12:27:09PM +0200, Andreas Gruenbacher wrote:
->> +                     if (dir_ace->e_flags & RICHACE_NO_PROPAGATE_INHERIT_ACE)
->> +                             ace->e_flags &= ~RICHACE_INHERITANCE_FLAGS;
->> +                     else if ((dir_ace->e_flags & RICHACE_FILE_INHERIT_ACE) &&
->> +                              !(dir_ace->e_flags & RICHACE_DIRECTORY_INHERIT_ACE))
->
-> The FILE_INHERIT_ACE check there is redundant since we already know
-> dir_ace is inheritable.
->
-> (So, OK, it isn't wrong to check it again but let's not make this
-> condition any more complicated than necessary.)
+From: Andy Adamson <andros@netapp.com>
 
-Indeed, we can turn it into:
+Jeff Layton worked on this patch set with me.
 
-        if (dir_ace->e_flags & RICHACE_NO_PROPAGATE_INHERIT_ACE)
-                ace->e_flags &= ~RICHACE_INHERITANCE_FLAGS;
-        else if (!(dir_ace->e_flags & RICHACE_DIRECTORY_INHERIT_ACE))
-                ace->e_flags |= RICHACE_INHERIT_ONLY_ACE;
+patch 0001 and 0002 clean up process_krb5_upcall() by moving the two cases into
+helper functions.
 
->> +static struct richacl *
->> +richacl_inherit_inode(const struct richacl *dir_acl, struct inode *inode)
->> +{
->> +     struct richacl *acl;
->> +     mode_t mask;
->> +
->> +     acl = richacl_inherit(dir_acl, S_ISDIR(inode->i_mode));
->> +     if (acl) {
->> +             mask = inode->i_mode;
->> +             if (richacl_equiv_mode(acl, &mask) == 0) {
->> +                     richacl_put(acl);
->> +                     acl = NULL;
->
-> Why is it correct to ignore entirely the inherited acl in this case?
->
-> Oh, I see, I'm forgetting that richacl_equiv_mode is setting the mask,
-> which will get applied at the end of this function.  In my defense,
-> maybe it's easy to overlook a side effect in an if condition.... But I
-> don't have a better idea.  OK.
+patch 0003 is the heart of this patch set.
 
-Yes. I'll leave that as it is.
+commit f9cac65972da588d5218236de60a7be11247a8aa added the fork to
+process_krb5_upcall so that the child assumes the uid of the principal
+requesting service. This is good for the reasons listed in the commit.
 
-> So, nits aside:
->
->         Reviewed-by: J. Bruce Fields <bfields@redhat.com>
+When machine credentials are used, a gssd_k5_kt_princ entry is added to
+a global list and used by future upcalls to note when valid machine credentials
+have been obtained. When a child process performs this task, the entry to the
+global list is lost upon exit, and all upcalls for machine credentials re-fetch
+a TGT, even when a valid TGT is in the machine kerberos credential cache.
 
-Thanks,
-Andreas
+Since forking is not necessary when the principal has uid=0, solve the
+gssd_k5_kt_princ_list issue by only forking when the uid != 0.
+
+Please do more testing. Comments welcome.
+
+Andy Adamson (4):
+  GSSD: move process_krb5_upcall machine cred case to helper function
+  GSSD: move process_krb5_updcall non machine cred case to helper
+    function
+  GSSD only fork when uid is not zeo
+  GSSD: clean up machine credentials
+
+ utils/gssd/gssd.c      |  10 +-
+ utils/gssd/gssd_proc.c | 244 ++++++++++++++++++++++++++++++-------------------
+ 2 files changed, 154 insertions(+), 100 deletions(-)
+
+-- 
+1.8.3.1
+
