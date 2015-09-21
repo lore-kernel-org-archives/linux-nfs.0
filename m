@@ -1,15 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.opengridcomputing.com ([72.48.136.20]:40643 "EHLO
+Received: from smtp.opengridcomputing.com ([72.48.136.20]:40649 "EHLO
 	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1756546AbbIURY3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Sep 2015 13:24:29 -0400
+	by vger.kernel.org with ESMTP id S1756546AbbIURYf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Sep 2015 13:24:35 -0400
 From: Steve Wise <swise@opengridcomputing.com>
-Subject: [PATCH 2/3] svcrdma: handle rdma read with a non-zero initial page
-	offset
+Subject: [PATCH 3/3] xprtrdma: don't log warnings for flushed completions
 To: trond.myklebust@primarydata.com, bfields@fieldses.org
 Cc: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Date: Mon, 21 Sep 2015 12:24:29 -0500
-Message-ID: <20150921172428.9761.27838.stgit@build2.ogc.int>
+Date: Mon, 21 Sep 2015 12:24:34 -0500
+Message-ID: <20150921172434.9761.97255.stgit@build2.ogc.int>
 In-Reply-To: <20150921172423.9761.92399.stgit@build2.ogc.int>
 References: <20150921172423.9761.92399.stgit@build2.ogc.int>
 MIME-Version: 1.0
@@ -17,48 +16,31 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The server rdma_read_chunk_lcl() and rdma_read_chunk_frmr() functions
-were not taking into account the initial page_offset when determining
-the rdma read length.  This resulted in a read who's starting address
-and length exceeded the base/bounds of the frmr.
+Unsignaled send WRs can get flushed as part of normal unmount, so don't
+log them as warnings.
 
-Most work loads don't tickle this bug apparently, but one test hit it
-every time: building the linux kernel on a 16 core node with 'make -j
-16 O=/mnt/0' where /mnt/0 is a ramdisk mounted via NFSRDMA.
-
-This bug seems to only be tripped with devices having small fastreg page
-list depths.  I didn't see it with mlx4, for instance.
-
-Fixes: 0bf4828983df ('svcrdma: refactor marshalling logic')
 Signed-off-by: Steve Wise <swise@opengridcomputing.com>
-Tested-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |    6 ++++--
- 1 files changed, 4 insertions(+), 2 deletions(-)
+ net/sunrpc/xprtrdma/frwr_ops.c |    7 +++++--
+ 1 files changed, 5 insertions(+), 2 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-index cb51742..5f6ca47 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-@@ -136,7 +136,8 @@ int rdma_read_chunk_lcl(struct svcxprt_rdma *xprt,
- 	ctxt->direction = DMA_FROM_DEVICE;
- 	ctxt->read_hdr = head;
- 	pages_needed = min_t(int, pages_needed, xprt->sc_max_sge_rd);
--	read = min_t(int, pages_needed << PAGE_SHIFT, rs_length);
-+	read = min_t(int, (pages_needed << PAGE_SHIFT) - *page_offset,
-+		     rs_length);
+diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
+index d6653f5..f1868ba 100644
+--- a/net/sunrpc/xprtrdma/frwr_ops.c
++++ b/net/sunrpc/xprtrdma/frwr_ops.c
+@@ -257,8 +257,11 @@ frwr_sendcompletion(struct ib_wc *wc)
  
- 	for (pno = 0; pno < pages_needed; pno++) {
- 		int len = min_t(int, rs_length, PAGE_SIZE - pg_off);
-@@ -235,7 +236,8 @@ int rdma_read_chunk_frmr(struct svcxprt_rdma *xprt,
- 	ctxt->direction = DMA_FROM_DEVICE;
- 	ctxt->frmr = frmr;
- 	pages_needed = min_t(int, pages_needed, xprt->sc_frmr_pg_list_len);
--	read = min_t(int, pages_needed << PAGE_SHIFT, rs_length);
-+	read = min_t(int, (pages_needed << PAGE_SHIFT) - *page_offset,
-+		     rs_length);
+ 	/* WARNING: Only wr_id and status are reliable at this point */
+ 	r = (struct rpcrdma_mw *)(unsigned long)wc->wr_id;
+-	pr_warn("RPC:       %s: frmr %p flushed, status %s (%d)\n",
+-		__func__, r, ib_wc_status_msg(wc->status), wc->status);
++	if (wc->status == IB_WC_WR_FLUSH_ERR)
++		dprintk("RPC:       %s: frmr %p flushed\n", __func__, r);
++	else
++		pr_warn("RPC:       %s: frmr %p error, status %s (%d)\n",
++			__func__, r, ib_wc_status_msg(wc->status), wc->status);
+ 	r->r.frmr.fr_state = FRMR_IS_STALE;
+ }
  
- 	frmr->kva = page_address(rqstp->rq_arg.pages[pg_no]);
- 	frmr->direction = DMA_FROM_DEVICE;
 
