@@ -1,235 +1,183 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:60651 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:60660 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752355AbbIUOiS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 21 Sep 2015 10:38:18 -0400
-Date: Mon, 21 Sep 2015 10:38:17 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Austin S Hemmelgarn <ahferroin7@gmail.com>
-Cc: Andreas Gruenbacher <agruenba@redhat.com>, linux-kernel@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-api@vger.kernel.org, linux-cifs@vger.kernel.org,
-        linux-security-module@vger.kernel.org
-Subject: Re: [RFC v7 13/41] richacl: Check if an acl is equivalent to a file
- mode
-Message-ID: <20150921143817.GA11256@fieldses.org>
-References: <1441448856-13478-1-git-send-email-agruenba@redhat.com>
- <1441448856-13478-14-git-send-email-agruenba@redhat.com>
- <20150917182219.GB13825@fieldses.org>
- <20150918005607.GB16699@fieldses.org>
- <56000D2B.6000705@gmail.com>
+	id S1757042AbbIUPKo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 21 Sep 2015 11:10:44 -0400
+Date: Mon, 21 Sep 2015 11:10:43 -0400
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 5/5] NFSv4: Unify synchronous and asynchronous error
+ handling
+Message-ID: <20150921151043.GB11256@fieldses.org>
+References: <1442781911-76248-1-git-send-email-trond.myklebust@primarydata.com>
+ <1442781911-76248-2-git-send-email-trond.myklebust@primarydata.com>
+ <1442781911-76248-3-git-send-email-trond.myklebust@primarydata.com>
+ <1442781911-76248-4-git-send-email-trond.myklebust@primarydata.com>
+ <1442781911-76248-5-git-send-email-trond.myklebust@primarydata.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <56000D2B.6000705@gmail.com>
+In-Reply-To: <1442781911-76248-5-git-send-email-trond.myklebust@primarydata.com>
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Sep 21, 2015 at 09:59:07AM -0400, Austin S Hemmelgarn wrote:
-> On 2015-09-17 20:56, J. Bruce Fields wrote:
-> >On Thu, Sep 17, 2015 at 02:22:19PM -0400, bfields wrote:
-> >>On Sat, Sep 05, 2015 at 12:27:08PM +0200, Andreas Gruenbacher wrote:
-> >>>ACLs are considered equivalent to file modes if they only consist of
-> >>>owner@, group@, and everyone@ entries, the owner@ permissions do not
-> >>>depend on whether the owner is a member in the owning group, and no
-> >>>inheritance flags are set.  This test is used to avoid storing richacls
-> >>>if the acl can be computed from the file permission bits.
-> >>
-> >>We're assuming here that it's OK for us to silently rearrange an ACL as
-> >>long as the result is still equivalent (in the sense that the permission
-> >>algorithm would always produce the same result).
-> >>
-> >>I guess that's OK by me, but it might violate user expectations in some
-> >>simple common cases, so may be worth mentioning in documentation
-> >>someplace if we don't already.
-> >
-> >Also your notion of mode-equivalence here is interesting, it's actually
-> >a strict subset of the ACLs that produce the same permission results as
-> >a mode.  (For example, everyone:rwx,bfields:rwx is equivalent to 0777
-> >but won't be considered mode-equivalent by this algorithm.)
-> Although it could also be equivalent to 0707, or (if bfields is the
-> group name also) 0077, or even (if bfields isn't the group or owner
-> of the file) 0007.
+On Sun, Sep 20, 2015 at 04:45:11PM -0400, Trond Myklebust wrote:
+> They now only differ in the way we handle waiting, so let's unify.
 
-I disagree.  I think you've misread my example ACL (may be my sloppy
-notation, sorry) or misunderstood the ACL evalutation algorithm.
-
-> Mode equivalence get's even trickier when you
-> throw in permissions just beyond rwx (for example, by Windows
-> standards, the usage of the execute bit on directories is weird
-> (they have a separate permission in their ACE's for directory
-> listing), or by VMS standards, write permission on a directory
-> doesn't mean that you can delete things in it (VMS actually had a
-> separate bit for the delete permission, and even had separate
-> permissions for system access)).
-
-I believe these patches handle all of those details correctly; if you
-see anything to the contrary, please do speak up.
-
-Note that Windows also has a DELETE bit, though it is ORed with the
-directory permission not ANDed (so it is sufficient for the directory to
-allow MAY_DELETE_CHILD *or* for the file to allow DELETE).
-
-(But I believe you're correct that VMS required both permissions, if
-e.g. http://www.djesys.com/vms/freevms/mentor/vms_prot.html is correct).
+Neat, yes, nice not to have that big switch duplicated....
 
 --b.
 
-> >
-> >I think the choices you've made probably make the most sense, they just
-> >wouldn't have been obvious to me.  Anyway, so, OK by me:
-> >
-> >	Reviewed-by: J. Bruce Fields <bfields@redhat.com>
-> >
-> >--b.
-> >
-> >>
-> >>--b.
-> >>
-> >>>
-> >>>Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
-> >>>---
-> >>>  fs/richacl_base.c       | 104 ++++++++++++++++++++++++++++++++++++++++++++++++
-> >>>  include/linux/richacl.h |   1 +
-> >>>  2 files changed, 105 insertions(+)
-> >>>
-> >>>diff --git a/fs/richacl_base.c b/fs/richacl_base.c
-> >>>index 3163152..106e988 100644
-> >>>--- a/fs/richacl_base.c
-> >>>+++ b/fs/richacl_base.c
-> >>>@@ -379,3 +379,107 @@ richacl_chmod(struct richacl *acl, mode_t mode)
-> >>>  	return clone;
-> >>>  }
-> >>>  EXPORT_SYMBOL_GPL(richacl_chmod);
-> >>>+
-> >>>+/**
-> >>>+ * richacl_equiv_mode  -  compute the mode equivalent of @acl
-> >>>+ *
-> >>>+ * An acl is considered equivalent to a file mode if it only consists of
-> >>>+ * owner@, group@, and everyone@ entries and the owner@ permissions do not
-> >>>+ * depend on whether the owner is a member in the owning group.
-> >>>+ */
-> >>>+int
-> >>>+richacl_equiv_mode(const struct richacl *acl, mode_t *mode_p)
-> >>>+{
-> >>>+	mode_t mode = *mode_p;
-> >>>+
-> >>>+	/*
-> >>>+	 * The RICHACE_DELETE_CHILD flag is meaningless for non-directories, so
-> >>>+	 * we ignore it.
-> >>>+	 */
-> >>>+	unsigned int x = S_ISDIR(mode) ? 0 : RICHACE_DELETE_CHILD;
-> >>>+	struct {
-> >>>+		unsigned int allowed;
-> >>>+		unsigned int defined;  /* allowed or denied */
-> >>>+	} owner = {
-> >>>+		.defined = RICHACE_POSIX_ALWAYS_ALLOWED |
-> >>>+			   RICHACE_POSIX_OWNER_ALLOWED  | x,
-> >>>+	}, group = {
-> >>>+		.defined = RICHACE_POSIX_ALWAYS_ALLOWED | x,
-> >>>+	}, everyone = {
-> >>>+		.defined = RICHACE_POSIX_ALWAYS_ALLOWED | x,
-> >>>+	};
-> >>>+	const struct richace *ace;
-> >>>+
-> >>>+	if (acl->a_flags & ~(RICHACL_WRITE_THROUGH | RICHACL_MASKED))
-> >>>+		return -1;
-> >>>+
-> >>>+	richacl_for_each_entry(ace, acl) {
-> >>>+		if (ace->e_flags & ~RICHACE_SPECIAL_WHO)
-> >>>+			return -1;
-> >>>+
-> >>>+		if (richace_is_owner(ace) || richace_is_everyone(ace)) {
-> >>>+			x = ace->e_mask & ~owner.defined;
-> >>>+			if (richace_is_allow(ace)) {
-> >>>+				unsigned int group_denied =
-> >>>+					group.defined & ~group.allowed;
-> >>>+
-> >>>+				if (x & group_denied)
-> >>>+					return -1;
-> >>>+				owner.allowed |= x;
-> >>>+			} else /* if (richace_is_deny(ace)) */ {
-> >>>+				if (x & group.allowed)
-> >>>+					return -1;
-> >>>+			}
-> >>>+			owner.defined |= x;
-> >>>+
-> >>>+			if (richace_is_everyone(ace)) {
-> >>>+				x = ace->e_mask;
-> >>>+				if (richace_is_allow(ace)) {
-> >>>+					group.allowed |=
-> >>>+						x & ~group.defined;
-> >>>+					everyone.allowed |=
-> >>>+						x & ~everyone.defined;
-> >>>+				}
-> >>>+				group.defined |= x;
-> >>>+				everyone.defined |= x;
-> >>>+			}
-> >>>+		} else if (richace_is_group(ace)) {
-> >>>+			x = ace->e_mask & ~group.defined;
-> >>>+			if (richace_is_allow(ace))
-> >>>+				group.allowed |= x;
-> >>>+			group.defined |= x;
-> >>>+		} else
-> >>>+			return -1;
-> >>>+	}
-> >>>+
-> >>>+	if (group.allowed & ~owner.defined)
-> >>>+		return -1;
-> >>>+
-> >>>+	if (acl->a_flags & RICHACL_MASKED) {
-> >>>+		if (acl->a_flags & RICHACL_WRITE_THROUGH) {
-> >>>+			owner.allowed = acl->a_owner_mask;
-> >>>+			everyone.allowed = acl->a_other_mask;
-> >>>+		} else {
-> >>>+			owner.allowed &= acl->a_owner_mask;
-> >>>+			everyone.allowed &= acl->a_other_mask;
-> >>>+		}
-> >>>+		group.allowed &= acl->a_group_mask;
-> >>>+	}
-> >>>+
-> >>>+	mode = (mode & ~S_IRWXUGO) |
-> >>>+	       (richacl_mask_to_mode(owner.allowed) << 6) |
-> >>>+	       (richacl_mask_to_mode(group.allowed) << 3) |
-> >>>+		richacl_mask_to_mode(everyone.allowed);
-> >>>+
-> >>>+	/* Mask flags we can ignore */
-> >>>+	x = S_ISDIR(mode) ? 0 : RICHACE_DELETE_CHILD;
-> >>>+
-> >>>+	if (((richacl_mode_to_mask(mode >> 6) ^ owner.allowed)    & ~x) ||
-> >>>+	    ((richacl_mode_to_mask(mode >> 3) ^ group.allowed)    & ~x) ||
-> >>>+	    ((richacl_mode_to_mask(mode)      ^ everyone.allowed) & ~x))
-> >>>+		return -1;
-> >>>+
-> >>>+	*mode_p = mode;
-> >>>+	return 0;
-> >>>+}
-> >>>+EXPORT_SYMBOL_GPL(richacl_equiv_mode);
-> >>>diff --git a/include/linux/richacl.h b/include/linux/richacl.h
-> >>>index d4a576c..6535ce5 100644
-> >>>--- a/include/linux/richacl.h
-> >>>+++ b/include/linux/richacl.h
-> >>>@@ -304,6 +304,7 @@ extern unsigned int richacl_mode_to_mask(mode_t);
-> >>>  extern unsigned int richacl_want_to_mask(unsigned int);
-> >>>  extern void richacl_compute_max_masks(struct richacl *);
-> >>>  extern struct richacl *richacl_chmod(struct richacl *, mode_t);
-> >>>+extern int richacl_equiv_mode(const struct richacl *, mode_t *);
-> >>>
-> >>>  /* richacl_inode.c */
-> >>>  extern int richacl_permission(struct inode *, const struct richacl *, int);
-> >>>--
-> >>>2.4.3
-> >>>
-> >>>--
-> >>>To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> >>>the body of a message to majordomo@vger.kernel.org
-> >>>More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> >--
-> >To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
-> >the body of a message to majordomo@vger.kernel.org
-> >More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> >Please read the FAQ at  http://www.tux.org/lkml/
-> >
 > 
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> ---
+>  fs/nfs/nfs4proc.c | 115 +++++++++++++++++++-----------------------------------
+>  1 file changed, 41 insertions(+), 74 deletions(-)
 > 
-
-
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index af3168c2b35d..18079763f5d0 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -78,7 +78,6 @@ struct nfs4_opendata;
+>  static int _nfs4_proc_open(struct nfs4_opendata *data);
+>  static int _nfs4_recover_proc_open(struct nfs4_opendata *data);
+>  static int nfs4_do_fsinfo(struct nfs_server *, struct nfs_fh *, struct nfs_fsinfo *);
+> -static int nfs4_async_handle_error(struct rpc_task *, struct nfs_server *, struct nfs4_state *, long *);
+>  static void nfs_fixup_referral_attributes(struct nfs_fattr *fattr);
+>  static int nfs4_proc_getattr(struct nfs_server *, struct nfs_fh *, struct nfs_fattr *, struct nfs4_label *label);
+>  static int _nfs4_proc_getattr(struct nfs_server *server, struct nfs_fh *fhandle, struct nfs_fattr *fattr, struct nfs4_label *label);
+> @@ -465,6 +464,47 @@ out_retry:
+>  	return ret;
+>  }
+>  
+> +static int
+> +nfs4_async_handle_error(struct rpc_task *task, struct nfs_server *server,
+> +			struct nfs4_state *state, long *timeout)
+> +{
+> +	struct nfs_client *clp = server->nfs_client;
+> +	struct nfs4_exception exception = {
+> +		.state = state,
+> +	};
+> +	int ret;
+> +
+> +	if (task->tk_status >= 0)
+> +		return 0;
+> +	if (timeout)
+> +		exception.timeout = *timeout;
+> +	ret = nfs4_do_handle_exception(server, task->tk_status, &exception);
+> +	if (exception.delay) {
+> +		nfs_inc_server_stats(server, NFSIOS_DELAY);
+> +		rpc_delay(task, nfs4_update_delay(&exception.timeout));
+> +		if (timeout)
+> +			*timeout = exception.timeout;
+> +		goto out_retry;
+> +	}
+> +	if (exception.recovering) {
+> +		rpc_sleep_on(&clp->cl_rpcwaitq, task, NULL);
+> +		if (test_bit(NFS4CLNT_MANAGER_RUNNING, &clp->cl_state) == 0)
+> +			rpc_wake_up_queued_task(&clp->cl_rpcwaitq, task);
+> +		goto out_retry;
+> +	}
+> +	task->tk_status = ret;
+> +	if (exception.retry)
+> +		return -EAGAIN;
+> +	return 0;
+> +out_retry:
+> +	if (test_bit(NFS_MIG_FAILED, &server->mig_status)) {
+> +		task->tk_status = -EIO;
+> +		return 0;
+> +	}
+> +	task->tk_status = 0;
+> +	return -EAGAIN;
+> +}
+> +
+>  /*
+>   * Return 'true' if 'clp' is using an rpc_client that is integrity protected
+>   * or 'false' otherwise.
+> @@ -4953,79 +4993,6 @@ out:
+>  #endif	/* CONFIG_NFS_V4_SECURITY_LABEL */
+>  
+>  
+> -static int
+> -nfs4_async_handle_error(struct rpc_task *task, struct nfs_server *server,
+> -			struct nfs4_state *state, long *timeout)
+> -{
+> -	struct nfs_client *clp = server->nfs_client;
+> -
+> -	if (task->tk_status >= 0)
+> -		return 0;
+> -	switch(task->tk_status) {
+> -		case -NFS4ERR_DELEG_REVOKED:
+> -		case -NFS4ERR_ADMIN_REVOKED:
+> -		case -NFS4ERR_BAD_STATEID:
+> -		case -NFS4ERR_OPENMODE:
+> -			if (state == NULL)
+> -				break;
+> -			if (nfs4_schedule_stateid_recovery(server, state) < 0)
+> -				goto recovery_failed;
+> -			goto wait_on_recovery;
+> -		case -NFS4ERR_EXPIRED:
+> -			if (state != NULL) {
+> -				if (nfs4_schedule_stateid_recovery(server, state) < 0)
+> -					goto recovery_failed;
+> -			}
+> -		case -NFS4ERR_STALE_STATEID:
+> -		case -NFS4ERR_STALE_CLIENTID:
+> -			nfs4_schedule_lease_recovery(clp);
+> -			goto wait_on_recovery;
+> -		case -NFS4ERR_MOVED:
+> -			if (nfs4_schedule_migration_recovery(server) < 0)
+> -				goto recovery_failed;
+> -			goto wait_on_recovery;
+> -		case -NFS4ERR_LEASE_MOVED:
+> -			nfs4_schedule_lease_moved_recovery(clp);
+> -			goto wait_on_recovery;
+> -#if defined(CONFIG_NFS_V4_1)
+> -		case -NFS4ERR_BADSESSION:
+> -		case -NFS4ERR_BADSLOT:
+> -		case -NFS4ERR_BAD_HIGH_SLOT:
+> -		case -NFS4ERR_DEADSESSION:
+> -		case -NFS4ERR_CONN_NOT_BOUND_TO_SESSION:
+> -		case -NFS4ERR_SEQ_FALSE_RETRY:
+> -		case -NFS4ERR_SEQ_MISORDERED:
+> -			dprintk("%s ERROR %d, Reset session\n", __func__,
+> -				task->tk_status);
+> -			nfs4_schedule_session_recovery(clp->cl_session, task->tk_status);
+> -			goto wait_on_recovery;
+> -#endif /* CONFIG_NFS_V4_1 */
+> -		case -NFS4ERR_DELAY:
+> -			nfs_inc_server_stats(server, NFSIOS_DELAY);
+> -			rpc_delay(task, nfs4_update_delay(timeout));
+> -			goto restart_call;
+> -		case -NFS4ERR_GRACE:
+> -			rpc_delay(task, NFS4_POLL_RETRY_MAX);
+> -		case -NFS4ERR_RETRY_UNCACHED_REP:
+> -		case -NFS4ERR_OLD_STATEID:
+> -			goto restart_call;
+> -	}
+> -	task->tk_status = nfs4_map_errors(task->tk_status);
+> -	return 0;
+> -recovery_failed:
+> -	task->tk_status = -EIO;
+> -	return 0;
+> -wait_on_recovery:
+> -	rpc_sleep_on(&clp->cl_rpcwaitq, task, NULL);
+> -	if (test_bit(NFS4CLNT_MANAGER_RUNNING, &clp->cl_state) == 0)
+> -		rpc_wake_up_queued_task(&clp->cl_rpcwaitq, task);
+> -	if (test_bit(NFS_MIG_FAILED, &server->mig_status))
+> -		goto recovery_failed;
+> -restart_call:
+> -	task->tk_status = 0;
+> -	return -EAGAIN;
+> -}
+> -
+>  static void nfs4_init_boot_verifier(const struct nfs_client *clp,
+>  				    nfs4_verifier *bootverf)
+>  {
+> -- 
+> 2.4.3
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
