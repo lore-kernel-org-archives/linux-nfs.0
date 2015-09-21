@@ -1,105 +1,61 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:60801 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932428AbbIUVAl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 21 Sep 2015 17:00:41 -0400
-Date: Mon, 21 Sep 2015 17:00:41 -0400
-To: Andreas Gruenbacher <agruenba@redhat.com>
-Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+Received: from mail-la0-f52.google.com ([209.85.215.52]:34925 "EHLO
+	mail-la0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756760AbbIUVUD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Sep 2015 17:20:03 -0400
+Received: by lagj9 with SMTP id j9so77197138lag.2
+        for <linux-nfs@vger.kernel.org>; Mon, 21 Sep 2015 14:19:59 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <20150918184014.GB21506@fieldses.org>
+References: <1441448856-13478-1-git-send-email-agruenba@redhat.com>
+	<1441448856-13478-16-git-send-email-agruenba@redhat.com>
+	<20150918184014.GB21506@fieldses.org>
+Date: Mon, 21 Sep 2015 23:19:59 +0200
+Message-ID: <CAHc6FU5mV9uVP9CjtDtKpJyTMRsn7hsArWXeKRp_xSeSPoCjnA@mail.gmail.com>
+Subject: Re: [RFC v7 15/41] richacl: Automatic Inheritance
+From: Andreas Gruenbacher <agruenba@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-kernel@vger.kernel.org,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
         linux-nfs@vger.kernel.org, linux-api@vger.kernel.org,
         linux-cifs@vger.kernel.org, linux-security-module@vger.kernel.org
-Subject: Re: [RFC v7 23/41] richacl: Set the owner permissions to the owner
- mask
-Message-ID: <20150921210041.GB12968@fieldses.org>
-References: <1441448856-13478-1-git-send-email-agruenba@redhat.com>
- <1441448856-13478-24-git-send-email-agruenba@redhat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1441448856-13478-24-git-send-email-agruenba@redhat.com>
-From: bfields@fieldses.org (J. Bruce Fields)
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Sep 05, 2015 at 12:27:18PM +0200, Andreas Gruenbacher wrote:
-> Change the acl so that owner@ is granted the permissions set in the
-> owner mask.
-> 
-> Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
-> ---
->  fs/richacl_compat.c | 46 ++++++++++++++++++++++++++++++++++++++++++++++
->  1 file changed, 46 insertions(+)
-> 
-> diff --git a/fs/richacl_compat.c b/fs/richacl_compat.c
-> index 9b76fc0..14a1b4b 100644
-> --- a/fs/richacl_compat.c
-> +++ b/fs/richacl_compat.c
-> @@ -413,3 +413,49 @@ richacl_propagate_everyone(struct richacl_alloc *alloc)
->  	}
->  	return 0;
->  }
-> +
-> +/**
-> + * richacl_set_owner_permissions  -  set the owner permissions to the owner mask
-> + *
-> + * Change the acl so that owner@ is granted the permissions set in the owner
-> + * mask.  This leaves at most one efective owner@ allow entry at the beginning
-> + * of the acl.
+2015-09-18 20:40 GMT+02:00 J. Bruce Fields <bfields@fieldses.org>:
+> On Sat, Sep 05, 2015 at 12:27:10PM +0200, Andreas Gruenbacher wrote:
+>> Automatic Inheritance (AI) allows changes to the acl of a directory to
+> In the above "file" sometimes means "any object" and somethings "a
+> non-directory".  I can sort it out, but more consistent terminology
+> would help.
 
-Perhaps also worth nothing here that it's a no-op in the !MASKED or
-!WRITE_THROUGH cases and that this does not change the permissions that
-the ACL grants.  (The latter wasn't obvious to me at first....  But
-this only modifies OWNER@ aces, and in the MASKED & WRITE_THROUGH case
-modification of OWNER@ aces doesn't affect permissions.)
+Okay, I'll fix it.
 
-Anyway, code looks right to me:
+>> Linux does not have a way of creating files without setting the file
+>> permission bits, so all files created inside a directory with
+>> RICHACL_AUTO_INHERIT set will have the RICHACL_PROTECTED flag set.  This
+>> effectively disables Automatic Inheritance.
+>>
+>> Protocols which support creating files without specifying permissions
+>> can explicitly clear the RICHACL_PROTECTED flag after creating a file
+>> and reset the file masks to "undo" applying the create mode; see
+>> richacl_compute_max_masks().  They should set the RICHACL_DEFAULTED
+>> flag.  This is a workaround; a mechanism that would allow a process to
+>> indicate to the kernel to ignore the create mode when there are
+>> inherited permissions would fix this problem.
+>
+> Also, as you know: current nfsd has no way to create files without
+> setting permissions.  And if we were to implement that it's unclear how
+> many clients would actually use it (Windows clients are rare).  And of
+> course Samba doesn't have the interfaces it would need.
+>
+> I think we should just drop this for now.  The rest of the richacl stuff
+> is still useful without it.
 
-	Reviewed-by: J. Bruce Fields <bfields@redhat.com>
+Samba will hack around it and adjust the ACL after the create; that's
+still better than not having Automatic Inheritance. Windows uses AI
+all the time so AI is more important for Samba than for NFSv4.
 
---b.
-
-> + */
-> +static int
-> +richacl_set_owner_permissions(struct richacl_alloc *alloc)
-> +{
-> +	unsigned int x = RICHACE_POSIX_ALWAYS_ALLOWED;
-> +	unsigned int owner_mask = alloc->acl->a_owner_mask & ~x;
-> +	unsigned int denied = 0;
-> +	struct richace *ace;
-> +
-> +	if (!((alloc->acl->a_flags & RICHACL_WRITE_THROUGH) &&
-> +	      (alloc->acl->a_flags & RICHACL_MASKED)))
-> +		return 0;
-> +
-> +	richacl_for_each_entry(ace, alloc->acl) {
-> +		if (richace_is_owner(ace)) {
-> +			if (richace_is_allow(ace) && !(owner_mask & denied)) {
-> +				richace_change_mask(alloc, &ace, owner_mask);
-> +				owner_mask = 0;
-> +			} else
-> +				richace_change_mask(alloc, &ace, 0);
-> +		} else {
-> +			if (richace_is_deny(ace))
-> +				denied |= ace->e_mask;
-> +		}
-> +	}
-> +
-> +	if (owner_mask & (denied |
-> +			  ~alloc->acl->a_other_mask |
-> +			  ~alloc->acl->a_group_mask)) {
-> +		ace = alloc->acl->a_entries;
-> +		if (richacl_insert_entry(alloc, &ace))
-> +			return -1;
-> +		ace->e_type = RICHACE_ACCESS_ALLOWED_ACE_TYPE;
-> +		ace->e_flags = RICHACE_SPECIAL_WHO;
-> +		ace->e_mask = owner_mask;
-> +		ace->e_id.special = RICHACE_OWNER_SPECIAL_ID;
-> +	}
-> +	return 0;
-> +}
-> -- 
-> 2.4.3
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Thanks,
+Andreas
