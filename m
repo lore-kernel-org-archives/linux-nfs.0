@@ -1,240 +1,79 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pa0-f42.google.com ([209.85.220.42]:35724 "EHLO
-	mail-pa0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755523AbbIUBEK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 20 Sep 2015 21:04:10 -0400
-Received: by pacfv12 with SMTP id fv12so102759304pac.2
-        for <linux-nfs@vger.kernel.org>; Sun, 20 Sep 2015 18:04:09 -0700 (PDT)
-Subject: Re: [PATCH] NFSv4: Recovery of recalled read delegations is broken
+Received: from mail-pa0-f41.google.com ([209.85.220.41]:36666 "EHLO
+	mail-pa0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755911AbbIUDWP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 20 Sep 2015 23:22:15 -0400
+Received: by padhk3 with SMTP id hk3so103274774pad.3
+        for <linux-nfs@vger.kernel.org>; Sun, 20 Sep 2015 20:22:14 -0700 (PDT)
 To: Trond Myklebust <trond.myklebust@primarydata.com>
-References: <55FA8D22.2010003@gmail.com>
- <87fv294r5u.fsf@notabene.neil.brown.name> <55FE82D9.4040305@gmail.com>
- <1442766380-45695-1-git-send-email-trond.myklebust@primarydata.com>
-Cc: NeilBrown <neilb@suse.com>, linux-nfs@vger.kernel.org,
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
         kinglongmee@gmail.com
 From: Kinglong Mee <kinglongmee@gmail.com>
-Message-ID: <55FF577F.9060302@gmail.com>
-Date: Mon, 21 Sep 2015 09:03:59 +0800
+Subject: NULL pointer dereference using pnfs with block layout
+Message-ID: <55FF77DD.8070807@gmail.com>
+Date: Mon, 21 Sep 2015 11:22:05 +0800
 MIME-Version: 1.0
-In-Reply-To: <1442766380-45695-1-git-send-email-trond.myklebust@primarydata.com>
-Content-Type: text/plain; charset=windows-1252
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 9/21/2015 00:26, Trond Myklebust wrote:
-> When a read delegation is being recalled, and we're reclaiming the
-> cached opens, we need to make sure that we only reclaim read-only
-> modes.
-> A previous attempt to do this, relied on retrieving the delegation
-> type from the nfs4_opendata structure. Unfortunately, as Kinglong
-> pointed out, this field can only be set when performing reboot recovery.
-> 
-> Furthermore, if we call nfs4_open_recover(), then we end up clobbering
-> the state->flags for all modes that we're not recovering...
-> 
-> The fix is to have the delegation recall code pass this information
-> to the recovery call, and then refactor the recovery code so that
-> nfs4_open_delegation_recall() does not need to call nfs4_open_recover().
-> 
-> Reported-by: Kinglong Mee <kinglongmee@gmail.com>
-> Fixes: 39f897fdbd46 ("NFSv4: When returning a delegation, don't...")
-> Cc: NeilBrown <neilb@suse.com>
-> Cc: stable@vger.kernel.org # v4.2+
-> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+It caused by rpc_restart_call_prepare with an uninitialized task
+for the pnfs do I/O locally without sending any RPC to MDS.
 
-Tested-by: Kinglong Mee <kinglongmee@gmail.com>
+Some debug messages,
 
-thanks,
-Kinglong Mee
+[ 1004.001842] bl_read_pagelist enter nr_pages 1 offset 2048 count 2048
+[ 1004.002110] bl_read_pagelist: pg_offset 2048
+[ 1004.002370] bl_read_pagelist: pg_len 2048 is_dio
+[ 1004.002617] bl_read_pagelist: pg_len 2048 after do_add_page_to_bio
+[ 1004.002853] bl_read_pagelist: 2048 4096 "(isect << SECTOR_SHIFT) < header->inode->i_size"
+[ 1004.003774] NFS: nfs_pgio_result:     0, (status 0), tk_ops      (null)
+[ 1004.003989] --> nfs4_read_done
+[ 1004.004224] nfs_readpage_done: 0
+[ 1004.004459] nfs_pgio_result: 0
+[ 1004.004691] nfs_readpage_result: eof 0, res.count 4096, args.count 2048  
+[ 1004.004926] nfs_readpage_retry: tk_ops           (null)
 
-> ---
->  fs/nfs/delegation.c |  8 ++++--
->  fs/nfs/delegation.h |  2 +-
->  fs/nfs/nfs4proc.c   | 81 +++++++++++++++++++++++++++++++----------------------
->  3 files changed, 53 insertions(+), 38 deletions(-)
-> 
-> diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
-> index 2714ef835bdd..be806ead7f4d 100644
-> --- a/fs/nfs/delegation.c
-> +++ b/fs/nfs/delegation.c
-> @@ -113,7 +113,8 @@ out:
->  	return status;
->  }
->  
-> -static int nfs_delegation_claim_opens(struct inode *inode, const nfs4_stateid *stateid)
-> +static int nfs_delegation_claim_opens(struct inode *inode,
-> +		const nfs4_stateid *stateid, fmode_t type)
->  {
->  	struct nfs_inode *nfsi = NFS_I(inode);
->  	struct nfs_open_context *ctx;
-> @@ -140,7 +141,7 @@ again:
->  		/* Block nfs4_proc_unlck */
->  		mutex_lock(&sp->so_delegreturn_mutex);
->  		seq = raw_seqcount_begin(&sp->so_reclaim_seqcount);
-> -		err = nfs4_open_delegation_recall(ctx, state, stateid);
-> +		err = nfs4_open_delegation_recall(ctx, state, stateid, type);
->  		if (!err)
->  			err = nfs_delegation_claim_locks(ctx, state, stateid);
->  		if (!err && read_seqcount_retry(&sp->so_reclaim_seqcount, seq))
-> @@ -411,7 +412,8 @@ static int nfs_end_delegation_return(struct inode *inode, struct nfs_delegation
->  	do {
->  		if (test_bit(NFS_DELEGATION_REVOKED, &delegation->flags))
->  			break;
-> -		err = nfs_delegation_claim_opens(inode, &delegation->stateid);
-> +		err = nfs_delegation_claim_opens(inode, &delegation->stateid,
-> +				delegation->type);
->  		if (!issync || err != -EAGAIN)
->  			break;
->  		/*
-> diff --git a/fs/nfs/delegation.h b/fs/nfs/delegation.h
-> index a44829173e57..333063e032f0 100644
-> --- a/fs/nfs/delegation.h
-> +++ b/fs/nfs/delegation.h
-> @@ -54,7 +54,7 @@ void nfs_delegation_reap_unclaimed(struct nfs_client *clp);
->  
->  /* NFSv4 delegation-related procedures */
->  int nfs4_proc_delegreturn(struct inode *inode, struct rpc_cred *cred, const nfs4_stateid *stateid, int issync);
-> -int nfs4_open_delegation_recall(struct nfs_open_context *ctx, struct nfs4_state *state, const nfs4_stateid *stateid);
-> +int nfs4_open_delegation_recall(struct nfs_open_context *ctx, struct nfs4_state *state, const nfs4_stateid *stateid, fmode_t type);
->  int nfs4_lock_delegation_recall(struct file_lock *fl, struct nfs4_state *state, const nfs4_stateid *stateid);
->  bool nfs4_copy_delegation_stateid(nfs4_stateid *dst, struct inode *inode, fmode_t flags);
->  
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index 693b903b48bd..099a0a83ee8d 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -1127,6 +1127,21 @@ static int nfs4_wait_for_completion_rpc_task(struct rpc_task *task)
->  	return ret;
->  }
->  
-> +static bool nfs4_mode_match_open_stateid(struct nfs4_state *state,
-> +		fmode_t fmode)
-> +{
-> +	switch(fmode & (FMODE_READ|FMODE_WRITE)) {
-> +	case FMODE_READ|FMODE_WRITE:
-> +		return state->n_rdwr != 0;
-> +	case FMODE_WRITE:
-> +		return state->n_wronly != 0;
-> +	case FMODE_READ:
-> +		return state->n_rdonly != 0;
-> +	}
-> +	WARN_ON_ONCE(1);
-> +	return false;
-> +}
-> +
->  static int can_open_cached(struct nfs4_state *state, fmode_t mode, int open_mode)
->  {
->  	int ret = 0;
-> @@ -1571,17 +1586,13 @@ static struct nfs4_opendata *nfs4_open_recoverdata_alloc(struct nfs_open_context
->  	return opendata;
->  }
->  
-> -static int nfs4_open_recover_helper(struct nfs4_opendata *opendata, fmode_t fmode, struct nfs4_state **res)
-> +static int nfs4_open_recover_helper(struct nfs4_opendata *opendata,
-> +		fmode_t fmode)
->  {
->  	struct nfs4_state *newstate;
->  	int ret;
->  
-> -	if ((opendata->o_arg.claim == NFS4_OPEN_CLAIM_DELEGATE_CUR ||
-> -	     opendata->o_arg.claim == NFS4_OPEN_CLAIM_DELEG_CUR_FH) &&
-> -	    (opendata->o_arg.u.delegation_type & fmode) != fmode)
-> -		/* This mode can't have been delegated, so we must have
-> -		 * a valid open_stateid to cover it - not need to reclaim.
-> -		 */
-> +	if (!nfs4_mode_match_open_stateid(opendata->state, fmode))
->  		return 0;
->  	opendata->o_arg.open_flags = 0;
->  	opendata->o_arg.fmode = fmode;
-> @@ -1597,14 +1608,14 @@ static int nfs4_open_recover_helper(struct nfs4_opendata *opendata, fmode_t fmod
->  	newstate = nfs4_opendata_to_nfs4_state(opendata);
->  	if (IS_ERR(newstate))
->  		return PTR_ERR(newstate);
-> +	if (newstate != opendata->state)
-> +		ret = -ESTALE;
->  	nfs4_close_state(newstate, fmode);
-> -	*res = newstate;
-> -	return 0;
-> +	return ret;
->  }
->  
->  static int nfs4_open_recover(struct nfs4_opendata *opendata, struct nfs4_state *state)
->  {
-> -	struct nfs4_state *newstate;
->  	int ret;
->  
->  	/* Don't trigger recovery in nfs_test_and_clear_all_open_stateid */
-> @@ -1615,27 +1626,15 @@ static int nfs4_open_recover(struct nfs4_opendata *opendata, struct nfs4_state *
->  	clear_bit(NFS_DELEGATED_STATE, &state->flags);
->  	clear_bit(NFS_OPEN_STATE, &state->flags);
->  	smp_rmb();
-> -	if (state->n_rdwr != 0) {
-> -		ret = nfs4_open_recover_helper(opendata, FMODE_READ|FMODE_WRITE, &newstate);
-> -		if (ret != 0)
-> -			return ret;
-> -		if (newstate != state)
-> -			return -ESTALE;
-> -	}
-> -	if (state->n_wronly != 0) {
-> -		ret = nfs4_open_recover_helper(opendata, FMODE_WRITE, &newstate);
-> -		if (ret != 0)
-> -			return ret;
-> -		if (newstate != state)
-> -			return -ESTALE;
-> -	}
-> -	if (state->n_rdonly != 0) {
-> -		ret = nfs4_open_recover_helper(opendata, FMODE_READ, &newstate);
-> -		if (ret != 0)
-> -			return ret;
-> -		if (newstate != state)
-> -			return -ESTALE;
-> -	}
-> +	ret = nfs4_open_recover_helper(opendata, FMODE_READ|FMODE_WRITE);
-> +	if (ret != 0)
-> +		return ret;
-> +	ret = nfs4_open_recover_helper(opendata, FMODE_WRITE);
-> +	if (ret != 0)
-> +		return ret;
-> +	ret = nfs4_open_recover_helper(opendata, FMODE_READ);
-> +	if (ret != 0)
-> +		return ret;
->  	/*
->  	 * We may have performed cached opens for all three recoveries.
->  	 * Check if we need to update the current stateid.
-> @@ -1759,18 +1758,32 @@ static int nfs4_handle_delegation_recall_error(struct nfs_server *server, struct
->  	return err;
->  }
->  
-> -int nfs4_open_delegation_recall(struct nfs_open_context *ctx, struct nfs4_state *state, const nfs4_stateid *stateid)
-> +int nfs4_open_delegation_recall(struct nfs_open_context *ctx,
-> +		struct nfs4_state *state, const nfs4_stateid *stateid,
-> +		fmode_t type)
->  {
->  	struct nfs_server *server = NFS_SERVER(state->inode);
->  	struct nfs4_opendata *opendata;
-> -	int err;
-> +	int err = 0;
->  
->  	opendata = nfs4_open_recoverdata_alloc(ctx, state,
->  			NFS4_OPEN_CLAIM_DELEG_CUR_FH);
->  	if (IS_ERR(opendata))
->  		return PTR_ERR(opendata);
->  	nfs4_stateid_copy(&opendata->o_arg.u.delegation, stateid);
-> -	err = nfs4_open_recover(opendata, state);
-> +	clear_bit(NFS_DELEGATED_STATE, &state->flags);
-> +	switch (type & (FMODE_READ|FMODE_WRITE)) {
-> +	case FMODE_READ|FMODE_WRITE:
-> +	case FMODE_WRITE:
-> +		err = nfs4_open_recover_helper(opendata, FMODE_READ|FMODE_WRITE);
-> +		if (err)
-> +			break;
-> +		err = nfs4_open_recover_helper(opendata, FMODE_WRITE);
-> +		if (err)
-> +			break;
-> +	case FMODE_READ:
-> +		err = nfs4_open_recover_helper(opendata, FMODE_READ);
-> +	}
->  	nfs4_opendata_put(opendata);
->  	return nfs4_handle_delegation_recall_error(server, state, stateid, err);
->  }
-> 
+Panic messages as,
+
+[ 1004.005170] BUG: unable to handle kernel NULL pointer dereference at           (null)
+[ 1004.005452] IP: [<ffffffffa0075f8a>] rpc_restart_call_prepare+0x2a/0x50 [sunrpc]
+[ 1004.005702] PGD 0
+[ 1004.005937] Oops: 0000 [#1]
+[ 1004.006175] Modules linked in: blocklayoutdriver(OE) nfsv4(OE) nfs(OE) fscache(E) xfs libcrc32c btrfs coretemp crct10dif_pclmul ppdev crc32_pclmul crc32c_intel ghash_clmulni_intel vmw_balloon vmw_vmci parport_pc parport nfsd(OE) shpchp xor raid6_pq i2c_piix4 auth_rpcgss nfs_acl lockd(E) grace sunrpc(E) vmwgfx drm_kms_helper ttm drm serio_raw e1000 mptspi scsi_transport_spi mptscsih ata_generic mptbase pata_acpi [last unloaded: fscache]
+[ 1004.007611] CPU: 0 PID: 3489 Comm: kworker/0:2 Tainted: G           OE   4.3.0-rc1+ #252
+[ 1004.007920] Hardware name: VMware, Inc. VMware Virtual Platform/440BX Desktop Reference Platform, BIOS 6.00 05/20/2014
+[ 1004.008571] Workqueue: events bl_read_cleanup [blocklayoutdriver]
+[ 1004.008917] task: ffff88006ceab080 ti: ffff880017700000 task.ti: ffff880017700000
+[ 1004.009315] RIP: 0010:[<ffffffffa0075f8a>]  [<ffffffffa0075f8a>] rpc_restart_call_prepare+0x2a/0x50 [sunrpc]
+[ 1004.010152] RSP: 0018:ffff880017703cc8  EFLAGS: 00010246
+[ 1004.010589] RAX: 0000000000000000 RBX: ffff880017726000 RCX: 0000000000000006
+[ 1004.011007] RDX: 0000000000000000 RSI: 0000000000000001 RDI: ffff8800177260d8
+[ 1004.011428] RBP: ffff880017703cc8 R08: 0000000000000001 R09: 0000000000000000
+[ 1004.011831] R10: 0000000000000000 R11: 0000000000000001 R12: ffff8800177260d8
+[ 1004.012237] R13: ffff8800686008b0 R14: 0000000000000000 R15: ffff880017726160
+[ 1004.012666] FS:  0000000000000000(0000) GS:ffffffff81c29000(0000) knlGS:0000000000000000
+[ 1004.013478] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+[ 1004.013930] CR2: 0000000000000000 CR3: 000000006ccbe000 CR4: 00000000001406f0
+[ 1004.014592] Stack:
+[ 1004.015103]  ffff880017703cf0 ffffffffa04c436e ffff8800177260d8 ffff880017726000
+[ 1004.015611]  ffff8800686008b0 ffff880017703d18 ffffffffa04c2fb8 ffff880017726160
+[ 1004.016105]  ffff880017726000 ffff88007ff43100 ffff880017703d40 ffffffffa05349c4
+[ 1004.016565] Call Trace:
+[ 1004.017071]  [<ffffffffa04c436e>] nfs_readpage_result+0x11e/0x130 [nfs]
+[ 1004.017546]  [<ffffffffa04c2fb8>] nfs_pgio_result+0x88/0xa0 [nfs]
+[ 1004.018009]  [<ffffffffa05349c4>] pnfs_ld_read_done+0x44/0xf0 [nfsv4]
+[ 1004.018469]  [<ffffffffa04a8532>] bl_read_cleanup+0x22/0x50 [blocklayoutdriver]
+[ 1004.018938]  [<ffffffff810a388c>] process_one_work+0x21c/0x4c0
+[ 1004.019406]  [<ffffffff810a37dd>] ? process_one_work+0x16d/0x4c0
+[ 1004.019876]  [<ffffffff810a3b7a>] worker_thread+0x4a/0x440
+[ 1004.020339]  [<ffffffff810a3b30>] ? process_one_work+0x4c0/0x4c0
+[ 1004.020795]  [<ffffffff810a3b30>] ? process_one_work+0x4c0/0x4c0
+[ 1004.021289]  [<ffffffff810a8d85>] kthread+0xf5/0x110
+[ 1004.021735]  [<ffffffff810a8c90>] ? kthread_create_on_node+0x240/0x240
+[ 1004.022177]  [<ffffffff8172cd1f>] ret_from_fork+0x3f/0x70
+[ 1004.022604]  [<ffffffff810a8c90>] ? kthread_create_on_node+0x240/0x240
+[ 1004.023025] Code: 00 0f 1f 44 00 00 31 c0 f6 87 e9 00 00 00 01 55 48 89 e5 75 29 48 8b 47 58 48 c7 47 50 80 42 07 a0 c7 87 e4 00 00 00 00 00 00 00 <48> 83 38 00 74 0f 48 c7 47 50 b0 f1 07 a0 b8 01 00 00 00 5d c3
+[ 1004.024344] RIP  [<ffffffffa0075f8a>] rpc_restart_call_prepare+0x2a/0x50 [sunrpc]
+[ 1004.024773]  RSP <ffff880017703cc8>
+[ 1004.025228] CR2: 0000000000000000
