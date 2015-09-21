@@ -1,155 +1,98 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:28459 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932736AbbIUWm3 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Sep 2015 18:42:29 -0400
+Received: from mail-pa0-f51.google.com ([209.85.220.51]:35040 "EHLO
+	mail-pa0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932434AbbIUWmn (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Sep 2015 18:42:43 -0400
+Received: by pacfv12 with SMTP id fv12so131277711pac.2
+        for <linux-nfs@vger.kernel.org>; Mon, 21 Sep 2015 15:42:42 -0700 (PDT)
+Subject: Re: [PATCH] NFS: Skip checking ds_cinfo.buckets when lseg's
+ commit_through_mds is set
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+References: <55FFD5F0.5030600@gmail.com>
+ <CAHQdGtRyw+FXn05CHQj5izVe1XeUVN4VZOZ_rg7RzH2ZDEyGtw@mail.gmail.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Weston Andros Adamson <dros@primarydata.com>, kinglongmee@gmail.com
+From: Kinglong Mee <kinglongmee@gmail.com>
+Message-ID: <560087D8.7050403@gmail.com>
+Date: Tue, 22 Sep 2015 06:42:32 +0800
+MIME-Version: 1.0
+In-Reply-To: <CAHQdGtRyw+FXn05CHQj5izVe1XeUVN4VZOZ_rg7RzH2ZDEyGtw@mail.gmail.com>
 Content-Type: text/plain; charset=utf-8
-Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2104\))
-Subject: Re: [PATCH v1 08/18] xprtrdma: Pre-allocate Work Requests for backchannel
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <CANjDDBgD02fG4gLW53XnAaVHk7-6qzRwvjZb=TkZrLBGXSO7Nw@mail.gmail.com>
-Date: Mon, 21 Sep 2015 15:41:55 -0700
-Cc: linux-rdma@vger.kernel.org,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <99C6B545-1F74-44F7-893A-9FA4F91F1FB1@oracle.com>
-References: <20150917202829.19671.90044.stgit@manet.1015granger.net> <20150917204516.19671.34390.stgit@manet.1015granger.net> <CANjDDBgD02fG4gLW53XnAaVHk7-6qzRwvjZb=TkZrLBGXSO7Nw@mail.gmail.com>
-To: Devesh Sharma <devesh.sharma@avagotech.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-> On Sep 21, 2015, at 3:33 AM, Devesh Sharma <devesh.sharma@avagotech.com> wrote:
-> 
-> On Fri, Sep 18, 2015 at 2:15 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
->> Pre-allocate extra send and receive Work Requests needed to handle
->> backchannel receives and sends.
->> 
->> The transport doesn't know how many extra WRs to pre-allocate until
->> the xprt_setup_backchannel() call, but that's long after the WRs are
->> allocated during forechannel setup.
->> 
->> So, use a fixed value for now.
->> 
->> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+On 9/22/2015 01:10, Trond Myklebust wrote:
+> On Mon, Sep 21, 2015 at 6:03 AM, Kinglong Mee <kinglongmee@gmail.com> wrote:
+>> When lseg's commit_through_mds is set, pnfs client always WARN once
+>> in nfs_direct_select_verf when checking ds_cinfo.nbuckets.
+>>
+>> But, filelayout_alloc_commit_info will not initialize the ds_cinfo.nbuckets.
+>> It's wrong of checking ds_cinfo.nbuckets, client should skip it.
+>>
+>> [17844.666094] ------------[ cut here ]------------
+>> [17844.667071] WARNING: CPU: 0 PID: 21758 at /root/source/linux-pnfs/fs/nfs/direct.c:174 nfs_direct_select_verf+0x5a/0x70 [nfs]()
+>> [17844.668650] Modules linked in: nfs_layout_nfsv41_files(OE) nfsv4(OE) nfs(OE) fscache(E) nfsd(OE) xfs libcrc32c btrfs ppdev coretemp crct10dif_pclmul auth_rpcgss crc32_pclmul crc32c_intel nfs_acl ghash_clmulni_intel lockd vmw_balloon xor vmw_vmci grace raid6_pq shpchp sunrpc parport_pc i2c_piix4 parport vmwgfx drm_kms_helper ttm drm serio_raw mptspi e1000 scsi_transport_spi mptscsih mptbase ata_generic pata_acpi [last unloaded: fscache]
+>> [17844.686676] CPU: 0 PID: 21758 Comm: kworker/0:1 Tainted: G        W  OE   4.3.0-rc1-pnfs+ #245
+>> [17844.687352] Hardware name: VMware, Inc. VMware Virtual Platform/440BX Desktop Reference Platform, BIOS 6.00 05/20/2014
+>> [17844.698502] Workqueue: nfsiod rpc_async_release [sunrpc]
+>> [17844.699212]  0000000000000009 0000000043e58010 ffff8800454fbc10 ffffffff813680c4
+>> [17844.699990]  ffff8800454fbc48 ffffffff8108b49d ffff88004eb20000 ffff88004eb20000
+>> [17844.700844]  ffff880062e26000 0000000000000000 0000000000000001 ffff8800454fbc58
+>> [17844.701637] Call Trace:
+>> [17844.725252]  [<ffffffff813680c4>] dump_stack+0x19/0x25
+>> [17844.732693]  [<ffffffff8108b49d>] warn_slowpath_common+0x7d/0xb0
+>> [17844.733855]  [<ffffffff8108b5da>] warn_slowpath_null+0x1a/0x20
+>> [17844.735015]  [<ffffffffa04a27ca>] nfs_direct_select_verf+0x5a/0x70 [nfs]
+>> [17844.735999]  [<ffffffffa04a2b83>] nfs_direct_set_hdr_verf+0x23/0x90 [nfs]
+>> [17844.736846]  [<ffffffffa04a2e17>] nfs_direct_write_completion+0x227/0x260 [nfs]
+>> [17844.737782]  [<ffffffffa04a433c>] nfs_pgio_release+0x1c/0x20 [nfs]
+>> [17844.738597]  [<ffffffffa0502df3>] pnfs_generic_rw_release+0x23/0x30 [nfsv4]
+>> [17844.739486]  [<ffffffffa01cbbea>] rpc_free_task+0x2a/0x70 [sunrpc]
+>> [17844.740326]  [<ffffffffa01cbcd5>] rpc_async_release+0x15/0x20 [sunrpc]
+>> [17844.741173]  [<ffffffff810a387c>] process_one_work+0x21c/0x4c0
+>> [17844.741984]  [<ffffffff810a37cd>] ? process_one_work+0x16d/0x4c0
+>> [17844.742837]  [<ffffffff810a3b6a>] worker_thread+0x4a/0x440
+>> [17844.743639]  [<ffffffff810a3b20>] ? process_one_work+0x4c0/0x4c0
+>> [17844.744399]  [<ffffffff810a3b20>] ? process_one_work+0x4c0/0x4c0
+>> [17844.745176]  [<ffffffff810a8d75>] kthread+0xf5/0x110
+>> [17844.745927]  [<ffffffff810a8c80>] ? kthread_create_on_node+0x240/0x240
+>> [17844.747105]  [<ffffffff8172ce1f>] ret_from_fork+0x3f/0x70
+>> [17844.747856]  [<ffffffff810a8c80>] ? kthread_create_on_node+0x240/0x240
+>> [17844.748642] ---[ end trace 336a2845d42b83f0 ]---
+>>
+>> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
 >> ---
->> net/sunrpc/xprtrdma/backchannel.c |    4 ++++
->> net/sunrpc/xprtrdma/verbs.c       |   14 ++++++++++++--
->> net/sunrpc/xprtrdma/xprt_rdma.h   |   10 ++++++++++
->> 3 files changed, 26 insertions(+), 2 deletions(-)
->> 
->> diff --git a/net/sunrpc/xprtrdma/backchannel.c b/net/sunrpc/xprtrdma/backchannel.c
->> index c0a42ad..f5c7122 100644
->> --- a/net/sunrpc/xprtrdma/backchannel.c
->> +++ b/net/sunrpc/xprtrdma/backchannel.c
->> @@ -123,6 +123,9 @@ int xprt_rdma_bc_setup(struct rpc_xprt *xprt, unsigned int reqs)
->>         * Twice as many rpc_rqsts are prepared to ensure there is
->>         * always an rpc_rqst available as soon as a reply is sent.
->>         */
->> +       if (reqs > RPCRDMA_BACKWARD_WRS >> 1)
->> +               goto out_err;
->> +
->>        for (i = 0; i < (reqs << 1); i++) {
->>                rqst = kzalloc(sizeof(*rqst), GFP_KERNEL);
->>                if (!rqst) {
->> @@ -159,6 +162,7 @@ int xprt_rdma_bc_setup(struct rpc_xprt *xprt, unsigned int reqs)
->> out_free:
->>        xprt_rdma_bc_destroy(xprt, reqs);
->> 
->> +out_err:
->>        pr_err("RPC:       %s: setup backchannel transport failed\n", __func__);
->>        return -ENOMEM;
->> }
->> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
->> index 1e4a948..133c720 100644
->> --- a/net/sunrpc/xprtrdma/verbs.c
->> +++ b/net/sunrpc/xprtrdma/verbs.c
->> @@ -614,6 +614,7 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
->>        struct ib_device_attr *devattr = &ia->ri_devattr;
->>        struct ib_cq *sendcq, *recvcq;
->>        struct ib_cq_init_attr cq_attr = {};
->> +       unsigned int max_qp_wr;
->>        int rc, err;
->> 
->>        if (devattr->max_sge < RPCRDMA_MAX_IOVS) {
->> @@ -622,18 +623,27 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
->>                return -ENOMEM;
->>        }
->> 
->> +       if (devattr->max_qp_wr <= RPCRDMA_BACKWARD_WRS) {
->> +               dprintk("RPC:       %s: insufficient wqe's available\n",
->> +                       __func__);
->> +               return -ENOMEM;
->> +       }
->> +       max_qp_wr = devattr->max_qp_wr - RPCRDMA_BACKWARD_WRS;
->> +
->>        /* check provider's send/recv wr limits */
->> -       if (cdata->max_requests > devattr->max_qp_wr)
->> -               cdata->max_requests = devattr->max_qp_wr;
->> +       if (cdata->max_requests > max_qp_wr)
->> +               cdata->max_requests = max_qp_wr;
+>>  fs/nfs/direct.c                | 2 +-
+>>  fs/nfs/filelayout/filelayout.c | 5 ++++-
+>>  include/linux/nfs_xdr.h        | 1 +
+>>  3 files changed, 6 insertions(+), 2 deletions(-)
+>>
+>> diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+>> index 38678d9..df3b6f4 100644
+>> --- a/fs/nfs/direct.c
+>> +++ b/fs/nfs/direct.c
+>> @@ -166,7 +166,7 @@ nfs_direct_select_verf(struct nfs_direct_req *dreq,
+>>         struct nfs_writeverf *verfp = &dreq->verf;
+>>
+>>  #ifdef CONFIG_NFS_V4_1
+>> -       if (ds_clp) {
+>> +       if (ds_clp && !dreq->ds_cinfo.through_mds) {
 > 
-> should we
-> cdata->max_request = max_qp_wr - RPCRDMA_BACKWARD_WRS?
+> Why we can't just test for dreq->ds_cinfo.nbuckets > 0?
 
-cdata->max_request is an input parameter to rpcrdma_ep_create().
-We can’t simply overwrite it here with a new larger value.
+Yes, that's okay by checking dreq->ds_cinfo.nbuckets or dreq->ds_cinfo.buckets here.
 
+The current code is harmless, only the noise of WARN_ONCE.
+At first glance, I plan to remove the WARN_ONCE.
+I add a through_mds here for stronger logical.
 
->>        ep->rep_attr.event_handler = rpcrdma_qp_async_error_upcall;
->>        ep->rep_attr.qp_context = ep;
->>        ep->rep_attr.srq = NULL;
->>        ep->rep_attr.cap.max_send_wr = cdata->max_requests;
->> +       ep->rep_attr.cap.max_send_wr += RPCRDMA_BACKWARD_WRS;
+Without adding new values, I'd prefer using dreq->ds_cinfo.nbuckets.
+A new patch will be post, thanks.
+
 > 
-> Looks like will cause a qp-create failure if any hypothetical device
-> supports devattr->max_qp_wr = cdata->max_requests
+>>                 /* pNFS is in use, use the DS verf */
+>>                 if (commit_idx >= 0 && commit_idx < dreq->ds_cinfo.nbuckets)
+>>                         verfp = &dreq->ds_cinfo.buckets[commit_idx].direct_verf;
 
-We’ve already capped cdata->max_requests at
-“devattr->max_qp_wr - RPCRDMA_BACKWARD_WRS” above. So, the logic
-should prevent that, unless I’ve made a mistake.
-
-
->>        rc = ia->ri_ops->ro_open(ia, ep, cdata);
->>        if (rc)
->>                return rc;
->>        ep->rep_attr.cap.max_recv_wr = cdata->max_requests;
->> +       ep->rep_attr.cap.max_recv_wr += RPCRDMA_BACKWARD_WRS;
->>        ep->rep_attr.cap.max_send_sge = RPCRDMA_MAX_IOVS;
->>        ep->rep_attr.cap.max_recv_sge = 1;
->>        ep->rep_attr.cap.max_inline_data = 0;
->> diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
->> index 2ca0567..37d0d7f 100644
->> --- a/net/sunrpc/xprtrdma/xprt_rdma.h
->> +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
->> @@ -101,6 +101,16 @@ struct rpcrdma_ep {
->>  */
->> #define RPCRDMA_IGNORE_COMPLETION      (0ULL)
->> 
->> +/* Pre-allocate extra Work Requests for handling backward receives
->> + * and sends. This is a fixed value because the Work Queues are
->> + * allocated when the forward channel is set up.
->> + */
->> +#if defined(CONFIG_SUNRPC_BACKCHANNEL)
->> +#define RPCRDMA_BACKWARD_WRS           (8)
->> +#else
->> +#define RPCRDMA_BACKWARD_WRS           (0)
->> +#endif
->> +
->> /* Registered buffer -- registered kmalloc'd memory for RDMA SEND/RECV
->>  *
->>  * The below structure appears at the front of a large region of kmalloc'd
->> 
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
-—
-Chuck Lever
-
-
-
+thanks,
+Kinglong Mee
