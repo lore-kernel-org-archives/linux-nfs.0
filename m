@@ -1,15 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx144.netapp.com ([216.240.21.25]:51454 "EHLO mx144.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752306AbbIUUuo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 21 Sep 2015 16:50:44 -0400
+	id S1752306AbbIUUup (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 21 Sep 2015 16:50:45 -0400
 From: <andros@netapp.com>
 To: <steved@redhat.com>
 CC: <jlayton@poochiereds.net>, <linux-nfs@vger.kernel.org>,
         Andy Adamson <andros@netapp.com>
-Subject: [PATCH 1/4] GSSD: move process_krb5_upcall machine cred case to helper function
-Date: Mon, 21 Sep 2015 16:50:06 -0400
-Message-ID: <1442868609-1812-2-git-send-email-andros@netapp.com>
+Subject: [PATCH 3/4] GSSD only fork when uid is not zeo
+Date: Mon, 21 Sep 2015 16:50:08 -0400
+Message-ID: <1442868609-1812-4-git-send-email-andros@netapp.com>
 In-Reply-To: <1442868609-1812-1-git-send-email-andros@netapp.com>
 References: <1442868609-1812-1-git-send-email-andros@netapp.com>
 MIME-Version: 1.0
@@ -19,144 +19,125 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andy Adamson <andros@netapp.com>
 
+commit f9cac65972da588d5218236de60a7be11247a8aa added the fork to
+process_krb5_upcall so that the child assumes the uid of the principal
+requesting service.
+
+When machine credentials are used, a gssd_k5_kt_princ entry is added to
+a global list and used by future upcalls to note when valid machine credentials
+have been obtained. When a child process performs this task, the entry to the
+global list is lost upon exit, and all upcalls for machine credentials re-fetch
+a TGT, even when a valid TGT is in the machine kerberos credential cache.
+
+Since forking is not necessary when the principal has uid=0, solve the
+gssd_k5_kt_princ_list issue by only forking when the uid != 0.
+
 Signed-off-by: Andy Adamson <andros@netapp.com>
 Signed-off-by: Jeff Layton <jlayton@poochiereds.net>
 ---
- utils/gssd/gssd_proc.c | 107 ++++++++++++++++++++++++++++---------------------
- 1 file changed, 62 insertions(+), 45 deletions(-)
+ utils/gssd/gssd_proc.c | 67 ++++++++++++++++++++++++++++++++------------------
+ 1 file changed, 43 insertions(+), 24 deletions(-)
 
 diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
-index 03afc8b..f5a9ce1 100644
+index 0e04570..7cf8f0c 100644
 --- a/utils/gssd/gssd_proc.c
 +++ b/utils/gssd/gssd_proc.c
-@@ -482,6 +482,64 @@ change_identity(uid_t uid)
- 	return 0;
- }
- 
-+AUTH *
-+krb5_use_machine_creds(struct clnt_info *clp, uid_t uid, char *tgtname,
-+		    char *service, CLIENT **rpc_clnt)
-+{
-+	AUTH	*auth = NULL;
-+	char	**credlist = NULL;
-+	char	**ccname;
-+	int	nocache = 0;
-+	int	success = 0;
-+
-+	do {
-+		gssd_refresh_krb5_machine_credential(clp->servername, NULL,
-+						service);
-+	/*
-+	 * Get a list of credential cache names and try each
-+	 * of them until one works or we've tried them all
-+	 */
-+		if (gssd_get_krb5_machine_cred_list(&credlist)) {
-+			printerr(0, "ERROR: No credentials found "
-+				"for connection to server %s\n",
-+				clp->servername);
-+			goto out;
-+		}
-+		for (ccname = credlist; ccname && *ccname; ccname++) {
-+			gssd_setup_krb5_machine_gss_ccache(*ccname);
-+			if ((create_auth_rpc_client(clp, tgtname, rpc_clnt,
-+						&auth, uid,
-+						AUTHTYPE_KRB5,
-+						GSS_C_NO_CREDENTIAL)) == 0) {
-+				/* Success! */
-+				success++;
-+				break;
-+			}
-+			printerr(2, "WARNING: Failed to create machine krb5"
-+				"context with cred cache %s for server %s\n",
-+				*ccname, clp->servername);
-+		}
-+		gssd_free_krb5_machine_cred_list(credlist);
-+		if (!success) {
-+			if(nocache == 0) {
-+				nocache++;
-+				printerr(2, "WARNING: Machine cache prematurely"					 "expired or corrupted trying to"
-+					 "recreate cache for server %s\n",
-+					clp->servername);
-+			} else {
-+				printerr(1, "WARNING: Failed to create machine"
-+					 "krb5 context with any credentials"
-+					 "cache for server %s\n",
-+					clp->servername);
-+				goto out;
-+			}
-+		}
-+	} while(!success);
-+
-+out:
-+	return auth;
-+}
-+
- /*
-  * this code uses the userland rpcsec gss library to create a krb5
-  * context on behalf of the kernel
-@@ -494,8 +552,6 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *tgtname,
- 	AUTH			*auth = NULL;
- 	struct authgss_private_data pd;
+@@ -597,33 +597,11 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *tgtname,
  	gss_buffer_desc		token;
--	char			**credlist = NULL;
--	char			**ccname;
- 	char			**dirname;
- 	int			create_resp = -1;
  	int			err, downcall_err = -EACCES;
-@@ -587,49 +643,10 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *tgtname,
- 	if (create_resp != 0) {
- 		if (uid == 0 && (root_uses_machine_creds == 1 ||
- 				service != NULL)) {
--			int nocache = 0;
--			int success = 0;
--			do {
--				gssd_refresh_krb5_machine_credential(clp->servername,
--								     NULL, service);
--				/*
--				 * Get a list of credential cache names and try each
--				 * of them until one works or we've tried them all
--				 */
--				if (gssd_get_krb5_machine_cred_list(&credlist)) {
--					printerr(0, "ERROR: No credentials found "
--						 "for connection to server %s\n",
--						 clp->servername);
--					goto out_return_error;
--				}
--				for (ccname = credlist; ccname && *ccname; ccname++) {
--					gssd_setup_krb5_machine_gss_ccache(*ccname);
--					if ((create_auth_rpc_client(clp, tgtname, &rpc_clnt,
--								    &auth, uid,
--								    AUTHTYPE_KRB5,
--								    GSS_C_NO_CREDENTIAL)) == 0) {
--						/* Success! */
--						success++;
--						break;
--					}
--					printerr(2, "WARNING: Failed to create machine krb5 context "
--						 "with credentials cache %s for server %s\n",
--						 *ccname, clp->servername);
--				}
--				gssd_free_krb5_machine_cred_list(credlist);
--				if (!success) {
--					if(nocache == 0) {
--						nocache++;
--						printerr(2, "WARNING: Machine cache is prematurely expired or corrupted "
--						            "trying to recreate cache for server %s\n", clp->servername);
--					} else {
--						printerr(1, "WARNING: Failed to create machine krb5 context "
--						 "with any credentials cache for server %s\n",
--						 clp->servername);
--						goto out_return_error;
--					}
--				}
--			} while(!success);
-+			auth =	krb5_use_machine_creds(clp, uid, tgtname,
-+							service, &rpc_clnt);
-+			if (auth == NULL)
-+				goto out_return_error;
- 		} else {
- 			printerr(1, "WARNING: Failed to create krb5 context "
- 				 "for user with uid %d for server %s\n",
+ 	OM_uint32		maj_stat, min_stat, lifetime_rec;
+-	pid_t			pid;
++	pid_t			pid, childpid = -1;
+ 	gss_name_t		gacceptor = GSS_C_NO_NAME;
+ 	gss_OID			mech;
+ 	gss_buffer_desc		acceptor  = {0};
+ 
+-	pid = fork();
+-	switch(pid) {
+-	case 0:
+-		/* Child: fall through to rest of function */
+-		break;
+-	case -1:
+-		/* fork() failed! */
+-		printerr(0, "WARNING: unable to fork() to handle upcall: %s\n",
+-				strerror(errno));
+-		return;
+-	default:
+-		/* Parent: just wait on child to exit and return */
+-		do {
+-			pid = wait(&err);
+-		} while(pid == -1 && errno != -ECHILD);
+-
+-		if (WIFSIGNALED(err))
+-			printerr(0, "WARNING: forked child was killed with signal %d\n",
+-					WTERMSIG(err));
+-		return;
+-	}
+-
+ 	printerr(1, "handling krb5 upcall (%s)\n", clp->relpath);
+ 
+ 	token.length = 0;
+@@ -655,6 +633,38 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *tgtname,
+ 		 service ? service : "<null>");
+ 	if (uid != 0 || (uid == 0 && root_uses_machine_creds == 0 &&
+ 				service == NULL)) {
++
++		/* already running as uid 0 */
++		if (uid == 0)
++			goto no_fork;
++
++		printerr(1, "Forking\n");
++		pid = fork();
++		switch(pid) {
++		case 0:
++			/* Child: fall through to rest of function */
++			childpid = getpid();
++			printerr(1, "CHILD forked pid %d \n", childpid);
++			break;
++		case -1:
++			/* fork() failed! */
++			printerr(0, "WARNING: unable to fork() to handle"
++				"upcall: %s\n", strerror(errno));
++			return;
++		default:
++			/* Parent: just wait on child to exit and return */
++			do {
++				pid = wait(&err);
++			} while(pid == -1 && errno != -ECHILD);
++
++			if (WIFSIGNALED(err))
++				printerr(0, "WARNING: forked child was killed"
++					 "with signal %d\n", WTERMSIG(err));
++			return;
++		}
++no_fork:
++
++		printerr(1, "pid %d calling krb5_not_machine_creds\n", getpid());
+ 		auth = krb5_not_machine_creds(clp, uid, tgtname, &downcall_err,
+ 						&err, &rpc_clnt);
+ 		if (err)
+@@ -717,11 +727,20 @@ out:
+ 	if (pd.pd_ctx_hndl.length != 0 || pd.pd_ctx != 0)
+ 		authgss_free_private_data(&pd);
+ #endif
++	printerr(1, "OUT auth %p rpc_clnt %p pid %d\n", auth, rpc_clnt,
++		getpid());
+ 	if (auth)
+ 		AUTH_DESTROY(auth);
+ 	if (rpc_clnt)
+ 		clnt_destroy(rpc_clnt);
+-	exit(0);
++	pid = getpid();
++	if (pid == childpid) {
++		printerr(1, "pid %d CALLING EXIT\n\n\n", pid);
++		exit(0);
++	} else {
++		printerr(1, "pid %d CALLING RETURN\n\n\n", pid);
++		return;
++	}
+ 
+ out_return_error:
+ 	do_error_downcall(fd, uid, downcall_err);
 -- 
 1.9.3 (Apple Git-50)
 
