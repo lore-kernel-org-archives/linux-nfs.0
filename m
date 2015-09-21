@@ -1,86 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ob0-f170.google.com ([209.85.214.170]:34879 "EHLO
-	mail-ob0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932504AbbIURKJ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Sep 2015 13:10:09 -0400
-Received: by obbzf10 with SMTP id zf10so86976019obb.2
-        for <linux-nfs@vger.kernel.org>; Mon, 21 Sep 2015 10:10:08 -0700 (PDT)
+Received: from smtp.opengridcomputing.com ([72.48.136.20]:40639 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753880AbbIURYY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Sep 2015 13:24:24 -0400
+From: Steve Wise <swise@opengridcomputing.com>
+Subject: [PATCH 1/3] xprtrdma: disconnect and flush cqs before freeing buffers
+To: trond.myklebust@primarydata.com, bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
+Date: Mon, 21 Sep 2015 12:24:23 -0500
+Message-ID: <20150921172423.9761.92399.stgit@build2.ogc.int>
 MIME-Version: 1.0
-In-Reply-To: <55FFD5F0.5030600@gmail.com>
-References: <55FFD5F0.5030600@gmail.com>
-Date: Mon, 21 Sep 2015 13:10:08 -0400
-Message-ID: <CAHQdGtRyw+FXn05CHQj5izVe1XeUVN4VZOZ_rg7RzH2ZDEyGtw@mail.gmail.com>
-Subject: Re: [PATCH] NFS: Skip checking ds_cinfo.buckets when lseg's
- commit_through_mds is set
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Weston Andros Adamson <dros@primarydata.com>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Sep 21, 2015 at 6:03 AM, Kinglong Mee <kinglongmee@gmail.com> wrote:
-> When lseg's commit_through_mds is set, pnfs client always WARN once
-> in nfs_direct_select_verf when checking ds_cinfo.nbuckets.
->
-> But, filelayout_alloc_commit_info will not initialize the ds_cinfo.nbuckets.
-> It's wrong of checking ds_cinfo.nbuckets, client should skip it.
->
-> [17844.666094] ------------[ cut here ]------------
-> [17844.667071] WARNING: CPU: 0 PID: 21758 at /root/source/linux-pnfs/fs/nfs/direct.c:174 nfs_direct_select_verf+0x5a/0x70 [nfs]()
-> [17844.668650] Modules linked in: nfs_layout_nfsv41_files(OE) nfsv4(OE) nfs(OE) fscache(E) nfsd(OE) xfs libcrc32c btrfs ppdev coretemp crct10dif_pclmul auth_rpcgss crc32_pclmul crc32c_intel nfs_acl ghash_clmulni_intel lockd vmw_balloon xor vmw_vmci grace raid6_pq shpchp sunrpc parport_pc i2c_piix4 parport vmwgfx drm_kms_helper ttm drm serio_raw mptspi e1000 scsi_transport_spi mptscsih mptbase ata_generic pata_acpi [last unloaded: fscache]
-> [17844.686676] CPU: 0 PID: 21758 Comm: kworker/0:1 Tainted: G        W  OE   4.3.0-rc1-pnfs+ #245
-> [17844.687352] Hardware name: VMware, Inc. VMware Virtual Platform/440BX Desktop Reference Platform, BIOS 6.00 05/20/2014
-> [17844.698502] Workqueue: nfsiod rpc_async_release [sunrpc]
-> [17844.699212]  0000000000000009 0000000043e58010 ffff8800454fbc10 ffffffff813680c4
-> [17844.699990]  ffff8800454fbc48 ffffffff8108b49d ffff88004eb20000 ffff88004eb20000
-> [17844.700844]  ffff880062e26000 0000000000000000 0000000000000001 ffff8800454fbc58
-> [17844.701637] Call Trace:
-> [17844.725252]  [<ffffffff813680c4>] dump_stack+0x19/0x25
-> [17844.732693]  [<ffffffff8108b49d>] warn_slowpath_common+0x7d/0xb0
-> [17844.733855]  [<ffffffff8108b5da>] warn_slowpath_null+0x1a/0x20
-> [17844.735015]  [<ffffffffa04a27ca>] nfs_direct_select_verf+0x5a/0x70 [nfs]
-> [17844.735999]  [<ffffffffa04a2b83>] nfs_direct_set_hdr_verf+0x23/0x90 [nfs]
-> [17844.736846]  [<ffffffffa04a2e17>] nfs_direct_write_completion+0x227/0x260 [nfs]
-> [17844.737782]  [<ffffffffa04a433c>] nfs_pgio_release+0x1c/0x20 [nfs]
-> [17844.738597]  [<ffffffffa0502df3>] pnfs_generic_rw_release+0x23/0x30 [nfsv4]
-> [17844.739486]  [<ffffffffa01cbbea>] rpc_free_task+0x2a/0x70 [sunrpc]
-> [17844.740326]  [<ffffffffa01cbcd5>] rpc_async_release+0x15/0x20 [sunrpc]
-> [17844.741173]  [<ffffffff810a387c>] process_one_work+0x21c/0x4c0
-> [17844.741984]  [<ffffffff810a37cd>] ? process_one_work+0x16d/0x4c0
-> [17844.742837]  [<ffffffff810a3b6a>] worker_thread+0x4a/0x440
-> [17844.743639]  [<ffffffff810a3b20>] ? process_one_work+0x4c0/0x4c0
-> [17844.744399]  [<ffffffff810a3b20>] ? process_one_work+0x4c0/0x4c0
-> [17844.745176]  [<ffffffff810a8d75>] kthread+0xf5/0x110
-> [17844.745927]  [<ffffffff810a8c80>] ? kthread_create_on_node+0x240/0x240
-> [17844.747105]  [<ffffffff8172ce1f>] ret_from_fork+0x3f/0x70
-> [17844.747856]  [<ffffffff810a8c80>] ? kthread_create_on_node+0x240/0x240
-> [17844.748642] ---[ end trace 336a2845d42b83f0 ]---
->
-> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
-> ---
->  fs/nfs/direct.c                | 2 +-
->  fs/nfs/filelayout/filelayout.c | 5 ++++-
->  include/linux/nfs_xdr.h        | 1 +
->  3 files changed, 6 insertions(+), 2 deletions(-)
->
-> diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-> index 38678d9..df3b6f4 100644
-> --- a/fs/nfs/direct.c
-> +++ b/fs/nfs/direct.c
-> @@ -166,7 +166,7 @@ nfs_direct_select_verf(struct nfs_direct_req *dreq,
->         struct nfs_writeverf *verfp = &dreq->verf;
->
->  #ifdef CONFIG_NFS_V4_1
-> -       if (ds_clp) {
-> +       if (ds_clp && !dreq->ds_cinfo.through_mds) {
+Otherwise a FRMR completion can cause a touch-after-free crash.
 
-Why we can't just test for dreq->ds_cinfo.nbuckets > 0?
+In xprt_rdma_destroy(), call rpcrdma_buffer_destroy() only after calling
+rpcrdma_ep_destroy().
 
->                 /* pNFS is in use, use the DS verf */
->                 if (commit_idx >= 0 && commit_idx < dreq->ds_cinfo.nbuckets)
->                         verfp = &dreq->ds_cinfo.buckets[commit_idx].direct_verf;
+In rpcrdma_ep_destroy(), disconnect the cm_id first which should flush the
+qp, then drain the cqs, then destroy the qp, and finally destroy the cqs.
 
-Cheers
-  Trond
+Signed-off-by: Steve Wise <swise@opengridcomputing.com>
+Tested-by: Chuck Lever <chuck.lever@oracle.com>
+---
+
+ net/sunrpc/xprtrdma/transport.c |    2 +-
+ net/sunrpc/xprtrdma/verbs.c     |    9 ++++++---
+ 2 files changed, 7 insertions(+), 4 deletions(-)
+
+diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+index 64443eb..41e452b 100644
+--- a/net/sunrpc/xprtrdma/transport.c
++++ b/net/sunrpc/xprtrdma/transport.c
+@@ -270,8 +270,8 @@ xprt_rdma_destroy(struct rpc_xprt *xprt)
+ 
+ 	xprt_clear_connected(xprt);
+ 
+-	rpcrdma_buffer_destroy(&r_xprt->rx_buf);
+ 	rpcrdma_ep_destroy(&r_xprt->rx_ep, &r_xprt->rx_ia);
++	rpcrdma_buffer_destroy(&r_xprt->rx_buf);
+ 	rpcrdma_ia_close(&r_xprt->rx_ia);
+ 
+ 	xprt_rdma_free_addresses(xprt);
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 6829967..01a314a 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -755,19 +755,22 @@ rpcrdma_ep_destroy(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
+ 
+ 	cancel_delayed_work_sync(&ep->rep_connect_worker);
+ 
+-	if (ia->ri_id->qp) {
++	if (ia->ri_id->qp)
+ 		rpcrdma_ep_disconnect(ep, ia);
++
++	rpcrdma_clean_cq(ep->rep_attr.recv_cq);
++	rpcrdma_clean_cq(ep->rep_attr.send_cq);
++
++	if (ia->ri_id->qp) {
+ 		rdma_destroy_qp(ia->ri_id);
+ 		ia->ri_id->qp = NULL;
+ 	}
+ 
+-	rpcrdma_clean_cq(ep->rep_attr.recv_cq);
+ 	rc = ib_destroy_cq(ep->rep_attr.recv_cq);
+ 	if (rc)
+ 		dprintk("RPC:       %s: ib_destroy_cq returned %i\n",
+ 			__func__, rc);
+ 
+-	rpcrdma_clean_cq(ep->rep_attr.send_cq);
+ 	rc = ib_destroy_cq(ep->rep_attr.send_cq);
+ 	if (rc)
+ 		dprintk("RPC:       %s: ib_destroy_cq returned %i\n",
+
