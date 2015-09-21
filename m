@@ -1,178 +1,240 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yk0-f172.google.com ([209.85.160.172]:33064 "EHLO
-	mail-yk0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755690AbbIUAsw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 20 Sep 2015 20:48:52 -0400
-Received: by ykft14 with SMTP id t14so89989400ykf.0
-        for <linux-nfs@vger.kernel.org>; Sun, 20 Sep 2015 17:48:51 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 5/5] NFSv4: Unify synchronous and asynchronous error handling
-Date: Sun, 20 Sep 2015 20:48:44 -0400
-Message-Id: <1442796524-89165-5-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1442796524-89165-4-git-send-email-trond.myklebust@primarydata.com>
-References: <1442796524-89165-1-git-send-email-trond.myklebust@primarydata.com>
- <1442796524-89165-2-git-send-email-trond.myklebust@primarydata.com>
- <1442796524-89165-3-git-send-email-trond.myklebust@primarydata.com>
- <1442796524-89165-4-git-send-email-trond.myklebust@primarydata.com>
+Received: from mail-pa0-f42.google.com ([209.85.220.42]:35724 "EHLO
+	mail-pa0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755523AbbIUBEK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 20 Sep 2015 21:04:10 -0400
+Received: by pacfv12 with SMTP id fv12so102759304pac.2
+        for <linux-nfs@vger.kernel.org>; Sun, 20 Sep 2015 18:04:09 -0700 (PDT)
+Subject: Re: [PATCH] NFSv4: Recovery of recalled read delegations is broken
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+References: <55FA8D22.2010003@gmail.com>
+ <87fv294r5u.fsf@notabene.neil.brown.name> <55FE82D9.4040305@gmail.com>
+ <1442766380-45695-1-git-send-email-trond.myklebust@primarydata.com>
+Cc: NeilBrown <neilb@suse.com>, linux-nfs@vger.kernel.org,
+        kinglongmee@gmail.com
+From: Kinglong Mee <kinglongmee@gmail.com>
+Message-ID: <55FF577F.9060302@gmail.com>
+Date: Mon, 21 Sep 2015 09:03:59 +0800
+MIME-Version: 1.0
+In-Reply-To: <1442766380-45695-1-git-send-email-trond.myklebust@primarydata.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-They now only differ in the way we handle waiting, so let's unify.
+On 9/21/2015 00:26, Trond Myklebust wrote:
+> When a read delegation is being recalled, and we're reclaiming the
+> cached opens, we need to make sure that we only reclaim read-only
+> modes.
+> A previous attempt to do this, relied on retrieving the delegation
+> type from the nfs4_opendata structure. Unfortunately, as Kinglong
+> pointed out, this field can only be set when performing reboot recovery.
+> 
+> Furthermore, if we call nfs4_open_recover(), then we end up clobbering
+> the state->flags for all modes that we're not recovering...
+> 
+> The fix is to have the delegation recall code pass this information
+> to the recovery call, and then refactor the recovery code so that
+> nfs4_open_delegation_recall() does not need to call nfs4_open_recover().
+> 
+> Reported-by: Kinglong Mee <kinglongmee@gmail.com>
+> Fixes: 39f897fdbd46 ("NFSv4: When returning a delegation, don't...")
+> Cc: NeilBrown <neilb@suse.com>
+> Cc: stable@vger.kernel.org # v4.2+
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/nfs4proc.c | 123 ++++++++++++++++++++++--------------------------------
- 1 file changed, 49 insertions(+), 74 deletions(-)
+Tested-by: Kinglong Mee <kinglongmee@gmail.com>
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index af3168c2b35d..ad25f18d8c81 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -78,7 +78,6 @@ struct nfs4_opendata;
- static int _nfs4_proc_open(struct nfs4_opendata *data);
- static int _nfs4_recover_proc_open(struct nfs4_opendata *data);
- static int nfs4_do_fsinfo(struct nfs_server *, struct nfs_fh *, struct nfs_fsinfo *);
--static int nfs4_async_handle_error(struct rpc_task *, struct nfs_server *, struct nfs4_state *, long *);
- static void nfs_fixup_referral_attributes(struct nfs_fattr *fattr);
- static int nfs4_proc_getattr(struct nfs_server *, struct nfs_fh *, struct nfs_fattr *, struct nfs4_label *label);
- static int _nfs4_proc_getattr(struct nfs_server *server, struct nfs_fh *fhandle, struct nfs_fattr *fattr, struct nfs4_label *label);
-@@ -465,6 +464,55 @@ out_retry:
- 	return ret;
- }
- 
-+static int
-+nfs4_async_handle_exception(struct rpc_task *task, struct nfs_server *server,
-+		int errorcode, struct nfs4_exception *exception)
-+{
-+	struct nfs_client *clp = server->nfs_client;
-+	int ret;
-+
-+	ret = nfs4_do_handle_exception(server, errorcode, exception);
-+	if (exception->delay) {
-+		rpc_delay(task, nfs4_update_delay(&exception->timeout));
-+		goto out_retry;
-+	}
-+	if (exception->recovering) {
-+		rpc_sleep_on(&clp->cl_rpcwaitq, task, NULL);
-+		if (test_bit(NFS4CLNT_MANAGER_RUNNING, &clp->cl_state) == 0)
-+			rpc_wake_up_queued_task(&clp->cl_rpcwaitq, task);
-+		goto out_retry;
-+	}
-+	if (test_bit(NFS_MIG_FAILED, &server->mig_status))
-+		ret = -EIO;
-+	return ret;
-+out_retry:
-+	if (ret == 0)
-+		exception->retry = 1;
-+	return ret;
-+}
-+
-+static int
-+nfs4_async_handle_error(struct rpc_task *task, struct nfs_server *server,
-+			struct nfs4_state *state, long *timeout)
-+{
-+	struct nfs4_exception exception = {
-+		.state = state,
-+	};
-+
-+	if (task->tk_status >= 0)
-+		return 0;
-+	if (timeout)
-+		exception.timeout = *timeout;
-+	task->tk_status = nfs4_async_handle_exception(task, server,
-+			task->tk_status,
-+			&exception);
-+	if (exception.delay && timeout)
-+		*timeout = exception.timeout;
-+	if (exception.retry)
-+		return -EAGAIN;
-+	return 0;
-+}
-+
- /*
-  * Return 'true' if 'clp' is using an rpc_client that is integrity protected
-  * or 'false' otherwise.
-@@ -4953,79 +5001,6 @@ out:
- #endif	/* CONFIG_NFS_V4_SECURITY_LABEL */
- 
- 
--static int
--nfs4_async_handle_error(struct rpc_task *task, struct nfs_server *server,
--			struct nfs4_state *state, long *timeout)
--{
--	struct nfs_client *clp = server->nfs_client;
--
--	if (task->tk_status >= 0)
--		return 0;
--	switch(task->tk_status) {
--		case -NFS4ERR_DELEG_REVOKED:
--		case -NFS4ERR_ADMIN_REVOKED:
--		case -NFS4ERR_BAD_STATEID:
--		case -NFS4ERR_OPENMODE:
--			if (state == NULL)
--				break;
--			if (nfs4_schedule_stateid_recovery(server, state) < 0)
--				goto recovery_failed;
--			goto wait_on_recovery;
--		case -NFS4ERR_EXPIRED:
--			if (state != NULL) {
--				if (nfs4_schedule_stateid_recovery(server, state) < 0)
--					goto recovery_failed;
--			}
--		case -NFS4ERR_STALE_STATEID:
--		case -NFS4ERR_STALE_CLIENTID:
--			nfs4_schedule_lease_recovery(clp);
--			goto wait_on_recovery;
--		case -NFS4ERR_MOVED:
--			if (nfs4_schedule_migration_recovery(server) < 0)
--				goto recovery_failed;
--			goto wait_on_recovery;
--		case -NFS4ERR_LEASE_MOVED:
--			nfs4_schedule_lease_moved_recovery(clp);
--			goto wait_on_recovery;
--#if defined(CONFIG_NFS_V4_1)
--		case -NFS4ERR_BADSESSION:
--		case -NFS4ERR_BADSLOT:
--		case -NFS4ERR_BAD_HIGH_SLOT:
--		case -NFS4ERR_DEADSESSION:
--		case -NFS4ERR_CONN_NOT_BOUND_TO_SESSION:
--		case -NFS4ERR_SEQ_FALSE_RETRY:
--		case -NFS4ERR_SEQ_MISORDERED:
--			dprintk("%s ERROR %d, Reset session\n", __func__,
--				task->tk_status);
--			nfs4_schedule_session_recovery(clp->cl_session, task->tk_status);
--			goto wait_on_recovery;
--#endif /* CONFIG_NFS_V4_1 */
--		case -NFS4ERR_DELAY:
--			nfs_inc_server_stats(server, NFSIOS_DELAY);
--			rpc_delay(task, nfs4_update_delay(timeout));
--			goto restart_call;
--		case -NFS4ERR_GRACE:
--			rpc_delay(task, NFS4_POLL_RETRY_MAX);
--		case -NFS4ERR_RETRY_UNCACHED_REP:
--		case -NFS4ERR_OLD_STATEID:
--			goto restart_call;
--	}
--	task->tk_status = nfs4_map_errors(task->tk_status);
--	return 0;
--recovery_failed:
--	task->tk_status = -EIO;
--	return 0;
--wait_on_recovery:
--	rpc_sleep_on(&clp->cl_rpcwaitq, task, NULL);
--	if (test_bit(NFS4CLNT_MANAGER_RUNNING, &clp->cl_state) == 0)
--		rpc_wake_up_queued_task(&clp->cl_rpcwaitq, task);
--	if (test_bit(NFS_MIG_FAILED, &server->mig_status))
--		goto recovery_failed;
--restart_call:
--	task->tk_status = 0;
--	return -EAGAIN;
--}
--
- static void nfs4_init_boot_verifier(const struct nfs_client *clp,
- 				    nfs4_verifier *bootverf)
- {
--- 
-2.4.3
+thanks,
+Kinglong Mee
 
+> ---
+>  fs/nfs/delegation.c |  8 ++++--
+>  fs/nfs/delegation.h |  2 +-
+>  fs/nfs/nfs4proc.c   | 81 +++++++++++++++++++++++++++++++----------------------
+>  3 files changed, 53 insertions(+), 38 deletions(-)
+> 
+> diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
+> index 2714ef835bdd..be806ead7f4d 100644
+> --- a/fs/nfs/delegation.c
+> +++ b/fs/nfs/delegation.c
+> @@ -113,7 +113,8 @@ out:
+>  	return status;
+>  }
+>  
+> -static int nfs_delegation_claim_opens(struct inode *inode, const nfs4_stateid *stateid)
+> +static int nfs_delegation_claim_opens(struct inode *inode,
+> +		const nfs4_stateid *stateid, fmode_t type)
+>  {
+>  	struct nfs_inode *nfsi = NFS_I(inode);
+>  	struct nfs_open_context *ctx;
+> @@ -140,7 +141,7 @@ again:
+>  		/* Block nfs4_proc_unlck */
+>  		mutex_lock(&sp->so_delegreturn_mutex);
+>  		seq = raw_seqcount_begin(&sp->so_reclaim_seqcount);
+> -		err = nfs4_open_delegation_recall(ctx, state, stateid);
+> +		err = nfs4_open_delegation_recall(ctx, state, stateid, type);
+>  		if (!err)
+>  			err = nfs_delegation_claim_locks(ctx, state, stateid);
+>  		if (!err && read_seqcount_retry(&sp->so_reclaim_seqcount, seq))
+> @@ -411,7 +412,8 @@ static int nfs_end_delegation_return(struct inode *inode, struct nfs_delegation
+>  	do {
+>  		if (test_bit(NFS_DELEGATION_REVOKED, &delegation->flags))
+>  			break;
+> -		err = nfs_delegation_claim_opens(inode, &delegation->stateid);
+> +		err = nfs_delegation_claim_opens(inode, &delegation->stateid,
+> +				delegation->type);
+>  		if (!issync || err != -EAGAIN)
+>  			break;
+>  		/*
+> diff --git a/fs/nfs/delegation.h b/fs/nfs/delegation.h
+> index a44829173e57..333063e032f0 100644
+> --- a/fs/nfs/delegation.h
+> +++ b/fs/nfs/delegation.h
+> @@ -54,7 +54,7 @@ void nfs_delegation_reap_unclaimed(struct nfs_client *clp);
+>  
+>  /* NFSv4 delegation-related procedures */
+>  int nfs4_proc_delegreturn(struct inode *inode, struct rpc_cred *cred, const nfs4_stateid *stateid, int issync);
+> -int nfs4_open_delegation_recall(struct nfs_open_context *ctx, struct nfs4_state *state, const nfs4_stateid *stateid);
+> +int nfs4_open_delegation_recall(struct nfs_open_context *ctx, struct nfs4_state *state, const nfs4_stateid *stateid, fmode_t type);
+>  int nfs4_lock_delegation_recall(struct file_lock *fl, struct nfs4_state *state, const nfs4_stateid *stateid);
+>  bool nfs4_copy_delegation_stateid(nfs4_stateid *dst, struct inode *inode, fmode_t flags);
+>  
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index 693b903b48bd..099a0a83ee8d 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -1127,6 +1127,21 @@ static int nfs4_wait_for_completion_rpc_task(struct rpc_task *task)
+>  	return ret;
+>  }
+>  
+> +static bool nfs4_mode_match_open_stateid(struct nfs4_state *state,
+> +		fmode_t fmode)
+> +{
+> +	switch(fmode & (FMODE_READ|FMODE_WRITE)) {
+> +	case FMODE_READ|FMODE_WRITE:
+> +		return state->n_rdwr != 0;
+> +	case FMODE_WRITE:
+> +		return state->n_wronly != 0;
+> +	case FMODE_READ:
+> +		return state->n_rdonly != 0;
+> +	}
+> +	WARN_ON_ONCE(1);
+> +	return false;
+> +}
+> +
+>  static int can_open_cached(struct nfs4_state *state, fmode_t mode, int open_mode)
+>  {
+>  	int ret = 0;
+> @@ -1571,17 +1586,13 @@ static struct nfs4_opendata *nfs4_open_recoverdata_alloc(struct nfs_open_context
+>  	return opendata;
+>  }
+>  
+> -static int nfs4_open_recover_helper(struct nfs4_opendata *opendata, fmode_t fmode, struct nfs4_state **res)
+> +static int nfs4_open_recover_helper(struct nfs4_opendata *opendata,
+> +		fmode_t fmode)
+>  {
+>  	struct nfs4_state *newstate;
+>  	int ret;
+>  
+> -	if ((opendata->o_arg.claim == NFS4_OPEN_CLAIM_DELEGATE_CUR ||
+> -	     opendata->o_arg.claim == NFS4_OPEN_CLAIM_DELEG_CUR_FH) &&
+> -	    (opendata->o_arg.u.delegation_type & fmode) != fmode)
+> -		/* This mode can't have been delegated, so we must have
+> -		 * a valid open_stateid to cover it - not need to reclaim.
+> -		 */
+> +	if (!nfs4_mode_match_open_stateid(opendata->state, fmode))
+>  		return 0;
+>  	opendata->o_arg.open_flags = 0;
+>  	opendata->o_arg.fmode = fmode;
+> @@ -1597,14 +1608,14 @@ static int nfs4_open_recover_helper(struct nfs4_opendata *opendata, fmode_t fmod
+>  	newstate = nfs4_opendata_to_nfs4_state(opendata);
+>  	if (IS_ERR(newstate))
+>  		return PTR_ERR(newstate);
+> +	if (newstate != opendata->state)
+> +		ret = -ESTALE;
+>  	nfs4_close_state(newstate, fmode);
+> -	*res = newstate;
+> -	return 0;
+> +	return ret;
+>  }
+>  
+>  static int nfs4_open_recover(struct nfs4_opendata *opendata, struct nfs4_state *state)
+>  {
+> -	struct nfs4_state *newstate;
+>  	int ret;
+>  
+>  	/* Don't trigger recovery in nfs_test_and_clear_all_open_stateid */
+> @@ -1615,27 +1626,15 @@ static int nfs4_open_recover(struct nfs4_opendata *opendata, struct nfs4_state *
+>  	clear_bit(NFS_DELEGATED_STATE, &state->flags);
+>  	clear_bit(NFS_OPEN_STATE, &state->flags);
+>  	smp_rmb();
+> -	if (state->n_rdwr != 0) {
+> -		ret = nfs4_open_recover_helper(opendata, FMODE_READ|FMODE_WRITE, &newstate);
+> -		if (ret != 0)
+> -			return ret;
+> -		if (newstate != state)
+> -			return -ESTALE;
+> -	}
+> -	if (state->n_wronly != 0) {
+> -		ret = nfs4_open_recover_helper(opendata, FMODE_WRITE, &newstate);
+> -		if (ret != 0)
+> -			return ret;
+> -		if (newstate != state)
+> -			return -ESTALE;
+> -	}
+> -	if (state->n_rdonly != 0) {
+> -		ret = nfs4_open_recover_helper(opendata, FMODE_READ, &newstate);
+> -		if (ret != 0)
+> -			return ret;
+> -		if (newstate != state)
+> -			return -ESTALE;
+> -	}
+> +	ret = nfs4_open_recover_helper(opendata, FMODE_READ|FMODE_WRITE);
+> +	if (ret != 0)
+> +		return ret;
+> +	ret = nfs4_open_recover_helper(opendata, FMODE_WRITE);
+> +	if (ret != 0)
+> +		return ret;
+> +	ret = nfs4_open_recover_helper(opendata, FMODE_READ);
+> +	if (ret != 0)
+> +		return ret;
+>  	/*
+>  	 * We may have performed cached opens for all three recoveries.
+>  	 * Check if we need to update the current stateid.
+> @@ -1759,18 +1758,32 @@ static int nfs4_handle_delegation_recall_error(struct nfs_server *server, struct
+>  	return err;
+>  }
+>  
+> -int nfs4_open_delegation_recall(struct nfs_open_context *ctx, struct nfs4_state *state, const nfs4_stateid *stateid)
+> +int nfs4_open_delegation_recall(struct nfs_open_context *ctx,
+> +		struct nfs4_state *state, const nfs4_stateid *stateid,
+> +		fmode_t type)
+>  {
+>  	struct nfs_server *server = NFS_SERVER(state->inode);
+>  	struct nfs4_opendata *opendata;
+> -	int err;
+> +	int err = 0;
+>  
+>  	opendata = nfs4_open_recoverdata_alloc(ctx, state,
+>  			NFS4_OPEN_CLAIM_DELEG_CUR_FH);
+>  	if (IS_ERR(opendata))
+>  		return PTR_ERR(opendata);
+>  	nfs4_stateid_copy(&opendata->o_arg.u.delegation, stateid);
+> -	err = nfs4_open_recover(opendata, state);
+> +	clear_bit(NFS_DELEGATED_STATE, &state->flags);
+> +	switch (type & (FMODE_READ|FMODE_WRITE)) {
+> +	case FMODE_READ|FMODE_WRITE:
+> +	case FMODE_WRITE:
+> +		err = nfs4_open_recover_helper(opendata, FMODE_READ|FMODE_WRITE);
+> +		if (err)
+> +			break;
+> +		err = nfs4_open_recover_helper(opendata, FMODE_WRITE);
+> +		if (err)
+> +			break;
+> +	case FMODE_READ:
+> +		err = nfs4_open_recover_helper(opendata, FMODE_READ);
+> +	}
+>  	nfs4_opendata_put(opendata);
+>  	return nfs4_handle_delegation_recall_error(server, state, stateid, err);
+>  }
+> 
