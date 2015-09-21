@@ -1,87 +1,371 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pa0-f41.google.com ([209.85.220.41]:35236 "EHLO
-	mail-pa0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933015AbbIUWy6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Sep 2015 18:54:58 -0400
-Received: by pacfv12 with SMTP id fv12so131522946pac.2
-        for <linux-nfs@vger.kernel.org>; Mon, 21 Sep 2015 15:54:57 -0700 (PDT)
-Subject: [PATCH v2] NFS: Skip checking ds_cinfo.buckets when lseg's
- commit_through_mds is set
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-References: <55FFD5F0.5030600@gmail.com>
- <CAHQdGtRyw+FXn05CHQj5izVe1XeUVN4VZOZ_rg7RzH2ZDEyGtw@mail.gmail.com>
- <560087D8.7050403@gmail.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Weston Andros Adamson <dros@primarydata.com>, kinglongmee@gmail.com
-From: Kinglong Mee <kinglongmee@gmail.com>
-Message-ID: <56008AB7.3020108@gmail.com>
-Date: Tue, 22 Sep 2015 06:54:47 +0800
-MIME-Version: 1.0
-In-Reply-To: <560087D8.7050403@gmail.com>
+Received: from aserp1040.oracle.com ([141.146.126.69]:51524 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932919AbbIUXFG convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Sep 2015 19:05:06 -0400
 Content-Type: text/plain; charset=utf-8
+Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2104\))
+Subject: Re: [PATCH v1 05/18] xprtrdma: Replace send and receive arrays
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <55FE8FEE.1010006@dev.mellanox.co.il>
+Date: Mon, 21 Sep 2015 16:04:28 -0700
+Cc: linux-rdma@vger.kernel.org,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <B217F6DC-F6B6-4544-91DB-B4CF2370617C@oracle.com>
+References: <20150917202829.19671.90044.stgit@manet.1015granger.net> <20150917204452.19671.66113.stgit@manet.1015granger.net> <55FE8FEE.1010006@dev.mellanox.co.il>
+To: Sagi Grimberg <sagig@dev.mellanox.co.il>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When lseg's commit_through_mds is set, pnfs client always WARN once
-in nfs_direct_select_verf after checking ds_cinfo.nbuckets.
 
-nfs should use the DS verf except commit_through_mds is set for
-layout segment where nbuckets is zero.
+> On Sep 20, 2015, at 3:52 AM, Sagi Grimberg <sagig@dev.mellanox.co.il> wrote:
+> 
+> On 9/17/2015 11:44 PM, Chuck Lever wrote:
+>> The rb_send_bufs and rb_recv_bufs arrays are used to implement a
+>> pair of stacks for keeping track of free rpcrdma_req and rpcrdma_rep
+>> structs. Replace those arrays with free lists.
+>> 
+>> To allow more than 512 RPCs in-flight at once, each of these arrays
+>> would be larger than a page (assuming 8-byte addresses and 4KB
+>> pages). Allowing up to 64K in-flight RPCs (as TCP now does), each
+>> buffer array would have to be 128 pages. That's an order-6
+>> allocation. (Not that we're going there.)
+>> 
+>> A list is easier to expand dynamically. Instead of allocating a
+>> larger array of pointers and copying the existing pointers to the
+>> new array, simply append more buffers to each list.
+>> 
+>> This also makes it simpler to manage receive buffers that might
+>> catch backwards-direction calls, or to post receive buffers in
+>> bulk to amortize the overhead of ib_post_recv.
+>> 
+>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> 
+> Hi Chuck,
+> 
+> I get the idea of this patch, but it is a bit confusing (to a
+> non-educated reader).
 
-[17844.666094] ------------[ cut here ]------------
-[17844.667071] WARNING: CPU: 0 PID: 21758 at /root/source/linux-pnfs/fs/nfs/direct.c:174 nfs_direct_select_verf+0x5a/0x70 [nfs]()
-[17844.668650] Modules linked in: nfs_layout_nfsv41_files(OE) nfsv4(OE) nfs(OE) fscache(E) nfsd(OE) xfs libcrc32c btrfs ppdev coretemp crct10dif_pclmul auth_rpcgss crc32_pclmul crc32c_intel nfs_acl ghash_clmulni_intel lockd vmw_balloon xor vmw_vmci grace raid6_pq shpchp sunrpc parport_pc i2c_piix4 parport vmwgfx drm_kms_helper ttm drm serio_raw mptspi e1000 scsi_transport_spi mptscsih mptbase ata_generic pata_acpi [last unloaded: fscache]
-[17844.686676] CPU: 0 PID: 21758 Comm: kworker/0:1 Tainted: G        W  OE   4.3.0-rc1-pnfs+ #245
-[17844.687352] Hardware name: VMware, Inc. VMware Virtual Platform/440BX Desktop Reference Platform, BIOS 6.00 05/20/2014
-[17844.698502] Workqueue: nfsiod rpc_async_release [sunrpc]
-[17844.699212]  0000000000000009 0000000043e58010 ffff8800454fbc10 ffffffff813680c4
-[17844.699990]  ffff8800454fbc48 ffffffff8108b49d ffff88004eb20000 ffff88004eb20000
-[17844.700844]  ffff880062e26000 0000000000000000 0000000000000001 ffff8800454fbc58
-[17844.701637] Call Trace:
-[17844.725252]  [<ffffffff813680c4>] dump_stack+0x19/0x25
-[17844.732693]  [<ffffffff8108b49d>] warn_slowpath_common+0x7d/0xb0
-[17844.733855]  [<ffffffff8108b5da>] warn_slowpath_null+0x1a/0x20
-[17844.735015]  [<ffffffffa04a27ca>] nfs_direct_select_verf+0x5a/0x70 [nfs]
-[17844.735999]  [<ffffffffa04a2b83>] nfs_direct_set_hdr_verf+0x23/0x90 [nfs]
-[17844.736846]  [<ffffffffa04a2e17>] nfs_direct_write_completion+0x227/0x260 [nfs]
-[17844.737782]  [<ffffffffa04a433c>] nfs_pgio_release+0x1c/0x20 [nfs]
-[17844.738597]  [<ffffffffa0502df3>] pnfs_generic_rw_release+0x23/0x30 [nfsv4]
-[17844.739486]  [<ffffffffa01cbbea>] rpc_free_task+0x2a/0x70 [sunrpc]
-[17844.740326]  [<ffffffffa01cbcd5>] rpc_async_release+0x15/0x20 [sunrpc]
-[17844.741173]  [<ffffffff810a387c>] process_one_work+0x21c/0x4c0
-[17844.741984]  [<ffffffff810a37cd>] ? process_one_work+0x16d/0x4c0
-[17844.742837]  [<ffffffff810a3b6a>] worker_thread+0x4a/0x440
-[17844.743639]  [<ffffffff810a3b20>] ? process_one_work+0x4c0/0x4c0
-[17844.744399]  [<ffffffff810a3b20>] ? process_one_work+0x4c0/0x4c0
-[17844.745176]  [<ffffffff810a8d75>] kthread+0xf5/0x110
-[17844.745927]  [<ffffffff810a8c80>] ? kthread_create_on_node+0x240/0x240
-[17844.747105]  [<ffffffff8172ce1f>] ret_from_fork+0x3f/0x70
-[17844.747856]  [<ffffffff810a8c80>] ? kthread_create_on_node+0x240/0x240
-[17844.748642] ---[ end trace 336a2845d42b83f0 ]---
+OK, let’s see if there’s room for additional improvement.
 
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
----
- fs/nfs/direct.c | 7 +++++--
- 1 file changed, 5 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index 38678d9..4b1d08f 100644
---- a/fs/nfs/direct.c
-+++ b/fs/nfs/direct.c
-@@ -166,8 +166,11 @@ nfs_direct_select_verf(struct nfs_direct_req *dreq,
- 	struct nfs_writeverf *verfp = &dreq->verf;
- 
- #ifdef CONFIG_NFS_V4_1
--	if (ds_clp) {
--		/* pNFS is in use, use the DS verf */
-+	/*
-+	 * pNFS is in use, use the DS verf except commit_through_mds is set
-+	 * for layout segment where nbuckets is zero.
-+	 */
-+	if (ds_clp && dreq->ds_cinfo.nbuckets > 0) {
- 		if (commit_idx >= 0 && commit_idx < dreq->ds_cinfo.nbuckets)
- 			verfp = &dreq->ds_cinfo.buckets[commit_idx].direct_verf;
- 		else
--- 
-2.5.0
+> Can you explain why sometimes you call put/get_locked routines
+> and sometimes you open-code them?
+
+Are you talking about the later patch that adds support for
+receiving backwards calls? That probably should use the
+existing helpers, shouldn’t it.
+
+
+> And is it mandatory to have
+> the callers lock before calling get/put? Perhaps the code would
+> be simpler if the get/put routines would take care of locking
+> since rb_lock looks dedicated to them.
+
+Not sure I understand this comment, I thought that the helpers
+were already doing the locking.
+
+
+> 
+>> ---
+>>  net/sunrpc/xprtrdma/verbs.c     |  141 +++++++++++++++++----------------------
+>>  net/sunrpc/xprtrdma/xprt_rdma.h |    9 +-
+>>  2 files changed, 66 insertions(+), 84 deletions(-)
+>> 
+>> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+>> index ac1345b..8d99214 100644
+>> --- a/net/sunrpc/xprtrdma/verbs.c
+>> +++ b/net/sunrpc/xprtrdma/verbs.c
+>> @@ -962,44 +962,18 @@ rpcrdma_buffer_create(struct rpcrdma_xprt *r_xprt)
+>>  {
+>>  	struct rpcrdma_buffer *buf = &r_xprt->rx_buf;
+>>  	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
+>> -	struct rpcrdma_create_data_internal *cdata = &r_xprt->rx_data;
+>> -	char *p;
+>> -	size_t len;
+>>  	int i, rc;
+>> 
+>> -	buf->rb_max_requests = cdata->max_requests;
+>> +	buf->rb_max_requests = r_xprt->rx_data.max_requests;
+>>  	spin_lock_init(&buf->rb_lock);
+>> 
+>> -	/* Need to allocate:
+>> -	 *   1.  arrays for send and recv pointers
+>> -	 *   2.  arrays of struct rpcrdma_req to fill in pointers
+>> -	 *   3.  array of struct rpcrdma_rep for replies
+>> -	 * Send/recv buffers in req/rep need to be registered
+>> -	 */
+>> -	len = buf->rb_max_requests *
+>> -		(sizeof(struct rpcrdma_req *) + sizeof(struct rpcrdma_rep *));
+>> -
+>> -	p = kzalloc(len, GFP_KERNEL);
+>> -	if (p == NULL) {
+>> -		dprintk("RPC:       %s: req_t/rep_t/pad kzalloc(%zd) failed\n",
+>> -			__func__, len);
+>> -		rc = -ENOMEM;
+>> -		goto out;
+>> -	}
+>> -	buf->rb_pool = p;	/* for freeing it later */
+>> -
+>> -	buf->rb_send_bufs = (struct rpcrdma_req **) p;
+>> -	p = (char *) &buf->rb_send_bufs[buf->rb_max_requests];
+>> -	buf->rb_recv_bufs = (struct rpcrdma_rep **) p;
+>> -	p = (char *) &buf->rb_recv_bufs[buf->rb_max_requests];
+>> -
+>>  	rc = ia->ri_ops->ro_init(r_xprt);
+>>  	if (rc)
+>>  		goto out;
+>> 
+>> +	INIT_LIST_HEAD(&buf->rb_send_bufs);
+>>  	for (i = 0; i < buf->rb_max_requests; i++) {
+>>  		struct rpcrdma_req *req;
+>> -		struct rpcrdma_rep *rep;
+>> 
+>>  		req = rpcrdma_create_req(r_xprt);
+>>  		if (IS_ERR(req)) {
+>> @@ -1008,7 +982,12 @@ rpcrdma_buffer_create(struct rpcrdma_xprt *r_xprt)
+>>  			rc = PTR_ERR(req);
+>>  			goto out;
+>>  		}
+>> -		buf->rb_send_bufs[i] = req;
+>> +		list_add(&req->rl_free, &buf->rb_send_bufs);
+>> +	}
+>> +
+>> +	INIT_LIST_HEAD(&buf->rb_recv_bufs);
+>> +	for (i = 0; i < buf->rb_max_requests + 2; i++) {
+>> +		struct rpcrdma_rep *rep;
+>> 
+>>  		rep = rpcrdma_create_rep(r_xprt);
+>>  		if (IS_ERR(rep)) {
+>> @@ -1017,7 +996,7 @@ rpcrdma_buffer_create(struct rpcrdma_xprt *r_xprt)
+>>  			rc = PTR_ERR(rep);
+>>  			goto out;
+>>  		}
+>> -		buf->rb_recv_bufs[i] = rep;
+>> +		list_add(&rep->rr_list, &buf->rb_recv_bufs);
+>>  	}
+>> 
+>>  	return 0;
+>> @@ -1051,25 +1030,26 @@ void
+>>  rpcrdma_buffer_destroy(struct rpcrdma_buffer *buf)
+>>  {
+>>  	struct rpcrdma_ia *ia = rdmab_to_ia(buf);
+>> -	int i;
+>> 
+>> -	/* clean up in reverse order from create
+>> -	 *   1.  recv mr memory (mr free, then kfree)
+>> -	 *   2.  send mr memory (mr free, then kfree)
+>> -	 *   3.  MWs
+>> -	 */
+>> -	dprintk("RPC:       %s: entering\n", __func__);
+>> +	while (!list_empty(&buf->rb_recv_bufs)) {
+>> +		struct rpcrdma_rep *rep = list_entry(buf->rb_recv_bufs.next,
+>> +						     struct rpcrdma_rep,
+>> +						     rr_list);
+>> 
+>> -	for (i = 0; i < buf->rb_max_requests; i++) {
+>> -		if (buf->rb_recv_bufs)
+>> -			rpcrdma_destroy_rep(ia, buf->rb_recv_bufs[i]);
+>> -		if (buf->rb_send_bufs)
+>> -			rpcrdma_destroy_req(ia, buf->rb_send_bufs[i]);
+>> +		list_del(&rep->rr_list);
+>> +		rpcrdma_destroy_rep(ia, rep);
+>>  	}
+>> 
+>> -	ia->ri_ops->ro_destroy(buf);
+>> +	while (!list_empty(&buf->rb_send_bufs)) {
+>> +		struct rpcrdma_req *req = list_entry(buf->rb_send_bufs.next,
+>> +						     struct rpcrdma_req,
+>> +						     rl_free);
+>> 
+>> -	kfree(buf->rb_pool);
+>> +		list_del(&req->rl_free);
+>> +		rpcrdma_destroy_req(ia, req);
+>> +	}
+>> +
+>> +	ia->ri_ops->ro_destroy(buf);
+>>  }
+>> 
+>>  struct rpcrdma_mw *
+>> @@ -1102,24 +1082,27 @@ rpcrdma_put_mw(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mw *mw)
+>>  }
+>> 
+>>  static void
+>> -rpcrdma_buffer_put_sendbuf(struct rpcrdma_req *req, struct rpcrdma_buffer *buf)
+>> +rpcrdma_buffer_put_locked(struct rpcrdma_rep *rep, struct rpcrdma_buffer *buf)
+>>  {
+>> -	buf->rb_send_bufs[--buf->rb_send_index] = req;
+>> -	req->rl_niovs = 0;
+>> -	if (req->rl_reply) {
+>> -		buf->rb_recv_bufs[--buf->rb_recv_index] = req->rl_reply;
+>> -		req->rl_reply = NULL;
+>> -	}
+>> +	list_add_tail(&rep->rr_list, &buf->rb_recv_bufs);
+>> +}
+>> +
+>> +static struct rpcrdma_rep *
+>> +rpcrdma_buffer_get_locked(struct rpcrdma_buffer *buf)
+>> +{
+>> +	struct rpcrdma_rep *rep;
+>> +
+>> +	rep = list_first_entry(&buf->rb_recv_bufs,
+>> +			       struct rpcrdma_rep, rr_list);
+>> +	list_del(&rep->rr_list);
+>> +
+>> +	return rep;
+>>  }
+> 
+> There seems to be a distinction between send/recv buffers. Would it
+> make sense to have a symmetric handling for both send/recv buffers?
+
+Or maybe the same helpers could handle both. I’ll have a look
+when I get back from SNIA SDC.
+
+
+>>  /*
+>>   * Get a set of request/reply buffers.
+>>   *
+>> - * Reply buffer (if needed) is attached to send buffer upon return.
+>> - * Rule:
+>> - *    rb_send_index and rb_recv_index MUST always be pointing to the
+>> - *    *next* available buffer (non-NULL). They are incremented after
+>> - *    removing buffers, and decremented *before* returning them.
+>> + * Reply buffer (if available) is attached to send buffer upon return.
+>>   */
+>>  struct rpcrdma_req *
+>>  rpcrdma_buffer_get(struct rpcrdma_buffer *buffers)
+>> @@ -1129,25 +1112,22 @@ rpcrdma_buffer_get(struct rpcrdma_buffer *buffers)
+>> 
+>>  	spin_lock_irqsave(&buffers->rb_lock, flags);
+>> 
+>> -	if (buffers->rb_send_index == buffers->rb_max_requests) {
+>> +	if (list_empty(&buffers->rb_send_bufs)) {
+>>  		spin_unlock_irqrestore(&buffers->rb_lock, flags);
+>> -		dprintk("RPC:       %s: out of request buffers\n", __func__);
+>> -		return ((struct rpcrdma_req *)NULL);
+>> -	}
+>> -
+>> -	req = buffers->rb_send_bufs[buffers->rb_send_index];
+>> -	if (buffers->rb_send_index < buffers->rb_recv_index) {
+>> -		dprintk("RPC:       %s: %d extra receives outstanding (ok)\n",
+>> -			__func__,
+>> -			buffers->rb_recv_index - buffers->rb_send_index);
+>> -		req->rl_reply = NULL;
+>> -	} else {
+>> -		req->rl_reply = buffers->rb_recv_bufs[buffers->rb_recv_index];
+>> -		buffers->rb_recv_bufs[buffers->rb_recv_index++] = NULL;
+>> +		pr_warn("RPC:       %s: out of request buffers\n", __func__);
+>> +		return NULL;
+>>  	}
+>> -	buffers->rb_send_bufs[buffers->rb_send_index++] = NULL;
+>> +	req = list_first_entry(&buffers->rb_send_bufs,
+>> +			       struct rpcrdma_req, rl_free);
+>> +	list_del(&req->rl_free);
+>> 
+>> +	req->rl_reply = NULL;
+>> +	if (!list_empty(&buffers->rb_recv_bufs))
+>> +		req->rl_reply = rpcrdma_buffer_get_locked(buffers);
+> 
+> Would it make sense to check !list_empty() inside _get_locked and handle
+> a possible NULL return?
+> 
+>>  	spin_unlock_irqrestore(&buffers->rb_lock, flags);
+>> +
+>> +	if (!req->rl_reply)
+>> +		pr_warn("RPC:       %s: out of reply buffers\n", __func__);
+>>  	return req;
+>>  }
+>> 
+>> @@ -1159,17 +1139,22 @@ void
+>>  rpcrdma_buffer_put(struct rpcrdma_req *req)
+>>  {
+>>  	struct rpcrdma_buffer *buffers = req->rl_buffer;
+>> +	struct rpcrdma_rep *rep = req->rl_reply;
+>>  	unsigned long flags;
+>> 
+>> +	req->rl_niovs = 0;
+>> +	req->rl_reply = NULL;
+>> +
+>>  	spin_lock_irqsave(&buffers->rb_lock, flags);
+>> -	rpcrdma_buffer_put_sendbuf(req, buffers);
+>> +	list_add_tail(&req->rl_free, &buffers->rb_send_bufs);
+>> +	if (rep)
+>> +		rpcrdma_buffer_put_locked(rep, buffers);
+>>  	spin_unlock_irqrestore(&buffers->rb_lock, flags);
+>>  }
+>> 
+>>  /*
+>>   * Recover reply buffers from pool.
+>> - * This happens when recovering from error conditions.
+>> - * Post-increment counter/array index.
+>> + * This happens when recovering from disconnect.
+>>   */
+>>  void
+>>  rpcrdma_recv_buffer_get(struct rpcrdma_req *req)
+>> @@ -1178,10 +1163,8 @@ rpcrdma_recv_buffer_get(struct rpcrdma_req *req)
+>>  	unsigned long flags;
+>> 
+>>  	spin_lock_irqsave(&buffers->rb_lock, flags);
+>> -	if (buffers->rb_recv_index < buffers->rb_max_requests) {
+>> -		req->rl_reply = buffers->rb_recv_bufs[buffers->rb_recv_index];
+>> -		buffers->rb_recv_bufs[buffers->rb_recv_index++] = NULL;
+>> -	}
+>> +	if (!list_empty(&buffers->rb_recv_bufs))
+>> +		req->rl_reply = rpcrdma_buffer_get_locked(buffers);
+>>  	spin_unlock_irqrestore(&buffers->rb_lock, flags);
+>>  }
+>> 
+>> @@ -1196,7 +1179,7 @@ rpcrdma_recv_buffer_put(struct rpcrdma_rep *rep)
+>>  	unsigned long flags;
+>> 
+>>  	spin_lock_irqsave(&buffers->rb_lock, flags);
+>> -	buffers->rb_recv_bufs[--buffers->rb_recv_index] = rep;
+>> +	rpcrdma_buffer_put_locked(rep, buffers);
+>>  	spin_unlock_irqrestore(&buffers->rb_lock, flags);
+>>  }
+>> 
+>> diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+>> index a13508b..e6a358f 100644
+>> --- a/net/sunrpc/xprtrdma/xprt_rdma.h
+>> +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+>> @@ -252,6 +252,7 @@ struct rpcrdma_mr_seg {		/* chunk descriptors */
+>>  #define RPCRDMA_MAX_IOVS	(2)
+>> 
+>>  struct rpcrdma_req {
+>> +	struct list_head	rl_free;
+>>  	unsigned int		rl_niovs;
+>>  	unsigned int		rl_nchunks;
+>>  	unsigned int		rl_connect_cookie;
+>> @@ -285,12 +286,10 @@ struct rpcrdma_buffer {
+>>  	struct list_head	rb_all;
+>>  	char			*rb_pool;
+>> 
+>> -	spinlock_t		rb_lock;	/* protect buf arrays */
+>> +	spinlock_t		rb_lock;	/* protect buf lists */
+>> +	struct list_head	rb_send_bufs;
+>> +	struct list_head	rb_recv_bufs;
+>>  	u32			rb_max_requests;
+>> -	int			rb_send_index;
+>> -	int			rb_recv_index;
+>> -	struct rpcrdma_req	**rb_send_bufs;
+>> -	struct rpcrdma_rep	**rb_recv_bufs;
+>>  };
+>>  #define rdmab_to_ia(b) (&container_of((b), struct rpcrdma_xprt, rx_buf)->rx_ia)
+>> 
+>> 
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+—
+Chuck Lever
+
+
 
