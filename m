@@ -1,70 +1,92 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yk0-f175.google.com ([209.85.160.175]:33874 "EHLO
-	mail-yk0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755672AbbIUAsu (ORCPT
+Received: from mail-yk0-f176.google.com ([209.85.160.176]:35701 "EHLO
+	mail-yk0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755662AbbIUAsu (ORCPT
 	<rfc822;linux-nfs@vger.kernel.org>); Sun, 20 Sep 2015 20:48:50 -0400
-Received: by ykdg206 with SMTP id g206so89862256ykd.1
-        for <linux-nfs@vger.kernel.org>; Sun, 20 Sep 2015 17:48:50 -0700 (PDT)
+Received: by ykdz138 with SMTP id z138so9218336ykd.2
+        for <linux-nfs@vger.kernel.org>; Sun, 20 Sep 2015 17:48:49 -0700 (PDT)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 4/5] NFSv4: Don't use synchronous delegation recall in exception handling
-Date: Sun, 20 Sep 2015 20:48:43 -0400
-Message-Id: <1442796524-89165-4-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1442796524-89165-3-git-send-email-trond.myklebust@primarydata.com>
+Subject: [PATCH v2 3/5] NFSv4: nfs4_async_handle_error should take a non-const nfs_server
+Date: Sun, 20 Sep 2015 20:48:42 -0400
+Message-Id: <1442796524-89165-3-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1442796524-89165-2-git-send-email-trond.myklebust@primarydata.com>
 References: <1442796524-89165-1-git-send-email-trond.myklebust@primarydata.com>
  <1442796524-89165-2-git-send-email-trond.myklebust@primarydata.com>
- <1442796524-89165-3-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The code needs to be able to work from inside an asynchronous context.
+For symmetry with the synchronous handler, and so that we can potentially
+handle errors such as NFS4ERR_BADNAME.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/delegation.c | 6 ++----
- fs/nfs/nfs4proc.c   | 8 +++-----
- 2 files changed, 5 insertions(+), 9 deletions(-)
+ fs/nfs/nfs4proc.c       | 6 +++---
+ include/linux/nfs_xdr.h | 6 +++---
+ 2 files changed, 6 insertions(+), 6 deletions(-)
 
-diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
-index be806ead7f4d..5166adcfc0fb 100644
---- a/fs/nfs/delegation.c
-+++ b/fs/nfs/delegation.c
-@@ -721,14 +721,12 @@ int nfs_async_inode_return_delegation(struct inode *inode,
- 	struct nfs_client *clp = server->nfs_client;
- 	struct nfs_delegation *delegation;
- 
--	filemap_flush(inode->i_mapping);
--
- 	rcu_read_lock();
- 	delegation = rcu_dereference(NFS_I(inode)->delegation);
- 	if (delegation == NULL)
- 		goto out_enoent;
--
--	if (!clp->cl_mvops->match_stateid(&delegation->stateid, stateid))
-+	if (stateid != NULL &&
-+	    !clp->cl_mvops->match_stateid(&delegation->stateid, stateid))
- 		goto out_enoent;
- 	nfs_mark_return_delegation(server, delegation);
- 	rcu_read_unlock();
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index b6bf246b9b6c..af3168c2b35d 100644
+index 9ab48308f195..b6bf246b9b6c 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -361,11 +361,9 @@ int nfs4_do_handle_exception(struct nfs_server *server, int errorcode, struct nf
- 		case -NFS4ERR_DELEG_REVOKED:
- 		case -NFS4ERR_ADMIN_REVOKED:
- 		case -NFS4ERR_BAD_STATEID:
--			if (inode && nfs4_have_delegation(inode, FMODE_READ)) {
--				nfs4_inode_return_delegation(inode);
--				exception->retry = 1;
--				return 0;
--			}
-+			if (inode && nfs_async_inode_return_delegation(inode,
-+						NULL) == 0)
-+				goto wait_on_recovery;
- 			if (state == NULL)
- 				break;
- 			ret = nfs4_schedule_stateid_recovery(server, state);
+@@ -78,7 +78,7 @@ struct nfs4_opendata;
+ static int _nfs4_proc_open(struct nfs4_opendata *data);
+ static int _nfs4_recover_proc_open(struct nfs4_opendata *data);
+ static int nfs4_do_fsinfo(struct nfs_server *, struct nfs_fh *, struct nfs_fsinfo *);
+-static int nfs4_async_handle_error(struct rpc_task *, const struct nfs_server *, struct nfs4_state *, long *);
++static int nfs4_async_handle_error(struct rpc_task *, struct nfs_server *, struct nfs4_state *, long *);
+ static void nfs_fixup_referral_attributes(struct nfs_fattr *fattr);
+ static int nfs4_proc_getattr(struct nfs_server *, struct nfs_fh *, struct nfs_fattr *, struct nfs4_label *label);
+ static int _nfs4_proc_getattr(struct nfs_server *server, struct nfs_fh *fhandle, struct nfs_fattr *fattr, struct nfs4_label *label);
+@@ -4956,7 +4956,7 @@ out:
+ 
+ 
+ static int
+-nfs4_async_handle_error(struct rpc_task *task, const struct nfs_server *server,
++nfs4_async_handle_error(struct rpc_task *task, struct nfs_server *server,
+ 			struct nfs4_state *state, long *timeout)
+ {
+ 	struct nfs_client *clp = server->nfs_client;
+@@ -5530,7 +5530,7 @@ struct nfs4_unlockdata {
+ 	struct nfs4_lock_state *lsp;
+ 	struct nfs_open_context *ctx;
+ 	struct file_lock fl;
+-	const struct nfs_server *server;
++	struct nfs_server *server;
+ 	unsigned long timestamp;
+ };
+ 
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 52faf7e96c65..53f2acc68baf 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -528,7 +528,7 @@ struct nfs4_delegreturnargs {
+ struct nfs4_delegreturnres {
+ 	struct nfs4_sequence_res	seq_res;
+ 	struct nfs_fattr * fattr;
+-	const struct nfs_server *server;
++	struct nfs_server *server;
+ };
+ 
+ /*
+@@ -601,7 +601,7 @@ struct nfs_removeargs {
+ 
+ struct nfs_removeres {
+ 	struct nfs4_sequence_res 	seq_res;
+-	const struct nfs_server *server;
++	struct nfs_server *server;
+ 	struct nfs_fattr	*dir_attr;
+ 	struct nfs4_change_info	cinfo;
+ };
+@@ -619,7 +619,7 @@ struct nfs_renameargs {
+ 
+ struct nfs_renameres {
+ 	struct nfs4_sequence_res	seq_res;
+-	const struct nfs_server		*server;
++	struct nfs_server		*server;
+ 	struct nfs4_change_info		old_cinfo;
+ 	struct nfs_fattr		*old_fattr;
+ 	struct nfs4_change_info		new_cinfo;
 -- 
 2.4.3
 
