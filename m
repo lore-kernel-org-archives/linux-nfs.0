@@ -1,254 +1,127 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp-o-3.desy.de ([131.169.56.156]:55091 "EHLO smtp-o-3.desy.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933337AbbIVNpO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 22 Sep 2015 09:45:14 -0400
-Received: from smtp-map-3.desy.de (smtp-map-3.desy.de [131.169.56.68])
-	by smtp-o-3.desy.de (DESY-O-3) with ESMTP id 669362804E4
-	for <linux-nfs@vger.kernel.org>; Tue, 22 Sep 2015 15:45:12 +0200 (CEST)
-Received: from ZITSWEEP4.win.desy.de (zitsweep4.win.desy.de [131.169.97.98])
-	by smtp-map-3.desy.de (DESY_MAP_3) with ESMTP id 57A7A117A
-	for <linux-nfs@vger.kernel.org>; Tue, 22 Sep 2015 15:45:12 +0200 (MEST)
-Received: from smtp-intra-1.desy.de (lb-40-26.desy.de) by ZITSWEEP4.win.desy.de
- (Clearswift SMTPRS 5.5.0) with ESMTP id <Tbd0223afbd83a9616230c@ZITSWEEP4.win.desy.de> for <linux-nfs@vger.kernel.org>;
- Tue, 22 Sep 2015 15:45:12 +0200
-From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+Received: from discipline.rit.edu ([129.21.6.207]:38734 "HELO
+	discipline.rit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1751591AbbIVOH5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Sep 2015 10:07:57 -0400
+From: Andrew Elble <aweits@rit.edu>
 To: linux-nfs@vger.kernel.org
-Cc: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-Subject: [PATCH] pnfs  support servers with multiple layout types
-Date: Tue, 22 Sep 2015 15:45:07 +0200
-Message-Id: <1442929507-7002-1-git-send-email-tigran.mkrtchyan@desy.de>
+Cc: Andrew Elble <aweits@rit.edu>
+Subject: [PATCH] nfsd: eliminate sending duplicate delegations
+Date: Tue, 22 Sep 2015 10:07:18 -0400
+Message-Id: <1442930838-45895-1-git-send-email-aweits@rit.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-current NFSv4.1/pNFS client assumes that MDS supports
-only one layout type. While it's true for most existing servers,
-nevertheless, this can be change in the near future.
+We've observed the nfsd server in a state where there are
+multiple delegations on the same nfs4_file for the same client.
+The nfs client does attempt to DELEGRETURN these when they are presented to
+it - but apparently under some (unknown) circumstances the client does not
+manage to return all of them. This leads to the eventual
+attempt to CB_RECALL more than one delegation with the same nfs
+filehandle to the same client. The first recall will succeed, but the
+next recall will fail with NFS4ERR_BADHANDLE. This leads to the server
+having delegations on cl_revoked that the client has no way to FREE
+or DELEGRETURN, with resulting inability to recover. The state manager
+on the server will continually assert SEQ4_STATUS_RECALLABLE_STATE_REVOKED,
+and the state manager on the client will be looping unable to satisfy
+the server.
 
-This patch is an attempt to multi layouttype MDS support.  To make
-it possible for such servers still function with existing clients, the layout
-type list will be processed in reverse order. This gives old clients still
-pick the first entry, but newer client will pick last entry.  Proof:
+So, let's not hand out duplicate delegations in the first place.
 
-4.3.0-rc1-dirty
-[  180.868764] nfs4flexfilelayout_init: NFSv4 Flexfile Layout Driver Registering...
+RFC 5561:
 
-2.6.32-573.3.1.el6.x86_64
-nfs4filelayout_init: NFSv4 File Layout Driver Registering...
+9.1.1:
+"Delegations and layouts, on the other hand, are not associated with a
+specific owner but are associated with the client as a whole
+(identified by a client ID)."
 
-Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+10.2:
+"...the stateid for a delegation is associated with a client ID and may be
+used on behalf of all the open-owners for the given client.  A
+delegation is made to the client as a whole and not to any specific
+process or thread of control within it."
+
+Reported-by: Eric Meddaugh <etmsys@rit.edu>
+Signed-off-by: Andrew Elble <aweits@rit.edu>
 ---
- fs/nfs/client.c         |  2 +-
- fs/nfs/nfs4xdr.c        | 22 +++++++++---------
- fs/nfs/pnfs.c           | 62 ++++++++++++++++++++++++++++++-------------------
- fs/nfs/pnfs.h           |  2 +-
- include/linux/nfs_xdr.h |  4 +++-
- 5 files changed, 54 insertions(+), 38 deletions(-)
+ fs/nfsd/nfs4state.c | 26 ++++++++++++++++++++++++--
+ fs/nfsd/state.h     |  1 +
+ 2 files changed, 25 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 57c5a02..1145bc7 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -786,7 +786,7 @@ int nfs_probe_fsinfo(struct nfs_server *server, struct nfs_fh *mntfh, struct nfs
- 	}
- 
- 	fsinfo.fattr = fattr;
--	fsinfo.layouttype = 0;
-+	memset(fsinfo.layouttype, 0, sizeof(fsinfo.layouttype));
- 	error = clp->rpc_ops->fsinfo(server, mntfh, &fsinfo);
- 	if (error < 0)
- 		goto out_error;
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 788adf3..7fbd411 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -4688,14 +4688,14 @@ static int decode_getfattr(struct xdr_stream *xdr, struct nfs_fattr *fattr,
- }
- 
- /*
-- * Decode potentially multiple layout types. Currently we only support
-- * one layout driver per file system.
-+ * Decode potentially multiple layout types.
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index ff108d2f777d..b0e2fba58271 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -3180,6 +3180,7 @@ static void nfsd4_init_file(struct knfsd_fh *fh, unsigned int hashval,
+ 	fp->fi_deleg_file = NULL;
+ 	fp->fi_had_conflict = false;
+ 	fp->fi_share_deny = 0;
++	mutex_init(&fp->fi_deleg_mutex);
+ 	memset(fp->fi_fds, 0, sizeof(fp->fi_fds));
+ 	memset(fp->fi_access, 0, sizeof(fp->fi_access));
+ #ifdef CONFIG_NFSD_PNFS
+@@ -4104,7 +4105,7 @@ static void nfsd4_open_deleg_none_ext(struct nfsd4_open *open, int status)
   */
--static int decode_first_pnfs_layout_type(struct xdr_stream *xdr,
-+static int decode_pnfs_layout_types(struct xdr_stream *xdr,
- 					 uint32_t *layouttype)
+ static void
+ nfs4_open_delegation(struct svc_fh *fh, struct nfsd4_open *open,
+-			struct nfs4_ol_stateid *stp)
++		     struct nfs4_ol_stateid *stp, struct nfs4_file *fp)
  {
- 	__be32 *p;
- 	int num;
-+	int i;
- 
- 	p = xdr_inline_decode(xdr, 4);
- 	if (unlikely(!p))
-@@ -4704,18 +4704,18 @@ static int decode_first_pnfs_layout_type(struct xdr_stream *xdr,
- 
- 	/* pNFS is not supported by the underlying file system */
- 	if (num == 0) {
--		*layouttype = 0;
- 		return 0;
+ 	struct nfs4_delegation *dp;
+ 	struct nfs4_openowner *oo = openowner(stp->st_stateowner);
+@@ -4146,10 +4147,31 @@ nfs4_open_delegation(struct svc_fh *fh, struct nfsd4_open *open,
+ 		default:
+ 			goto out_no_deleg;
  	}
--	if (num > 1)
--		printk(KERN_INFO "NFS: %s: Warning: Multiple pNFS layout "
--			"drivers per filesystem not supported\n", __func__);
-+	if (num > NFS_MAX_LAYOUT_TYPES)
-+		printk(KERN_INFO "NFS: %s: Warning: Too many (%d) pNFS layout types\n", __func__, num);
- 
- 	/* Decode and set first layout type, move xdr->p past unused types */
- 	p = xdr_inline_decode(xdr, num * 4);
- 	if (unlikely(!p))
- 		goto out_overflow;
--	*layouttype = be32_to_cpup(p);
-+	for(i = 0; i < num && i < NFS_MAX_LAYOUT_TYPES; i++) {
-+		layouttype[i] = be32_to_cpup(p++);
++
++	mutex_lock(&fp->fi_deleg_mutex);
++	spin_lock(&state_lock);
++	spin_lock(&fp->fi_lock);
++	list_for_each_entry(dp, &fp->fi_delegations, dl_perfile) {
++	  if(same_clid(&clp->cl_clientid,&dp->dl_stid.sc_client->cl_clientid)) {
++	    atomic_inc(&dp->dl_stid.sc_count);
++	    spin_unlock(&fp->fi_lock);
++	    spin_unlock(&state_lock);
++	    mutex_unlock(&fp->fi_deleg_mutex);
++	    goto out_with_existing_deleg;
++	  }
 +	}
- 	return 0;
- out_overflow:
- 	print_overflow_msg(__func__, xdr);
-@@ -4735,10 +4735,10 @@ static int decode_attr_pnfstype(struct xdr_stream *xdr, uint32_t *bitmap,
- 	if (unlikely(bitmap[1] & (FATTR4_WORD1_FS_LAYOUT_TYPES - 1U)))
- 		return -EIO;
- 	if (bitmap[1] & FATTR4_WORD1_FS_LAYOUT_TYPES) {
--		status = decode_first_pnfs_layout_type(xdr, layouttype);
-+		status = decode_pnfs_layout_types(xdr, layouttype);
- 		bitmap[1] &= ~FATTR4_WORD1_FS_LAYOUT_TYPES;
- 	} else
--		*layouttype = 0;
-+		memset(layouttype, 0, sizeof(*layouttype));
- 	return status;
- }
- 
-@@ -4792,7 +4792,7 @@ static int decode_fsinfo(struct xdr_stream *xdr, struct nfs_fsinfo *fsinfo)
- 	status = decode_attr_time_delta(xdr, bitmap, &fsinfo->time_delta);
- 	if (status != 0)
- 		goto xdr_error;
--	status = decode_attr_pnfstype(xdr, bitmap, &fsinfo->layouttype);
-+	status = decode_attr_pnfstype(xdr, bitmap, fsinfo->layouttype);
- 	if (status != 0)
- 		goto xdr_error;
- 	status = decode_attr_layout_blksize(xdr, bitmap, &fsinfo->blksize);
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index ba12464..883bfa2 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -104,45 +104,59 @@ unset_pnfs_layoutdriver(struct nfs_server *nfss)
-  * Try to set the server's pnfs module to the pnfs layout type specified by id.
-  * Currently only one pNFS layout driver per filesystem is supported.
-  *
-- * @id layout type. Zero (illegal layout type) indicates pNFS not in use.
-+ * @ids array of layout types supported by MDS.
-  */
- void
- set_pnfs_layoutdriver(struct nfs_server *server, const struct nfs_fh *mntfh,
--		      u32 id)
-+		      u32 *ids)
- {
- 	struct pnfs_layoutdriver_type *ld_type = NULL;
-+	u32 id;
-+	int i;
- 
--	if (id == 0)
--		goto out_no_driver;
- 	if (!(server->nfs_client->cl_exchange_flags &
- 		 (EXCHGID4_FLAG_USE_NON_PNFS | EXCHGID4_FLAG_USE_PNFS_MDS))) {
--		printk(KERN_ERR "NFS: %s: id %u cl_exchange_flags 0x%x\n",
--			__func__, id, server->nfs_client->cl_exchange_flags);
-+		printk(KERN_ERR "NFS: %s: cl_exchange_flags 0x%x\n",
-+			__func__, server->nfs_client->cl_exchange_flags);
- 		goto out_no_driver;
- 	}
--	ld_type = find_pnfs_driver(id);
--	if (!ld_type) {
--		request_module("%s-%u", LAYOUT_NFSV4_1_MODULE_PREFIX, id);
++	spin_unlock(&fp->fi_lock);
++	spin_unlock(&state_lock);
 +
-+	/*
-+ 	 * walk in reverse ordet to use last in the list first.
-+   	 * By assyming, that server will send most common type first,
-+   	 * most preferred one last, old client will be happy with
-+   	 * a first entry, where new clients (4.4+) will pick the
-+   	 * most advance one.
-+ 	 */
-+	for(i = NFS_MAX_LAYOUT_TYPES; i >=0; i--) {
-+		id = ids[i];
-+		if(!id)
-+			continue;
+ 	dp = nfs4_set_delegation(clp, fh, stp->st_stid.sc_file, stp->st_clnt_odstate);
 +
- 		ld_type = find_pnfs_driver(id);
- 		if (!ld_type) {
--			dprintk("%s: No pNFS module found for %u.\n",
--				__func__, id);
-+			request_module("%s-%u", LAYOUT_NFSV4_1_MODULE_PREFIX, id);
-+			ld_type = find_pnfs_driver(id);
-+			if (!ld_type) {
-+				dprintk("%s: No pNFS module found for %u.\n",
-+					__func__, id);
-+				continue;
-+			}
-+		}
-+		server->pnfs_curr_ld = ld_type;
-+		if (ld_type->set_layoutdriver
-+		    && ld_type->set_layoutdriver(server, mntfh)) {
-+			printk(KERN_ERR "NFS: %s: Error initializing pNFS layout "
-+				"driver %u.\n", __func__, id);
-+			module_put(ld_type->owner);
- 			goto out_no_driver;
- 		}
--	}
--	server->pnfs_curr_ld = ld_type;
--	if (ld_type->set_layoutdriver
--	    && ld_type->set_layoutdriver(server, mntfh)) {
--		printk(KERN_ERR "NFS: %s: Error initializing pNFS layout "
--			"driver %u.\n", __func__, id);
--		module_put(ld_type->owner);
--		goto out_no_driver;
--	}
--	/* Bump the MDS count */
--	atomic_inc(&server->nfs_client->cl_mds_count);
-+		/* Bump the MDS count */
-+		atomic_inc(&server->nfs_client->cl_mds_count);
- 
--	dprintk("%s: pNFS module for %u set\n", __func__, id);
--	return;
-+		dprintk("%s: pNFS module for %u set\n", __func__, id);
-+		return;
-+	}
- 
- out_no_driver:
- 	dprintk("%s: Using NFSv4 I/O\n", __func__);
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 78c9351..e7609c3 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -235,7 +235,7 @@ void pnfs_get_layout_hdr(struct pnfs_layout_hdr *lo);
- void pnfs_put_lseg(struct pnfs_layout_segment *lseg);
- void pnfs_put_lseg_locked(struct pnfs_layout_segment *lseg);
- 
--void set_pnfs_layoutdriver(struct nfs_server *, const struct nfs_fh *, u32);
-+void set_pnfs_layoutdriver(struct nfs_server *, const struct nfs_fh *, u32 *);
- void unset_pnfs_layoutdriver(struct nfs_server *);
- void pnfs_generic_pg_init_read(struct nfs_pageio_descriptor *, struct nfs_page *);
- int pnfs_generic_pg_readpages(struct nfs_pageio_descriptor *desc);
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 52faf7e..6c88745 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -124,6 +124,8 @@ struct nfs_fattr {
- 		| NFS_ATTR_FATTR_SPACE_USED \
- 		| NFS_ATTR_FATTR_V4_SECURITY_LABEL)
- 
-+#define NFS_MAX_LAYOUT_TYPES 32
++	mutex_unlock(&fp->fi_deleg_mutex);
 +
- /*
-  * Info on the file system
-  */
-@@ -139,7 +141,7 @@ struct nfs_fsinfo {
- 	__u64			maxfilesize;
- 	struct timespec		time_delta; /* server time granularity */
- 	__u32			lease_time; /* in seconds */
--	__u32			layouttype; /* supported pnfs layout driver */
-+	__u32			layouttype[NFS_MAX_LAYOUT_TYPES]; /* supported pnfs layout drivers */
- 	__u32			blksize; /* preferred pnfs io block size */
- };
+ 	if (IS_ERR(dp))
+ 		goto out_no_deleg;
  
++out_with_existing_deleg:
++
+ 	memcpy(&open->op_delegate_stateid, &dp->dl_stid.sc_stateid, sizeof(dp->dl_stid.sc_stateid));
+ 
+ 	dprintk("NFSD: delegation stateid=" STATEID_FMT "\n",
+@@ -4262,7 +4284,7 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
+ 	* Attempt to hand out a delegation. No error return, because the
+ 	* OPEN succeeds even if we fail.
+ 	*/
+-	nfs4_open_delegation(current_fh, open, stp);
++	nfs4_open_delegation(current_fh, open, stp, fp);
+ nodeleg:
+ 	status = nfs_ok;
+ 
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 67685b6cfef3..06a22efba408 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -512,6 +512,7 @@ struct nfs4_file {
+ 	int			fi_delegees;
+ 	struct knfsd_fh		fi_fhandle;
+ 	bool			fi_had_conflict;
++	struct mutex		fi_deleg_mutex;
+ #ifdef CONFIG_NFSD_PNFS
+ 	struct list_head	fi_lo_states;
+ 	atomic_t		fi_lo_recalls;
 -- 
-2.4.3
+2.4.6
 
