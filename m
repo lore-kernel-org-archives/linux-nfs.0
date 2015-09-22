@@ -1,159 +1,159 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from elasmtp-spurfowl.atl.sa.earthlink.net ([209.86.89.66]:51826
-	"EHLO elasmtp-spurfowl.atl.sa.earthlink.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1756444AbbIVDEl convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 21 Sep 2015 23:04:41 -0400
-References: <1442429367.24127.6.camel@localhost.localdomain> <CAHQdGtSWaeAyjeKFV5AxJPou_94esPnso5sQrA=wfep6m5qP5Q@mail.gmail.com> <08D9E2B0-B4A8-4DF0-9BB7-B19B2D260E97@oracle.com> <CAHQdGtTJdVf1UU7H=R-VdZPxT=BAKA04bB-WGbPqR38JkUpwMA@mail.gmail.com> <001a01d0f0c7$ca84e6d0$5f8eb470$@mindspring.com> <CAHQdGtSB6XwQme2GBsQzfjxZf4qJRPhsWSMf+mWbE5501HVBzw@mail.gmail.com> <3E2CC450-BB4D-4F08-957D-EB78FE3665BE@oracle.com> <EE6B41C1-F6A4-4EA0-BE83-4FD48EED9E42@oracle.com> <CAHQdGtQjXigfEzy=Jse0Fv+33B1m4LD-wEC7fZ3Ys2TPQCoacA@mail.gmail.com>
-In-Reply-To: <CAHQdGtQjXigfEzy=Jse0Fv+33B1m4LD-wEC7fZ3Ys2TPQCoacA@mail.gmail.com>
-Mime-Version: 1.0 (iPhone Mail 8J2)
-Content-Type: text/plain;
-	charset=utf-8
-Message-Id: <AFF6E75A-424D-4E62-8ABC-8CB0590583E0@mindspring.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-From: Frank Filz <ffilzlnx@mindspring.com>
-Subject: Re: [PATCH] Use a separate superblock if mount requires a different security flavor
-Date: Mon, 21 Sep 2015 20:03:59 -0700
-To: Trond Myklebust <trond.myklebust@primarydata.com>
+Received: from mail-pa0-f47.google.com ([209.85.220.47]:36732 "EHLO
+	mail-pa0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757795AbbIVDgU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Sep 2015 23:36:20 -0400
+Received: by padbj2 with SMTP id bj2so9879661pad.3
+        for <linux-nfs@vger.kernel.org>; Mon, 21 Sep 2015 20:36:19 -0700 (PDT)
+From: Peng Tao <tao.peng@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Peng Tao <tao.peng@primarydata.com>
+Subject: [PATCH v2] NFS41: make close wait for layoutreturn
+Date: Tue, 22 Sep 2015 11:35:22 +0800
+Message-Id: <1442892922-10834-1-git-send-email-tao.peng@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I'll see what happens with mounting / and then navigating into the two exports. My gut feel is my patch will actually make that work but I acknowledge the automatic mounts that will occur might follow a different path that isn't helped by my patch. 
+If we send a layoutreturn asynchronously before close, the close
+might reach server first and layoutreturn would fail with BADSTATEID
+because there is nothing keeping the layout stateid alive.
 
-I can also try and find out what freebsd client does. 
+Also do not pretend sending layoutreturn if we are not.
 
-I also agree with Chuck that some understanding if this configuration is something sysadmins genuinely expect to work (as opposed to QA folks trying the scenario because no documentation says it isn't supported).
+Signed-off-by: Peng Tao <tao.peng@primarydata.com>
+---
+v2: grab lo refcount when doing ROC
 
-If we decide it shouldn't be supported then we should consider making server side changes. 
+ fs/nfs/nfs4proc.c | 17 +++++++++++++++++
+ fs/nfs/pnfs.c     | 35 +++++++++++++++++++++++++----------
+ fs/nfs/pnfs.h     |  7 +++++++
+ 3 files changed, 49 insertions(+), 10 deletions(-)
 
-Frank
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 693b903..05f2da4 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2645,6 +2645,15 @@ out:
+ 	return err;
+ }
+ 
++static bool
++nfs4_wait_on_layoutreturn(struct inode *inode, struct rpc_task *task)
++{
++	if (!nfs_have_layout(inode))
++		return false;
++
++	return pnfs_wait_on_layoutreturn(inode, task);
++}
++
+ struct nfs4_closedata {
+ 	struct inode *inode;
+ 	struct nfs4_state *state;
+@@ -2763,6 +2772,11 @@ static void nfs4_close_prepare(struct rpc_task *task, void *data)
+ 		goto out_no_action;
+ 	}
+ 
++	if (nfs4_wait_on_layoutreturn(inode, task)) {
++		nfs_release_seqid(calldata->arg.seqid);
++		goto out_wait;
++	}
++
+ 	if (calldata->arg.fmode == 0)
+ 		task->tk_msg.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_CLOSE];
+ 	if (calldata->roc)
+@@ -5308,6 +5322,9 @@ static void nfs4_delegreturn_prepare(struct rpc_task *task, void *data)
+ 
+ 	d_data = (struct nfs4_delegreturndata *)data;
+ 
++	if (nfs4_wait_on_layoutreturn(d_data->inode, task))
++		return;
++
+ 	if (d_data->roc)
+ 		pnfs_roc_get_barrier(d_data->inode, &d_data->roc_barrier);
+ 
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index ba12464..8abe271 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1104,20 +1104,15 @@ bool pnfs_roc(struct inode *ino)
+ 			mark_lseg_invalid(lseg, &tmp_list);
+ 			found = true;
+ 		}
+-	/* pnfs_prepare_layoutreturn() grabs lo ref and it will be put
+-	 * in pnfs_roc_release(). We don't really send a layoutreturn but
+-	 * still want others to view us like we are sending one!
+-	 *
+-	 * If pnfs_prepare_layoutreturn() fails, it means someone else is doing
+-	 * LAYOUTRETURN, so we proceed like there are no layouts to return.
+-	 *
+-	 * ROC in three conditions:
++	/* ROC in two conditions:
+ 	 * 1. there are ROC lsegs
+ 	 * 2. we don't send layoutreturn
+-	 * 3. no others are sending layoutreturn
+ 	 */
+-	if (found && !layoutreturn && pnfs_prepare_layoutreturn(lo))
++	if (found && !layoutreturn) {
++		/* lo ref dropped in pnfs_roc_release() */
++		pnfs_get_layout_hdr(lo);
+ 		roc = true;
++	}
+ 
+ out_noroc:
+ 	spin_unlock(&ino->i_lock);
+@@ -1172,6 +1167,26 @@ void pnfs_roc_get_barrier(struct inode *ino, u32 *barrier)
+ 	spin_unlock(&ino->i_lock);
+ }
+ 
++bool pnfs_wait_on_layoutreturn(struct inode *ino, struct rpc_task *task)
++{
++	struct nfs_inode *nfsi = NFS_I(ino);
++        struct pnfs_layout_hdr *lo;
++        bool sleep = false;
++
++	/* we might not have grabbed lo reference. so need to check under
++	 * i_lock */
++        spin_lock(&ino->i_lock);
++        lo = nfsi->layout;
++        if (lo && test_bit(NFS_LAYOUT_RETURN, &lo->plh_flags))
++                sleep = true;
++        spin_unlock(&ino->i_lock);
++
++        if (sleep)
++                rpc_sleep_on(&NFS_SERVER(ino)->roc_rpcwaitq, task, NULL);
++
++        return sleep;
++}
++
+ /*
+  * Compare two layout segments for sorting into layout cache.
+  * We want to preferentially return RW over RO layouts, so ensure those
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 78c9351..d1990e9 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -270,6 +270,7 @@ bool pnfs_roc(struct inode *ino);
+ void pnfs_roc_release(struct inode *ino);
+ void pnfs_roc_set_barrier(struct inode *ino, u32 barrier);
+ void pnfs_roc_get_barrier(struct inode *ino, u32 *barrier);
++bool pnfs_wait_on_layoutreturn(struct inode *ino, struct rpc_task *task);
+ void pnfs_set_layoutcommit(struct inode *, struct pnfs_layout_segment *, loff_t);
+ void pnfs_cleanup_layoutcommit(struct nfs4_layoutcommit_data *data);
+ int pnfs_layoutcommit_inode(struct inode *inode, bool sync);
+@@ -639,6 +640,12 @@ pnfs_roc_get_barrier(struct inode *ino, u32 *barrier)
+ {
+ }
+ 
++static inline bool
++pnfs_wait_on_layoutreturn(struct inode *ino, struct rpc_task *task)
++{
++	return false;
++}
++
+ static inline void set_pnfs_layoutdriver(struct nfs_server *s,
+ 					 const struct nfs_fh *mntfh, u32 id)
+ {
+-- 
+1.8.3.1
 
-Sent from my iPhone
-
-On Sep 21, 2015, at 5:43 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
-
-> On Mon, Sep 21, 2015 at 7:10 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
->> 
->>> On Sep 17, 2015, at 11:01 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
->>> 
->>> 
->>> On Sep 16, 2015, at 11:32 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
->>> 
->>>> On Wed, Sep 16, 2015 at 5:36 PM, Frank Filz <ffilzlnx@mindspring.com> wrote:
->>>>>> On Wed, Sep 16, 2015 at 4:55 PM, Chuck Lever <chuck.lever@oracle.com>
->>>>>> wrote:
->>>>>>> 
->>>>>>> On Sep 16, 2015, at 4:52 PM, Trond Myklebust
->>>>>> <trond.myklebust@primarydata.com> wrote:
->>>>>>> 
->>>>>>>> On Wed, Sep 16, 2015 at 2:49 PM, Frank Filz <ffilzlnx@mindspring.com>
->>>>>> wrote:
->>>>>>>>> If a server has two exports from the same filesystem but with
->>>>>>>>> different security flavors allowed, when the client mounts first one
->>>>>>>>> and then the second, the same super block was being used. This
->>>>>>>>> resulted in the security flavor for the first export being applied
->>>>>>>>> to access to the second export.
->>>>>>>>> 
->>>>>>>>> The fix is simply to check the security flavor of the nfs_server
->>>>>>>>> temporarily constructed for the second mount within
->>>>>> nfs_compare_super.
->>>>>>>>> 
->>>>>>>>> Signed-off-by: Frank S. Filz <ffilzlnx@mindspring.com>
->>>>>>>>> ---
->>>>>>>>> fs/nfs/super.c | 3 +++
->>>>>>>>> 1 file changed, 3 insertions(+)
->>>>>>>>> 
->>>>>>>>> diff --git a/fs/nfs/super.c b/fs/nfs/super.c index 084af10..44d60f1
->>>>>>>>> 100644
->>>>>>>>> --- a/fs/nfs/super.c
->>>>>>>>> +++ b/fs/nfs/super.c
->>>>>>>>> @@ -2455,6 +2455,9 @@ static int nfs_compare_super(struct
->>>>>>>>> super_block *sb, void *data)
->>>>>>>>>     struct nfs_server *server = sb_mntdata->server, *old =
->>>>>>>>> NFS_SB(sb);
->>>>>>>>>     int mntflags = sb_mntdata->mntflags;
->>>>>>>>> 
->>>>>>>>> +       if(old->client->cl_auth->au_flavor
->>>>>>>>> +          != server->client->cl_auth->au_flavor)
->>>>>>>>> +               return 0;
->>>>>>>> 
->>>>>>>> Isn't this check already being performed in
->>>>>>>> nfs_compare_mount_options()? As far as I can see, the difference is
->>>>>>>> that you are checking unconditionally, whereas
->>>>>>>> nfs_compare_mount_options only does so if there was a 'sec=' line
->>>>>>>> specified in the mount options.
->>>>>>> 
->>>>>>> Right. If the user doesn't provide a sec=, the security flavor is
->>>>>>> autonegotiated. In the case Frank describes, there are two directories
->>>>>>> shared on the server, each from the same FSID but using distinct
->>>>>>> security policies.
->>>>>>> 
->>>>>>> So the mount options comparison is inadequate if no sec= is specified
->>>>>>> on the mount command line.
->>>>>> 
->>>>>> We don't claim to support autonegotiation of multiple security policies per
->>>>>> filesystem, in general. We only claim to support one auth flavour per super
->>>>>> block.
->>>>>> 
->>>>>> If I understand you correctly, you are knowingly trying to work around that
->>>>>> limitation by performing multiple mounts of the same filesystem and force it
->>>>>> to use multiple super blocks. Why can't you then also specify the 'sec='?
->>>>> 
->>>>> I see that point, but why not just make this case work smoothly rather than force the user to go back and specify -o sec on the mount?
->>>> 
->>>> The main issue is that it violates the policy that we must try our
->>>> best not to set up situations where the client has cache consistency
->>>> issues due to the existence of multiple superblocks that all have page
->>>> caches for the same file.
->>> 
->>> The parts of the physical FS's namespace that are accessible
->>> by each security flavor are disjoint. Aside from hardlinks, is
->>> there any possibility for cache aliasing in this scenario?
->>> 
->>> 
->>>>> Actually all that is necessary is SOME difference in mount options (or use -o nosharedcache, which could be used on all the mounts so all can have the same mount options...) and allow security negotiation to work.
->>>> 
->>>> I'd expect there to be no problems if the admin specifies -o
->>>> nosharedcache. Please do let me know if that fails to work.
->>>> 
->>>>> An interesting question is if there are any servers out there that don't typically provide different FSID for different portions of the namespace, but also provide a mechanism to specify different security policies for different portions of the namespace?
->>>> 
->>>> That sort of situation is difficult to manage.
->>> 
->>> But appears to be allowed by Solaris, and likely also by Linux
->>> and Ganesha. I think we are going to have to consider it,
->>> particularly if there is no prohibition against it in the RFCs.
->> 
->> It is certainly possible to document best practices or
->> add admin UI limits to prevent servers from being
->> configured this way.
->> 
->> Meanwhile, the Linux client does allow mounting such
->> exports when both mounts specify unique “sec=“. If this
->> is a dangerous or unsupported scenario, perhaps this
->> should be disallowed somehow.
->> 
->> When security is negotiated, the second mount is not
->> allowed. It could display an informative error message
->> when if fails.
-> 
-> My main worry with the patch you proposed is that we're only
-> considering a small part of the problem here, namely what happens on
-> mount.
-> What if the user were to mount '/' instead of the particular path you
-> chose, and then simply walk down to the problematic directory? As far
-> as I can see, that will fail just as badly both with and without this
-> patch. Why would users expect that behaviour to be any different to
-> the new mount behaviour?
-> 
-> IOW: what is the full set of expectations would we be setting by
-> applying the patch, and what is the rationale for changing some
-> behaviour, but not all?
-> 
-> Also, while I know that the Linux client has never supported this
-> behaviour. What do the Solaris and FreeBSD clients do, and what are
-> their limitations?
-> 
-> Cheers
->  Trond
