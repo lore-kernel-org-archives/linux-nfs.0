@@ -1,81 +1,134 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx141.netapp.com ([216.240.21.12]:34459 "EHLO mx141.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751806AbbIVQin (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 22 Sep 2015 12:38:43 -0400
-From: "Adamson, Andy" <William.Adamson@netapp.com>
-To: Jeff Layton <jlayton@poochiereds.net>
-CC: "steved@redhat.com" <steved@redhat.com>,
+Received: from mail-qg0-f48.google.com ([209.85.192.48]:35656 "EHLO
+	mail-qg0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752393AbbIVRJ3 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Sep 2015 13:09:29 -0400
+Received: by qgt47 with SMTP id 47so121972399qgt.2
+        for <linux-nfs@vger.kernel.org>; Tue, 22 Sep 2015 10:09:28 -0700 (PDT)
+Date: Tue, 22 Sep 2015 13:09:23 -0400
+From: Jeff Layton <jlayton@poochiereds.net>
+To: "Adamson, Andy" <William.Adamson@netapp.com>
+Cc: "steved@redhat.com" <steved@redhat.com>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 Subject: Re: [PATCH 4/4] GSSD: clean up machine credentials
-Date: Tue, 22 Sep 2015 16:38:41 +0000
-Message-ID: <0ED1A1D2-B73A-436E-9DBF-472D6049A6E4@netapp.com>
+Message-ID: <20150922130923.25cb96ca@synchrony.poochiereds.net>
+In-Reply-To: <0ED1A1D2-B73A-436E-9DBF-472D6049A6E4@netapp.com>
 References: <1442868609-1812-1-git-send-email-andros@netapp.com>
- <1442868609-1812-5-git-send-email-andros@netapp.com>
- <20150922072419.5d9df0d3@synchrony.poochiereds.net>
-In-Reply-To: <20150922072419.5d9df0d3@synchrony.poochiereds.net>
-Content-Type: text/plain; charset="utf-8"
+	<1442868609-1812-5-git-send-email-andros@netapp.com>
+	<20150922072419.5d9df0d3@synchrony.poochiereds.net>
+	<0ED1A1D2-B73A-436E-9DBF-472D6049A6E4@netapp.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQo+IE9uIFNlcCAyMiwgMjAxNSwgYXQgNzoyNCBBTSwgSmVmZiBMYXl0b24gPGpsYXl0b25AcG9v
-Y2hpZXJlZHMubmV0PiB3cm90ZToNCj4gDQo+IE9uIE1vbiwgMjEgU2VwIDIwMTUgMTY6NTA6MDkg
-LTA0MDANCj4gPGFuZHJvc0BuZXRhcHAuY29tPiB3cm90ZToNCj4gDQo+PiBGcm9tOiBBbmR5IEFk
-YW1zb24gPGFuZHJvc0BuZXRhcHAuY29tPg0KPj4gDQo+PiBTaW5jZSB3ZSBubyBsb25nZXIgZm9y
-ayBmb3IgdWlkIDAsIGdzc2RfYXRleGl0KCkgaXMgb25seSBjYWxsZWQgd2hlbiB1aWQgIT0gMCwN
-Cj4+IGFuZCBmYWlscyBhcyBwZXJtaXNzaW9ucyBvbiB0aGUgL3RtcC9rcmI1Y2NtYWNoaW5lX1JF
-QUxNIGZpbGUgcHJvaGliaXQNCj4+IHRoZSBjbGVhbiB1cCBvZiBtYWNoaW5lIGNyZWRlbnRpYWxz
-IChhcyBpdCBzaG91bGQpLg0KPj4gDQo+PiBNb3ZlIHRoZSByZWFwaW5nIG9mIG1hY2hpbmUgY3Jl
-ZGVudGlhbHMgYmFjayBpbnRvIGEgU0lHSU5UIHNpZ2hhbmRsZXIgc28gdGhhdA0KPj4gPEN0cmwg
-Qz4gZGVzdHJveWVzIG1hY2hpbmUgY3JlZGVudGlhbHMuDQo+PiANCj4+IFNpZ25lZC1vZmYtYnk6
-IEFuZHkgQWRhbXNvbiA8YW5kcm9zQG5ldGFwcC5jb20+DQo+PiAtLS0NCj4+IHV0aWxzL2dzc2Qv
-Z3NzZC5jIHwgMTAgKysrKy0tLS0tLQ0KPj4gMSBmaWxlIGNoYW5nZWQsIDQgaW5zZXJ0aW9ucygr
-KSwgNiBkZWxldGlvbnMoLSkNCj4+IA0KPj4gZGlmZiAtLWdpdCBhL3V0aWxzL2dzc2QvZ3NzZC5j
-IGIvdXRpbHMvZ3NzZC9nc3NkLmMNCj4+IGluZGV4IDJhNzY4ZWEuLmViZmY4NjAgMTAwNjQ0DQo+
-PiAtLS0gYS91dGlscy9nc3NkL2dzc2QuYw0KPj4gKysrIGIvdXRpbHMvZ3NzZC9nc3NkLmMNCj4+
-IEBAIC03MjksMTAgKzcyOSwxMiBAQCBmb3VuZDoNCj4+IH0NCj4+IA0KPj4gc3RhdGljIHZvaWQN
-Cj4+IC1nc3NkX2F0ZXhpdCh2b2lkKQ0KPj4gK3NpZ19kaWUoaW50IHNpZ25hbCkNCj4+IHsNCj4+
-IAlpZiAocm9vdF91c2VzX21hY2hpbmVfY3JlZHMpDQo+PiAJCWdzc2RfZGVzdHJveV9rcmI1X21h
-Y2hpbmVfY3JlZHMoKTsNCj4+ICsJcHJpbnRlcnIoMSwgImV4aXRpbmcgb24gc2lnbmFsICVkXG4i
-LCBzaWduYWwpOw0KPj4gKwlleGl0KDApOw0KPj4gfQ0KPj4gDQo+PiBzdGF0aWMgdm9pZA0KPj4g
-QEAgLTg5MiwxNyArODk0LDEzIEBAIG1haW4oaW50IGFyZ2MsIGNoYXIgKmFyZ3ZbXSkNCj4+IAkJ
-ZXhpdChFWElUX0ZBSUxVUkUpOw0KPj4gCX0NCj4+IA0KPj4gLQlpZiAoYXRleGl0KGdzc2RfYXRl
-eGl0KSkgew0KPj4gLQkJcHJpbnRlcnIoMSwgIkVSUk9SOiBhdGV4aXQgZmFpbGVkOiAlc1xuIiwg
-c3RyZXJyb3IoZXJybm8pKTsNCj4+IC0JCWV4aXQoRVhJVF9GQUlMVVJFKTsNCj4+IC0JfQ0KPj4g
-LQ0KPj4gCWlub3RpZnlfZmQgPSBpbm90aWZ5X2luaXQxKElOX05PTkJMT0NLKTsNCj4+IAlpZiAo
-aW5vdGlmeV9mZCA9PSAtMSkgew0KPj4gCQlwcmludGVycigxLCAiRVJST1I6IGlub3RpZnlfaW5p
-dDEgZmFpbGVkOiAlc1xuIiwgc3RyZXJyb3IoZXJybm8pKTsNCj4+IAkJZXhpdChFWElUX0ZBSUxV
-UkUpOw0KPj4gCX0NCj4+IA0KPj4gKwlzaWduYWwoU0lHSU5ULCBzaWdfZGllKTsNCj4+IAlzaWdu
-YWxfc2V0KCZzaWdodXBfZXYsIFNJR0hVUCwgZ3NzZF9zY2FuX2NiLCBOVUxMKTsNCj4+IAlzaWdu
-YWxfYWRkKCZzaWdodXBfZXYsIE5VTEwpOw0KPj4gCWV2ZW50X3NldCgmaW5vdGlmeV9ldiwgaW5v
-dGlmeV9mZCwgRVZfUkVBRCB8IEVWX1BFUlNJU1QsIGdzc2RfaW5vdGlmeV9jYiwgTlVMTCk7DQo+
-IA0KPiANCj4gSG1tLCBJIGRvbid0IGtub3cgYWJvdXQgdGhpcyBvbmUuIFdoYXQgaWYgeW91IGRp
-ZSBkdWUgdG8gU0lHVEVSTSBvcg0KPiBzb21ldGhpbmcgKHdoaWNoIGlzIHdoYXQgc3lzdGVtZCBn
-ZW5lcmFsbHkgc2VuZHMgcHJvY2Vzc2VzKS4gVGhleSB3b24ndA0KPiBnZXQgY2xlYW5lZCB1cCBp
-biB0aGF0IGNhc2UuDQoNClllcyAtIHRoZSBjb2RlIHByaW9yIHRvIGdzc2RfYXRleGl0KCkgY2Fs
-bGVkIHRoZSBzaWdfZGllIGZvciBTSUdURVJNIGFzIHdlbGwuDQo+IA0KPiBXaGF0IG1heSBiZSBi
-ZXR0ZXIgaXMgdG8ganVzdCBrZWVwIHRoZSBhdGV4aXQgaGFuZGxlciBidXQgaGF2ZSBpdCBkbyBh
-DQo+IGdldHBpZCgpIGFuZCBvbmx5IGRvIHRoZSBjbGVhbnVwIGlmIGl0cyB0aGUgb3JpZ2luYWwg
-cGlkIG9mIHRoZSBkYWVtb24uDQo+IEp1c3QgZG8gYSBnZXRwaWQgZWFybHkgZHVyaW5nIGdzc2Qg
-c3RhcnR1cCBhbmQgc3RvcmUgaXQgaW4gYSBnbG9iYWwNCj4gdmFyaWFibGUgc29tZXdoZXJlLg0K
-DQpJIHRyaWVkIHRoYXQgYmVmb3JlIHN1Ym1pdHRpbmcgdGhpcyBwYXRjaCAtIGdzc2RfYXRleGl0
-IGlzIG5vdCBjYWxsZWQgd2hlbiBzeXN0ZW1jdGwgc3RvcCBycGMtZ3NzZC5zZXJ2aWNlIHN0b3Bz
-IHJwYy5nc3NkLiBOb3IgaXMgaXQgY2FsbGVkIG9uIFNJR0lOVCwgU0lHS0lMTCwgb3IgU0lHVEVS
-TS4gQUZBSUNTLCBpdCBpcyBuZXZlciBjYWxsZWQuDQo+IA0KPiBUaGF0IHNhaWQsIG1heWJlIEkg
-c2hvdWxkIHRha2UgYSBzdGVwIGJhY2sgYW5kIGFzayAtLSB3aHkgZG9lcyBnc3NkDQo+IGNsZWFu
-IHVwIHRoaXMgY3JlZGNhY2hlIGluIHRoZSBmaXJzdCBwbGFjZT8gSXMgdGhlcmUgc29tZSBhdHRh
-Y2sgdmVjdG9yDQo+IHRoYXQgdGhpcyBwcmV2ZW50cywgb3IgaXMgaXQganVzdCB0byBwcmV2ZW50
-IGEgdG9uIG9mIGNyZWRjYWNoZXMgcGlsaW5nDQo+IHVwIGluIC90bXA/DQoNClllYWgsIGl04oCZ
-cyBub3QgYSBiaWcgcHJvYmxlbSAtIGNyZWQgY2FjaGVzIHBpbGluZyB1cCBpbiAvdG1wLiBNb3N0
-bHkgaXTigJlzIGR1ZSB0byBhZG1pbuKAmXMgdGhpbmtpbmcgdGhhdCBpZiB0aGUgdXNlciBvZiBr
-ZXJiZXJvcyBjcmVkZW50aWFscyBpcyBub3QgcnVubmluZywgdGhlbiB0aGUga2VyYmVyb3MgY3Jl
-ZGVudGlhbHMgc2hvdWxkIG5vdCBiZSBwcmVzZW50LiBUaGUgc2FtZSByZWFzb24ga2Rlc3Ryb3kg
-aXMgdXNlZC4gTm90ZSB0aGF0IHRoZSAvdG1wL2tyYjVjY21hY2hpbmVfUkVBTE0gZmlsZSBzdXJ2
-aXZlcyByZWJvb3Qg4oCmLg0KDQpJIHRoaW5rIEkgc2hvdWxkIHNpbXBseSB1c2Ugc2lnX2RpZSBm
-b3IgU0lHVEVSTSBhbmQgU0lHS0lMTCBhcyB3ZWxsIGFzIFNJR0lOVC4gTm90ZSB0aGF0IHdpdGgg
-dGhlIHNpZ19kaWUoKSBhcHByb2FjaCwgSSBkbyBub3QgbmVlZCB0byBjaGVjayB0aGUgcGlkLg0K
-DQpXSXRoIHRoZSBhZGRpdGlvbiBvZiBTSUdURVJNIGFuZCBTSUdLSUxMLCB0aGUgbWFjaGluZSBj
-cmVkZW50aWFsIGZpbGUgaXMg4oCYa2Rlc3Ryb3llZOKAmSB1cG9uIHJwYy5nc3NkIGV4aXQuDQoN
-CuKAlD5BbmR5DQo+IA0KPiAtLSANCj4gSmVmZiBMYXl0b24gPGpsYXl0b25AcG9vY2hpZXJlZHMu
-bmV0Pg0KDQo=
+On Tue, 22 Sep 2015 16:38:41 +0000
+"Adamson, Andy" <William.Adamson@netapp.com> wrote:
+
+> 
+> > On Sep 22, 2015, at 7:24 AM, Jeff Layton <jlayton@poochiereds.net> wrote:
+> > 
+> > On Mon, 21 Sep 2015 16:50:09 -0400
+> > <andros@netapp.com> wrote:
+> > 
+> >> From: Andy Adamson <andros@netapp.com>
+> >> 
+> >> Since we no longer fork for uid 0, gssd_atexit() is only called when uid != 0,
+> >> and fails as permissions on the /tmp/krb5ccmachine_REALM file prohibit
+> >> the clean up of machine credentials (as it should).
+> >> 
+> >> Move the reaping of machine credentials back into a SIGINT sighandler so that
+> >> <Ctrl C> destroyes machine credentials.
+> >> 
+> >> Signed-off-by: Andy Adamson <andros@netapp.com>
+> >> ---
+> >> utils/gssd/gssd.c | 10 ++++------
+> >> 1 file changed, 4 insertions(+), 6 deletions(-)
+> >> 
+> >> diff --git a/utils/gssd/gssd.c b/utils/gssd/gssd.c
+> >> index 2a768ea..ebff860 100644
+> >> --- a/utils/gssd/gssd.c
+> >> +++ b/utils/gssd/gssd.c
+> >> @@ -729,10 +729,12 @@ found:
+> >> }
+> >> 
+> >> static void
+> >> -gssd_atexit(void)
+> >> +sig_die(int signal)
+> >> {
+> >> 	if (root_uses_machine_creds)
+> >> 		gssd_destroy_krb5_machine_creds();
+> >> +	printerr(1, "exiting on signal %d\n", signal);
+> >> +	exit(0);
+> >> }
+> >> 
+> >> static void
+> >> @@ -892,17 +894,13 @@ main(int argc, char *argv[])
+> >> 		exit(EXIT_FAILURE);
+> >> 	}
+> >> 
+> >> -	if (atexit(gssd_atexit)) {
+> >> -		printerr(1, "ERROR: atexit failed: %s\n", strerror(errno));
+> >> -		exit(EXIT_FAILURE);
+> >> -	}
+> >> -
+> >> 	inotify_fd = inotify_init1(IN_NONBLOCK);
+> >> 	if (inotify_fd == -1) {
+> >> 		printerr(1, "ERROR: inotify_init1 failed: %s\n", strerror(errno));
+> >> 		exit(EXIT_FAILURE);
+> >> 	}
+> >> 
+> >> +	signal(SIGINT, sig_die);
+> >> 	signal_set(&sighup_ev, SIGHUP, gssd_scan_cb, NULL);
+> >> 	signal_add(&sighup_ev, NULL);
+> >> 	event_set(&inotify_ev, inotify_fd, EV_READ | EV_PERSIST, gssd_inotify_cb, NULL);
+> > 
+> > 
+> > Hmm, I don't know about this one. What if you die due to SIGTERM or
+> > something (which is what systemd generally sends processes). They won't
+> > get cleaned up in that case.
+> 
+> Yes - the code prior to gssd_atexit() called the sig_die for SIGTERM as well.
+> > 
+> > What may be better is to just keep the atexit handler but have it do a
+> > getpid() and only do the cleanup if its the original pid of the daemon.
+> > Just do a getpid early during gssd startup and store it in a global
+> > variable somewhere.
+> 
+> I tried that before submitting this patch - gssd_atexit is not called when systemctl stop rpc-gssd.service stops rpc.gssd. Nor is it called on SIGINT, SIGKILL, or SIGTERM. AFAICS, it is never called.
+> > 
+
+Ahh, right:
+
+       The atexit() function registers the given function to be called at nor‐
+       mal process termination, either via exit(3) or via return from the pro‐
+       gram's main().
+
+...signals don't qualify as normal process termination.
+
+> > That said, maybe I should take a step back and ask -- why does gssd
+> > clean up this credcache in the first place? Is there some attack
+> > vector that this prevents, or is it just to prevent a ton of
+> > credcaches piling up in /tmp?
+> 
+> Yeah, it’s not a big problem - cred caches piling up in /tmp. Mostly
+> it’s due to admin’s thinking that if the user of kerberos credentials
+> is not running, then the kerberos credentials should not be present.
+> The same reason kdestroy is used. Note that
+> the /tmp/krb5ccmachine_REALM file survives reboot ….
+> 
+> I think I should simply use sig_die for SIGTERM and SIGKILL as well
+> as SIGINT. Note that with the sig_die() approach, I do not need to
+> check the pid.
+> 
+
+
+If signals are the only way to take the daemon down then that should be OK.
+
+> WIth the addition of SIGTERM and SIGKILL, the machine credential file
+> is ‘kdestroyed’ upon rpc.gssd exit.
+> 
+
+FWIW, you can't override SIGKILL. SIGTERM should be doable though.
+-- 
+Jeff Layton <jlayton@poochiereds.net>
