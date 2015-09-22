@@ -1,25 +1,38 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:28480 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757653AbbIVCb6 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Sep 2015 22:31:58 -0400
-Content-Type: text/plain; charset=utf-8
-Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2104\))
-Subject: Re: [PATCH] Use a separate superblock if mount requires a different security flavor
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <CAHQdGtQjXigfEzy=Jse0Fv+33B1m4LD-wEC7fZ3Ys2TPQCoacA@mail.gmail.com>
-Date: Mon, 21 Sep 2015 18:31:48 -0700
-Cc: Frank Filz <ffilzlnx@mindspring.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <74D754DA-7B3E-4753-8619-87909B3AE40A@oracle.com>
+Received: from elasmtp-spurfowl.atl.sa.earthlink.net ([209.86.89.66]:51826
+	"EHLO elasmtp-spurfowl.atl.sa.earthlink.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1756444AbbIVDEl convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 21 Sep 2015 23:04:41 -0400
 References: <1442429367.24127.6.camel@localhost.localdomain> <CAHQdGtSWaeAyjeKFV5AxJPou_94esPnso5sQrA=wfep6m5qP5Q@mail.gmail.com> <08D9E2B0-B4A8-4DF0-9BB7-B19B2D260E97@oracle.com> <CAHQdGtTJdVf1UU7H=R-VdZPxT=BAKA04bB-WGbPqR38JkUpwMA@mail.gmail.com> <001a01d0f0c7$ca84e6d0$5f8eb470$@mindspring.com> <CAHQdGtSB6XwQme2GBsQzfjxZf4qJRPhsWSMf+mWbE5501HVBzw@mail.gmail.com> <3E2CC450-BB4D-4F08-957D-EB78FE3665BE@oracle.com> <EE6B41C1-F6A4-4EA0-BE83-4FD48EED9E42@oracle.com> <CAHQdGtQjXigfEzy=Jse0Fv+33B1m4LD-wEC7fZ3Ys2TPQCoacA@mail.gmail.com>
+In-Reply-To: <CAHQdGtQjXigfEzy=Jse0Fv+33B1m4LD-wEC7fZ3Ys2TPQCoacA@mail.gmail.com>
+Mime-Version: 1.0 (iPhone Mail 8J2)
+Content-Type: text/plain;
+	charset=utf-8
+Message-Id: <AFF6E75A-424D-4E62-8ABC-8CB0590583E0@mindspring.com>
+Cc: Chuck Lever <chuck.lever@oracle.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+From: Frank Filz <ffilzlnx@mindspring.com>
+Subject: Re: [PATCH] Use a separate superblock if mount requires a different security flavor
+Date: Mon, 21 Sep 2015 20:03:59 -0700
 To: Trond Myklebust <trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+I'll see what happens with mounting / and then navigating into the two exports. My gut feel is my patch will actually make that work but I acknowledge the automatic mounts that will occur might follow a different path that isn't helped by my patch. 
 
-> On Sep 21, 2015, at 5:43 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
-> 
+I can also try and find out what freebsd client does. 
+
+I also agree with Chuck that some understanding if this configuration is something sysadmins genuinely expect to work (as opposed to QA folks trying the scenario because no documentation says it isn't supported).
+
+If we decide it shouldn't be supported then we should consider making server side changes. 
+
+Frank
+
+Sent from my iPhone
+
+On Sep 21, 2015, at 5:43 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+
 > On Mon, Sep 21, 2015 at 7:10 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
 >> 
 >>> On Sep 17, 2015, at 11:01 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
@@ -133,68 +146,14 @@ List-ID: <linux-nfs.vger.kernel.org>
 > as I can see, that will fail just as badly both with and without this
 > patch. Why would users expect that behaviour to be any different to
 > the new mount behaviour?
-
-<shrug> Maybe that’s a little different, though I don’t
-have direct experience of how this is supposed to work.
-
-If the client mounts “/“ with an explicit security flavor
-that does not work with all the server’s shares, then
-that’s clearly an admin choice. The root directories of
-inaccessible shares will simply not allow users to cd
-into them.
-
-When no “sec=“ is specified when mounting “/“ then is the
-client allowed to renegotiate when crossing into real
-shares, or are the real shares accessed only via the same
-flavor that was negotiated for “/“ ? If it’s the former,
-do we know that works well for any set of possible
-security policies specified on the server’s shares? If
-it’s the latter, is it a surprise when some shares are
-not accessible? Dunno.
-
-
+> 
 > IOW: what is the full set of expectations would we be setting by
 > applying the patch, and what is the rationale for changing some
 > behaviour, but not all?
-
-Our testing turned up this inconsistency. I don’t think
-we have a particular favorite outcome here, other than
-safe, consistent behavior.
-
-Since specifying different “sec=“ works now, Frank and I
-thought it was indeed a supported configuration.
-
-If it’s not, then let’s fix the Linux client to behave
-consistently and/or fail gracefully. The client (or an
-appropriate man page) should help admins understand
-what might be going wrong.
-
-
+> 
 > Also, while I know that the Linux client has never supported this
 > behaviour. What do the Solaris and FreeBSD clients do, and what are
 > their limitations?
-
-I’m told the Solaris client has a similar design as
-Linux, in that it attempts to match one superblock to
-each FSID on the server.
-
-It tries to behave in a consistent manner by using the
-WRONGSEC errors to flip back and forth between security
-flavors as necessary. The Solaris folks recognize this
-is not a good permanent solution, and have similar
-concerns about whether this is a reasonable scenario
-to try to support with more complex logic on the client.
-
-I suggested some server changes before. It would be
-useful to know whether sharing more than one directory
-on a server’s physical filesystem using distinct
-security policies is a common usage scenario. If it
-isn’t, then preventing such multi-security mounts on
-the client doesn’t seem onerous.
-
-
-—
-Chuck Lever
-
-
-
+> 
+> Cheers
+>  Trond
