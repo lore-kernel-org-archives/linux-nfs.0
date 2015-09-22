@@ -1,63 +1,119 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:60921 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:60922 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752740AbbIVBvr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 21 Sep 2015 21:51:47 -0400
-Date: Mon, 21 Sep 2015 21:51:46 -0400
+	id S1757619AbbIVBwN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 21 Sep 2015 21:52:13 -0400
+Date: Mon, 21 Sep 2015 21:52:13 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
 To: Andreas Gruenbacher <agruenba@redhat.com>
 Cc: linux-kernel@vger.kernel.org,
         linux-fsdevel <linux-fsdevel@vger.kernel.org>,
         linux-nfs@vger.kernel.org, linux-api@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-security-module@vger.kernel.org
-Subject: Re: [RFC v7 15/41] richacl: Automatic Inheritance
-Message-ID: <20150922015146.GA15960@fieldses.org>
+        linux-cifs@vger.kernel.org, linux-security-module@vger.kernel.org,
+        Andreas Gruenbacher <agruen@kernel.org>
+Subject: Re: [RFC v7 21/41] richacl: Move everyone@ aces down the acl
+Message-ID: <20150922015213.GB15960@fieldses.org>
 References: <1441448856-13478-1-git-send-email-agruenba@redhat.com>
- <1441448856-13478-16-git-send-email-agruenba@redhat.com>
- <20150918184014.GB21506@fieldses.org>
- <CAHc6FU5mV9uVP9CjtDtKpJyTMRsn7hsArWXeKRp_xSeSPoCjnA@mail.gmail.com>
+ <1441448856-13478-22-git-send-email-agruenba@redhat.com>
+ <20150918193524.GA22671@fieldses.org>
+ <CAHc6FU5m8KKSsEg18UhRSnVdsAzoFSD9pdLRv1DdDA==ZCQmdw@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAHc6FU5mV9uVP9CjtDtKpJyTMRsn7hsArWXeKRp_xSeSPoCjnA@mail.gmail.com>
+In-Reply-To: <CAHc6FU5m8KKSsEg18UhRSnVdsAzoFSD9pdLRv1DdDA==ZCQmdw@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Sep 21, 2015 at 11:19:59PM +0200, Andreas Gruenbacher wrote:
-> 2015-09-18 20:40 GMT+02:00 J. Bruce Fields <bfields@fieldses.org>:
-> > On Sat, Sep 05, 2015 at 12:27:10PM +0200, Andreas Gruenbacher wrote:
-> >> Automatic Inheritance (AI) allows changes to the acl of a directory to
-> > In the above "file" sometimes means "any object" and somethings "a
-> > non-directory".  I can sort it out, but more consistent terminology
-> > would help.
-> 
-> Okay, I'll fix it.
-> 
-> >> Linux does not have a way of creating files without setting the file
-> >> permission bits, so all files created inside a directory with
-> >> RICHACL_AUTO_INHERIT set will have the RICHACL_PROTECTED flag set.  This
-> >> effectively disables Automatic Inheritance.
+On Mon, Sep 21, 2015 at 11:43:16PM +0200, Andreas Gruenbacher wrote:
+> 2015-09-18 21:35 GMT+02:00 J. Bruce Fields <bfields@fieldses.org>:
+> > On Sat, Sep 05, 2015 at 12:27:16PM +0200, Andreas Gruenbacher wrote:
+> >> The POSIX standard puts processes which are not the owner or a member in
+> >> the owning group or which match any ace other then everyone@ on the
+> >> other file class.  We only know if a process is in the other class after
+> >> processing the entire acl.
 > >>
-> >> Protocols which support creating files without specifying permissions
-> >> can explicitly clear the RICHACL_PROTECTED flag after creating a file
-> >> and reset the file masks to "undo" applying the create mode; see
-> >> richacl_compute_max_masks().  They should set the RICHACL_DEFAULTED
-> >> flag.  This is a workaround; a mechanism that would allow a process to
-> >> indicate to the kernel to ignore the create mode when there are
-> >> inherited permissions would fix this problem.
+> >> Move all everyone@ aces in the acl down in the acl so that at most a
+> >> single everyone@ allow ace remains at the end.  Permissions which are
+> >> not explicitly allowed are implicitly denied, so an everyone@ deny ace
+> >> is unneeded.
+> >>
+> >> The everyone@ aces can be moved down the acl without changing the
+> >> permissions that the acl grants.  This transformation simplifies the
+> >> following algorithms, and eventually allows us to turn the final
+> >> everyone@ allow ace into an entry for the other class.
+> >>
+> >> Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
+> >> ---
+> >>  fs/richacl_compat.c | 65 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+> >>  1 file changed, 65 insertions(+)
+> >>
+> >> diff --git a/fs/richacl_compat.c b/fs/richacl_compat.c
+> >> index 341e429..4f0acf5 100644
+> >> --- a/fs/richacl_compat.c
+> >> +++ b/fs/richacl_compat.c
+> >> @@ -153,3 +153,68 @@ richace_change_mask(struct richacl_alloc *alloc, struct richace **ace,
+> >>       }
+> >>       return 0;
+> >>  }
+> >> +
+> >> +/**
+> >> + * richacl_move_everyone_aces_down  -  move everyone@ aces to the end of the acl
+> >> + * @alloc:   acl and number of allocated entries
+> >> + *
+> >> + * Move all everyone aces to the end of the acl so that only a single everyone@
+> >> + * allow ace remains at the end, and update the mask fields of all aces on the
+> >> + * way.  The last ace of the resulting acl will be an everyone@ allow ace only
+> >> + * if @acl grants any permissions to @everyone.  No @everyone deny aces will
+> >> + * remain.
+> >> + *
+> >> + * This transformation does not alter the permissions that the acl grants.
+> >> + * Having at most one everyone@ allow ace at the end of the acl helps us in the
+> >> + * following algorithms.
+> >> + */
+> >> +static int
+> >> +richacl_move_everyone_aces_down(struct richacl_alloc *alloc)
+> >> +{
+> >> +     struct richace *ace;
+> >> +     unsigned int allowed = 0, denied = 0;
+> >> +
+> >> +     richacl_for_each_entry(ace, alloc->acl) {
+> >> +             if (richace_is_inherit_only(ace))
+> >> +                     continue;
+> >> +             if (richace_is_everyone(ace)) {
+> >> +                     if (richace_is_allow(ace))
+> >> +                             allowed |= (ace->e_mask & ~denied);
+> >> +                     else if (richace_is_deny(ace))
+> >> +                             denied |= (ace->e_mask & ~allowed);
+> >> +                     else
+> >> +                             continue;
+> >> +                     if (richace_change_mask(alloc, &ace, 0))
+> >> +                             return -1;
+> >> +             } else {
+> >> +                     if (richace_is_allow(ace)) {
+> >> +                             if (richace_change_mask(alloc, &ace, allowed |
+> >> +                                             (ace->e_mask & ~denied)))
+> >> +                                     return -1;
+> >> +                     } else if (richace_is_deny(ace)) {
+> >> +                             if (richace_change_mask(alloc, &ace, denied |
+> >> +                                             (ace->e_mask & ~allowed)))
+> >> +                                     return -1;
+> >> +                     }
+> >> +             }
+> >> +     }
+> >> +     if (allowed & ~RICHACE_POSIX_ALWAYS_ALLOWED) {
+> >> +             struct richace *last_ace = ace - 1;
+> >> +
+> >> +             if (alloc->acl->a_entries &&
+> >> +                 richace_is_everyone(last_ace) &&
+> >> +                 richace_is_allow(last_ace) &&
+> >> +                 richace_is_inherit_only(last_ace) &&
+> >> +                 last_ace->e_mask == allowed)
+> >> +                     last_ace->e_flags &= ~RICHACE_INHERIT_ONLY_ACE;
 > >
-> > Also, as you know: current nfsd has no way to create files without
-> > setting permissions.  And if we were to implement that it's unclear how
-> > many clients would actually use it (Windows clients are rare).  And of
-> > course Samba doesn't have the interfaces it would need.
-> >
-> > I think we should just drop this for now.  The rest of the richacl stuff
-> > is still useful without it.
+> > That's a funny special case!  Is it even worth it, or could we just live
+> > with an extra uninheritable EVERYONE ace in this case?
 > 
-> Samba will hack around it and adjust the ACL after the create; that's
-> still better than not having Automatic Inheritance. Windows uses AI
-> all the time so AI is more important for Samba than for NFSv4.
+> Inheritable everyone@ allow entries at the end of the ACL are not
+> uncommon. This special case prevents the algorithm from splitting such
+> entries into inherit-only and non-inheritable parts.
 
-Oh, OK, that makes sense.  Even just giving them a place to store the
-bits would be better than nothing.  So, ignore my objection there....
-
---b.
+OK.--b.
