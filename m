@@ -1,345 +1,81 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:32982 "EHLO fieldses.org"
+Received: from mx141.netapp.com ([216.240.21.12]:34459 "EHLO mx141.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758384AbbIVQGj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 22 Sep 2015 12:06:39 -0400
-Date: Tue, 22 Sep 2015 12:06:37 -0400
-To: Andreas Gruenbacher <agruenba@redhat.com>
-Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-api@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-security-module@vger.kernel.org,
-        Andreas Gruenbacher <agruen@kernel.org>
-Subject: Re: [RFC v7 25/41] richacl: Isolate the owner and group classes
-Message-ID: <20150922160637.GC15838@fieldses.org>
-References: <1441448856-13478-1-git-send-email-agruenba@redhat.com>
- <1441448856-13478-26-git-send-email-agruenba@redhat.com>
+	id S1751806AbbIVQin (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 22 Sep 2015 12:38:43 -0400
+From: "Adamson, Andy" <William.Adamson@netapp.com>
+To: Jeff Layton <jlayton@poochiereds.net>
+CC: "steved@redhat.com" <steved@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 4/4] GSSD: clean up machine credentials
+Date: Tue, 22 Sep 2015 16:38:41 +0000
+Message-ID: <0ED1A1D2-B73A-436E-9DBF-472D6049A6E4@netapp.com>
+References: <1442868609-1812-1-git-send-email-andros@netapp.com>
+ <1442868609-1812-5-git-send-email-andros@netapp.com>
+ <20150922072419.5d9df0d3@synchrony.poochiereds.net>
+In-Reply-To: <20150922072419.5d9df0d3@synchrony.poochiereds.net>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1441448856-13478-26-git-send-email-agruenba@redhat.com>
-From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Sep 05, 2015 at 12:27:20PM +0200, Andreas Gruenbacher wrote:
-> When applying the file masks to an acl, we need to ensure that no
-> process gets more permissions than allowed by its file mask.
-> 
-> This may require inserting an owner@ deny ace to ensure this if the
-> owner mask contains fewer permissions than the group or other mask.  For
-> example, when applying mode 0466 to the following acl:
-> 
->    everyone@:rw::allow
-> 
-> A deny ace needs to be inserted so that the owner won't get elevated
-> write access:
-> 
->    owner@:w::deny
->    everyone@:rw::allow
-> 
-> Likewise, we may need to insert group class deny aces if the group mask
-> contains fewer permissions than the other mask.  For example, when
-> applying mode 0646 to the following acl:
-> 
->    owner@:rw::allow
->    everyone@:rw::allow
-> 
-> A deny ace needs to be inserted so that the owning group won't get
-> elevated write access:
-> 
->    owner@:rw::allow
->    group@:w::deny
->    everyone@:rw::allow
-> 
-> Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
-> ---
->  fs/richacl_compat.c | 236 ++++++++++++++++++++++++++++++++++++++++++++++++++++
->  1 file changed, 236 insertions(+)
-> 
-> diff --git a/fs/richacl_compat.c b/fs/richacl_compat.c
-> index 30bdc95..412844c 100644
-> --- a/fs/richacl_compat.c
-> +++ b/fs/richacl_compat.c
-> @@ -494,3 +494,239 @@ richacl_set_other_permissions(struct richacl_alloc *alloc)
->  		richace_change_mask(alloc, &ace, other_mask);
->  	return 0;
->  }
-> +
-> +/**
-> + * richacl_max_allowed  -  maximum permissions that anybody is allowed
-> + */
-> +static unsigned int
-> +richacl_max_allowed(struct richacl *acl)
-> +{
-> +	struct richace *ace;
-> +	unsigned int allowed = 0;
-> +
-> +	richacl_for_each_entry_reverse(ace, acl) {
-> +		if (richace_is_inherit_only(ace))
-> +			continue;
-> +		if (richace_is_allow(ace))
-> +			allowed |= ace->e_mask;
-> +		else if (richace_is_deny(ace)) {
-> +			if (richace_is_everyone(ace))
-> +				allowed &= ~ace->e_mask;
-> +		}
-> +	}
-> +	return allowed;
-> +}
-> +
-> +/**
-> + * richacl_isolate_owner_class  -  limit the owner class to the owner file mask
-> + * @alloc:	acl and number of allocated entries
-> + *
-> + * POSIX requires that after a chmod, the owner class is granted no more
-> + * permissions than the owner file permission bits.  For richacls, this
-> + * means that the owner class must not be granted any permissions that the
-> + * owner mask does not include.
-> + *
-> + * When we apply file masks to an acl which grant more permissions to the group
-> + * or other class than to the owner class, we may end up in a situation where
-> + * the owner is granted additional permissions from other aces.  For example,
-> + * given this acl:
-> + *
-> + *    everyone:rwx::allow
-> + *
-> + * when file masks corresponding to mode 0466 are applied, after
-> + * richacl_propagate_everyone() and __richacl_apply_masks(), we end up with:
-> + *
-> + *    owner@:r::allow
-> + *    everyone@:rw::allow
-
-Are you sure?  I didn't think richacl_apply_masks actually creates an
-owner@ entry in this case.  Which is OK, just delete the owner@ ace from
-here and the following example and it still makes sense, I think.
-
-(But: thanks in general for the examples in these comments, they're
-extremely helpful.)
-
-> + *
-> + * This acl still grants the owner rw access through the everyone@ allow ace.
-> + * To fix this, we must deny the owner w access:
-> + *
-> + *    owner@:w::deny
-> + *    owner@:r::allow
-> + *    everyone@:rw::allow
-> + */
-> +static int
-> +richacl_isolate_owner_class(struct richacl_alloc *alloc)
-> +{
-> +	struct richace *ace;
-> +	unsigned int allowed = 0;
-> +
-> +	allowed = richacl_max_allowed(alloc->acl);
-> +	if (allowed & ~alloc->acl->a_owner_mask) {
-> +		/*
-> +		 * Figure out if we can update an existig OWNER@ DENY entry.
-> +		 */
-> +		richacl_for_each_entry(ace, alloc->acl) {
-> +			if (richace_is_inherit_only(ace))
-> +				continue;
-> +			if (richace_is_deny(ace)) {
-> +				if (richace_is_owner(ace))
-> +					break;
-> +			} else if (richace_is_allow(ace)) {
-> +				ace = alloc->acl->a_entries +
-> +				      alloc->acl->a_count;
-> +				break;
-> +			}
-> +		}
-> +		if (ace != alloc->acl->a_entries + alloc->acl->a_count) {
-> +			if (richace_change_mask(alloc, &ace, ace->e_mask |
-> +					(allowed & ~alloc->acl->a_owner_mask)))
-> +				return -1;
-> +		} else {
-> +			/* Insert an owner@ deny entry at the front. */
-> +			ace = alloc->acl->a_entries;
-> +			if (richacl_insert_entry(alloc, &ace))
-> +				return -1;
-> +			ace->e_type = RICHACE_ACCESS_DENIED_ACE_TYPE;
-> +			ace->e_flags = RICHACE_SPECIAL_WHO;
-> +			ace->e_mask = allowed & ~alloc->acl->a_owner_mask;
-> +			ace->e_id.special = RICHACE_OWNER_SPECIAL_ID;
-> +		}
-> +	}
-> +	return 0;
-
-Makes sense, though personally I'd find it simpler to follow without the
-a_entries + a_count condition, maybe something like this (untested):
-
-		richacl_for_each_entry(ace, alloc->acl) {
-			if (richace_is_inherit_only(ace))
-				continue;
-			if (richace_is_allow(ace))
-				break;
-			if (richace_is_owner(ace))
-				goto found;
-		}
-		/* Insert an owner@ deny entry at the front. */
-		ace = alloc->acl->a_entries;
-		if (richacl_insert_entry(alloc, &ace))
-			return -1;
-		ace->e_type = RICHACE_ACCESS_DENIED_ACE_TYPE;
-		ace->e_flags = RICHACE_SPECIAL_WHO;
-		ace->e_mask = allowed & ~alloc->acl->a_owner_mask;
-		ace->e_id.special = RICHACE_OWNER_SPECIAL_ID;
-		return 0;
-	found:
-		if (richace_change_mask(alloc, &ace, ace->e_mask |
-					(allowed & ~alloc->acl->a_owner_mask)))
-			return -1;
-		return 0;
-
---b.
-
-> +}
-> +
-> +/**
-> + * __richacl_isolate_who  -  isolate entry from everyone@ allow entry
-> + * @alloc:	acl and number of allocated entries
-> + * @who:	identifier to isolate
-> + * @deny:	permissions this identifier should not be allowed
-> + *
-> + * See richacl_isolate_group_class().
-> + */
-> +static int
-> +__richacl_isolate_who(struct richacl_alloc *alloc, struct richace *who,
-> +		      unsigned int deny)
-> +{
-> +	struct richacl *acl = alloc->acl;
-> +	struct richace *ace;
-> +	int n;
-> +	/*
-> +	 * Compute the permissions already denied to @who.
-> +	 */
-> +	richacl_for_each_entry(ace, acl) {
-> +		if (richace_is_inherit_only(ace))
-> +			continue;
-> +		if (richace_is_same_identifier(ace, who) &&
-> +		    richace_is_deny(ace))
-> +			deny &= ~ace->e_mask;
-> +	}
-> +	if (!deny)
-> +		return 0;
-> +
-> +	/*
-> +	 * Figure out if we can update an existig deny entry.  Start from the
-> +	 * entry before the trailing everyone@ allow entry. We will not hit
-> +	 * everyone@ entries in the loop.
-> +	 */
-> +	for (n = acl->a_count - 2; n != -1; n--) {
-> +		ace = acl->a_entries + n;
-> +		if (richace_is_inherit_only(ace))
-> +			continue;
-> +		if (richace_is_deny(ace)) {
-> +			if (richace_is_same_identifier(ace, who))
-> +				break;
-> +		} else if (richace_is_allow(ace) &&
-> +			   (ace->e_mask & deny)) {
-> +			n = -1;
-> +			break;
-> +		}
-> +	}
-> +	if (n != -1) {
-> +		if (richace_change_mask(alloc, &ace, ace->e_mask | deny))
-> +			return -1;
-> +	} else {
-> +		/*
-> +		 * Insert a new entry before the trailing everyone@ deny entry.
-> +		 */
-> +		struct richace who_copy;
-> +
-> +		richace_copy(&who_copy, who);
-> +		ace = acl->a_entries + acl->a_count - 1;
-> +		if (richacl_insert_entry(alloc, &ace))
-> +			return -1;
-> +		richace_copy(ace, &who_copy);
-> +		ace->e_type = RICHACE_ACCESS_DENIED_ACE_TYPE;
-> +		ace->e_flags &= ~RICHACE_INHERITANCE_FLAGS;
-> +		ace->e_mask = deny;
-> +	}
-> +	return 0;
-> +}
-> +
-> +/**
-> + * richacl_isolate_group_class  -  limit the group class to the group file mask
-> + * @alloc:	acl and number of allocated entries
-> + *
-> + * POSIX requires that after a chmod, the group class is granted no more
-> + * permissions than the group file permission bits.  For richacls, this
-> + * means that the group class must not be granted any permissions that the
-> + * group mask does not include.
-> + *
-> + * When we apply file masks to an acl which grant more permissions to the other
-> + * class than to the group class, we may end up in a situation where processes
-> + * in the group class are granted additional permission from other aces.  For
-> + * example, given this acl:
-> + *
-> + *    joe:rwx::allow
-> + *    everyone:rwx::allow
-> + *
-> + * when file masks corresponding to mode 0646 are applied, after
-> + * richacl_propagate_everyone() and __richacl_apply_masks(), we end up with:
-> + *
-> + *    joe:r::allow
-> + *    owner@:rw::allow
-> + *    group@:r::allow
-> + *    everyone@:rw::allow
-> + *
-> + * This acl still grants joe and group@ rw access through the everyone@ allow
-> + * ace.  To fix this, we must deny w access to group class aces before the
-> + * everyone@ allow ace at the end of the acl:
-> + *
-> + *    joe:r::allow
-> + *    owner@:rw::allow
-> + *    group@:r::allow
-> + *    joe:w::deny
-> + *    group@:w::deny
-> + *    everyone@:rw::allow
-> + */
-> +static int
-> +richacl_isolate_group_class(struct richacl_alloc *alloc)
-> +{
-> +	struct richace who = {
-> +		.e_flags = RICHACE_SPECIAL_WHO,
-> +		.e_id.special = RICHACE_GROUP_SPECIAL_ID,
-> +	};
-> +	struct richace *ace;
-> +	unsigned int deny;
-> +
-> +	if (!alloc->acl->a_count)
-> +		return 0;
-> +	ace = alloc->acl->a_entries + alloc->acl->a_count - 1;
-> +	if (richace_is_inherit_only(ace) || !richace_is_everyone(ace))
-> +		return 0;
-> +	deny = ace->e_mask & ~alloc->acl->a_group_mask;
-> +
-> +	if (deny) {
-> +		unsigned int n;
-> +
-> +		if (__richacl_isolate_who(alloc, &who, deny))
-> +			return -1;
-> +		/*
-> +		 * Start from the entry before the trailing everyone@ allow
-> +		 * entry.  We will not hit everyone@ entries in the loop.
-> +		 */
-> +		for (n = alloc->acl->a_count - 2; n != -1; n--) {
-> +			ace = alloc->acl->a_entries + n;
-> +
-> +			if (richace_is_inherit_only(ace) ||
-> +			    richace_is_owner(ace) ||
-> +			    richace_is_group(ace) ||
-> +			    richace_is_everyone(ace))
-> +				continue;
-> +			if (__richacl_isolate_who(alloc, ace, deny))
-> +				return -1;
-> +		}
-> +	}
-> +	return 0;
-> +}
-> -- 
-> 2.4.3
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+DQo+IE9uIFNlcCAyMiwgMjAxNSwgYXQgNzoyNCBBTSwgSmVmZiBMYXl0b24gPGpsYXl0b25AcG9v
+Y2hpZXJlZHMubmV0PiB3cm90ZToNCj4gDQo+IE9uIE1vbiwgMjEgU2VwIDIwMTUgMTY6NTA6MDkg
+LTA0MDANCj4gPGFuZHJvc0BuZXRhcHAuY29tPiB3cm90ZToNCj4gDQo+PiBGcm9tOiBBbmR5IEFk
+YW1zb24gPGFuZHJvc0BuZXRhcHAuY29tPg0KPj4gDQo+PiBTaW5jZSB3ZSBubyBsb25nZXIgZm9y
+ayBmb3IgdWlkIDAsIGdzc2RfYXRleGl0KCkgaXMgb25seSBjYWxsZWQgd2hlbiB1aWQgIT0gMCwN
+Cj4+IGFuZCBmYWlscyBhcyBwZXJtaXNzaW9ucyBvbiB0aGUgL3RtcC9rcmI1Y2NtYWNoaW5lX1JF
+QUxNIGZpbGUgcHJvaGliaXQNCj4+IHRoZSBjbGVhbiB1cCBvZiBtYWNoaW5lIGNyZWRlbnRpYWxz
+IChhcyBpdCBzaG91bGQpLg0KPj4gDQo+PiBNb3ZlIHRoZSByZWFwaW5nIG9mIG1hY2hpbmUgY3Jl
+ZGVudGlhbHMgYmFjayBpbnRvIGEgU0lHSU5UIHNpZ2hhbmRsZXIgc28gdGhhdA0KPj4gPEN0cmwg
+Qz4gZGVzdHJveWVzIG1hY2hpbmUgY3JlZGVudGlhbHMuDQo+PiANCj4+IFNpZ25lZC1vZmYtYnk6
+IEFuZHkgQWRhbXNvbiA8YW5kcm9zQG5ldGFwcC5jb20+DQo+PiAtLS0NCj4+IHV0aWxzL2dzc2Qv
+Z3NzZC5jIHwgMTAgKysrKy0tLS0tLQ0KPj4gMSBmaWxlIGNoYW5nZWQsIDQgaW5zZXJ0aW9ucygr
+KSwgNiBkZWxldGlvbnMoLSkNCj4+IA0KPj4gZGlmZiAtLWdpdCBhL3V0aWxzL2dzc2QvZ3NzZC5j
+IGIvdXRpbHMvZ3NzZC9nc3NkLmMNCj4+IGluZGV4IDJhNzY4ZWEuLmViZmY4NjAgMTAwNjQ0DQo+
+PiAtLS0gYS91dGlscy9nc3NkL2dzc2QuYw0KPj4gKysrIGIvdXRpbHMvZ3NzZC9nc3NkLmMNCj4+
+IEBAIC03MjksMTAgKzcyOSwxMiBAQCBmb3VuZDoNCj4+IH0NCj4+IA0KPj4gc3RhdGljIHZvaWQN
+Cj4+IC1nc3NkX2F0ZXhpdCh2b2lkKQ0KPj4gK3NpZ19kaWUoaW50IHNpZ25hbCkNCj4+IHsNCj4+
+IAlpZiAocm9vdF91c2VzX21hY2hpbmVfY3JlZHMpDQo+PiAJCWdzc2RfZGVzdHJveV9rcmI1X21h
+Y2hpbmVfY3JlZHMoKTsNCj4+ICsJcHJpbnRlcnIoMSwgImV4aXRpbmcgb24gc2lnbmFsICVkXG4i
+LCBzaWduYWwpOw0KPj4gKwlleGl0KDApOw0KPj4gfQ0KPj4gDQo+PiBzdGF0aWMgdm9pZA0KPj4g
+QEAgLTg5MiwxNyArODk0LDEzIEBAIG1haW4oaW50IGFyZ2MsIGNoYXIgKmFyZ3ZbXSkNCj4+IAkJ
+ZXhpdChFWElUX0ZBSUxVUkUpOw0KPj4gCX0NCj4+IA0KPj4gLQlpZiAoYXRleGl0KGdzc2RfYXRl
+eGl0KSkgew0KPj4gLQkJcHJpbnRlcnIoMSwgIkVSUk9SOiBhdGV4aXQgZmFpbGVkOiAlc1xuIiwg
+c3RyZXJyb3IoZXJybm8pKTsNCj4+IC0JCWV4aXQoRVhJVF9GQUlMVVJFKTsNCj4+IC0JfQ0KPj4g
+LQ0KPj4gCWlub3RpZnlfZmQgPSBpbm90aWZ5X2luaXQxKElOX05PTkJMT0NLKTsNCj4+IAlpZiAo
+aW5vdGlmeV9mZCA9PSAtMSkgew0KPj4gCQlwcmludGVycigxLCAiRVJST1I6IGlub3RpZnlfaW5p
+dDEgZmFpbGVkOiAlc1xuIiwgc3RyZXJyb3IoZXJybm8pKTsNCj4+IAkJZXhpdChFWElUX0ZBSUxV
+UkUpOw0KPj4gCX0NCj4+IA0KPj4gKwlzaWduYWwoU0lHSU5ULCBzaWdfZGllKTsNCj4+IAlzaWdu
+YWxfc2V0KCZzaWdodXBfZXYsIFNJR0hVUCwgZ3NzZF9zY2FuX2NiLCBOVUxMKTsNCj4+IAlzaWdu
+YWxfYWRkKCZzaWdodXBfZXYsIE5VTEwpOw0KPj4gCWV2ZW50X3NldCgmaW5vdGlmeV9ldiwgaW5v
+dGlmeV9mZCwgRVZfUkVBRCB8IEVWX1BFUlNJU1QsIGdzc2RfaW5vdGlmeV9jYiwgTlVMTCk7DQo+
+IA0KPiANCj4gSG1tLCBJIGRvbid0IGtub3cgYWJvdXQgdGhpcyBvbmUuIFdoYXQgaWYgeW91IGRp
+ZSBkdWUgdG8gU0lHVEVSTSBvcg0KPiBzb21ldGhpbmcgKHdoaWNoIGlzIHdoYXQgc3lzdGVtZCBn
+ZW5lcmFsbHkgc2VuZHMgcHJvY2Vzc2VzKS4gVGhleSB3b24ndA0KPiBnZXQgY2xlYW5lZCB1cCBp
+biB0aGF0IGNhc2UuDQoNClllcyAtIHRoZSBjb2RlIHByaW9yIHRvIGdzc2RfYXRleGl0KCkgY2Fs
+bGVkIHRoZSBzaWdfZGllIGZvciBTSUdURVJNIGFzIHdlbGwuDQo+IA0KPiBXaGF0IG1heSBiZSBi
+ZXR0ZXIgaXMgdG8ganVzdCBrZWVwIHRoZSBhdGV4aXQgaGFuZGxlciBidXQgaGF2ZSBpdCBkbyBh
+DQo+IGdldHBpZCgpIGFuZCBvbmx5IGRvIHRoZSBjbGVhbnVwIGlmIGl0cyB0aGUgb3JpZ2luYWwg
+cGlkIG9mIHRoZSBkYWVtb24uDQo+IEp1c3QgZG8gYSBnZXRwaWQgZWFybHkgZHVyaW5nIGdzc2Qg
+c3RhcnR1cCBhbmQgc3RvcmUgaXQgaW4gYSBnbG9iYWwNCj4gdmFyaWFibGUgc29tZXdoZXJlLg0K
+DQpJIHRyaWVkIHRoYXQgYmVmb3JlIHN1Ym1pdHRpbmcgdGhpcyBwYXRjaCAtIGdzc2RfYXRleGl0
+IGlzIG5vdCBjYWxsZWQgd2hlbiBzeXN0ZW1jdGwgc3RvcCBycGMtZ3NzZC5zZXJ2aWNlIHN0b3Bz
+IHJwYy5nc3NkLiBOb3IgaXMgaXQgY2FsbGVkIG9uIFNJR0lOVCwgU0lHS0lMTCwgb3IgU0lHVEVS
+TS4gQUZBSUNTLCBpdCBpcyBuZXZlciBjYWxsZWQuDQo+IA0KPiBUaGF0IHNhaWQsIG1heWJlIEkg
+c2hvdWxkIHRha2UgYSBzdGVwIGJhY2sgYW5kIGFzayAtLSB3aHkgZG9lcyBnc3NkDQo+IGNsZWFu
+IHVwIHRoaXMgY3JlZGNhY2hlIGluIHRoZSBmaXJzdCBwbGFjZT8gSXMgdGhlcmUgc29tZSBhdHRh
+Y2sgdmVjdG9yDQo+IHRoYXQgdGhpcyBwcmV2ZW50cywgb3IgaXMgaXQganVzdCB0byBwcmV2ZW50
+IGEgdG9uIG9mIGNyZWRjYWNoZXMgcGlsaW5nDQo+IHVwIGluIC90bXA/DQoNClllYWgsIGl04oCZ
+cyBub3QgYSBiaWcgcHJvYmxlbSAtIGNyZWQgY2FjaGVzIHBpbGluZyB1cCBpbiAvdG1wLiBNb3N0
+bHkgaXTigJlzIGR1ZSB0byBhZG1pbuKAmXMgdGhpbmtpbmcgdGhhdCBpZiB0aGUgdXNlciBvZiBr
+ZXJiZXJvcyBjcmVkZW50aWFscyBpcyBub3QgcnVubmluZywgdGhlbiB0aGUga2VyYmVyb3MgY3Jl
+ZGVudGlhbHMgc2hvdWxkIG5vdCBiZSBwcmVzZW50LiBUaGUgc2FtZSByZWFzb24ga2Rlc3Ryb3kg
+aXMgdXNlZC4gTm90ZSB0aGF0IHRoZSAvdG1wL2tyYjVjY21hY2hpbmVfUkVBTE0gZmlsZSBzdXJ2
+aXZlcyByZWJvb3Qg4oCmLg0KDQpJIHRoaW5rIEkgc2hvdWxkIHNpbXBseSB1c2Ugc2lnX2RpZSBm
+b3IgU0lHVEVSTSBhbmQgU0lHS0lMTCBhcyB3ZWxsIGFzIFNJR0lOVC4gTm90ZSB0aGF0IHdpdGgg
+dGhlIHNpZ19kaWUoKSBhcHByb2FjaCwgSSBkbyBub3QgbmVlZCB0byBjaGVjayB0aGUgcGlkLg0K
+DQpXSXRoIHRoZSBhZGRpdGlvbiBvZiBTSUdURVJNIGFuZCBTSUdLSUxMLCB0aGUgbWFjaGluZSBj
+cmVkZW50aWFsIGZpbGUgaXMg4oCYa2Rlc3Ryb3llZOKAmSB1cG9uIHJwYy5nc3NkIGV4aXQuDQoN
+CuKAlD5BbmR5DQo+IA0KPiAtLSANCj4gSmVmZiBMYXl0b24gPGpsYXl0b25AcG9vY2hpZXJlZHMu
+bmV0Pg0KDQo=
