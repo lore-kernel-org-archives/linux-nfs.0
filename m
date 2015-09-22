@@ -1,93 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qg0-f53.google.com ([209.85.192.53]:35248 "EHLO
-	mail-qg0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752566AbbIVLYY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Sep 2015 07:24:24 -0400
-Received: by qgt47 with SMTP id 47so112847661qgt.2
-        for <linux-nfs@vger.kernel.org>; Tue, 22 Sep 2015 04:24:23 -0700 (PDT)
-Date: Tue, 22 Sep 2015 07:24:19 -0400
-From: Jeff Layton <jlayton@poochiereds.net>
-To: <andros@netapp.com>
-Cc: <steved@redhat.com>, <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 4/4] GSSD: clean up machine credentials
-Message-ID: <20150922072419.5d9df0d3@synchrony.poochiereds.net>
-In-Reply-To: <1442868609-1812-5-git-send-email-andros@netapp.com>
-References: <1442868609-1812-1-git-send-email-andros@netapp.com>
-	<1442868609-1812-5-git-send-email-andros@netapp.com>
+Received: from mx2.suse.de ([195.135.220.15]:47070 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751415AbbIVLpB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 22 Sep 2015 07:45:01 -0400
+Date: Tue, 22 Sep 2015 13:44:04 +0200
+From: David Sterba <dsterba@suse.cz>
+To: Anna Schumaker <Anna.Schumaker@netapp.com>
+Cc: linux-nfs@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-api@vger.kernel.org,
+        zab@zabbo.net, viro@zeniv.linux.org.uk, clm@fb.com,
+        darrick.wong@oracle.com, mtk.manpages@gmail.com, andros@netapp.com,
+        hch@infradead.org
+Subject: Re: [PATCH v2 1/9] vfs: add copy_file_range syscall and vfs helper
+Message-ID: <20150922114404.GF8891@twin.jikos.cz>
+Reply-To: dsterba@suse.cz
+References: <1442003423-6884-1-git-send-email-Anna.Schumaker@Netapp.com>
+ <1442003423-6884-2-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1442003423-6884-2-git-send-email-Anna.Schumaker@Netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 21 Sep 2015 16:50:09 -0400
-<andros@netapp.com> wrote:
+On Fri, Sep 11, 2015 at 04:30:14PM -0400, Anna Schumaker wrote:
+> From: Zach Brown <zab@redhat.com>
+> +/*
+> + * copy_file_range() differs from regular file read and write in that it
+> + * specifically allows return partial success.  When it does so is up to
+> + * the copy_file_range method.
+> + */
+> +ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
+> +			    struct file *file_out, loff_t pos_out,
+> +			    size_t len, int flags)
 
-> From: Andy Adamson <andros@netapp.com>
-> 
-> Since we no longer fork for uid 0, gssd_atexit() is only called when uid != 0,
-> and fails as permissions on the /tmp/krb5ccmachine_REALM file prohibit
-> the clean up of machine credentials (as it should).
-> 
-> Move the reaping of machine credentials back into a SIGINT sighandler so that
-> <Ctrl C> destroyes machine credentials.
-> 
-> Signed-off-by: Andy Adamson <andros@netapp.com>
-> ---
->  utils/gssd/gssd.c | 10 ++++------
->  1 file changed, 4 insertions(+), 6 deletions(-)
-> 
-> diff --git a/utils/gssd/gssd.c b/utils/gssd/gssd.c
-> index 2a768ea..ebff860 100644
-> --- a/utils/gssd/gssd.c
-> +++ b/utils/gssd/gssd.c
-> @@ -729,10 +729,12 @@ found:
->  }
->  
->  static void
-> -gssd_atexit(void)
-> +sig_die(int signal)
->  {
->  	if (root_uses_machine_creds)
->  		gssd_destroy_krb5_machine_creds();
-> +	printerr(1, "exiting on signal %d\n", signal);
-> +	exit(0);
->  }
->  
->  static void
-> @@ -892,17 +894,13 @@ main(int argc, char *argv[])
->  		exit(EXIT_FAILURE);
->  	}
->  
-> -	if (atexit(gssd_atexit)) {
-> -		printerr(1, "ERROR: atexit failed: %s\n", strerror(errno));
-> -		exit(EXIT_FAILURE);
-> -	}
-> -
->  	inotify_fd = inotify_init1(IN_NONBLOCK);
->  	if (inotify_fd == -1) {
->  		printerr(1, "ERROR: inotify_init1 failed: %s\n", strerror(errno));
->  		exit(EXIT_FAILURE);
->  	}
->  
-> +	signal(SIGINT, sig_die);
->  	signal_set(&sighup_ev, SIGHUP, gssd_scan_cb, NULL);
->  	signal_add(&sighup_ev, NULL);
->  	event_set(&inotify_ev, inotify_fd, EV_READ | EV_PERSIST, gssd_inotify_cb, NULL);
+Is the signed type for flags correct? I had the impression that it's
+usually good to have unsigned int/long for flags, this can be seen
+frequently in the vfs/fs code. Mainly for consistency.
 
+> +	ret = file_in->f_op->copy_file_range(file_in, pos_in, file_out, pos_out,
+> +					     len, flags);
 
-Hmm, I don't know about this one. What if you die due to SIGTERM or
-something (which is what systemd generally sends processes). They won't
-get cleaned up in that case.
+int -> unsigned int
 
-What may be better is to just keep the atexit handler but have it do a
-getpid() and only do the cleanup if its the original pid of the daemon.
-Just do a getpid early during gssd startup and store it in a global
-variable somewhere.
+> +}
+> +EXPORT_SYMBOL(vfs_copy_file_range);
+> +
+> +SYSCALL_DEFINE6(copy_file_range, int, fd_in, loff_t __user *, off_in,
+> +		int, fd_out, loff_t __user *, off_out,
+> +		size_t, len, unsigned int, flags)
 
-That said, maybe I should take a step back and ask -- why does gssd
-clean up this credcache in the first place? Is there some attack vector
-that this prevents, or is it just to prevent a ton of credcaches piling
-up in /tmp?
+the syscal takes unsigned int
 
--- 
-Jeff Layton <jlayton@poochiereds.net>
+> --- a/include/linux/fs.h
+> +++ b/include/linux/fs.h
+> @@ -1642,6 +1642,7 @@ struct file_operations {
+>  #ifndef CONFIG_MMU
+>  	unsigned (*mmap_capabilities)(struct file *);
+>  #endif
+> +	ssize_t (*copy_file_range)(struct file *, loff_t, struct file *, loff_t, size_t, int);
+
+switch to unsigned
+
+> +extern ssize_t vfs_copy_file_range(struct file *, loff_t , struct file *,
+> +				   loff_t, size_t, int);
+
+and here
