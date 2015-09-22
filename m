@@ -1,126 +1,75 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:41285 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759259AbbIVSXm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Sep 2015 14:23:42 -0400
-Subject: Re: [PATCH v1 00/24] New fast registration API
-To: Sagi Grimberg <sagig@mellanox.com>,
-        Sagi Grimberg <sagig@dev.mellanox.co.il>, linux-rdma@vger.kernel.org
-References: <1442482947-27785-1-git-send-email-sagig@mellanox.com>
- <55FDEDD5.1090105@oracle.com> <55FE7E24.20300@dev.mellanox.co.il>
- <5600928A.7070202@oracle.com> <560100EA.8080302@mellanox.com>
- <560109B7.8070005@mellanox.com>
-Cc: linux-nfs@vger.kernel.org, "Nicholas A. Bellinger" <nab@linux-iscsi.org>
-From: santosh shilimkar <santosh.shilimkar@oracle.com>
-Message-ID: <56019CA1.5010703@oracle.com>
-Date: Tue, 22 Sep 2015 11:23:29 -0700
+Received: from mx142.netapp.com ([216.240.21.19]:34131 "EHLO mx142.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933528AbbIVS22 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 22 Sep 2015 14:28:28 -0400
+Subject: Re: [PATCH v2 1/9] vfs: add copy_file_range syscall and vfs helper
+To: <dsterba@suse.cz>, <linux-nfs@vger.kernel.org>,
+        <linux-btrfs@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>,
+        <linux-api@vger.kernel.org>, <zab@zabbo.net>,
+        <viro@zeniv.linux.org.uk>, <clm@fb.com>, <darrick.wong@oracle.com>,
+        <mtk.manpages@gmail.com>, <andros@netapp.com>, <hch@infradead.org>
+References: <1442003423-6884-1-git-send-email-Anna.Schumaker@Netapp.com>
+ <1442003423-6884-2-git-send-email-Anna.Schumaker@Netapp.com>
+ <20150922114404.GF8891@twin.jikos.cz>
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+Message-ID: <56019DA7.90409@Netapp.com>
+Date: Tue, 22 Sep 2015 14:27:51 -0400
 MIME-Version: 1.0
-In-Reply-To: <560109B7.8070005@mellanox.com>
-Content-Type: text/plain; charset=windows-1252; format=flowed
+In-Reply-To: <20150922114404.GF8891@twin.jikos.cz>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 9/22/2015 12:56 AM, Sagi Grimberg wrote:
-> On 9/22/2015 10:19 AM, Sagi Grimberg wrote:
->>>
->>> As mentioned earlier, I have a WIP RDS fastreg branch [3]
->>> which is functional (at least I can RDMA messages across
->>> nodes ;-)).
->>
->> Nice!
->>
->>> So merging [2] and [3], I created [4] and applied
->>> a delta change based on your other patches. I saw ib_post_send
->>> failure with my HCA driver returning '-EINVAL'. I didn't
->>> debug it further but at least opcode and num_sge were set
->>> correctly so I shouldn't have seen it. So I did memset()
->>> on reg_wr which seems to have helped to fix the ib_post_send()
->>> failure.
->>
->> Yep - that was my fault. When converting the ULPs I optimized by
->> removing the memset but I forgot to set reg_wr.wr.next = NULL when
->> the ULP needed. This caused the driver to read a second bogus work
->> request. Steve just reported this as well so I'll fix that in v2.
->>
-Ahh, right. There can be chain of wr.
+On 09/22/2015 07:44 AM, David Sterba wrote:
+> On Fri, Sep 11, 2015 at 04:30:14PM -0400, Anna Schumaker wrote:
+>> From: Zach Brown <zab@redhat.com>
+>> +/*
+>> + * copy_file_range() differs from regular file read and write in that it
+>> + * specifically allows return partial success.  When it does so is up to
+>> + * the copy_file_range method.
+>> + */
+>> +ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
+>> +			    struct file *file_out, loff_t pos_out,
+>> +			    size_t len, int flags)
+> 
+> Is the signed type for flags correct? I had the impression that it's
+> usually good to have unsigned int/long for flags, this can be seen
+> frequently in the vfs/fs code. Mainly for consistency.
 
->>>
->>> But I got into remote access errors which tells me that I
->>> have messed up setup(rkey, sge setup or access flags)
->>
->> One thing that pops is that in the old API the MR was registered
->> with iova_start = 0 (which is probably what was sent to the peer),
->> but the new API the iova is implicitly sg_dma_address(&sg[0]).
->>
->> The registered MR holds these attributes in:
->> mr->rkey
->> mr->iova
->> mr->length
->>
->> These should be passed to a peer to perform rdma.
->>
-right.
+I'm all for consistency!  I'll change the function to take an unsigned int.
 
-> ohh, I just read the RDS 3.1 specification (for the first time..) and I
-> noticed that RDS 3.1 header extension contains only a 32bit offset
-> parameter. Why is that anyway? why not 64bit so it can be a valid mapped
-> address? Also the code doesn't use it at all and always passes 0 (which
-> is buggy if sg[0] has an offset from a page).
->
-> This won't work with the proposed API as the iova is 64bit (as all other
-> existing RDMA protocols use 64bit addresses).
->
-> In any event, I'd much rather to add ib_map_mr_sg_zbva() just for RDS
-> to use instead of polluting the API with an iova argument, but I think
-> that the RDS spec can be updated to use 64bit offsets and align to all
-> other RDMA protocols (it has enough space in h_exthdr which is 128bit).
->
-RDS assumes it's an offset and hence it has been used as 32 bit. I need
-to look through this carefully though because all the existing
-application use this header format. There is also RDMA read/write
-byte information sent as part of the header(Not in upstream code yet)
-so the space might be less. But point taken. Will look into it.
+Thanks,
+Anna
 
-> I was thinking of:
-> diff --git a/include/rdma/ib_verbs.h b/include/rdma/ib_verbs.h
-> index e7e0251..61fcab4 100644
-> --- a/include/rdma/ib_verbs.h
-> +++ b/include/rdma/ib_verbs.h
-> @@ -3033,6 +3033,21 @@ int ib_map_mr_sg(struct ib_mr *mr,
->                   unsigned int sg_nents,
->                   unsigned int page_size);
->
-> +static inline int
-> +ib_map_mr_sg_zbva(struct ib_mr *mr,
-> +                 struct scatterlist *sg,
-> +                 unsigned int sg_nents,
-> +                 unsigned int page_size)
-> +{
-> +       int rc;
-> +
-> +       rc = ib_map_mr_sg(mr, sg, sg_nents, page_size);
-> +       if (likely(!rc))
-> +               mr->iova &= ((u64)page_size - 1);
-> +
-> +       return rc;
-> +}
-> +
->   int ib_sg_to_pages(struct ib_mr *mr,
->                     struct scatterlist *sgl,
->                     unsigned int sg_nents,
-> --
->
-> Thoughts?
->
-> Santosh, can you use that one instead and let us know if
-> it resolves your issue?
->
-Unfortunately this change still doesn't fix the issue.
+> 
+>> +	ret = file_in->f_op->copy_file_range(file_in, pos_in, file_out, pos_out,
+>> +					     len, flags);
+> 
+> int -> unsigned int
+> 
+>> +}
+>> +EXPORT_SYMBOL(vfs_copy_file_range);
+>> +
+>> +SYSCALL_DEFINE6(copy_file_range, int, fd_in, loff_t __user *, off_in,
+>> +		int, fd_out, loff_t __user *, off_out,
+>> +		size_t, len, unsigned int, flags)
+> 
+> the syscal takes unsigned int
+> 
+>> --- a/include/linux/fs.h
+>> +++ b/include/linux/fs.h
+>> @@ -1642,6 +1642,7 @@ struct file_operations {
+>>  #ifndef CONFIG_MMU
+>>  	unsigned (*mmap_capabilities)(struct file *);
+>>  #endif
+>> +	ssize_t (*copy_file_range)(struct file *, loff_t, struct file *, loff_t, size_t, int);
+> 
+> switch to unsigned
+> 
+>> +extern ssize_t vfs_copy_file_range(struct file *, loff_t , struct file *,
+>> +				   loff_t, size_t, int);
+> 
+> and here
+> 
 
-> I think you should make sure to correctly construct the
-> h_exthdr with: rds_rdma_make_cookie(mr->rkey, (32)mr->iova)
-
-Will look into it. Thanks for suggestion.
-
-Regards,
-Santosh
