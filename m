@@ -1,174 +1,254 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ob0-f173.google.com ([209.85.214.173]:33376 "EHLO
-	mail-ob0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757880AbbIVNAM convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Sep 2015 09:00:12 -0400
-Received: by obbbh8 with SMTP id bh8so6402049obb.0
-        for <linux-nfs@vger.kernel.org>; Tue, 22 Sep 2015 06:00:11 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <74D754DA-7B3E-4753-8619-87909B3AE40A@oracle.com>
-References: <1442429367.24127.6.camel@localhost.localdomain>
-	<CAHQdGtSWaeAyjeKFV5AxJPou_94esPnso5sQrA=wfep6m5qP5Q@mail.gmail.com>
-	<08D9E2B0-B4A8-4DF0-9BB7-B19B2D260E97@oracle.com>
-	<CAHQdGtTJdVf1UU7H=R-VdZPxT=BAKA04bB-WGbPqR38JkUpwMA@mail.gmail.com>
-	<001a01d0f0c7$ca84e6d0$5f8eb470$@mindspring.com>
-	<CAHQdGtSB6XwQme2GBsQzfjxZf4qJRPhsWSMf+mWbE5501HVBzw@mail.gmail.com>
-	<3E2CC450-BB4D-4F08-957D-EB78FE3665BE@oracle.com>
-	<EE6B41C1-F6A4-4EA0-BE83-4FD48EED9E42@oracle.com>
-	<CAHQdGtQjXigfEzy=Jse0Fv+33B1m4LD-wEC7fZ3Ys2TPQCoacA@mail.gmail.com>
-	<74D754DA-7B3E-4753-8619-87909B3AE40A@oracle.com>
-Date: Tue, 22 Sep 2015 09:00:11 -0400
-Message-ID: <CAHQdGtSFHQFXG7CtHZ0Hp2LPi1y0w1xsm6tT-WxcNTKSqLTaYw@mail.gmail.com>
-Subject: Re: [PATCH] Use a separate superblock if mount requires a different
- security flavor
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Frank Filz <ffilzlnx@mindspring.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from smtp-o-3.desy.de ([131.169.56.156]:55091 "EHLO smtp-o-3.desy.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933337AbbIVNpO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 22 Sep 2015 09:45:14 -0400
+Received: from smtp-map-3.desy.de (smtp-map-3.desy.de [131.169.56.68])
+	by smtp-o-3.desy.de (DESY-O-3) with ESMTP id 669362804E4
+	for <linux-nfs@vger.kernel.org>; Tue, 22 Sep 2015 15:45:12 +0200 (CEST)
+Received: from ZITSWEEP4.win.desy.de (zitsweep4.win.desy.de [131.169.97.98])
+	by smtp-map-3.desy.de (DESY_MAP_3) with ESMTP id 57A7A117A
+	for <linux-nfs@vger.kernel.org>; Tue, 22 Sep 2015 15:45:12 +0200 (MEST)
+Received: from smtp-intra-1.desy.de (lb-40-26.desy.de) by ZITSWEEP4.win.desy.de
+ (Clearswift SMTPRS 5.5.0) with ESMTP id <Tbd0223afbd83a9616230c@ZITSWEEP4.win.desy.de> for <linux-nfs@vger.kernel.org>;
+ Tue, 22 Sep 2015 15:45:12 +0200
+From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+To: linux-nfs@vger.kernel.org
+Cc: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+Subject: [PATCH] pnfs  support servers with multiple layout types
+Date: Tue, 22 Sep 2015 15:45:07 +0200
+Message-Id: <1442929507-7002-1-git-send-email-tigran.mkrtchyan@desy.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Sep 21, 2015 at 9:31 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
->
->> On Sep 21, 2015, at 5:43 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
->>
->> On Mon, Sep 21, 2015 at 7:10 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
->>>
->>>> On Sep 17, 2015, at 11:01 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
->>>>
->>>>
->>>> On Sep 16, 2015, at 11:32 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
->>>>
->>>>> On Wed, Sep 16, 2015 at 5:36 PM, Frank Filz <ffilzlnx@mindspring.com> wrote:
->>>>>>> On Wed, Sep 16, 2015 at 4:55 PM, Chuck Lever <chuck.lever@oracle.com>
->>>>>>> wrote:
->>>>>>>>
->>>>>>>> On Sep 16, 2015, at 4:52 PM, Trond Myklebust
->>>>>>> <trond.myklebust@primarydata.com> wrote:
->>>>>>>>
->>>>>>>>> On Wed, Sep 16, 2015 at 2:49 PM, Frank Filz <ffilzlnx@mindspring.com>
->>>>>>> wrote:
->>>>>>>>>> If a server has two exports from the same filesystem but with
->>>>>>>>>> different security flavors allowed, when the client mounts first one
->>>>>>>>>> and then the second, the same super block was being used. This
->>>>>>>>>> resulted in the security flavor for the first export being applied
->>>>>>>>>> to access to the second export.
->>>>>>>>>>
->>>>>>>>>> The fix is simply to check the security flavor of the nfs_server
->>>>>>>>>> temporarily constructed for the second mount within
->>>>>>> nfs_compare_super.
->>>>>>>>>>
->>>>>>>>>> Signed-off-by: Frank S. Filz <ffilzlnx@mindspring.com>
->>>>>>>>>> ---
->>>>>>>>>> fs/nfs/super.c | 3 +++
->>>>>>>>>> 1 file changed, 3 insertions(+)
->>>>>>>>>>
->>>>>>>>>> diff --git a/fs/nfs/super.c b/fs/nfs/super.c index 084af10..44d60f1
->>>>>>>>>> 100644
->>>>>>>>>> --- a/fs/nfs/super.c
->>>>>>>>>> +++ b/fs/nfs/super.c
->>>>>>>>>> @@ -2455,6 +2455,9 @@ static int nfs_compare_super(struct
->>>>>>>>>> super_block *sb, void *data)
->>>>>>>>>>     struct nfs_server *server = sb_mntdata->server, *old =
->>>>>>>>>> NFS_SB(sb);
->>>>>>>>>>     int mntflags = sb_mntdata->mntflags;
->>>>>>>>>>
->>>>>>>>>> +       if(old->client->cl_auth->au_flavor
->>>>>>>>>> +          != server->client->cl_auth->au_flavor)
->>>>>>>>>> +               return 0;
->>>>>>>>>
->>>>>>>>> Isn't this check already being performed in
->>>>>>>>> nfs_compare_mount_options()? As far as I can see, the difference is
->>>>>>>>> that you are checking unconditionally, whereas
->>>>>>>>> nfs_compare_mount_options only does so if there was a 'sec=' line
->>>>>>>>> specified in the mount options.
->>>>>>>>
->>>>>>>> Right. If the user doesn't provide a sec=, the security flavor is
->>>>>>>> autonegotiated. In the case Frank describes, there are two directories
->>>>>>>> shared on the server, each from the same FSID but using distinct
->>>>>>>> security policies.
->>>>>>>>
->>>>>>>> So the mount options comparison is inadequate if no sec= is specified
->>>>>>>> on the mount command line.
->>>>>>>
->>>>>>> We don't claim to support autonegotiation of multiple security policies per
->>>>>>> filesystem, in general. We only claim to support one auth flavour per super
->>>>>>> block.
->>>>>>>
->>>>>>> If I understand you correctly, you are knowingly trying to work around that
->>>>>>> limitation by performing multiple mounts of the same filesystem and force it
->>>>>>> to use multiple super blocks. Why can't you then also specify the 'sec='?
->>>>>>
->>>>>> I see that point, but why not just make this case work smoothly rather than force the user to go back and specify -o sec on the mount?
->>>>>
->>>>> The main issue is that it violates the policy that we must try our
->>>>> best not to set up situations where the client has cache consistency
->>>>> issues due to the existence of multiple superblocks that all have page
->>>>> caches for the same file.
->>>>
->>>> The parts of the physical FS's namespace that are accessible
->>>> by each security flavor are disjoint. Aside from hardlinks, is
->>>> there any possibility for cache aliasing in this scenario?
->>>>
->>>>
->>>>>> Actually all that is necessary is SOME difference in mount options (or use -o nosharedcache, which could be used on all the mounts so all can have the same mount options...) and allow security negotiation to work.
->>>>>
->>>>> I'd expect there to be no problems if the admin specifies -o
->>>>> nosharedcache. Please do let me know if that fails to work.
->>>>>
->>>>>> An interesting question is if there are any servers out there that don't typically provide different FSID for different portions of the namespace, but also provide a mechanism to specify different security policies for different portions of the namespace?
->>>>>
->>>>> That sort of situation is difficult to manage.
->>>>
->>>> But appears to be allowed by Solaris, and likely also by Linux
->>>> and Ganesha. I think we are going to have to consider it,
->>>> particularly if there is no prohibition against it in the RFCs.
->>>
->>> It is certainly possible to document best practices or
->>> add admin UI limits to prevent servers from being
->>> configured this way.
->>>
->>> Meanwhile, the Linux client does allow mounting such
->>> exports when both mounts specify unique “sec=“. If this
->>> is a dangerous or unsupported scenario, perhaps this
->>> should be disallowed somehow.
->>>
->>> When security is negotiated, the second mount is not
->>> allowed. It could display an informative error message
->>> when if fails.
->>
->> My main worry with the patch you proposed is that we're only
->> considering a small part of the problem here, namely what happens on
->> mount.
->> What if the user were to mount '/' instead of the particular path you
->> chose, and then simply walk down to the problematic directory? As far
->> as I can see, that will fail just as badly both with and without this
->> patch. Why would users expect that behaviour to be any different to
->> the new mount behaviour?
->
-> <shrug> Maybe that’s a little different, though I don’t
-> have direct experience of how this is supposed to work.
->
-> If the client mounts “/“ with an explicit security flavor
-> that does not work with all the server’s shares, then
-> that’s clearly an admin choice. The root directories of
-> inaccessible shares will simply not allow users to cd
-> into them.
->
+current NFSv4.1/pNFS client assumes that MDS supports
+only one layout type. While it's true for most existing servers,
+nevertheless, this can be change in the near future.
 
-Right now, I can do
+This patch is an attempt to multi layouttype MDS support.  To make
+it possible for such servers still function with existing clients, the layout
+type list will be processed in reverse order. This gives old clients still
+pick the first entry, but newer client will pick last entry.  Proof:
 
-mkdir -p /mnt; umount -a -t nfs,nfs4; mount server:/ /mnt; cd /mnt/foo/bar
+4.3.0-rc1-dirty
+[  180.868764] nfs4flexfilelayout_init: NFSv4 Flexfile Layout Driver Registering...
 
-or I can do
+2.6.32-573.3.1.el6.x86_64
+nfs4filelayout_init: NFSv4 File Layout Driver Registering...
 
-mkdir -p /mnt/foo/bar; umount -a -t nfs,nfs4; mount server:/foo/mnt
-/mnt/foo/bar; cd /mnt/foo/bar
+Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+---
+ fs/nfs/client.c         |  2 +-
+ fs/nfs/nfs4xdr.c        | 22 +++++++++---------
+ fs/nfs/pnfs.c           | 62 ++++++++++++++++++++++++++++++-------------------
+ fs/nfs/pnfs.h           |  2 +-
+ include/linux/nfs_xdr.h |  4 +++-
+ 5 files changed, 54 insertions(+), 38 deletions(-)
 
-I can expect both approaches to lead to the exact same behaviour in
-directory /mnt/foo/bar. This is true no matter what the path I'm
-mounting or looking up, as long as I use the default mount options.
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 57c5a02..1145bc7 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -786,7 +786,7 @@ int nfs_probe_fsinfo(struct nfs_server *server, struct nfs_fh *mntfh, struct nfs
+ 	}
+ 
+ 	fsinfo.fattr = fattr;
+-	fsinfo.layouttype = 0;
++	memset(fsinfo.layouttype, 0, sizeof(fsinfo.layouttype));
+ 	error = clp->rpc_ops->fsinfo(server, mntfh, &fsinfo);
+ 	if (error < 0)
+ 		goto out_error;
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 788adf3..7fbd411 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -4688,14 +4688,14 @@ static int decode_getfattr(struct xdr_stream *xdr, struct nfs_fattr *fattr,
+ }
+ 
+ /*
+- * Decode potentially multiple layout types. Currently we only support
+- * one layout driver per file system.
++ * Decode potentially multiple layout types.
+  */
+-static int decode_first_pnfs_layout_type(struct xdr_stream *xdr,
++static int decode_pnfs_layout_types(struct xdr_stream *xdr,
+ 					 uint32_t *layouttype)
+ {
+ 	__be32 *p;
+ 	int num;
++	int i;
+ 
+ 	p = xdr_inline_decode(xdr, 4);
+ 	if (unlikely(!p))
+@@ -4704,18 +4704,18 @@ static int decode_first_pnfs_layout_type(struct xdr_stream *xdr,
+ 
+ 	/* pNFS is not supported by the underlying file system */
+ 	if (num == 0) {
+-		*layouttype = 0;
+ 		return 0;
+ 	}
+-	if (num > 1)
+-		printk(KERN_INFO "NFS: %s: Warning: Multiple pNFS layout "
+-			"drivers per filesystem not supported\n", __func__);
++	if (num > NFS_MAX_LAYOUT_TYPES)
++		printk(KERN_INFO "NFS: %s: Warning: Too many (%d) pNFS layout types\n", __func__, num);
+ 
+ 	/* Decode and set first layout type, move xdr->p past unused types */
+ 	p = xdr_inline_decode(xdr, num * 4);
+ 	if (unlikely(!p))
+ 		goto out_overflow;
+-	*layouttype = be32_to_cpup(p);
++	for(i = 0; i < num && i < NFS_MAX_LAYOUT_TYPES; i++) {
++		layouttype[i] = be32_to_cpup(p++);
++	}
+ 	return 0;
+ out_overflow:
+ 	print_overflow_msg(__func__, xdr);
+@@ -4735,10 +4735,10 @@ static int decode_attr_pnfstype(struct xdr_stream *xdr, uint32_t *bitmap,
+ 	if (unlikely(bitmap[1] & (FATTR4_WORD1_FS_LAYOUT_TYPES - 1U)))
+ 		return -EIO;
+ 	if (bitmap[1] & FATTR4_WORD1_FS_LAYOUT_TYPES) {
+-		status = decode_first_pnfs_layout_type(xdr, layouttype);
++		status = decode_pnfs_layout_types(xdr, layouttype);
+ 		bitmap[1] &= ~FATTR4_WORD1_FS_LAYOUT_TYPES;
+ 	} else
+-		*layouttype = 0;
++		memset(layouttype, 0, sizeof(*layouttype));
+ 	return status;
+ }
+ 
+@@ -4792,7 +4792,7 @@ static int decode_fsinfo(struct xdr_stream *xdr, struct nfs_fsinfo *fsinfo)
+ 	status = decode_attr_time_delta(xdr, bitmap, &fsinfo->time_delta);
+ 	if (status != 0)
+ 		goto xdr_error;
+-	status = decode_attr_pnfstype(xdr, bitmap, &fsinfo->layouttype);
++	status = decode_attr_pnfstype(xdr, bitmap, fsinfo->layouttype);
+ 	if (status != 0)
+ 		goto xdr_error;
+ 	status = decode_attr_layout_blksize(xdr, bitmap, &fsinfo->blksize);
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index ba12464..883bfa2 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -104,45 +104,59 @@ unset_pnfs_layoutdriver(struct nfs_server *nfss)
+  * Try to set the server's pnfs module to the pnfs layout type specified by id.
+  * Currently only one pNFS layout driver per filesystem is supported.
+  *
+- * @id layout type. Zero (illegal layout type) indicates pNFS not in use.
++ * @ids array of layout types supported by MDS.
+  */
+ void
+ set_pnfs_layoutdriver(struct nfs_server *server, const struct nfs_fh *mntfh,
+-		      u32 id)
++		      u32 *ids)
+ {
+ 	struct pnfs_layoutdriver_type *ld_type = NULL;
++	u32 id;
++	int i;
+ 
+-	if (id == 0)
+-		goto out_no_driver;
+ 	if (!(server->nfs_client->cl_exchange_flags &
+ 		 (EXCHGID4_FLAG_USE_NON_PNFS | EXCHGID4_FLAG_USE_PNFS_MDS))) {
+-		printk(KERN_ERR "NFS: %s: id %u cl_exchange_flags 0x%x\n",
+-			__func__, id, server->nfs_client->cl_exchange_flags);
++		printk(KERN_ERR "NFS: %s: cl_exchange_flags 0x%x\n",
++			__func__, server->nfs_client->cl_exchange_flags);
+ 		goto out_no_driver;
+ 	}
+-	ld_type = find_pnfs_driver(id);
+-	if (!ld_type) {
+-		request_module("%s-%u", LAYOUT_NFSV4_1_MODULE_PREFIX, id);
++
++	/*
++ 	 * walk in reverse ordet to use last in the list first.
++   	 * By assyming, that server will send most common type first,
++   	 * most preferred one last, old client will be happy with
++   	 * a first entry, where new clients (4.4+) will pick the
++   	 * most advance one.
++ 	 */
++	for(i = NFS_MAX_LAYOUT_TYPES; i >=0; i--) {
++		id = ids[i];
++		if(!id)
++			continue;
++
+ 		ld_type = find_pnfs_driver(id);
+ 		if (!ld_type) {
+-			dprintk("%s: No pNFS module found for %u.\n",
+-				__func__, id);
++			request_module("%s-%u", LAYOUT_NFSV4_1_MODULE_PREFIX, id);
++			ld_type = find_pnfs_driver(id);
++			if (!ld_type) {
++				dprintk("%s: No pNFS module found for %u.\n",
++					__func__, id);
++				continue;
++			}
++		}
++		server->pnfs_curr_ld = ld_type;
++		if (ld_type->set_layoutdriver
++		    && ld_type->set_layoutdriver(server, mntfh)) {
++			printk(KERN_ERR "NFS: %s: Error initializing pNFS layout "
++				"driver %u.\n", __func__, id);
++			module_put(ld_type->owner);
+ 			goto out_no_driver;
+ 		}
+-	}
+-	server->pnfs_curr_ld = ld_type;
+-	if (ld_type->set_layoutdriver
+-	    && ld_type->set_layoutdriver(server, mntfh)) {
+-		printk(KERN_ERR "NFS: %s: Error initializing pNFS layout "
+-			"driver %u.\n", __func__, id);
+-		module_put(ld_type->owner);
+-		goto out_no_driver;
+-	}
+-	/* Bump the MDS count */
+-	atomic_inc(&server->nfs_client->cl_mds_count);
++		/* Bump the MDS count */
++		atomic_inc(&server->nfs_client->cl_mds_count);
+ 
+-	dprintk("%s: pNFS module for %u set\n", __func__, id);
+-	return;
++		dprintk("%s: pNFS module for %u set\n", __func__, id);
++		return;
++	}
+ 
+ out_no_driver:
+ 	dprintk("%s: Using NFSv4 I/O\n", __func__);
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 78c9351..e7609c3 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -235,7 +235,7 @@ void pnfs_get_layout_hdr(struct pnfs_layout_hdr *lo);
+ void pnfs_put_lseg(struct pnfs_layout_segment *lseg);
+ void pnfs_put_lseg_locked(struct pnfs_layout_segment *lseg);
+ 
+-void set_pnfs_layoutdriver(struct nfs_server *, const struct nfs_fh *, u32);
++void set_pnfs_layoutdriver(struct nfs_server *, const struct nfs_fh *, u32 *);
+ void unset_pnfs_layoutdriver(struct nfs_server *);
+ void pnfs_generic_pg_init_read(struct nfs_pageio_descriptor *, struct nfs_page *);
+ int pnfs_generic_pg_readpages(struct nfs_pageio_descriptor *desc);
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 52faf7e..6c88745 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -124,6 +124,8 @@ struct nfs_fattr {
+ 		| NFS_ATTR_FATTR_SPACE_USED \
+ 		| NFS_ATTR_FATTR_V4_SECURITY_LABEL)
+ 
++#define NFS_MAX_LAYOUT_TYPES 32
++
+ /*
+  * Info on the file system
+  */
+@@ -139,7 +141,7 @@ struct nfs_fsinfo {
+ 	__u64			maxfilesize;
+ 	struct timespec		time_delta; /* server time granularity */
+ 	__u32			lease_time; /* in seconds */
+-	__u32			layouttype; /* supported pnfs layout driver */
++	__u32			layouttype[NFS_MAX_LAYOUT_TYPES]; /* supported pnfs layout drivers */
+ 	__u32			blksize; /* preferred pnfs io block size */
+ };
+ 
+-- 
+2.4.3
 
-Any patches need to preserve this property that mount and lookup are
-the same operation...
