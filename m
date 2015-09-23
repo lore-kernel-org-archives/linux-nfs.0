@@ -1,74 +1,195 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx144.netapp.com ([216.240.21.25]:25245 "EHLO mx144.netapp.com"
+Received: from fieldses.org ([173.255.197.46]:33769 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755233AbbIWOa6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 23 Sep 2015 10:30:58 -0400
-From: <andros@netapp.com>
-To: <steved@redhat.com>
-CC: <jlayton@poochiereds.net>, <linux-nfs@vger.kernel.org>,
-        Andy Adamson <andros@netapp.com>
-Subject: [PATCH Version 2 4/4] GSSD: clean up machine credentials
-Date: Wed, 23 Sep 2015 10:30:16 -0400
-Message-ID: <1443018616-1335-5-git-send-email-andros@netapp.com>
-In-Reply-To: <1443018616-1335-1-git-send-email-andros@netapp.com>
-References: <1443018616-1335-1-git-send-email-andros@netapp.com>
+	id S1752955AbbIWTSd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 23 Sep 2015 15:18:33 -0400
+Date: Wed, 23 Sep 2015 15:18:32 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Andreas Gruenbacher <agruenba@redhat.com>
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-api@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-security-module@vger.kernel.org,
+        Andreas Gruenbacher <agruen@kernel.org>
+Subject: Re: [RFC v7 26/41] richacl: Apply the file masks to a richacl
+Message-ID: <20150923191832.GA29577@fieldses.org>
+References: <1441448856-13478-1-git-send-email-agruenba@redhat.com>
+ <1441448856-13478-27-git-send-email-agruenba@redhat.com>
+ <20150922191108.GC19127@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20150922191108.GC19127@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+On Tue, Sep 22, 2015 at 03:11:08PM -0400, bfields wrote:
+> On Sat, Sep 05, 2015 at 12:27:21PM +0200, Andreas Gruenbacher wrote:
+> > Put all the pieces of the acl transformation puzzle together for
+> > computing a richacl which has the file masks "applied" so that the
+> > standard nfsv4 access check algorithm can be used on the richacl.
+> > 
+> > Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
+> > ---
+> >  fs/richacl_compat.c     | 110 ++++++++++++++++++++++++++++++++++++++++++++++++
+> >  include/linux/richacl.h |   3 ++
+> >  2 files changed, 113 insertions(+)
+> > 
+> > diff --git a/fs/richacl_compat.c b/fs/richacl_compat.c
+> > index 412844c..9681efe 100644
+> > --- a/fs/richacl_compat.c
+> > +++ b/fs/richacl_compat.c
+> > @@ -730,3 +730,113 @@ richacl_isolate_group_class(struct richacl_alloc *alloc)
+> >  	}
+> >  	return 0;
+> >  }
+> > +
+> > +/**
+> > + * __richacl_apply_masks  -  apply the file masks to all aces
+> > + * @alloc:	acl and number of allocated entries
+> > + *
+> > + * Apply the owner mask to owner@ aces, the other mask to
+> > + * everyone@ aces, and the group mask to all other aces.
+> > + *
+> > + * The previous transformations have brought the acl into a
+> > + * form in which applying the masks will not lead to the
+> > + * accidental loss of permissions anymore.
+> > + */
+> > +static int
+> > +__richacl_apply_masks(struct richacl_alloc *alloc, kuid_t owner)
+> > +{
+> > +	struct richace *ace;
+> > +
+> > +	richacl_for_each_entry(ace, alloc->acl) {
+> > +		unsigned int mask;
+> > +
+> > +		if (richace_is_inherit_only(ace) || !richace_is_allow(ace))
+> > +			continue;
+> > +		if (richace_is_owner(ace) ||
+> > +		    (richace_is_unix_user(ace) && uid_eq(owner, ace->e_id.uid)))
+> > +			mask = alloc->acl->a_owner_mask;
+> 
+> Is treating matching user aces like owner aces what you intended to do,
+> and if so, why?
 
-Since we no longer fork for uid 0, gssd_atexit() is only called when uid != 0,
-and fails as permissions on the /tmp/krb5ccmachine_REALM file prohibit
-the clean up of machine credentials (as it should).
+That does look wrong to me; in an example like:
 
-Move the reaping of machine credentials back into a SIGINT sighandler so that
-<Ctrl C> destroyes machine credentials.
+	file owner bfields
+	mask 0700, not WRITE_THROUGH
+	bfields:rwx::allow
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- utils/gssd/gssd.c | 11 +++++------
- 1 file changed, 5 insertions(+), 6 deletions(-)
+The permission algorithm grants nothing to anyone, but it looks to me
+like richacl_apply_masks just leaves this as
 
-diff --git a/utils/gssd/gssd.c b/utils/gssd/gssd.c
-index 2a768ea..e480349 100644
---- a/utils/gssd/gssd.c
-+++ b/utils/gssd/gssd.c
-@@ -729,10 +729,12 @@ found:
- }
- 
- static void
--gssd_atexit(void)
-+sig_die(int signal)
- {
- 	if (root_uses_machine_creds)
- 		gssd_destroy_krb5_machine_creds();
-+	printerr(1, "exiting on signal %d\n", signal);
-+	exit(0);
- }
- 
- static void
-@@ -892,17 +894,14 @@ main(int argc, char *argv[])
- 		exit(EXIT_FAILURE);
- 	}
- 
--	if (atexit(gssd_atexit)) {
--		printerr(1, "ERROR: atexit failed: %s\n", strerror(errno));
--		exit(EXIT_FAILURE);
--	}
--
- 	inotify_fd = inotify_init1(IN_NONBLOCK);
- 	if (inotify_fd == -1) {
- 		printerr(1, "ERROR: inotify_init1 failed: %s\n", strerror(errno));
- 		exit(EXIT_FAILURE);
- 	}
- 
-+	signal(SIGINT, sig_die);
-+	signal(SIGTERM, sig_die);
- 	signal_set(&sighup_ev, SIGHUP, gssd_scan_cb, NULL);
- 	signal_add(&sighup_ev, NULL);
- 	event_set(&inotify_ev, inotify_fd, EV_READ | EV_PERSIST, gssd_inotify_cb, NULL);
--- 
-1.9.3 (Apple Git-50)
+	bfields:rwx::allow
 
+but it would give the right result (an empty/deny-all ACL) if it weren't
+for this odd case here.
+
+--b.
+
+> 
+> --b.
+> 
+> > +		else if (richace_is_everyone(ace))
+> > +			mask = alloc->acl->a_other_mask;
+> > +		else
+> > +			mask = alloc->acl->a_group_mask;
+> > +		if (richace_change_mask(alloc, &ace, ace->e_mask & mask))
+> > +			return -1;
+> > +	}
+> > +	return 0;
+> > +}
+> > +
+> > +/**
+> > + * richacl_apply_masks  -  apply the masks to the acl
+> > + *
+> > + * Transform @acl so that the standard NFSv4 permission check algorithm (which
+> > + * is not aware of file masks) will compute the same access decisions as the
+> > + * richacl permission check algorithm (which looks at the acl and the file
+> > + * masks).
+> > + *
+> > + * This algorithm is split into several steps:
+> > + *
+> > + *   - Move everyone@ aces to the end of the acl.  This simplifies the other
+> > + *     transformations, and allows the everyone@ allow ace at the end of the
+> > + *     acl to eventually allow permissions to the other class only.
+> > + *
+> > + *   - Propagate everyone@ permissions up the acl.  This transformation makes
+> > + *     sure that the owner and group class aces won't lose any permissions when
+> > + *     we apply the other mask to the everyone@ allow ace at the end of the acl.
+> > + *
+> > + *   - Apply the file masks to all aces.
+> > + *
+> > + *   - Make sure the owner is granted the owner mask permissions.
+> > + *
+> > + *   - Make sure everyone is granted the other mask permissions.
+> > + *
+> > + *   - Make sure that the owner is not granted any permissions beyond the owner
+> > + *     mask from group class aces or from everyone@.
+> > + *
+> > + *   - Make sure that the group class is not granted any permissions from
+> > + *     everyone@.
+> > + *
+> > + * The algorithm is exact except for richacls which cannot be represented as an
+> > + * acl alone: for example, given this acl:
+> > + *
+> > + *    group@:rw::allow
+> > + *
+> > + * when file masks corresponding to mode 0600 are applied, the owner would only
+> > + * get rw access if he is a member of the owning group.  This algorithm would
+> > + * produce an empty acl in this case.  We fix this case by modifying
+> > + * richacl_permission() so that the group mask is always applied to group class
+> > + * aces.  With this fix, the owner would not have any access (beyond the
+> > + * implicit permissions always granted to owners).
+> > + *
+> > + * NOTE: Depending on the acl and file masks, this algorithm can increase the
+> > + * number of aces by almost a factor of three in the worst case. This may make
+> > + * the acl too large for some purposes.
+> > + */
+> > +int
+> > +richacl_apply_masks(struct richacl **acl, kuid_t owner)
+> > +{
+> > +	if ((*acl)->a_flags & RICHACL_MASKED) {
+> > +		struct richacl_alloc alloc = {
+> > +			.acl = richacl_clone(*acl, GFP_KERNEL),
+> > +			.count = (*acl)->a_count,
+> > +		};
+> > +		if (!alloc.acl)
+> > +			return -ENOMEM;
+> > +
+> > +		if (richacl_move_everyone_aces_down(&alloc) ||
+> > +		    richacl_propagate_everyone(&alloc) ||
+> > +		    __richacl_apply_masks(&alloc, owner) ||
+> > +		    richacl_set_owner_permissions(&alloc) ||
+> > +		    richacl_set_other_permissions(&alloc) ||
+> > +		    richacl_isolate_owner_class(&alloc) ||
+> > +		    richacl_isolate_group_class(&alloc)) {
+> > +			richacl_put(alloc.acl);
+> > +			return -ENOMEM;
+> > +		}
+> > +
+> > +		alloc.acl->a_flags &= ~(RICHACL_WRITE_THROUGH | RICHACL_MASKED);
+> > +		richacl_put(*acl);
+> > +		*acl = alloc.acl;
+> > +	}
+> > +	return 0;
+> > +}
+> > +EXPORT_SYMBOL_GPL(richacl_apply_masks);
+> > diff --git a/include/linux/richacl.h b/include/linux/richacl.h
+> > index 832b06c..a945f3c 100644
+> > --- a/include/linux/richacl.h
+> > +++ b/include/linux/richacl.h
+> > @@ -332,4 +332,7 @@ extern struct richacl *richacl_inherit(const struct richacl *, int);
+> >  extern int richacl_permission(struct inode *, const struct richacl *, int);
+> >  extern struct richacl *richacl_create(struct inode *, struct inode *);
+> >  
+> > +/* richacl_compat.c */
+> > +extern int richacl_apply_masks(struct richacl **, kuid_t);
+> > +
+> >  #endif /* __RICHACL_H */
+> > -- 
+> > 2.4.3
+> > 
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
