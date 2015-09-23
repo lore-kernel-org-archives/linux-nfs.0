@@ -1,50 +1,69 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-la0-f50.google.com ([209.85.215.50]:34808 "EHLO
-	mail-la0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755048AbbIWNdy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Sep 2015 09:33:54 -0400
-Received: by lahg1 with SMTP id g1so50720587lah.1
-        for <linux-nfs@vger.kernel.org>; Wed, 23 Sep 2015 06:33:53 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <20150922190224.GA19127@fieldses.org>
-References: <1441448856-13478-1-git-send-email-agruenba@redhat.com>
-	<1441448856-13478-26-git-send-email-agruenba@redhat.com>
-	<20150922190224.GA19127@fieldses.org>
-Date: Wed, 23 Sep 2015 15:33:49 +0200
-Message-ID: <CAHc6FU7_+fbyG0mEu3pUkfaV72AM0DzJnBES=b--koXJgo0a2g@mail.gmail.com>
-Subject: Re: [RFC v7 25/41] richacl: Isolate the owner and group classes
-From: Andreas Gruenbacher <agruenba@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: LKML <linux-kernel@vger.kernel.org>,
+Received: from fieldses.org ([173.255.197.46]:33575 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754153AbbIWNzp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 23 Sep 2015 09:55:45 -0400
+Date: Wed, 23 Sep 2015 09:55:44 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Andreas Gruenbacher <agruenba@redhat.com>
+Cc: linux-kernel@vger.kernel.org,
         linux-fsdevel <linux-fsdevel@vger.kernel.org>,
         linux-nfs@vger.kernel.org, linux-api@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-security-module@vger.kernel.org,
-        Andreas Gruenbacher <agruen@kernel.org>
-Content-Type: text/plain; charset=UTF-8
+        linux-cifs@vger.kernel.org, linux-security-module@vger.kernel.org
+Subject: Re: [RFC v7 15/41] richacl: Automatic Inheritance
+Message-ID: <20150923135544.GA27083@fieldses.org>
+References: <1441448856-13478-1-git-send-email-agruenba@redhat.com>
+ <1441448856-13478-16-git-send-email-agruenba@redhat.com>
+ <20150918184014.GB21506@fieldses.org>
+ <CAHc6FU5mV9uVP9CjtDtKpJyTMRsn7hsArWXeKRp_xSeSPoCjnA@mail.gmail.com>
+ <20150922015146.GA15960@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20150922015146.GA15960@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-2015-09-22 21:02 GMT+02:00 J. Bruce Fields <bfields@fieldses.org>:
-> On Sat, Sep 05, 2015 at 12:27:20PM +0200, Andreas Gruenbacher wrote:
->> +      * Compute the permissions already denied to @who.
->
-> I'm not sure, but may be worth commenting on the lack of everyone denies
-> here as you do in a couple places below.
+On Mon, Sep 21, 2015 at 09:51:46PM -0400, J. Bruce Fields wrote:
+> On Mon, Sep 21, 2015 at 11:19:59PM +0200, Andreas Gruenbacher wrote:
+> > 2015-09-18 20:40 GMT+02:00 J. Bruce Fields <bfields@fieldses.org>:
+> > > On Sat, Sep 05, 2015 at 12:27:10PM +0200, Andreas Gruenbacher wrote:
+> > >> Automatic Inheritance (AI) allows changes to the acl of a directory to
+> > > In the above "file" sometimes means "any object" and somethings "a
+> > > non-directory".  I can sort it out, but more consistent terminology
+> > > would help.
+> > 
+> > Okay, I'll fix it.
+> > 
+> > >> Linux does not have a way of creating files without setting the file
+> > >> permission bits, so all files created inside a directory with
+> > >> RICHACL_AUTO_INHERIT set will have the RICHACL_PROTECTED flag set.  This
+> > >> effectively disables Automatic Inheritance.
+> > >>
+> > >> Protocols which support creating files without specifying permissions
+> > >> can explicitly clear the RICHACL_PROTECTED flag after creating a file
+> > >> and reset the file masks to "undo" applying the create mode; see
+> > >> richacl_compute_max_masks().  They should set the RICHACL_DEFAULTED
+> > >> flag.  This is a workaround; a mechanism that would allow a process to
+> > >> indicate to the kernel to ignore the create mode when there are
+> > >> inherited permissions would fix this problem.
+> > >
+> > > Also, as you know: current nfsd has no way to create files without
+> > > setting permissions.  And if we were to implement that it's unclear how
+> > > many clients would actually use it (Windows clients are rare).  And of
+> > > course Samba doesn't have the interfaces it would need.
+> > >
+> > > I think we should just drop this for now.  The rest of the richacl stuff
+> > > is still useful without it.
+> > 
+> > Samba will hack around it and adjust the ACL after the create; that's
+> > still better than not having Automatic Inheritance. Windows uses AI
+> > all the time so AI is more important for Samba than for NFSv4.
+> 
+> Oh, OK, that makes sense.  Even just giving them a place to store the
+> bits would be better than nothing.  So, ignore my objection there....
 
-Okay.
+Oh, and
 
-> As in the owner case, I think a goto would simplify the logic a little.
+	Reviewed-by: J. Bruce Fields <bfields@redhat.com>
 
-Yep, I'll clean that up.
-
->> +             /*
->> +              * Start from the entry before the trailing everyone@ allow
->> +              * entry.  We will not hit everyone@ entries in the loop.
->
-> May as well skip the check below, in that case?
-
-Indeed. You can almost tell from those few leftovers how the code has
-evolved over time :)
-
-Thanks,
-Andreas
+--b.
