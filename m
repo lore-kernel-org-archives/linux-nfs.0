@@ -1,117 +1,156 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:33275 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759959AbbIWBqb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 22 Sep 2015 21:46:31 -0400
-Date: Tue, 22 Sep 2015 21:46:30 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Andreas Gruenbacher <agruenba@redhat.com>
-Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-api@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-security-module@vger.kernel.org
-Subject: Re: [RFC v7 22/41] richacl: Propagate everyone@ permissions to other
- aces
-Message-ID: <20150923014630.GB23581@fieldses.org>
-References: <CAHc6FU5Ug3rN2-znFeABpdn+LCHgvzOnSRB4BCepNS6mToJVZg@mail.gmail.com>
- <1441448856-13478-1-git-send-email-agruenba@redhat.com>
- <1441448856-13478-23-git-send-email-agruenba@redhat.com>
- <20150918215611.GD22671@fieldses.org>
- <20150921192441.GA12968@fieldses.org>
- <1442972384-22757-1-git-send-email-agruenba@redhat.com>
+Received: from e28smtp04.in.ibm.com ([122.248.162.4]:37623 "EHLO
+	e28smtp04.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1760036AbbIWCcA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Sep 2015 22:32:00 -0400
+Received: from /spool/local
+	by e28smtp04.in.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <aneesh.kumar@linux.vnet.ibm.com>;
+	Wed, 23 Sep 2015 08:01:58 +0530
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: Andreas Gruenbacher <agruenba@redhat.com>, linux-kernel@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-api@vger.kernel.org, linux-cifs@vger.kernel.org,
+        linux-security-module@vger.kernel.org
+Subject: Re: [RFC v7 19/41] ext4: Add richacl feature flag
+In-Reply-To: <1441448856-13478-20-git-send-email-agruenba@redhat.com>
+References: <1441448856-13478-1-git-send-email-agruenba@redhat.com> <1441448856-13478-20-git-send-email-agruenba@redhat.com>
+Date: Wed, 23 Sep 2015 08:01:49 +0530
+Message-ID: <87io71hnmy.fsf@linux.vnet.ibm.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1442972384-22757-1-git-send-email-agruenba@redhat.com>
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Sep 23, 2015 at 03:39:44AM +0200, Andreas Gruenbacher wrote:
-> Here are my improvements; hope that helps ...
+Andreas Gruenbacher <agruenba@redhat.com> writes:
 
-Yes, looks good, thanks!--b.
+> From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+>
+> This feature flag selects richacl instead of posix acl support on the
+> file system. In addition, the "acl" mount option is needed for enabling
+> either of the two kinds of acls.
+>
+> Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
 
-> 
-> Thanks,
-> Andreas
-> 
-> diff --git a/fs/richacl_compat.c b/fs/richacl_compat.c
-> index 9b76fc0..21af9a0 100644
-> --- a/fs/richacl_compat.c
-> +++ b/fs/richacl_compat.c
-> @@ -351,26 +351,26 @@ richacl_propagate_everyone(struct richacl_alloc *alloc)
->  	struct richace *ace;
->  	unsigned int owner_allow, group_allow;
->  
-> -	/*
-> -	 * If the owner mask contains permissions which are not in the group
-> -	 * mask, the group mask contains permissions which are not in the other
-> -	 * mask, or the owner class contains permissions which are not in the
-> -	 * other mask, we may need to propagate permissions up from the
-> -	 * everyone@ allow ace.  The third condition is implied by the first
-> -	 * two.
-> -	 */
-> -	if (!((acl->a_owner_mask & ~acl->a_group_mask) ||
-> -	      (acl->a_group_mask & ~acl->a_other_mask)))
-> -		return 0;
->  	if (!acl->a_count)
->  		return 0;
->  	ace = acl->a_entries + acl->a_count - 1;
->  	if (richace_is_inherit_only(ace) || !richace_is_everyone(ace))
->  		return 0;
->  
-> +	/*
-> +	 * Permissions the owner and group class are granted through the
-> +	 * trailing everyone@ allow ace.
-> +	 */
->  	owner_allow = ace->e_mask & acl->a_owner_mask;
->  	group_allow = ace->e_mask & acl->a_group_mask;
->  
-> +	/*
-> +	 * If the group or other masks hide permissions which the owner should
-> +	 * be allowed, we need to propagate those permissions up.  Otherwise,
-> +	 * those permissions may be lost when applying the other mask to the
-> +	 * trailing everyone@ allow ace, or when isolating the group class from
-> +	 * the other class through additional deny aces.
-> +	 */
->  	if (owner_allow & ~(acl->a_group_mask & acl->a_other_mask)) {
->  		/* Propagate everyone@ permissions through to owner@. */
->  		who.e_id.special = RICHACE_OWNER_SPECIAL_ID;
-> @@ -379,6 +379,11 @@ richacl_propagate_everyone(struct richacl_alloc *alloc)
->  		acl = alloc->acl;
->  	}
->  
-> +	/*
-> +	 * If the other mask hides permissions which the group class should be
-> +	 * allowed, we need to propagate those permissions up to the owning
-> +	 * group and to all other members in the group class.
-> +	 */
->  	if (group_allow & ~acl->a_other_mask) {
->  		int n;
->  
-> @@ -399,16 +404,15 @@ richacl_propagate_everyone(struct richacl_alloc *alloc)
->  			    richace_is_owner(ace) ||
->  			    richace_is_group(ace))
->  				continue;
-> -			if (richace_is_allow(ace) || richace_is_deny(ace)) {
-> -				/*
-> -				 * Any inserted entry will end up below the
-> -				 * current entry
-> -				 */
-> -				if (__richacl_propagate_everyone(alloc, ace,
-> -								 group_allow))
-> -					return -1;
-> -				acl = alloc->acl;
-> -			}
+ Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+
+> ---
+>  fs/ext4/ext4.h  |  6 ++++--
+>  fs/ext4/super.c | 42 +++++++++++++++++++++++++++++++++---------
+>  2 files changed, 37 insertions(+), 11 deletions(-)
+>
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index f5e9f04..e69c8ea 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -991,7 +991,7 @@ struct ext4_inode_info {
+>  #define EXT4_MOUNT_UPDATE_JOURNAL	0x01000	/* Update the journal format */
+>  #define EXT4_MOUNT_NO_UID32		0x02000  /* Disable 32-bit UIDs */
+>  #define EXT4_MOUNT_XATTR_USER		0x04000	/* Extended user attributes */
+> -#define EXT4_MOUNT_POSIX_ACL		0x08000	/* POSIX Access Control Lists */
+> +#define EXT4_MOUNT_ACL			0x08000	/* Access Control Lists */
+>  #define EXT4_MOUNT_NO_AUTO_DA_ALLOC	0x10000	/* No auto delalloc mapping */
+>  #define EXT4_MOUNT_BARRIER		0x20000 /* Use block barriers */
+>  #define EXT4_MOUNT_QUOTA		0x80000 /* Some quota option set */
+> @@ -1582,6 +1582,7 @@ static inline int ext4_encrypted_inode(struct inode *inode)
+>  #define EXT4_FEATURE_INCOMPAT_LARGEDIR		0x4000 /* >2GB or 3-lvl htree */
+>  #define EXT4_FEATURE_INCOMPAT_INLINE_DATA	0x8000 /* data in inode */
+>  #define EXT4_FEATURE_INCOMPAT_ENCRYPT		0x10000
+> +#define EXT4_FEATURE_INCOMPAT_RICHACL		0x20000
+>
+>  #define EXT2_FEATURE_COMPAT_SUPP	EXT4_FEATURE_COMPAT_EXT_ATTR
+>  #define EXT2_FEATURE_INCOMPAT_SUPP	(EXT4_FEATURE_INCOMPAT_FILETYPE| \
+> @@ -1607,7 +1608,8 @@ static inline int ext4_encrypted_inode(struct inode *inode)
+>  					 EXT4_FEATURE_INCOMPAT_FLEX_BG| \
+>  					 EXT4_FEATURE_INCOMPAT_MMP | \
+>  					 EXT4_FEATURE_INCOMPAT_INLINE_DATA | \
+> -					 EXT4_FEATURE_INCOMPAT_ENCRYPT)
+> +					 EXT4_FEATURE_INCOMPAT_ENCRYPT | \
+> +					 EXT4_FEATURE_INCOMPAT_RICHACL)
+>  #define EXT4_FEATURE_RO_COMPAT_SUPP	(EXT4_FEATURE_RO_COMPAT_SPARSE_SUPER| \
+>  					 EXT4_FEATURE_RO_COMPAT_LARGE_FILE| \
+>  					 EXT4_FEATURE_RO_COMPAT_GDT_CSUM| \
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 58987b5..05d6537 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -1257,6 +1257,28 @@ static ext4_fsblk_t get_sb_block(void **data)
+>  	return sb_block;
+>  }
+>
+> +static int enable_acl(struct super_block *sb)
+> +{
+> +	sb->s_flags &= ~(MS_POSIXACL | MS_RICHACL);
+> +	if (test_opt(sb, ACL)) {
+> +		if (EXT4_HAS_INCOMPAT_FEATURE(sb,
+> +					      EXT4_FEATURE_INCOMPAT_RICHACL)) {
+> +#ifdef CONFIG_EXT4_FS_RICHACL
+> +			sb->s_flags |= MS_RICHACL;
+> +#else
+> +			return -EOPNOTSUPP;
+> +#endif
+> +		} else {
+> +#ifdef CONFIG_EXT4_FS_POSIX_ACL
+> +			sb->s_flags |= MS_POSIXACL;
+> +#else
+> +			return -EOPNOTSUPP;
+> +#endif
+> +		}
+> +	}
+> +	return 0;
+> +}
 > +
-> +			/*
-> +			 * Any inserted entry will end up below the current
-> +			 * entry.
-> +			 */
-> +			if (__richacl_propagate_everyone(alloc, ace,
-> +							 group_allow))
-> +				return -1;
-> +			acl = alloc->acl;
->  		}
+>  #define DEFAULT_JOURNAL_IOPRIO (IOPRIO_PRIO_VALUE(IOPRIO_CLASS_BE, 3))
+>  static char deprecated_msg[] = "Mount option \"%s\" will be removed by %s\n"
+>  	"Contact linux-ext4@vger.kernel.org if you think we should keep it.\n";
+> @@ -1403,9 +1425,9 @@ static const struct mount_opts {
+>  	 MOPT_NO_EXT2 | MOPT_DATAJ},
+>  	{Opt_user_xattr, EXT4_MOUNT_XATTR_USER, MOPT_SET},
+>  	{Opt_nouser_xattr, EXT4_MOUNT_XATTR_USER, MOPT_CLEAR},
+> -#ifdef CONFIG_EXT4_FS_POSIX_ACL
+> -	{Opt_acl, EXT4_MOUNT_POSIX_ACL, MOPT_SET},
+> -	{Opt_noacl, EXT4_MOUNT_POSIX_ACL, MOPT_CLEAR},
+> +#if defined(CONFIG_EXT4_FS_POSIX_ACL) || defined(CONFIG_EXT4_FS_RICHACL)
+> +	{Opt_acl, EXT4_MOUNT_ACL, MOPT_SET},
+> +	{Opt_noacl, EXT4_MOUNT_ACL, MOPT_CLEAR},
+>  #else
+>  	{Opt_acl, 0, MOPT_NOSUPPORT},
+>  	{Opt_noacl, 0, MOPT_NOSUPPORT},
+> @@ -3563,8 +3585,8 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+>  		set_opt(sb, NO_UID32);
+>  	/* xattr user namespace & acls are now defaulted on */
+>  	set_opt(sb, XATTR_USER);
+> -#ifdef CONFIG_EXT4_FS_POSIX_ACL
+> -	set_opt(sb, POSIX_ACL);
+> +#if defined(CONFIG_EXT4_FS_POSIX_ACL) || defined(CONFIG_EXT4_FS_RICHACL)
+> +	set_opt(sb, ACL);
+>  #endif
+>  	/* don't forget to enable journal_csum when metadata_csum is enabled. */
+>  	if (ext4_has_metadata_csum(sb))
+> @@ -3645,8 +3667,9 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+>  			clear_opt(sb, DELALLOC);
 >  	}
->  	return 0;
+>
+> -	sb->s_flags = (sb->s_flags & ~MS_POSIXACL) |
+> -		(test_opt(sb, POSIX_ACL) ? MS_POSIXACL : 0);
+> +	err = enable_acl(sb);
+> +	if (err)
+> +		goto failed_mount;
+>
+>  	if (le32_to_cpu(es->s_rev_level) == EXT4_GOOD_OLD_REV &&
+>  	    (EXT4_HAS_COMPAT_FEATURE(sb, ~0U) ||
+> @@ -4960,8 +4983,9 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
+>  	if (sbi->s_mount_flags & EXT4_MF_FS_ABORTED)
+>  		ext4_abort(sb, "Abort forced by user");
+>
+> -	sb->s_flags = (sb->s_flags & ~MS_POSIXACL) |
+> -		(test_opt(sb, POSIX_ACL) ? MS_POSIXACL : 0);
+> +	err = enable_acl(sb);
+> +	if (err)
+> +		goto restore_opts;
+>
+>  	es = sbi->s_es;
+>
 > -- 
 > 2.4.3
+
