@@ -1,69 +1,88 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:33575 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:33579 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754153AbbIWNzp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 23 Sep 2015 09:55:45 -0400
-Date: Wed, 23 Sep 2015 09:55:44 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1754590AbbIWODH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 23 Sep 2015 10:03:07 -0400
+Date: Wed, 23 Sep 2015 10:03:07 -0400
 To: Andreas Gruenbacher <agruenba@redhat.com>
-Cc: linux-kernel@vger.kernel.org,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-nfs@vger.kernel.org, linux-api@vger.kernel.org,
         linux-cifs@vger.kernel.org, linux-security-module@vger.kernel.org
-Subject: Re: [RFC v7 15/41] richacl: Automatic Inheritance
-Message-ID: <20150923135544.GA27083@fieldses.org>
+Subject: Re: [RFC v7 24/41] richacl: Set the other permissions to the other
+ mask
+Message-ID: <20150923140307.GB27083@fieldses.org>
 References: <1441448856-13478-1-git-send-email-agruenba@redhat.com>
- <1441448856-13478-16-git-send-email-agruenba@redhat.com>
- <20150918184014.GB21506@fieldses.org>
- <CAHc6FU5mV9uVP9CjtDtKpJyTMRsn7hsArWXeKRp_xSeSPoCjnA@mail.gmail.com>
- <20150922015146.GA15960@fieldses.org>
+ <1441448856-13478-25-git-send-email-agruenba@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20150922015146.GA15960@fieldses.org>
+In-Reply-To: <1441448856-13478-25-git-send-email-agruenba@redhat.com>
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Sep 21, 2015 at 09:51:46PM -0400, J. Bruce Fields wrote:
-> On Mon, Sep 21, 2015 at 11:19:59PM +0200, Andreas Gruenbacher wrote:
-> > 2015-09-18 20:40 GMT+02:00 J. Bruce Fields <bfields@fieldses.org>:
-> > > On Sat, Sep 05, 2015 at 12:27:10PM +0200, Andreas Gruenbacher wrote:
-> > >> Automatic Inheritance (AI) allows changes to the acl of a directory to
-> > > In the above "file" sometimes means "any object" and somethings "a
-> > > non-directory".  I can sort it out, but more consistent terminology
-> > > would help.
-> > 
-> > Okay, I'll fix it.
-> > 
-> > >> Linux does not have a way of creating files without setting the file
-> > >> permission bits, so all files created inside a directory with
-> > >> RICHACL_AUTO_INHERIT set will have the RICHACL_PROTECTED flag set.  This
-> > >> effectively disables Automatic Inheritance.
-> > >>
-> > >> Protocols which support creating files without specifying permissions
-> > >> can explicitly clear the RICHACL_PROTECTED flag after creating a file
-> > >> and reset the file masks to "undo" applying the create mode; see
-> > >> richacl_compute_max_masks().  They should set the RICHACL_DEFAULTED
-> > >> flag.  This is a workaround; a mechanism that would allow a process to
-> > >> indicate to the kernel to ignore the create mode when there are
-> > >> inherited permissions would fix this problem.
-> > >
-> > > Also, as you know: current nfsd has no way to create files without
-> > > setting permissions.  And if we were to implement that it's unclear how
-> > > many clients would actually use it (Windows clients are rare).  And of
-> > > course Samba doesn't have the interfaces it would need.
-> > >
-> > > I think we should just drop this for now.  The rest of the richacl stuff
-> > > is still useful without it.
-> > 
-> > Samba will hack around it and adjust the ACL after the create; that's
-> > still better than not having Automatic Inheritance. Windows uses AI
-> > all the time so AI is more important for Samba than for NFSv4.
+On Sat, Sep 05, 2015 at 12:27:19PM +0200, Andreas Gruenbacher wrote:
+> Change the acl so that everyone@ is granted the permissions set in the
+> other mask.
 > 
-> Oh, OK, that makes sense.  Even just giving them a place to store the
-> bits would be better than nothing.  So, ignore my objection there....
+> Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
+> ---
+>  fs/richacl_compat.c | 35 +++++++++++++++++++++++++++++++++++
+>  1 file changed, 35 insertions(+)
+> 
+> diff --git a/fs/richacl_compat.c b/fs/richacl_compat.c
+> index 14a1b4b..30bdc95 100644
+> --- a/fs/richacl_compat.c
+> +++ b/fs/richacl_compat.c
+> @@ -459,3 +459,38 @@ richacl_set_owner_permissions(struct richacl_alloc *alloc)
+>  	}
+>  	return 0;
+>  }
+> +
+> +/**
+> + * richacl_set_other_permissions  -  set the other permissions to the other mask
+> + *
+> + * Change the acl so that everyone@ is granted the permissions set in the other
+> + * mask.  This leaves at most one efective everyone@ allow entry at the end of
+> + * the acl.
+> + */
+> +static int
+> +richacl_set_other_permissions(struct richacl_alloc *alloc)
+> +{
+> +	struct richacl *acl = alloc->acl;
+> +	unsigned int x = RICHACE_POSIX_ALWAYS_ALLOWED;
+> +	unsigned int other_mask = acl->a_other_mask & ~x;
+> +	struct richace *ace = acl->a_entries + acl->a_count - 1;
+> +
+> +	if (!(other_mask &&
+> +	      (acl->a_flags & RICHACL_WRITE_THROUGH) &&
+> +	      (acl->a_flags & RICHACL_MASKED)))
+> +		return 0;
 
-Oh, and
-
-	Reviewed-by: J. Bruce Fields <bfields@redhat.com>
+By the way, I think this is only called after checking MASKED--so the
+MASKED check here could be a WARN_ON, or could just be dropped.  Ditto
+for the following patch.
 
 --b.
+
+> +
+> +	if (acl->a_count == 0 ||
+> +	    !richace_is_everyone(ace) ||
+> +	    richace_is_inherit_only(ace)) {
+> +		ace++;
+> +		if (richacl_insert_entry(alloc, &ace))
+> +			return -1;
+> +		ace->e_type = RICHACE_ACCESS_ALLOWED_ACE_TYPE;
+> +		ace->e_flags = RICHACE_SPECIAL_WHO;
+> +		ace->e_mask = other_mask;
+> +		ace->e_id.special = RICHACE_EVERYONE_SPECIAL_ID;
+> +	} else
+> +		richace_change_mask(alloc, &ace, other_mask);
+> +	return 0;
+> +}
+> -- 
+> 2.4.3
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
