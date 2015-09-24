@@ -1,47 +1,37 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.windriver.com ([147.11.1.11]:61237 "EHLO
-	mail.windriver.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755868AbbIXCTL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Sep 2015 22:19:11 -0400
-Received: from localhost (lrq.corp.ad.wrs.com [128.224.162.158])
-	by mail.windriver.com (8.15.2/8.15.1) with ESMTP id t8O2JAwl014324
-	for <linux-nfs@vger.kernel.org>; Wed, 23 Sep 2015 19:19:10 -0700 (PDT)
-From: roy.qing.li@gmail.com
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] nfsroot: make nfsroot to accept the 1024 bytes long directory name
-Date: Thu, 24 Sep 2015 10:19:09 +0800
-Message-Id: <1443061149-25153-1-git-send-email-roy.qing.li@gmail.com>
+Received: from mail-wi0-f176.google.com ([209.85.212.176]:35848 "EHLO
+	mail-wi0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756169AbbIXFsQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Sep 2015 01:48:16 -0400
+Date: Thu, 24 Sep 2015 07:48:08 +0200
+From: Alexander Aring <alex.aring@gmail.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Nikolay Aleksandrov <nikolay@cumulusnetworks.com>,
+        Linux Network Devel Mailing List <netdev@vger.kernel.org>,
+        Steven Rostedt <rostedt@goodmis.org>
+Subject: Re: Race with ip=dhcp bootparameter in ip_rcv_finish on am335x
+Message-ID: <20150924054806.GA1702@omega>
+References: <20150923102953.GA8918@omega>
+ <5602809D.2020500@cumulusnetworks.com>
+ <20150923115757.GA23260@omega>
+ <20150923122714.GA31569@omega>
+ <CAHQdGtSuhAVMWqm__UYvuKCrAGW54KO10XTWoju0Singq1SbqQ@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <CAHQdGtSuhAVMWqm__UYvuKCrAGW54KO10XTWoju0Singq1SbqQ@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Li RongQing <roy.qing.li@gmail.com>
+Hi,
 
-although NFS_MAXPATHLEN is defined to 1024, nfs client hopes to accept
-a 1024 byte path, but nfs_root_parms is limited to 256, and the nfs path
-will truncated when a user inputs nfs path from kernel cmdline
+On Wed, Sep 23, 2015 at 09:16:00AM -0400, Trond Myklebust wrote:
+...
+> 
+> Is that happening when the transport is being torn down? If so, is it
+> fixed by http://git.linux-nfs.org/?p=trondmy/linux-nfs.git;a=commitdiff;h=79234c3db6842a3de03817211d891e0c2878f756
+> ?
 
-enlarge nfs_root_parms to 1024, to make it accept the 1024 bytes long
-directory name, since nfs_root_parms is defined as _initdata, it will
-be released after system bootup
+thanks. This patch fixed my issue.
 
-Signed-off-by: Li RongQing <roy.qing.li@gmail.com>
----
- fs/nfs/nfsroot.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/fs/nfs/nfsroot.c b/fs/nfs/nfsroot.c
-index 9bc9f04..89a15db 100644
---- a/fs/nfs/nfsroot.c
-+++ b/fs/nfs/nfsroot.c
-@@ -90,7 +90,7 @@
- #define NFS_DEF_OPTIONS		"vers=2,udp,rsize=4096,wsize=4096"
- 
- /* Parameters passed from the kernel command line */
--static char nfs_root_parms[256] __initdata = "";
-+static char nfs_root_parms[NFS_MAXPATHLEN + 1] __initdata = "";
- 
- /* Text-based mount options passed to super.c */
- static char nfs_root_options[256] __initdata = NFS_DEF_OPTIONS;
--- 
-2.1.4
-
+- Alex
