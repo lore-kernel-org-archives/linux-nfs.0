@@ -1,60 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pa0-f48.google.com ([209.85.220.48]:35322 "EHLO
-	mail-pa0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753148AbbIXM4k (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Sep 2015 08:56:40 -0400
-Received: by pacfv12 with SMTP id fv12so73893746pac.2
-        for <linux-nfs@vger.kernel.org>; Thu, 24 Sep 2015 05:56:40 -0700 (PDT)
-Subject: [PATCH 3/8] NFS: Remove the left function defines in callback.h
+Received: from mail-pa0-f45.google.com ([209.85.220.45]:34714 "EHLO
+	mail-pa0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753148AbbIXM5P (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Sep 2015 08:57:15 -0400
+Received: by padhy16 with SMTP id hy16so72836384pad.1
+        for <linux-nfs@vger.kernel.org>; Thu, 24 Sep 2015 05:57:15 -0700 (PDT)
+Subject: [PATCH 4/8] NFS: Remove unneeded NFS_DEBUG checking before define
+ NFSDBG_FACILITY
 To: Trond Myklebust <trond.myklebust@primarydata.com>
 References: <5603F269.9060102@gmail.com>
 Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
         kinglongmee@gmail.com
 From: Kinglong Mee <kinglongmee@gmail.com>
-Message-ID: <5603F2FD.1010601@gmail.com>
-Date: Thu, 24 Sep 2015 20:56:29 +0800
+Message-ID: <5603F31F.5060007@gmail.com>
+Date: Thu, 24 Sep 2015 20:57:03 +0800
 MIME-Version: 1.0
 In-Reply-To: <5603F269.9060102@gmail.com>
 Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Commit 778be232a207 "NFS do not find client in NFSv4 pg_authenticate" has remove
-the define and using of nfs4_set_callback_sessionid(), and
-commit 36281caa839f "NFSv4: Further clean-ups of delegation stateid validation"
-has update the checking of stateid, and move the code to nfs4proc.c.
-
-This patch remove those function defines left in callback.h
+It's not needed to checking NFS_DEBUG before define NFSDBG_FACILITY, remove it.
 
 Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
 ---
- fs/nfs/callback.h | 6 ------
- 1 file changed, 6 deletions(-)
+ fs/nfs/callback_proc.c | 2 --
+ fs/nfs/mount_clnt.c    | 4 +---
+ 2 files changed, 1 insertion(+), 5 deletions(-)
 
-diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
-index cbcc903..ff8195b 100644
---- a/fs/nfs/callback.h
-+++ b/fs/nfs/callback.h
-@@ -117,9 +117,6 @@ extern __be32 nfs4_callback_sequence(struct cb_sequenceargs *args,
- 				       struct cb_sequenceres *res,
- 				       struct cb_process_state *cps);
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index b85cf7a..807eb6e 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -17,9 +17,7 @@
+ #include "nfs4session.h"
+ #include "nfs4trace.h"
  
--extern int nfs41_validate_delegation_stateid(struct nfs_delegation *delegation,
--					     const nfs4_stateid *stateid);
--
- #define RCA4_TYPE_MASK_RDATA_DLG	0
- #define RCA4_TYPE_MASK_WDATA_DLG	1
- #define RCA4_TYPE_MASK_DIR_DLG         2
-@@ -191,9 +188,6 @@ extern __be32 nfs4_callback_recall(struct cb_recallargs *args, void *dummy,
- #if IS_ENABLED(CONFIG_NFS_V4)
- extern int nfs_callback_up(u32 minorversion, struct rpc_xprt *xprt);
- extern void nfs_callback_down(int minorversion, struct net *net);
--extern int nfs4_validate_delegation_stateid(struct nfs_delegation *delegation,
--					    const nfs4_stateid *stateid);
--extern int nfs4_set_callback_sessionid(struct nfs_client *clp);
- #endif /* CONFIG_NFS_V4 */
+-#ifdef NFS_DEBUG
+ #define NFSDBG_FACILITY NFSDBG_CALLBACK
+-#endif
+ 
+ __be32 nfs4_callback_getattr(struct cb_getattrargs *args,
+ 			     struct cb_getattrres *res,
+diff --git a/fs/nfs/mount_clnt.c b/fs/nfs/mount_clnt.c
+index 99a4528..09b1900 100644
+--- a/fs/nfs/mount_clnt.c
++++ b/fs/nfs/mount_clnt.c
+@@ -16,9 +16,7 @@
+ #include <linux/nfs_fs.h>
+ #include "internal.h"
+ 
+-#ifdef NFS_DEBUG
+-# define NFSDBG_FACILITY	NFSDBG_MOUNT
+-#endif
++#define NFSDBG_FACILITY	NFSDBG_MOUNT
+ 
  /*
-  * nfs41: Callbacks are expected to not cause substantial latency,
+  * Defined by RFC 1094, section A.3; and RFC 1813, section 5.1.4
 -- 
 2.5.0
 
