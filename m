@@ -1,273 +1,254 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from [193.47.165.129] ([193.47.165.129]:41965 "EHLO mellanox.co.il"
+Received: from [193.47.165.129] ([193.47.165.129]:41974 "EHLO mellanox.co.il"
 	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1757456AbbIXRhH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 24 Sep 2015 13:37:07 -0400
+	id S1757463AbbIXRhL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 24 Sep 2015 13:37:11 -0400
 From: Sagi Grimberg <sagig@mellanox.com>
 To: linux-rdma@vger.kernel.org
 Cc: linux-nfs@vger.kernel.org, "Nicholas A. Bellinger" <nab@linux-iscsi.org>
-Subject: [PATCH v2 11/26] iser-target: Port to new memory registration API
-Date: Thu, 24 Sep 2015 20:35:03 +0300
-Message-Id: <1443116118-10730-12-git-send-email-sagig@mellanox.com>
+Subject: [PATCH v2 15/26] IB/srp: Split srp_map_sg
+Date: Thu, 24 Sep 2015 20:35:07 +0300
+Message-Id: <1443116118-10730-16-git-send-email-sagig@mellanox.com>
 In-Reply-To: <1443116118-10730-1-git-send-email-sagig@mellanox.com>
 References: <1443116118-10730-1-git-send-email-sagig@mellanox.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Remove fastreg page list allocation as the page vector
-is now private to the provider. Instead of constructing
-the page list and fast_req work request, call ib_map_mr_sg
-and construct ib_reg_wr.
+This is a perparation patch for the new registration API
+conversion. It splits srp_map_sg per registration strategy
+(srp_map_sg[fmr|fr|dma]. On its own it adds some code duplication,
+but it makes the API switch easier to comprehend.
 
 Signed-off-by: Sagi Grimberg <sagig@mellanox.com>
-Acked-by: Christoph Hellwig <hch@lst.de>
 ---
- drivers/infiniband/ulp/isert/ib_isert.c | 130 +++++++-------------------------
- drivers/infiniband/ulp/isert/ib_isert.h |   2 -
- 2 files changed, 28 insertions(+), 104 deletions(-)
+ drivers/infiniband/ulp/srp/ib_srp.c | 156 ++++++++++++++++++++++++------------
+ 1 file changed, 105 insertions(+), 51 deletions(-)
 
-diff --git a/drivers/infiniband/ulp/isert/ib_isert.c b/drivers/infiniband/ulp/isert/ib_isert.c
-index dcb29d166211..692875ba7a1f 100644
---- a/drivers/infiniband/ulp/isert/ib_isert.c
-+++ b/drivers/infiniband/ulp/isert/ib_isert.c
-@@ -475,10 +475,8 @@ isert_conn_free_fastreg_pool(struct isert_conn *isert_conn)
- 	list_for_each_entry_safe(fr_desc, tmp,
- 				 &isert_conn->fr_pool, list) {
- 		list_del(&fr_desc->list);
--		ib_free_fast_reg_page_list(fr_desc->data_frpl);
- 		ib_dereg_mr(fr_desc->data_mr);
- 		if (fr_desc->pi_ctx) {
--			ib_free_fast_reg_page_list(fr_desc->pi_ctx->prot_frpl);
- 			ib_dereg_mr(fr_desc->pi_ctx->prot_mr);
- 			ib_dereg_mr(fr_desc->pi_ctx->sig_mr);
- 			kfree(fr_desc->pi_ctx);
-@@ -506,22 +504,13 @@ isert_create_pi_ctx(struct fast_reg_descriptor *desc,
+diff --git a/drivers/infiniband/ulp/srp/ib_srp.c b/drivers/infiniband/ulp/srp/ib_srp.c
+index f8b9c18da03d..74748d1075fc 100644
+--- a/drivers/infiniband/ulp/srp/ib_srp.c
++++ b/drivers/infiniband/ulp/srp/ib_srp.c
+@@ -1286,6 +1286,17 @@ static int srp_map_finish_fmr(struct srp_map_state *state,
+ 	if (WARN_ON_ONCE(state->fmr.next >= state->fmr.end))
  		return -ENOMEM;
- 	}
  
--	pi_ctx->prot_frpl = ib_alloc_fast_reg_page_list(device,
--					    ISCSI_ISER_SG_TABLESIZE);
--	if (IS_ERR(pi_ctx->prot_frpl)) {
--		isert_err("Failed to allocate prot frpl err=%ld\n",
--			  PTR_ERR(pi_ctx->prot_frpl));
--		ret = PTR_ERR(pi_ctx->prot_frpl);
--		goto err_pi_ctx;
--	}
--
- 	pi_ctx->prot_mr = ib_alloc_mr(pd, IB_MR_TYPE_MEM_REG,
- 				      ISCSI_ISER_SG_TABLESIZE);
- 	if (IS_ERR(pi_ctx->prot_mr)) {
- 		isert_err("Failed to allocate prot frmr err=%ld\n",
- 			  PTR_ERR(pi_ctx->prot_mr));
- 		ret = PTR_ERR(pi_ctx->prot_mr);
--		goto err_prot_frpl;
-+		goto err_pi_ctx;
- 	}
- 	desc->ind |= ISERT_PROT_KEY_VALID;
++	WARN_ON_ONCE(!dev->use_fmr);
++
++	if (state->npages == 0)
++		return 0;
++
++	if (state->npages == 1 && target->global_mr) {
++		srp_map_desc(state, state->base_dma_addr, state->dma_len,
++			     target->global_mr->rkey);
++		return 0;
++	}
++
+ 	fmr = ib_fmr_pool_map_phys(ch->fmr_pool, state->pages,
+ 				   state->npages, io_addr);
+ 	if (IS_ERR(fmr))
+@@ -1297,6 +1308,9 @@ static int srp_map_finish_fmr(struct srp_map_state *state,
+ 	srp_map_desc(state, state->base_dma_addr & ~dev->mr_page_mask,
+ 		     state->dma_len, fmr->fmr->rkey);
  
-@@ -541,8 +530,6 @@ isert_create_pi_ctx(struct fast_reg_descriptor *desc,
- 
- err_prot_mr:
- 	ib_dereg_mr(pi_ctx->prot_mr);
--err_prot_frpl:
--	ib_free_fast_reg_page_list(pi_ctx->prot_frpl);
- err_pi_ctx:
- 	kfree(pi_ctx);
- 
-@@ -553,34 +540,18 @@ static int
- isert_create_fr_desc(struct ib_device *ib_device, struct ib_pd *pd,
- 		     struct fast_reg_descriptor *fr_desc)
- {
--	int ret;
--
--	fr_desc->data_frpl = ib_alloc_fast_reg_page_list(ib_device,
--							 ISCSI_ISER_SG_TABLESIZE);
--	if (IS_ERR(fr_desc->data_frpl)) {
--		isert_err("Failed to allocate data frpl err=%ld\n",
--			  PTR_ERR(fr_desc->data_frpl));
--		return PTR_ERR(fr_desc->data_frpl);
--	}
--
- 	fr_desc->data_mr = ib_alloc_mr(pd, IB_MR_TYPE_MEM_REG,
- 				       ISCSI_ISER_SG_TABLESIZE);
- 	if (IS_ERR(fr_desc->data_mr)) {
- 		isert_err("Failed to allocate data frmr err=%ld\n",
- 			  PTR_ERR(fr_desc->data_mr));
--		ret = PTR_ERR(fr_desc->data_mr);
--		goto err_data_frpl;
-+		return PTR_ERR(fr_desc->data_mr);
- 	}
- 	fr_desc->ind |= ISERT_DATA_KEY_VALID;
- 
- 	isert_dbg("Created fr_desc %p\n", fr_desc);
- 
++	state->npages = 0;
++	state->dma_len = 0;
++
  	return 0;
--
--err_data_frpl:
--	ib_free_fast_reg_page_list(fr_desc->data_frpl);
--
--	return ret;
  }
  
- static int
-@@ -2516,45 +2487,6 @@ unmap_cmd:
+@@ -1309,10 +1323,23 @@ static int srp_map_finish_fr(struct srp_map_state *state,
+ 	struct ib_fast_reg_wr wr;
+ 	struct srp_fr_desc *desc;
+ 	u32 rkey;
++	int err;
++
+ 
+ 	if (WARN_ON_ONCE(state->fr.next >= state->fr.end))
+ 		return -ENOMEM;
+ 
++	WARN_ON_ONCE(!dev->use_fast_reg);
++
++	if (state->npages == 0)
++		return 0;
++
++	if (state->npages == 1 && target->global_mr) {
++		srp_map_desc(state, state->base_dma_addr, state->dma_len,
++			     target->global_mr->rkey);
++		return 0;
++	}
++
+ 	desc = srp_fr_pool_get(ch->fr_pool);
+ 	if (!desc)
+ 		return -ENOMEM;
+@@ -1342,7 +1369,14 @@ static int srp_map_finish_fr(struct srp_map_state *state,
+ 	srp_map_desc(state, state->base_dma_addr, state->dma_len,
+ 		     desc->mr->rkey);
+ 
+-	return ib_post_send(ch->qp, &wr.wr, &bad_wr);
++	err = ib_post_send(ch->qp, &wr.wr, &bad_wr);
++	if (err)
++		return err;
++
++	state->npages = 0;
++	state->dma_len = 0;
++
++	return 0;
+ }
+ 
+ static int srp_finish_mapping(struct srp_map_state *state,
+@@ -1350,26 +1384,9 @@ static int srp_finish_mapping(struct srp_map_state *state,
+ {
+ 	struct srp_target_port *target = ch->target;
+ 	struct srp_device *dev = target->srp_host->srp_dev;
+-	int ret = 0;
+-
+-	WARN_ON_ONCE(!dev->use_fast_reg && !dev->use_fmr);
+-
+-	if (state->npages == 0)
+-		return 0;
+ 
+-	if (state->npages == 1 && target->global_mr)
+-		srp_map_desc(state, state->base_dma_addr, state->dma_len,
+-			     target->global_mr->rkey);
+-	else
+-		ret = dev->use_fast_reg ? srp_map_finish_fr(state, ch) :
+-			srp_map_finish_fmr(state, ch);
+-
+-	if (ret == 0) {
+-		state->npages = 0;
+-		state->dma_len = 0;
+-	}
+-
+-	return ret;
++	return dev->use_fast_reg ? srp_map_finish_fr(state, ch) :
++				   srp_map_finish_fmr(state, ch);
+ }
+ 
+ static int srp_map_sg_entry(struct srp_map_state *state,
+@@ -1415,47 +1432,79 @@ static int srp_map_sg_entry(struct srp_map_state *state,
  	return ret;
  }
  
--static int
--isert_map_fr_pagelist(struct ib_device *ib_dev,
--		      struct scatterlist *sg_start, int sg_nents, u64 *fr_pl)
--{
--	u64 start_addr, end_addr, page, chunk_start = 0;
--	struct scatterlist *tmp_sg;
--	int i = 0, new_chunk, last_ent, n_pages;
--
--	n_pages = 0;
--	new_chunk = 1;
--	last_ent = sg_nents - 1;
--	for_each_sg(sg_start, tmp_sg, sg_nents, i) {
--		start_addr = ib_sg_dma_address(ib_dev, tmp_sg);
--		if (new_chunk)
--			chunk_start = start_addr;
--		end_addr = start_addr + ib_sg_dma_len(ib_dev, tmp_sg);
--
--		isert_dbg("SGL[%d] dma_addr: 0x%llx len: %u\n",
--			  i, (unsigned long long)tmp_sg->dma_address,
--			  tmp_sg->length);
--
--		if ((end_addr & ~PAGE_MASK) && i < last_ent) {
--			new_chunk = 0;
--			continue;
--		}
--		new_chunk = 1;
--
--		page = chunk_start & PAGE_MASK;
--		do {
--			fr_pl[n_pages++] = page;
--			isert_dbg("Mapped page_list[%d] page_addr: 0x%llx\n",
--				  n_pages - 1, page);
--			page += PAGE_SIZE;
--		} while (page < end_addr);
--	}
--
--	return n_pages;
--}
--
- static inline void
- isert_inv_rkey(struct ib_send_wr *inv_wr, struct ib_mr *mr)
+-static int srp_map_sg(struct srp_map_state *state, struct srp_rdma_ch *ch,
+-		      struct srp_request *req, struct scatterlist *scat,
+-		      int count)
++static int srp_map_sg_fmr(struct srp_map_state *state, struct srp_rdma_ch *ch,
++			  struct srp_request *req, struct scatterlist *scat,
++			  int count)
  {
-@@ -2580,11 +2512,9 @@ isert_fast_reg_mr(struct isert_conn *isert_conn,
- 	struct isert_device *device = isert_conn->device;
- 	struct ib_device *ib_dev = device->ib_device;
- 	struct ib_mr *mr;
--	struct ib_fast_reg_page_list *frpl;
--	struct ib_fast_reg_wr fr_wr;
-+	struct ib_reg_wr reg_wr;
- 	struct ib_send_wr inv_wr, *bad_wr, *wr = NULL;
--	int ret, pagelist_len;
--	u32 page_off;
-+	int ret, n;
+-	struct srp_target_port *target = ch->target;
+-	struct srp_device *dev = target->srp_host->srp_dev;
+ 	struct scatterlist *sg;
+ 	int i, ret;
  
- 	if (mem->dma_nents == 1) {
- 		sge->lkey = device->pd->local_dma_lkey;
-@@ -2595,45 +2525,41 @@ isert_fast_reg_mr(struct isert_conn *isert_conn,
- 		return 0;
+-	state->desc	= req->indirect_desc;
+-	state->pages	= req->map_page;
+-	if (dev->use_fast_reg) {
+-		state->fr.next = req->fr_list;
+-		state->fr.end = req->fr_list + target->cmd_sg_cnt;
+-	} else if (dev->use_fmr) {
+-		state->fmr.next = req->fmr_list;
+-		state->fmr.end = req->fmr_list + target->cmd_sg_cnt;
++	state->desc = req->indirect_desc;
++	state->pages = req->map_page;
++	state->fmr.next = req->fmr_list;
++	state->fmr.end = req->fmr_list + ch->target->cmd_sg_cnt;
++
++	for_each_sg(scat, sg, count, i) {
++		ret = srp_map_sg_entry(state, ch, sg, i);
++		if (ret)
++			return ret;
  	}
  
--	if (ind == ISERT_DATA_KEY_VALID) {
-+	if (ind == ISERT_DATA_KEY_VALID)
- 		/* Registering data buffer */
- 		mr = fr_desc->data_mr;
--		frpl = fr_desc->data_frpl;
+-	if (dev->use_fast_reg || dev->use_fmr) {
+-		for_each_sg(scat, sg, count, i) {
+-			ret = srp_map_sg_entry(state, ch, sg, i);
+-			if (ret)
+-				goto out;
+-		}
+-		ret = srp_finish_mapping(state, ch);
++	ret = srp_finish_mapping(state, ch);
++	if (ret)
++		return ret;
++
++	req->nmdesc = state->nmdesc;
++
++	return 0;
++}
++
++static int srp_map_sg_fr(struct srp_map_state *state, struct srp_rdma_ch *ch,
++			 struct srp_request *req, struct scatterlist *scat,
++			 int count)
++{
++	struct scatterlist *sg;
++	int i, ret;
++
++	state->desc = req->indirect_desc;
++	state->pages = req->map_page;
++	state->fmr.next = req->fmr_list;
++	state->fmr.end = req->fmr_list + ch->target->cmd_sg_cnt;
++
++	for_each_sg(scat, sg, count, i) {
++		ret = srp_map_sg_entry(state, ch, sg, i);
+ 		if (ret)
+-			goto out;
 -	} else {
-+	else
- 		/* Registering protection buffer */
- 		mr = fr_desc->pi_ctx->prot_mr;
--		frpl = fr_desc->pi_ctx->prot_frpl;
--	}
--
--	page_off = mem->offset % PAGE_SIZE;
--
--	isert_dbg("Use fr_desc %p sg_nents %d offset %u\n",
--		  fr_desc, mem->nents, mem->offset);
--
--	pagelist_len = isert_map_fr_pagelist(ib_dev, mem->sg, mem->nents,
--					     &frpl->page_list[0]);
- 
- 	if (!(fr_desc->ind & ind)) {
- 		isert_inv_rkey(&inv_wr, mr);
- 		wr = &inv_wr;
- 	}
- 
--	/* Prepare FASTREG WR */
--	memset(&fr_wr, 0, sizeof(fr_wr));
--	fr_wr.wr.wr_id = ISER_FASTREG_LI_WRID;
--	fr_wr.wr.opcode = IB_WR_FAST_REG_MR;
--	fr_wr.iova_start = frpl->page_list[0] + page_off;
--	fr_wr.page_list = frpl;
--	fr_wr.page_list_len = pagelist_len;
--	fr_wr.page_shift = PAGE_SHIFT;
--	fr_wr.length = mem->len;
--	fr_wr.rkey = mr->rkey;
--	fr_wr.access_flags = IB_ACCESS_LOCAL_WRITE;
-+	n = ib_map_mr_sg(mr, mem->sg, mem->nents, PAGE_SIZE);
-+	if (unlikely(n != mem->nents)) {
-+		isert_err("failed to map mr sg (%d/%d)\n",
-+			 n, mem->nents);
-+		return n < 0 ? n : -EINVAL;
+-		for_each_sg(scat, sg, count, i) {
+-			srp_map_desc(state, ib_sg_dma_address(dev->dev, sg),
+-				     ib_sg_dma_len(dev->dev, sg),
+-				     target->global_mr->rkey);
+-		}
++			return ret;
 +	}
 +
-+	isert_dbg("Use fr_desc %p sg_nents %d offset %u\n",
-+		  fr_desc, mem->nents, mem->offset);
++	ret = srp_finish_mapping(state, ch);
++	if (ret)
++		return ret;
 +
-+	reg_wr.wr.next = NULL;
-+	reg_wr.wr.opcode = IB_WR_REG_MR;
-+	reg_wr.wr.wr_id = ISER_FASTREG_LI_WRID;
-+	reg_wr.wr.send_flags = 0;
-+	reg_wr.wr.num_sge = 0;
-+	reg_wr.mr = mr;
-+	reg_wr.key = mr->lkey;
-+	reg_wr.access = IB_ACCESS_LOCAL_WRITE;
++	req->nmdesc = state->nmdesc;
++
++	return 0;
++}
++
++static int srp_map_sg_dma(struct srp_map_state *state, struct srp_rdma_ch *ch,
++			  struct srp_request *req, struct scatterlist *scat,
++			  int count)
++{
++	struct srp_target_port *target = ch->target;
++	struct srp_device *dev = target->srp_host->srp_dev;
++	struct scatterlist *sg;
++	int i;
++
++	state->desc = req->indirect_desc;
++	for_each_sg(scat, sg, count, i) {
++		srp_map_desc(state, ib_sg_dma_address(dev->dev, sg),
++			     ib_sg_dma_len(dev->dev, sg),
++			     target->global_mr->rkey);
+ 	}
  
- 	if (!wr)
--		wr = &fr_wr.wr;
-+		wr = &reg_wr.wr;
- 	else
--		wr->next = &fr_wr.wr;
-+		wr->next = &reg_wr.wr;
+ 	req->nmdesc = state->nmdesc;
+-	ret = 0;
  
- 	ret = ib_post_send(isert_conn->qp, wr, &bad_wr);
- 	if (ret) {
-@@ -2643,8 +2569,8 @@ isert_fast_reg_mr(struct isert_conn *isert_conn,
- 	fr_desc->ind &= ~ind;
+-out:
+-	return ret;
++	return 0;
+ }
  
- 	sge->lkey = mr->lkey;
--	sge->addr = frpl->page_list[0] + page_off;
--	sge->length = mem->len;
-+	sge->addr = mr->iova;
-+	sge->length = mr->length;
+ /*
+@@ -1563,7 +1612,12 @@ static int srp_map_data(struct scsi_cmnd *scmnd, struct srp_rdma_ch *ch,
+ 				   target->indirect_size, DMA_TO_DEVICE);
  
- 	isert_dbg("sge: addr: 0x%llx  length: %u lkey: %x\n",
- 		  sge->addr, sge->length, sge->lkey);
-diff --git a/drivers/infiniband/ulp/isert/ib_isert.h b/drivers/infiniband/ulp/isert/ib_isert.h
-index 0a4a7861cce9..e87f9b096533 100644
---- a/drivers/infiniband/ulp/isert/ib_isert.h
-+++ b/drivers/infiniband/ulp/isert/ib_isert.h
-@@ -84,14 +84,12 @@ enum isert_indicator {
+ 	memset(&state, 0, sizeof(state));
+-	srp_map_sg(&state, ch, req, scat, count);
++	if (dev->use_fast_reg)
++		srp_map_sg_fr(&state, ch, req, scat, count);
++	else if (dev->use_fmr)
++		srp_map_sg_fmr(&state, ch, req, scat, count);
++	else
++		srp_map_sg_dma(&state, ch, req, scat, count);
  
- struct pi_context {
- 	struct ib_mr		       *prot_mr;
--	struct ib_fast_reg_page_list   *prot_frpl;
- 	struct ib_mr		       *sig_mr;
- };
- 
- struct fast_reg_descriptor {
- 	struct list_head		list;
- 	struct ib_mr		       *data_mr;
--	struct ib_fast_reg_page_list   *data_frpl;
- 	u8				ind;
- 	struct pi_context	       *pi_ctx;
- };
+ 	/* We've mapped the request, now pull as much of the indirect
+ 	 * descriptor table as we can into the command buffer. If this
 -- 
 1.8.4.3
 
