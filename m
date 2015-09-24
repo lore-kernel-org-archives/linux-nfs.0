@@ -1,27 +1,27 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from [193.47.165.129] ([193.47.165.129]:41936 "EHLO mellanox.co.il"
+Received: from [193.47.165.129] ([193.47.165.129]:41939 "EHLO mellanox.co.il"
 	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1757420AbbIXRgq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	id S1757409AbbIXRgq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
 	Thu, 24 Sep 2015 13:36:46 -0400
 From: Sagi Grimberg <sagig@mellanox.com>
 To: linux-rdma@vger.kernel.org
 Cc: linux-nfs@vger.kernel.org, "Nicholas A. Bellinger" <nab@linux-iscsi.org>
-Subject: [PATCH v2 03/26] IB/mlx5: Support the new memory registration API
-Date: Thu, 24 Sep 2015 20:34:55 +0300
-Message-Id: <1443116118-10730-4-git-send-email-sagig@mellanox.com>
+Subject: [PATCH v2 06/26] RDMA/cxgb3: Support the new memory registration API
+Date: Thu, 24 Sep 2015 20:34:58 +0300
+Message-Id: <1443116118-10730-7-git-send-email-sagig@mellanox.com>
 In-Reply-To: <1443116118-10730-1-git-send-email-sagig@mellanox.com>
 References: <1443116118-10730-1-git-send-email-sagig@mellanox.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 Support the new memory registration API by allocating a
-private page list array in mlx5_ib_mr and populate it when
-mlx5_ib_map_mr_sg is invoked. Also, support IB_WR_REG_MR
-by setting the exact WQE as IB_WR_FAST_REG_MR, just take the
-needed information from different places:
-- page_size, iova, length, access flags (ib_mr)
-- page array (mlx5_ib_mr)
-- key (ib_reg_wr)
+private page list array in iwch_mr and populate it when
+iwch_map_mr_sg is invoked. Also, support IB_WR_REG_MR
+by duplicating build_fastreg just take the needed information
+from different places:
+- page_size, iova, length (ib_mr)
+- page array (iwch_mr)
+- key, access flags (ib_reg_wr)
 
 The IB_WR_FAST_REG_MR handlers will be removed later when
 all the ULPs will be converted.
@@ -29,317 +29,160 @@ all the ULPs will be converted.
 Signed-off-by: Sagi Grimberg <sagig@mellanox.com>
 Acked-by: Christoph Hellwig <hch@lst.de>
 ---
- drivers/infiniband/hw/mlx5/cq.c      |  3 ++
- drivers/infiniband/hw/mlx5/main.c    |  1 +
- drivers/infiniband/hw/mlx5/mlx5_ib.h |  8 ++++
- drivers/infiniband/hw/mlx5/mr.c      | 87 ++++++++++++++++++++++++++++++++++++
- drivers/infiniband/hw/mlx5/qp.c      | 83 ++++++++++++++++++++++++++++++++++
- 5 files changed, 182 insertions(+)
+ drivers/infiniband/hw/cxgb3/iwch_provider.c | 33 ++++++++++++++++++++
+ drivers/infiniband/hw/cxgb3/iwch_provider.h |  2 ++
+ drivers/infiniband/hw/cxgb3/iwch_qp.c       | 48 +++++++++++++++++++++++++++++
+ 3 files changed, 83 insertions(+)
 
-diff --git a/drivers/infiniband/hw/mlx5/cq.c b/drivers/infiniband/hw/mlx5/cq.c
-index 5c9eeea62805..90daf791d51d 100644
---- a/drivers/infiniband/hw/mlx5/cq.c
-+++ b/drivers/infiniband/hw/mlx5/cq.c
-@@ -108,6 +108,9 @@ static enum ib_wc_opcode get_umr_comp(struct mlx5_ib_wq *wq, int idx)
- 	case IB_WR_LOCAL_INV:
- 		return IB_WC_LOCAL_INV;
+diff --git a/drivers/infiniband/hw/cxgb3/iwch_provider.c b/drivers/infiniband/hw/cxgb3/iwch_provider.c
+index 93308c45f298..ee3d5ca7de6c 100644
+--- a/drivers/infiniband/hw/cxgb3/iwch_provider.c
++++ b/drivers/infiniband/hw/cxgb3/iwch_provider.c
+@@ -463,6 +463,7 @@ static int iwch_dereg_mr(struct ib_mr *ib_mr)
+ 		return -EINVAL;
  
-+	case IB_WR_REG_MR:
-+		return IB_WC_REG_MR;
-+
- 	case IB_WR_FAST_REG_MR:
- 		return IB_WC_FAST_REG_MR;
+ 	mhp = to_iwch_mr(ib_mr);
++	kfree(mhp->pages);
+ 	rhp = mhp->rhp;
+ 	mmid = mhp->attr.stag >> 8;
+ 	cxio_dereg_mem(&rhp->rdev, mhp->attr.stag, mhp->attr.pbl_size,
+@@ -821,6 +822,12 @@ static struct ib_mr *iwch_alloc_mr(struct ib_pd *pd,
+ 	if (!mhp)
+ 		goto err;
  
-diff --git a/drivers/infiniband/hw/mlx5/main.c b/drivers/infiniband/hw/mlx5/main.c
-index 276d7824be8a..7ebce545daf1 100644
---- a/drivers/infiniband/hw/mlx5/main.c
-+++ b/drivers/infiniband/hw/mlx5/main.c
-@@ -1432,6 +1432,7 @@ static void *mlx5_ib_add(struct mlx5_core_dev *mdev)
- 	dev->ib_dev.detach_mcast	= mlx5_ib_mcg_detach;
- 	dev->ib_dev.process_mad		= mlx5_ib_process_mad;
- 	dev->ib_dev.alloc_mr		= mlx5_ib_alloc_mr;
-+	dev->ib_dev.map_mr_sg		= mlx5_ib_map_mr_sg;
- 	dev->ib_dev.alloc_fast_reg_page_list = mlx5_ib_alloc_fast_reg_page_list;
- 	dev->ib_dev.free_fast_reg_page_list  = mlx5_ib_free_fast_reg_page_list;
- 	dev->ib_dev.check_mr_status	= mlx5_ib_check_mr_status;
-diff --git a/drivers/infiniband/hw/mlx5/mlx5_ib.h b/drivers/infiniband/hw/mlx5/mlx5_ib.h
-index 210f99877b0b..bc1853f8e67d 100644
---- a/drivers/infiniband/hw/mlx5/mlx5_ib.h
-+++ b/drivers/infiniband/hw/mlx5/mlx5_ib.h
-@@ -319,6 +319,11 @@ enum mlx5_ib_mtt_access_flags {
- 
- struct mlx5_ib_mr {
- 	struct ib_mr		ibmr;
-+	void			*descs;
-+	dma_addr_t		desc_map;
-+	int			ndescs;
-+	int			max_descs;
-+	int			desc_size;
- 	struct mlx5_core_mr	mmr;
- 	struct ib_umem	       *umem;
- 	struct mlx5_shared_mr_info	*smr_info;
-@@ -560,6 +565,9 @@ int mlx5_ib_dereg_mr(struct ib_mr *ibmr);
- struct ib_mr *mlx5_ib_alloc_mr(struct ib_pd *pd,
- 			       enum ib_mr_type mr_type,
- 			       u32 max_num_sg);
-+int mlx5_ib_map_mr_sg(struct ib_mr *ibmr,
-+		      struct scatterlist *sg,
-+		      unsigned int sg_nents);
- struct ib_fast_reg_page_list *mlx5_ib_alloc_fast_reg_page_list(struct ib_device *ibdev,
- 							       int page_list_len);
- void mlx5_ib_free_fast_reg_page_list(struct ib_fast_reg_page_list *page_list);
-diff --git a/drivers/infiniband/hw/mlx5/mr.c b/drivers/infiniband/hw/mlx5/mr.c
-index 6d8aac0c1748..e071685e192d 100644
---- a/drivers/infiniband/hw/mlx5/mr.c
-+++ b/drivers/infiniband/hw/mlx5/mr.c
-@@ -1165,6 +1165,46 @@ error:
- 	return err;
- }
- 
-+static int
-+mlx5_alloc_priv_descs(struct ib_device *device,
-+		      struct mlx5_ib_mr *mr,
-+		      int ndescs,
-+		      int desc_size)
-+{
-+	int size = ndescs * desc_size;
-+	int ret;
-+
-+	mr->descs = kzalloc(size, GFP_KERNEL);
-+	if (!mr->descs)
-+		return -ENOMEM;
-+
-+	mr->desc_map = dma_map_single(device->dma_device, mr->descs,
-+				      size, DMA_TO_DEVICE);
-+	if (dma_mapping_error(device->dma_device, mr->desc_map)) {
++	mhp->pages = kcalloc(max_num_sg, sizeof(u64), GFP_KERNEL);
++	if (!mhp->pages) {
 +		ret = -ENOMEM;
-+		goto err;
++		goto pl_err;
 +	}
 +
-+	return 0;
-+err:
-+	kfree(mr->descs);
-+	return ret;
-+}
-+
-+static void
-+mlx5_free_priv_descs(struct mlx5_ib_mr *mr)
-+{
-+	struct ib_device *device = mr->ibmr.device;
-+	int size = mr->max_descs * mr->desc_size;
-+
-+	if (mr->descs) {
-+		dma_unmap_single(device->dma_device, mr->desc_map,
-+				 size, DMA_TO_DEVICE);
-+		kfree(mr->descs);
-+		mr->descs = NULL;
-+	}
-+}
-+
- static int clean_mr(struct mlx5_ib_mr *mr)
- {
- 	struct mlx5_ib_dev *dev = to_mdev(mr->ibmr.device);
-@@ -1184,6 +1224,8 @@ static int clean_mr(struct mlx5_ib_mr *mr)
- 		mr->sig = NULL;
- 	}
- 
-+	mlx5_free_priv_descs(mr);
-+
- 	if (!umred) {
- 		err = destroy_mkey(dev, mr);
- 		if (err) {
-@@ -1273,6 +1315,14 @@ struct ib_mr *mlx5_ib_alloc_mr(struct ib_pd *pd,
- 	if (mr_type == IB_MR_TYPE_MEM_REG) {
- 		access_mode = MLX5_ACCESS_MODE_MTT;
- 		in->seg.log2_page_size = PAGE_SHIFT;
-+
-+		err = mlx5_alloc_priv_descs(pd->device, mr,
-+					    ndescs, sizeof(u64));
-+		if (err)
-+			goto err_free_in;
-+
-+		mr->desc_size = sizeof(u64);
-+		mr->max_descs = ndescs;
- 	} else if (mr_type == IB_MR_TYPE_SIGNATURE) {
- 		u32 psv_index[2];
- 
-@@ -1329,6 +1379,7 @@ err_destroy_psv:
- 			mlx5_ib_warn(dev, "failed to destroy wire psv %d\n",
- 				     mr->sig->psv_wire.psv_idx);
- 	}
-+	mlx5_free_priv_descs(mr);
- err_free_sig:
- 	kfree(mr->sig);
- err_free_in:
-@@ -1420,3 +1471,39 @@ int mlx5_ib_check_mr_status(struct ib_mr *ibmr, u32 check_mask,
- done:
- 	return ret;
+ 	mhp->rhp = rhp;
+ 	ret = iwch_alloc_pbl(mhp, max_num_sg);
+ 	if (ret)
+@@ -847,11 +854,36 @@ err3:
+ err2:
+ 	iwch_free_pbl(mhp);
+ err1:
++	kfree(mhp->pages);
++pl_err:
+ 	kfree(mhp);
+ err:
+ 	return ERR_PTR(ret);
  }
-+
-+static int mlx5_set_page(struct ib_mr *ibmr, u64 addr)
+ 
++static int iwch_set_page(struct ib_mr *ibmr, u64 addr)
 +{
-+	struct mlx5_ib_mr *mr = to_mmr(ibmr);
-+	__be64 *descs;
++	struct iwch_mr *mhp = to_iwch_mr(ibmr);
 +
-+	if (unlikely(mr->ndescs == mr->max_descs))
++	if (unlikely(mhp->npages == mhp->attr.pbl_size))
 +		return -ENOMEM;
 +
-+	descs = mr->descs;
-+	descs[mr->ndescs++] = cpu_to_be64(addr | MLX5_EN_RD | MLX5_EN_WR);
++	mhp->pages[mhp->npages++] = addr;
 +
 +	return 0;
 +}
 +
-+int mlx5_ib_map_mr_sg(struct ib_mr *ibmr,
-+		      struct scatterlist *sg,
-+		      unsigned int sg_nents)
++static int iwch_map_mr_sg(struct ib_mr *ibmr,
++			  struct scatterlist *sg,
++			  unsigned int sg_nents)
 +{
-+	struct mlx5_ib_mr *mr = to_mmr(ibmr);
-+	int n;
++	struct iwch_mr *mhp = to_iwch_mr(ibmr);
 +
-+	mr->ndescs = 0;
++	mhp->npages = 0;
 +
-+	ib_dma_sync_single_for_cpu(ibmr->device, mr->desc_map,
-+				   mr->desc_size * mr->max_descs,
-+				   DMA_TO_DEVICE);
-+
-+	n = ib_sg_to_pages(ibmr, sg, sg_nents, mlx5_set_page);
-+
-+	ib_dma_sync_single_for_device(ibmr->device, mr->desc_map,
-+				      mr->desc_size * mr->max_descs,
-+				      DMA_TO_DEVICE);
-+
-+	return n;
++	return ib_sg_to_pages(ibmr, sg, sg_nents, iwch_set_page);
 +}
-diff --git a/drivers/infiniband/hw/mlx5/qp.c b/drivers/infiniband/hw/mlx5/qp.c
-index dcd8d58f95e1..61d3aa9a6ca9 100644
---- a/drivers/infiniband/hw/mlx5/qp.c
-+++ b/drivers/infiniband/hw/mlx5/qp.c
-@@ -65,6 +65,7 @@ static const u32 mlx5_ib_opcode[] = {
- 	[IB_WR_SEND_WITH_INV]			= MLX5_OPCODE_SEND_INVAL,
- 	[IB_WR_LOCAL_INV]			= MLX5_OPCODE_UMR,
- 	[IB_WR_FAST_REG_MR]			= MLX5_OPCODE_UMR,
-+	[IB_WR_REG_MR]				= MLX5_OPCODE_UMR,
- 	[IB_WR_MASKED_ATOMIC_CMP_AND_SWP]	= MLX5_OPCODE_ATOMIC_MASKED_CS,
- 	[IB_WR_MASKED_ATOMIC_FETCH_AND_ADD]	= MLX5_OPCODE_ATOMIC_MASKED_FA,
- 	[MLX5_IB_WR_UMR]			= MLX5_OPCODE_UMR,
-@@ -1901,6 +1902,17 @@ static __be64 sig_mkey_mask(void)
- 	return cpu_to_be64(result);
- }
++
+ static struct ib_fast_reg_page_list *iwch_alloc_fastreg_pbl(
+ 					struct ib_device *device,
+ 					int page_list_len)
+@@ -1450,6 +1482,7 @@ int iwch_register_device(struct iwch_dev *dev)
+ 	dev->ibdev.bind_mw = iwch_bind_mw;
+ 	dev->ibdev.dealloc_mw = iwch_dealloc_mw;
+ 	dev->ibdev.alloc_mr = iwch_alloc_mr;
++	dev->ibdev.map_mr_sg = iwch_map_mr_sg;
+ 	dev->ibdev.alloc_fast_reg_page_list = iwch_alloc_fastreg_pbl;
+ 	dev->ibdev.free_fast_reg_page_list = iwch_free_fastreg_pbl;
+ 	dev->ibdev.attach_mcast = iwch_multicast_attach;
+diff --git a/drivers/infiniband/hw/cxgb3/iwch_provider.h b/drivers/infiniband/hw/cxgb3/iwch_provider.h
+index 87c14b0c5ac0..2ac85b86a680 100644
+--- a/drivers/infiniband/hw/cxgb3/iwch_provider.h
++++ b/drivers/infiniband/hw/cxgb3/iwch_provider.h
+@@ -77,6 +77,8 @@ struct iwch_mr {
+ 	struct iwch_dev *rhp;
+ 	u64 kva;
+ 	struct tpt_attributes attr;
++	u64 *pages;
++	u32 npages;
+ };
  
-+static void set_reg_umr_seg(struct mlx5_wqe_umr_ctrl_seg *umr,
-+				struct mlx5_ib_mr *mr)
-+{
-+	int ndescs = mr->ndescs;
-+
-+	memset(umr, 0, sizeof(*umr));
-+	umr->flags = MLX5_UMR_CHECK_NOT_FREE;
-+	umr->klm_octowords = get_klm_octo(ndescs);
-+	umr->mkey_mask = frwr_mkey_mask();
-+}
-+
- static void set_frwr_umr_segment(struct mlx5_wqe_umr_ctrl_seg *umr,
- 				 struct ib_send_wr *wr, int li)
- {
-@@ -1992,6 +2004,22 @@ static u8 get_umr_flags(int acc)
- 		MLX5_PERM_LOCAL_READ | MLX5_PERM_UMR_EN;
- }
- 
-+static void set_reg_mkey_seg(struct mlx5_mkey_seg *seg,
-+			     struct mlx5_ib_mr *mr,
-+			     u32 key, int access)
-+{
-+	int ndescs = ALIGN(mr->ndescs, 8) >> 1;
-+
-+	memset(seg, 0, sizeof(*seg));
-+	seg->flags = get_umr_flags(access) | MLX5_ACCESS_MODE_MTT;
-+	seg->qpn_mkey7_0 = cpu_to_be32((key & 0xff) | 0xffffff00);
-+	seg->flags_pd = cpu_to_be32(MLX5_MKEY_REMOTE_INVAL);
-+	seg->start_addr = cpu_to_be64(mr->ibmr.iova);
-+	seg->len = cpu_to_be64(mr->ibmr.length);
-+	seg->xlt_oct_size = cpu_to_be32(ndescs);
-+	seg->log2_page_size = ilog2(mr->ibmr.page_size);
-+}
-+
- static void set_mkey_segment(struct mlx5_mkey_seg *seg, struct ib_send_wr *wr,
- 			     int li, int *writ)
- {
-@@ -2033,6 +2061,17 @@ static void set_reg_mkey_segment(struct mlx5_mkey_seg *seg, struct ib_send_wr *w
- 				       mlx5_mkey_variant(umrwr->mkey));
- }
- 
-+static void set_reg_data_seg(struct mlx5_wqe_data_seg *dseg,
-+			     struct mlx5_ib_mr *mr,
-+			     struct mlx5_ib_pd *pd)
-+{
-+	int bcount = mr->desc_size * mr->ndescs;
-+
-+	dseg->addr = cpu_to_be64(mr->desc_map);
-+	dseg->byte_count = cpu_to_be32(ALIGN(bcount, 64));
-+	dseg->lkey = cpu_to_be32(pd->ibpd.local_dma_lkey);
-+}
-+
- static void set_frwr_pages(struct mlx5_wqe_data_seg *dseg,
- 			   struct ib_send_wr *wr,
- 			   struct mlx5_core_dev *mdev,
-@@ -2438,6 +2477,38 @@ static int set_psv_wr(struct ib_sig_domain *domain,
+ typedef struct iwch_mw iwch_mw_handle;
+diff --git a/drivers/infiniband/hw/cxgb3/iwch_qp.c b/drivers/infiniband/hw/cxgb3/iwch_qp.c
+index bac0508fedd9..a09ea538e990 100644
+--- a/drivers/infiniband/hw/cxgb3/iwch_qp.c
++++ b/drivers/infiniband/hw/cxgb3/iwch_qp.c
+@@ -146,6 +146,49 @@ static int build_rdma_read(union t3_wr *wqe, struct ib_send_wr *wr,
  	return 0;
  }
  
-+static int set_reg_wr(struct mlx5_ib_qp *qp,
-+		      struct ib_reg_wr *wr,
-+		      void **seg, int *size)
++static int build_memreg(union t3_wr *wqe, struct ib_reg_wr *wr,
++			  u8 *flit_cnt, int *wr_cnt, struct t3_wq *wq)
 +{
-+	struct mlx5_ib_mr *mr = to_mmr(wr->mr);
-+	struct mlx5_ib_pd *pd = to_mpd(qp->ibqp.pd);
++	struct iwch_mr *mhp = to_iwch_mr(wr->mr);
++	int i;
++	__be64 *p;
 +
-+	if (unlikely(wr->wr.send_flags & IB_SEND_INLINE)) {
-+		mlx5_ib_warn(to_mdev(qp->ibqp.device),
-+			     "Invalid IB_SEND_INLINE send flag\n");
++	if (mhp->npages > T3_MAX_FASTREG_DEPTH)
 +		return -EINVAL;
++	*wr_cnt = 1;
++	wqe->fastreg.stag = cpu_to_be32(wr->key);
++	wqe->fastreg.len = cpu_to_be32(mhp->ibmr.length);
++	wqe->fastreg.va_base_hi = cpu_to_be32(mhp->ibmr.iova >> 32);
++	wqe->fastreg.va_base_lo_fbo =
++				cpu_to_be32(mhp->ibmr.iova & 0xffffffff);
++	wqe->fastreg.page_type_perms = cpu_to_be32(
++		V_FR_PAGE_COUNT(mhp->npages) |
++		V_FR_PAGE_SIZE(ilog2(wr->mr->page_size) - 12) |
++		V_FR_TYPE(TPT_VATO) |
++		V_FR_PERMS(iwch_ib_to_tpt_access(wr->access)));
++	p = &wqe->fastreg.pbl_addrs[0];
++	for (i = 0; i < mhp->npages; i++, p++) {
++
++		/* If we need a 2nd WR, then set it up */
++		if (i == T3_MAX_FASTREG_FRAG) {
++			*wr_cnt = 2;
++			wqe = (union t3_wr *)(wq->queue +
++				Q_PTR2IDX((wq->wptr+1), wq->size_log2));
++			build_fw_riwrh((void *)wqe, T3_WR_FASTREG, 0,
++			       Q_GENBIT(wq->wptr + 1, wq->size_log2),
++			       0, 1 + mhp->npages - T3_MAX_FASTREG_FRAG,
++			       T3_EOP);
++
++			p = &wqe->pbl_frag.pbl_addrs[0];
++		}
++		*p = cpu_to_be64((u64)mhp->pages[i]);
 +	}
-+
-+	set_reg_umr_seg(*seg, mr);
-+	*seg += sizeof(struct mlx5_wqe_umr_ctrl_seg);
-+	*size += sizeof(struct mlx5_wqe_umr_ctrl_seg) / 16;
-+	if (unlikely((*seg == qp->sq.qend)))
-+		*seg = mlx5_get_send_wqe(qp, 0);
-+
-+	set_reg_mkey_seg(*seg, mr, wr->key, wr->access);
-+	*seg += sizeof(struct mlx5_mkey_seg);
-+	*size += sizeof(struct mlx5_mkey_seg) / 16;
-+	if (unlikely((*seg == qp->sq.qend)))
-+		*seg = mlx5_get_send_wqe(qp, 0);
-+
-+	set_reg_data_seg(*seg, mr, pd);
-+	*seg += sizeof(struct mlx5_wqe_data_seg);
-+	*size += (sizeof(struct mlx5_wqe_data_seg) / 16);
-+
++	*flit_cnt = 5 + mhp->npages;
++	if (*flit_cnt > 15)
++		*flit_cnt = 15;
 +	return 0;
 +}
 +
- static int set_frwr_li_wr(void **seg, struct ib_send_wr *wr, int *size,
- 			  struct mlx5_core_dev *mdev, struct mlx5_ib_pd *pd, struct mlx5_ib_qp *qp)
+ static int build_fastreg(union t3_wr *wqe, struct ib_send_wr *send_wr,
+ 				u8 *flit_cnt, int *wr_cnt, struct t3_wq *wq)
  {
-@@ -2680,6 +2751,18 @@ int mlx5_ib_post_send(struct ib_qp *ibqp, struct ib_send_wr *wr,
- 				num_sge = 0;
- 				break;
- 
-+			case IB_WR_REG_MR:
-+				next_fence = MLX5_FENCE_MODE_INITIATOR_SMALL;
-+				qp->sq.wr_data[idx] = IB_WR_REG_MR;
-+				ctrl->imm = cpu_to_be32(reg_wr(wr)->key);
-+				err = set_reg_wr(qp, reg_wr(wr), &seg, &size);
-+				if (err) {
-+					*bad_wr = wr;
-+					goto out;
-+				}
-+				num_sge = 0;
-+				break;
-+
- 			case IB_WR_REG_SIG_MR:
- 				qp->sq.wr_data[idx] = IB_WR_REG_SIG_MR;
- 				mr = to_mmr(sig_handover_wr(wr)->sig_mr);
+@@ -419,6 +462,11 @@ int iwch_post_send(struct ib_qp *ibqp, struct ib_send_wr *wr,
+ 			err = build_fastreg(wqe, wr, &t3_wr_flit_cnt,
+ 						 &wr_cnt, &qhp->wq);
+ 			break;
++		case IB_WR_REG_MR:
++			t3_wr_opcode = T3_WR_FASTREG;
++			err = build_memreg(wqe, reg_wr(wr), &t3_wr_flit_cnt,
++					   &wr_cnt, &qhp->wq);
++			break;
+ 		case IB_WR_LOCAL_INV:
+ 			if (wr->send_flags & IB_SEND_FENCE)
+ 				t3_wr_flags |= T3_LOCAL_FENCE_FLAG;
 -- 
 1.8.4.3
 
