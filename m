@@ -1,49 +1,69 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-am1on0068.outbound.protection.outlook.com ([157.56.112.68]:10840
-	"EHLO emea01-am1-obe.outbound.protection.outlook.com"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1751073AbbIXJHF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 24 Sep 2015 05:07:05 -0400
-Subject: Re: [PATCH v1 15/24] IB/srp: Convert to new memory registration API
-To: Bart Van Assche <bart.vanassche@sandisk.com>, <linux-rdma@vger.kernel.org>
-References: <1442482947-27785-1-git-send-email-sagig@mellanox.com>
- <1442482947-27785-16-git-send-email-sagig@mellanox.com>
- <5601CF20.3040102@sandisk.com>
-CC: <linux-nfs@vger.kernel.org>, "Nicholas A. Bellinger" <nab@linux-iscsi.org>
-From: Sagi Grimberg <sagig@mellanox.com>
-Message-ID: <5603BD30.7060908@mellanox.com>
-Date: Thu, 24 Sep 2015 12:06:56 +0300
+Received: from mx1.redhat.com ([209.132.183.28]:58094 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754558AbbIXMmG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 24 Sep 2015 08:42:06 -0400
+Subject: Re: The Fall Bakeathon in Westford, Ma
+To: NFSv4 <nfsv4@ietf.org>, Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+References: <55AEAB99.7080407@RedHat.com>
+From: Steve Dickson <SteveD@redhat.com>
+Message-ID: <5603EF9C.1090906@RedHat.com>
+Date: Thu, 24 Sep 2015 08:42:04 -0400
 MIME-Version: 1.0
-In-Reply-To: <5601CF20.3040102@sandisk.com>
-Content-Type: text/plain; charset="windows-1252"; format=flowed
+In-Reply-To: <55AEAB99.7080407@RedHat.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 9/23/2015 12:58 AM, Bart Van Assche wrote:
-> On 09/17/2015 02:42 AM, Sagi Grimberg wrote:
->> Since SRP supports both FMRs and FRWR, the new API conversion
->> includes splitting the sg list mapping routines in srp_map_data to
->> srp_map_sg_fr that works with the new memory registration API,
->> srp_map_sg_fmr which constructs a page vector and calls
->> ib_fmr_pool_map_phys, and srp_map_sg_dma which is used only
->> if no FRWR nor FMR are supported (which I'm not sure is a valid
->> use-case anymore).
->>
->> The srp protocol is able to pass to the target multiple descriptors
->> for remote access, so it basically calls registers muleitple sg list
->> partials the entire sg list is mapped and registered (each time maps
->> a prefix of an sg list).
->
-> This sentence is hard to comprehend, and the spelling of "multiple"
-> should be addressed.
->
-> Another comment about this patch is that there are multiple changes in
-> this patch. It should be split into multiple patches, e.g. one patch
-> that converts srp_map_sg() into srp_map_sg_fmr() and srp_map_sg_fr() and
-> another patch that introduces the ib_map_mr_sg() call.
+Hello,
 
-OK Bart, I'll split the patches.
+Here is the list of people that said they are coming to the Fall BAT
+   http://nfsv4bat.org/Events/2015/October/Bakeathon-attedance-15.pdf
 
-Thanks,
+Please make sure your name is on the list if are
+planing on attending. If you name is not on the
+list and you are planning on attending, please 
+let me know asap... 
 
-Sagi.
+Also please make sure the t-shirt sizes are accurate,
+since I will be putting in the order this afternoon.
+
+steved.
+
+On 07/21/2015 04:29 PM, Steve Dickson wrote:
+> Red Hat is pleased to announce the Fall NFS Bake-a-ton will be
+> hosted by Red Hat in Westford, MA office 
+> The Date: *Oct 12th - 16th*
+> 
+> Details and registration info:
+>     http://nfsv4bat.org/Events/2015/October/BAT/index.html
+> 
+> Something new this year... RDMA testing! I was able 
+> to secure a side room off one of the conference room where 
+> we can put the noisy machinery... So RDMA testing is on! 
+> 
+> Once again I have blocked some rooms at two different hotels 
+> this year. The Westford Regency Inn and Hampton Inn.
+> 
+> The Westford Regency Inn now has a  shuttle bus to/from
+> the Red Hat office as well as some updated rooms, ask
+> for them. 
+> 
+> The Hampton Inn is much newer but a bit more expensive and
+> not as close the Westford Regency but walking distance to a 
+> couple of decent restaurants. Plus a free breakfast as all 
+> Hampton Inn do. 
+> 
+> Please book *asap* since there is a limited number of rooms
+> at the Red Hat rate.  
+> 
+> When registering (i.e. replying to this email) please give me
+>    * Company Name
+>    * How engineers are coming
+>    * T-shirt sizes
+>    * Hotel you will be staying in
+> 
+> I hope to see you in October!!!
+> 
+> steved.
+> 
