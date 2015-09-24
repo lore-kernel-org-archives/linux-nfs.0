@@ -1,205 +1,164 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from [193.47.165.129] ([193.47.165.129]:41894 "EHLO mellanox.co.il"
+Received: from [193.47.165.129] ([193.47.165.129]:41905 "EHLO mellanox.co.il"
 	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1757360AbbIXRgY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 24 Sep 2015 13:36:24 -0400
+	id S1757384AbbIXRg3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 24 Sep 2015 13:36:29 -0400
 From: Sagi Grimberg <sagig@mellanox.com>
 To: linux-rdma@vger.kernel.org
 Cc: linux-nfs@vger.kernel.org, "Nicholas A. Bellinger" <nab@linux-iscsi.org>
-Subject: [PATCH v2 23/26] IB/qib: Remove old FRWR API
-Date: Thu, 24 Sep 2015 20:34:51 +0300
-Message-Id: <1443116094-7969-24-git-send-email-sagig@mellanox.com>
+Subject: [PATCH v2 26/26] IB/core: Remove old fast registration API
+Date: Thu, 24 Sep 2015 20:34:54 +0300
+Message-Id: <1443116094-7969-27-git-send-email-sagig@mellanox.com>
 In-Reply-To: <1443116094-7969-1-git-send-email-sagig@mellanox.com>
 References: <1443116094-7969-1-git-send-email-sagig@mellanox.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-No ULP uses it anymore, go ahead and remove it.
+No callers and no providers left, go ahead and remove it.
 
 Signed-off-by: Sagi Grimberg <sagig@mellanox.com>
 Acked-by: Christoph Hellwig <hch@lst.de>
 ---
- drivers/infiniband/hw/qib/qib_keys.c  | 56 -----------------------------------
- drivers/infiniband/hw/qib/qib_mr.c    | 32 +-------------------
- drivers/infiniband/hw/qib/qib_verbs.c |  8 -----
- drivers/infiniband/hw/qib/qib_verbs.h |  7 -----
- 4 files changed, 1 insertion(+), 102 deletions(-)
+ drivers/infiniband/core/verbs.c | 25 -------------------
+ include/rdma/ib_verbs.h         | 54 -----------------------------------------
+ 2 files changed, 79 deletions(-)
 
-diff --git a/drivers/infiniband/hw/qib/qib_keys.c b/drivers/infiniband/hw/qib/qib_keys.c
-index 95b8b9110fc6..d725c565518d 100644
---- a/drivers/infiniband/hw/qib/qib_keys.c
-+++ b/drivers/infiniband/hw/qib/qib_keys.c
-@@ -336,62 +336,6 @@ bail:
+diff --git a/drivers/infiniband/core/verbs.c b/drivers/infiniband/core/verbs.c
+index b84d168f6e21..e0368fcf5fdb 100644
+--- a/drivers/infiniband/core/verbs.c
++++ b/drivers/infiniband/core/verbs.c
+@@ -1253,31 +1253,6 @@ struct ib_mr *ib_alloc_mr(struct ib_pd *pd,
  }
+ EXPORT_SYMBOL(ib_alloc_mr);
  
- /*
-- * Initialize the memory region specified by the work reqeust.
-- */
--int qib_fast_reg_mr(struct qib_qp *qp, struct ib_send_wr *send_wr)
+-struct ib_fast_reg_page_list *ib_alloc_fast_reg_page_list(struct ib_device *device,
+-							  int max_page_list_len)
 -{
--	struct ib_fast_reg_wr *wr = fast_reg_wr(send_wr);
--	struct qib_lkey_table *rkt = &to_idev(qp->ibqp.device)->lk_table;
--	struct qib_pd *pd = to_ipd(qp->ibqp.pd);
--	struct qib_mregion *mr;
--	u32 rkey = wr->rkey;
--	unsigned i, n, m;
--	int ret = -EINVAL;
--	unsigned long flags;
--	u64 *page_list;
--	size_t ps;
+-	struct ib_fast_reg_page_list *page_list;
 -
--	spin_lock_irqsave(&rkt->lock, flags);
--	if (pd->user || rkey == 0)
--		goto bail;
+-	if (!device->alloc_fast_reg_page_list)
+-		return ERR_PTR(-ENOSYS);
 -
--	mr = rcu_dereference_protected(
--		rkt->table[(rkey >> (32 - ib_qib_lkey_table_size))],
--		lockdep_is_held(&rkt->lock));
--	if (unlikely(mr == NULL || qp->ibqp.pd != mr->pd))
--		goto bail;
+-	page_list = device->alloc_fast_reg_page_list(device, max_page_list_len);
 -
--	if (wr->page_list_len > mr->max_segs)
--		goto bail;
--
--	ps = 1UL << wr->page_shift;
--	if (wr->length > ps * wr->page_list_len)
--		goto bail;
--
--	mr->user_base = wr->iova_start;
--	mr->iova = wr->iova_start;
--	mr->lkey = rkey;
--	mr->length = wr->length;
--	mr->access_flags = wr->access_flags;
--	page_list = wr->page_list->page_list;
--	m = 0;
--	n = 0;
--	for (i = 0; i < wr->page_list_len; i++) {
--		mr->map[m]->segs[n].vaddr = (void *) page_list[i];
--		mr->map[m]->segs[n].length = ps;
--		if (++n == QIB_SEGSZ) {
--			m++;
--			n = 0;
--		}
+-	if (!IS_ERR(page_list)) {
+-		page_list->device = device;
+-		page_list->max_page_list_len = max_page_list_len;
 -	}
 -
--	ret = 0;
--bail:
--	spin_unlock_irqrestore(&rkt->lock, flags);
--	return ret;
+-	return page_list;
 -}
+-EXPORT_SYMBOL(ib_alloc_fast_reg_page_list);
 -
--/*
-  * Initialize the memory region specified by the work request.
-  */
- int qib_reg_mr(struct qib_qp *qp, struct ib_reg_wr *wr)
-diff --git a/drivers/infiniband/hw/qib/qib_mr.c b/drivers/infiniband/hw/qib/qib_mr.c
-index 0fa4b0de8074..73f78c0f9522 100644
---- a/drivers/infiniband/hw/qib/qib_mr.c
-+++ b/drivers/infiniband/hw/qib/qib_mr.c
-@@ -324,7 +324,7 @@ out:
- 
- /*
-  * Allocate a memory region usable with the
-- * IB_WR_FAST_REG_MR send work request.
-+ * IB_WR_REG_MR send work request.
-  *
-  * Return the memory region on success, otherwise return an errno.
-  */
-@@ -375,36 +375,6 @@ int qib_map_mr_sg(struct ib_mr *ibmr,
- 	return ib_sg_to_pages(ibmr, sg, sg_nents, qib_set_page);
- }
- 
--struct ib_fast_reg_page_list *
--qib_alloc_fast_reg_page_list(struct ib_device *ibdev, int page_list_len)
+-void ib_free_fast_reg_page_list(struct ib_fast_reg_page_list *page_list)
 -{
--	unsigned size = page_list_len * sizeof(u64);
--	struct ib_fast_reg_page_list *pl;
--
--	if (size > PAGE_SIZE)
--		return ERR_PTR(-EINVAL);
--
--	pl = kzalloc(sizeof(*pl), GFP_KERNEL);
--	if (!pl)
--		return ERR_PTR(-ENOMEM);
--
--	pl->page_list = kzalloc(size, GFP_KERNEL);
--	if (!pl->page_list)
--		goto err_free;
--
--	return pl;
--
--err_free:
--	kfree(pl);
--	return ERR_PTR(-ENOMEM);
+-	page_list->device->free_fast_reg_page_list(page_list);
 -}
+-EXPORT_SYMBOL(ib_free_fast_reg_page_list);
 -
--void qib_free_fast_reg_page_list(struct ib_fast_reg_page_list *pl)
--{
--	kfree(pl->page_list);
--	kfree(pl);
--}
+ /* Memory windows */
+ 
+ struct ib_mw *ib_alloc_mw(struct ib_pd *pd, enum ib_mw_type type)
+diff --git a/include/rdma/ib_verbs.h b/include/rdma/ib_verbs.h
+index f9a3436702c8..c1b5bfa66b84 100644
+--- a/include/rdma/ib_verbs.h
++++ b/include/rdma/ib_verbs.h
+@@ -736,7 +736,6 @@ enum ib_wc_opcode {
+ 	IB_WC_BIND_MW,
+ 	IB_WC_LSO,
+ 	IB_WC_LOCAL_INV,
+-	IB_WC_FAST_REG_MR,
+ 	IB_WC_REG_MR,
+ 	IB_WC_MASKED_COMP_SWAP,
+ 	IB_WC_MASKED_FETCH_ADD,
+@@ -1029,7 +1028,6 @@ enum ib_wr_opcode {
+ 	IB_WR_SEND_WITH_INV,
+ 	IB_WR_RDMA_READ_WITH_INV,
+ 	IB_WR_LOCAL_INV,
+-	IB_WR_FAST_REG_MR,
+ 	IB_WR_REG_MR,
+ 	IB_WR_MASKED_ATOMIC_CMP_AND_SWP,
+ 	IB_WR_MASKED_ATOMIC_FETCH_AND_ADD,
+@@ -1068,12 +1066,6 @@ struct ib_sge {
+ 	u32	lkey;
+ };
+ 
+-struct ib_fast_reg_page_list {
+-	struct ib_device       *device;
+-	u64		       *page_list;
+-	unsigned int		max_page_list_len;
+-};
 -
  /**
-  * qib_alloc_fmr - allocate a fast memory region
-  * @pd: the protection domain for this memory region
-diff --git a/drivers/infiniband/hw/qib/qib_verbs.c b/drivers/infiniband/hw/qib/qib_verbs.c
-index a1e53d7b662b..de6cb6fcda8d 100644
---- a/drivers/infiniband/hw/qib/qib_verbs.c
-+++ b/drivers/infiniband/hw/qib/qib_verbs.c
-@@ -365,9 +365,6 @@ static int qib_post_one_send(struct qib_qp *qp, struct ib_send_wr *wr,
- 	if (wr->opcode == IB_WR_REG_MR) {
- 		if (qib_reg_mr(qp, reg_wr(wr)))
- 			goto bail_inval;
--	} else if (wr->opcode == IB_WR_FAST_REG_MR) {
--		if (qib_fast_reg_mr(qp, wr))
--			goto bail_inval;
- 	} else if (qp->ibqp.qp_type == IB_QPT_UC) {
- 		if ((unsigned) wr->opcode >= IB_WR_RDMA_READ)
- 			goto bail_inval;
-@@ -407,9 +404,6 @@ static int qib_post_one_send(struct qib_qp *qp, struct ib_send_wr *wr,
- 	else if (wr->opcode == IB_WR_REG_MR)
- 		memcpy(&wqe->reg_wr, reg_wr(wr),
- 			sizeof(wqe->reg_wr));
--	else if (wr->opcode == IB_WR_FAST_REG_MR)
--		memcpy(&wqe->fast_reg_wr, fast_reg_wr(wr),
--			sizeof(wqe->fast_reg_wr));
- 	else if (wr->opcode == IB_WR_RDMA_WRITE_WITH_IMM ||
- 		 wr->opcode == IB_WR_RDMA_WRITE ||
- 		 wr->opcode == IB_WR_RDMA_READ)
-@@ -2267,8 +2261,6 @@ int qib_register_ib_device(struct qib_devdata *dd)
- 	ibdev->dereg_mr = qib_dereg_mr;
- 	ibdev->alloc_mr = qib_alloc_mr;
- 	ibdev->map_mr_sg = qib_map_mr_sg;
--	ibdev->alloc_fast_reg_page_list = qib_alloc_fast_reg_page_list;
--	ibdev->free_fast_reg_page_list = qib_free_fast_reg_page_list;
- 	ibdev->alloc_fmr = qib_alloc_fmr;
- 	ibdev->map_phys_fmr = qib_map_phys_fmr;
- 	ibdev->unmap_fmr = qib_unmap_fmr;
-diff --git a/drivers/infiniband/hw/qib/qib_verbs.h b/drivers/infiniband/hw/qib/qib_verbs.h
-index dbc81c5761e3..bb11fe56ac6e 100644
---- a/drivers/infiniband/hw/qib/qib_verbs.h
-+++ b/drivers/infiniband/hw/qib/qib_verbs.h
-@@ -344,7 +344,6 @@ struct qib_swqe {
- 		struct ib_send_wr wr;   /* don't use wr.sg_list */
- 		struct ib_ud_wr ud_wr;
- 		struct ib_reg_wr reg_wr;
--		struct ib_fast_reg_wr fast_reg_wr;
- 		struct ib_rdma_wr rdma_wr;
- 		struct ib_atomic_wr atomic_wr;
- 	};
-@@ -1051,12 +1050,6 @@ int qib_map_mr_sg(struct ib_mr *ibmr,
- 		  struct scatterlist *sg,
- 		  unsigned int sg_nents);
+  * struct ib_mw_bind_info - Parameters for a memory window bind operation.
+  * @mr: A memory region to bind the memory window to.
+@@ -1147,22 +1139,6 @@ static inline struct ib_ud_wr *ud_wr(struct ib_send_wr *wr)
+ 	return container_of(wr, struct ib_ud_wr, wr);
+ }
  
--struct ib_fast_reg_page_list *qib_alloc_fast_reg_page_list(
--				struct ib_device *ibdev, int page_list_len);
+-struct ib_fast_reg_wr {
+-	struct ib_send_wr	wr;
+-	u64			iova_start;
+-	struct ib_fast_reg_page_list *page_list;
+-	unsigned int		page_shift;
+-	unsigned int		page_list_len;
+-	u32			length;
+-	int			access_flags;
+-	u32			rkey;
+-};
 -
--void qib_free_fast_reg_page_list(struct ib_fast_reg_page_list *pl);
+-static inline struct ib_fast_reg_wr *fast_reg_wr(struct ib_send_wr *wr)
+-{
+-	return container_of(wr, struct ib_fast_reg_wr, wr);
+-}
 -
--int qib_fast_reg_mr(struct qib_qp *qp, struct ib_send_wr *wr);
- int qib_reg_mr(struct qib_qp *qp, struct ib_reg_wr *wr);
+ struct ib_reg_wr {
+ 	struct ib_send_wr	wr;
+ 	struct ib_mr		*mr;
+@@ -1777,9 +1753,6 @@ struct ib_device {
+ 	int                        (*map_mr_sg)(struct ib_mr *mr,
+ 						struct scatterlist *sg,
+ 						unsigned int sg_nents);
+-	struct ib_fast_reg_page_list * (*alloc_fast_reg_page_list)(struct ib_device *device,
+-								   int page_list_len);
+-	void			   (*free_fast_reg_page_list)(struct ib_fast_reg_page_list *page_list);
+ 	int                        (*rereg_phys_mr)(struct ib_mr *mr,
+ 						    int mr_rereg_mask,
+ 						    struct ib_pd *pd,
+@@ -2888,33 +2861,6 @@ struct ib_mr *ib_alloc_mr(struct ib_pd *pd,
+ 			  u32 max_num_sg);
  
- struct ib_fmr *qib_alloc_fmr(struct ib_pd *pd, int mr_access_flags,
+ /**
+- * ib_alloc_fast_reg_page_list - Allocates a page list array
+- * @device - ib device pointer.
+- * @page_list_len - size of the page list array to be allocated.
+- *
+- * This allocates and returns a struct ib_fast_reg_page_list * and a
+- * page_list array that is at least page_list_len in size.  The actual
+- * size is returned in max_page_list_len.  The caller is responsible
+- * for initializing the contents of the page_list array before posting
+- * a send work request with the IB_WC_FAST_REG_MR opcode.
+- *
+- * The page_list array entries must be translated using one of the
+- * ib_dma_*() functions just like the addresses passed to
+- * ib_map_phys_fmr().  Once the ib_post_send() is issued, the struct
+- * ib_fast_reg_page_list must not be modified by the caller until the
+- * IB_WC_FAST_REG_MR work request completes.
+- */
+-struct ib_fast_reg_page_list *ib_alloc_fast_reg_page_list(
+-				struct ib_device *device, int page_list_len);
+-
+-/**
+- * ib_free_fast_reg_page_list - Deallocates a previously allocated
+- *   page list array.
+- * @page_list - struct ib_fast_reg_page_list pointer to be deallocated.
+- */
+-void ib_free_fast_reg_page_list(struct ib_fast_reg_page_list *page_list);
+-
+-/**
+  * ib_update_fast_reg_key - updates the key portion of the fast_reg MR
+  *   R_Key and L_Key.
+  * @mr - struct ib_mr pointer to be updated.
 -- 
 1.8.4.3
 
