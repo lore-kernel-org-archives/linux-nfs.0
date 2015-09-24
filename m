@@ -1,248 +1,174 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from [193.47.165.129] ([193.47.165.129]:41930 "EHLO mellanox.co.il"
+Received: from [193.47.165.129] ([193.47.165.129]:41920 "EHLO mellanox.co.il"
 	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1757380AbbIXRgh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 24 Sep 2015 13:36:37 -0400
+	id S1757399AbbIXRge (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 24 Sep 2015 13:36:34 -0400
 From: Sagi Grimberg <sagig@mellanox.com>
 To: linux-rdma@vger.kernel.org
 Cc: linux-nfs@vger.kernel.org, "Nicholas A. Bellinger" <nab@linux-iscsi.org>
-Subject: [PATCH v2 01/26] IB/core: Introduce new fast registration API
-Date: Thu, 24 Sep 2015 20:34:53 +0300
-Message-Id: <1443116118-10730-2-git-send-email-sagig@mellanox.com>
-In-Reply-To: <1443116118-10730-1-git-send-email-sagig@mellanox.com>
-References: <1443116118-10730-1-git-send-email-sagig@mellanox.com>
+Subject: [PATCH v2 00/26] New fast registration API
+Date: Thu, 24 Sep 2015 20:34:52 +0300
+Message-Id: <1443116118-10730-1-git-send-email-sagig@mellanox.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The new fast registration  verb ib_map_mr_sg receives a scatterlist
-and converts it to a page list under the verbs API thus hiding
-the specific HW mapping details away from the consumer.
+Hi all,
 
-The provider drivers are provided with a generic helper ib_sg_to_pages
-that converts a scatterlist into a vector of page addresses. The
-drivers can still perform any HW specific page address setting
-by passing a set_page function pointer which will be invoked for
-each page address. This allows drivers to avoid keeping a shadow
-page vectors and convert them to HW specific translations by doing
-extra copies.
+As discussed on the linux-rdma list, there is plenty of room for
+improvement in our memory registration APIs. We keep finding
+ULPs that are duplicating code, sometimes use wrong strategies
+and mis-use our current API.
 
-This API will allow ULPs to remove the duplicated code of constructing
-a page vector from a given sg list.
+As a first step, this patch set replaces the fast registration API
+to accept a kernel common struct scatterlist and takes care of
+the page vector construction in the core layer with hooks for the
+drivers HW specific assignments. This allows to remove a common
+code duplication as it was done in each and every ULP driver.
 
-The send work request ib_reg_wr also shrinks as it will contain only
-mr, key and access flags in addition.
+Changes from v1:
+- Add ib_map_mr_sg_zbva() for RDS which uses it (preferred it over
+  polluting the API).
 
-Signed-off-by: Sagi Grimberg <sagig@mellanox.com>
-Tested-by: Christoph Hellwig <hch@lst.de>
-Tested-by: Signed-off-by: Santosh Shilimkar <santosh.shilimkar@oracle.com>
----
- drivers/infiniband/core/verbs.c | 107 ++++++++++++++++++++++++++++++++++++++++
- include/rdma/ib_verbs.h         |  44 +++++++++++++++++
- 2 files changed, 151 insertions(+)
+- Replaced coherent allocations in mlx4, mlx5 with DMA streaming
+  APIs (Bart)
 
-diff --git a/drivers/infiniband/core/verbs.c b/drivers/infiniband/core/verbs.c
-index e1f2c9887f3f..b84d168f6e21 100644
---- a/drivers/infiniband/core/verbs.c
-+++ b/drivers/infiniband/core/verbs.c
-@@ -1469,3 +1469,110 @@ int ib_check_mr_status(struct ib_mr *mr, u32 check_mask,
- 		mr->device->check_mr_status(mr, check_mask, mr_status) : -ENOSYS;
- }
- EXPORT_SYMBOL(ib_check_mr_status);
-+
-+/**
-+ * ib_map_mr_sg() - Map the largest prefix of a dma mapped SG list
-+ *     and set it the memory region.
-+ * @mr:            memory region
-+ * @sg:            dma mapped scatterlist
-+ * @sg_nents:      number of entries in sg
-+ * @page_size:     page vector desired page size
-+ *
-+ * Constraints:
-+ * - The first sg element is allowed to have an offset.
-+ * - Each sg element must be aligned to page_size (or physically
-+ *   contiguous to the previous element). In case an sg element has a
-+ *   non contiguous offset, the mapping prefix will not include it.
-+ * - The last sg element is allowed to have length less than page_size.
-+ * - If sg_nents total byte length exceeds the mr max_num_sge * page_size
-+ *   then only max_num_sg entries will be mapped.
-+ *
-+ * Returns the number of sg elements that were mapped to the memory region.
-+ *
-+ * After this completes successfully, the  memory region
-+ * is ready for registration.
-+ */
-+int ib_map_mr_sg(struct ib_mr *mr,
-+		 struct scatterlist *sg,
-+		 unsigned int sg_nents,
-+		 unsigned int page_size)
-+{
-+	if (unlikely(!mr->device->map_mr_sg))
-+		return -ENOSYS;
-+
-+	mr->page_size = page_size;
-+
-+	return mr->device->map_mr_sg(mr, sg, sg_nents);
-+}
-+EXPORT_SYMBOL(ib_map_mr_sg);
-+
-+/**
-+ * ib_sg_to_pages() - Convert the largest prefix of a sg list
-+ *     to a page vector
-+ * @mr:            memory region
-+ * @sgl:           dma mapped scatterlist
-+ * @sg_nents:      number of entries in sg
-+ * @set_page:      driver page assignment function pointer
-+ *
-+ * Core service helper for drivers to covert the largest
-+ * prefix of given sg list to a page vector. The sg list
-+ * prefix converted is the prefix that meet the requirements
-+ * of ib_map_mr_sg.
-+ *
-+ * Returns the number of sg elements that were assigned to
-+ * a page vector.
-+ */
-+int ib_sg_to_pages(struct ib_mr *mr,
-+		   struct scatterlist *sgl,
-+		   unsigned int sg_nents,
-+		   int (*set_page)(struct ib_mr *, u64))
-+{
-+	struct scatterlist *sg;
-+	u64 last_end_dma_addr = 0, last_page_addr = 0;
-+	unsigned int last_page_off = 0;
-+	u64 page_mask = ~((u64)mr->page_size - 1);
-+	int i;
-+
-+	mr->iova = sg_dma_address(&sgl[0]);
-+	mr->length = 0;
-+
-+	for_each_sg(sgl, sg, sg_nents, i) {
-+		u64 dma_addr = sg_dma_address(sg);
-+		unsigned int dma_len = sg_dma_len(sg);
-+		u64 end_dma_addr = dma_addr + dma_len;
-+		u64 page_addr = dma_addr & page_mask;
-+
-+		if (i && page_addr != dma_addr) {
-+			if (last_end_dma_addr != dma_addr) {
-+				/* gap */
-+				goto done;
-+
-+			} else if (last_page_off + dma_len < mr->page_size) {
-+				/* chunk this fragment with the last */
-+				mr->length += dma_len;
-+				last_end_dma_addr += dma_len;
-+				last_page_off += dma_len;
-+				continue;
-+			} else {
-+				/* map starting from the next page */
-+				page_addr = last_page_addr + mr->page_size;
-+				dma_len -= mr->page_size - last_page_off;
-+			}
-+		}
-+
-+		do {
-+			if (unlikely(set_page(mr, page_addr)))
-+				goto done;
-+			page_addr += mr->page_size;
-+		} while (page_addr < end_dma_addr);
-+
-+		mr->length += dma_len;
-+		last_end_dma_addr = end_dma_addr;
-+		last_page_addr = end_dma_addr & page_mask;
-+		last_page_off = end_dma_addr & ~page_mask;
-+	}
-+
-+done:
-+	return i;
-+}
-+EXPORT_SYMBOL(ib_sg_to_pages);
-diff --git a/include/rdma/ib_verbs.h b/include/rdma/ib_verbs.h
-index edf02908a0fd..f9a3436702c8 100644
---- a/include/rdma/ib_verbs.h
-+++ b/include/rdma/ib_verbs.h
-@@ -737,6 +737,7 @@ enum ib_wc_opcode {
- 	IB_WC_LSO,
- 	IB_WC_LOCAL_INV,
- 	IB_WC_FAST_REG_MR,
-+	IB_WC_REG_MR,
- 	IB_WC_MASKED_COMP_SWAP,
- 	IB_WC_MASKED_FETCH_ADD,
- /*
-@@ -1029,6 +1030,7 @@ enum ib_wr_opcode {
- 	IB_WR_RDMA_READ_WITH_INV,
- 	IB_WR_LOCAL_INV,
- 	IB_WR_FAST_REG_MR,
-+	IB_WR_REG_MR,
- 	IB_WR_MASKED_ATOMIC_CMP_AND_SWP,
- 	IB_WR_MASKED_ATOMIC_FETCH_AND_ADD,
- 	IB_WR_BIND_MW,
-@@ -1161,6 +1163,18 @@ static inline struct ib_fast_reg_wr *fast_reg_wr(struct ib_send_wr *wr)
- 	return container_of(wr, struct ib_fast_reg_wr, wr);
- }
- 
-+struct ib_reg_wr {
-+	struct ib_send_wr	wr;
-+	struct ib_mr		*mr;
-+	u32			key;
-+	int			access;
-+};
-+
-+static inline struct ib_reg_wr *reg_wr(struct ib_send_wr *wr)
-+{
-+	return container_of(wr, struct ib_reg_wr, wr);
-+}
-+
- struct ib_bind_mw_wr {
- 	struct ib_send_wr	wr;
- 	struct ib_mw		*mw;
-@@ -1373,6 +1387,9 @@ struct ib_mr {
- 	struct ib_uobject *uobject;
- 	u32		   lkey;
- 	u32		   rkey;
-+	u64		   iova;
-+	u32		   length;
-+	unsigned int	   page_size;
- 	atomic_t	   usecnt; /* count number of MWs */
- };
- 
-@@ -1757,6 +1774,9 @@ struct ib_device {
- 	struct ib_mr *		   (*alloc_mr)(struct ib_pd *pd,
- 					       enum ib_mr_type mr_type,
- 					       u32 max_num_sg);
-+	int                        (*map_mr_sg)(struct ib_mr *mr,
-+						struct scatterlist *sg,
-+						unsigned int sg_nents);
- 	struct ib_fast_reg_page_list * (*alloc_fast_reg_page_list)(struct ib_device *device,
- 								   int page_list_len);
- 	void			   (*free_fast_reg_page_list)(struct ib_fast_reg_page_list *page_list);
-@@ -3062,4 +3082,28 @@ struct net_device *ib_get_net_dev_by_params(struct ib_device *dev, u8 port,
- 					    u16 pkey, const union ib_gid *gid,
- 					    const struct sockaddr *addr);
- 
-+int ib_map_mr_sg(struct ib_mr *mr,
-+		 struct scatterlist *sg,
-+		 unsigned int sg_nents,
-+		 unsigned int page_size);
-+
-+static inline int
-+ib_map_mr_sg_zbva(struct ib_mr *mr,
-+		  struct scatterlist *sg,
-+		  unsigned int sg_nents,
-+		  unsigned int page_size)
-+{
-+	int n;
-+
-+	n = ib_map_mr_sg(mr, sg, sg_nents, page_size);
-+	mr->iova = 0;
-+
-+	return n;
-+}
-+
-+int ib_sg_to_pages(struct ib_mr *mr,
-+		   struct scatterlist *sgl,
-+		   unsigned int sg_nents,
-+		   int (*set_page)(struct ib_mr *, u64));
-+
- #endif /* IB_VERBS_H */
+- Changed ib_map_mr_sg description (Bart)
+
+- Split SRP driver patches (Bart)
+
+- Added missing wr->next = NULL from various ULPs (Steve, Santosh)
+
+- Fixed 0-day testing errors in nes driver, xprtrdma and svcrdma
+
+- Fixed checkpatch issues
+
+Changes from v0:
+- Rebased on top of 4.3-rc1 + Christoph's ib_send_wr conversion patches
+
+- Allow the ULP to pass page_size argument to ib_map_mr_sg in order
+  to have it work better in some specific workloads. This suggestion
+  came from Bart Van Assche which pointed out that some applications
+  might use page sizes significantly smaller than the system PAGE_SIZE
+  of specific architectures
+
+- Fixed some logical bugs in ib_sg_to_pages
+
+- Added a set_page function pointer for drivers to pass to ib_sg_to_pages
+  so some drivers (e.g mlx4, mlx5, nes) can avoid keeping a second page
+  vector and/or re-iterate on the page vector in order to perform HW specific
+  assignments (big/little endian conversion, extra flags)
+
+- Converted SRP initiator and RDS iwarp ULPs to the new API
+
+- Removed fast registration code from hfi1 driver (as it isn't supported
+  anyway). I assume that the correct place to get the support back would
+  be in a shared SW library (hfi1, qib, rxe).
+
+- Updated the change logs
+
+So far my tests covered:
+- ULPs:
+	* iser initiator
+	* iser target
+	* xprtrdma
+	* svcrdma
+- Drivers:
+	* mlx4
+	* mlx5
+	* Steve Wise was kind enough to run NFS client/server over cxgb4 and
+	  reported good results.
+	* Santosh reports that RDS IB conversion is functional and working
+	  with ib_map_mr_sg_zbva
+
+I don't have access to other HW devices (qib, nes) nor iwarp devices so RDS is
+compile tested only. Santosh reports
+
+I'm targeting this to 4.4 so I'll appreciate more feedback and a bigger testing
+coverage.
+
+The code is available at: https://github.com/sagigrimberg/linux/tree/reg_api.4
+
+Sagi Grimberg (26):
+  IB/core: Introduce new fast registration API
+  IB/mlx5: Remove dead fmr code
+  IB/mlx5: Support the new memory registration API
+  IB/mlx4: Support the new memory registration API
+  RDMA/ocrdma: Support the new memory registration API
+  RDMA/cxgb3: Support the new memory registration API
+  iw_cxgb4: Support the new memory registration API
+  IB/qib: Support the new memory registration API
+  RDMA/nes: Support the new memory registration API
+  IB/iser: Port to new fast registration API
+  iser-target: Port to new memory registration API
+  xprtrdma: Port to new memory registration API
+  svcrdma: Port to new memory registration API
+  RDS/IW: Convert to new memory registration API
+  IB/srp: Split srp_map_sg
+  IB/srp: Convert to new registration API
+  IB/srp: Dont allocate a page vector when using fast_reg
+  IB/mlx5: Remove old FRWR API support
+  IB/mlx4: Remove old FRWR API support
+  RDMA/ocrdma: Remove old FRWR API
+  RDMA/cxgb3: Remove old FRWR API
+  iw_cxgb4: Remove old FRWR API
+  IB/qib: Remove old FRWR API
+  RDMA/nes: Remove old FRWR API
+  IB/hfi1: Remove Old fast registraion API support
+  IB/core: Remove old fast registration API
+
+ drivers/infiniband/core/verbs.c             | 132 +++++++++++---
+ drivers/infiniband/hw/cxgb3/iwch_cq.c       |   2 +-
+ drivers/infiniband/hw/cxgb3/iwch_provider.c |  39 +++--
+ drivers/infiniband/hw/cxgb3/iwch_provider.h |   2 +
+ drivers/infiniband/hw/cxgb3/iwch_qp.c       |  37 ++--
+ drivers/infiniband/hw/cxgb4/cq.c            |   2 +-
+ drivers/infiniband/hw/cxgb4/iw_cxgb4.h      |  25 +--
+ drivers/infiniband/hw/cxgb4/mem.c           |  61 +++----
+ drivers/infiniband/hw/cxgb4/provider.c      |   3 +-
+ drivers/infiniband/hw/cxgb4/qp.c            |  47 +++--
+ drivers/infiniband/hw/mlx4/cq.c             |   2 +-
+ drivers/infiniband/hw/mlx4/main.c           |   3 +-
+ drivers/infiniband/hw/mlx4/mlx4_ib.h        |  22 +--
+ drivers/infiniband/hw/mlx4/mr.c             | 143 ++++++++++------
+ drivers/infiniband/hw/mlx4/qp.c             |  34 ++--
+ drivers/infiniband/hw/mlx5/cq.c             |   4 +-
+ drivers/infiniband/hw/mlx5/main.c           |   3 +-
+ drivers/infiniband/hw/mlx5/mlx5_ib.h        |  47 +----
+ drivers/infiniband/hw/mlx5/mr.c             | 129 +++++++++-----
+ drivers/infiniband/hw/mlx5/qp.c             | 140 +++++++--------
+ drivers/infiniband/hw/nes/nes_hw.h          |   6 -
+ drivers/infiniband/hw/nes/nes_verbs.c       | 163 +++++++-----------
+ drivers/infiniband/hw/nes/nes_verbs.h       |   4 +
+ drivers/infiniband/hw/ocrdma/ocrdma.h       |   2 +
+ drivers/infiniband/hw/ocrdma/ocrdma_main.c  |   3 +-
+ drivers/infiniband/hw/ocrdma/ocrdma_verbs.c | 154 ++++++++---------
+ drivers/infiniband/hw/ocrdma/ocrdma_verbs.h |   7 +-
+ drivers/infiniband/hw/qib/qib_keys.c        |  42 ++---
+ drivers/infiniband/hw/qib/qib_mr.c          |  46 ++---
+ drivers/infiniband/hw/qib/qib_verbs.c       |  13 +-
+ drivers/infiniband/hw/qib/qib_verbs.h       |  13 +-
+ drivers/infiniband/ulp/iser/iscsi_iser.h    |   8 +-
+ drivers/infiniband/ulp/iser/iser_memory.c   |  54 +++---
+ drivers/infiniband/ulp/iser/iser_verbs.c    |  16 +-
+ drivers/infiniband/ulp/isert/ib_isert.c     | 130 +++-----------
+ drivers/infiniband/ulp/isert/ib_isert.h     |   2 -
+ drivers/infiniband/ulp/srp/ib_srp.c         | 255 ++++++++++++++++------------
+ drivers/infiniband/ulp/srp/ib_srp.h         |  11 +-
+ drivers/staging/hfi1/keys.c                 |  55 ------
+ drivers/staging/hfi1/mr.c                   |  32 +---
+ drivers/staging/hfi1/verbs.c                |   9 +-
+ drivers/staging/hfi1/verbs.h                |   8 -
+ include/linux/sunrpc/svc_rdma.h             |   6 +-
+ include/rdma/ib_verbs.h                     |  86 +++++-----
+ net/rds/iw.h                                |   5 +-
+ net/rds/iw_rdma.c                           | 128 +++++---------
+ net/rds/iw_send.c                           |  57 +++----
+ net/sunrpc/xprtrdma/frwr_ops.c              | 113 +++++++-----
+ net/sunrpc/xprtrdma/svc_rdma_recvfrom.c     |  76 +++++----
+ net/sunrpc/xprtrdma/svc_rdma_transport.c    |  34 ++--
+ net/sunrpc/xprtrdma/xprt_rdma.h             |   3 +-
+ 51 files changed, 1143 insertions(+), 1275 deletions(-)
+
 -- 
 1.8.4.3
 
