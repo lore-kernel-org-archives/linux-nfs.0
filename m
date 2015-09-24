@@ -1,345 +1,248 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from [193.47.165.129] ([193.47.165.129]:41912 "EHLO mellanox.co.il"
+Received: from [193.47.165.129] ([193.47.165.129]:41930 "EHLO mellanox.co.il"
 	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1757391AbbIXRgb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 24 Sep 2015 13:36:31 -0400
+	id S1757380AbbIXRgh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 24 Sep 2015 13:36:37 -0400
 From: Sagi Grimberg <sagig@mellanox.com>
 To: linux-rdma@vger.kernel.org
 Cc: linux-nfs@vger.kernel.org, "Nicholas A. Bellinger" <nab@linux-iscsi.org>
-Subject: [PATCH v2 03/26] IB/mlx5: Support the new memory registration API
-Date: Thu, 24 Sep 2015 20:34:31 +0300
-Message-Id: <1443116094-7969-4-git-send-email-sagig@mellanox.com>
-In-Reply-To: <1443116094-7969-1-git-send-email-sagig@mellanox.com>
-References: <1443116094-7969-1-git-send-email-sagig@mellanox.com>
+Subject: [PATCH v2 01/26] IB/core: Introduce new fast registration API
+Date: Thu, 24 Sep 2015 20:34:53 +0300
+Message-Id: <1443116118-10730-2-git-send-email-sagig@mellanox.com>
+In-Reply-To: <1443116118-10730-1-git-send-email-sagig@mellanox.com>
+References: <1443116118-10730-1-git-send-email-sagig@mellanox.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Support the new memory registration API by allocating a
-private page list array in mlx5_ib_mr and populate it when
-mlx5_ib_map_mr_sg is invoked. Also, support IB_WR_REG_MR
-by setting the exact WQE as IB_WR_FAST_REG_MR, just take the
-needed information from different places:
-- page_size, iova, length, access flags (ib_mr)
-- page array (mlx5_ib_mr)
-- key (ib_reg_wr)
+The new fast registration  verb ib_map_mr_sg receives a scatterlist
+and converts it to a page list under the verbs API thus hiding
+the specific HW mapping details away from the consumer.
 
-The IB_WR_FAST_REG_MR handlers will be removed later when
-all the ULPs will be converted.
+The provider drivers are provided with a generic helper ib_sg_to_pages
+that converts a scatterlist into a vector of page addresses. The
+drivers can still perform any HW specific page address setting
+by passing a set_page function pointer which will be invoked for
+each page address. This allows drivers to avoid keeping a shadow
+page vectors and convert them to HW specific translations by doing
+extra copies.
+
+This API will allow ULPs to remove the duplicated code of constructing
+a page vector from a given sg list.
+
+The send work request ib_reg_wr also shrinks as it will contain only
+mr, key and access flags in addition.
 
 Signed-off-by: Sagi Grimberg <sagig@mellanox.com>
-Acked-by: Christoph Hellwig <hch@lst.de>
+Tested-by: Christoph Hellwig <hch@lst.de>
+Tested-by: Signed-off-by: Santosh Shilimkar <santosh.shilimkar@oracle.com>
 ---
- drivers/infiniband/hw/mlx5/cq.c      |  3 ++
- drivers/infiniband/hw/mlx5/main.c    |  1 +
- drivers/infiniband/hw/mlx5/mlx5_ib.h |  8 ++++
- drivers/infiniband/hw/mlx5/mr.c      | 87 ++++++++++++++++++++++++++++++++++++
- drivers/infiniband/hw/mlx5/qp.c      | 83 ++++++++++++++++++++++++++++++++++
- 5 files changed, 182 insertions(+)
+ drivers/infiniband/core/verbs.c | 107 ++++++++++++++++++++++++++++++++++++++++
+ include/rdma/ib_verbs.h         |  44 +++++++++++++++++
+ 2 files changed, 151 insertions(+)
 
-diff --git a/drivers/infiniband/hw/mlx5/cq.c b/drivers/infiniband/hw/mlx5/cq.c
-index 5c9eeea62805..90daf791d51d 100644
---- a/drivers/infiniband/hw/mlx5/cq.c
-+++ b/drivers/infiniband/hw/mlx5/cq.c
-@@ -108,6 +108,9 @@ static enum ib_wc_opcode get_umr_comp(struct mlx5_ib_wq *wq, int idx)
- 	case IB_WR_LOCAL_INV:
- 		return IB_WC_LOCAL_INV;
- 
-+	case IB_WR_REG_MR:
-+		return IB_WC_REG_MR;
-+
- 	case IB_WR_FAST_REG_MR:
- 		return IB_WC_FAST_REG_MR;
- 
-diff --git a/drivers/infiniband/hw/mlx5/main.c b/drivers/infiniband/hw/mlx5/main.c
-index 276d7824be8a..7ebce545daf1 100644
---- a/drivers/infiniband/hw/mlx5/main.c
-+++ b/drivers/infiniband/hw/mlx5/main.c
-@@ -1432,6 +1432,7 @@ static void *mlx5_ib_add(struct mlx5_core_dev *mdev)
- 	dev->ib_dev.detach_mcast	= mlx5_ib_mcg_detach;
- 	dev->ib_dev.process_mad		= mlx5_ib_process_mad;
- 	dev->ib_dev.alloc_mr		= mlx5_ib_alloc_mr;
-+	dev->ib_dev.map_mr_sg		= mlx5_ib_map_mr_sg;
- 	dev->ib_dev.alloc_fast_reg_page_list = mlx5_ib_alloc_fast_reg_page_list;
- 	dev->ib_dev.free_fast_reg_page_list  = mlx5_ib_free_fast_reg_page_list;
- 	dev->ib_dev.check_mr_status	= mlx5_ib_check_mr_status;
-diff --git a/drivers/infiniband/hw/mlx5/mlx5_ib.h b/drivers/infiniband/hw/mlx5/mlx5_ib.h
-index 210f99877b0b..bc1853f8e67d 100644
---- a/drivers/infiniband/hw/mlx5/mlx5_ib.h
-+++ b/drivers/infiniband/hw/mlx5/mlx5_ib.h
-@@ -319,6 +319,11 @@ enum mlx5_ib_mtt_access_flags {
- 
- struct mlx5_ib_mr {
- 	struct ib_mr		ibmr;
-+	void			*descs;
-+	dma_addr_t		desc_map;
-+	int			ndescs;
-+	int			max_descs;
-+	int			desc_size;
- 	struct mlx5_core_mr	mmr;
- 	struct ib_umem	       *umem;
- 	struct mlx5_shared_mr_info	*smr_info;
-@@ -560,6 +565,9 @@ int mlx5_ib_dereg_mr(struct ib_mr *ibmr);
- struct ib_mr *mlx5_ib_alloc_mr(struct ib_pd *pd,
- 			       enum ib_mr_type mr_type,
- 			       u32 max_num_sg);
-+int mlx5_ib_map_mr_sg(struct ib_mr *ibmr,
-+		      struct scatterlist *sg,
-+		      unsigned int sg_nents);
- struct ib_fast_reg_page_list *mlx5_ib_alloc_fast_reg_page_list(struct ib_device *ibdev,
- 							       int page_list_len);
- void mlx5_ib_free_fast_reg_page_list(struct ib_fast_reg_page_list *page_list);
-diff --git a/drivers/infiniband/hw/mlx5/mr.c b/drivers/infiniband/hw/mlx5/mr.c
-index 6d8aac0c1748..e071685e192d 100644
---- a/drivers/infiniband/hw/mlx5/mr.c
-+++ b/drivers/infiniband/hw/mlx5/mr.c
-@@ -1165,6 +1165,46 @@ error:
- 	return err;
+diff --git a/drivers/infiniband/core/verbs.c b/drivers/infiniband/core/verbs.c
+index e1f2c9887f3f..b84d168f6e21 100644
+--- a/drivers/infiniband/core/verbs.c
++++ b/drivers/infiniband/core/verbs.c
+@@ -1469,3 +1469,110 @@ int ib_check_mr_status(struct ib_mr *mr, u32 check_mask,
+ 		mr->device->check_mr_status(mr, check_mask, mr_status) : -ENOSYS;
  }
- 
-+static int
-+mlx5_alloc_priv_descs(struct ib_device *device,
-+		      struct mlx5_ib_mr *mr,
-+		      int ndescs,
-+		      int desc_size)
+ EXPORT_SYMBOL(ib_check_mr_status);
++
++/**
++ * ib_map_mr_sg() - Map the largest prefix of a dma mapped SG list
++ *     and set it the memory region.
++ * @mr:            memory region
++ * @sg:            dma mapped scatterlist
++ * @sg_nents:      number of entries in sg
++ * @page_size:     page vector desired page size
++ *
++ * Constraints:
++ * - The first sg element is allowed to have an offset.
++ * - Each sg element must be aligned to page_size (or physically
++ *   contiguous to the previous element). In case an sg element has a
++ *   non contiguous offset, the mapping prefix will not include it.
++ * - The last sg element is allowed to have length less than page_size.
++ * - If sg_nents total byte length exceeds the mr max_num_sge * page_size
++ *   then only max_num_sg entries will be mapped.
++ *
++ * Returns the number of sg elements that were mapped to the memory region.
++ *
++ * After this completes successfully, the  memory region
++ * is ready for registration.
++ */
++int ib_map_mr_sg(struct ib_mr *mr,
++		 struct scatterlist *sg,
++		 unsigned int sg_nents,
++		 unsigned int page_size)
 +{
-+	int size = ndescs * desc_size;
-+	int ret;
++	if (unlikely(!mr->device->map_mr_sg))
++		return -ENOSYS;
 +
-+	mr->descs = kzalloc(size, GFP_KERNEL);
-+	if (!mr->descs)
-+		return -ENOMEM;
++	mr->page_size = page_size;
 +
-+	mr->desc_map = dma_map_single(device->dma_device, mr->descs,
-+				      size, DMA_TO_DEVICE);
-+	if (dma_mapping_error(device->dma_device, mr->desc_map)) {
-+		ret = -ENOMEM;
-+		goto err;
++	return mr->device->map_mr_sg(mr, sg, sg_nents);
++}
++EXPORT_SYMBOL(ib_map_mr_sg);
++
++/**
++ * ib_sg_to_pages() - Convert the largest prefix of a sg list
++ *     to a page vector
++ * @mr:            memory region
++ * @sgl:           dma mapped scatterlist
++ * @sg_nents:      number of entries in sg
++ * @set_page:      driver page assignment function pointer
++ *
++ * Core service helper for drivers to covert the largest
++ * prefix of given sg list to a page vector. The sg list
++ * prefix converted is the prefix that meet the requirements
++ * of ib_map_mr_sg.
++ *
++ * Returns the number of sg elements that were assigned to
++ * a page vector.
++ */
++int ib_sg_to_pages(struct ib_mr *mr,
++		   struct scatterlist *sgl,
++		   unsigned int sg_nents,
++		   int (*set_page)(struct ib_mr *, u64))
++{
++	struct scatterlist *sg;
++	u64 last_end_dma_addr = 0, last_page_addr = 0;
++	unsigned int last_page_off = 0;
++	u64 page_mask = ~((u64)mr->page_size - 1);
++	int i;
++
++	mr->iova = sg_dma_address(&sgl[0]);
++	mr->length = 0;
++
++	for_each_sg(sgl, sg, sg_nents, i) {
++		u64 dma_addr = sg_dma_address(sg);
++		unsigned int dma_len = sg_dma_len(sg);
++		u64 end_dma_addr = dma_addr + dma_len;
++		u64 page_addr = dma_addr & page_mask;
++
++		if (i && page_addr != dma_addr) {
++			if (last_end_dma_addr != dma_addr) {
++				/* gap */
++				goto done;
++
++			} else if (last_page_off + dma_len < mr->page_size) {
++				/* chunk this fragment with the last */
++				mr->length += dma_len;
++				last_end_dma_addr += dma_len;
++				last_page_off += dma_len;
++				continue;
++			} else {
++				/* map starting from the next page */
++				page_addr = last_page_addr + mr->page_size;
++				dma_len -= mr->page_size - last_page_off;
++			}
++		}
++
++		do {
++			if (unlikely(set_page(mr, page_addr)))
++				goto done;
++			page_addr += mr->page_size;
++		} while (page_addr < end_dma_addr);
++
++		mr->length += dma_len;
++		last_end_dma_addr = end_dma_addr;
++		last_page_addr = end_dma_addr & page_mask;
++		last_page_off = end_dma_addr & ~page_mask;
 +	}
 +
-+	return 0;
-+err:
-+	kfree(mr->descs);
-+	return ret;
++done:
++	return i;
 +}
-+
-+static void
-+mlx5_free_priv_descs(struct mlx5_ib_mr *mr)
-+{
-+	struct ib_device *device = mr->ibmr.device;
-+	int size = mr->max_descs * mr->desc_size;
-+
-+	if (mr->descs) {
-+		dma_unmap_single(device->dma_device, mr->desc_map,
-+				 size, DMA_TO_DEVICE);
-+		kfree(mr->descs);
-+		mr->descs = NULL;
-+	}
-+}
-+
- static int clean_mr(struct mlx5_ib_mr *mr)
- {
- 	struct mlx5_ib_dev *dev = to_mdev(mr->ibmr.device);
-@@ -1184,6 +1224,8 @@ static int clean_mr(struct mlx5_ib_mr *mr)
- 		mr->sig = NULL;
- 	}
- 
-+	mlx5_free_priv_descs(mr);
-+
- 	if (!umred) {
- 		err = destroy_mkey(dev, mr);
- 		if (err) {
-@@ -1273,6 +1315,14 @@ struct ib_mr *mlx5_ib_alloc_mr(struct ib_pd *pd,
- 	if (mr_type == IB_MR_TYPE_MEM_REG) {
- 		access_mode = MLX5_ACCESS_MODE_MTT;
- 		in->seg.log2_page_size = PAGE_SHIFT;
-+
-+		err = mlx5_alloc_priv_descs(pd->device, mr,
-+					    ndescs, sizeof(u64));
-+		if (err)
-+			goto err_free_in;
-+
-+		mr->desc_size = sizeof(u64);
-+		mr->max_descs = ndescs;
- 	} else if (mr_type == IB_MR_TYPE_SIGNATURE) {
- 		u32 psv_index[2];
- 
-@@ -1329,6 +1379,7 @@ err_destroy_psv:
- 			mlx5_ib_warn(dev, "failed to destroy wire psv %d\n",
- 				     mr->sig->psv_wire.psv_idx);
- 	}
-+	mlx5_free_priv_descs(mr);
- err_free_sig:
- 	kfree(mr->sig);
- err_free_in:
-@@ -1420,3 +1471,39 @@ int mlx5_ib_check_mr_status(struct ib_mr *ibmr, u32 check_mask,
- done:
- 	return ret;
++EXPORT_SYMBOL(ib_sg_to_pages);
+diff --git a/include/rdma/ib_verbs.h b/include/rdma/ib_verbs.h
+index edf02908a0fd..f9a3436702c8 100644
+--- a/include/rdma/ib_verbs.h
++++ b/include/rdma/ib_verbs.h
+@@ -737,6 +737,7 @@ enum ib_wc_opcode {
+ 	IB_WC_LSO,
+ 	IB_WC_LOCAL_INV,
+ 	IB_WC_FAST_REG_MR,
++	IB_WC_REG_MR,
+ 	IB_WC_MASKED_COMP_SWAP,
+ 	IB_WC_MASKED_FETCH_ADD,
+ /*
+@@ -1029,6 +1030,7 @@ enum ib_wr_opcode {
+ 	IB_WR_RDMA_READ_WITH_INV,
+ 	IB_WR_LOCAL_INV,
+ 	IB_WR_FAST_REG_MR,
++	IB_WR_REG_MR,
+ 	IB_WR_MASKED_ATOMIC_CMP_AND_SWP,
+ 	IB_WR_MASKED_ATOMIC_FETCH_AND_ADD,
+ 	IB_WR_BIND_MW,
+@@ -1161,6 +1163,18 @@ static inline struct ib_fast_reg_wr *fast_reg_wr(struct ib_send_wr *wr)
+ 	return container_of(wr, struct ib_fast_reg_wr, wr);
  }
+ 
++struct ib_reg_wr {
++	struct ib_send_wr	wr;
++	struct ib_mr		*mr;
++	u32			key;
++	int			access;
++};
 +
-+static int mlx5_set_page(struct ib_mr *ibmr, u64 addr)
++static inline struct ib_reg_wr *reg_wr(struct ib_send_wr *wr)
 +{
-+	struct mlx5_ib_mr *mr = to_mmr(ibmr);
-+	__be64 *descs;
-+
-+	if (unlikely(mr->ndescs == mr->max_descs))
-+		return -ENOMEM;
-+
-+	descs = mr->descs;
-+	descs[mr->ndescs++] = cpu_to_be64(addr | MLX5_EN_RD | MLX5_EN_WR);
-+
-+	return 0;
++	return container_of(wr, struct ib_reg_wr, wr);
 +}
 +
-+int mlx5_ib_map_mr_sg(struct ib_mr *ibmr,
-+		      struct scatterlist *sg,
-+		      unsigned int sg_nents)
+ struct ib_bind_mw_wr {
+ 	struct ib_send_wr	wr;
+ 	struct ib_mw		*mw;
+@@ -1373,6 +1387,9 @@ struct ib_mr {
+ 	struct ib_uobject *uobject;
+ 	u32		   lkey;
+ 	u32		   rkey;
++	u64		   iova;
++	u32		   length;
++	unsigned int	   page_size;
+ 	atomic_t	   usecnt; /* count number of MWs */
+ };
+ 
+@@ -1757,6 +1774,9 @@ struct ib_device {
+ 	struct ib_mr *		   (*alloc_mr)(struct ib_pd *pd,
+ 					       enum ib_mr_type mr_type,
+ 					       u32 max_num_sg);
++	int                        (*map_mr_sg)(struct ib_mr *mr,
++						struct scatterlist *sg,
++						unsigned int sg_nents);
+ 	struct ib_fast_reg_page_list * (*alloc_fast_reg_page_list)(struct ib_device *device,
+ 								   int page_list_len);
+ 	void			   (*free_fast_reg_page_list)(struct ib_fast_reg_page_list *page_list);
+@@ -3062,4 +3082,28 @@ struct net_device *ib_get_net_dev_by_params(struct ib_device *dev, u8 port,
+ 					    u16 pkey, const union ib_gid *gid,
+ 					    const struct sockaddr *addr);
+ 
++int ib_map_mr_sg(struct ib_mr *mr,
++		 struct scatterlist *sg,
++		 unsigned int sg_nents,
++		 unsigned int page_size);
++
++static inline int
++ib_map_mr_sg_zbva(struct ib_mr *mr,
++		  struct scatterlist *sg,
++		  unsigned int sg_nents,
++		  unsigned int page_size)
 +{
-+	struct mlx5_ib_mr *mr = to_mmr(ibmr);
 +	int n;
 +
-+	mr->ndescs = 0;
-+
-+	ib_dma_sync_single_for_cpu(ibmr->device, mr->desc_map,
-+				   mr->desc_size * mr->max_descs,
-+				   DMA_TO_DEVICE);
-+
-+	n = ib_sg_to_pages(ibmr, sg, sg_nents, mlx5_set_page);
-+
-+	ib_dma_sync_single_for_device(ibmr->device, mr->desc_map,
-+				      mr->desc_size * mr->max_descs,
-+				      DMA_TO_DEVICE);
++	n = ib_map_mr_sg(mr, sg, sg_nents, page_size);
++	mr->iova = 0;
 +
 +	return n;
 +}
-diff --git a/drivers/infiniband/hw/mlx5/qp.c b/drivers/infiniband/hw/mlx5/qp.c
-index dcd8d58f95e1..61d3aa9a6ca9 100644
---- a/drivers/infiniband/hw/mlx5/qp.c
-+++ b/drivers/infiniband/hw/mlx5/qp.c
-@@ -65,6 +65,7 @@ static const u32 mlx5_ib_opcode[] = {
- 	[IB_WR_SEND_WITH_INV]			= MLX5_OPCODE_SEND_INVAL,
- 	[IB_WR_LOCAL_INV]			= MLX5_OPCODE_UMR,
- 	[IB_WR_FAST_REG_MR]			= MLX5_OPCODE_UMR,
-+	[IB_WR_REG_MR]				= MLX5_OPCODE_UMR,
- 	[IB_WR_MASKED_ATOMIC_CMP_AND_SWP]	= MLX5_OPCODE_ATOMIC_MASKED_CS,
- 	[IB_WR_MASKED_ATOMIC_FETCH_AND_ADD]	= MLX5_OPCODE_ATOMIC_MASKED_FA,
- 	[MLX5_IB_WR_UMR]			= MLX5_OPCODE_UMR,
-@@ -1901,6 +1902,17 @@ static __be64 sig_mkey_mask(void)
- 	return cpu_to_be64(result);
- }
- 
-+static void set_reg_umr_seg(struct mlx5_wqe_umr_ctrl_seg *umr,
-+				struct mlx5_ib_mr *mr)
-+{
-+	int ndescs = mr->ndescs;
 +
-+	memset(umr, 0, sizeof(*umr));
-+	umr->flags = MLX5_UMR_CHECK_NOT_FREE;
-+	umr->klm_octowords = get_klm_octo(ndescs);
-+	umr->mkey_mask = frwr_mkey_mask();
-+}
++int ib_sg_to_pages(struct ib_mr *mr,
++		   struct scatterlist *sgl,
++		   unsigned int sg_nents,
++		   int (*set_page)(struct ib_mr *, u64));
 +
- static void set_frwr_umr_segment(struct mlx5_wqe_umr_ctrl_seg *umr,
- 				 struct ib_send_wr *wr, int li)
- {
-@@ -1992,6 +2004,22 @@ static u8 get_umr_flags(int acc)
- 		MLX5_PERM_LOCAL_READ | MLX5_PERM_UMR_EN;
- }
- 
-+static void set_reg_mkey_seg(struct mlx5_mkey_seg *seg,
-+			     struct mlx5_ib_mr *mr,
-+			     u32 key, int access)
-+{
-+	int ndescs = ALIGN(mr->ndescs, 8) >> 1;
-+
-+	memset(seg, 0, sizeof(*seg));
-+	seg->flags = get_umr_flags(access) | MLX5_ACCESS_MODE_MTT;
-+	seg->qpn_mkey7_0 = cpu_to_be32((key & 0xff) | 0xffffff00);
-+	seg->flags_pd = cpu_to_be32(MLX5_MKEY_REMOTE_INVAL);
-+	seg->start_addr = cpu_to_be64(mr->ibmr.iova);
-+	seg->len = cpu_to_be64(mr->ibmr.length);
-+	seg->xlt_oct_size = cpu_to_be32(ndescs);
-+	seg->log2_page_size = ilog2(mr->ibmr.page_size);
-+}
-+
- static void set_mkey_segment(struct mlx5_mkey_seg *seg, struct ib_send_wr *wr,
- 			     int li, int *writ)
- {
-@@ -2033,6 +2061,17 @@ static void set_reg_mkey_segment(struct mlx5_mkey_seg *seg, struct ib_send_wr *w
- 				       mlx5_mkey_variant(umrwr->mkey));
- }
- 
-+static void set_reg_data_seg(struct mlx5_wqe_data_seg *dseg,
-+			     struct mlx5_ib_mr *mr,
-+			     struct mlx5_ib_pd *pd)
-+{
-+	int bcount = mr->desc_size * mr->ndescs;
-+
-+	dseg->addr = cpu_to_be64(mr->desc_map);
-+	dseg->byte_count = cpu_to_be32(ALIGN(bcount, 64));
-+	dseg->lkey = cpu_to_be32(pd->ibpd.local_dma_lkey);
-+}
-+
- static void set_frwr_pages(struct mlx5_wqe_data_seg *dseg,
- 			   struct ib_send_wr *wr,
- 			   struct mlx5_core_dev *mdev,
-@@ -2438,6 +2477,38 @@ static int set_psv_wr(struct ib_sig_domain *domain,
- 	return 0;
- }
- 
-+static int set_reg_wr(struct mlx5_ib_qp *qp,
-+		      struct ib_reg_wr *wr,
-+		      void **seg, int *size)
-+{
-+	struct mlx5_ib_mr *mr = to_mmr(wr->mr);
-+	struct mlx5_ib_pd *pd = to_mpd(qp->ibqp.pd);
-+
-+	if (unlikely(wr->wr.send_flags & IB_SEND_INLINE)) {
-+		mlx5_ib_warn(to_mdev(qp->ibqp.device),
-+			     "Invalid IB_SEND_INLINE send flag\n");
-+		return -EINVAL;
-+	}
-+
-+	set_reg_umr_seg(*seg, mr);
-+	*seg += sizeof(struct mlx5_wqe_umr_ctrl_seg);
-+	*size += sizeof(struct mlx5_wqe_umr_ctrl_seg) / 16;
-+	if (unlikely((*seg == qp->sq.qend)))
-+		*seg = mlx5_get_send_wqe(qp, 0);
-+
-+	set_reg_mkey_seg(*seg, mr, wr->key, wr->access);
-+	*seg += sizeof(struct mlx5_mkey_seg);
-+	*size += sizeof(struct mlx5_mkey_seg) / 16;
-+	if (unlikely((*seg == qp->sq.qend)))
-+		*seg = mlx5_get_send_wqe(qp, 0);
-+
-+	set_reg_data_seg(*seg, mr, pd);
-+	*seg += sizeof(struct mlx5_wqe_data_seg);
-+	*size += (sizeof(struct mlx5_wqe_data_seg) / 16);
-+
-+	return 0;
-+}
-+
- static int set_frwr_li_wr(void **seg, struct ib_send_wr *wr, int *size,
- 			  struct mlx5_core_dev *mdev, struct mlx5_ib_pd *pd, struct mlx5_ib_qp *qp)
- {
-@@ -2680,6 +2751,18 @@ int mlx5_ib_post_send(struct ib_qp *ibqp, struct ib_send_wr *wr,
- 				num_sge = 0;
- 				break;
- 
-+			case IB_WR_REG_MR:
-+				next_fence = MLX5_FENCE_MODE_INITIATOR_SMALL;
-+				qp->sq.wr_data[idx] = IB_WR_REG_MR;
-+				ctrl->imm = cpu_to_be32(reg_wr(wr)->key);
-+				err = set_reg_wr(qp, reg_wr(wr), &seg, &size);
-+				if (err) {
-+					*bad_wr = wr;
-+					goto out;
-+				}
-+				num_sge = 0;
-+				break;
-+
- 			case IB_WR_REG_SIG_MR:
- 				qp->sq.wr_data[idx] = IB_WR_REG_SIG_MR;
- 				mr = to_mmr(sig_handover_wr(wr)->sig_mr);
+ #endif /* IB_VERBS_H */
 -- 
 1.8.4.3
 
