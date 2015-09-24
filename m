@@ -1,248 +1,269 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from [193.47.165.129] ([193.47.165.129]:41951 "EHLO mellanox.co.il"
+Received: from [193.47.165.129] ([193.47.165.129]:41971 "EHLO mellanox.co.il"
 	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1757440AbbIXRg7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 24 Sep 2015 13:36:59 -0400
+	id S1757460AbbIXRhH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 24 Sep 2015 13:37:07 -0400
 From: Sagi Grimberg <sagig@mellanox.com>
 To: linux-rdma@vger.kernel.org
 Cc: linux-nfs@vger.kernel.org, "Nicholas A. Bellinger" <nab@linux-iscsi.org>
-Subject: [PATCH v2 07/26] iw_cxgb4: Support the new memory registration API
-Date: Thu, 24 Sep 2015 20:34:59 +0300
-Message-Id: <1443116118-10730-8-git-send-email-sagig@mellanox.com>
+Subject: [PATCH v2 13/26] svcrdma: Port to new memory registration API
+Date: Thu, 24 Sep 2015 20:35:05 +0300
+Message-Id: <1443116118-10730-14-git-send-email-sagig@mellanox.com>
 In-Reply-To: <1443116118-10730-1-git-send-email-sagig@mellanox.com>
 References: <1443116118-10730-1-git-send-email-sagig@mellanox.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Support the new memory registration API by allocating a
-private page list array in c4iw_mr and populate it when
-c4iw_map_mr_sg is invoked. Also, support IB_WR_REG_MR
-by duplicating build_fastreg just take the needed information
-from different places:
-- page_size, iova, length (ib_mr)
-- page array (c4iw_mr)
-- key, access flags (ib_reg_wr)
-
-The IB_WR_FAST_REG_MR handlers will be removed later when
-all the ULPs will be converted.
+Instead of maintaining a fastreg page list, keep an sg table
+and convert an array of pages to a sg list. Then call ib_map_mr_sg
+and construct ib_reg_wr.
 
 Signed-off-by: Sagi Grimberg <sagig@mellanox.com>
 Acked-by: Christoph Hellwig <hch@lst.de>
 ---
- drivers/infiniband/hw/cxgb4/iw_cxgb4.h |  7 ++++
- drivers/infiniband/hw/cxgb4/mem.c      | 38 +++++++++++++++++
- drivers/infiniband/hw/cxgb4/provider.c |  1 +
- drivers/infiniband/hw/cxgb4/qp.c       | 74 ++++++++++++++++++++++++++++++++++
- 4 files changed, 120 insertions(+)
+ include/linux/sunrpc/svc_rdma.h          |  6 +--
+ net/sunrpc/xprtrdma/svc_rdma_recvfrom.c  | 76 ++++++++++++++++++--------------
+ net/sunrpc/xprtrdma/svc_rdma_transport.c | 34 +++++---------
+ 3 files changed, 55 insertions(+), 61 deletions(-)
 
-diff --git a/drivers/infiniband/hw/cxgb4/iw_cxgb4.h b/drivers/infiniband/hw/cxgb4/iw_cxgb4.h
-index c7bb38c931a5..032f90aa8ac9 100644
---- a/drivers/infiniband/hw/cxgb4/iw_cxgb4.h
-+++ b/drivers/infiniband/hw/cxgb4/iw_cxgb4.h
-@@ -386,6 +386,10 @@ struct c4iw_mr {
- 	struct c4iw_dev *rhp;
- 	u64 kva;
- 	struct tpt_attributes attr;
-+	u64 *mpl;
-+	dma_addr_t mpl_addr;
-+	u32 max_mpl_len;
-+	u32 mpl_len;
+diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
+index 83211bc9219e..e240d102a911 100644
+--- a/include/linux/sunrpc/svc_rdma.h
++++ b/include/linux/sunrpc/svc_rdma.h
+@@ -105,11 +105,9 @@ struct svc_rdma_chunk_sge {
  };
+ struct svc_rdma_fastreg_mr {
+ 	struct ib_mr *mr;
+-	void *kva;
+-	struct ib_fast_reg_page_list *page_list;
+-	int page_list_len;
++	struct scatterlist *sg;
++	unsigned int sg_nents;
+ 	unsigned long access_flags;
+-	unsigned long map_len;
+ 	enum dma_data_direction direction;
+ 	struct list_head frmr_list;
+ };
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+index 7be42d0da19e..303f194970f9 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+@@ -220,12 +220,12 @@ int rdma_read_chunk_frmr(struct svcxprt_rdma *xprt,
+ {
+ 	struct ib_rdma_wr read_wr;
+ 	struct ib_send_wr inv_wr;
+-	struct ib_fast_reg_wr fastreg_wr;
++	struct ib_reg_wr reg_wr;
+ 	u8 key;
+-	int pages_needed = PAGE_ALIGN(*page_offset + rs_length) >> PAGE_SHIFT;
++	unsigned int nents = PAGE_ALIGN(*page_offset + rs_length) >> PAGE_SHIFT;
+ 	struct svc_rdma_op_ctxt *ctxt = svc_rdma_get_context(xprt);
+ 	struct svc_rdma_fastreg_mr *frmr = svc_rdma_get_frmr(xprt);
+-	int ret, read, pno;
++	int ret, read, pno, dma_nents, n;
+ 	u32 pg_off = *page_offset;
+ 	u32 pg_no = *page_no;
  
- static inline struct c4iw_mr *to_c4iw_mr(struct ib_mr *ibmr)
-@@ -973,6 +977,9 @@ struct ib_fast_reg_page_list *c4iw_alloc_fastreg_pbl(
- struct ib_mr *c4iw_alloc_mr(struct ib_pd *pd,
- 			    enum ib_mr_type mr_type,
- 			    u32 max_num_sg);
-+int c4iw_map_mr_sg(struct ib_mr *ibmr,
-+		   struct scatterlist *sg,
-+		   unsigned int sg_nents);
- int c4iw_dealloc_mw(struct ib_mw *mw);
- struct ib_mw *c4iw_alloc_mw(struct ib_pd *pd, enum ib_mw_type type);
- struct ib_mr *c4iw_reg_user_mr(struct ib_pd *pd, u64 start,
-diff --git a/drivers/infiniband/hw/cxgb4/mem.c b/drivers/infiniband/hw/cxgb4/mem.c
-index 026b91ebd5e2..86ec65721797 100644
---- a/drivers/infiniband/hw/cxgb4/mem.c
-+++ b/drivers/infiniband/hw/cxgb4/mem.c
-@@ -863,6 +863,7 @@ struct ib_mr *c4iw_alloc_mr(struct ib_pd *pd,
- 	u32 mmid;
- 	u32 stag = 0;
- 	int ret = 0;
-+	int length = roundup(max_num_sg * sizeof(u64), 32);
+@@ -234,16 +234,14 @@ int rdma_read_chunk_frmr(struct svcxprt_rdma *xprt,
  
- 	if (mr_type != IB_MR_TYPE_MEM_REG ||
- 	    max_num_sg > t4_max_fr_depth(use_dsgl))
-@@ -876,6 +877,14 @@ struct ib_mr *c4iw_alloc_mr(struct ib_pd *pd,
- 		goto err;
- 	}
+ 	ctxt->direction = DMA_FROM_DEVICE;
+ 	ctxt->frmr = frmr;
+-	pages_needed = min_t(int, pages_needed, xprt->sc_frmr_pg_list_len);
+-	read = min_t(int, pages_needed << PAGE_SHIFT, rs_length);
++	nents = min_t(unsigned int, nents, xprt->sc_frmr_pg_list_len);
++	read = min_t(int, nents << PAGE_SHIFT, rs_length);
  
-+	mhp->mpl = dma_alloc_coherent(&rhp->rdev.lldi.pdev->dev,
-+				      length, &mhp->mpl_addr, GFP_KERNEL);
-+	if (!mhp->mpl) {
-+		ret = -ENOMEM;
-+		goto err_mpl;
-+	}
-+	mhp->max_mpl_len = length;
+-	frmr->kva = page_address(rqstp->rq_arg.pages[pg_no]);
+ 	frmr->direction = DMA_FROM_DEVICE;
+ 	frmr->access_flags = (IB_ACCESS_LOCAL_WRITE|IB_ACCESS_REMOTE_WRITE);
+-	frmr->map_len = pages_needed << PAGE_SHIFT;
+-	frmr->page_list_len = pages_needed;
++	frmr->sg_nents = nents;
+ 
+-	for (pno = 0; pno < pages_needed; pno++) {
++	for (pno = 0; pno < nents; pno++) {
+ 		int len = min_t(int, rs_length, PAGE_SIZE - pg_off);
+ 
+ 		head->arg.pages[pg_no] = rqstp->rq_arg.pages[pg_no];
+@@ -251,17 +249,12 @@ int rdma_read_chunk_frmr(struct svcxprt_rdma *xprt,
+ 		head->arg.len += len;
+ 		if (!pg_off)
+ 			head->count++;
 +
- 	mhp->rhp = rhp;
- 	ret = alloc_pbl(mhp, max_num_sg);
- 	if (ret)
-@@ -905,11 +914,37 @@ err2:
- 	c4iw_pblpool_free(&mhp->rhp->rdev, mhp->attr.pbl_addr,
- 			      mhp->attr.pbl_size << 3);
- err1:
-+	dma_free_coherent(&mhp->rhp->rdev.lldi.pdev->dev,
-+			  mhp->max_mpl_len, mhp->mpl, mhp->mpl_addr);
-+err_mpl:
- 	kfree(mhp);
- err:
- 	return ERR_PTR(ret);
- }
- 
-+static int c4iw_set_page(struct ib_mr *ibmr, u64 addr)
-+{
-+	struct c4iw_mr *mhp = to_c4iw_mr(ibmr);
++		sg_set_page(&frmr->sg[pno], rqstp->rq_arg.pages[pg_no],
++			    len, pg_off);
 +
-+	if (unlikely(mhp->mpl_len == mhp->max_mpl_len))
+ 		rqstp->rq_respages = &rqstp->rq_arg.pages[pg_no+1];
+ 		rqstp->rq_next_page = rqstp->rq_respages + 1;
+-		frmr->page_list->page_list[pno] =
+-			ib_dma_map_page(xprt->sc_cm_id->device,
+-					head->arg.pages[pg_no], 0,
+-					PAGE_SIZE, DMA_FROM_DEVICE);
+-		ret = ib_dma_mapping_error(xprt->sc_cm_id->device,
+-					   frmr->page_list->page_list[pno]);
+-		if (ret)
+-			goto err;
+-		atomic_inc(&xprt->sc_dma_used);
+ 
+ 		/* adjust offset and wrap to next page if needed */
+ 		pg_off += len;
+@@ -277,28 +270,42 @@ int rdma_read_chunk_frmr(struct svcxprt_rdma *xprt,
+ 	else
+ 		clear_bit(RDMACTXT_F_LAST_CTXT, &ctxt->flags);
+ 
++	dma_nents = ib_dma_map_sg(xprt->sc_cm_id->device,
++				  frmr->sg, frmr->sg_nents,
++				  frmr->direction);
++	if (!dma_nents) {
++		pr_err("svcrdma: failed to dma map sg %p\n",
++		       frmr->sg);
 +		return -ENOMEM;
++	}
++	atomic_inc(&xprt->sc_dma_used);
 +
-+	mhp->mpl[mhp->mpl_len++] = addr;
++	n = ib_map_mr_sg(frmr->mr, frmr->sg, frmr->sg_nents, PAGE_SIZE);
++	if (unlikely(n != frmr->sg_nents)) {
++		pr_err("svcrdma: failed to map mr %p (%d/%d elements)\n",
++		       frmr->mr, n, frmr->sg_nents);
++		return n < 0 ? n : -EINVAL;
++	}
 +
-+	return 0;
-+}
-+
-+int c4iw_map_mr_sg(struct ib_mr *ibmr,
-+		   struct scatterlist *sg,
-+		   unsigned int sg_nents)
-+{
-+	struct c4iw_mr *mhp = to_c4iw_mr(ibmr);
-+
-+	mhp->mpl_len = 0;
-+
-+	return ib_sg_to_pages(ibmr, sg, sg_nents, c4iw_set_page);
-+}
-+
- struct ib_fast_reg_page_list *c4iw_alloc_fastreg_pbl(struct ib_device *device,
- 						     int page_list_len)
+ 	/* Bump the key */
+ 	key = (u8)(frmr->mr->lkey & 0x000000FF);
+ 	ib_update_fast_reg_key(frmr->mr, ++key);
+ 
+-	ctxt->sge[0].addr = (unsigned long)frmr->kva + *page_offset;
++	ctxt->sge[0].addr = frmr->mr->iova;
+ 	ctxt->sge[0].lkey = frmr->mr->lkey;
+-	ctxt->sge[0].length = read;
++	ctxt->sge[0].length = frmr->mr->length;
+ 	ctxt->count = 1;
+ 	ctxt->read_hdr = head;
+ 
+-	/* Prepare FASTREG WR */
+-	memset(&fastreg_wr, 0, sizeof(fastreg_wr));
+-	fastreg_wr.wr.opcode = IB_WR_FAST_REG_MR;
+-	fastreg_wr.wr.send_flags = IB_SEND_SIGNALED;
+-	fastreg_wr.iova_start = (unsigned long)frmr->kva;
+-	fastreg_wr.page_list = frmr->page_list;
+-	fastreg_wr.page_list_len = frmr->page_list_len;
+-	fastreg_wr.page_shift = PAGE_SHIFT;
+-	fastreg_wr.length = frmr->map_len;
+-	fastreg_wr.access_flags = frmr->access_flags;
+-	fastreg_wr.rkey = frmr->mr->lkey;
+-	fastreg_wr.wr.next = &read_wr.wr;
++	/* Prepare REG WR */
++	reg_wr.wr.opcode = IB_WR_REG_MR;
++	reg_wr.wr.wr_id = 0;
++	reg_wr.wr.send_flags = IB_SEND_SIGNALED;
++	reg_wr.wr.num_sge = 0;
++	reg_wr.mr = frmr->mr;
++	reg_wr.key = frmr->mr->lkey;
++	reg_wr.access = frmr->access_flags;
++	reg_wr.wr.next = &read_wr.wr;
+ 
+ 	/* Prepare RDMA_READ */
+ 	memset(&read_wr, 0, sizeof(read_wr));
+@@ -324,7 +331,7 @@ int rdma_read_chunk_frmr(struct svcxprt_rdma *xprt,
+ 	ctxt->wr_op = read_wr.wr.opcode;
+ 
+ 	/* Post the chain */
+-	ret = svc_rdma_send(xprt, &fastreg_wr.wr);
++	ret = svc_rdma_send(xprt, &reg_wr.wr);
+ 	if (ret) {
+ 		pr_err("svcrdma: Error %d posting RDMA_READ\n", ret);
+ 		set_bit(XPT_CLOSE, &xprt->sc_xprt.xpt_flags);
+@@ -338,7 +345,8 @@ int rdma_read_chunk_frmr(struct svcxprt_rdma *xprt,
+ 	atomic_inc(&rdma_stat_read);
+ 	return ret;
+  err:
+-	svc_rdma_unmap_dma(ctxt);
++	ib_dma_unmap_sg(xprt->sc_cm_id->device,
++			frmr->sg, frmr->sg_nents, frmr->direction);
+ 	svc_rdma_put_context(ctxt, 0);
+ 	svc_rdma_put_frmr(xprt, frmr);
+ 	return ret;
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+index b9fe134bb416..27aeda42f444 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+@@ -731,7 +731,7 @@ static struct svc_xprt *svc_rdma_create(struct svc_serv *serv,
+ static struct svc_rdma_fastreg_mr *rdma_alloc_frmr(struct svcxprt_rdma *xprt)
  {
-@@ -970,6 +1005,9 @@ int c4iw_dereg_mr(struct ib_mr *ib_mr)
- 	rhp = mhp->rhp;
- 	mmid = mhp->attr.stag >> 8;
- 	remove_handle(rhp, &rhp->mmidr, mmid);
-+	if (mhp->mpl)
-+		dma_free_coherent(&mhp->rhp->rdev.lldi.pdev->dev,
-+				  mhp->max_mpl_len, mhp->mpl, mhp->mpl_addr);
- 	dereg_mem(&rhp->rdev, mhp->attr.stag, mhp->attr.pbl_size,
- 		       mhp->attr.pbl_addr);
- 	if (mhp->attr.pbl_size)
-diff --git a/drivers/infiniband/hw/cxgb4/provider.c b/drivers/infiniband/hw/cxgb4/provider.c
-index 7746113552e7..55dedadcffaa 100644
---- a/drivers/infiniband/hw/cxgb4/provider.c
-+++ b/drivers/infiniband/hw/cxgb4/provider.c
-@@ -557,6 +557,7 @@ int c4iw_register_device(struct c4iw_dev *dev)
- 	dev->ibdev.bind_mw = c4iw_bind_mw;
- 	dev->ibdev.dealloc_mw = c4iw_dealloc_mw;
- 	dev->ibdev.alloc_mr = c4iw_alloc_mr;
-+	dev->ibdev.map_mr_sg = c4iw_map_mr_sg;
- 	dev->ibdev.alloc_fast_reg_page_list = c4iw_alloc_fastreg_pbl;
- 	dev->ibdev.free_fast_reg_page_list = c4iw_free_fastreg_pbl;
- 	dev->ibdev.attach_mcast = c4iw_multicast_attach;
-diff --git a/drivers/infiniband/hw/cxgb4/qp.c b/drivers/infiniband/hw/cxgb4/qp.c
-index b60498fff99a..12a23bc935f3 100644
---- a/drivers/infiniband/hw/cxgb4/qp.c
-+++ b/drivers/infiniband/hw/cxgb4/qp.c
-@@ -605,10 +605,76 @@ static int build_rdma_recv(struct c4iw_qp *qhp, union t4_recv_wr *wqe,
- 	return 0;
+ 	struct ib_mr *mr;
+-	struct ib_fast_reg_page_list *pl;
++	struct scatterlist *sg;
+ 	struct svc_rdma_fastreg_mr *frmr;
+ 	u32 num_sg;
+ 
+@@ -744,13 +744,14 @@ static struct svc_rdma_fastreg_mr *rdma_alloc_frmr(struct svcxprt_rdma *xprt)
+ 	if (IS_ERR(mr))
+ 		goto err_free_frmr;
+ 
+-	pl = ib_alloc_fast_reg_page_list(xprt->sc_cm_id->device,
+-					 num_sg);
+-	if (IS_ERR(pl))
++	sg = kcalloc(RPCSVC_MAXPAGES, sizeof(*sg), GFP_KERNEL);
++	if (!sg)
+ 		goto err_free_mr;
+ 
++	sg_init_table(sg, RPCSVC_MAXPAGES);
++
+ 	frmr->mr = mr;
+-	frmr->page_list = pl;
++	frmr->sg = sg;
+ 	INIT_LIST_HEAD(&frmr->frmr_list);
+ 	return frmr;
+ 
+@@ -770,8 +771,8 @@ static void rdma_dealloc_frmr_q(struct svcxprt_rdma *xprt)
+ 		frmr = list_entry(xprt->sc_frmr_q.next,
+ 				  struct svc_rdma_fastreg_mr, frmr_list);
+ 		list_del_init(&frmr->frmr_list);
++		kfree(frmr->sg);
+ 		ib_dereg_mr(frmr->mr);
+-		ib_free_fast_reg_page_list(frmr->page_list);
+ 		kfree(frmr);
+ 	}
+ }
+@@ -785,8 +786,7 @@ struct svc_rdma_fastreg_mr *svc_rdma_get_frmr(struct svcxprt_rdma *rdma)
+ 		frmr = list_entry(rdma->sc_frmr_q.next,
+ 				  struct svc_rdma_fastreg_mr, frmr_list);
+ 		list_del_init(&frmr->frmr_list);
+-		frmr->map_len = 0;
+-		frmr->page_list_len = 0;
++		frmr->sg_nents = 0;
+ 	}
+ 	spin_unlock_bh(&rdma->sc_frmr_q_lock);
+ 	if (frmr)
+@@ -795,25 +795,13 @@ struct svc_rdma_fastreg_mr *svc_rdma_get_frmr(struct svcxprt_rdma *rdma)
+ 	return rdma_alloc_frmr(rdma);
  }
  
-+static int build_memreg(struct t4_sq *sq, union t4_wr *wqe,
-+			struct ib_reg_wr *wr, u8 *len16, u8 t5dev)
-+{
-+	struct c4iw_mr *mhp = to_c4iw_mr(wr->mr);
-+	struct fw_ri_immd *imdp;
-+	__be64 *p;
-+	int i;
-+	int pbllen = roundup(mhp->mpl_len * sizeof(u64), 32);
-+	int rem;
-+
-+	if (mhp->mpl_len > t4_max_fr_depth(use_dsgl))
-+		return -EINVAL;
-+
-+	wqe->fr.qpbinde_to_dcacpu = 0;
-+	wqe->fr.pgsz_shift = ilog2(wr->mr->page_size) - 12;
-+	wqe->fr.addr_type = FW_RI_VA_BASED_TO;
-+	wqe->fr.mem_perms = c4iw_ib_to_tpt_access(wr->access);
-+	wqe->fr.len_hi = 0;
-+	wqe->fr.len_lo = cpu_to_be32(mhp->ibmr.length);
-+	wqe->fr.stag = cpu_to_be32(wr->key);
-+	wqe->fr.va_hi = cpu_to_be32(mhp->ibmr.iova >> 32);
-+	wqe->fr.va_lo_fbo = cpu_to_be32(mhp->ibmr.iova &
-+					0xffffffff);
-+
-+	if (t5dev && use_dsgl && (pbllen > max_fr_immd)) {
-+		struct fw_ri_dsgl *sglp;
-+
-+		for (i = 0; i < mhp->mpl_len; i++)
-+			mhp->mpl[i] = (__force u64)cpu_to_be64((u64)mhp->mpl[i]);
-+
-+		sglp = (struct fw_ri_dsgl *)(&wqe->fr + 1);
-+		sglp->op = FW_RI_DATA_DSGL;
-+		sglp->r1 = 0;
-+		sglp->nsge = cpu_to_be16(1);
-+		sglp->addr0 = cpu_to_be64(mhp->mpl_addr);
-+		sglp->len0 = cpu_to_be32(pbllen);
-+
-+		*len16 = DIV_ROUND_UP(sizeof(wqe->fr) + sizeof(*sglp), 16);
-+	} else {
-+		imdp = (struct fw_ri_immd *)(&wqe->fr + 1);
-+		imdp->op = FW_RI_DATA_IMMD;
-+		imdp->r1 = 0;
-+		imdp->r2 = 0;
-+		imdp->immdlen = cpu_to_be32(pbllen);
-+		p = (__be64 *)(imdp + 1);
-+		rem = pbllen;
-+		for (i = 0; i < mhp->mpl_len; i++) {
-+			*p = cpu_to_be64((u64)mhp->mpl[i]);
-+			rem -= sizeof(*p);
-+			if (++p == (__be64 *)&sq->queue[sq->size])
-+				p = (__be64 *)sq->queue;
-+		}
-+		BUG_ON(rem < 0);
-+		while (rem) {
-+			*p = 0;
-+			rem -= sizeof(*p);
-+			if (++p == (__be64 *)&sq->queue[sq->size])
-+				p = (__be64 *)sq->queue;
-+		}
-+		*len16 = DIV_ROUND_UP(sizeof(wqe->fr) + sizeof(*imdp)
-+				      + pbllen, 16);
-+	}
-+	return 0;
-+}
-+
- static int build_fastreg(struct t4_sq *sq, union t4_wr *wqe,
- 			 struct ib_send_wr *send_wr, u8 *len16, u8 t5dev)
+-static void frmr_unmap_dma(struct svcxprt_rdma *xprt,
+-			   struct svc_rdma_fastreg_mr *frmr)
+-{
+-	int page_no;
+-	for (page_no = 0; page_no < frmr->page_list_len; page_no++) {
+-		dma_addr_t addr = frmr->page_list->page_list[page_no];
+-		if (ib_dma_mapping_error(frmr->mr->device, addr))
+-			continue;
+-		atomic_dec(&xprt->sc_dma_used);
+-		ib_dma_unmap_page(frmr->mr->device, addr, PAGE_SIZE,
+-				  frmr->direction);
+-	}
+-}
+-
+ void svc_rdma_put_frmr(struct svcxprt_rdma *rdma,
+ 		       struct svc_rdma_fastreg_mr *frmr)
  {
- 	struct ib_fast_reg_wr *wr = fast_reg_wr(send_wr);
-+
- 	struct fw_ri_immd *imdp;
- 	__be64 *p;
- 	int i;
-@@ -817,6 +883,14 @@ int c4iw_post_send(struct ib_qp *ibqp, struct ib_send_wr *wr,
- 					    qhp->rhp->rdev.lldi.adapter_type) ?
- 					    1 : 0);
- 			break;
-+		case IB_WR_REG_MR:
-+			fw_opcode = FW_RI_FR_NSMR_WR;
-+			swsqe->opcode = FW_RI_FAST_REGISTER;
-+			err = build_memreg(&qhp->wq.sq, wqe, reg_wr(wr), &len16,
-+					   is_t5(
-+					   qhp->rhp->rdev.lldi.adapter_type) ?
-+					   1 : 0);
-+			break;
- 		case IB_WR_LOCAL_INV:
- 			if (wr->send_flags & IB_SEND_FENCE)
- 				fw_flags |= FW_RI_LOCAL_FENCE_FLAG;
+ 	if (frmr) {
+-		frmr_unmap_dma(rdma, frmr);
++		ib_dma_unmap_sg(rdma->sc_cm_id->device,
++				frmr->sg, frmr->sg_nents, frmr->direction);
++		atomic_dec(&rdma->sc_dma_used);
+ 		spin_lock_bh(&rdma->sc_frmr_q_lock);
+ 		WARN_ON_ONCE(!list_empty(&frmr->frmr_list));
+ 		list_add(&frmr->frmr_list, &rdma->sc_frmr_q);
 -- 
 1.8.4.3
 
