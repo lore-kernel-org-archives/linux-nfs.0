@@ -1,32 +1,142 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wi0-f179.google.com ([209.85.212.179]:36451 "EHLO
-	mail-wi0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751547AbbIXGx1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Sep 2015 02:53:27 -0400
-Received: by wicgb1 with SMTP id gb1so235974538wic.1
-        for <linux-nfs@vger.kernel.org>; Wed, 23 Sep 2015 23:53:26 -0700 (PDT)
-Subject: Re: [PATCH v1 00/24] New fast registration API
-To: Christoph Hellwig <hch@infradead.org>, Sagi Grimberg <sagig@mellanox.com>
-References: <1442482947-27785-1-git-send-email-sagig@mellanox.com>
- <20150919224518.GA23027@infradead.org>
-Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org,
-        "Nicholas A. Bellinger" <nab@linux-iscsi.org>
-From: Sagi Grimberg <sagig@dev.mellanox.co.il>
-Message-ID: <56039DE9.1010300@dev.mellanox.co.il>
-Date: Thu, 24 Sep 2015 09:53:29 +0300
-MIME-Version: 1.0
-In-Reply-To: <20150919224518.GA23027@infradead.org>
-Content-Type: text/plain; charset=windows-1252; format=flowed
+Received: from [193.47.165.129] ([193.47.165.129]:41858 "EHLO mellanox.co.il"
+	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1756691AbbIXHey (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 24 Sep 2015 03:34:54 -0400
+From: Sagi Grimberg <sagig@mellanox.com>
+To: Doug Ledford <dledford@redhat.com>
+Cc: Chuck Lever <chuck.lever@oracle.com>, linux-rdma@vger.kernel.org,
+        linux-nfs <linux-nfs@vger.kernel.org>
+Subject: [PATCH rdma-rc v2 1/4] xprtrdma: Replace global lkey with lkey local to PD
+Date: Thu, 24 Sep 2015 10:34:21 +0300
+Message-Id: <1443080064-28760-2-git-send-email-sagig@mellanox.com>
+In-Reply-To: <1443080064-28760-1-git-send-email-sagig@mellanox.com>
+References: <1443080064-28760-1-git-send-email-sagig@mellanox.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 9/20/2015 1:45 AM, Christoph Hellwig wrote:
-> Hi Sagi,
->
-> I've converted the driver I'm developing to your API and it works
-> great.  I think this is an important step towards making the RDMA
-> more usable!
+From: Chuck Lever <chuck.lever@oracle.com>
 
-Thanks Christoph,
+The core API has changed so that devices that do not have a global
+DMA lkey automatically create an mr, per-PD, and make that lkey
+available. The global DMA lkey interface is going away in favor of
+the per-PD DMA lkey.
 
-should I take it as your "Tested-by: " on ib_core + mlx4 changes?
+The per-PD DMA lkey is always available. Convert xprtrdma to use the
+device's per-PD DMA lkey for regbufs, no matter which memory
+registration scheme is in use.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Sagi Grimberg <sagig@mellanox.com>
+Cc: linux-nfs <linux-nfs@vger.kernel.org>
+---
+ net/sunrpc/xprtrdma/fmr_ops.c      | 19 -------------------
+ net/sunrpc/xprtrdma/frwr_ops.c     |  5 -----
+ net/sunrpc/xprtrdma/physical_ops.c | 10 +---------
+ net/sunrpc/xprtrdma/verbs.c        |  2 +-
+ net/sunrpc/xprtrdma/xprt_rdma.h    |  1 -
+ 5 files changed, 2 insertions(+), 35 deletions(-)
+
+diff --git a/net/sunrpc/xprtrdma/fmr_ops.c b/net/sunrpc/xprtrdma/fmr_ops.c
+index cb25c89da623..f1e8dafbd507 100644
+--- a/net/sunrpc/xprtrdma/fmr_ops.c
++++ b/net/sunrpc/xprtrdma/fmr_ops.c
+@@ -39,25 +39,6 @@ static int
+ fmr_op_open(struct rpcrdma_ia *ia, struct rpcrdma_ep *ep,
+ 	    struct rpcrdma_create_data_internal *cdata)
+ {
+-	struct ib_device_attr *devattr = &ia->ri_devattr;
+-	struct ib_mr *mr;
+-
+-	/* Obtain an lkey to use for the regbufs, which are
+-	 * protected from remote access.
+-	 */
+-	if (devattr->device_cap_flags & IB_DEVICE_LOCAL_DMA_LKEY) {
+-		ia->ri_dma_lkey = ia->ri_device->local_dma_lkey;
+-	} else {
+-		mr = ib_get_dma_mr(ia->ri_pd, IB_ACCESS_LOCAL_WRITE);
+-		if (IS_ERR(mr)) {
+-			pr_err("%s: ib_get_dma_mr for failed with %lX\n",
+-			       __func__, PTR_ERR(mr));
+-			return -ENOMEM;
+-		}
+-		ia->ri_dma_lkey = ia->ri_dma_mr->lkey;
+-		ia->ri_dma_mr = mr;
+-	}
+-
+ 	return 0;
+ }
+ 
+diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
+index d6653f5d0830..5318951b3b53 100644
+--- a/net/sunrpc/xprtrdma/frwr_ops.c
++++ b/net/sunrpc/xprtrdma/frwr_ops.c
+@@ -189,11 +189,6 @@ frwr_op_open(struct rpcrdma_ia *ia, struct rpcrdma_ep *ep,
+ 	struct ib_device_attr *devattr = &ia->ri_devattr;
+ 	int depth, delta;
+ 
+-	/* Obtain an lkey to use for the regbufs, which are
+-	 * protected from remote access.
+-	 */
+-	ia->ri_dma_lkey = ia->ri_device->local_dma_lkey;
+-
+ 	ia->ri_max_frmr_depth =
+ 			min_t(unsigned int, RPCRDMA_MAX_DATA_SEGS,
+ 			      devattr->max_fast_reg_page_list_len);
+diff --git a/net/sunrpc/xprtrdma/physical_ops.c b/net/sunrpc/xprtrdma/physical_ops.c
+index 72cf8b15bbb4..617b76f22154 100644
+--- a/net/sunrpc/xprtrdma/physical_ops.c
++++ b/net/sunrpc/xprtrdma/physical_ops.c
+@@ -23,7 +23,6 @@ static int
+ physical_op_open(struct rpcrdma_ia *ia, struct rpcrdma_ep *ep,
+ 		 struct rpcrdma_create_data_internal *cdata)
+ {
+-	struct ib_device_attr *devattr = &ia->ri_devattr;
+ 	struct ib_mr *mr;
+ 
+ 	/* Obtain an rkey to use for RPC data payloads.
+@@ -37,15 +36,8 @@ physical_op_open(struct rpcrdma_ia *ia, struct rpcrdma_ep *ep,
+ 		       __func__, PTR_ERR(mr));
+ 		return -ENOMEM;
+ 	}
+-	ia->ri_dma_mr = mr;
+-
+-	/* Obtain an lkey to use for regbufs.
+-	 */
+-	if (devattr->device_cap_flags & IB_DEVICE_LOCAL_DMA_LKEY)
+-		ia->ri_dma_lkey = ia->ri_device->local_dma_lkey;
+-	else
+-		ia->ri_dma_lkey = ia->ri_dma_mr->lkey;
+ 
++	ia->ri_dma_mr = mr;
+ 	return 0;
+ }
+ 
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 682996779970..eb081ad05e33 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -1252,7 +1252,7 @@ rpcrdma_alloc_regbuf(struct rpcrdma_ia *ia, size_t size, gfp_t flags)
+ 		goto out_free;
+ 
+ 	iov->length = size;
+-	iov->lkey = ia->ri_dma_lkey;
++	iov->lkey = ia->ri_pd->local_dma_lkey;
+ 	rb->rg_size = size;
+ 	rb->rg_owner = NULL;
+ 	return rb;
+diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+index d252457ff21a..df5ad4e15702 100644
+--- a/net/sunrpc/xprtrdma/xprt_rdma.h
++++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+@@ -66,7 +66,6 @@ struct rpcrdma_ia {
+ 	struct rdma_cm_id 	*ri_id;
+ 	struct ib_pd		*ri_pd;
+ 	struct ib_mr		*ri_dma_mr;
+-	u32			ri_dma_lkey;
+ 	struct completion	ri_done;
+ 	int			ri_async_rc;
+ 	unsigned int		ri_max_frmr_depth;
+-- 
+1.8.4.3
+
