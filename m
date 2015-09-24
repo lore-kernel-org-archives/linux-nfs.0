@@ -1,253 +1,254 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from [193.47.165.129] ([193.47.165.129]:41768 "EHLO mellanox.co.il"
+Received: from [193.47.165.129] ([193.47.165.129]:41800 "EHLO mellanox.co.il"
 	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1756840AbbIXRfp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	id S1756816AbbIXRfp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
 	Thu, 24 Sep 2015 13:35:45 -0400
 From: Sagi Grimberg <sagig@mellanox.com>
 To: linux-rdma@vger.kernel.org
 Cc: linux-nfs@vger.kernel.org, "Nicholas A. Bellinger" <nab@linux-iscsi.org>
-Subject: [PATCH v2 12/26] xprtrdma: Port to new memory registration API
-Date: Thu, 24 Sep 2015 20:34:40 +0300
-Message-Id: <1443116094-7969-13-git-send-email-sagig@mellanox.com>
+Subject: [PATCH v2 15/26] IB/srp: Split srp_map_sg
+Date: Thu, 24 Sep 2015 20:34:43 +0300
+Message-Id: <1443116094-7969-16-git-send-email-sagig@mellanox.com>
 In-Reply-To: <1443116094-7969-1-git-send-email-sagig@mellanox.com>
 References: <1443116094-7969-1-git-send-email-sagig@mellanox.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Instead of maintaining a fastreg page list, keep an sg table
-and convert an array of pages to a sg list. Then call ib_map_mr_sg
-and construct ib_reg_wr.
-
-Note that the next step would be to have NFS work with sg lists
-as it maps well to sk_frags (see comment from hch
-http://marc.info/?l=linux-rdma&m=143677002622296&w=2).
+This is a perparation patch for the new registration API
+conversion. It splits srp_map_sg per registration strategy
+(srp_map_sg[fmr|fr|dma]. On its own it adds some code duplication,
+but it makes the API switch easier to comprehend.
 
 Signed-off-by: Sagi Grimberg <sagig@mellanox.com>
-Acked-by: Christoph Hellwig <hch@lst.de>
 ---
- net/sunrpc/xprtrdma/frwr_ops.c  | 113 +++++++++++++++++++++++-----------------
- net/sunrpc/xprtrdma/xprt_rdma.h |   3 +-
- 2 files changed, 68 insertions(+), 48 deletions(-)
+ drivers/infiniband/ulp/srp/ib_srp.c | 156 ++++++++++++++++++++++++------------
+ 1 file changed, 105 insertions(+), 51 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
-index 0d2f46f600b6..b80a82149977 100644
---- a/net/sunrpc/xprtrdma/frwr_ops.c
-+++ b/net/sunrpc/xprtrdma/frwr_ops.c
-@@ -151,9 +151,13 @@ __frwr_init(struct rpcrdma_mw *r, struct ib_pd *pd, struct ib_device *device,
- 	f->fr_mr = ib_alloc_mr(pd, IB_MR_TYPE_MEM_REG, depth);
- 	if (IS_ERR(f->fr_mr))
- 		goto out_mr_err;
--	f->fr_pgl = ib_alloc_fast_reg_page_list(device, depth);
--	if (IS_ERR(f->fr_pgl))
+diff --git a/drivers/infiniband/ulp/srp/ib_srp.c b/drivers/infiniband/ulp/srp/ib_srp.c
+index f8b9c18da03d..74748d1075fc 100644
+--- a/drivers/infiniband/ulp/srp/ib_srp.c
++++ b/drivers/infiniband/ulp/srp/ib_srp.c
+@@ -1286,6 +1286,17 @@ static int srp_map_finish_fmr(struct srp_map_state *state,
+ 	if (WARN_ON_ONCE(state->fmr.next >= state->fmr.end))
+ 		return -ENOMEM;
+ 
++	WARN_ON_ONCE(!dev->use_fmr);
 +
-+	f->sg = kcalloc(depth, sizeof(*f->sg), GFP_KERNEL);
-+	if (!f->sg)
- 		goto out_list_err;
++	if (state->npages == 0)
++		return 0;
 +
-+	sg_init_table(f->sg, depth);
++	if (state->npages == 1 && target->global_mr) {
++		srp_map_desc(state, state->base_dma_addr, state->dma_len,
++			     target->global_mr->rkey);
++		return 0;
++	}
++
+ 	fmr = ib_fmr_pool_map_phys(ch->fmr_pool, state->pages,
+ 				   state->npages, io_addr);
+ 	if (IS_ERR(fmr))
+@@ -1297,6 +1308,9 @@ static int srp_map_finish_fmr(struct srp_map_state *state,
+ 	srp_map_desc(state, state->base_dma_addr & ~dev->mr_page_mask,
+ 		     state->dma_len, fmr->fmr->rkey);
+ 
++	state->npages = 0;
++	state->dma_len = 0;
 +
  	return 0;
- 
- out_mr_err:
-@@ -163,7 +167,7 @@ out_mr_err:
- 	return rc;
- 
- out_list_err:
--	rc = PTR_ERR(f->fr_pgl);
-+	rc = -ENOMEM;
- 	dprintk("RPC:       %s: ib_alloc_fast_reg_page_list status %i\n",
- 		__func__, rc);
- 	ib_dereg_mr(f->fr_mr);
-@@ -179,7 +183,7 @@ __frwr_release(struct rpcrdma_mw *r)
- 	if (rc)
- 		dprintk("RPC:       %s: ib_dereg_mr status %i\n",
- 			__func__, rc);
--	ib_free_fast_reg_page_list(r->r.frmr.fr_pgl);
-+	kfree(r->r.frmr.sg);
  }
  
- static int
-@@ -312,14 +316,11 @@ frwr_op_map(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
- 	struct rpcrdma_mw *mw;
- 	struct rpcrdma_frmr *frmr;
- 	struct ib_mr *mr;
--	struct ib_fast_reg_wr fastreg_wr;
-+	struct ib_reg_wr reg_wr;
- 	struct ib_send_wr *bad_wr;
-+	unsigned int dma_nents;
- 	u8 key;
--	int len, pageoff;
--	int i, rc;
--	int seg_len;
--	u64 pa;
--	int page_no;
-+	int i, rc, len, n;
- 
- 	mw = seg1->rl_mw;
- 	seg1->rl_mw = NULL;
-@@ -332,64 +333,81 @@ frwr_op_map(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
- 	} while (mw->r.frmr.fr_state != FRMR_IS_INVALID);
- 	frmr = &mw->r.frmr;
- 	frmr->fr_state = FRMR_IS_VALID;
-+	mr = frmr->fr_mr;
- 
--	pageoff = offset_in_page(seg1->mr_offset);
--	seg1->mr_offset -= pageoff;	/* start of page */
--	seg1->mr_len += pageoff;
--	len = -pageoff;
- 	if (nsegs > ia->ri_max_frmr_depth)
- 		nsegs = ia->ri_max_frmr_depth;
- 
--	for (page_no = i = 0; i < nsegs;) {
--		rpcrdma_map_one(device, seg, direction);
--		pa = seg->mr_dma;
--		for (seg_len = seg->mr_len; seg_len > 0; seg_len -= PAGE_SIZE) {
--			frmr->fr_pgl->page_list[page_no++] = pa;
--			pa += PAGE_SIZE;
--		}
-+	for (len = 0, i = 0; i < nsegs;) {
-+		if (seg->mr_page)
-+			sg_set_page(&frmr->sg[i],
-+				    seg->mr_page,
-+				    seg->mr_len,
-+				    offset_in_page(seg->mr_offset));
-+		else
-+			sg_set_buf(&frmr->sg[i], seg->mr_offset,
-+				   seg->mr_len);
+@@ -1309,10 +1323,23 @@ static int srp_map_finish_fr(struct srp_map_state *state,
+ 	struct ib_fast_reg_wr wr;
+ 	struct srp_fr_desc *desc;
+ 	u32 rkey;
++	int err;
 +
- 		len += seg->mr_len;
- 		++seg;
- 		++i;
+ 
+ 	if (WARN_ON_ONCE(state->fr.next >= state->fr.end))
+ 		return -ENOMEM;
+ 
++	WARN_ON_ONCE(!dev->use_fast_reg);
 +
- 		/* Check for holes */
- 		if ((i < nsegs && offset_in_page(seg->mr_offset)) ||
- 		    offset_in_page((seg-1)->mr_offset + (seg-1)->mr_len))
- 			break;
- 	}
-+	frmr->sg_nents = i;
++	if (state->npages == 0)
++		return 0;
 +
-+	dma_nents = ib_dma_map_sg(device, frmr->sg, frmr->sg_nents, direction);
-+	if (!dma_nents) {
-+		pr_err("RPC:       %s: failed to dma map sg %p sg_nents %d\n",
-+		       __func__, frmr->sg, frmr->sg_nents);
-+		return -ENOMEM;
++	if (state->npages == 1 && target->global_mr) {
++		srp_map_desc(state, state->base_dma_addr, state->dma_len,
++			     target->global_mr->rkey);
++		return 0;
 +	}
 +
-+	n = ib_map_mr_sg(mr, frmr->sg, frmr->sg_nents, PAGE_SIZE);
-+	if (unlikely(n != frmr->sg_nents)) {
-+		pr_err("RPC:       %s: failed to map mr %p (%d/%d)\n",
-+		       __func__, frmr->fr_mr, n, frmr->sg_nents);
-+		rc = n < 0 ? n : -EINVAL;
-+		goto out_senderr;
-+	}
+ 	desc = srp_fr_pool_get(ch->fr_pool);
+ 	if (!desc)
+ 		return -ENOMEM;
+@@ -1342,7 +1369,14 @@ static int srp_map_finish_fr(struct srp_map_state *state,
+ 	srp_map_desc(state, state->base_dma_addr, state->dma_len,
+ 		     desc->mr->rkey);
+ 
+-	return ib_post_send(ch->qp, &wr.wr, &bad_wr);
++	err = ib_post_send(ch->qp, &wr.wr, &bad_wr);
++	if (err)
++		return err;
 +
- 	dprintk("RPC:       %s: Using frmr %p to map %d segments (%d bytes)\n",
--		__func__, mw, i, len);
++	state->npages = 0;
++	state->dma_len = 0;
++
++	return 0;
+ }
+ 
+ static int srp_finish_mapping(struct srp_map_state *state,
+@@ -1350,26 +1384,9 @@ static int srp_finish_mapping(struct srp_map_state *state,
+ {
+ 	struct srp_target_port *target = ch->target;
+ 	struct srp_device *dev = target->srp_host->srp_dev;
+-	int ret = 0;
 -
--	memset(&fastreg_wr, 0, sizeof(fastreg_wr));
--	fastreg_wr.wr.wr_id = (unsigned long)(void *)mw;
--	fastreg_wr.wr.opcode = IB_WR_FAST_REG_MR;
--	fastreg_wr.iova_start = seg1->mr_dma + pageoff;
--	fastreg_wr.page_list = frmr->fr_pgl;
--	fastreg_wr.page_shift = PAGE_SHIFT;
--	fastreg_wr.page_list_len = page_no;
--	fastreg_wr.length = len;
--	fastreg_wr.access_flags = writing ?
--				IB_ACCESS_REMOTE_WRITE | IB_ACCESS_LOCAL_WRITE :
--				IB_ACCESS_REMOTE_READ;
--	mr = frmr->fr_mr;
-+		__func__, mw, frmr->sg_nents, mr->length);
-+
- 	key = (u8)(mr->rkey & 0x000000FF);
- 	ib_update_fast_reg_key(mr, ++key);
--	fastreg_wr.rkey = mr->rkey;
-+
-+	reg_wr.wr.next = NULL;
-+	reg_wr.wr.opcode = IB_WR_REG_MR;
-+	reg_wr.wr.wr_id = (uintptr_t)mw;
-+	reg_wr.wr.num_sge = 0;
-+	reg_wr.wr.send_flags = 0;
-+	reg_wr.mr = mr;
-+	reg_wr.key = mr->rkey;
-+	reg_wr.access = writing ?
-+			IB_ACCESS_REMOTE_WRITE | IB_ACCESS_LOCAL_WRITE :
-+			IB_ACCESS_REMOTE_READ;
+-	WARN_ON_ONCE(!dev->use_fast_reg && !dev->use_fmr);
+-
+-	if (state->npages == 0)
+-		return 0;
  
- 	DECR_CQCOUNT(&r_xprt->rx_ep);
--	rc = ib_post_send(ia->ri_id->qp, &fastreg_wr.wr, &bad_wr);
-+	rc = ib_post_send(ia->ri_id->qp, &reg_wr.wr, &bad_wr);
- 	if (rc)
- 		goto out_senderr;
- 
-+	seg1->mr_dir = direction;
- 	seg1->rl_mw = mw;
- 	seg1->mr_rkey = mr->rkey;
--	seg1->mr_base = seg1->mr_dma + pageoff;
--	seg1->mr_nsegs = i;
--	seg1->mr_len = len;
--	return i;
-+	seg1->mr_base = mr->iova;
-+	seg1->mr_nsegs = frmr->sg_nents;
-+	seg1->mr_len = mr->length;
-+
-+	return frmr->sg_nents;
- 
- out_senderr:
- 	dprintk("RPC:       %s: ib_post_send status %i\n", __func__, rc);
--	while (i--)
--		rpcrdma_unmap_one(device, --seg);
-+	ib_dma_unmap_sg(device, frmr->sg, frmr->sg_nents, direction);
- 	__frwr_queue_recovery(mw);
- 	return rc;
+-	if (state->npages == 1 && target->global_mr)
+-		srp_map_desc(state, state->base_dma_addr, state->dma_len,
+-			     target->global_mr->rkey);
+-	else
+-		ret = dev->use_fast_reg ? srp_map_finish_fr(state, ch) :
+-			srp_map_finish_fmr(state, ch);
+-
+-	if (ret == 0) {
+-		state->npages = 0;
+-		state->dma_len = 0;
+-	}
+-
+-	return ret;
++	return dev->use_fast_reg ? srp_map_finish_fr(state, ch) :
++				   srp_map_finish_fmr(state, ch);
  }
-@@ -403,28 +421,29 @@ frwr_op_unmap(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg)
- 	struct rpcrdma_mr_seg *seg1 = seg;
- 	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
- 	struct rpcrdma_mw *mw = seg1->rl_mw;
-+	struct rpcrdma_frmr *frmr = &mw->r.frmr;
- 	struct ib_send_wr invalidate_wr, *bad_wr;
- 	int rc, nsegs = seg->mr_nsegs;
  
- 	dprintk("RPC:       %s: FRMR %p\n", __func__, mw);
+ static int srp_map_sg_entry(struct srp_map_state *state,
+@@ -1415,47 +1432,79 @@ static int srp_map_sg_entry(struct srp_map_state *state,
+ 	return ret;
+ }
  
- 	seg1->rl_mw = NULL;
--	mw->r.frmr.fr_state = FRMR_IS_INVALID;
-+	frmr->fr_state = FRMR_IS_INVALID;
+-static int srp_map_sg(struct srp_map_state *state, struct srp_rdma_ch *ch,
+-		      struct srp_request *req, struct scatterlist *scat,
+-		      int count)
++static int srp_map_sg_fmr(struct srp_map_state *state, struct srp_rdma_ch *ch,
++			  struct srp_request *req, struct scatterlist *scat,
++			  int count)
+ {
+-	struct srp_target_port *target = ch->target;
+-	struct srp_device *dev = target->srp_host->srp_dev;
+ 	struct scatterlist *sg;
+ 	int i, ret;
  
- 	memset(&invalidate_wr, 0, sizeof(invalidate_wr));
- 	invalidate_wr.wr_id = (unsigned long)(void *)mw;
- 	invalidate_wr.opcode = IB_WR_LOCAL_INV;
--	invalidate_wr.ex.invalidate_rkey = mw->r.frmr.fr_mr->rkey;
-+	invalidate_wr.ex.invalidate_rkey = frmr->fr_mr->rkey;
- 	DECR_CQCOUNT(&r_xprt->rx_ep);
- 
--	while (seg1->mr_nsegs--)
--		rpcrdma_unmap_one(ia->ri_device, seg++);
- 	read_lock(&ia->ri_qplock);
- 	rc = ib_post_send(ia->ri_id->qp, &invalidate_wr, &bad_wr);
- 	read_unlock(&ia->ri_qplock);
- 	if (rc)
- 		goto out_err;
- 
-+	ib_dma_unmap_sg(ia->ri_device, frmr->sg, frmr->sg_nents, seg1->mr_dir);
+-	state->desc	= req->indirect_desc;
+-	state->pages	= req->map_page;
+-	if (dev->use_fast_reg) {
+-		state->fr.next = req->fr_list;
+-		state->fr.end = req->fr_list + target->cmd_sg_cnt;
+-	} else if (dev->use_fmr) {
+-		state->fmr.next = req->fmr_list;
+-		state->fmr.end = req->fmr_list + target->cmd_sg_cnt;
++	state->desc = req->indirect_desc;
++	state->pages = req->map_page;
++	state->fmr.next = req->fmr_list;
++	state->fmr.end = req->fmr_list + ch->target->cmd_sg_cnt;
 +
- 	rpcrdma_put_mw(r_xprt, mw);
- 	return nsegs;
++	for_each_sg(scat, sg, count, i) {
++		ret = srp_map_sg_entry(state, ch, sg, i);
++		if (ret)
++			return ret;
+ 	}
  
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index d252457ff21a..00773636d17e 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -195,7 +195,8 @@ enum rpcrdma_frmr_state {
- };
+-	if (dev->use_fast_reg || dev->use_fmr) {
+-		for_each_sg(scat, sg, count, i) {
+-			ret = srp_map_sg_entry(state, ch, sg, i);
+-			if (ret)
+-				goto out;
+-		}
+-		ret = srp_finish_mapping(state, ch);
++	ret = srp_finish_mapping(state, ch);
++	if (ret)
++		return ret;
++
++	req->nmdesc = state->nmdesc;
++
++	return 0;
++}
++
++static int srp_map_sg_fr(struct srp_map_state *state, struct srp_rdma_ch *ch,
++			 struct srp_request *req, struct scatterlist *scat,
++			 int count)
++{
++	struct scatterlist *sg;
++	int i, ret;
++
++	state->desc = req->indirect_desc;
++	state->pages = req->map_page;
++	state->fmr.next = req->fmr_list;
++	state->fmr.end = req->fmr_list + ch->target->cmd_sg_cnt;
++
++	for_each_sg(scat, sg, count, i) {
++		ret = srp_map_sg_entry(state, ch, sg, i);
+ 		if (ret)
+-			goto out;
+-	} else {
+-		for_each_sg(scat, sg, count, i) {
+-			srp_map_desc(state, ib_sg_dma_address(dev->dev, sg),
+-				     ib_sg_dma_len(dev->dev, sg),
+-				     target->global_mr->rkey);
+-		}
++			return ret;
++	}
++
++	ret = srp_finish_mapping(state, ch);
++	if (ret)
++		return ret;
++
++	req->nmdesc = state->nmdesc;
++
++	return 0;
++}
++
++static int srp_map_sg_dma(struct srp_map_state *state, struct srp_rdma_ch *ch,
++			  struct srp_request *req, struct scatterlist *scat,
++			  int count)
++{
++	struct srp_target_port *target = ch->target;
++	struct srp_device *dev = target->srp_host->srp_dev;
++	struct scatterlist *sg;
++	int i;
++
++	state->desc = req->indirect_desc;
++	for_each_sg(scat, sg, count, i) {
++		srp_map_desc(state, ib_sg_dma_address(dev->dev, sg),
++			     ib_sg_dma_len(dev->dev, sg),
++			     target->global_mr->rkey);
+ 	}
  
- struct rpcrdma_frmr {
--	struct ib_fast_reg_page_list	*fr_pgl;
-+	struct scatterlist		*sg;
-+	unsigned int			sg_nents;
- 	struct ib_mr			*fr_mr;
- 	enum rpcrdma_frmr_state		fr_state;
- 	struct work_struct		fr_work;
+ 	req->nmdesc = state->nmdesc;
+-	ret = 0;
+ 
+-out:
+-	return ret;
++	return 0;
+ }
+ 
+ /*
+@@ -1563,7 +1612,12 @@ static int srp_map_data(struct scsi_cmnd *scmnd, struct srp_rdma_ch *ch,
+ 				   target->indirect_size, DMA_TO_DEVICE);
+ 
+ 	memset(&state, 0, sizeof(state));
+-	srp_map_sg(&state, ch, req, scat, count);
++	if (dev->use_fast_reg)
++		srp_map_sg_fr(&state, ch, req, scat, count);
++	else if (dev->use_fmr)
++		srp_map_sg_fmr(&state, ch, req, scat, count);
++	else
++		srp_map_sg_dma(&state, ch, req, scat, count);
+ 
+ 	/* We've mapped the request, now pull as much of the indirect
+ 	 * descriptor table as we can into the command buffer. If this
 -- 
 1.8.4.3
 
