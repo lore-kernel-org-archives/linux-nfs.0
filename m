@@ -1,46 +1,54 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pa0-f49.google.com ([209.85.220.49]:32915 "EHLO
-	mail-pa0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753627AbbIXM6w (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Sep 2015 08:58:52 -0400
-Received: by pacex6 with SMTP id ex6so72735761pac.0
-        for <linux-nfs@vger.kernel.org>; Thu, 24 Sep 2015 05:58:52 -0700 (PDT)
-Subject: [PATCH 8/8] NFS: Return directly if encode_sessionid fail
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-References: <5603F269.9060102@gmail.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        kinglongmee@gmail.com
-From: Kinglong Mee <kinglongmee@gmail.com>
-Message-ID: <5603F37E.1050002@gmail.com>
-Date: Thu, 24 Sep 2015 20:58:38 +0800
+Received: from mail-wi0-f169.google.com ([209.85.212.169]:38597 "EHLO
+	mail-wi0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754571AbbIXNEN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Sep 2015 09:04:13 -0400
+Received: by wiclk2 with SMTP id lk2so111838259wic.1
+        for <linux-nfs@vger.kernel.org>; Thu, 24 Sep 2015 06:04:12 -0700 (PDT)
+Subject: Re: [PATCH rdma-rc v2 1/4] xprtrdma: Replace global lkey with lkey
+ local to PD
+To: Anna Schumaker <Anna.Schumaker@netapp.com>,
+        Sagi Grimberg <sagig@mellanox.com>, Doug Ledford <dledford@redhat.com>
+References: <1443080064-28760-1-git-send-email-sagig@mellanox.com>
+ <1443080064-28760-2-git-send-email-sagig@mellanox.com>
+ <5603F34F.3050505@Netapp.com>
+Cc: Chuck Lever <chuck.lever@oracle.com>, linux-rdma@vger.kernel.org,
+        linux-nfs <linux-nfs@vger.kernel.org>
+From: Sagi Grimberg <sagig@dev.mellanox.co.il>
+Message-ID: <5603F4C8.5080500@dev.mellanox.co.il>
+Date: Thu, 24 Sep 2015 16:04:08 +0300
 MIME-Version: 1.0
-In-Reply-To: <5603F269.9060102@gmail.com>
-Content-Type: text/plain; charset=utf-8
+In-Reply-To: <5603F34F.3050505@Netapp.com>
+Content-Type: text/plain; charset=utf-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-encode_sessionid() may return error, nfs needs process the return value.
+On 9/24/2015 3:57 PM, Anna Schumaker wrote:
+> Hi Sagi,
 
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
----
- fs/nfs/callback_xdr.c | 4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
+Hey Anna,
 
-diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
-index 4ad39fe..646cdac 100644
---- a/fs/nfs/callback_xdr.c
-+++ b/fs/nfs/callback_xdr.c
-@@ -699,7 +699,9 @@ static __be32 encode_cb_sequence_res(struct svc_rqst *rqstp,
- 	if (unlikely(status != 0))
- 		goto out;
- 
--	encode_sessionid(xdr, &res->csr_sessionid);
-+	status = encode_sessionid(xdr, &res->csr_sessionid);
-+	if (status)
-+		goto out;
- 
- 	p = xdr_reserve_space(xdr, 4 * sizeof(uint32_t));
- 	if (unlikely(p == NULL))
--- 
-2.5.0
+>
+> On 09/24/2015 03:34 AM, Sagi Grimberg wrote:
+>> From: Chuck Lever <chuck.lever@oracle.com>
+>>
+>> The core API has changed so that devices that do not have a global
+>> DMA lkey automatically create an mr, per-PD, and make that lkey
+>> available. The global DMA lkey interface is going away in favor of
+>> the per-PD DMA lkey.
+>>
+>> The per-PD DMA lkey is always available. Convert xprtrdma to use the
+>> device's per-PD DMA lkey for regbufs, no matter which memory
+>> registration scheme is in use.
+>
+> This is going through an RDMA tree somewhere, correct?
 
+Yes, this was from Chuck's 4.4 RFC series. I just included it
+in this set as it is related to a driver fix that should go to
+4.3-rc.
+
+>  You can add my:
+>
+> Acked-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+
+Thanks!
