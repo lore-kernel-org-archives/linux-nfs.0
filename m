@@ -1,64 +1,72 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-la0-f51.google.com ([209.85.215.51]:36281 "EHLO
-	mail-la0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754537AbbIWWOl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Sep 2015 18:14:41 -0400
-Received: by lacao8 with SMTP id ao8so44176449lac.3
-        for <linux-nfs@vger.kernel.org>; Wed, 23 Sep 2015 15:14:40 -0700 (PDT)
+Received: from mx2.suse.de ([195.135.220.15]:35306 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932095AbbIXCAg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 23 Sep 2015 22:00:36 -0400
+From: Neil Brown <neilb@suse.de>
+To: dsterba@suse.cz
+Date: Thu, 24 Sep 2015 11:59:02 +1000
+Cc: Josef Bacik <jbacik@fb.com>, Chris Mason <clm@fb.com>,
+        Jan Kara <jack@suse.cz>,
+        Ryusuke Konishi <konishi.ryusuke@lab.ntt.co.jp>,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-nilfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-btrfs@vger.kernel.org
+Subject: Re: [PATCH 1/3] BTRFS: support NFSv2 export
+In-Reply-To: <20150511081309.GI23255@suse.cz>
+References: <20150508001142.31129.7604.stgit@notabene.brown> <20150508001623.31129.91695.stgit@notabene.brown> <20150511081309.GI23255@suse.cz>
+Message-ID: <87r3lowpax.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-In-Reply-To: <20150923210531.GC29349@fieldses.org>
-References: <1441448856-13478-1-git-send-email-agruenba@redhat.com>
-	<1441448856-13478-27-git-send-email-agruenba@redhat.com>
-	<20150922191108.GC19127@fieldses.org>
-	<20150923191832.GA29577@fieldses.org>
-	<CAHc6FU4YkLJUAQEfH7CG8sAzXYbGzg_ibyT7m26Fc1p26v1=VQ@mail.gmail.com>
-	<20150923203357.GC30521@fieldses.org>
-	<CAHc6FU4Jh=-K5=DBERP3-vv8Sak4XGjVJgJ85mTeyPiApUhz+g@mail.gmail.com>
-	<20150923210531.GC29349@fieldses.org>
-Date: Thu, 24 Sep 2015 00:14:40 +0200
-Message-ID: <CAHc6FU7W-oLTOqBxmzAOY5mM37-J6NcnXrhm2SnoDXqHBJbhRQ@mail.gmail.com>
-Subject: Re: [RFC v7 26/41] richacl: Apply the file masks to a richacl
-From: Andreas Gruenbacher <agruenba@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: LKML <linux-kernel@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-nfs@vger.kernel.org, linux-api@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-security-module@vger.kernel.org,
-        Andreas Gruenbacher <agruen@kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: multipart/signed; boundary="=-=-=";
+	micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-2015-09-23 23:05 GMT+02:00 J. Bruce Fields <bfields@fieldses.org>:
-> On Wed, Sep 23, 2015 at 10:40:18PM +0200, Andreas Gruenbacher wrote:
->> 2015-09-23 22:33 GMT+02:00 J. Bruce Fields <bfields@fieldses.org>:
->> > The same could be said if there's a group-i-belong-to:rwx::allow entry,
->> > do we make that exception too?
->>
->> We cannot because that would be incorrect for all other group members.
->
-> OK.  So people have to learn how the group mask works anyway, and now
-> they have to learn a special exception to that rule.
->
-> I don't like having this exception.  Or making the richacl->v4acl
-> translation dependent on the owner.
->
-> But I admit it's surprising to that an 0700 mask with
-> "bfields:rwx::allow" ACL denies access to a bfields-owned file.
+--=-=-=
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-I fully understand your point. This kind of acl is one of the the
-first things people will try, and nobody is going to accept when
-access is denied in this case though.
+David Sterba <dsterba@suse.cz> writes:
 
-Things are made worse by the fact that Windows has the concept of
-owner@ or group@ entries for inheritable permissions but not for
-effective ones; it will always produce and expect "bfields:rwx::allow"
-type entries instead of "owner@:rwx::allow" type entries. I'm not sure
-if Samba could bridge that gap.
+> On Fri, May 08, 2015 at 10:16:23AM +1000, NeilBrown wrote:
+>> The "fh_len" passed to ->fh_to_* is not guaranteed to be that same as
+>> that returned by encode_fh - it may be larger.
+>>=20
+>> With NFSv2, the filehandle is fixed length, so it may appear longer
+>> than expected and be zero-padded.
+>>=20
+>> So we must test that fh_len is at least some value, not exactly equal
+>> to it.
+>>=20
+>> Signed-off-by: NeilBrown <neilb@suse.de>
+>
+> Acked-by: David Sterba <dsterba@suse.cz>
 
-The fact that we cannot handle entries for groups the owner is in in a
-similar way is not a big deal; it's not surprising that changing the
-group file mode permission bits affects group entries.
+Thanks.  However I just checked mainline and this still hasn't been
+applied.
+Should I resend it to someone?  Who?
 
 Thanks,
-Andreas
+NeilBrown
+
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2
+
+iQIcBAEBCAAGBQJWA1jnAAoJEDnsnt1WYoG5KSAP/1716nmLGCRjmTwtXVI5R3mL
+io6SgWlTwBJvZYAF+vFys7UO5bgLnATHysY56EV5Pj3Ky3dWVz5NGap+qjCuyHNX
+fyCsXgfwbACB9zoYlKqADDsNMa0hpnUC0sLYiDzG9OyjQDaJyDPlv5mNJCFWHnyE
+fAohkp+OzBwi+v+SxFjtA5NjwGxzmJ2EXdxy5+klwspMcdLlbSLwveSOYMLxsh2b
+ZA5px7VCs6+lPDPZyI1u7nmv3z1NEBB+JZMcJhP3GJGBlv/f2aTGlaCaCHfI77EV
+zGOgZeTz6vkSw8kQTzq70sBGQsCyOBwioA7QgAXfiiQlfhYQZTV6bLPgPF9Qauu4
+C5x+8TreFMjUvAtFIbt18W4tiWSZqSj8uEfcwZSMBN6L+J76GDbT38FUr6ZoeAfj
+FLk9CZQEEb+ZolaMUi9l0dMgFdXKnciU3C601bHJPgedQVyxlM7Tx1d6qNFunmzE
+f0UnbuuoQJViY3ILQETE7XUxRtBp+VZSMZHxXNa3MbPqkV4P8cPZhiSlXGX9OOyn
+IFoT2a3xfvD1tJm2Hf2E7xUmbu+i4RBQvwc1KJJVK+VZpShN1M/c+FsuN2smCmzV
+KMDxqGAVmLDeJRzaoe0/WCLaBkG2sQcSqTH+FQUBwaElC2lL4ouDxqw2m1NVB/6p
+I+nRdvvjXrX/s1Jrq3jd
+=Zrth
+-----END PGP SIGNATURE-----
+--=-=-=--
