@@ -1,69 +1,42 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:58094 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754558AbbIXMmG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 24 Sep 2015 08:42:06 -0400
-Subject: Re: The Fall Bakeathon in Westford, Ma
-To: NFSv4 <nfsv4@ietf.org>, Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-References: <55AEAB99.7080407@RedHat.com>
-From: Steve Dickson <SteveD@redhat.com>
-Message-ID: <5603EF9C.1090906@RedHat.com>
-Date: Thu, 24 Sep 2015 08:42:04 -0400
+Received: from mail-pa0-f53.google.com ([209.85.220.53]:35157 "EHLO
+	mail-pa0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752622AbbIXMyP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Sep 2015 08:54:15 -0400
+Received: by pacfv12 with SMTP id fv12so73843103pac.2
+        for <linux-nfs@vger.kernel.org>; Thu, 24 Sep 2015 05:54:15 -0700 (PDT)
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        kinglongmee@gmail.com
+From: Kinglong Mee <kinglongmee@gmail.com>
+Subject: [PATCH 0/8] Some cleanups and bugfixes for nfs client callback
+Message-ID: <5603F269.9060102@gmail.com>
+Date: Thu, 24 Sep 2015 20:54:01 +0800
 MIME-Version: 1.0
-In-Reply-To: <55AEAB99.7080407@RedHat.com>
-Content-Type: text/plain; charset=windows-1252
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
+The first five are cleanups, and last three are bugfixes
+for nfs client callback.
 
-Here is the list of people that said they are coming to the Fall BAT
-   http://nfsv4bat.org/Events/2015/October/Bakeathon-attedance-15.pdf
+Kinglong Mee (8):
+  NFS: Get rid of the unneeded addr stored in callback arguments
+  NFS: Remove the left global variable nfs_callback_tcpport
+  NFS: Remove the left function defines in callback.h
+  NFS: Remove unneeded NFS_DEBUG checking before define NFSDBG_FACILITY
+  NFS: Use NFS4_MAX_SESSIONID_LEN directly for decode/encode sessionid
+  NFS: Fix bad defines of callback response maxsize
+  NFS: Fix bad checking of max taglen in callback request
+  NFS: Return directly if encode_sessionid fail
 
-Please make sure your name is on the list if are
-planing on attending. If you name is not on the
-list and you are planning on attending, please 
-let me know asap... 
+ fs/nfs/callback.h      | 12 ------------
+ fs/nfs/callback_proc.c |  2 --
+ fs/nfs/callback_xdr.c  | 39 ++++++++++++++++++---------------------
+ fs/nfs/mount_clnt.c    |  4 +---
+ fs/nfs/super.c         |  2 --
+ 5 files changed, 19 insertions(+), 40 deletions(-)
 
-Also please make sure the t-shirt sizes are accurate,
-since I will be putting in the order this afternoon.
+-- 
+2.5.0
 
-steved.
-
-On 07/21/2015 04:29 PM, Steve Dickson wrote:
-> Red Hat is pleased to announce the Fall NFS Bake-a-ton will be
-> hosted by Red Hat in Westford, MA office 
-> The Date: *Oct 12th - 16th*
-> 
-> Details and registration info:
->     http://nfsv4bat.org/Events/2015/October/BAT/index.html
-> 
-> Something new this year... RDMA testing! I was able 
-> to secure a side room off one of the conference room where 
-> we can put the noisy machinery... So RDMA testing is on! 
-> 
-> Once again I have blocked some rooms at two different hotels 
-> this year. The Westford Regency Inn and Hampton Inn.
-> 
-> The Westford Regency Inn now has a  shuttle bus to/from
-> the Red Hat office as well as some updated rooms, ask
-> for them. 
-> 
-> The Hampton Inn is much newer but a bit more expensive and
-> not as close the Westford Regency but walking distance to a 
-> couple of decent restaurants. Plus a free breakfast as all 
-> Hampton Inn do. 
-> 
-> Please book *asap* since there is a limited number of rooms
-> at the Red Hat rate.  
-> 
-> When registering (i.e. replying to this email) please give me
->    * Company Name
->    * How engineers are coming
->    * T-shirt sizes
->    * Hotel you will be staying in
-> 
-> I hope to see you in October!!!
-> 
-> steved.
-> 
