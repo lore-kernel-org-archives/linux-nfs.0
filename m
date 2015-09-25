@@ -1,64 +1,64 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:34998 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:35000 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932976AbbIYURV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Sep 2015 16:17:21 -0400
-Date: Fri, 25 Sep 2015 16:17:20 -0400
+	id S933168AbbIYUZQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Sep 2015 16:25:16 -0400
+Date: Fri, 25 Sep 2015 16:25:15 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Andreas Gruenbacher <agruenba@redhat.com>
-Cc: LKML <linux-kernel@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Linux API Mailing List <linux-api@vger.kernel.org>,
-        linux-cifs@vger.kernel.org,
-        LSM List <linux-security-module@vger.kernel.org>
-Subject: Re: [RFC v7 25/41] richacl: Isolate the owner and group classes
-Message-ID: <20150925201720.GA15359@fieldses.org>
-References: <1441448856-13478-1-git-send-email-agruenba@redhat.com>
- <1441448856-13478-26-git-send-email-agruenba@redhat.com>
- <20150922190224.GA19127@fieldses.org>
- <CAHc6FU7_+fbyG0mEu3pUkfaV72AM0DzJnBES=b--koXJgo0a2g@mail.gmail.com>
- <1443180341-22911-1-git-send-email-agruenba@redhat.com>
+To: Andrzej Hajda <a.hajda@samsung.com>
+Cc: linux-kernel@vger.kernel.org,
+        Bartlomiej Zolnierkiewicz <b.zolnierkie@samsung.com>,
+        Marek Szyprowski <m.szyprowski@samsung.com>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        "David S. Miller" <davem@davemloft.net>, linux-nfs@vger.kernel.org,
+        netdev@vger.kernel.org
+Subject: Re: [PATCH 01/19] SUNRPC: fix variable type
+Message-ID: <20150925202515.GA15653@fieldses.org>
+References: <1443103227-25612-1-git-send-email-a.hajda@samsung.com>
+ <1443103227-25612-2-git-send-email-a.hajda@samsung.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1443180341-22911-1-git-send-email-agruenba@redhat.com>
+In-Reply-To: <1443103227-25612-2-git-send-email-a.hajda@samsung.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Sep 25, 2015 at 01:25:41PM +0200, Andreas Gruenbacher wrote:
-> Here is another minor improvement that produces deny aces with fewer
-> permissions in them and avoids creating unnecessary deny aces in some
-> cases.
+ACK.  Assuming Trond gets this.--b.
 
-Looks good.--b.
-
+On Thu, Sep 24, 2015 at 04:00:09PM +0200, Andrzej Hajda wrote:
+> Due to incorrect len type bc_send_request returned always zero.
 > 
-> Andreas
+> The problem has been detected using proposed semantic patch
+> scripts/coccinelle/tests/assign_signed_to_unsigned.cocci [1].
 > 
+> [1]: http://permalink.gmane.org/gmane.linux.kernel/2046107
+> 
+> Signed-off-by: Andrzej Hajda <a.hajda@samsung.com>
 > ---
->  fs/richacl_compat.c | 5 ++---
->  1 file changed, 2 insertions(+), 3 deletions(-)
+> Hi,
 > 
-> diff --git a/fs/richacl_compat.c b/fs/richacl_compat.c
-> index 2f53394..bc0bcfe 100644
-> --- a/fs/richacl_compat.c
-> +++ b/fs/richacl_compat.c
-> @@ -605,14 +605,13 @@ __richacl_isolate_who(struct richacl_alloc *alloc, struct richace *who,
->  	int n;
+> To avoid problems with too many mail recipients I have sent whole
+> patchset only to LKML. Anyway patches have no dependencies.
+> 
+> Regards
+> Andrzej
+> ---
+>  net/sunrpc/xprtsock.c | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+> index 1a85e0e..60fb002 100644
+> --- a/net/sunrpc/xprtsock.c
+> +++ b/net/sunrpc/xprtsock.c
+> @@ -2472,7 +2472,7 @@ static int bc_send_request(struct rpc_task *task)
+>  {
+>  	struct rpc_rqst *req = task->tk_rqstp;
+>  	struct svc_xprt	*xprt;
+> -	u32                     len;
+> +	int len;
 >  
+>  	dprintk("sending request with xid: %08x\n", ntohl(req->rq_xid));
 >  	/*
-> -	 * Compute the permissions already denied to @who.  There are no
-> +	 * Compute the permissions already defined for @who.  There are no
->  	 * everyone@ deny aces left in the acl at this stage.
->  	 */
->  	richacl_for_each_entry(ace, acl) {
->  		if (richace_is_inherit_only(ace))
->  			continue;
-> -		if (richace_is_same_identifier(acl, ace, who) &&
-> -		    richace_is_deny(ace))
-> +		if (richace_is_same_identifier(acl, ace, who))
->  			deny &= ~ace->e_mask;
->  	}
->  	if (!deny)
 > -- 
-> 2.4.3
+> 1.9.1
