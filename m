@@ -1,17 +1,17 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx143.netapp.com ([216.240.21.24]:59082 "EHLO mx143.netapp.com"
+Received: from mx144.netapp.com ([216.240.21.25]:47116 "EHLO mx144.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933301AbbIYUsj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Sep 2015 16:48:39 -0400
+	id S933301AbbIYUsg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Sep 2015 16:48:36 -0400
 From: Anna Schumaker <Anna.Schumaker@netapp.com>
 To: <linux-nfs@vger.kernel.org>, <linux-btrfs@vger.kernel.org>,
         <linux-fsdevel@vger.kernel.org>, <linux-api@vger.kernel.org>,
         <zab@zabbo.net>, <viro@zeniv.linux.org.uk>, <clm@fb.com>,
         <darrick.wong@oracle.com>, <mtk.manpages@gmail.com>,
         <andros@netapp.com>, <hch@infradead.org>
-Subject: [PATCH v3 10/9] copy_file_range.2: New page documenting copy_file_range()
-Date: Fri, 25 Sep 2015 16:48:16 -0400
-Message-ID: <1443214096-12769-11-git-send-email-Anna.Schumaker@Netapp.com>
+Subject: [PATCH v3 8/9] vfs: copy_file_range() can do a pagecache copy with splice
+Date: Fri, 25 Sep 2015 16:48:14 -0400
+Message-ID: <1443214096-12769-9-git-send-email-Anna.Schumaker@Netapp.com>
 In-Reply-To: <1443214096-12769-1-git-send-email-Anna.Schumaker@Netapp.com>
 References: <1443214096-12769-1-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
@@ -19,252 +19,175 @@ Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-copy_file_range() is a new system call for copying ranges of data
-completely in the kernel.  This gives filesystems an opportunity to
-implement some kind of "copy acceleration", such as reflinks or
-server-side-copy (in the case of NFS).
+The NFS server will need some kind offallback for filesystems that don't
+have any kind of copy acceleration, and it should be generally useful to
+have an in-kernel copy to avoid lots of switches between kernel and user
+space.
+
+I make this configurable by adding two new flags.  Users who only want a
+reflink can pass COPY_FR_REFLINK, and users who want a full data copy can
+pass COPY_FR_COPY.  The default (flags=0) means to first attempt a
+reflink, but use the pagecache if that fails.
+
+I moved the rw_verify_area() calls into the fallback code since some
+filesystems can handle reflinking a large range.
 
 Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 ---
 v3:
-- Added license information
-- Updated splice(2)
-- Various other edits after mailing list discussion
+- Check that both filesystems have the same filesystem type
+- Add COPY_FR_DEDUPE flag for Darrick
+- Check that at most one flag is set at a time
 ---
- man2/copy_file_range.2 | 211 +++++++++++++++++++++++++++++++++++++++++++++++++
- man2/splice.2          |   1 +
- 2 files changed, 212 insertions(+)
- create mode 100644 man2/copy_file_range.2
+ fs/read_write.c           | 61 +++++++++++++++++++++++++++++++----------------
+ include/linux/copy.h      |  6 +++++
+ include/uapi/linux/Kbuild |  1 +
+ include/uapi/linux/copy.h |  8 +++++++
+ 4 files changed, 56 insertions(+), 20 deletions(-)
+ create mode 100644 include/linux/copy.h
+ create mode 100644 include/uapi/linux/copy.h
 
-diff --git a/man2/copy_file_range.2 b/man2/copy_file_range.2
-new file mode 100644
-index 0000000..6d66d4a
---- /dev/null
-+++ b/man2/copy_file_range.2
-@@ -0,0 +1,211 @@
-+.\"This manpage is Copyright (C) 2015 Anna Schumaker <Anna.Schumaker@Netapp.com>
-+.\"
-+.\" %%%LICENSE_START(VERBATIM)
-+.\" Permission is granted to make and distribute verbatim copies of this
-+.\" manual provided the copyright notice and this permission notice are
-+.\" preserved on all copies.
-+.\"
-+.\" Permission is granted to copy and distribute modified versions of
-+.\" this manual under the conditions for verbatim copying, provided that
-+.\" the entire resulting derived work is distributed under the terms of
-+.\" a permission notice identical to this one.
-+.\"
-+.\" Since the Linux kernel and libraries are constantly changing, this
-+.\" manual page may be incorrect or out-of-date.  The author(s) assume.
-+.\" no responsibility for errors or omissions, or for damages resulting.
-+.\" from the use of the information contained herein.  The author(s) may.
-+.\" not have taken the same level of care in the production of this.
-+.\" manual, which is licensed free of charge, as they might when working.
-+.\" professionally.
-+.\"
-+.\" Formatted or processed versions of this manual, if unaccompanied by
-+.\" the source, must acknowledge the copyright and authors of this work.
-+.\" %%%LICENSE_END
-+.\"
-+.TH COPY 2 2015-08-31 "Linux" "Linux Programmer's Manual"
-+.SH NAME
-+copy_file_range \- Copy a range of data from one file to another
-+.SH SYNOPSIS
-+.nf
-+.B #include <linux/copy.h>
-+.B #include <sys/syscall.h>
-+.B #include <unistd.h>
-+
-+.BI "ssize_t copy_file_range(int " fd_in ", loff_t *" off_in ", int " fd_out ",
-+.BI "                        loff_t *" off_out ", size_t " len \
-+", unsigned int " flags );
-+.fi
-+.SH DESCRIPTION
-+The
-+.BR copy_file_range ()
-+system call performs an in-kernel copy between two file descriptors
-+without the additional cost of transferring data from the kernel to userspace
-+and then back into the kernel.
-+It copies up to
-+.I len
-+bytes of data from file descriptor
-+.I fd_in
-+to file descriptor
-+.IR fd_out ,
-+overwriting any data that exists within the requested range of the target file.
-+
-+The following semantics apply for
-+.IR off_in ,
-+and similar statements apply to
-+.IR off_out :
-+.IP * 3
-+If
-+.I off_in
-+is NULL, then bytes are read from
-+.I fd_in
-+starting from the current file offset, and the offset is
-+adjusted by the number of bytes copied.
-+.IP *
-+If
-+.I off_in
-+is not NULL, then
-+.I off_in
-+must point to a buffer that specifies the starting
-+offset where bytes from
-+.I fd_in
-+will be read.  The current file offset of
-+.I fd_in
-+is not changed, but
-+.I off_in
-+is adjusted appropriately.
-+.PP
-+
-+The
-+.I flags
-+argument can have one of the following flags set:
-+.TP 1.9i
-+.B COPY_FR_COPY
-+Copy all the file data in the requested range.
-+Some filesystems might be able to accelerate this copy
-+to avoid unnecessary data transfers.
-+.TP
-+.B COPY_FR_REFLINK
-+Create a lightweight "reflink", where data is not copied until
-+one of the files is modified.
-+.PP
-+The default behavior
-+.RI ( flags
-+== 0) is to try creating a reflink,
-+and if reflinking fails
-+.BR copy_file_range ()
-+will fall back to performing a full data copy.
-+.SH RETURN VALUE
-+Upon successful completion,
-+.BR copy_file_range ()
-+will return the number of bytes copied between files.
-+This could be less than the length originally requested.
-+
-+On error,
-+.BR copy_file_range ()
-+returns \-1 and
-+.I errno
-+is set to indicate the error.
-+.SH ERRORS
-+.TP
-+.B EBADF
-+One or more file descriptors are not valid; or
-+.I fd_in
-+is not open for reading; or
-+.I fd_out
-+is not open for writing.
-+.TP
-+.B EINVAL
-+Requested range extends beyond the end of the source file; or the
-+.I flags
-+argument is set to an invalid value.
-+.TP
-+.B EIO
-+A low level I/O error occurred while copying.
-+.TP
-+.B ENOMEM
-+Out of memory.
-+.TP
-+.B ENOSPC
-+There is not enough space on the target filesystem to complete the copy.
-+.TP
-+.B EOPNOTSUPP
-+.B COPY_REFLINK
-+was specified in
-+.IR flags ,
-+but the target filesystem does not support reflinks.
-+.TP
-+.B EXDEV
-+Target filesystem doesn't support cross-filesystem copies.
-+.SH VERSIONS
-+The
-+.BR copy_file_range ()
-+system call first appeared in Linux 4.4.
-+.SH CONFORMING TO
-+The
-+.BR copy_file_range ()
-+system call is a nonstandard Linux extension.
-+.SH EXAMPLE
-+.nf
-+#define _GNU_SOURCE
-+#include <fcntl.h>
+diff --git a/fs/read_write.c b/fs/read_write.c
+index ee9fa37..a0fd9dc 100644
+--- a/fs/read_write.c
++++ b/fs/read_write.c
+@@ -7,6 +7,7 @@
+ #include <linux/slab.h> 
+ #include <linux/stat.h>
+ #include <linux/fcntl.h>
 +#include <linux/copy.h>
-+#include <stdio.h>
-+#include <stdlib.h>
-+#include <sys/stat.h>
-+#include <sys/syscall.h>
-+#include <unistd.h>
-+
-+loff_t copy_file_range(int fd_in, loff_t *off_in, int fd_out,
-+                       loff_t *off_out, size_t len, unsigned int flags)
+ #include <linux/file.h>
+ #include <linux/uio.h>
+ #include <linux/fsnotify.h>
+@@ -1329,6 +1330,29 @@ COMPAT_SYSCALL_DEFINE4(sendfile64, int, out_fd, int, in_fd,
+ }
+ #endif
+ 
++static ssize_t vfs_copy_file_pagecache(struct file *file_in, loff_t pos_in,
++				       struct file *file_out, loff_t pos_out,
++				       size_t len)
 +{
-+    return syscall(__NR_copy_file_range, fd_in, off_in, fd_out,
-+                   off_out, len, flags);
++	ssize_t ret;
++
++	ret = rw_verify_area(READ, file_in, &pos_in, len);
++	if (ret >= 0) {
++		len = ret;
++		ret = rw_verify_area(WRITE, file_out, &pos_out, len);
++		if (ret >= 0)
++			len = ret;
++	}
++	if (ret < 0)
++		return ret;
++
++	file_start_write(file_out);
++	ret = do_splice_direct(file_in, &pos_in, file_out, &pos_out, len, 0);
++	file_end_write(file_out);
++
++	return ret;
 +}
 +
-+int main(int argc, char **argv)
-+{
-+    int fd_in, fd_out;
-+    struct stat stat;
-+    loff_t len, ret;
-+    char buf[2];
+ /*
+  * copy_file_range() differs from regular file read and write in that it
+  * specifically allows return partial success.  When it does so is up to
+@@ -1338,34 +1362,26 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
+ 			    struct file *file_out, loff_t pos_out,
+ 			    size_t len, unsigned int flags)
+ {
+-	struct inode *inode_in;
+-	struct inode *inode_out;
+ 	ssize_t ret;
+ 
+-	if (flags)
++	/* Flags should only be used exclusively. */
++	if ((flags & COPY_FR_COPY) && (flags & ~COPY_FR_COPY))
+ 		return -EINVAL;
++	if ((flags & COPY_FR_REFLINK) && (flags & ~COPY_FR_REFLINK))
++		return -EINVAL;
++	if (flags & COPY_FR_DEDUPE)
++		return -EOPNOTSUPP;
+ 
+-	/* copy_file_range allows full ssize_t len, ignoring MAX_RW_COUNT  */
+-	ret = rw_verify_area(READ, file_in, &pos_in, len);
+-	if (ret >= 0)
+-		ret = rw_verify_area(WRITE, file_out, &pos_out, len);
+-	if (ret < 0)
+-		return ret;
++	/* Default behavior is to try both. */
++	if (flags == 0)
++		flags = COPY_FR_COPY | COPY_FR_REFLINK;
+ 
+ 	if (!(file_in->f_mode & FMODE_READ) ||
+ 	    !(file_out->f_mode & FMODE_WRITE) ||
+ 	    (file_out->f_flags & O_APPEND) ||
+-	    !file_out->f_op || !file_out->f_op->copy_file_range)
++	    !file_out->f_op)
+ 		return -EBADF;
+ 
+-	inode_in = file_inode(file_in);
+-	inode_out = file_inode(file_out);
+-
+-	/* make sure offsets don't wrap and the input is inside i_size */
+-	if (pos_in + len < pos_in || pos_out + len < pos_out ||
+-	    pos_in + len > i_size_read(inode_in))
+-		return -EINVAL;
+-
+ 	if (len == 0)
+ 		return 0;
+ 
+@@ -1373,8 +1389,13 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
+ 	if (ret)
+ 		return ret;
+ 
+-	ret = file_out->f_op->copy_file_range(file_in, pos_in, file_out, pos_out,
+-					      len, flags);
++	ret = -EOPNOTSUPP;
++	if (file_out->f_op->copy_file_range && (file_in->f_op == file_out->f_op))
++		ret = file_out->f_op->copy_file_range(file_in, pos_in, file_out,
++						      pos_out, len, flags);
++	if ((ret < 0) && (flags & COPY_FR_COPY))
++		ret = vfs_copy_file_pagecache(file_in, pos_in, file_out,
++					      pos_out, len);
+ 	if (ret > 0) {
+ 		fsnotify_access(file_in);
+ 		add_rchar(current, ret);
+diff --git a/include/linux/copy.h b/include/linux/copy.h
+new file mode 100644
+index 0000000..fd54543
+--- /dev/null
++++ b/include/linux/copy.h
+@@ -0,0 +1,6 @@
++#ifndef _LINUX_COPY_H
++#define _LINUX_COPY_H
 +
-+    if (argc != 3) {
-+        fprintf(stderr, "Usage: %s <source> <destination>\\n", argv[0]);
-+        exit(EXIT_FAILURE);
-+    }
++#include <uapi/linux/copy.h>
 +
-+    fd_in = open(argv[1], O_RDONLY);
-+    if (fd_in == \-1) {
-+        perror("open (argv[1])");
-+        exit(EXIT_FAILURE);
-+    }
++#endif /* _LINUX_COPY_H */
+diff --git a/include/uapi/linux/Kbuild b/include/uapi/linux/Kbuild
+index f7b2db4..faafd67 100644
+--- a/include/uapi/linux/Kbuild
++++ b/include/uapi/linux/Kbuild
+@@ -90,6 +90,7 @@ header-y += coda_psdev.h
+ header-y += coff.h
+ header-y += connector.h
+ header-y += const.h
++header-y += copy.h
+ header-y += cramfs_fs.h
+ header-y += cuda.h
+ header-y += cyclades.h
+diff --git a/include/uapi/linux/copy.h b/include/uapi/linux/copy.h
+new file mode 100644
+index 0000000..6225838
+--- /dev/null
++++ b/include/uapi/linux/copy.h
+@@ -0,0 +1,8 @@
++#ifndef _UAPI_LINUX_COPY_H
++#define _UAPI_LINUX_COPY_H
 +
-+    if (fstat(fd_in, &stat) == \-1) {
-+        perror("fstat");
-+        exit(EXIT_FAILURE);
-+    }
-+    len = stat.st_size;
++#define COPY_FR_COPY		(1 << 0)  /* Only do a pagecache copy.  */
++#define COPY_FR_REFLINK		(1 << 1)  /* Only make a reflink.       */
++#define COPY_FR_DEDUPE		(1 << 2)  /* Deduplicate file data.     */
 +
-+    fd_out = open(argv[2], O_CREAT|O_WRONLY|O_TRUNC, 0644);
-+    if (fd_out == \-1) {
-+        perror("open (argv[2])");
-+        exit(EXIT_FAILURE);
-+    }
-+
-+    do {
-+        ret = copy_file_range(fd_in, NULL, fd_out, NULL, len, COPY_FR_COPY);
-+        if (ret == \-1) {
-+            perror("copy_file_range");
-+            exit(EXIT_FAILURE);
-+        }
-+
-+        len \-= ret;
-+    } while (len > 0);
-+
-+    close(fd_in);
-+    close(fd_out);
-+    exit(EXIT_SUCCESS);
-+}
-+.fi
-+.SH SEE ALSO
-+.BR splice (2)
-diff --git a/man2/splice.2 b/man2/splice.2
-index b9b4f42..5c162e0 100644
---- a/man2/splice.2
-+++ b/man2/splice.2
-@@ -238,6 +238,7 @@ only pointers are copied, not the pages of the buffer.
- See
- .BR tee (2).
- .SH SEE ALSO
-+.BR copy_file_range (2),
- .BR sendfile (2),
- .BR tee (2),
- .BR vmsplice (2)
++#endif /* _UAPI_LINUX_COPY_H */
 -- 
 2.5.3
 
