@@ -1,61 +1,85 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail2.vodafone.ie ([213.233.128.44]:52357 "EHLO
-	mail2.vodafone.ie" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750906AbbIYV6r (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Sep 2015 17:58:47 -0400
-Subject: Re: [PATCH v3 8/9] vfs: copy_file_range() can do a pagecache copy
- with splice
-To: Anna Schumaker <Anna.Schumaker@netapp.com>, linux-nfs@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-api@vger.kernel.org, zab@zabbo.net, viro@zeniv.linux.org.uk,
-        clm@fb.com, darrick.wong@oracle.com, mtk.manpages@gmail.com,
-        andros@netapp.com, hch@infradead.org
-References: <1443214096-12769-1-git-send-email-Anna.Schumaker@Netapp.com>
- <1443214096-12769-9-git-send-email-Anna.Schumaker@Netapp.com>
-From: =?UTF-8?Q?P=c3=a1draig_Brady?= <P@draigBrady.com>
-Message-ID: <5605C392.80008@draigBrady.com>
-Date: Fri, 25 Sep 2015 22:58:42 +0100
+Return-Path: <ffilzlnx@mindspring.com>
+From: "Frank Filz" <ffilzlnx@mindspring.com>
+To: "'Benjamin Coddington'" <bcodding@redhat.com>,
+        "'Pankaj Singh'" <psingh.ait@gmail.com>
+Cc: <linux-nfs@vger.kernel.org>
+References: <CAPrqf91jVM8jq2-u9TBNPx4nc2pmPct-PYqGWau4mcQQOT_Lmg@mail.gmail.com> <alpine.OSX.2.19.9992.1509250914050.24831@planck.local>
+In-Reply-To: <alpine.OSX.2.19.9992.1509250914050.24831@planck.local>
+Subject: RE: Tool or module to test NFSv3 server scalability
+Date: Fri, 25 Sep 2015 15:00:18 -0700
+Message-ID: <028f01d0f7dd$91c11e50$b5435af0$@mindspring.com>
 MIME-Version: 1.0
-In-Reply-To: <1443214096-12769-9-git-send-email-Anna.Schumaker@Netapp.com>
-Content-Type: text/plain; charset=windows-1252
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain;
+	charset="us-ascii"
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 25/09/15 21:48, Anna Schumaker wrote:
-> The NFS server will need some kind offallback for filesystems that don't
-> have any kind of copy acceleration, and it should be generally useful to
-> have an in-kernel copy to avoid lots of switches between kernel and user
-> space.
+> > Hi all,
+> >
+> > I am new to nfs. I have a requirement to test the scalability of NFSv3.
+> > To test this I would require a solution that can simulate multiple nfs
+clients.
+> > As its known a single TCP connection is used for communication between
+> > client and server. So to increase multiple connections multiple
+> > nfs-clients would be needed. Which is very costly.
+> >
+> > So would need some method/tool to create multiple nfs TCP connections
+> > from single or few machines.
 > 
-> I make this configurable by adding two new flags.  Users who only want a
-> reflink can pass COPY_FR_REFLINK, and users who want a full data copy can
-> pass COPY_FR_COPY.  The default (flags=0) means to first attempt a
-> reflink, but use the pagecache if that fails.
 > 
-> I moved the rw_verify_area() calls into the fallback code since some
-> filesystems can handle reflinking a large range.
+> Hi Pankaj, this is a fun question.
 > 
-> Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+> One thought I had would be to use a big block ip addresses on a linux NFS
+> server, and mount the filesystem with each unique server ip address.  That
+> should create a bunch of connections with only a single client and server.
+> IPv6 is ideal since there's a lot of address room.
+> 
+> This turns out to be really easy to do if you have a linux server with
+Any-IP
+> support [1].
+> 
+> On my server, I set up a rule so that any ipv6 traffic arriving on eth0
+consults
+> route table 200, and set up route table 200 to route everything to the
+> loopback interface:
+> 
+> ip -6 rule add from all iif eth0 lookup 200 ip -6 route add local default
+dev lo
+> table 200
+> 
+> Then on my client, I set a routing rule for a large local network to route
+to my
+> server's eth0 ipv6 real-world address:
+> 
+> ip -6 route add fd12:3456:789a:1::/64 via
+> 2601:18b:4000:1a2a:5054:ff:fe30:a648
+> 
+> Now, whenever my client sends any traffic to any ip in
+fd12:3456:789a:1::/64,
+> it will go to my server's loopback adapter which should accept it as
+though it
+> had that address.
+> 
+> On the client we can then bash out some mounts:
+> 
+> for j in {1..1024}; do mkdir /mnt/v6/$(printf %x $j); done; cd /mnt/v6 for
+dir in
+> *; do mount \[fd12:3456:789a:1::$dir\]:/ $dir; done grep fd12 /proc/mounts
+|
+> wc
+>    1024    6144  248022
+> 
+> This should cause the linux nfs client's rpc code to create a separate
+> connection for each mount.
 
-Reviewed-by: Pádraig Brady <P@draigBrady.com>
+You can also do something like this using localhost addresses (I often for
+testing use several different localhost addresses to simulate multiple
+clients).
 
-LGTM. For my reference, for cp(1), mv(1), install(1), this will avoid
-user space copies in the normal case, client side copies in the network
-file system case, and provide a more generalized interface to reflink().
+I used it long ago to check out some stuff with 1000 clients.
 
-coreutils pseudo code is:
+Frank
 
-  unsigned int cfr_flags = COPY_FR_COPY;
-  if (mode == mv)
-    cfr_flags = 0; /* reflink falling back to normal */
-  else if (mode == cp) {
-    if --reflink || --reflink==always
-      cfr_flags = COPY_FR_REFLINK;
-    else if --reflink==auto
-      cfr_flags = 0; /* reflink falling back to normal */
-  }
-  if vfs_copy_file_range(..., cfr_flags) == ENOTSUP
-    normal_user_space_copy();
 
-thanks,
-Pádraig.
+---
+This email has been checked for viruses by Avast antivirus software.
+https://www.avast.com/antivirus
