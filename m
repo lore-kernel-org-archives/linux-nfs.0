@@ -1,49 +1,61 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:32589 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933215AbbIYVVm convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Sep 2015 17:21:42 -0400
-Received: from userv0021.oracle.com (userv0021.oracle.com [156.151.31.71])
-	by userp1040.oracle.com (Sentrion-MTA-4.3.2/Sentrion-MTA-4.3.2) with ESMTP id t8PLLg7F003549
-	(version=TLSv1 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Fri, 25 Sep 2015 21:21:42 GMT
-Received: from aserv0122.oracle.com (aserv0122.oracle.com [141.146.126.236])
-	by userv0021.oracle.com (8.13.8/8.13.8) with ESMTP id t8PLLfoU015889
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=FAIL)
-	for <linux-nfs@vger.kernel.org>; Fri, 25 Sep 2015 21:21:42 GMT
-Received: from abhmp0018.oracle.com (abhmp0018.oracle.com [141.146.116.24])
-	by aserv0122.oracle.com (8.13.8/8.13.8) with ESMTP id t8PLLfht021501
-	for <linux-nfs@vger.kernel.org>; Fri, 25 Sep 2015 21:21:41 GMT
-From: Chuck Lever <chuck.lever@oracle.com>
-Content-Type: text/plain; charset=utf-8
-Subject: "Lock reclaim failed!" after cluster fail over
-Message-Id: <0E2C4BF6-14AE-44B0-A0C2-CF4203D7DD8C@oracle.com>
-Date: Fri, 25 Sep 2015 14:21:40 -0700
-To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2104\))
+Received: from mail2.vodafone.ie ([213.233.128.44]:52357 "EHLO
+	mail2.vodafone.ie" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750906AbbIYV6r (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Sep 2015 17:58:47 -0400
+Subject: Re: [PATCH v3 8/9] vfs: copy_file_range() can do a pagecache copy
+ with splice
+To: Anna Schumaker <Anna.Schumaker@netapp.com>, linux-nfs@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-api@vger.kernel.org, zab@zabbo.net, viro@zeniv.linux.org.uk,
+        clm@fb.com, darrick.wong@oracle.com, mtk.manpages@gmail.com,
+        andros@netapp.com, hch@infradead.org
+References: <1443214096-12769-1-git-send-email-Anna.Schumaker@Netapp.com>
+ <1443214096-12769-9-git-send-email-Anna.Schumaker@Netapp.com>
+From: =?UTF-8?Q?P=c3=a1draig_Brady?= <P@draigBrady.com>
+Message-ID: <5605C392.80008@draigBrady.com>
+Date: Fri, 25 Sep 2015 22:58:42 +0100
+MIME-Version: 1.0
+In-Reply-To: <1443214096-12769-9-git-send-email-Anna.Schumaker@Netapp.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi-
+On 25/09/15 21:48, Anna Schumaker wrote:
+> The NFS server will need some kind offallback for filesystems that don't
+> have any kind of copy acceleration, and it should be generally useful to
+> have an in-kernel copy to avoid lots of switches between kernel and user
+> space.
+> 
+> I make this configurable by adding two new flags.  Users who only want a
+> reflink can pass COPY_FR_REFLINK, and users who want a full data copy can
+> pass COPY_FR_COPY.  The default (flags=0) means to first attempt a
+> reflink, but use the pagecache if that fails.
+> 
+> I moved the rw_verify_area() calls into the fallback code since some
+> filesystems can handle reflinking a large range.
+> 
+> Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-Part of our internal testing involves performing server
-fail-over while under load. On regular occasion, we see
-Linux clients (post 4.0 kernels) report “Lock reclaim
-failed!” but the wire capture looks unremarkable.
+Reviewed-by: P�draig Brady <P@draigBrady.com>
 
-I’ve instrumented a Linux client, and both the recovery
-open and reclaim_locks calls return 0, the workload
-does not report any problem, yet the client is still
-reporting a failure.
+LGTM. For my reference, for cp(1), mv(1), install(1), this will avoid
+user space copies in the normal case, client side copies in the network
+file system case, and provide a more generalized interface to reflink().
 
-Delegation on the server is disabled during the test.
+coreutils pseudo code is:
 
-Any opinions about why the client is reporting a
-failure, or where to explore next?
+  unsigned int cfr_flags = COPY_FR_COPY;
+  if (mode == mv)
+    cfr_flags = 0; /* reflink falling back to normal */
+  else if (mode == cp) {
+    if --reflink || --reflink==always
+      cfr_flags = COPY_FR_REFLINK;
+    else if --reflink==auto
+      cfr_flags = 0; /* reflink falling back to normal */
+  }
+  if vfs_copy_file_range(..., cfr_flags) == ENOTSUP
+    normal_user_space_copy();
 
-
-—
-Chuck Lever
-
-
-
+thanks,
+P�draig.
