@@ -1,107 +1,95 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f175.google.com ([209.85.213.175]:35045 "EHLO
-	mail-ig0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757141AbbIYPOR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Sep 2015 11:14:17 -0400
-Received: by igbkq10 with SMTP id kq10so12108071igb.0
-        for <linux-nfs@vger.kernel.org>; Fri, 25 Sep 2015 08:14:16 -0700 (PDT)
-Message-ID: <1443194044.26785.1.camel@primarydata.com>
-Subject: [GIT PULL] Please pull NFS client bugfixes
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
-Date: Fri, 25 Sep 2015 11:14:04 -0400
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from mail-bl2on0097.outbound.protection.outlook.com ([65.55.169.97]:52236
+	"EHLO na01-bl2-obe.outbound.protection.outlook.com"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1756438AbbIYQ3t (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Sep 2015 12:29:49 -0400
+Subject: Re: [PATCH v2 15/26] IB/srp: Split srp_map_sg
+To: Sagi Grimberg <sagig@mellanox.com>, <linux-rdma@vger.kernel.org>
+References: <1443116118-10730-1-git-send-email-sagig@mellanox.com>
+ <1443116118-10730-16-git-send-email-sagig@mellanox.com>
+CC: <linux-nfs@vger.kernel.org>, "Nicholas A. Bellinger" <nab@linux-iscsi.org>
+From: Bart Van Assche <bart.vanassche@sandisk.com>
+Message-ID: <56057320.4010905@sandisk.com>
+Date: Fri, 25 Sep 2015 09:15:28 -0700
+MIME-Version: 1.0
+In-Reply-To: <1443116118-10730-16-git-send-email-sagig@mellanox.com>
+Content-Type: text/plain; charset="windows-1252"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Linus,
+On 09/24/2015 10:35 AM, Sagi Grimberg wrote:
+> This is a perparation patch for the new registration API
+             ^ preparation ?
 
-The following changes since commit 6ff33f3902c3b1c5d0db6b1e2c70b6d76fba357f:
+> conversion. It splits srp_map_sg per registration strategy
+> (srp_map_sg[fmr|fr|dma]. On its own it adds some code duplication,
+> but it makes the API switch easier to comprehend.
+>
+> Signed-off-by: Sagi Grimberg <sagig@mellanox.com>
+> ---
+>   drivers/infiniband/ulp/srp/ib_srp.c | 156 ++++++++++++++++++++++++------------
+>   1 file changed, 105 insertions(+), 51 deletions(-)
+>
+> diff --git a/drivers/infiniband/ulp/srp/ib_srp.c b/drivers/infiniband/ulp/srp/ib_srp.c
+> index f8b9c18da03d..74748d1075fc 100644
+> --- a/drivers/infiniband/ulp/srp/ib_srp.c
+> +++ b/drivers/infiniband/ulp/srp/ib_srp.c
+> @@ -1286,6 +1286,17 @@ static int srp_map_finish_fmr(struct srp_map_state *state,
+>   	if (WARN_ON_ONCE(state->fmr.next >= state->fmr.end))
+>   		return -ENOMEM;
+>
+> +	WARN_ON_ONCE(!dev->use_fmr);
+> +
+> +	if (state->npages == 0)
+> +		return 0;
+> +
+> +	if (state->npages == 1 && target->global_mr) {
+> +		srp_map_desc(state, state->base_dma_addr, state->dma_len,
+> +			     target->global_mr->rkey);
+> +		return 0;
+> +	}
+> +
 
-  Linux 4.3-rc1 (2015-09-12 16:35:56 -0700)
+The above is not correct. The npages and dma_len variables have to be 
+reset before returning. How about changing the "return 0" statement into 
+"goto reset_state" and adding a "reset_state" label ?
 
-are available in the git repository at:
+>   	fmr = ib_fmr_pool_map_phys(ch->fmr_pool, state->pages,
+>   				   state->npages, io_addr);
+>   	if (IS_ERR(fmr))
+> @@ -1297,6 +1308,9 @@ static int srp_map_finish_fmr(struct srp_map_state *state,
+>   	srp_map_desc(state, state->base_dma_addr & ~dev->mr_page_mask,
+>   		     state->dma_len, fmr->fmr->rkey);
+>
+> +	state->npages = 0;
+> +	state->dma_len = 0;
+> +
+>   	return 0;
+>   }
+>
+> @@ -1309,10 +1323,23 @@ static int srp_map_finish_fr(struct srp_map_state *state,
+>   	struct ib_fast_reg_wr wr;
+>   	struct srp_fr_desc *desc;
+>   	u32 rkey;
+> +	int err;
+> +
+>
+>   	if (WARN_ON_ONCE(state->fr.next >= state->fr.end))
+>   		return -ENOMEM;
+>
+> +	WARN_ON_ONCE(!dev->use_fast_reg);
+> +
+> +	if (state->npages == 0)
+> +		return 0;
+> +
+> +	if (state->npages == 1 && target->global_mr) {
+> +		srp_map_desc(state, state->base_dma_addr, state->dma_len,
+> +			     target->global_mr->rkey);
+> +		return 0;
+> +	}
+> +
 
-  git://git.linux-nfs.org/projects/trondmy/linux-nfs.git tags/nfs-for-4.3-2
+Same comment here. npages and dma_len have to be reset before returning.
 
-for you to fetch changes up to 500d701f336b2771d34e46da7875a4782515a652:
-
-  NFS41: make close wait for layoutreturn (2015-09-23 08:55:32 -0400)
-
-Cheers
-  Trond
-
-----------------------------------------------------------------
-NFS client bugfixes for Linux 4.3
-
-Highlights include:
-
-Stable patches:
-- fix v4.2 SEEK on files over 2 gigs
-- Fix a layout segment reference leak when pNFS I/O falls back to inband I/O.
-- Fix recovery of recalled read delegations
-
-Bugfixes:
-- Fix a case where NFSv4 fails to send CLOSE after a server reboot
-- Fix sunrpc to wait for connections to complete before retrying
-- Fix sunrpc races between transport connect/disconnect and shutdown
-- Fix an infinite loop when layoutget fail with BAD_STATEID
-- nfs/filelayout: Fix NULL reference caused by double freeing of fh_array
-- Fix a bogus WARN_ON_ONCE() in O_DIRECT when layout commit_through_mds is set
-- Fix layoutreturn/close ordering issues.
-
-----------------------------------------------------------------
-J. Bruce Fields (1):
-      nfs: fix v4.2 SEEK on files over 2 gigs
-
-Julia Lawall (1):
-      SUNRPC: drop null test before destroy functions
-
-Kinglong Mee (4):
-      nfs/filelayout: Fix NULL reference caused by double freeing of fh_array
-      NFS: Do cleanup before resetting pageio read/write to mds
-      NFS: Fix an infinite loop when layoutget fail with BAD_STATEID
-      NFS: Skip checking ds_cinfo.buckets when lseg's commit_through_mds is set
-
-Olga Kornievskaia (1):
-      Failing to send a CLOSE if file is opened WRONLY and server reboots on a 4.x mount
-
-Peng Tao (2):
-      nfs: fix pg_test page count calculation
-      NFS41: make close wait for layoutreturn
-
-Trond Myklebust (6):
-      SUNRPC: Fix races between socket connection and destroy code
-      SUNRPC: Ensure that we wait for connections to complete before retrying
-      SUNRPC: Lock the transport layer on shutdown
-      SUNRPC: xs_sock_mark_closed() does not need to trigger socket autoclose
-      NFSv4: Recovery of recalled read delegations is broken
-      NFSv4.x/pnfs: Don't try to recover stateids twice in layoutget
-
- fs/nfs/delegation.c             |   8 ++-
- fs/nfs/delegation.h             |   2 +-
- fs/nfs/direct.c                 |   7 ++-
- fs/nfs/filelayout/filelayout.c  |  31 ++++------
- fs/nfs/nfs42proc.c              |   4 +-
- fs/nfs/nfs4proc.c               | 127 ++++++++++++++++++++++++++--------------
- fs/nfs/nfs4state.c              |   2 +-
- fs/nfs/pagelist.c               |   2 +-
- fs/nfs/pnfs.c                   |  35 +++++++----
- fs/nfs/pnfs.h                   |   7 +++
- fs/nfs/read.c                   |   3 +
- fs/nfs/write.c                  |   3 +
- include/linux/sunrpc/xprtsock.h |   3 +
- net/sunrpc/sched.c              |  12 ++--
- net/sunrpc/xprt.c               |   6 ++
- net/sunrpc/xprtsock.c           |  15 +++--
- 16 files changed, 172 insertions(+), 95 deletions(-)
--- 
-Trond Myklebust
-Linux NFS client maintainer, PrimaryData
-trond.myklebust@primarydata.com
-
-
-
+Bart.
