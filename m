@@ -1,85 +1,114 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pa0-f48.google.com ([209.85.220.48]:34530 "EHLO
-	mail-pa0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754043AbbIYK0X (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Sep 2015 06:26:23 -0400
-Received: by padhy16 with SMTP id hy16so102666175pad.1
-        for <linux-nfs@vger.kernel.org>; Fri, 25 Sep 2015 03:26:23 -0700 (PDT)
-From: Peng Tao <tao.peng@primarydata.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: linux-nfs@vger.kernel.org, Anna Schumaker <anna.schumaker@netapp.com>,
-        Christoph Hellwig <hch@infradead.org>,
-        Peng Tao <tao.peng@primarydata.com>
-Subject: [PATCH 6/6] nfs42: add NFS_IOC_CLONE_RANGE ioctl
-Date: Sat, 26 Sep 2015 02:24:39 +0800
-Message-Id: <1443205479-13563-7-git-send-email-tao.peng@primarydata.com>
-In-Reply-To: <1443205479-13563-1-git-send-email-tao.peng@primarydata.com>
-References: <1443205479-13563-1-git-send-email-tao.peng@primarydata.com>
+Received: from mail-qg0-f43.google.com ([209.85.192.43]:34533 "EHLO
+	mail-qg0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753164AbbIYKxV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Sep 2015 06:53:21 -0400
+Received: by qgez77 with SMTP id z77so66078712qge.1
+        for <linux-nfs@vger.kernel.org>; Fri, 25 Sep 2015 03:53:20 -0700 (PDT)
+Date: Fri, 25 Sep 2015 06:53:17 -0400
+From: Jeff Layton <jlayton@poochiereds.net>
+To: Steve Dickson <steved@redhat.com>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
+        Systemd Mailing List <systemd-devel@lists.freedesktop.org>
+Subject: Re: [PATCH] gssd: Improve scalability by not waiting for child
+ processes
+Message-ID: <20150925065317.6f5339cd@tlielax.poochiereds.net>
+In-Reply-To: <1443043250-25703-1-git-send-email-steved@redhat.com>
+References: <1443043250-25703-1-git-send-email-steved@redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-It follows btrfs BTRFS_IOC_CLONE_RANGE lead on ioctl number and
-arguments.
+On Wed, 23 Sep 2015 17:20:50 -0400
+Steve Dickson <steved@redhat.com> wrote:
 
-Signed-off-by: Peng Tao <tao.peng@primarydata.com>
----
- fs/nfs/nfs4file.c        | 14 ++++++++++++++
- include/uapi/linux/nfs.h |  9 ++++++++-
- 2 files changed, 22 insertions(+), 1 deletion(-)
+> Instead of waiting on every fork, which would
+> become a bottle neck during a mount storm, simply
+> set a SIGCHLD signal handler to do the wait on
+> the child process
+> 
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+> ---
+>  utils/gssd/gssd.c      | 18 ++++++++++++++++++
+>  utils/gssd/gssd_proc.c | 11 ++---------
+>  2 files changed, 20 insertions(+), 9 deletions(-)
+> 
+> diff --git a/utils/gssd/gssd.c b/utils/gssd/gssd.c
+> index e480349..8b778cb 100644
+> --- a/utils/gssd/gssd.c
+> +++ b/utils/gssd/gssd.c
+> @@ -44,11 +44,13 @@
+>  #define _GNU_SOURCE
+>  #endif
+>  
+> +#include <sys/types.h>
+>  #include <sys/param.h>
+>  #include <sys/socket.h>
+>  #include <sys/time.h>
+>  #include <sys/resource.h>
+>  #include <sys/inotify.h>
+> +#include <sys/wait.h>
+>  #include <rpc/rpc.h>
+>  #include <netinet/in.h>
+>  #include <arpa/inet.h>
+> @@ -736,6 +738,21 @@ sig_die(int signal)
+>  	printerr(1, "exiting on signal %d\n", signal);
+>  	exit(0);
+>  }
+> +static void
+> +sig_child(int signal)
+> +{
+> +	int err;
+> +	pid_t pid;
+> +
+> +	/* Parent: just wait on child to exit and return */
+> +	do {
+> +		pid = wait(&err);
+> +	} while(pid == -1 && errno != -ECHILD);
+> +
+> +	if (WIFSIGNALED(err))
+> +		printerr(0, "WARNING: forked child was killed"
+> +			 "with signal %d\n", WTERMSIG(err));
+> +}
+>  
+>  static void
+>  usage(char *progname)
+> @@ -902,6 +919,7 @@ main(int argc, char *argv[])
+>  
+>  	signal(SIGINT, sig_die);
+>  	signal(SIGTERM, sig_die);
+> +	signal(SIGCHLD, sig_child);
+>  	signal_set(&sighup_ev, SIGHUP, gssd_scan_cb, NULL);
+>  	signal_add(&sighup_ev, NULL);
+>  	event_set(&inotify_ev, inotify_fd, EV_READ | EV_PERSIST, gssd_inotify_cb, NULL);
+> diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
+> index 11168b2..8f5ca03 100644
+> --- a/utils/gssd/gssd_proc.c
+> +++ b/utils/gssd/gssd_proc.c
+> @@ -656,16 +656,9 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *tgtname,
+>  			/* fork() failed! */
+>  			printerr(0, "WARNING: unable to fork() to handle"
+>  				"upcall: %s\n", strerror(errno));
+> -			return;
+> +			/* FALLTHROUGH */
+>  		default:
+> -			/* Parent: just wait on child to exit and return */
+> -			do {
+> -				pid = wait(&err);
+> -			} while(pid == -1 && errno != -ECHILD);
+> -
+> -			if (WIFSIGNALED(err))
+> -				printerr(0, "WARNING: forked child was killed"
+> -					 "with signal %d\n", WTERMSIG(err));
+> +			/* Parent: Return and wait for the SIGCHLD */
+>  			return;
+>  		}
+>  no_fork:
 
-diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
-index 4f463dd..4384a1d 100644
---- a/fs/nfs/nfs4file.c
-+++ b/fs/nfs/nfs4file.c
-@@ -288,14 +288,28 @@ out_drop_write:
- 	mnt_drop_write_file(dst_file);
- 	return ret;
- }
-+
-+static long nfs42_ioctl_clone_range(struct file *dst_file, void __user *argp)
-+{
-+	struct nfs_ioctl_clone_range_args args;
-+
-+	if (copy_from_user(&args, argp, sizeof(args)))
-+		return -EFAULT;
-+
-+	return nfs42_ioctl_clone(dst_file, args.src_fd, args.src_off, args.dst_off, args.count);
-+}
- #endif /* CONFIG_NFS_V4_2 */
- 
- long nfs4_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
- {
-+	void __user *argp = (void __user *)arg;
-+
- 	switch (cmd) {
- #ifdef CONFIG_NFS_V4_2
- 	case NFS_IOC_CLONE:
- 		return nfs42_ioctl_clone(file, arg, 0, 0, 0);
-+	case NFS_IOC_CLONE_RANGE:
-+		return nfs42_ioctl_clone_range(file, argp);
- #endif
- 	}
- 
-diff --git a/include/uapi/linux/nfs.h b/include/uapi/linux/nfs.h
-index d85748d..c6b86cc 100644
---- a/include/uapi/linux/nfs.h
-+++ b/include/uapi/linux/nfs.h
-@@ -33,7 +33,14 @@
- 
- /* NFS ioctls */
- /* Let's follow btrfs lead on CLONE to avoid messing userspace */
--#define NFS_IOC_CLONE	_IOW(0x94, 9, int)
-+#define NFS_IOC_CLONE		_IOW(0x94, 9, int)
-+#define NFS_IOC_CLONE_RANGE	_IOW(0x94, 13, int)
-+
-+struct nfs_ioctl_clone_range_args {
-+	__s64 src_fd;
-+	__u64 src_off, count;
-+	__u64 dst_off;
-+};
- 
- /*
-  * NFS stats. The good thing with these values is that NFSv3 errors are
--- 
-1.8.3.1
+I was thinking that there was some reason that we couldn't do this --
+that there were data structures that would get wiped if you got another
+upcall while the first was being processed. The forking should prevent
+that though, so I think this looks reasonable.
 
+Acked-by: Jeff Layton <jlayton@poochiereds.net>
