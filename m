@@ -1,178 +1,397 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ob0-f174.google.com ([209.85.214.174]:34329 "EHLO
-	mail-ob0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751622AbbI0SWJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Sep 2015 14:22:09 -0400
-Received: by obbda8 with SMTP id da8so113579515obb.1
-        for <linux-nfs@vger.kernel.org>; Sun, 27 Sep 2015 11:22:08 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <9143.1443358024@jrobl>
-References: <9143.1443358024@jrobl>
-Date: Sun, 27 Sep 2015 14:22:07 -0400
-Message-ID: <CAHQdGtRjsqdHGpdFJc7AGm=gFXBdKBSPyQpvUPWJZtmwx0FypA@mail.gmail.com>
-Subject: Re: v4.3-rc2, fault in sock_release via nfs_put_client
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: "J. R. Okajima" <hooanon05g@gmail.com>
-Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        Linux FS-devel Mailing List <linux-fsdevel@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from mx1.redhat.com ([209.132.183.28]:53592 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756670AbbI0WNk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 27 Sep 2015 18:13:40 -0400
+From: Andreas Gruenbacher <agruenba@redhat.com>
+To: Alexander Viro <viro@zeniv.linux.org.uk>, "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-api@vger.kernel.org
+Subject: [PATCH v8 41/41] richacl: uapi header split
+Date: Mon, 28 Sep 2015 00:09:32 +0200
+Message-Id: <1443391772-10171-42-git-send-email-agruenba@redhat.com>
+In-Reply-To: <1443391772-10171-1-git-send-email-agruenba@redhat.com>
+References: <1443391772-10171-1-git-send-email-agruenba@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Sep 27, 2015 at 8:47 AM, J. R. Okajima <hooanon05g@gmail.com> wrote:
->
->
-> Hello NFS folks,
->
-> I don't know whether this is a known issue or not (since I was off from
-> development for a few months), but I've got a "general protection fault:
-> 0000" message from linux-4.3-rc2.
-> Here are the reproducible script and the log.
-> Would you check them please?
->
-> Notes:
-> - The script cannot reproduce the problem perfectly. Not always. But if
->   you try several times, you will able to see. On my test system, I had
->   to try a few times.
-> - As far as I know, if bind-mount did not happen, then the problem did
->   not happen either. But I am not sure whether bind-mount is really the
->   trigger of this issue.
->
->
-> J. R. Okajima
->
-> ----------------------------------------------------------------------
-> #!/bin/sh
->
-> set -eu
->
-> Stat() # path
-> {
->         stat -f --printf="%n %T\n" $1
-> }
->
-> uname -a
-> s=/dev/shm
-> Stat $s
-> c=/tmp/c
-> mkdir -p $c
-> showmount -e > /tmp/e
-> sudo exportfs -i -o rw,async,no_subtree_check,no_root_squash,fsid=99 localhost:$s
-> showmount -e | diff /tmp/e - || :
-> sudo mount -t nfs localhost:$s $c
-> Stat $c
-> b=/tmp/b
-> mkdir -p $b
-> sudo mount -o bind $c $b
-> Stat $b
-> > $b/f
-> cat /proc/mounts > /tmp/m
-> sudo umount -l $b
-> diff /tmp/m /proc/mounts || :
-> sync
-> sleep 1
-> cat /proc/mounts > /tmp/m
-> sudo umount -l $c
-> diff /tmp/m /proc/mounts
-> sudo exportfs -u localhost:$s
-> showmount -e | diff /tmp/e -
-> ----------------------------------------------------------------------
->
-> $ sh -x ./nfs-4.3-rc2.sh
-> + set -eu
-> + s=/dev/shm
-> + Stat /dev/shm
-> + stat -f --printf=%n %T\n /dev/shm
-> /dev/shm tmpfs
-> + c=/tmp/c
-> + mkdir -p /tmp/c
-> + showmount -e
-> + sudo exportfs -i -o rw,async,no_subtree_check,no_root_squash,fsid=99 localhost:/dev/shm
-> + showmount -e
-> + diff /tmp/e -
-> 3a4
-> > /dev/shm     localhost
-> + :
-> + sudo mount -t nfs localhost:/dev/shm /tmp/c
-> + Stat /tmp/c
-> + stat -f --printf=%n %T\n /tmp/c
-> /tmp/c nfs
-> + b=/tmp/b
-> + mkdir -p /tmp/b
-> + sudo mount -o bind /tmp/c /tmp/b
-> + Stat /tmp/b
-> + stat -f --printf=%n %T\n /tmp/b
-> /tmp/b nfs
-> +
-> + cat /proc/mounts
-> + sudo umount -l /tmp/b
-> + diff /tmp/m /proc/mounts
-> 26d25
-> < localhost:/dev/shm /tmp/b nfs4 rw,relatime,vers=4.0,rsize=65536,wsize=65536,namlen=255,hard,proto=tcp,port=0,timeo=600,retrans=2,clientaddr=127.0.0.1,local_lock=none,addr=127.0.0.1 0 0
-> + :
-> + sync
-> + sleep 1
-> + cat /proc/mounts
-> + sudo umount -l /tmp/c
-> general protection fault: 0000 [#7] PREEMPT SMP
-> Modules linked in: oprofile configs autofs4 nfsd [last unloaded: brd]
-> CPU: 0 PID: 4325 Comm: umount.nfs Tainted: G      D         4.3.0-rc2aufsD+ #67
-> Hardware name: Pegatron Pegatron/IPM41, BIOS 0001 02/05/2009
-> task: ffff88002d69ea00 ti: ffff88002ca00000 task.ti: ffff88002ca00000
-> RIP: 0010:[<ffffffff81643be1>]  [<ffffffff81643be1>] sock_release+0x21/0x90
-> RSP: 0018:ffff88002ca03bd8  EFLAGS: 00010202
-> RAX: 6b6b6b6b6b6b6b6b RBX: ffff88002812f7c0 RCX: 0000000000000000
-> RDX: 0000000000000000 RSI: 0000000000000000 RDI: ffff88002812f7c0
-> RBP: ffff88002ca03be8 R08: 0000000000000000 R09: 0000000000000000
-> R10: 0000000000000000 R11: 0000000000000001 R12: 0000000000000000
-> R13: ffff88002812f7c0 R14: ffff88002b8eeea0 R15: 0000000000000001
-> FS:  00007f763d4f57e0(0000) GS:ffff88002fc00000(0000) knlGS:0000000000000000
-> CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-> CR2: 0000000001176db8 CR3: 000000002d76c000 CR4: 00000000000406f0
-> Stack:
->  ffff88002b870000 0000000000000000 ffff88002ca03c18 ffffffff81715afc
->  ffff88002b870000 0000000000000000 ffff88002b870000 ffff88002ca03d08
->  ffff88002ca03c38 ffffffff81715bd6 0000000000000000 ffff88002b870000
-> Call Trace:
->  [<ffffffff81715afc>] xs_reset_transport+0x18c/0x250
->  [<ffffffff81715bd6>] xs_close+0x16/0x30
->  [<ffffffff81715c06>] xs_destroy+0x16/0x30
->  [<ffffffff8170fb4f>] xprt_destroy+0x6f/0x80
->  [<ffffffff81712364>] xprt_put+0x14/0x20
->  [<ffffffff8170dda4>] rpc_free_client+0x84/0xc0
->  [<ffffffff8170de3a>] rpc_release_client+0x5a/0x90
->  [<ffffffff8170df61>] rpc_shutdown_client+0xf1/0x100
->  [<ffffffff812cb4c7>] nfs_free_client+0x97/0xa0
->  [<ffffffff81312c84>] nfs4_free_client+0xa4/0xc0
->  [<ffffffff812c97e5>] nfs_put_client+0x295/0x430
->  [<ffffffff81312be0>] ? nfs4_alloc_client+0x380/0x380
->  [<ffffffff812ca80c>] nfs_free_server+0x7c/0xd0
->  [<ffffffff812d732c>] nfs_kill_super+0x2c/0x40
->  [<ffffffff811ad5f1>] deactivate_locked_super+0x51/0x90
->  [<ffffffff811ae4b4>] deactivate_super+0x84/0x90
->  [<ffffffff811d28e7>] cleanup_mnt+0x97/0xe0
->  [<ffffffff811d2982>] __cleanup_mnt+0x12/0x20
->  [<ffffffff8107e9f2>] task_work_run+0x72/0xa0
->  [<ffffffff81001d0b>] prepare_exit_to_usermode+0x10b/0x150
->  [<ffffffff811d3d95>] ? mntput_no_expire+0x5/0x2c0
->  [<ffffffff81001de6>] syscall_return_slowpath+0x96/0x2f0
->  [<ffffffff81751a71>] int_ret_from_sys_call+0x25/0x9f
-> Code: 5b 5d c3 0f 1f 80 00 00 00 00 66 66 66 66 90 55 48 89 e5 48 83 ec 10 48 89 5d f0 48 89 fb 4c 89 65 f8 48 8b 47 28 48 85 c0 74 17 <4c> 8b 60 08 ff 50 10 48 c7 43 28 00 00 00 00 4c 89 e7 e8 b8 7d
-> RIP  [<ffffffff81643be1>] sock_release+0x21/0x90
->  RSP <ffff88002ca03bd8>
-> ---[ end trace 1bcdd4036690d082 ]---
-> umount.nfs: /tmp/c: not mounted
-> umount.nfs: /tmp/c: not mounted
-> umount.nfs: /tmp/c: not mounted
-> umount.nfs: /tmp/c: not mounted
-> umount.nfs: /tmp/c: not mounted
-> umount.nfs: /tmp/c: not mounted
-> umount.nfs: /tmp/c: not mounted
+Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
+---
+ include/linux/richacl.h            | 119 +++++--------------------------------
+ include/linux/richacl_xattr.h      |  17 +-----
+ include/uapi/linux/Kbuild          |   2 +
+ include/uapi/linux/richacl.h       | 111 ++++++++++++++++++++++++++++++++++
+ include/uapi/linux/richacl_xattr.h |  43 ++++++++++++++
+ 5 files changed, 173 insertions(+), 119 deletions(-)
+ create mode 100644 include/uapi/linux/richacl.h
+ create mode 100644 include/uapi/linux/richacl_xattr.h
 
+diff --git a/include/linux/richacl.h b/include/linux/richacl.h
+index 1822666..8875941 100644
+--- a/include/linux/richacl.h
++++ b/include/linux/richacl.h
+@@ -17,9 +17,7 @@
+ #ifndef __RICHACL_H
+ #define __RICHACL_H
+ 
+-#define RICHACE_OWNER_SPECIAL_ID	0
+-#define RICHACE_GROUP_SPECIAL_ID	1
+-#define RICHACE_EVERYONE_SPECIAL_ID	2
++#include <uapi/linux/richacl.h>
+ 
+ struct richace {
+ 	unsigned short	e_type;
+@@ -44,43 +42,12 @@ struct richacl {
+ 	struct richace	a_entries[0];
+ };
+ 
+-#define richacl_for_each_entry(_ace, _acl) \
+-	for (_ace = (_acl)->a_entries; \
+-	     _ace != (_acl)->a_entries + (_acl)->a_count; \
+-	     _ace++)
+-
+-#define richacl_for_each_entry_reverse(_ace, _acl) \
+-	for (_ace = (_acl)->a_entries + (_acl)->a_count - 1; \
+-	     _ace != (_acl)->a_entries - 1; \
+-	     _ace--)
+-
+-/* a_flags values */
+-#define RICHACL_AUTO_INHERIT			0x01
+-#define RICHACL_PROTECTED			0x02
+-#define RICHACL_DEFAULTED			0x04
+-#define RICHACL_WRITE_THROUGH			0x40
+-#define RICHACL_MASKED				0x80
+-
+ #define RICHACL_VALID_FLAGS (					\
+-		RICHACL_AUTO_INHERIT |				\
+-		RICHACL_PROTECTED |				\
+-		RICHACL_DEFAULTED |				\
+-		RICHACL_WRITE_THROUGH |				\
+-		RICHACL_MASKED)
+-
+-/* e_type values */
+-#define RICHACE_ACCESS_ALLOWED_ACE_TYPE		0x0000
+-#define RICHACE_ACCESS_DENIED_ACE_TYPE		0x0001
+-
+-/* e_flags bitflags */
+-#define RICHACE_FILE_INHERIT_ACE		0x0001
+-#define RICHACE_DIRECTORY_INHERIT_ACE		0x0002
+-#define RICHACE_NO_PROPAGATE_INHERIT_ACE	0x0004
+-#define RICHACE_INHERIT_ONLY_ACE		0x0008
+-#define RICHACE_IDENTIFIER_GROUP		0x0040
+-#define RICHACE_INHERITED_ACE			0x0080
+-#define RICHACE_UNMAPPED_WHO			0x2000
+-#define RICHACE_SPECIAL_WHO			0x4000
++	RICHACL_AUTO_INHERIT |					\
++	RICHACL_PROTECTED |					\
++	RICHACL_DEFAULTED |					\
++	RICHACL_WRITE_THROUGH |					\
++	RICHACL_MASKED)
+ 
+ #define RICHACE_VALID_FLAGS (					\
+ 	RICHACE_FILE_INHERIT_ACE |				\
+@@ -99,27 +66,6 @@ struct richacl {
+ 	RICHACE_INHERIT_ONLY_ACE |				\
+ 	RICHACE_INHERITED_ACE )
+ 
+-/* e_mask bitflags */
+-#define RICHACE_READ_DATA			0x00000001
+-#define RICHACE_LIST_DIRECTORY			0x00000001
+-#define RICHACE_WRITE_DATA			0x00000002
+-#define RICHACE_ADD_FILE			0x00000002
+-#define RICHACE_APPEND_DATA			0x00000004
+-#define RICHACE_ADD_SUBDIRECTORY		0x00000004
+-#define RICHACE_READ_NAMED_ATTRS		0x00000008
+-#define RICHACE_WRITE_NAMED_ATTRS		0x00000010
+-#define RICHACE_EXECUTE				0x00000020
+-#define RICHACE_DELETE_CHILD			0x00000040
+-#define RICHACE_READ_ATTRIBUTES			0x00000080
+-#define RICHACE_WRITE_ATTRIBUTES		0x00000100
+-#define RICHACE_WRITE_RETENTION			0x00000200
+-#define RICHACE_WRITE_RETENTION_HOLD		0x00000400
+-#define RICHACE_DELETE				0x00010000
+-#define RICHACE_READ_ACL			0x00020000
+-#define RICHACE_WRITE_ACL			0x00040000
+-#define RICHACE_WRITE_OWNER			0x00080000
+-#define RICHACE_SYNCHRONIZE			0x00100000
+-
+ /* Valid RICHACE_* flags for directories and non-directories */
+ #define RICHACE_VALID_MASK (					\
+ 	RICHACE_READ_DATA | RICHACE_LIST_DIRECTORY |		\
+@@ -139,49 +85,16 @@ struct richacl {
+ 	RICHACE_WRITE_OWNER |					\
+ 	RICHACE_SYNCHRONIZE)
+ 
+-/*
+- * The POSIX permissions are supersets of the following NFSv4 permissions:
+- *
+- *  - MAY_READ maps to READ_DATA or LIST_DIRECTORY, depending on the type
+- *    of the file system object.
+- *
+- *  - MAY_WRITE maps to WRITE_DATA or RICHACE_APPEND_DATA for files, and to
+- *    ADD_FILE, RICHACE_ADD_SUBDIRECTORY, or RICHACE_DELETE_CHILD for directories.
+- *
+- *  - MAY_EXECUTE maps to RICHACE_EXECUTE.
+- *
+- *  (Some of these NFSv4 permissions have the same bit values.)
+- */
+-#define RICHACE_POSIX_MODE_READ (			\
+-		RICHACE_READ_DATA |		\
+-		RICHACE_LIST_DIRECTORY)
+-#define RICHACE_POSIX_MODE_WRITE (			\
+-		RICHACE_WRITE_DATA |		\
+-		RICHACE_ADD_FILE |			\
+-		RICHACE_APPEND_DATA |		\
+-		RICHACE_ADD_SUBDIRECTORY |		\
+-		RICHACE_DELETE_CHILD)
+-#define RICHACE_POSIX_MODE_EXEC RICHACE_EXECUTE
+-#define RICHACE_POSIX_MODE_ALL (			\
+-		RICHACE_POSIX_MODE_READ |		\
+-		RICHACE_POSIX_MODE_WRITE |		\
+-		RICHACE_POSIX_MODE_EXEC)
+-/*
+- * These permissions are always allowed
+- * no matter what the acl says.
+- */
+-#define RICHACE_POSIX_ALWAYS_ALLOWED (	\
+-		RICHACE_SYNCHRONIZE |	\
+-		RICHACE_READ_ATTRIBUTES |	\
+-		RICHACE_READ_ACL)
+-/*
+- * The owner is implicitly granted
+- * these permissions under POSIX.
+- */
+-#define RICHACE_POSIX_OWNER_ALLOWED (		\
+-		RICHACE_WRITE_ATTRIBUTES |		\
+-		RICHACE_WRITE_OWNER |		\
+-		RICHACE_WRITE_ACL)
++#define richacl_for_each_entry(_ace, _acl) \
++	for (_ace = (_acl)->a_entries; \
++	     _ace != (_acl)->a_entries + (_acl)->a_count; \
++	     _ace++)
++
++#define richacl_for_each_entry_reverse(_ace, _acl) \
++	for (_ace = (_acl)->a_entries + (_acl)->a_count - 1; \
++	     _ace != (_acl)->a_entries - 1; \
++	     _ace--)
++
+ /**
+  * richacl_get  -  grab another reference to a richacl handle
+  */
+diff --git a/include/linux/richacl_xattr.h b/include/linux/richacl_xattr.h
+index f84cc21..eff36a3 100644
+--- a/include/linux/richacl_xattr.h
++++ b/include/linux/richacl_xattr.h
+@@ -17,24 +17,9 @@
+ #ifndef __RICHACL_XATTR_H
+ #define __RICHACL_XATTR_H
+ 
++#include <uapi/linux/richacl_xattr.h>
+ #include <linux/richacl.h>
+ 
+-struct richace_xattr {
+-	__le16		e_type;
+-	__le16		e_flags;
+-	__le32		e_mask;
+-	__le32		e_id;
+-};
+-
+-struct richacl_xattr {
+-	unsigned char	a_version;
+-	unsigned char	a_flags;
+-	__le16		a_count;
+-	__le32		a_owner_mask;
+-	__le32		a_group_mask;
+-	__le32		a_other_mask;
+-};
+-
+ #define RICHACL_XATTR_VERSION	0
+ #define RICHACL_XATTR_MAX_COUNT \
+ 	((XATTR_SIZE_MAX - sizeof(struct richacl_xattr)) / \
+diff --git a/include/uapi/linux/Kbuild b/include/uapi/linux/Kbuild
+index f7b2db4..18ad070 100644
+--- a/include/uapi/linux/Kbuild
++++ b/include/uapi/linux/Kbuild
+@@ -348,6 +348,8 @@ header-y += reboot.h
+ header-y += reiserfs_fs.h
+ header-y += reiserfs_xattr.h
+ header-y += resource.h
++header-y += richacl.h
++header-y += richacl_xattr.h
+ header-y += rfkill.h
+ header-y += romfs_fs.h
+ header-y += rose.h
+diff --git a/include/uapi/linux/richacl.h b/include/uapi/linux/richacl.h
+new file mode 100644
+index 0000000..6887f88
+--- /dev/null
++++ b/include/uapi/linux/richacl.h
+@@ -0,0 +1,111 @@
++/*
++ * Copyright (C) 2006, 2010  Novell, Inc.
++ * Copyright (C) 2015  Red Hat, Inc.
++ * Written by Andreas Gruenbacher <agruen@kernel.org>
++ *
++ * This program is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License as published by the
++ * Free Software Foundation; either version 2, or (at your option) any
++ * later version.
++ *
++ * This program is distributed in the hope that it will be useful, but
++ * WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * General Public License for more details.
++ */
++
++#ifndef __UAPI_RICHACL_H
++#define __UAPI_RICHACL_H
++
++/* a_flags values */
++#define RICHACL_AUTO_INHERIT			0x01
++#define RICHACL_PROTECTED			0x02
++#define RICHACL_DEFAULTED			0x04
++#define RICHACL_WRITE_THROUGH			0x40
++#define RICHACL_MASKED				0x80
++
++/* e_type values */
++#define RICHACE_ACCESS_ALLOWED_ACE_TYPE		0x0000
++#define RICHACE_ACCESS_DENIED_ACE_TYPE		0x0001
++
++/* e_flags bitflags */
++#define RICHACE_FILE_INHERIT_ACE		0x0001
++#define RICHACE_DIRECTORY_INHERIT_ACE		0x0002
++#define RICHACE_NO_PROPAGATE_INHERIT_ACE	0x0004
++#define RICHACE_INHERIT_ONLY_ACE		0x0008
++#define RICHACE_IDENTIFIER_GROUP		0x0040
++#define RICHACE_INHERITED_ACE			0x0080
++#define RICHACE_UNMAPPED_WHO			0x2000
++#define RICHACE_SPECIAL_WHO			0x4000
++
++/* e_mask bitflags */
++#define RICHACE_READ_DATA			0x00000001
++#define RICHACE_LIST_DIRECTORY			0x00000001
++#define RICHACE_WRITE_DATA			0x00000002
++#define RICHACE_ADD_FILE			0x00000002
++#define RICHACE_APPEND_DATA			0x00000004
++#define RICHACE_ADD_SUBDIRECTORY		0x00000004
++#define RICHACE_READ_NAMED_ATTRS		0x00000008
++#define RICHACE_WRITE_NAMED_ATTRS		0x00000010
++#define RICHACE_EXECUTE				0x00000020
++#define RICHACE_DELETE_CHILD			0x00000040
++#define RICHACE_READ_ATTRIBUTES			0x00000080
++#define RICHACE_WRITE_ATTRIBUTES		0x00000100
++#define RICHACE_WRITE_RETENTION			0x00000200
++#define RICHACE_WRITE_RETENTION_HOLD		0x00000400
++#define RICHACE_DELETE				0x00010000
++#define RICHACE_READ_ACL			0x00020000
++#define RICHACE_WRITE_ACL			0x00040000
++#define RICHACE_WRITE_OWNER			0x00080000
++#define RICHACE_SYNCHRONIZE			0x00100000
++
++/* e_id values */
++#define RICHACE_OWNER_SPECIAL_ID		0
++#define RICHACE_GROUP_SPECIAL_ID		1
++#define RICHACE_EVERYONE_SPECIAL_ID		2
++
++/*
++ * The POSIX permissions are supersets of the following richacl permissions:
++ *
++ *  - MAY_READ maps to READ_DATA or LIST_DIRECTORY, depending on the type
++ *    of the file system object.
++ *
++ *  - MAY_WRITE maps to WRITE_DATA or RICHACE_APPEND_DATA for files, and to
++ *    ADD_FILE, RICHACE_ADD_SUBDIRECTORY, or RICHACE_DELETE_CHILD for directories.
++ *
++ *  - MAY_EXECUTE maps to RICHACE_EXECUTE.
++ *
++ *  (Some of these richacl permissions have the same bit values.)
++ */
++#define RICHACE_POSIX_MODE_READ (			\
++		RICHACE_READ_DATA |			\
++		RICHACE_LIST_DIRECTORY)
++#define RICHACE_POSIX_MODE_WRITE (			\
++		RICHACE_WRITE_DATA |			\
++		RICHACE_ADD_FILE |			\
++		RICHACE_APPEND_DATA |			\
++		RICHACE_ADD_SUBDIRECTORY |		\
++		RICHACE_DELETE_CHILD)
++#define RICHACE_POSIX_MODE_EXEC RICHACE_EXECUTE
++#define RICHACE_POSIX_MODE_ALL (			\
++		RICHACE_POSIX_MODE_READ |		\
++		RICHACE_POSIX_MODE_WRITE |		\
++		RICHACE_POSIX_MODE_EXEC)
++
++/*
++ * These permissions are always allowed no matter what the acl says.
++ */
++#define RICHACE_POSIX_ALWAYS_ALLOWED (			\
++		RICHACE_SYNCHRONIZE |			\
++		RICHACE_READ_ATTRIBUTES |		\
++		RICHACE_READ_ACL)
++
++/*
++ * The owner is implicitly granted these permissions under POSIX.
++ */
++#define RICHACE_POSIX_OWNER_ALLOWED (			\
++		RICHACE_WRITE_ATTRIBUTES |		\
++		RICHACE_WRITE_OWNER |			\
++		RICHACE_WRITE_ACL)
++
++#endif /* __UAPI_RICHACL_H */
+diff --git a/include/uapi/linux/richacl_xattr.h b/include/uapi/linux/richacl_xattr.h
+new file mode 100644
+index 0000000..6f96bc0
+--- /dev/null
++++ b/include/uapi/linux/richacl_xattr.h
+@@ -0,0 +1,43 @@
++/*
++ * Copyright (C) 2006, 2010  Novell, Inc.
++ * Copyright (C) 2015  Red Hat, Inc.
++ * Written by Andreas Gruenbacher <agruen@kernel.org>
++ *
++ * This program is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License as published by the
++ * Free Software Foundation; either version 2, or (at your option) any
++ * later version.
++ *
++ * This program is distributed in the hope that it will be useful, but
++ * WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * General Public License for more details.
++ */
++
++#ifndef __UAPI_RICHACL_XATTR_H
++#define __UAPI_RICHACL_XATTR_H
++
++#include <linux/types.h>
++#include <linux/xattr.h>
++
++struct richace_xattr {
++	__le16		e_type;
++	__le16		e_flags;
++	__le32		e_mask;
++	__le32		e_id;
++};
++
++struct richacl_xattr {
++	unsigned char	a_version;
++	unsigned char	a_flags;
++	__le16		a_count;
++	__le32		a_owner_mask;
++	__le32		a_group_mask;
++	__le32		a_other_mask;
++};
++
++#define RICHACL_XATTR_MAX_COUNT \
++	((XATTR_SIZE_MAX - sizeof(struct richacl_xattr)) / \
++	 sizeof(struct richace_xattr))
++
++#endif  /* __UAPI_RICHACL_XATTR_H */
+-- 
+2.4.3
 
-There is a fix for this issue in v4.3-rc3. Please see
-https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?id=79234c3db6842a3de03817211d891e0c2878f756
-
-Cheers
-  Trond
