@@ -1,255 +1,166 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wi0-f173.google.com ([209.85.212.173]:38730 "EHLO
-	mail-wi0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755038AbbI0HXi (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Sep 2015 03:23:38 -0400
-Received: by wiclk2 with SMTP id lk2so64318317wic.1
-        for <linux-nfs@vger.kernel.org>; Sun, 27 Sep 2015 00:23:37 -0700 (PDT)
-Subject: Re: [PATCH v2 12/26] xprtrdma: Port to new memory registration API
-To: Chuck Lever <chuck.lever@oracle.com>, Sagi Grimberg <sagig@mellanox.com>
-References: <1443116094-7969-1-git-send-email-sagig@mellanox.com>
- <1443116094-7969-13-git-send-email-sagig@mellanox.com>
- <9F4BB29C-C399-4B02-9622-D9ED0BBD84BB@oracle.com>
-Cc: linux-rdma@vger.kernel.org,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        "Nicholas A. Bellinger" <nab@linux-iscsi.org>
-From: Sagi Grimberg <sagig@dev.mellanox.co.il>
-Message-ID: <56079974.3010205@dev.mellanox.co.il>
-Date: Sun, 27 Sep 2015 10:23:32 +0300
-MIME-Version: 1.0
-In-Reply-To: <9F4BB29C-C399-4B02-9622-D9ED0BBD84BB@oracle.com>
-Content-Type: text/plain; charset=utf-8; format=flowed
+Received: from mfb02-md.ns.itscom.net ([175.177.155.110]:35643 "EHLO
+	mfb02-md.ns.itscom.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755607AbbI0MxS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Sep 2015 08:53:18 -0400
+Received: from mail02-md.ns.itscom.net (mail02-md.ns.itscom.net [175.177.155.112])
+	by mfb02-md.ns.itscom.net (Postfix) with ESMTP id 32F30170E6DD
+	for <linux-nfs@vger.kernel.org>; Sun, 27 Sep 2015 21:47:08 +0900 (JST)
+From: "J. R. Okajima" <hooanon05g@gmail.com>
+To: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org
+Subject: v4.3-rc2, fault in sock_release via nfs_put_client
+Date: Sun, 27 Sep 2015 21:47:04 +0900
+Message-ID: <9143.1443358024@jrobl>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 9/25/2015 7:51 PM, Chuck Lever wrote:
->
->> On Sep 24, 2015, at 10:34 AM, Sagi Grimberg <sagig@mellanox.com> wrote:
->>
->> Instead of maintaining a fastreg page list, keep an sg table
->> and convert an array of pages to a sg list. Then call ib_map_mr_sg
->> and construct ib_reg_wr.
->>
->> Note that the next step would be to have NFS work with sg lists
->> as it maps well to sk_frags (see comment from hch
->> http://marc.info/?l=linux-rdma&m=143677002622296&w=2).
->
-> Fwiw, you would need to change tcp_sendpages() first.
->
-> One more comment below.
->
->
->> Signed-off-by: Sagi Grimberg <sagig@mellanox.com>
->> Acked-by: Christoph Hellwig <hch@lst.de>
->> ---
->> net/sunrpc/xprtrdma/frwr_ops.c  | 113 +++++++++++++++++++++++-----------------
->> net/sunrpc/xprtrdma/xprt_rdma.h |   3 +-
->> 2 files changed, 68 insertions(+), 48 deletions(-)
->>
->> diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
->> index 0d2f46f600b6..b80a82149977 100644
->> --- a/net/sunrpc/xprtrdma/frwr_ops.c
->> +++ b/net/sunrpc/xprtrdma/frwr_ops.c
->> @@ -151,9 +151,13 @@ __frwr_init(struct rpcrdma_mw *r, struct ib_pd *pd, struct ib_device *device,
->> 	f->fr_mr = ib_alloc_mr(pd, IB_MR_TYPE_MEM_REG, depth);
->> 	if (IS_ERR(f->fr_mr))
->> 		goto out_mr_err;
->> -	f->fr_pgl = ib_alloc_fast_reg_page_list(device, depth);
->> -	if (IS_ERR(f->fr_pgl))
->> +
->> +	f->sg = kcalloc(depth, sizeof(*f->sg), GFP_KERNEL);
->> +	if (!f->sg)
->> 		goto out_list_err;
->> +
->> +	sg_init_table(f->sg, depth);
->> +
->> 	return 0;
->>
->> out_mr_err:
->> @@ -163,7 +167,7 @@ out_mr_err:
->> 	return rc;
->>
->> out_list_err:
->> -	rc = PTR_ERR(f->fr_pgl);
->> +	rc = -ENOMEM;
->> 	dprintk("RPC:       %s: ib_alloc_fast_reg_page_list status %i\n",
->> 		__func__, rc);
->> 	ib_dereg_mr(f->fr_mr);
->> @@ -179,7 +183,7 @@ __frwr_release(struct rpcrdma_mw *r)
->> 	if (rc)
->> 		dprintk("RPC:       %s: ib_dereg_mr status %i\n",
->> 			__func__, rc);
->> -	ib_free_fast_reg_page_list(r->r.frmr.fr_pgl);
->> +	kfree(r->r.frmr.sg);
->> }
->>
->> static int
->> @@ -312,14 +316,11 @@ frwr_op_map(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
->> 	struct rpcrdma_mw *mw;
->> 	struct rpcrdma_frmr *frmr;
->> 	struct ib_mr *mr;
->> -	struct ib_fast_reg_wr fastreg_wr;
->> +	struct ib_reg_wr reg_wr;
->> 	struct ib_send_wr *bad_wr;
->> +	unsigned int dma_nents;
->> 	u8 key;
->> -	int len, pageoff;
->> -	int i, rc;
->> -	int seg_len;
->> -	u64 pa;
->> -	int page_no;
->> +	int i, rc, len, n;
->>
->> 	mw = seg1->rl_mw;
->> 	seg1->rl_mw = NULL;
->> @@ -332,64 +333,81 @@ frwr_op_map(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
->> 	} while (mw->r.frmr.fr_state != FRMR_IS_INVALID);
->> 	frmr = &mw->r.frmr;
->> 	frmr->fr_state = FRMR_IS_VALID;
->> +	mr = frmr->fr_mr;
->>
->> -	pageoff = offset_in_page(seg1->mr_offset);
->> -	seg1->mr_offset -= pageoff;	/* start of page */
->> -	seg1->mr_len += pageoff;
->> -	len = -pageoff;
->> 	if (nsegs > ia->ri_max_frmr_depth)
->> 		nsegs = ia->ri_max_frmr_depth;
->>
->> -	for (page_no = i = 0; i < nsegs;) {
->> -		rpcrdma_map_one(device, seg, direction);
->> -		pa = seg->mr_dma;
->> -		for (seg_len = seg->mr_len; seg_len > 0; seg_len -= PAGE_SIZE) {
->> -			frmr->fr_pgl->page_list[page_no++] = pa;
->> -			pa += PAGE_SIZE;
->> -		}
->> +	for (len = 0, i = 0; i < nsegs;) {
->> +		if (seg->mr_page)
->> +			sg_set_page(&frmr->sg[i],
->> +				    seg->mr_page,
->> +				    seg->mr_len,
->> +				    offset_in_page(seg->mr_offset));
->> +		else
->> +			sg_set_buf(&frmr->sg[i], seg->mr_offset,
->> +				   seg->mr_len);
->> +
->> 		len += seg->mr_len;
->> 		++seg;
->> 		++i;
->> +
->> 		/* Check for holes */
->> 		if ((i < nsegs && offset_in_page(seg->mr_offset)) ||
->> 		    offset_in_page((seg-1)->mr_offset + (seg-1)->mr_len))
->> 			break;
->> 	}
->> +	frmr->sg_nents = i;
->> +
->> +	dma_nents = ib_dma_map_sg(device, frmr->sg, frmr->sg_nents, direction);
->> +	if (!dma_nents) {
->> +		pr_err("RPC:       %s: failed to dma map sg %p sg_nents %d\n",
->> +		       __func__, frmr->sg, frmr->sg_nents);
->> +		return -ENOMEM;
->> +	}
->> +
->> +	n = ib_map_mr_sg(mr, frmr->sg, frmr->sg_nents, PAGE_SIZE);
->> +	if (unlikely(n != frmr->sg_nents)) {
->> +		pr_err("RPC:       %s: failed to map mr %p (%d/%d)\n",
->> +		       __func__, frmr->fr_mr, n, frmr->sg_nents);
->> +		rc = n < 0 ? n : -EINVAL;
->> +		goto out_senderr;
->> +	}
->> +
->> 	dprintk("RPC:       %s: Using frmr %p to map %d segments (%d bytes)\n",
->> -		__func__, mw, i, len);
->> -
->> -	memset(&fastreg_wr, 0, sizeof(fastreg_wr));
->> -	fastreg_wr.wr.wr_id = (unsigned long)(void *)mw;
->> -	fastreg_wr.wr.opcode = IB_WR_FAST_REG_MR;
->> -	fastreg_wr.iova_start = seg1->mr_dma + pageoff;
->> -	fastreg_wr.page_list = frmr->fr_pgl;
->> -	fastreg_wr.page_shift = PAGE_SHIFT;
->> -	fastreg_wr.page_list_len = page_no;
->> -	fastreg_wr.length = len;
->> -	fastreg_wr.access_flags = writing ?
->> -				IB_ACCESS_REMOTE_WRITE | IB_ACCESS_LOCAL_WRITE :
->> -				IB_ACCESS_REMOTE_READ;
->> -	mr = frmr->fr_mr;
->> +		__func__, mw, frmr->sg_nents, mr->length);
->> +
->> 	key = (u8)(mr->rkey & 0x000000FF);
->> 	ib_update_fast_reg_key(mr, ++key);
->> -	fastreg_wr.rkey = mr->rkey;
->> +
->> +	reg_wr.wr.next = NULL;
->> +	reg_wr.wr.opcode = IB_WR_REG_MR;
->> +	reg_wr.wr.wr_id = (uintptr_t)mw;
->> +	reg_wr.wr.num_sge = 0;
->> +	reg_wr.wr.send_flags = 0;
->> +	reg_wr.mr = mr;
->> +	reg_wr.key = mr->rkey;
->> +	reg_wr.access = writing ?
->> +			IB_ACCESS_REMOTE_WRITE | IB_ACCESS_LOCAL_WRITE :
->> +			IB_ACCESS_REMOTE_READ;
->>
->> 	DECR_CQCOUNT(&r_xprt->rx_ep);
->> -	rc = ib_post_send(ia->ri_id->qp, &fastreg_wr.wr, &bad_wr);
->> +	rc = ib_post_send(ia->ri_id->qp, &reg_wr.wr, &bad_wr);
->> 	if (rc)
->> 		goto out_senderr;
->>
->> +	seg1->mr_dir = direction;
->> 	seg1->rl_mw = mw;
->> 	seg1->mr_rkey = mr->rkey;
->> -	seg1->mr_base = seg1->mr_dma + pageoff;
->> -	seg1->mr_nsegs = i;
->> -	seg1->mr_len = len;
->> -	return i;
->> +	seg1->mr_base = mr->iova;
->> +	seg1->mr_nsegs = frmr->sg_nents;
->> +	seg1->mr_len = mr->length;
->> +
->> +	return frmr->sg_nents;
->>
->> out_senderr:
->> 	dprintk("RPC:       %s: ib_post_send status %i\n", __func__, rc);
->> -	while (i--)
->> -		rpcrdma_unmap_one(device, --seg);
->> +	ib_dma_unmap_sg(device, frmr->sg, frmr->sg_nents, direction);
->> 	__frwr_queue_recovery(mw);
->> 	return rc;
->> }
->> @@ -403,28 +421,29 @@ frwr_op_unmap(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg)
->> 	struct rpcrdma_mr_seg *seg1 = seg;
->> 	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
->> 	struct rpcrdma_mw *mw = seg1->rl_mw;
->> +	struct rpcrdma_frmr *frmr = &mw->r.frmr;
->> 	struct ib_send_wr invalidate_wr, *bad_wr;
->> 	int rc, nsegs = seg->mr_nsegs;
->>
->> 	dprintk("RPC:       %s: FRMR %p\n", __func__, mw);
->>
->> 	seg1->rl_mw = NULL;
->> -	mw->r.frmr.fr_state = FRMR_IS_INVALID;
->> +	frmr->fr_state = FRMR_IS_INVALID;
->>
->> 	memset(&invalidate_wr, 0, sizeof(invalidate_wr));
->> 	invalidate_wr.wr_id = (unsigned long)(void *)mw;
->> 	invalidate_wr.opcode = IB_WR_LOCAL_INV;
->> -	invalidate_wr.ex.invalidate_rkey = mw->r.frmr.fr_mr->rkey;
->> +	invalidate_wr.ex.invalidate_rkey = frmr->fr_mr->rkey;
->> 	DECR_CQCOUNT(&r_xprt->rx_ep);
->>
->> -	while (seg1->mr_nsegs--)
->> -		rpcrdma_unmap_one(ia->ri_device, seg++);
->> 	read_lock(&ia->ri_qplock);
->> 	rc = ib_post_send(ia->ri_id->qp, &invalidate_wr, &bad_wr);
->> 	read_unlock(&ia->ri_qplock);
->> 	if (rc)
->> 		goto out_err;
->>
->> +	ib_dma_unmap_sg(ia->ri_device, frmr->sg, frmr->sg_nents, seg1->mr_dir);
->
-> What benefit does moving the DMA unmap after the post_send have?
-> Remember that the LOCAL_INV WRs may not have started yet, even after
-> the post_send.
 
-It doesn't have a benefit. I can move it back...
+Hello NFS folks,
+
+I don't know whether this is a known issue or not (since I was off from
+development for a few months), but I've got a "general protection fault:
+0000" message from linux-4.3-rc2.
+Here are the reproducible script and the log.
+Would you check them please?
+
+Notes:
+- The script cannot reproduce the problem perfectly. Not always. But if
+  you try several times, you will able to see. On my test system, I had
+  to try a few times.
+- As far as I know, if bind-mount did not happen, then the problem did
+  not happen either. But I am not sure whether bind-mount is really the
+  trigger of this issue.
+
+
+J. R. Okajima
+
+----------------------------------------------------------------------
+#!/bin/sh
+
+set -eu
+
+Stat() # path
+{
+	stat -f --printf="%n %T\n" $1
+}
+
+uname -a
+s=/dev/shm
+Stat $s
+c=/tmp/c
+mkdir -p $c
+showmount -e > /tmp/e
+sudo exportfs -i -o rw,async,no_subtree_check,no_root_squash,fsid=99 localhost:$s
+showmount -e | diff /tmp/e - || :
+sudo mount -t nfs localhost:$s $c
+Stat $c
+b=/tmp/b
+mkdir -p $b
+sudo mount -o bind $c $b
+Stat $b
+> $b/f
+cat /proc/mounts > /tmp/m
+sudo umount -l $b
+diff /tmp/m /proc/mounts || :
+sync
+sleep 1
+cat /proc/mounts > /tmp/m
+sudo umount -l $c
+diff /tmp/m /proc/mounts
+sudo exportfs -u localhost:$s
+showmount -e | diff /tmp/e -
+----------------------------------------------------------------------
+
+$ sh -x ./nfs-4.3-rc2.sh
++ set -eu
++ s=/dev/shm
++ Stat /dev/shm
++ stat -f --printf=%n %T\n /dev/shm
+/dev/shm tmpfs
++ c=/tmp/c
++ mkdir -p /tmp/c
++ showmount -e
++ sudo exportfs -i -o rw,async,no_subtree_check,no_root_squash,fsid=99 localhost:/dev/shm
++ showmount -e
++ diff /tmp/e -
+3a4
+> /dev/shm     localhost
++ :
++ sudo mount -t nfs localhost:/dev/shm /tmp/c
++ Stat /tmp/c
++ stat -f --printf=%n %T\n /tmp/c
+/tmp/c nfs
++ b=/tmp/b
++ mkdir -p /tmp/b
++ sudo mount -o bind /tmp/c /tmp/b
++ Stat /tmp/b
++ stat -f --printf=%n %T\n /tmp/b
+/tmp/b nfs
++
++ cat /proc/mounts
++ sudo umount -l /tmp/b
++ diff /tmp/m /proc/mounts
+26d25
+< localhost:/dev/shm /tmp/b nfs4 rw,relatime,vers=4.0,rsize=65536,wsize=65536,namlen=255,hard,proto=tcp,port=0,timeo=600,retrans=2,clientaddr=127.0.0.1,local_lock=none,addr=127.0.0.1 0 0
++ :
++ sync
++ sleep 1
++ cat /proc/mounts
++ sudo umount -l /tmp/c
+general protection fault: 0000 [#7] PREEMPT SMP
+Modules linked in: oprofile configs autofs4 nfsd [last unloaded: brd]
+CPU: 0 PID: 4325 Comm: umount.nfs Tainted: G      D         4.3.0-rc2aufsD+ #67
+Hardware name: Pegatron Pegatron/IPM41, BIOS 0001 02/05/2009
+task: ffff88002d69ea00 ti: ffff88002ca00000 task.ti: ffff88002ca00000
+RIP: 0010:[<ffffffff81643be1>]  [<ffffffff81643be1>] sock_release+0x21/0x90
+RSP: 0018:ffff88002ca03bd8  EFLAGS: 00010202
+RAX: 6b6b6b6b6b6b6b6b RBX: ffff88002812f7c0 RCX: 0000000000000000
+RDX: 0000000000000000 RSI: 0000000000000000 RDI: ffff88002812f7c0
+RBP: ffff88002ca03be8 R08: 0000000000000000 R09: 0000000000000000
+R10: 0000000000000000 R11: 0000000000000001 R12: 0000000000000000
+R13: ffff88002812f7c0 R14: ffff88002b8eeea0 R15: 0000000000000001
+FS:  00007f763d4f57e0(0000) GS:ffff88002fc00000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+CR2: 0000000001176db8 CR3: 000000002d76c000 CR4: 00000000000406f0
+Stack:
+ ffff88002b870000 0000000000000000 ffff88002ca03c18 ffffffff81715afc
+ ffff88002b870000 0000000000000000 ffff88002b870000 ffff88002ca03d08
+ ffff88002ca03c38 ffffffff81715bd6 0000000000000000 ffff88002b870000
+Call Trace:
+ [<ffffffff81715afc>] xs_reset_transport+0x18c/0x250
+ [<ffffffff81715bd6>] xs_close+0x16/0x30
+ [<ffffffff81715c06>] xs_destroy+0x16/0x30
+ [<ffffffff8170fb4f>] xprt_destroy+0x6f/0x80
+ [<ffffffff81712364>] xprt_put+0x14/0x20
+ [<ffffffff8170dda4>] rpc_free_client+0x84/0xc0
+ [<ffffffff8170de3a>] rpc_release_client+0x5a/0x90
+ [<ffffffff8170df61>] rpc_shutdown_client+0xf1/0x100
+ [<ffffffff812cb4c7>] nfs_free_client+0x97/0xa0
+ [<ffffffff81312c84>] nfs4_free_client+0xa4/0xc0
+ [<ffffffff812c97e5>] nfs_put_client+0x295/0x430
+ [<ffffffff81312be0>] ? nfs4_alloc_client+0x380/0x380
+ [<ffffffff812ca80c>] nfs_free_server+0x7c/0xd0
+ [<ffffffff812d732c>] nfs_kill_super+0x2c/0x40
+ [<ffffffff811ad5f1>] deactivate_locked_super+0x51/0x90
+ [<ffffffff811ae4b4>] deactivate_super+0x84/0x90
+ [<ffffffff811d28e7>] cleanup_mnt+0x97/0xe0
+ [<ffffffff811d2982>] __cleanup_mnt+0x12/0x20
+ [<ffffffff8107e9f2>] task_work_run+0x72/0xa0
+ [<ffffffff81001d0b>] prepare_exit_to_usermode+0x10b/0x150
+ [<ffffffff811d3d95>] ? mntput_no_expire+0x5/0x2c0
+ [<ffffffff81001de6>] syscall_return_slowpath+0x96/0x2f0
+ [<ffffffff81751a71>] int_ret_from_sys_call+0x25/0x9f
+Code: 5b 5d c3 0f 1f 80 00 00 00 00 66 66 66 66 90 55 48 89 e5 48 83 ec 10 48 89 5d f0 48 89 fb 4c 89 65 f8 48 8b 47 28 48 85 c0 74 17 <4c> 8b 60 08 ff 50 10 48 c7 43 28 00 00 00 00 4c 89 e7 e8 b8 7d 
+RIP  [<ffffffff81643be1>] sock_release+0x21/0x90
+ RSP <ffff88002ca03bd8>
+---[ end trace 1bcdd4036690d082 ]---
+umount.nfs: /tmp/c: not mounted
+umount.nfs: /tmp/c: not mounted
+umount.nfs: /tmp/c: not mounted
+umount.nfs: /tmp/c: not mounted
+umount.nfs: /tmp/c: not mounted
+umount.nfs: /tmp/c: not mounted
+umount.nfs: /tmp/c: not mounted
+$
+----------------------------------------------------------------------
