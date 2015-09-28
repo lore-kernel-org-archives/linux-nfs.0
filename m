@@ -1,46 +1,44 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.opengridcomputing.com ([72.48.136.20]:50020 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1757039AbbI1ObY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Sep 2015 10:31:24 -0400
-Subject: Re: [PATCH 2/3] svcrdma: handle rdma read with a non-zero initial
- page offset
-To: trond.myklebust@primarydata.com, bfields@fieldses.org
-References: <20150921172423.9761.92399.stgit@build2.ogc.int>
- <20150921172428.9761.27838.stgit@build2.ogc.int>
-Cc: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-From: Steve Wise <swise@opengridcomputing.com>
-Message-ID: <56094F3D.2030002@opengridcomputing.com>
-Date: Mon, 28 Sep 2015 09:31:25 -0500
-MIME-Version: 1.0
-In-Reply-To: <20150921172428.9761.27838.stgit@build2.ogc.int>
-Content-Type: text/plain; charset=utf-8; format=flowed
+Received: from m12-17.163.com ([220.181.12.17]:44481 "EHLO m12-17.163.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933794AbbI1Of4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 28 Sep 2015 10:35:56 -0400
+From: Yaowei Bai <bywxiaobai@163.com>
+To: viro@zeniv.linux.org.uk, trond.myklebust@primarydata.com,
+        anna.schumaker@netapp.com
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: [PATCH 13/17] fs/nfs: remove unnecessary new_valid_dev check
+Date: Mon, 28 Sep 2015 22:30:32 +0800
+Message-Id: <1443450632-5647-1-git-send-email-bywxiaobai@163.com>
+In-Reply-To: <1443446807-4838-1-git-send-email-bywxiaobai@163.com>
+References: <1443446807-4838-1-git-send-email-bywxiaobai@163.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 9/21/2015 12:24 PM, Steve Wise wrote:
-> The server rdma_read_chunk_lcl() and rdma_read_chunk_frmr() functions
-> were not taking into account the initial page_offset when determining
-> the rdma read length.  This resulted in a read who's starting address
-> and length exceeded the base/bounds of the frmr.
->
-> Most work loads don't tickle this bug apparently, but one test hit it
-> every time: building the linux kernel on a 16 core node with 'make -j
-> 16 O=/mnt/0' where /mnt/0 is a ramdisk mounted via NFSRDMA.
->
-> This bug seems to only be tripped with devices having small fastreg page
-> list depths.  I didn't see it with mlx4, for instance.
->
-> Fixes: 0bf4828983df ('svcrdma: refactor marshalling logic')
-> Signed-off-by: Steve Wise <swise@opengridcomputing.com>
-> Tested-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
->
->
+As new_valid_dev always returns 1, so !new_valid_dev check is not
+needed, remove it.
 
-Hey Bruce, can this make 4.3-rc?  Also, what do you think about pushing 
-it to stable?
+Signed-off-by: Yaowei Bai <bywxiaobai@163.com>
+---
+ fs/nfs/dir.c | 3 ---
+ 1 file changed, 3 deletions(-)
 
-Thanks,
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 3d8e4ff..ce5a218 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -1714,9 +1714,6 @@ nfs_mknod(struct inode *dir, struct dentry *dentry, umode_t mode, dev_t rdev)
+ 	dfprintk(VFS, "NFS: mknod(%s/%lu), %pd\n",
+ 			dir->i_sb->s_id, dir->i_ino, dentry);
+ 
+-	if (!new_valid_dev(rdev))
+-		return -EINVAL;
+-
+ 	attr.ia_mode = mode;
+ 	attr.ia_valid = ATTR_MODE;
+ 
+-- 
+1.9.1
 
-Steve.
+
