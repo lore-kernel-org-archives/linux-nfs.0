@@ -1,55 +1,38 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx144.netapp.com ([216.240.21.25]:5174 "EHLO mx144.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757516AbbI1O2Y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 28 Sep 2015 10:28:24 -0400
-Subject: Re: [PATCH v3 8/9] vfs: copy_file_range() can do a pagecache copy
- with splice
-To: Andy Lutomirski <luto@amacapital.net>
-References: <1443214096-12769-1-git-send-email-Anna.Schumaker@Netapp.com>
- <1443214096-12769-9-git-send-email-Anna.Schumaker@Netapp.com>
- <CALCETrWLAwNVqAiTMOmaktVY0cQkM0bX2vztXzEHm3EFYDg6zA@mail.gmail.com>
-CC: <linux-nfs@vger.kernel.org>,
-        Linux btrfs Developers List <linux-btrfs@vger.kernel.org>,
-        Linux FS Devel <linux-fsdevel@vger.kernel.org>,
-        Linux API <linux-api@vger.kernel.org>, Zach Brown <zab@zabbo.net>,
-        Al Viro <viro@zeniv.linux.org.uk>, Chris Mason <clm@fb.com>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>,
-        Michael Kerrisk-manpages <mtk.manpages@gmail.com>, <andros@netapp.com>,
-        Christoph Hellwig <hch@infradead.org>
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-Message-ID: <56094E82.2070800@Netapp.com>
-Date: Mon, 28 Sep 2015 10:28:18 -0400
+Received: from smtp.opengridcomputing.com ([72.48.136.20]:50012 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S933318AbbI1Oaq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Sep 2015 10:30:46 -0400
+Subject: Re: [PATCH 1/3] xprtrdma: disconnect and flush cqs before freeing
+ buffers
+To: trond.myklebust@primarydata.com, bfields@fieldses.org
+References: <20150921172423.9761.92399.stgit@build2.ogc.int>
+Cc: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
+From: Steve Wise <swise@opengridcomputing.com>
+Message-ID: <56094F16.3040608@opengridcomputing.com>
+Date: Mon, 28 Sep 2015 09:30:46 -0500
 MIME-Version: 1.0
-In-Reply-To: <CALCETrWLAwNVqAiTMOmaktVY0cQkM0bX2vztXzEHm3EFYDg6zA@mail.gmail.com>
-Content-Type: text/plain; charset="utf-8"
+In-Reply-To: <20150921172423.9761.92399.stgit@build2.ogc.int>
+Content-Type: text/plain; charset=utf-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 09/25/2015 08:14 PM, Andy Lutomirski wrote:
-> On Fri, Sep 25, 2015 at 1:48 PM, Anna Schumaker
-> <Anna.Schumaker@netapp.com> wrote:
->> The NFS server will need some kind offallback for filesystems that don't
->> have any kind of copy acceleration, and it should be generally useful to
->> have an in-kernel copy to avoid lots of switches between kernel and user
->> space.
->>
->> I make this configurable by adding two new flags.  Users who only want a
->> reflink can pass COPY_FR_REFLINK, and users who want a full data copy can
->> pass COPY_FR_COPY.  The default (flags=0) means to first attempt a
->> reflink, but use the pagecache if that fails.
->>
-> 
-> Can you clarify how the subject line fits in?  I'm a bit lost.
+On 9/21/2015 12:24 PM, Steve Wise wrote:
+> Otherwise a FRMR completion can cause a touch-after-free crash.
+>
+> In xprt_rdma_destroy(), call rpcrdma_buffer_destroy() only after calling
+> rpcrdma_ep_destroy().
+>
+> In rpcrdma_ep_destroy(), disconnect the cm_id first which should flush the
+> qp, then drain the cqs, then destroy the qp, and finally destroy the cqs.
+>
+> Signed-off-by: Steve Wise <swise@opengridcomputing.com>
+> Tested-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
 
-I'll try!  I use the splice interface to copy file data from the pagecache, and this implements an in-kernel copy that can be controlled using the two flags I added.
+Hey Trond,  I'm hoping this can make 4.3-rc (and stable if you agree).
 
-I plan on using this in the NFS server when I add server-side copy support.
+Thanks,
 
-Let me know if that doesn't answer your question!
-Anna
-
-> 
-> --Andy
-> 
+Steve.
 
