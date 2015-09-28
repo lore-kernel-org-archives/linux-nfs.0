@@ -1,60 +1,39 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:45877 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750810AbbI1Sr1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Sep 2015 14:47:27 -0400
-Date: Mon, 28 Sep 2015 11:46:18 -0700
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-To: Anna Schumaker <Anna.Schumaker@netapp.com>
-Cc: linux-nfs@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-api@vger.kernel.org,
-        zab@zabbo.net, viro@zeniv.linux.org.uk, clm@fb.com,
-        mtk.manpages@gmail.com, andros@netapp.com, hch@infradead.org
-Subject: Re: [PATCH v3 5/9] vfs: Copy shouldn't forbid ranges inside the same
- file
-Message-ID: <20150928184618.GD850@birch.djwong.org>
-References: <1443214096-12769-1-git-send-email-Anna.Schumaker@Netapp.com>
- <1443214096-12769-6-git-send-email-Anna.Schumaker@Netapp.com>
+Received: from smtp.opengridcomputing.com ([72.48.136.20]:50495 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751105AbbI1TcV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Sep 2015 15:32:21 -0400
+Subject: Re: [PATCH v2 00/26] New fast registration API
+To: Sagi Grimberg <sagig@mellanox.com>, linux-rdma@vger.kernel.org
+References: <1443116118-10730-1-git-send-email-sagig@mellanox.com>
+Cc: linux-nfs@vger.kernel.org, "Nicholas A. Bellinger" <nab@linux-iscsi.org>
+From: Steve Wise <swise@opengridcomputing.com>
+Message-ID: <560995C6.3040909@opengridcomputing.com>
+Date: Mon, 28 Sep 2015 14:32:22 -0500
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1443214096-12769-6-git-send-email-Anna.Schumaker@Netapp.com>
+In-Reply-To: <1443116118-10730-1-git-send-email-sagig@mellanox.com>
+Content-Type: text/plain; charset=windows-1252; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Sep 25, 2015 at 04:48:11PM -0400, Anna Schumaker wrote:
-> This is perfectly valid for BTRFS and XFS, so let's leave this up to
-> filesystems to check.
-> 
-> Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
-> Reviewed-by: David Sterba <dsterba@suse.com>
+On 9/24/2015 12:34 PM, Sagi Grimberg wrote:
+> I don't have access to other HW devices (qib, nes) nor iwarp devices so RDS is
+> compile tested only. Santosh reports
+>
+> I'm targeting this to 4.4 so I'll appreciate more feedback and a bigger testing
+> coverage.
+>
+> The code is available at: https://github.com/sagigrimberg/linux/tree/reg_api.4
 
-Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
+With these NFSRDMA fixes applied on top of reg_api.4:
 
---D
+https://patchwork.kernel.org/patch/7233211/
+https://patchwork.kernel.org/patch/7233231/
+https://patchwork.kernel.org/patch/7233251/
 
-> ---
->  fs/read_write.c | 4 ----
->  1 file changed, 4 deletions(-)
-> 
-> diff --git a/fs/read_write.c b/fs/read_write.c
-> index f3d6c48..8e7cb33 100644
-> --- a/fs/read_write.c
-> +++ b/fs/read_write.c
-> @@ -1371,10 +1371,6 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
->  	    file_in->f_path.mnt != file_out->f_path.mnt)
->  		return -EXDEV;
->  
-> -	/* forbid ranges in the same file */
-> -	if (inode_in == inode_out)
-> -		return -EINVAL;
-> -
->  	if (len == 0)
->  		return 0;
->  
-> -- 
-> 2.5.3
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-api" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+I tested NFSRDMA client and server over iw_cxgb4 with NFSv3 and NFSv4.
+
+Looks good.
+
+Tested-by: Steve Wise <swise@opengridcomputing.com>
+
