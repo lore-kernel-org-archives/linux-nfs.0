@@ -1,44 +1,56 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from m12-17.163.com ([220.181.12.17]:44481 "EHLO m12-17.163.com"
+Received: from mx143.netapp.com ([216.240.21.24]:13717 "EHLO mx143.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933794AbbI1Of4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 28 Sep 2015 10:35:56 -0400
-From: Yaowei Bai <bywxiaobai@163.com>
-To: viro@zeniv.linux.org.uk, trond.myklebust@primarydata.com,
-        anna.schumaker@netapp.com
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: [PATCH 13/17] fs/nfs: remove unnecessary new_valid_dev check
-Date: Mon, 28 Sep 2015 22:30:32 +0800
-Message-Id: <1443450632-5647-1-git-send-email-bywxiaobai@163.com>
-In-Reply-To: <1443446807-4838-1-git-send-email-bywxiaobai@163.com>
-References: <1443446807-4838-1-git-send-email-bywxiaobai@163.com>
+	id S933633AbbI1Opj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 28 Sep 2015 10:45:39 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+Subject: Re: [PATCH 1/3] xprtrdma: disconnect and flush cqs before freeing
+ buffers
+To: Steve Wise <swise@opengridcomputing.com>,
+        <trond.myklebust@primarydata.com>, <bfields@fieldses.org>
+References: <20150921172423.9761.92399.stgit@build2.ogc.int>
+ <56094F16.3040608@opengridcomputing.com>
+CC: <linux-nfs@vger.kernel.org>, <linux-rdma@vger.kernel.org>
+Message-ID: <56095286.6030201@Netapp.com>
+Date: Mon, 28 Sep 2015 10:45:26 -0400
+MIME-Version: 1.0
+In-Reply-To: <56094F16.3040608@opengridcomputing.com>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-As new_valid_dev always returns 1, so !new_valid_dev check is not
-needed, remove it.
+Hi Steve,
 
-Signed-off-by: Yaowei Bai <bywxiaobai@163.com>
----
- fs/nfs/dir.c | 3 ---
- 1 file changed, 3 deletions(-)
+On 09/28/2015 10:30 AM, Steve Wise wrote:
+> On 9/21/2015 12:24 PM, Steve Wise wrote:
+>> Otherwise a FRMR completion can cause a touch-after-free crash.
+>>
+>> In xprt_rdma_destroy(), call rpcrdma_buffer_destroy() only after calling
+>> rpcrdma_ep_destroy().
+>>
+>> In rpcrdma_ep_destroy(), disconnect the cm_id first which should flush the
+>> qp, then drain the cqs, then destroy the qp, and finally destroy the cqs.
+>>
+>> Signed-off-by: Steve Wise <swise@opengridcomputing.com>
+>> Tested-by: Chuck Lever <chuck.lever@oracle.com>
+>> ---
+> 
+> Hey Trond,  I'm hoping this can make 4.3-rc (and stable if you agree).
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 3d8e4ff..ce5a218 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -1714,9 +1714,6 @@ nfs_mknod(struct inode *dir, struct dentry *dentry, umode_t mode, dev_t rdev)
- 	dfprintk(VFS, "NFS: mknod(%s/%lu), %pd\n",
- 			dir->i_sb->s_id, dir->i_ino, dentry);
- 
--	if (!new_valid_dev(rdev))
--		return -EINVAL;
--
- 	attr.ia_mode = mode;
- 	attr.ia_valid = ATTR_MODE;
- 
--- 
-1.9.1
+This patch looks fine to me.  I'll pass it on to Trond!
 
+I'll save patch 3/3 for the Linux 4.4 merge.
+
+Thanks,
+Anna
+
+> 
+> Thanks,
+> 
+> Steve.
+> 
+> -- 
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
