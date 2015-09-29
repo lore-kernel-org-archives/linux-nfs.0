@@ -1,52 +1,83 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:60934 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:47778 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S934914AbbI2Pg1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 29 Sep 2015 11:36:27 -0400
-Received: from int-mx14.intmail.prod.int.phx2.redhat.com (int-mx14.intmail.prod.int.phx2.redhat.com [10.5.11.27])
-	by mx1.redhat.com (Postfix) with ESMTPS id 95F97A85
-	for <linux-nfs@vger.kernel.org>; Tue, 29 Sep 2015 15:36:26 +0000 (UTC)
+	id S934853AbbI2Pgo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 29 Sep 2015 11:36:44 -0400
+Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+	by mx1.redhat.com (Postfix) with ESMTPS id 75C572E8349
+	for <linux-nfs@vger.kernel.org>; Tue, 29 Sep 2015 15:36:44 +0000 (UTC)
 From: Scott Mayhew <smayhew@redhat.com>
 To: steved@redhat.com
 Cc: linux-nfs@vger.kernel.org
-Subject: [nfs-utils PATCH] close the syslog fd in daemon_init()
-Date: Tue, 29 Sep 2015 11:36:25 -0400
-Message-Id: <1443540985-27992-1-git-send-email-smayhew@redhat.com>
+Subject: [nfs-utils PATCH] Allow gssd and svcgssd to set the libtirpc debug level
+Date: Tue, 29 Sep 2015 11:36:43 -0400
+Message-Id: <1443541003-28073-1-git-send-email-smayhew@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Commit 7addf9d (cleanup daemonization code) added the following line to
-mydaemon_init():
-
-        dup2(pipefds[1], 3);
-
-If we've already called vsyslog() before the fork(), then chances are fd
-3 was being used for the syslog socket.  In that case the next vsyslog()
-call will cause the data to appear on the read end of the pipe, causing
-the parent to exit with a nonzero status.  If systemd is running, it
-will see the parent's nonzero exit status and will terminate the child
-as well.
-
-So just call closelog() to close the fd.  The next call to vsyslog()
-will open a new one if need be.
+The interface for controlling the debug level in libtirpc was added
+over a year ago, but nothing's taking advantage of it.
 
 Signed-off-by: Scott Mayhew <smayhew@redhat.com>
 ---
- support/nfs/mydaemon.c | 1 +
- 1 file changed, 1 insertion(+)
+ aclocal/libtirpc.m4  | 6 ++++++
+ utils/gssd/gssd.c    | 7 +++++++
+ utils/gssd/svcgssd.c | 7 +++++++
+ 3 files changed, 20 insertions(+)
 
-diff --git a/support/nfs/mydaemon.c b/support/nfs/mydaemon.c
-index 3391eff..701cfd9 100644
---- a/support/nfs/mydaemon.c
-+++ b/support/nfs/mydaemon.c
-@@ -122,6 +122,7 @@ daemon_init(bool fg)
- 	dup2(tempfd, 0);
- 	dup2(tempfd, 1);
- 	dup2(tempfd, 2);
-+	closelog();
- 	dup2(pipefds[1], 3);
- 	pipefds[1] = 3;
- 	closeall(4);
+diff --git a/aclocal/libtirpc.m4 b/aclocal/libtirpc.m4
+index b7de636..27368ff 100644
+--- a/aclocal/libtirpc.m4
++++ b/aclocal/libtirpc.m4
+@@ -20,6 +20,12 @@ AC_DEFUN([AC_LIBTIRPC], [
+                                     [Define to 1 if your rpcsec library provides authgss_free_private_data])],,
+                          [${LIBS}])])
+ 
++     AS_IF([test -n "${LIBTIRPC}"],
++           [AC_CHECK_LIB([tirpc], [libtirpc_set_debug],
++                         [AC_DEFINE([HAVE_LIBTIRPC_SET_DEBUG], [1],
++                                    [Define to 1 if your tirpc library provides libtirpc_set_debug])],,
++                         [${LIBS}])])
++
+   AC_SUBST([AM_CPPFLAGS])
+   AC_SUBST(LIBTIRPC)
+ 
+diff --git a/utils/gssd/gssd.c b/utils/gssd/gssd.c
+index e480349..078e558 100644
+--- a/utils/gssd/gssd.c
++++ b/utils/gssd/gssd.c
+@@ -869,6 +869,13 @@ main(int argc, char *argv[])
+ 	if (verbosity && rpc_verbosity == 0)
+ 		rpc_verbosity = verbosity;
+ 	authgss_set_debug_level(rpc_verbosity);
++#elif HAVE_LIBTIRPC_SET_DEBUG
++	/*
++	 * Only set the libtirpc debug level if explicitly requested via -r...
++	 * gssd is chatty enough as it is.
++	 */
++	if (rpc_verbosity > 0)
++		libtirpc_set_debug(progname, rpc_verbosity, fg);
+ #else
+         if (rpc_verbosity > 0)
+ 		printerr(0, "Warning: rpcsec_gss library does not "
+diff --git a/utils/gssd/svcgssd.c b/utils/gssd/svcgssd.c
+index f1b4347..0fe7c6d 100644
+--- a/utils/gssd/svcgssd.c
++++ b/utils/gssd/svcgssd.c
+@@ -135,6 +135,13 @@ main(int argc, char *argv[])
+ 	if (verbosity && rpc_verbosity == 0)
+ 		rpc_verbosity = verbosity;
+ 	authgss_set_debug_level(rpc_verbosity);
++#elif HAVE_LIBTIRPC_SET_DEBUG
++        /*
++	 * Only set the libtirpc debug level if explicitly requested via -r...
++	 * svcgssd is chatty enough as it is.
++	 */
++        if (rpc_verbosity > 0)
++                libtirpc_set_debug(progname, rpc_verbosity, fg);
+ #else
+ 	if (rpc_verbosity > 0)
+ 		printerr(0, "Warning: rpcsec_gss library does not "
 -- 
 1.9.3
 
