@@ -1,17 +1,17 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx141.netapp.com ([216.240.21.12]:56103 "EHLO mx141.netapp.com"
+Received: from mx141.netapp.com ([216.240.21.12]:56108 "EHLO mx141.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S935370AbbI2SFg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 29 Sep 2015 14:05:36 -0400
+	id S935353AbbI2SF1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 29 Sep 2015 14:05:27 -0400
 From: Anna Schumaker <Anna.Schumaker@netapp.com>
 To: <linux-nfs@vger.kernel.org>, <linux-btrfs@vger.kernel.org>,
         <linux-fsdevel@vger.kernel.org>, <linux-api@vger.kernel.org>,
         <zab@zabbo.net>, <viro@zeniv.linux.org.uk>, <clm@fb.com>,
         <darrick.wong@oracle.com>, <mtk.manpages@gmail.com>,
         <andros@netapp.com>, <hch@infradead.org>
-Subject: [PATCH v4 9/9] btrfs: btrfs_copy_file_range() only supports reflinks
-Date: Tue, 29 Sep 2015 14:05:12 -0400
-Message-ID: <1443549913-8091-10-git-send-email-Anna.Schumaker@Netapp.com>
+Subject: [PATCH v4 4/9] vfs: Copy should check len after file open mode
+Date: Tue, 29 Sep 2015 14:05:07 -0400
+Message-ID: <1443549913-8091-5-git-send-email-Anna.Schumaker@Netapp.com>
 In-Reply-To: <1443549913-8091-1-git-send-email-Anna.Schumaker@Netapp.com>
 References: <1443549913-8091-1-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
@@ -19,36 +19,39 @@ Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Reject copies that don't have the COPY_FR_REFLINK flag set.
+I don't think it makes sense to report that a copy succeeded if the
+files aren't open properly.
 
 Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 Reviewed-by: David Sterba <dsterba@suse.com>
 ---
- fs/btrfs/ioctl.c | 4 ++++
- 1 file changed, 4 insertions(+)
+ fs/read_write.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/fs/btrfs/ioctl.c b/fs/btrfs/ioctl.c
-index 4311554..2e14b91 100644
---- a/fs/btrfs/ioctl.c
-+++ b/fs/btrfs/ioctl.c
-@@ -44,6 +44,7 @@
- #include <linux/uuid.h>
- #include <linux/btrfs.h>
- #include <linux/uaccess.h>
-+#include <linux/copy.h>
- #include "ctree.h"
- #include "disk-io.h"
- #include "transaction.h"
-@@ -3848,6 +3849,9 @@ ssize_t btrfs_copy_file_range(struct file *file_in, loff_t pos_in,
- {
- 	ssize_t ret;
+diff --git a/fs/read_write.c b/fs/read_write.c
+index dd10750..f3d6c48 100644
+--- a/fs/read_write.c
++++ b/fs/read_write.c
+@@ -1345,9 +1345,6 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
+ 	if (flags)
+ 		return -EINVAL;
  
-+	if (!(flags & COPY_FR_REFLINK))
-+		return -EOPNOTSUPP;
+-	if (len == 0)
+-		return 0;
+-
+ 	/* copy_file_range allows full ssize_t len, ignoring MAX_RW_COUNT  */
+ 	ret = rw_verify_area(READ, file_in, &pos_in, len);
+ 	if (ret >= 0)
+@@ -1378,6 +1375,9 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
+ 	if (inode_in == inode_out)
+ 		return -EINVAL;
+ 
++	if (len == 0)
++		return 0;
 +
- 	ret = btrfs_clone_files(file_out, file_in, pos_in, len, pos_out);
- 	if (ret == 0)
- 		ret = len;
+ 	ret = mnt_want_write_file(file_out);
+ 	if (ret)
+ 		return ret;
 -- 
 2.5.3
 
