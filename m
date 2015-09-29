@@ -1,79 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wi0-f178.google.com ([209.85.212.178]:35251 "EHLO
-	mail-wi0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754076AbbI2Oyj convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Sep 2015 10:54:39 -0400
-MIME-Version: 1.0
-In-Reply-To: <20150928174648.GA3190@fieldses.org>
-References: <1443391772-10171-1-git-send-email-agruenba@redhat.com>
-	<20150928163543.GF1358@fieldses.org>
-	<CAHpGcM++=D1yrkVmZsKwdQCQj4yPdwGGNbmF-Bma7Yo_+kpNQQ@mail.gmail.com>
-	<20150928174648.GA3190@fieldses.org>
-Date: Tue, 29 Sep 2015 16:54:37 +0200
-Message-ID: <CAHpGcMKfNewTJOL0ono8kCDoU8YZvxGfuLe3XP6VCGKuZL3mnA@mail.gmail.com>
-Subject: Re: [PATCH v8 00/41] Richacls
-From: =?UTF-8?Q?Andreas_Gr=C3=BCnbacher?= <andreas.gruenbacher@gmail.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Andreas Gruenbacher <agruenba@redhat.com>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Jeff Layton <jlayton@poochiereds.net>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>, linux-ext4@vger.kernel.org,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        Linux FS-devel Mailing List <linux-fsdevel@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Linux API Mailing List <linux-api@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from mx1.redhat.com ([209.132.183.28]:60934 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S934914AbbI2Pg1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 29 Sep 2015 11:36:27 -0400
+Received: from int-mx14.intmail.prod.int.phx2.redhat.com (int-mx14.intmail.prod.int.phx2.redhat.com [10.5.11.27])
+	by mx1.redhat.com (Postfix) with ESMTPS id 95F97A85
+	for <linux-nfs@vger.kernel.org>; Tue, 29 Sep 2015 15:36:26 +0000 (UTC)
+From: Scott Mayhew <smayhew@redhat.com>
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [nfs-utils PATCH] close the syslog fd in daemon_init()
+Date: Tue, 29 Sep 2015 11:36:25 -0400
+Message-Id: <1443540985-27992-1-git-send-email-smayhew@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-2015-09-28 19:46 GMT+02:00 J. Bruce Fields <bfields@fieldses.org>:
-> On Mon, Sep 28, 2015 at 07:10:06PM +0200, Andreas Grünbacher wrote:
->> 2015-09-28 18:35 GMT+02:00 J. Bruce Fields <bfields@fieldses.org>:
->> > On Mon, Sep 28, 2015 at 12:08:51AM +0200, Andreas Gruenbacher wrote:
->> >> Open issues in nfs:
->> >>
->> >> * When a user or group name cannot be mapped, nfs's idmapper always maps it
->> >>   to nobody. That's good enough for mapping the file owner and owning
->> >>   group, but not for identifiers in acls. For now, to get the nfs richacl
->> >>   support somewhat working, I'm explicitly checking if mapping has resulted
->> >>   in uid/gid 99 in the kernel.
->> >>
->> >> * When the nfs server replies with NFS4ERR_BADNAME for any user or group
->> >>   name lookup, the client will stop sending numeric uids and gids to the
->> >>   server even when the lookup wasn't numeric.  From then on, the client
->> >>   will translate uids and gids that have no mapping to the string "nobody",
->> >>   and the server will reject them.  This problem is not specific to acls.
->> >
->> > Do you have fixes in mind for these two issues?
->>
->> I'm not sure how to best fix the idmapper problem, with backwards
->> compatibility and all.
->
-> I haven't looked at the current nfsidmap interface....  So it's
-> completely lacking any way to communicate failure?
+Commit 7addf9d (cleanup daemonization code) added the following line to
+mydaemon_init():
 
-Yes, when a user doesn't exist, idmapper maps that to the nobody
-uid/gid. That's the failure mode of stat. In the acl case, we do want
-to map user and group names to their respective ids where possible (so
-that the acl makes sense in the local system context), but we do want
-to preserve the original user and group names when there is no such
-mapping instead of mapping to the nobody uid/gid.
+        dup2(pipefds[1], 3);
 
->> The second problem shouldn't be too hard to fix.
->
-> Is it enough to turn off the failover in the case there's no possibility
-> it could have been caused by a numeric id?
+If we've already called vsyslog() before the fork(), then chances are fd
+3 was being used for the syslog socket.  In that case the next vsyslog()
+call will cause the data to appear on the read end of the pipe, causing
+the parent to exit with a nonzero status.  If systemd is running, it
+will see the parent's nonzero exit status and will terminate the child
+as well.
 
-Yes, I believe that would be enough.
+So just call closelog() to close the fd.  The next call to vsyslog()
+will open a new one if need be.
 
-> If any user can set ACLs with arbitrary strings as names, then we'd be
-> giving any user unprivileged user the ability to turn off numeric
-> idmapping, so I think we need to fix that.
+Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+---
+ support/nfs/mydaemon.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-The bug can be triggered by unprivileged users with nfs4_setfacl.
+diff --git a/support/nfs/mydaemon.c b/support/nfs/mydaemon.c
+index 3391eff..701cfd9 100644
+--- a/support/nfs/mydaemon.c
++++ b/support/nfs/mydaemon.c
+@@ -122,6 +122,7 @@ daemon_init(bool fg)
+ 	dup2(tempfd, 0);
+ 	dup2(tempfd, 1);
+ 	dup2(tempfd, 2);
++	closelog();
+ 	dup2(pipefds[1], 3);
+ 	pipefds[1] = 3;
+ 	closeall(4);
+-- 
+1.9.3
 
-Thanks,
-Andreas
