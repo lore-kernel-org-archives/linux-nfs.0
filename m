@@ -1,131 +1,79 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from outbound-smtp01.blacknight.com ([81.17.249.7]:36983 "EHLO
-	outbound-smtp01.blacknight.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S965227AbbI2OXz (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Sep 2015 10:23:55 -0400
-Received: from mail.blacknight.com (pemlinmail06.blacknight.ie [81.17.255.152])
-	by outbound-smtp01.blacknight.com (Postfix) with ESMTPS id E1D4D98C55
-	for <linux-nfs@vger.kernel.org>; Tue, 29 Sep 2015 14:23:48 +0000 (UTC)
-Date: Tue, 29 Sep 2015 15:23:47 +0100
-From: Mel Gorman <mgorman@techsingularity.net>
-To: Andrew Morton <akpm@linux-foundation.org>
-Cc: Jerome Marchand <jmarchan@redhat.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Hugh Dickins <hughd@google.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        Linux-MM <linux-mm@kvack.org>
-Subject: [PATCH] mm: swap: Use swap_lock to prevent parallel swapon
- activations instead of i_mutex
-Message-ID: <20150929142347.GK3068@techsingularity.net>
+Received: from mail-wi0-f178.google.com ([209.85.212.178]:35251 "EHLO
+	mail-wi0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754076AbbI2Oyj convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Sep 2015 10:54:39 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-15
+In-Reply-To: <20150928174648.GA3190@fieldses.org>
+References: <1443391772-10171-1-git-send-email-agruenba@redhat.com>
+	<20150928163543.GF1358@fieldses.org>
+	<CAHpGcM++=D1yrkVmZsKwdQCQj4yPdwGGNbmF-Bma7Yo_+kpNQQ@mail.gmail.com>
+	<20150928174648.GA3190@fieldses.org>
+Date: Tue, 29 Sep 2015 16:54:37 +0200
+Message-ID: <CAHpGcMKfNewTJOL0ono8kCDoU8YZvxGfuLe3XP6VCGKuZL3mnA@mail.gmail.com>
+Subject: Re: [PATCH v8 00/41] Richacls
+From: =?UTF-8?Q?Andreas_Gr=C3=BCnbacher?= <andreas.gruenbacher@gmail.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Andreas Gruenbacher <agruenba@redhat.com>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>, linux-ext4@vger.kernel.org,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        Linux FS-devel Mailing List <linux-fsdevel@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Linux API Mailing List <linux-api@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Jerome Marchand reported a lockdep warning as follows
+2015-09-28 19:46 GMT+02:00 J. Bruce Fields <bfields@fieldses.org>:
+> On Mon, Sep 28, 2015 at 07:10:06PM +0200, Andreas Grünbacher wrote:
+>> 2015-09-28 18:35 GMT+02:00 J. Bruce Fields <bfields@fieldses.org>:
+>> > On Mon, Sep 28, 2015 at 12:08:51AM +0200, Andreas Gruenbacher wrote:
+>> >> Open issues in nfs:
+>> >>
+>> >> * When a user or group name cannot be mapped, nfs's idmapper always maps it
+>> >>   to nobody. That's good enough for mapping the file owner and owning
+>> >>   group, but not for identifiers in acls. For now, to get the nfs richacl
+>> >>   support somewhat working, I'm explicitly checking if mapping has resulted
+>> >>   in uid/gid 99 in the kernel.
+>> >>
+>> >> * When the nfs server replies with NFS4ERR_BADNAME for any user or group
+>> >>   name lookup, the client will stop sending numeric uids and gids to the
+>> >>   server even when the lookup wasn't numeric.  From then on, the client
+>> >>   will translate uids and gids that have no mapping to the string "nobody",
+>> >>   and the server will reject them.  This problem is not specific to acls.
+>> >
+>> > Do you have fixes in mind for these two issues?
+>>
+>> I'm not sure how to best fix the idmapper problem, with backwards
+>> compatibility and all.
+>
+> I haven't looked at the current nfsidmap interface....  So it's
+> completely lacking any way to communicate failure?
 
-    [ 6819.501009] =================================
-    [ 6819.501009] [ INFO: inconsistent lock state ]
-    [ 6819.501009] 4.2.0-rc1-shmacct-babka-v2-next-20150709+ #255 Not tainted
-    [ 6819.501009] ---------------------------------
-    [ 6819.501009] inconsistent {RECLAIM_FS-ON-W} -> {IN-RECLAIM_FS-W} usage.
-    [ 6819.501009] kswapd0/38 [HC0[0]:SC0[0]:HE1:SE1] takes:
-    [ 6819.501009]  (&sb->s_type->i_mutex_key#17){+.+.?.}, at: [<ffffffffa03772a5>] nfs_file_direct_write+0x85/0x3f0 [nfs]
-    [ 6819.501009] {RECLAIM_FS-ON-W} state was registered at:
-    [ 6819.501009]   [<ffffffff81107f51>] mark_held_locks+0x71/0x90
-    [ 6819.501009]   [<ffffffff8110b775>] lockdep_trace_alloc+0x75/0xe0
-    [ 6819.501009]   [<ffffffff81245529>] kmem_cache_alloc_node_trace+0x39/0x440
-    [ 6819.501009]   [<ffffffff81225b8f>] __get_vm_area_node+0x7f/0x160
-    [ 6819.501009]   [<ffffffff81226eb2>] __vmalloc_node_range+0x72/0x2c0
-    [ 6819.501009]   [<ffffffff81227424>] vzalloc+0x54/0x60
-    [ 6819.501009]   [<ffffffff8122c7c8>] SyS_swapon+0x628/0xfc0
-    [ 6819.501009]   [<ffffffff81867772>] entry_SYSCALL_64_fastpath+0x12/0x76
+Yes, when a user doesn't exist, idmapper maps that to the nobody
+uid/gid. That's the failure mode of stat. In the acl case, we do want
+to map user and group names to their respective ids where possible (so
+that the acl makes sense in the local system context), but we do want
+to preserve the original user and group names when there is no such
+mapping instead of mapping to the nobody uid/gid.
 
-It's due to NFS acquiring i_mutex since a9ab5e840669 ("nfs: page
-cache invalidation for dio") to invalidate page cache before direct I/O.
-Filesystems may safely acquire i_mutex during direct writes but NFS is unique
-in its treatment of swap files. Ordinarily swap files are supported by the
-core VM looking up the physical block for a given offset in advance. There
-is no physical block for NFS and the direct write paths are used after
-calling mapping->swap_activate.
+>> The second problem shouldn't be too hard to fix.
+>
+> Is it enough to turn off the failover in the case there's no possibility
+> it could have been caused by a numeric id?
 
-The lockdep warning is triggered by swapon(), which is not in reclaim
-context, acquiring the i_mutex to ensure a swapfile is not activated twice.
+Yes, I believe that would be enough.
 
-swapon does not need the i_mutex for this purpose.  There is a requirement
-that fallocate not be used on swapfiles but this is protected by the inode
-flag S_SWAPFILE and nothing to do with i_mutex. In fact, the current
-protection does nothing for block devices. This patch expands the role
-of swap_lock to protect against parallel activations of block devices and
-swapfiles and removes the use of i_mutex. This both improves the protection
-for swapon and avoids the lockdep warning.
+> If any user can set ACLs with arbitrary strings as names, then we'd be
+> giving any user unprivileged user the ability to turn off numeric
+> idmapping, so I think we need to fix that.
 
-Reported-and-tested-by: Jerome Marchand <jmarchan@redhat.com>
-Signed-off-by: Mel Gorman <mgorman@techsingularity.net>
----
- mm/swapfile.c | 14 ++++++--------
- 1 file changed, 6 insertions(+), 8 deletions(-)
+The bug can be triggered by unprivileged users with nfs4_setfacl.
 
-diff --git a/mm/swapfile.c b/mm/swapfile.c
-index 58877312cf6b..e55a69fd24e4 100644
---- a/mm/swapfile.c
-+++ b/mm/swapfile.c
-@@ -1970,9 +1970,9 @@ SYSCALL_DEFINE1(swapoff, const char __user *, specialfile)
- 		set_blocksize(bdev, old_block_size);
- 		blkdev_put(bdev, FMODE_READ | FMODE_WRITE | FMODE_EXCL);
- 	} else {
--		mutex_lock(&inode->i_mutex);
-+		spin_lock(&swap_lock);
- 		inode->i_flags &= ~S_SWAPFILE;
--		mutex_unlock(&inode->i_mutex);
-+		spin_unlock(&swap_lock);
- 	}
- 	filp_close(swap_file, NULL);
- 
-@@ -2197,7 +2197,6 @@ static int claim_swapfile(struct swap_info_struct *p, struct inode *inode)
- 		p->flags |= SWP_BLKDEV;
- 	} else if (S_ISREG(inode->i_mode)) {
- 		p->bdev = inode->i_sb->s_bdev;
--		mutex_lock(&inode->i_mutex);
- 		if (IS_SWAPFILE(inode))
- 			return -EBUSY;
- 	} else
-@@ -2426,12 +2425,15 @@ SYSCALL_DEFINE2(swapon, const char __user *, specialfile, int, swap_flags)
- 		goto bad_swap;
- 	}
- 
-+	/* prevent parallel swapons */
-+	spin_lock(&swap_lock);
- 	p->swap_file = swap_file;
- 	mapping = swap_file->f_mapping;
- 	inode = mapping->host;
- 
- 	/* If S_ISREG(inode->i_mode) will do mutex_lock(&inode->i_mutex); */
- 	error = claim_swapfile(p, inode);
-+	spin_unlock(&swap_lock);
- 	if (unlikely(error))
- 		goto bad_swap;
- 
-@@ -2574,10 +2576,8 @@ SYSCALL_DEFINE2(swapon, const char __user *, specialfile, int, swap_flags)
- 	vfree(swap_map);
- 	vfree(cluster_info);
- 	if (swap_file) {
--		if (inode && S_ISREG(inode->i_mode)) {
--			mutex_unlock(&inode->i_mutex);
-+		if (inode && S_ISREG(inode->i_mode))
- 			inode = NULL;
--		}
- 		filp_close(swap_file, NULL);
- 	}
- out:
-@@ -2587,8 +2587,6 @@ SYSCALL_DEFINE2(swapon, const char __user *, specialfile, int, swap_flags)
- 	}
- 	if (name)
- 		putname(name);
--	if (inode && S_ISREG(inode->i_mode))
--		mutex_unlock(&inode->i_mutex);
- 	return error;
- }
- 
+Thanks,
+Andreas
