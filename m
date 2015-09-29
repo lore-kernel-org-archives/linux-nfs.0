@@ -1,83 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:47778 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([173.255.197.46]:37057 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S934853AbbI2Pgo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 29 Sep 2015 11:36:44 -0400
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (Postfix) with ESMTPS id 75C572E8349
-	for <linux-nfs@vger.kernel.org>; Tue, 29 Sep 2015 15:36:44 +0000 (UTC)
-From: Scott Mayhew <smayhew@redhat.com>
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [nfs-utils PATCH] Allow gssd and svcgssd to set the libtirpc debug level
-Date: Tue, 29 Sep 2015 11:36:43 -0400
-Message-Id: <1443541003-28073-1-git-send-email-smayhew@redhat.com>
+	id S934882AbbI2Pkr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 29 Sep 2015 11:40:47 -0400
+Date: Tue, 29 Sep 2015 11:40:46 -0400
+From: "'J. Bruce Fields'" <bfields@fieldses.org>
+To: Steve Wise <swise@opengridcomputing.com>
+Cc: trond.myklebust@primarydata.com, linux-nfs@vger.kernel.org,
+        linux-rdma@vger.kernel.org
+Subject: Re: [PATCH 2/3] svcrdma: handle rdma read with a non-zero initial
+ page offset
+Message-ID: <20150929154046.GE3190@fieldses.org>
+References: <20150921172423.9761.92399.stgit@build2.ogc.int>
+ <20150921172428.9761.27838.stgit@build2.ogc.int>
+ <56094F3D.2030002@opengridcomputing.com>
+ <20150928210459.GC3190@fieldses.org>
+ <009001d0fa37$8871a980$9954fc80$@opengridcomputing.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <009001d0fa37$8871a980$9954fc80$@opengridcomputing.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The interface for controlling the debug level in libtirpc was added
-over a year ago, but nothing's taking advantage of it.
+On Mon, Sep 28, 2015 at 04:49:21PM -0500, Steve Wise wrote:
+> 
+> 
+> > -----Original Message-----
+> > From: J. Bruce Fields [mailto:bfields@fieldses.org]
+> > Sent: Monday, September 28, 2015 4:05 PM
+> > To: Steve Wise
+> > Cc: trond.myklebust@primarydata.com; linux-nfs@vger.kernel.org; linux-rdma@vger.kernel.org
+> > Subject: Re: [PATCH 2/3] svcrdma: handle rdma read with a non-zero initial page offset
+> > 
+> > On Mon, Sep 28, 2015 at 09:31:25AM -0500, Steve Wise wrote:
+> > > On 9/21/2015 12:24 PM, Steve Wise wrote:
+> > > >The server rdma_read_chunk_lcl() and rdma_read_chunk_frmr() functions
+> > > >were not taking into account the initial page_offset when determining
+> > > >the rdma read length.  This resulted in a read who's starting address
+> > > >and length exceeded the base/bounds of the frmr.
+> > > >
+> > > >Most work loads don't tickle this bug apparently, but one test hit it
+> > > >every time: building the linux kernel on a 16 core node with 'make -j
+> > > >16 O=/mnt/0' where /mnt/0 is a ramdisk mounted via NFSRDMA.
+> > > >
+> > > >This bug seems to only be tripped with devices having small fastreg page
+> > > >list depths.  I didn't see it with mlx4, for instance.
+> > > >
+> > > >Fixes: 0bf4828983df ('svcrdma: refactor marshalling logic')
+> > > >Signed-off-by: Steve Wise <swise@opengridcomputing.com>
+> > > >Tested-by: Chuck Lever <chuck.lever@oracle.com>
+> > > >---
+> > > >
+> > > >
+> > >
+> > > Hey Bruce, can this make 4.3-rc?  Also, what do you think about
+> > > pushing it to stable?
+> > 
+> > It looks like a reasonable candidate for stable.  Apologies, somehow I
+> > missed it when you posted it--would you mind resending?
+> > 
+> > --b.
+> 
+> resent this one patch.
+> 
+> What is your process for pushing to stable?
 
-Signed-off-by: Scott Mayhew <smayhew@redhat.com>
----
- aclocal/libtirpc.m4  | 6 ++++++
- utils/gssd/gssd.c    | 7 +++++++
- utils/gssd/svcgssd.c | 7 +++++++
- 3 files changed, 20 insertions(+)
+Currently my standard regression tests don't seem to be passing on
+recent 4.3; once I figure that out, I'll push out a branch with your
+patch (and any others required) to
 
-diff --git a/aclocal/libtirpc.m4 b/aclocal/libtirpc.m4
-index b7de636..27368ff 100644
---- a/aclocal/libtirpc.m4
-+++ b/aclocal/libtirpc.m4
-@@ -20,6 +20,12 @@ AC_DEFUN([AC_LIBTIRPC], [
-                                     [Define to 1 if your rpcsec library provides authgss_free_private_data])],,
-                          [${LIBS}])])
- 
-+     AS_IF([test -n "${LIBTIRPC}"],
-+           [AC_CHECK_LIB([tirpc], [libtirpc_set_debug],
-+                         [AC_DEFINE([HAVE_LIBTIRPC_SET_DEBUG], [1],
-+                                    [Define to 1 if your tirpc library provides libtirpc_set_debug])],,
-+                         [${LIBS}])])
-+
-   AC_SUBST([AM_CPPFLAGS])
-   AC_SUBST(LIBTIRPC)
- 
-diff --git a/utils/gssd/gssd.c b/utils/gssd/gssd.c
-index e480349..078e558 100644
---- a/utils/gssd/gssd.c
-+++ b/utils/gssd/gssd.c
-@@ -869,6 +869,13 @@ main(int argc, char *argv[])
- 	if (verbosity && rpc_verbosity == 0)
- 		rpc_verbosity = verbosity;
- 	authgss_set_debug_level(rpc_verbosity);
-+#elif HAVE_LIBTIRPC_SET_DEBUG
-+	/*
-+	 * Only set the libtirpc debug level if explicitly requested via -r...
-+	 * gssd is chatty enough as it is.
-+	 */
-+	if (rpc_verbosity > 0)
-+		libtirpc_set_debug(progname, rpc_verbosity, fg);
- #else
-         if (rpc_verbosity > 0)
- 		printerr(0, "Warning: rpcsec_gss library does not "
-diff --git a/utils/gssd/svcgssd.c b/utils/gssd/svcgssd.c
-index f1b4347..0fe7c6d 100644
---- a/utils/gssd/svcgssd.c
-+++ b/utils/gssd/svcgssd.c
-@@ -135,6 +135,13 @@ main(int argc, char *argv[])
- 	if (verbosity && rpc_verbosity == 0)
- 		rpc_verbosity = verbosity;
- 	authgss_set_debug_level(rpc_verbosity);
-+#elif HAVE_LIBTIRPC_SET_DEBUG
-+        /*
-+	 * Only set the libtirpc debug level if explicitly requested via -r...
-+	 * svcgssd is chatty enough as it is.
-+	 */
-+        if (rpc_verbosity > 0)
-+                libtirpc_set_debug(progname, rpc_verbosity, fg);
- #else
- 	if (rpc_verbosity > 0)
- 		printerr(0, "Warning: rpcsec_gss library does not "
--- 
-1.9.3
+	git://linux-nfs.org/~bfields for-4.3
 
+and then send a pull request to Linus.  Should be by the end of the
+week.
+
+--b.
