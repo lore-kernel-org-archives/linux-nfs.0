@@ -1,41 +1,47 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx142.netapp.com ([216.240.21.19]:55301 "EHLO mx142.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754226AbbI2U5h (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 29 Sep 2015 16:57:37 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-Subject: [GIT PULL] Please pull an NFSoRDMA client bugfix
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Steve Wise <swise@opengridcomputing.com>
-Message-ID: <560AFB37.4080609@Netapp.com>
-Date: Tue, 29 Sep 2015 16:57:27 -0400
+Received: from mail-wi0-f179.google.com ([209.85.212.179]:36146 "EHLO
+	mail-wi0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752338AbbI2U63 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Sep 2015 16:58:29 -0400
+Received: by wicgb1 with SMTP id gb1so167102613wic.1
+        for <linux-nfs@vger.kernel.org>; Tue, 29 Sep 2015 13:58:28 -0700 (PDT)
+Subject: Re: [PATCH v1 00/24] New fast registration API
+To: Bart Van Assche <bart.vanassche@sandisk.com>,
+        Sagi Grimberg <sagig@mellanox.com>, linux-rdma@vger.kernel.org
+References: <1442482947-27785-1-git-send-email-sagig@mellanox.com>
+ <560AE099.2080004@sandisk.com>
+Cc: linux-nfs@vger.kernel.org, "Nicholas A. Bellinger" <nab@linux-iscsi.org>
+From: Sagi Grimberg <sagig@dev.mellanox.co.il>
+Message-ID: <560AFB71.3010003@dev.mellanox.co.il>
+Date: Tue, 29 Sep 2015 23:58:25 +0300
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+In-Reply-To: <560AE099.2080004@sandisk.com>
+Content-Type: text/plain; charset=windows-1252; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Trond,
+On 9/29/2015 10:03 PM, Bart Van Assche wrote:
+> On 09/17/2015 02:42 AM, Sagi Grimberg wrote:
+>> - Converted SRP initiator and RDS iwarp ULPs to the new API
+>
+> Hello Sagi,
+>
 
-The following changes since commit d0f36c46deea97bd16b9277be2f1acac74d76037:
+Hi Bart,
 
-  xprtrdma: take HCA driver refcount at client (2015-08-05 16:22:56 -0400)
+> How has the converted SRP initiator driver been tested ? With the kernel
+> tree that is available on branch reg_api.4
 
-are available in the git repository at:
+That's odd. Although I haven't formally submitted reg_api.4 yet, I did
+test ib_srp initiator against upstream srpt over CX3 (mlx4) and CX4
+(mlx5). I ran connect, disconnect, stress IO of all block sizes and
+some unaligned block-IO and SG_IO test utilities. It all seems to pass
+for me.
 
-  git://git.linux-nfs.org/projects/anna/nfs-rdma.git tags/nfs-rdma-for-4.3-2
-
-for you to fetch changes up to 72c021738252dde5849d575a650239d6404930ee:
-
-  xprtrdma: disconnect and flush cqs before freeing buffers (2015-09-28 10:42:35 -0400)
+Just this morning (my morning) I tested the v2 set on iser, srp, nfs. I
+placed that in branch reg_api.5. Would you mind running reg_api.5 and 
+see if this issue persist (I would be surprised because I haven't seen
+any sign of it)?
 
 Thanks,
-Anna
-
-----------------------------------------------------------------
-Steve Wise (1):
-      xprtrdma: disconnect and flush cqs before freeing buffers
-
- net/sunrpc/xprtrdma/transport.c | 2 +-
- net/sunrpc/xprtrdma/verbs.c     | 9 ++++++---
- 2 files changed, 7 insertions(+), 4 deletions(-)
+Sagi.
