@@ -1,47 +1,56 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wi0-f173.google.com ([209.85.212.173]:33546 "EHLO
-	mail-wi0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755328AbbI2Gtb (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Sep 2015 02:49:31 -0400
-Received: by wiclk2 with SMTP id lk2so135735764wic.0
-        for <linux-nfs@vger.kernel.org>; Mon, 28 Sep 2015 23:49:30 -0700 (PDT)
+Received: from mail-am1on0070.outbound.protection.outlook.com ([157.56.112.70]:39168
+	"EHLO emea01-am1-obe.outbound.protection.outlook.com"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1755304AbbI2G7D (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 29 Sep 2015 02:59:03 -0400
 Subject: Re: [PATCH v1 01/24] IB/core: Introduce new fast registration API
-To: Sagi Grimberg <sagig@mellanox.com>, Christoph Hellwig <hch@infradead.org>,
-        Bart Van Assche <bart.vanassche@sandisk.com>
+To: Bart Van Assche <bart.vanassche@sandisk.com>,
+        Sagi Grimberg <sagig@dev.mellanox.co.il>, <linux-rdma@vger.kernel.org>
 References: <1442482947-27785-1-git-send-email-sagig@mellanox.com>
  <1442482947-27785-2-git-send-email-sagig@mellanox.com>
  <5601C65F.8060403@sandisk.com> <5603A841.70509@dev.mellanox.co.il>
- <5609A9D0.8030607@sandisk.com> <20150929055907.GA29758@infradead.org>
- <560A341F.7030108@mellanox.com>
-Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org,
-        "Nicholas A. Bellinger" <nab@linux-iscsi.org>
-From: Sagi Grimberg <sagig@dev.mellanox.co.il>
-Message-ID: <560A3474.3040603@dev.mellanox.co.il>
-Date: Tue, 29 Sep 2015 09:49:24 +0300
+ <5609A9D0.8030607@sandisk.com>
+CC: <linux-nfs@vger.kernel.org>, "Nicholas A. Bellinger" <nab@linux-iscsi.org>
+From: Sagi Grimberg <sagig@mellanox.com>
+Message-ID: <560A32DC.4040808@mellanox.com>
+Date: Tue, 29 Sep 2015 09:42:36 +0300
 MIME-Version: 1.0
-In-Reply-To: <560A341F.7030108@mellanox.com>
-Content-Type: text/plain; charset=windows-1252; format=flowed
+In-Reply-To: <5609A9D0.8030607@sandisk.com>
+Content-Type: text/plain; charset="windows-1252"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 9/29/2015 9:47 AM, Sagi Grimberg wrote:
->> Shouldn't higher layers take care of this?  Trying to implement the same
->> coalescing algorithm at various layers isn't very optimal, although we
->> need to decide and document which one is responsible.
+On 9/28/2015 11:57 PM, Bart Van Assche wrote:
+> On 09/24/2015 12:37 AM, Sagi Grimberg wrote:
+>> On 9/23/2015 12:21 AM, Bart Van Assche wrote:
+>>> On 09/17/2015 02:42 AM, Sagi Grimberg wrote:
+>>>> +            } else if (last_page_off + dma_len < mr->page_size) {
+>>>> +                /* chunk this fragment with the last */
+>>>> +                last_end_dma_addr += dma_len;
+>>>> +                last_page_off += dma_len;
+>>>> +                mr->length += dma_len;
+>>>> +                continue;
+>>>
+>>> Shouldn't this code update last_page_addr ?
+>>
+>> Actually I think it doesn't since it is only relevant for the else
+>> statement where we are passing the page_size boundary.
 >
-> The block layer can take care of it, but I'm not sure about NFS/RDS at
-> the moment (IIRC Steve specifically asked if this API would take care
-> of chunking contig sg elements) so I'd rather keep it in until we are
-> absolutely sure we don't need it.
+> Hello Sagi,
 >
-> I can add a documentation statement for it.
+> Suppose that the following sg-list is passed to this function as {
+> offset, length } pairs and that this list has not been coalesced by the
+> DMA mapping code: [ { 0, page_size / 4 }, { page_size / 4, page_size / 4
+> }, { 2 * page_size / 4, page_size / 2 } ]. I think the algorithm in
+> patch 01/24 will map the above sample sg-list onto two pages. Shouldn't
+> that sg-list be mapped onto one page instead ?
 
-Actually its documented:
+It seems to... In order to get that correct we'd need to change the
+condition to (last_page_off + dma_len <= mr->page_size)
 
-  * Constraints:
-  * - The first sg element is allowed to have an offset.
-  * - Each sg element must be aligned to page_size (or physically
-  *   contiguous to the previous element). In case an sg element has a
-  *   non contiguous offset, the mapping prefix will not include it.
-  * - The last sg element is allowed to have length less than page_size.
+I'll change for v2.
 
+Thanks.
+
+Sagi.
