@@ -1,17 +1,17 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx142.netapp.com ([216.240.21.19]:45229 "EHLO mx142.netapp.com"
+Received: from mx144.netapp.com ([216.240.21.25]:61603 "EHLO mx144.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S935365AbbI2SFc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 29 Sep 2015 14:05:32 -0400
+	id S935363AbbI2SFb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 29 Sep 2015 14:05:31 -0400
 From: Anna Schumaker <Anna.Schumaker@netapp.com>
 To: <linux-nfs@vger.kernel.org>, <linux-btrfs@vger.kernel.org>,
         <linux-fsdevel@vger.kernel.org>, <linux-api@vger.kernel.org>,
         <zab@zabbo.net>, <viro@zeniv.linux.org.uk>, <clm@fb.com>,
         <darrick.wong@oracle.com>, <mtk.manpages@gmail.com>,
         <andros@netapp.com>, <hch@infradead.org>
-Subject: [PATCH v4 2/9] x86: add sys_copy_file_range to syscall tables
-Date: Tue, 29 Sep 2015 14:05:05 -0400
-Message-ID: <1443549913-8091-3-git-send-email-Anna.Schumaker@Netapp.com>
+Subject: [PATCH v4 6/9] vfs: Copy should use file_out rather than file_in
+Date: Tue, 29 Sep 2015 14:05:09 -0400
+Message-ID: <1443549913-8091-7-git-send-email-Anna.Schumaker@Netapp.com>
 In-Reply-To: <1443549913-8091-1-git-send-email-Anna.Schumaker@Netapp.com>
 References: <1443549913-8091-1-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
@@ -19,39 +19,40 @@ Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Zach Brown <zab@redhat.com>
+The way to think about this is that the destination filesystem reads the
+data from the source file and processes it accordingly.  This is
+especially important to avoid an infinate loop when doing a "server to
+server" copy on NFS.
 
-Add sys_copy_file_range to the x86 syscall tables.
-
-Signed-off-by: Zach Brown <zab@redhat.com>
-[Anna Schumaker: Update syscall number in syscall_32.tbl]
 Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 ---
- arch/x86/entry/syscalls/syscall_32.tbl | 1 +
- arch/x86/entry/syscalls/syscall_64.tbl | 1 +
- 2 files changed, 2 insertions(+)
+ fs/read_write.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/arch/x86/entry/syscalls/syscall_32.tbl b/arch/x86/entry/syscalls/syscall_32.tbl
-index 7663c45..0531270 100644
---- a/arch/x86/entry/syscalls/syscall_32.tbl
-+++ b/arch/x86/entry/syscalls/syscall_32.tbl
-@@ -382,3 +382,4 @@
- 373	i386	shutdown		sys_shutdown
- 374	i386	userfaultfd		sys_userfaultfd
- 375	i386	membarrier		sys_membarrier
-+376	i386	copy_file_range		sys_copy_file_range
-diff --git a/arch/x86/entry/syscalls/syscall_64.tbl b/arch/x86/entry/syscalls/syscall_64.tbl
-index 278842f..03a9396 100644
---- a/arch/x86/entry/syscalls/syscall_64.tbl
-+++ b/arch/x86/entry/syscalls/syscall_64.tbl
-@@ -331,6 +331,7 @@
- 322	64	execveat		stub_execveat
- 323	common	userfaultfd		sys_userfaultfd
- 324	common	membarrier		sys_membarrier
-+325	common	copy_file_range		sys_copy_file_range
+diff --git a/fs/read_write.c b/fs/read_write.c
+index 8e7cb33..6f74f1f 100644
+--- a/fs/read_write.c
++++ b/fs/read_write.c
+@@ -1355,7 +1355,7 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
+ 	if (!(file_in->f_mode & FMODE_READ) ||
+ 	    !(file_out->f_mode & FMODE_WRITE) ||
+ 	    (file_out->f_flags & O_APPEND) ||
+-	    !file_in->f_op || !file_in->f_op->copy_file_range)
++	    !file_out->f_op || !file_out->f_op->copy_file_range)
+ 		return -EBADF;
  
- #
- # x32-specific system call numbers start at 512 to avoid cache impact
+ 	inode_in = file_inode(file_in);
+@@ -1378,8 +1378,8 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
+ 	if (ret)
+ 		return ret;
+ 
+-	ret = file_in->f_op->copy_file_range(file_in, pos_in, file_out, pos_out,
+-					     len, flags);
++	ret = file_out->f_op->copy_file_range(file_in, pos_in, file_out, pos_out,
++					      len, flags);
+ 	if (ret > 0) {
+ 		fsnotify_access(file_in);
+ 		add_rchar(current, ret);
 -- 
 2.5.3
 
