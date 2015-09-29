@@ -1,85 +1,159 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.linuxfoundation.org ([140.211.169.12]:55696 "EHLO
-	mail.linuxfoundation.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752256AbbI2WCs (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Sep 2015 18:02:48 -0400
-Date: Tue, 29 Sep 2015 15:02:46 -0700
-From: Andrew Morton <akpm@linux-foundation.org>
-To: mhocko@kernel.org
-Cc: <linux-mm@kvack.org>, Dave Chinner <david@fromorbit.com>,
-        "Theodore Ts'o" <tytso@mit.edu>, Ming Lei <ming.lei@canonical.com>,
-        Andreas Dilger <andreas.dilger@intel.com>,
-        Oleg Drokin <oleg.drokin@intel.com>, Al Viro <viro@zeniv.linux.org.uk>,
-        Christoph Hellwig <hch@lst.de>, linux-kernel@vger.kernel.org,
-        xfs@oss.sgi.com, linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
-        Michal Hocko <mhocko@suse.com>
-Subject: Re: [PATCH] mm, fs: Obey gfp_mapping for add_to_page_cache
-Message-Id: <20150929150246.286cc6013bce3eec170376aa@linux-foundation.org>
-In-Reply-To: <1443193461-31402-1-git-send-email-mhocko@kernel.org>
-References: <1443193461-31402-1-git-send-email-mhocko@kernel.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from fieldses.org ([173.255.197.46]:37277 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750827AbbI2XO2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 29 Sep 2015 19:14:28 -0400
+Date: Tue, 29 Sep 2015 19:14:27 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@poochiereds.net>
+Cc: linux-nfs@vger.kernel.org, Andrew W Elble <aweits@rit.edu>
+Subject: Re: [PATCH] nfsd: serialize state seqid morphing operations
+Message-ID: <20150929231427.GA12002@fieldses.org>
+References: <1442490428-29487-1-git-send-email-jeff.layton@primarydata.com>
+ <20150929211155.GI3190@fieldses.org>
+ <20150929172638.6cc775ff@tlielax.poochiereds.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20150929172638.6cc775ff@tlielax.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 25 Sep 2015 17:04:21 +0200 mhocko@kernel.org wrote:
-
-> From: Michal Hocko <mhocko@suse.com>
+On Tue, Sep 29, 2015 at 05:26:38PM -0400, Jeff Layton wrote:
+> On Tue, 29 Sep 2015 17:11:55 -0400
+> "J. Bruce Fields" <bfields@fieldses.org> wrote:
 > 
-> 6afdb859b710 ("mm: do not ignore mapping_gfp_mask in page cache
-> allocation paths) has caught some users of hardcoded GFP_KERNEL
-> used in the page cache allocation paths. This, however, wasn't complete
-> and there were others which went unnoticed.
+> > On Thu, Sep 17, 2015 at 07:47:08AM -0400, Jeff Layton wrote:
+> > > Andrew was seeing a race occur when an OPEN and OPEN_DOWNGRADE were
+> > > running in parallel. The server would receive the OPEN_DOWNGRADE first
+> > > and check its seqid, but then an OPEN would race in and bump it. The
+> > > OPEN_DOWNGRADE would then complete and bump the seqid again.  The result
+> > > was that the OPEN_DOWNGRADE would be applied after the OPEN, even though
+> > > it should have been rejected since the seqid changed.
+> > > 
+> > > The only recourse we have here I think is to serialize operations that
+> > > bump the seqid in a stateid, particularly when we're given a seqid in
+> > > the call. To address this, we add a new rw_semaphore to the
+> > > nfs4_ol_stateid struct. We do a down_write prior to checking the seqid
+> > > after looking up the stateid to ensure that nothing else is going to
+> > > bump it while we're operating on it.
+> > > 
+> > > In the case of OPEN, we do a down_read, as the call doesn't contain a
+> > > seqid. Those can run in parallel -- we just need to serialize them when
+> > > there is a concurrent OPEN_DOWNGRADE or CLOSE.
+> > > 
+> > > LOCK and LOCKU however always take the write lock as there is no
+> > > opportunity for parallelizing those.
+> > > 
+> > > Reported-and-Tested-by: Andrew W Elble <aweits@rit.edu>
+> > > Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
+> > > ---
+> > >  fs/nfsd/nfs4state.c | 33 ++++++++++++++++++++++++++++-----
+> > >  fs/nfsd/state.h     | 19 ++++++++++---------
+> > >  2 files changed, 38 insertions(+), 14 deletions(-)
+> > > 
+> > > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> > > index 0f1d5691b795..1b39edf10b67 100644
+> > > --- a/fs/nfsd/nfs4state.c
+> > > +++ b/fs/nfsd/nfs4state.c
+> > > @@ -3360,6 +3360,7 @@ static void init_open_stateid(struct nfs4_ol_stateid *stp, struct nfs4_file *fp,
+> > >  	stp->st_access_bmap = 0;
+> > >  	stp->st_deny_bmap = 0;
+> > >  	stp->st_openstp = NULL;
+> > > +	init_rwsem(&stp->st_rwsem);
+> > >  	spin_lock(&oo->oo_owner.so_client->cl_lock);
+> > >  	list_add(&stp->st_perstateowner, &oo->oo_owner.so_stateids);
+> > >  	spin_lock(&fp->fi_lock);
+> > > @@ -4187,15 +4188,20 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
+> > >  	 */
+> > >  	if (stp) {
+> > >  		/* Stateid was found, this is an OPEN upgrade */
+> > > +		down_read(&stp->st_rwsem);
+> > >  		status = nfs4_upgrade_open(rqstp, fp, current_fh, stp, open);
+> > > -		if (status)
+> > > +		if (status) {
+> > > +			up_read(&stp->st_rwsem);
+> > >  			goto out;
+> > > +		}
+> > >  	} else {
+> > >  		stp = open->op_stp;
+> > >  		open->op_stp = NULL;
+> > >  		init_open_stateid(stp, fp, open);
+> > > +		down_read(&stp->st_rwsem);
+> > >  		status = nfs4_get_vfs_file(rqstp, fp, current_fh, stp, open);
+> > >  		if (status) {
+> > > +			up_read(&stp->st_rwsem);
+> > >  			release_open_stateid(stp);
+> > >  			goto out;
+> > >  		}
+> > > @@ -4207,6 +4213,7 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
+> > >  	}
+> > >  	update_stateid(&stp->st_stid.sc_stateid);
+> > >  	memcpy(&open->op_stateid, &stp->st_stid.sc_stateid, sizeof(stateid_t));
+> > > +	up_read(&stp->st_rwsem);
+> > >  
+> > >  	if (nfsd4_has_session(&resp->cstate)) {
+> > >  		if (open->op_deleg_want & NFS4_SHARE_WANT_NO_DELEG) {
+> > 
+> > The patch looks good, but:
+> > 
+> > Does it matter that we don't have an exclusive lock over that
+> > update_stateid?
+> > 
+> > I think there's at least one small bug there:
+> > 
+> > 	static inline void update_stateid(stateid_t *stateid)
+> > 	{       
+> > 	        stateid->si_generation++;
+> > 	        /* Wraparound recommendation from 3530bis-13 9.1.3.2: */
+> > 	        if (stateid->si_generation == 0)
+> > 	                stateid->si_generation = 1;
+> > 	}
+> > 
+> > The si_generation increment isn't atomic, and even if it were the wraparound
+> > handling definitely wouldn't.  That's a pretty small race.
+> > 
 > 
-> Dave Chinner has reported the following deadlock for xfs on loop device:
-> : With the recent merge of the loop device changes, I'm now seeing
-> : XFS deadlock on my single CPU, 1GB RAM VM running xfs/073.
-> :
-> : The deadlocked is as follows:
-> :
-> : kloopd1: loop_queue_read_work
-> :       xfs_file_iter_read
-> :       lock XFS inode XFS_IOLOCK_SHARED (on image file)
-> :       page cache read (GFP_KERNEL)
-> :       radix tree alloc
-> :       memory reclaim
-> :       reclaim XFS inodes
-> :       log force to unpin inodes
-> :       <wait for log IO completion>
-> :
-> : xfs-cil/loop1: <does log force IO work>
-> :       xlog_cil_push
-> :       xlog_write
-> :       <loop issuing log writes>
-> :               xlog_state_get_iclog_space()
-> :               <blocks due to all log buffers under write io>
-> :               <waits for IO completion>
-> :
-> : kloopd1: loop_queue_write_work
-> :       xfs_file_write_iter
-> :       lock XFS inode XFS_IOLOCK_EXCL (on image file)
-> :       <wait for inode to be unlocked>
-> :
-> : i.e. the kloopd, with it's split read and write work queues, has
-> : introduced a dependency through memory reclaim. i.e. that writes
-> : need to be able to progress for reads make progress.
-> :
-> : The problem, fundamentally, is that mpage_readpages() does a
-> : GFP_KERNEL allocation, rather than paying attention to the inode's
-> : mapping gfp mask, which is set to GFP_NOFS.
-> :
-> : The didn't used to happen, because the loop device used to issue
-> : reads through the splice path and that does:
-> :
-> :       error = add_to_page_cache_lru(page, mapping, index,
-> :                       GFP_KERNEL & mapping_gfp_mask(mapping));
+> Yeah, I eyeballed that some time ago and convinced myself it was ok,
+> but I think you're right that there is a potential race there. That
+> counter sort of seems like something that ought to use atomics in some
+> fashion. The wraparound is tricky, but could be done locklessly with
+> cmpxchg, I think...
+> > Does it also matter that this si_generation update isn't atomic with respect
+> > to the actual open and upgrade of the share bits?
+> > 
 > 
-> This has changed by aa4d86163e4 (block: loop: switch to VFS ITER_BVEC).
+> I don't think so. If you race with a concurrent OPEN upgrade, the
+> server will either have what you requested or a superset of that. It's
+> only OPEN_DOWNGRADE and CLOSE that need full serialization.
 
-xfs-on-loop deadlocks since April would appear to warrant a -stable
-backport, yes?
+IO also takes stateids, and I think it'd be interesting to think about
+scenarios that involve concurrent opens and reads or writes.  For
+example:
 
-> this is a rebase on top of the current mmotm
-> (2015-09-22-15-28)
+	- process_open2 upgrades R to RW
 
-So I've redone the patch against current mainline.
+				- Write processed with si_generation=1
+
+	- process_open2 bumps si_generation
+
+The write succeeds, but it was performed with a stateid that represented
+a read-only open.  I believe that write should have gotten either
+OPENMODE (if it happened before the open) or OLD_STATEID (if it happened
+after).
+
+I don't know if that's actually a problem in practice.
+
+Hm, I also wonder about the window between the si_generation bump and
+memcpy.  Multiple concurrent opens could end up returning the same
+stateid:
+
+	- si_generation++
+				- si_generation++
+
+	- memcpy new stateid
+				- memcpy new stateid
+
+Again, I'm not sure if that will actually cause application-visible
+problems.
+
+--b.
