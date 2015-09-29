@@ -1,35 +1,131 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-am1on0075.outbound.protection.outlook.com ([157.56.112.75]:37785
-	"EHLO emea01-am1-obe.outbound.protection.outlook.com"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1755426AbbI2HEG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 29 Sep 2015 03:04:06 -0400
-Subject: Re: [PATCH v1 01/24] IB/core: Introduce new fast registration API
-To: Christoph Hellwig <hch@infradead.org>,
-        Bart Van Assche <bart.vanassche@sandisk.com>
-References: <1442482947-27785-1-git-send-email-sagig@mellanox.com>
- <1442482947-27785-2-git-send-email-sagig@mellanox.com>
- <5601C65F.8060403@sandisk.com> <5603A841.70509@dev.mellanox.co.il>
- <5609A9D0.8030607@sandisk.com> <20150929055907.GA29758@infradead.org>
-CC: Sagi Grimberg <sagig@dev.mellanox.co.il>, <linux-rdma@vger.kernel.org>,
-        <linux-nfs@vger.kernel.org>,
-        "Nicholas A. Bellinger" <nab@linux-iscsi.org>
-From: Sagi Grimberg <sagig@mellanox.com>
-Message-ID: <560A341F.7030108@mellanox.com>
-Date: Tue, 29 Sep 2015 09:47:59 +0300
+Received: from outbound-smtp01.blacknight.com ([81.17.249.7]:36983 "EHLO
+	outbound-smtp01.blacknight.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S965227AbbI2OXz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Sep 2015 10:23:55 -0400
+Received: from mail.blacknight.com (pemlinmail06.blacknight.ie [81.17.255.152])
+	by outbound-smtp01.blacknight.com (Postfix) with ESMTPS id E1D4D98C55
+	for <linux-nfs@vger.kernel.org>; Tue, 29 Sep 2015 14:23:48 +0000 (UTC)
+Date: Tue, 29 Sep 2015 15:23:47 +0100
+From: Mel Gorman <mgorman@techsingularity.net>
+To: Andrew Morton <akpm@linux-foundation.org>
+Cc: Jerome Marchand <jmarchan@redhat.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Hugh Dickins <hughd@google.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        Linux-MM <linux-mm@kvack.org>
+Subject: [PATCH] mm: swap: Use swap_lock to prevent parallel swapon
+ activations instead of i_mutex
+Message-ID: <20150929142347.GK3068@techsingularity.net>
 MIME-Version: 1.0
-In-Reply-To: <20150929055907.GA29758@infradead.org>
-Content-Type: text/plain; charset="windows-1252"; format=flowed
+Content-Type: text/plain; charset=iso-8859-15
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> Shouldn't higher layers take care of this?  Trying to implement the same
-> coalescing algorithm at various layers isn't very optimal, although we
-> need to decide and document which one is responsible.
+Jerome Marchand reported a lockdep warning as follows
 
-The block layer can take care of it, but I'm not sure about NFS/RDS at
-the moment (IIRC Steve specifically asked if this API would take care
-of chunking contig sg elements) so I'd rather keep it in until we are
-absolutely sure we don't need it.
+    [ 6819.501009] =================================
+    [ 6819.501009] [ INFO: inconsistent lock state ]
+    [ 6819.501009] 4.2.0-rc1-shmacct-babka-v2-next-20150709+ #255 Not tainted
+    [ 6819.501009] ---------------------------------
+    [ 6819.501009] inconsistent {RECLAIM_FS-ON-W} -> {IN-RECLAIM_FS-W} usage.
+    [ 6819.501009] kswapd0/38 [HC0[0]:SC0[0]:HE1:SE1] takes:
+    [ 6819.501009]  (&sb->s_type->i_mutex_key#17){+.+.?.}, at: [<ffffffffa03772a5>] nfs_file_direct_write+0x85/0x3f0 [nfs]
+    [ 6819.501009] {RECLAIM_FS-ON-W} state was registered at:
+    [ 6819.501009]   [<ffffffff81107f51>] mark_held_locks+0x71/0x90
+    [ 6819.501009]   [<ffffffff8110b775>] lockdep_trace_alloc+0x75/0xe0
+    [ 6819.501009]   [<ffffffff81245529>] kmem_cache_alloc_node_trace+0x39/0x440
+    [ 6819.501009]   [<ffffffff81225b8f>] __get_vm_area_node+0x7f/0x160
+    [ 6819.501009]   [<ffffffff81226eb2>] __vmalloc_node_range+0x72/0x2c0
+    [ 6819.501009]   [<ffffffff81227424>] vzalloc+0x54/0x60
+    [ 6819.501009]   [<ffffffff8122c7c8>] SyS_swapon+0x628/0xfc0
+    [ 6819.501009]   [<ffffffff81867772>] entry_SYSCALL_64_fastpath+0x12/0x76
 
-I can add a documentation statement for it.
+It's due to NFS acquiring i_mutex since a9ab5e840669 ("nfs: page
+cache invalidation for dio") to invalidate page cache before direct I/O.
+Filesystems may safely acquire i_mutex during direct writes but NFS is unique
+in its treatment of swap files. Ordinarily swap files are supported by the
+core VM looking up the physical block for a given offset in advance. There
+is no physical block for NFS and the direct write paths are used after
+calling mapping->swap_activate.
+
+The lockdep warning is triggered by swapon(), which is not in reclaim
+context, acquiring the i_mutex to ensure a swapfile is not activated twice.
+
+swapon does not need the i_mutex for this purpose.  There is a requirement
+that fallocate not be used on swapfiles but this is protected by the inode
+flag S_SWAPFILE and nothing to do with i_mutex. In fact, the current
+protection does nothing for block devices. This patch expands the role
+of swap_lock to protect against parallel activations of block devices and
+swapfiles and removes the use of i_mutex. This both improves the protection
+for swapon and avoids the lockdep warning.
+
+Reported-and-tested-by: Jerome Marchand <jmarchan@redhat.com>
+Signed-off-by: Mel Gorman <mgorman@techsingularity.net>
+---
+ mm/swapfile.c | 14 ++++++--------
+ 1 file changed, 6 insertions(+), 8 deletions(-)
+
+diff --git a/mm/swapfile.c b/mm/swapfile.c
+index 58877312cf6b..e55a69fd24e4 100644
+--- a/mm/swapfile.c
++++ b/mm/swapfile.c
+@@ -1970,9 +1970,9 @@ SYSCALL_DEFINE1(swapoff, const char __user *, specialfile)
+ 		set_blocksize(bdev, old_block_size);
+ 		blkdev_put(bdev, FMODE_READ | FMODE_WRITE | FMODE_EXCL);
+ 	} else {
+-		mutex_lock(&inode->i_mutex);
++		spin_lock(&swap_lock);
+ 		inode->i_flags &= ~S_SWAPFILE;
+-		mutex_unlock(&inode->i_mutex);
++		spin_unlock(&swap_lock);
+ 	}
+ 	filp_close(swap_file, NULL);
+ 
+@@ -2197,7 +2197,6 @@ static int claim_swapfile(struct swap_info_struct *p, struct inode *inode)
+ 		p->flags |= SWP_BLKDEV;
+ 	} else if (S_ISREG(inode->i_mode)) {
+ 		p->bdev = inode->i_sb->s_bdev;
+-		mutex_lock(&inode->i_mutex);
+ 		if (IS_SWAPFILE(inode))
+ 			return -EBUSY;
+ 	} else
+@@ -2426,12 +2425,15 @@ SYSCALL_DEFINE2(swapon, const char __user *, specialfile, int, swap_flags)
+ 		goto bad_swap;
+ 	}
+ 
++	/* prevent parallel swapons */
++	spin_lock(&swap_lock);
+ 	p->swap_file = swap_file;
+ 	mapping = swap_file->f_mapping;
+ 	inode = mapping->host;
+ 
+ 	/* If S_ISREG(inode->i_mode) will do mutex_lock(&inode->i_mutex); */
+ 	error = claim_swapfile(p, inode);
++	spin_unlock(&swap_lock);
+ 	if (unlikely(error))
+ 		goto bad_swap;
+ 
+@@ -2574,10 +2576,8 @@ SYSCALL_DEFINE2(swapon, const char __user *, specialfile, int, swap_flags)
+ 	vfree(swap_map);
+ 	vfree(cluster_info);
+ 	if (swap_file) {
+-		if (inode && S_ISREG(inode->i_mode)) {
+-			mutex_unlock(&inode->i_mutex);
++		if (inode && S_ISREG(inode->i_mode))
+ 			inode = NULL;
+-		}
+ 		filp_close(swap_file, NULL);
+ 	}
+ out:
+@@ -2587,8 +2587,6 @@ SYSCALL_DEFINE2(swapon, const char __user *, specialfile, int, swap_flags)
+ 	}
+ 	if (name)
+ 		putname(name);
+-	if (inode && S_ISREG(inode->i_mode))
+-		mutex_unlock(&inode->i_mutex);
+ 	return error;
+ }
+ 
