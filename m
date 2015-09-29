@@ -1,77 +1,51 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:37057 "EHLO fieldses.org"
+Received: from mx141.netapp.com ([216.240.21.12]:56103 "EHLO mx141.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S934882AbbI2Pkr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 29 Sep 2015 11:40:47 -0400
-Date: Tue, 29 Sep 2015 11:40:46 -0400
-From: "'J. Bruce Fields'" <bfields@fieldses.org>
-To: Steve Wise <swise@opengridcomputing.com>
-Cc: trond.myklebust@primarydata.com, linux-nfs@vger.kernel.org,
-        linux-rdma@vger.kernel.org
-Subject: Re: [PATCH 2/3] svcrdma: handle rdma read with a non-zero initial
- page offset
-Message-ID: <20150929154046.GE3190@fieldses.org>
-References: <20150921172423.9761.92399.stgit@build2.ogc.int>
- <20150921172428.9761.27838.stgit@build2.ogc.int>
- <56094F3D.2030002@opengridcomputing.com>
- <20150928210459.GC3190@fieldses.org>
- <009001d0fa37$8871a980$9954fc80$@opengridcomputing.com>
+	id S935368AbbI2SFd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 29 Sep 2015 14:05:33 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+To: <linux-nfs@vger.kernel.org>, <linux-btrfs@vger.kernel.org>,
+        <linux-fsdevel@vger.kernel.org>, <linux-api@vger.kernel.org>,
+        <zab@zabbo.net>, <viro@zeniv.linux.org.uk>, <clm@fb.com>,
+        <darrick.wong@oracle.com>, <mtk.manpages@gmail.com>,
+        <andros@netapp.com>, <hch@infradead.org>
+Subject: [PATCH v4 7/9] vfs: Remove copy_file_range mountpoint checks
+Date: Tue, 29 Sep 2015 14:05:10 -0400
+Message-ID: <1443549913-8091-8-git-send-email-Anna.Schumaker@Netapp.com>
+In-Reply-To: <1443549913-8091-1-git-send-email-Anna.Schumaker@Netapp.com>
+References: <1443549913-8091-1-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <009001d0fa37$8871a980$9954fc80$@opengridcomputing.com>
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Sep 28, 2015 at 04:49:21PM -0500, Steve Wise wrote:
-> 
-> 
-> > -----Original Message-----
-> > From: J. Bruce Fields [mailto:bfields@fieldses.org]
-> > Sent: Monday, September 28, 2015 4:05 PM
-> > To: Steve Wise
-> > Cc: trond.myklebust@primarydata.com; linux-nfs@vger.kernel.org; linux-rdma@vger.kernel.org
-> > Subject: Re: [PATCH 2/3] svcrdma: handle rdma read with a non-zero initial page offset
-> > 
-> > On Mon, Sep 28, 2015 at 09:31:25AM -0500, Steve Wise wrote:
-> > > On 9/21/2015 12:24 PM, Steve Wise wrote:
-> > > >The server rdma_read_chunk_lcl() and rdma_read_chunk_frmr() functions
-> > > >were not taking into account the initial page_offset when determining
-> > > >the rdma read length.  This resulted in a read who's starting address
-> > > >and length exceeded the base/bounds of the frmr.
-> > > >
-> > > >Most work loads don't tickle this bug apparently, but one test hit it
-> > > >every time: building the linux kernel on a 16 core node with 'make -j
-> > > >16 O=/mnt/0' where /mnt/0 is a ramdisk mounted via NFSRDMA.
-> > > >
-> > > >This bug seems to only be tripped with devices having small fastreg page
-> > > >list depths.  I didn't see it with mlx4, for instance.
-> > > >
-> > > >Fixes: 0bf4828983df ('svcrdma: refactor marshalling logic')
-> > > >Signed-off-by: Steve Wise <swise@opengridcomputing.com>
-> > > >Tested-by: Chuck Lever <chuck.lever@oracle.com>
-> > > >---
-> > > >
-> > > >
-> > >
-> > > Hey Bruce, can this make 4.3-rc?  Also, what do you think about
-> > > pushing it to stable?
-> > 
-> > It looks like a reasonable candidate for stable.  Apologies, somehow I
-> > missed it when you posted it--would you mind resending?
-> > 
-> > --b.
-> 
-> resent this one patch.
-> 
-> What is your process for pushing to stable?
+I still want to do an in-kernel copy even if the files are on different
+mountpoints, and NFS has a "server to server" copy that expects two
+files on different mountpoints.  Let's have individual filesystems
+implement this check instead.
 
-Currently my standard regression tests don't seem to be passing on
-recent 4.3; once I figure that out, I'll push out a branch with your
-patch (and any others required) to
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Reviewed-by: David Sterba <dsterba@suse.com>
+---
+ fs/read_write.c | 5 -----
+ 1 file changed, 5 deletions(-)
 
-	git://linux-nfs.org/~bfields for-4.3
+diff --git a/fs/read_write.c b/fs/read_write.c
+index 6f74f1f..ee9fa37 100644
+--- a/fs/read_write.c
++++ b/fs/read_write.c
+@@ -1366,11 +1366,6 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
+ 	    pos_in + len > i_size_read(inode_in))
+ 		return -EINVAL;
+ 
+-	/* this could be relaxed once a method supports cross-fs copies */
+-	if (inode_in->i_sb != inode_out->i_sb ||
+-	    file_in->f_path.mnt != file_out->f_path.mnt)
+-		return -EXDEV;
+-
+ 	if (len == 0)
+ 		return 0;
+ 
+-- 
+2.5.3
 
-and then send a pull request to Linus.  Should be by the end of the
-week.
-
---b.
