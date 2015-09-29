@@ -1,17 +1,17 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx141.netapp.com ([216.240.21.12]:25554 "EHLO mx141.netapp.com"
+Received: from mx142.netapp.com ([216.240.21.19]:45229 "EHLO mx142.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S935358AbbI2SF3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 29 Sep 2015 14:05:29 -0400
+	id S935365AbbI2SFc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 29 Sep 2015 14:05:32 -0400
 From: Anna Schumaker <Anna.Schumaker@netapp.com>
 To: <linux-nfs@vger.kernel.org>, <linux-btrfs@vger.kernel.org>,
         <linux-fsdevel@vger.kernel.org>, <linux-api@vger.kernel.org>,
         <zab@zabbo.net>, <viro@zeniv.linux.org.uk>, <clm@fb.com>,
         <darrick.wong@oracle.com>, <mtk.manpages@gmail.com>,
         <andros@netapp.com>, <hch@infradead.org>
-Subject: [PATCH v4 5/9] vfs: Copy shouldn't forbid ranges inside the same file
-Date: Tue, 29 Sep 2015 14:05:08 -0400
-Message-ID: <1443549913-8091-6-git-send-email-Anna.Schumaker@Netapp.com>
+Subject: [PATCH v4 2/9] x86: add sys_copy_file_range to syscall tables
+Date: Tue, 29 Sep 2015 14:05:05 -0400
+Message-ID: <1443549913-8091-3-git-send-email-Anna.Schumaker@Netapp.com>
 In-Reply-To: <1443549913-8091-1-git-send-email-Anna.Schumaker@Netapp.com>
 References: <1443549913-8091-1-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
@@ -19,31 +19,39 @@ Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is perfectly valid for BTRFS and XFS, so let's leave this up to
-filesystems to check.
+From: Zach Brown <zab@redhat.com>
 
+Add sys_copy_file_range to the x86 syscall tables.
+
+Signed-off-by: Zach Brown <zab@redhat.com>
+[Anna Schumaker: Update syscall number in syscall_32.tbl]
 Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
-Reviewed-by: David Sterba <dsterba@suse.com>
-Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- fs/read_write.c | 4 ----
- 1 file changed, 4 deletions(-)
+ arch/x86/entry/syscalls/syscall_32.tbl | 1 +
+ arch/x86/entry/syscalls/syscall_64.tbl | 1 +
+ 2 files changed, 2 insertions(+)
 
-diff --git a/fs/read_write.c b/fs/read_write.c
-index f3d6c48..8e7cb33 100644
---- a/fs/read_write.c
-+++ b/fs/read_write.c
-@@ -1371,10 +1371,6 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
- 	    file_in->f_path.mnt != file_out->f_path.mnt)
- 		return -EXDEV;
+diff --git a/arch/x86/entry/syscalls/syscall_32.tbl b/arch/x86/entry/syscalls/syscall_32.tbl
+index 7663c45..0531270 100644
+--- a/arch/x86/entry/syscalls/syscall_32.tbl
++++ b/arch/x86/entry/syscalls/syscall_32.tbl
+@@ -382,3 +382,4 @@
+ 373	i386	shutdown		sys_shutdown
+ 374	i386	userfaultfd		sys_userfaultfd
+ 375	i386	membarrier		sys_membarrier
++376	i386	copy_file_range		sys_copy_file_range
+diff --git a/arch/x86/entry/syscalls/syscall_64.tbl b/arch/x86/entry/syscalls/syscall_64.tbl
+index 278842f..03a9396 100644
+--- a/arch/x86/entry/syscalls/syscall_64.tbl
++++ b/arch/x86/entry/syscalls/syscall_64.tbl
+@@ -331,6 +331,7 @@
+ 322	64	execveat		stub_execveat
+ 323	common	userfaultfd		sys_userfaultfd
+ 324	common	membarrier		sys_membarrier
++325	common	copy_file_range		sys_copy_file_range
  
--	/* forbid ranges in the same file */
--	if (inode_in == inode_out)
--		return -EINVAL;
--
- 	if (len == 0)
- 		return 0;
- 
+ #
+ # x32-specific system call numbers start at 512 to avoid cache impact
 -- 
 2.5.3
 
