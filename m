@@ -1,159 +1,231 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:37277 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750827AbbI2XO2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 29 Sep 2015 19:14:28 -0400
-Date: Tue, 29 Sep 2015 19:14:27 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@poochiereds.net>
-Cc: linux-nfs@vger.kernel.org, Andrew W Elble <aweits@rit.edu>
-Subject: Re: [PATCH] nfsd: serialize state seqid morphing operations
-Message-ID: <20150929231427.GA12002@fieldses.org>
-References: <1442490428-29487-1-git-send-email-jeff.layton@primarydata.com>
- <20150929211155.GI3190@fieldses.org>
- <20150929172638.6cc775ff@tlielax.poochiereds.net>
+Received: from cn.fujitsu.com ([59.151.112.132]:2551 "EHLO
+	heian.cn.fujitsu.com" rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751263AbbI3DWN convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Sep 2015 23:22:13 -0400
+From: Zhao Lei <zhaolei@cn.fujitsu.com>
+To: "'Anna Schumaker'" <Anna.Schumaker@netapp.com>,
+        <linux-nfs@vger.kernel.org>, <linux-btrfs@vger.kernel.org>,
+        <linux-fsdevel@vger.kernel.org>, <linux-api@vger.kernel.org>,
+        <zab@zabbo.net>, <viro@zeniv.linux.org.uk>, <clm@fb.com>,
+        <darrick.wong@oracle.com>, <mtk.manpages@gmail.com>,
+        <andros@netapp.com>, <hch@infradead.org>
+References: <1443549913-8091-1-git-send-email-Anna.Schumaker@Netapp.com> <1443549913-8091-4-git-send-email-Anna.Schumaker@Netapp.com>
+In-Reply-To: <1443549913-8091-4-git-send-email-Anna.Schumaker@Netapp.com>
+Subject: RE: [PATCH v4 3/9] btrfs: add .copy_file_range file operation
+Date: Wed, 30 Sep 2015 11:20:59 +0800
+Message-ID: <00cc01d0fb2f$079ae210$16d0a630$@cn.fujitsu.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20150929172638.6cc775ff@tlielax.poochiereds.net>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Sep 29, 2015 at 05:26:38PM -0400, Jeff Layton wrote:
-> On Tue, 29 Sep 2015 17:11:55 -0400
-> "J. Bruce Fields" <bfields@fieldses.org> wrote:
+Hi, Anna Schumaker
+
+> -----Original Message-----
+> From: linux-btrfs-owner@vger.kernel.org
+> [mailto:linux-btrfs-owner@vger.kernel.org] On Behalf Of Anna Schumaker
+> Sent: Wednesday, September 30, 2015 2:05 AM
+> To: linux-nfs@vger.kernel.org; linux-btrfs@vger.kernel.org;
+> linux-fsdevel@vger.kernel.org; linux-api@vger.kernel.org; zab@zabbo.net;
+> viro@zeniv.linux.org.uk; clm@fb.com; darrick.wong@oracle.com;
+> mtk.manpages@gmail.com; andros@netapp.com; hch@infradead.org
+> Subject: [PATCH v4 3/9] btrfs: add .copy_file_range file operation
 > 
-> > On Thu, Sep 17, 2015 at 07:47:08AM -0400, Jeff Layton wrote:
-> > > Andrew was seeing a race occur when an OPEN and OPEN_DOWNGRADE were
-> > > running in parallel. The server would receive the OPEN_DOWNGRADE first
-> > > and check its seqid, but then an OPEN would race in and bump it. The
-> > > OPEN_DOWNGRADE would then complete and bump the seqid again.  The result
-> > > was that the OPEN_DOWNGRADE would be applied after the OPEN, even though
-> > > it should have been rejected since the seqid changed.
-> > > 
-> > > The only recourse we have here I think is to serialize operations that
-> > > bump the seqid in a stateid, particularly when we're given a seqid in
-> > > the call. To address this, we add a new rw_semaphore to the
-> > > nfs4_ol_stateid struct. We do a down_write prior to checking the seqid
-> > > after looking up the stateid to ensure that nothing else is going to
-> > > bump it while we're operating on it.
-> > > 
-> > > In the case of OPEN, we do a down_read, as the call doesn't contain a
-> > > seqid. Those can run in parallel -- we just need to serialize them when
-> > > there is a concurrent OPEN_DOWNGRADE or CLOSE.
-> > > 
-> > > LOCK and LOCKU however always take the write lock as there is no
-> > > opportunity for parallelizing those.
-> > > 
-> > > Reported-and-Tested-by: Andrew W Elble <aweits@rit.edu>
-> > > Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
-> > > ---
-> > >  fs/nfsd/nfs4state.c | 33 ++++++++++++++++++++++++++++-----
-> > >  fs/nfsd/state.h     | 19 ++++++++++---------
-> > >  2 files changed, 38 insertions(+), 14 deletions(-)
-> > > 
-> > > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> > > index 0f1d5691b795..1b39edf10b67 100644
-> > > --- a/fs/nfsd/nfs4state.c
-> > > +++ b/fs/nfsd/nfs4state.c
-> > > @@ -3360,6 +3360,7 @@ static void init_open_stateid(struct nfs4_ol_stateid *stp, struct nfs4_file *fp,
-> > >  	stp->st_access_bmap = 0;
-> > >  	stp->st_deny_bmap = 0;
-> > >  	stp->st_openstp = NULL;
-> > > +	init_rwsem(&stp->st_rwsem);
-> > >  	spin_lock(&oo->oo_owner.so_client->cl_lock);
-> > >  	list_add(&stp->st_perstateowner, &oo->oo_owner.so_stateids);
-> > >  	spin_lock(&fp->fi_lock);
-> > > @@ -4187,15 +4188,20 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
-> > >  	 */
-> > >  	if (stp) {
-> > >  		/* Stateid was found, this is an OPEN upgrade */
-> > > +		down_read(&stp->st_rwsem);
-> > >  		status = nfs4_upgrade_open(rqstp, fp, current_fh, stp, open);
-> > > -		if (status)
-> > > +		if (status) {
-> > > +			up_read(&stp->st_rwsem);
-> > >  			goto out;
-> > > +		}
-> > >  	} else {
-> > >  		stp = open->op_stp;
-> > >  		open->op_stp = NULL;
-> > >  		init_open_stateid(stp, fp, open);
-> > > +		down_read(&stp->st_rwsem);
-> > >  		status = nfs4_get_vfs_file(rqstp, fp, current_fh, stp, open);
-> > >  		if (status) {
-> > > +			up_read(&stp->st_rwsem);
-> > >  			release_open_stateid(stp);
-> > >  			goto out;
-> > >  		}
-> > > @@ -4207,6 +4213,7 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
-> > >  	}
-> > >  	update_stateid(&stp->st_stid.sc_stateid);
-> > >  	memcpy(&open->op_stateid, &stp->st_stid.sc_stateid, sizeof(stateid_t));
-> > > +	up_read(&stp->st_rwsem);
-> > >  
-> > >  	if (nfsd4_has_session(&resp->cstate)) {
-> > >  		if (open->op_deleg_want & NFS4_SHARE_WANT_NO_DELEG) {
-> > 
-> > The patch looks good, but:
-> > 
-> > Does it matter that we don't have an exclusive lock over that
-> > update_stateid?
-> > 
-> > I think there's at least one small bug there:
-> > 
-> > 	static inline void update_stateid(stateid_t *stateid)
-> > 	{       
-> > 	        stateid->si_generation++;
-> > 	        /* Wraparound recommendation from 3530bis-13 9.1.3.2: */
-> > 	        if (stateid->si_generation == 0)
-> > 	                stateid->si_generation = 1;
-> > 	}
-> > 
-> > The si_generation increment isn't atomic, and even if it were the wraparound
-> > handling definitely wouldn't.  That's a pretty small race.
-> > 
+> From: Zach Brown <zab@redhat.com>
 > 
-> Yeah, I eyeballed that some time ago and convinced myself it was ok,
-> but I think you're right that there is a potential race there. That
-> counter sort of seems like something that ought to use atomics in some
-> fashion. The wraparound is tricky, but could be done locklessly with
-> cmpxchg, I think...
-> > Does it also matter that this si_generation update isn't atomic with respect
-> > to the actual open and upgrade of the share bits?
-> > 
+> This rearranges the existing COPY_RANGE ioctl implementation so that
+> the .copy_file_range file operation can call the core loop that copies file data
+> extent items.
 > 
-> I don't think so. If you race with a concurrent OPEN upgrade, the
-> server will either have what you requested or a superset of that. It's
-> only OPEN_DOWNGRADE and CLOSE that need full serialization.
+> The extent copying loop is lifted up into its own function.  It retains the core
+> btrfs error checks that should be shared.
+> 
+> Signed-off-by: Zach Brown <zab@redhat.com>
+> Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+> Reviewed-by: Josef Bacik <jbacik@fb.com>
+> Reviewed-by: David Sterba <dsterba@suse.com>
+> ---
+>  fs/btrfs/ctree.h |  3 ++
+>  fs/btrfs/file.c  |  1 +
+>  fs/btrfs/ioctl.c | 91 ++++++++++++++++++++++++++++++++------------------------
+>  3 files changed, 56 insertions(+), 39 deletions(-)
+> 
+> diff --git a/fs/btrfs/ctree.h b/fs/btrfs/ctree.h index 938efe3..5d06a4f 100644
+> --- a/fs/btrfs/ctree.h
+> +++ b/fs/btrfs/ctree.h
+> @@ -3996,6 +3996,9 @@ int btrfs_dirty_pages(struct btrfs_root *root, struct
+> inode *inode,
+>  		      loff_t pos, size_t write_bytes,
+>  		      struct extent_state **cached);
+>  int btrfs_fdatawrite_range(struct inode *inode, loff_t start, loff_t end);
+> +ssize_t btrfs_copy_file_range(struct file *file_in, loff_t pos_in,
+> +			      struct file *file_out, loff_t pos_out,
+> +			      size_t len, int flags);
+> 
 
-IO also takes stateids, and I think it'd be interesting to think about
-scenarios that involve concurrent opens and reads or writes.  For
-example:
+It is different with declaration:
+ssize_t (*copy_file_range)(struct file *, loff_t, struct file *, loff_t, size_t, unsigned int);
 
-	- process_open2 upgrades R to RW
+(flags changed from unsigned int to int)
 
-				- Write processed with si_generation=1
+>  /* tree-defrag.c */
+>  int btrfs_defrag_leaves(struct btrfs_trans_handle *trans, diff --git
+> a/fs/btrfs/file.c b/fs/btrfs/file.c index b823fac..b05449c 100644
+> --- a/fs/btrfs/file.c
+> +++ b/fs/btrfs/file.c
+> @@ -2816,6 +2816,7 @@ const struct file_operations btrfs_file_operations =
+> {  #ifdef CONFIG_COMPAT
+>  	.compat_ioctl	= btrfs_ioctl,
+>  #endif
+> +	.copy_file_range = btrfs_copy_file_range,
 
-	- process_open2 bumps si_generation
+And cause compiler warning at this line:
+fs/btrfs/file.c:2819: warning: initialization from incompatible pointer type   
 
-The write succeeds, but it was performed with a stateid that represented
-a read-only open.  I believe that write should have gotten either
-OPENMODE (if it happened before the open) or OLD_STATEID (if it happened
-after).
+Small problem, but better to fix.
 
-I don't know if that's actually a problem in practice.
+Thanks
+Zhaolei
 
-Hm, I also wonder about the window between the si_generation bump and
-memcpy.  Multiple concurrent opens could end up returning the same
-stateid:
+>  };
+> 
+>  void btrfs_auto_defrag_exit(void)
+> diff --git a/fs/btrfs/ioctl.c b/fs/btrfs/ioctl.c index 0adf542..4311554 100644
+> --- a/fs/btrfs/ioctl.c
+> +++ b/fs/btrfs/ioctl.c
+> @@ -3727,17 +3727,16 @@ out:
+>  	return ret;
+>  }
+> 
+> -static noinline long btrfs_ioctl_clone(struct file *file, unsigned long srcfd,
+> -				       u64 off, u64 olen, u64 destoff)
+> +static noinline int btrfs_clone_files(struct file *file, struct file *file_src,
+> +					u64 off, u64 olen, u64 destoff)
+>  {
+>  	struct inode *inode = file_inode(file);
+> +	struct inode *src = file_inode(file_src);
+>  	struct btrfs_root *root = BTRFS_I(inode)->root;
+> -	struct fd src_file;
+> -	struct inode *src;
+>  	int ret;
+>  	u64 len = olen;
+>  	u64 bs = root->fs_info->sb->s_blocksize;
+> -	int same_inode = 0;
+> +	int same_inode = src == inode;
+> 
+>  	/*
+>  	 * TODO:
+> @@ -3750,49 +3749,20 @@ static noinline long btrfs_ioctl_clone(struct file
+> *file, unsigned long srcfd,
+>  	 *   be either compressed or non-compressed.
+>  	 */
+> 
+> -	/* the destination must be opened for writing */
+> -	if (!(file->f_mode & FMODE_WRITE) || (file->f_flags & O_APPEND))
+> -		return -EINVAL;
+> -
+>  	if (btrfs_root_readonly(root))
+>  		return -EROFS;
+> 
+> -	ret = mnt_want_write_file(file);
+> -	if (ret)
+> -		return ret;
+> -
+> -	src_file = fdget(srcfd);
+> -	if (!src_file.file) {
+> -		ret = -EBADF;
+> -		goto out_drop_write;
+> -	}
+> -
+> -	ret = -EXDEV;
+> -	if (src_file.file->f_path.mnt != file->f_path.mnt)
+> -		goto out_fput;
+> -
+> -	src = file_inode(src_file.file);
+> -
+> -	ret = -EINVAL;
+> -	if (src == inode)
+> -		same_inode = 1;
+> -
+> -	/* the src must be open for reading */
+> -	if (!(src_file.file->f_mode & FMODE_READ))
+> -		goto out_fput;
+> +	if (file_src->f_path.mnt != file->f_path.mnt ||
+> +	    src->i_sb != inode->i_sb)
+> +		return -EXDEV;
+> 
+>  	/* don't make the dst file partly checksummed */
+>  	if ((BTRFS_I(src)->flags & BTRFS_INODE_NODATASUM) !=
+>  	    (BTRFS_I(inode)->flags & BTRFS_INODE_NODATASUM))
+> -		goto out_fput;
+> +		return -EINVAL;
+> 
+> -	ret = -EISDIR;
+>  	if (S_ISDIR(src->i_mode) || S_ISDIR(inode->i_mode))
+> -		goto out_fput;
+> -
+> -	ret = -EXDEV;
+> -	if (src->i_sb != inode->i_sb)
+> -		goto out_fput;
+> +		return -EISDIR;
+> 
+>  	if (!same_inode) {
+>  		btrfs_double_inode_lock(src, inode);
+> @@ -3869,6 +3839,49 @@ out_unlock:
+>  		btrfs_double_inode_unlock(src, inode);
+>  	else
+>  		mutex_unlock(&src->i_mutex);
+> +	return ret;
+> +}
+> +
+> +ssize_t btrfs_copy_file_range(struct file *file_in, loff_t pos_in,
+> +			      struct file *file_out, loff_t pos_out,
+> +			      size_t len, int flags)
+> +{
+> +	ssize_t ret;
+> +
+> +	ret = btrfs_clone_files(file_out, file_in, pos_in, len, pos_out);
+> +	if (ret == 0)
+> +		ret = len;
+> +	return ret;
+> +}
+> +
+> +static noinline long btrfs_ioctl_clone(struct file *file, unsigned long srcfd,
+> +				       u64 off, u64 olen, u64 destoff) {
+> +	struct fd src_file;
+> +	int ret;
+> +
+> +	/* the destination must be opened for writing */
+> +	if (!(file->f_mode & FMODE_WRITE) || (file->f_flags & O_APPEND))
+> +		return -EINVAL;
+> +
+> +	ret = mnt_want_write_file(file);
+> +	if (ret)
+> +		return ret;
+> +
+> +	src_file = fdget(srcfd);
+> +	if (!src_file.file) {
+> +		ret = -EBADF;
+> +		goto out_drop_write;
+> +	}
+> +
+> +	/* the src must be open for reading */
+> +	if (!(src_file.file->f_mode & FMODE_READ)) {
+> +		ret = -EINVAL;
+> +		goto out_fput;
+> +	}
+> +
+> +	ret = btrfs_clone_files(file, src_file.file, off, olen, destoff);
+> +
+>  out_fput:
+>  	fdput(src_file);
+>  out_drop_write:
+> --
+> 2.5.3
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-btrfs" in the body
+> of a message to majordomo@vger.kernel.org More majordomo info at
+> http://vger.kernel.org/majordomo-info.html
 
-	- si_generation++
-				- si_generation++
-
-	- memcpy new stateid
-				- memcpy new stateid
-
-Again, I'm not sure if that will actually cause application-visible
-problems.
-
---b.
