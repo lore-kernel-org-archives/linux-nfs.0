@@ -1,73 +1,41 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:52212 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752284AbbJARzn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 1 Oct 2015 13:55:43 -0400
-Date: Thu, 1 Oct 2015 13:55:41 -0400 (EDT)
-From: Benjamin Coddington <bcodding@redhat.com>
-To: Constantine Peresypkin <pconstantine@gmail.com>
-cc: linux-nfs@vger.kernel.org
-Subject: Re: Is UNSTABLE ever sent in client writes?
-In-Reply-To: <CAOEg9Lr2rcAUC_x0vZqp_n55gT_WXRR_iZzGh_TKtDFdOsqn7Q@mail.gmail.com>
-Message-ID: <alpine.OSX.2.19.9992.1510011338400.5275@planck.local>
-References: <CAOEg9Lo4N3ceJYV0=L-Khrh-oTFZUyTTS=X5acXTg9JKfe2_YA@mail.gmail.com> <alpine.OSX.2.19.9992.1510011325260.5275@planck.local> <CAOEg9Lr2rcAUC_x0vZqp_n55gT_WXRR_iZzGh_TKtDFdOsqn7Q@mail.gmail.com>
+Received: from mail-bl2on0079.outbound.protection.outlook.com ([65.55.169.79]:8669
+	"EHLO na01-bl2-obe.outbound.protection.outlook.com"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1752976AbbJASKP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 1 Oct 2015 14:10:15 -0400
+Subject: Re: [PATCH v2 16/26] IB/srp: Convert to new registration API
+To: Sagi Grimberg <sagig@mellanox.com>, <linux-rdma@vger.kernel.org>
+References: <1443116118-10730-1-git-send-email-sagig@mellanox.com>
+ <1443116118-10730-17-git-send-email-sagig@mellanox.com>
+CC: <linux-nfs@vger.kernel.org>, "Nicholas A. Bellinger" <nab@linux-iscsi.org>
+From: Bart Van Assche <bart.vanassche@sandisk.com>
+Message-ID: <560D7702.1050806@sandisk.com>
+Date: Thu, 1 Oct 2015 11:10:10 -0700
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+In-Reply-To: <1443116118-10730-17-git-send-email-sagig@mellanox.com>
+Content-Type: text/plain; charset="windows-1252"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 1 Oct 2015, Constantine Peresypkin wrote:
+On 09/24/2015 10:35 AM, Sagi Grimberg wrote:
+> +	if (dev->use_fast_reg) {
+> +		state.sg = idb_sg;
+> +		state.sg_nents = 1;
+> +		sg_set_buf(idb_sg, req->indirect_desc, idb_len);
+> +		idb_sg->dma_address = req->indirect_dma_addr; /* hack! */
+> +		ret = srp_map_finish_fr(&state, ch);
+> +		if (ret < 0)
+> +			return ret;
+> +	} else if (dev->use_fmr) {
 
->
-> The question is: can I force it to always use unstable? Or how can I debug why FILE_SYNC is always sent in my case?
+Hello Sagi,
 
-No, I don't believe you can.  You can use systemtap, or turn up the nfs
-debugging.
+Had you considered to use sg_init_one() instead of using sg_set_buf() 
+and setting sg_nents to one ? The former function sets the end marker in 
+the idb_sg scatterlist and also sets sg_magic if CONFIG_DEBUG_SG has 
+been enabled.
 
-I don't think FILE_SYNC will always be sent.  It depends upon how you are
-doing IO.  What are you using to test?
+Thanks,
 
-Try something like this on a mount with wsize=4096.  It should get you four
-unstable writes, and eventually a COMMIT:
-
-#define TPATH "/mnt/fedora/tmp/"
-#define SIZE 4096*4
-#define CHARS "I love when strings are 32 chars"
-
-int main(void *argc) {
-    int pos, filp_foo;
-    void *foo_addr;
-
-    unlink(TPATH "foo");
-    filp_foo = open(TPATH "foo", O_RDWR|O_CREAT, S_IWUSR|S_IRUSR|S_IRGRP|S_IROTH);
-    ftruncate(filp_foo, SIZE);
-    foo_addr = mmap(NULL, SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, filp_foo, 0);
-    for (pos = 0; pos < SIZE; pos += strlen(CHARS))
-        strcpy(foo_addr + pos, CHARS);
-    close(filp_foo);
-}
-
-Ben
-
-
->
-> On Oct 1, 2015 12:32 PM, "Benjamin Coddington" <bcodding@redhat.com> wrote:
->       On Thu, 1 Oct 2015, Constantine Peresypkin wrote:
->
->       > Tried with various mount options (sync, async)
->       > Looked into source code.
->       > It seems like it will never be sent, client always assumes server can
->       > do FILE_SYNC, and server cannot respond with anything else, if
->       > implemented correctly.
->       > But what we can do if the server is inherently unable to do FILE_SYNC
->       > (eventual consistency, write reorder, etc.)?
->
->       Hi Constantine, my linux client does unstable writes all the time.
->       nfs_pgio_rpcsetup() default stable arg is NFS_UNSTABLE..
->
->       Try doing a write larger than your mount's wsize parameter.
->
->       Ben
->
->
->
+Bart.
