@@ -1,91 +1,73 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-by2on0055.outbound.protection.outlook.com ([207.46.100.55]:8992
-	"EHLO na01-by2-obe.outbound.protection.outlook.com"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1754758AbbJARxY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 1 Oct 2015 13:53:24 -0400
-Subject: Re: [PATCH v1 00/24] New fast registration API
-To: Sagi Grimberg <sagig@dev.mellanox.co.il>,
-        Sagi Grimberg <sagig@mellanox.com>,
-        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>
-References: <1442482947-27785-1-git-send-email-sagig@mellanox.com>
- <560AE099.2080004@sandisk.com> <560AFB71.3010003@dev.mellanox.co.il>
- <560C30F4.50900@sandisk.com> <560C42CE.6090000@sandisk.com>
- <560CDDBC.8000400@dev.mellanox.co.il>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Nicholas A. Bellinger" <nab@linux-iscsi.org>
-From: Bart Van Assche <bart.vanassche@sandisk.com>
-Message-ID: <560D730C.9000302@sandisk.com>
-Date: Thu, 1 Oct 2015 10:53:16 -0700
+Received: from mx1.redhat.com ([209.132.183.28]:52212 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752284AbbJARzn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 1 Oct 2015 13:55:43 -0400
+Date: Thu, 1 Oct 2015 13:55:41 -0400 (EDT)
+From: Benjamin Coddington <bcodding@redhat.com>
+To: Constantine Peresypkin <pconstantine@gmail.com>
+cc: linux-nfs@vger.kernel.org
+Subject: Re: Is UNSTABLE ever sent in client writes?
+In-Reply-To: <CAOEg9Lr2rcAUC_x0vZqp_n55gT_WXRR_iZzGh_TKtDFdOsqn7Q@mail.gmail.com>
+Message-ID: <alpine.OSX.2.19.9992.1510011338400.5275@planck.local>
+References: <CAOEg9Lo4N3ceJYV0=L-Khrh-oTFZUyTTS=X5acXTg9JKfe2_YA@mail.gmail.com> <alpine.OSX.2.19.9992.1510011325260.5275@planck.local> <CAOEg9Lr2rcAUC_x0vZqp_n55gT_WXRR_iZzGh_TKtDFdOsqn7Q@mail.gmail.com>
 MIME-Version: 1.0
-In-Reply-To: <560CDDBC.8000400@dev.mellanox.co.il>
-Content-Type: text/plain; charset="utf-8"; format=flowed
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 10/01/2015 12:16 AM, Sagi Grimberg wrote:
->
->>>> Just this morning (my morning) I tested the v2 set on iser, srp, nfs. I
->>>> placed that in branch reg_api.5. Would you mind running reg_api.5 and
->>>> see if this issue persist (I would be surprised because I haven't seen
->>>> any sign of it)?
->>>
->>> Sorry but I still see these messages with the reg_api.5 branch.
->>> [root@ib-ini linux-kernel]# git show HEAD | grep ^commit
->>> commit 3b5b34777d3cd606433f0aca51e3885323648e07
->>> [root@ib-ini linux-kernel]# uname -a
->>> Linux ib-ini 4.2.0-rc6-debug+ #1 SMP Wed Sep 30 11:38:36 PDT 2015 x86_64
->>> x86_64 x86_64 GNU/Linux
->>>
->>> I will try to run a bisect.
->>
->> (replying to my own e-mail)
->>
->> Apparently this behavior got introduced through the patch "IB/srp:
->> Convert to new registration API" (commit
->> ad66cbace5ca8c60673bedf35e5027868b0dd2d7). Without that patch SRP I/O
->> works fine. With that patch I see receive failures being reported. The
->> SRP initiator was loaded on my setup with the following kernel driver
->> options:
->>
->> # cat /etc/modprobe.d/ib_srp.conf
->> options ib_srp cmd_sg_entries=255 prefer_fr=1 register_always=1
->
-> Strange. I don't see that.
->
-> options ib_srp prefer_fr=1 register_always=1 are set by default.
->
-> When I try to connect srp initiator against upstream srpt with
-> cmd_sg_entries=255 I get CM reject on iu max size:
-> kernel: scsi host17: ib_srp: REJ received
-> kernel: scsi host17: ib_srp: SRP_LOGIN_REJ: requested max_it_iu_len too
-> large
-> kernel: scsi host17: ib_srp: Connection 0/8 failed
-> kernel: scsi host17: ib_srp: Sending CM DREQ failed
->
-> When I connect with cmd_sg_entries=128 I successfully connect:
-> kernel: scsi host18: SRP.T10:F452140300117400
-> kernel: scsi 18:0:0:0: Direct-Access     LIO-ORG  RAMDISK-MCP      4.0
-> PQ: 0 ANSI: 5
-> kernel: scsi host18: ib_srp: new target: id_ext f452140300117400
-> ioc_guid f452140300117400 pkey ffff service_id f452140300117400 sgid
-> fe80:0000:0000:0000:f452:1403:0011:7411 dgid
-> fe80:0000:0000:0000:f452:1403:0011:7401
-> kernel: sd 18:0:0:0: [sdy] 20480 512-byte logical blocks: (10.4 MB/10.0 MiB)
-> kernel: sd 18:0:0:0: [sdy] Write Protect is off
-> kernel: sd 18:0:0:0: [sdy] Mode Sense: 43 00 00 08
-> kernel: sd 18:0:0:0: [sdy] Write cache: disabled, read cache: enabled,
-> doesn't support DPO or FUA
-> kernel: sd 18:0:0:0: [sdy] Attached SCSI disk
->
-> I wander what is the difference between our test environments? I can't
-> look into this if I'm not able to reproduce.
+On Thu, 1 Oct 2015, Constantine Peresypkin wrote:
 
-Hello Sagi,
+>
+> The question is: can I force it to always use unstable? Or how can I debug why FILE_SYNC is always sent in my case?
 
-At the target side I see "Sep 30 12:56:06 ibdev1 kernel: [178664.300296] 
-ib_srpt: RDMA t 5 for idx 0 failed with status 10." (status 10 
-corresponds to IB_WC_REM_ACCESS_ERR). I will try to determine the root 
-cause.
+No, I don't believe you can.  You can use systemtap, or turn up the nfs
+debugging.
 
-Bart.
+I don't think FILE_SYNC will always be sent.  It depends upon how you are
+doing IO.  What are you using to test?
+
+Try something like this on a mount with wsize=4096.  It should get you four
+unstable writes, and eventually a COMMIT:
+
+#define TPATH "/mnt/fedora/tmp/"
+#define SIZE 4096*4
+#define CHARS "I love when strings are 32 chars"
+
+int main(void *argc) {
+    int pos, filp_foo;
+    void *foo_addr;
+
+    unlink(TPATH "foo");
+    filp_foo = open(TPATH "foo", O_RDWR|O_CREAT, S_IWUSR|S_IRUSR|S_IRGRP|S_IROTH);
+    ftruncate(filp_foo, SIZE);
+    foo_addr = mmap(NULL, SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, filp_foo, 0);
+    for (pos = 0; pos < SIZE; pos += strlen(CHARS))
+        strcpy(foo_addr + pos, CHARS);
+    close(filp_foo);
+}
+
+Ben
+
+
+>
+> On Oct 1, 2015 12:32 PM, "Benjamin Coddington" <bcodding@redhat.com> wrote:
+>       On Thu, 1 Oct 2015, Constantine Peresypkin wrote:
+>
+>       > Tried with various mount options (sync, async)
+>       > Looked into source code.
+>       > It seems like it will never be sent, client always assumes server can
+>       > do FILE_SYNC, and server cannot respond with anything else, if
+>       > implemented correctly.
+>       > But what we can do if the server is inherently unable to do FILE_SYNC
+>       > (eventual consistency, write reorder, etc.)?
+>
+>       Hi Constantine, my linux client does unstable writes all the time.
+>       nfs_pgio_rpcsetup() default stable arg is NFS_UNSTABLE..
+>
+>       Try doing a write larger than your mount's wsize parameter.
+>
+>       Ben
+>
+>
+>
