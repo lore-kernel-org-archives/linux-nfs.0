@@ -1,63 +1,46 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx144.netapp.com ([216.240.21.25]:38953 "EHLO mx144.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750795AbbJAVaX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 1 Oct 2015 17:30:23 -0400
-From: "Adamson, Andy" <William.Adamson@netapp.com>
-To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-CC: "krbdev@mit.edu" <krbdev@mit.edu>
-Subject: Fwd: Gss context refresh failure due to clock skew
-Date: Thu, 1 Oct 2015 21:30:21 +0000
-Message-ID: <FA7F806E-E5DA-4C41-AE7F-99E381E71123@netapp.com>
-References: <AD03968E-7017-4D32-A90C-C74C1E9CDFAC@netapp.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from mail-io0-f171.google.com ([209.85.223.171]:35123 "EHLO
+	mail-io0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750781AbbJAXM3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Oct 2015 19:12:29 -0400
+Received: by ioiz6 with SMTP id z6so102929129ioi.2
+        for <linux-nfs@vger.kernel.org>; Thu, 01 Oct 2015 16:12:29 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Cc: Jeff Layton <jlayton@primarydata.com>
+Subject: [PATCH] NFS: Fix a write performance regression
+Date: Thu,  1 Oct 2015 19:12:26 -0400
+Message-Id: <1443741146-21816-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-QnJpbmdpbmcgaW4gdGhlIE5GU3Y0IGFuZCBLZXJiZXJvcyBsaXN0Lg0KDQrigJQ+QW5keQ0KDQo+
-IEJlZ2luIGZvcndhcmRlZCBtZXNzYWdlOg0KPiANCj4gRnJvbTogQW5keSBBZGFtc29uIDxhbmRy
-b3NAbmV0YXBwLmNvbT4NCj4gU3ViamVjdDogR3NzIGNvbnRleHQgcmVmcmVzaCBmYWlsdXJlDQo+
-IERhdGU6IE9jdG9iZXIgMSwgMjAxNSBhdCA0OjM5OjA2IFBNIEVEVA0KPiBUbzogQnJ1Y2UgRmll
-bGRzIDxiZmllbGRzQGZpZWxkc2VzLm9yZz4NCj4gQ2M6IFNpbW8gU29yY2UgPHNpbW9AcmVkaGF0
-LmNvbT4NCj4gDQo+IEhpIEJydWNlLCBTaW1vDQo+IA0KPiBXZSBhcmUgc2VlaW5nIGEgZmFpbHVy
-ZSBvbiBHU1MgY29udGV4dCByZW5ld2FsIGJldHdlZW4gdGhlIExpbnV4IGNsaWVudCBhbmQgTmV0
-QXBwLCBzbyBJIHRlc3RlZCBMaW51eCBjbGllbnQgdG8gTGludXggc2VydmVyIGFuZCBzZWUgYSBz
-aW1pbGFyIHNpdHVhdGlvbi4NCj4gDQo+IFRoZSBzaXR1YXRpb24gb2NjdXJzIGFzIGZvbGxvd3Mu
-DQo+IA0KPiAxKSBGb3Igc2ltcGxpY2l0eSAsIHNldCB0aGUgY2xpZW50IGFuZCBzZXJ2ZXIgdG8g
-Ym90aCBoYXZlIHRoZSBzYW1lIEtlcmJlcm9zIGNsb2NrIHNrZXcgLSBJIGxlYXZlIHRoZSBkZWZh
-dWx0IDUgbWludXRlcy4NCj4gMikgRm9yIGNvbnZlbmllbmNlLCBJIHNldCB0aGUgVEdTIGxpZmV0
-aW1lcyB0byBiZSBhcyBzaG9ydCBhcyBwb3NzaWJsZSwgMTAgbWludXRlcyBmb3IgV2luMjAwOFIy
-IEFEIHdoaWNoIEkgdGVzdCB3aXRoLg0KPiAzKSBDbGllbnQgY2xvY2sgaXMgc2V0IHRvIHRoZSBL
-REMgKFdpbkFEKSBjbG9jayB2aWEgTlRQLg0KPiA0KSBTZXQgdGhlIHNlcnZlciBjbG9jayB0byBi
-ZSAyLTMgbWludXRlcyBhaGVhZCBvZiB0aGUgY2xpZW50IGNsb2NrLCBidXQgc3RpbGwgd2l0aGlu
-IHRoZSBLZXJiZXJvcyBjbG9jayBza2V3Lg0KPiA1KSBNb3VudCBORlMgd2l0aCAtbyBzZWM9a3Ji
-NSAtIHRoaXMgc3VjY2VlZHMgYmVjYXVzZSBjbG9ja3MgYXJlIHdpdGhpbiB0aGUgS2VyYmVyb3Mg
-Y2xvY2sgc2tldw0KPiA2KSBPbiB0aGUgY2xpZW50IGtsaXN0IC1jZSB0aGUgbWFjaGluZSBjcmVk
-cyB0byBub3RlIHRoZSBzZXJ2ZXIgVEdTIGV4cGlyeSB0aW1lDQo+IDcpIE9uIHRoZSBzZXJ2ZXIs
-IHdhaXQgdW50aWwgdGhlIGNsaWVudOKAmXMgc2VydmVyVEdTIGV4cGlyeSB0aW1lIGhhcyBqdXN0
-IHBhc3NlZC4gTm90ZSBhdCB0aGlzIHRpbWUgdGhhdCBhY2NvcmRpbmcgdG8gdGhlIGNsaWVudCBj
-bG9jaywgdGhlIFRHUyBoYXMgMi0zIG1pbnV0ZXMgb2YgYmVpbmcgdmFsaWQsIGJ1dCBvbiB0aGUg
-c2VydmVyLCB0aGUgVEdTIHdpbGwgaGF2ZSBleHBpcmVkLg0KPiA4KSBPbiB0aGUgY2xpZW50LCBt
-YWtlIGEgbmV3IGRpcmVjdG9yeTogbWtkaXIgL21udHBvaW50L2JsYWgNCj4gVGhlIGNsaWVudCBz
-ZW5kcyBhbiBORlMgQUNDRVNTIChmb3IgdGhlIG1rZGlyKSBjYWxsIHdoaWNoIGdldHMgYmFjayBh
-biBBVVRIX0VSUk9SLCBHU1MgY3JlZGVudGlhbCBwcm9ibGVtLg0KPiBUaGlzIHBva2VzIHRoZSBj
-bGllbnQgdG8gZG8gYW4gdXBjYWxsIHRvIHJlZnJlc2ggdGhlIEdTUyBjb250ZXh0Lg0KPiA5KSBU
-aGUgY2xpZW50IHNlbmRzIGEgTlVMTCBjYWxsIFJQQ1NFQ19HU1NfSU5JVCwgdXNpbmcgdGhlIFRH
-UyBpbiB0aGUgY3JlZGVudGlhbCBjYWNoZSAobm8gY2FsbCB0byBLREMgZm9yIG5ldyBUR1MpIGJl
-Y2F1c2UgdGhlIGNsaWVudCBjbG9jayBzYXlzIHRoZSBUR1MgaXMgc3RpbGwgdmFsaWQuDQo+IA0K
-PiAxMCkgT05UQVA6IFRoZSBzZXJ2ZXIgcmVwbGllcyB0byB0aGUgTlVMTCBjYWxsIHdpdGggYW4g
-YSBHU1MgbWlub3Igc3RhdHVzIG9mIEdTU19TX0NSRURFTlRJQUxfRVhQSVJFRC4NCj4gDQo+IDEw
-KSBMSU5VWDogVGhlIHNlcnZlciBkb2VzIG5vdCByZXBseSB0byB0aGUgTlVMTCBSUENTRUNfR1NT
-X0lOSVQgY2FsbCwgaW4gZmFjdCwgdGhlIExpbnV4IHNlcnZlciBzZW5kcyBhIEZJTiB0byB0aGUg
-Y2xpZW50IGdzc2QgY29ubmVjdGlvbi4NCj4gDQo+IDExKSBUaGUgbWtkaXIgcmVxdWVzdCBnZXRz
-IHBlcm1pc3Npb24gZGVuaWVkDQo+IA0KPiAxMikgV2FpdCB1bnRpbCB0aGUgY2xpZW50IGNsb2Nr
-IGlzIHBhc3QgdGhlIHNlcnZlciBUR1MgZXhwaXJ5IHRpbWUNCj4gMTMpIHJlLXRyeSB0aGUgbWtk
-aXIgLSBpdCBzdWNjZWVkcyBhZnRlciBhIHN1Y2Nlc3NmdWwgR1NTIElOSVQgTlVMTCBjYWxsIGV4
-Y2hhbmdlIGZvciBib3RoIHNlcnZlcnMuDQo+IA0KPiBJbiB0aGUgT05UQVAgY2FzZSwgdGhlIGFj
-Y2VwdF9zZWNfY29udGV4dCBjYWxsIGludG8gdGhlIE1JVCBsaWJyYXJpZXMgZmFpbHMgKGV2ZW4g
-dGhvdWdoIGtyYjVfY2hlY2tfY2xvY2tza2V3KCkgaXMgYXBwYXJlbnRseSBjYWxsZWQpLiBJIGJl
-bGlldmUgdGhlIGdzc19wcm94eSBvbiBMaW51eCBhbHNvIGp1c3QgY2FsbHMgaW50byB0aGUgTUlU
-IGxpYnJhcmllcy4gDQo+IA0KPiBTaG91bGRu4oCZdCB0aGVzZSByZWZyZXNoIGNhbGxzIHN1Y2Nl
-ZWQ/IElzbuKAmXQgdGhlIEtlcmJlcm9zIGNsb2NrIHNrZXcgc3VwcG9zZWQgdG8gaGFuZGxlIHRo
-aXMgc2l0dWF0aW9uPw0KPiANCj4g4oCUPkFuZHkNCg0K
+If all other conditions in nfs_can_extend_write() are met, and there
+are no locks, then we should be able to assume close-to-open semantics
+and the ability to extend our write to cover the whole page.
+
+With this patch, the xfstests generic/074 test completes in 232s instead
+of >1400s on my test rig.
+
+Fixes: bd61e0a9c852 ("locks: convert posix locks to file_lock_context")
+Cc: Jeff Layton <jlayton@primarydata.com>
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfs/write.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 72624dc4a623..1d6f6b43b7f4 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -1223,7 +1223,7 @@ static int nfs_can_extend_write(struct file *file, struct page *page, struct ino
+ 		return 1;
+ 	if (!flctx || (list_empty_careful(&flctx->flc_flock) &&
+ 		       list_empty_careful(&flctx->flc_posix)))
+-		return 0;
++		return 1;
+ 
+ 	/* Check to see if there are whole file write locks */
+ 	ret = 0;
+-- 
+2.4.3
+
