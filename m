@@ -1,42 +1,79 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from quartz.orcorp.ca ([184.70.90.242]:48913 "EHLO quartz.orcorp.ca"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755799AbbJASiW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 1 Oct 2015 14:38:22 -0400
-Date: Thu, 1 Oct 2015 12:38:18 -0600
-From: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: linux-rdma <linux-rdma@vger.kernel.org>,
-        Devesh Sharma <devesh.sharma@avagotech.com>,
-        Sagi Grimberg <sagig@dev.mellanox.co.il>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v1 03/18] xprtrdma: Remove completion polling budgets
-Message-ID: <20151001183818.GA9477@obsidianresearch.com>
-References: <A3B1A836-81AF-40E6-B551-587B7173B72D@oracle.com>
- <55FE8C0F.1050706@dev.mellanox.co.il>
- <CANjDDBjcRXsPFt2Bd+9oL2wTBTxpDsAvN5PZN669dhTC7xSyqw@mail.gmail.com>
- <0804C887-9E32-4257-96D2-6C1FBC9CB271@oracle.com>
- <CANjDDBgB_T9BN7ATTWEJcJScs2JH9bGv5zikUpu_2JJaRYS-Ug@mail.gmail.com>
- <A5EE402A-82CE-49DC-8AB9-63EC340CE8DA@oracle.com>
- <20151001171310.GA8428@obsidianresearch.com>
- <CDDBC387-9135-405E-B535-EE89F952386E@oracle.com>
- <20151001181548.GA8670@obsidianresearch.com>
- <E543F197-56F6-43FC-A2FE-4273695405E9@oracle.com>
+Return-Path: <pconstantine@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <E543F197-56F6-43FC-A2FE-4273695405E9@oracle.com>
-Sender: linux-nfs-owner@vger.kernel.org
+In-Reply-To: <alpine.OSX.2.19.9992.1510011338400.5275@planck.local>
+References: <CAOEg9Lo4N3ceJYV0=L-Khrh-oTFZUyTTS=X5acXTg9JKfe2_YA@mail.gmail.com>
+	<alpine.OSX.2.19.9992.1510011325260.5275@planck.local>
+	<CAOEg9Lr2rcAUC_x0vZqp_n55gT_WXRR_iZzGh_TKtDFdOsqn7Q@mail.gmail.com>
+	<alpine.OSX.2.19.9992.1510011338400.5275@planck.local>
+Date: Thu, 1 Oct 2015 14:12:30 -0500
+Message-ID: <CAOEg9LoHqwKdn7NfHWRh_asAkL9f_22X1udwHRn0+xPX_eKhng@mail.gmail.com>
+Subject: Re: Is UNSTABLE ever sent in client writes?
+From: Constantine Peresypkin <pconstantine@gmail.com>
+To: Benjamin Coddington <bcodding@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Oct 01, 2015 at 02:31:41PM -0400, Chuck Lever wrote:
+Doesn't help much.
+As far as I can see from the code, there are only two places where
+write_pageio_init() is called, and it's called either with
+FLUSH_STABLE or FLUSH_COND_STABLE
+Therefore I have no idea how exactly any unstable write will be submitted.
 
-> Does a ULP want to continue polling if ib_poll_cq{_and_arm)
-> returns a negative RC?
-
-No. We should try and figure out if that can even happen, if not get
-rid of the possibility.
-
-If it can happen, it can only mean the CQ is busted, and needs to be
-destroyed. Ie the whole ULP probably needs to restart.
-
-Jason
+On Thu, Oct 1, 2015 at 12:55 PM, Benjamin Coddington
+<bcodding@redhat.com> wrote:
+> On Thu, 1 Oct 2015, Constantine Peresypkin wrote:
+>
+>>
+>> The question is: can I force it to always use unstable? Or how can I debug why FILE_SYNC is always sent in my case?
+>
+> No, I don't believe you can.  You can use systemtap, or turn up the nfs
+> debugging.
+>
+> I don't think FILE_SYNC will always be sent.  It depends upon how you are
+> doing IO.  What are you using to test?
+>
+> Try something like this on a mount with wsize=4096.  It should get you four
+> unstable writes, and eventually a COMMIT:
+>
+> #define TPATH "/mnt/fedora/tmp/"
+> #define SIZE 4096*4
+> #define CHARS "I love when strings are 32 chars"
+>
+> int main(void *argc) {
+>     int pos, filp_foo;
+>     void *foo_addr;
+>
+>     unlink(TPATH "foo");
+>     filp_foo = open(TPATH "foo", O_RDWR|O_CREAT, S_IWUSR|S_IRUSR|S_IRGRP|S_IROTH);
+>     ftruncate(filp_foo, SIZE);
+>     foo_addr = mmap(NULL, SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, filp_foo, 0);
+>     for (pos = 0; pos < SIZE; pos += strlen(CHARS))
+>         strcpy(foo_addr + pos, CHARS);
+>     close(filp_foo);
+> }
+>
+> Ben
+>
+>
+>>
+>> On Oct 1, 2015 12:32 PM, "Benjamin Coddington" <bcodding@redhat.com> wrote:
+>>       On Thu, 1 Oct 2015, Constantine Peresypkin wrote:
+>>
+>>       > Tried with various mount options (sync, async)
+>>       > Looked into source code.
+>>       > It seems like it will never be sent, client always assumes server can
+>>       > do FILE_SYNC, and server cannot respond with anything else, if
+>>       > implemented correctly.
+>>       > But what we can do if the server is inherently unable to do FILE_SYNC
+>>       > (eventual consistency, write reorder, etc.)?
+>>
+>>       Hi Constantine, my linux client does unstable writes all the time.
+>>       nfs_pgio_rpcsetup() default stable arg is NFS_UNSTABLE..
+>>
+>>       Try doing a write larger than your mount's wsize parameter.
+>>
+>>       Ben
+>>
+>>
+>>
