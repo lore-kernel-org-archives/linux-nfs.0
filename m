@@ -1,199 +1,324 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qg0-f47.google.com ([209.85.192.47]:36063 "EHLO
-	mail-qg0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751336AbbJAP0N (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Oct 2015 11:26:13 -0400
-Subject: Re: NFS / FuseFS Kernel Hangs Bug
-To: "sascha a." <sascha.arthur@gmail.com>
-References: <CAK_92-ECoKWOPJXbT=BNcXhd5aVq77rWOciKfKf6a-LYTFbDqg@mail.gmail.com>
- <560D4212.3010101@gmail.com>
- <CAK_92-HRCUAg6=ATiGT0Cbh+Qkhk9mHBUXje9z9utosEC7e0cw@mail.gmail.com>
-Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
-From: Austin S Hemmelgarn <ahferroin7@gmail.com>
-Message-ID: <560D505C.6000403@gmail.com>
-Date: Thu, 1 Oct 2015 11:25:16 -0400
+Received: from relay.parallels.com ([195.214.232.42]:41069 "EHLO
+	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752284AbbJAQg3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Oct 2015 12:36:29 -0400
+Subject: Re: [PATCH] lockd: create NSM handles per net namespace
+To: "J. Bruce Fields" <bfields@fieldses.org>
+References: <1443012569-21623-1-git-send-email-aryabinin@virtuozzo.com>
+ <20150929184745.GG3190@fieldses.org>
+CC: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Jeff Layton <jlayton@poochiereds.net>, <linux-nfs@vger.kernel.org>,
+        <linux-kernel@vger.kernel.org>, <skinsbursky@virtuozzo.com>,
+        <stable@vger.kernel.org>
+From: Andrey Ryabinin <aryabinin@virtuozzo.com>
+Message-ID: <560D6103.9010306@virtuozzo.com>
+Date: Thu, 1 Oct 2015 19:36:19 +0300
 MIME-Version: 1.0
-In-Reply-To: <CAK_92-HRCUAg6=ATiGT0Cbh+Qkhk9mHBUXje9z9utosEC7e0cw@mail.gmail.com>
-Content-Type: multipart/signed; protocol="application/pkcs7-signature"; micalg=sha-512; boundary="------------ms050606030806000502030201"
+In-Reply-To: <20150929184745.GG3190@fieldses.org>
+Content-Type: text/plain; charset="windows-1252"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is a cryptographically signed message in MIME format.
+On 09/29/2015 09:47 PM, J. Bruce Fields wrote:
+> On Wed, Sep 23, 2015 at 03:49:29PM +0300, Andrey Ryabinin wrote:
+>> Commit cb7323fffa85 ("lockd: create and use per-net NSM
+>>  RPC clients on MON/UNMON requests") introduced per-net
+>> NSM RPC clients. Unfortunately this doesn't make any sense
+>> without per-net nsm_handle.
+> 
+> Makes sense to me.  Is anyone doing testing to make sure we've got this
+> right now?
+> 
+> (For example, have you reproduced the below problem and verified that
+> it's fixed after this patch?)
+> 
 
---------------ms050606030806000502030201
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Transfer-Encoding: quoted-printable
+Yes, that NULL-ptr was actually hit, so I've fixed it with this patch.
 
-On 2015-10-01 10:45, sascha a. wrote:
-> Hello,
->
-> Okay, i was wrong with FUSE and NFS thanks for the hint.
->
-> About the Problem:
-> Without digging deep into the kernel sources, your explaination is
-> more or less that was i thinking about whats happening.
-> Anyways, the reason why i report the Problem is that during this 120
-> Seconds (until the Kernel solves this issue by killing (?) the
-> process) the system is unusable.
->
-> What i mean about it:
-> Its not even possible to ssh on the server, even if /root and /home is
-> local and should not be affected by the slow NFS Servers.
-> Also it seems during this period a lot of network connections drop/free=
-ze(?).
->
-> Youre completly right when you says, theres no other way/its by design
-> to wait for the NFS-Response. But in my point of view this 'wait' is
-> happening on the wrong security level. If im not wrong the current
-> implementation blocks/hangs tasks in kernelspace, or at least blocks
-> the scheduler during this period.
-If it's a single core system, and the kernel is configured with=20
-PREEMPT_NONE, I could see that being possible, but I think Debian=20
-(assuming you're using Debian because the /proc/version info that you=20
-posted in the original e-mail indicated the kernel was a Debian build)=20
-builds with PREEMPT_VOLUNTARY by default.  I have little knowledge of=20
-the internal workings of the kernel's NFS client implementation, so I'm=20
-Cc'ing the associated mailing list.
+BTW, after this patch we could get rid of that per-net nsm-rpc-clients stuff.
+With per-net nsm_handles, rpc clients are already per-net.
 
-If you don't need guaranteed data safety, you might try adding 'async'=20
-to the share options on the NFS server in /etc/exports.  Keep in mind=20
-though that using this has a significant chance to cause data loss (from =
+AFAIK the only reason for them was introduced is because RPC client need to know 'utsname()->nodename',
+but utsname() might be NULL when nsm_unmonitor() called.
+So we could just save nodename e.g. in nlm_host struct and pass it to rpc_create(). Thus we don't need
+to keep rpc client untill last unmonitor request. We could create/destroy separate RPC client for each
+monitor/unmonitor request. IOW, like it was before cb7323fffa85 ("lockd: create and use per-net NSM RPC clients on MON/UNMON requests")
 
-the client's perspective that is, it will look like calls to write()=20
-that returned success never happened) if the NFS server crashes, so you=20
-should only do this if you are 100% certain that you can afford the=20
-potential data loss.  Also keep in mind that this violates the official=20
-NFS standards, so some third-party software may lose it's mind when used =
+Anyway, this is a subject for a separate patch.
 
-with this.
 
-If you're just using NFSv3 you may also try using udp instead of tcp=20
-(this actually doesn't hurt reliability much when used on a reliable=20
-network), I've seen doing so more than double performance and cut server =
 
-load in half in some cases (maintaining a TCP connection is pretty=20
-network and processor intensive, as it was designed for reliable=20
-communications across unreliable networks).
-> 2015-10-01 16:24 GMT+02:00 Austin S Hemmelgarn <ahferroin7@gmail.com>:
->> On 2015-10-01 09:06, sascha a. wrote:
->>>
->>> Hello,
->>>
->>>
->>> I want to report a Bug with NFS / FuseFS.
->>>
->>> Theres trouble with mounting a NFS FS with FuseFS, if the NFS Server
->>> is slowly responding.
->>>
->>> The problem occurs, if you mount a NFS FS with FuseFS driver for
->>> example with this command:
->>>
->>> mount -t nfs -o vers=3D3,nfsvers=3D3,hard,intr,tcp server /dest
->>>
->>> Working on this nfs overlay works like a charm, as long as the NFS
->>> Server is not under heavy load. If it gets under HEAVY load from time=
-
->>> to time the kernel hangs (which should in my opinion never ever
->>> occur).
+> --b.
+> 
 >>
->> OK, before I start on an explanation of why what is happening is happe=
-ning,
->> I should note that unless you're using some special FUSE driver instea=
-d of
->> the regular NFS tools, you're not using FUSE to mount the NFS share, y=
-ou're
->> using a regular kernel driver.
+>> E.g. the following scenario could happen
+>> Two hosts (X and Y) in different namespaces (A and B) share
+>> the same nsm struct.
 >>
->> Now, on to the explanation:
->> This behavior is expected and unavoidable for any network filesystem u=
-nder
->> the described conditions.  Sync (or any other command that causes acce=
-ss to
->> the filesystem that isn't served by the local cache) requires sending =
-a
->> command to the server.  Sync in particular is _synchronous_ (and it sh=
-ould
->> be, otherwise you break the implied data safety from using it), which =
-means
->> that it will wait until it gets a reply from the server before it retu=
-rns,
->> which means that if the server is heavily loaded (or just ridiculously=
-
->> slow), it will be a while before it returns.  On top of this, dependin=
-g on
->> how the server is caching data, it may take a long time to return even=
- on a
->> really fast server with no other load.
+>> 1. nsm_monitor(host_X) called => NSM rpc client created,
+>> 	nsm->sm_monitored bit set.
+>> 2. nsm_mointor(host-Y) called => nsm->sm_monitored already set,
+>> 	we just exit. Thus in namespace B ln->nsm_clnt == NULL.
+>> 3. host X destroyed => nsm->sm_count decremented to 1
+>> 4. host Y destroyed => nsm_unmonitor() => nsm_mon_unmon() => NULL-ptr
+>> 	dereference of *ln->nsm_clnt
 >>
->> The stacktrace you posted indicates simply that the kernel noticed tha=
-t
->> 'sync' was in an I/O sleep state (the 'D state' it refers to) for more=
- than
->> 120 seconds, which is the default detection timeout for this.
+>> So this could be fixed by making per-net nsm_handles list,
+>> instead of global. Thus different net namespaces will not be able
+>> share the same nsm_handle.
 >>
-
-
-
---------------ms050606030806000502030201
-Content-Type: application/pkcs7-signature; name="smime.p7s"
-Content-Transfer-Encoding: base64
-Content-Disposition: attachment; filename="smime.p7s"
-Content-Description: S/MIME Cryptographic Signature
-
-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
-cnQub3JnMSIwIAYDVQQDExlDQSBDZXJ0IFNpZ25pbmcgQXV0aG9yaXR5MSEwHwYJKoZIhvcN
-AQkBFhJzdXBwb3J0QGNhY2VydC5vcmcCAxEt+DANBglghkgBZQMEAgMFAKCCAiEwGAYJKoZI
-hvcNAQkDMQsGCSqGSIb3DQEHATAcBgkqhkiG9w0BCQUxDxcNMTUxMDAxMTUyNTE2WjBPBgkq
-hkiG9w0BCQQxQgRAQn0AIZAWecYljrDhUB2FdIKJ6WDa+ii+Sdxakrsd4Tx1d9JSKgEyo4GS
-zUR0eW/B6I1VbpbuUpv4lbr9925R8zBsBgkqhkiG9w0BCQ8xXzBdMAsGCWCGSAFlAwQBKjAL
-BglghkgBZQMEAQIwCgYIKoZIhvcNAwcwDgYIKoZIhvcNAwICAgCAMA0GCCqGSIb3DQMCAgFA
-MAcGBSsOAwIHMA0GCCqGSIb3DQMCAgEoMIGRBgkrBgEEAYI3EAQxgYMwgYAweTEQMA4GA1UE
-ChMHUm9vdCBDQTEeMBwGA1UECxMVaHR0cDovL3d3dy5jYWNlcnQub3JnMSIwIAYDVQQDExlD
-QSBDZXJ0IFNpZ25pbmcgQXV0aG9yaXR5MSEwHwYJKoZIhvcNAQkBFhJzdXBwb3J0QGNhY2Vy
-dC5vcmcCAxEt+DCBkwYLKoZIhvcNAQkQAgsxgYOggYAweTEQMA4GA1UEChMHUm9vdCBDQTEe
-MBwGA1UECxMVaHR0cDovL3d3dy5jYWNlcnQub3JnMSIwIAYDVQQDExlDQSBDZXJ0IFNpZ25p
-bmcgQXV0aG9yaXR5MSEwHwYJKoZIhvcNAQkBFhJzdXBwb3J0QGNhY2VydC5vcmcCAxEt+DAN
-BgkqhkiG9w0BAQEFAASCAgCQCMjEKPQ/XFCaQJ+nBk9HBpwqNV2DzBcpYb4upl7/44PXAQyG
-ZAN8n8WccvpEbKMahTqF4TJ3yk9wo+pUrUkUICXXHsnZVlmLcKeibeXitlJutTME7YnCwvx1
-exKuvj+bs+XUjs4rakBdnKjITfoH3lGzmKAKGLVyi7mqxw1QFKmhl1d4620aNDmaw19UDGBn
-0Jd+FR7yjC0Ix4HkDeRcJYq9TgOs/JcHUEiM+kCQ3rEwVzC9rhWUWL0d+/TMV95rJNxnJV3U
-p0FcjCtQp2I72VgX90tek6ZbjHFuZEUO6s9Vnw7GhpduTE2Z8Wm4sTEpgHaSk45mO7PinFsE
-8rZFV90LRW6UVvtbFyrFxT5X2PmUpBLwKD83DfUwgcrQq3zFrXN8rqQxL/gGFsQ6gRJ4H2nj
-sCnOyBXb9QBJRQnIbMKAW3vXHLX59kVkby2WUo7DaJkbrEjwB0GqZV/H6+3rP6Aq9kJPogcR
-J76uSa7aUPk2ynDF5tRzE8tcUNbuWSzQNxhbX3QIwU6e47WzXXrFg5hCsnXx8tKlkDFnmfxK
-MM803zQRCrD/UHCxu0SY7I23NR16c12DgvjhTJfM9pyg8+J0wAKHxDKoxh1ocSZjSm6WO+MT
-iDe5cNZ5qm34glEo7fwErSgFEaCL/Es7mbRNk5yPvG/0rADyXy8yaH8JhAAAAAAAAA==
---------------ms050606030806000502030201--
+>> Signed-off-by: Andrey Ryabinin <aryabinin@virtuozzo.com>
+>> Cc: <stable@vger.kernel.org>
+>> ---
+>>  fs/lockd/host.c             |  7 ++++---
+>>  fs/lockd/mon.c              | 36 ++++++++++++++++++++++--------------
+>>  fs/lockd/netns.h            |  1 +
+>>  fs/lockd/svc.c              |  1 +
+>>  fs/lockd/svc4proc.c         |  2 +-
+>>  fs/lockd/svcproc.c          |  2 +-
+>>  include/linux/lockd/lockd.h |  9 ++++++---
+>>  7 files changed, 36 insertions(+), 22 deletions(-)
+>>
+>> diff --git a/fs/lockd/host.c b/fs/lockd/host.c
+>> index 969d589..b5f3c3a 100644
+>> --- a/fs/lockd/host.c
+>> +++ b/fs/lockd/host.c
+>> @@ -116,7 +116,7 @@ static struct nlm_host *nlm_alloc_host(struct nlm_lookup_host_info *ni,
+>>  		atomic_inc(&nsm->sm_count);
+>>  	else {
+>>  		host = NULL;
+>> -		nsm = nsm_get_handle(ni->sap, ni->salen,
+>> +		nsm = nsm_get_handle(ni->net, ni->sap, ni->salen,
+>>  					ni->hostname, ni->hostname_len);
+>>  		if (unlikely(nsm == NULL)) {
+>>  			dprintk("lockd: %s failed; no nsm handle\n",
+>> @@ -534,17 +534,18 @@ static struct nlm_host *next_host_state(struct hlist_head *cache,
+>>  
+>>  /**
+>>   * nlm_host_rebooted - Release all resources held by rebooted host
+>> + * @net:  network namespace
+>>   * @info: pointer to decoded results of NLM_SM_NOTIFY call
+>>   *
+>>   * We were notified that the specified host has rebooted.  Release
+>>   * all resources held by that peer.
+>>   */
+>> -void nlm_host_rebooted(const struct nlm_reboot *info)
+>> +void nlm_host_rebooted(const struct net *net, const struct nlm_reboot *info)
+>>  {
+>>  	struct nsm_handle *nsm;
+>>  	struct nlm_host	*host;
+>>  
+>> -	nsm = nsm_reboot_lookup(info);
+>> +	nsm = nsm_reboot_lookup(net, info);
+>>  	if (unlikely(nsm == NULL))
+>>  		return;
+>>  
+>> diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
+>> index 47a32b6..6c05cd1 100644
+>> --- a/fs/lockd/mon.c
+>> +++ b/fs/lockd/mon.c
+>> @@ -51,7 +51,6 @@ struct nsm_res {
+>>  };
+>>  
+>>  static const struct rpc_program	nsm_program;
+>> -static				LIST_HEAD(nsm_handles);
+>>  static				DEFINE_SPINLOCK(nsm_lock);
+>>  
+>>  /*
+>> @@ -264,33 +263,35 @@ void nsm_unmonitor(const struct nlm_host *host)
+>>  	}
+>>  }
+>>  
+>> -static struct nsm_handle *nsm_lookup_hostname(const char *hostname,
+>> -					      const size_t len)
+>> +static struct nsm_handle *nsm_lookup_hostname(const struct list_head *nsm_handles,
+>> +					const char *hostname, const size_t len)
+>>  {
+>>  	struct nsm_handle *nsm;
+>>  
+>> -	list_for_each_entry(nsm, &nsm_handles, sm_link)
+>> +	list_for_each_entry(nsm, nsm_handles, sm_link)
+>>  		if (strlen(nsm->sm_name) == len &&
+>>  		    memcmp(nsm->sm_name, hostname, len) == 0)
+>>  			return nsm;
+>>  	return NULL;
+>>  }
+>>  
+>> -static struct nsm_handle *nsm_lookup_addr(const struct sockaddr *sap)
+>> +static struct nsm_handle *nsm_lookup_addr(const struct list_head *nsm_handles,
+>> +					const struct sockaddr *sap)
+>>  {
+>>  	struct nsm_handle *nsm;
+>>  
+>> -	list_for_each_entry(nsm, &nsm_handles, sm_link)
+>> +	list_for_each_entry(nsm, nsm_handles, sm_link)
+>>  		if (rpc_cmp_addr(nsm_addr(nsm), sap))
+>>  			return nsm;
+>>  	return NULL;
+>>  }
+>>  
+>> -static struct nsm_handle *nsm_lookup_priv(const struct nsm_private *priv)
+>> +static struct nsm_handle *nsm_lookup_priv(const struct list_head *nsm_handles,
+>> +					const struct nsm_private *priv)
+>>  {
+>>  	struct nsm_handle *nsm;
+>>  
+>> -	list_for_each_entry(nsm, &nsm_handles, sm_link)
+>> +	list_for_each_entry(nsm, nsm_handles, sm_link)
+>>  		if (memcmp(nsm->sm_priv.data, priv->data,
+>>  					sizeof(priv->data)) == 0)
+>>  			return nsm;
+>> @@ -353,6 +354,7 @@ static struct nsm_handle *nsm_create_handle(const struct sockaddr *sap,
+>>  
+>>  /**
+>>   * nsm_get_handle - Find or create a cached nsm_handle
+>> + * @net: network namespace
+>>   * @sap: pointer to socket address of handle to find
+>>   * @salen: length of socket address
+>>   * @hostname: pointer to C string containing hostname to find
+>> @@ -365,11 +367,13 @@ static struct nsm_handle *nsm_create_handle(const struct sockaddr *sap,
+>>   * @hostname cannot be found in the handle cache.  Returns NULL if
+>>   * an error occurs.
+>>   */
+>> -struct nsm_handle *nsm_get_handle(const struct sockaddr *sap,
+>> +struct nsm_handle *nsm_get_handle(const struct net *net,
+>> +				  const struct sockaddr *sap,
+>>  				  const size_t salen, const char *hostname,
+>>  				  const size_t hostname_len)
+>>  {
+>>  	struct nsm_handle *cached, *new = NULL;
+>> +	struct lockd_net *ln = net_generic(net, lockd_net_id);
+>>  
+>>  	if (hostname && memchr(hostname, '/', hostname_len) != NULL) {
+>>  		if (printk_ratelimit()) {
+>> @@ -384,9 +388,10 @@ retry:
+>>  	spin_lock(&nsm_lock);
+>>  
+>>  	if (nsm_use_hostnames && hostname != NULL)
+>> -		cached = nsm_lookup_hostname(hostname, hostname_len);
+>> +		cached = nsm_lookup_hostname(&ln->nsm_handles,
+>> +					hostname, hostname_len);
+>>  	else
+>> -		cached = nsm_lookup_addr(sap);
+>> +		cached = nsm_lookup_addr(&ln->nsm_handles, sap);
+>>  
+>>  	if (cached != NULL) {
+>>  		atomic_inc(&cached->sm_count);
+>> @@ -400,7 +405,7 @@ retry:
+>>  	}
+>>  
+>>  	if (new != NULL) {
+>> -		list_add(&new->sm_link, &nsm_handles);
+>> +		list_add(&new->sm_link, &ln->nsm_handles);
+>>  		spin_unlock(&nsm_lock);
+>>  		dprintk("lockd: created nsm_handle for %s (%s)\n",
+>>  				new->sm_name, new->sm_addrbuf);
+>> @@ -417,19 +422,22 @@ retry:
+>>  
+>>  /**
+>>   * nsm_reboot_lookup - match NLMPROC_SM_NOTIFY arguments to an nsm_handle
+>> + * @net:  network namespace
+>>   * @info: pointer to NLMPROC_SM_NOTIFY arguments
+>>   *
+>>   * Returns a matching nsm_handle if found in the nsm cache. The returned
+>>   * nsm_handle's reference count is bumped. Otherwise returns NULL if some
+>>   * error occurred.
+>>   */
+>> -struct nsm_handle *nsm_reboot_lookup(const struct nlm_reboot *info)
+>> +struct nsm_handle *nsm_reboot_lookup(const struct net *net,
+>> +				const struct nlm_reboot *info)
+>>  {
+>>  	struct nsm_handle *cached;
+>> +	struct lockd_net *ln = net_generic(net, lockd_net_id);
+>>  
+>>  	spin_lock(&nsm_lock);
+>>  
+>> -	cached = nsm_lookup_priv(&info->priv);
+>> +	cached = nsm_lookup_priv(&ln->nsm_handles, &info->priv);
+>>  	if (unlikely(cached == NULL)) {
+>>  		spin_unlock(&nsm_lock);
+>>  		dprintk("lockd: never saw rebooted peer '%.*s' before\n",
+>> diff --git a/fs/lockd/netns.h b/fs/lockd/netns.h
+>> index 097bfa3..89fe011 100644
+>> --- a/fs/lockd/netns.h
+>> +++ b/fs/lockd/netns.h
+>> @@ -15,6 +15,7 @@ struct lockd_net {
+>>  	spinlock_t nsm_clnt_lock;
+>>  	unsigned int nsm_users;
+>>  	struct rpc_clnt *nsm_clnt;
+>> +	struct list_head nsm_handles;
+>>  };
+>>  
+>>  extern int lockd_net_id;
+>> diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+>> index d678bcc..0dff13f 100644
+>> --- a/fs/lockd/svc.c
+>> +++ b/fs/lockd/svc.c
+>> @@ -593,6 +593,7 @@ static int lockd_init_net(struct net *net)
+>>  	INIT_LIST_HEAD(&ln->lockd_manager.list);
+>>  	ln->lockd_manager.block_opens = false;
+>>  	spin_lock_init(&ln->nsm_clnt_lock);
+>> +	INIT_LIST_HEAD(&ln->nsm_handles);
+>>  	return 0;
+>>  }
+>>  
+>> diff --git a/fs/lockd/svc4proc.c b/fs/lockd/svc4proc.c
+>> index b147d1a..09c576f 100644
+>> --- a/fs/lockd/svc4proc.c
+>> +++ b/fs/lockd/svc4proc.c
+>> @@ -421,7 +421,7 @@ nlm4svc_proc_sm_notify(struct svc_rqst *rqstp, struct nlm_reboot *argp,
+>>  		return rpc_system_err;
+>>  	}
+>>  
+>> -	nlm_host_rebooted(argp);
+>> +	nlm_host_rebooted(SVC_NET(rqstp), argp);
+>>  	return rpc_success;
+>>  }
+>>  
+>> diff --git a/fs/lockd/svcproc.c b/fs/lockd/svcproc.c
+>> index 21171f0..fb26b9f 100644
+>> --- a/fs/lockd/svcproc.c
+>> +++ b/fs/lockd/svcproc.c
+>> @@ -464,7 +464,7 @@ nlmsvc_proc_sm_notify(struct svc_rqst *rqstp, struct nlm_reboot *argp,
+>>  		return rpc_system_err;
+>>  	}
+>>  
+>> -	nlm_host_rebooted(argp);
+>> +	nlm_host_rebooted(SVC_NET(rqstp), argp);
+>>  	return rpc_success;
+>>  }
+>>  
+>> diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
+>> index ff82a32..fd3b65b 100644
+>> --- a/include/linux/lockd/lockd.h
+>> +++ b/include/linux/lockd/lockd.h
+>> @@ -235,7 +235,8 @@ void		  nlm_rebind_host(struct nlm_host *);
+>>  struct nlm_host * nlm_get_host(struct nlm_host *);
+>>  void		  nlm_shutdown_hosts(void);
+>>  void		  nlm_shutdown_hosts_net(struct net *net);
+>> -void		  nlm_host_rebooted(const struct nlm_reboot *);
+>> +void		  nlm_host_rebooted(const struct net *net,
+>> +					const struct nlm_reboot *);
+>>  
+>>  /*
+>>   * Host monitoring
+>> @@ -243,11 +244,13 @@ void		  nlm_host_rebooted(const struct nlm_reboot *);
+>>  int		  nsm_monitor(const struct nlm_host *host);
+>>  void		  nsm_unmonitor(const struct nlm_host *host);
+>>  
+>> -struct nsm_handle *nsm_get_handle(const struct sockaddr *sap,
+>> +struct nsm_handle *nsm_get_handle(const struct net *net,
+>> +					const struct sockaddr *sap,
+>>  					const size_t salen,
+>>  					const char *hostname,
+>>  					const size_t hostname_len);
+>> -struct nsm_handle *nsm_reboot_lookup(const struct nlm_reboot *info);
+>> +struct nsm_handle *nsm_reboot_lookup(const struct net *net,
+>> +					const struct nlm_reboot *info);
+>>  void		  nsm_release(struct nsm_handle *nsm);
+>>  
+>>  /*
+>> -- 
+>> 2.4.9
