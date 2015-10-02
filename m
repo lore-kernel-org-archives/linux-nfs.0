@@ -1,36 +1,49 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-by2on0086.outbound.protection.outlook.com ([207.46.100.86]:54352
-	"EHLO na01-by2-obe.outbound.protection.outlook.com"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1751841AbbJBPhL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 2 Oct 2015 11:37:11 -0400
-Subject: Re: [PATCH v1 00/24] New fast registration API
-To: Sagi Grimberg <sagig@dev.mellanox.co.il>
-References: <1442482947-27785-1-git-send-email-sagig@mellanox.com>
- <560AE099.2080004@sandisk.com> <560AFB71.3010003@dev.mellanox.co.il>
- <560C30F4.50900@sandisk.com> <560C42CE.6090000@sandisk.com>
- <560CDDBC.8000400@dev.mellanox.co.il> <560D730C.9000302@sandisk.com>
- <560D9E69.70604@sandisk.com>
- <35618B90-4D6E-4036-A69B-4405F020D440@dev.mellanox.co.il>
-CC: Sagi Grimberg <sagig@mellanox.com>,
-        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Nicholas A. Bellinger" <nab@linux-iscsi.org>
-From: Bart Van Assche <bart.vanassche@sandisk.com>
-Message-ID: <560EA4A1.3080709@sandisk.com>
-Date: Fri, 2 Oct 2015 08:37:05 -0700
-MIME-Version: 1.0
-In-Reply-To: <35618B90-4D6E-4036-A69B-4405F020D440@dev.mellanox.co.il>
-Content-Type: text/plain; charset="utf-8"; format=flowed
+Received: from mail-qk0-f178.google.com ([209.85.220.178]:35130 "EHLO
+	mail-qk0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752482AbbJBPr1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Oct 2015 11:47:27 -0400
+Received: by qkap81 with SMTP id p81so44538330qka.2
+        for <linux-nfs@vger.kernel.org>; Fri, 02 Oct 2015 08:47:27 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] NFSv4.1: nfs4_opendata_check_deleg needs to handle NFS4_OPEN_CLAIM_DELEG_CUR_FH
+Date: Fri,  2 Oct 2015 11:47:24 -0400
+Message-Id: <1443800844-7249-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 10/01/2015 11:14 PM, Sagi Grimberg wrote:
-> Would you mind sending me your .config?
+We need to warn against broken NFSv4.1 servers that try to hand out
+delegations in response to NFS4_OPEN_CLAIM_DELEG_CUR_FH.
 
-Hello Sagi,
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfs/nfs4proc.c | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
 
-I just sent this .config file to you off-list.
-
-Bart.
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index f93b9cdb4934..56b0958b940f 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -1458,12 +1458,16 @@ nfs4_opendata_check_deleg(struct nfs4_opendata *data, struct nfs4_state *state)
+ 	if (delegation)
+ 		delegation_flags = delegation->flags;
+ 	rcu_read_unlock();
+-	if (data->o_arg.claim == NFS4_OPEN_CLAIM_DELEGATE_CUR) {
++	switch (data->o_arg.claim) {
++	case NFS4_OPEN_CLAIM_DELEGATE_CUR:
++	case NFS4_OPEN_CLAIM_DELEG_CUR_FH:
+ 		pr_err_ratelimited("NFS: Broken NFSv4 server %s is "
+ 				   "returning a delegation for "
+ 				   "OPEN(CLAIM_DELEGATE_CUR)\n",
+ 				   clp->cl_hostname);
+-	} else if ((delegation_flags & 1UL<<NFS_DELEGATION_NEED_RECLAIM) == 0)
++		return;
++	}
++	if ((delegation_flags & 1UL<<NFS_DELEGATION_NEED_RECLAIM) == 0)
+ 		nfs_inode_set_delegation(state->inode,
+ 					 data->owner->so_cred,
+ 					 &data->o_res);
+-- 
+2.4.3
 
