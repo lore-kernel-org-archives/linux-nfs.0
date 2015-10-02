@@ -1,110 +1,69 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:40933 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751841AbbJBOpV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 2 Oct 2015 10:45:21 -0400
-Date: Fri, 2 Oct 2015 10:45:20 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: andros@netapp.com
-Cc: trond.myklebust@primarydata.com, anna.schumaker@netapp.com,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH Version 2 00/16] NFSv4.2: Add support for inter-server to
- server COPY
-Message-ID: <20151002144520.GA15612@fieldses.org>
-References: <1441387778-16465-1-git-send-email-andros@netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1441387778-16465-1-git-send-email-andros@netapp.com>
+Received: from mail-io0-f174.google.com ([209.85.223.174]:33842 "EHLO
+	mail-io0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751841AbbJBO6C (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Oct 2015 10:58:02 -0400
+Received: by iow1 with SMTP id 1so85562890iow.1
+        for <linux-nfs@vger.kernel.org>; Fri, 02 Oct 2015 07:58:01 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] NFS: Fix up page writeback accounting
+Date: Fri,  2 Oct 2015 10:57:59 -0400
+Message-Id: <1443797879-4525-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Apologies for the slow response.  I'm waiting to review this carefully
-until the simpler (single-server) case is done.
+Currently, we are crediting all the calls to nfs_writepages_callback()
+(i.e. the nfs_writepages() callback) to nfs_writepage(). Aside from
+being inconsistent with the behaviour of the equivalent readpage/readpages
+accounting, this also means that we cannot distinguish between bulk writes
+and single page writebacks (which confuses the 'nfsiostat -p' tool).
 
-Eventually I'd be curious for any performance results, specifically:
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfs/write.c | 12 ++++++------
+ 1 file changed, 6 insertions(+), 6 deletions(-)
 
-	- when copying a large file, is the copy able to use all the
-	  available server<->server bandwidth?
-	- when copying a small file, how does COPY compare to a read and
-	  a write?
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 72624dc4a623..cfa47761a8ce 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -569,19 +569,17 @@ static int nfs_page_async_flush(struct nfs_pageio_descriptor *pgio,
+ 	if (!nfs_pageio_add_request(pgio, req)) {
+ 		nfs_redirty_request(req);
+ 		ret = pgio->pg_error;
+-	}
++	} else
++		nfs_add_stats(page_file_mapping(page)->host,
++				NFSIOS_WRITEPAGES, 1);
+ out:
+ 	return ret;
+ }
+ 
+ static int nfs_do_writepage(struct page *page, struct writeback_control *wbc, struct nfs_pageio_descriptor *pgio)
+ {
+-	struct inode *inode = page_file_mapping(page)->host;
+ 	int ret;
+ 
+-	nfs_inc_stats(inode, NFSIOS_VFSWRITEPAGE);
+-	nfs_add_stats(inode, NFSIOS_WRITEPAGES, 1);
+-
+ 	nfs_pageio_cond_complete(pgio, page_file_index(page));
+ 	ret = nfs_page_async_flush(pgio, page, wbc->sync_mode == WB_SYNC_NONE);
+ 	if (ret == -EAGAIN) {
+@@ -597,9 +595,11 @@ static int nfs_do_writepage(struct page *page, struct writeback_control *wbc, st
+ static int nfs_writepage_locked(struct page *page, struct writeback_control *wbc)
+ {
+ 	struct nfs_pageio_descriptor pgio;
++	struct inode *inode = page_file_mapping(page)->host;
+ 	int err;
+ 
+-	nfs_pageio_init_write(&pgio, page->mapping->host, wb_priority(wbc),
++	nfs_inc_stats(inode, NFSIOS_VFSWRITEPAGE);
++	nfs_pageio_init_write(&pgio, inode, wb_priority(wbc),
+ 				false, &nfs_async_write_completion_ops);
+ 	err = nfs_do_writepage(page, wbc, &pgio);
+ 	nfs_pageio_complete(&pgio);
+-- 
+2.4.3
 
---b.
-
-On Fri, Sep 04, 2015 at 01:29:22PM -0400, andros@netapp.com wrote:
-> From: Andy Adamson <andros@netapp.com>
-> 
-> Version 2:
-> 
-> Fixed xdr issues. 
-> Fixed stateid issues
-> Added lease time to copy_notify return 
-> 
-> 
-> Version 1: 
-> These patches add client and server support for NFSv4.2 inter-server to
-> server copy offload. These patches build upon Anna Schumaker's COPY Operation
-> patches which are in turn built upon Zack Brown's VFS vfs_copy_file_range
-> syscall. Additional functionality is added to the COPY operation past what
-> Anna added. The COPY_NOTIFY operation is added.
-> 
-> The first three patches change Zach Brown's vfs_copy_file_range implementation.
-> The first two patches relax the check for only performing copy offload between
-> files with the same mount and super block, moving that check into a helper
-> function that can be called (e.g. BTRFS) in a file systems copy_file_range
-> function. The third patch changes vfs_copy_file_range to call the destination
-> file (file_out) copy_file_range f_ops proceedure instead of the file_in version.
-> 
-> The remaining patches implement the COPY_NOTIFY operation and the inter-ssc
-> changes to the COPY operation.  One source server using NL4_NETADDR is
-> currently supported. I used the test program from Anna's COPY
-> operation patch set.
-> 
-> 
-> 
-> Andy Adamson (12):
->   VFS: Separate cross fs check from vfs_copy_file_range
->   BTRFS: Use VFS copy offload helper
->   VFS SQUASH use file_out instead of file_in for copy_file_range
->   NFS add same file check and flush source and destination for COPY
->   NFS add inter ssc functions to nfs42proc
->   NFS add COPY_NOTIFY operation
->   NFSD add ca_source_server<> to COPY
->   NFSD add COPY_NOTIFY operation
->   NFS add ca_source_server<> to COPY
->   NFSD generalize nfsd4_compound_state flag names
->   NFSD: allow inter server COPY to have a STALE source server fh
->   NFSD add nfs4 inter ssc to nfsd4_copy
-> 
-> Olga Kornievskaia (4):
->   NFS COPY xdr changes
->   NFS in copy use stateid returned by copy_notify
->   NFS always use openstateid in COPY_NOTIFY
->   NFSD: extra stateid checking in read for interserver copy
-> 
->  fs/btrfs/ioctl.c              |   3 +
->  fs/nfs/nfs42.h                |   2 +-
->  fs/nfs/nfs42proc.c            | 238 +++++++++++++++++++++-
->  fs/nfs/nfs42xdr.c             | 213 +++++++++++++++++++-
->  fs/nfs/nfs4_fs.h              |   9 +-
->  fs/nfs/nfs4file.c             |  17 +-
->  fs/nfs/nfs4proc.c             |   8 +-
->  fs/nfs/nfs4state.c            |   2 +-
->  fs/nfs/nfs4xdr.c              |   1 +
->  fs/nfsd/Kconfig               |  10 +
->  fs/nfsd/nfs4proc.c            | 456 +++++++++++++++++++++++++++++++++++++++++-
->  fs/nfsd/nfs4state.c           |  37 +++-
->  fs/nfsd/nfs4xdr.c             | 203 ++++++++++++++++++-
->  fs/nfsd/nfsd.h                |   2 +
->  fs/nfsd/state.h               |   8 +
->  fs/nfsd/xdr4.h                |  29 ++-
->  fs/read_write.c               |  38 ++--
->  include/linux/fs.h            |   1 +
->  include/linux/nfs4.h          |   7 +
->  include/linux/nfs4intercopy.h |  39 ++++
->  include/linux/nfs_fs_sb.h     |   1 +
->  include/linux/nfs_xdr.h       |  28 +++
->  22 files changed, 1289 insertions(+), 63 deletions(-)
->  create mode 100644 include/linux/nfs4intercopy.h
-> 
-> -- 
-> 1.8.3.1
