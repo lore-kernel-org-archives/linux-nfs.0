@@ -1,50 +1,36 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f175.google.com ([209.85.213.175]:33671 "EHLO
-	mail-ig0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753032AbbJBPWs (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Oct 2015 11:22:48 -0400
-Received: by igbkq10 with SMTP id kq10so20867837igb.0
-        for <linux-nfs@vger.kernel.org>; Fri, 02 Oct 2015 08:22:47 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Andrew W Elble <aweits@rit.edu>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] NFSv4: Don't try to reclaim unused state owners
-Date: Fri,  2 Oct 2015 11:22:45 -0400
-Message-Id: <1443799365-6120-1-git-send-email-trond.myklebust@primarydata.com>
+Received: from mail-by2on0086.outbound.protection.outlook.com ([207.46.100.86]:54352
+	"EHLO na01-by2-obe.outbound.protection.outlook.com"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1751841AbbJBPhL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 2 Oct 2015 11:37:11 -0400
+Subject: Re: [PATCH v1 00/24] New fast registration API
+To: Sagi Grimberg <sagig@dev.mellanox.co.il>
+References: <1442482947-27785-1-git-send-email-sagig@mellanox.com>
+ <560AE099.2080004@sandisk.com> <560AFB71.3010003@dev.mellanox.co.il>
+ <560C30F4.50900@sandisk.com> <560C42CE.6090000@sandisk.com>
+ <560CDDBC.8000400@dev.mellanox.co.il> <560D730C.9000302@sandisk.com>
+ <560D9E69.70604@sandisk.com>
+ <35618B90-4D6E-4036-A69B-4405F020D440@dev.mellanox.co.il>
+CC: Sagi Grimberg <sagig@mellanox.com>,
+        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "Nicholas A. Bellinger" <nab@linux-iscsi.org>
+From: Bart Van Assche <bart.vanassche@sandisk.com>
+Message-ID: <560EA4A1.3080709@sandisk.com>
+Date: Fri, 2 Oct 2015 08:37:05 -0700
+MIME-Version: 1.0
+In-Reply-To: <35618B90-4D6E-4036-A69B-4405F020D440@dev.mellanox.co.il>
+Content-Type: text/plain; charset="utf-8"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Currently, we don't test if the state owner is in use before we try to
-recover it. The problem is that if the refcount is zero, then the
-state owner will be waiting on the lru list for garbage collection.
-The expectation in that case is that if you bump the refcount, then
-you must also remove the state owner from the lru list. Otherwise
-the call to nfs4_put_state_owner will corrupt that list by trying
-to add our state owner a second time.
+On 10/01/2015 11:14 PM, Sagi Grimberg wrote:
+> Would you mind sending me your .config?
 
-Avoid the whole problem by just skipping state owners that hold no
-state.
+Hello Sagi,
 
-Reported-by: Andrew W Elble <aweits@rit.edu>
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/nfs4state.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+I just sent this .config file to you off-list.
 
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 5db324635e92..d854693a15b0 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -1725,7 +1725,8 @@ restart:
- 			if (!test_and_clear_bit(ops->owner_flag_bit,
- 							&sp->so_flags))
- 				continue;
--			atomic_inc(&sp->so_count);
-+			if (!atomic_inc_not_zero(&sp->so_count))
-+				continue;
- 			spin_unlock(&clp->cl_lock);
- 			rcu_read_unlock();
- 
--- 
-2.4.3
+Bart.
 
