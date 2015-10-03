@@ -1,40 +1,41 @@
-Return-Path: <trond.myklebust@primarydata.com>
-MIME-Version: 1.0
-In-Reply-To: <3f289465f9fe9aef49605e1418e6a22c6f3d6118.1443705317.git.bcodding@redhat.com>
-References: <3f289465f9fe9aef49605e1418e6a22c6f3d6118.1443705317.git.bcodding@redhat.com>
-Date: Fri, 2 Oct 2015 15:54:31 -0400
-Message-ID: <CAHQdGtRCDUKmh71YSOvMwEa2-fH7T2=WhNBBAkh__4mY1rAz5g@mail.gmail.com>
-Subject: Re: [PATCH] NFSv4: Fix a nograce recovery hang
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Benjamin Coddington <bcodding@redhat.com>
-Cc: Anna Schumaker <Anna.Schumaker@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail-qk0-f172.google.com ([209.85.220.172]:35110 "EHLO
+	mail-qk0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752068AbbJCMiJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 3 Oct 2015 08:38:09 -0400
+Received: by qkap81 with SMTP id p81so53540967qka.2
+        for <linux-nfs@vger.kernel.org>; Sat, 03 Oct 2015 05:38:08 -0700 (PDT)
+From: Jeff Layton <jlayton@poochiereds.net>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] nfsd: use a multithreaded workqueue for nfsd4_callbacks
+Date: Sat,  3 Oct 2015 08:38:02 -0400
+Message-Id: <1443875882-12089-1-git-send-email-jeff.layton@primarydata.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Oct 1, 2015 at 9:17 AM, Benjamin Coddington <bcodding@redhat.com> wrote:
-> Since commit 5cae02f42793130e1387f4ec09c4d07056ce9fa5 an OPEN_CONFIRM should
-> have a privileged sequence in the recovery case to allow nograce recovery to
-> proceed for NFSv4.0.
->
-> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
-> ---
->  fs/nfs/nfs4proc.c |    2 ++
->  1 files changed, 2 insertions(+), 0 deletions(-)
->
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index f93b9cd..784a649 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -1863,6 +1863,8 @@ static int _nfs4_proc_open_confirm(struct nfs4_opendata *data)
->         data->rpc_done = 0;
->         data->rpc_status = 0;
->         data->timestamp = jiffies;
-> +       if (data->is_recover)
-> +               nfs4_set_sequence_privileged(&data->c_arg.seq_args);
->         task = rpc_run_task(&task_setup_data);
->         if (IS_ERR(task))
->                 return PTR_ERR(task);
-> --
+I don't see any need to order callbacks with respect to one another.
+Also, these are generally not involved in memory reclaim, so I don't see
+the need for a rescuer thread here either.
 
-Makes sense. Thanks Ben!
+Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
+---
+ fs/nfsd/nfs4callback.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index e7f50c4081d6..7dabbb436290 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -1017,7 +1017,7 @@ static const struct rpc_call_ops nfsd4_cb_ops = {
+ 
+ int nfsd4_create_callback_queue(void)
+ {
+-	callback_wq = create_singlethread_workqueue("nfsd4_callbacks");
++	callback_wq = alloc_workqueue("%s", WQ_UNBOUND, 0, "nfsd4_callbacks");
+ 	if (!callback_wq)
+ 		return -ENOMEM;
+ 	return 0;
+-- 
+2.4.3
+
