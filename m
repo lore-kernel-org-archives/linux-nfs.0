@@ -1,80 +1,70 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f181.google.com ([209.85.220.181]:34734 "EHLO
-	mail-qk0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751489AbbJDNf6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 4 Oct 2015 09:35:58 -0400
-Received: by qkbi190 with SMTP id i190so40109587qkb.1
-        for <linux-nfs@vger.kernel.org>; Sun, 04 Oct 2015 06:35:57 -0700 (PDT)
-Date: Sun, 4 Oct 2015 09:35:53 -0400
-From: Jeff Layton <jlayton@poochiereds.net>
-To: Al Viro <viro@ZenIV.linux.org.uk>
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH v2 1/4] fs: have flush_delayed_fput flush the workqueue
- job
-Message-ID: <20151004093553.0ff25438@tlielax.poochiereds.net>
-In-Reply-To: <1442493587-32499-2-git-send-email-jeff.layton@primarydata.com>
-References: <1442493587-32499-1-git-send-email-jeff.layton@primarydata.com>
-	<1442493587-32499-2-git-send-email-jeff.layton@primarydata.com>
+Received: from mail-ig0-f175.google.com ([209.85.213.175]:33124 "EHLO
+	mail-ig0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752025AbbJEDD3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 4 Oct 2015 23:03:29 -0400
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH] svcrdma: Fix NFS server crash triggered by 1MB NFS WRITE
+To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
+Date: Sun, 04 Oct 2015 23:03:26 -0400
+Message-ID: <20151005025022.5074.89318.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 17 Sep 2015 08:39:44 -0400
-Jeff Layton <jlayton@poochiereds.net> wrote:
+Now that the NFS server advertises a maximum payload size of 1MB
+for RPC/RDMA again, it crashes in svc_process_common() when NFS
+client sends a 1MB NFS WRITE on an NFS/RDMA mount.
 
-> I think there's a potential race in flush_delayed_fput. A kthread does
-> an fput() and that file gets added to the list and the delayed work is
-> scheduled. More than 1 jiffy passes, and the workqueue thread picks up
-> the work and starts running it. Then the kthread calls
-> flush_delayed_work.  It sees that the list is empty and returns
-> immediately, even though the __fput for its file may not have run yet.
-> 
-> Close this by making flush_delayed_fput use flush_delayed_work instead,
-> which should immediately schedule the work to run if it's not already,
-> and block until the workqueue job completes.
-> 
-> Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
-> ---
->  fs/file_table.c | 6 +++---
->  1 file changed, 3 insertions(+), 3 deletions(-)
-> 
+The server has set up a 259 element array of struct page pointers
+in rq_pages[] for each incoming request. The last element of the
+array is NULL.
 
-It should be noted that the only current user of flush_delayed_fput()
-can call it before the workqueue threads are ever started.
+When an incoming request has been completely received,
+rdma_read_complete() attempts to set the starting page of the
+incoming page vector:
 
-Looking at the code, I *think* this will still do the right thing --
-block until those threads are started and then flush the work as usual,
-but do let me know if I've misread it.
+  rqstp->rq_arg.pages = &rqstp->rq_pages[head->hdr_count];
 
-> diff --git a/fs/file_table.c b/fs/file_table.c
-> index ad17e05ebf95..52cc6803c07a 100644
-> --- a/fs/file_table.c
-> +++ b/fs/file_table.c
-> @@ -244,6 +244,8 @@ static void ____fput(struct callback_head *work)
->  	__fput(container_of(work, struct file, f_u.fu_rcuhead));
->  }
->  
-> +static DECLARE_DELAYED_WORK(delayed_fput_work, delayed_fput);
-> +
->  /*
->   * If kernel thread really needs to have the final fput() it has done
->   * to complete, call this.  The only user right now is the boot - we
-> @@ -256,11 +258,9 @@ static void ____fput(struct callback_head *work)
->   */
->  void flush_delayed_fput(void)
->  {
-> -	delayed_fput(NULL);
-> +	flush_delayed_work(&delayed_fput_work);
->  }
->  
-> -static DECLARE_DELAYED_WORK(delayed_fput_work, delayed_fput);
-> -
->  void fput(struct file *file)
->  {
->  	if (atomic_long_dec_and_test(&file->f_count)) {
+and the page to use for the reply:
 
+  rqstp->rq_respages = &rqstp->rq_arg.pages[page_no];
 
--- 
-Jeff Layton <jlayton@poochiereds.net>
+But the value of page_no has already accounted for head->hdr_count.
+Thus rq_respages now points past the end of the incoming pages. For
+NFS WRITE operations smaller than the maximum, this is harmless.
+
+But when the NFS WRITE operation is as large as the server's max
+payload size, rq_respages now points at the last entry in rq_pages,
+which is NULL.
+
+Fixes: cc9a903d915c ('svcrdma: Change maximum server payload . . .')
+BugLink: https://bugzilla.linux-nfs.org/show_bug.cgi?id=270
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+
+This fixes a 4.3-rc regression. Please apply to 4.3-rc when this
+patch passes review.
+
+It could also be appropriate for stable kernels which do not have
+commit 7e5be28827bf ("svcrdma: advertise the correct max payload"),
+though I have not tested them with this patch.
+
+ net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+index cb51742..37b4341 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+@@ -531,7 +531,7 @@ static int rdma_read_complete(struct svc_rqst *rqstp,
+ 	rqstp->rq_arg.page_base = head->arg.page_base;
+ 
+ 	/* rq_respages starts after the last arg page */
+-	rqstp->rq_respages = &rqstp->rq_arg.pages[page_no];
++	rqstp->rq_respages = &rqstp->rq_pages[page_no];
+ 	rqstp->rq_next_page = rqstp->rq_respages + 1;
+ 
+ 	/* Rebuild rq_arg head and tail. */
+
