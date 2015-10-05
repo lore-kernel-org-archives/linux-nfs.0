@@ -1,72 +1,102 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from dmz-mailsec-scanner-5.mit.edu ([18.7.68.34]:42689 "EHLO
-	dmz-mailsec-scanner-5.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750738AbbJETPV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Oct 2015 15:15:21 -0400
-Subject: Re: Fwd: Gss context refresh failure due to clock skew
-To: "Adamson, Andy" <William.Adamson@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Received: from mx144.netapp.com ([216.240.21.25]:4378 "EHLO mx144.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751052AbbJETgT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 5 Oct 2015 15:36:19 -0400
+From: "Adamson, Andy" <William.Adamson@netapp.com>
+To: Greg Hudson <ghudson@MIT.EDU>
+CC: "Adamson, Andy" <William.Adamson@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        "krbdev@mit.edu" <krbdev@MIT.EDU>
+Subject: Re: Gss context refresh failure due to clock skew
+Date: Mon, 5 Oct 2015 19:35:39 +0000
+Message-ID: <A7007DA3-24B2-4079-96A8-A6E97085031C@netapp.com>
 References: <AD03968E-7017-4D32-A90C-C74C1E9CDFAC@netapp.com>
- <FA7F806E-E5DA-4C41-AE7F-99E381E71123@netapp.com>
-Cc: "krbdev@mit.edu" <krbdev@mit.edu>
-From: Greg Hudson <ghudson@mit.edu>
-Message-ID: <5612CB0F.5040501@mit.edu>
-Date: Mon, 5 Oct 2015 15:10:07 -0400
+ <FA7F806E-E5DA-4C41-AE7F-99E381E71123@netapp.com> <5612CB0F.5040501@mit.edu>
+In-Reply-To: <5612CB0F.5040501@mit.edu>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-In-Reply-To: <FA7F806E-E5DA-4C41-AE7F-99E381E71123@netapp.com>
-Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Sorry for the delay; Andy's mail got stuck in the krbdev moderation
-queue by mistake.
-
-On 10/01/2015 05:30 PM, Adamson, Andy wrote:
-> The situation occurs as follows.
-
-I am a little bit confused by this description because of terminology
-issues.  In your description, you appear to use the phrase "TGS" to
-refer to service tickets (i.e. tickets whose service principal is
-nfs/server.name), but I can't be sure.  The actual meaning of "TGS" is
-"ticket-granting service," i.e. the KDC service whose principal name is
-krbtgt/REALM.
-
-> 2) For convenience, I set the TGS lifetimes to be as short as possible, 10 minutes for Win2008R2 AD which I test with.
-
-Are you setting the maximum lifetime for nfs/server.name tickets to 10
-minutes, but still allowing ticket-granting tickets to have a lifetime
-of multiple hours?
-
->> 12) Wait until the client clock is past the server TGS expiry time
->> 13) re-try the mkdir - it succeeds after a successful GSS INIT NULL call exchange for both servers.
-
-If I understand correctly, this request succeeds because
-krb5_get_credentials() ignores the expired cached service ticket and
-makes a TGS request for a new service ticket.  The cache now contains:
-
-* A ticket for krbtgt/REALM with hours remaining
-* A ticket for nfs/server.name which expired recently
-* Another ticket for nfs/server.name which expires in ten minutes
-
-Is that correct?
-
-> Shouldn’t these refresh calls succeed? Isn’t the Kerberos clock skew supposed to handle this situation?
-
-I think this case doesn't arise often because people don't often set
-maximum service ticket lifetimes to be shorter than maximum TGT
-lifetimes.  If the TGT itself has expired or is about to expire, some
-out-of-band agent needs to refresh the TGT somehow, and it doesn't
-matter all that much whether the failure comes from the client or the
-server.
-
-That said, your scenario should work, and it doesn't.  The primary cause
-is an explicit check added to the krb5 mech's gss_accept_sec_context()
-implementation in 1996 (before the MIT krb5 1.0 release), which checks
-the ticket endtime with no allowance for clock skew.  I don't know
-precisely why the check was added, but my guess it is for the
-computation of the context validity lifetime; it would make no sense to
-tell the application "the authentication succeeded and the resulting
-context is valid for the next -3 minutes."
-
-Perhaps a better choice would be to remove this check, and instead add
-the clock skew to the validity lifetime of GSS krb5 acceptor contexts.
+DQo+IE9uIE9jdCA1LCAyMDE1LCBhdCAzOjEwIFBNLCBHcmVnIEh1ZHNvbiA8Z2h1ZHNvbkBNSVQu
+RURVPiB3cm90ZToNCj4gDQo+IFNvcnJ5IGZvciB0aGUgZGVsYXk7IEFuZHkncyBtYWlsIGdvdCBz
+dHVjayBpbiB0aGUga3JiZGV2IG1vZGVyYXRpb24NCj4gcXVldWUgYnkgbWlzdGFrZS4NCj4gDQo+
+IE9uIDEwLzAxLzIwMTUgMDU6MzAgUE0sIEFkYW1zb24sIEFuZHkgd3JvdGU6DQo+PiBUaGUgc2l0
+dWF0aW9uIG9jY3VycyBhcyBmb2xsb3dzLg0KPiANCj4gSSBhbSBhIGxpdHRsZSBiaXQgY29uZnVz
+ZWQgYnkgdGhpcyBkZXNjcmlwdGlvbiBiZWNhdXNlIG9mIHRlcm1pbm9sb2d5DQo+IGlzc3Vlcy4g
+IEluIHlvdXIgZGVzY3JpcHRpb24sIHlvdSBhcHBlYXIgdG8gdXNlIHRoZSBwaHJhc2UgIlRHUyIg
+dG8NCj4gcmVmZXIgdG8gc2VydmljZSB0aWNrZXRzIChpLmUuIHRpY2tldHMgd2hvc2Ugc2Vydmlj
+ZSBwcmluY2lwYWwgaXMNCj4gbmZzL3NlcnZlci5uYW1lKSwgYnV0IEkgY2FuJ3QgYmUgc3VyZS4g
+IFRoZSBhY3R1YWwgbWVhbmluZyBvZiAiVEdTIiBpcw0KPiAidGlja2V0LWdyYW50aW5nIHNlcnZp
+Y2UsIiBpLmUuIHRoZSBLREMgc2VydmljZSB3aG9zZSBwcmluY2lwYWwgbmFtZSBpcw0KPiBrcmJ0
+Z3QvUkVBTE0uDQoNCkhpIEdyZWcNCg0KUGFyZG9uIG15IHRlcm1pbm9sb2d5IGdhZmYuIEkgbWVh
+biBhIHRpY2tldCBmb3IgbmZzL3NlcnZlci5uYW1lLg0KDQo+IA0KPj4gMikgRm9yIGNvbnZlbmll
+bmNlLCBJIHNldCB0aGUgVEdTIGxpZmV0aW1lcyB0byBiZSBhcyBzaG9ydCBhcyBwb3NzaWJsZSwg
+MTAgbWludXRlcyBmb3IgV2luMjAwOFIyIEFEIHdoaWNoIEkgdGVzdCB3aXRoLg0KPiANCj4gQXJl
+IHlvdSBzZXR0aW5nIHRoZSBtYXhpbXVtIGxpZmV0aW1lIGZvciBuZnMvc2VydmVyLm5hbWUgdGlj
+a2V0cyB0byAxMA0KPiBtaW51dGVzLCBidXQgc3RpbGwgYWxsb3dpbmcgdGlja2V0LWdyYW50aW5n
+IHRpY2tldHMgdG8gaGF2ZSBhIGxpZmV0aW1lDQo+IG9mIG11bHRpcGxlIGhvdXJzPw0KDQpbcm9v
+dEByaGVsNi03Z2Egc2xlcy1rZXJuZWxdIyBrbGlzdCAtY2UgL3RtcC9rcmI1Y2NfbWFjaGluZV9B
+TkRST1NBRC5GQUtFDQpUaWNrZXQgY2FjaGU6IEZJTEU6L3RtcC9rcmI1Y2NfbWFjaGluZV9BTkRS
+T1NBRC5GQUtFDQpEZWZhdWx0IHByaW5jaXBhbDogbmZzL3JoZWw2LTdnYS5hbmRyb3NhZC5mYWtl
+QEFORFJPU0FELkZBS0UNCg0KVmFsaWQgc3RhcnRpbmcgICAgIEV4cGlyZXMgICAgICAgICAgICBT
+ZXJ2aWNlIHByaW5jaXBhbA0KMDkvMzAvMTUgMTE6NTc6MDIgIDA5LzMwLzE1IDEyOjU3OjAyICBr
+cmJ0Z3QvQU5EUk9TQUQuRkFLRUBBTkRST1NBRC5GQUtFDQogICAgICAgIHJlbmV3IHVudGlsIDEw
+LzA3LzE1IDExOjU3OjAyLCBFdHlwZSAoc2tleSwgdGt0KTogYWVzMjU2LWN0cy1obWFjLXNoYTEt
+OTYsIGFlczI1Ni1jdHMtaG1hYy1zaGExLTk2DQowOS8zMC8xNSAxMTo1NzowMiAgMDkvMzAvMTUg
+MTI6MDc6MDIgIG5mcy9yaGVsNy0xZ2EtNC5hbmRyb3NhZC5mYWtlQEFORFJPU0FELkZBS0UNCiAg
+ICAgICAgcmVuZXcgdW50aWwgMTAvMDcvMTUgMTE6NTc6MDIsIEV0eXBlIChza2V5LCB0a3QpOiBh
+cmNmb3VyLWhtYWMsIGFyY2ZvdXItaG1hYw0KDQoNCj4gDQo+Pj4gMTIpIFdhaXQgdW50aWwgdGhl
+IGNsaWVudCBjbG9jayBpcyBwYXN0IHRoZSBzZXJ2ZXIgVEdTIGV4cGlyeSB0aW1lDQo+Pj4gMTMp
+IHJlLXRyeSB0aGUgbWtkaXIgLSBpdCBzdWNjZWVkcyBhZnRlciBhIHN1Y2Nlc3NmdWwgR1NTIElO
+SVQgTlVMTCBjYWxsIGV4Y2hhbmdlIGZvciBib3RoIHNlcnZlcnMuDQo+IA0KPiBJZiBJIHVuZGVy
+c3RhbmQgY29ycmVjdGx5LCB0aGlzIHJlcXVlc3Qgc3VjY2VlZHMgYmVjYXVzZQ0KPiBrcmI1X2dl
+dF9jcmVkZW50aWFscygpIGlnbm9yZXMgdGhlIGV4cGlyZWQgY2FjaGVkIHNlcnZpY2UgdGlja2V0
+IGFuZA0KPiBtYWtlcyBhIFRHUyByZXF1ZXN0IGZvciBhIG5ldyBzZXJ2aWNlIHRpY2tldC4gIFRo
+ZSBjYWNoZSBub3cgY29udGFpbnM6DQo+IA0KPiAqIEEgdGlja2V0IGZvciBrcmJ0Z3QvUkVBTE0g
+d2l0aCBob3VycyByZW1haW5pbmcNCj4gKiBBIHRpY2tldCBmb3IgbmZzL3NlcnZlci5uYW1lIHdo
+aWNoIGV4cGlyZWQgcmVjZW50bHkNCj4gKiBBbm90aGVyIHRpY2tldCBmb3IgbmZzL3NlcnZlci5u
+YW1lIHdoaWNoIGV4cGlyZXMgaW4gdGVuIG1pbnV0ZXMNCj4gDQo+IElzIHRoYXQgY29ycmVjdD8N
+Cg0KWWVzLCBhbmQgdGhlIG5ldyBzZXJ2aWNlIHRpY2tldCBwcm9kdWNlcyBhbiBSUENTRUNfR1NT
+X0lOSVQgdG9rZW4gdGhhdCBoYXMgYW4gZXhwaXJ5IHRoYXQgcGFzc2VzIHRoZSBzZXJ2ZXJzIGNs
+b2NrIHRlc3QuDQoNCj4gDQo+PiBTaG91bGRu4oCZdCB0aGVzZSByZWZyZXNoIGNhbGxzIHN1Y2Nl
+ZWQ/IElzbuKAmXQgdGhlIEtlcmJlcm9zIGNsb2NrIHNrZXcgc3VwcG9zZWQgdG8gaGFuZGxlIHRo
+aXMgc2l0dWF0aW9uPw0KPiANCj4gSSB0aGluayB0aGlzIGNhc2UgZG9lc24ndCBhcmlzZSBvZnRl
+biBiZWNhdXNlIHBlb3BsZSBkb24ndCBvZnRlbiBzZXQNCj4gbWF4aW11bSBzZXJ2aWNlIHRpY2tl
+dCBsaWZldGltZXMgdG8gYmUgc2hvcnRlciB0aGFuIG1heGltdW0gVEdUDQo+IGxpZmV0aW1lcy4g
+IA0KDQpOb3QgdGhlIGNhdXNlIG9mIHRoZSBpc3N1ZS4gVGhlIHNlcnZpY2UgdGlja2V0IGxpZmV0
+aW1lIG9mIDEwIG1pbnV0ZXMgaXMganVzdCB0aGVyZSBmb3IgdGVzdGluZyB0aGlzIGlzc3VlIGFz
+IEkgbmVlZGVkIHRvIHdhaXQgdW50aWwgdGhlIHNlcnZpY2UgdGlja2V0IGhhZCDigJhleHBpcmVk
+4oCZIG9uIHRoZSBzZXJ2ZXIgLSBidXQgbm90IHlldCBvbiB0aGUgY2xpZW50Lg0KDQpXZSBzZWUg
+dGhpcyBpc3N1ZSBhbGwgdGhlIHRpbWUgaW4gTmV0QXBwIFFBIGFzIHdlIHJ1biBtdXRpcGxlIGRh
+eSBoZWF2eSBJTyB0ZXN0cyBhZ2FpbnN0IGEga2VyYmVyb3MgbW91bnQuIElmIHRoZSBzZXJ2ZXIg
+Y2xvY2sgaXMgYWhlYWQgb2YgdGhlIGNsaWVudCBjbG9jaywgcGVybWlzc2lvbiBkZW5pZWQgZXJy
+b3JzIHN0b3AgdGhlIHRlc3QgYXMgdGhlIGZpcnN0IHNlcnZpY2UgdGlja2V0IOKAnGV4cGlyZXPi
+gJ0gb24gdGhlIHNlcnZlciBidXQgbm90IG9uIHRoZSBjbGllbnQuDQoNCg0KPiBJZiB0aGUgVEdU
+IGl0c2VsZiBoYXMgZXhwaXJlZCBvciBpcyBhYm91dCB0byBleHBpcmUsIHNvbWUNCj4gb3V0LW9m
+LWJhbmQgYWdlbnQgbmVlZHMgdG8gcmVmcmVzaCB0aGUgVEdUIHNvbWVob3csIGFuZCBpdCBkb2Vz
+bid0DQo+IG1hdHRlciBhbGwgdGhhdCBtdWNoIHdoZXRoZXIgdGhlIGZhaWx1cmUgY29tZXMgZnJv
+bSB0aGUgY2xpZW50IG9yIHRoZQ0KPiBzZXJ2ZXIuDQoNCkkgdGhvdWdodCB0aGF0IGhhdmluZyBh
+IGtleXRhYiBlbnRyeSBhbmQgYSByZW5ld2FibGUgVEdUIHdhcyBlbm91Z2guDQoNCj4gDQo+IFRo
+YXQgc2FpZCwgeW91ciBzY2VuYXJpbyBzaG91bGQgd29yaywgYW5kIGl0IGRvZXNuJ3QuICBUaGUg
+cHJpbWFyeSBjYXVzZQ0KPiBpcyBhbiBleHBsaWNpdCBjaGVjayBhZGRlZCB0byB0aGUga3JiNSBt
+ZWNoJ3MgZ3NzX2FjY2VwdF9zZWNfY29udGV4dCgpDQo+IGltcGxlbWVudGF0aW9uIGluIDE5OTYg
+KGJlZm9yZSB0aGUgTUlUIGtyYjUgMS4wIHJlbGVhc2UpLCB3aGljaCBjaGVja3MNCj4gdGhlIHRp
+Y2tldCBlbmR0aW1lIHdpdGggbm8gYWxsb3dhbmNlIGZvciBjbG9jayBza2V3LiAgSSBkb24ndCBr
+bm93DQo+IHByZWNpc2VseSB3aHkgdGhlIGNoZWNrIHdhcyBhZGRlZCwgYnV0IG15IGd1ZXNzIGl0
+IGlzIGZvciB0aGUNCj4gY29tcHV0YXRpb24gb2YgdGhlIGNvbnRleHQgdmFsaWRpdHkgbGlmZXRp
+bWU7IGl0IHdvdWxkIG1ha2Ugbm8gc2Vuc2UgdG8NCj4gdGVsbCB0aGUgYXBwbGljYXRpb24gInRo
+ZSBhdXRoZW50aWNhdGlvbiBzdWNjZWVkZWQgYW5kIHRoZSByZXN1bHRpbmcNCj4gY29udGV4dCBp
+cyB2YWxpZCBmb3IgdGhlIG5leHQgLTMgbWludXRlcy7igJ0NCg0KVGhhdCBhbHNvIG1ha2VzIG5v
+IHNlbnNlIC0gc2ltcGx5IHVzZSB0aGUga2VyYmVyb3MgY2xvY2sgc2tldyBpbiB0aGUgbWVzc2Fn
+ZS4gZS5nLiBpZiB0aGUgY2xvY2sgc2tldyBpcyA1IG1pbnV0ZXMsIGFuZCBpZiBhY2NvcmRpbmcg
+dG8gdGhlIHNlcnZlciBjbG9jayB0aGUgdGlja2V0IGhhcyBiZWVuIGV4cGlyZWQgZm9yIDIgbWlu
+dXRlcywgdGhlbiB0aGUgbWVzc2FnZSBiZWNvbWVzICJ0aGUgYXV0aGVudGljYXRpb24gc3VjY2Vl
+ZGVkIGFuZCB0aGUgcmVzdWx0aW5nIGNvbnRleHQgaXMgdmFsaWQgZm9yIHRoZSBuZXh0IDMgbWlu
+dXRlcy7igJ0gIGFzIHRoZXJlIGFyZSAzIG1pbnV0ZXMgbGVmdCBpbiB0aGUgc2VydmVyIGNsb2Nr
+IHRpbWUgY2F2YXQgdGhlIGNvbmZpZ3VyZWQga2VyYmVyb3MgY2xvY2sgc2tldy4NCg0KDQo+IA0K
+PiBQZXJoYXBzIGEgYmV0dGVyIGNob2ljZSB3b3VsZCBiZSB0byByZW1vdmUgdGhpcyBjaGVjaywg
+YW5kIGluc3RlYWQgYWRkDQo+IHRoZSBjbG9jayBza2V3IHRvIHRoZSB2YWxpZGl0eSBsaWZldGlt
+ZSBvZiBHU1Mga3JiNSBhY2NlcHRvciBjb250ZXh0cy4NCg0KWWVzLiBUaGF0IGlzIG15IG9waW5p
+b24uDQoNCuKAlD5BbmR5DQoNCg==
