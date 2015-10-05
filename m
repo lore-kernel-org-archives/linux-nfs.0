@@ -1,145 +1,85 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:56673 "EHLO mx1.redhat.com"
+Received: from mx141.netapp.com ([216.240.21.12]:38686 "EHLO mx141.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750848AbbJEThZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 5 Oct 2015 15:37:25 -0400
-From: Andreas Gruenbacher <agruenba@redhat.com>
-To: Alexander Viro <viro@zeniv.linux.org.uk>, "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@poochiereds.net>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-api@vger.kernel.org
-Subject: [PATCH v9 01/43] vfs: Add IS_ACL() and IS_RICHACL() tests
-Date: Mon,  5 Oct 2015 21:36:28 +0200
-Message-Id: <1444073830-21854-2-git-send-email-agruenba@redhat.com>
-In-Reply-To: <1444073830-21854-1-git-send-email-agruenba@redhat.com>
-References: <1444073830-21854-1-git-send-email-agruenba@redhat.com>
+	id S1751255AbbJEUen (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 5 Oct 2015 16:34:43 -0400
+From: "Adamson, Andy" <William.Adamson@netapp.com>
+To: Greg Hudson <ghudson@MIT.EDU>
+CC: "Adamson, Andy" <William.Adamson@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        "krbdev@mit.edu" <krbdev@MIT.EDU>
+Subject: Re: Gss context refresh failure due to clock skew
+Date: Mon, 5 Oct 2015 20:34:42 +0000
+Message-ID: <9ED9C3B6-A0D0-411F-AB95-77CB1E8AA097@netapp.com>
+References: <AD03968E-7017-4D32-A90C-C74C1E9CDFAC@netapp.com>
+ <FA7F806E-E5DA-4C41-AE7F-99E381E71123@netapp.com> <5612CB0F.5040501@mit.edu>
+ <A7007DA3-24B2-4079-96A8-A6E97085031C@netapp.com> <5612D73F.8020605@mit.edu>
+In-Reply-To: <5612D73F.8020605@mit.edu>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The vfs does not apply the umask for file systems that support acls. The
-test used for this used to be called IS_POSIXACL(). Switch to a new
-IS_ACL() test to check for either posix acls or richacls instead. Add a new
-MS_RICHACL flag and IS_RICHACL() test for richacls alone. The IS_POSIXACL()
-test is still needed by nfsd.
-
-Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
-Reviewed-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/Kconfig              |  3 +++
- fs/namei.c              |  8 ++++----
- include/linux/fs.h      | 12 ++++++++++++
- include/uapi/linux/fs.h |  3 ++-
- 4 files changed, 21 insertions(+), 5 deletions(-)
-
-diff --git a/fs/Kconfig b/fs/Kconfig
-index da3f32f..bff2879 100644
---- a/fs/Kconfig
-+++ b/fs/Kconfig
-@@ -56,6 +56,9 @@ endif # BLOCK
- config FS_POSIX_ACL
- 	def_bool n
- 
-+config FS_RICHACL
-+	def_bool n
-+
- config EXPORTFS
- 	tristate
- 
-diff --git a/fs/namei.c b/fs/namei.c
-index 726d211..48c2752 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -2794,7 +2794,7 @@ static int atomic_open(struct nameidata *nd, struct dentry *dentry,
- 	}
- 
- 	mode = op->mode;
--	if ((open_flag & O_CREAT) && !IS_POSIXACL(dir))
-+	if ((open_flag & O_CREAT) && !IS_ACL(dir))
- 		mode &= ~current_umask();
- 
- 	excl = (open_flag & (O_EXCL | O_CREAT)) == (O_EXCL | O_CREAT);
-@@ -2978,7 +2978,7 @@ static int lookup_open(struct nameidata *nd, struct path *path,
- 	/* Negative dentry, just create the file */
- 	if (!dentry->d_inode && (op->open_flag & O_CREAT)) {
- 		umode_t mode = op->mode;
--		if (!IS_POSIXACL(dir->d_inode))
-+		if (!IS_ACL(dir->d_inode))
- 			mode &= ~current_umask();
- 		/*
- 		 * This write is needed to ensure that a
-@@ -3549,7 +3549,7 @@ retry:
- 	if (IS_ERR(dentry))
- 		return PTR_ERR(dentry);
- 
--	if (!IS_POSIXACL(path.dentry->d_inode))
-+	if (!IS_ACL(path.dentry->d_inode))
- 		mode &= ~current_umask();
- 	error = security_path_mknod(&path, dentry, mode, dev);
- 	if (error)
-@@ -3618,7 +3618,7 @@ retry:
- 	if (IS_ERR(dentry))
- 		return PTR_ERR(dentry);
- 
--	if (!IS_POSIXACL(path.dentry->d_inode))
-+	if (!IS_ACL(path.dentry->d_inode))
- 		mode &= ~current_umask();
- 	error = security_path_mkdir(&path, dentry, mode);
- 	if (!error)
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 72d8a84..4efa435 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1781,6 +1781,12 @@ struct super_operations {
- #define IS_IMMUTABLE(inode)	((inode)->i_flags & S_IMMUTABLE)
- #define IS_POSIXACL(inode)	__IS_FLG(inode, MS_POSIXACL)
- 
-+#ifdef CONFIG_FS_RICHACL
-+#define IS_RICHACL(inode)	__IS_FLG(inode, MS_RICHACL)
-+#else
-+#define IS_RICHACL(inode)	0
-+#endif
-+
- #define IS_DEADDIR(inode)	((inode)->i_flags & S_DEAD)
- #define IS_NOCMTIME(inode)	((inode)->i_flags & S_NOCMTIME)
- #define IS_SWAPFILE(inode)	((inode)->i_flags & S_SWAPFILE)
-@@ -1794,6 +1800,12 @@ struct super_operations {
- 				 (inode)->i_rdev == WHITEOUT_DEV)
- 
- /*
-+ * IS_ACL() tells the VFS to not apply the umask
-+ * and use check_acl for acl permission checks when defined.
-+ */
-+#define IS_ACL(inode)		__IS_FLG(inode, MS_POSIXACL | MS_RICHACL)
-+
-+/*
-  * Inode state bits.  Protected by inode->i_lock
-  *
-  * Three bits determine the dirty state of the inode, I_DIRTY_SYNC,
-diff --git a/include/uapi/linux/fs.h b/include/uapi/linux/fs.h
-index 9b964a5..6ac6bc9 100644
---- a/include/uapi/linux/fs.h
-+++ b/include/uapi/linux/fs.h
-@@ -81,7 +81,7 @@ struct inodes_stat_t {
- #define MS_VERBOSE	32768	/* War is peace. Verbosity is silence.
- 				   MS_VERBOSE is deprecated. */
- #define MS_SILENT	32768
--#define MS_POSIXACL	(1<<16)	/* VFS does not apply the umask */
-+#define MS_POSIXACL	(1<<16)	/* Supports POSIX ACLs */
- #define MS_UNBINDABLE	(1<<17)	/* change to unbindable */
- #define MS_PRIVATE	(1<<18)	/* change to private */
- #define MS_SLAVE	(1<<19)	/* change to slave */
-@@ -91,6 +91,7 @@ struct inodes_stat_t {
- #define MS_I_VERSION	(1<<23) /* Update inode I_version field */
- #define MS_STRICTATIME	(1<<24) /* Always perform atime updates */
- #define MS_LAZYTIME	(1<<25) /* Update the on-disk [acm]times lazily */
-+#define MS_RICHACL	(1<<26) /* Supports richacls */
- 
- /* These sb flags are internal to the kernel */
- #define MS_NOSEC	(1<<28)
--- 
-2.5.0
-
+DQo+IE9uIE9jdCA1LCAyMDE1LCBhdCA0OjAyIFBNLCBHcmVnIEh1ZHNvbiA8Z2h1ZHNvbkBNSVQu
+RURVPiB3cm90ZToNCj4gDQo+IE9uIDEwLzA1LzIwMTUgMDM6MzUgUE0sIEFkYW1zb24sIEFuZHkg
+d3JvdGU6DQo+Pj4gSSB0aGluayB0aGlzIGNhc2UgZG9lc24ndCBhcmlzZSBvZnRlbiBiZWNhdXNl
+IHBlb3BsZSBkb24ndCBvZnRlbiBzZXQNCj4+PiBtYXhpbXVtIHNlcnZpY2UgdGlja2V0IGxpZmV0
+aW1lcyB0byBiZSBzaG9ydGVyIHRoYW4gbWF4aW11bSBUR1QNCj4+PiBsaWZldGltZXMuICANCj4+
+IA0KPj4gTm90IHRoZSBjYXVzZSBvZiB0aGUgaXNzdWUuIFRoZSBzZXJ2aWNlIHRpY2tldCBsaWZl
+dGltZSBvZiAxMCBtaW51dGVzIGlzIGp1c3QgdGhlcmUgZm9yIHRlc3RpbmcgdGhpcyBpc3N1ZSBh
+cyBJIG5lZWRlZCB0byB3YWl0IHVudGlsIHRoZSBzZXJ2aWNlIHRpY2tldCBoYWQg4oCYZXhwaXJl
+ZOKAmSBvbiB0aGUgc2VydmVyIC0gYnV0IG5vdCB5ZXQgb24gdGhlIGNsaWVudC4NCj4+IA0KPj4g
+V2Ugc2VlIHRoaXMgaXNzdWUgYWxsIHRoZSB0aW1lIGluIE5ldEFwcCBRQSBhcyB3ZSBydW4gbXV0
+aXBsZSBkYXkgaGVhdnkgSU8gdGVzdHMgYWdhaW5zdCBhIGtlcmJlcm9zIG1vdW50LiBJZiB0aGUg
+c2VydmVyIGNsb2NrIGlzIGFoZWFkIG9mIHRoZSBjbGllbnQgY2xvY2ssIHBlcm1pc3Npb24gZGVu
+aWVkIGVycm9ycyBzdG9wIHRoZSB0ZXN0IGFzIHRoZSBmaXJzdCBzZXJ2aWNlIHRpY2tldCDigJxl
+eHBpcmVz4oCdIG9uIHRoZSBzZXJ2ZXIgYnV0IG5vdCBvbiB0aGUgY2xpZW50Lg0KPiANCj4gSWYg
+dGhlIGlzc3VlIGlzIG5vdCBjYXVzZWQgYnkgc2hvcnQtbGlmZXRpbWUgc2VydmljZSBwcmluY2lw
+YWxzLA0KDQpJIHdhcyB3cm9uZyAtIHlvdSBhcmUgcmlnaHQsIGl0IGlzIGNhdXNlZCBieSBzZXJ2
+aWNlIHRpY2tldCBsaWZldGltZXMgYmVpbmcgc2hvcnRlciB0aGFuIFRHVCBsaWZldGltZXMuDQoN
+CkkgZGlkbuKAmXQga25vdyBzZXR0aW5nIHRoZSBzZXJ2aWNlIHRpY2tldCBsaWZldGltZXMgdG8g
+bm90IGJlIGxlc3MgdGhhbiBUR1QgbGlmZXRpbWVzIHdhcyBhIHJlcXVpcmVtZW50LiBOZWl0aGVy
+IGRvZXMgTmV0QXBwIFFBIGFuZCBJIHN1c3BlY3QsIG5laXRoZXIgZG8gY3VzdG9tZXJzIGluIGdl
+bmVyYWwuDQoNCj4gdGhlbg0KPiB0aGUgdGVzdCBzY2VuYXJpbyB5b3UgZGVzY3JpYmVkIGlzbid0
+IHJlcHJlc2VudGF0aXZlIG9mIHRoZSByZWFsDQo+IHNjZW5hcmlvLiAgVG8gcmVwcm9kdWNlIHRo
+ZSBwcm9ibGVtIGFzIGl0IG1hbmlmZXN0cyBpbiB5b3VyIElPIHRlc3RzLA0KPiB5b3Ugd2lsbCBu
+ZWVkIHRvIGFkanVzdCB0aGUgVEdUIGxpZmV0aW1lIGRvd24gdG8gdGVuIG1pbnV0ZXMgYXMgd2Vs
+bCBhcw0KPiB0aGUgbmZzL3NlcnZlciBsaWZldGltZS4NCg0KQ29kZSB3YXMgYWRkZWQgdG8gcnBj
+Lmdzc2QsIHRoZSBORlMgY2xpZW50IGFnZW50IHRoYXQgY3JlYXRlcyBHU1MgY29udGV4dHMgZm9y
+IE5GUywgdG8gdGFrZSBpbnRvIGFjY291bnQgdGhlIGNsb2NrIHNrZXcgYW5kIGdldCBhIG5ldyBU
+R1QgYmVmb3JlIChub3crY2xvY2sgc2tldykuIFNvIGlmIHRoZSBzZXJ2aWNlIHRpY2tldCBsaWZl
+dGltZSBpcyBlcXVhbCB0byBvciBncmVhdGVyIHRoYW4gdGhlIFRHVCBsaWZldGltZSwgdGhlbiBh
+bGwgaXMgd2VsbC4NCg0KPiANCj4+PiBJZiB0aGUgVEdUIGl0c2VsZiBoYXMgZXhwaXJlZCBvciBp
+cyBhYm91dCB0byBleHBpcmUsIHNvbWUNCj4+PiBvdXQtb2YtYmFuZCBhZ2VudCBuZWVkcyB0byBy
+ZWZyZXNoIHRoZSBUR1Qgc29tZWhvdywgYW5kIGl0IGRvZXNuJ3QNCj4+PiBtYXR0ZXIgYWxsIHRo
+YXQgbXVjaCB3aGV0aGVyIHRoZSBmYWlsdXJlIGNvbWVzIGZyb20gdGhlIGNsaWVudCBvciB0aGUN
+Cj4+PiBzZXJ2ZXIuDQo+PiANCj4+IEkgdGhvdWdodCB0aGF0IGhhdmluZyBhIGtleXRhYiBlbnRy
+eSBhbmQgYSByZW5ld2FibGUgVEdUIHdhcyBlbm91Z2guDQo+IA0KPiBJJ20gbm90IHN1cmUgd2h5
+IHlvdSB3b3VsZCBkbyBib3RoIG9mIHRoZXNlOyBpZiB5b3UncmUgZ2V0dGluZyBpbml0aWFsDQo+
+IGNyZWRzIHdpdGggYSBrZXl0YWIsIHRoZXJlIGlzIG5vIG5lZWQgdG8gbXVjayBhcm91bmQgd2l0
+aCB0aWNrZXQgcmVuZXdhbC4NCg0KSSB3b3VsZG7igJl0LCBidXQgUUEgYW5kIGN1c3RvbWVycyBk
+by4NCg0KPiANCj4gQW55d2F5LCBnc3NfaW5pdF9zZWNfY29udGV4dCgpIG5ldmVyIHJlbmV3cyB0
+aWNrZXRzLCBhbmQgb25seSBnZXRzDQo+IHRpY2tldHMgZnJvbSBhIGtleXRhYiB3aGVuIGEgY2xp
+ZW50IGtleXRhYiBpcyBjb25maWd1cmVkIChuZXcgaW4gMS4xMSkuDQo+IFdoZW4gdGlja2V0cyBh
+cmUgb2J0YWluZWQgdXNpbmcgYSBjbGllbnQga2V5dGFiLCB0aGV5IGFyZSByZWZyZXNoZWQNCj4g
+ZnJvbSB0aGUga2V5dGFiIHdoZW4gdGhleSBhcmUgaGFsZndheSB0byBleHBpcmluZywNCg0KcmVm
+cmVzaGVkIGJ54oCmPw0KDQo+IHNvIHRoaXMgY2xvY2sgc2tldw0KPiBpc3N1ZSBzaG91bGQgbm90
+IGFyaXNlLCBzbyBJIGRvbid0IHRoaW5rIHRoYXQgZmVhdHVyZSBpcyBiZWluZyB1c2VkLg0KPiAN
+Cj4gSXQgaXMgcG9zc2libGUgdGhhdCB0aGUgTkZTIGNsaWVudCBjb2RlIGhhcyBpdHMgb3duIHNl
+cGFyYXRlIGxvZ2ljIGZvcg0KPiBvYnRhaW5pbmcgbmV3IHRpY2tldHMgdXNpbmcgYSBrZXl0YWIu
+ICANCg0KV2hlbiBhbiBORlMgcmVxdWVzdCByZXF1aXJlcyBhIEdTUyBjb250ZXh0LCBpZiB0aGUg
+Y29udGV4dCBkb2VzIG5vdCBleGlzdCwgaXMgbm90IHZhbGlkLCBvciBpZiBpdCBpcyB2YWxpZCBi
+dXQgdGhlIHNlcnZlciByZXBsaWVzIHRvIGFuIFJQQyByZXF1ZXN0IHVzaW5nIGEgR1NTIGNvbnRl
+eHQgd2l0aCBhbiBSUEMgZXJyb3IgdGhhdCBpbmRpY2F0ZXMgaXTigJlzIHNpZGUgb2YgdGhlIEdT
+UyBjb250ZXh0IGhhcyBhIHByb2JsZW0sIHRoZSBjbGllbnQga2VybmVsIGRvZXMgYW4gdXBjYWxs
+IHRvIHJwYy5nc3NkIHdoaWNoIHRoZW4gZGVjaWRlcyBpZiBhIG5ldyBzZXJ2aWNlIHRpY2tldCBp
+cyByZXF1aXJlZCB0byBzZW5kIGFuIFJQQ1NFQ19HU1NfSU5JVCBtZXNzYWdlIHRvIHRoZSBzZXJ2
+ZXIgdG8gY3JlYXRlIGEgbmV3IEdTUyBjb250ZXh0LiBUaGUgcmVzdWx0YW50IEdTUyBjb250ZXh0
+IGlzIHN0b3JlZCBpbiB0aGUgY2xpZW50IGtlcm5lbCB3aXRoIGEgbGlmZXRpbWUgZXF1YWwgdG8g
+dGhlIHNlcnZpY2UgdGlja2V0IHVzZWQgdG8gY3JlYXRlIGl0Lg0KDQpJZiBycGMuZ3NzZCBjYWxs
+cyB0aGUgY29kZSB0aGF0IHJlZnJlc2hlcyB0aGUgdGlja2V0cyBmcm9tIHRoZSBrZXl0YWIgd2hl
+biB0aGV5IGFyZSBoYWxmIHdheSB0byBleHBpcmluZ+KAmSB0aGVuIHRoYXQgc2hvdWxkIG1pdGln
+YXRlIHRoZSBjbG9jayBza2V3IGlzc3VlLg0KDQoNCj4gSWYgc28sIHdlIG5lZWQgdG8gdW5kZXJz
+dGFuZCBob3cNCj4gaXQgd29ya3MuICBJdCdzIHBvc3NpYmxlICh0aG91Z2ggdW5saWtlbHkpIHRo
+YXQgY2hhbmdpbmcgdGhlIGJlaGF2aW9yIG9mDQo+IGdzc19hY2NlcHRfc2VjX2NvbnRleHQoKSB3
+b3VsZG4ndCBiZSBzdWZmaWNpZW50IGJ5IGl0c2VsZi4NCg0K
