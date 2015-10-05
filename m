@@ -1,85 +1,43 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx141.netapp.com ([216.240.21.12]:38686 "EHLO mx141.netapp.com"
+Received: from mx143.netapp.com ([216.240.21.24]:41493 "EHLO mx143.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751255AbbJEUen (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 5 Oct 2015 16:34:43 -0400
-From: "Adamson, Andy" <William.Adamson@netapp.com>
-To: Greg Hudson <ghudson@MIT.EDU>
-CC: "Adamson, Andy" <William.Adamson@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        "krbdev@mit.edu" <krbdev@MIT.EDU>
-Subject: Re: Gss context refresh failure due to clock skew
-Date: Mon, 5 Oct 2015 20:34:42 +0000
-Message-ID: <9ED9C3B6-A0D0-411F-AB95-77CB1E8AA097@netapp.com>
-References: <AD03968E-7017-4D32-A90C-C74C1E9CDFAC@netapp.com>
- <FA7F806E-E5DA-4C41-AE7F-99E381E71123@netapp.com> <5612CB0F.5040501@mit.edu>
- <A7007DA3-24B2-4079-96A8-A6E97085031C@netapp.com> <5612D73F.8020605@mit.edu>
-In-Reply-To: <5612D73F.8020605@mit.edu>
-Content-Type: text/plain; charset="utf-8"
+	id S1751303AbbJEUnc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 5 Oct 2015 16:43:32 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
+CC: <Anna.Schumaker@netapp.com>, <Olga.Kornievskaia@netapp.com>
+Subject: [PATCH] NFS: Fix a tracepoint NULL-pointer dereference
+Date: Mon, 5 Oct 2015 16:43:26 -0400
+Message-ID: <1444077806-29155-1-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQo+IE9uIE9jdCA1LCAyMDE1LCBhdCA0OjAyIFBNLCBHcmVnIEh1ZHNvbiA8Z2h1ZHNvbkBNSVQu
-RURVPiB3cm90ZToNCj4gDQo+IE9uIDEwLzA1LzIwMTUgMDM6MzUgUE0sIEFkYW1zb24sIEFuZHkg
-d3JvdGU6DQo+Pj4gSSB0aGluayB0aGlzIGNhc2UgZG9lc24ndCBhcmlzZSBvZnRlbiBiZWNhdXNl
-IHBlb3BsZSBkb24ndCBvZnRlbiBzZXQNCj4+PiBtYXhpbXVtIHNlcnZpY2UgdGlja2V0IGxpZmV0
-aW1lcyB0byBiZSBzaG9ydGVyIHRoYW4gbWF4aW11bSBUR1QNCj4+PiBsaWZldGltZXMuICANCj4+
-IA0KPj4gTm90IHRoZSBjYXVzZSBvZiB0aGUgaXNzdWUuIFRoZSBzZXJ2aWNlIHRpY2tldCBsaWZl
-dGltZSBvZiAxMCBtaW51dGVzIGlzIGp1c3QgdGhlcmUgZm9yIHRlc3RpbmcgdGhpcyBpc3N1ZSBh
-cyBJIG5lZWRlZCB0byB3YWl0IHVudGlsIHRoZSBzZXJ2aWNlIHRpY2tldCBoYWQg4oCYZXhwaXJl
-ZOKAmSBvbiB0aGUgc2VydmVyIC0gYnV0IG5vdCB5ZXQgb24gdGhlIGNsaWVudC4NCj4+IA0KPj4g
-V2Ugc2VlIHRoaXMgaXNzdWUgYWxsIHRoZSB0aW1lIGluIE5ldEFwcCBRQSBhcyB3ZSBydW4gbXV0
-aXBsZSBkYXkgaGVhdnkgSU8gdGVzdHMgYWdhaW5zdCBhIGtlcmJlcm9zIG1vdW50LiBJZiB0aGUg
-c2VydmVyIGNsb2NrIGlzIGFoZWFkIG9mIHRoZSBjbGllbnQgY2xvY2ssIHBlcm1pc3Npb24gZGVu
-aWVkIGVycm9ycyBzdG9wIHRoZSB0ZXN0IGFzIHRoZSBmaXJzdCBzZXJ2aWNlIHRpY2tldCDigJxl
-eHBpcmVz4oCdIG9uIHRoZSBzZXJ2ZXIgYnV0IG5vdCBvbiB0aGUgY2xpZW50Lg0KPiANCj4gSWYg
-dGhlIGlzc3VlIGlzIG5vdCBjYXVzZWQgYnkgc2hvcnQtbGlmZXRpbWUgc2VydmljZSBwcmluY2lw
-YWxzLA0KDQpJIHdhcyB3cm9uZyAtIHlvdSBhcmUgcmlnaHQsIGl0IGlzIGNhdXNlZCBieSBzZXJ2
-aWNlIHRpY2tldCBsaWZldGltZXMgYmVpbmcgc2hvcnRlciB0aGFuIFRHVCBsaWZldGltZXMuDQoN
-CkkgZGlkbuKAmXQga25vdyBzZXR0aW5nIHRoZSBzZXJ2aWNlIHRpY2tldCBsaWZldGltZXMgdG8g
-bm90IGJlIGxlc3MgdGhhbiBUR1QgbGlmZXRpbWVzIHdhcyBhIHJlcXVpcmVtZW50LiBOZWl0aGVy
-IGRvZXMgTmV0QXBwIFFBIGFuZCBJIHN1c3BlY3QsIG5laXRoZXIgZG8gY3VzdG9tZXJzIGluIGdl
-bmVyYWwuDQoNCj4gdGhlbg0KPiB0aGUgdGVzdCBzY2VuYXJpbyB5b3UgZGVzY3JpYmVkIGlzbid0
-IHJlcHJlc2VudGF0aXZlIG9mIHRoZSByZWFsDQo+IHNjZW5hcmlvLiAgVG8gcmVwcm9kdWNlIHRo
-ZSBwcm9ibGVtIGFzIGl0IG1hbmlmZXN0cyBpbiB5b3VyIElPIHRlc3RzLA0KPiB5b3Ugd2lsbCBu
-ZWVkIHRvIGFkanVzdCB0aGUgVEdUIGxpZmV0aW1lIGRvd24gdG8gdGVuIG1pbnV0ZXMgYXMgd2Vs
-bCBhcw0KPiB0aGUgbmZzL3NlcnZlciBsaWZldGltZS4NCg0KQ29kZSB3YXMgYWRkZWQgdG8gcnBj
-Lmdzc2QsIHRoZSBORlMgY2xpZW50IGFnZW50IHRoYXQgY3JlYXRlcyBHU1MgY29udGV4dHMgZm9y
-IE5GUywgdG8gdGFrZSBpbnRvIGFjY291bnQgdGhlIGNsb2NrIHNrZXcgYW5kIGdldCBhIG5ldyBU
-R1QgYmVmb3JlIChub3crY2xvY2sgc2tldykuIFNvIGlmIHRoZSBzZXJ2aWNlIHRpY2tldCBsaWZl
-dGltZSBpcyBlcXVhbCB0byBvciBncmVhdGVyIHRoYW4gdGhlIFRHVCBsaWZldGltZSwgdGhlbiBh
-bGwgaXMgd2VsbC4NCg0KPiANCj4+PiBJZiB0aGUgVEdUIGl0c2VsZiBoYXMgZXhwaXJlZCBvciBp
-cyBhYm91dCB0byBleHBpcmUsIHNvbWUNCj4+PiBvdXQtb2YtYmFuZCBhZ2VudCBuZWVkcyB0byBy
-ZWZyZXNoIHRoZSBUR1Qgc29tZWhvdywgYW5kIGl0IGRvZXNuJ3QNCj4+PiBtYXR0ZXIgYWxsIHRo
-YXQgbXVjaCB3aGV0aGVyIHRoZSBmYWlsdXJlIGNvbWVzIGZyb20gdGhlIGNsaWVudCBvciB0aGUN
-Cj4+PiBzZXJ2ZXIuDQo+PiANCj4+IEkgdGhvdWdodCB0aGF0IGhhdmluZyBhIGtleXRhYiBlbnRy
-eSBhbmQgYSByZW5ld2FibGUgVEdUIHdhcyBlbm91Z2guDQo+IA0KPiBJJ20gbm90IHN1cmUgd2h5
-IHlvdSB3b3VsZCBkbyBib3RoIG9mIHRoZXNlOyBpZiB5b3UncmUgZ2V0dGluZyBpbml0aWFsDQo+
-IGNyZWRzIHdpdGggYSBrZXl0YWIsIHRoZXJlIGlzIG5vIG5lZWQgdG8gbXVjayBhcm91bmQgd2l0
-aCB0aWNrZXQgcmVuZXdhbC4NCg0KSSB3b3VsZG7igJl0LCBidXQgUUEgYW5kIGN1c3RvbWVycyBk
-by4NCg0KPiANCj4gQW55d2F5LCBnc3NfaW5pdF9zZWNfY29udGV4dCgpIG5ldmVyIHJlbmV3cyB0
-aWNrZXRzLCBhbmQgb25seSBnZXRzDQo+IHRpY2tldHMgZnJvbSBhIGtleXRhYiB3aGVuIGEgY2xp
-ZW50IGtleXRhYiBpcyBjb25maWd1cmVkIChuZXcgaW4gMS4xMSkuDQo+IFdoZW4gdGlja2V0cyBh
-cmUgb2J0YWluZWQgdXNpbmcgYSBjbGllbnQga2V5dGFiLCB0aGV5IGFyZSByZWZyZXNoZWQNCj4g
-ZnJvbSB0aGUga2V5dGFiIHdoZW4gdGhleSBhcmUgaGFsZndheSB0byBleHBpcmluZywNCg0KcmVm
-cmVzaGVkIGJ54oCmPw0KDQo+IHNvIHRoaXMgY2xvY2sgc2tldw0KPiBpc3N1ZSBzaG91bGQgbm90
-IGFyaXNlLCBzbyBJIGRvbid0IHRoaW5rIHRoYXQgZmVhdHVyZSBpcyBiZWluZyB1c2VkLg0KPiAN
-Cj4gSXQgaXMgcG9zc2libGUgdGhhdCB0aGUgTkZTIGNsaWVudCBjb2RlIGhhcyBpdHMgb3duIHNl
-cGFyYXRlIGxvZ2ljIGZvcg0KPiBvYnRhaW5pbmcgbmV3IHRpY2tldHMgdXNpbmcgYSBrZXl0YWIu
-ICANCg0KV2hlbiBhbiBORlMgcmVxdWVzdCByZXF1aXJlcyBhIEdTUyBjb250ZXh0LCBpZiB0aGUg
-Y29udGV4dCBkb2VzIG5vdCBleGlzdCwgaXMgbm90IHZhbGlkLCBvciBpZiBpdCBpcyB2YWxpZCBi
-dXQgdGhlIHNlcnZlciByZXBsaWVzIHRvIGFuIFJQQyByZXF1ZXN0IHVzaW5nIGEgR1NTIGNvbnRl
-eHQgd2l0aCBhbiBSUEMgZXJyb3IgdGhhdCBpbmRpY2F0ZXMgaXTigJlzIHNpZGUgb2YgdGhlIEdT
-UyBjb250ZXh0IGhhcyBhIHByb2JsZW0sIHRoZSBjbGllbnQga2VybmVsIGRvZXMgYW4gdXBjYWxs
-IHRvIHJwYy5nc3NkIHdoaWNoIHRoZW4gZGVjaWRlcyBpZiBhIG5ldyBzZXJ2aWNlIHRpY2tldCBp
-cyByZXF1aXJlZCB0byBzZW5kIGFuIFJQQ1NFQ19HU1NfSU5JVCBtZXNzYWdlIHRvIHRoZSBzZXJ2
-ZXIgdG8gY3JlYXRlIGEgbmV3IEdTUyBjb250ZXh0LiBUaGUgcmVzdWx0YW50IEdTUyBjb250ZXh0
-IGlzIHN0b3JlZCBpbiB0aGUgY2xpZW50IGtlcm5lbCB3aXRoIGEgbGlmZXRpbWUgZXF1YWwgdG8g
-dGhlIHNlcnZpY2UgdGlja2V0IHVzZWQgdG8gY3JlYXRlIGl0Lg0KDQpJZiBycGMuZ3NzZCBjYWxs
-cyB0aGUgY29kZSB0aGF0IHJlZnJlc2hlcyB0aGUgdGlja2V0cyBmcm9tIHRoZSBrZXl0YWIgd2hl
-biB0aGV5IGFyZSBoYWxmIHdheSB0byBleHBpcmluZ+KAmSB0aGVuIHRoYXQgc2hvdWxkIG1pdGln
-YXRlIHRoZSBjbG9jayBza2V3IGlzc3VlLg0KDQoNCj4gSWYgc28sIHdlIG5lZWQgdG8gdW5kZXJz
-dGFuZCBob3cNCj4gaXQgd29ya3MuICBJdCdzIHBvc3NpYmxlICh0aG91Z2ggdW5saWtlbHkpIHRo
-YXQgY2hhbmdpbmcgdGhlIGJlaGF2aW9yIG9mDQo+IGdzc19hY2NlcHRfc2VjX2NvbnRleHQoKSB3
-b3VsZG4ndCBiZSBzdWZmaWNpZW50IGJ5IGl0c2VsZi4NCg0K
+Running xfstest generic/013 with the tracepoint nfs:nfs4_open_file
+enabled produces a NULL-pointer dereference when calculating fileid and
+filehandle of the opened file.  Fix this by checking if state is NULL
+before trying to use the inode pointer.
+
+Reported-by: Olga Kornievskaia <aglo@umich.edu>
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+---
+ fs/nfs/nfs4trace.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/fs/nfs/nfs4trace.h b/fs/nfs/nfs4trace.h
+index 28df12e..671cf68 100644
+--- a/fs/nfs/nfs4trace.h
++++ b/fs/nfs/nfs4trace.h
+@@ -409,7 +409,7 @@ DECLARE_EVENT_CLASS(nfs4_open_event,
+ 			__entry->flags = flags;
+ 			__entry->fmode = (__force unsigned int)ctx->mode;
+ 			__entry->dev = ctx->dentry->d_sb->s_dev;
+-			if (!IS_ERR(state))
++			if (!IS_ERR_OR_NULL(state))
+ 				inode = state->inode;
+ 			if (inode != NULL) {
+ 				__entry->fileid = NFS_FILEID(inode);
+-- 
+2.6.0
+
