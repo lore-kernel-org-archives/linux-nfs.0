@@ -1,468 +1,56 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:54138 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751178AbbJETjJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 5 Oct 2015 15:39:09 -0400
-From: Andreas Gruenbacher <agruenba@redhat.com>
-To: Alexander Viro <viro@zeniv.linux.org.uk>, "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@poochiereds.net>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-api@vger.kernel.org
-Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [PATCH v9 20/43] ext4: Add richacl support
-Date: Mon,  5 Oct 2015 21:36:47 +0200
-Message-Id: <1444073830-21854-21-git-send-email-agruenba@redhat.com>
-In-Reply-To: <1444073830-21854-1-git-send-email-agruenba@redhat.com>
-References: <1444073830-21854-1-git-send-email-agruenba@redhat.com>
+Received: from dmz-mailsec-scanner-5.mit.edu ([18.7.68.34]:44793 "EHLO
+	dmz-mailsec-scanner-5.mit.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751288AbbJEUCV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Oct 2015 16:02:21 -0400
+Subject: Re: Gss context refresh failure due to clock skew
+To: "Adamson, Andy" <William.Adamson@netapp.com>
+References: <AD03968E-7017-4D32-A90C-C74C1E9CDFAC@netapp.com>
+ <FA7F806E-E5DA-4C41-AE7F-99E381E71123@netapp.com> <5612CB0F.5040501@mit.edu>
+ <A7007DA3-24B2-4079-96A8-A6E97085031C@netapp.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        "krbdev@mit.edu" <krbdev@mit.edu>
+From: Greg Hudson <ghudson@mit.edu>
+Message-ID: <5612D73F.8020605@mit.edu>
+Date: Mon, 5 Oct 2015 16:02:07 -0400
+MIME-Version: 1.0
+In-Reply-To: <A7007DA3-24B2-4079-96A8-A6E97085031C@netapp.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+On 10/05/2015 03:35 PM, Adamson, Andy wrote:
+>> I think this case doesn't arise often because people don't often set
+>> maximum service ticket lifetimes to be shorter than maximum TGT
+>> lifetimes.  
+> 
+> Not the cause of the issue. The service ticket lifetime of 10 minutes is just there for testing this issue as I needed to wait until the service ticket had ‘expired’ on the server - but not yet on the client.
+> 
+> We see this issue all the time in NetApp QA as we run mutiple day heavy IO tests against a kerberos mount. If the server clock is ahead of the client clock, permission denied errors stop the test as the first service ticket “expires” on the server but not on the client.
 
-Support the richacl permission model in ext4.  The richacls are stored
-in "system.richacl" xattrs.  Richacls need to be enabled by tune2fs or
-at file system create time.
+If the issue is not caused by short-lifetime service principals, then
+the test scenario you described isn't representative of the real
+scenario.  To reproduce the problem as it manifests in your IO tests,
+you will need to adjust the TGT lifetime down to ten minutes as well as
+the nfs/server lifetime.
 
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
----
- fs/ext4/Kconfig   |  15 +++++++
- fs/ext4/Makefile  |   1 +
- fs/ext4/acl.c     |   6 +--
- fs/ext4/acl.h     |  12 +++---
- fs/ext4/file.c    |   7 ++-
- fs/ext4/ialloc.c  |   7 ++-
- fs/ext4/inode.c   |  10 +++--
- fs/ext4/namei.c   |  13 ++++--
- fs/ext4/richacl.c | 126 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
- fs/ext4/richacl.h |  43 +++++++++++++++++++
- fs/ext4/xattr.c   |   7 +++
- 11 files changed, 228 insertions(+), 19 deletions(-)
- create mode 100644 fs/ext4/richacl.c
- create mode 100644 fs/ext4/richacl.h
+>> If the TGT itself has expired or is about to expire, some
+>> out-of-band agent needs to refresh the TGT somehow, and it doesn't
+>> matter all that much whether the failure comes from the client or the
+>> server.
+> 
+> I thought that having a keytab entry and a renewable TGT was enough.
 
-diff --git a/fs/ext4/Kconfig b/fs/ext4/Kconfig
-index 47728da..5f8360a 100644
---- a/fs/ext4/Kconfig
-+++ b/fs/ext4/Kconfig
-@@ -130,3 +130,18 @@ config EXT4_DEBUG
- 	  If you select Y here, then you will be able to turn on debugging
- 	  with a command such as:
- 		echo 1 > /sys/module/ext4/parameters/mballoc_debug
-+
-+config EXT4_FS_RICHACL
-+	bool "Ext4 Rich Access Control Lists (EXPERIMENTAL)"
-+	depends on EXT4_FS
-+	select FS_RICHACL
-+	help
-+	  Rich ACLs are an implementation of NFSv4 ACLs, extended by file masks
-+	  to fit into the standard POSIX file permission model.  They are
-+	  designed to work seamlessly locally as well as across the NFSv4 and
-+	  CIFS/SMB2 network file system protocols.
-+
-+	  To learn more about Rich ACL, visit
-+	  http://acl.bestbits.at/richacl/
-+
-+	  If you don't know what Rich ACLs are, say N
-diff --git a/fs/ext4/Makefile b/fs/ext4/Makefile
-index 75285ea..ea0d539 100644
---- a/fs/ext4/Makefile
-+++ b/fs/ext4/Makefile
-@@ -14,3 +14,4 @@ ext4-$(CONFIG_EXT4_FS_POSIX_ACL)	+= acl.o
- ext4-$(CONFIG_EXT4_FS_SECURITY)		+= xattr_security.o
- ext4-$(CONFIG_EXT4_FS_ENCRYPTION)	+= crypto_policy.o crypto.o \
- 		crypto_key.o crypto_fname.o
-+ext4-$(CONFIG_EXT4_FS_RICHACL) 		+= richacl.o
-diff --git a/fs/ext4/acl.c b/fs/ext4/acl.c
-index 69b1e73..d965fa6 100644
---- a/fs/ext4/acl.c
-+++ b/fs/ext4/acl.c
-@@ -140,7 +140,7 @@ fail:
-  * inode->i_mutex: don't care
-  */
- struct posix_acl *
--ext4_get_acl(struct inode *inode, int type)
-+ext4_get_posix_acl(struct inode *inode, int type)
- {
- 	int name_index;
- 	char *value = NULL;
-@@ -234,7 +234,7 @@ __ext4_set_acl(handle_t *handle, struct inode *inode, int type,
- }
- 
- int
--ext4_set_acl(struct inode *inode, struct posix_acl *acl, int type)
-+ext4_set_posix_acl(struct inode *inode, struct posix_acl *acl, int type)
- {
- 	handle_t *handle;
- 	int error, retries = 0;
-@@ -259,7 +259,7 @@ retry:
-  * inode->i_mutex: up (access to inode is still exclusive)
-  */
- int
--ext4_init_acl(handle_t *handle, struct inode *inode, struct inode *dir)
-+ext4_init_posix_acl(handle_t *handle, struct inode *inode, struct inode *dir)
- {
- 	struct posix_acl *default_acl, *acl;
- 	int error;
-diff --git a/fs/ext4/acl.h b/fs/ext4/acl.h
-index da2c795..450b4d1 100644
---- a/fs/ext4/acl.h
-+++ b/fs/ext4/acl.h
-@@ -54,17 +54,17 @@ static inline int ext4_acl_count(size_t size)
- #ifdef CONFIG_EXT4_FS_POSIX_ACL
- 
- /* acl.c */
--struct posix_acl *ext4_get_acl(struct inode *inode, int type);
--int ext4_set_acl(struct inode *inode, struct posix_acl *acl, int type);
--extern int ext4_init_acl(handle_t *, struct inode *, struct inode *);
-+struct posix_acl *ext4_get_posix_acl(struct inode *inode, int type);
-+int ext4_set_posix_acl(struct inode *inode, struct posix_acl *acl, int type);
-+extern int ext4_init_posix_acl(handle_t *, struct inode *, struct inode *);
- 
- #else  /* CONFIG_EXT4_FS_POSIX_ACL */
- #include <linux/sched.h>
--#define ext4_get_acl NULL
--#define ext4_set_acl NULL
-+#define ext4_get_posix_acl NULL
-+#define ext4_set_posix_acl NULL
- 
- static inline int
--ext4_init_acl(handle_t *handle, struct inode *inode, struct inode *dir)
-+ext4_init_posix_acl(handle_t *handle, struct inode *inode, struct inode *dir)
- {
- 	return 0;
- }
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index 113837e..b161cc0 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -30,6 +30,7 @@
- #include "ext4_jbd2.h"
- #include "xattr.h"
- #include "acl.h"
-+#include "richacl.h"
- 
- /*
-  * Called when an inode is released. Note that this is different
-@@ -717,8 +718,10 @@ const struct inode_operations ext4_file_inode_operations = {
- 	.getxattr	= generic_getxattr,
- 	.listxattr	= ext4_listxattr,
- 	.removexattr	= generic_removexattr,
--	.get_acl	= ext4_get_acl,
--	.set_acl	= ext4_set_acl,
-+	.get_acl	= ext4_get_posix_acl,
-+	.set_acl	= ext4_set_posix_acl,
-+	.get_richacl	= ext4_get_richacl,
-+	.set_richacl	= ext4_set_richacl,
- 	.fiemap		= ext4_fiemap,
- };
- 
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index 619bfc1..5e701b3 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -27,6 +27,7 @@
- #include "ext4_jbd2.h"
- #include "xattr.h"
- #include "acl.h"
-+#include "richacl.h"
- 
- #include <trace/events/ext4.h>
- 
-@@ -1052,7 +1053,11 @@ got:
- 	if (err)
- 		goto fail_drop;
- 
--	err = ext4_init_acl(handle, inode, dir);
-+	if (EXT4_IS_RICHACL(dir))
-+		err = ext4_init_richacl(handle, inode, dir);
-+	else
-+		err = ext4_init_posix_acl(handle, inode, dir);
-+
- 	if (err)
- 		goto fail_free_drop;
- 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 612fbcf..d8a48a3 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -42,6 +42,7 @@
- #include "xattr.h"
- #include "acl.h"
- #include "truncate.h"
-+#include "richacl.h"
- 
- #include <trace/events/ext4.h>
- 
-@@ -4805,9 +4806,12 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
- 	if (orphan && inode->i_nlink)
- 		ext4_orphan_del(NULL, inode);
- 
--	if (!rc && (ia_valid & ATTR_MODE))
--		rc = posix_acl_chmod(inode, inode->i_mode);
--
-+	if (!rc && (ia_valid & ATTR_MODE)) {
-+		if (EXT4_IS_RICHACL(inode))
-+			rc = richacl_chmod(inode, inode->i_mode);
-+		else
-+			rc = posix_acl_chmod(inode, inode->i_mode);
-+	}
- err_out:
- 	ext4_std_error(inode->i_sb, error);
- 	if (!error)
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 9f61e76..f32b771 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -38,6 +38,7 @@
- 
- #include "xattr.h"
- #include "acl.h"
-+#include "richacl.h"
- 
- #include <trace/events/ext4.h>
- /*
-@@ -3852,8 +3853,10 @@ const struct inode_operations ext4_dir_inode_operations = {
- 	.getxattr	= generic_getxattr,
- 	.listxattr	= ext4_listxattr,
- 	.removexattr	= generic_removexattr,
--	.get_acl	= ext4_get_acl,
--	.set_acl	= ext4_set_acl,
-+	.get_acl	= ext4_get_posix_acl,
-+	.set_acl	= ext4_set_posix_acl,
-+	.get_richacl	= ext4_get_richacl,
-+	.set_richacl	= ext4_set_richacl,
- 	.fiemap         = ext4_fiemap,
- };
- 
-@@ -3863,6 +3866,8 @@ const struct inode_operations ext4_special_inode_operations = {
- 	.getxattr	= generic_getxattr,
- 	.listxattr	= ext4_listxattr,
- 	.removexattr	= generic_removexattr,
--	.get_acl	= ext4_get_acl,
--	.set_acl	= ext4_set_acl,
-+	.get_acl	= ext4_get_posix_acl,
-+	.set_acl	= ext4_set_posix_acl,
-+	.get_richacl	= ext4_get_richacl,
-+	.set_richacl	= ext4_set_richacl,
- };
-diff --git a/fs/ext4/richacl.c b/fs/ext4/richacl.c
-new file mode 100644
-index 0000000..83b7a95
---- /dev/null
-+++ b/fs/ext4/richacl.c
-@@ -0,0 +1,126 @@
-+/*
-+ * Copyright IBM Corporation, 2010
-+ * Copyright (C) 2015  Red Hat, Inc.
-+ * Author Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-+ *
-+ * This program is free software; you can redistribute it and/or modify it
-+ * under the terms of version 2.1 of the GNU Lesser General Public License
-+ * as published by the Free Software Foundation.
-+ *
-+ * This program is distributed in the hope that it would be useful, but
-+ * WITHOUT ANY WARRANTY; without even the implied warranty of
-+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-+ *
-+ */
-+
-+#include <linux/kernel.h>
-+#include <linux/fs.h>
-+#include <linux/richacl_xattr.h>
-+
-+#include "ext4.h"
-+#include "ext4_jbd2.h"
-+#include "xattr.h"
-+#include "acl.h"
-+#include "richacl.h"
-+
-+struct richacl *
-+ext4_get_richacl(struct inode *inode)
-+{
-+	const int name_index = EXT4_XATTR_INDEX_RICHACL;
-+	void *value = NULL;
-+	struct richacl *acl;
-+	int retval;
-+
-+	retval = ext4_xattr_get(inode, name_index, "", NULL, 0);
-+	if (retval > 0) {
-+		value = kmalloc(retval, GFP_NOFS);
-+		if (!value)
-+			return ERR_PTR(-ENOMEM);
-+		retval = ext4_xattr_get(inode, name_index, "", value, retval);
-+	}
-+	if (retval > 0) {
-+		acl = richacl_from_xattr(&init_user_ns, value, retval);
-+		if (acl == ERR_PTR(-EINVAL))
-+			acl = ERR_PTR(-EIO);
-+	} else if (retval == -ENODATA || retval == -ENOSYS)
-+		acl = NULL;
-+	else
-+		acl = ERR_PTR(retval);
-+	kfree(value);
-+
-+	if (!IS_ERR(acl))
-+		set_cached_richacl(inode, acl);
-+
-+	return acl;
-+}
-+
-+static int
-+__ext4_set_richacl(handle_t *handle, struct inode *inode, struct richacl *acl)
-+{
-+	const int name_index = EXT4_XATTR_INDEX_RICHACL;
-+	size_t size = 0;
-+	void *value = NULL;
-+	int retval;
-+
-+	if (acl) {
-+		mode_t mode = inode->i_mode;
-+
-+		if (richacl_equiv_mode(acl, &mode) == 0) {
-+			inode->i_mode = mode;
-+			ext4_mark_inode_dirty(handle, inode);
-+			acl = NULL;
-+		}
-+	}
-+	if (acl) {
-+		size = richacl_xattr_size(acl);
-+		value = kmalloc(size, GFP_NOFS);
-+		if (!value)
-+			return -ENOMEM;
-+		richacl_to_xattr(&init_user_ns, acl, value, size);
-+	}
-+	if (handle)
-+		retval = ext4_xattr_set_handle(handle, inode, name_index, "",
-+					       value, size, 0);
-+	else
-+		retval = ext4_xattr_set(inode, name_index, "", value, size, 0);
-+	kfree(value);
-+	if (!retval)
-+		set_cached_richacl(inode, acl);
-+
-+	return retval;
-+}
-+
-+int
-+ext4_set_richacl(struct inode *inode, struct richacl *acl)
-+{
-+	handle_t *handle;
-+	int retval, retries = 0;
-+
-+retry:
-+	handle = ext4_journal_start(inode, EXT4_HT_XATTR,
-+				    ext4_jbd2_credits_xattr(inode));
-+	if (IS_ERR(handle))
-+		return PTR_ERR(handle);
-+
-+	retval = __ext4_set_richacl(handle, inode, acl);
-+	ext4_journal_stop(handle);
-+	if (retval == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
-+		goto retry;
-+	return retval;
-+}
-+
-+int
-+ext4_init_richacl(handle_t *handle, struct inode *inode, struct inode *dir)
-+{
-+	struct richacl *acl = richacl_create(inode, dir);
-+	int error;
-+
-+	error = PTR_ERR(acl);
-+	if (IS_ERR(acl))
-+		return error;
-+	if (acl) {
-+		error = __ext4_set_richacl(handle, inode, acl);
-+		richacl_put(acl);
-+	}
-+	return error;
-+}
-diff --git a/fs/ext4/richacl.h b/fs/ext4/richacl.h
-new file mode 100644
-index 0000000..249a2e9
---- /dev/null
-+++ b/fs/ext4/richacl.h
-@@ -0,0 +1,43 @@
-+/*
-+ * Copyright IBM Corporation, 2010
-+ * Copyright (C)  2015 Red Hat, Inc.
-+ * Author Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-+ *
-+ * This program is free software; you can redistribute it and/or modify it
-+ * under the terms of version 2.1 of the GNU Lesser General Public License
-+ * as published by the Free Software Foundation.
-+ *
-+ * This program is distributed in the hope that it would be useful, but
-+ * WITHOUT ANY WARRANTY; without even the implied warranty of
-+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-+ *
-+ */
-+
-+#ifndef __FS_EXT4_RICHACL_H
-+#define __FS_EXT4_RICHACL_H
-+
-+#include <linux/richacl.h>
-+
-+#ifdef CONFIG_EXT4_FS_RICHACL
-+
-+#define EXT4_IS_RICHACL(inode) IS_RICHACL(inode)
-+
-+extern struct richacl *ext4_get_richacl(struct inode *);
-+extern int ext4_set_richacl(struct inode *, struct richacl *);
-+
-+extern int ext4_init_richacl(handle_t *, struct inode *, struct inode *);
-+
-+#else  /* CONFIG_FS_EXT4_RICHACL */
-+
-+#define EXT4_IS_RICHACL(inode) (0)
-+#define ext4_get_richacl NULL
-+#define ext4_set_richacl NULL
-+
-+static inline int
-+ext4_init_richacl(handle_t *handle, struct inode *inode, struct inode *dir)
-+{
-+	return 0;
-+}
-+
-+#endif  /* CONFIG_FS_EXT4_RICHACL */
-+#endif  /* __FS_EXT4_RICHACL_H */
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index 16e28c0..4d79adb 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -55,6 +55,7 @@
- #include <linux/slab.h>
- #include <linux/mbcache.h>
- #include <linux/quotaops.h>
-+#include <linux/richacl_xattr.h>
- #include "ext4_jbd2.h"
- #include "ext4.h"
- #include "xattr.h"
-@@ -99,6 +100,9 @@ static const struct xattr_handler *ext4_xattr_handler_map[] = {
- #ifdef CONFIG_EXT4_FS_SECURITY
- 	[EXT4_XATTR_INDEX_SECURITY]	     = &ext4_xattr_security_handler,
- #endif
-+#ifdef CONFIG_EXT4_FS_RICHACL
-+	[EXT4_XATTR_INDEX_RICHACL]           = &richacl_xattr_handler,
-+#endif
- };
- 
- const struct xattr_handler *ext4_xattr_handlers[] = {
-@@ -111,6 +115,9 @@ const struct xattr_handler *ext4_xattr_handlers[] = {
- #ifdef CONFIG_EXT4_FS_SECURITY
- 	&ext4_xattr_security_handler,
- #endif
-+#ifdef CONFIG_EXT4_FS_RICHACL
-+	&richacl_xattr_handler,
-+#endif
- 	NULL
- };
- 
--- 
-2.5.0
+I'm not sure why you would do both of these; if you're getting initial
+creds with a keytab, there is no need to muck around with ticket renewal.
 
+Anyway, gss_init_sec_context() never renews tickets, and only gets
+tickets from a keytab when a client keytab is configured (new in 1.11).
+ When tickets are obtained using a client keytab, they are refreshed
+from the keytab when they are halfway to expiring, so this clock skew
+issue should not arise, so I don't think that feature is being used.
+
+It is possible that the NFS client code has its own separate logic for
+obtaining new tickets using a keytab.  If so, we need to understand how
+it works.  It's possible (though unlikely) that changing the behavior of
+gss_accept_sec_context() wouldn't be sufficient by itself.
