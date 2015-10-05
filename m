@@ -1,70 +1,131 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f175.google.com ([209.85.213.175]:33124 "EHLO
-	mail-ig0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752025AbbJEDD3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 4 Oct 2015 23:03:29 -0400
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH] svcrdma: Fix NFS server crash triggered by 1MB NFS WRITE
-To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Date: Sun, 04 Oct 2015 23:03:26 -0400
-Message-ID: <20151005025022.5074.89318.stgit@klimt.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-qk0-f170.google.com ([209.85.220.170]:35633 "EHLO
+	mail-qk0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750954AbbJELCt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Oct 2015 07:02:49 -0400
+Received: by qkap81 with SMTP id p81so66922633qka.2
+        for <linux-nfs@vger.kernel.org>; Mon, 05 Oct 2015 04:02:48 -0700 (PDT)
+From: Jeff Layton <jlayton@poochiereds.net>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        Al Viro <viro@ZenIV.linux.org.uk>
+Subject: [PATCH v5 00/20] nfsd: open file caching
+Date: Mon,  5 Oct 2015 07:02:22 -0400
+Message-Id: <1444042962-6947-1-git-send-email-jeff.layton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Now that the NFS server advertises a maximum payload size of 1MB
-for RPC/RDMA again, it crashes in svc_process_common() when NFS
-client sends a 1MB NFS WRITE on an NFS/RDMA mount.
+v5:
+- switch to using flush_delayed_fput instead of __fput_sync
+- hash on inode->i_ino instead of inode pointer
+- add /proc/fs/nfsd/file_cache_stats file to track stats on the hash
+- eliminate extra fh_verify in nfsd_file_acquire
 
-The server has set up a 259 element array of struct page pointers
-in rq_pages[] for each incoming request. The last element of the
-array is NULL.
+v4:
+- squash some of the patches down into one patch to reduce churn
+- close cached open files after unlink instead of before
+- don't just close files after nfsd does an unlink, must do it
+  after any vfs-layer unlink. Use fsnotify to handle that.
+- use a SRCU notifier chain for setlease
+- add patch to allow non-kthreads to do a fput_sync
 
-When an incoming request has been completely received,
-rdma_read_complete() attempts to set the starting page of the
-incoming page vector:
+v3:
+- open files are now hashed on inode pointer instead of fh
+- eliminate the recurring workqueue job in favor of shrinker/LRU and
+  notifier from lease setting code
+- have nfsv4 use the cache as well
+- removal of raparms cache
 
-  rqstp->rq_arg.pages = &rqstp->rq_pages[head->hdr_count];
+v2:
+- changelog cleanups and clarifications
+- allow COMMIT to use cached open files
+- tracepoints for nfsd_file cache
+- proactively close open files prior to REMOVE, or a RENAME over a
+  positive dentry
 
-and the page to use for the reply:
+This is the fifth iteration of the open file cache patches for nfsd.
+The main changes from the v4 set are the conversion of the code to
+use flush_delayed_fput instead of __fput_sync, and some changes to
+improve performance.
 
-  rqstp->rq_respages = &rqstp->rq_arg.pages[page_no];
+The kbuild test robot noted a drop in performance with this set,
+which turned out to be lousy hash distribution due to hashing on
+inode pointer value. Hashing on inode->i_ino gives a much better
+distribution.
 
-But the value of page_no has already accounted for head->hdr_count.
-Thus rq_respages now points past the end of the incoming pages. For
-NFS WRITE operations smaller than the maximum, this is harmless.
+For those seeing this for the first time, main impetus here is to help
+speed up NFSv3 I/O. nfsd will do an open+read/write+close for every READ
+or WRITE RPC. This patchset allows us to cache those open files more or
+less indefinitely, and close them out in response to certain vfs-layer
+activity (unlinks and setlease attempts primarily).
 
-But when the NFS WRITE operation is as large as the server's max
-payload size, rq_respages now points at the last entry in rq_pages,
-which is NULL.
+The first few patches in the series make (small) changes to several
+subsystems to enable the caching infrastructure. The tenth patch adds
+the cache itself, and then the remaining patches hook the nfsd code
+up to the cache. The final patch rips out the raparms cache since it's
+no longer needed with these changes.
 
-Fixes: cc9a903d915c ('svcrdma: Change maximum server payload . . .')
-BugLink: https://bugzilla.linux-nfs.org/show_bug.cgi?id=270
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+Again, the most controversial part of the set is probably the changes
+to allow normal user processes to use the delayed_fput infrastructure.
+Al, if you could weigh in on those, then that would be helpful. We
+really do need a way to allow a thread to flush the final fput work
+without returning to userland.
 
-This fixes a 4.3-rc regression. Please apply to 4.3-rc when this
-patch passes review.
+Jeff Layton (20):
+  list_lru: add list_lru_rotate
+  fs: have flush_delayed_fput flush the workqueue job
+  fs: add a kerneldoc header to fput
+  fs: add fput_queue
+  fs: export flush_delayed_fput
+  fsnotify: export several symbols
+  locks: create a new notifier chain for lease attempts
+  nfsd: move include of state.h from trace.c to trace.h
+  sunrpc: add a new cache_detail operation for when a cache is flushed
+  nfsd: add a new struct file caching facility to nfsd
+  nfsd: keep some rudimentary stats on nfsd_file cache
+  nfsd: allow filecache open to skip fh_verify check
+  nfsd: hook up nfsd_write to the new nfsd_file cache
+  nfsd: hook up nfsd_read to the nfsd_file cache
+  nfsd: hook nfsd_commit up to the nfsd_file cache
+  nfsd: convert nfs4_file->fi_fds array to use nfsd_files
+  nfsd: have nfsd_test_lock use the nfsd_file cache
+  nfsd: convert fi_deleg_file and ls_file fields to nfsd_file
+  nfsd: hook up nfs4_preprocess_stateid_op to the nfsd_file cache
+  nfsd: rip out the raparms cache
 
-It could also be appropriate for stable kernels which do not have
-commit 7e5be28827bf ("svcrdma: advertise the correct max payload"),
-though I have not tested them with this patch.
+ fs/file_table.c              |  76 +++++-
+ fs/locks.c                   |  37 +++
+ fs/nfsd/Kconfig              |   2 +
+ fs/nfsd/Makefile             |   3 +-
+ fs/nfsd/export.c             |  14 +
+ fs/nfsd/filecache.c          | 613 +++++++++++++++++++++++++++++++++++++++++++
+ fs/nfsd/filecache.h          |  38 +++
+ fs/nfsd/nfs3proc.c           |   2 +-
+ fs/nfsd/nfs4layouts.c        |  12 +-
+ fs/nfsd/nfs4proc.c           |  32 +--
+ fs/nfsd/nfs4state.c          | 174 ++++++------
+ fs/nfsd/nfs4xdr.c            |  16 +-
+ fs/nfsd/nfsctl.c             |  10 +
+ fs/nfsd/nfsproc.c            |   2 +-
+ fs/nfsd/nfssvc.c             |  16 +-
+ fs/nfsd/state.h              |  10 +-
+ fs/nfsd/trace.c              |   2 -
+ fs/nfsd/trace.h              | 129 +++++++++
+ fs/nfsd/vfs.c                | 269 +++++--------------
+ fs/nfsd/vfs.h                |  11 +-
+ fs/nfsd/xdr4.h               |  15 +-
+ fs/notify/group.c            |   2 +
+ fs/notify/mark.c             |   3 +
+ include/linux/file.h         |   1 +
+ include/linux/fs.h           |   1 +
+ include/linux/list_lru.h     |  13 +
+ include/linux/sunrpc/cache.h |   1 +
+ mm/list_lru.c                |  15 ++
+ net/sunrpc/cache.c           |   3 +
+ 29 files changed, 1149 insertions(+), 373 deletions(-)
+ create mode 100644 fs/nfsd/filecache.c
+ create mode 100644 fs/nfsd/filecache.h
 
- net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
-
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-index cb51742..37b4341 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-@@ -531,7 +531,7 @@ static int rdma_read_complete(struct svc_rqst *rqstp,
- 	rqstp->rq_arg.page_base = head->arg.page_base;
- 
- 	/* rq_respages starts after the last arg page */
--	rqstp->rq_respages = &rqstp->rq_arg.pages[page_no];
-+	rqstp->rq_respages = &rqstp->rq_pages[page_no];
- 	rqstp->rq_next_page = rqstp->rq_respages + 1;
- 
- 	/* Rebuild rq_arg head and tail. */
+-- 
+2.4.3
 
