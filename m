@@ -1,75 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from ipmail04.adl6.internode.on.net ([150.101.137.141]:62732 "EHLO
+Received: from ipmail04.adl6.internode.on.net ([150.101.137.141]:22291 "EHLO
 	ipmail04.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751919AbbJEVRP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Oct 2015 17:17:15 -0400
-Date: Tue, 6 Oct 2015 08:17:11 +1100
+	by vger.kernel.org with ESMTP id S1750780AbbJEVrV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Oct 2015 17:47:21 -0400
+Date: Tue, 6 Oct 2015 08:47:17 +1100
 From: Dave Chinner <david@fromorbit.com>
-To: Andreas Gruenbacher <agruenba@redhat.com>
-Cc: Christoph Hellwig <hch@infradead.org>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@poochiereds.net>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>, linux-ext4@vger.kernel.org,
-        LKML <linux-kernel@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-nfs@vger.kernel.org, linux-api@vger.kernel.org
-Subject: Re: [PATCH v8 00/41] Richacls
-Message-ID: <20151005211711.GB23350@dastard>
-References: <1443391772-10171-1-git-send-email-agruenba@redhat.com>
- <20151004062313.GA20212@infradead.org>
- <CAHc6FU53mXg1k0KCNkWEjxyuC8iAUgWh-A76qX=C3Yth+qEyuQ@mail.gmail.com>
+To: Jeff Layton <jlayton@poochiereds.net>
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, Al Viro <viro@ZenIV.linux.org.uk>
+Subject: Re: [PATCH v5 01/20] list_lru: add list_lru_rotate
+Message-ID: <20151005214717.GC23350@dastard>
+References: <1444042962-6947-1-git-send-email-jeff.layton@primarydata.com>
+ <1444042962-6947-2-git-send-email-jeff.layton@primarydata.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAHc6FU53mXg1k0KCNkWEjxyuC8iAUgWh-A76qX=C3Yth+qEyuQ@mail.gmail.com>
+In-Reply-To: <1444042962-6947-2-git-send-email-jeff.layton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Oct 05, 2015 at 08:45:40PM +0200, Andreas Gruenbacher wrote:
-> On Sun, Oct 4, 2015 at 8:23 AM, Christoph Hellwig <hch@infradead.org> wrote:
-> > On Mon, Sep 28, 2015 at 12:08:51AM +0200, Andreas Gruenbacher wrote:
-> >> Hello,
-> >>
-> >> here's another update of the richacl patch queue.  At this stage, I would
-> >> like to ask for final feedback so that the core and ext4 code (patches
-> >> 1-19) can be merged in the 4.4 merge window.  The nfsd and nfs code should
-> >> then go through the respective maintainer trees.
-> >
-> > Now way in this form even if everyone agrees we should have these
-> > bastard ACLs.  I certainly disagree.
+On Mon, Oct 05, 2015 at 07:02:23AM -0400, Jeff Layton wrote:
+> Add a function that can move an entry to the MRU end of the list.
 > 
-> Well, thanks for having a look at the patches.
-> 
-> > Ayway, back to the VFS <-> FS interface.  You still require tons of
-> > boilderplate code in the filesystem which isn't required and we got rid
-> > of for Posix ACLs.  The filesystem should not look at the userspace
-> > xattr format, please follow a model similar to ->get_acl and ->set_acl
-> > for Posix ACLs.
-> 
-> I will repost a version that has this cleaned up.
-> 
-> > After that the wire up should be so trivial that you can wire up btrfs,
-> > xfs and f2fs as well, which is important to make the feature mergeable.
-> 
-> Why would the patch queue become more mergeable by having support for
-> more filesystems in it? The filesystem specific code really isn't all
-> that interesting.
+> Cc: Andrew Morton <akpm@linux-foundation.org>
+> Cc: linux-mm@kvack.org
+> Reviewed-by: Vladimir Davydov <vdavydov@parallels.com>
+> Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
 
-The hardest part for the filesystem support is the on-disk feature
-flag that needs to be set. The kernel part of that is easy, but it's
-an on-disk format change and so there's also all the userspace side
-for mkfs, fsck, debug tools, etc, that also need to be able to parse
-and understand it. So while the xattr code can be made much more
-generic, there's a bunch of filesystem specific code that needs to
-go into multiple different repositories and userspace packages for
-this.
+Having read through patch 10 (nfsd: add a new struct file caching
+facility to nfsd) that uses this function, I think it is unnecessary
+as it's usage is incorrect from the perspective of the list_lru
+shrinker management.
 
-Andreas, I also can't remember if any xfstests have been written for
-these ACLs? That would certainly help make sure all these
-filesystems have equivalent behaviour...
+What you are attempting to do is rotate the object to the tail of
+the LRU when the last reference is dropped, so that it gets a full
+trip through the LRU before being reclaimed by the shrinker. And to
+ensure this "works", the scan from the shrinker checks for reference
+counts and skip the item being isolated (i.e. return LRU_SKIP) and
+so leave it in it's place in the LRU.
+
+i.e. you're attempting to manage LRU-ness of the list yourself when,
+in fact, the list_lru infrastructure does this and doesn't have the
+subtle bugs your version has. By trying to manage it yourself, the
+list_lru lists are no longer sorted into memory pressure driven
+LRU order.
+
+e.g. your manual rotation technique means if there are nr_to_walk
+referenced items at the head of the list, the shrinker will skip
+them all and do nothing, even though there are reclaimable objects
+further down the list. i.e. it can't do any reclaim because it
+doesn't sort the list into LRU order any more.
+
+This comes from using LRU_SKIP improperly. LRU_SKIP is there for
+objects that we can't lock in the isolate callback due to lock
+inversion issues (e.g. see dentry_lru_isolate()), and so we need to
+look at it again on the next scan pass. hence it gets left in place.
+
+However, if we can lock the item and peer at it's reference counts
+safely and we decide that we cannot reclaim it because it is
+referenced, the isolate callback should be returning LRU_ROTATE
+to move the referenced item to the tail of the list. (Again, see
+dentry_lru_isolate() for an example.) The means that
+the next nr_to_walk scan of the list will not rescan that item and
+skip it again (unless the list is very short), but will instead scan
+items that it hasn't yet reached.
+
+This avoids the "shrinker does nothing due to skipped items at the
+head of the list" problem, and makes the LRU function as an actual
+LRU. i.e.  referenced items all cluster towards the tail of the LRU
+under memory pressure and the head of the LRU contains the
+reclaimable objects.
+
+So I think the correct solution is to use LRU_ROTATE correctly
+rather than try to manage the LRU list order externally like this.
 
 Cheers,
 
