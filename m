@@ -1,64 +1,102 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-la0-f48.google.com ([209.85.215.48]:34363 "EHLO
-	mail-la0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751256AbbJEWBV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Oct 2015 18:01:21 -0400
-Received: by labzv5 with SMTP id zv5so133636809lab.1
-        for <linux-nfs@vger.kernel.org>; Mon, 05 Oct 2015 15:01:20 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <20151005211711.GB23350@dastard>
-References: <1443391772-10171-1-git-send-email-agruenba@redhat.com>
-	<20151004062313.GA20212@infradead.org>
-	<CAHc6FU53mXg1k0KCNkWEjxyuC8iAUgWh-A76qX=C3Yth+qEyuQ@mail.gmail.com>
-	<20151005211711.GB23350@dastard>
-Date: Tue, 6 Oct 2015 00:01:19 +0200
-Message-ID: <CAHc6FU5=nPVRRO+0MycYMMmp66hg7YvY4kMGy-D4JfgD3_FkLQ@mail.gmail.com>
-Subject: Re: [PATCH v8 00/41] Richacls
-From: Andreas Gruenbacher <agruenba@redhat.com>
-To: Dave Chinner <david@fromorbit.com>
-Cc: Christoph Hellwig <hch@infradead.org>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@poochiereds.net>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>, linux-ext4@vger.kernel.org,
-        LKML <linux-kernel@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-nfs@vger.kernel.org, linux-api@vger.kernel.org
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-yk0-f169.google.com ([209.85.160.169]:34027 "EHLO
+	mail-yk0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752153AbbJEXDe (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Oct 2015 19:03:34 -0400
+Received: by ykdg206 with SMTP id g206so185335006ykd.1
+        for <linux-nfs@vger.kernel.org>; Mon, 05 Oct 2015 16:03:34 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Subject: [RFC PATCH 1/3] SUNRPC: Refactor TCP receive
+Date: Mon,  5 Oct 2015 19:03:29 -0400
+Message-Id: <1444086211-4811-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Oct 5, 2015 at 11:17 PM, Dave Chinner <david@fromorbit.com> wrote:
-> On Mon, Oct 05, 2015 at 08:45:40PM +0200, Andreas Gruenbacher wrote:
->> On Sun, Oct 4, 2015 at 8:23 AM, Christoph Hellwig <hch@infradead.org> wrote:
->> > After that the wire up should be so trivial that you can wire up btrfs,
->> > xfs and f2fs as well, which is important to make the feature mergeable.
->>
->> Why would the patch queue become more mergeable by having support for
->> more filesystems in it? The filesystem specific code really isn't all
->> that interesting.
->
-> The hardest part for the filesystem support is the on-disk feature
-> flag that needs to be set. The kernel part of that is easy, but it's
-> an on-disk format change and so there's also all the userspace side
-> for mkfs, fsck, debug tools, etc, that also need to be able to parse
-> and understand it. So while the xattr code can be made much more
-> generic, there's a bunch of filesystem specific code that needs to
-> go into multiple different repositories and userspace packages for
-> this.
+Move the TCP data receive loop out of xs_tcp_data_ready(). Doing so
+will allow us to move the data receive out of the softirq context in
+a set of followup patches.
 
-Yes.
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ net/sunrpc/xprtsock.c | 44 +++++++++++++++++++++++++++++---------------
+ 1 file changed, 29 insertions(+), 15 deletions(-)
 
-> Andreas, I also can't remember if any xfstests have been written for
-> these ACLs? That would certainly help make sure all these
-> filesystems have equivalent behaviour...
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 1a85e0ed0b48..fa8d0c15c8cd 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -1391,6 +1391,30 @@ static int xs_tcp_data_recv(read_descriptor_t *rd_desc, struct sk_buff *skb, uns
+ 	return len - desc.count;
+ }
+ 
++static void xs_tcp_data_receive(struct sock_xprt *transport)
++{
++	struct rpc_xprt *xprt = &transport->xprt;
++	struct sock *sk;
++	read_descriptor_t rd_desc = {
++		.count = 2*1024*1024,
++		.arg.data = xprt,
++	};
++	unsigned long total = 0;
++	int read = 0;
++
++	sk = transport->inet;
++
++	/* We use rd_desc to pass struct xprt to xs_tcp_data_recv */
++	for (;;) {
++		read = tcp_read_sock(sk, &rd_desc, xs_tcp_data_recv);
++		if (read <= 0)
++			break;
++		total += read;
++		rd_desc.count = 65536;
++	}
++	trace_xs_tcp_data_ready(xprt, read, total);
++}
++
+ /**
+  * xs_tcp_data_ready - "data ready" callback for TCP sockets
+  * @sk: socket with data to read
+@@ -1398,34 +1422,24 @@ static int xs_tcp_data_recv(read_descriptor_t *rd_desc, struct sk_buff *skb, uns
+  */
+ static void xs_tcp_data_ready(struct sock *sk)
+ {
++	struct sock_xprt *transport;
+ 	struct rpc_xprt *xprt;
+-	read_descriptor_t rd_desc;
+-	int read;
+-	unsigned long total = 0;
+ 
+ 	dprintk("RPC:       xs_tcp_data_ready...\n");
+ 
+ 	read_lock_bh(&sk->sk_callback_lock);
+-	if (!(xprt = xprt_from_sock(sk))) {
+-		read = 0;
++	if (!(xprt = xprt_from_sock(sk)))
+ 		goto out;
+-	}
++	transport = container_of(xprt, struct sock_xprt, xprt);
++
+ 	/* Any data means we had a useful conversation, so
+ 	 * the we don't need to delay the next reconnect
+ 	 */
+ 	if (xprt->reestablish_timeout)
+ 		xprt->reestablish_timeout = 0;
+ 
+-	/* We use rd_desc to pass struct xprt to xs_tcp_data_recv */
+-	rd_desc.arg.data = xprt;
+-	do {
+-		rd_desc.count = 65536;
+-		read = tcp_read_sock(sk, &rd_desc, xs_tcp_data_recv);
+-		if (read > 0)
+-			total += read;
+-	} while (read > 0);
++	xs_tcp_data_receive(transport);
+ out:
+-	trace_xs_tcp_data_ready(xprt, read, total);
+ 	read_unlock_bh(&sk->sk_callback_lock);
+ }
+ 
+-- 
+2.4.3
 
-There's a reasonable amount of tests in the richacl user-space package
-which are shell based, with a few small C helpers. We could move those
-into xfstests eventually; now seems a bit early to me.
-
-Thanks,
-Andreas
