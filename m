@@ -1,102 +1,122 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yk0-f169.google.com ([209.85.160.169]:34027 "EHLO
-	mail-yk0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752153AbbJEXDe (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Oct 2015 19:03:34 -0400
-Received: by ykdg206 with SMTP id g206so185335006ykd.1
-        for <linux-nfs@vger.kernel.org>; Mon, 05 Oct 2015 16:03:34 -0700 (PDT)
+Received: from mail-yk0-f182.google.com ([209.85.160.182]:34962 "EHLO
+	mail-yk0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752153AbbJEXDh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Oct 2015 19:03:37 -0400
+Received: by ykdz138 with SMTP id z138so186606968ykd.2
+        for <linux-nfs@vger.kernel.org>; Mon, 05 Oct 2015 16:03:36 -0700 (PDT)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: linux-nfs@vger.kernel.org
-Subject: [RFC PATCH 1/3] SUNRPC: Refactor TCP receive
-Date: Mon,  5 Oct 2015 19:03:29 -0400
-Message-Id: <1444086211-4811-1-git-send-email-trond.myklebust@primarydata.com>
+Subject: [RFC PATCH 3/3] SUNRPC: Allow TCP to replace the bh-safe lock in receive path
+Date: Mon,  5 Oct 2015 19:03:31 -0400
+Message-Id: <1444086211-4811-3-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1444086211-4811-2-git-send-email-trond.myklebust@primarydata.com>
+References: <1444086211-4811-1-git-send-email-trond.myklebust@primarydata.com>
+ <1444086211-4811-2-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Move the TCP data receive loop out of xs_tcp_data_ready(). Doing so
-will allow us to move the data receive out of the softirq context in
-a set of followup patches.
+This patch attempts to eke out a couple more iops by allowing the TCP code
+to replace bh-safe spinlock with an ordinary one while receiving data. We
+still need to use the bh-safe spinlock when completing.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- net/sunrpc/xprtsock.c | 44 +++++++++++++++++++++++++++++---------------
- 1 file changed, 29 insertions(+), 15 deletions(-)
+ net/sunrpc/xprt.c     |  4 ++++
+ net/sunrpc/xprtsock.c | 17 ++++++++++-------
+ 2 files changed, 14 insertions(+), 7 deletions(-)
 
+diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+index 2e98f4a243e5..e604bb680bcf 100644
+--- a/net/sunrpc/xprt.c
++++ b/net/sunrpc/xprt.c
+@@ -951,6 +951,7 @@ void xprt_transmit(struct rpc_task *task)
+ 			/*
+ 			 * Add to the list only if we're expecting a reply
+ 			 */
++			spin_lock(&xprt->reserve_lock);
+ 			spin_lock_bh(&xprt->transport_lock);
+ 			/* Update the softirq receive buffer */
+ 			memcpy(&req->rq_private_buf, &req->rq_rcv_buf,
+@@ -958,6 +959,7 @@ void xprt_transmit(struct rpc_task *task)
+ 			/* Add request to the receive list */
+ 			list_add_tail(&req->rq_list, &xprt->recv);
+ 			spin_unlock_bh(&xprt->transport_lock);
++			spin_unlock(&xprt->reserve_lock);
+ 			xprt_reset_majortimeo(req);
+ 			/* Turn off autodisconnect */
+ 			del_singleshot_timer_sync(&xprt->timer);
+@@ -1278,6 +1280,7 @@ void xprt_release(struct rpc_task *task)
+ 		task->tk_ops->rpc_count_stats(task, task->tk_calldata);
+ 	else if (task->tk_client)
+ 		rpc_count_iostats(task, task->tk_client->cl_metrics);
++	spin_lock(&xprt->reserve_lock);
+ 	spin_lock_bh(&xprt->transport_lock);
+ 	xprt->ops->release_xprt(xprt, task);
+ 	if (xprt->ops->release_request)
+@@ -1289,6 +1292,7 @@ void xprt_release(struct rpc_task *task)
+ 		mod_timer(&xprt->timer,
+ 				xprt->last_used + xprt->idle_timeout);
+ 	spin_unlock_bh(&xprt->transport_lock);
++	spin_unlock(&xprt->reserve_lock);
+ 	if (req->rq_buffer)
+ 		xprt->ops->buf_free(req->rq_buffer);
+ 	xprt_inject_disconnect(xprt);
 diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 1a85e0ed0b48..fa8d0c15c8cd 100644
+index 58dc90ccebb6..063d2eb20d8e 100644
 --- a/net/sunrpc/xprtsock.c
 +++ b/net/sunrpc/xprtsock.c
-@@ -1391,6 +1391,30 @@ static int xs_tcp_data_recv(read_descriptor_t *rd_desc, struct sk_buff *skb, uns
- 	return len - desc.count;
- }
+@@ -1246,21 +1246,24 @@ static inline int xs_tcp_read_reply(struct rpc_xprt *xprt,
+ 	dprintk("RPC:       read reply XID %08x\n", ntohl(transport->tcp_xid));
  
-+static void xs_tcp_data_receive(struct sock_xprt *transport)
-+{
-+	struct rpc_xprt *xprt = &transport->xprt;
-+	struct sock *sk;
-+	read_descriptor_t rd_desc = {
-+		.count = 2*1024*1024,
-+		.arg.data = xprt,
-+	};
-+	unsigned long total = 0;
-+	int read = 0;
-+
-+	sk = transport->inet;
-+
-+	/* We use rd_desc to pass struct xprt to xs_tcp_data_recv */
-+	for (;;) {
-+		read = tcp_read_sock(sk, &rd_desc, xs_tcp_data_recv);
-+		if (read <= 0)
-+			break;
-+		total += read;
-+		rd_desc.count = 65536;
+ 	/* Find and lock the request corresponding to this xid */
+-	spin_lock_bh(&xprt->transport_lock);
++	spin_lock(&xprt->reserve_lock);
+ 	req = xprt_lookup_rqst(xprt, transport->tcp_xid);
+ 	if (!req) {
+ 		dprintk("RPC:       XID %08x request not found!\n",
+ 				ntohl(transport->tcp_xid));
+-		spin_unlock_bh(&xprt->transport_lock);
++		spin_unlock(&xprt->reserve_lock);
+ 		return -1;
+ 	}
+ 
+ 	xs_tcp_read_common(xprt, desc, req);
+ 
+-	if (!(transport->tcp_flags & TCP_RCV_COPY_DATA))
++	if (!(transport->tcp_flags & TCP_RCV_COPY_DATA)) {
++		spin_lock_bh(&xprt->transport_lock);
+ 		xprt_complete_rqst(req->rq_task, transport->tcp_copied);
++		spin_unlock_bh(&xprt->transport_lock);
 +	}
-+	trace_xs_tcp_data_ready(xprt, read, total);
-+}
-+
- /**
-  * xs_tcp_data_ready - "data ready" callback for TCP sockets
-  * @sk: socket with data to read
-@@ -1398,34 +1422,24 @@ static int xs_tcp_data_recv(read_descriptor_t *rd_desc, struct sk_buff *skb, uns
-  */
- static void xs_tcp_data_ready(struct sock *sk)
- {
-+	struct sock_xprt *transport;
- 	struct rpc_xprt *xprt;
--	read_descriptor_t rd_desc;
--	int read;
--	unsigned long total = 0;
  
- 	dprintk("RPC:       xs_tcp_data_ready...\n");
- 
- 	read_lock_bh(&sk->sk_callback_lock);
--	if (!(xprt = xprt_from_sock(sk))) {
--		read = 0;
-+	if (!(xprt = xprt_from_sock(sk)))
- 		goto out;
--	}
-+	transport = container_of(xprt, struct sock_xprt, xprt);
-+
- 	/* Any data means we had a useful conversation, so
- 	 * the we don't need to delay the next reconnect
- 	 */
- 	if (xprt->reestablish_timeout)
- 		xprt->reestablish_timeout = 0;
- 
--	/* We use rd_desc to pass struct xprt to xs_tcp_data_recv */
--	rd_desc.arg.data = xprt;
--	do {
--		rd_desc.count = 65536;
--		read = tcp_read_sock(sk, &rd_desc, xs_tcp_data_recv);
--		if (read > 0)
--			total += read;
--	} while (read > 0);
-+	xs_tcp_data_receive(transport);
- out:
--	trace_xs_tcp_data_ready(xprt, read, total);
- 	read_unlock_bh(&sk->sk_callback_lock);
+-	spin_unlock_bh(&xprt->transport_lock);
++	spin_unlock(&xprt->reserve_lock);
+ 	return 0;
  }
  
+@@ -1280,10 +1283,10 @@ static int xs_tcp_read_callback(struct rpc_xprt *xprt,
+ 	struct rpc_rqst *req;
+ 
+ 	/* Look up and lock the request corresponding to the given XID */
+-	spin_lock_bh(&xprt->transport_lock);
++	spin_lock(&xprt->reserve_lock);
+ 	req = xprt_lookup_bc_request(xprt, transport->tcp_xid);
+ 	if (req == NULL) {
+-		spin_unlock_bh(&xprt->transport_lock);
++		spin_unlock(&xprt->reserve_lock);
+ 		printk(KERN_WARNING "Callback slot table overflowed\n");
+ 		xprt_force_disconnect(xprt);
+ 		return -1;
+@@ -1294,7 +1297,7 @@ static int xs_tcp_read_callback(struct rpc_xprt *xprt,
+ 
+ 	if (!(transport->tcp_flags & TCP_RCV_COPY_DATA))
+ 		xprt_complete_bc_request(req, transport->tcp_copied);
+-	spin_unlock_bh(&xprt->transport_lock);
++	spin_unlock(&xprt->reserve_lock);
+ 
+ 	return 0;
+ }
 -- 
 2.4.3
 
