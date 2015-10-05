@@ -1,75 +1,49 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f181.google.com ([209.85.220.181]:35965 "EHLO
-	mail-qk0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751317AbbJELCw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Oct 2015 07:02:52 -0400
-Received: by qkcf65 with SMTP id f65so66729669qkc.3
-        for <linux-nfs@vger.kernel.org>; Mon, 05 Oct 2015 04:02:51 -0700 (PDT)
-From: Jeff Layton <jlayton@poochiereds.net>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        Al Viro <viro@ZenIV.linux.org.uk>
-Subject: [PATCH v5 03/20] fs: add a kerneldoc header to fput
-Date: Mon,  5 Oct 2015 07:02:25 -0400
-Message-Id: <1444042962-6947-4-git-send-email-jeff.layton@primarydata.com>
-In-Reply-To: <1444042962-6947-1-git-send-email-jeff.layton@primarydata.com>
-References: <1444042962-6947-1-git-send-email-jeff.layton@primarydata.com>
+Received: from mx1.redhat.com ([209.132.183.28]:55570 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750942AbbJELuX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 5 Oct 2015 07:50:23 -0400
+Subject: Re: [systemd-devel] [PATCH] gssd: Improve scalability by not waiting
+ for child processes
+To: Florian Weimer <fw@deneb.enyo.de>
+References: <1443043250-25703-1-git-send-email-steved@redhat.com>
+ <874mi7yrio.fsf@mid.deneb.enyo.de>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
+        Systemd Mailing List <systemd-devel@lists.freedesktop.org>
+From: Steve Dickson <SteveD@redhat.com>
+Message-ID: <561263FD.7030805@RedHat.com>
+Date: Mon, 5 Oct 2015 07:50:21 -0400
+MIME-Version: 1.0
+In-Reply-To: <874mi7yrio.fsf@mid.deneb.enyo.de>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-...and move its EXPORT_SYMBOL just below the function.
 
-Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
----
- fs/file_table.c | 21 ++++++++++++++++++++-
- 1 file changed, 20 insertions(+), 1 deletion(-)
 
-diff --git a/fs/file_table.c b/fs/file_table.c
-index 52cc6803c07a..8cfeaee6323f 100644
---- a/fs/file_table.c
-+++ b/fs/file_table.c
-@@ -261,6 +261,25 @@ void flush_delayed_fput(void)
- 	flush_delayed_work(&delayed_fput_work);
- }
- 
-+/**
-+ * fput - put a struct file reference
-+ * @file: file of which to put the reference
-+ *
-+ * This function decrements the reference count for the struct file reference,
-+ * and queues it up for destruction if the count goes to zero. In the case of
-+ * most tasks we queue it to the task_work infrastructure, which will be run
-+ * just before the task returns back to userspace. kthreads however never
-+ * return to userspace, so for those we add them to a global list and schedule
-+ * a delayed workqueue job to do the final cleanup work.
-+ *
-+ * Why not just do it synchronously? __fput can involve taking locks of all
-+ * sorts, and doing it synchronously means that the callers must take extra care
-+ * not to deadlock. That can be very difficult to ensure, so by deferring it
-+ * until just before return to userland or to the workqueue, we sidestep that
-+ * nastiness. Also, __fput can be quite stack intensive, so doing a final fput
-+ * has the possibility of blowing up if we don't take steps to ensure that we
-+ * have enough stack space to make it work.
-+ */
- void fput(struct file *file)
- {
- 	if (atomic_long_dec_and_test(&file->f_count)) {
-@@ -281,6 +300,7 @@ void fput(struct file *file)
- 			schedule_delayed_work(&delayed_fput_work, 1);
- 	}
- }
-+EXPORT_SYMBOL(fput);
- 
- /*
-  * synchronous analog of fput(); for kernel threads that might be needed
-@@ -299,7 +319,6 @@ void __fput_sync(struct file *file)
- 	}
- }
- 
--EXPORT_SYMBOL(fput);
- 
- void put_filp(struct file *file)
- {
--- 
-2.4.3
+On 10/04/2015 04:19 AM, Florian Weimer wrote:
+> * Steve Dickson:
+> 
+>> +static void
+>> +sig_child(int signal)
+>> +{
+>> +	int err;
+>> +	pid_t pid;
+>> +
+>> +	/* Parent: just wait on child to exit and return */
+>> +	do {
+>> +		pid = wait(&err);
+>> +	} while(pid == -1 && errno != -ECHILD);
+>> +
+>> +	if (WIFSIGNALED(err))
+>> +		printerr(0, "WARNING: forked child was killed"
+>> +			 "with signal %d\n", WTERMSIG(err));
+>> +}
+> 
+> prinerr calls vfprintf or vsyslog.  Neither is safe to use in signal
+> handlers, so you need to log this message in some other way.
+Good point... but this patch was self NAK-ed due to it leaving
+zombie processes during my testing.
+
+steved.
 
