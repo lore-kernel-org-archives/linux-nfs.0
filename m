@@ -1,56 +1,142 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from dmz-mailsec-scanner-5.mit.edu ([18.7.68.34]:44793 "EHLO
-	dmz-mailsec-scanner-5.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751288AbbJEUCV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Oct 2015 16:02:21 -0400
-Subject: Re: Gss context refresh failure due to clock skew
-To: "Adamson, Andy" <William.Adamson@netapp.com>
-References: <AD03968E-7017-4D32-A90C-C74C1E9CDFAC@netapp.com>
- <FA7F806E-E5DA-4C41-AE7F-99E381E71123@netapp.com> <5612CB0F.5040501@mit.edu>
- <A7007DA3-24B2-4079-96A8-A6E97085031C@netapp.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        "krbdev@mit.edu" <krbdev@mit.edu>
-From: Greg Hudson <ghudson@mit.edu>
-Message-ID: <5612D73F.8020605@mit.edu>
-Date: Mon, 5 Oct 2015 16:02:07 -0400
-MIME-Version: 1.0
-In-Reply-To: <A7007DA3-24B2-4079-96A8-A6E97085031C@netapp.com>
-Content-Type: text/plain; charset=utf-8
+Received: from mx1.redhat.com ([209.132.183.28]:40655 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751178AbbJETi6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 5 Oct 2015 15:38:58 -0400
+From: Andreas Gruenbacher <agruenba@redhat.com>
+To: Alexander Viro <viro@zeniv.linux.org.uk>, "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-api@vger.kernel.org
+Subject: [PATCH v9 18/43] richacl: Add richacl xattr handler
+Date: Mon,  5 Oct 2015 21:36:45 +0200
+Message-Id: <1444073830-21854-19-git-send-email-agruenba@redhat.com>
+In-Reply-To: <1444073830-21854-1-git-send-email-agruenba@redhat.com>
+References: <1444073830-21854-1-git-send-email-agruenba@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 10/05/2015 03:35 PM, Adamson, Andy wrote:
->> I think this case doesn't arise often because people don't often set
->> maximum service ticket lifetimes to be shorter than maximum TGT
->> lifetimes.  
-> 
-> Not the cause of the issue. The service ticket lifetime of 10 minutes is just there for testing this issue as I needed to wait until the service ticket had ‘expired’ on the server - but not yet on the client.
-> 
-> We see this issue all the time in NetApp QA as we run mutiple day heavy IO tests against a kerberos mount. If the server clock is ahead of the client clock, permission denied errors stop the test as the first service ticket “expires” on the server but not on the client.
+Add richacl xattr handler implementing the xattr operations based on the
+get_richacl and set_richacl inode operations.
 
-If the issue is not caused by short-lifetime service principals, then
-the test scenario you described isn't representative of the real
-scenario.  To reproduce the problem as it manifests in your IO tests,
-you will need to adjust the TGT lifetime down to ten minutes as well as
-the nfs/server lifetime.
+Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
+---
+ fs/richacl_xattr.c            | 78 +++++++++++++++++++++++++++++++++++++++++++
+ include/linux/richacl_xattr.h |  2 ++
+ 2 files changed, 80 insertions(+)
 
->> If the TGT itself has expired or is about to expire, some
->> out-of-band agent needs to refresh the TGT somehow, and it doesn't
->> matter all that much whether the failure comes from the client or the
->> server.
-> 
-> I thought that having a keytab entry and a renewable TGT was enough.
+diff --git a/fs/richacl_xattr.c b/fs/richacl_xattr.c
+index cd9979d..dc529dc 100644
+--- a/fs/richacl_xattr.c
++++ b/fs/richacl_xattr.c
+@@ -18,7 +18,9 @@
+ #include <linux/fs.h>
+ #include <linux/slab.h>
+ #include <linux/module.h>
++#include <linux/xattr.h>
+ #include <linux/richacl_xattr.h>
++#include <uapi/linux/xattr.h>
+ 
+ MODULE_LICENSE("GPL");
+ 
+@@ -161,6 +163,82 @@ richacl_to_xattr(struct user_namespace *user_ns,
+ }
+ EXPORT_SYMBOL_GPL(richacl_to_xattr);
+ 
++static size_t
++richacl_xattr_list(struct dentry *dentry, char *list, size_t list_len,
++		   const char *name, size_t name_len, int handler_flags)
++{
++	const size_t size = sizeof(XATTR_NAME_RICHACL);
++
++	if (!IS_RICHACL(d_backing_inode(dentry)))
++		return 0;
++	if (list && size <= list_len)
++		memcpy(list, XATTR_NAME_RICHACL, size);
++	return size;
++}
++
++static int
++richacl_xattr_get(struct dentry *dentry, const char *name, void *buffer,
++		  size_t buffer_size, int handler_flags)
++{
++	struct inode *inode = d_backing_inode(dentry);
++	struct richacl *acl;
++	int error;
++
++	if (strcmp(name, "") != 0)
++		return -EINVAL;
++	if (!IS_RICHACL(inode))
++		return EOPNOTSUPP;
++	if (S_ISLNK(inode->i_mode))
++		return -EOPNOTSUPP;
++	acl = get_richacl(inode);
++	if (IS_ERR(acl))
++		return PTR_ERR(acl);
++	if (acl == NULL)
++		return -ENODATA;
++	error = richacl_to_xattr(&init_user_ns, acl, buffer, buffer_size);
++	richacl_put(acl);
++	return error;
++}
++
++static int
++richacl_xattr_set(struct dentry *dentry, const char *name,
++		  const void *value, size_t size, int flags, int handler_flags)
++{
++	struct inode *inode = d_backing_inode(dentry);
++	struct richacl *acl = NULL;
++	int ret;
++
++	if (strcmp(name, "") != 0)
++		return -EINVAL;
++	if (!IS_RICHACL(inode))
++		return -EOPNOTSUPP;
++	if (!inode->i_op->set_richacl)
++		return -EOPNOTSUPP;
++
++	if (!uid_eq(current_fsuid(), inode->i_uid) &&
++	    inode_permission(inode, MAY_CHMOD) &&
++	    !capable(CAP_FOWNER))
++		return -EPERM;
++
++	if (value) {
++		acl = richacl_from_xattr(&init_user_ns, value, size);
++		if (IS_ERR(acl))
++			return PTR_ERR(acl);
++	}
++
++	ret = inode->i_op->set_richacl(inode, acl);
++	richacl_put(acl);
++	return ret;
++}
++
++struct xattr_handler richacl_xattr_handler = {
++	.prefix = XATTR_NAME_RICHACL,
++	.list = richacl_xattr_list,
++	.get = richacl_xattr_get,
++	.set = richacl_xattr_set,
++};
++EXPORT_SYMBOL(richacl_xattr_handler);
++
+ /*
+  * Fix up the uids and gids in richacl extended attributes in place.
+  */
+diff --git a/include/linux/richacl_xattr.h b/include/linux/richacl_xattr.h
+index f84cc21..dac4e32 100644
+--- a/include/linux/richacl_xattr.h
++++ b/include/linux/richacl_xattr.h
+@@ -59,4 +59,6 @@ static inline void richacl_fix_xattr_to_user(void *value, size_t size)
+ }
+ #endif
+ 
++extern struct xattr_handler richacl_xattr_handler;
++
+ #endif /* __RICHACL_XATTR_H */
+-- 
+2.5.0
 
-I'm not sure why you would do both of these; if you're getting initial
-creds with a keytab, there is no need to muck around with ticket renewal.
-
-Anyway, gss_init_sec_context() never renews tickets, and only gets
-tickets from a keytab when a client keytab is configured (new in 1.11).
- When tickets are obtained using a client keytab, they are refreshed
-from the keytab when they are halfway to expiring, so this clock skew
-issue should not arise, so I don't think that feature is being used.
-
-It is possible that the NFS client code has its own separate logic for
-obtaining new tickets using a keytab.  If so, we need to understand how
-it works.  It's possible (though unlikely) that changing the behavior of
-gss_accept_sec_context() wouldn't be sufficient by itself.
