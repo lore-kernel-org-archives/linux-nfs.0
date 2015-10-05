@@ -1,83 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qg0-f45.google.com ([209.85.192.45]:32920 "EHLO
-	mail-qg0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751265AbbJELCy (ORCPT
+Received: from mail-qg0-f50.google.com ([209.85.192.50]:34159 "EHLO
+	mail-qg0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751474AbbJELCy (ORCPT
 	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Oct 2015 07:02:54 -0400
-Received: by qgev79 with SMTP id v79so145480769qge.0
-        for <linux-nfs@vger.kernel.org>; Mon, 05 Oct 2015 04:02:54 -0700 (PDT)
+Received: by qgez77 with SMTP id z77so146014123qge.1
+        for <linux-nfs@vger.kernel.org>; Mon, 05 Oct 2015 04:02:53 -0700 (PDT)
 From: Jeff Layton <jlayton@poochiereds.net>
 To: bfields@fieldses.org
 Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         Al Viro <viro@ZenIV.linux.org.uk>
-Subject: [PATCH v5 06/20] fsnotify: export several symbols
-Date: Mon,  5 Oct 2015 07:02:28 -0400
-Message-Id: <1444042962-6947-7-git-send-email-jeff.layton@primarydata.com>
+Subject: [PATCH v5 05/20] fs: export flush_delayed_fput
+Date: Mon,  5 Oct 2015 07:02:27 -0400
+Message-Id: <1444042962-6947-6-git-send-email-jeff.layton@primarydata.com>
 In-Reply-To: <1444042962-6947-1-git-send-email-jeff.layton@primarydata.com>
 References: <1444042962-6947-1-git-send-email-jeff.layton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-With nfsd's new open-file caching infrastructure, we need a way to know
-when unlinks occur so it can close files that it may be holding open.
-fsnotify fits the bill nicely, but the symbols aren't currently exported
-to modules. Export some of its symbols so nfsd can use this
-infrastructure.
+...and clean up the comments over it a bit. The nfsd code will need to
+be able to call back into this.
 
-Cc: Eric Paris <eparis@redhat.com>
 Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
 ---
- fs/notify/group.c | 2 ++
- fs/notify/mark.c  | 3 +++
- 2 files changed, 5 insertions(+)
+ fs/file_table.c | 22 +++++++++++++---------
+ 1 file changed, 13 insertions(+), 9 deletions(-)
 
-diff --git a/fs/notify/group.c b/fs/notify/group.c
-index d16b62cb2854..295d08800126 100644
---- a/fs/notify/group.c
-+++ b/fs/notify/group.c
-@@ -81,6 +81,7 @@ void fsnotify_put_group(struct fsnotify_group *group)
- 	if (atomic_dec_and_test(&group->refcnt))
- 		fsnotify_final_destroy_group(group);
- }
-+EXPORT_SYMBOL_GPL(fsnotify_put_group);
+diff --git a/fs/file_table.c b/fs/file_table.c
+index 95361d2b8a08..899c19687cfa 100644
+--- a/fs/file_table.c
++++ b/fs/file_table.c
+@@ -246,20 +246,24 @@ static void ____fput(struct callback_head *work)
  
- /*
-  * Create a new fsnotify_group and hold a reference for the group returned.
-@@ -109,6 +110,7 @@ struct fsnotify_group *fsnotify_alloc_group(const struct fsnotify_ops *ops)
+ static DECLARE_DELAYED_WORK(delayed_fput_work, delayed_fput);
  
- 	return group;
- }
-+EXPORT_SYMBOL_GPL(fsnotify_alloc_group);
- 
- int fsnotify_fasync(int fd, struct file *file, int on)
+-/*
+- * If kernel thread really needs to have the final fput() it has done
+- * to complete, call this.  The only user right now is the boot - we
+- * *do* need to make sure our writes to binaries on initramfs has
+- * not left us with opened struct file waiting for __fput() - execve()
+- * won't work without that.  Please, don't add more callers without
+- * very good reasons; in particular, never call that with locks
+- * held and never call that from a thread that might need to do
+- * some work on any kind of umount.
++/**
++ * flush_delayed_fput - ensure that all delayed_fput work is complete
++ *
++ * If kernel thread or task that has used fput_queue really needs to have the
++ * final fput() it has done to complete, call this. One of the main users is
++ * the boot - we *do* need to make sure our writes to binaries on initramfs has
++ * not left us with opened struct file waiting for __fput() - execve() won't
++ * work without that.
++ *
++ * Please, don't add more callers without very good reasons; in particular,
++ * never call that with locks held and never from a thread that might need to
++ * do some work on any kind of umount.
+  */
+ void flush_delayed_fput(void)
  {
-diff --git a/fs/notify/mark.c b/fs/notify/mark.c
-index fc0df4442f7b..1dda1734ac84 100644
---- a/fs/notify/mark.c
-+++ b/fs/notify/mark.c
-@@ -208,6 +208,7 @@ void fsnotify_destroy_mark(struct fsnotify_mark *mark,
- 	mutex_unlock(&group->mark_mutex);
- 	fsnotify_free_mark(mark);
+ 	flush_delayed_work(&delayed_fput_work);
  }
-+EXPORT_SYMBOL_GPL(fsnotify_destroy_mark);
++EXPORT_SYMBOL(flush_delayed_fput);
  
- void fsnotify_destroy_marks(struct hlist_head *head, spinlock_t *lock)
- {
-@@ -402,6 +403,7 @@ int fsnotify_add_mark(struct fsnotify_mark *mark, struct fsnotify_group *group,
- 	mutex_unlock(&group->mark_mutex);
- 	return ret;
- }
-+EXPORT_SYMBOL_GPL(fsnotify_add_mark);
- 
- /*
-  * Given a list of marks, find the mark associated with given group. If found
-@@ -492,6 +494,7 @@ void fsnotify_init_mark(struct fsnotify_mark *mark,
- 	atomic_set(&mark->refcnt, 1);
- 	mark->free_mark = free_mark;
- }
-+EXPORT_SYMBOL_GPL(fsnotify_init_mark);
- 
- static int fsnotify_mark_destroy(void *ignored)
- {
+ /**
+  * fput - put a struct file reference
 -- 
 2.4.3
 
