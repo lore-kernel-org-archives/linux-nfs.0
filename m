@@ -1,324 +1,495 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qg0-f44.google.com ([209.85.192.44]:35778 "EHLO
-	mail-qg0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750833AbbJELDH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Oct 2015 07:03:07 -0400
-Received: by qgt47 with SMTP id 47so145709689qgt.2
-        for <linux-nfs@vger.kernel.org>; Mon, 05 Oct 2015 04:03:06 -0700 (PDT)
+Received: from mail-qg0-f53.google.com ([209.85.192.53]:33075 "EHLO
+	mail-qg0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751779AbbJELDG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Oct 2015 07:03:06 -0400
+Received: by qgev79 with SMTP id v79so145484525qge.0
+        for <linux-nfs@vger.kernel.org>; Mon, 05 Oct 2015 04:03:05 -0700 (PDT)
 From: Jeff Layton <jlayton@poochiereds.net>
 To: bfields@fieldses.org
 Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         Al Viro <viro@ZenIV.linux.org.uk>
-Subject: [PATCH v5 19/20] nfsd: hook up nfs4_preprocess_stateid_op to the nfsd_file cache
-Date: Mon,  5 Oct 2015 07:02:41 -0400
-Message-Id: <1444042962-6947-20-git-send-email-jeff.layton@primarydata.com>
+Subject: [PATCH v5 18/20] nfsd: convert fi_deleg_file and ls_file fields to nfsd_file
+Date: Mon,  5 Oct 2015 07:02:40 -0400
+Message-Id: <1444042962-6947-19-git-send-email-jeff.layton@primarydata.com>
 In-Reply-To: <1444042962-6947-1-git-send-email-jeff.layton@primarydata.com>
 References: <1444042962-6947-1-git-send-email-jeff.layton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Have nfs4_preprocess_stateid_op pass back a nfsd_file instead of a filp.
-Since we now presume that the struct file will be persistent in most
-cases, we can stop fiddling with the raparms in the read code. This
-also means that we don't really care about the rd_tmp_file field
-anymore.
+Have them keep an nfsd_file reference instead of a struct file.
 
 Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
 ---
- fs/nfsd/nfs4proc.c  | 32 ++++++++++++++++----------------
- fs/nfsd/nfs4state.c | 24 ++++++++++--------------
- fs/nfsd/nfs4xdr.c   | 16 +++++-----------
- fs/nfsd/state.h     |  2 +-
- fs/nfsd/xdr4.h      | 15 +++++++--------
- 5 files changed, 39 insertions(+), 50 deletions(-)
+ fs/nfsd/nfs4layouts.c |  12 ++---
+ fs/nfsd/nfs4state.c   | 131 ++++++++++++++++++++++++++------------------------
+ fs/nfsd/state.h       |   6 +--
+ 3 files changed, 76 insertions(+), 73 deletions(-)
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index a9f096c7e99f..7e21763a35f2 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -758,7 +758,7 @@ nfsd4_read(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- {
- 	__be32 status;
+diff --git a/fs/nfsd/nfs4layouts.c b/fs/nfsd/nfs4layouts.c
+index 9ffef06b30d5..1ee1881cf8d0 100644
+--- a/fs/nfsd/nfs4layouts.c
++++ b/fs/nfsd/nfs4layouts.c
+@@ -144,8 +144,8 @@ nfsd4_free_layout_stateid(struct nfs4_stid *stid)
+ 	list_del_init(&ls->ls_perfile);
+ 	spin_unlock(&fp->fi_lock);
  
--	read->rd_filp = NULL;
-+	read->rd_nf = NULL;
- 	if (read->rd_offset >= OFFSET_MAX)
- 		return nfserr_inval;
+-	vfs_setlease(ls->ls_file, F_UNLCK, NULL, (void **)&ls);
+-	fput(ls->ls_file);
++	vfs_setlease(ls->ls_file->nf_file, F_UNLCK, NULL, (void **)&ls);
++	nfsd_file_put(ls->ls_file);
  
-@@ -775,7 +775,7 @@ nfsd4_read(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	if (ls->ls_recalled)
+ 		atomic_dec(&ls->ls_stid.sc_file->fi_lo_recalls);
+@@ -169,7 +169,7 @@ nfsd4_layout_setlease(struct nfs4_layout_stateid *ls)
+ 	fl->fl_end = OFFSET_MAX;
+ 	fl->fl_owner = ls;
+ 	fl->fl_pid = current->tgid;
+-	fl->fl_file = ls->ls_file;
++	fl->fl_file = ls->ls_file->nf_file;
  
- 	/* check stateid */
- 	status = nfs4_preprocess_stateid_op(rqstp, cstate, &read->rd_stateid,
--			RD_STATE, &read->rd_filp, &read->rd_tmp_file);
-+			RD_STATE, &read->rd_nf);
+ 	status = vfs_setlease(fl->fl_file, fl->fl_type, &fl, NULL);
  	if (status) {
- 		dprintk("NFSD: nfsd4_read: couldn't process stateid!\n");
- 		goto out;
-@@ -921,7 +921,7 @@ nfsd4_setattr(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+@@ -207,13 +207,13 @@ nfsd4_alloc_layout_stateid(struct nfsd4_compound_state *cstate,
+ 			NFSPROC4_CLNT_CB_LAYOUT);
  
- 	if (setattr->sa_iattr.ia_valid & ATTR_SIZE) {
- 		status = nfs4_preprocess_stateid_op(rqstp, cstate,
--			&setattr->sa_stateid, WR_STATE, NULL, NULL);
-+			&setattr->sa_stateid, WR_STATE, NULL);
- 		if (status) {
- 			dprintk("NFSD: nfsd4_setattr: couldn't process stateid!\n");
- 			return status;
-@@ -977,7 +977,7 @@ nfsd4_write(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	    struct nfsd4_write *write)
- {
- 	stateid_t *stateid = &write->wr_stateid;
--	struct file *filp = NULL;
-+	struct nfsd_file *nf = NULL;
- 	__be32 status = nfs_ok;
- 	unsigned long cnt;
- 	int nvecs;
-@@ -986,7 +986,7 @@ nfsd4_write(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		return nfserr_inval;
+ 	if (parent->sc_type == NFS4_DELEG_STID)
+-		ls->ls_file = get_file(fp->fi_deleg_file);
++		ls->ls_file = nfsd_file_get(fp->fi_deleg_file);
+ 	else
+ 		ls->ls_file = find_any_file(fp);
+ 	BUG_ON(!ls->ls_file);
  
- 	status = nfs4_preprocess_stateid_op(rqstp, cstate, stateid, WR_STATE,
--			&filp, NULL);
-+			&nf);
- 	if (status) {
- 		dprintk("NFSD: nfsd4_write: couldn't process stateid!\n");
- 		return status;
-@@ -999,10 +999,10 @@ nfsd4_write(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	nvecs = fill_in_write_vector(rqstp->rq_vec, write);
- 	WARN_ON_ONCE(nvecs > ARRAY_SIZE(rqstp->rq_vec));
+ 	if (nfsd4_layout_setlease(ls)) {
+-		fput(ls->ls_file);
++		nfsd_file_put(ls->ls_file);
+ 		put_nfs4_file(fp);
+ 		kmem_cache_free(nfs4_layout_stateid_cache, ls);
+ 		return NULL;
+@@ -598,7 +598,7 @@ nfsd4_cb_layout_fail(struct nfs4_layout_stateid *ls)
  
--	status = nfsd_vfs_write(rqstp, &cstate->current_fh, filp,
-+	status = nfsd_vfs_write(rqstp, &cstate->current_fh, nf->nf_file,
- 				write->wr_offset, rqstp->rq_vec, nvecs, &cnt,
- 				&write->wr_how_written);
--	fput(filp);
-+	nfsd_file_put(nf);
+ 	argv[0] = "/sbin/nfsd-recall-failed";
+ 	argv[1] = addr_str;
+-	argv[2] = ls->ls_file->f_path.mnt->mnt_sb->s_id;
++	argv[2] = ls->ls_file->nf_file->f_path.mnt->mnt_sb->s_id;
+ 	argv[3] = NULL;
  
- 	write->wr_bytes_written = cnt;
- 
-@@ -1014,21 +1014,21 @@ nfsd4_fallocate(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		struct nfsd4_fallocate *fallocate, int flags)
- {
- 	__be32 status = nfserr_notsupp;
--	struct file *file;
-+	struct nfsd_file *nf;
- 
- 	status = nfs4_preprocess_stateid_op(rqstp, cstate,
- 					    &fallocate->falloc_stateid,
--					    WR_STATE, &file, NULL);
-+					    WR_STATE, &nf);
- 	if (status != nfs_ok) {
- 		dprintk("NFSD: nfsd4_fallocate: couldn't process stateid!\n");
- 		return status;
- 	}
- 
--	status = nfsd4_vfs_fallocate(rqstp, &cstate->current_fh, file,
-+	status = nfsd4_vfs_fallocate(rqstp, &cstate->current_fh, nf->nf_file,
- 				     fallocate->falloc_offset,
- 				     fallocate->falloc_length,
- 				     flags);
--	fput(file);
-+	nfsd_file_put(nf);
- 	return status;
- }
- 
-@@ -1053,11 +1053,11 @@ nfsd4_seek(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- {
- 	int whence;
- 	__be32 status;
--	struct file *file;
-+	struct nfsd_file *nf;
- 
- 	status = nfs4_preprocess_stateid_op(rqstp, cstate,
- 					    &seek->seek_stateid,
--					    RD_STATE, &file, NULL);
-+					    RD_STATE, &nf);
- 	if (status) {
- 		dprintk("NFSD: nfsd4_seek: couldn't process stateid!\n");
- 		return status;
-@@ -1079,14 +1079,14 @@ nfsd4_seek(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	 * Note:  This call does change file->f_pos, but nothing in NFSD
- 	 *        should ever file->f_pos.
- 	 */
--	seek->seek_pos = vfs_llseek(file, seek->seek_offset, whence);
-+	seek->seek_pos = vfs_llseek(nf->nf_file, seek->seek_offset, whence);
- 	if (seek->seek_pos < 0)
- 		status = nfserrno(seek->seek_pos);
--	else if (seek->seek_pos >= i_size_read(file_inode(file)))
-+	else if (seek->seek_pos >= i_size_read(file_inode(nf->nf_file)))
- 		seek->seek_eof = true;
- 
- out:
--	fput(file);
-+	nfsd_file_put(nf);
- 	return status;
- }
- 
+ 	error = call_usermodehelper(argv[0], argv, envp, UMH_WAIT_PROC);
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 4d58a6db6e41..477fe34567d0 100644
+index 4348af408ccb..4d58a6db6e41 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -4658,7 +4658,7 @@ nfs4_check_olstateid(struct svc_fh *fhp, struct nfs4_ol_stateid *ols, int flags)
- 
- static __be32
- nfs4_check_file(struct svc_rqst *rqstp, struct svc_fh *fhp, struct nfs4_stid *s,
--		struct file **filpp, bool *tmp_file, int flags)
-+		struct nfsd_file **nfp, int flags)
- {
- 	int acc = (flags & RD_STATE) ? NFSD_MAY_READ : NFSD_MAY_WRITE;
- 	struct nfsd_file *nf;
-@@ -4668,20 +4668,18 @@ nfs4_check_file(struct svc_rqst *rqstp, struct svc_fh *fhp, struct nfs4_stid *s,
- 	if (nf) {
- 		status = nfsd_permission(rqstp, fhp->fh_export, fhp->fh_dentry,
- 				acc | NFSD_MAY_OWNER_OVERRIDE);
--		if (status)
-+		if (status) {
-+			nfsd_file_put(nf);
- 			goto out;
-+		}
- 	} else {
- 		status = nfsd_file_acquire(rqstp, fhp, acc, &nf);
- 		if (status)
- 			return status;
--
--		if (tmp_file)
--			*tmp_file = true;
+@@ -289,18 +289,18 @@ put_nfs4_file(struct nfs4_file *fi)
  	}
+ }
  
--	*filpp = get_file(nf->nf_file);
-+	*nfp = nf;
- out:
--	nfsd_file_put(nf);
+-static struct file *
++static struct nfsd_file *
+ __nfs4_get_fd(struct nfs4_file *f, int oflag)
+ {
+ 	if (f->fi_fds[oflag])
+-		return get_file(f->fi_fds[oflag]->nf_file);
++		return nfsd_file_get(f->fi_fds[oflag]);
+ 	return NULL;
+ }
+ 
+-static struct file *
++static struct nfsd_file *
+ find_writeable_file_locked(struct nfs4_file *f)
+ {
+-	struct file *ret;
++	struct nfsd_file *ret;
+ 
+ 	lockdep_assert_held(&f->fi_lock);
+ 
+@@ -310,10 +310,10 @@ find_writeable_file_locked(struct nfs4_file *f)
+ 	return ret;
+ }
+ 
+-static struct file *
++static struct nfsd_file *
+ find_writeable_file(struct nfs4_file *f)
+ {
+-	struct file *ret;
++	struct nfsd_file *ret;
+ 
+ 	spin_lock(&f->fi_lock);
+ 	ret = find_writeable_file_locked(f);
+@@ -322,9 +322,10 @@ find_writeable_file(struct nfs4_file *f)
+ 	return ret;
+ }
+ 
+-static struct file *find_readable_file_locked(struct nfs4_file *f)
++static struct nfsd_file *
++find_readable_file_locked(struct nfs4_file *f)
+ {
+-	struct file *ret;
++	struct nfsd_file *ret;
+ 
+ 	lockdep_assert_held(&f->fi_lock);
+ 
+@@ -334,10 +335,10 @@ static struct file *find_readable_file_locked(struct nfs4_file *f)
+ 	return ret;
+ }
+ 
+-static struct file *
++static struct nfsd_file *
+ find_readable_file(struct nfs4_file *f)
+ {
+-	struct file *ret;
++	struct nfsd_file *ret;
+ 
+ 	spin_lock(&f->fi_lock);
+ 	ret = find_readable_file_locked(f);
+@@ -346,10 +347,10 @@ find_readable_file(struct nfs4_file *f)
+ 	return ret;
+ }
+ 
+-struct file *
++struct nfsd_file *
+ find_any_file(struct nfs4_file *f)
+ {
+-	struct file *ret;
++	struct nfsd_file *ret;
+ 
+ 	spin_lock(&f->fi_lock);
+ 	ret = __nfs4_get_fd(f, O_RDWR);
+@@ -761,16 +762,16 @@ nfs4_inc_and_copy_stateid(stateid_t *dst, struct nfs4_stid *stid)
+ 
+ static void nfs4_put_deleg_lease(struct nfs4_file *fp)
+ {
+-	struct file *filp = NULL;
++	struct nfsd_file *nf = NULL;
+ 
+ 	spin_lock(&fp->fi_lock);
+ 	if (fp->fi_deleg_file && --fp->fi_delegees == 0)
+-		swap(filp, fp->fi_deleg_file);
++		swap(nf, fp->fi_deleg_file);
+ 	spin_unlock(&fp->fi_lock);
+ 
+-	if (filp) {
+-		vfs_setlease(filp, F_UNLCK, NULL, (void **)&fp);
+-		fput(filp);
++	if (nf) {
++		vfs_setlease(nf->nf_file, F_UNLCK, NULL, (void **)&fp);
++		nfsd_file_put(nf);
+ 	}
+ }
+ 
+@@ -1062,11 +1063,14 @@ static void nfs4_free_lock_stateid(struct nfs4_stid *stid)
+ {
+ 	struct nfs4_ol_stateid *stp = openlockstateid(stid);
+ 	struct nfs4_lockowner *lo = lockowner(stp->st_stateowner);
+-	struct file *file;
++	struct nfsd_file *nf;
+ 
+-	file = find_any_file(stp->st_stid.sc_file);
+-	if (file)
+-		filp_close(file, (fl_owner_t)lo);
++	nf = find_any_file(stp->st_stid.sc_file);
++	if (nf) {
++		get_file(nf->nf_file);
++		filp_close(nf->nf_file, (fl_owner_t)lo);
++		nfsd_file_put(nf);
++	}
+ 	nfs4_free_ol_stateid(stid);
+ }
+ 
+@@ -3964,21 +3968,21 @@ static int nfs4_setlease(struct nfs4_delegation *dp)
+ {
+ 	struct nfs4_file *fp = dp->dl_stid.sc_file;
+ 	struct file_lock *fl;
+-	struct file *filp;
++	struct nfsd_file *nf;
+ 	int status = 0;
+ 
+ 	fl = nfs4_alloc_init_lease(fp, NFS4_OPEN_DELEGATE_READ);
+ 	if (!fl)
+ 		return -ENOMEM;
+-	filp = find_readable_file(fp);
+-	if (!filp) {
++	nf = find_readable_file(fp);
++	if (!nf) {
+ 		/* We should always have a readable file here */
+ 		WARN_ON_ONCE(1);
+ 		locks_free_lock(fl);
+ 		return -EBADF;
+ 	}
+-	fl->fl_file = filp;
+-	status = vfs_setlease(filp, fl->fl_type, &fl, NULL);
++	fl->fl_file = nf->nf_file;
++	status = vfs_setlease(nf->nf_file, fl->fl_type, &fl, NULL);
+ 	if (fl)
+ 		locks_free_lock(fl);
+ 	if (status)
+@@ -3996,7 +4000,7 @@ static int nfs4_setlease(struct nfs4_delegation *dp)
+ 		hash_delegation_locked(dp, fp);
+ 		goto out_unlock;
+ 	}
+-	fp->fi_deleg_file = filp;
++	fp->fi_deleg_file = nf;
+ 	fp->fi_delegees = 1;
+ 	hash_delegation_locked(dp, fp);
+ 	spin_unlock(&fp->fi_lock);
+@@ -4006,7 +4010,7 @@ out_unlock:
+ 	spin_unlock(&fp->fi_lock);
+ 	spin_unlock(&state_lock);
+ out_fput:
+-	fput(filp);
++	nfsd_file_put(nf);
  	return status;
  }
  
-@@ -4691,7 +4689,7 @@ out:
- __be32
- nfs4_preprocess_stateid_op(struct svc_rqst *rqstp,
- 		struct nfsd4_compound_state *cstate, stateid_t *stateid,
--		int flags, struct file **filpp, bool *tmp_file)
-+		int flags, struct nfsd_file **nfp)
+@@ -4618,7 +4622,7 @@ nfsd4_lookup_stateid(struct nfsd4_compound_state *cstate,
+ 	return nfs_ok;
+ }
+ 
+-static struct file *
++static struct nfsd_file *
+ nfs4_find_file(struct nfs4_stid *s, int flags)
  {
- 	struct svc_fh *fhp = &cstate->current_fh;
- 	struct inode *ino = d_inode(fhp->fh_dentry);
-@@ -4700,10 +4698,8 @@ nfs4_preprocess_stateid_op(struct svc_rqst *rqstp,
- 	struct nfs4_stid *s = NULL;
+ 	if (!s)
+@@ -4628,7 +4632,7 @@ nfs4_find_file(struct nfs4_stid *s, int flags)
+ 	case NFS4_DELEG_STID:
+ 		if (WARN_ON_ONCE(!s->sc_file->fi_deleg_file))
+ 			return NULL;
+-		return get_file(s->sc_file->fi_deleg_file);
++		return nfsd_file_get(s->sc_file->fi_deleg_file);
+ 	case NFS4_OPEN_STID:
+ 	case NFS4_LOCK_STID:
+ 		if (flags & RD_STATE)
+@@ -4657,21 +4661,17 @@ nfs4_check_file(struct svc_rqst *rqstp, struct svc_fh *fhp, struct nfs4_stid *s,
+ 		struct file **filpp, bool *tmp_file, int flags)
+ {
+ 	int acc = (flags & RD_STATE) ? NFSD_MAY_READ : NFSD_MAY_WRITE;
+-	struct file *file;
++	struct nfsd_file *nf;
  	__be32 status;
  
--	if (filpp)
--		*filpp = NULL;
--	if (tmp_file)
--		*tmp_file = false;
-+	if (nfp)
-+		*nfp = NULL;
+-	file = nfs4_find_file(s, flags);
+-	if (file) {
++	nf = nfs4_find_file(s, flags);
++	if (nf) {
+ 		status = nfsd_permission(rqstp, fhp->fh_export, fhp->fh_dentry,
+ 				acc | NFSD_MAY_OWNER_OVERRIDE);
+-		if (status) {
+-			fput(file);
+-			return status;
+-		}
+-
+-		*filpp = file;
++		if (status)
++			goto out;
+ 	} else {
+-		status = nfsd_open(rqstp, fhp, S_IFREG, acc, filpp);
++		status = nfsd_file_acquire(rqstp, fhp, acc, &nf);
+ 		if (status)
+ 			return status;
  
- 	if (grace_disallows_io(net, ino))
- 		return nfserr_grace;
-@@ -4740,8 +4736,8 @@ nfs4_preprocess_stateid_op(struct svc_rqst *rqstp,
- 	status = nfs4_check_fh(fhp, s);
+@@ -4679,7 +4679,10 @@ nfs4_check_file(struct svc_rqst *rqstp, struct svc_fh *fhp, struct nfs4_stid *s,
+ 			*tmp_file = true;
+ 	}
  
- done:
--	if (!status && filpp)
--		status = nfs4_check_file(rqstp, fhp, s, filpp, tmp_file, flags);
-+	if (status == nfs_ok && nfp)
-+		status = nfs4_check_file(rqstp, fhp, s, nfp, flags);
- out:
- 	if (s)
- 		nfs4_put_stid(s);
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 325521ce389a..92e5e8f884d0 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -49,6 +49,7 @@
- #include "cache.h"
- #include "netns.h"
- #include "pnfs.h"
-+#include "filecache.h"
+-	return 0;
++	*filpp = get_file(nf->nf_file);
++out:
++	nfsd_file_put(nf);
++	return status;
+ }
  
- #ifdef CONFIG_NFSD_V4_SECURITY_LABEL
- #include <linux/security.h>
-@@ -3460,14 +3461,14 @@ nfsd4_encode_read(struct nfsd4_compoundres *resp, __be32 nfserr,
- {
- 	unsigned long maxcount;
- 	struct xdr_stream *xdr = &resp->xdr;
--	struct file *file = read->rd_filp;
-+	struct file *file;
- 	int starting_len = xdr->buf->len;
--	struct raparms *ra = NULL;
- 	__be32 *p;
- 
- 	if (nfserr)
+ /*
+@@ -5413,7 +5416,7 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	struct nfs4_ol_stateid *lock_stp = NULL;
+ 	struct nfs4_ol_stateid *open_stp = NULL;
+ 	struct nfs4_file *fp;
+-	struct file *filp = NULL;
++	struct nfsd_file *nf = NULL;
+ 	struct file_lock *file_lock = NULL;
+ 	struct file_lock *conflock = NULL;
+ 	__be32 status = 0;
+@@ -5498,8 +5501,8 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		case NFS4_READ_LT:
+ 		case NFS4_READW_LT:
+ 			spin_lock(&fp->fi_lock);
+-			filp = find_readable_file_locked(fp);
+-			if (filp)
++			nf = find_readable_file_locked(fp);
++			if (nf)
+ 				get_lock_access(lock_stp, NFS4_SHARE_ACCESS_READ);
+ 			spin_unlock(&fp->fi_lock);
+ 			file_lock->fl_type = F_RDLCK;
+@@ -5507,8 +5510,8 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		case NFS4_WRITE_LT:
+ 		case NFS4_WRITEW_LT:
+ 			spin_lock(&fp->fi_lock);
+-			filp = find_writeable_file_locked(fp);
+-			if (filp)
++			nf = find_writeable_file_locked(fp);
++			if (nf)
+ 				get_lock_access(lock_stp, NFS4_SHARE_ACCESS_WRITE);
+ 			spin_unlock(&fp->fi_lock);
+ 			file_lock->fl_type = F_WRLCK;
+@@ -5517,14 +5520,14 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 			status = nfserr_inval;
  		goto out;
+ 	}
+-	if (!filp) {
++	if (!nf) {
+ 		status = nfserr_openmode;
+ 		goto out;
+ 	}
  
-+	file = read->rd_nf->nf_file;
- 	p = xdr_reserve_space(xdr, 8); /* eof flag and byte count */
- 	if (!p) {
- 		WARN_ON_ONCE(test_bit(RQ_SPLICE_OK, &resp->rqstp->rq_flags));
-@@ -3487,24 +3488,17 @@ nfsd4_encode_read(struct nfsd4_compoundres *resp, __be32 nfserr,
- 			 (xdr->buf->buflen - xdr->buf->len));
- 	maxcount = min_t(unsigned long, maxcount, read->rd_length);
+ 	file_lock->fl_owner = (fl_owner_t)lockowner(nfs4_get_stateowner(&lock_sop->lo_owner));
+ 	file_lock->fl_pid = current->tgid;
+-	file_lock->fl_file = filp;
++	file_lock->fl_file = nf->nf_file;
+ 	file_lock->fl_flags = FL_POSIX;
+ 	file_lock->fl_lmops = &nfsd_posix_mng_ops;
+ 	file_lock->fl_start = lock->lk_offset;
+@@ -5538,7 +5541,7 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		goto out;
+ 	}
  
--	if (read->rd_tmp_file)
--		ra = nfsd_init_raparms(file);
--
- 	if (file->f_op->splice_read &&
- 	    test_bit(RQ_SPLICE_OK, &resp->rqstp->rq_flags))
- 		nfserr = nfsd4_encode_splice_read(resp, read, file, maxcount);
- 	else
- 		nfserr = nfsd4_encode_readv(resp, read, file, maxcount);
- 
--	if (ra)
--		nfsd_put_raparams(file, ra);
--
- 	if (nfserr)
- 		xdr_truncate_encode(xdr, starting_len);
--
+-	err = vfs_lock_file(filp, F_SETLK, file_lock, conflock);
++	err = vfs_lock_file(nf->nf_file, F_SETLK, file_lock, conflock);
+ 	switch (-err) {
+ 	case 0: /* success! */
+ 		nfs4_inc_and_copy_stateid(&lock->lk_resp_stateid, &lock_stp->st_stid);
+@@ -5558,8 +5561,8 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		break;
+ 	}
  out:
--	if (file)
--		fput(file);
-+	if (read->rd_nf)
-+		nfsd_file_put(read->rd_nf);
- 	return nfserr;
+-	if (filp)
+-		fput(filp);
++	if (nf)
++		nfsd_file_put(nf);
+ 	if (lock_stp) {
+ 		/* Bump seqid manually if the 4.0 replay owner is openowner */
+ 		if (cstate->replay_owner &&
+@@ -5686,7 +5689,7 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	    struct nfsd4_locku *locku)
+ {
+ 	struct nfs4_ol_stateid *stp;
+-	struct file *filp = NULL;
++	struct nfsd_file *nf;
+ 	struct file_lock *file_lock = NULL;
+ 	__be32 status;
+ 	int err;
+@@ -5704,8 +5707,8 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 					&stp, nn);
+ 	if (status)
+ 		goto out;
+-	filp = find_any_file(stp->st_stid.sc_file);
+-	if (!filp) {
++	nf = find_any_file(stp->st_stid.sc_file);
++	if (!nf) {
+ 		status = nfserr_lock_range;
+ 		goto put_stateid;
+ 	}
+@@ -5713,13 +5716,13 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	if (!file_lock) {
+ 		dprintk("NFSD: %s: unable to allocate lock!\n", __func__);
+ 		status = nfserr_jukebox;
+-		goto fput;
++		goto put_file;
+ 	}
+ 
+ 	file_lock->fl_type = F_UNLCK;
+ 	file_lock->fl_owner = (fl_owner_t)lockowner(nfs4_get_stateowner(stp->st_stateowner));
+ 	file_lock->fl_pid = current->tgid;
+-	file_lock->fl_file = filp;
++	file_lock->fl_file = nf->nf_file;
+ 	file_lock->fl_flags = FL_POSIX;
+ 	file_lock->fl_lmops = &nfsd_posix_mng_ops;
+ 	file_lock->fl_start = locku->lu_offset;
+@@ -5728,14 +5731,14 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 						locku->lu_length);
+ 	nfs4_transform_lock_offset(file_lock);
+ 
+-	err = vfs_lock_file(filp, F_SETLK, file_lock, NULL);
++	err = vfs_lock_file(nf->nf_file, F_SETLK, file_lock, NULL);
+ 	if (err) {
+ 		dprintk("NFSD: nfs4_locku: vfs_lock_file failed!\n");
+ 		goto out_nfserr;
+ 	}
+ 	nfs4_inc_and_copy_stateid(&locku->lu_stateid, &stp->st_stid);
+-fput:
+-	fput(filp);
++put_file:
++	nfsd_file_put(nf);
+ put_stateid:
+ 	up_write(&stp->st_rwsem);
+ 	nfs4_put_stid(&stp->st_stid);
+@@ -5747,7 +5750,7 @@ out:
+ 
+ out_nfserr:
+ 	status = nfserrno(err);
+-	goto fput;
++	goto put_file;
+ }
+ 
+ /*
+@@ -5760,17 +5763,17 @@ check_for_locks(struct nfs4_file *fp, struct nfs4_lockowner *lowner)
+ {
+ 	struct file_lock *fl;
+ 	int status = false;
+-	struct file *filp = find_any_file(fp);
++	struct nfsd_file *nf = find_any_file(fp);
+ 	struct inode *inode;
+ 	struct file_lock_context *flctx;
+ 
+-	if (!filp) {
++	if (!nf) {
+ 		/* Any valid lock stateid should have some sort of access */
+ 		WARN_ON_ONCE(1);
+ 		return status;
+ 	}
+ 
+-	inode = file_inode(filp);
++	inode = file_inode(nf->nf_file);
+ 	flctx = inode->i_flctx;
+ 
+ 	if (flctx && !list_empty_careful(&flctx->flc_posix)) {
+@@ -5783,7 +5786,7 @@ check_for_locks(struct nfs4_file *fp, struct nfs4_lockowner *lowner)
+ 		}
+ 		spin_unlock(&flctx->flc_lock);
+ 	}
+-	fput(filp);
++	nfsd_file_put(nf);
+ 	return status;
  }
  
 diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index ee23de10663c..732fbb3b5ef1 100644
+index 473faa436e07..ee23de10663c 100644
 --- a/fs/nfsd/state.h
 +++ b/fs/nfsd/state.h
-@@ -579,7 +579,7 @@ struct nfsd_net;
+@@ -501,7 +501,7 @@ struct nfs4_file {
+ 	 */
+ 	atomic_t		fi_access[2];
+ 	u32			fi_share_deny;
+-	struct file		*fi_deleg_file;
++	struct nfsd_file	*fi_deleg_file;
+ 	int			fi_delegees;
+ 	struct knfsd_fh		fi_fhandle;
+ 	bool			fi_had_conflict;
+@@ -550,7 +550,7 @@ struct nfs4_layout_stateid {
+ 	spinlock_t			ls_lock;
+ 	struct list_head		ls_layouts;
+ 	u32				ls_layout_type;
+-	struct file			*ls_file;
++	struct nfsd_file		*ls_file;
+ 	struct nfsd4_callback		ls_recall;
+ 	stateid_t			ls_recall_sid;
+ 	bool				ls_recalled;
+@@ -615,7 +615,7 @@ static inline void get_nfs4_file(struct nfs4_file *fi)
+ {
+ 	atomic_inc(&fi->fi_ref);
+ }
+-struct file *find_any_file(struct nfs4_file *f);
++struct nfsd_file *find_any_file(struct nfs4_file *f);
  
- extern __be32 nfs4_preprocess_stateid_op(struct svc_rqst *rqstp,
- 		struct nfsd4_compound_state *cstate, stateid_t *stateid,
--		int flags, struct file **filp, bool *tmp_file);
-+		int flags, struct nfsd_file **filp);
- __be32 nfsd4_lookup_stateid(struct nfsd4_compound_state *cstate,
- 		     stateid_t *stateid, unsigned char typemask,
- 		     struct nfs4_stid **s, struct nfsd_net *nn);
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index ce7362c88b48..c167d7a5b0e6 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -268,15 +268,14 @@ struct nfsd4_open_downgrade {
- 
- 
- struct nfsd4_read {
--	stateid_t	rd_stateid;         /* request */
--	u64		rd_offset;          /* request */
--	u32		rd_length;          /* request */
--	int		rd_vlen;
--	struct file     *rd_filp;
--	bool		rd_tmp_file;
-+	stateid_t		rd_stateid;         /* request */
-+	u64			rd_offset;          /* request */
-+	u32			rd_length;          /* request */
-+	int			rd_vlen;
-+	struct nfsd_file	*rd_nf;
- 	
--	struct svc_rqst *rd_rqstp;          /* response */
--	struct svc_fh * rd_fhp;             /* response */
-+	struct svc_rqst		*rd_rqstp;          /* response */
-+	struct svc_fh		*rd_fhp;             /* response */
- };
- 
- struct nfsd4_readdir {
+ /* grace period management */
+ void nfsd4_end_grace(struct nfsd_net *nn);
 -- 
 2.4.3
 
