@@ -1,49 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:55570 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750942AbbJELuX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 5 Oct 2015 07:50:23 -0400
-Subject: Re: [systemd-devel] [PATCH] gssd: Improve scalability by not waiting
- for child processes
-To: Florian Weimer <fw@deneb.enyo.de>
-References: <1443043250-25703-1-git-send-email-steved@redhat.com>
- <874mi7yrio.fsf@mid.deneb.enyo.de>
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
-        Systemd Mailing List <systemd-devel@lists.freedesktop.org>
-From: Steve Dickson <SteveD@redhat.com>
-Message-ID: <561263FD.7030805@RedHat.com>
-Date: Mon, 5 Oct 2015 07:50:21 -0400
+Received: from mx0b-00082601.pphosted.com ([67.231.153.30]:2366 "EHLO
+	mx0b-00082601.pphosted.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751530AbbJEOh3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Oct 2015 10:37:29 -0400
+Date: Mon, 5 Oct 2015 10:32:46 -0400
+From: Chris Mason <clm@fb.com>
+To: Neil Brown <neilb@suse.de>
+CC: <dsterba@suse.cz>, Josef Bacik <jbacik@fb.com>, Jan Kara <jack@suse.cz>,
+        Ryusuke Konishi <konishi.ryusuke@lab.ntt.co.jp>,
+        <linux-fsdevel@vger.kernel.org>, <linux-nfs@vger.kernel.org>,
+        <linux-nilfs@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
+        <linux-btrfs@vger.kernel.org>
+Subject: Re: [PATCH 1/3] BTRFS: support NFSv2 export
+Message-ID: <20151005143246.GW25218@ret.masoncoding.com>
+References: <20150508001142.31129.7604.stgit@notabene.brown>
+ <20150508001623.31129.91695.stgit@notabene.brown>
+ <20150511081309.GI23255@suse.cz>
+ <87r3lowpax.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-In-Reply-To: <874mi7yrio.fsf@mid.deneb.enyo.de>
-Content-Type: text/plain; charset=windows-1252
+Content-Type: text/plain; charset="us-ascii"
+In-Reply-To: <87r3lowpax.fsf@notabene.neil.brown.name>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-On 10/04/2015 04:19 AM, Florian Weimer wrote:
-> * Steve Dickson:
+On Thu, Sep 24, 2015 at 11:59:02AM +1000, Neil Brown wrote:
+> David Sterba <dsterba@suse.cz> writes:
 > 
->> +static void
->> +sig_child(int signal)
->> +{
->> +	int err;
->> +	pid_t pid;
->> +
->> +	/* Parent: just wait on child to exit and return */
->> +	do {
->> +		pid = wait(&err);
->> +	} while(pid == -1 && errno != -ECHILD);
->> +
->> +	if (WIFSIGNALED(err))
->> +		printerr(0, "WARNING: forked child was killed"
->> +			 "with signal %d\n", WTERMSIG(err));
->> +}
+> > On Fri, May 08, 2015 at 10:16:23AM +1000, NeilBrown wrote:
+> >> The "fh_len" passed to ->fh_to_* is not guaranteed to be that same as
+> >> that returned by encode_fh - it may be larger.
+> >> 
+> >> With NFSv2, the filehandle is fixed length, so it may appear longer
+> >> than expected and be zero-padded.
+> >> 
+> >> So we must test that fh_len is at least some value, not exactly equal
+> >> to it.
+> >> 
+> >> Signed-off-by: NeilBrown <neilb@suse.de>
+> >
+> > Acked-by: David Sterba <dsterba@suse.cz>
 > 
-> prinerr calls vfprintf or vsyslog.  Neither is safe to use in signal
-> handlers, so you need to log this message in some other way.
-Good point... but this patch was self NAK-ed due to it leaving
-zombie processes during my testing.
+> Thanks.  However I just checked mainline and this still hasn't been
+> applied.
+> Should I resend it to someone?  Who?
 
-steved.
+
+Sorry Neil, I thought you were pushing these after it was ack'd.  I'll
+put it in my pull this week.
+
+-chris
 
