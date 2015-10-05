@@ -1,65 +1,64 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:32618 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751125AbbJEPEb convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Oct 2015 11:04:31 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2104\))
-Subject: Re: [PATCH] svcrdma: Fix NFS server crash triggered by 1MB NFS WRITE
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <5612912B.7080105@dev.mellanox.co.il>
-Date: Mon, 5 Oct 2015 11:04:26 -0400
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-rdma@vger.kernel.org
-Message-Id: <F70E8A77-C1CB-4DC5-ABDA-FEA7E6F534C2@oracle.com>
-References: <20151005025022.5074.89318.stgit@klimt.1015granger.net> <5612912B.7080105@dev.mellanox.co.il>
-To: Sagi Grimberg <sagig@dev.mellanox.co.il>
+Received: from mail-lb0-f180.google.com ([209.85.217.180]:34664 "EHLO
+	mail-lb0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751052AbbJESpm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Oct 2015 14:45:42 -0400
+Received: by lbbwt4 with SMTP id wt4so25589380lbb.1
+        for <linux-nfs@vger.kernel.org>; Mon, 05 Oct 2015 11:45:41 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <20151004062313.GA20212@infradead.org>
+References: <1443391772-10171-1-git-send-email-agruenba@redhat.com>
+	<20151004062313.GA20212@infradead.org>
+Date: Mon, 5 Oct 2015 20:45:40 +0200
+Message-ID: <CAHc6FU53mXg1k0KCNkWEjxyuC8iAUgWh-A76qX=C3Yth+qEyuQ@mail.gmail.com>
+Subject: Re: [PATCH v8 00/41] Richacls
+From: Andreas Gruenbacher <agruenba@redhat.com>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: Alexander Viro <viro@zeniv.linux.org.uk>, "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>, linux-ext4@vger.kernel.org,
+        LKML <linux-kernel@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-nfs@vger.kernel.org, linux-api@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Sun, Oct 4, 2015 at 8:23 AM, Christoph Hellwig <hch@infradead.org> wrote:
+> On Mon, Sep 28, 2015 at 12:08:51AM +0200, Andreas Gruenbacher wrote:
+>> Hello,
+>>
+>> here's another update of the richacl patch queue.  At this stage, I would
+>> like to ask for final feedback so that the core and ext4 code (patches
+>> 1-19) can be merged in the 4.4 merge window.  The nfsd and nfs code should
+>> then go through the respective maintainer trees.
+>
+> Now way in this form even if everyone agrees we should have these
+> bastard ACLs.  I certainly disagree.
 
-> On Oct 5, 2015, at 11:03 AM, Sagi Grimberg <sagig@dev.mellanox.co.il> wrote:
-> 
-> On 10/5/2015 6:03 AM, Chuck Lever wrote:
->> Now that the NFS server advertises a maximum payload size of 1MB
->> for RPC/RDMA again, it crashes in svc_process_common() when NFS
->> client sends a 1MB NFS WRITE on an NFS/RDMA mount.
->> 
->> The server has set up a 259 element array of struct page pointers
->> in rq_pages[] for each incoming request. The last element of the
->> array is NULL.
->> 
->> When an incoming request has been completely received,
->> rdma_read_complete() attempts to set the starting page of the
->> incoming page vector:
->> 
->>   rqstp->rq_arg.pages = &rqstp->rq_pages[head->hdr_count];
->> 
->> and the page to use for the reply:
->> 
->>   rqstp->rq_respages = &rqstp->rq_arg.pages[page_no];
->> 
->> But the value of page_no has already accounted for head->hdr_count.
->> Thus rq_respages now points past the end of the incoming pages. For
->> NFS WRITE operations smaller than the maximum, this is harmless.
->> 
->> But when the NFS WRITE operation is as large as the server's max
->> payload size, rq_respages now points at the last entry in rq_pages,
->> which is NULL.
->> 
->> Fixes: cc9a903d915c ('svcrdma: Change maximum server payload . . .')
->> BugLink: https://bugzilla.linux-nfs.org/show_bug.cgi?id=270
->> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->> ---
-> 
-> Looks correct,
-> 
-> Reviewed-by: Sagi Grimberg <sagig@mellanox.com>
+Well, thanks for having a look at the patches.
 
-Excellent, thank you!
+> Ayway, back to the VFS <-> FS interface.  You still require tons of
+> boilderplate code in the filesystem which isn't required and we got rid
+> of for Posix ACLs.  The filesystem should not look at the userspace
+> xattr format, please follow a model similar to ->get_acl and ->set_acl
+> for Posix ACLs.
 
---
-Chuck Lever
+I will repost a version that has this cleaned up.
 
+> After that the wire up should be so trivial that you can wire up btrfs,
+> xfs and f2fs as well, which is important to make the feature mergeable.
 
+Why would the patch queue become more mergeable by having support for
+more filesystems in it? The filesystem specific code really isn't all
+that interesting.
 
+> And honestly I tink adding even more overload to xattrs is a really bad
+> idea and after 10 years of experience with that junk we really need to
+> learn and make new overloads proper system calls.
+
+Thanks,
+Andreas
