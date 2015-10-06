@@ -1,107 +1,230 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx142.netapp.com ([216.240.21.19]:23606 "EHLO mx142.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750810AbbJFOxS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 6 Oct 2015 10:53:18 -0400
-From: "Adamson, Andy" <William.Adamson@netapp.com>
-To: Benjamin Kaduk <kaduk@MIT.EDU>
-CC: "Adamson, Andy" <William.Adamson@netapp.com>,
-        Greg Hudson <ghudson@MIT.EDU>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        "krbdev@mit.edu" <krbdev@MIT.EDU>
-Subject: Re: Gss context refresh failure due to clock skew
-Date: Tue, 6 Oct 2015 14:53:16 +0000
-Message-ID: <9E0A46D0-6A66-47A2-848C-81A13EF20A52@netapp.com>
-References: <AD03968E-7017-4D32-A90C-C74C1E9CDFAC@netapp.com>
- <FA7F806E-E5DA-4C41-AE7F-99E381E71123@netapp.com> <5612CB0F.5040501@mit.edu>
- <A7007DA3-24B2-4079-96A8-A6E97085031C@netapp.com> <5612D73F.8020605@mit.edu>
- <9ED9C3B6-A0D0-411F-AB95-77CB1E8AA097@netapp.com>
- <alpine.GSO.1.10.1510051952080.26829@multics.mit.edu>
-In-Reply-To: <alpine.GSO.1.10.1510051952080.26829@multics.mit.edu>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from userp1040.oracle.com ([156.151.31.81]:21411 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750810AbbJFO6L convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Oct 2015 10:58:11 -0400
+Content-Type: text/plain; charset=utf-8
+Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2104\))
+Subject: Re: [RFC PATCH 3/3] SUNRPC: Allow TCP to replace the bh-safe lock in receive path
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <CAHQdGtR4jsm89DnA2S+AYoqNsK1JdWOiCbb0h64mSACDfhWeug@mail.gmail.com>
+Date: Tue, 6 Oct 2015 10:58:04 -0400
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <334D8F98-DE14-4972-AA03-F75C8A3550EA@oracle.com>
+References: <1444086211-4811-1-git-send-email-trond.myklebust@primarydata.com> <1444086211-4811-2-git-send-email-trond.myklebust@primarydata.com> <1444086211-4811-3-git-send-email-trond.myklebust@primarydata.com> <97B47F0A-B0B3-4B11-8498-3616CD761D4A@oracle.com> <CAHQdGtRFNnTAJ4bSk4fpcnU5QjZAfdwYc__Z1QGmMkJDvW6B4w@mail.gmail.com> <70202CF9-BD35-4BAB-BDC1-B374FBF71D59@oracle.com> <CAHQdGtR4jsm89DnA2S+AYoqNsK1JdWOiCbb0h64mSACDfhWeug@mail.gmail.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQo+IE9uIE9jdCA1LCAyMDE1LCBhdCA4OjAyIFBNLCBCZW5qYW1pbiBLYWR1ayA8a2FkdWtATUlU
-LkVEVT4gd3JvdGU6DQo+IA0KPiBPbiBNb24sIDUgT2N0IDIwMTUsIEFkYW1zb24sIEFuZHkgd3Jv
-dGU6DQo+IA0KPj4gDQo+Pj4gT24gT2N0IDUsIDIwMTUsIGF0IDQ6MDIgUE0sIEdyZWcgSHVkc29u
-IDxnaHVkc29uQE1JVC5FRFU+IHdyb3RlOg0KPj4+IA0KPj4+IE9uIDEwLzA1LzIwMTUgMDM6MzUg
-UE0sIEFkYW1zb24sIEFuZHkgd3JvdGU6DQo+Pj4+PiBJIHRoaW5rIHRoaXMgY2FzZSBkb2Vzbid0
-IGFyaXNlIG9mdGVuIGJlY2F1c2UgcGVvcGxlIGRvbid0IG9mdGVuIHNldA0KPj4+Pj4gbWF4aW11
-bSBzZXJ2aWNlIHRpY2tldCBsaWZldGltZXMgdG8gYmUgc2hvcnRlciB0aGFuIG1heGltdW0gVEdU
-DQo+Pj4+PiBsaWZldGltZXMuDQo+Pj4+IA0KPj4+PiBOb3QgdGhlIGNhdXNlIG9mIHRoZSBpc3N1
-ZS4gVGhlIHNlcnZpY2UgdGlja2V0IGxpZmV0aW1lIG9mIDEwIG1pbnV0ZXMgaXMganVzdCB0aGVy
-ZSBmb3IgdGVzdGluZyB0aGlzIGlzc3VlIGFzIEkgbmVlZGVkIHRvIHdhaXQgdW50aWwgdGhlIHNl
-cnZpY2UgdGlja2V0IGhhZCDigJhleHBpcmVk4oCZIG9uIHRoZSBzZXJ2ZXIgLSBidXQgbm90IHll
-dCBvbiB0aGUgY2xpZW50Lg0KPj4+PiANCj4+Pj4gV2Ugc2VlIHRoaXMgaXNzdWUgYWxsIHRoZSB0
-aW1lIGluIE5ldEFwcCBRQSBhcyB3ZSBydW4gbXV0aXBsZSBkYXkgaGVhdnkgSU8gdGVzdHMgYWdh
-aW5zdCBhIGtlcmJlcm9zIG1vdW50LiBJZiB0aGUgc2VydmVyIGNsb2NrIGlzIGFoZWFkIG9mIHRo
-ZSBjbGllbnQgY2xvY2ssIHBlcm1pc3Npb24gZGVuaWVkIGVycm9ycyBzdG9wIHRoZSB0ZXN0IGFz
-IHRoZSBmaXJzdCBzZXJ2aWNlIHRpY2tldCDigJxleHBpcmVz4oCdIG9uIHRoZSBzZXJ2ZXIgYnV0
-IG5vdCBvbiB0aGUgY2xpZW50Lg0KPj4+IA0KPj4+IElmIHRoZSBpc3N1ZSBpcyBub3QgY2F1c2Vk
-IGJ5IHNob3J0LWxpZmV0aW1lIHNlcnZpY2UgcHJpbmNpcGFscywNCj4+IA0KPj4gSSB3YXMgd3Jv
-bmcgLSB5b3UgYXJlIHJpZ2h0LCBpdCBpcyBjYXVzZWQgYnkgc2VydmljZSB0aWNrZXQgbGlmZXRp
-bWVzIGJlaW5nIHNob3J0ZXIgdGhhbiBUR1QgbGlmZXRpbWVzLg0KPj4gDQo+PiBJIGRpZG7igJl0
-IGtub3cgc2V0dGluZyB0aGUgc2VydmljZSB0aWNrZXQgbGlmZXRpbWVzIHRvIG5vdCBiZSBsZXNz
-IHRoYW4NCj4+IFRHVCBsaWZldGltZXMgd2FzIGEgcmVxdWlyZW1lbnQuIE5laXRoZXIgZG9lcyBO
-ZXRBcHAgUUEgYW5kIEkgc3VzcGVjdCwNCj4+IG5laXRoZXIgZG8gY3VzdG9tZXJzIGluIGdlbmVy
-YWwuDQo+IA0KPiBJdCdzIG5vdCBhIHJlcXVpcmVtZW50LiAgKEdyZWcgZXhwbGljaXRseSBzYWlk
-ICJUaGF0IHNhaWQsIHlvdXIgc2NlbmFyaW8NCj4gc2hvdWxkIHdvcmssIGFuZCBpdCBkb2Vzbid0
-LiIgaW4gaGlzIGZpcnN0IG1lc3NhZ2UuKQ0KDQpIaSBCZW4NCg0KT0suICBUaGlzIGRvZXMgbWVh
-biB0aGF0IHVudGlsIHRoaXMgZ2V0cyBhZGRyZXNzZWQsIHdlIHdpbGwgbmVlZCB0byBwb2ludCB0
-aGlzIG91dCB0byBhZG1pbmlzdHJhdG9ycy4NCg0KPiANCj4+PiB0aGVuDQo+Pj4gdGhlIHRlc3Qg
-c2NlbmFyaW8geW91IGRlc2NyaWJlZCBpc24ndCByZXByZXNlbnRhdGl2ZSBvZiB0aGUgcmVhbA0K
-Pj4+IHNjZW5hcmlvLiAgVG8gcmVwcm9kdWNlIHRoZSBwcm9ibGVtIGFzIGl0IG1hbmlmZXN0cyBp
-biB5b3VyIElPIHRlc3RzLA0KPj4+IHlvdSB3aWxsIG5lZWQgdG8gYWRqdXN0IHRoZSBUR1QgbGlm
-ZXRpbWUgZG93biB0byB0ZW4gbWludXRlcyBhcyB3ZWxsIGFzDQo+Pj4gdGhlIG5mcy9zZXJ2ZXIg
-bGlmZXRpbWUuDQo+PiANCj4+IENvZGUgd2FzIGFkZGVkIHRvIHJwYy5nc3NkLCB0aGUgTkZTIGNs
-aWVudCBhZ2VudCB0aGF0IGNyZWF0ZXMgR1NTDQo+PiBjb250ZXh0cyBmb3IgTkZTLCB0byB0YWtl
-IGludG8gYWNjb3VudCB0aGUgY2xvY2sgc2tldyBhbmQgZ2V0IGEgbmV3IFRHVA0KPj4gYmVmb3Jl
-IChub3crY2xvY2sgc2tldykuIFNvIGlmIHRoZSBzZXJ2aWNlIHRpY2tldCBsaWZldGltZSBpcyBl
-cXVhbCB0bw0KPj4gb3IgZ3JlYXRlciB0aGFuIHRoZSBUR1QgbGlmZXRpbWUsIHRoZW4gYWxsIGlz
-IHdlbGwuDQo+PiANCj4+PiANCj4+Pj4+IElmIHRoZSBUR1QgaXRzZWxmIGhhcyBleHBpcmVkIG9y
-IGlzIGFib3V0IHRvIGV4cGlyZSwgc29tZQ0KPj4+Pj4gb3V0LW9mLWJhbmQgYWdlbnQgbmVlZHMg
-dG8gcmVmcmVzaCB0aGUgVEdUIHNvbWVob3csIGFuZCBpdCBkb2Vzbid0DQo+Pj4+PiBtYXR0ZXIg
-YWxsIHRoYXQgbXVjaCB3aGV0aGVyIHRoZSBmYWlsdXJlIGNvbWVzIGZyb20gdGhlIGNsaWVudCBv
-ciB0aGUNCj4+Pj4+IHNlcnZlci4NCj4+Pj4gDQo+Pj4+IEkgdGhvdWdodCB0aGF0IGhhdmluZyBh
-IGtleXRhYiBlbnRyeSBhbmQgYSByZW5ld2FibGUgVEdUIHdhcyBlbm91Z2guDQo+Pj4gDQo+Pj4g
-SSdtIG5vdCBzdXJlIHdoeSB5b3Ugd291bGQgZG8gYm90aCBvZiB0aGVzZTsgaWYgeW91J3JlIGdl
-dHRpbmcgaW5pdGlhbA0KPj4+IGNyZWRzIHdpdGggYSBrZXl0YWIsIHRoZXJlIGlzIG5vIG5lZWQg
-dG8gbXVjayBhcm91bmQgd2l0aCB0aWNrZXQgcmVuZXdhbC4NCj4+IA0KPj4gSSB3b3VsZG7igJl0
-LCBidXQgUUEgYW5kIGN1c3RvbWVycyBkby4NCj4+IA0KPj4+IA0KPj4+IEFueXdheSwgZ3NzX2lu
-aXRfc2VjX2NvbnRleHQoKSBuZXZlciByZW5ld3MgdGlja2V0cywgYW5kIG9ubHkgZ2V0cw0KPj4+
-IHRpY2tldHMgZnJvbSBhIGtleXRhYiB3aGVuIGEgY2xpZW50IGtleXRhYiBpcyBjb25maWd1cmVk
-IChuZXcgaW4gMS4xMSkuDQo+Pj4gV2hlbiB0aWNrZXRzIGFyZSBvYnRhaW5lZCB1c2luZyBhIGNs
-aWVudCBrZXl0YWIsIHRoZXkgYXJlIHJlZnJlc2hlZA0KPj4+IGZyb20gdGhlIGtleXRhYiB3aGVu
-IHRoZXkgYXJlIGhhbGZ3YXkgdG8gZXhwaXJpbmcsDQo+PiANCj4+IHJlZnJlc2hlZCBieeKApj8N
-Cj4gDQo+IFRoZSBHU1MgbGlicmFyeSBpdHNlbGYuDQo+IGh0dHA6Ly9rNXdpa2kua2VyYmVyb3Mu
-b3JnL3dpa2kvUHJvamVjdHMvS2V5dGFiX2luaXRpYXRpb24gYW5kDQo+IGh0dHA6Ly93ZWIubWl0
-LmVkdS9rZXJiZXJvcy9rcmI1LWxhdGVzdC9kb2MvYmFzaWMva2V5dGFiX2RlZi5odG1sI2RlZmF1
-bHQtY2xpZW50LWtleXRhYg0KPiBnaXZlIGEgbGl0dGxlIGJpdCBvZiBpbnRybywgdGhvdWdoIHRo
-aXMgZmVhdHVyZSBjb3VsZCBiZW5lZml0IGZyb20gYmV0dGVyDQo+IGRvY3VtZW50YXRpb24uDQoN
-ClRoYW5rcyBmb3IgdGhlIGluZm8NCg0K4oCUPkFuZHkNCj4gDQo+IC1CZW4NCj4gDQo+Pj4gc28g
-dGhpcyBjbG9jayBza2V3DQo+Pj4gaXNzdWUgc2hvdWxkIG5vdCBhcmlzZSwgc28gSSBkb24ndCB0
-aGluayB0aGF0IGZlYXR1cmUgaXMgYmVpbmcgdXNlZC4NCj4+PiANCj4+PiBJdCBpcyBwb3NzaWJs
-ZSB0aGF0IHRoZSBORlMgY2xpZW50IGNvZGUgaGFzIGl0cyBvd24gc2VwYXJhdGUgbG9naWMgZm9y
-DQo+Pj4gb2J0YWluaW5nIG5ldyB0aWNrZXRzIHVzaW5nIGEga2V5dGFiLg0KPj4gDQo+PiBXaGVu
-IGFuIE5GUyByZXF1ZXN0IHJlcXVpcmVzIGEgR1NTIGNvbnRleHQsIGlmIHRoZSBjb250ZXh0IGRv
-ZXMgbm90DQo+PiBleGlzdCwgaXMgbm90IHZhbGlkLCBvciBpZiBpdCBpcyB2YWxpZCBidXQgdGhl
-IHNlcnZlciByZXBsaWVzIHRvIGFuIFJQQw0KPj4gcmVxdWVzdCB1c2luZyBhIEdTUyBjb250ZXh0
-IHdpdGggYW4gUlBDIGVycm9yIHRoYXQgaW5kaWNhdGVzIGl04oCZcyBzaWRlDQo+PiBvZiB0aGUg
-R1NTIGNvbnRleHQgaGFzIGEgcHJvYmxlbSwgdGhlIGNsaWVudCBrZXJuZWwgZG9lcyBhbiB1cGNh
-bGwgdG8NCj4+IHJwYy5nc3NkIHdoaWNoIHRoZW4gZGVjaWRlcyBpZiBhIG5ldyBzZXJ2aWNlIHRp
-Y2tldCBpcyByZXF1aXJlZCB0byBzZW5kDQo+PiBhbiBSUENTRUNfR1NTX0lOSVQgbWVzc2FnZSB0
-byB0aGUgc2VydmVyIHRvIGNyZWF0ZSBhIG5ldyBHU1MgY29udGV4dC4NCj4+IFRoZSByZXN1bHRh
-bnQgR1NTIGNvbnRleHQgaXMgc3RvcmVkIGluIHRoZSBjbGllbnQga2VybmVsIHdpdGggYSBsaWZl
-dGltZQ0KPj4gZXF1YWwgdG8gdGhlIHNlcnZpY2UgdGlja2V0IHVzZWQgdG8gY3JlYXRlIGl0Lg0K
-Pj4gDQo+PiBJZiBycGMuZ3NzZCBjYWxscyB0aGUgY29kZSB0aGF0IHJlZnJlc2hlcyB0aGUgdGlj
-a2V0cyBmcm9tIHRoZSBrZXl0YWINCj4+IHdoZW4gdGhleSBhcmUgaGFsZiB3YXkgdG8gZXhwaXJp
-bmfigJkgdGhlbiB0aGF0IHNob3VsZCBtaXRpZ2F0ZSB0aGUgY2xvY2sNCj4+IHNrZXcgaXNzdWUu
-DQo+PiANCj4+IA0KPj4+IElmIHNvLCB3ZSBuZWVkIHRvIHVuZGVyc3RhbmQgaG93DQo+Pj4gaXQg
-d29ya3MuICBJdCdzIHBvc3NpYmxlICh0aG91Z2ggdW5saWtlbHkpIHRoYXQgY2hhbmdpbmcgdGhl
-IGJlaGF2aW9yIG9mDQo+Pj4gZ3NzX2FjY2VwdF9zZWNfY29udGV4dCgpIHdvdWxkbid0IGJlIHN1
-ZmZpY2llbnQgYnkgaXRzZWxmLg0KPj4gDQo+PiANCj4+IF9fX19fX19fX19fX19fX19fX19fX19f
-X19fX19fX19fX19fX19fX19fX19fX19fDQo+PiBrcmJkZXYgbWFpbGluZyBsaXN0ICAgICAgICAg
-ICAgIGtyYmRldkBtaXQuZWR1DQo+PiBodHRwczovL21haWxtYW4ubWl0LmVkdS9tYWlsbWFuL2xp
-c3RpbmZvL2tyYmRldg0KDQo=
+
+> On Oct 6, 2015, at 10:17 AM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+> 
+> On Tue, Oct 6, 2015 at 9:56 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>> 
+>>> On Oct 5, 2015, at 11:55 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+>>> 
+>>> On Mon, Oct 5, 2015 at 8:10 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>>>> 
+>>>>> On Oct 5, 2015, at 7:03 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+>>>>> 
+>>>>> This patch attempts to eke out a couple more iops by allowing the TCP code
+>>>>> to replace bh-safe spinlock with an ordinary one while receiving data. We
+>>>>> still need to use the bh-safe spinlock when completing.
+>>>>> 
+>>>>> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+>>>>> ---
+>>>>> net/sunrpc/xprt.c     |  4 ++++
+>>>>> net/sunrpc/xprtsock.c | 17 ++++++++++-------
+>>>>> 2 files changed, 14 insertions(+), 7 deletions(-)
+>>>>> 
+>>>>> diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+>>>>> index 2e98f4a243e5..e604bb680bcf 100644
+>>>>> --- a/net/sunrpc/xprt.c
+>>>>> +++ b/net/sunrpc/xprt.c
+>>>>> @@ -951,6 +951,7 @@ void xprt_transmit(struct rpc_task *task)
+>>>>>                     /*
+>>>>>                      * Add to the list only if we're expecting a reply
+>>>>>                      */
+>>>>> +                     spin_lock(&xprt->reserve_lock);
+>>>>>                     spin_lock_bh(&xprt->transport_lock);
+>>>> 
+>>>> This is painful. spin_lock_bh is a pre-emption point, where
+>>>> the kernel can handle interrupts while others are spinning
+>>>> waiting for both of these locks. It can result in waiting
+>>>> for more than 100us to get the lock.
+>>>> 
+>>> 
+>>> I thought, the problem isn't so much the spin_lock_bh() but rather the
+>>> spin_unlock_bh(). If this is the outermost bh-safe lock, then
+>>> spin_unlock_bh() may call do_softirq(), which can take a while, and
+>>> therefore increase the chances of contention for any outer
+>>> (non-bh-safe) locks.
+>>> 
+>>> Note, however, that PATCH 2/3 significantly cuts down on the total
+>>> amount of time spent in do_softirq(), and therefore explains most of
+>>> the performance increase. We can drop patch 3/3 without losing much.
+>> 
+>> My only quibble is the double locking in xprt_transmit().
+>> Wondering if it is sensible to use llist for the receive
+>> list.
+> 
+> Possibly.
+> 
+>> I actually need to drop locks between xprt_lookup_rqst()
+>> and xprt_complete_rqst() for other reasons. That part of
+>> this patch is desirable!
+>> 
+>> In fact, I wasn’t aware that it was safe to drop the
+>> lock after xprt_lookup_rqst without first having removed
+>> the found request from the receive list.
+> 
+> That's what I'm using the reserve_lock for. We still need something
+> like it in order to pin the request on the receive list while we're
+> doing the copy.
+
+My feeble attempt at this was to add a separate step to remove
+the request from the list, once the caller was sure that the
+request was not going to get dropped. Then the transport_lock
+is dropped, and later xprt_complete_rqst finishes retiring
+the request with the wake_up_queued_task.
+
+When split out this way, it is clear that xprt_complete_rqst
+is the top contender for the transport_lock.
+
+
+> As the subject message says, though, this is an RFC series. I'm still
+> playing with the code in order to figure out what is needed.
+> 
+>>>> Was there an increase or decrease in CPU utilization with
+>>>> this change?
+>>> 
+>>> I'm seeing less overall contention.
+>>> 
+>>>>>                     /* Update the softirq receive buffer */
+>>>>>                     memcpy(&req->rq_private_buf, &req->rq_rcv_buf,
+>>>>> @@ -958,6 +959,7 @@ void xprt_transmit(struct rpc_task *task)
+>>>>>                     /* Add request to the receive list */
+>>>>>                     list_add_tail(&req->rq_list, &xprt->recv);
+>>>>>                     spin_unlock_bh(&xprt->transport_lock);
+>>>>> +                     spin_unlock(&xprt->reserve_lock);
+>>>>>                     xprt_reset_majortimeo(req);
+>>>>>                     /* Turn off autodisconnect */
+>>>>>                     del_singleshot_timer_sync(&xprt->timer);
+>>>>> @@ -1278,6 +1280,7 @@ void xprt_release(struct rpc_task *task)
+>>>>>             task->tk_ops->rpc_count_stats(task, task->tk_calldata);
+>>>>>     else if (task->tk_client)
+>>>>>             rpc_count_iostats(task, task->tk_client->cl_metrics);
+>>>>> +     spin_lock(&xprt->reserve_lock);
+>>>>>     spin_lock_bh(&xprt->transport_lock);
+>>>>>     xprt->ops->release_xprt(xprt, task);
+>>>>>     if (xprt->ops->release_request)
+>>>>> @@ -1289,6 +1292,7 @@ void xprt_release(struct rpc_task *task)
+>>>>>             mod_timer(&xprt->timer,
+>>>>>                             xprt->last_used + xprt->idle_timeout);
+>>>>>     spin_unlock_bh(&xprt->transport_lock);
+>>>>> +     spin_unlock(&xprt->reserve_lock);
+>>>>>     if (req->rq_buffer)
+>>>>>             xprt->ops->buf_free(req->rq_buffer);
+>>>>>     xprt_inject_disconnect(xprt);
+>>>>> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+>>>>> index 58dc90ccebb6..063d2eb20d8e 100644
+>>>>> --- a/net/sunrpc/xprtsock.c
+>>>>> +++ b/net/sunrpc/xprtsock.c
+>>>>> @@ -1246,21 +1246,24 @@ static inline int xs_tcp_read_reply(struct rpc_xprt *xprt,
+>>>>>     dprintk("RPC:       read reply XID %08x\n", ntohl(transport->tcp_xid));
+>>>>> 
+>>>>>     /* Find and lock the request corresponding to this xid */
+>>>>> -     spin_lock_bh(&xprt->transport_lock);
+>>>>> +     spin_lock(&xprt->reserve_lock);
+>>>>>     req = xprt_lookup_rqst(xprt, transport->tcp_xid);
+>>>>>     if (!req) {
+>>>>>             dprintk("RPC:       XID %08x request not found!\n",
+>>>>>                             ntohl(transport->tcp_xid));
+>>>>> -             spin_unlock_bh(&xprt->transport_lock);
+>>>>> +             spin_unlock(&xprt->reserve_lock);
+>>>>>             return -1;
+>>>>>     }
+>>>> 
+>>>> Is a similar change needed for rpcrdma_reply_handler() ? If
+>>>> that can’t be changed until it runs in a WQ context, I have
+>>>> that patch right now. It can be ready for 4.4.
+>>>> 
+>>>> 
+>>>>>     xs_tcp_read_common(xprt, desc, req);
+>>>>> 
+>>>>> -     if (!(transport->tcp_flags & TCP_RCV_COPY_DATA))
+>>>>> +     if (!(transport->tcp_flags & TCP_RCV_COPY_DATA)) {
+>>>>> +             spin_lock_bh(&xprt->transport_lock);
+>>>>>             xprt_complete_rqst(req->rq_task, transport->tcp_copied);
+>>>>> +             spin_unlock_bh(&xprt->transport_lock);
+>>>>> +     }
+>>>>> 
+>>>>> -     spin_unlock_bh(&xprt->transport_lock);
+>>>>> +     spin_unlock(&xprt->reserve_lock);
+>>>>>     return 0;
+>>>>> }
+>>>> 
+>>>> xprt_complete_rqst() is actually the top source of contention
+>>>> on transport_lock in my tests, thanks to the locking under
+>>>> rpc_wake_up_queued_task(). Is there a plan to mitigate locking
+>>>> costs in the RPC scheduler?
+>>> 
+>>> I'm not understanding how rpc_wake_up_queued_task() could cause a
+>>> problem here. Can you explain?
+>> 
+>> xprt_complete_rqst() is holding the transport_lock, and
+>> rpc_wake_up_queued_task is holding the wait queue lock.
+>> 
+>> During complex workloads like database or multi-threaded software
+>> build, I’ve observed the rpc_make_runnable -> wake_up_bit path
+>> take a very long time while both of these locks are held.
+>> 
+>> The problem seems similar to the above: pre-emption allows the
+>> kernel to perform housekeeping while RPC-related threads are
+>> spinning on these locks.
+>> 
+>> There is likewise a problem with xprt_lock_write_next, which
+>> invokes rpc_wake_up_first while the transport_lock is held.
+> 
+> I'm still not understanding. Apologies if I'm just being dense.
+
+NP, we had a discussion about this at LSF this spring. There
+wasn't agreement on exactly what’s going on.
+
+
+> The call to do_softirq() shouldn't happen until after the last bh-safe
+> lock is released, so I wouldn't normally expect it to be called until
+> after the transport lock has been released in xprt_complete_rqst(). In
+> the existing upstream code, because all of this is being called from a
+> bh-safe context in xs_tcp_data_ready(), the do_softirq() will be
+> deferred until at least then, and possibly even later, depending on
+> where in the socket code the ->data_ready() callback originated from.
+
+I’ve ftraced this (with RPC/RDMA, anyway), and the softIRQ pre-emption
+appears to happen at spin_lock_bh time. I’d be very happy to be
+incorrect about this, and it’s certainly possible I didn’t understand
+what I was looking at.
+
+Even if spin_unlock_bh is where pre-emption occurs, the order of taking
+the locks would matter:
+
+1. spin_lock A
+2. spin_lock_bh B
+3. do_work
+4. spin_unlock_bh B -> do_softIRQ
+5. spin_unlock A
+
+The thread continues to hold lock A while handling a non-deterministic
+amount of other work, forcing those waiting on A to spin. But I think
+that’s what you were saying above.
+
+I haven’t been able to nail down exactly why wake_up_bit outliers
+take so long. It is either softIRQ pre-emption or the fact that
+wake_up_bit depends on the latency for a trip through the scheduler.
+
+
+—-
+Chuck Lever
+
+
+
