@@ -1,74 +1,89 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from ipmail04.adl6.internode.on.net ([150.101.137.141]:43452 "EHLO
-	ipmail04.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751214AbbJFBUZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Oct 2015 21:20:25 -0400
-Date: Tue, 6 Oct 2015 12:20:20 +1100
-From: Dave Chinner <david@fromorbit.com>
-To: Andreas Gruenbacher <agruenba@redhat.com>
-Cc: Christoph Hellwig <hch@infradead.org>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@poochiereds.net>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>, linux-ext4@vger.kernel.org,
-        LKML <linux-kernel@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-nfs@vger.kernel.org, linux-api@vger.kernel.org
-Subject: Re: [PATCH v8 00/41] Richacls
-Message-ID: <20151006012020.GD23350@dastard>
-References: <1443391772-10171-1-git-send-email-agruenba@redhat.com>
- <20151004062313.GA20212@infradead.org>
- <CAHc6FU53mXg1k0KCNkWEjxyuC8iAUgWh-A76qX=C3Yth+qEyuQ@mail.gmail.com>
- <20151005211711.GB23350@dastard>
- <CAHc6FU5=nPVRRO+0MycYMMmp66hg7YvY4kMGy-D4JfgD3_FkLQ@mail.gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAHc6FU5=nPVRRO+0MycYMMmp66hg7YvY4kMGy-D4JfgD3_FkLQ@mail.gmail.com>
+Received: from aserp1040.oracle.com ([141.146.126.69]:47747 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751370AbbJFBri convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Oct 2015 21:47:38 -0400
+References: <20151005025022.5074.89318.stgit@klimt.1015granger.net> <001801d0ffa5$ebd3aff0$c37b0fd0$@opengridcomputing.com>
+Mime-Version: 1.0 (1.0)
+In-Reply-To: <001801d0ffa5$ebd3aff0$c37b0fd0$@opengridcomputing.com>
+Content-Type: text/plain;
+	charset=us-ascii
+Message-Id: <6998D6F7-ECD3-4CF6-9DF1-C47551ABA9F2@oracle.com>
+Cc: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH] svcrdma: Fix NFS server crash triggered by 1MB NFS WRITE
+Date: Mon, 5 Oct 2015 21:47:29 -0400
+To: Steve Wise <swise@opengridcomputing.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Oct 06, 2015 at 12:01:19AM +0200, Andreas Gruenbacher wrote:
-> On Mon, Oct 5, 2015 at 11:17 PM, Dave Chinner <david@fromorbit.com> wrote:
-> > On Mon, Oct 05, 2015 at 08:45:40PM +0200, Andreas Gruenbacher wrote:
-> >> On Sun, Oct 4, 2015 at 8:23 AM, Christoph Hellwig <hch@infradead.org> wrote:
-> >> > After that the wire up should be so trivial that you can wire up btrfs,
-> >> > xfs and f2fs as well, which is important to make the feature mergeable.
-> >>
-> >> Why would the patch queue become more mergeable by having support for
-> >> more filesystems in it? The filesystem specific code really isn't all
-> >> that interesting.
-> >
-> > The hardest part for the filesystem support is the on-disk feature
-> > flag that needs to be set. The kernel part of that is easy, but it's
-> > an on-disk format change and so there's also all the userspace side
-> > for mkfs, fsck, debug tools, etc, that also need to be able to parse
-> > and understand it. So while the xattr code can be made much more
-> > generic, there's a bunch of filesystem specific code that needs to
-> > go into multiple different repositories and userspace packages for
-> > this.
-> 
-> Yes.
-> 
-> > Andreas, I also can't remember if any xfstests have been written for
-> > these ACLs? That would certainly help make sure all these
-> > filesystems have equivalent behaviour...
-> 
-> There's a reasonable amount of tests in the richacl user-space package
-> which are shell based, with a few small C helpers. We could move those
-> into xfstests eventually; now seems a bit early to me.
 
-Well, all the fs developers that will do the userspace work are
-already running xfstests. If you want us to be able to test the
-richACL code as we add all the fs specific flags to the userspace
-code, then we need the tests in xfstests at the same time the
-infrastructure appears in the kernel...
+> On Oct 5, 2015, at 3:42 PM, Steve Wise <swise@opengridcomputing.com> wrote:
+> 
+> 
+> 
+>> -----Original Message-----
+>> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Chuck Lever
+>> Sent: Sunday, October 04, 2015 10:03 PM
+>> To: linux-nfs@vger.kernel.org; linux-rdma@vger.kernel.org
+>> Subject: [PATCH] svcrdma: Fix NFS server crash triggered by 1MB NFS WRITE
+>> 
+>> Now that the NFS server advertises a maximum payload size of 1MB
+>> for RPC/RDMA again, it crashes in svc_process_common() when NFS
+>> client sends a 1MB NFS WRITE on an NFS/RDMA mount.
+>> 
+>> The server has set up a 259 element array of struct page pointers
+>> in rq_pages[] for each incoming request. The last element of the
+>> array is NULL.
+>> 
+>> When an incoming request has been completely received,
+>> rdma_read_complete() attempts to set the starting page of the
+>> incoming page vector:
+>> 
+>>  rqstp->rq_arg.pages = &rqstp->rq_pages[head->hdr_count];
+>> 
+>> and the page to use for the reply:
+>> 
+>>  rqstp->rq_respages = &rqstp->rq_arg.pages[page_no];
+>> 
+>> But the value of page_no has already accounted for head->hdr_count.
+>> Thus rq_respages now points past the end of the incoming pages. For
+>> NFS WRITE operations smaller than the maximum, this is harmless.
+>> 
+>> But when the NFS WRITE operation is as large as the server's max
+>> payload size, rq_respages now points at the last entry in rq_pages,
+>> which is NULL.
+>> 
+>> Fixes: cc9a903d915c ('svcrdma: Change maximum server payload . . .')
+>> BugLink: https://bugzilla.linux-nfs.org/show_bug.cgi?id=270
+>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>> ---
+>> 
+>> This fixes a 4.3-rc regression. Please apply to 4.3-rc when this
+>> patch passes review.
+>> 
+>> It could also be appropriate for stable kernels which do not have
+>> commit 7e5be28827bf ("svcrdma: advertise the correct max payload"),
+>> though I have not tested them with this patch.
+>> 
+>> net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |    2 +-
+>> 1 files changed, 1 insertions(+), 1 deletions(-)
+>> 
+>> diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+>> index cb51742..37b4341 100644
+>> --- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+>> +++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+>> @@ -531,7 +531,7 @@ static int rdma_read_complete(struct svc_rqst *rqstp,
+>>    rqstp->rq_arg.page_base = head->arg.page_base;
+>> 
+>>    /* rq_respages starts after the last arg page */
+>> -    rqstp->rq_respages = &rqstp->rq_arg.pages[page_no];
+>> +    rqstp->rq_respages = &rqstp->rq_pages[page_no];
+>>    rqstp->rq_next_page = rqstp->rq_respages + 1;
+>> 
+>>    /* Rebuild rq_arg head and tail. */
+>> 
+> 
+> Reviewed-by: Steve Wise <swise@opengridcomputing.com>
 
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+Thanks!
