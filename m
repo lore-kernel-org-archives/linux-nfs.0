@@ -1,137 +1,156 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from dmz-mailsec-scanner-2.mit.edu ([18.9.25.13]:55542 "EHLO
-	dmz-mailsec-scanner-2.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750780AbbJFAHT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Oct 2015 20:07:19 -0400
-Date: Mon, 5 Oct 2015 20:02:11 -0400 (EDT)
-From: Benjamin Kaduk <kaduk@MIT.EDU>
-To: "Adamson, Andy" <William.Adamson@netapp.com>
-cc: Greg Hudson <ghudson@MIT.EDU>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        "krbdev@mit.edu" <krbdev@MIT.EDU>
-Subject: Re: Gss context refresh failure due to clock skew
-In-Reply-To: <9ED9C3B6-A0D0-411F-AB95-77CB1E8AA097@netapp.com>
-Message-ID: <alpine.GSO.1.10.1510051952080.26829@multics.mit.edu>
-References: <AD03968E-7017-4D32-A90C-C74C1E9CDFAC@netapp.com> <FA7F806E-E5DA-4C41-AE7F-99E381E71123@netapp.com> <5612CB0F.5040501@mit.edu> <A7007DA3-24B2-4079-96A8-A6E97085031C@netapp.com> <5612D73F.8020605@mit.edu>
- <9ED9C3B6-A0D0-411F-AB95-77CB1E8AA097@netapp.com>
-MIME-Version: 1.0
-Content-Type: MULTIPART/MIXED; boundary="-559023410-442568504-1444089144=:26829"
+Received: from aserp1040.oracle.com ([141.146.126.69]:20969 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751389AbbJFAKb convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Oct 2015 20:10:31 -0400
+Content-Type: text/plain; charset=utf-8
+Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2104\))
+Subject: Re: [RFC PATCH 3/3] SUNRPC: Allow TCP to replace the bh-safe lock in receive path
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1444086211-4811-3-git-send-email-trond.myklebust@primarydata.com>
+Date: Mon, 5 Oct 2015 20:10:27 -0400
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <97B47F0A-B0B3-4B11-8498-3616CD761D4A@oracle.com>
+References: <1444086211-4811-1-git-send-email-trond.myklebust@primarydata.com> <1444086211-4811-2-git-send-email-trond.myklebust@primarydata.com> <1444086211-4811-3-git-send-email-trond.myklebust@primarydata.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
 
----559023410-442568504-1444089144=:26829
-Content-Type: TEXT/PLAIN; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Content-ID: <alpine.GSO.1.10.1510051952571.26829@multics.mit.edu>
+> On Oct 5, 2015, at 7:03 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+> 
+> This patch attempts to eke out a couple more iops by allowing the TCP code
+> to replace bh-safe spinlock with an ordinary one while receiving data. We
+> still need to use the bh-safe spinlock when completing.
+> 
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> ---
+> net/sunrpc/xprt.c     |  4 ++++
+> net/sunrpc/xprtsock.c | 17 ++++++++++-------
+> 2 files changed, 14 insertions(+), 7 deletions(-)
+> 
+> diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+> index 2e98f4a243e5..e604bb680bcf 100644
+> --- a/net/sunrpc/xprt.c
+> +++ b/net/sunrpc/xprt.c
+> @@ -951,6 +951,7 @@ void xprt_transmit(struct rpc_task *task)
+> 			/*
+> 			 * Add to the list only if we're expecting a reply
+> 			 */
+> +			spin_lock(&xprt->reserve_lock);
+> 			spin_lock_bh(&xprt->transport_lock);
 
-On Mon, 5 Oct 2015, Adamson, Andy wrote:
+This is painful. spin_lock_bh is a pre-emption point, where
+the kernel can handle interrupts while others are spinning
+waiting for both of these locks. It can result in waiting
+for more than 100us to get the lock.
 
->
-> > On Oct 5, 2015, at 4:02 PM, Greg Hudson <ghudson@MIT.EDU> wrote:
-> >
-> > On 10/05/2015 03:35 PM, Adamson, Andy wrote:
-> >>> I think this case doesn't arise often because people don't often set
-> >>> maximum service ticket lifetimes to be shorter than maximum TGT
-> >>> lifetimes.
-> >>
-> >> Not the cause of the issue. The service ticket lifetime of 10 minutes =
-is just there for testing this issue as I needed to wait until the service =
-ticket had =E2=80=98expired=E2=80=99 on the server - but not yet on the cli=
-ent.
-> >>
-> >> We see this issue all the time in NetApp QA as we run mutiple day heav=
-y IO tests against a kerberos mount. If the server clock is ahead of the cl=
-ient clock, permission denied errors stop the test as the first service tic=
-ket =E2=80=9Cexpires=E2=80=9D on the server but not on the client.
-> >
-> > If the issue is not caused by short-lifetime service principals,
->
-> I was wrong - you are right, it is caused by service ticket lifetimes bei=
-ng shorter than TGT lifetimes.
->
-> I didn=E2=80=99t know setting the service ticket lifetimes to not be less=
- than
-> TGT lifetimes was a requirement. Neither does NetApp QA and I suspect,
-> neither do customers in general.
+Was there an increase or decrease in CPU utilization with
+this change?
 
-It's not a requirement.  (Greg explicitly said "That said, your scenario
-should work, and it doesn't." in his first message.)
 
-> > then
-> > the test scenario you described isn't representative of the real
-> > scenario.  To reproduce the problem as it manifests in your IO tests,
-> > you will need to adjust the TGT lifetime down to ten minutes as well as
-> > the nfs/server lifetime.
->
-> Code was added to rpc.gssd, the NFS client agent that creates GSS
-> contexts for NFS, to take into account the clock skew and get a new TGT
-> before (now+clock skew). So if the service ticket lifetime is equal to
-> or greater than the TGT lifetime, then all is well.
->
-> >
-> >>> If the TGT itself has expired or is about to expire, some
-> >>> out-of-band agent needs to refresh the TGT somehow, and it doesn't
-> >>> matter all that much whether the failure comes from the client or the
-> >>> server.
-> >>
-> >> I thought that having a keytab entry and a renewable TGT was enough.
-> >
-> > I'm not sure why you would do both of these; if you're getting initial
-> > creds with a keytab, there is no need to muck around with ticket renewa=
-l.
->
-> I wouldn=E2=80=99t, but QA and customers do.
->
-> >
-> > Anyway, gss_init_sec_context() never renews tickets, and only gets
-> > tickets from a keytab when a client keytab is configured (new in 1.11).
-> > When tickets are obtained using a client keytab, they are refreshed
-> > from the keytab when they are halfway to expiring,
->
-> refreshed by=E2=80=A6?
+> 			/* Update the softirq receive buffer */
+> 			memcpy(&req->rq_private_buf, &req->rq_rcv_buf,
+> @@ -958,6 +959,7 @@ void xprt_transmit(struct rpc_task *task)
+> 			/* Add request to the receive list */
+> 			list_add_tail(&req->rq_list, &xprt->recv);
+> 			spin_unlock_bh(&xprt->transport_lock);
+> +			spin_unlock(&xprt->reserve_lock);
+> 			xprt_reset_majortimeo(req);
+> 			/* Turn off autodisconnect */
+> 			del_singleshot_timer_sync(&xprt->timer);
+> @@ -1278,6 +1280,7 @@ void xprt_release(struct rpc_task *task)
+> 		task->tk_ops->rpc_count_stats(task, task->tk_calldata);
+> 	else if (task->tk_client)
+> 		rpc_count_iostats(task, task->tk_client->cl_metrics);
+> +	spin_lock(&xprt->reserve_lock);
+> 	spin_lock_bh(&xprt->transport_lock);
+> 	xprt->ops->release_xprt(xprt, task);
+> 	if (xprt->ops->release_request)
+> @@ -1289,6 +1292,7 @@ void xprt_release(struct rpc_task *task)
+> 		mod_timer(&xprt->timer,
+> 				xprt->last_used + xprt->idle_timeout);
+> 	spin_unlock_bh(&xprt->transport_lock);
+> +	spin_unlock(&xprt->reserve_lock);
+> 	if (req->rq_buffer)
+> 		xprt->ops->buf_free(req->rq_buffer);
+> 	xprt_inject_disconnect(xprt);
+> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+> index 58dc90ccebb6..063d2eb20d8e 100644
+> --- a/net/sunrpc/xprtsock.c
+> +++ b/net/sunrpc/xprtsock.c
+> @@ -1246,21 +1246,24 @@ static inline int xs_tcp_read_reply(struct rpc_xprt *xprt,
+> 	dprintk("RPC:       read reply XID %08x\n", ntohl(transport->tcp_xid));
+> 
+> 	/* Find and lock the request corresponding to this xid */
+> -	spin_lock_bh(&xprt->transport_lock);
+> +	spin_lock(&xprt->reserve_lock);
+> 	req = xprt_lookup_rqst(xprt, transport->tcp_xid);
+> 	if (!req) {
+> 		dprintk("RPC:       XID %08x request not found!\n",
+> 				ntohl(transport->tcp_xid));
+> -		spin_unlock_bh(&xprt->transport_lock);
+> +		spin_unlock(&xprt->reserve_lock);
+> 		return -1;
+> 	}
 
-The GSS library itself.
-http://k5wiki.kerberos.org/wiki/Projects/Keytab_initiation and
-http://web.mit.edu/kerberos/krb5-latest/doc/basic/keytab_def.html#default-c=
-lient-keytab
-give a little bit of intro, though this feature could benefit from better
-documentation.
+Is a similar change needed for rpcrdma_reply_handler() ? If
+that can’t be changed until it runs in a WQ context, I have
+that patch right now. It can be ready for 4.4.
 
--Ben
 
-> > so this clock skew
-> > issue should not arise, so I don't think that feature is being used.
-> >
-> > It is possible that the NFS client code has its own separate logic for
-> > obtaining new tickets using a keytab.
->
-> When an NFS request requires a GSS context, if the context does not
-> exist, is not valid, or if it is valid but the server replies to an RPC
-> request using a GSS context with an RPC error that indicates it=E2=80=99s=
- side
-> of the GSS context has a problem, the client kernel does an upcall to
-> rpc.gssd which then decides if a new service ticket is required to send
-> an RPCSEC_GSS_INIT message to the server to create a new GSS context.
-> The resultant GSS context is stored in the client kernel with a lifetime
-> equal to the service ticket used to create it.
->
-> If rpc.gssd calls the code that refreshes the tickets from the keytab
-> when they are half way to expiring=E2=80=99 then that should mitigate the=
- clock
-> skew issue.
->
->
-> > If so, we need to understand how
-> > it works.  It's possible (though unlikely) that changing the behavior o=
-f
-> > gss_accept_sec_context() wouldn't be sufficient by itself.
->
->
-> _______________________________________________
-> krbdev mailing list             krbdev@mit.edu
-> https://mailman.mit.edu/mailman/listinfo/krbdev
->
----559023410-442568504-1444089144=:26829--
+> 	xs_tcp_read_common(xprt, desc, req);
+> 
+> -	if (!(transport->tcp_flags & TCP_RCV_COPY_DATA))
+> +	if (!(transport->tcp_flags & TCP_RCV_COPY_DATA)) {
+> +		spin_lock_bh(&xprt->transport_lock);
+> 		xprt_complete_rqst(req->rq_task, transport->tcp_copied);
+> +		spin_unlock_bh(&xprt->transport_lock);
+> +	}
+> 
+> -	spin_unlock_bh(&xprt->transport_lock);
+> +	spin_unlock(&xprt->reserve_lock);
+> 	return 0;
+> }
+
+xprt_complete_rqst() is actually the top source of contention
+on transport_lock in my tests, thanks to the locking under
+rpc_wake_up_queued_task(). Is there a plan to mitigate locking
+costs in the RPC scheduler?
+
+
+> @@ -1280,10 +1283,10 @@ static int xs_tcp_read_callback(struct rpc_xprt *xprt,
+> 	struct rpc_rqst *req;
+> 
+> 	/* Look up and lock the request corresponding to the given XID */
+> -	spin_lock_bh(&xprt->transport_lock);
+> +	spin_lock(&xprt->reserve_lock);
+> 	req = xprt_lookup_bc_request(xprt, transport->tcp_xid);
+> 	if (req == NULL) {
+> -		spin_unlock_bh(&xprt->transport_lock);
+> +		spin_unlock(&xprt->reserve_lock);
+> 		printk(KERN_WARNING "Callback slot table overflowed\n");
+> 		xprt_force_disconnect(xprt);
+> 		return -1;
+> @@ -1294,7 +1297,7 @@ static int xs_tcp_read_callback(struct rpc_xprt *xprt,
+> 
+> 	if (!(transport->tcp_flags & TCP_RCV_COPY_DATA))
+> 		xprt_complete_bc_request(req, transport->tcp_copied);
+> -	spin_unlock_bh(&xprt->transport_lock);
+> +	spin_unlock(&xprt->reserve_lock);
+> 
+> 	return 0;
+> }
+> -- 
+> 2.4.3
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+—
+Chuck Lever
+
+
+
