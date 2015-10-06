@@ -1,48 +1,53 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from [193.47.165.129] ([193.47.165.129]:38398 "EHLO mellanox.co.il"
-	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1751438AbbJFJse (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 6 Oct 2015 05:48:34 -0400
-From: Sagi Grimberg <sagig@mellanox.com>
-To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Cc: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH rdma-rc] xprtrdma: Don't require LOCAL_DMA_LKEY support for fasterg
-Date: Tue,  6 Oct 2015 12:48:09 +0300
-Message-Id: <1444124889-8957-1-git-send-email-sagig@mellanox.com>
+Received: from tundra.namei.org ([65.99.196.166]:40156 "EHLO namei.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750915AbbJFJtl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 6 Oct 2015 05:49:41 -0400
+Date: Tue, 6 Oct 2015 20:49:04 +1100 (AEDT)
+From: James Morris <jmorris@namei.org>
+To: Christoph Hellwig <hch@infradead.org>
+cc: Andreas Gruenbacher <agruenba@redhat.com>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-api@vger.kernel.org
+Subject: Re: [PATCH v8 00/41] Richacls
+In-Reply-To: <20151004062313.GA20212@infradead.org>
+Message-ID: <alpine.LRH.2.20.1510062047220.2329@namei.org>
+References: <1443391772-10171-1-git-send-email-agruenba@redhat.com> <20151004062313.GA20212@infradead.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-There is no need to require LOCAL_DMA_LKEY support in order to
-use fast registration as the PD allocation makes sure that there
-is a local_dma_lkey.
+On Sat, 3 Oct 2015, Christoph Hellwig wrote:
 
-This caused a NULL pointer dereference in mlx5 which removed
-the support for LOCAL_DMA_LKEY.
+> On Mon, Sep 28, 2015 at 12:08:51AM +0200, Andreas Gruenbacher wrote:
+> > Hello,
+> > 
+> > here's another update of the richacl patch queue.  At this stage, I would
+> > like to ask for final feedback so that the core and ext4 code (patches
+> > 1-19) can be merged in the 4.4 merge window.  The nfsd and nfs code should
+> > then go through the respective maintainer trees.
+> 
+> Now way in this form even if everyone agrees we should have these
+> bastard ACLs.  I certainly disagree.
+> 
 
-Fixes: bb6c96d72879 ("xprtrdma: Replace global lkey with lkey local to PD")
-Signed-off-by: Sagi Grimberg <sagig@mellanox.com>
----
- net/sunrpc/xprtrdma/verbs.c |    7 ++-----
- 1 files changed, 2 insertions(+), 5 deletions(-)
+Where is the rationale for them?
 
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index eb081ad..7efd9ef 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -543,11 +543,8 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
- 	}
- 
- 	if (memreg == RPCRDMA_FRMR) {
--		/* Requires both frmr reg and local dma lkey */
--		if (((devattr->device_cap_flags &
--		     (IB_DEVICE_MEM_MGT_EXTENSIONS|IB_DEVICE_LOCAL_DMA_LKEY)) !=
--		    (IB_DEVICE_MEM_MGT_EXTENSIONS|IB_DEVICE_LOCAL_DMA_LKEY)) ||
--		      (devattr->max_fast_reg_page_list_len == 0)) {
-+		if (!(devattr->device_cap_flags & IB_DEVICE_MEM_MGT_EXTENSIONS) ||
-+		    (devattr->max_fast_reg_page_list_len == 0)) {
- 			dprintk("RPC:       %s: FRMR registration "
- 				"not supported by HCA\n", __func__);
- 			memreg = RPCRDMA_MTHCAFMR;
+This url doesn't work: http://acl.bestbits.at/richacl/
+
+
+
+
+
 -- 
-1.7.1
+James Morris
+<jmorris@namei.org>
 
