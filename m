@@ -1,75 +1,60 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:24032 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752681AbbJFQf6 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Oct 2015 12:35:58 -0400
-Content-Type: text/plain;
-	charset=us-ascii
-Mime-Version: 1.0 (1.0)
-Subject: Re: [PATCH rdma-rc] xprtrdma: Don't require LOCAL_DMA_LKEY support for fasterg
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <5613F684.3020904@dev.mellanox.co.il>
-Date: Tue, 6 Oct 2015 12:35:52 -0400
-Cc: Sagi Grimberg <sagig@mellanox.com>, linux-rdma@vger.kernel.org,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <99F91046-F9B1-4EBC-ADFD-AE00A3E72B64@oracle.com>
-References: <1444124889-8957-1-git-send-email-sagig@mellanox.com> <56C57483-17AA-47FF-8743-E1522BD8C351@oracle.com> <5613F684.3020904@dev.mellanox.co.il>
-To: Sagi Grimberg <sagig@dev.mellanox.co.il>
+Received: from [193.47.165.129] ([193.47.165.129]:42626 "EHLO mellanox.co.il"
+	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1751318AbbJFQxN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 6 Oct 2015 12:53:13 -0400
+From: Sagi Grimberg <sagig@mellanox.com>
+To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Cc: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH rdma-rc v1] xprtrdma: Don't require LOCAL_DMA_LKEY support for fasterg
+Date: Tue,  6 Oct 2015 19:52:37 +0300
+Message-Id: <1444150357-2362-1-git-send-email-sagig@mellanox.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+There is no need to require LOCAL_DMA_LKEY support as the
+PD allocation makes sure that there is a local_dma_lkey. Also
+correctly set a return value in error path.
 
-> On Oct 6, 2015, at 12:27 PM, Sagi Grimberg <sagig@dev.mellanox.co.il> wrote:
-> 
->> On 10/6/2015 6:05 PM, Chuck Lever wrote:
->> Hi Sagi-
->> 
->> 
->>> On Oct 6, 2015, at 5:48 AM, Sagi Grimberg <sagig@mellanox.com> wrote:
->>> 
->>> There is no need to require LOCAL_DMA_LKEY support in order to
->>> use fast registration as the PD allocation makes sure that there
->>> is a local_dma_lkey.
->> 
->> In other words, all devices now have a local DMA lkey, so the
->> check is unnecessary.
-> 
-> Right.
-> 
->> 
->> 
->>> This caused a NULL pointer dereference in mlx5 which removed
->>> the support for LOCAL_DMA_LKEY.
->> 
->> Where was the bad dereference? in mlx5, or in xprtrdma?
-> 
-> xprtrdma, ia->ri_ops wasn't assigned correctly.
-> 
-> Now that I look at it, one error path in rpcrdma_ia_open misses
-> an rc assignment. That needs to be fixed too, should it be in the same
-> patch?
+This caused a NULL pointer dereference in mlx5 which removed
+the support for LOCAL_DMA_LKEY.
 
-Go for it.
+Fixes: bb6c96d72879 ("xprtrdma: Replace global lkey with lkey local to PD")
+Signed-off-by: Sagi Grimberg <sagig@mellanox.com>
+Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
+---
+Changes from v0:
+- Added error path rc assignment.
 
+ net/sunrpc/xprtrdma/verbs.c |    8 +++-----
+ 1 files changed, 3 insertions(+), 5 deletions(-)
 
-> 
-> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-> index 7efd9ef..81e8d31 100644
-> --- a/net/sunrpc/xprtrdma/verbs.c
-> +++ b/net/sunrpc/xprtrdma/verbs.c
-> @@ -554,6 +554,7 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
->                if (!ia->ri_device->alloc_fmr) {
->                        dprintk("RPC:       %s: MTHCAFMR registration "
->                                "not supported by HCA\n", __func__);
-> +                       rc = -EINVAL;
->                        goto out3;
->                }
->        }
-> --
-> 
-> the incorrect requirement + missing rc caused the NULL deref of
-> ia->ri_ops.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index eb081ad..81e8d31 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -543,11 +543,8 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
+ 	}
+ 
+ 	if (memreg == RPCRDMA_FRMR) {
+-		/* Requires both frmr reg and local dma lkey */
+-		if (((devattr->device_cap_flags &
+-		     (IB_DEVICE_MEM_MGT_EXTENSIONS|IB_DEVICE_LOCAL_DMA_LKEY)) !=
+-		    (IB_DEVICE_MEM_MGT_EXTENSIONS|IB_DEVICE_LOCAL_DMA_LKEY)) ||
+-		      (devattr->max_fast_reg_page_list_len == 0)) {
++		if (!(devattr->device_cap_flags & IB_DEVICE_MEM_MGT_EXTENSIONS) ||
++		    (devattr->max_fast_reg_page_list_len == 0)) {
+ 			dprintk("RPC:       %s: FRMR registration "
+ 				"not supported by HCA\n", __func__);
+ 			memreg = RPCRDMA_MTHCAFMR;
+@@ -557,6 +554,7 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
+ 		if (!ia->ri_device->alloc_fmr) {
+ 			dprintk("RPC:       %s: MTHCAFMR registration "
+ 				"not supported by HCA\n", __func__);
++			rc = -EINVAL;
+ 			goto out3;
+ 		}
+ 	}
+-- 
+1.7.1
+
