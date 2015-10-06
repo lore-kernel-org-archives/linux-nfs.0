@@ -1,57 +1,48 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:49030 "EHLO
-	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750897AbbJFJH4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Oct 2015 05:07:56 -0400
-Date: Tue, 6 Oct 2015 11:07:46 +0200
-From: Pavel Machek <pavel@ucw.cz>
-To: Andreas Gruenbacher <agruenba@redhat.com>
-Cc: Alexander Viro <viro@zeniv.linux.org.uk>, "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@poochiereds.net>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-api@vger.kernel.org
-Subject: Re: [PATCH v9 00/43] Richacls
-Message-ID: <20151006090746.GA27791@xo-6d-61-c0.localdomain>
-References: <1444073830-21854-1-git-send-email-agruenba@redhat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1444073830-21854-1-git-send-email-agruenba@redhat.com>
+Received: from [193.47.165.129] ([193.47.165.129]:38398 "EHLO mellanox.co.il"
+	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1751438AbbJFJse (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 6 Oct 2015 05:48:34 -0400
+From: Sagi Grimberg <sagig@mellanox.com>
+To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Cc: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH rdma-rc] xprtrdma: Don't require LOCAL_DMA_LKEY support for fasterg
+Date: Tue,  6 Oct 2015 12:48:09 +0300
+Message-Id: <1444124889-8957-1-git-send-email-sagig@mellanox.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon 2015-10-05 21:36:27, Andreas Gruenbacher wrote:
-> Here is another update of the richacl patch queue.  I would like to ask for
-> feedback so that the core and ext4 code (patches 1-21) can be merged in the
-> 4.4 merge window.  Changes since the last posting
-> (https://lkml.org/lkml/2015/9/27/148):
-> 
->  * A set_richacl inode operation similar to set_acl for POSIX ACLs was
->    added.  The filesystem specific code needed for adding richacl support
->    has shrunk: ext4_richacl_chmod, ext4_xattr_{list,get,set}_richacl,
->    ext4_init_richacl, ext4_richacl_xattr_handler were all replaced by vfs
->    functions.
-> 
-> The complete patch queue is available here:
-> 
->   git://git.kernel.org/pub/scm/linux/kernel/git/agruen/linux-richacl.git \
-> 	richacl-2015-10-05
-> 
-> 
-> The richacl user-space utilitites and test suite are available here:
-> 
->   https://github.com/andreas-gruenbacher/richacl/
-> 
-> 
-> We still have two open issues in nfs (see the previous posting) which don't
-> affect the core functionality.
+There is no need to require LOCAL_DMA_LKEY support in order to
+use fast registration as the PD allocation makes sure that there
+is a local_dma_lkey.
 
-Should there be file in Documentation/ explaining how this works?
+This caused a NULL pointer dereference in mlx5 which removed
+the support for LOCAL_DMA_LKEY.
 
-									Pavel
+Fixes: bb6c96d72879 ("xprtrdma: Replace global lkey with lkey local to PD")
+Signed-off-by: Sagi Grimberg <sagig@mellanox.com>
+---
+ net/sunrpc/xprtrdma/verbs.c |    7 ++-----
+ 1 files changed, 2 insertions(+), 5 deletions(-)
+
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index eb081ad..7efd9ef 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -543,11 +543,8 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
+ 	}
+ 
+ 	if (memreg == RPCRDMA_FRMR) {
+-		/* Requires both frmr reg and local dma lkey */
+-		if (((devattr->device_cap_flags &
+-		     (IB_DEVICE_MEM_MGT_EXTENSIONS|IB_DEVICE_LOCAL_DMA_LKEY)) !=
+-		    (IB_DEVICE_MEM_MGT_EXTENSIONS|IB_DEVICE_LOCAL_DMA_LKEY)) ||
+-		      (devattr->max_fast_reg_page_list_len == 0)) {
++		if (!(devattr->device_cap_flags & IB_DEVICE_MEM_MGT_EXTENSIONS) ||
++		    (devattr->max_fast_reg_page_list_len == 0)) {
+ 			dprintk("RPC:       %s: FRMR registration "
+ 				"not supported by HCA\n", __func__);
+ 			memreg = RPCRDMA_MTHCAFMR;
 -- 
-(english) http://www.livejournal.com/~pavelmachek
-(cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blog.html
+1.7.1
+
