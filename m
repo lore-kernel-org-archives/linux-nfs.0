@@ -1,177 +1,133 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ob0-f182.google.com ([209.85.214.182]:33286 "EHLO
-	mail-ob0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751467AbbJFDzi convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Oct 2015 23:55:38 -0400
-Received: by obbbh8 with SMTP id bh8so144804001obb.0
-        for <linux-nfs@vger.kernel.org>; Mon, 05 Oct 2015 20:55:38 -0700 (PDT)
+Received: from mail-wi0-f181.google.com ([209.85.212.181]:35406 "EHLO
+	mail-wi0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750818AbbJFIhq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Oct 2015 04:37:46 -0400
+Received: by wicge5 with SMTP id ge5so155659340wic.0
+        for <linux-nfs@vger.kernel.org>; Tue, 06 Oct 2015 01:37:45 -0700 (PDT)
+Subject: Re: [PATCH v1 00/24] New fast registration API
+To: Bart Van Assche <bart.vanassche@sandisk.com>
+References: <1442482947-27785-1-git-send-email-sagig@mellanox.com>
+ <560AE099.2080004@sandisk.com> <560AFB71.3010003@dev.mellanox.co.il>
+ <560C30F4.50900@sandisk.com> <560C42CE.6090000@sandisk.com>
+ <560CDDBC.8000400@dev.mellanox.co.il> <560D730C.9000302@sandisk.com>
+ <560D9E69.70604@sandisk.com>
+ <35618B90-4D6E-4036-A69B-4405F020D440@dev.mellanox.co.il>
+ <560EA4A1.3080709@sandisk.com>
+Cc: Sagi Grimberg <sagig@mellanox.com>,
+        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "Nicholas A. Bellinger" <nab@linux-iscsi.org>
+From: Sagi Grimberg <sagig@dev.mellanox.co.il>
+Message-ID: <56138854.4040209@dev.mellanox.co.il>
+Date: Tue, 6 Oct 2015 11:37:40 +0300
 MIME-Version: 1.0
-In-Reply-To: <97B47F0A-B0B3-4B11-8498-3616CD761D4A@oracle.com>
-References: <1444086211-4811-1-git-send-email-trond.myklebust@primarydata.com>
-	<1444086211-4811-2-git-send-email-trond.myklebust@primarydata.com>
-	<1444086211-4811-3-git-send-email-trond.myklebust@primarydata.com>
-	<97B47F0A-B0B3-4B11-8498-3616CD761D4A@oracle.com>
-Date: Mon, 5 Oct 2015 23:55:37 -0400
-Message-ID: <CAHQdGtRFNnTAJ4bSk4fpcnU5QjZAfdwYc__Z1QGmMkJDvW6B4w@mail.gmail.com>
-Subject: Re: [RFC PATCH 3/3] SUNRPC: Allow TCP to replace the bh-safe lock in
- receive path
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+In-Reply-To: <560EA4A1.3080709@sandisk.com>
+Content-Type: text/plain; charset=utf-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Oct 5, 2015 at 8:10 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+On 10/2/2015 6:37 PM, Bart Van Assche wrote:
+> On 10/01/2015 11:14 PM, Sagi Grimberg wrote:
+>> Would you mind sending me your .config?
 >
->> On Oct 5, 2015, at 7:03 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
->>
->> This patch attempts to eke out a couple more iops by allowing the TCP code
->> to replace bh-safe spinlock with an ordinary one while receiving data. We
->> still need to use the bh-safe spinlock when completing.
->>
->> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
->> ---
->> net/sunrpc/xprt.c     |  4 ++++
->> net/sunrpc/xprtsock.c | 17 ++++++++++-------
->> 2 files changed, 14 insertions(+), 7 deletions(-)
->>
->> diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
->> index 2e98f4a243e5..e604bb680bcf 100644
->> --- a/net/sunrpc/xprt.c
->> +++ b/net/sunrpc/xprt.c
->> @@ -951,6 +951,7 @@ void xprt_transmit(struct rpc_task *task)
->>                       /*
->>                        * Add to the list only if we're expecting a reply
->>                        */
->> +                     spin_lock(&xprt->reserve_lock);
->>                       spin_lock_bh(&xprt->transport_lock);
->
-> This is painful. spin_lock_bh is a pre-emption point, where
-> the kernel can handle interrupts while others are spinning
-> waiting for both of these locks. It can result in waiting
-> for more than 100us to get the lock.
->
+> Hello Sagi,
 
-I thought, the problem isn't so much the spin_lock_bh() but rather the
-spin_unlock_bh(). If this is the outermost bh-safe lock, then
-spin_unlock_bh() may call do_softirq(), which can take a while, and
-therefore increase the chances of contention for any outer
-(non-bh-safe) locks.
+Hi Bart,
 
-Note, however, that PATCH 2/3 significantly cuts down on the total
-amount of time spent in do_softirq(), and therefore explains most of
-the performance increase. We can drop patch 3/3 without losing much.
+>
+> I just sent this .config file to you off-list.
 
-> Was there an increase or decrease in CPU utilization with
-> this change?
+I see now the error you are referring to.
 
-I'm seeing less overall contention.
+The issue is that the device requires the MR page array to have
+an alignment (0x40 for mlx4 and 0x400 for mlx5). When I modified the
+page array allocation to be non-coherent I didn't take care of
+alignment.
 
->>                       /* Update the softirq receive buffer */
->>                       memcpy(&req->rq_private_buf, &req->rq_rcv_buf,
->> @@ -958,6 +959,7 @@ void xprt_transmit(struct rpc_task *task)
->>                       /* Add request to the receive list */
->>                       list_add_tail(&req->rq_list, &xprt->recv);
->>                       spin_unlock_bh(&xprt->transport_lock);
->> +                     spin_unlock(&xprt->reserve_lock);
->>                       xprt_reset_majortimeo(req);
->>                       /* Turn off autodisconnect */
->>                       del_singleshot_timer_sync(&xprt->timer);
->> @@ -1278,6 +1280,7 @@ void xprt_release(struct rpc_task *task)
->>               task->tk_ops->rpc_count_stats(task, task->tk_calldata);
->>       else if (task->tk_client)
->>               rpc_count_iostats(task, task->tk_client->cl_metrics);
->> +     spin_lock(&xprt->reserve_lock);
->>       spin_lock_bh(&xprt->transport_lock);
->>       xprt->ops->release_xprt(xprt, task);
->>       if (xprt->ops->release_request)
->> @@ -1289,6 +1292,7 @@ void xprt_release(struct rpc_task *task)
->>               mod_timer(&xprt->timer,
->>                               xprt->last_used + xprt->idle_timeout);
->>       spin_unlock_bh(&xprt->transport_lock);
->> +     spin_unlock(&xprt->reserve_lock);
->>       if (req->rq_buffer)
->>               xprt->ops->buf_free(req->rq_buffer);
->>       xprt_inject_disconnect(xprt);
->> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
->> index 58dc90ccebb6..063d2eb20d8e 100644
->> --- a/net/sunrpc/xprtsock.c
->> +++ b/net/sunrpc/xprtsock.c
->> @@ -1246,21 +1246,24 @@ static inline int xs_tcp_read_reply(struct rpc_xprt *xprt,
->>       dprintk("RPC:       read reply XID %08x\n", ntohl(transport->tcp_xid));
->>
->>       /* Find and lock the request corresponding to this xid */
->> -     spin_lock_bh(&xprt->transport_lock);
->> +     spin_lock(&xprt->reserve_lock);
->>       req = xprt_lookup_rqst(xprt, transport->tcp_xid);
->>       if (!req) {
->>               dprintk("RPC:       XID %08x request not found!\n",
->>                               ntohl(transport->tcp_xid));
->> -             spin_unlock_bh(&xprt->transport_lock);
->> +             spin_unlock(&xprt->reserve_lock);
->>               return -1;
->>       }
->
-> Is a similar change needed for rpcrdma_reply_handler() ? If
-> that can’t be changed until it runs in a WQ context, I have
-> that patch right now. It can be ready for 4.4.
->
->
->>       xs_tcp_read_common(xprt, desc, req);
->>
->> -     if (!(transport->tcp_flags & TCP_RCV_COPY_DATA))
->> +     if (!(transport->tcp_flags & TCP_RCV_COPY_DATA)) {
->> +             spin_lock_bh(&xprt->transport_lock);
->>               xprt_complete_rqst(req->rq_task, transport->tcp_copied);
->> +             spin_unlock_bh(&xprt->transport_lock);
->> +     }
->>
->> -     spin_unlock_bh(&xprt->transport_lock);
->> +     spin_unlock(&xprt->reserve_lock);
->>       return 0;
->> }
->
-> xprt_complete_rqst() is actually the top source of contention
-> on transport_lock in my tests, thanks to the locking under
-> rpc_wake_up_queued_task(). Is there a plan to mitigate locking
-> costs in the RPC scheduler?
+Taking care of this alignment may result in a higher order allocation
+as we'd need to add (alignment - 1) to the allocation size.
 
-I'm not understanding how rpc_wake_up_queued_task() could cause a
-problem here. Can you explain?
+e.g. a 512 pages on mlx4 will become:
+512 * 8 + 0x40 - 1 = 4159
 
->> @@ -1280,10 +1283,10 @@ static int xs_tcp_read_callback(struct rpc_xprt *xprt,
->>       struct rpc_rqst *req;
->>
->>       /* Look up and lock the request corresponding to the given XID */
->> -     spin_lock_bh(&xprt->transport_lock);
->> +     spin_lock(&xprt->reserve_lock);
->>       req = xprt_lookup_bc_request(xprt, transport->tcp_xid);
->>       if (req == NULL) {
->> -             spin_unlock_bh(&xprt->transport_lock);
->> +             spin_unlock(&xprt->reserve_lock);
->>               printk(KERN_WARNING "Callback slot table overflowed\n");
->>               xprt_force_disconnect(xprt);
->>               return -1;
->> @@ -1294,7 +1297,7 @@ static int xs_tcp_read_callback(struct rpc_xprt *xprt,
->>
->>       if (!(transport->tcp_flags & TCP_RCV_COPY_DATA))
->>               xprt_complete_bc_request(req, transport->tcp_copied);
->> -     spin_unlock_bh(&xprt->transport_lock);
->> +     spin_unlock(&xprt->reserve_lock);
->>
->>       return 0;
->> }
->> --
->> 2.4.3
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
-> —
-> Chuck Lever
->
->
->
+I'm leaning towards this approach. Any preference?
+
+I think this patch should take care of mlx4:
+diff --git a/drivers/infiniband/hw/mlx4/mlx4_ib.h 
+b/drivers/infiniband/hw/mlx4/mlx4_ib.h
+index de6eab3..4c69247 100644 
+
+--- a/drivers/infiniband/hw/mlx4/mlx4_ib.h
++++ b/drivers/infiniband/hw/mlx4/mlx4_ib.h
+@@ -129,6 +129,8 @@ struct mlx4_ib_cq {
+         struct list_head                recv_qp_list;
+  };
+
++#define MLX4_MR_PAGES_ALIGN 0x40
++
+  struct mlx4_ib_mr {
+         struct ib_mr            ibmr;
+         __be64                  *pages;
+@@ -137,6 +139,7 @@ struct mlx4_ib_mr {
+         u32                     max_pages;
+         struct mlx4_mr          mmr;
+         struct ib_umem         *umem;
++       void                    *pages_alloc;
+  };
+
+  struct mlx4_ib_mw {
+diff --git a/drivers/infiniband/hw/mlx4/mr.c 
+b/drivers/infiniband/hw/mlx4/mr.c
+index fa01f75..d3f8175 100644
+--- a/drivers/infiniband/hw/mlx4/mr.c
++++ b/drivers/infiniband/hw/mlx4/mr.c
+@@ -279,10 +279,14 @@ mlx4_alloc_priv_pages(struct ib_device *device,
+         int size = max_pages * sizeof(u64);
+         int ret;
+
+-       mr->pages = kzalloc(size, GFP_KERNEL);
+-       if (!mr->pages)
++       size += max_t(int, MLX4_MR_PAGES_ALIGN - ARCH_KMALLOC_MINALIGN, 0);
++
++       mr->pages_alloc = kzalloc(size, GFP_KERNEL);
++       if (!mr->pages_alloc)
+                 return -ENOMEM;
+
++       mr->pages = PTR_ALIGN(mr->pages_alloc, MLX4_MR_PAGES_ALIGN);
++
+         mr->page_map = dma_map_single(device->dma_device, mr->pages,
+                                       size, DMA_TO_DEVICE);
+
+@@ -293,20 +297,22 @@ mlx4_alloc_priv_pages(struct ib_device *device,
+
+         return 0;
+  err:
+-       kfree(mr->pages);
++       kfree(mr->pages_alloc);
+         return ret;
+  }
+
+  static void
+  mlx4_free_priv_pages(struct mlx4_ib_mr *mr)
+  {
+-       struct ib_device *device = mr->ibmr.device;
+-       int size = mr->max_pages * sizeof(u64);
+-
+         if (mr->pages) {
++               struct ib_device *device = mr->ibmr.device;
++               int size = mr->max_pages * sizeof(u64);
++
++               size += max_t(int, MLX4_MR_PAGES_ALIGN - 
+ARCH_KMALLOC_MINALIGN, 0);
++
+                 dma_unmap_single(device->dma_device, mr->page_map,
+                                  size, DMA_TO_DEVICE);
+-               kfree(mr->pages);
++               kfree(mr->pages_alloc);
+                 mr->pages = NULL;
+         }
+  }
+--
+
+Sagi.
