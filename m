@@ -1,133 +1,108 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-by2on0066.outbound.protection.outlook.com ([207.46.100.66]:14645
-	"EHLO na01-by2-obe.outbound.protection.outlook.com"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1750810AbbJFStk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 6 Oct 2015 14:49:40 -0400
-Subject: Re: [PATCH v1 00/24] New fast registration API
-To: Sagi Grimberg <sagig@dev.mellanox.co.il>
-References: <1442482947-27785-1-git-send-email-sagig@mellanox.com>
- <560AE099.2080004@sandisk.com> <560AFB71.3010003@dev.mellanox.co.il>
- <560C30F4.50900@sandisk.com> <560C42CE.6090000@sandisk.com>
- <560CDDBC.8000400@dev.mellanox.co.il> <560D730C.9000302@sandisk.com>
- <560D9E69.70604@sandisk.com>
- <35618B90-4D6E-4036-A69B-4405F020D440@dev.mellanox.co.il>
- <560EA4A1.3080709@sandisk.com> <56138854.4040209@dev.mellanox.co.il>
-CC: Sagi Grimberg <sagig@mellanox.com>,
-        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Nicholas A. Bellinger" <nab@linux-iscsi.org>
-From: Bart Van Assche <bart.vanassche@sandisk.com>
-Message-ID: <561417B9.2080505@sandisk.com>
-Date: Tue, 6 Oct 2015 11:49:29 -0700
-MIME-Version: 1.0
-In-Reply-To: <56138854.4040209@dev.mellanox.co.il>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-pa0-f42.google.com ([209.85.220.42]:34522 "EHLO
+	mail-pa0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753100AbbJFU0S (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Oct 2015 16:26:18 -0400
+Received: by padhy16 with SMTP id hy16so79642719pad.1
+        for <linux-nfs@vger.kernel.org>; Tue, 06 Oct 2015 13:26:17 -0700 (PDT)
+Subject: Re: [PATCH v8 00/41] Richacls
+Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2104\))
+Content-Type: multipart/signed; boundary="Apple-Mail=_2BC013DC-9D8C-45B8-8CC6-5E5219C7CBCA"; protocol="application/pgp-signature"; micalg=pgp-sha256
+From: Andreas Dilger <adilger@dilger.ca>
+In-Reply-To: <CAHc6FU5aZJDC3N1iGyVeHfbqMyquM93ONJvUR-t0a9+AjmtAXQ@mail.gmail.com>
+Date: Tue, 6 Oct 2015 14:26:09 -0600
+Cc: Christoph Hellwig <hch@infradead.org>,
+        Austin S Hemmelgarn <ahferroin7@gmail.com>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        "Theodore Ts'o" <tytso@mit.edu>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        linux-ext4 <linux-ext4@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-nfs@vger.kernel.org, Linux API <linux-api@vger.kernel.org>
+Message-Id: <CF738526-0807-4CE5-A52B-413164D41AA9@dilger.ca>
+References: <1443391772-10171-1-git-send-email-agruenba@redhat.com> <20151004062313.GA20212@infradead.org> <CAHc6FU53mXg1k0KCNkWEjxyuC8iAUgWh-A76qX=C3Yth+qEyuQ@mail.gmail.com> <5612C85C.2060407@gmail.com> <20151006094935.GA14144@infradead.org> <CAHc6FU5aZJDC3N1iGyVeHfbqMyquM93ONJvUR-t0a9+AjmtAXQ@mail.gmail.com>
+To: Andreas Gruenbacher <agruenba@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 10/06/2015 01:37 AM, Sagi Grimberg wrote:
-> I see now the error you are referring to.
-> 
-> The issue is that the device requires the MR page array to have
-> an alignment (0x40 for mlx4 and 0x400 for mlx5). When I modified the
-> page array allocation to be non-coherent I didn't take care of
-> alignment.
-> 
-> Taking care of this alignment may result in a higher order allocation
-> as we'd need to add (alignment - 1) to the allocation size.
-> 
-> e.g. a 512 pages on mlx4 will become:
-> 512 * 8 + 0x40 - 1 = 4159
-> 
-> I'm leaning towards this approach. Any preference?
-> 
-> I think this patch should take care of mlx4:
-> [ ... ]
 
-Hello Sagi,
+--Apple-Mail=_2BC013DC-9D8C-45B8-8CC6-5E5219C7CBCA
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=us-ascii
 
-Thanks for the patch. But since the patch included in the previous
-e-mail mapped a memory range that could be outside the bounds of the
-allocated memory I have been testing the patch below:
+On Oct 6, 2015, at 7:12 AM, Andreas Gruenbacher <agruenba@redhat.com> =
+wrote:
+>=20
+> On Tue, Oct 6, 2015 at 11:49 AM, Christoph Hellwig <hch@infradead.org> =
+wrote:
+>> On Mon, Oct 05, 2015 at 02:58:36PM -0400, Austin S Hemmelgarn wrote:
+>>> I think the point is that a new VFS feature that is easy to =
+integrate in
+>>> multiple filesystems should have support for those filesystems.  A =
+decade
+>>> ago, just having ext* support would probably have been fine, but =
+these days,
+>>> XFS, BTRFS, and F2FS are used just as much (if not more) on =
+production
+>>> systems as ext4, and having support for them right from the start =
+would
+>>> significantly help with adoption of richacls.
+>>=20
+>> That's one reason.  The other is that actually wiring it up for more
+>> than a single consumer shows its actually reasonable generic.
+>=20
+> The filesystem interface now is the same as for POSIX ACLs, used by a
+> dozen or so filesystems already.
+>=20
+>> I don't want to end up with a situration like Posix ACLs again where
+>> different file systems using different on disk formats again.
+>=20
+> Any file system could choose a different on-disk format than the one
+> that ext4 currently uses, but I don't see a reason why any should.
+> Apart from uid / gid mappings that is the same as the user-space xattr
+> format. Network file systems like NFSv4 and CIFS with their predefined
+> over-the-wire formats obviously are another story.
 
----
- drivers/infiniband/hw/mlx4/mlx4_ib.h |  3 +++
- drivers/infiniband/hw/mlx4/mr.c      | 19 ++++++++++++-------
- 2 files changed, 15 insertions(+), 7 deletions(-)
+And any disk filesystems that have their own non-POSIX ACLs, such as =
+HFS, NTFS, ZFS would presumably also need to map the in-kernel Richacl =
+format to their on-disk format.
 
-diff --git a/drivers/infiniband/hw/mlx4/mlx4_ib.h b/drivers/infiniband/hw/mlx4/mlx4_ib.h
-index de6eab3..864d595 100644
---- a/drivers/infiniband/hw/mlx4/mlx4_ib.h
-+++ b/drivers/infiniband/hw/mlx4/mlx4_ib.h
-@@ -129,6 +129,8 @@ struct mlx4_ib_cq {
- 	struct list_head		recv_qp_list;
- };
- 
-+#define MLX4_MR_PAGES_ALIGN 0x40
-+
- struct mlx4_ib_mr {
- 	struct ib_mr		ibmr;
- 	__be64			*pages;
-@@ -137,6 +139,7 @@ struct mlx4_ib_mr {
- 	u32			max_pages;
- 	struct mlx4_mr		mmr;
- 	struct ib_umem	       *umem;
-+	void                   *pages_alloc;
- };
- 
- struct mlx4_ib_mw {
-diff --git a/drivers/infiniband/hw/mlx4/mr.c b/drivers/infiniband/hw/mlx4/mr.c
-index fa01f75..8121c1c 100644
---- a/drivers/infiniband/hw/mlx4/mr.c
-+++ b/drivers/infiniband/hw/mlx4/mr.c
-@@ -277,12 +277,17 @@ mlx4_alloc_priv_pages(struct ib_device *device,
- 		      int max_pages)
- {
- 	int size = max_pages * sizeof(u64);
-+	int add_size;
- 	int ret;
- 
--	mr->pages = kzalloc(size, GFP_KERNEL);
--	if (!mr->pages)
-+	add_size = max_t(int, MLX4_MR_PAGES_ALIGN - ARCH_KMALLOC_MINALIGN, 0);
-+
-+	mr->pages_alloc = kzalloc(size + add_size, GFP_KERNEL);
-+	if (!mr->pages_alloc)
- 		return -ENOMEM;
- 
-+	mr->pages = PTR_ALIGN(mr->pages_alloc, MLX4_MR_PAGES_ALIGN);
-+
- 	mr->page_map = dma_map_single(device->dma_device, mr->pages,
- 				      size, DMA_TO_DEVICE);
- 
-@@ -293,20 +298,20 @@ mlx4_alloc_priv_pages(struct ib_device *device,
- 
- 	return 0;
- err:
--	kfree(mr->pages);
-+	kfree(mr->pages_alloc);
- 	return ret;
- }
- 
- static void
- mlx4_free_priv_pages(struct mlx4_ib_mr *mr)
- {
--	struct ib_device *device = mr->ibmr.device;
--	int size = mr->max_pages * sizeof(u64);
--
- 	if (mr->pages) {
-+		struct ib_device *device = mr->ibmr.device;
-+		int size = mr->max_pages * sizeof(u64);
-+
- 		dma_unmap_single(device->dma_device, mr->page_map,
- 				 size, DMA_TO_DEVICE);
--		kfree(mr->pages);
-+		kfree(mr->pages_alloc);
- 		mr->pages = NULL;
- 	}
- }
--- 
-2.1.4
+Cheers, Andreas
 
 
+
+
+
+
+--Apple-Mail=_2BC013DC-9D8C-45B8-8CC6-5E5219C7CBCA
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP using GPGMail
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iQIVAwUBVhQuY3Kl2rkXzB/gAQjy2BAAp5upU1xFGzGv3nOJ9JW0EHZff4l7ccFu
+kwFjn/6rotF6OXO0YQQGXUgZp6SlKN1ytoxJBV4l3A1ukb2ufRld6iiOEOmibZuT
+LGJuGAbQnT6KSL+IYtT9Jz/2cWw5fnHw8QKYtphzqrBbHJqqbcS0IMDw5WTfw0Y7
+S9ayWZGNITtbjo49Kjmw90cwk/s7WUGr9r3zzgmp8rXzFRYoyF2WgopzK5Gwb+Ak
+fB+JvHWq/9+PrKfY1Iyk+PhxuLL71r6z4yol9POUY+BFD2xGxiSKfHhIuSO6gnXT
+k0CaZvVG2hrCLsRUTwd9MnyC7Zsb5wNMvLnJOq2NyajYBR60l62IZ4hImKPmg/ej
+EZ1WyPObjhIjgdzI33zRHhpaZBvmFqL2vmv7N7EfhjLbePWeMrv3r4tQxN+syHRW
+D5ghIj1nhYcEsesRbLvu7WxEO9AnSy7na9L+84T/1Bt6bmO0BPvwEeGSx2KzccE0
+QpgaxRr9SG/CLiq8fO6Hb+5B+yfiUEHIT2zNDIrW33fSEvHbVA1nDbiDhXSLCLK+
+NszXTjQ1i3nEINx+1tuT+62bhSgGRUfUwdoW4TSTkUR069N8JWiUOtQQaK7kIyuq
+IrzYsB5OO2SWBYgsL50GhdjASDi2B6f9qBVLKWDLufPBtHtx+OllYtp4uZl0tcAI
+KzKVmTgB4RU=
+=CoPb
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_2BC013DC-9D8C-45B8-8CC6-5E5219C7CBCA--
