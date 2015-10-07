@@ -1,109 +1,42 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:44115 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753092AbbJGUl4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 7 Oct 2015 16:41:56 -0400
-Date: Wed, 7 Oct 2015 16:41:55 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Doug Ledford <dledford@redhat.com>
-Cc: Steve Wise <swise@opengridcomputing.com>, linux-nfs@vger.kernel.org,
-        linux-rdma@vger.kernel.org
-Subject: Re: [PATCH RESEND] svcrdma: handle rdma read with a non-zero initial
- page offset
-Message-ID: <20151007204155.GB28136@fieldses.org>
-References: <20150928214605.17900.50257.stgit@build2.ogc.int>
- <56140879.3040000@redhat.com>
- <20151007170151.GB26514@fieldses.org>
- <56155751.7010903@redhat.com>
+Received: from mail-ob0-f169.google.com ([209.85.214.169]:35465 "EHLO
+	mail-ob0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754350AbbJGVpQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Oct 2015 17:45:16 -0400
+Received: by obbzf10 with SMTP id zf10so24070896obb.2
+        for <linux-nfs@vger.kernel.org>; Wed, 07 Oct 2015 14:45:15 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <56155751.7010903@redhat.com>
+In-Reply-To: <1444217995-8233-1-git-send-email-aryabinin@virtuozzo.com>
+References: <201510071927.5zx6Lh6E%fengguang.wu@intel.com>
+	<1444217995-8233-1-git-send-email-aryabinin@virtuozzo.com>
+Date: Wed, 7 Oct 2015 17:45:15 -0400
+Message-ID: <CAHQdGtQNVhqiEx2NytJDkHt+AtYUw6+_JT0q0L0+uZVBaSXT+Q@mail.gmail.com>
+Subject: Re: [PATCH v2] lockd: get rid of reference-counted NSM RPC clients
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Andrey Ryabinin <aryabinin@virtuozzo.com>
+Cc: Anna Schumaker <anna.schumaker@netapp.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        Stanislav Kinsbursky <skinsbursky@virtuozzo.com>,
+        kbuild test robot <lkp@intel.com>, kbuild-all@01.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Oct 07, 2015 at 01:33:05PM -0400, Doug Ledford wrote:
-> On 10/07/2015 01:01 PM, J. Bruce Fields wrote:
-> > On Tue, Oct 06, 2015 at 01:44:25PM -0400, Doug Ledford wrote:
-> >> On 09/28/2015 05:46 PM, Steve Wise wrote:
-> >>> The server rdma_read_chunk_lcl() and rdma_read_chunk_frmr() functions
-> >>> were not taking into account the initial page_offset when determining
-> >>> the rdma read length.  This resulted in a read who's starting address
-> >>> and length exceeded the base/bounds of the frmr.
-> >>>
-> >>> Most work loads don't tickle this bug apparently, but one test hit it
-> >>> every time: building the linux kernel on a 16 core node with 'make -j
-> >>> 16 O=/mnt/0' where /mnt/0 is a ramdisk mounted via NFSRDMA.
-> >>>
-> >>> This bug seems to only be tripped with devices having small fastreg page
-> >>> list depths.  I didn't see it with mlx4, for instance.
-> >>
-> >> Bruce, what's you're take on this?  Do you want to push this through or
-> >> would you care if I push it through my tree?
-> > 
-> > Whoops, sorry, I meant to send a pull request for that last week.  Uh, I
-> > think I'll go ahead and do that now if it's OK with you.
-> 
-> Fine with me.  I was just trying to make sure it didn't get forgotten ;-)
+On Wed, Oct 7, 2015 at 7:39 AM, Andrey Ryabinin <aryabinin@virtuozzo.com> wrote:
+> Currently we have reference-counted per-net NSM RPC client
+> which created on the first monitor request and destroyed
+> after the last unmonitor request. It's needed because
+> RPC client need to know 'utsname()->nodename', but utsname()
+> might be NULL when nsm_unmonitor() called.
+>
 
-Understood, thanks!  I've sent the pull request.--b.
+The other reason for keeping the rpc_client around is to avoid a need
+to do portmapper/rpcbind lookups in a net namespace that may be in the
+process of shutting down. This patchset will reintroduce that
+requirement.
 
-> 
-> > --b.
-> > 
-> >>
-> >>> Fixes: 0bf4828983df ('svcrdma: refactor marshalling logic')
-> >>> Signed-off-by: Steve Wise <swise@opengridcomputing.com>
-> >>> Tested-by: Chuck Lever <chuck.lever@oracle.com>
-> >>> ---
-> >>>
-> >>>  net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |    6 ++++--
-> >>>  1 files changed, 4 insertions(+), 2 deletions(-)
-> >>>
-> >>> diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-> >>> index cb51742..5f6ca47 100644
-> >>> --- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-> >>> +++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-> >>> @@ -136,7 +136,8 @@ int rdma_read_chunk_lcl(struct svcxprt_rdma *xprt,
-> >>>  	ctxt->direction = DMA_FROM_DEVICE;
-> >>>  	ctxt->read_hdr = head;
-> >>>  	pages_needed = min_t(int, pages_needed, xprt->sc_max_sge_rd);
-> >>> -	read = min_t(int, pages_needed << PAGE_SHIFT, rs_length);
-> >>> +	read = min_t(int, (pages_needed << PAGE_SHIFT) - *page_offset,
-> >>> +		     rs_length);
-> >>>  
-> >>>  	for (pno = 0; pno < pages_needed; pno++) {
-> >>>  		int len = min_t(int, rs_length, PAGE_SIZE - pg_off);
-> >>> @@ -235,7 +236,8 @@ int rdma_read_chunk_frmr(struct svcxprt_rdma *xprt,
-> >>>  	ctxt->direction = DMA_FROM_DEVICE;
-> >>>  	ctxt->frmr = frmr;
-> >>>  	pages_needed = min_t(int, pages_needed, xprt->sc_frmr_pg_list_len);
-> >>> -	read = min_t(int, pages_needed << PAGE_SHIFT, rs_length);
-> >>> +	read = min_t(int, (pages_needed << PAGE_SHIFT) - *page_offset,
-> >>> +		     rs_length);
-> >>>  
-> >>>  	frmr->kva = page_address(rqstp->rq_arg.pages[pg_no]);
-> >>>  	frmr->direction = DMA_FROM_DEVICE;
-> >>>
-> >>> --
-> >>> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
-> >>> the body of a message to majordomo@vger.kernel.org
-> >>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> >>>
-> >>
-> >>
-> >> -- 
-> >> Doug Ledford <dledford@redhat.com>
-> >>               GPG KeyID: 0E572FDD
-> >>
-> >>
-> > 
-> > 
-> 
-> 
-> -- 
-> Doug Ledford <dledford@redhat.com>
->               GPG KeyID: 0E572FDD
-> 
-> 
-
-
+Cheers
+  Trond
