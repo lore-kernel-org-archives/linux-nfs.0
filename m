@@ -1,49 +1,91 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-bl2on0085.outbound.protection.outlook.com ([65.55.169.85]:56767
-	"EHLO na01-bl2-obe.outbound.protection.outlook.com"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1754644AbbJGQpk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 7 Oct 2015 12:45:40 -0400
-Subject: Re: [PATCH v1 00/24] New fast registration API
-To: Christoph Hellwig <hch@infradead.org>,
-        Sagi Grimberg <sagig@dev.mellanox.co.il>
-References: <560AE099.2080004@sandisk.com>
- <560AFB71.3010003@dev.mellanox.co.il> <560C30F4.50900@sandisk.com>
- <560C42CE.6090000@sandisk.com> <560CDDBC.8000400@dev.mellanox.co.il>
- <560D730C.9000302@sandisk.com> <560D9E69.70604@sandisk.com>
- <35618B90-4D6E-4036-A69B-4405F020D440@dev.mellanox.co.il>
- <560EA4A1.3080709@sandisk.com> <56138854.4040209@dev.mellanox.co.il>
- <20151007092024.GA18020@infradead.org>
-CC: Sagi Grimberg <sagig@mellanox.com>,
-        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Nicholas A. Bellinger" <nab@linux-iscsi.org>
-From: Bart Van Assche <bart.vanassche@sandisk.com>
-Message-ID: <5615489E.2050307@sandisk.com>
-Date: Wed, 7 Oct 2015 09:30:22 -0700
+Received: from fieldses.org ([173.255.197.46]:43994 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753995AbbJGRBx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 7 Oct 2015 13:01:53 -0400
+Date: Wed, 7 Oct 2015 13:01:51 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Doug Ledford <dledford@redhat.com>
+Cc: Steve Wise <swise@opengridcomputing.com>, linux-nfs@vger.kernel.org,
+        linux-rdma@vger.kernel.org
+Subject: Re: [PATCH RESEND] svcrdma: handle rdma read with a non-zero initial
+ page offset
+Message-ID: <20151007170151.GB26514@fieldses.org>
+References: <20150928214605.17900.50257.stgit@build2.ogc.int>
+ <56140879.3040000@redhat.com>
 MIME-Version: 1.0
-In-Reply-To: <20151007092024.GA18020@infradead.org>
-Content-Type: text/plain; charset="utf-8"; format=flowed
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <56140879.3040000@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 10/07/2015 02:20 AM, Christoph Hellwig wrote:
-> On Tue, Oct 06, 2015 at 11:37:40AM +0300, Sagi Grimberg wrote:
->> The issue is that the device requires the MR page array to have
->> an alignment (0x40 for mlx4 and 0x400 for mlx5). When I modified the
->> page array allocation to be non-coherent I didn't take care of
->> alignment.
->
-> Just curious:  why did you switch away from the coheret dma allocations
-> anyway?  Seems like the page lists are mapped as long as they are
-> allocated so the coherent allocator would seem like a nice fit.
+On Tue, Oct 06, 2015 at 01:44:25PM -0400, Doug Ledford wrote:
+> On 09/28/2015 05:46 PM, Steve Wise wrote:
+> > The server rdma_read_chunk_lcl() and rdma_read_chunk_frmr() functions
+> > were not taking into account the initial page_offset when determining
+> > the rdma read length.  This resulted in a read who's starting address
+> > and length exceeded the base/bounds of the frmr.
+> > 
+> > Most work loads don't tickle this bug apparently, but one test hit it
+> > every time: building the linux kernel on a 16 core node with 'make -j
+> > 16 O=/mnt/0' where /mnt/0 is a ramdisk mounted via NFSRDMA.
+> > 
+> > This bug seems to only be tripped with devices having small fastreg page
+> > list depths.  I didn't see it with mlx4, for instance.
+> 
+> Bruce, what's you're take on this?  Do you want to push this through or
+> would you care if I push it through my tree?
 
-Hello Christoph,
+Whoops, sorry, I meant to send a pull request for that last week.  Uh, I
+think I'll go ahead and do that now if it's OK with you.
 
-My concern is that caching and/or write combining might be disabled for 
-DMA coherent memory regions. This is why I assume that calling 
-dma_map_single() and dma_unmap_single() will be faster for registering 
-multiple pages as a single memory region instead of using DMA coherent 
-memory.
+--b.
 
-Bart.
+> 
+> > Fixes: 0bf4828983df ('svcrdma: refactor marshalling logic')
+> > Signed-off-by: Steve Wise <swise@opengridcomputing.com>
+> > Tested-by: Chuck Lever <chuck.lever@oracle.com>
+> > ---
+> > 
+> >  net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |    6 ++++--
+> >  1 files changed, 4 insertions(+), 2 deletions(-)
+> > 
+> > diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+> > index cb51742..5f6ca47 100644
+> > --- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+> > +++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+> > @@ -136,7 +136,8 @@ int rdma_read_chunk_lcl(struct svcxprt_rdma *xprt,
+> >  	ctxt->direction = DMA_FROM_DEVICE;
+> >  	ctxt->read_hdr = head;
+> >  	pages_needed = min_t(int, pages_needed, xprt->sc_max_sge_rd);
+> > -	read = min_t(int, pages_needed << PAGE_SHIFT, rs_length);
+> > +	read = min_t(int, (pages_needed << PAGE_SHIFT) - *page_offset,
+> > +		     rs_length);
+> >  
+> >  	for (pno = 0; pno < pages_needed; pno++) {
+> >  		int len = min_t(int, rs_length, PAGE_SIZE - pg_off);
+> > @@ -235,7 +236,8 @@ int rdma_read_chunk_frmr(struct svcxprt_rdma *xprt,
+> >  	ctxt->direction = DMA_FROM_DEVICE;
+> >  	ctxt->frmr = frmr;
+> >  	pages_needed = min_t(int, pages_needed, xprt->sc_frmr_pg_list_len);
+> > -	read = min_t(int, pages_needed << PAGE_SHIFT, rs_length);
+> > +	read = min_t(int, (pages_needed << PAGE_SHIFT) - *page_offset,
+> > +		     rs_length);
+> >  
+> >  	frmr->kva = page_address(rqstp->rq_arg.pages[pg_no]);
+> >  	frmr->direction = DMA_FROM_DEVICE;
+> > 
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > 
+> 
+> 
+> -- 
+> Doug Ledford <dledford@redhat.com>
+>               GPG KeyID: 0E572FDD
+> 
+> 
+
+
