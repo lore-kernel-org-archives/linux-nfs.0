@@ -1,81 +1,72 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f180.google.com ([209.85.213.180]:38428 "EHLO
-	mail-ig0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754330AbbJGPqC convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Oct 2015 11:46:02 -0400
-Received: by igxx6 with SMTP id x6so17607833igx.1
-        for <linux-nfs@vger.kernel.org>; Wed, 07 Oct 2015 08:46:01 -0700 (PDT)
+Received: from mail-wi0-f169.google.com ([209.85.212.169]:36373 "EHLO
+	mail-wi0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754095AbbJGPs7 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Oct 2015 11:48:59 -0400
+Received: by wicgb1 with SMTP id gb1so217590105wic.1
+        for <linux-nfs@vger.kernel.org>; Wed, 07 Oct 2015 08:48:58 -0700 (PDT)
+Subject: Re: [PATCH v1 00/24] New fast registration API
+To: Bart Van Assche <bart.vanassche@sandisk.com>
+References: <1442482947-27785-1-git-send-email-sagig@mellanox.com>
+ <560AE099.2080004@sandisk.com> <560AFB71.3010003@dev.mellanox.co.il>
+ <560C30F4.50900@sandisk.com> <560C42CE.6090000@sandisk.com>
+ <560CDDBC.8000400@dev.mellanox.co.il> <560D730C.9000302@sandisk.com>
+ <560D9E69.70604@sandisk.com>
+ <35618B90-4D6E-4036-A69B-4405F020D440@dev.mellanox.co.il>
+ <560EA4A1.3080709@sandisk.com> <56138854.4040209@dev.mellanox.co.il>
+ <561417B9.2080505@sandisk.com> <5614BECF.9030907@dev.mellanox.co.il>
+ <56153E41.10607@sandisk.com>
+Cc: Sagi Grimberg <sagig@mellanox.com>,
+        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "Nicholas A. Bellinger" <nab@linux-iscsi.org>
+From: Sagi Grimberg <sagig@dev.mellanox.co.il>
+Message-ID: <56153EE6.80703@dev.mellanox.co.il>
+Date: Wed, 7 Oct 2015 18:48:54 +0300
 MIME-Version: 1.0
-In-Reply-To: <56153576.1090209@mit.edu>
-References: <AD03968E-7017-4D32-A90C-C74C1E9CDFAC@netapp.com>
-	<FA7F806E-E5DA-4C41-AE7F-99E381E71123@netapp.com>
-	<5612CB0F.5040501@mit.edu>
-	<A7007DA3-24B2-4079-96A8-A6E97085031C@netapp.com>
-	<5612D73F.8020605@mit.edu>
-	<9ED9C3B6-A0D0-411F-AB95-77CB1E8AA097@netapp.com>
-	<alpine.GSO.1.10.1510051952080.26829@multics.mit.edu>
-	<9E0A46D0-6A66-47A2-848C-81A13EF20A52@netapp.com>
-	<EEF67DC8-C71A-4914-B614-EBEC63404F0B@netapp.com>
-	<56152FF4.8050705@mit.edu>
-	<16B417DB-F019-4654-8B4E-7C4C3AF1487D@netapp.com>
-	<56153576.1090209@mit.edu>
-Date: Wed, 7 Oct 2015 11:46:01 -0400
-Message-ID: <CAN-5tyE8pWdJ=zHW+O8R1bvWFHrHHi029xvXJAo0YJfDX3zpjw@mail.gmail.com>
-Subject: Re: Gss context refresh failure due to clock skew
-From: Olga Kornievskaia <aglo@citi.umich.edu>
-To: Greg Hudson <ghudson@mit.edu>
-Cc: "Adamson, Andy" <William.Adamson@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        "krbdev@mit.edu" <krbdev@mit.edu>
-Content-Type: text/plain; charset=UTF-8
+In-Reply-To: <56153E41.10607@sandisk.com>
+Content-Type: text/plain; charset=utf-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Oct 7, 2015 at 11:08 AM, Greg Hudson <ghudson@mit.edu> wrote:
-> On 10/07/2015 11:00 AM, Adamson, Andy wrote:
->> —— from the ticket: ——
+On 10/7/2015 6:46 PM, Bart Van Assche wrote:
+> On 10/06/2015 11:42 PM, Sagi Grimberg wrote:
+>> On 10/6/2015 9:49 PM, Bart Van Assche wrote:
+>>> On 10/06/2015 01:37 AM, Sagi Grimberg wrote:
+>>>> I see now the error you are referring to.
+>>>>
+>>>> The issue is that the device requires the MR page array to have
+>>>> an alignment (0x40 for mlx4 and 0x400 for mlx5). When I modified the
+>>>> page array allocation to be non-coherent I didn't take care of
+>>>> alignment.
+>>>>
+>>>> Taking care of this alignment may result in a higher order allocation
+>>>> as we'd need to add (alignment - 1) to the allocation size.
+>>>>
+>>>> e.g. a 512 pages on mlx4 will become:
+>>>> 512 * 8 + 0x40 - 1 = 4159
+>>>>
+>>>> I'm leaning towards this approach. Any preference?
+>>>>
+>>>> I think this patch should take care of mlx4:
+>>>> [ ... ]
+>>>
+>>> Hello Sagi,
+>>>
+>>> Thanks for the patch. But since the patch included in the previous
+>>> e-mail mapped a memory range that could be outside the bounds of the
+>>> allocated memory I have been testing the patch below:
 >>
->> This unnecessarily strict check causes a particularly bad experience
->> when (a) the client's clock is slightly ahead of the server's clock,
->> and (b) the maximum service ticket lifetime is lower than the maximum
->> TGT lifetime.
+>> Thanks! I correct the patches.
 >>
->> —— ——
->> I think both a) and b) are incorrect.
->>
->> for a) you got it backwards. this occurs when the server clock is ahead of the client clock.
+>> Can I take it as your Tested-by on srp?
 >
-> Yes, I did write the wrong thing there; I will follow up on that.
->
->> for b) the relationship between the TGT lifetime and the service ticket lifetime is irrelevant. Only the service ticket lifetime has any effect as the client will use a valid service ticket to construct an RPCSEC_GSS_INIT request irregardless of the TGT lifetime value.
->
-> I will try one more time to communicate what I mean:
->
-> * If the service ticket end time is less than the TGT end time, then
-> gss_init_sec_context() fails during the clock skew window, and starts
-> succeeding again afterwards.
->
-> * If the service ticket and TGT have both expired (according to the
-> server), then gss_init_sec_context() fails, and keeps failing
-> afterwards, unless there is some out-of-band agent refreshing expired TGTs.
->
-> Put another way: we expect authentications to start failing around the
-> time the TGT expires.  We do not expect authentications to start failing
-> around the time a service ticket expires, if the TGT is still valid.
+> Sure :-) But please keep in mind that I currently only have access to
+> ConnectX-3 HCA's for testing RDMA software and not to any other RDMA HCA
+> model.
 
-Why not? This is not what should happen according to the theory of
-Kerberos protocol. Let's use slightly generic terms, TGT is a
-credential that proves client's identity to the KDC. TGT or it's
-lifetime has no relevance in the context of authentication between the
-client and a kerberized service, in this case an NFS server. Then a
-service ticket is a credential that is used to prove client's identity
-to the NFS server. The lifetime of the NFS service ticket should be
-allowed to be valid within some configurable clock skew.
+Thanks Bart. For what its worth, I've tested srp (and iser + nfs) on
+both CX3 and CX4 with your config file.
 
-> That is what I refer to as a "particularly" bad experience.
->
-> If that isn't clear, perhaps we should ignore this as a moot point; it
-> doesn't really affect how we plan to change the krb5 code.
-> _______________________________________________
-> krbdev mailing list             krbdev@mit.edu
-> https://mailman.mit.edu/mailman/listinfo/krbdev
+Cheers,
+Sagi.
