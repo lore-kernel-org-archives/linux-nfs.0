@@ -1,17 +1,10 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx141.netapp.com ([216.240.21.12]:6865 "EHLO mx141.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751864AbbJGPAt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 7 Oct 2015 11:00:49 -0400
-From: "Adamson, Andy" <William.Adamson@netapp.com>
-To: Greg Hudson <ghudson@MIT.EDU>
-CC: "Adamson, Andy" <William.Adamson@netapp.com>,
-        Benjamin Kaduk <kaduk@MIT.EDU>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        "krbdev@mit.edu" <krbdev@MIT.EDU>
+Received: from dmz-mailsec-scanner-4.mit.edu ([18.9.25.15]:64527 "EHLO
+	dmz-mailsec-scanner-4.mit.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753227AbbJGPIp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Oct 2015 11:08:45 -0400
 Subject: Re: Gss context refresh failure due to clock skew
-Date: Wed, 7 Oct 2015 15:00:48 +0000
-Message-ID: <16B417DB-F019-4654-8B4E-7C4C3AF1487D@netapp.com>
+To: "Adamson, Andy" <William.Adamson@netapp.com>
 References: <AD03968E-7017-4D32-A90C-C74C1E9CDFAC@netapp.com>
  <FA7F806E-E5DA-4C41-AE7F-99E381E71123@netapp.com> <5612CB0F.5040501@mit.edu>
  <A7007DA3-24B2-4079-96A8-A6E97085031C@netapp.com> <5612D73F.8020605@mit.edu>
@@ -19,56 +12,50 @@ References: <AD03968E-7017-4D32-A90C-C74C1E9CDFAC@netapp.com>
  <alpine.GSO.1.10.1510051952080.26829@multics.mit.edu>
  <9E0A46D0-6A66-47A2-848C-81A13EF20A52@netapp.com>
  <EEF67DC8-C71A-4914-B614-EBEC63404F0B@netapp.com> <56152FF4.8050705@mit.edu>
-In-Reply-To: <56152FF4.8050705@mit.edu>
-Content-Type: text/plain; charset="utf-8"
+ <16B417DB-F019-4654-8B4E-7C4C3AF1487D@netapp.com>
+Cc: Benjamin Kaduk <kaduk@mit.edu>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        "krbdev@mit.edu" <krbdev@mit.edu>
+From: Greg Hudson <ghudson@mit.edu>
+Message-ID: <56153576.1090209@mit.edu>
+Date: Wed, 7 Oct 2015 11:08:38 -0400
 MIME-Version: 1.0
+In-Reply-To: <16B417DB-F019-4654-8B4E-7C4C3AF1487D@netapp.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQo+IE9uIE9jdCA3LCAyMDE1LCBhdCAxMDo0NSBBTSwgR3JlZyBIdWRzb24gPGdodWRzb25ATUlU
-LkVEVT4gd3JvdGU6DQo+IA0KPiBPbiAxMC8wNy8yMDE1IDA5OjIyIEFNLCBBZGFtc29uLCBBbmR5
-IHdyb3RlOg0KPj4gQWN0dWFsbHksIHNldHRpbmcgdGhlIHNlcnZpY2UgdGlja2V0IGxpZmV0aW1l
-IHRvIGJlIGVxdWFsIHRvIChvciBncmVhdGVyIHRoYW4gaWYgdGhpcyBpcyBwb3NzaWJsZSkgdGhl
-IFRHVCBsaWZldGltZSB3aWxsIG5vdCBoZWxwLiBKdXN0IGFzIGluIHRoZSBleGFtcGxlIEkgc2Vu
-dCwgdGhlIGFwcGxpY2F0aW9uIHdpbGwgZ2V0IHBlcm1pc3Npb24gZGVuaWVkIGR1cmluZyB0aGUg
-dGltZSBkaWZmZXJlbmNlIGJldHdlZW4gdGhlIGNsaWVudCBhbmQgc2VydmVyIGNsb2NrLg0KPiAN
-Cj4gVGhhdCBpcyBleHBlY3RlZC4gIFdoYXQgaXMgbm90IGV4cGVjdGVkLCBpbiB0aGlzIHZhcmlh
-bnQsIGlzIHRoYXQNCj4gZ3NzX2luaXRfc2VjX2NvbnRleHQoKSB3aWxsIHN1Y2NlZWQgYnkgaXRz
-ZWxmIG9uY2UgdGhlIGNsaWVudCBiZWxpZXZlcw0KPiB0aGUgVEdUIGFuZCBzZXJ2aWNlIHRpY2tl
-dCB0byBoYXZlIGV4cGlyZWQuICBBcG9sb2dpZXMgZm9yIGFueQ0KPiBtaXNjb21tdW5pY2F0aW9u
-IG9uIHRoaXMgcG9pbnQuDQo+IA0KPiBUaGVyZSBtYXkgYmUgc29tZXRoaW5nIGluIHRoZSBjYWxs
-aW5nIGNvZGUgd2hpY2ggcmVmcmVzaGVzIHRoZSBUR1QgaW4NCj4gdGhpcyBzaXR1YXRpb24uICBJ
-ZiBzbywgdGhlbiB0byBmdWxseSB1bmRlcnN0YW5kIHRoZSBzY2VuYXJpbywgd2UgbmVlZA0KPiB0
-byBrbm93IGhvdyB0aGUgY2FsbGluZyBjb2RlIGRlY2lkZXMgd2hlbiB0byByZWZyZXNoIHRoZSBU
-R1QuDQo+IA0KPiBJIG9wZW5lZCBhIHRpY2tldCBhYm91dCB0aGlzIGlzc3VlIGhlcmU6DQo+IA0K
-PiAgICBodHRwOi8va3JiZGV2Lm1pdC5lZHUvcnQvVGlja2V0L0Rpc3BsYXkuaHRtbD9pZD04MjY4
-DQoNCuKAlOKAlCBmcm9tIHRoZSB0aWNrZXQ6IOKAlOKAlCANCg0KVGhpcyB1bm5lY2Vzc2FyaWx5
-IHN0cmljdCBjaGVjayBjYXVzZXMgYSBwYXJ0aWN1bGFybHkgYmFkIGV4cGVyaWVuY2UNCndoZW4g
-KGEpIHRoZSBjbGllbnQncyBjbG9jayBpcyBzbGlnaHRseSBhaGVhZCBvZiB0aGUgc2VydmVyJ3Mg
-Y2xvY2ssDQphbmQgKGIpIHRoZSBtYXhpbXVtIHNlcnZpY2UgdGlja2V0IGxpZmV0aW1lIGlzIGxv
-d2VyIHRoYW4gdGhlIG1heGltdW0NClRHVCBsaWZldGltZS4gDQoNCuKAlOKAlCDigJTigJQgDQpJ
-IHRoaW5rIGJvdGggYSkgYW5kIGIpIGFyZSBpbmNvcnJlY3QuDQoNCmZvciBhKSB5b3UgZ290IGl0
-IGJhY2t3YXJkcy4gdGhpcyBvY2N1cnMgd2hlbiB0aGUgc2VydmVyIGNsb2NrIGlzIGFoZWFkIG9m
-IHRoZSBjbGllbnQgY2xvY2suDQoNCmZvciBiKSB0aGUgcmVsYXRpb25zaGlwIGJldHdlZW4gdGhl
-IFRHVCBsaWZldGltZSBhbmQgdGhlIHNlcnZpY2UgdGlja2V0IGxpZmV0aW1lIGlzIGlycmVsZXZh
-bnQuIE9ubHkgdGhlIHNlcnZpY2UgdGlja2V0IGxpZmV0aW1lIGhhcyBhbnkgZWZmZWN0IGFzIHRo
-ZSBjbGllbnQgd2lsbCB1c2UgYSB2YWxpZCBzZXJ2aWNlIHRpY2tldCB0byBjb25zdHJ1Y3QgYW4g
-UlBDU0VDX0dTU19JTklUIHJlcXVlc3QgaXJyZWdhcmRsZXNzIG9mIHRoZSBUR1QgbGlmZXRpbWUg
-dmFsdWUuDQoNCg0KSGVyZSBpcyBob3cgSSB3b3VsZCBkZXNjcmliZSBpdDoNCg0KQ2hhbmdlIHRo
-aXM6DQoNClRoaXMgdW5uZWNlc3NhcmlseSBzdHJpY3QgY2hlY2sgY2F1c2VzIGEgcGFydGljdWxh
-cmx5IGJhZCBleHBlcmllbmNlDQp3aGVuIChhKSB0aGUgY2xpZW50J3MgY2xvY2sgaXMgc2xpZ2h0
-bHkgYWhlYWQgb2YgdGhlIHNlcnZlcidzIGNsb2NrLA0KYW5kIChiKSB0aGUgbWF4aW11bSBzZXJ2
-aWNlIHRpY2tldCBsaWZldGltZSBpcyBsb3dlciB0aGFuIHRoZSBtYXhpbXVtDQpUR1QgbGlmZXRp
-bWUuICBJbiB0aGF0IGNpcmN1bXN0YW5jZSwgdGhlIGNsaWVudCB3aWxsIGFjcXVpcmUgYSBuZXcN
-CnNlcnZpY2UgdGlja2V0IHVzaW5nIHRoZSBUR1QgaWYgdGhlIGNsaWVudCBzZWVzIHRoZSBjcmVk
-ZW50aWFsIGFzDQpleHBpcmVkLCBidXQgdGhlIGFwcGxpY2F0aW9uIHdpbGwgZXhwZXJpZW5jZSBh
-biBhdXRoZW50aWNhdGlvbg0KZmFpbHVyZSBpZiBvbmx5IHRoZSBzZXJ2ZXIgc2VlcyB0aGUgY3Jl
-ZGVudGlhbCBhcyBleHBpcmVkLg0KDQoNCnRvIHRoaXMNCg0KVGhpcyB1bm5lY2Vzc2FyaWx5IHN0
-cmljdCBjaGVjayBjYXVzZXMgYSBwYXJ0aWN1bGFybHkgYmFkIGV4cGVyaWVuY2UNCndoZW4gdGhl
-IHNlcnZlcidzIGNsb2NrIGlzIHNsaWdodGx5IGFoZWFkIG9mIHRoZSBjbGllbnRzIGNsb2NrLg0K
-SW4gdGhhdCBjaXJjdW1zdGFuY2UsIHRoZSBjbGllbnQgd2lsbCB1c2UgdGhlIGFsbW9zdCBleHBp
-cmVkIHNlcnZpY2UgDQp0aWNrZXQgaW4gY29uc3RydWN0aW5nIHRoZSBnc3NfaW5pdF9zZWNfY29u
-dGV4dCBjYWxsIGFuZCBub3QgYWNxdWlyZSANCmEgbmV3IHNlcnZpY2UgdGlja2V0IHVzaW5nIHRo
-ZSBUR1QuIFRoZSBhcHBsaWNhdGlvbiB3aWxsIGV4cGVyaWVuY2UgDQphbiBhdXRoZW50aWNhdGlv
-biBmYWlsdXJlIGFzIHRoZSBzZXJ2ZXIgY2FsbGluZyBnc3NfYWNjZXB0X3NlY19jb250ZXh0DQpz
-ZWVzIHRoZSBjcmVkZW50aWFsIGFzIGV4cGlyZWQuDQoNCg0KDQo=
+On 10/07/2015 11:00 AM, Adamson, Andy wrote:
+> —— from the ticket: —— 
+> 
+> This unnecessarily strict check causes a particularly bad experience
+> when (a) the client's clock is slightly ahead of the server's clock,
+> and (b) the maximum service ticket lifetime is lower than the maximum
+> TGT lifetime. 
+> 
+> —— —— 
+> I think both a) and b) are incorrect.
+> 
+> for a) you got it backwards. this occurs when the server clock is ahead of the client clock.
+
+Yes, I did write the wrong thing there; I will follow up on that.
+
+> for b) the relationship between the TGT lifetime and the service ticket lifetime is irrelevant. Only the service ticket lifetime has any effect as the client will use a valid service ticket to construct an RPCSEC_GSS_INIT request irregardless of the TGT lifetime value.
+
+I will try one more time to communicate what I mean:
+
+* If the service ticket end time is less than the TGT end time, then
+gss_init_sec_context() fails during the clock skew window, and starts
+succeeding again afterwards.
+
+* If the service ticket and TGT have both expired (according to the
+server), then gss_init_sec_context() fails, and keeps failing
+afterwards, unless there is some out-of-band agent refreshing expired TGTs.
+
+Put another way: we expect authentications to start failing around the
+time the TGT expires.  We do not expect authentications to start failing
+around the time a service ticket expires, if the TGT is still valid.
+That is what I refer to as a "particularly" bad experience.
+
+If that isn't clear, perhaps we should ignore this as a moot point; it
+doesn't really affect how we plan to change the krb5 code.
