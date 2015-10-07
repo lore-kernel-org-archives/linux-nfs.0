@@ -1,84 +1,64 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yk0-f180.google.com ([209.85.160.180]:35582 "EHLO
-	mail-yk0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752972AbbJGCw4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Oct 2015 22:52:56 -0400
-Received: by ykdz138 with SMTP id z138so4446900ykd.2
-        for <linux-nfs@vger.kernel.org>; Tue, 06 Oct 2015 19:52:56 -0700 (PDT)
-Message-ID: <1444186352.25629.1.camel@primarydata.com>
-Subject: [GIT PULL] Please pull NFS client bugfixes
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Date: Tue, 06 Oct 2015 22:52:32 -0400
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from mail-wi0-f176.google.com ([209.85.212.176]:36854 "EHLO
+	mail-wi0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751006AbbJGGm3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Oct 2015 02:42:29 -0400
+Received: by wicgb1 with SMTP id gb1so196121246wic.1
+        for <linux-nfs@vger.kernel.org>; Tue, 06 Oct 2015 23:42:28 -0700 (PDT)
+Subject: Re: [PATCH v1 00/24] New fast registration API
+To: Bart Van Assche <bart.vanassche@sandisk.com>
+References: <1442482947-27785-1-git-send-email-sagig@mellanox.com>
+ <560AE099.2080004@sandisk.com> <560AFB71.3010003@dev.mellanox.co.il>
+ <560C30F4.50900@sandisk.com> <560C42CE.6090000@sandisk.com>
+ <560CDDBC.8000400@dev.mellanox.co.il> <560D730C.9000302@sandisk.com>
+ <560D9E69.70604@sandisk.com>
+ <35618B90-4D6E-4036-A69B-4405F020D440@dev.mellanox.co.il>
+ <560EA4A1.3080709@sandisk.com> <56138854.4040209@dev.mellanox.co.il>
+ <561417B9.2080505@sandisk.com>
+Cc: Sagi Grimberg <sagig@mellanox.com>,
+        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "Nicholas A. Bellinger" <nab@linux-iscsi.org>
+From: Sagi Grimberg <sagig@dev.mellanox.co.il>
+Message-ID: <5614BECF.9030907@dev.mellanox.co.il>
+Date: Wed, 7 Oct 2015 09:42:23 +0300
+MIME-Version: 1.0
+In-Reply-To: <561417B9.2080505@sandisk.com>
+Content-Type: text/plain; charset=utf-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Linus,
+On 10/6/2015 9:49 PM, Bart Van Assche wrote:
+> On 10/06/2015 01:37 AM, Sagi Grimberg wrote:
+>> I see now the error you are referring to.
+>>
+>> The issue is that the device requires the MR page array to have
+>> an alignment (0x40 for mlx4 and 0x400 for mlx5). When I modified the
+>> page array allocation to be non-coherent I didn't take care of
+>> alignment.
+>>
+>> Taking care of this alignment may result in a higher order allocation
+>> as we'd need to add (alignment - 1) to the allocation size.
+>>
+>> e.g. a 512 pages on mlx4 will become:
+>> 512 * 8 + 0x40 - 1 = 4159
+>>
+>> I'm leaning towards this approach. Any preference?
+>>
+>> I think this patch should take care of mlx4:
+>> [ ... ]
+>
+> Hello Sagi,
+>
+> Thanks for the patch. But since the patch included in the previous
+> e-mail mapped a memory range that could be outside the bounds of the
+> allocated memory I have been testing the patch below:
 
-The following changes since commit 5634347dee31373a8faf084f4cdbf6d5ea0b03a4:
+Thanks! I correct the patches.
 
-  Merge tag 'arm64-fixes' of git://git.kernel.org/pub/scm/linux/kernel/git/arm64/linux (2015-10-02 14:54:16 -0400)
+Can I take it as your Tested-by on srp?
 
-are available in the git repository at:
-
-  git://git.linux-nfs.org/projects/trondmy/linux-nfs.git tags/nfs-for-4.3-3
-
-for you to fetch changes up to 39d0d3bdf7bab3021a31e501172ac0f18947f9b3:
-
-  NFS: Fix a tracepoint NULL-pointer dereference (2015-10-06 18:56:25 -0400)
-
-Cheers
-  Trond
-
-----------------------------------------------------------------
-NFS client bugfixes for Linux 4.3
-
-Highlights include:
-
-Bugfixes:
-- Fix a use-after-free bug in the RPC/RDMA client
-- Fix a write performance regression
-- Fix up page writeback accounting
-- Don't try to reclaim unused state owners
-- Fix a NFSv4 nograce recovery hang
-- reset states to use open_stateid when returning delegation voluntarily
-- Fix a tracepoint NULL-pointer dereference
-
-----------------------------------------------------------------
-Anna Schumaker (1):
-      NFS: Fix a tracepoint NULL-pointer dereference
-
-Benjamin Coddington (1):
-      NFSv4: Fix a nograce recovery hang
-
-Jeff Layton (1):
-      nfs4: reset states to use open_stateid when returning delegation voluntarily
-
-Steve Wise (1):
-      xprtrdma: disconnect and flush cqs before freeing buffers
-
-Trond Myklebust (5):
-      NFS: Fix up page writeback accounting
-      NFS: Fix a write performance regression
-      NFSv4: Don't try to reclaim unused state owners
-      NFSv4.1: nfs4_opendata_check_deleg needs to handle NFS4_OPEN_CLAIM_DELEG_CUR_FH
-      Merge tag 'nfs-rdma-for-4.3-2' of git://git.linux-nfs.org/projects/anna/nfs-rdma
-
- fs/nfs/nfs4proc.c               | 15 +++++++++++++--
- fs/nfs/nfs4state.c              |  3 ++-
- fs/nfs/nfs4trace.h              |  2 +-
- fs/nfs/write.c                  | 14 +++++++-------
- net/sunrpc/xprtrdma/transport.c |  2 +-
- net/sunrpc/xprtrdma/verbs.c     |  9 ++++++---
- 6 files changed, 30 insertions(+), 15 deletions(-)
--- 
-Trond Myklebust
-Linux NFS client maintainer, PrimaryData
-trond.myklebust@primarydata.com
-
+Cheers,
+Sagi.
 
 
