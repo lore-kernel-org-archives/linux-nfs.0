@@ -1,129 +1,70 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx144.netapp.com ([216.240.21.25]:52671 "EHLO mx144.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751509AbbJGNW3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 7 Oct 2015 09:22:29 -0400
-From: "Adamson, Andy" <William.Adamson@netapp.com>
-To: Benjamin Kaduk <kaduk@MIT.EDU>
-CC: "Adamson, Andy" <William.Adamson@netapp.com>,
-        Greg Hudson <ghudson@MIT.EDU>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        "krbdev@mit.edu" <krbdev@MIT.EDU>
-Subject: Re: Gss context refresh failure due to clock skew
-Date: Wed, 7 Oct 2015 13:22:26 +0000
-Message-ID: <EEF67DC8-C71A-4914-B614-EBEC63404F0B@netapp.com>
-References: <AD03968E-7017-4D32-A90C-C74C1E9CDFAC@netapp.com>
- <FA7F806E-E5DA-4C41-AE7F-99E381E71123@netapp.com> <5612CB0F.5040501@mit.edu>
- <A7007DA3-24B2-4079-96A8-A6E97085031C@netapp.com> <5612D73F.8020605@mit.edu>
- <9ED9C3B6-A0D0-411F-AB95-77CB1E8AA097@netapp.com>
- <alpine.GSO.1.10.1510051952080.26829@multics.mit.edu>
- <9E0A46D0-6A66-47A2-848C-81A13EF20A52@netapp.com>
-In-Reply-To: <9E0A46D0-6A66-47A2-848C-81A13EF20A52@netapp.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-lb0-f173.google.com ([209.85.217.173]:36401 "EHLO
+	mail-lb0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751460AbbJGNiu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Oct 2015 09:38:50 -0400
+Received: by lbcao8 with SMTP id ao8so11535793lbc.3
+        for <linux-nfs@vger.kernel.org>; Wed, 07 Oct 2015 06:38:48 -0700 (PDT)
 MIME-Version: 1.0
+In-Reply-To: <20151007075053.GA8660@infradead.org>
+References: <1443391772-10171-1-git-send-email-agruenba@redhat.com>
+	<20151004062313.GA20212@infradead.org>
+	<CAHc6FU53mXg1k0KCNkWEjxyuC8iAUgWh-A76qX=C3Yth+qEyuQ@mail.gmail.com>
+	<5612C85C.2060407@gmail.com>
+	<20151006094935.GA14144@infradead.org>
+	<CAHc6FU5aZJDC3N1iGyVeHfbqMyquM93ONJvUR-t0a9+AjmtAXQ@mail.gmail.com>
+	<CF738526-0807-4CE5-A52B-413164D41AA9@dilger.ca>
+	<20151007075053.GA8660@infradead.org>
+Date: Wed, 7 Oct 2015 15:38:48 +0200
+Message-ID: <CAHc6FU7TM5LDu_vVvDc3WPuzQN2mkGGp2AvCY+=qN0GvWuC=Ew@mail.gmail.com>
+Subject: Re: [PATCH v8 00/41] Richacls
+From: Andreas Gruenbacher <agruenba@redhat.com>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: Andreas Dilger <adilger@dilger.ca>,
+        Austin S Hemmelgarn <ahferroin7@gmail.com>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        "Theodore Ts'o" <tytso@mit.edu>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        linux-ext4 <linux-ext4@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-nfs@vger.kernel.org, Linux API <linux-api@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQo+IE9uIE9jdCA2LCAyMDE1LCBhdCAxMDo1MyBBTSwgQW5keSBBZGFtc29uIDxhbmRyb3NAbmV0
-YXBwLmNvbT4gd3JvdGU6DQo+IA0KPj4gDQo+PiBPbiBPY3QgNSwgMjAxNSwgYXQgODowMiBQTSwg
-QmVuamFtaW4gS2FkdWsgPGthZHVrQE1JVC5FRFU+IHdyb3RlOg0KPj4gDQo+PiBPbiBNb24sIDUg
-T2N0IDIwMTUsIEFkYW1zb24sIEFuZHkgd3JvdGU6DQo+PiANCj4+PiANCj4+Pj4gT24gT2N0IDUs
-IDIwMTUsIGF0IDQ6MDIgUE0sIEdyZWcgSHVkc29uIDxnaHVkc29uQE1JVC5FRFU+IHdyb3RlOg0K
-Pj4+PiANCj4+Pj4gT24gMTAvMDUvMjAxNSAwMzozNSBQTSwgQWRhbXNvbiwgQW5keSB3cm90ZToN
-Cj4+Pj4+PiBJIHRoaW5rIHRoaXMgY2FzZSBkb2Vzbid0IGFyaXNlIG9mdGVuIGJlY2F1c2UgcGVv
-cGxlIGRvbid0IG9mdGVuIHNldA0KPj4+Pj4+IG1heGltdW0gc2VydmljZSB0aWNrZXQgbGlmZXRp
-bWVzIHRvIGJlIHNob3J0ZXIgdGhhbiBtYXhpbXVtIFRHVA0KPj4+Pj4+IGxpZmV0aW1lcy4NCj4+
-Pj4+IA0KPj4+Pj4gTm90IHRoZSBjYXVzZSBvZiB0aGUgaXNzdWUuIFRoZSBzZXJ2aWNlIHRpY2tl
-dCBsaWZldGltZSBvZiAxMCBtaW51dGVzIGlzIGp1c3QgdGhlcmUgZm9yIHRlc3RpbmcgdGhpcyBp
-c3N1ZSBhcyBJIG5lZWRlZCB0byB3YWl0IHVudGlsIHRoZSBzZXJ2aWNlIHRpY2tldCBoYWQg4oCY
-ZXhwaXJlZOKAmSBvbiB0aGUgc2VydmVyIC0gYnV0IG5vdCB5ZXQgb24gdGhlIGNsaWVudC4NCj4+
-Pj4+IA0KPj4+Pj4gV2Ugc2VlIHRoaXMgaXNzdWUgYWxsIHRoZSB0aW1lIGluIE5ldEFwcCBRQSBh
-cyB3ZSBydW4gbXV0aXBsZSBkYXkgaGVhdnkgSU8gdGVzdHMgYWdhaW5zdCBhIGtlcmJlcm9zIG1v
-dW50LiBJZiB0aGUgc2VydmVyIGNsb2NrIGlzIGFoZWFkIG9mIHRoZSBjbGllbnQgY2xvY2ssIHBl
-cm1pc3Npb24gZGVuaWVkIGVycm9ycyBzdG9wIHRoZSB0ZXN0IGFzIHRoZSBmaXJzdCBzZXJ2aWNl
-IHRpY2tldCDigJxleHBpcmVz4oCdIG9uIHRoZSBzZXJ2ZXIgYnV0IG5vdCBvbiB0aGUgY2xpZW50
-Lg0KPj4+PiANCj4+Pj4gSWYgdGhlIGlzc3VlIGlzIG5vdCBjYXVzZWQgYnkgc2hvcnQtbGlmZXRp
-bWUgc2VydmljZSBwcmluY2lwYWxzLA0KPj4+IA0KPj4+IEkgd2FzIHdyb25nIC0geW91IGFyZSBy
-aWdodCwgaXQgaXMgY2F1c2VkIGJ5IHNlcnZpY2UgdGlja2V0IGxpZmV0aW1lcyBiZWluZyBzaG9y
-dGVyIHRoYW4gVEdUIGxpZmV0aW1lcy4NCg0KDQpBY3R1YWxseSwgc2V0dGluZyB0aGUgc2Vydmlj
-ZSB0aWNrZXQgbGlmZXRpbWUgdG8gYmUgZXF1YWwgdG8gKG9yIGdyZWF0ZXIgdGhhbiBpZiB0aGlz
-IGlzIHBvc3NpYmxlKSB0aGUgVEdUIGxpZmV0aW1lIHdpbGwgbm90IGhlbHAuIEp1c3QgYXMgaW4g
-dGhlIGV4YW1wbGUgSSBzZW50LCB0aGUgYXBwbGljYXRpb24gd2lsbCBnZXQgcGVybWlzc2lvbiBk
-ZW5pZWQgZHVyaW5nIHRoZSB0aW1lIGRpZmZlcmVuY2UgYmV0d2VlbiB0aGUgY2xpZW50IGFuZCBz
-ZXJ2ZXIgY2xvY2suDQoNClNheSB0aGUgc2VydmVyIGNsb2NrIGlzIGFoZWFkIG9mIHRoZSBjbGll
-bnQgY2xvY2sgYnkgWCBzZWNvbmRzIGFuZCB0aGF0IHRoZSBzZXJ2aWNlIHRpY2tldCBvbiB0aGUg
-Y2xpZW50IGhhcyBYIHNlY29uZHMgb2YgbGlmZXRpbWUgbGVmdCBiZWZvcmUgaXMgZXhwaXJlcyBv
-biB0aGUgY2xpZW50IC0gd2hpY2ggbWVhbnMgaXQgaGFzIGFscmVhZHkgZXhwaXJlZCBvbiB0aGUg
-c2VydmVyLiBUaGUgY2xpZW50IHNlbmRzIGFuIE5GUyByZXF1ZXN0IHdoaWNoIHdpbGwgYmUgcmVq
-ZWN0ZWQgYnkgdGhlIHNlcnZlciB3aXRoIGEgYmFkIGNvbnRleHQgUlBDIGxldmVsIEFVVEhfRVJS
-T1IgYXMgdGhlIEdTUyBDb250ZXh0IG9uIHRoZSBzZXJ2ZXIgd2lsbCBoYXZlIGV4cGlyZWQgKGNv
-bnRleHQgbGlmZXRpbWUgPT0gc2VydmljZSB0aWNrZXQgbGlmZXRpbWUpLiBUaGUgc2VydmVyIHJl
-cGx5IHByb21wdHMgdGhlIGNsaWVudCBkbyBhbiB1cGNhbGwgdG8gZ3NzZCB0byByZWZyZXNoIHRo
-ZSBHU1MgY29udGV4dC4gZ3NzZCBzZW5kcyBhbiBSUENTRUNfR1NTX0lOSVQgbWVzc2FnZSB1c2lu
-ZyB0aGUgc2VydmljZSB0aWNrZXQgKGFzIGl0IHN0aWxsIGhhcyBYIHNlY29uZHMgb2YgdmFsaWQg
-bGlmZXRpbWUpLCBhbmQgdGhlIHNlcnZlciB3aWxsIHJlamVjdCB0aGUgUlBDU0VDX0dTU19JTklU
-IHJlcXVlc3Qgd2l0aCBHU1NfU19DUkVERU5USUFMU19FWFBJUkVELg0KDQrigJQ+QW5keQ0KDQoN
-Cg0KPj4+IA0KPj4+IEkgZGlkbuKAmXQga25vdyBzZXR0aW5nIHRoZSBzZXJ2aWNlIHRpY2tldCBs
-aWZldGltZXMgdG8gbm90IGJlIGxlc3MgdGhhbg0KPj4+IFRHVCBsaWZldGltZXMgd2FzIGEgcmVx
-dWlyZW1lbnQuIE5laXRoZXIgZG9lcyBOZXRBcHAgUUEgYW5kIEkgc3VzcGVjdCwNCj4+PiBuZWl0
-aGVyIGRvIGN1c3RvbWVycyBpbiBnZW5lcmFsLg0KPj4gDQo+PiBJdCdzIG5vdCBhIHJlcXVpcmVt
-ZW50LiAgKEdyZWcgZXhwbGljaXRseSBzYWlkICJUaGF0IHNhaWQsIHlvdXIgc2NlbmFyaW8NCj4+
-IHNob3VsZCB3b3JrLCBhbmQgaXQgZG9lc24ndC4iIGluIGhpcyBmaXJzdCBtZXNzYWdlLikNCj4g
-DQo+IEhpIEJlbg0KPiANCj4gT0suICBUaGlzIGRvZXMgbWVhbiB0aGF0IHVudGlsIHRoaXMgZ2V0
-cyBhZGRyZXNzZWQsIHdlIHdpbGwgbmVlZCB0byBwb2ludCB0aGlzIG91dCB0byBhZG1pbmlzdHJh
-dG9ycy4NCj4gDQo+PiANCj4+Pj4gdGhlbg0KPj4+PiB0aGUgdGVzdCBzY2VuYXJpbyB5b3UgZGVz
-Y3JpYmVkIGlzbid0IHJlcHJlc2VudGF0aXZlIG9mIHRoZSByZWFsDQo+Pj4+IHNjZW5hcmlvLiAg
-VG8gcmVwcm9kdWNlIHRoZSBwcm9ibGVtIGFzIGl0IG1hbmlmZXN0cyBpbiB5b3VyIElPIHRlc3Rz
-LA0KPj4+PiB5b3Ugd2lsbCBuZWVkIHRvIGFkanVzdCB0aGUgVEdUIGxpZmV0aW1lIGRvd24gdG8g
-dGVuIG1pbnV0ZXMgYXMgd2VsbCBhcw0KPj4+PiB0aGUgbmZzL3NlcnZlciBsaWZldGltZS4NCj4+
-PiANCj4+PiBDb2RlIHdhcyBhZGRlZCB0byBycGMuZ3NzZCwgdGhlIE5GUyBjbGllbnQgYWdlbnQg
-dGhhdCBjcmVhdGVzIEdTUw0KPj4+IGNvbnRleHRzIGZvciBORlMsIHRvIHRha2UgaW50byBhY2Nv
-dW50IHRoZSBjbG9jayBza2V3IGFuZCBnZXQgYSBuZXcgVEdUDQo+Pj4gYmVmb3JlIChub3crY2xv
-Y2sgc2tldykuIFNvIGlmIHRoZSBzZXJ2aWNlIHRpY2tldCBsaWZldGltZSBpcyBlcXVhbCB0bw0K
-Pj4+IG9yIGdyZWF0ZXIgdGhhbiB0aGUgVEdUIGxpZmV0aW1lLCB0aGVuIGFsbCBpcyB3ZWxsLg0K
-Pj4+IA0KPj4+PiANCj4+Pj4+PiBJZiB0aGUgVEdUIGl0c2VsZiBoYXMgZXhwaXJlZCBvciBpcyBh
-Ym91dCB0byBleHBpcmUsIHNvbWUNCj4+Pj4+PiBvdXQtb2YtYmFuZCBhZ2VudCBuZWVkcyB0byBy
-ZWZyZXNoIHRoZSBUR1Qgc29tZWhvdywgYW5kIGl0IGRvZXNuJ3QNCj4+Pj4+PiBtYXR0ZXIgYWxs
-IHRoYXQgbXVjaCB3aGV0aGVyIHRoZSBmYWlsdXJlIGNvbWVzIGZyb20gdGhlIGNsaWVudCBvciB0
-aGUNCj4+Pj4+PiBzZXJ2ZXIuDQo+Pj4+PiANCj4+Pj4+IEkgdGhvdWdodCB0aGF0IGhhdmluZyBh
-IGtleXRhYiBlbnRyeSBhbmQgYSByZW5ld2FibGUgVEdUIHdhcyBlbm91Z2guDQo+Pj4+IA0KPj4+
-PiBJJ20gbm90IHN1cmUgd2h5IHlvdSB3b3VsZCBkbyBib3RoIG9mIHRoZXNlOyBpZiB5b3UncmUg
-Z2V0dGluZyBpbml0aWFsDQo+Pj4+IGNyZWRzIHdpdGggYSBrZXl0YWIsIHRoZXJlIGlzIG5vIG5l
-ZWQgdG8gbXVjayBhcm91bmQgd2l0aCB0aWNrZXQgcmVuZXdhbC4NCj4+PiANCj4+PiBJIHdvdWxk
-buKAmXQsIGJ1dCBRQSBhbmQgY3VzdG9tZXJzIGRvLg0KPj4+IA0KPj4+PiANCj4+Pj4gQW55d2F5
-LCBnc3NfaW5pdF9zZWNfY29udGV4dCgpIG5ldmVyIHJlbmV3cyB0aWNrZXRzLCBhbmQgb25seSBn
-ZXRzDQo+Pj4+IHRpY2tldHMgZnJvbSBhIGtleXRhYiB3aGVuIGEgY2xpZW50IGtleXRhYiBpcyBj
-b25maWd1cmVkIChuZXcgaW4gMS4xMSkuDQo+Pj4+IFdoZW4gdGlja2V0cyBhcmUgb2J0YWluZWQg
-dXNpbmcgYSBjbGllbnQga2V5dGFiLCB0aGV5IGFyZSByZWZyZXNoZWQNCj4+Pj4gZnJvbSB0aGUg
-a2V5dGFiIHdoZW4gdGhleSBhcmUgaGFsZndheSB0byBleHBpcmluZywNCj4+PiANCj4+PiByZWZy
-ZXNoZWQgYnnigKY/DQo+PiANCj4+IFRoZSBHU1MgbGlicmFyeSBpdHNlbGYuDQo+PiBodHRwOi8v
-azV3aWtpLmtlcmJlcm9zLm9yZy93aWtpL1Byb2plY3RzL0tleXRhYl9pbml0aWF0aW9uIGFuZA0K
-Pj4gaHR0cDovL3dlYi5taXQuZWR1L2tlcmJlcm9zL2tyYjUtbGF0ZXN0L2RvYy9iYXNpYy9rZXl0
-YWJfZGVmLmh0bWwjZGVmYXVsdC1jbGllbnQta2V5dGFiDQo+PiBnaXZlIGEgbGl0dGxlIGJpdCBv
-ZiBpbnRybywgdGhvdWdoIHRoaXMgZmVhdHVyZSBjb3VsZCBiZW5lZml0IGZyb20gYmV0dGVyDQo+
-PiBkb2N1bWVudGF0aW9uLg0KPiANCj4gVGhhbmtzIGZvciB0aGUgaW5mbw0KPiANCj4g4oCUPkFu
-ZHkNCj4+IA0KPj4gLUJlbg0KPj4gDQo+Pj4+IHNvIHRoaXMgY2xvY2sgc2tldw0KPj4+PiBpc3N1
-ZSBzaG91bGQgbm90IGFyaXNlLCBzbyBJIGRvbid0IHRoaW5rIHRoYXQgZmVhdHVyZSBpcyBiZWlu
-ZyB1c2VkLg0KPj4+PiANCj4+Pj4gSXQgaXMgcG9zc2libGUgdGhhdCB0aGUgTkZTIGNsaWVudCBj
-b2RlIGhhcyBpdHMgb3duIHNlcGFyYXRlIGxvZ2ljIGZvcg0KPj4+PiBvYnRhaW5pbmcgbmV3IHRp
-Y2tldHMgdXNpbmcgYSBrZXl0YWIuDQo+Pj4gDQo+Pj4gV2hlbiBhbiBORlMgcmVxdWVzdCByZXF1
-aXJlcyBhIEdTUyBjb250ZXh0LCBpZiB0aGUgY29udGV4dCBkb2VzIG5vdA0KPj4+IGV4aXN0LCBp
-cyBub3QgdmFsaWQsIG9yIGlmIGl0IGlzIHZhbGlkIGJ1dCB0aGUgc2VydmVyIHJlcGxpZXMgdG8g
-YW4gUlBDDQo+Pj4gcmVxdWVzdCB1c2luZyBhIEdTUyBjb250ZXh0IHdpdGggYW4gUlBDIGVycm9y
-IHRoYXQgaW5kaWNhdGVzIGl04oCZcyBzaWRlDQo+Pj4gb2YgdGhlIEdTUyBjb250ZXh0IGhhcyBh
-IHByb2JsZW0sIHRoZSBjbGllbnQga2VybmVsIGRvZXMgYW4gdXBjYWxsIHRvDQo+Pj4gcnBjLmdz
-c2Qgd2hpY2ggdGhlbiBkZWNpZGVzIGlmIGEgbmV3IHNlcnZpY2UgdGlja2V0IGlzIHJlcXVpcmVk
-IHRvIHNlbmQNCj4+PiBhbiBSUENTRUNfR1NTX0lOSVQgbWVzc2FnZSB0byB0aGUgc2VydmVyIHRv
-IGNyZWF0ZSBhIG5ldyBHU1MgY29udGV4dC4NCj4+PiBUaGUgcmVzdWx0YW50IEdTUyBjb250ZXh0
-IGlzIHN0b3JlZCBpbiB0aGUgY2xpZW50IGtlcm5lbCB3aXRoIGEgbGlmZXRpbWUNCj4+PiBlcXVh
-bCB0byB0aGUgc2VydmljZSB0aWNrZXQgdXNlZCB0byBjcmVhdGUgaXQuDQo+Pj4gDQo+Pj4gSWYg
-cnBjLmdzc2QgY2FsbHMgdGhlIGNvZGUgdGhhdCByZWZyZXNoZXMgdGhlIHRpY2tldHMgZnJvbSB0
-aGUga2V5dGFiDQo+Pj4gd2hlbiB0aGV5IGFyZSBoYWxmIHdheSB0byBleHBpcmluZ+KAmSB0aGVu
-IHRoYXQgc2hvdWxkIG1pdGlnYXRlIHRoZSBjbG9jaw0KPj4+IHNrZXcgaXNzdWUuDQo+Pj4gDQo+
-Pj4gDQo+Pj4+IElmIHNvLCB3ZSBuZWVkIHRvIHVuZGVyc3RhbmQgaG93DQo+Pj4+IGl0IHdvcmtz
-LiAgSXQncyBwb3NzaWJsZSAodGhvdWdoIHVubGlrZWx5KSB0aGF0IGNoYW5naW5nIHRoZSBiZWhh
-dmlvciBvZg0KPj4+PiBnc3NfYWNjZXB0X3NlY19jb250ZXh0KCkgd291bGRuJ3QgYmUgc3VmZmlj
-aWVudCBieSBpdHNlbGYuDQo+Pj4gDQo+Pj4gDQo+Pj4gX19fX19fX19fX19fX19fX19fX19fX19f
-X19fX19fX19fX19fX19fX19fX19fX18NCj4+PiBrcmJkZXYgbWFpbGluZyBsaXN0ICAgICAgICAg
-ICAgIGtyYmRldkBtaXQuZWR1DQo+Pj4gaHR0cHM6Ly9tYWlsbWFuLm1pdC5lZHUvbWFpbG1hbi9s
-aXN0aW5mby9rcmJkZXYNCg0K
+On Wed, Oct 7, 2015 at 9:50 AM, Christoph Hellwig <hch@infradead.org> wrote:
+> On Tue, Oct 06, 2015 at 02:26:09PM -0600, Andreas Dilger wrote:
+>> And any disk filesystems that have their own non-POSIX ACLs, such as HFS, NTFS, ZFS would presumably also need to map the in-kernel Richacl format to their on-disk format.
+>
+> No, we did this mistake with Posix ACLs, and we're not going to repeat
+> it here.  Filesystems with their own slightly different ACLs must not
+> reuse the interface.
+
+Well, things may not be quite as clearly delineated. We currently have
+code in nfsd for mapping between NFSv4 ACLs on the wire and POSIX ACLs
+on local file systems. This mapping is problematic because of the
+semantic differences between NFSv4 ACLs and POSIX ACLs (different sets
+of permissions, access and default acl vs. inheritance flags,
+different permission check algorithm). I wish we could have avoided
+that.
+
+Richacls are designed to support NFSv4 ACLs on top of POSIX systems.
+This means that they should obviously be supported by the NFSv4 server
+and client (see the patches) and by the common local filesystems.
+
+ACLs on NTFS and ZFS mostly fit into the same model. The big remaining
+difference there is how users and groups are identified: NTFS used
+SIDs (https://en.wikipedia.org/wiki/Security_Identifier); ZFS could be
+said to use a hybrid UID / GID / SID model. Exposing those ACLs as
+richacls would make sense if we can find a clean way of handling this
+aspect.
+
+HFS ACLs have sufficiently different semantics (the user.group tuples)
+that representing them as richacls wouldn't make sense.
+
+Thanks,
+Andreas
