@@ -1,59 +1,41 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:43629 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752556AbbJGOsr convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Oct 2015 10:48:47 -0400
+Received: from dmz-mailsec-scanner-3.mit.edu ([18.9.25.14]:52555 "EHLO
+	dmz-mailsec-scanner-3.mit.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752402AbbJGOuS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Oct 2015 10:50:18 -0400
+Subject: Re: Gss context refresh failure due to clock skew
+To: "Adamson, Andy" <William.Adamson@netapp.com>,
+        Benjamin Kaduk <kaduk@mit.edu>
+References: <AD03968E-7017-4D32-A90C-C74C1E9CDFAC@netapp.com>
+ <FA7F806E-E5DA-4C41-AE7F-99E381E71123@netapp.com> <5612CB0F.5040501@mit.edu>
+ <A7007DA3-24B2-4079-96A8-A6E97085031C@netapp.com> <5612D73F.8020605@mit.edu>
+ <9ED9C3B6-A0D0-411F-AB95-77CB1E8AA097@netapp.com>
+ <alpine.GSO.1.10.1510051952080.26829@multics.mit.edu>
+ <9E0A46D0-6A66-47A2-848C-81A13EF20A52@netapp.com>
+ <EEF67DC8-C71A-4914-B614-EBEC63404F0B@netapp.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        "krbdev@mit.edu" <krbdev@mit.edu>
+From: Greg Hudson <ghudson@mit.edu>
+Message-ID: <56152FF4.8050705@mit.edu>
+Date: Wed, 7 Oct 2015 10:45:08 -0400
+MIME-Version: 1.0
+In-Reply-To: <EEF67DC8-C71A-4914-B614-EBEC63404F0B@netapp.com>
 Content-Type: text/plain; charset=utf-8
-Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2104\))
-Subject: Re: [PATCH v2 06/16] xprtrdma: Use workqueue to process RPC/RDMA replies
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <56152E96.9040400@dev.mellanox.co.il>
-Date: Wed, 7 Oct 2015 10:48:43 -0400
-Cc: linux-rdma@vger.kernel.org,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <4983C0DB-A6E3-4A64-B822-8D45D9847C31@oracle.com>
-References: <20151006142430.11788.42604.stgit@manet.1015granger.net> <20151006145924.11788.64757.stgit@manet.1015granger.net> <56152E96.9040400@dev.mellanox.co.il>
-To: Sagi Grimberg <sagig@dev.mellanox.co.il>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On 10/07/2015 09:22 AM, Adamson, Andy wrote:
+> Actually, setting the service ticket lifetime to be equal to (or greater than if this is possible) the TGT lifetime will not help. Just as in the example I sent, the application will get permission denied during the time difference between the client and server clock.
 
-> On Oct 7, 2015, at 10:39 AM, Sagi Grimberg <sagig@dev.mellanox.co.il> wrote:
-> 
-> On 10/6/2015 5:59 PM, Chuck Lever wrote:
->> The reply tasklet is fast, but it's single threaded. After reply
->> traffic saturates a single CPU, there's no more reply processing
->> capacity.
->> 
->> Replace the tasklet with a workqueue to spread reply handling across
->> all CPUs.  This also moves RPC/RDMA reply handling out of the soft
->> IRQ context and into a context that allows sleeps.
-> 
-> Hi Chuck,
-> 
-> I'm probably missing something here, but do you ever schedule in
-> the workqueue context? Don't you need to explicitly schedule after
-> a jiffie or so the code works also in a non fully preemptable kernel?
+That is expected.  What is not expected, in this variant, is that
+gss_init_sec_context() will succeed by itself once the client believes
+the TGT and service ticket to have expired.  Apologies for any
+miscommunication on this point.
 
-Each RPC reply gets its own work request. This is unlike
-the tasklet, which continues to run as long as there are
-items on xprtrdma’s global tasklet queue.
+There may be something in the calling code which refreshes the TGT in
+this situation.  If so, then to fully understand the scenario, we need
+to know how the calling code decides when to refresh the TGT.
 
-I can’t think of anything in the current reply handler
-that would take longer than a few microseconds to run,
-unless there is lock contention on the transport_lock.
+I opened a ticket about this issue here:
 
-wake_up_bit can also be slow sometimes, but it schedules
-internally.
-
-Eventually the reply handler will also synchronously
-perform R_key invalidation. In that case, I think there
-will be an implicit schedule while waiting for the
-invalidation to finish.
-
-
--—
-Chuck Lever
-
-
-
+    http://krbdev.mit.edu/rt/Ticket/Display.html?id=8268
