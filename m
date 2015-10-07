@@ -1,42 +1,41 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ob0-f169.google.com ([209.85.214.169]:35465 "EHLO
-	mail-ob0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754350AbbJGVpQ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Oct 2015 17:45:16 -0400
-Received: by obbzf10 with SMTP id zf10so24070896obb.2
-        for <linux-nfs@vger.kernel.org>; Wed, 07 Oct 2015 14:45:15 -0700 (PDT)
+Received: from mail-oi0-f43.google.com ([209.85.218.43]:36246 "EHLO
+	mail-oi0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750824AbbJGXRm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Oct 2015 19:17:42 -0400
+Received: by oibi136 with SMTP id i136so18080776oib.3
+        for <linux-nfs@vger.kernel.org>; Wed, 07 Oct 2015 16:17:41 -0700 (PDT)
 MIME-Version: 1.0
-In-Reply-To: <1444217995-8233-1-git-send-email-aryabinin@virtuozzo.com>
-References: <201510071927.5zx6Lh6E%fengguang.wu@intel.com>
-	<1444217995-8233-1-git-send-email-aryabinin@virtuozzo.com>
-Date: Wed, 7 Oct 2015 17:45:15 -0400
-Message-ID: <CAHQdGtQNVhqiEx2NytJDkHt+AtYUw6+_JT0q0L0+uZVBaSXT+Q@mail.gmail.com>
-Subject: Re: [PATCH v2] lockd: get rid of reference-counted NSM RPC clients
+In-Reply-To: <20151007200831.GB27924@fieldses.org>
+References: <1444240482-11287-1-git-send-email-trond.myklebust@primarydata.com>
+	<20151007200831.GB27924@fieldses.org>
+Date: Wed, 7 Oct 2015 19:17:41 -0400
+Message-ID: <CAHQdGtQT8+LeKyPghb9Ypr0kyF4aNXSOHCNDc3fvhZETvrpxLg@mail.gmail.com>
+Subject: Re: [PATCH] SUNRPC: Use MSG_SENDPAGE_NOTLAST when calling sendpage()
 From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Andrey Ryabinin <aryabinin@virtuozzo.com>
-Cc: Anna Schumaker <anna.schumaker@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@poochiereds.net>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        Stanislav Kinsbursky <skinsbursky@virtuozzo.com>,
-        kbuild test robot <lkp@intel.com>, kbuild-all@01.org
+To: Bruce Fields <bfields@fieldses.org>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Oct 7, 2015 at 7:39 AM, Andrey Ryabinin <aryabinin@virtuozzo.com> wrote:
-> Currently we have reference-counted per-net NSM RPC client
-> which created on the first monitor request and destroyed
-> after the last unmonitor request. It's needed because
-> RPC client need to know 'utsname()->nodename', but utsname()
-> might be NULL when nsm_unmonitor() called.
+On Wed, Oct 7, 2015 at 4:08 PM, Bruce Fields <bfields@fieldses.org> wrote:
+> On Wed, Oct 07, 2015 at 01:54:42PM -0400, Trond Myklebust wrote:
+>> If we're sending more pages via kernel_sendpage(), then set
+>> MSG_SENDPAGE_NOTLAST.
 >
+> Given that we've survived without this a while, I assume this is a hint
+> that may provide better performance in some cases (have you seen that?)
+> and that it doesn't have to be 100% correct?
 
-The other reason for keeping the rpc_client around is to avoid a need
-to do portmapper/rpcbind lookups in a net namespace that may be in the
-process of shutting down. This patchset will reintroduce that
-requirement.
+See the original motivation in:
 
-Cheers
-  Trond
+commit 2f5338442425 ("tcp: allow splice() to build full TSO packets")
+
+and the later bugfix (which actually introduces MSG_SENDPAGE_NOTLAST):
+
+commit 35f9c09fe9c7 ("tcp: tcp_sendpages() should call tcp_push() once")
+
+> In which case, looks fine, will queue up for 4.4....
+
+Sure. It's a minor performance enhancement, so there is no immediate rush.
