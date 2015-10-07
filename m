@@ -1,267 +1,129 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from relay.parallels.com ([195.214.232.42]:37968 "EHLO
-	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752667AbbJGLkD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Oct 2015 07:40:03 -0400
-From: Andrey Ryabinin <aryabinin@virtuozzo.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
+Received: from mail-io0-f180.google.com ([209.85.223.180]:36678 "EHLO
+	mail-io0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751464AbbJGNVr (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Oct 2015 09:21:47 -0400
+Subject: Re: [PATCH v9 00/43] Richacls
+To: James Morris <jmorris@namei.org>,
+        Andreas Gruenbacher <agruenba@redhat.com>
+References: <1444073830-21854-1-git-send-email-agruenba@redhat.com>
+ <20151006090746.GA27791@xo-6d-61-c0.localdomain>
+ <CAHc6FU79km84DAg+-EHkwyBf3Wq-e5AhBYQ1eXdS8mDpmPR0ow@mail.gmail.com>
+ <alpine.LRH.2.20.1510071832320.20498@namei.org>
+Cc: Pavel Machek <pavel@ucw.cz>, Alexander Viro <viro@zeniv.linux.org.uk>,
+        "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
         "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@poochiereds.net>
-CC: <linux-nfs@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
-        Stanislav Kinsbursky <skinsbursky@virtuozzo.com>,
-        kbuild test robot <lkp@intel.com>, <kbuild-all@01.org>,
-        Andrey Ryabinin <aryabinin@virtuozzo.com>
-Subject: [PATCH v2] lockd: get rid of reference-counted NSM RPC clients
-Date: Wed, 7 Oct 2015 14:39:55 +0300
-Message-ID: <1444217995-8233-1-git-send-email-aryabinin@virtuozzo.com>
-In-Reply-To: <201510071927.5zx6Lh6E%fengguang.wu@intel.com>
-References: <201510071927.5zx6Lh6E%fengguang.wu@intel.com>
+        Jeff Layton <jlayton@poochiereds.net>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>, linux-ext4@vger.kernel.org,
+        LKML <linux-kernel@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-nfs@vger.kernel.org, linux-api@vger.kernel.org
+From: Austin S Hemmelgarn <ahferroin7@gmail.com>
+Message-ID: <56151C50.9060902@gmail.com>
+Date: Wed, 7 Oct 2015 09:21:20 -0400
 MIME-Version: 1.0
-Content-Type: text/plain
+In-Reply-To: <alpine.LRH.2.20.1510071832320.20498@namei.org>
+Content-Type: multipart/signed; protocol="application/pkcs7-signature"; micalg=sha-512; boundary="------------ms010502000503060407040607"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Currently we have reference-counted per-net NSM RPC client
-which created on the first monitor request and destroyed
-after the last unmonitor request. It's needed because
-RPC client need to know 'utsname()->nodename', but utsname()
-might be NULL when nsm_unmonitor() called.
+This is a cryptographically signed message in MIME format.
 
-So instead of holding the rpc client we could just save nodename
-in struct nlm_host and pass it to the rpc_create().
-Thus ther is no need in keeping rpc client until last
-unmonitor request. We could create separate RPC clients
-for each monitor/unmonitor requests.
+--------------ms010502000503060407040607
+Content-Type: text/plain; charset=windows-1252; format=flowed
+Content-Transfer-Encoding: quoted-printable
 
-Signed-off-by: Andrey Ryabinin <aryabinin@virtuozzo.com>
----
- Changes since v1:
-  - fixed build warning:
-	 fs/lockd/mon.c:111:3: warning: format '%d' expects argument of type 'int', but argument 2 has type 'long int' [-Wformat=]
+On 2015-10-07 03:33, James Morris wrote:
+> On Tue, 6 Oct 2015, Andreas Gruenbacher wrote:
+>
+>> On Tue, Oct 6, 2015 at 11:07 AM, Pavel Machek <pavel@ucw.cz> wrote:
+>>> Should there be file in Documentation/ explaining how this works?
+>>
+>> There are plenty of comments in the code and in the patch descriptions=
 
- fs/lockd/host.c             |  1 +
- fs/lockd/mon.c              | 89 ++++++++-------------------------------------
- fs/lockd/netns.h            |  3 --
- fs/lockd/svc.c              |  1 -
- include/linux/lockd/lockd.h |  1 +
- 5 files changed, 17 insertions(+), 78 deletions(-)
+>> that describe how the code works. The user-space package has manual
+>> pages that describe how to use richacls; this information would not be=
 
-diff --git a/fs/lockd/host.c b/fs/lockd/host.c
-index b5f3c3a..d716c99 100644
---- a/fs/lockd/host.c
-+++ b/fs/lockd/host.c
-@@ -161,6 +161,7 @@ static struct nlm_host *nlm_alloc_host(struct nlm_lookup_host_info *ni,
- 	host->h_nsmhandle  = nsm;
- 	host->h_addrbuf    = nsm->sm_addrbuf;
- 	host->net	   = ni->net;
-+	strlcpy(host->nodename, utsname()->nodename, sizeof(host->nodename));
- 
- out:
- 	return host;
-diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
-index 6c05cd1..19166d4 100644
---- a/fs/lockd/mon.c
-+++ b/fs/lockd/mon.c
-@@ -42,7 +42,7 @@ struct nsm_args {
- 	u32			proc;
- 
- 	char			*mon_name;
--	char			*nodename;
-+	const char		*nodename;
- };
- 
- struct nsm_res {
-@@ -86,69 +86,18 @@ static struct rpc_clnt *nsm_create(struct net *net, const char *nodename)
- 	return rpc_create(&args);
- }
- 
--static struct rpc_clnt *nsm_client_set(struct lockd_net *ln,
--		struct rpc_clnt *clnt)
--{
--	spin_lock(&ln->nsm_clnt_lock);
--	if (ln->nsm_users == 0) {
--		if (clnt == NULL)
--			goto out;
--		ln->nsm_clnt = clnt;
--	}
--	clnt = ln->nsm_clnt;
--	ln->nsm_users++;
--out:
--	spin_unlock(&ln->nsm_clnt_lock);
--	return clnt;
--}
--
--static struct rpc_clnt *nsm_client_get(struct net *net, const char *nodename)
--{
--	struct rpc_clnt	*clnt, *new;
--	struct lockd_net *ln = net_generic(net, lockd_net_id);
--
--	clnt = nsm_client_set(ln, NULL);
--	if (clnt != NULL)
--		goto out;
--
--	clnt = new = nsm_create(net, nodename);
--	if (IS_ERR(clnt))
--		goto out;
--
--	clnt = nsm_client_set(ln, new);
--	if (clnt != new)
--		rpc_shutdown_client(new);
--out:
--	return clnt;
--}
--
--static void nsm_client_put(struct net *net)
--{
--	struct lockd_net *ln = net_generic(net, lockd_net_id);
--	struct rpc_clnt	*clnt = NULL;
--
--	spin_lock(&ln->nsm_clnt_lock);
--	ln->nsm_users--;
--	if (ln->nsm_users == 0) {
--		clnt = ln->nsm_clnt;
--		ln->nsm_clnt = NULL;
--	}
--	spin_unlock(&ln->nsm_clnt_lock);
--	if (clnt != NULL)
--		rpc_shutdown_client(clnt);
--}
--
- static int nsm_mon_unmon(struct nsm_handle *nsm, u32 proc, struct nsm_res *res,
--			 struct rpc_clnt *clnt)
-+			 const struct nlm_host *host)
- {
- 	int		status;
-+	struct rpc_clnt *clnt;
- 	struct nsm_args args = {
- 		.priv		= &nsm->sm_priv,
- 		.prog		= NLM_PROGRAM,
- 		.vers		= 3,
- 		.proc		= NLMPROC_NSM_NOTIFY,
- 		.mon_name	= nsm->sm_mon_name,
--		.nodename	= clnt->cl_nodename,
-+		.nodename	= host->nodename,
- 	};
- 	struct rpc_message msg = {
- 		.rpc_argp	= &args,
-@@ -157,6 +106,13 @@ static int nsm_mon_unmon(struct nsm_handle *nsm, u32 proc, struct nsm_res *res,
- 
- 	memset(res, 0, sizeof(*res));
- 
-+	clnt = nsm_create(host->net, host->nodename);
-+	if (IS_ERR(clnt)) {
-+		dprintk("lockd: failed to create NSM upcall transport, "
-+			"status=%ld, net=%p\n", PTR_ERR(clnt), host->net);
-+		return PTR_ERR(clnt);
-+	}
-+
- 	msg.rpc_proc = &clnt->cl_procinfo[proc];
- 	status = rpc_call_sync(clnt, &msg, RPC_TASK_SOFTCONN);
- 	if (status == -ECONNREFUSED) {
-@@ -170,6 +126,8 @@ static int nsm_mon_unmon(struct nsm_handle *nsm, u32 proc, struct nsm_res *res,
- 				status);
- 	else
- 		status = 0;
-+
-+	rpc_shutdown_client(clnt);
- 	return status;
- }
- 
-@@ -189,32 +147,19 @@ int nsm_monitor(const struct nlm_host *host)
- 	struct nsm_handle *nsm = host->h_nsmhandle;
- 	struct nsm_res	res;
- 	int		status;
--	struct rpc_clnt *clnt;
--	const char *nodename = NULL;
- 
- 	dprintk("lockd: nsm_monitor(%s)\n", nsm->sm_name);
- 
- 	if (nsm->sm_monitored)
- 		return 0;
- 
--	if (host->h_rpcclnt)
--		nodename = host->h_rpcclnt->cl_nodename;
--
- 	/*
- 	 * Choose whether to record the caller_name or IP address of
- 	 * this peer in the local rpc.statd's database.
- 	 */
- 	nsm->sm_mon_name = nsm_use_hostnames ? nsm->sm_name : nsm->sm_addrbuf;
- 
--	clnt = nsm_client_get(host->net, nodename);
--	if (IS_ERR(clnt)) {
--		status = PTR_ERR(clnt);
--		dprintk("lockd: failed to create NSM upcall transport, "
--				"status=%d, net=%p\n", status, host->net);
--		return status;
--	}
--
--	status = nsm_mon_unmon(nsm, NSMPROC_MON, &res, clnt);
-+	status = nsm_mon_unmon(nsm, NSMPROC_MON, &res, host);
- 	if (unlikely(res.status != 0))
- 		status = -EIO;
- 	if (unlikely(status < 0)) {
-@@ -246,11 +191,9 @@ void nsm_unmonitor(const struct nlm_host *host)
- 
- 	if (atomic_read(&nsm->sm_count) == 1
- 	 && nsm->sm_monitored && !nsm->sm_sticky) {
--		struct lockd_net *ln = net_generic(host->net, lockd_net_id);
--
- 		dprintk("lockd: nsm_unmonitor(%s)\n", nsm->sm_name);
- 
--		status = nsm_mon_unmon(nsm, NSMPROC_UNMON, &res, ln->nsm_clnt);
-+		status = nsm_mon_unmon(nsm, NSMPROC_UNMON, &res, host);
- 		if (res.status != 0)
- 			status = -EIO;
- 		if (status < 0)
-@@ -258,8 +201,6 @@ void nsm_unmonitor(const struct nlm_host *host)
- 					nsm->sm_name);
- 		else
- 			nsm->sm_monitored = 0;
--
--		nsm_client_put(host->net);
- 	}
- }
- 
-diff --git a/fs/lockd/netns.h b/fs/lockd/netns.h
-index 89fe011..5426189 100644
---- a/fs/lockd/netns.h
-+++ b/fs/lockd/netns.h
-@@ -12,9 +12,6 @@ struct lockd_net {
- 	struct delayed_work grace_period_end;
- 	struct lock_manager lockd_manager;
- 
--	spinlock_t nsm_clnt_lock;
--	unsigned int nsm_users;
--	struct rpc_clnt *nsm_clnt;
- 	struct list_head nsm_handles;
- };
- 
-diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-index 0dff13f..5f31ebd 100644
---- a/fs/lockd/svc.c
-+++ b/fs/lockd/svc.c
-@@ -592,7 +592,6 @@ static int lockd_init_net(struct net *net)
- 	INIT_DELAYED_WORK(&ln->grace_period_end, grace_ender);
- 	INIT_LIST_HEAD(&ln->lockd_manager.list);
- 	ln->lockd_manager.block_opens = false;
--	spin_lock_init(&ln->nsm_clnt_lock);
- 	INIT_LIST_HEAD(&ln->nsm_handles);
- 	return 0;
- }
-diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
-index fd3b65b..c153738 100644
---- a/include/linux/lockd/lockd.h
-+++ b/include/linux/lockd/lockd.h
-@@ -68,6 +68,7 @@ struct nlm_host {
- 	struct nsm_handle	*h_nsmhandle;	/* NSM status handle */
- 	char			*h_addrbuf;	/* address eyecatcher */
- 	struct net		*net;		/* host net */
-+	char			nodename[UNX_MAXNODENAME + 1];
- };
- 
- /*
--- 
-2.4.9
+>> accessible to users when put in Documentation/. Also, some background
+>> information is available on http://www.bestbits.at/richacl/.
+>
+> Are many distros planning on enabling this?  I gather RH is...
+>
+I think a better question is "Are many distros planning on supporting=20
+this?".  Most distros probably won't enable this immediately, and many=20
+other than the enterprise ones are likely to put the choice on the=20
+system administrator.  I would expect that RHEL, OEL, and SLES (and by=20
+extension, Fedora, CentOS, and OpenSuSE) are likely to enable it, and=20
+Ubuntu might.  Gentoo will likely take the same approach as it does with =
 
+xattrs and POSIX ACL's, namely that if you want them, you enable them=20
+yourself.  I would expect Arch to have support (probably within a week=20
+or two of this being merged), but not enable them by default, and I'd=20
+expect a similar policy from Debian.
+
+
+--------------ms010502000503060407040607
+Content-Type: application/pkcs7-signature; name="smime.p7s"
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="smime.p7s"
+Content-Description: S/MIME Cryptographic Signature
+
+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
+cnQub3JnMSIwIAYDVQQDExlDQSBDZXJ0IFNpZ25pbmcgQXV0aG9yaXR5MSEwHwYJKoZIhvcN
+AQkBFhJzdXBwb3J0QGNhY2VydC5vcmcCAxEt+DANBglghkgBZQMEAgMFAKCCAiEwGAYJKoZI
+hvcNAQkDMQsGCSqGSIb3DQEHATAcBgkqhkiG9w0BCQUxDxcNMTUxMDA3MTMyMTIwWjBPBgkq
+hkiG9w0BCQQxQgRAZMwPFArop+RtdZbH8HeSv/ChAM+f/wvd+wwlWNrmlvkvRfnmPvTEz25D
+tUv4J+o+CfYiQdNTOFZGL4TWzt2V3zBsBgkqhkiG9w0BCQ8xXzBdMAsGCWCGSAFlAwQBKjAL
+BglghkgBZQMEAQIwCgYIKoZIhvcNAwcwDgYIKoZIhvcNAwICAgCAMA0GCCqGSIb3DQMCAgFA
+MAcGBSsOAwIHMA0GCCqGSIb3DQMCAgEoMIGRBgkrBgEEAYI3EAQxgYMwgYAweTEQMA4GA1UE
+ChMHUm9vdCBDQTEeMBwGA1UECxMVaHR0cDovL3d3dy5jYWNlcnQub3JnMSIwIAYDVQQDExlD
+QSBDZXJ0IFNpZ25pbmcgQXV0aG9yaXR5MSEwHwYJKoZIhvcNAQkBFhJzdXBwb3J0QGNhY2Vy
+dC5vcmcCAxEt+DCBkwYLKoZIhvcNAQkQAgsxgYOggYAweTEQMA4GA1UEChMHUm9vdCBDQTEe
+MBwGA1UECxMVaHR0cDovL3d3dy5jYWNlcnQub3JnMSIwIAYDVQQDExlDQSBDZXJ0IFNpZ25p
+bmcgQXV0aG9yaXR5MSEwHwYJKoZIhvcNAQkBFhJzdXBwb3J0QGNhY2VydC5vcmcCAxEt+DAN
+BgkqhkiG9w0BAQEFAASCAgAe93WST/tuOuVvQvkSYOjZTmsvVxAd2A+L7IK/vYpyeK2qwOaf
+kpIile4ffv4BhTfRN/kmJK7+m7o/kkDsEejWKJNhtIUW9Ks7IpDUBzkn2KHl0gp4n0ZBmtTr
+Sl5Cmvntoi//Lv1B8UsPulEDcviuzuSwKltx6x1BKaxIDL5Lxitbwwd1o/1KDOk5aTQ8DVq+
+kEFPcbOqqBZV4c1v1hBtOW3bkxCNTh2kIA9mVq0rJjX/hsA+5XNSarAF6iSh3yox9qT1/yYB
+oiwD7GWM4XTFfu+XsKNKTdvUHrpqwRVBG4/A4KpDV2IMc0sFPY2rilQJcfT+e164nIxPinDS
+9Pe2+TrDezXbL8+vFAEjLnXpc/CYd38xMTdWA06HtCPLL/t6DVtmzhansP27B1nNJmrQLFzj
+bGFOORDkaFExq4S8wl0vWRljIg4KjZSb+3tV9ThzJBAYSoaWomo2iZmhC93/yRzNlEpj+bVr
+gys3HnFzCwyq6T8wLMZ04JzjR78Te/6sJ2a8P4O6fI/PimqQsg66WKlRDtQKxOtqLfP5+n/o
+xKluApXBVhULUWbgaNY2ExsfGJrnXN+B+yNl6oJAN4IrZlUVd/oC3LUux7mGgOzTTle0fzkI
+Sge95xjZtEBQo3MN4zY7MCYpZvgI4HI3kSKTza8yZWqFDfxn9fmub1DOuQAAAAAAAA==
+--------------ms010502000503060407040607--
