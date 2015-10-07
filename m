@@ -1,164 +1,175 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f170.google.com ([209.85.213.170]:36200 "EHLO
-	mail-ig0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755075AbbJGRVT convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Oct 2015 13:21:19 -0400
-Received: by igcrk20 with SMTP id rk20so114305321igc.1
-        for <linux-nfs@vger.kernel.org>; Wed, 07 Oct 2015 10:21:18 -0700 (PDT)
+Received: from mail-ob0-f169.google.com ([209.85.214.169]:35278 "EHLO
+	mail-ob0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754737AbbJGRZi convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Oct 2015 13:25:38 -0400
+Received: by obbzf10 with SMTP id zf10so18723764obb.2
+        for <linux-nfs@vger.kernel.org>; Wed, 07 Oct 2015 10:25:37 -0700 (PDT)
 MIME-Version: 1.0
-In-Reply-To: <55F6B9A5.7020306@gmail.com>
+In-Reply-To: <CAJ75kXZFyYzxU4HZi6KEbfVAkxXgCg1Crb9VEz+1=i2gvLg0dA@mail.gmail.com>
 References: <55F6B9A5.7020306@gmail.com>
-From: William Dauchy <wdauchy@gmail.com>
-Date: Wed, 7 Oct 2015 19:20:59 +0200
-Message-ID: <CAJ75kXZFyYzxU4HZi6KEbfVAkxXgCg1Crb9VEz+1=i2gvLg0dA@mail.gmail.com>
+	<CAJ75kXZFyYzxU4HZi6KEbfVAkxXgCg1Crb9VEz+1=i2gvLg0dA@mail.gmail.com>
+Date: Wed, 7 Oct 2015 13:25:37 -0400
+Message-ID: <CAHQdGtRSpXLpZVhUyg4xvR__rbYDoQ67gnynJkcpnuvNHThZwA@mail.gmail.com>
 Subject: Re: [PATCH] nfs/filelayout: Fix NULL reference caused by double
  freeing of fh_array
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: William Dauchy <wdauchy@gmail.com>
+Cc: Kinglong Mee <kinglongmee@gmail.com>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Trond,
+On Wed, Oct 7, 2015 at 1:20 PM, William Dauchy <wdauchy@gmail.com> wrote:
+> Hi Trond,
+>
+> I was just wondering if this patch was targeted for stable, I was
+> thinking about v4.1.x
+>
 
-I was just wondering if this patch was targeted for stable, I was
-thinking about v4.1.x
+I hadn't marked this patch as being targeted for stable, because I
+didn't have any reports of people seeing this bug in the wild. However
+it has been upstreamed now, so if you are actually hitting the bug,
+you should be able to submit it to stable@vger.kernel.org yourself.
 
-Best regards,
+Cheers
+  Trond
 
-On Mon, Sep 14, 2015 at 2:12 PM, Kinglong Mee <kinglongmee@gmail.com> wrote:
-> If filelayout_decode_layout fail, _filelayout_free_lseg will causes
-> a double freeing of fh_array.
+> Best regards,
 >
-> [ 1179.279800] BUG: unable to handle kernel NULL pointer dereference at           (null)
-> [ 1179.280198] IP: [<ffffffffa027222d>] filelayout_free_fh_array.isra.11+0x1d/0x70 [nfs_layout_nfsv41_files]
-> [ 1179.281010] PGD 0
-> [ 1179.281443] Oops: 0000 [#1]
-> [ 1179.281831] Modules linked in: nfs_layout_nfsv41_files(OE) nfsv4(OE) nfs(OE) fscache(E) xfs libcrc32c coretemp nfsd crct10dif_pclmul ppdev crc32_pclmul crc32c_intel auth_rpcgss ghash_clmulni_intel nfs_acl lockd vmw_balloon grace sunrpc parport_pc vmw_vmci parport shpchp i2c_piix4 vmwgfx drm_kms_helper ttm drm serio_raw mptspi scsi_transport_spi mptscsih e1000 mptbase ata_generic pata_acpi [last unloaded: fscache]
-> [ 1179.283891] CPU: 0 PID: 13336 Comm: cat Tainted: G           OE   4.3.0-rc1-pnfs+ #244
-> [ 1179.284323] Hardware name: VMware, Inc. VMware Virtual Platform/440BX Desktop Reference Platform, BIOS 6.00 05/20/2014
-> [ 1179.285206] task: ffff8800501d48c0 ti: ffff88003e3c4000 task.ti: ffff88003e3c4000
-> [ 1179.285668] RIP: 0010:[<ffffffffa027222d>]  [<ffffffffa027222d>] filelayout_free_fh_array.isra.11+0x1d/0x70 [nfs_layout_nfsv41_files]
-> [ 1179.286612] RSP: 0018:ffff88003e3c77f8  EFLAGS: 00010202
-> [ 1179.287092] RAX: 0000000000000000 RBX: ffff88001fe78900 RCX: 0000000000000000
-> [ 1179.287731] RDX: ffffea0000f40760 RSI: ffff88001fe789c8 RDI: ffff88001fe789c0
-> [ 1179.288383] RBP: ffff88003e3c7810 R08: ffffea0000f40760 R09: 0000000000000000
-> [ 1179.289170] R10: 0000000000000000 R11: 0000000000000001 R12: ffff88001fe789c8
-> [ 1179.289959] R13: ffff88001fe789c0 R14: ffff88004ec05a80 R15: ffff88004f935b88
-> [ 1179.290791] FS:  00007f4e66bb5700(0000) GS:ffffffff81c29000(0000) knlGS:0000000000000000
-> [ 1179.291580] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-> [ 1179.292209] CR2: 0000000000000000 CR3: 00000000203f8000 CR4: 00000000001406f0
-> [ 1179.292731] Stack:
-> [ 1179.293195]  ffff88001fe78900 00000000000000d0 ffff88001fe78178 ffff88003e3c7868
-> [ 1179.293676]  ffffffffa0272737 0000000000000001 0000000000000001 ffff88001fe78800
-> [ 1179.294151]  00000000614fffce ffffffff81727671 ffff88001fe78100 ffff88001fe78100
-> [ 1179.294623] Call Trace:
-> [ 1179.295092]  [<ffffffffa0272737>] filelayout_alloc_lseg+0xa7/0x2d0 [nfs_layout_nfsv41_files]
-> [ 1179.295625]  [<ffffffff81727671>] ? out_of_line_wait_on_bit+0x81/0xb0
-> [ 1179.296133]  [<ffffffffa040407e>] pnfs_layout_process+0xae/0x320 [nfsv4]
-> [ 1179.296632]  [<ffffffffa03e0a01>] nfs4_proc_layoutget+0x2b1/0x360 [nfsv4]
-> [ 1179.297134]  [<ffffffffa0402983>] pnfs_update_layout+0x853/0xb30 [nfsv4]
-> [ 1179.297632]  [<ffffffffa039db24>] ? nfs_get_lock_context+0x74/0x170 [nfs]
-> [ 1179.298158]  [<ffffffffa0271807>] filelayout_pg_init_read+0x37/0x50 [nfs_layout_nfsv41_files]
-> [ 1179.298834]  [<ffffffffa03a72d9>] __nfs_pageio_add_request+0x119/0x460 [nfs]
-> [ 1179.299385]  [<ffffffffa03a6bd7>] ? nfs_create_request.part.9+0x37/0x2e0 [nfs]
-> [ 1179.299872]  [<ffffffffa03a7cc3>] nfs_pageio_add_request+0xa3/0x1b0 [nfs]
-> [ 1179.300362]  [<ffffffffa03a8635>] readpage_async_filler+0x85/0x260 [nfs]
-> [ 1179.300907]  [<ffffffff81180cb1>] read_cache_pages+0x91/0xd0
-> [ 1179.301391]  [<ffffffffa03a85b0>] ? nfs_read_completion+0x220/0x220 [nfs]
-> [ 1179.301867]  [<ffffffffa03a8dc8>] nfs_readpages+0x128/0x200 [nfs]
-> [ 1179.302330]  [<ffffffff81180ef3>] __do_page_cache_readahead+0x203/0x280
-> [ 1179.302784]  [<ffffffff81180dc8>] ? __do_page_cache_readahead+0xd8/0x280
-> [ 1179.303413]  [<ffffffff81181116>] ondemand_readahead+0x1a6/0x2f0
-> [ 1179.303855]  [<ffffffff81181371>] page_cache_sync_readahead+0x31/0x50
-> [ 1179.304286]  [<ffffffff811750a6>] generic_file_read_iter+0x4a6/0x5c0
-> [ 1179.304711]  [<ffffffffa03a0316>] ? __nfs_revalidate_mapping+0x1f6/0x240 [nfs]
-> [ 1179.305132]  [<ffffffffa039ccf2>] nfs_file_read+0x52/0xa0 [nfs]
-> [ 1179.305540]  [<ffffffff811e343c>] __vfs_read+0xcc/0x100
-> [ 1179.305936]  [<ffffffff811e3d15>] vfs_read+0x85/0x130
-> [ 1179.306326]  [<ffffffff811e4a98>] SyS_read+0x58/0xd0
-> [ 1179.306708]  [<ffffffff8172caaf>] entry_SYSCALL_64_fastpath+0x12/0x76
-> [ 1179.307094] Code: c4 66 66 66 66 2e 0f 1f 84 00 00 00 00 00 0f 1f 44 00 00 55 48 89 e5 41 55 41 54 53 8b 07 49 89 f4 85 c0 74 47 48 8b 06 49 89 fd <48> 8b 38 48 85 ff 74 22 31 db eb 0c 48 63 d3 48 8b 3c d0 48 85
-> [ 1179.308357] RIP  [<ffffffffa027222d>] filelayout_free_fh_array.isra.11+0x1d/0x70 [nfs_layout_nfsv41_files]
-> [ 1179.309177]  RSP <ffff88003e3c77f8>
-> [ 1179.309582] CR2: 0000000000000000
->
-> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
-> ---
->  fs/nfs/filelayout/filelayout.c | 31 ++++++++++++-------------------
->  1 file changed, 12 insertions(+), 19 deletions(-)
->
-> diff --git a/fs/nfs/filelayout/filelayout.c b/fs/nfs/filelayout/filelayout.c
-> index b34f2e2..02ec079 100644
-> --- a/fs/nfs/filelayout/filelayout.c
-> +++ b/fs/nfs/filelayout/filelayout.c
-> @@ -629,23 +629,18 @@ out_put:
->         goto out;
->  }
->
-> -static void filelayout_free_fh_array(struct nfs4_filelayout_segment *fl)
-> +static void _filelayout_free_lseg(struct nfs4_filelayout_segment *fl)
->  {
->         int i;
->
-> -       for (i = 0; i < fl->num_fh; i++) {
-> -               if (!fl->fh_array[i])
-> -                       break;
-> -               kfree(fl->fh_array[i]);
-> +       if (fl->fh_array) {
-> +               for (i = 0; i < fl->num_fh; i++) {
-> +                       if (!fl->fh_array[i])
-> +                               break;
-> +                       kfree(fl->fh_array[i]);
-> +               }
-> +               kfree(fl->fh_array);
->         }
-> -       kfree(fl->fh_array);
-> -       fl->fh_array = NULL;
-> -}
-> -
-> -static void
-> -_filelayout_free_lseg(struct nfs4_filelayout_segment *fl)
-> -{
-> -       filelayout_free_fh_array(fl);
->         kfree(fl);
->  }
->
-> @@ -716,21 +711,21 @@ filelayout_decode_layout(struct pnfs_layout_hdr *flo,
->                 /* Do we want to use a mempool here? */
->                 fl->fh_array[i] = kmalloc(sizeof(struct nfs_fh), gfp_flags);
->                 if (!fl->fh_array[i])
-> -                       goto out_err_free;
-> +                       goto out_err;
->
->                 p = xdr_inline_decode(&stream, 4);
->                 if (unlikely(!p))
-> -                       goto out_err_free;
-> +                       goto out_err;
->                 fl->fh_array[i]->size = be32_to_cpup(p++);
->                 if (sizeof(struct nfs_fh) < fl->fh_array[i]->size) {
->                         printk(KERN_ERR "NFS: Too big fh %d received %d\n",
->                                i, fl->fh_array[i]->size);
-> -                       goto out_err_free;
-> +                       goto out_err;
->                 }
->
->                 p = xdr_inline_decode(&stream, fl->fh_array[i]->size);
->                 if (unlikely(!p))
-> -                       goto out_err_free;
-> +                       goto out_err;
->                 memcpy(fl->fh_array[i]->data, p, fl->fh_array[i]->size);
->                 dprintk("DEBUG: %s: fh len %d\n", __func__,
->                         fl->fh_array[i]->size);
-> @@ -739,8 +734,6 @@ filelayout_decode_layout(struct pnfs_layout_hdr *flo,
->         __free_page(scratch);
->         return 0;
->
-> -out_err_free:
-> -       filelayout_free_fh_array(fl);
->  out_err:
->         __free_page(scratch);
->         return -EIO;
--- 
-William
+> On Mon, Sep 14, 2015 at 2:12 PM, Kinglong Mee <kinglongmee@gmail.com> wrote:
+>> If filelayout_decode_layout fail, _filelayout_free_lseg will causes
+>> a double freeing of fh_array.
+>>
+>> [ 1179.279800] BUG: unable to handle kernel NULL pointer dereference at           (null)
+>> [ 1179.280198] IP: [<ffffffffa027222d>] filelayout_free_fh_array.isra.11+0x1d/0x70 [nfs_layout_nfsv41_files]
+>> [ 1179.281010] PGD 0
+>> [ 1179.281443] Oops: 0000 [#1]
+>> [ 1179.281831] Modules linked in: nfs_layout_nfsv41_files(OE) nfsv4(OE) nfs(OE) fscache(E) xfs libcrc32c coretemp nfsd crct10dif_pclmul ppdev crc32_pclmul crc32c_intel auth_rpcgss ghash_clmulni_intel nfs_acl lockd vmw_balloon grace sunrpc parport_pc vmw_vmci parport shpchp i2c_piix4 vmwgfx drm_kms_helper ttm drm serio_raw mptspi scsi_transport_spi mptscsih e1000 mptbase ata_generic pata_acpi [last unloaded: fscache]
+>> [ 1179.283891] CPU: 0 PID: 13336 Comm: cat Tainted: G           OE   4.3.0-rc1-pnfs+ #244
+>> [ 1179.284323] Hardware name: VMware, Inc. VMware Virtual Platform/440BX Desktop Reference Platform, BIOS 6.00 05/20/2014
+>> [ 1179.285206] task: ffff8800501d48c0 ti: ffff88003e3c4000 task.ti: ffff88003e3c4000
+>> [ 1179.285668] RIP: 0010:[<ffffffffa027222d>]  [<ffffffffa027222d>] filelayout_free_fh_array.isra.11+0x1d/0x70 [nfs_layout_nfsv41_files]
+>> [ 1179.286612] RSP: 0018:ffff88003e3c77f8  EFLAGS: 00010202
+>> [ 1179.287092] RAX: 0000000000000000 RBX: ffff88001fe78900 RCX: 0000000000000000
+>> [ 1179.287731] RDX: ffffea0000f40760 RSI: ffff88001fe789c8 RDI: ffff88001fe789c0
+>> [ 1179.288383] RBP: ffff88003e3c7810 R08: ffffea0000f40760 R09: 0000000000000000
+>> [ 1179.289170] R10: 0000000000000000 R11: 0000000000000001 R12: ffff88001fe789c8
+>> [ 1179.289959] R13: ffff88001fe789c0 R14: ffff88004ec05a80 R15: ffff88004f935b88
+>> [ 1179.290791] FS:  00007f4e66bb5700(0000) GS:ffffffff81c29000(0000) knlGS:0000000000000000
+>> [ 1179.291580] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+>> [ 1179.292209] CR2: 0000000000000000 CR3: 00000000203f8000 CR4: 00000000001406f0
+>> [ 1179.292731] Stack:
+>> [ 1179.293195]  ffff88001fe78900 00000000000000d0 ffff88001fe78178 ffff88003e3c7868
+>> [ 1179.293676]  ffffffffa0272737 0000000000000001 0000000000000001 ffff88001fe78800
+>> [ 1179.294151]  00000000614fffce ffffffff81727671 ffff88001fe78100 ffff88001fe78100
+>> [ 1179.294623] Call Trace:
+>> [ 1179.295092]  [<ffffffffa0272737>] filelayout_alloc_lseg+0xa7/0x2d0 [nfs_layout_nfsv41_files]
+>> [ 1179.295625]  [<ffffffff81727671>] ? out_of_line_wait_on_bit+0x81/0xb0
+>> [ 1179.296133]  [<ffffffffa040407e>] pnfs_layout_process+0xae/0x320 [nfsv4]
+>> [ 1179.296632]  [<ffffffffa03e0a01>] nfs4_proc_layoutget+0x2b1/0x360 [nfsv4]
+>> [ 1179.297134]  [<ffffffffa0402983>] pnfs_update_layout+0x853/0xb30 [nfsv4]
+>> [ 1179.297632]  [<ffffffffa039db24>] ? nfs_get_lock_context+0x74/0x170 [nfs]
+>> [ 1179.298158]  [<ffffffffa0271807>] filelayout_pg_init_read+0x37/0x50 [nfs_layout_nfsv41_files]
+>> [ 1179.298834]  [<ffffffffa03a72d9>] __nfs_pageio_add_request+0x119/0x460 [nfs]
+>> [ 1179.299385]  [<ffffffffa03a6bd7>] ? nfs_create_request.part.9+0x37/0x2e0 [nfs]
+>> [ 1179.299872]  [<ffffffffa03a7cc3>] nfs_pageio_add_request+0xa3/0x1b0 [nfs]
+>> [ 1179.300362]  [<ffffffffa03a8635>] readpage_async_filler+0x85/0x260 [nfs]
+>> [ 1179.300907]  [<ffffffff81180cb1>] read_cache_pages+0x91/0xd0
+>> [ 1179.301391]  [<ffffffffa03a85b0>] ? nfs_read_completion+0x220/0x220 [nfs]
+>> [ 1179.301867]  [<ffffffffa03a8dc8>] nfs_readpages+0x128/0x200 [nfs]
+>> [ 1179.302330]  [<ffffffff81180ef3>] __do_page_cache_readahead+0x203/0x280
+>> [ 1179.302784]  [<ffffffff81180dc8>] ? __do_page_cache_readahead+0xd8/0x280
+>> [ 1179.303413]  [<ffffffff81181116>] ondemand_readahead+0x1a6/0x2f0
+>> [ 1179.303855]  [<ffffffff81181371>] page_cache_sync_readahead+0x31/0x50
+>> [ 1179.304286]  [<ffffffff811750a6>] generic_file_read_iter+0x4a6/0x5c0
+>> [ 1179.304711]  [<ffffffffa03a0316>] ? __nfs_revalidate_mapping+0x1f6/0x240 [nfs]
+>> [ 1179.305132]  [<ffffffffa039ccf2>] nfs_file_read+0x52/0xa0 [nfs]
+>> [ 1179.305540]  [<ffffffff811e343c>] __vfs_read+0xcc/0x100
+>> [ 1179.305936]  [<ffffffff811e3d15>] vfs_read+0x85/0x130
+>> [ 1179.306326]  [<ffffffff811e4a98>] SyS_read+0x58/0xd0
+>> [ 1179.306708]  [<ffffffff8172caaf>] entry_SYSCALL_64_fastpath+0x12/0x76
+>> [ 1179.307094] Code: c4 66 66 66 66 2e 0f 1f 84 00 00 00 00 00 0f 1f 44 00 00 55 48 89 e5 41 55 41 54 53 8b 07 49 89 f4 85 c0 74 47 48 8b 06 49 89 fd <48> 8b 38 48 85 ff 74 22 31 db eb 0c 48 63 d3 48 8b 3c d0 48 85
+>> [ 1179.308357] RIP  [<ffffffffa027222d>] filelayout_free_fh_array.isra.11+0x1d/0x70 [nfs_layout_nfsv41_files]
+>> [ 1179.309177]  RSP <ffff88003e3c77f8>
+>> [ 1179.309582] CR2: 0000000000000000
+>>
+>> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+>> ---
+>>  fs/nfs/filelayout/filelayout.c | 31 ++++++++++++-------------------
+>>  1 file changed, 12 insertions(+), 19 deletions(-)
+>>
+>> diff --git a/fs/nfs/filelayout/filelayout.c b/fs/nfs/filelayout/filelayout.c
+>> index b34f2e2..02ec079 100644
+>> --- a/fs/nfs/filelayout/filelayout.c
+>> +++ b/fs/nfs/filelayout/filelayout.c
+>> @@ -629,23 +629,18 @@ out_put:
+>>         goto out;
+>>  }
+>>
+>> -static void filelayout_free_fh_array(struct nfs4_filelayout_segment *fl)
+>> +static void _filelayout_free_lseg(struct nfs4_filelayout_segment *fl)
+>>  {
+>>         int i;
+>>
+>> -       for (i = 0; i < fl->num_fh; i++) {
+>> -               if (!fl->fh_array[i])
+>> -                       break;
+>> -               kfree(fl->fh_array[i]);
+>> +       if (fl->fh_array) {
+>> +               for (i = 0; i < fl->num_fh; i++) {
+>> +                       if (!fl->fh_array[i])
+>> +                               break;
+>> +                       kfree(fl->fh_array[i]);
+>> +               }
+>> +               kfree(fl->fh_array);
+>>         }
+>> -       kfree(fl->fh_array);
+>> -       fl->fh_array = NULL;
+>> -}
+>> -
+>> -static void
+>> -_filelayout_free_lseg(struct nfs4_filelayout_segment *fl)
+>> -{
+>> -       filelayout_free_fh_array(fl);
+>>         kfree(fl);
+>>  }
+>>
+>> @@ -716,21 +711,21 @@ filelayout_decode_layout(struct pnfs_layout_hdr *flo,
+>>                 /* Do we want to use a mempool here? */
+>>                 fl->fh_array[i] = kmalloc(sizeof(struct nfs_fh), gfp_flags);
+>>                 if (!fl->fh_array[i])
+>> -                       goto out_err_free;
+>> +                       goto out_err;
+>>
+>>                 p = xdr_inline_decode(&stream, 4);
+>>                 if (unlikely(!p))
+>> -                       goto out_err_free;
+>> +                       goto out_err;
+>>                 fl->fh_array[i]->size = be32_to_cpup(p++);
+>>                 if (sizeof(struct nfs_fh) < fl->fh_array[i]->size) {
+>>                         printk(KERN_ERR "NFS: Too big fh %d received %d\n",
+>>                                i, fl->fh_array[i]->size);
+>> -                       goto out_err_free;
+>> +                       goto out_err;
+>>                 }
+>>
+>>                 p = xdr_inline_decode(&stream, fl->fh_array[i]->size);
+>>                 if (unlikely(!p))
+>> -                       goto out_err_free;
+>> +                       goto out_err;
+>>                 memcpy(fl->fh_array[i]->data, p, fl->fh_array[i]->size);
+>>                 dprintk("DEBUG: %s: fh len %d\n", __func__,
+>>                         fl->fh_array[i]->size);
+>> @@ -739,8 +734,6 @@ filelayout_decode_layout(struct pnfs_layout_hdr *flo,
+>>         __free_page(scratch);
+>>         return 0;
+>>
+>> -out_err_free:
+>> -       filelayout_free_fh_array(fl);
+>>  out_err:
+>>         __free_page(scratch);
+>>         return -EIO;
+> --
+> William
