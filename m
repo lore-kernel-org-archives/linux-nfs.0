@@ -1,64 +1,45 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wi0-f176.google.com ([209.85.212.176]:36854 "EHLO
-	mail-wi0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751006AbbJGGm3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Oct 2015 02:42:29 -0400
-Received: by wicgb1 with SMTP id gb1so196121246wic.1
-        for <linux-nfs@vger.kernel.org>; Tue, 06 Oct 2015 23:42:28 -0700 (PDT)
-Subject: Re: [PATCH v1 00/24] New fast registration API
-To: Bart Van Assche <bart.vanassche@sandisk.com>
-References: <1442482947-27785-1-git-send-email-sagig@mellanox.com>
- <560AE099.2080004@sandisk.com> <560AFB71.3010003@dev.mellanox.co.il>
- <560C30F4.50900@sandisk.com> <560C42CE.6090000@sandisk.com>
- <560CDDBC.8000400@dev.mellanox.co.il> <560D730C.9000302@sandisk.com>
- <560D9E69.70604@sandisk.com>
- <35618B90-4D6E-4036-A69B-4405F020D440@dev.mellanox.co.il>
- <560EA4A1.3080709@sandisk.com> <56138854.4040209@dev.mellanox.co.il>
- <561417B9.2080505@sandisk.com>
-Cc: Sagi Grimberg <sagig@mellanox.com>,
-        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Nicholas A. Bellinger" <nab@linux-iscsi.org>
-From: Sagi Grimberg <sagig@dev.mellanox.co.il>
-Message-ID: <5614BECF.9030907@dev.mellanox.co.il>
-Date: Wed, 7 Oct 2015 09:42:23 +0300
+Received: from tundra.namei.org ([65.99.196.166]:40168 "EHLO namei.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750864AbbJGHdY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 7 Oct 2015 03:33:24 -0400
+Date: Wed, 7 Oct 2015 18:33:09 +1100 (AEDT)
+From: James Morris <jmorris@namei.org>
+To: Andreas Gruenbacher <agruenba@redhat.com>
+cc: Pavel Machek <pavel@ucw.cz>, Alexander Viro <viro@zeniv.linux.org.uk>,
+        "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>, linux-ext4@vger.kernel.org,
+        LKML <linux-kernel@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-nfs@vger.kernel.org, linux-api@vger.kernel.org
+Subject: Re: [PATCH v9 00/43] Richacls
+In-Reply-To: <CAHc6FU79km84DAg+-EHkwyBf3Wq-e5AhBYQ1eXdS8mDpmPR0ow@mail.gmail.com>
+Message-ID: <alpine.LRH.2.20.1510071832320.20498@namei.org>
+References: <1444073830-21854-1-git-send-email-agruenba@redhat.com> <20151006090746.GA27791@xo-6d-61-c0.localdomain> <CAHc6FU79km84DAg+-EHkwyBf3Wq-e5AhBYQ1eXdS8mDpmPR0ow@mail.gmail.com>
 MIME-Version: 1.0
-In-Reply-To: <561417B9.2080505@sandisk.com>
-Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 10/6/2015 9:49 PM, Bart Van Assche wrote:
-> On 10/06/2015 01:37 AM, Sagi Grimberg wrote:
->> I see now the error you are referring to.
->>
->> The issue is that the device requires the MR page array to have
->> an alignment (0x40 for mlx4 and 0x400 for mlx5). When I modified the
->> page array allocation to be non-coherent I didn't take care of
->> alignment.
->>
->> Taking care of this alignment may result in a higher order allocation
->> as we'd need to add (alignment - 1) to the allocation size.
->>
->> e.g. a 512 pages on mlx4 will become:
->> 512 * 8 + 0x40 - 1 = 4159
->>
->> I'm leaning towards this approach. Any preference?
->>
->> I think this patch should take care of mlx4:
->> [ ... ]
->
-> Hello Sagi,
->
-> Thanks for the patch. But since the patch included in the previous
-> e-mail mapped a memory range that could be outside the bounds of the
-> allocated memory I have been testing the patch below:
+On Tue, 6 Oct 2015, Andreas Gruenbacher wrote:
 
-Thanks! I correct the patches.
+> On Tue, Oct 6, 2015 at 11:07 AM, Pavel Machek <pavel@ucw.cz> wrote:
+> > Should there be file in Documentation/ explaining how this works?
+> 
+> There are plenty of comments in the code and in the patch descriptions
+> that describe how the code works. The user-space package has manual
+> pages that describe how to use richacls; this information would not be
+> accessible to users when put in Documentation/. Also, some background
+> information is available on http://www.bestbits.at/richacl/.
 
-Can I take it as your Tested-by on srp?
+Are many distros planning on enabling this?  I gather RH is...
 
-Cheers,
-Sagi.
 
+-- 
+James Morris
+<jmorris@namei.org>
 
