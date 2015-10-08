@@ -1,156 +1,272 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from [193.47.165.129] ([193.47.165.129]:35122 "EHLO mellanox.co.il"
+Received: from [193.47.165.129] ([193.47.165.129]:35199 "EHLO mellanox.co.il"
 	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1753743AbbJHHvh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 8 Oct 2015 03:51:37 -0400
+	id S1753870AbbJHHvz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 8 Oct 2015 03:51:55 -0400
 From: Sagi Grimberg <sagig@mellanox.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: [PATCH v3 00/26] New fast registration API
-Date: Thu,  8 Oct 2015 10:50:43 +0300
-Message-Id: <1444290669-5252-1-git-send-email-sagig@mellanox.com>
+Subject: [PATCH v3 11/26] iser-target: Port to new memory registration API
+Date: Thu,  8 Oct 2015 10:50:54 +0300
+Message-Id: <1444290669-5252-12-git-send-email-sagig@mellanox.com>
+In-Reply-To: <1444290669-5252-1-git-send-email-sagig@mellanox.com>
+References: <1444290669-5252-1-git-send-email-sagig@mellanox.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi all,
+Remove fastreg page list allocation as the page vector
+is now private to the provider. Instead of constructing
+the page list and fast_req work request, call ib_map_mr_sg
+and construct ib_reg_wr.
 
-As discussed on the linux-rdma list, there is plenty of room for
-improvement in our memory registration APIs. We keep finding
-ULPs that are duplicating code, sometimes use wrong strategies
-and mis-use our current API.
+Signed-off-by: Sagi Grimberg <sagig@mellanox.com>
+Acked-by: Christoph Hellwig <hch@lst.de>
+---
+ drivers/infiniband/ulp/isert/ib_isert.c | 130 +++++++-------------------------
+ drivers/infiniband/ulp/isert/ib_isert.h |   2 -
+ 2 files changed, 28 insertions(+), 104 deletions(-)
 
-As a first step, this patch set replaces the fast registration API
-to accept a kernel common struct scatterlist and takes care of
-the page vector construction in the core layer with hooks for the
-drivers HW specific assignments. This allows to remove a common
-code duplication as it was done in each and every ULP driver.
-
-Changes from v2:
-- Fixed alignment for page lists allocations in mlx4, mlx5 (Bart)
-
-- Rebased against Doug's for-4.4 tree (4.3.0-rc1) + 4.3-rc fixes
-
-- Added Acked/Tested tags
-
-Changes from v1:
-- Add ib_map_mr_sg_zbva() for RDS which uses it (preferred it over
-  polluting the API).
-
-- Replaced coherent allocations in mlx4, mlx5 with DMA streaming
-  APIs (Bart)
-
-- Changed ib_map_mr_sg description (Bart)
-
-- Split SRP driver patches (Bart)
-
-- Added missing wr->next = NULL from various ULPs (Steve, Santosh)
-
-- Fixed 0-day testing errors in nes driver, xprtrdma and svcrdma
-
-- Fixed checkpatch issues
-
-Changes from v0:
-- Rebased on top of 4.3-rc1 + Christoph's ib_send_wr conversion patches
-
-- Allow the ULP to pass page_size argument to ib_map_mr_sg in order
-  to have it work better in some specific workloads. This suggestion
-  came from Bart Van Assche which pointed out that some applications
-  might use page sizes significantly smaller than the system PAGE_SIZE
-  of specific architectures
-
-- Fixed some logical bugs in ib_sg_to_pages
-
-- Added a set_page function pointer for drivers to pass to ib_sg_to_pages
-  so some drivers (e.g mlx4, mlx5, nes) can avoid keeping a second page
-  vector and/or re-iterate on the page vector in order to perform HW specific
-  assignments (big/little endian conversion, extra flags)
-
-- Converted SRP initiator and RDS iwarp ULPs to the new API
-
-- Removed fast registration code from hfi1 driver (as it isn't supported
-  anyway). I assume that the correct place to get the support back would
-  be in a shared SW library (hfi1, qib, rxe).
-
-- Updated the change logs
-
-The code is available at: https://github.com/sagigrimberg/linux/tree/reg_api.6
-
-Sagi Grimberg (26):
-  IB/core: Introduce new fast registration API
-  IB/mlx5: Remove dead fmr code
-  IB/mlx5: Support the new memory registration API
-  IB/mlx4: Support the new memory registration API
-  RDMA/ocrdma: Support the new memory registration API
-  RDMA/cxgb3: Support the new memory registration API
-  iw_cxgb4: Support the new memory registration API
-  IB/qib: Support the new memory registration API
-  RDMA/nes: Support the new memory registration API
-  IB/iser: Port to new fast registration API
-  iser-target: Port to new memory registration API
-  xprtrdma: Port to new memory registration API
-  svcrdma: Port to new memory registration API
-  RDS/IW: Convert to new memory registration API
-  IB/srp: Split srp_map_sg
-  IB/srp: Convert to new registration API
-  IB/srp: Remove srp_finish_mapping
-  IB/srp: Dont allocate a page vector when using fast_reg
-  IB/mlx5: Remove old FRWR API support
-  IB/mlx4: Remove old FRWR API support
-  RDMA/ocrdma: Remove old FRWR API
-  RDMA/cxgb3: Remove old FRWR API
-  iw_cxgb4: Remove old FRWR API
-  IB/qib: Remove old FRWR API
-  RDMA/nes: Remove old FRWR API
-  IB/core: Remove old fast registration API
-
- drivers/infiniband/core/verbs.c             | 132 +++++++++++---
- drivers/infiniband/hw/cxgb3/iwch_cq.c       |   2 +-
- drivers/infiniband/hw/cxgb3/iwch_provider.c |  39 +++--
- drivers/infiniband/hw/cxgb3/iwch_provider.h |   2 +
- drivers/infiniband/hw/cxgb3/iwch_qp.c       |  37 ++--
- drivers/infiniband/hw/cxgb4/cq.c            |   2 +-
- drivers/infiniband/hw/cxgb4/iw_cxgb4.h      |  25 +--
- drivers/infiniband/hw/cxgb4/mem.c           |  61 +++----
- drivers/infiniband/hw/cxgb4/provider.c      |   3 +-
- drivers/infiniband/hw/cxgb4/qp.c            |  47 +++--
- drivers/infiniband/hw/mlx4/cq.c             |   2 +-
- drivers/infiniband/hw/mlx4/main.c           |   3 +-
- drivers/infiniband/hw/mlx4/mlx4_ib.h        |  25 ++-
- drivers/infiniband/hw/mlx4/mr.c             | 149 ++++++++++------
- drivers/infiniband/hw/mlx4/qp.c             |  34 ++--
- drivers/infiniband/hw/mlx5/cq.c             |   4 +-
- drivers/infiniband/hw/mlx5/main.c           |   3 +-
- drivers/infiniband/hw/mlx5/mlx5_ib.h        |  48 +-----
- drivers/infiniband/hw/mlx5/mr.c             | 135 ++++++++++-----
- drivers/infiniband/hw/mlx5/qp.c             | 140 +++++++--------
- drivers/infiniband/hw/nes/nes_hw.h          |   6 -
- drivers/infiniband/hw/nes/nes_verbs.c       | 163 +++++++-----------
- drivers/infiniband/hw/nes/nes_verbs.h       |   4 +
- drivers/infiniband/hw/ocrdma/ocrdma.h       |   2 +
- drivers/infiniband/hw/ocrdma/ocrdma_main.c  |   3 +-
- drivers/infiniband/hw/ocrdma/ocrdma_verbs.c | 154 ++++++++---------
- drivers/infiniband/hw/ocrdma/ocrdma_verbs.h |   7 +-
- drivers/infiniband/hw/qib/qib_keys.c        |  42 ++---
- drivers/infiniband/hw/qib/qib_mr.c          |  46 ++---
- drivers/infiniband/hw/qib/qib_verbs.c       |  13 +-
- drivers/infiniband/hw/qib/qib_verbs.h       |  13 +-
- drivers/infiniband/ulp/iser/iscsi_iser.h    |   8 +-
- drivers/infiniband/ulp/iser/iser_memory.c   |  54 +++---
- drivers/infiniband/ulp/iser/iser_verbs.c    |  16 +-
- drivers/infiniband/ulp/isert/ib_isert.c     | 130 +++-----------
- drivers/infiniband/ulp/isert/ib_isert.h     |   2 -
- drivers/infiniband/ulp/srp/ib_srp.c         | 256 +++++++++++++++++-----------
- drivers/infiniband/ulp/srp/ib_srp.h         |  11 +-
- include/linux/sunrpc/svc_rdma.h             |   6 +-
- include/rdma/ib_verbs.h                     |  86 +++++-----
- net/rds/iw.h                                |   5 +-
- net/rds/iw_rdma.c                           | 128 +++++---------
- net/rds/iw_send.c                           |  57 +++----
- net/sunrpc/xprtrdma/frwr_ops.c              | 112 +++++++-----
- net/sunrpc/xprtrdma/svc_rdma_recvfrom.c     |  76 +++++----
- net/sunrpc/xprtrdma/svc_rdma_transport.c    |  34 ++--
- net/sunrpc/xprtrdma/xprt_rdma.h             |   3 +-
- 47 files changed, 1157 insertions(+), 1173 deletions(-)
-
+diff --git a/drivers/infiniband/ulp/isert/ib_isert.c b/drivers/infiniband/ulp/isert/ib_isert.c
+index 70d55d381515..7dbae56e576a 100644
+--- a/drivers/infiniband/ulp/isert/ib_isert.c
++++ b/drivers/infiniband/ulp/isert/ib_isert.c
+@@ -473,10 +473,8 @@ isert_conn_free_fastreg_pool(struct isert_conn *isert_conn)
+ 	list_for_each_entry_safe(fr_desc, tmp,
+ 				 &isert_conn->fr_pool, list) {
+ 		list_del(&fr_desc->list);
+-		ib_free_fast_reg_page_list(fr_desc->data_frpl);
+ 		ib_dereg_mr(fr_desc->data_mr);
+ 		if (fr_desc->pi_ctx) {
+-			ib_free_fast_reg_page_list(fr_desc->pi_ctx->prot_frpl);
+ 			ib_dereg_mr(fr_desc->pi_ctx->prot_mr);
+ 			ib_dereg_mr(fr_desc->pi_ctx->sig_mr);
+ 			kfree(fr_desc->pi_ctx);
+@@ -504,22 +502,13 @@ isert_create_pi_ctx(struct fast_reg_descriptor *desc,
+ 		return -ENOMEM;
+ 	}
+ 
+-	pi_ctx->prot_frpl = ib_alloc_fast_reg_page_list(device,
+-					    ISCSI_ISER_SG_TABLESIZE);
+-	if (IS_ERR(pi_ctx->prot_frpl)) {
+-		isert_err("Failed to allocate prot frpl err=%ld\n",
+-			  PTR_ERR(pi_ctx->prot_frpl));
+-		ret = PTR_ERR(pi_ctx->prot_frpl);
+-		goto err_pi_ctx;
+-	}
+-
+ 	pi_ctx->prot_mr = ib_alloc_mr(pd, IB_MR_TYPE_MEM_REG,
+ 				      ISCSI_ISER_SG_TABLESIZE);
+ 	if (IS_ERR(pi_ctx->prot_mr)) {
+ 		isert_err("Failed to allocate prot frmr err=%ld\n",
+ 			  PTR_ERR(pi_ctx->prot_mr));
+ 		ret = PTR_ERR(pi_ctx->prot_mr);
+-		goto err_prot_frpl;
++		goto err_pi_ctx;
+ 	}
+ 	desc->ind |= ISERT_PROT_KEY_VALID;
+ 
+@@ -539,8 +528,6 @@ isert_create_pi_ctx(struct fast_reg_descriptor *desc,
+ 
+ err_prot_mr:
+ 	ib_dereg_mr(pi_ctx->prot_mr);
+-err_prot_frpl:
+-	ib_free_fast_reg_page_list(pi_ctx->prot_frpl);
+ err_pi_ctx:
+ 	kfree(pi_ctx);
+ 
+@@ -551,34 +538,18 @@ static int
+ isert_create_fr_desc(struct ib_device *ib_device, struct ib_pd *pd,
+ 		     struct fast_reg_descriptor *fr_desc)
+ {
+-	int ret;
+-
+-	fr_desc->data_frpl = ib_alloc_fast_reg_page_list(ib_device,
+-							 ISCSI_ISER_SG_TABLESIZE);
+-	if (IS_ERR(fr_desc->data_frpl)) {
+-		isert_err("Failed to allocate data frpl err=%ld\n",
+-			  PTR_ERR(fr_desc->data_frpl));
+-		return PTR_ERR(fr_desc->data_frpl);
+-	}
+-
+ 	fr_desc->data_mr = ib_alloc_mr(pd, IB_MR_TYPE_MEM_REG,
+ 				       ISCSI_ISER_SG_TABLESIZE);
+ 	if (IS_ERR(fr_desc->data_mr)) {
+ 		isert_err("Failed to allocate data frmr err=%ld\n",
+ 			  PTR_ERR(fr_desc->data_mr));
+-		ret = PTR_ERR(fr_desc->data_mr);
+-		goto err_data_frpl;
++		return PTR_ERR(fr_desc->data_mr);
+ 	}
+ 	fr_desc->ind |= ISERT_DATA_KEY_VALID;
+ 
+ 	isert_dbg("Created fr_desc %p\n", fr_desc);
+ 
+ 	return 0;
+-
+-err_data_frpl:
+-	ib_free_fast_reg_page_list(fr_desc->data_frpl);
+-
+-	return ret;
+ }
+ 
+ static int
+@@ -2535,45 +2506,6 @@ unmap_cmd:
+ 	return ret;
+ }
+ 
+-static int
+-isert_map_fr_pagelist(struct ib_device *ib_dev,
+-		      struct scatterlist *sg_start, int sg_nents, u64 *fr_pl)
+-{
+-	u64 start_addr, end_addr, page, chunk_start = 0;
+-	struct scatterlist *tmp_sg;
+-	int i = 0, new_chunk, last_ent, n_pages;
+-
+-	n_pages = 0;
+-	new_chunk = 1;
+-	last_ent = sg_nents - 1;
+-	for_each_sg(sg_start, tmp_sg, sg_nents, i) {
+-		start_addr = ib_sg_dma_address(ib_dev, tmp_sg);
+-		if (new_chunk)
+-			chunk_start = start_addr;
+-		end_addr = start_addr + ib_sg_dma_len(ib_dev, tmp_sg);
+-
+-		isert_dbg("SGL[%d] dma_addr: 0x%llx len: %u\n",
+-			  i, (unsigned long long)tmp_sg->dma_address,
+-			  tmp_sg->length);
+-
+-		if ((end_addr & ~PAGE_MASK) && i < last_ent) {
+-			new_chunk = 0;
+-			continue;
+-		}
+-		new_chunk = 1;
+-
+-		page = chunk_start & PAGE_MASK;
+-		do {
+-			fr_pl[n_pages++] = page;
+-			isert_dbg("Mapped page_list[%d] page_addr: 0x%llx\n",
+-				  n_pages - 1, page);
+-			page += PAGE_SIZE;
+-		} while (page < end_addr);
+-	}
+-
+-	return n_pages;
+-}
+-
+ static inline void
+ isert_inv_rkey(struct ib_send_wr *inv_wr, struct ib_mr *mr)
+ {
+@@ -2599,11 +2531,9 @@ isert_fast_reg_mr(struct isert_conn *isert_conn,
+ 	struct isert_device *device = isert_conn->device;
+ 	struct ib_device *ib_dev = device->ib_device;
+ 	struct ib_mr *mr;
+-	struct ib_fast_reg_page_list *frpl;
+-	struct ib_fast_reg_wr fr_wr;
++	struct ib_reg_wr reg_wr;
+ 	struct ib_send_wr inv_wr, *bad_wr, *wr = NULL;
+-	int ret, pagelist_len;
+-	u32 page_off;
++	int ret, n;
+ 
+ 	if (mem->dma_nents == 1) {
+ 		sge->lkey = device->pd->local_dma_lkey;
+@@ -2614,45 +2544,41 @@ isert_fast_reg_mr(struct isert_conn *isert_conn,
+ 		return 0;
+ 	}
+ 
+-	if (ind == ISERT_DATA_KEY_VALID) {
++	if (ind == ISERT_DATA_KEY_VALID)
+ 		/* Registering data buffer */
+ 		mr = fr_desc->data_mr;
+-		frpl = fr_desc->data_frpl;
+-	} else {
++	else
+ 		/* Registering protection buffer */
+ 		mr = fr_desc->pi_ctx->prot_mr;
+-		frpl = fr_desc->pi_ctx->prot_frpl;
+-	}
+-
+-	page_off = mem->offset % PAGE_SIZE;
+-
+-	isert_dbg("Use fr_desc %p sg_nents %d offset %u\n",
+-		  fr_desc, mem->nents, mem->offset);
+-
+-	pagelist_len = isert_map_fr_pagelist(ib_dev, mem->sg, mem->nents,
+-					     &frpl->page_list[0]);
+ 
+ 	if (!(fr_desc->ind & ind)) {
+ 		isert_inv_rkey(&inv_wr, mr);
+ 		wr = &inv_wr;
+ 	}
+ 
+-	/* Prepare FASTREG WR */
+-	memset(&fr_wr, 0, sizeof(fr_wr));
+-	fr_wr.wr.wr_id = ISER_FASTREG_LI_WRID;
+-	fr_wr.wr.opcode = IB_WR_FAST_REG_MR;
+-	fr_wr.iova_start = frpl->page_list[0] + page_off;
+-	fr_wr.page_list = frpl;
+-	fr_wr.page_list_len = pagelist_len;
+-	fr_wr.page_shift = PAGE_SHIFT;
+-	fr_wr.length = mem->len;
+-	fr_wr.rkey = mr->rkey;
+-	fr_wr.access_flags = IB_ACCESS_LOCAL_WRITE;
++	n = ib_map_mr_sg(mr, mem->sg, mem->nents, PAGE_SIZE);
++	if (unlikely(n != mem->nents)) {
++		isert_err("failed to map mr sg (%d/%d)\n",
++			 n, mem->nents);
++		return n < 0 ? n : -EINVAL;
++	}
++
++	isert_dbg("Use fr_desc %p sg_nents %d offset %u\n",
++		  fr_desc, mem->nents, mem->offset);
++
++	reg_wr.wr.next = NULL;
++	reg_wr.wr.opcode = IB_WR_REG_MR;
++	reg_wr.wr.wr_id = ISER_FASTREG_LI_WRID;
++	reg_wr.wr.send_flags = 0;
++	reg_wr.wr.num_sge = 0;
++	reg_wr.mr = mr;
++	reg_wr.key = mr->lkey;
++	reg_wr.access = IB_ACCESS_LOCAL_WRITE;
+ 
+ 	if (!wr)
+-		wr = &fr_wr.wr;
++		wr = &reg_wr.wr;
+ 	else
+-		wr->next = &fr_wr.wr;
++		wr->next = &reg_wr.wr;
+ 
+ 	ret = ib_post_send(isert_conn->qp, wr, &bad_wr);
+ 	if (ret) {
+@@ -2662,8 +2588,8 @@ isert_fast_reg_mr(struct isert_conn *isert_conn,
+ 	fr_desc->ind &= ~ind;
+ 
+ 	sge->lkey = mr->lkey;
+-	sge->addr = frpl->page_list[0] + page_off;
+-	sge->length = mem->len;
++	sge->addr = mr->iova;
++	sge->length = mr->length;
+ 
+ 	isert_dbg("sge: addr: 0x%llx  length: %u lkey: %x\n",
+ 		  sge->addr, sge->length, sge->lkey);
+diff --git a/drivers/infiniband/ulp/isert/ib_isert.h b/drivers/infiniband/ulp/isert/ib_isert.h
+index 360461819452..3d7fbc47c343 100644
+--- a/drivers/infiniband/ulp/isert/ib_isert.h
++++ b/drivers/infiniband/ulp/isert/ib_isert.h
+@@ -84,14 +84,12 @@ enum isert_indicator {
+ 
+ struct pi_context {
+ 	struct ib_mr		       *prot_mr;
+-	struct ib_fast_reg_page_list   *prot_frpl;
+ 	struct ib_mr		       *sig_mr;
+ };
+ 
+ struct fast_reg_descriptor {
+ 	struct list_head		list;
+ 	struct ib_mr		       *data_mr;
+-	struct ib_fast_reg_page_list   *data_frpl;
+ 	u8				ind;
+ 	struct pi_context	       *pi_ctx;
+ };
 -- 
 1.8.4.3
 
