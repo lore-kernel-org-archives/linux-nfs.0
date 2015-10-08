@@ -1,238 +1,247 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from [193.47.165.129] ([193.47.165.129]:35221 "EHLO mellanox.co.il"
+Received: from [193.47.165.129] ([193.47.165.129]:35211 "EHLO mellanox.co.il"
 	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1753895AbbJHHwC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 8 Oct 2015 03:52:02 -0400
+	id S1753882AbbJHHv4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 8 Oct 2015 03:51:56 -0400
 From: Sagi Grimberg <sagig@mellanox.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: [PATCH v3 25/26] RDMA/nes: Remove old FRWR API
-Date: Thu,  8 Oct 2015 10:51:08 +0300
-Message-Id: <1444290669-5252-26-git-send-email-sagig@mellanox.com>
+Subject: [PATCH v3 12/26] xprtrdma: Port to new memory registration API
+Date: Thu,  8 Oct 2015 10:50:55 +0300
+Message-Id: <1444290669-5252-13-git-send-email-sagig@mellanox.com>
 In-Reply-To: <1444290669-5252-1-git-send-email-sagig@mellanox.com>
 References: <1444290669-5252-1-git-send-email-sagig@mellanox.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-No ULP uses it anymore, go ahead and remove it.
+Instead of maintaining a fastreg page list, keep an sg table
+and convert an array of pages to a sg list. Then call ib_map_mr_sg
+and construct ib_reg_wr.
+
+Note that the next step would be to have NFS work with sg lists
+as it maps well to sk_frags (see comment from hch
+http://marc.info/?l=linux-rdma&m=143677002622296&w=2).
 
 Signed-off-by: Sagi Grimberg <sagig@mellanox.com>
 Acked-by: Christoph Hellwig <hch@lst.de>
+Tested-by: Steve Wise <swise@opengridcomputing.com>
+Tested-by: Selvin Xavier <selvin.xavier@avagotech.com>
 ---
- drivers/infiniband/hw/nes/nes_hw.h    |   6 --
- drivers/infiniband/hw/nes/nes_verbs.c | 162 +---------------------------------
- 2 files changed, 1 insertion(+), 167 deletions(-)
+ net/sunrpc/xprtrdma/frwr_ops.c  | 112 +++++++++++++++++++++++-----------------
+ net/sunrpc/xprtrdma/xprt_rdma.h |   3 +-
+ 2 files changed, 67 insertions(+), 48 deletions(-)
 
-diff --git a/drivers/infiniband/hw/nes/nes_hw.h b/drivers/infiniband/hw/nes/nes_hw.h
-index d748e4b31b8d..c9080208aad2 100644
---- a/drivers/infiniband/hw/nes/nes_hw.h
-+++ b/drivers/infiniband/hw/nes/nes_hw.h
-@@ -1200,12 +1200,6 @@ struct nes_fast_mr_wqe_pbl {
- 	dma_addr_t	paddr;
- };
+diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
+index 0d2f46f600b6..3c89f8052786 100644
+--- a/net/sunrpc/xprtrdma/frwr_ops.c
++++ b/net/sunrpc/xprtrdma/frwr_ops.c
+@@ -151,9 +151,13 @@ __frwr_init(struct rpcrdma_mw *r, struct ib_pd *pd, struct ib_device *device,
+ 	f->fr_mr = ib_alloc_mr(pd, IB_MR_TYPE_MEM_REG, depth);
+ 	if (IS_ERR(f->fr_mr))
+ 		goto out_mr_err;
+-	f->fr_pgl = ib_alloc_fast_reg_page_list(device, depth);
+-	if (IS_ERR(f->fr_pgl))
++
++	f->sg = kcalloc(depth, sizeof(*f->sg), GFP_KERNEL);
++	if (!f->sg)
+ 		goto out_list_err;
++
++	sg_init_table(f->sg, depth);
++
+ 	return 0;
  
--struct nes_ib_fast_reg_page_list {
--	struct ib_fast_reg_page_list	ibfrpl;
--	struct nes_fast_mr_wqe_pbl 	nes_wqe_pbl;
--	u64 				pbl;
--};
--
- struct nes_listener {
- 	struct work_struct      work;
- 	struct workqueue_struct *wq;
-diff --git a/drivers/infiniband/hw/nes/nes_verbs.c b/drivers/infiniband/hw/nes/nes_verbs.c
-index f5b0cc972403..c58091a6635f 100644
---- a/drivers/infiniband/hw/nes/nes_verbs.c
-+++ b/drivers/infiniband/hw/nes/nes_verbs.c
-@@ -486,76 +486,6 @@ static int nes_map_mr_sg(struct ib_mr *ibmr,
- 	return ib_sg_to_pages(ibmr, sg, sg_nents, nes_set_page);
+ out_mr_err:
+@@ -163,7 +167,7 @@ out_mr_err:
+ 	return rc;
+ 
+ out_list_err:
+-	rc = PTR_ERR(f->fr_pgl);
++	rc = -ENOMEM;
+ 	dprintk("RPC:       %s: ib_alloc_fast_reg_page_list status %i\n",
+ 		__func__, rc);
+ 	ib_dereg_mr(f->fr_mr);
+@@ -179,7 +183,7 @@ __frwr_release(struct rpcrdma_mw *r)
+ 	if (rc)
+ 		dprintk("RPC:       %s: ib_dereg_mr status %i\n",
+ 			__func__, rc);
+-	ib_free_fast_reg_page_list(r->r.frmr.fr_pgl);
++	kfree(r->r.frmr.sg);
  }
  
--/*
-- * nes_alloc_fast_reg_page_list
-- */
--static struct ib_fast_reg_page_list *nes_alloc_fast_reg_page_list(
--							struct ib_device *ibdev,
--							int page_list_len)
--{
--	struct nes_vnic *nesvnic = to_nesvnic(ibdev);
--	struct nes_device *nesdev = nesvnic->nesdev;
--	struct ib_fast_reg_page_list *pifrpl;
--	struct nes_ib_fast_reg_page_list *pnesfrpl;
--
--	if (page_list_len > (NES_4K_PBL_CHUNK_SIZE / sizeof(u64)))
--		return ERR_PTR(-E2BIG);
--	/*
--	 * Allocate the ib_fast_reg_page_list structure, the
--	 * nes_fast_bpl structure, and the PLB table.
--	 */
--	pnesfrpl = kmalloc(sizeof(struct nes_ib_fast_reg_page_list) +
--			   page_list_len * sizeof(u64), GFP_KERNEL);
--
--	if (!pnesfrpl)
--		return ERR_PTR(-ENOMEM);
--
--	pifrpl = &pnesfrpl->ibfrpl;
--	pifrpl->page_list = &pnesfrpl->pbl;
--	pifrpl->max_page_list_len = page_list_len;
--	/*
--	 * Allocate the WQE PBL
--	 */
--	pnesfrpl->nes_wqe_pbl.kva = pci_alloc_consistent(nesdev->pcidev,
--							 page_list_len * sizeof(u64),
--							 &pnesfrpl->nes_wqe_pbl.paddr);
--
--	if (!pnesfrpl->nes_wqe_pbl.kva) {
--		kfree(pnesfrpl);
--		return ERR_PTR(-ENOMEM);
--	}
--	nes_debug(NES_DBG_MR, "nes_alloc_fast_reg_pbl: nes_frpl = %p, "
--		  "ibfrpl = %p, ibfrpl.page_list = %p, pbl.kva = %p, "
--		  "pbl.paddr = %llx\n", pnesfrpl, &pnesfrpl->ibfrpl,
--		  pnesfrpl->ibfrpl.page_list, pnesfrpl->nes_wqe_pbl.kva,
--		  (unsigned long long) pnesfrpl->nes_wqe_pbl.paddr);
--
--	return pifrpl;
--}
--
--/*
-- * nes_free_fast_reg_page_list
-- */
--static void nes_free_fast_reg_page_list(struct ib_fast_reg_page_list *pifrpl)
--{
--	struct nes_vnic *nesvnic = to_nesvnic(pifrpl->device);
--	struct nes_device *nesdev = nesvnic->nesdev;
--	struct nes_ib_fast_reg_page_list *pnesfrpl;
--
--	pnesfrpl = container_of(pifrpl, struct nes_ib_fast_reg_page_list, ibfrpl);
--	/*
--	 * Free the WQE PBL.
--	 */
--	pci_free_consistent(nesdev->pcidev,
--			    pifrpl->max_page_list_len * sizeof(u64),
--			    pnesfrpl->nes_wqe_pbl.kva,
--			    pnesfrpl->nes_wqe_pbl.paddr);
--	/*
--	 * Free the PBL structure
--	 */
--	kfree(pnesfrpl);
--}
--
- /**
-  * nes_query_device
-  */
-@@ -3470,94 +3400,6 @@ static int nes_post_send(struct ib_qp *ibqp, struct ib_send_wr *ib_wr,
- 					    NES_IWARP_SQ_LOCINV_WQE_INV_STAG_IDX,
- 					    ib_wr->ex.invalidate_rkey);
- 			break;
--		case IB_WR_FAST_REG_MR:
--		{
--			int i;
--			struct ib_fast_reg_wr *fwr = fast_reg_wr(ib_wr);
--			int flags = fwr->access_flags;
--			struct nes_ib_fast_reg_page_list *pnesfrpl =
--				container_of(fwr->page_list,
--					     struct nes_ib_fast_reg_page_list,
--					     ibfrpl);
--			u64 *src_page_list = pnesfrpl->ibfrpl.page_list;
--			u64 *dst_page_list = pnesfrpl->nes_wqe_pbl.kva;
--
--			if (fwr->page_list_len >
--			    (NES_4K_PBL_CHUNK_SIZE / sizeof(u64))) {
--				nes_debug(NES_DBG_IW_TX, "SQ_FMR: bad page_list_len\n");
--				err = -EINVAL;
--				break;
--			}
--			wqe_misc = NES_IWARP_SQ_OP_FAST_REG;
--			set_wqe_64bit_value(wqe->wqe_words,
--					    NES_IWARP_SQ_FMR_WQE_VA_FBO_LOW_IDX,
--					    fwr->iova_start);
--			set_wqe_32bit_value(wqe->wqe_words,
--					    NES_IWARP_SQ_FMR_WQE_LENGTH_LOW_IDX,
--					    fwr->length);
--			set_wqe_32bit_value(wqe->wqe_words,
--					    NES_IWARP_SQ_FMR_WQE_LENGTH_HIGH_IDX, 0);
--			set_wqe_32bit_value(wqe->wqe_words,
--					    NES_IWARP_SQ_FMR_WQE_MR_STAG_IDX,
--					    fwr->rkey);
--			/* Set page size: */
--			if (fwr->page_shift == 12) {
--				wqe_misc |= NES_IWARP_SQ_FMR_WQE_PAGE_SIZE_4K;
--			} else if (fwr->page_shift == 21) {
--				wqe_misc |= NES_IWARP_SQ_FMR_WQE_PAGE_SIZE_2M;
--			} else {
--				nes_debug(NES_DBG_IW_TX, "Invalid page shift,"
--					  " ib_wr=%u, max=1\n", ib_wr->num_sge);
--				err = -EINVAL;
--				break;
--			}
--			/* Set access_flags */
--			wqe_misc |= NES_IWARP_SQ_FMR_WQE_RIGHTS_ENABLE_LOCAL_READ;
--			if (flags & IB_ACCESS_LOCAL_WRITE)
--				wqe_misc |= NES_IWARP_SQ_FMR_WQE_RIGHTS_ENABLE_LOCAL_WRITE;
--
--			if (flags & IB_ACCESS_REMOTE_WRITE)
--				wqe_misc |= NES_IWARP_SQ_FMR_WQE_RIGHTS_ENABLE_REMOTE_WRITE;
--
--			if (flags & IB_ACCESS_REMOTE_READ)
--				wqe_misc |= NES_IWARP_SQ_FMR_WQE_RIGHTS_ENABLE_REMOTE_READ;
--
--			if (flags & IB_ACCESS_MW_BIND)
--				wqe_misc |= NES_IWARP_SQ_FMR_WQE_RIGHTS_ENABLE_WINDOW_BIND;
--
--			/* Fill in PBL info: */
--			if (fwr->page_list_len >
--			    pnesfrpl->ibfrpl.max_page_list_len) {
--				nes_debug(NES_DBG_IW_TX, "Invalid page list length,"
--					  " ib_wr=%p, value=%u, max=%u\n",
--					  ib_wr, fwr->page_list_len,
--					  pnesfrpl->ibfrpl.max_page_list_len);
--				err = -EINVAL;
--				break;
--			}
--
--			set_wqe_64bit_value(wqe->wqe_words,
--					    NES_IWARP_SQ_FMR_WQE_PBL_ADDR_LOW_IDX,
--					    pnesfrpl->nes_wqe_pbl.paddr);
--
--			set_wqe_32bit_value(wqe->wqe_words,
--					    NES_IWARP_SQ_FMR_WQE_PBL_LENGTH_IDX,
--					    fwr->page_list_len * 8);
--
--			for (i = 0; i < fwr->page_list_len; i++)
--				dst_page_list[i] = cpu_to_le64(src_page_list[i]);
--
--			nes_debug(NES_DBG_IW_TX, "SQ_FMR: iova_start: %llx, "
--				  "length: %d, rkey: %0x, pgl_paddr: %llx, "
--				  "page_list_len: %u, wqe_misc: %x\n",
--				  (unsigned long long) fwr->iova_start,
--				  fwr->length,
--				  fwr->rkey,
--				  (unsigned long long) pnesfrpl->nes_wqe_pbl.paddr,
--				  fwr->page_list_len,
--				  wqe_misc);
--			break;
+ static int
+@@ -312,14 +316,11 @@ frwr_op_map(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
+ 	struct rpcrdma_mw *mw;
+ 	struct rpcrdma_frmr *frmr;
+ 	struct ib_mr *mr;
+-	struct ib_fast_reg_wr fastreg_wr;
++	struct ib_reg_wr reg_wr;
+ 	struct ib_send_wr *bad_wr;
++	unsigned int dma_nents;
+ 	u8 key;
+-	int len, pageoff;
+-	int i, rc;
+-	int seg_len;
+-	u64 pa;
+-	int page_no;
++	int i, rc, len, n;
+ 
+ 	mw = seg1->rl_mw;
+ 	seg1->rl_mw = NULL;
+@@ -332,64 +333,81 @@ frwr_op_map(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
+ 	} while (mw->r.frmr.fr_state != FRMR_IS_INVALID);
+ 	frmr = &mw->r.frmr;
+ 	frmr->fr_state = FRMR_IS_VALID;
++	mr = frmr->fr_mr;
+ 
+-	pageoff = offset_in_page(seg1->mr_offset);
+-	seg1->mr_offset -= pageoff;	/* start of page */
+-	seg1->mr_len += pageoff;
+-	len = -pageoff;
+ 	if (nsegs > ia->ri_max_frmr_depth)
+ 		nsegs = ia->ri_max_frmr_depth;
+ 
+-	for (page_no = i = 0; i < nsegs;) {
+-		rpcrdma_map_one(device, seg, direction);
+-		pa = seg->mr_dma;
+-		for (seg_len = seg->mr_len; seg_len > 0; seg_len -= PAGE_SIZE) {
+-			frmr->fr_pgl->page_list[page_no++] = pa;
+-			pa += PAGE_SIZE;
 -		}
- 		case IB_WR_REG_MR:
- 		{
- 			struct nes_mr *mr = to_nesmr(reg_wr(ib_wr)->mr);
-@@ -3866,7 +3708,7 @@ static int nes_poll_cq(struct ib_cq *ibcq, int num_entries, struct ib_wc *entry)
- 						entry->opcode = IB_WC_LOCAL_INV;
- 						break;
- 					case NES_IWARP_SQ_OP_FAST_REG:
--						entry->opcode = IB_WC_FAST_REG_MR;
-+						entry->opcode = IB_WC_REG_MR;
- 						break;
- 				}
++	for (len = 0, i = 0; i < nsegs;) {
++		if (seg->mr_page)
++			sg_set_page(&frmr->sg[i],
++				    seg->mr_page,
++				    seg->mr_len,
++				    offset_in_page(seg->mr_offset));
++		else
++			sg_set_buf(&frmr->sg[i], seg->mr_offset,
++				   seg->mr_len);
++
+ 		len += seg->mr_len;
+ 		++seg;
+ 		++i;
++
+ 		/* Check for holes */
+ 		if ((i < nsegs && offset_in_page(seg->mr_offset)) ||
+ 		    offset_in_page((seg-1)->mr_offset + (seg-1)->mr_len))
+ 			break;
+ 	}
++	frmr->sg_nents = i;
++
++	dma_nents = ib_dma_map_sg(device, frmr->sg, frmr->sg_nents, direction);
++	if (!dma_nents) {
++		pr_err("RPC:       %s: failed to dma map sg %p sg_nents %d\n",
++		       __func__, frmr->sg, frmr->sg_nents);
++		return -ENOMEM;
++	}
++
++	n = ib_map_mr_sg(mr, frmr->sg, frmr->sg_nents, PAGE_SIZE);
++	if (unlikely(n != frmr->sg_nents)) {
++		pr_err("RPC:       %s: failed to map mr %p (%d/%d)\n",
++		       __func__, frmr->fr_mr, n, frmr->sg_nents);
++		rc = n < 0 ? n : -EINVAL;
++		goto out_senderr;
++	}
++
+ 	dprintk("RPC:       %s: Using frmr %p to map %d segments (%d bytes)\n",
+-		__func__, mw, i, len);
+-
+-	memset(&fastreg_wr, 0, sizeof(fastreg_wr));
+-	fastreg_wr.wr.wr_id = (unsigned long)(void *)mw;
+-	fastreg_wr.wr.opcode = IB_WR_FAST_REG_MR;
+-	fastreg_wr.iova_start = seg1->mr_dma + pageoff;
+-	fastreg_wr.page_list = frmr->fr_pgl;
+-	fastreg_wr.page_shift = PAGE_SHIFT;
+-	fastreg_wr.page_list_len = page_no;
+-	fastreg_wr.length = len;
+-	fastreg_wr.access_flags = writing ?
+-				IB_ACCESS_REMOTE_WRITE | IB_ACCESS_LOCAL_WRITE :
+-				IB_ACCESS_REMOTE_READ;
+-	mr = frmr->fr_mr;
++		__func__, mw, frmr->sg_nents, mr->length);
++
+ 	key = (u8)(mr->rkey & 0x000000FF);
+ 	ib_update_fast_reg_key(mr, ++key);
+-	fastreg_wr.rkey = mr->rkey;
++
++	reg_wr.wr.next = NULL;
++	reg_wr.wr.opcode = IB_WR_REG_MR;
++	reg_wr.wr.wr_id = (uintptr_t)mw;
++	reg_wr.wr.num_sge = 0;
++	reg_wr.wr.send_flags = 0;
++	reg_wr.mr = mr;
++	reg_wr.key = mr->rkey;
++	reg_wr.access = writing ?
++			IB_ACCESS_REMOTE_WRITE | IB_ACCESS_LOCAL_WRITE :
++			IB_ACCESS_REMOTE_READ;
  
-@@ -4055,8 +3897,6 @@ struct nes_ib_device *nes_init_ofa_device(struct net_device *netdev)
+ 	DECR_CQCOUNT(&r_xprt->rx_ep);
+-	rc = ib_post_send(ia->ri_id->qp, &fastreg_wr.wr, &bad_wr);
++	rc = ib_post_send(ia->ri_id->qp, &reg_wr.wr, &bad_wr);
+ 	if (rc)
+ 		goto out_senderr;
  
- 	nesibdev->ibdev.alloc_mr = nes_alloc_mr;
- 	nesibdev->ibdev.map_mr_sg = nes_map_mr_sg;
--	nesibdev->ibdev.alloc_fast_reg_page_list = nes_alloc_fast_reg_page_list;
--	nesibdev->ibdev.free_fast_reg_page_list = nes_free_fast_reg_page_list;
++	seg1->mr_dir = direction;
+ 	seg1->rl_mw = mw;
+ 	seg1->mr_rkey = mr->rkey;
+-	seg1->mr_base = seg1->mr_dma + pageoff;
+-	seg1->mr_nsegs = i;
+-	seg1->mr_len = len;
+-	return i;
++	seg1->mr_base = mr->iova;
++	seg1->mr_nsegs = frmr->sg_nents;
++	seg1->mr_len = mr->length;
++
++	return frmr->sg_nents;
  
- 	nesibdev->ibdev.attach_mcast = nes_multicast_attach;
- 	nesibdev->ibdev.detach_mcast = nes_multicast_detach;
+ out_senderr:
+ 	dprintk("RPC:       %s: ib_post_send status %i\n", __func__, rc);
+-	while (i--)
+-		rpcrdma_unmap_one(device, --seg);
++	ib_dma_unmap_sg(device, frmr->sg, frmr->sg_nents, direction);
+ 	__frwr_queue_recovery(mw);
+ 	return rc;
+ }
+@@ -403,22 +421,22 @@ frwr_op_unmap(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg)
+ 	struct rpcrdma_mr_seg *seg1 = seg;
+ 	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
+ 	struct rpcrdma_mw *mw = seg1->rl_mw;
++	struct rpcrdma_frmr *frmr = &mw->r.frmr;
+ 	struct ib_send_wr invalidate_wr, *bad_wr;
+ 	int rc, nsegs = seg->mr_nsegs;
+ 
+ 	dprintk("RPC:       %s: FRMR %p\n", __func__, mw);
+ 
+ 	seg1->rl_mw = NULL;
+-	mw->r.frmr.fr_state = FRMR_IS_INVALID;
++	frmr->fr_state = FRMR_IS_INVALID;
+ 
+ 	memset(&invalidate_wr, 0, sizeof(invalidate_wr));
+ 	invalidate_wr.wr_id = (unsigned long)(void *)mw;
+ 	invalidate_wr.opcode = IB_WR_LOCAL_INV;
+-	invalidate_wr.ex.invalidate_rkey = mw->r.frmr.fr_mr->rkey;
++	invalidate_wr.ex.invalidate_rkey = frmr->fr_mr->rkey;
+ 	DECR_CQCOUNT(&r_xprt->rx_ep);
+ 
+-	while (seg1->mr_nsegs--)
+-		rpcrdma_unmap_one(ia->ri_device, seg++);
++	ib_dma_unmap_sg(ia->ri_device, frmr->sg, frmr->sg_nents, seg1->mr_dir);
+ 	read_lock(&ia->ri_qplock);
+ 	rc = ib_post_send(ia->ri_id->qp, &invalidate_wr, &bad_wr);
+ 	read_unlock(&ia->ri_qplock);
+diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+index c09414e6f91b..426a9107c0ff 100644
+--- a/net/sunrpc/xprtrdma/xprt_rdma.h
++++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+@@ -193,7 +193,8 @@ enum rpcrdma_frmr_state {
+ };
+ 
+ struct rpcrdma_frmr {
+-	struct ib_fast_reg_page_list	*fr_pgl;
++	struct scatterlist		*sg;
++	unsigned int			sg_nents;
+ 	struct ib_mr			*fr_mr;
+ 	enum rpcrdma_frmr_state		fr_state;
+ 	struct work_struct		fr_work;
 -- 
 1.8.4.3
 
