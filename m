@@ -1,31 +1,45 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wi0-f178.google.com ([209.85.212.178]:38045 "EHLO
-	mail-wi0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751641AbbJHIWD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Oct 2015 04:22:03 -0400
-Received: by wiclk2 with SMTP id lk2so13914621wic.1
-        for <linux-nfs@vger.kernel.org>; Thu, 08 Oct 2015 01:22:01 -0700 (PDT)
-Subject: Re: [PATCH v3 00/26] New fast registration API
-To: Christoph Hellwig <hch@infradead.org>, Sagi Grimberg <sagig@mellanox.com>
-References: <1444290669-5252-1-git-send-email-sagig@mellanox.com>
- <20151008080103.GA29235@infradead.org>
-Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-From: Sagi Grimberg <sagig@dev.mellanox.co.il>
-Message-ID: <561627A6.1000409@dev.mellanox.co.il>
-Date: Thu, 8 Oct 2015 11:21:58 +0300
+Received: from fieldses.org ([173.255.197.46]:44205 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751913AbbJHMQM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 8 Oct 2015 08:16:12 -0400
+Date: Thu, 8 Oct 2015 08:16:10 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Andrey Ryabinin <aryabinin@virtuozzo.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        Stanislav Kinsbursky <skinsbursky@virtuozzo.com>,
+        kbuild test robot <lkp@intel.com>, kbuild-all@01.org
+Subject: Re: [PATCH v2] lockd: get rid of reference-counted NSM RPC clients
+Message-ID: <20151008121610.GA32078@fieldses.org>
+References: <201510071927.5zx6Lh6E%fengguang.wu@intel.com>
+ <1444217995-8233-1-git-send-email-aryabinin@virtuozzo.com>
+ <CAHQdGtQNVhqiEx2NytJDkHt+AtYUw6+_JT0q0L0+uZVBaSXT+Q@mail.gmail.com>
 MIME-Version: 1.0
-In-Reply-To: <20151008080103.GA29235@infradead.org>
-Content-Type: text/plain; charset=windows-1252; format=flowed
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAHQdGtQNVhqiEx2NytJDkHt+AtYUw6+_JT0q0L0+uZVBaSXT+Q@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 10/8/2015 11:01 AM, Christoph Hellwig wrote:
-> On Thu, Oct 08, 2015 at 10:50:43AM +0300, Sagi Grimberg wrote:
->> - Rebased against Doug's for-4.4 tree (4.3.0-rc1) + 4.3-rc fixes
->
-> Does this means its not on top of the send_wr changes now?  I'm fine
-> with that as I think your series is even more important than the send_wr
-> split and I'm happy to rebase, but I'd also really like to see some
-> progress on them..
+On Wed, Oct 07, 2015 at 05:45:15PM -0400, Trond Myklebust wrote:
+> On Wed, Oct 7, 2015 at 7:39 AM, Andrey Ryabinin <aryabinin@virtuozzo.com> wrote:
+> > Currently we have reference-counted per-net NSM RPC client
+> > which created on the first monitor request and destroyed
+> > after the last unmonitor request. It's needed because
+> > RPC client need to know 'utsname()->nodename', but utsname()
+> > might be NULL when nsm_unmonitor() called.
+> >
+> 
+> The other reason for keeping the rpc_client around is to avoid a need
+> to do portmapper/rpcbind lookups in a net namespace that may be in the
+> process of shutting down. This patchset will reintroduce that
+> requirement.
 
-Its on top of your wr_cleanup as well.
+Oops, yes, I think I remember now our dealing with that issue before.
+
+So, that dooms this approach, sorry!
+
+--b.
