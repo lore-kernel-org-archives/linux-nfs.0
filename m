@@ -1,64 +1,86 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qg0-f45.google.com ([209.85.192.45]:34830 "EHLO
-	mail-qg0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933270AbbJHQze convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Oct 2015 12:55:34 -0400
-Received: by qgt47 with SMTP id 47so47143136qgt.2
-        for <linux-nfs@vger.kernel.org>; Thu, 08 Oct 2015 09:55:34 -0700 (PDT)
-Date: Thu, 8 Oct 2015 12:55:29 -0400
-From: Jeff Layton <jlayton@poochiereds.net>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        Al Viro <viro@ZenIV.linux.org.uk>
-Subject: Re: [PATCH v5 00/20] nfsd: open file caching
-Message-ID: <20151008125529.3f30308e@synchrony.poochiereds.net>
-In-Reply-To: <20151008164225.GA496@fieldses.org>
-References: <1444042962-6947-1-git-send-email-jeff.layton@primarydata.com>
-	<20151008164225.GA496@fieldses.org>
+Received: from hqemgate16.nvidia.com ([216.228.121.65]:8889 "EHLO
+	hqemgate16.nvidia.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S965137AbbJHR2l (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Oct 2015 13:28:41 -0400
+From: Leandro Awa <lawa@nvidia.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Alexander Viro <viro@zeniv.linux.org.uk>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        "Linux FS-devel Mailing List" <linux-fsdevel@vger.kernel.org>
+Subject: RE: RCU caching regression in kernel v4.1+
+Date: Thu, 8 Oct 2015 17:28:40 +0000
+Message-ID: <891c441822444259aeea17e9a72edcb9@HQMAIL102.nvidia.com>
+References: <CAHQdGtQTDeYN4ZQn8=zV4WwTQG-FWoLNb4H-kTwJo_nRsy3g6g@mail.gmail.com>
+ <1444308880.43040.1.camel@primarydata.com>
+In-Reply-To: <1444308880.43040.1.camel@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 8 Oct 2015 12:42:25 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
-
-> I get a this on the client running some lease tests:
-> 
-> [   38.552120] BUG: unable to handle kernel NULL pointer dereference at (null)
-> [   38.552723] IP: [<ffffffff811fcb3f>] vfs_setlease+0x1f/0x70
-> [   38.553111] PGD 56c2d067 PUD 51145067 PMD 0 
-> [   38.553534] Oops: 0000 [#1] PREEMPT SMP DEBUG_PAGEALLOC 
-> [   38.554128] Modules linked in: nfsd auth_rpcgss oid_registry nfs_acl lockd grace sunrpc
-> [   38.555102] CPU: 0 PID: 4890 Comm: lease_tests Not tainted 4.3.0-rc3-14186-g7619b8e #322
-> [   38.555593] Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS 1.7.5-20140709_153950- 04/01/2014
-> [   38.556005] task: ffff880075bd8080 ti: ffff880055560000 task.ti: ffff880055560000
-> [   38.556005] RIP: 0010:[<ffffffff811fcb3f>]  [<ffffffff811fcb3f>] vfs_setlease+0x1f/0x70
-> [   38.556005] RSP: 0018:ffff880055563e98  EFLAGS: 00010246
-> [   38.556005] RAX: 0000000000000000 RBX: 0000000000000002 RCX: ffff880055563ec8
-> [   38.556005] RDX: 0000000000000000 RSI: 0000000000000002 RDI: ffff880051133e40
-> [   38.556005] RBP: ffff880055563eb8 R08: 0000000000000000 R09: 00007ffc941da360
-> [   38.556005] R10: 0000000000000008 R11: 0000000000000212 R12: ffff880051133e40
-> [   38.556005] R13: 0000000000000000 R14: ffff880051133e40 R15: ffff880051133e40
-> [   38.556005] FS:  00007fbbe6864700(0000) GS:ffff88007f800000(0000) knlGS:0000000000000000
-> [   38.556005] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-> [   38.556005] CR2: 0000000000000000 CR3: 00000000590b0000 CR4: 00000000000406f0
-> [   38.556005] Stack:
-> [   38.556005]  ffff880056dd1f88 0000000000000002 0000000000000400 0000000000000002
-> [   38.556005]  ffff880055563ef8 ffffffff811fd4c1 ffff880051133e40 ffffffff8157b913
-> [   38.556005]  0000000000000000 0000000000000000 0000000000000400 0000000000000002
-> [   38.556005] Call Trace:
-> [   38.556005]  [<ffffffff811fd4c1>] fcntl_setlease+0xa1/0xd0
-> [   38.556005]  [<ffffffff8157b913>] ? security_file_fcntl+0x43/0x60
-> [   38.556005]  [<ffffffff811bc74f>] SyS_fcntl+0x31f/0x630
-> [   38.556005]  [<ffffffff81a77117>] entry_SYSCALL_64_fastpath+0x12/0x6f
-> [   38.556005] Code: ff ff 66 2e 0f 1f 84 00 00 00 00 00 66 66 66 66 90 55 48 89 e5 41 55 41 54 53 49 89 d5 49 89 fc 48 89 f3 48 83 ec 08 48 83 fe 02 <48> 8b 12 74 14 48 c7 c7 40 cb 27 83 48 89 4d e0 e8 9c d8 e9 ff 
-> [   38.556005] RIP  [<ffffffff811fcb3f>] vfs_setlease+0x1f/0x70
-> [   38.556005]  RSP <ffff880055563e98>
-> [   38.556005] CR2: 0000000000000000
-> [   38.573673] ---[ end trace 2e6e1d4b9df8a11e ]---
-> 
-> --b.
-
-My bad...it needs this patch. I'll roll this into the set before the
-next posting.
+SGkgVHJvbmQsDQoNClN1cmUuICAgSSdtIHJ1bm5pbmcgdGhlIHRlc3Qgbm93LiAgSXQgc2hvdWxk
+IGJlIGRvbmUgd2l0aGluIHRoZSBuZXh0IDQgaG91cnMuDQoNCkJlc3QgUmVnYXJkcywNCkxlYW5k
+cm8gQXdhDQoNCg0KLS0tLS1PcmlnaW5hbCBNZXNzYWdlLS0tLS0NCkZyb206IFRyb25kIE15a2xl
+YnVzdCBbbWFpbHRvOnRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb21dIA0KU2VudDogVGh1
+cnNkYXksIE9jdG9iZXIgMDgsIDIwMTUgNTo1NSBBTQ0KVG86IEFsZXhhbmRlciBWaXJvDQpDYzog
+TGludXggTkZTIE1haWxpbmcgTGlzdDsgTGVhbmRybyBBd2E7IExpbnV4IEZTLWRldmVsIE1haWxp
+bmcgTGlzdA0KU3ViamVjdDogUmU6IFJDVSBjYWNoaW5nIHJlZ3Jlc3Npb24gaW4ga2VybmVsIHY0
+LjErDQoNCk9uIFdlZCwgMjAxNS0xMC0wNyBhdCAxNDo1NyAtMDQwMCwgVHJvbmQgTXlrbGVidXN0
+IHdyb3RlOg0KPiBIaSBBbCwNCj4gDQo+IFBsZWFzZSBjb3VsZCB5b3UgdGFrZSBhIGxvb2sgYXQg
+dGhlIGJ1Z3ppbGxhIGVudHJ5IGluDQo+IGh0dHBzOi8vYnVnemlsbGEua2VybmVsLm9yZy9zaG93
+X2J1Zy5jZ2k/aWQ9MTA0OTExID8NCj4gDQo+IEl0IGRlc2NyaWJlcyBhIE5GUyBjYWNoaW5nIHJl
+Z3Jlc3Npb24gdGhhdCBhcHBlYXJzIHRvIGJlIGNhdXNlZCBieSANCj4gY29tbWl0IDc2NmM0Y2Jm
+YWNkODYzNGQ3NTgwYmFjNmExYjg0NTZlNjNkZTNlODQgKCJuYW1laToNCj4gZF9pc19uZWdhdGl2
+ZSgpIHNob3VsZCBiZSBjaGVja2VkIGJlZm9yZSAtPmRfc2VxIHZhbGlkYXRpb24iKS4NCj4gDQo+
+IFNob3VsZG4ndCB0aGF0IHRlc3QgZm9yICdpZiAobmVnYXRpdmUpIHJldHVybiAtRU5PRU5UOycg
+aGFwcGVuIGFmdGVyIA0KPiB0aGUgY2FsbCB0byBkX3JldmFsaWRhdGUoKSBpbiBsb29rdXBfZmFz
+dCgpPyBJZiBub3QsIHdlIGNhbiBlbmQgdXAgDQo+IGNhY2hpbmcgbmVnYXRpdmUgZGVudHJpZXMg
+Zm9yZXZlciwgQUZBSUNTLi4uDQo+IA0KPiBDaGVlcnMNCj4gICBUcm9uZA0KDQpMZWFuZHJvLCBj
+YW4geW91IHBsZWFzZSB0ZXN0IGlmIHRoZSBmb2xsb3dpbmcgcGF0Y2ggaGVscHMgaW4gYW55IHdh
+eT8NCg0KQ2hlZXJzDQogIFRyb25kDQoNCjg8LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0NCkZyb20gZWI2MWVjZTU3MzliYjJm
+M2I2ZDAzZGQ4Y2E4ZTMzNWJmMGQxMjY4NyBNb24gU2VwIDE3IDAwOjAwOjAwIDIwMDENCkZyb206
+IFRyb25kIE15a2xlYnVzdCA8dHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbT4NCkRhdGU6
+IFRodSwgOCBPY3QgMjAxNSAwODo0NDowMCAtMDQwMA0KU3ViamVjdDogW1BBVENIXSBuYW1laTog
+cmVzdWx0cyBvZiBkX2lzX25lZ2F0aXZlKCkgc2hvdWxkIGJlIGNoZWNrZWQgYWZ0ZXIgIGRlbnRy
+eSByZXZhbGlkYXRpb24NCg0KTGVhbmRybyBBd2Egd3JpdGVzOg0KQWZ0ZXIgc3dpdGNoaW5nIHRv
+IHZlcnNpb24gNC4xLjYsIG91ciBwYXJhbGxlbGl6ZWQgYW5kIGRpc3RyaWJ1dGVkIHdvcmtmbG93
+cyBub3cgIGZhaWwgY29uc2lzdGVudGx5IHdpdGggZXJyb3JzIG9mIHRoZSBmb3JtOg0KDQpUMzQ6
+IC4vcmVnZXguYzozOToyMjogZXJyb3I6IGNvbmZpZy5oOiBObyBzdWNoIGZpbGUgb3IgZGlyZWN0
+b3J5DQoNCkZyb20gb3VyICdnaXQgYmlzZWN0JyB0ZXN0aW5nLCB0aGUgZm9sbG93aW5nIGNvbW1p
+dCBhcHBlYXJzIHRvIGJlIHRoZSBwb3NzaWJsZSBjYXVzZSBvZiB0aGUgYmVoYXZpb3Igd2UndmUg
+YmVlbiBzZWVpbmc6IGNvbW1pdCA3NjZjNGNiZmFjZDgNCg0KVGhlIGlzc3VlIGlzIHRoYXQgcmV2
+YWxpZGF0aW9uIG1heSBjYXVzZSB0aGUgZGVudHJ5IHRvIGJlIGRyb3BwZWQgaW4gTkZTIGlmLCBz
+YXksIHRoZSBjbGllbnQgbm90ZXMgdGhhdCB0aGUgZGlyZWN0b3J5IHRpbWVzdGFtcHMgaGF2ZSBj
+aGFuZ2VkLg0KDQpSZXBvcnRlZC1ieTogTGVhbmRybyBBd2EgPGxhd2FAbnZpZGlhLmNvbT4NCkxp
+bms6IGh0dHBzOi8vYnVnemlsbGEua2VybmVsLm9yZy9zaG93X2J1Zy5jZ2k/aWQ9MTA0OTExDQpG
+aXhlczogNzY2YzRjYmZhY2Q4ICgibmFtZWk6IGRfaXNfbmVnYXRpdmUoKSBzaG91bGQgYmUgY2hl
+Y2tlZC4uLiIpDQpDYzogc3RhYmxlQHZnZXIua2VybmVsLm9yZyAjIHY0LjErDQpTaWduZWQtb2Zm
+LWJ5OiBUcm9uZCBNeWtsZWJ1c3QgPHRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20+DQot
+LS0NCiBmcy9uYW1laS5jIHwgOCArKysrKystLQ0KIDEgZmlsZSBjaGFuZ2VkLCA2IGluc2VydGlv
+bnMoKyksIDIgZGVsZXRpb25zKC0pDQoNCmRpZmYgLS1naXQgYS9mcy9uYW1laS5jIGIvZnMvbmFt
+ZWkuYw0KaW5kZXggNzI2ZDIxMWRiNDg0Li4zM2U5NDk1YTMxMjkgMTAwNjQ0DQotLS0gYS9mcy9u
+YW1laS5jDQorKysgYi9mcy9uYW1laS5jDQpAQCAtMTU1OCw4ICsxNTU4LDYgQEAgc3RhdGljIGlu
+dCBsb29rdXBfZmFzdChzdHJ1Y3QgbmFtZWlkYXRhICpuZCwNCiAJCW5lZ2F0aXZlID0gZF9pc19u
+ZWdhdGl2ZShkZW50cnkpOw0KIAkJaWYgKHJlYWRfc2VxY291bnRfcmV0cnkoJmRlbnRyeS0+ZF9z
+ZXEsIHNlcSkpDQogCQkJcmV0dXJuIC1FQ0hJTEQ7DQotCQlpZiAobmVnYXRpdmUpDQotCQkJcmV0
+dXJuIC1FTk9FTlQ7DQogDQogCQkvKg0KIAkJICogVGhpcyBzZXF1ZW5jZSBjb3VudCB2YWxpZGF0
+ZXMgdGhhdCB0aGUgcGFyZW50IGhhZCBubyBAQCAtMTU4MCw2ICsxNTc4LDEyIEBAIHN0YXRpYyBp
+bnQgbG9va3VwX2Zhc3Qoc3RydWN0IG5hbWVpZGF0YSAqbmQsDQogCQkJCWdvdG8gdW5sYXp5Ow0K
+IAkJCX0NCiAJCX0NCisJCS8qDQorCQkgKiBOb3RlOiBkbyBuZWdhdGl2ZSBkZW50cnkgY2hlY2sg
+YWZ0ZXIgcmV2YWxpZGF0aW9uIGluDQorCQkgKiBjYXNlIHRoYXQgZHJvcHMgaXQuDQorCQkgKi8N
+CisJCWlmIChuZWdhdGl2ZSkNCisJCQlyZXR1cm4gLUVOT0VOVDsNCiAJCXBhdGgtPm1udCA9IG1u
+dDsNCiAJCXBhdGgtPmRlbnRyeSA9IGRlbnRyeTsNCiAJCWlmIChsaWtlbHkoX19mb2xsb3dfbW91
+bnRfcmN1KG5kLCBwYXRoLCBpbm9kZSwgc2VxcCkpKQ0KLS0NCjIuNC4zDQoNCi0tDQpUcm9uZCBN
+eWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lciwgUHJpbWFyeURhdGEgdHJvbmQu
+bXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbQ0KDQoNCg0KDQotLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLQ0KVGhpcyBlbWFpbCBtZXNzYWdlIGlzIGZvciB0aGUgc29sZSB1c2Ugb2YgdGhlIGludGVu
+ZGVkIHJlY2lwaWVudChzKSBhbmQgbWF5IGNvbnRhaW4NCmNvbmZpZGVudGlhbCBpbmZvcm1hdGlv
+bi4gIEFueSB1bmF1dGhvcml6ZWQgcmV2aWV3LCB1c2UsIGRpc2Nsb3N1cmUgb3IgZGlzdHJpYnV0
+aW9uDQppcyBwcm9oaWJpdGVkLiAgSWYgeW91IGFyZSBub3QgdGhlIGludGVuZGVkIHJlY2lwaWVu
+dCwgcGxlYXNlIGNvbnRhY3QgdGhlIHNlbmRlciBieQ0KcmVwbHkgZW1haWwgYW5kIGRlc3Ryb3kg
+YWxsIGNvcGllcyBvZiB0aGUgb3JpZ2luYWwgbWVzc2FnZS4NCi0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tDQo=
