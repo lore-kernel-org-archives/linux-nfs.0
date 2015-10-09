@@ -1,147 +1,97 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga11.intel.com ([192.55.52.93]:18315 "EHLO mga11.intel.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750750AbbJIBMH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 8 Oct 2015 21:12:07 -0400
-Date: Fri, 9 Oct 2015 09:11:27 +0800
-From: kbuild test robot <lkp@intel.com>
-To: Kosuke Tatsukawa <tatsu@ab.jp.nec.com>
-Cc: kbuild-all@01.org, Trond Myklebust <trond.myklebust@primarydata.com>,
+Received: from TYO201.gate.nec.co.jp ([210.143.35.51]:54848 "EHLO
+	tyo201.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754172AbbJIBoj convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Oct 2015 21:44:39 -0400
+From: Kosuke Tatsukawa <tatsu@ab.jp.nec.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
         Anna Schumaker <anna.schumaker@netapp.com>,
         "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@poochiereds.net>,
-        "David S. Miller" <davem@davemloft.net>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "Jeff Layton" <jlayton@poochiereds.net>,
+        "David S. Miller" <davem@davemloft.net>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
         "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
         "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-Subject: Re: [PATCH] sunrpc: fix waitqueue_active without memory barrier in
+Subject: [PATCH v2] sunrpc: fix waitqueue_active without memory barrier in
  sunrpc
-Message-ID: <201510090901.oXMifuia%fengguang.wu@intel.com>
+Date: Fri, 9 Oct 2015 01:44:07 +0000
+Message-ID: <17EC94B0A072C34B8DCF0D30AD16044A028748C0@BPXM09GP.gisp.nec.co.jp>
+Content-Type: text/plain; charset="iso-2022-jp"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <17EC94B0A072C34B8DCF0D30AD16044A028747A3@BPXM09GP.gisp.nec.co.jp>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Kosuke,
+There are several places in net/sunrpc/svcsock.c which calls
+waitqueue_active() without calling a memory barrier.  Add a memory
+barrier just as in wq_has_sleeper().
 
-[auto build test WARNING on v4.3-rc4 -- if it's inappropriate base, please ignore]
+I found this issue when I was looking through the linux source code
+for places calling waitqueue_active() before wake_up*(), but without
+preceding memory barriers, after sending a patch to fix a similar
+issue in drivers/tty/n_tty.c  (Details about the original issue can be
+found here: https://lkml.org/lkml/2015/9/28/849).
 
-reproduce:
-        # apt-get install sparse
-        make ARCH=x86_64 allmodconfig
-        make C=1 CF=-D__CHECK_ENDIAN__
-
-
-sparse warnings: (new ones prefixed by >>)
-
->> net/sunrpc/svcsock.c:417:28: sparse: incorrect type in argument 1 (different base types)
-   net/sunrpc/svcsock.c:417:28:    expected struct socket_wq *wq
-   net/sunrpc/svcsock.c:417:28:    got struct __wait_queue_head [usertype] *wq
->> net/sunrpc/svcsock.c:1597:28: sparse: incorrect type in argument 1 (different base types)
-   net/sunrpc/svcsock.c:1597:28:    expected struct socket_wq *wq
-   net/sunrpc/svcsock.c:1597:28:    got struct __wait_queue_head [usertype] *[assigned] wq
-   net/sunrpc/svcsock.c:435:28: sparse: incorrect type in argument 1 (different base types)
-   net/sunrpc/svcsock.c:435:28:    expected struct socket_wq *wq
-   net/sunrpc/svcsock.c:435:28:    got struct __wait_queue_head [usertype] *wq
-   net/sunrpc/svcsock.c:790:28: sparse: incorrect type in argument 1 (different base types)
-   net/sunrpc/svcsock.c:790:28:    expected struct socket_wq *wq
-   net/sunrpc/svcsock.c:790:28:    got struct __wait_queue_head [usertype] *[assigned] wq
-   net/sunrpc/svcsock.c:811:28: sparse: incorrect type in argument 1 (different base types)
-   net/sunrpc/svcsock.c:811:28:    expected struct socket_wq *wq
-   net/sunrpc/svcsock.c:811:28:    got struct __wait_queue_head [usertype] *wq
-   net/sunrpc/svcsock.c:826:28: sparse: incorrect type in argument 1 (different base types)
-   net/sunrpc/svcsock.c:826:28:    expected struct socket_wq *wq
-   net/sunrpc/svcsock.c:826:28:    got struct __wait_queue_head [usertype] *wq
-   net/sunrpc/svcsock.c: In function 'svc_udp_data_ready':
-   net/sunrpc/svcsock.c:417:21: warning: passing argument 1 of 'wq_has_sleeper' from incompatible pointer type [-Wincompatible-pointer-types]
-     if (wq_has_sleeper(wq))
-                        ^
-   In file included from include/net/inet_sock.h:27:0,
-                    from include/linux/udp.h:20,
-                    from net/sunrpc/svcsock.c:30:
-   include/net/sock.h:1879:20: note: expected 'struct socket_wq *' but argument is of type 'wait_queue_head_t * {aka struct __wait_queue_head *}'
-    static inline bool wq_has_sleeper(struct socket_wq *wq)
-                       ^
-   net/sunrpc/svcsock.c: In function 'svc_write_space':
-   net/sunrpc/svcsock.c:435:21: warning: passing argument 1 of 'wq_has_sleeper' from incompatible pointer type [-Wincompatible-pointer-types]
-     if (wq_has_sleeper(wq)) {
-                        ^
-   In file included from include/net/inet_sock.h:27:0,
-                    from include/linux/udp.h:20,
-                    from net/sunrpc/svcsock.c:30:
-   include/net/sock.h:1879:20: note: expected 'struct socket_wq *' but argument is of type 'wait_queue_head_t * {aka struct __wait_queue_head *}'
-    static inline bool wq_has_sleeper(struct socket_wq *wq)
-                       ^
-   net/sunrpc/svcsock.c: In function 'svc_tcp_listen_data_ready':
-   net/sunrpc/svcsock.c:790:21: warning: passing argument 1 of 'wq_has_sleeper' from incompatible pointer type [-Wincompatible-pointer-types]
-     if (wq_has_sleeper(wq))
-                        ^
-   In file included from include/net/inet_sock.h:27:0,
-                    from include/linux/udp.h:20,
-                    from net/sunrpc/svcsock.c:30:
-   include/net/sock.h:1879:20: note: expected 'struct socket_wq *' but argument is of type 'wait_queue_head_t * {aka struct __wait_queue_head *}'
-    static inline bool wq_has_sleeper(struct socket_wq *wq)
-                       ^
-   net/sunrpc/svcsock.c: In function 'svc_tcp_state_change':
-   net/sunrpc/svcsock.c:811:21: warning: passing argument 1 of 'wq_has_sleeper' from incompatible pointer type [-Wincompatible-pointer-types]
-     if (wq_has_sleeper(wq))
-                        ^
-   In file included from include/net/inet_sock.h:27:0,
-                    from include/linux/udp.h:20,
-                    from net/sunrpc/svcsock.c:30:
-   include/net/sock.h:1879:20: note: expected 'struct socket_wq *' but argument is of type 'wait_queue_head_t * {aka struct __wait_queue_head *}'
-    static inline bool wq_has_sleeper(struct socket_wq *wq)
-                       ^
-   net/sunrpc/svcsock.c: In function 'svc_tcp_data_ready':
-   net/sunrpc/svcsock.c:826:21: warning: passing argument 1 of 'wq_has_sleeper' from incompatible pointer type [-Wincompatible-pointer-types]
-     if (wq_has_sleeper(wq))
-                        ^
-   In file included from include/net/inet_sock.h:27:0,
-                    from include/linux/udp.h:20,
-                    from net/sunrpc/svcsock.c:30:
-   include/net/sock.h:1879:20: note: expected 'struct socket_wq *' but argument is of type 'wait_queue_head_t * {aka struct __wait_queue_head *}'
-    static inline bool wq_has_sleeper(struct socket_wq *wq)
-                       ^
-   net/sunrpc/svcsock.c: In function 'svc_sock_detach':
-   net/sunrpc/svcsock.c:1597:21: warning: passing argument 1 of 'wq_has_sleeper' from incompatible pointer type [-Wincompatible-pointer-types]
-     if (wq_has_sleeper(wq))
-                        ^
-   In file included from include/net/inet_sock.h:27:0,
-                    from include/linux/udp.h:20,
-                    from net/sunrpc/svcsock.c:30:
-   include/net/sock.h:1879:20: note: expected 'struct socket_wq *' but argument is of type 'wait_queue_head_t * {aka struct __wait_queue_head *}'
-    static inline bool wq_has_sleeper(struct socket_wq *wq)
-                       ^
-
-vim +417 net/sunrpc/svcsock.c
-
-   401	
-   402	/*
-   403	 * INET callback when data has been received on the socket.
-   404	 */
-   405	static void svc_udp_data_ready(struct sock *sk)
-   406	{
-   407		struct svc_sock	*svsk = (struct svc_sock *)sk->sk_user_data;
-   408		wait_queue_head_t *wq = sk_sleep(sk);
-   409	
-   410		if (svsk) {
-   411			dprintk("svc: socket %p(inet %p), busy=%d\n",
-   412				svsk, sk,
-   413				test_bit(XPT_BUSY, &svsk->sk_xprt.xpt_flags));
-   414			set_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags);
-   415			svc_xprt_enqueue(&svsk->sk_xprt);
-   416		}
- > 417		if (wq_has_sleeper(wq))
-   418			wake_up_interruptible(wq);
-   419	}
-   420	
-   421	/*
-   422	 * INET callback when space is newly available on the socket.
-   423	 */
-   424	static void svc_write_space(struct sock *sk)
-   425	{
-
+Signed-off-by: Kosuke Tatsukawa <tatsu@ab.jp.nec.com>
 ---
-0-DAY kernel test infrastructure                Open Source Technology Center
-https://lists.01.org/pipermail/kbuild-all                   Intel Corporation
+v2:
+  - Fixed compiler warnings caused by type mismatch
+v1:
+  - https://lkml.org/lkml/2015/10/8/993
+---
+ net/sunrpc/svcsock.c |    6 ++++++
+ 1 files changed, 6 insertions(+), 0 deletions(-)
+
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index 0c81202..ec19444 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -414,6 +414,7 @@ static void svc_udp_data_ready(struct sock *sk)
+ 		set_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags);
+ 		svc_xprt_enqueue(&svsk->sk_xprt);
+ 	}
++	smp_mb();
+ 	if (wq && waitqueue_active(wq))
+ 		wake_up_interruptible(wq);
+ }
+@@ -432,6 +433,7 @@ static void svc_write_space(struct sock *sk)
+ 		svc_xprt_enqueue(&svsk->sk_xprt);
+ 	}
+ 
++	smp_mb();
+ 	if (wq && waitqueue_active(wq)) {
+ 		dprintk("RPC svc_write_space: someone sleeping on %p\n",
+ 		       svsk);
+@@ -787,6 +789,7 @@ static void svc_tcp_listen_data_ready(struct sock *sk)
+ 	}
+ 
+ 	wq = sk_sleep(sk);
++	smp_mb();
+ 	if (wq && waitqueue_active(wq))
+ 		wake_up_interruptible_all(wq);
+ }
+@@ -808,6 +811,7 @@ static void svc_tcp_state_change(struct sock *sk)
+ 		set_bit(XPT_CLOSE, &svsk->sk_xprt.xpt_flags);
+ 		svc_xprt_enqueue(&svsk->sk_xprt);
+ 	}
++	smp_mb();
+ 	if (wq && waitqueue_active(wq))
+ 		wake_up_interruptible_all(wq);
+ }
+@@ -823,6 +827,7 @@ static void svc_tcp_data_ready(struct sock *sk)
+ 		set_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags);
+ 		svc_xprt_enqueue(&svsk->sk_xprt);
+ 	}
++	smp_mb();
+ 	if (wq && waitqueue_active(wq))
+ 		wake_up_interruptible(wq);
+ }
+@@ -1594,6 +1599,7 @@ static void svc_sock_detach(struct svc_xprt *xprt)
+ 	sk->sk_write_space = svsk->sk_owspace;
+ 
+ 	wq = sk_sleep(sk);
++	smp_mb();
+ 	if (wq && waitqueue_active(wq))
+ 		wake_up_interruptible(wq);
+ }
+-- 
+1.7.1
