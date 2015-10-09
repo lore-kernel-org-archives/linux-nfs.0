@@ -1,25 +1,42 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yk0-f174.google.com ([209.85.160.174]:33970 "EHLO
-	mail-yk0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932637AbbJIRor (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Oct 2015 13:44:47 -0400
-Received: by ykdg206 with SMTP id g206so85041418ykd.1
-        for <linux-nfs@vger.kernel.org>; Fri, 09 Oct 2015 10:44:47 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: Alexander Viro <viro@zeniv.linux.org.uk>, Leandro Awa <lawa@nvidia.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Linux FS-devel Mailing List <linux-fsdevel@vger.kernel.org>,
-        linux-kernel@vger.kernel.org
-Subject: [PATCH] namei: results of d_is_negative() should be checked after dentry revalidation
-Date: Fri,  9 Oct 2015 13:44:34 -0400
-Message-Id: <1444412674-3077-1-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <9459055931ab4f269b96bad953738778@HQMAIL102.nvidia.com>
-References: <9459055931ab4f269b96bad953738778@HQMAIL102.nvidia.com>
+Received: from fieldses.org ([173.255.197.46]:44855 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933472AbbJIRp5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 9 Oct 2015 13:45:57 -0400
+Date: Fri, 9 Oct 2015 13:45:56 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Christoph Hellwig <hch@lst.de>
+Cc: linux-nfs@vger.kernel.org, stable@vger.kernel.org
+Subject: Re: [PATCH] nfsd/blocklayout: accept any minlength
+Message-ID: <20151009174556.GA8188@fieldses.org>
+References: <1444395806-32111-1-git-send-email-hch@lst.de>
+ <20151009152803.GC6825@fieldses.org>
+ <20151009170400.GA7482@lst.de>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20151009170400.GA7482@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Leandro Awa writes:
-After switching to version 4.1.6, our parallelized and distributed workflows now  fail consistently with errors of the form:
+On Fri, Oct 09, 2015 at 07:04:00PM +0200, Christoph Hellwig wrote:
+> On Fri, Oct 09, 2015 at 11:28:03AM -0400, J. Bruce Fields wrote:
+> > OK, planning to apply for 4.3 just on the assumption that you know what
+> > you're doing, but: I don't get it--it looks like the worst that can
+> > happen here is we just reuturn LAYOUTUNAVAILABLE to LAYOUTGET.
+> > Shouldn't the client then just fall back on normal NFS IO?  Why the
+> > hang?
+> 
+> I've just retested with Trond's latest tree and can't reproduce the
+> hang anymore.  It used to fence the client due to a lack of response,
+> but that might have been a different client bug that has now been fixed.
 
-T34: ./regex.c:39:22: error: config.h: No such file or directory
+OK, makes sense.
+
+This still looks like a harmless enough change, but is it still stable
+and 4.3 material?
+
+If it affected a released client then it's probably worth it even if
+it's really a client bug.  If it's just something you saw once against
+an -rc1, I'd rather leave it for 4.4.
+
+--b.
