@@ -1,36 +1,91 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f169.google.com ([209.85.223.169]:35998 "EHLO
-	mail-io0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752153AbbJHU0j (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Oct 2015 16:26:39 -0400
+Received: from hqemgate14.nvidia.com ([216.228.121.143]:2160 "EHLO
+	hqemgate14.nvidia.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752384AbbJIABS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Oct 2015 20:01:18 -0400
+From: Leandro Awa <lawa@nvidia.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Alexander Viro <viro@zeniv.linux.org.uk>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        "Linux FS-devel Mailing List" <linux-fsdevel@vger.kernel.org>
+Subject: RE: RCU caching regression in kernel v4.1+
+Date: Fri, 9 Oct 2015 00:01:16 +0000
+Message-ID: <9459055931ab4f269b96bad953738778@HQMAIL102.nvidia.com>
+References: <CAHQdGtQTDeYN4ZQn8=zV4WwTQG-FWoLNb4H-kTwJo_nRsy3g6g@mail.gmail.com>
+ <1444308880.43040.1.camel@primarydata.com>
 MIME-Version: 1.0
-In-Reply-To: <1444290669-5252-13-git-send-email-sagig@mellanox.com>
-References: <1444290669-5252-1-git-send-email-sagig@mellanox.com>
-	<1444290669-5252-13-git-send-email-sagig@mellanox.com>
-Date: Thu, 8 Oct 2015 23:26:39 +0300
-Message-ID: <CAJ3xEMjiNA6+yzggVBKC5ff0huri0KJOYoLx=FfAfs3HDO=VpA@mail.gmail.com>
-Subject: Re: [PATCH v3 12/26] xprtrdma: Port to new memory registration API
-From: Or Gerlitz <gerlitz.or@gmail.com>
-To: Sagi Grimberg <sagig@mellanox.com>
-Cc: "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Oct 8, 2015 at 10:50 AM, Sagi Grimberg <sagig@mellanox.com> wrote:
-> Instead of maintaining a fastreg page list, keep an sg table
-> and convert an array of pages to a sg list. Then call ib_map_mr_sg
-> and construct ib_reg_wr.
->
-> Note that the next step would be to have NFS work with sg lists
-> as it maps well to sk_frags (see comment from hch
-> http://marc.info/?l=linux-rdma&m=143677002622296&w=2).
-
-
-I don't see the point to keep the 2nd paragraph in the upstream git log
-forever, it deserves to be after the --- line such that when the maintainer
-uses git am this stays out, so apply this in the respin you'd be doing
-to address Chuck's comments.
-
-Or.
+RnlpICAgICBUaGUgcGF0Y2ggZGVmaW5pdGVseSBoZWxwZWQuDQoNClRoYW5rIHlvdS4NCg0KUmVn
+YXJkcywNCkxlYW5kcm8gQXdhDQpNSVMtRmFybSBTdXBwb3J0DQoNCg0KLS0tLS1PcmlnaW5hbCBN
+ZXNzYWdlLS0tLS0NCkZyb206IExlYW5kcm8gQXdhIA0KU2VudDogVGh1cnNkYXksIE9jdG9iZXIg
+MDgsIDIwMTUgMTA6MjkgQU0NClRvOiAnVHJvbmQgTXlrbGVidXN0JzsgQWxleGFuZGVyIFZpcm8N
+CkNjOiBMaW51eCBORlMgTWFpbGluZyBMaXN0OyBMaW51eCBGUy1kZXZlbCBNYWlsaW5nIExpc3QN
+ClN1YmplY3Q6IFJFOiBSQ1UgY2FjaGluZyByZWdyZXNzaW9uIGluIGtlcm5lbCB2NC4xKw0KDQpI
+aSBUcm9uZCwNCg0KU3VyZS4gICBJJ20gcnVubmluZyB0aGUgdGVzdCBub3cuICBJdCBzaG91bGQg
+YmUgZG9uZSB3aXRoaW4gdGhlIG5leHQgNCBob3Vycy4NCg0KQmVzdCBSZWdhcmRzLA0KTGVhbmRy
+byBBd2ENCg0KDQotLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KRnJvbTogVHJvbmQgTXlrbGVi
+dXN0IFttYWlsdG86dHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbV0NClNlbnQ6IFRodXJz
+ZGF5LCBPY3RvYmVyIDA4LCAyMDE1IDU6NTUgQU0NClRvOiBBbGV4YW5kZXIgVmlybw0KQ2M6IExp
+bnV4IE5GUyBNYWlsaW5nIExpc3Q7IExlYW5kcm8gQXdhOyBMaW51eCBGUy1kZXZlbCBNYWlsaW5n
+IExpc3QNClN1YmplY3Q6IFJlOiBSQ1UgY2FjaGluZyByZWdyZXNzaW9uIGluIGtlcm5lbCB2NC4x
+Kw0KDQpPbiBXZWQsIDIwMTUtMTAtMDcgYXQgMTQ6NTcgLTA0MDAsIFRyb25kIE15a2xlYnVzdCB3
+cm90ZToNCj4gSGkgQWwsDQo+IA0KPiBQbGVhc2UgY291bGQgeW91IHRha2UgYSBsb29rIGF0IHRo
+ZSBidWd6aWxsYSBlbnRyeSBpbg0KPiBodHRwczovL2J1Z3ppbGxhLmtlcm5lbC5vcmcvc2hvd19i
+dWcuY2dpP2lkPTEwNDkxMSA/DQo+IA0KPiBJdCBkZXNjcmliZXMgYSBORlMgY2FjaGluZyByZWdy
+ZXNzaW9uIHRoYXQgYXBwZWFycyB0byBiZSBjYXVzZWQgYnkgDQo+IGNvbW1pdCA3NjZjNGNiZmFj
+ZDg2MzRkNzU4MGJhYzZhMWI4NDU2ZTYzZGUzZTg0ICgibmFtZWk6DQo+IGRfaXNfbmVnYXRpdmUo
+KSBzaG91bGQgYmUgY2hlY2tlZCBiZWZvcmUgLT5kX3NlcSB2YWxpZGF0aW9uIikuDQo+IA0KPiBT
+aG91bGRuJ3QgdGhhdCB0ZXN0IGZvciAnaWYgKG5lZ2F0aXZlKSByZXR1cm4gLUVOT0VOVDsnIGhh
+cHBlbiBhZnRlciANCj4gdGhlIGNhbGwgdG8gZF9yZXZhbGlkYXRlKCkgaW4gbG9va3VwX2Zhc3Qo
+KT8gSWYgbm90LCB3ZSBjYW4gZW5kIHVwIA0KPiBjYWNoaW5nIG5lZ2F0aXZlIGRlbnRyaWVzIGZv
+cmV2ZXIsIEFGQUlDUy4uLg0KPiANCj4gQ2hlZXJzDQo+ICAgVHJvbmQNCg0KTGVhbmRybywgY2Fu
+IHlvdSBwbGVhc2UgdGVzdCBpZiB0aGUgZm9sbG93aW5nIHBhdGNoIGhlbHBzIGluIGFueSB3YXk/
+DQoNCkNoZWVycw0KICBUcm9uZA0KDQo4PC0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tDQpGcm9tIGViNjFlY2U1NzM5YmIyZjNi
+NmQwM2RkOGNhOGUzMzViZjBkMTI2ODcgTW9uIFNlcCAxNyAwMDowMDowMCAyMDAxDQpGcm9tOiBU
+cm9uZCBNeWtsZWJ1c3QgPHRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20+DQpEYXRlOiBU
+aHUsIDggT2N0IDIwMTUgMDg6NDQ6MDAgLTA0MDANClN1YmplY3Q6IFtQQVRDSF0gbmFtZWk6IHJl
+c3VsdHMgb2YgZF9pc19uZWdhdGl2ZSgpIHNob3VsZCBiZSBjaGVja2VkIGFmdGVyICBkZW50cnkg
+cmV2YWxpZGF0aW9uDQoNCkxlYW5kcm8gQXdhIHdyaXRlczoNCkFmdGVyIHN3aXRjaGluZyB0byB2
+ZXJzaW9uIDQuMS42LCBvdXIgcGFyYWxsZWxpemVkIGFuZCBkaXN0cmlidXRlZCB3b3JrZmxvd3Mg
+bm93ICBmYWlsIGNvbnNpc3RlbnRseSB3aXRoIGVycm9ycyBvZiB0aGUgZm9ybToNCg0KVDM0OiAu
+L3JlZ2V4LmM6Mzk6MjI6IGVycm9yOiBjb25maWcuaDogTm8gc3VjaCBmaWxlIG9yIGRpcmVjdG9y
+eQ0KDQpGcm9tIG91ciAnZ2l0IGJpc2VjdCcgdGVzdGluZywgdGhlIGZvbGxvd2luZyBjb21taXQg
+YXBwZWFycyB0byBiZSB0aGUgcG9zc2libGUgY2F1c2Ugb2YgdGhlIGJlaGF2aW9yIHdlJ3ZlIGJl
+ZW4gc2VlaW5nOiBjb21taXQgNzY2YzRjYmZhY2Q4DQoNClRoZSBpc3N1ZSBpcyB0aGF0IHJldmFs
+aWRhdGlvbiBtYXkgY2F1c2UgdGhlIGRlbnRyeSB0byBiZSBkcm9wcGVkIGluIE5GUyBpZiwgc2F5
+LCB0aGUgY2xpZW50IG5vdGVzIHRoYXQgdGhlIGRpcmVjdG9yeSB0aW1lc3RhbXBzIGhhdmUgY2hh
+bmdlZC4NCg0KUmVwb3J0ZWQtYnk6IExlYW5kcm8gQXdhIDxsYXdhQG52aWRpYS5jb20+DQpMaW5r
+OiBodHRwczovL2J1Z3ppbGxhLmtlcm5lbC5vcmcvc2hvd19idWcuY2dpP2lkPTEwNDkxMQ0KRml4
+ZXM6IDc2NmM0Y2JmYWNkOCAoIm5hbWVpOiBkX2lzX25lZ2F0aXZlKCkgc2hvdWxkIGJlIGNoZWNr
+ZWQuLi4iKQ0KQ2M6IHN0YWJsZUB2Z2VyLmtlcm5lbC5vcmcgIyB2NC4xKw0KU2lnbmVkLW9mZi1i
+eTogVHJvbmQgTXlrbGVidXN0IDx0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29tPg0KLS0t
+DQogZnMvbmFtZWkuYyB8IDggKysrKysrLS0NCiAxIGZpbGUgY2hhbmdlZCwgNiBpbnNlcnRpb25z
+KCspLCAyIGRlbGV0aW9ucygtKQ0KDQpkaWZmIC0tZ2l0IGEvZnMvbmFtZWkuYyBiL2ZzL25hbWVp
+LmMNCmluZGV4IDcyNmQyMTFkYjQ4NC4uMzNlOTQ5NWEzMTI5IDEwMDY0NA0KLS0tIGEvZnMvbmFt
+ZWkuYw0KKysrIGIvZnMvbmFtZWkuYw0KQEAgLTE1NTgsOCArMTU1OCw2IEBAIHN0YXRpYyBpbnQg
+bG9va3VwX2Zhc3Qoc3RydWN0IG5hbWVpZGF0YSAqbmQsDQogCQluZWdhdGl2ZSA9IGRfaXNfbmVn
+YXRpdmUoZGVudHJ5KTsNCiAJCWlmIChyZWFkX3NlcWNvdW50X3JldHJ5KCZkZW50cnktPmRfc2Vx
+LCBzZXEpKQ0KIAkJCXJldHVybiAtRUNISUxEOw0KLQkJaWYgKG5lZ2F0aXZlKQ0KLQkJCXJldHVy
+biAtRU5PRU5UOw0KIA0KIAkJLyoNCiAJCSAqIFRoaXMgc2VxdWVuY2UgY291bnQgdmFsaWRhdGVz
+IHRoYXQgdGhlIHBhcmVudCBoYWQgbm8gQEAgLTE1ODAsNiArMTU3OCwxMiBAQCBzdGF0aWMgaW50
+IGxvb2t1cF9mYXN0KHN0cnVjdCBuYW1laWRhdGEgKm5kLA0KIAkJCQlnb3RvIHVubGF6eTsNCiAJ
+CQl9DQogCQl9DQorCQkvKg0KKwkJICogTm90ZTogZG8gbmVnYXRpdmUgZGVudHJ5IGNoZWNrIGFm
+dGVyIHJldmFsaWRhdGlvbiBpbg0KKwkJICogY2FzZSB0aGF0IGRyb3BzIGl0Lg0KKwkJICovDQor
+CQlpZiAobmVnYXRpdmUpDQorCQkJcmV0dXJuIC1FTk9FTlQ7DQogCQlwYXRoLT5tbnQgPSBtbnQ7
+DQogCQlwYXRoLT5kZW50cnkgPSBkZW50cnk7DQogCQlpZiAobGlrZWx5KF9fZm9sbG93X21vdW50
+X3JjdShuZCwgcGF0aCwgaW5vZGUsIHNlcXApKSkNCi0tDQoyLjQuMw0KDQotLQ0KVHJvbmQgTXlr
+bGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIsIFByaW1hcnlEYXRhIHRyb25kLm15
+a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20NCg0KDQoNCg0KLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0NClRoaXMgZW1haWwgbWVzc2FnZSBpcyBmb3IgdGhlIHNvbGUgdXNlIG9mIHRoZSBpbnRlbmRl
+ZCByZWNpcGllbnQocykgYW5kIG1heSBjb250YWluDQpjb25maWRlbnRpYWwgaW5mb3JtYXRpb24u
+ICBBbnkgdW5hdXRob3JpemVkIHJldmlldywgdXNlLCBkaXNjbG9zdXJlIG9yIGRpc3RyaWJ1dGlv
+bg0KaXMgcHJvaGliaXRlZC4gIElmIHlvdSBhcmUgbm90IHRoZSBpbnRlbmRlZCByZWNpcGllbnQs
+IHBsZWFzZSBjb250YWN0IHRoZSBzZW5kZXIgYnkNCnJlcGx5IGVtYWlsIGFuZCBkZXN0cm95IGFs
+bCBjb3BpZXMgb2YgdGhlIG9yaWdpbmFsIG1lc3NhZ2UuDQotLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLQ0K
