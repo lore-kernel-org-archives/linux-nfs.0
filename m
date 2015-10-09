@@ -1,91 +1,99 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from hqemgate14.nvidia.com ([216.228.121.143]:2160 "EHLO
-	hqemgate14.nvidia.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752384AbbJIABS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Oct 2015 20:01:18 -0400
-From: Leandro Awa <lawa@nvidia.com>
+Received: from TYO200.gate.nec.co.jp ([210.143.35.50]:61413 "EHLO
+	tyo200.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933666AbbJIAiG convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Oct 2015 20:38:06 -0400
+From: Kosuke Tatsukawa <tatsu@ab.jp.nec.com>
 To: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Alexander Viro <viro@zeniv.linux.org.uk>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        "Linux FS-devel Mailing List" <linux-fsdevel@vger.kernel.org>
-Subject: RE: RCU caching regression in kernel v4.1+
-Date: Fri, 9 Oct 2015 00:01:16 +0000
-Message-ID: <9459055931ab4f269b96bad953738778@HQMAIL102.nvidia.com>
-References: <CAHQdGtQTDeYN4ZQn8=zV4WwTQG-FWoLNb4H-kTwJo_nRsy3g6g@mail.gmail.com>
- <1444308880.43040.1.camel@primarydata.com>
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        "Jeff Layton" <jlayton@poochiereds.net>,
+        "David S. Miller" <davem@davemloft.net>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Subject: [PATCH] sunrpc: fix waitqueue_active without memory barrier in
+ sunrpc
+Date: Fri, 9 Oct 2015 00:35:51 +0000
+Message-ID: <17EC94B0A072C34B8DCF0D30AD16044A028747A3@BPXM09GP.gisp.nec.co.jp>
+Content-Type: text/plain; charset="iso-2022-jp"
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-RnlpICAgICBUaGUgcGF0Y2ggZGVmaW5pdGVseSBoZWxwZWQuDQoNClRoYW5rIHlvdS4NCg0KUmVn
-YXJkcywNCkxlYW5kcm8gQXdhDQpNSVMtRmFybSBTdXBwb3J0DQoNCg0KLS0tLS1PcmlnaW5hbCBN
-ZXNzYWdlLS0tLS0NCkZyb206IExlYW5kcm8gQXdhIA0KU2VudDogVGh1cnNkYXksIE9jdG9iZXIg
-MDgsIDIwMTUgMTA6MjkgQU0NClRvOiAnVHJvbmQgTXlrbGVidXN0JzsgQWxleGFuZGVyIFZpcm8N
-CkNjOiBMaW51eCBORlMgTWFpbGluZyBMaXN0OyBMaW51eCBGUy1kZXZlbCBNYWlsaW5nIExpc3QN
-ClN1YmplY3Q6IFJFOiBSQ1UgY2FjaGluZyByZWdyZXNzaW9uIGluIGtlcm5lbCB2NC4xKw0KDQpI
-aSBUcm9uZCwNCg0KU3VyZS4gICBJJ20gcnVubmluZyB0aGUgdGVzdCBub3cuICBJdCBzaG91bGQg
-YmUgZG9uZSB3aXRoaW4gdGhlIG5leHQgNCBob3Vycy4NCg0KQmVzdCBSZWdhcmRzLA0KTGVhbmRy
-byBBd2ENCg0KDQotLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KRnJvbTogVHJvbmQgTXlrbGVi
-dXN0IFttYWlsdG86dHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbV0NClNlbnQ6IFRodXJz
-ZGF5LCBPY3RvYmVyIDA4LCAyMDE1IDU6NTUgQU0NClRvOiBBbGV4YW5kZXIgVmlybw0KQ2M6IExp
-bnV4IE5GUyBNYWlsaW5nIExpc3Q7IExlYW5kcm8gQXdhOyBMaW51eCBGUy1kZXZlbCBNYWlsaW5n
-IExpc3QNClN1YmplY3Q6IFJlOiBSQ1UgY2FjaGluZyByZWdyZXNzaW9uIGluIGtlcm5lbCB2NC4x
-Kw0KDQpPbiBXZWQsIDIwMTUtMTAtMDcgYXQgMTQ6NTcgLTA0MDAsIFRyb25kIE15a2xlYnVzdCB3
-cm90ZToNCj4gSGkgQWwsDQo+IA0KPiBQbGVhc2UgY291bGQgeW91IHRha2UgYSBsb29rIGF0IHRo
-ZSBidWd6aWxsYSBlbnRyeSBpbg0KPiBodHRwczovL2J1Z3ppbGxhLmtlcm5lbC5vcmcvc2hvd19i
-dWcuY2dpP2lkPTEwNDkxMSA/DQo+IA0KPiBJdCBkZXNjcmliZXMgYSBORlMgY2FjaGluZyByZWdy
-ZXNzaW9uIHRoYXQgYXBwZWFycyB0byBiZSBjYXVzZWQgYnkgDQo+IGNvbW1pdCA3NjZjNGNiZmFj
-ZDg2MzRkNzU4MGJhYzZhMWI4NDU2ZTYzZGUzZTg0ICgibmFtZWk6DQo+IGRfaXNfbmVnYXRpdmUo
-KSBzaG91bGQgYmUgY2hlY2tlZCBiZWZvcmUgLT5kX3NlcSB2YWxpZGF0aW9uIikuDQo+IA0KPiBT
-aG91bGRuJ3QgdGhhdCB0ZXN0IGZvciAnaWYgKG5lZ2F0aXZlKSByZXR1cm4gLUVOT0VOVDsnIGhh
-cHBlbiBhZnRlciANCj4gdGhlIGNhbGwgdG8gZF9yZXZhbGlkYXRlKCkgaW4gbG9va3VwX2Zhc3Qo
-KT8gSWYgbm90LCB3ZSBjYW4gZW5kIHVwIA0KPiBjYWNoaW5nIG5lZ2F0aXZlIGRlbnRyaWVzIGZv
-cmV2ZXIsIEFGQUlDUy4uLg0KPiANCj4gQ2hlZXJzDQo+ICAgVHJvbmQNCg0KTGVhbmRybywgY2Fu
-IHlvdSBwbGVhc2UgdGVzdCBpZiB0aGUgZm9sbG93aW5nIHBhdGNoIGhlbHBzIGluIGFueSB3YXk/
-DQoNCkNoZWVycw0KICBUcm9uZA0KDQo4PC0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tDQpGcm9tIGViNjFlY2U1NzM5YmIyZjNi
-NmQwM2RkOGNhOGUzMzViZjBkMTI2ODcgTW9uIFNlcCAxNyAwMDowMDowMCAyMDAxDQpGcm9tOiBU
-cm9uZCBNeWtsZWJ1c3QgPHRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20+DQpEYXRlOiBU
-aHUsIDggT2N0IDIwMTUgMDg6NDQ6MDAgLTA0MDANClN1YmplY3Q6IFtQQVRDSF0gbmFtZWk6IHJl
-c3VsdHMgb2YgZF9pc19uZWdhdGl2ZSgpIHNob3VsZCBiZSBjaGVja2VkIGFmdGVyICBkZW50cnkg
-cmV2YWxpZGF0aW9uDQoNCkxlYW5kcm8gQXdhIHdyaXRlczoNCkFmdGVyIHN3aXRjaGluZyB0byB2
-ZXJzaW9uIDQuMS42LCBvdXIgcGFyYWxsZWxpemVkIGFuZCBkaXN0cmlidXRlZCB3b3JrZmxvd3Mg
-bm93ICBmYWlsIGNvbnNpc3RlbnRseSB3aXRoIGVycm9ycyBvZiB0aGUgZm9ybToNCg0KVDM0OiAu
-L3JlZ2V4LmM6Mzk6MjI6IGVycm9yOiBjb25maWcuaDogTm8gc3VjaCBmaWxlIG9yIGRpcmVjdG9y
-eQ0KDQpGcm9tIG91ciAnZ2l0IGJpc2VjdCcgdGVzdGluZywgdGhlIGZvbGxvd2luZyBjb21taXQg
-YXBwZWFycyB0byBiZSB0aGUgcG9zc2libGUgY2F1c2Ugb2YgdGhlIGJlaGF2aW9yIHdlJ3ZlIGJl
-ZW4gc2VlaW5nOiBjb21taXQgNzY2YzRjYmZhY2Q4DQoNClRoZSBpc3N1ZSBpcyB0aGF0IHJldmFs
-aWRhdGlvbiBtYXkgY2F1c2UgdGhlIGRlbnRyeSB0byBiZSBkcm9wcGVkIGluIE5GUyBpZiwgc2F5
-LCB0aGUgY2xpZW50IG5vdGVzIHRoYXQgdGhlIGRpcmVjdG9yeSB0aW1lc3RhbXBzIGhhdmUgY2hh
-bmdlZC4NCg0KUmVwb3J0ZWQtYnk6IExlYW5kcm8gQXdhIDxsYXdhQG52aWRpYS5jb20+DQpMaW5r
-OiBodHRwczovL2J1Z3ppbGxhLmtlcm5lbC5vcmcvc2hvd19idWcuY2dpP2lkPTEwNDkxMQ0KRml4
-ZXM6IDc2NmM0Y2JmYWNkOCAoIm5hbWVpOiBkX2lzX25lZ2F0aXZlKCkgc2hvdWxkIGJlIGNoZWNr
-ZWQuLi4iKQ0KQ2M6IHN0YWJsZUB2Z2VyLmtlcm5lbC5vcmcgIyB2NC4xKw0KU2lnbmVkLW9mZi1i
-eTogVHJvbmQgTXlrbGVidXN0IDx0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29tPg0KLS0t
-DQogZnMvbmFtZWkuYyB8IDggKysrKysrLS0NCiAxIGZpbGUgY2hhbmdlZCwgNiBpbnNlcnRpb25z
-KCspLCAyIGRlbGV0aW9ucygtKQ0KDQpkaWZmIC0tZ2l0IGEvZnMvbmFtZWkuYyBiL2ZzL25hbWVp
-LmMNCmluZGV4IDcyNmQyMTFkYjQ4NC4uMzNlOTQ5NWEzMTI5IDEwMDY0NA0KLS0tIGEvZnMvbmFt
-ZWkuYw0KKysrIGIvZnMvbmFtZWkuYw0KQEAgLTE1NTgsOCArMTU1OCw2IEBAIHN0YXRpYyBpbnQg
-bG9va3VwX2Zhc3Qoc3RydWN0IG5hbWVpZGF0YSAqbmQsDQogCQluZWdhdGl2ZSA9IGRfaXNfbmVn
-YXRpdmUoZGVudHJ5KTsNCiAJCWlmIChyZWFkX3NlcWNvdW50X3JldHJ5KCZkZW50cnktPmRfc2Vx
-LCBzZXEpKQ0KIAkJCXJldHVybiAtRUNISUxEOw0KLQkJaWYgKG5lZ2F0aXZlKQ0KLQkJCXJldHVy
-biAtRU5PRU5UOw0KIA0KIAkJLyoNCiAJCSAqIFRoaXMgc2VxdWVuY2UgY291bnQgdmFsaWRhdGVz
-IHRoYXQgdGhlIHBhcmVudCBoYWQgbm8gQEAgLTE1ODAsNiArMTU3OCwxMiBAQCBzdGF0aWMgaW50
-IGxvb2t1cF9mYXN0KHN0cnVjdCBuYW1laWRhdGEgKm5kLA0KIAkJCQlnb3RvIHVubGF6eTsNCiAJ
-CQl9DQogCQl9DQorCQkvKg0KKwkJICogTm90ZTogZG8gbmVnYXRpdmUgZGVudHJ5IGNoZWNrIGFm
-dGVyIHJldmFsaWRhdGlvbiBpbg0KKwkJICogY2FzZSB0aGF0IGRyb3BzIGl0Lg0KKwkJICovDQor
-CQlpZiAobmVnYXRpdmUpDQorCQkJcmV0dXJuIC1FTk9FTlQ7DQogCQlwYXRoLT5tbnQgPSBtbnQ7
-DQogCQlwYXRoLT5kZW50cnkgPSBkZW50cnk7DQogCQlpZiAobGlrZWx5KF9fZm9sbG93X21vdW50
-X3JjdShuZCwgcGF0aCwgaW5vZGUsIHNlcXApKSkNCi0tDQoyLjQuMw0KDQotLQ0KVHJvbmQgTXlr
-bGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIsIFByaW1hcnlEYXRhIHRyb25kLm15
-a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20NCg0KDQoNCg0KLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0NClRoaXMgZW1haWwgbWVzc2FnZSBpcyBmb3IgdGhlIHNvbGUgdXNlIG9mIHRoZSBpbnRlbmRl
-ZCByZWNpcGllbnQocykgYW5kIG1heSBjb250YWluDQpjb25maWRlbnRpYWwgaW5mb3JtYXRpb24u
-ICBBbnkgdW5hdXRob3JpemVkIHJldmlldywgdXNlLCBkaXNjbG9zdXJlIG9yIGRpc3RyaWJ1dGlv
-bg0KaXMgcHJvaGliaXRlZC4gIElmIHlvdSBhcmUgbm90IHRoZSBpbnRlbmRlZCByZWNpcGllbnQs
-IHBsZWFzZSBjb250YWN0IHRoZSBzZW5kZXIgYnkNCnJlcGx5IGVtYWlsIGFuZCBkZXN0cm95IGFs
-bCBjb3BpZXMgb2YgdGhlIG9yaWdpbmFsIG1lc3NhZ2UuDQotLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLQ0K
+There are several places in net/sunrpc/svcsock.c which calls
+waitqueue_active() without calling a memory barrier.  Change the code
+to call wq_has_sleeper() instead, which other networking code uses in
+similar places.
+
+I found this issue when I was looking through the linux source code
+for places calling waitqueue_active() before wake_up*(), but without
+preceding memory barriers, after sending a patch to fix a similar
+issue in drivers/tty/n_tty.c  (Details about the original issue can be
+found here: https://lkml.org/lkml/2015/9/28/849).
+
+Signed-off-by: Kosuke Tatsukawa <tatsu@ab.jp.nec.com>
+---
+ net/sunrpc/svcsock.c |   12 ++++++------
+ 1 files changed, 6 insertions(+), 6 deletions(-)
+
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index 0c81202..cf081b8 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -414,7 +414,7 @@ static void svc_udp_data_ready(struct sock *sk)
+ 		set_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags);
+ 		svc_xprt_enqueue(&svsk->sk_xprt);
+ 	}
+-	if (wq && waitqueue_active(wq))
++	if (wq_has_sleeper(wq))
+ 		wake_up_interruptible(wq);
+ }
+ 
+@@ -432,7 +432,7 @@ static void svc_write_space(struct sock *sk)
+ 		svc_xprt_enqueue(&svsk->sk_xprt);
+ 	}
+ 
+-	if (wq && waitqueue_active(wq)) {
++	if (wq_has_sleeper(wq)) {
+ 		dprintk("RPC svc_write_space: someone sleeping on %p\n",
+ 		       svsk);
+ 		wake_up_interruptible(wq);
+@@ -787,7 +787,7 @@ static void svc_tcp_listen_data_ready(struct sock *sk)
+ 	}
+ 
+ 	wq = sk_sleep(sk);
+-	if (wq && waitqueue_active(wq))
++	if (wq_has_sleeper(wq))
+ 		wake_up_interruptible_all(wq);
+ }
+ 
+@@ -808,7 +808,7 @@ static void svc_tcp_state_change(struct sock *sk)
+ 		set_bit(XPT_CLOSE, &svsk->sk_xprt.xpt_flags);
+ 		svc_xprt_enqueue(&svsk->sk_xprt);
+ 	}
+-	if (wq && waitqueue_active(wq))
++	if (wq_has_sleeper(wq))
+ 		wake_up_interruptible_all(wq);
+ }
+ 
+@@ -823,7 +823,7 @@ static void svc_tcp_data_ready(struct sock *sk)
+ 		set_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags);
+ 		svc_xprt_enqueue(&svsk->sk_xprt);
+ 	}
+-	if (wq && waitqueue_active(wq))
++	if (wq_has_sleeper(wq))
+ 		wake_up_interruptible(wq);
+ }
+ 
+@@ -1594,7 +1594,7 @@ static void svc_sock_detach(struct svc_xprt *xprt)
+ 	sk->sk_write_space = svsk->sk_owspace;
+ 
+ 	wq = sk_sleep(sk);
+-	if (wq && waitqueue_active(wq))
++	if (wq_has_sleeper(wq))
+ 		wake_up_interruptible(wq);
+ }
+ 
+-- 
+1.7.1
