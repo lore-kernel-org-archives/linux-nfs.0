@@ -1,76 +1,57 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wi0-f174.google.com ([209.85.212.174]:33295 "EHLO
-	mail-wi0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751231AbbJJBGd (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Oct 2015 21:06:33 -0400
-Received: by wiclk2 with SMTP id lk2so90739956wic.0
-        for <linux-nfs@vger.kernel.org>; Fri, 09 Oct 2015 18:06:32 -0700 (PDT)
-Subject: Re: [PATCH v3 12/26] xprtrdma: Port to new memory registration API
-To: Chuck Lever <chuck.lever@oracle.com>, Sagi Grimberg <sagig@mellanox.com>
-References: <1444290669-5252-1-git-send-email-sagig@mellanox.com>
- <1444290669-5252-13-git-send-email-sagig@mellanox.com>
- <87F3CC02-2979-4C6B-990A-C31C52790ABC@oracle.com>
-Cc: linux-rdma@vger.kernel.org,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-From: Sagi Grimberg <sagig@dev.mellanox.co.il>
-Message-ID: <56186495.6060309@dev.mellanox.co.il>
-Date: Sat, 10 Oct 2015 04:06:29 +0300
+Received: from zeniv.linux.org.uk ([195.92.253.2]:54734 "EHLO
+	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750956AbbJJBhD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Oct 2015 21:37:03 -0400
+Date: Sat, 10 Oct 2015 02:36:57 +0100
+From: Al Viro <viro@ZenIV.linux.org.uk>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Leandro Awa <lawa@nvidia.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Linux FS-devel Mailing List <linux-fsdevel@vger.kernel.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH] namei: results of d_is_negative() should be checked
+ after dentry revalidation
+Message-ID: <20151010013657.GD22011@ZenIV.linux.org.uk>
+References: <9459055931ab4f269b96bad953738778@HQMAIL102.nvidia.com>
+ <1444412674-3077-1-git-send-email-trond.myklebust@primarydata.com>
+ <CA+55aFzMMEB_zLoS+SznZCiW8k3ZgMO4BBFFJz7=Cj99FXiXmQ@mail.gmail.com>
 MIME-Version: 1.0
-In-Reply-To: <87F3CC02-2979-4C6B-990A-C31C52790ABC@oracle.com>
-Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CA+55aFzMMEB_zLoS+SznZCiW8k3ZgMO4BBFFJz7=Cj99FXiXmQ@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Fri, Oct 09, 2015 at 05:19:02PM -0700, Linus Torvalds wrote:
 
->> out_list_err:
->> -	rc = PTR_ERR(f->fr_pgl);
->> +	rc = -ENOMEM;
->> 	dprintk("RPC:       %s: ib_alloc_fast_reg_page_list status %i\n”,
->
-> Should you update this debugging message?
+> So in general, we should always (a) either verify all sequence points
+> or (b) return -ENOCHLD to go into slow mode. The patch seems
+> 
+> However, this thing was explicitly made to be this way by commit
+> 766c4cbfacd8 ("namei: d_is_negative() should be checked before ->d_seq
+> validation"), so while my gut feel is to consider this fix
+> ObviouslyCorrect(tm), I will delay it a bit in the hope to get an ACK
+> and comment from Al about the patch.
+> 
+> Al?
 
-Yes I will.
+Umm...  I agree that the current version is wrong and it looks like this
+patch is a complete fix.  The only problem is the commit message -
+what really happens is that 766c4cbfacd8 got the things subtly wrong.
+We used to treat d_is_negative() after lookup_fast() as "fall with ENOENT".
+That was wrong - checking ->d_flags outside of ->d_seq protection is
+unreliable and failing with hard error on what should've fallen back to
+non-RCU pathname resolution is a bug.
 
->> +	n = ib_map_mr_sg(mr, frmr->sg, frmr->sg_nents, PAGE_SIZE);
->> +	if (unlikely(n != frmr->sg_nents)) {
->
-> The basic logic looks OK. But signed v. unsigned comparison here?
-> Is there a guarantee that the maximum value sg_nents can have is
-> INT_MAX?
->
-> i and n are signed, sg_nents is unsigned. I’d prefer to have
-> the variable signage all agree. Since we’re counting stuff,
-> maybe unsigned all around is a better choice? (rc should
-> remain signed).
+Unfortunately, we'd pulled the test too far up and ran afoul of another
+kind of staleness.  Dentry might have been absolutely stable from the
+RCU point of view (and we might be on UP, etc.), but stale from the
+remote fs point of view.  If ->d_revalidate() returns "it's actually
+stale", dentry gets thrown away and original code wouldn't even have looked
+at its ->d_flags.  What we need is to check ->d_flags where 766c4cbfacd8 does
+(prior to ->d_seq validation) but only use the result in cases where we
+do not discard this dentry outright.
 
-OK, I'll make i, n, len unsigned integers.
-
->
-> If ib_map_mr_sg can return a negative value, maybe “rc = ib_map_mr_sg”
-> is more clear. Is n used anywhere else?
-
-Nop.
-
->
-> Use %u formatter for displaying unsigned variables.
->
->
->> +		pr_err("RPC:       %s: failed to map mr %p (%d/%d)\n",
->> +		       __func__, frmr->fr_mr, n, frmr->sg_nents);
->> +		rc = n < 0 ? n : -EINVAL;
->> +		goto out_senderr;
->
-> Is frmr->sg_nents set correctly here for the ib_dma_unmap_sg()
-> call in the error exit? Maybe you want to use the value in
-> “n” instead (as long as it’s positive, of course).
-
-Umm, I think that frmr->sg_nents is assigned before the unmap is even
-reachable (we assign before mapping because we won't take partial
-maapings at least for now).
-
-
-
-I'll be waiting for more comments before posting v4.
-
-Cheers,
-Sagi.
+With some explanation along the lines of the above added, consider the patch
+ACKed.
