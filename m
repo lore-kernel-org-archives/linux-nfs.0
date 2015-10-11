@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:35430 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:37153 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751686AbbJKXBo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 11 Oct 2015 19:01:44 -0400
+	id S932294AbbJKXBh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 11 Oct 2015 19:01:37 -0400
 From: Andreas Gruenbacher <andreas.gruenbacher@gmail.com>
 To: Alexander Viro <viro@zeniv.linux.org.uk>, "Theodore Ts'o" <tytso@mit.edu>,
         Andreas Dilger <adilger.kernel@dilger.ca>,
@@ -14,78 +14,141 @@ To: Alexander Viro <viro@zeniv.linux.org.uk>, "Theodore Ts'o" <tytso@mit.edu>,
         xfs@oss.sgi.com, linux-kernel@vger.kernel.org,
         linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-cifs@vger.kernel.org, linux-api@vger.kernel.org
-Cc: Andreas Gruenbacher <agruenba@redhat.com>
-Subject: [PATCH v10 22/46] xfs: Fix error path in xfs_get_acl
-Date: Mon, 12 Oct 2015 00:58:33 +0200
-Message-Id: <1444604337-17651-23-git-send-email-andreas.gruenbacher@gmail.com>
+Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+        Andreas Gruenbacher <agruenba@redhat.com>
+Subject: [PATCH v10 21/46] ext4: Add richacl feature flag
+Date: Mon, 12 Oct 2015 00:58:32 +0200
+Message-Id: <1444604337-17651-22-git-send-email-andreas.gruenbacher@gmail.com>
 In-Reply-To: <1444604337-17651-1-git-send-email-andreas.gruenbacher@gmail.com>
 References: <1444604337-17651-1-git-send-email-andreas.gruenbacher@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andreas Gruenbacher <agruenba@redhat.com>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 
-Error codes from xfs_attr_get other than -ENOATTR were not properly
-reported.  Fix that, and clean the code up somewhat.
+This feature flag selects richacl instead of posix acl support on the
+file system. In addition, the "acl" mount option is needed for enabling
+either of the two kinds of acls.
 
-In addition, the declaration of struct xfs_inode in xfs_acl.h isn't needed.
-
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
 ---
- fs/xfs/xfs_acl.c | 19 +++++++------------
- fs/xfs/xfs_acl.h |  1 -
- 2 files changed, 7 insertions(+), 13 deletions(-)
+ fs/ext4/ext4.h  |  6 ++++--
+ fs/ext4/super.c | 42 +++++++++++++++++++++++++++++++++---------
+ 2 files changed, 37 insertions(+), 11 deletions(-)
 
-diff --git a/fs/xfs/xfs_acl.c b/fs/xfs/xfs_acl.c
-index 4b64167..0f4ee92 100644
---- a/fs/xfs/xfs_acl.c
-+++ b/fs/xfs/xfs_acl.c
-@@ -122,7 +122,7 @@ struct posix_acl *
- xfs_get_acl(struct inode *inode, int type)
- {
- 	struct xfs_inode *ip = XFS_I(inode);
--	struct posix_acl *acl = NULL;
-+	struct posix_acl *acl;
- 	struct xfs_acl *xfs_acl;
- 	unsigned char *ea_name;
- 	int error;
-@@ -158,18 +158,13 @@ xfs_get_acl(struct inode *inode, int type)
- 		 * cache entry, for any other error assume it is transient and
- 		 * leave the cache entry as ACL_NOT_CACHED.
- 		 */
--		if (error == -ENOATTR)
--			goto out_update_cache;
--		goto out;
--	}
-+		acl = (error == -ENOATTR) ? NULL : ERR_PTR(error);
-+	} else
-+		acl = xfs_acl_from_disk(xfs_acl,
-+					XFS_ACL_MAX_ENTRIES(ip->i_mount));
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index fd1f28b..b97a3b1 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -991,7 +991,7 @@ struct ext4_inode_info {
+ #define EXT4_MOUNT_UPDATE_JOURNAL	0x01000	/* Update the journal format */
+ #define EXT4_MOUNT_NO_UID32		0x02000  /* Disable 32-bit UIDs */
+ #define EXT4_MOUNT_XATTR_USER		0x04000	/* Extended user attributes */
+-#define EXT4_MOUNT_POSIX_ACL		0x08000	/* POSIX Access Control Lists */
++#define EXT4_MOUNT_ACL			0x08000	/* Access Control Lists */
+ #define EXT4_MOUNT_NO_AUTO_DA_ALLOC	0x10000	/* No auto delalloc mapping */
+ #define EXT4_MOUNT_BARRIER		0x20000 /* Use block barriers */
+ #define EXT4_MOUNT_QUOTA		0x80000 /* Some quota option set */
+@@ -1582,6 +1582,7 @@ static inline int ext4_encrypted_inode(struct inode *inode)
+ #define EXT4_FEATURE_INCOMPAT_LARGEDIR		0x4000 /* >2GB or 3-lvl htree */
+ #define EXT4_FEATURE_INCOMPAT_INLINE_DATA	0x8000 /* data in inode */
+ #define EXT4_FEATURE_INCOMPAT_ENCRYPT		0x10000
++#define EXT4_FEATURE_INCOMPAT_RICHACL		0x20000
  
--	acl = xfs_acl_from_disk(xfs_acl, XFS_ACL_MAX_ENTRIES(ip->i_mount));
--	if (IS_ERR(acl))
--		goto out;
--
--out_update_cache:
--	set_cached_acl(inode, type, acl);
--out:
-+	if (!IS_ERR(acl))
-+		set_cached_acl(inode, type, acl);
- 	kmem_free(xfs_acl);
- 	return acl;
+ #define EXT2_FEATURE_COMPAT_SUPP	EXT4_FEATURE_COMPAT_EXT_ATTR
+ #define EXT2_FEATURE_INCOMPAT_SUPP	(EXT4_FEATURE_INCOMPAT_FILETYPE| \
+@@ -1607,7 +1608,8 @@ static inline int ext4_encrypted_inode(struct inode *inode)
+ 					 EXT4_FEATURE_INCOMPAT_FLEX_BG| \
+ 					 EXT4_FEATURE_INCOMPAT_MMP | \
+ 					 EXT4_FEATURE_INCOMPAT_INLINE_DATA | \
+-					 EXT4_FEATURE_INCOMPAT_ENCRYPT)
++					 EXT4_FEATURE_INCOMPAT_ENCRYPT | \
++					 EXT4_FEATURE_INCOMPAT_RICHACL)
+ #define EXT4_FEATURE_RO_COMPAT_SUPP	(EXT4_FEATURE_RO_COMPAT_SPARSE_SUPER| \
+ 					 EXT4_FEATURE_RO_COMPAT_LARGE_FILE| \
+ 					 EXT4_FEATURE_RO_COMPAT_GDT_CSUM| \
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index a63c7b0..84d1a5d 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1270,6 +1270,28 @@ static ext4_fsblk_t get_sb_block(void **data)
+ 	return sb_block;
  }
-diff --git a/fs/xfs/xfs_acl.h b/fs/xfs/xfs_acl.h
-index 3841b07..9ee0a0d 100644
---- a/fs/xfs/xfs_acl.h
-+++ b/fs/xfs/xfs_acl.h
-@@ -20,7 +20,6 @@
  
- struct inode;
- struct posix_acl;
--struct xfs_inode;
++static int enable_acl(struct super_block *sb)
++{
++	sb->s_flags &= ~(MS_POSIXACL | MS_RICHACL);
++	if (test_opt(sb, ACL)) {
++		if (EXT4_HAS_INCOMPAT_FEATURE(sb,
++					      EXT4_FEATURE_INCOMPAT_RICHACL)) {
++#ifdef CONFIG_EXT4_FS_RICHACL
++			sb->s_flags |= MS_RICHACL;
++#else
++			return -EOPNOTSUPP;
++#endif
++		} else {
++#ifdef CONFIG_EXT4_FS_POSIX_ACL
++			sb->s_flags |= MS_POSIXACL;
++#else
++			return -EOPNOTSUPP;
++#endif
++		}
++	}
++	return 0;
++}
++
+ #define DEFAULT_JOURNAL_IOPRIO (IOPRIO_PRIO_VALUE(IOPRIO_CLASS_BE, 3))
+ static char deprecated_msg[] = "Mount option \"%s\" will be removed by %s\n"
+ 	"Contact linux-ext4@vger.kernel.org if you think we should keep it.\n";
+@@ -1416,9 +1438,9 @@ static const struct mount_opts {
+ 	 MOPT_NO_EXT2 | MOPT_DATAJ},
+ 	{Opt_user_xattr, EXT4_MOUNT_XATTR_USER, MOPT_SET},
+ 	{Opt_nouser_xattr, EXT4_MOUNT_XATTR_USER, MOPT_CLEAR},
+-#ifdef CONFIG_EXT4_FS_POSIX_ACL
+-	{Opt_acl, EXT4_MOUNT_POSIX_ACL, MOPT_SET},
+-	{Opt_noacl, EXT4_MOUNT_POSIX_ACL, MOPT_CLEAR},
++#if defined(CONFIG_EXT4_FS_POSIX_ACL) || defined(CONFIG_EXT4_FS_RICHACL)
++	{Opt_acl, EXT4_MOUNT_ACL, MOPT_SET},
++	{Opt_noacl, EXT4_MOUNT_ACL, MOPT_CLEAR},
+ #else
+ 	{Opt_acl, 0, MOPT_NOSUPPORT},
+ 	{Opt_noacl, 0, MOPT_NOSUPPORT},
+@@ -3576,8 +3598,8 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 		set_opt(sb, NO_UID32);
+ 	/* xattr user namespace & acls are now defaulted on */
+ 	set_opt(sb, XATTR_USER);
+-#ifdef CONFIG_EXT4_FS_POSIX_ACL
+-	set_opt(sb, POSIX_ACL);
++#if defined(CONFIG_EXT4_FS_POSIX_ACL) || defined(CONFIG_EXT4_FS_RICHACL)
++	set_opt(sb, ACL);
+ #endif
+ 	/* don't forget to enable journal_csum when metadata_csum is enabled. */
+ 	if (ext4_has_metadata_csum(sb))
+@@ -3660,8 +3682,9 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 		sb->s_iflags |= SB_I_CGROUPWB;
+ 	}
  
- #ifdef CONFIG_XFS_POSIX_ACL
- extern struct posix_acl *xfs_get_acl(struct inode *inode, int type);
+-	sb->s_flags = (sb->s_flags & ~MS_POSIXACL) |
+-		(test_opt(sb, POSIX_ACL) ? MS_POSIXACL : 0);
++	err = enable_acl(sb);
++	if (err)
++		goto failed_mount;
+ 
+ 	if (le32_to_cpu(es->s_rev_level) == EXT4_GOOD_OLD_REV &&
+ 	    (EXT4_HAS_COMPAT_FEATURE(sb, ~0U) ||
+@@ -4981,8 +5004,9 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
+ 	if (sbi->s_mount_flags & EXT4_MF_FS_ABORTED)
+ 		ext4_abort(sb, "Abort forced by user");
+ 
+-	sb->s_flags = (sb->s_flags & ~MS_POSIXACL) |
+-		(test_opt(sb, POSIX_ACL) ? MS_POSIXACL : 0);
++	err = enable_acl(sb);
++	if (err)
++		goto restore_opts;
+ 
+ 	es = sbi->s_es;
+ 
 -- 
 2.5.0
 
