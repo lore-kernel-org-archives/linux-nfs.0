@@ -1,35 +1,31 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f170.google.com ([209.85.223.170]:33686 "EHLO
-	mail-io0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751485AbbJJRTe (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 10 Oct 2015 13:19:34 -0400
+Received: from verein.lst.de ([213.95.11.211]:49068 "EHLO newverein.lst.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751282AbbJKNDV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 11 Oct 2015 09:03:21 -0400
+Date: Sun, 11 Oct 2015 15:03:20 +0200
+From: Christoph Hellwig <hch@lst.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Christoph Hellwig <hch@lst.de>, linux-nfs@vger.kernel.org,
+        stable@vger.kernel.org
+Subject: Re: [PATCH] nfsd/blocklayout: accept any minlength
+Message-ID: <20151011130319.GB3726@lst.de>
+References: <1444395806-32111-1-git-send-email-hch@lst.de> <20151009152803.GC6825@fieldses.org> <20151009170400.GA7482@lst.de> <20151009174556.GA8188@fieldses.org>
 MIME-Version: 1.0
-In-Reply-To: <20151010171317.GF22011@ZenIV.linux.org.uk>
-References: <9459055931ab4f269b96bad953738778@HQMAIL102.nvidia.com>
-	<1444412674-3077-1-git-send-email-trond.myklebust@primarydata.com>
-	<CA+55aFzMMEB_zLoS+SznZCiW8k3ZgMO4BBFFJz7=Cj99FXiXmQ@mail.gmail.com>
-	<20151010013657.GD22011@ZenIV.linux.org.uk>
-	<20151010171317.GF22011@ZenIV.linux.org.uk>
-Date: Sat, 10 Oct 2015 10:19:33 -0700
-Message-ID: <CA+55aFz4SKKWPRWSj3UnELcdYnqLJBKxPwLsQG1oiGKh2kp-_Q@mail.gmail.com>
-Subject: Re: [PATCH] namei: results of d_is_negative() should be checked after
- dentry revalidation
-From: Linus Torvalds <torvalds@linux-foundation.org>
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Leandro Awa <lawa@nvidia.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Linux FS-devel Mailing List <linux-fsdevel@vger.kernel.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20151009174556.GA8188@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Oct 10, 2015 at 10:13 AM, Al Viro <viro@zeniv.linux.org.uk> wrote:
->
-> OK, I've attemtped to add an explanation of what's going on; please, pull from
-..
+On Fri, Oct 09, 2015 at 01:45:56PM -0400, J. Bruce Fields wrote:
+> If it affected a released client then it's probably worth it even if
+> it's really a client bug.  If it's just something you saw once against
+> an -rc1, I'd rather leave it for 4.4.
 
-Heh. I just committed it myself with your emailed explanation, so ..
+This one is a server bug uncovered by a client change that went into
+4.3-rc.  Additionally when I first reproduced this in Trond's tree it
+also caused a hang, but that is now gone.  Given how little activity
+the server had around time I'm confident to blame that part on an unknown
+client bug.
 
-                  Linus
+So yes, we really need it in ASAP and in stable all the way back.
