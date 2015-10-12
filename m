@@ -1,256 +1,149 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from [193.47.165.129] ([193.47.165.129]:35466 "EHLO mellanox.co.il"
+Received: from [193.47.165.129] ([193.47.165.129]:35489 "EHLO mellanox.co.il"
 	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1752466AbbJLPa2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 12 Oct 2015 11:30:28 -0400
+	id S1752612AbbJLPad (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 12 Oct 2015 11:30:33 -0400
 From: Sagi Grimberg <sagig@mellanox.com>
 To: linux-rdma@vger.kernel.org
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v4 15/26] IB/srp: Split srp_map_sg
-Date: Mon, 12 Oct 2015 18:29:28 +0300
-Message-Id: <1444663779-1522-16-git-send-email-sagig@mellanox.com>
+Subject: [PATCH v4 22/26] RDMA/cxgb3: Remove old FRWR API
+Date: Mon, 12 Oct 2015 18:29:35 +0300
+Message-Id: <1444663779-1522-23-git-send-email-sagig@mellanox.com>
 In-Reply-To: <1444663779-1522-1-git-send-email-sagig@mellanox.com>
 References: <1444663779-1522-1-git-send-email-sagig@mellanox.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is a preparation patch for the new registration API
-conversion. It splits srp_map_sg per registration strategy
-(srp_map_sg[fmr|fr|dma]. On its own it adds some code duplication,
-but it makes the API switch easier to comprehend.
+No ULP uses it anymore, go ahead and remove it.
 
 Signed-off-by: Sagi Grimberg <sagig@mellanox.com>
-Tested-by: Bart Van Assche <bart.vanassche@sandisk.com>
+Acked-by: Christoph Hellwig <hch@lst.de>
 ---
- drivers/infiniband/ulp/srp/ib_srp.c | 157 ++++++++++++++++++++++++------------
- 1 file changed, 106 insertions(+), 51 deletions(-)
+ drivers/infiniband/hw/cxgb3/iwch_cq.c       |  2 +-
+ drivers/infiniband/hw/cxgb3/iwch_provider.c | 24 ---------------
+ drivers/infiniband/hw/cxgb3/iwch_qp.c       | 47 -----------------------------
+ 3 files changed, 1 insertion(+), 72 deletions(-)
 
-diff --git a/drivers/infiniband/ulp/srp/ib_srp.c b/drivers/infiniband/ulp/srp/ib_srp.c
-index 1390f99ca76b..3ec94c109e1b 100644
---- a/drivers/infiniband/ulp/srp/ib_srp.c
-+++ b/drivers/infiniband/ulp/srp/ib_srp.c
-@@ -1286,6 +1286,17 @@ static int srp_map_finish_fmr(struct srp_map_state *state,
- 	if (state->fmr.next >= state->fmr.end)
- 		return -ENOMEM;
+diff --git a/drivers/infiniband/hw/cxgb3/iwch_cq.c b/drivers/infiniband/hw/cxgb3/iwch_cq.c
+index cf5474ae68ff..cfe404925a39 100644
+--- a/drivers/infiniband/hw/cxgb3/iwch_cq.c
++++ b/drivers/infiniband/hw/cxgb3/iwch_cq.c
+@@ -123,7 +123,7 @@ static int iwch_poll_cq_one(struct iwch_dev *rhp, struct iwch_cq *chp,
+ 			wc->opcode = IB_WC_LOCAL_INV;
+ 			break;
+ 		case T3_FAST_REGISTER:
+-			wc->opcode = IB_WC_FAST_REG_MR;
++			wc->opcode = IB_WC_REG_MR;
+ 			break;
+ 		default:
+ 			printk(KERN_ERR MOD "Unexpected opcode %d "
+diff --git a/drivers/infiniband/hw/cxgb3/iwch_provider.c b/drivers/infiniband/hw/cxgb3/iwch_provider.c
+index ee3d5ca7de6c..99ae2ab14b9e 100644
+--- a/drivers/infiniband/hw/cxgb3/iwch_provider.c
++++ b/drivers/infiniband/hw/cxgb3/iwch_provider.c
+@@ -884,28 +884,6 @@ static int iwch_map_mr_sg(struct ib_mr *ibmr,
+ 	return ib_sg_to_pages(ibmr, sg, sg_nents, iwch_set_page);
+ }
  
-+	WARN_ON_ONCE(!dev->use_fmr);
-+
-+	if (state->npages == 0)
-+		return 0;
-+
-+	if (state->npages == 1 && target->global_mr) {
-+		srp_map_desc(state, state->base_dma_addr, state->dma_len,
-+			     target->global_mr->rkey);
-+		goto reset_state;
-+	}
-+
- 	fmr = ib_fmr_pool_map_phys(ch->fmr_pool, state->pages,
- 				   state->npages, io_addr);
- 	if (IS_ERR(fmr))
-@@ -1297,6 +1308,10 @@ static int srp_map_finish_fmr(struct srp_map_state *state,
- 	srp_map_desc(state, state->base_dma_addr & ~dev->mr_page_mask,
- 		     state->dma_len, fmr->fmr->rkey);
- 
-+reset_state:
-+	state->npages = 0;
-+	state->dma_len = 0;
-+
+-static struct ib_fast_reg_page_list *iwch_alloc_fastreg_pbl(
+-					struct ib_device *device,
+-					int page_list_len)
+-{
+-	struct ib_fast_reg_page_list *page_list;
+-
+-	page_list = kmalloc(sizeof *page_list + page_list_len * sizeof(u64),
+-			    GFP_KERNEL);
+-	if (!page_list)
+-		return ERR_PTR(-ENOMEM);
+-
+-	page_list->page_list = (u64 *)(page_list + 1);
+-	page_list->max_page_list_len = page_list_len;
+-
+-	return page_list;
+-}
+-
+-static void iwch_free_fastreg_pbl(struct ib_fast_reg_page_list *page_list)
+-{
+-	kfree(page_list);
+-}
+-
+ static int iwch_destroy_qp(struct ib_qp *ib_qp)
+ {
+ 	struct iwch_dev *rhp;
+@@ -1483,8 +1461,6 @@ int iwch_register_device(struct iwch_dev *dev)
+ 	dev->ibdev.dealloc_mw = iwch_dealloc_mw;
+ 	dev->ibdev.alloc_mr = iwch_alloc_mr;
+ 	dev->ibdev.map_mr_sg = iwch_map_mr_sg;
+-	dev->ibdev.alloc_fast_reg_page_list = iwch_alloc_fastreg_pbl;
+-	dev->ibdev.free_fast_reg_page_list = iwch_free_fastreg_pbl;
+ 	dev->ibdev.attach_mcast = iwch_multicast_attach;
+ 	dev->ibdev.detach_mcast = iwch_multicast_detach;
+ 	dev->ibdev.process_mad = iwch_process_mad;
+diff --git a/drivers/infiniband/hw/cxgb3/iwch_qp.c b/drivers/infiniband/hw/cxgb3/iwch_qp.c
+index a09ea538e990..d0548fc6395e 100644
+--- a/drivers/infiniband/hw/cxgb3/iwch_qp.c
++++ b/drivers/infiniband/hw/cxgb3/iwch_qp.c
+@@ -189,48 +189,6 @@ static int build_memreg(union t3_wr *wqe, struct ib_reg_wr *wr,
  	return 0;
  }
  
-@@ -1309,10 +1324,22 @@ static int srp_map_finish_fr(struct srp_map_state *state,
- 	struct ib_fast_reg_wr wr;
- 	struct srp_fr_desc *desc;
- 	u32 rkey;
-+	int err;
- 
- 	if (state->fr.next >= state->fr.end)
- 		return -ENOMEM;
- 
-+	WARN_ON_ONCE(!dev->use_fast_reg);
-+
-+	if (state->npages == 0)
-+		return 0;
-+
-+	if (state->npages == 1 && target->global_mr) {
-+		srp_map_desc(state, state->base_dma_addr, state->dma_len,
-+			     target->global_mr->rkey);
-+		goto reset_state;
-+	}
-+
- 	desc = srp_fr_pool_get(ch->fr_pool);
- 	if (!desc)
- 		return -ENOMEM;
-@@ -1342,7 +1369,15 @@ static int srp_map_finish_fr(struct srp_map_state *state,
- 	srp_map_desc(state, state->base_dma_addr, state->dma_len,
- 		     desc->mr->rkey);
- 
--	return ib_post_send(ch->qp, &wr.wr, &bad_wr);
-+	err = ib_post_send(ch->qp, &wr.wr, &bad_wr);
-+	if (err)
-+		return err;
-+
-+reset_state:
-+	state->npages = 0;
-+	state->dma_len = 0;
-+
-+	return 0;
- }
- 
- static int srp_finish_mapping(struct srp_map_state *state,
-@@ -1350,26 +1385,9 @@ static int srp_finish_mapping(struct srp_map_state *state,
- {
- 	struct srp_target_port *target = ch->target;
- 	struct srp_device *dev = target->srp_host->srp_dev;
--	int ret = 0;
- 
--	WARN_ON_ONCE(!dev->use_fast_reg && !dev->use_fmr);
+-static int build_fastreg(union t3_wr *wqe, struct ib_send_wr *send_wr,
+-				u8 *flit_cnt, int *wr_cnt, struct t3_wq *wq)
+-{
+-	struct ib_fast_reg_wr *wr = fast_reg_wr(send_wr);
+-	int i;
+-	__be64 *p;
 -
--	if (state->npages == 0)
--		return 0;
+-	if (wr->page_list_len > T3_MAX_FASTREG_DEPTH)
+-		return -EINVAL;
+-	*wr_cnt = 1;
+-	wqe->fastreg.stag = cpu_to_be32(wr->rkey);
+-	wqe->fastreg.len = cpu_to_be32(wr->length);
+-	wqe->fastreg.va_base_hi = cpu_to_be32(wr->iova_start >> 32);
+-	wqe->fastreg.va_base_lo_fbo = cpu_to_be32(wr->iova_start & 0xffffffff);
+-	wqe->fastreg.page_type_perms = cpu_to_be32(
+-		V_FR_PAGE_COUNT(wr->page_list_len) |
+-		V_FR_PAGE_SIZE(wr->page_shift-12) |
+-		V_FR_TYPE(TPT_VATO) |
+-		V_FR_PERMS(iwch_ib_to_tpt_access(wr->access_flags)));
+-	p = &wqe->fastreg.pbl_addrs[0];
+-	for (i = 0; i < wr->page_list_len; i++, p++) {
 -
--	if (state->npages == 1 && target->global_mr)
--		srp_map_desc(state, state->base_dma_addr, state->dma_len,
--			     target->global_mr->rkey);
--	else
--		ret = dev->use_fast_reg ? srp_map_finish_fr(state, ch) :
--			srp_map_finish_fmr(state, ch);
+-		/* If we need a 2nd WR, then set it up */
+-		if (i == T3_MAX_FASTREG_FRAG) {
+-			*wr_cnt = 2;
+-			wqe = (union t3_wr *)(wq->queue +
+-				Q_PTR2IDX((wq->wptr+1), wq->size_log2));
+-			build_fw_riwrh((void *)wqe, T3_WR_FASTREG, 0,
+-			       Q_GENBIT(wq->wptr + 1, wq->size_log2),
+-			       0, 1 + wr->page_list_len - T3_MAX_FASTREG_FRAG,
+-			       T3_EOP);
 -
--	if (ret == 0) {
--		state->npages = 0;
--		state->dma_len = 0;
+-			p = &wqe->pbl_frag.pbl_addrs[0];
+-		}
+-		*p = cpu_to_be64((u64)wr->page_list->page_list[i]);
 -	}
+-	*flit_cnt = 5 + wr->page_list_len;
+-	if (*flit_cnt > 15)
+-		*flit_cnt = 15;
+-	return 0;
+-}
 -
--	return ret;
-+	return dev->use_fast_reg ? srp_map_finish_fr(state, ch) :
-+				   srp_map_finish_fmr(state, ch);
- }
- 
- static int srp_map_sg_entry(struct srp_map_state *state,
-@@ -1415,47 +1433,79 @@ static int srp_map_sg_entry(struct srp_map_state *state,
- 	return ret;
- }
- 
--static int srp_map_sg(struct srp_map_state *state, struct srp_rdma_ch *ch,
--		      struct srp_request *req, struct scatterlist *scat,
--		      int count)
-+static int srp_map_sg_fmr(struct srp_map_state *state, struct srp_rdma_ch *ch,
-+			  struct srp_request *req, struct scatterlist *scat,
-+			  int count)
+ static int build_inv_stag(union t3_wr *wqe, struct ib_send_wr *wr,
+ 				u8 *flit_cnt)
  {
--	struct srp_target_port *target = ch->target;
--	struct srp_device *dev = target->srp_host->srp_dev;
- 	struct scatterlist *sg;
- 	int i, ret;
- 
--	state->desc	= req->indirect_desc;
--	state->pages	= req->map_page;
--	if (dev->use_fast_reg) {
--		state->fr.next = req->fr_list;
--		state->fr.end = req->fr_list + target->cmd_sg_cnt;
--	} else if (dev->use_fmr) {
--		state->fmr.next = req->fmr_list;
--		state->fmr.end = req->fmr_list + target->cmd_sg_cnt;
-+	state->desc = req->indirect_desc;
-+	state->pages = req->map_page;
-+	state->fmr.next = req->fmr_list;
-+	state->fmr.end = req->fmr_list + ch->target->cmd_sg_cnt;
-+
-+	for_each_sg(scat, sg, count, i) {
-+		ret = srp_map_sg_entry(state, ch, sg, i);
-+		if (ret)
-+			return ret;
- 	}
- 
--	if (dev->use_fast_reg || dev->use_fmr) {
--		for_each_sg(scat, sg, count, i) {
--			ret = srp_map_sg_entry(state, ch, sg, i);
--			if (ret)
--				goto out;
--		}
--		ret = srp_finish_mapping(state, ch);
-+	ret = srp_finish_mapping(state, ch);
-+	if (ret)
-+		return ret;
-+
-+	req->nmdesc = state->nmdesc;
-+
-+	return 0;
-+}
-+
-+static int srp_map_sg_fr(struct srp_map_state *state, struct srp_rdma_ch *ch,
-+			 struct srp_request *req, struct scatterlist *scat,
-+			 int count)
-+{
-+	struct scatterlist *sg;
-+	int i, ret;
-+
-+	state->desc = req->indirect_desc;
-+	state->pages = req->map_page;
-+	state->fmr.next = req->fmr_list;
-+	state->fmr.end = req->fmr_list + ch->target->cmd_sg_cnt;
-+
-+	for_each_sg(scat, sg, count, i) {
-+		ret = srp_map_sg_entry(state, ch, sg, i);
- 		if (ret)
--			goto out;
--	} else {
--		for_each_sg(scat, sg, count, i) {
--			srp_map_desc(state, ib_sg_dma_address(dev->dev, sg),
--				     ib_sg_dma_len(dev->dev, sg),
--				     target->global_mr->rkey);
--		}
-+			return ret;
- 	}
- 
-+	ret = srp_finish_mapping(state, ch);
-+	if (ret)
-+		return ret;
-+
- 	req->nmdesc = state->nmdesc;
--	ret = 0;
- 
--out:
--	return ret;
-+	return 0;
-+}
-+
-+static int srp_map_sg_dma(struct srp_map_state *state, struct srp_rdma_ch *ch,
-+			  struct srp_request *req, struct scatterlist *scat,
-+			  int count)
-+{
-+	struct srp_target_port *target = ch->target;
-+	struct srp_device *dev = target->srp_host->srp_dev;
-+	struct scatterlist *sg;
-+	int i;
-+
-+	state->desc = req->indirect_desc;
-+	for_each_sg(scat, sg, count, i) {
-+		srp_map_desc(state, ib_sg_dma_address(dev->dev, sg),
-+			     ib_sg_dma_len(dev->dev, sg),
-+			     target->global_mr->rkey);
-+	}
-+
-+	req->nmdesc = state->nmdesc;
-+
-+	return 0;
- }
- 
- /*
-@@ -1563,7 +1613,12 @@ static int srp_map_data(struct scsi_cmnd *scmnd, struct srp_rdma_ch *ch,
- 				   target->indirect_size, DMA_TO_DEVICE);
- 
- 	memset(&state, 0, sizeof(state));
--	srp_map_sg(&state, ch, req, scat, count);
-+	if (dev->use_fast_reg)
-+		srp_map_sg_fr(&state, ch, req, scat, count);
-+	else if (dev->use_fmr)
-+		srp_map_sg_fmr(&state, ch, req, scat, count);
-+	else
-+		srp_map_sg_dma(&state, ch, req, scat, count);
- 
- 	/* We've mapped the request, now pull as much of the indirect
- 	 * descriptor table as we can into the command buffer. If this
+@@ -457,11 +415,6 @@ int iwch_post_send(struct ib_qp *ibqp, struct ib_send_wr *wr,
+ 			if (!qhp->wq.oldest_read)
+ 				qhp->wq.oldest_read = sqp;
+ 			break;
+-		case IB_WR_FAST_REG_MR:
+-			t3_wr_opcode = T3_WR_FASTREG;
+-			err = build_fastreg(wqe, wr, &t3_wr_flit_cnt,
+-						 &wr_cnt, &qhp->wq);
+-			break;
+ 		case IB_WR_REG_MR:
+ 			t3_wr_opcode = T3_WR_FASTREG;
+ 			err = build_memreg(wqe, reg_wr(wr), &t3_wr_flit_cnt,
 -- 
 1.8.4.3
 
