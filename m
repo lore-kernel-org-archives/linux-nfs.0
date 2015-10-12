@@ -1,74 +1,99 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:46496 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:46500 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752069AbbJLUUo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 12 Oct 2015 16:20:44 -0400
-Date: Mon, 12 Oct 2015 16:20:44 -0400
+	id S1751674AbbJLU0o (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 12 Oct 2015 16:26:44 -0400
+Date: Mon, 12 Oct 2015 16:26:43 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@poochiereds.net>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsd: use a multithreaded workqueue for nfsd4_callbacks
-Message-ID: <20151012202044.GL28755@fieldses.org>
-References: <1443875882-12089-1-git-send-email-jeff.layton@primarydata.com>
- <20151009212459.GF8188@fieldses.org>
- <20151009173923.1ca297a4@synchrony.poochiereds.net>
- <20151012181117.GF28755@fieldses.org>
- <20151012161421.1468a79b@synchrony.poochiereds.net>
+To: Kosuke Tatsukawa <tatsu@ab.jp.nec.com>
+Cc: Neil Brown <nfbrown@novell.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        "David S. Miller" <davem@davemloft.net>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH v2] sunrpc: fix waitqueue_active without memory barrier
+ in sunrpc
+Message-ID: <20151012202643.GM28755@fieldses.org>
+References: <20151009211819.GE8188@fieldses.org>
+ <17EC94B0A072C34B8DCF0D30AD16044A02877311@BPXM09GP.gisp.nec.co.jp>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20151012161421.1468a79b@synchrony.poochiereds.net>
+In-Reply-To: <17EC94B0A072C34B8DCF0D30AD16044A02877311@BPXM09GP.gisp.nec.co.jp>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Oct 12, 2015 at 04:14:21PM -0400, Jeff Layton wrote:
-> On Mon, 12 Oct 2015 14:11:17 -0400
-> "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> 
-> > On Fri, Oct 09, 2015 at 05:39:23PM -0400, Jeff Layton wrote:
-> > > On Fri, 9 Oct 2015 17:24:59 -0400
-> > > "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > > 
-> > > > On Sat, Oct 03, 2015 at 08:38:02AM -0400, Jeff Layton wrote:
-> > > > > I don't see any need to order callbacks with respect to one another.
-> > > > 
-> > > > I thought the code in nfsd4_process_cb_update really depended on this.
-> > > > The locking it has is against nfsd threads, it probably assumes it's
-> > > > only run from a cb thread and that it's the only one running at a time.
-> > > > 
-> > > > But I haven't reviewed it lately.
-> > > > 
-> > > > --b.
-> > > > 
-> > > 
-> > > Yikes -- ok. That's not at all obvious. That should prob be documented
-> > > if so.
+On Mon, Oct 12, 2015 at 10:41:06AM +0000, Kosuke Tatsukawa wrote:
+> J. Bruce Fields wrote:
+> > On Fri, Oct 09, 2015 at 06:29:44AM +0000, Kosuke Tatsukawa wrote:
+> >> Neil Brown wrote:
+> >> > Kosuke Tatsukawa <tatsu@ab.jp.nec.com> writes:
+> >> > 
+> >> >> There are several places in net/sunrpc/svcsock.c which calls
+> >> >> waitqueue_active() without calling a memory barrier.  Add a memory
+> >> >> barrier just as in wq_has_sleeper().
+> >> >>
+> >> >> I found this issue when I was looking through the linux source code
+> >> >> for places calling waitqueue_active() before wake_up*(), but without
+> >> >> preceding memory barriers, after sending a patch to fix a similar
+> >> >> issue in drivers/tty/n_tty.c  (Details about the original issue can be
+> >> >> found here: https://lkml.org/lkml/2015/9/28/849).
+> >> > 
+> >> > hi,
+> >> > this feels like the wrong approach to the problem.  It requires extra
+> >> > 'smb_mb's to be spread around which are hard to understand as easy to
+> >> > forget.
+> >> > 
+> >> > A quick look seems to suggest that (nearly) every waitqueue_active()
+> >> > will need an smb_mb.  Could we just put the smb_mb() inside
+> >> > waitqueue_active()??
+> >> <snip>
+> >> 
+> >> There are around 200 occurrences of waitqueue_active() in the kernel
+> >> source, and most of the places which use it before wake_up are either
+> >> protected by some spin lock, or already has a memory barrier or some
+> >> kind of atomic operation before it.
+> >> 
+> >> Simply adding smp_mb() to waitqueue_active() would incur extra cost in
+> >> many cases and won't be a good idea.
+> >> 
+> >> Another way to solve this problem is to remove the waitqueue_active(),
+> >> making the code look like this;
+> >> 	if (wq)
+> >> 		wake_up_interruptible(wq);
+> >> This also fixes the problem because the spinlock in the wake_up*() acts
+> >> as a memory barrier and prevents the code from being reordered by the
+> >> CPU (and it also makes the resulting code is much simpler).
 > > 
-> > Yes, my bad.
+> > I might not care which we did, except I don't have the means to test
+> > this quickly, and I guess this is some of our most frequently called
+> > code.
 > > 
-> > > Yeah, ok...I guess you could end up with multiple threads racing to
-> > > tear down the cb_client and xprt and create a new one, and it looks
-> > > like the cl_cb_client and cl_cred pointers could get clobbered by new
-> > > ones in that case.
-> > > 
-> > > Shouldn't be too hard to fix protecting those pointers with the
-> > > cl_lock. That said, I prob won't be able to spend time on it right now.
-> > > You can go ahead and drop that patch and I'll resend if/when I get
-> > > around to fixing that.
+> > I suppose your patch is the most conservative approach, as the
+> > alternative is a spinlock/unlock in wake_up_interruptible, which I
+> > assume is necessarily more expensive than an smp_mb().
 > > 
-> > What's the problem that this fixes exactly?
+> > As far as I can tell it's been this way since forever.  (Well, since a
+> > 2002 patch "NFSD: TCP: rationalise locking in RPC server routines" which
+> > removed some spinlocks from the data_ready routines.)
 > > 
+> > I don't understand what the actual race is yet (which code exactly is
+> > missing the wakeup in this case?  nfsd threads seem to instead get
+> > woken up by the wake_up_process() in svc_xprt_do_enqueue().)
 > 
-> Unnecessary serialization of callbacks?
+> Thank you for the reply.  I tried looking into this.
 > 
-> Not that that's necessarily a problem, but with the newer workqueue
-> implementation there is more overhead in running a single threaded
-> workqueue since it implies a rescuer thread and has to do extra work
-> to ensure that the jobs are run in sequential order.
+> The callbacks in net/sunrpc/svcsock.c are set up in svc_tcp_init() and
+> svc_udp_init(), which are both called from svc_setup_socket().
+> svc_setup_socket() is called (indirectly) from lockd, nfsd, and nfsv4
+> callback port related code.
 > 
-> If that serialization is not actually needed, then it's better to move
-> it to a multithreaded workqueue.
+> Maybe I'm wrong, but there might not be any kernel code that is using
+> the socket's wait queue in this case.
 
-We'd still be serializing a lot of the same code, just using locks
-instead, wouldn't we?
+As Trond points out there are probably waiters internal to the
+networking code.
 
 --b.
