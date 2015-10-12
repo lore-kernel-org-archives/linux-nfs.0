@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from [193.47.165.129] ([193.47.165.129]:35517 "EHLO mellanox.co.il"
+Received: from [193.47.165.129] ([193.47.165.129]:35501 "EHLO mellanox.co.il"
 	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1752470AbbJLPar (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	id S1752548AbbJLPar (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
 	Mon, 12 Oct 2015 11:30:47 -0400
 From: Sagi Grimberg <sagig@mellanox.com>
 To: linux-rdma@vger.kernel.org
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v4 20/26] IB/mlx4: Remove old FRWR API support
-Date: Mon, 12 Oct 2015 18:29:33 +0300
-Message-Id: <1444663779-1522-21-git-send-email-sagig@mellanox.com>
+Subject: [PATCH v4 23/26] iw_cxgb4: Remove old FRWR API
+Date: Mon, 12 Oct 2015 18:29:36 +0300
+Message-Id: <1444663779-1522-24-git-send-email-sagig@mellanox.com>
 In-Reply-To: <1444663779-1522-1-git-send-email-sagig@mellanox.com>
 References: <1444663779-1522-1-git-send-email-sagig@mellanox.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -19,195 +19,226 @@ No ULP uses it anymore, go ahead and remove it.
 Signed-off-by: Sagi Grimberg <sagig@mellanox.com>
 Acked-by: Christoph Hellwig <hch@lst.de>
 ---
- drivers/infiniband/hw/mlx4/cq.c      |  3 +--
- drivers/infiniband/hw/mlx4/main.c    |  2 --
- drivers/infiniband/hw/mlx4/mlx4_ib.h | 15 -----------
- drivers/infiniband/hw/mlx4/mr.c      | 48 ------------------------------------
- drivers/infiniband/hw/mlx4/qp.c      | 31 -----------------------
- 5 files changed, 1 insertion(+), 98 deletions(-)
+ drivers/infiniband/hw/cxgb4/cq.c       |  2 +-
+ drivers/infiniband/hw/cxgb4/iw_cxgb4.h | 18 --------
+ drivers/infiniband/hw/cxgb4/mem.c      | 45 --------------------
+ drivers/infiniband/hw/cxgb4/provider.c |  2 -
+ drivers/infiniband/hw/cxgb4/qp.c       | 77 ----------------------------------
+ 5 files changed, 1 insertion(+), 143 deletions(-)
 
-diff --git a/drivers/infiniband/hw/mlx4/cq.c b/drivers/infiniband/hw/mlx4/cq.c
-index 2ea4125b7903..b88fc8f5ab18 100644
---- a/drivers/infiniband/hw/mlx4/cq.c
-+++ b/drivers/infiniband/hw/mlx4/cq.c
-@@ -818,8 +818,7 @@ repoll:
- 			wc->opcode    = IB_WC_LSO;
+diff --git a/drivers/infiniband/hw/cxgb4/cq.c b/drivers/infiniband/hw/cxgb4/cq.c
+index 92d518382a9f..de9cd6901752 100644
+--- a/drivers/infiniband/hw/cxgb4/cq.c
++++ b/drivers/infiniband/hw/cxgb4/cq.c
+@@ -752,7 +752,7 @@ static int c4iw_poll_cq_one(struct c4iw_cq *chp, struct ib_wc *wc)
+ 			wc->opcode = IB_WC_LOCAL_INV;
  			break;
- 		case MLX4_OPCODE_FMR:
--			wc->opcode    = IB_WC_FAST_REG_MR;
--			/* TODO: wc->opcode    = IB_WC_REG_MR; */
-+			wc->opcode    = IB_WC_REG_MR;
+ 		case FW_RI_FAST_REGISTER:
+-			wc->opcode = IB_WC_FAST_REG_MR;
++			wc->opcode = IB_WC_REG_MR;
  			break;
- 		case MLX4_OPCODE_LOCAL_INVAL:
- 			wc->opcode    = IB_WC_LOCAL_INV;
-diff --git a/drivers/infiniband/hw/mlx4/main.c b/drivers/infiniband/hw/mlx4/main.c
-index 19191ac0783c..0d7698e11329 100644
---- a/drivers/infiniband/hw/mlx4/main.c
-+++ b/drivers/infiniband/hw/mlx4/main.c
-@@ -2250,8 +2250,6 @@ static void *mlx4_ib_add(struct mlx4_dev *dev)
- 	ibdev->ib_dev.dereg_mr		= mlx4_ib_dereg_mr;
- 	ibdev->ib_dev.alloc_mr		= mlx4_ib_alloc_mr;
- 	ibdev->ib_dev.map_mr_sg		= mlx4_ib_map_mr_sg;
--	ibdev->ib_dev.alloc_fast_reg_page_list = mlx4_ib_alloc_fast_reg_page_list;
--	ibdev->ib_dev.free_fast_reg_page_list  = mlx4_ib_free_fast_reg_page_list;
- 	ibdev->ib_dev.attach_mcast	= mlx4_ib_mcg_attach;
- 	ibdev->ib_dev.detach_mcast	= mlx4_ib_mcg_detach;
- 	ibdev->ib_dev.process_mad	= mlx4_ib_process_mad;
-diff --git a/drivers/infiniband/hw/mlx4/mlx4_ib.h b/drivers/infiniband/hw/mlx4/mlx4_ib.h
-index d6214577ecf8..4c6924791771 100644
---- a/drivers/infiniband/hw/mlx4/mlx4_ib.h
-+++ b/drivers/infiniband/hw/mlx4/mlx4_ib.h
-@@ -147,12 +147,6 @@ struct mlx4_ib_mw {
- 	struct mlx4_mw		mmw;
- };
+ 		default:
+ 			printk(KERN_ERR MOD "Unexpected opcode %d "
+diff --git a/drivers/infiniband/hw/cxgb4/iw_cxgb4.h b/drivers/infiniband/hw/cxgb4/iw_cxgb4.h
+index 032f90aa8ac9..699c52b875b1 100644
+--- a/drivers/infiniband/hw/cxgb4/iw_cxgb4.h
++++ b/drivers/infiniband/hw/cxgb4/iw_cxgb4.h
+@@ -409,20 +409,6 @@ static inline struct c4iw_mw *to_c4iw_mw(struct ib_mw *ibmw)
+ 	return container_of(ibmw, struct c4iw_mw, ibmw);
+ }
  
--struct mlx4_ib_fast_reg_page_list {
--	struct ib_fast_reg_page_list	ibfrpl;
--	__be64			       *mapped_page_list;
--	dma_addr_t			map;
+-struct c4iw_fr_page_list {
+-	struct ib_fast_reg_page_list ibpl;
+-	DEFINE_DMA_UNMAP_ADDR(mapping);
+-	dma_addr_t dma_addr;
+-	struct c4iw_dev *dev;
+-	int pll_len;
 -};
 -
- struct mlx4_ib_fmr {
- 	struct ib_fmr           ibfmr;
- 	struct mlx4_fmr         mfmr;
-@@ -645,11 +639,6 @@ static inline struct mlx4_ib_mw *to_mmw(struct ib_mw *ibmw)
- 	return container_of(ibmw, struct mlx4_ib_mw, ibmw);
- }
- 
--static inline struct mlx4_ib_fast_reg_page_list *to_mfrpl(struct ib_fast_reg_page_list *ibfrpl)
+-static inline struct c4iw_fr_page_list *to_c4iw_fr_page_list(
+-					struct ib_fast_reg_page_list *ibpl)
 -{
--	return container_of(ibfrpl, struct mlx4_ib_fast_reg_page_list, ibfrpl);
+-	return container_of(ibpl, struct c4iw_fr_page_list, ibpl);
 -}
 -
- static inline struct mlx4_ib_fmr *to_mfmr(struct ib_fmr *ibfmr)
- {
- 	return container_of(ibfmr, struct mlx4_ib_fmr, ibfmr);
-@@ -716,10 +705,6 @@ struct ib_mr *mlx4_ib_alloc_mr(struct ib_pd *pd,
- int mlx4_ib_map_mr_sg(struct ib_mr *ibmr,
- 		      struct scatterlist *sg,
- 		      unsigned int sg_nents);
--struct ib_fast_reg_page_list *mlx4_ib_alloc_fast_reg_page_list(struct ib_device *ibdev,
--							       int page_list_len);
--void mlx4_ib_free_fast_reg_page_list(struct ib_fast_reg_page_list *page_list);
--
- int mlx4_ib_modify_cq(struct ib_cq *cq, u16 cq_count, u16 cq_period);
- int mlx4_ib_resize_cq(struct ib_cq *ibcq, int entries, struct ib_udata *udata);
- struct ib_cq *mlx4_ib_create_cq(struct ib_device *ibdev,
-diff --git a/drivers/infiniband/hw/mlx4/mr.c b/drivers/infiniband/hw/mlx4/mr.c
-index 96fc7ed99fb8..33f7ffac7b19 100644
---- a/drivers/infiniband/hw/mlx4/mr.c
-+++ b/drivers/infiniband/hw/mlx4/mr.c
-@@ -443,54 +443,6 @@ err_free:
- 	return ERR_PTR(err);
+ struct c4iw_cq {
+ 	struct ib_cq ibcq;
+ 	struct c4iw_dev *rhp;
+@@ -970,10 +956,6 @@ int c4iw_accept_cr(struct iw_cm_id *cm_id, struct iw_cm_conn_param *conn_param);
+ int c4iw_reject_cr(struct iw_cm_id *cm_id, const void *pdata, u8 pdata_len);
+ void c4iw_qp_add_ref(struct ib_qp *qp);
+ void c4iw_qp_rem_ref(struct ib_qp *qp);
+-void c4iw_free_fastreg_pbl(struct ib_fast_reg_page_list *page_list);
+-struct ib_fast_reg_page_list *c4iw_alloc_fastreg_pbl(
+-					struct ib_device *device,
+-					int page_list_len);
+ struct ib_mr *c4iw_alloc_mr(struct ib_pd *pd,
+ 			    enum ib_mr_type mr_type,
+ 			    u32 max_num_sg);
+diff --git a/drivers/infiniband/hw/cxgb4/mem.c b/drivers/infiniband/hw/cxgb4/mem.c
+index 86ec65721797..ada42ed425a0 100644
+--- a/drivers/infiniband/hw/cxgb4/mem.c
++++ b/drivers/infiniband/hw/cxgb4/mem.c
+@@ -945,51 +945,6 @@ int c4iw_map_mr_sg(struct ib_mr *ibmr,
+ 	return ib_sg_to_pages(ibmr, sg, sg_nents, c4iw_set_page);
  }
  
--struct ib_fast_reg_page_list *mlx4_ib_alloc_fast_reg_page_list(struct ib_device *ibdev,
--							       int page_list_len)
+-struct ib_fast_reg_page_list *c4iw_alloc_fastreg_pbl(struct ib_device *device,
+-						     int page_list_len)
 -{
--	struct mlx4_ib_dev *dev = to_mdev(ibdev);
--	struct mlx4_ib_fast_reg_page_list *mfrpl;
--	int size = page_list_len * sizeof (u64);
+-	struct c4iw_fr_page_list *c4pl;
+-	struct c4iw_dev *dev = to_c4iw_dev(device);
+-	dma_addr_t dma_addr;
+-	int pll_len = roundup(page_list_len * sizeof(u64), 32);
 -
--	if (page_list_len > MLX4_MAX_FAST_REG_PAGES)
--		return ERR_PTR(-EINVAL);
--
--	mfrpl = kmalloc(sizeof *mfrpl, GFP_KERNEL);
--	if (!mfrpl)
+-	c4pl = kmalloc(sizeof(*c4pl), GFP_KERNEL);
+-	if (!c4pl)
 -		return ERR_PTR(-ENOMEM);
 -
--	mfrpl->ibfrpl.page_list = kmalloc(size, GFP_KERNEL);
--	if (!mfrpl->ibfrpl.page_list)
--		goto err_free;
+-	c4pl->ibpl.page_list = dma_alloc_coherent(&dev->rdev.lldi.pdev->dev,
+-						  pll_len, &dma_addr,
+-						  GFP_KERNEL);
+-	if (!c4pl->ibpl.page_list) {
+-		kfree(c4pl);
+-		return ERR_PTR(-ENOMEM);
+-	}
+-	dma_unmap_addr_set(c4pl, mapping, dma_addr);
+-	c4pl->dma_addr = dma_addr;
+-	c4pl->dev = dev;
+-	c4pl->pll_len = pll_len;
 -
--	mfrpl->mapped_page_list = dma_alloc_coherent(&dev->dev->persist->
--						     pdev->dev,
--						     size, &mfrpl->map,
--						     GFP_KERNEL);
--	if (!mfrpl->mapped_page_list)
--		goto err_free;
+-	PDBG("%s c4pl %p pll_len %u page_list %p dma_addr %pad\n",
+-	     __func__, c4pl, c4pl->pll_len, c4pl->ibpl.page_list,
+-	     &c4pl->dma_addr);
 -
--	WARN_ON(mfrpl->map & 0x3f);
--
--	return &mfrpl->ibfrpl;
--
--err_free:
--	kfree(mfrpl->ibfrpl.page_list);
--	kfree(mfrpl);
--	return ERR_PTR(-ENOMEM);
+-	return &c4pl->ibpl;
 -}
 -
--void mlx4_ib_free_fast_reg_page_list(struct ib_fast_reg_page_list *page_list)
+-void c4iw_free_fastreg_pbl(struct ib_fast_reg_page_list *ibpl)
 -{
--	struct mlx4_ib_dev *dev = to_mdev(page_list->device);
--	struct mlx4_ib_fast_reg_page_list *mfrpl = to_mfrpl(page_list);
--	int size = page_list->max_page_list_len * sizeof (u64);
+-	struct c4iw_fr_page_list *c4pl = to_c4iw_fr_page_list(ibpl);
 -
--	dma_free_coherent(&dev->dev->persist->pdev->dev, size,
--			  mfrpl->mapped_page_list,
--			  mfrpl->map);
--	kfree(mfrpl->ibfrpl.page_list);
--	kfree(mfrpl);
+-	PDBG("%s c4pl %p pll_len %u page_list %p dma_addr %pad\n",
+-	     __func__, c4pl, c4pl->pll_len, c4pl->ibpl.page_list,
+-	     &c4pl->dma_addr);
+-
+-	dma_free_coherent(&c4pl->dev->rdev.lldi.pdev->dev,
+-			  c4pl->pll_len,
+-			  c4pl->ibpl.page_list, dma_unmap_addr(c4pl, mapping));
+-	kfree(c4pl);
 -}
 -
- struct ib_fmr *mlx4_ib_fmr_alloc(struct ib_pd *pd, int acc,
- 				 struct ib_fmr_attr *fmr_attr)
+ int c4iw_dereg_mr(struct ib_mr *ib_mr)
  {
-diff --git a/drivers/infiniband/hw/mlx4/qp.c b/drivers/infiniband/hw/mlx4/qp.c
-index 850d4e9c13c5..b88a2b78ee88 100644
---- a/drivers/infiniband/hw/mlx4/qp.c
-+++ b/drivers/infiniband/hw/mlx4/qp.c
-@@ -111,7 +111,6 @@ static const __be32 mlx4_ib_opcode[] = {
- 	[IB_WR_ATOMIC_FETCH_AND_ADD]		= cpu_to_be32(MLX4_OPCODE_ATOMIC_FA),
- 	[IB_WR_SEND_WITH_INV]			= cpu_to_be32(MLX4_OPCODE_SEND_INVAL),
- 	[IB_WR_LOCAL_INV]			= cpu_to_be32(MLX4_OPCODE_LOCAL_INVAL),
--	[IB_WR_FAST_REG_MR]			= cpu_to_be32(MLX4_OPCODE_FMR),
- 	[IB_WR_REG_MR]				= cpu_to_be32(MLX4_OPCODE_FMR),
- 	[IB_WR_MASKED_ATOMIC_CMP_AND_SWP]	= cpu_to_be32(MLX4_OPCODE_MASKED_ATOMIC_CS),
- 	[IB_WR_MASKED_ATOMIC_FETCH_AND_ADD]	= cpu_to_be32(MLX4_OPCODE_MASKED_ATOMIC_FA),
-@@ -2422,28 +2421,6 @@ static void set_reg_seg(struct mlx4_wqe_fmr_seg *fseg,
- 	fseg->reserved[1]	= 0;
+ 	struct c4iw_dev *rhp;
+diff --git a/drivers/infiniband/hw/cxgb4/provider.c b/drivers/infiniband/hw/cxgb4/provider.c
+index 55dedadcffaa..8f115b405d76 100644
+--- a/drivers/infiniband/hw/cxgb4/provider.c
++++ b/drivers/infiniband/hw/cxgb4/provider.c
+@@ -558,8 +558,6 @@ int c4iw_register_device(struct c4iw_dev *dev)
+ 	dev->ibdev.dealloc_mw = c4iw_dealloc_mw;
+ 	dev->ibdev.alloc_mr = c4iw_alloc_mr;
+ 	dev->ibdev.map_mr_sg = c4iw_map_mr_sg;
+-	dev->ibdev.alloc_fast_reg_page_list = c4iw_alloc_fastreg_pbl;
+-	dev->ibdev.free_fast_reg_page_list = c4iw_free_fastreg_pbl;
+ 	dev->ibdev.attach_mcast = c4iw_multicast_attach;
+ 	dev->ibdev.detach_mcast = c4iw_multicast_detach;
+ 	dev->ibdev.process_mad = c4iw_process_mad;
+diff --git a/drivers/infiniband/hw/cxgb4/qp.c b/drivers/infiniband/hw/cxgb4/qp.c
+index 12a23bc935f3..c7d05a933e2d 100644
+--- a/drivers/infiniband/hw/cxgb4/qp.c
++++ b/drivers/infiniband/hw/cxgb4/qp.c
+@@ -670,75 +670,6 @@ static int build_memreg(struct t4_sq *sq, union t4_wr *wqe,
+ 	return 0;
  }
  
--static void set_fmr_seg(struct mlx4_wqe_fmr_seg *fseg,
--		struct ib_fast_reg_wr *wr)
+-static int build_fastreg(struct t4_sq *sq, union t4_wr *wqe,
+-			 struct ib_send_wr *send_wr, u8 *len16, u8 t5dev)
 -{
--	struct mlx4_ib_fast_reg_page_list *mfrpl = to_mfrpl(wr->page_list);
+-	struct ib_fast_reg_wr *wr = fast_reg_wr(send_wr);
+-
+-	struct fw_ri_immd *imdp;
+-	__be64 *p;
 -	int i;
+-	int pbllen = roundup(wr->page_list_len * sizeof(u64), 32);
+-	int rem;
 -
--	for (i = 0; i < wr->page_list_len; ++i)
--		mfrpl->mapped_page_list[i] =
--			cpu_to_be64(wr->page_list->page_list[i] |
--				    MLX4_MTT_FLAG_PRESENT);
+-	if (wr->page_list_len > t4_max_fr_depth(use_dsgl))
+-		return -EINVAL;
 -
--	fseg->flags		= convert_access(wr->access_flags);
--	fseg->mem_key		= cpu_to_be32(wr->rkey);
--	fseg->buf_list		= cpu_to_be64(mfrpl->map);
--	fseg->start_addr	= cpu_to_be64(wr->iova_start);
--	fseg->reg_len		= cpu_to_be64(wr->length);
--	fseg->offset		= 0; /* XXX -- is this just for ZBVA? */
--	fseg->page_size		= cpu_to_be32(wr->page_shift);
--	fseg->reserved[0]	= 0;
--	fseg->reserved[1]	= 0;
+-	wqe->fr.qpbinde_to_dcacpu = 0;
+-	wqe->fr.pgsz_shift = wr->page_shift - 12;
+-	wqe->fr.addr_type = FW_RI_VA_BASED_TO;
+-	wqe->fr.mem_perms = c4iw_ib_to_tpt_access(wr->access_flags);
+-	wqe->fr.len_hi = 0;
+-	wqe->fr.len_lo = cpu_to_be32(wr->length);
+-	wqe->fr.stag = cpu_to_be32(wr->rkey);
+-	wqe->fr.va_hi = cpu_to_be32(wr->iova_start >> 32);
+-	wqe->fr.va_lo_fbo = cpu_to_be32(wr->iova_start & 0xffffffff);
+-
+-	if (t5dev && use_dsgl && (pbllen > max_fr_immd)) {
+-		struct c4iw_fr_page_list *c4pl =
+-			to_c4iw_fr_page_list(wr->page_list);
+-		struct fw_ri_dsgl *sglp;
+-
+-		for (i = 0; i < wr->page_list_len; i++) {
+-			wr->page_list->page_list[i] = (__force u64)
+-				cpu_to_be64((u64)wr->page_list->page_list[i]);
+-		}
+-
+-		sglp = (struct fw_ri_dsgl *)(&wqe->fr + 1);
+-		sglp->op = FW_RI_DATA_DSGL;
+-		sglp->r1 = 0;
+-		sglp->nsge = cpu_to_be16(1);
+-		sglp->addr0 = cpu_to_be64(c4pl->dma_addr);
+-		sglp->len0 = cpu_to_be32(pbllen);
+-
+-		*len16 = DIV_ROUND_UP(sizeof(wqe->fr) + sizeof(*sglp), 16);
+-	} else {
+-		imdp = (struct fw_ri_immd *)(&wqe->fr + 1);
+-		imdp->op = FW_RI_DATA_IMMD;
+-		imdp->r1 = 0;
+-		imdp->r2 = 0;
+-		imdp->immdlen = cpu_to_be32(pbllen);
+-		p = (__be64 *)(imdp + 1);
+-		rem = pbllen;
+-		for (i = 0; i < wr->page_list_len; i++) {
+-			*p = cpu_to_be64((u64)wr->page_list->page_list[i]);
+-			rem -= sizeof(*p);
+-			if (++p == (__be64 *)&sq->queue[sq->size])
+-				p = (__be64 *)sq->queue;
+-		}
+-		BUG_ON(rem < 0);
+-		while (rem) {
+-			*p = 0;
+-			rem -= sizeof(*p);
+-			if (++p == (__be64 *)&sq->queue[sq->size])
+-				p = (__be64 *)sq->queue;
+-		}
+-		*len16 = DIV_ROUND_UP(sizeof(wqe->fr) + sizeof(*imdp)
+-				      + pbllen, 16);
+-	}
+-	return 0;
 -}
 -
- static void set_bind_seg(struct mlx4_wqe_bind_seg *bseg,
- 		struct ib_bind_mw_wr *wr)
+ static int build_inv_stag(union t4_wr *wqe, struct ib_send_wr *wr,
+ 			  u8 *len16)
  {
-@@ -2775,14 +2752,6 @@ int mlx4_ib_post_send(struct ib_qp *ibqp, struct ib_send_wr *wr,
- 				size += sizeof (struct mlx4_wqe_local_inval_seg) / 16;
- 				break;
- 
--			case IB_WR_FAST_REG_MR:
--				ctrl->srcrb_flags |=
--					cpu_to_be32(MLX4_WQE_CTRL_STRONG_ORDER);
--				set_fmr_seg(wqe, fast_reg_wr(wr));
--				wqe  += sizeof (struct mlx4_wqe_fmr_seg);
--				size += sizeof (struct mlx4_wqe_fmr_seg) / 16;
--				break;
--
- 			case IB_WR_REG_MR:
- 				ctrl->srcrb_flags |=
- 					cpu_to_be32(MLX4_WQE_CTRL_STRONG_ORDER);
+@@ -875,14 +806,6 @@ int c4iw_post_send(struct ib_qp *ibqp, struct ib_send_wr *wr,
+ 			if (!qhp->wq.sq.oldest_read)
+ 				qhp->wq.sq.oldest_read = swsqe;
+ 			break;
+-		case IB_WR_FAST_REG_MR:
+-			fw_opcode = FW_RI_FR_NSMR_WR;
+-			swsqe->opcode = FW_RI_FAST_REGISTER;
+-			err = build_fastreg(&qhp->wq.sq, wqe, wr, &len16,
+-					    is_t5(
+-					    qhp->rhp->rdev.lldi.adapter_type) ?
+-					    1 : 0);
+-			break;
+ 		case IB_WR_REG_MR:
+ 			fw_opcode = FW_RI_FR_NSMR_WR;
+ 			swsqe->opcode = FW_RI_FAST_REGISTER;
 -- 
 1.8.4.3
 
