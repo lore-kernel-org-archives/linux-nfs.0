@@ -1,72 +1,81 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qg0-f44.google.com ([209.85.192.44]:35630 "EHLO
-	mail-qg0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751961AbbJLOxn (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Oct 2015 10:53:43 -0400
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH] svcrdma: Fix NFS server crash triggered by 1MB NFS WRITE
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Date: Mon, 12 Oct 2015 10:53:39 -0400
-Message-ID: <20151012145257.3981.13852.stgit@oracle-120.nfsv4bat.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from [193.47.165.129] ([193.47.165.129]:35374 "EHLO mellanox.co.il"
+	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1751661AbbJLPaE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 12 Oct 2015 11:30:04 -0400
+From: Sagi Grimberg <sagig@mellanox.com>
+To: linux-rdma@vger.kernel.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v4 02/26] IB/mlx5: Remove dead fmr code
+Date: Mon, 12 Oct 2015 18:29:15 +0300
+Message-Id: <1444663779-1522-3-git-send-email-sagig@mellanox.com>
+In-Reply-To: <1444663779-1522-1-git-send-email-sagig@mellanox.com>
+References: <1444663779-1522-1-git-send-email-sagig@mellanox.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Now that the NFS server advertises a maximum payload size of 1MB
-for RPC/RDMA again, it crashes in svc_process_common() when NFS
-client sends a 1MB NFS WRITE on an NFS/RDMA mount.
+Just function declarations - no need for those
+laying arround. If for some reason someone will want
+FMR support in mlx5, it should be easy enough to restore
+a few structs.
 
-The server has set up a 259 element array of struct page pointers
-in rq_pages[] for each incoming request. The last element of the
-array is NULL.
-
-When an incoming request has been completely received,
-rdma_read_complete() attempts to set the starting page of the
-incoming page vector:
-
-  rqstp->rq_arg.pages = &rqstp->rq_pages[head->hdr_count];
-
-and the page to use for the reply:
-
-  rqstp->rq_respages = &rqstp->rq_arg.pages[page_no];
-
-But the value of page_no has already accounted for head->hdr_count.
-Thus rq_respages now points past the end of the incoming pages.
-
-For NFS WRITE operations smaller than the maximum, this is harmless.
-But when the NFS WRITE operation is as large as the server's max
-payload size, rq_respages now points at the last entry in rq_pages,
-which is NULL.
-
-Fixes: cc9a903d915c ('svcrdma: Change maximum server payload . . .')
-BugLink: https://bugzilla.linux-nfs.org/show_bug.cgi?id=270
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Reviewed-by: Sagi Grimberg <sagig@dev.mellanox.co.il>
-Reviewed-by: Steve Wise <swise@opengridcomputing.com>
-Reviewed-by: Shirley Ma <shirley.ma@oracle.com>
+Signed-off-by: Sagi Grimberg <sagig@mellanox.com>
+Reviewed-by: Bart Van Assche <bart.vanassche@sandisk.com>
+Acked-by: Christoph Hellwig <hch@lst.de>
 ---
+ drivers/infiniband/hw/mlx5/mlx5_ib.h | 25 -------------------------
+ 1 file changed, 25 deletions(-)
 
-Hi Bruce-
-
-This is a regression in 4.3. Can you send this to Linus?
-
-
- net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
-
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-index cb51742..37b4341 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-@@ -531,7 +531,7 @@ static int rdma_read_complete(struct svc_rqst *rqstp,
- 	rqstp->rq_arg.page_base = head->arg.page_base;
+diff --git a/drivers/infiniband/hw/mlx5/mlx5_ib.h b/drivers/infiniband/hw/mlx5/mlx5_ib.h
+index 29f3ecdbe790..f789a3e6c215 100644
+--- a/drivers/infiniband/hw/mlx5/mlx5_ib.h
++++ b/drivers/infiniband/hw/mlx5/mlx5_ib.h
+@@ -364,20 +364,6 @@ enum {
+ 	MLX5_FMR_BUSY,
+ };
  
- 	/* rq_respages starts after the last arg page */
--	rqstp->rq_respages = &rqstp->rq_arg.pages[page_no];
-+	rqstp->rq_respages = &rqstp->rq_pages[page_no];
- 	rqstp->rq_next_page = rqstp->rq_respages + 1;
+-struct mlx5_ib_fmr {
+-	struct ib_fmr			ibfmr;
+-	struct mlx5_core_mr		mr;
+-	int				access_flags;
+-	int				state;
+-	/* protect fmr state
+-	 */
+-	spinlock_t			lock;
+-	u64				wrid;
+-	struct ib_send_wr		wr[2];
+-	u8				page_shift;
+-	struct ib_fast_reg_page_list	page_list;
+-};
+-
+ struct mlx5_cache_ent {
+ 	struct list_head	head;
+ 	/* sync access to the cahce entry
+@@ -462,11 +448,6 @@ static inline struct mlx5_ib_dev *to_mdev(struct ib_device *ibdev)
+ 	return container_of(ibdev, struct mlx5_ib_dev, ib_dev);
+ }
  
- 	/* Rebuild rq_arg head and tail. */
+-static inline struct mlx5_ib_fmr *to_mfmr(struct ib_fmr *ibfmr)
+-{
+-	return container_of(ibfmr, struct mlx5_ib_fmr, ibfmr);
+-}
+-
+ static inline struct mlx5_ib_cq *to_mcq(struct ib_cq *ibcq)
+ {
+ 	return container_of(ibcq, struct mlx5_ib_cq, ibcq);
+@@ -582,12 +563,6 @@ struct ib_mr *mlx5_ib_alloc_mr(struct ib_pd *pd,
+ struct ib_fast_reg_page_list *mlx5_ib_alloc_fast_reg_page_list(struct ib_device *ibdev,
+ 							       int page_list_len);
+ void mlx5_ib_free_fast_reg_page_list(struct ib_fast_reg_page_list *page_list);
+-struct ib_fmr *mlx5_ib_fmr_alloc(struct ib_pd *pd, int acc,
+-				 struct ib_fmr_attr *fmr_attr);
+-int mlx5_ib_map_phys_fmr(struct ib_fmr *ibfmr, u64 *page_list,
+-		      int npages, u64 iova);
+-int mlx5_ib_unmap_fmr(struct list_head *fmr_list);
+-int mlx5_ib_fmr_dealloc(struct ib_fmr *ibfmr);
+ int mlx5_ib_process_mad(struct ib_device *ibdev, int mad_flags, u8 port_num,
+ 			const struct ib_wc *in_wc, const struct ib_grh *in_grh,
+ 			const struct ib_mad_hdr *in, size_t in_mad_size,
+-- 
+1.8.4.3
 
