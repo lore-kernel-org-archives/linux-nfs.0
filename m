@@ -1,54 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:46431 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:46466 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752103AbbJLSLR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 12 Oct 2015 14:11:17 -0400
-Date: Mon, 12 Oct 2015 14:11:17 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@poochiereds.net>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsd: use a multithreaded workqueue for nfsd4_callbacks
-Message-ID: <20151012181117.GF28755@fieldses.org>
-References: <1443875882-12089-1-git-send-email-jeff.layton@primarydata.com>
- <20151009212459.GF8188@fieldses.org>
- <20151009173923.1ca297a4@synchrony.poochiereds.net>
+	id S1752513AbbJLTZj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 12 Oct 2015 15:25:39 -0400
+Date: Mon, 12 Oct 2015 15:25:38 -0400
+To: Nick Bowler <nbowler@draconx.ca>
+Cc: linux-nfs@vger.kernel.org, jlayton@poochiereds.net
+Subject: Re: PROBLEM: nfs I/O errors with sqlite applications
+Message-ID: <20151012192538.GG28755@fieldses.org>
+References: <20151012164846.GA5017@draconx.ca>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20151009173923.1ca297a4@synchrony.poochiereds.net>
+In-Reply-To: <20151012164846.GA5017@draconx.ca>
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Oct 09, 2015 at 05:39:23PM -0400, Jeff Layton wrote:
-> On Fri, 9 Oct 2015 17:24:59 -0400
-> "J. Bruce Fields" <bfields@fieldses.org> wrote:
+On Mon, Oct 12, 2015 at 12:48:56PM -0400, Nick Bowler wrote:
+> Hi,
 > 
-> > On Sat, Oct 03, 2015 at 08:38:02AM -0400, Jeff Layton wrote:
-> > > I don't see any need to order callbacks with respect to one another.
-> > 
-> > I thought the code in nfsd4_process_cb_update really depended on this.
-> > The locking it has is against nfsd threads, it probably assumes it's
-> > only run from a cb thread and that it's the only one running at a time.
-> > 
-> > But I haven't reviewed it lately.
-> > 
-> > --b.
-> > 
+> I'm having a problem where, eventually, the nfs-mounted home directory
+> on one of my machines starts failing in a kind of weird way.  The issue
+> appears to affect only sqlite; I have two applications that I know of
+> which use it:
 > 
-> Yikes -- ok. That's not at all obvious. That should prob be documented
-> if so.
-
-Yes, my bad.
-
-> Yeah, ok...I guess you could end up with multiple threads racing to
-> tear down the cb_client and xprt and create a new one, and it looks
-> like the cl_cb_client and cl_cred pointers could get clobbered by new
-> ones in that case.
+>   - Firefox, where the symptom is that the browser just hangs randomly,
+>   - gmpc, which crashes immediately on startup with I/O error.
 > 
-> Shouldn't be too hard to fix protecting those pointers with the
-> cl_lock. That said, I prob won't be able to spend time on it right now.
-> You can go ahead and drop that patch and I'll resend if/when I get
-> around to fixing that.
+> Once the issue occurs these applications remain permanently broken.
+> Since the latter is easier to test, I can run it in strace, and the
+> failing syscall seems to be:
+> 
+>   fcntl(7, F_SETLK, {type=F_RDLCK, whence=SEEK_SET, start=1073741824, len=1}) = -1 EIO (Input/output error)
+> 
+> When the issue occurs, the client dmesg log is full of messages of the form:
+> 
+>   [3441972.381211] NFS: v4 server returned a bad sequence-id error on an unconfirmed sequence ffff88007612ae20!
+> 
+> There are no unusual messages on the server.
+> 
+> Rebooting the client corrects the issue in the short term, but it seems
+> to re-occur after about 1 month of uptime.  This makes it difficult to
+> test anything.  So right now I have left the client in the broken state
+> in case there's something else I can try.
+> 
+> The client is running Linux 4.2, with approx. 38 days uptime.  The
+> server is running Linux 4.1.4, with 62 days uptime.
+> 
+> Let me know if you need any more info.
 
-What's the problem that this fixes exactly?
+That does sound like a pain to debug.
+
+I don't *think* this could be explained by the problem Jeff's seqid
+locking patches fixed, but maybe I'm wrong; cc'ing him to confirm.
+
+I wonder if there's some way to make this reproduce more quickly, for
+example by running something that makes more aggressive use of sqlite,
+or running multiple copies of such a thing simultaneously.  Might be
+interesting to know what the pattern of file opens and locking looks
+like (so stracing one of those applications might help).
 
 --b.
