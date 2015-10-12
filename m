@@ -1,72 +1,59 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f170.google.com ([209.85.220.170]:35422 "EHLO
-	mail-qk0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751527AbbJLUOZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Oct 2015 16:14:25 -0400
-Received: by qkap81 with SMTP id p81so62395582qka.2
-        for <linux-nfs@vger.kernel.org>; Mon, 12 Oct 2015 13:14:24 -0700 (PDT)
-Date: Mon, 12 Oct 2015 16:14:21 -0400
-From: Jeff Layton <jlayton@poochiereds.net>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsd: use a multithreaded workqueue for nfsd4_callbacks
-Message-ID: <20151012161421.1468a79b@synchrony.poochiereds.net>
-In-Reply-To: <20151012181117.GF28755@fieldses.org>
-References: <1443875882-12089-1-git-send-email-jeff.layton@primarydata.com>
-	<20151009212459.GF8188@fieldses.org>
-	<20151009173923.1ca297a4@synchrony.poochiereds.net>
-	<20151012181117.GF28755@fieldses.org>
+Received: from fieldses.org ([173.255.197.46]:46494 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751861AbbJLUSR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 12 Oct 2015 16:18:17 -0400
+Date: Mon, 12 Oct 2015 16:18:15 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Christoph Hellwig <hch@lst.de>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Stable Tree Mailing List <stable@vger.kernel.org>
+Subject: Re: [PATCH] nfsd/blocklayout: accept any minlength
+Message-ID: <20151012201815.GK28755@fieldses.org>
+References: <1444395806-32111-1-git-send-email-hch@lst.de>
+ <20151009152803.GC6825@fieldses.org>
+ <20151009170400.GA7482@lst.de>
+ <20151009174556.GA8188@fieldses.org>
+ <CAHQdGtQN15nChCy8mzrDBdaU+RTTCvqaSbH1D=e56c2B_+5KiA@mail.gmail.com>
+ <20151009200438.GB8188@fieldses.org>
+ <20151011130821.GC3726@lst.de>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20151011130821.GC3726@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 12 Oct 2015 14:11:17 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
-
-> On Fri, Oct 09, 2015 at 05:39:23PM -0400, Jeff Layton wrote:
-> > On Fri, 9 Oct 2015 17:24:59 -0400
-> > "J. Bruce Fields" <bfields@fieldses.org> wrote:
+On Sun, Oct 11, 2015 at 03:08:22PM +0200, Christoph Hellwig wrote:
+> On Fri, Oct 09, 2015 at 04:04:38PM -0400, J. Bruce Fields wrote:
+> > I had some ideas that layouts were something a server could decline just
+> > on random whim.  Rereading that section.... OK, looks like I was
+> > confused, TRYLATER is the closest we come to random whim.
 > > 
-> > > On Sat, Oct 03, 2015 at 08:38:02AM -0400, Jeff Layton wrote:
-> > > > I don't see any need to order callbacks with respect to one another.
-> > > 
-> > > I thought the code in nfsd4_process_cb_update really depended on this.
-> > > The locking it has is against nfsd threads, it probably assumes it's
-> > > only run from a cb thread and that it's the only one running at a time.
-> > > 
-> > > But I haven't reviewed it lately.
-> > > 
-> > > --b.
-> > > 
-> > 
-> > Yikes -- ok. That's not at all obvious. That should prob be documented
-> > if so.
+> > So the following condition on the alignments of the offset also looks
+> > wrong.  Christoph, should it be rounding the offset down instead of
+> > rejecting in that case?
 > 
-> Yes, my bad.
+> RFC5663 is very explicit about the extents being aligned, but doesn't
+> say anything about LAYOUTGET requests.  It's a bit of a gray area, but
+> I think not handing out a layout is still the best thing to do as a client
+> has to be really confused to ask for an unaligned layout and expect to get
+> an aligned extent back.
+
+http://tools.ietf.org/html/rfc5661#section-18.43.3 always allows a
+server to round down the offset, is there any downside to doing that?
+
+> I just need to check for the best possible error value.
+
+INVAL or BADLAYOUT, I guess.  But just rounding down seems harmless and
+compatible with the letter of the spec.
+
+Though without any reason or a client to request an unaligned offset I
+guess it's a bit academic.
+
+--b.
+
 > 
-> > Yeah, ok...I guess you could end up with multiple threads racing to
-> > tear down the cb_client and xprt and create a new one, and it looks
-> > like the cl_cb_client and cl_cred pointers could get clobbered by new
-> > ones in that case.
-> > 
-> > Shouldn't be too hard to fix protecting those pointers with the
-> > cl_lock. That said, I prob won't be able to spend time on it right now.
-> > You can go ahead and drop that patch and I'll resend if/when I get
-> > around to fixing that.
+> > And other layoutunavailable cases might need review too.
 > 
-> What's the problem that this fixes exactly?
-> 
-
-Unnecessary serialization of callbacks?
-
-Not that that's necessarily a problem, but with the newer workqueue
-implementation there is more overhead in running a single threaded
-workqueue since it implies a rescuer thread and has to do extra work
-to ensure that the jobs are run in sequential order.
-
-If that serialization is not actually needed, then it's better to move
-it to a multithreaded workqueue.
-
--- 
-Jeff Layton <jlayton@poochiereds.net>
+> Will do.
