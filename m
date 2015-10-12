@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from [193.47.165.129] ([193.47.165.129]:35538 "EHLO mellanox.co.il"
+Received: from [193.47.165.129] ([193.47.165.129]:35517 "EHLO mellanox.co.il"
 	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1752465AbbJLPay (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 12 Oct 2015 11:30:54 -0400
+	id S1752470AbbJLPar (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 12 Oct 2015 11:30:47 -0400
 From: Sagi Grimberg <sagig@mellanox.com>
 To: linux-rdma@vger.kernel.org
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v4 25/26] RDMA/nes: Remove old FRWR API
-Date: Mon, 12 Oct 2015 18:29:38 +0300
-Message-Id: <1444663779-1522-26-git-send-email-sagig@mellanox.com>
+Subject: [PATCH v4 20/26] IB/mlx4: Remove old FRWR API support
+Date: Mon, 12 Oct 2015 18:29:33 +0300
+Message-Id: <1444663779-1522-21-git-send-email-sagig@mellanox.com>
 In-Reply-To: <1444663779-1522-1-git-send-email-sagig@mellanox.com>
 References: <1444663779-1522-1-git-send-email-sagig@mellanox.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -19,221 +19,195 @@ No ULP uses it anymore, go ahead and remove it.
 Signed-off-by: Sagi Grimberg <sagig@mellanox.com>
 Acked-by: Christoph Hellwig <hch@lst.de>
 ---
- drivers/infiniband/hw/nes/nes_hw.h    |   6 --
- drivers/infiniband/hw/nes/nes_verbs.c | 162 +---------------------------------
- 2 files changed, 1 insertion(+), 167 deletions(-)
+ drivers/infiniband/hw/mlx4/cq.c      |  3 +--
+ drivers/infiniband/hw/mlx4/main.c    |  2 --
+ drivers/infiniband/hw/mlx4/mlx4_ib.h | 15 -----------
+ drivers/infiniband/hw/mlx4/mr.c      | 48 ------------------------------------
+ drivers/infiniband/hw/mlx4/qp.c      | 31 -----------------------
+ 5 files changed, 1 insertion(+), 98 deletions(-)
 
-diff --git a/drivers/infiniband/hw/nes/nes_hw.h b/drivers/infiniband/hw/nes/nes_hw.h
-index d748e4b31b8d..c9080208aad2 100644
---- a/drivers/infiniband/hw/nes/nes_hw.h
-+++ b/drivers/infiniband/hw/nes/nes_hw.h
-@@ -1200,12 +1200,6 @@ struct nes_fast_mr_wqe_pbl {
- 	dma_addr_t	paddr;
+diff --git a/drivers/infiniband/hw/mlx4/cq.c b/drivers/infiniband/hw/mlx4/cq.c
+index 2ea4125b7903..b88fc8f5ab18 100644
+--- a/drivers/infiniband/hw/mlx4/cq.c
++++ b/drivers/infiniband/hw/mlx4/cq.c
+@@ -818,8 +818,7 @@ repoll:
+ 			wc->opcode    = IB_WC_LSO;
+ 			break;
+ 		case MLX4_OPCODE_FMR:
+-			wc->opcode    = IB_WC_FAST_REG_MR;
+-			/* TODO: wc->opcode    = IB_WC_REG_MR; */
++			wc->opcode    = IB_WC_REG_MR;
+ 			break;
+ 		case MLX4_OPCODE_LOCAL_INVAL:
+ 			wc->opcode    = IB_WC_LOCAL_INV;
+diff --git a/drivers/infiniband/hw/mlx4/main.c b/drivers/infiniband/hw/mlx4/main.c
+index 19191ac0783c..0d7698e11329 100644
+--- a/drivers/infiniband/hw/mlx4/main.c
++++ b/drivers/infiniband/hw/mlx4/main.c
+@@ -2250,8 +2250,6 @@ static void *mlx4_ib_add(struct mlx4_dev *dev)
+ 	ibdev->ib_dev.dereg_mr		= mlx4_ib_dereg_mr;
+ 	ibdev->ib_dev.alloc_mr		= mlx4_ib_alloc_mr;
+ 	ibdev->ib_dev.map_mr_sg		= mlx4_ib_map_mr_sg;
+-	ibdev->ib_dev.alloc_fast_reg_page_list = mlx4_ib_alloc_fast_reg_page_list;
+-	ibdev->ib_dev.free_fast_reg_page_list  = mlx4_ib_free_fast_reg_page_list;
+ 	ibdev->ib_dev.attach_mcast	= mlx4_ib_mcg_attach;
+ 	ibdev->ib_dev.detach_mcast	= mlx4_ib_mcg_detach;
+ 	ibdev->ib_dev.process_mad	= mlx4_ib_process_mad;
+diff --git a/drivers/infiniband/hw/mlx4/mlx4_ib.h b/drivers/infiniband/hw/mlx4/mlx4_ib.h
+index d6214577ecf8..4c6924791771 100644
+--- a/drivers/infiniband/hw/mlx4/mlx4_ib.h
++++ b/drivers/infiniband/hw/mlx4/mlx4_ib.h
+@@ -147,12 +147,6 @@ struct mlx4_ib_mw {
+ 	struct mlx4_mw		mmw;
  };
  
--struct nes_ib_fast_reg_page_list {
+-struct mlx4_ib_fast_reg_page_list {
 -	struct ib_fast_reg_page_list	ibfrpl;
--	struct nes_fast_mr_wqe_pbl 	nes_wqe_pbl;
--	u64 				pbl;
+-	__be64			       *mapped_page_list;
+-	dma_addr_t			map;
 -};
 -
- struct nes_listener {
- 	struct work_struct      work;
- 	struct workqueue_struct *wq;
-diff --git a/drivers/infiniband/hw/nes/nes_verbs.c b/drivers/infiniband/hw/nes/nes_verbs.c
-index f5b0cc972403..c58091a6635f 100644
---- a/drivers/infiniband/hw/nes/nes_verbs.c
-+++ b/drivers/infiniband/hw/nes/nes_verbs.c
-@@ -486,76 +486,6 @@ static int nes_map_mr_sg(struct ib_mr *ibmr,
- 	return ib_sg_to_pages(ibmr, sg, sg_nents, nes_set_page);
+ struct mlx4_ib_fmr {
+ 	struct ib_fmr           ibfmr;
+ 	struct mlx4_fmr         mfmr;
+@@ -645,11 +639,6 @@ static inline struct mlx4_ib_mw *to_mmw(struct ib_mw *ibmw)
+ 	return container_of(ibmw, struct mlx4_ib_mw, ibmw);
  }
  
--/*
-- * nes_alloc_fast_reg_page_list
-- */
--static struct ib_fast_reg_page_list *nes_alloc_fast_reg_page_list(
--							struct ib_device *ibdev,
--							int page_list_len)
+-static inline struct mlx4_ib_fast_reg_page_list *to_mfrpl(struct ib_fast_reg_page_list *ibfrpl)
 -{
--	struct nes_vnic *nesvnic = to_nesvnic(ibdev);
--	struct nes_device *nesdev = nesvnic->nesdev;
--	struct ib_fast_reg_page_list *pifrpl;
--	struct nes_ib_fast_reg_page_list *pnesfrpl;
--
--	if (page_list_len > (NES_4K_PBL_CHUNK_SIZE / sizeof(u64)))
--		return ERR_PTR(-E2BIG);
--	/*
--	 * Allocate the ib_fast_reg_page_list structure, the
--	 * nes_fast_bpl structure, and the PLB table.
--	 */
--	pnesfrpl = kmalloc(sizeof(struct nes_ib_fast_reg_page_list) +
--			   page_list_len * sizeof(u64), GFP_KERNEL);
--
--	if (!pnesfrpl)
--		return ERR_PTR(-ENOMEM);
--
--	pifrpl = &pnesfrpl->ibfrpl;
--	pifrpl->page_list = &pnesfrpl->pbl;
--	pifrpl->max_page_list_len = page_list_len;
--	/*
--	 * Allocate the WQE PBL
--	 */
--	pnesfrpl->nes_wqe_pbl.kva = pci_alloc_consistent(nesdev->pcidev,
--							 page_list_len * sizeof(u64),
--							 &pnesfrpl->nes_wqe_pbl.paddr);
--
--	if (!pnesfrpl->nes_wqe_pbl.kva) {
--		kfree(pnesfrpl);
--		return ERR_PTR(-ENOMEM);
--	}
--	nes_debug(NES_DBG_MR, "nes_alloc_fast_reg_pbl: nes_frpl = %p, "
--		  "ibfrpl = %p, ibfrpl.page_list = %p, pbl.kva = %p, "
--		  "pbl.paddr = %llx\n", pnesfrpl, &pnesfrpl->ibfrpl,
--		  pnesfrpl->ibfrpl.page_list, pnesfrpl->nes_wqe_pbl.kva,
--		  (unsigned long long) pnesfrpl->nes_wqe_pbl.paddr);
--
--	return pifrpl;
+-	return container_of(ibfrpl, struct mlx4_ib_fast_reg_page_list, ibfrpl);
 -}
 -
--/*
-- * nes_free_fast_reg_page_list
-- */
--static void nes_free_fast_reg_page_list(struct ib_fast_reg_page_list *pifrpl)
--{
--	struct nes_vnic *nesvnic = to_nesvnic(pifrpl->device);
--	struct nes_device *nesdev = nesvnic->nesdev;
--	struct nes_ib_fast_reg_page_list *pnesfrpl;
+ static inline struct mlx4_ib_fmr *to_mfmr(struct ib_fmr *ibfmr)
+ {
+ 	return container_of(ibfmr, struct mlx4_ib_fmr, ibfmr);
+@@ -716,10 +705,6 @@ struct ib_mr *mlx4_ib_alloc_mr(struct ib_pd *pd,
+ int mlx4_ib_map_mr_sg(struct ib_mr *ibmr,
+ 		      struct scatterlist *sg,
+ 		      unsigned int sg_nents);
+-struct ib_fast_reg_page_list *mlx4_ib_alloc_fast_reg_page_list(struct ib_device *ibdev,
+-							       int page_list_len);
+-void mlx4_ib_free_fast_reg_page_list(struct ib_fast_reg_page_list *page_list);
 -
--	pnesfrpl = container_of(pifrpl, struct nes_ib_fast_reg_page_list, ibfrpl);
--	/*
--	 * Free the WQE PBL.
--	 */
--	pci_free_consistent(nesdev->pcidev,
--			    pifrpl->max_page_list_len * sizeof(u64),
--			    pnesfrpl->nes_wqe_pbl.kva,
--			    pnesfrpl->nes_wqe_pbl.paddr);
--	/*
--	 * Free the PBL structure
--	 */
--	kfree(pnesfrpl);
+ int mlx4_ib_modify_cq(struct ib_cq *cq, u16 cq_count, u16 cq_period);
+ int mlx4_ib_resize_cq(struct ib_cq *ibcq, int entries, struct ib_udata *udata);
+ struct ib_cq *mlx4_ib_create_cq(struct ib_device *ibdev,
+diff --git a/drivers/infiniband/hw/mlx4/mr.c b/drivers/infiniband/hw/mlx4/mr.c
+index 96fc7ed99fb8..33f7ffac7b19 100644
+--- a/drivers/infiniband/hw/mlx4/mr.c
++++ b/drivers/infiniband/hw/mlx4/mr.c
+@@ -443,54 +443,6 @@ err_free:
+ 	return ERR_PTR(err);
+ }
+ 
+-struct ib_fast_reg_page_list *mlx4_ib_alloc_fast_reg_page_list(struct ib_device *ibdev,
+-							       int page_list_len)
+-{
+-	struct mlx4_ib_dev *dev = to_mdev(ibdev);
+-	struct mlx4_ib_fast_reg_page_list *mfrpl;
+-	int size = page_list_len * sizeof (u64);
+-
+-	if (page_list_len > MLX4_MAX_FAST_REG_PAGES)
+-		return ERR_PTR(-EINVAL);
+-
+-	mfrpl = kmalloc(sizeof *mfrpl, GFP_KERNEL);
+-	if (!mfrpl)
+-		return ERR_PTR(-ENOMEM);
+-
+-	mfrpl->ibfrpl.page_list = kmalloc(size, GFP_KERNEL);
+-	if (!mfrpl->ibfrpl.page_list)
+-		goto err_free;
+-
+-	mfrpl->mapped_page_list = dma_alloc_coherent(&dev->dev->persist->
+-						     pdev->dev,
+-						     size, &mfrpl->map,
+-						     GFP_KERNEL);
+-	if (!mfrpl->mapped_page_list)
+-		goto err_free;
+-
+-	WARN_ON(mfrpl->map & 0x3f);
+-
+-	return &mfrpl->ibfrpl;
+-
+-err_free:
+-	kfree(mfrpl->ibfrpl.page_list);
+-	kfree(mfrpl);
+-	return ERR_PTR(-ENOMEM);
 -}
 -
- /**
-  * nes_query_device
-  */
-@@ -3470,94 +3400,6 @@ static int nes_post_send(struct ib_qp *ibqp, struct ib_send_wr *ib_wr,
- 					    NES_IWARP_SQ_LOCINV_WQE_INV_STAG_IDX,
- 					    ib_wr->ex.invalidate_rkey);
- 			break;
--		case IB_WR_FAST_REG_MR:
--		{
--			int i;
--			struct ib_fast_reg_wr *fwr = fast_reg_wr(ib_wr);
--			int flags = fwr->access_flags;
--			struct nes_ib_fast_reg_page_list *pnesfrpl =
--				container_of(fwr->page_list,
--					     struct nes_ib_fast_reg_page_list,
--					     ibfrpl);
--			u64 *src_page_list = pnesfrpl->ibfrpl.page_list;
--			u64 *dst_page_list = pnesfrpl->nes_wqe_pbl.kva;
+-void mlx4_ib_free_fast_reg_page_list(struct ib_fast_reg_page_list *page_list)
+-{
+-	struct mlx4_ib_dev *dev = to_mdev(page_list->device);
+-	struct mlx4_ib_fast_reg_page_list *mfrpl = to_mfrpl(page_list);
+-	int size = page_list->max_page_list_len * sizeof (u64);
 -
--			if (fwr->page_list_len >
--			    (NES_4K_PBL_CHUNK_SIZE / sizeof(u64))) {
--				nes_debug(NES_DBG_IW_TX, "SQ_FMR: bad page_list_len\n");
--				err = -EINVAL;
--				break;
--			}
--			wqe_misc = NES_IWARP_SQ_OP_FAST_REG;
--			set_wqe_64bit_value(wqe->wqe_words,
--					    NES_IWARP_SQ_FMR_WQE_VA_FBO_LOW_IDX,
--					    fwr->iova_start);
--			set_wqe_32bit_value(wqe->wqe_words,
--					    NES_IWARP_SQ_FMR_WQE_LENGTH_LOW_IDX,
--					    fwr->length);
--			set_wqe_32bit_value(wqe->wqe_words,
--					    NES_IWARP_SQ_FMR_WQE_LENGTH_HIGH_IDX, 0);
--			set_wqe_32bit_value(wqe->wqe_words,
--					    NES_IWARP_SQ_FMR_WQE_MR_STAG_IDX,
--					    fwr->rkey);
--			/* Set page size: */
--			if (fwr->page_shift == 12) {
--				wqe_misc |= NES_IWARP_SQ_FMR_WQE_PAGE_SIZE_4K;
--			} else if (fwr->page_shift == 21) {
--				wqe_misc |= NES_IWARP_SQ_FMR_WQE_PAGE_SIZE_2M;
--			} else {
--				nes_debug(NES_DBG_IW_TX, "Invalid page shift,"
--					  " ib_wr=%u, max=1\n", ib_wr->num_sge);
--				err = -EINVAL;
--				break;
--			}
--			/* Set access_flags */
--			wqe_misc |= NES_IWARP_SQ_FMR_WQE_RIGHTS_ENABLE_LOCAL_READ;
--			if (flags & IB_ACCESS_LOCAL_WRITE)
--				wqe_misc |= NES_IWARP_SQ_FMR_WQE_RIGHTS_ENABLE_LOCAL_WRITE;
+-	dma_free_coherent(&dev->dev->persist->pdev->dev, size,
+-			  mfrpl->mapped_page_list,
+-			  mfrpl->map);
+-	kfree(mfrpl->ibfrpl.page_list);
+-	kfree(mfrpl);
+-}
 -
--			if (flags & IB_ACCESS_REMOTE_WRITE)
--				wqe_misc |= NES_IWARP_SQ_FMR_WQE_RIGHTS_ENABLE_REMOTE_WRITE;
--
--			if (flags & IB_ACCESS_REMOTE_READ)
--				wqe_misc |= NES_IWARP_SQ_FMR_WQE_RIGHTS_ENABLE_REMOTE_READ;
--
--			if (flags & IB_ACCESS_MW_BIND)
--				wqe_misc |= NES_IWARP_SQ_FMR_WQE_RIGHTS_ENABLE_WINDOW_BIND;
--
--			/* Fill in PBL info: */
--			if (fwr->page_list_len >
--			    pnesfrpl->ibfrpl.max_page_list_len) {
--				nes_debug(NES_DBG_IW_TX, "Invalid page list length,"
--					  " ib_wr=%p, value=%u, max=%u\n",
--					  ib_wr, fwr->page_list_len,
--					  pnesfrpl->ibfrpl.max_page_list_len);
--				err = -EINVAL;
--				break;
--			}
--
--			set_wqe_64bit_value(wqe->wqe_words,
--					    NES_IWARP_SQ_FMR_WQE_PBL_ADDR_LOW_IDX,
--					    pnesfrpl->nes_wqe_pbl.paddr);
--
--			set_wqe_32bit_value(wqe->wqe_words,
--					    NES_IWARP_SQ_FMR_WQE_PBL_LENGTH_IDX,
--					    fwr->page_list_len * 8);
--
--			for (i = 0; i < fwr->page_list_len; i++)
--				dst_page_list[i] = cpu_to_le64(src_page_list[i]);
--
--			nes_debug(NES_DBG_IW_TX, "SQ_FMR: iova_start: %llx, "
--				  "length: %d, rkey: %0x, pgl_paddr: %llx, "
--				  "page_list_len: %u, wqe_misc: %x\n",
--				  (unsigned long long) fwr->iova_start,
--				  fwr->length,
--				  fwr->rkey,
--				  (unsigned long long) pnesfrpl->nes_wqe_pbl.paddr,
--				  fwr->page_list_len,
--				  wqe_misc);
--			break;
--		}
- 		case IB_WR_REG_MR:
- 		{
- 			struct nes_mr *mr = to_nesmr(reg_wr(ib_wr)->mr);
-@@ -3866,7 +3708,7 @@ static int nes_poll_cq(struct ib_cq *ibcq, int num_entries, struct ib_wc *entry)
- 						entry->opcode = IB_WC_LOCAL_INV;
- 						break;
- 					case NES_IWARP_SQ_OP_FAST_REG:
--						entry->opcode = IB_WC_FAST_REG_MR;
-+						entry->opcode = IB_WC_REG_MR;
- 						break;
- 				}
+ struct ib_fmr *mlx4_ib_fmr_alloc(struct ib_pd *pd, int acc,
+ 				 struct ib_fmr_attr *fmr_attr)
+ {
+diff --git a/drivers/infiniband/hw/mlx4/qp.c b/drivers/infiniband/hw/mlx4/qp.c
+index 850d4e9c13c5..b88a2b78ee88 100644
+--- a/drivers/infiniband/hw/mlx4/qp.c
++++ b/drivers/infiniband/hw/mlx4/qp.c
+@@ -111,7 +111,6 @@ static const __be32 mlx4_ib_opcode[] = {
+ 	[IB_WR_ATOMIC_FETCH_AND_ADD]		= cpu_to_be32(MLX4_OPCODE_ATOMIC_FA),
+ 	[IB_WR_SEND_WITH_INV]			= cpu_to_be32(MLX4_OPCODE_SEND_INVAL),
+ 	[IB_WR_LOCAL_INV]			= cpu_to_be32(MLX4_OPCODE_LOCAL_INVAL),
+-	[IB_WR_FAST_REG_MR]			= cpu_to_be32(MLX4_OPCODE_FMR),
+ 	[IB_WR_REG_MR]				= cpu_to_be32(MLX4_OPCODE_FMR),
+ 	[IB_WR_MASKED_ATOMIC_CMP_AND_SWP]	= cpu_to_be32(MLX4_OPCODE_MASKED_ATOMIC_CS),
+ 	[IB_WR_MASKED_ATOMIC_FETCH_AND_ADD]	= cpu_to_be32(MLX4_OPCODE_MASKED_ATOMIC_FA),
+@@ -2422,28 +2421,6 @@ static void set_reg_seg(struct mlx4_wqe_fmr_seg *fseg,
+ 	fseg->reserved[1]	= 0;
+ }
  
-@@ -4055,8 +3897,6 @@ struct nes_ib_device *nes_init_ofa_device(struct net_device *netdev)
+-static void set_fmr_seg(struct mlx4_wqe_fmr_seg *fseg,
+-		struct ib_fast_reg_wr *wr)
+-{
+-	struct mlx4_ib_fast_reg_page_list *mfrpl = to_mfrpl(wr->page_list);
+-	int i;
+-
+-	for (i = 0; i < wr->page_list_len; ++i)
+-		mfrpl->mapped_page_list[i] =
+-			cpu_to_be64(wr->page_list->page_list[i] |
+-				    MLX4_MTT_FLAG_PRESENT);
+-
+-	fseg->flags		= convert_access(wr->access_flags);
+-	fseg->mem_key		= cpu_to_be32(wr->rkey);
+-	fseg->buf_list		= cpu_to_be64(mfrpl->map);
+-	fseg->start_addr	= cpu_to_be64(wr->iova_start);
+-	fseg->reg_len		= cpu_to_be64(wr->length);
+-	fseg->offset		= 0; /* XXX -- is this just for ZBVA? */
+-	fseg->page_size		= cpu_to_be32(wr->page_shift);
+-	fseg->reserved[0]	= 0;
+-	fseg->reserved[1]	= 0;
+-}
+-
+ static void set_bind_seg(struct mlx4_wqe_bind_seg *bseg,
+ 		struct ib_bind_mw_wr *wr)
+ {
+@@ -2775,14 +2752,6 @@ int mlx4_ib_post_send(struct ib_qp *ibqp, struct ib_send_wr *wr,
+ 				size += sizeof (struct mlx4_wqe_local_inval_seg) / 16;
+ 				break;
  
- 	nesibdev->ibdev.alloc_mr = nes_alloc_mr;
- 	nesibdev->ibdev.map_mr_sg = nes_map_mr_sg;
--	nesibdev->ibdev.alloc_fast_reg_page_list = nes_alloc_fast_reg_page_list;
--	nesibdev->ibdev.free_fast_reg_page_list = nes_free_fast_reg_page_list;
- 
- 	nesibdev->ibdev.attach_mcast = nes_multicast_attach;
- 	nesibdev->ibdev.detach_mcast = nes_multicast_detach;
+-			case IB_WR_FAST_REG_MR:
+-				ctrl->srcrb_flags |=
+-					cpu_to_be32(MLX4_WQE_CTRL_STRONG_ORDER);
+-				set_fmr_seg(wqe, fast_reg_wr(wr));
+-				wqe  += sizeof (struct mlx4_wqe_fmr_seg);
+-				size += sizeof (struct mlx4_wqe_fmr_seg) / 16;
+-				break;
+-
+ 			case IB_WR_REG_MR:
+ 				ctrl->srcrb_flags |=
+ 					cpu_to_be32(MLX4_WQE_CTRL_STRONG_ORDER);
 -- 
 1.8.4.3
 
