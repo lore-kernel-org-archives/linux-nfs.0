@@ -1,77 +1,54 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:46408 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:46431 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751116AbbJLRNx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 12 Oct 2015 13:13:53 -0400
-Date: Mon, 12 Oct 2015 13:13:52 -0400
+	id S1752103AbbJLSLR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 12 Oct 2015 14:11:17 -0400
+Date: Mon, 12 Oct 2015 14:11:17 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Subject: Re: [PATCH] svcrdma: Fix NFS server crash triggered by 1MB NFS WRITE
-Message-ID: <20151012171352.GC28755@fieldses.org>
-References: <20151012145257.3981.13852.stgit@oracle-120.nfsv4bat.org>
+To: Jeff Layton <jlayton@poochiereds.net>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfsd: use a multithreaded workqueue for nfsd4_callbacks
+Message-ID: <20151012181117.GF28755@fieldses.org>
+References: <1443875882-12089-1-git-send-email-jeff.layton@primarydata.com>
+ <20151009212459.GF8188@fieldses.org>
+ <20151009173923.1ca297a4@synchrony.poochiereds.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20151012145257.3981.13852.stgit@oracle-120.nfsv4bat.org>
+In-Reply-To: <20151009173923.1ca297a4@synchrony.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Oct 12, 2015 at 10:53:39AM -0400, Chuck Lever wrote:
-> Now that the NFS server advertises a maximum payload size of 1MB
-> for RPC/RDMA again, it crashes in svc_process_common() when NFS
-> client sends a 1MB NFS WRITE on an NFS/RDMA mount.
+On Fri, Oct 09, 2015 at 05:39:23PM -0400, Jeff Layton wrote:
+> On Fri, 9 Oct 2015 17:24:59 -0400
+> "J. Bruce Fields" <bfields@fieldses.org> wrote:
 > 
-> The server has set up a 259 element array of struct page pointers
-> in rq_pages[] for each incoming request. The last element of the
-> array is NULL.
+> > On Sat, Oct 03, 2015 at 08:38:02AM -0400, Jeff Layton wrote:
+> > > I don't see any need to order callbacks with respect to one another.
+> > 
+> > I thought the code in nfsd4_process_cb_update really depended on this.
+> > The locking it has is against nfsd threads, it probably assumes it's
+> > only run from a cb thread and that it's the only one running at a time.
+> > 
+> > But I haven't reviewed it lately.
+> > 
+> > --b.
+> > 
 > 
-> When an incoming request has been completely received,
-> rdma_read_complete() attempts to set the starting page of the
-> incoming page vector:
-> 
->   rqstp->rq_arg.pages = &rqstp->rq_pages[head->hdr_count];
-> 
-> and the page to use for the reply:
-> 
->   rqstp->rq_respages = &rqstp->rq_arg.pages[page_no];
-> 
-> But the value of page_no has already accounted for head->hdr_count.
-> Thus rq_respages now points past the end of the incoming pages.
-> 
-> For NFS WRITE operations smaller than the maximum, this is harmless.
-> But when the NFS WRITE operation is as large as the server's max
-> payload size, rq_respages now points at the last entry in rq_pages,
-> which is NULL.
-> 
-> Fixes: cc9a903d915c ('svcrdma: Change maximum server payload . . .')
-> BugLink: https://bugzilla.linux-nfs.org/show_bug.cgi?id=270
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> Reviewed-by: Sagi Grimberg <sagig@dev.mellanox.co.il>
-> Reviewed-by: Steve Wise <swise@opengridcomputing.com>
-> Reviewed-by: Shirley Ma <shirley.ma@oracle.com>
-> ---
-> 
-> Hi Bruce-
-> 
-> This is a regression in 4.3. Can you send this to Linus?
+> Yikes -- ok. That's not at all obvious. That should prob be documented
+> if so.
 
-OK, queuing for 4.3, thanks.--b.
+Yes, my bad.
 
+> Yeah, ok...I guess you could end up with multiple threads racing to
+> tear down the cb_client and xprt and create a new one, and it looks
+> like the cl_cb_client and cl_cred pointers could get clobbered by new
+> ones in that case.
 > 
-> 
->  net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |    2 +-
->  1 files changed, 1 insertions(+), 1 deletions(-)
-> 
-> diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-> index cb51742..37b4341 100644
-> --- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-> +++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-> @@ -531,7 +531,7 @@ static int rdma_read_complete(struct svc_rqst *rqstp,
->  	rqstp->rq_arg.page_base = head->arg.page_base;
->  
->  	/* rq_respages starts after the last arg page */
-> -	rqstp->rq_respages = &rqstp->rq_arg.pages[page_no];
-> +	rqstp->rq_respages = &rqstp->rq_pages[page_no];
->  	rqstp->rq_next_page = rqstp->rq_respages + 1;
->  
->  	/* Rebuild rq_arg head and tail. */
+> Shouldn't be too hard to fix protecting those pointers with the
+> cl_lock. That said, I prob won't be able to spend time on it right now.
+> You can go ahead and drop that patch and I'll resend if/when I get
+> around to fixing that.
+
+What's the problem that this fixes exactly?
+
+--b.
