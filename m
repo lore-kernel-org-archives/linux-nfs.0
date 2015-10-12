@@ -1,68 +1,49 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:46476 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751840AbbJLTqt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 12 Oct 2015 15:46:49 -0400
-Date: Mon, 12 Oct 2015 15:46:47 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Nick Bowler <nbowler@draconx.ca>
-Cc: linux-nfs@vger.kernel.org, jlayton@poochiereds.net
-Subject: Re: PROBLEM: nfs I/O errors with sqlite applications
-Message-ID: <20151012194647.GJ28755@fieldses.org>
-References: <20151012164846.GA5017@draconx.ca>
- <20151012192538.GG28755@fieldses.org>
+Received: from mail-lb0-f178.google.com ([209.85.217.178]:32933 "EHLO
+	mail-lb0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752757AbbJLTtT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Oct 2015 15:49:19 -0400
+Received: by lbbk10 with SMTP id k10so41328109lbb.0
+        for <linux-nfs@vger.kernel.org>; Mon, 12 Oct 2015 12:49:17 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20151012192538.GG28755@fieldses.org>
+In-Reply-To: <561BC61E.6010704@Netapp.com>
+References: <1444604337-17651-1-git-send-email-andreas.gruenbacher@gmail.com>
+	<1444604337-17651-45-git-send-email-andreas.gruenbacher@gmail.com>
+	<561BC61E.6010704@Netapp.com>
+Date: Mon, 12 Oct 2015 21:49:17 +0200
+Message-ID: <CAHc6FU6kp1pR8hRU3g2+A07xfpErMa3bNGJ47Sc4gEJS0U3nJQ@mail.gmail.com>
+Subject: Re: [PATCH v10 44/46] nfs: Add richacl support
+From: Andreas Gruenbacher <agruenba@redhat.com>
+To: Anna Schumaker <Anna.Schumaker@netapp.com>
+Cc: Andreas Gruenbacher <andreas.gruenbacher@gmail.com>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Dave Chinner <david@fromorbit.com>,
+        linux-ext4 <linux-ext4@vger.kernel.org>, xfs@oss.sgi.com,
+        LKML <linux-kernel@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        linux-cifs@vger.kernel.org, Linux API <linux-api@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Oct 12, 2015 at 03:25:38PM -0400, bfields wrote:
-> On Mon, Oct 12, 2015 at 12:48:56PM -0400, Nick Bowler wrote:
-> > Hi,
-> > 
-> > I'm having a problem where, eventually, the nfs-mounted home directory
-> > on one of my machines starts failing in a kind of weird way.  The issue
-> > appears to affect only sqlite; I have two applications that I know of
-> > which use it:
-> > 
-> >   - Firefox, where the symptom is that the browser just hangs randomly,
-> >   - gmpc, which crashes immediately on startup with I/O error.
-> > 
-> > Once the issue occurs these applications remain permanently broken.
-> > Since the latter is easier to test, I can run it in strace, and the
-> > failing syscall seems to be:
-> > 
-> >   fcntl(7, F_SETLK, {type=F_RDLCK, whence=SEEK_SET, start=1073741824, len=1}) = -1 EIO (Input/output error)
-> > 
-> > When the issue occurs, the client dmesg log is full of messages of the form:
-> > 
-> >   [3441972.381211] NFS: v4 server returned a bad sequence-id error on an unconfirmed sequence ffff88007612ae20!
-> > 
-> > There are no unusual messages on the server.
-> > 
-> > Rebooting the client corrects the issue in the short term, but it seems
-> > to re-occur after about 1 month of uptime.  This makes it difficult to
-> > test anything.  So right now I have left the client in the broken state
-> > in case there's something else I can try.
-> > 
-> > The client is running Linux 4.2, with approx. 38 days uptime.  The
-> > server is running Linux 4.1.4, with 62 days uptime.
-> > 
-> > Let me know if you need any more info.
-> 
-> That does sound like a pain to debug.
-> 
-> I don't *think* this could be explained by the problem Jeff's seqid
-> locking patches fixed, but maybe I'm wrong; cc'ing him to confirm.
-> 
-> I wonder if there's some way to make this reproduce more quickly, for
-> example by running something that makes more aggressive use of sqlite,
-> or running multiple copies of such a thing simultaneously.  Might be
-> interesting to know what the pattern of file opens and locking looks
-> like (so stracing one of those applications might help).
+Anna,
 
-Oh, also I forgot to ask what version of the NFS protocol you're using
-(4.0, 4.1, or 4.2).
+On Mon, Oct 12, 2015 at 4:39 PM, Anna Schumaker
+<Anna.Schumaker@netapp.com> wrote:
+> I'm not a fan of the "one giant function" approach.  Is there any way to split richacl_from_nfs4_acl() into several smaller functions?
 
---b.
+sure, parsing the usr/group identifier could be put in a separate
+function, for example.
+
+That function cannot stay as it is right now anyway --- we really need
+idmapper to tell us when an identifier string cannot be mapped to a
+uid or gid so that we can preserve that identifier.
+
+Thanks,
+Andreas
