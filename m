@@ -1,89 +1,101 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:46534 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751912AbbJLVHW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 12 Oct 2015 17:07:22 -0400
-Date: Mon, 12 Oct 2015 17:07:19 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@poochiereds.net>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsd: use a multithreaded workqueue for nfsd4_callbacks
-Message-ID: <20151012210719.GP28755@fieldses.org>
-References: <1443875882-12089-1-git-send-email-jeff.layton@primarydata.com>
- <20151009212459.GF8188@fieldses.org>
- <20151009173923.1ca297a4@synchrony.poochiereds.net>
- <20151012181117.GF28755@fieldses.org>
- <20151012161421.1468a79b@synchrony.poochiereds.net>
- <20151012202044.GL28755@fieldses.org>
- <20151012170219.152d8ea8@synchrony.poochiereds.net>
+Received: from mail-ig0-f169.google.com ([209.85.213.169]:37688 "EHLO
+	mail-ig0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752596AbbJLVzI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Oct 2015 17:55:08 -0400
+Received: by igcpe7 with SMTP id pe7so1762026igc.0
+        for <linux-nfs@vger.kernel.org>; Mon, 12 Oct 2015 14:55:07 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20151012170219.152d8ea8@synchrony.poochiereds.net>
+Date: Mon, 12 Oct 2015 17:55:07 -0400
+Message-ID: <CAN-5tyHxP276Re_Zm4mV9F+EY1Czq5SfbPJ1Os_CQd0hfhFzdA@mail.gmail.com>
+Subject: [PATCH 1/1] Adding issync field to delegreturn_exit tracepoint
+From: Olga Kornievskaia <aglo@umich.edu>
+To: linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Oct 12, 2015 at 05:02:19PM -0400, Jeff Layton wrote:
-> On Mon, 12 Oct 2015 16:20:44 -0400
-> "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> 
-> > On Mon, Oct 12, 2015 at 04:14:21PM -0400, Jeff Layton wrote:
-> > > On Mon, 12 Oct 2015 14:11:17 -0400
-> > > "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > > 
-> > > > On Fri, Oct 09, 2015 at 05:39:23PM -0400, Jeff Layton wrote:
-> > > > > On Fri, 9 Oct 2015 17:24:59 -0400
-> > > > > "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > > > > 
-> > > > > > On Sat, Oct 03, 2015 at 08:38:02AM -0400, Jeff Layton wrote:
-> > > > > > > I don't see any need to order callbacks with respect to one another.
-> > > > > > 
-> > > > > > I thought the code in nfsd4_process_cb_update really depended on this.
-> > > > > > The locking it has is against nfsd threads, it probably assumes it's
-> > > > > > only run from a cb thread and that it's the only one running at a time.
-> > > > > > 
-> > > > > > But I haven't reviewed it lately.
-> > > > > > 
-> > > > > > --b.
-> > > > > > 
-> > > > > 
-> > > > > Yikes -- ok. That's not at all obvious. That should prob be documented
-> > > > > if so.
-> > > > 
-> > > > Yes, my bad.
-> > > > 
-> > > > > Yeah, ok...I guess you could end up with multiple threads racing to
-> > > > > tear down the cb_client and xprt and create a new one, and it looks
-> > > > > like the cl_cb_client and cl_cred pointers could get clobbered by new
-> > > > > ones in that case.
-> > > > > 
-> > > > > Shouldn't be too hard to fix protecting those pointers with the
-> > > > > cl_lock. That said, I prob won't be able to spend time on it right now.
-> > > > > You can go ahead and drop that patch and I'll resend if/when I get
-> > > > > around to fixing that.
-> > > > 
-> > > > What's the problem that this fixes exactly?
-> > > > 
-> > > 
-> > > Unnecessary serialization of callbacks?
-> > > 
-> > > Not that that's necessarily a problem, but with the newer workqueue
-> > > implementation there is more overhead in running a single threaded
-> > > workqueue since it implies a rescuer thread and has to do extra work
-> > > to ensure that the jobs are run in sequential order.
-> > > 
-> > > If that serialization is not actually needed, then it's better to move
-> > > it to a multithreaded workqueue.
-> > 
-> > We'd still be serializing a lot of the same code, just using locks
-> > instead, wouldn't we?
-> > 
-> > --b.
-> 
-> Any serialization would be per-clnt instead of global like it is today.
-> 
-> Also, we'd likely only serialize changes to some of the pointers
-> instead of the entire operation.
+It'll be nice to know when we return delegations synchronously or not.
 
-OK, makes sense.  Probably not a priority for now, though.
+Signed-off: Olga Kornievskaia <kolga@netapp.com>
+---
+ fs/nfs/nfs4proc.c  |  5 ++++-
+ fs/nfs/nfs4trace.h | 12 ++++++++----
+ 2 files changed, 12 insertions(+), 5 deletions(-)
 
---b.
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index f93b9cd..858c780 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5283,6 +5283,7 @@ struct nfs4_delegreturndata {
+     struct inode *inode;
+     bool roc;
+     u32 roc_barrier;
++    int issync;
+ };
+
+ static void nfs4_delegreturn_done(struct rpc_task *task, void *calldata)
+@@ -5292,7 +5293,8 @@ static void nfs4_delegreturn_done(struct
+rpc_task *task, void *calldata)
+     if (!nfs4_sequence_done(task, &data->res.seq_res))
+         return;
+
+-    trace_nfs4_delegreturn_exit(&data->args, &data->res, task->tk_status);
++    trace_nfs4_delegreturn_exit(&data->args, &data->res, task->tk_status,
++                    data->issync);
+     switch (task->tk_status) {
+     case 0:
+         renew_lease(data->res.server, data->timestamp);
+@@ -5387,6 +5389,7 @@ static int _nfs4_proc_delegreturn(struct inode
+*inode, struct rpc_cred *cred, co
+     data->inode = nfs_igrab_and_active(inode);
+     if (data->inode)
+         data->roc = nfs4_roc(inode);
++    data->issync = issync;
+
+     task_setup_data.callback_data = data;
+     msg.rpc_argp = &data->args;
+diff --git a/fs/nfs/nfs4trace.h b/fs/nfs/nfs4trace.h
+index 671cf68..be67e87 100644
+--- a/fs/nfs/nfs4trace.h
++++ b/fs/nfs/nfs4trace.h
+@@ -612,29 +612,33 @@ TRACE_EVENT(nfs4_delegreturn_exit,
+         TP_PROTO(
+             const struct nfs4_delegreturnargs *args,
+             const struct nfs4_delegreturnres *res,
+-            int error
++            int error,
++            int issync
+         ),
+
+-        TP_ARGS(args, res, error),
++        TP_ARGS(args, res, error, issync),
+
+         TP_STRUCT__entry(
+             __field(dev_t, dev)
+             __field(u32, fhandle)
+             __field(int, error)
++            __field(int, issync)
+         ),
+
+         TP_fast_assign(
+             __entry->dev = res->server->s_dev;
+             __entry->fhandle = nfs_fhandle_hash(args->fhandle);
+             __entry->error = error;
++            __entry->issync = issync;
+         ),
+
+         TP_printk(
+-            "error=%d (%s) dev=%02x:%02x fhandle=0x%08x",
++            "error=%d (%s) dev=%02x:%02x fhandle=0x%08x issync=%d",
+             __entry->error,
+             show_nfsv4_errors(__entry->error),
+             MAJOR(__entry->dev), MINOR(__entry->dev),
+-            __entry->fhandle
++            __entry->fhandle,
++            __entry->issync
+         )
+ );
+
+-- 
+1.8.3.1
