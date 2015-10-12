@@ -1,56 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f174.google.com ([209.85.213.174]:35192 "EHLO
-	mail-ig0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751213AbbJLQtY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Oct 2015 12:49:24 -0400
-Received: by igbkq10 with SMTP id kq10so76829341igb.0
-        for <linux-nfs@vger.kernel.org>; Mon, 12 Oct 2015 09:49:23 -0700 (PDT)
-Received: from localhost (dhcp-24-53-243-138.cable.user.start.ca. [24.53.243.138])
-        by smtp.gmail.com with ESMTPSA id n3sm5156700iga.0.2015.10.12.09.49.23
-        for <linux-nfs@vger.kernel.org>
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Mon, 12 Oct 2015 09:49:23 -0700 (PDT)
-From: Nick Bowler <nbowler@draconx.ca>
-Date: Mon, 12 Oct 2015 12:48:56 -0400
-To: linux-nfs@vger.kernel.org
-Subject: PROBLEM: nfs I/O errors with sqlite applications
-Message-ID: <20151012164846.GA5017@draconx.ca>
+Received: from fieldses.org ([173.255.197.46]:46408 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751116AbbJLRNx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 12 Oct 2015 13:13:53 -0400
+Date: Mon, 12 Oct 2015 13:13:52 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
+Subject: Re: [PATCH] svcrdma: Fix NFS server crash triggered by 1MB NFS WRITE
+Message-ID: <20151012171352.GC28755@fieldses.org>
+References: <20151012145257.3981.13852.stgit@oracle-120.nfsv4bat.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20151012145257.3981.13852.stgit@oracle-120.nfsv4bat.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
+On Mon, Oct 12, 2015 at 10:53:39AM -0400, Chuck Lever wrote:
+> Now that the NFS server advertises a maximum payload size of 1MB
+> for RPC/RDMA again, it crashes in svc_process_common() when NFS
+> client sends a 1MB NFS WRITE on an NFS/RDMA mount.
+> 
+> The server has set up a 259 element array of struct page pointers
+> in rq_pages[] for each incoming request. The last element of the
+> array is NULL.
+> 
+> When an incoming request has been completely received,
+> rdma_read_complete() attempts to set the starting page of the
+> incoming page vector:
+> 
+>   rqstp->rq_arg.pages = &rqstp->rq_pages[head->hdr_count];
+> 
+> and the page to use for the reply:
+> 
+>   rqstp->rq_respages = &rqstp->rq_arg.pages[page_no];
+> 
+> But the value of page_no has already accounted for head->hdr_count.
+> Thus rq_respages now points past the end of the incoming pages.
+> 
+> For NFS WRITE operations smaller than the maximum, this is harmless.
+> But when the NFS WRITE operation is as large as the server's max
+> payload size, rq_respages now points at the last entry in rq_pages,
+> which is NULL.
+> 
+> Fixes: cc9a903d915c ('svcrdma: Change maximum server payload . . .')
+> BugLink: https://bugzilla.linux-nfs.org/show_bug.cgi?id=270
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> Reviewed-by: Sagi Grimberg <sagig@dev.mellanox.co.il>
+> Reviewed-by: Steve Wise <swise@opengridcomputing.com>
+> Reviewed-by: Shirley Ma <shirley.ma@oracle.com>
+> ---
+> 
+> Hi Bruce-
+> 
+> This is a regression in 4.3. Can you send this to Linus?
 
-I'm having a problem where, eventually, the nfs-mounted home directory
-on one of my machines starts failing in a kind of weird way.  The issue
-appears to affect only sqlite; I have two applications that I know of
-which use it:
+OK, queuing for 4.3, thanks.--b.
 
-  - Firefox, where the symptom is that the browser just hangs randomly,
-  - gmpc, which crashes immediately on startup with I/O error.
-
-Once the issue occurs these applications remain permanently broken.
-Since the latter is easier to test, I can run it in strace, and the
-failing syscall seems to be:
-
-  fcntl(7, F_SETLK, {type=F_RDLCK, whence=SEEK_SET, start=1073741824, len=1}) = -1 EIO (Input/output error)
-
-When the issue occurs, the client dmesg log is full of messages of the form:
-
-  [3441972.381211] NFS: v4 server returned a bad sequence-id error on an unconfirmed sequence ffff88007612ae20!
-
-There are no unusual messages on the server.
-
-Rebooting the client corrects the issue in the short term, but it seems
-to re-occur after about 1 month of uptime.  This makes it difficult to
-test anything.  So right now I have left the client in the broken state
-in case there's something else I can try.
-
-The client is running Linux 4.2, with approx. 38 days uptime.  The
-server is running Linux 4.1.4, with 62 days uptime.
-
-Let me know if you need any more info.
-
-Thanks,
-  Nick
+> 
+> 
+>  net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |    2 +-
+>  1 files changed, 1 insertions(+), 1 deletions(-)
+> 
+> diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+> index cb51742..37b4341 100644
+> --- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+> +++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+> @@ -531,7 +531,7 @@ static int rdma_read_complete(struct svc_rqst *rqstp,
+>  	rqstp->rq_arg.page_base = head->arg.page_base;
+>  
+>  	/* rq_respages starts after the last arg page */
+> -	rqstp->rq_respages = &rqstp->rq_arg.pages[page_no];
+> +	rqstp->rq_respages = &rqstp->rq_pages[page_no];
+>  	rqstp->rq_next_page = rqstp->rq_respages + 1;
+>  
+>  	/* Rebuild rq_arg head and tail. */
