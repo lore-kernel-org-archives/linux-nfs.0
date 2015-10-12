@@ -1,101 +1,74 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f170.google.com ([209.85.223.170]:33532 "EHLO
-	mail-io0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752660AbbJLWBN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Oct 2015 18:01:13 -0400
-Received: by iodv82 with SMTP id v82so2418935iod.0
-        for <linux-nfs@vger.kernel.org>; Mon, 12 Oct 2015 15:01:12 -0700 (PDT)
+Received: from aserp1040.oracle.com ([141.146.126.69]:34363 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752524AbbJLXS3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Oct 2015 19:18:29 -0400
+Date: Mon, 12 Oct 2015 16:17:49 -0700
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: Anna Schumaker <Anna.Schumaker@netapp.com>, linux-nfs@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-api@vger.kernel.org, zab@zabbo.net, viro@zeniv.linux.org.uk,
+        clm@fb.com, mtk.manpages@gmail.com, andros@netapp.com
+Subject: Re: [PATCH v5 8/9] vfs: Add vfs_copy_file_range() support for
+ pagecache copies
+Message-ID: <20151012231749.GC11398@birch.djwong.org>
+References: <1443634014-3026-1-git-send-email-Anna.Schumaker@Netapp.com>
+ <1443634014-3026-9-git-send-email-Anna.Schumaker@Netapp.com>
+ <20151011142203.GA31867@infradead.org>
 MIME-Version: 1.0
-Date: Mon, 12 Oct 2015 18:01:12 -0400
-Message-ID: <CAN-5tyEDNYzdDs=_NJf9=U7NBg0d2ddm4Wa0Tw0jaP9sa61dCQ@mail.gmail.com>
-Subject: [PATCH 1/1] Adding issync field to delegreturn_exit tracepoint
-From: Olga Kornievskaia <aglo@umich.edu>
-To: linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20151011142203.GA31867@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-It'll be nice to know when we return delegations synchronously or not.
+On Sun, Oct 11, 2015 at 07:22:03AM -0700, Christoph Hellwig wrote:
+> On Wed, Sep 30, 2015 at 01:26:52PM -0400, Anna Schumaker wrote:
+> > This allows us to have an in-kernel copy mechanism that avoids frequent
+> > switches between kernel and user space.  This is especially useful so
+> > NFSD can support server-side copies.
+> > 
+> > I make pagecache copies configurable by adding three new (exclusive)
+> > flags:
+> > - COPY_FR_REFLINK tells vfs_copy_file_range() to only create a reflink.
+> > - COPY_FR_COPY does a full data copy, but may be filesystem accelerated.
+> > - COPY_FR_DEDUP creates a reflink, but only if the contents of both
+> >   ranges are identical.
+> 
+> All but FR_COPY really should be a separate system call.  Clones (an
+> dedup as a special case of clones) are really a separate beast from file
+> copies.
+> 
+> If I want to clone a file I either want it clone fully or fail, not copy
+> a certain amount.  That means that a) we need to return an error not
+> short "write", and b) locking impementations are important - we need to
+> prevent other applications from racing with our clone even if it is
+> large, while to get these semantics for the possible short returning
+> file copy will require a proper userland locking protocol. Last but not
+> least file copies need to be interruptible while clones should be not.
+> All this is already important for local file systems and even more
+> important for NFS exporting.
+> 
+> So I'd suggest to drop this patch and just let your syscall handle
+> actualy copies with all their horrors.  We can go with Peng's patches
+> to generalize the btrfs ioctls for clones for now which is what everyone
+> already uses anyway, and then add a separate sys_file_clone later.
 
-Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
----
- fs/nfs/nfs4proc.c  |  5 ++++-
- fs/nfs/nfs4trace.h | 12 ++++++++----
- 2 files changed, 12 insertions(+), 5 deletions(-)
+Hm.  Peng's patches only generalize the CLONE and CLONE_RANGE ioctls from
+btrfs, however they don't port over the (vastly different) EXTENT_SAME ioctl.
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index f93b9cd..858c780 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5283,6 +5283,7 @@ struct nfs4_delegreturndata {
-     struct inode *inode;
-     bool roc;
-     u32 roc_barrier;
-+    int issync;
- };
+What does everyone think about generalizing EXTENT_SAME?  The interface enables
+one to ask the kernel to dedupe multiple file ranges in a single call.  That's
+more complex than what I was proposing with COPY_FR_DEDUP(E), but I'm assuming
+that the extra complexity buys us the ability to ... multi-dedupe at the same
+time, with locks held on the source file?
 
- static void nfs4_delegreturn_done(struct rpc_task *task, void *calldata)
-@@ -5292,7 +5293,8 @@ static void nfs4_delegreturn_done(struct
-rpc_task *task, void *calldata)
-     if (!nfs4_sequence_done(task, &data->res.seq_res))
-         return;
+I'm happy to generalize the existing EXTENT_SAME, but please yell if you really
+hate the interface.
 
--    trace_nfs4_delegreturn_exit(&data->args, &data->res, task->tk_status);
-+    trace_nfs4_delegreturn_exit(&data->args, &data->res, task->tk_status,
-+                    data->issync);
-     switch (task->tk_status) {
-     case 0:
-         renew_lease(data->res.server, data->timestamp);
-@@ -5387,6 +5389,7 @@ static int _nfs4_proc_delegreturn(struct inode
-*inode, struct rpc_cred *cred, co
-     data->inode = nfs_igrab_and_active(inode);
-     if (data->inode)
-         data->roc = nfs4_roc(inode);
-+    data->issync = issync;
+--D
 
-     task_setup_data.callback_data = data;
-     msg.rpc_argp = &data->args;
-diff --git a/fs/nfs/nfs4trace.h b/fs/nfs/nfs4trace.h
-index 671cf68..be67e87 100644
---- a/fs/nfs/nfs4trace.h
-+++ b/fs/nfs/nfs4trace.h
-@@ -612,29 +612,33 @@ TRACE_EVENT(nfs4_delegreturn_exit,
-         TP_PROTO(
-             const struct nfs4_delegreturnargs *args,
-             const struct nfs4_delegreturnres *res,
--            int error
-+            int error,
-+            int issync
-         ),
-
--        TP_ARGS(args, res, error),
-+        TP_ARGS(args, res, error, issync),
-
-         TP_STRUCT__entry(
-             __field(dev_t, dev)
-             __field(u32, fhandle)
-             __field(int, error)
-+            __field(int, issync)
-         ),
-
-         TP_fast_assign(
-             __entry->dev = res->server->s_dev;
-             __entry->fhandle = nfs_fhandle_hash(args->fhandle);
-             __entry->error = error;
-+            __entry->issync = issync;
-         ),
-
-         TP_printk(
--            "error=%d (%s) dev=%02x:%02x fhandle=0x%08x",
-+            "error=%d (%s) dev=%02x:%02x fhandle=0x%08x issync=%d",
-             __entry->error,
-             show_nfsv4_errors(__entry->error),
-             MAJOR(__entry->dev), MINOR(__entry->dev),
--            __entry->fhandle
-+            __entry->fhandle,
-+            __entry->issync
-         )
- );
-
--- 
-1.8.3.1
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-api" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
