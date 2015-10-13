@@ -1,93 +1,36 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f169.google.com ([209.85.223.169]:35044 "EHLO
-	mail-io0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752254AbbJMONG (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Oct 2015 10:13:06 -0400
-Received: by iofl186 with SMTP id l186so22125934iof.2
-        for <linux-nfs@vger.kernel.org>; Tue, 13 Oct 2015 07:13:04 -0700 (PDT)
+Received: from dot.freshdot.net ([213.154.236.176]:49226 "EHLO
+	dot.freshdot.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752370AbbJMOeq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Oct 2015 10:34:46 -0400
+Date: Tue, 13 Oct 2015 16:34:45 +0200
+From: Sander Smeenk <ssmeenk@freshdot.net>
+To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: CAP(abilities) and NFS mounted storage
+Message-ID: <20151013143445.GE10632@dot.dmz.freshdot.net>
+References: <20151013122128.GD10632@dot.dmz.freshdot.net>
+ <CAHQdGtRUrWuahu7iQbQQLUeB_ZPFoqFLTXFhHa0pCuKGp9ycWA@mail.gmail.com>
 MIME-Version: 1.0
-In-Reply-To: <CAHQdGtQfBZ4yRCkZ0-voFekTEx8fJ1kHCzrmtjr3RHh-dqOuww@mail.gmail.com>
-References: <CAN-5tyHxP276Re_Zm4mV9F+EY1Czq5SfbPJ1Os_CQd0hfhFzdA@mail.gmail.com>
-	<CAHQdGtSg5E0jrEhK-aLht6WdmMTFFBUuG8tUX7sHJDUj+67-4Q@mail.gmail.com>
-	<CAN-5tyHMCMekT0gJE1zNQLO0P5bVgjr_PuQF1BYhNy7n4KBvHg@mail.gmail.com>
-	<CAHQdGtQfBZ4yRCkZ0-voFekTEx8fJ1kHCzrmtjr3RHh-dqOuww@mail.gmail.com>
-Date: Tue, 13 Oct 2015 10:13:04 -0400
-Message-ID: <CAN-5tyGme1rm+hD0JpOc3co0=_u2hzPwR7eN3AT4_TjVA4NkDA@mail.gmail.com>
-Subject: Re: [PATCH 1/1] Adding issync field to delegreturn_exit tracepoint
-From: Olga Kornievskaia <aglo@umich.edu>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAHQdGtRUrWuahu7iQbQQLUeB_ZPFoqFLTXFhHa0pCuKGp9ycWA@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Oct 13, 2015 at 9:27 AM, Trond Myklebust
-<trond.myklebust@primarydata.com> wrote:
-> On Tue, Oct 13, 2015 at 8:26 AM, Olga Kornievskaia <aglo@umich.edu> wrote:
->>
->> On Mon, Oct 12, 2015 at 11:47 PM, Trond Myklebust
->> <trond.myklebust@primarydata.com> wrote:
->> > On Mon, Oct 12, 2015 at 5:55 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
->> >> It'll be nice to know when we return delegations synchronously or not.
->> >
->> > Why? This patch forces us to carry an otherwise completely unnecessary
->> > parameter, so at the very minimum we should have a discussion of what
->> > the real use cases are.
->>
->> I used it to diagnose the race of open and delegreturn. If it's kept
->
-> How were you using it?
+Quoting Trond Myklebust (trond.myklebust@primarydata.com):
 
- I added two more traces points in the beginning of delegreturn and in
-nfs4_do_open before sending the rpc. I can see that a given file
-handle:
--- delegreturn prepare tracepoint is happening,
--- then the tracepoint of before sending the open is logged,
--- then delegreturn prepare is logged again,
--- then tracepoint for nfs4_open_file which is after receiving reply
-to the open from the server
--- then delegreturn_exit tracepoint
+> > I've experimented with different capabilties, but CAP_DAC_OVERRIDE is
+> > not enough. I'd very much like to hear if it is possible for this to
+> > work on NFS like it does on local storage.
+> This will not work on NFS. The server, which enforces permissions, has
+> no way to know what capabilities your process has on the client.
 
-    kworker/1:0H-14168 [001] ....   576.571636:
-nfs4_delegreturn_prepare: error=0 (OK) dev=00:2a fhandle=0x84792ca9
-issync=0
+Thanks. I feared this answer. But i understand that the NFS-server cant
+know if the process on the NFS-client has CAP_DAC_READ_SEARCH
+capabilities set.
 
-          hammer-13955 [000] ....   576.942632: nfs4_open_file_begin:
-flags=32768 (0x8000) fmode=READ|0x801c fileid=00:2a:0
-fhandle=0x00000000 name=00:2a:904/000002CB.ham
+Would setfsuid() help anything in this case? Or is it just a big no-go?
 
-          hammer-13955 [001] ....   577.043084: nfs4_open_file:
-error=0 (OK) flags=32768 (0x8000) fmode=READ|0x801c fileid=00:2a:7708
-fhandle=0x84792ca9 name=00:2a:904/000002CB.ham
-
-    kworker/0:1H-431   [000] ....   577.064013:
-nfs4_delegreturn_prepare: error=0 (OK) dev=00:2a fhandle=0x84792ca9
-issync=0
-
-    kworker/0:1H-431   [000] ....   577.101076: nfs4_delegreturn_exit:
-error=0 (OK) dev=00:2a fhandle=0x84792ca9
-
-    kworker/0:1H-431   [000] ....   577.113021: nfs4_read:
-error=-10025 (BAD_STATEID) fileid=00:2a:7708 fhandle=0x84792ca9
-offset=0 count=64
-
-
->
->> that some delegreturns are synchronous and others are not I think the
->> information is useful.
->
-> The only difference between synchronous and asynchronous in this case
-> is whether or not the process that launched the delegreturn actually
-> waits for it to complete; a signal could easily prevent it from doing
-> so without interrupting the delegreturn call itself.
-> IOW: for complete information when debugging races here, you really
-> need to examine the return value from the wait call.
->
->> Speaking of there is a race between state manager thread returning
->> used delegations and new open. Previously I thought it was evict
->> inode...
->
-> Is this with commit 5e99b532bb95 ("nfs4: reset states to use
-> open_stateid when returning delegation voluntarily") applied?
-
-No I have not. I will try that. Thanks.
+-Sndr.
+-- 
+| Daylight savings time - why are they saving it and where do they keep it?
+| 4096R/20CC6CD2 - 6D40 1A20 B9AA 87D4 84C7  FBD6 F3A9 9442 20CC 6CD2
