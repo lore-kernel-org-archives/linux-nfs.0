@@ -1,94 +1,94 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pa0-f45.google.com ([209.85.220.45]:35797 "EHLO
-	mail-pa0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752152AbbJMMqF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Oct 2015 08:46:05 -0400
-Received: by pabve7 with SMTP id ve7so21094444pab.2
-        for <linux-nfs@vger.kernel.org>; Tue, 13 Oct 2015 05:46:04 -0700 (PDT)
-From: Kinglong Mee <kinglongmee@gmail.com>
-Subject: Re: NULL pointer dereference using pnfs with block layout
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-References: <55FF77DD.8070807@gmail.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        kinglongmee@gmail.com
-Message-ID: <561CFD01.3080201@gmail.com>
-Date: Tue, 13 Oct 2015 20:45:53 +0800
+Received: from mail-oi0-f43.google.com ([209.85.218.43]:34278 "EHLO
+	mail-oi0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752939AbbJMMyF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Oct 2015 08:54:05 -0400
+Received: by oiak8 with SMTP id k8so8737875oia.1
+        for <linux-nfs@vger.kernel.org>; Tue, 13 Oct 2015 05:54:05 -0700 (PDT)
 MIME-Version: 1.0
-In-Reply-To: <55FF77DD.8070807@gmail.com>
-Content-Type: text/plain; charset=utf-8
+In-Reply-To: <20151013065225.44c5581d@synchrony.poochiereds.net>
+References: <20151012164846.GA5017@draconx.ca>
+	<20151012192538.GG28755@fieldses.org>
+	<20151012194647.GJ28755@fieldses.org>
+	<20151013030136.GA7081@draconx.ca>
+	<20151013065225.44c5581d@synchrony.poochiereds.net>
+Date: Tue, 13 Oct 2015 08:54:05 -0400
+Message-ID: <CADyTPEyUKNdYuj0LwoX-r6jJJ0tEufwyA_mEKE=OVniX9rXPog@mail.gmail.com>
+Subject: Re: PROBLEM: nfs I/O errors with sqlite applications
+From: Nick Bowler <nbowler@draconx.ca>
+To: Jeff Layton <jlayton@poochiereds.net>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-ping ...
+On 2015-10-13, Jeff Layton <jlayton@poochiereds.net> wrote:
+> On Mon, 12 Oct 2015 23:01:36 -0400
+> Nick Bowler <nbowler@draconx.ca> wrote:
+>> On 2015-10-12 15:46 -0400, J. Bruce Fields wrote:
+>> > On Mon, Oct 12, 2015 at 03:25:38PM -0400, bfields wrote:
+>> > > On Mon, Oct 12, 2015 at 12:48:56PM -0400, Nick Bowler wrote:
+>> > > > I'm having a problem where, eventually, the nfs-mounted home
+>> > > > directory on one of my machines starts failing in a kind of weird
+>> > > > way.  The issue appears to affect only sqlite; I have two
+>> > > > applications that I know of which use it:
+>> > > >
+>> > > >   - Firefox, where the symptom is that the browser just hangs
+>> > > >     randomly,
+>> > > >   - gmpc, which crashes immediately on startup with I/O error.
+>> > > >
+>> > > > Once the issue occurs these applications remain permanently broken.
+>> > > > Since the latter is easier to test, I can run it in strace, and the
+>> > > > failing syscall seems to be:
+>> > > >
+>> > > >   fcntl(7, F_SETLK, {type=F_RDLCK, whence=SEEK_SET,
+>> > > > start=1073741824, len=1}) = -1 EIO (Input/output error)
+>> > > >
+>> > > > When the issue occurs, the client dmesg log is full of messages of
+>> > > > the form:
+>> > > >
+>> > > >   [3441972.381211] NFS: v4 server returned a bad sequence-id error
+>> > > > on an unconfirmed sequence ffff88007612ae20!
+>> > > >
+>> > > > There are no unusual messages on the server.
+>> [...]
+> Ok, makes sense. The log shows that it occurred in a fcntl call, so
+> it's probably this from lookup_or_create_lock_state:
+>
+>         lo = find_lockowner_str(cl, &lock->lk_new_owner);
+>         if (!lo) {
+>                 strhashval = ownerstr_hashval(&lock->lk_new_owner);
+>                 lo = alloc_init_lock_stateowner(strhashval, cl, ost, lock);
+>                 if (lo == NULL)
+>                         return nfserr_jukebox;
+>         } else {
+>                 /* with an existing lockowner, seqids must be the same */
+>                 status = nfserr_bad_seqid;
+>                 if (!cstate->minorversion &&
+>                     lock->lk_new_lock_seqid != lo->lo_owner.so_seqid)
+>                         goto out;
+>         }
+>
+> ...so we found an existing lockowner, but the seqid in the call is
+> wrong. It seems like the client ought to try to recover in this case,
+> but I don't see where it handles BAD_SEQID errors in the locking code.
+> What kernel versions are the client and server running here?
 
-What's your opinion about this problem ?
+It was in my original mail but got snipped (by me).  The client is
+running Linux 4.2.  The server is running Linux 4.1.4.  But that's
+just what they're running right now; I've been seeing this issue
+for a while now and both machines have been updated several times.
 
-If read/write of block layout file with bad length (res.count != arg.count),
-should nfs retry?  NFS try to call rpc_restart_call_prepare() right now, 
-that cause a panic with uninitialized task.
+> In any case, the question now is whether this is a client or server
+> bug. What would tell us that is a network capture of the NFS traffic
+> between client and server at the time that this occurs. Would it be
+> possible to collect one? If so, then let Bruce and I know and we can
+> figure out a way to share it privately.
 
-thanks,
-Kinglong Mee
+This should be possible.
 
-On 9/21/2015 11:22, Kinglong Mee wrote:
-> It caused by rpc_restart_call_prepare with an uninitialized task
-> for the pnfs do I/O locally without sending any RPC to MDS.
-> 
-> Some debug messages,
-> 
-> [ 1004.001842] bl_read_pagelist enter nr_pages 1 offset 2048 count 2048
-> [ 1004.002110] bl_read_pagelist: pg_offset 2048
-> [ 1004.002370] bl_read_pagelist: pg_len 2048 is_dio
-> [ 1004.002617] bl_read_pagelist: pg_len 2048 after do_add_page_to_bio
-> [ 1004.002853] bl_read_pagelist: 2048 4096 "(isect << SECTOR_SHIFT) < header->inode->i_size"
-> [ 1004.003774] NFS: nfs_pgio_result:     0, (status 0), tk_ops      (null)
-> [ 1004.003989] --> nfs4_read_done
-> [ 1004.004224] nfs_readpage_done: 0
-> [ 1004.004459] nfs_pgio_result: 0
-> [ 1004.004691] nfs_readpage_result: eof 0, res.count 4096, args.count 2048  
-> [ 1004.004926] nfs_readpage_retry: tk_ops           (null)
-> 
-> Panic messages as,
-> 
-> [ 1004.005170] BUG: unable to handle kernel NULL pointer dereference at           (null)
-> [ 1004.005452] IP: [<ffffffffa0075f8a>] rpc_restart_call_prepare+0x2a/0x50 [sunrpc]
-> [ 1004.005702] PGD 0
-> [ 1004.005937] Oops: 0000 [#1]
-> [ 1004.006175] Modules linked in: blocklayoutdriver(OE) nfsv4(OE) nfs(OE) fscache(E) xfs libcrc32c btrfs coretemp crct10dif_pclmul ppdev crc32_pclmul crc32c_intel ghash_clmulni_intel vmw_balloon vmw_vmci parport_pc parport nfsd(OE) shpchp xor raid6_pq i2c_piix4 auth_rpcgss nfs_acl lockd(E) grace sunrpc(E) vmwgfx drm_kms_helper ttm drm serio_raw e1000 mptspi scsi_transport_spi mptscsih ata_generic mptbase pata_acpi [last unloaded: fscache]
-> [ 1004.007611] CPU: 0 PID: 3489 Comm: kworker/0:2 Tainted: G           OE   4.3.0-rc1+ #252
-> [ 1004.007920] Hardware name: VMware, Inc. VMware Virtual Platform/440BX Desktop Reference Platform, BIOS 6.00 05/20/2014
-> [ 1004.008571] Workqueue: events bl_read_cleanup [blocklayoutdriver]
-> [ 1004.008917] task: ffff88006ceab080 ti: ffff880017700000 task.ti: ffff880017700000
-> [ 1004.009315] RIP: 0010:[<ffffffffa0075f8a>]  [<ffffffffa0075f8a>] rpc_restart_call_prepare+0x2a/0x50 [sunrpc]
-> [ 1004.010152] RSP: 0018:ffff880017703cc8  EFLAGS: 00010246
-> [ 1004.010589] RAX: 0000000000000000 RBX: ffff880017726000 RCX: 0000000000000006
-> [ 1004.011007] RDX: 0000000000000000 RSI: 0000000000000001 RDI: ffff8800177260d8
-> [ 1004.011428] RBP: ffff880017703cc8 R08: 0000000000000001 R09: 0000000000000000
-> [ 1004.011831] R10: 0000000000000000 R11: 0000000000000001 R12: ffff8800177260d8
-> [ 1004.012237] R13: ffff8800686008b0 R14: 0000000000000000 R15: ffff880017726160
-> [ 1004.012666] FS:  0000000000000000(0000) GS:ffffffff81c29000(0000) knlGS:0000000000000000
-> [ 1004.013478] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-> [ 1004.013930] CR2: 0000000000000000 CR3: 000000006ccbe000 CR4: 00000000001406f0
-> [ 1004.014592] Stack:
-> [ 1004.015103]  ffff880017703cf0 ffffffffa04c436e ffff8800177260d8 ffff880017726000
-> [ 1004.015611]  ffff8800686008b0 ffff880017703d18 ffffffffa04c2fb8 ffff880017726160
-> [ 1004.016105]  ffff880017726000 ffff88007ff43100 ffff880017703d40 ffffffffa05349c4
-> [ 1004.016565] Call Trace:
-> [ 1004.017071]  [<ffffffffa04c436e>] nfs_readpage_result+0x11e/0x130 [nfs]
-> [ 1004.017546]  [<ffffffffa04c2fb8>] nfs_pgio_result+0x88/0xa0 [nfs]
-> [ 1004.018009]  [<ffffffffa05349c4>] pnfs_ld_read_done+0x44/0xf0 [nfsv4]
-> [ 1004.018469]  [<ffffffffa04a8532>] bl_read_cleanup+0x22/0x50 [blocklayoutdriver]
-> [ 1004.018938]  [<ffffffff810a388c>] process_one_work+0x21c/0x4c0
-> [ 1004.019406]  [<ffffffff810a37dd>] ? process_one_work+0x16d/0x4c0
-> [ 1004.019876]  [<ffffffff810a3b7a>] worker_thread+0x4a/0x440
-> [ 1004.020339]  [<ffffffff810a3b30>] ? process_one_work+0x4c0/0x4c0
-> [ 1004.020795]  [<ffffffff810a3b30>] ? process_one_work+0x4c0/0x4c0
-> [ 1004.021289]  [<ffffffff810a8d85>] kthread+0xf5/0x110
-> [ 1004.021735]  [<ffffffff810a8c90>] ? kthread_create_on_node+0x240/0x240
-> [ 1004.022177]  [<ffffffff8172cd1f>] ret_from_fork+0x3f/0x70
-> [ 1004.022604]  [<ffffffff810a8c90>] ? kthread_create_on_node+0x240/0x240
-> [ 1004.023025] Code: 00 0f 1f 44 00 00 31 c0 f6 87 e9 00 00 00 01 55 48 89 e5 75 29 48 8b 47 58 48 c7 47 50 80 42 07 a0 c7 87 e4 00 00 00 00 00 00 00 <48> 83 38 00 74 0f 48 c7 47 50 b0 f1 07 a0 b8 01 00 00 00 5d c3
-> [ 1004.024344] RIP  [<ffffffffa0075f8a>] rpc_restart_call_prepare+0x2a/0x50 [sunrpc]
-> [ 1004.024773]  RSP <ffff880017703cc8>
-> [ 1004.025228] CR2: 0000000000000000
-> 
+> In the meantime, you may want to consider switching to NFSv4.1+. It
+> really is a superior protocol to v4.0 as it allows more stateful
+> operations to run in parallel and would likely sidestep this problem.
+
+Certainly something to look into!
