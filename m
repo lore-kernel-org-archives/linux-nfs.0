@@ -1,53 +1,86 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-oi0-f46.google.com ([209.85.218.46]:36664 "EHLO
-	mail-oi0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932270AbbJMN1Q (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Oct 2015 09:27:16 -0400
-Received: by oihr205 with SMTP id r205so9295343oih.3
-        for <linux-nfs@vger.kernel.org>; Tue, 13 Oct 2015 06:27:16 -0700 (PDT)
+Received: from mail-oi0-f50.google.com ([209.85.218.50]:34785 "EHLO
+	mail-oi0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932198AbbJMNd5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Oct 2015 09:33:57 -0400
+Received: by oiak8 with SMTP id k8so9423286oia.1
+        for <linux-nfs@vger.kernel.org>; Tue, 13 Oct 2015 06:33:57 -0700 (PDT)
 MIME-Version: 1.0
-In-Reply-To: <CAN-5tyHMCMekT0gJE1zNQLO0P5bVgjr_PuQF1BYhNy7n4KBvHg@mail.gmail.com>
-References: <CAN-5tyHxP276Re_Zm4mV9F+EY1Czq5SfbPJ1Os_CQd0hfhFzdA@mail.gmail.com>
-	<CAHQdGtSg5E0jrEhK-aLht6WdmMTFFBUuG8tUX7sHJDUj+67-4Q@mail.gmail.com>
-	<CAN-5tyHMCMekT0gJE1zNQLO0P5bVgjr_PuQF1BYhNy7n4KBvHg@mail.gmail.com>
-Date: Tue, 13 Oct 2015 09:27:15 -0400
-Message-ID: <CAHQdGtQfBZ4yRCkZ0-voFekTEx8fJ1kHCzrmtjr3RHh-dqOuww@mail.gmail.com>
-Subject: Re: [PATCH 1/1] Adding issync field to delegreturn_exit tracepoint
+In-Reply-To: <20151013122128.GD10632@dot.dmz.freshdot.net>
+References: <20151013122128.GD10632@dot.dmz.freshdot.net>
+Date: Tue, 13 Oct 2015 09:33:56 -0400
+Message-ID: <CAHQdGtRUrWuahu7iQbQQLUeB_ZPFoqFLTXFhHa0pCuKGp9ycWA@mail.gmail.com>
+Subject: Re: CAP(abilities) and NFS mounted storage
 From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Olga Kornievskaia <aglo@umich.edu>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
+To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Oct 13, 2015 at 8:26 AM, Olga Kornievskaia <aglo@umich.edu> wrote:
+On Tue, Oct 13, 2015 at 8:21 AM, Sander Smeenk <ssmeenk@freshdot.net> wrote:
+> Hi,
 >
-> On Mon, Oct 12, 2015 at 11:47 PM, Trond Myklebust
-> <trond.myklebust@primarydata.com> wrote:
-> > On Mon, Oct 12, 2015 at 5:55 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
-> >> It'll be nice to know when we return delegations synchronously or not.
-> >
-> > Why? This patch forces us to carry an otherwise completely unnecessary
-> > parameter, so at the very minimum we should have a discussion of what
-> > the real use cases are.
+> I'm struggling with a permission issue involving NFS-mounted storage and
+> a certain set of capabilities set by cap_set_flags(). The behaviour
+> differs for local storage versus NFS mounted storage.
 >
-> I used it to diagnose the race of open and delegreturn. If it's kept
+> I have this structure on local storage (spinning disks):
+> | # namei -l /opt/home/sites/t/test/dir/structure/.htaccess
+> | f: /opt/home/sites/t/test/dir/structure/.htaccess
+> | drwxr-xr-x root      root                 /
+> | drwxr-xr-x root      root                 opt
+> | drwxr-x--x root      root                 home
+> | drwx--x--x root      root                 sites
+> | drwx--x--x root      root                 t
+> | drwx------ http-test http-linux_http-test test
+> | drwx--x--x http-test http-linux_http-test dir
+> | drwx------ http-test http-linux_http-test structure
+> | -rw------- http-test http-linux_http-test .htaccess
+>
+> And this same structure on NFS-mounted storage:
+> | # namei -l /mnt/home/sites/t/test/dir/structure/.htaccess
+> | f: /mnt/home/sites/t/test/dir/structure/.htaccess
+> | drwxr-xr-x root      root                 /
+> | drwxr-xr-x root      root                 mnt
+> | drwxr-x--x root      root                 home
+> | drwx--x--x root      root                 sites
+> | drwx--x--x root      root                 t
+> | drwx------ http-test http-linux_http-test test
+> | drwx--x--x http-test http-linux_http-test dir
+> | drwx------ http-test http-linux_http-test structure
+> | -rw------- http-test http-linux_http-test .htaccess
+>
+> The NFS server is a NetApp filer (-sec=sys,rw=clientip,root=clientip).
+> I tried this with a Linux server too (rw,no_root_squash,no_subtree_check).
+> The client is always a Linux machine (rw,vers=3,tcp,bg).
+>
+> I made a little C program to illustrate the issue. It drops privileges
+> to www-data and tries to access the file specified with a certain set of
+> capabilties[*].
+>
+> This works for local storage, fails on NFS:
+>
+> LOCAL:
+> | # ./capset /opt/home/sites/t/test/dir/structure/.htaccess
+> | euid:33 uid:33 egid:33 gid:33
+> | Process capabilities: = cap_dac_read_search,cap_setgid,cap_setuid,cap_sys_nice+ep;
+> | Access: success!
+>
+> NFS:
+> | # ./capset /mnt/home/sites/t/test/dir/structure/.htaccess
+> | euid:33 uid:33 egid:33 gid:33
+> | Process capabilities: = cap_dac_read_search,cap_setgid,cap_setuid,cap_sys_nice+ep;
+> | Access: error (13): Permission denied
+>
+> The source for capset can be seen pasted at https://8n1.org/10831/12f0
+> Lines >=42
+>
+> I've experimented with different capabilties, but CAP_DAC_OVERRIDE is
+> not enough. I'd very much like to hear if it is possible for this to
+> work on NFS like it does on local storage.
 
-How were you using it?
+This will not work on NFS. The server, which enforces permissions, has
+no way to know what capabilities your process has on the client.
 
-> that some delegreturns are synchronous and others are not I think the
-> information is useful.
-
-The only difference between synchronous and asynchronous in this case
-is whether or not the process that launched the delegreturn actually
-waits for it to complete; a signal could easily prevent it from doing
-so without interrupting the delegreturn call itself.
-IOW: for complete information when debugging races here, you really
-need to examine the return value from the wait call.
-
-> Speaking of there is a race between state manager thread returning
-> used delegations and new open. Previously I thought it was evict
-> inode...
-
-Is this with commit 5e99b532bb95 ("nfs4: reset states to use
-open_stateid when returning delegation voluntarily") applied?
+Cheers
+  Trond
