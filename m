@@ -1,94 +1,53 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-oi0-f43.google.com ([209.85.218.43]:34278 "EHLO
-	mail-oi0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752939AbbJMMyF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Oct 2015 08:54:05 -0400
-Received: by oiak8 with SMTP id k8so8737875oia.1
-        for <linux-nfs@vger.kernel.org>; Tue, 13 Oct 2015 05:54:05 -0700 (PDT)
+Received: from mail-oi0-f46.google.com ([209.85.218.46]:36664 "EHLO
+	mail-oi0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932270AbbJMN1Q (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Oct 2015 09:27:16 -0400
+Received: by oihr205 with SMTP id r205so9295343oih.3
+        for <linux-nfs@vger.kernel.org>; Tue, 13 Oct 2015 06:27:16 -0700 (PDT)
 MIME-Version: 1.0
-In-Reply-To: <20151013065225.44c5581d@synchrony.poochiereds.net>
-References: <20151012164846.GA5017@draconx.ca>
-	<20151012192538.GG28755@fieldses.org>
-	<20151012194647.GJ28755@fieldses.org>
-	<20151013030136.GA7081@draconx.ca>
-	<20151013065225.44c5581d@synchrony.poochiereds.net>
-Date: Tue, 13 Oct 2015 08:54:05 -0400
-Message-ID: <CADyTPEyUKNdYuj0LwoX-r6jJJ0tEufwyA_mEKE=OVniX9rXPog@mail.gmail.com>
-Subject: Re: PROBLEM: nfs I/O errors with sqlite applications
-From: Nick Bowler <nbowler@draconx.ca>
-To: Jeff Layton <jlayton@poochiereds.net>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+In-Reply-To: <CAN-5tyHMCMekT0gJE1zNQLO0P5bVgjr_PuQF1BYhNy7n4KBvHg@mail.gmail.com>
+References: <CAN-5tyHxP276Re_Zm4mV9F+EY1Czq5SfbPJ1Os_CQd0hfhFzdA@mail.gmail.com>
+	<CAHQdGtSg5E0jrEhK-aLht6WdmMTFFBUuG8tUX7sHJDUj+67-4Q@mail.gmail.com>
+	<CAN-5tyHMCMekT0gJE1zNQLO0P5bVgjr_PuQF1BYhNy7n4KBvHg@mail.gmail.com>
+Date: Tue, 13 Oct 2015 09:27:15 -0400
+Message-ID: <CAHQdGtQfBZ4yRCkZ0-voFekTEx8fJ1kHCzrmtjr3RHh-dqOuww@mail.gmail.com>
+Subject: Re: [PATCH 1/1] Adding issync field to delegreturn_exit tracepoint
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Olga Kornievskaia <aglo@umich.edu>
+Cc: linux-nfs <linux-nfs@vger.kernel.org>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2015-10-13, Jeff Layton <jlayton@poochiereds.net> wrote:
-> On Mon, 12 Oct 2015 23:01:36 -0400
-> Nick Bowler <nbowler@draconx.ca> wrote:
->> On 2015-10-12 15:46 -0400, J. Bruce Fields wrote:
->> > On Mon, Oct 12, 2015 at 03:25:38PM -0400, bfields wrote:
->> > > On Mon, Oct 12, 2015 at 12:48:56PM -0400, Nick Bowler wrote:
->> > > > I'm having a problem where, eventually, the nfs-mounted home
->> > > > directory on one of my machines starts failing in a kind of weird
->> > > > way.  The issue appears to affect only sqlite; I have two
->> > > > applications that I know of which use it:
->> > > >
->> > > >   - Firefox, where the symptom is that the browser just hangs
->> > > >     randomly,
->> > > >   - gmpc, which crashes immediately on startup with I/O error.
->> > > >
->> > > > Once the issue occurs these applications remain permanently broken.
->> > > > Since the latter is easier to test, I can run it in strace, and the
->> > > > failing syscall seems to be:
->> > > >
->> > > >   fcntl(7, F_SETLK, {type=F_RDLCK, whence=SEEK_SET,
->> > > > start=1073741824, len=1}) = -1 EIO (Input/output error)
->> > > >
->> > > > When the issue occurs, the client dmesg log is full of messages of
->> > > > the form:
->> > > >
->> > > >   [3441972.381211] NFS: v4 server returned a bad sequence-id error
->> > > > on an unconfirmed sequence ffff88007612ae20!
->> > > >
->> > > > There are no unusual messages on the server.
->> [...]
-> Ok, makes sense. The log shows that it occurred in a fcntl call, so
-> it's probably this from lookup_or_create_lock_state:
+On Tue, Oct 13, 2015 at 8:26 AM, Olga Kornievskaia <aglo@umich.edu> wrote:
 >
->         lo = find_lockowner_str(cl, &lock->lk_new_owner);
->         if (!lo) {
->                 strhashval = ownerstr_hashval(&lock->lk_new_owner);
->                 lo = alloc_init_lock_stateowner(strhashval, cl, ost, lock);
->                 if (lo == NULL)
->                         return nfserr_jukebox;
->         } else {
->                 /* with an existing lockowner, seqids must be the same */
->                 status = nfserr_bad_seqid;
->                 if (!cstate->minorversion &&
->                     lock->lk_new_lock_seqid != lo->lo_owner.so_seqid)
->                         goto out;
->         }
+> On Mon, Oct 12, 2015 at 11:47 PM, Trond Myklebust
+> <trond.myklebust@primarydata.com> wrote:
+> > On Mon, Oct 12, 2015 at 5:55 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
+> >> It'll be nice to know when we return delegations synchronously or not.
+> >
+> > Why? This patch forces us to carry an otherwise completely unnecessary
+> > parameter, so at the very minimum we should have a discussion of what
+> > the real use cases are.
 >
-> ...so we found an existing lockowner, but the seqid in the call is
-> wrong. It seems like the client ought to try to recover in this case,
-> but I don't see where it handles BAD_SEQID errors in the locking code.
-> What kernel versions are the client and server running here?
+> I used it to diagnose the race of open and delegreturn. If it's kept
 
-It was in my original mail but got snipped (by me).  The client is
-running Linux 4.2.  The server is running Linux 4.1.4.  But that's
-just what they're running right now; I've been seeing this issue
-for a while now and both machines have been updated several times.
+How were you using it?
 
-> In any case, the question now is whether this is a client or server
-> bug. What would tell us that is a network capture of the NFS traffic
-> between client and server at the time that this occurs. Would it be
-> possible to collect one? If so, then let Bruce and I know and we can
-> figure out a way to share it privately.
+> that some delegreturns are synchronous and others are not I think the
+> information is useful.
 
-This should be possible.
+The only difference between synchronous and asynchronous in this case
+is whether or not the process that launched the delegreturn actually
+waits for it to complete; a signal could easily prevent it from doing
+so without interrupting the delegreturn call itself.
+IOW: for complete information when debugging races here, you really
+need to examine the return value from the wait call.
 
-> In the meantime, you may want to consider switching to NFSv4.1+. It
-> really is a superior protocol to v4.0 as it allows more stateful
-> operations to run in parallel and would likely sidestep this problem.
+> Speaking of there is a race between state manager thread returning
+> used delegations and new open. Previously I thought it was evict
+> inode...
 
-Certainly something to look into!
+Is this with commit 5e99b532bb95 ("nfs4: reset states to use
+open_stateid when returning delegation voluntarily") applied?
