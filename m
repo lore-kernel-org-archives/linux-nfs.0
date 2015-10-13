@@ -1,12 +1,12 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ob0-f177.google.com ([209.85.214.177]:34296 "EHLO
-	mail-ob0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751973AbbJMTq5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Oct 2015 15:46:57 -0400
-Received: by obbda8 with SMTP id da8so22786497obb.1
-        for <linux-nfs@vger.kernel.org>; Tue, 13 Oct 2015 12:46:57 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <m2fv1esla2.fsf@discipline.rit.edu>
+Received: from discipline.rit.edu ([129.21.6.207]:17016 "HELO
+	discipline.rit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1752161AbbJMT6v (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Oct 2015 15:58:51 -0400
+From: Andrew W Elble <aweits@rit.edu>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Olga Kornievskaia <aglo@umich.edu>, linux-nfs <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/1] Adding issync field to delegreturn_exit tracepoint
 References: <CAN-5tyHxP276Re_Zm4mV9F+EY1Czq5SfbPJ1Os_CQd0hfhFzdA@mail.gmail.com>
 	<CAHQdGtSg5E0jrEhK-aLht6WdmMTFFBUuG8tUX7sHJDUj+67-4Q@mail.gmail.com>
 	<CAN-5tyHMCMekT0gJE1zNQLO0P5bVgjr_PuQF1BYhNy7n4KBvHg@mail.gmail.com>
@@ -17,40 +17,34 @@ References: <CAN-5tyHxP276Re_Zm4mV9F+EY1Czq5SfbPJ1Os_CQd0hfhFzdA@mail.gmail.com>
 	<CAN-5tyHGp4ihz3pzcmX+xjm5aba8SA3Pfxw-nxNTKv9tFikaGw@mail.gmail.com>
 	<CAHQdGtQJm6rFiNgF+SVCx_3SAnzBgHu8mXToWu_uNwJHYCZzqA@mail.gmail.com>
 	<m2fv1esla2.fsf@discipline.rit.edu>
-Date: Tue, 13 Oct 2015 15:46:56 -0400
-Message-ID: <CAHQdGtS9NKgi0EcS-vQy9sVveGG-id4cKeTBr7dAeTs+93+Cuw@mail.gmail.com>
-Subject: Re: [PATCH 1/1] Adding issync field to delegreturn_exit tracepoint
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Andrew W Elble <aweits@rit.edu>
-Cc: Olga Kornievskaia <aglo@umich.edu>, linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+	<CAHQdGtS9NKgi0EcS-vQy9sVveGG-id4cKeTBr7dAeTs+93+Cuw@mail.gmail.com>
+Date: Tue, 13 Oct 2015 15:58:50 -0400
+In-Reply-To: <CAHQdGtS9NKgi0EcS-vQy9sVveGG-id4cKeTBr7dAeTs+93+Cuw@mail.gmail.com>
+	(Trond Myklebust's message of "Tue, 13 Oct 2015 15:46:56 -0400")
+Message-ID: <m27fmqr151.fsf@discipline.rit.edu>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Oct 13, 2015 at 1:58 PM, Andrew W Elble <aweits@rit.edu> wrote:
->
-> Trond Myklebust <trond.myklebust@primarydata.com> writes:
->
-> >> > OK. So what are the symptoms? I'm having trouble seeing how a race can
-> >> > happen, given a correctly coded server.
-> >>
-> >> Here's what the server sees:
-> >> open (foobar) replies back with a delegation
-> >> various operations including a close()
-> >> some time goes by...
-> >> open (foobar) replies back with the same delegation
-> >
-> > Why? Olga, we already had this discussion. That sort of server
-> > behaviour is never going to work without races and is the root cause
-> > of your problem. We simply won't ever support servers that do this.
->
-> Trond,
->
->   Specifically, what would the correct behavior be here?
 
-The server should honour the open without repeating the delegation.
+> The server should honour the open without repeating the delegation.
+>
+> The client already knows about the delegation due to the first open,
+> so there is no value whatsoever in repeating it. In addition, as you
+> see from Olga's example, it causes races with the return of that
+> delegation.
 
-The client already knows about the delegation due to the first open,
-so there is no value whatsoever in repeating it. In addition, as you
-see from Olga's example, it causes races with the return of that
-delegation.
+Thanks for the clarification, I'll be updating my v2 patch to suppress both
+types of delegations ("duplicate" and "repeated").
+
+Thanks,
+
+Andy
+
+-- 
+Andrew W. Elble
+aweits@discipline.rit.edu
+Infrastructure Engineer, Communications Technical Lead
+Rochester Institute of Technology
+PGP: BFAD 8461 4CCF DC95 DA2C B0EB 965B 082E 863E C912
