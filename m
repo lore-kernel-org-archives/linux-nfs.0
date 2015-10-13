@@ -1,77 +1,130 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:36582 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751902AbbJLXlk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Oct 2015 19:41:40 -0400
-Date: Mon, 12 Oct 2015 16:41:06 -0700
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: P??draig Brady <P@draigBrady.com>,
-        Anna Schumaker <Anna.Schumaker@netapp.com>, linux-nfs@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-api@vger.kernel.org, zab@zabbo.net, viro@zeniv.linux.org.uk,
-        clm@fb.com, mtk.manpages@gmail.com, andros@netapp.com
-Subject: Re: [PATCH v5 9/9] btrfs: btrfs_copy_file_range() only supports
- reflinks
-Message-ID: <20151012234106.GD11398@birch.djwong.org>
-References: <1443634014-3026-1-git-send-email-Anna.Schumaker@Netapp.com>
- <1443634014-3026-10-git-send-email-Anna.Schumaker@Netapp.com>
- <20151011142939.GA30905@infradead.org>
- <561B8A09.5070507@draigBrady.com>
- <20151012143444.GA10156@infradead.org>
+Received: from mail-io0-f170.google.com ([209.85.223.170]:35431 "EHLO
+	mail-io0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932181AbbJMDCF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Oct 2015 23:02:05 -0400
+Received: by iofl186 with SMTP id l186so7556205iof.2
+        for <linux-nfs@vger.kernel.org>; Mon, 12 Oct 2015 20:02:03 -0700 (PDT)
+Date: Mon, 12 Oct 2015 23:01:36 -0400
+From: Nick Bowler <nbowler@draconx.ca>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org, jlayton@poochiereds.net
+Subject: Re: PROBLEM: nfs I/O errors with sqlite applications
+Message-ID: <20151013030136.GA7081@draconx.ca>
+References: <20151012164846.GA5017@draconx.ca>
+ <20151012192538.GG28755@fieldses.org>
+ <20151012194647.GJ28755@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20151012143444.GA10156@infradead.org>
+Content-Type: multipart/mixed; boundary="/9DWx/yDrRhgMJTb"
+In-Reply-To: <20151012194647.GJ28755@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Oct 12, 2015 at 07:34:44AM -0700, Christoph Hellwig wrote:
-> On Mon, Oct 12, 2015 at 11:23:05AM +0100, P??draig Brady wrote:
-> > You're right that if the user doesn't notice, then there is no
-> > point exposing this. However I think the user does notice as
-> > there is a difference in the end state of the copy.  I.E. generally
-> > if there is a different end state it would require an option,
-> > while if only a different copying mechanism it would not.
-> > I think the different end state of a reflink warrants an option for 3 reasons:
-> > 
-> >  - The user might want separate bits for resiliency. Now this is
-> >    a weak argument due to possible deduplication in lower layers,
-> >    but still valid is some setups.
-> 
-> This one is completely bogus.  For one because literally every lower
-> layer can and increasinly will dedup or share in some form.  If we
-> prentend we could do this we actively mislead the user.
-> 
-> >  - The user might want to avoid CoW at a later time critical stage.
-> > 
-> >  - The user might want to avoid ENOSPC at a later critical stage.
-> 
-> These two are the same and would be the argument for the "falloc" flag
-> I mention before.  But we'd need to sit down and specify the exact
-> semantics for it.  For example one important question that comes to mind
-> is if it also applies for extents that are holes in the source range.
 
-One of the patches in last week's XFS reflink patchbomb adds FALLOC_FL_UNSHARE
-flag; at the moment it _only_ forces copy-on-write of shared blocks, and it
-leaves holes alone.
+--/9DWx/yDrRhgMJTb
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 
-Obviously we haven't yet figured out what are peoples' preferences in terms of
-"fill the holes and unshare the shared" vs. "only unshare the shared" vs. "only
-fill the holes".  It isn't that hard to add a FALLOC_FL_UNSHARE_FILL_HOLES flag
-that fills the holes while unsharing is going on.
+On 2015-10-12 15:46 -0400, J. Bruce Fields wrote:
+> On Mon, Oct 12, 2015 at 03:25:38PM -0400, bfields wrote:
+> > On Mon, Oct 12, 2015 at 12:48:56PM -0400, Nick Bowler wrote:
+> > > I'm having a problem where, eventually, the nfs-mounted home directory
+> > > on one of my machines starts failing in a kind of weird way.  The issue
+> > > appears to affect only sqlite; I have two applications that I know of
+> > > which use it:
+> > > 
+> > >   - Firefox, where the symptom is that the browser just hangs randomly,
+> > >   - gmpc, which crashes immediately on startup with I/O error.
+> > > 
+> > > Once the issue occurs these applications remain permanently broken.
+> > > Since the latter is easier to test, I can run it in strace, and the
+> > > failing syscall seems to be:
+> > > 
+> > >   fcntl(7, F_SETLK, {type=F_RDLCK, whence=SEEK_SET, start=1073741824, len=1}) = -1 EIO (Input/output error)
+> > > 
+> > > When the issue occurs, the client dmesg log is full of messages of the form:
+> > > 
+> > >   [3441972.381211] NFS: v4 server returned a bad sequence-id error on an unconfirmed sequence ffff88007612ae20!
+> > > 
+> > > There are no unusual messages on the server.
+[...]
+> > I wonder if there's some way to make this reproduce more quickly, for
+> > example by running something that makes more aggressive use of sqlite,
+> > or running multiple copies of such a thing simultaneously.  Might be
+> > interesting to know what the pattern of file opens and locking looks
+> > like (so stracing one of those applications might help).
 
-Personally I suspect that the most interest is in filling holes and unsharing,
-because they don't want to pay for allocation at a critical stage for anywhere
-in the file.  But I could be wrong, so allowing both goals to be expressed via
-mode allows flexibility.
+I could try doing something like using the sqlite3 command-line tool to
+do a lot of database operations, and hope I can reproduce.  I'd have to
+reboot to test though.
 
---D
+I attached a full strace log (gzipped) from a failing process.  The
+command run is:
 
-> 
-> I'd much rather get the basic system call in ASAP and then let people
-> explain their use cases for this and only add it once we've made sure
-> we have consistent semantics that actually fit the users needs.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-api" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+  sqlite3 newfile.sqlite vacuum
+
+which fails in a similar manner to gmpc.
+
+> Oh, also I forgot to ask what version of the NFS protocol you're using
+> (4.0, 4.1, or 4.2).
+
+Looks like 4.0:
+
+  athena:/home on /home type nfs4 (rw,relatime,vers=4.0,rsize=524288,wsize=524288,namlen=255,hard,proto=tcp,port=0,timeo=600,retrans=2,sec=krb5,clientaddr=192.168.0.207,local_lock=none,addr=192.168.0.10)
+
+Cheers,
+  Nick
+
+--/9DWx/yDrRhgMJTb
+Content-Type: application/octet-stream
+Content-Disposition: attachment; filename="sqlite3-vacuum-strace.log.gz"
+Content-Transfer-Encoding: base64
+
+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
+vyvn5+eSoGe29OyEjxIEEh+q/ANm4INtazYAAA==
+
+--/9DWx/yDrRhgMJTb--
