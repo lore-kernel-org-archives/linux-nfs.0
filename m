@@ -1,78 +1,149 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx141.netapp.com ([216.240.21.12]:47801 "EHLO mx141.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752156AbbJMUZe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 13 Oct 2015 16:25:34 -0400
-Subject: Re: [PATCH v5 8/9] vfs: Add vfs_copy_file_range() support for
- pagecache copies
-To: =?UTF-8?Q?P=c3=a1draig_Brady?= <P@draigBrady.com>,
-        Neil Brown <nfbrown@novell.com>, <linux-nfs@vger.kernel.org>,
-        <linux-btrfs@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>,
-        <linux-api@vger.kernel.org>, <zab@zabbo.net>,
-        <viro@zeniv.linux.org.uk>, <clm@fb.com>, <darrick.wong@oracle.com>,
-        <mtk.manpages@gmail.com>, <andros@netapp.com>, <hch@infradead.org>
-References: <1443634014-3026-1-git-send-email-Anna.Schumaker@Netapp.com>
- <1443634014-3026-9-git-send-email-Anna.Schumaker@Netapp.com>
- <87vbai6sud.fsf@notabene.neil.brown.name> <5617A1E9.1080509@draigBrady.com>
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-Message-ID: <561D68B9.8030209@Netapp.com>
-Date: Tue, 13 Oct 2015 16:25:29 -0400
+Received: from TYO201.gate.nec.co.jp ([210.143.35.51]:50578 "EHLO
+	tyo201.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751642AbbJND5q convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Oct 2015 23:57:46 -0400
+From: Kosuke Tatsukawa <tatsu@ab.jp.nec.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>
+CC: Neil Brown <nfbrown@novell.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        "David S. Miller" <davem@davemloft.net>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH v2] sunrpc: fix waitqueue_active without memory barrier
+ in sunrpc
+Date: Wed, 14 Oct 2015 03:57:13 +0000
+Message-ID: <17EC94B0A072C34B8DCF0D30AD16044A02877996@BPXM09GP.gisp.nec.co.jp>
+In-Reply-To: <20151012202643.GM28755@fieldses.org>
+Content-Type: text/plain; charset="iso-2022-jp"
 MIME-Version: 1.0
-In-Reply-To: <5617A1E9.1080509@draigBrady.com>
-Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 10/09/2015 07:15 AM, Pádraig Brady wrote:
-> On 08/10/15 02:40, Neil Brown wrote:
->> Anna Schumaker <Anna.Schumaker@netapp.com> writes:
->>
->>> @@ -1338,34 +1362,26 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
->>>  			    struct file *file_out, loff_t pos_out,
->>>  			    size_t len, unsigned int flags)
->>>  {
->>> -	struct inode *inode_in;
->>> -	struct inode *inode_out;
->>>  	ssize_t ret;
->>>  
->>> -	if (flags)
->>> +	/* Flags should only be used exclusively. */
->>> +	if ((flags & COPY_FR_COPY) && (flags & ~COPY_FR_COPY))
->>> +		return -EINVAL;
->>> +	if ((flags & COPY_FR_REFLINK) && (flags & ~COPY_FR_REFLINK))
->>> +		return -EINVAL;
->>> +	if ((flags & COPY_FR_DEDUP) && (flags & ~COPY_FR_DEDUP))
->>>  		return -EINVAL;
->>>  
->>
->> Do you also need:
->>
->>    if (flags & ~(COPY_FR_COPY | COPY_FR_REFLINK | COPY_FR_DEDUP))
->>    	return -EINVAL;
->>
->> so that future user-space can test if the kernel supports new flags?
+J. Bruce Fields wrote:
+> On Mon, Oct 12, 2015 at 10:41:06AM +0000, Kosuke Tatsukawa wrote:
+>> J. Bruce Fields wrote:
+>> > On Fri, Oct 09, 2015 at 06:29:44AM +0000, Kosuke Tatsukawa wrote:
+>> >> Neil Brown wrote:
+>> >> > Kosuke Tatsukawa <tatsu@ab.jp.nec.com> writes:
+>> >> > 
+>> >> >> There are several places in net/sunrpc/svcsock.c which calls
+>> >> >> waitqueue_active() without calling a memory barrier.  Add a memory
+>> >> >> barrier just as in wq_has_sleeper().
+>> >> >>
+>> >> >> I found this issue when I was looking through the linux source code
+>> >> >> for places calling waitqueue_active() before wake_up*(), but without
+>> >> >> preceding memory barriers, after sending a patch to fix a similar
+>> >> >> issue in drivers/tty/n_tty.c  (Details about the original issue can be
+>> >> >> found here: https://lkml.org/lkml/2015/9/28/849).
+>> >> > 
+>> >> > hi,
+>> >> > this feels like the wrong approach to the problem.  It requires extra
+>> >> > 'smb_mb's to be spread around which are hard to understand as easy to
+>> >> > forget.
+>> >> > 
+>> >> > A quick look seems to suggest that (nearly) every waitqueue_active()
+>> >> > will need an smb_mb.  Could we just put the smb_mb() inside
+>> >> > waitqueue_active()??
+>> >> <snip>
+>> >> 
+>> >> There are around 200 occurrences of waitqueue_active() in the kernel
+>> >> source, and most of the places which use it before wake_up are either
+>> >> protected by some spin lock, or already has a memory barrier or some
+>> >> kind of atomic operation before it.
+>> >> 
+>> >> Simply adding smp_mb() to waitqueue_active() would incur extra cost in
+>> >> many cases and won't be a good idea.
+>> >> 
+>> >> Another way to solve this problem is to remove the waitqueue_active(),
+>> >> making the code look like this;
+>> >> 	if (wq)
+>> >> 		wake_up_interruptible(wq);
+>> >> This also fixes the problem because the spinlock in the wake_up*() acts
+>> >> as a memory barrier and prevents the code from being reordered by the
+>> >> CPU (and it also makes the resulting code is much simpler).
+>> > 
+>> > I might not care which we did, except I don't have the means to test
+>> > this quickly, and I guess this is some of our most frequently called
+>> > code.
+>> > 
+>> > I suppose your patch is the most conservative approach, as the
+>> > alternative is a spinlock/unlock in wake_up_interruptible, which I
+>> > assume is necessarily more expensive than an smp_mb().
+>> > 
+>> > As far as I can tell it's been this way since forever.  (Well, since a
+>> > 2002 patch "NFSD: TCP: rationalise locking in RPC server routines" which
+>> > removed some spinlocks from the data_ready routines.)
+>> > 
+>> > I don't understand what the actual race is yet (which code exactly is
+>> > missing the wakeup in this case?  nfsd threads seem to instead get
+>> > woken up by the wake_up_process() in svc_xprt_do_enqueue().)
+>> 
+>> Thank you for the reply.  I tried looking into this.
+>> 
+>> The callbacks in net/sunrpc/svcsock.c are set up in svc_tcp_init() and
+>> svc_udp_init(), which are both called from svc_setup_socket().
+>> svc_setup_socket() is called (indirectly) from lockd, nfsd, and nfsv4
+>> callback port related code.
+>> 
+>> Maybe I'm wrong, but there might not be any kernel code that is using
+>> the socket's wait queue in this case.
 > 
-> Seems like a good idea, yes.
-> 
-> Also that got me thinking about COPY_FR_SPARSE.
-> What's the current behavior when copying a sparse range?
-> Is the hole propagated by default (good), or is it expanded?
+> As Trond points out there are probably waiters internal to the
+> networking code.
 
-I haven't tried it, but I think the hole would be expanded :(.  I'm having splice() handle the pagecache copy part, and (as far as I know) splice() doesn't know anything about sparse files.  I might be able to put in some kind of fallocate() / splice() loop to copy the range in multiple pieces.
+Trond and Bruce, thank you for the comment.  I was able to find the call
+to the wait function that was called from nfsd.
 
-I don't want to add COPY_FR_SPARSE_AUTO, because then the kernel will have to determine how best to interpret "auto".  I'm more inclined to add a single COPY_FR_SPARSE flag to enable creating sparse files, and then have the application tell us what to do for any given range.
+sk_stream_wait_connect() and sk_stream_wait_memory() were called from
+either do_tcp_sendpages() or tcp_sendmsg() called from within
+svc_send().  sk_stream_wait_connect() shouldn't be called at this point,
+because the socket has already been used to receive the rpc request.
 
-Anna
+On the wake_up side, sk_write_space() is called from the following
+locations.  The relevant ones seems to be preceded by atomic_sub or a
+memory barrier.
++ ksocknal_write_space [drivers/staging/lustre/lnet/klnds/socklnd/socklnd_lib.c:633]
++ atm_pop_raw [net/atm/raw.c:40]
++ sock_setsockopt [net/core/sock.c:740]
++ sock_wfree [net/core/sock.c:1630]
+  Preceded by atomic_sub in sock_wfree()
++ ccid3_hc_tx_packet_recv [net/dccp/ccids/ccid3.c:442]
++ do_tcp_sendpages [net/ipv4/tcp.c:1008]
++ tcp_sendmsg [net/ipv4/tcp.c:1300]
++ do_tcp_setsockopt [net/ipv4/tcp.c:2597]
++ tcp_new_space [net/ipv4/tcp_input.c:4885]
+  Preceded by smp_mb__after_atomic in tcp_check_space()
++ llc_conn_state_process [net/llc/llc_conn.c:148]
++ pipe_rcv_status [net/phonet/pep.c:312]
++ pipe_do_rcv [net/phonet/pep.c:440]
++ pipe_start_flow_control [net/phonet/pep.c:554]
++ svc_sock_setbufsize [net/sunrpc/svcsock.c:45]
 
-> 
-> Note cp(1) has --sparse={never,auto,always}. Auto is the default,
-> so it would be good I think if that was the default mode for copy_file_range().
-> With other sparse modes, we'd have to avoid copy_file_range() unless
-> there was control possible with COPY_FR_SPARSE_{AUTO,NONE,ALWAYS}.
-> Note currently cp --sparse=always will detect runs of zeros and also
-> avoid speculative preallocation by using fallocate (fd, FALLOC_FL_PUNCH_HOLE, ...)
-> 
-> thanks,
-> Pádraig.
-> 
+sk_state_change() calls related to TCP/IP were called from the following
+places.
++ inet_shutdown [net/ipv4/af_inet.c:825]
+  This shouldn't be called when waiting
++ tcp_done [net/ipv4/tcp.c:3078]
+  spin_lock*/spin_unlock* is called in lock_timer_base
++ tcp_fin [net/ipv4/tcp_input.c:4031]
+  atomic_long_sub is called from sk_memory_allocated_sub called within
+  sk_mem_reclaim
++ tcp_finish_connect [net/ipv4/tcp_input.c:5415]
+  This shoudn't be called when waiting
++ tcp_rcv_state_process [net/ipv4/tcp_input.c:5807,5880]
+  The socket shouldn't be in TCP_SYN_RECV nor TCP_FIN_WAIT1 states when
+  waiting
 
+I think the wait queue won't be used for being woken up by
+svc_{tcp,udp}_data_ready, because nfsd doesn't read from a socket.
+
+So with the current implementation, it seems there shouldn't be any
+problems even if the memory barrier is missing.
+---
+Kosuke TATSUKAWA  | 3rd IT Platform Department
+                  | IT Platform Division, NEC Corporation
+                  | tatsu@ab.jp.nec.com
