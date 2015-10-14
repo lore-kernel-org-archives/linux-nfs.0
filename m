@@ -1,208 +1,193 @@
 Return-Path: <jlayton@poochiereds.net>
-Date: Wed, 14 Oct 2015 15:55:05 -0400
+Date: Wed, 14 Oct 2015 16:30:18 -0400
 From: Jeff Layton <jlayton@poochiereds.net>
 To: Benjamin Coddington <bcodding@redhat.com>
 Cc: linux-nfs@vger.kernel.org, trond.myklebust@primarydata.com,
         anna.schumaker@netapp.com
-Subject: Re: [PATCH 08/10] NFS: Move do_vfs_lock to shared inline
-Message-ID: <20151014155521.28475a2d@synchrony.poochiereds.net>
-In-Reply-To: <1ad951a190be5b737d285ae91c3d8acbfb84ff18.1444846590.git.bcodding@redhat.com>
+Subject: Re: [PATCH 10/10] NFS: Deferred unlocks - always unlock on FL_CLOSE
+Message-ID: <20151014163018.1d2de645@synchrony.poochiereds.net>
+In-Reply-To: <93c4aa68a777b232075b9b8252d671635bb1c320.1444846590.git.bcodding@redhat.com>
 References: <cover.1444846590.git.bcodding@redhat.com>
-	<1ad951a190be5b737d285ae91c3d8acbfb84ff18.1444846590.git.bcodding@redhat.com>
+	<93c4aa68a777b232075b9b8252d671635bb1c320.1444846590.git.bcodding@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 14 Oct 2015 14:23:35 -0400
+On Wed, 14 Oct 2015 14:23:37 -0400
 Benjamin Coddington <bcodding@redhat.com> wrote:
 
-> Send the inode instead of the file_lock to do_vfs_lock() in
-> fs/lockd/clintproc.c (because there may not be a fl_file the unlock path).
-> Now that we have posix_lock_inode_wait() the three copies of do_vfs_lock()
-> can be collapsed.
+> NFS unlock procedures will wait for IO to complete before sending an unlock.
+> In the case that this wait is interrupted, an unlock may never be sent if
+> the unlock is part of cleaning up locks during a close.  This lost lock can
+> then prevent other clients from locking the file.
+> 
+> Fix this by deferring an unlock that should wait for IO during FL_CLOSE by
+> copying it to a list on the nfs_lock_context, which can then be used to
+> release the lock when the IO has completed.
 > 
 > Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
 > ---
->  fs/lockd/clntproc.c |   25 +++++--------------------
->  fs/nfs/file.c       |   20 ++------------------
->  fs/nfs/nfs4proc.c   |   16 ----------------
->  include/linux/fs.h  |   16 ++++++++++++++++
->  4 files changed, 23 insertions(+), 54 deletions(-)
+>  fs/nfs/file.c          |   36 +++++++++++++++++++++++++++++++++++-
+>  fs/nfs/inode.c         |    1 +
+>  fs/nfs/pagelist.c      |   23 ++++++++++++++++++++---
+>  include/linux/nfs_fs.h |    7 +++++++
+>  4 files changed, 63 insertions(+), 4 deletions(-)
 > 
-> diff --git a/fs/lockd/clntproc.c b/fs/lockd/clntproc.c
-> index 4a35e7c..bd484f0 100644
-> --- a/fs/lockd/clntproc.c
-> +++ b/fs/lockd/clntproc.c
-> @@ -475,22 +475,6 @@ static void nlmclnt_locks_init_private(struct file_lock *fl, struct nlm_host *ho
->  	fl->fl_ops = &nlmclnt_lock_ops;
->  }
->  
-> -static int do_vfs_lock(struct file_lock *fl)
-> -{
-> -	int res = 0;
-> -	switch (fl->fl_flags & (FL_POSIX|FL_FLOCK)) {
-> -		case FL_POSIX:
-> -			res = posix_lock_file_wait(fl->fl_file, fl);
-> -			break;
-> -		case FL_FLOCK:
-> -			res = flock_lock_file_wait(fl->fl_file, fl);
-> -			break;
-> -		default:
-> -			BUG();
-> -	}
-> -	return res;
-> -}
-> -
->  /*
->   * LOCK: Try to create a lock
->   *
-> @@ -518,6 +502,7 @@ nlmclnt_lock(struct nlm_rqst *req, struct file_lock *fl)
->  	struct nlm_host	*host = req->a_host;
->  	struct nlm_res	*resp = &req->a_res;
->  	struct nlm_wait *block = NULL;
-> +	struct inode *inode = file_inode(fl->fl_file);
->  	unsigned char fl_flags = fl->fl_flags;
->  	unsigned char fl_type;
->  	int status = -ENOLCK;
-> @@ -527,7 +512,7 @@ nlmclnt_lock(struct nlm_rqst *req, struct file_lock *fl)
->  	req->a_args.state = nsm_local_state;
->  
->  	fl->fl_flags |= FL_ACCESS;
-> -	status = do_vfs_lock(fl);
-> +	status = do_vfs_lock(inode, fl);
->  	fl->fl_flags = fl_flags;
->  	if (status < 0)
->  		goto out;
-> @@ -577,7 +562,7 @@ again:
->  		}
->  		/* Ensure the resulting lock will get added to granted list */
->  		fl->fl_flags |= FL_SLEEP;
-> -		if (do_vfs_lock(fl) < 0)
-> +		if (do_vfs_lock(inode, fl) < 0)
->  			printk(KERN_WARNING "%s: VFS is out of sync with lock manager!\n", __func__);
->  		up_read(&host->h_rwsem);
->  		fl->fl_flags = fl_flags;
-> @@ -607,7 +592,7 @@ out_unlock:
->  	fl_type = fl->fl_type;
->  	fl->fl_type = F_UNLCK;
->  	down_read(&host->h_rwsem);
-> -	do_vfs_lock(fl);
-> +	do_vfs_lock(inode, fl);
->  	up_read(&host->h_rwsem);
->  	fl->fl_type = fl_type;
->  	fl->fl_flags = fl_flags;
-> @@ -674,7 +659,7 @@ nlmclnt_unlock(struct nfs_open_context *ctx, struct nlm_rqst *req, struct file_l
->  	 */
->  	fl->fl_flags |= FL_EXISTS;
->  	down_read(&host->h_rwsem);
-> -	status = do_vfs_lock(fl);
-> +	status = do_vfs_lock(d_inode(ctx->dentry), fl);
->  	up_read(&host->h_rwsem);
->  	fl->fl_flags = fl_flags;
->  	if (status == -ENOENT) {
 > diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-> index 319847c..d16c50f 100644
+> index d16c50f..460311a 100644
 > --- a/fs/nfs/file.c
 > +++ b/fs/nfs/file.c
-> @@ -737,22 +737,6 @@ out_noconflict:
->  	goto out;
+> @@ -738,6 +738,36 @@ out_noconflict:
 >  }
 >  
-> -static int do_vfs_lock(struct file *file, struct file_lock *fl)
-> -{
-> -	int res = 0;
-> -	switch (fl->fl_flags & (FL_POSIX|FL_FLOCK)) {
-> -		case FL_POSIX:
-> -			res = posix_lock_file_wait(file, fl);
-> -			break;
-> -		case FL_FLOCK:
-> -			res = flock_lock_file_wait(file, fl);
-> -			break;
-> -		default:
-> -			BUG();
-> -	}
-> -	return res;
-> -}
-> -
 >  static int
->  do_unlk(struct file *filp, int cmd, struct file_lock *fl, int is_local)
->  {
-> @@ -786,7 +770,7 @@ do_unlk(struct file *filp, int cmd, struct file_lock *fl, int is_local)
->  	if (!is_local)
->  		status = NFS_PROTO(inode)->lock(ctx, cmd, fl);
->  	else
-> -		status = do_vfs_lock(filp, fl);
-> +		status = do_vfs_lock(inode, fl);
->  	return status;
->  }
->  
-> @@ -817,7 +801,7 @@ do_setlk(struct file *filp, int cmd, struct file_lock *fl, int is_local)
->  	if (!is_local)
->  		status = NFS_PROTO(inode)->lock(ctx, cmd, fl);
->  	else
-> -		status = do_vfs_lock(filp, fl);
-> +		status = do_vfs_lock(inode, fl);
->  	if (status < 0)
->  		goto out;
->  
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index c08f8ac..6b19307 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -5511,22 +5511,6 @@ static int nfs4_proc_getlk(struct nfs4_state *state, int cmd, struct file_lock *
->  	return err;
->  }
->  
-> -static int do_vfs_lock(struct inode *inode, struct file_lock *fl)
-> -{
-> -	int res = 0;
-> -	switch (fl->fl_flags & (FL_POSIX|FL_FLOCK)) {
-> -		case FL_POSIX:
-> -			res = posix_lock_inode_wait(inode, fl);
-> -			break;
-> -		case FL_FLOCK:
-> -			res = flock_lock_inode_wait(inode, fl);
-> -			break;
-> -		default:
-> -			BUG();
-> -	}
-> -	return res;
-> -}
-> -
->  struct nfs4_unlockdata {
->  	struct nfs_locku_args arg;
->  	struct nfs_locku_res res;
-> diff --git a/include/linux/fs.h b/include/linux/fs.h
-> index 72d8a84..165577a 100644
-> --- a/include/linux/fs.h
-> +++ b/include/linux/fs.h
-> @@ -1225,6 +1225,22 @@ static inline int flock_lock_file_wait(struct file *filp, struct file_lock *fl)
->  	return flock_lock_inode_wait(file_inode(filp), fl);
->  }
->  
-> +static inline int do_vfs_lock(struct inode *inode, struct file_lock *fl)
+> +defer_unlk(struct nfs_lock_context *l_ctx, int cmd, struct file_lock *fl)
 > +{
-> +	int res = 0;
-> +	switch (fl->fl_flags & (FL_POSIX|FL_FLOCK)) {
-> +		case FL_POSIX:
-> +			res = posix_lock_inode_wait(inode, fl);
-> +			break;
-> +		case FL_FLOCK:
-> +			res = flock_lock_inode_wait(inode, fl);
-> +			break;
-> +		default:
-> +			BUG();
+> +	struct inode *inode = d_inode(l_ctx->open_context->dentry);
+> +	struct nfs_io_counter *c = &l_ctx->io_count;
+> +	struct nfs_deferred_unlock *dunlk;
+> +	int status = 0;
+> +
+> +	if (atomic_read(&c->io_count) == 0)
+> +		return 0;
+> +
+> +	/* free in nfs_iocounter_dec */
+> +	dunlk = kmalloc(sizeof(*dunlk), GFP_NOFS);
+> +	if (dunlk == NULL)
+> +		return -ENOMEM;
+> +
+
+This is a little ugly...
+
+You're probably going to calling this from something like
+locks_remove_posix, and if this allocation fails then the unlock will
+just never happen.
+
+Is there any way to avoid this allocation?
+
+The "cmd" field in nfs_deferred_unlock is more or less redundant. We're
+always calling this with that set to F_UNLCK. We also know that this
+will be called on the whole file range. Maybe we can simply add a flag
+to the lock context to indicate whether we should send a whole-file
+unlock on it when the io_count goes to zero.
+
+Also, on a somewhat related note...we aren't currently setting FL_CLOSE
+in locks_remove_flock and we probably should be.
+
+
+> +	INIT_LIST_HEAD(&dunlk->list);
+> +	dunlk->cmd = cmd;
+> +	memcpy(&dunlk->fl, fl, sizeof(dunlk->fl));
+> +	spin_lock(&inode->i_lock);
+> +	if (atomic_read(&c->io_count) != 0) {
+> +		list_add_tail(&dunlk->list, &l_ctx->dunlk_list);
+> +		status = -EINPROGRESS;
+> +	} else {
+> +		kfree(dunlk);
 > +	}
-> +	return res;
+> +	spin_unlock(&inode->i_lock);
+> +	return status;
 > +}
 > +
->  struct fasync_struct {
->  	spinlock_t		fa_lock;
->  	int			magic;
+> +static int
+>  do_unlk(struct file *filp, int cmd, struct file_lock *fl, int
+> is_local) {
+>  	struct inode *inode = filp->f_mapping->host;
+> @@ -753,7 +783,11 @@ do_unlk(struct file *filp, int cmd, struct
+> file_lock *fl, int is_local) 
+>  	l_ctx = nfs_get_lock_context(nfs_file_open_context(filp));
+>  	if (!IS_ERR(l_ctx)) {
+> -		status = nfs_iocounter_wait(&l_ctx->io_count);
+> +		if (fl->fl_flags & FL_CLOSE)
+> +			status = defer_unlk(l_ctx, cmd, fl);
+> +		else
+> +			status =
+> nfs_iocounter_wait(&l_ctx->io_count); +
+>  		nfs_put_lock_context(l_ctx);
+>  		if (status < 0)
+>  			return status;
+> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+> index 326d9e1..af4f846 100644
+> --- a/fs/nfs/inode.c
+> +++ b/fs/nfs/inode.c
+> @@ -696,6 +696,7 @@ static void nfs_init_lock_context(struct
+> nfs_lock_context *l_ctx) l_ctx->lockowner.l_owner = current->files;
+>  	l_ctx->lockowner.l_pid = current->tgid;
+>  	INIT_LIST_HEAD(&l_ctx->list);
+> +	INIT_LIST_HEAD(&l_ctx->dunlk_list);
+>  	nfs_iocounter_init(&l_ctx->io_count);
+>  }
+>  
+> diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+> index fe3ddd2..17dd6c0 100644
+> --- a/fs/nfs/pagelist.c
+> +++ b/fs/nfs/pagelist.c
+> @@ -108,9 +108,26 @@ nfs_iocounter_inc(struct nfs_io_counter *c)
+>  }
+>  
+>  static void
+> -nfs_iocounter_dec(struct nfs_io_counter *c)
+> +nfs_iocounter_dec(struct nfs_lock_context *l_ctx)
+>  {
+> -	if (atomic_dec_and_test(&c->io_count)) {
+> +	struct nfs_io_counter *c = &l_ctx->io_count;
+> +	struct inode *inode = d_inode(l_ctx->open_context->dentry);
+> +
+> +	if (atomic_dec_and_lock(&c->io_count, &inode->i_lock)) {
+> +		if (unlikely(!list_empty(&l_ctx->dunlk_list))) {
+> +			struct nfs_deferred_unlock *dunlk, *tmp;
+> +			LIST_HEAD(dunlk_list);
+> +			list_replace_init(&l_ctx->dunlk_list,
+> &dunlk_list);
+> +			spin_unlock(&inode->i_lock);
+> +
+> +			list_for_each_entry_safe(dunlk, tmp,
+> &dunlk_list, list) {
+> +
+> NFS_PROTO(inode)->lock(l_ctx->open_context, dunlk->cmd, &dunlk->fl);
+> +				locks_release_private(&dunlk->fl);
+> +				kfree(dunlk);
+> +			}
+> +		} else {
+> +			spin_unlock(&inode->i_lock);
+> +		}
+>  		clear_bit(NFS_IO_INPROGRESS, &c->flags);
+>  		smp_mb__after_atomic();
+>  		wake_up_bit(&c->flags, NFS_IO_INPROGRESS);
+> @@ -431,7 +448,7 @@ static void nfs_clear_request(struct nfs_page
+> *req) req->wb_page = NULL;
+>  	}
+>  	if (l_ctx != NULL) {
+> -		nfs_iocounter_dec(&l_ctx->io_count);
+> +		nfs_iocounter_dec(l_ctx);
+>  		nfs_put_lock_context(l_ctx);
+>  		req->wb_lock_context = NULL;
+>  	}
+> diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+> index c0e9614..ba36498 100644
+> --- a/include/linux/nfs_fs.h
+> +++ b/include/linux/nfs_fs.h
+> @@ -66,12 +66,19 @@ struct nfs_io_counter {
+>  	atomic_t io_count;
+>  };
+>  
+> +struct nfs_deferred_unlock {
+> +	struct list_head list;
+> +	int cmd;
+> +	struct file_lock fl;
+> +};
+> +
+>  struct nfs_lock_context {
+>  	atomic_t count;
+>  	struct list_head list;
+>  	struct nfs_open_context *open_context;
+>  	struct nfs_lockowner lockowner;
+>  	struct nfs_io_counter io_count;
+> +	struct list_head dunlk_list;
+>  };
+>  
+>  struct nfs4_state;
 
-Meh ok...a little large for an inline though. Maybe you should move
-that into fs/nfs_common and have it as an exported symbol? I'm not too
-religious about it though since we don't have many call sites.
 
 -- 
 Jeff Layton <jlayton@poochiereds.net>
