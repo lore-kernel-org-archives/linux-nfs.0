@@ -1,15 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:38694 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:36148 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753068AbbJNSXj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	id S1753502AbbJNSXj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
 	Wed, 14 Oct 2015 14:23:39 -0400
 From: Benjamin Coddington <bcodding@redhat.com>
 To: linux-nfs@vger.kernel.org
 Cc: jlayton@poochiereds.net, trond.myklebust@primarydata.com,
         anna.schumaker@netapp.com
-Subject: [PATCH 03/10] NFS: Move the flock open mode check into nfs_flock()
-Date: Wed, 14 Oct 2015 14:23:30 -0400
-Message-Id: <c94a6b0c0e48aef6e4fbec83dd509a1f6fae757a.1444846590.git.bcodding@redhat.com>
+Subject: [PATCH 06/10] lockd: Plumb nfs_open_context into nlm client unlock
+Date: Wed, 14 Oct 2015 14:23:33 -0400
+Message-Id: <53487f0016786186cea49a3caa6c46f25592b8e1.1444846590.git.bcodding@redhat.com>
 In-Reply-To: <cover.1444846590.git.bcodding@redhat.com>
 References: <cover.1444846590.git.bcodding@redhat.com>
 In-Reply-To: <cover.1444846590.git.bcodding@redhat.com>
@@ -17,66 +17,127 @@ References: <cover.1444846590.git.bcodding@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We only need to check lock exclusive/shared types against open mode when
-flock() is used on NFS, so move it into the flock-specific path instead of
-checking it for all locks.
+We cannot depend on a file_lock->fl_file still being around while performing
+unlocks for NFSv2 and NFSv3.  Pass along the nfs_open_context to
+provide the necessary inode and credential to complete the unlock.
 
 Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
 ---
- fs/nfs/file.c     |   15 +++++++++++++++
- fs/nfs/nfs4proc.c |   13 -------------
- 2 files changed, 15 insertions(+), 13 deletions(-)
+ fs/lockd/clntproc.c        |   14 ++++++++------
+ fs/nfs/nfs3proc.c          |    4 +---
+ fs/nfs/proc.c              |    4 +---
+ include/linux/lockd/bind.h |    3 ++-
+ 4 files changed, 12 insertions(+), 13 deletions(-)
 
-diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index c0f9b1e..57fefd2 100644
---- a/fs/nfs/file.c
-+++ b/fs/nfs/file.c
-@@ -904,6 +904,21 @@ int nfs_flock(struct file *filp, int cmd, struct file_lock *fl)
- 	/* We're simulating flock() locks using posix locks on the server */
- 	if (fl->fl_type == F_UNLCK)
- 		return do_unlk(filp, cmd, fl, is_local);
-+
-+	/*
-+	 * Don't rely on the VFS having checked the file open mode,
-+	 * since it won't do this for flock() locks.
-+	 */
-+	switch (fl->fl_type) {
-+	case F_RDLCK:
-+		if (!(filp->f_mode & FMODE_READ))
-+			return -EBADF;
-+		break;
-+	case F_WRLCK:
-+		if (!(filp->f_mode & FMODE_WRITE))
-+			return -EBADF;
-+	}
-+
- 	return do_setlk(filp, cmd, fl, is_local);
+diff --git a/fs/lockd/clntproc.c b/fs/lockd/clntproc.c
+index acd3947..8fe50a9 100644
+--- a/fs/lockd/clntproc.c
++++ b/fs/lockd/clntproc.c
+@@ -25,7 +25,7 @@
+ 
+ static int	nlmclnt_test(struct nlm_rqst *, struct file_lock *);
+ static int	nlmclnt_lock(struct nlm_rqst *, struct file_lock *);
+-static int	nlmclnt_unlock(struct nlm_rqst *, struct file_lock *);
++static int	nlmclnt_unlock(struct nfs_open_context *nfs, struct nlm_rqst *, struct file_lock *);
+ static int	nlm_stat_to_errno(__be32 stat);
+ static void	nlmclnt_locks_init_private(struct file_lock *fl, struct nlm_host *host);
+ static int	nlmclnt_cancel(struct nlm_host *, int , struct file_lock *);
+@@ -147,13 +147,15 @@ static void nlmclnt_release_lockargs(struct nlm_rqst *req)
+ 
+ /**
+  * nlmclnt_proc - Perform a single client-side lock request
+- * @host: address of a valid nlm_host context representing the NLM server
++ * @ctx: address of the nfs_open_context for lock to operate upon
+  * @cmd: fcntl-style file lock operation to perform
+  * @fl: address of arguments for the lock operation
+  *
+  */
+-int nlmclnt_proc(struct nlm_host *host, int cmd, struct file_lock *fl)
++int nlmclnt_proc(struct nfs_open_context *ctx, int cmd, struct file_lock *fl)
+ {
++	struct inode		*inode = d_inode(ctx->dentry);
++	struct nlm_host		*host = NFS_SERVER(inode)->nlm_host;
+ 	struct nlm_rqst		*call;
+ 	int			status;
+ 
+@@ -175,7 +177,7 @@ int nlmclnt_proc(struct nlm_host *host, int cmd, struct file_lock *fl)
+ 			call->a_args.block = IS_SETLKW(cmd) ? 1 : 0;
+ 			status = nlmclnt_lock(call, fl);
+ 		} else
+-			status = nlmclnt_unlock(call, fl);
++			status = nlmclnt_unlock(ctx, call, fl);
+ 	} else if (IS_GETLK(cmd))
+ 		status = nlmclnt_test(call, fl);
+ 	else
+@@ -657,7 +659,7 @@ nlmclnt_reclaim(struct nlm_host *host, struct file_lock *fl,
+  * UNLOCK: remove an existing lock
+  */
+ static int
+-nlmclnt_unlock(struct nlm_rqst *req, struct file_lock *fl)
++nlmclnt_unlock(struct nfs_open_context *ctx, struct nlm_rqst *req, struct file_lock *fl)
+ {
+ 	struct nlm_host	*host = req->a_host;
+ 	struct nlm_res	*resp = &req->a_res;
+@@ -680,7 +682,7 @@ nlmclnt_unlock(struct nlm_rqst *req, struct file_lock *fl)
+ 	}
+ 
+ 	atomic_inc(&req->a_count);
+-	status = nlmclnt_async_call(nfs_file_cred(fl->fl_file), req,
++	status = nlmclnt_async_call(ctx->cred, req,
+ 			NLMPROC_UNLOCK, &nlmclnt_unlock_ops);
+ 	if (status < 0)
+ 		goto out;
+diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
+index a10e147..2941ab7 100644
+--- a/fs/nfs/nfs3proc.c
++++ b/fs/nfs/nfs3proc.c
+@@ -868,9 +868,7 @@ static void nfs3_proc_commit_setup(struct nfs_commit_data *data, struct rpc_mess
+ static int
+ nfs3_proc_lock(struct nfs_open_context *ctx, int cmd, struct file_lock *fl)
+ {
+-	struct inode *inode = d_inode(ctx->dentry);
+-
+-	return nlmclnt_proc(NFS_SERVER(inode)->nlm_host, cmd, fl);
++	return nlmclnt_proc(ctx, cmd, fl);
  }
- EXPORT_SYMBOL_GPL(nfs_flock);
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 75223d2..28b771c 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -6137,19 +6137,6 @@ nfs4_proc_lock(struct file *filp, int cmd, struct file_lock *request)
  
- 	if (state == NULL)
- 		return -ENOLCK;
--	/*
--	 * Don't rely on the VFS having checked the file open mode,
--	 * since it won't do this for flock() locks.
--	 */
--	switch (request->fl_type) {
--	case F_RDLCK:
--		if (!(filp->f_mode & FMODE_READ))
--			return -EBADF;
--		break;
--	case F_WRLCK:
--		if (!(filp->f_mode & FMODE_WRITE))
--			return -EBADF;
--	}
+ static int nfs3_have_delegation(struct inode *inode, fmode_t flags)
+diff --git a/fs/nfs/proc.c b/fs/nfs/proc.c
+index 185deb9..17d892e 100644
+--- a/fs/nfs/proc.c
++++ b/fs/nfs/proc.c
+@@ -636,9 +636,7 @@ nfs_proc_commit_setup(struct nfs_commit_data *data, struct rpc_message *msg)
+ static int
+ nfs_proc_lock(struct nfs_open_context *ctx, int cmd, struct file_lock *fl)
+ {
+-	struct inode *inode = d_inode(ctx->dentry);
+-
+-	return nlmclnt_proc(NFS_SERVER(inode)->nlm_host, cmd, fl);
++	return nlmclnt_proc(ctx, cmd, fl);
+ }
  
- 	do {
- 		status = nfs4_proc_setlk(state, cmd, request);
+ /* Helper functions for NFS lock bounds checking */
+diff --git a/include/linux/lockd/bind.h b/include/linux/lockd/bind.h
+index 4d24d64..1d62e85 100644
+--- a/include/linux/lockd/bind.h
++++ b/include/linux/lockd/bind.h
+@@ -18,6 +18,7 @@
+ 
+ /* Dummy declarations */
+ struct svc_rqst;
++struct nfs_open_context;
+ 
+ /*
+  * This is the set of functions for lockd->nfsd communication
+@@ -52,7 +53,7 @@ struct nlmclnt_initdata {
+ extern struct nlm_host *nlmclnt_init(const struct nlmclnt_initdata *nlm_init);
+ extern void	nlmclnt_done(struct nlm_host *host);
+ 
+-extern int	nlmclnt_proc(struct nlm_host *host, int cmd,
++extern int	nlmclnt_proc(struct nfs_open_context *ctx, int cmd,
+ 					struct file_lock *fl);
+ extern int	lockd_up(struct net *net);
+ extern void	lockd_down(struct net *net);
 -- 
 1.7.1
 
