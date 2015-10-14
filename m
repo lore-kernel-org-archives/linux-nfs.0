@@ -1,158 +1,71 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:47523 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932351AbbJNQAn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 14 Oct 2015 12:00:43 -0400
-Date: Wed, 14 Oct 2015 12:00:40 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Kosuke Tatsukawa <tatsu@ab.jp.nec.com>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Neil Brown <nfbrown@novell.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Jeff Layton <jlayton@poochiereds.net>,
-        "David S. Miller" <davem@davemloft.net>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-Subject: Re: [PATCH v2] sunrpc: fix waitqueue_active without memory barrier
- in sunrpc
-Message-ID: <20151014160040.GA11087@fieldses.org>
-References: <20151012202643.GM28755@fieldses.org>
- <17EC94B0A072C34B8DCF0D30AD16044A02877996@BPXM09GP.gisp.nec.co.jp>
+Received: from mail-oi0-f50.google.com ([209.85.218.50]:35047 "EHLO
+	mail-oi0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751889AbbJNROo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Oct 2015 13:14:44 -0400
+Received: by oixx6 with SMTP id x6so15769488oix.2
+        for <linux-nfs@vger.kernel.org>; Wed, 14 Oct 2015 10:14:43 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <17EC94B0A072C34B8DCF0D30AD16044A02877996@BPXM09GP.gisp.nec.co.jp>
+In-Reply-To: <CAN-5tyG==2S2-xSsqY-0fHk=Rrk0SsRML9J77ahbQwkp4vgAkg@mail.gmail.com>
+References: <CAN-5tyHxP276Re_Zm4mV9F+EY1Czq5SfbPJ1Os_CQd0hfhFzdA@mail.gmail.com>
+	<CAHQdGtSg5E0jrEhK-aLht6WdmMTFFBUuG8tUX7sHJDUj+67-4Q@mail.gmail.com>
+	<CAN-5tyHMCMekT0gJE1zNQLO0P5bVgjr_PuQF1BYhNy7n4KBvHg@mail.gmail.com>
+	<CAHQdGtQfBZ4yRCkZ0-voFekTEx8fJ1kHCzrmtjr3RHh-dqOuww@mail.gmail.com>
+	<CAN-5tyGme1rm+hD0JpOc3co0=_u2hzPwR7eN3AT4_TjVA4NkDA@mail.gmail.com>
+	<CAN-5tyFZRU3zCSKU7wNoGzwDF9hn2Vvq6+JL9cWQnuhwoBftyg@mail.gmail.com>
+	<CAHQdGtRzyiqjEj8Z2eBjk6ugzG8maK+F2BnO69JsX4ntCOzCcw@mail.gmail.com>
+	<CAN-5tyHGp4ihz3pzcmX+xjm5aba8SA3Pfxw-nxNTKv9tFikaGw@mail.gmail.com>
+	<CAHQdGtQJm6rFiNgF+SVCx_3SAnzBgHu8mXToWu_uNwJHYCZzqA@mail.gmail.com>
+	<m2fv1esla2.fsf@discipline.rit.edu>
+	<CAHQdGtS9NKgi0EcS-vQy9sVveGG-id4cKeTBr7dAeTs+93+Cuw@mail.gmail.com>
+	<CAN-5tyG==2S2-xSsqY-0fHk=Rrk0SsRML9J77ahbQwkp4vgAkg@mail.gmail.com>
+Date: Wed, 14 Oct 2015 13:14:43 -0400
+Message-ID: <CAHQdGtQYZoswAKZh3E+yFzTdFL7_RN_JLN7R-8OEosFj87AaLA@mail.gmail.com>
+Subject: Re: [PATCH 1/1] Adding issync field to delegreturn_exit tracepoint
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Olga Kornievskaia <aglo@umich.edu>
+Cc: Andrew W Elble <aweits@rit.edu>, linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Oct 14, 2015 at 03:57:13AM +0000, Kosuke Tatsukawa wrote:
-> J. Bruce Fields wrote:
-> > On Mon, Oct 12, 2015 at 10:41:06AM +0000, Kosuke Tatsukawa wrote:
-> >> J. Bruce Fields wrote:
-> >> > On Fri, Oct 09, 2015 at 06:29:44AM +0000, Kosuke Tatsukawa wrote:
-> >> >> Neil Brown wrote:
-> >> >> > Kosuke Tatsukawa <tatsu@ab.jp.nec.com> writes:
-> >> >> > 
-> >> >> >> There are several places in net/sunrpc/svcsock.c which calls
-> >> >> >> waitqueue_active() without calling a memory barrier.  Add a memory
-> >> >> >> barrier just as in wq_has_sleeper().
-> >> >> >>
-> >> >> >> I found this issue when I was looking through the linux source code
-> >> >> >> for places calling waitqueue_active() before wake_up*(), but without
-> >> >> >> preceding memory barriers, after sending a patch to fix a similar
-> >> >> >> issue in drivers/tty/n_tty.c  (Details about the original issue can be
-> >> >> >> found here: https://lkml.org/lkml/2015/9/28/849).
-> >> >> > 
-> >> >> > hi,
-> >> >> > this feels like the wrong approach to the problem.  It requires extra
-> >> >> > 'smb_mb's to be spread around which are hard to understand as easy to
-> >> >> > forget.
-> >> >> > 
-> >> >> > A quick look seems to suggest that (nearly) every waitqueue_active()
-> >> >> > will need an smb_mb.  Could we just put the smb_mb() inside
-> >> >> > waitqueue_active()??
-> >> >> <snip>
-> >> >> 
-> >> >> There are around 200 occurrences of waitqueue_active() in the kernel
-> >> >> source, and most of the places which use it before wake_up are either
-> >> >> protected by some spin lock, or already has a memory barrier or some
-> >> >> kind of atomic operation before it.
-> >> >> 
-> >> >> Simply adding smp_mb() to waitqueue_active() would incur extra cost in
-> >> >> many cases and won't be a good idea.
-> >> >> 
-> >> >> Another way to solve this problem is to remove the waitqueue_active(),
-> >> >> making the code look like this;
-> >> >> 	if (wq)
-> >> >> 		wake_up_interruptible(wq);
-> >> >> This also fixes the problem because the spinlock in the wake_up*() acts
-> >> >> as a memory barrier and prevents the code from being reordered by the
-> >> >> CPU (and it also makes the resulting code is much simpler).
-> >> > 
-> >> > I might not care which we did, except I don't have the means to test
-> >> > this quickly, and I guess this is some of our most frequently called
-> >> > code.
-> >> > 
-> >> > I suppose your patch is the most conservative approach, as the
-> >> > alternative is a spinlock/unlock in wake_up_interruptible, which I
-> >> > assume is necessarily more expensive than an smp_mb().
-> >> > 
-> >> > As far as I can tell it's been this way since forever.  (Well, since a
-> >> > 2002 patch "NFSD: TCP: rationalise locking in RPC server routines" which
-> >> > removed some spinlocks from the data_ready routines.)
-> >> > 
-> >> > I don't understand what the actual race is yet (which code exactly is
-> >> > missing the wakeup in this case?  nfsd threads seem to instead get
-> >> > woken up by the wake_up_process() in svc_xprt_do_enqueue().)
-> >> 
-> >> Thank you for the reply.  I tried looking into this.
-> >> 
-> >> The callbacks in net/sunrpc/svcsock.c are set up in svc_tcp_init() and
-> >> svc_udp_init(), which are both called from svc_setup_socket().
-> >> svc_setup_socket() is called (indirectly) from lockd, nfsd, and nfsv4
-> >> callback port related code.
-> >> 
-> >> Maybe I'm wrong, but there might not be any kernel code that is using
-> >> the socket's wait queue in this case.
-> > 
-> > As Trond points out there are probably waiters internal to the
-> > networking code.
-> 
-> Trond and Bruce, thank you for the comment.  I was able to find the call
-> to the wait function that was called from nfsd.
-> 
-> sk_stream_wait_connect() and sk_stream_wait_memory() were called from
-> either do_tcp_sendpages() or tcp_sendmsg() called from within
-> svc_send().  sk_stream_wait_connect() shouldn't be called at this point,
-> because the socket has already been used to receive the rpc request.
-> 
-> On the wake_up side, sk_write_space() is called from the following
-> locations.  The relevant ones seems to be preceded by atomic_sub or a
-> memory barrier.
-> + ksocknal_write_space [drivers/staging/lustre/lnet/klnds/socklnd/socklnd_lib.c:633]
-> + atm_pop_raw [net/atm/raw.c:40]
-> + sock_setsockopt [net/core/sock.c:740]
-> + sock_wfree [net/core/sock.c:1630]
->   Preceded by atomic_sub in sock_wfree()
-> + ccid3_hc_tx_packet_recv [net/dccp/ccids/ccid3.c:442]
-> + do_tcp_sendpages [net/ipv4/tcp.c:1008]
-> + tcp_sendmsg [net/ipv4/tcp.c:1300]
-> + do_tcp_setsockopt [net/ipv4/tcp.c:2597]
-> + tcp_new_space [net/ipv4/tcp_input.c:4885]
->   Preceded by smp_mb__after_atomic in tcp_check_space()
-> + llc_conn_state_process [net/llc/llc_conn.c:148]
-> + pipe_rcv_status [net/phonet/pep.c:312]
-> + pipe_do_rcv [net/phonet/pep.c:440]
-> + pipe_start_flow_control [net/phonet/pep.c:554]
-> + svc_sock_setbufsize [net/sunrpc/svcsock.c:45]
-> 
-> sk_state_change() calls related to TCP/IP were called from the following
-> places.
-> + inet_shutdown [net/ipv4/af_inet.c:825]
->   This shouldn't be called when waiting
-> + tcp_done [net/ipv4/tcp.c:3078]
->   spin_lock*/spin_unlock* is called in lock_timer_base
-> + tcp_fin [net/ipv4/tcp_input.c:4031]
->   atomic_long_sub is called from sk_memory_allocated_sub called within
->   sk_mem_reclaim
-> + tcp_finish_connect [net/ipv4/tcp_input.c:5415]
->   This shoudn't be called when waiting
-> + tcp_rcv_state_process [net/ipv4/tcp_input.c:5807,5880]
->   The socket shouldn't be in TCP_SYN_RECV nor TCP_FIN_WAIT1 states when
->   waiting
-> 
-> I think the wait queue won't be used for being woken up by
-> svc_{tcp,udp}_data_ready, because nfsd doesn't read from a socket.
+On Wed, Oct 14, 2015 at 10:58 AM, Olga Kornievskaia <aglo@umich.edu> wrote:
+> On Tue, Oct 13, 2015 at 3:46 PM, Trond Myklebust
+> <trond.myklebust@primarydata.com> wrote:
+>> On Tue, Oct 13, 2015 at 1:58 PM, Andrew W Elble <aweits@rit.edu> wrote:
+>>>
+>>> Trond Myklebust <trond.myklebust@primarydata.com> writes:
+>>>
+>>> >> > OK. So what are the symptoms? I'm having trouble seeing how a race can
+>>> >> > happen, given a correctly coded server.
+>>> >>
+>>> >> Here's what the server sees:
+>>> >> open (foobar) replies back with a delegation
+>>> >> various operations including a close()
+>>> >> some time goes by...
+>>> >> open (foobar) replies back with the same delegation
+>>> >
+>>> > Why? Olga, we already had this discussion. That sort of server
+>>> > behaviour is never going to work without races and is the root cause
+>>> > of your problem. We simply won't ever support servers that do this.
+>>>
+>>> Trond,
+>>>
+>>>   Specifically, what would the correct behavior be here?
+>>
+>> The server should honour the open without repeating the delegation.
+>>
+>> The client already knows about the delegation due to the first open,
+>> so there is no value whatsoever in repeating it. In addition, as you
+>> see from Olga's example, it causes races with the return of that
+>> delegation.
+>
+> Trond thank you for the explanations. While I haven't hit the last
+> case of the race I would still like to bring up that we've seen a case
+> where ACCESS is sent and then DELEGRETURN and then delegation stateid
+> is used by the IO. Perhaps the commit 5e99b532bb95 helps in that case.
+> But if not, then this case of the race can't be handled by the server.
 
-Looking, well, I guess kernel_recvmsg() does read from a socket, but I
-assume calling with MSG_DONTWAIT means that it doesn't block.
-
-> So with the current implementation, it seems there shouldn't be any
-> problems even if the memory barrier is missing.
-
-Thanks for the detailed investigation.
-
-I think it would be worth adding a comment if that might help someone
-having to reinvestigate this again some day.
-
---b.
+That's a different bug, and is indeed a client issue. It should be
+fixed by commit 24311f884189 + 5e99b532bb95. Please let me know if
+that is not the case.
