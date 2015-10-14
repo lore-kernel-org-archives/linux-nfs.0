@@ -1,15 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:38702 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:56165 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753481AbbJNSXj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	id S1753480AbbJNSXj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
 	Wed, 14 Oct 2015 14:23:39 -0400
 From: Benjamin Coddington <bcodding@redhat.com>
 To: linux-nfs@vger.kernel.org
 Cc: jlayton@poochiereds.net, trond.myklebust@primarydata.com,
         anna.schumaker@netapp.com
-Subject: [PATCH 08/10] NFS: Move do_vfs_lock to shared inline
-Date: Wed, 14 Oct 2015 14:23:35 -0400
-Message-Id: <1ad951a190be5b737d285ae91c3d8acbfb84ff18.1444846590.git.bcodding@redhat.com>
+Subject: [PATCH 07/10] lockd: Send the inode to nlmclnt_setlockargs()
+Date: Wed, 14 Oct 2015 14:23:34 -0400
+Message-Id: <c5dc089ccb52c44fe5ebed87382b5685858eb6d0.1444846590.git.bcodding@redhat.com>
 In-Reply-To: <cover.1444846590.git.bcodding@redhat.com>
 References: <cover.1444846590.git.bcodding@redhat.com>
 In-Reply-To: <cover.1444846590.git.bcodding@redhat.com>
@@ -17,189 +17,65 @@ References: <cover.1444846590.git.bcodding@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Send the inode instead of the file_lock to do_vfs_lock() in
-fs/lockd/clintproc.c (because there may not be a fl_file the unlock path).
-Now that we have posix_lock_inode_wait() the three copies of do_vfs_lock()
-can be collapsed.
+Instead of using fl_file to reference the inode in nlmclnt_setlockargs() to
+set the filehandle, send the inode as an argument.  That way, we can use
+nlmclnt_proc without having a valid fl_file, which can happen if we are
+releasing locks after a close.
 
 Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
 ---
- fs/lockd/clntproc.c |   25 +++++--------------------
- fs/nfs/file.c       |   20 ++------------------
- fs/nfs/nfs4proc.c   |   16 ----------------
- include/linux/fs.h  |   16 ++++++++++++++++
- 4 files changed, 23 insertions(+), 54 deletions(-)
+ fs/lockd/clntproc.c |   11 ++++++-----
+ 1 files changed, 6 insertions(+), 5 deletions(-)
 
 diff --git a/fs/lockd/clntproc.c b/fs/lockd/clntproc.c
-index 4a35e7c..bd484f0 100644
+index 8fe50a9..4a35e7c 100644
 --- a/fs/lockd/clntproc.c
 +++ b/fs/lockd/clntproc.c
-@@ -475,22 +475,6 @@ static void nlmclnt_locks_init_private(struct file_lock *fl, struct nlm_host *ho
- 	fl->fl_ops = &nlmclnt_lock_ops;
- }
- 
--static int do_vfs_lock(struct file_lock *fl)
--{
--	int res = 0;
--	switch (fl->fl_flags & (FL_POSIX|FL_FLOCK)) {
--		case FL_POSIX:
--			res = posix_lock_file_wait(fl->fl_file, fl);
--			break;
--		case FL_FLOCK:
--			res = flock_lock_file_wait(fl->fl_file, fl);
--			break;
--		default:
--			BUG();
--	}
--	return res;
--}
--
+@@ -121,14 +121,15 @@ static struct nlm_lockowner *nlm_find_lockowner(struct nlm_host *host, fl_owner_
  /*
-  * LOCK: Try to create a lock
-  *
-@@ -518,6 +502,7 @@ nlmclnt_lock(struct nlm_rqst *req, struct file_lock *fl)
- 	struct nlm_host	*host = req->a_host;
- 	struct nlm_res	*resp = &req->a_res;
- 	struct nlm_wait *block = NULL;
-+	struct inode *inode = file_inode(fl->fl_file);
- 	unsigned char fl_flags = fl->fl_flags;
- 	unsigned char fl_type;
- 	int status = -ENOLCK;
-@@ -527,7 +512,7 @@ nlmclnt_lock(struct nlm_rqst *req, struct file_lock *fl)
- 	req->a_args.state = nsm_local_state;
- 
- 	fl->fl_flags |= FL_ACCESS;
--	status = do_vfs_lock(fl);
-+	status = do_vfs_lock(inode, fl);
- 	fl->fl_flags = fl_flags;
- 	if (status < 0)
- 		goto out;
-@@ -577,7 +562,7 @@ again:
- 		}
- 		/* Ensure the resulting lock will get added to granted list */
- 		fl->fl_flags |= FL_SLEEP;
--		if (do_vfs_lock(fl) < 0)
-+		if (do_vfs_lock(inode, fl) < 0)
- 			printk(KERN_WARNING "%s: VFS is out of sync with lock manager!\n", __func__);
- 		up_read(&host->h_rwsem);
- 		fl->fl_flags = fl_flags;
-@@ -607,7 +592,7 @@ out_unlock:
- 	fl_type = fl->fl_type;
- 	fl->fl_type = F_UNLCK;
- 	down_read(&host->h_rwsem);
--	do_vfs_lock(fl);
-+	do_vfs_lock(inode, fl);
- 	up_read(&host->h_rwsem);
- 	fl->fl_type = fl_type;
- 	fl->fl_flags = fl_flags;
-@@ -674,7 +659,7 @@ nlmclnt_unlock(struct nfs_open_context *ctx, struct nlm_rqst *req, struct file_l
- 	 */
- 	fl->fl_flags |= FL_EXISTS;
- 	down_read(&host->h_rwsem);
--	status = do_vfs_lock(fl);
-+	status = do_vfs_lock(d_inode(ctx->dentry), fl);
- 	up_read(&host->h_rwsem);
- 	fl->fl_flags = fl_flags;
- 	if (status == -ENOENT) {
-diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index 319847c..d16c50f 100644
---- a/fs/nfs/file.c
-+++ b/fs/nfs/file.c
-@@ -737,22 +737,6 @@ out_noconflict:
- 	goto out;
- }
- 
--static int do_vfs_lock(struct file *file, struct file_lock *fl)
--{
--	int res = 0;
--	switch (fl->fl_flags & (FL_POSIX|FL_FLOCK)) {
--		case FL_POSIX:
--			res = posix_lock_file_wait(file, fl);
--			break;
--		case FL_FLOCK:
--			res = flock_lock_file_wait(file, fl);
--			break;
--		default:
--			BUG();
--	}
--	return res;
--}
--
- static int
- do_unlk(struct file *filp, int cmd, struct file_lock *fl, int is_local)
+  * Initialize arguments for TEST/LOCK/UNLOCK/CANCEL calls
+  */
+-static void nlmclnt_setlockargs(struct nlm_rqst *req, struct file_lock *fl)
++static void nlmclnt_setlockargs(struct nlm_rqst *req, struct file_lock *fl,
++                                struct inode *inode)
  {
-@@ -786,7 +770,7 @@ do_unlk(struct file *filp, int cmd, struct file_lock *fl, int is_local)
- 	if (!is_local)
- 		status = NFS_PROTO(inode)->lock(ctx, cmd, fl);
- 	else
--		status = do_vfs_lock(filp, fl);
-+		status = do_vfs_lock(inode, fl);
- 	return status;
- }
+ 	struct nlm_args	*argp = &req->a_args;
+ 	struct nlm_lock	*lock = &argp->lock;
+ 	char *nodename = req->a_host->h_rpcclnt->cl_nodename;
  
-@@ -817,7 +801,7 @@ do_setlk(struct file *filp, int cmd, struct file_lock *fl, int is_local)
- 	if (!is_local)
- 		status = NFS_PROTO(inode)->lock(ctx, cmd, fl);
- 	else
--		status = do_vfs_lock(filp, fl);
-+		status = do_vfs_lock(inode, fl);
- 	if (status < 0)
- 		goto out;
+ 	nlmclnt_next_cookie(&argp->cookie);
+-	memcpy(&lock->fh, NFS_FH(file_inode(fl->fl_file)), sizeof(struct nfs_fh));
++	memcpy(&lock->fh, NFS_FH(inode), sizeof(struct nfs_fh));
+ 	lock->caller  = nodename;
+ 	lock->oh.data = req->a_owner;
+ 	lock->oh.len  = snprintf(req->a_owner, sizeof(req->a_owner), "%u@%s",
+@@ -170,7 +171,7 @@ int nlmclnt_proc(struct nfs_open_context *ctx, int cmd, struct file_lock *fl)
+ 		return -ENOMEM;
+ 	}
+ 	/* Set up the argument struct */
+-	nlmclnt_setlockargs(call, fl);
++	nlmclnt_setlockargs(call, fl, inode);
  
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index c08f8ac..6b19307 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5511,22 +5511,6 @@ static int nfs4_proc_getlk(struct nfs4_state *state, int cmd, struct file_lock *
- 	return err;
- }
+ 	if (IS_SETLK(cmd) || IS_SETLKW(cmd)) {
+ 		if (fl->fl_type != F_UNLCK) {
+@@ -629,7 +630,7 @@ nlmclnt_reclaim(struct nlm_host *host, struct file_lock *fl,
+ 	req->a_host  = host;
  
--static int do_vfs_lock(struct inode *inode, struct file_lock *fl)
--{
--	int res = 0;
--	switch (fl->fl_flags & (FL_POSIX|FL_FLOCK)) {
--		case FL_POSIX:
--			res = posix_lock_inode_wait(inode, fl);
--			break;
--		case FL_FLOCK:
--			res = flock_lock_inode_wait(inode, fl);
--			break;
--		default:
--			BUG();
--	}
--	return res;
--}
--
- struct nfs4_unlockdata {
- 	struct nfs_locku_args arg;
- 	struct nfs_locku_res res;
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 72d8a84..165577a 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1225,6 +1225,22 @@ static inline int flock_lock_file_wait(struct file *filp, struct file_lock *fl)
- 	return flock_lock_inode_wait(file_inode(filp), fl);
- }
+ 	/* Set up the argument struct */
+-	nlmclnt_setlockargs(req, fl);
++	nlmclnt_setlockargs(req, fl, file_inode(fl->fl_file));
+ 	req->a_args.reclaim = 1;
  
-+static inline int do_vfs_lock(struct inode *inode, struct file_lock *fl)
-+{
-+	int res = 0;
-+	switch (fl->fl_flags & (FL_POSIX|FL_FLOCK)) {
-+		case FL_POSIX:
-+			res = posix_lock_inode_wait(inode, fl);
-+			break;
-+		case FL_FLOCK:
-+			res = flock_lock_inode_wait(inode, fl);
-+			break;
-+		default:
-+			BUG();
-+	}
-+	return res;
-+}
-+
- struct fasync_struct {
- 	spinlock_t		fa_lock;
- 	int			magic;
+ 	status = nlmclnt_call(nfs_file_cred(fl->fl_file), req, NLMPROC_LOCK);
+@@ -755,7 +756,7 @@ static int nlmclnt_cancel(struct nlm_host *host, int block, struct file_lock *fl
+ 		return -ENOMEM;
+ 	req->a_flags = RPC_TASK_ASYNC;
+ 
+-	nlmclnt_setlockargs(req, fl);
++	nlmclnt_setlockargs(req, fl, file_inode(fl->fl_file));
+ 	req->a_args.block = block;
+ 
+ 	atomic_inc(&req->a_count);
 -- 
 1.7.1
 
