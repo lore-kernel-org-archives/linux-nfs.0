@@ -1,18 +1,21 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f171.google.com ([209.85.213.171]:33412 "EHLO
-	mail-ig0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932339AbbJNTJ2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Oct 2015 15:09:28 -0400
+Received: from mail-io0-f178.google.com ([209.85.223.178]:35650 "EHLO
+	mail-io0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751478AbbJNTPL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Oct 2015 15:15:11 -0400
 Subject: Re: [PATCH v5 8/9] vfs: Add vfs_copy_file_range() support for
  pagecache copies
-To: Christoph Hellwig <hch@infradead.org>,
-        Andy Lutomirski <luto@amacapital.net>
+To: Andy Lutomirski <luto@amacapital.net>,
+        Christoph Hellwig <hch@infradead.org>
 References: <1443634014-3026-1-git-send-email-Anna.Schumaker@Netapp.com>
  <1443634014-3026-9-git-send-email-Anna.Schumaker@Netapp.com>
  <20151011142203.GA31867@infradead.org>
  <20151012231749.GC11398@birch.djwong.org> <561E980C.9010509@Netapp.com>
  <CALCETrU0-Q-q0u0BAPwu+mbyS+LVp6M1Hqro3xwzSm7eNCbEmg@mail.gmail.com>
  <20151014182701.GC31225@infradead.org>
+ <CALCETrWrHs6x+aZ7c=sySRCdzwdfUQZH_DL++vLL78NXXN+7FQ@mail.gmail.com>
+ <20151014184946.GA15214@infradead.org>
+ <CALCETrV2ZG=EV5KLEeOERSbDjXCyaULAn0k34msSPFWvf0Tm9w@mail.gmail.com>
 Cc: Anna Schumaker <Anna.Schumaker@netapp.com>,
         "Darrick J. Wong" <darrick.wong@oracle.com>, linux-nfs@vger.kernel.org,
         Linux btrfs Developers List <linux-btrfs@vger.kernel.org>,
@@ -21,70 +24,44 @@ Cc: Anna Schumaker <Anna.Schumaker@netapp.com>,
         Al Viro <viro@zeniv.linux.org.uk>, Chris Mason <clm@fb.com>,
         Michael Kerrisk-manpages <mtk.manpages@gmail.com>, andros@netapp.com
 From: Austin S Hemmelgarn <ahferroin7@gmail.com>
-Message-ID: <561EA83E.8080000@gmail.com>
-Date: Wed, 14 Oct 2015 15:08:46 -0400
+Message-ID: <561EA997.9020402@gmail.com>
+Date: Wed, 14 Oct 2015 15:14:31 -0400
 MIME-Version: 1.0
-In-Reply-To: <20151014182701.GC31225@infradead.org>
-Content-Type: multipart/signed; protocol="application/pkcs7-signature"; micalg=sha-512; boundary="------------ms070805030004010606060103"
+In-Reply-To: <CALCETrV2ZG=EV5KLEeOERSbDjXCyaULAn0k34msSPFWvf0Tm9w@mail.gmail.com>
+Content-Type: multipart/signed; protocol="application/pkcs7-signature"; micalg=sha-512; boundary="------------ms080307080103030306090407"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 This is a cryptographically signed message in MIME format.
 
---------------ms070805030004010606060103
-Content-Type: text/plain; charset=windows-1252; format=flowed
+--------------ms080307080103030306090407
+Content-Type: text/plain; charset=utf-8; format=flowed
 Content-Transfer-Encoding: quoted-printable
 
-On 2015-10-14 14:27, Christoph Hellwig wrote:
-> On Wed, Oct 14, 2015 at 11:08:40AM -0700, Andy Lutomirski wrote:
->>> So what I'm hearing is that I should drop the reflink and dedup flags=
- and change this system call only perform a full copy (with preserving of=
- sparseness), correct?  I can make those changes, but only if everybody i=
-s in agreement that it's the best way forward.
+On 2015-10-14 14:53, Andy Lutomirski wrote:
+> On Wed, Oct 14, 2015 at 11:49 AM, Christoph Hellwig <hch@infradead.org>=
+ wrote:
+>> On Wed, Oct 14, 2015 at 11:38:13AM -0700, Andy Lutomirski wrote:
+>>> One might argue that reflink is like copy + immediate dedupe.
 >>
->> I personally rather like the reflink option.  That thing is quite usef=
-ul.
+>> Not, it's not.  It's all that and more, because it is an operation tha=
+t
+>> is atomic vs other writes to the file and it's an operation that eithe=
+r
+>> clones the whole range or nothing.  That's a very important difference=
+=2E
 >
-> reflink is very useful, probably more useful than the copy actually. Bu=
-t it
-> is different from a copy.  It should be a separate interface.
-Whether or not reflink is different from a copy is entirely a matter of=20
-who is looking at it.  For someone looking directly at the block device, =
-
-or trying to manipulate the block layout of the filesystem it is=20
-definitely not a copy.  For a database app that needs ACID transaction=20
-semantics, it is definitely not a copy (although for that usage, it's=20
-arguably significantly better than a copy).  From the point of view of a =
-
-generic userspace app that didn't perform the copy operation however,=20
-and for anyone looking at it after the fact without paying attention to=20
-the block layout, a reflink _is_ for all intents and purposes=20
-functionally equivalent to a copy of the reflinked data (assuming of=20
-course that the filesystem implements it properly, and that the hardware =
-
-behaves right).
-
-I would not in fact be surprised if at least some SCSI devices that=20
-implement the XCOPY command do so internally using a reflink (I have not =
-
-personally read the standard, but even if it 'requires' a compliant=20
-device to actually create a separate copy of the data, there will still=20
-be some vendors who ignore this), and it is well known that some SSD's=20
-do in-band data deduplication effectively reducing a traditional copy to =
-
-a reflink at the firmware level.
-
-I agree that we shouldn't try to make a reflink by default (less than=20
-intelligent programmers won't read the docs completely, and will make=20
-various stupid assumptions about how this is 'supposed' to work, making=20
-the defaults less ambiguous is a good thing), but it makes sense (at=20
-least, it does to me) to have the ability to say 'make this block of=20
-data appear at this location as well, I don't care how you do it as long =
-
-as they are functionally independent for userspace applications'.
+> Fair enough.
+>
+> Would copy_file_range without the reflink option removed still be
+> permitted to link blocks on supported filesystems (btrfs and maybe
+> XFS)?
+I would argue that it should have such functionality, but not do so by=20
+default (maybe add some option to tell it to ask the FS to accelerate=20
+the copy operation?).
 
 
---------------ms070805030004010606060103
+--------------ms080307080103030306090407
 Content-Type: application/pkcs7-signature; name="smime.p7s"
 Content-Transfer-Encoding: base64
 Content-Disposition: attachment; filename="smime.p7s"
@@ -126,9 +103,9 @@ F6gUv9/mo6riv3A5bem/BdbgaJoPnWQD9D8wSyci9G4LKC+HQAMdLmGoeZfpJzKHMYIE0TCC
 BM0CAQEwgYAweTEQMA4GA1UEChMHUm9vdCBDQTEeMBwGA1UECxMVaHR0cDovL3d3dy5jYWNl
 cnQub3JnMSIwIAYDVQQDExlDQSBDZXJ0IFNpZ25pbmcgQXV0aG9yaXR5MSEwHwYJKoZIhvcN
 AQkBFhJzdXBwb3J0QGNhY2VydC5vcmcCAxEt+DANBglghkgBZQMEAgMFAKCCAiEwGAYJKoZI
-hvcNAQkDMQsGCSqGSIb3DQEHATAcBgkqhkiG9w0BCQUxDxcNMTUxMDE0MTkwODQ2WjBPBgkq
-hkiG9w0BCQQxQgRAJvWX9ui9In4cPoFrHScO/NP30WQblhrhQQahOTA+x9rly/RwYYFR66sC
-t4iMgypVX04+w8xmkuGcCXssGtAGNDBsBgkqhkiG9w0BCQ8xXzBdMAsGCWCGSAFlAwQBKjAL
+hvcNAQkDMQsGCSqGSIb3DQEHATAcBgkqhkiG9w0BCQUxDxcNMTUxMDE0MTkxNDMxWjBPBgkq
+hkiG9w0BCQQxQgRAJc/10uovbk9IXpTW9kPqxbNs66d74WsV+G4N1N6m8siIwJ2d5u1w6rxS
+cesxzU2qoKNmGCd1qD8Ub5r+61fgqDBsBgkqhkiG9w0BCQ8xXzBdMAsGCWCGSAFlAwQBKjAL
 BglghkgBZQMEAQIwCgYIKoZIhvcNAwcwDgYIKoZIhvcNAwICAgCAMA0GCCqGSIb3DQMCAgFA
 MAcGBSsOAwIHMA0GCCqGSIb3DQMCAgEoMIGRBgkrBgEEAYI3EAQxgYMwgYAweTEQMA4GA1UE
 ChMHUm9vdCBDQTEeMBwGA1UECxMVaHR0cDovL3d3dy5jYWNlcnQub3JnMSIwIAYDVQQDExlD
@@ -136,14 +113,14 @@ QSBDZXJ0IFNpZ25pbmcgQXV0aG9yaXR5MSEwHwYJKoZIhvcNAQkBFhJzdXBwb3J0QGNhY2Vy
 dC5vcmcCAxEt+DCBkwYLKoZIhvcNAQkQAgsxgYOggYAweTEQMA4GA1UEChMHUm9vdCBDQTEe
 MBwGA1UECxMVaHR0cDovL3d3dy5jYWNlcnQub3JnMSIwIAYDVQQDExlDQSBDZXJ0IFNpZ25p
 bmcgQXV0aG9yaXR5MSEwHwYJKoZIhvcNAQkBFhJzdXBwb3J0QGNhY2VydC5vcmcCAxEt+DAN
-BgkqhkiG9w0BAQEFAASCAgCRmixHKCJ/6B2ca1pw3qBc3FMltwPQ38hpXNttSAso8jG1AGfC
-mazy/y1yfuCzbXPdzmh2j51zf+rMoQ8gpvy1vH8baMC2G2zgxocaYIS96Meuci2JaedstQu7
-oNSVti0fKqfOeVV2mqhD0U7cunlrWotK8jeheaG34eNQMxSJZzqwyfkwCubXnzMWmWahh018
-K0rXb012bOQZQBMaVq4cms8zuuUHHT+9ABByXTgWpIuuG88MIJOMAiw8nJeatrlmoQlrhN6h
-NubJ48btj9Y0jkPPBfmoSlg+60BesWmEp8hqRU2ITZqK/IcVi+GHb/0JMKIA/yrI5Hg85gul
-iWEJrYug13IB/poQZ+TlsUMZhZu4LUsS+/8qinPT1u+7X1kiN8QNrqmv5paj1Qy6yta1TQdU
-FPWJrFe7Hrr0Fpd6oPKByt8GZLaksghyWerPs7O+8dYw3N1C6fnsBW5GHSvorZAwDXLgEwfl
-7b/P4cGmwj/CNR9aGoL3zAAGUjpmYhsOtz7IZVvyWqOsghga7mB++2Fip6/Huy0krvdAQ1zi
-Oc+qmSjd90Jve57Y00LOTN2p39vXPmqa8lqSo0ksn3FUGf0Oogb/U69aIEj0LPgw/fgRGTEU
-WCLLGmS6sTG2qfDBIqMDiKnso0GKw2rjt+XmDwatR5BWmKRmZ5eW9/dZ4gAAAAAAAA==
---------------ms070805030004010606060103--
+BgkqhkiG9w0BAQEFAASCAgB+jpxwzwsFYE/4EcSudyc/DtsFxVz6h6vbpDEMGzKHj3PsPb06
+auyFaQg9c6S/2ErmE1eCSfpS9VNaJtoe5sSnpI4WQ6/Li7S1P9SM36txm4I1LlbLqp/kWQuS
+QbExaJGWvZM9Gs6K92BOlteQao0ppVV5J/7QtQ5GSGBADTyNfGbugItMdfLGLPz2ThwaZuD0
+HYSbShAz8NBzpj3/iCZM2s3G3cQHXsqpph8vsWlxcM3eMsI64Fj8TR3EJHoaAokBk/jE/Ptb
+yjqEI8nbNMrUc3Lt6I41eJDZGA/KZdfwQDDkYd+ltb2H2vqL9v/GwtlThsUMrTVpTGJ3vF1u
+QAho4TqdHxcx9wQcedReNQdf925mNJFrndX/BQc6Xu7MXHYkUl81wFB9PecHCkd9fxen52iV
+ZiuY9ULYS52PzGTkAEpkhLHUYLFnrgV5nXNf/Ax/j8TEoQ4EL7r8XGQ51g3PuZ4ZUkGkJGB+
+zqWs1LET7Jp334m4LF4RI8RXw71YVbGuIX7RJMkO9o4FXK+MT4qYz6LGmKnf+K1FlsbX5CGQ
+Y8zDbgaEQwv3MEJHtEiJHOy4XchMwVHf4yuqgGXdiN4dcP6zbvukEapBYDowskC46Hhi++u6
+/ii0necyvDb3ZUSK2Ofui2XJiDXIbjOlrRmTMNC4rL47u1qrgVEHAu3+TwAAAAAAAA==
+--------------ms080307080103030306090407--
