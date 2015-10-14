@@ -1,66 +1,51 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:40339 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:36141 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753482AbbJNSXj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	id S1753389AbbJNSXj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
 	Wed, 14 Oct 2015 14:23:39 -0400
 From: Benjamin Coddington <bcodding@redhat.com>
 To: linux-nfs@vger.kernel.org
 Cc: jlayton@poochiereds.net, trond.myklebust@primarydata.com,
         anna.schumaker@netapp.com
-Subject: [PATCH 05/10] NFSv4: Pass nfs_open_context instead of nfs4_state to nfs4_proc_unlck()
-Date: Wed, 14 Oct 2015 14:23:32 -0400
-Message-Id: <65a07ff08d9c616d4189f956ef982e43c66c548b.1444846590.git.bcodding@redhat.com>
-In-Reply-To: <cover.1444846590.git.bcodding@redhat.com>
-References: <cover.1444846590.git.bcodding@redhat.com>
-In-Reply-To: <cover.1444846590.git.bcodding@redhat.com>
-References: <cover.1444846590.git.bcodding@redhat.com>
+Subject: [PATCH 00/10] locking fixups for NFS
+Date: Wed, 14 Oct 2015 14:23:27 -0400
+Message-Id: <cover.1444846590.git.bcodding@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-nfs4_proc_unlk() acquires the nfs_open_context from the file_lock's
-fl_file->private, but we will not always have a referenced fl_file in this
-path.  Instead, pass along the nfs_open_context from the call to
-nfs4_proc_lock().  This allows us to use nfs4_proc_unlck() without a
-valid reference in fl_file.
+This set addresses a few NFS related locking issues as well as a couple
+minor cleanups.  It does a bit of plumbing to make sure we can complete
+unlocks after close when the fl_file may be unavailable, and it attempts to
+always release locks even when a wait for oustanding IO is interrupted
+before sending an unlock.  This can orphan a lock on a server, which might
+mean a delay for matching lock NFS4, or require a server restart to clean up
+that lock for NFS3.
 
-Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
----
- fs/nfs/nfs4proc.c |    7 ++++---
- 1 files changed, 4 insertions(+), 3 deletions(-)
+Benjamin Coddington (10):
+  NFS: keep nfs4_state for nfs4_lock_state cleanup
+  NFS4: remove a redundant lock range checks
+  NFS: Move the flock open mode check into nfs_flock()
+  NFS: Pass nfs_open_context instead of file to the lock procs
+  NFSv4: Pass nfs_open_context instead of nfs4_state to
+    nfs4_proc_unlck()
+  lockd: Plumb nfs_open_context into nlm client unlock
+  lockd: Send the inode to nlmclnt_setlockargs()
+  NFS: Move do_vfs_lock to shared inline
+  locks: Use more file_inode and fix a comment
+  NFS: Deferred unlocks - always unlock on FL_CLOSE
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 18a1ee7..c08f8ac 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5668,8 +5668,9 @@ static struct rpc_task *nfs4_do_unlck(struct file_lock *fl,
- 	return rpc_run_task(&task_setup_data);
- }
- 
--static int nfs4_proc_unlck(struct nfs4_state *state, int cmd, struct file_lock *request)
-+static int nfs4_proc_unlck(struct nfs_open_context *ctx, int cmd, struct file_lock *request)
- {
-+	struct nfs4_state *state = ctx->state;
- 	struct inode *inode = state->inode;
- 	struct nfs4_state_owner *sp = state->owner;
- 	struct nfs_inode *nfsi = NFS_I(inode);
-@@ -5705,7 +5706,7 @@ static int nfs4_proc_unlck(struct nfs4_state *state, int cmd, struct file_lock *
- 	status = -ENOMEM;
- 	if (IS_ERR(seqid))
- 		goto out;
--	task = nfs4_do_unlck(request, nfs_file_open_context(request->fl_file), lsp, seqid);
-+	task = nfs4_do_unlck(request, ctx, lsp, seqid);
- 	status = PTR_ERR(task);
- 	if (IS_ERR(task))
- 		goto out;
-@@ -6129,7 +6130,7 @@ nfs4_proc_lock(struct nfs_open_context *ctx, int cmd, struct file_lock *request)
- 
- 	if (request->fl_type == F_UNLCK) {
- 		if (state != NULL)
--			return nfs4_proc_unlck(state, cmd, request);
-+			return nfs4_proc_unlck(ctx, cmd, request);
- 		return 0;
- 	}
- 
--- 
-1.7.1
+ fs/lockd/clntproc.c        |   50 +++++++++++-------------------
+ fs/locks.c                 |    8 ++---
+ fs/nfs/file.c              |   72 +++++++++++++++++++++++++++++++++-----------
+ fs/nfs/inode.c             |    1 +
+ fs/nfs/nfs3proc.c          |    6 +--
+ fs/nfs/nfs4proc.c          |   43 +++-----------------------
+ fs/nfs/nfs4state.c         |    2 +
+ fs/nfs/pagelist.c          |   23 ++++++++++++--
+ fs/nfs/proc.c              |    6 +--
+ include/linux/fs.h         |   16 ++++++++++
+ include/linux/lockd/bind.h |    3 +-
+ include/linux/nfs_fs.h     |    7 ++++
+ include/linux/nfs_xdr.h    |    2 +-
+ 13 files changed, 134 insertions(+), 105 deletions(-)
 
