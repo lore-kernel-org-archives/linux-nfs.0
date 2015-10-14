@@ -1,44 +1,59 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([198.137.202.9]:32946 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752869AbbJNHlb (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Oct 2015 03:41:31 -0400
-Date: Wed, 14 Oct 2015 00:41:25 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Anna Schumaker <Anna.Schumaker@netapp.com>
-Cc: P??draig Brady <P@draigBrady.com>, Neil Brown <nfbrown@novell.com>,
-        linux-nfs@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-api@vger.kernel.org,
-        zab@zabbo.net, viro@zeniv.linux.org.uk, clm@fb.com,
-        darrick.wong@oracle.com, mtk.manpages@gmail.com, andros@netapp.com,
-        hch@infradead.org
-Subject: Re: [PATCH v5 8/9] vfs: Add vfs_copy_file_range() support for
- pagecache copies
-Message-ID: <20151014074125.GA2485@infradead.org>
-References: <1443634014-3026-1-git-send-email-Anna.Schumaker@Netapp.com>
- <1443634014-3026-9-git-send-email-Anna.Schumaker@Netapp.com>
- <87vbai6sud.fsf@notabene.neil.brown.name>
- <5617A1E9.1080509@draigBrady.com>
- <561D68B9.8030209@Netapp.com>
+Received: from mail-ob0-f175.google.com ([209.85.214.175]:33863 "EHLO
+	mail-ob0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751904AbbJNKxP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Oct 2015 06:53:15 -0400
+Received: by obbda8 with SMTP id da8so36208334obb.1
+        for <linux-nfs@vger.kernel.org>; Wed, 14 Oct 2015 03:53:14 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <561D68B9.8030209@Netapp.com>
+In-Reply-To: <561E01BA.4040109@gmail.com>
+References: <55FF77DD.8070807@gmail.com>
+	<561CFD01.3080201@gmail.com>
+	<CAHQdGtSapCjT+ABSx=8maLN2KQJFFsW-v-F7BYy6wYykKfs0BA@mail.gmail.com>
+	<561E01BA.4040109@gmail.com>
+Date: Wed, 14 Oct 2015 06:53:14 -0400
+Message-ID: <CAHQdGtSzTQLacptvPw0c73zHFn3ixynkpjavC2v-C5FBxNv8Hg@mail.gmail.com>
+Subject: Re: NULL pointer dereference using pnfs with block layout
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Kinglong Mee <kinglongmee@gmail.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Oct 13, 2015 at 04:25:29PM -0400, Anna Schumaker wrote:
-> I haven't tried it, but I think the hole would be expanded :(.  I'm having splice() handle the pagecache copy part, and (as far as I know) splice() doesn't know anything about sparse files.  I might be able to put in some kind of fallocate() / splice() loop to copy the range in multiple pieces.
-> 
-> I don't want to add COPY_FR_SPARSE_AUTO, because then the kernel will have to determine how best to interpret "auto".  I'm more inclined to add a single COPY_FR_SPARSE flag to enable creating sparse files, and then have the application tell us what to do for any given range.
+On Wed, Oct 14, 2015 at 3:18 AM, Kinglong Mee <kinglongmee@gmail.com> wrote:
+> On 10/13/2015 21:45, Trond Myklebust wrote:
+>> On Tue, Oct 13, 2015 at 8:45 AM, Kinglong Mee <kinglongmee@gmail.com> wrote:
+>>> ping ...
+>>>
+>>> What's your opinion about this problem ?
+>>>
+>>> If read/write of block layout file with bad length (res.count != arg.count),
+>>> should nfs retry?  NFS try to call rpc_restart_call_prepare() right now,
+>>> that cause a panic with uninitialized task.
+>>
+>> The client should not be attempting to read more data than what was
+>> requested by the O_DIRECT read request. It should be strictly
+>> respecting the boundaries of the user buffer that was supplied.
+>
+> Yes, that's right.
+>
+>> Any idea why this is happening?
+>
+> As post before, bl_read_pagelist() return a longer result that causes the panic.
+>
+>>>> [ 1004.001842] bl_read_pagelist enter nr_pages 1 offset 2048 count 2048
+>>>> [ 1004.002110] bl_read_pagelist: pg_offset 2048
+>>>> [ 1004.002370] bl_read_pagelist: pg_len 2048 is_dio
+>>>> [ 1004.002617] bl_read_pagelist: pg_len 2048 after do_add_page_to_bio
+>>>> [ 1004.002853] bl_read_pagelist: 2048 4096 "(isect << SECTOR_SHIFT) < header->inode->i_size"
+>>>> [ 1004.003774] NFS: nfs_pgio_result:     0, (status 0), tk_ops      (null)
+>>>> [ 1004.003989] --> nfs4_read_done
+>>>> [ 1004.004224] nfs_readpage_done: 0
+>>>> [ 1004.004459] nfs_pgio_result: 0
+>>>> [ 1004.004691] nfs_readpage_result: eof 0, res.count 4096, args.count 2048
+>>>> [ 1004.004926] nfs_readpage_retry: tk_ops           (null)
 
-Teh right think is to keep sparse ranges spare as much as possible.
-This would require the same sort of support as NFS READ_PLUS so I think
-it's worthwhile to try it.  If the file system can't support it it won't
-be sparse, so we'll get a worse quality of implementation.
-
-But please don't add even more weird flags that just confuse users.
-
-So far I think the only useful flag for copy_file_range is a PREALLOC
-or similar flag that says the destination range should have an implicit
-poix_fallocate performed on it.  And due to the complexity of
-implementation I'm not even sure we need that in the first version.
+Right, but that means one of two things: Either we need to fix
+bl_read_pagelist, or we need to fall back to read-through-MDS in this
+case.
