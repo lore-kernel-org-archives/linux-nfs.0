@@ -1,40 +1,151 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ob0-f180.google.com ([209.85.214.180]:36555 "EHLO
-	mail-ob0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752843AbbJOTt7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Oct 2015 15:49:59 -0400
-Received: by obbrx8 with SMTP id rx8so73893930obb.3
-        for <linux-nfs@vger.kernel.org>; Thu, 15 Oct 2015 12:49:59 -0700 (PDT)
+Received: from fieldses.org ([173.255.197.46]:48245 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753291AbbJOU5n (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 15 Oct 2015 16:57:43 -0400
+Date: Thu, 15 Oct 2015 16:57:42 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Kosuke Tatsukawa <tatsu@ab.jp.nec.com>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Neil Brown <nfbrown@novell.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        "David S. Miller" <davem@davemloft.net>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH v2] sunrpc: fix waitqueue_active without memory barrier
+ in sunrpc
+Message-ID: <20151015205742.GB20155@fieldses.org>
+References: <17EC94B0A072C34B8DCF0D30AD16044A02877D53@BPXM09GP.gisp.nec.co.jp>
+ <17EC94B0A072C34B8DCF0D30AD16044A02878443@BPXM09GP.gisp.nec.co.jp>
 MIME-Version: 1.0
-In-Reply-To: <20151015190945.GH49747@tonberry.usersys.redhat.com>
-References: <20151015190945.GH49747@tonberry.usersys.redhat.com>
-Date: Thu, 15 Oct 2015 15:49:58 -0400
-Message-ID: <CAHQdGtSOiiSdUS5QJ-1rq3uKvhbLxPo50r9zUW3Gzw+N+cfKXQ@mail.gmail.com>
-Subject: Re: Diskless client with NFSv4 root?
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Scott Mayhew <smayhew@redhat.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <17EC94B0A072C34B8DCF0D30AD16044A02878443@BPXM09GP.gisp.nec.co.jp>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Oct 15, 2015 at 3:09 PM, Scott Mayhew <smayhew@redhat.com> wrote:
->
-> Is this something that is expected to work?  It pretty much deadlocks
-> during boot.  I took a vmcore... the oldest RPC task (and the one that
-> had the RPC transport locked) was a SETATTR that was waiting on an id
-> mapper upcall, and the first task in the sending RPC wait queue was the
-> OPEN of the /sbin/request-key program.
->
-> If I disable id mapping on the NFS server then it looks like it works...
->
+On Thu, Oct 15, 2015 at 11:44:20AM +0000, Kosuke Tatsukawa wrote:
+> Tatsukawa Kosuke wrote:
+> > J. Bruce Fields wrote:
+> >> Thanks for the detailed investigation.
+> >> 
+> >> I think it would be worth adding a comment if that might help someone
+> >> having to reinvestigate this again some day.
+> > 
+> > It would be nice, but I find it difficult to write a comment in the
+> > sunrpc layer why a memory barrier isn't necessary, using the knowledge
+> > of how nfsd uses it, and the current implementation of the network code.
+> > 
+> > Personally, I would prefer removing the call to waitqueue_active() which
+> > would make the memory barrier totally unnecessary at the cost of a
+> > spin_lock + spin_unlock by unconditionally calling
+> > wake_up_interruptible.
+> 
+> On second thought, the callbacks will be called frequently from the tcp
+> code, so it wouldn't be a good idea.
 
-Yes, that is 100% expected behaviour. You get circular behaviour if
-you try to use idmapped identities when starting the idmapper. :-)
+So, I was even considering documenting it like this, if it's not
+overkill.
 
-In fact, if you look in the commit logs, you'll find that enabling
-rootless NFSv4 was one of the justifications for adding the AUTH_SYS
-non-idmapped mode on the client.
+Hmm... but if this is right, then we may as well ask why we're doing the
+wakeups at all.  Might be educational to test the code with them
+removed.
 
-Cheers
-  Trond
+--b.
+
+commit 0882cfeb39e0
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Thu Oct 15 16:53:41 2015 -0400
+
+    svcrpc: document lack of some memory barriers.
+    
+    Kosuke Tatsukawa points out an odd lack of memory barriers in some sites
+    here.  I think the code's correct, but it's probably worth documenting.
+    
+    Reported-by: Kosuke Tatsukawa <tatsu@ab.jp.nec.com>
+
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index 856407fa085e..90480993ec4a 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -399,6 +399,25 @@ static int svc_sock_secure_port(struct svc_rqst *rqstp)
+ 	return svc_port_is_privileged(svc_addr(rqstp));
+ }
+ 
++static void svc_no_smp_mb(void)
++{
++	/*
++	 * Kosuke Tatsukawa points out there should normally be an
++	 * smp_mb() at the callsites of this function.  (Either that or
++	 * we could just drop the waitqueue_active() checks.)
++	 *
++	 * It appears they aren't currently necessary, though, basically
++	 * because nfsd does non-blocking reads from these sockets, so
++	 * the only places we wait on this waitqueue is in sendpage and
++	 * sendmsg, which won't be waiting for wakeups on newly arrived
++	 * data.
++	 *
++	 * Maybe we should add the memory barriers anyway, but these are
++	 * hot paths so we'd need to be convinced there's no sigificant
++	 * penalty.
++	 */
++}
++
+ /*
+  * INET callback when data has been received on the socket.
+  */
+@@ -414,7 +433,7 @@ static void svc_udp_data_ready(struct sock *sk)
+ 		set_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags);
+ 		svc_xprt_enqueue(&svsk->sk_xprt);
+ 	}
+-	smp_mb();
++	svc_no_smp_mb();
+ 	if (wq && waitqueue_active(wq))
+ 		wake_up_interruptible(wq);
+ }
+@@ -433,7 +452,7 @@ static void svc_write_space(struct sock *sk)
+ 		svc_xprt_enqueue(&svsk->sk_xprt);
+ 	}
+ 
+-	smp_mb();
++	svc_no_smp_mb();
+ 	if (wq && waitqueue_active(wq)) {
+ 		dprintk("RPC svc_write_space: someone sleeping on %p\n",
+ 		       svsk);
+@@ -789,7 +808,7 @@ static void svc_tcp_listen_data_ready(struct sock *sk)
+ 	}
+ 
+ 	wq = sk_sleep(sk);
+-	smp_mb();
++	svc_no_smp_mb();
+ 	if (wq && waitqueue_active(wq))
+ 		wake_up_interruptible_all(wq);
+ }
+@@ -811,7 +830,7 @@ static void svc_tcp_state_change(struct sock *sk)
+ 		set_bit(XPT_CLOSE, &svsk->sk_xprt.xpt_flags);
+ 		svc_xprt_enqueue(&svsk->sk_xprt);
+ 	}
+-	smp_mb();
++	svc_no_smp_mb();
+ 	if (wq && waitqueue_active(wq))
+ 		wake_up_interruptible_all(wq);
+ }
+@@ -827,7 +846,7 @@ static void svc_tcp_data_ready(struct sock *sk)
+ 		set_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags);
+ 		svc_xprt_enqueue(&svsk->sk_xprt);
+ 	}
+-	smp_mb();
++	svc_no_smp_mb();
+ 	if (wq && waitqueue_active(wq))
+ 		wake_up_interruptible(wq);
+ }
+@@ -1599,7 +1618,7 @@ static void svc_sock_detach(struct svc_xprt *xprt)
+ 	sk->sk_write_space = svsk->sk_owspace;
+ 
+ 	wq = sk_sleep(sk);
+-	smp_mb();
++	svc_no_smp_mb();
+ 	if (wq && waitqueue_active(wq))
+ 		wake_up_interruptible(wq);
+ }
