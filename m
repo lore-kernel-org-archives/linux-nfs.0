@@ -1,151 +1,71 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:48245 "EHLO fieldses.org"
+Received: from mx2.suse.de ([195.135.220.15]:59800 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753291AbbJOU5n (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 15 Oct 2015 16:57:43 -0400
-Date: Thu, 15 Oct 2015 16:57:42 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Kosuke Tatsukawa <tatsu@ab.jp.nec.com>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Neil Brown <nfbrown@novell.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Jeff Layton <jlayton@poochiereds.net>,
-        "David S. Miller" <davem@davemloft.net>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-Subject: Re: [PATCH v2] sunrpc: fix waitqueue_active without memory barrier
- in sunrpc
-Message-ID: <20151015205742.GB20155@fieldses.org>
-References: <17EC94B0A072C34B8DCF0D30AD16044A02877D53@BPXM09GP.gisp.nec.co.jp>
- <17EC94B0A072C34B8DCF0D30AD16044A02878443@BPXM09GP.gisp.nec.co.jp>
+	id S1751401AbbJOV5b (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 15 Oct 2015 17:57:31 -0400
+From: Neil Brown <neilb@suse.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Date: Fri, 16 Oct 2015 08:57:23 +1100
+Cc: Olaf Kirch <okir@suse.de>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH/RFC] sunrpc/cache: make cache flushing more reliable.
+In-Reply-To: <20151015135039.GB18976@fieldses.org>
+References: <87fv1cwsln.fsf@notabene.neil.brown.name> <87a8rkws7g.fsf@notabene.neil.brown.name> <20151015135039.GB18976@fieldses.org>
+Message-ID: <874mhrx0ak.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <17EC94B0A072C34B8DCF0D30AD16044A02878443@BPXM09GP.gisp.nec.co.jp>
+Content-Type: multipart/signed; boundary="=-=-=";
+	micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Oct 15, 2015 at 11:44:20AM +0000, Kosuke Tatsukawa wrote:
-> Tatsukawa Kosuke wrote:
-> > J. Bruce Fields wrote:
-> >> Thanks for the detailed investigation.
-> >> 
-> >> I think it would be worth adding a comment if that might help someone
-> >> having to reinvestigate this again some day.
-> > 
-> > It would be nice, but I find it difficult to write a comment in the
-> > sunrpc layer why a memory barrier isn't necessary, using the knowledge
-> > of how nfsd uses it, and the current implementation of the network code.
-> > 
-> > Personally, I would prefer removing the call to waitqueue_active() which
-> > would make the memory barrier totally unnecessary at the cost of a
-> > spin_lock + spin_unlock by unconditionally calling
-> > wake_up_interruptible.
-> 
-> On second thought, the callbacks will be called frequently from the tcp
-> code, so it wouldn't be a good idea.
+--=-=-=
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-So, I was even considering documenting it like this, if it's not
-overkill.
+"J. Bruce Fields" <bfields@fieldses.org> writes:
 
-Hmm... but if this is right, then we may as well ask why we're doing the
-wakeups at all.  Might be educational to test the code with them
-removed.
+>>=20
+>> I'll resend it people are otherwise happy.
+>
+> I'm otherwise happy!  Looks like a reasonable approach.
+>
+> (The one thing I wonder is whether it would be clearer to outright fail
+> writes that attempt to create already-expired cache entries.
+>
+> But I think that's an unimportant corner case really.  And if there are
+> existing cases where that's happening then perhaps it's less disruptive
+> just to let them expire a second later rathern than to introduce a new
+> error.)
 
---b.
+I hadn't thought about.  There is often a good case for failing a
+meaningless value rather than silently doing something different.
+Were I creating a new interface, I would probably do that.
+But revising an old interface that doesn't currently return an error...
+I agree with you that it is likely less disruptive to not introduce a
+new error.  Thanks for asking the question.
 
-commit 0882cfeb39e0
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Thu Oct 15 16:53:41 2015 -0400
+I'll post the proper patch separately.
 
-    svcrpc: document lack of some memory barriers.
-    
-    Kosuke Tatsukawa points out an odd lack of memory barriers in some sites
-    here.  I think the code's correct, but it's probably worth documenting.
-    
-    Reported-by: Kosuke Tatsukawa <tatsu@ab.jp.nec.com>
+Thanks,
+NeilBrown
 
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 856407fa085e..90480993ec4a 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -399,6 +399,25 @@ static int svc_sock_secure_port(struct svc_rqst *rqstp)
- 	return svc_port_is_privileged(svc_addr(rqstp));
- }
- 
-+static void svc_no_smp_mb(void)
-+{
-+	/*
-+	 * Kosuke Tatsukawa points out there should normally be an
-+	 * smp_mb() at the callsites of this function.  (Either that or
-+	 * we could just drop the waitqueue_active() checks.)
-+	 *
-+	 * It appears they aren't currently necessary, though, basically
-+	 * because nfsd does non-blocking reads from these sockets, so
-+	 * the only places we wait on this waitqueue is in sendpage and
-+	 * sendmsg, which won't be waiting for wakeups on newly arrived
-+	 * data.
-+	 *
-+	 * Maybe we should add the memory barriers anyway, but these are
-+	 * hot paths so we'd need to be convinced there's no sigificant
-+	 * penalty.
-+	 */
-+}
-+
- /*
-  * INET callback when data has been received on the socket.
-  */
-@@ -414,7 +433,7 @@ static void svc_udp_data_ready(struct sock *sk)
- 		set_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags);
- 		svc_xprt_enqueue(&svsk->sk_xprt);
- 	}
--	smp_mb();
-+	svc_no_smp_mb();
- 	if (wq && waitqueue_active(wq))
- 		wake_up_interruptible(wq);
- }
-@@ -433,7 +452,7 @@ static void svc_write_space(struct sock *sk)
- 		svc_xprt_enqueue(&svsk->sk_xprt);
- 	}
- 
--	smp_mb();
-+	svc_no_smp_mb();
- 	if (wq && waitqueue_active(wq)) {
- 		dprintk("RPC svc_write_space: someone sleeping on %p\n",
- 		       svsk);
-@@ -789,7 +808,7 @@ static void svc_tcp_listen_data_ready(struct sock *sk)
- 	}
- 
- 	wq = sk_sleep(sk);
--	smp_mb();
-+	svc_no_smp_mb();
- 	if (wq && waitqueue_active(wq))
- 		wake_up_interruptible_all(wq);
- }
-@@ -811,7 +830,7 @@ static void svc_tcp_state_change(struct sock *sk)
- 		set_bit(XPT_CLOSE, &svsk->sk_xprt.xpt_flags);
- 		svc_xprt_enqueue(&svsk->sk_xprt);
- 	}
--	smp_mb();
-+	svc_no_smp_mb();
- 	if (wq && waitqueue_active(wq))
- 		wake_up_interruptible_all(wq);
- }
-@@ -827,7 +846,7 @@ static void svc_tcp_data_ready(struct sock *sk)
- 		set_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags);
- 		svc_xprt_enqueue(&svsk->sk_xprt);
- 	}
--	smp_mb();
-+	svc_no_smp_mb();
- 	if (wq && waitqueue_active(wq))
- 		wake_up_interruptible(wq);
- }
-@@ -1599,7 +1618,7 @@ static void svc_sock_detach(struct svc_xprt *xprt)
- 	sk->sk_write_space = svsk->sk_owspace;
- 
- 	wq = sk_sleep(sk);
--	smp_mb();
-+	svc_no_smp_mb();
- 	if (wq && waitqueue_active(wq))
- 		wake_up_interruptible(wq);
- }
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2
+
+iQIcBAEBCAAGBQJWICFDAAoJEDnsnt1WYoG5q6EP/1QY+Wfr4PVOiu79CWgAnWUZ
+wI/eYPghlBm8uSHm50vKdIZpg5oCSdyfsPZcd/ogOc/kQePKa2nbW2AV7g6b+iUj
+Nf+FNObRJWnrpACRK3LavG3rHBERC8pQeIdOaNgSiNKgu37vcfEghAyAWz88il8n
+6IEbpwgQCvOE88JkAXmMxsCOd7JMrfE5evP6P5n7oZGhy+wLmX9++6ylqvs6j+Wb
++U9Q3DWFkpqAmPd90vqpOYCOzoSoyJNl4stYMvq5b3JQ+mYhsDHBaUouMT8mEOQ2
+3q1AGkHxABoF5OD/E7Uo5QPlJa6o69mSnYwO0Rxuri9ZlyPDpX2vm9SnbQx+Cn5t
+kdOT5/0SA8p+KDHwN6vvUxriw8pKUCaHCI1GF2bWCnzGjmr76pUziEmcVAwRt2eO
+3XAQgkURldv6AP7WYXdLSxs/wAovJdY8od1+Rpxs7WRxD7lE3Lp9o+eArvamE419
+RrMCUggd/ow7W6AOOGTg2G4ZtlHE0KpG1Pzq0FGnGckChtRxbUfUk25RcV92oMYy
+8sWL6o1QkVyUVH/vp+w+E8AsioiDar/qPoJHZY/d0rlpIhFAYweucC06GTqG6EfU
+LGushBtCz9E8tfAL/YxB4/yMjaC5Ak4xUt8L9284xfLvQGX11rXtGg81ntyVdgBU
+j7pU7NnS/RHFr3Hv/w78
+=z62r
+-----END PGP SIGNATURE-----
+--=-=-=--
