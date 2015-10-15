@@ -1,172 +1,152 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from TYO201.gate.nec.co.jp ([210.143.35.51]:43873 "EHLO
-	tyo201.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753190AbbJOLpC convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Oct 2015 07:45:02 -0400
-From: Kosuke Tatsukawa <tatsu@ab.jp.nec.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Neil Brown <nfbrown@novell.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Jeff Layton <jlayton@poochiereds.net>,
-        "David S. Miller" <davem@davemloft.net>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-Subject: Re: [PATCH v2] sunrpc: fix waitqueue_active without memory barrier
- in sunrpc
-Date: Thu, 15 Oct 2015 11:44:20 +0000
-Message-ID: <17EC94B0A072C34B8DCF0D30AD16044A02878443@BPXM09GP.gisp.nec.co.jp>
-In-Reply-To: <17EC94B0A072C34B8DCF0D30AD16044A02877D53@BPXM09GP.gisp.nec.co.jp>
-Content-Type: text/plain; charset="iso-2022-jp"
+Received: from mail-io0-f179.google.com ([209.85.223.179]:36027 "EHLO
+	mail-io0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752183AbbJOMZG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Oct 2015 08:25:06 -0400
+Subject: Re: [PATCH v5 8/9] vfs: Add vfs_copy_file_range() support for
+ pagecache copies
+To: Christoph Hellwig <hch@infradead.org>
+References: <1443634014-3026-1-git-send-email-Anna.Schumaker@Netapp.com>
+ <1443634014-3026-9-git-send-email-Anna.Schumaker@Netapp.com>
+ <20151011142203.GA31867@infradead.org>
+ <20151012231749.GC11398@birch.djwong.org> <561E980C.9010509@Netapp.com>
+ <CALCETrU0-Q-q0u0BAPwu+mbyS+LVp6M1Hqro3xwzSm7eNCbEmg@mail.gmail.com>
+ <20151014182701.GC31225@infradead.org> <561EA83E.8080000@gmail.com>
+ <20151015063621.GA3025@infradead.org>
+Cc: Andy Lutomirski <luto@amacapital.net>,
+        Anna Schumaker <Anna.Schumaker@netapp.com>,
+        "Darrick J. Wong" <darrick.wong@oracle.com>, linux-nfs@vger.kernel.org,
+        Linux btrfs Developers List <linux-btrfs@vger.kernel.org>,
+        Linux FS Devel <linux-fsdevel@vger.kernel.org>,
+        Linux API <linux-api@vger.kernel.org>, Zach Brown <zab@zabbo.net>,
+        Al Viro <viro@zeniv.linux.org.uk>, Chris Mason <clm@fb.com>,
+        Michael Kerrisk-manpages <mtk.manpages@gmail.com>, andros@netapp.com
+From: Austin S Hemmelgarn <ahferroin7@gmail.com>
+Message-ID: <561F9B13.7020804@gmail.com>
+Date: Thu, 15 Oct 2015 08:24:51 -0400
 MIME-Version: 1.0
+In-Reply-To: <20151015063621.GA3025@infradead.org>
+Content-Type: multipart/signed; protocol="application/pkcs7-signature"; micalg=sha-512; boundary="------------ms090603000905010607010104"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Tatsukawa Kosuke wrote:
-> J. Bruce Fields wrote:
->> On Wed, Oct 14, 2015 at 03:57:13AM +0000, Kosuke Tatsukawa wrote:
->>> J. Bruce Fields wrote:
->>> > On Mon, Oct 12, 2015 at 10:41:06AM +0000, Kosuke Tatsukawa wrote:
->>> >> J. Bruce Fields wrote:
->>> >> > On Fri, Oct 09, 2015 at 06:29:44AM +0000, Kosuke Tatsukawa wrote:
->>> >> >> Neil Brown wrote:
->>> >> >> > Kosuke Tatsukawa <tatsu@ab.jp.nec.com> writes:
->>> >> >> > 
->>> >> >> >> There are several places in net/sunrpc/svcsock.c which calls
->>> >> >> >> waitqueue_active() without calling a memory barrier.  Add a memory
->>> >> >> >> barrier just as in wq_has_sleeper().
->>> >> >> >>
->>> >> >> >> I found this issue when I was looking through the linux source code
->>> >> >> >> for places calling waitqueue_active() before wake_up*(), but without
->>> >> >> >> preceding memory barriers, after sending a patch to fix a similar
->>> >> >> >> issue in drivers/tty/n_tty.c  (Details about the original issue can be
->>> >> >> >> found here: https://lkml.org/lkml/2015/9/28/849).
->>> >> >> > 
->>> >> >> > hi,
->>> >> >> > this feels like the wrong approach to the problem.  It requires extra
->>> >> >> > 'smb_mb's to be spread around which are hard to understand as easy to
->>> >> >> > forget.
->>> >> >> > 
->>> >> >> > A quick look seems to suggest that (nearly) every waitqueue_active()
->>> >> >> > will need an smb_mb.  Could we just put the smb_mb() inside
->>> >> >> > waitqueue_active()??
->>> >> >> <snip>
->>> >> >> 
->>> >> >> There are around 200 occurrences of waitqueue_active() in the kernel
->>> >> >> source, and most of the places which use it before wake_up are either
->>> >> >> protected by some spin lock, or already has a memory barrier or some
->>> >> >> kind of atomic operation before it.
->>> >> >> 
->>> >> >> Simply adding smp_mb() to waitqueue_active() would incur extra cost in
->>> >> >> many cases and won't be a good idea.
->>> >> >> 
->>> >> >> Another way to solve this problem is to remove the waitqueue_active(),
->>> >> >> making the code look like this;
->>> >> >> 	if (wq)
->>> >> >> 		wake_up_interruptible(wq);
->>> >> >> This also fixes the problem because the spinlock in the wake_up*() acts
->>> >> >> as a memory barrier and prevents the code from being reordered by the
->>> >> >> CPU (and it also makes the resulting code is much simpler).
->>> >> > 
->>> >> > I might not care which we did, except I don't have the means to test
->>> >> > this quickly, and I guess this is some of our most frequently called
->>> >> > code.
->>> >> > 
->>> >> > I suppose your patch is the most conservative approach, as the
->>> >> > alternative is a spinlock/unlock in wake_up_interruptible, which I
->>> >> > assume is necessarily more expensive than an smp_mb().
->>> >> > 
->>> >> > As far as I can tell it's been this way since forever.  (Well, since a
->>> >> > 2002 patch "NFSD: TCP: rationalise locking in RPC server routines" which
->>> >> > removed some spinlocks from the data_ready routines.)
->>> >> > 
->>> >> > I don't understand what the actual race is yet (which code exactly is
->>> >> > missing the wakeup in this case?  nfsd threads seem to instead get
->>> >> > woken up by the wake_up_process() in svc_xprt_do_enqueue().)
->>> >> 
->>> >> Thank you for the reply.  I tried looking into this.
->>> >> 
->>> >> The callbacks in net/sunrpc/svcsock.c are set up in svc_tcp_init() and
->>> >> svc_udp_init(), which are both called from svc_setup_socket().
->>> >> svc_setup_socket() is called (indirectly) from lockd, nfsd, and nfsv4
->>> >> callback port related code.
->>> >> 
->>> >> Maybe I'm wrong, but there might not be any kernel code that is using
->>> >> the socket's wait queue in this case.
->>> > 
->>> > As Trond points out there are probably waiters internal to the
->>> > networking code.
->>> 
->>> Trond and Bruce, thank you for the comment.  I was able to find the call
->>> to the wait function that was called from nfsd.
->>> 
->>> sk_stream_wait_connect() and sk_stream_wait_memory() were called from
->>> either do_tcp_sendpages() or tcp_sendmsg() called from within
->>> svc_send().  sk_stream_wait_connect() shouldn't be called at this point,
->>> because the socket has already been used to receive the rpc request.
->>> 
->>> On the wake_up side, sk_write_space() is called from the following
->>> locations.  The relevant ones seems to be preceded by atomic_sub or a
->>> memory barrier.
->>> + ksocknal_write_space [drivers/staging/lustre/lnet/klnds/socklnd/socklnd_lib.c:633]
->>> + atm_pop_raw [net/atm/raw.c:40]
->>> + sock_setsockopt [net/core/sock.c:740]
->>> + sock_wfree [net/core/sock.c:1630]
->>>   Preceded by atomic_sub in sock_wfree()
->>> + ccid3_hc_tx_packet_recv [net/dccp/ccids/ccid3.c:442]
->>> + do_tcp_sendpages [net/ipv4/tcp.c:1008]
->>> + tcp_sendmsg [net/ipv4/tcp.c:1300]
->>> + do_tcp_setsockopt [net/ipv4/tcp.c:2597]
->>> + tcp_new_space [net/ipv4/tcp_input.c:4885]
->>>   Preceded by smp_mb__after_atomic in tcp_check_space()
->>> + llc_conn_state_process [net/llc/llc_conn.c:148]
->>> + pipe_rcv_status [net/phonet/pep.c:312]
->>> + pipe_do_rcv [net/phonet/pep.c:440]
->>> + pipe_start_flow_control [net/phonet/pep.c:554]
->>> + svc_sock_setbufsize [net/sunrpc/svcsock.c:45]
->>> 
->>> sk_state_change() calls related to TCP/IP were called from the following
->>> places.
->>> + inet_shutdown [net/ipv4/af_inet.c:825]
->>>   This shouldn't be called when waiting
->>> + tcp_done [net/ipv4/tcp.c:3078]
->>>   spin_lock*/spin_unlock* is called in lock_timer_base
->>> + tcp_fin [net/ipv4/tcp_input.c:4031]
->>>   atomic_long_sub is called from sk_memory_allocated_sub called within
->>>   sk_mem_reclaim
->>> + tcp_finish_connect [net/ipv4/tcp_input.c:5415]
->>>   This shoudn't be called when waiting
->>> + tcp_rcv_state_process [net/ipv4/tcp_input.c:5807,5880]
->>>   The socket shouldn't be in TCP_SYN_RECV nor TCP_FIN_WAIT1 states when
->>>   waiting
->>> 
->>> I think the wait queue won't be used for being woken up by
->>> svc_{tcp,udp}_data_ready, because nfsd doesn't read from a socket.
->> 
->> Looking, well, I guess kernel_recvmsg() does read from a socket, but I
->> assume calling with MSG_DONTWAIT means that it doesn't block.
->> 
->>> So with the current implementation, it seems there shouldn't be any
->>> problems even if the memory barrier is missing.
->> 
->> Thanks for the detailed investigation.
->> 
->> I think it would be worth adding a comment if that might help someone
->> having to reinvestigate this again some day.
-> 
-> It would be nice, but I find it difficult to write a comment in the
-> sunrpc layer why a memory barrier isn't necessary, using the knowledge
-> of how nfsd uses it, and the current implementation of the network code.
-> 
-> Personally, I would prefer removing the call to waitqueue_active() which
-> would make the memory barrier totally unnecessary at the cost of a
-> spin_lock + spin_unlock by unconditionally calling
-> wake_up_interruptible.
+This is a cryptographically signed message in MIME format.
 
-On second thought, the callbacks will be called frequently from the tcp
-code, so it wouldn't be a good idea.
----
-Kosuke TATSUKAWA  | 3rd IT Platform Department
-                  | IT Platform Division, NEC Corporation
-                  | tatsu@ab.jp.nec.com
+--------------ms090603000905010607010104
+Content-Type: text/plain; charset=windows-1252; format=flowed
+Content-Transfer-Encoding: quoted-printable
+
+On 2015-10-15 02:36, Christoph Hellwig wrote:
+> On Wed, Oct 14, 2015 at 03:08:46PM -0400, Austin S Hemmelgarn wrote:
+>> Whether or not reflink is different from a copy is entirely a matter o=
+f who
+>> is looking at it.
+>
+> So what?  I've been trying to explain why clone semantics matter, and
+> I've not seen a counter argument for that.  I've also explained a coupl=
+e
+> times that a valid clone always is a valid copy, and I've only heard
+> some slight disagreement, and so far none as long as we take the
+> COPY_FALLOCATE option into account.
+>
+> Note that all of this also applies to storage devices - any smart array=
+
+> will do a clone-like operation underneath an XCOPY, but so far SCSI
+> doesn't provide full clone _semantics_ even if you can emulate a lot of=
+
+> it using a lot of complexity around ROD tokens.
+>
+> Similar at the SCSI level you can perform a fallocate-like operation
+> using the anchor bit in the UNMAP or WRITE SAME commands.
+>
+>> I agree that we shouldn't try to make a reflink by default (less than
+>> intelligent programmers won't read the docs completely, and will make
+>> various stupid assumptions about how this is 'supposed' to work, makin=
+g the
+>> defaults less ambiguous is a good thing), but it makes sense (at least=
+, it
+>> does to me) to have the ability to say 'make this block of data appear=
+ at
+>> this location as well, I don't care how you do it as long as they are
+>> functionally independent for userspace applications'.
+>
+> Yes, we absolutely should use reflink as a default implementation for
+> copy where available.
+>
+> But we also need a clone or reflink interface that only gives us well
+> specified reflink semantics, and not the much weaker copy semantics.
+>
+Ah, I was completely misunderstanding your meaning, sorry about any=20
+confusion that I may have caused as a result of this.
+
+My only point with saying we shouldn't reflink by default is that there=20
+are many (unintelligent) people who will assume that since the syscall=20
+has copy in it's name, that's what it will do; and, while I don't think=20
+we should cater to such individuals, it does make sense to have a=20
+syscall that says in it's name that it copies data actually do so by=20
+default.
+
+
+--------------ms090603000905010607010104
+Content-Type: application/pkcs7-signature; name="smime.p7s"
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="smime.p7s"
+Content-Description: S/MIME Cryptographic Signature
+
+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
+cnQub3JnMSIwIAYDVQQDExlDQSBDZXJ0IFNpZ25pbmcgQXV0aG9yaXR5MSEwHwYJKoZIhvcN
+AQkBFhJzdXBwb3J0QGNhY2VydC5vcmcCAxEt+DANBglghkgBZQMEAgMFAKCCAiEwGAYJKoZI
+hvcNAQkDMQsGCSqGSIb3DQEHATAcBgkqhkiG9w0BCQUxDxcNMTUxMDE1MTIyNDUxWjBPBgkq
+hkiG9w0BCQQxQgRAVThoTmu26WvTR4Zm8CeGeerdYzGdAJ2tYfPuyNA1EYu7OjvOj0NquH9c
+prqqFryOoHrTTdbPmW/4FGCf38KIGTBsBgkqhkiG9w0BCQ8xXzBdMAsGCWCGSAFlAwQBKjAL
+BglghkgBZQMEAQIwCgYIKoZIhvcNAwcwDgYIKoZIhvcNAwICAgCAMA0GCCqGSIb3DQMCAgFA
+MAcGBSsOAwIHMA0GCCqGSIb3DQMCAgEoMIGRBgkrBgEEAYI3EAQxgYMwgYAweTEQMA4GA1UE
+ChMHUm9vdCBDQTEeMBwGA1UECxMVaHR0cDovL3d3dy5jYWNlcnQub3JnMSIwIAYDVQQDExlD
+QSBDZXJ0IFNpZ25pbmcgQXV0aG9yaXR5MSEwHwYJKoZIhvcNAQkBFhJzdXBwb3J0QGNhY2Vy
+dC5vcmcCAxEt+DCBkwYLKoZIhvcNAQkQAgsxgYOggYAweTEQMA4GA1UEChMHUm9vdCBDQTEe
+MBwGA1UECxMVaHR0cDovL3d3dy5jYWNlcnQub3JnMSIwIAYDVQQDExlDQSBDZXJ0IFNpZ25p
+bmcgQXV0aG9yaXR5MSEwHwYJKoZIhvcNAQkBFhJzdXBwb3J0QGNhY2VydC5vcmcCAxEt+DAN
+BgkqhkiG9w0BAQEFAASCAgAZOtGNQHd11MIw00kbh2l+pyluX+S275walf4ruTdxK82U+UHt
+ry3tBhXIWUHmq602Q7CQCbwhEGYEv9qsDmaThiTFahFI6D/9BgHNVtXGE1HJrq1RjEAv/X/X
+CAdkT7cag+4zt17l1H8rSQsXE4qQpjMj/OKi4OawRoOqSDt/klYeN1qXc0eNvM6D28eVQoJv
+mws4woflggGSuVNaa2lzQWCAa8p8hRa+IExJY2rIkyDpFF7Z87qc5Z1bMXZE2yhCWtQodoOY
+lTAeq1aNBvc/MTkJ48CSP8KHzeIpBPmP0jd/BJawbLPwXG8PcaHDzFS3b8CN15uCT9tIo8PT
+aNNTCZBlcHsNkC6OckWr9O/E9sntgdf4+wL+Q10weOuO9QaXhN/77NMaDtffqHuxZdBoj9h2
+gLqeb05jbrXxf2+OB0aUA/bLJA8WmXbtZwNhPwQNY/K9sJ78cugMeI1RGKeD+1vkCUyujPOa
+GK13Nuh5OhfgGujUMQDyMs6Be7Jz3UP7Q1V4HggkvNwISf6gsSR+eGIMvvcECWdhvFp1O/Py
+eUJRZva92NFRhUWypZL4KDf2gRen6pg19R8xIAam0zIiPH1a+cSt1VCTc8CTDfLuZ6YeYg1R
+JqodUz9/HlZQp331+8ojs7GV1hSiJQ8vwDranTBT/85mOde/h8WQ/5sEQQAAAAAAAA==
+--------------ms090603000905010607010104--
