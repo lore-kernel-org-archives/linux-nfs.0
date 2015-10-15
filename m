@@ -1,193 +1,168 @@
-Return-Path: <jlayton@poochiereds.net>
-Date: Wed, 14 Oct 2015 16:30:18 -0400
-From: Jeff Layton <jlayton@poochiereds.net>
-To: Benjamin Coddington <bcodding@redhat.com>
-Cc: linux-nfs@vger.kernel.org, trond.myklebust@primarydata.com,
-        anna.schumaker@netapp.com
-Subject: Re: [PATCH 10/10] NFS: Deferred unlocks - always unlock on FL_CLOSE
-Message-ID: <20151014163018.1d2de645@synchrony.poochiereds.net>
-In-Reply-To: <93c4aa68a777b232075b9b8252d671635bb1c320.1444846590.git.bcodding@redhat.com>
-References: <cover.1444846590.git.bcodding@redhat.com>
-	<93c4aa68a777b232075b9b8252d671635bb1c320.1444846590.git.bcodding@redhat.com>
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from TYO202.gate.nec.co.jp ([210.143.35.52]:33474 "EHLO
+	tyo202.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753766AbbJOAJp convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Oct 2015 20:09:45 -0400
+From: Kosuke Tatsukawa <tatsu@ab.jp.nec.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Neil Brown <nfbrown@novell.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        "David S. Miller" <davem@davemloft.net>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH v2] sunrpc: fix waitqueue_active without memory barrier
+ in sunrpc
+Date: Thu, 15 Oct 2015 00:09:11 +0000
+Message-ID: <17EC94B0A072C34B8DCF0D30AD16044A02877D53@BPXM09GP.gisp.nec.co.jp>
+In-Reply-To: <20151014160040.GA11087@fieldses.org>
+Content-Type: text/plain; charset="iso-2022-jp"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 14 Oct 2015 14:23:37 -0400
-Benjamin Coddington <bcodding@redhat.com> wrote:
-
-> NFS unlock procedures will wait for IO to complete before sending an unlock.
-> In the case that this wait is interrupted, an unlock may never be sent if
-> the unlock is part of cleaning up locks during a close.  This lost lock can
-> then prevent other clients from locking the file.
+J. Bruce Fields wrote:
+> On Wed, Oct 14, 2015 at 03:57:13AM +0000, Kosuke Tatsukawa wrote:
+>> J. Bruce Fields wrote:
+>> > On Mon, Oct 12, 2015 at 10:41:06AM +0000, Kosuke Tatsukawa wrote:
+>> >> J. Bruce Fields wrote:
+>> >> > On Fri, Oct 09, 2015 at 06:29:44AM +0000, Kosuke Tatsukawa wrote:
+>> >> >> Neil Brown wrote:
+>> >> >> > Kosuke Tatsukawa <tatsu@ab.jp.nec.com> writes:
+>> >> >> > 
+>> >> >> >> There are several places in net/sunrpc/svcsock.c which calls
+>> >> >> >> waitqueue_active() without calling a memory barrier.  Add a memory
+>> >> >> >> barrier just as in wq_has_sleeper().
+>> >> >> >>
+>> >> >> >> I found this issue when I was looking through the linux source code
+>> >> >> >> for places calling waitqueue_active() before wake_up*(), but without
+>> >> >> >> preceding memory barriers, after sending a patch to fix a similar
+>> >> >> >> issue in drivers/tty/n_tty.c  (Details about the original issue can be
+>> >> >> >> found here: https://lkml.org/lkml/2015/9/28/849).
+>> >> >> > 
+>> >> >> > hi,
+>> >> >> > this feels like the wrong approach to the problem.  It requires extra
+>> >> >> > 'smb_mb's to be spread around which are hard to understand as easy to
+>> >> >> > forget.
+>> >> >> > 
+>> >> >> > A quick look seems to suggest that (nearly) every waitqueue_active()
+>> >> >> > will need an smb_mb.  Could we just put the smb_mb() inside
+>> >> >> > waitqueue_active()??
+>> >> >> <snip>
+>> >> >> 
+>> >> >> There are around 200 occurrences of waitqueue_active() in the kernel
+>> >> >> source, and most of the places which use it before wake_up are either
+>> >> >> protected by some spin lock, or already has a memory barrier or some
+>> >> >> kind of atomic operation before it.
+>> >> >> 
+>> >> >> Simply adding smp_mb() to waitqueue_active() would incur extra cost in
+>> >> >> many cases and won't be a good idea.
+>> >> >> 
+>> >> >> Another way to solve this problem is to remove the waitqueue_active(),
+>> >> >> making the code look like this;
+>> >> >> 	if (wq)
+>> >> >> 		wake_up_interruptible(wq);
+>> >> >> This also fixes the problem because the spinlock in the wake_up*() acts
+>> >> >> as a memory barrier and prevents the code from being reordered by the
+>> >> >> CPU (and it also makes the resulting code is much simpler).
+>> >> > 
+>> >> > I might not care which we did, except I don't have the means to test
+>> >> > this quickly, and I guess this is some of our most frequently called
+>> >> > code.
+>> >> > 
+>> >> > I suppose your patch is the most conservative approach, as the
+>> >> > alternative is a spinlock/unlock in wake_up_interruptible, which I
+>> >> > assume is necessarily more expensive than an smp_mb().
+>> >> > 
+>> >> > As far as I can tell it's been this way since forever.  (Well, since a
+>> >> > 2002 patch "NFSD: TCP: rationalise locking in RPC server routines" which
+>> >> > removed some spinlocks from the data_ready routines.)
+>> >> > 
+>> >> > I don't understand what the actual race is yet (which code exactly is
+>> >> > missing the wakeup in this case?  nfsd threads seem to instead get
+>> >> > woken up by the wake_up_process() in svc_xprt_do_enqueue().)
+>> >> 
+>> >> Thank you for the reply.  I tried looking into this.
+>> >> 
+>> >> The callbacks in net/sunrpc/svcsock.c are set up in svc_tcp_init() and
+>> >> svc_udp_init(), which are both called from svc_setup_socket().
+>> >> svc_setup_socket() is called (indirectly) from lockd, nfsd, and nfsv4
+>> >> callback port related code.
+>> >> 
+>> >> Maybe I'm wrong, but there might not be any kernel code that is using
+>> >> the socket's wait queue in this case.
+>> > 
+>> > As Trond points out there are probably waiters internal to the
+>> > networking code.
+>> 
+>> Trond and Bruce, thank you for the comment.  I was able to find the call
+>> to the wait function that was called from nfsd.
+>> 
+>> sk_stream_wait_connect() and sk_stream_wait_memory() were called from
+>> either do_tcp_sendpages() or tcp_sendmsg() called from within
+>> svc_send().  sk_stream_wait_connect() shouldn't be called at this point,
+>> because the socket has already been used to receive the rpc request.
+>> 
+>> On the wake_up side, sk_write_space() is called from the following
+>> locations.  The relevant ones seems to be preceded by atomic_sub or a
+>> memory barrier.
+>> + ksocknal_write_space [drivers/staging/lustre/lnet/klnds/socklnd/socklnd_lib.c:633]
+>> + atm_pop_raw [net/atm/raw.c:40]
+>> + sock_setsockopt [net/core/sock.c:740]
+>> + sock_wfree [net/core/sock.c:1630]
+>>   Preceded by atomic_sub in sock_wfree()
+>> + ccid3_hc_tx_packet_recv [net/dccp/ccids/ccid3.c:442]
+>> + do_tcp_sendpages [net/ipv4/tcp.c:1008]
+>> + tcp_sendmsg [net/ipv4/tcp.c:1300]
+>> + do_tcp_setsockopt [net/ipv4/tcp.c:2597]
+>> + tcp_new_space [net/ipv4/tcp_input.c:4885]
+>>   Preceded by smp_mb__after_atomic in tcp_check_space()
+>> + llc_conn_state_process [net/llc/llc_conn.c:148]
+>> + pipe_rcv_status [net/phonet/pep.c:312]
+>> + pipe_do_rcv [net/phonet/pep.c:440]
+>> + pipe_start_flow_control [net/phonet/pep.c:554]
+>> + svc_sock_setbufsize [net/sunrpc/svcsock.c:45]
+>> 
+>> sk_state_change() calls related to TCP/IP were called from the following
+>> places.
+>> + inet_shutdown [net/ipv4/af_inet.c:825]
+>>   This shouldn't be called when waiting
+>> + tcp_done [net/ipv4/tcp.c:3078]
+>>   spin_lock*/spin_unlock* is called in lock_timer_base
+>> + tcp_fin [net/ipv4/tcp_input.c:4031]
+>>   atomic_long_sub is called from sk_memory_allocated_sub called within
+>>   sk_mem_reclaim
+>> + tcp_finish_connect [net/ipv4/tcp_input.c:5415]
+>>   This shoudn't be called when waiting
+>> + tcp_rcv_state_process [net/ipv4/tcp_input.c:5807,5880]
+>>   The socket shouldn't be in TCP_SYN_RECV nor TCP_FIN_WAIT1 states when
+>>   waiting
+>> 
+>> I think the wait queue won't be used for being woken up by
+>> svc_{tcp,udp}_data_ready, because nfsd doesn't read from a socket.
 > 
-> Fix this by deferring an unlock that should wait for IO during FL_CLOSE by
-> copying it to a list on the nfs_lock_context, which can then be used to
-> release the lock when the IO has completed.
+> Looking, well, I guess kernel_recvmsg() does read from a socket, but I
+> assume calling with MSG_DONTWAIT means that it doesn't block.
 > 
-> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
-> ---
->  fs/nfs/file.c          |   36 +++++++++++++++++++++++++++++++++++-
->  fs/nfs/inode.c         |    1 +
->  fs/nfs/pagelist.c      |   23 ++++++++++++++++++++---
->  include/linux/nfs_fs.h |    7 +++++++
->  4 files changed, 63 insertions(+), 4 deletions(-)
+>> So with the current implementation, it seems there shouldn't be any
+>> problems even if the memory barrier is missing.
 > 
-> diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-> index d16c50f..460311a 100644
-> --- a/fs/nfs/file.c
-> +++ b/fs/nfs/file.c
-> @@ -738,6 +738,36 @@ out_noconflict:
->  }
->  
->  static int
-> +defer_unlk(struct nfs_lock_context *l_ctx, int cmd, struct file_lock *fl)
-> +{
-> +	struct inode *inode = d_inode(l_ctx->open_context->dentry);
-> +	struct nfs_io_counter *c = &l_ctx->io_count;
-> +	struct nfs_deferred_unlock *dunlk;
-> +	int status = 0;
-> +
-> +	if (atomic_read(&c->io_count) == 0)
-> +		return 0;
-> +
-> +	/* free in nfs_iocounter_dec */
-> +	dunlk = kmalloc(sizeof(*dunlk), GFP_NOFS);
-> +	if (dunlk == NULL)
-> +		return -ENOMEM;
-> +
+> Thanks for the detailed investigation.
+> 
+> I think it would be worth adding a comment if that might help someone
+> having to reinvestigate this again some day.
 
-This is a little ugly...
+It would be nice, but I find it difficult to write a comment in the
+sunrpc layer why a memory barrier isn't necessary, using the knowledge
+of how nfsd uses it, and the current implementation of the network code.
 
-You're probably going to calling this from something like
-locks_remove_posix, and if this allocation fails then the unlock will
-just never happen.
-
-Is there any way to avoid this allocation?
-
-The "cmd" field in nfs_deferred_unlock is more or less redundant. We're
-always calling this with that set to F_UNLCK. We also know that this
-will be called on the whole file range. Maybe we can simply add a flag
-to the lock context to indicate whether we should send a whole-file
-unlock on it when the io_count goes to zero.
-
-Also, on a somewhat related note...we aren't currently setting FL_CLOSE
-in locks_remove_flock and we probably should be.
-
-
-> +	INIT_LIST_HEAD(&dunlk->list);
-> +	dunlk->cmd = cmd;
-> +	memcpy(&dunlk->fl, fl, sizeof(dunlk->fl));
-> +	spin_lock(&inode->i_lock);
-> +	if (atomic_read(&c->io_count) != 0) {
-> +		list_add_tail(&dunlk->list, &l_ctx->dunlk_list);
-> +		status = -EINPROGRESS;
-> +	} else {
-> +		kfree(dunlk);
-> +	}
-> +	spin_unlock(&inode->i_lock);
-> +	return status;
-> +}
-> +
-> +static int
->  do_unlk(struct file *filp, int cmd, struct file_lock *fl, int
-> is_local) {
->  	struct inode *inode = filp->f_mapping->host;
-> @@ -753,7 +783,11 @@ do_unlk(struct file *filp, int cmd, struct
-> file_lock *fl, int is_local) 
->  	l_ctx = nfs_get_lock_context(nfs_file_open_context(filp));
->  	if (!IS_ERR(l_ctx)) {
-> -		status = nfs_iocounter_wait(&l_ctx->io_count);
-> +		if (fl->fl_flags & FL_CLOSE)
-> +			status = defer_unlk(l_ctx, cmd, fl);
-> +		else
-> +			status =
-> nfs_iocounter_wait(&l_ctx->io_count); +
->  		nfs_put_lock_context(l_ctx);
->  		if (status < 0)
->  			return status;
-> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-> index 326d9e1..af4f846 100644
-> --- a/fs/nfs/inode.c
-> +++ b/fs/nfs/inode.c
-> @@ -696,6 +696,7 @@ static void nfs_init_lock_context(struct
-> nfs_lock_context *l_ctx) l_ctx->lockowner.l_owner = current->files;
->  	l_ctx->lockowner.l_pid = current->tgid;
->  	INIT_LIST_HEAD(&l_ctx->list);
-> +	INIT_LIST_HEAD(&l_ctx->dunlk_list);
->  	nfs_iocounter_init(&l_ctx->io_count);
->  }
->  
-> diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-> index fe3ddd2..17dd6c0 100644
-> --- a/fs/nfs/pagelist.c
-> +++ b/fs/nfs/pagelist.c
-> @@ -108,9 +108,26 @@ nfs_iocounter_inc(struct nfs_io_counter *c)
->  }
->  
->  static void
-> -nfs_iocounter_dec(struct nfs_io_counter *c)
-> +nfs_iocounter_dec(struct nfs_lock_context *l_ctx)
->  {
-> -	if (atomic_dec_and_test(&c->io_count)) {
-> +	struct nfs_io_counter *c = &l_ctx->io_count;
-> +	struct inode *inode = d_inode(l_ctx->open_context->dentry);
-> +
-> +	if (atomic_dec_and_lock(&c->io_count, &inode->i_lock)) {
-> +		if (unlikely(!list_empty(&l_ctx->dunlk_list))) {
-> +			struct nfs_deferred_unlock *dunlk, *tmp;
-> +			LIST_HEAD(dunlk_list);
-> +			list_replace_init(&l_ctx->dunlk_list,
-> &dunlk_list);
-> +			spin_unlock(&inode->i_lock);
-> +
-> +			list_for_each_entry_safe(dunlk, tmp,
-> &dunlk_list, list) {
-> +
-> NFS_PROTO(inode)->lock(l_ctx->open_context, dunlk->cmd, &dunlk->fl);
-> +				locks_release_private(&dunlk->fl);
-> +				kfree(dunlk);
-> +			}
-> +		} else {
-> +			spin_unlock(&inode->i_lock);
-> +		}
->  		clear_bit(NFS_IO_INPROGRESS, &c->flags);
->  		smp_mb__after_atomic();
->  		wake_up_bit(&c->flags, NFS_IO_INPROGRESS);
-> @@ -431,7 +448,7 @@ static void nfs_clear_request(struct nfs_page
-> *req) req->wb_page = NULL;
->  	}
->  	if (l_ctx != NULL) {
-> -		nfs_iocounter_dec(&l_ctx->io_count);
-> +		nfs_iocounter_dec(l_ctx);
->  		nfs_put_lock_context(l_ctx);
->  		req->wb_lock_context = NULL;
->  	}
-> diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-> index c0e9614..ba36498 100644
-> --- a/include/linux/nfs_fs.h
-> +++ b/include/linux/nfs_fs.h
-> @@ -66,12 +66,19 @@ struct nfs_io_counter {
->  	atomic_t io_count;
->  };
->  
-> +struct nfs_deferred_unlock {
-> +	struct list_head list;
-> +	int cmd;
-> +	struct file_lock fl;
-> +};
-> +
->  struct nfs_lock_context {
->  	atomic_t count;
->  	struct list_head list;
->  	struct nfs_open_context *open_context;
->  	struct nfs_lockowner lockowner;
->  	struct nfs_io_counter io_count;
-> +	struct list_head dunlk_list;
->  };
->  
->  struct nfs4_state;
-
-
--- 
-Jeff Layton <jlayton@poochiereds.net>
+Personally, I would prefer removing the call to waitqueue_active() which
+would make the memory barrier totally unnecessary at the cost of a
+spin_lock + spin_unlock by unconditionally calling
+wake_up_interruptible.
+---
+Kosuke TATSUKAWA  | 3rd IT Platform Department
+                  | IT Platform Division, NEC Corporation
+                  | tatsu@ab.jp.nec.com
