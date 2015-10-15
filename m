@@ -1,64 +1,93 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([198.137.202.9]:49589 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754722AbbJOGg2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Oct 2015 02:36:28 -0400
-Date: Wed, 14 Oct 2015 23:36:21 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Austin S Hemmelgarn <ahferroin7@gmail.com>
-Cc: Andy Lutomirski <luto@amacapital.net>,
-        Anna Schumaker <Anna.Schumaker@netapp.com>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>, linux-nfs@vger.kernel.org,
-        Linux btrfs Developers List <linux-btrfs@vger.kernel.org>,
-        Linux FS Devel <linux-fsdevel@vger.kernel.org>,
-        Linux API <linux-api@vger.kernel.org>, Zach Brown <zab@zabbo.net>,
-        Al Viro <viro@zeniv.linux.org.uk>, Chris Mason <clm@fb.com>,
-        Michael Kerrisk-manpages <mtk.manpages@gmail.com>, andros@netapp.com
-Subject: Re: [PATCH v5 8/9] vfs: Add vfs_copy_file_range() support for
- pagecache copies
-Message-ID: <20151015063621.GA3025@infradead.org>
-References: <1443634014-3026-1-git-send-email-Anna.Schumaker@Netapp.com>
- <1443634014-3026-9-git-send-email-Anna.Schumaker@Netapp.com>
- <20151011142203.GA31867@infradead.org>
- <20151012231749.GC11398@birch.djwong.org>
- <561E980C.9010509@Netapp.com>
- <CALCETrU0-Q-q0u0BAPwu+mbyS+LVp6M1Hqro3xwzSm7eNCbEmg@mail.gmail.com>
- <20151014182701.GC31225@infradead.org>
- <561EA83E.8080000@gmail.com>
+Received: from mx2.suse.de ([195.135.220.15]:35678 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750732AbbJOGjy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 15 Oct 2015 02:39:54 -0400
+From: Neil Brown <neilb@suse.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Date: Thu, 15 Oct 2015 17:39:47 +1100
+Cc: Olaf Kirch <okir@suse.de>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH/RFC] sunrpc/cache: make cache flushing more reliable.
+In-Reply-To: <87fv1cwsln.fsf@notabene.neil.brown.name>
+References: <87fv1cwsln.fsf@notabene.neil.brown.name>
+Message-ID: <87a8rkws7g.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <561EA83E.8080000@gmail.com>
+Content-Type: multipart/signed; boundary="=-=-=";
+	micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Oct 14, 2015 at 03:08:46PM -0400, Austin S Hemmelgarn wrote:
-> Whether or not reflink is different from a copy is entirely a matter of who
-> is looking at it.
+--=-=-=
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-So what?  I've been trying to explain why clone semantics matter, and
-I've not seen a counter argument for that.  I've also explained a couple
-times that a valid clone always is a valid copy, and I've only heard
-some slight disagreement, and so far none as long as we take the
-COPY_FALLOCATE option into account.
 
-Note that all of this also applies to storage devices - any smart array
-will do a clone-like operation underneath an XCOPY, but so far SCSI
-doesn't provide full clone _semantics_ even if you can emulate a lot of
-it using a lot of complexity around ROD tokens.
+Sorry.. I didn't refresh before posting....
 
-Similar at the SCSI level you can perform a fallocate-like operation
-using the anchor bit in the UNMAP or WRITE SAME commands.
+> @@ -487,10 +496,13 @@ EXPORT_SYMBOL_GPL(cache_flush);
+>=20=20
+>  void cache_purge(struct cache_detail *detail)
+>  {
+> -	detail->flush_time =3D LONG_MAX;
+> +	time_t now =3D seconds_since_boot();
+> +	if (detail->flush_time >=3D now)
+> +		now =3D detail->flush_time + 1;
+> +	/* 'now' is the maximum value any 'last_refresh' can have */
+> +	detail->flush_time =3D now + 1;
 
-> I agree that we shouldn't try to make a reflink by default (less than
-> intelligent programmers won't read the docs completely, and will make
-> various stupid assumptions about how this is 'supposed' to work, making the
-> defaults less ambiguous is a good thing), but it makes sense (at least, it
-> does to me) to have the ability to say 'make this block of data appear at
-> this location as well, I don't care how you do it as long as they are
-> functionally independent for userspace applications'.
+This should not have the '+ 1'.
 
-Yes, we absolutely should use reflink as a default implementation for
-copy where available.
+>  	detail->nextcheck =3D seconds_since_boot();
+>  	cache_flush();
+> -	detail->flush_time =3D 1;
+>  }
+>  EXPORT_SYMBOL_GPL(cache_purge);
+>=20=20
+> @@ -1447,8 +1460,22 @@ static ssize_t write_flush(struct file *file, cons=
+t char __user *buf,
+>  		return -EINVAL;
+>=20=20
+>  	bp =3D tbuf;
+> -	cd->flush_time =3D get_expiry(&bp);
+> -	cd->nextcheck =3D seconds_since_boot();
+> +	then =3D get_expiry(&bp);
+> +	now =3D seconds_since_boot();
+> +	cd->nextcheck =3D now;
+> +	/* Can only set flush_time to 1 second beyond "now", or
+> +	 * possibly 1 second beyond flushtime.  This is because
+> +	 * flush_time never goes backwards so it mustn't get too far
+> +	 * ahead of time.
+> +	 */
+> +	if (then >=3D now) {
+> +		/* Want to flush everything, so behave like cache_purge() */
+> +		if (cd->flush_time >=3D now)
+> +			now =3D cd->flush_time + 1;
+> +		then =3D now + 1;
 
-But we also need a clone or reflink interface that only gives us well
-specified reflink semantics, and not the much weaker copy semantics.
+Nor should.
+
+I'll resend it people are otherwise happy.
+
+NeilBrown
+
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2
+
+iQIcBAEBCAAGBQJWH0ozAAoJEDnsnt1WYoG5+GcP/3suSY1UzY3GlU/mnZfKPFBH
+kaKjzs7uYDhTTBJNlllTTXO82v/pKk9ynt7Xfeifia40wexDeu0/pWGjtmVy4cxE
+sZgk0ARuqLyj13SLZvzHbtHgZTzOkZZSwkBZImbnyoQcMebMdgEj0glWno6InmE9
+El8GliTJO/HdMu5gvv6RBdPDafGc09QIyy3ugHjfPMuyNt79qDUv/sM+PxgLiFiI
+4awneivh3Bgx41zRk2CGpM+SS8VikIFOEepqjOCdFvcLoitxNRLQAeeN8+ir3oAD
+NVguqekzN2HZcju/BI+zTG21FnTQVkAQXaOoFDd0DszadpfTUz2eKa+Obm+zldzm
+agD1JmduXs9BZH5jnDfg8IkzOmNTUsEUpuFy9lMguzbWhmGvOa/zNgrWHayHdofW
+EBBbCczOC4BF3aKERoa8S1hhclXCBR4EIrDnaS9x4fFz/2ZZ8AllfeJLaECN9E49
+jeHE5xWF8iN7LyMLlswFya23A3dl3AHNZz7NEH5YMPp6EAI3hRsuCALQJA/Fo0mK
+964YCdh13XrfvRqFSW5M+gyhYbjVmsMqRZQ1lfnB5ZbD3ZE1+dNYlxoSUH8LfauH
+9J4fEFqDIaoPThOuXjmCnPFmofxUqS1lDnUGq///GFASsc3phDPeKvEkqzniWOXL
+VmRZiKs9TRrfN0lbYM2E
+=Q6Us
+-----END PGP SIGNATURE-----
+--=-=-=--
