@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f169.google.com ([209.85.220.169]:35051 "EHLO
-	mail-qk0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932314AbbJPNZI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Oct 2015 09:25:08 -0400
-Subject: [PATCH v3 08/16] xprtrdma: Saving IRQs no longer needed for rb_lock
+Received: from mail-qg0-f47.google.com ([209.85.192.47]:34887 "EHLO
+	mail-qg0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753504AbbJPNZR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Oct 2015 09:25:17 -0400
+Subject: [PATCH v3 09/16] SUNRPC: Abstract backchannel operations
 From: Chuck Lever <chuck.lever@oracle.com>
 To: anna.schumaker@netapp.com
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Fri, 16 Oct 2015 09:25:06 -0400
-Message-ID: <20151016132506.6819.30436.stgit@oracle-122.nfsv4bat.org>
+Date: Fri, 16 Oct 2015 09:25:14 -0400
+Message-ID: <20151016132514.6819.45488.stgit@oracle-122.nfsv4bat.org>
 In-Reply-To: <20151016131958.6819.98407.stgit@oracle-122.nfsv4bat.org>
 References: <20151016131958.6819.98407.stgit@oracle-122.nfsv4bat.org>
 MIME-Version: 1.0
@@ -16,96 +16,160 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Now that RPC replies are processed in a workqueue, there's no need
-to disable IRQs when managing send and receive buffers. This saves
-noticeable overhead per RPC.
+xprt_{setup,destroy}_backchannel() won't be adequate for RPC/RMDA
+bi-direction. In particular, receive buffers have to be pre-
+registered and posted in order to receive incoming backchannel
+requests.
+
+Add a virtual function call to allow the insertion of appropriate
+backchannel setup and destruction methods for each transport.
+
+In addition, freeing a backchannel request is a little different
+for RPC/RDMA. Introduce an rpc_xprt_op to handle the difference.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 Reviewed-by: Sagi Grimberg <sagig@mellanox.com>
 Tested-By: Devesh Sharma <devesh.sharma@avagotech.com>
 ---
- net/sunrpc/xprtrdma/verbs.c |   24 ++++++++++--------------
- 1 file changed, 10 insertions(+), 14 deletions(-)
+ include/linux/sunrpc/bc_xprt.h |    5 +++++
+ include/linux/sunrpc/xprt.h    |    5 +++++
+ net/sunrpc/backchannel_rqst.c  |   24 ++++++++++++++++++++++--
+ net/sunrpc/xprtsock.c          |   15 +++++++++++++++
+ 4 files changed, 47 insertions(+), 2 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index a4102fc..2dca18d 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -1065,24 +1065,23 @@ struct rpcrdma_req *
- rpcrdma_buffer_get(struct rpcrdma_buffer *buffers)
- {
- 	struct rpcrdma_req *req;
--	unsigned long flags;
+diff --git a/include/linux/sunrpc/bc_xprt.h b/include/linux/sunrpc/bc_xprt.h
+index 8df43c9f..4397a48 100644
+--- a/include/linux/sunrpc/bc_xprt.h
++++ b/include/linux/sunrpc/bc_xprt.h
+@@ -38,6 +38,11 @@ void xprt_free_bc_request(struct rpc_rqst *req);
+ int xprt_setup_backchannel(struct rpc_xprt *, unsigned int min_reqs);
+ void xprt_destroy_backchannel(struct rpc_xprt *, unsigned int max_reqs);
  
--	spin_lock_irqsave(&buffers->rb_lock, flags);
-+	spin_lock(&buffers->rb_lock);
- 	if (list_empty(&buffers->rb_send_bufs))
- 		goto out_reqbuf;
- 	req = rpcrdma_buffer_get_req_locked(buffers);
- 	if (list_empty(&buffers->rb_recv_bufs))
- 		goto out_repbuf;
- 	req->rl_reply = rpcrdma_buffer_get_rep_locked(buffers);
--	spin_unlock_irqrestore(&buffers->rb_lock, flags);
-+	spin_unlock(&buffers->rb_lock);
- 	return req;
- 
- out_reqbuf:
--	spin_unlock_irqrestore(&buffers->rb_lock, flags);
-+	spin_unlock(&buffers->rb_lock);
- 	pr_warn("RPC:       %s: out of request buffers\n", __func__);
- 	return NULL;
- out_repbuf:
--	spin_unlock_irqrestore(&buffers->rb_lock, flags);
-+	spin_unlock(&buffers->rb_lock);
- 	pr_warn("RPC:       %s: out of reply buffers\n", __func__);
- 	req->rl_reply = NULL;
- 	return req;
-@@ -1097,16 +1096,15 @@ rpcrdma_buffer_put(struct rpcrdma_req *req)
- {
- 	struct rpcrdma_buffer *buffers = req->rl_buffer;
- 	struct rpcrdma_rep *rep = req->rl_reply;
--	unsigned long flags;
- 
- 	req->rl_niovs = 0;
- 	req->rl_reply = NULL;
- 
--	spin_lock_irqsave(&buffers->rb_lock, flags);
-+	spin_lock(&buffers->rb_lock);
- 	list_add_tail(&req->rl_free, &buffers->rb_send_bufs);
- 	if (rep)
- 		list_add_tail(&rep->rr_list, &buffers->rb_recv_bufs);
--	spin_unlock_irqrestore(&buffers->rb_lock, flags);
-+	spin_unlock(&buffers->rb_lock);
- }
++/* Socket backchannel transport methods */
++int xprt_setup_bc(struct rpc_xprt *xprt, unsigned int min_reqs);
++void xprt_destroy_bc(struct rpc_xprt *xprt, unsigned int max_reqs);
++void xprt_free_bc_rqst(struct rpc_rqst *req);
++
+ /*
+  * Determine if a shared backchannel is in use
+  */
+diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+index 0fb9acb..3f79c4a 100644
+--- a/include/linux/sunrpc/xprt.h
++++ b/include/linux/sunrpc/xprt.h
+@@ -136,6 +136,11 @@ struct rpc_xprt_ops {
+ 	int		(*enable_swap)(struct rpc_xprt *xprt);
+ 	void		(*disable_swap)(struct rpc_xprt *xprt);
+ 	void		(*inject_disconnect)(struct rpc_xprt *xprt);
++	int		(*bc_setup)(struct rpc_xprt *xprt,
++				    unsigned int min_reqs);
++	void		(*bc_free_rqst)(struct rpc_rqst *rqst);
++	void		(*bc_destroy)(struct rpc_xprt *xprt,
++				      unsigned int max_reqs);
+ };
  
  /*
-@@ -1117,12 +1115,11 @@ void
- rpcrdma_recv_buffer_get(struct rpcrdma_req *req)
+diff --git a/net/sunrpc/backchannel_rqst.c b/net/sunrpc/backchannel_rqst.c
+index 6255d14..229956b 100644
+--- a/net/sunrpc/backchannel_rqst.c
++++ b/net/sunrpc/backchannel_rqst.c
+@@ -138,6 +138,14 @@ out_free:
+  */
+ int xprt_setup_backchannel(struct rpc_xprt *xprt, unsigned int min_reqs)
  {
- 	struct rpcrdma_buffer *buffers = req->rl_buffer;
--	unsigned long flags;
- 
--	spin_lock_irqsave(&buffers->rb_lock, flags);
-+	spin_lock(&buffers->rb_lock);
- 	if (!list_empty(&buffers->rb_recv_bufs))
- 		req->rl_reply = rpcrdma_buffer_get_rep_locked(buffers);
--	spin_unlock_irqrestore(&buffers->rb_lock, flags);
-+	spin_unlock(&buffers->rb_lock);
++	if (!xprt->ops->bc_setup)
++		return 0;
++	return xprt->ops->bc_setup(xprt, min_reqs);
++}
++EXPORT_SYMBOL_GPL(xprt_setup_backchannel);
++
++int xprt_setup_bc(struct rpc_xprt *xprt, unsigned int min_reqs)
++{
+ 	struct rpc_rqst *req;
+ 	struct list_head tmp_list;
+ 	int i;
+@@ -192,7 +200,6 @@ out_free:
+ 	dprintk("RPC:       setup backchannel transport failed\n");
+ 	return -ENOMEM;
  }
+-EXPORT_SYMBOL_GPL(xprt_setup_backchannel);
  
- /*
-@@ -1133,11 +1130,10 @@ void
- rpcrdma_recv_buffer_put(struct rpcrdma_rep *rep)
+ /**
+  * xprt_destroy_backchannel - Destroys the backchannel preallocated structures.
+@@ -205,6 +212,13 @@ EXPORT_SYMBOL_GPL(xprt_setup_backchannel);
+  */
+ void xprt_destroy_backchannel(struct rpc_xprt *xprt, unsigned int max_reqs)
  {
- 	struct rpcrdma_buffer *buffers = &rep->rr_rxprt->rx_buf;
--	unsigned long flags;
++	if (xprt->ops->bc_destroy)
++		xprt->ops->bc_destroy(xprt, max_reqs);
++}
++EXPORT_SYMBOL_GPL(xprt_destroy_backchannel);
++
++void xprt_destroy_bc(struct rpc_xprt *xprt, unsigned int max_reqs)
++{
+ 	struct rpc_rqst *req = NULL, *tmp = NULL;
  
--	spin_lock_irqsave(&buffers->rb_lock, flags);
-+	spin_lock(&buffers->rb_lock);
- 	list_add_tail(&rep->rr_list, &buffers->rb_recv_bufs);
--	spin_unlock_irqrestore(&buffers->rb_lock, flags);
-+	spin_unlock(&buffers->rb_lock);
+ 	dprintk("RPC:        destroy backchannel transport\n");
+@@ -227,7 +241,6 @@ out:
+ 	dprintk("RPC:        backchannel list empty= %s\n",
+ 		list_empty(&xprt->bc_pa_list) ? "true" : "false");
  }
+-EXPORT_SYMBOL_GPL(xprt_destroy_backchannel);
+ 
+ static struct rpc_rqst *xprt_alloc_bc_request(struct rpc_xprt *xprt, __be32 xid)
+ {
+@@ -264,6 +277,13 @@ void xprt_free_bc_request(struct rpc_rqst *req)
+ {
+ 	struct rpc_xprt *xprt = req->rq_xprt;
+ 
++	xprt->ops->bc_free_rqst(req);
++}
++
++void xprt_free_bc_rqst(struct rpc_rqst *req)
++{
++	struct rpc_xprt *xprt = req->rq_xprt;
++
+ 	dprintk("RPC:       free backchannel req=%p\n", req);
+ 
+ 	req->rq_connect_cookie = xprt->connect_cookie - 1;
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 1a85e0e..3084163 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -2539,6 +2539,11 @@ static struct rpc_xprt_ops xs_local_ops = {
+ 	.print_stats		= xs_local_print_stats,
+ 	.enable_swap		= xs_enable_swap,
+ 	.disable_swap		= xs_disable_swap,
++#ifdef CONFIG_SUNRPC_BACKCHANNEL
++	.bc_setup		= xprt_setup_bc,
++	.bc_free_rqst		= xprt_free_bc_rqst,
++	.bc_destroy		= xprt_destroy_bc,
++#endif
+ };
+ 
+ static struct rpc_xprt_ops xs_udp_ops = {
+@@ -2561,6 +2566,11 @@ static struct rpc_xprt_ops xs_udp_ops = {
+ 	.enable_swap		= xs_enable_swap,
+ 	.disable_swap		= xs_disable_swap,
+ 	.inject_disconnect	= xs_inject_disconnect,
++#ifdef CONFIG_SUNRPC_BACKCHANNEL
++	.bc_setup		= xprt_setup_bc,
++	.bc_free_rqst		= xprt_free_bc_rqst,
++	.bc_destroy		= xprt_destroy_bc,
++#endif
+ };
+ 
+ static struct rpc_xprt_ops xs_tcp_ops = {
+@@ -2580,6 +2590,11 @@ static struct rpc_xprt_ops xs_tcp_ops = {
+ 	.enable_swap		= xs_enable_swap,
+ 	.disable_swap		= xs_disable_swap,
+ 	.inject_disconnect	= xs_inject_disconnect,
++#ifdef CONFIG_SUNRPC_BACKCHANNEL
++	.bc_setup		= xprt_setup_bc,
++	.bc_free_rqst		= xprt_free_bc_rqst,
++	.bc_destroy		= xprt_destroy_bc,
++#endif
+ };
  
  /*
 
