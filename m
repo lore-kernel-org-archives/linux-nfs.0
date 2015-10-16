@@ -1,64 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:33916 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932229AbbJPPTB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 16 Oct 2015 11:19:01 -0400
+Received: from mail-lb0-f182.google.com ([209.85.217.182]:34957 "EHLO
+	mail-lb0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754500AbbJPQNV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Oct 2015 12:13:21 -0400
+Received: by lbbes7 with SMTP id es7so14264220lbb.2
+        for <linux-nfs@vger.kernel.org>; Fri, 16 Oct 2015 09:13:19 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <CALCETrXFkB01tk21FuEOqABHWg1XyOQwsT+s=Lq0RYye6X_7xw@mail.gmail.com>
+References: <1445008706-15115-1-git-send-email-agruenba@redhat.com>
+	<1445008706-15115-17-git-send-email-agruenba@redhat.com>
+	<CALCETrXFkB01tk21FuEOqABHWg1XyOQwsT+s=Lq0RYye6X_7xw@mail.gmail.com>
+Date: Fri, 16 Oct 2015 18:13:19 +0200
+Message-ID: <CAHc6FU7SNs6+xt34s18xM-C4U_7v5DLcN_feHXhVMY1q=K6zxA@mail.gmail.com>
+Subject: Re: [PATCH v11 16/48] richacl: Automatic Inheritance
 From: Andreas Gruenbacher <agruenba@redhat.com>
-To: Alexander Viro <viro@zeniv.linux.org.uk>, "Theodore Ts'o" <tytso@mit.edu>,
+To: Andy Lutomirski <luto@amacapital.net>
+Cc: Alexander Viro <viro@zeniv.linux.org.uk>, "Theodore Ts'o" <tytso@mit.edu>,
         Andreas Dilger <adilger.kernel@dilger.ca>,
         "J. Bruce Fields" <bfields@fieldses.org>,
         Jeff Layton <jlayton@poochiereds.net>,
         Trond Myklebust <trond.myklebust@primarydata.com>,
         Anna Schumaker <anna.schumaker@netapp.com>,
-        Dave Chinner <david@fromorbit.com>, linux-ext4@vger.kernel.org,
-        xfs@oss.sgi.com, linux-kernel@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-api@vger.kernel.org
-Subject: [PATCH v11 04/48] vfs: Make the inode passed to inode_change_ok non-const
-Date: Fri, 16 Oct 2015 17:17:42 +0200
-Message-Id: <1445008706-15115-5-git-send-email-agruenba@redhat.com>
-In-Reply-To: <1445008706-15115-1-git-send-email-agruenba@redhat.com>
-References: <1445008706-15115-1-git-send-email-agruenba@redhat.com>
+        Dave Chinner <david@fromorbit.com>,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+        xfs@oss.sgi.com,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        Linux FS Devel <linux-fsdevel@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        linux-cifs@vger.kernel.org, Linux API <linux-api@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We will need to call iop->permission and iop->get_acl from
-inode_change_ok() for additional permission checks, and both take a
-non-const inode.
+On Fri, Oct 16, 2015 at 6:00 PM, Andy Lutomirski <luto@amacapital.net> wrote:
+> On Fri, Oct 16, 2015 at 8:17 AM, Andreas Gruenbacher
+> <agruenba@redhat.com> wrote:
+>> Automatic Inheritance works as follows:
+>>
+>>  - When the RICHACL_AUTO_INHERIT flag in the acl of a file or directory
+>>    is not set, the file or directory is not affected by AI.
+>>
+>>  - When the RICHACL_AUTO_INHERIT flag in the acl of a directory is set
+>>    and a file or subdirectory is created in that directory, the
+>>    inherited acl will have the RICHACL_AUTO_INHERIT flag set, and all
+>>    inherited aces will have the RICHACE_INHERITED_ACE flag set.  This
+>>    allows user space to distinguish between aces which have been
+>>    inherited and aces which have been explicitly added.
+>
+> What if the file or subdirectory that's created in that directory is a
+> hard link?
 
-Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
-Reviewed-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/attr.c          | 2 +-
- include/linux/fs.h | 2 +-
- 2 files changed, 2 insertions(+), 2 deletions(-)
+Directories cannot have hard links.
 
-diff --git a/fs/attr.c b/fs/attr.c
-index 6530ced..328be71 100644
---- a/fs/attr.c
-+++ b/fs/attr.c
-@@ -28,7 +28,7 @@
-  * Should be called as the first thing in ->setattr implementations,
-  * possibly after taking additional locks.
-  */
--int inode_change_ok(const struct inode *inode, struct iattr *attr)
-+int inode_change_ok(struct inode *inode, struct iattr *attr)
- {
- 	unsigned int ia_valid = attr->ia_valid;
- 
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 402acd7..aab32c8 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -2871,7 +2871,7 @@ extern int buffer_migrate_page(struct address_space *,
- #define buffer_migrate_page NULL
- #endif
- 
--extern int inode_change_ok(const struct inode *, struct iattr *);
-+extern int inode_change_ok(struct inode *, struct iattr *);
- extern int inode_newsize_ok(const struct inode *, loff_t offset);
- extern void setattr_copy(struct inode *inode, const struct iattr *attr);
- 
--- 
-2.5.0
+When a file is hard linked into multiple directories with different
+inheritable permissions, the permissions set last will "win". This
+isn't particularly pretty, but it's the way this has worked on that
+other operating system with significant marked share for the last
+fifteen years.
 
+Thanks,
+Andreas
