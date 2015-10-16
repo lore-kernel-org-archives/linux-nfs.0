@@ -1,16 +1,24 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:59985 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752071AbbJOV7Q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 15 Oct 2015 17:59:16 -0400
-From: Neil Brown <neilb@suse.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Date: Fri, 16 Oct 2015 08:59:08 +1100
-Cc: Olaf Kirch <okir@suse.de>, linux-nfs@vger.kernel.org
-Subject: [PATCH v2] sunrpc/cache: make cache flushing more reliable.
-In-Reply-To: <20151015135039.GB18976@fieldses.org>
-References: <87fv1cwsln.fsf@notabene.neil.brown.name> <87a8rkws7g.fsf@notabene.neil.brown.name> <20151015135039.GB18976@fieldses.org>
-Message-ID: <871tcvx07n.fsf@notabene.neil.brown.name>
+Received: from victor.provo.novell.com ([137.65.250.26]:58812 "EHLO
+	prv3-mh.provo.novell.com" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1752024AbbJPAte (ORCPT
+	<rfc822;groupwise-linux-nfs@vger.kernel.org:0:0>);
+	Thu, 15 Oct 2015 20:49:34 -0400
+From: Neil Brown <nfbrown@novell.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>,
+        Kosuke Tatsukawa <tatsu@ab.jp.nec.com>
+Date: Fri, 16 Oct 2015 11:49:18 +1100
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        "David S. Miller" <davem@davemloft.net>,
+        "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "netdev\@vger.kernel.org" <netdev@vger.kernel.org>,
+        "linux-kernel\@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH v2] sunrpc: fix waitqueue_active without memory barrier in sunrpc
+In-Reply-To: <20151015205742.GB20155@fieldses.org>
+References: <17EC94B0A072C34B8DCF0D30AD16044A02877D53@BPXM09GP.gisp.nec.co.jp> <17EC94B0A072C34B8DCF0D30AD16044A02878443@BPXM09GP.gisp.nec.co.jp> <20151015205742.GB20155@fieldses.org>
+Message-ID: <87y4f3vdrl.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
 Content-Type: multipart/signed; boundary="=-=-=";
 	micalg=pgp-sha256; protocol="application/pgp-signature"
@@ -21,242 +29,154 @@ List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 Content-Transfer-Encoding: quoted-printable
 
+"J. Bruce Fields" <bfields@fieldses.org> writes:
 
-The caches used to store sunrpc authentication information can be
-flushed by writing a timestamp to a file in /proc.
+> On Thu, Oct 15, 2015 at 11:44:20AM +0000, Kosuke Tatsukawa wrote:
+>> Tatsukawa Kosuke wrote:
+>> > J. Bruce Fields wrote:
+>> >> Thanks for the detailed investigation.
+>> >>=20
+>> >> I think it would be worth adding a comment if that might help someone
+>> >> having to reinvestigate this again some day.
+>> >=20
+>> > It would be nice, but I find it difficult to write a comment in the
+>> > sunrpc layer why a memory barrier isn't necessary, using the knowledge
+>> > of how nfsd uses it, and the current implementation of the network cod=
+e.
+>> >=20
+>> > Personally, I would prefer removing the call to waitqueue_active() whi=
+ch
+>> > would make the memory barrier totally unnecessary at the cost of a
+>> > spin_lock + spin_unlock by unconditionally calling
+>> > wake_up_interruptible.
+>>=20
+>> On second thought, the callbacks will be called frequently from the tcp
+>> code, so it wouldn't be a good idea.
+>
+> So, I was even considering documenting it like this, if it's not
+> overkill.
+>
+> Hmm... but if this is right, then we may as well ask why we're doing the
+> wakeups at all.  Might be educational to test the code with them
+> removed.
+>
+> --b.
+>
+> commit 0882cfeb39e0
+> Author: J. Bruce Fields <bfields@redhat.com>
+> Date:   Thu Oct 15 16:53:41 2015 -0400
+>
+>     svcrpc: document lack of some memory barriers.
+>=20=20=20=20=20
+>     Kosuke Tatsukawa points out an odd lack of memory barriers in some si=
+tes
+>     here.  I think the code's correct, but it's probably worth documentin=
+g.
+>=20=20=20=20=20
+>     Reported-by: Kosuke Tatsukawa <tatsu@ab.jp.nec.com>
+>
+> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+> index 856407fa085e..90480993ec4a 100644
+> --- a/net/sunrpc/svcsock.c
+> +++ b/net/sunrpc/svcsock.c
+> @@ -399,6 +399,25 @@ static int svc_sock_secure_port(struct svc_rqst *rqs=
+tp)
+>  	return svc_port_is_privileged(svc_addr(rqstp));
+>  }
+>=20=20
+> +static void svc_no_smp_mb(void)
+> +{
+> +	/*
+> +	 * Kosuke Tatsukawa points out there should normally be an
+> +	 * smp_mb() at the callsites of this function.  (Either that or
+> +	 * we could just drop the waitqueue_active() checks.)
+> +	 *
+> +	 * It appears they aren't currently necessary, though, basically
+> +	 * because nfsd does non-blocking reads from these sockets, so
+> +	 * the only places we wait on this waitqueue is in sendpage and
+> +	 * sendmsg, which won't be waiting for wakeups on newly arrived
+> +	 * data.
+> +	 *
+> +	 * Maybe we should add the memory barriers anyway, but these are
+> +	 * hot paths so we'd need to be convinced there's no sigificant
+> +	 * penalty.
+> +	 */
+> +}
+> +
+>  /*
+>   * INET callback when data has been received on the socket.
+>   */
+> @@ -414,7 +433,7 @@ static void svc_udp_data_ready(struct sock *sk)
+>  		set_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags);
+>  		svc_xprt_enqueue(&svsk->sk_xprt);
+>  	}
+> -	smp_mb();
+> +	svc_no_smp_mb();
+>  	if (wq && waitqueue_active(wq))
+>  		wake_up_interruptible(wq);
+>  }
+> @@ -433,7 +452,7 @@ static void svc_write_space(struct sock *sk)
+>  		svc_xprt_enqueue(&svsk->sk_xprt);
+>  	}
+>=20=20
+> -	smp_mb();
+> +	svc_no_smp_mb();
+>  	if (wq && waitqueue_active(wq)) {
+>  		dprintk("RPC svc_write_space: someone sleeping on %p\n",
+>  		       svsk);
+> @@ -789,7 +808,7 @@ static void svc_tcp_listen_data_ready(struct sock *sk)
+>  	}
+>=20=20
+>  	wq =3D sk_sleep(sk);
+> -	smp_mb();
+> +	svc_no_smp_mb();
+>  	if (wq && waitqueue_active(wq))
+>  		wake_up_interruptible_all(wq);
+>  }
+> @@ -811,7 +830,7 @@ static void svc_tcp_state_change(struct sock *sk)
+>  		set_bit(XPT_CLOSE, &svsk->sk_xprt.xpt_flags);
+>  		svc_xprt_enqueue(&svsk->sk_xprt);
+>  	}
+> -	smp_mb();
+> +	svc_no_smp_mb();
+>  	if (wq && waitqueue_active(wq))
+>  		wake_up_interruptible_all(wq);
+>  }
+> @@ -827,7 +846,7 @@ static void svc_tcp_data_ready(struct sock *sk)
+>  		set_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags);
+>  		svc_xprt_enqueue(&svsk->sk_xprt);
+>  	}
+> -	smp_mb();
+> +	svc_no_smp_mb();
+>  	if (wq && waitqueue_active(wq))
+>  		wake_up_interruptible(wq);
+>  }
+> @@ -1599,7 +1618,7 @@ static void svc_sock_detach(struct svc_xprt *xprt)
+>  	sk->sk_write_space =3D svsk->sk_owspace;
+>=20=20
+>  	wq =3D sk_sleep(sk);
+> -	smp_mb();
+> +	svc_no_smp_mb();
+>  	if (wq && waitqueue_active(wq))
+>  		wake_up_interruptible(wq);
+>  }
 
-This timestamp has a one-second resolution and any entry in cache that
-was last_refreshed *before* that time is treated as expired.
+I would feel a lot more comfortable if you instead created:
 
-This is problematic as it is not possible to reliably flush the cache
-without interrupting NFS service.
-If the current time is written to the "flush" file, any entry that was
-added since the current second started will still be treated as valid.
-If one second beyond than the current time is written to the file
-then no entries can be valid until the second ticks over.  This will
-mean that no NFS request will be handled for up to 1 second.
+static inline bool sunrpc_waitqueue_active(struct wait_queue_head *wq)
+{
+	if (!wq)
+        	return false;
+        /* long comment abot not needing a memory barrier */
+        return waitqueue_active(wq);
+}
 
-To resolve this issue we make two changes:
+and then replace various "if (wq && waitqueue_active(wq))" calls with
+if (sunrpc_waitqueue_active(wq))"
 
-1/ treat an entry as expired if the timestamp when it was last_refreshed
-  is before *or the same as* the expiry time.  This means that current
-  code which writes out the current time will now flush the cache
-  reliably.
+The comment seems readable and seems to make sense.
 
-2/ when a new entry in added to the cache -  set the last_refresh timestamp
-  to 1 second *beyond* the current flush time, when that not in the
-  past.
-  This ensures that newly added entries will always be valid.
-
-
-Now that we have a very reliable way to flush the cache, and also
-since we are using "since-boot" timestamps which are monotonic,
-change cache_purge() to set the smallest future flush_time which
-will work, and leave it there: don't revert to '1'.
-
-Also disable the setting of the 'flush_time' far into the future.
-That has never been useful and is now awkward as it would cause
-last_refresh times to be strange.
-Finally: if a request is made to set the 'flush_time' to the current
-second, assume the intent is to flush the cache and advance it, if
-necessary, to 1 second beyond the current 'flush_time' so that all
-active entries will be deemed to be expired.
-
-As part of this we need to add a 'cache_detail' arg to cache_init()
-and cache_fresh_locked() so they can find the current ->flush_time.
-
-Signed-off-by: NeilBrown <neilb@suse.com>
-Reported-by: Olaf Kirch <okir@suse.com>
-
-diff --git a/include/linux/sunrpc/cache.h b/include/linux/sunrpc/cache.h
-index 03d3b4c92d9f..ed03c9f7f908 100644
-=2D-- a/include/linux/sunrpc/cache.h
-+++ b/include/linux/sunrpc/cache.h
-@@ -48,8 +48,10 @@
- struct cache_head {
- 	struct hlist_node	cache_list;
- 	time_t		expiry_time;	/* After time time, don't use the data */
-=2D	time_t		last_refresh;   /* If CACHE_PENDING, this is when upcall=20
-=2D					 * was sent, else this is when update was received
-+	time_t		last_refresh;   /* If CACHE_PENDING, this is when upcall was
-+					 * sent, else this is when update was
-+					 * received, though it is alway set to
-+					 * be *after* ->flush_time.
- 					 */
- 	struct kref	ref;
- 	unsigned long	flags;
-@@ -105,8 +107,12 @@ struct cache_detail {
- 	/* fields below this comment are for internal use
- 	 * and should not be touched by cache owners
- 	 */
-=2D	time_t			flush_time;		/* flush all cache items with last_refresh
-=2D							 * earlier than this */
-+	time_t			flush_time;		/* flush all cache items with
-+							 * last_refresh at or earlier
-+							 * than this.  last_refresh
-+							 * is never set at or earlier
-+							 * than this.
-+							 */
- 	struct list_head	others;
- 	time_t			nextcheck;
- 	int			entries;
-@@ -203,7 +209,7 @@ static inline void cache_put(struct cache_head *h, stru=
-ct cache_detail *cd)
- static inline int cache_is_expired(struct cache_detail *detail, struct cac=
-he_head *h)
- {
- 	return  (h->expiry_time < seconds_since_boot()) ||
-=2D		(detail->flush_time > h->last_refresh);
-+		(detail->flush_time >=3D h->last_refresh);
- }
-=20
- extern int cache_check(struct cache_detail *detail,
-diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-index 4a2340a54401..5e4f815c2b34 100644
-=2D-- a/net/sunrpc/cache.c
-+++ b/net/sunrpc/cache.c
-@@ -41,13 +41,16 @@
- static bool cache_defer_req(struct cache_req *req, struct cache_head *item=
-);
- static void cache_revisit_request(struct cache_head *item);
-=20
-=2Dstatic void cache_init(struct cache_head *h)
-+static void cache_init(struct cache_head *h, struct cache_detail *detail)
- {
- 	time_t now =3D seconds_since_boot();
- 	INIT_HLIST_NODE(&h->cache_list);
- 	h->flags =3D 0;
- 	kref_init(&h->ref);
- 	h->expiry_time =3D now + CACHE_NEW_EXPIRY;
-+	if (now <=3D detail->flush_time)
-+		/* ensure it isn't already expired */
-+		now =3D detail->flush_time + 1;
- 	h->last_refresh =3D now;
- }
-=20
-@@ -81,7 +84,7 @@ struct cache_head *sunrpc_cache_lookup(struct cache_detai=
-l *detail,
- 	 * we might get lose if we need to
- 	 * cache_put it soon.
- 	 */
-=2D	cache_init(new);
-+	cache_init(new, detail);
- 	detail->init(new, key);
-=20
- 	write_lock(&detail->hash_lock);
-@@ -116,10 +119,15 @@ EXPORT_SYMBOL_GPL(sunrpc_cache_lookup);
-=20
- static void cache_dequeue(struct cache_detail *detail, struct cache_head *=
-ch);
-=20
-=2Dstatic void cache_fresh_locked(struct cache_head *head, time_t expiry)
-+static void cache_fresh_locked(struct cache_head *head, time_t expiry,
-+			       struct cache_detail *detail)
- {
-+	time_t now =3D seconds_since_boot();
-+	if (now <=3D detail->flush_time)
-+		/* ensure it isn't immediately treated as expired */
-+		now =3D detail->flush_time + 1;
- 	head->expiry_time =3D expiry;
-=2D	head->last_refresh =3D seconds_since_boot();
-+	head->last_refresh =3D now;
- 	smp_wmb(); /* paired with smp_rmb() in cache_is_valid() */
- 	set_bit(CACHE_VALID, &head->flags);
- }
-@@ -149,7 +157,7 @@ struct cache_head *sunrpc_cache_update(struct cache_det=
-ail *detail,
- 				set_bit(CACHE_NEGATIVE, &old->flags);
- 			else
- 				detail->update(old, new);
-=2D			cache_fresh_locked(old, new->expiry_time);
-+			cache_fresh_locked(old, new->expiry_time, detail);
- 			write_unlock(&detail->hash_lock);
- 			cache_fresh_unlocked(old, detail);
- 			return old;
-@@ -162,7 +170,7 @@ struct cache_head *sunrpc_cache_update(struct cache_det=
-ail *detail,
- 		cache_put(old, detail);
- 		return NULL;
- 	}
-=2D	cache_init(tmp);
-+	cache_init(tmp, detail);
- 	detail->init(tmp, old);
-=20
- 	write_lock(&detail->hash_lock);
-@@ -173,8 +181,8 @@ struct cache_head *sunrpc_cache_update(struct cache_det=
-ail *detail,
- 	hlist_add_head(&tmp->cache_list, &detail->hash_table[hash]);
- 	detail->entries++;
- 	cache_get(tmp);
-=2D	cache_fresh_locked(tmp, new->expiry_time);
-=2D	cache_fresh_locked(old, 0);
-+	cache_fresh_locked(tmp, new->expiry_time, detail);
-+	cache_fresh_locked(old, 0, detail);
- 	write_unlock(&detail->hash_lock);
- 	cache_fresh_unlocked(tmp, detail);
- 	cache_fresh_unlocked(old, detail);
-@@ -219,7 +227,8 @@ static int try_to_negate_entry(struct cache_detail *det=
-ail, struct cache_head *h
- 	rv =3D cache_is_valid(h);
- 	if (rv =3D=3D -EAGAIN) {
- 		set_bit(CACHE_NEGATIVE, &h->flags);
-=2D		cache_fresh_locked(h, seconds_since_boot()+CACHE_NEW_EXPIRY);
-+		cache_fresh_locked(h, seconds_since_boot()+CACHE_NEW_EXPIRY,
-+				   detail);
- 		rv =3D -ENOENT;
- 	}
- 	write_unlock(&detail->hash_lock);
-@@ -487,10 +496,13 @@ EXPORT_SYMBOL_GPL(cache_flush);
-=20
- void cache_purge(struct cache_detail *detail)
- {
-=2D	detail->flush_time =3D LONG_MAX;
-+	time_t now =3D seconds_since_boot();
-+	if (detail->flush_time >=3D now)
-+		now =3D detail->flush_time + 1;
-+	/* 'now' is the maximum value any 'last_refresh' can have */
-+	detail->flush_time =3D now;
- 	detail->nextcheck =3D seconds_since_boot();
- 	cache_flush();
-=2D	detail->flush_time =3D 1;
- }
- EXPORT_SYMBOL_GPL(cache_purge);
-=20
-@@ -1436,6 +1448,7 @@ static ssize_t write_flush(struct file *file, const c=
-har __user *buf,
- {
- 	char tbuf[20];
- 	char *bp, *ep;
-+	time_t then, now;
-=20
- 	if (*ppos || count > sizeof(tbuf)-1)
- 		return -EINVAL;
-@@ -1447,8 +1460,22 @@ static ssize_t write_flush(struct file *file, const =
-char __user *buf,
- 		return -EINVAL;
-=20
- 	bp =3D tbuf;
-=2D	cd->flush_time =3D get_expiry(&bp);
-=2D	cd->nextcheck =3D seconds_since_boot();
-+	then =3D get_expiry(&bp);
-+	now =3D seconds_since_boot();
-+	cd->nextcheck =3D now;
-+	/* Can only set flush_time to 1 second beyond "now", or
-+	 * possibly 1 second beyond flushtime.  This is because
-+	 * flush_time never goes backwards so it mustn't get too far
-+	 * ahead of time.
-+	 */
-+	if (then >=3D now) {
-+		/* Want to flush everything, so behave like cache_purge() */
-+		if (cd->flush_time >=3D now)
-+			now =3D cd->flush_time + 1;
-+		then =3D now;
-+	}
-+
-+	cd->flush_time =3D then;
- 	cache_flush();
-=20
- 	*ppos +=3D count;
+NeilBrown
 
 --=-=-=
 Content-Type: application/pgp-signature; name="signature.asc"
@@ -264,18 +184,18 @@ Content-Type: application/pgp-signature; name="signature.asc"
 -----BEGIN PGP SIGNATURE-----
 Version: GnuPG v2
 
-iQIcBAEBCAAGBQJWICGsAAoJEDnsnt1WYoG5YjUP/R6KKZQ/CZ3IurqBp3SsxKrO
-KnjZQf+AMnpUWqB7SQJNoOdH2uQGEtjW2mw3aj9t4VmK0qH2cb94YCDQYSfXPepL
-No2hN52V9eyFKle9f9wR/JaUKDkxSMOBrn7TX2RC+UIwn/D3JaSltHQiW6mCbg6L
-wJdmF1DTCp9Mo9O6knfa0nzVJBit/CrL2UFhz/hNa3wDtRsLrwJO1Ps3jZXNfKPb
-Na8h2/7O8jllBnbWhPmBa6nECZngOISIDLbnVwVrdG5WI+PMCsaNkTCJev1zM9XI
-JMSw3VfxpV2p5aGHYUiI2xqEnLjzRg+3fS2mtyEK1JjZ4VWSWHB5hQeq/HNNCtXf
-SVN3YIiOyu8oPlzRTYgM39tKqrbAyBRFb3GBvE6z1W8vZEZvWmRMgTYK3J9bAfOl
-M4U6r8Iq23Ouf2iy4nNP/N7rX9tJuG4jZPqoe9fQIY36/IU+BEtN8ksYCgFgmUBK
-OdWK/nzx37rqWg7UZyIJo7xpLxP1fSUlJcHaiACRgWtBJHYCuzTh/IJvxUpKRs64
-bbndW2DvMAFC2BdOYWj1AX9wCMklTjbrDhQ6spghZufS9aWvkwIilZ7zT5GcglZJ
-lGmIctGKdRtWmkjWo4FrpDBV70RCOApTi5eSR7VUYKU+NTw7UxEOPeLUVCY3qNah
-qlzbGQ5DONAqujCfl+lZ
-=fs3x
+iQIcBAEBCAAGBQJWIEmOAAoJEDnsnt1WYoG5AvsP/iz/VQ182MdeetXVXuv/X+dQ
+ISrHAxsQi6s1mRPLLz3C8fzl8aP4TU0ONelLDcnRiPKkSdUNMWnIzIHm6E0loZhd
+vZImEJiEzIFHyJyqXLNX3R1tiys7pV3tKGemIDQse3oWrd5YU42owzly+ZAqGDmQ
+u9XCRsdjs4XGaz62oizjQaxg8In5E4DvRuy7dznbrvrPlhU6VbZFHki+6bz0ua16
+RrU/eklgrUOAGotoGtw8+m2nBGdoc8XZvzIsJKRjWo2RPo3ncWXbaAiI6IDqZ5+E
+56FgL6OUSsnlNSsZV6XVM02nXOU67Vq3QKQnK9BJGV4odINbFtyKZtT+gbPt4zbk
+eLWYL7AF+jU+fxKdLF2Ysg6UtEYYw+x15NUWqXfJIOJT2QjMX4YJs4Bc3i9nYz17
+josLDE3znKFu8GtuboiB3XxuPPgmqOm378K6fW81U2YbKVLhtpa4JmfLsMPqSNq3
+KhZ8z9NGJdZiHwTT4Gw8GsyxWlTYCdIHqv2KSpsJCy0LWsqWCpmCMnkUnKR3gxly
+8oCj5KdNxwEg0U2vC4EqL0ZyCLysWSkrEox4CD1/fTpYjKwxuiDqa95mL247/l/1
+gAb6516aWkM5aT+RNd2GfFIDTH/1d4+GRSTUzUgAZ5spl6Vc0Zt75Li+r35CJE42
+4iSPHWVJZK+N/Oc8lXBU
+=LGut
 -----END PGP SIGNATURE-----
 --=-=-=--
