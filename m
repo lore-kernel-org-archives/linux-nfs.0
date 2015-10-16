@@ -1,63 +1,164 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ob0-f178.google.com ([209.85.214.178]:36612 "EHLO
-	mail-ob0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754291AbbJPQAb (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Oct 2015 12:00:31 -0400
-Received: by obcqt19 with SMTP id qt19so16003214obc.3
-        for <linux-nfs@vger.kernel.org>; Fri, 16 Oct 2015 09:00:30 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <1445008706-15115-17-git-send-email-agruenba@redhat.com>
-References: <1445008706-15115-1-git-send-email-agruenba@redhat.com> <1445008706-15115-17-git-send-email-agruenba@redhat.com>
-From: Andy Lutomirski <luto@amacapital.net>
-Date: Fri, 16 Oct 2015 09:00:11 -0700
-Message-ID: <CALCETrXFkB01tk21FuEOqABHWg1XyOQwsT+s=Lq0RYye6X_7xw@mail.gmail.com>
-Subject: Re: [PATCH v11 16/48] richacl: Automatic Inheritance
-To: Andreas Gruenbacher <agruenba@redhat.com>
-Cc: Alexander Viro <viro@zeniv.linux.org.uk>, "Theodore Ts'o" <tytso@mit.edu>,
+Received: from mx1.redhat.com ([209.132.183.28]:39864 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932728AbbJPPUH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 16 Oct 2015 11:20:07 -0400
+From: Andreas Gruenbacher <agruenba@redhat.com>
+To: Alexander Viro <viro@zeniv.linux.org.uk>, "Theodore Ts'o" <tytso@mit.edu>,
         Andreas Dilger <adilger.kernel@dilger.ca>,
         "J. Bruce Fields" <bfields@fieldses.org>,
         Jeff Layton <jlayton@poochiereds.net>,
         Trond Myklebust <trond.myklebust@primarydata.com>,
         Anna Schumaker <anna.schumaker@netapp.com>,
-        Dave Chinner <david@fromorbit.com>,
-        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-        xfs@oss.sgi.com,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        Linux FS Devel <linux-fsdevel@vger.kernel.org>,
-        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
-        Linux API <linux-api@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+        Dave Chinner <david@fromorbit.com>, linux-ext4@vger.kernel.org,
+        xfs@oss.sgi.com, linux-kernel@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-api@vger.kernel.org
+Subject: [PATCH v11 14/48] richacl: Check if an acl is equivalent to a file mode
+Date: Fri, 16 Oct 2015 17:17:52 +0200
+Message-Id: <1445008706-15115-15-git-send-email-agruenba@redhat.com>
+In-Reply-To: <1445008706-15115-1-git-send-email-agruenba@redhat.com>
+References: <1445008706-15115-1-git-send-email-agruenba@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Oct 16, 2015 at 8:17 AM, Andreas Gruenbacher
-<agruenba@redhat.com> wrote:
-> Automatic Inheritance (AI) allows changes to the acl of a directory to
-> propagate down to children.
->
-> This is mostly implemented in user space: when a process changes the
-> permissions of a directory and Automatic Inheritance is enabled for that
-> directory, the process must propagate those changes to all children,
-> recursively.
->
-> The kernel enables this by keeping track of which permissions have been
-> inherited at create time.  In addition, it makes sure that permission
-> propagation is turned off when the permissions are set explicitly (for
-> example, upon create or chmod).
->
-> Automatic Inheritance works as follows:
->
->  - When the RICHACL_AUTO_INHERIT flag in the acl of a file or directory
->    is not set, the file or directory is not affected by AI.
->
->  - When the RICHACL_AUTO_INHERIT flag in the acl of a directory is set
->    and a file or subdirectory is created in that directory, the
->    inherited acl will have the RICHACL_AUTO_INHERIT flag set, and all
->    inherited aces will have the RICHACE_INHERITED_ACE flag set.  This
->    allows user space to distinguish between aces which have been
->    inherited and aces which have been explicitly added.
+ACLs are considered equivalent to file modes if they only consist of
+owner@, group@, and everyone@ entries, the owner@ permissions do not
+depend on whether the owner is a member in the owning group, and no
+inheritance flags are set.  This test is used to avoid storing richacls
+if the acl can be computed from the file permission bits.
 
-What if the file or subdirectory that's created in that directory is a
-hard link?
+Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
+Reviewed-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/richacl_base.c       | 104 ++++++++++++++++++++++++++++++++++++++++++++++++
+ include/linux/richacl.h |   1 +
+ 2 files changed, 105 insertions(+)
 
---Andy
+diff --git a/fs/richacl_base.c b/fs/richacl_base.c
+index 764d73a..f4b8d3c 100644
+--- a/fs/richacl_base.c
++++ b/fs/richacl_base.c
+@@ -382,3 +382,107 @@ __richacl_chmod(struct richacl *acl, umode_t mode)
+ 	return clone;
+ }
+ EXPORT_SYMBOL_GPL(__richacl_chmod);
++
++/**
++ * richacl_equiv_mode  -  compute the mode equivalent of @acl
++ *
++ * An acl is considered equivalent to a file mode if it only consists of
++ * owner@, group@, and everyone@ entries and the owner@ permissions do not
++ * depend on whether the owner is a member in the owning group.
++ */
++int
++richacl_equiv_mode(const struct richacl *acl, umode_t *mode_p)
++{
++	umode_t mode = *mode_p;
++
++	/*
++	 * The RICHACE_DELETE_CHILD flag is meaningless for non-directories, so
++	 * we ignore it.
++	 */
++	unsigned int x = S_ISDIR(mode) ? 0 : RICHACE_DELETE_CHILD;
++	struct {
++		unsigned int allowed;
++		unsigned int defined;  /* allowed or denied */
++	} owner = {
++		.defined = RICHACE_POSIX_ALWAYS_ALLOWED |
++			   RICHACE_POSIX_OWNER_ALLOWED  | x,
++	}, group = {
++		.defined = RICHACE_POSIX_ALWAYS_ALLOWED | x,
++	}, everyone = {
++		.defined = RICHACE_POSIX_ALWAYS_ALLOWED | x,
++	};
++	const struct richace *ace;
++
++	if (acl->a_flags & ~(RICHACL_WRITE_THROUGH | RICHACL_MASKED))
++		return -1;
++
++	richacl_for_each_entry(ace, acl) {
++		if (ace->e_flags & ~RICHACE_SPECIAL_WHO)
++			return -1;
++
++		if (richace_is_owner(ace) || richace_is_everyone(ace)) {
++			x = ace->e_mask & ~owner.defined;
++			if (richace_is_allow(ace)) {
++				unsigned int group_denied =
++					group.defined & ~group.allowed;
++
++				if (x & group_denied)
++					return -1;
++				owner.allowed |= x;
++			} else /* if (richace_is_deny(ace)) */ {
++				if (x & group.allowed)
++					return -1;
++			}
++			owner.defined |= x;
++
++			if (richace_is_everyone(ace)) {
++				x = ace->e_mask;
++				if (richace_is_allow(ace)) {
++					group.allowed |=
++						x & ~group.defined;
++					everyone.allowed |=
++						x & ~everyone.defined;
++				}
++				group.defined |= x;
++				everyone.defined |= x;
++			}
++		} else if (richace_is_group(ace)) {
++			x = ace->e_mask & ~group.defined;
++			if (richace_is_allow(ace))
++				group.allowed |= x;
++			group.defined |= x;
++		} else
++			return -1;
++	}
++
++	if (group.allowed & ~owner.defined)
++		return -1;
++
++	if (acl->a_flags & RICHACL_MASKED) {
++		if (acl->a_flags & RICHACL_WRITE_THROUGH) {
++			owner.allowed = acl->a_owner_mask;
++			everyone.allowed = acl->a_other_mask;
++		} else {
++			owner.allowed &= acl->a_owner_mask;
++			everyone.allowed &= acl->a_other_mask;
++		}
++		group.allowed &= acl->a_group_mask;
++	}
++
++	mode = (mode & ~S_IRWXUGO) |
++	       (richacl_mask_to_mode(owner.allowed) << 6) |
++	       (richacl_mask_to_mode(group.allowed) << 3) |
++		richacl_mask_to_mode(everyone.allowed);
++
++	/* Mask flags we can ignore */
++	x = S_ISDIR(mode) ? 0 : RICHACE_DELETE_CHILD;
++
++	if (((richacl_mode_to_mask(mode >> 6) ^ owner.allowed)    & ~x) ||
++	    ((richacl_mode_to_mask(mode >> 3) ^ group.allowed)    & ~x) ||
++	    ((richacl_mode_to_mask(mode)      ^ everyone.allowed) & ~x))
++		return -1;
++
++	*mode_p = mode;
++	return 0;
++}
++EXPORT_SYMBOL_GPL(richacl_equiv_mode);
+diff --git a/include/linux/richacl.h b/include/linux/richacl.h
+index e42e882..49d84dd 100644
+--- a/include/linux/richacl.h
++++ b/include/linux/richacl.h
+@@ -222,6 +222,7 @@ extern unsigned int richacl_mode_to_mask(umode_t);
+ extern unsigned int richacl_want_to_mask(unsigned int);
+ extern void richacl_compute_max_masks(struct richacl *);
+ extern struct richacl *__richacl_chmod(struct richacl *, umode_t);
++extern int richacl_equiv_mode(const struct richacl *, umode_t *);
+ 
+ /* richacl_inode.c */
+ extern int richacl_permission(struct inode *, const struct richacl *, int);
+-- 
+2.5.0
+
