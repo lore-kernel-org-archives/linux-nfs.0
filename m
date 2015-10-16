@@ -1,10 +1,12 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:33783 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754111AbbJPPSg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 16 Oct 2015 11:18:36 -0400
-From: Andreas Gruenbacher <agruenba@redhat.com>
-To: Alexander Viro <viro@zeniv.linux.org.uk>, "Theodore Ts'o" <tytso@mit.edu>,
+Received: from mail-ig0-f178.google.com ([209.85.213.178]:37985 "EHLO
+	mail-ig0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751968AbbJPRbk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Oct 2015 13:31:40 -0400
+Subject: Re: [PATCH v11 21/48] ext4: Add richacl feature flag
+To: Andreas Gruenbacher <agruenba@redhat.com>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        "Theodore Ts'o" <tytso@mit.edu>,
         Andreas Dilger <adilger.kernel@dilger.ca>,
         "J. Bruce Fields" <bfields@fieldses.org>,
         Jeff Layton <jlayton@poochiereds.net>,
@@ -14,192 +16,133 @@ To: Alexander Viro <viro@zeniv.linux.org.uk>, "Theodore Ts'o" <tytso@mit.edu>,
         xfs@oss.sgi.com, linux-kernel@vger.kernel.org,
         linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-cifs@vger.kernel.org, linux-api@vger.kernel.org
-Subject: [PATCH v11 00/48] Richacls
-Date: Fri, 16 Oct 2015 17:17:38 +0200
-Message-Id: <1445008706-15115-1-git-send-email-agruenba@redhat.com>
+References: <1445008706-15115-1-git-send-email-agruenba@redhat.com>
+ <1445008706-15115-22-git-send-email-agruenba@redhat.com>
+Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+From: Austin S Hemmelgarn <ahferroin7@gmail.com>
+Message-ID: <5621346E.5000500@gmail.com>
+Date: Fri, 16 Oct 2015 13:31:26 -0400
+MIME-Version: 1.0
+In-Reply-To: <1445008706-15115-22-git-send-email-agruenba@redhat.com>
+Content-Type: multipart/signed; protocol="application/pkcs7-signature"; micalg=sha-512; boundary="------------ms080105070900080704090103"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Here is another update of the richacl patch queue.  I would like to ask for
-feedback so that the core and local filesystem code (patches 1-24) can be
-merged in the 4.4 merge window.
+This is a cryptographically signed message in MIME format.
 
-Changes since the last posting (http://lwn.net/Articles/660392/):
+--------------ms080105070900080704090103
+Content-Type: text/plain; charset=windows-1252; format=flowed
+Content-Transfer-Encoding: quoted-printable
 
- * The kernel nfs client can now distinguish between users and
-   groups which have no ID mapping and the nobody user/group.
-   This requires an extension to the nfsidmap user-space helper
-   from the nfs-utils package [2].  When the kernel detects
-   that nfsidmap doesn't support the new mapping, it falls
-   back to the old one.
+On 2015-10-16 11:17, Andreas Gruenbacher wrote:
+> From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+>
+> This feature flag selects richacl instead of posix acl support on the
+> file system. In addition, the "acl" mount option is needed for enabling=
 
- * Minor bugs with unmapped user and group names in nfs and nfsd
-   have been fixed.  Some functions have been split to be easier
-   to understand.
+> either of the two kinds of acls.
+>
+> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+> Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
+> ---
+>   fs/ext4/ext4.h  |  6 ++++--
+>   fs/ext4/super.c | 42 +++++++++++++++++++++++++++++++++---------
+>   2 files changed, 37 insertions(+), 11 deletions(-)
+>
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index fd1f28b..b97a3b1 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -991,7 +991,7 @@ struct ext4_inode_info {
+>   #define EXT4_MOUNT_UPDATE_JOURNAL	0x01000	/* Update the journal forma=
+t */
+>   #define EXT4_MOUNT_NO_UID32		0x02000  /* Disable 32-bit UIDs */
+>   #define EXT4_MOUNT_XATTR_USER		0x04000	/* Extended user attributes */=
 
- * The ext4 and xfs filesystem code has been simplified based on
-   feedback from Dave Chinner.  On xfs, richacls can no longer
-   be compiled out (but they will only be effective on file
-   systems with the richacl feature set).
+> -#define EXT4_MOUNT_POSIX_ACL		0x08000	/* POSIX Access Control Lists */=
+
+> +#define EXT4_MOUNT_ACL			0x08000	/* Access Control Lists */
+>   #define EXT4_MOUNT_NO_AUTO_DA_ALLOC	0x10000	/* No auto delalloc mappi=
+ng */
+>   #define EXT4_MOUNT_BARRIER		0x20000 /* Use block barriers */
+>   #define EXT4_MOUNT_QUOTA		0x80000 /* Some quota option set */
+> @@ -1582,6 +1582,7 @@ static inline int ext4_encrypted_inode(struct ino=
+de *inode)
+>   #define EXT4_FEATURE_INCOMPAT_LARGEDIR		0x4000 /* >2GB or 3-lvl htree=
+ */
+>   #define EXT4_FEATURE_INCOMPAT_INLINE_DATA	0x8000 /* data in inode */
+>   #define EXT4_FEATURE_INCOMPAT_ENCRYPT		0x10000
+> +#define EXT4_FEATURE_INCOMPAT_RICHACL		0x20000
+I would like to re-iterate, on both XFS and ext4, I _really_ think this=20
+should be a ro_compat flag, and not an incompat one.  If a person has=20
+the ability to mount the FS (even if it's a read-only mount), then they=20
+by definition have read access to the file or partition that the=20
+filesystem is contained in, which means that any ACL's stored on the=20
+filesystem are functionally irrelevant, and making this an incompat=20
+feature will just complicate things further for people who have a=20
+legitimate need to recover data.
 
 
-The complete patch queue is available in git form at [1].  The richacl
-user-space utilitites and test suite are available at [3].  Please see the
-richacl homepage [4] for more information.
+--------------ms080105070900080704090103
+Content-Type: application/pkcs7-signature; name="smime.p7s"
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="smime.p7s"
+Content-Description: S/MIME Cryptographic Signature
 
-[1] git://git.kernel.org/pub/scm/linux/kernel/git/agruen/linux-richacl.git \
-	richacl-2015-10-16
-[2] https://github.com/andreas-gruenbacher/nfs-utils
-[3] https://github.com/andreas-gruenbacher/richacl/
-[4] http://www.bestbits.at/richacl/
-
-
-Thanks,
-Andreas
-
-
-Andreas Gruenbacher (46):
-  vfs: Add IS_ACL() and IS_RICHACL() tests
-  vfs: Add MAY_CREATE_FILE and MAY_CREATE_DIR permission flags
-  vfs: Add MAY_DELETE_SELF and MAY_DELETE_CHILD permission flags
-  vfs: Make the inode passed to inode_change_ok non-const
-  vfs: Add permission flags for setting file attributes
-  richacl: In-memory representation and helper functions
-  richacl: Permission mapping functions
-  richacl: Compute maximum file masks from an acl
-  richacl: Permission check algorithm
-  vfs: Cache base_acl objects in inodes
-  vfs: Add get_richacl and set_richacl inode operations
-  vfs: Cache richacl in struct inode
-  richacl: Update the file masks in chmod()
-  richacl: Check if an acl is equivalent to a file mode
-  richacl: Create-time inheritance
-  richacl: Automatic Inheritance
-  richacl: xattr mapping functions
-  richacl: Add richacl xattr handler
-  vfs: Add richacl permission checking
-  xfs: Fix error path in xfs_get_acl
-  xfs: Make xfs_set_mode non-static
-  xfs: Add richacl support
-  richacl: acl editing helper functions
-  richacl: Move everyone@ aces down the acl
-  richacl: Propagate everyone@ permissions to other aces
-  richacl: Set the owner permissions to the owner mask
-  richacl: Set the other permissions to the other mask
-  richacl: Isolate the owner and group classes
-  richacl: Apply the file masks to a richacl
-  richacl: Create richacl from mode values
-  nfsd: Keep list of acls to dispose of in compoundargs
-  nfsd: Use richacls as internal acl representation
-  nfsd: Add richacl support
-  nfsd: Add support for the v4.1 dacl attribute
-  nfsd: Add support for the MAY_CREATE_{FILE,DIR} permissions
-  richacl: Add support for unmapped identifiers
-  nfsd: Add support for unmapped richace identifiers
-  ext4: Don't allow unmapped identifiers in richacls
-  xfs: Don't allow unmapped identifiers in richacls
-  sunrpc: Allow to demand-allocate pages to encode into
-  sunrpc: Add xdr_init_encode_pages
-  nfs: Fix GETATTR bitmap verification
-  nfs: Remove unused xdr page offsets in getacl/setacl arguments
-  nfs: Distinguish missing users and groups from nobody
-  nfs: Add richacl support
-  nfs: Add support for the v4.1 dacl attribute
-
-Aneesh Kumar K.V (2):
-  ext4: Add richacl support
-  ext4: Add richacl feature flag
-
- drivers/staging/lustre/lustre/llite/llite_lib.c |   2 +-
- fs/Kconfig                                      |   9 +
- fs/Makefile                                     |   3 +
- fs/attr.c                                       |  81 ++-
- fs/ext4/Kconfig                                 |  11 +
- fs/ext4/Makefile                                |   1 +
- fs/ext4/ext4.h                                  |   6 +-
- fs/ext4/file.c                                  |   3 +
- fs/ext4/ialloc.c                                |  11 +-
- fs/ext4/inode.c                                 |  12 +-
- fs/ext4/namei.c                                 |   5 +
- fs/ext4/richacl.c                               | 145 ++++
- fs/ext4/richacl.h                               |  40 ++
- fs/ext4/super.c                                 |  42 +-
- fs/ext4/xattr.c                                 |   7 +
- fs/f2fs/acl.c                                   |   4 +-
- fs/inode.c                                      |  15 +-
- fs/jffs2/acl.c                                  |   6 +-
- fs/namei.c                                      | 111 ++-
- fs/nfs/inode.c                                  |   3 -
- fs/nfs/nfs4idmap.c                              |  57 +-
- fs/nfs/nfs4proc.c                               | 734 ++++++++++++++-----
- fs/nfs/nfs4xdr.c                                | 261 ++++++-
- fs/nfs/super.c                                  |   4 +-
- fs/nfs_common/Makefile                          |   1 +
- fs/nfs_common/nfs4acl.c                         |  44 ++
- fs/nfsd/Kconfig                                 |   1 +
- fs/nfsd/acl.h                                   |  23 +-
- fs/nfsd/nfs4acl.c                               | 487 +++++++------
- fs/nfsd/nfs4proc.c                              |  25 +-
- fs/nfsd/nfs4xdr.c                               | 268 ++++---
- fs/nfsd/nfsd.h                                  |   6 +-
- fs/nfsd/nfsfh.c                                 |   8 +-
- fs/nfsd/vfs.c                                   |  28 +-
- fs/nfsd/vfs.h                                   |  17 +-
- fs/nfsd/xdr4.h                                  |  12 +-
- fs/posix_acl.c                                  |  26 +-
- fs/richacl_base.c                               | 685 ++++++++++++++++++
- fs/richacl_compat.c                             | 915 ++++++++++++++++++++++++
- fs/richacl_inode.c                              | 333 +++++++++
- fs/richacl_xattr.c                              | 345 +++++++++
- fs/xattr.c                                      |  34 +-
- fs/xfs/Kconfig                                  |   1 +
- fs/xfs/Makefile                                 |   1 +
- fs/xfs/libxfs/xfs_format.h                      |  11 +-
- fs/xfs/xfs_acl.c                                |  19 +-
- fs/xfs/xfs_acl.h                                |   1 -
- fs/xfs/xfs_inode.c                              |  24 +
- fs/xfs/xfs_inode.h                              |   2 +
- fs/xfs/xfs_iops.c                               |  44 +-
- fs/xfs/xfs_richacl.c                            | 106 +++
- fs/xfs/xfs_richacl.h                            |  23 +
- fs/xfs/xfs_super.c                              |   6 +-
- fs/xfs/xfs_super.h                              |   4 +
- fs/xfs/xfs_xattr.c                              |   2 +
- include/linux/fs.h                              |  51 +-
- include/linux/nfs4.h                            |  24 +-
- include/linux/nfs4acl.h                         |   7 +
- include/linux/nfs_fs.h                          |   1 -
- include/linux/nfs_fs_sb.h                       |   3 +
- include/linux/nfs_xdr.h                         |  13 +-
- include/linux/posix_acl.h                       |  12 +-
- include/linux/richacl.h                         | 276 +++++++
- include/linux/richacl_compat.h                  |  40 ++
- include/linux/richacl_xattr.h                   |  44 ++
- include/linux/sunrpc/xdr.h                      |   2 +
- include/uapi/linux/Kbuild                       |   2 +
- include/uapi/linux/fs.h                         |   3 +-
- include/uapi/linux/nfs4.h                       |   3 +-
- include/uapi/linux/richacl.h                    | 111 +++
- include/uapi/linux/richacl_xattr.h              |  44 ++
- include/uapi/linux/xattr.h                      |   2 +
- net/sunrpc/xdr.c                                |  34 +
- 73 files changed, 4985 insertions(+), 762 deletions(-)
- create mode 100644 fs/ext4/richacl.c
- create mode 100644 fs/ext4/richacl.h
- create mode 100644 fs/nfs_common/nfs4acl.c
- create mode 100644 fs/richacl_base.c
- create mode 100644 fs/richacl_compat.c
- create mode 100644 fs/richacl_inode.c
- create mode 100644 fs/richacl_xattr.c
- create mode 100644 fs/xfs/xfs_richacl.c
- create mode 100644 fs/xfs/xfs_richacl.h
- create mode 100644 include/linux/nfs4acl.h
- create mode 100644 include/linux/richacl.h
- create mode 100644 include/linux/richacl_compat.h
- create mode 100644 include/linux/richacl_xattr.h
- create mode 100644 include/uapi/linux/richacl.h
- create mode 100644 include/uapi/linux/richacl_xattr.h
-
--- 
-2.5.0
-
+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
+cnQub3JnMSIwIAYDVQQDExlDQSBDZXJ0IFNpZ25pbmcgQXV0aG9yaXR5MSEwHwYJKoZIhvcN
+AQkBFhJzdXBwb3J0QGNhY2VydC5vcmcCAxEt+DANBglghkgBZQMEAgMFAKCCAiEwGAYJKoZI
+hvcNAQkDMQsGCSqGSIb3DQEHATAcBgkqhkiG9w0BCQUxDxcNMTUxMDE2MTczMTI2WjBPBgkq
+hkiG9w0BCQQxQgRAPhvf1wDQT+zY79/J/S+GlQuTEjNgTXDad8G8O18RNeFdjxHt3mpiCQ82
+rufwknYUE44F4fxbLMbe6U6gPJLvtjBsBgkqhkiG9w0BCQ8xXzBdMAsGCWCGSAFlAwQBKjAL
+BglghkgBZQMEAQIwCgYIKoZIhvcNAwcwDgYIKoZIhvcNAwICAgCAMA0GCCqGSIb3DQMCAgFA
+MAcGBSsOAwIHMA0GCCqGSIb3DQMCAgEoMIGRBgkrBgEEAYI3EAQxgYMwgYAweTEQMA4GA1UE
+ChMHUm9vdCBDQTEeMBwGA1UECxMVaHR0cDovL3d3dy5jYWNlcnQub3JnMSIwIAYDVQQDExlD
+QSBDZXJ0IFNpZ25pbmcgQXV0aG9yaXR5MSEwHwYJKoZIhvcNAQkBFhJzdXBwb3J0QGNhY2Vy
+dC5vcmcCAxEt+DCBkwYLKoZIhvcNAQkQAgsxgYOggYAweTEQMA4GA1UEChMHUm9vdCBDQTEe
+MBwGA1UECxMVaHR0cDovL3d3dy5jYWNlcnQub3JnMSIwIAYDVQQDExlDQSBDZXJ0IFNpZ25p
+bmcgQXV0aG9yaXR5MSEwHwYJKoZIhvcNAQkBFhJzdXBwb3J0QGNhY2VydC5vcmcCAxEt+DAN
+BgkqhkiG9w0BAQEFAASCAgBhVrX0WVc4FHJb+ZrN+BO5uwBBBz933mTcl0qCV6MZD4ryS6ir
+8lHOyIBz9GvZlZ4xA7IA0K3/2b2fMtEuX4DZ7xPfzvMFrSrJOZbs9Nu70eZaUqxC0sJMFDGh
+nikYW+mHbq7/g16LcDv7FuM8oRHWkLwOL45pTZKwr+LunnbbwlZsugnaxRp4WAjFyWSBiqZJ
+Om7BzqUq6nBRZmOno+Np4U68YbquM3kYVJROjn97QRjftmG13IGqSgiayrUEqcgg1KNq3yQL
+QaOHE1S9XqfwnjIkI8vDwVv1izeJF6gv0LdrfkodV6q72CyVxeZT6bg+2eKadM/ftVl60Q9k
+jTAdo3ZGoi2IkbbJxKYYweCxrCzXB5swtQvHa5bwp32udj+Ddc09dHhkdsrgT6pDdPebzpBw
+CroIT9QEMIO5lyd1JJHYYhUm4j4rtRI9crViS4tyKgP59YLCUvr/tfnq1DIzNtB7VvNvo0Ni
+sIROwtVD/Qua4JLpx3mKN3UMPVoP05Hf8ahazbI907qLz6tiK//eREBeA0q989QtntRrfgVg
+xPs5PMSbkLWdUZNhVg81eGApuyQvEDd59Urs01EdVGC6I71kWJoa2X98dsHdj8P/5Ii9Yq5b
+T8IUVQ8c5AOoob5gq3VNrq2oVvl0n1DEH9MjprNwnDxDLTQ5Y6xdE4yxZgAAAAAAAA==
+--------------ms080105070900080704090103--
