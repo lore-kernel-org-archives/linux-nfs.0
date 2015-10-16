@@ -1,62 +1,107 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-lb0-f182.google.com ([209.85.217.182]:34957 "EHLO
-	mail-lb0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754500AbbJPQNV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Oct 2015 12:13:21 -0400
-Received: by lbbes7 with SMTP id es7so14264220lbb.2
-        for <linux-nfs@vger.kernel.org>; Fri, 16 Oct 2015 09:13:19 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <CALCETrXFkB01tk21FuEOqABHWg1XyOQwsT+s=Lq0RYye6X_7xw@mail.gmail.com>
-References: <1445008706-15115-1-git-send-email-agruenba@redhat.com>
-	<1445008706-15115-17-git-send-email-agruenba@redhat.com>
-	<CALCETrXFkB01tk21FuEOqABHWg1XyOQwsT+s=Lq0RYye6X_7xw@mail.gmail.com>
-Date: Fri, 16 Oct 2015 18:13:19 +0200
-Message-ID: <CAHc6FU7SNs6+xt34s18xM-C4U_7v5DLcN_feHXhVMY1q=K6zxA@mail.gmail.com>
-Subject: Re: [PATCH v11 16/48] richacl: Automatic Inheritance
+Received: from mx1.redhat.com ([209.132.183.28]:45537 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932497AbbJPPSz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 16 Oct 2015 11:18:55 -0400
 From: Andreas Gruenbacher <agruenba@redhat.com>
-To: Andy Lutomirski <luto@amacapital.net>
-Cc: Alexander Viro <viro@zeniv.linux.org.uk>, "Theodore Ts'o" <tytso@mit.edu>,
+To: Alexander Viro <viro@zeniv.linux.org.uk>, "Theodore Ts'o" <tytso@mit.edu>,
         Andreas Dilger <adilger.kernel@dilger.ca>,
         "J. Bruce Fields" <bfields@fieldses.org>,
         Jeff Layton <jlayton@poochiereds.net>,
         Trond Myklebust <trond.myklebust@primarydata.com>,
         Anna Schumaker <anna.schumaker@netapp.com>,
-        Dave Chinner <david@fromorbit.com>,
-        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-        xfs@oss.sgi.com,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        Linux FS Devel <linux-fsdevel@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-cifs@vger.kernel.org, Linux API <linux-api@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+        Dave Chinner <david@fromorbit.com>, linux-ext4@vger.kernel.org,
+        xfs@oss.sgi.com, linux-kernel@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-api@vger.kernel.org
+Subject: [PATCH v11 03/48] vfs: Add MAY_DELETE_SELF and MAY_DELETE_CHILD permission flags
+Date: Fri, 16 Oct 2015 17:17:41 +0200
+Message-Id: <1445008706-15115-4-git-send-email-agruenba@redhat.com>
+In-Reply-To: <1445008706-15115-1-git-send-email-agruenba@redhat.com>
+References: <1445008706-15115-1-git-send-email-agruenba@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Oct 16, 2015 at 6:00 PM, Andy Lutomirski <luto@amacapital.net> wrote:
-> On Fri, Oct 16, 2015 at 8:17 AM, Andreas Gruenbacher
-> <agruenba@redhat.com> wrote:
->> Automatic Inheritance works as follows:
->>
->>  - When the RICHACL_AUTO_INHERIT flag in the acl of a file or directory
->>    is not set, the file or directory is not affected by AI.
->>
->>  - When the RICHACL_AUTO_INHERIT flag in the acl of a directory is set
->>    and a file or subdirectory is created in that directory, the
->>    inherited acl will have the RICHACL_AUTO_INHERIT flag set, and all
->>    inherited aces will have the RICHACE_INHERITED_ACE flag set.  This
->>    allows user space to distinguish between aces which have been
->>    inherited and aces which have been explicitly added.
->
-> What if the file or subdirectory that's created in that directory is a
-> hard link?
+Normally, deleting a file requires MAY_WRITE access to the parent
+directory.  With richacls, a file may be deleted with MAY_DELETE_CHILD access
+to the parent directory or with MAY_DELETE_SELF access to the file.
 
-Directories cannot have hard links.
+To support that, pass the MAY_DELETE_CHILD mask flag to inode_permission()
+when checking for delete access inside a directory, and MAY_DELETE_SELF
+when checking for delete access to a file itelf.
 
-When a file is hard linked into multiple directories with different
-inheritable permissions, the permissions set last will "win". This
-isn't particularly pretty, but it's the way this has worked on that
-other operating system with significant marked share for the last
-fifteen years.
+The MAY_DELETE_SELF permission overrides the sticky directory check.
 
-Thanks,
-Andreas
+Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
+Reviewed-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/namei.c         | 21 ++++++++++++---------
+ include/linux/fs.h |  2 ++
+ 2 files changed, 14 insertions(+), 9 deletions(-)
+
+diff --git a/fs/namei.c b/fs/namei.c
+index 0259392..2eab19e 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -453,9 +453,9 @@ static int sb_permission(struct super_block *sb, struct inode *inode, int mask)
+  * this, letting us set arbitrary permissions for filesystem access without
+  * changing the "normal" UIDs which are used for other things.
+  *
+- * MAY_WRITE must be set in @mask whenever MAY_APPEND, MAY_CREATE_FILE, or
+- * MAY_CREATE_DIR are set.  That way, file systems that don't support these
+- * permissions will check for MAY_WRITE instead.
++ * MAY_WRITE must be set in @mask whenever MAY_APPEND, MAY_CREATE_FILE,
++ * MAY_CREATE_DIR, or MAY_DELETE_CHILD are set.  That way, file systems that
++ * don't support these permissions will check for MAY_WRITE instead.
+  */
+ int inode_permission(struct inode *inode, int mask)
+ {
+@@ -2555,7 +2555,7 @@ static int may_delete(struct inode *dir, struct dentry *victim,
+ 		      bool isdir, bool replace)
+ {
+ 	struct inode *inode = d_backing_inode(victim);
+-	int error, mask = MAY_WRITE | MAY_EXEC;
++	int error, mask = MAY_EXEC;
+ 
+ 	if (d_is_negative(victim))
+ 		return -ENOENT;
+@@ -2565,15 +2565,18 @@ static int may_delete(struct inode *dir, struct dentry *victim,
+ 	audit_inode_child(dir, victim, AUDIT_TYPE_CHILD_DELETE);
+ 
+ 	if (replace)
+-		mask |= isdir ? MAY_CREATE_DIR : MAY_CREATE_FILE;
+-	error = inode_permission(dir, mask);
++		mask |= MAY_WRITE | (isdir ? MAY_CREATE_DIR : MAY_CREATE_FILE);
++	error = inode_permission(dir, mask | MAY_WRITE | MAY_DELETE_CHILD);
++	if (!error && check_sticky(dir, inode))
++		error = -EPERM;
++	if (error && IS_RICHACL(inode) &&
++	    inode_permission(inode, MAY_DELETE_SELF) == 0)
++		error = 0;
+ 	if (error)
+ 		return error;
+ 	if (IS_APPEND(dir))
+ 		return -EPERM;
+-
+-	if (check_sticky(dir, inode) || IS_APPEND(inode) ||
+-	    IS_IMMUTABLE(inode) || IS_SWAPFILE(inode))
++	if (IS_APPEND(inode) || IS_IMMUTABLE(inode) || IS_SWAPFILE(inode))
+ 		return -EPERM;
+ 	if (isdir) {
+ 		if (!d_is_dir(victim))
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index d6e2330..402acd7 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -84,6 +84,8 @@ typedef void (dax_iodone_t)(struct buffer_head *bh_map, int uptodate);
+ #define MAY_NOT_BLOCK		0x00000080
+ #define MAY_CREATE_FILE		0x00000100
+ #define MAY_CREATE_DIR		0x00000200
++#define MAY_DELETE_CHILD	0x00000400
++#define MAY_DELETE_SELF		0x00000800
+ 
+ /*
+  * flags in file.f_mode.  Note that FMODE_READ and FMODE_WRITE must correspond
+-- 
+2.5.0
+
