@@ -1,17 +1,17 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx144.netapp.com ([216.240.21.25]:54627 "EHLO mx144.netapp.com"
+Received: from mx144.netapp.com ([216.240.21.25]:33973 "EHLO mx144.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932833AbbJPVIk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 16 Oct 2015 17:08:40 -0400
+	id S932866AbbJPVIn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 16 Oct 2015 17:08:43 -0400
 From: Anna Schumaker <Anna.Schumaker@netapp.com>
 To: <linux-nfs@vger.kernel.org>, <linux-btrfs@vger.kernel.org>,
         <linux-fsdevel@vger.kernel.org>, <linux-api@vger.kernel.org>,
         <zab@zabbo.net>, <viro@zeniv.linux.org.uk>, <clm@fb.com>,
         <darrick.wong@oracle.com>, <mtk.manpages@gmail.com>,
         <andros@netapp.com>, <hch@infradead.org>
-Subject: [PATCH v6 3/4] btrfs: add .copy_file_range file operation
-Date: Fri, 16 Oct 2015 17:08:25 -0400
-Message-ID: <1445029707-31549-4-git-send-email-Anna.Schumaker@Netapp.com>
+Subject: [PATCH v6 5/4] copy_file_range.2: New page documenting copy_file_range()
+Date: Fri, 16 Oct 2015 17:08:27 -0400
+Message-ID: <1445029707-31549-6-git-send-email-Anna.Schumaker@Netapp.com>
 In-Reply-To: <1445029707-31549-1-git-send-email-Anna.Schumaker@Netapp.com>
 References: <1445029707-31549-1-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
@@ -19,190 +19,244 @@ Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Zach Brown <zab@redhat.com>
+copy_file_range() is a new system call for copying ranges of data
+completely in the kernel.  This gives filesystems an opportunity to
+implement some kind of "copy acceleration", such as reflinks or
+server-side-copy (in the case of NFS).
 
-This rearranges the existing COPY_RANGE ioctl implementation so that the
-.copy_file_range file operation can call the core loop that copies file
-data extent items.
-
-The extent copying loop is lifted up into its own function.  It retains
-the core btrfs error checks that should be shared.
-
-Signed-off-by: Zach Brown <zab@redhat.com>
-[Anna Schumaker: Make flags an unsigned int,
-                 Check for COPY_FR_REFLINK]
 Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
-Reviewed-by: Josef Bacik <jbacik@fb.com>
-Reviewed-by: David Sterba <dsterba@suse.com>
+Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
 v6:
-- Check for COPY_FR_REFLINK
+- Updates for removing most flags
 ---
- fs/btrfs/ctree.h |  3 ++
- fs/btrfs/file.c  |  1 +
- fs/btrfs/ioctl.c | 94 +++++++++++++++++++++++++++++++++-----------------------
- 3 files changed, 59 insertions(+), 39 deletions(-)
+ man2/copy_file_range.2 | 204 +++++++++++++++++++++++++++++++++++++++++++++++++
+ man2/splice.2          |   1 +
+ 2 files changed, 205 insertions(+)
+ create mode 100644 man2/copy_file_range.2
 
-diff --git a/fs/btrfs/ctree.h b/fs/btrfs/ctree.h
-index 938efe3..0046567 100644
---- a/fs/btrfs/ctree.h
-+++ b/fs/btrfs/ctree.h
-@@ -3996,6 +3996,9 @@ int btrfs_dirty_pages(struct btrfs_root *root, struct inode *inode,
- 		      loff_t pos, size_t write_bytes,
- 		      struct extent_state **cached);
- int btrfs_fdatawrite_range(struct inode *inode, loff_t start, loff_t end);
-+ssize_t btrfs_copy_file_range(struct file *file_in, loff_t pos_in,
-+			      struct file *file_out, loff_t pos_out,
-+			      size_t len, unsigned int flags);
- 
- /* tree-defrag.c */
- int btrfs_defrag_leaves(struct btrfs_trans_handle *trans,
-diff --git a/fs/btrfs/file.c b/fs/btrfs/file.c
-index b823fac..b05449c 100644
---- a/fs/btrfs/file.c
-+++ b/fs/btrfs/file.c
-@@ -2816,6 +2816,7 @@ const struct file_operations btrfs_file_operations = {
- #ifdef CONFIG_COMPAT
- 	.compat_ioctl	= btrfs_ioctl,
- #endif
-+	.copy_file_range = btrfs_copy_file_range,
- };
- 
- void btrfs_auto_defrag_exit(void)
-diff --git a/fs/btrfs/ioctl.c b/fs/btrfs/ioctl.c
-index 0adf542..3fee0cb 100644
---- a/fs/btrfs/ioctl.c
-+++ b/fs/btrfs/ioctl.c
-@@ -3727,17 +3727,16 @@ out:
- 	return ret;
- }
- 
--static noinline long btrfs_ioctl_clone(struct file *file, unsigned long srcfd,
--				       u64 off, u64 olen, u64 destoff)
-+static noinline int btrfs_clone_files(struct file *file, struct file *file_src,
-+					u64 off, u64 olen, u64 destoff)
- {
- 	struct inode *inode = file_inode(file);
-+	struct inode *src = file_inode(file_src);
- 	struct btrfs_root *root = BTRFS_I(inode)->root;
--	struct fd src_file;
--	struct inode *src;
- 	int ret;
- 	u64 len = olen;
- 	u64 bs = root->fs_info->sb->s_blocksize;
--	int same_inode = 0;
-+	int same_inode = src == inode;
- 
- 	/*
- 	 * TODO:
-@@ -3750,49 +3749,20 @@ static noinline long btrfs_ioctl_clone(struct file *file, unsigned long srcfd,
- 	 *   be either compressed or non-compressed.
- 	 */
- 
--	/* the destination must be opened for writing */
--	if (!(file->f_mode & FMODE_WRITE) || (file->f_flags & O_APPEND))
--		return -EINVAL;
--
- 	if (btrfs_root_readonly(root))
- 		return -EROFS;
- 
--	ret = mnt_want_write_file(file);
--	if (ret)
--		return ret;
--
--	src_file = fdget(srcfd);
--	if (!src_file.file) {
--		ret = -EBADF;
--		goto out_drop_write;
--	}
--
--	ret = -EXDEV;
--	if (src_file.file->f_path.mnt != file->f_path.mnt)
--		goto out_fput;
--
--	src = file_inode(src_file.file);
--
--	ret = -EINVAL;
--	if (src == inode)
--		same_inode = 1;
--
--	/* the src must be open for reading */
--	if (!(src_file.file->f_mode & FMODE_READ))
--		goto out_fput;
-+	if (file_src->f_path.mnt != file->f_path.mnt ||
-+	    src->i_sb != inode->i_sb)
-+		return -EXDEV;
- 
- 	/* don't make the dst file partly checksummed */
- 	if ((BTRFS_I(src)->flags & BTRFS_INODE_NODATASUM) !=
- 	    (BTRFS_I(inode)->flags & BTRFS_INODE_NODATASUM))
--		goto out_fput;
-+		return -EINVAL;
- 
--	ret = -EISDIR;
- 	if (S_ISDIR(src->i_mode) || S_ISDIR(inode->i_mode))
--		goto out_fput;
--
--	ret = -EXDEV;
--	if (src->i_sb != inode->i_sb)
--		goto out_fput;
-+		return -EISDIR;
- 
- 	if (!same_inode) {
- 		btrfs_double_inode_lock(src, inode);
-@@ -3869,6 +3839,52 @@ out_unlock:
- 		btrfs_double_inode_unlock(src, inode);
- 	else
- 		mutex_unlock(&src->i_mutex);
-+	return ret;
+diff --git a/man2/copy_file_range.2 b/man2/copy_file_range.2
+new file mode 100644
+index 0000000..6c52c85
+--- /dev/null
++++ b/man2/copy_file_range.2
+@@ -0,0 +1,204 @@
++.\"This manpage is Copyright (C) 2015 Anna Schumaker <Anna.Schumaker@Netapp.com>
++.\"
++.\" %%%LICENSE_START(VERBATIM)
++.\" Permission is granted to make and distribute verbatim copies of this
++.\" manual provided the copyright notice and this permission notice are
++.\" preserved on all copies.
++.\"
++.\" Permission is granted to copy and distribute modified versions of
++.\" this manual under the conditions for verbatim copying, provided that
++.\" the entire resulting derived work is distributed under the terms of
++.\" a permission notice identical to this one.
++.\"
++.\" Since the Linux kernel and libraries are constantly changing, this
++.\" manual page may be incorrect or out-of-date.  The author(s) assume.
++.\" no responsibility for errors or omissions, or for damages resulting.
++.\" from the use of the information contained herein.  The author(s) may.
++.\" not have taken the same level of care in the production of this.
++.\" manual, which is licensed free of charge, as they might when working.
++.\" professionally.
++.\"
++.\" Formatted or processed versions of this manual, if unaccompanied by
++.\" the source, must acknowledge the copyright and authors of this work.
++.\" %%%LICENSE_END
++.\"
++.TH COPY 2 2015-10-16 "Linux" "Linux Programmer's Manual"
++.SH NAME
++copy_file_range \- Copy a range of data from one file to another
++.SH SYNOPSIS
++.nf
++.B #include <linux/fs.h>
++.B #include <sys/syscall.h>
++.B #include <unistd.h>
++
++.BI "ssize_t copy_file_range(int " fd_in ", loff_t *" off_in ", int " fd_out ",
++.BI "                        loff_t *" off_out ", size_t " len \
++", unsigned int " flags );
++.fi
++.SH DESCRIPTION
++The
++.BR copy_file_range ()
++system call performs an in-kernel copy between two file descriptors
++without the additional cost of transferring data from the kernel to userspace
++and then back into the kernel.
++It copies up to
++.I len
++bytes of data from file descriptor
++.I fd_in
++to file descriptor
++.IR fd_out ,
++overwriting any data that exists within the requested range of the target file.
++
++The following semantics apply for
++.IR off_in ,
++and similar statements apply to
++.IR off_out :
++.IP * 3
++If
++.I off_in
++is NULL, then bytes are read from
++.I fd_in
++starting from the current file offset, and the offset is
++adjusted by the number of bytes copied.
++.IP *
++If
++.I off_in
++is not NULL, then
++.I off_in
++must point to a buffer that specifies the starting
++offset where bytes from
++.I fd_in
++will be read.  The current file offset of
++.I fd_in
++is not changed, but
++.I off_in
++is adjusted appropriately.
++.PP
++
++The
++.I flags
++argument can have the following flag set:
++.TP 1.9i
++.B COPY_FR_REFLINK
++Create a lightweight "reflink", where data is not copied until
++one of the files is modified.
++.PP
++The default behavior
++.RI ( flags
++== 0) is to perform a full data copy of the requested range.
++.SH RETURN VALUE
++Upon successful completion,
++.BR copy_file_range ()
++will return the number of bytes copied between files.
++This could be less than the length originally requested.
++
++On error,
++.BR copy_file_range ()
++returns \-1 and
++.I errno
++is set to indicate the error.
++.SH ERRORS
++.TP
++.B EBADF
++One or more file descriptors are not valid; or
++.I fd_in
++is not open for reading; or
++.I fd_out
++is not open for writing.
++.TP
++.B EINVAL
++Requested range extends beyond the end of the source file; or the
++.I flags
++argument is set to an invalid value.
++.TP
++.B EIO
++A low level I/O error occurred while copying.
++.TP
++.B ENOMEM
++Out of memory.
++.TP
++.B ENOSPC
++There is not enough space on the target filesystem to complete the copy.
++.TP
++.B EOPNOTSUPP
++.B COPY_REFLINK
++was specified in
++.IR flags ,
++but the target filesystem does not support reflinks.
++.TP
++.B EXDEV
++.IR file_in " and " file_out
++are not on the same mounted filesystem.
++.SH VERSIONS
++The
++.BR copy_file_range ()
++system call first appeared in Linux 4.4.
++.SH CONFORMING TO
++The
++.BR copy_file_range ()
++system call is a nonstandard Linux extension.
++.SH EXAMPLE
++.nf
++#define _GNU_SOURCE
++#include <fcntl.h>
++#include <linux/fs.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <sys/stat.h>
++#include <sys/syscall.h>
++#include <unistd.h>
++
++loff_t copy_file_range(int fd_in, loff_t *off_in, int fd_out,
++                       loff_t *off_out, size_t len, unsigned int flags)
++{
++    return syscall(__NR_copy_file_range, fd_in, off_in, fd_out,
++                   off_out, len, flags);
 +}
 +
-+ssize_t btrfs_copy_file_range(struct file *file_in, loff_t pos_in,
-+			      struct file *file_out, loff_t pos_out,
-+			      size_t len, unsigned int flags)
++int main(int argc, char **argv)
 +{
-+	ssize_t ret;
++    int fd_in, fd_out;
++    struct stat stat;
++    loff_t len, ret;
++    char buf[2];
 +
-+	if (!(flags & COPY_FR_REFLINK))
-+		return -EOPNOTSUPP;
++    if (argc != 3) {
++        fprintf(stderr, "Usage: %s <source> <destination>\\n", argv[0]);
++        exit(EXIT_FAILURE);
++    }
 +
-+	ret = btrfs_clone_files(file_out, file_in, pos_in, len, pos_out);
-+	if (ret == 0)
-+		ret = len;
-+	return ret;
++    fd_in = open(argv[1], O_RDONLY);
++    if (fd_in == \-1) {
++        perror("open (argv[1])");
++        exit(EXIT_FAILURE);
++    }
++
++    if (fstat(fd_in, &stat) == \-1) {
++        perror("fstat");
++        exit(EXIT_FAILURE);
++    }
++    len = stat.st_size;
++
++    fd_out = open(argv[2], O_CREAT|O_WRONLY|O_TRUNC, 0644);
++    if (fd_out == \-1) {
++        perror("open (argv[2])");
++        exit(EXIT_FAILURE);
++    }
++
++    do {
++        ret = copy_file_range(fd_in, NULL, fd_out, NULL, len, 0);
++        if (ret == \-1) {
++            perror("copy_file_range");
++            exit(EXIT_FAILURE);
++        }
++
++        len \-= ret;
++    } while (len > 0);
++
++    close(fd_in);
++    close(fd_out);
++    exit(EXIT_SUCCESS);
 +}
-+
-+static noinline long btrfs_ioctl_clone(struct file *file, unsigned long srcfd,
-+				       u64 off, u64 olen, u64 destoff)
-+{
-+	struct fd src_file;
-+	int ret;
-+
-+	/* the destination must be opened for writing */
-+	if (!(file->f_mode & FMODE_WRITE) || (file->f_flags & O_APPEND))
-+		return -EINVAL;
-+
-+	ret = mnt_want_write_file(file);
-+	if (ret)
-+		return ret;
-+
-+	src_file = fdget(srcfd);
-+	if (!src_file.file) {
-+		ret = -EBADF;
-+		goto out_drop_write;
-+	}
-+
-+	/* the src must be open for reading */
-+	if (!(src_file.file->f_mode & FMODE_READ)) {
-+		ret = -EINVAL;
-+		goto out_fput;
-+	}
-+
-+	ret = btrfs_clone_files(file, src_file.file, off, olen, destoff);
-+
- out_fput:
- 	fdput(src_file);
- out_drop_write:
++.fi
++.SH SEE ALSO
++.BR splice (2)
+diff --git a/man2/splice.2 b/man2/splice.2
+index b9b4f42..5c162e0 100644
+--- a/man2/splice.2
++++ b/man2/splice.2
+@@ -238,6 +238,7 @@ only pointers are copied, not the pages of the buffer.
+ See
+ .BR tee (2).
+ .SH SEE ALSO
++.BR copy_file_range (2),
+ .BR sendfile (2),
+ .BR tee (2),
+ .BR vmsplice (2)
 -- 
 2.6.1
 
