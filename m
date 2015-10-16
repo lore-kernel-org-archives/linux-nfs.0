@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:47980 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:41141 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S965015AbbJPPXj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 16 Oct 2015 11:23:39 -0400
+	id S933211AbbJPPXw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 16 Oct 2015 11:23:52 -0400
 From: Andreas Gruenbacher <agruenba@redhat.com>
 To: Alexander Viro <viro@zeniv.linux.org.uk>, "Theodore Ts'o" <tytso@mit.edu>,
         Andreas Dilger <adilger.kernel@dilger.ca>,
@@ -14,182 +14,145 @@ To: Alexander Viro <viro@zeniv.linux.org.uk>, "Theodore Ts'o" <tytso@mit.edu>,
         xfs@oss.sgi.com, linux-kernel@vger.kernel.org,
         linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-cifs@vger.kernel.org, linux-api@vger.kernel.org
-Subject: [PATCH v11 46/48] nfs: Distinguish missing users and groups from nobody
-Date: Fri, 16 Oct 2015 17:18:24 +0200
-Message-Id: <1445008706-15115-47-git-send-email-agruenba@redhat.com>
+Subject: [PATCH v11 48/48] nfs: Add support for the v4.1 dacl attribute
+Date: Fri, 16 Oct 2015 17:18:26 +0200
+Message-Id: <1445008706-15115-49-git-send-email-agruenba@redhat.com>
 In-Reply-To: <1445008706-15115-1-git-send-email-agruenba@redhat.com>
 References: <1445008706-15115-1-git-send-email-agruenba@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-User and group names are mapped to IDs using the kernel keyring infrastructure.
-When a name does not exist, it is mapped to the nobody user or group; there is
-no way to tell the difference from the mapping result.
+The dacl attribute includes Automatic Inheritance flags not supported by
+the acl attribute.  it is only supported in NFS version 4.1 and higher.
+On systems where NFS version 4.0 is still the default, an additional
+mount option is needed:
 
-In ACLs, we need to make that distinction.  For that, use the new "xuid" and
-"xgid" maps: they behave like the old "uid" and "gid" maps except that the IDs
-of existing users and groups are prefixed by a "+" sign.
-
-When the "xuid" or "xgid" maps are not supported, nfs falls back to the "uid"
-and "gid" maps.
+    mount -t nfs4 -o vers=4.1 [...]
 
 Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
 ---
- fs/nfs/nfs4idmap.c        | 57 ++++++++++++++++++++++++++++++++++++++---------
- fs/nfs/nfs4xdr.c          |  6 +++--
- include/linux/nfs_fs_sb.h |  1 +
- 3 files changed, 52 insertions(+), 12 deletions(-)
+ fs/nfs/nfs4proc.c       |  2 +-
+ fs/nfs/nfs4xdr.c        | 54 ++++++++++++++++++++++++++++++++++++++++++-------
+ include/linux/nfs_xdr.h |  2 +-
+ 3 files changed, 49 insertions(+), 9 deletions(-)
 
-diff --git a/fs/nfs/nfs4idmap.c b/fs/nfs/nfs4idmap.c
-index 2e49022..34dd404 100644
---- a/fs/nfs/nfs4idmap.c
-+++ b/fs/nfs/nfs4idmap.c
-@@ -100,10 +100,12 @@ static bool nfs_fattr_map_owner_name(struct nfs_server *server, struct nfs_fattr
- {
- 	struct nfs4_string *owner = fattr->owner_name;
- 	kuid_t uid;
-+	int ret;
- 
- 	if (!(fattr->valid & NFS_ATTR_FATTR_OWNER_NAME))
- 		return false;
--	if (nfs_map_name_to_uid(server, owner->data, owner->len, &uid) == 0) {
-+	ret = nfs_map_name_to_uid(server, owner->data, owner->len, &uid);
-+	if (ret == 0 || ret == -ENOENT) {
- 		fattr->uid = uid;
- 		fattr->valid |= NFS_ATTR_FATTR_OWNER;
- 	}
-@@ -114,10 +116,12 @@ static bool nfs_fattr_map_group_name(struct nfs_server *server, struct nfs_fattr
- {
- 	struct nfs4_string *group = fattr->group_name;
- 	kgid_t gid;
-+	int ret;
- 
- 	if (!(fattr->valid & NFS_ATTR_FATTR_GROUP_NAME))
- 		return false;
--	if (nfs_map_group_to_gid(server, group->data, group->len, &gid) == 0) {
-+	ret = nfs_map_group_to_gid(server, group->data, group->len, &gid);
-+	if (ret == 0 || ret == -ENOENT) {
- 		fattr->gid = gid;
- 		fattr->valid |= NFS_ATTR_FATTR_GROUP;
- 	}
-@@ -351,20 +355,23 @@ static ssize_t nfs_idmap_lookup_name(__u32 id, const char *type, char *buf,
- }
- 
- /* Name -> ID */
-+/* Returns -ENOENT for unknown names (with @id set to the nobody id). */
- static int nfs_idmap_lookup_id(const char *name, size_t namelen, const char *type,
- 			       __u32 *id, struct idmap *idmap)
- {
--	char id_str[NFS_UINT_MAXLEN];
-+	char id_str[NFS_UINT_MAXLEN + 1];
- 	long id_long;
- 	ssize_t data_size;
- 	int ret = 0;
- 
--	data_size = nfs_idmap_get_key(name, namelen, type, id_str, NFS_UINT_MAXLEN, idmap);
-+	data_size = nfs_idmap_get_key(name, namelen, type, id_str, sizeof(id_str), idmap);
- 	if (data_size <= 0) {
- 		ret = -EINVAL;
- 	} else {
- 		ret = kstrtol(id_str, 10, &id_long);
- 		*id = (__u32)id_long;
-+		if (!ret && *id_str != '+')
-+			ret = -ENOENT;
- 	}
- 	return ret;
- }
-@@ -719,9 +726,24 @@ int nfs_map_name_to_uid(const struct nfs_server *server, const char *name, size_
- 	__u32 id = -1;
- 	int ret = 0;
- 
--	if (!nfs_map_string_to_numeric(name, namelen, &id))
--		ret = nfs_idmap_lookup_id(name, namelen, "uid", &id, idmap);
--	if (ret == 0) {
-+	if (!nfs_map_string_to_numeric(name, namelen, &id)) {
-+		struct nfs_client *client = server->nfs_client;
-+		const char *type;
-+
-+		for(;;) {
-+			type = "xuid";
-+			if (test_bit(NFS_CS_NOXUID, &client->cl_flags))
-+				type = "uid";
-+
-+			ret = nfs_idmap_lookup_id(name, namelen, type, &id, idmap);
-+			if (ret != -EINVAL || test_bit(NFS_CS_NOXUID, &client->cl_flags))
-+				break;
-+			printk(KERN_NOTICE "NFS: Falling back from nfsidmap "
-+			       "xuid/xgid to uid/gid\n");
-+			set_bit(NFS_CS_NOXUID, &client->cl_flags);
-+		}
-+	}
-+	if (ret == 0 || ret == -ENOENT) {
- 		*uid = make_kuid(&init_user_ns, id);
- 		if (!uid_valid(*uid))
- 			ret = -ERANGE;
-@@ -736,9 +758,24 @@ int nfs_map_group_to_gid(const struct nfs_server *server, const char *name, size
- 	__u32 id = -1;
- 	int ret = 0;
- 
--	if (!nfs_map_string_to_numeric(name, namelen, &id))
--		ret = nfs_idmap_lookup_id(name, namelen, "gid", &id, idmap);
--	if (ret == 0) {
-+	if (!nfs_map_string_to_numeric(name, namelen, &id)) {
-+		struct nfs_client *client = server->nfs_client;
-+		const char *type;
-+
-+		for(;;) {
-+			type = "xgid";
-+			if (test_bit(NFS_CS_NOXUID, &client->cl_flags))
-+				type = "gid";
-+
-+			ret = nfs_idmap_lookup_id(name, namelen, type, &id, idmap);
-+			if (ret != -EINVAL || test_bit(NFS_CS_NOXUID, &client->cl_flags))
-+				break;
-+			printk(KERN_NOTICE "NFS: Falling back from nfsidmap "
-+			       "xuid/xgid to uid/gid\n");
-+			set_bit(NFS_CS_NOXUID, &client->cl_flags);
-+		}
-+	}
-+	if (ret == 0 || ret == -ENOENT) {
- 		*gid = make_kgid(&init_user_ns, id);
- 		if (!gid_valid(*gid))
- 			ret = -ERANGE;
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 7bb2dea..191369f 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -4556,7 +4556,7 @@ static struct richacl *__nfs4_get_acl_uncached(struct inode *inode)
+ 	struct nfs_server *server = NFS_SERVER(inode);
+ 	struct page *pages[DIV_ROUND_UP(NFS4ACL_SIZE_MAX, PAGE_SIZE)] = {};
+ 	struct nfs_getaclargs args = {
+-		.fh = NFS_FH(inode),
++		.inode = inode,
+ 		.acl_pages = pages,
+ 		.acl_len = ARRAY_SIZE(pages) * PAGE_SIZE,
+ 	};
 diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index eefed15..adeb894 100644
+index 2f1d6be..a73f7c6 100644
 --- a/fs/nfs/nfs4xdr.c
 +++ b/fs/nfs/nfs4xdr.c
-@@ -3875,7 +3875,8 @@ static int decode_attr_owner(struct xdr_stream *xdr, uint32_t *bitmap,
- 				ret = NFS_ATTR_FATTR_OWNER_NAME;
- 			}
- 		} else if (len < XDR_MAX_NETOBJ) {
--			if (nfs_map_name_to_uid(server, (char *)p, len, uid) == 0)
-+			ret = nfs_map_name_to_uid(server, (char *)p, len, uid);
-+			if (ret == 0 || ret == -ENOENT)
- 				ret = NFS_ATTR_FATTR_OWNER;
- 			else
- 				dprintk("%s: nfs_map_name_to_uid failed!\n",
-@@ -3918,7 +3919,8 @@ static int decode_attr_group(struct xdr_stream *xdr, uint32_t *bitmap,
- 				ret = NFS_ATTR_FATTR_GROUP_NAME;
- 			}
- 		} else if (len < XDR_MAX_NETOBJ) {
--			if (nfs_map_group_to_gid(server, (char *)p, len, gid) == 0)
-+			ret = nfs_map_group_to_gid(server, (char *)p, len, gid);
-+			if (ret == 0 || ret == -ENOENT)
- 				ret = NFS_ATTR_FATTR_GROUP;
- 			else
- 				dprintk("%s: nfs_map_group_to_gid failed!\n",
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 570a7df..c7d42b7 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -36,6 +36,7 @@ struct nfs_client {
- #define NFS_CS_RENEWD		3		/* - renewd started */
- #define NFS_CS_STOP_RENEW	4		/* no more state to renew */
- #define NFS_CS_CHECK_LEASE_TIME	5		/* need to check lease time */
-+#define NFS_CS_NOXUID		6		/* don't use idmap xuid / xgid */
- 	unsigned long		cl_flags;	/* behavior switches */
- #define NFS_CS_NORESVPORT	0		/* - use ephemeral src port */
- #define NFS_CS_DISCRTRY		1		/* - disconnect on RPC retry */
+@@ -1661,9 +1661,16 @@ encode_setacl(struct xdr_stream *xdr, struct nfs_setaclargs *arg, struct compoun
+ 	encode_nfs4_stateid(xdr, &zero_stateid);
+ 
+ 	/* Encode attribute bitmap. */
+-	p = reserve_space(xdr, 2*4);
+-	*p++ = cpu_to_be32(1);
+-	*p = cpu_to_be32(FATTR4_WORD0_ACL);
++	if (arg->server->attr_bitmask[1] & FATTR4_WORD1_DACL) {
++		p = reserve_space(xdr, 3*4);
++		*p++ = cpu_to_be32(2);
++		*p++ = 0;
++		*p = cpu_to_be32(FATTR4_WORD1_DACL);
++	} else {
++		p = reserve_space(xdr, 2*4);
++		*p++ = cpu_to_be32(1);
++		*p = cpu_to_be32(FATTR4_WORD0_ACL);
++	}
+ 
+ 	attrlen_offset = xdr->buf->len;
+ 	xdr_reserve_space(xdr, 4);  /* to be backfilled later */
+@@ -2498,9 +2505,12 @@ static void nfs4_xdr_enc_getacl(struct rpc_rqst *req, struct xdr_stream *xdr,
+ 
+ 	encode_compound_hdr(xdr, req, &hdr);
+ 	encode_sequence(xdr, &args->seq_args, &hdr);
+-	encode_putfh(xdr, args->fh, &hdr);
++	encode_putfh(xdr, NFS_FH(args->inode), &hdr);
+ 	replen = hdr.replen + op_decode_hdr_maxsz + 1;
+-	encode_getattr_two(xdr, FATTR4_WORD0_ACL, FATTR4_WORD1_MODE, &hdr);
++	if (NFS_SERVER(args->inode)->attr_bitmask[1] & FATTR4_WORD1_DACL)
++		encode_getattr_two(xdr, 0, FATTR4_WORD1_MODE | FATTR4_WORD1_DACL, &hdr);
++	else
++		encode_getattr_two(xdr, FATTR4_WORD0_ACL, FATTR4_WORD1_MODE, &hdr);
+ 
+ 	xdr_inline_pages(&req->rq_rcv_buf, replen << 2,
+ 		args->acl_pages, 0, args->acl_len);
+@@ -5402,12 +5412,25 @@ static int decode_getacl(struct xdr_stream *xdr, struct rpc_rqst *req,
+ 
+ 	if (unlikely(bitmap[0] & (FATTR4_WORD0_ACL - 1U)))
+ 		return -EIO;
+-	if (likely(bitmap[0] & FATTR4_WORD0_ACL)) {
++
++	if (bitmap[0] & FATTR4_WORD0_ACL) {
++		struct richace *ace;
++
++		if (bitmap[1] & FATTR4_WORD1_DACL)
++			return -EIO;
++
+ 		acl = decode_acl_entries(xdr, res->server);
+ 		if (IS_ERR(acl))
+ 			return PTR_ERR(acl);
++
++		status = -EIO;
++		richacl_for_each_entry(ace, acl) {
++			if (ace->e_flags & RICHACE_INHERITED_ACE)
++				goto out;
++		}
++
+ 		bitmap[0] &= ~FATTR4_WORD0_ACL;
+-	} else
++	} else if (!(bitmap[1] & FATTR4_WORD1_DACL))
+ 		return -EOPNOTSUPP;
+ 
+ 	status = -EIO;
+@@ -5417,6 +5440,23 @@ static int decode_getacl(struct xdr_stream *xdr, struct rpc_rqst *req,
+ 	status = decode_attr_mode(xdr, bitmap, &res->mode);
+ 	if (status < 0)
+ 		goto out;
++
++	if (bitmap[1] & FATTR4_WORD1_DACL) {
++		unsigned int flags;
++		__be32 *p;
++
++		p = xdr_inline_decode(xdr, 4);
++		if (unlikely(!p))
++			return -EIO;
++		flags = be32_to_cpup(p);
++
++		acl = decode_acl_entries(xdr, res->server);
++		if (IS_ERR(acl))
++			return PTR_ERR(acl);
++
++		acl->a_flags = flags;
++		bitmap[1] &= ~FATTR4_WORD1_DACL;
++	}
+ 	status = 0;
+ 
+ out:
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 337c341..9c2a078 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -695,7 +695,7 @@ struct nfs_setaclres {
+ 
+ struct nfs_getaclargs {
+ 	struct nfs4_sequence_args 	seq_args;
+-	struct nfs_fh *			fh;
++	struct inode *			inode;
+ 	size_t				acl_len;
+ 	struct page **			acl_pages;
+ };
 -- 
 2.5.0
 
