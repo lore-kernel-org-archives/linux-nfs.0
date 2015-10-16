@@ -1,53 +1,43 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([198.137.202.9]:34844 "EHLO
+Received: from bombadil.infradead.org ([198.137.202.9]:35462 "EHLO
 	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932103AbbJPMY6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Oct 2015 08:24:58 -0400
-Date: Fri, 16 Oct 2015 05:24:53 -0700
+	with ESMTP id S1752099AbbJPMZq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Oct 2015 08:25:46 -0400
+Date: Fri, 16 Oct 2015 05:25:44 -0700
 From: Christoph Hellwig <hch@infradead.org>
-To: P??draig Brady <P@draigBrady.com>
-Cc: Austin S Hemmelgarn <ahferroin7@gmail.com>,
-        Christoph Hellwig <hch@infradead.org>,
-        Andy Lutomirski <luto@amacapital.net>,
-        Anna Schumaker <Anna.Schumaker@netapp.com>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>, linux-nfs@vger.kernel.org,
-        Linux btrfs Developers List <linux-btrfs@vger.kernel.org>,
-        Linux FS Devel <linux-fsdevel@vger.kernel.org>,
-        Linux API <linux-api@vger.kernel.org>, Zach Brown <zab@zabbo.net>,
-        Al Viro <viro@zeniv.linux.org.uk>, Chris Mason <clm@fb.com>,
-        Michael Kerrisk-manpages <mtk.manpages@gmail.com>, andros@netapp.com
-Subject: Re: [PATCH v5 8/9] vfs: Add vfs_copy_file_range() support for
- pagecache copies
-Message-ID: <20151016122453.GB5889@infradead.org>
-References: <20151012231749.GC11398@birch.djwong.org>
- <561E980C.9010509@Netapp.com>
- <CALCETrU0-Q-q0u0BAPwu+mbyS+LVp6M1Hqro3xwzSm7eNCbEmg@mail.gmail.com>
- <20151014182701.GC31225@infradead.org>
- <561EA83E.8080000@gmail.com>
- <20151015063621.GA3025@infradead.org>
- <561F9B13.7020804@gmail.com>
- <20151016053808.GA29510@infradead.org>
- <5620E3A1.90408@gmail.com>
- <5620E74F.50006@draigBrady.com>
+To: Chris Mason <clm@fb.com>, Christoph Hellwig <hch@infradead.org>,
+        "Darrick J. Wong" <darrick.wong@oracle.com>,
+        P??draig Brady <P@draigBrady.com>,
+        Anna Schumaker <Anna.Schumaker@netapp.com>, linux-nfs@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-api@vger.kernel.org, zab@zabbo.net, viro@zeniv.linux.org.uk,
+        mtk.manpages@gmail.com, andros@netapp.com
+Subject: Re: [PATCH v5 9/9] btrfs: btrfs_copy_file_range() only supports
+ reflinks
+Message-ID: <20151016122544.GC5889@infradead.org>
+References: <1443634014-3026-1-git-send-email-Anna.Schumaker@Netapp.com>
+ <1443634014-3026-10-git-send-email-Anna.Schumaker@Netapp.com>
+ <20151011142939.GA30905@infradead.org>
+ <561B8A09.5070507@draigBrady.com>
+ <20151012143444.GA10156@infradead.org>
+ <20151012234106.GD11398@birch.djwong.org>
+ <20151013072959.GB10794@infradead.org>
+ <20151014184608.GK850@birch.djwong.org>
+ <20151015060045.GA23996@infradead.org>
+ <20151016114919.GB6874@ret.masoncoding.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <5620E74F.50006@draigBrady.com>
+In-Reply-To: <20151016114919.GB6874@ret.masoncoding.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Oct 16, 2015 at 01:02:23PM +0100, P??draig Brady wrote:
-> Right. reflinking is transparent to the user, though its consequences are not.
-> Consequences being the possible extra latency or ENOSPC on CoW.
+On Fri, Oct 16, 2015 at 07:49:19AM -0400, Chris Mason wrote:
+> > Yes, that would be my preference.  I'd also like to understand what
+> > exactly btrfs does in fallocate.
+> 
+> For which part?  The answer changes based on how many references there
+> are to a given fallocated region.
 
-You can get all these consequences without doing the file system reflink
-by using a COW file system, any dedup scheme or thinly provisioned or
-COW storage devices.
-
-> Therefore reflinking should be an explicit action/flag IMHO.
-
-This still does not make any sense, as it only prevents one of many
-ways a file could do COW operations underneath.  If you don't want
-ENOSPC use fallocate, or the proposed COPY_FALLOC flag.  If you want
-care about latency you need to carefull benchmark your setup but in
-general falloc / COPY_FALLOC might be a good starting point.  But for
-99% of the copies a reflink is exactly the right thing to do.
+Both cases.  With btrfs allocating new block on every write how do you
+avoid that ENOSPC?  Is there a unassigned block preallocation that's
+made persistent in some way?
