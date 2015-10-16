@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:47070 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:35318 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933152AbbJPPW7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 16 Oct 2015 11:22:59 -0400
+	id S1753317AbbJPPWx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 16 Oct 2015 11:22:53 -0400
 From: Andreas Gruenbacher <agruenba@redhat.com>
 To: Alexander Viro <viro@zeniv.linux.org.uk>, "Theodore Ts'o" <tytso@mit.edu>,
         Andreas Dilger <adilger.kernel@dilger.ca>,
@@ -14,37 +14,94 @@ To: Alexander Viro <viro@zeniv.linux.org.uk>, "Theodore Ts'o" <tytso@mit.edu>,
         xfs@oss.sgi.com, linux-kernel@vger.kernel.org,
         linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-cifs@vger.kernel.org, linux-api@vger.kernel.org
-Subject: [PATCH v11 40/48] ext4: Don't allow unmapped identifiers in richacls
-Date: Fri, 16 Oct 2015 17:18:18 +0200
-Message-Id: <1445008706-15115-41-git-send-email-agruenba@redhat.com>
+Subject: [PATCH v11 39/48] nfsd: Add support for unmapped richace identifiers
+Date: Fri, 16 Oct 2015 17:18:17 +0200
+Message-Id: <1445008706-15115-40-git-send-email-agruenba@redhat.com>
 In-Reply-To: <1445008706-15115-1-git-send-email-agruenba@redhat.com>
 References: <1445008706-15115-1-git-send-email-agruenba@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Don't allow acls which contain unmapped identifiers: they are meaningful
-for remote file systems only.
+Add support for encoding unmapped identifiers in richacl entries: local
+filesystems are not usually supposed to store unmapped identifiers, but
+allowing that for debugging purposes can be useful; for that, nfsd must
+also be able to encode them.
 
 Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
 ---
- fs/ext4/richacl.c | 4 ++++
- 1 file changed, 4 insertions(+)
+ fs/nfsd/acl.h     |  2 +-
+ fs/nfsd/nfs4acl.c | 17 +++++++++++------
+ fs/nfsd/nfs4xdr.c |  4 ++--
+ 3 files changed, 14 insertions(+), 9 deletions(-)
 
-diff --git a/fs/ext4/richacl.c b/fs/ext4/richacl.c
-index 906d048..2115385 100644
---- a/fs/ext4/richacl.c
-+++ b/fs/ext4/richacl.c
-@@ -74,6 +74,10 @@ __ext4_set_richacl(handle_t *handle, struct inode *inode, struct richacl *acl)
- 	int retval, size;
- 	void *value;
+diff --git a/fs/nfsd/acl.h b/fs/nfsd/acl.h
+index d73c664..4935144 100644
+--- a/fs/nfsd/acl.h
++++ b/fs/nfsd/acl.h
+@@ -51,7 +51,7 @@ struct svc_rqst;
+ __be32 nfsd4_decode_ace_who(struct richace *ace, struct svc_rqst *rqstp,
+ 			    char *who, u32 len);
+ __be32 nfsd4_encode_ace_who(struct xdr_stream *xdr, struct svc_rqst *rqstp,
+-			    struct richace *ace);
++			    struct richace *ace, struct richacl *acl);
  
-+	/* Don't allow acls with unmapped identifiers. */
-+	if (richacl_has_unmapped_identifiers(acl))
-+		return -EINVAL;
-+
- 	if (richacl_equiv_mode(acl, &mode) == 0) {
- 		inode->i_ctime = ext4_current_time(inode);
- 		inode->i_mode = mode;
+ struct richacl *nfsd4_get_acl(struct svc_rqst *rqstp, struct dentry *dentry);
+ __be32 nfsd4_set_acl(struct svc_rqst *rqstp, struct svc_fh *fhp,
+diff --git a/fs/nfsd/nfs4acl.c b/fs/nfsd/nfs4acl.c
+index f017a76..3cc83fd 100644
+--- a/fs/nfsd/nfs4acl.c
++++ b/fs/nfsd/nfs4acl.c
+@@ -885,17 +885,22 @@ __be32 nfsd4_decode_ace_who(struct richace *ace, struct svc_rqst *rqstp,
+ }
+ 
+ __be32 nfsd4_encode_ace_who(struct xdr_stream *xdr, struct svc_rqst *rqstp,
+-			    struct richace *ace)
++			    struct richace *ace, struct richacl *acl)
+ {
+-	if (ace->e_flags & RICHACE_SPECIAL_WHO) {
+-		unsigned int special_id = ace->e_id.special;
++	if (ace->e_flags & (RICHACE_SPECIAL_WHO | RICHACE_UNMAPPED_WHO)) {
+ 		const char *who;
+ 		unsigned int len;
+ 		__be32 *p;
+ 
+-		if (!nfs4acl_special_id_to_who(special_id, &who, &len)) {
+-			WARN_ON_ONCE(1);
+-			return nfserr_serverfault;
++		if (ace->e_flags & RICHACE_SPECIAL_WHO) {
++			if (!nfs4acl_special_id_to_who(ace->e_id.special,
++						       &who, &len)) {
++				WARN_ON_ONCE(1);
++				return nfserr_serverfault;
++			}
++		} else {
++			who = richace_unmapped_identifier(ace, acl);
++			len = strlen(who);
+ 		}
+ 		p = xdr_reserve_space(xdr, len + 4);
+ 		if (!p)
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 33d028c..8728d0e 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -2325,7 +2325,7 @@ static __be32 nfsd4_encode_acl_entries(struct xdr_stream *xdr,
+ {
+ 	__be32 *p;
+ 
+-	flags_mask &= ~RICHACE_SPECIAL_WHO;
++	flags_mask &= ~(RICHACE_SPECIAL_WHO | RICHACE_UNMAPPED_WHO);
+ 
+ 	p = xdr_reserve_space(xdr, 4);
+ 	if (!p)
+@@ -2347,7 +2347,7 @@ static __be32 nfsd4_encode_acl_entries(struct xdr_stream *xdr,
+ 			*p++ = cpu_to_be32(ace->e_type);
+ 			*p++ = cpu_to_be32(ace->e_flags & flags_mask);
+ 			*p++ = cpu_to_be32(ace->e_mask & ace_mask);
+-			status = nfsd4_encode_ace_who(xdr, rqstp, ace);
++			status = nfsd4_encode_ace_who(xdr, rqstp, ace, acl);
+ 			if (status)
+ 				return status;
+ 		}
 -- 
 2.5.0
 
