@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:57270 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:47980 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S964871AbbJPPW1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 16 Oct 2015 11:22:27 -0400
+	id S965015AbbJPPXj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 16 Oct 2015 11:23:39 -0400
 From: Andreas Gruenbacher <agruenba@redhat.com>
 To: Alexander Viro <viro@zeniv.linux.org.uk>, "Theodore Ts'o" <tytso@mit.edu>,
         Andreas Dilger <adilger.kernel@dilger.ca>,
@@ -14,339 +14,182 @@ To: Alexander Viro <viro@zeniv.linux.org.uk>, "Theodore Ts'o" <tytso@mit.edu>,
         xfs@oss.sgi.com, linux-kernel@vger.kernel.org,
         linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-cifs@vger.kernel.org, linux-api@vger.kernel.org
-Subject: [PATCH v11 35/48] nfsd: Add richacl support
-Date: Fri, 16 Oct 2015 17:18:13 +0200
-Message-Id: <1445008706-15115-36-git-send-email-agruenba@redhat.com>
+Subject: [PATCH v11 46/48] nfs: Distinguish missing users and groups from nobody
+Date: Fri, 16 Oct 2015 17:18:24 +0200
+Message-Id: <1445008706-15115-47-git-send-email-agruenba@redhat.com>
 In-Reply-To: <1445008706-15115-1-git-send-email-agruenba@redhat.com>
 References: <1445008706-15115-1-git-send-email-agruenba@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On file systems with richacls enabled, get and set richacls directly
-instead of converting from / to posix acls.
+User and group names are mapped to IDs using the kernel keyring infrastructure.
+When a name does not exist, it is mapped to the nobody user or group; there is
+no way to tell the difference from the mapping result.
+
+In ACLs, we need to make that distinction.  For that, use the new "xuid" and
+"xgid" maps: they behave like the old "uid" and "gid" maps except that the IDs
+of existing users and groups are prefixed by a "+" sign.
+
+When the "xuid" or "xgid" maps are not supported, nfs falls back to the "uid"
+and "gid" maps.
 
 Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
-Acked-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/nfsd/acl.h      |   3 +-
- fs/nfsd/nfs4acl.c  | 124 ++++++++++++++++++++++++++++++++++++++---------------
- fs/nfsd/nfs4proc.c |   2 +-
- fs/nfsd/nfs4xdr.c  |  34 +++++++++++----
- 4 files changed, 117 insertions(+), 46 deletions(-)
+ fs/nfs/nfs4idmap.c        | 57 ++++++++++++++++++++++++++++++++++++++---------
+ fs/nfs/nfs4xdr.c          |  6 +++--
+ include/linux/nfs_fs_sb.h |  1 +
+ 3 files changed, 52 insertions(+), 12 deletions(-)
 
-diff --git a/fs/nfsd/acl.h b/fs/nfsd/acl.h
-index 1c5deb5..d73c664 100644
---- a/fs/nfsd/acl.h
-+++ b/fs/nfsd/acl.h
-@@ -53,8 +53,7 @@ __be32 nfsd4_decode_ace_who(struct richace *ace, struct svc_rqst *rqstp,
- __be32 nfsd4_encode_ace_who(struct xdr_stream *xdr, struct svc_rqst *rqstp,
- 			    struct richace *ace);
- 
--int nfsd4_get_acl(struct svc_rqst *rqstp, struct dentry *dentry,
--		  struct richacl **acl);
-+struct richacl *nfsd4_get_acl(struct svc_rqst *rqstp, struct dentry *dentry);
- __be32 nfsd4_set_acl(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 		     struct richacl *acl);
- 
-diff --git a/fs/nfsd/nfs4acl.c b/fs/nfsd/nfs4acl.c
-index 6d3bb72..f017a76 100644
---- a/fs/nfsd/nfs4acl.c
-+++ b/fs/nfsd/nfs4acl.c
-@@ -40,6 +40,8 @@
- #include <linux/nfs_fs.h>
- #include <linux/richacl_compat.h>
- #include <linux/nfs4acl.h>
-+#include <linux/xattr.h>
-+#include <linux/richacl_xattr.h>
- 
- #include "nfsfh.h"
- #include "nfsd.h"
-@@ -129,32 +131,28 @@ static short ace2type(struct richace *);
- static void _posix_to_richacl_one(struct posix_acl *, struct richacl_alloc *,
- 				unsigned int);
- 
--int
--nfsd4_get_acl(struct svc_rqst *rqstp, struct dentry *dentry,
--	      struct richacl **acl)
-+static struct richacl *
-+nfsd4_get_posix_acl(struct svc_rqst *rqstp, struct dentry *dentry)
+diff --git a/fs/nfs/nfs4idmap.c b/fs/nfs/nfs4idmap.c
+index 2e49022..34dd404 100644
+--- a/fs/nfs/nfs4idmap.c
++++ b/fs/nfs/nfs4idmap.c
+@@ -100,10 +100,12 @@ static bool nfs_fattr_map_owner_name(struct nfs_server *server, struct nfs_fattr
  {
- 	struct inode *inode = d_inode(dentry);
--	int error = 0;
- 	struct posix_acl *pacl = NULL, *dpacl = NULL;
- 	struct richacl_alloc alloc;
- 	unsigned int flags = 0;
- 	int count;
+ 	struct nfs4_string *owner = fattr->owner_name;
+ 	kuid_t uid;
++	int ret;
  
- 	pacl = get_acl(inode, ACL_TYPE_ACCESS);
--	if (!pacl)
--		pacl = posix_acl_from_mode(inode->i_mode, GFP_KERNEL);
--
--	if (IS_ERR(pacl))
--		return PTR_ERR(pacl);
-+	if (IS_ERR_OR_NULL(pacl))
-+		return (void *)pacl;
- 
--	/* allocate for worst case: one (deny, allow) pair each: */
-+	/* Allocate for worst case: one (deny, allow) pair each.  The resulting
-+	   acl will be released shortly and won't be cached. */
- 	count = 2 * pacl->a_count;
- 
- 	if (S_ISDIR(inode->i_mode)) {
- 		flags = FLAG_DIRECTORY;
- 		dpacl = get_acl(inode, ACL_TYPE_DEFAULT);
- 		if (IS_ERR(dpacl)) {
--			error = PTR_ERR(dpacl);
-+			alloc.acl = (void *)dpacl;
- 			goto rel_pacl;
- 		}
- 
-@@ -163,7 +161,7 @@ nfsd4_get_acl(struct svc_rqst *rqstp, struct dentry *dentry,
+ 	if (!(fattr->valid & NFS_ATTR_FATTR_OWNER_NAME))
+ 		return false;
+-	if (nfs_map_name_to_uid(server, owner->data, owner->len, &uid) == 0) {
++	ret = nfs_map_name_to_uid(server, owner->data, owner->len, &uid);
++	if (ret == 0 || ret == -ENOENT) {
+ 		fattr->uid = uid;
+ 		fattr->valid |= NFS_ATTR_FATTR_OWNER;
  	}
+@@ -114,10 +116,12 @@ static bool nfs_fattr_map_group_name(struct nfs_server *server, struct nfs_fattr
+ {
+ 	struct nfs4_string *group = fattr->group_name;
+ 	kgid_t gid;
++	int ret;
  
- 	if (!richacl_prepare(&alloc, count)) {
--		error = -ENOMEM;
-+		alloc.acl = ERR_PTR(-ENOMEM);
- 		goto out;
+ 	if (!(fattr->valid & NFS_ATTR_FATTR_GROUP_NAME))
+ 		return false;
+-	if (nfs_map_group_to_gid(server, group->data, group->len, &gid) == 0) {
++	ret = nfs_map_group_to_gid(server, group->data, group->len, &gid);
++	if (ret == 0 || ret == -ENOENT) {
+ 		fattr->gid = gid;
+ 		fattr->valid |= NFS_ATTR_FATTR_GROUP;
  	}
- 
-@@ -172,13 +170,37 @@ nfsd4_get_acl(struct svc_rqst *rqstp, struct dentry *dentry,
- 	if (dpacl)
- 		_posix_to_richacl_one(dpacl, &alloc, flags | FLAG_DEFAULT_ACL);
- 
--	*acl = alloc.acl;
--
- out:
- 	posix_acl_release(dpacl);
- rel_pacl:
- 	posix_acl_release(pacl);
--	return error;
-+	return alloc.acl;
-+}
-+
-+struct richacl *
-+nfsd4_get_acl(struct svc_rqst *rqstp, struct dentry *dentry)
-+{
-+	struct inode *inode = d_inode(dentry);
-+	struct richacl *acl;
-+	int error;
-+
-+	if (IS_RICHACL(inode))
-+		acl = get_richacl(inode);
-+	else
-+		acl = nfsd4_get_posix_acl(rqstp, dentry);
-+	if (IS_ERR(acl))
-+		return acl;
-+	else if (acl == NULL) {
-+		acl = richacl_from_mode(inode->i_mode);
-+		if (acl == NULL)
-+			acl = ERR_PTR(-ENOMEM);
-+	}
-+	error = richacl_apply_masks(&acl, inode->i_uid);
-+	if (error) {
-+		richacl_put(acl);
-+		acl = ERR_PTR(error);
-+	}
-+	return acl;
+@@ -351,20 +355,23 @@ static ssize_t nfs_idmap_lookup_name(__u32 id, const char *type, char *buf,
  }
  
- struct posix_acl_summary {
-@@ -744,56 +766,88 @@ out_estate:
+ /* Name -> ID */
++/* Returns -ENOENT for unknown names (with @id set to the nobody id). */
+ static int nfs_idmap_lookup_id(const char *name, size_t namelen, const char *type,
+ 			       __u32 *id, struct idmap *idmap)
+ {
+-	char id_str[NFS_UINT_MAXLEN];
++	char id_str[NFS_UINT_MAXLEN + 1];
+ 	long id_long;
+ 	ssize_t data_size;
+ 	int ret = 0;
+ 
+-	data_size = nfs_idmap_get_key(name, namelen, type, id_str, NFS_UINT_MAXLEN, idmap);
++	data_size = nfs_idmap_get_key(name, namelen, type, id_str, sizeof(id_str), idmap);
+ 	if (data_size <= 0) {
+ 		ret = -EINVAL;
+ 	} else {
+ 		ret = kstrtol(id_str, 10, &id_long);
+ 		*id = (__u32)id_long;
++		if (!ret && *id_str != '+')
++			ret = -ENOENT;
+ 	}
  	return ret;
  }
+@@ -719,9 +726,24 @@ int nfs_map_name_to_uid(const struct nfs_server *server, const char *name, size_
+ 	__u32 id = -1;
+ 	int ret = 0;
  
--__be32
--nfsd4_set_acl(struct svc_rqst *rqstp, struct svc_fh *fhp, struct richacl *acl)
-+static int
-+nfsd4_set_posix_acl(struct svc_rqst *rqstp, struct dentry *dentry,
-+		    struct richacl *acl)
- {
--	__be32 error;
- 	int host_error;
--	struct dentry *dentry;
--	struct inode *inode;
-+	struct inode *inode = d_inode(dentry);
- 	struct posix_acl *pacl = NULL, *dpacl = NULL;
- 	unsigned int flags = 0;
- 
--	/* Get inode */
--	error = fh_verify(rqstp, fhp, 0, NFSD_MAY_SATTR);
--	if (error)
--		return error;
--
--	dentry = fhp->fh_dentry;
--	inode = d_inode(dentry);
--
- 	if (!inode->i_op->set_acl || !IS_POSIXACL(inode))
--		return nfserr_attrnotsupp;
-+		return -EOPNOTSUPP;
- 
- 	if (S_ISDIR(inode->i_mode))
- 		flags = FLAG_DIRECTORY;
- 
- 	host_error = nfs4_richacl_to_posix(acl, &pacl, &dpacl, flags);
- 	if (host_error == -EINVAL)
--		return nfserr_attrnotsupp;
-+		return -EOPNOTSUPP;
- 	if (host_error < 0)
--		goto out_nfserr;
-+		return host_error;
- 
- 	host_error = inode->i_op->set_acl(inode, pacl, ACL_TYPE_ACCESS);
- 	if (host_error < 0)
- 		goto out_release;
- 
--	if (S_ISDIR(inode->i_mode)) {
-+	if (S_ISDIR(inode->i_mode))
- 		host_error = inode->i_op->set_acl(inode, dpacl,
- 						  ACL_TYPE_DEFAULT);
--	}
- 
- out_release:
- 	posix_acl_release(pacl);
- 	posix_acl_release(dpacl);
--out_nfserr:
-+	return host_error;
-+}
+-	if (!nfs_map_string_to_numeric(name, namelen, &id))
+-		ret = nfs_idmap_lookup_id(name, namelen, "uid", &id, idmap);
+-	if (ret == 0) {
++	if (!nfs_map_string_to_numeric(name, namelen, &id)) {
++		struct nfs_client *client = server->nfs_client;
++		const char *type;
 +
-+static int
-+nfsd4_set_richacl(struct svc_rqst *rqstp, struct dentry *dentry,
-+		  struct richacl *acl)
-+{
-+	int host_error;
-+	struct inode *inode = d_inode(dentry);
-+	size_t size = richacl_xattr_size(acl);
-+	char *buffer;
++		for(;;) {
++			type = "xuid";
++			if (test_bit(NFS_CS_NOXUID, &client->cl_flags))
++				type = "uid";
 +
-+	if (!inode->i_op->setxattr || !IS_RICHACL(inode))
-+		return -EOPNOTSUPP;
-+
-+	richacl_compute_max_masks(acl);
-+
-+	buffer = kmalloc(size, GFP_KERNEL);
-+	if (!buffer)
-+		return -ENOMEM;
-+	richacl_to_xattr(&init_user_ns, acl, buffer, size);
-+	host_error = inode->i_op->setxattr(dentry, XATTR_NAME_RICHACL,
-+					   buffer, size, 0);
-+	kfree(buffer);
-+	return host_error;
-+}
-+
-+__be32
-+nfsd4_set_acl(struct svc_rqst *rqstp, struct svc_fh *fhp, struct richacl *acl)
-+{
-+	struct dentry *dentry;
-+	int host_error;
-+	__be32 error;
-+
-+	error = fh_verify(rqstp, fhp, 0, NFSD_MAY_SATTR);
-+	if (error)
-+		return error;
-+	dentry = fhp->fh_dentry;
-+
-+	if (IS_RICHACL(d_inode(dentry)))
-+		host_error = nfsd4_set_richacl(rqstp, dentry, acl);
-+	else
-+		host_error = nfsd4_set_posix_acl(rqstp, dentry, acl);
-+
- 	if (host_error == -EOPNOTSUPP)
- 		return nfserr_attrnotsupp;
- 	else
- 		return nfserrno(host_error);
- }
- 
--
- static short
- ace2type(struct richace *ace)
- {
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 2430235..1bcfda2 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -110,7 +110,7 @@ check_attr_support(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	 * in current environment or not.
- 	 */
- 	if (bmval[0] & FATTR4_WORD0_ACL) {
--		if (!IS_POSIXACL(d_inode(dentry)))
-+		if (!IS_ACL(d_inode(dentry)))
- 			return nfserr_attrnotsupp;
- 	}
- 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 8603f40..682a7d8 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -340,11 +340,24 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
- 
- 		richacl_for_each_entry(ace, *acl) {
- 			READ_BUF(16); len += 16;
--			ace->e_type = be32_to_cpup(p++);
--			ace->e_flags = be32_to_cpup(p++);
--			ace->e_mask = be32_to_cpup(p++);
--			if (ace->e_flags & RICHACE_SPECIAL_WHO)
-+
-+			dummy32 = be32_to_cpup(p++);
-+			if (dummy32 > RICHACE_ACCESS_DENIED_ACE_TYPE)
-+				return nfserr_inval;
-+			ace->e_type = dummy32;
-+
-+			dummy32 = be32_to_cpup(p++);
-+			if (dummy32 & (~RICHACE_VALID_FLAGS |
-+				       RICHACE_INHERITED_ACE |
-+				       RICHACE_SPECIAL_WHO))
- 				return nfserr_inval;
-+			ace->e_flags = dummy32;
-+
-+			dummy32 = be32_to_cpup(p++);
-+			if (dummy32 & ~NFS4_ACE_MASK_ALL)
-+				return nfserr_inval;
-+			ace->e_mask = dummy32;
-+
- 			dummy32 = be32_to_cpup(p++);
- 			READ_BUF(dummy32);
- 			len += XDR_QUADLEN(dummy32) << 2;
-@@ -2330,7 +2343,11 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
- 		fhp = tempfh;
- 	}
- 	if (bmval0 & FATTR4_WORD0_ACL) {
--		err = nfsd4_get_acl(rqstp, dentry, &acl);
-+		acl = nfsd4_get_acl(rqstp, dentry);
-+		if (IS_ERR(acl)) {
-+			err = PTR_ERR(acl);
-+			acl = NULL;
++			ret = nfs_idmap_lookup_id(name, namelen, type, &id, idmap);
++			if (ret != -EINVAL || test_bit(NFS_CS_NOXUID, &client->cl_flags))
++				break;
++			printk(KERN_NOTICE "NFS: Falling back from nfsidmap "
++			       "xuid/xgid to uid/gid\n");
++			set_bit(NFS_CS_NOXUID, &client->cl_flags);
 +		}
- 		if (err == -EOPNOTSUPP)
- 			bmval0 &= ~FATTR4_WORD0_ACL;
- 		else if (err == -EINVAL) {
-@@ -2370,7 +2387,7 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
- 		u32 word1 = nfsd_suppattrs1(minorversion);
- 		u32 word2 = nfsd_suppattrs2(minorversion);
++	}
++	if (ret == 0 || ret == -ENOENT) {
+ 		*uid = make_kuid(&init_user_ns, id);
+ 		if (!uid_valid(*uid))
+ 			ret = -ERANGE;
+@@ -736,9 +758,24 @@ int nfs_map_group_to_gid(const struct nfs_server *server, const char *name, size
+ 	__u32 id = -1;
+ 	int ret = 0;
  
--		if (!IS_POSIXACL(dentry->d_inode))
-+		if (!IS_ACL(d_inode(dentry)))
- 			word0 &= ~FATTR4_WORD0_ACL;
- 		if (!contextsupport)
- 			word2 &= ~FATTR4_WORD2_SECURITY_LABEL;
-@@ -2505,7 +2522,8 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
- 			if (!p)
- 				goto out_resource;
- 			*p++ = cpu_to_be32(ace->e_type);
--			*p++ = cpu_to_be32(ace->e_flags & ~RICHACE_SPECIAL_WHO);
-+			*p++ = cpu_to_be32(ace->e_flags &
-+				~(RICHACE_SPECIAL_WHO | RICHACE_INHERITED_ACE));
- 			*p++ = cpu_to_be32(ace->e_mask & NFS4_ACE_MASK_ALL);
- 			status = nfsd4_encode_ace_who(xdr, rqstp, ace);
- 			if (status)
-@@ -2517,7 +2535,7 @@ out_acl:
- 		p = xdr_reserve_space(xdr, 4);
- 		if (!p)
- 			goto out_resource;
--		*p++ = cpu_to_be32(IS_POSIXACL(dentry->d_inode) ?
-+		*p++ = cpu_to_be32(IS_ACL(d_inode(dentry)) ?
- 			ACL4_SUPPORT_ALLOW_ACL|ACL4_SUPPORT_DENY_ACL : 0);
- 	}
- 	if (bmval0 & FATTR4_WORD0_CANSETTIME) {
+-	if (!nfs_map_string_to_numeric(name, namelen, &id))
+-		ret = nfs_idmap_lookup_id(name, namelen, "gid", &id, idmap);
+-	if (ret == 0) {
++	if (!nfs_map_string_to_numeric(name, namelen, &id)) {
++		struct nfs_client *client = server->nfs_client;
++		const char *type;
++
++		for(;;) {
++			type = "xgid";
++			if (test_bit(NFS_CS_NOXUID, &client->cl_flags))
++				type = "gid";
++
++			ret = nfs_idmap_lookup_id(name, namelen, type, &id, idmap);
++			if (ret != -EINVAL || test_bit(NFS_CS_NOXUID, &client->cl_flags))
++				break;
++			printk(KERN_NOTICE "NFS: Falling back from nfsidmap "
++			       "xuid/xgid to uid/gid\n");
++			set_bit(NFS_CS_NOXUID, &client->cl_flags);
++		}
++	}
++	if (ret == 0 || ret == -ENOENT) {
+ 		*gid = make_kgid(&init_user_ns, id);
+ 		if (!gid_valid(*gid))
+ 			ret = -ERANGE;
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index eefed15..adeb894 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -3875,7 +3875,8 @@ static int decode_attr_owner(struct xdr_stream *xdr, uint32_t *bitmap,
+ 				ret = NFS_ATTR_FATTR_OWNER_NAME;
+ 			}
+ 		} else if (len < XDR_MAX_NETOBJ) {
+-			if (nfs_map_name_to_uid(server, (char *)p, len, uid) == 0)
++			ret = nfs_map_name_to_uid(server, (char *)p, len, uid);
++			if (ret == 0 || ret == -ENOENT)
+ 				ret = NFS_ATTR_FATTR_OWNER;
+ 			else
+ 				dprintk("%s: nfs_map_name_to_uid failed!\n",
+@@ -3918,7 +3919,8 @@ static int decode_attr_group(struct xdr_stream *xdr, uint32_t *bitmap,
+ 				ret = NFS_ATTR_FATTR_GROUP_NAME;
+ 			}
+ 		} else if (len < XDR_MAX_NETOBJ) {
+-			if (nfs_map_group_to_gid(server, (char *)p, len, gid) == 0)
++			ret = nfs_map_group_to_gid(server, (char *)p, len, gid);
++			if (ret == 0 || ret == -ENOENT)
+ 				ret = NFS_ATTR_FATTR_GROUP;
+ 			else
+ 				dprintk("%s: nfs_map_group_to_gid failed!\n",
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index 570a7df..c7d42b7 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -36,6 +36,7 @@ struct nfs_client {
+ #define NFS_CS_RENEWD		3		/* - renewd started */
+ #define NFS_CS_STOP_RENEW	4		/* no more state to renew */
+ #define NFS_CS_CHECK_LEASE_TIME	5		/* need to check lease time */
++#define NFS_CS_NOXUID		6		/* don't use idmap xuid / xgid */
+ 	unsigned long		cl_flags;	/* behavior switches */
+ #define NFS_CS_NORESVPORT	0		/* - use ephemeral src port */
+ #define NFS_CS_DISCRTRY		1		/* - disconnect on RPC retry */
 -- 
 2.5.0
 
