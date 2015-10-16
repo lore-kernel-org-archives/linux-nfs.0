@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qg0-f52.google.com ([209.85.192.52]:32873 "EHLO
-	mail-qg0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932227AbbJPNYK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Oct 2015 09:24:10 -0400
-Subject: [PATCH v3 01/16] xprtrdma: Enable swap-on-NFS/RDMA
+Received: from mail-qg0-f41.google.com ([209.85.192.41]:35827 "EHLO
+	mail-qg0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932171AbbJPNYS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Oct 2015 09:24:18 -0400
+Subject: [PATCH v3 02/16] xprtrdma: Re-arm after missed events
 From: Chuck Lever <chuck.lever@oracle.com>
 To: anna.schumaker@netapp.com
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Fri, 16 Oct 2015 09:24:08 -0400
-Message-ID: <20151016132408.6819.70670.stgit@oracle-122.nfsv4bat.org>
+Date: Fri, 16 Oct 2015 09:24:16 -0400
+Message-ID: <20151016132416.6819.91661.stgit@oracle-122.nfsv4bat.org>
 In-Reply-To: <20151016131958.6819.98407.stgit@oracle-122.nfsv4bat.org>
 References: <20151016131958.6819.98407.stgit@oracle-122.nfsv4bat.org>
 MIME-Version: 1.0
@@ -16,33 +16,121 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-After adding a swapfile on an NFS/RDMA mount and removing the
-normal swap partition, I was able to push the NFS client well
-into swap without any issue.
+ib_req_notify_cq(IB_CQ_REPORT_MISSED_EVENTS) returns a positive
+value if WCs were added to a CQ after the last completion upcall
+but before the CQ has been re-armed.
 
-I forgot to swapoff the NFS file before rebooting. This pinned
-the NFS mount and the IB core and provider, causing shutdown to
-hang. I think this is expected and safe behavior. Probably
-shutdown scripts should "swapoff -a" before unmounting any
-filesystems.
+Commit 7f23f6f6e388 ("xprtrmda: Reduce lock contention in
+completion handlers") assumed that when ib_req_notify_cq() returned
+a positive RC, the CQ had also been successfully re-armed, making
+it safe to return control to the provider without losing any
+completion signals. That is an invalid assumption.
 
+Change both completion handlers to continue polling while
+ib_req_notify_cq() returns a positive value.
+
+Fixes: 7f23f6f6e388 ("xprtrmda: Reduce lock contention in ...")
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 Reviewed-by: Sagi Grimberg <sagig@mellanox.com>
+Reviewed-by: Devesh Sharma <devesh.sharma@avagotech.com>
 Tested-By: Devesh Sharma <devesh.sharma@avagotech.com>
 ---
- net/sunrpc/xprtrdma/transport.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ net/sunrpc/xprtrdma/verbs.c |   66 +++++++------------------------------------
+ 1 file changed, 10 insertions(+), 56 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index 41e452b..e9e5ed7 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -676,7 +676,7 @@ static void xprt_rdma_print_stats(struct rpc_xprt *xprt, struct seq_file *seq)
- static int
- xprt_rdma_enable_swap(struct rpc_xprt *xprt)
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 8a477e2..c713909 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -179,38 +179,17 @@ rpcrdma_sendcq_poll(struct ib_cq *cq, struct rpcrdma_ep *ep)
+ 	return 0;
+ }
+ 
+-/*
+- * Handle send, fast_reg_mr, and local_inv completions.
+- *
+- * Send events are typically suppressed and thus do not result
+- * in an upcall. Occasionally one is signaled, however. This
+- * prevents the provider's completion queue from wrapping and
+- * losing a completion.
++/* Handle provider send completion upcalls.
+  */
+ static void
+ rpcrdma_sendcq_upcall(struct ib_cq *cq, void *cq_context)
  {
--	return -EINVAL;
-+	return 0;
+ 	struct rpcrdma_ep *ep = (struct rpcrdma_ep *)cq_context;
+-	int rc;
+-
+-	rc = rpcrdma_sendcq_poll(cq, ep);
+-	if (rc) {
+-		dprintk("RPC:       %s: ib_poll_cq failed: %i\n",
+-			__func__, rc);
+-		return;
+-	}
+ 
+-	rc = ib_req_notify_cq(cq,
+-			IB_CQ_NEXT_COMP | IB_CQ_REPORT_MISSED_EVENTS);
+-	if (rc == 0)
+-		return;
+-	if (rc < 0) {
+-		dprintk("RPC:       %s: ib_req_notify_cq failed: %i\n",
+-			__func__, rc);
+-		return;
+-	}
+-
+-	rpcrdma_sendcq_poll(cq, ep);
++	do {
++		rpcrdma_sendcq_poll(cq, ep);
++	} while (ib_req_notify_cq(cq, IB_CQ_NEXT_COMP |
++				  IB_CQ_REPORT_MISSED_EVENTS) > 0);
+ }
+ 
+ static void
+@@ -274,42 +253,17 @@ out_schedule:
+ 	return rc;
+ }
+ 
+-/*
+- * Handle receive completions.
+- *
+- * It is reentrant but processes single events in order to maintain
+- * ordering of receives to keep server credits.
+- *
+- * It is the responsibility of the scheduled tasklet to return
+- * recv buffers to the pool. NOTE: this affects synchronization of
+- * connection shutdown. That is, the structures required for
+- * the completion of the reply handler must remain intact until
+- * all memory has been reclaimed.
++/* Handle provider receive completion upcalls.
+  */
+ static void
+ rpcrdma_recvcq_upcall(struct ib_cq *cq, void *cq_context)
+ {
+ 	struct rpcrdma_ep *ep = (struct rpcrdma_ep *)cq_context;
+-	int rc;
+-
+-	rc = rpcrdma_recvcq_poll(cq, ep);
+-	if (rc) {
+-		dprintk("RPC:       %s: ib_poll_cq failed: %i\n",
+-			__func__, rc);
+-		return;
+-	}
+ 
+-	rc = ib_req_notify_cq(cq,
+-			IB_CQ_NEXT_COMP | IB_CQ_REPORT_MISSED_EVENTS);
+-	if (rc == 0)
+-		return;
+-	if (rc < 0) {
+-		dprintk("RPC:       %s: ib_req_notify_cq failed: %i\n",
+-			__func__, rc);
+-		return;
+-	}
+-
+-	rpcrdma_recvcq_poll(cq, ep);
++	do {
++		rpcrdma_recvcq_poll(cq, ep);
++	} while (ib_req_notify_cq(cq, IB_CQ_NEXT_COMP |
++				  IB_CQ_REPORT_MISSED_EVENTS) > 0);
  }
  
  static void
