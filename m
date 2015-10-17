@@ -1,52 +1,76 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx0b-00082601.pphosted.com ([67.231.153.30]:1650 "EHLO
-	mx0b-00082601.pphosted.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751924AbbJQNpU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 17 Oct 2015 09:45:20 -0400
-Date: Sat, 17 Oct 2015 09:44:40 -0400
-From: Chris Mason <clm@fb.com>
-To: Dave Chinner <david@fromorbit.com>
-CC: Christoph Hellwig <hch@infradead.org>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>,
-        P??draig Brady <P@draigBrady.com>,
-        Anna Schumaker <Anna.Schumaker@netapp.com>,
-        <linux-nfs@vger.kernel.org>, <linux-btrfs@vger.kernel.org>,
-        <linux-fsdevel@vger.kernel.org>, <linux-api@vger.kernel.org>,
-        <zab@zabbo.net>, <viro@zeniv.linux.org.uk>, <mtk.manpages@gmail.com>,
-        <andros@netapp.com>
-Subject: Re: [PATCH v5 9/9] btrfs: btrfs_copy_file_range() only supports
- reflinks
-Message-ID: <20151017134440.GE6874@ret.masoncoding.com>
-References: <561B8A09.5070507@draigBrady.com>
- <20151012143444.GA10156@infradead.org>
- <20151012234106.GD11398@birch.djwong.org>
- <20151013072959.GB10794@infradead.org>
- <20151014184608.GK850@birch.djwong.org>
- <20151015060045.GA23996@infradead.org>
- <20151016114919.GB6874@ret.masoncoding.com>
- <20151016122544.GC5889@infradead.org>
- <20151016131950.GC6874@ret.masoncoding.com>
- <20151016214435.GA2786@dastard>
+Received: from ipmail06.adl6.internode.on.net ([150.101.137.145]:51231 "EHLO
+	ipmail06.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1750894AbbJQXWz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 17 Oct 2015 19:22:55 -0400
+Date: Sun, 18 Oct 2015 10:17:59 +1100
+From: Dave Chinner <david@fromorbit.com>
+To: Austin S Hemmelgarn <ahferroin7@gmail.com>
+Cc: Andreas Gruenbacher <agruenba@redhat.com>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        linux-ext4 <linux-ext4@vger.kernel.org>, xfs@oss.sgi.com,
+        LKML <linux-kernel@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        linux-cifs@vger.kernel.org, Linux API <linux-api@vger.kernel.org>,
+        "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: [PATCH v11 21/48] ext4: Add richacl feature flag
+Message-ID: <20151017231759.GV27164@dastard>
+References: <1445008706-15115-1-git-send-email-agruenba@redhat.com>
+ <1445008706-15115-22-git-send-email-agruenba@redhat.com>
+ <5621346E.5000500@gmail.com>
+ <CAHc6FU7sR2zN-K3un74wCv+1NPnrqJ=LYiWo+YQ_2X0kopyoTQ@mail.gmail.com>
+ <562141AD.60302@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-In-Reply-To: <20151016214435.GA2786@dastard>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <562141AD.60302@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Oct 17, 2015 at 08:44:35AM +1100, Dave Chinner wrote:
-> 
-> > When we're doing writes, it'll check the preallocated extents for extra
-> > refs and force COW if any exist.  So writes into a preallocated region
-> > can enospc.
-> 
-> This really seems like an btrfs interpretation/implementation
-> issue, not a problem for reflink in general.
-> 
+On Fri, Oct 16, 2015 at 02:27:57PM -0400, Austin S Hemmelgarn wrote:
+> On 2015-10-16 13:41, Andreas Gruenbacher wrote:
+> >On Fri, Oct 16, 2015 at 7:31 PM, Austin S Hemmelgarn
+> ><ahferroin7@gmail.com> wrote:
+> >>I would like to re-iterate, on both XFS and ext4, I _really_ think this
+> >>should be a ro_compat flag, and not an incompat one.  If a person has the
+> >>ability to mount the FS (even if it's a read-only mount), then they by
+> >>definition have read access to the file or partition that the filesystem is
+> >>contained in, which means that any ACL's stored on the filesystem are
+> >>functionally irrelevant,
+> >
+> >It is unfortunately not safe to make such a file system accessible to
+> >other users, so the feature is not strictly read-only compatible.
+> If it's not safe WRT data integrity, then the design needs to be
+> reworked, as that directly implies that isn't safe for even every
+> day usage on a writable filesystem.
 
-Right, now matter how we do it there are tradeoffs, and this one seemed
-the least surprising to me.  I don't think it's a big problem at all.
+This is exactly what we have *incompat feature flags for*: to
+protect old code that doesn't know about potentially dangerous new
+on-disk formats from trying to parse those formats and causing
+unpredictable bad things from happening.
 
-Automatically replacing preallocated extents with holes during clone
-seems like a better compromise though (at least for btrfs anyway).
+Austin, your arguments hold no weight because they are no different
+to the considerations for any new on-disk feature: the user needs to
+have both kernel and userspace support to recover filesystems that
+go bad. If you are using a brand new fs/kernel feature, then it is
+expected that you know that your DR processes take this into
+account.
 
--chris
+This is also why we XFS devs wait at least a year after new on-disk
+features are merged into XFS before we consider turning them on by
+default. i.e.  to give distros and recovery utilities time to pick
+up kernels and userspace pacakges that support the new feature
+before the average user will encounter it....
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
