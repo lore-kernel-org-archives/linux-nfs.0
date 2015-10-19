@@ -1,23 +1,21 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f179.google.com ([209.85.223.179]:33832 "EHLO
-	mail-io0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750904AbbJSNMp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 Oct 2015 09:12:45 -0400
+Received: from mail-ig0-f177.google.com ([209.85.213.177]:36750 "EHLO
+	mail-ig0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751642AbbJSNQz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 Oct 2015 09:16:55 -0400
 Subject: Re: [PATCH v11 21/48] ext4: Add richacl feature flag
-To: Dave Chinner <david@fromorbit.com>
+To: Andreas Gruenbacher <agruenba@redhat.com>
 References: <1445008706-15115-1-git-send-email-agruenba@redhat.com>
  <1445008706-15115-22-git-send-email-agruenba@redhat.com>
  <5621346E.5000500@gmail.com>
  <CAHc6FU7sR2zN-K3un74wCv+1NPnrqJ=LYiWo+YQ_2X0kopyoTQ@mail.gmail.com>
- <562141AD.60302@gmail.com> <20151017231759.GV27164@dastard>
-Cc: Andreas Gruenbacher <agruenba@redhat.com>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        "Theodore Ts'o" <tytso@mit.edu>,
+Cc: Alexander Viro <viro@zeniv.linux.org.uk>, "Theodore Ts'o" <tytso@mit.edu>,
         Andreas Dilger <adilger.kernel@dilger.ca>,
         "J. Bruce Fields" <bfields@fieldses.org>,
         Jeff Layton <jlayton@poochiereds.net>,
         Trond Myklebust <trond.myklebust@primarydata.com>,
         Anna Schumaker <anna.schumaker@netapp.com>,
+        Dave Chinner <david@fromorbit.com>,
         linux-ext4 <linux-ext4@vger.kernel.org>, xfs@oss.sgi.com,
         LKML <linux-kernel@vger.kernel.org>,
         linux-fsdevel <linux-fsdevel@vger.kernel.org>,
@@ -25,82 +23,49 @@ Cc: Andreas Gruenbacher <agruenba@redhat.com>,
         linux-cifs@vger.kernel.org, Linux API <linux-api@vger.kernel.org>,
         "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 From: Austin S Hemmelgarn <ahferroin7@gmail.com>
-Message-ID: <5624EC42.8050708@gmail.com>
-Date: Mon, 19 Oct 2015 09:12:34 -0400
+Message-ID: <5624ED40.7040206@gmail.com>
+Date: Mon, 19 Oct 2015 09:16:48 -0400
 MIME-Version: 1.0
-In-Reply-To: <20151017231759.GV27164@dastard>
-Content-Type: multipart/signed; protocol="application/pkcs7-signature"; micalg=sha-512; boundary="------------ms010802090608060909070409"
+In-Reply-To: <CAHc6FU7sR2zN-K3un74wCv+1NPnrqJ=LYiWo+YQ_2X0kopyoTQ@mail.gmail.com>
+Content-Type: multipart/signed; protocol="application/pkcs7-signature"; micalg=sha-512; boundary="------------ms030800000600070409050505"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 This is a cryptographically signed message in MIME format.
 
---------------ms010802090608060909070409
+--------------ms030800000600070409050505
 Content-Type: text/plain; charset=windows-1252; format=flowed
 Content-Transfer-Encoding: quoted-printable
 
-On 2015-10-17 19:17, Dave Chinner wrote:
-> On Fri, Oct 16, 2015 at 02:27:57PM -0400, Austin S Hemmelgarn wrote:
->> On 2015-10-16 13:41, Andreas Gruenbacher wrote:
->>> On Fri, Oct 16, 2015 at 7:31 PM, Austin S Hemmelgarn
->>> <ahferroin7@gmail.com> wrote:
->>>> I would like to re-iterate, on both XFS and ext4, I _really_ think t=
-his
->>>> should be a ro_compat flag, and not an incompat one.  If a person ha=
-s the
->>>> ability to mount the FS (even if it's a read-only mount), then they =
-by
->>>> definition have read access to the file or partition that the filesy=
-stem is
->>>> contained in, which means that any ACL's stored on the filesystem ar=
-e
->>>> functionally irrelevant,
->>>
->>> It is unfortunately not safe to make such a file system accessible to=
+On 2015-10-16 13:41, Andreas Gruenbacher wrote:
+> On Fri, Oct 16, 2015 at 7:31 PM, Austin S Hemmelgarn
+> <ahferroin7@gmail.com> wrote:
+>> I would like to re-iterate, on both XFS and ext4, I _really_ think thi=
+s
+>> should be a ro_compat flag, and not an incompat one.  If a person has =
+the
+>> ability to mount the FS (even if it's a read-only mount), then they by=
 
->>> other users, so the feature is not strictly read-only compatible.
->> If it's not safe WRT data integrity, then the design needs to be
->> reworked, as that directly implies that isn't safe for even every
->> day usage on a writable filesystem.
+>> definition have read access to the file or partition that the filesyst=
+em is
+>> contained in, which means that any ACL's stored on the filesystem are
+>> functionally irrelevant,
 >
-> This is exactly what we have *incompat feature flags for*: to
-> protect old code that doesn't know about potentially dangerous new
-> on-disk formats from trying to parse those formats and causing
-> unpredictable bad things from happening.
-However, unless things have changed (I haven't had time to re-read the=20
-patch-set yet), then the only change will be a new set of xattrs, and=20
-that type of change _shouldn't_ break existing code that doesn't know=20
-about them. Andreas really needs to explain _exactly_ why it isn't safe=20
-to mount this on a kernel that doesn't support it and let other users=20
-access it, and if the answer is 'because the ACL's won't be honored'=20
-then that really isn't acceptable reason IMHO, because (as I outlined in =
+> It is unfortunately not safe to make such a file system accessible to
+> other users, so the feature is not strictly read-only compatible.
+>
+OK, seeing as I wasn't particularly clear as to why I object to this in=20
+my other e-mail, let's try this again.
 
-the previous e-mail) being able to mount the filesystem implies that=20
-they have at least read access to the underlying storage, which means=20
-that the ACL's in the filesystem are irrelevant as far as any competent=20
-individual who is actively trying to illegitimately access the data is=20
-concerned.
-> Austin, your arguments hold no weight because they are no different
-> to the considerations for any new on-disk feature: the user needs to
-> have both kernel and userspace support to recover filesystems that
-> go bad. If you are using a brand new fs/kernel feature, then it is
-> expected that you know that your DR processes take this into
-> account.
-Except that the given argument from Andreas as to why it's an incompat=20
-feature does not clarify whether it's to prevent breaking the existing=20
-filesystem code (which I understand and agree is a proper usage for such =
-
-a flag), or to try and provide some thin facade of security when there=20
-really is none (which is what the bit about 'and expose it to other=20
-users' really sounds like to me).  Yes the argument that I made which=20
-you have replied to was admittedly shortsighted and didn't need to be=20
-made to get the point that I was actually trying to make across, and I=20
-sincerely apologize for that.
+Can you please explain exactly why it isn't safe to make such a=20
+filesystem accessible to other users?  Because that _really_ sounds to=20
+me like you are trying to rely on this being un-mountable on a kernel=20
+that doesn't support richacls to try and provide the illusion of better=20
+security.
 
 
 
-
---------------ms010802090608060909070409
+--------------ms030800000600070409050505
 Content-Type: application/pkcs7-signature; name="smime.p7s"
 Content-Transfer-Encoding: base64
 Content-Disposition: attachment; filename="smime.p7s"
@@ -142,9 +107,9 @@ F6gUv9/mo6riv3A5bem/BdbgaJoPnWQD9D8wSyci9G4LKC+HQAMdLmGoeZfpJzKHMYIE0TCC
 BM0CAQEwgYAweTEQMA4GA1UEChMHUm9vdCBDQTEeMBwGA1UECxMVaHR0cDovL3d3dy5jYWNl
 cnQub3JnMSIwIAYDVQQDExlDQSBDZXJ0IFNpZ25pbmcgQXV0aG9yaXR5MSEwHwYJKoZIhvcN
 AQkBFhJzdXBwb3J0QGNhY2VydC5vcmcCAxEt+DANBglghkgBZQMEAgMFAKCCAiEwGAYJKoZI
-hvcNAQkDMQsGCSqGSIb3DQEHATAcBgkqhkiG9w0BCQUxDxcNMTUxMDE5MTMxMjM0WjBPBgkq
-hkiG9w0BCQQxQgRAmxOkF4plL1+dwwSYoBxHLizItbQwDrZjHhG9YUbOSe6ygHc0hiNJtVFK
-Gaub22tFDKBLPwrAPce6uAazICXIWTBsBgkqhkiG9w0BCQ8xXzBdMAsGCWCGSAFlAwQBKjAL
+hvcNAQkDMQsGCSqGSIb3DQEHATAcBgkqhkiG9w0BCQUxDxcNMTUxMDE5MTMxNjQ4WjBPBgkq
+hkiG9w0BCQQxQgRARV6FVy8ON7WyTnhIiAHOwTSFhz3p0KC2fGHMjP9x8EYihIRJXwV8A1lr
+GKCnA11haUrftMPG6T6MwJvROKcnzTBsBgkqhkiG9w0BCQ8xXzBdMAsGCWCGSAFlAwQBKjAL
 BglghkgBZQMEAQIwCgYIKoZIhvcNAwcwDgYIKoZIhvcNAwICAgCAMA0GCCqGSIb3DQMCAgFA
 MAcGBSsOAwIHMA0GCCqGSIb3DQMCAgEoMIGRBgkrBgEEAYI3EAQxgYMwgYAweTEQMA4GA1UE
 ChMHUm9vdCBDQTEeMBwGA1UECxMVaHR0cDovL3d3dy5jYWNlcnQub3JnMSIwIAYDVQQDExlD
@@ -152,14 +117,14 @@ QSBDZXJ0IFNpZ25pbmcgQXV0aG9yaXR5MSEwHwYJKoZIhvcNAQkBFhJzdXBwb3J0QGNhY2Vy
 dC5vcmcCAxEt+DCBkwYLKoZIhvcNAQkQAgsxgYOggYAweTEQMA4GA1UEChMHUm9vdCBDQTEe
 MBwGA1UECxMVaHR0cDovL3d3dy5jYWNlcnQub3JnMSIwIAYDVQQDExlDQSBDZXJ0IFNpZ25p
 bmcgQXV0aG9yaXR5MSEwHwYJKoZIhvcNAQkBFhJzdXBwb3J0QGNhY2VydC5vcmcCAxEt+DAN
-BgkqhkiG9w0BAQEFAASCAgAvII814wRDy81RBAJMCIQY6ZG4Mi5WOHhz9sVic+8gAEJjNpP5
-VTYhuVJokfgQ8YVIN5WTV4+8oEC9prO+QABhvUbKdJghrAafOiji+RHvPw53wO5ITMKLbZlY
-ay0kXDIKRb5CAuLfNOEOrScZ/quNVSRb95hO7c7u0a+v54VYGgdLA7gkdHCGpiU0LWwMFqkQ
-vajdy6jVj2JBftkTpBoki8eiK0PjTyp1PrSpnRq6P6bhGqwl6SirgyLbIzTBEG5BvKH8LEe/
-wxRoky7aEEJUWnXwdCj8G+AZyFb2dvDjZnURihi8jpkPBH8HA7g6OE5pEsebUgiEr5dBpY/5
-K7Ag0cXXvhfHBI8hSN2kFwBhbW7VAOATRf+uHjmAVRtDG52p2VWPfdmgaekpF1cqKZ0Ch8ym
-twB+RNHFzWJkz3x0FDuXCgicjbkyehKZeuMPDrs/MuT/H3Y1C7twgftS8eLNDBJDDJB+/FgV
-s/rKccEhbG7cgy71pa/8/3Uifg6rslx5QOKNyqLS+MESfEC16G1D6v26ocUAfLd3qsu5aevC
-GAC8LBBxXTE7cFSibnC3ZVTQhxBrCMnfbBTe4VQBLNIZXwaLfiokw/SLjyTaMfYqt1s/l8i0
-rJGcLE0Aw2SD1NI38lQzCFLlq4670K+mhszfc243K60zRrMy5ntEVvwEcQAAAAAAAA==
---------------ms010802090608060909070409--
+BgkqhkiG9w0BAQEFAASCAgBySybJn5n6gL1K0NqULeU/N3XCZxSHe8Q2IUD71ZuiWCXoVYzF
+dCdkwFqrmkO3nLrEZzdCg01rP/UqG5V5vFs3pO9REX2eEIZmw29HFZ6zryN+iKDKAhQ9EX+E
+S13Pw6AZWZayWowqKp3hFBFGgpGpyXy852bB4AlifgWRZb0SErGY0K+DrnCMZazDUq4/FEHi
+lZ180OX35bqdEwAXXyWbZ2qdXXJun1NUsLdoIc/3mkGVwqec4kKoa2cTgKYJq5IQ+MHEfy65
+WxZVQW8v3Ul3QFZjkSL5d5qCYgn9Ol9GbBURPHd1NBkJq/w1xl9pIPIohikul8cY6whYx3LE
+dPYnjSyrHlU0CLgkIDsEZWSqEVxnipMTP9cxf9hZJNfY3D6mY7bLeyvLauKLoA/De3IAee4Q
+KUVF9joGIMiSy8gifPODhPgmq2uWxCkBzK/sW56NUYcl0qvFOPx/DeaYSqijwTe6fuGPISw7
+RfIDZ9Mx9TEN0+UvFviq9F2I8PzIL0TdfQ3bS7/2YZrx7k131m6tShSnejdHEy8rHrg27m0R
+bcolCOOErNVGc8DcsZt90M9Y248sEgr9mD0jboWY8nY064/eyZwFZZwwT1yWg+MeQQ1ojOjl
+lTQXu/NdFls9aKK6wY+WpoyeFZX5cnfBtHAn1fvo4PG0b9AM+SHGLUTvBAAAAAAAAA==
+--------------ms030800000600070409050505--
