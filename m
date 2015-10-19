@@ -1,188 +1,98 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f172.google.com ([209.85.223.172]:36645 "EHLO
-	mail-io0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751358AbbJSQUG (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 Oct 2015 12:20:06 -0400
-Subject: Re: [PATCH v11 21/48] ext4: Add richacl feature flag
-To: Andreas Gruenbacher <agruenba@redhat.com>
-References: <1445008706-15115-1-git-send-email-agruenba@redhat.com>
- <1445008706-15115-22-git-send-email-agruenba@redhat.com>
- <5621346E.5000500@gmail.com>
- <CAHc6FU7sR2zN-K3un74wCv+1NPnrqJ=LYiWo+YQ_2X0kopyoTQ@mail.gmail.com>
- <5624ED40.7040206@gmail.com>
- <CAHc6FU4CVQAn6TCQzC8r9m9URmqD_eHQBwhDK2o_o4eb3myW=A@mail.gmail.com>
-Cc: Alexander Viro <viro@zeniv.linux.org.uk>, "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@poochiereds.net>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Dave Chinner <david@fromorbit.com>,
-        linux-ext4 <linux-ext4@vger.kernel.org>, xfs@oss.sgi.com,
-        LKML <linux-kernel@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-cifs@vger.kernel.org, Linux API <linux-api@vger.kernel.org>,
-        "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-From: Austin S Hemmelgarn <ahferroin7@gmail.com>
-Message-ID: <5625182C.3050007@gmail.com>
-Date: Mon, 19 Oct 2015 12:19:56 -0400
+Received: from mail4.gandi.net ([217.70.183.210]:43330 "EHLO gandi.net"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1750995AbbJSQdg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 19 Oct 2015 12:33:36 -0400
+Date: Mon, 19 Oct 2015 18:33:32 +0200
+From: William Dauchy <william@gandi.net>
+To: linux-fsdevel@vger.kernel.org
+Cc: Linux NFS mailing list <linux-nfs@vger.kernel.org>,
+        Jeff Layton <jeff.layton@primarydata.com>
+Subject: locks_get_lock_context null deref
+Message-ID: <20151019163332.GI10696@gandi.net>
 MIME-Version: 1.0
-In-Reply-To: <CAHc6FU4CVQAn6TCQzC8r9m9URmqD_eHQBwhDK2o_o4eb3myW=A@mail.gmail.com>
-Content-Type: multipart/signed; protocol="application/pkcs7-signature"; micalg=sha-512; boundary="------------ms070003050802000306030105"
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature"; boundary="WHz+neNWvhIGAO8A"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is a cryptographically signed message in MIME format.
 
---------------ms070003050802000306030105
-Content-Type: text/plain; charset=utf-8; format=flowed
+--WHz+neNWvhIGAO8A
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 Content-Transfer-Encoding: quoted-printable
 
-On 2015-10-19 11:34, Andreas Gruenbacher wrote:
-> On Mon, Oct 19, 2015 at 3:16 PM, Austin S Hemmelgarn
-> <ahferroin7@gmail.com> wrote:
->> On 2015-10-16 13:41, Andreas Gruenbacher wrote:
->>>
->>> On Fri, Oct 16, 2015 at 7:31 PM, Austin S Hemmelgarn
->>> <ahferroin7@gmail.com> wrote:
->>>>
->>>> I would like to re-iterate, on both XFS and ext4, I _really_ think t=
-his
->>>> should be a ro_compat flag, and not an incompat one.  If a person ha=
-s the
->>>> ability to mount the FS (even if it's a read-only mount), then they =
-by
->>>> definition have read access to the file or partition that the filesy=
-stem
->>>> is contained in, which means that any ACL's stored on the filesystem=
- are
->>>> functionally irrelevant,
->>>
->>> It is unfortunately not safe to make such a file system accessible to=
+Hello,
 
->>> other users, so the feature is not strictly read-only compatible.
->>>
->> OK, seeing as I wasn't particularly clear as to why I object to this i=
-n my
->> other e-mail, let's try this again.
->>
->> Can you please explain exactly why it isn't safe to make such a filesy=
-stem
->> accessible to other users?
->
-> See here: http://www.spinics.net/lists/linux-ext4/msg49541.html
-OK, so to clarify, this isn't 'safe' because:
-1. The richacls that exist on the filesystem won't be enforced.
-2. Newly created files will have no ACL's set.
+I am getting the following null deref on locks_get_lock_context using a v4.=
+1.x
+(x86_64) while using the nfs client v4.0.
 
-It is worth noting that these are also issues with any kind of access=20
-control mechanism.  Using your logic, all LSM's need to set separate=20
-incompat feature flags in filesystems they are being used on, as should=20
-POSIX ACLs, and for that matter so should Samba in many circumstances,=20
-and any NFS system not using idmapping or synchronized/centralized user=20
-databases.  Now, if the SELinux (or SMACK, or TOMOYO) people had taken=20
-this approach, then I might be inclined to not complain (at least not to =
-
-you, I'd be complaining to them about this rather poor design choice),=20
-but that is not the case, because (I assume) they realized that all this =
-
-provides is a false sense of security.
-
-Issue 1, as I have said before, is functionally irrelevant for anyone=20
-who actually knows what they are doing; all you need for ext* is one of=20
-the myriad of programs for un-deleting files on such a filesystem (such=20
-as ext4magic or extundelete, and good luck convincing them to not allow=20
-being used when this flag is set), for BTRFS you just need the regular=20
-filesystem administration utilities ('btrfs restore' works wonders, and=20
-that one will _never_ honor any kind of permissions, because it's for=20
-disaster recovery), and while I don't know of any way to do this with=20
-XFS, that is only because I don't use XFS myself and have not had the=20
-need to provide tech support for anyone who does.  If somebody=20
-absolutely _needs_ a guarantee that the acls will be enforced, they need =
-
-to be using whole disk encryption, not just acls, and even that can't=20
-provide such a guarantee.
-
-As for issue 2, that can be solved by making it a read-only compatible=20
-flag, which is what I was suggesting be done in the first place.  The=20
-only situation I can think of that this would cause an issue for is if=20
-the filesystem was not cleanly unmounted, and the log-replay doesn't set =
-
-the ACL's, but mounting an uncleanly unmounted filesystem that has=20
-richacls on a kernel without support should fall into one of the=20
-following 2 cases more than 99% of the time:
-1. The system crashed hard, and the regular kernel is un-bootable for=20
-some reason, in this case you're at the point of disaster recovery,=20
-should not be exposing _anything_ to a multi-user environment, and=20
-probably care a lot more about being able to get the system running=20
-again than about not accidentally creating a file with a missing ACL.
-2. The filesystem was maliciously stolen in some way (either the=20
-hardware was acquired, or more likely, someone got an image of a still=20
-mounted filesystem), in which case all of my statements above regarding=20
-issue 1 apply.
+Any hint to help debug that issue?
 
 
---------------ms070003050802000306030105
-Content-Type: application/pkcs7-signature; name="smime.p7s"
-Content-Transfer-Encoding: base64
-Content-Disposition: attachment; filename="smime.p7s"
-Content-Description: S/MIME Cryptographic Signature
+BUG: unable to handle kernel NULL pointer dereference at 00000000000001c8
+IP: [<ffffffff811d0cf3>] locks_get_lock_context+0x3/0xc0
+PGD 0=20
+Oops: 0000 [#1] SMP=20
+CPU: 1 PID: 1773 Comm: kworker/1:1H Not tainted 4.1.11-rc1 #1
+Workqueue: rpciod ffffffff8164fff0
+task: ffff8810374deba0 ti: ffff8810374df150 task.ti: ffff8810374df150
+RIP: 0010:[<ffffffff811d0cf3>]  [<ffffffff811d0cf3>] locks_get_lock_context=
++0x3/0xc0
+RSP: 0000:ffff881036007bb0  EFLAGS: 00010246
+RAX: ffff881036007c30 RBX: ffff881001981880 RCX: 0000000000000002
+RDX: 00000000000006ed RSI: 0000000000000002 RDI: 0000000000000000
+RBP: ffff881036007c08 R08: 0000000000000000 R09: 0000000000000001
+R10: 0000000000000000 R11: ffff88101db69948 R12: ffff8810019818d8
+R13: ffff881036007bc8 R14: ffff880e225d81c0 R15: ffff881edfd2b400
+FS:  0000000000000000(0000) GS:ffff88103fc20000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+CR2: 00000000000001c8 CR3: 000000000169b000 CR4: 00000000000606f0
+Stack:
+ ffffffff811d2710 ffff881036007bc8 ffffffff819f1af1 ffff881036007bc8
+ ffff881036007bc8 ffff881036007c08 ffff881001981880 ffff8810019818d8
+ ffff881036007c48 ffff880e225d81c0 ffff881edfd2b400 ffff881036007c88
+Call Trace:
+ [<ffffffff811d2710>] ? flock_lock_file+0x30/0x270
+ [<ffffffff811d3ad1>] flock_lock_file_wait+0x41/0xf0
+ [<ffffffff8168be66>] ? _raw_spin_unlock+0x26/0x40
+ [<ffffffff81268de9>] do_vfs_lock+0x19/0x40
+ [<ffffffff812695cc>] nfs4_locku_done+0x5c/0xf0
+ [<ffffffff8164f3f4>] rpc_exit_task+0x34/0xb0
+ [<ffffffff8164fcd9>] __rpc_execute+0x79/0x390
+ [<ffffffff81650000>] rpc_async_schedule+0x10/0x20
+ [<ffffffff81086095>] process_one_work+0x1a5/0x450
+ [<ffffffff81086024>] ? process_one_work+0x134/0x450
+ [<ffffffff8108638b>] worker_thread+0x4b/0x4a0
+ [<ffffffff81086340>] ? process_one_work+0x450/0x450
+ [<ffffffff81086340>] ? process_one_work+0x450/0x450
+ [<ffffffff8108d777>] kthread+0xf7/0x110
+ [<ffffffff8108d680>] ? __kthread_parkme+0xa0/0xa0
+ [<ffffffff8168ce3e>] ret_from_fork+0x3e/0x70
+ [<ffffffff8108d680>] ? __kthread_parkme+0xa0/0xa0
+Code: 48 b8 00 00 00 00 00 00 00 80 55 48 89 e5 48 09 c1 ff d1 5d 85 c0 0f =
+95 c0 0f b6 c0 eb b9 66 2e 0f 1f 84 00 00 00 00 00 83 fe 02 <48> 8b 87 c8 0=
+1 00 00 0f 84 a0 00 00 00 48 85 c0 0f 85 97 00 00=20
+RIP  [<ffffffff811d0cf3>] locks_get_lock_context+0x3/0xc0
+ RSP <ffff881036007bb0>
+CR2: 00000000000001c8
+---[ end trace 2da9686dda1b5574 ]---
 
-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
-cnQub3JnMSIwIAYDVQQDExlDQSBDZXJ0IFNpZ25pbmcgQXV0aG9yaXR5MSEwHwYJKoZIhvcN
-AQkBFhJzdXBwb3J0QGNhY2VydC5vcmcCAxEt+DANBglghkgBZQMEAgMFAKCCAiEwGAYJKoZI
-hvcNAQkDMQsGCSqGSIb3DQEHATAcBgkqhkiG9w0BCQUxDxcNMTUxMDE5MTYxOTU2WjBPBgkq
-hkiG9w0BCQQxQgRAfC+gD4JHtSqkBVo4Uo2fM9IhhiB/VP79yU7hftrGucAlQ8sWak5Fc75t
-foKee/4RQUokGo2Rhum3jYMn9QUxuDBsBgkqhkiG9w0BCQ8xXzBdMAsGCWCGSAFlAwQBKjAL
-BglghkgBZQMEAQIwCgYIKoZIhvcNAwcwDgYIKoZIhvcNAwICAgCAMA0GCCqGSIb3DQMCAgFA
-MAcGBSsOAwIHMA0GCCqGSIb3DQMCAgEoMIGRBgkrBgEEAYI3EAQxgYMwgYAweTEQMA4GA1UE
-ChMHUm9vdCBDQTEeMBwGA1UECxMVaHR0cDovL3d3dy5jYWNlcnQub3JnMSIwIAYDVQQDExlD
-QSBDZXJ0IFNpZ25pbmcgQXV0aG9yaXR5MSEwHwYJKoZIhvcNAQkBFhJzdXBwb3J0QGNhY2Vy
-dC5vcmcCAxEt+DCBkwYLKoZIhvcNAQkQAgsxgYOggYAweTEQMA4GA1UEChMHUm9vdCBDQTEe
-MBwGA1UECxMVaHR0cDovL3d3dy5jYWNlcnQub3JnMSIwIAYDVQQDExlDQSBDZXJ0IFNpZ25p
-bmcgQXV0aG9yaXR5MSEwHwYJKoZIhvcNAQkBFhJzdXBwb3J0QGNhY2VydC5vcmcCAxEt+DAN
-BgkqhkiG9w0BAQEFAASCAgBR0bu7sMjL43EBbSzC72JYWjlFdYJJ61yr/YlC9Ot5dASTKiPd
-YSFBqhutOQHvWZ17Q84t9cig/XxSX4KX9VSckl6MRU9Fo/y7A0q7xbfSl90N3jcUhhE/flRX
-29BIoQbRuDigPgTJaQoIhW3hfoA5ZscfUCDHlBGXmnAZ+kWwqGWzMZL3IOPl1ZUKqfY6NfYQ
-YSjJ65aizDJjIqpgnRQIUNXVJ14hg/GBEM/6n2H3sFEDGtVM+fw2ehICKT99LyYueB/fB+iG
-vYWeSOzc18HwIAUu2c3SVi9mPRWNHtXES8ajqkS4eQsNGPpQfMq8ZbOMPizz2r0chYe74tXc
-VxguvDf2kFUFTFzCDV7PNMS+TlVL8By22g3R7ifrNcBW7SP77FI2UMsm53/BfaMOSDp3VDrG
-12LAuyk4rACHrCp4YUxwfwzfhX8HmfZbbJS4vRXeBIuXT+S8BDAe34rmIEvUb566Ixaxzrh7
-ttWEtfn6a2xPQvkBNNcANgNVRWsTC4Qj/e5UFuhTsVAq+0yfcSglZOuo6g6jyp2iU+PRQNt9
-qO5pxFUDgJvGgSTIGJzQ97DNPo3GlDKZBvzyooDAZAcutyxKpvBeYsjw+63bpGU0Xk70MZrG
-b8qPTEhBxhWlklqYcd+kiuX8SulzlvyDKmSGJSGHJVH0KFTqWV3gcuYx3wAAAAAAAA==
---------------ms070003050802000306030105--
+
+Thanks,
+--=20
+William
+
+--WHz+neNWvhIGAO8A
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1
+
+iEYEARECAAYFAlYlG1wACgkQ1I6eqOUidQEc+gCgieFWA0CtyPubu7xod2Qo7SaW
+RNkAnAmr91b82iw2+gA1JnzbcHnAyvtB
+=Y7lE
+-----END PGP SIGNATURE-----
+
+--WHz+neNWvhIGAO8A--
