@@ -1,56 +1,103 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([198.137.202.9]:50159 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752583AbbJRSaO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 18 Oct 2015 14:30:14 -0400
-Date: Sun, 18 Oct 2015 11:30:13 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Anna Schumaker <Anna.Schumaker@netapp.com>
-Cc: linux-nfs@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-api@vger.kernel.org,
-        zab@zabbo.net, viro@zeniv.linux.org.uk, clm@fb.com,
-        darrick.wong@oracle.com, mtk.manpages@gmail.com, andros@netapp.com,
-        hch@infradead.org
-Subject: Re: [PATCH v6 5/4] copy_file_range.2: New page documenting
- copy_file_range()
-Message-ID: <20151018183013.GA11200@infradead.org>
-References: <1445029707-31549-1-git-send-email-Anna.Schumaker@Netapp.com>
- <1445029707-31549-6-git-send-email-Anna.Schumaker@Netapp.com>
+Received: from mx2.suse.de ([195.135.220.15]:38343 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752001AbbJSBIt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 18 Oct 2015 21:08:49 -0400
+From: Neil Brown <neilb@suse.com>
+To: util-linux@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Mon, 19 Oct 2015 12:08:41 +1100
+Subject: mount does not accurately identify existing NFS mounts, and shouldn't try.
+Message-ID: <87twpnll5y.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1445029707-31549-6-git-send-email-Anna.Schumaker@Netapp.com>
+Content-Type: multipart/signed; boundary="=-=-=";
+	micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Just commenting on the man page here as the comment is about sematics.
-All the infrastructure in the patch looks reasonable to me, but this
-is something we need to get right.
+--=-=-=
+Content-Type: text/plain
 
-> +.B COPY_FR_REFLINK
-> +Create a lightweight "reflink", where data is not copied until
-> +one of the files is modified.
-> +.PP
-> +The default behavior
-> +.RI ( flags
-> +== 0) is to perform a full data copy of the requested range.
-> +.SH RETURN VALUE
-> +Upon successful completion,
-> +.BR copy_file_range ()
-> +will return the number of bytes copied between files.
-> +This could be less than the length originally requested.
 
-As mentioned in the previous discussion I fundamentally disagree with
-the way your word the flags here.
+When I run "mount -a" (and possibly in other circumstances) mount
+attempts to determine if the requested filesystem is already mounted.
+It seems to have some handling for various special cases, but doesn't
+handle all cases properly.
 
-flags = 0 gives you the data from source at dest, period.  How it's
-implemented is up to the file system as a user cannot observe how data
-actually is stored underneath.
+For example, if I have
+  server:/export /import nfs ....
+  192.168.1.1:/private private nfs ....
 
-Additionaly I think the 'clone' option with it's stronger guarantees
-should be a separate system call.  So for now just have no supported
-flag and leave it up to the file system and storage device how to
-implement it.
+in /etc/fstab and the IP address of 'server' is 192.168.1.1,
+then both entries will appear in /proc/mounts with the same host name
+(depending on which order there were mounted).
 
-For the future a COPY_FALLOC flag taht guaranatees you do not get ENOSPC
-on the copied range will be very useful, but given the complexity I
-think it's not something we should add now.
+When I run "mount -a" a second time it will detect that one of these is
+already correctly mounted, and will ignore it.
+The other will not be detected as already being mounted (as the hostname
+appears different) and "mount -a" will try to mount it again.
+
+This will fail with "EBUSY" and mount will report an error
+   .... is busy or already mounted.
+
+So while both filesystems are already mounted, we only get an error for
+one of them.
+
+The irony here is that while it is hard for user-space to determine
+if the mounted filesystem matches the requested filesystem it is trivial
+for the kernel.
+For NFS we could try canonicalizing the server name, but undoubtedly
+other issues would arrive.  I believe there are similar issues with
+btrfs and submount, though I have looked closely.
+
+For the kernel, it is as simple as
+
+	/* Refuse the same filesystem on the same mount point */
+	err = -EBUSY;
+	if (path->mnt->mnt_sb == newmnt->mnt.mnt_sb &&
+	    path->mnt->mnt_root == path->dentry)
+		goto unlock;
+
+This is the *only* time that the kernel returns EBUSY for a "mount a new
+filesystem" request (remount can return EBUSY for other reasons I
+think).
+
+So in the case where "mount" thinks it should check if the filesystem is
+already mounted and ignore the request if it is, the best thing it can
+do is to just try the mount and ignore any "EBUSY" error status - treat
+that the same as success.
+
+So all that code for "is this the same mountpoint" can probably be
+discarded.
+
+Did I miss any important consideration there?
+
+Unfortunately this change could be awkward to implement as /sbin/mount
+decides whether to try the mount and (for NFS), /sbin/mount.nfs gives an
+error message if EBUSY is returned.  Would we need to pass a "noebusy"
+flag, but only if mount.nfs were willing to accept it....
+
+Any suggestions?
+
+NeilBrown
+
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2
+
+iQIcBAEBCAAGBQJWJEKZAAoJEDnsnt1WYoG5Dd4QAKMlLVdfC7ndMIAMc4Rob442
+bmBFgu3wuoQSG6JlxXTJZEQp7qpJ6G33BTA1U4lkYgdLaXB9l4EtE5THaQHNEzZv
+ulVU/m/ZPn7swezA+HtK/ShhEOlIOtMKFGsSGuxDw9H8IB5TYQw9oEm031y7fE2o
+ffLYOCec922/JYv+Don6efL/QA0ue0nkEOxghN6N2Wq14/i5SqZvMEwEuO3uFiR0
+OeTB+krwc9wdbJlr183EVxh01OIY6Pf6THQe4EFVuHS6Gj0rqUjD971jGTxj1Hyo
+9PHmhCXFBOsFTVLb6bO4M5kkp6QsMGlmct+KTb0QyevNVyBYpgmIVYBEeTLhrDvV
+hdSD/ncsG+liir75t+MvwBjhMMK/ouERtg16yCgvO9s6Gb/8X8LT1r2VBRQwIfzs
+0QMS+O2xV9LgyDrwQnuML8XB+EPfi0LBJIajB9qXUlDynVB+lgmH4jmgBz1pD9P/
+f+VAINL/lElU5YSOEHEwNYGn+WYrZRZ2Hd/Nrr6jHy7gQ9Q+8X99RwqunTOClqMm
+yQBsY+XLOxhsvXvLt8sIxk/T6a1v/VrO4JyEYe9Pf2py+V4rcZvpgmkI+9ZiMaGW
+WY6xLUt3ErVzLFZGxhp+cCpcKRxHxhnuXp+r8xsJuV9x1Su1h9W3QA1kz94D5zfZ
+74oKZkBAn5nCC5oVyDdG
+=JepF
+-----END PGP SIGNATURE-----
+--=-=-=--
