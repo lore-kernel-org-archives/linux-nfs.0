@@ -1,50 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:50410 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:50411 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752594AbbJSVsE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 19 Oct 2015 17:48:04 -0400
-Date: Mon, 19 Oct 2015 17:48:01 -0400
-From: Bruce Fields <bfields@fieldses.org>
-To: Frank Filz <ffilzlnx@mindspring.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: Pull request for pynfs
-Message-ID: <20151019214801.GA16551@fieldses.org>
-References: <012101d10853$7cae4ac0$760ae040$@mindspring.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <012101d10853$7cae4ac0$760ae040$@mindspring.com>
+	id S1754644AbbJSVzh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 19 Oct 2015 17:55:37 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 1/2] nfsd: fix clid_inuse on mount with security change
+Date: Mon, 19 Oct 2015 17:55:34 -0400
+Message-Id: <1445291735-16717-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Oct 16, 2015 at 01:44:42PM -0700, Frank Filz wrote:
-> Bruce,
-> 
-> Please pull the top patch from:
-> 
-> https://github.com/ffilz/pynfs/commits/master
-> 
-> It fixes CID2 to allow NFS4_OK when SETCLIENTID with a different principal
-> replaces a clientid that has no state, and adds CID2a which expects
-> NFS4ERR_CLID_INUSE since it does have state.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Thanks!
+In bakeathon testing Solaris client was getting CLID_INUSE error when
+doing a krb5 mount soon after an auth_sys mount, or vice versa.
 
-This leave us with two test functions both named "testInUse".
+That's not really necessary since in this case the old client doesn't
+have any state any more:
 
-I applied the following to get both tests working.
+	http://tools.ietf.org/html/rfc7530#page-103
 
---b.
+	"when the server gets a SETCLIENTID for a client ID that
+	currently has no state, or it has state but the lease has
+	expired, rather than returning NFS4ERR_CLID_INUSE, the server
+	MUST allow the SETCLIENTID and confirm the new client ID if
+	followed by the appropriate SETCLIENTID_CONFIRM."
 
-diff --git a/nfs4.0/servertests/st_setclientid.py b/nfs4.0/servertests/st_setclientid.py
-index 0fb59cd7f542..fbeab22e5026 100644
---- a/nfs4.0/servertests/st_setclientid.py
-+++ b/nfs4.0/servertests/st_setclientid.py
-@@ -50,7 +50,7 @@ def testClientUpdateCallback(t, env):
-     res = c.close_file(t.code, fh, stateid)
-     check(res, msg="Close after updating callback info")
-     
--def testInUse(t, env):
-+def testNotInUse(t, env):
-     """SETCLIENTID with same nfs_client_id.id should return NFS4ERR_OK
-        if there is no active state
- 
+This doesn't fix the problem completely since our client_has_state()
+check counts openowners left around to handle close replays, which we
+should probably just remove in this case.
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4state.c | 10 ++++++++--
+ 1 file changed, 8 insertions(+), 2 deletions(-)
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 8b4731dd6f91..1159a2321e37 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -2275,7 +2275,8 @@ static bool client_has_state(struct nfs4_client *clp)
+ 	 * Note clp->cl_openowners check isn't quite right: there's no
+ 	 * need to count owners without stateid's.
+ 	 *
+-	 * Also note we should probably be using this in 4.0 case too.
++	 * Also note in 4.0 case should also be checking for openowners
++	 * kept around just for close handling.
+ 	 */
+ 	return !list_empty(&clp->cl_openowners)
+ #ifdef CONFIG_NFSD_PNFS
+@@ -3062,7 +3063,7 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	/* Cases below refer to rfc 3530 section 14.2.33: */
+ 	spin_lock(&nn->client_lock);
+ 	conf = find_confirmed_client_by_name(&clname, nn);
+-	if (conf) {
++	if (conf && client_has_state(conf)) {
+ 		/* case 0: */
+ 		status = nfserr_clid_inuse;
+ 		if (clp_used_exchangeid(conf))
+@@ -3149,6 +3150,11 @@ nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
+ 	} else { /* case 3: normal case; new or rebooted client */
+ 		old = find_confirmed_client_by_name(&unconf->cl_name, nn);
+ 		if (old) {
++			status = nfserr_clid_inuse;
++			if (client_has_state(old)
++					&& !same_creds(&unconf->cl_cred,
++							&old->cl_cred))
++				goto out;
+ 			status = mark_client_expired_locked(old);
+ 			if (status) {
+ 				old = NULL;
+-- 
+2.4.3
+
