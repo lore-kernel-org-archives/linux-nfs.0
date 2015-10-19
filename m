@@ -1,103 +1,120 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:38343 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752001AbbJSBIt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 18 Oct 2015 21:08:49 -0400
-From: Neil Brown <neilb@suse.com>
-To: util-linux@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 19 Oct 2015 12:08:41 +1100
-Subject: mount does not accurately identify existing NFS mounts, and shouldn't try.
-Message-ID: <87twpnll5y.fsf@notabene.neil.brown.name>
+Received: from mail-qg0-f47.google.com ([209.85.192.47]:33077 "EHLO
+	mail-qg0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752654AbbJSMJW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 Oct 2015 08:09:22 -0400
+Received: by qgeo38 with SMTP id o38so110559603qge.0
+        for <linux-nfs@vger.kernel.org>; Mon, 19 Oct 2015 05:09:21 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-	micalg=pgp-sha256; protocol="application/pgp-signature"
+Date: Mon, 19 Oct 2015 14:09:21 +0200
+Message-ID: <CALr0QzH-pcLs_ei2uB3AogPQWj-aNkLfQaPMc5J+XsTAFdSvVQ@mail.gmail.com>
+Subject: Nfsv4 referrals over bind mounted subtree, mount order problem
+From: Prunk Dump <prunkdump@gmail.com>
+To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
+Hello NFS team !
 
+I have sometimes trouble using NFSv4 referrals and I don't really
+understand where the problem come from. Here the configuration steps
+that expose the situation :
 
-When I run "mount -a" (and possibly in other circumstances) mount
-attempts to determine if the requested filesystem is already mounted.
-It seems to have some handling for various special cases, but doesn't
-handle all cases properly.
+---------------------------------------------
+1) standard nfs4 export (works)
+---------------------------------------------
+My server export a file tree like this :
 
-For example, if I have
-  server:/export /import nfs ....
-  192.168.1.1:/private private nfs ....
+/myexport/dirA
+/myexport/dirB
 
-in /etc/fstab and the IP address of 'server' is 192.168.1.1,
-then both entries will appear in /proc/mounts with the same host name
-(depending on which order there were mounted).
+To do this I have bind mounted as usual the tree root in the NFS root :
 
-When I run "mount -a" a second time it will detect that one of these is
-already correctly mounted, and will ignore it.
-The other will not be detected as already being mounted (as the hostname
-appears different) and "mount -a" will try to mount it again.
+mount --bind /myexport /srv/nfs4/myexport
+/srv/nfs4/myexport
+172.16.0.0/16(sec=krb5,rw,async,no_subtree_check)  (in /etc/exports)
 
-This will fail with "EBUSY" and mount will report an error
-   .... is busy or already mounted.
+Everything is OK.
 
-So while both filesystems are already mounted, we only get an error for
-one of them.
+-----------------------------------------------------------------
+2) dirA redirection, bind mounted to itself (works)
+-----------------------------------------------------------------
 
-The irony here is that while it is hard for user-space to determine
-if the mounted filesystem matches the requested filesystem it is trivial
-for the kernel.
-For NFS we could try canonicalizing the server name, but undoubtedly
-other issues would arrive.  I believe there are similar issues with
-btrfs and submount, though I have looked closely.
+I now want to redirect dirA to another server "anotherserver". So I
+bind mount the dirA folder to itself.
 
-For the kernel, it is as simple as
+mount --bind /srv/nfs4/myexport/dirA /srv/nfs4/myexport/dirA
+/srv/nfs4/myexport/dirA
+172.16.0.0/16(refer=/myexport/dirA@anotherserver,sec=krb5,rw,async,no_subtree_check)
+ (in /etc/exports)
 
-	/* Refuse the same filesystem on the same mount point */
-	err = -EBUSY;
-	if (path->mnt->mnt_sb == newmnt->mnt.mnt_sb &&
-	    path->mnt->mnt_root == path->dentry)
-		goto unlock;
+Now the redirection works as expected.
 
-This is the *only* time that the kernel returns EBUSY for a "mount a new
-filesystem" request (remount can return EBUSY for other reasons I
-think).
+----------------------------------------------------------------------------------
+3) mount remote dirA on the original server (first problem)
+-----------------------------------------------------------------------------------
 
-So in the case where "mount" thinks it should check if the filesystem is
-already mounted and ignore the request if it is, the best thing it can
-do is to just try the mount and ignore any "EBUSY" error status - treat
-that the same as success.
+But the original server need to keep access to the "dirA" files. So I
+need to mount the redirected "dirA@anotherserver" tree on "myserver".
 
-So all that code for "is this the same mountpoint" can probably be
-discarded.
+mount -t nfs4 -o sec=krb5 anotherserver:/myexport/dirA  /myexport/dirA
 
-Did I miss any important consideration there?
+But as /myexport is bind mounted, this command create another mount
+point on /srv/nfs4/myexport/dirA.
 
-Unfortunately this change could be awkward to implement as /sbin/mount
-decides whether to try the mount and (for NFS), /sbin/mount.nfs gives an
-error message if EBUSY is returned.  Would we need to pass a "noebusy"
-flag, but only if mount.nfs were willing to accept it....
+# mount
+...
+anotherserver:/myexport/dirA on /myexport/dirA ...
+anotherserver:/myexport/dirA on /srv/nfs4/myexport/dirA ...
 
-Any suggestions?
+So, as this command create a mount point at the right position, where
+the redirection start, I initially think that the initial self binded
+mount /srv/nfs4/myexport/dirA is useless now. So I keep the only the
+nfs4 mount.
 
-NeilBrown
+But strangely the redirection does not works anymore. And I don't
+understand where is the problem.
 
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
+######
+first solution tried : mount remote to /myexport/dirA, adding an
+additional bind mount (don't works)
+######
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2
+I tried to add another bind mount over the nfs mount. I now have four
+mount points !
 
-iQIcBAEBCAAGBQJWJEKZAAoJEDnsnt1WYoG5Dd4QAKMlLVdfC7ndMIAMc4Rob442
-bmBFgu3wuoQSG6JlxXTJZEQp7qpJ6G33BTA1U4lkYgdLaXB9l4EtE5THaQHNEzZv
-ulVU/m/ZPn7swezA+HtK/ShhEOlIOtMKFGsSGuxDw9H8IB5TYQw9oEm031y7fE2o
-ffLYOCec922/JYv+Don6efL/QA0ue0nkEOxghN6N2Wq14/i5SqZvMEwEuO3uFiR0
-OeTB+krwc9wdbJlr183EVxh01OIY6Pf6THQe4EFVuHS6Gj0rqUjD971jGTxj1Hyo
-9PHmhCXFBOsFTVLb6bO4M5kkp6QsMGlmct+KTb0QyevNVyBYpgmIVYBEeTLhrDvV
-hdSD/ncsG+liir75t+MvwBjhMMK/ouERtg16yCgvO9s6Gb/8X8LT1r2VBRQwIfzs
-0QMS+O2xV9LgyDrwQnuML8XB+EPfi0LBJIajB9qXUlDynVB+lgmH4jmgBz1pD9P/
-f+VAINL/lElU5YSOEHEwNYGn+WYrZRZ2Hd/Nrr6jHy7gQ9Q+8X99RwqunTOClqMm
-yQBsY+XLOxhsvXvLt8sIxk/T6a1v/VrO4JyEYe9Pf2py+V4rcZvpgmkI+9ZiMaGW
-WY6xLUt3ErVzLFZGxhp+cCpcKRxHxhnuXp+r8xsJuV9x1Su1h9W3QA1kz94D5zfZ
-74oKZkBAn5nCC5oVyDdG
-=JepF
------END PGP SIGNATURE-----
---=-=-=--
+anotherserver:/myexport/dirA on /myexport/dirA ...
+anotherserver:/myexport/dirA on /srv/nfs4/myexport/dirA ...
+anotherserver:/myexport/dirA on /srv/nfs4/myexport/dirA ...
+anotherserver:/myexport/dirA on /myexport/dirA ...
+
+But this does not solve the problem. No redirection.
+
+######
+second solution tried : mount remote nfs directly to
+/srv/nfs4/myexport/dirA (works !)
+######
+
+If a mount the remote share directly to /srv/nfs4/myexport/dirA :
+
+mount -t nfs4 -o sec=krb5 anotherserver:/myexport/dirA /srv/nfs4/myexport/dirA
+
+as /myexport is bind mounted, this create another mount point on
+/myexport/dirA :
+
+# mount
+anotherserver:/myexport/dirA on /srv/nfs4/myexport/dirA ...
+anotherserver:/myexport/dirA on /myexport/dirA ...
+
+But the mount points are in reverse order now.  And in this case it
+works ! I can access the remote share in /myexport/dirA. And the other
+clients are redirected to anotherserver.
+
+But I can't understand why...
+
+Why the mount order is so important ?
+
+Thanks !
+
+Baptiste.
