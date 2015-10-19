@@ -1,63 +1,60 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:50412 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754644AbbJSVzm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 19 Oct 2015 17:55:42 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 2/2] nfsd: improve client_has_state to check for unused openowners
-Date: Mon, 19 Oct 2015 17:55:35 -0400
-Message-Id: <1445291735-16717-2-git-send-email-bfields@redhat.com>
-In-Reply-To: <1445291735-16717-1-git-send-email-bfields@redhat.com>
-References: <1445291735-16717-1-git-send-email-bfields@redhat.com>
+Received: from elasmtp-mealy.atl.sa.earthlink.net ([209.86.89.69]:52469 "EHLO
+	elasmtp-mealy.atl.sa.earthlink.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752912AbbJSWBL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 Oct 2015 18:01:11 -0400
+From: "Frank Filz" <ffilzlnx@mindspring.com>
+To: "'Bruce Fields'" <bfields@fieldses.org>
+Cc: <linux-nfs@vger.kernel.org>
+References: <012101d10853$7cae4ac0$760ae040$@mindspring.com> <20151019214801.GA16551@fieldses.org>
+In-Reply-To: <20151019214801.GA16551@fieldses.org>
+Subject: RE: Pull request for pynfs
+Date: Mon, 19 Oct 2015 15:00:56 -0700
+Message-ID: <01e401d10ab9$a2691c00$e73b5400$@mindspring.com>
+MIME-Version: 1.0
+Content-Type: text/plain;
+	charset="us-ascii"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+> On Fri, Oct 16, 2015 at 01:44:42PM -0700, Frank Filz wrote:
+> > Bruce,
+> >
+> > Please pull the top patch from:
+> >
+> > https://github.com/ffilz/pynfs/commits/master
+> >
+> > It fixes CID2 to allow NFS4_OK when SETCLIENTID with a different
+> > principal replaces a clientid that has no state, and adds CID2a which
+> > expects NFS4ERR_CLID_INUSE since it does have state.
+> 
+> Thanks!
+> 
+> This leave us with two test functions both named "testInUse".
+> 
+> I applied the following to get both tests working.
 
-At least in the v4.0 case openowners can hang around for a while after
-last close, but they shouldn't really block (for example), a new mount
-with a different principal.
+Oops, sorry...
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Frank
+
+> diff --git a/nfs4.0/servertests/st_setclientid.py
+> b/nfs4.0/servertests/st_setclientid.py
+> index 0fb59cd7f542..fbeab22e5026 100644
+> --- a/nfs4.0/servertests/st_setclientid.py
+> +++ b/nfs4.0/servertests/st_setclientid.py
+> @@ -50,7 +50,7 @@ def testClientUpdateCallback(t, env):
+>      res = c.close_file(t.code, fh, stateid)
+>      check(res, msg="Close after updating callback info")
+> 
+> -def testInUse(t, env):
+> +def testNotInUse(t, env):
+>      """SETCLIENTID with same nfs_client_id.id should return NFS4ERR_OK
+>         if there is no active state
+> 
+
+
 ---
- fs/nfsd/nfs4state.c | 20 ++++++++++++--------
- 1 file changed, 12 insertions(+), 8 deletions(-)
-
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 1159a2321e37..151357bcfe99 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -2269,16 +2269,20 @@ nfsd4_set_ex_flags(struct nfs4_client *new, struct nfsd4_exchange_id *clid)
- 	clid->flags = new->cl_exchange_flags;
- }
- 
-+static bool client_has_openowners(struct nfs4_client *clp)
-+{
-+	struct nfs4_openowner *oo;
-+
-+	list_for_each_entry(oo, &clp->cl_openowners, oo_perclient) {
-+		if (!list_empty(&oo->oo_owner.so_stateids))
-+			return true;
-+	}
-+	return false;
-+}
-+
- static bool client_has_state(struct nfs4_client *clp)
- {
--	/*
--	 * Note clp->cl_openowners check isn't quite right: there's no
--	 * need to count owners without stateid's.
--	 *
--	 * Also note in 4.0 case should also be checking for openowners
--	 * kept around just for close handling.
--	 */
--	return !list_empty(&clp->cl_openowners)
-+	return !client_has_openowners(clp)
- #ifdef CONFIG_NFSD_PNFS
- 		|| !list_empty(&clp->cl_lo_states)
- #endif
--- 
-2.4.3
+This email has been checked for viruses by Avast antivirus software.
+https://www.avast.com/antivirus
 
