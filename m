@@ -1,142 +1,114 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qg0-f53.google.com ([209.85.192.53]:36514 "EHLO
-	mail-qg0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753425AbbJTIkr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Oct 2015 04:40:47 -0400
-Received: by qgad10 with SMTP id d10so8500394qga.3
-        for <linux-nfs@vger.kernel.org>; Tue, 20 Oct 2015 01:40:47 -0700 (PDT)
+Received: from cn.fujitsu.com ([59.151.112.132]:25020 "EHLO
+	heian.cn.fujitsu.com" rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751789AbbJTJlg convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Oct 2015 05:41:36 -0400
+From: Zhao Lei <zhaolei@cn.fujitsu.com>
+To: "'Anna Schumaker'" <Anna.Schumaker@netapp.com>,
+        <linux-nfs@vger.kernel.org>, <linux-btrfs@vger.kernel.org>,
+        <linux-fsdevel@vger.kernel.org>, <linux-api@vger.kernel.org>,
+        <zab@zabbo.net>, <viro@zeniv.linux.org.uk>, <clm@fb.com>,
+        <darrick.wong@oracle.com>, <mtk.manpages@gmail.com>,
+        <andros@netapp.com>, <hch@infradead.org>
+References: <1445029707-31549-1-git-send-email-Anna.Schumaker@Netapp.com>
+In-Reply-To: <1445029707-31549-1-git-send-email-Anna.Schumaker@Netapp.com>
+Subject: RE: [PATCH v6 0/4] VFS: In-kernel copy system call
+Date: Tue, 20 Oct 2015 17:41:29 +0800
+Message-ID: <011e01d10b1b$7f70b390$7e521ab0$@cn.fujitsu.com>
 MIME-Version: 1.0
-In-Reply-To: <CALr0QzH-pcLs_ei2uB3AogPQWj-aNkLfQaPMc5J+XsTAFdSvVQ@mail.gmail.com>
-References: <CALr0QzH-pcLs_ei2uB3AogPQWj-aNkLfQaPMc5J+XsTAFdSvVQ@mail.gmail.com>
-Date: Tue, 20 Oct 2015 10:40:46 +0200
-Message-ID: <CALr0QzFihE251wbVcoRQbYHxH5Ca_pA6NJJRvWaRr40-GZPUOA@mail.gmail.com>
-Subject: Re: Nfsv4 referrals over bind mounted subtree, mount order problem
-From: Prunk Dump <prunkdump@gmail.com>
-To: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-2015-10-19 14:09 GMT+02:00 Prunk Dump <prunkdump@gmail.com>:
-> Hello NFS team !
->
-> I have sometimes trouble using NFSv4 referrals and I don't really
-> understand where the problem come from. Here the configuration steps
-> that expose the situation :
->
-> ---------------------------------------------
-> 1) standard nfs4 export (works)
-> ---------------------------------------------
-> My server export a file tree like this :
->
-> /myexport/dirA
-> /myexport/dirB
->
-> To do this I have bind mounted as usual the tree root in the NFS root :
->
-> mount --bind /myexport /srv/nfs4/myexport
-> /srv/nfs4/myexport
-> 172.16.0.0/16(sec=krb5,rw,async,no_subtree_check)  (in /etc/exports)
->
-> Everything is OK.
->
-> -----------------------------------------------------------------
-> 2) dirA redirection, bind mounted to itself (works)
-> -----------------------------------------------------------------
->
-> I now want to redirect dirA to another server "anotherserver". So I
-> bind mount the dirA folder to itself.
->
-> mount --bind /srv/nfs4/myexport/dirA /srv/nfs4/myexport/dirA
-> /srv/nfs4/myexport/dirA
-> 172.16.0.0/16(refer=/myexport/dirA@anotherserver,sec=krb5,rw,async,no_subtree_check)
->  (in /etc/exports)
->
-> Now the redirection works as expected.
->
-> ----------------------------------------------------------------------------------
-> 3) mount remote dirA on the original server (first problem)
-> -----------------------------------------------------------------------------------
->
-> But the original server need to keep access to the "dirA" files. So I
-> need to mount the redirected "dirA@anotherserver" tree on "myserver".
->
-> mount -t nfs4 -o sec=krb5 anotherserver:/myexport/dirA  /myexport/dirA
->
-> But as /myexport is bind mounted, this command create another mount
-> point on /srv/nfs4/myexport/dirA.
->
-> # mount
-> ...
-> anotherserver:/myexport/dirA on /myexport/dirA ...
-> anotherserver:/myexport/dirA on /srv/nfs4/myexport/dirA ...
->
-> So, as this command create a mount point at the right position, where
-> the redirection start, I initially think that the initial self binded
-> mount /srv/nfs4/myexport/dirA is useless now. So I keep the only the
-> nfs4 mount.
->
-> But strangely the redirection does not works anymore. And I don't
-> understand where is the problem.
->
-> ######
-> first solution tried : mount remote to /myexport/dirA, adding an
-> additional bind mount (don't works)
-> ######
->
-> I tried to add another bind mount over the nfs mount. I now have four
-> mount points !
->
-> anotherserver:/myexport/dirA on /myexport/dirA ...
-> anotherserver:/myexport/dirA on /srv/nfs4/myexport/dirA ...
-> anotherserver:/myexport/dirA on /srv/nfs4/myexport/dirA ...
-> anotherserver:/myexport/dirA on /myexport/dirA ...
->
-> But this does not solve the problem. No redirection.
->
-> ######
-> second solution tried : mount remote nfs directly to
-> /srv/nfs4/myexport/dirA (works !)
-> ######
->
-> If a mount the remote share directly to /srv/nfs4/myexport/dirA :
->
-> mount -t nfs4 -o sec=krb5 anotherserver:/myexport/dirA /srv/nfs4/myexport/dirA
->
-> as /myexport is bind mounted, this create another mount point on
-> /myexport/dirA :
->
-> # mount
-> anotherserver:/myexport/dirA on /srv/nfs4/myexport/dirA ...
-> anotherserver:/myexport/dirA on /myexport/dirA ...
->
-> But the mount points are in reverse order now.  And in this case it
-> works ! I can access the remote share in /myexport/dirA. And the other
-> clients are redirected to anotherserver.
->
-> But I can't understand why...
->
-> Why the mount order is so important ?
->
-> Thanks !
->
-> Baptiste.
+Hi, Anna Schumaker
 
-Excuse me !
+This patchset compile ok in x86 and x86_64 target,
+But failed in arm when compiling btrfs dir, and output following error message:
+  <stdin>:1304:2: warning: #warning syscall copy_file_range not implemented [-Wcpp]   
 
-In reality the solution proposed above does not work ! The NFS server
-say :  "/myexport/dirA does not support NFS export" as it is a NFS
-mounted filesystem.
+Reproduce:
 
-Can anyone help me !?
+merge commands:
+cd /mnt/big1/linux
+git fetch -q --all
+git --force -B btrfs_base v4.3-rc5
+git am --abort
+git am --whitespace=nowarn PATCH_v6_1_4__vfs__add_copy_file_range_syscall_and_vfs_helper
+git am --whitespace=nowarn PATCH_v6_2_4__x86__add_sys_copy_file_range_to_syscall_tables
+git am --whitespace=nowarn PATCH_v6_3_4__btrfs__add_.copy_file_range_file_operation
+git am --whitespace=nowarn PATCH_v6_4_4__vfs__Add_vfs_copy_file_range___support_for_pagecache_copies
 
-Is this possible to avoid duplicating mount point when mounting over
-bind mount ?
+compild commands:   
+make --directory=/mnt/big1/linux ARCH=arm CROSS_COMPILE=arm-buildroot-linux-uclibcgnueabi- distclean
+make --directory=/mnt/big1/linux ARCH=arm CROSS_COMPILE=arm-buildroot-linux-uclibcgnueabi- defconfig
+/mnt/big1/linux/scripts/config --file /mnt/big1/linux/.config --module CONFIG_BTRFS_FS   
+/mnt/big1/linux/scripts/config --file /mnt/big1/linux/.config --enable CONFIG_BTRFS_FS_POSIX_ACL   
+/mnt/big1/linux/scripts/config --file /mnt/big1/linux/.config --enable CONFIG_BTRFS_FS_CHECK_INTEGRITY   
+/mnt/big1/linux/scripts/config --file /mnt/big1/linux/.config --enable CONFIG_BTRFS_FS_RUN_SANITY_TESTS   
+/mnt/big1/linux/scripts/config --file /mnt/big1/linux/.config --enable CONFIG_BTRFS_DEBUG   
+/mnt/big1/linux/scripts/config --file /mnt/big1/linux/.config --enable CONFIG_BTRFS_ASSERT   
+make --directory=/mnt/big1/linux ARCH=arm CROSS_COMPILE=arm-buildroot-linux-uclibcgnueabi- -j8 fs/btrfs/   
 
-/myexport and /srv/nfs4/myexport are the same mount. But I want to do
-a nfs4 mount on /myexpot/dirA and a bind mount on
-/srv/nfs4/myexport/dirA.
+Thanks
+Zhaolei
 
-Thanks.
+> -----Original Message-----
+> From: linux-btrfs-owner@vger.kernel.org
+> [mailto:linux-btrfs-owner@vger.kernel.org] On Behalf Of Anna Schumaker
+> Sent: Saturday, October 17, 2015 5:08 AM
+> To: linux-nfs@vger.kernel.org; linux-btrfs@vger.kernel.org;
+> linux-fsdevel@vger.kernel.org; linux-api@vger.kernel.org; zab@zabbo.net;
+> viro@zeniv.linux.org.uk; clm@fb.com; darrick.wong@oracle.com;
+> mtk.manpages@gmail.com; andros@netapp.com; hch@infradead.org
+> Subject: [PATCH v6 0/4] VFS: In-kernel copy system call
+> 
+> Copy system calls came up during Plumbers a while ago, mostly because
+> several filesystems (including NFS and XFS) are currently working on copy
+> acceleration implementations.  We haven't heard from Zach Brown in a while,
+> so I volunteered to push his patches upstream so individual filesystems don't
+> need to keep writing their own ioctls.
+> 
+> This posting adresses Christoph's comments.  I'm pretty sure that splice() is
+> already interruptible, so I don't know what else needs to be done for this
+> system call.
+> 
+> I haven't started work on a "sparse" copy flag yet.  I would like to focus on the
+> base system call first, and then add that later if it's still desired.
+> 
+> Changes in v6:
+> - Squash together most patches.
+> - Drop all flags except COPY_FR_REFLINK.
+> - Drop patch removing same mountpoint check.
+> - Change default behavior (flags = 0) to a data copy.
+> 
+> 
+> Anna Schumaker (1):
+>   vfs: Add vfs_copy_file_range() support for pagecache copies
+> 
+> Zach Brown (3):
+>   vfs: add copy_file_range syscall and vfs helper
+>   x86: add sys_copy_file_range to syscall tables
+>   btrfs: add .copy_file_range file operation
+> 
+>  arch/x86/entry/syscalls/syscall_32.tbl |   1 +
+>  arch/x86/entry/syscalls/syscall_64.tbl |   1 +
+>  fs/btrfs/ctree.h                       |   3 +
+>  fs/btrfs/file.c                        |   1 +
+>  fs/btrfs/ioctl.c                       |  94 +++++++++++++----------
+>  fs/read_write.c                        | 133
+> +++++++++++++++++++++++++++++++++
+>  include/linux/fs.h                     |   3 +
+>  include/linux/syscalls.h               |   3 +
+>  include/uapi/asm-generic/unistd.h      |   4 +-
+>  include/uapi/linux/fs.h                |   2 +
+>  kernel/sys_ni.c                        |   1 +
+>  11 files changed, 206 insertions(+), 40 deletions(-)
+> 
+> --
+> 2.6.1
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-btrfs" in the body
+> of a message to majordomo@vger.kernel.org More majordomo info at
+> http://vger.kernel.org/majordomo-info.html
 
-Baptiste.
