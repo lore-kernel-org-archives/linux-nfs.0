@@ -1,139 +1,80 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:50925 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751285AbbJTSal (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 20 Oct 2015 14:30:41 -0400
-Date: Tue, 20 Oct 2015 14:30:39 -0400
-To: Prunk Dump <prunkdump@gmail.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: Nfsv4 referrals over bind mounted subtree, mount order problem
-Message-ID: <20151020183039.GB21687@fieldses.org>
-References: <CALr0QzH-pcLs_ei2uB3AogPQWj-aNkLfQaPMc5J+XsTAFdSvVQ@mail.gmail.com>
+Received: from discipline.rit.edu ([129.21.6.207]:63581 "HELO
+	discipline.rit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1751508AbbJTSeR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Oct 2015 14:34:17 -0400
+From: Andrew W Elble <aweits@rit.edu>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH RFC v2] nfsd: don't revoke delegations that a client has stated it doesn't have
+References: <1445350911-63530-1-git-send-email-aweits@rit.edu>
+	<20151020172949.GA21687@fieldses.org>
+Date: Tue, 20 Oct 2015 14:34:15 -0400
+In-Reply-To: <20151020172949.GA21687@fieldses.org> (J. Bruce Fields's message
+	of "Tue, 20 Oct 2015 13:29:49 -0400")
+Message-ID: <m2twplxuc8.fsf@discipline.rit.edu>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CALr0QzH-pcLs_ei2uB3AogPQWj-aNkLfQaPMc5J+XsTAFdSvVQ@mail.gmail.com>
-From: bfields@fieldses.org (J. Bruce Fields)
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Oct 19, 2015 at 02:09:21PM +0200, Prunk Dump wrote:
-> Hello NFS team !
-> 
-> I have sometimes trouble using NFSv4 referrals and I don't really
-> understand where the problem come from. Here the configuration steps
-> that expose the situation :
-> 
-> ---------------------------------------------
-> 1) standard nfs4 export (works)
-> ---------------------------------------------
-> My server export a file tree like this :
-> 
-> /myexport/dirA
-> /myexport/dirB
-> 
-> To do this I have bind mounted as usual the tree root in the NFS root :
-> 
-> mount --bind /myexport /srv/nfs4/myexport
-> /srv/nfs4/myexport
-> 172.16.0.0/16(sec=krb5,rw,async,no_subtree_check)  (in /etc/exports)
 
-I'm not sure why you're doing this.
+> Are clients really allowed to just lose a delegation?  (Have you seen
+> such a case, other than the duplicate-delegation case which you already
+> fixed?)
 
-(It used to be necessary to do something like this (with the addition of
-an fsid=0 option on the root export) for NFSv4 exports, but that hasn't
-been necessary for a while.  You can skip this step and just mount
-server:/myexport/dirA from the client.
+In short, yes, we're still seeing it. We have also been seeing increasing
+stability from the work that has been done (which also increases the
+time between replication).
 
-> Everything is OK.
-> 
-> -----------------------------------------------------------------
-> 2) dirA redirection, bind mounted to itself (works)
-> -----------------------------------------------------------------
-> 
-> I now want to redirect dirA to another server "anotherserver". So I
-> bind mount the dirA folder to itself.
-> 
-> mount --bind /srv/nfs4/myexport/dirA /srv/nfs4/myexport/dirA
-> /srv/nfs4/myexport/dirA
-> 172.16.0.0/16(refer=/myexport/dirA@anotherserver,sec=krb5,rw,async,no_subtree_check)
->  (in /etc/exports)
-> 
-> Now the redirection works as expected.
-> 
-> ----------------------------------------------------------------------------------
-> 3) mount remote dirA on the original server (first problem)
-> -----------------------------------------------------------------------------------
-> 
-> But the original server need to keep access to the "dirA" files. So I
-> need to mount the redirected "dirA@anotherserver" tree on "myserver".
-> 
-> mount -t nfs4 -o sec=krb5 anotherserver:/myexport/dirA  /myexport/dirA
+The reason for v2 was I got coverage on the destruction path in
+testing and discovered my mistake in v1. This one is extremely
+frustrating to chase down (I've been 14+ hours deep in
+packet captures to try and find the allocation to the recall - I
+keep running out of disk space).
 
-I'd recommend mounting it someplace that isn't under an export,
-otherwise this will get a bit complicated.
+The operational reason to avoid this is because a lost delegation
+effectively kills the mount when the state managers are looping. I have
+a patch that alters fault injection to recreate the scenario.
 
---b.
+>> 1.) Any race between a delegation grant and a recall has been
+>>     presumably avoided by the delay and second attempt.
+>
+> If something happened to the forechannel connection, then I believe it
+> could take longer than 2 seconds to time out and recover.
 
-> 
-> But as /myexport is bind mounted, this command create another mount
-> point on /srv/nfs4/myexport/dirA.
-> 
-> # mount
-> ...
-> anotherserver:/myexport/dirA on /myexport/dirA ...
-> anotherserver:/myexport/dirA on /srv/nfs4/myexport/dirA ...
-> 
-> So, as this command create a mount point at the right position, where
-> the redirection start, I initially think that the initial self binded
-> mount /srv/nfs4/myexport/dirA is useless now. So I keep the only the
-> nfs4 mount.
-> 
-> But strangely the redirection does not works anymore. And I don't
-> understand where is the problem.
-> 
-> ######
-> first solution tried : mount remote to /myexport/dirA, adding an
-> additional bind mount (don't works)
-> ######
-> 
-> I tried to add another bind mount over the nfs mount. I now have four
-> mount points !
-> 
-> anotherserver:/myexport/dirA on /myexport/dirA ...
-> anotherserver:/myexport/dirA on /srv/nfs4/myexport/dirA ...
-> anotherserver:/myexport/dirA on /srv/nfs4/myexport/dirA ...
-> anotherserver:/myexport/dirA on /myexport/dirA ...
-> 
-> But this does not solve the problem. No redirection.
-> 
-> ######
-> second solution tried : mount remote nfs directly to
-> /srv/nfs4/myexport/dirA (works !)
-> ######
-> 
-> If a mount the remote share directly to /srv/nfs4/myexport/dirA :
-> 
-> mount -t nfs4 -o sec=krb5 anotherserver:/myexport/dirA /srv/nfs4/myexport/dirA
-> 
-> as /myexport is bind mounted, this create another mount point on
-> /myexport/dirA :
-> 
-> # mount
-> anotherserver:/myexport/dirA on /srv/nfs4/myexport/dirA ...
-> anotherserver:/myexport/dirA on /myexport/dirA ...
-> 
-> But the mount points are in reverse order now.  And in this case it
-> works ! I can access the remote share in /myexport/dirA. And the other
-> clients are redirected to anotherserver.
-> 
-> But I can't understand why...
-> 
-> Why the mount order is so important ?
-> 
-> Thanks !
-> 
-> Baptiste.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Hrm, yes I see.
+
+> So I'm inclined to instead fix any bugs that result in servers and
+> client disagreeing about whether there's a delegation.
+
+Not abandoning trying to track it down. It's quite clearly going to take
+a while.
+
+> Another thing we could do here is finally implement the server-side
+> support for referring triples (I think the client's done?):
+>
+> 	http://wiki.linux-nfs.org/wiki/index.php/Server_4.0_and_4.1_issues#Referring_triples
+> 	https://tools.ietf.org/html/rfc5661#section-2.10.6.3
+>
+> That would eliminate the need for the recall retries.
+>
+> Though that would still leave open the question of how to handle those
+> errors on a recall.  We still not be able to conclude that it's safe for
+> the server to destroy the delegation.
+
+Would this be more appropriately "fixed" by supporting DELEGPURGE in a
+limited fashion to clear out cl_revoked? (I'm not quite sure
+that's a valid interpretation of RFC5561) to clear out any "lost"
+delegations?
+
+Thanks,
+
+Andy
+
+-- 
+Andrew W. Elble
+aweits@discipline.rit.edu
+Infrastructure Engineer, Communications Technical Lead
+Rochester Institute of Technology
+PGP: BFAD 8461 4CCF DC95 DA2C B0EB 965B 082E 863E C912
