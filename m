@@ -1,62 +1,105 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f181.google.com ([209.85.220.181]:33182 "EHLO
-	mail-qk0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753034AbbJTReG (ORCPT
+Received: from mail-qk0-f178.google.com ([209.85.220.178]:34233 "EHLO
+	mail-qk0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753028AbbJTReG (ORCPT
 	<rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Oct 2015 13:34:06 -0400
-Received: by qkcy65 with SMTP id y65so10884289qkc.0
-        for <linux-nfs@vger.kernel.org>; Tue, 20 Oct 2015 10:34:05 -0700 (PDT)
+Received: by qkfm62 with SMTP id m62so10907062qkf.1
+        for <linux-nfs@vger.kernel.org>; Tue, 20 Oct 2015 10:34:02 -0700 (PDT)
 From: Jeff Layton <jlayton@poochiereds.net>
 To: bfields@fieldses.org
 Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         Al Viro <viro@ZenIV.linux.org.uk>
-Subject: [PATCH v6 08/19] sunrpc: add a new cache_detail operation for when a cache is flushed
-Date: Tue, 20 Oct 2015 13:33:41 -0400
-Message-Id: <1445362432-18869-9-git-send-email-jeff.layton@primarydata.com>
+Subject: [PATCH v6 05/19] fs: add fput_global
+Date: Tue, 20 Oct 2015 13:33:38 -0400
+Message-Id: <1445362432-18869-6-git-send-email-jeff.layton@primarydata.com>
 In-Reply-To: <1445362432-18869-1-git-send-email-jeff.layton@primarydata.com>
 References: <1445362432-18869-1-git-send-email-jeff.layton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When the exports table is changed, exportfs will usually write a new
-time to the "flush" file in the nfsd.export cache procfile. This tells
-the kernel to flush any entries that are older than that value.
+When nfsd caches a file, we want to be able to close it down in advance
+of setlease attempts. Setting a lease is generally done at the behest of
+userland, so we need a mechanism to ensure that a userland task can
+completely close a file without having to return back to userspace.
 
-This gives us a mechanism to tell whether an unexport might have
-occurred. Add a new ->flush cache_detail operation that is called after
-flushing the cache whenever someone writes to a "flush" file.
+To do this, we borrow the global delayed_fput infrastructure that
+kthreads use. fput_global will queue to the global_fput list if
+the last reference was put. The caller can then use fput_global_flush
+to force the final __fput to run.
 
+While we're at it, export fput_global_flush as nfsd will need to use
+that as well.
+
+Cc: Al Viro <viro@ZenIV.linux.org.uk>
 Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
 ---
- include/linux/sunrpc/cache.h | 1 +
- net/sunrpc/cache.c           | 3 +++
- 2 files changed, 4 insertions(+)
+ fs/file_table.c      | 33 +++++++++++++++++++++++++++++++++
+ include/linux/file.h |  1 +
+ 2 files changed, 34 insertions(+)
 
-diff --git a/include/linux/sunrpc/cache.h b/include/linux/sunrpc/cache.h
-index 03d3b4c92d9f..d1c10a978bb2 100644
---- a/include/linux/sunrpc/cache.h
-+++ b/include/linux/sunrpc/cache.h
-@@ -98,6 +98,7 @@ struct cache_detail {
- 					      int has_died);
- 
- 	struct cache_head *	(*alloc)(void);
-+	void			(*flush)(void);
- 	int			(*match)(struct cache_head *orig, struct cache_head *new);
- 	void			(*init)(struct cache_head *orig, struct cache_head *new);
- 	void			(*update)(struct cache_head *orig, struct cache_head *new);
-diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-index 4a2340a54401..60da9aa2bdc5 100644
---- a/net/sunrpc/cache.c
-+++ b/net/sunrpc/cache.c
-@@ -1451,6 +1451,9 @@ static ssize_t write_flush(struct file *file, const char __user *buf,
- 	cd->nextcheck = seconds_since_boot();
- 	cache_flush();
- 
-+	if (cd->flush)
-+		cd->flush();
-+
- 	*ppos += count;
- 	return count;
+diff --git a/fs/file_table.c b/fs/file_table.c
+index 0bf8ddc680ab..d214c45765e6 100644
+--- a/fs/file_table.c
++++ b/fs/file_table.c
+@@ -262,6 +262,7 @@ void fput_global_flush(void)
+ {
+ 	flush_delayed_work(&global_fput_work);
  }
++EXPORT_SYMBOL(fput_global_flush);
+ 
+ /**
+  * fput - put a struct file reference
+@@ -304,6 +305,38 @@ void fput(struct file *file)
+ }
+ EXPORT_SYMBOL(fput);
+ 
++/**
++ * fput_global - do an fput without using task_work
++ * @file: file of which to put the reference
++ *
++ * When fput is called in the context of a userland process, it'll queue the
++ * actual work (__fput()) to be done just before returning to userland. In some
++ * cases however, we need to ensure that the __fput runs before that point.
++ *
++ * There is no safe way to flush work that has been queued via task_work_add
++ * however, so to do this we borrow the global_fput infrastructure that
++ * kthreads use. The userland process can use fput_global() on one or more
++ * struct files and then call fput_global_flush() to ensure that they are
++ * completely closed before proceeding.
++ *
++ * The main user is nfsd, which uses this to ensure that all cached but
++ * otherwise unused files are closed to allow a userland request for a lease
++ * to proceed.
++ *
++ * Returns true if the final fput was done, false otherwise. The caller can
++ * use this to determine whether to fput_global_flush afterward.
++ */
++bool fput_global(struct file *file)
++{
++	if (atomic_long_dec_and_test(&file->f_count)) {
++		if (llist_add(&file->f_u.fu_llist, &global_fput_list))
++			schedule_delayed_work(&global_fput_work, 1);
++		return true;
++	}
++	return false;
++}
++EXPORT_SYMBOL(fput_global);
++
+ /*
+  * synchronous analog of fput(); for kernel threads that might be needed
+  * in some umount() (and thus can't use fput_global_flush() without
+diff --git a/include/linux/file.h b/include/linux/file.h
+index 73bb7cee57e9..7803aed00271 100644
+--- a/include/linux/file.h
++++ b/include/linux/file.h
+@@ -12,6 +12,7 @@
+ struct file;
+ 
+ extern void fput(struct file *);
++extern bool fput_global(struct file *);
+ 
+ struct file_operations;
+ struct vfsmount;
 -- 
 2.4.3
 
