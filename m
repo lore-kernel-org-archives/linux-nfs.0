@@ -1,54 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:51330 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:46860 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752955AbbJUP7K (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 Oct 2015 11:59:10 -0400
-Date: Wed, 21 Oct 2015 11:59:08 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@poochiereds.net>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 2/2] create_session: ensure that we send an auth flavor
- in CREATE_SESSION call
-Message-ID: <20151021155908.GD27929@fieldses.org>
-References: <1445356861-13860-1-git-send-email-jeff.layton@primarydata.com>
- <1445356861-13860-2-git-send-email-jeff.layton@primarydata.com>
+	id S1754852AbbJUTF1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 21 Oct 2015 15:05:27 -0400
+Date: Wed, 21 Oct 2015 15:05:24 -0400 (EDT)
+From: Benjamin Coddington <bcodding@redhat.com>
+To: krichy@tvnetwork.hu
+cc: linux-nfs@vger.kernel.org
+Subject: Re: nfs lockup
+In-Reply-To: <alpine.DEB.2.20.1510211715430.5353@krichy.tvnetwork.hu>
+Message-ID: <alpine.OSX.2.19.9992.1510211503550.6711@planck.local>
+References: <alpine.DEB.2.20.1510211715430.5353@krichy.tvnetwork.hu>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1445356861-13860-2-git-send-email-jeff.layton@primarydata.com>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Thanks, both pynfs patches applied.--b.
+On Wed, 21 Oct 2015, krichy@tvnetwork.hu wrote:
 
-On Tue, Oct 20, 2015 at 12:01:01PM -0400, Jeff Layton wrote:
-> ...it is required.
-> 
-> Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
-> ---
->  nfs4.1/server41tests/st_create_session.py | 4 ++--
->  1 file changed, 2 insertions(+), 2 deletions(-)
-> 
-> diff --git a/nfs4.1/server41tests/st_create_session.py b/nfs4.1/server41tests/st_create_session.py
-> index 4c56bb45cc8e..d3b7635545ba 100644
-> --- a/nfs4.1/server41tests/st_create_session.py
-> +++ b/nfs4.1/server41tests/st_create_session.py
-> @@ -13,7 +13,7 @@ def create_session(c, clientid, sequenceid, cred=None, flags=0):
->      chan_attrs = channel_attrs4(0,8192,8192,8192,128,8,[])
->      res = c.compound([op.create_session(clientid, sequenceid, flags,
->                                          chan_attrs, chan_attrs,
-> -                                        123, [])], cred)
-> +                                        123, [callback_sec_parms4(0)])], cred)
->      return res
->  
->  ###############################################
-> @@ -305,7 +305,7 @@ def testRdmaArray2(t, env):
->      chan_attrs = channel_attrs4(0,8192,8192,8192,128,8,[13, 57])
->      ops = [op.create_session(c.clientid, c.seqid, 0,
->                               chan_attrs, chan_attrs,
-> -                             c.c.prog, [])]
-> +                             c.c.prog, [callback_sec_parms4(0)])]
->      c = c.c
->      xid = c.compound_async(ops, checks=False)
->      try:
-> -- 
-> 2.4.3
+> Dear devs,
+>
+> We have an nfs lockup issue. We run a ganeti cluster consisting of 7 debian
+> linux nodes and 1 freenas for hosting the vm images. The images are exported
+> via nfsv3. The problem is that randomly we end in a livelock on one of our
+> nodes.
+>
+> That means the nfs share is alive, we can list directories, files, even can
+> read files (very slow, see later). And even can write to files, but the file
+> close operation does not return, it gets blocked.
+>
+> The read is slow in that way that while copying a file from the share to /tmp,
+> the data arrives very fast to the node, but in /tmp it accumulates slowly.
+>
+> I've also opened a debian bug report on it, but I think it is not related to
+> debian (https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=801924).
+>
+> The only way is to reboot machine, with all the vm's running on it getting
+> interrupted.
+>
+> I've captured each tasks' stack trace, hopefully it helps someone to find out
+> the issue.
+>
+> Meanwhile the other 6 nodes can access the nfs share right, so I think this is
+> not a networking or server issue. Restarting the nfs server on the server side
+> still does not have any effect, not recovering. The nfs tcp connection is
+> established, listing files works again, but writes not.
+>
+> Some information of the nodes:
+> # uname -a
+> Linux host 3.16.0-4-amd64 #1 SMP Debian 3.16.7-ckt11-1+deb8u4 (2015-09-19)
+> x86_64 GNU/Linux
+>
+> They have 1.5G ram allocated to dom0, that should be enough.
+>
+> I know this information is little information, give me advice what to look for
+> next time. Unfortunately I dont know how to reproduce it.
+>
+> Thanks in advance,
+>
+> Kojedzinszky Richard
+> Euronet Magyarorszag Informatika Zrt.
+
+I took a look at your debian bug report.. what's up with those drbd procs?
+Are you writing to drbd-backed devs, and have you made sure that's not
+involved in any way?
+
+Ben
