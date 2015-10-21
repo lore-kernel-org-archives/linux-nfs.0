@@ -1,69 +1,115 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:50988 "EHLO fieldses.org"
+Received: from mout.gmx.net ([212.227.17.20]:56322 "EHLO mout.gmx.net"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751071AbbJTVKU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 20 Oct 2015 17:10:20 -0400
-Date: Tue, 20 Oct 2015 17:10:17 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Andrew W Elble <aweits@rit.edu>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH RFC v2] nfsd: don't revoke delegations that a client has
- stated it doesn't have
-Message-ID: <20151020211017.GA22828@fieldses.org>
-References: <1445350911-63530-1-git-send-email-aweits@rit.edu>
- <20151020172949.GA21687@fieldses.org>
- <m2twplxuc8.fsf@discipline.rit.edu>
+	id S1750992AbbJUMQ1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 21 Oct 2015 08:16:27 -0400
+Received: from [128.44.10.120] ([93.232.113.113]) by mail.gmx.com (mrgmx101)
+ with ESMTPSA (Nemesis) id 0MDE6y-1ZldjB21DY-00GY64 for
+ <linux-nfs@vger.kernel.org>; Wed, 21 Oct 2015 14:16:25 +0200
+From: Hans-Peter Budek <peter.budek@gmx.de>
+Subject: NFS related bug in 3.14.54
+To: linux-nfs@vger.kernel.org
+Message-ID: <56278218.4090606@gmx.de>
+Date: Wed, 21 Oct 2015 14:16:24 +0200
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <m2twplxuc8.fsf@discipline.rit.edu>
+Content-Type: text/plain; charset=ISO-8859-15
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Oct 20, 2015 at 02:34:15PM -0400, Andrew W Elble wrote:
-> 
-> > Are clients really allowed to just lose a delegation?  (Have you seen
-> > such a case, other than the duplicate-delegation case which you already
-> > fixed?)
-> 
-> In short, yes, we're still seeing it. We have also been seeing increasing
-> stability from the work that has been done (which also increases the
-> time between replication).
-> 
-> The reason for v2 was I got coverage on the destruction path in
-> testing and discovered my mistake in v1. This one is extremely
-> frustrating to chase down (I've been 14+ hours deep in
-> packet captures to try and find the allocation to the recall - I
-> keep running out of disk space).
+A diskless station which mounts my NFS server as root device
+(nolock,nfsvers=3,vers=3)causes a kernel bug on my server:
 
-Ugh.  Maybe patching in some well-chosen printk's could help.
+Oct 21 12:44:34 falco kernel: [64002.882741] NFSD: the nfsdcld client tracking
+upcall will be removed in 3.10. Please transition to using nfsdcltrack.
+Oct 21 12:46:34 falco kernel: [64123.231017] NFSD: Unable to end grace period: -110
+...
+Oct 21 13:00:12 falco kernel: [64941.364757] BUG: unable to handle kernel NULL
+pointer dereference at 0000000000000008
+Oct 21 13:00:12 falco kernel: [64941.364782] IP: [<ffffffff812de742>]
+skb_copy_and_csum_datagram_iovec+0x22/0x110
+Oct 21 13:00:12 falco kernel: [64941.364804] PGD 3d321067 PUD d9915067 PMD 0
+Oct 21 13:00:12 falco kernel: [64941.364819] Oops: 0000 [#1] SMP
+Oct 21 13:00:12 falco kernel: [64941.364831] Modules linked in: nfsd auth_rpcgss
+oid_registry nfs_acl lockd sunrpc ipv6 sg usb_storage ahci libahci rtc_cmos
+floppy evdev coretemp it87 hwmon_vid hwmon i2c_i801 acpi_cpufreq processor r8169
+mii pcspkr usbhid xhci_hcd uhci_hcd ehci_pci ehci_hcd usbcore usb_common
+rr2310_00(PO)
+Oct 21 13:00:12 falco kernel: [64941.364933] CPU: 0 PID: 23000 Comm: nfsd
+Tainted: P           O 3.14.54 #7
+Oct 21 13:00:12 falco kernel: [64941.364948] Hardware name: Gigabyte Technology
+Co., Ltd. EP35C-DS3R/EP35C-DS3R, BIOS F3 07/17/2008
+Oct 21 13:00:12 falco kernel: [64941.364966] task: ffff8801fe3fb170 ti:
+ffff88003cd84000 task.ti: ffff88003cd84000
+Oct 21 13:00:12 falco kernel: [64941.364982] RIP: 0010:[<ffffffff812de742>]
+[<ffffffff812de742>] skb_copy_and_csum_datagram_iovec+0x22/0x110
+Oct 21 13:00:12 falco kernel: [64941.365005] RSP: 0018:ffff88003cd85bd0  EFLAGS:
+00010202
+Oct 21 13:00:12 falco kernel: [64941.365016] RAX: 0000000000000000 RBX:
+ffff8800e5e31880 RCX: 00000000000004f8
+Oct 21 13:00:12 falco kernel: [64941.365031] RDX: 0000000000000000 RSI:
+0000000000001088 RDI: ffff8800d98e9e00
+Oct 21 13:00:12 falco kernel: [64941.365046] RBP: 0000000000000008 R08:
+0000000000000000 R09: 00000000744d8bb2
+Oct 21 13:00:12 falco kernel: [64941.365108] R10: 00000000000004c0 R11:
+0000000000000005 R12: ffff8800d98e9e00
+Oct 21 13:00:12 falco kernel: [64941.365171] R13: 0000000000001080 R14:
+0000000000001080 R15: ffff8800d98e9e00
+Oct 21 13:00:12 falco kernel: [64941.365233] FS:  0000000000000000(0000)
+GS:ffff880213c00000(0000) knlGS:0000000000000000
+Oct 21 13:00:12 falco kernel: [64941.365344] CS:  0010 DS: 0000 ES: 0000 CR0:
+000000008005003b
+Oct 21 13:00:12 falco kernel: [64941.365403] CR2: 0000000000000008 CR3:
+00000000d80dd000 CR4: 00000000000007f0
+Oct 21 13:00:12 falco kernel: [64941.365465] Stack:
+Oct 21 13:00:12 falco kernel: [64941.365517]  ffff8800d98e9e00 ffffffff812d7f3d
+ffff8800e5e31880 ffff88003cd85dc8
+Oct 21 13:00:12 falco kernel: [64941.365632]  0000000000000000 0000000000000000
+0000000000001080 ffffffff81331f82
+Oct 21 13:00:12 falco kernel: [64941.365740]  0000004213c0c130 0000000000000002
+ffff8800e5e318f0 ffff880208ee4028
+Oct 21 13:00:12 falco kernel: [64941.365740] Call Trace:
+Oct 21 13:00:12 falco kernel: [64941.365740]  [<ffffffff812d7f3d>] ?
+skb_checksum+0x1d/0x30
+Oct 21 13:00:12 falco kernel: [64941.365740]  [<ffffffff81331f82>] ?
+udp_recvmsg+0x1e2/0x350
+Oct 21 13:00:12 falco kernel: [64941.365740]  [<ffffffff8133c028>] ?
+inet_recvmsg+0x48/0x80
+Oct 21 13:00:12 falco kernel: [64941.365740]  [<ffffffff812cf802>] ?
+sock_recvmsg+0x72/0x90
+Oct 21 13:00:12 falco kernel: [64941.365740]  [<ffffffff81042811>] ?
+lock_timer_base.isra.31+0x21/0x50
+Oct 21 13:00:12 falco kernel: [64941.365740]  [<ffffffff812cf850>] ?
+kernel_recvmsg+0x30/0x40
+Oct 21 13:00:12 falco kernel: [64941.365740]  [<ffffffffa01c29a4>] ?
+svc_udp_recvfrom+0x84/0x3e0 [sunrpc]
+Oct 21 13:00:12 falco kernel: [64941.365740]  [<ffffffff81042cca>] ?
+del_timer_sync+0x4a/0x60
+Oct 21 13:00:12 falco kernel: [64941.365740]  [<ffffffff81371fbf>] ?
+schedule_timeout+0x12f/0x1d0
+Oct 21 13:00:12 falco kernel: [64941.365740]  [<ffffffffa01ce231>] ?
+svc_recv+0x961/0x970 [sunrpc]
+Oct 21 13:00:12 falco kernel: [64941.365740]  [<ffffffff8105d240>] ?
+wake_up_process+0x30/0x30
+Oct 21 13:00:12 falco kernel: [64941.365740]  [<ffffffffa021f66d>] ?
+nfsd+0x9d/0x120 [nfsd]
+Oct 21 13:00:12 falco kernel: [64941.365740]  [<ffffffffa021f5d0>] ?
+nfsd_destroy+0x70/0x70 [nfsd]
+Oct 21 13:00:12 falco kernel: [64941.365740]  [<ffffffff810535f8>] ?
+kthread+0xb8/0xd0
+Oct 21 13:00:12 falco kernel: [64941.365740]  [<ffffffff81053540>] ?
+kthread_create_on_node+0x170/0x170
+Oct 21 13:00:12 falco kernel: [64941.365740]  [<ffffffff8137b258>] ?
+ret_from_fork+0x58/0x90
+Oct 21 13:00:12 falco kernel: [64941.365740]  [<ffffffff81053540>] ?
+kthread_create_on_node+0x170/0x170
+Oct 21 13:00:12 falco kernel: [64941.365740] Code: a5 fe ff ff 0f 1f 44 00 00 41
+56 31 c0 41 55 41 54 49 89 fc 55 89 f5 53 48 83 ec 10 8b 77 68 41 89 f5 41 29 ed
+0f 84 88 00 00 00 <48> 8b 42 08 48 89 d3 48 85 c0 75 0f 66 90 48 83 c3 10 48 8b 43
+Oct 21 13:00:12 falco kernel: [64941.365740] RIP  [<ffffffff812de742>]
+skb_copy_and_csum_datagram_iovec+0x22/0x110
+Oct 21 13:00:12 falco kernel: [64941.365740]  RSP <ffff88003cd85bd0>
+Oct 21 13:00:12 falco kernel: [64941.365740] CR2: 0000000000000008
+Oct 21 13:00:12 falco kernel: [64941.367743] ---[ end trace 874f0a58b4dbd906 ]---
 
-Or doing some filtering as you capture.   You could capture just
-operations that might have a delegation stateid--OPEN, DELEGRETURN,
-CB_RECALL.  And probably SEQUENCE replies with any flags set.
-
-> > Another thing we could do here is finally implement the server-side
-> > support for referring triples (I think the client's done?):
-> >
-> > 	http://wiki.linux-nfs.org/wiki/index.php/Server_4.0_and_4.1_issues#Referring_triples
-> > 	https://tools.ietf.org/html/rfc5661#section-2.10.6.3
-> >
-> > That would eliminate the need for the recall retries.
-> >
-> > Though that would still leave open the question of how to handle those
-> > errors on a recall.  We still not be able to conclude that it's safe for
-> > the server to destroy the delegation.
-> 
-> Would this be more appropriately "fixed" by supporting DELEGPURGE in a
-> limited fashion to clear out cl_revoked? (I'm not quite sure
-> that's a valid interpretation of RFC5561) to clear out any "lost"
-> delegations?
-
-I haven't thought it through, but that's clearly not what's intended
-for, so I'm pessimistic.  Note also we'd need to implement it first.
-
-There may be other ways the client could better recover, but we'd still
-rather avoid such situations in the first place.  The recovery logic is
-already complicated enough, it would be worse if it also needed to
-handle a lot of cases that could only occur due to outright bugs.
-
---b.
+Cheers,
+Peter
