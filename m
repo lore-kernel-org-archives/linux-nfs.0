@@ -1,155 +1,211 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:51416 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754932AbbJUU1Y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 Oct 2015 16:27:24 -0400
-Date: Wed, 21 Oct 2015 16:27:22 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Hans-Peter Budek <peter.budek@gmx.de>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: NFS related bug in 3.14.54
-Message-ID: <20151021202722.GA28748@fieldses.org>
-References: <562775EE.1060208@gmx.de>
- <20151021153428.GA27929@fieldses.org>
- <5627E554.1050901@gmx.de>
+Return-Path: <trond.myklebust@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <5627E554.1050901@gmx.de>
-Sender: linux-nfs-owner@vger.kernel.org
+In-Reply-To: <20151014155521.28475a2d@synchrony.poochiereds.net>
+References: <cover.1444846590.git.bcodding@redhat.com>
+	<1ad951a190be5b737d285ae91c3d8acbfb84ff18.1444846590.git.bcodding@redhat.com>
+	<20151014155521.28475a2d@synchrony.poochiereds.net>
+Date: Wed, 21 Oct 2015 14:48:45 -0700
+Message-ID: <CAHQdGtTYxUdJvvALn0o=KVAwyNxCO03JXhexFysbjq6p9wrjUQ@mail.gmail.com>
+Subject: Re: [PATCH 08/10] NFS: Move do_vfs_lock to shared inline
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Jeff Layton <jlayton@poochiereds.net>
+Cc: Benjamin Coddington <bcodding@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Anna Schumaker <anna.schumaker@netapp.com>
+Content-Type: text/plain; charset=UTF-8
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Oct 21, 2015 at 09:19:48PM +0200, Hans-Peter Budek wrote:
-> J. Bruce Fields wrote:
-> > On Wed, Oct 21, 2015 at 01:24:30PM +0200, Hans-Peter Budek wrote:
-> >> A diskless station which mounts my NFS server as root device
-> >> (nolock,nfsvers=3,vers=3)causes a kernel bug on my server:
-> > 
-> > I don't have the bandwidth to handle all bugs myself, would you mind
-> > resending this with a cc: to linux-nfs@vger.kernel.org?
-> > 
-> > Doesn't ring any bells off the top of my head.
-> > 
-> > I'd also be curious to know whether this is reproduceable (e.g., if it
-> > happens every (or most) times you boot this client, and whether there
-> > was some previous kernel version where this didn't happen (so, did this
-> > just start happening on an upgrade of your server's kernel).
-> 
-> I checked this about 10 times. This happend every time with a similar kernel
-> log. The contents of some registers and the stack was slightly different but
-> the call trace and the dereference of 0x8 remained the same.
-> I had to reboot my server each time because it doesn't respond to nfs mount
-> requests after the trap.
-> The previous kernel version was 3.14.35 which seems to work.
+On Wed, Oct 14, 2015 at 12:55 PM, Jeff Layton <jlayton@poochiereds.net> wrote:
+>
+> On Wed, 14 Oct 2015 14:23:35 -0400
+> Benjamin Coddington <bcodding@redhat.com> wrote:
+>
+> > Send the inode instead of the file_lock to do_vfs_lock() in
+> > fs/lockd/clintproc.c (because there may not be a fl_file the unlock path).
+> > Now that we have posix_lock_inode_wait() the three copies of do_vfs_lock()
+> > can be collapsed.
+> >
+> > Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+> > ---
+> >  fs/lockd/clntproc.c |   25 +++++--------------------
+> >  fs/nfs/file.c       |   20 ++------------------
+> >  fs/nfs/nfs4proc.c   |   16 ----------------
+> >  include/linux/fs.h  |   16 ++++++++++++++++
+> >  4 files changed, 23 insertions(+), 54 deletions(-)
+> >
+> > diff --git a/fs/lockd/clntproc.c b/fs/lockd/clntproc.c
+> > index 4a35e7c..bd484f0 100644
+> > --- a/fs/lockd/clntproc.c
+> > +++ b/fs/lockd/clntproc.c
+> > @@ -475,22 +475,6 @@ static void nlmclnt_locks_init_private(struct file_lock *fl, struct nlm_host *ho
+> >       fl->fl_ops = &nlmclnt_lock_ops;
+> >  }
+> >
+> > -static int do_vfs_lock(struct file_lock *fl)
+> > -{
+> > -     int res = 0;
+> > -     switch (fl->fl_flags & (FL_POSIX|FL_FLOCK)) {
+> > -             case FL_POSIX:
+> > -                     res = posix_lock_file_wait(fl->fl_file, fl);
+> > -                     break;
+> > -             case FL_FLOCK:
+> > -                     res = flock_lock_file_wait(fl->fl_file, fl);
+> > -                     break;
+> > -             default:
+> > -                     BUG();
+> > -     }
+> > -     return res;
+> > -}
+> > -
+> >  /*
+> >   * LOCK: Try to create a lock
+> >   *
+> > @@ -518,6 +502,7 @@ nlmclnt_lock(struct nlm_rqst *req, struct file_lock *fl)
+> >       struct nlm_host *host = req->a_host;
+> >       struct nlm_res  *resp = &req->a_res;
+> >       struct nlm_wait *block = NULL;
+> > +     struct inode *inode = file_inode(fl->fl_file);
+> >       unsigned char fl_flags = fl->fl_flags;
+> >       unsigned char fl_type;
+> >       int status = -ENOLCK;
+> > @@ -527,7 +512,7 @@ nlmclnt_lock(struct nlm_rqst *req, struct file_lock *fl)
+> >       req->a_args.state = nsm_local_state;
+> >
+> >       fl->fl_flags |= FL_ACCESS;
+> > -     status = do_vfs_lock(fl);
+> > +     status = do_vfs_lock(inode, fl);
+> >       fl->fl_flags = fl_flags;
+> >       if (status < 0)
+> >               goto out;
+> > @@ -577,7 +562,7 @@ again:
+> >               }
+> >               /* Ensure the resulting lock will get added to granted list */
+> >               fl->fl_flags |= FL_SLEEP;
+> > -             if (do_vfs_lock(fl) < 0)
+> > +             if (do_vfs_lock(inode, fl) < 0)
+> >                       printk(KERN_WARNING "%s: VFS is out of sync with lock manager!\n", __func__);
+> >               up_read(&host->h_rwsem);
+> >               fl->fl_flags = fl_flags;
+> > @@ -607,7 +592,7 @@ out_unlock:
+> >       fl_type = fl->fl_type;
+> >       fl->fl_type = F_UNLCK;
+> >       down_read(&host->h_rwsem);
+> > -     do_vfs_lock(fl);
+> > +     do_vfs_lock(inode, fl);
+> >       up_read(&host->h_rwsem);
+> >       fl->fl_type = fl_type;
+> >       fl->fl_flags = fl_flags;
+> > @@ -674,7 +659,7 @@ nlmclnt_unlock(struct nfs_open_context *ctx, struct nlm_rqst *req, struct file_l
+> >        */
+> >       fl->fl_flags |= FL_EXISTS;
+> >       down_read(&host->h_rwsem);
+> > -     status = do_vfs_lock(fl);
+> > +     status = do_vfs_lock(d_inode(ctx->dentry), fl);
+> >       up_read(&host->h_rwsem);
+> >       fl->fl_flags = fl_flags;
+> >       if (status == -ENOENT) {
+> > diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+> > index 319847c..d16c50f 100644
+> > --- a/fs/nfs/file.c
+> > +++ b/fs/nfs/file.c
+> > @@ -737,22 +737,6 @@ out_noconflict:
+> >       goto out;
+> >  }
+> >
+> > -static int do_vfs_lock(struct file *file, struct file_lock *fl)
+> > -{
+> > -     int res = 0;
+> > -     switch (fl->fl_flags & (FL_POSIX|FL_FLOCK)) {
+> > -             case FL_POSIX:
+> > -                     res = posix_lock_file_wait(file, fl);
+> > -                     break;
+> > -             case FL_FLOCK:
+> > -                     res = flock_lock_file_wait(file, fl);
+> > -                     break;
+> > -             default:
+> > -                     BUG();
+> > -     }
+> > -     return res;
+> > -}
+> > -
+> >  static int
+> >  do_unlk(struct file *filp, int cmd, struct file_lock *fl, int is_local)
+> >  {
+> > @@ -786,7 +770,7 @@ do_unlk(struct file *filp, int cmd, struct file_lock *fl, int is_local)
+> >       if (!is_local)
+> >               status = NFS_PROTO(inode)->lock(ctx, cmd, fl);
+> >       else
+> > -             status = do_vfs_lock(filp, fl);
+> > +             status = do_vfs_lock(inode, fl);
+> >       return status;
+> >  }
+> >
+> > @@ -817,7 +801,7 @@ do_setlk(struct file *filp, int cmd, struct file_lock *fl, int is_local)
+> >       if (!is_local)
+> >               status = NFS_PROTO(inode)->lock(ctx, cmd, fl);
+> >       else
+> > -             status = do_vfs_lock(filp, fl);
+> > +             status = do_vfs_lock(inode, fl);
+> >       if (status < 0)
+> >               goto out;
+> >
+> > diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> > index c08f8ac..6b19307 100644
+> > --- a/fs/nfs/nfs4proc.c
+> > +++ b/fs/nfs/nfs4proc.c
+> > @@ -5511,22 +5511,6 @@ static int nfs4_proc_getlk(struct nfs4_state *state, int cmd, struct file_lock *
+> >       return err;
+> >  }
+> >
+> > -static int do_vfs_lock(struct inode *inode, struct file_lock *fl)
+> > -{
+> > -     int res = 0;
+> > -     switch (fl->fl_flags & (FL_POSIX|FL_FLOCK)) {
+> > -             case FL_POSIX:
+> > -                     res = posix_lock_inode_wait(inode, fl);
+> > -                     break;
+> > -             case FL_FLOCK:
+> > -                     res = flock_lock_inode_wait(inode, fl);
+> > -                     break;
+> > -             default:
+> > -                     BUG();
+> > -     }
+> > -     return res;
+> > -}
+> > -
+> >  struct nfs4_unlockdata {
+> >       struct nfs_locku_args arg;
+> >       struct nfs_locku_res res;
+> > diff --git a/include/linux/fs.h b/include/linux/fs.h
+> > index 72d8a84..165577a 100644
+> > --- a/include/linux/fs.h
+> > +++ b/include/linux/fs.h
+> > @@ -1225,6 +1225,22 @@ static inline int flock_lock_file_wait(struct file *filp, struct file_lock *fl)
+> >       return flock_lock_inode_wait(file_inode(filp), fl);
+> >  }
+> >
+> > +static inline int do_vfs_lock(struct inode *inode, struct file_lock *fl)
+> > +{
+> > +     int res = 0;
+> > +     switch (fl->fl_flags & (FL_POSIX|FL_FLOCK)) {
+> > +             case FL_POSIX:
+> > +                     res = posix_lock_inode_wait(inode, fl);
+> > +                     break;
+> > +             case FL_FLOCK:
+> > +                     res = flock_lock_inode_wait(inode, fl);
+> > +                     break;
+> > +             default:
+> > +                     BUG();
+> > +     }
+> > +     return res;
+> > +}
+> > +
+> >  struct fasync_struct {
+> >       spinlock_t              fa_lock;
+> >       int                     magic;
+>
+> Meh ok...a little large for an inline though. Maybe you should move
+> that into fs/nfs_common and have it as an exported symbol? I'm not too
+> religious about it though since we don't have many call sites.
 
-Between 3.14.35 and 3.14.54 I don't see any interesting changes in
-fs/nfsd or net/sunrpc.
-
-Given where it happened this could be due to a networking change.
-
-Unless someone comes up with a better idea, another option may just be
-to a search by bisection between those two versions.
-
---b.
-
-> 
-> Cheers,
-> Peter
-> > 
-> > --b.
-> > 
-> >>
-> >> Oct 21 12:44:34 falco kernel: [64002.882741] NFSD: the nfsdcld client tracking
-> >> upcall will be removed in 3.10. Please transition to using nfsdcltrack.
-> >> Oct 21 12:46:34 falco kernel: [64123.231017] NFSD: Unable to end grace period: -110
-> >> ...
-> >> Oct 21 13:00:12 falco kernel: [64941.364757] BUG: unable to handle kernel NULL
-> >> pointer dereference at 0000000000000008
-> >> Oct 21 13:00:12 falco kernel: [64941.364782] IP: [<ffffffff812de742>]
-> >> skb_copy_and_csum_datagram_iovec+0x22/0x110
-> >> Oct 21 13:00:12 falco kernel: [64941.364804] PGD 3d321067 PUD d9915067 PMD 0
-> >> Oct 21 13:00:12 falco kernel: [64941.364819] Oops: 0000 [#1] SMP
-> >> Oct 21 13:00:12 falco kernel: [64941.364831] Modules linked in: nfsd auth_rpcgss
-> >> oid_registry nfs_acl lockd sunrpc ipv6 sg usb_storage ahci libahci rtc_cmos
-> >> floppy evdev coretemp it87 hwmon_vid hwmon i2c_i801 acpi_cpufreq processor r8169
-> >> mii pcspkr usbhid xhci_hcd uhci_hcd ehci_pci ehci_hcd usbcore usb_common
-> >> rr2310_00(PO)
-> >> Oct 21 13:00:12 falco kernel: [64941.364933] CPU: 0 PID: 23000 Comm: nfsd
-> >> Tainted: P           O 3.14.54 #7
-> >> Oct 21 13:00:12 falco kernel: [64941.364948] Hardware name: Gigabyte Technology
-> >> Co., Ltd. EP35C-DS3R/EP35C-DS3R, BIOS F3 07/17/2008
-> >> Oct 21 13:00:12 falco kernel: [64941.364966] task: ffff8801fe3fb170 ti:
-> >> ffff88003cd84000 task.ti: ffff88003cd84000
-> >> Oct 21 13:00:12 falco kernel: [64941.364982] RIP: 0010:[<ffffffff812de742>]
-> >> [<ffffffff812de742>] skb_copy_and_csum_datagram_iovec+0x22/0x110
-> >> Oct 21 13:00:12 falco kernel: [64941.365005] RSP: 0018:ffff88003cd85bd0  EFLAGS:
-> >> 00010202
-> >> Oct 21 13:00:12 falco kernel: [64941.365016] RAX: 0000000000000000 RBX:
-> >> ffff8800e5e31880 RCX: 00000000000004f8
-> >> Oct 21 13:00:12 falco kernel: [64941.365031] RDX: 0000000000000000 RSI:
-> >> 0000000000001088 RDI: ffff8800d98e9e00
-> >> Oct 21 13:00:12 falco kernel: [64941.365046] RBP: 0000000000000008 R08:
-> >> 0000000000000000 R09: 00000000744d8bb2
-> >> Oct 21 13:00:12 falco kernel: [64941.365108] R10: 00000000000004c0 R11:
-> >> 0000000000000005 R12: ffff8800d98e9e00
-> >> Oct 21 13:00:12 falco kernel: [64941.365171] R13: 0000000000001080 R14:
-> >> 0000000000001080 R15: ffff8800d98e9e00
-> >> Oct 21 13:00:12 falco kernel: [64941.365233] FS:  0000000000000000(0000)
-> >> GS:ffff880213c00000(0000) knlGS:0000000000000000
-> >> Oct 21 13:00:12 falco kernel: [64941.365344] CS:  0010 DS: 0000 ES: 0000 CR0:
-> >> 000000008005003b
-> >> Oct 21 13:00:12 falco kernel: [64941.365403] CR2: 0000000000000008 CR3:
-> >> 00000000d80dd000 CR4: 00000000000007f0
-> >> Oct 21 13:00:12 falco kernel: [64941.365465] Stack:
-> >> Oct 21 13:00:12 falco kernel: [64941.365517]  ffff8800d98e9e00 ffffffff812d7f3d
-> >> ffff8800e5e31880 ffff88003cd85dc8
-> >> Oct 21 13:00:12 falco kernel: [64941.365632]  0000000000000000 0000000000000000
-> >> 0000000000001080 ffffffff81331f82
-> >> Oct 21 13:00:12 falco kernel: [64941.365740]  0000004213c0c130 0000000000000002
-> >> ffff8800e5e318f0 ffff880208ee4028
-> >> Oct 21 13:00:12 falco kernel: [64941.365740] Call Trace:
-> >> Oct 21 13:00:12 falco kernel: [64941.365740]  [<ffffffff812d7f3d>] ?
-> >> skb_checksum+0x1d/0x30
-> >> Oct 21 13:00:12 falco kernel: [64941.365740]  [<ffffffff81331f82>] ?
-> >> udp_recvmsg+0x1e2/0x350
-> >> Oct 21 13:00:12 falco kernel: [64941.365740]  [<ffffffff8133c028>] ?
-> >> inet_recvmsg+0x48/0x80
-> >> Oct 21 13:00:12 falco kernel: [64941.365740]  [<ffffffff812cf802>] ?
-> >> sock_recvmsg+0x72/0x90
-> >> Oct 21 13:00:12 falco kernel: [64941.365740]  [<ffffffff81042811>] ?
-> >> lock_timer_base.isra.31+0x21/0x50
-> >> Oct 21 13:00:12 falco kernel: [64941.365740]  [<ffffffff812cf850>] ?
-> >> kernel_recvmsg+0x30/0x40
-> >> Oct 21 13:00:12 falco kernel: [64941.365740]  [<ffffffffa01c29a4>] ?
-> >> svc_udp_recvfrom+0x84/0x3e0 [sunrpc]
-> >> Oct 21 13:00:12 falco kernel: [64941.365740]  [<ffffffff81042cca>] ?
-> >> del_timer_sync+0x4a/0x60
-> >> Oct 21 13:00:12 falco kernel: [64941.365740]  [<ffffffff81371fbf>] ?
-> >> schedule_timeout+0x12f/0x1d0
-> >> Oct 21 13:00:12 falco kernel: [64941.365740]  [<ffffffffa01ce231>] ?
-> >> svc_recv+0x961/0x970 [sunrpc]
-> >> Oct 21 13:00:12 falco kernel: [64941.365740]  [<ffffffff8105d240>] ?
-> >> wake_up_process+0x30/0x30
-> >> Oct 21 13:00:12 falco kernel: [64941.365740]  [<ffffffffa021f66d>] ?
-> >> nfsd+0x9d/0x120 [nfsd]
-> >> Oct 21 13:00:12 falco kernel: [64941.365740]  [<ffffffffa021f5d0>] ?
-> >> nfsd_destroy+0x70/0x70 [nfsd]
-> >> Oct 21 13:00:12 falco kernel: [64941.365740]  [<ffffffff810535f8>] ?
-> >> kthread+0xb8/0xd0
-> >> Oct 21 13:00:12 falco kernel: [64941.365740]  [<ffffffff81053540>] ?
-> >> kthread_create_on_node+0x170/0x170
-> >> Oct 21 13:00:12 falco kernel: [64941.365740]  [<ffffffff8137b258>] ?
-> >> ret_from_fork+0x58/0x90
-> >> Oct 21 13:00:12 falco kernel: [64941.365740]  [<ffffffff81053540>] ?
-> >> kthread_create_on_node+0x170/0x170
-> >> Oct 21 13:00:12 falco kernel: [64941.365740] Code: a5 fe ff ff 0f 1f 44 00 00 41
-> >> 56 31 c0 41 55 41 54 49 89 fc 55 89 f5 53 48 83 ec 10 8b 77 68 41 89 f5 41 29 ed
-> >> 0f 84 88 00 00 00 <48> 8b 42 08 48 89 d3 48 85 c0 75 0f 66 90 48 83 c3 10 48 8b 43
-> >> Oct 21 13:00:12 falco kernel: [64941.365740] RIP  [<ffffffff812de742>]
-> >> skb_copy_and_csum_datagram_iovec+0x22/0x110
-> >> Oct 21 13:00:12 falco kernel: [64941.365740]  RSP <ffff88003cd85bd0>
-> >> Oct 21 13:00:12 falco kernel: [64941.365740] CR2: 0000000000000008
-> >> Oct 21 13:00:12 falco kernel: [64941.367743] ---[ end trace 874f0a58b4dbd906 ]---
-> >>
-> >> Cheers,
-> >> Peter
-> > 
+Is this ready to merge, or should we hold off pending an update?
