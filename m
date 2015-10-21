@@ -1,1809 +1,800 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:41950 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751731AbbJUO1j (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 Oct 2015 10:27:39 -0400
-Subject: [PATCH 6/6] KEYS: Merge the type-specific data with the payload data
-From: David Howells <dhowells@redhat.com>
-To: keyrings@vger.kernel.org
-Cc: linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
-        ecryptfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net, dhowells@redhat.com,
-        linux-security-module@vger.kernel.org,
-        linux-ima-devel@lists.sourceforge.net, ceph-devel@vger.kernel.org,
-        linux-ext4@vger.kernel.org
-Date: Wed, 21 Oct 2015 15:27:32 +0100
-Message-ID: <20151021142732.31251.48751.stgit@warthog.procyon.org.uk>
-In-Reply-To: <20151021142646.31251.6867.stgit@warthog.procyon.org.uk>
-References: <20151021142646.31251.6867.stgit@warthog.procyon.org.uk>
+Received: from krichy.tvnetwork.hu ([109.61.101.194]:35196 "EHLO
+	krichy.tvnetwork.hu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754714AbbJUPfY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Oct 2015 11:35:24 -0400
+Received: from localhost (localhost [127.0.0.1])
+	by krichy.tvnetwork.hu (Postfix) with ESMTP id BDB1457236
+	for <linux-nfs@vger.kernel.org>; Wed, 21 Oct 2015 17:25:53 +0200 (CEST)
+Date: Wed, 21 Oct 2015 17:25:53 +0200 (CEST)
+From: krichy@tvnetwork.hu
+To: linux-nfs@vger.kernel.org
+Subject: nfs lockup
+Message-ID: <alpine.DEB.2.20.1510211715430.5353@krichy.tvnetwork.hu>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: multipart/mixed; BOUNDARY="1030603365-548830738-1445441153=:5353"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Merge the type-specific data with the payload data into one four-word chunk
-as it seems pointless to keep them separate.
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
 
-Use user_key_payload() for accessing the payloads of overloaded
-user-defined keys.
+--1030603365-548830738-1445441153=:5353
+Content-Type: text/plain; format=flowed; charset=US-ASCII
 
-Signed-off-by: David Howells <dhowells@redhat.com>
-cc: linux-cifs@vger.kernel.org
-cc: ecryptfs@vger.kernel.org
-cc: linux-ext4@vger.kernel.org
-cc: linux-f2fs-devel@lists.sourceforge.net
-cc: linux-nfs@vger.kernel.org
-cc: ceph-devel@vger.kernel.org
-cc: linux-ima-devel@lists.sourceforge.net
----
+Dear devs,
 
- Documentation/crypto/asymmetric-keys.txt         |   27 +++++++------
- Documentation/security/keys.txt                  |   41 ++++++++++++-------
- crypto/asymmetric_keys/asymmetric_keys.h         |    5 --
- crypto/asymmetric_keys/asymmetric_type.c         |   44 ++++++++++++---------
- crypto/asymmetric_keys/public_key.c              |    4 +-
- crypto/asymmetric_keys/signature.c               |    2 -
- crypto/asymmetric_keys/x509_parser.h             |    1 
- crypto/asymmetric_keys/x509_public_key.c         |    9 ++--
- fs/cifs/cifs_spnego.c                            |    6 +--
- fs/cifs/cifsacl.c                                |   25 ++++++------
- fs/cifs/connect.c                                |    9 ++--
- fs/cifs/sess.c                                   |    2 -
- fs/cifs/smb2pdu.c                                |    2 -
- fs/ecryptfs/ecryptfs_kernel.h                    |    5 +-
- fs/ext4/crypto_key.c                             |    4 +-
- fs/f2fs/crypto_key.c                             |    4 +-
- fs/fscache/object-list.c                         |    4 +-
- fs/nfs/nfs4idmap.c                               |    4 +-
- include/crypto/public_key.h                      |    1 
- include/keys/asymmetric-subtype.h                |    2 -
- include/keys/asymmetric-type.h                   |   15 +++++++
- include/keys/user-type.h                         |    8 ++++
- include/linux/key-type.h                         |    3 -
- include/linux/key.h                              |   33 +++++++--------
- kernel/module_signing.c                          |    1 
- lib/digsig.c                                     |    7 ++-
- net/ceph/ceph_common.c                           |    2 -
- net/ceph/crypto.c                                |    6 +--
- net/dns_resolver/dns_key.c                       |   20 +++++----
- net/dns_resolver/dns_query.c                     |    7 +--
- net/dns_resolver/internal.h                      |    8 ++++
- net/rxrpc/af_rxrpc.c                             |    2 -
- net/rxrpc/ar-key.c                               |   32 +++++++--------
- net/rxrpc/ar-output.c                            |    2 -
- net/rxrpc/ar-security.c                          |    4 +-
- net/rxrpc/rxkad.c                                |   16 ++++---
- security/integrity/evm/evm_crypto.c              |    2 -
- security/keys/big_key.c                          |   47 +++++++++++++++-------
- security/keys/encrypted-keys/encrypted.c         |   18 ++++----
- security/keys/encrypted-keys/encrypted.h         |    4 +-
- security/keys/encrypted-keys/masterkey_trusted.c |    4 +-
- security/keys/key.c                              |   18 ++++----
- security/keys/keyctl.c                           |    4 +-
- security/keys/keyring.c                          |   12 +++---
- security/keys/process_keys.c                     |    4 +-
- security/keys/request_key.c                      |    4 +-
- security/keys/request_key_auth.c                 |   12 +++---
- security/keys/trusted.c                          |    6 +--
- security/keys/user_defined.c                     |   14 +++----
- 49 files changed, 286 insertions(+), 230 deletions(-)
+We have an nfs lockup issue. We run a ganeti cluster consisting of 7 
+debian linux nodes and 1 freenas for hosting the vm images. The images are 
+exported via nfsv3. The problem is that randomly we end in a livelock on 
+one of our nodes.
 
-diff --git a/Documentation/crypto/asymmetric-keys.txt b/Documentation/crypto/asymmetric-keys.txt
-index b7675904a747..8c07e0ea6bc0 100644
---- a/Documentation/crypto/asymmetric-keys.txt
-+++ b/Documentation/crypto/asymmetric-keys.txt
-@@ -186,7 +186,7 @@ and looks like the following:
- 					const struct public_key_signature *sig);
- 	};
- 
--Asymmetric keys point to this with their type_data[0] member.
-+Asymmetric keys point to this with their payload[asym_subtype] member.
- 
- The owner and name fields should be set to the owning module and the name of
- the subtype.  Currently, the name is only used for print statements.
-@@ -269,8 +269,7 @@ mandatory:
- 
- 	struct key_preparsed_payload {
- 		char		*description;
--		void		*type_data[2];
--		void		*payload;
-+		void		*payload[4];
- 		const void	*data;
- 		size_t		datalen;
- 		size_t		quotalen;
-@@ -283,16 +282,18 @@ mandatory:
-      not theirs.
- 
-      If the parser is happy with the blob, it should propose a description for
--     the key and attach it to ->description, ->type_data[0] should be set to
--     point to the subtype to be used, ->payload should be set to point to the
--     initialised data for that subtype, ->type_data[1] should point to a hex
--     fingerprint and quotalen should be updated to indicate how much quota this
--     key should account for.
--
--     When clearing up, the data attached to ->type_data[1] and ->description
--     will be kfree()'d and the data attached to ->payload will be passed to the
--     subtype's ->destroy() method to be disposed of.  A module reference for
--     the subtype pointed to by ->type_data[0] will be put.
-+     the key and attach it to ->description, ->payload[asym_subtype] should be
-+     set to point to the subtype to be used, ->payload[asym_crypto] should be
-+     set to point to the initialised data for that subtype,
-+     ->payload[asym_key_ids] should point to one or more hex fingerprints and
-+     quotalen should be updated to indicate how much quota this key should
-+     account for.
-+
-+     When clearing up, the data attached to ->payload[asym_key_ids] and
-+     ->description will be kfree()'d and the data attached to
-+     ->payload[asm_crypto] will be passed to the subtype's ->destroy() method
-+     to be disposed of.  A module reference for the subtype pointed to by
-+     ->payload[asym_subtype] will be put.
- 
- 
-      If the data format is not recognised, -EBADMSG should be returned.  If it
-diff --git a/Documentation/security/keys.txt b/Documentation/security/keys.txt
-index c9e7f4f223a5..8c183873b2b7 100644
---- a/Documentation/security/keys.txt
-+++ b/Documentation/security/keys.txt
-@@ -1049,12 +1049,12 @@ search a specific keyring, so using keyrings in this way is of limited utility.
- NOTES ON ACCESSING PAYLOAD CONTENTS
- ===================================
- 
--The simplest payload is just a number in key->payload.value. In this case,
--there's no need to indulge in RCU or locking when accessing the payload.
-+The simplest payload is just data stored in key->payload directly.  In this
-+case, there's no need to indulge in RCU or locking when accessing the payload.
- 
--More complex payload contents must be allocated and a pointer to them set in
--key->payload.data. One of the following ways must be selected to access the
--data:
-+More complex payload contents must be allocated and pointers to them set in the
-+key->payload.data[] array.  One of the following ways must be selected to
-+access the data:
- 
-  (1) Unmodifiable key type.
- 
-@@ -1092,6 +1092,13 @@ data:
-      the payload. key->datalen cannot be relied upon to be consistent with the
-      payload just dereferenced if the key's semaphore is not held.
- 
-+     Note that key->payload.data[0] has a shadow that is marked for __rcu
-+     usage.  This is called key->payload.rcu_data0.  The following accessors
-+     wrap the RCU calls to this element:
-+
-+	rcu_assign_keypointer(struct key *key, void *data);
-+	void *rcu_dereference_key(struct key *key);
-+
- 
- ===================
- DEFINING A KEY TYPE
-@@ -1143,8 +1150,7 @@ The structure has a number of fields, some of which are mandatory:
- 
- 	struct key_preparsed_payload {
- 		char		*description;
--		void		*type_data[2];
--		void		*payload;
-+		union key_payload payload;
- 		const void	*data;
- 		size_t		datalen;
- 		size_t		quotalen;
-@@ -1160,10 +1166,9 @@ The structure has a number of fields, some of which are mandatory:
-      attached as a string to the description field.  This will be used for the
-      key description if the caller of add_key() passes NULL or "".
- 
--     The method can attach anything it likes to type_data[] and payload.  These
--     are merely passed along to the instantiate() or update() operations.  If
--     set, the expiry time will be applied to the key if it is instantiated from
--     this data.
-+     The method can attach anything it likes to payload.  This is merely passed
-+     along to the instantiate() or update() operations.  If set, the expiry
-+     time will be applied to the key if it is instantiated from this data.
- 
-      The method should return 0 if successful or a negative error code
-      otherwise.
-@@ -1172,11 +1177,10 @@ The structure has a number of fields, some of which are mandatory:
-  (*) void (*free_preparse)(struct key_preparsed_payload *prep);
- 
-      This method is only required if the preparse() method is provided,
--     otherwise it is unused.  It cleans up anything attached to the
--     description, type_data and payload fields of the key_preparsed_payload
--     struct as filled in by the preparse() method.  It will always be called
--     after preparse() returns successfully, even if instantiate() or update()
--     succeed.
-+     otherwise it is unused.  It cleans up anything attached to the description
-+     and payload fields of the key_preparsed_payload struct as filled in by the
-+     preparse() method.  It will always be called after preparse() returns
-+     successfully, even if instantiate() or update() succeed.
- 
- 
-  (*) int (*instantiate)(struct key *key, struct key_preparsed_payload *prep);
-@@ -1197,6 +1201,11 @@ The structure has a number of fields, some of which are mandatory:
- 
-      It is safe to sleep in this method.
- 
-+     generic_key_instantiate() is provided to simply copy the data from
-+     prep->payload.data[] to key->payload.data[], with RCU-safe assignment on
-+     the first element.  It will then clear prep->payload.data[] so that the
-+     free_preparse method doesn't release the data.
-+
- 
-  (*) int (*update)(struct key *key, const void *data, size_t datalen);
- 
-diff --git a/crypto/asymmetric_keys/asymmetric_keys.h b/crypto/asymmetric_keys/asymmetric_keys.h
-index 3f5b537ab33e..1d450b580245 100644
---- a/crypto/asymmetric_keys/asymmetric_keys.h
-+++ b/crypto/asymmetric_keys/asymmetric_keys.h
-@@ -14,8 +14,3 @@ extern struct asymmetric_key_id *asymmetric_key_hex_to_key_id(const char *id);
- extern int __asymmetric_key_hex_to_key_id(const char *id,
- 					  struct asymmetric_key_id *match_id,
- 					  size_t hexlen);
--static inline
--const struct asymmetric_key_ids *asymmetric_key_ids(const struct key *key)
--{
--	return key->type_data.p[1];
--}
-diff --git a/crypto/asymmetric_keys/asymmetric_type.c b/crypto/asymmetric_keys/asymmetric_type.c
-index 1916680ad81b..9f2165b27d52 100644
---- a/crypto/asymmetric_keys/asymmetric_type.c
-+++ b/crypto/asymmetric_keys/asymmetric_type.c
-@@ -307,25 +307,34 @@ static int asymmetric_key_preparse(struct key_preparsed_payload *prep)
- }
- 
- /*
-+ * Clean up the key ID list
-+ */
-+static void asymmetric_key_free_kids(struct asymmetric_key_ids *kids)
-+{
-+	int i;
-+
-+	if (kids) {
-+		for (i = 0; i < ARRAY_SIZE(kids->id); i++)
-+			kfree(kids->id[i]);
-+		kfree(kids);
-+	}
-+}
-+
-+/*
-  * Clean up the preparse data
-  */
- static void asymmetric_key_free_preparse(struct key_preparsed_payload *prep)
- {
--	struct asymmetric_key_subtype *subtype = prep->type_data[0];
--	struct asymmetric_key_ids *kids = prep->type_data[1];
--	int i;
-+	struct asymmetric_key_subtype *subtype = prep->payload.data[asym_subtype];
-+	struct asymmetric_key_ids *kids = prep->payload.data[asym_key_ids];
- 
- 	pr_devel("==>%s()\n", __func__);
- 
- 	if (subtype) {
--		subtype->destroy(prep->payload[0]);
-+		subtype->destroy(prep->payload.data[asym_crypto]);
- 		module_put(subtype->owner);
- 	}
--	if (kids) {
--		for (i = 0; i < ARRAY_SIZE(kids->id); i++)
--			kfree(kids->id[i]);
--		kfree(kids);
--	}
-+	asymmetric_key_free_kids(kids);
- 	kfree(prep->description);
- }
- 
-@@ -335,20 +344,19 @@ static void asymmetric_key_free_preparse(struct key_preparsed_payload *prep)
- static void asymmetric_key_destroy(struct key *key)
- {
- 	struct asymmetric_key_subtype *subtype = asymmetric_key_subtype(key);
--	struct asymmetric_key_ids *kids = key->type_data.p[1];
-+	struct asymmetric_key_ids *kids = key->payload.data[asym_key_ids];
-+	void *data = key->payload.data[asym_crypto];
-+
-+	key->payload.data[asym_crypto] = NULL;
-+	key->payload.data[asym_subtype] = NULL;
-+	key->payload.data[asym_key_ids] = NULL;
- 
- 	if (subtype) {
--		subtype->destroy(key->payload.data);
-+		subtype->destroy(data);
- 		module_put(subtype->owner);
--		key->type_data.p[0] = NULL;
- 	}
- 
--	if (kids) {
--		kfree(kids->id[0]);
--		kfree(kids->id[1]);
--		kfree(kids);
--		key->type_data.p[1] = NULL;
--	}
-+	asymmetric_key_free_kids(kids);
- }
- 
- struct key_type key_type_asymmetric = {
-diff --git a/crypto/asymmetric_keys/public_key.c b/crypto/asymmetric_keys/public_key.c
-index 81efccbe22d5..6db4c01c6503 100644
---- a/crypto/asymmetric_keys/public_key.c
-+++ b/crypto/asymmetric_keys/public_key.c
-@@ -49,7 +49,7 @@ EXPORT_SYMBOL_GPL(pkey_id_type_name);
- static void public_key_describe(const struct key *asymmetric_key,
- 				struct seq_file *m)
- {
--	struct public_key *key = asymmetric_key->payload.data;
-+	struct public_key *key = asymmetric_key->payload.data[asym_crypto];
- 
- 	if (key)
- 		seq_printf(m, "%s.%s",
-@@ -112,7 +112,7 @@ EXPORT_SYMBOL_GPL(public_key_verify_signature);
- static int public_key_verify_signature_2(const struct key *key,
- 					 const struct public_key_signature *sig)
- {
--	const struct public_key *pk = key->payload.data;
-+	const struct public_key *pk = key->payload.data[asym_crypto];
- 	return public_key_verify_signature(pk, sig);
- }
- 
-diff --git a/crypto/asymmetric_keys/signature.c b/crypto/asymmetric_keys/signature.c
-index 7525fd183574..9441240f7d2a 100644
---- a/crypto/asymmetric_keys/signature.c
-+++ b/crypto/asymmetric_keys/signature.c
-@@ -37,7 +37,7 @@ int verify_signature(const struct key *key,
- 		return -EINVAL;
- 	subtype = asymmetric_key_subtype(key);
- 	if (!subtype ||
--	    !key->payload.data)
-+	    !key->payload.data[0])
- 		return -EINVAL;
- 	if (!subtype->verify_signature)
- 		return -ENOTSUPP;
-diff --git a/crypto/asymmetric_keys/x509_parser.h b/crypto/asymmetric_keys/x509_parser.h
-index 1de01eaec884..dbeed6018e63 100644
---- a/crypto/asymmetric_keys/x509_parser.h
-+++ b/crypto/asymmetric_keys/x509_parser.h
-@@ -11,6 +11,7 @@
- 
- #include <linux/time.h>
- #include <crypto/public_key.h>
-+#include <keys/asymmetric-type.h>
- 
- struct x509_certificate {
- 	struct x509_certificate *next;
-diff --git a/crypto/asymmetric_keys/x509_public_key.c b/crypto/asymmetric_keys/x509_public_key.c
-index 197096632412..64d42981a8d7 100644
---- a/crypto/asymmetric_keys/x509_public_key.c
-+++ b/crypto/asymmetric_keys/x509_public_key.c
-@@ -266,7 +266,8 @@ static int x509_validate_trust(struct x509_certificate *cert,
- 	if (!IS_ERR(key))  {
- 		if (!use_builtin_keys
- 		    || test_bit(KEY_FLAG_BUILTIN, &key->flags))
--			ret = x509_check_signature(key->payload.data, cert);
-+			ret = x509_check_signature(key->payload.data[asym_crypto],
-+						   cert);
- 		key_put(key);
- 	}
- 	return ret;
-@@ -352,9 +353,9 @@ static int x509_key_preparse(struct key_preparsed_payload *prep)
- 
- 	/* We're pinning the module by being linked against it */
- 	__module_get(public_key_subtype.owner);
--	prep->type_data[0] = &public_key_subtype;
--	prep->type_data[1] = kids;
--	prep->payload[0] = cert->pub;
-+	prep->payload.data[asym_subtype] = &public_key_subtype;
-+	prep->payload.data[asym_key_ids] = kids;
-+	prep->payload.data[asym_crypto] = cert->pub;
- 	prep->description = desc;
- 	prep->quotalen = 100;
- 
-diff --git a/fs/cifs/cifs_spnego.c b/fs/cifs/cifs_spnego.c
-index f4cf200b3c76..6908080e9b6d 100644
---- a/fs/cifs/cifs_spnego.c
-+++ b/fs/cifs/cifs_spnego.c
-@@ -42,7 +42,7 @@ cifs_spnego_key_instantiate(struct key *key, struct key_preparsed_payload *prep)
- 		goto error;
- 
- 	/* attach the data */
--	key->payload.data = payload;
-+	key->payload.data[0] = payload;
- 	ret = 0;
- 
- error:
-@@ -52,7 +52,7 @@ error:
- static void
- cifs_spnego_key_destroy(struct key *key)
- {
--	kfree(key->payload.data);
-+	kfree(key->payload.data[0]);
- }
- 
- 
-@@ -167,7 +167,7 @@ cifs_get_spnego_key(struct cifs_ses *sesInfo)
- 
- #ifdef CONFIG_CIFS_DEBUG2
- 	if (cifsFYI && !IS_ERR(spnego_key)) {
--		struct cifs_spnego_msg *msg = spnego_key->payload.data;
-+		struct cifs_spnego_msg *msg = spnego_key->payload.data[0];
- 		cifs_dump_mem("SPNEGO reply blob:", msg->data, min(1024U,
- 				msg->secblob_len + msg->sesskey_len));
- 	}
-diff --git a/fs/cifs/cifsacl.c b/fs/cifs/cifsacl.c
-index 1ea780bc6376..3f93125916bf 100644
---- a/fs/cifs/cifsacl.c
-+++ b/fs/cifs/cifsacl.c
-@@ -58,16 +58,15 @@ cifs_idmap_key_instantiate(struct key *key, struct key_preparsed_payload *prep)
- 	 * dereference payload.data!
- 	 */
- 	if (prep->datalen <= sizeof(key->payload)) {
--		key->payload.value = 0;
--		memcpy(&key->payload.value, prep->data, prep->datalen);
--		key->datalen = prep->datalen;
--		return 0;
-+		key->payload.data[0] = NULL;
-+		memcpy(&key->payload, prep->data, prep->datalen);
-+	} else {
-+		payload = kmemdup(prep->data, prep->datalen, GFP_KERNEL);
-+		if (!payload)
-+			return -ENOMEM;
-+		key->payload.data[0] = payload;
- 	}
--	payload = kmemdup(prep->data, prep->datalen, GFP_KERNEL);
--	if (!payload)
--		return -ENOMEM;
- 
--	key->payload.data = payload;
- 	key->datalen = prep->datalen;
- 	return 0;
- }
-@@ -76,7 +75,7 @@ static inline void
- cifs_idmap_key_destroy(struct key *key)
- {
- 	if (key->datalen > sizeof(key->payload))
--		kfree(key->payload.data);
-+		kfree(key->payload.data[0]);
- }
- 
- static struct key_type cifs_idmap_key_type = {
-@@ -233,8 +232,8 @@ id_to_sid(unsigned int cid, uint sidtype, struct cifs_sid *ssid)
- 	 * it could be.
- 	 */
- 	ksid = sidkey->datalen <= sizeof(sidkey->payload) ?
--		(struct cifs_sid *)&sidkey->payload.value :
--		(struct cifs_sid *)sidkey->payload.data;
-+		(struct cifs_sid *)&sidkey->payload :
-+		(struct cifs_sid *)sidkey->payload.data[0];
- 
- 	ksid_size = CIFS_SID_BASE_SIZE + (ksid->num_subauth * sizeof(__le32));
- 	if (ksid_size > sidkey->datalen) {
-@@ -307,14 +306,14 @@ sid_to_id(struct cifs_sb_info *cifs_sb, struct cifs_sid *psid,
- 	if (sidtype == SIDOWNER) {
- 		kuid_t uid;
- 		uid_t id;
--		memcpy(&id, &sidkey->payload.value, sizeof(uid_t));
-+		memcpy(&id, &sidkey->payload.data[0], sizeof(uid_t));
- 		uid = make_kuid(&init_user_ns, id);
- 		if (uid_valid(uid))
- 			fuid = uid;
- 	} else {
- 		kgid_t gid;
- 		gid_t id;
--		memcpy(&id, &sidkey->payload.value, sizeof(gid_t));
-+		memcpy(&id, &sidkey->payload.data[0], sizeof(gid_t));
- 		gid = make_kgid(&init_user_ns, id);
- 		if (gid_valid(gid))
- 			fgid = gid;
-diff --git a/fs/cifs/connect.c b/fs/cifs/connect.c
-index 773f4dc77630..3f2228570d44 100644
---- a/fs/cifs/connect.c
-+++ b/fs/cifs/connect.c
-@@ -2325,13 +2325,14 @@ static int
- cifs_set_cifscreds(struct smb_vol *vol, struct cifs_ses *ses)
- {
- 	int rc = 0;
--	char *desc, *delim, *payload;
-+	const char *delim, *payload;
-+	char *desc;
- 	ssize_t len;
- 	struct key *key;
- 	struct TCP_Server_Info *server = ses->server;
- 	struct sockaddr_in *sa;
- 	struct sockaddr_in6 *sa6;
--	struct user_key_payload *upayload;
-+	const struct user_key_payload *upayload;
- 
- 	desc = kmalloc(CIFSCREDS_DESC_SIZE, GFP_KERNEL);
- 	if (!desc)
-@@ -2374,14 +2375,14 @@ cifs_set_cifscreds(struct smb_vol *vol, struct cifs_ses *ses)
- 	}
- 
- 	down_read(&key->sem);
--	upayload = key->payload.data;
-+	upayload = user_key_payload(key);
- 	if (IS_ERR_OR_NULL(upayload)) {
- 		rc = upayload ? PTR_ERR(upayload) : -EINVAL;
- 		goto out_key_put;
- 	}
- 
- 	/* find first : in payload */
--	payload = (char *)upayload->data;
-+	payload = upayload->data;
- 	delim = strnchr(payload, upayload->datalen, ':');
- 	cifs_dbg(FYI, "payload=%s\n", payload);
- 	if (!delim) {
-diff --git a/fs/cifs/sess.c b/fs/cifs/sess.c
-index bce6fdcd5d48..59727e32ed0f 100644
---- a/fs/cifs/sess.c
-+++ b/fs/cifs/sess.c
-@@ -988,7 +988,7 @@ sess_auth_kerberos(struct sess_data *sess_data)
- 		goto out;
- 	}
- 
--	msg = spnego_key->payload.data;
-+	msg = spnego_key->payload.data[0];
- 	/*
- 	 * check version field to make sure that cifs.upcall is
- 	 * sending us a response in an expected form
-diff --git a/fs/cifs/smb2pdu.c b/fs/cifs/smb2pdu.c
-index ce83e2edbe0a..52d14c9cf052 100644
---- a/fs/cifs/smb2pdu.c
-+++ b/fs/cifs/smb2pdu.c
-@@ -660,7 +660,7 @@ ssetup_ntlmssp_authenticate:
- 			goto ssetup_exit;
- 		}
- 
--		msg = spnego_key->payload.data;
-+		msg = spnego_key->payload.data[0];
- 		/*
- 		 * check version field to make sure that cifs.upcall is
- 		 * sending us a response in an expected form
-diff --git a/fs/ecryptfs/ecryptfs_kernel.h b/fs/ecryptfs/ecryptfs_kernel.h
-index 5ba029e627cc..7b39260c7bba 100644
---- a/fs/ecryptfs/ecryptfs_kernel.h
-+++ b/fs/ecryptfs/ecryptfs_kernel.h
-@@ -86,7 +86,7 @@ ecryptfs_get_encrypted_key_payload_data(struct key *key)
- {
- 	if (key->type == &key_type_encrypted)
- 		return (struct ecryptfs_auth_tok *)
--			(&((struct encrypted_key_payload *)key->payload.data)->payload_data);
-+			(&((struct encrypted_key_payload *)key->payload.data[0])->payload_data);
- 	else
- 		return NULL;
- }
-@@ -117,8 +117,7 @@ ecryptfs_get_key_payload_data(struct key *key)
- 
- 	auth_tok = ecryptfs_get_encrypted_key_payload_data(key);
- 	if (!auth_tok)
--		return (struct ecryptfs_auth_tok *)
--			(((struct user_key_payload *)key->payload.data)->data);
-+		return (struct ecryptfs_auth_tok *)user_key_payload(key)->data;
- 	else
- 		return auth_tok;
- }
-diff --git a/fs/ext4/crypto_key.c b/fs/ext4/crypto_key.c
-index 1d510c11b100..5c52c79dea46 100644
---- a/fs/ext4/crypto_key.c
-+++ b/fs/ext4/crypto_key.c
-@@ -121,7 +121,7 @@ int _ext4_get_encryption_info(struct inode *inode)
- 	struct key *keyring_key = NULL;
- 	struct ext4_encryption_key *master_key;
- 	struct ext4_encryption_context ctx;
--	struct user_key_payload *ukp;
-+	const struct user_key_payload *ukp;
- 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
- 	struct crypto_ablkcipher *ctfm;
- 	const char *cipher_str;
-@@ -209,7 +209,7 @@ retry:
- 	}
- 	crypt_info->ci_keyring_key = keyring_key;
- 	BUG_ON(keyring_key->type != &key_type_logon);
--	ukp = ((struct user_key_payload *)keyring_key->payload.data);
-+	ukp = user_key_payload(keyring_key);
- 	if (ukp->datalen != sizeof(struct ext4_encryption_key)) {
- 		res = -EINVAL;
- 		goto out;
-diff --git a/fs/f2fs/crypto_key.c b/fs/f2fs/crypto_key.c
-index 9f77de2ef317..5de2d866a25c 100644
---- a/fs/f2fs/crypto_key.c
-+++ b/fs/f2fs/crypto_key.c
-@@ -122,7 +122,7 @@ int _f2fs_get_encryption_info(struct inode *inode)
- 	struct key *keyring_key = NULL;
- 	struct f2fs_encryption_key *master_key;
- 	struct f2fs_encryption_context ctx;
--	struct user_key_payload *ukp;
-+	const struct user_key_payload *ukp;
- 	struct crypto_ablkcipher *ctfm;
- 	const char *cipher_str;
- 	char raw_key[F2FS_MAX_KEY_SIZE];
-@@ -199,7 +199,7 @@ retry:
- 	}
- 	crypt_info->ci_keyring_key = keyring_key;
- 	BUG_ON(keyring_key->type != &key_type_logon);
--	ukp = ((struct user_key_payload *)keyring_key->payload.data);
-+	ukp = user_key_payload(keyring_key);
- 	if (ukp->datalen != sizeof(struct f2fs_encryption_key)) {
- 		res = -EINVAL;
- 		goto out;
-diff --git a/fs/fscache/object-list.c b/fs/fscache/object-list.c
-index 51dde817e1f2..6b028b7c4250 100644
---- a/fs/fscache/object-list.c
-+++ b/fs/fscache/object-list.c
-@@ -316,7 +316,7 @@ static const struct seq_operations fscache_objlist_ops = {
- static void fscache_objlist_config(struct fscache_objlist_data *data)
- {
- #ifdef CONFIG_KEYS
--	struct user_key_payload *confkey;
-+	const struct user_key_payload *confkey;
- 	unsigned long config;
- 	struct key *key;
- 	const char *buf;
-@@ -329,7 +329,7 @@ static void fscache_objlist_config(struct fscache_objlist_data *data)
- 	config = 0;
- 	rcu_read_lock();
- 
--	confkey = key->payload.data;
-+	confkey = user_key_payload(key);
- 	buf = confkey->data;
- 
- 	for (len = confkey->datalen - 1; len >= 0; len--) {
-diff --git a/fs/nfs/nfs4idmap.c b/fs/nfs/nfs4idmap.c
-index 2e4902203c35..5ba22c6b0ffa 100644
---- a/fs/nfs/nfs4idmap.c
-+++ b/fs/nfs/nfs4idmap.c
-@@ -297,7 +297,7 @@ static ssize_t nfs_idmap_get_key(const char *name, size_t namelen,
- {
- 	const struct cred *saved_cred;
- 	struct key *rkey;
--	struct user_key_payload *payload;
-+	const struct user_key_payload *payload;
- 	ssize_t ret;
- 
- 	saved_cred = override_creds(id_resolver_cache);
-@@ -316,7 +316,7 @@ static ssize_t nfs_idmap_get_key(const char *name, size_t namelen,
- 	if (ret < 0)
- 		goto out_up;
- 
--	payload = rcu_dereference(rkey->payload.rcudata);
-+	payload = user_key_payload(rkey);
- 	if (IS_ERR_OR_NULL(payload)) {
- 		ret = PTR_ERR(payload);
- 		goto out_up;
-diff --git a/include/crypto/public_key.h b/include/crypto/public_key.h
-index 067c242b1e15..cc2516df0efa 100644
---- a/include/crypto/public_key.h
-+++ b/include/crypto/public_key.h
-@@ -15,7 +15,6 @@
- #define _LINUX_PUBLIC_KEY_H
- 
- #include <linux/mpi.h>
--#include <keys/asymmetric-type.h>
- #include <crypto/hash_info.h>
- 
- enum pkey_algo {
-diff --git a/include/keys/asymmetric-subtype.h b/include/keys/asymmetric-subtype.h
-index 4b840e822209..4915d40d3c3c 100644
---- a/include/keys/asymmetric-subtype.h
-+++ b/include/keys/asymmetric-subtype.h
-@@ -49,7 +49,7 @@ struct asymmetric_key_subtype {
- static inline
- struct asymmetric_key_subtype *asymmetric_key_subtype(const struct key *key)
- {
--	return key->type_data.p[0];
-+	return key->payload.data[asym_subtype];
- }
- 
- #endif /* _KEYS_ASYMMETRIC_SUBTYPE_H */
-diff --git a/include/keys/asymmetric-type.h b/include/keys/asymmetric-type.h
-index c0754abb2f56..59c1df9cf922 100644
---- a/include/keys/asymmetric-type.h
-+++ b/include/keys/asymmetric-type.h
-@@ -19,6 +19,16 @@
- extern struct key_type key_type_asymmetric;
- 
- /*
-+ * The key payload is four words.  The asymmetric-type key uses them as
-+ * follows:
-+ */
-+enum asymmetric_payload_bits {
-+	asym_crypto,
-+	asym_subtype,
-+	asym_key_ids,
-+};
-+
-+/*
-  * Identifiers for an asymmetric key ID.  We have three ways of looking up a
-  * key derived from an X.509 certificate:
-  *
-@@ -58,6 +68,11 @@ extern struct asymmetric_key_id *asymmetric_key_generate_id(const void *val_1,
- 							    size_t len_1,
- 							    const void *val_2,
- 							    size_t len_2);
-+static inline
-+const struct asymmetric_key_ids *asymmetric_key_ids(const struct key *key)
-+{
-+	return key->payload.data[asym_key_ids];
-+}
- 
- /*
-  * The payload is at the discretion of the subtype.
-diff --git a/include/keys/user-type.h b/include/keys/user-type.h
-index cebefb069c44..c56fef40f53e 100644
---- a/include/keys/user-type.h
-+++ b/include/keys/user-type.h
-@@ -15,6 +15,8 @@
- #include <linux/key.h>
- #include <linux/rcupdate.h>
- 
-+#ifdef CONFIG_KEYS
-+
- /*****************************************************************************/
- /*
-  * the payload for a key of type "user" or "logon"
-@@ -46,5 +48,11 @@ extern void user_describe(const struct key *user, struct seq_file *m);
- extern long user_read(const struct key *key,
- 		      char __user *buffer, size_t buflen);
- 
-+static inline const struct user_key_payload *user_key_payload(const struct key *key)
-+{
-+	return (struct user_key_payload *)rcu_dereference_key(key);
-+}
-+
-+#endif /* CONFIG_KEYS */
- 
- #endif /* _KEYS_USER_TYPE_H */
-diff --git a/include/linux/key-type.h b/include/linux/key-type.h
-index ff9f1d394235..7463355a198b 100644
---- a/include/linux/key-type.h
-+++ b/include/linux/key-type.h
-@@ -40,8 +40,7 @@ struct key_construction {
-  */
- struct key_preparsed_payload {
- 	char		*description;	/* Proposed key description (or NULL) */
--	void		*type_data[2];	/* Private key-type data */
--	void		*payload[2];	/* Proposed payload */
-+	union key_payload payload;	/* Proposed payload */
- 	const void	*data;		/* Raw data */
- 	size_t		datalen;	/* Raw datalen */
- 	size_t		quotalen;	/* Quota length for proposed payload */
-diff --git a/include/linux/key.h b/include/linux/key.h
-index e1d4715f3222..66f705243985 100644
---- a/include/linux/key.h
-+++ b/include/linux/key.h
-@@ -89,6 +89,11 @@ struct keyring_index_key {
- 	size_t			desc_len;
- };
- 
-+union key_payload {
-+	void __rcu		*rcu_data0;
-+	void			*data[4];
-+};
-+
- /*****************************************************************************/
- /*
-  * key reference with possession attribute handling
-@@ -186,28 +191,18 @@ struct key {
- 		};
- 	};
- 
--	/* type specific data
--	 * - this is used by the keyring type to index the name
--	 */
--	union {
--		struct list_head	link;
--		unsigned long		x[2];
--		void			*p[2];
--		int			reject_error;
--	} type_data;
--
- 	/* key data
- 	 * - this is used to hold the data actually used in cryptography or
- 	 *   whatever
- 	 */
- 	union {
--		union {
--			unsigned long		value;
--			void __rcu		*rcudata;
--			void			*data;
--			void			*data2[2];
--		} payload;
--		struct assoc_array keys;
-+		union key_payload payload;
-+		struct {
-+			/* Keyring bits */
-+			struct list_head name_link;
-+			struct assoc_array keys;
-+		};
-+		int reject_error;
- 	};
- };
- 
-@@ -336,12 +331,12 @@ static inline bool key_is_instantiated(const struct key *key)
- }
- 
- #define rcu_dereference_key(KEY)					\
--	(rcu_dereference_protected((KEY)->payload.rcudata,		\
-+	(rcu_dereference_protected((KEY)->payload.rcu_data0,		\
- 				   rwsem_is_locked(&((struct key *)(KEY))->sem)))
- 
- #define rcu_assign_keypointer(KEY, PAYLOAD)				\
- do {									\
--	rcu_assign_pointer((KEY)->payload.rcudata, (PAYLOAD));		\
-+	rcu_assign_pointer((KEY)->payload.rcu_data0, (PAYLOAD));	\
- } while (0)
- 
- #ifdef CONFIG_SYSCTL
-diff --git a/kernel/module_signing.c b/kernel/module_signing.c
-index bd62f5cda746..6528a79d998d 100644
---- a/kernel/module_signing.c
-+++ b/kernel/module_signing.c
-@@ -10,6 +10,7 @@
-  */
- 
- #include <linux/kernel.h>
-+#include <linux/errno.h>
- #include <keys/system_keyring.h>
- #include <crypto/public_key.h>
- #include "module-internal.h"
-diff --git a/lib/digsig.c b/lib/digsig.c
-index ae05ea393fc8..07be6c1ef4e2 100644
---- a/lib/digsig.c
-+++ b/lib/digsig.c
-@@ -79,12 +79,13 @@ static int digsig_verify_rsa(struct key *key,
- 	unsigned char *out1 = NULL;
- 	const char *m;
- 	MPI in = NULL, res = NULL, pkey[2];
--	uint8_t *p, *datap, *endp;
--	struct user_key_payload *ukp;
-+	uint8_t *p, *datap;
-+	const uint8_t *endp;
-+	const struct user_key_payload *ukp;
- 	struct pubkey_hdr *pkh;
- 
- 	down_read(&key->sem);
--	ukp = key->payload.data;
-+	ukp = user_key_payload(key);
- 
- 	if (ukp->datalen < sizeof(*pkh))
- 		goto err1;
-diff --git a/net/ceph/ceph_common.c b/net/ceph/ceph_common.c
-index 54a00d66509e..78f098a20796 100644
---- a/net/ceph/ceph_common.c
-+++ b/net/ceph/ceph_common.c
-@@ -318,7 +318,7 @@ static int get_secret(struct ceph_crypto_key *dst, const char *name) {
- 		goto out;
- 	}
- 
--	ckey = ukey->payload.data;
-+	ckey = ukey->payload.data[0];
- 	err = ceph_crypto_key_clone(dst, ckey);
- 	if (err)
- 		goto out_key;
-diff --git a/net/ceph/crypto.c b/net/ceph/crypto.c
-index 4440edcce0d6..42e8649c6e79 100644
---- a/net/ceph/crypto.c
-+++ b/net/ceph/crypto.c
-@@ -537,7 +537,7 @@ static int ceph_key_preparse(struct key_preparsed_payload *prep)
- 	if (ret < 0)
- 		goto err_ckey;
- 
--	prep->payload[0] = ckey;
-+	prep->payload.data[0] = ckey;
- 	prep->quotalen = datalen;
- 	return 0;
- 
-@@ -549,14 +549,14 @@ err:
- 
- static void ceph_key_free_preparse(struct key_preparsed_payload *prep)
- {
--	struct ceph_crypto_key *ckey = prep->payload[0];
-+	struct ceph_crypto_key *ckey = prep->payload.data[0];
- 	ceph_crypto_key_destroy(ckey);
- 	kfree(ckey);
- }
- 
- static void ceph_key_destroy(struct key *key)
- {
--	struct ceph_crypto_key *ckey = key->payload.data;
-+	struct ceph_crypto_key *ckey = key->payload.data[0];
- 
- 	ceph_crypto_key_destroy(ckey);
- 	kfree(ckey);
-diff --git a/net/dns_resolver/dns_key.c b/net/dns_resolver/dns_key.c
-index 31cd4fd75486..c79b85eb4d4c 100644
---- a/net/dns_resolver/dns_key.c
-+++ b/net/dns_resolver/dns_key.c
-@@ -122,7 +122,7 @@ dns_resolver_preparse(struct key_preparsed_payload *prep)
- 					goto bad_option_value;
- 
- 				kdebug("dns error no. = %lu", derrno);
--				prep->type_data[0] = ERR_PTR(-derrno);
-+				prep->payload.data[dns_key_error] = ERR_PTR(-derrno);
- 				continue;
- 			}
- 
-@@ -137,8 +137,8 @@ dns_resolver_preparse(struct key_preparsed_payload *prep)
- 
- 	/* don't cache the result if we're caching an error saying there's no
- 	 * result */
--	if (prep->type_data[0]) {
--		kleave(" = 0 [h_error %ld]", PTR_ERR(prep->type_data[0]));
-+	if (prep->payload.data[dns_key_error]) {
-+		kleave(" = 0 [h_error %ld]", PTR_ERR(prep->payload.data[dns_key_error]));
- 		return 0;
- 	}
- 
-@@ -155,7 +155,7 @@ dns_resolver_preparse(struct key_preparsed_payload *prep)
- 	memcpy(upayload->data, data, result_len);
- 	upayload->data[result_len] = '\0';
- 
--	prep->payload[0] = upayload;
-+	prep->payload.data[dns_key_data] = upayload;
- 	kleave(" = 0");
- 	return 0;
- }
-@@ -167,7 +167,7 @@ static void dns_resolver_free_preparse(struct key_preparsed_payload *prep)
- {
- 	pr_devel("==>%s()\n", __func__);
- 
--	kfree(prep->payload[0]);
-+	kfree(prep->payload.data[dns_key_data]);
- }
- 
- /*
-@@ -223,10 +223,10 @@ static int dns_resolver_match_preparse(struct key_match_data *match_data)
-  */
- static void dns_resolver_describe(const struct key *key, struct seq_file *m)
- {
--	int err = key->type_data.x[0];
--
- 	seq_puts(m, key->description);
- 	if (key_is_instantiated(key)) {
-+		int err = PTR_ERR(key->payload.data[dns_key_error]);
-+
- 		if (err)
- 			seq_printf(m, ": %d", err);
- 		else
-@@ -241,8 +241,10 @@ static void dns_resolver_describe(const struct key *key, struct seq_file *m)
- static long dns_resolver_read(const struct key *key,
- 			      char __user *buffer, size_t buflen)
- {
--	if (key->type_data.x[0])
--		return key->type_data.x[0];
-+	int err = PTR_ERR(key->payload.data[dns_key_error]);
-+
-+	if (err)
-+		return err;
- 
- 	return user_read(key, buffer, buflen);
- }
-diff --git a/net/dns_resolver/dns_query.c b/net/dns_resolver/dns_query.c
-index 39d2c39bdf87..4677b6fa6dda 100644
---- a/net/dns_resolver/dns_query.c
-+++ b/net/dns_resolver/dns_query.c
-@@ -70,7 +70,7 @@ int dns_query(const char *type, const char *name, size_t namelen,
- 	      const char *options, char **_result, time_t *_expiry)
- {
- 	struct key *rkey;
--	struct user_key_payload *upayload;
-+	const struct user_key_payload *upayload;
- 	const struct cred *saved_cred;
- 	size_t typelen, desclen;
- 	char *desc, *cp;
-@@ -137,12 +137,11 @@ int dns_query(const char *type, const char *name, size_t namelen,
- 		goto put;
- 
- 	/* If the DNS server gave an error, return that to the caller */
--	ret = rkey->type_data.x[0];
-+	ret = PTR_ERR(rkey->payload.data[dns_key_error]);
- 	if (ret)
- 		goto put;
- 
--	upayload = rcu_dereference_protected(rkey->payload.data,
--					     lockdep_is_held(&rkey->sem));
-+	upayload = user_key_payload(rkey);
- 	len = upayload->datalen;
- 
- 	ret = -ENOMEM;
-diff --git a/net/dns_resolver/internal.h b/net/dns_resolver/internal.h
-index 7af1ed39c009..0c570d40e4d6 100644
---- a/net/dns_resolver/internal.h
-+++ b/net/dns_resolver/internal.h
-@@ -23,6 +23,14 @@
- #include <linux/sched.h>
- 
- /*
-+ * Layout of key payload words.
-+ */
-+enum {
-+	dns_key_data,
-+	dns_key_error,
-+};
-+
-+/*
-  * dns_key.c
-  */
- extern const struct cred *dns_resolver_cache;
-diff --git a/net/rxrpc/af_rxrpc.c b/net/rxrpc/af_rxrpc.c
-index 25d60ed15284..1f8a144a5dc2 100644
---- a/net/rxrpc/af_rxrpc.c
-+++ b/net/rxrpc/af_rxrpc.c
-@@ -305,7 +305,7 @@ struct rxrpc_call *rxrpc_kernel_begin_call(struct socket *sock,
- 
- 	if (!key)
- 		key = rx->key;
--	if (key && !key->payload.data)
-+	if (key && !key->payload.data[0])
- 		key = NULL; /* a no-security key */
- 
- 	bundle = rxrpc_get_bundle(rx, trans, key, service_id, gfp);
-diff --git a/net/rxrpc/ar-key.c b/net/rxrpc/ar-key.c
-index db0f39f5ef96..da3cc09f683e 100644
---- a/net/rxrpc/ar-key.c
-+++ b/net/rxrpc/ar-key.c
-@@ -148,10 +148,10 @@ static int rxrpc_preparse_xdr_rxkad(struct key_preparsed_payload *prep,
- 		       token->kad->ticket[6], token->kad->ticket[7]);
- 
- 	/* count the number of tokens attached */
--	prep->type_data[0] = (void *)((unsigned long)prep->type_data[0] + 1);
-+	prep->payload.data[1] = (void *)((unsigned long)prep->payload.data[1] + 1);
- 
- 	/* attach the data */
--	for (pptoken = (struct rxrpc_key_token **)&prep->payload[0];
-+	for (pptoken = (struct rxrpc_key_token **)&prep->payload.data[0];
- 	     *pptoken;
- 	     pptoken = &(*pptoken)->next)
- 		continue;
-@@ -522,7 +522,7 @@ static int rxrpc_preparse_xdr_rxk5(struct key_preparsed_payload *prep,
- 		goto inval;
- 
- 	/* attach the payload */
--	for (pptoken = (struct rxrpc_key_token **)&prep->payload[0];
-+	for (pptoken = (struct rxrpc_key_token **)&prep->payload.data[0];
- 	     *pptoken;
- 	     pptoken = &(*pptoken)->next)
- 		continue;
-@@ -764,10 +764,10 @@ static int rxrpc_preparse(struct key_preparsed_payload *prep)
- 	memcpy(&token->kad->ticket, v1->ticket, v1->ticket_length);
- 
- 	/* count the number of tokens attached */
--	prep->type_data[0] = (void *)((unsigned long)prep->type_data[0] + 1);
-+	prep->payload.data[1] = (void *)((unsigned long)prep->payload.data[1] + 1);
- 
- 	/* attach the data */
--	pp = (struct rxrpc_key_token **)&prep->payload[0];
-+	pp = (struct rxrpc_key_token **)&prep->payload.data[0];
- 	while (*pp)
- 		pp = &(*pp)->next;
- 	*pp = token;
-@@ -814,7 +814,7 @@ static void rxrpc_free_token_list(struct rxrpc_key_token *token)
-  */
- static void rxrpc_free_preparse(struct key_preparsed_payload *prep)
- {
--	rxrpc_free_token_list(prep->payload[0]);
-+	rxrpc_free_token_list(prep->payload.data[0]);
- }
- 
- /*
-@@ -831,7 +831,7 @@ static int rxrpc_preparse_s(struct key_preparsed_payload *prep)
- 	if (prep->datalen != 8)
- 		return -EINVAL;
- 
--	memcpy(&prep->type_data, prep->data, 8);
-+	memcpy(&prep->payload.data[2], prep->data, 8);
- 
- 	ci = crypto_alloc_blkcipher("pcbc(des)", 0, CRYPTO_ALG_ASYNC);
- 	if (IS_ERR(ci)) {
-@@ -842,7 +842,7 @@ static int rxrpc_preparse_s(struct key_preparsed_payload *prep)
- 	if (crypto_blkcipher_setkey(ci, prep->data, 8) < 0)
- 		BUG();
- 
--	prep->payload[0] = ci;
-+	prep->payload.data[0] = ci;
- 	_leave(" = 0");
- 	return 0;
- }
-@@ -852,8 +852,8 @@ static int rxrpc_preparse_s(struct key_preparsed_payload *prep)
-  */
- static void rxrpc_free_preparse_s(struct key_preparsed_payload *prep)
- {
--	if (prep->payload[0])
--		crypto_free_blkcipher(prep->payload[0]);
-+	if (prep->payload.data[0])
-+		crypto_free_blkcipher(prep->payload.data[0]);
- }
- 
- /*
-@@ -861,7 +861,7 @@ static void rxrpc_free_preparse_s(struct key_preparsed_payload *prep)
-  */
- static void rxrpc_destroy(struct key *key)
- {
--	rxrpc_free_token_list(key->payload.data);
-+	rxrpc_free_token_list(key->payload.data[0]);
- }
- 
- /*
-@@ -869,9 +869,9 @@ static void rxrpc_destroy(struct key *key)
-  */
- static void rxrpc_destroy_s(struct key *key)
- {
--	if (key->payload.data) {
--		crypto_free_blkcipher(key->payload.data);
--		key->payload.data = NULL;
-+	if (key->payload.data[0]) {
-+		crypto_free_blkcipher(key->payload.data[0]);
-+		key->payload.data[0] = NULL;
- 	}
- }
- 
-@@ -1070,7 +1070,7 @@ static long rxrpc_read(const struct key *key,
- 	size += 1 * 4;	/* token count */
- 
- 	ntoks = 0;
--	for (token = key->payload.data; token; token = token->next) {
-+	for (token = key->payload.data[0]; token; token = token->next) {
- 		toksize = 4;	/* sec index */
- 
- 		switch (token->security_index) {
-@@ -1163,7 +1163,7 @@ static long rxrpc_read(const struct key *key,
- 	ENCODE(ntoks);
- 
- 	tok = 0;
--	for (token = key->payload.data; token; token = token->next) {
-+	for (token = key->payload.data[0]; token; token = token->next) {
- 		toksize = toksizes[tok++];
- 		ENCODE(toksize);
- 		oldxdr = xdr;
-diff --git a/net/rxrpc/ar-output.c b/net/rxrpc/ar-output.c
-index c0042807bfc6..a40d3afe93b7 100644
---- a/net/rxrpc/ar-output.c
-+++ b/net/rxrpc/ar-output.c
-@@ -158,7 +158,7 @@ int rxrpc_client_sendmsg(struct rxrpc_sock *rx, struct rxrpc_transport *trans,
- 			service_id = htons(srx->srx_service);
- 		}
- 		key = rx->key;
--		if (key && !rx->key->payload.data)
-+		if (key && !rx->key->payload.data[0])
- 			key = NULL;
- 		bundle = rxrpc_get_bundle(rx, trans, key, service_id,
- 					  GFP_KERNEL);
-diff --git a/net/rxrpc/ar-security.c b/net/rxrpc/ar-security.c
-index 49b3cc31ee1f..8334474eb26c 100644
---- a/net/rxrpc/ar-security.c
-+++ b/net/rxrpc/ar-security.c
-@@ -137,9 +137,9 @@ int rxrpc_init_client_conn_security(struct rxrpc_connection *conn)
- 	if (ret < 0)
- 		return ret;
- 
--	if (!key->payload.data)
-+	token = key->payload.data[0];
-+	if (!token)
- 		return -EKEYREJECTED;
--	token = key->payload.data;
- 
- 	sec = rxrpc_security_lookup(token->security_index);
- 	if (!sec)
-diff --git a/net/rxrpc/rxkad.c b/net/rxrpc/rxkad.c
-index f226709ebd8f..d7a9ab5a9d9c 100644
---- a/net/rxrpc/rxkad.c
-+++ b/net/rxrpc/rxkad.c
-@@ -67,7 +67,7 @@ static int rxkad_init_connection_security(struct rxrpc_connection *conn)
- 
- 	_enter("{%d},{%x}", conn->debug_id, key_serial(conn->key));
- 
--	token = conn->key->payload.data;
-+	token = conn->key->payload.data[0];
- 	conn->security_ix = token->security_index;
- 
- 	ci = crypto_alloc_blkcipher("pcbc(fcrypt)", 0, CRYPTO_ALG_ASYNC);
-@@ -125,7 +125,7 @@ static void rxkad_prime_packet_security(struct rxrpc_connection *conn)
- 	if (!conn->key)
- 		return;
- 
--	token = conn->key->payload.data;
-+	token = conn->key->payload.data[0];
- 	memcpy(&iv, token->kad->session_key, sizeof(iv));
- 
- 	desc.tfm = conn->cipher;
-@@ -221,7 +221,7 @@ static int rxkad_secure_packet_encrypt(const struct rxrpc_call *call,
- 	rxkhdr.checksum = 0;
- 
- 	/* encrypt from the session key */
--	token = call->conn->key->payload.data;
-+	token = call->conn->key->payload.data[0];
- 	memcpy(&iv, token->kad->session_key, sizeof(iv));
- 	desc.tfm = call->conn->cipher;
- 	desc.info = iv.x;
-@@ -433,7 +433,7 @@ static int rxkad_verify_packet_encrypt(const struct rxrpc_call *call,
- 	skb_to_sgvec(skb, sg, 0, skb->len);
- 
- 	/* decrypt from the session key */
--	token = call->conn->key->payload.data;
-+	token = call->conn->key->payload.data[0];
- 	memcpy(&iv, token->kad->session_key, sizeof(iv));
- 	desc.tfm = call->conn->cipher;
- 	desc.info = iv.x;
-@@ -780,7 +780,7 @@ static int rxkad_respond_to_challenge(struct rxrpc_connection *conn,
- 	if (conn->security_level < min_level)
- 		goto protocol_error;
- 
--	token = conn->key->payload.data;
-+	token = conn->key->payload.data[0];
- 
- 	/* build the response packet */
- 	memset(&resp, 0, sizeof(resp));
-@@ -848,12 +848,12 @@ static int rxkad_decrypt_ticket(struct rxrpc_connection *conn,
- 		}
- 	}
- 
--	ASSERT(conn->server_key->payload.data != NULL);
-+	ASSERT(conn->server_key->payload.data[0] != NULL);
- 	ASSERTCMP((unsigned long) ticket & 7UL, ==, 0);
- 
--	memcpy(&iv, &conn->server_key->type_data, sizeof(iv));
-+	memcpy(&iv, &conn->server_key->payload.data[2], sizeof(iv));
- 
--	desc.tfm = conn->server_key->payload.data;
-+	desc.tfm = conn->server_key->payload.data[0];
- 	desc.info = iv.x;
- 	desc.flags = 0;
- 
-diff --git a/security/integrity/evm/evm_crypto.c b/security/integrity/evm/evm_crypto.c
-index 159ef3ea4130..461f8d891579 100644
---- a/security/integrity/evm/evm_crypto.c
-+++ b/security/integrity/evm/evm_crypto.c
-@@ -247,7 +247,7 @@ int evm_init_key(void)
- 		return -ENOENT;
- 
- 	down_read(&evm_key->sem);
--	ekp = evm_key->payload.data;
-+	ekp = evm_key->payload.data[0];
- 	if (ekp->decrypted_datalen > MAX_KEY_SIZE) {
- 		rc = -EINVAL;
- 		goto out;
-diff --git a/security/keys/big_key.c b/security/keys/big_key.c
-index b6adb94f6d52..907c1522ee46 100644
---- a/security/keys/big_key.c
-+++ b/security/keys/big_key.c
-@@ -21,6 +21,16 @@
- MODULE_LICENSE("GPL");
- 
- /*
-+ * Layout of key payload words.
-+ */
-+enum {
-+	big_key_data,
-+	big_key_path,
-+	big_key_path_2nd_part,
-+	big_key_len,
-+};
-+
-+/*
-  * If the data is under this limit, there's no point creating a shm file to
-  * hold it as the permanently resident metadata for the shmem fs will be at
-  * least as large as the data.
-@@ -47,7 +57,7 @@ struct key_type key_type_big_key = {
-  */
- int big_key_preparse(struct key_preparsed_payload *prep)
- {
--	struct path *path = (struct path *)&prep->payload;
-+	struct path *path = (struct path *)&prep->payload.data[big_key_path];
- 	struct file *file;
- 	ssize_t written;
- 	size_t datalen = prep->datalen;
-@@ -60,7 +70,7 @@ int big_key_preparse(struct key_preparsed_payload *prep)
- 	/* Set an arbitrary quota */
- 	prep->quotalen = 16;
- 
--	prep->type_data[1] = (void *)(unsigned long)datalen;
-+	prep->payload.data[big_key_len] = (void *)(unsigned long)datalen;
- 
- 	if (datalen > BIG_KEY_FILE_THRESHOLD) {
- 		/* Create a shmem file to store the data in.  This will permit the data
-@@ -94,7 +104,8 @@ int big_key_preparse(struct key_preparsed_payload *prep)
- 		if (!data)
- 			return -ENOMEM;
- 
--		prep->payload[0] = memcpy(data, prep->data, prep->datalen);
-+		prep->payload.data[big_key_data] = data;
-+		memcpy(data, prep->data, prep->datalen);
- 	}
- 	return 0;
- 
-@@ -110,10 +121,10 @@ error:
- void big_key_free_preparse(struct key_preparsed_payload *prep)
- {
- 	if (prep->datalen > BIG_KEY_FILE_THRESHOLD) {
--		struct path *path = (struct path *)&prep->payload;
-+		struct path *path = (struct path *)&prep->payload.data[big_key_path];
- 		path_put(path);
- 	} else {
--		kfree(prep->payload[0]);
-+		kfree(prep->payload.data[big_key_data]);
- 	}
- }
- 
-@@ -123,11 +134,12 @@ void big_key_free_preparse(struct key_preparsed_payload *prep)
-  */
- void big_key_revoke(struct key *key)
- {
--	struct path *path = (struct path *)&key->payload.data2;
-+	struct path *path = (struct path *)&key->payload.data[big_key_path];
- 
- 	/* clear the quota */
- 	key_payload_reserve(key, 0);
--	if (key_is_instantiated(key) && key->type_data.x[1] > BIG_KEY_FILE_THRESHOLD)
-+	if (key_is_instantiated(key) &&
-+	    (size_t)key->payload.data[big_key_len] > BIG_KEY_FILE_THRESHOLD)
- 		vfs_truncate(path, 0);
- }
- 
-@@ -136,14 +148,16 @@ void big_key_revoke(struct key *key)
-  */
- void big_key_destroy(struct key *key)
- {
--	if (key->type_data.x[1] > BIG_KEY_FILE_THRESHOLD) {
--		struct path *path = (struct path *)&key->payload.data2;
-+	size_t datalen = (size_t)key->payload.data[big_key_len];
-+
-+	if (datalen) {
-+		struct path *path = (struct path *)&key->payload.data[big_key_path];
- 		path_put(path);
- 		path->mnt = NULL;
- 		path->dentry = NULL;
- 	} else {
--		kfree(key->payload.data);
--		key->payload.data = NULL;
-+		kfree(key->payload.data[big_key_data]);
-+		key->payload.data[big_key_data] = NULL;
- 	}
- }
- 
-@@ -152,12 +166,12 @@ void big_key_destroy(struct key *key)
-  */
- void big_key_describe(const struct key *key, struct seq_file *m)
- {
--	unsigned long datalen = key->type_data.x[1];
-+	size_t datalen = (size_t)key->payload.data[big_key_len];
- 
- 	seq_puts(m, key->description);
- 
- 	if (key_is_instantiated(key))
--		seq_printf(m, ": %lu [%s]",
-+		seq_printf(m, ": %zu [%s]",
- 			   datalen,
- 			   datalen > BIG_KEY_FILE_THRESHOLD ? "file" : "buff");
- }
-@@ -168,14 +182,14 @@ void big_key_describe(const struct key *key, struct seq_file *m)
-  */
- long big_key_read(const struct key *key, char __user *buffer, size_t buflen)
- {
--	unsigned long datalen = key->type_data.x[1];
-+	size_t datalen = (size_t)key->payload.data[big_key_len];
- 	long ret;
- 
- 	if (!buffer || buflen < datalen)
- 		return datalen;
- 
- 	if (datalen > BIG_KEY_FILE_THRESHOLD) {
--		struct path *path = (struct path *)&key->payload.data2;
-+		struct path *path = (struct path *)&key->payload.data[big_key_path];
- 		struct file *file;
- 		loff_t pos;
- 
-@@ -190,7 +204,8 @@ long big_key_read(const struct key *key, char __user *buffer, size_t buflen)
- 			ret = -EIO;
- 	} else {
- 		ret = datalen;
--		if (copy_to_user(buffer, key->payload.data, datalen) != 0)
-+		if (copy_to_user(buffer, key->payload.data[big_key_data],
-+				 datalen) != 0)
- 			ret = -EFAULT;
- 	}
- 
-diff --git a/security/keys/encrypted-keys/encrypted.c b/security/keys/encrypted-keys/encrypted.c
-index 7bed4ad7cd76..927db9f35ad6 100644
---- a/security/keys/encrypted-keys/encrypted.c
-+++ b/security/keys/encrypted-keys/encrypted.c
-@@ -303,10 +303,10 @@ out:
-  *
-  * Use a user provided key to encrypt/decrypt an encrypted-key.
-  */
--static struct key *request_user_key(const char *master_desc, u8 **master_key,
-+static struct key *request_user_key(const char *master_desc, const u8 **master_key,
- 				    size_t *master_keylen)
- {
--	struct user_key_payload *upayload;
-+	const struct user_key_payload *upayload;
- 	struct key *ukey;
- 
- 	ukey = request_key(&key_type_user, master_desc, NULL);
-@@ -314,7 +314,7 @@ static struct key *request_user_key(const char *master_desc, u8 **master_key,
- 		goto error;
- 
- 	down_read(&ukey->sem);
--	upayload = ukey->payload.data;
-+	upayload = user_key_payload(ukey);
- 	*master_key = upayload->data;
- 	*master_keylen = upayload->datalen;
- error:
-@@ -426,7 +426,7 @@ static int init_blkcipher_desc(struct blkcipher_desc *desc, const u8 *key,
- }
- 
- static struct key *request_master_key(struct encrypted_key_payload *epayload,
--				      u8 **master_key, size_t *master_keylen)
-+				      const u8 **master_key, size_t *master_keylen)
- {
- 	struct key *mkey = NULL;
- 
-@@ -653,7 +653,7 @@ static int encrypted_key_decrypt(struct encrypted_key_payload *epayload,
- {
- 	struct key *mkey;
- 	u8 derived_key[HASH_SIZE];
--	u8 *master_key;
-+	const u8 *master_key;
- 	u8 *hmac;
- 	const char *hex_encoded_data;
- 	unsigned int encrypted_datalen;
-@@ -837,7 +837,7 @@ static void encrypted_rcu_free(struct rcu_head *rcu)
-  */
- static int encrypted_update(struct key *key, struct key_preparsed_payload *prep)
- {
--	struct encrypted_key_payload *epayload = key->payload.data;
-+	struct encrypted_key_payload *epayload = key->payload.data[0];
- 	struct encrypted_key_payload *new_epayload;
- 	char *buf;
- 	char *new_master_desc = NULL;
-@@ -896,7 +896,7 @@ static long encrypted_read(const struct key *key, char __user *buffer,
- {
- 	struct encrypted_key_payload *epayload;
- 	struct key *mkey;
--	u8 *master_key;
-+	const u8 *master_key;
- 	size_t master_keylen;
- 	char derived_key[HASH_SIZE];
- 	char *ascii_buf;
-@@ -957,13 +957,13 @@ out:
-  */
- static void encrypted_destroy(struct key *key)
- {
--	struct encrypted_key_payload *epayload = key->payload.data;
-+	struct encrypted_key_payload *epayload = key->payload.data[0];
- 
- 	if (!epayload)
- 		return;
- 
- 	memset(epayload->decrypted_data, 0, epayload->decrypted_datalen);
--	kfree(key->payload.data);
-+	kfree(key->payload.data[0]);
- }
- 
- struct key_type key_type_encrypted = {
-diff --git a/security/keys/encrypted-keys/encrypted.h b/security/keys/encrypted-keys/encrypted.h
-index 8136a2d44c63..47802c0de735 100644
---- a/security/keys/encrypted-keys/encrypted.h
-+++ b/security/keys/encrypted-keys/encrypted.h
-@@ -5,10 +5,10 @@
- #if defined(CONFIG_TRUSTED_KEYS) || \
-   (defined(CONFIG_TRUSTED_KEYS_MODULE) && defined(CONFIG_ENCRYPTED_KEYS_MODULE))
- extern struct key *request_trusted_key(const char *trusted_desc,
--				       u8 **master_key, size_t *master_keylen);
-+				       const u8 **master_key, size_t *master_keylen);
- #else
- static inline struct key *request_trusted_key(const char *trusted_desc,
--					      u8 **master_key,
-+					      const u8 **master_key,
- 					      size_t *master_keylen)
- {
- 	return ERR_PTR(-EOPNOTSUPP);
-diff --git a/security/keys/encrypted-keys/masterkey_trusted.c b/security/keys/encrypted-keys/masterkey_trusted.c
-index 013f7e5d3a2f..b5b4812dbc87 100644
---- a/security/keys/encrypted-keys/masterkey_trusted.c
-+++ b/security/keys/encrypted-keys/masterkey_trusted.c
-@@ -29,7 +29,7 @@
-  * data, trusted key type data is not visible decrypted from userspace.
-  */
- struct key *request_trusted_key(const char *trusted_desc,
--				u8 **master_key, size_t *master_keylen)
-+				const u8 **master_key, size_t *master_keylen)
- {
- 	struct trusted_key_payload *tpayload;
- 	struct key *tkey;
-@@ -39,7 +39,7 @@ struct key *request_trusted_key(const char *trusted_desc,
- 		goto error;
- 
- 	down_read(&tkey->sem);
--	tpayload = tkey->payload.data;
-+	tpayload = tkey->payload.data[0];
- 	*master_key = tpayload->key;
- 	*master_keylen = tpayload->key_len;
- error:
-diff --git a/security/keys/key.c b/security/keys/key.c
-index c0478465d1ac..ab7997ded725 100644
---- a/security/keys/key.c
-+++ b/security/keys/key.c
-@@ -554,7 +554,7 @@ int key_reject_and_link(struct key *key,
- 	if (!test_bit(KEY_FLAG_INSTANTIATED, &key->flags)) {
- 		/* mark the key as being negatively instantiated */
- 		atomic_inc(&key->user->nikeys);
--		key->type_data.reject_error = -error;
-+		key->reject_error = -error;
- 		smp_wmb();
- 		set_bit(KEY_FLAG_NEGATIVE, &key->flags);
- 		set_bit(KEY_FLAG_INSTANTIATED, &key->flags);
-@@ -1046,14 +1046,14 @@ int generic_key_instantiate(struct key *key, struct key_preparsed_payload *prep)
- 
- 	ret = key_payload_reserve(key, prep->quotalen);
- 	if (ret == 0) {
--		key->type_data.p[0] = prep->type_data[0];
--		key->type_data.p[1] = prep->type_data[1];
--		rcu_assign_keypointer(key, prep->payload[0]);
--		key->payload.data2[1] = prep->payload[1];
--		prep->type_data[0] = NULL;
--		prep->type_data[1] = NULL;
--		prep->payload[0] = NULL;
--		prep->payload[1] = NULL;
-+		rcu_assign_keypointer(key, prep->payload.data[0]);
-+		key->payload.data[1] = prep->payload.data[1];
-+		key->payload.data[2] = prep->payload.data[2];
-+		key->payload.data[3] = prep->payload.data[3];
-+		prep->payload.data[0] = NULL;
-+		prep->payload.data[1] = NULL;
-+		prep->payload.data[2] = NULL;
-+		prep->payload.data[3] = NULL;
- 	}
- 	pr_devel("<==%s() = %d\n", __func__, ret);
- 	return ret;
-diff --git a/security/keys/keyctl.c b/security/keys/keyctl.c
-index 6110fa498494..fb111eafcb89 100644
---- a/security/keys/keyctl.c
-+++ b/security/keys/keyctl.c
-@@ -1027,7 +1027,7 @@ long keyctl_instantiate_key_common(key_serial_t id,
- 	if (!instkey)
- 		goto error;
- 
--	rka = instkey->payload.data;
-+	rka = instkey->payload.data[0];
- 	if (rka->target_key->serial != id)
- 		goto error;
- 
-@@ -1194,7 +1194,7 @@ long keyctl_reject_key(key_serial_t id, unsigned timeout, unsigned error,
- 	if (!instkey)
- 		goto error;
- 
--	rka = instkey->payload.data;
-+	rka = instkey->payload.data[0];
- 	if (rka->target_key->serial != id)
- 		goto error;
- 
-diff --git a/security/keys/keyring.c b/security/keys/keyring.c
-index d33437007ad2..f931ccfeefb0 100644
---- a/security/keys/keyring.c
-+++ b/security/keys/keyring.c
-@@ -118,7 +118,7 @@ static void keyring_publish_name(struct key *keyring)
- 		if (!keyring_name_hash[bucket].next)
- 			INIT_LIST_HEAD(&keyring_name_hash[bucket]);
- 
--		list_add_tail(&keyring->type_data.link,
-+		list_add_tail(&keyring->name_link,
- 			      &keyring_name_hash[bucket]);
- 
- 		write_unlock(&keyring_name_lock);
-@@ -387,9 +387,9 @@ static void keyring_destroy(struct key *keyring)
- 	if (keyring->description) {
- 		write_lock(&keyring_name_lock);
- 
--		if (keyring->type_data.link.next != NULL &&
--		    !list_empty(&keyring->type_data.link))
--			list_del(&keyring->type_data.link);
-+		if (keyring->name_link.next != NULL &&
-+		    !list_empty(&keyring->name_link))
-+			list_del(&keyring->name_link);
- 
- 		write_unlock(&keyring_name_lock);
- 	}
-@@ -572,7 +572,7 @@ static int keyring_search_iterator(const void *object, void *iterator_data)
- 		/* we set a different error code if we pass a negative key */
- 		if (kflags & (1 << KEY_FLAG_NEGATIVE)) {
- 			smp_rmb();
--			ctx->result = ERR_PTR(key->type_data.reject_error);
-+			ctx->result = ERR_PTR(key->reject_error);
- 			kleave(" = %d [neg]", ctx->skipped_ret);
- 			goto skipped;
- 		}
-@@ -990,7 +990,7 @@ struct key *find_keyring_by_name(const char *name, bool skip_perm_check)
- 		 * that's readable and that hasn't been revoked */
- 		list_for_each_entry(keyring,
- 				    &keyring_name_hash[bucket],
--				    type_data.link
-+				    name_link
- 				    ) {
- 			if (!kuid_has_mapping(current_user_ns(), keyring->user->uid))
- 				continue;
-diff --git a/security/keys/process_keys.c b/security/keys/process_keys.c
-index 43b4cddbf2b3..a3f85d2a00bb 100644
---- a/security/keys/process_keys.c
-+++ b/security/keys/process_keys.c
-@@ -457,7 +457,7 @@ key_ref_t search_process_keyrings(struct keyring_search_context *ctx)
- 		down_read(&cred->request_key_auth->sem);
- 
- 		if (key_validate(ctx->cred->request_key_auth) == 0) {
--			rka = ctx->cred->request_key_auth->payload.data;
-+			rka = ctx->cred->request_key_auth->payload.data[0];
- 
- 			ctx->cred = rka->cred;
- 			key_ref = search_process_keyrings(ctx);
-@@ -647,7 +647,7 @@ try_again:
- 			key_ref = ERR_PTR(-EKEYREVOKED);
- 			key = NULL;
- 		} else {
--			rka = ctx.cred->request_key_auth->payload.data;
-+			rka = ctx.cred->request_key_auth->payload.data[0];
- 			key = rka->dest_keyring;
- 			__key_get(key);
- 		}
-diff --git a/security/keys/request_key.c b/security/keys/request_key.c
-index 486ef6fa393b..95d5cfc172c6 100644
---- a/security/keys/request_key.c
-+++ b/security/keys/request_key.c
-@@ -271,7 +271,7 @@ static void construct_get_dest_keyring(struct key **_dest_keyring)
- 			if (cred->request_key_auth) {
- 				authkey = cred->request_key_auth;
- 				down_read(&authkey->sem);
--				rka = authkey->payload.data;
-+				rka = authkey->payload.data[0];
- 				if (!test_bit(KEY_FLAG_REVOKED,
- 					      &authkey->flags))
- 					dest_keyring =
-@@ -593,7 +593,7 @@ int wait_for_key_construction(struct key *key, bool intr)
- 		return -ERESTARTSYS;
- 	if (test_bit(KEY_FLAG_NEGATIVE, &key->flags)) {
- 		smp_rmb();
--		return key->type_data.reject_error;
-+		return key->reject_error;
- 	}
- 	return key_validate(key);
- }
-diff --git a/security/keys/request_key_auth.c b/security/keys/request_key_auth.c
-index 5d672f7580dd..4f0f112fe276 100644
---- a/security/keys/request_key_auth.c
-+++ b/security/keys/request_key_auth.c
-@@ -59,7 +59,7 @@ static void request_key_auth_free_preparse(struct key_preparsed_payload *prep)
- static int request_key_auth_instantiate(struct key *key,
- 					struct key_preparsed_payload *prep)
- {
--	key->payload.data = (struct request_key_auth *)prep->data;
-+	key->payload.data[0] = (struct request_key_auth *)prep->data;
- 	return 0;
- }
- 
-@@ -69,7 +69,7 @@ static int request_key_auth_instantiate(struct key *key,
- static void request_key_auth_describe(const struct key *key,
- 				      struct seq_file *m)
- {
--	struct request_key_auth *rka = key->payload.data;
-+	struct request_key_auth *rka = key->payload.data[0];
- 
- 	seq_puts(m, "key:");
- 	seq_puts(m, key->description);
-@@ -84,7 +84,7 @@ static void request_key_auth_describe(const struct key *key,
- static long request_key_auth_read(const struct key *key,
- 				  char __user *buffer, size_t buflen)
- {
--	struct request_key_auth *rka = key->payload.data;
-+	struct request_key_auth *rka = key->payload.data[0];
- 	size_t datalen;
- 	long ret;
- 
-@@ -110,7 +110,7 @@ static long request_key_auth_read(const struct key *key,
-  */
- static void request_key_auth_revoke(struct key *key)
- {
--	struct request_key_auth *rka = key->payload.data;
-+	struct request_key_auth *rka = key->payload.data[0];
- 
- 	kenter("{%d}", key->serial);
- 
-@@ -125,7 +125,7 @@ static void request_key_auth_revoke(struct key *key)
-  */
- static void request_key_auth_destroy(struct key *key)
- {
--	struct request_key_auth *rka = key->payload.data;
-+	struct request_key_auth *rka = key->payload.data[0];
- 
- 	kenter("{%d}", key->serial);
- 
-@@ -179,7 +179,7 @@ struct key *request_key_auth_new(struct key *target, const void *callout_info,
- 		if (test_bit(KEY_FLAG_REVOKED, &cred->request_key_auth->flags))
- 			goto auth_key_revoked;
- 
--		irka = cred->request_key_auth->payload.data;
-+		irka = cred->request_key_auth->payload.data[0];
- 		rka->cred = get_cred(irka->cred);
- 		rka->pid = irka->pid;
- 
-diff --git a/security/keys/trusted.c b/security/keys/trusted.c
-index d3633cf17c7d..903dace648a1 100644
---- a/security/keys/trusted.c
-+++ b/security/keys/trusted.c
-@@ -1007,7 +1007,7 @@ static void trusted_rcu_free(struct rcu_head *rcu)
-  */
- static int trusted_update(struct key *key, struct key_preparsed_payload *prep)
- {
--	struct trusted_key_payload *p = key->payload.data;
-+	struct trusted_key_payload *p = key->payload.data[0];
- 	struct trusted_key_payload *new_p;
- 	struct trusted_key_options *new_o;
- 	size_t datalen = prep->datalen;
-@@ -1114,12 +1114,12 @@ static long trusted_read(const struct key *key, char __user *buffer,
-  */
- static void trusted_destroy(struct key *key)
- {
--	struct trusted_key_payload *p = key->payload.data;
-+	struct trusted_key_payload *p = key->payload.data[0];
- 
- 	if (!p)
- 		return;
- 	memset(p->key, 0, p->key_len);
--	kfree(key->payload.data);
-+	kfree(key->payload.data[0]);
- }
- 
- struct key_type key_type_trusted = {
-diff --git a/security/keys/user_defined.c b/security/keys/user_defined.c
-index 36b47bbd3d8c..28cb30f80256 100644
---- a/security/keys/user_defined.c
-+++ b/security/keys/user_defined.c
-@@ -74,7 +74,7 @@ int user_preparse(struct key_preparsed_payload *prep)
- 
- 	/* attach the data */
- 	prep->quotalen = datalen;
--	prep->payload[0] = upayload;
-+	prep->payload.data[0] = upayload;
- 	upayload->datalen = datalen;
- 	memcpy(upayload->data, prep->data, datalen);
- 	return 0;
-@@ -86,7 +86,7 @@ EXPORT_SYMBOL_GPL(user_preparse);
-  */
- void user_free_preparse(struct key_preparsed_payload *prep)
- {
--	kfree(prep->payload[0]);
-+	kfree(prep->payload.data[0]);
- }
- EXPORT_SYMBOL_GPL(user_free_preparse);
- 
-@@ -120,7 +120,7 @@ int user_update(struct key *key, struct key_preparsed_payload *prep)
- 
- 	if (ret == 0) {
- 		/* attach the new data, displacing the old */
--		zap = key->payload.data;
-+		zap = key->payload.data[0];
- 		rcu_assign_keypointer(key, upayload);
- 		key->expiry = 0;
- 	}
-@@ -140,7 +140,7 @@ EXPORT_SYMBOL_GPL(user_update);
-  */
- void user_revoke(struct key *key)
- {
--	struct user_key_payload *upayload = key->payload.data;
-+	struct user_key_payload *upayload = key->payload.data[0];
- 
- 	/* clear the quota */
- 	key_payload_reserve(key, 0);
-@@ -158,7 +158,7 @@ EXPORT_SYMBOL(user_revoke);
-  */
- void user_destroy(struct key *key)
- {
--	struct user_key_payload *upayload = key->payload.data;
-+	struct user_key_payload *upayload = key->payload.data[0];
- 
- 	kfree(upayload);
- }
-@@ -183,10 +183,10 @@ EXPORT_SYMBOL_GPL(user_describe);
-  */
- long user_read(const struct key *key, char __user *buffer, size_t buflen)
- {
--	struct user_key_payload *upayload;
-+	const struct user_key_payload *upayload;
- 	long ret;
- 
--	upayload = rcu_dereference_key(key);
-+	upayload = user_key_payload(key);
- 	ret = upayload->datalen;
- 
- 	/* we can return the data as is */
+That means the nfs share is alive, we can list directories, files, even 
+can read files (very slow, see later). And even can write to files, but 
+the file close operation does not return, it gets blocked.
 
+The read is slow in that way that while copying a file from the share to 
+/tmp, the data arrives very fast to the node, but in /tmp it accumulates 
+slowly.
+
+I've also opened a debian bug report on it, but I think it is not related 
+to debian (https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=801924).
+
+The only way is to reboot machine, with all the vm's running on it getting 
+interrupted.
+
+I've captured each tasks' stack trace, hopefully it helps someone to find 
+out the issue.
+
+Meanwhile the other 6 nodes can access the nfs share right, so I think 
+this is not a networking or server issue. Restarting the nfs server on the 
+server side still does not have any effect, not recovering. The nfs tcp 
+connection is established, listing files works again, but writes not.
+
+Some information of the nodes:
+# uname -a
+Linux host 3.16.0-4-amd64 #1 SMP Debian 
+3.16.7-ckt11-1+deb8u4 (2015-09-19) x86_64 GNU/Linux
+
+They have 1.5G ram allocated to dom0, that should be enough.
+
+I know this information is little information, give me advice what to look 
+for next time. Unfortunately I dont know how to reproduce it.
+
+Thanks in advance,
+
+Kojedzinszky Richard
+Euronet Magyarorszag Informatika Zrt.
+--1030603365-548830738-1445441153=:5353
+Content-Type: application/gzip; name=all.trace.txt.gz
+Content-Transfer-Encoding: BASE64
+Content-ID: <alpine.DEB.2.20.1510211725530.5353@krichy.tvnetwork.hu>
+Content-Description: 
+Content-Disposition: attachment; filename=all.trace.txt.gz
+
+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
+l/+kA6emGwjSGusnO8/QCGHwpJFXPnQQaw3sJvScWUNzhUyFOOfkKCfhfbc9
+Yo+haTg2vVudDFb+3Gt5+o234bv42di9URB8c8brlaTUCgjWZ0xB+K/1cZll
+RAWBT11RyWCJpVJixrUWJ1/eyTlhklodWXBVWSnKmayytSK8ckdbZZplxeP3
+UJ9Cz5YqFfZyxj8XUI1lNK2f8cayglBGKHaYi+WWaCFVY2yLtL1mWRNuzpZ5
+70Scd0ikXnz8+PtQxklR8DBKODLQZVlZRdl6KObnmTOBe7vwfpOsVzG7/TRf
+LDCorPWzv00WxD+ks+s2Kfy70U4PbEldl3semyXmuRQmrMfCL90mwT+BeVXr
+OuuSrZQuGDvukEVu4pf5buu+SIH5Fxe2rrvUYyJJXh3f6r6GpIb3yc6BrQsJ
+3WWePIcXf8etLN8Z06oc712fbGloyDj3uF1jn3y4kGrJpRUFyol/BpFdJcW8
+WCf71TLu7isUlk7qmHqW2UBE3YXkXkjQ8mzgFl3w2AJmlb2LWyvtnLLr59eg
+sgkpKrjETqaYyv9n70uaFEl2df8KyzJr69M+D73ozdnc7X29OtZ2DYuJSqwS
+yANkVfe/f5LcI4gJMggSErLiDFQ6eIwuyTV8krrRlCv6n5zuwwn1y/g3UiIO
+Ut1dTaqH351lzJtKqlvjJJMDWjLLuxHrU0rElBJRn/nRbmhnjnfHOS4G2v9t
+igHPricG0OaU8LWoOJXEgHa1sj7ws347JeJDxQDLeWZwVcr0BtoVzaKPUq1O
+aCsCnkues/lu+fUFlnu5Ru6jmui6c0CaW9KfQpYFHLGm/ZwMmzY0hVnPS8Qb
+zMQtKS/TLQj5xtu8bb2gePOf//nz3/Ptvn0UYXk6CRcfn7bAMXhyPq33RkoP
+tH49QwZpXVmupXGsRutE4G9veXdF6/eW/uMzQdC10AW6BJDSptRhv+ulCj1a
+4o8EatdHYZ29joFW4g+TTRYCRpEG8/WvyUNWAQNFrGXpDLBeDeCheNeIzDT3
+wEh3nfkzNQy4+KApC6o85k6Rv3eBlfUgJGsYLxyGzyZWth1drCO8MI1ibJ1N
+wYDVnRUlkj6MtTD0u2FKSMfQGXB+mWOQ4tJFORpP7GF3EI0xoepPjD22Zm2t
+hXQ5emiK7XaznRd/kzIhkq5UObuN4B3iY6fSxhOodjGBat9V4OoTAndYaWMU
+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
+jV5HagZJTnjgO/ntL2hS63fpNAUA
+
+--1030603365-548830738-1445441153=:5353--
