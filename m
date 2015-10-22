@@ -1,24 +1,24 @@
-Return-Path: <jlayton@poochiereds.net>
-Date: Wed, 21 Oct 2015 19:49:40 -0400
-From: Jeff Layton <jlayton@poochiereds.net>
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:43316 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750732AbbJVALr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 21 Oct 2015 20:11:47 -0400
+Date: Wed, 21 Oct 2015 20:11:44 -0400 (EDT)
+From: Benjamin Coddington <bcodding@redhat.com>
 To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Benjamin Coddington <bcodding@redhat.com>,
-        Linux NFS Mailing List
- <linux-nfs@vger.kernel.org>,
+cc: Jeff Layton <jlayton@poochiereds.net>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
         Anna Schumaker <anna.schumaker@netapp.com>
 Subject: Re: [PATCH 08/10] NFS: Move do_vfs_lock to shared inline
-Message-ID: <20151021194940.76d3d9f8@tlielax.poochiereds.net>
 In-Reply-To: <CAHQdGtTYxUdJvvALn0o=KVAwyNxCO03JXhexFysbjq6p9wrjUQ@mail.gmail.com>
-References: <cover.1444846590.git.bcodding@redhat.com>
-	<1ad951a190be5b737d285ae91c3d8acbfb84ff18.1444846590.git.bcodding@redhat.com>
-	<20151014155521.28475a2d@synchrony.poochiereds.net>
-	<CAHQdGtTYxUdJvvALn0o=KVAwyNxCO03JXhexFysbjq6p9wrjUQ@mail.gmail.com>
+Message-ID: <alpine.OSX.2.19.9992.1510212007460.6711@planck.local>
+References: <cover.1444846590.git.bcodding@redhat.com> <1ad951a190be5b737d285ae91c3d8acbfb84ff18.1444846590.git.bcodding@redhat.com> <20151014155521.28475a2d@synchrony.poochiereds.net> <CAHQdGtTYxUdJvvALn0o=KVAwyNxCO03JXhexFysbjq6p9wrjUQ@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 21 Oct 2015 14:48:45 -0700
-Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+On Wed, 21 Oct 2015, Trond Myklebust wrote:
 
 > On Wed, Oct 14, 2015 at 12:55 PM, Jeff Layton <jlayton@poochiereds.net> wrote:
 > >
@@ -212,16 +212,10 @@ Trond Myklebust <trond.myklebust@primarydata.com> wrote:
 > > Meh ok...a little large for an inline though. Maybe you should move
 > > that into fs/nfs_common and have it as an exported symbol? I'm not too
 > > religious about it though since we don't have many call sites.
-> 
+>
 > Is this ready to merge, or should we hold off pending an update?
 
-This one is really fine IMO, but I do have a bit of concern with the
-last patch in the series. That one adds an allocation to the unlock
-codepath. If that fails then a dangling lock could be left hanging
-around on the server. I think it's possible to do this without
-allocating anything there, so I'd like to see that changed.
+I'll send another update.  I need to consider Jeff's comments on patch 10
+and see if we can get rid of that kmalloc.
 
-Otherwise, the set looks good to me. Nice work!
-
--- 
-Jeff Layton <jlayton@poochiereds.net>
+Ben
