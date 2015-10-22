@@ -1,114 +1,144 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:41937 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:48227 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751453AbbJVLSA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 Oct 2015 07:18:00 -0400
-Date: Thu, 22 Oct 2015 07:17:57 -0400 (EDT)
+	id S1756697AbbJVPgA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 Oct 2015 11:36:00 -0400
 From: Benjamin Coddington <bcodding@redhat.com>
-To: krichy@tvnetwork.hu
-cc: linux-nfs@vger.kernel.org
-Subject: Re: nfs lockup
-In-Reply-To: <alpine.DEB.2.20.1510212206120.16145@krichy.tvnetwork.hu>
-Message-ID: <alpine.OSX.2.19.9992.1510220601461.6711@planck.local>
-References: <alpine.DEB.2.20.1510211715430.5353@krichy.tvnetwork.hu> <alpine.OSX.2.19.9992.1510211503550.6711@planck.local> <alpine.DEB.2.20.1510212206120.16145@krichy.tvnetwork.hu>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+To: Jeff Layton <jlayton@poochiereds.net>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Alexander Viro <viro@zeniv.linux.org.uk>
+Cc: Christoph Hellwig <hch@infradead.org>, Oleg Drokin <oleg.drokin@intel.com>,
+        Andreas Dilger <andreas.dilger@intel.com>,
+        Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
+        Eric Van Hensbergen <ericvh@gmail.com>,
+        Ron Minnich <rminnich@sandia.gov>, Latchesar Ionkov <lucho@ionkov.net>,
+        "Yan Zheng" <zyan@redhat.com>, Sage Weil <sage@redhat.com>,
+        Ilya Dryomov <idryomov@gmail.com>, Steve French <sfrench@samba.org>,
+        Christine Caulfield <ccaulfie@redhat.com>,
+        David Teigland <teigland@redhat.com>,
+        Miklos Szeredi <miklos@szeredi.hu>,
+        Steven Whitehouse <swhiteho@redhat.com>,
+        Bob Peterson <rpeterso@redhat.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Mark Fasheh <mfasheh@suse.com>, Joel Becker <jlbec@evilplan.org>,
+        aybuke ozdemir <aybuke.147@gmail.com>,
+        Julia Lawall <Julia.Lawall@lip6.fr>,
+        Abdul Hussain <habdul@visteon.com>, lustre-devel@lists.lustre.org,
+        devel@driverdev.osuosl.org, linux-kernel@vger.kernel.org,
+        v9fs-developer@lists.sourceforge.net, ceph-devel@vger.kernel.org,
+        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
+        cluster-devel@redhat.com, fuse-devel@lists.sourceforge.net,
+        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        ocfs2-devel@oss.oracle.com
+Subject: [PATCH 3/3] locks: cleanup posix_lock_inode_wait and flock_lock_inode_wait
+Date: Thu, 22 Oct 2015 11:35:56 -0400
+Message-Id: <ded792d8fdcba562a1c74fd14fefcb387debc4b1.1445524157.git.bcodding@redhat.com>
+In-Reply-To: <cover.1445524157.git.bcodding@redhat.com>
+References: <cover.1445524157.git.bcodding@redhat.com>
+In-Reply-To: <cover.1445524157.git.bcodding@redhat.com>
+References: <cover.1445524157.git.bcodding@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-It looks like a lot of processes are waiting on i_mutex in
-generic_file_write_iter().  Possible you're in a particularly
-bad spot of contention for that mutex?
+All callers use locks_lock_inode_wait() instead.
 
-Maybe you might use the 'perf-top' tool to dig in to what the system seems to be doing
-when this happens..
+Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+---
+ fs/locks.c         |    5 +----
+ include/linux/fs.h |   24 ------------------------
+ 2 files changed, 1 insertions(+), 28 deletions(-)
 
-On Wed, 21 Oct 2015, krichy@tvnetwork.hu wrote:
+diff --git a/fs/locks.c b/fs/locks.c
+index 94d50d3..b6f3c92 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -1167,8 +1167,7 @@ EXPORT_SYMBOL(posix_lock_file);
+  * @inode: inode of file to which lock request should be applied
+  * @fl: The lock to be applied
+  *
+- * Variant of posix_lock_file_wait that does not take a filp, and so can be
+- * used after the filp has already been torn down.
++ * Apply a POSIX style lock request to an inode.
+  */
+ int posix_lock_inode_wait(struct inode *inode, struct file_lock *fl)
+ {
+@@ -1187,7 +1186,6 @@ int posix_lock_inode_wait(struct inode *inode, struct file_lock *fl)
+ 	}
+ 	return error;
+ }
+-EXPORT_SYMBOL(posix_lock_inode_wait);
+ 
+ /**
+  * locks_mandatory_locked - Check for an active lock
+@@ -1873,7 +1871,6 @@ int flock_lock_inode_wait(struct inode *inode, struct file_lock *fl)
+ 	}
+ 	return error;
+ }
+-EXPORT_SYMBOL(flock_lock_inode_wait);
+ 
+ /**
+  * locks_lock_inode_wait - Apply a lock to an inode
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 2e283b7..05b07c9 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1053,12 +1053,10 @@ extern void locks_remove_file(struct file *);
+ extern void locks_release_private(struct file_lock *);
+ extern void posix_test_lock(struct file *, struct file_lock *);
+ extern int posix_lock_file(struct file *, struct file_lock *, struct file_lock *);
+-extern int posix_lock_inode_wait(struct inode *, struct file_lock *);
+ extern int posix_unblock_lock(struct file_lock *);
+ extern int vfs_test_lock(struct file *, struct file_lock *);
+ extern int vfs_lock_file(struct file *, unsigned int, struct file_lock *, struct file_lock *);
+ extern int vfs_cancel_lock(struct file *filp, struct file_lock *fl);
+-extern int flock_lock_inode_wait(struct inode *inode, struct file_lock *fl);
+ extern int locks_lock_inode_wait(struct inode *inode, struct file_lock *fl);
+ extern int __break_lease(struct inode *inode, unsigned int flags, unsigned int type);
+ extern void lease_get_mtime(struct inode *, struct timespec *time);
+@@ -1145,12 +1143,6 @@ static inline int posix_lock_file(struct file *filp, struct file_lock *fl,
+ 	return -ENOLCK;
+ }
+ 
+-static inline int posix_lock_inode_wait(struct inode *inode,
+-					struct file_lock *fl)
+-{
+-	return -ENOLCK;
+-}
+-
+ static inline int posix_unblock_lock(struct file_lock *waiter)
+ {
+ 	return -ENOENT;
+@@ -1172,12 +1164,6 @@ static inline int vfs_cancel_lock(struct file *filp, struct file_lock *fl)
+ 	return 0;
+ }
+ 
+-static inline int flock_lock_inode_wait(struct inode *inode,
+-					struct file_lock *request)
+-{
+-	return -ENOLCK;
+-}
+-
+ static inline int locks_lock_file_wait(struct file *filp, struct file_lock *fl)
+ {
+ 	return -ENOLCK;
+@@ -1221,16 +1207,6 @@ static inline struct inode *file_inode(const struct file *f)
+ 	return f->f_inode;
+ }
+ 
+-static inline int posix_lock_file_wait(struct file *filp, struct file_lock *fl)
+-{
+-	return posix_lock_inode_wait(file_inode(filp), fl);
+-}
+-
+-static inline int flock_lock_file_wait(struct file *filp, struct file_lock *fl)
+-{
+-	return flock_lock_inode_wait(file_inode(filp), fl);
+-}
+-
+ static inline int locks_lock_file_wait(struct file *filp, struct file_lock *fl)
+ {
+ 	return locks_lock_inode_wait(file_inode(filp), fl);
+-- 
+1.7.1
 
->
-> No, the lock is nothing to do with drbd. In the ganeti cluster some vms use
-> drbd mirrored disks, but others use images on shared folder on nfs. That locks
-> up sometimes. Drbd devices do work well, every network connectivity work well.
->
-> Please give me advice, what to check next time. Unfortunately I cannot
-> reproduce the problem.
->
-> Could the 9000 MTU setting affect NFS somehow? Does that count that we are
-> using xen, and thus a hypervisor is involved (regarding drbd it does).
->
-> Thanks,
->
->
-> Kojedzinszky Richard
-> Euronet Magyarorszag Informatika Zrt.
->
-> On Wed, 21 Oct 2015, Benjamin Coddington wrote:
->
-> > Date: Wed, 21 Oct 2015 15:05:24 -0400 (EDT)
-> > From: Benjamin Coddington <bcodding@redhat.com>
-> > To: krichy@tvnetwork.hu
-> > Cc: linux-nfs@vger.kernel.org
-> > Subject: Re: nfs lockup
-> >
-> > On Wed, 21 Oct 2015, krichy@tvnetwork.hu wrote:
-> >
-> > > Dear devs,
-> > >
-> > > We have an nfs lockup issue. We run a ganeti cluster consisting of 7
-> > > debian
-> > > linux nodes and 1 freenas for hosting the vm images. The images are
-> > > exported
-> > > via nfsv3. The problem is that randomly we end in a livelock on one of our
-> > > nodes.
-> > >
-> > > That means the nfs share is alive, we can list directories, files, even
-> > > can
-> > > read files (very slow, see later). And even can write to files, but the
-> > > file
-> > > close operation does not return, it gets blocked.
-> > >
-> > > The read is slow in that way that while copying a file from the share to
-> > > /tmp,
-> > > the data arrives very fast to the node, but in /tmp it accumulates slowly.
-> > >
-> > > I've also opened a debian bug report on it, but I think it is not related
-> > > to
-> > > debian (https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=801924).
-> > >
-> > > The only way is to reboot machine, with all the vm's running on it getting
-> > > interrupted.
-> > >
-> > > I've captured each tasks' stack trace, hopefully it helps someone to find
-> > > out
-> > > the issue.
-> > >
-> > > Meanwhile the other 6 nodes can access the nfs share right, so I think
-> > > this is
-> > > not a networking or server issue. Restarting the nfs server on the server
-> > > side
-> > > still does not have any effect, not recovering. The nfs tcp connection is
-> > > established, listing files works again, but writes not.
-> > >
-> > > Some information of the nodes:
-> > > # uname -a
-> > > Linux host 3.16.0-4-amd64 #1 SMP Debian 3.16.7-ckt11-1+deb8u4 (2015-09-19)
-> > > x86_64 GNU/Linux
-> > >
-> > > They have 1.5G ram allocated to dom0, that should be enough.
-> > >
-> > > I know this information is little information, give me advice what to look
-> > > for
-> > > next time. Unfortunately I dont know how to reproduce it.
-> > >
-> > > Thanks in advance,
-> > >
-> > > Kojedzinszky Richard
-> > > Euronet Magyarorszag Informatika Zrt.
-> >
-> > I took a look at your debian bug report.. what's up with those drbd procs?
-> > Are you writing to drbd-backed devs, and have you made sure that's not
-> > involved in any way?
-> >
-> > Ben
-> >
->
