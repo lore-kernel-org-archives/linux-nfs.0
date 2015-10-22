@@ -1,142 +1,189 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:34372 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([173.255.197.46]:35224 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S965066AbbJVQVu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 Oct 2015 12:21:50 -0400
-Date: Thu, 22 Oct 2015 12:21:44 -0400 (EDT)
-From: Benjamin Coddington <bcodding@redhat.com>
-To: Jeff Layton <jlayton@poochiereds.net>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Alexander Viro <viro@zeniv.linux.org.uk>
-cc: Christoph Hellwig <hch@infradead.org>, Oleg Drokin <oleg.drokin@intel.com>,
-        Andreas Dilger <andreas.dilger@intel.com>,
-        Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
-        Eric Van Hensbergen <ericvh@gmail.com>,
-        Ron Minnich <rminnich@sandia.gov>, Latchesar Ionkov <lucho@ionkov.net>,
-        Yan Zheng <zyan@redhat.com>, Sage Weil <sage@redhat.com>,
-        Ilya Dryomov <idryomov@gmail.com>, Steve French <sfrench@samba.org>,
-        Christine Caulfield <ccaulfie@redhat.com>,
-        David Teigland <teigland@redhat.com>,
-        Miklos Szeredi <miklos@szeredi.hu>,
-        Steven Whitehouse <swhiteho@redhat.com>,
-        Bob Peterson <rpeterso@redhat.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
+	id S1751301AbbJVQbf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 Oct 2015 12:31:35 -0400
+Date: Thu, 22 Oct 2015 12:31:33 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Kosuke Tatsukawa <tatsu@ab.jp.nec.com>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Neil Brown <nfbrown@novell.com>,
         Anna Schumaker <anna.schumaker@netapp.com>,
-        Mark Fasheh <mfasheh@suse.com>, Joel Becker <jlbec@evilplan.org>,
-        aybuke ozdemir <aybuke.147@gmail.com>,
-        Julia Lawall <Julia.Lawall@lip6.fr>,
-        Abdul Hussain <habdul@visteon.com>, lustre-devel@lists.lustre.org,
-        devel@driverdev.osuosl.org, linux-kernel@vger.kernel.org,
-        v9fs-developer@lists.sourceforge.net, ceph-devel@vger.kernel.org,
-        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
-        cluster-devel@redhat.com, fuse-devel@lists.sourceforge.net,
-        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        ocfs2-devel@oss.oracle.com
-Subject: Re: [PATCH 1/3] locks: introduce locks_lock_inode_wait()
-In-Reply-To: <daf0d3941f34438c1fbdc94a5f3a47c2b22f3ee8.1445524157.git.bcodding@redhat.com>
-Message-ID: <alpine.OSX.2.19.9992.1510221219010.6711@planck.local>
-References: <cover.1445524157.git.bcodding@redhat.com> <daf0d3941f34438c1fbdc94a5f3a47c2b22f3ee8.1445524157.git.bcodding@redhat.com>
+        Jeff Layton <jlayton@poochiereds.net>,
+        "David S. Miller" <davem@davemloft.net>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH v2] sunrpc: fix waitqueue_active without memory barrier
+ in sunrpc
+Message-ID: <20151022163133.GB5205@fieldses.org>
+References: <17EC94B0A072C34B8DCF0D30AD16044A0287864B@BPXM09GP.gisp.nec.co.jp>
+ <17EC94B0A072C34B8DCF0D30AD16044A028786CB@BPXM09GP.gisp.nec.co.jp>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <17EC94B0A072C34B8DCF0D30AD16044A028786CB@BPXM09GP.gisp.nec.co.jp>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 22 Oct 2015, Benjamin Coddington wrote:
+On Fri, Oct 16, 2015 at 02:28:10AM +0000, Kosuke Tatsukawa wrote:
+> Tatsukawa Kosuke wrote:
+> > J. Bruce Fields wrote:
+> >> On Thu, Oct 15, 2015 at 11:44:20AM +0000, Kosuke Tatsukawa wrote:
+> >>> Tatsukawa Kosuke wrote:
+> >>> > J. Bruce Fields wrote:
+> >>> >> Thanks for the detailed investigation.
+> >>> >> 
+> >>> >> I think it would be worth adding a comment if that might help someone
+> >>> >> having to reinvestigate this again some day.
+> >>> > 
+> >>> > It would be nice, but I find it difficult to write a comment in the
+> >>> > sunrpc layer why a memory barrier isn't necessary, using the knowledge
+> >>> > of how nfsd uses it, and the current implementation of the network code.
+> >>> > 
+> >>> > Personally, I would prefer removing the call to waitqueue_active() which
+> >>> > would make the memory barrier totally unnecessary at the cost of a
+> >>> > spin_lock + spin_unlock by unconditionally calling
+> >>> > wake_up_interruptible.
+> >>> 
+> >>> On second thought, the callbacks will be called frequently from the tcp
+> >>> code, so it wouldn't be a good idea.
+> >> 
+> >> So, I was even considering documenting it like this, if it's not
+> >> overkill.
+> >> 
+> >> Hmm... but if this is right, then we may as well ask why we're doing the
+> >> wakeups at all.  Might be educational to test the code with them
+> >> removed.
+> > 
+> > sk_write_space will be called in sock_wfree() with UDP/IP each time
+> > kfree_skb() is called.  With TCP/IP, sk_write_space is only called if
+> > SOCK_NOSPACE has been set.
+> > 
+> > sk_data_ready will be called in both tcp_rcv_established() for TCP/IP
+> > and in sock_queue_rcv_skb() for UDP/IP.  The latter lacks a memory
+> > barrier with sk_data_ready called right after __skb_queue_tail().
+> > I think this hasn't caused any problems because sk_data_ready wasn't
+> > used.
+> 
+> Actually, svc_udp_data_ready() calls set_bit() which is an atomic
+> operation.  So there won't be a problem unless svsk is NULL.
 
-> Users of the locks API commonly call either posix_lock_file_wait() or
-> flock_lock_file_wait() depending upon the lock type.  Add a new function
-> locks_lock_inode_wait() which will check and call the correct function for
-> the type of lock passed in.
->
-> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+So is it true that every caller of these socket callbacks has adequate
+memory barriers between the time the change is made visible and the time
+the callback is called?
+
+If so, then there's nothing really specific about nfsd here.
+
+In that case maybe it's the networking code that use some documentation,
+if it doesn't already?  (Or maybe common helper functions for this
+
+	if (waitqueue_active(wq))
+		wake_up(wq)
+
+pattern?)
+
+--b.
+
+> 
+> 
+> >> --b.
+> >> 
+> >> commit 0882cfeb39e0
+> >> Author: J. Bruce Fields <bfields@redhat.com>
+> >> Date:   Thu Oct 15 16:53:41 2015 -0400
+> >> 
+> >>     svcrpc: document lack of some memory barriers.
+> >>     
+> >>     Kosuke Tatsukawa points out an odd lack of memory barriers in some sites
+> >>     here.  I think the code's correct, but it's probably worth documenting.
+> >>     
+> >>     Reported-by: Kosuke Tatsukawa <tatsu@ab.jp.nec.com>
+> >> 
+> >> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+> >> index 856407fa085e..90480993ec4a 100644
+> >> --- a/net/sunrpc/svcsock.c
+> >> +++ b/net/sunrpc/svcsock.c
+> >> @@ -399,6 +399,25 @@ static int svc_sock_secure_port(struct svc_rqst *rqstp)
+> >>  	return svc_port_is_privileged(svc_addr(rqstp));
+> >>  }
+> >>  
+> >> +static void svc_no_smp_mb(void)
+> >> +{
+> >> +	/*
+> >> +	 * Kosuke Tatsukawa points out there should normally be an
+> >> +	 * smp_mb() at the callsites of this function.  (Either that or
+> >> +	 * we could just drop the waitqueue_active() checks.)
+> >> +	 *
+> >> +	 * It appears they aren't currently necessary, though, basically
+> >> +	 * because nfsd does non-blocking reads from these sockets, so
+> >> +	 * the only places we wait on this waitqueue is in sendpage and
+> >> +	 * sendmsg, which won't be waiting for wakeups on newly arrived
+> >> +	 * data.
+> >> +	 *
+> >> +	 * Maybe we should add the memory barriers anyway, but these are
+> >> +	 * hot paths so we'd need to be convinced there's no sigificant
+> >> +	 * penalty.
+> >> +	 */
+> >> +}
+> >> +
+> >>  /*
+> >>   * INET callback when data has been received on the socket.
+> >>   */
+> >> @@ -414,7 +433,7 @@ static void svc_udp_data_ready(struct sock *sk)
+> >>  		set_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags);
+> >>  		svc_xprt_enqueue(&svsk->sk_xprt);
+> >>  	}
+> >> -	smp_mb();
+> >> +	svc_no_smp_mb();
+> >>  	if (wq && waitqueue_active(wq))
+> >>  		wake_up_interruptible(wq);
+> >>  }
+> >> @@ -433,7 +452,7 @@ static void svc_write_space(struct sock *sk)
+> >>  		svc_xprt_enqueue(&svsk->sk_xprt);
+> >>  	}
+> >>  
+> >> -	smp_mb();
+> >> +	svc_no_smp_mb();
+> >>  	if (wq && waitqueue_active(wq)) {
+> >>  		dprintk("RPC svc_write_space: someone sleeping on %p\n",
+> >>  		       svsk);
+> >> @@ -789,7 +808,7 @@ static void svc_tcp_listen_data_ready(struct sock *sk)
+> >>  	}
+> >>  
+> >>  	wq = sk_sleep(sk);
+> >> -	smp_mb();
+> >> +	svc_no_smp_mb();
+> >>  	if (wq && waitqueue_active(wq))
+> >>  		wake_up_interruptible_all(wq);
+> >>  }
+> >> @@ -811,7 +830,7 @@ static void svc_tcp_state_change(struct sock *sk)
+> >>  		set_bit(XPT_CLOSE, &svsk->sk_xprt.xpt_flags);
+> >>  		svc_xprt_enqueue(&svsk->sk_xprt);
+> >>  	}
+> >> -	smp_mb();
+> >> +	svc_no_smp_mb();
+> >>  	if (wq && waitqueue_active(wq))
+> >>  		wake_up_interruptible_all(wq);
+> >>  }
+> >> @@ -827,7 +846,7 @@ static void svc_tcp_data_ready(struct sock *sk)
+> >>  		set_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags);
+> >>  		svc_xprt_enqueue(&svsk->sk_xprt);
+> >>  	}
+> >> -	smp_mb();
+> >> +	svc_no_smp_mb();
+> >>  	if (wq && waitqueue_active(wq))
+> >>  		wake_up_interruptible(wq);
+> >>  }
+> >> @@ -1599,7 +1618,7 @@ static void svc_sock_detach(struct svc_xprt *xprt)
+> >>  	sk->sk_write_space = svsk->sk_owspace;
+> >>  
+> >>  	wq = sk_sleep(sk);
+> >> -	smp_mb();
+> >> +	svc_no_smp_mb();
+> >>  	if (wq && waitqueue_active(wq))
+> >>  		wake_up_interruptible(wq);
+> >>  }
 > ---
->  fs/locks.c         |   24 ++++++++++++++++++++++++
->  include/linux/fs.h |   11 +++++++++++
->  2 files changed, 35 insertions(+), 0 deletions(-)
->
-> diff --git a/fs/locks.c b/fs/locks.c
-> index 2a54c80..68b1784 100644
-> --- a/fs/locks.c
-> +++ b/fs/locks.c
-> @@ -1876,6 +1876,30 @@ int flock_lock_inode_wait(struct inode *inode, struct file_lock *fl)
->  EXPORT_SYMBOL(flock_lock_inode_wait);
->
->  /**
-> + * locks_lock_inode_wait - Apply a lock to an inode
-> + * @inode: inode of the file to apply to
-> + * @fl: The lock to be applied
-> + *
-> + * Apply a POSIX or FLOCK style lock request to an inode.
-> + */
-> +int locks_lock_inode_wait(struct inode *inode, struct file_lock *fl)
-> +{
-> +	int res = 0;
-> +	switch (fl->fl_flags & (FL_POSIX|FL_FLOCK)) {
-> +		case FL_POSIX:
-> +			res = posix_lock_inode_wait(inode, fl);
-> +			break;
-> +		case FL_FLOCK:
-> +			res = flock_lock_inode_wait(inode, fl);
-> +			break;
-> +		default:
-> +			BUG();
-> +	}
-> +	return res;
-> +}
-> +EXPORT_SYMBOL(locks_lock_inode_wait);
-> +
-> +/**
->   *	sys_flock: - flock() system call.
->   *	@fd: the file descriptor to lock.
->   *	@cmd: the type of lock to apply.
-> diff --git a/include/linux/fs.h b/include/linux/fs.h
-> index 72d8a84..2e283b7 100644
-> --- a/include/linux/fs.h
-> +++ b/include/linux/fs.h
-> @@ -1059,6 +1059,7 @@ extern int vfs_test_lock(struct file *, struct file_lock *);
->  extern int vfs_lock_file(struct file *, unsigned int, struct file_lock *, struct file_lock *);
->  extern int vfs_cancel_lock(struct file *filp, struct file_lock *fl);
->  extern int flock_lock_inode_wait(struct inode *inode, struct file_lock *fl);
-> +extern int locks_lock_inode_wait(struct inode *inode, struct file_lock *fl);
->  extern int __break_lease(struct inode *inode, unsigned int flags, unsigned int type);
->  extern void lease_get_mtime(struct inode *, struct timespec *time);
->  extern int generic_setlease(struct file *, long, struct file_lock **, void **priv);
-> @@ -1177,6 +1178,11 @@ static inline int flock_lock_inode_wait(struct inode *inode,
->  	return -ENOLCK;
->  }
->
-> +static inline int locks_lock_file_wait(struct file *filp, struct file_lock *fl)
-> +{
-> +	return -ENOLCK;
-> +}
-> +
-
-So, this is obviously wrong - thank you 0-day robot.  Yes, I did build and
-test against these patches, but went back and added this after I realized it
-should work w/o CONFIG_FILE_LOCKING.  I'll re-send.
-
-Ben
-
->  static inline int __break_lease(struct inode *inode, unsigned int mode, unsigned int type)
->  {
->  	return 0;
-> @@ -1225,6 +1231,11 @@ static inline int flock_lock_file_wait(struct file *filp, struct file_lock *fl)
->  	return flock_lock_inode_wait(file_inode(filp), fl);
->  }
->
-> +static inline int locks_lock_file_wait(struct file *filp, struct file_lock *fl)
-> +{
-> +	return locks_lock_inode_wait(file_inode(filp), fl);
-> +}
-> +
->  struct fasync_struct {
->  	spinlock_t		fa_lock;
->  	int			magic;
-> --
-> 1.7.1
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
+> Kosuke TATSUKAWA  | 3rd IT Platform Department
+>                   | IT Platform Division, NEC Corporation
+>                   | tatsu@ab.jp.nec.com
