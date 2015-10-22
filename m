@@ -1,221 +1,71 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:43316 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750732AbbJVALr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 Oct 2015 20:11:47 -0400
-Date: Wed, 21 Oct 2015 20:11:44 -0400 (EDT)
-From: Benjamin Coddington <bcodding@redhat.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-cc: Jeff Layton <jlayton@poochiereds.net>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Anna Schumaker <anna.schumaker@netapp.com>
-Subject: Re: [PATCH 08/10] NFS: Move do_vfs_lock to shared inline
-In-Reply-To: <CAHQdGtTYxUdJvvALn0o=KVAwyNxCO03JXhexFysbjq6p9wrjUQ@mail.gmail.com>
-Message-ID: <alpine.OSX.2.19.9992.1510212007460.6711@planck.local>
-References: <cover.1444846590.git.bcodding@redhat.com> <1ad951a190be5b737d285ae91c3d8acbfb84ff18.1444846590.git.bcodding@redhat.com> <20151014155521.28475a2d@synchrony.poochiereds.net> <CAHQdGtTYxUdJvvALn0o=KVAwyNxCO03JXhexFysbjq6p9wrjUQ@mail.gmail.com>
+Received: from victor.provo.novell.com ([137.65.250.26]:50921 "EHLO
+	prv3-mh.provo.novell.com" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1751352AbbJVGct (ORCPT
+	<rfc822;groupwise-linux-nfs@vger.kernel.org:0:0>);
+	Thu, 22 Oct 2015 02:32:49 -0400
+From: Neil Brown <nfbrown@novell.com>
+To: Steve Dickson <SteveD@redhat.com>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Date: Thu, 22 Oct 2015 17:32:35 +1100
+Subject: [PATCH nfs-utils] systemd/Makefile: only install rpc-svcgssd.service if it is required.
+In-Reply-To: <5606D863.9060107@RedHat.com>
+References: <5606D863.9060107@RedHat.com>
+Message-ID: <87y4evza4c.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: multipart/signed; boundary="=-=-=";
+	micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 21 Oct 2015, Trond Myklebust wrote:
+--=-=-=
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-> On Wed, Oct 14, 2015 at 12:55 PM, Jeff Layton <jlayton@poochiereds.net> wrote:
-> >
-> > On Wed, 14 Oct 2015 14:23:35 -0400
-> > Benjamin Coddington <bcodding@redhat.com> wrote:
-> >
-> > > Send the inode instead of the file_lock to do_vfs_lock() in
-> > > fs/lockd/clintproc.c (because there may not be a fl_file the unlock path).
-> > > Now that we have posix_lock_inode_wait() the three copies of do_vfs_lock()
-> > > can be collapsed.
-> > >
-> > > Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
-> > > ---
-> > >  fs/lockd/clntproc.c |   25 +++++--------------------
-> > >  fs/nfs/file.c       |   20 ++------------------
-> > >  fs/nfs/nfs4proc.c   |   16 ----------------
-> > >  include/linux/fs.h  |   16 ++++++++++++++++
-> > >  4 files changed, 23 insertions(+), 54 deletions(-)
-> > >
-> > > diff --git a/fs/lockd/clntproc.c b/fs/lockd/clntproc.c
-> > > index 4a35e7c..bd484f0 100644
-> > > --- a/fs/lockd/clntproc.c
-> > > +++ b/fs/lockd/clntproc.c
-> > > @@ -475,22 +475,6 @@ static void nlmclnt_locks_init_private(struct file_lock *fl, struct nlm_host *ho
-> > >       fl->fl_ops = &nlmclnt_lock_ops;
-> > >  }
-> > >
-> > > -static int do_vfs_lock(struct file_lock *fl)
-> > > -{
-> > > -     int res = 0;
-> > > -     switch (fl->fl_flags & (FL_POSIX|FL_FLOCK)) {
-> > > -             case FL_POSIX:
-> > > -                     res = posix_lock_file_wait(fl->fl_file, fl);
-> > > -                     break;
-> > > -             case FL_FLOCK:
-> > > -                     res = flock_lock_file_wait(fl->fl_file, fl);
-> > > -                     break;
-> > > -             default:
-> > > -                     BUG();
-> > > -     }
-> > > -     return res;
-> > > -}
-> > > -
-> > >  /*
-> > >   * LOCK: Try to create a lock
-> > >   *
-> > > @@ -518,6 +502,7 @@ nlmclnt_lock(struct nlm_rqst *req, struct file_lock *fl)
-> > >       struct nlm_host *host = req->a_host;
-> > >       struct nlm_res  *resp = &req->a_res;
-> > >       struct nlm_wait *block = NULL;
-> > > +     struct inode *inode = file_inode(fl->fl_file);
-> > >       unsigned char fl_flags = fl->fl_flags;
-> > >       unsigned char fl_type;
-> > >       int status = -ENOLCK;
-> > > @@ -527,7 +512,7 @@ nlmclnt_lock(struct nlm_rqst *req, struct file_lock *fl)
-> > >       req->a_args.state = nsm_local_state;
-> > >
-> > >       fl->fl_flags |= FL_ACCESS;
-> > > -     status = do_vfs_lock(fl);
-> > > +     status = do_vfs_lock(inode, fl);
-> > >       fl->fl_flags = fl_flags;
-> > >       if (status < 0)
-> > >               goto out;
-> > > @@ -577,7 +562,7 @@ again:
-> > >               }
-> > >               /* Ensure the resulting lock will get added to granted list */
-> > >               fl->fl_flags |= FL_SLEEP;
-> > > -             if (do_vfs_lock(fl) < 0)
-> > > +             if (do_vfs_lock(inode, fl) < 0)
-> > >                       printk(KERN_WARNING "%s: VFS is out of sync with lock manager!\n", __func__);
-> > >               up_read(&host->h_rwsem);
-> > >               fl->fl_flags = fl_flags;
-> > > @@ -607,7 +592,7 @@ out_unlock:
-> > >       fl_type = fl->fl_type;
-> > >       fl->fl_type = F_UNLCK;
-> > >       down_read(&host->h_rwsem);
-> > > -     do_vfs_lock(fl);
-> > > +     do_vfs_lock(inode, fl);
-> > >       up_read(&host->h_rwsem);
-> > >       fl->fl_type = fl_type;
-> > >       fl->fl_flags = fl_flags;
-> > > @@ -674,7 +659,7 @@ nlmclnt_unlock(struct nfs_open_context *ctx, struct nlm_rqst *req, struct file_l
-> > >        */
-> > >       fl->fl_flags |= FL_EXISTS;
-> > >       down_read(&host->h_rwsem);
-> > > -     status = do_vfs_lock(fl);
-> > > +     status = do_vfs_lock(d_inode(ctx->dentry), fl);
-> > >       up_read(&host->h_rwsem);
-> > >       fl->fl_flags = fl_flags;
-> > >       if (status == -ENOENT) {
-> > > diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-> > > index 319847c..d16c50f 100644
-> > > --- a/fs/nfs/file.c
-> > > +++ b/fs/nfs/file.c
-> > > @@ -737,22 +737,6 @@ out_noconflict:
-> > >       goto out;
-> > >  }
-> > >
-> > > -static int do_vfs_lock(struct file *file, struct file_lock *fl)
-> > > -{
-> > > -     int res = 0;
-> > > -     switch (fl->fl_flags & (FL_POSIX|FL_FLOCK)) {
-> > > -             case FL_POSIX:
-> > > -                     res = posix_lock_file_wait(file, fl);
-> > > -                     break;
-> > > -             case FL_FLOCK:
-> > > -                     res = flock_lock_file_wait(file, fl);
-> > > -                     break;
-> > > -             default:
-> > > -                     BUG();
-> > > -     }
-> > > -     return res;
-> > > -}
-> > > -
-> > >  static int
-> > >  do_unlk(struct file *filp, int cmd, struct file_lock *fl, int is_local)
-> > >  {
-> > > @@ -786,7 +770,7 @@ do_unlk(struct file *filp, int cmd, struct file_lock *fl, int is_local)
-> > >       if (!is_local)
-> > >               status = NFS_PROTO(inode)->lock(ctx, cmd, fl);
-> > >       else
-> > > -             status = do_vfs_lock(filp, fl);
-> > > +             status = do_vfs_lock(inode, fl);
-> > >       return status;
-> > >  }
-> > >
-> > > @@ -817,7 +801,7 @@ do_setlk(struct file *filp, int cmd, struct file_lock *fl, int is_local)
-> > >       if (!is_local)
-> > >               status = NFS_PROTO(inode)->lock(ctx, cmd, fl);
-> > >       else
-> > > -             status = do_vfs_lock(filp, fl);
-> > > +             status = do_vfs_lock(inode, fl);
-> > >       if (status < 0)
-> > >               goto out;
-> > >
-> > > diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> > > index c08f8ac..6b19307 100644
-> > > --- a/fs/nfs/nfs4proc.c
-> > > +++ b/fs/nfs/nfs4proc.c
-> > > @@ -5511,22 +5511,6 @@ static int nfs4_proc_getlk(struct nfs4_state *state, int cmd, struct file_lock *
-> > >       return err;
-> > >  }
-> > >
-> > > -static int do_vfs_lock(struct inode *inode, struct file_lock *fl)
-> > > -{
-> > > -     int res = 0;
-> > > -     switch (fl->fl_flags & (FL_POSIX|FL_FLOCK)) {
-> > > -             case FL_POSIX:
-> > > -                     res = posix_lock_inode_wait(inode, fl);
-> > > -                     break;
-> > > -             case FL_FLOCK:
-> > > -                     res = flock_lock_inode_wait(inode, fl);
-> > > -                     break;
-> > > -             default:
-> > > -                     BUG();
-> > > -     }
-> > > -     return res;
-> > > -}
-> > > -
-> > >  struct nfs4_unlockdata {
-> > >       struct nfs_locku_args arg;
-> > >       struct nfs_locku_res res;
-> > > diff --git a/include/linux/fs.h b/include/linux/fs.h
-> > > index 72d8a84..165577a 100644
-> > > --- a/include/linux/fs.h
-> > > +++ b/include/linux/fs.h
-> > > @@ -1225,6 +1225,22 @@ static inline int flock_lock_file_wait(struct file *filp, struct file_lock *fl)
-> > >       return flock_lock_inode_wait(file_inode(filp), fl);
-> > >  }
-> > >
-> > > +static inline int do_vfs_lock(struct inode *inode, struct file_lock *fl)
-> > > +{
-> > > +     int res = 0;
-> > > +     switch (fl->fl_flags & (FL_POSIX|FL_FLOCK)) {
-> > > +             case FL_POSIX:
-> > > +                     res = posix_lock_inode_wait(inode, fl);
-> > > +                     break;
-> > > +             case FL_FLOCK:
-> > > +                     res = flock_lock_inode_wait(inode, fl);
-> > > +                     break;
-> > > +             default:
-> > > +                     BUG();
-> > > +     }
-> > > +     return res;
-> > > +}
-> > > +
-> > >  struct fasync_struct {
-> > >       spinlock_t              fa_lock;
-> > >       int                     magic;
-> >
-> > Meh ok...a little large for an inline though. Maybe you should move
-> > that into fs/nfs_common and have it as an exported symbol? I'm not too
-> > religious about it though since we don't have many call sites.
->
-> Is this ready to merge, or should we hold off pending an update?
 
-I'll send another update.  I need to consider Jeff's comments on patch 10
-and see if we can get rid of that kmalloc.
+If we build without rpc-svcgssd (the default), don't install matching
+.service file.
 
-Ben
+Signed-off-by: NeilBrown <neilb@suse.com>
+
+diff --git a/systemd/Makefile.am b/systemd/Makefile.am
+index 0331926dcc03..03f96e93dccf 100644
+=2D-- a/systemd/Makefile.am
++++ b/systemd/Makefile.am
+@@ -28,9 +28,13 @@ endif
+ if CONFIG_GSS
+ unit_files +=3D \
+     auth-rpcgss-module.service \
+=2D    rpc-gssd.service \
++    rpc-gssd.service
++
++if CONFIG_SVCGSS
++unit_files +=3D \
+     rpc-svcgssd.service
+ endif
++endif
+=20
+ EXTRA_DIST =3D $(unit_files)
+=20
+
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2
+
+iQIcBAEBCAAGBQJWKIMDAAoJEDnsnt1WYoG5DN4QALRbfa5UFXKjpN/d+McdteUC
+tBV5J1etmNmySyKf41ohxqmnEleYyr2PtQOktaxap4Ag8KPXiejdwVXdw2EqMv4A
+gN18wyteNCS9LX0UXQGVZnbW/RMcsdi4myjKM9QCi9a9LNr38REdlhSZFNvx8BII
+HMqB0rz2XdryaMQFSVCEbZX/PSargR+LB9L27KudHP5T1kAVxSbt1HPfWNN1zZD3
+YoX7wxNbsoAWz6ZQ3GUU2b4Ebb3+nVJQRn4U3wJFgGzmshiMwR8tCmhLxykJSWc4
+nKUKMXxntCwbBNeAJwtTaOhLNcjaB+cgL191f2yWHd+S+1p878zGU9LzvqegP/RR
+RsVQoL/GW9zKMR9O+u21HLFk/HCl/bgg2CFEtRG3Cl6M5S2M/L3DYukq0L5ESS2j
+BeVIVX758NPpf2WUlEEUDnODc18ZHzcRED+zDQ8sJ686Bu/NNENrpbkszKP6N1Vc
+PQps/U5hCshDRkTWspgI8lW/6zQBuUxy4DT1iBPny9IGV8L4qbQetDZXR5u0IBTA
+oHjX5vfybzRrPFnvaaaCHApSWRDgMrID9kTabKBsI302cx6YXwD7oykz9oRqUt5N
+YZ/enYxx4WkYBhWIuqSxdNSZ+6VghDJ+PH6kV4rqHnknqzPk2YNbLJhR2NUsLywA
+FZwBZ7BM+u4vdBIsTiWM
+=T9gN
+-----END PGP SIGNATURE-----
+--=-=-=--
