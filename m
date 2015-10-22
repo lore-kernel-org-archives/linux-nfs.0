@@ -1,7 +1,7 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:53004 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:36237 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757791AbbJVRiS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	id S1757654AbbJVRiS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
 	Thu, 22 Oct 2015 13:38:18 -0400
 From: Benjamin Coddington <bcodding@redhat.com>
 To: Jeff Layton <jlayton@poochiereds.net>,
@@ -26,47 +26,126 @@ Cc: Christoph Hellwig <hch@infradead.org>, Oleg Drokin <oleg.drokin@intel.com>,
         Julia Lawall <Julia.Lawall@lip6.fr>,
         Abdul Hussain <habdul@visteon.com>, linux-kernel@vger.kernel.org,
         linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: [PATCH V2 0/3] Minor cleanup for locks API
-Date: Thu, 22 Oct 2015 13:38:12 -0400
-Message-Id: <cover.1445535305.git.bcodding@redhat.com>
+Subject: [PATCH V2 3/3] locks: cleanup posix_lock_inode_wait and flock_lock_inode_wait
+Date: Thu, 22 Oct 2015 13:38:15 -0400
+Message-Id: <bbe0fbc1041e7638f3b05ee242eb2c787c8494a6.1445535305.git.bcodding@redhat.com>
+In-Reply-To: <cover.1445535305.git.bcodding@redhat.com>
+References: <cover.1445535305.git.bcodding@redhat.com>
+In-Reply-To: <cover.1445535305.git.bcodding@redhat.com>
+References: <cover.1445535305.git.bcodding@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-NFS has recently been moving things around to cope with the situation where
-a struct file may not be available during an unlock.  That work has
-presented an opportunity to do a minor cleanup on the locks API.
+All callers use locks_lock_inode_wait() instead.
 
-Users of posix_lock_file_wait() (for FL_POSIX style locks) and
-flock_lock_file_wait() (for FL_FLOCK style locks) can instead call
-locks_lock_file_wait() for both lock types.  Because the passed-in file_lock
-specifies its own type, the correct function can be selected on behalf of
-the user.
+Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+---
+ fs/locks.c         |    9 +++------
+ include/linux/fs.h |   24 ------------------------
+ 2 files changed, 3 insertions(+), 30 deletions(-)
 
-This work allows further cleanup within NFS and lockd which will be
-submitted separately.
-
-Changes in v2:
-	- fix typo that caused build failure for CONFIG_FILE_LOCKS=n
-	- make posix_lock_inode_wait and flock_lock_inode_wait static
-	- trimmed away a number of distro-lists to minimize cross-posting
-
-Benjamin Coddington (3):
-  locks: introduce locks_lock_inode_wait()
-  Move locks API users to locks_lock_inode_wait()
-  locks: cleanup posix_lock_inode_wait and flock_lock_inode_wait
-
- drivers/staging/lustre/lustre/llite/file.c |    8 +----
- fs/9p/vfs_file.c                           |    4 +-
- fs/ceph/locks.c                            |    4 +-
- fs/cifs/file.c                             |    2 +-
- fs/dlm/plock.c                             |    4 +-
- fs/fuse/file.c                             |    2 +-
- fs/gfs2/file.c                             |    8 +++---
- fs/lockd/clntproc.c                        |   13 +---------
- fs/locks.c                                 |   35 ++++++++++++++++++++++-----
- fs/nfs/file.c                              |   13 +---------
- fs/nfs/nfs4proc.c                          |   13 +---------
- fs/ocfs2/locks.c                           |    8 +++---
- include/linux/fs.h                         |   21 +++-------------
- 13 files changed, 53 insertions(+), 82 deletions(-)
+diff --git a/fs/locks.c b/fs/locks.c
+index 94d50d3..4181f83 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -1167,10 +1167,9 @@ EXPORT_SYMBOL(posix_lock_file);
+  * @inode: inode of file to which lock request should be applied
+  * @fl: The lock to be applied
+  *
+- * Variant of posix_lock_file_wait that does not take a filp, and so can be
+- * used after the filp has already been torn down.
++ * Apply a POSIX style lock request to an inode.
+  */
+-int posix_lock_inode_wait(struct inode *inode, struct file_lock *fl)
++static int posix_lock_inode_wait(struct inode *inode, struct file_lock *fl)
+ {
+ 	int error;
+ 	might_sleep ();
+@@ -1187,7 +1186,6 @@ int posix_lock_inode_wait(struct inode *inode, struct file_lock *fl)
+ 	}
+ 	return error;
+ }
+-EXPORT_SYMBOL(posix_lock_inode_wait);
+ 
+ /**
+  * locks_mandatory_locked - Check for an active lock
+@@ -1856,7 +1854,7 @@ int fcntl_setlease(unsigned int fd, struct file *filp, long arg)
+  *
+  * Apply a FLOCK style lock request to an inode.
+  */
+-int flock_lock_inode_wait(struct inode *inode, struct file_lock *fl)
++static int flock_lock_inode_wait(struct inode *inode, struct file_lock *fl)
+ {
+ 	int error;
+ 	might_sleep();
+@@ -1873,7 +1871,6 @@ int flock_lock_inode_wait(struct inode *inode, struct file_lock *fl)
+ 	}
+ 	return error;
+ }
+-EXPORT_SYMBOL(flock_lock_inode_wait);
+ 
+ /**
+  * locks_lock_inode_wait - Apply a lock to an inode
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index b064d4c..4974968 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1053,12 +1053,10 @@ extern void locks_remove_file(struct file *);
+ extern void locks_release_private(struct file_lock *);
+ extern void posix_test_lock(struct file *, struct file_lock *);
+ extern int posix_lock_file(struct file *, struct file_lock *, struct file_lock *);
+-extern int posix_lock_inode_wait(struct inode *, struct file_lock *);
+ extern int posix_unblock_lock(struct file_lock *);
+ extern int vfs_test_lock(struct file *, struct file_lock *);
+ extern int vfs_lock_file(struct file *, unsigned int, struct file_lock *, struct file_lock *);
+ extern int vfs_cancel_lock(struct file *filp, struct file_lock *fl);
+-extern int flock_lock_inode_wait(struct inode *inode, struct file_lock *fl);
+ extern int locks_lock_inode_wait(struct inode *inode, struct file_lock *fl);
+ extern int __break_lease(struct inode *inode, unsigned int flags, unsigned int type);
+ extern void lease_get_mtime(struct inode *, struct timespec *time);
+@@ -1145,12 +1143,6 @@ static inline int posix_lock_file(struct file *filp, struct file_lock *fl,
+ 	return -ENOLCK;
+ }
+ 
+-static inline int posix_lock_inode_wait(struct inode *inode,
+-					struct file_lock *fl)
+-{
+-	return -ENOLCK;
+-}
+-
+ static inline int posix_unblock_lock(struct file_lock *waiter)
+ {
+ 	return -ENOENT;
+@@ -1172,12 +1164,6 @@ static inline int vfs_cancel_lock(struct file *filp, struct file_lock *fl)
+ 	return 0;
+ }
+ 
+-static inline int flock_lock_inode_wait(struct inode *inode,
+-					struct file_lock *request)
+-{
+-	return -ENOLCK;
+-}
+-
+ static inline int locks_lock_inode_wait(struct inode *inode, struct file_lock *fl)
+ {
+ 	return -ENOLCK;
+@@ -1221,16 +1207,6 @@ static inline struct inode *file_inode(const struct file *f)
+ 	return f->f_inode;
+ }
+ 
+-static inline int posix_lock_file_wait(struct file *filp, struct file_lock *fl)
+-{
+-	return posix_lock_inode_wait(file_inode(filp), fl);
+-}
+-
+-static inline int flock_lock_file_wait(struct file *filp, struct file_lock *fl)
+-{
+-	return flock_lock_inode_wait(file_inode(filp), fl);
+-}
+-
+ static inline int locks_lock_file_wait(struct file *filp, struct file_lock *fl)
+ {
+ 	return locks_lock_inode_wait(file_inode(filp), fl);
+-- 
+1.7.1
 
