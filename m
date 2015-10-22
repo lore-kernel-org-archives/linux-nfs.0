@@ -1,97 +1,54 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx3-phx2.redhat.com ([209.132.183.24]:35389 "EHLO
-	mx3-phx2.redhat.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S965849AbbJVU6Z (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Oct 2015 16:58:25 -0400
-Received: from zmail22.collab.prod.int.phx2.redhat.com (zmail22.collab.prod.int.phx2.redhat.com [10.5.83.26])
-	by mx3-phx2.redhat.com (8.13.8/8.13.8) with ESMTP id t9MKwOou003955
-	for <linux-nfs@vger.kernel.org>; Thu, 22 Oct 2015 16:58:24 -0400
-Date: Thu, 22 Oct 2015 16:58:24 -0400 (EDT)
-From: Frank Sorenson <sorenson@redhat.com>
-To: linux-nfs@vger.kernel.org
-Message-ID: <1686719493.36610358.1445547504794.JavaMail.zimbra@redhat.com>
-In-Reply-To: <1652759591.36606461.1445546958744.JavaMail.zimbra@redhat.com>
-Subject: mountd does not check for membership of IP addresses in netgroups
- if the IP is resolvable
+Received: from fieldses.org ([173.255.197.46]:35370 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S964833AbbJVVTa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 Oct 2015 17:19:30 -0400
+Date: Thu, 22 Oct 2015 17:19:28 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@poochiereds.net>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        Al Viro <viro@ZenIV.linux.org.uk>
+Subject: Re: [PATCH v6 00/19] nfsd: open file caching
+Message-ID: <20151022211928.GF5205@fieldses.org>
+References: <1445362432-18869-1-git-send-email-jeff.layton@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1445362432-18869-1-git-send-email-jeff.layton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Looks like there's a leak--is this something you've seen already?
 
-If a netgroup entry specifies an IP address, and that IP address
-can be resolved to a name, the current match code in mountd only
-tests whether the canonical name and any aliases are in the
-netgroup, and does not test whether the IP address is in the netgroup.
+This is on my current nfsd-next, which has some other stuff too.
 
-(IP addresses which do not resolve to a name are already checked
-for membership in the netgroup)
+--b.
 
+[  819.980697] kmem_cache_destroy nfsd_file_mark: Slab cache still has objects
+[  819.981326] CPU: 0 PID: 4360 Comm: nfsd Not tainted 4.3.0-rc3-00040-ga6bca98 #360
+[  819.981969] Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS 1.7.5-20140709_153950- 04/01/2014
+[  819.982805]  ffff8800738d7d30 ffff8800738d7d20 ffffffff816053ac ffff880051ee5540
+[  819.983803]  ffff8800738d7d58 ffffffff811813df ffff8800738d7d30 ffff8800738d7d30
+[  819.984782]  ffff880074fd5e00 ffffffff822f9c80 ffff88007c64cf80 ffff8800738d7d68
+[  819.985751] Call Trace:
+[  819.985940]  [<ffffffff816053ac>] dump_stack+0x4e/0x82
+[  819.986369]  [<ffffffff811813df>] kmem_cache_destroy+0xef/0x100
+[  819.986899]  [<ffffffffa00c2198>] nfsd_file_cache_shutdown+0x78/0xa0 [nfsd]
+[  819.987513]  [<ffffffffa00b2c4d>] nfsd_shutdown_generic+0x1d/0x20 [nfsd]
+[  819.988100]  [<ffffffffa00b2d2d>] nfsd_shutdown_net+0xdd/0x180 [nfsd]
+[  819.988656]  [<ffffffffa00b2c55>] ? nfsd_shutdown_net+0x5/0x180 [nfsd]
+[  819.989218]  [<ffffffffa00b2f34>] nfsd_last_thread+0x164/0x190 [nfsd]
+[  819.989770]  [<ffffffffa00b2dd5>] ? nfsd_last_thread+0x5/0x190 [nfsd]
+[  819.990328]  [<ffffffffa001463e>] svc_shutdown_net+0x2e/0x40 [sunrpc]
+[  819.990996]  [<ffffffffa00b3936>] nfsd_destroy+0xd6/0x190 [nfsd]
+[  819.991719]  [<ffffffffa00b3865>] ? nfsd_destroy+0x5/0x190 [nfsd]
+[  819.992373]  [<ffffffffa00b3bb1>] nfsd+0x1c1/0x280 [nfsd]
+[  819.992960]  [<ffffffffa00b39f5>] ? nfsd+0x5/0x280 [nfsd]
+[  819.993537]  [<ffffffffa00b39f0>] ? nfsd_destroy+0x190/0x190 [nfsd]
+[  819.994195]  [<ffffffff81098d6f>] kthread+0xef/0x110
+[  819.994734]  [<ffffffff81a7677c>] ? _raw_spin_unlock_irq+0x2c/0x50
+[  819.995439]  [<ffffffff81098c80>] ?  kthread_create_on_node+0x200/0x200
+[  819.996129]  [<ffffffff81a7744f>] ret_from_fork+0x3f/0x70
+[  819.996706]  [<ffffffff81098c80>] ?  kthread_create_on_node+0x200/0x200
+[  819.998854] nfsd: last server has exited, flushing export cache
+[  820.195957] NFSD: starting 20-second grace period (net ffffffff822f9c80)
 
-The following demonstrates this issue:
-
-/etc/netgroup:
-test_netgroup	(127.0.0.1,-,-)
-
-/etc/exports:
-/data		@test_netgroup(rw,sync)
-
-# mkdir /data
-# mkdir -p /mnt/test
-# exportfs -a
-# mount localhost:/data /mnt/test
-
-assuming that there is a localhost entry in /etc/hosts, this will fail:
-mount.nfs: access denied by server while mounting localhost:/data
-
-
-The patch below adds the code to test for the IP addresses in
-the netgroup, and the mount now succeeds.
-
-
-
-Author: Frank Sorenson <sorenson@redhat.com>
-Date:   Thu Oct 22 15:38:17 2015 -0500
-
-    mountd: fix netgroup lookup for resolvable IP addresses
-    
-    If a netgroup entry specifies an IP address, and that
-    IP address can be resolved to a name, mountd will
-    currently only test whether the canonical name and
-    any aliases are in the netgroup, and does not test
-    whether the IP address is in the netgroup (IP
-    addresses which do not resolve to a name are
-    already checked against the netgroup).
-    
-    This patch adds the check to see whether the IP
-    addresses are in the netgroup.
-    
-    
-    Signed-off-by: Frank Sorenson <sorenson@redhat.com>
-
-diff --git a/support/export/client.c b/support/export/client.c
-index 95156f0..f6c58f2 100644
---- a/support/export/client.c
-+++ b/support/export/client.c
-@@ -686,6 +686,21 @@ check_netgroup(const nfs_client *clp, const struct addrinfo *ai)
- 		}
- 	}
- 
-+	/* check whether the IP itself is in the netgroup */
-+	for (tmp = ai ; tmp != NULL ; tmp = tmp->ai_next) {
-+		free(hname);
-+		hname = calloc(INET6_ADDRSTRLEN, 1);
-+
-+		if (inet_ntop(tmp->ai_family, &(((struct sockaddr_in *)tmp->ai_addr)->sin_addr), hname, INET6_ADDRSTRLEN) != hname) {
-+			xlog(D_GENERAL, "  %s: unable to inet_ntop addrinfo %p: %m", __func__, tmp, errno);
-+			goto out;
-+		}
-+		if (innetgr(netgroup, hname, NULL, NULL)) {
-+			match = 1;
-+			goto out;
-+		}
-+	}
-+
- 	/* Okay, strip off the domain (if we have one) */
- 	dot = strchr(hname, '.');
- 	if (dot == NULL)
