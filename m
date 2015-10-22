@@ -1,112 +1,251 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail4.gandi.net ([217.70.183.210]:56055 "EHLO gandi.net"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1757973AbbJVSz1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 Oct 2015 14:55:27 -0400
-Date: Thu, 22 Oct 2015 20:55:23 +0200
-From: William Dauchy <william@gandi.net>
-To: stable@vger.kernel.org
-Cc: William Dauchy <william@gandi.net>, linux-fsdevel@vger.kernel.org,
-        Linux NFS mailing list <linux-nfs@vger.kernel.org>,
-        Jeff Layton <jeff.layton@primarydata.com>,
-        Jeff Layton <jlayton@poochiereds.net>
-Subject: Re: locks_get_lock_context null deref
-Message-ID: <20151022185523.GE3258@gandi.net>
-References: <20151019163332.GI10696@gandi.net>
- <20151019174014.GJ10696@gandi.net>
- <20151022173243.GD3258@gandi.net>
- <20151022143945.42856f45@synchrony.poochiereds.net>
+Received: from fieldses.org ([173.255.197.46]:35327 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S965428AbbJVTOf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 Oct 2015 15:14:35 -0400
+Date: Thu, 22 Oct 2015 15:14:35 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Neil Brown <neilb@suse.com>
+Cc: Olaf Kirch <okir@suse.de>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2] sunrpc/cache: make cache flushing more reliable.
+Message-ID: <20151022191435.GE5205@fieldses.org>
+References: <87fv1cwsln.fsf@notabene.neil.brown.name>
+ <87a8rkws7g.fsf@notabene.neil.brown.name>
+ <20151015135039.GB18976@fieldses.org>
+ <871tcvx07n.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="cYtjc4pxslFTELvY"
-In-Reply-To: <20151022143945.42856f45@synchrony.poochiereds.net>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <871tcvx07n.fsf@notabene.neil.brown.name>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Thanks, applying.--b.
 
---cYtjc4pxslFTELvY
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+On Fri, Oct 16, 2015 at 08:59:08AM +1100, Neil Brown wrote:
+> 
+> The caches used to store sunrpc authentication information can be
+> flushed by writing a timestamp to a file in /proc.
+> 
+> This timestamp has a one-second resolution and any entry in cache that
+> was last_refreshed *before* that time is treated as expired.
+> 
+> This is problematic as it is not possible to reliably flush the cache
+> without interrupting NFS service.
+> If the current time is written to the "flush" file, any entry that was
+> added since the current second started will still be treated as valid.
+> If one second beyond than the current time is written to the file
+> then no entries can be valid until the second ticks over.  This will
+> mean that no NFS request will be handled for up to 1 second.
+> 
+> To resolve this issue we make two changes:
+> 
+> 1/ treat an entry as expired if the timestamp when it was last_refreshed
+>   is before *or the same as* the expiry time.  This means that current
+>   code which writes out the current time will now flush the cache
+>   reliably.
+> 
+> 2/ when a new entry in added to the cache -  set the last_refresh timestamp
+>   to 1 second *beyond* the current flush time, when that not in the
+>   past.
+>   This ensures that newly added entries will always be valid.
+> 
+> 
+> Now that we have a very reliable way to flush the cache, and also
+> since we are using "since-boot" timestamps which are monotonic,
+> change cache_purge() to set the smallest future flush_time which
+> will work, and leave it there: don't revert to '1'.
+> 
+> Also disable the setting of the 'flush_time' far into the future.
+> That has never been useful and is now awkward as it would cause
+> last_refresh times to be strange.
+> Finally: if a request is made to set the 'flush_time' to the current
+> second, assume the intent is to flush the cache and advance it, if
+> necessary, to 1 second beyond the current 'flush_time' so that all
+> active entries will be deemed to be expired.
+> 
+> As part of this we need to add a 'cache_detail' arg to cache_init()
+> and cache_fresh_locked() so they can find the current ->flush_time.
+> 
+> Signed-off-by: NeilBrown <neilb@suse.com>
+> Reported-by: Olaf Kirch <okir@suse.com>
+> 
+> diff --git a/include/linux/sunrpc/cache.h b/include/linux/sunrpc/cache.h
+> index 03d3b4c92d9f..ed03c9f7f908 100644
+> --- a/include/linux/sunrpc/cache.h
+> +++ b/include/linux/sunrpc/cache.h
+> @@ -48,8 +48,10 @@
+>  struct cache_head {
+>  	struct hlist_node	cache_list;
+>  	time_t		expiry_time;	/* After time time, don't use the data */
+> -	time_t		last_refresh;   /* If CACHE_PENDING, this is when upcall 
+> -					 * was sent, else this is when update was received
+> +	time_t		last_refresh;   /* If CACHE_PENDING, this is when upcall was
+> +					 * sent, else this is when update was
+> +					 * received, though it is alway set to
+> +					 * be *after* ->flush_time.
+>  					 */
+>  	struct kref	ref;
+>  	unsigned long	flags;
+> @@ -105,8 +107,12 @@ struct cache_detail {
+>  	/* fields below this comment are for internal use
+>  	 * and should not be touched by cache owners
+>  	 */
+> -	time_t			flush_time;		/* flush all cache items with last_refresh
+> -							 * earlier than this */
+> +	time_t			flush_time;		/* flush all cache items with
+> +							 * last_refresh at or earlier
+> +							 * than this.  last_refresh
+> +							 * is never set at or earlier
+> +							 * than this.
+> +							 */
+>  	struct list_head	others;
+>  	time_t			nextcheck;
+>  	int			entries;
+> @@ -203,7 +209,7 @@ static inline void cache_put(struct cache_head *h, struct cache_detail *cd)
+>  static inline int cache_is_expired(struct cache_detail *detail, struct cache_head *h)
+>  {
+>  	return  (h->expiry_time < seconds_since_boot()) ||
+> -		(detail->flush_time > h->last_refresh);
+> +		(detail->flush_time >= h->last_refresh);
+>  }
+>  
+>  extern int cache_check(struct cache_detail *detail,
+> diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
+> index 4a2340a54401..5e4f815c2b34 100644
+> --- a/net/sunrpc/cache.c
+> +++ b/net/sunrpc/cache.c
+> @@ -41,13 +41,16 @@
+>  static bool cache_defer_req(struct cache_req *req, struct cache_head *item);
+>  static void cache_revisit_request(struct cache_head *item);
+>  
+> -static void cache_init(struct cache_head *h)
+> +static void cache_init(struct cache_head *h, struct cache_detail *detail)
+>  {
+>  	time_t now = seconds_since_boot();
+>  	INIT_HLIST_NODE(&h->cache_list);
+>  	h->flags = 0;
+>  	kref_init(&h->ref);
+>  	h->expiry_time = now + CACHE_NEW_EXPIRY;
+> +	if (now <= detail->flush_time)
+> +		/* ensure it isn't already expired */
+> +		now = detail->flush_time + 1;
+>  	h->last_refresh = now;
+>  }
+>  
+> @@ -81,7 +84,7 @@ struct cache_head *sunrpc_cache_lookup(struct cache_detail *detail,
+>  	 * we might get lose if we need to
+>  	 * cache_put it soon.
+>  	 */
+> -	cache_init(new);
+> +	cache_init(new, detail);
+>  	detail->init(new, key);
+>  
+>  	write_lock(&detail->hash_lock);
+> @@ -116,10 +119,15 @@ EXPORT_SYMBOL_GPL(sunrpc_cache_lookup);
+>  
+>  static void cache_dequeue(struct cache_detail *detail, struct cache_head *ch);
+>  
+> -static void cache_fresh_locked(struct cache_head *head, time_t expiry)
+> +static void cache_fresh_locked(struct cache_head *head, time_t expiry,
+> +			       struct cache_detail *detail)
+>  {
+> +	time_t now = seconds_since_boot();
+> +	if (now <= detail->flush_time)
+> +		/* ensure it isn't immediately treated as expired */
+> +		now = detail->flush_time + 1;
+>  	head->expiry_time = expiry;
+> -	head->last_refresh = seconds_since_boot();
+> +	head->last_refresh = now;
+>  	smp_wmb(); /* paired with smp_rmb() in cache_is_valid() */
+>  	set_bit(CACHE_VALID, &head->flags);
+>  }
+> @@ -149,7 +157,7 @@ struct cache_head *sunrpc_cache_update(struct cache_detail *detail,
+>  				set_bit(CACHE_NEGATIVE, &old->flags);
+>  			else
+>  				detail->update(old, new);
+> -			cache_fresh_locked(old, new->expiry_time);
+> +			cache_fresh_locked(old, new->expiry_time, detail);
+>  			write_unlock(&detail->hash_lock);
+>  			cache_fresh_unlocked(old, detail);
+>  			return old;
+> @@ -162,7 +170,7 @@ struct cache_head *sunrpc_cache_update(struct cache_detail *detail,
+>  		cache_put(old, detail);
+>  		return NULL;
+>  	}
+> -	cache_init(tmp);
+> +	cache_init(tmp, detail);
+>  	detail->init(tmp, old);
+>  
+>  	write_lock(&detail->hash_lock);
+> @@ -173,8 +181,8 @@ struct cache_head *sunrpc_cache_update(struct cache_detail *detail,
+>  	hlist_add_head(&tmp->cache_list, &detail->hash_table[hash]);
+>  	detail->entries++;
+>  	cache_get(tmp);
+> -	cache_fresh_locked(tmp, new->expiry_time);
+> -	cache_fresh_locked(old, 0);
+> +	cache_fresh_locked(tmp, new->expiry_time, detail);
+> +	cache_fresh_locked(old, 0, detail);
+>  	write_unlock(&detail->hash_lock);
+>  	cache_fresh_unlocked(tmp, detail);
+>  	cache_fresh_unlocked(old, detail);
+> @@ -219,7 +227,8 @@ static int try_to_negate_entry(struct cache_detail *detail, struct cache_head *h
+>  	rv = cache_is_valid(h);
+>  	if (rv == -EAGAIN) {
+>  		set_bit(CACHE_NEGATIVE, &h->flags);
+> -		cache_fresh_locked(h, seconds_since_boot()+CACHE_NEW_EXPIRY);
+> +		cache_fresh_locked(h, seconds_since_boot()+CACHE_NEW_EXPIRY,
+> +				   detail);
+>  		rv = -ENOENT;
+>  	}
+>  	write_unlock(&detail->hash_lock);
+> @@ -487,10 +496,13 @@ EXPORT_SYMBOL_GPL(cache_flush);
+>  
+>  void cache_purge(struct cache_detail *detail)
+>  {
+> -	detail->flush_time = LONG_MAX;
+> +	time_t now = seconds_since_boot();
+> +	if (detail->flush_time >= now)
+> +		now = detail->flush_time + 1;
+> +	/* 'now' is the maximum value any 'last_refresh' can have */
+> +	detail->flush_time = now;
+>  	detail->nextcheck = seconds_since_boot();
+>  	cache_flush();
+> -	detail->flush_time = 1;
+>  }
+>  EXPORT_SYMBOL_GPL(cache_purge);
+>  
+> @@ -1436,6 +1448,7 @@ static ssize_t write_flush(struct file *file, const char __user *buf,
+>  {
+>  	char tbuf[20];
+>  	char *bp, *ep;
+> +	time_t then, now;
+>  
+>  	if (*ppos || count > sizeof(tbuf)-1)
+>  		return -EINVAL;
+> @@ -1447,8 +1460,22 @@ static ssize_t write_flush(struct file *file, const char __user *buf,
+>  		return -EINVAL;
+>  
+>  	bp = tbuf;
+> -	cd->flush_time = get_expiry(&bp);
+> -	cd->nextcheck = seconds_since_boot();
+> +	then = get_expiry(&bp);
+> +	now = seconds_since_boot();
+> +	cd->nextcheck = now;
+> +	/* Can only set flush_time to 1 second beyond "now", or
+> +	 * possibly 1 second beyond flushtime.  This is because
+> +	 * flush_time never goes backwards so it mustn't get too far
+> +	 * ahead of time.
+> +	 */
+> +	if (then >= now) {
+> +		/* Want to flush everything, so behave like cache_purge() */
+> +		if (cd->flush_time >= now)
+> +			now = cd->flush_time + 1;
+> +		then = now;
+> +	}
+> +
+> +	cd->flush_time = then;
+>  	cache_flush();
+>  
+>  	*ppos += count;
 
-Hi stable team,
 
-I got the following null deref on lock_get_context using nfs client v4.0
-on a linux v4.1.x.
-After applying these four patches on top, I was unable to reproduce the
-issue:
-
-bcd7f78 locks: have flock_lock_file take an inode pointer instead of a filp
-29d01b2 locks: new helpers - flock_lock_inode_wait and posix_lock_inode_wait
-ee296d7 locks: inline posix_lock_file_wait and flock_lock_file_wait
-83bfff2 nfs4: have do_vfs_lock take an inode pointer
-
-Jeff Layton agreed it should be candidates for stable tree in v4.1.x
-Do you think these four patches could be queued in v4.1.x?
-
-
-BUG: unable to handle kernel NULL pointer dereference at 00000000000001c8
-IP: [<ffffffff811d0cf3>] locks_get_lock_context+0x3/0xc0
-PGD 0=20
-Oops: 0000 [#1] SMP=20
-CPU: 1 PID: 1773 Comm: kworker/1:1H Not tainted 4.1.11-rc1 #1
-Workqueue: rpciod ffffffff8164fff0
-task: ffff8810374deba0 ti: ffff8810374df150 task.ti: ffff8810374df150
-RIP: 0010:[<ffffffff811d0cf3>]  [<ffffffff811d0cf3>] locks_get_lock_context=
-+0x3/0xc0
-RSP: 0000:ffff881036007bb0  EFLAGS: 00010246
-RAX: ffff881036007c30 RBX: ffff881001981880 RCX: 0000000000000002
-RDX: 00000000000006ed RSI: 0000000000000002 RDI: 0000000000000000
-RBP: ffff881036007c08 R08: 0000000000000000 R09: 0000000000000001
-R10: 0000000000000000 R11: ffff88101db69948 R12: ffff8810019818d8
-R13: ffff881036007bc8 R14: ffff880e225d81c0 R15: ffff881edfd2b400
-FS:  0000000000000000(0000) GS:ffff88103fc20000(0000) knlGS:0000000000000000
-CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-CR2: 00000000000001c8 CR3: 000000000169b000 CR4: 00000000000606f0
-Stack:
- ffffffff811d2710 ffff881036007bc8 ffffffff819f1af1 ffff881036007bc8
- ffff881036007bc8 ffff881036007c08 ffff881001981880 ffff8810019818d8
- ffff881036007c48 ffff880e225d81c0 ffff881edfd2b400 ffff881036007c88
-Call Trace:
- [<ffffffff811d2710>] ? flock_lock_file+0x30/0x270
- [<ffffffff811d3ad1>] flock_lock_file_wait+0x41/0xf0
- [<ffffffff8168be66>] ? _raw_spin_unlock+0x26/0x40
- [<ffffffff81268de9>] do_vfs_lock+0x19/0x40
- [<ffffffff812695cc>] nfs4_locku_done+0x5c/0xf0
- [<ffffffff8164f3f4>] rpc_exit_task+0x34/0xb0
- [<ffffffff8164fcd9>] __rpc_execute+0x79/0x390
- [<ffffffff81650000>] rpc_async_schedule+0x10/0x20
- [<ffffffff81086095>] process_one_work+0x1a5/0x450
- [<ffffffff81086024>] ? process_one_work+0x134/0x450
- [<ffffffff8108638b>] worker_thread+0x4b/0x4a0
- [<ffffffff81086340>] ? process_one_work+0x450/0x450
- [<ffffffff81086340>] ? process_one_work+0x450/0x450
- [<ffffffff8108d777>] kthread+0xf7/0x110
- [<ffffffff8108d680>] ? __kthread_parkme+0xa0/0xa0
- [<ffffffff8168ce3e>] ret_from_fork+0x3e/0x70
- [<ffffffff8108d680>] ? __kthread_parkme+0xa0/0xa0
-Code: 48 b8 00 00 00 00 00 00 00 80 55 48 89 e5 48 09 c1 ff d1 5d 85 c0 0f =
-95 c0 0f b6 c0 eb b9 66 2e 0f 1f 84 00 00 00 00 00 83 fe 02 <48> 8b 87 c8 0=
-1 00 00 0f 84 a0 00 00 00 48 85 c0 0f 85 97 00 00=20
-RIP  [<ffffffff811d0cf3>] locks_get_lock_context+0x3/0xc0
- RSP <ffff881036007bb0>
-CR2: 00000000000001c8
----[ end trace 2da9686dda1b5574 ]---
-
-
-Thanks,
---=20
-William
-
---cYtjc4pxslFTELvY
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1
-
-iEYEARECAAYFAlYpMRsACgkQ1I6eqOUidQFT2gCgnTHihmZoAtY3152iOQLGJ4vl
-RLoAnjlNv+zZd46MxlQKmEMTOcUM2fdz
-=B1md
------END PGP SIGNATURE-----
-
---cYtjc4pxslFTELvY--
