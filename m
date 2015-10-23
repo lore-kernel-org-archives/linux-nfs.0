@@ -1,69 +1,59 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:35879 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753401AbbJWTgA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 23 Oct 2015 15:36:00 -0400
-Date: Fri, 23 Oct 2015 15:35:59 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@poochiereds.net>
-Cc: Christoph Hellwig <hch@lst.de>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH RFC] nfsd: serialize layout stateid morphing operations
-Message-ID: <20151023193559.GB16137@fieldses.org>
-References: <1442491104-30080-1-git-send-email-jeff.layton@primarydata.com>
- <20151011131527.GA4007@lst.de>
- <20151011165121.5f5d81c1@tlielax.poochiereds.net>
+Received: from elasmtp-dupuy.atl.sa.earthlink.net ([209.86.89.62]:40722 "EHLO
+	elasmtp-dupuy.atl.sa.earthlink.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751392AbbJWUFP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Oct 2015 16:05:15 -0400
+From: "Frank Filz" <ffilzlnx@mindspring.com>
+To: "'Andreas Gruenbacher'" <agruenba@redhat.com>,
+        "'Alexander Viro'" <viro@zeniv.linux.org.uk>,
+        "'Theodore Ts'o'" <tytso@mit.edu>,
+        "'Andreas Dilger'" <adilger.kernel@dilger.ca>,
+        "'J. Bruce Fields'" <bfields@fieldses.org>,
+        "'Jeff Layton'" <jlayton@poochiereds.net>,
+        "'Trond Myklebust'" <trond.myklebust@primarydata.com>,
+        "'Anna Schumaker'" <anna.schumaker@netapp.com>,
+        "'Dave Chinner'" <david@fromorbit.com>, <linux-ext4@vger.kernel.org>,
+        <xfs@oss.sgi.com>, <linux-kernel@vger.kernel.org>,
+        <linux-fsdevel@vger.kernel.org>, <linux-nfs@vger.kernel.org>,
+        <linux-cifs@vger.kernel.org>, <linux-api@vger.kernel.org>
+References: <1445625722-13791-1-git-send-email-agruenba@redhat.com>
+In-Reply-To: <1445625722-13791-1-git-send-email-agruenba@redhat.com>
+Subject: RE: [PATCH v12 00/49] Richacls
+Date: Fri, 23 Oct 2015 13:03:59 -0700
+Message-ID: <002f01d10dcd$f5f9f170$e1edd450$@mindspring.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20151011165121.5f5d81c1@tlielax.poochiereds.net>
+Content-Type: text/plain;
+	charset="us-ascii"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Oct 11, 2015 at 04:51:21PM -0400, Jeff Layton wrote:
-> On Sun, 11 Oct 2015 15:15:27 +0200
-> Christoph Hellwig <hch@lst.de> wrote:
+Andreas Gruenbacher:
 > 
-> > On Thu, Sep 17, 2015 at 07:58:24AM -0400, Jeff Layton wrote:
-> > > In order to allow the client to make a sane determination of what
-> > > happened with racing LAYOUTGET/LAYOUTRETURN/CB_LAYOUTRECALL calls, we
-> > > must ensure that the seqids return accurately represent the order of
-> > > operations. The simplest way to do that is to ensure that operations on
-> > > a single stateid are serialized.
-> > > 
-> > > This patch adds a mutex to the layout stateid, and locks it when
-> > > checking the layout stateid's seqid. The mutex is held over the entire
-> > > operation and released after the seqid is bumped.
-> > > 
-> > > Note that in the case of CB_LAYOUTRECALL we must move the increment of
-> > > the seqid and setting into a new cb "prepare" operation. The lease
-> > > infrastructure will call the lm_break callback with a spinlock held, so
-> > > and we can't take the mutex in that codepath.
-> > 
-> > I can't say I like the long running mutex all that much.  What kinds
-> > of reproducers do you have where the current behavior causes problems?
+> Here is another update of the richacl patch queue.  I would like to ask
+for
+> feedback so that the core and local filesystem code (patches 1-25) can be
+> merged in the 4.4 merge window.
 > 
-> I'm not thrilled with it either, though it is per-stateid. It should
-> only ever be contended when there are concurrent operations that specify
-> the same stateid.
+> Changes since the last posting (http://lwn.net/Articles/661078/):
 > 
-> We did have a report of this problem with open stateids that came about
-> after the client started parallelizing opens more aggressively. It was
-> pretty clear that you could hit similar races with lock stateids as
-> well, given a client that didn't serialize things properly.
+>  * On ext4, filesystems with the richacl feature can no longer be mounted
+>    with -o noacl; richacls cannot be turned off.
 > 
-> I don't have any reports of this problem with layout stateids though.
-> It may be that the client is good enough at serializing these
-> operations (or slow enough) that it's never an issue. But, if that's
-> the case then the mutex is harmless anyway since it'd never be
-> contended.
+>  * XFS was listing richacl xattrs as "trusted.system.richacl"; this has
+>    been fixed.
 > 
-> In hindsight I probably should have sent this as a RFC patch, I'm fine
-> with dropping this for now if you think it's potentially harmful.
+>  * Some definitions have been moved from include/linux/ to
+>    include/uapi/linux/.  The license of the uapi headers has been changed
+>    to LGPL.
 
-Still looks to me like the code's incorrect without your patch, so I
-intend to apply it.
+Thanks for that last. I kept meaning to ask about that for cleaner use in
+Ganesha.
 
-I'll fully admit that I haven't looked at how layout stateid's are
-supposed to work closely enough so it's possible Christoph can persaude
-me otherwise.
+Frank
 
---b.
+
+
+---
+This email has been checked for viruses by Avast antivirus software.
+https://www.avast.com/antivirus
+
