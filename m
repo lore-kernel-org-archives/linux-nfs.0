@@ -1,204 +1,119 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:40321 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751432AbbJWSn7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 23 Oct 2015 14:43:59 -0400
-From: Andreas Gruenbacher <agruenba@redhat.com>
-To: Alexander Viro <viro@zeniv.linux.org.uk>, "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@poochiereds.net>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Dave Chinner <david@fromorbit.com>, linux-ext4@vger.kernel.org,
-        xfs@oss.sgi.com, linux-kernel@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-api@vger.kernel.org
-Cc: Andreas Gruenbacher <agruenba@redhat.com>
-Subject: [PATCH v12 16/49] richacl: Automatic Inheritance
-Date: Fri, 23 Oct 2015 20:41:29 +0200
-Message-Id: <1445625722-13791-17-git-send-email-agruenba@redhat.com>
-In-Reply-To: <1445625722-13791-1-git-send-email-agruenba@redhat.com>
-References: <1445625722-13791-1-git-send-email-agruenba@redhat.com>
+Received: from mail-qg0-f47.google.com ([209.85.192.47]:34368 "EHLO
+	mail-qg0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752007AbbJWTRQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Oct 2015 15:17:16 -0400
+Received: by qgem9 with SMTP id m9so74461120qge.1
+        for <linux-nfs@vger.kernel.org>; Fri, 23 Oct 2015 12:17:15 -0700 (PDT)
+Date: Fri, 23 Oct 2015 15:17:12 -0400
+From: Jeff Layton <jlayton@poochiereds.net>
+To: Anders Blomdell <anders.blomdell@control.lth.se>
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
+Subject: Re: NULL pointer dereference in nfs_delegation_find_inode
+Message-ID: <20151023151712.6cec9529@synchrony.poochiereds.net>
+In-Reply-To: <562A280A.7070205@control.lth.se>
+References: <5629E933.8030807@control.lth.se>
+	<20151023072827.2861dd75@tlielax.poochiereds.net>
+	<562A280A.7070205@control.lth.se>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Automatic Inheritance (AI) allows changes to the acl of a directory to
-propagate down to children.
+On Fri, 23 Oct 2015 14:28:58 +0200
+Anders Blomdell <anders.blomdell@control.lth.se> wrote:
 
-This is mostly implemented in user space: when a process changes the
-permissions of a directory and Automatic Inheritance is enabled for that
-directory, the process must propagate those changes to all children,
-recursively.
+> On 2015-10-23 13:28, Jeff Layton wrote:
+> > On Fri, 23 Oct 2015 10:00:51 +0200
+> > Anders Blomdell <anders.blomdell@control.lth.se> wrote:
+> > 
+> >> We occasionally (about once every 2-4 weeks on 1 of a 100 machenes) get 
+> >>
+> >>   BUG: unable to handle kernel NULL pointer dereference at 0000000000000548
+> >>   IP: [<ffffffffa0651744>] nfs_delegation_find_inode+0x64/0x150 [nfsv4]
+> >>
+> >> the attached bug is from 4.1.8-100.fc21, but I have seen it on 4.1.5-100.fc21 as
+> >> well. Right now I have a realtime modified (xenomai.org) 3.8.13 system that exhibits
+> >> the problem more frequently, and that leads me to belive that the problem is
+> >> a data race problem, and by instrumenting fs/nfs/delegation.c (3.8.13) to:
+> >>
+> >>
+> >>   static struct inode *
+> >>   nfs_delegation_find_inode_server(struct nfs_server *server,
+> >> 				 const struct nfs_fh *fhandle)
+> >>   {
+> >> 	  struct nfs_delegation *delegation;
+> >> 	  struct inode *res = NULL;
+> >>
+> >>  	  printk(KERN_ERR "server = %p\n", server);
+> >> 	  list_for_each_entry_rcu(delegation, &server->delegations, super_list) {
+> >> 		  printk(KERN_ERR "delegation = %p\n", delegation);
+> >> 		  printk(KERN_ERR "delegation->lock = %p\n", delegation->lock);
+> >> 		  spin_lock(&delegation->lock);
+> >> 		  printk(KERN_ERR "delegation->inode = %p\n", delegation->inode);
+> >> 		  if (delegation->inode != NULL) {
+> >> 			  printk(KERN_ERR "NFS_I(delegation->inode) = %p", NFS_I(delegation->inode));
+> >> 			  printk(KERN_ERR "NFS_I(delegation->inode)->fh = %p", NFS_I(delegation->inode)->fh);
+> >> 		  }
+> >> 		  if (delegation->inode != NULL &&
+> >> 		      nfs_compare_fh(fhandle, &NFS_I(delegation->inode)->fh) == 0) {
+> >> 			  res = igrab(delegation->inode);
+> >> 		  }
+> >> 		  spin_unlock(&delegation->lock);
+> >> 		  if (res != NULL)
+> >> 			  break;
+> >> 	  }
+> >> 	  return res;
+> >>   }
+> >>
+> >> the system dies with (delegation.c compiled with -O0):
+> >>
+> >>   server = ffff8803dee58458
+> >>   delegation =           (null)
+> >>   BUG: unable to handle kernel NULL pointer dereference at 0000000000000050
+> >>   IP: [<ffffffffa08924ae>] nfs_delegation_find_inode_server+0x80/0x1e0 [nfsv4]
+> >>
+> >> Anybody thet can give me a hint how to write a program that gives rise to multiple 
+> >> delegations to further investigate this issue?
+> >>
+> >> Regards
+> >>
+> >> Anders Blomdell
+> >>
+> > 
+> > Huh. That delegation pointer really never be NULL. 
+>                                       ^should
+> > I'm unclear on how
+> > that could even happen in the context of a list_for_each_entry_rcu
+> > loop. Oh, but super_list is the first struct member in nfs_delegation
+> > so it probably means that server->delegations was NULL.
+> > 
+> > Maybe this is a use-after free of some sort or there's a memory
+> > scribble involved?
+> That is my guess, and the realtime patch used probably makes the window of opportunity
+> much larger (since the bug happens every few hours instead of every few years on average).
+> 
+> 
+> > You might want to consider turning up some memory
+> > debugging options while reproducing this.
+> Any hints on what options? Could/should they beturned on for the NFS module only
+> 
 
-The kernel enables this by keeping track of which permissions have been
-inherited at create time.  In addition, it makes sure that permission
-propagation is turned off when the permissions are set explicitly (for
-example, upon create or chmod).
+If your kernel uses SLUB then you can poke around with the options
+under /sys/kernel/slab. Figure out which cache that object belongs too
+(it appears to be kmalloc'ed) and enable stuff like "poison" and
+red_zone.
 
-Automatic Inheritance works as follows:
+If you can get a vmcore then you could also open it up with the
+debugger and see what at "server" object looks like. Has it been freed?
+Does it belong to the right slabcache? etc...
 
- - When the RICHACL_AUTO_INHERIT flag in the acl of a file or directory
-   is not set, the file or directory is not affected by AI.
+> Any hints of what file operations to use to force delegations to happen?
+> 
 
- - When the RICHACL_AUTO_INHERIT flag in the acl of a directory is set
-   and a file or subdirectory is created in that directory, the
-   inherited acl will have the RICHACL_AUTO_INHERIT flag set, and all
-   inherited aces will have the RICHACE_INHERITED_ACE flag set.  This
-   allows user space to distinguish between aces which have been
-   inherited and aces which have been explicitly added.
+You can't really force it as it's 100% up to the server. They are
+handed out at OPEN time. So any open-heavy workload should help
+reproduce it.
 
- - When the RICHACL_PROTECTED acl flag in the acl of a file or directory
-   is set, AI will not modify the acl.  This does not affect propagation
-   of permissions from the file to its children (if the file is a
-   directory).
-
-Linux does not have a way of creating files or directories without setting the
-file permission bits, so all files created inside a directory with
-RICHACL_AUTO_INHERIT set will have the RICHACL_PROTECTED flag set.  This
-effectively disables Automatic Inheritance.
-
-Protocols which support creating files without specifying permissions can
-explicitly clear the RICHACL_PROTECTED flag after creating a file and reset the
-file masks to "undo" applying the create mode; see richacl_compute_max_masks().
-They should set the RICHACL_DEFAULTED flag.  (A mechanism that would allow to
-indicate to the kernel to ignore the create mode in the first place when there
-are inherited permissions would be nice to have.)
-
-Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
-Reviewed-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/richacl_base.c            | 10 +++++++++-
- fs/richacl_inode.c           |  7 +++++++
- include/linux/richacl.h      | 12 ++++++++++++
- include/uapi/linux/richacl.h | 11 ++++++++++-
- 4 files changed, 38 insertions(+), 2 deletions(-)
-
-diff --git a/fs/richacl_base.c b/fs/richacl_base.c
-index 9f7d91d..2a9c448 100644
---- a/fs/richacl_base.c
-+++ b/fs/richacl_base.c
-@@ -366,7 +366,8 @@ __richacl_chmod(struct richacl *acl, umode_t mode)
- 	    acl->a_group_mask == group_mask &&
- 	    acl->a_other_mask == other_mask &&
- 	    (acl->a_flags & RICHACL_MASKED) &&
--	    (acl->a_flags & RICHACL_WRITE_THROUGH))
-+	    (acl->a_flags & RICHACL_WRITE_THROUGH) &&
-+	    (!richacl_is_auto_inherit(acl) || richacl_is_protected(acl)))
- 		return acl;
- 
- 	clone = richacl_clone(acl, GFP_KERNEL);
-@@ -378,6 +379,8 @@ __richacl_chmod(struct richacl *acl, umode_t mode)
- 	clone->a_owner_mask = owner_mask;
- 	clone->a_group_mask = group_mask;
- 	clone->a_other_mask = other_mask;
-+	if (richacl_is_auto_inherit(clone))
-+		clone->a_flags |= RICHACL_PROTECTED;
- 
- 	return clone;
- }
-@@ -551,6 +554,11 @@ richacl_inherit(const struct richacl *dir_acl, int isdir)
- 			ace++;
- 		}
- 	}
-+	if (richacl_is_auto_inherit(dir_acl)) {
-+		acl->a_flags = RICHACL_AUTO_INHERIT;
-+		richacl_for_each_entry(ace, acl)
-+			ace->e_flags |= RICHACE_INHERITED_ACE;
-+	}
- 
- 	return acl;
- }
-diff --git a/fs/richacl_inode.c b/fs/richacl_inode.c
-index d2bf076..24276da 100644
---- a/fs/richacl_inode.c
-+++ b/fs/richacl_inode.c
-@@ -277,6 +277,13 @@ richacl_inherit_inode(const struct richacl *dir_acl, umode_t *mode_p)
- 			richacl_put(acl);
- 			acl = NULL;
- 		} else {
-+			/*
-+			 * We need to set RICHACL_PROTECTED because we are
-+			 * doing an implicit chmod
-+			 */
-+			if (richacl_is_auto_inherit(acl))
-+				acl->a_flags |= RICHACL_PROTECTED;
-+
- 			richacl_compute_max_masks(acl);
- 			/*
- 			 * Ensure that the acl will not grant any permissions
-diff --git a/include/linux/richacl.h b/include/linux/richacl.h
-index 302872b..7cfa64d 100644
---- a/include/linux/richacl.h
-+++ b/include/linux/richacl.h
-@@ -76,6 +76,18 @@ extern void set_cached_richacl(struct inode *, struct richacl *);
- extern void forget_cached_richacl(struct inode *);
- extern struct richacl *get_richacl(struct inode *);
- 
-+static inline int
-+richacl_is_auto_inherit(const struct richacl *acl)
-+{
-+	return acl->a_flags & RICHACL_AUTO_INHERIT;
-+}
-+
-+static inline int
-+richacl_is_protected(const struct richacl *acl)
-+{
-+	return acl->a_flags & RICHACL_PROTECTED;
-+}
-+
- /**
-  * richace_is_owner  -  check if @ace is an OWNER@ entry
-  */
-diff --git a/include/uapi/linux/richacl.h b/include/uapi/linux/richacl.h
-index 1ed48ac..8849a53 100644
---- a/include/uapi/linux/richacl.h
-+++ b/include/uapi/linux/richacl.h
-@@ -18,6 +18,9 @@
- #define __UAPI_RICHACL_H
- 
- /* a_flags values */
-+#define RICHACL_AUTO_INHERIT			0x01
-+#define RICHACL_PROTECTED			0x02
-+#define RICHACL_DEFAULTED			0x04
- #define RICHACL_WRITE_THROUGH			0x40
- #define RICHACL_MASKED				0x80
- 
-@@ -31,6 +34,7 @@
- #define RICHACE_NO_PROPAGATE_INHERIT_ACE	0x0004
- #define RICHACE_INHERIT_ONLY_ACE		0x0008
- #define RICHACE_IDENTIFIER_GROUP		0x0040
-+#define RICHACE_INHERITED_ACE			0x0080
- #define RICHACE_SPECIAL_WHO			0x4000
- 
- /* e_mask bitflags */
-@@ -60,6 +64,9 @@
- #define RICHACE_EVERYONE_SPECIAL_ID		2
- 
- #define RICHACL_VALID_FLAGS (					\
-+	RICHACL_AUTO_INHERIT |					\
-+	RICHACL_PROTECTED |					\
-+	RICHACL_DEFAULTED |					\
- 	RICHACL_WRITE_THROUGH |					\
- 	RICHACL_MASKED )
- 
-@@ -69,13 +76,15 @@
- 	RICHACE_NO_PROPAGATE_INHERIT_ACE |			\
- 	RICHACE_INHERIT_ONLY_ACE |				\
- 	RICHACE_IDENTIFIER_GROUP |				\
-+	RICHACE_INHERITED_ACE |					\
- 	RICHACE_SPECIAL_WHO )
- 
- #define RICHACE_INHERITANCE_FLAGS (				\
- 	RICHACE_FILE_INHERIT_ACE |				\
- 	RICHACE_DIRECTORY_INHERIT_ACE |				\
- 	RICHACE_NO_PROPAGATE_INHERIT_ACE |			\
--	RICHACE_INHERIT_ONLY_ACE )
-+	RICHACE_INHERIT_ONLY_ACE |				\
-+	RICHACE_INHERITED_ACE )
- 
- /* Valid RICHACE_* flags for directories and non-directories */
- #define RICHACE_VALID_MASK (					\
 -- 
-2.5.0
-
+Jeff Layton <jlayton@poochiereds.net>
