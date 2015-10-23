@@ -1,70 +1,212 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx142.netapp.com ([216.240.21.19]:1939 "EHLO mx142.netapp.com"
+Received: from fieldses.org ([173.255.197.46]:35909 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751283AbbJWUo6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 23 Oct 2015 16:44:58 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-Subject: [GIT PULL] Please pull NFSoRDMA changes for 4.4
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        linux-rdma <linux-rdma@vger.kernel.org>
-Message-ID: <562A9C42.7030506@Netapp.com>
-Date: Fri, 23 Oct 2015 16:44:50 -0400
+	id S1751283AbbJWUts (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 23 Oct 2015 16:49:48 -0400
+Date: Fri, 23 Oct 2015 16:49:45 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Kosuke Tatsukawa <tatsu@ab.jp.nec.com>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Neil Brown <nfbrown@novell.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        "David S. Miller" <davem@davemloft.net>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH v2] sunrpc: fix waitqueue_active without memory barrier
+ in sunrpc
+Message-ID: <20151023204945.GD16137@fieldses.org>
+References: <20151022163133.GB5205@fieldses.org>
+ <17EC94B0A072C34B8DCF0D30AD16044A0287A7C2@BPXM09GP.gisp.nec.co.jp>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <17EC94B0A072C34B8DCF0D30AD16044A0287A7C2@BPXM09GP.gisp.nec.co.jp>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Trond,
+On Fri, Oct 23, 2015 at 04:14:10AM +0000, Kosuke Tatsukawa wrote:
+> J. Bruce Fields wrote:
+> > On Fri, Oct 16, 2015 at 02:28:10AM +0000, Kosuke Tatsukawa wrote:
+> >> Tatsukawa Kosuke wrote:
+> >> > J. Bruce Fields wrote:
+> >> >> On Thu, Oct 15, 2015 at 11:44:20AM +0000, Kosuke Tatsukawa wrote:
+> >> >>> Tatsukawa Kosuke wrote:
+> >> >>> > J. Bruce Fields wrote:
+> >> >>> >> Thanks for the detailed investigation.
+> >> >>> >> 
+> >> >>> >> I think it would be worth adding a comment if that might help someone
+> >> >>> >> having to reinvestigate this again some day.
+> >> >>> > 
+> >> >>> > It would be nice, but I find it difficult to write a comment in the
+> >> >>> > sunrpc layer why a memory barrier isn't necessary, using the knowledge
+> >> >>> > of how nfsd uses it, and the current implementation of the network code.
+> >> >>> > 
+> >> >>> > Personally, I would prefer removing the call to waitqueue_active() which
+> >> >>> > would make the memory barrier totally unnecessary at the cost of a
+> >> >>> > spin_lock + spin_unlock by unconditionally calling
+> >> >>> > wake_up_interruptible.
+> >> >>> 
+> >> >>> On second thought, the callbacks will be called frequently from the tcp
+> >> >>> code, so it wouldn't be a good idea.
+> >> >> 
+> >> >> So, I was even considering documenting it like this, if it's not
+> >> >> overkill.
+> >> >> 
+> >> >> Hmm... but if this is right, then we may as well ask why we're doing the
+> >> >> wakeups at all.  Might be educational to test the code with them
+> >> >> removed.
+> >> > 
+> >> > sk_write_space will be called in sock_wfree() with UDP/IP each time
+> >> > kfree_skb() is called.  With TCP/IP, sk_write_space is only called if
+> >> > SOCK_NOSPACE has been set.
+> >> > 
+> >> > sk_data_ready will be called in both tcp_rcv_established() for TCP/IP
+> >> > and in sock_queue_rcv_skb() for UDP/IP.  The latter lacks a memory
+> >> > barrier with sk_data_ready called right after __skb_queue_tail().
+> >> > I think this hasn't caused any problems because sk_data_ready wasn't
+> >> > used.
+> >> 
+> >> Actually, svc_udp_data_ready() calls set_bit() which is an atomic
+> >> operation.  So there won't be a problem unless svsk is NULL.
+> > 
+> > So is it true that every caller of these socket callbacks has adequate
+> > memory barriers between the time the change is made visible and the time
+> > the callback is called?
+> > 
+> > If so, then there's nothing really specific about nfsd here.
+> > 
+> > In that case maybe it's the networking code that use some documentation,
+> > if it doesn't already?  (Or maybe common helper functions for this
+> > 
+> > 	if (waitqueue_active(wq))
+> > 		wake_up(wq)
+> > 
+> > pattern?)
+> 
+> Some of the other places defining these callback functions are using
+>   static inline bool wq_has_sleeper(struct socket_wq *wq)
+> defined in include/net/sock.h
+> 
+> The comment above the function explains that it was introduced for
+> exactly this purpose.
+> 
+> Even thought the argument variable uses the same name "wq", it has a
+> different type from the wq used in svcsock.c (struct socket_wq *
+> vs. wait_queue_head_t *).
 
-The following changes since commit 7379047d5585187d1288486d4627873170d0005a:
+OK, thanks.  So, I guess it still sounds like the code is OK as is, but
+maybe my comment wasn't.  Here's another attempt.
 
-  Linux 4.3-rc6 (2015-10-18 16:08:42 -0700)
+--b.
 
-are available in the git repository at:
+commit b805ca58a81a
+Author: Kosuke Tatsukawa <tatsu@ab.jp.nec.com>
+Date:   Fri Oct 9 01:44:07 2015 +0000
 
-  git://git.linux-nfs.org/projects/anna/nfs-rdma.git tags/nfs-rdma-4.4
+    svcrpc: document lack of some memory barriers
+    
+    We're missing memory barriers in net/sunrpc/svcsock.c in some spots we'd
+    expect them.  But it doesn't appear they're necessary in our case, and
+    this is likely a hot path--for now just document the odd behavior.
+    
+    I found this issue when I was looking through the linux source code
+    for places calling waitqueue_active() before wake_up*(), but without
+    preceding memory barriers, after sending a patch to fix a similar
+    issue in drivers/tty/n_tty.c  (Details about the original issue can be
+    found here: https://lkml.org/lkml/2015/9/28/849).
+    
+    Signed-off-by: Kosuke Tatsukawa <tatsu@ab.jp.nec.com>
+    [bfields@redhat.com,nfbrown@novell.com: document instead of adding barriers]
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 
-for you to fetch changes up to 50add18fd4c82cc1eaedc6ce879d998a66f20e1f:
-
-  NFS: Enable client side NFSv4.1 backchannel to use other transports (2015-10-19 14:48:18 -0400)
-
-Thanks,
-Anna
-
-----------------------------------------------------------------
-Chuck Lever (16):
-      xprtrdma: Enable swap-on-NFS/RDMA
-      xprtrdma: Re-arm after missed events
-      xprtrdma: Prevent loss of completion signals
-      xprtrdma: Refactor reply handler error handling
-      xprtrdma: Replace send and receive arrays
-      xprtrdma: Use workqueue to process RPC/RDMA replies
-      xprtrdma: Remove reply tasklet
-      xprtrdma: Saving IRQs no longer needed for rb_lock
-      SUNRPC: Abstract backchannel operations
-      xprtrdma: Pre-allocate backward rpc_rqst and send/receive buffers
-      xprtrdma: Pre-allocate Work Requests for backchannel
-      xprtrdma: Add support for sending backward direction RPC replies
-      xprtrdma: Handle incoming backward direction RPC calls
-      svcrdma: Add backward direction service for RPC/RDMA transport
-      SUNRPC: Remove the TCP-only restriction in bc_svc_process()
-      NFS: Enable client side NFSv4.1 backchannel to use other transports
-
- fs/nfs/callback.c                        |  33 +++++++++------
- include/linux/sunrpc/bc_xprt.h           |   5 +++
- include/linux/sunrpc/svc_rdma.h          |   6 ++-
- include/linux/sunrpc/xprt.h              |   7 ++++
- net/sunrpc/backchannel_rqst.c            |  24 ++++++++++-
- net/sunrpc/svc.c                         |   5 ---
- net/sunrpc/xprtrdma/Makefile             |   1 +
- net/sunrpc/xprtrdma/backchannel.c        | 373 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- net/sunrpc/xprtrdma/rpc_rdma.c           | 148 +++++++++++++++++++++++++++++++++++++++++++++--------------------
- net/sunrpc/xprtrdma/svc_rdma.c           |   6 +++
- net/sunrpc/xprtrdma/svc_rdma_transport.c |  58 ++++++++++++++++++++++++++
- net/sunrpc/xprtrdma/transport.c          |  18 +++++++-
- net/sunrpc/xprtrdma/verbs.c              | 479 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------------------------------------------------------------------------------------------------------
- net/sunrpc/xprtrdma/xprt_rdma.h          |  53 +++++++++++++++++++-----
- net/sunrpc/xprtsock.c                    |  16 ++++++++
- 15 files changed, 916 insertions(+), 316 deletions(-)
- create mode 100644 net/sunrpc/xprtrdma/backchannel.c
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index 48923730722d..1f71eece04d3 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -399,6 +399,31 @@ static int svc_sock_secure_port(struct svc_rqst *rqstp)
+ 	return svc_port_is_privileged(svc_addr(rqstp));
+ }
+ 
++static bool sunrpc_waitqueue_active(wait_queue_head_t *wq)
++{
++	if (!wq)
++		return false;
++	/*
++	 * Kosuke Tatsukawa points out there should normally be a memory
++	 * barrier here--see wq_has_sleeper().
++	 *
++	 * It appears that isn't currently necessary, though, basically
++	 * because callers all appear to have sufficient memory barriers
++	 * between the time the relevant change is made and the
++	 * time they call these callbacks.
++	 *
++	 * The nfsd code itself doesn't actually explicitly wait on
++	 * these waitqueues, but it may wait on them for example in
++	 * sendpage() or sendmsg() calls.  (And those may be the only
++	 * places, since it it uses nonblocking reads.)
++	 *
++	 * Maybe we should add the memory barriers anyway, but these are
++	 * hot paths so we'd need to be convinced there's no sigificant
++	 * penalty.
++	 */
++	return waitqueue_active(wq);
++}
++
+ /*
+  * INET callback when data has been received on the socket.
+  */
+@@ -414,7 +439,7 @@ static void svc_udp_data_ready(struct sock *sk)
+ 		set_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags);
+ 		svc_xprt_enqueue(&svsk->sk_xprt);
+ 	}
+-	if (wq && waitqueue_active(wq))
++	if (sunrpc_waitqueue_active(wq))
+ 		wake_up_interruptible(wq);
+ }
+ 
+@@ -432,7 +457,7 @@ static void svc_write_space(struct sock *sk)
+ 		svc_xprt_enqueue(&svsk->sk_xprt);
+ 	}
+ 
+-	if (wq && waitqueue_active(wq)) {
++	if (sunrpc_waitqueue_active(wq)) {
+ 		dprintk("RPC svc_write_space: someone sleeping on %p\n",
+ 		       svsk);
+ 		wake_up_interruptible(wq);
+@@ -787,7 +812,7 @@ static void svc_tcp_listen_data_ready(struct sock *sk)
+ 	}
+ 
+ 	wq = sk_sleep(sk);
+-	if (wq && waitqueue_active(wq))
++	if (sunrpc_waitqueue_active(wq))
+ 		wake_up_interruptible_all(wq);
+ }
+ 
+@@ -808,7 +833,7 @@ static void svc_tcp_state_change(struct sock *sk)
+ 		set_bit(XPT_CLOSE, &svsk->sk_xprt.xpt_flags);
+ 		svc_xprt_enqueue(&svsk->sk_xprt);
+ 	}
+-	if (wq && waitqueue_active(wq))
++	if (sunrpc_waitqueue_active(wq))
+ 		wake_up_interruptible_all(wq);
+ }
+ 
+@@ -823,7 +848,7 @@ static void svc_tcp_data_ready(struct sock *sk)
+ 		set_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags);
+ 		svc_xprt_enqueue(&svsk->sk_xprt);
+ 	}
+-	if (wq && waitqueue_active(wq))
++	if (sunrpc_waitqueue_active(wq))
+ 		wake_up_interruptible(wq);
+ }
+ 
+@@ -1594,7 +1619,7 @@ static void svc_sock_detach(struct svc_xprt *xprt)
+ 	sk->sk_write_space = svsk->sk_owspace;
+ 
+ 	wq = sk_sleep(sk);
+-	if (wq && waitqueue_active(wq))
++	if (sunrpc_waitqueue_active(wq))
+ 		wake_up_interruptible(wq);
+ }
+ 
