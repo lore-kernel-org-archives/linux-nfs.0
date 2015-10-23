@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:56301 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:45752 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752678AbbJWSqf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 23 Oct 2015 14:46:35 -0400
+	id S965079AbbJWSrm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 23 Oct 2015 14:47:42 -0400
 From: Andreas Gruenbacher <agruenba@redhat.com>
 To: Alexander Viro <viro@zeniv.linux.org.uk>, "Theodore Ts'o" <tytso@mit.edu>,
         Andreas Dilger <adilger.kernel@dilger.ca>,
@@ -15,594 +15,145 @@ To: Alexander Viro <viro@zeniv.linux.org.uk>, "Theodore Ts'o" <tytso@mit.edu>,
         linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-cifs@vger.kernel.org, linux-api@vger.kernel.org
 Cc: Andreas Gruenbacher <agruenba@redhat.com>
-Subject: [PATCH v12 39/49] richacl: Add support for unmapped identifiers
-Date: Fri, 23 Oct 2015 20:41:52 +0200
-Message-Id: <1445625722-13791-40-git-send-email-agruenba@redhat.com>
+Subject: [PATCH v12 49/49] nfs: Add support for the v4.1 dacl attribute
+Date: Fri, 23 Oct 2015 20:42:02 +0200
+Message-Id: <1445625722-13791-50-git-send-email-agruenba@redhat.com>
 In-Reply-To: <1445625722-13791-1-git-send-email-agruenba@redhat.com>
 References: <1445625722-13791-1-git-send-email-agruenba@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Some remote file systems like nfs may return user or group identifiers
-that cannot be mapped to local uids / gids.  Allow to represent such
-unmapped identifiers in richacls.  (We still cannot represent unmapped
-owners and owning groups, however.)
+The dacl attribute includes Automatic Inheritance flags not supported by
+the acl attribute.  it is only supported in NFS version 4.1 and higher.
+On systems where NFS version 4.0 is still the default, an additional
+mount option is needed:
 
-In the in-memory representation, the richacl is followed by a list of
-NUL-terminated strings, with no padding.  Entries with an unmapped
-identifier have the RICHACE_UNMAPPED_WHO flag set, and ace->e_id.offs
-specifies the offset into this list.  Multiple entries can refer to the
-same offset.
-
-The xattr representation is similar, but ace->e_id is ignored, and the
-list of unmapped identifier strings contains a string for each acl entry
-whose RICHACE_UNMAPPED_WHO flag is set.
+    mount -t nfs4 -o vers=4.1 [...]
 
 Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
 ---
- fs/richacl_base.c            | 139 ++++++++++++++++++++++++++++++++++++++++---
- fs/richacl_compat.c          |  18 +++---
- fs/richacl_inode.c           |   4 +-
- fs/richacl_xattr.c           |  69 +++++++++++++++++----
- include/linux/richacl.h      |  31 ++++++++--
- include/uapi/linux/richacl.h |   2 +
- 6 files changed, 227 insertions(+), 36 deletions(-)
+ fs/nfs/nfs4proc.c       |  2 +-
+ fs/nfs/nfs4xdr.c        | 54 ++++++++++++++++++++++++++++++++++++++++++-------
+ include/linux/nfs_xdr.h |  2 +-
+ 3 files changed, 49 insertions(+), 9 deletions(-)
 
-diff --git a/fs/richacl_base.c b/fs/richacl_base.c
-index 2a9c448..641b1bb 100644
---- a/fs/richacl_base.c
-+++ b/fs/richacl_base.c
-@@ -23,22 +23,25 @@
- MODULE_LICENSE("GPL");
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 7bb2dea..191369f 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -4556,7 +4556,7 @@ static struct richacl *__nfs4_get_acl_uncached(struct inode *inode)
+ 	struct nfs_server *server = NFS_SERVER(inode);
+ 	struct page *pages[DIV_ROUND_UP(NFS4ACL_SIZE_MAX, PAGE_SIZE)] = {};
+ 	struct nfs_getaclargs args = {
+-		.fh = NFS_FH(inode),
++		.inode = inode,
+ 		.acl_pages = pages,
+ 		.acl_len = ARRAY_SIZE(pages) * PAGE_SIZE,
+ 	};
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 2f1d6be..a73f7c6 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -1661,9 +1661,16 @@ encode_setacl(struct xdr_stream *xdr, struct nfs_setaclargs *arg, struct compoun
+ 	encode_nfs4_stateid(xdr, &zero_stateid);
  
- /**
-- * richacl_alloc  -  allocate a richacl
-+ * __richacl_alloc  -  allocate a richacl
-  * @count:	number of entries
-+ * @unmapped_size:	size to reserve for unmapped identifiers
-  */
- struct richacl *
--richacl_alloc(int count, gfp_t gfp)
-+__richacl_alloc(unsigned int count, size_t unmapped_size, gfp_t gfp)
- {
--	size_t size = sizeof(struct richacl) + count * sizeof(struct richace);
-+	size_t size = sizeof(struct richacl) + count * sizeof(struct richace) +
-+		      unmapped_size;
- 	struct richacl *acl = kzalloc(size, gfp);
- 
- 	if (acl) {
- 		atomic_set(&acl->a_base.ba_refcount, 1);
- 		acl->a_count = count;
-+		acl->a_unmapped_size = unmapped_size;
- 	}
- 	return acl;
- }
--EXPORT_SYMBOL_GPL(richacl_alloc);
-+EXPORT_SYMBOL_GPL(__richacl_alloc);
- 
- /**
-  * richacl_clone  -  create a copy of a richacl
-@@ -47,7 +50,8 @@ struct richacl *
- richacl_clone(const struct richacl *acl, gfp_t gfp)
- {
- 	int count = acl->a_count;
--	size_t size = sizeof(struct richacl) + count * sizeof(struct richace);
-+	size_t size = sizeof(struct richacl) + count * sizeof(struct richace) +
-+		      acl->a_unmapped_size;
- 	struct richacl *dup = kmalloc(size, gfp);
- 
- 	if (dup) {
-@@ -59,6 +63,9 @@ richacl_clone(const struct richacl *acl, gfp_t gfp)
- 
- /**
-  * richace_copy  -  copy an acl entry
-+ *
-+ * If @from has an unmapped who value (from->e_flags & RICHACE_UNMAPPED_WHO),
-+ * it can only be copied within the same acl!
-  */
- void
- richace_copy(struct richace *to, const struct richace *from)
-@@ -66,6 +73,82 @@ richace_copy(struct richace *to, const struct richace *from)
- 	memcpy(to, from, sizeof(struct richace));
- }
- 
-+/**
-+ * richacl_add_unmapped_identifier
-+ * @pacl:	Pointer to an acl
-+ * @pace:	acl entry within @acl
-+ * @who:	unmapped identifier
-+ * @len:	length of @who
-+ * @gfp:	memory allocation flags
-+ *
-+ * Add an unmapped identifier to an acl, possibly reallocating the acl.
-+ */
-+int richacl_add_unmapped_identifier(struct richacl **pacl,
-+				    struct richace **pace,
-+				    const char *who,
-+				    unsigned int len, gfp_t gfp)
-+{
-+	struct richacl *acl = *pacl;
-+	size_t size = sizeof(struct richacl) +
-+		      acl->a_count * sizeof(struct richace) +
-+		      acl->a_unmapped_size + len + 1;
-+	unsigned int index = *pace - acl->a_entries;
-+
-+	acl = krealloc(*pacl, size, gfp);
-+	if (acl) {
-+		char *unmapped = (char *)(acl->a_entries + acl->a_count);
-+		struct richace *ace = acl->a_entries + index;
-+
-+		ace->e_flags |= RICHACE_UNMAPPED_WHO;
-+		ace->e_flags &= ~RICHACE_SPECIAL_WHO;
-+		ace->e_id.offs = acl->a_unmapped_size;
-+		memcpy(unmapped + ace->e_id.offs, who, len);
-+		unmapped[ace->e_id.offs + len] = 0;
-+		acl->a_unmapped_size += len + 1;
-+		*pace = ace;
-+		*pacl = acl;
-+		return 0;
+ 	/* Encode attribute bitmap. */
+-	p = reserve_space(xdr, 2*4);
+-	*p++ = cpu_to_be32(1);
+-	*p = cpu_to_be32(FATTR4_WORD0_ACL);
++	if (arg->server->attr_bitmask[1] & FATTR4_WORD1_DACL) {
++		p = reserve_space(xdr, 3*4);
++		*p++ = cpu_to_be32(2);
++		*p++ = 0;
++		*p = cpu_to_be32(FATTR4_WORD1_DACL);
++	} else {
++		p = reserve_space(xdr, 2*4);
++		*p++ = cpu_to_be32(1);
++		*p = cpu_to_be32(FATTR4_WORD0_ACL);
 +	}
-+	return -1;
-+}
-+EXPORT_SYMBOL_GPL(richacl_add_unmapped_identifier);
-+
-+/**
-+ * richace_unmapped_identifier  -  get unmapped identifier
-+ * @acl:	acl containing @ace
-+ * @ace:	acl entry
-+ *
-+ * Get the unmapped identifier of @ace as a NUL-terminated string, or NULL if
-+ * @ace doesn't have an unmapped identifier.
-+ */
-+const char *richace_unmapped_identifier(const struct richace *ace,
-+					const struct richacl *acl)
-+{
-+	const char *unmapped = (char *)(acl->a_entries + acl->a_count);
-+
-+	if (!(ace->e_flags & RICHACE_UNMAPPED_WHO))
-+		return NULL;
-+	return unmapped + ace->e_id.offs;
-+}
-+EXPORT_SYMBOL(richace_unmapped_identifier);
-+
-+/**
-+ * richacl_has_unmapped_identifiers
-+ *
-+ * Check if an acl has unmapped identifiers.
-+ */
-+bool richacl_has_unmapped_identifiers(struct richacl *acl)
-+{
-+	struct richace *ace;
-+
-+	richacl_for_each_entry(ace, acl) {
-+		if (ace->e_flags & RICHACE_UNMAPPED_WHO)
-+			return true;
-+	}
-+	return false;
-+}
-+EXPORT_SYMBOL_GPL(richacl_has_unmapped_identifiers);
-+
- /*
-  * richacl_mask_to_mode  -  compute the file permission bits from mask
-  * @mask:	%RICHACE_* permission mask
-@@ -214,7 +297,7 @@ static unsigned int richacl_allowed_to_who(struct richacl *acl,
- 	richacl_for_each_entry_reverse(ace, acl) {
- 		if (richace_is_inherit_only(ace))
- 			continue;
--		if (richace_is_same_identifier(ace, who) ||
-+		if (richace_is_same_identifier(acl, ace, who) ||
- 		    richace_is_everyone(ace)) {
- 			if (richace_is_allow(ace))
- 				allowed |= ace->e_mask;
-@@ -505,45 +588,72 @@ richacl_inherit(const struct richacl *dir_acl, int isdir)
- 	const struct richace *dir_ace;
- 	struct richacl *acl = NULL;
- 	struct richace *ace;
--	int count = 0;
-+	unsigned int count = 0, unmapped_size = 0, offset = 0;
-+	const char *dir_unmapped;
-+	char *unmapped;
  
- 	if (isdir) {
- 		richacl_for_each_entry(dir_ace, dir_acl) {
- 			if (!richace_is_inheritable(dir_ace))
- 				continue;
-+
- 			count++;
-+			dir_unmapped =
-+				richace_unmapped_identifier(dir_ace, dir_acl);
-+			if (dir_unmapped)
-+				unmapped_size += strlen(dir_unmapped) + 1;
- 		}
- 		if (!count)
- 			return NULL;
--		acl = richacl_alloc(count, GFP_KERNEL);
-+		acl = __richacl_alloc(count, unmapped_size, GFP_KERNEL);
- 		if (!acl)
- 			return ERR_PTR(-ENOMEM);
- 		ace = acl->a_entries;
-+		unmapped = (char *)(acl->a_entries + acl->a_count);
- 		richacl_for_each_entry(dir_ace, dir_acl) {
- 			if (!richace_is_inheritable(dir_ace))
- 				continue;
-+
- 			richace_copy(ace, dir_ace);
- 			if (dir_ace->e_flags & RICHACE_NO_PROPAGATE_INHERIT_ACE)
- 				ace->e_flags &= ~RICHACE_INHERITANCE_FLAGS;
- 			else if (!(dir_ace->e_flags & RICHACE_DIRECTORY_INHERIT_ACE))
- 				ace->e_flags |= RICHACE_INHERIT_ONLY_ACE;
-+
-+			dir_unmapped =
-+				richace_unmapped_identifier(dir_ace, dir_acl);
-+			if (dir_unmapped) {
-+				size_t sz = strlen(dir_unmapped) + 1;
-+
-+				ace->e_id.offs = offset;
-+				memcpy(unmapped, dir_unmapped, sz);
-+				unmapped += sz;
-+				offset += sz;
-+			}
- 			ace++;
- 		}
- 	} else {
- 		richacl_for_each_entry(dir_ace, dir_acl) {
- 			if (!(dir_ace->e_flags & RICHACE_FILE_INHERIT_ACE))
- 				continue;
-+
- 			count++;
-+			dir_unmapped =
-+				richace_unmapped_identifier(dir_ace, dir_acl);
-+			if (dir_unmapped)
-+				unmapped_size += strlen(dir_unmapped) + 1;
- 		}
- 		if (!count)
- 			return NULL;
--		acl = richacl_alloc(count, GFP_KERNEL);
-+		acl = __richacl_alloc(count, unmapped_size, GFP_KERNEL);
- 		if (!acl)
- 			return ERR_PTR(-ENOMEM);
- 		ace = acl->a_entries;
-+		unmapped = (char *)(acl->a_entries + acl->a_count);
- 		richacl_for_each_entry(dir_ace, dir_acl) {
- 			if (!(dir_ace->e_flags & RICHACE_FILE_INHERIT_ACE))
- 				continue;
-+
- 			richace_copy(ace, dir_ace);
- 			ace->e_flags &= ~RICHACE_INHERITANCE_FLAGS;
- 			/*
-@@ -551,6 +661,17 @@ richacl_inherit(const struct richacl *dir_acl, int isdir)
- 			 * non-directories, so clear it.
- 			 */
- 			ace->e_mask &= ~RICHACE_DELETE_CHILD;
-+
-+			dir_unmapped =
-+				richace_unmapped_identifier(dir_ace, dir_acl);
-+			if (dir_unmapped) {
-+				size_t sz = strlen(dir_unmapped) + 1;
-+
-+				ace->e_id.offs = offset;
-+				memcpy(unmapped, dir_unmapped, sz);
-+				unmapped += sz;
-+				offset += sz;
-+			}
- 			ace++;
- 		}
- 	}
-diff --git a/fs/richacl_compat.c b/fs/richacl_compat.c
-index 3a11773..24b5397 100644
---- a/fs/richacl_compat.c
-+++ b/fs/richacl_compat.c
-@@ -71,11 +71,13 @@ richacl_insert_entry(struct richacl_alloc *alloc, struct richace **ace)
- {
- 	struct richacl *acl = alloc->acl;
- 	unsigned int index = *ace - acl->a_entries;
--	size_t tail_size = (acl->a_count - index) * sizeof(struct richace);
-+	size_t tail_size = (acl->a_count - index) * sizeof(struct richace) +
-+			   acl->a_unmapped_size;
+ 	attrlen_offset = xdr->buf->len;
+ 	xdr_reserve_space(xdr, 4);  /* to be backfilled later */
+@@ -2498,9 +2505,12 @@ static void nfs4_xdr_enc_getacl(struct rpc_rqst *req, struct xdr_stream *xdr,
  
- 	if (alloc->count == acl->a_count) {
- 		size_t new_size = sizeof(struct richacl) +
--			(acl->a_count + 1) * sizeof(struct richace);
-+			(acl->a_count + 1) * sizeof(struct richace) +
-+			acl->a_unmapped_size;
+ 	encode_compound_hdr(xdr, req, &hdr);
+ 	encode_sequence(xdr, &args->seq_args, &hdr);
+-	encode_putfh(xdr, args->fh, &hdr);
++	encode_putfh(xdr, NFS_FH(args->inode), &hdr);
+ 	replen = hdr.replen + op_decode_hdr_maxsz + 1;
+-	encode_getattr_two(xdr, FATTR4_WORD0_ACL, FATTR4_WORD1_MODE, &hdr);
++	if (NFS_SERVER(args->inode)->attr_bitmask[1] & FATTR4_WORD1_DACL)
++		encode_getattr_two(xdr, 0, FATTR4_WORD1_MODE | FATTR4_WORD1_DACL, &hdr);
++	else
++		encode_getattr_two(xdr, FATTR4_WORD0_ACL, FATTR4_WORD1_MODE, &hdr);
  
- 		acl = krealloc(acl, new_size, GFP_KERNEL);
- 		if (!acl)
-@@ -103,10 +105,6 @@ struct richace *richacl_append_entry(struct richacl_alloc *alloc)
- 	struct richacl *acl = alloc->acl;
- 	struct richace *ace = acl->a_entries + acl->a_count;
+ 	xdr_inline_pages(&req->rq_rcv_buf, replen << 2,
+ 		args->acl_pages, 0, args->acl_len);
+@@ -5402,12 +5412,25 @@ static int decode_getacl(struct xdr_stream *xdr, struct rpc_rqst *req,
  
--	if (alloc->count > alloc->acl->a_count) {
--		acl->a_count++;
--		return ace;
--	}
- 	return richacl_insert_entry(alloc, &ace) ? NULL : ace;
- }
- EXPORT_SYMBOL_GPL(richacl_append_entry);
-@@ -261,12 +259,12 @@ __richacl_propagate_everyone(struct richacl_alloc *alloc, struct richace *who,
- 		if (richace_is_inherit_only(ace))
- 			continue;
- 		if (richace_is_allow(ace)) {
--			if (richace_is_same_identifier(ace, who)) {
-+			if (richace_is_same_identifier(acl, ace, who)) {
- 				allow &= ~ace->e_mask;
- 				allow_last = ace;
- 			}
- 		} else if (richace_is_deny(ace)) {
--			if (richace_is_same_identifier(ace, who))
-+			if (richace_is_same_identifier(acl, ace, who))
- 				allow &= ~ace->e_mask;
- 			else if (allow & ace->e_mask)
- 				allow_last = NULL;
-@@ -613,7 +611,7 @@ __richacl_isolate_who(struct richacl_alloc *alloc, struct richace *who,
- 	richacl_for_each_entry(ace, acl) {
- 		if (richace_is_inherit_only(ace))
- 			continue;
--		if (richace_is_same_identifier(ace, who))
-+		if (richace_is_same_identifier(acl, ace, who))
- 			deny &= ~ace->e_mask;
- 	}
- 	if (!deny)
-@@ -629,7 +627,7 @@ __richacl_isolate_who(struct richacl_alloc *alloc, struct richace *who,
- 		if (richace_is_inherit_only(ace))
- 			continue;
- 		if (richace_is_deny(ace)) {
--			if (richace_is_same_identifier(ace, who))
-+			if (richace_is_same_identifier(acl, ace, who))
- 				return richace_change_mask(alloc, &ace,
- 							   ace->e_mask | deny);
- 		} else if (richace_is_allow(ace) &&
-diff --git a/fs/richacl_inode.c b/fs/richacl_inode.c
-index 24276da..026abae 100644
---- a/fs/richacl_inode.c
-+++ b/fs/richacl_inode.c
-@@ -161,8 +161,10 @@ richacl_permission(struct inode *inode, const struct richacl *acl,
- 		} else if (richace_is_unix_group(ace)) {
- 			if (!in_group_p(ace->e_id.gid))
- 				continue;
--		} else
-+		} else if (richace_is_everyone(ace))
- 			goto entry_matches_everyone;
-+		else
-+			continue;
- 
- 		/*
- 		 * Apply the group file mask to entries other than owner@ and
-diff --git a/fs/richacl_xattr.c b/fs/richacl_xattr.c
-index 767c1f7..09b1012 100644
---- a/fs/richacl_xattr.c
-+++ b/fs/richacl_xattr.c
-@@ -35,7 +35,8 @@ richacl_from_xattr(struct user_namespace *user_ns,
- 	const struct richace_xattr *xattr_ace = (void *)(xattr_acl + 1);
- 	struct richacl *acl;
- 	struct richace *ace;
--	int count;
-+	unsigned int count, offset;
-+	char *unmapped;
- 
- 	if (size < sizeof(*xattr_acl) ||
- 	    xattr_acl->a_version != RICHACL_XATTR_VERSION ||
-@@ -45,10 +46,11 @@ richacl_from_xattr(struct user_namespace *user_ns,
- 	count = le16_to_cpu(xattr_acl->a_count);
- 	if (count > RICHACL_XATTR_MAX_COUNT)
- 		return ERR_PTR(-EINVAL);
--	if (size != count * sizeof(*xattr_ace))
-+	if (size < count * sizeof(*xattr_ace))
- 		return ERR_PTR(-EINVAL);
-+	size -= count * sizeof(*xattr_ace);
- 
--	acl = richacl_alloc(count, GFP_NOFS);
-+	acl = __richacl_alloc(count, size, GFP_NOFS);
- 	if (!acl)
- 		return ERR_PTR(-ENOMEM);
- 
-@@ -63,6 +65,16 @@ richacl_from_xattr(struct user_namespace *user_ns,
- 	if (acl->a_other_mask & ~RICHACE_VALID_MASK)
- 		goto fail_einval;
- 
-+	unmapped = (char *)(acl->a_entries + count);
-+	if (size) {
-+		char *xattr_unmapped = (char *)(xattr_ace + count);
+ 	if (unlikely(bitmap[0] & (FATTR4_WORD0_ACL - 1U)))
+ 		return -EIO;
+-	if (likely(bitmap[0] & FATTR4_WORD0_ACL)) {
 +
-+		if (xattr_unmapped[size - 1] != 0)
-+			goto fail_einval;
-+		memcpy(unmapped, xattr_unmapped, size);
-+	}
-+	offset = 0;
++	if (bitmap[0] & FATTR4_WORD0_ACL) {
++		struct richace *ace;
 +
- 	richacl_for_each_entry(ace, acl) {
- 		ace->e_type  = le16_to_cpu(xattr_ace->e_type);
- 		ace->e_flags = le16_to_cpu(xattr_ace->e_flags);
-@@ -74,6 +86,15 @@ richacl_from_xattr(struct user_namespace *user_ns,
- 			ace->e_id.special = le32_to_cpu(xattr_ace->e_id);
- 			if (ace->e_id.special > RICHACE_EVERYONE_SPECIAL_ID)
- 				goto fail_einval;
-+		} else if (ace->e_flags & RICHACE_UNMAPPED_WHO) {
-+			size_t sz;
++		if (bitmap[1] & FATTR4_WORD1_DACL)
++			return -EIO;
 +
-+			if (offset == size)
-+				goto fail_einval;
-+			ace->e_id.offs = offset;
-+			sz = strlen(unmapped) + 1;
-+			unmapped += sz;
-+			offset += sz;
- 		} else if (ace->e_flags & RICHACE_IDENTIFIER_GROUP) {
- 			u32 id = le32_to_cpu(xattr_ace->e_id);
- 
-@@ -90,10 +111,12 @@ richacl_from_xattr(struct user_namespace *user_ns,
- 		if (ace->e_type > RICHACE_ACCESS_DENIED_ACE_TYPE ||
- 		    (ace->e_mask & ~RICHACE_VALID_MASK))
- 			goto fail_einval;
--
- 		xattr_ace++;
- 	}
- 
-+	if (offset != size)
-+		goto fail_einval;
+ 		acl = decode_acl_entries(xdr, res->server);
+ 		if (IS_ERR(acl))
+ 			return PTR_ERR(acl);
 +
- 	return acl;
- 
- fail_einval:
-@@ -109,8 +132,15 @@ size_t
- richacl_xattr_size(const struct richacl *acl)
- {
- 	size_t size = sizeof(struct richacl_xattr);
-+	const struct richace *ace;
- 
- 	size += sizeof(struct richace_xattr) * acl->a_count;
-+	richacl_for_each_entry(ace, acl) {
-+		const char *unmapped = richace_unmapped_identifier(ace, acl);
-+
-+		if (unmapped)
-+			size += strlen(unmapped) + 1;
-+	}
- 	return size;
- }
- EXPORT_SYMBOL_GPL(richacl_xattr_size);
-@@ -129,6 +159,7 @@ richacl_to_xattr(struct user_namespace *user_ns,
- 	struct richace_xattr *xattr_ace;
- 	const struct richace *ace;
- 	size_t real_size;
-+	char *xattr_unmapped;
- 
- 	real_size = richacl_xattr_size(acl);
- 	if (!buffer)
-@@ -145,18 +176,33 @@ richacl_to_xattr(struct user_namespace *user_ns,
- 	xattr_acl->a_other_mask = cpu_to_le32(acl->a_other_mask);
- 
- 	xattr_ace = (void *)(xattr_acl + 1);
-+	xattr_unmapped = (char *)(xattr_ace + acl->a_count);
- 	richacl_for_each_entry(ace, acl) {
-+		const char *who;
-+
- 		xattr_ace->e_type = cpu_to_le16(ace->e_type);
- 		xattr_ace->e_flags = cpu_to_le16(ace->e_flags);
- 		xattr_ace->e_mask = cpu_to_le32(ace->e_mask);
- 		if (ace->e_flags & RICHACE_SPECIAL_WHO)
- 			xattr_ace->e_id = cpu_to_le32(ace->e_id.special);
--		else if (ace->e_flags & RICHACE_IDENTIFIER_GROUP)
--			xattr_ace->e_id =
--				cpu_to_le32(from_kgid(user_ns, ace->e_id.gid));
--		else
--			xattr_ace->e_id =
--				cpu_to_le32(from_kuid(user_ns, ace->e_id.uid));
-+		else {
-+			who = richace_unmapped_identifier(ace, acl);
-+			if (who) {
-+				size_t sz = strlen(who) + 1;
-+
-+				xattr_ace->e_id = 0;
-+				memcpy(xattr_unmapped, who, sz);
-+				xattr_unmapped += sz;
-+			} else if (ace->e_flags & RICHACE_IDENTIFIER_GROUP) {
-+				u32 id = from_kgid(user_ns, ace->e_id.gid);
-+
-+				xattr_ace->e_id = cpu_to_le32(id);
-+			} else {
-+				u32 id = from_kuid(user_ns, ace->e_id.uid);
-+
-+				xattr_ace->e_id = cpu_to_le32(id);
-+			}
++		status = -EIO;
++		richacl_for_each_entry(ace, acl) {
++			if (ace->e_flags & RICHACE_INHERITED_ACE)
++				goto out;
 +		}
- 		xattr_ace++;
- 	}
- 	return real_size;
-@@ -262,7 +308,8 @@ static void richacl_fix_xattr_userns(
- 		return;
- 	count = size / sizeof(*xattr_ace);
- 	for (; count; count--, xattr_ace++) {
--		if (xattr_ace->e_flags & cpu_to_le16(RICHACE_SPECIAL_WHO))
-+		if (xattr_ace->e_flags & cpu_to_le16(RICHACE_SPECIAL_WHO |
-+						     RICHACE_UNMAPPED_WHO))
- 			continue;
- 		if (xattr_ace->e_flags &
- 		    cpu_to_le16(RICHACE_IDENTIFIER_GROUP)) {
-diff --git a/include/linux/richacl.h b/include/linux/richacl.h
-index 10bfd0f..52e5c3d 100644
---- a/include/linux/richacl.h
-+++ b/include/linux/richacl.h
-@@ -27,6 +27,7 @@ struct richace {
- 		kuid_t		uid;
- 		kgid_t		gid;
- 		unsigned int	special;
-+		unsigned short	offs;  /* unmapped offset */
- 	} e_id;
- };
- 
-@@ -37,6 +38,7 @@ struct richacl {
- 	unsigned int	a_other_mask;
- 	unsigned short	a_count;
- 	unsigned short	a_flags;
-+	unsigned short	a_unmapped_size;
- 	struct richace	a_entries[0];
- };
- 
-@@ -182,14 +184,28 @@ richace_is_deny(const struct richace *ace)
-  * richace_is_same_identifier  -  are both identifiers the same?
-  */
- static inline bool
--richace_is_same_identifier(const struct richace *a, const struct richace *b)
-+richace_is_same_identifier(const struct richacl *acl,
-+			   const struct richace *ace1,
-+			   const struct richace *ace2)
- {
--	return !((a->e_flags ^ b->e_flags) &
--		 (RICHACE_SPECIAL_WHO | RICHACE_IDENTIFIER_GROUP)) &&
--	       !memcmp(&a->e_id, &b->e_id, sizeof(a->e_id));
-+	const char *unmapped = (char *)(acl->a_entries + acl->a_count);
 +
-+	return !((ace1->e_flags ^ ace2->e_flags) &
-+		 (RICHACE_SPECIAL_WHO |
-+		  RICHACE_IDENTIFIER_GROUP |
-+		  RICHACE_UNMAPPED_WHO)) &&
-+	       ((ace1->e_flags & RICHACE_UNMAPPED_WHO) ?
-+		!strcmp(unmapped + ace1->e_id.offs,
-+			unmapped + ace2->e_id.offs) :
-+		!memcmp(&ace1->e_id, &ace2->e_id, sizeof(ace1->e_id)));
-+}
+ 		bitmap[0] &= ~FATTR4_WORD0_ACL;
+-	} else
++	} else if (!(bitmap[1] & FATTR4_WORD1_DACL))
+ 		return -EOPNOTSUPP;
+ 
+ 	status = -EIO;
+@@ -5417,6 +5440,23 @@ static int decode_getacl(struct xdr_stream *xdr, struct rpc_rqst *req,
+ 	status = decode_attr_mode(xdr, bitmap, &res->mode);
+ 	if (status < 0)
+ 		goto out;
 +
-+extern struct richacl *__richacl_alloc(unsigned int, size_t, gfp_t);
-+static inline struct richacl *richacl_alloc(unsigned int count, gfp_t gfp)
-+{
-+	return __richacl_alloc(count, 0, gfp);
- }
++	if (bitmap[1] & FATTR4_WORD1_DACL) {
++		unsigned int flags;
++		__be32 *p;
++
++		p = xdr_inline_decode(xdr, 4);
++		if (unlikely(!p))
++			return -EIO;
++		flags = be32_to_cpup(p);
++
++		acl = decode_acl_entries(xdr, res->server);
++		if (IS_ERR(acl))
++			return PTR_ERR(acl);
++
++		acl->a_flags = flags;
++		bitmap[1] &= ~FATTR4_WORD1_DACL;
++	}
+ 	status = 0;
  
--extern struct richacl *richacl_alloc(int, gfp_t);
- extern struct richacl *richacl_clone(const struct richacl *, gfp_t);
- extern void richace_copy(struct richace *, const struct richace *);
- extern int richacl_masks_to_mode(const struct richacl *);
-@@ -199,6 +215,11 @@ extern void richacl_compute_max_masks(struct richacl *);
- extern struct richacl *__richacl_chmod(struct richacl *, umode_t);
- extern int richacl_equiv_mode(const struct richacl *, umode_t *);
- extern struct richacl *richacl_inherit(const struct richacl *, int);
-+extern int richacl_add_unmapped_identifier(struct richacl **, struct richace **,
-+					   const char *, unsigned int, gfp_t);
-+extern const char *richace_unmapped_identifier(const struct richace *,
-+					       const struct richacl *);
-+extern bool richacl_has_unmapped_identifiers(struct richacl *);
+ out:
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 337c341..9c2a078 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -695,7 +695,7 @@ struct nfs_setaclres {
  
- /* richacl_inode.c */
- extern int richacl_permission(struct inode *, const struct richacl *, int);
-diff --git a/include/uapi/linux/richacl.h b/include/uapi/linux/richacl.h
-index 8849a53..132fee1 100644
---- a/include/uapi/linux/richacl.h
-+++ b/include/uapi/linux/richacl.h
-@@ -35,6 +35,7 @@
- #define RICHACE_INHERIT_ONLY_ACE		0x0008
- #define RICHACE_IDENTIFIER_GROUP		0x0040
- #define RICHACE_INHERITED_ACE			0x0080
-+#define RICHACE_UNMAPPED_WHO			0x2000
- #define RICHACE_SPECIAL_WHO			0x4000
- 
- /* e_mask bitflags */
-@@ -77,6 +78,7 @@
- 	RICHACE_INHERIT_ONLY_ACE |				\
- 	RICHACE_IDENTIFIER_GROUP |				\
- 	RICHACE_INHERITED_ACE |					\
-+	RICHACE_UNMAPPED_WHO |					\
- 	RICHACE_SPECIAL_WHO )
- 
- #define RICHACE_INHERITANCE_FLAGS (				\
+ struct nfs_getaclargs {
+ 	struct nfs4_sequence_args 	seq_args;
+-	struct nfs_fh *			fh;
++	struct inode *			inode;
+ 	size_t				acl_len;
+ 	struct page **			acl_pages;
+ };
 -- 
 2.5.0
 
