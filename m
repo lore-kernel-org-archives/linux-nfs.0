@@ -1,122 +1,223 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:35874 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:36884 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750992AbbJWTVr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 23 Oct 2015 15:21:47 -0400
-Date: Fri, 23 Oct 2015 15:21:43 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@poochiereds.net>
-Cc: Anders Blomdell <anders.blomdell@control.lth.se>,
-        linux-nfs@vger.kernel.org
-Subject: Re: NULL pointer dereference in nfs_delegation_find_inode
-Message-ID: <20151023192143.GA16137@fieldses.org>
-References: <5629E933.8030807@control.lth.se>
- <20151023072827.2861dd75@tlielax.poochiereds.net>
- <562A280A.7070205@control.lth.se>
- <20151023151712.6cec9529@synchrony.poochiereds.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20151023151712.6cec9529@synchrony.poochiereds.net>
+	id S1753092AbbJWSnG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 23 Oct 2015 14:43:06 -0400
+From: Andreas Gruenbacher <agruenba@redhat.com>
+To: Alexander Viro <viro@zeniv.linux.org.uk>, "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Dave Chinner <david@fromorbit.com>, linux-ext4@vger.kernel.org,
+        xfs@oss.sgi.com, linux-kernel@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-api@vger.kernel.org
+Cc: Andreas Gruenbacher <agruenba@redhat.com>
+Subject: [PATCH v12 08/49] richacl: Compute maximum file masks from an acl
+Date: Fri, 23 Oct 2015 20:41:21 +0200
+Message-Id: <1445625722-13791-9-git-send-email-agruenba@redhat.com>
+In-Reply-To: <1445625722-13791-1-git-send-email-agruenba@redhat.com>
+References: <1445625722-13791-1-git-send-email-agruenba@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Oct 23, 2015 at 03:17:12PM -0400, Jeff Layton wrote:
-> On Fri, 23 Oct 2015 14:28:58 +0200
-> Anders Blomdell <anders.blomdell@control.lth.se> wrote:
-> 
-> > On 2015-10-23 13:28, Jeff Layton wrote:
-> > > On Fri, 23 Oct 2015 10:00:51 +0200
-> > > Anders Blomdell <anders.blomdell@control.lth.se> wrote:
-> > > 
-> > >> We occasionally (about once every 2-4 weeks on 1 of a 100 machenes) get 
-> > >>
-> > >>   BUG: unable to handle kernel NULL pointer dereference at 0000000000000548
-> > >>   IP: [<ffffffffa0651744>] nfs_delegation_find_inode+0x64/0x150 [nfsv4]
-> > >>
-> > >> the attached bug is from 4.1.8-100.fc21, but I have seen it on 4.1.5-100.fc21 as
-> > >> well. Right now I have a realtime modified (xenomai.org) 3.8.13 system that exhibits
-> > >> the problem more frequently, and that leads me to belive that the problem is
-> > >> a data race problem, and by instrumenting fs/nfs/delegation.c (3.8.13) to:
-> > >>
-> > >>
-> > >>   static struct inode *
-> > >>   nfs_delegation_find_inode_server(struct nfs_server *server,
-> > >> 				 const struct nfs_fh *fhandle)
-> > >>   {
-> > >> 	  struct nfs_delegation *delegation;
-> > >> 	  struct inode *res = NULL;
-> > >>
-> > >>  	  printk(KERN_ERR "server = %p\n", server);
-> > >> 	  list_for_each_entry_rcu(delegation, &server->delegations, super_list) {
-> > >> 		  printk(KERN_ERR "delegation = %p\n", delegation);
-> > >> 		  printk(KERN_ERR "delegation->lock = %p\n", delegation->lock);
-> > >> 		  spin_lock(&delegation->lock);
-> > >> 		  printk(KERN_ERR "delegation->inode = %p\n", delegation->inode);
-> > >> 		  if (delegation->inode != NULL) {
-> > >> 			  printk(KERN_ERR "NFS_I(delegation->inode) = %p", NFS_I(delegation->inode));
-> > >> 			  printk(KERN_ERR "NFS_I(delegation->inode)->fh = %p", NFS_I(delegation->inode)->fh);
-> > >> 		  }
-> > >> 		  if (delegation->inode != NULL &&
-> > >> 		      nfs_compare_fh(fhandle, &NFS_I(delegation->inode)->fh) == 0) {
-> > >> 			  res = igrab(delegation->inode);
-> > >> 		  }
-> > >> 		  spin_unlock(&delegation->lock);
-> > >> 		  if (res != NULL)
-> > >> 			  break;
-> > >> 	  }
-> > >> 	  return res;
-> > >>   }
-> > >>
-> > >> the system dies with (delegation.c compiled with -O0):
-> > >>
-> > >>   server = ffff8803dee58458
-> > >>   delegation =           (null)
-> > >>   BUG: unable to handle kernel NULL pointer dereference at 0000000000000050
-> > >>   IP: [<ffffffffa08924ae>] nfs_delegation_find_inode_server+0x80/0x1e0 [nfsv4]
-> > >>
-> > >> Anybody thet can give me a hint how to write a program that gives rise to multiple 
-> > >> delegations to further investigate this issue?
-> > >>
-> > >> Regards
-> > >>
-> > >> Anders Blomdell
-> > >>
-> > > 
-> > > Huh. That delegation pointer really never be NULL. 
-> >                                       ^should
-> > > I'm unclear on how
-> > > that could even happen in the context of a list_for_each_entry_rcu
-> > > loop. Oh, but super_list is the first struct member in nfs_delegation
-> > > so it probably means that server->delegations was NULL.
-> > > 
-> > > Maybe this is a use-after free of some sort or there's a memory
-> > > scribble involved?
-> > That is my guess, and the realtime patch used probably makes the window of opportunity
-> > much larger (since the bug happens every few hours instead of every few years on average).
-> > 
-> > 
-> > > You might want to consider turning up some memory
-> > > debugging options while reproducing this.
-> > Any hints on what options? Could/should they beturned on for the NFS module only
-> > 
-> 
-> If your kernel uses SLUB then you can poke around with the options
-> under /sys/kernel/slab. Figure out which cache that object belongs too
-> (it appears to be kmalloc'ed) and enable stuff like "poison" and
-> red_zone.
-> 
-> If you can get a vmcore then you could also open it up with the
-> debugger and see what at "server" object looks like. Has it been freed?
-> Does it belong to the right slabcache? etc...
-> 
-> > Any hints of what file operations to use to force delegations to happen?
-> > 
-> 
-> You can't really force it as it's 100% up to the server. They are
-> handed out at OPEN time. So any open-heavy workload should help
-> reproduce it.
+Compute upper bound owner, group, and other file masks with as few
+permissions as possible without denying any permissions that the NFSv4
+acl in a richacl grants.
 
-Also if it's a Linux server it will only give out delegations on
-read-only opens.  (But I didn't notice if you said what the server was.)
+This algorithm is used when a file inherits an acl at create time and
+when an acl is set via a mechanism that does not provide file masks
+(such as setting an acl via nfsd).  When user-space sets an acl via
+setxattr, the extended attribute already includes the file masks.
 
---b.
+Setting an acl also sets the file mode permission bits: they are
+determined by the file masks; see richacl_masks_to_mode().
+
+Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
+Reviewed-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/richacl_base.c       | 157 ++++++++++++++++++++++++++++++++++++++++++++++++
+ include/linux/richacl.h |   1 +
+ 2 files changed, 158 insertions(+)
+
+diff --git a/fs/richacl_base.c b/fs/richacl_base.c
+index a393001..69b806c 100644
+--- a/fs/richacl_base.c
++++ b/fs/richacl_base.c
+@@ -183,3 +183,160 @@ richacl_want_to_mask(unsigned int want)
+ 	return mask;
+ }
+ EXPORT_SYMBOL_GPL(richacl_want_to_mask);
++
++/*
++ * Note: functions like richacl_allowed_to_who(), richacl_group_class_allowed(),
++ * and richacl_compute_max_masks() iterate through the entire acl in reverse
++ * order as an optimization.
++ *
++ * In the standard algorithm, aces are considered in forward order.  When a
++ * process matches an ace, the permissions in the ace are either allowed or
++ * denied depending on the ace type.  Once a permission has been allowed or
++ * denied, it is no longer considered in further aces.
++ *
++ * By iterating through the acl in reverse order, we can compute the same
++ * result without having to keep track of which permissions have been allowed
++ * and denied already.
++ */
++
++/**
++ * richacl_allowed_to_who  -  permissions allowed to a specific who value
++ *
++ * Compute the maximum mask values allowed to a specific who value, taking
++ * everyone@ aces into account.
++ */
++static unsigned int richacl_allowed_to_who(struct richacl *acl,
++					   struct richace *who)
++{
++	struct richace *ace;
++	unsigned int allowed = 0;
++
++	richacl_for_each_entry_reverse(ace, acl) {
++		if (richace_is_inherit_only(ace))
++			continue;
++		if (richace_is_same_identifier(ace, who) ||
++		    richace_is_everyone(ace)) {
++			if (richace_is_allow(ace))
++				allowed |= ace->e_mask;
++			else if (richace_is_deny(ace))
++				allowed &= ~ace->e_mask;
++		}
++	}
++	return allowed;
++}
++
++/**
++ * richacl_group_class_allowed  -  maximum permissions of the group class
++ *
++ * Compute the maximum mask values allowed to a process in the group class
++ * (i.e., a process which is not the owner but is in the owning group or
++ * matches a user or group acl entry).  This includes permissions granted or
++ * denied by everyone@ aces.
++ *
++ * See richacl_compute_max_masks().
++ */
++static unsigned int richacl_group_class_allowed(struct richacl *acl)
++{
++	struct richace *ace;
++	unsigned int everyone_allowed = 0, group_class_allowed = 0;
++	int had_group_ace = 0;
++
++	richacl_for_each_entry_reverse(ace, acl) {
++		if (richace_is_inherit_only(ace) ||
++		    richace_is_owner(ace))
++			continue;
++
++		if (richace_is_everyone(ace)) {
++			if (richace_is_allow(ace))
++				everyone_allowed |= ace->e_mask;
++			else if (richace_is_deny(ace))
++				everyone_allowed &= ~ace->e_mask;
++		} else {
++			group_class_allowed |=
++				richacl_allowed_to_who(acl, ace);
++
++			if (richace_is_group(ace))
++				had_group_ace = 1;
++		}
++	}
++	/*
++	 * If the acl doesn't contain any group@ aces, richacl_allowed_to_who()
++	 * wasn't called for the owning group.  We could make that call now, but
++	 * we already know the result (everyone_allowed).
++	 */
++	if (!had_group_ace)
++		group_class_allowed |= everyone_allowed;
++	return group_class_allowed;
++}
++
++/**
++ * richacl_compute_max_masks  -  compute upper bound masks
++ *
++ * Computes upper bound owner, group, and other masks so that none of the
++ * permissions allowed by the acl are disabled.
++ *
++ * We don't make assumptions about who the owner is so that the owner can
++ * change with no effect on the file masks or file mode permission bits; this
++ * means that we must assume that all entries can match the owner.
++ */
++void richacl_compute_max_masks(struct richacl *acl)
++{
++	unsigned int gmask = ~0;
++	struct richace *ace;
++
++	/*
++	 * @gmask contains all permissions which the group class is ever
++	 * allowed.  We use it to avoid adding permissions to the group mask
++	 * from everyone@ allow aces which the group class is always denied
++	 * through other aces.  For example, the following acl would otherwise
++	 * result in a group mask of rw:
++	 *
++	 *	group@:w::deny
++	 *	everyone@:rw::allow
++	 *
++	 * Avoid computing @gmask for acls which do not include any group class
++	 * deny aces: in such acls, the group class is never denied any
++	 * permissions from everyone@ allow aces, and the group class cannot
++	 * have fewer permissions than the other class.
++	 */
++
++restart:
++	acl->a_owner_mask = 0;
++	acl->a_group_mask = 0;
++	acl->a_other_mask = 0;
++
++	richacl_for_each_entry_reverse(ace, acl) {
++		if (richace_is_inherit_only(ace))
++			continue;
++
++		if (richace_is_owner(ace)) {
++			if (richace_is_allow(ace))
++				acl->a_owner_mask |= ace->e_mask;
++			else if (richace_is_deny(ace))
++				acl->a_owner_mask &= ~ace->e_mask;
++		} else if (richace_is_everyone(ace)) {
++			if (richace_is_allow(ace)) {
++				acl->a_owner_mask |= ace->e_mask;
++				acl->a_group_mask |= ace->e_mask & gmask;
++				acl->a_other_mask |= ace->e_mask;
++			} else if (richace_is_deny(ace)) {
++				acl->a_owner_mask &= ~ace->e_mask;
++				acl->a_group_mask &= ~ace->e_mask;
++				acl->a_other_mask &= ~ace->e_mask;
++			}
++		} else {
++			if (richace_is_allow(ace)) {
++				acl->a_owner_mask |= ace->e_mask & gmask;
++				acl->a_group_mask |= ace->e_mask & gmask;
++			} else if (richace_is_deny(ace) && gmask == ~0) {
++				gmask = richacl_group_class_allowed(acl);
++				if (likely(gmask != ~0))
++					/* should always be true */
++					goto restart;
++			}
++		}
++	}
++
++	acl->a_flags &= ~(RICHACL_WRITE_THROUGH | RICHACL_MASKED);
++}
++EXPORT_SYMBOL_GPL(richacl_compute_max_masks);
+diff --git a/include/linux/richacl.h b/include/linux/richacl.h
+index 9102ef0..3559b2c 100644
+--- a/include/linux/richacl.h
++++ b/include/linux/richacl.h
+@@ -178,5 +178,6 @@ extern void richace_copy(struct richace *, const struct richace *);
+ extern int richacl_masks_to_mode(const struct richacl *);
+ extern unsigned int richacl_mode_to_mask(umode_t);
+ extern unsigned int richacl_want_to_mask(unsigned int);
++extern void richacl_compute_max_masks(struct richacl *);
+ 
+ #endif /* __RICHACL_H */
+-- 
+2.5.0
+
