@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:55936 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:33615 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754395AbbJWSoy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 23 Oct 2015 14:44:54 -0400
+	id S1752855AbbJWSpH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 23 Oct 2015 14:45:07 -0400
 From: Andreas Gruenbacher <agruenba@redhat.com>
 To: Alexander Viro <viro@zeniv.linux.org.uk>, "Theodore Ts'o" <tytso@mit.edu>,
         Andreas Dilger <adilger.kernel@dilger.ca>,
@@ -15,283 +15,260 @@ To: Alexander Viro <viro@zeniv.linux.org.uk>, "Theodore Ts'o" <tytso@mit.edu>,
         linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-cifs@vger.kernel.org, linux-api@vger.kernel.org
 Cc: Andreas Gruenbacher <agruenba@redhat.com>
-Subject: [PATCH v12 24/49] xfs: Change how listxattr generates synthetic attributes
-Date: Fri, 23 Oct 2015 20:41:37 +0200
-Message-Id: <1445625722-13791-25-git-send-email-agruenba@redhat.com>
+Subject: [PATCH v12 26/49] richacl: acl editing helper functions
+Date: Fri, 23 Oct 2015 20:41:39 +0200
+Message-Id: <1445625722-13791-27-git-send-email-agruenba@redhat.com>
 In-Reply-To: <1445625722-13791-1-git-send-email-agruenba@redhat.com>
 References: <1445625722-13791-1-git-send-email-agruenba@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Instead of adding the synthesized POSIX ACL attribute names after listing all
-non-synthesized attributes, generate them immediately when listing the
-non-synthesized attributes.
+The file masks in richacls make chmod and creating new files more
+efficient than having to apply file permission bits to the acl directly.
+They also allow us to regain permissions from an acl even after a
+restrictive chmod, because the permissions in the acl itself are not
+being destroyed.  In POSIX ACLs, the mask entry has a similar function.
 
-In addition, merge xfs_xattr_put_listent and xfs_xattr_put_listent_sizes to
-ensure that the list size is computed correctly; the split version was
-overestimating the list size for non-root users.
+Protocols like nfsv4 do not understand file masks.  For those protocols,
+we need to compute nfs4 acls which represent the effective permissions
+granted by a richacl: we need to "apply" the file masks to the acl.
+
+This is the first in a series of richacl transformation patches; it
+implements basic richacl editing functions.  The following patches
+implement algorithms for transforming a richacl so that it can be
+evaluated as a plain nfs4 acl, with identical permission check results.
 
 Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
+Reviewed-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/xfs/xfs_acl.c   |  23 ---------
- fs/xfs/xfs_acl.h   |   4 --
- fs/xfs/xfs_xattr.c | 137 +++++++++++++++++++++++------------------------------
- 3 files changed, 59 insertions(+), 105 deletions(-)
+ fs/Makefile                    |   3 +-
+ fs/richacl_compat.c            | 155 +++++++++++++++++++++++++++++++++++++++++
+ include/linux/richacl_compat.h |  40 +++++++++++
+ 3 files changed, 197 insertions(+), 1 deletion(-)
+ create mode 100644 fs/richacl_compat.c
+ create mode 100644 include/linux/richacl_compat.h
 
-diff --git a/fs/xfs/xfs_acl.c b/fs/xfs/xfs_acl.c
-index 7b03383..778a464 100644
---- a/fs/xfs/xfs_acl.c
-+++ b/fs/xfs/xfs_acl.c
-@@ -231,29 +231,6 @@ __xfs_set_acl(struct inode *inode, int type, struct posix_acl *acl)
- 	return error;
- }
+diff --git a/fs/Makefile b/fs/Makefile
+index 35e640d..32b391b 100644
+--- a/fs/Makefile
++++ b/fs/Makefile
+@@ -49,7 +49,8 @@ obj-$(CONFIG_SYSCTL)		+= drop_caches.o
  
--static int
--xfs_acl_exists(struct inode *inode, unsigned char *name)
--{
--	int len = XFS_ACL_MAX_SIZE(XFS_M(inode->i_sb));
--
--	return (xfs_attr_get(XFS_I(inode), name, NULL, &len,
--			    ATTR_ROOT|ATTR_KERNOVAL) == 0);
--}
--
--int
--posix_acl_access_exists(struct inode *inode)
--{
--	return xfs_acl_exists(inode, SGI_ACL_FILE);
--}
--
--int
--posix_acl_default_exists(struct inode *inode)
--{
--	if (!S_ISDIR(inode->i_mode))
--		return 0;
--	return xfs_acl_exists(inode, SGI_ACL_DEFAULT);
--}
--
- int
- xfs_set_acl(struct inode *inode, struct posix_acl *acl, int type)
- {
-diff --git a/fs/xfs/xfs_acl.h b/fs/xfs/xfs_acl.h
-index 9ee0a0d..cf973f5 100644
---- a/fs/xfs/xfs_acl.h
-+++ b/fs/xfs/xfs_acl.h
-@@ -24,15 +24,11 @@ struct posix_acl;
- #ifdef CONFIG_XFS_POSIX_ACL
- extern struct posix_acl *xfs_get_acl(struct inode *inode, int type);
- extern int xfs_set_acl(struct inode *inode, struct posix_acl *acl, int type);
--extern int posix_acl_access_exists(struct inode *inode);
--extern int posix_acl_default_exists(struct inode *inode);
- #else
- static inline struct posix_acl *xfs_get_acl(struct inode *inode, int type)
- {
- 	return NULL;
- }
- # define xfs_set_acl					NULL
--# define posix_acl_access_exists(inode)			0
--# define posix_acl_default_exists(inode)		0
- #endif /* CONFIG_XFS_POSIX_ACL */
- #endif	/* __XFS_ACL_H__ */
-diff --git a/fs/xfs/xfs_xattr.c b/fs/xfs/xfs_xattr.c
-index c0368151..8428aed 100644
---- a/fs/xfs/xfs_xattr.c
-+++ b/fs/xfs/xfs_xattr.c
-@@ -106,47 +106,19 @@ const struct xattr_handler *xfs_xattr_handlers[] = {
- 	NULL
- };
+ obj-$(CONFIG_FHANDLE)		+= fhandle.o
+ obj-$(CONFIG_FS_RICHACL)	+= richacl.o
+-richacl-y			:= richacl_base.o richacl_inode.o richacl_xattr.o
++richacl-y			:= richacl_base.o richacl_inode.o \
++				   richacl_xattr.o richacl_compat.o
  
--static unsigned int xfs_xattr_prefix_len(int flags)
--{
--	if (flags & XFS_ATTR_SECURE)
--		return sizeof("security");
--	else if (flags & XFS_ATTR_ROOT)
--		return sizeof("trusted");
--	else
--		return sizeof("user");
--}
--
--static const char *xfs_xattr_prefix(int flags)
--{
--	if (flags & XFS_ATTR_SECURE)
--		return xfs_xattr_security_handler.prefix;
--	else if (flags & XFS_ATTR_ROOT)
--		return xfs_xattr_trusted_handler.prefix;
--	else
--		return xfs_xattr_user_handler.prefix;
--}
--
- static int
--xfs_xattr_put_listent(
-+__xfs_xattr_put_listent(
- 	struct xfs_attr_list_context *context,
--	int		flags,
--	unsigned char	*name,
--	int		namelen,
--	int		valuelen,
--	unsigned char	*value)
-+	char *prefix,
-+	int prefix_len,
-+	unsigned char *name,
-+	int namelen)
- {
--	unsigned int prefix_len = xfs_xattr_prefix_len(flags);
- 	char *offset;
- 	int arraytop;
+ obj-y				+= quota/
  
--	ASSERT(context->count >= 0);
--
--	/*
--	 * Only show root namespace entries if we are actually allowed to
--	 * see them.
--	 */
--	if ((flags & XFS_ATTR_ROOT) && !capable(CAP_SYS_ADMIN))
--		return 0;
-+	if (!context->alist)
-+		goto compute_size;
- 
- 	arraytop = context->count + prefix_len + namelen + 1;
- 	if (arraytop > context->firstu) {
-@@ -154,17 +126,19 @@ xfs_xattr_put_listent(
- 		return 1;
- 	}
- 	offset = (char *)context->alist + context->count;
--	strncpy(offset, xfs_xattr_prefix(flags), prefix_len);
-+	strncpy(offset, prefix, prefix_len);
- 	offset += prefix_len;
- 	strncpy(offset, (char *)name, namelen);			/* real name */
- 	offset += namelen;
- 	*offset = '\0';
+diff --git a/fs/richacl_compat.c b/fs/richacl_compat.c
+new file mode 100644
+index 0000000..5c59999
+--- /dev/null
++++ b/fs/richacl_compat.c
+@@ -0,0 +1,155 @@
++/*
++ * Copyright (C) 2006, 2010  Novell, Inc.
++ * Copyright (C) 2015  Red Hat, Inc.
++ * Written by Andreas Gruenbacher <agruenba@redhat.com>
++ *
++ * This program is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License as published by the
++ * Free Software Foundation; either version 2, or (at your option) any
++ * later version.
++ *
++ * This program is distributed in the hope that it will be useful, but
++ * WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * General Public License for more details.
++ */
 +
-+compute_size:
- 	context->count += prefix_len + namelen + 1;
- 	return 0;
- }
- 
- static int
--xfs_xattr_put_listent_sizes(
-+xfs_xattr_put_listent(
- 	struct xfs_attr_list_context *context,
- 	int		flags,
- 	unsigned char	*name,
-@@ -172,24 +146,55 @@ xfs_xattr_put_listent_sizes(
- 	int		valuelen,
- 	unsigned char	*value)
- {
--	context->count += xfs_xattr_prefix_len(flags) + namelen + 1;
--	return 0;
--}
-+	char *prefix;
-+	int prefix_len;
- 
--static int
--list_one_attr(const char *name, const size_t len, void *data,
--		size_t size, ssize_t *result)
--{
--	char *p = data + *result;
-+	ASSERT(context->count >= 0);
- 
--	*result += len;
--	if (!size)
--		return 0;
--	if (*result > size)
--		return -ERANGE;
-+	if (flags & XFS_ATTR_ROOT) {
-+#ifdef CONFIG_XFS_POSIX_ACL
-+		if (namelen == SGI_ACL_FILE_SIZE &&
-+		    strncmp(name, SGI_ACL_FILE,
-+			    SGI_ACL_FILE_SIZE) == 0) {
-+			int ret = __xfs_xattr_put_listent(
-+					context, XATTR_SYSTEM_PREFIX,
-+					XATTR_SYSTEM_PREFIX_LEN,
-+					XATTR_POSIX_ACL_ACCESS,
-+					strlen(XATTR_POSIX_ACL_ACCESS));
-+			if (ret)
-+				return ret;
-+		} else if (namelen == SGI_ACL_DEFAULT_SIZE &&
-+			 strncmp(name, SGI_ACL_DEFAULT,
-+				 SGI_ACL_DEFAULT_SIZE) == 0) {
-+			int ret = __xfs_xattr_put_listent(
-+					context, XATTR_SYSTEM_PREFIX,
-+					XATTR_SYSTEM_PREFIX_LEN,
-+					XATTR_POSIX_ACL_DEFAULT,
-+					strlen(XATTR_POSIX_ACL_DEFAULT));
-+			if (ret)
-+				return ret;
-+		}
-+#endif
- 
--	strcpy(p, name);
--	return 0;
-+		/*
-+		 * Only show root namespace entries if we are actually allowed to
-+		 * see them.
-+		 */
-+		if (!capable(CAP_SYS_ADMIN))
-+			return 0;
++#include <linux/module.h>
++#include <linux/fs.h>
++#include <linux/slab.h>
++#include <linux/richacl_compat.h>
 +
-+		prefix = XATTR_TRUSTED_PREFIX;
-+		prefix_len = XATTR_TRUSTED_PREFIX_LEN;
-+	} else if (flags & XFS_ATTR_SECURE) {
-+		prefix = XATTR_SECURITY_PREFIX;
-+		prefix_len = XATTR_SECURITY_PREFIX_LEN;
-+	} else {
-+		prefix = XATTR_USER_PREFIX;
-+		prefix_len = XATTR_USER_PREFIX_LEN;
++/**
++ * richacl_prepare  -  allocate richacl being constructed
++ *
++ * Allocate a richacl which can hold @count entries but which is initially
++ * empty.
++ */
++struct richacl *richacl_prepare(struct richacl_alloc *alloc, unsigned int count)
++{
++	alloc->acl = richacl_alloc(count, GFP_KERNEL);
++	if (!alloc->acl)
++		return NULL;
++	alloc->acl->a_count = 0;
++	alloc->count = count;
++	return alloc->acl;
++}
++EXPORT_SYMBOL_GPL(richacl_prepare);
++
++/**
++ * richacl_delete_entry  -  delete an entry in an acl
++ * @alloc:	acl and number of allocated entries
++ * @ace:	an entry in @alloc->acl
++ *
++ * Updates @ace so that it points to the entry before the deleted entry
++ * on return. (When deleting the first entry, @ace will point to the
++ * (non-existent) entry before the first entry). This behavior is the
++ * expected behavior when deleting entries while forward iterating over
++ * an acl.
++ */
++void
++richacl_delete_entry(struct richacl_alloc *alloc, struct richace **ace)
++{
++	void *end = alloc->acl->a_entries + alloc->acl->a_count;
++
++	memmove(*ace, *ace + 1, end - (void *)(*ace + 1));
++	(*ace)--;
++	alloc->acl->a_count--;
++}
++EXPORT_SYMBOL_GPL(richacl_delete_entry);
++
++/**
++ * richacl_insert_entry  -  insert an entry in an acl
++ * @alloc:	acl and number of allocated entries
++ * @ace:	entry before which the new entry shall be inserted
++ *
++ * Insert a new entry in @alloc->acl at position @ace and zero-initialize
++ * it.  This may require reallocating @alloc->acl.
++ */
++int
++richacl_insert_entry(struct richacl_alloc *alloc, struct richace **ace)
++{
++	struct richacl *acl = alloc->acl;
++	unsigned int index = *ace - acl->a_entries;
++	size_t tail_size = (acl->a_count - index) * sizeof(struct richace);
++
++	if (alloc->count == acl->a_count) {
++		size_t new_size = sizeof(struct richacl) +
++			(acl->a_count + 1) * sizeof(struct richace);
++
++		acl = krealloc(acl, new_size, GFP_KERNEL);
++		if (!acl)
++			return -1;
++		*ace = acl->a_entries + index;
++		alloc->acl = acl;
++		alloc->count++;
 +	}
 +
-+	return __xfs_xattr_put_listent(context, prefix, prefix_len, name,
-+				       namelen);
- }
- 
- ssize_t
-@@ -198,7 +203,6 @@ xfs_vn_listxattr(struct dentry *dentry, char *data, size_t size)
- 	struct xfs_attr_list_context context;
- 	struct attrlist_cursor_kern cursor = { 0 };
- 	struct inode		*inode = d_inode(dentry);
--	int			error;
- 
- 	/*
- 	 * First read the regular on-disk attributes.
-@@ -207,37 +211,14 @@ xfs_vn_listxattr(struct dentry *dentry, char *data, size_t size)
- 	context.dp = XFS_I(inode);
- 	context.cursor = &cursor;
- 	context.resynch = 1;
--	context.alist = data;
-+	context.alist = size ? data : NULL;
- 	context.bufsize = size;
- 	context.firstu = context.bufsize;
--
--	if (size)
--		context.put_listent = xfs_xattr_put_listent;
--	else
--		context.put_listent = xfs_xattr_put_listent_sizes;
-+	context.put_listent = xfs_xattr_put_listent;
- 
- 	xfs_attr_list_int(&context);
- 	if (context.count < 0)
- 		return -ERANGE;
- 
--	/*
--	 * Then add the two synthetic ACL attributes.
--	 */
--	if (posix_acl_access_exists(inode)) {
--		error = list_one_attr(POSIX_ACL_XATTR_ACCESS,
--				strlen(POSIX_ACL_XATTR_ACCESS) + 1,
--				data, size, &context.count);
--		if (error)
--			return error;
--	}
--
--	if (posix_acl_default_exists(inode)) {
--		error = list_one_attr(POSIX_ACL_XATTR_DEFAULT,
--				strlen(POSIX_ACL_XATTR_DEFAULT) + 1,
--				data, size, &context.count);
--		if (error)
--			return error;
--	}
--
- 	return context.count;
- }
++	memmove(*ace + 1, *ace, tail_size);
++	memset(*ace, 0, sizeof(**ace));
++	acl->a_count++;
++	return 0;
++}
++EXPORT_SYMBOL_GPL(richacl_insert_entry);
++
++/**
++ * richacl_append_entry  -  append an entry to an acl
++ * @alloc:		acl and number of allocated entries
++ *
++ * This may require reallocating @alloc->acl.
++ */
++struct richace *richacl_append_entry(struct richacl_alloc *alloc)
++{
++	struct richacl *acl = alloc->acl;
++	struct richace *ace = acl->a_entries + acl->a_count;
++
++	if (alloc->count > alloc->acl->a_count) {
++		acl->a_count++;
++		return ace;
++	}
++	return richacl_insert_entry(alloc, &ace) ? NULL : ace;
++}
++EXPORT_SYMBOL_GPL(richacl_append_entry);
++
++/**
++ * richace_change_mask  -  set the mask of @ace to @mask
++ * @alloc:	acl and number of allocated entries
++ * @ace:	entry to modify
++ * @mask:	new mask for @ace
++ *
++ * If @ace is inheritable, a inherit-only ace is inserted before @ace which
++ * includes the inheritable permissions of @ace and the inheritance flags of
++ * @ace are cleared before changing the mask.
++ *
++ * If @mask is 0, the original ace is turned into an inherit-only entry if
++ * there are any inheritable permissions, and removed otherwise.
++ *
++ * The returned @ace points to the modified or inserted effective-only acl
++ * entry if that entry exists, to the entry that has become inheritable-only,
++ * or else to the previous entry in the acl.
++ */
++static int
++richace_change_mask(struct richacl_alloc *alloc, struct richace **ace,
++			   unsigned int mask)
++{
++	if (mask && (*ace)->e_mask == mask)
++		(*ace)->e_flags &= ~RICHACE_INHERIT_ONLY_ACE;
++	else if (mask & ~RICHACE_POSIX_ALWAYS_ALLOWED) {
++		if (richace_is_inheritable(*ace)) {
++			if (richacl_insert_entry(alloc, ace))
++				return -1;
++			richace_copy(*ace, *ace + 1);
++			(*ace)->e_flags |= RICHACE_INHERIT_ONLY_ACE;
++			(*ace)++;
++			(*ace)->e_flags &= ~RICHACE_INHERITANCE_FLAGS |
++					   RICHACE_INHERITED_ACE;
++		}
++		(*ace)->e_mask = mask;
++	} else {
++		if (richace_is_inheritable(*ace))
++			(*ace)->e_flags |= RICHACE_INHERIT_ONLY_ACE;
++		else
++			richacl_delete_entry(alloc, ace);
++	}
++	return 0;
++}
+diff --git a/include/linux/richacl_compat.h b/include/linux/richacl_compat.h
+new file mode 100644
+index 0000000..a9ff630
+--- /dev/null
++++ b/include/linux/richacl_compat.h
+@@ -0,0 +1,40 @@
++/*
++ * Copyright (C) 2015  Red Hat, Inc.
++ * Written by Andreas Gruenbacher <agruenba@redhat.com>
++ *
++ * This program is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License as published by the
++ * Free Software Foundation; either version 2, or (at your option) any
++ * later version.
++ *
++ * This program is distributed in the hope that it will be useful, but
++ * WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * General Public License for more details.
++ */
++
++#ifndef __RICHACL_COMPAT_H
++#define __RICHACL_COMPAT_H
++
++#include <linux/richacl.h>
++
++/**
++ * struct richacl_alloc  -  remember how many entries are actually allocated
++ * @acl:	acl with a_count <= @count
++ * @count:	the actual number of entries allocated in @acl
++ *
++ * We pass around this structure while modifying an acl so that we do
++ * not have to reallocate when we remove existing entries followed by
++ * adding new entries.
++ */
++struct richacl_alloc {
++	struct richacl *acl;
++	unsigned int count;
++};
++
++struct richacl *richacl_prepare(struct richacl_alloc *, unsigned int);
++struct richace *richacl_append_entry(struct richacl_alloc *);
++int richacl_insert_entry(struct richacl_alloc *, struct richace **);
++void richacl_delete_entry(struct richacl_alloc *, struct richace **);
++
++#endif  /* __RICHACL_COMPAT_H */
 -- 
 2.5.0
 
