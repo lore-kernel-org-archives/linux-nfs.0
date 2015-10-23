@@ -1,109 +1,74 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from sperry-03.control.lth.se ([130.235.83.190]:49713 "EHLO
-	sperry-03.control.lth.se" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750827AbbJWQiF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Oct 2015 12:38:05 -0400
-Subject: Re: NULL pointer dereference in nfs_delegation_find_inode
-To: Jeff Layton <jlayton@poochiereds.net>
-References: <5629E933.8030807@control.lth.se>
- <20151023072827.2861dd75@tlielax.poochiereds.net>
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
-From: Anders Blomdell <anders.blomdell@control.lth.se>
-Message-ID: <562A280A.7070205@control.lth.se>
-Date: Fri, 23 Oct 2015 14:28:58 +0200
+Received: from fieldses.org ([173.255.197.46]:35793 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753987AbbJWSKF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 23 Oct 2015 14:10:05 -0400
+Date: Fri, 23 Oct 2015 14:10:01 -0400
+To: krichy@tvnetwork.hu
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: nfs lockup
+Message-ID: <20151023181001.GA15564@fieldses.org>
+References: <alpine.DEB.2.20.1510211715430.5353@krichy.tvnetwork.hu>
 MIME-Version: 1.0
-In-Reply-To: <20151023072827.2861dd75@tlielax.poochiereds.net>
-Content-Type: text/plain; charset=windows-1252
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <alpine.DEB.2.20.1510211715430.5353@krichy.tvnetwork.hu>
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2015-10-23 13:28, Jeff Layton wrote:
-> On Fri, 23 Oct 2015 10:00:51 +0200
-> Anders Blomdell <anders.blomdell@control.lth.se> wrote:
+On Wed, Oct 21, 2015 at 05:25:53PM +0200, krichy@tvnetwork.hu wrote:
+> Dear devs,
 > 
->> We occasionally (about once every 2-4 weeks on 1 of a 100 machenes) get 
->>
->>   BUG: unable to handle kernel NULL pointer dereference at 0000000000000548
->>   IP: [<ffffffffa0651744>] nfs_delegation_find_inode+0x64/0x150 [nfsv4]
->>
->> the attached bug is from 4.1.8-100.fc21, but I have seen it on 4.1.5-100.fc21 as
->> well. Right now I have a realtime modified (xenomai.org) 3.8.13 system that exhibits
->> the problem more frequently, and that leads me to belive that the problem is
->> a data race problem, and by instrumenting fs/nfs/delegation.c (3.8.13) to:
->>
->>
->>   static struct inode *
->>   nfs_delegation_find_inode_server(struct nfs_server *server,
->> 				 const struct nfs_fh *fhandle)
->>   {
->> 	  struct nfs_delegation *delegation;
->> 	  struct inode *res = NULL;
->>
->>  	  printk(KERN_ERR "server = %p\n", server);
->> 	  list_for_each_entry_rcu(delegation, &server->delegations, super_list) {
->> 		  printk(KERN_ERR "delegation = %p\n", delegation);
->> 		  printk(KERN_ERR "delegation->lock = %p\n", delegation->lock);
->> 		  spin_lock(&delegation->lock);
->> 		  printk(KERN_ERR "delegation->inode = %p\n", delegation->inode);
->> 		  if (delegation->inode != NULL) {
->> 			  printk(KERN_ERR "NFS_I(delegation->inode) = %p", NFS_I(delegation->inode));
->> 			  printk(KERN_ERR "NFS_I(delegation->inode)->fh = %p", NFS_I(delegation->inode)->fh);
->> 		  }
->> 		  if (delegation->inode != NULL &&
->> 		      nfs_compare_fh(fhandle, &NFS_I(delegation->inode)->fh) == 0) {
->> 			  res = igrab(delegation->inode);
->> 		  }
->> 		  spin_unlock(&delegation->lock);
->> 		  if (res != NULL)
->> 			  break;
->> 	  }
->> 	  return res;
->>   }
->>
->> the system dies with (delegation.c compiled with -O0):
->>
->>   server = ffff8803dee58458
->>   delegation =           (null)
->>   BUG: unable to handle kernel NULL pointer dereference at 0000000000000050
->>   IP: [<ffffffffa08924ae>] nfs_delegation_find_inode_server+0x80/0x1e0 [nfsv4]
->>
->> Anybody thet can give me a hint how to write a program that gives rise to multiple 
->> delegations to further investigate this issue?
->>
->> Regards
->>
->> Anders Blomdell
->>
+> We have an nfs lockup issue. We run a ganeti cluster consisting of 7
+> debian linux nodes and 1 freenas for hosting the vm images. The
+> images are exported via nfsv3. The problem is that randomly we end
+> in a livelock on one of our nodes.
 > 
-> Huh. That delegation pointer really never be NULL. 
-                                      ^should
-> I'm unclear on how
-> that could even happen in the context of a list_for_each_entry_rcu
-> loop. Oh, but super_list is the first struct member in nfs_delegation
-> so it probably means that server->delegations was NULL.
+> That means the nfs share is alive, we can list directories, files,
+> even can read files (very slow, see later). And even can write to
+> files, but the file close operation does not return, it gets
+> blocked.
 > 
-> Maybe this is a use-after free of some sort or there's a memory
-> scribble involved?
-That is my guess, and the realtime patch used probably makes the window of opportunity
-much larger (since the bug happens every few hours instead of every few years on average).
+> The read is slow in that way that while copying a file from the
+> share to /tmp, the data arrives very fast to the node, but in /tmp
+> it accumulates slowly.
 
+I don't understand what you mean by that.  Do you have some measurements
+to help quantify "very fast" and "slowly"?
 
-> You might want to consider turning up some memory
-> debugging options while reproducing this.
-Any hints on what options? Could/should they beturned on for the NFS module only
+--b.
 
-Any hints of what file operations to use to force delegations to happen?
+> 
+> I've also opened a debian bug report on it, but I think it is not
+> related to debian
+> (https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=801924).
+> 
+> The only way is to reboot machine, with all the vm's running on it
+> getting interrupted.
+> 
+> I've captured each tasks' stack trace, hopefully it helps someone to
+> find out the issue.
+> 
+> Meanwhile the other 6 nodes can access the nfs share right, so I
+> think this is not a networking or server issue. Restarting the nfs
+> server on the server side still does not have any effect, not
+> recovering. The nfs tcp connection is established, listing files
+> works again, but writes not.
+> 
+> Some information of the nodes:
+> # uname -a
+> Linux host 3.16.0-4-amd64 #1 SMP Debian 3.16.7-ckt11-1+deb8u4
+> (2015-09-19) x86_64 GNU/Linux
+> 
+> They have 1.5G ram allocated to dom0, that should be enough.
+> 
+> I know this information is little information, give me advice what
+> to look for next time. Unfortunately I dont know how to reproduce
+> it.
+> 
+> Thanks in advance,
+> 
+> Kojedzinszky Richard
+> Euronet Magyarorszag Informatika Zrt.
 
-Regards
-
-Anders Blomdell
- 
-
-
--- 
-Anders Blomdell                  Email: anders.blomdell@control.lth.se
-Department of Automatic Control
-Lund University                  Phone:    +46 46 222 4625
-P.O. Box 118                     Fax:      +46 46 138118
-SE-221 00 Lund, Sweden
 
