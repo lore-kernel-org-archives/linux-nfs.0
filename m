@@ -1,119 +1,215 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qg0-f47.google.com ([209.85.192.47]:34368 "EHLO
-	mail-qg0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752007AbbJWTRQ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Oct 2015 15:17:16 -0400
-Received: by qgem9 with SMTP id m9so74461120qge.1
-        for <linux-nfs@vger.kernel.org>; Fri, 23 Oct 2015 12:17:15 -0700 (PDT)
-Date: Fri, 23 Oct 2015 15:17:12 -0400
-From: Jeff Layton <jlayton@poochiereds.net>
-To: Anders Blomdell <anders.blomdell@control.lth.se>
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
-Subject: Re: NULL pointer dereference in nfs_delegation_find_inode
-Message-ID: <20151023151712.6cec9529@synchrony.poochiereds.net>
-In-Reply-To: <562A280A.7070205@control.lth.se>
-References: <5629E933.8030807@control.lth.se>
-	<20151023072827.2861dd75@tlielax.poochiereds.net>
-	<562A280A.7070205@control.lth.se>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from mx1.redhat.com ([209.132.183.28]:55703 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753776AbbJWSnx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 23 Oct 2015 14:43:53 -0400
+From: Andreas Gruenbacher <agruenba@redhat.com>
+To: Alexander Viro <viro@zeniv.linux.org.uk>, "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Dave Chinner <david@fromorbit.com>, linux-ext4@vger.kernel.org,
+        xfs@oss.sgi.com, linux-kernel@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-api@vger.kernel.org
+Cc: Andreas Gruenbacher <agruenba@redhat.com>
+Subject: [PATCH v12 15/49] richacl: Create-time inheritance
+Date: Fri, 23 Oct 2015 20:41:28 +0200
+Message-Id: <1445625722-13791-16-git-send-email-agruenba@redhat.com>
+In-Reply-To: <1445625722-13791-1-git-send-email-agruenba@redhat.com>
+References: <1445625722-13791-1-git-send-email-agruenba@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 23 Oct 2015 14:28:58 +0200
-Anders Blomdell <anders.blomdell@control.lth.se> wrote:
+When a new file is created, it can inherit an acl from its parent
+directory; this is similar to how default acls work in POSIX (draft)
+ACLs.
 
-> On 2015-10-23 13:28, Jeff Layton wrote:
-> > On Fri, 23 Oct 2015 10:00:51 +0200
-> > Anders Blomdell <anders.blomdell@control.lth.se> wrote:
-> > 
-> >> We occasionally (about once every 2-4 weeks on 1 of a 100 machenes) get 
-> >>
-> >>   BUG: unable to handle kernel NULL pointer dereference at 0000000000000548
-> >>   IP: [<ffffffffa0651744>] nfs_delegation_find_inode+0x64/0x150 [nfsv4]
-> >>
-> >> the attached bug is from 4.1.8-100.fc21, but I have seen it on 4.1.5-100.fc21 as
-> >> well. Right now I have a realtime modified (xenomai.org) 3.8.13 system that exhibits
-> >> the problem more frequently, and that leads me to belive that the problem is
-> >> a data race problem, and by instrumenting fs/nfs/delegation.c (3.8.13) to:
-> >>
-> >>
-> >>   static struct inode *
-> >>   nfs_delegation_find_inode_server(struct nfs_server *server,
-> >> 				 const struct nfs_fh *fhandle)
-> >>   {
-> >> 	  struct nfs_delegation *delegation;
-> >> 	  struct inode *res = NULL;
-> >>
-> >>  	  printk(KERN_ERR "server = %p\n", server);
-> >> 	  list_for_each_entry_rcu(delegation, &server->delegations, super_list) {
-> >> 		  printk(KERN_ERR "delegation = %p\n", delegation);
-> >> 		  printk(KERN_ERR "delegation->lock = %p\n", delegation->lock);
-> >> 		  spin_lock(&delegation->lock);
-> >> 		  printk(KERN_ERR "delegation->inode = %p\n", delegation->inode);
-> >> 		  if (delegation->inode != NULL) {
-> >> 			  printk(KERN_ERR "NFS_I(delegation->inode) = %p", NFS_I(delegation->inode));
-> >> 			  printk(KERN_ERR "NFS_I(delegation->inode)->fh = %p", NFS_I(delegation->inode)->fh);
-> >> 		  }
-> >> 		  if (delegation->inode != NULL &&
-> >> 		      nfs_compare_fh(fhandle, &NFS_I(delegation->inode)->fh) == 0) {
-> >> 			  res = igrab(delegation->inode);
-> >> 		  }
-> >> 		  spin_unlock(&delegation->lock);
-> >> 		  if (res != NULL)
-> >> 			  break;
-> >> 	  }
-> >> 	  return res;
-> >>   }
-> >>
-> >> the system dies with (delegation.c compiled with -O0):
-> >>
-> >>   server = ffff8803dee58458
-> >>   delegation =           (null)
-> >>   BUG: unable to handle kernel NULL pointer dereference at 0000000000000050
-> >>   IP: [<ffffffffa08924ae>] nfs_delegation_find_inode_server+0x80/0x1e0 [nfsv4]
-> >>
-> >> Anybody thet can give me a hint how to write a program that gives rise to multiple 
-> >> delegations to further investigate this issue?
-> >>
-> >> Regards
-> >>
-> >> Anders Blomdell
-> >>
-> > 
-> > Huh. That delegation pointer really never be NULL. 
->                                       ^should
-> > I'm unclear on how
-> > that could even happen in the context of a list_for_each_entry_rcu
-> > loop. Oh, but super_list is the first struct member in nfs_delegation
-> > so it probably means that server->delegations was NULL.
-> > 
-> > Maybe this is a use-after free of some sort or there's a memory
-> > scribble involved?
-> That is my guess, and the realtime patch used probably makes the window of opportunity
-> much larger (since the bug happens every few hours instead of every few years on average).
-> 
-> 
-> > You might want to consider turning up some memory
-> > debugging options while reproducing this.
-> Any hints on what options? Could/should they beturned on for the NFS module only
-> 
+As with POSIX ACLs, if a file inherits an acl from its parent directory,
+the intersection between the create mode and the permissions granted by
+the inherited acl determines the file masks and file permission bits,
+and the umask is ignored.
 
-If your kernel uses SLUB then you can poke around with the options
-under /sys/kernel/slab. Figure out which cache that object belongs too
-(it appears to be kmalloc'ed) and enable stuff like "poison" and
-red_zone.
+Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
+Reviewed-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/richacl_base.c       | 68 +++++++++++++++++++++++++++++++++++++++++++++++
+ fs/richacl_inode.c      | 70 +++++++++++++++++++++++++++++++++++++++++++++++++
+ include/linux/richacl.h |  2 ++
+ 3 files changed, 140 insertions(+)
 
-If you can get a vmcore then you could also open it up with the
-debugger and see what at "server" object looks like. Has it been freed?
-Does it belong to the right slabcache? etc...
-
-> Any hints of what file operations to use to force delegations to happen?
-> 
-
-You can't really force it as it's 100% up to the server. They are
-handed out at OPEN time. So any open-heavy workload should help
-reproduce it.
-
+diff --git a/fs/richacl_base.c b/fs/richacl_base.c
+index 56b5ad6..9f7d91d 100644
+--- a/fs/richacl_base.c
++++ b/fs/richacl_base.c
+@@ -486,3 +486,71 @@ richacl_equiv_mode(const struct richacl *acl, umode_t *mode_p)
+ 	return 0;
+ }
+ EXPORT_SYMBOL_GPL(richacl_equiv_mode);
++
++/**
++ * richacl_inherit  -  compute the inherited acl of a new file
++ * @dir_acl:	acl of the containing directory
++ * @isdir:	inherit by a directory or non-directory?
++ *
++ * A directory can have acl entries which files and/or directories created
++ * inside the directory will inherit.  This function computes the acl for such
++ * a new file.  If there is no inheritable acl, it will return %NULL.
++ */
++struct richacl *
++richacl_inherit(const struct richacl *dir_acl, int isdir)
++{
++	const struct richace *dir_ace;
++	struct richacl *acl = NULL;
++	struct richace *ace;
++	int count = 0;
++
++	if (isdir) {
++		richacl_for_each_entry(dir_ace, dir_acl) {
++			if (!richace_is_inheritable(dir_ace))
++				continue;
++			count++;
++		}
++		if (!count)
++			return NULL;
++		acl = richacl_alloc(count, GFP_KERNEL);
++		if (!acl)
++			return ERR_PTR(-ENOMEM);
++		ace = acl->a_entries;
++		richacl_for_each_entry(dir_ace, dir_acl) {
++			if (!richace_is_inheritable(dir_ace))
++				continue;
++			richace_copy(ace, dir_ace);
++			if (dir_ace->e_flags & RICHACE_NO_PROPAGATE_INHERIT_ACE)
++				ace->e_flags &= ~RICHACE_INHERITANCE_FLAGS;
++			else if (!(dir_ace->e_flags & RICHACE_DIRECTORY_INHERIT_ACE))
++				ace->e_flags |= RICHACE_INHERIT_ONLY_ACE;
++			ace++;
++		}
++	} else {
++		richacl_for_each_entry(dir_ace, dir_acl) {
++			if (!(dir_ace->e_flags & RICHACE_FILE_INHERIT_ACE))
++				continue;
++			count++;
++		}
++		if (!count)
++			return NULL;
++		acl = richacl_alloc(count, GFP_KERNEL);
++		if (!acl)
++			return ERR_PTR(-ENOMEM);
++		ace = acl->a_entries;
++		richacl_for_each_entry(dir_ace, dir_acl) {
++			if (!(dir_ace->e_flags & RICHACE_FILE_INHERIT_ACE))
++				continue;
++			richace_copy(ace, dir_ace);
++			ace->e_flags &= ~RICHACE_INHERITANCE_FLAGS;
++			/*
++			 * RICHACE_DELETE_CHILD is meaningless for
++			 * non-directories, so clear it.
++			 */
++			ace->e_mask &= ~RICHACE_DELETE_CHILD;
++			ace++;
++		}
++	}
++
++	return acl;
++}
+diff --git a/fs/richacl_inode.c b/fs/richacl_inode.c
+index 301f246..d2bf076 100644
+--- a/fs/richacl_inode.c
++++ b/fs/richacl_inode.c
+@@ -252,3 +252,73 @@ richacl_chmod(struct inode *inode, umode_t mode)
+ 	return retval;
+ }
+ EXPORT_SYMBOL(richacl_chmod);
++
++/*
++ * richacl_inherit_inode  -  compute inherited acl and file mode
++ * @dir_acl:	acl of the containing directory
++ * @mode_p:	mode of the new inode
++ *
++ * The file permission bits in @mode_p must be set to the create mode by the
++ * caller.
++ *
++ * If there is an inheritable acl, the maximum permissions that the acl grants
++ * are computed and the file masks of the new acl are set accordingly.
++ */
++static struct richacl *
++richacl_inherit_inode(const struct richacl *dir_acl, umode_t *mode_p)
++{
++	struct richacl *acl;
++	umode_t mode = *mode_p;
++
++	acl = richacl_inherit(dir_acl, S_ISDIR(mode));
++	if (acl) {
++		if (richacl_equiv_mode(acl, &mode) == 0) {
++			*mode_p &= mode;
++			richacl_put(acl);
++			acl = NULL;
++		} else {
++			richacl_compute_max_masks(acl);
++			/*
++			 * Ensure that the acl will not grant any permissions
++			 * beyond the create mode.
++			 */
++			acl->a_flags |= RICHACL_MASKED;
++			acl->a_owner_mask &=
++				richacl_mode_to_mask(mode >> 6);
++			acl->a_group_mask &=
++				richacl_mode_to_mask(mode >> 3);
++			acl->a_other_mask &=
++				richacl_mode_to_mask(mode);
++		}
++	} else
++		*mode_p &= ~current_umask();
++
++	return acl;
++}
++
++/**
++ * richacl_create  -  filesystem create helper
++ * @mode_p:	mode of the new inode
++ * @dir:	containing directory
++ *
++ * Compute the inherited acl for a new inode.  If there is no acl to inherit,
++ * apply the umask.  Use when creating a new inode on a richacl enabled file
++ * system.
++ */
++struct richacl *richacl_create(umode_t *mode_p, struct inode *dir)
++{
++	struct richacl *dir_acl, *acl = NULL;
++
++	if (S_ISLNK(*mode_p))
++		return NULL;
++	dir_acl = get_richacl(dir);
++	if (dir_acl) {
++		if (IS_ERR(dir_acl))
++			return dir_acl;
++		acl = richacl_inherit_inode(dir_acl, mode_p);
++		richacl_put(dir_acl);
++	} else
++		*mode_p &= ~current_umask();
++	return acl;
++}
++EXPORT_SYMBOL_GPL(richacl_create);
+diff --git a/include/linux/richacl.h b/include/linux/richacl.h
+index ddd5aa6..302872b 100644
+--- a/include/linux/richacl.h
++++ b/include/linux/richacl.h
+@@ -186,9 +186,11 @@ extern unsigned int richacl_want_to_mask(unsigned int);
+ extern void richacl_compute_max_masks(struct richacl *);
+ extern struct richacl *__richacl_chmod(struct richacl *, umode_t);
+ extern int richacl_equiv_mode(const struct richacl *, umode_t *);
++extern struct richacl *richacl_inherit(const struct richacl *, int);
+ 
+ /* richacl_inode.c */
+ extern int richacl_permission(struct inode *, const struct richacl *, int);
+ extern int richacl_chmod(struct inode *, umode_t);
++extern struct richacl *richacl_create(umode_t *, struct inode *);
+ 
+ #endif /* __RICHACL_H */
 -- 
-Jeff Layton <jlayton@poochiereds.net>
+2.5.0
+
