@@ -1,222 +1,122 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:34865 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([173.255.197.46]:35874 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753092AbbJWSnM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 23 Oct 2015 14:43:12 -0400
-From: Andreas Gruenbacher <agruenba@redhat.com>
-To: Alexander Viro <viro@zeniv.linux.org.uk>, "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@poochiereds.net>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Dave Chinner <david@fromorbit.com>, linux-ext4@vger.kernel.org,
-        xfs@oss.sgi.com, linux-kernel@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-api@vger.kernel.org
-Cc: Andreas Gruenbacher <agruenba@redhat.com>
-Subject: [PATCH v12 09/49] richacl: Permission check algorithm
-Date: Fri, 23 Oct 2015 20:41:22 +0200
-Message-Id: <1445625722-13791-10-git-send-email-agruenba@redhat.com>
-In-Reply-To: <1445625722-13791-1-git-send-email-agruenba@redhat.com>
-References: <1445625722-13791-1-git-send-email-agruenba@redhat.com>
+	id S1750992AbbJWTVr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 23 Oct 2015 15:21:47 -0400
+Date: Fri, 23 Oct 2015 15:21:43 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@poochiereds.net>
+Cc: Anders Blomdell <anders.blomdell@control.lth.se>,
+        linux-nfs@vger.kernel.org
+Subject: Re: NULL pointer dereference in nfs_delegation_find_inode
+Message-ID: <20151023192143.GA16137@fieldses.org>
+References: <5629E933.8030807@control.lth.se>
+ <20151023072827.2861dd75@tlielax.poochiereds.net>
+ <562A280A.7070205@control.lth.se>
+ <20151023151712.6cec9529@synchrony.poochiereds.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20151023151712.6cec9529@synchrony.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-A richacl roughly grants a requested access if the NFSv4 acl in the
-richacl grants the requested permissions according to the NFSv4
-permission check algorithm and the file mask that applies to the process
-includes the requested permissions.
+On Fri, Oct 23, 2015 at 03:17:12PM -0400, Jeff Layton wrote:
+> On Fri, 23 Oct 2015 14:28:58 +0200
+> Anders Blomdell <anders.blomdell@control.lth.se> wrote:
+> 
+> > On 2015-10-23 13:28, Jeff Layton wrote:
+> > > On Fri, 23 Oct 2015 10:00:51 +0200
+> > > Anders Blomdell <anders.blomdell@control.lth.se> wrote:
+> > > 
+> > >> We occasionally (about once every 2-4 weeks on 1 of a 100 machenes) get 
+> > >>
+> > >>   BUG: unable to handle kernel NULL pointer dereference at 0000000000000548
+> > >>   IP: [<ffffffffa0651744>] nfs_delegation_find_inode+0x64/0x150 [nfsv4]
+> > >>
+> > >> the attached bug is from 4.1.8-100.fc21, but I have seen it on 4.1.5-100.fc21 as
+> > >> well. Right now I have a realtime modified (xenomai.org) 3.8.13 system that exhibits
+> > >> the problem more frequently, and that leads me to belive that the problem is
+> > >> a data race problem, and by instrumenting fs/nfs/delegation.c (3.8.13) to:
+> > >>
+> > >>
+> > >>   static struct inode *
+> > >>   nfs_delegation_find_inode_server(struct nfs_server *server,
+> > >> 				 const struct nfs_fh *fhandle)
+> > >>   {
+> > >> 	  struct nfs_delegation *delegation;
+> > >> 	  struct inode *res = NULL;
+> > >>
+> > >>  	  printk(KERN_ERR "server = %p\n", server);
+> > >> 	  list_for_each_entry_rcu(delegation, &server->delegations, super_list) {
+> > >> 		  printk(KERN_ERR "delegation = %p\n", delegation);
+> > >> 		  printk(KERN_ERR "delegation->lock = %p\n", delegation->lock);
+> > >> 		  spin_lock(&delegation->lock);
+> > >> 		  printk(KERN_ERR "delegation->inode = %p\n", delegation->inode);
+> > >> 		  if (delegation->inode != NULL) {
+> > >> 			  printk(KERN_ERR "NFS_I(delegation->inode) = %p", NFS_I(delegation->inode));
+> > >> 			  printk(KERN_ERR "NFS_I(delegation->inode)->fh = %p", NFS_I(delegation->inode)->fh);
+> > >> 		  }
+> > >> 		  if (delegation->inode != NULL &&
+> > >> 		      nfs_compare_fh(fhandle, &NFS_I(delegation->inode)->fh) == 0) {
+> > >> 			  res = igrab(delegation->inode);
+> > >> 		  }
+> > >> 		  spin_unlock(&delegation->lock);
+> > >> 		  if (res != NULL)
+> > >> 			  break;
+> > >> 	  }
+> > >> 	  return res;
+> > >>   }
+> > >>
+> > >> the system dies with (delegation.c compiled with -O0):
+> > >>
+> > >>   server = ffff8803dee58458
+> > >>   delegation =           (null)
+> > >>   BUG: unable to handle kernel NULL pointer dereference at 0000000000000050
+> > >>   IP: [<ffffffffa08924ae>] nfs_delegation_find_inode_server+0x80/0x1e0 [nfsv4]
+> > >>
+> > >> Anybody thet can give me a hint how to write a program that gives rise to multiple 
+> > >> delegations to further investigate this issue?
+> > >>
+> > >> Regards
+> > >>
+> > >> Anders Blomdell
+> > >>
+> > > 
+> > > Huh. That delegation pointer really never be NULL. 
+> >                                       ^should
+> > > I'm unclear on how
+> > > that could even happen in the context of a list_for_each_entry_rcu
+> > > loop. Oh, but super_list is the first struct member in nfs_delegation
+> > > so it probably means that server->delegations was NULL.
+> > > 
+> > > Maybe this is a use-after free of some sort or there's a memory
+> > > scribble involved?
+> > That is my guess, and the realtime patch used probably makes the window of opportunity
+> > much larger (since the bug happens every few hours instead of every few years on average).
+> > 
+> > 
+> > > You might want to consider turning up some memory
+> > > debugging options while reproducing this.
+> > Any hints on what options? Could/should they beturned on for the NFS module only
+> > 
+> 
+> If your kernel uses SLUB then you can poke around with the options
+> under /sys/kernel/slab. Figure out which cache that object belongs too
+> (it appears to be kmalloc'ed) and enable stuff like "poison" and
+> red_zone.
+> 
+> If you can get a vmcore then you could also open it up with the
+> debugger and see what at "server" object looks like. Has it been freed?
+> Does it belong to the right slabcache? etc...
+> 
+> > Any hints of what file operations to use to force delegations to happen?
+> > 
+> 
+> You can't really force it as it's 100% up to the server. They are
+> handed out at OPEN time. So any open-heavy workload should help
+> reproduce it.
 
-Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
-Reviewed-by: "J. Bruce Fields" <bfields@fieldses.org>
----
- fs/Makefile             |   2 +-
- fs/richacl_inode.c      | 149 ++++++++++++++++++++++++++++++++++++++++++++++++
- include/linux/richacl.h |   3 +
- 3 files changed, 153 insertions(+), 1 deletion(-)
- create mode 100644 fs/richacl_inode.c
+Also if it's a Linux server it will only give out delegations on
+read-only opens.  (But I didn't notice if you said what the server was.)
 
-diff --git a/fs/Makefile b/fs/Makefile
-index fe3e9dd..ec665fd 100644
---- a/fs/Makefile
-+++ b/fs/Makefile
-@@ -49,7 +49,7 @@ obj-$(CONFIG_SYSCTL)		+= drop_caches.o
- 
- obj-$(CONFIG_FHANDLE)		+= fhandle.o
- obj-$(CONFIG_FS_RICHACL)	+= richacl.o
--richacl-y			:= richacl_base.o
-+richacl-y			:= richacl_base.o richacl_inode.o
- 
- obj-y				+= quota/
- 
-diff --git a/fs/richacl_inode.c b/fs/richacl_inode.c
-new file mode 100644
-index 0000000..99b3c93
---- /dev/null
-+++ b/fs/richacl_inode.c
-@@ -0,0 +1,149 @@
-+/*
-+ * Copyright (C) 2010  Novell, Inc.
-+ * Copyright (C) 2015  Red Hat, Inc.
-+ * Written by Andreas Gruenbacher <agruenba@redhat.com>
-+ *
-+ * This program is free software; you can redistribute it and/or modify it
-+ * under the terms of the GNU General Public License as published by the
-+ * Free Software Foundation; either version 2, or (at your option) any
-+ * later version.
-+ *
-+ * This program is distributed in the hope that it will be useful, but
-+ * WITHOUT ANY WARRANTY; without even the implied warranty of
-+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-+ * General Public License for more details.
-+ */
-+
-+#include <linux/sched.h>
-+#include <linux/module.h>
-+#include <linux/fs.h>
-+#include <linux/slab.h>
-+#include <linux/richacl.h>
-+
-+/**
-+ * richacl_permission  -  richacl permission check algorithm
-+ * @inode:	inode to check
-+ * @acl:	rich acl of the inode
-+ * @want:	requested access (MAY_* flags)
-+ *
-+ * Checks if the current process is granted @mask flags in @acl.
-+ */
-+int
-+richacl_permission(struct inode *inode, const struct richacl *acl,
-+		   int want)
-+{
-+	const struct richace *ace;
-+	unsigned int mask = richacl_want_to_mask(want);
-+	unsigned int requested = mask, denied = 0;
-+	int in_owning_group = in_group_p(inode->i_gid);
-+	int in_owner_or_group_class = in_owning_group;
-+
-+	/*
-+	 * A process is
-+	 *   - in the owner file class if it owns the file,
-+	 *   - in the group file class if it is in the file's owning group or
-+	 *     it matches any of the user or group entries, and
-+	 *   - in the other file class otherwise.
-+	 * The file class is only relevant for determining which file mask to
-+	 * apply, which only happens for masked acls.
-+	 */
-+	if (acl->a_flags & RICHACL_MASKED) {
-+		if ((acl->a_flags & RICHACL_WRITE_THROUGH) &&
-+		    uid_eq(current_fsuid(), inode->i_uid)) {
-+			denied = requested & ~acl->a_owner_mask;
-+			goto out;
-+		}
-+	} else {
-+		/*
-+		 * When the acl is not masked, there is no need to determine if
-+		 * the process is in the group class and we can break out
-+		 * earlier of the loop below.
-+		 */
-+		in_owner_or_group_class = 1;
-+	}
-+
-+	/*
-+	 * Check if the acl grants the requested access and determine which
-+	 * file class the process is in.
-+	 */
-+	richacl_for_each_entry(ace, acl) {
-+		unsigned int ace_mask = ace->e_mask;
-+
-+		if (richace_is_inherit_only(ace))
-+			continue;
-+		if (richace_is_owner(ace)) {
-+			if (!uid_eq(current_fsuid(), inode->i_uid))
-+				continue;
-+			goto entry_matches_owner;
-+		} else if (richace_is_group(ace)) {
-+			if (!in_owning_group)
-+				continue;
-+		} else if (richace_is_unix_user(ace)) {
-+			if (!uid_eq(current_fsuid(), ace->e_id.uid))
-+				continue;
-+			if (uid_eq(current_fsuid(), inode->i_uid))
-+				goto entry_matches_owner;
-+		} else if (richace_is_unix_group(ace)) {
-+			if (!in_group_p(ace->e_id.gid))
-+				continue;
-+		} else
-+			goto entry_matches_everyone;
-+
-+		/*
-+		 * Apply the group file mask to entries other than owner@ and
-+		 * everyone@ or user entries matching the owner.  This ensures
-+		 * that we grant the same permissions as the acl computed by
-+		 * richacl_apply_masks().
-+		 *
-+		 * Without this restriction, the following richacl would grant
-+		 * rw access to processes which are both the owner and in the
-+		 * owning group, but not to other users in the owning group,
-+		 * which could not be represented without masks:
-+		 *
-+		 *  owner:rw::mask
-+		 *  group@:rw::allow
-+		 */
-+		if ((acl->a_flags & RICHACL_MASKED) && richace_is_allow(ace))
-+			ace_mask &= acl->a_group_mask;
-+
-+entry_matches_owner:
-+		/* The process is in the owner or group file class. */
-+		in_owner_or_group_class = 1;
-+
-+entry_matches_everyone:
-+		/* Check which mask flags the ACE allows or denies. */
-+		if (richace_is_deny(ace))
-+			denied |= ace_mask & mask;
-+		mask &= ~ace_mask;
-+
-+		/*
-+		 * Keep going until we know which file class
-+		 * the process is in.
-+		 */
-+		if (!mask && in_owner_or_group_class)
-+			break;
-+	}
-+	denied |= mask;
-+
-+	if (acl->a_flags & RICHACL_MASKED) {
-+		/*
-+		 * The file class a process is in determines which file mask
-+		 * applies.  Check if that file mask also grants the requested
-+		 * access.
-+		 */
-+		if (uid_eq(current_fsuid(), inode->i_uid))
-+			denied |= requested & ~acl->a_owner_mask;
-+		else if (in_owner_or_group_class)
-+			denied |= requested & ~acl->a_group_mask;
-+		else {
-+			if (acl->a_flags & RICHACL_WRITE_THROUGH)
-+				denied = requested & ~acl->a_other_mask;
-+			else
-+				denied |= requested & ~acl->a_other_mask;
-+		}
-+	}
-+
-+out:
-+	return denied ? -EACCES : 0;
-+}
-+EXPORT_SYMBOL_GPL(richacl_permission);
-diff --git a/include/linux/richacl.h b/include/linux/richacl.h
-index 3559b2c..1d9f5f7 100644
---- a/include/linux/richacl.h
-+++ b/include/linux/richacl.h
-@@ -180,4 +180,7 @@ extern unsigned int richacl_mode_to_mask(umode_t);
- extern unsigned int richacl_want_to_mask(unsigned int);
- extern void richacl_compute_max_masks(struct richacl *);
- 
-+/* richacl_inode.c */
-+extern int richacl_permission(struct inode *, const struct richacl *, int);
-+
- #endif /* __RICHACL_H */
--- 
-2.5.0
-
+--b.
