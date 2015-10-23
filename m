@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:36943 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:58652 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752678AbbJWSqm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 23 Oct 2015 14:46:42 -0400
+	id S1752678AbbJWSq2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 23 Oct 2015 14:46:28 -0400
 From: Andreas Gruenbacher <agruenba@redhat.com>
 To: Alexander Viro <viro@zeniv.linux.org.uk>, "Theodore Ts'o" <tytso@mit.edu>,
         Andreas Dilger <adilger.kernel@dilger.ca>,
@@ -15,94 +15,204 @@ To: Alexander Viro <viro@zeniv.linux.org.uk>, "Theodore Ts'o" <tytso@mit.edu>,
         linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-cifs@vger.kernel.org, linux-api@vger.kernel.org
 Cc: Andreas Gruenbacher <agruenba@redhat.com>
-Subject: [PATCH v12 40/49] nfsd: Add support for unmapped richace identifiers
-Date: Fri, 23 Oct 2015 20:41:53 +0200
-Message-Id: <1445625722-13791-41-git-send-email-agruenba@redhat.com>
+Subject: [PATCH v12 38/49] nfsd: Add support for the MAY_CREATE_{FILE,DIR} permissions
+Date: Fri, 23 Oct 2015 20:41:51 +0200
+Message-Id: <1445625722-13791-39-git-send-email-agruenba@redhat.com>
 In-Reply-To: <1445625722-13791-1-git-send-email-agruenba@redhat.com>
 References: <1445625722-13791-1-git-send-email-agruenba@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Add support for encoding unmapped identifiers in richacl entries: local
-filesystems are not usually supposed to store unmapped identifiers, but
-allowing that for debugging purposes can be useful; for that, nfsd must
-also be able to encode them.
+For local file systems, the vfs performs the necessary permission checks
+for operations like creating files and directories.  NFSd duplicates
+several of those checks.  The vfs checks have been extended to check for
+additional permissions like MAY_CREATE_FILE and MY_CREATE_DIR; the nfsd
+checks currently lack those extensions.
+
+Ideally, all duplicate checks should be removed; for now, just fix the
+duplicate checks instead though.
 
 Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
+Acked-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/nfsd/acl.h     |  2 +-
- fs/nfsd/nfs4acl.c | 17 +++++++++++------
- fs/nfsd/nfs4xdr.c |  4 ++--
- 3 files changed, 14 insertions(+), 9 deletions(-)
+ fs/nfsd/nfs4proc.c |  5 +++--
+ fs/nfsd/nfsfh.c    |  8 ++++----
+ fs/nfsd/vfs.c      | 28 ++++++++++++++++++++--------
+ fs/nfsd/vfs.h      | 17 +++++++++--------
+ 4 files changed, 36 insertions(+), 22 deletions(-)
 
-diff --git a/fs/nfsd/acl.h b/fs/nfsd/acl.h
-index d73c664..4935144 100644
---- a/fs/nfsd/acl.h
-+++ b/fs/nfsd/acl.h
-@@ -51,7 +51,7 @@ struct svc_rqst;
- __be32 nfsd4_decode_ace_who(struct richace *ace, struct svc_rqst *rqstp,
- 			    char *who, u32 len);
- __be32 nfsd4_encode_ace_who(struct xdr_stream *xdr, struct svc_rqst *rqstp,
--			    struct richace *ace);
-+			    struct richace *ace, struct richacl *acl);
- 
- struct richacl *nfsd4_get_acl(struct svc_rqst *rqstp, struct dentry *dentry);
- __be32 nfsd4_set_acl(struct svc_rqst *rqstp, struct svc_fh *fhp,
-diff --git a/fs/nfsd/nfs4acl.c b/fs/nfsd/nfs4acl.c
-index f017a76..3cc83fd 100644
---- a/fs/nfsd/nfs4acl.c
-+++ b/fs/nfsd/nfs4acl.c
-@@ -885,17 +885,22 @@ __be32 nfsd4_decode_ace_who(struct richace *ace, struct svc_rqst *rqstp,
- }
- 
- __be32 nfsd4_encode_ace_who(struct xdr_stream *xdr, struct svc_rqst *rqstp,
--			    struct richace *ace)
-+			    struct richace *ace, struct richacl *acl)
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index a053e78..8d476ff 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -599,14 +599,15 @@ static __be32
+ nfsd4_create(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	     struct nfsd4_create *create)
  {
--	if (ace->e_flags & RICHACE_SPECIAL_WHO) {
--		unsigned int special_id = ace->e_id.special;
-+	if (ace->e_flags & (RICHACE_SPECIAL_WHO | RICHACE_UNMAPPED_WHO)) {
- 		const char *who;
- 		unsigned int len;
- 		__be32 *p;
++	int access = create->cr_type == NF4DIR ?
++		NFSD_MAY_CREATE_DIR : NFSD_MAY_CREATE_FILE;
+ 	struct svc_fh resfh;
+ 	__be32 status;
+ 	dev_t rdev;
  
--		if (!nfs4acl_special_id_to_who(special_id, &who, &len)) {
--			WARN_ON_ONCE(1);
--			return nfserr_serverfault;
-+		if (ace->e_flags & RICHACE_SPECIAL_WHO) {
-+			if (!nfs4acl_special_id_to_who(ace->e_id.special,
-+						       &who, &len)) {
-+				WARN_ON_ONCE(1);
-+				return nfserr_serverfault;
-+			}
-+		} else {
-+			who = richace_unmapped_identifier(ace, acl);
-+			len = strlen(who);
- 		}
- 		p = xdr_reserve_space(xdr, len + 4);
- 		if (!p)
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 33d028c..8728d0e 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -2325,7 +2325,7 @@ static __be32 nfsd4_encode_acl_entries(struct xdr_stream *xdr,
- {
- 	__be32 *p;
+ 	fh_init(&resfh, NFS4_FHSIZE);
  
--	flags_mask &= ~RICHACE_SPECIAL_WHO;
-+	flags_mask &= ~(RICHACE_SPECIAL_WHO | RICHACE_UNMAPPED_WHO);
+-	status = fh_verify(rqstp, &cstate->current_fh, S_IFDIR,
+-			   NFSD_MAY_CREATE);
++	status = fh_verify(rqstp, &cstate->current_fh, S_IFDIR, access);
+ 	if (status)
+ 		return status;
  
- 	p = xdr_reserve_space(xdr, 4);
- 	if (!p)
-@@ -2347,7 +2347,7 @@ static __be32 nfsd4_encode_acl_entries(struct xdr_stream *xdr,
- 			*p++ = cpu_to_be32(ace->e_type);
- 			*p++ = cpu_to_be32(ace->e_flags & flags_mask);
- 			*p++ = cpu_to_be32(ace->e_mask & ace_mask);
--			status = nfsd4_encode_ace_who(xdr, rqstp, ace);
-+			status = nfsd4_encode_ace_who(xdr, rqstp, ace, acl);
- 			if (status)
- 				return status;
- 		}
+diff --git a/fs/nfsd/nfsfh.c b/fs/nfsd/nfsfh.c
+index 350041a..7159316 100644
+--- a/fs/nfsd/nfsfh.c
++++ b/fs/nfsd/nfsfh.c
+@@ -319,10 +319,10 @@ fh_verify(struct svc_rqst *rqstp, struct svc_fh *fhp, umode_t type, int access)
+ 	/*
+ 	 * We still have to do all these permission checks, even when
+ 	 * fh_dentry is already set:
+-	 * 	- fh_verify may be called multiple times with different
+-	 * 	  "access" arguments (e.g. nfsd_proc_create calls
+-	 * 	  fh_verify(...,NFSD_MAY_EXEC) first, then later (in
+-	 * 	  nfsd_create) calls fh_verify(...,NFSD_MAY_CREATE).
++	 *	- fh_verify may be called multiple times with different
++	 *	  "access" arguments (e.g. nfsd_proc_create calls
++	 *	  fh_verify(...,NFSD_MAY_EXEC) first, then later (in
++	 *	  nfsd_create) calls fh_verify(...,NFSD_MAY_CREATE_FILE).
+ 	 *	- in the NFSv4 case, the filehandle may have been filled
+ 	 *	  in by fh_compose, and given a dentry, but further
+ 	 *	  compound operations performed with that filehandle
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index 45c0497..fb35775 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -1128,6 +1128,8 @@ nfsd_create(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 	__be32		err;
+ 	__be32		err2;
+ 	int		host_err;
++	int access = (type == S_IFDIR) ?
++		NFSD_MAY_CREATE_DIR : NFSD_MAY_CREATE_FILE;
+ 
+ 	err = nfserr_perm;
+ 	if (!flen)
+@@ -1136,7 +1138,7 @@ nfsd_create(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 	if (isdotent(fname, flen))
+ 		goto out;
+ 
+-	err = fh_verify(rqstp, fhp, S_IFDIR, NFSD_MAY_CREATE);
++	err = fh_verify(rqstp, fhp, S_IFDIR, access);
+ 	if (err)
+ 		goto out;
+ 
+@@ -1301,7 +1303,7 @@ do_nfsd_create(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 
+ 	/* If file doesn't exist, check for permissions to create one */
+ 	if (d_really_is_negative(dchild)) {
+-		err = fh_verify(rqstp, fhp, S_IFDIR, NFSD_MAY_CREATE);
++		err = fh_verify(rqstp, fhp, S_IFDIR, NFSD_MAY_CREATE_FILE);
+ 		if (err)
+ 			goto out;
+ 	}
+@@ -1485,7 +1487,7 @@ nfsd_symlink(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 	if (isdotent(fname, flen))
+ 		goto out;
+ 
+-	err = fh_verify(rqstp, fhp, S_IFDIR, NFSD_MAY_CREATE);
++	err = fh_verify(rqstp, fhp, S_IFDIR, NFSD_MAY_CREATE_FILE);
+ 	if (err)
+ 		goto out;
+ 
+@@ -1532,7 +1534,7 @@ nfsd_link(struct svc_rqst *rqstp, struct svc_fh *ffhp,
+ 	__be32		err;
+ 	int		host_err;
+ 
+-	err = fh_verify(rqstp, ffhp, S_IFDIR, NFSD_MAY_CREATE);
++	err = fh_verify(rqstp, ffhp, S_IFDIR, NFSD_MAY_CREATE_FILE);
+ 	if (err)
+ 		goto out;
+ 	err = fh_verify(rqstp, tfhp, 0, NFSD_MAY_NOP);
+@@ -1604,11 +1606,12 @@ nfsd_rename(struct svc_rqst *rqstp, struct svc_fh *ffhp, char *fname, int flen,
+ 	struct inode	*fdir, *tdir;
+ 	__be32		err;
+ 	int		host_err;
++	int		access;
+ 
+ 	err = fh_verify(rqstp, ffhp, S_IFDIR, NFSD_MAY_REMOVE);
+ 	if (err)
+ 		goto out;
+-	err = fh_verify(rqstp, tfhp, S_IFDIR, NFSD_MAY_CREATE);
++	err = fh_verify(rqstp, tfhp, S_IFDIR, NFSD_MAY_NOP);
+ 	if (err)
+ 		goto out;
+ 
+@@ -1647,6 +1650,13 @@ nfsd_rename(struct svc_rqst *rqstp, struct svc_fh *ffhp, char *fname, int flen,
+ 	if (odentry == trap)
+ 		goto out_dput_old;
+ 
++	host_err = 0;
++	access = S_ISDIR(d_inode(odentry)->i_mode) ?
++		NFSD_MAY_CREATE_DIR : NFSD_MAY_CREATE_FILE;
++	err = fh_verify(rqstp, tfhp, S_IFDIR, access);
++	if (err)
++		goto out_dput_old;
++
+ 	ndentry = lookup_one_len(tname, tdentry, tlen);
+ 	host_err = PTR_ERR(ndentry);
+ 	if (IS_ERR(ndentry))
+@@ -1672,7 +1682,8 @@ nfsd_rename(struct svc_rqst *rqstp, struct svc_fh *ffhp, char *fname, int flen,
+  out_dput_old:
+ 	dput(odentry);
+  out_nfserr:
+-	err = nfserrno(host_err);
++	if (host_err)
++		err = nfserrno(host_err);
+ 	/*
+ 	 * We cannot rely on fh_unlock on the two filehandles,
+ 	 * as that would do the wrong thing if the two directories
+@@ -2005,8 +2016,9 @@ nfsd_permission(struct svc_rqst *rqstp, struct svc_export *exp,
+ 	    uid_eq(inode->i_uid, current_fsuid()))
+ 		return 0;
+ 
+-	/* This assumes  NFSD_MAY_{READ,WRITE,EXEC} == MAY_{READ,WRITE,EXEC} */
+-	err = inode_permission(inode, acc & (MAY_READ|MAY_WRITE|MAY_EXEC));
++	/* This assumes NFSD_MAY_{READ,WRITE,EXEC} == MAY_{READ,WRITE,EXEC}. */
++	err = inode_permission(inode, acc & (MAY_READ|MAY_WRITE|MAY_EXEC|
++					     MAY_CREATE_DIR|MAY_CREATE_FILE));
+ 
+ 	/* Allow read access to binaries even when mode 111 */
+ 	if (err == -EACCES && S_ISREG(inode->i_mode) &&
+diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
+index fee2451..c849ef2 100644
+--- a/fs/nfsd/vfs.h
++++ b/fs/nfsd/vfs.h
+@@ -19,18 +19,19 @@
+ #define NFSD_MAY_TRUNC			0x010
+ #define NFSD_MAY_LOCK			0x020
+ #define NFSD_MAY_MASK			0x03f
++#define NFSD_MAY_CREATE_FILE		0x103 /* == MAY_{EXEC|WRITE|CREATE_FILE} */
++#define NFSD_MAY_CREATE_DIR		0x203 /* == MAY_{EXEC|WRITE|CREATE_DIR} */
+ 
+ /* extra hints to permission and open routines: */
+-#define NFSD_MAY_OWNER_OVERRIDE		0x040
+-#define NFSD_MAY_LOCAL_ACCESS		0x080 /* for device special files */
+-#define NFSD_MAY_BYPASS_GSS_ON_ROOT	0x100
+-#define NFSD_MAY_NOT_BREAK_LEASE	0x200
+-#define NFSD_MAY_BYPASS_GSS		0x400
+-#define NFSD_MAY_READ_IF_EXEC		0x800
++#define NFSD_MAY_OWNER_OVERRIDE		0x04000
++#define NFSD_MAY_LOCAL_ACCESS		0x08000 /* for device special files */
++#define NFSD_MAY_BYPASS_GSS_ON_ROOT	0x10000
++#define NFSD_MAY_NOT_BREAK_LEASE	0x20000
++#define NFSD_MAY_BYPASS_GSS		0x40000
++#define NFSD_MAY_READ_IF_EXEC		0x80000
+ 
+-#define NFSD_MAY_64BIT_COOKIE		0x1000 /* 64 bit readdir cookies for >= NFSv3 */
++#define NFSD_MAY_64BIT_COOKIE		0x100000 /* 64 bit readdir cookies for >= NFSv3 */
+ 
+-#define NFSD_MAY_CREATE		(NFSD_MAY_EXEC|NFSD_MAY_WRITE)
+ #define NFSD_MAY_REMOVE		(NFSD_MAY_EXEC|NFSD_MAY_WRITE|NFSD_MAY_TRUNC)
+ 
+ /*
 -- 
 2.5.0
 
