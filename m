@@ -1,10 +1,10 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pa0-f49.google.com ([209.85.220.49]:34030 "EHLO
-	mail-pa0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752715AbbJXP3g (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 24 Oct 2015 11:29:36 -0400
-Received: by padhk11 with SMTP id hk11so144713338pad.1
-        for <linux-nfs@vger.kernel.org>; Sat, 24 Oct 2015 08:29:35 -0700 (PDT)
+Received: from mail-pa0-f45.google.com ([209.85.220.45]:36441 "EHLO
+	mail-pa0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752754AbbJXP3o (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 24 Oct 2015 11:29:44 -0400
+Received: by pacfv9 with SMTP id fv9so151051817pac.3
+        for <linux-nfs@vger.kernel.org>; Sat, 24 Oct 2015 08:29:43 -0700 (PDT)
 From: Peng Tao <tao.peng@primarydata.com>
 To: linux-fsdevel@vger.kernel.org
 Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
@@ -16,138 +16,117 @@ Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
         linux-nfs@vger.kernel.org, linux-btrfs@vger.kernel.org,
         linux-cifs@vger.kernel.org,
         Steve French <steve.french@primarydata.com>,
-        Peng Tao <tao.peng@primarydata.com>
-Subject: [PATCH 7/9] nfs42: remove private clone ioctl handler
-Date: Sun, 25 Oct 2015 07:17:14 +0800
-Message-Id: <1445728636-10109-8-git-send-email-tao.peng@primarydata.com>
+        Anna Schumaker <Anna.Schumaker@netapp.com>,
+        Anna Schumaker <Anna.Schumaker@netapp.com>
+Subject: [PATCH 8/9] nfsd: Pass filehandle to nfs4_preprocess_stateid_op()
+Date: Sun, 25 Oct 2015 07:17:15 +0800
+Message-Id: <1445728636-10109-9-git-send-email-tao.peng@primarydata.com>
 In-Reply-To: <1445728636-10109-1-git-send-email-tao.peng@primarydata.com>
 References: <1445728636-10109-1-git-send-email-tao.peng@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-BTRFS_IOC_CLONE/BTRFS_IOC_CLONE_RANGE is now handled
-by generic layer and goes through the .copy_file_range
-method.
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
 
-Signed-off-by: Peng Tao <tao.peng@primarydata.com>
+This will be needed so COPY can look up the saved_fh in addition to the
+current_fh.
+
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 ---
- fs/nfs/nfs4file.c | 96 -------------------------------------------------------
- 1 file changed, 96 deletions(-)
+ fs/nfsd/nfs4proc.c  | 16 +++++++++-------
+ fs/nfsd/nfs4state.c |  6 +++---
+ fs/nfsd/state.h     |  5 +++--
+ 3 files changed, 15 insertions(+), 12 deletions(-)
 
-diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
-index f1924d8..181b67b 100644
---- a/fs/nfs/nfs4file.c
-+++ b/fs/nfs/nfs4file.c
-@@ -240,99 +240,8 @@ out_unlock:
- out:
- 	return ret < 0 ? ret : len;
- }
--
--static noinline long
--nfs42_ioctl_clone(struct file *dst_file, unsigned long srcfd,
--		  u64 src_off, u64 dst_off, u64 count)
--{
--	struct inode *dst_inode = file_inode(dst_file);
--	struct fd src_file;
--	struct inode *src_inode;
--	int ret;
--
--	/* dst file must be opened for writing */
--	if (!(dst_file->f_mode & FMODE_WRITE))
--		return -EINVAL;
--
--	ret = mnt_want_write_file(dst_file);
--	if (ret)
--		return ret;
--
--	src_file = fdget(srcfd);
--	if (!src_file.file) {
--		ret = -EBADF;
--		goto out_drop_write;
--	}
--
--	src_inode = file_inode(src_file.file);
--
--	/* src and dst must be different files */
--	ret = -EINVAL;
--	if (src_inode == dst_inode)
--		goto out_fput;
--
--	/* src file must be opened for reading */
--	if (!(src_file.file->f_mode & FMODE_READ))
--		goto out_fput;
--
--	/* src and dst must be regular files */
--	ret = -EISDIR;
--	if (!S_ISREG(src_inode->i_mode) || !S_ISREG(dst_inode->i_mode))
--		goto out_fput;
--
--	ret = -EXDEV;
--	if (src_file.file->f_path.mnt != dst_file->f_path.mnt ||
--	    src_inode->i_sb != dst_inode->i_sb)
--		goto out_fput;
--
--	ret = nfs42_copy_file_range(src_file.file, src_off, dst_file,
--				    dst_off, count, 0);
--	if (ret > 0)
--		ret = 0;
--
--out_fput:
--	fdput(src_file);
--out_drop_write:
--	mnt_drop_write_file(dst_file);
--	return ret;
--}
--
--static long nfs42_ioctl_clone_range(struct file *dst_file, void __user *argp)
--{
--	struct nfs_ioctl_clone_range_args args;
--
--	if (copy_from_user(&args, argp, sizeof(args)))
--		return -EFAULT;
--
--	return nfs42_ioctl_clone(dst_file, args.src_fd, args.src_off, args.dst_off, args.count);
--}
--#else
--static long nfs42_ioctl_clone(struct file *dst_file, unsigned long srcfd,
--		u64 src_off, u64 dst_off, u64 count)
--{
--	return -ENOTTY;
--}
--
--static long nfs42_ioctl_clone_range(struct file *dst_file, void __user *argp)
--{
--	return -ENOTTY;
--}
- #endif /* CONFIG_NFS_V4_2 */
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 4ce6b97..eab6d6d 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -774,8 +774,9 @@ nfsd4_read(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		clear_bit(RQ_SPLICE_OK, &rqstp->rq_flags);
  
--long nfs4_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
--{
--	void __user *argp = (void __user *)arg;
--
--	switch (cmd) {
--	case NFS_IOC_CLONE:
--		return nfs42_ioctl_clone(file, arg, 0, 0, 0);
--	case NFS_IOC_CLONE_RANGE:
--		return nfs42_ioctl_clone_range(file, argp);
--	}
--
--	return -ENOTTY;
--}
--
- const struct file_operations nfs4_file_operations = {
- #ifdef CONFIG_NFS_V4_2
- 	.llseek		= nfs4_file_llseek,
-@@ -356,9 +265,4 @@ const struct file_operations nfs4_file_operations = {
- #endif /* CONFIG_NFS_V4_2 */
- 	.check_flags	= nfs_check_flags,
- 	.setlease	= simple_nosetlease,
--#ifdef CONFIG_COMPAT
--	.unlocked_ioctl = nfs4_ioctl,
--#else
--	.compat_ioctl	= nfs4_ioctl,
--#endif /* CONFIG_COMPAT */
- };
+ 	/* check stateid */
+-	status = nfs4_preprocess_stateid_op(rqstp, cstate, &read->rd_stateid,
+-			RD_STATE, &read->rd_filp, &read->rd_tmp_file);
++	status = nfs4_preprocess_stateid_op(rqstp, cstate, &cstate->current_fh,
++					&read->rd_stateid, RD_STATE,
++					&read->rd_filp, &read->rd_tmp_file);
+ 	if (status) {
+ 		dprintk("NFSD: nfsd4_read: couldn't process stateid!\n");
+ 		goto out;
+@@ -921,7 +922,8 @@ nfsd4_setattr(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 
+ 	if (setattr->sa_iattr.ia_valid & ATTR_SIZE) {
+ 		status = nfs4_preprocess_stateid_op(rqstp, cstate,
+-			&setattr->sa_stateid, WR_STATE, NULL, NULL);
++				&cstate->current_fh, &setattr->sa_stateid,
++				WR_STATE, NULL, NULL);
+ 		if (status) {
+ 			dprintk("NFSD: nfsd4_setattr: couldn't process stateid!\n");
+ 			return status;
+@@ -985,8 +987,8 @@ nfsd4_write(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	if (write->wr_offset >= OFFSET_MAX)
+ 		return nfserr_inval;
+ 
+-	status = nfs4_preprocess_stateid_op(rqstp, cstate, stateid, WR_STATE,
+-			&filp, NULL);
++	status = nfs4_preprocess_stateid_op(rqstp, cstate, &cstate->current_fh,
++						stateid, WR_STATE, &filp, NULL);
+ 	if (status) {
+ 		dprintk("NFSD: nfsd4_write: couldn't process stateid!\n");
+ 		return status;
+@@ -1016,7 +1018,7 @@ nfsd4_fallocate(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	__be32 status = nfserr_notsupp;
+ 	struct file *file;
+ 
+-	status = nfs4_preprocess_stateid_op(rqstp, cstate,
++	status = nfs4_preprocess_stateid_op(rqstp, cstate, &cstate->current_fh,
+ 					    &fallocate->falloc_stateid,
+ 					    WR_STATE, &file, NULL);
+ 	if (status != nfs_ok) {
+@@ -1055,7 +1057,7 @@ nfsd4_seek(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	__be32 status;
+ 	struct file *file;
+ 
+-	status = nfs4_preprocess_stateid_op(rqstp, cstate,
++	status = nfs4_preprocess_stateid_op(rqstp, cstate, &cstate->current_fh,
+ 					    &seek->seek_stateid,
+ 					    RD_STATE, &file, NULL);
+ 	if (status) {
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 0f1d569..8f4d925 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4666,10 +4666,10 @@ nfs4_check_file(struct svc_rqst *rqstp, struct svc_fh *fhp, struct nfs4_stid *s,
+  */
+ __be32
+ nfs4_preprocess_stateid_op(struct svc_rqst *rqstp,
+-		struct nfsd4_compound_state *cstate, stateid_t *stateid,
+-		int flags, struct file **filpp, bool *tmp_file)
++		struct nfsd4_compound_state *cstate, struct svc_fh *fhp,
++		stateid_t *stateid, int flags, struct file **filpp,
++		bool *tmp_file)
+ {
+-	struct svc_fh *fhp = &cstate->current_fh;
+ 	struct inode *ino = d_inode(fhp->fh_dentry);
+ 	struct net *net = SVC_NET(rqstp);
+ 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 583ffc1..640f57f 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -584,8 +584,9 @@ struct nfsd4_compound_state;
+ struct nfsd_net;
+ 
+ extern __be32 nfs4_preprocess_stateid_op(struct svc_rqst *rqstp,
+-		struct nfsd4_compound_state *cstate, stateid_t *stateid,
+-		int flags, struct file **filp, bool *tmp_file);
++		struct nfsd4_compound_state *cstate, struct svc_fh *fhp,
++		stateid_t *stateid, int flags, struct file **filp,
++		bool *tmp_file);
+ __be32 nfsd4_lookup_stateid(struct nfsd4_compound_state *cstate,
+ 		     stateid_t *stateid, unsigned char typemask,
+ 		     struct nfs4_stid **s, struct nfsd_net *nn);
 -- 
 1.8.3.1
 
