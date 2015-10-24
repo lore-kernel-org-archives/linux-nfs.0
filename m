@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f175.google.com ([209.85.213.175]:34607 "EHLO
-	mail-ig0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752388AbbJXV1F (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 24 Oct 2015 17:27:05 -0400
-Subject: [PATCH v4 05/16] xprtrdma: Replace send and receive arrays
+Received: from mail-ig0-f181.google.com ([209.85.213.181]:36790 "EHLO
+	mail-ig0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752131AbbJXV1M (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 24 Oct 2015 17:27:12 -0400
+Subject: [PATCH v4 06/16] xprtrdma: Use workqueue to process RPC/RDMA replies
 From: Chuck Lever <chuck.lever@oracle.com>
 To: Anna.Schumaker@netapp.com
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Sat, 24 Oct 2015 17:27:02 -0400
-Message-ID: <20151024212702.4715.71020.stgit@manet.1015granger.net>
+Date: Sat, 24 Oct 2015 17:27:10 -0400
+Message-ID: <20151024212710.4715.40751.stgit@manet.1015granger.net>
 In-Reply-To: <20151024211707.4715.61650.stgit@manet.1015granger.net>
 References: <20151024211707.4715.61650.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -16,316 +16,242 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The rb_send_bufs and rb_recv_bufs arrays are used to implement a
-pair of stacks for keeping track of free rpcrdma_req and rpcrdma_rep
-structs. Replace those arrays with free lists.
+The reply tasklet is fast, but it's single threaded. After reply
+traffic saturates a single CPU, there's no more reply processing
+capacity.
 
-To allow more than 512 RPCs in-flight at once, each of these arrays
-would be larger than a page (assuming 8-byte addresses and 4KB
-pages). Allowing up to 64K in-flight RPCs (as TCP now does), each
-buffer array would have to be 128 pages. That's an order-6
-allocation. (Not that we're going there.)
-
-A list is easier to expand dynamically. Instead of allocating a
-larger array of pointers and copying the existing pointers to the
-new array, simply append more buffers to each list.
-
-This also makes it simpler to manage receive buffers that might
-catch backwards-direction calls, or to post receive buffers in
-bulk to amortize the overhead of ib_post_recv.
+Replace the tasklet with a workqueue to spread reply handling across
+all CPUs.  This also moves RPC/RDMA reply handling out of the soft
+IRQ context and into a context that allows sleeps.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 Reviewed-by: Sagi Grimberg <sagig@mellanox.com>
-Reviewed-by: Devesh Sharma <devesh.sharma@avagotech.com>
 Tested-By: Devesh Sharma <devesh.sharma@avagotech.com>
 ---
- net/sunrpc/xprtrdma/verbs.c     |  155 +++++++++++++++++----------------------
- net/sunrpc/xprtrdma/xprt_rdma.h |    9 +-
- 2 files changed, 73 insertions(+), 91 deletions(-)
+ net/sunrpc/xprtrdma/rpc_rdma.c  |   17 +++++++-----
+ net/sunrpc/xprtrdma/transport.c |    8 ++++++
+ net/sunrpc/xprtrdma/verbs.c     |   54 ++++++++++++++++++++++++++++++++-------
+ net/sunrpc/xprtrdma/xprt_rdma.h |    4 +++
+ 4 files changed, 65 insertions(+), 18 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index a60b4c4..c09f1b6 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -926,44 +926,18 @@ rpcrdma_buffer_create(struct rpcrdma_xprt *r_xprt)
- {
- 	struct rpcrdma_buffer *buf = &r_xprt->rx_buf;
- 	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
--	struct rpcrdma_create_data_internal *cdata = &r_xprt->rx_data;
--	char *p;
--	size_t len;
- 	int i, rc;
- 
--	buf->rb_max_requests = cdata->max_requests;
-+	buf->rb_max_requests = r_xprt->rx_data.max_requests;
- 	spin_lock_init(&buf->rb_lock);
- 
--	/* Need to allocate:
--	 *   1.  arrays for send and recv pointers
--	 *   2.  arrays of struct rpcrdma_req to fill in pointers
--	 *   3.  array of struct rpcrdma_rep for replies
--	 * Send/recv buffers in req/rep need to be registered
--	 */
--	len = buf->rb_max_requests *
--		(sizeof(struct rpcrdma_req *) + sizeof(struct rpcrdma_rep *));
--
--	p = kzalloc(len, GFP_KERNEL);
--	if (p == NULL) {
--		dprintk("RPC:       %s: req_t/rep_t/pad kzalloc(%zd) failed\n",
--			__func__, len);
--		rc = -ENOMEM;
--		goto out;
--	}
--	buf->rb_pool = p;	/* for freeing it later */
--
--	buf->rb_send_bufs = (struct rpcrdma_req **) p;
--	p = (char *) &buf->rb_send_bufs[buf->rb_max_requests];
--	buf->rb_recv_bufs = (struct rpcrdma_rep **) p;
--	p = (char *) &buf->rb_recv_bufs[buf->rb_max_requests];
--
- 	rc = ia->ri_ops->ro_init(r_xprt);
- 	if (rc)
- 		goto out;
- 
-+	INIT_LIST_HEAD(&buf->rb_send_bufs);
- 	for (i = 0; i < buf->rb_max_requests; i++) {
- 		struct rpcrdma_req *req;
--		struct rpcrdma_rep *rep;
- 
- 		req = rpcrdma_create_req(r_xprt);
- 		if (IS_ERR(req)) {
-@@ -972,7 +946,12 @@ rpcrdma_buffer_create(struct rpcrdma_xprt *r_xprt)
- 			rc = PTR_ERR(req);
- 			goto out;
- 		}
--		buf->rb_send_bufs[i] = req;
-+		list_add(&req->rl_free, &buf->rb_send_bufs);
-+	}
-+
-+	INIT_LIST_HEAD(&buf->rb_recv_bufs);
-+	for (i = 0; i < buf->rb_max_requests + 2; i++) {
-+		struct rpcrdma_rep *rep;
- 
- 		rep = rpcrdma_create_rep(r_xprt);
- 		if (IS_ERR(rep)) {
-@@ -981,7 +960,7 @@ rpcrdma_buffer_create(struct rpcrdma_xprt *r_xprt)
- 			rc = PTR_ERR(rep);
- 			goto out;
- 		}
--		buf->rb_recv_bufs[i] = rep;
-+		list_add(&rep->rr_list, &buf->rb_recv_bufs);
- 	}
- 
- 	return 0;
-@@ -990,6 +969,28 @@ out:
- 	return rc;
+diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+index 60ffa63..95774fc 100644
+--- a/net/sunrpc/xprtrdma/rpc_rdma.c
++++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+@@ -723,8 +723,8 @@ rpcrdma_conn_func(struct rpcrdma_ep *ep)
+ 	schedule_delayed_work(&ep->rep_connect_worker, 0);
  }
  
-+static struct rpcrdma_req *
-+rpcrdma_buffer_get_req_locked(struct rpcrdma_buffer *buf)
-+{
-+	struct rpcrdma_req *req;
+-/*
+- * Called as a tasklet to do req/reply match and complete a request
++/* Process received RPC/RDMA messages.
++ *
+  * Errors must result in the RPC task either being awakened, or
+  * allowed to timeout, to discover the errors at that time.
+  */
+@@ -752,13 +752,14 @@ rpcrdma_reply_handler(struct rpcrdma_rep *rep)
+ 	if (headerp->rm_vers != rpcrdma_version)
+ 		goto out_badversion;
+ 
+-	/* Get XID and try for a match. */
+-	spin_lock(&xprt->transport_lock);
++	/* Match incoming rpcrdma_rep to an rpcrdma_req to
++	 * get context for handling any incoming chunks.
++	 */
++	spin_lock_bh(&xprt->transport_lock);
+ 	rqst = xprt_lookup_rqst(xprt, headerp->rm_xid);
+ 	if (!rqst)
+ 		goto out_nomatch;
+ 
+-	/* get request object */
+ 	req = rpcr_to_rdmar(rqst);
+ 	if (req->rl_reply)
+ 		goto out_duplicate;
+@@ -859,7 +860,7 @@ badheader:
+ 		xprt_release_rqst_cong(rqst->rq_task);
+ 
+ 	xprt_complete_rqst(rqst->rq_task, status);
+-	spin_unlock(&xprt->transport_lock);
++	spin_unlock_bh(&xprt->transport_lock);
+ 	dprintk("RPC:       %s: xprt_complete_rqst(0x%p, 0x%p, %d)\n",
+ 			__func__, xprt, rqst, status);
+ 	return;
+@@ -882,14 +883,14 @@ out_badversion:
+ 	goto repost;
+ 
+ out_nomatch:
+-	spin_unlock(&xprt->transport_lock);
++	spin_unlock_bh(&xprt->transport_lock);
+ 	dprintk("RPC:       %s: no match for incoming xid 0x%08x len %d\n",
+ 		__func__, be32_to_cpu(headerp->rm_xid),
+ 		rep->rr_len);
+ 	goto repost;
+ 
+ out_duplicate:
+-	spin_unlock(&xprt->transport_lock);
++	spin_unlock_bh(&xprt->transport_lock);
+ 	dprintk("RPC:       %s: "
+ 		"duplicate reply %p to RPC request %p: xid 0x%08x\n",
+ 		__func__, rep, req, be32_to_cpu(headerp->rm_xid));
+diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+index e9e5ed7..897a2f3 100644
+--- a/net/sunrpc/xprtrdma/transport.c
++++ b/net/sunrpc/xprtrdma/transport.c
+@@ -732,6 +732,7 @@ void xprt_rdma_cleanup(void)
+ 		dprintk("RPC:       %s: xprt_unregister returned %i\n",
+ 			__func__, rc);
+ 
++	rpcrdma_destroy_wq();
+ 	frwr_destroy_recovery_wq();
+ }
+ 
+@@ -743,8 +744,15 @@ int xprt_rdma_init(void)
+ 	if (rc)
+ 		return rc;
+ 
++	rc = rpcrdma_alloc_wq();
++	if (rc) {
++		frwr_destroy_recovery_wq();
++		return rc;
++	}
 +
-+	req = list_first_entry(&buf->rb_send_bufs,
-+			       struct rpcrdma_req, rl_free);
-+	list_del(&req->rl_free);
-+	return req;
+ 	rc = xprt_register_transport(&xprt_rdma);
+ 	if (rc) {
++		rpcrdma_destroy_wq();
+ 		frwr_destroy_recovery_wq();
+ 		return rc;
+ 	}
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index c09f1b6..5c20629 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -100,6 +100,35 @@ rpcrdma_run_tasklet(unsigned long data)
+ 
+ static DECLARE_TASKLET(rpcrdma_tasklet_g, rpcrdma_run_tasklet, 0UL);
+ 
++static struct workqueue_struct *rpcrdma_receive_wq;
++
++int
++rpcrdma_alloc_wq(void)
++{
++	struct workqueue_struct *recv_wq;
++
++	recv_wq = alloc_workqueue("xprtrdma_receive",
++				  WQ_MEM_RECLAIM | WQ_UNBOUND | WQ_HIGHPRI,
++				  0);
++	if (!recv_wq)
++		return -ENOMEM;
++
++	rpcrdma_receive_wq = recv_wq;
++	return 0;
 +}
 +
-+static struct rpcrdma_rep *
-+rpcrdma_buffer_get_rep_locked(struct rpcrdma_buffer *buf)
++void
++rpcrdma_destroy_wq(void)
 +{
-+	struct rpcrdma_rep *rep;
++	struct workqueue_struct *wq;
 +
-+	rep = list_first_entry(&buf->rb_recv_bufs,
-+			       struct rpcrdma_rep, rr_list);
-+	list_del(&rep->rr_list);
-+	return rep;
++	if (rpcrdma_receive_wq) {
++		wq = rpcrdma_receive_wq;
++		rpcrdma_receive_wq = NULL;
++		destroy_workqueue(wq);
++	}
 +}
 +
  static void
- rpcrdma_destroy_rep(struct rpcrdma_ia *ia, struct rpcrdma_rep *rep)
+ rpcrdma_schedule_tasklet(struct list_head *sched_list)
  {
-@@ -1015,25 +1016,22 @@ void
- rpcrdma_buffer_destroy(struct rpcrdma_buffer *buf)
- {
- 	struct rpcrdma_ia *ia = rdmab_to_ia(buf);
--	int i;
+@@ -196,7 +225,16 @@ rpcrdma_sendcq_upcall(struct ib_cq *cq, void *cq_context)
+ }
  
--	/* clean up in reverse order from create
--	 *   1.  recv mr memory (mr free, then kfree)
--	 *   2.  send mr memory (mr free, then kfree)
--	 *   3.  MWs
--	 */
--	dprintk("RPC:       %s: entering\n", __func__);
-+	while (!list_empty(&buf->rb_recv_bufs)) {
-+		struct rpcrdma_rep *rep;
- 
--	for (i = 0; i < buf->rb_max_requests; i++) {
--		if (buf->rb_recv_bufs)
--			rpcrdma_destroy_rep(ia, buf->rb_recv_bufs[i]);
--		if (buf->rb_send_bufs)
--			rpcrdma_destroy_req(ia, buf->rb_send_bufs[i]);
-+		rep = rpcrdma_buffer_get_rep_locked(buf);
-+		rpcrdma_destroy_rep(ia, rep);
- 	}
- 
--	ia->ri_ops->ro_destroy(buf);
-+	while (!list_empty(&buf->rb_send_bufs)) {
-+		struct rpcrdma_req *req;
- 
--	kfree(buf->rb_pool);
-+		req = rpcrdma_buffer_get_req_locked(buf);
-+		rpcrdma_destroy_req(ia, req);
-+	}
+ static void
+-rpcrdma_recvcq_process_wc(struct ib_wc *wc, struct list_head *sched_list)
++rpcrdma_receive_worker(struct work_struct *work)
++{
++	struct rpcrdma_rep *rep =
++			container_of(work, struct rpcrdma_rep, rr_work);
 +
-+	ia->ri_ops->ro_destroy(buf);
- }
- 
- struct rpcrdma_mw *
-@@ -1065,25 +1063,10 @@ rpcrdma_put_mw(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mw *mw)
- 	spin_unlock(&buf->rb_mwlock);
- }
- 
--static void
--rpcrdma_buffer_put_sendbuf(struct rpcrdma_req *req, struct rpcrdma_buffer *buf)
--{
--	buf->rb_send_bufs[--buf->rb_send_index] = req;
--	req->rl_niovs = 0;
--	if (req->rl_reply) {
--		buf->rb_recv_bufs[--buf->rb_recv_index] = req->rl_reply;
--		req->rl_reply = NULL;
--	}
--}
--
- /*
-  * Get a set of request/reply buffers.
-  *
-- * Reply buffer (if needed) is attached to send buffer upon return.
-- * Rule:
-- *    rb_send_index and rb_recv_index MUST always be pointing to the
-- *    *next* available buffer (non-NULL). They are incremented after
-- *    removing buffers, and decremented *before* returning them.
-+ * Reply buffer (if available) is attached to send buffer upon return.
-  */
- struct rpcrdma_req *
- rpcrdma_buffer_get(struct rpcrdma_buffer *buffers)
-@@ -1092,26 +1075,23 @@ rpcrdma_buffer_get(struct rpcrdma_buffer *buffers)
- 	unsigned long flags;
- 
- 	spin_lock_irqsave(&buffers->rb_lock, flags);
-+	if (list_empty(&buffers->rb_send_bufs))
-+		goto out_reqbuf;
-+	req = rpcrdma_buffer_get_req_locked(buffers);
-+	if (list_empty(&buffers->rb_recv_bufs))
-+		goto out_repbuf;
-+	req->rl_reply = rpcrdma_buffer_get_rep_locked(buffers);
-+	spin_unlock_irqrestore(&buffers->rb_lock, flags);
-+	return req;
- 
--	if (buffers->rb_send_index == buffers->rb_max_requests) {
--		spin_unlock_irqrestore(&buffers->rb_lock, flags);
--		dprintk("RPC:       %s: out of request buffers\n", __func__);
--		return ((struct rpcrdma_req *)NULL);
--	}
--
--	req = buffers->rb_send_bufs[buffers->rb_send_index];
--	if (buffers->rb_send_index < buffers->rb_recv_index) {
--		dprintk("RPC:       %s: %d extra receives outstanding (ok)\n",
--			__func__,
--			buffers->rb_recv_index - buffers->rb_send_index);
--		req->rl_reply = NULL;
--	} else {
--		req->rl_reply = buffers->rb_recv_bufs[buffers->rb_recv_index];
--		buffers->rb_recv_bufs[buffers->rb_recv_index++] = NULL;
--	}
--	buffers->rb_send_bufs[buffers->rb_send_index++] = NULL;
--
-+out_reqbuf:
-+	spin_unlock_irqrestore(&buffers->rb_lock, flags);
-+	pr_warn("RPC:       %s: out of request buffers\n", __func__);
-+	return NULL;
-+out_repbuf:
- 	spin_unlock_irqrestore(&buffers->rb_lock, flags);
-+	pr_warn("RPC:       %s: out of reply buffers\n", __func__);
-+	req->rl_reply = NULL;
- 	return req;
- }
- 
-@@ -1123,17 +1103,22 @@ void
- rpcrdma_buffer_put(struct rpcrdma_req *req)
- {
- 	struct rpcrdma_buffer *buffers = req->rl_buffer;
-+	struct rpcrdma_rep *rep = req->rl_reply;
- 	unsigned long flags;
- 
-+	req->rl_niovs = 0;
-+	req->rl_reply = NULL;
++	rpcrdma_reply_handler(rep);
++}
 +
- 	spin_lock_irqsave(&buffers->rb_lock, flags);
--	rpcrdma_buffer_put_sendbuf(req, buffers);
-+	list_add_tail(&req->rl_free, &buffers->rb_send_bufs);
-+	if (rep)
-+		list_add_tail(&rep->rr_list, &buffers->rb_recv_bufs);
- 	spin_unlock_irqrestore(&buffers->rb_lock, flags);
++static void
++rpcrdma_recvcq_process_wc(struct ib_wc *wc)
+ {
+ 	struct rpcrdma_rep *rep =
+ 			(struct rpcrdma_rep *)(unsigned long)wc->wr_id;
+@@ -219,8 +257,9 @@ rpcrdma_recvcq_process_wc(struct ib_wc *wc, struct list_head *sched_list)
+ 	prefetch(rdmab_to_msg(rep->rr_rdmabuf));
+ 
+ out_schedule:
+-	list_add_tail(&rep->rr_list, sched_list);
++	queue_work(rpcrdma_receive_wq, &rep->rr_work);
+ 	return;
++
+ out_fail:
+ 	if (wc->status != IB_WC_WR_FLUSH_ERR)
+ 		pr_err("RPC:       %s: rep %p: %s\n",
+@@ -239,7 +278,6 @@ static void
+ rpcrdma_recvcq_poll(struct ib_cq *cq)
+ {
+ 	struct ib_wc *pos, wcs[4];
+-	LIST_HEAD(sched_list);
+ 	int count, rc;
+ 
+ 	do {
+@@ -251,10 +289,8 @@ rpcrdma_recvcq_poll(struct ib_cq *cq)
+ 
+ 		count = rc;
+ 		while (count-- > 0)
+-			rpcrdma_recvcq_process_wc(pos++, &sched_list);
++			rpcrdma_recvcq_process_wc(pos++);
+ 	} while (rc == ARRAY_SIZE(wcs));
+-
+-	rpcrdma_schedule_tasklet(&sched_list);
  }
  
- /*
-  * Recover reply buffers from pool.
-- * This happens when recovering from error conditions.
-- * Post-increment counter/array index.
-+ * This happens when recovering from disconnect.
-  */
- void
- rpcrdma_recv_buffer_get(struct rpcrdma_req *req)
-@@ -1142,10 +1127,8 @@ rpcrdma_recv_buffer_get(struct rpcrdma_req *req)
- 	unsigned long flags;
+ /* Handle provider receive completion upcalls.
+@@ -272,12 +308,9 @@ static void
+ rpcrdma_flush_cqs(struct rpcrdma_ep *ep)
+ {
+ 	struct ib_wc wc;
+-	LIST_HEAD(sched_list);
  
- 	spin_lock_irqsave(&buffers->rb_lock, flags);
--	if (buffers->rb_recv_index < buffers->rb_max_requests) {
--		req->rl_reply = buffers->rb_recv_bufs[buffers->rb_recv_index];
--		buffers->rb_recv_bufs[buffers->rb_recv_index++] = NULL;
--	}
-+	if (!list_empty(&buffers->rb_recv_bufs))
-+		req->rl_reply = rpcrdma_buffer_get_rep_locked(buffers);
- 	spin_unlock_irqrestore(&buffers->rb_lock, flags);
+ 	while (ib_poll_cq(ep->rep_attr.recv_cq, 1, &wc) > 0)
+-		rpcrdma_recvcq_process_wc(&wc, &sched_list);
+-	if (!list_empty(&sched_list))
+-		rpcrdma_schedule_tasklet(&sched_list);
++		rpcrdma_recvcq_process_wc(&wc);
+ 	while (ib_poll_cq(ep->rep_attr.send_cq, 1, &wc) > 0)
+ 		rpcrdma_sendcq_process_wc(&wc);
  }
+@@ -913,6 +946,7 @@ rpcrdma_create_rep(struct rpcrdma_xprt *r_xprt)
  
-@@ -1160,7 +1143,7 @@ rpcrdma_recv_buffer_put(struct rpcrdma_rep *rep)
- 	unsigned long flags;
+ 	rep->rr_device = ia->ri_device;
+ 	rep->rr_rxprt = r_xprt;
++	INIT_WORK(&rep->rr_work, rpcrdma_receive_worker);
+ 	return rep;
  
- 	spin_lock_irqsave(&buffers->rb_lock, flags);
--	buffers->rb_recv_bufs[--buffers->rb_recv_index] = rep;
-+	list_add_tail(&rep->rr_list, &buffers->rb_recv_bufs);
- 	spin_unlock_irqrestore(&buffers->rb_lock, flags);
- }
- 
+ out_free:
 diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index a13508b..e6a358f 100644
+index e6a358f..6ea1dbe 100644
 --- a/net/sunrpc/xprtrdma/xprt_rdma.h
 +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -252,6 +252,7 @@ struct rpcrdma_mr_seg {		/* chunk descriptors */
- #define RPCRDMA_MAX_IOVS	(2)
- 
- struct rpcrdma_req {
-+	struct list_head	rl_free;
- 	unsigned int		rl_niovs;
- 	unsigned int		rl_nchunks;
- 	unsigned int		rl_connect_cookie;
-@@ -285,12 +286,10 @@ struct rpcrdma_buffer {
- 	struct list_head	rb_all;
- 	char			*rb_pool;
- 
--	spinlock_t		rb_lock;	/* protect buf arrays */
-+	spinlock_t		rb_lock;	/* protect buf lists */
-+	struct list_head	rb_send_bufs;
-+	struct list_head	rb_recv_bufs;
- 	u32			rb_max_requests;
--	int			rb_send_index;
--	int			rb_recv_index;
--	struct rpcrdma_req	**rb_send_bufs;
--	struct rpcrdma_rep	**rb_recv_bufs;
+@@ -164,6 +164,7 @@ struct rpcrdma_rep {
+ 	unsigned int		rr_len;
+ 	struct ib_device	*rr_device;
+ 	struct rpcrdma_xprt	*rr_rxprt;
++	struct work_struct	rr_work;
+ 	struct list_head	rr_list;
+ 	struct rpcrdma_regbuf	*rr_rdmabuf;
  };
- #define rdmab_to_ia(b) (&container_of((b), struct rpcrdma_xprt, rx_buf)->rx_ia)
+@@ -430,6 +431,9 @@ unsigned int rpcrdma_max_segments(struct rpcrdma_xprt *);
+ int frwr_alloc_recovery_wq(void);
+ void frwr_destroy_recovery_wq(void);
  
++int rpcrdma_alloc_wq(void);
++void rpcrdma_destroy_wq(void);
++
+ /*
+  * Wrappers for chunk registration, shared by read/write chunk code.
+  */
 
