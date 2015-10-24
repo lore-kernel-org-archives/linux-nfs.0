@@ -1,81 +1,91 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f196.google.com ([209.85.223.196]:34882 "EHLO
-	mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751785AbbJXQwk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 24 Oct 2015 12:52:40 -0400
-Date: Sat, 24 Oct 2015 11:52:37 -0500
-From: Eric Biggers <ebiggers3@gmail.com>
+Received: from userp1040.oracle.com ([156.151.31.81]:49264 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751934AbbJXSlL convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 24 Oct 2015 14:41:11 -0400
+Content-Type: text/plain; charset=utf-8
+Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2104\))
+Subject: Re: [GIT PULL] Please pull NFSoRDMA changes for 4.4
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <562A9C42.7030506@Netapp.com>
+Date: Sat, 24 Oct 2015 14:41:00 -0400
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        linux-rdma <linux-rdma@vger.kernel.org>
+Message-Id: <914C310D-238E-4646-891F-7680492D440C@oracle.com>
+References: <562A9C42.7030506@Netapp.com>
 To: Anna Schumaker <Anna.Schumaker@netapp.com>
-Cc: linux-nfs@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-api@vger.kernel.org,
-        zab@zabbo.net, viro@zeniv.linux.org.uk, clm@fb.com,
-        darrick.wong@oracle.com, mtk.manpages@gmail.com, andros@netapp.com,
-        hch@infradead.org
-Subject: Re: [PATCH v7 0/4] VFS: In-kernel copy system call
-Message-ID: <20151024165237.GA6436@zzz>
-References: <1445628736-13058-1-git-send-email-Anna.Schumaker@Netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1445628736-13058-1-git-send-email-Anna.Schumaker@Netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-A few comments:
 
->       if (!(file_in->f_mode & FMODE_READ) ||
->           !(file_out->f_mode & FMODE_WRITE) ||
->           (file_out->f_flags & O_APPEND) ||
->           !file_out->f_op)
->               return -EBADF;
+> On Oct 23, 2015, at 4:44 PM, Anna Schumaker <Anna.Schumaker@netapp.com> wrote:
+> 
+> Hi Trond,
+> 
+> The following changes since commit 7379047d5585187d1288486d4627873170d0005a:
+> 
+>  Linux 4.3-rc6 (2015-10-18 16:08:42 -0700)
+> 
+> are available in the git repository at:
+> 
+>  git://git.linux-nfs.org/projects/anna/nfs-rdma.git tags/nfs-rdma-4.4
+> 
+> for you to fetch changes up to 50add18fd4c82cc1eaedc6ce879d998a66f20e1f:
+> 
+>  NFS: Enable client side NFSv4.1 backchannel to use other transports (2015-10-19 14:48:18 -0400)
 
-Isn't 'f_op' always non-NULL?
+Anna, did you already send Steve Wise’s fix for 4.4?
 
-If the destination file cannot be append-only, shouldn't this be documented?
-
->	if (inode_in->i_sb != inode_out->i_sb ||
->		file_in->f_path.mnt != file_out->f_path.mnt)
->		return -EXDEV;
-
-Doesn't the same mount already imply the same superblock?
-
-> /*
->  * copy_file_range() differs from regular file read and write in that it
->  * specifically allows return partial success.  When it does so is up to
->  * the copy_file_range method.
->  */
-
-What does this mean?  I thought that read() and write() can also return partial
-success.
-
->       f_out = fdget(fd_out);
->       if (!f_in.file || !f_out.file) {
->               ret = -EBADF;
->               goto out;
->	}
-
-This looked wrong at first because it may call fdput() on a 'struct fd' that was
-not successfully acquired, but it looks like it works currently because of how
-the FDPUT_FPUT flag is used.  It may be a good idea to write it the "obvious"
-way, though (use separate labels depending on which fdput()s need to happen).
+http://marc.info/?l=linux-nfs&m=144285627709672&w=2
 
 
-Other questions:
+> Thanks,
+> Anna
+> 
+> ----------------------------------------------------------------
+> Chuck Lever (16):
+>      xprtrdma: Enable swap-on-NFS/RDMA
+>      xprtrdma: Re-arm after missed events
+>      xprtrdma: Prevent loss of completion signals
+>      xprtrdma: Refactor reply handler error handling
+>      xprtrdma: Replace send and receive arrays
+>      xprtrdma: Use workqueue to process RPC/RDMA replies
+>      xprtrdma: Remove reply tasklet
+>      xprtrdma: Saving IRQs no longer needed for rb_lock
+>      SUNRPC: Abstract backchannel operations
+>      xprtrdma: Pre-allocate backward rpc_rqst and send/receive buffers
+>      xprtrdma: Pre-allocate Work Requests for backchannel
+>      xprtrdma: Add support for sending backward direction RPC replies
+>      xprtrdma: Handle incoming backward direction RPC calls
+>      svcrdma: Add backward direction service for RPC/RDMA transport
+>      SUNRPC: Remove the TCP-only restriction in bc_svc_process()
+>      NFS: Enable client side NFSv4.1 backchannel to use other transports
+> 
+> fs/nfs/callback.c                        |  33 +++++++++------
+> include/linux/sunrpc/bc_xprt.h           |   5 +++
+> include/linux/sunrpc/svc_rdma.h          |   6 ++-
+> include/linux/sunrpc/xprt.h              |   7 ++++
+> net/sunrpc/backchannel_rqst.c            |  24 ++++++++++-
+> net/sunrpc/svc.c                         |   5 ---
+> net/sunrpc/xprtrdma/Makefile             |   1 +
+> net/sunrpc/xprtrdma/backchannel.c        | 373 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+> net/sunrpc/xprtrdma/rpc_rdma.c           | 148 +++++++++++++++++++++++++++++++++++++++++++++--------------------
+> net/sunrpc/xprtrdma/svc_rdma.c           |   6 +++
+> net/sunrpc/xprtrdma/svc_rdma_transport.c |  58 ++++++++++++++++++++++++++
+> net/sunrpc/xprtrdma/transport.c          |  18 +++++++-
+> net/sunrpc/xprtrdma/verbs.c              | 479 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------------------------------------------------------------------------------------------------------
+> net/sunrpc/xprtrdma/xprt_rdma.h          |  53 +++++++++++++++++++-----
+> net/sunrpc/xprtsock.c                    |  16 ++++++++
+> 15 files changed, 916 insertions(+), 316 deletions(-)
+> create mode 100644 net/sunrpc/xprtrdma/backchannel.c
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-Should FMODE_PREAD or FMODE_PWRITE access be checked if the user specifies their
-own 'off_in' or 'off_out', respectively?
+—
+Chuck Lever
 
-What is supposed to happen if the user passes provides a file descriptor to a
-non-regular file, such as a block device or char device?
 
-If the 'in' file has fewer than 'len' bytes remaining until EOF, what is the
-expected behavior?  It looks like the btrfs implementation has different
-behavior from the pagecache implementation.
 
-It appears the btrfs implementation has alignment restrictions --- where is this
-documented and how will users know what alignment to use?
-
-Are copies within the same file permitted and can the ranges overlap?  The man
-page doesn't say.
-
-It looks like the initial patch defines __NR_copy_file_range for the ARM
-architecture but doesn't actually hook that system call up for ARM; why is that?
