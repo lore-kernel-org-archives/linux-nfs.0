@@ -1,93 +1,81 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pa0-f43.google.com ([209.85.220.43]:35719 "EHLO
-	mail-pa0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752355AbbJXP2x (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 24 Oct 2015 11:28:53 -0400
-Received: by pasz6 with SMTP id z6so144427212pas.2
-        for <linux-nfs@vger.kernel.org>; Sat, 24 Oct 2015 08:28:52 -0700 (PDT)
-From: Peng Tao <tao.peng@primarydata.com>
-To: linux-fsdevel@vger.kernel.org
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Christoph Hellwig <hch@infradead.org>, Zach Brown <zab@zabbo.net>,
-        Darren Hart <dvhart@linux.intel.com>,
-        Jeff Layton <jeff.layton@primarydata.com>, bfields@fieldses.org,
-        "Darrick J. Wong" <darrick.wong@oracle.com>, viro@zeniv.linux.org.uk,
-        linux-nfs@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-cifs@vger.kernel.org,
-        Steve French <steve.french@primarydata.com>,
-        Peng Tao <tao.peng@primarydata.com>
-Subject: [PATCH 1/9] vfs: add COPY_FILE_CLONE_ONLY flag
-Date: Sun, 25 Oct 2015 07:17:08 +0800
-Message-Id: <1445728636-10109-2-git-send-email-tao.peng@primarydata.com>
-In-Reply-To: <1445728636-10109-1-git-send-email-tao.peng@primarydata.com>
-References: <1445728636-10109-1-git-send-email-tao.peng@primarydata.com>
+Received: from mail-io0-f196.google.com ([209.85.223.196]:34882 "EHLO
+	mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751785AbbJXQwk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 24 Oct 2015 12:52:40 -0400
+Date: Sat, 24 Oct 2015 11:52:37 -0500
+From: Eric Biggers <ebiggers3@gmail.com>
+To: Anna Schumaker <Anna.Schumaker@netapp.com>
+Cc: linux-nfs@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-api@vger.kernel.org,
+        zab@zabbo.net, viro@zeniv.linux.org.uk, clm@fb.com,
+        darrick.wong@oracle.com, mtk.manpages@gmail.com, andros@netapp.com,
+        hch@infradead.org
+Subject: Re: [PATCH v7 0/4] VFS: In-kernel copy system call
+Message-ID: <20151024165237.GA6436@zzz>
+References: <1445628736-13058-1-git-send-email-Anna.Schumaker@Netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1445628736-13058-1-git-send-email-Anna.Schumaker@Netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-To tell file system not to return partial success in the
-.copy_file_range method. This is useful to implement the
-clone (or reflink) functionality.
+A few comments:
 
-COPY_FILE_CLONE_ONLY is added only to include/linux/fs.h
-and thus is not exposed to users. We can replace it with
-something like Anna's COPY_FR_REFLINK in uapi/fs.h when
-implementing new user visiable APIs like sys_clone.
+>       if (!(file_in->f_mode & FMODE_READ) ||
+>           !(file_out->f_mode & FMODE_WRITE) ||
+>           (file_out->f_flags & O_APPEND) ||
+>           !file_out->f_op)
+>               return -EBADF;
 
-Signed-off-by: Peng Tao <tao.peng@primarydata.com>
----
- fs/read_write.c    | 9 +++++----
- include/linux/fs.h | 3 +++
- 2 files changed, 8 insertions(+), 4 deletions(-)
+Isn't 'f_op' always non-NULL?
 
-diff --git a/fs/read_write.c b/fs/read_write.c
-index d2da7e4..da11a7f 100644
---- a/fs/read_write.c
-+++ b/fs/read_write.c
-@@ -1349,8 +1349,9 @@ static ssize_t vfs_copy_fr_copy(struct file *file_in, loff_t pos_in,
- 
- /*
-  * copy_file_range() differs from regular file read and write in that it
-- * specifically allows return partial success.  When it does so is up to
-- * the copy_file_range method.
-+ * specifically allows returning partial success when COPY_FILE_CLONE_ONLY
-+ * is not set in the flags argument, in which case it is up to the file system
-+ * to decide whether it wants to do so in the copy_file_range method.
-  */
- ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
- 			    struct file *file_out, loff_t pos_out,
-@@ -1360,7 +1361,7 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
- 	struct inode *inode_out = file_inode(file_out);
- 	ssize_t ret;
- 
--	if (flags != 0)
-+	if (flags && flags != COPY_FILE_CLONE_ONLY)
- 		return -EINVAL;
- 
- 	if (!(file_in->f_mode & FMODE_READ) ||
-@@ -1385,7 +1386,7 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
- 	if (file_out->f_op->copy_file_range)
- 		ret = file_out->f_op->copy_file_range(file_in, pos_in, file_out,
- 						      pos_out, len, flags);
--	if (ret == -EOPNOTSUPP)
-+	if (ret == -EOPNOTSUPP && !(flags & COPY_FILE_CLONE_ONLY))
- 		ret = vfs_copy_fr_copy(file_in, pos_in, file_out, pos_out, len);
- 
- 	if (ret > 0) {
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 6220307..1c430fd 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1610,6 +1610,9 @@ struct block_device_operations;
- 
- struct iov_iter;
- 
-+/* Tell file system not to return partial success in copy_file_range method */
-+#define COPY_FILE_CLONE_ONLY		(1 << 0)
-+
- struct file_operations {
- 	struct module *owner;
- 	loff_t (*llseek) (struct file *, loff_t, int);
--- 
-1.8.3.1
+If the destination file cannot be append-only, shouldn't this be documented?
 
+>	if (inode_in->i_sb != inode_out->i_sb ||
+>		file_in->f_path.mnt != file_out->f_path.mnt)
+>		return -EXDEV;
+
+Doesn't the same mount already imply the same superblock?
+
+> /*
+>  * copy_file_range() differs from regular file read and write in that it
+>  * specifically allows return partial success.  When it does so is up to
+>  * the copy_file_range method.
+>  */
+
+What does this mean?  I thought that read() and write() can also return partial
+success.
+
+>       f_out = fdget(fd_out);
+>       if (!f_in.file || !f_out.file) {
+>               ret = -EBADF;
+>               goto out;
+>	}
+
+This looked wrong at first because it may call fdput() on a 'struct fd' that was
+not successfully acquired, but it looks like it works currently because of how
+the FDPUT_FPUT flag is used.  It may be a good idea to write it the "obvious"
+way, though (use separate labels depending on which fdput()s need to happen).
+
+
+Other questions:
+
+Should FMODE_PREAD or FMODE_PWRITE access be checked if the user specifies their
+own 'off_in' or 'off_out', respectively?
+
+What is supposed to happen if the user passes provides a file descriptor to a
+non-regular file, such as a block device or char device?
+
+If the 'in' file has fewer than 'len' bytes remaining until EOF, what is the
+expected behavior?  It looks like the btrfs implementation has different
+behavior from the pagecache implementation.
+
+It appears the btrfs implementation has alignment restrictions --- where is this
+documented and how will users know what alignment to use?
+
+Are copies within the same file permitted and can the ranges overlap?  The man
+page doesn't say.
+
+It looks like the initial patch defines __NR_copy_file_range for the ARM
+architecture but doesn't actually hook that system call up for ARM; why is that?
