@@ -1,225 +1,157 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f173.google.com ([209.85.213.173]:35769 "EHLO
-	mail-ig0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752357AbbJXV2f (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 24 Oct 2015 17:28:35 -0400
-Subject: [PATCH v4 16/16] NFS: Enable client side NFSv4.1 backchannel to use
- other transports
-From: Chuck Lever <chuck.lever@oracle.com>
-To: Anna.Schumaker@netapp.com
-Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Sat, 24 Oct 2015 17:28:32 -0400
-Message-ID: <20151024212832.4715.39528.stgit@manet.1015granger.net>
-In-Reply-To: <20151024211707.4715.61650.stgit@manet.1015granger.net>
-References: <20151024211707.4715.61650.stgit@manet.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-pa0-f50.google.com ([209.85.220.50]:32791 "EHLO
+	mail-pa0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751150AbbJYFX3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 25 Oct 2015 01:23:29 -0400
+Received: by padcn9 with SMTP id cn9so733784pad.0
+        for <linux-nfs@vger.kernel.org>; Sat, 24 Oct 2015 22:23:28 -0700 (PDT)
+Subject: Re: [PATCH v7 0/4] VFS: In-kernel copy system call
+Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2104\))
+Content-Type: multipart/signed; boundary="Apple-Mail=_FDF4770E-EB06-4131-BB44-A60DC879FD59"; protocol="application/pgp-signature"; micalg=pgp-sha256
+From: Andreas Dilger <adilger@dilger.ca>
+In-Reply-To: <20151024165237.GA6436@zzz>
+Date: Sat, 24 Oct 2015 23:23:20 -0600
+Cc: Anna Schumaker <Anna.Schumaker@netapp.com>, linux-nfs@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-api@vger.kernel.org, zab@zabbo.net, viro@zeniv.linux.org.uk,
+        clm@fb.com, darrick.wong@oracle.com, mtk.manpages@gmail.com,
+        andros@netapp.com, hch@infradead.org
+Message-Id: <68F5F620-B6E7-4DB7-ADFF-8FCFE7D88BEA@dilger.ca>
+References: <1445628736-13058-1-git-send-email-Anna.Schumaker@Netapp.com> <20151024165237.GA6436@zzz>
+To: Eric Biggers <ebiggers3@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Forechannel transports get their own "bc_up" method to create an
-endpoint for the backchannel service.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- fs/nfs/callback.c                 |   40 +++++++------------------------------
- include/linux/sunrpc/xprt.h       |    2 ++
- net/sunrpc/xprtrdma/backchannel.c |   21 +++++++++++++++++++
- net/sunrpc/xprtrdma/transport.c   |    1 +
- net/sunrpc/xprtrdma/xprt_rdma.h   |    1 +
- net/sunrpc/xprtsock.c             |   12 +++++++++++
- 6 files changed, 45 insertions(+), 32 deletions(-)
+--Apple-Mail=_FDF4770E-EB06-4131-BB44-A60DC879FD59
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=us-ascii
 
-diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-index 75f7c0a..a7f2e6e 100644
---- a/fs/nfs/callback.c
-+++ b/fs/nfs/callback.c
-@@ -99,17 +99,6 @@ nfs4_callback_up(struct svc_serv *serv)
- }
- 
- #if defined(CONFIG_NFS_V4_1)
--static int nfs41_callback_up_net(struct svc_serv *serv, struct net *net)
--{
--	/*
--	 * Create an svc_sock for the back channel service that shares the
--	 * fore channel connection.
--	 * Returns the input port (0) and sets the svc_serv bc_xprt on success
--	 */
--	return svc_create_xprt(serv, "tcp-bc", net, PF_INET, 0,
--			      SVC_SOCK_ANONYMOUS);
--}
--
- /*
-  * The callback service for NFSv4.1 callbacks
-  */
-@@ -184,11 +173,6 @@ static inline void nfs_callback_bc_serv(u32 minorversion, struct rpc_xprt *xprt,
- 		xprt->bc_serv = serv;
- }
- #else
--static int nfs41_callback_up_net(struct svc_serv *serv, struct net *net)
--{
--	return 0;
--}
--
- static void nfs_minorversion_callback_svc_setup(struct svc_serv *serv,
- 		struct svc_rqst **rqstpp, int (**callback_svc)(void *vrqstp))
- {
-@@ -259,7 +243,8 @@ static void nfs_callback_down_net(u32 minorversion, struct svc_serv *serv, struc
- 	svc_shutdown_net(serv, net);
- }
- 
--static int nfs_callback_up_net(int minorversion, struct svc_serv *serv, struct net *net)
-+static int nfs_callback_up_net(int minorversion, struct svc_serv *serv,
-+			       struct net *net, struct rpc_xprt *xprt)
- {
- 	struct nfs_net *nn = net_generic(net, nfs_net_id);
- 	int ret;
-@@ -275,20 +260,11 @@ static int nfs_callback_up_net(int minorversion, struct svc_serv *serv, struct n
- 		goto err_bind;
- 	}
- 
--	switch (minorversion) {
--		case 0:
--			ret = nfs4_callback_up_net(serv, net);
--			break;
--		case 1:
--		case 2:
--			ret = nfs41_callback_up_net(serv, net);
--			break;
--		default:
--			printk(KERN_ERR "NFS: unknown callback version: %d\n",
--					minorversion);
--			ret = -EINVAL;
--			break;
--	}
-+	ret = -EPROTONOSUPPORT;
-+	if (minorversion == 0)
-+		ret = nfs4_callback_up_net(serv, net);
-+	else if (xprt->ops->bc_up)
-+		ret = xprt->ops->bc_up(serv, net);
- 
- 	if (ret < 0) {
- 		printk(KERN_ERR "NFS: callback service start failed\n");
-@@ -364,7 +340,7 @@ int nfs_callback_up(u32 minorversion, struct rpc_xprt *xprt)
- 		goto err_create;
- 	}
- 
--	ret = nfs_callback_up_net(minorversion, serv, net);
-+	ret = nfs_callback_up_net(minorversion, serv, net, xprt);
- 	if (ret < 0)
- 		goto err_net;
- 
-diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
-index 82c0839..9d22f43 100644
---- a/include/linux/sunrpc/xprt.h
-+++ b/include/linux/sunrpc/xprt.h
-@@ -54,6 +54,7 @@ enum rpc_display_format_t {
- struct rpc_task;
- struct rpc_xprt;
- struct seq_file;
-+struct svc_serv;
- 
- /*
-  * This describes a complete RPC request
-@@ -138,6 +139,7 @@ struct rpc_xprt_ops {
- 	void		(*inject_disconnect)(struct rpc_xprt *xprt);
- 	int		(*bc_setup)(struct rpc_xprt *xprt,
- 				    unsigned int min_reqs);
-+	int		(*bc_up)(struct svc_serv *serv, struct net *net);
- 	void		(*bc_free_rqst)(struct rpc_rqst *rqst);
- 	void		(*bc_destroy)(struct rpc_xprt *xprt,
- 				      unsigned int max_reqs);
-diff --git a/net/sunrpc/xprtrdma/backchannel.c b/net/sunrpc/xprtrdma/backchannel.c
-index 0b3387f..2dcb44f 100644
---- a/net/sunrpc/xprtrdma/backchannel.c
-+++ b/net/sunrpc/xprtrdma/backchannel.c
-@@ -7,6 +7,7 @@
- #include <linux/module.h>
- #include <linux/sunrpc/xprt.h>
- #include <linux/sunrpc/svc.h>
-+#include <linux/sunrpc/svc_xprt.h>
- 
- #include "xprt_rdma.h"
- 
-@@ -174,6 +175,26 @@ out_err:
- }
- 
- /**
-+ * xprt_rdma_bc_up - Create transport endpoint for backchannel service
-+ * @serv: server endpoint
-+ * @net: network namespace
-+ *
-+ * The "xprt" is an implied argument: it supplies the name of the
-+ * backchannel transport class.
-+ *
-+ * Returns zero on success, negative errno on failure
-+ */
-+int xprt_rdma_bc_up(struct svc_serv *serv, struct net *net)
-+{
-+	int ret;
-+
-+	ret = svc_create_xprt(serv, "rdma-bc", net, PF_INET, 0, 0);
-+	if (ret < 0)
-+		return ret;
-+	return 0;
-+}
-+
-+/**
-  * rpcrdma_bc_marshal_reply - Send backwards direction reply
-  * @rqst: buffer containing RPC reply data
-  *
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index 845278e..8c545f7 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -708,6 +708,7 @@ static struct rpc_xprt_ops xprt_rdma_procs = {
- 	.inject_disconnect	= xprt_rdma_inject_disconnect,
- #if defined(CONFIG_SUNRPC_BACKCHANNEL)
- 	.bc_setup		= xprt_rdma_bc_setup,
-+	.bc_up			= xprt_rdma_bc_up,
- 	.bc_free_rqst		= xprt_rdma_bc_free_rqst,
- 	.bc_destroy		= xprt_rdma_bc_destroy,
- #endif
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index eb87d96e8..f8dd17b 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -520,6 +520,7 @@ void xprt_rdma_cleanup(void);
-  */
- #if defined(CONFIG_SUNRPC_BACKCHANNEL)
- int xprt_rdma_bc_setup(struct rpc_xprt *, unsigned int);
-+int xprt_rdma_bc_up(struct svc_serv *, struct net *);
- int rpcrdma_bc_post_recv(struct rpcrdma_xprt *, unsigned int);
- void rpcrdma_bc_receive_call(struct rpcrdma_xprt *, struct rpcrdma_rep *);
- int rpcrdma_bc_marshal_reply(struct rpc_rqst *);
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 44a81e4..dc47067 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -1306,6 +1306,17 @@ static inline int _xs_tcp_read_data(struct rpc_xprt *xprt,
- 		xs_tcp_read_reply(xprt, desc) :
- 		xs_tcp_read_callback(xprt, desc);
- }
-+
-+static int xs_tcp_bc_up(struct svc_serv *serv, struct net *net)
-+{
-+	int ret;
-+
-+	ret = svc_create_xprt(serv, "tcp-bc", net, PF_INET, 0,
-+			      SVC_SOCK_ANONYMOUS);
-+	if (ret < 0)
-+		return ret;
-+	return 0;
-+}
- #else
- static inline int _xs_tcp_read_data(struct rpc_xprt *xprt,
- 					struct xdr_skb_reader *desc)
-@@ -2582,6 +2593,7 @@ static struct rpc_xprt_ops xs_tcp_ops = {
- 	.inject_disconnect	= xs_inject_disconnect,
- #ifdef CONFIG_SUNRPC_BACKCHANNEL
- 	.bc_setup		= xprt_setup_bc,
-+	.bc_up			= xs_tcp_bc_up,
- 	.bc_free_rqst		= xprt_free_bc_rqst,
- 	.bc_destroy		= xprt_destroy_bc,
- #endif
 
+> On Oct 24, 2015, at 10:52 AM, Eric Biggers <ebiggers3@gmail.com> =
+wrote:
+>=20
+> A few comments:
+>=20
+>>      if (!(file_in->f_mode & FMODE_READ) ||
+>>          !(file_out->f_mode & FMODE_WRITE) ||
+>>          (file_out->f_flags & O_APPEND) ||
+>>          !file_out->f_op)
+>>              return -EBADF;
+>=20
+> Isn't 'f_op' always non-NULL?
+>=20
+> If the destination file cannot be append-only, shouldn't this be =
+documented?
+
+Actually, wouldn't O_APPEND only be a problem if the target file wasn't
+being appended to?  In other words, if the target i_size =3D=3D start =
+offset
+then it should be possible to use the copy syscall on an O_APPEND file.
+
+Cheers, Andreas
+
+>> 	if (inode_in->i_sb !=3D inode_out->i_sb ||
+>> 		file_in->f_path.mnt !=3D file_out->f_path.mnt)
+>> 		return -EXDEV;
+>=20
+> Doesn't the same mount already imply the same superblock?
+>=20
+>> /*
+>> * copy_file_range() differs from regular file read and write in that =
+it
+>> * specifically allows return partial success.  When it does so is up =
+to
+>> * the copy_file_range method.
+>> */
+>=20
+> What does this mean?  I thought that read() and write() can also =
+return partial
+> success.
+>=20
+>>      f_out =3D fdget(fd_out);
+>>      if (!f_in.file || !f_out.file) {
+>>              ret =3D -EBADF;
+>>              goto out;
+>> 	}
+>=20
+> This looked wrong at first because it may call fdput() on a 'struct =
+fd' that was
+> not successfully acquired, but it looks like it works currently =
+because of how
+> the FDPUT_FPUT flag is used.  It may be a good idea to write it the =
+"obvious"
+> way, though (use separate labels depending on which fdput()s need to =
+happen).
+>=20
+>=20
+> Other questions:
+>=20
+> Should FMODE_PREAD or FMODE_PWRITE access be checked if the user =
+specifies their
+> own 'off_in' or 'off_out', respectively?
+>=20
+> What is supposed to happen if the user passes provides a file =
+descriptor to a
+> non-regular file, such as a block device or char device?
+>=20
+> If the 'in' file has fewer than 'len' bytes remaining until EOF, what =
+is the
+> expected behavior?  It looks like the btrfs implementation has =
+different
+> behavior from the pagecache implementation.
+>=20
+> It appears the btrfs implementation has alignment restrictions --- =
+where is this
+> documented and how will users know what alignment to use?
+>=20
+> Are copies within the same file permitted and can the ranges overlap?  =
+The man
+> page doesn't say.
+>=20
+> It looks like the initial patch defines __NR_copy_file_range for the =
+ARM
+> architecture but doesn't actually hook that system call up for ARM; =
+why is that?
+> --
+> To unsubscribe from this list: send the line "unsubscribe =
+linux-fsdevel" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+
+Cheers, Andreas
+
+
+
+
+
+
+--Apple-Mail=_FDF4770E-EB06-4131-BB44-A60DC879FD59
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP using GPGMail
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iQIVAwUBVixnSXKl2rkXzB/gAQhHrQ//ZLGJo1eiwLC3Vgk5UM/ZqkUnJARB3sjJ
+dbqmVM/LumCwthwL4638B04pv2CKKLbPsrroYBnoFNaNB9m3EDnEWwqu7ssd0Vn/
+QMqZhxwUOxLmfBpQCQ+c1ZSJTlBrmTcVrH0BJTGnqOIxGMgLTXNSefGSl6Re2SEf
+CQ/MznfK8h0CdHD3sOYEkYj32tIf6dmg3zdNcvDY+3UXQrQ2Z0iiK3cQp2kbSo1k
+VLQ4o5krGF3UuSkcaLlrH0kB/0gLare1r6vXsQgyvMr36+LZZseN63jIVG8ZdnNh
+dGiGoNuoVcDoLzTQJg2pdZgMyr2+fAKwjTngWJN7dqhWI9iOnIayR0qFVdSqW8Q6
+Yhy2MI6vq0TxyW7VBT8PtBpnwnk3Gc4Ga4iudDSkqcd+c++riwDDNpoxrKTf+5R6
+ii6ZpHQ1EHYpk2WKqVEbv4Nzyavkn3EJZoaDrMTbiORxPSQmY3m1zgTLhfGoFOvs
+UrxjEWqLa7HQ13m2bl33Sgsl7HGR2lEaEbyY8wvnlR8wZUvAvGcSpOvMpqR0t/WR
+MIZ4OJulFxaAy3HM3gBkrBrYEhKc2u31f1GzolaaDQsYYhuAKnRYtG7ZSyIsX3Vp
+0UrYkw7WVykx5k0IcX0DCTuwLTc11fUpsXFybrLJMpeF+SK/uLdYscQPOtVoIBTL
+KMb0tkG1YtY=
+=XODZ
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_FDF4770E-EB06-4131-BB44-A60DC879FD59--
