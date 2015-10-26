@@ -1,56 +1,101 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wi0-f172.google.com ([209.85.212.172]:37948 "EHLO
-	mail-wi0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752893AbbJZEdG (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 26 Oct 2015 00:33:06 -0400
-Received: by wicll6 with SMTP id ll6so96971308wic.1
-        for <linux-nfs@vger.kernel.org>; Sun, 25 Oct 2015 21:33:05 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <20151023182506.GB15564@fieldses.org>
-References: <CAPrqf91BcyKjsHMK+fYm6cbxEkeU__2NYF=XZhL+TAmZ-LnzMw@mail.gmail.com>
-	<20151023182506.GB15564@fieldses.org>
-Date: Mon, 26 Oct 2015 10:03:05 +0530
-Message-ID: <CAPrqf92Vs8F2JaAv5SDf74=iPNE09v3kExoOXea-YCGaa78xvA@mail.gmail.com>
-Subject: Re: Max connurent connections limit on nfsvs server.
-From: Pankaj Singh <psingh.ait@gmail.com>
+Received: from krichy.tvnetwork.hu ([109.61.101.194]:57942 "EHLO
+	krichy.tvnetwork.hu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753268AbbJZHi5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 26 Oct 2015 03:38:57 -0400
+Date: Mon, 26 Oct 2015 08:38:53 +0100 (CET)
+From: krichy@tvnetwork.hu
 To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=UTF-8
+cc: linux-nfs@vger.kernel.org
+Subject: Re: nfs lockup
+In-Reply-To: <20151023181001.GA15564@fieldses.org>
+Message-ID: <alpine.DEB.2.20.1510260834280.24908@krichy.tvnetwork.hu>
+References: <alpine.DEB.2.20.1510211715430.5353@krichy.tvnetwork.hu> <20151023181001.GA15564@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-HI,
 
-So this means that nfs by itself does not have a limit but it depends
-on hardware, underlying filesystem and number of sockets supported by
-system. Or Is it correct to say, with increase in connections (TCP)
-first limit that would hit will be because of underlying filesystem's
-resource consumption and it response time( time to process an RPC).
+I dont have exact measurements, but my observations were that the file 
+grew at around a few 100kbyte/s, while after a reboot this file can be 
+copied at a few megs/s rate.
 
-Thanks,
-~Pankaj Singh
+I did a kernel upgrade to 4.2 now, and I am trying to collect more 
+information upon the hang. Unfortunately I dont know the exact case which 
+triggers this hang, thus I cannot reproduce. Measurements before the 
+hangs dont show any unusual to me.
 
-On Fri, Oct 23, 2015 at 11:55 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> On Fri, Oct 23, 2015 at 12:07:40PM +0530, Pankaj Singh wrote:
->> I am new to nfs.
->> What would be the max connurent connections an nfsv3 server can support?
->> Even if we are an high end hardware and fastest(have high throughput)
->> underlining file system.
+Thanks in advance,
+Kojedzinszky Richard
+Euronet Magyarorszag Informatika Zrt.
+
+On Fri, 23 Oct 2015, J. Bruce Fields wrote:
+
+> Date: Fri, 23 Oct 2015 14:10:01 -0400
+> From: J. Bruce Fields <bfields@fieldses.org>
+> To: krichy@tvnetwork.hu
+> Cc: linux-nfs@vger.kernel.org
+> Subject: Re: nfs lockup
+> 
+> On Wed, Oct 21, 2015 at 05:25:53PM +0200, krichy@tvnetwork.hu wrote:
+>> Dear devs,
+>>
+>> We have an nfs lockup issue. We run a ganeti cluster consisting of 7
+>> debian linux nodes and 1 freenas for hosting the vm images. The
+>> images are exported via nfsv3. The problem is that randomly we end
+>> in a livelock on one of our nodes.
+>>
+>> That means the nfs share is alive, we can list directories, files,
+>> even can read files (very slow, see later). And even can write to
+>> files, but the file close operation does not return, it gets
+>> blocked.
+>>
+>> The read is slow in that way that while copying a file from the
+>> share to /tmp, the data arrives very fast to the node, but in /tmp
+>> it accumulates slowly.
 >
-> I don't think we can give a single number, you may hit different limits
-> depending on your hardware and workload.
->
-> Note that there are max_connections tunables for both nfsd and nlm
-> (/porc/fs/nfsd/max_connections and
-> /sys/module/lockd/parameters/nlm_max_connections) which you may need to
-> adjust (but of course that doesn't solve all problems, it just controls
-> some code that causes the server to drop connections past those limits.)
+> I don't understand what you mean by that.  Do you have some measurements
+> to help quantify "very fast" and "slowly"?
 >
 > --b.
-
-
-
--- 
-Regards,
-Pankaj SIngh
-Phone No: 8826266889
+>
+>>
+>> I've also opened a debian bug report on it, but I think it is not
+>> related to debian
+>> (https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=801924).
+>>
+>> The only way is to reboot machine, with all the vm's running on it
+>> getting interrupted.
+>>
+>> I've captured each tasks' stack trace, hopefully it helps someone to
+>> find out the issue.
+>>
+>> Meanwhile the other 6 nodes can access the nfs share right, so I
+>> think this is not a networking or server issue. Restarting the nfs
+>> server on the server side still does not have any effect, not
+>> recovering. The nfs tcp connection is established, listing files
+>> works again, but writes not.
+>>
+>> Some information of the nodes:
+>> # uname -a
+>> Linux host 3.16.0-4-amd64 #1 SMP Debian 3.16.7-ckt11-1+deb8u4
+>> (2015-09-19) x86_64 GNU/Linux
+>>
+>> They have 1.5G ram allocated to dom0, that should be enough.
+>>
+>> I know this information is little information, give me advice what
+>> to look for next time. Unfortunately I dont know how to reproduce
+>> it.
+>>
+>> Thanks in advance,
+>>
+>> Kojedzinszky Richard
+>> Euronet Magyarorszag Informatika Zrt.
+>
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
