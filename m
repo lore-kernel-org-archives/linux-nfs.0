@@ -1,55 +1,174 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f170.google.com ([209.85.213.170]:33165 "EHLO
-	mail-ig0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932256AbbJ0QD5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 27 Oct 2015 12:03:57 -0400
+Received: from mail-ig0-f178.google.com ([209.85.213.178]:33555 "EHLO
+	mail-ig0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S964799AbbJ0ROM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 27 Oct 2015 13:14:12 -0400
 MIME-Version: 1.0
-In-Reply-To: <1445628736-13058-2-git-send-email-Anna.Schumaker@Netapp.com>
-References: <1445628736-13058-1-git-send-email-Anna.Schumaker@Netapp.com> <1445628736-13058-2-git-send-email-Anna.Schumaker@Netapp.com>
+In-Reply-To: <1445728636-10109-3-git-send-email-tao.peng@primarydata.com>
+References: <1445728636-10109-1-git-send-email-tao.peng@primarydata.com> <1445728636-10109-3-git-send-email-tao.peng@primarydata.com>
 From: Steve French <smfrench@gmail.com>
-Date: Tue, 27 Oct 2015 11:03:37 -0500
-Message-ID: <CAH2r5mtRzSX3dZAXZwgVLQfjjfrkX8X=7b2uxQJ+De=5JjmqCw@mail.gmail.com>
-Subject: Re: [PATCH v7 1/4] vfs: add copy_file_range syscall and vfs helper
-To: Anna Schumaker <Anna.Schumaker@netapp.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+Date: Tue, 27 Oct 2015 12:13:52 -0500
+Message-ID: <CAH2r5mt1e5LigOh4Xyj5NCFUrSjTOajKjeYZsR2mE1rHE93uKg@mail.gmail.com>
+Subject: Re: [PATCH 2/9] cifs: add .copy_file_range file operation
+To: Peng Tao <tao.peng@primarydata.com>
+Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Christoph Hellwig <hch@infradead.org>, Zach Brown <zab@zabbo.net>,
+        Darren Hart <dvhart@linux.intel.com>,
+        Jeff Layton <jeff.layton@primarydata.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        "Darrick J. Wong" <darrick.wong@oracle.com>,
+        Al Viro <viro@zeniv.linux.org.uk>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
         linux-btrfs@vger.kernel.org,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        "linux-api@vger.kernel.org" <linux-api@vger.kernel.org>, zab@zabbo.net,
-        Al Viro <viro@zeniv.linux.org.uk>, clm@fb.com, darrick.wong@oracle.com,
-        Michael Kerrisk-manpages <mtk.manpages@gmail.com>, andros@netapp.com,
-        Christoph Hellwig <hch@infradead.org>
+        "linux-cifs@vger.kernel.org" <linux-cifs@vger.kernel.org>,
+        Steve French <steve.french@primarydata.com>,
+        samba-technical <samba-technical@lists.samba.org>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The patch set looks good so far, and copy offload is important for
-CIFS/SMB3 (not just Windows/Mac/Samba but most servers support one of
-the various methods available to do this over the network via CIFS and
-also SMB2/SMB3).  I have only implemented two ways of copy offload in
-cifs.ko so far but will look at adding the remaining mechanisms.
+Patch looks fine, but it points out a Kconfig problem with cifs.ko.
+Need to remove the
 
-Currently cifs.ko does have a similar restriction to the below one
-that you have in your patch1, but I was planning to relax it (as long
-as source and target are on the same server) since some of the
-important use cases are having the server do copy offload from one
-share to another.   So we should support the case where the files are
-on the same file system type (nfs, cifs etc.) but not necessarily on
-the same superblock (for the case of cifs they will be on the same
-server, but with some forms of copy offload that would not necessarily
-have to be on the same server).
+         #ifdef CONFIG_CIFS_POSIX
 
-The following check should be removed (an alternative would be to
-check that source and target are the same filesystem type ie nfs, or
-cifs or xfs etc. or simply let the file systems check file_in and
-file_out's validity)
+around the statements like:
 
-> +       /* this could be relaxed once a method supports cross-fs copies */
-> +       if (inode_in->i_sb != inode_out->i_sb ||
-> +           file_in->f_path.mnt != file_out->f_path.mnt)
-> +               return -EXDEV;
+         .unlocked_ioctl = cifs_ioctl,
+         .copy_file_range = cifs_file_copy_range,
+
+Copy offload does not require support for the old CIFS POSIX
+extensions (or even cifs at all) - it works fine over SMB3.
+Alternatively you can move the copy_file_range to the end of the
+struct file_operations in your patch, and I can remove the
+CONFIG_CIFS_POSIX around cifs_ioctl in a different patch that I put in
+my tree - whichever you prefer.
+
+Originally the first ioctl that cifs supported did require the CIFS
+POSIX extensions because it used an info level defined in the CIFS
+UNIX/POSIX extensions.  With later additions to cifs_ioctl that
+restriction is now obsolete.  Later ioctls have been added that work
+over SMB3, and do not require the CIFS POSIX extensions (such as copy
+offload).   The patch that originally introduced the CIFS_POSIX ifdef
+around this ioctl was
+
+commit c67593a03129967eae8939c4899767182eb6d6cd
+Author: Steve French <smfrench@austin.rr.com>
+Date:   Thu Apr 28 22:41:04 2005 -0700
+
+    [PATCH] cifs: Enable ioctl support in POSIX extensions to handle lsattr
+
+but obviously now we don't need the CONFIG_CIFS_POSIX ifdef around the
+ioctl functions.
+
+On Sat, Oct 24, 2015 at 6:17 PM, Peng Tao <tao.peng@primarydata.com> wrote:
+> Signed-off-by: Peng Tao <tao.peng@primarydata.com>
+> ---
+>  fs/cifs/cifsfs.c |  22 ++++++++++++
+>  fs/cifs/cifsfs.h |   4 ++-
+>  fs/cifs/ioctl.c  | 100 +++++++++++++++++++++++++++++++------------------------
+>  3 files changed, 82 insertions(+), 44 deletions(-)
+>
+> diff --git a/fs/cifs/cifsfs.c b/fs/cifs/cifsfs.c
+> index e739950..6ef7c3c 100644
+> --- a/fs/cifs/cifsfs.c
+> +++ b/fs/cifs/cifsfs.c
+> @@ -910,6 +910,22 @@ const struct inode_operations cifs_symlink_inode_ops = {
+>  #endif
+>  };
+>
+> +#ifdef CONFIG_CIFS_POSIX
+> +ssize_t cifs_file_copy_range(struct file *file_in, loff_t pos_in,
+> +                            struct file *file_out, loff_t pos_out,
+> +                            size_t len, unsigned int flags)
+> +{
+> +       unsigned int xid;
+> +       int rc;
+> +
+> +       xid = get_xid();
+> +       rc = cifs_file_clone_range(xid, file_in, file_out, pos_in,
+> +                                  len, pos_out, true);
+> +       free_xid(xid);
+> +       return rc < 0 ? rc : len;
+> +}
+> +#endif
+> +
+>  const struct file_operations cifs_file_ops = {
+>         .read_iter = cifs_loose_read_iter,
+>         .write_iter = cifs_file_write_iter,
+> @@ -923,6 +939,7 @@ const struct file_operations cifs_file_ops = {
+>         .llseek = cifs_llseek,
+>  #ifdef CONFIG_CIFS_POSIX
+>         .unlocked_ioctl = cifs_ioctl,
+> +       .copy_file_range = cifs_file_copy_range,
+>  #endif /* CONFIG_CIFS_POSIX */
+>         .setlease = cifs_setlease,
+>         .fallocate = cifs_fallocate,
+> @@ -941,6 +958,7 @@ const struct file_operations cifs_file_strict_ops = {
+>         .llseek = cifs_llseek,
+>  #ifdef CONFIG_CIFS_POSIX
+>         .unlocked_ioctl = cifs_ioctl,
+> +       .copy_file_range = cifs_file_copy_range,
+>  #endif /* CONFIG_CIFS_POSIX */
+>         .setlease = cifs_setlease,
+>         .fallocate = cifs_fallocate,
+> @@ -959,6 +977,7 @@ const struct file_operations cifs_file_direct_ops = {
+>         .splice_read = generic_file_splice_read,
+>  #ifdef CONFIG_CIFS_POSIX
+>         .unlocked_ioctl  = cifs_ioctl,
+> +       .copy_file_range = cifs_file_copy_range,
+>  #endif /* CONFIG_CIFS_POSIX */
+>         .llseek = cifs_llseek,
+>         .setlease = cifs_setlease,
+> @@ -977,6 +996,7 @@ const struct file_operations cifs_file_nobrl_ops = {
+>         .llseek = cifs_llseek,
+>  #ifdef CONFIG_CIFS_POSIX
+>         .unlocked_ioctl = cifs_ioctl,
+> +       .copy_file_range = cifs_file_copy_range,
+>  #endif /* CONFIG_CIFS_POSIX */
+>         .setlease = cifs_setlease,
+>         .fallocate = cifs_fallocate,
+> @@ -994,6 +1014,7 @@ const struct file_operations cifs_file_strict_nobrl_ops = {
+>         .llseek = cifs_llseek,
+>  #ifdef CONFIG_CIFS_POSIX
+>         .unlocked_ioctl = cifs_ioctl,
+> +       .copy_file_range = cifs_file_copy_range,
+>  #endif /* CONFIG_CIFS_POSIX */
+>         .setlease = cifs_setlease,
+>         .fallocate = cifs_fallocate,
+> @@ -1011,6 +1032,7 @@ const struct file_operations cifs_file_direct_nobrl_ops = {
+>         .splice_read = generic_file_splice_read,
+>  #ifdef CONFIG_CIFS_POSIX
+>         .unlocked_ioctl  = cifs_ioctl,
+> +       .copy_file_range = cifs_file_copy_range,
+>  #endif /* CONFIG_CIFS_POSIX */
+>         .llseek = cifs_llseek,
+>         .setlease = cifs_setlease,
 
 
+Patch looks fine, but it points out a Kconfig problem with cifs.ko.
+Need to remove the
 
+#ifdef CONFIG_CIFS_POSIX
+
+around the
+
+         .unlocked_ioctl = cifs_ioctl,
+         .copy_file_range = cifs_file_copy_range,
+
+statements.  Alternatively you can move the copy_file_range to the end
+of the struct file_operations in your patch, and I can remove the
+CONFIG_CIFS_POSIX around cifs_ioctl in a different patch that I put in
+my tree - whichever you prefer.
+
+Originally the first ioctl that cifs supported did require the CIFS
+POSIX extensions because it used an info level defined in the CIFS
+UNIX/POSIX extensions.  With later additions to cifs_ioctl that
+restriction is now obsolete.  Later ioctls have been added that work
+over SMB3, and do not require the CIFS POSIX extensions (such as copy
+offload).  See patch
 
 -- 
 Thanks,
