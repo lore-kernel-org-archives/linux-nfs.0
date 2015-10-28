@@ -1,52 +1,185 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ob0-f173.google.com ([209.85.214.173]:36186 "EHLO
-	mail-ob0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751423AbbJ1UQf convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Oct 2015 16:16:35 -0400
-Received: by obcqt19 with SMTP id qt19so16450158obc.3
-        for <linux-nfs@vger.kernel.org>; Wed, 28 Oct 2015 13:16:35 -0700 (PDT)
+Received: from krichy.tvnetwork.hu ([109.61.101.194]:37568 "EHLO
+	krichy.tvnetwork.hu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756333AbbJ1XRb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Oct 2015 19:17:31 -0400
+Date: Thu, 29 Oct 2015 00:17:27 +0100 (CET)
+From: krichy@tvnetwork.hu
+To: "J. Bruce Fields" <bfields@fieldses.org>
+cc: linux-nfs@vger.kernel.org
+Subject: Re: nfs client hangs / repeating nfs requests
+In-Reply-To: <alpine.DEB.2.20.1510281511070.25867@krichy.tvnetwork.hu>
+Message-ID: <alpine.DEB.2.20.1510290012060.5794@krichy.tvnetwork.hu>
+References: <alpine.DEB.2.20.1510281158380.24492@krichy.tvnetwork.hu> <20151028135742.GC20682@fieldses.org> <alpine.DEB.2.20.1510281511070.25867@krichy.tvnetwork.hu>
 MIME-Version: 1.0
-In-Reply-To: <40E7CBBC-565F-41D7-BC3D-069FFD8B0BBB@oracle.com>
-References: <216A83C3-D724-49C7-A64B-3471CF981AA3@oracle.com>
-	<CAHQdGtREX8ZPw9eVaXpxaPSjmfjQvQpXcxS5DnOdjgq=zfthSg@mail.gmail.com>
-	<40E7CBBC-565F-41D7-BC3D-069FFD8B0BBB@oracle.com>
-Date: Wed, 28 Oct 2015 16:16:34 -0400
-Message-ID: <CAHQdGtTd2mwzNL6mjg4+Eiwbzk2FRkBovJcT__OLQC-WbvrpJg@mail.gmail.com>
-Subject: Re: GSSD warning with proto=rdma
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=US-ASCII; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Oct 28, 2015 at 3:33 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
->
->> On Oct 28, 2015, at 3:30 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
->>
->> On Wed, Oct 28, 2015 at 2:56 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
->>> Hi-
->>>
->>> I’m beginning to try Kerberos with NFS/RDMA. I get this complaint
->>> from GSSD:
->>>
->>> Oct 28 13:10:02 manet rpc.gssd[2549]: WARNING: unrecognized
->>> protocol, 'rdma', requested for connection to server
->>> klimt-ib.1015granger.net for user with uid 0
->>>
->>> Should I change the kernel NFS client to tell GSSD it’s using
->>> TCP, or should I change GSSD to recognize RDMA as another form
->>> of TCP?
->>>
->>
->> gssd expects to be able to connect to the IP address that we pass in
->> the upcall. If we can guarantee that IP address can always be resolved
->> in a TCP connection attempt, then let's lie, and call it TCP.
->
-> NFS/RDMA still requires IPoIB to provide IP addresses that
-> resolve to GUIDs, so I think we can make that guarantee.
->
-> Still, do you prefer the kernel to lie, or for GSSD to lie?
-> Changing GSSD might be more future-proof.
+Dear Bruce,
 
-OK.
+I am trying to do more dbugging regarding my issue. Now I am at a stage 
+where the nfs mount is unmounted, and still the kernel log shows periodic 
+nfs messages, and also packets transmitted. The nfs mount point is 
+unmounted.
+
+Something strange is going here.
+
+The nfs was mounted over gre over ipsec over a WAN connection, which may 
+have random packet loss or high RTT. Can this cause the nfs client to 
+behave this way? I suppose it should no.
+
+Please tell me what info should I collect for more debugging.
+
+Unfortunately I could not reproduce this in a virtualised network 
+environment even with netem qdisc to emulate the WAN characteristics. But 
+I am trying to do it so.
+
+Thanks in advance,
+
+Kojedzinszky Richard
+Euronet Magyarorszag Informatika Zrt.
+
+On Wed, 28 Oct 2015, krichy@tvnetwork.hu wrote:
+
+> Date: Wed, 28 Oct 2015 16:19:50 +0100 (CET)
+> From: krichy@tvnetwork.hu
+> To: J. Bruce Fields <bfields@fieldses.org>
+> Cc: linux-nfs@vger.kernel.org
+> Subject: Re: nfs client hangs / repeating nfs requests
+> 
+> Dear Bruce,
+>
+> That was an n-th experiment. Actually, with default settings the hang still 
+> happens, but I've just noticed the repeating packets with these settings. 
+> I've chosen 1024 sizes to fit the requests in one packets, to avoid any 
+> ip/udp fragmentation.
+>
+> The server is a freebsd nfs. I am struggling with this setup for a few months 
+> now, and I dont know, what is the cause of the hang. I could hardly believe 
+> that the nfs server is buggy, as many people around the world is using 
+> freebsd as an nfs server. The same for linux, I hardly can believe that the 
+> nfs client is faulty, as again many people is using it.
+>
+> But still I have the issue, hanging nfs mounts.
+>
+> I will report on any advance.
+>
+> Regards,
+>
+> Kojedzinszky Richard
+> Euronet Magyarorszag Informatika Zrt.
+>
+> On Wed, 28 Oct 2015, J. Bruce Fields wrote:
+>
+>> Date: Wed, 28 Oct 2015 09:57:42 -0400
+>> From: J. Bruce Fields <bfields@fieldses.org>
+>> To: krichy@tvnetwork.hu
+>> Cc: linux-nfs@vger.kernel.org
+>> Subject: Re: nfs client hangs / repeating nfs requests
+>> 
+>> On Wed, Oct 28, 2015 at 12:06:02PM +0100, krichy@tvnetwork.hu wrote:
+>>> Dear all,
+>>> 
+>>> I am again having some trouble with nfs client. Actually I am
+>>> running minidlna over nfs over gre over ipsec configuration, but I
+>>> suppose the latter two should not count.
+>>> 
+>>> Minidlna scans the entire directory, reading all files (or just
+>>> parts), and while doing it, sometimes the process hangs.
+>>> 
+>>> I could emulate this with reading the first 16k off all files from
+>>> nfs, and fortunately the effect is the same.
+>>> 
+>>> After a hang/recovery, no userspace is accessing the nfs right now,
+>>> but tcpdump shows repeating requests/replies (attached). Meanwhile
+>>> the rpc debug also emits logs.
+>>> 
+>>> # uname -a
+>>> Linux k-desktop 4.1.0-2-amd64 #1 SMP Debian 4.1.6-1 (2015-08-23)
+>>> x86_64 GNU/Linux
+>>> # mount | grep nfs
+>>> 10.0.0.2:/home/kh on /remote/kh type nfs 
+>>> (rw,relatime,vers=3,rsize=1024,wsize=1024,namlen=255,hard,nolock,proto=udp,timeo=11,retrans=3,sec=sys,mountaddr=10.0.0.2,mountvers=3,mountport=644,mountproto=udp,local_lock=all,addr=10.0.0.2)
+>> 
+>> rsize=1024,wsize=1024,proto=udp is unusual and not normally what we'd
+>> recommend.  Is there a reason for not sticking with defaults there?
+>> 
+>> But I don't have any explanation for the hang.
+>> 
+>> --b.
+>> 
+>>> Any suggestions?
+>>> 
+>>> Kojedzinszky Richard
+>>> Euronet Magyarorszag Informatika Zrt.
+>> 
+>> 
+>>> Oct 28 12:02:18 k-desktop kernel: [12237.516020] RPC: 54539 
+>>> xprt_prepare_transmit
+>>> Oct 28 12:02:18 k-desktop kernel: [12237.516022] RPC: 54539 
+>>> xprt_cwnd_limited cong = 0 cwnd = 256
+>>> Oct 28 12:02:18 k-desktop kernel: [12237.516027] RPC: 54539 
+>>> xprt_transmit(120)
+>>> Oct 28 12:02:18 k-desktop kernel: [12237.516054] RPC: 54539 xmit complete
+>>> Oct 28 12:02:22 k-desktop kernel: [12241.932011] RPC: 54539 xprt_timer
+>>> Oct 28 12:02:22 k-desktop kernel: [12241.932016] RPC:       cong 256, cwnd 
+>>> was 256, now 256
+>>> Oct 28 12:02:22 k-desktop kernel: [12241.932020] RPC: 54539 
+>>> xprt_prepare_transmit
+>>> Oct 28 12:02:22 k-desktop kernel: [12241.932022] RPC: 54539 
+>>> xprt_cwnd_limited cong = 0 cwnd = 256
+>>> Oct 28 12:02:22 k-desktop kernel: [12241.932027] RPC: 54539 
+>>> xprt_transmit(120)
+>>> Oct 28 12:02:22 k-desktop kernel: [12241.932054] RPC: 54539 xmit complete
+>>> Oct 28 12:02:31 k-desktop kernel: [12250.748013] RPC: 54539 xprt_timer
+>>> Oct 28 12:02:31 k-desktop kernel: [12250.748018] RPC:       cong 256, cwnd 
+>>> was 256, now 256
+>>> Oct 28 12:02:31 k-desktop kernel: [12250.748023] RPC: 54539 
+>>> xprt_prepare_transmit
+>>> Oct 28 12:02:31 k-desktop kernel: [12250.748025] RPC: 54539 
+>>> xprt_cwnd_limited cong = 0 cwnd = 256
+>>> Oct 28 12:02:31 k-desktop kernel: [12250.748029] RPC: 54539 
+>>> xprt_transmit(120)
+>>> Oct 28 12:02:31 k-desktop kernel: [12250.748058] RPC: 54539 xmit complete
+>>> Oct 28 12:02:32 k-desktop kernel: [12251.852014] RPC: 54539 xprt_timer
+>>> Oct 28 12:02:32 k-desktop kernel: [12251.852018] RPC:       cong 256, cwnd 
+>>> was 256, now 256
+>>> Oct 28 12:02:32 k-desktop kernel: [12251.852021] RPC: 54539 
+>>> xprt_prepare_transmit
+>>> Oct 28 12:02:32 k-desktop kernel: [12251.852023] RPC: 54539 
+>>> xprt_cwnd_limited cong = 0 cwnd = 256
+>>> Oct 28 12:02:32 k-desktop kernel: [12251.852027] RPC: 54539 
+>>> xprt_transmit(120)
+>>> Oct 28 12:02:32 k-desktop kernel: [12251.852048] RPC: 54539 xmit complete
+>>> Oct 28 12:02:35 k-desktop kernel: [12254.060011] RPC: 54539 xprt_timer
+>>> Oct 28 12:02:35 k-desktop kernel: [12254.060015] RPC:       cong 256, cwnd 
+>>> was 256, now 256
+>>> Oct 28 12:02:35 k-desktop kernel: [12254.060018] RPC: 54539 
+>>> xprt_prepare_transmit
+>>> Oct 28 12:02:35 k-desktop kernel: [12254.060020] RPC: 54539 
+>>> xprt_cwnd_limited cong = 0 cwnd = 256
+>>> Oct 28 12:02:35 k-desktop kernel: [12254.060023] RPC: 54539 
+>>> xprt_transmit(120)
+>>> Oct 28 12:02:35 k-desktop kernel: [12254.060041] RPC: 54539 xmit complete
+>>> Oct 28 12:02:39 k-desktop kernel: [12258.476012] RPC: 54539 xprt_timer
+>>> Oct 28 12:02:39 k-desktop kernel: [12258.476016] RPC:       cong 256, cwnd 
+>>> was 256, now 256
+>>> Oct 28 12:02:39 k-desktop kernel: [12258.476020] RPC: 54539 
+>>> xprt_prepare_transmit
+>>> Oct 28 12:02:39 k-desktop kernel: [12258.476022] RPC: 54539 
+>>> xprt_cwnd_limited cong = 0 cwnd = 256
+>>> Oct 28 12:02:39 k-desktop kernel: [12258.476027] RPC: 54539 
+>>> xprt_transmit(120)
+>>> Oct 28 12:02:39 k-desktop kernel: [12258.476052] RPC: 54539 xmit complete
+>> 
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
