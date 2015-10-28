@@ -1,124 +1,106 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from krichy.tvnetwork.hu ([109.61.101.194]:41364 "EHLO
-	krichy.tvnetwork.hu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752487AbbJ1PTy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Oct 2015 11:19:54 -0400
-Date: Wed, 28 Oct 2015 16:19:50 +0100 (CET)
-From: krichy@tvnetwork.hu
+Received: from e39.co.us.ibm.com ([32.97.110.160]:49306 "EHLO
+	e39.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932762AbbJ1QQ5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Oct 2015 12:16:57 -0400
+Received: from localhost
+	by e39.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <malahal@us.ibm.com>;
+	Wed, 28 Oct 2015 10:16:57 -0600
+Received: from b01cxnp23033.gho.pok.ibm.com (b01cxnp23033.gho.pok.ibm.com [9.57.198.28])
+	by d01dlp01.pok.ibm.com (Postfix) with ESMTP id 9379C38C8046
+	for <linux-nfs@vger.kernel.org>; Wed, 28 Oct 2015 12:16:54 -0400 (EDT)
+Received: from d01av05.pok.ibm.com (d01av05.pok.ibm.com [9.56.224.195])
+	by b01cxnp23033.gho.pok.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id t9SGGsYL55312508
+	for <linux-nfs@vger.kernel.org>; Wed, 28 Oct 2015 16:16:54 GMT
+Received: from d01av05.pok.ibm.com (localhost [127.0.0.1])
+	by d01av05.pok.ibm.com (8.14.4/8.14.4/NCO v10.0 AVout) with ESMTP id t9SGFriD017439
+	for <linux-nfs@vger.kernel.org>; Wed, 28 Oct 2015 12:15:55 -0400
+Date: Wed, 28 Oct 2015 11:16:48 -0500
+From: Malahal Naineni <malahal@us.ibm.com>
 To: "J. Bruce Fields" <bfields@fieldses.org>
-cc: linux-nfs@vger.kernel.org
-Subject: Re: nfs client hangs / repeating nfs requests
-In-Reply-To: <20151028135742.GC20682@fieldses.org>
-Message-ID: <alpine.DEB.2.20.1510281511070.25867@krichy.tvnetwork.hu>
-References: <alpine.DEB.2.20.1510281158380.24492@krichy.tvnetwork.hu> <20151028135742.GC20682@fieldses.org>
+Cc: linux-nfs@vger.kernel.org, steved@redhat.com
+Subject: Re: [PATCH] Close etab file's file descriptor on stat error.
+Message-ID: <20151028161648.GB2549@us.ibm.com>
+References: <1445990490-1941-1-git-send-email-malahal@us.ibm.com>
+ <20151028135331.GB20682@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; format=flowed; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20151028135331.GB20682@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Dear Bruce,
+I wondered that myself! gdb (of course, running in foreground) showed
+0,1,2 as a pty as expected. file descriptor 3 was some socket! Maybe, I
+will debug it to find out what socket that was and what issues a user
+could get into!
 
-That was an n-th experiment. Actually, with default settings the hang 
-still happens, but I've just noticed the repeating packets with these 
-settings. I've chosen 1024 sizes to fit the requests in one packets, 
-to avoid any ip/udp fragmentation.
+Regards, Malahal.
 
-The server is a freebsd nfs. I am struggling with this setup for a few 
-months now, and I dont know, what is the cause of the hang. I could hardly 
-believe that the nfs server is buggy, as many people around the world is 
-using freebsd as an nfs server. The same for linux, I hardly can believe 
-that the nfs client is faulty, as again many people is using it.
-
-But still I have the issue, hanging nfs mounts.
-
-I will report on any advance.
-
-Regards,
-
-Kojedzinszky Richard
-Euronet Magyarorszag Informatika Zrt.
-
-On Wed, 28 Oct 2015, J. Bruce Fields wrote:
-
-> Date: Wed, 28 Oct 2015 09:57:42 -0400
-> From: J. Bruce Fields <bfields@fieldses.org>
-> To: krichy@tvnetwork.hu
-> Cc: linux-nfs@vger.kernel.org
-> Subject: Re: nfs client hangs / repeating nfs requests
+J. Bruce Fields [bfields@fieldses.org] wrote:
+> On Tue, Oct 27, 2015 at 07:01:30PM -0500, Malahal Naineni wrote:
+> > Also, fixed erroneously closing file descriptor 0 at init time.
 > 
-> On Wed, Oct 28, 2015 at 12:06:02PM +0100, krichy@tvnetwork.hu wrote:
->> Dear all,
->>
->> I am again having some trouble with nfs client. Actually I am
->> running minidlna over nfs over gre over ipsec configuration, but I
->> suppose the latter two should not count.
->>
->> Minidlna scans the entire directory, reading all files (or just
->> parts), and while doing it, sometimes the process hangs.
->>
->> I could emulate this with reading the first 16k off all files from
->> nfs, and fortunately the effect is the same.
->>
->> After a hang/recovery, no userspace is accessing the nfs right now,
->> but tcpdump shows repeating requests/replies (attached). Meanwhile
->> the rpc debug also emits logs.
->>
->> # uname -a
->> Linux k-desktop 4.1.0-2-amd64 #1 SMP Debian 4.1.6-1 (2015-08-23)
->> x86_64 GNU/Linux
->> # mount | grep nfs
->> 10.0.0.2:/home/kh on /remote/kh type nfs (rw,relatime,vers=3,rsize=1024,wsize=1024,namlen=255,hard,nolock,proto=udp,timeo=11,retrans=3,sec=sys,mountaddr=10.0.0.2,mountvers=3,mountport=644,mountproto=udp,local_lock=all,addr=10.0.0.2)
->
-> rsize=1024,wsize=1024,proto=udp is unusual and not normally what we'd
-> recommend.  Is there a reason for not sticking with defaults there?
->
-> But I don't have any explanation for the hang.
->
-> --b.
->
->> Any suggestions?
->>
->> Kojedzinszky Richard
->> Euronet Magyarorszag Informatika Zrt.
->
->
->> Oct 28 12:02:18 k-desktop kernel: [12237.516020] RPC: 54539 xprt_prepare_transmit
->> Oct 28 12:02:18 k-desktop kernel: [12237.516022] RPC: 54539 xprt_cwnd_limited cong = 0 cwnd = 256
->> Oct 28 12:02:18 k-desktop kernel: [12237.516027] RPC: 54539 xprt_transmit(120)
->> Oct 28 12:02:18 k-desktop kernel: [12237.516054] RPC: 54539 xmit complete
->> Oct 28 12:02:22 k-desktop kernel: [12241.932011] RPC: 54539 xprt_timer
->> Oct 28 12:02:22 k-desktop kernel: [12241.932016] RPC:       cong 256, cwnd was 256, now 256
->> Oct 28 12:02:22 k-desktop kernel: [12241.932020] RPC: 54539 xprt_prepare_transmit
->> Oct 28 12:02:22 k-desktop kernel: [12241.932022] RPC: 54539 xprt_cwnd_limited cong = 0 cwnd = 256
->> Oct 28 12:02:22 k-desktop kernel: [12241.932027] RPC: 54539 xprt_transmit(120)
->> Oct 28 12:02:22 k-desktop kernel: [12241.932054] RPC: 54539 xmit complete
->> Oct 28 12:02:31 k-desktop kernel: [12250.748013] RPC: 54539 xprt_timer
->> Oct 28 12:02:31 k-desktop kernel: [12250.748018] RPC:       cong 256, cwnd was 256, now 256
->> Oct 28 12:02:31 k-desktop kernel: [12250.748023] RPC: 54539 xprt_prepare_transmit
->> Oct 28 12:02:31 k-desktop kernel: [12250.748025] RPC: 54539 xprt_cwnd_limited cong = 0 cwnd = 256
->> Oct 28 12:02:31 k-desktop kernel: [12250.748029] RPC: 54539 xprt_transmit(120)
->> Oct 28 12:02:31 k-desktop kernel: [12250.748058] RPC: 54539 xmit complete
->> Oct 28 12:02:32 k-desktop kernel: [12251.852014] RPC: 54539 xprt_timer
->> Oct 28 12:02:32 k-desktop kernel: [12251.852018] RPC:       cong 256, cwnd was 256, now 256
->> Oct 28 12:02:32 k-desktop kernel: [12251.852021] RPC: 54539 xprt_prepare_transmit
->> Oct 28 12:02:32 k-desktop kernel: [12251.852023] RPC: 54539 xprt_cwnd_limited cong = 0 cwnd = 256
->> Oct 28 12:02:32 k-desktop kernel: [12251.852027] RPC: 54539 xprt_transmit(120)
->> Oct 28 12:02:32 k-desktop kernel: [12251.852048] RPC: 54539 xmit complete
->> Oct 28 12:02:35 k-desktop kernel: [12254.060011] RPC: 54539 xprt_timer
->> Oct 28 12:02:35 k-desktop kernel: [12254.060015] RPC:       cong 256, cwnd was 256, now 256
->> Oct 28 12:02:35 k-desktop kernel: [12254.060018] RPC: 54539 xprt_prepare_transmit
->> Oct 28 12:02:35 k-desktop kernel: [12254.060020] RPC: 54539 xprt_cwnd_limited cong = 0 cwnd = 256
->> Oct 28 12:02:35 k-desktop kernel: [12254.060023] RPC: 54539 xprt_transmit(120)
->> Oct 28 12:02:35 k-desktop kernel: [12254.060041] RPC: 54539 xmit complete
->> Oct 28 12:02:39 k-desktop kernel: [12258.476012] RPC: 54539 xprt_timer
->> Oct 28 12:02:39 k-desktop kernel: [12258.476016] RPC:       cong 256, cwnd was 256, now 256
->> Oct 28 12:02:39 k-desktop kernel: [12258.476020] RPC: 54539 xprt_prepare_transmit
->> Oct 28 12:02:39 k-desktop kernel: [12258.476022] RPC: 54539 xprt_cwnd_limited cong = 0 cwnd = 256
->> Oct 28 12:02:39 k-desktop kernel: [12258.476027] RPC: 54539 xprt_transmit(120)
->> Oct 28 12:02:39 k-desktop kernel: [12258.476052] RPC: 54539 xmit complete
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
+> Thanks, that's interesting.  Did that extra close(0) have any
+> user-visible consequences?
+> 
+> > 
+> > Signed-off-by: Malahal Naineni <malahal@us.ibm.com>
+> > ---
+> >  utils/mountd/auth.c | 17 ++++++++++++++---
+> >  1 file changed, 14 insertions(+), 3 deletions(-)
+> > 
+> > diff --git a/utils/mountd/auth.c b/utils/mountd/auth.c
+> > index 330cab5..894a7a5 100644
+> > --- a/utils/mountd/auth.c
+> > +++ b/utils/mountd/auth.c
+> > @@ -85,7 +85,7 @@ auth_reload()
+> >  {
+> >  	struct stat		stb;
+> >  	static ino_t		last_inode;
+> > -	static int		last_fd;
+> > +	static int		last_fd = -1;
+> >  	static unsigned int	counter;
+> >  	int			fd;
+> >  
+> > @@ -93,11 +93,22 @@ auth_reload()
+> >  		xlog(L_FATAL, "couldn't open %s", _PATH_ETAB);
+> >  	} else if (fstat(fd, &stb) < 0) {
+> >  		xlog(L_FATAL, "couldn't stat %s", _PATH_ETAB);
+> > -	} else if (stb.st_ino == last_inode) {
+> > +		close(fd);
+> > +	} else if (last_fd != -1 && stb.st_ino == last_inode) {
+> 
+> I think that (last_fd != -1) is actually unnecessary (basically because
+> last_inode is initially 0, which isn't a legal inode number), but...
+> it's probably clearer this way, OK.
+> 
+> Patch looks OK to me.--b.
+> 
+> > +		/* We opened the etab file before, and its inode
+> > +		 * number hasn't changed since then.
+> > +		 */
+> >  		close(fd);
+> >  		return counter;
+> >  	} else {
+> > -		close(last_fd);
+> > +		/* Need to process entries from the etab file.  Close
+> > +		 * the file descriptor from the previous open (last_fd),
+> > +		 * and keep the current file descriptor open to prevent
+> > +		 * the file system reusing the current inode number
+> > +		 * (last_inode).
+> > +		 */
+> > +		if (last_fd != -1)
+> > +			close(last_fd);
+> >  		last_fd = fd;
+> >  		last_inode = stb.st_ino;
+> >  	}
+> > -- 
+> > 1.8.3.1
+> > 
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+
