@@ -1,42 +1,45 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:39307 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751425AbbJ1RT6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 28 Oct 2015 13:19:58 -0400
-Received: from int-mx13.intmail.prod.int.phx2.redhat.com (int-mx13.intmail.prod.int.phx2.redhat.com [10.5.11.26])
-	by mx1.redhat.com (Postfix) with ESMTPS id C4D218C1C0
-	for <linux-nfs@vger.kernel.org>; Wed, 28 Oct 2015 17:19:57 +0000 (UTC)
-From: Scott Mayhew <smayhew@redhat.com>
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [nfs-utils PATCH] exportfs: Restore the EAI_NONAME check in host_pton()
-Date: Wed, 28 Oct 2015 13:19:56 -0400
-Message-Id: <1446052796-10287-1-git-send-email-smayhew@redhat.com>
+Received: from aserp1040.oracle.com ([141.146.126.69]:32433 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755601AbbJ1S4w convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Oct 2015 14:56:52 -0400
+Received: from userv0021.oracle.com (userv0021.oracle.com [156.151.31.71])
+	by aserp1040.oracle.com (Sentrion-MTA-4.3.2/Sentrion-MTA-4.3.2) with ESMTP id t9SIuoCw006168
+	(version=TLSv1 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Wed, 28 Oct 2015 18:56:51 GMT
+Received: from userv0121.oracle.com (userv0121.oracle.com [156.151.31.72])
+	by userv0021.oracle.com (8.13.8/8.13.8) with ESMTP id t9SIuo2Z025413
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=FAIL)
+	for <linux-nfs@vger.kernel.org>; Wed, 28 Oct 2015 18:56:50 GMT
+Received: from abhmp0018.oracle.com (abhmp0018.oracle.com [141.146.116.24])
+	by userv0121.oracle.com (8.13.8/8.13.8) with ESMTP id t9SIuoe9005979
+	for <linux-nfs@vger.kernel.org>; Wed, 28 Oct 2015 18:56:50 GMT
+From: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=utf-8
+Subject: GSSD warning with proto=rdma
+Message-Id: <216A83C3-D724-49C7-A64B-3471CF981AA3@oracle.com>
+Date: Wed, 28 Oct 2015 14:56:48 -0400
+To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2104\))
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Commit d89e3fc7 removed the EAI_NONAME check altogether instead of just
-moving the NULL check.  This causes exportfs -u to incorrectly exit
-with 1 whenever there's more than one MCL_FQDN export in the exportlist.
+Hi-
 
-Signed-off-by: Scott Mayhew <smayhew@redhat.com>
----
- support/export/hostname.c | 2 ++
- 1 file changed, 2 insertions(+)
+I’m beginning to try Kerberos with NFS/RDMA. I get this complaint
+from GSSD:
 
-diff --git a/support/export/hostname.c b/support/export/hostname.c
-index 169baa5..7a44d42 100644
---- a/support/export/hostname.c
-+++ b/support/export/hostname.c
-@@ -134,6 +134,8 @@ host_pton(const char *paddr)
- 			break;
- 		}
- 		return ai;
-+	case EAI_NONAME:
-+		break;
- 	case EAI_SYSTEM:
- 		xlog(D_GENERAL, "%s: failed to convert %s: (%d) %m",
- 				__func__, paddr, errno);
--- 
-2.4.3
+Oct 28 13:10:02 manet rpc.gssd[2549]: WARNING: unrecognized
+protocol, 'rdma', requested for connection to server
+klimt-ib.1015granger.net for user with uid 0
+
+Should I change the kernel NFS client to tell GSSD it’s using
+TCP, or should I change GSSD to recognize RDMA as another form
+of TCP?
+
+
+-—
+Chuck Lever
+
+
 
