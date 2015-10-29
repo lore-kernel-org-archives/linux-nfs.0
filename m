@@ -1,80 +1,101 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ob0-f177.google.com ([209.85.214.177]:35753 "EHLO
-	mail-ob0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752025AbbJ2SoG (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Oct 2015 14:44:06 -0400
-Received: by obctp1 with SMTP id tp1so24950375obc.2
-        for <linux-nfs@vger.kernel.org>; Thu, 29 Oct 2015 11:44:05 -0700 (PDT)
-Date: Thu, 29 Oct 2015 11:43:56 -0700 (PDT)
-From: Hugh Dickins <hughd@google.com>
-To: Boaz Harrosh <ooo@electrozaur.com>
-cc: Andrew Morton <akpm@linux-foundation.org>,
-        Benny Halevy <bhalevy@primarydata.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Christoph Lameter <cl@linux.com>, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-mm@kvack.org, osd-dev@open-osd.org
-Subject: [PATCH] osd fs: __r4w_get_page rely on PageUptodate for uptodate
-Message-ID: <alpine.LSU.2.11.1510291137430.3369@eggly.anvils>
-MIME-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Received: from userp1040.oracle.com ([156.151.31.81]:45602 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757914AbbJ2VXF convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Oct 2015 17:23:05 -0400
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2104\))
+Subject: Re: nfs-utils regression on IPv6-less kernels
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <55F05499.3090505@RedHat.com>
+Date: Thu, 29 Oct 2015 17:22:34 -0400
+Cc: Christoph Hellwig <hch@infradead.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <DCA7A1B3-6024-462A-99B3-E95329736E17@oracle.com>
+References: <20150810131358.GA19466@infradead.org> <55C9D2F2.1020300@RedHat.com> <20150817124220.GA17877@infradead.org> <F810C54A-A075-40D1-9912-80A85A7A0D63@oracle.com> <20150817160639.GA1173@infradead.org> <55F05499.3090505@RedHat.com>
+To: Steve Dickson <SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Patch "mm: migrate dirty page without clear_page_dirty_for_io etc",
-presently staged in mmotm and linux-next, simplifies the migration of
-a PageDirty pagecache page: one stat needs moving from zone to zone
-and that's about all.
 
-It's convenient and safest for it to shift the PageDirty bit from old
-page to new, just before updating the zone stats: before copying data
-and marking the new PageUptodate.  This is all done while both pages
-are isolated and locked, just as before; and just as before, there's
-a moment when the new page is visible in the radix_tree, but not yet
-PageUptodate.  What's new is that it may now be briefly visible as
-PageDirty before it is PageUptodate.
+> On Sep 9, 2015, at 11:47 AM, Steve Dickson <SteveD@redhat.com> wrote:
+> 
+> 
+> 
+> On 08/17/2015 12:06 PM, Christoph Hellwig wrote:
+>> On Mon, Aug 17, 2015 at 08:40:25AM -0700, Chuck Lever wrote:
+>>> Probably stopped working with "rpc.nfsd: Squelch DNS errors when
+>>> using --host option".
+>>> 
+>>> getaddrinfo(3) returns a list of addresses, some of which are
+>>> IPv6 addresses. It gets the list from /etc/hosts, or DNS. Even
+>>> on kernels which do not support IPv6, there may be at least one
+>>> IPv6 address in the list.
+>>> 
+>>> nfssvc_setfds() then loops over this list. The error handling
+>>> in nfssvc_setfds() causes the loop to exit if the socket(2)
+>>> call fails. It should "continue" if the error is EAFNOSUPPORT.
+>>> In fact, that xlog notice can also be removed.
+>>> 
+>>> I'm traveling this week. Is this enough for you to generate a
+>>> fix?
+>> 
+>> Yes, that works:
+>> 
+>> ---
+>> From: Christoph Hellwig <hch@lst.de>
+>> Subject: nfsd: ignore unsupported address types in nfssvc_setfds
+>> 
+>> Just continue and try a different record returned from getaddrinfo
+>> if the kernel does not support an address family.  This fixes nfsd
+>> startup on kernels without IPv6 support.
+>> 
+>> Suggested-by: Chuck Lever <chuck.lever@oracle.com>
+>> Signed-off-by: Christoph Hellwig <hch@lst.de>
+> Sorry it took so long... committed!
 
-When I scoured the tree to see if this could cause a problem anywhere,
-the only places I found were in two similar functions __r4w_get_page():
-which look up a page with find_get_page() (not using page lock), then
-claim it's uptodate if it's PageDirty or PageWriteback or PageUptodate.
+I’m pulling from git://linux-nfs.org/nfs-utils but I
+don’t see this commit. What’s the correct URL to pull
+from for upstream nfs-utils?
 
-I'm not sure whether that was right before, but now it might be wrong
-(on rare occasions): only claim the page is uptodate if PageUptodate.
-Or perhaps the page in question could never be migratable anyway?
 
-Signed-off-by: Hugh Dickins <hughd@google.com>
----
+> steved.
+> 
+>> 
+>> diff --git a/utils/nfsd/nfssvc.c b/utils/nfsd/nfssvc.c
+>> index a2b11d8..fc11d23 100644
+>> --- a/utils/nfsd/nfssvc.c
+>> +++ b/utils/nfsd/nfssvc.c
+>> @@ -174,15 +174,14 @@ nfssvc_setfds(const struct addrinfo *hints, const char *node, const char *port)
+>> 		sockfd = socket(addr->ai_family, addr->ai_socktype,
+>> 				addr->ai_protocol);
+>> 		if (sockfd < 0) {
+>> -			if (errno == EAFNOSUPPORT)
+>> -				xlog(L_NOTICE, "address family %s not "
+>> -						"supported by protocol %s",
+>> -						family, proto);
+>> -			else
+>> +			if (errno != EAFNOSUPPORT) {
+>> 				xlog(L_ERROR, "unable to create %s %s socket: "
+>> 				     "errno %d (%m)", family, proto, errno);
+>> -			rc = errno;
+>> -			goto error;
+>> +				rc = errno;
+>> +				goto error;
+>> +			}
+>> +			addr = addr->ai_next;
+>> +			continue;
+>> 		}
+>> #ifdef IPV6_SUPPORTED
+>> 		if (addr->ai_family == AF_INET6 &&
+>> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
- fs/exofs/inode.c             |    5 +----
- fs/nfs/objlayout/objio_osd.c |    5 +----
- 2 files changed, 2 insertions(+), 8 deletions(-)
+—
+Chuck Lever
 
---- 4.3-next/fs/exofs/inode.c	2015-08-30 11:34:09.000000000 -0700
-+++ linux/fs/exofs/inode.c	2015-10-28 16:55:18.795554294 -0700
-@@ -592,10 +592,7 @@ static struct page *__r4w_get_page(void
- 			}
- 			unlock_page(page);
- 		}
--		if (PageDirty(page) || PageWriteback(page))
--			*uptodate = true;
--		else
--			*uptodate = PageUptodate(page);
-+		*uptodate = PageUptodate(page);
- 		EXOFS_DBGMSG2("index=0x%lx uptodate=%d\n", index, *uptodate);
- 		return page;
- 	} else {
---- 4.3-next/fs/nfs/objlayout/objio_osd.c	2015-10-21 18:35:07.620645439 -0700
-+++ linux/fs/nfs/objlayout/objio_osd.c	2015-10-28 16:53:55.083686639 -0700
-@@ -476,10 +476,7 @@ static struct page *__r4w_get_page(void
- 		}
- 		unlock_page(page);
- 	}
--	if (PageDirty(page) || PageWriteback(page))
--		*uptodate = true;
--	else
--		*uptodate = PageUptodate(page);
-+	*uptodate = PageUptodate(page);
- 	dprintk("%s: index=0x%lx uptodate=%d\n", __func__, index, *uptodate);
- 	return page;
- }
+
+
