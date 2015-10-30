@@ -1,72 +1,115 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:39062 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:55762 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759271AbbJ3KzL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 30 Oct 2015 06:55:11 -0400
-Date: Fri, 30 Oct 2015 11:55:09 +0100
-From: Karel Zak <kzak@redhat.com>
-To: Neil Brown <neilb@suse.com>
-Cc: util-linux@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: Re: mount does not accurately identify existing NFS mounts, and
- shouldn't try.
-Message-ID: <20151030105509.GG19508@ws.net.home>
-References: <87twpnll5y.fsf@notabene.neil.brown.name>
+	id S1758696AbbJ3NWR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 30 Oct 2015 09:22:17 -0400
+Subject: Re: nfs-utils regression on IPv6-less kernels
+To: Chuck Lever <chuck.lever@oracle.com>
+References: <20150810131358.GA19466@infradead.org>
+ <55C9D2F2.1020300@RedHat.com> <20150817124220.GA17877@infradead.org>
+ <F810C54A-A075-40D1-9912-80A85A7A0D63@oracle.com>
+ <20150817160639.GA1173@infradead.org> <55F05499.3090505@RedHat.com>
+ <DCA7A1B3-6024-462A-99B3-E95329736E17@oracle.com>
+Cc: Christoph Hellwig <hch@infradead.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+From: Steve Dickson <SteveD@redhat.com>
+Message-ID: <56336F08.3050700@RedHat.com>
+Date: Fri, 30 Oct 2015 09:22:16 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <87twpnll5y.fsf@notabene.neil.brown.name>
+In-Reply-To: <DCA7A1B3-6024-462A-99B3-E95329736E17@oracle.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Oct 19, 2015 at 12:08:41PM +1100, Neil Brown wrote:
-> 	/* Refuse the same filesystem on the same mount point */
-> 	err = -EBUSY;
-> 	if (path->mnt->mnt_sb == newmnt->mnt.mnt_sb &&
-> 	    path->mnt->mnt_root == path->dentry)
-> 		goto unlock;
+
+
+On 10/29/2015 05:22 PM, Chuck Lever wrote:
 > 
-> This is the *only* time that the kernel returns EBUSY for a "mount a new
-> filesystem" request (remount can return EBUSY for other reasons I
-> think).
+>> On Sep 9, 2015, at 11:47 AM, Steve Dickson <SteveD@redhat.com> wrote:
+>>
+>>
+>>
+>> On 08/17/2015 12:06 PM, Christoph Hellwig wrote:
+>>> On Mon, Aug 17, 2015 at 08:40:25AM -0700, Chuck Lever wrote:
+>>>> Probably stopped working with "rpc.nfsd: Squelch DNS errors when
+>>>> using --host option".
+>>>>
+>>>> getaddrinfo(3) returns a list of addresses, some of which are
+>>>> IPv6 addresses. It gets the list from /etc/hosts, or DNS. Even
+>>>> on kernels which do not support IPv6, there may be at least one
+>>>> IPv6 address in the list.
+>>>>
+>>>> nfssvc_setfds() then loops over this list. The error handling
+>>>> in nfssvc_setfds() causes the loop to exit if the socket(2)
+>>>> call fails. It should "continue" if the error is EAFNOSUPPORT.
+>>>> In fact, that xlog notice can also be removed.
+>>>>
+>>>> I'm traveling this week. Is this enough for you to generate a
+>>>> fix?
+>>>
+>>> Yes, that works:
+>>>
+>>> ---
+>>> From: Christoph Hellwig <hch@lst.de>
+>>> Subject: nfsd: ignore unsupported address types in nfssvc_setfds
+>>>
+>>> Just continue and try a different record returned from getaddrinfo
+>>> if the kernel does not support an address family.  This fixes nfsd
+>>> startup on kernels without IPv6 support.
+>>>
+>>> Suggested-by: Chuck Lever <chuck.lever@oracle.com>
+>>> Signed-off-by: Christoph Hellwig <hch@lst.de>
+>> Sorry it took so long... committed!
 > 
-> So in the case where "mount" thinks it should check if the filesystem is
-> already mounted and ignore the request if it is, the best thing it can
-> do is to just try the mount and ignore any "EBUSY" error status - treat
-> that the same as success.
+> I’m pulling from git://linux-nfs.org/nfs-utils but I
+> don’t see this commit. What’s the correct URL to pull
+> from for upstream nfs-utils?
+Well it is Halloween so maybe a spook got or I did the 
+commit and forgot to do the push... One of those two
+happen! ;-) 
+
+Its there now... Sorry for the confusion... 
+
+steved. 
 > 
-> So all that code for "is this the same mountpoint" can probably be
-> discarded.
-
-Well, we have many situations (another than mount -a) when you want to
-know if the FS is mounted, but you have not permissions for mount(2)
-or you don't want to try it (because mount(2) may trigger many another
-things in userspace).
-
-> Did I miss any important consideration there?
-
-The problem is that the way between fstab entry and mount(2) is
-sometimes pretty complex (mount.<type> helpers, loop devices,
-UUID/LABEL translation, etc).
-
-So, compare fstab with /proc/mounts is usually good compromise...
-
-Your suggestion seems usable for mount -a, but it's one small use-case
-(and for example systemd don't use "mount -a" during boot).
-
-> Unfortunately this change could be awkward to implement as /sbin/mount
-> decides whether to try the mount and (for NFS), /sbin/mount.nfs gives an
-> error message if EBUSY is returned.  Would we need to pass a "noebusy"
-> flag, but only if mount.nfs were willing to accept it....
 > 
-> Any suggestions?
-
-We have kill(PID, 0) to detect if the PID is valid, you don't have to
-parse all /proc. It would be nice to have the same for filesystems,
-something like
-
-    mount("/dev/sda1, "/mnt", "ext4", MS_NOMOUNT, NULL)
-
-   Karel 
-
--- 
- Karel Zak  <kzak@redhat.com>
- http://karelzak.blogspot.com
+>> steved.
+>>
+>>>
+>>> diff --git a/utils/nfsd/nfssvc.c b/utils/nfsd/nfssvc.c
+>>> index a2b11d8..fc11d23 100644
+>>> --- a/utils/nfsd/nfssvc.c
+>>> +++ b/utils/nfsd/nfssvc.c
+>>> @@ -174,15 +174,14 @@ nfssvc_setfds(const struct addrinfo *hints, const char *node, const char *port)
+>>> 		sockfd = socket(addr->ai_family, addr->ai_socktype,
+>>> 				addr->ai_protocol);
+>>> 		if (sockfd < 0) {
+>>> -			if (errno == EAFNOSUPPORT)
+>>> -				xlog(L_NOTICE, "address family %s not "
+>>> -						"supported by protocol %s",
+>>> -						family, proto);
+>>> -			else
+>>> +			if (errno != EAFNOSUPPORT) {
+>>> 				xlog(L_ERROR, "unable to create %s %s socket: "
+>>> 				     "errno %d (%m)", family, proto, errno);
+>>> -			rc = errno;
+>>> -			goto error;
+>>> +				rc = errno;
+>>> +				goto error;
+>>> +			}
+>>> +			addr = addr->ai_next;
+>>> +			continue;
+>>> 		}
+>>> #ifdef IPV6_SUPPORTED
+>>> 		if (addr->ai_family == AF_INET6 &&
+>>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> —
+> Chuck Lever
+> 
+> 
+> 
