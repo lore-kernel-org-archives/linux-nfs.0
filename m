@@ -1,251 +1,105 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:39337 "EHLO fieldses.org"
+Received: from mx2.suse.de ([195.135.220.15]:42197 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758809AbbJ3RsZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 30 Oct 2015 13:48:25 -0400
-Date: Fri, 30 Oct 2015 13:48:23 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: krichy@tvnetwork.hu
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: nfs client hangs / repeating nfs requests
-Message-ID: <20151030174823.GA4143@fieldses.org>
-References: <alpine.DEB.2.20.1510281158380.24492@krichy.tvnetwork.hu>
- <20151028135742.GC20682@fieldses.org>
- <alpine.DEB.2.20.1510281511070.25867@krichy.tvnetwork.hu>
- <alpine.DEB.2.20.1510290012060.5794@krichy.tvnetwork.hu>
- <20151029132247.GB28300@fieldses.org>
- <alpine.DEB.2.20.1510291524380.9150@krichy.tvnetwork.hu>
+	id S1031672AbbJ3WqS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 30 Oct 2015 18:46:18 -0400
+From: Neil Brown <neilb@suse.com>
+To: Karel Zak <kzak@redhat.com>
+Date: Sat, 31 Oct 2015 09:46:10 +1100
+Cc: util-linux@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: Re: mount does not accurately identify existing NFS mounts, and shouldn't try.
+In-Reply-To: <20151030105509.GG19508@ws.net.home>
+References: <87twpnll5y.fsf@notabene.neil.brown.name> <20151030105509.GG19508@ws.net.home>
+Message-ID: <871tccvutp.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <alpine.DEB.2.20.1510291524380.9150@krichy.tvnetwork.hu>
+Content-Type: multipart/signed; boundary="=-=-=";
+	micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Oct 29, 2015 at 03:27:25PM +0100, krichy@tvnetwork.hu wrote:
-> And do you have idea of what could be the repeating nfs client
-> requests after unmounting the nfs share? Could there be any cases
-> when a reply arrives in, but the kernel nfs code does not or can not
-> process it, thus not changing that request's state?
+--=-=-=
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-I missed your description of what was happening with those requests,
-sorry.
+On Fri, Oct 30 2015, Karel Zak wrote:
 
-Also, I'm a little confused by your description of the hangs.  Do they
-last until you give up and power off the machine, or do they resolve
-themselves eventually?  If the latter then for all we know that might
-just be what happens over a network with some random packet loss.
+> On Mon, Oct 19, 2015 at 12:08:41PM +1100, Neil Brown wrote:
+>> 	/* Refuse the same filesystem on the same mount point */
+>> 	err =3D -EBUSY;
+>> 	if (path->mnt->mnt_sb =3D=3D newmnt->mnt.mnt_sb &&
+>> 	    path->mnt->mnt_root =3D=3D path->dentry)
+>> 		goto unlock;
+>>=20
+>> This is the *only* time that the kernel returns EBUSY for a "mount a new
+>> filesystem" request (remount can return EBUSY for other reasons I
+>> think).
+>>=20
+>> So in the case where "mount" thinks it should check if the filesystem is
+>> already mounted and ignore the request if it is, the best thing it can
+>> do is to just try the mount and ignore any "EBUSY" error status - treat
+>> that the same as success.
+>>=20
+>> So all that code for "is this the same mountpoint" can probably be
+>> discarded.
+>
+> Well, we have many situations (another than mount -a) when you want to
+> know if the FS is mounted, but you have not permissions for mount(2)
+> or you don't want to try it (because mount(2) may trigger many another
+> things in userspace).
+>
+>> Did I miss any important consideration there?
+>
+> The problem is that the way between fstab entry and mount(2) is
+> sometimes pretty complex (mount.<type> helpers, loop devices,
+> UUID/LABEL translation, etc).
+>
+> So, compare fstab with /proc/mounts is usually good compromise...
+>
+> Your suggestion seems usable for mount -a, but it's one small use-case
+> (and for example systemd don't use "mount -a" during boot).
+>
+>> Unfortunately this change could be awkward to implement as /sbin/mount
+>> decides whether to try the mount and (for NFS), /sbin/mount.nfs gives an
+>> error message if EBUSY is returned.  Would we need to pass a "noebusy"
+>> flag, but only if mount.nfs were willing to accept it....
+>>=20
+>> Any suggestions?
+>
+> We have kill(PID, 0) to detect if the PID is valid, you don't have to
+> parse all /proc. It would be nice to have the same for filesystems,
+> something like
+>
+>     mount("/dev/sda1, "/mnt", "ext4", MS_NOMOUNT, NULL)
 
---b.
+I like that!  I really do.  It returns the same error as mount would if
+run by a privileged uses, or returns success without actually changing
+anything.
+MS_NOMOUNT is incompatible with MS_REMOUNT, MS_MOVE and several others.
 
-> 
-> 
-> Kojedzinszky Richard
-> Euronet Magyarorszag Informatika Zrt.
-> 
-> On Thu, 29 Oct 2015, J. Bruce Fields wrote:
-> 
-> >Date: Thu, 29 Oct 2015 09:22:47 -0400
-> >From: J. Bruce Fields <bfields@fieldses.org>
-> >To: krichy@tvnetwork.hu
-> >Cc: linux-nfs@vger.kernel.org
-> >Subject: Re: nfs client hangs / repeating nfs requests
-> >
-> >On Thu, Oct 29, 2015 at 12:17:27AM +0100, krichy@tvnetwork.hu wrote:
-> >>I am trying to do more dbugging regarding my issue. Now I am at a
-> >>stage where the nfs mount is unmounted, and still the kernel log
-> >>shows periodic nfs messages, and also packets transmitted. The nfs
-> >>mount point is unmounted.
-> >>
-> >>Something strange is going here.
-> >>
-> >>The nfs was mounted over gre over ipsec over a WAN connection, which
-> >>may have random packet loss or high RTT. Can this cause the nfs
-> >>client to behave this way? I suppose it should no.
-> >
-> >I'd expect poor performance, but not an indefinite hang.
-> >
-> >One possible exception is that if the protocols depend on userspace
-> >helpers of some sort (e.g. for crypto setup), then there's a potential
-> >deadlock where the helper needs to allocate memory to make progress, but
-> >memory allocation is waiting on nfs to write out dirty pages.  Since
-> >you're not talking about a write-heavy workload that's unlikely in your
-> >case.
-> >
-> >>Please tell me what info should I collect for more debugging.
-> >
-> >Possible things to try:
-> >
-> >	- ps to identify which process are hanging.
-> >	- look at network traffic with wireshark or tcpdump--are client
-> >	  and server still communicating, and if so what are they doing?
-> >	- echo 0 >/proc/sys/sunrpc/rpc_debug will log information about
-> >	  rpc tasks.
-> >	- echo t >/proc/sysrq-trigger will dump information about tasks.
-> >
-> >And also check the server to see if it's logging anything or if nfsd is
-> >hung (but I'm not familiar with freebsd debugging).
-> >
-> >--b.
-> >
-> >>
-> >>Unfortunately I could not reproduce this in a virtualised network
-> >>environment even with netem qdisc to emulate the WAN
-> >>characteristics. But I am trying to do it so.
-> >>
-> >>Thanks in advance,
-> >>
-> >>Kojedzinszky Richard
-> >>Euronet Magyarorszag Informatika Zrt.
-> >>
-> >>On Wed, 28 Oct 2015, krichy@tvnetwork.hu wrote:
-> >>
-> >>>Date: Wed, 28 Oct 2015 16:19:50 +0100 (CET)
-> >>>From: krichy@tvnetwork.hu
-> >>>To: J. Bruce Fields <bfields@fieldses.org>
-> >>>Cc: linux-nfs@vger.kernel.org
-> >>>Subject: Re: nfs client hangs / repeating nfs requests
-> >>>
-> >>>Dear Bruce,
-> >>>
-> >>>That was an n-th experiment. Actually, with default settings the
-> >>>hang still happens, but I've just noticed the repeating packets
-> >>>with these settings. I've chosen 1024 sizes to fit the requests in
-> >>>one packets, to avoid any ip/udp fragmentation.
-> >>>
-> >>>The server is a freebsd nfs. I am struggling with this setup for a
-> >>>few months now, and I dont know, what is the cause of the hang. I
-> >>>could hardly believe that the nfs server is buggy, as many people
-> >>>around the world is using freebsd as an nfs server. The same for
-> >>>linux, I hardly can believe that the nfs client is faulty, as
-> >>>again many people is using it.
-> >>>
-> >>>But still I have the issue, hanging nfs mounts.
-> >>>
-> >>>I will report on any advance.
-> >>>
-> >>>Regards,
-> >>>
-> >>>Kojedzinszky Richard
-> >>>Euronet Magyarorszag Informatika Zrt.
-> >>>
-> >>>On Wed, 28 Oct 2015, J. Bruce Fields wrote:
-> >>>
-> >>>>Date: Wed, 28 Oct 2015 09:57:42 -0400
-> >>>>From: J. Bruce Fields <bfields@fieldses.org>
-> >>>>To: krichy@tvnetwork.hu
-> >>>>Cc: linux-nfs@vger.kernel.org
-> >>>>Subject: Re: nfs client hangs / repeating nfs requests
-> >>>>
-> >>>>On Wed, Oct 28, 2015 at 12:06:02PM +0100, krichy@tvnetwork.hu wrote:
-> >>>>>Dear all,
-> >>>>>
-> >>>>>I am again having some trouble with nfs client. Actually I am
-> >>>>>running minidlna over nfs over gre over ipsec configuration, but I
-> >>>>>suppose the latter two should not count.
-> >>>>>
-> >>>>>Minidlna scans the entire directory, reading all files (or just
-> >>>>>parts), and while doing it, sometimes the process hangs.
-> >>>>>
-> >>>>>I could emulate this with reading the first 16k off all files from
-> >>>>>nfs, and fortunately the effect is the same.
-> >>>>>
-> >>>>>After a hang/recovery, no userspace is accessing the nfs right now,
-> >>>>>but tcpdump shows repeating requests/replies (attached). Meanwhile
-> >>>>>the rpc debug also emits logs.
-> >>>>>
-> >>>>># uname -a
-> >>>>>Linux k-desktop 4.1.0-2-amd64 #1 SMP Debian 4.1.6-1 (2015-08-23)
-> >>>>>x86_64 GNU/Linux
-> >>>>># mount | grep nfs
-> >>>>>10.0.0.2:/home/kh on /remote/kh type nfs (rw,relatime,vers=3,rsize=1024,wsize=1024,namlen=255,hard,nolock,proto=udp,timeo=11,retrans=3,sec=sys,mountaddr=10.0.0.2,mountvers=3,mountport=644,mountproto=udp,local_lock=all,addr=10.0.0.2)
-> >>>>
-> >>>>rsize=1024,wsize=1024,proto=udp is unusual and not normally what we'd
-> >>>>recommend.  Is there a reason for not sticking with defaults there?
-> >>>>
-> >>>>But I don't have any explanation for the hang.
-> >>>>
-> >>>>--b.
-> >>>>
-> >>>>>Any suggestions?
-> >>>>>
-> >>>>>Kojedzinszky Richard
-> >>>>>Euronet Magyarorszag Informatika Zrt.
-> >>>>
-> >>>>
-> >>>>>Oct 28 12:02:18 k-desktop kernel: [12237.516020] RPC: 54539
-> >>>>>xprt_prepare_transmit
-> >>>>>Oct 28 12:02:18 k-desktop kernel: [12237.516022] RPC: 54539
-> >>>>>xprt_cwnd_limited cong = 0 cwnd = 256
-> >>>>>Oct 28 12:02:18 k-desktop kernel: [12237.516027] RPC: 54539
-> >>>>>xprt_transmit(120)
-> >>>>>Oct 28 12:02:18 k-desktop kernel: [12237.516054] RPC: 54539 xmit complete
-> >>>>>Oct 28 12:02:22 k-desktop kernel: [12241.932011] RPC: 54539 xprt_timer
-> >>>>>Oct 28 12:02:22 k-desktop kernel: [12241.932016] RPC:
-> >>>>>cong 256, cwnd was 256, now 256
-> >>>>>Oct 28 12:02:22 k-desktop kernel: [12241.932020] RPC: 54539
-> >>>>>xprt_prepare_transmit
-> >>>>>Oct 28 12:02:22 k-desktop kernel: [12241.932022] RPC: 54539
-> >>>>>xprt_cwnd_limited cong = 0 cwnd = 256
-> >>>>>Oct 28 12:02:22 k-desktop kernel: [12241.932027] RPC: 54539
-> >>>>>xprt_transmit(120)
-> >>>>>Oct 28 12:02:22 k-desktop kernel: [12241.932054] RPC: 54539 xmit complete
-> >>>>>Oct 28 12:02:31 k-desktop kernel: [12250.748013] RPC: 54539 xprt_timer
-> >>>>>Oct 28 12:02:31 k-desktop kernel: [12250.748018] RPC:
-> >>>>>cong 256, cwnd was 256, now 256
-> >>>>>Oct 28 12:02:31 k-desktop kernel: [12250.748023] RPC: 54539
-> >>>>>xprt_prepare_transmit
-> >>>>>Oct 28 12:02:31 k-desktop kernel: [12250.748025] RPC: 54539
-> >>>>>xprt_cwnd_limited cong = 0 cwnd = 256
-> >>>>>Oct 28 12:02:31 k-desktop kernel: [12250.748029] RPC: 54539
-> >>>>>xprt_transmit(120)
-> >>>>>Oct 28 12:02:31 k-desktop kernel: [12250.748058] RPC: 54539 xmit complete
-> >>>>>Oct 28 12:02:32 k-desktop kernel: [12251.852014] RPC: 54539 xprt_timer
-> >>>>>Oct 28 12:02:32 k-desktop kernel: [12251.852018] RPC:
-> >>>>>cong 256, cwnd was 256, now 256
-> >>>>>Oct 28 12:02:32 k-desktop kernel: [12251.852021] RPC: 54539
-> >>>>>xprt_prepare_transmit
-> >>>>>Oct 28 12:02:32 k-desktop kernel: [12251.852023] RPC: 54539
-> >>>>>xprt_cwnd_limited cong = 0 cwnd = 256
-> >>>>>Oct 28 12:02:32 k-desktop kernel: [12251.852027] RPC: 54539
-> >>>>>xprt_transmit(120)
-> >>>>>Oct 28 12:02:32 k-desktop kernel: [12251.852048] RPC: 54539 xmit complete
-> >>>>>Oct 28 12:02:35 k-desktop kernel: [12254.060011] RPC: 54539 xprt_timer
-> >>>>>Oct 28 12:02:35 k-desktop kernel: [12254.060015] RPC:
-> >>>>>cong 256, cwnd was 256, now 256
-> >>>>>Oct 28 12:02:35 k-desktop kernel: [12254.060018] RPC: 54539
-> >>>>>xprt_prepare_transmit
-> >>>>>Oct 28 12:02:35 k-desktop kernel: [12254.060020] RPC: 54539
-> >>>>>xprt_cwnd_limited cong = 0 cwnd = 256
-> >>>>>Oct 28 12:02:35 k-desktop kernel: [12254.060023] RPC: 54539
-> >>>>>xprt_transmit(120)
-> >>>>>Oct 28 12:02:35 k-desktop kernel: [12254.060041] RPC: 54539 xmit complete
-> >>>>>Oct 28 12:02:39 k-desktop kernel: [12258.476012] RPC: 54539 xprt_timer
-> >>>>>Oct 28 12:02:39 k-desktop kernel: [12258.476016] RPC:
-> >>>>>cong 256, cwnd was 256, now 256
-> >>>>>Oct 28 12:02:39 k-desktop kernel: [12258.476020] RPC: 54539
-> >>>>>xprt_prepare_transmit
-> >>>>>Oct 28 12:02:39 k-desktop kernel: [12258.476022] RPC: 54539
-> >>>>>xprt_cwnd_limited cong = 0 cwnd = 256
-> >>>>>Oct 28 12:02:39 k-desktop kernel: [12258.476027] RPC: 54539
-> >>>>>xprt_transmit(120)
-> >>>>>Oct 28 12:02:39 k-desktop kernel: [12258.476052] RPC: 54539 xmit complete
-> >>>>
-> >>>>--
-> >>>>To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> >>>>the body of a message to majordomo@vger.kernel.org
-> >>>>More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> >>>>
-> >>>--
-> >>>To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> >>>the body of a message to majordomo@vger.kernel.org
-> >>>More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> >>>
-> >--
-> >To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> >the body of a message to majordomo@vger.kernel.org
-> >More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> >
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+I won't be providing a kernel patch straight away, but I would like to
+see this happen.
+
+Thanks,
+NeilBrown
+
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2
+
+iQIcBAEBCAAGBQJWM/MyAAoJEDnsnt1WYoG57N8QAIhTN3k3rNznyVETOU1/MKef
+iUFAjXd0T3GRuZlFBm3h+8sY6YPD0XOOSJsUtsWtGEZ3CyGXINtIwuZ1DyeukTvR
+waY12fV77LPpev/8mjfIp5ZQ4D4sMoxDFVFYgpw+dfT4FU6Us0teo9B+UOqVVfY0
+hfRUm3jMEPberBL6VaCVb8OwXro03Z6X5aI6iNAEcM//hxxXpG1wKZ0MGuhmSghN
+MWwI1w8JCCU47W6MDB1U2pm4XjtHNRUiv7xHNBX3xlRwwyP2mBJi1lO4B5MyJJuY
+Kgka6sL/PiGSHi47psyVYGkrJ8HFg5CI73NNR1rW/A4Lct5ksJCnXHGJhhChU9Vq
+KETlld3XD5UEyTMy+26OYuEeGTmQF8eKnC5H1eW4KuRCvFq046I98gfhpnVoMMlY
+IijvKeM09hClMXaMWqTHgOTk78Cj3/z4RGn8OpgfauOQlwoEaDXJH8qIObJNi/EI
+jmmMUPfVs614cK8KwpsBw8daPBejJrHkSKTuwqdZ+jtdjrCCx8/nAHzgK9jeIyfb
+tY/S8C1WETO+6Tmy+b+aGm0O0NjH9s0TExrSpPq8Ti2rs8adzW2wcBC2dv9YBEma
+QGKKacHSDpXLCpfpbNTkOz5L3sWglGWEOVQNEjqtRhWVb86zYFd7Fq4FPiX35M/d
+yl5XGzv9JysYsvt7XyAp
+=nwYz
+-----END PGP SIGNATURE-----
+--=-=-=--
