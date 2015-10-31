@@ -1,105 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:42197 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1031672AbbJ3WqS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 30 Oct 2015 18:46:18 -0400
-From: Neil Brown <neilb@suse.com>
-To: Karel Zak <kzak@redhat.com>
-Date: Sat, 31 Oct 2015 09:46:10 +1100
-Cc: util-linux@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: Re: mount does not accurately identify existing NFS mounts, and shouldn't try.
-In-Reply-To: <20151030105509.GG19508@ws.net.home>
-References: <87twpnll5y.fsf@notabene.neil.brown.name> <20151030105509.GG19508@ws.net.home>
-Message-ID: <871tccvutp.fsf@notabene.neil.brown.name>
+Received: from wp221.webpack.hosteurope.de ([80.237.132.228]:47678 "EHLO
+	wp221.webpack.hosteurope.de" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752665AbbJaKsI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 31 Oct 2015 06:48:08 -0400
+Received: from [192.168.0.17] (helo=jue.netz)
+	by tor.netz with esmtp (Exim 4.86)
+	(envelope-from <juergen@jue.netz>)
+	id 1ZsTPF-0006kR-5S
+	for linux-nfs@vger.kernel.org; Sat, 31 Oct 2015 11:29:05 +0100
+Received: from juergen by jue.netz with local (Exim 4.86)
+	(envelope-from <juergen@jue.netz>)
+	id 1ZsTPF-0000X3-4a
+	for linux-nfs@vger.kernel.org; Sat, 31 Oct 2015 11:29:05 +0100
+Date: Sat, 31 Oct 2015 11:29:05 +0100
+From: Juergen Daubert <jue@jue.li>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] nfsd: Fix message when creating NFSD listener sockets
+Message-ID: <20151031102905.GA2010@jue.netz>
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-	micalg=pgp-sha256; protocol="application/pgp-signature"
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+When the kernel's IPv6 module isn't loaded:
 
-On Fri, Oct 30 2015, Karel Zak wrote:
+#:~> /usr/sbin/rpc.nfsd --debug 8
+rpc.nfsd: knfsd is currently down
+rpc.nfsd: Writing version string to kernel: -2 +3 +4
+rpc.nfsd: Creating AF_INET TCP socket.
+rpc.nfsd: Creating AF_INET UDP socket.
+rpc.nfsd: Creating AF_INET6 TCP socket.
+rpc.nfsd: Creating AF_INET6 UDP socket.
 
-> On Mon, Oct 19, 2015 at 12:08:41PM +1100, Neil Brown wrote:
->> 	/* Refuse the same filesystem on the same mount point */
->> 	err =3D -EBUSY;
->> 	if (path->mnt->mnt_sb =3D=3D newmnt->mnt.mnt_sb &&
->> 	    path->mnt->mnt_root =3D=3D path->dentry)
->> 		goto unlock;
->>=20
->> This is the *only* time that the kernel returns EBUSY for a "mount a new
->> filesystem" request (remount can return EBUSY for other reasons I
->> think).
->>=20
->> So in the case where "mount" thinks it should check if the filesystem is
->> already mounted and ignore the request if it is, the best thing it can
->> do is to just try the mount and ignore any "EBUSY" error status - treat
->> that the same as success.
->>=20
->> So all that code for "is this the same mountpoint" can probably be
->> discarded.
->
-> Well, we have many situations (another than mount -a) when you want to
-> know if the FS is mounted, but you have not permissions for mount(2)
-> or you don't want to try it (because mount(2) may trigger many another
-> things in userspace).
->
->> Did I miss any important consideration there?
->
-> The problem is that the way between fstab entry and mount(2) is
-> sometimes pretty complex (mount.<type> helpers, loop devices,
-> UUID/LABEL translation, etc).
->
-> So, compare fstab with /proc/mounts is usually good compromise...
->
-> Your suggestion seems usable for mount -a, but it's one small use-case
-> (and for example systemd don't use "mount -a" during boot).
->
->> Unfortunately this change could be awkward to implement as /sbin/mount
->> decides whether to try the mount and (for NFS), /sbin/mount.nfs gives an
->> error message if EBUSY is returned.  Would we need to pass a "noebusy"
->> flag, but only if mount.nfs were willing to accept it....
->>=20
->> Any suggestions?
->
-> We have kill(PID, 0) to detect if the PID is valid, you don't have to
-> parse all /proc. It would be nice to have the same for filesystems,
-> something like
->
->     mount("/dev/sda1, "/mnt", "ext4", MS_NOMOUNT, NULL)
+The last two messages are misleading, since creation of AF_INET6
+sockets now fails silently without kernel IPv6 support.
 
-I like that!  I really do.  It returns the same error as mount would if
-run by a privileged uses, or returns success without actually changing
-anything.
-MS_NOMOUNT is incompatible with MS_REMOUNT, MS_MOVE and several others.
+Fixes: c31fef7f4beb ('nfsd: ignore unsupported address types')
 
-I won't be providing a kernel patch straight away, but I would like to
-see this happen.
+Signed-off-by: Juergen Daubert <jue@jue.il>
+---
 
-Thanks,
-NeilBrown
+ utils/nfsd/nfssvc.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
 
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2
-
-iQIcBAEBCAAGBQJWM/MyAAoJEDnsnt1WYoG57N8QAIhTN3k3rNznyVETOU1/MKef
-iUFAjXd0T3GRuZlFBm3h+8sY6YPD0XOOSJsUtsWtGEZ3CyGXINtIwuZ1DyeukTvR
-waY12fV77LPpev/8mjfIp5ZQ4D4sMoxDFVFYgpw+dfT4FU6Us0teo9B+UOqVVfY0
-hfRUm3jMEPberBL6VaCVb8OwXro03Z6X5aI6iNAEcM//hxxXpG1wKZ0MGuhmSghN
-MWwI1w8JCCU47W6MDB1U2pm4XjtHNRUiv7xHNBX3xlRwwyP2mBJi1lO4B5MyJJuY
-Kgka6sL/PiGSHi47psyVYGkrJ8HFg5CI73NNR1rW/A4Lct5ksJCnXHGJhhChU9Vq
-KETlld3XD5UEyTMy+26OYuEeGTmQF8eKnC5H1eW4KuRCvFq046I98gfhpnVoMMlY
-IijvKeM09hClMXaMWqTHgOTk78Cj3/z4RGn8OpgfauOQlwoEaDXJH8qIObJNi/EI
-jmmMUPfVs614cK8KwpsBw8daPBejJrHkSKTuwqdZ+jtdjrCCx8/nAHzgK9jeIyfb
-tY/S8C1WETO+6Tmy+b+aGm0O0NjH9s0TExrSpPq8Ti2rs8adzW2wcBC2dv9YBEma
-QGKKacHSDpXLCpfpbNTkOz5L3sWglGWEOVQNEjqtRhWVb86zYFd7Fq4FPiX35M/d
-yl5XGzv9JysYsvt7XyAp
-=nwYz
------END PGP SIGNATURE-----
---=-=-=--
+diff --git a/utils/nfsd/nfssvc.c b/utils/nfsd/nfssvc.c
+index fc11d23..e8efd06 100644
+--- a/utils/nfsd/nfssvc.c
++++ b/utils/nfsd/nfssvc.c
+@@ -168,8 +168,6 @@ nfssvc_setfds(const struct addrinfo *hints, const char *node, const char *port)
+ 			continue;
+ 		}
+ 
+-		xlog(D_GENERAL, "Creating %s %s socket.", family, proto);
+-
+ 		/* open socket and prepare to hand it off to kernel */
+ 		sockfd = socket(addr->ai_family, addr->ai_socktype,
+ 				addr->ai_protocol);
+@@ -183,6 +181,9 @@ nfssvc_setfds(const struct addrinfo *hints, const char *node, const char *port)
+ 			addr = addr->ai_next;
+ 			continue;
+ 		}
++
++		xlog(D_GENERAL, "Created %s %s socket.", family, proto);
++
+ #ifdef IPV6_SUPPORTED
+ 		if (addr->ai_family == AF_INET6 &&
+ 		    setsockopt(sockfd, IPPROTO_IPV6, IPV6_V6ONLY, &on, sizeof(on))) {
