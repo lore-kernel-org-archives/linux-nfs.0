@@ -1,130 +1,146 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f180.google.com ([209.85.213.180]:36765 "EHLO
-	mail-ig0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752741AbbKAWAl convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 1 Nov 2015 17:00:41 -0500
-Received: by igdg1 with SMTP id g1so45165703igd.1
-        for <linux-nfs@vger.kernel.org>; Sun, 01 Nov 2015 14:00:41 -0800 (PST)
-Content-Type: text/plain; charset=utf-8
-Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2104\))
-Subject: Re: [Libtirpc-devel] ANNOUNCE: libtirpc-1.0.1 released.
-From: Chuck Lever <chucklever@gmail.com>
-In-Reply-To: <563689C9.5040800@lysator.liu.se>
-Date: Sun, 1 Nov 2015 17:00:39 -0500
-Cc: Andreas Radke <a.radke@arcor.de>, Steve Dickson <SteveD@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        libtirpc List <libtirpc-devel@lists.sourceforge.net>
-Message-Id: <B5C96098-FDB0-4F8A-805A-3B525DC3CBCB@gmail.com>
-References: <56351BDA.1090500@RedHat.com> <20151101115106.54815c74@workstation64.home> <56365281.4070005@lysator.liu.se> <83C2DFA0-A11D-4EBA-8786-E247393812F3@gmail.com> <563689C9.5040800@lysator.liu.se>
-To: Peter Rosin <peda@lysator.liu.se>
+Received: from mail-pa0-f45.google.com ([209.85.220.45]:33620 "EHLO
+	mail-pa0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752741AbbKAXjQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 1 Nov 2015 18:39:16 -0500
+Received: by pabfh17 with SMTP id fh17so4344883pab.0
+        for <linux-nfs@vger.kernel.org>; Sun, 01 Nov 2015 15:39:15 -0800 (PST)
+Date: Sun, 1 Nov 2015 15:39:07 -0800 (PST)
+From: Hugh Dickins <hughd@google.com>
+To: Boaz Harrosh <ooo@electrozaur.com>
+cc: Hugh Dickins <hughd@google.com>, Andrew Morton <akpm@linux-foundation.org>,
+        Benny Halevy <bhalevy@primarydata.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Christoph Lameter <cl@linux.com>, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-mm@kvack.org, osd-dev@open-osd.org
+Subject: Re: [PATCH] osd fs: __r4w_get_page rely on PageUptodate for
+ uptodate
+In-Reply-To: <5635E2B4.5070308@electrozaur.com>
+Message-ID: <alpine.LSU.2.11.1511011513240.11427@eggly.anvils>
+References: <alpine.LSU.2.11.1510291137430.3369@eggly.anvils> <5635E2B4.5070308@electrozaur.com>
+MIME-Version: 1.0
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Sun, 1 Nov 2015, Boaz Harrosh wrote:
+> On 10/29/2015 08:43 PM, Hugh Dickins wrote:
+> > Patch "mm: migrate dirty page without clear_page_dirty_for_io etc",
+> > presently staged in mmotm and linux-next, simplifies the migration of
+> > a PageDirty pagecache page: one stat needs moving from zone to zone
+> > and that's about all.
+> > 
+> > It's convenient and safest for it to shift the PageDirty bit from old
+> > page to new, just before updating the zone stats: before copying data
+> > and marking the new PageUptodate.  This is all done while both pages
+> > are isolated and locked, just as before; and just as before, there's
+> > a moment when the new page is visible in the radix_tree, but not yet
+> > PageUptodate.  What's new is that it may now be briefly visible as
+> > PageDirty before it is PageUptodate.
+> > 
+> > When I scoured the tree to see if this could cause a problem anywhere,
+> > the only places I found were in two similar functions __r4w_get_page():
+> > which look up a page with find_get_page() (not using page lock), then
+> > claim it's uptodate if it's PageDirty or PageWriteback or PageUptodate.
+> > 
+> > I'm not sure whether that was right before, but now it might be wrong
+> > (on rare occasions): only claim the page is uptodate if PageUptodate.
+> > Or perhaps the page in question could never be migratable anyway?
+> > 
+> 
+> Hi Sir Hugh
 
-> On Nov 1, 2015, at 4:53 PM, Peter Rosin <peda@lysator.liu.se> wrote:
+Hi Boaz - please pardon my informality :)
+
+> 
+> I'm sorry, I admit the code is clear as mud, but your patch below is wrong.
+> 
+> The *uptodate return from __r4w_get_page is not really "up-to-date" at all
+> actually it means: "do we need to read the page from storage" writable/dirty pages
+> we do not read from storage but use the newest data in memory.
+> 
+> r4w means read-for-write which is when we need to bring in the full stripe to
+> re-calculate raid5/6 . (when only the partial stripe is written)
+
+Yes, that's what I understood from the code too, and how PageUptodate
+is usually used: it allows the caller to bypass the overhead of locking
+the page, rechecking PageUptodate, and reading it in if still necessary.
+
+> 
+> The scenario below of: "briefly visible as PageDirty before it is PageUptodate"
+> is fine in this case because in both cases we do not need to read the page.
+
+But when do you think you have a PageDirty (or PageWriteback) page which
+is not PageUptodate?  We do not ClearPageUptodate when a page is modified.
+
+PageUptodate normally remains set for as long as that page remains caching
+that offset of the file.  I think it's true to say that PageUptodate is
+only cleared when an error, or sometimes an invalidation, occurs (or of
+course when the page is freed for reuse).
+
+I was going to suggest that you check through the places which
+ClearPageUptodate, but that is rather a confusing exercise, since I think
+the majority of them are actually redundant - pages don't come from the
+allocator with PageUptodate set, and a filesystem would already be in
+trouble if it set PageUptodate before the page was initialized (usually
+by reading its data in from disk).  So I think those ClearPageUptodates
+on read error are redundant; though I'm not daring to remove them
+(and they have no bearing on this patch at hand).
+
+> 
+> Thanks for looking
+> Boaz
+> 
+> > Signed-off-by: Hugh Dickins <hughd@google.com>
+> 
+> This patch is not correct!
+
+I think you have actually confirmed that the patch is correct:
+why bother to test PageDirty or PageWriteback when PageUptodate
+already tells you what you need?
+
+Or do these filesystems do something unusual with PageUptodate
+when PageDirty is set?  I didn't find it.
+
+Thanks,
+Hugh
+
+> 
+> > ---
+> > 
+> >  fs/exofs/inode.c             |    5 +----
+> >  fs/nfs/objlayout/objio_osd.c |    5 +----
+> >  2 files changed, 2 insertions(+), 8 deletions(-)
+> > 
+> > --- 4.3-next/fs/exofs/inode.c	2015-08-30 11:34:09.000000000 -0700
+> > +++ linux/fs/exofs/inode.c	2015-10-28 16:55:18.795554294 -0700
+> > @@ -592,10 +592,7 @@ static struct page *__r4w_get_page(void
+> >  			}
+> >  			unlock_page(page);
+> >  		}
+> > -		if (PageDirty(page) || PageWriteback(page))
+> > -			*uptodate = true;
+> > -		else
+> > -			*uptodate = PageUptodate(page);
+> > +		*uptodate = PageUptodate(page);
+> >  		EXOFS_DBGMSG2("index=0x%lx uptodate=%d\n", index, *uptodate);
+> >  		return page;
+> >  	} else {
+> > --- 4.3-next/fs/nfs/objlayout/objio_osd.c	2015-10-21 18:35:07.620645439 -0700
+> > +++ linux/fs/nfs/objlayout/objio_osd.c	2015-10-28 16:53:55.083686639 -0700
+> > @@ -476,10 +476,7 @@ static struct page *__r4w_get_page(void
+> >  		}
+> >  		unlock_page(page);
+> >  	}
+> > -	if (PageDirty(page) || PageWriteback(page))
+> > -		*uptodate = true;
+> > -	else
+> > -		*uptodate = PageUptodate(page);
+> > +	*uptodate = PageUptodate(page);
+> >  	dprintk("%s: index=0x%lx uptodate=%d\n", __func__, index, *uptodate);
+> >  	return page;
+> >  }
+> > 
 > 
 > 
-> On 2015-11-01 20:26, Chuck Lever wrote:
->>> On Nov 1, 2015, at 12:57 PM, Peter Rosin <peda@lysator.liu.se> wrote:
->>> 
->>> 
->>> On 2015-11-01 11:51, Andreas Radke wrote:
->>>> Am Sat, 31 Oct 2015 15:51:54 -0400
->>>> schrieb Steve Dickson <SteveD@redhat.com>:
->>>> 
->>>>> Hello,
->>>>> 
->>>>> The 1.0.1 version of libtirpc has just been release.
->>>>> 
->>>>> In this release the SONAME has been changed to 3.0.0 to
->>>>> reflect a number of changes in the API. Those changes
->>>>> were needed to make the Linux version of libtirpc
->>>>> more compatible with other implementations
->>>> This break rpcbind recompilation:
->>>> 
->>>> src/rpcb_svc_com.c: In function 'handle_reply':
->>>> src/rpcb_svc_com.c:1298:6: error: 'SVCXPRT {aka struct __rpc_svcxprt}'
->>>> has no member named 'xp_auth' xprt->xp_auth = &svc_auth_none;
->>>>      ^
->>>> In file included from /usr/include/tirpc/rpc/rpc.h:62:0,
->>>>                 from src/rpcb_svc_com.c:48:
->>>> src/rpcb_svc_com.c:1300:22: error: 'SVCXPRT {aka struct __rpc_svcxprt}'
->>>> has no member named 'xp_auth' SVCAUTH_DESTROY(xprt->xp_auth);
->>>>                      ^
->>>> /usr/include/tirpc/rpc/svc_auth.h:63:7: note: in definition of macro
->>>> 'SVCAUTH_DESTROY' ((*((auth)->svc_ah_ops->svc_ah_destroy))(auth))
->>>>       ^
->>>> src/rpcb_svc_com.c:1300:22: error: 'SVCXPRT {aka struct __rpc_svcxprt}'
->>>> has no member named 'xp_auth' SVCAUTH_DESTROY(xprt->xp_auth);
->>>>                      ^
->>>> /usr/include/tirpc/rpc/svc_auth.h:63:43: note: in definition of macro
->>>> 'SVCAUTH_DESTROY' ((*((auth)->svc_ah_ops->svc_ah_destroy))(auth))
->>>>                                           ^
->>>> src/rpcb_svc_com.c:1301:6: error: 'SVCXPRT {aka struct __rpc_svcxprt}'
->>>> has no member named 'xp_auth' xprt->xp_auth = NULL;
->>>>      ^
->>>> Makefile:481: recipe for target 'src/rpcb_svc_com.o' failed
->>>> make: *** [src/rpcb_svc_com.o] Error 1
->>>> make: *** Waiting for unfinished jobs....
->>>> ==> ERROR: A failure occurred in build().
->>>> 
->>>> Do you have a fix?
->>>> 
->>> Should be as simple as (not even compile-tested):
->>> 
->>> diff --git a/src/rpcb_svc_com.c b/src/rpcb_svc_com.c
->>> index 4ae93f1..38f163f 100644
->>> --- a/src/rpcb_svc_com.c
->>> +++ b/src/rpcb_svc_com.c
->>> @@ -1295,10 +1295,8 @@ handle_reply(int fd, SVCXPRT *xprt)
->>>     a.rmt_localvers = fi->versnum;
->>> 
->>>     xprt_set_caller(xprt, fi);
->>> -    xprt->xp_auth = &svc_auth_none;
->>> +    SVC_XP_AUTH(xprt) = svc_auth_none;
->>>     svc_sendreply(xprt, (xdrproc_t) xdr_rmtcall_result, (char *) &a);
->>> -    SVCAUTH_DESTROY(xprt->xp_auth);
->>> -    xprt->xp_auth = NULL;
->>> done:
->>>     if (buffer)
->>>         free(buffer);
->>> 
->>> But that breaks compatibility with earlier libtirpc of course…
->>> 
->> #if defined(SVC_XP_AUTH)
->> SVC_XP_AUTH(xprt) = svc_auth_none;
->> #else
->> 
->> . . .
->> 
->> #endif
->> 
->> But I wonder if that’s even necessary now. See rpcbind
->> commit 86036582c001.
->> 
-> Yes, it is fishy to clobber the server auth stuff, so it is probably best to just zap
-> the svc_auth_none assignment altogether. However, the core initializes the
-> server auth to svc_auth_none at the beginning of handling each separate call,
-> so if you somehow use a xprt to send replies before it has taken a call (is that
-> even possible?), there will be no server auth. In that very dubious case, the
-> assignment is essential.
-> 
-> I have not looked at the rpcbind code in any depth whatsoever and don't know
-> anything about the semantics of this "handle_reply" function. But, since it is
-> a "reply", there will presumably have been a preceding "call", presumably on
-> the same transport, in which case the server auth have been initialized. So, it
-> is safe to drop the svc_auth_none assignment.           Presumably. :-)
-
-The original 2012 rpcbind fix smells a little like a
-workaround for a libtirpc bug. It would be nice if there
-was a unit test somewhere to confirm that setting xp_auth
-is no longer needed with the current libtirpc (or help us
-ferret out the libtirpc bug if it still exists).
-
-
---
-Chuck Lever
-chucklever@gmail.com
-
-
-
