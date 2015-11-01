@@ -1,104 +1,86 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wm0-f51.google.com ([74.125.82.51]:35362 "EHLO
-	mail-wm0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751565AbbKAKAZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 1 Nov 2015 05:00:25 -0500
-Message-ID: <5635E2B4.5070308@electrozaur.com>
-Date: Sun, 01 Nov 2015 12:00:20 +0200
-From: Boaz Harrosh <ooo@electrozaur.com>
+Received: from mail-in-01.arcor-online.net ([151.189.21.41]:55549 "EHLO
+	mail-in-01.arcor-online.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752442AbbKAKvK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 1 Nov 2015 05:51:10 -0500
+Date: Sun, 1 Nov 2015 11:51:06 +0100
+From: Andreas Radke <a.radke@arcor.de>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: libtirpc <libtirpc-devel@lists.sourceforge.net>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: ANNOUNCE: libtirpc-1.0.1 released.
+Message-ID: <20151101115106.54815c74@workstation64.home>
+In-Reply-To: <56351BDA.1090500@RedHat.com>
+References: <56351BDA.1090500@RedHat.com>
 MIME-Version: 1.0
-To: Hugh Dickins <hughd@google.com>
-CC: Andrew Morton <akpm@linux-foundation.org>,
-        Benny Halevy <bhalevy@primarydata.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Christoph Lameter <cl@linux.com>, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-mm@kvack.org, osd-dev@open-osd.org
-Subject: Re: [PATCH] osd fs: __r4w_get_page rely on PageUptodate for uptodate
-References: <alpine.LSU.2.11.1510291137430.3369@eggly.anvils>
-In-Reply-To: <alpine.LSU.2.11.1510291137430.3369@eggly.anvils>
-Content-Type: text/plain; charset=utf-8
+Content-Type: multipart/signed; micalg=pgp-sha256;
+ boundary="Sig_/okE4/sMz1B+peWEo0NiC=3A"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 10/29/2015 08:43 PM, Hugh Dickins wrote:
-> Patch "mm: migrate dirty page without clear_page_dirty_for_io etc",
-> presently staged in mmotm and linux-next, simplifies the migration of
-> a PageDirty pagecache page: one stat needs moving from zone to zone
-> and that's about all.
-> 
-> It's convenient and safest for it to shift the PageDirty bit from old
-> page to new, just before updating the zone stats: before copying data
-> and marking the new PageUptodate.  This is all done while both pages
-> are isolated and locked, just as before; and just as before, there's
-> a moment when the new page is visible in the radix_tree, but not yet
-> PageUptodate.  What's new is that it may now be briefly visible as
-> PageDirty before it is PageUptodate.
-> 
-> When I scoured the tree to see if this could cause a problem anywhere,
-> the only places I found were in two similar functions __r4w_get_page():
-> which look up a page with find_get_page() (not using page lock), then
-> claim it's uptodate if it's PageDirty or PageWriteback or PageUptodate.
-> 
-> I'm not sure whether that was right before, but now it might be wrong
-> (on rare occasions): only claim the page is uptodate if PageUptodate.
-> Or perhaps the page in question could never be migratable anyway?
-> 
+--Sig_/okE4/sMz1B+peWEo0NiC=3A
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-Hi Sir Hugh
+Am Sat, 31 Oct 2015 15:51:54 -0400
+schrieb Steve Dickson <SteveD@redhat.com>:
 
-I'm sorry, I admit the code is clear as mud, but your patch below is wrong.
+> Hello,
+>=20
+> The 1.0.1 version of libtirpc has just been release.
+>=20
+> In this release the SONAME has been changed to 3.0.0 to
+> reflect a number of changes in the API. Those changes=20
+> were needed to make the Linux version of libtirpc=20
+> more compatible with other implementations =20
 
-The *uptodate return from __r4w_get_page is not really "up-to-date" at all
-actually it means: "do we need to read the page from storage" writable/dirty pages
-we do not read from storage but use the newest data in memory.
+This break rpcbind recompilation:
 
-r4w means read-for-write which is when we need to bring in the full stripe to
-re-calculate raid5/6 . (when only the partial stripe is written)
+src/rpcb_svc_com.c: In function 'handle_reply':
+src/rpcb_svc_com.c:1298:6: error: 'SVCXPRT {aka struct __rpc_svcxprt}'
+has no member named 'xp_auth' xprt->xp_auth =3D &svc_auth_none;
+      ^
+In file included from /usr/include/tirpc/rpc/rpc.h:62:0,
+                 from src/rpcb_svc_com.c:48:
+src/rpcb_svc_com.c:1300:22: error: 'SVCXPRT {aka struct __rpc_svcxprt}'
+has no member named 'xp_auth' SVCAUTH_DESTROY(xprt->xp_auth);
+                      ^
+/usr/include/tirpc/rpc/svc_auth.h:63:7: note: in definition of macro
+'SVCAUTH_DESTROY' ((*((auth)->svc_ah_ops->svc_ah_destroy))(auth))
+       ^
+src/rpcb_svc_com.c:1300:22: error: 'SVCXPRT {aka struct __rpc_svcxprt}'
+has no member named 'xp_auth' SVCAUTH_DESTROY(xprt->xp_auth);
+                      ^
+/usr/include/tirpc/rpc/svc_auth.h:63:43: note: in definition of macro
+'SVCAUTH_DESTROY' ((*((auth)->svc_ah_ops->svc_ah_destroy))(auth))
+                                           ^
+src/rpcb_svc_com.c:1301:6: error: 'SVCXPRT {aka struct __rpc_svcxprt}'
+has no member named 'xp_auth' xprt->xp_auth =3D NULL;
+      ^
+Makefile:481: recipe for target 'src/rpcb_svc_com.o' failed
+make: *** [src/rpcb_svc_com.o] Error 1
+make: *** Waiting for unfinished jobs....
+=3D=3D> ERROR: A failure occurred in build().
 
-The scenario below of: "briefly visible as PageDirty before it is PageUptodate"
-is fine in this case because in both cases we do not need to read the page.
+Do you have a fix?
 
-Thanks for looking
-Boaz
+-Andy
+Arch Linux
 
-> Signed-off-by: Hugh Dickins <hughd@google.com>
+--Sig_/okE4/sMz1B+peWEo0NiC=3A
+Content-Type: application/pgp-signature
+Content-Description: Digitale Signatur von OpenPGP
 
-This patch is not correct!
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2
 
-> ---
-> 
->  fs/exofs/inode.c             |    5 +----
->  fs/nfs/objlayout/objio_osd.c |    5 +----
->  2 files changed, 2 insertions(+), 8 deletions(-)
-> 
-> --- 4.3-next/fs/exofs/inode.c	2015-08-30 11:34:09.000000000 -0700
-> +++ linux/fs/exofs/inode.c	2015-10-28 16:55:18.795554294 -0700
-> @@ -592,10 +592,7 @@ static struct page *__r4w_get_page(void
->  			}
->  			unlock_page(page);
->  		}
-> -		if (PageDirty(page) || PageWriteback(page))
-> -			*uptodate = true;
-> -		else
-> -			*uptodate = PageUptodate(page);
-> +		*uptodate = PageUptodate(page);
->  		EXOFS_DBGMSG2("index=0x%lx uptodate=%d\n", index, *uptodate);
->  		return page;
->  	} else {
-> --- 4.3-next/fs/nfs/objlayout/objio_osd.c	2015-10-21 18:35:07.620645439 -0700
-> +++ linux/fs/nfs/objlayout/objio_osd.c	2015-10-28 16:53:55.083686639 -0700
-> @@ -476,10 +476,7 @@ static struct page *__r4w_get_page(void
->  		}
->  		unlock_page(page);
->  	}
-> -	if (PageDirty(page) || PageWriteback(page))
-> -		*uptodate = true;
-> -	else
-> -		*uptodate = PageUptodate(page);
-> +	*uptodate = PageUptodate(page);
->  	dprintk("%s: index=0x%lx uptodate=%d\n", __func__, index, *uptodate);
->  	return page;
->  }
-> 
+iQEcBAEBCAAGBQJWNe6aAAoJEJRlerIPKgkry9wH/2HhooJgxNnPbV53d853XYDl
+p1NZ19XEmik9sG6ZTz4jkdZkWCs+Fw3mDBFnuazTPiEWcje/sQME8ssLAQbfMf7E
+3mKj36jb8aUG+ldSA/3ijbl8Iy5nWjmQTI2xK8xnMDNoRckjpy7lSg94MB5roffk
+/N/EVMrm6jF2sPdatZF3QI4KnklKEdtu7srHDaK7b97lgn/OGixUfBRrobSwjm67
+U8vGxzjyQI4CeMM0/inh3BnedyUf8ELkvRwtTJfvy32nIiLaOkLm8xTHBqR65W1D
+Sg7kw1fgN4e957Kbz8pFLJ+s8q1yRw2iX4vJ4ZtKrRiEahAaYJy1FO17tbf3UJE=
+=jHn/
+-----END PGP SIGNATURE-----
 
+--Sig_/okE4/sMz1B+peWEo0NiC=3A--
