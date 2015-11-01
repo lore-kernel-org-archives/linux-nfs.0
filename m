@@ -1,128 +1,104 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:26317 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751288AbbJaVha (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 31 Oct 2015 17:37:30 -0400
-From: Chuck Lever <chuck.lever@oracle.com>
-Content-Type: multipart/signed; boundary="Apple-Mail=_6B82C4B5-104E-406E-9FFD-3B5C523FC149"; protocol="application/pgp-signature"; micalg=pgp-sha512
-Subject: Announcing the release of fedfs-utils version 0.10.5
-Date: Sat, 31 Oct 2015 17:37:07 -0400
-Message-Id: <B532CF95-7E25-42DC-91F3-E96BDCC87F22@oracle.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        samba-technical@lists.samba.org, autofs@vger.kernel.org
-To: "fedfs-utils;release announcements"
-	<fedfs-utils-announce@oss.oracle.com>
-Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2104\))
+Received: from mail-wm0-f51.google.com ([74.125.82.51]:35362 "EHLO
+	mail-wm0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751565AbbKAKAZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 1 Nov 2015 05:00:25 -0500
+Message-ID: <5635E2B4.5070308@electrozaur.com>
+Date: Sun, 01 Nov 2015 12:00:20 +0200
+From: Boaz Harrosh <ooo@electrozaur.com>
+MIME-Version: 1.0
+To: Hugh Dickins <hughd@google.com>
+CC: Andrew Morton <akpm@linux-foundation.org>,
+        Benny Halevy <bhalevy@primarydata.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Christoph Lameter <cl@linux.com>, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-mm@kvack.org, osd-dev@open-osd.org
+Subject: Re: [PATCH] osd fs: __r4w_get_page rely on PageUptodate for uptodate
+References: <alpine.LSU.2.11.1510291137430.3369@eggly.anvils>
+In-Reply-To: <alpine.LSU.2.11.1510291137430.3369@eggly.anvils>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On 10/29/2015 08:43 PM, Hugh Dickins wrote:
+> Patch "mm: migrate dirty page without clear_page_dirty_for_io etc",
+> presently staged in mmotm and linux-next, simplifies the migration of
+> a PageDirty pagecache page: one stat needs moving from zone to zone
+> and that's about all.
+> 
+> It's convenient and safest for it to shift the PageDirty bit from old
+> page to new, just before updating the zone stats: before copying data
+> and marking the new PageUptodate.  This is all done while both pages
+> are isolated and locked, just as before; and just as before, there's
+> a moment when the new page is visible in the radix_tree, but not yet
+> PageUptodate.  What's new is that it may now be briefly visible as
+> PageDirty before it is PageUptodate.
+> 
+> When I scoured the tree to see if this could cause a problem anywhere,
+> the only places I found were in two similar functions __r4w_get_page():
+> which look up a page with find_get_page() (not using page lock), then
+> claim it's uptodate if it's PageDirty or PageWriteback or PageUptodate.
+> 
+> I'm not sure whether that was right before, but now it might be wrong
+> (on rare occasions): only claim the page is uptodate if PageUptodate.
+> Or perhaps the page in question could never be migratable anyway?
+> 
 
---Apple-Mail=_6B82C4B5-104E-406E-9FFD-3B5C523FC149
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=utf-8
+Hi Sir Hugh
 
-This package contains an implementation of the Federated Filesystem
-(FedFS) Proposed Standard for Linux. For an introduction to FedFS, see
-RFC 5716.
+I'm sorry, I admit the code is clear as mud, but your patch below is wrong.
 
-This is an ALPHA quality release.  The code in this release is not
-guaranteed to work.  Programming, administrative, and user interfaces
-may change significantly before the next release.  This release is for
-technology preview only.
+The *uptodate return from __r4w_get_page is not really "up-to-date" at all
+actually it means: "do we need to read the page from storage" writable/dirty pages
+we do not read from storage but use the newest data in memory.
 
-Changes since 0.10.4:
-	=E2=80=A2 More fixes in admin tools
+r4w means read-for-write which is when we need to bring in the full stripe to
+re-calculate raid5/6 . (when only the partial stripe is written)
 
+The scenario below of: "briefly visible as PageDirty before it is PageUptodate"
+is fine in this case because in both cases we do not need to read the page.
 
-Changes since 0.10.3:
-	=E2=80=A2 Fix bugs in admin tools
+Thanks for looking
+Boaz
 
+> Signed-off-by: Hugh Dickins <hughd@google.com>
 
-Changes since 0.10.2:
-	=E2=80=A2 More error handling fixes
-	=E2=80=A2 Remove an incorrect package dependency
+This patch is not correct!
 
+> ---
+> 
+>  fs/exofs/inode.c             |    5 +----
+>  fs/nfs/objlayout/objio_osd.c |    5 +----
+>  2 files changed, 2 insertions(+), 8 deletions(-)
+> 
+> --- 4.3-next/fs/exofs/inode.c	2015-08-30 11:34:09.000000000 -0700
+> +++ linux/fs/exofs/inode.c	2015-10-28 16:55:18.795554294 -0700
+> @@ -592,10 +592,7 @@ static struct page *__r4w_get_page(void
+>  			}
+>  			unlock_page(page);
+>  		}
+> -		if (PageDirty(page) || PageWriteback(page))
+> -			*uptodate = true;
+> -		else
+> -			*uptodate = PageUptodate(page);
+> +		*uptodate = PageUptodate(page);
+>  		EXOFS_DBGMSG2("index=0x%lx uptodate=%d\n", index, *uptodate);
+>  		return page;
+>  	} else {
+> --- 4.3-next/fs/nfs/objlayout/objio_osd.c	2015-10-21 18:35:07.620645439 -0700
+> +++ linux/fs/nfs/objlayout/objio_osd.c	2015-10-28 16:53:55.083686639 -0700
+> @@ -476,10 +476,7 @@ static struct page *__r4w_get_page(void
+>  		}
+>  		unlock_page(page);
+>  	}
+> -	if (PageDirty(page) || PageWriteback(page))
+> -		*uptodate = true;
+> -	else
+> -		*uptodate = PageUptodate(page);
+> +	*uptodate = PageUptodate(page);
+>  	dprintk("%s: index=0x%lx uptodate=%d\n", __func__, index, *uptodate);
+>  	return page;
+>  }
+> 
 
-Changes since 0.10.1:
-	=E2=80=A2 Fix bugs in nsdb-jumpstart
-	=E2=80=A2 Numerous fixes to error handling paths
-	=E2=80=A2 Introduce basic support for Coverity analysis
-
-
-Changes since 0.10.0:
-	=E2=80=A2 Address packaging issues
-
-
-New with fedfs-utils 0.10.0:
-
-Non-backwards compatible changes:
-	=E2=80=A2 *ldaperr removed from libnsdb API
-	=E2=80=A2 ADMIN client tools no longer use AUTH_NONE security
-	=E2=80=A2 ADMIN client tools no longer exit with FedFS status =
-code
-
-New features:
-	=E2=80=A2 Python package PyFedfs added
-	=E2=80=A2 Tool for configuring FedFS domain root directories
-	=E2=80=A2 Tool for setting up NSDBs using OpenLDAP
-	=E2=80=A2 Simpler NCE discovery (compliant with new FedFS NCE =
-I-D)
-	=E2=80=A2 admin_t API for performing remote ADMIN requests
-	=E2=80=A2 rpc.fedfsd uses an ACL to control who can perform =
-ADMIN requests
-	=E2=80=A2 rpc.fedfsd and ADMIN tools support RPCSEC and Kerberos =
-v5
-
-Minor fixes:
-	=E2=80=A2 FEDFS_LOOKUP_JUNCTION no longer returns NSDB_LDAP_VAL
-	=E2=80=A2 fedfs-map-nfs4 handles multiple SRV records
-	=E2=80=A2 Packaging simplifications
-	=E2=80=A2 Dozens of code clean-ups and bug fixes; consult =
-Changelog for details
-
-
-Source code available at:
-http://git.linux-nfs.org/?p=3Dcel/fedfs-utils.git
-
-The new head of the master branch is commit:
-
-df0bf073399a Release 0.10.5
-
-Patchwork available at:
-http://patchwork.ozlabs.org/project/fedfs-utils/list/
-
-Tarball releases available at:
-http://git.linux-nfs.org/?p=3Dcel/fedfs-releases.git;a=3Dsummary
-
---
-Chuck Lever
-
-
---Apple-Mail=_6B82C4B5-104E-406E-9FFD-3B5C523FC149
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP using GPGMail
-
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
-
-iQIcBAEBCgAGBQJWNTSNAAoJEDNqszNvZn+X5hkP/0pRxgLWKoE5nwCsKj1L0d1Z
-c7/of3be4CfGEKanAsxJT0VtdyNsCYPKl2vwFXe8s7eqLlQ8TKcO4mI4BZLe/u4t
-fgIykKXILoUMLnfx+LCxxLp6GJ79VCcGvxBgJs/Xp0x+2NHA5OG5RGAfbmIQblSi
-alYKR5gWJDWp931BTHfkaR+JXz5HJoxmXe51M3zbHZfASgY2clw1E0mn/5SNXWwE
-YQ4SFuG9euNB9EmSDa9xALXMrQTq4WMEojUESaBEEMEV0cPW9386EeZAm46e+z43
-hkWipf/I9PZmOz5upzb0ATDK9Rip1ZuMXxQJhjAXTrHTCbIiLlEXuKo7RjAeiMMW
-eEvrNln8+5eLs3KuBJLhTa1otKnvhWZn/A40Om2cVZ0s35dYHzbYqHBA2x+qcMQP
-tPA8NV3QRnpnDnhxbBv1zF9HQZ+9n2sB665gTJ7N6QufuhfROgDXezbE4jzu+P0u
-d9/P3sBYQhIhUGJ0BROz/7M7jvBRnvMF5bCgq3w8wiRwRkyatpHwJIs3SB7Rne4F
-TJmh6+uwdN8UNphUojY2JgOltjw+8hJ2/FkdxZyu+bX5KGwe5GROZefgCSSTEad/
-bh4o2bo03jHG1gQnpmDKLODFjMPf2aPYyeAx/OO7cfeQfdkeKMzEDAv5kd6ANHzl
-M/loZbdGvq4wkMVZcOfd
-=XnmX
------END PGP SIGNATURE-----
-
---Apple-Mail=_6B82C4B5-104E-406E-9FFD-3B5C523FC149--
