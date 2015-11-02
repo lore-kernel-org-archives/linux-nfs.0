@@ -1,127 +1,254 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f174.google.com ([209.85.213.174]:35716 "EHLO
-	mail-ig0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752466AbbKBStf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Nov 2015 13:49:35 -0500
-Received: by igpw7 with SMTP id w7so63539332igp.0
-        for <linux-nfs@vger.kernel.org>; Mon, 02 Nov 2015 10:49:34 -0800 (PST)
-Received: from leira.trondhjem.org (c-68-49-164-203.hsd1.mi.comcast.net. [68.49.164.203])
-        by smtp.gmail.com with ESMTPSA id q10sm6347055igh.4.2015.11.02.10.49.33
-        for <linux-nfs@vger.kernel.org>
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Mon, 02 Nov 2015 10:49:34 -0800 (PST)
-Message-ID: <1446490172.30323.3.camel@primarydata.com>
-Subject: [PATCH 2/2] pNFS/flexfiles: Add support for FF_FLAGS_NO_IO_THRU_MDS
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Date: Mon, 02 Nov 2015 13:49:32 -0500
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from mx144.netapp.com ([216.240.21.25]:52765 "EHLO mx144.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752596AbbKBUnq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 2 Nov 2015 15:43:46 -0500
+Subject: Re: [PATCH v4 16/16] NFS: Enable client side NFSv4.1 backchannel to
+ use other transports
+To: Chuck Lever <chuck.lever@oracle.com>, <Anna.Schumaker@netapp.com>
+References: <20151024211707.4715.61650.stgit@manet.1015granger.net>
+ <20151024212832.4715.39528.stgit@manet.1015granger.net>
+CC: <linux-rdma@vger.kernel.org>, <linux-nfs@vger.kernel.org>
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+Message-ID: <5637CAFC.7070805@Netapp.com>
+Date: Mon, 2 Nov 2015 15:43:40 -0500
+MIME-Version: 1.0
+In-Reply-To: <20151024212832.4715.39528.stgit@manet.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-For loosely coupled pNFS/flexfiles systems, there is often no advantage
-at all in going through the MDS for I/O, since the MDS is subject to
-the same limitations as all other clients when talking to DSes. If a
-DS is unresponsive, I/O through the MDS will fail.
+Hi Chuck,
 
-For such systems, the only scalable solution is to have the pNFS
-clients
-retry doing pNFS, and so the protocol now provides a flag that allows
-the pNFS server to signal this.
+Sorry for the delay in reviewing.
 
-If LAYOUTGET returns FF_FLAGS_NO_IO_THRU_MDS, then we should assume
-that
-the MDS wants the client to retry using these devices, even if they
-were
-previously marked as being unavailable. To do so, we add a helper,
-ff_layout_mark_devices_valid() that will be called from layoutget.
+On 10/24/2015 05:28 PM, Chuck Lever wrote:
+> Forechannel transports get their own "bc_up" method to create an
+> endpoint for the backchannel service.
+> 
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+>  fs/nfs/callback.c                 |   40 +++++++------------------------------
+>  include/linux/sunrpc/xprt.h       |    2 ++
+>  net/sunrpc/xprtrdma/backchannel.c |   21 +++++++++++++++++++
+>  net/sunrpc/xprtrdma/transport.c   |    1 +
+>  net/sunrpc/xprtrdma/xprt_rdma.h   |    1 +
+>  net/sunrpc/xprtsock.c             |   12 +++++++++++
+>  6 files changed, 45 insertions(+), 32 deletions(-)
+> 
+> diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+> index 75f7c0a..a7f2e6e 100644
+> --- a/fs/nfs/callback.c
+> +++ b/fs/nfs/callback.c
+> @@ -99,17 +99,6 @@ nfs4_callback_up(struct svc_serv *serv)
+>  }
+>  
+>  #if defined(CONFIG_NFS_V4_1)
+> -static int nfs41_callback_up_net(struct svc_serv *serv, struct net *net)
+> -{
+> -	/*
+> -	 * Create an svc_sock for the back channel service that shares the
+> -	 * fore channel connection.
+> -	 * Returns the input port (0) and sets the svc_serv bc_xprt on success
+> -	 */
+> -	return svc_create_xprt(serv, "tcp-bc", net, PF_INET, 0,
+> -			      SVC_SOCK_ANONYMOUS);
+> -}
+> -
+>  /*
+>   * The callback service for NFSv4.1 callbacks
+>   */
+> @@ -184,11 +173,6 @@ static inline void nfs_callback_bc_serv(u32 minorversion, struct rpc_xprt *xprt,
+>  		xprt->bc_serv = serv;
+>  }
+>  #else
+> -static int nfs41_callback_up_net(struct svc_serv *serv, struct net *net)
+> -{
+> -	return 0;
+> -}
+> -
+>  static void nfs_minorversion_callback_svc_setup(struct svc_serv *serv,
+>  		struct svc_rqst **rqstpp, int (**callback_svc)(void *vrqstp))
+>  {
+> @@ -259,7 +243,8 @@ static void nfs_callback_down_net(u32 minorversion, struct svc_serv *serv, struc
+>  	svc_shutdown_net(serv, net);
+>  }
+>  
+> -static int nfs_callback_up_net(int minorversion, struct svc_serv *serv, struct net *net)
+> +static int nfs_callback_up_net(int minorversion, struct svc_serv *serv,
+> +			       struct net *net, struct rpc_xprt *xprt)
+>  {
+>  	struct nfs_net *nn = net_generic(net, nfs_net_id);
+>  	int ret;
+> @@ -275,20 +260,11 @@ static int nfs_callback_up_net(int minorversion, struct svc_serv *serv, struct n
+>  		goto err_bind;
+>  	}
+>  
+> -	switch (minorversion) {
+> -		case 0:
+> -			ret = nfs4_callback_up_net(serv, net);
+> -			break;
+> -		case 1:
+> -		case 2:
+> -			ret = nfs41_callback_up_net(serv, net);
+> -			break;
+> -		default:
+> -			printk(KERN_ERR "NFS: unknown callback version: %d\n",
+> -					minorversion);
+> -			ret = -EINVAL;
+> -			break;
+> -	}
+> +	ret = -EPROTONOSUPPORT;
+> +	if (minorversion == 0)
+> +		ret = nfs4_callback_up_net(serv, net);
+> +	else if (xprt->ops->bc_up)
+> +		ret = xprt->ops->bc_up(serv, net);
+>  
+>  	if (ret < 0) {
+>  		printk(KERN_ERR "NFS: callback service start failed\n");
+> @@ -364,7 +340,7 @@ int nfs_callback_up(u32 minorversion, struct rpc_xprt *xprt)
+>  		goto err_create;
+>  	}
+>  
+> -	ret = nfs_callback_up_net(minorversion, serv, net);
+> +	ret = nfs_callback_up_net(minorversion, serv, net, xprt);
+>  	if (ret < 0)
+>  		goto err_net;
+>  
+> diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+> index 82c0839..9d22f43 100644
+> --- a/include/linux/sunrpc/xprt.h
+> +++ b/include/linux/sunrpc/xprt.h
+> @@ -54,6 +54,7 @@ enum rpc_display_format_t {
+>  struct rpc_task;
+>  struct rpc_xprt;
+>  struct seq_file;
+> +struct svc_serv;
+>  
+>  /*
+>   * This describes a complete RPC request
+> @@ -138,6 +139,7 @@ struct rpc_xprt_ops {
+>  	void		(*inject_disconnect)(struct rpc_xprt *xprt);
+>  	int		(*bc_setup)(struct rpc_xprt *xprt,
+>  				    unsigned int min_reqs);
+> +	int		(*bc_up)(struct svc_serv *serv, struct net *net);
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/flexfilelayout/flexfilelayout.c | 18 ++++++++++++++++--
- fs/nfs/flexfilelayout/flexfilelayout.h |  7 +++++++
- 2 files changed, 23 insertions(+), 2 deletions(-)
+Disabling CONFIG_SUNRPC_DEBUG gives me several:
 
-diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c
-b/fs/nfs/flexfilelayout/flexfilelayout.c
-index 7fc14b90886e..03516c80855a 100644
---- a/fs/nfs/flexfilelayout/flexfilelayout.c
-+++ b/fs/nfs/flexfilelayout/flexfilelayout.c
-@@ -339,6 +339,19 @@ static void ff_layout_sort_mirrors(struct
-nfs4_ff_layout_segment *fls)
- 	}
- }
- 
-+static void ff_layout_mark_devices_valid(struct nfs4_ff_layout_segment
-*fls)
-+{
-+	struct nfs4_deviceid_node *node;
-+	int i;
-+
-+	if (!(fls->flags & FF_FLAGS_NO_IO_THRU_MDS))
-+		return;
-+	for (i = 0; i < fls->mirror_array_cnt; i++) {
-+		node = &fls->mirror_array[i]->mirror_ds->id_node;
-+		clear_bit(NFS_DEVICEID_UNAVAILABLE, &node->flags);
-+	}
-+}
-+
- static struct pnfs_layout_segment *
- ff_layout_alloc_lseg(struct pnfs_layout_hdr *lh,
- 		     struct nfs4_layoutget_res *lgr,
-@@ -499,6 +512,7 @@ ff_layout_alloc_lseg(struct pnfs_layout_hdr *lh,
- 	rc = ff_layout_check_layout(lgr);
- 	if (rc)
- 		goto out_err_free;
-+	ff_layout_mark_devices_valid(fls);
- 
- 	ret = &fls->generic_hdr;
- 	dprintk("<-- %s (success)\n", __func__);
-@@ -1035,7 +1049,8 @@ static int ff_layout_async_handle_error_v4(struct
-rpc_task *task,
- 		rpc_wake_up(&tbl->slot_tbl_waitq);
- 		/* fall through */
- 	default:
--		if (ff_layout_has_available_ds(lseg))
-+		if (ff_layout_no_fallback_to_mds(lseg) ||
-+		    ff_layout_has_available_ds(lseg))
- 			return -NFS4ERR_RESET_TO_PNFS;
- reset:
- 		dprintk("%s Retry through MDS. Error %d\n", __func__,
-@@ -1153,7 +1168,6 @@ static void ff_layout_io_track_ds_error(struct
-pnfs_layout_segment *lseg,
- }
- 
- /* NFS_PROTO call done callback routines */
--
- static int ff_layout_read_done_cb(struct rpc_task *task,
- 				struct nfs_pgio_header *hdr)
- {
-diff --git a/fs/nfs/flexfilelayout/flexfilelayout.h
-b/fs/nfs/flexfilelayout/flexfilelayout.h
-index 68cc0d9828f9..2bb08bc6aaf0 100644
---- a/fs/nfs/flexfilelayout/flexfilelayout.h
-+++ b/fs/nfs/flexfilelayout/flexfilelayout.h
-@@ -10,6 +10,7 @@
- #define FS_NFS_NFS4FLEXFILELAYOUT_H
- 
- #define FF_FLAGS_NO_LAYOUTCOMMIT 1
-+#define FF_FLAGS_NO_IO_THRU_MDS 2
- 
- #include "../pnfs.h"
- 
-@@ -146,6 +147,12 @@ FF_LAYOUT_MIRROR_COUNT(struct pnfs_layout_segment
-*lseg)
- }
- 
- static inline bool
-+ff_layout_no_fallback_to_mds(struct pnfs_layout_segment *lseg)
-+{
-+	return FF_LAYOUT_LSEG(lseg)->flags & FF_FLAGS_NO_IO_THRU_MDS;
-+}
-+
-+static inline bool
- ff_layout_test_devid_unavailable(struct nfs4_deviceid_node *node)
- {
- 	return nfs4_test_deviceid_unavailable(node);
+  CC [M]  fs/nfsd/nfs4acl.o
+  CC [M]  fs/nfsd/nfs4callback.o
+In file included from include/linux/sunrpc/clnt.h:19:0,
+                 from fs/nfsd/nfs4callback.c:34:
+include/linux/sunrpc/xprt.h:142:46: error: 'struct net' declared inside parameter list [-Werror]
+  int  (*bc_up)(struct svc_serv *serv, struct net *net);
+                                              ^
+include/linux/sunrpc/xprt.h:142:46: error: its scope is only this definition or declaration, which is probably not what you want [-Werror]
+
+I'm guessing an include file is missing somewhere?
+
+Anna
+
+
+>  	void		(*bc_free_rqst)(struct rpc_rqst *rqst);
+>  	void		(*bc_destroy)(struct rpc_xprt *xprt,
+>  				      unsigned int max_reqs);
+> diff --git a/net/sunrpc/xprtrdma/backchannel.c b/net/sunrpc/xprtrdma/backchannel.c
+> index 0b3387f..2dcb44f 100644
+> --- a/net/sunrpc/xprtrdma/backchannel.c
+> +++ b/net/sunrpc/xprtrdma/backchannel.c
+> @@ -7,6 +7,7 @@
+>  #include <linux/module.h>
+>  #include <linux/sunrpc/xprt.h>
+>  #include <linux/sunrpc/svc.h>
+> +#include <linux/sunrpc/svc_xprt.h>
+>  
+>  #include "xprt_rdma.h"
+>  
+> @@ -174,6 +175,26 @@ out_err:
+>  }
+>  
+>  /**
+> + * xprt_rdma_bc_up - Create transport endpoint for backchannel service
+> + * @serv: server endpoint
+> + * @net: network namespace
+> + *
+> + * The "xprt" is an implied argument: it supplies the name of the
+> + * backchannel transport class.
+> + *
+> + * Returns zero on success, negative errno on failure
+> + */
+> +int xprt_rdma_bc_up(struct svc_serv *serv, struct net *net)
+> +{
+> +	int ret;
+> +
+> +	ret = svc_create_xprt(serv, "rdma-bc", net, PF_INET, 0, 0);
+> +	if (ret < 0)
+> +		return ret;
+> +	return 0;
+> +}
+> +
+> +/**
+>   * rpcrdma_bc_marshal_reply - Send backwards direction reply
+>   * @rqst: buffer containing RPC reply data
+>   *
+> diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+> index 845278e..8c545f7 100644
+> --- a/net/sunrpc/xprtrdma/transport.c
+> +++ b/net/sunrpc/xprtrdma/transport.c
+> @@ -708,6 +708,7 @@ static struct rpc_xprt_ops xprt_rdma_procs = {
+>  	.inject_disconnect	= xprt_rdma_inject_disconnect,
+>  #if defined(CONFIG_SUNRPC_BACKCHANNEL)
+>  	.bc_setup		= xprt_rdma_bc_setup,
+> +	.bc_up			= xprt_rdma_bc_up,
+>  	.bc_free_rqst		= xprt_rdma_bc_free_rqst,
+>  	.bc_destroy		= xprt_rdma_bc_destroy,
+>  #endif
+> diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+> index eb87d96e8..f8dd17b 100644
+> --- a/net/sunrpc/xprtrdma/xprt_rdma.h
+> +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+> @@ -520,6 +520,7 @@ void xprt_rdma_cleanup(void);
+>   */
+>  #if defined(CONFIG_SUNRPC_BACKCHANNEL)
+>  int xprt_rdma_bc_setup(struct rpc_xprt *, unsigned int);
+> +int xprt_rdma_bc_up(struct svc_serv *, struct net *);
+>  int rpcrdma_bc_post_recv(struct rpcrdma_xprt *, unsigned int);
+>  void rpcrdma_bc_receive_call(struct rpcrdma_xprt *, struct rpcrdma_rep *);
+>  int rpcrdma_bc_marshal_reply(struct rpc_rqst *);
+> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+> index 44a81e4..dc47067 100644
+> --- a/net/sunrpc/xprtsock.c
+> +++ b/net/sunrpc/xprtsock.c
+> @@ -1306,6 +1306,17 @@ static inline int _xs_tcp_read_data(struct rpc_xprt *xprt,
+>  		xs_tcp_read_reply(xprt, desc) :
+>  		xs_tcp_read_callback(xprt, desc);
+>  }
+> +
+> +static int xs_tcp_bc_up(struct svc_serv *serv, struct net *net)
+> +{
+> +	int ret;
+> +
+> +	ret = svc_create_xprt(serv, "tcp-bc", net, PF_INET, 0,
+> +			      SVC_SOCK_ANONYMOUS);
+> +	if (ret < 0)
+> +		return ret;
+> +	return 0;
+> +}
+>  #else
+>  static inline int _xs_tcp_read_data(struct rpc_xprt *xprt,
+>  					struct xdr_skb_reader *desc)
+> @@ -2582,6 +2593,7 @@ static struct rpc_xprt_ops xs_tcp_ops = {
+>  	.inject_disconnect	= xs_inject_disconnect,
+>  #ifdef CONFIG_SUNRPC_BACKCHANNEL
+>  	.bc_setup		= xprt_setup_bc,
+> +	.bc_up			= xs_tcp_bc_up,
+>  	.bc_free_rqst		= xprt_free_bc_rqst,
+>  	.bc_destroy		= xprt_destroy_bc,
+>  #endif
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+
