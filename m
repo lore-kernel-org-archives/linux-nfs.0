@@ -1,61 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wm0-f42.google.com ([74.125.82.42]:35496 "EHLO
-	mail-wm0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753720AbbKBLFg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Nov 2015 06:05:36 -0500
-Message-ID: <5637437C.4070306@electrozaur.com>
-Date: Mon, 02 Nov 2015 13:05:32 +0200
-From: Boaz Harrosh <ooo@electrozaur.com>
+Received: from mail-lf0-f52.google.com ([209.85.215.52]:33936 "EHLO
+	mail-lf0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751847AbbKBMBZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Nov 2015 07:01:25 -0500
+Received: by lfgh9 with SMTP id h9so13894030lfg.1
+        for <linux-nfs@vger.kernel.org>; Mon, 02 Nov 2015 04:01:23 -0800 (PST)
 MIME-Version: 1.0
-To: Hugh Dickins <hughd@google.com>
-CC: Andrew Morton <akpm@linux-foundation.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Christoph Lameter <cl@linux.com>, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-mm@kvack.org, osd-dev@open-osd.org
-Subject: Re: [PATCH] osd fs: __r4w_get_page rely on PageUptodate for uptodate
-References: <alpine.LSU.2.11.1510291137430.3369@eggly.anvils> <5635E2B4.5070308@electrozaur.com> <alpine.LSU.2.11.1511011513240.11427@eggly.anvils>
-In-Reply-To: <alpine.LSU.2.11.1511011513240.11427@eggly.anvils>
-Content-Type: text/plain; charset=utf-8
+In-Reply-To: <CAKCW0Y4U6jhqr=PVnSjVZP5T2Q_5qLXOpfHmsyCYUCRsMcKEuw@mail.gmail.com>
+References: <CAKCW0Y78D15MhRcxNtS2=0xQPowPFBPw43L=OLQE=1WJd8Acuw@mail.gmail.com>
+ <CAKCW0Y4U6jhqr=PVnSjVZP5T2Q_5qLXOpfHmsyCYUCRsMcKEuw@mail.gmail.com>
+From: Jeenu Viswambharan <jeenuv@gmail.com>
+Date: Mon, 2 Nov 2015 12:00:53 +0000
+Message-ID: <CAKCW0Y4RpYhMbL5D_oCfLYhh8qQSMzfX9QNqRkRnsVD06dFSzg@mail.gmail.com>
+Subject: Re: NFS mount timeouts
+To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 11/02/2015 01:39 AM, Hugh Dickins wrote:
-<>
->> This patch is not correct!
-> 
-> I think you have actually confirmed that the patch is correct:
-> why bother to test PageDirty or PageWriteback when PageUptodate
-> already tells you what you need?
-> 
-> Or do these filesystems do something unusual with PageUptodate
-> when PageDirty is set?  I didn't find it.
-> 
+On Fri, Oct 30, 2015 at 3:02 PM, Jeenu Viswambharan <jeenuv@gmail.com> wrote:
+> On Fri, Oct 30, 2015 at 2:54 PM, Jeenu Viswambharan <jeenuv@gmail.com> wrote:
+>> I've a development board whose root file system is shared via. NFS
+>> from my PC (3.13.0-66-generic #108-Ubuntu SMP x86_64 GNU/Linux). The
+>> behaviour at times is that board mounts the NFS share, but then soon
+>> thereafter, while in execution, it started displaying NFS timeouts,
+>> retries, and hangs. That's the end of it.
+>
+> I missed to mention that once this happens, the board won't boot
+> again: it'll wait for the root file system to be mounted, fails, and
+> then crashes. Even restarting NFS server doesn't help.
 
-This is kind of delicate stuff. It took me a while to get it right
-when I did it. I don't remember all the details.
+I found signs that the NFS server is probably allowing access to the
+said share, but for some reason Linux on my development board wouldn't
+boot. I found the following traces in syslog, indicating retries from
+the Linux boot:
 
-But consider this option:
+  Nov  2 11:48:26 e105349-lin rpc.mountd[7920]: authenticated mount
+request from 10.1.197.27:912 for /work/nfs (/work/nfs)
+  Nov  2 11:49:09 e105349-lin rpc.mountd[7920]: authenticated mount
+request from 10.1.197.27:899 for /work/nfs (/work/nfs)
+  Nov  2 11:50:02 e105349-lin rpc.mountd[7920]: authenticated mount
+request from 10.1.197.27:871 for /work/nfs (/work/nfs)
+  Nov  2 11:51:15 e105349-lin rpc.mountd[7920]: authenticated mount
+request from 10.1.197.27:759 for /work/nfs (/work/nfs)
+  Nov  2 11:52:48 e105349-lin rpc.mountd[7920]: authenticated mount
+request from 10.1.197.27:999 for /work/nfs (/work/nfs)
+  Nov  2 11:54:21 e105349-lin rpc.mountd[7920]: authenticated mount
+request from 10.1.197.27:792 for /work/nfs (/work/nfs)
 
-exofs_write_begin on a full PAGE_CACHE_SIZE, the page is instantiated
-new in page-cache is that PageUptodate(page) then? I thought not.
-(exofs does not set that)
+Also, there are entries in /var/lib/nfs/rmtab for the said NFS share.
+For some reason the board isn't happy with all these, and gives up
+citing NFS timeout:
 
-Now that page I do not want to read in. The latest data is in memory.
-(Same when this page is in writeback, dirty-bit is cleared)
+  [  197.211808] VFS: Unable to mount root fs via NFS, trying floppy.
+  [  197.214885] VFS: Cannot open root device "nfs" or
+unknown-block(2,0): error -6
+  [  197.218459] Please append a correct "root=" boot option; here are
+the available partitions:
+  [  197.222611] Kernel panic - not syncing: VFS: Unable to mount root
+fs on unknown-block(2,0)
+  [  197.226702] CPU: 0 PID: 1 Comm: swapper/0 Not tainted 3.15.0-rc8+ #2
 
-So for sure if page is dirty or writeback then we surly do not need a read.
-only if not then we need to consider the  PageUptodate(page) state.
+Could somebody help diagnose the problem please?
 
-Do you think the code is actually wrong as is?
-
-BTW: Very similar code is in fs/nfs/objlayout/objio_osd.c::__r4w_get_page
-
-> Thanks,
-> Hugh
-> 
-<>
-
-Thanks
-Boaz
-
+-- 
+Jeenu
