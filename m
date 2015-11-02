@@ -1,59 +1,105 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f173.google.com ([209.85.223.173]:35057 "EHLO
-	mail-io0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751723AbbKBNXy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Nov 2015 08:23:54 -0500
-Received: by iofz202 with SMTP id z202so142947433iof.2
-        for <linux-nfs@vger.kernel.org>; Mon, 02 Nov 2015 05:23:53 -0800 (PST)
-Message-ID: <1446470630.8952.6.camel@kepstin.ca>
-Subject: Re: [PATCH] nfs-utils: Substitute sbindir in systemd unit files.
-From: Calvin Walton <calvin.walton@kepstin.ca>
-To: Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org
-Date: Mon, 02 Nov 2015 08:23:50 -0500
-In-Reply-To: <56375CD4.3010806@RedHat.com>
-References: <1429638029-13637-1-git-send-email-calvin.walton@kepstin.ca>
-	 <1429638223-13852-1-git-send-email-calvin.walton@kepstin.ca>
-	 <56375CD4.3010806@RedHat.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from mx143.netapp.com ([216.240.21.24]:46797 "EHLO mx143.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753550AbbKBPRV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 2 Nov 2015 10:17:21 -0500
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+Subject: Re: [GIT PULL] Please pull NFSoRDMA changes for 4.4
+To: Chuck Lever <chuck.lever@oracle.com>,
+        Anna Schumaker <Anna.Schumaker@netapp.com>
+References: <562A9C42.7030506@Netapp.com>
+ <914C310D-238E-4646-891F-7680492D440C@oracle.com>
+CC: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        linux-rdma <linux-rdma@vger.kernel.org>
+Message-ID: <56377E78.5070409@Netapp.com>
+Date: Mon, 2 Nov 2015 10:17:12 -0500
+MIME-Version: 1.0
+In-Reply-To: <914C310D-238E-4646-891F-7680492D440C@oracle.com>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Steve,
-
-On Mon, 2015-11-02 at 07:53 -0500, Steve Dickson wrote:
-> Hello, 
+On 10/24/2015 02:41 PM, Chuck Lever wrote:
 > 
-> I'm finally getting around to looking at this and
-> I'm seen a couple issues...
+>> On Oct 23, 2015, at 4:44 PM, Anna Schumaker <Anna.Schumaker@netapp.com> wrote:
+>>
+>> Hi Trond,
+>>
+>> The following changes since commit 7379047d5585187d1288486d4627873170d0005a:
+>>
+>>  Linux 4.3-rc6 (2015-10-18 16:08:42 -0700)
+>>
+>> are available in the git repository at:
+>>
+>>  git://git.linux-nfs.org/projects/anna/nfs-rdma.git tags/nfs-rdma-4.4
+>>
+>> for you to fetch changes up to 50add18fd4c82cc1eaedc6ce879d998a66f20e1f:
+>>
+>>  NFS: Enable client side NFSv4.1 backchannel to use other transports (2015-10-19 14:48:18 -0400)
+> 
+> Anna, did you already send Steve Wise’s fix for 4.4?
 
-> > -unit_dir = /usr/lib/systemd/system
-> > -
-> > -if INSTALL_SYSTEMD
-> > -install-data-hook: $(unit_files)
-> But after making the patch apply cleanly the scripts
-> no longer get installed and I believe its 
-> because you took out the above rule. 
+Oops!  I think I forgot that patch.  I'll include it with the v4 pull request today.
 
-You had actually ran into this same issue when you reviewed the patch
-earlier. This rule isn't needed because automake's built-in install
-path functionality is used - but the files only get installed if
-  --with-systemd=/some/path
-is passed to configure. (If you only use --with-systemd, you might find
-the units get installed to the directory "/yes")
+Anna
 
-The conclusion was that some patching of configure was needed - it
-should enable installing the unit files by default if systemd is found,
-and not require manually specifying the path where to install the units
-(using e.g. pkg-config to find it if unspecified)
-
-I should have done this earlier, but was busy with some other stuff for
-work.
-
-I'm ok with autoconf stuff, so I'll take a look at rolling an updated
-patch series with the configure changes. Hopefully it'll get done
-before several months have passed...
-
--- 
-Calvin Walton <calvin.walton@kepstin.ca>
+> 
+> http://marc.info/?l=linux-nfs&m=144285627709672&w=2
+> 
+> 
+>> Thanks,
+>> Anna
+>>
+>> ----------------------------------------------------------------
+>> Chuck Lever (16):
+>>      xprtrdma: Enable swap-on-NFS/RDMA
+>>      xprtrdma: Re-arm after missed events
+>>      xprtrdma: Prevent loss of completion signals
+>>      xprtrdma: Refactor reply handler error handling
+>>      xprtrdma: Replace send and receive arrays
+>>      xprtrdma: Use workqueue to process RPC/RDMA replies
+>>      xprtrdma: Remove reply tasklet
+>>      xprtrdma: Saving IRQs no longer needed for rb_lock
+>>      SUNRPC: Abstract backchannel operations
+>>      xprtrdma: Pre-allocate backward rpc_rqst and send/receive buffers
+>>      xprtrdma: Pre-allocate Work Requests for backchannel
+>>      xprtrdma: Add support for sending backward direction RPC replies
+>>      xprtrdma: Handle incoming backward direction RPC calls
+>>      svcrdma: Add backward direction service for RPC/RDMA transport
+>>      SUNRPC: Remove the TCP-only restriction in bc_svc_process()
+>>      NFS: Enable client side NFSv4.1 backchannel to use other transports
+>>
+>> fs/nfs/callback.c                        |  33 +++++++++------
+>> include/linux/sunrpc/bc_xprt.h           |   5 +++
+>> include/linux/sunrpc/svc_rdma.h          |   6 ++-
+>> include/linux/sunrpc/xprt.h              |   7 ++++
+>> net/sunrpc/backchannel_rqst.c            |  24 ++++++++++-
+>> net/sunrpc/svc.c                         |   5 ---
+>> net/sunrpc/xprtrdma/Makefile             |   1 +
+>> net/sunrpc/xprtrdma/backchannel.c        | 373 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+>> net/sunrpc/xprtrdma/rpc_rdma.c           | 148 +++++++++++++++++++++++++++++++++++++++++++++--------------------
+>> net/sunrpc/xprtrdma/svc_rdma.c           |   6 +++
+>> net/sunrpc/xprtrdma/svc_rdma_transport.c |  58 ++++++++++++++++++++++++++
+>> net/sunrpc/xprtrdma/transport.c          |  18 +++++++-
+>> net/sunrpc/xprtrdma/verbs.c              | 479 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------------------------------------------------------------------------------------------------------
+>> net/sunrpc/xprtrdma/xprt_rdma.h          |  53 +++++++++++++++++++-----
+>> net/sunrpc/xprtsock.c                    |  16 ++++++++
+>> 15 files changed, 916 insertions(+), 316 deletions(-)
+>> create mode 100644 net/sunrpc/xprtrdma/backchannel.c
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> —
+> Chuck Lever
+> 
+> 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
 
