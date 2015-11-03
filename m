@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:38843 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:39004 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751426AbbKCPTr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 3 Nov 2015 10:19:47 -0500
+	id S1754178AbbKCPUQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 3 Nov 2015 10:20:16 -0500
 From: Andreas Gruenbacher <agruenba@redhat.com>
 To: Alexander Viro <viro@zeniv.linux.org.uk>, "Theodore Ts'o" <tytso@mit.edu>,
         Andreas Dilger <adilger.kernel@dilger.ca>,
@@ -15,123 +15,97 @@ To: Alexander Viro <viro@zeniv.linux.org.uk>, "Theodore Ts'o" <tytso@mit.edu>,
         linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-cifs@vger.kernel.org, linux-api@vger.kernel.org
 Cc: Andreas Gruenbacher <agruenba@redhat.com>
-Subject: [PATCH v13 19/51] vfs: Add richacl permission checking
-Date: Tue,  3 Nov 2015 16:16:55 +0100
-Message-Id: <1446563847-14005-20-git-send-email-agruenba@redhat.com>
+Subject: [PATCH v13 23/51] xfs: Make xfs_set_mode non-static
+Date: Tue,  3 Nov 2015 16:16:59 +0100
+Message-Id: <1446563847-14005-24-git-send-email-agruenba@redhat.com>
 In-Reply-To: <1446563847-14005-1-git-send-email-agruenba@redhat.com>
 References: <1446563847-14005-1-git-send-email-agruenba@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hook the richacl permission checking function into the vfs.
+Make xfs_set_mode non-static and move it from xfs_acl.c into xfs_inode.c.
 
 Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
 ---
- fs/namei.c     | 51 +++++++++++++++++++++++++++++++++++++++++++++++++--
- fs/posix_acl.c |  6 +++---
- 2 files changed, 52 insertions(+), 5 deletions(-)
+ fs/xfs/xfs_acl.c   | 18 ------------------
+ fs/xfs/xfs_inode.c | 24 ++++++++++++++++++++++++
+ fs/xfs/xfs_inode.h |  2 ++
+ 3 files changed, 26 insertions(+), 18 deletions(-)
 
-diff --git a/fs/namei.c b/fs/namei.c
-index 2eab19e..3822b5e 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -35,6 +35,7 @@
- #include <linux/fs_struct.h>
- #include <linux/posix_acl.h>
- #include <linux/hash.h>
-+#include <linux/richacl.h>
- #include <asm/uaccess.h>
- 
- #include "internal.h"
-@@ -255,7 +256,40 @@ void putname(struct filename *name)
- 		__putname(name);
+diff --git a/fs/xfs/xfs_acl.c b/fs/xfs/xfs_acl.c
+index e87fd3f..7b03383 100644
+--- a/fs/xfs/xfs_acl.c
++++ b/fs/xfs/xfs_acl.c
+@@ -232,24 +232,6 @@ __xfs_set_acl(struct inode *inode, int type, struct posix_acl *acl)
  }
  
--static int check_acl(struct inode *inode, int mask)
-+static int check_richacl(struct inode *inode, int mask)
-+{
-+#ifdef CONFIG_FS_RICHACL
-+	struct richacl *acl;
-+
-+	if (mask & MAY_NOT_BLOCK) {
-+		acl = get_cached_richacl_rcu(inode);
-+		if (!acl)
-+			goto no_acl;
-+		/* no ->get_richacl() calls in RCU mode... */
-+		if (acl == ACL_NOT_CACHED)
-+			return -ECHILD;
-+		return richacl_permission(inode, acl, mask & ~MAY_NOT_BLOCK);
-+	}
-+
-+	acl = get_richacl(inode);
-+	if (IS_ERR(acl))
-+		return PTR_ERR(acl);
-+	if (acl) {
-+		int error = richacl_permission(inode, acl, mask);
-+		richacl_put(acl);
-+		return error;
-+	}
-+no_acl:
-+#endif
-+	if (mask & (MAY_DELETE_SELF | MAY_TAKE_OWNERSHIP |
-+		    MAY_CHMOD | MAY_SET_TIMES)) {
-+		/* File permission bits cannot grant this. */
-+		return -EACCES;
-+	}
-+	return -EAGAIN;
-+}
-+
-+static int check_posix_acl(struct inode *inode, int mask)
- {
- #ifdef CONFIG_FS_POSIX_ACL
- 	struct posix_acl *acl;
-@@ -290,11 +324,24 @@ static int acl_permission_check(struct inode *inode, int mask)
- {
- 	unsigned int mode = inode->i_mode;
- 
-+	/*
-+	 * With POSIX ACLs, the (mode & S_IRWXU) bits exactly match the owner
-+	 * permissions, and we can skip checking posix acls for the owner.
-+	 * With richacls, the owner may be granted fewer permissions than the
-+	 * mode bits seem to suggest (for example, append but not write), and
-+	 * we always need to check the richacl.
-+	 */
-+
-+	if (IS_RICHACL(inode)) {
-+		int error = check_richacl(inode, mask);
-+		if (error != -EAGAIN)
-+			return error;
-+	}
- 	if (likely(uid_eq(current_fsuid(), inode->i_uid)))
- 		mode >>= 6;
- 	else {
- 		if (IS_POSIXACL(inode) && (mode & S_IRWXG)) {
--			int error = check_acl(inode, mask);
-+			int error = check_posix_acl(inode, mask);
- 			if (error != -EAGAIN)
- 				return error;
- 		}
-diff --git a/fs/posix_acl.c b/fs/posix_acl.c
-index 1d766a5..3459bd5 100644
---- a/fs/posix_acl.c
-+++ b/fs/posix_acl.c
-@@ -100,13 +100,13 @@ struct posix_acl *get_acl(struct inode *inode, int type)
- {
- 	struct posix_acl *acl;
- 
-+	if (!IS_POSIXACL(inode))
-+		return NULL;
-+
- 	acl = get_cached_acl(inode, type);
- 	if (acl != ACL_NOT_CACHED)
- 		return acl;
- 
--	if (!IS_POSIXACL(inode))
--		return NULL;
+ static int
+-xfs_set_mode(struct inode *inode, umode_t mode)
+-{
+-	int error = 0;
 -
- 	/*
- 	 * A filesystem can force a ACL callback by just never filling the
- 	 * ACL cache. But normally you'd fill the cache either at inode
+-	if (mode != inode->i_mode) {
+-		struct iattr iattr;
+-
+-		iattr.ia_valid = ATTR_MODE | ATTR_CTIME;
+-		iattr.ia_mode = mode;
+-		iattr.ia_ctime = current_fs_time(inode->i_sb);
+-
+-		error = xfs_setattr_nonsize(XFS_I(inode), &iattr, XFS_ATTR_NOACL);
+-	}
+-
+-	return error;
+-}
+-
+-static int
+ xfs_acl_exists(struct inode *inode, unsigned char *name)
+ {
+ 	int len = XFS_ACL_MAX_SIZE(XFS_M(inode->i_sb));
+diff --git a/fs/xfs/xfs_inode.c b/fs/xfs/xfs_inode.c
+index dc40a6d..644fa04 100644
+--- a/fs/xfs/xfs_inode.c
++++ b/fs/xfs/xfs_inode.c
+@@ -3587,3 +3587,27 @@ xfs_iflush_int(
+ corrupt_out:
+ 	return -EFSCORRUPTED;
+ }
++
++/*
++ * Set an inode's file mode.
++ *
++ * Called when updating an inode's file mode as part of setting an ACL only.
++ * The VFS goes through the setattr inode operation instead.
++ */
++int
++xfs_set_mode(struct inode *inode, umode_t mode)
++{
++	int error = 0;
++
++	if (mode != inode->i_mode) {
++		struct iattr iattr;
++
++		iattr.ia_valid = ATTR_MODE | ATTR_CTIME;
++		iattr.ia_mode = mode;
++		iattr.ia_ctime = current_fs_time(inode->i_sb);
++
++		error = xfs_setattr_nonsize(XFS_I(inode), &iattr, XFS_ATTR_NOACL);
++	}
++
++	return error;
++}
+diff --git a/fs/xfs/xfs_inode.h b/fs/xfs/xfs_inode.h
+index ca9e119..7b22db0 100644
+--- a/fs/xfs/xfs_inode.h
++++ b/fs/xfs/xfs_inode.h
+@@ -424,6 +424,8 @@ int		xfs_dir_ialloc(struct xfs_trans **, struct xfs_inode *, umode_t,
+ int		xfs_droplink(struct xfs_trans *, struct xfs_inode *);
+ int		xfs_bumplink(struct xfs_trans *, struct xfs_inode *);
+ 
++int		xfs_set_mode(struct inode *, umode_t);
++
+ /* from xfs_file.c */
+ enum xfs_prealloc_flags {
+ 	XFS_PREALLOC_SET	= (1 << 1),
 -- 
 2.5.0
 
