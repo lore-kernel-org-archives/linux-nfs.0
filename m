@@ -1,104 +1,98 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:58337 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751229AbbKCRZn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 3 Nov 2015 12:25:43 -0500
-From: Andreas Gruenbacher <agruenba@redhat.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>, linux-nfs@vger.kernel.org
-Cc: Andreas Gruenbacher <agruenba@redhat.com>
-Subject: [PATCH 2/2] nfs: Remove unused xdr page offsets in getacl/setacl arguments
-Date: Tue,  3 Nov 2015 18:25:34 +0100
-Message-Id: <1446571534-16286-3-git-send-email-agruenba@redhat.com>
-In-Reply-To: <1446571534-16286-1-git-send-email-agruenba@redhat.com>
-References: <1446571534-16286-1-git-send-email-agruenba@redhat.com>
+Received: from mail-ob0-f174.google.com ([209.85.214.174]:34059 "EHLO
+	mail-ob0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751965AbbKCRiU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Nov 2015 12:38:20 -0500
+Received: by obbza9 with SMTP id za9so18256001obb.1
+        for <linux-nfs@vger.kernel.org>; Tue, 03 Nov 2015 09:38:20 -0800 (PST)
+MIME-Version: 1.0
+In-Reply-To: <55F381CE.4070600@gmail.com>
+References: <55F17A7E.50406@gmail.com>
+	<20150911212320.GG11677@fieldses.org>
+	<55F38130.7020802@gmail.com>
+	<55F381CE.4070600@gmail.com>
+Date: Tue, 3 Nov 2015 12:38:19 -0500
+Message-ID: <CAHQdGtQ6ydLcZTy5-QB7fSuEhDR+rV3dRe8bROtafWMqYAdmXQ@mail.gmail.com>
+Subject: Re: [PATCH v2] Sunrpc: Supports hexadecimal number for sysctl files
+ of sunrpc debug
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Kinglong Mee <kinglongmee@gmail.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The arguments passed around for getacl and setacl xdr encoding, struct
-nfs_setaclargs and struct nfs_getaclargs, both contain an array of
-pages, an offset into the first page, and the length of the page data.
-The offset is unused as it is always zero; remove it.
+On Fri, Sep 11, 2015 at 9:37 PM, Kinglong Mee <kinglongmee@gmail.com> wrote:
+> The sunrpc debug sysctl files only accept decimal number right now.
+> But all the XXXDBUG_XXX macros are defined as hexadecimal.
+> It is not easy to set or check an separate flag.
+>
+> This patch let those files support accepting hexadecimal number,
+> (decimal number is also supported). Also, display it as hexadecimal.
+>
+> v2,
+> Remove duplicate parsing of '0x...', just using simple_strtol(tmpbuf, &s, 0)
+> Fix a bug of isspace() checking after parsing
+>
+> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+> ---
+>  net/sunrpc/sysctl.c | 23 ++++++++++++-----------
+>  1 file changed, 12 insertions(+), 11 deletions(-)
+>
+> diff --git a/net/sunrpc/sysctl.c b/net/sunrpc/sysctl.c
+> index 887f018..c88d9bc 100644
+> --- a/net/sunrpc/sysctl.c
+> +++ b/net/sunrpc/sysctl.c
+> @@ -76,7 +76,7 @@ static int
+>  proc_dodebug(struct ctl_table *table, int write,
+>                                 void __user *buffer, size_t *lenp, loff_t *ppos)
+>  {
+> -       char            tmpbuf[20], c, *s;
+> +       char            tmpbuf[20], c, *s = NULL;
+>         char __user *p;
+>         unsigned int    value;
+>         size_t          left, len;
+> @@ -103,23 +103,24 @@ proc_dodebug(struct ctl_table *table, int write,
+>                         return -EFAULT;
+>                 tmpbuf[left] = '\0';
+>
+> -               for (s = tmpbuf, value = 0; '0' <= *s && *s <= '9'; s++, left--)
+> -                       value = 10 * value + (*s - '0');
+> -               if (*s && !isspace(*s))
+> -                       return -EINVAL;
+> -               while (left && isspace(*s))
+> -                       left--, s++;
+> +               value = simple_strtol(tmpbuf, &s, 0);
+> +               if (s) {
+> +                       left -= (s - tmpbuf);
+> +                       if (left && !isspace(*s))
+> +                               return -EINVAL;
+> +                       while (left && isspace(*s))
+> +                               left--, s++;
+> +               } else
+> +                       left = 0;
+>                 *(unsigned int *) table->data = value;
+>                 /* Display the RPC tasks on writing to rpc_debug */
+>                 if (strcmp(table->procname, "rpc_debug") == 0)
+>                         rpc_show_tasks(&init_net);
+>         } else {
+> -               if (!access_ok(VERIFY_WRITE, buffer, left))
+> -                       return -EFAULT;
+> -               len = sprintf(tmpbuf, "%d", *(unsigned int *) table->data);
+> +               len = sprintf(tmpbuf, "0x%04x", *(unsigned int *) table->data);
+>                 if (len > left)
+>                         len = left;
+> -               if (__copy_to_user(buffer, tmpbuf, len))
+> +               if (copy_to_user(buffer, tmpbuf, len))
+>                         return -EFAULT;
+>                 if ((left -= len) > 0) {
+>                         if (put_user('\n', (char __user *)buffer + len))
+> --
+> 2.5.0
+>
 
-Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
----
- fs/nfs/nfs4proc.c       | 5 ++---
- fs/nfs/nfs4xdr.c        | 4 ++--
- include/linux/nfs_xdr.h | 2 --
- 3 files changed, 4 insertions(+), 7 deletions(-)
+Bruce, did you take this patch, or is there an expectation that I should do so?
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 5133bb1..eec5c4c 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -4530,7 +4530,7 @@ static inline int nfs4_server_supports_acls(struct nfs_server *server)
- #define NFS4ACL_MAXPAGES DIV_ROUND_UP(XATTR_SIZE_MAX, PAGE_SIZE)
- 
- static int buf_to_pages_noslab(const void *buf, size_t buflen,
--		struct page **pages, unsigned int *pgbase)
-+		struct page **pages)
- {
- 	struct page *newpage, **spages;
- 	int rc = 0;
-@@ -4674,7 +4674,6 @@ static ssize_t __nfs4_get_acl_uncached(struct inode *inode, void *buf, size_t bu
- 		goto out_free;
- 
- 	args.acl_len = npages * PAGE_SIZE;
--	args.acl_pgbase = 0;
- 
- 	dprintk("%s  buf %p buflen %zu npages %d args.acl_len %zu\n",
- 		__func__, buf, buflen, npages, args.acl_len);
-@@ -4766,7 +4765,7 @@ static int __nfs4_proc_set_acl(struct inode *inode, const void *buf, size_t bufl
- 		return -EOPNOTSUPP;
- 	if (npages > ARRAY_SIZE(pages))
- 		return -ERANGE;
--	i = buf_to_pages_noslab(buf, buflen, arg.acl_pages, &arg.acl_pgbase);
-+	i = buf_to_pages_noslab(buf, buflen, arg.acl_pages);
- 	if (i < 0)
- 		return i;
- 	nfs4_inode_return_delegation(inode);
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 6f6d921..eefed15 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -1659,7 +1659,7 @@ encode_setacl(struct xdr_stream *xdr, struct nfs_setaclargs *arg, struct compoun
- 	*p = cpu_to_be32(FATTR4_WORD0_ACL);
- 	p = reserve_space(xdr, 4);
- 	*p = cpu_to_be32(arg->acl_len);
--	xdr_write_pages(xdr, arg->acl_pages, arg->acl_pgbase, arg->acl_len);
-+	xdr_write_pages(xdr, arg->acl_pages, 0, arg->acl_len);
- }
- 
- static void
-@@ -2491,7 +2491,7 @@ static void nfs4_xdr_enc_getacl(struct rpc_rqst *req, struct xdr_stream *xdr,
- 	encode_getattr_two(xdr, FATTR4_WORD0_ACL, 0, &hdr);
- 
- 	xdr_inline_pages(&req->rq_rcv_buf, replen << 2,
--		args->acl_pages, args->acl_pgbase, args->acl_len);
-+		args->acl_pages, 0, args->acl_len);
- 
- 	encode_nops(&hdr);
- }
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 52faf7e..090ade4 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -685,7 +685,6 @@ struct nfs_setaclargs {
- 	struct nfs4_sequence_args	seq_args;
- 	struct nfs_fh *			fh;
- 	size_t				acl_len;
--	unsigned int			acl_pgbase;
- 	struct page **			acl_pages;
- };
- 
-@@ -697,7 +696,6 @@ struct nfs_getaclargs {
- 	struct nfs4_sequence_args 	seq_args;
- 	struct nfs_fh *			fh;
- 	size_t				acl_len;
--	unsigned int			acl_pgbase;
- 	struct page **			acl_pages;
- };
- 
--- 
-2.5.0
-
+Cheers
+  Trond
