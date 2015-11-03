@@ -1,81 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:41725 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751405AbbKCUKX convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Nov 2015 15:10:23 -0500
-Content-Type: text/plain; charset=utf-8
-Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2104\))
-Subject: Re: [PATCH] svcrdma: Do not send XDR roundup bytes for a write chunk
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20151016132938.8597.65237.stgit@oracle-120.nfsv4bat.org>
-Date: Tue, 3 Nov 2015 15:10:21 -0500
-Message-Id: <94E65795-E205-44FE-93DE-A1FF24CD5C2E@oracle.com>
-References: <20151016132938.8597.65237.stgit@oracle-120.nfsv4bat.org>
-To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-rdma@vger.kernel.org
+Received: from mail-qg0-f41.google.com ([209.85.192.41]:36041 "EHLO
+	mail-qg0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755375AbbKCUnh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Nov 2015 15:43:37 -0500
+Received: by qgad10 with SMTP id d10so24006946qga.3
+        for <linux-nfs@vger.kernel.org>; Tue, 03 Nov 2015 12:43:36 -0800 (PST)
+From: Jeff Layton <jlayton@poochiereds.net>
+To: trond.myklebust@primarydata.com,
+        Anna Schumaker <anna.schumaker@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH RFC] nfs4: use adaptive backoff when we get NFS4ERR_DELAY on LAYOUTGET
+Date: Tue,  3 Nov 2015 15:43:31 -0500
+Message-Id: <1446583411-9901-1-git-send-email-jeff.layton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Currently, we end up waiting a full 15s before reissuing the call
+because we're passing in NULL for the timeout.
 
-> On Oct 16, 2015, at 9:30 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
-> 
-> Minor optimization: when dealing with write chunk XDR roundup, do
-> not post a Write WR for the zero bytes in the pad. Simply update
-> the write segment in the RPC-over-RDMA header to reflect the extra
-> pad bytes.
-> 
-> The Reply chunk is also a write chunk, but the server does not use
-> send_write_chunks() to send the Reply chunk. That's OK in this case:
-> the server Upper Layer typically marshals the Reply chunk contents
-> in a single contiguous buffer, without a separate tail for the XDR
-> pad.
-> 
-> The comments and the variable naming refer to "chunks" but what is
-> really meant is "segments." The existing code sends only one
-> xdr_write_chunk per RPC reply.
-> 
-> The fix assumes this as well. When the XDR pad in the first write
-> chunk is reached, the assumption is the Write list is complete and
-> send_write_chunks() returns.
-> 
-> That will remain a valid assumption until the server Upper Layer can
-> support multiple bulk payload results per RPC.
-> 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> --
+Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
+---
+ fs/nfs/nfs4proc.c       | 3 ++-
+ include/linux/nfs_xdr.h | 1 +
+ 2 files changed, 3 insertions(+), 1 deletion(-)
 
-Bruce, can you take this for 4.4 ?
-
-
-> net/sunrpc/xprtrdma/svc_rdma_sendto.c |    7 +++++++
-> 1 files changed, 7 insertions(+), 0 deletions(-)
-> 
-> diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-> index 1dfae83..6c48901 100644
-> --- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-> +++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-> @@ -342,6 +342,13 @@ static int send_write_chunks(struct svcxprt_rdma *xprt,
-> 						arg_ch->rs_handle,
-> 						arg_ch->rs_offset,
-> 						write_len);
-> +
-> +		/* Do not send XDR pad bytes */
-> +		if (chunk_no && write_len < 4) {
-> +			chunk_no++;
-> +			break;
-> +		}
-> +
-> 		chunk_off = 0;
-> 		while (write_len) {
-> 			ret = send_write(xprt, rqstp,
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
-—
-Chuck Lever
-
-
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 5133bb18830e..b4098319b021 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -7872,7 +7872,7 @@ static void nfs4_layoutget_done(struct rpc_task *task, void *calldata)
+ 			spin_unlock(&inode->i_lock);
+ 		goto out_restart;
+ 	}
+-	if (nfs4_async_handle_error(task, server, state, NULL) == -EAGAIN)
++	if (nfs4_async_handle_error(task, server, state, &lgp->timeout) == -EAGAIN)
+ 		goto out_restart;
+ out:
+ 	dprintk("<-- %s\n", __func__);
+@@ -7990,6 +7990,7 @@ nfs4_proc_layoutget(struct nfs4_layoutget *lgp, gfp_t gfp_flags)
+ 	lgp->res.layoutp = &lgp->args.layout;
+ 	lgp->res.seq_res.sr_slot = NULL;
+ 	nfs4_init_sequence(&lgp->args.seq_args, &lgp->res.seq_res, 0);
++	lgp->timeout = 0;
+ 
+ 	task = rpc_run_task(&task_setup_data);
+ 	if (IS_ERR(task))
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 52faf7e96c65..0ab65cb7d15b 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -250,6 +250,7 @@ struct nfs4_layoutget {
+ 	struct nfs4_layoutget_res res;
+ 	struct rpc_cred *cred;
+ 	gfp_t gfp_flags;
++	long timeout;
+ };
+ 
+ struct nfs4_getdeviceinfo_args {
+-- 
+2.4.3
 
