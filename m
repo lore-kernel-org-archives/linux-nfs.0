@@ -1,154 +1,444 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:41780 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S964975AbbKCWGZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 3 Nov 2015 17:06:25 -0500
-Date: Tue, 3 Nov 2015 17:06:24 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Andrew W Elble <aweits@rit.edu>
-Cc: linux-nfs@vger.kernel.org, jlayton@poochiereds.net
-Subject: Re: Update and questions.
-Message-ID: <20151103220624.GB1096@fieldses.org>
-References: <m21tc8l5as.fsf@discipline.rit.edu>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <m21tc8l5as.fsf@discipline.rit.edu>
+Received: from mail-pa0-f47.google.com ([209.85.220.47]:33733 "EHLO
+	mail-pa0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S964813AbbKCW35 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Nov 2015 17:29:57 -0500
+Received: by pabfh17 with SMTP id fh17so30707169pab.0
+        for <linux-nfs@vger.kernel.org>; Tue, 03 Nov 2015 14:29:57 -0800 (PST)
+Subject: Re: [PATCH v13 10/51] vfs: Cache base_acl objects in inodes
+Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2104\))
+Content-Type: multipart/signed; boundary="Apple-Mail=_124A55A8-7810-46A6-8154-225356928F53"; protocol="application/pgp-signature"; micalg=pgp-sha256
+From: Andreas Dilger <adilger@dilger.ca>
+In-Reply-To: <1446563847-14005-11-git-send-email-agruenba@redhat.com>
+Date: Tue, 3 Nov 2015 15:29:50 -0700
+Cc: Alexander Viro <viro@zeniv.linux.org.uk>, "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Dave Chinner <david@fromorbit.com>, linux-ext4@vger.kernel.org,
+        xfs@oss.sgi.com, linux-kernel@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-api@vger.kernel.org
+Message-Id: <D235953B-3EAF-4B00-AC07-4420B85E9E9E@dilger.ca>
+References: <1446563847-14005-1-git-send-email-agruenba@redhat.com> <1446563847-14005-11-git-send-email-agruenba@redhat.com>
+To: Andreas Gruenbacher <agruenba@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Nov 02, 2015 at 11:44:27AM -0500, Andrew W Elble wrote:
-> 
-> I've been busy patching in things to observe what's going on with my
-> delegation issues.
-> 
-> I implemented a seq_file interface on the server to walk the
-> file_hashtbl, and some interesting things have popped up:
 
-Zowie.
+--Apple-Mail=_124A55A8-7810-46A6-8154-225356928F53
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=us-ascii
 
-So you're waiting for the problem to reproduce itself, and then dumping
-this information?
+On Nov 3, 2015, at 8:16 AM, Andreas Gruenbacher <agruenba@redhat.com> =
+wrote:
+>=20
+> POSIX ACLs and richacls are both objects allocated by kmalloc() with a
+> reference count which are freed by kfree_rcu().  An inode can either
+> cache an access and a default POSIX ACL, or a richacl (richacls do not
+> have default acls).  To allow an inode to cache either of the two =
+kinds
+> of acls, introduce a new base_acl type and convert i_acl and
+> i_default_acl to that type. In most cases, the vfs then doesn't have =
+to
+> care which kind of acl an inode caches (if any).
 
-(And if I remember correctly the problem was that the server was
-attempting to recall delegations that the client claimed not to have any
-knowledge of?)
+For new wrapper functions like this better to name them as "NOUN_VERB" =
+so
+rather than "VERB_NOUN" so that related functions sort together, like
+base_acl_init(), base_acl_get(), base_acl_put(), base_acl_refcount(), =
+etc.
 
-> This is a nfs4_file that has two open stateids allocated to the same client:
-> 
-> file fh: 82369f70 R:2 F:4 FP:ffff881f24286b58 I:ffff881f6f6a91d0 D:ffff881febf08b40 /home/<stuff>
->   Deleg: Linux NFSv4.1 <hosta> : 2292335602000000d89e0700 120317
->   Deleg: Linux NFSv4.1 <hostb> : 2292335607000000437f0700 148262
->   Stateid: Linux NFSv4.1 <hosta> : 2292335602000000d69e0700/1
->   Stateid: Linux NFSv4.1 <hosta> : 2292335602000000d79e0700/1
-> 
-> This one has four:
-> 
-> file fh: 6ecdd5f8 R:4 F:4 FP:ffff88083e2974a0 I:ffff881f6c9349d0 D:ffff883f4ad1e780 /home/<stuff>
->   Stateid: Linux NFSv4.1 <hosta> : 2292335602000000f1620800/1
->   Stateid: Linux NFSv4.1 <hosta> : 2292335602000000f0620800/1
->   Stateid: Linux NFSv4.1 <hosta> : 2292335602000000c64c0800/1
->   Stateid: Linux NFSv4.1 <hosta> : 2292335602000000c74c0800/1
+> Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
+> ---
+> drivers/staging/lustre/lustre/llite/llite_lib.c |  2 +-
+> fs/f2fs/acl.c                                   |  4 ++--
+> fs/inode.c                                      |  4 ++--
+> fs/jffs2/acl.c                                  |  6 ++++--
+> fs/posix_acl.c                                  | 18 =
++++++++++---------
+> include/linux/fs.h                              | 25 =
+++++++++++++++++++++++---
+> include/linux/posix_acl.h                       | 12 ++++--------
+> include/linux/richacl.h                         |  2 +-
+> 8 files changed, 45 insertions(+), 28 deletions(-)
+>=20
+> diff --git a/drivers/staging/lustre/lustre/llite/llite_lib.c =
+b/drivers/staging/lustre/lustre/llite/llite_lib.c
+> index b4ed6c8..5766f69 100644
+> --- a/drivers/staging/lustre/lustre/llite/llite_lib.c
+> +++ b/drivers/staging/lustre/lustre/llite/llite_lib.c
+> @@ -1118,7 +1118,7 @@ void ll_clear_inode(struct inode *inode)
+> 	}
+> #ifdef CONFIG_FS_POSIX_ACL
+> 	else if (lli->lli_posix_acl) {
+> -		LASSERT(atomic_read(&lli->lli_posix_acl->a_refcount) =3D=3D=
+ 1);
+> +		=
+LASSERT(atomic_read(&lli->lli_posix_acl->a_base.ba_refcount) =3D=3D 1);
 
-I believe stateid's are per client,openowner,file.  So multiple
-stateid's per file should be OK if there are multiple openowners.
+It probably makes sense to have a wrapper for this, like =
+base_acl_refcount()
+so that the details are similarly abstracted from the callers, or there
+isn't much benefit to having get_base_acl() and put_base_acl() at all.
 
-> These are nfs4_files that have elevated fi_ref counts but are
-> essentially "empty":
-> (note: fi_had_conflict is seemingly always nonzero on entries like these)
-> 
-> file fh: ee23414c F:1 FP:ffff88087fc52318 I:0000000000000000
-> file fh: 5a8e8c86 F:2 FP:ffff881f5e872318 I:0000000000000000
+> 		LASSERT(lli->lli_remote_perms =3D=3D NULL);
+> 		posix_acl_release(lli->lli_posix_acl);
+> 		lli->lli_posix_acl =3D NULL;
+> diff --git a/fs/f2fs/acl.c b/fs/f2fs/acl.c
+> index c8f25f7..a4207de 100644
+> --- a/fs/f2fs/acl.c
+> +++ b/fs/f2fs/acl.c
+> @@ -270,7 +270,7 @@ static struct posix_acl *f2fs_acl_clone(const =
+struct posix_acl *acl,
+> 				sizeof(struct posix_acl_entry);
+> 		clone =3D kmemdup(acl, size, flags);
+> 		if (clone)
+> -			atomic_set(&clone->a_refcount, 1);
+> +			atomic_set(&clone->a_base.ba_refcount, 1);
 
-So if I understand correctly, there's neither a delegated file nor
-anything in the fi_fds[] array?  Hm.
+This should be base_acl_init() since this should also reset the RCU =
+state
+if it was just copied from "acl" above.  That wouldn't be quite correct =
+if
+there are other fields added to struct base_acl that don't need to be
+initialized when it is copied, so possibly base_acl_reinit() would be =
+better
+here and below if that will be the case in the near future (I haven't =
+looked
+through the whole patch series yet).
 
-I'll have to stare at the code to figure out what that means.
+> 	}
+> 	return clone;
+> }
+> @@ -282,7 +282,7 @@ static int f2fs_acl_create_masq(struct posix_acl =
+*acl, umode_t *mode_p)
+> 	umode_t mode =3D *mode_p;
+> 	int not_equiv =3D 0;
+>=20
+> -	/* assert(atomic_read(acl->a_refcount) =3D=3D 1); */
+> +	/* assert(atomic_read(acl->a_base.ba_refcount) =3D=3D 1); */
 
-fi_had_conflict means a delegation was recalled on this file at some
-point.
+May as well make the comment use the base_acl_refcount() wrapper =
+function too.
 
---b.
+>=20
+> 	FOREACH_ACL_ENTRY(pa, acl, pe) {
+> 		switch(pa->e_tag) {
+> diff --git a/fs/inode.c b/fs/inode.c
+> index 78a17b8..2a387f4 100644
+> --- a/fs/inode.c
+> +++ b/fs/inode.c
+> @@ -233,9 +233,9 @@ void __destroy_inode(struct inode *inode)
+>=20
+> #ifdef CONFIG_FS_POSIX_ACL
+> 	if (inode->i_acl && inode->i_acl !=3D ACL_NOT_CACHED)
+> -		posix_acl_release(inode->i_acl);
+> +		put_base_acl(inode->i_acl);
+> 	if (inode->i_default_acl && inode->i_default_acl !=3D =
+ACL_NOT_CACHED)
+> -		posix_acl_release(inode->i_default_acl);
+> +		put_base_acl(inode->i_default_acl);
+> #endif
+> 	this_cpu_dec(nr_inodes);
+> }
+> diff --git a/fs/jffs2/acl.c b/fs/jffs2/acl.c
+> index 2f7a3c0..04a5836 100644
+> --- a/fs/jffs2/acl.c
+> +++ b/fs/jffs2/acl.c
+> @@ -294,13 +294,15 @@ int jffs2_init_acl_post(struct inode *inode)
+> 	int rc;
+>=20
+> 	if (inode->i_default_acl) {
+> -		rc =3D __jffs2_set_acl(inode, JFFS2_XPREFIX_ACL_DEFAULT, =
+inode->i_default_acl);
+> +		rc =3D __jffs2_set_acl(inode, JFFS2_XPREFIX_ACL_DEFAULT,
+> +				     *acl_by_type(inode, =
+ACL_TYPE_DEFAULT));
+> 		if (rc)
+> 			return rc;
+> 	}
+>=20
+> 	if (inode->i_acl) {
+> -		rc =3D __jffs2_set_acl(inode, JFFS2_XPREFIX_ACL_ACCESS, =
+inode->i_acl);
+> +		rc =3D __jffs2_set_acl(inode, JFFS2_XPREFIX_ACL_ACCESS,
+> +				     *acl_by_type(inode, =
+ACL_TYPE_ACCESS));
+> 		if (rc)
+> 			return rc;
+> 	}
+> diff --git a/fs/posix_acl.c b/fs/posix_acl.c
+> index 4fb17de..b3b2265 100644
+> --- a/fs/posix_acl.c
+> +++ b/fs/posix_acl.c
+> @@ -25,9 +25,9 @@ struct posix_acl **acl_by_type(struct inode *inode, =
+int type)
+> {
+> 	switch (type) {
+> 	case ACL_TYPE_ACCESS:
+> -		return &inode->i_acl;
+> +		return (struct posix_acl **)&inode->i_acl;
+> 	case ACL_TYPE_DEFAULT:
+> -		return &inode->i_default_acl;
+> +		return (struct posix_acl **)&inode->i_default_acl;
 
-> 
-> ======================
-> 
-> for clarity:
-> 
-> +static int nfs4_file_hash_list_show(struct seq_file *seq, void *v)
+This would be better to use container_of() to unwrap struct base_acl =
+from
+struct posix_acl.  That avoids the hard requirement (which isn't =
+documented
+anywhere) that base_acl needs to be the first member of struct =
+posix_acl.
+
+I was originally going to write that you should add a comment that =
+base_acl
+needs to be the first member of both richacl and posix_acl, but =
+container_of()
+is both cleaner and safer.
+
+Looking further down, that IS actually needed due to the way kfree is =
+used on
+the base_acl pointer, but using container_of() is still cleaner and =
+safer
+than directly casting double pointers (which some compilers and static
+analysis tools will be unhappy with).
+
+> 	default:
+> 		BUG();
+> 	}
+> @@ -83,16 +83,16 @@ EXPORT_SYMBOL(forget_cached_acl);
+>=20
+> void forget_all_cached_acls(struct inode *inode)
+> {
+> -	struct posix_acl *old_access, *old_default;
+> +	struct base_acl *old_access, *old_default;
+> 	spin_lock(&inode->i_lock);
+> 	old_access =3D inode->i_acl;
+> 	old_default =3D inode->i_default_acl;
+> 	inode->i_acl =3D inode->i_default_acl =3D ACL_NOT_CACHED;
+> 	spin_unlock(&inode->i_lock);
+> 	if (old_access !=3D ACL_NOT_CACHED)
+> -		posix_acl_release(old_access);
+> +		put_base_acl(old_access);
+> 	if (old_default !=3D ACL_NOT_CACHED)
+> -		posix_acl_release(old_default);
+> +		put_base_acl(old_default);
+> }
+> EXPORT_SYMBOL(forget_all_cached_acls);
+>=20
+> @@ -129,7 +129,7 @@ EXPORT_SYMBOL(get_acl);
+> void
+> posix_acl_init(struct posix_acl *acl, int count)
+> {
+> -	atomic_set(&acl->a_refcount, 1);
+> +	atomic_set(&acl->a_base.ba_refcount, 1);
+
+This should be base_acl_init().
+
+> 	acl->a_count =3D count;
+> }
+> EXPORT_SYMBOL(posix_acl_init);
+> @@ -162,7 +162,7 @@ posix_acl_clone(const struct posix_acl *acl, gfp_t =
+flags)
+> 		           sizeof(struct posix_acl_entry);
+> 		clone =3D kmemdup(acl, size, flags);
+> 		if (clone)
+> -			atomic_set(&clone->a_refcount, 1);
+> +			atomic_set(&clone->a_base.ba_refcount, 1);
+
+Also base_acl_init() or base_acl_reinit().
+
+> 	}
+> 	return clone;
+> }
+> @@ -384,7 +384,7 @@ static int posix_acl_create_masq(struct posix_acl =
+*acl, umode_t *mode_p)
+> 	umode_t mode =3D *mode_p;
+> 	int not_equiv =3D 0;
+>=20
+> -	/* assert(atomic_read(acl->a_refcount) =3D=3D 1); */
+> +	/* assert(atomic_read(acl->a_base.ba_refcount) =3D=3D 1); */
+
+base_acl_refcount().
+
+> 	FOREACH_ACL_ENTRY(pa, acl, pe) {
+>                 switch(pa->e_tag) {
+> @@ -439,7 +439,7 @@ static int __posix_acl_chmod_masq(struct posix_acl =
+*acl, umode_t mode)
+> 	struct posix_acl_entry *group_obj =3D NULL, *mask_obj =3D NULL;
+> 	struct posix_acl_entry *pa, *pe;
+>=20
+> -	/* assert(atomic_read(acl->a_refcount) =3D=3D 1); */
+> +	/* assert(atomic_read(acl->a_base.ba_refcount) =3D=3D 1); */
+
+...
+
+> 	FOREACH_ACL_ENTRY(pa, acl, pe) {
+> 		switch(pa->e_tag) {
+> diff --git a/include/linux/fs.h b/include/linux/fs.h
+> index ba91a89..3c22c92 100644
+> --- a/include/linux/fs.h
+> +++ b/include/linux/fs.h
+> @@ -576,6 +576,12 @@ static inline void mapping_allow_writable(struct =
+address_space *mapping)
+> #define i_size_ordered_init(inode) do { } while (0)
+> #endif
+>=20
+> +struct base_acl {
+> +	union {
+> +		atomic_t ba_refcount;
+> +		struct rcu_head ba_rcu;
+> +	};
+> +};
+> struct posix_acl;
+
+Is this forward declaration of struct posix_acl even needed anymore =
+after
+the change below?  There shouldn't be references to the struct in the =
+common
+code anymore (at least not by the end of the patch series.
+
+> #define ACL_NOT_CACHED ((void *)(-1))
+>=20
+> @@ -595,9 +601,9 @@ struct inode {
+> 	kgid_t			i_gid;
+> 	unsigned int		i_flags;
+>=20
+> -#ifdef CONFIG_FS_POSIX_ACL
+> -	struct posix_acl	*i_acl;
+> -	struct posix_acl	*i_default_acl;
+> +#if defined(CONFIG_FS_POSIX_ACL)
+> +	struct base_acl		*i_acl;
+> +	struct base_acl		*i_default_acl;
+> #endif
+>=20
+> 	const struct inode_operations	*i_op;
+> @@ -3059,4 +3065,17 @@ static inline bool dir_relax(struct inode =
+*inode)
+>=20
+> extern bool path_noexec(const struct path *path);
+>=20
+> +static inline struct base_acl *get_base_acl(struct base_acl *acl)
+
 > +{
-> +       char *name = __getname();
-> +       char *p;
-> +       int i;
-> +       struct dentry *dentry;
-> +       struct inode *inode = NULL;
-> +       struct nfs4_delegation *dp;
-> +       struct nfs4_ol_stateid *stp;
-> +       if (!name)
-> +               goto out;
-> +
-> +       if (v != SEQ_START_TOKEN) {
-> +               struct nfs4_file *fp = (struct nfs4_file *) v;
-> +               spin_lock(&fp->fi_lock);
-> +               seq_printf(seq, "file fh: %08x",nfsd_fhandle_hash(&fp->fi_fhandle));
-> +               for (i = 0; i < 3; i++) {
-> +                       if (fp->fi_fds[i]) {
-> +                               if (!inode)
-> +                                       inode = (fp->fi_fds[i])->f_inode;
-> +                               dentry = (fp->fi_fds[i])->f_path.dentry;
-> +                               if (dentry)
-> +                                       break;
-> +                       }
-> +               }
-> +               if (atomic_read(&fp->fi_access[O_RDONLY]) > 0)
-> +                       seq_printf(seq, " R:%d",
-> +                               atomic_read(&fp->fi_access[O_RDONLY]));
-> +               if (atomic_read(&fp->fi_access[O_WRONLY]) > 0)
-> +                       seq_printf(seq, " W:%d",
-> +                               atomic_read(&fp->fi_access[O_WRONLY]));
-> +               seq_printf(seq, " F:%d",
-> +                       atomic_read(&fp->fi_ref));
-> +               seq_printf(seq, " FP:%pK", fp);
-> +               if ((!dentry) && fp->fi_deleg_file)
-> +                       dentry = fp->fi_deleg_file->f_path.dentry;
-> +               if ((!inode) && fp->fi_deleg_file)
-> +                       inode = (fp->fi_deleg_file)->f_inode;
-> +               seq_printf(seq, " I:%pK", inode);
-> +               if (dentry) {
-> +                       p = dentry_path_raw(dentry, name, PATH_MAX);
-> +                       seq_printf(seq, " D:%pK %s\n", dentry, p);
-> +               } else {
-> +                       seq_printf(seq, "\n");
-> +               }
-> +               list_for_each_entry(dp, &fp->fi_delegations, dl_perfile) {
-> +                       seq_printf(seq, "  Deleg: %.*s : %*phN %lu\n",
-> +                               (int)dp->dl_recall.cb_clp->cl_name.len,
-> +                               dp->dl_recall.cb_clp->cl_name.data,
-> +                               12,
-> +                               &dp->dl_stid.sc_stateid.si_opaque,
-> +                               get_seconds() - dp->dl_alloctime);
-> +               }
-> +               list_for_each_entry(stp, &fp->fi_stateids, st_perfile) {
-> +                       seq_printf(seq, "  Stateid: %.*s : %*phN/%x\n",
-> +                               (int)stp->st_stid.sc_client->cl_name.len,
-> +                               stp->st_stid.sc_client->cl_name.data,
-> +                               12,
-> +                               &stp->st_stid.sc_stateid.si_opaque,
-> +                               stp->st_stid.sc_stateid.si_generation);
-> +               }
-> +               spin_unlock(&fp->fi_lock);
-> +       }
-> +       __putname(name);
-> +out:
-> +       return 0;
+> +	if (acl)
+> +		atomic_inc(&acl->ba_refcount);
+> +	return acl;
 > +}
-> 
-> Thanks,
-> 
-> Andy
-> 
-> -- 
-> Andrew W. Elble
-> aweits@discipline.rit.edu
-> Infrastructure Engineer, Communications Technical Lead
-> Rochester Institute of Technology
-> PGP: BFAD 8461 4CCF DC95 DA2C B0EB 965B 082E 863E C912
+> +
+> +static inline void put_base_acl(struct base_acl *acl)
+> +{
+> +	if (acl && atomic_dec_and_test(&acl->ba_refcount))
+> +		kfree_rcu(acl, ba_rcu);
+
+Hmm, using the base_acl pointer as the pointer to kfree means that the
+base_acl structure DOES need to be the first one in both struct =
+posix_acl
+and struct richacl, so that needs to be commented at each structure so
+it doesn't accidentally break in the future.
+
+> +}
+> +
+> #endif /* _LINUX_FS_H */
+> diff --git a/include/linux/posix_acl.h b/include/linux/posix_acl.h
+> index 3e96a6a..2c46441 100644
+> --- a/include/linux/posix_acl.h
+> +++ b/include/linux/posix_acl.h
+> @@ -43,10 +43,7 @@ struct posix_acl_entry {
+> };
+>=20
+> struct posix_acl {
+> -	union {
+> -		atomic_t		a_refcount;
+> -		struct rcu_head		a_rcu;
+> -	};
+> +	struct base_acl		a_base;
+
+	struct base_acl		a_base;	/* must be first, see =
+base_acl_put() */
+
+> 	unsigned int		a_count;
+> 	struct posix_acl_entry	a_entries[0];
+> };
+> @@ -61,8 +58,7 @@ struct posix_acl {
+> static inline struct posix_acl *
+> posix_acl_dup(struct posix_acl *acl)
+> {
+> -	if (acl)
+> -		atomic_inc(&acl->a_refcount);
+> +	get_base_acl(&acl->a_base);
+> 	return acl;
+> }
+>=20
+> @@ -72,8 +68,8 @@ posix_acl_dup(struct posix_acl *acl)
+> static inline void
+> posix_acl_release(struct posix_acl *acl)
+> {
+> -	if (acl && atomic_dec_and_test(&acl->a_refcount))
+> -		kfree_rcu(acl, a_rcu);
+> +	BUILD_BUG_ON(offsetof(struct posix_acl, a_base) !=3D 0);
+> +	put_base_acl(&acl->a_base);
+> }
+>=20
+>=20
+> diff --git a/include/linux/richacl.h b/include/linux/richacl.h
+> index 1d9f5f7..2baef35 100644
+> --- a/include/linux/richacl.h
+> +++ b/include/linux/richacl.h
+> @@ -57,7 +57,7 @@ static inline struct richacl *
+> richacl_get(struct richacl *acl)
+> {
+> 	if (acl)
+> -		atomic_inc(&acl->a_refcount);
+> +		atomic_inc(&acl->a_base.ba_refcount);
+> 	return acl;
+
+This should also use base_acl_get() for consistency.  That said, where =
+is
+the call to base_acl_put() in the richacl code?
+
+Also, where is the change to struct richacl?  It looks like this patch =
+would
+not be able to compile by itself.  I was going to say that struct =
+richacl
+also needs a comment like struct posix_acl that struct base_acl needs to =
+be
+first.
+
+Cheers, Andreas
+
+
+
+
+
+
+--Apple-Mail=_124A55A8-7810-46A6-8154-225356928F53
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP using GPGMail
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iQIVAwUBVjk1X3Kl2rkXzB/gAQiSPA/9HwI8jDfYrPQGfFL4NjZZNxfBK6rnfVsw
+XRPQCXVJDDCjhM0t6RHBuQxJiGjBeHbqE3WkoqTUg7njFG5URFExY6XXOJBnjdTW
+nwxR0gM840ni52uLCaD+QkvIxbvbBYZQmFdtYv5wB78usBcFFSltEx7sXh7+lQru
+eMW3dlIAQhdKhhvN1BccVS3XBDD6TwNvgB4CK3/rOWCAU4YJLooeMPTebvEmcNYJ
+j5bMqBhPJT3oyYlN0Q8dIV/NOFC59lwBEoItzHSnYkPLTawFP9CUNeXHRNP/39t/
+rwRFRNl30EQFwB5FfPWFNtJhKgjAtlojiTU2OgXbTTn7041dEhkdVqkhLmU9odky
+PD3UGjD6rSn3nnpvop7roAyoBUX5hU2G4gAKoo4aIwkp5kaN/L86JUHp1Sp23Ik2
+JyxldGVwoLBSbgJKW6bBamP6IeA+kDuG1MwW5Af+9iPbM0Tf730kaON1B6X3s1xn
+EHhgVYaqx5G8GcIr8+XYVxnnC/fwnka03DFZxRI0A/oSdRxI0TS+98jcbPliNiE5
+sHoxCvmuegRXMMfYBzQcG6d6SXDz+oG3TRtonZkn3qIuWV2dBTQTY1mjrdu5RR/r
+uIkBGaib0UjU6F5HHlTj4tNgXmkU4rPS7mOLcZ3mzr6eNinE3lr0oa9d9bY7zVLk
+uta4gJIXPtY=
+=vbcX
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_124A55A8-7810-46A6-8154-225356928F53--
