@@ -1,51 +1,59 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-lf0-f43.google.com ([209.85.215.43]:35711 "EHLO
-	mail-lf0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751423AbbKCJJn (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Nov 2015 04:09:43 -0500
-Received: by lfbn126 with SMTP id n126so10106883lfb.2
-        for <linux-nfs@vger.kernel.org>; Tue, 03 Nov 2015 01:09:42 -0800 (PST)
+Received: from mx1.redhat.com ([209.132.183.28]:36714 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751123AbbKCJXV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 3 Nov 2015 04:23:21 -0500
+Subject: Re: [Libtirpc-devel] [PATCH] handle_reply: Don't use the xp_auth
+ pointer directly
+To: Libtirpc-devel Mailing List <libtirpc-devel@lists.sourceforge.net>
+References: <1446502376-8252-1-git-send-email-steved@redhat.com>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+From: Steve Dickson <SteveD@redhat.com>
+Message-ID: <56387D08.4070900@RedHat.com>
+Date: Tue, 3 Nov 2015 04:23:20 -0500
 MIME-Version: 1.0
-In-Reply-To: <CAKCW0Y4RpYhMbL5D_oCfLYhh8qQSMzfX9QNqRkRnsVD06dFSzg@mail.gmail.com>
-References: <CAKCW0Y78D15MhRcxNtS2=0xQPowPFBPw43L=OLQE=1WJd8Acuw@mail.gmail.com>
- <CAKCW0Y4U6jhqr=PVnSjVZP5T2Q_5qLXOpfHmsyCYUCRsMcKEuw@mail.gmail.com> <CAKCW0Y4RpYhMbL5D_oCfLYhh8qQSMzfX9QNqRkRnsVD06dFSzg@mail.gmail.com>
-From: Jeenu Viswambharan <jeenuv@gmail.com>
-Date: Tue, 3 Nov 2015 09:09:12 +0000
-Message-ID: <CAKCW0Y5K+0Y-PJ94+S1PjY8e3ktFxZZUhBPbH+bwiZ0UHbAenA@mail.gmail.com>
-Subject: Re: NFS mount timeouts
-To: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=UTF-8
+In-Reply-To: <1446502376-8252-1-git-send-email-steved@redhat.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Nov 2, 2015 at 12:00 PM, Jeenu Viswambharan <jeenuv@gmail.com> wrote:
-> On Fri, Oct 30, 2015 at 3:02 PM, Jeenu Viswambharan <jeenuv@gmail.com> wrote:
->> On Fri, Oct 30, 2015 at 2:54 PM, Jeenu Viswambharan <jeenuv@gmail.com> wrote:
->>> I've a development board whose root file system is shared via. NFS
->>> from my PC (3.13.0-66-generic #108-Ubuntu SMP x86_64 GNU/Linux). The
->>> behaviour at times is that board mounts the NFS share, but then soon
->>> thereafter, while in execution, it started displaying NFS timeouts,
->>> retries, and hangs. That's the end of it.
->>
->> I missed to mention that once this happens, the board won't boot
->> again: it'll wait for the root file system to be mounted, fails, and
->> then crashes. Even restarting NFS server doesn't help.
->
-> I found signs that the NFS server is probably allowing access to the
-> said share, but for some reason Linux on my development board wouldn't
-> boot. I found the following traces in syslog, indicating retries from
-> the Linux boot:
->
-> [...]
 
-For closure, looks like the cause of the problem was that I didn't
-specify "tcp" mount option in my nfsroot parameter. Also, if I don't
-additionally mention "v3", file system accesses seem to be
-particularly slow. With these options specified, file system is
-getting mounted fine.
 
-Oddly enough, this requirement turned mandatory out of the blue. I
-never used to use these before!
+On 11/02/2015 05:12 PM, Steve Dickson wrote:
+> In the latest libtirpc version to access the xp_auth
+> one must use the SVC_XP_AUTH macro. To be backwards
+> compatible a couple ifdefs were added to use the
+> macro when it exists.
+> 
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+Committed... 
 
--- 
-Jeenu
+steved.
+
+> ---
+>  src/rpcb_svc_com.c | 7 +++++++
+>  1 file changed, 7 insertions(+)
+> 
+> diff --git a/src/rpcb_svc_com.c b/src/rpcb_svc_com.c
+> index 4ae93f1..22d6c84 100644
+> --- a/src/rpcb_svc_com.c
+> +++ b/src/rpcb_svc_com.c
+> @@ -1295,10 +1295,17 @@ handle_reply(int fd, SVCXPRT *xprt)
+>  	a.rmt_localvers = fi->versnum;
+>  
+>  	xprt_set_caller(xprt, fi);
+> +#if defined(SVC_XP_AUTH)
+> +	SVC_XP_AUTH(xprt) = svc_auth_none;
+> +#else 
+>  	xprt->xp_auth = &svc_auth_none;
+> +#endif
+>  	svc_sendreply(xprt, (xdrproc_t) xdr_rmtcall_result, (char *) &a);
+> +#if !defined(SVC_XP_AUTH)
+>  	SVCAUTH_DESTROY(xprt->xp_auth);
+>  	xprt->xp_auth = NULL;
+> +#endif
+> +
+>  done:
+>  	if (buffer)
+>  		free(buffer);
+> 
