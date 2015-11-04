@@ -1,110 +1,70 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:52627 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:54863 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S965397AbbKDVuy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 4 Nov 2015 16:50:54 -0500
-Received: from int-mx14.intmail.prod.int.phx2.redhat.com (int-mx14.intmail.prod.int.phx2.redhat.com [10.5.11.27])
-	by mx1.redhat.com (Postfix) with ESMTPS id 100798AE7F
-	for <linux-nfs@vger.kernel.org>; Wed,  4 Nov 2015 21:50:54 +0000 (UTC)
-Subject: Re: mountd does not check for membership of IP addresses in netgroups
- if the IP is resolvable
-To: Frank Sorenson <sorenson@redhat.com>, linux-nfs@vger.kernel.org
-References: <1686719493.36610358.1445547504794.JavaMail.zimbra@redhat.com>
+	id S965397AbbKDVvU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 4 Nov 2015 16:51:20 -0500
+Subject: Re: [PATCH] Close etab file's file descriptor on stat error.
+To: Malahal Naineni <malahal@us.ibm.com>, linux-nfs@vger.kernel.org
+References: <1445990490-1941-1-git-send-email-malahal@us.ibm.com>
 From: Steve Dickson <SteveD@redhat.com>
-Message-ID: <563A7DBC.4060403@RedHat.com>
-Date: Wed, 4 Nov 2015 16:50:52 -0500
+Message-ID: <563A7DD6.7050708@RedHat.com>
+Date: Wed, 4 Nov 2015 16:51:18 -0500
 MIME-Version: 1.0
-In-Reply-To: <1686719493.36610358.1445547504794.JavaMail.zimbra@redhat.com>
-Content-Type: text/plain; charset=utf-8
+In-Reply-To: <1445990490-1941-1-git-send-email-malahal@us.ibm.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
 
-On 10/22/2015 04:58 PM, Frank Sorenson wrote:
+On 10/27/2015 08:01 PM, Malahal Naineni wrote:
+> Also, fixed erroneously closing file descriptor 0 at init time.
 > 
-> If a netgroup entry specifies an IP address, and that IP address
-> can be resolved to a name, the current match code in mountd only
-> tests whether the canonical name and any aliases are in the
-> netgroup, and does not test whether the IP address is in the netgroup.
-> 
-> (IP addresses which do not resolve to a name are already checked
-> for membership in the netgroup)
-> 
-> 
-> The following demonstrates this issue:
-> 
-> /etc/netgroup:
-> test_netgroup	(127.0.0.1,-,-)
-> 
-> /etc/exports:
-> /data		@test_netgroup(rw,sync)
-> 
-> # mkdir /data
-> # mkdir -p /mnt/test
-> # exportfs -a
-> # mount localhost:/data /mnt/test
-> 
-> assuming that there is a localhost entry in /etc/hosts, this will fail:
-> mount.nfs: access denied by server while mounting localhost:/data
-> 
-> 
-> The patch below adds the code to test for the IP addresses in
-> the netgroup, and the mount now succeeds.
-> 
-> 
-> 
-> Author: Frank Sorenson <sorenson@redhat.com>
-> Date:   Thu Oct 22 15:38:17 2015 -0500
-> 
->     mountd: fix netgroup lookup for resolvable IP addresses
->     
->     If a netgroup entry specifies an IP address, and that
->     IP address can be resolved to a name, mountd will
->     currently only test whether the canonical name and
->     any aliases are in the netgroup, and does not test
->     whether the IP address is in the netgroup (IP
->     addresses which do not resolve to a name are
->     already checked against the netgroup).
->     
->     This patch adds the check to see whether the IP
->     addresses are in the netgroup.
->     
->     
->     Signed-off-by: Frank Sorenson <sorenson@redhat.com>
+> Signed-off-by: Malahal Naineni <malahal@us.ibm.com>
 Committed... 
 
 steved.
 
+> ---
+>  utils/mountd/auth.c | 17 ++++++++++++++---
+>  1 file changed, 14 insertions(+), 3 deletions(-)
 > 
-> diff --git a/support/export/client.c b/support/export/client.c
-> index 95156f0..f6c58f2 100644
-> --- a/support/export/client.c
-> +++ b/support/export/client.c
-> @@ -686,6 +686,21 @@ check_netgroup(const nfs_client *clp, const struct addrinfo *ai)
->  		}
->  	}
+> diff --git a/utils/mountd/auth.c b/utils/mountd/auth.c
+> index 330cab5..894a7a5 100644
+> --- a/utils/mountd/auth.c
+> +++ b/utils/mountd/auth.c
+> @@ -85,7 +85,7 @@ auth_reload()
+>  {
+>  	struct stat		stb;
+>  	static ino_t		last_inode;
+> -	static int		last_fd;
+> +	static int		last_fd = -1;
+>  	static unsigned int	counter;
+>  	int			fd;
 >  
-> +	/* check whether the IP itself is in the netgroup */
-> +	for (tmp = ai ; tmp != NULL ; tmp = tmp->ai_next) {
-> +		free(hname);
-> +		hname = calloc(INET6_ADDRSTRLEN, 1);
-> +
-> +		if (inet_ntop(tmp->ai_family, &(((struct sockaddr_in *)tmp->ai_addr)->sin_addr), hname, INET6_ADDRSTRLEN) != hname) {
-> +			xlog(D_GENERAL, "  %s: unable to inet_ntop addrinfo %p: %m", __func__, tmp, errno);
-> +			goto out;
-> +		}
-> +		if (innetgr(netgroup, hname, NULL, NULL)) {
-> +			match = 1;
-> +			goto out;
-> +		}
-> +	}
-> +
->  	/* Okay, strip off the domain (if we have one) */
->  	dot = strchr(hname, '.');
->  	if (dot == NULL)
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> @@ -93,11 +93,22 @@ auth_reload()
+>  		xlog(L_FATAL, "couldn't open %s", _PATH_ETAB);
+>  	} else if (fstat(fd, &stb) < 0) {
+>  		xlog(L_FATAL, "couldn't stat %s", _PATH_ETAB);
+> -	} else if (stb.st_ino == last_inode) {
+> +		close(fd);
+> +	} else if (last_fd != -1 && stb.st_ino == last_inode) {
+> +		/* We opened the etab file before, and its inode
+> +		 * number hasn't changed since then.
+> +		 */
+>  		close(fd);
+>  		return counter;
+>  	} else {
+> -		close(last_fd);
+> +		/* Need to process entries from the etab file.  Close
+> +		 * the file descriptor from the previous open (last_fd),
+> +		 * and keep the current file descriptor open to prevent
+> +		 * the file system reusing the current inode number
+> +		 * (last_inode).
+> +		 */
+> +		if (last_fd != -1)
+> +			close(last_fd);
+>  		last_fd = fd;
+>  		last_inode = stb.st_ino;
+>  	}
 > 
