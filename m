@@ -1,56 +1,131 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from discipline.rit.edu ([129.21.6.207]:11668 "HELO
+Received: from discipline.rit.edu ([129.21.6.207]:16478 "HELO
 	discipline.rit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S965397AbbKDWHV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Nov 2015 17:07:21 -0500
+	with SMTP id S965397AbbKDWIE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Nov 2015 17:08:04 -0500
 From: Andrew Elble <aweits@rit.edu>
-To: linux-nfs@vger.kernel.org, bfields@fieldses.org, jlayton@poochiereds.net
+To: linux-nfs@vger.kernel.org, trond.myklebust@primarydata.com
 Cc: Andrew Elble <aweits@rit.edu>
-Subject: [PATCH] nfsd: fix nfsd4_delegreturn to return correct error codes
-Date: Wed,  4 Nov 2015 17:07:17 -0500
-Message-Id: <1446674837-4980-1-git-send-email-aweits@rit.edu>
+Subject: [PATCH RFC] nfs: nfs_do_return_delegation() needs to send FREE_STATEID
+Date: Wed,  4 Nov 2015 17:07:59 -0500
+Message-Id: <1446674879-6876-1-git-send-email-aweits@rit.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When delegations are revoked:
+In the NFS4.1 case, revoked delegations need to be processed via
+FREE_STATEID, not simply forgotten.
 
-In the NFSv4 case, NFS4ERR_BAD_STATEID
-In the NFSv4.1 case, NFS4ERR_DELEG_REVOKED
-
+Fixes: 869f9dfa4d6d ("NFSv4: Fix races between nfs_remove_bad_delegation() and delegation return")
 Signed-off-by: Andrew Elble <aweits@rit.edu>
 ---
- fs/nfsd/nfs4state.c | 12 +++++++++---
- 1 file changed, 9 insertions(+), 3 deletions(-)
+ fs/nfs/delegation.c |  6 ++++++
+ fs/nfs/nfs4_fs.h    |  2 ++
+ fs/nfs/nfs4proc.c   | 18 ++++++++++--------
+ 3 files changed, 18 insertions(+), 8 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 66df2903ab8e..0f0634ca4158 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -5147,15 +5147,21 @@ nfsd4_delegreturn(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	if ((status = fh_verify(rqstp, &cstate->current_fh, S_IFREG, 0)))
- 		return status;
+diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
+index 5166adcfc0fb..40301018c2d6 100644
+--- a/fs/nfs/delegation.c
++++ b/fs/nfs/delegation.c
+@@ -199,12 +199,18 @@ void nfs_inode_reclaim_delegation(struct inode *inode, struct rpc_cred *cred,
+ static int nfs_do_return_delegation(struct inode *inode, struct nfs_delegation *delegation, int issync)
+ {
+ 	int res = 0;
++	struct rpc_cred *cred = delegation->cred;
++	struct nfs_server *server = NFS_SERVER(inode);
  
--	status = nfsd4_lookup_stateid(cstate, stateid, NFS4_DELEG_STID, &s, nn);
-+	status = nfsd4_lookup_stateid(cstate, stateid,
-+				NFS4_DELEG_STID|NFS4_REVOKED_DELEG_STID,
-+				&s, nn);
- 	if (status)
- 		goto out;
- 	dp = delegstateid(s);
- 	status = check_stateid_generation(stateid, &dp->dl_stid.sc_stateid, nfsd4_has_session(cstate));
- 	if (status)
- 		goto put_stateid;
--
--	destroy_delegation(dp);
-+	if (dp->dl_stid.sc_type == NFS4_DELEG_STID)
-+		destroy_delegation(dp);
-+	if (dp->dl_stid.sc_type == NFS4_REVOKED_DELEG_STID)
-+		status = nfserr_bad_stateid;
-+		if (cstate->minorversion)
-+			status = nfserr_deleg_revoked;
- put_stateid:
- 	nfs4_put_stid(&dp->dl_stid);
- out:
+ 	if (!test_bit(NFS_DELEGATION_REVOKED, &delegation->flags))
+ 		res = nfs4_proc_delegreturn(inode,
+ 				delegation->cred,
+ 				&delegation->stateid,
+ 				issync);
++	else if (server->nfs_client->cl_minorversion)
++		res = nfs41_free_stateid(server, &delegation->stateid,
++					cred, issync);
++
+ 	nfs_free_delegation(delegation);
+ 	return res;
+ }
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index 4afdee420d25..862fe4e44634 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -261,6 +261,8 @@ extern int nfs4_set_rw_stateid(nfs4_stateid *stateid,
+ 		fmode_t fmode);
+ 
+ #if defined(CONFIG_NFS_V4_1)
++int nfs41_free_stateid(struct nfs_server *, nfs4_stateid *,
++		struct rpc_cred *, int issync);
+ static inline struct nfs4_session *nfs4_get_session(const struct nfs_server *server)
+ {
+ 	return server->nfs_client->cl_session;
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 7ed8f2cd97f8..77811c727703 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -88,8 +88,6 @@ static int nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
+ #ifdef CONFIG_NFS_V4_1
+ static int nfs41_test_stateid(struct nfs_server *, nfs4_stateid *,
+ 		struct rpc_cred *);
+-static int nfs41_free_stateid(struct nfs_server *, nfs4_stateid *,
+-		struct rpc_cred *);
+ #endif
+ 
+ #ifdef CONFIG_NFS_V4_SECURITY_LABEL
+@@ -2347,7 +2345,7 @@ static void nfs41_check_delegation_stateid(struct nfs4_state *state)
+ 		/* Free the stateid unless the server explicitly
+ 		 * informs us the stateid is unrecognized. */
+ 		if (status != -NFS4ERR_BAD_STATEID)
+-			nfs41_free_stateid(server, &stateid, cred);
++			nfs41_free_stateid(server, &stateid, cred, 1);
+ 		nfs_finish_clear_delegation_stateid(state);
+ 	}
+ 
+@@ -2381,7 +2379,7 @@ static int nfs41_check_open_stateid(struct nfs4_state *state)
+ 		/* Free the stateid unless the server explicitly
+ 		 * informs us the stateid is unrecognized. */
+ 		if (status != -NFS4ERR_BAD_STATEID)
+-			nfs41_free_stateid(server, stateid, cred);
++			nfs41_free_stateid(server, stateid, cred, 1);
+ 
+ 		clear_bit(NFS_O_RDONLY_STATE, &state->flags);
+ 		clear_bit(NFS_O_WRONLY_STATE, &state->flags);
+@@ -6033,7 +6031,7 @@ static int nfs41_check_expired_locks(struct nfs4_state *state)
+ 				if (status != -NFS4ERR_BAD_STATEID)
+ 					nfs41_free_stateid(server,
+ 							&lsp->ls_stateid,
+-							cred);
++							cred, 1);
+ 				clear_bit(NFS_LOCK_INITIALIZED, &lsp->ls_flags);
+ 				ret = status;
+ 			}
+@@ -8553,19 +8551,23 @@ static struct rpc_task *_nfs41_free_stateid(struct nfs_server *server,
+  * Returns NFS_OK if the server freed "stateid".  Otherwise a
+  * negative NFS4ERR value is returned.
+  */
+-static int nfs41_free_stateid(struct nfs_server *server,
++int nfs41_free_stateid(struct nfs_server *server,
+ 		nfs4_stateid *stateid,
+-		struct rpc_cred *cred)
++		struct rpc_cred *cred,
++		int issync)
+ {
+ 	struct rpc_task *task;
+-	int ret;
++	int ret = 0;
+ 
+ 	task = _nfs41_free_stateid(server, stateid, cred, true);
+ 	if (IS_ERR(task))
+ 		return PTR_ERR(task);
++	if (!issync)
++		goto out;
+ 	ret = rpc_wait_for_completion_task(task);
+ 	if (!ret)
+ 		ret = task->tk_status;
++out:
+ 	rpc_put_task(task);
+ 	return ret;
+ }
 -- 
 2.4.6
 
