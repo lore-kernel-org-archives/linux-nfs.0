@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from discipline.rit.edu ([129.21.6.207]:33662 "HELO
+Received: from discipline.rit.edu ([129.21.6.207]:17149 "HELO
 	discipline.rit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1751615AbbKDQYO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Nov 2015 11:24:14 -0500
+	with SMTP id S1030816AbbKDRNy (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Nov 2015 12:13:54 -0500
 From: Andrew Elble <aweits@rit.edu>
 To: linux-nfs@vger.kernel.org, bfields@fieldses.org, jlayton@poochiereds.net
 Cc: Andrew Elble <aweits@rit.edu>
-Subject: [PATCH RFC] nfsd: fix race with open / open upgrade stateids
-Date: Wed,  4 Nov 2015 11:24:07 -0500
-Message-Id: <1446654247-97951-1-git-send-email-aweits@rit.edu>
+Subject: [PATCH RFCv2] nfsd: fix race with open / open upgrade stateids
+Date: Wed,  4 Nov 2015 12:13:45 -0500
+Message-Id: <1446657225-72903-1-git-send-email-aweits@rit.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
@@ -28,11 +28,11 @@ path indicates that the race was indeed happening.
 
 Signed-off-by: Andrew Elble <aweits@rit.edu>
 ---
- fs/nfsd/nfs4state.c | 107 +++++++++++++++++++++++++++++++++++++++-------------
- 1 file changed, 81 insertions(+), 26 deletions(-)
+ fs/nfsd/nfs4state.c | 109 +++++++++++++++++++++++++++++++++++++++-------------
+ 1 file changed, 83 insertions(+), 26 deletions(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index e3a10df44896..458d776abd9f 100644
+index e3a10df44896..66df2903ab8e 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
 @@ -3345,6 +3345,40 @@ static const struct nfs4_stateowner_operations openowner_ops = {
@@ -177,7 +177,7 @@ index e3a10df44896..458d776abd9f 100644
  	} else {
  		open->op_file = NULL;
  		status = nfserr_bad_stateid;
-@@ -4225,8 +4270,17 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
+@@ -4225,8 +4270,19 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
  	} else {
  		stp = open->op_stp;
  		open->op_stp = NULL;
@@ -190,14 +190,16 @@ index e3a10df44896..458d776abd9f 100644
 +			down_read(&stp->st_rwsem);
 +			status = nfs4_upgrade_open(rqstp, fp, current_fh,
 +						stp, open);
-+			if (status)
++			if (status) {
++				up_read(&stp->st_rwsem);
 +				goto out;
++			}
 +			goto upgrade_out;
 +		}
  		status = nfs4_get_vfs_file(rqstp, fp, current_fh, stp, open);
  		if (status) {
  			up_read(&stp->st_rwsem);
-@@ -4239,6 +4293,7 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
+@@ -4239,6 +4295,7 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
  		if (stp->st_clnt_odstate == open->op_odstate)
  			open->op_odstate = NULL;
  	}
