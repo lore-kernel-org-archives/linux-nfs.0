@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:39764 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:41426 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1032492AbbKELkZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 5 Nov 2015 06:40:25 -0500
+	id S1032029AbbKELlr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 5 Nov 2015 06:41:47 -0500
 From: Andreas Gruenbacher <agruenba@redhat.com>
 To: Alexander Viro <viro@zeniv.linux.org.uk>, "Theodore Ts'o" <tytso@mit.edu>,
         Andreas Dilger <adilger.kernel@dilger.ca>,
@@ -15,149 +15,190 @@ To: Alexander Viro <viro@zeniv.linux.org.uk>, "Theodore Ts'o" <tytso@mit.edu>,
         linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-cifs@vger.kernel.org, linux-api@vger.kernel.org
 Cc: Andreas Gruenbacher <agruenba@redhat.com>
-Subject: [PATCH v14 05/22] vfs: Add permission flags for setting file attributes
-Date: Thu,  5 Nov 2015 12:39:23 +0100
-Message-Id: <1446723580-3747-6-git-send-email-agruenba@redhat.com>
+Subject: [PATCH v14 17/22] richacl: Automatic Inheritance
+Date: Thu,  5 Nov 2015 12:39:35 +0100
+Message-Id: <1446723580-3747-18-git-send-email-agruenba@redhat.com>
 In-Reply-To: <1446723580-3747-1-git-send-email-agruenba@redhat.com>
 References: <1446723580-3747-1-git-send-email-agruenba@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Richacls support permissions that allow to take ownership of a file,
-change the file permissions, and set the file timestamps.  Support that
-by introducing new permission mask flags and by checking for those mask
-flags in inode_change_ok().
+Automatic Inheritance (AI) allows changes to the acl of a directory to
+propagate down to children.
+
+This is mostly implemented in user space: when a process changes the
+permissions of a directory and Automatic Inheritance is enabled for that
+directory, the process must propagate those changes to all children,
+recursively.
+
+The kernel enables this by keeping track of which permissions have been
+inherited at create time.  In addition, it makes sure that permission
+propagation is turned off when the permissions are set explicitly (for
+example, upon create or chmod).
+
+Automatic Inheritance works as follows:
+
+ - When the RICHACL_AUTO_INHERIT flag in the acl of a file or directory
+   is not set, the file or directory is not affected by AI.
+
+ - When the RICHACL_AUTO_INHERIT flag in the acl of a directory is set
+   and a file or subdirectory is created in that directory, the
+   inherited acl will have the RICHACL_AUTO_INHERIT flag set, and all
+   inherited aces will have the RICHACE_INHERITED_ACE flag set.  This
+   allows user space to distinguish between aces which have been
+   inherited and aces which have been explicitly added.
+
+ - When the RICHACL_PROTECTED acl flag in the acl of a file or directory
+   is set, AI will not modify the acl.  This does not affect propagation
+   of permissions from the file to its children (if the file is a
+   directory).
+
+Linux does not have a way of creating files or directories without setting the
+file permission bits, so all files created inside a directory with
+RICHACL_AUTO_INHERIT set will have the RICHACL_PROTECTED flag set.  This
+effectively disables Automatic Inheritance.
+
+Protocols which support creating files without specifying permissions can
+explicitly clear the RICHACL_PROTECTED flag after creating a file and reset the
+file masks to "undo" applying the create mode; see richacl_compute_max_masks().
+They should set the RICHACL_DEFAULTED flag.  (A mechanism that would allow to
+indicate to the kernel to ignore the create mode in the first place when there
+are inherited permissions would be nice to have.)
 
 Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
 Reviewed-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/attr.c          | 79 +++++++++++++++++++++++++++++++++++++++++++++---------
- include/linux/fs.h |  3 +++
- 2 files changed, 70 insertions(+), 12 deletions(-)
+ fs/richacl_base.c            | 10 +++++++++-
+ fs/richacl_inode.c           |  7 +++++++
+ include/linux/richacl.h      | 12 ++++++++++++
+ include/uapi/linux/richacl.h | 11 ++++++++++-
+ 4 files changed, 38 insertions(+), 2 deletions(-)
 
-diff --git a/fs/attr.c b/fs/attr.c
-index 328be71..85483e0 100644
---- a/fs/attr.c
-+++ b/fs/attr.c
-@@ -17,6 +17,65 @@
- #include <linux/ima.h>
+diff --git a/fs/richacl_base.c b/fs/richacl_base.c
+index 3753216..b67280d 100644
+--- a/fs/richacl_base.c
++++ b/fs/richacl_base.c
+@@ -366,7 +366,8 @@ __richacl_chmod(struct richacl *acl, umode_t mode)
+ 	    acl->a_group_mask == group_mask &&
+ 	    acl->a_other_mask == other_mask &&
+ 	    (acl->a_flags & RICHACL_MASKED) &&
+-	    (acl->a_flags & RICHACL_WRITE_THROUGH))
++	    (acl->a_flags & RICHACL_WRITE_THROUGH) &&
++	    (!richacl_is_auto_inherit(acl) || richacl_is_protected(acl)))
+ 		return acl;
  
- /**
-+ * inode_extended_permission  -  permissions beyond read/write/execute
-+ *
-+ * Check for permissions that only richacls can currently grant.
-+ */
-+static int inode_extended_permission(struct inode *inode, int mask)
-+{
-+	if (!IS_RICHACL(inode))
-+		return -EPERM;
-+	return inode_permission(inode, mask);
-+}
-+
-+static bool inode_uid_change_ok(struct inode *inode, kuid_t ia_uid)
-+{
-+	if (uid_eq(current_fsuid(), inode->i_uid) &&
-+	    uid_eq(ia_uid, inode->i_uid))
-+		return true;
-+	if (uid_eq(current_fsuid(), ia_uid) &&
-+	    inode_extended_permission(inode, MAY_TAKE_OWNERSHIP) == 0)
-+		return true;
-+	if (capable_wrt_inode_uidgid(inode, CAP_CHOWN))
-+		return true;
-+	return false;
-+}
-+
-+static bool inode_gid_change_ok(struct inode *inode, kgid_t ia_gid)
-+{
-+	int in_group = in_group_p(ia_gid);
-+	if (uid_eq(current_fsuid(), inode->i_uid) &&
-+	    (in_group || gid_eq(ia_gid, inode->i_gid)))
-+		return true;
-+	if (in_group && inode_extended_permission(inode, MAY_TAKE_OWNERSHIP) == 0)
-+		return true;
-+	if (capable_wrt_inode_uidgid(inode, CAP_CHOWN))
-+		return true;
-+	return false;
-+}
-+
-+/**
-+ * inode_owner_permitted_or_capable
-+ *
-+ * Check for permissions implicitly granted to the owner, like MAY_CHMOD or
-+ * MAY_SET_TIMES.  Equivalent to inode_owner_or_capable for file systems
-+ * without support for those permissions.
-+ */
-+static bool inode_owner_permitted_or_capable(struct inode *inode, int mask)
-+{
-+	struct user_namespace *ns;
-+
-+	if (uid_eq(current_fsuid(), inode->i_uid))
-+		return true;
-+	if (inode_extended_permission(inode, mask) == 0)
-+		return true;
-+	ns = current_user_ns();
-+	if (ns_capable(ns, CAP_FOWNER) && kuid_has_mapping(ns, inode->i_uid))
-+		return true;
-+	return false;
-+}
-+
-+/**
-  * inode_change_ok - check if attribute changes to an inode are allowed
-  * @inode:	inode to check
-  * @attr:	attributes to change
-@@ -47,22 +106,18 @@ int inode_change_ok(struct inode *inode, struct iattr *attr)
- 		return 0;
+ 	clone = richacl_clone(acl, GFP_KERNEL);
+@@ -378,6 +379,8 @@ __richacl_chmod(struct richacl *acl, umode_t mode)
+ 	clone->a_owner_mask = owner_mask;
+ 	clone->a_group_mask = group_mask;
+ 	clone->a_other_mask = other_mask;
++	if (richacl_is_auto_inherit(clone))
++		clone->a_flags |= RICHACL_PROTECTED;
  
- 	/* Make sure a caller can chown. */
--	if ((ia_valid & ATTR_UID) &&
--	    (!uid_eq(current_fsuid(), inode->i_uid) ||
--	     !uid_eq(attr->ia_uid, inode->i_uid)) &&
--	    !capable_wrt_inode_uidgid(inode, CAP_CHOWN))
--		return -EPERM;
-+	if (ia_valid & ATTR_UID)
-+		if (!inode_uid_change_ok(inode, attr->ia_uid))
-+			return -EPERM;
- 
- 	/* Make sure caller can chgrp. */
--	if ((ia_valid & ATTR_GID) &&
--	    (!uid_eq(current_fsuid(), inode->i_uid) ||
--	    (!in_group_p(attr->ia_gid) && !gid_eq(attr->ia_gid, inode->i_gid))) &&
--	    !capable_wrt_inode_uidgid(inode, CAP_CHOWN))
--		return -EPERM;
-+	if (ia_valid & ATTR_GID)
-+		if (!inode_gid_change_ok(inode, attr->ia_gid))
-+			return -EPERM;
- 
- 	/* Make sure a caller can chmod. */
- 	if (ia_valid & ATTR_MODE) {
--		if (!inode_owner_or_capable(inode))
-+		if (!inode_owner_permitted_or_capable(inode, MAY_CHMOD))
- 			return -EPERM;
- 		/* Also check the setgid bit! */
- 		if (!in_group_p((ia_valid & ATTR_GID) ? attr->ia_gid :
-@@ -73,7 +128,7 @@ int inode_change_ok(struct inode *inode, struct iattr *attr)
- 
- 	/* Check for setting the inode time. */
- 	if (ia_valid & (ATTR_MTIME_SET | ATTR_ATIME_SET | ATTR_TIMES_SET)) {
--		if (!inode_owner_or_capable(inode))
-+		if (!inode_owner_permitted_or_capable(inode, MAY_SET_TIMES))
- 			return -EPERM;
+ 	return clone;
+ }
+@@ -551,6 +554,11 @@ richacl_inherit(const struct richacl *dir_acl, int isdir)
+ 			ace++;
+ 		}
  	}
++	if (richacl_is_auto_inherit(dir_acl)) {
++		acl->a_flags = RICHACL_AUTO_INHERIT;
++		richacl_for_each_entry(ace, acl)
++			ace->e_flags |= RICHACE_INHERITED_ACE;
++	}
  
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index aab32c8..ba91a89 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -86,6 +86,9 @@ typedef void (dax_iodone_t)(struct buffer_head *bh_map, int uptodate);
- #define MAY_CREATE_DIR		0x00000200
- #define MAY_DELETE_CHILD	0x00000400
- #define MAY_DELETE_SELF		0x00000800
-+#define MAY_TAKE_OWNERSHIP	0x00001000
-+#define MAY_CHMOD		0x00002000
-+#define MAY_SET_TIMES		0x00004000
+ 	return acl;
+ }
+diff --git a/fs/richacl_inode.c b/fs/richacl_inode.c
+index ec3d2c8..99a1ab6 100644
+--- a/fs/richacl_inode.c
++++ b/fs/richacl_inode.c
+@@ -279,6 +279,13 @@ richacl_inherit_inode(const struct richacl *dir_acl, umode_t *mode_p)
+ 			richacl_put(acl);
+ 			acl = NULL;
+ 		} else {
++			/*
++			 * We need to set RICHACL_PROTECTED because we are
++			 * doing an implicit chmod
++			 */
++			if (richacl_is_auto_inherit(acl))
++				acl->a_flags |= RICHACL_PROTECTED;
++
+ 			richacl_compute_max_masks(acl);
+ 			/*
+ 			 * Ensure that the acl will not grant any permissions
+diff --git a/include/linux/richacl.h b/include/linux/richacl.h
+index c8fae91a..c524a4b 100644
+--- a/include/linux/richacl.h
++++ b/include/linux/richacl.h
+@@ -76,6 +76,18 @@ extern void set_cached_richacl(struct inode *, struct richacl *);
+ extern void forget_cached_richacl(struct inode *);
+ extern struct richacl *get_richacl(struct inode *);
  
- /*
-  * flags in file.f_mode.  Note that FMODE_READ and FMODE_WRITE must correspond
++static inline int
++richacl_is_auto_inherit(const struct richacl *acl)
++{
++	return acl->a_flags & RICHACL_AUTO_INHERIT;
++}
++
++static inline int
++richacl_is_protected(const struct richacl *acl)
++{
++	return acl->a_flags & RICHACL_PROTECTED;
++}
++
+ /**
+  * richace_is_owner  -  check if @ace is an OWNER@ entry
+  */
+diff --git a/include/uapi/linux/richacl.h b/include/uapi/linux/richacl.h
+index 1ed48ac..8849a53 100644
+--- a/include/uapi/linux/richacl.h
++++ b/include/uapi/linux/richacl.h
+@@ -18,6 +18,9 @@
+ #define __UAPI_RICHACL_H
+ 
+ /* a_flags values */
++#define RICHACL_AUTO_INHERIT			0x01
++#define RICHACL_PROTECTED			0x02
++#define RICHACL_DEFAULTED			0x04
+ #define RICHACL_WRITE_THROUGH			0x40
+ #define RICHACL_MASKED				0x80
+ 
+@@ -31,6 +34,7 @@
+ #define RICHACE_NO_PROPAGATE_INHERIT_ACE	0x0004
+ #define RICHACE_INHERIT_ONLY_ACE		0x0008
+ #define RICHACE_IDENTIFIER_GROUP		0x0040
++#define RICHACE_INHERITED_ACE			0x0080
+ #define RICHACE_SPECIAL_WHO			0x4000
+ 
+ /* e_mask bitflags */
+@@ -60,6 +64,9 @@
+ #define RICHACE_EVERYONE_SPECIAL_ID		2
+ 
+ #define RICHACL_VALID_FLAGS (					\
++	RICHACL_AUTO_INHERIT |					\
++	RICHACL_PROTECTED |					\
++	RICHACL_DEFAULTED |					\
+ 	RICHACL_WRITE_THROUGH |					\
+ 	RICHACL_MASKED )
+ 
+@@ -69,13 +76,15 @@
+ 	RICHACE_NO_PROPAGATE_INHERIT_ACE |			\
+ 	RICHACE_INHERIT_ONLY_ACE |				\
+ 	RICHACE_IDENTIFIER_GROUP |				\
++	RICHACE_INHERITED_ACE |					\
+ 	RICHACE_SPECIAL_WHO )
+ 
+ #define RICHACE_INHERITANCE_FLAGS (				\
+ 	RICHACE_FILE_INHERIT_ACE |				\
+ 	RICHACE_DIRECTORY_INHERIT_ACE |				\
+ 	RICHACE_NO_PROPAGATE_INHERIT_ACE |			\
+-	RICHACE_INHERIT_ONLY_ACE )
++	RICHACE_INHERIT_ONLY_ACE |				\
++	RICHACE_INHERITED_ACE )
+ 
+ /* Valid RICHACE_* flags for directories and non-directories */
+ #define RICHACE_VALID_MASK (					\
 -- 
 2.5.0
 
