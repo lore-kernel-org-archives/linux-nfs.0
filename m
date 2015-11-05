@@ -1,143 +1,54 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:39328 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:54273 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1031012AbbKELjv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 5 Nov 2015 06:39:51 -0500
-From: Andreas Gruenbacher <agruenba@redhat.com>
-To: Alexander Viro <viro@zeniv.linux.org.uk>, "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@poochiereds.net>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Dave Chinner <david@fromorbit.com>, linux-ext4@vger.kernel.org,
-        xfs@oss.sgi.com, linux-kernel@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-api@vger.kernel.org
-Cc: Andreas Gruenbacher <agruenba@redhat.com>
-Subject: [PATCH v14 00/22] Richacls (Core and Ext4)
-Date: Thu,  5 Nov 2015 12:39:18 +0100
-Message-Id: <1446723580-3747-1-git-send-email-agruenba@redhat.com>
+	id S1030793AbbKEMh6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 5 Nov 2015 07:37:58 -0500
+Received: from int-mx14.intmail.prod.int.phx2.redhat.com (int-mx14.intmail.prod.int.phx2.redhat.com [10.5.11.27])
+	by mx1.redhat.com (Postfix) with ESMTPS id 49BF3A0B89
+	for <linux-nfs@vger.kernel.org>; Thu,  5 Nov 2015 12:37:58 +0000 (UTC)
+Received: from smallhat.boston.devel.redhat.com (vpn-56-48.rdu2.redhat.com [10.10.56.48])
+	by int-mx14.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id tA5CbvrU013752
+	for <linux-nfs@vger.kernel.org>; Thu, 5 Nov 2015 07:37:57 -0500
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Monthly Linux NFS Town Hall meeting: *Today* - Thur Nov 4
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Message-ID: <563B4DA5.5040901@RedHat.com>
+Date: Thu, 5 Nov 2015 07:37:57 -0500
+MIME-Version: 1.0
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Here is another update to the richacl patch queue.  This posting contains
-the patches ready to be merged; the patches later in the queue still need
-some more review.
+Hello,
 
-Changes since the last posting (http://lwn.net/Articles/662881/):
+Its that time again... the NFS town hall meeting
+will be *Today*!
 
- * Functions {get,put}_base_acl renamed to base_acl_{get,put}. Functions
-   base_acl_init and base_acl_refcount added and used where appropriate.
-   Better document that struct base_acl must be the first member in an ACL.
+   *Thur Nov 4 at 01:00 pm EST (10:00am PST)*
 
- * Function acl_by_type un-exported and changed to return a struct base_acl
-   pointer.
+The usual agenda will apply. The maintainers will give
+a quick status of what is happening in their worlds.
 
- * The "Cache base_acl objects in inodes" and "Cache richacl in struct
-   inode" patches were not perfectly split.
+Next we'll get updates from major contributors on what
+they have been doing and are planing on doing.
+  
+Finally, we'll open the floor to questions, comments, 
+concerns from the community.  
 
- * Fix the commit message of "Add richacl feature flag".
+Generally the meeting lasts between 30 to 45 mins, with 
+a very hard stop at 60mins. 
 
+Please feel to attend and participate!
 
-The complete patch queue is available in git form here:
+Again the Time: 10:00 am PST (01:00 pm EST)
 
-  git://git.kernel.org/pub/scm/linux/kernel/git/agruen/linux-richacl.git \
-	richacl-2015-11-05
+The call in numbers are:
 
+U.S. and Canada: (800) 451-8679
+World wide toll free numbers
+   https://www.intercallonline.com/listNumbersByCode.action?confCode=5642721552
 
-The richacl user-space utilitites, man pages, and test suite are available
-here:
+Conference code: 564.272.1552
 
-  https://github.com/andreas-gruenbacher/richacl
-
-
-Changes to other user-space packages for richacl are available here:
-
-  https://github.com/andreas-gruenbacher/coreutils
-  https://github.com/andreas-gruenbacher/e2fsprogs
-  https://github.com/andreas-gruenbacher/xfsprogs-dev
-  https://github.com/andreas-gruenbacher/nfs-utils
-
-
-Please see the richacl homepage for more information:
-
-  http://www.bestbits.at/richacl/
-
-
-Thanks,
-Andreas
-
-Andreas Gruenbacher (20):
-  vfs: Add IS_ACL() and IS_RICHACL() tests
-  vfs: Add MAY_CREATE_FILE and MAY_CREATE_DIR permission flags
-  vfs: Add MAY_DELETE_SELF and MAY_DELETE_CHILD permission flags
-  vfs: Make the inode passed to inode_change_ok non-const
-  vfs: Add permission flags for setting file attributes
-  richacl: In-memory representation and helper functions
-  richacl: Permission mapping functions
-  richacl: Compute maximum file masks from an acl
-  richacl: Permission check algorithm
-  posix_acl: Unexport acl_by_type and make it static
-  vfs: Cache base_acl objects in inodes
-  vfs: Add get_richacl and set_richacl inode operations
-  vfs: Cache richacl in struct inode
-  richacl: Update the file masks in chmod()
-  richacl: Check if an acl is equivalent to a file mode
-  richacl: Create-time inheritance
-  richacl: Automatic Inheritance
-  richacl: xattr mapping functions
-  richacl: Add richacl xattr handler
-  vfs: Add richacl permission checking
-
-Aneesh Kumar K.V (2):
-  ext4: Add richacl support
-  ext4: Add richacl feature flag
-
- drivers/staging/lustre/lustre/llite/llite_lib.c |   2 +-
- fs/Kconfig                                      |   3 +
- fs/Makefile                                     |   2 +
- fs/attr.c                                       |  81 +++-
- fs/ext4/Kconfig                                 |  11 +
- fs/ext4/Makefile                                |   1 +
- fs/ext4/ext4.h                                  |   6 +-
- fs/ext4/file.c                                  |   3 +
- fs/ext4/ialloc.c                                |  11 +-
- fs/ext4/inode.c                                 |  12 +-
- fs/ext4/namei.c                                 |   5 +
- fs/ext4/richacl.c                               | 142 ++++++
- fs/ext4/richacl.h                               |  40 ++
- fs/ext4/super.c                                 |  49 +-
- fs/ext4/xattr.c                                 |   7 +
- fs/f2fs/acl.c                                   |   4 +-
- fs/inode.c                                      |  15 +-
- fs/jffs2/acl.c                                  |  10 +-
- fs/namei.c                                      | 111 +++--
- fs/posix_acl.c                                  |  50 +--
- fs/richacl_base.c                               | 564 ++++++++++++++++++++++++
- fs/richacl_inode.c                              | 333 ++++++++++++++
- fs/richacl_xattr.c                              | 298 +++++++++++++
- fs/xattr.c                                      |  34 +-
- include/linux/fs.h                              |  60 ++-
- include/linux/posix_acl.h                       |  13 +-
- include/linux/richacl.h                         | 208 +++++++++
- include/linux/richacl_xattr.h                   |  44 ++
- include/uapi/linux/Kbuild                       |   2 +
- include/uapi/linux/fs.h                         |   3 +-
- include/uapi/linux/richacl.h                    | 152 +++++++
- include/uapi/linux/richacl_xattr.h              |  44 ++
- include/uapi/linux/xattr.h                      |   2 +
- 33 files changed, 2213 insertions(+), 109 deletions(-)
- create mode 100644 fs/ext4/richacl.c
- create mode 100644 fs/ext4/richacl.h
- create mode 100644 fs/richacl_base.c
- create mode 100644 fs/richacl_inode.c
- create mode 100644 fs/richacl_xattr.c
- create mode 100644 include/linux/richacl.h
- create mode 100644 include/linux/richacl_xattr.h
- create mode 100644 include/uapi/linux/richacl.h
- create mode 100644 include/uapi/linux/richacl_xattr.h
-
--- 
-2.5.0
+steved.
 
