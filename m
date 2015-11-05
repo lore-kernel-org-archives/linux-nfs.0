@@ -1,90 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ob0-f182.google.com ([209.85.214.182]:32826 "EHLO
-	mail-ob0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1161963AbbKEP5E (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Nov 2015 10:57:04 -0500
-Received: by obbww6 with SMTP id ww6so43017656obb.0
-        for <linux-nfs@vger.kernel.org>; Thu, 05 Nov 2015 07:57:04 -0800 (PST)
+Received: from mail-ob0-f177.google.com ([209.85.214.177]:34532 "EHLO
+	mail-ob0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1031593AbbKEQbx (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Nov 2015 11:31:53 -0500
+Received: by obbza9 with SMTP id za9so70559161obb.1
+        for <linux-nfs@vger.kernel.org>; Thu, 05 Nov 2015 08:31:53 -0800 (PST)
 MIME-Version: 1.0
-In-Reply-To: <CAHc6FU5xkjWJeGFR5mO8+OAEMwwU6yWK7H8CV1fn5dk-LS23-g@mail.gmail.com>
-References: <1446563847-14005-1-git-send-email-agruenba@redhat.com>
-	<1446563847-14005-46-git-send-email-agruenba@redhat.com>
-	<CAHQdGtScoRb-722ES168O8tkp-Rbvwe6bZ=70WwgiXpCC3vsHw@mail.gmail.com>
-	<CAHc6FU5xkjWJeGFR5mO8+OAEMwwU6yWK7H8CV1fn5dk-LS23-g@mail.gmail.com>
-Date: Thu, 5 Nov 2015 10:57:04 -0500
-Message-ID: <CAHQdGtQitLZq9fKHhzZbqS5ESRYNgNpw=M+y715mWMjFi-cgNQ@mail.gmail.com>
-Subject: Re: [PATCH v13 45/51] sunrpc: Allow to demand-allocate pages to
- encode into
+In-Reply-To: <m2twp0v5hc.fsf@discipline.rit.edu>
+References: <1446684228-37765-1-git-send-email-aweits@rit.edu>
+	<CAHQdGtQmYV9Aq+=CivbmPTjHMZVhd8BznpMsmXXD=cZwzOO0Uw@mail.gmail.com>
+	<m2twp0v5hc.fsf@discipline.rit.edu>
+Date: Thu, 5 Nov 2015 11:31:53 -0500
+Message-ID: <CAHQdGtQ15TFpAk+RuCCSORKe1gYNWoVD8d9a_Vxy=_44=WFo9g@mail.gmail.com>
+Subject: Re: [PATCH RFC v3] nfs: nfs_do_return_delegation() needs to send FREE_STATEID
 From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Andreas Gruenbacher <agruenba@redhat.com>
-Cc: Alexander Viro <viro@zeniv.linux.org.uk>, "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@poochiereds.net>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Dave Chinner <david@fromorbit.com>,
-        linux-ext4 <linux-ext4@vger.kernel.org>,
-        XFS Developers <xfs@oss.sgi.com>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        Linux FS-devel Mailing List <linux-fsdevel@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-cifs@vger.kernel.org,
-        Linux API Mailing List <linux-api@vger.kernel.org>
+To: Andrew W Elble <aweits@rit.edu>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Nov 5, 2015 at 6:07 AM, Andreas Gruenbacher <agruenba@redhat.com> wrote:
-> Trond,
+On Thu, Nov 5, 2015 at 10:19 AM, Andrew W Elble <aweits@rit.edu> wrote:
 >
-> On Tue, Nov 3, 2015 at 5:25 PM, Trond Myklebust
-> <trond.myklebust@primarydata.com> wrote:
->> On Tue, Nov 3, 2015 at 10:17 AM, Andreas Gruenbacher
->> <agruenba@redhat.com> wrote:
->>> When encoding large, variable-length objects such as acls into xdr_bufs,
->>> it is easier to allocate buffer pages on demand rather than precomputing
->>> the required buffer size.
+>> If the server is revoking a delegation, then presumably it will also
+>> set one or more of the SEQ4_STATUS_EXPIRED_SOME_STATE_REVOKED,
+>> SEQ4_STATUS_ADMIN_STATE_REVOKED, SEQ4_STATUS_RECALLABLE_STATE_REVOKED,
+>> which should start up a state manager thread to do the
+>> test_stateid/free_stateid dance.
 >>
->> NACK. We're not doing allocations from inside the XDR encoders. This
->> can and should be done before calling into the SUNRPC layer.
+>> So instead of adding the free stateid call above, why can't we just
+>> punt the freeing of the delegation to the state manager?
 >
-> an XDR-encoded ACL can be up to 64k (16 pages) in size. In practice,
-> large ACLs like that will almost never occur and almost all ACLs will
-> fit into a single page though.
+> I inferred (perhaps incorrectly) that nfs_do_return_delegation() was a
+> place delegations went to and didn't come back from.
 >
-> The XDR-encoded ACL contains strings for the user and group names
-> which need to be looked up when the idmapper is used. Those lookups
-> are somewhat expensive; in addition, the lookup results can change
-> over time. When precomputing the size, allocating space, and then
-> encoding the ACL, we could run out of space when encoding.
->
-> So we could always allocate the maximum 16 pages, encode the acl, and
-> free the unused pages. This would be rather wasteful though.
->
-> Given how simple it is to allocate pages as we go, this seems the
-> better choice here. This doesn't break any existing code either; NULL
-> page pointers would have oopsed in xdr_get_next_encode_buffer before.
->
-> From the memory management point of view, there is no difference in
-> preallocating GFP_NOFS pages and allocating them on demand; the pages
-> are allocated in the same task and locking context in both cases.
->
-> So could you please explain why you object to this change?
->
+> I managed to convince myself that since all callers of
+> nfs_do_return_delegation() detach the delegation, the state manager
+> wouldn't be able to perform that function without reattaching the
+> delegation - and that doesn't look quite so safe (and/or possible)
+> in all of those call paths?
 
-Allocating memory deep in the bowels of the RPC code with the
-expectation that it will be freed by the caller of the RPC request is
-a layering violation of the ugliest sort. How is anyone who is
-unfamiliar with the code going to be able to understand what is going
-on without tracing through 1000 lines of code to spot where the
-allocation is happening?
+Looking again more closely, can we ever have NFS_DELEGATION_REVOKED
+set without first having called nfs41_check_delegation_stateid(), and
+therefore presumably having freed the delegation stateid? The only
+place I can see that might be broken is
+ff_layout_async_handle_error_v4(), which calls
+nfs_remove_bad_delegation() directly instead of using the state
+manager.
 
-Aside from that, we do not want any non-critical blocking while
-holding the RPC socket lock. Your allocation request will block all
-further traffic to the server until it is satisfied. That includes
-blocking page writeback, which might actually free up memory to
-satisfy the allocation.
-
-As I said above, there is no reason whatsoever to have to do all this
-inside encode_setacl(). The entire ACL encoding into pages can be done
-before even calling into the RPC layer, just like we do today.
+There is also a question of what to do if the call to DELEGRETURN
+itself returns NFS4ERR_DELEG_REVOKED, but why would a server do that?
