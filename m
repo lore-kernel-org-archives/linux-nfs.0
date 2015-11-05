@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:41426 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:58325 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1032029AbbKELlr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 5 Nov 2015 06:41:47 -0500
+	id S1161701AbbKELmW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 5 Nov 2015 06:42:22 -0500
 From: Andreas Gruenbacher <agruenba@redhat.com>
 To: Alexander Viro <viro@zeniv.linux.org.uk>, "Theodore Ts'o" <tytso@mit.edu>,
         Andreas Dilger <adilger.kernel@dilger.ca>,
@@ -14,191 +14,156 @@ To: Alexander Viro <viro@zeniv.linux.org.uk>, "Theodore Ts'o" <tytso@mit.edu>,
         xfs@oss.sgi.com, linux-kernel@vger.kernel.org,
         linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-cifs@vger.kernel.org, linux-api@vger.kernel.org
-Cc: Andreas Gruenbacher <agruenba@redhat.com>
-Subject: [PATCH v14 17/22] richacl: Automatic Inheritance
-Date: Thu,  5 Nov 2015 12:39:35 +0100
-Message-Id: <1446723580-3747-18-git-send-email-agruenba@redhat.com>
+Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+        Andreas Gruenbacher <agruenba@redhat.com>
+Subject: [PATCH v14 22/22] ext4: Add richacl feature flag
+Date: Thu,  5 Nov 2015 12:39:40 +0100
+Message-Id: <1446723580-3747-23-git-send-email-agruenba@redhat.com>
 In-Reply-To: <1446723580-3747-1-git-send-email-agruenba@redhat.com>
 References: <1446723580-3747-1-git-send-email-agruenba@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Automatic Inheritance (AI) allows changes to the acl of a directory to
-propagate down to children.
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 
-This is mostly implemented in user space: when a process changes the
-permissions of a directory and Automatic Inheritance is enabled for that
-directory, the process must propagate those changes to all children,
-recursively.
+This feature flag selects richacl instead of POSIX ACL support on the
+filesystem.  When this feature is off, the "acl" and "noacl" mount options
+control whether POSIX ACLs are enabled.  When it is on, richacls are
+automatically enabled and using the "noacl" mount option leads to an error.
 
-The kernel enables this by keeping track of which permissions have been
-inherited at create time.  In addition, it makes sure that permission
-propagation is turned off when the permissions are set explicitly (for
-example, upon create or chmod).
-
-Automatic Inheritance works as follows:
-
- - When the RICHACL_AUTO_INHERIT flag in the acl of a file or directory
-   is not set, the file or directory is not affected by AI.
-
- - When the RICHACL_AUTO_INHERIT flag in the acl of a directory is set
-   and a file or subdirectory is created in that directory, the
-   inherited acl will have the RICHACL_AUTO_INHERIT flag set, and all
-   inherited aces will have the RICHACE_INHERITED_ACE flag set.  This
-   allows user space to distinguish between aces which have been
-   inherited and aces which have been explicitly added.
-
- - When the RICHACL_PROTECTED acl flag in the acl of a file or directory
-   is set, AI will not modify the acl.  This does not affect propagation
-   of permissions from the file to its children (if the file is a
-   directory).
-
-Linux does not have a way of creating files or directories without setting the
-file permission bits, so all files created inside a directory with
-RICHACL_AUTO_INHERIT set will have the RICHACL_PROTECTED flag set.  This
-effectively disables Automatic Inheritance.
-
-Protocols which support creating files without specifying permissions can
-explicitly clear the RICHACL_PROTECTED flag after creating a file and reset the
-file masks to "undo" applying the create mode; see richacl_compute_max_masks().
-They should set the RICHACL_DEFAULTED flag.  (A mechanism that would allow to
-indicate to the kernel to ignore the create mode in the first place when there
-are inherited permissions would be nice to have.)
-
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
-Reviewed-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/richacl_base.c            | 10 +++++++++-
- fs/richacl_inode.c           |  7 +++++++
- include/linux/richacl.h      | 12 ++++++++++++
- include/uapi/linux/richacl.h | 11 ++++++++++-
- 4 files changed, 38 insertions(+), 2 deletions(-)
+ fs/ext4/ext4.h  |  6 ++++--
+ fs/ext4/super.c | 49 ++++++++++++++++++++++++++++++++++++++++---------
+ 2 files changed, 44 insertions(+), 11 deletions(-)
 
-diff --git a/fs/richacl_base.c b/fs/richacl_base.c
-index 3753216..b67280d 100644
---- a/fs/richacl_base.c
-+++ b/fs/richacl_base.c
-@@ -366,7 +366,8 @@ __richacl_chmod(struct richacl *acl, umode_t mode)
- 	    acl->a_group_mask == group_mask &&
- 	    acl->a_other_mask == other_mask &&
- 	    (acl->a_flags & RICHACL_MASKED) &&
--	    (acl->a_flags & RICHACL_WRITE_THROUGH))
-+	    (acl->a_flags & RICHACL_WRITE_THROUGH) &&
-+	    (!richacl_is_auto_inherit(acl) || richacl_is_protected(acl)))
- 		return acl;
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index fd1f28b..b97a3b1 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -991,7 +991,7 @@ struct ext4_inode_info {
+ #define EXT4_MOUNT_UPDATE_JOURNAL	0x01000	/* Update the journal format */
+ #define EXT4_MOUNT_NO_UID32		0x02000  /* Disable 32-bit UIDs */
+ #define EXT4_MOUNT_XATTR_USER		0x04000	/* Extended user attributes */
+-#define EXT4_MOUNT_POSIX_ACL		0x08000	/* POSIX Access Control Lists */
++#define EXT4_MOUNT_ACL			0x08000	/* Access Control Lists */
+ #define EXT4_MOUNT_NO_AUTO_DA_ALLOC	0x10000	/* No auto delalloc mapping */
+ #define EXT4_MOUNT_BARRIER		0x20000 /* Use block barriers */
+ #define EXT4_MOUNT_QUOTA		0x80000 /* Some quota option set */
+@@ -1582,6 +1582,7 @@ static inline int ext4_encrypted_inode(struct inode *inode)
+ #define EXT4_FEATURE_INCOMPAT_LARGEDIR		0x4000 /* >2GB or 3-lvl htree */
+ #define EXT4_FEATURE_INCOMPAT_INLINE_DATA	0x8000 /* data in inode */
+ #define EXT4_FEATURE_INCOMPAT_ENCRYPT		0x10000
++#define EXT4_FEATURE_INCOMPAT_RICHACL		0x20000
  
- 	clone = richacl_clone(acl, GFP_KERNEL);
-@@ -378,6 +379,8 @@ __richacl_chmod(struct richacl *acl, umode_t mode)
- 	clone->a_owner_mask = owner_mask;
- 	clone->a_group_mask = group_mask;
- 	clone->a_other_mask = other_mask;
-+	if (richacl_is_auto_inherit(clone))
-+		clone->a_flags |= RICHACL_PROTECTED;
- 
- 	return clone;
+ #define EXT2_FEATURE_COMPAT_SUPP	EXT4_FEATURE_COMPAT_EXT_ATTR
+ #define EXT2_FEATURE_INCOMPAT_SUPP	(EXT4_FEATURE_INCOMPAT_FILETYPE| \
+@@ -1607,7 +1608,8 @@ static inline int ext4_encrypted_inode(struct inode *inode)
+ 					 EXT4_FEATURE_INCOMPAT_FLEX_BG| \
+ 					 EXT4_FEATURE_INCOMPAT_MMP | \
+ 					 EXT4_FEATURE_INCOMPAT_INLINE_DATA | \
+-					 EXT4_FEATURE_INCOMPAT_ENCRYPT)
++					 EXT4_FEATURE_INCOMPAT_ENCRYPT | \
++					 EXT4_FEATURE_INCOMPAT_RICHACL)
+ #define EXT4_FEATURE_RO_COMPAT_SUPP	(EXT4_FEATURE_RO_COMPAT_SPARSE_SUPER| \
+ 					 EXT4_FEATURE_RO_COMPAT_LARGE_FILE| \
+ 					 EXT4_FEATURE_RO_COMPAT_GDT_CSUM| \
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index a63c7b0..7457ea8 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1270,6 +1270,28 @@ static ext4_fsblk_t get_sb_block(void **data)
+ 	return sb_block;
  }
-@@ -551,6 +554,11 @@ richacl_inherit(const struct richacl *dir_acl, int isdir)
- 			ace++;
- 		}
- 	}
-+	if (richacl_is_auto_inherit(dir_acl)) {
-+		acl->a_flags = RICHACL_AUTO_INHERIT;
-+		richacl_for_each_entry(ace, acl)
-+			ace->e_flags |= RICHACE_INHERITED_ACE;
+ 
++static int enable_acl(struct super_block *sb)
++{
++	sb->s_flags &= ~(MS_POSIXACL | MS_RICHACL);
++	if (test_opt(sb, ACL)) {
++		if (EXT4_HAS_INCOMPAT_FEATURE(sb,
++					      EXT4_FEATURE_INCOMPAT_RICHACL)) {
++#ifdef CONFIG_EXT4_FS_RICHACL
++			sb->s_flags |= MS_RICHACL;
++#else
++			return -EOPNOTSUPP;
++#endif
++		} else {
++#ifdef CONFIG_EXT4_FS_POSIX_ACL
++			sb->s_flags |= MS_POSIXACL;
++#else
++			return -EOPNOTSUPP;
++#endif
++		}
 +	}
- 
- 	return acl;
- }
-diff --git a/fs/richacl_inode.c b/fs/richacl_inode.c
-index ec3d2c8..99a1ab6 100644
---- a/fs/richacl_inode.c
-+++ b/fs/richacl_inode.c
-@@ -279,6 +279,13 @@ richacl_inherit_inode(const struct richacl *dir_acl, umode_t *mode_p)
- 			richacl_put(acl);
- 			acl = NULL;
- 		} else {
-+			/*
-+			 * We need to set RICHACL_PROTECTED because we are
-+			 * doing an implicit chmod
-+			 */
-+			if (richacl_is_auto_inherit(acl))
-+				acl->a_flags |= RICHACL_PROTECTED;
-+
- 			richacl_compute_max_masks(acl);
- 			/*
- 			 * Ensure that the acl will not grant any permissions
-diff --git a/include/linux/richacl.h b/include/linux/richacl.h
-index c8fae91a..c524a4b 100644
---- a/include/linux/richacl.h
-+++ b/include/linux/richacl.h
-@@ -76,6 +76,18 @@ extern void set_cached_richacl(struct inode *, struct richacl *);
- extern void forget_cached_richacl(struct inode *);
- extern struct richacl *get_richacl(struct inode *);
- 
-+static inline int
-+richacl_is_auto_inherit(const struct richacl *acl)
-+{
-+	return acl->a_flags & RICHACL_AUTO_INHERIT;
++	return 0;
 +}
 +
-+static inline int
-+richacl_is_protected(const struct richacl *acl)
-+{
-+	return acl->a_flags & RICHACL_PROTECTED;
-+}
-+
- /**
-  * richace_is_owner  -  check if @ace is an OWNER@ entry
-  */
-diff --git a/include/uapi/linux/richacl.h b/include/uapi/linux/richacl.h
-index 1ed48ac..8849a53 100644
---- a/include/uapi/linux/richacl.h
-+++ b/include/uapi/linux/richacl.h
-@@ -18,6 +18,9 @@
- #define __UAPI_RICHACL_H
+ #define DEFAULT_JOURNAL_IOPRIO (IOPRIO_PRIO_VALUE(IOPRIO_CLASS_BE, 3))
+ static char deprecated_msg[] = "Mount option \"%s\" will be removed by %s\n"
+ 	"Contact linux-ext4@vger.kernel.org if you think we should keep it.\n";
+@@ -1416,9 +1438,9 @@ static const struct mount_opts {
+ 	 MOPT_NO_EXT2 | MOPT_DATAJ},
+ 	{Opt_user_xattr, EXT4_MOUNT_XATTR_USER, MOPT_SET},
+ 	{Opt_nouser_xattr, EXT4_MOUNT_XATTR_USER, MOPT_CLEAR},
+-#ifdef CONFIG_EXT4_FS_POSIX_ACL
+-	{Opt_acl, EXT4_MOUNT_POSIX_ACL, MOPT_SET},
+-	{Opt_noacl, EXT4_MOUNT_POSIX_ACL, MOPT_CLEAR},
++#if defined(CONFIG_EXT4_FS_POSIX_ACL) || defined(CONFIG_EXT4_FS_RICHACL)
++	{Opt_acl, EXT4_MOUNT_ACL, MOPT_SET},
++	{Opt_noacl, EXT4_MOUNT_ACL, MOPT_CLEAR},
+ #else
+ 	{Opt_acl, 0, MOPT_NOSUPPORT},
+ 	{Opt_noacl, 0, MOPT_NOSUPPORT},
+@@ -1466,6 +1488,13 @@ static int handle_mount_opt(struct super_block *sb, char *opt, int token,
+ #endif
+ 	switch (token) {
+ 	case Opt_noacl:
++#ifdef CONFIG_EXT4_FS_RICHACL
++	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RICHACL)) {
++		ext4_msg(sb, KERN_ERR, "Mount option \"%s\" incompatible "
++			 "with richacl feature", opt);
++		return -1;
++	}
++#endif
+ 	case Opt_nouser_xattr:
+ 		ext4_msg(sb, KERN_WARNING, deprecated_msg, opt, "3.5");
+ 		break;
+@@ -3576,8 +3605,8 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 		set_opt(sb, NO_UID32);
+ 	/* xattr user namespace & acls are now defaulted on */
+ 	set_opt(sb, XATTR_USER);
+-#ifdef CONFIG_EXT4_FS_POSIX_ACL
+-	set_opt(sb, POSIX_ACL);
++#if defined(CONFIG_EXT4_FS_POSIX_ACL) || defined(CONFIG_EXT4_FS_RICHACL)
++	set_opt(sb, ACL);
+ #endif
+ 	/* don't forget to enable journal_csum when metadata_csum is enabled. */
+ 	if (ext4_has_metadata_csum(sb))
+@@ -3660,8 +3689,9 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 		sb->s_iflags |= SB_I_CGROUPWB;
+ 	}
  
- /* a_flags values */
-+#define RICHACL_AUTO_INHERIT			0x01
-+#define RICHACL_PROTECTED			0x02
-+#define RICHACL_DEFAULTED			0x04
- #define RICHACL_WRITE_THROUGH			0x40
- #define RICHACL_MASKED				0x80
+-	sb->s_flags = (sb->s_flags & ~MS_POSIXACL) |
+-		(test_opt(sb, POSIX_ACL) ? MS_POSIXACL : 0);
++	err = enable_acl(sb);
++	if (err)
++		goto failed_mount;
  
-@@ -31,6 +34,7 @@
- #define RICHACE_NO_PROPAGATE_INHERIT_ACE	0x0004
- #define RICHACE_INHERIT_ONLY_ACE		0x0008
- #define RICHACE_IDENTIFIER_GROUP		0x0040
-+#define RICHACE_INHERITED_ACE			0x0080
- #define RICHACE_SPECIAL_WHO			0x4000
+ 	if (le32_to_cpu(es->s_rev_level) == EXT4_GOOD_OLD_REV &&
+ 	    (EXT4_HAS_COMPAT_FEATURE(sb, ~0U) ||
+@@ -4981,8 +5011,9 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
+ 	if (sbi->s_mount_flags & EXT4_MF_FS_ABORTED)
+ 		ext4_abort(sb, "Abort forced by user");
  
- /* e_mask bitflags */
-@@ -60,6 +64,9 @@
- #define RICHACE_EVERYONE_SPECIAL_ID		2
+-	sb->s_flags = (sb->s_flags & ~MS_POSIXACL) |
+-		(test_opt(sb, POSIX_ACL) ? MS_POSIXACL : 0);
++	err = enable_acl(sb);
++	if (err)
++		goto restore_opts;
  
- #define RICHACL_VALID_FLAGS (					\
-+	RICHACL_AUTO_INHERIT |					\
-+	RICHACL_PROTECTED |					\
-+	RICHACL_DEFAULTED |					\
- 	RICHACL_WRITE_THROUGH |					\
- 	RICHACL_MASKED )
+ 	es = sbi->s_es;
  
-@@ -69,13 +76,15 @@
- 	RICHACE_NO_PROPAGATE_INHERIT_ACE |			\
- 	RICHACE_INHERIT_ONLY_ACE |				\
- 	RICHACE_IDENTIFIER_GROUP |				\
-+	RICHACE_INHERITED_ACE |					\
- 	RICHACE_SPECIAL_WHO )
- 
- #define RICHACE_INHERITANCE_FLAGS (				\
- 	RICHACE_FILE_INHERIT_ACE |				\
- 	RICHACE_DIRECTORY_INHERIT_ACE |				\
- 	RICHACE_NO_PROPAGATE_INHERIT_ACE |			\
--	RICHACE_INHERIT_ONLY_ACE )
-+	RICHACE_INHERIT_ONLY_ACE |				\
-+	RICHACE_INHERITED_ACE )
- 
- /* Valid RICHACE_* flags for directories and non-directories */
- #define RICHACE_VALID_MASK (					\
 -- 
 2.5.0
 
