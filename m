@@ -1,62 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.opengridcomputing.com ([72.48.136.20]:49061 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1755909AbbKERUm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Nov 2015 12:20:42 -0500
-From: "Steve Wise" <swise@opengridcomputing.com>
-To: "'Anna Schumaker'" <Anna.Schumaker@netapp.com>,
-        "'Trond Myklebust'" <trond.myklebust@primarydata.com>
-Cc: <linux-nfs@vger.kernel.org>, "Chuck Lever" <chuck.lever@oracle.com>
-References: <560AFB37.4080609@Netapp.com>
-In-Reply-To: <560AFB37.4080609@Netapp.com>
-Subject: RE: [GIT PULL] Please pull an NFSoRDMA client bugfix
-Date: Thu, 5 Nov 2015 11:20:47 -0600
-Message-ID: <01c101d117ee$4f87f320$ee97d960$@opengridcomputing.com>
+Received: from mx1.redhat.com ([209.132.183.28]:33036 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932907AbbKERt1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 5 Nov 2015 12:49:27 -0500
+Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
+	by mx1.redhat.com (Postfix) with ESMTPS id 014808EFE6
+	for <linux-nfs@vger.kernel.org>; Thu,  5 Nov 2015 17:49:26 +0000 (UTC)
+Received: from smallhat.boston.devel.redhat.com (vpn-59-58.rdu2.redhat.com [10.10.59.58])
+	by int-mx11.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id tA5HnQCB003488
+	for <linux-nfs@vger.kernel.org>; Thu, 5 Nov 2015 12:49:26 -0500
+Subject: Re: Monthly Linux NFS Town Hall meeting: *Today* - Thur Nov 4
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+References: <563B4DA5.5040901@RedHat.com>
+From: Steve Dickson <SteveD@redhat.com>
+Message-ID: <563B96A5.7030009@RedHat.com>
+Date: Thu, 5 Nov 2015 12:49:25 -0500
 MIME-Version: 1.0
-Content-Type: text/plain;
-	charset="UTF-8"
+In-Reply-To: <563B4DA5.5040901@RedHat.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Anna and Trond,
+A quick reminder... this will be starting in a few,
+If interested.
 
-Does it make sense for this to be pushed into stable as well?  It can cause a touch-after-free crash on iWARP transports. 
+steved.
 
-Steve.
-
-> -----Original Message-----
-> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Anna Schumaker
-> Sent: Tuesday, September 29, 2015 3:57 PM
-> To: Trond Myklebust
-> Cc: linux-nfs@vger.kernel.org; Steve Wise
-> Subject: [GIT PULL] Please pull an NFSoRDMA client bugfix
+On 11/05/2015 07:37 AM, Steve Dickson wrote:
+> Hello,
 > 
-> Hi Trond,
+> Its that time again... the NFS town hall meeting
+> will be *Today*!
 > 
-> The following changes since commit d0f36c46deea97bd16b9277be2f1acac74d76037:
+>    *Thur Nov 4 at 01:00 pm EST (10:00am PST)*
 > 
->   xprtrdma: take HCA driver refcount at client (2015-08-05 16:22:56 -0400)
+> The usual agenda will apply. The maintainers will give
+> a quick status of what is happening in their worlds.
 > 
-> are available in the git repository at:
+> Next we'll get updates from major contributors on what
+> they have been doing and are planing on doing.
+>   
+> Finally, we'll open the floor to questions, comments, 
+> concerns from the community.  
 > 
->   git://git.linux-nfs.org/projects/anna/nfs-rdma.git tags/nfs-rdma-for-4.3-2
+> Generally the meeting lasts between 30 to 45 mins, with 
+> a very hard stop at 60mins. 
 > 
-> for you to fetch changes up to 72c021738252dde5849d575a650239d6404930ee:
+> Please feel to attend and participate!
 > 
->   xprtrdma: disconnect and flush cqs before freeing buffers (2015-09-28 10:42:35 -0400)
+> Again the Time: 10:00 am PST (01:00 pm EST)
 > 
-> Thanks,
-> Anna
+> The call in numbers are:
 > 
-> ----------------------------------------------------------------
-> Steve Wise (1):
->       xprtrdma: disconnect and flush cqs before freeing buffers
+> U.S. and Canada: (800) 451-8679
+> World wide toll free numbers
+>    https://www.intercallonline.com/listNumbersByCode.action?confCode=5642721552
 > 
->  net/sunrpc/xprtrdma/transport.c | 2 +-
->  net/sunrpc/xprtrdma/verbs.c     | 9 ++++++---
->  2 files changed, 7 insertions(+), 4 deletions(-)
+> Conference code: 564.272.1552
+> 
+> steved.
+> 
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
+> 
