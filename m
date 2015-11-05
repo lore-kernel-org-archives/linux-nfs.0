@@ -1,132 +1,97 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from discipline.rit.edu ([129.21.6.207]:60567 "HELO
-	discipline.rit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1750727AbbKDXVj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Nov 2015 18:21:39 -0500
-From: Andrew Elble <aweits@rit.edu>
-To: linux-nfs@vger.kernel.org, trond.myklebust@primarydata.com
-Cc: Andrew Elble <aweits@rit.edu>
-Subject: [PATCH RFC v2] nfs: nfs_do_return_delegation() needs to send FREE_STATEID
-Date: Wed,  4 Nov 2015 18:21:33 -0500
-Message-Id: <1446679293-13945-1-git-send-email-aweits@rit.edu>
+Received: from mx5-phx2.redhat.com ([209.132.183.37]:47945 "EHLO
+	mx5-phx2.redhat.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932414AbbKEAn1 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Nov 2015 19:43:27 -0500
+Date: Wed, 4 Nov 2015 19:43:26 -0500 (EST)
+From: Jianhong Yin <jiyin@redhat.com>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Message-ID: <2021932998.2770701.1446684206867.JavaMail.zimbra@redhat.com>
+In-Reply-To: <563A7E8B.4060805@RedHat.com>
+References: <1446608590-3556-1-git-send-email-jiyin@redhat.com> <563A7E8B.4060805@RedHat.com>
+Subject: Re: [PATCH] exportfs: Fix buf size in test_export() dump().
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In the NFS4.1 case, revoked delegations need to be processed via
-FREE_STATEID, not simply forgotten.
 
-Fixes: 869f9dfa4d6d ("NFSv4: Fix races between nfs_remove_bad_delegation() and delegation return")
-Signed-off-by: Andrew Elble <aweits@rit.edu>
----
- fs/nfs/delegation.c |  7 +++++++
- fs/nfs/nfs4_fs.h    |  2 ++
- fs/nfs/nfs4proc.c   | 18 ++++++++++--------
- 3 files changed, 19 insertions(+), 8 deletions(-)
 
-diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
-index 5166adcfc0fb..332ce6525f84 100644
---- a/fs/nfs/delegation.c
-+++ b/fs/nfs/delegation.c
-@@ -199,12 +199,19 @@ void nfs_inode_reclaim_delegation(struct inode *inode, struct rpc_cred *cred,
- static int nfs_do_return_delegation(struct inode *inode, struct nfs_delegation *delegation, int issync)
- {
- 	int res = 0;
-+	struct rpc_cred *cred = delegation->cred;
-+	struct nfs_server *server = NFS_SERVER(inode);
- 
- 	if (!test_bit(NFS_DELEGATION_REVOKED, &delegation->flags))
- 		res = nfs4_proc_delegreturn(inode,
- 				delegation->cred,
- 				&delegation->stateid,
- 				issync);
-+#if defined(CONFIG_NFS_V4_1)
-+	else if (server->nfs_client->cl_minorversion)
-+		res = nfs41_free_stateid(server, &delegation->stateid,
-+					cred, issync);
-+#endif /* CONFIG_NFS_V4_1 */
- 	nfs_free_delegation(delegation);
- 	return res;
- }
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index 4afdee420d25..862fe4e44634 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -261,6 +261,8 @@ extern int nfs4_set_rw_stateid(nfs4_stateid *stateid,
- 		fmode_t fmode);
- 
- #if defined(CONFIG_NFS_V4_1)
-+int nfs41_free_stateid(struct nfs_server *, nfs4_stateid *,
-+		struct rpc_cred *, int issync);
- static inline struct nfs4_session *nfs4_get_session(const struct nfs_server *server)
- {
- 	return server->nfs_client->cl_session;
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 7ed8f2cd97f8..77811c727703 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -88,8 +88,6 @@ static int nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
- #ifdef CONFIG_NFS_V4_1
- static int nfs41_test_stateid(struct nfs_server *, nfs4_stateid *,
- 		struct rpc_cred *);
--static int nfs41_free_stateid(struct nfs_server *, nfs4_stateid *,
--		struct rpc_cred *);
- #endif
- 
- #ifdef CONFIG_NFS_V4_SECURITY_LABEL
-@@ -2347,7 +2345,7 @@ static void nfs41_check_delegation_stateid(struct nfs4_state *state)
- 		/* Free the stateid unless the server explicitly
- 		 * informs us the stateid is unrecognized. */
- 		if (status != -NFS4ERR_BAD_STATEID)
--			nfs41_free_stateid(server, &stateid, cred);
-+			nfs41_free_stateid(server, &stateid, cred, 1);
- 		nfs_finish_clear_delegation_stateid(state);
- 	}
- 
-@@ -2381,7 +2379,7 @@ static int nfs41_check_open_stateid(struct nfs4_state *state)
- 		/* Free the stateid unless the server explicitly
- 		 * informs us the stateid is unrecognized. */
- 		if (status != -NFS4ERR_BAD_STATEID)
--			nfs41_free_stateid(server, stateid, cred);
-+			nfs41_free_stateid(server, stateid, cred, 1);
- 
- 		clear_bit(NFS_O_RDONLY_STATE, &state->flags);
- 		clear_bit(NFS_O_WRONLY_STATE, &state->flags);
-@@ -6033,7 +6031,7 @@ static int nfs41_check_expired_locks(struct nfs4_state *state)
- 				if (status != -NFS4ERR_BAD_STATEID)
- 					nfs41_free_stateid(server,
- 							&lsp->ls_stateid,
--							cred);
-+							cred, 1);
- 				clear_bit(NFS_LOCK_INITIALIZED, &lsp->ls_flags);
- 				ret = status;
- 			}
-@@ -8553,19 +8551,23 @@ static struct rpc_task *_nfs41_free_stateid(struct nfs_server *server,
-  * Returns NFS_OK if the server freed "stateid".  Otherwise a
-  * negative NFS4ERR value is returned.
-  */
--static int nfs41_free_stateid(struct nfs_server *server,
-+int nfs41_free_stateid(struct nfs_server *server,
- 		nfs4_stateid *stateid,
--		struct rpc_cred *cred)
-+		struct rpc_cred *cred,
-+		int issync)
- {
- 	struct rpc_task *task;
--	int ret;
-+	int ret = 0;
- 
- 	task = _nfs41_free_stateid(server, stateid, cred, true);
- 	if (IS_ERR(task))
- 		return PTR_ERR(task);
-+	if (!issync)
-+		goto out;
- 	ret = rpc_wait_for_completion_task(task);
- 	if (!ret)
- 		ret = task->tk_status;
-+out:
- 	rpc_put_task(task);
- 	return ret;
- }
--- 
-2.4.6
+----- 原始邮件 -----
+> 发件人: "Steve Dickson" <SteveD@redhat.com>
+> 收件人: "stevens.yin" <jiyin@redhat.com>, linux-nfs@vger.kernel.org
+> 发送时间: 星期四, 2015年 11 月 05日 上午 5:54:19
+> 主题: Re: [PATCH] exportfs: Fix buf size in test_export() dump().
+> 
+> 
+> 
+> On 11/03/2015 10:43 PM, stevens.yin wrote:
+> > From: Jianhong Yin <jiyin@redhat.com>
+> > 
+> > The buf[] size in test_export() is not enough for NFS_MAXPATHLEN
+> > + prefix/suffix proto string. Fix it and same issue in dump().
+> > And just to be on the safe side, %s/sprintf/snprintf/
+> Next time please add a proper Signed-off-by line. Since
+> I do know the history of this patch I did the Signed-off-by.
+Got it, thanks!
 
+> 
+> Committed...
+> 
+> steved.
+> 
+> > ---
+> >  utils/exportfs/exportfs.c | 13 ++++++++-----
+> >  1 file changed, 8 insertions(+), 5 deletions(-)
+> > 
+> > diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
+> > index 8758231..c7a79a6 100644
+> > --- a/utils/exportfs/exportfs.c
+> > +++ b/utils/exportfs/exportfs.c
+> > @@ -499,9 +499,10 @@ unexportfs(char *arg, int verbose)
+> >  
+> >  static int can_test(void)
+> >  {
+> > -	char buf[1024];
+> > +	char buf[1024] = { 0 };
+> >  	int fd;
+> >  	int n;
+> > +	size_t bufsiz = sizeof(buf);
+> >  
+> >  	fd = open("/proc/net/rpc/auth.unix.ip/channel", O_WRONLY);
+> >  	if (fd < 0)
+> > @@ -514,9 +515,9 @@ static int can_test(void)
+> >  	 * commit 2f74f972  (sunrpc: prepare NFS for 2038).
+> >  	 */
+> >  	if (time(NULL) > INT_TO_LONG_THRESHOLD_SECS)
+> > -		sprintf(buf, "nfsd 0.0.0.0 %ld -test-client-\n", LONG_MAX);
+> > +		snprintf(buf, bufsiz-1, "nfsd 0.0.0.0 %ld -test-client-\n", LONG_MAX);
+> >  	else
+> > -		sprintf(buf, "nfsd 0.0.0.0 %d -test-client-\n", INT_MAX);
+> > +		snprintf(buf, bufsiz-1, "nfsd 0.0.0.0 %d -test-client-\n", INT_MAX);
+> >  
+> >  	n = write(fd, buf, strlen(buf));
+> >  	close(fd);
+> > @@ -532,7 +533,8 @@ static int can_test(void)
+> >  
+> >  static int test_export(char *path, int with_fsid)
+> >  {
+> > -	char buf[1024];
+> > +	/* beside max path, buf size should take protocol str into account */
+> > +	char buf[NFS_MAXPATHLEN+1+64] = { 0 };
+> >  	char *bp = buf;
+> >  	int len = sizeof(buf);
+> >  	int fd, n;
+> > @@ -758,7 +760,8 @@ dumpopt(char c, char *fmt, ...)
+> >  static void
+> >  dump(int verbose, int export_format)
+> >  {
+> > -	char buf[1024];
+> > +	/* buf[] size should >= sizeof(struct exportent->e_path) */
+> > +	char buf[NFS_MAXPATHLEN+1] = { 0 };
+> >  	char *bp;
+> >  	int len;
+> >  	nfs_export	*exp;
+> > 
+> 
