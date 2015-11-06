@@ -1,199 +1,53 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pa0-f52.google.com ([209.85.220.52]:35118 "EHLO
-	mail-pa0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757624AbbKFV0w (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Nov 2015 16:26:52 -0500
-Received: by pasz6 with SMTP id z6so138144977pas.2
-        for <linux-nfs@vger.kernel.org>; Fri, 06 Nov 2015 13:26:52 -0800 (PST)
-Subject: Re: [PATCH v14 03/22] vfs: Add MAY_DELETE_SELF and MAY_DELETE_CHILD permission flags
-Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2104\))
-Content-Type: multipart/signed; boundary="Apple-Mail=_686D8F26-4634-4110-89A3-CE8E4878A295"; protocol="application/pgp-signature"; micalg=pgp-sha256
-From: Andreas Dilger <adilger@dilger.ca>
-In-Reply-To: <1446723580-3747-4-git-send-email-agruenba@redhat.com>
-Date: Fri, 6 Nov 2015 14:26:45 -0700
-Cc: Alexander Viro <viro@zeniv.linux.org.uk>, "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@poochiereds.net>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Dave Chinner <david@fromorbit.com>, linux-ext4@vger.kernel.org,
-        xfs@oss.sgi.com, linux-kernel@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-api@vger.kernel.org
-Message-Id: <8C966D9B-A46D-47EC-BD4B-20E2F9B42555@dilger.ca>
-References: <1446723580-3747-1-git-send-email-agruenba@redhat.com> <1446723580-3747-4-git-send-email-agruenba@redhat.com>
-To: Andreas Gruenbacher <agruenba@redhat.com>
+Received: from smtp-o-3.desy.de ([131.169.56.156]:46502 "EHLO smtp-o-3.desy.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S965640AbbKFVvt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 6 Nov 2015 16:51:49 -0500
+Received: from smtp-map-3.desy.de (smtp-map-3.desy.de [131.169.56.68])
+	by smtp-o-3.desy.de (DESY-O-3) with ESMTP id 2829128023D
+	for <linux-nfs@vger.kernel.org>; Fri,  6 Nov 2015 22:43:13 +0100 (CET)
+Received: from ZITSWEEP2.win.desy.de (zitsweep2.win.desy.de [131.169.97.96])
+	by smtp-map-3.desy.de (DESY_MAP_3) with ESMTP id 1BB1214B1
+	for <linux-nfs@vger.kernel.org>; Fri,  6 Nov 2015 22:43:11 +0100 (MET)
+Received: from smtp-intra-1.desy.de (lb-40-26.desy.de) by ZITSWEEP2.win.desy.de
+ (Clearswift SMTPRS 5.5.0) with ESMTP id <Tbdeb608b6c83a9616012e0@ZITSWEEP2.win.desy.de> for <linux-nfs@vger.kernel.org>;
+ Fri, 6 Nov 2015 22:43:11 +0100
+From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+To: linux-nfs@vger.kernel.org
+Cc: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+Subject: [PATCH] nfs: bump printk level to log pnfs errors
+Date: Fri,  6 Nov 2015 22:43:08 +0100
+Message-Id: <1446846188-13944-1-git-send-email-tigran.mkrtchyan@desy.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+log as INFO level why pnfs client falled back to IO
+through MDS.
 
---Apple-Mail=_686D8F26-4634-4110-89A3-CE8E4878A295
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=us-ascii
+example:
 
-On Nov 5, 2015, at 4:39 AM, Andreas Gruenbacher <agruenba@redhat.com> =
-wrote:
->=20
-> Normally, deleting a file requires MAY_WRITE access to the parent
-> directory.  With richacls, a file may be deleted with MAY_DELETE_CHILD =
-access
-> to the parent directory or with MAY_DELETE_SELF access to the file.
->=20
-> To support that, pass the MAY_DELETE_CHILD mask flag to =
-inode_permission()
-> when checking for delete access inside a directory, and =
-MAY_DELETE_SELF
-> when checking for delete access to a file itelf.
->=20
-> The MAY_DELETE_SELF permission overrides the sticky directory check.
->=20
-> Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
-> Reviewed-by: J. Bruce Fields <bfields@redhat.com>
-> ---
-> fs/namei.c         | 21 ++++++++++++---------
-> include/linux/fs.h |  2 ++
-> 2 files changed, 14 insertions(+), 9 deletions(-)
->=20
-> diff --git a/fs/namei.c b/fs/namei.c
-> index 0259392..2eab19e 100644
-> --- a/fs/namei.c
-> +++ b/fs/namei.c
-> @@ -453,9 +453,9 @@ static int sb_permission(struct super_block *sb, =
-struct inode *inode, int mask)
->  * this, letting us set arbitrary permissions for filesystem access =
-without
->  * changing the "normal" UIDs which are used for other things.
->  *
-> - * MAY_WRITE must be set in @mask whenever MAY_APPEND, =
-MAY_CREATE_FILE, or
-> - * MAY_CREATE_DIR are set.  That way, file systems that don't support =
-these
-> - * permissions will check for MAY_WRITE instead.
-> + * MAY_WRITE must be set in @mask whenever MAY_APPEND, =
-MAY_CREATE_FILE,
-> + * MAY_CREATE_DIR, or MAY_DELETE_CHILD are set.  That way, file =
-systems that
-> + * don't support these permissions will check for MAY_WRITE instead.
->  */
-> int inode_permission(struct inode *inode, int mask)
-> {
-> @@ -2555,7 +2555,7 @@ static int may_delete(struct inode *dir, struct =
-dentry *victim,
-> 		      bool isdir, bool replace)
-> {
-> 	struct inode *inode =3D d_backing_inode(victim);
-> -	int error, mask =3D MAY_WRITE | MAY_EXEC;
-> +	int error, mask =3D MAY_EXEC;
->=20
-> 	if (d_is_negative(victim))
-> 		return -ENOENT;
-> @@ -2565,15 +2565,18 @@ static int may_delete(struct inode *dir, =
-struct dentry *victim,
-> 	audit_inode_child(dir, victim, AUDIT_TYPE_CHILD_DELETE);
->=20
-> 	if (replace)
-> -		mask |=3D isdir ? MAY_CREATE_DIR : MAY_CREATE_FILE;
-> -	error =3D inode_permission(dir, mask);
-> +		mask |=3D MAY_WRITE | (isdir ? MAY_CREATE_DIR : =
-MAY_CREATE_FILE);
-> +	error =3D inode_permission(dir, mask | MAY_WRITE | =
-MAY_DELETE_CHILD);
-> +	if (!error && check_sticky(dir, inode))
-> +		error =3D -EPERM;
-> +	if (error && IS_RICHACL(inode) &&
-> +	    inode_permission(inode, MAY_DELETE_SELF) =3D=3D 0)
-> +		error =3D 0;
+    NFS: filelayout_async_handle_error: Retry through MDS. DS [2001:638:700:10bf::1:8d]:32049 error -5
 
-This looks like a serious bug, as it is overriding other errors returned
-from inode_permission() such as -EROFS from sb_permission() or even from
-generic_permission->acl_permission_check().  Clearing the error returned
-by an earlier check doesn't seem safe, only new errors should be added.
+Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+---
+ fs/nfs/filelayout/filelayout.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-The call to inode_permission(inode) is also duplicating the =
-sb_permission()
-check from inode_permission(dir), so at most should be =
-__inode_permission().
+diff --git a/fs/nfs/filelayout/filelayout.c b/fs/nfs/filelayout/filelayout.c
+index 02ec079..0838b62 100644
+--- a/fs/nfs/filelayout/filelayout.c
++++ b/fs/nfs/filelayout/filelayout.c
+@@ -206,8 +206,8 @@ static int filelayout_async_handle_error(struct rpc_task *task,
+ 		/* fall through */
+ 	default:
+ reset:
+-		dprintk("%s Retry through MDS. Error %d\n", __func__,
+-			task->tk_status);
++		printk(KERN_INFO "NFS: %s: Retry through MDS. DS %pISpc error %d\n", __func__,
++			&task->tk_client->cl_xprt->addr, task->tk_status);
+ 		return -NFS4ERR_RESET_TO_MDS;
+ 	}
+ out:
+-- 
+2.5.0
 
-It looks like this would be correct if you check MAY_DELETE_SELF =
-together
-with check_sticky():
-
-	if (!error && check_sticky(dir, inode) &&
-	    !__inode_permission(inode, MAY_DELETE_SELF))
-		error =3D -EPERM;
-
-I ommitted the IS_RICHACL() check here, since that should probably be in
-__inode_permission() when MAY_DELETE_SELF is passed?
-
-Cheers, Andreas
-
-> 	if (error)
-> 		return error;
-> 	if (IS_APPEND(dir))
-> 		return -EPERM;
-
-> -
-> -	if (check_sticky(dir, inode) || IS_APPEND(inode) ||
-> -	    IS_IMMUTABLE(inode) || IS_SWAPFILE(inode))
-> +	if (IS_APPEND(inode) || IS_IMMUTABLE(inode) || =
-IS_SWAPFILE(inode))
-> 		return -EPERM;
-
-> 	if (isdir) {
-> 		if (!d_is_dir(victim))
-> diff --git a/include/linux/fs.h b/include/linux/fs.h
-> index d6e2330..402acd7 100644
-> --- a/include/linux/fs.h
-> +++ b/include/linux/fs.h
-> @@ -84,6 +84,8 @@ typedef void (dax_iodone_t)(struct buffer_head =
-*bh_map, int uptodate);
-> #define MAY_NOT_BLOCK		0x00000080
-> #define MAY_CREATE_FILE		0x00000100
-> #define MAY_CREATE_DIR		0x00000200
-> +#define MAY_DELETE_CHILD	0x00000400
-> +#define MAY_DELETE_SELF		0x00000800
->=20
-> /*
->  * flags in file.f_mode.  Note that FMODE_READ and FMODE_WRITE must =
-correspond
-> --
-> 2.5.0
->=20
-
-
-Cheers, Andreas
-
-
-
-
-
-
---Apple-Mail=_686D8F26-4634-4110-89A3-CE8E4878A295
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP using GPGMail
-
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
-
-iQIVAwUBVj0bFXKl2rkXzB/gAQgVMw/9HRWeCdxHmVddBJ/NJ4cEapoGKeJnXALg
-cLCr0ABLWmBJr3IH+IUcb717xKy9DtCjIMB5WIRCi6xhaNqfm+4ytLpQ34zLq006
-EXkyLU/RMK2/x1OI/VsPHZ6LX8SAHqIwq5pJ8ZDd8ZuwA74DRwY6txYEyRHOptdT
-xffUViiy+5tEJChnqJgi4gMSaGXamyoUjJ/YfF1/TftgMq7Iil8DC6JtcfUtEuTu
-NhXsPhpGl4Dfz+jOyZd09CmaKDdeXHoE9o/0vEjZz6A20yS1zC5fbjQ0UwqMUDT9
-WDyxa9WbLArpUalW/L0tRE1l34n/rfIqIBz0gSF0Uw/cjE6mPb40Vc+W4AWkUEZl
-K3LWTq6aXdSn9oXmPDW5/4y3lVVeJ0DLRHCMkgkKGyx0U2zcHyHkA+iEIYM7+0FL
-2nJ7KBig+DX2O/qXvsygIfYiaOsLJTnkz+8s6hOh041lbNSOK9Ul9E1IjAGd4VV3
-Ft7+qLEtN0LT464Lj2SxfSRh3B+Ug+ylVgNiC496XILMSGAga7ORSNeoKDhMbO1h
-b+KHBY8hHgQL446CHtIiMEveBtXEgKK7DH0zdl2kpTtGwTMmwOHsZ/6IVUeBKZGh
-V4dD1jpUZtmqgNsxysAMs2bCH7R+w+1syXB09lP4+KTaGlQeSATGtlFkZ4Ow2i1l
-rxiI67P1K2g=
-=Vb9Z
------END PGP SIGNATURE-----
-
---Apple-Mail=_686D8F26-4634-4110-89A3-CE8E4878A295--
