@@ -1,178 +1,140 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:51297 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753946AbbKGSOO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 7 Nov 2015 13:14:14 -0500
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (Postfix) with ESMTPS id 53302461C4
-	for <linux-nfs@vger.kernel.org>; Sat,  7 Nov 2015 18:14:14 +0000 (UTC)
-Received: from smallhat.boston.devel.redhat.com (vpn-59-101.rdu2.redhat.com [10.10.59.101])
-	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id tA7IECrM027545
-	for <linux-nfs@vger.kernel.org>; Sat, 7 Nov 2015 13:14:13 -0500
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 1/3] gssd: reworked first level of debugging
-Date: Sat,  7 Nov 2015 13:14:08 -0500
-Message-Id: <1446920050-5968-2-git-send-email-steved@redhat.com>
-In-Reply-To: <1446920050-5968-1-git-send-email-steved@redhat.com>
-References: <1446920050-5968-1-git-send-email-steved@redhat.com>
+Received: from mail-lb0-f180.google.com ([209.85.217.180]:36466 "EHLO
+	mail-lb0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752400AbbKGUra (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 7 Nov 2015 15:47:30 -0500
+Received: by lbblt2 with SMTP id lt2so58554272lbb.3
+        for <linux-nfs@vger.kernel.org>; Sat, 07 Nov 2015 12:47:29 -0800 (PST)
+MIME-Version: 1.0
+In-Reply-To: <8C966D9B-A46D-47EC-BD4B-20E2F9B42555@dilger.ca>
+References: <1446723580-3747-1-git-send-email-agruenba@redhat.com>
+	<1446723580-3747-4-git-send-email-agruenba@redhat.com>
+	<8C966D9B-A46D-47EC-BD4B-20E2F9B42555@dilger.ca>
+Date: Sat, 7 Nov 2015 21:47:28 +0100
+Message-ID: <CAHc6FU7h5JLPfiB=fx=k0yjCAp+ujy3bY0XbMz3rR--1uo=5AQ@mail.gmail.com>
+Subject: Re: [PATCH v14 03/22] vfs: Add MAY_DELETE_SELF and MAY_DELETE_CHILD
+ permission flags
+From: Andreas Gruenbacher <agruenba@redhat.com>
+To: Andreas Dilger <adilger@dilger.ca>
+Cc: Alexander Viro <viro@zeniv.linux.org.uk>, "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Dave Chinner <david@fromorbit.com>,
+        linux-ext4 <linux-ext4@vger.kernel.org>,
+        XFS Developers <xfs@oss.sgi.com>, LKML <linux-kernel@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        linux-cifs@vger.kernel.org, Linux API <linux-api@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Cleaned up first level of debugging. Only
-errors and warnings are logged.
+On Fri, Nov 6, 2015 at 10:26 PM, Andreas Dilger <adilger@dilger.ca> wrote:
+> On Nov 5, 2015, at 4:39 AM, Andreas Gruenbacher <agruenba@redhat.com> wrote:
+>>
+>> Normally, deleting a file requires MAY_WRITE access to the parent
+>> directory.  With richacls, a file may be deleted with MAY_DELETE_CHILD access
+>> to the parent directory or with MAY_DELETE_SELF access to the file.
+>>
+>> To support that, pass the MAY_DELETE_CHILD mask flag to inode_permission()
+>> when checking for delete access inside a directory, and MAY_DELETE_SELF
+>> when checking for delete access to a file itelf.
+>>
+>> The MAY_DELETE_SELF permission overrides the sticky directory check.
+>>
+>> Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
+>> Reviewed-by: J. Bruce Fields <bfields@redhat.com>
+>> ---
+>> fs/namei.c         | 21 ++++++++++++---------
+>> include/linux/fs.h |  2 ++
+>> 2 files changed, 14 insertions(+), 9 deletions(-)
+>>
+>> diff --git a/fs/namei.c b/fs/namei.c
+>> index 0259392..2eab19e 100644
+>> --- a/fs/namei.c
+>> +++ b/fs/namei.c
+>> @@ -453,9 +453,9 @@ static int sb_permission(struct super_block *sb, struct inode *inode, int mask)
+>>  * this, letting us set arbitrary permissions for filesystem access without
+>>  * changing the "normal" UIDs which are used for other things.
+>>  *
+>> - * MAY_WRITE must be set in @mask whenever MAY_APPEND, MAY_CREATE_FILE, or
+>> - * MAY_CREATE_DIR are set.  That way, file systems that don't support these
+>> - * permissions will check for MAY_WRITE instead.
+>> + * MAY_WRITE must be set in @mask whenever MAY_APPEND, MAY_CREATE_FILE,
+>> + * MAY_CREATE_DIR, or MAY_DELETE_CHILD are set.  That way, file systems that
+>> + * don't support these permissions will check for MAY_WRITE instead.
+>>  */
+>> int inode_permission(struct inode *inode, int mask)
+>> {
+>> @@ -2555,7 +2555,7 @@ static int may_delete(struct inode *dir, struct dentry *victim,
+>>                     bool isdir, bool replace)
+>> {
+>>       struct inode *inode = d_backing_inode(victim);
+>> -     int error, mask = MAY_WRITE | MAY_EXEC;
+>> +     int error, mask = MAY_EXEC;
+>>
+>>       if (d_is_negative(victim))
+>>               return -ENOENT;
+>> @@ -2565,15 +2565,18 @@ static int may_delete(struct inode *dir, struct dentry *victim,
+>>       audit_inode_child(dir, victim, AUDIT_TYPE_CHILD_DELETE);
+>>
+>>       if (replace)
+>> -             mask |= isdir ? MAY_CREATE_DIR : MAY_CREATE_FILE;
+>> -     error = inode_permission(dir, mask);
+>> +             mask |= MAY_WRITE | (isdir ? MAY_CREATE_DIR : MAY_CREATE_FILE);
+>> +     error = inode_permission(dir, mask | MAY_WRITE | MAY_DELETE_CHILD);
+>> +     if (!error && check_sticky(dir, inode))
+>> +             error = -EPERM;
+>> +     if (error && IS_RICHACL(inode) &&
+>> +         inode_permission(inode, MAY_DELETE_SELF) == 0)
+>> +             error = 0;
+>
+> This looks like a serious bug, as it is overriding other errors returned
+> from inode_permission() such as -EROFS from sb_permission() or even from
+> generic_permission->acl_permission_check().  Clearing the error returned
+> by an earlier check doesn't seem safe, only new errors should be added.
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- utils/gssd/gssd_proc.c | 24 +++++++++---------------
- utils/gssd/krb5_util.c | 16 ++++++++++------
- 2 files changed, 19 insertions(+), 21 deletions(-)
+See further below ...
 
-diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
-index cee8991..3d9ca75 100644
---- a/utils/gssd/gssd_proc.c
-+++ b/utils/gssd/gssd_proc.c
-@@ -150,7 +150,7 @@ do_downcall(int k5_fd, uid_t uid, struct authgss_private_data *pd,
- 	unsigned int timeout = context_timeout;
- 	unsigned int buf_size = 0;
- 
--	printerr(1, "doing downcall: lifetime_rec=%u acceptor=%.*s\n",
-+	printerr(2, "doing downcall: lifetime_rec=%u acceptor=%.*s\n",
- 		lifetime_rec, acceptor->length, acceptor->value);
- 	buf_size = sizeof(uid) + sizeof(timeout) + sizeof(pd->pd_seq_win) +
- 		sizeof(pd->pd_ctx_hndl.length) + pd->pd_ctx_hndl.length +
-@@ -189,7 +189,7 @@ do_error_downcall(int k5_fd, uid_t uid, int err)
- 	unsigned int timeout = 0;
- 	int	zero = 0;
- 
--	printerr(1, "doing error downcall\n");
-+	printerr(2, "doing error downcall\n");
- 
- 	if (WRITE_BYTES(&p, end, uid)) goto out_err;
- 	if (WRITE_BYTES(&p, end, timeout)) goto out_err;
-@@ -484,7 +484,7 @@ krb5_not_machine_creds(struct clnt_info *clp, uid_t uid, char *tgtname,
- 	char		**dname;
- 	int		err, resp = -1;
- 
--	printerr(1, "krb5_not_machine_creds: uid %d tgtname %s\n", 
-+	printerr(2, "krb5_not_machine_creds: uid %d tgtname %s\n", 
- 		uid, tgtname);
- 
- 	*chg_err = change_identity(uid);
-@@ -531,7 +531,7 @@ krb5_use_machine_creds(struct clnt_info *clp, uid_t uid, char *tgtname,
- 	int	nocache = 0;
- 	int	success = 0;
- 
--	printerr(1, "krb5_use_machine_creds: uid %d tgtname %s\n", 
-+	printerr(2, "krb5_use_machine_creds: uid %d tgtname %s\n", 
- 		uid, tgtname);
- 
- 	do {
-@@ -601,8 +601,6 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *tgtname,
- 	gss_OID			mech;
- 	gss_buffer_desc		acceptor  = {0};
- 
--	printerr(1, "handling krb5 upcall (%s)\n", clp->relpath);
--
- 	token.length = 0;
- 	token.value = NULL;
- 	memset(&pd, 0, sizeof(struct authgss_private_data));
-@@ -628,8 +626,6 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *tgtname,
- 	 * used for this case is not important.
- 	 *
- 	 */
--	printerr(2, "%s: service is '%s'\n", __func__,
--		 service ? service : "<null>");
- 	if (uid != 0 || (uid == 0 && root_uses_machine_creds == 0 &&
- 				service == NULL)) {
- 
-@@ -643,7 +639,7 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *tgtname,
- 			/* Child: fall through to rest of function */
- 			childpid = getpid();
- 			unsetenv("KRB5CCNAME");
--			printerr(1, "CHILD forked pid %d \n", childpid);
-+			printerr(2, "CHILD forked pid %d \n", childpid);
- 			break;
- 		case -1:
- 			/* fork() failed! */
-@@ -676,9 +672,7 @@ no_fork:
- 			if (auth == NULL)
- 				goto out_return_error;
- 		} else {
--			printerr(1, "WARNING: Failed to create krb5 context "
--				 "for user with uid %d for server %s\n",
--				 uid, clp->servername);
-+			/* krb5_not_machine_creds logs the error */
- 			goto out_return_error;
- 		}
- 	}
-@@ -752,6 +746,8 @@ handle_krb5_upcall(struct clnt_info *clp)
- 		return;
- 	}
- 
-+	printerr(2, "\n%s: uid %d (%s)\n", __func__, uid, clp->relpath);
-+
- 	process_krb5_upcall(clp, uid, clp->krb5_fd, NULL, NULL);
- }
- 
-@@ -768,8 +764,6 @@ handle_gssd_upcall(struct clnt_info *clp)
- 	char			*service = NULL;
- 	char			*enctypes = NULL;
- 
--	printerr(1, "handling gssd upcall (%s)\n", clp->relpath);
--
- 	lbuflen = read(clp->gssd_fd, lbuf, sizeof(lbuf));
- 	if (lbuflen <= 0 || lbuf[lbuflen-1] != '\n') {
- 		printerr(0, "WARNING: handle_gssd_upcall: "
-@@ -778,7 +772,7 @@ handle_gssd_upcall(struct clnt_info *clp)
- 	}
- 	lbuf[lbuflen-1] = 0;
- 
--	printerr(2, "%s: '%s'\n", __func__, lbuf);
-+	printerr(2, "\n%s: '%s' (%s)\n", __func__, lbuf, clp->relpath);
- 
- 	for (p = strtok(lbuf, " "); p; p = strtok(NULL, " ")) {
- 		if (!strncmp(p, "mech=", strlen("mech=")))
-diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
-index f48de2c..1d91483 100644
---- a/utils/gssd/krb5_util.c
-+++ b/utils/gssd/krb5_util.c
-@@ -451,8 +451,7 @@ gssd_get_single_krb5_cred(krb5_context context,
- 	}
- 
- 	code = 0;
--	printerr(2, "Successfully obtained machine credentials for "
--		 "principal '%s' stored in ccache '%s'\n", pname, cc_name);
-+	printerr(2, "%s: principal '%s' ccache:'%s'\n", __func__, pname, cc_name);
-   out:
- #if HAVE_KRB5_GET_INIT_CREDS_OPT_SET_ADDRESSLESS
- 	if (init_opts)
-@@ -1410,16 +1409,21 @@ gssd_acquire_krb5_cred(gss_cred_id_t *gss_cred)
- int
- gssd_acquire_user_cred(gss_cred_id_t *gss_cred)
- {
--	OM_uint32 min_stat;
-+	OM_uint32 maj_stat, min_stat;
- 	int ret;
- 
- 	ret = gssd_acquire_krb5_cred(gss_cred);
- 
- 	/* force validation of cred to check for expiry */
- 	if (ret == 0) {
--		if (gss_inquire_cred(&min_stat, *gss_cred, NULL, NULL,
--				     NULL, NULL) != GSS_S_COMPLETE)
--			ret = -1;
-+		maj_stat = gss_inquire_cred(&min_stat, *gss_cred, 
-+			NULL, NULL, NULL, NULL);
-+		if (maj_stat != GSS_S_COMPLETE) {
-+			if (get_verbosity() > 0)
-+				pgsserr("gss_inquire_cred",
-+					maj_stat, min_stat, &krb5oid);
-+				ret = -1;
-+			}
- 	}
- 
- 	return ret;
--- 
-2.4.3
+> The call to inode_permission(inode) is also duplicating the sb_permission()
+> check from inode_permission(dir), so at most should be __inode_permission().
 
+This could be optimized, but that would make the code harder to read.
+I don't think it really matters: this only affects file with the
+MAY_DELETE_SELF permission, and sb_permissions is really cheap anyway.
+
+> It looks like this would be correct if you check MAY_DELETE_SELF together
+> with check_sticky():
+>
+>         if (!error && check_sticky(dir, inode) &&
+>             !__inode_permission(inode, MAY_DELETE_SELF))
+>                 error = -EPERM;
+
+Nope, this version would deny users with MAY_DELETE_SELF access to a
+file and MAY_EXEC access to the directory the right to delete the file
+because @error would already be set then.
+
+You are right that the check for MAY_DELETE_SELF overrides too much
+here though; we need an additional inode_permission(dir, ...) check in
+there.
+
+I've pushed a fixed version here that I will do some more testing on
+before reposting:
+
+  git://git.kernel.org/pub/scm/linux/kernel/git/agruen/linux-richacl.git
+richacl-wip
+
+> I ommitted the IS_RICHACL() check here, since that should probably be in
+> __inode_permission() when MAY_DELETE_SELF is passed?
+
+The IS_RICHACL() check is indeed done in inode_permission ->
+__inode_permission -> do_inode_permission -> generic_permission ->
+acl_permission_check. I've duplicated that check here to avoid slowing
+down may_delete in the common case where the filesystem doesn't
+support richacls.
+
+Thanks,
+Andreas
