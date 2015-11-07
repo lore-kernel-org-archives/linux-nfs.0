@@ -1,234 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:35628 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:51296 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753608AbbKGRoj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 7 Nov 2015 12:44:39 -0500
-From: Andreas Gruenbacher <agruenba@redhat.com>
-To: Andreas Dilger <adilger@dilger.ca>
-Cc: Andreas Gruenbacher <agruenba@redhat.com>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        "Theodore Ts'o" <tytso@mit.edu>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@poochiereds.net>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Dave Chinner <david@fromorbit.com>, linux-ext4@vger.kernel.org,
-        xfs@oss.sgi.com, linux-kernel@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-api@vger.kernel.org
-Subject: Re: [PATCH v14 02/22] vfs: Add MAY_CREATE_FILE and MAY_CREATE_DIR permission flags
-Date: Sat,  7 Nov 2015 18:44:28 +0100
-Message-Id: <1446918268-858-1-git-send-email-agruenba@redhat.com>
-References: <1446723580-3747-1-git-send-email-agruenba@redhat.com> <1446723580-3747-3-git-send-email-agruenba@redhat.com> <ABAAFEBD-0C80-41A3-8D29-F2AB9BAF1823@dilger.ca>
-In-Reply-To: <ABAAFEBD-0C80-41A3-8D29-F2AB9BAF1823@dilger.ca>
+	id S1753945AbbKGSON (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 7 Nov 2015 13:14:13 -0500
+Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+	by mx1.redhat.com (Postfix) with ESMTPS id 77370461C3
+	for <linux-nfs@vger.kernel.org>; Sat,  7 Nov 2015 18:14:13 +0000 (UTC)
+Received: from smallhat.boston.devel.redhat.com (vpn-59-101.rdu2.redhat.com [10.10.59.101])
+	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id tA7IECrL027545
+	for <linux-nfs@vger.kernel.org>; Sat, 7 Nov 2015 13:14:12 -0500
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 0/3] Improving rpc.gssd's debugging 
+Date: Sat,  7 Nov 2015 13:14:07 -0500
+Message-Id: <1446920050-5968-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Nov 6, 2015 at 9:58 PM, Andreas Dilger <adilger@dilger.ca> wrote:
-> I thought you proposed adding an enum for these parameters, and possibly
-> making them a single parameter flag, to make the code in the caller more
-> readable.
+Now that rpc.gssd is the critical path of every
+NFS mount, any favored mount, I thought I would
+take a crack at making the daemon a bit more 
+debuggable by making the logging more readable.
 
-No, the result would just be different but not any better; vfs_rename would
-become messy.  I've played with this patch some more, and I find the approach
-below which splits may_delete into may_delete and may_replace much better.
-What do you think?
+The first level of debugging (-v) will only log 
+errors and warnings that are not normally logged.
+I'm thinking this might be a good level to run
+at a customer's site.
 
-Thanks,
-Andreas
+I also thought about changing the majority of the 
+printerr(0) which always log to printerr(1)s. I 
+decided not to since I figured more info is 
+better.
 
----------- 8< ----------
+Note, I didn't remove any of the messages, I just pushed
+them back to other debug levels. 
 
-Richacls distinguish between creating non-directories and directories. To
-support that, add an isdir parameter to may_create(). When checking
-inode_permission() for create permission, pass in an additional
-MAY_CREATE_FILE or MAY_CREATE_DIR mask flag.
+I trimmed down the second level of debugging (-vv) 
+by again moving them back to other levels. 
 
-Add may_replace() to allow checking for delete and create access when
-replacing an existing file in vfs_rename().
+The third level (-vvv) is basically the same.
 
-Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
-Reviewed-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/namei.c         | 49 +++++++++++++++++++++++++++++++++----------------
- include/linux/fs.h |  2 ++
- 2 files changed, 35 insertions(+), 16 deletions(-)
+Using the fourth level (-vvvv) to enable all the logging
+that old level three did.
 
-diff --git a/fs/namei.c b/fs/namei.c
-index 224ecf1..4e5dc2f 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -453,7 +453,9 @@ static int sb_permission(struct super_block *sb, struct inode *inode, int mask)
-  * this, letting us set arbitrary permissions for filesystem access without
-  * changing the "normal" UIDs which are used for other things.
-  *
-- * When checking for MAY_APPEND, MAY_WRITE must also be set in @mask.
-+ * MAY_WRITE must be set in @mask whenever MAY_APPEND, MAY_CREATE_FILE, or
-+ * MAY_CREATE_DIR are set.  That way, file systems that don't support these
-+ * permissions will check for MAY_WRITE instead.
-  */
- int inode_permission(struct inode *inode, int mask)
- {
-@@ -2549,7 +2551,8 @@ EXPORT_SYMBOL(__check_sticky);
-  * 10. We don't allow removal of NFS sillyrenamed files; it's handled by
-  *     nfs_async_unlink().
-  */
--static int may_delete(struct inode *dir, struct dentry *victim, bool isdir)
-+static int may_delete_replace(struct inode *dir, struct dentry *victim,
-+			      bool isdir, int mask)
- {
- 	struct inode *inode = d_backing_inode(victim);
- 	int error;
-@@ -2561,7 +2564,7 @@ static int may_delete(struct inode *dir, struct dentry *victim, bool isdir)
- 	BUG_ON(victim->d_parent->d_inode != dir);
- 	audit_inode_child(dir, victim, AUDIT_TYPE_CHILD_DELETE);
- 
--	error = inode_permission(dir, MAY_WRITE | MAY_EXEC);
-+	error = inode_permission(dir, mask | MAY_WRITE | MAY_EXEC);
- 	if (error)
- 		return error;
- 	if (IS_APPEND(dir))
-@@ -2584,6 +2587,18 @@ static int may_delete(struct inode *dir, struct dentry *victim, bool isdir)
- 	return 0;
- }
- 
-+static int may_delete(struct inode *dir, struct dentry *victim, bool isdir)
-+{
-+	return may_delete_replace(dir, victim, isdir, 0);
-+}
-+
-+static int may_replace(struct inode *dir, struct dentry *victim, bool isdir)
-+{
-+	int mask = isdir ? MAY_CREATE_DIR : MAY_CREATE_FILE;
-+
-+	return may_delete_replace(dir, victim, isdir, mask);
-+}
-+
- /*	Check whether we can create an object with dentry child in directory
-  *  dir.
-  *  1. We can't do it if child already exists (open has special treatment for
-@@ -2592,14 +2607,16 @@ static int may_delete(struct inode *dir, struct dentry *victim, bool isdir)
-  *  3. We should have write and exec permissions on dir
-  *  4. We can't do it if dir is immutable (done in permission())
-  */
--static inline int may_create(struct inode *dir, struct dentry *child)
-+static inline int may_create(struct inode *dir, struct dentry *child, bool isdir)
- {
-+	int mask = isdir ? MAY_CREATE_DIR : MAY_CREATE_FILE;
-+
- 	audit_inode_child(dir, child, AUDIT_TYPE_CHILD_CREATE);
- 	if (child->d_inode)
- 		return -EEXIST;
- 	if (IS_DEADDIR(dir))
- 		return -ENOENT;
--	return inode_permission(dir, MAY_WRITE | MAY_EXEC);
-+	return inode_permission(dir, MAY_WRITE | MAY_EXEC | mask);
- }
- 
- /*
-@@ -2649,7 +2666,7 @@ EXPORT_SYMBOL(unlock_rename);
- int vfs_create(struct inode *dir, struct dentry *dentry, umode_t mode,
- 		bool want_excl)
- {
--	int error = may_create(dir, dentry);
-+	int error = may_create(dir, dentry, false);
- 	if (error)
- 		return error;
- 
-@@ -3494,7 +3511,7 @@ EXPORT_SYMBOL(user_path_create);
- 
- int vfs_mknod(struct inode *dir, struct dentry *dentry, umode_t mode, dev_t dev)
- {
--	int error = may_create(dir, dentry);
-+	int error = may_create(dir, dentry, false);
- 
- 	if (error)
- 		return error;
-@@ -3586,7 +3603,7 @@ SYSCALL_DEFINE3(mknod, const char __user *, filename, umode_t, mode, unsigned, d
- 
- int vfs_mkdir(struct inode *dir, struct dentry *dentry, umode_t mode)
- {
--	int error = may_create(dir, dentry);
-+	int error = may_create(dir, dentry, true);
- 	unsigned max_links = dir->i_sb->s_max_links;
- 
- 	if (error)
-@@ -3667,7 +3684,7 @@ EXPORT_SYMBOL(dentry_unhash);
- 
- int vfs_rmdir(struct inode *dir, struct dentry *dentry)
- {
--	int error = may_delete(dir, dentry, 1);
-+	int error = may_delete(dir, dentry, true);
- 
- 	if (error)
- 		return error;
-@@ -3789,7 +3806,7 @@ SYSCALL_DEFINE1(rmdir, const char __user *, pathname)
- int vfs_unlink(struct inode *dir, struct dentry *dentry, struct inode **delegated_inode)
- {
- 	struct inode *target = dentry->d_inode;
--	int error = may_delete(dir, dentry, 0);
-+	int error = may_delete(dir, dentry, false);
- 
- 	if (error)
- 		return error;
-@@ -3923,7 +3940,7 @@ SYSCALL_DEFINE1(unlink, const char __user *, pathname)
- 
- int vfs_symlink(struct inode *dir, struct dentry *dentry, const char *oldname)
- {
--	int error = may_create(dir, dentry);
-+	int error = may_create(dir, dentry, false);
- 
- 	if (error)
- 		return error;
-@@ -4006,7 +4023,7 @@ int vfs_link(struct dentry *old_dentry, struct inode *dir, struct dentry *new_de
- 	if (!inode)
- 		return -ENOENT;
- 
--	error = may_create(dir, new_dentry);
-+	error = may_create(dir, new_dentry, false);
- 	if (error)
- 		return error;
- 
-@@ -4199,14 +4216,14 @@ int vfs_rename(struct inode *old_dir, struct dentry *old_dentry,
- 		return error;
- 
- 	if (!target) {
--		error = may_create(new_dir, new_dentry);
-+		error = may_create(new_dir, new_dentry, is_dir);
- 	} else {
- 		new_is_dir = d_is_dir(new_dentry);
- 
- 		if (!(flags & RENAME_EXCHANGE))
--			error = may_delete(new_dir, new_dentry, is_dir);
-+			error = may_replace(new_dir, new_dentry, is_dir);
- 		else
--			error = may_delete(new_dir, new_dentry, new_is_dir);
-+			error = may_replace(new_dir, new_dentry, new_is_dir);
- 	}
- 	if (error)
- 		return error;
-@@ -4469,7 +4486,7 @@ SYSCALL_DEFINE2(rename, const char __user *, oldname, const char __user *, newna
- 
- int vfs_whiteout(struct inode *dir, struct dentry *dentry)
- {
--	int error = may_create(dir, dentry);
-+	int error = may_create(dir, dentry, false);
- 	if (error)
- 		return error;
- 
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 4efa435..d6e2330 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -82,6 +82,8 @@ typedef void (dax_iodone_t)(struct buffer_head *bh_map, int uptodate);
- #define MAY_CHDIR		0x00000040
- /* called from RCU mode, don't block */
- #define MAY_NOT_BLOCK		0x00000080
-+#define MAY_CREATE_FILE		0x00000100
-+#define MAY_CREATE_DIR		0x00000200
- 
- /*
-  * flags in file.f_mode.  Note that FMODE_READ and FMODE_WRITE must correspond
+Thoughts/Comments... A waste of a good Saturday afternoon?? ;-) 
+
+Steve Dickson (3):
+  gssd: reworked first level of debugging
+  gssd: log all fatal errors
+  gssd: reworked second level of debugging
+
+ utils/gssd/context_heimdal.c |  2 +-
+ utils/gssd/context_lucid.c   |  6 +++---
+ utils/gssd/gssd.c            | 14 +++++++-------
+ utils/gssd/gssd_proc.c       | 32 +++++++++++++-------------------
+ utils/gssd/krb5_util.c       | 28 ++++++++++++++++------------
+ 5 files changed, 40 insertions(+), 42 deletions(-)
+
 -- 
-2.5.0
+2.4.3
 
