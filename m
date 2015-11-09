@@ -1,82 +1,71 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:34791 "EHLO fieldses.org"
+Received: from anor.bigon.be ([91.121.173.99]:60442 "EHLO anor.bigon.be"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751731AbbKIVbl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 9 Nov 2015 16:31:41 -0500
-Date: Mon, 9 Nov 2015 16:31:41 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [RFC PATCH] Using pthreads to handle upcalls.
-Message-ID: <20151109213141.GD11046@fieldses.org>
-References: <1447074308-15823-1-git-send-email-steved@redhat.com>
- <20151109183938.GD8738@fieldses.org>
- <5640FDF2.9040802@RedHat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <5640FDF2.9040802@RedHat.com>
+	id S1751312AbbKIXcd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 9 Nov 2015 18:32:33 -0500
+Received: from anor.bigon.be (localhost.localdomain [127.0.0.1])
+	by anor.bigon.be (Postfix) with ESMTP id B69A71A1BB
+	for <linux-nfs@vger.kernel.org>; Tue, 10 Nov 2015 00:25:22 +0100 (CET)
+Received: from anor.bigon.be ([127.0.0.1])
+	by anor.bigon.be (anor.bigon.be [127.0.0.1]) (amavisd-new, port 10026)
+	with ESMTP id HXJwT-lsYN6g for <linux-nfs@vger.kernel.org>;
+	Tue, 10 Nov 2015 00:25:19 +0100 (CET)
+Received: from fornost.bigon.be (unknown [IPv6:2a02:578:85fc:1:226:18ff:fe08:6073])
+	(using TLSv1 with cipher ECDHE-RSA-AES256-SHA (256/256 bits))
+	(Client did not present a certificate)
+	(Authenticated sender: bigon)
+	by anor.bigon.be (Postfix) with ESMTPSA id 7CA821A070
+	for <linux-nfs@vger.kernel.org>; Tue, 10 Nov 2015 00:25:19 +0100 (CET)
+From: Laurent Bigonville <bigon@debian.org>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] Delete the unix socket only if we have created it
+Date: Tue, 10 Nov 2015 00:25:17 +0100
+Message-Id: <1447111517-5448-1-git-send-email-bigon@debian.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Nov 09, 2015 at 03:11:30PM -0500, Steve Dickson wrote:
-> Hey,
-> 
-> On 11/09/2015 01:39 PM, J. Bruce Fields wrote:
-> > On Mon, Nov 09, 2015 at 08:05:07AM -0500, Steve Dickson wrote:
-> >> Recently a bug was found that was causing a
-> >> TGT fetch for every mount upcall. The bug was
-> >> caused when forking for every mount was introduce.
-> >> The global memory for the TGT cache was being
-> >> freed when the forked process existed. 
-> >>
-> >> The fix we came up with was to only fork on non-root
-> >> upcalls, basically mount upcalls would no longer fork.
-> >> In debugging the patch it became apparent that if the
-> >> process hung, all NFS mounts on that client would be blocked.
-> >> So at this point rpc.gssd is a single point of failure.
-> >>
-> >> This patch replaces the forking/non-forking with creating
-> >> pthreads for every upcall which I think is a better 
-> >> solution to the original problem since pthreads can share
-> >> global data. 
-> > 
-> > I seem to recall the reason for the fork is to allow dropping some
-> > privileges while processing the upcall, is that right? 
-> I don't see this where privileges are being dropped. 
+From: Laurent Bigonville <bigon@bigon.be>
 
-See 6b53fc9ce38ba6fff2fd5c2f6ed143747067a39d "gssd: do a more thorough
-change of identity after forking".  I think the id's its switching there
-are global to a process, not specific to a single pthread.
+If systemd has created the unix socket on our behalf, we shouldn't try
+to delete it.
 
-> >> I was also hoping using pthread would bring more asynchronous
-> >> to rpc.gssd. I was thinking rpc.gssd could take an upcall,
-> >> fire off a thread to handle it, the go back and listen
-> >> for more upcalls. 
-> >>
-> >> Unfortunately this is not the case. It seems, maybe due to
-> >> my lack of my pthreads understanding, that after each 
-> >> pthread_create() call, a pthread_join() call, which waits for 
-> >> the created to stop, is needed. Similar to fork/wait..
-> > 
-> > Actually making gssd thread-safe would be a significant effort.
-> Is it because the MIT libs are not thread-safe?
+https://bugzilla.redhat.com/show_bug.cgi?id=1279076
 
-I don't know, it's one of many things we'd need to check.
+Signed-off-by: Laurent Bigonville <bigon@bigon.be>
+---
+ src/rpcbind.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
 
-> Isn't the gssd_k5_kt_princ_list the only global list?  Something to do
-> with the upcalls? 
+diff --git a/src/rpcbind.c b/src/rpcbind.c
+index 045daa1..c4265cd 100644
+--- a/src/rpcbind.c
++++ b/src/rpcbind.c
+@@ -87,6 +87,7 @@ static inline void __nss_configure_lookup(const char *db, const char *s) {}
+ int debugging = 0;	/* Tell me what's going on */
+ int doabort = 0;	/* When debugging, do an abort on errors */
+ int dofork = 1;		/* fork? */
++int createdsocket = 0;  /* Did I create the socket or systemd did it for me? */
+ 
+ rpcblist_ptr list_rbl;	/* A list of version 3/4 rpcbind services */
+ 
+@@ -445,6 +446,7 @@ init_transport(struct netconfig *nconf)
+ 		memset(&sun, 0, sizeof sun);
+ 		sun.sun_family = AF_LOCAL;
+ 		unlink(_PATH_RPCBINDSOCK);
++		createdsocket = 1; /* We are now in the process of creating the unix socket */
+ 		strcpy(sun.sun_path, _PATH_RPCBINDSOCK);
+ 		addrlen = SUN_LEN(&sun);
+ 		sa = (struct sockaddr *)&sun;
+@@ -846,7 +848,8 @@ static void
+ terminate(int dummy /*__unused*/)
+ {
+ 	close(rpcbindlockfd);
+-	unlink(_PATH_RPCBINDSOCK);
++	if(createdsocket)
++		unlink(_PATH_RPCBINDSOCK);
+ 	unlink(RPCBINDDLOCK);
+ #ifdef WARMSTART
+ 	write_warmstart();	/* Dump yourself */
+-- 
+2.6.2
 
-There's also some global data that keeps track of the state of the rpc
-pipefs directory--topdir_list, etc.
-
-It might be easier just to share that one list?  I don't know what would
-be involved, though.
-
-I'm not convinced this is a good way to help with hangs--a lot of the
-cases that would cause a hang are going to cause further threads to hang
-too.
-
-I can believe the parallelism might be useful in some cases for
-performance reasons, but I don't know if we've seen such a case yet.
-
---b.
