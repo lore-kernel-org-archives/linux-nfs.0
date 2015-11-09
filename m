@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:43598 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:55390 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753552AbbKILKf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 9 Nov 2015 06:10:35 -0500
+	id S1753551AbbKILKW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 9 Nov 2015 06:10:22 -0500
 From: Andreas Gruenbacher <agruenba@redhat.com>
 To: Alexander Viro <viro@zeniv.linux.org.uk>, "Theodore Ts'o" <tytso@mit.edu>,
         Andreas Dilger <adilger.kernel@dilger.ca>,
@@ -15,43 +15,57 @@ To: Alexander Viro <viro@zeniv.linux.org.uk>, "Theodore Ts'o" <tytso@mit.edu>,
         linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-cifs@vger.kernel.org, linux-api@vger.kernel.org
 Cc: Andreas Gruenbacher <agruenba@redhat.com>
-Subject: [PATCH v15 12/22] vfs: Add get_richacl and set_richacl inode operations
-Date: Mon,  9 Nov 2015 12:08:53 +0100
-Message-Id: <1447067343-31479-13-git-send-email-agruenba@redhat.com>
+Subject: [PATCH v15 10/22] posix_acl: Unexport acl_by_type and make it static
+Date: Mon,  9 Nov 2015 12:08:51 +0100
+Message-Id: <1447067343-31479-11-git-send-email-agruenba@redhat.com>
 In-Reply-To: <1447067343-31479-1-git-send-email-agruenba@redhat.com>
 References: <1447067343-31479-1-git-send-email-agruenba@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-These operations are similar to the get_acl and set_acl operations for
-POSIX ACLs.  The distinction between access and default ACLs doesn't exist
-for richacls.
+acl_by_type(inode, type) returns a pointer to either inode->i_acl or
+inode->i_default_acl depending on type.  This is useful in
+fs/posix_acl.c, but should never have been visible outside that file.
 
 Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
 ---
- include/linux/fs.h | 2 ++
- 1 file changed, 2 insertions(+)
+ fs/posix_acl.c            | 3 +--
+ include/linux/posix_acl.h | 1 -
+ 2 files changed, 1 insertion(+), 3 deletions(-)
 
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 2fd840e..3c36c72 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1662,6 +1662,7 @@ struct inode_operations {
- 	const char * (*follow_link) (struct dentry *, void **);
- 	int (*permission) (struct inode *, int);
- 	struct posix_acl * (*get_acl)(struct inode *, int);
-+	struct richacl * (*get_richacl)(struct inode *);
+diff --git a/fs/posix_acl.c b/fs/posix_acl.c
+index 4fb17de..aacfb58 100644
+--- a/fs/posix_acl.c
++++ b/fs/posix_acl.c
+@@ -21,7 +21,7 @@
+ #include <linux/export.h>
+ #include <linux/user_namespace.h>
  
- 	int (*readlink) (struct dentry *, char __user *,int);
- 	void (*put_link) (struct inode *, void *);
-@@ -1691,6 +1692,7 @@ struct inode_operations {
- 			   umode_t create_mode, int *opened);
- 	int (*tmpfile) (struct inode *, struct dentry *, umode_t);
- 	int (*set_acl)(struct inode *, struct posix_acl *, int);
-+	int (*set_richacl)(struct inode *, struct richacl *);
+-struct posix_acl **acl_by_type(struct inode *inode, int type)
++static struct posix_acl **acl_by_type(struct inode *inode, int type)
+ {
+ 	switch (type) {
+ 	case ACL_TYPE_ACCESS:
+@@ -32,7 +32,6 @@ struct posix_acl **acl_by_type(struct inode *inode, int type)
+ 		BUG();
+ 	}
+ }
+-EXPORT_SYMBOL(acl_by_type);
  
- 	/* WARNING: probably going away soon, do not use! */
- } ____cacheline_aligned;
+ struct posix_acl *get_cached_acl(struct inode *inode, int type)
+ {
+diff --git a/include/linux/posix_acl.h b/include/linux/posix_acl.h
+index 3e96a6a..5b5a80c 100644
+--- a/include/linux/posix_acl.h
++++ b/include/linux/posix_acl.h
+@@ -99,7 +99,6 @@ extern int posix_acl_create(struct inode *, umode_t *, struct posix_acl **,
+ extern int simple_set_acl(struct inode *, struct posix_acl *, int);
+ extern int simple_acl_create(struct inode *, struct inode *);
+ 
+-struct posix_acl **acl_by_type(struct inode *inode, int type);
+ struct posix_acl *get_cached_acl(struct inode *inode, int type);
+ struct posix_acl *get_cached_acl_rcu(struct inode *inode, int type);
+ void set_cached_acl(struct inode *inode, int type, struct posix_acl *acl);
 -- 
 2.5.0
 
