@@ -1,93 +1,99 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:35961 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751957AbbKKUCP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 11 Nov 2015 15:02:15 -0500
-Date: Wed, 11 Nov 2015 15:02:12 -0500
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [GIT PULL] nfsd changes for 4.4
-Message-ID: <20151111200212.GC29410@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-From: bfields@fieldses.org (J. Bruce Fields)
+Received: from userp1040.oracle.com ([156.151.31.81]:17795 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752535AbbKKUUh convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Nov 2015 15:20:37 -0500
+Content-Type: text/plain; charset=utf-8
+Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2104\))
+Subject: Re: [PATCH] svcrdma: Do not send XDR roundup bytes for a write chunk
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <94E65795-E205-44FE-93DE-A1FF24CD5C2E@oracle.com>
+Date: Wed, 11 Nov 2015 15:20:33 -0500
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Linux RDMA Mailing List <linux-rdma@vger.kernel.org>
+Message-Id: <2CF378F3-09B3-441D-9DE6-5336F0B8BF65@oracle.com>
+References: <20151016132938.8597.65237.stgit@oracle-120.nfsv4bat.org> <94E65795-E205-44FE-93DE-A1FF24CD5C2E@oracle.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Please pull nfsd changes from
 
-  git://linux-nfs.org/~bfields/linux.git tags/nfsd-4.4
+> On Nov 3, 2015, at 3:10 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+> 
+> 
+>> On Oct 16, 2015, at 9:30 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>> 
+>> Minor optimization: when dealing with write chunk XDR roundup, do
+>> not post a Write WR for the zero bytes in the pad. Simply update
+>> the write segment in the RPC-over-RDMA header to reflect the extra
+>> pad bytes.
+>> 
+>> The Reply chunk is also a write chunk, but the server does not use
+>> send_write_chunks() to send the Reply chunk. That's OK in this case:
+>> the server Upper Layer typically marshals the Reply chunk contents
+>> in a single contiguous buffer, without a separate tail for the XDR
+>> pad.
+>> 
+>> The comments and the variable naming refer to "chunks" but what is
+>> really meant is "segments." The existing code sends only one
+>> xdr_write_chunk per RPC reply.
+>> 
+>> The fix assumes this as well. When the XDR pad in the first write
+>> chunk is reached, the assumption is the Write list is complete and
+>> send_write_chunks() returns.
+>> 
+>> That will remain a valid assumption until the server Upper Layer can
+>> support multiple bulk payload results per RPC.
+>> 
+>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>> --
+> 
+> Bruce, can you take this for 4.4 ?
 
-Apologies for coming a little late in the merge window.  Fortunately
-this is another fairly quiet one, mainly smaller bugfixes and cleanup.
+Hi Bruce-
 
-We're still finding some bugs from the breakup of the big NFSv4 state
-lock in 3.17--thanks especially to Andrew Elble and Jeff Layton for
-tracking down some of the remaining races.
+Your 4.4 pull request did not include this patch.
 
---b.
 
-----------------------------------------------------------------
-Andrew Elble (2):
-      nfsd: eliminate sending duplicate and repeated delegations
-      nfsd: fix race with open / open upgrade stateids
+>> net/sunrpc/xprtrdma/svc_rdma_sendto.c |    7 +++++++
+>> 1 files changed, 7 insertions(+), 0 deletions(-)
+>> 
+>> diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+>> index 1dfae83..6c48901 100644
+>> --- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+>> +++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+>> @@ -342,6 +342,13 @@ static int send_write_chunks(struct svcxprt_rdma *xprt,
+>> 						arg_ch->rs_handle,
+>> 						arg_ch->rs_offset,
+>> 						write_len);
+>> +
+>> +		/* Do not send XDR pad bytes */
+>> +		if (chunk_no && write_len < 4) {
+>> +			chunk_no++;
+>> +			break;
+>> +		}
+>> +
+>> 		chunk_off = 0;
+>> 		while (write_len) {
+>> 			ret = send_write(xprt, rqstp,
+>> 
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> —
+> Chuck Lever
+> 
+> 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-Andrey Ryabinin (2):
-      lockd: create NSM handles per net namespace
-      lockd: get rid of reference-counted NSM RPC clients
+—
+Chuck Lever
 
-Arnd Bergmann (1):
-      sunrpc: avoid warning in gss_key_timeout
 
-J. Bruce Fields (3):
-      nfsd: fix clid_inuse on mount with security change
-      nfsd: improve client_has_state to check for unused openowners
-      svcrpc: document lack of some memory barriers
 
-Jeff Layton (7):
-      nfsd: serialize state seqid morphing operations
-      nfsd: move svc_fh->fh_maxsize to just after fh_handle
-      nfsd: switch unsigned char flags in svc_fh to bools
-      nfsd: move include of state.h from trace.c to trace.h
-      nfsd: serialize layout stateid morphing operations
-      nfsd: ensure that seqid morphing operations are atomic wrt to copies
-      nfsd: remove recurring workqueue job to clean DRC
-
-Julia Lawall (1):
-      nfsd: drop null test before destroy functions
-
-Neil Brown (1):
-      sunrpc/cache: make cache flushing more reliable.
-
-Stefan Hajnoczi (1):
-      SUNRPC: drop stale comment in svc_setup_socket()
-
-Trond Myklebust (1):
-      SUNRPC: Use MSG_SENDPAGE_NOTLAST when calling sendpage()
-
- fs/lockd/host.c                |   8 +-
- fs/lockd/mon.c                 | 125 ++++++-------------
- fs/lockd/netns.h               |   4 +-
- fs/lockd/svc.c                 |   2 +-
- fs/lockd/svc4proc.c            |   2 +-
- fs/lockd/svcproc.c             |   2 +-
- fs/nfsd/nfs3xdr.c              |   4 +-
- fs/nfsd/nfs4layouts.c          |  34 ++++--
- fs/nfsd/nfs4proc.c             |   4 +
- fs/nfsd/nfs4state.c            | 265 +++++++++++++++++++++++++++++++----------
- fs/nfsd/nfscache.c             |  32 +----
- fs/nfsd/nfsfh.c                |   5 +-
- fs/nfsd/nfsfh.h                |  20 ++--
- fs/nfsd/state.h                |  43 +++----
- fs/nfsd/trace.c                |   2 -
- fs/nfsd/trace.h                |   2 +
- fs/nfsd/vfs.c                  |   4 +-
- fs/nfsd/vfs.h                  |   4 +-
- fs/nfsd/xdr4.h                 |   2 +-
- include/linux/lockd/lockd.h    |  10 +-
- include/linux/sunrpc/cache.h   |  16 ++-
- net/sunrpc/auth_gss/auth_gss.c |  13 +-
- net/sunrpc/cache.c             |  53 +++++++--
- net/sunrpc/svcsock.c           |  40 +++++--
- net/sunrpc/xprtsock.c          |   4 +-
- 25 files changed, 415 insertions(+), 285 deletions(-)
