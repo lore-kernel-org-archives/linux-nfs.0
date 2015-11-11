@@ -1,44 +1,71 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f196.google.com ([209.85.223.196]:33304 "EHLO
-	mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752596AbbKKOxk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Nov 2015 09:53:40 -0500
-Date: Wed, 11 Nov 2015 08:53:37 -0600
-From: Eric Biggers <ebiggers3@gmail.com>
-To: Anna Schumaker <Anna.Schumaker@netapp.com>
-Cc: linux-nfs@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-api@vger.kernel.org,
-        zab@zabbo.net, viro@zeniv.linux.org.uk, clm@fb.com,
-        darrick.wong@oracle.com, mtk.manpages@gmail.com, andros@netapp.com,
-        hch@infradead.org
-Subject: Re: [PATCH v9 0/4] VFS: In-kernel copy system call
-Message-ID: <20151111145337.GA2392@zzz>
-References: <1447192413-15376-1-git-send-email-Anna.Schumaker@Netapp.com>
+Received: from mx141.netapp.com ([216.240.21.12]:60801 "EHLO mx141.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751142AbbKKTMp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 11 Nov 2015 14:12:45 -0500
+Subject: Re: [GIT PULL] Please pull an NFSoRDMA client bugfix
+To: Steve Wise <swise@opengridcomputing.com>,
+        "'Trond Myklebust'" <trond.myklebust@primarydata.com>
+References: <560AFB37.4080609@Netapp.com>
+ <01c101d117ee$4f87f320$ee97d960$@opengridcomputing.com>
+CC: <linux-nfs@vger.kernel.org>, Chuck Lever <chuck.lever@oracle.com>
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+Message-ID: <56439320.1040103@Netapp.com>
+Date: Wed, 11 Nov 2015 14:12:32 -0500
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1447192413-15376-1-git-send-email-Anna.Schumaker@Netapp.com>
+In-Reply-To: <01c101d117ee$4f87f320$ee97d960$@opengridcomputing.com>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Nov 10, 2015 at 04:53:30PM -0500, Anna Schumaker wrote:
->	out:
->		fdput(f_in);
->	out1:
->		fdput(f_out);
+Hi Steve,
 
-The fdput()s are in the wrong order.  fdget(f_in) is first at the beginning, so
-fdput(f_in) needs to be last at the end.
+On 11/05/2015 12:20 PM, Steve Wise wrote:
+> Anna and Trond,
+> 
+> Does it make sense for this to be pushed into stable as well?  It can cause a touch-after-free crash on iWARP transports. 
 
->       /* this could be relaxed once a method supports cross-fs copies */
->       if (inode_in->i_sb != inode_out->i_sb)
->               return -EXDEV;
+Do you know if any users are hitting this?  I can push it to stable, but only if it's being hit in the wild.
 
-This allows the same superblock but different mounts --- is that intentional?
-The commit message says otherwise: it says the vfs entry point requires the same
-superblock and mount.
+Anna
 
+> 
+> Steve.
+> 
+>> -----Original Message-----
+>> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Anna Schumaker
+>> Sent: Tuesday, September 29, 2015 3:57 PM
+>> To: Trond Myklebust
+>> Cc: linux-nfs@vger.kernel.org; Steve Wise
+>> Subject: [GIT PULL] Please pull an NFSoRDMA client bugfix
+>>
+>> Hi Trond,
+>>
+>> The following changes since commit d0f36c46deea97bd16b9277be2f1acac74d76037:
+>>
+>>   xprtrdma: take HCA driver refcount at client (2015-08-05 16:22:56 -0400)
+>>
+>> are available in the git repository at:
+>>
+>>   git://git.linux-nfs.org/projects/anna/nfs-rdma.git tags/nfs-rdma-for-4.3-2
+>>
+>> for you to fetch changes up to 72c021738252dde5849d575a650239d6404930ee:
+>>
+>>   xprtrdma: disconnect and flush cqs before freeing buffers (2015-09-28 10:42:35 -0400)
+>>
+>> Thanks,
+>> Anna
+>>
+>> ----------------------------------------------------------------
+>> Steve Wise (1):
+>>       xprtrdma: disconnect and flush cqs before freeing buffers
+>>
+>>  net/sunrpc/xprtrdma/transport.c | 2 +-
+>>  net/sunrpc/xprtrdma/verbs.c     | 9 ++++++---
+>>  2 files changed, 7 insertions(+), 4 deletions(-)
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
 
-Was there a decision made on FMODE_PREAD and FMODE_PWRITE?  To me it seems
-logical that the if the user explicitly specifies an offset, then the
-corresponding mode should be checked.  That would check whether the file is
-seekable or not, I believe.  Note that e.g. sys_sendfile() does the same thing.
