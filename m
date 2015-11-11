@@ -1,40 +1,42 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([198.137.202.9]:56040 "EHLO
+Received: from bombadil.infradead.org ([198.137.202.9]:56068 "EHLO
 	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750921AbbKKNyM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Nov 2015 08:54:12 -0500
+	with ESMTP id S1750921AbbKKNyP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Nov 2015 08:54:15 -0500
 From: Christoph Hellwig <hch@lst.de>
 To: Trond Myklebust <trond.myklebust@primarydata.com>
 Cc: Peng Tao <tao.peng@primarydata.com>, linux-nfs@vger.kernel.org
-Subject: [PATCH 1/2] nfs: pass on count for CLONE operations
-Date: Wed, 11 Nov 2015 14:49:46 +0100
-Message-Id: <1447249787-2298-2-git-send-email-hch@lst.de>
+Subject: [PATCH 2/2] nfs: offer native ioctls even if CONFIG_COMPAT is set
+Date: Wed, 11 Nov 2015 14:49:47 +0100
+Message-Id: <1447249787-2298-3-git-send-email-hch@lst.de>
 In-Reply-To: <1447249787-2298-1-git-send-email-hch@lst.de>
 References: <1447249787-2298-1-git-send-email-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Currently we pass uninitialized stack garbage in the count parameter.
-The value is usually large enought to clone whole files and thus let
-simple tests pass, but it makes the tests for range clones very unhappy.
+Without this for example 64-bit binaries on typical amd64 distributions
+would not be able to use ioctls on NFS.  For now this only affects clones.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- fs/nfs/nfs42proc.c | 1 +
- 1 file changed, 1 insertion(+)
+ fs/nfs/nfs4file.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
 
-diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
-index 3e92a3c..303d22e 100644
---- a/fs/nfs/nfs42proc.c
-+++ b/fs/nfs/nfs42proc.c
-@@ -284,6 +284,7 @@ static int _nfs42_proc_clone(struct rpc_message *msg, struct file *src_f,
- 		.dst_fh = NFS_FH(dst_inode),
- 		.src_offset = src_offset,
- 		.dst_offset = dst_offset,
-+		.count = count,
- 		.dst_bitmask = server->cache_consistency_bitmask,
- 	};
- 	struct nfs42_clone_res res = {
+diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
+index 4aa5719..7f72505 100644
+--- a/fs/nfs/nfs4file.c
++++ b/fs/nfs/nfs4file.c
+@@ -347,9 +347,8 @@ const struct file_operations nfs4_file_operations = {
+ #endif /* CONFIG_NFS_V4_2 */
+ 	.check_flags	= nfs_check_flags,
+ 	.setlease	= simple_nosetlease,
+-#ifdef CONFIG_COMPAT
+ 	.unlocked_ioctl = nfs4_ioctl,
+-#else
++#ifdef CONFIG_COMPAT
+ 	.compat_ioctl	= nfs4_ioctl,
+ #endif /* CONFIG_COMPAT */
+ };
 -- 
 1.9.1
 
