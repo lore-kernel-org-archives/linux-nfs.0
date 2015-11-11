@@ -1,35 +1,44 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx144.netapp.com ([216.240.21.25]:60292 "EHLO mx144.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751239AbbKKOAV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 11 Nov 2015 09:00:21 -0500
+Received: from mail-io0-f196.google.com ([209.85.223.196]:33304 "EHLO
+	mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752596AbbKKOxk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Nov 2015 09:53:40 -0500
+Date: Wed, 11 Nov 2015 08:53:37 -0600
+From: Eric Biggers <ebiggers3@gmail.com>
+To: Anna Schumaker <Anna.Schumaker@netapp.com>
+Cc: linux-nfs@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-api@vger.kernel.org,
+        zab@zabbo.net, viro@zeniv.linux.org.uk, clm@fb.com,
+        darrick.wong@oracle.com, mtk.manpages@gmail.com, andros@netapp.com,
+        hch@infradead.org
 Subject: Re: [PATCH v9 0/4] VFS: In-kernel copy system call
-To: Al Viro <viro@ZenIV.linux.org.uk>
+Message-ID: <20151111145337.GA2392@zzz>
 References: <1447192413-15376-1-git-send-email-Anna.Schumaker@Netapp.com>
- <20151111033827.GJ22011@ZenIV.linux.org.uk>
-CC: <linux-nfs@vger.kernel.org>, <linux-btrfs@vger.kernel.org>,
-        <linux-fsdevel@vger.kernel.org>, <linux-api@vger.kernel.org>,
-        <zab@zabbo.net>, <clm@fb.com>, <darrick.wong@oracle.com>,
-        <mtk.manpages@gmail.com>, <andros@netapp.com>, <hch@infradead.org>
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-Message-ID: <564349EB.7030900@Netapp.com>
-Date: Wed, 11 Nov 2015 09:00:11 -0500
 MIME-Version: 1.0
-In-Reply-To: <20151111033827.GJ22011@ZenIV.linux.org.uk>
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1447192413-15376-1-git-send-email-Anna.Schumaker@Netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 11/10/2015 10:38 PM, Al Viro wrote:
-> On Tue, Nov 10, 2015 at 04:53:29PM -0500, Anna Schumaker wrote:
->> Copy system calls came up during Plumbers a while ago, mostly because several
->> filesystems (including NFS and XFS) are currently working on copy acceleration
->> implementations.  We haven't heard from Zach Brown in a while, so I volunteered
->> to push his patches upstream so individual filesystems don't need to keep
->> writing their own ioctls.
-> 
-> OK, taken for the next cycle.  FWIW, I'm going to toss COMPAT_SYSCALL_DEFINE
-> counterpart in as well - right now it's doing only native, AFAICS.
-> 
+On Tue, Nov 10, 2015 at 04:53:30PM -0500, Anna Schumaker wrote:
+>	out:
+>		fdput(f_in);
+>	out1:
+>		fdput(f_out);
 
-Thanks, Al!
+The fdput()s are in the wrong order.  fdget(f_in) is first at the beginning, so
+fdput(f_in) needs to be last at the end.
+
+>       /* this could be relaxed once a method supports cross-fs copies */
+>       if (inode_in->i_sb != inode_out->i_sb)
+>               return -EXDEV;
+
+This allows the same superblock but different mounts --- is that intentional?
+The commit message says otherwise: it says the vfs entry point requires the same
+superblock and mount.
+
+
+Was there a decision made on FMODE_PREAD and FMODE_PWRITE?  To me it seems
+logical that the if the user explicitly specifies an offset, then the
+corresponding mode should be checked.  That would check whether the file is
+seekable or not, I believe.  Note that e.g. sys_sendfile() does the same thing.
