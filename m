@@ -1,73 +1,265 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:36472 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:36536 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753039AbbKLTNE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 12 Nov 2015 14:13:04 -0500
-Date: Thu, 12 Nov 2015 14:13:03 -0500
+	id S1751524AbbKLVW0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 12 Nov 2015 16:22:26 -0500
+Date: Thu, 12 Nov 2015 16:22:25 -0500
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: linux-nfs@vger.kernel.org, linux-rmda@vger.kernel.org
-Subject: Re: [PATCH] svcrdma: Do not send XDR roundup bytes for a write chunk
-Message-ID: <20151112191303.GB8538@fieldses.org>
-References: <20151112144433.13507.34603.stgit@klimt.1015granger.net>
+To: Al Viro <viro@zeniv.linux.org.uk>
+Cc: linux-fsdevel@vger.kernel.org, NeilBrown <neilb@suse.de>,
+        Kinglong Mee <kinglongmee@gmail.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: [PATCH] nfsd: don't hold i_mutex over userspace upcalls
+Message-ID: <20151112212225.GF8538@fieldses.org>
+References: <20150501115326.51f5613a@notabene.brown>
+ <20150504220130.GB16827@fieldses.org>
+ <5548CBA3.9080608@gmail.com>
+ <20150505141801.GB27106@fieldses.org>
+ <20150505155203.GD27106@fieldses.org>
+ <20150506082628.0dd049c7@notabene.brown>
+ <20150508161558.GA18851@fieldses.org>
+ <20150508200133.GC18851@fieldses.org>
+ <20150603151819.GA8441@fieldses.org>
+ <20150818191028.GA3957@fieldses.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20151112144433.13507.34603.stgit@klimt.1015granger.net>
+In-Reply-To: <20150818191028.GA3957@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Thanks, applying.
+From: NeilBrown <neilb@suse.de>
+Subject: [PATCH] nfsd: don't hold i_mutex over userspace upcalls
 
-On Thu, Nov 12, 2015 at 09:44:33AM -0500, Chuck Lever wrote:
-> Minor optimization:
+We need information about exports when crossing mountpoints during
+lookup or NFSv4 readdir.  If we don't already have that information
+cached, we may have to ask (and wait for) rpc.mountd.
 
-Based on that I'm queueing it up for 4.5--let me know if that causes
-some problem.
+In both cases we currently hold the i_mutex on the parent of the
+directory we're asking rpc.mountd about.  We've seen situations where
+rpc.mountd performs some operation on that directory that tries to take
+the i_mutex again, resulting in deadlock.
 
---b.
+With some care, we may be able to avoid that in rpc.mountd.  But it
+seems better just to avoid holding a mutex while waiting on userspace.
 
-> when dealing with write chunk XDR roundup, do
-> not post a Write WR for the zero bytes in the pad. Simply update
-> the write segment in the RPC-over-RDMA header to reflect the extra
-> pad bytes.
-> 
-> The Reply chunk is also a write chunk, but the server does not use
-> send_write_chunks() to send the Reply chunk. That's OK in this case:
-> the server Upper Layer typically marshals the Reply chunk contents
-> in a single contiguous buffer, without a separate tail for the XDR
-> pad.
-> 
-> The comments and the variable naming refer to "chunks" but what is
-> really meant is "segments." The existing code sends only one
-> xdr_write_chunk per RPC reply.
-> 
-> The fix assumes this as well. When the XDR pad in the first write
-> chunk is reached, the assumption is the Write list is complete and
-> send_write_chunks() returns.
-> 
-> That will remain a valid assumption until the server Upper Layer can
-> support multiple bulk payload results per RPC.
-> 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
->  net/sunrpc/xprtrdma/svc_rdma_sendto.c |    7 +++++++
->  1 file changed, 7 insertions(+)
-> 
-> diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-> index 1dfae83..6c48901 100644
-> --- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-> +++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-> @@ -342,6 +342,13 @@ static int send_write_chunks(struct svcxprt_rdma *xprt,
->  						arg_ch->rs_handle,
->  						arg_ch->rs_offset,
->  						write_len);
-> +
-> +		/* Do not send XDR pad bytes */
-> +		if (chunk_no && write_len < 4) {
-> +			chunk_no++;
-> +			break;
-> +		}
-> +
->  		chunk_off = 0;
->  		while (write_len) {
->  			ret = send_write(xprt, rqstp,
+It appears that lookup_one_len is pretty much the only operation that
+needs the i_mutex.  So we could just drop the i_mutex elsewhere and do
+something like
+
+	mutex_lock()
+	lookup_one_len()
+	mutex_unlock()
+
+In many cases though the lookup would have been cached and not required
+the i_mutex, so it's more efficient to create a lookup_one_len() variant
+that only takes the i_mutex when necessary.
+
+Signed-off-by: NeilBrown <neilb@suse.de>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/namei.c            | 74 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/nfsd/nfs3xdr.c     |  2 +-
+ fs/nfsd/nfs4xdr.c     |  8 +++---
+ fs/nfsd/vfs.c         | 23 +++++++---------
+ include/linux/namei.h |  1 +
+ 5 files changed, 89 insertions(+), 19 deletions(-)
+
+diff --git a/fs/namei.c b/fs/namei.c
+index 726d211db484..d68c21fe4598 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -2278,6 +2278,8 @@ EXPORT_SYMBOL(vfs_path_lookup);
+  *
+  * Note that this routine is purely a helper for filesystem usage and should
+  * not be called by generic code.
++ *
++ * The caller must hold base->i_mutex.
+  */
+ struct dentry *lookup_one_len(const char *name, struct dentry *base, int len)
+ {
+@@ -2321,6 +2323,78 @@ struct dentry *lookup_one_len(const char *name, struct dentry *base, int len)
+ }
+ EXPORT_SYMBOL(lookup_one_len);
+ 
++/**
++ * lookup_one_len_unlocked - filesystem helper to lookup single pathname component
++ * @name:	pathname component to lookup
++ * @base:	base directory to lookup from
++ * @len:	maximum length @len should be interpreted to
++ *
++ * Note that this routine is purely a helper for filesystem usage and should
++ * not be called by generic code.
++ *
++ * Unlike lookup_one_len, it should be called without the parent
++ * i_mutex held, and will take the i_mutex itself if necessary.
++ */
++struct dentry *lookup_one_len_unlocked(const char *name,
++				       struct dentry *base, int len)
++{
++	struct qstr this;
++	unsigned int c;
++	int err;
++	struct dentry *ret;
++
++	this.name = name;
++	this.len = len;
++	this.hash = full_name_hash(name, len);
++	if (!len)
++		return ERR_PTR(-EACCES);
++
++	if (unlikely(name[0] == '.')) {
++		if (len < 2 || (len == 2 && name[1] == '.'))
++			return ERR_PTR(-EACCES);
++	}
++
++	while (len--) {
++		c = *(const unsigned char *)name++;
++		if (c == '/' || c == '\0')
++			return ERR_PTR(-EACCES);
++	}
++	/*
++	 * See if the low-level filesystem might want
++	 * to use its own hash..
++	 */
++	if (base->d_flags & DCACHE_OP_HASH) {
++		int err = base->d_op->d_hash(base, &this);
++		if (err < 0)
++			return ERR_PTR(err);
++	}
++
++	err = inode_permission(base->d_inode, MAY_EXEC);
++	if (err)
++		return ERR_PTR(err);
++
++	ret = __d_lookup(base, &this);
++	if (ret)
++		return ret;
++	/*
++	 * __d_lookup() is used to try to get a quick answer and avoid the
++	 * mutex.  A false-negative does no harm.
++	 */
++	ret = __d_lookup(base, &this);
++	if (ret && ret->d_flags & DCACHE_OP_REVALIDATE) {
++		dput(ret);
++		ret = NULL;
++	}
++	if (ret)
++		return ret;
++
++	mutex_lock(&base->d_inode->i_mutex);
++	ret =  __lookup_hash(&this, base, 0);
++	mutex_unlock(&base->d_inode->i_mutex);
++	return ret;
++}
++EXPORT_SYMBOL(lookup_one_len_unlocked);
++
+ int user_path_at_empty(int dfd, const char __user *name, unsigned flags,
+ 		 struct path *path, int *empty)
+ {
+diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
+index 00575d776d91..2246454dec76 100644
+--- a/fs/nfsd/nfs3xdr.c
++++ b/fs/nfsd/nfs3xdr.c
+@@ -823,7 +823,7 @@ compose_entry_fh(struct nfsd3_readdirres *cd, struct svc_fh *fhp,
+ 		} else
+ 			dchild = dget(dparent);
+ 	} else
+-		dchild = lookup_one_len(name, dparent, namlen);
++		dchild = lookup_one_len_unlocked(name, dparent, namlen);
+ 	if (IS_ERR(dchild))
+ 		return rv;
+ 	if (d_mountpoint(dchild))
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 51c9e9ca39a4..325521ce389a 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -2838,14 +2838,14 @@ nfsd4_encode_dirent_fattr(struct xdr_stream *xdr, struct nfsd4_readdir *cd,
+ 	__be32 nfserr;
+ 	int ignore_crossmnt = 0;
+ 
+-	dentry = lookup_one_len(name, cd->rd_fhp->fh_dentry, namlen);
++	dentry = lookup_one_len_unlocked(name, cd->rd_fhp->fh_dentry, namlen);
+ 	if (IS_ERR(dentry))
+ 		return nfserrno(PTR_ERR(dentry));
+ 	if (d_really_is_negative(dentry)) {
+ 		/*
+-		 * nfsd_buffered_readdir drops the i_mutex between
+-		 * readdir and calling this callback, leaving a window
+-		 * where this directory entry could have gone away.
++		 * we're not holding the i_mutex here, so there's
++		 * a window where this directory entry could have gone
++		 * away.
+ 		 */
+ 		dput(dentry);
+ 		return nfserr_noent;
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index 994d66fbb446..4212aaacbb55 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -217,10 +217,16 @@ nfsd_lookup_dentry(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 		host_err = PTR_ERR(dentry);
+ 		if (IS_ERR(dentry))
+ 			goto out_nfserr;
+-		/*
+-		 * check if we have crossed a mount point ...
+-		 */
+ 		if (nfsd_mountpoint(dentry, exp)) {
++			/*
++			 * We don't need the i_mutex after all.  It's
++			 * still possible we could open this (regular
++			 * files can be mountpoints too), but the
++			 * i_mutex is just there to prevent renames of
++			 * something that we might be about to delegate,
++			 * and a mountpoint won't be renamed:
++			 */
++			fh_unlock(fhp);
+ 			if ((host_err = nfsd_cross_mnt(rqstp, &dentry, &exp))) {
+ 				dput(dentry);
+ 				goto out_nfserr;
+@@ -1809,7 +1815,6 @@ static __be32 nfsd_buffered_readdir(struct file *file, nfsd_filldir_t func,
+ 	offset = *offsetp;
+ 
+ 	while (1) {
+-		struct inode *dir_inode = file_inode(file);
+ 		unsigned int reclen;
+ 
+ 		cdp->err = nfserr_eof; /* will be cleared on successful read */
+@@ -1828,15 +1833,6 @@ static __be32 nfsd_buffered_readdir(struct file *file, nfsd_filldir_t func,
+ 		if (!size)
+ 			break;
+ 
+-		/*
+-		 * Various filldir functions may end up calling back into
+-		 * lookup_one_len() and the file system's ->lookup() method.
+-		 * These expect i_mutex to be held, as it would within readdir.
+-		 */
+-		host_err = mutex_lock_killable(&dir_inode->i_mutex);
+-		if (host_err)
+-			break;
+-
+ 		de = (struct buffered_dirent *)buf.dirent;
+ 		while (size > 0) {
+ 			offset = de->offset;
+@@ -1853,7 +1849,6 @@ static __be32 nfsd_buffered_readdir(struct file *file, nfsd_filldir_t func,
+ 			size -= reclen;
+ 			de = (struct buffered_dirent *)((char *)de + reclen);
+ 		}
+-		mutex_unlock(&dir_inode->i_mutex);
+ 		if (size > 0) /* We bailed out early */
+ 			break;
+ 
+diff --git a/include/linux/namei.h b/include/linux/namei.h
+index d8c6334cd150..d0f25d81b46a 100644
+--- a/include/linux/namei.h
++++ b/include/linux/namei.h
+@@ -77,6 +77,7 @@ extern struct dentry *kern_path_locked(const char *, struct path *);
+ extern int kern_path_mountpoint(int, const char *, struct path *, unsigned int);
+ 
+ extern struct dentry *lookup_one_len(const char *, struct dentry *, int);
++extern struct dentry *lookup_one_len_unlocked(const char *, struct dentry *, int);
+ 
+ extern int follow_down_one(struct path *);
+ extern int follow_down(struct path *);
+-- 
+2.5.0
+
