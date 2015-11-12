@@ -1,54 +1,42 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:46609 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:34272 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932312AbbKLLoJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 12 Nov 2015 06:44:09 -0500
-Subject: [PATCH 2/2] MAINTAINERS: linux-cachefs@redhat.com is moderated for
- non-subscribers
+	id S932085AbbKLLnt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 12 Nov 2015 06:43:49 -0500
+Subject: [PATCH 0/2] FS-Cache: More miscellany
 From: David Howells <dhowells@redhat.com>
 To: viro@ZenIV.linux.org.uk
-Cc: linux-nfs@vger.kernel.org, linux-cachefs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, dhowells@redhat.com,
-        Geert Uytterhoeven <geert@linux-m68k.org>,
-        linux-fsdevel@vger.kernel.org
-Date: Thu, 12 Nov 2015 11:44:05 +0000
-Message-ID: <20151112114405.22379.69612.stgit@warthog.procyon.org.uk>
-In-Reply-To: <20151112114344.22379.19320.stgit@warthog.procyon.org.uk>
-References: <20151112114344.22379.19320.stgit@warthog.procyon.org.uk>
+Cc: dhowells@redhat.com, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-cachefs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Date: Thu, 12 Nov 2015 11:43:45 +0000
+Message-ID: <20151112114344.22379.19320.stgit@warthog.procyon.org.uk>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Geert Uytterhoeven <geert@linux-m68k.org>
 
-Signed-off-by: Geert Uytterhoeven <geert@linux-m68k.org>
-Signed-off-by: David Howells <dhowells@redhat.com>
+Attached are another couple of miscellaneous bits in FS-Cache and
+CacheFiles:
+
+ (1) Fix an uninitialised error value.
+
+ (2) In MAINTAINERS, mark the mailing list as being moderated for
+     non-subscribers.
+
+These can also be found here:
+
+	http://git.kernel.org/cgit/linux/kernel/git/dhowells/linux-fs.git/log/?h=fscache-fixes
+
+David
 ---
+Geert Uytterhoeven (2):
+      FS-Cache: Add missing initialization of ret in cachefiles_write_page()
+      MAINTAINERS: linux-cachefs@redhat.com is moderated for non-subscribers
 
- MAINTAINERS |    4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 35fe7ae0492e..470605885f01 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -2545,7 +2545,7 @@ F:	arch/c6x/
- 
- CACHEFILES: FS-CACHE BACKEND FOR CACHING ON MOUNTED FILESYSTEMS
- M:	David Howells <dhowells@redhat.com>
--L:	linux-cachefs@redhat.com
-+L:	linux-cachefs@redhat.com (moderated for non-subscribers)
- S:	Supported
- F:	Documentation/filesystems/caching/cachefiles.txt
- F:	fs/cachefiles/
-@@ -4558,7 +4558,7 @@ F:	include/linux/frontswap.h
- 
- FS-CACHE: LOCAL CACHING FOR NETWORK FILESYSTEMS
- M:	David Howells <dhowells@redhat.com>
--L:	linux-cachefs@redhat.com
-+L:	linux-cachefs@redhat.com (moderated for non-subscribers)
- S:	Supported
- F:	Documentation/filesystems/caching/
- F:	fs/fscache/
+ MAINTAINERS          |    4 ++--
+ fs/cachefiles/rdwr.c |    2 +-
+ 2 files changed, 3 insertions(+), 3 deletions(-)
 
