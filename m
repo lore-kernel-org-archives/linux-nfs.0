@@ -1,18 +1,18 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:34667 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:34642 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932173AbbKLLqh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 12 Nov 2015 06:46:37 -0500
-Subject: [PATCH 2/2] MAINTAINERS: linux-cachefs@redhat.com is moderated for
- non-subscribers
+	id S932298AbbKLLq1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 12 Nov 2015 06:46:27 -0500
+Subject: [PATCH 1/2] FS-Cache: Add missing initialization of ret in
+ cachefiles_write_page()
 From: David Howells <dhowells@redhat.com>
 To: viro@ZenIV.linux.org.uk
 Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
         dhowells@redhat.com, linux-cachefs@redhat.com,
         Geert Uytterhoeven <geert@linux-m68k.org>,
         linux-fsdevel@vger.kernel.org
-Date: Thu, 12 Nov 2015 11:46:33 +0000
-Message-ID: <20151112114633.22585.35029.stgit@warthog.procyon.org.uk>
+Date: Thu, 12 Nov 2015 11:46:23 +0000
+Message-ID: <20151112114623.22585.41976.stgit@warthog.procyon.org.uk>
 In-Reply-To: <20151112114614.22585.81355.stgit@warthog.procyon.org.uk>
 References: <20151112114614.22585.81355.stgit@warthog.procyon.org.uk>
 MIME-Version: 1.0
@@ -22,33 +22,32 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: Geert Uytterhoeven <geert@linux-m68k.org>
 
+fs/cachefiles/rdwr.c: In function ‘cachefiles_write_page’:
+fs/cachefiles/rdwr.c:882: warning: ‘ret’ may be used uninitialized in
+this function
+
+If the jump to label "error" is taken, "ret" will indeed be
+uninitialized, and random stack data may be printed by the debug code.
+
+Fixes: 102f4d900c9c8f5e ("FS-Cache: Handle a write to the page immediately beyond the EOF marker")
 Signed-off-by: Geert Uytterhoeven <geert@linux-m68k.org>
 Signed-off-by: David Howells <dhowells@redhat.com>
 ---
 
- MAINTAINERS |    4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ fs/cachefiles/rdwr.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 35fe7ae0492e..470605885f01 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -2545,7 +2545,7 @@ F:	arch/c6x/
+diff --git a/fs/cachefiles/rdwr.c b/fs/cachefiles/rdwr.c
+index 7a6b02f72787..c0f3da3926a0 100644
+--- a/fs/cachefiles/rdwr.c
++++ b/fs/cachefiles/rdwr.c
+@@ -879,7 +879,7 @@ int cachefiles_write_page(struct fscache_storage *op, struct page *page)
+ 	loff_t pos, eof;
+ 	size_t len;
+ 	void *data;
+-	int ret;
++	int ret = -ENOBUFS;
  
- CACHEFILES: FS-CACHE BACKEND FOR CACHING ON MOUNTED FILESYSTEMS
- M:	David Howells <dhowells@redhat.com>
--L:	linux-cachefs@redhat.com
-+L:	linux-cachefs@redhat.com (moderated for non-subscribers)
- S:	Supported
- F:	Documentation/filesystems/caching/cachefiles.txt
- F:	fs/cachefiles/
-@@ -4558,7 +4558,7 @@ F:	include/linux/frontswap.h
- 
- FS-CACHE: LOCAL CACHING FOR NETWORK FILESYSTEMS
- M:	David Howells <dhowells@redhat.com>
--L:	linux-cachefs@redhat.com
-+L:	linux-cachefs@redhat.com (moderated for non-subscribers)
- S:	Supported
- F:	Documentation/filesystems/caching/
- F:	fs/fscache/
+ 	ASSERT(op != NULL);
+ 	ASSERT(page != NULL);
 
