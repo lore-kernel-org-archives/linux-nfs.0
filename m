@@ -1,40 +1,38 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([198.137.202.9]:59924 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751969AbbKMI62 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Nov 2015 03:58:28 -0500
-Date: Fri, 13 Nov 2015 00:58:22 -0800
-From: Christoph Hellwig <hch@infradead.org>
-To: Peng Tao <tao.peng@primarydata.com>
-Cc: linux-fsdevel@vger.kernel.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Christoph Hellwig <hch@infradead.org>, Zach Brown <zab@zabbo.net>,
-        Darren Hart <dvhart@linux.intel.com>,
-        Jeff Layton <jeff.layton@primarydata.com>, bfields@fieldses.org,
-        "Darrick J. Wong" <darrick.wong@oracle.com>, viro@zeniv.linux.org.uk,
-        linux-nfs@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-cifs@vger.kernel.org,
-        Steve French <steve.french@primarydata.com>
-Subject: Re: [PATCH 1/9] vfs: add COPY_FILE_CLONE_ONLY flag
-Message-ID: <20151113085822.GA2272@infradead.org>
-References: <1445728636-10109-1-git-send-email-tao.peng@primarydata.com>
- <1445728636-10109-2-git-send-email-tao.peng@primarydata.com>
+Received: from verein.lst.de ([213.95.11.211]:40407 "EHLO newverein.lst.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753561AbbKMJJj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 13 Nov 2015 04:09:39 -0500
+Date: Fri, 13 Nov 2015 10:09:37 +0100
+From: Christoph Hellwig <hch@lst.de>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Peng Tao <tao.peng@primarydata.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 3/5] nfs: allow intra-file CLONE
+Message-ID: <20151113090937.GA7024@lst.de>
+References: <1447403929-13743-1-git-send-email-hch@lst.de> <1447403929-13743-4-git-send-email-hch@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1445728636-10109-2-git-send-email-tao.peng@primarydata.com>
+In-Reply-To: <1447403929-13743-4-git-send-email-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Oct 25, 2015 at 07:17:08AM +0800, Peng Tao wrote:
-> To tell file system not to return partial success in the
-> .copy_file_range method. This is useful to implement the
-> clone (or reflink) functionality.
+Meh, a fixlet got lost while rebasing.  See below for the one liner
+or just grab the git tree from:
 
-The return value is only part of it, the other part is to
-make it atomic.  Thus I don't think overloading copy_file_range
-is a good idea - we should have a seaprate .clone_file_range that
-is called by the btrfs ioctls moved to the core, and have
-vfs_copy_file_range use .clone_file_range if that exists, and
-if none of the potentially conflicting future flags like
-COPY_FALLOC are present.
+	http://git.infradead.org/users/hch/pnfs.git/shortlog/refs/heads/clone-fixes
+	git://git.infradead.org/users/hch/pnfs.git clone-fixes
+
+diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
+index 49dbeab..db9b5fe 100644
+--- a/fs/nfs/nfs4file.c
++++ b/fs/nfs/nfs4file.c
+@@ -258,7 +258,7 @@ nfs42_ioctl_clone(struct file *dst_file, unsigned long srcfd,
+ 	/* XXX: do we lock at all? what if server needs CB_RECALL_LAYOUT? */
+ 	if (same_inode) {
+ 		mutex_lock(&src_inode->i_mutex);
+-	} if (dst_inode < src_inode) {
++	} else if (dst_inode < src_inode) {
+ 		mutex_lock_nested(&dst_inode->i_mutex, I_MUTEX_PARENT);
+ 		mutex_lock_nested(&src_inode->i_mutex, I_MUTEX_CHILD);
+ 	} else {
+
