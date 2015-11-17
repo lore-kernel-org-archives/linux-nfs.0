@@ -1,140 +1,22 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f176.google.com ([209.85.220.176]:34179 "EHLO
-	mail-qk0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753200AbbKQLxW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 Nov 2015 06:53:22 -0500
-Received: by qkfo3 with SMTP id o3so1683905qkf.1
-        for <linux-nfs@vger.kernel.org>; Tue, 17 Nov 2015 03:53:21 -0800 (PST)
-From: Jeff Layton <jlayton@poochiereds.net>
-To: bfields@fieldses.org, trond.myklebust@primarydata.com
-Cc: linux-nfs@vger.kernel.org, Eric Paris <eparis@parisplace.org>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org
-Subject: [PATCH v1 04/38] fs: rename "delayed_fput" infrastructure to "fput_global"
-Date: Tue, 17 Nov 2015 06:52:26 -0500
-Message-Id: <1447761180-4250-5-git-send-email-jeff.layton@primarydata.com>
-In-Reply-To: <1447761180-4250-1-git-send-email-jeff.layton@primarydata.com>
-References: <1447761180-4250-1-git-send-email-jeff.layton@primarydata.com>
+Received: from bombadil.infradead.org ([198.137.202.9]:56885 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751711AbbKQMAK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 Nov 2015 07:00:10 -0500
+Received: from hch by bombadil.infradead.org with local (Exim 4.80.1 #2 (Red Hat Linux))
+	id 1Zyevi-0005fu-DM
+	for linux-nfs@vger.kernel.org; Tue, 17 Nov 2015 12:00:10 +0000
+Date: Tue, 17 Nov 2015 04:00:10 -0800
+From: Christoph Hellwig <hch@infradead.org>
+To: linux-nfs@vger.kernel.org
+Subject: Re: lock reclaim failed!
+Message-ID: <20151117120010.GA3798@infradead.org>
+References: <20151113092254.GA5047@infradead.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20151113092254.GA5047@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-delayed_fput work is only delayed until the workqueue job runs. It's
-even possible that it will run immediately after you call it if the
-workqueue job happens to be executing at the time. What it does
-guarantee is that the final __fput will run in a different task than the
-the one that queued it. It's this property that we want to use in the
-NFSD code to close files in advance of a setlease attempt by userland.
-
-Change the name of the "delayed_fput" infrastructure to "fput_global"
-as that better describes what this code does.
-
-Cc: Al Viro <viro@ZenIV.linux.org.uk>
-Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
----
- fs/file_table.c      | 38 ++++++++++++++++++++------------------
- include/linux/file.h |  2 +-
- init/main.c          |  2 +-
- 3 files changed, 22 insertions(+), 20 deletions(-)
-
-diff --git a/fs/file_table.c b/fs/file_table.c
-index 8cfeaee6323f..0bf8ddc680ab 100644
---- a/fs/file_table.c
-+++ b/fs/file_table.c
-@@ -227,10 +227,10 @@ static void __fput(struct file *file)
- 	mntput(mnt);
- }
- 
--static LLIST_HEAD(delayed_fput_list);
--static void delayed_fput(struct work_struct *unused)
-+static LLIST_HEAD(global_fput_list);
-+static void global_fput(struct work_struct *unused)
- {
--	struct llist_node *node = llist_del_all(&delayed_fput_list);
-+	struct llist_node *node = llist_del_all(&global_fput_list);
- 	struct llist_node *next;
- 
- 	for (; node; node = next) {
-@@ -244,21 +244,23 @@ static void ____fput(struct callback_head *work)
- 	__fput(container_of(work, struct file, f_u.fu_rcuhead));
- }
- 
--static DECLARE_DELAYED_WORK(delayed_fput_work, delayed_fput);
-+static DECLARE_DELAYED_WORK(global_fput_work, global_fput);
- 
--/*
-- * If kernel thread really needs to have the final fput() it has done
-- * to complete, call this.  The only user right now is the boot - we
-- * *do* need to make sure our writes to binaries on initramfs has
-- * not left us with opened struct file waiting for __fput() - execve()
-- * won't work without that.  Please, don't add more callers without
-- * very good reasons; in particular, never call that with locks
-- * held and never call that from a thread that might need to do
-- * some work on any kind of umount.
-+/**
-+ * fput_global_flush - ensure that all global_fput work is complete
-+ *
-+ * If a kernel thread really needs to have the final fput() it has done to
-+ * complete, call this. One of the main users is the boot - we *do* need to
-+ * make sure our writes to binaries on initramfs has not left us with opened
-+ * struct file waiting for __fput() - execve() won't work without that.
-+ *
-+ * Please, don't add more callers without very good reasons; in particular,
-+ * never call that with locks held and never from a thread that might need to
-+ * do some work on any kind of umount.
-  */
--void flush_delayed_fput(void)
-+void fput_global_flush(void)
- {
--	flush_delayed_work(&delayed_fput_work);
-+	flush_delayed_work(&global_fput_work);
- }
- 
- /**
-@@ -296,15 +298,15 @@ void fput(struct file *file)
- 			 */
- 		}
- 
--		if (llist_add(&file->f_u.fu_llist, &delayed_fput_list))
--			schedule_delayed_work(&delayed_fput_work, 1);
-+		if (llist_add(&file->f_u.fu_llist, &global_fput_list))
-+			schedule_delayed_work(&global_fput_work, 1);
- 	}
- }
- EXPORT_SYMBOL(fput);
- 
- /*
-  * synchronous analog of fput(); for kernel threads that might be needed
-- * in some umount() (and thus can't use flush_delayed_fput() without
-+ * in some umount() (and thus can't use fput_global_flush() without
-  * risking deadlocks), need to wait for completion of __fput() and know
-  * for this specific struct file it won't involve anything that would
-  * need them.  Use only if you really need it - at the very least,
-diff --git a/include/linux/file.h b/include/linux/file.h
-index f87d30882a24..73bb7cee57e9 100644
---- a/include/linux/file.h
-+++ b/include/linux/file.h
-@@ -70,7 +70,7 @@ extern void put_unused_fd(unsigned int fd);
- 
- extern void fd_install(unsigned int fd, struct file *file);
- 
--extern void flush_delayed_fput(void);
-+extern void fput_global_flush(void);
- extern void __fput_sync(struct file *);
- 
- #endif /* __LINUX_FILE_H */
-diff --git a/init/main.c b/init/main.c
-index 9e64d7097f1a..6cb24a16ddd6 100644
---- a/init/main.c
-+++ b/init/main.c
-@@ -941,7 +941,7 @@ static int __ref kernel_init(void *unused)
- 	system_state = SYSTEM_RUNNING;
- 	numa_default_policy();
- 
--	flush_delayed_fput();
-+	fput_global_flush();
- 
- 	if (ramdisk_execute_command) {
- 		ret = run_init_process(ramdisk_execute_command);
--- 
-2.4.3
-
+I've tried for a couple days to reproduce this issue, but failed.
+Looks like this was just a one off - sorry for the noise.
