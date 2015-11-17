@@ -1,61 +1,58 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:36332 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752508AbbKPU7g (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 16 Nov 2015 15:59:36 -0500
-Received: from int-mx14.intmail.prod.int.phx2.redhat.com (int-mx14.intmail.prod.int.phx2.redhat.com [10.5.11.27])
-	by mx1.redhat.com (Postfix) with ESMTPS id 0979E8E22D
-	for <linux-nfs@vger.kernel.org>; Mon, 16 Nov 2015 20:59:36 +0000 (UTC)
-Received: from smallhat.boston.devel.redhat.com (vpn-56-193.rdu2.redhat.com [10.10.56.193])
-	by int-mx14.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id tAGKxZb0015714
-	for <linux-nfs@vger.kernel.org>; Mon, 16 Nov 2015 15:59:35 -0500
-Subject: Re: [PATCH 0/3] Improving rpc.gssd's debugging
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-References: <1446920050-5968-1-git-send-email-steved@redhat.com>
-From: Steve Dickson <SteveD@redhat.com>
-Message-ID: <564A43B6.4070102@RedHat.com>
-Date: Mon, 16 Nov 2015 15:59:34 -0500
+Received: from mail-pa0-f45.google.com ([209.85.220.45]:36823 "EHLO
+	mail-pa0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751936AbbKQDou (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 Nov 2015 22:44:50 -0500
+Received: by pacdm15 with SMTP id dm15so196526859pac.3
+        for <linux-nfs@vger.kernel.org>; Mon, 16 Nov 2015 19:44:50 -0800 (PST)
+From: Kinglong Mee <kinglongmee@gmail.com>
+Subject: [PATCH] NFS4: Cleanup FATTR4_WORD0_FS_LOCATIONS after decoding
+ success
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Andreas Gruenbacher <agruenba@redhat.com>, kinglongmee@gmail.com
+Message-ID: <564AA29F.7060404@gmail.com>
+Date: Tue, 17 Nov 2015 11:44:31 +0800
 MIME-Version: 1.0
-In-Reply-To: <1446920050-5968-1-git-send-email-steved@redhat.com>
-Content-Type: text/plain; charset=windows-1252
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Commit 1ca843a2d2 "nfs: Fix GETATTR bitmap verification" has
+check the bitmap after decoding success, but decode_attr_fs_locations
+forgets cleanup the FATTR4_WORD0_FS_LOCATIONS bits.
 
+decode_getfattr_attrs always return -EIO when meeting FS_LOCATIONS now.
 
-On 11/07/2015 01:14 PM, Steve Dickson wrote:
-> Now that rpc.gssd is the critical path of every
-> NFS mount, any favored mount, I thought I would
-> take a crack at making the daemon a bit more 
-> debuggable by making the logging more readable.
-> 
-> The first level of debugging (-v) will only log 
-> errors and warnings that are not normally logged.
-> I'm thinking this might be a good level to run
-> at a customer's site.
-> 
-> I also thought about changing the majority of the 
-> printerr(0) which always log to printerr(1)s. I 
-> decided not to since I figured more info is 
-> better.
-> 
-> Note, I didn't remove any of the messages, I just pushed
-> them back to other debug levels. 
-> 
-> I trimmed down the second level of debugging (-vv) 
-> by again moving them back to other levels. 
-> 
-> The third level (-vvv) is basically the same.
-> 
-> Using the fourth level (-vvvv) to enable all the logging
-> that old level three did.
-> 
-> Thoughts/Comments... A waste of a good Saturday afternoon?? ;-) 
-> 
-> Steve Dickson (3):
->   gssd: reworked first level of debugging
->   gssd: log all fatal errors
->   gssd: reworked second level of debugging
-All three patches committed... 
+# ll /mnt/
+ls: cannot access /mnt/referal: Input/output error
+ls: cannot access /mnt/replicas: Input/output error
+total 32
+drwxr-xr-x. 7 root root 8192 Nov 16 20:36 pnfs
+??????????? ? ?    ?       ?            ? referal
+??????????? ? ?    ?       ?            ? replicas
 
-steved.
+Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+---
+ fs/nfs/nfs4xdr.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index dfed4f5..f9f9d94 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -3671,8 +3671,10 @@ static int decode_attr_fs_locations(struct xdr_stream *xdr, uint32_t *bitmap, st
+ 		if (unlikely(status != 0))
+ 			goto out_eio;
+ 	}
+-	if (res->nlocations != 0)
++	if (res->nlocations != 0) {
++		bitmap[0] &= ~FATTR4_WORD0_FS_LOCATIONS;
+ 		status = NFS_ATTR_FATTR_V4_LOCATIONS;
++	}
+ out:
+ 	dprintk("%s: fs_locations done, error = %d\n", __func__, status);
+ 	return status;
+-- 
+2.5.0
+
