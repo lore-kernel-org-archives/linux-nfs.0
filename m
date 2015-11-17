@@ -1,106 +1,105 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f175.google.com ([209.85.220.175]:32992 "EHLO
-	mail-qk0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753378AbbKQLxX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 Nov 2015 06:53:23 -0500
-Received: by qkas77 with SMTP id s77so1711469qka.0
-        for <linux-nfs@vger.kernel.org>; Tue, 17 Nov 2015 03:53:22 -0800 (PST)
+Received: from mail-qk0-f180.google.com ([209.85.220.180]:36799 "EHLO
+	mail-qk0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753404AbbKQLxZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 Nov 2015 06:53:25 -0500
+Received: by qkda6 with SMTP id a6so1674291qkd.3
+        for <linux-nfs@vger.kernel.org>; Tue, 17 Nov 2015 03:53:24 -0800 (PST)
 From: Jeff Layton <jlayton@poochiereds.net>
 To: bfields@fieldses.org, trond.myklebust@primarydata.com
 Cc: linux-nfs@vger.kernel.org, Eric Paris <eparis@parisplace.org>,
         Alexander Viro <viro@zeniv.linux.org.uk>,
         linux-fsdevel@vger.kernel.org
-Subject: [PATCH v1 05/38] fs: add fput_global
-Date: Tue, 17 Nov 2015 06:52:27 -0500
-Message-Id: <1447761180-4250-6-git-send-email-jeff.layton@primarydata.com>
+Subject: [PATCH v1 07/38] fsnotify: export several symbols
+Date: Tue, 17 Nov 2015 06:52:29 -0500
+Message-Id: <1447761180-4250-8-git-send-email-jeff.layton@primarydata.com>
 In-Reply-To: <1447761180-4250-1-git-send-email-jeff.layton@primarydata.com>
 References: <1447761180-4250-1-git-send-email-jeff.layton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When nfsd caches a file, we want to be able to close it down in advance
-of setlease attempts. Setting a lease is generally done at the behest of
-userland, so we need a mechanism to ensure that a userland task can
-completely close a file without having to return back to userspace.
+With nfsd's new open-file caching infrastructure, we need a way to know
+when unlinks occur so it can close files that it may be holding open.
+fsnotify fits the bill nicely, but the symbols aren't currently exported
+to modules. Export some of its symbols so nfsd can use this
+infrastructure.
 
-To do this, we borrow the global delayed_fput infrastructure that
-kthreads use. fput_global will queue to the global_fput list if
-the last reference was put. The caller can then use fput_global_flush
-to force the final __fput to run.
-
-While we're at it, export fput_global_flush as nfsd will need to use
-that as well.
-
-Cc: Al Viro <viro@ZenIV.linux.org.uk>
+Cc: Eric Paris <eparis@redhat.com>
 Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
 ---
- fs/file_table.c      | 33 +++++++++++++++++++++++++++++++++
- include/linux/file.h |  1 +
- 2 files changed, 34 insertions(+)
+ fs/notify/group.c      | 2 ++
+ fs/notify/inode_mark.c | 1 +
+ fs/notify/mark.c       | 4 ++++
+ 3 files changed, 7 insertions(+)
 
-diff --git a/fs/file_table.c b/fs/file_table.c
-index 0bf8ddc680ab..d214c45765e6 100644
---- a/fs/file_table.c
-+++ b/fs/file_table.c
-@@ -262,6 +262,7 @@ void fput_global_flush(void)
- {
- 	flush_delayed_work(&global_fput_work);
+diff --git a/fs/notify/group.c b/fs/notify/group.c
+index d16b62cb2854..295d08800126 100644
+--- a/fs/notify/group.c
++++ b/fs/notify/group.c
+@@ -81,6 +81,7 @@ void fsnotify_put_group(struct fsnotify_group *group)
+ 	if (atomic_dec_and_test(&group->refcnt))
+ 		fsnotify_final_destroy_group(group);
  }
-+EXPORT_SYMBOL(fput_global_flush);
++EXPORT_SYMBOL_GPL(fsnotify_put_group);
  
- /**
-  * fput - put a struct file reference
-@@ -304,6 +305,38 @@ void fput(struct file *file)
- }
- EXPORT_SYMBOL(fput);
- 
-+/**
-+ * fput_global - do an fput without using task_work
-+ * @file: file of which to put the reference
-+ *
-+ * When fput is called in the context of a userland process, it'll queue the
-+ * actual work (__fput()) to be done just before returning to userland. In some
-+ * cases however, we need to ensure that the __fput runs before that point.
-+ *
-+ * There is no safe way to flush work that has been queued via task_work_add
-+ * however, so to do this we borrow the global_fput infrastructure that
-+ * kthreads use. The userland process can use fput_global() on one or more
-+ * struct files and then call fput_global_flush() to ensure that they are
-+ * completely closed before proceeding.
-+ *
-+ * The main user is nfsd, which uses this to ensure that all cached but
-+ * otherwise unused files are closed to allow a userland request for a lease
-+ * to proceed.
-+ *
-+ * Returns true if the final fput was done, false otherwise. The caller can
-+ * use this to determine whether to fput_global_flush afterward.
-+ */
-+bool fput_global(struct file *file)
-+{
-+	if (atomic_long_dec_and_test(&file->f_count)) {
-+		if (llist_add(&file->f_u.fu_llist, &global_fput_list))
-+			schedule_delayed_work(&global_fput_work, 1);
-+		return true;
-+	}
-+	return false;
-+}
-+EXPORT_SYMBOL(fput_global);
-+
  /*
-  * synchronous analog of fput(); for kernel threads that might be needed
-  * in some umount() (and thus can't use fput_global_flush() without
-diff --git a/include/linux/file.h b/include/linux/file.h
-index 73bb7cee57e9..7803aed00271 100644
---- a/include/linux/file.h
-+++ b/include/linux/file.h
-@@ -12,6 +12,7 @@
- struct file;
+  * Create a new fsnotify_group and hold a reference for the group returned.
+@@ -109,6 +110,7 @@ struct fsnotify_group *fsnotify_alloc_group(const struct fsnotify_ops *ops)
  
- extern void fput(struct file *);
-+extern bool fput_global(struct file *);
+ 	return group;
+ }
++EXPORT_SYMBOL_GPL(fsnotify_alloc_group);
  
- struct file_operations;
- struct vfsmount;
+ int fsnotify_fasync(int fd, struct file *file, int on)
+ {
+diff --git a/fs/notify/inode_mark.c b/fs/notify/inode_mark.c
+index e785fd954c30..76e608b8894c 100644
+--- a/fs/notify/inode_mark.c
++++ b/fs/notify/inode_mark.c
+@@ -87,6 +87,7 @@ struct fsnotify_mark *fsnotify_find_inode_mark(struct fsnotify_group *group,
+ 
+ 	return mark;
+ }
++EXPORT_SYMBOL_GPL(fsnotify_find_inode_mark);
+ 
+ /*
+  * If we are setting a mark mask on an inode mark we should pin the inode
+diff --git a/fs/notify/mark.c b/fs/notify/mark.c
+index fc0df4442f7b..c2bd670d4704 100644
+--- a/fs/notify/mark.c
++++ b/fs/notify/mark.c
+@@ -109,6 +109,7 @@ void fsnotify_put_mark(struct fsnotify_mark *mark)
+ 		mark->free_mark(mark);
+ 	}
+ }
++EXPORT_SYMBOL_GPL(fsnotify_put_mark);
+ 
+ /* Calculate mask of events for a list of marks */
+ u32 fsnotify_recalc_mask(struct hlist_head *head)
+@@ -208,6 +209,7 @@ void fsnotify_destroy_mark(struct fsnotify_mark *mark,
+ 	mutex_unlock(&group->mark_mutex);
+ 	fsnotify_free_mark(mark);
+ }
++EXPORT_SYMBOL_GPL(fsnotify_destroy_mark);
+ 
+ void fsnotify_destroy_marks(struct hlist_head *head, spinlock_t *lock)
+ {
+@@ -402,6 +404,7 @@ int fsnotify_add_mark(struct fsnotify_mark *mark, struct fsnotify_group *group,
+ 	mutex_unlock(&group->mark_mutex);
+ 	return ret;
+ }
++EXPORT_SYMBOL_GPL(fsnotify_add_mark);
+ 
+ /*
+  * Given a list of marks, find the mark associated with given group. If found
+@@ -492,6 +495,7 @@ void fsnotify_init_mark(struct fsnotify_mark *mark,
+ 	atomic_set(&mark->refcnt, 1);
+ 	mark->free_mark = free_mark;
+ }
++EXPORT_SYMBOL_GPL(fsnotify_init_mark);
+ 
+ static int fsnotify_mark_destroy(void *ignored)
+ {
 -- 
 2.4.3
 
