@@ -1,273 +1,217 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qg0-f41.google.com ([209.85.192.41]:36166 "EHLO
-	mail-qg0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753419AbbKQLxl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 Nov 2015 06:53:41 -0500
-Received: by qgad10 with SMTP id d10so3411665qga.3
-        for <linux-nfs@vger.kernel.org>; Tue, 17 Nov 2015 03:53:40 -0800 (PST)
+Received: from mail-qk0-f182.google.com ([209.85.220.182]:35656 "EHLO
+	mail-qk0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753516AbbKQLxm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 Nov 2015 06:53:42 -0500
+Received: by qkao63 with SMTP id o63so1677015qka.2
+        for <linux-nfs@vger.kernel.org>; Tue, 17 Nov 2015 03:53:41 -0800 (PST)
 From: Jeff Layton <jlayton@poochiereds.net>
 To: bfields@fieldses.org, trond.myklebust@primarydata.com
 Cc: linux-nfs@vger.kernel.org, Eric Paris <eparis@parisplace.org>,
         Alexander Viro <viro@zeniv.linux.org.uk>,
         linux-fsdevel@vger.kernel.org
-Subject: [PATCH v1 22/38] nfsd: rip out the raparms cache
-Date: Tue, 17 Nov 2015 06:52:44 -0500
-Message-Id: <1447761180-4250-23-git-send-email-jeff.layton@primarydata.com>
+Subject: [PATCH v1 23/38] nfsd: add a new EXPORT_OP_NOWCC flag to struct export_operations
+Date: Tue, 17 Nov 2015 06:52:45 -0500
+Message-Id: <1447761180-4250-24-git-send-email-jeff.layton@primarydata.com>
 In-Reply-To: <1447761180-4250-1-git-send-email-jeff.layton@primarydata.com>
 References: <1447761180-4250-1-git-send-email-jeff.layton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Nothing uses it anymore.
+With NFSv3 nfsd will always attempt to send along WCC data to the
+client. This generally involves saving off the in-core inode information
+prior to doing the operation on the given filehandle, and then issuing a
+vfs_getattr to it after the op.
 
+Some filesystems (particularly clustered or networked ones) have an
+expensive ->getattr inode operation. Atomicitiy is also often difficult
+or impossible to guarantee on such filesystems. For those, we're best
+off not trying to provide WCC information to the client at all, and to
+simply allow it to poll for that information as needed with a GETATTR
+RPC.
+
+This patch adds a new flags field to struct export_operations, and
+defines a new EXPORT_OP_NOWCC flag that filesystems can use to indicate
+that nfsd should not attempt to provide WCC info in NFSv3 replies. It
+also adds a blurb about the new flags field and flag to the exporting
+documentation.
+
+The server will also now skip collecting this information for NFSv2 as
+well, since that info is never used there anyway.
+
+Note that this patch does not add this flag to any filesystem
+export_operations structures. This was originally developed to allow
+reexporting nfs via nfsd. That code is not (and may never be) suitable
+for merging into mainline.
+
+Other filesystems may want to consider enabling this flag too. It's hard
+to tell however which ones have export operations to enable export via
+knfsd and which ones mostly rely on them for open-by-filehandle support,
+so I'm leaving that up to the individual maintainers to decide. I am
+cc'ing the relevant lists for those filesystems that I think may want to
+consider adding this though.
+
+Cc: HPDD-discuss@lists.01.org
+Cc: ceph-devel@vger.kernel.org
+Cc: cluster-devel@redhat.com
+Cc: fuse-devel@lists.sourceforge.net
+Cc: ocfs2-devel@oss.oracle.com
 Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
 ---
- fs/nfsd/nfssvc.c |  14 +-----
- fs/nfsd/vfs.c    | 147 -------------------------------------------------------
- fs/nfsd/vfs.h    |   6 ---
- 3 files changed, 1 insertion(+), 166 deletions(-)
+ Documentation/filesystems/nfs/Exporting | 27 +++++++++++++++++++++++++++
+ fs/nfsd/nfs3xdr.c                       |  5 ++++-
+ fs/nfsd/nfsfh.c                         | 14 ++++++++++++++
+ fs/nfsd/nfsfh.h                         |  5 ++++-
+ include/linux/exportfs.h                |  2 ++
+ 5 files changed, 51 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index d816bb3faa6e..d1034d119afb 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -216,18 +216,9 @@ static int nfsd_startup_generic(int nrservs)
- 	if (nfsd_users++)
- 		return 0;
+diff --git a/Documentation/filesystems/nfs/Exporting b/Documentation/filesystems/nfs/Exporting
+index 520a4becb75c..fa636cde3907 100644
+--- a/Documentation/filesystems/nfs/Exporting
++++ b/Documentation/filesystems/nfs/Exporting
+@@ -138,6 +138,11 @@ struct which has the following members:
+     to find potential names, and matches inode numbers to find the correct
+     match.
  
--	/*
--	 * Readahead param cache - will no-op if it already exists.
--	 * (Note therefore results will be suboptimal if number of
--	 * threads is modified after nfsd start.)
--	 */
--	ret = nfsd_racache_init(2*nrservs);
--	if (ret)
--		goto dec_users;
--
- 	ret = nfsd_file_cache_init();
- 	if (ret)
--		goto out_racache;
-+		goto dec_users;
++  flags
++    Some filesystems may need to be handled differently than others. The
++    export_operations struct also includes a flags field that allows the
++    filesystem to communicate such information to nfsd. See the Export
++    Operations Flags section below for more explanation.
  
- 	ret = nfs4_state_start();
- 	if (ret)
-@@ -236,8 +227,6 @@ static int nfsd_startup_generic(int nrservs)
- 
- out_file_cache:
- 	nfsd_file_cache_shutdown();
--out_racache:
--	nfsd_racache_shutdown();
- dec_users:
- 	nfsd_users--;
- 	return ret;
-@@ -250,7 +239,6 @@ static void nfsd_shutdown_generic(void)
- 
- 	nfs4_state_shutdown();
- 	nfsd_file_cache_shutdown();
--	nfsd_racache_shutdown();
- }
- 
- static bool nfsd_needs_lockd(void)
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 62e6194d58f8..0b5072632ae5 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -47,34 +47,6 @@
- 
- #define NFSDDBG_FACILITY		NFSDDBG_FILEOP
- 
--
--/*
-- * This is a cache of readahead params that help us choose the proper
-- * readahead strategy. Initially, we set all readahead parameters to 0
-- * and let the VFS handle things.
-- * If you increase the number of cached files very much, you'll need to
-- * add a hash table here.
-- */
--struct raparms {
--	struct raparms		*p_next;
--	unsigned int		p_count;
--	ino_t			p_ino;
--	dev_t			p_dev;
--	int			p_set;
--	struct file_ra_state	p_ra;
--	unsigned int		p_hindex;
--};
--
--struct raparm_hbucket {
--	struct raparms		*pb_head;
--	spinlock_t		pb_lock;
--} ____cacheline_aligned_in_smp;
--
--#define RAPARM_HASH_BITS	4
--#define RAPARM_HASH_SIZE	(1<<RAPARM_HASH_BITS)
--#define RAPARM_HASH_MASK	(RAPARM_HASH_SIZE-1)
--static struct raparm_hbucket	raparm_hash[RAPARM_HASH_SIZE];
--
- /* 
-  * Called from nfsd_lookup and encode_dirent. Check if we have crossed 
-  * a mount point.
-@@ -744,65 +716,6 @@ nfsd_open_verified(struct svc_rqst *rqstp, struct svc_fh *fhp, umode_t type,
- 	return err;
- }
- 
--struct raparms *
--nfsd_init_raparms(struct file *file)
--{
--	struct inode *inode = file_inode(file);
--	dev_t dev = inode->i_sb->s_dev;
--	ino_t ino = inode->i_ino;
--	struct raparms	*ra, **rap, **frap = NULL;
--	int depth = 0;
--	unsigned int hash;
--	struct raparm_hbucket *rab;
--
--	hash = jhash_2words(dev, ino, 0xfeedbeef) & RAPARM_HASH_MASK;
--	rab = &raparm_hash[hash];
--
--	spin_lock(&rab->pb_lock);
--	for (rap = &rab->pb_head; (ra = *rap); rap = &ra->p_next) {
--		if (ra->p_ino == ino && ra->p_dev == dev)
--			goto found;
--		depth++;
--		if (ra->p_count == 0)
--			frap = rap;
--	}
--	depth = nfsdstats.ra_size;
--	if (!frap) {	
--		spin_unlock(&rab->pb_lock);
--		return NULL;
--	}
--	rap = frap;
--	ra = *frap;
--	ra->p_dev = dev;
--	ra->p_ino = ino;
--	ra->p_set = 0;
--	ra->p_hindex = hash;
--found:
--	if (rap != &rab->pb_head) {
--		*rap = ra->p_next;
--		ra->p_next   = rab->pb_head;
--		rab->pb_head = ra;
--	}
--	ra->p_count++;
--	nfsdstats.ra_depth[depth*10/nfsdstats.ra_size]++;
--	spin_unlock(&rab->pb_lock);
--
--	if (ra->p_set)
--		file->f_ra = ra->p_ra;
--	return ra;
--}
--
--void nfsd_put_raparams(struct file *file, struct raparms *ra)
--{
--	struct raparm_hbucket *rab = &raparm_hash[ra->p_hindex];
--
--	spin_lock(&rab->pb_lock);
--	ra->p_ra = file->f_ra;
--	ra->p_set = 1;
--	ra->p_count--;
--	spin_unlock(&rab->pb_lock);
--}
--
- /*
-  * Grab and keep cached pages associated with a file in the svc_rqst
-  * so that they can be passed to the network sendmsg/sendpage routines
-@@ -2031,63 +1944,3 @@ nfsd_permission(struct svc_rqst *rqstp, struct svc_export *exp,
- 
- 	return err? nfserrno(err) : 0;
- }
--
--void
--nfsd_racache_shutdown(void)
--{
--	struct raparms *raparm, *last_raparm;
--	unsigned int i;
--
--	dprintk("nfsd: freeing readahead buffers.\n");
--
--	for (i = 0; i < RAPARM_HASH_SIZE; i++) {
--		raparm = raparm_hash[i].pb_head;
--		while(raparm) {
--			last_raparm = raparm;
--			raparm = raparm->p_next;
--			kfree(last_raparm);
--		}
--		raparm_hash[i].pb_head = NULL;
--	}
--}
--/*
-- * Initialize readahead param cache
-- */
--int
--nfsd_racache_init(int cache_size)
--{
--	int	i;
--	int	j = 0;
--	int	nperbucket;
--	struct raparms **raparm = NULL;
--
--
--	if (raparm_hash[0].pb_head)
--		return 0;
--	nperbucket = DIV_ROUND_UP(cache_size, RAPARM_HASH_SIZE);
--	nperbucket = max(2, nperbucket);
--	cache_size = nperbucket * RAPARM_HASH_SIZE;
--
--	dprintk("nfsd: allocating %d readahead buffers.\n", cache_size);
--
--	for (i = 0; i < RAPARM_HASH_SIZE; i++) {
--		spin_lock_init(&raparm_hash[i].pb_lock);
--
--		raparm = &raparm_hash[i].pb_head;
--		for (j = 0; j < nperbucket; j++) {
--			*raparm = kzalloc(sizeof(struct raparms), GFP_KERNEL);
--			if (!*raparm)
--				goto out_nomem;
--			raparm = &(*raparm)->p_next;
--		}
--		*raparm = NULL;
--	}
--
--	nfsdstats.ra_size = cache_size;
--	return 0;
--
--out_nomem:
--	dprintk("nfsd: kmalloc failed, freeing readahead buffers\n");
--	nfsd_racache_shutdown();
--	return -ENOMEM;
--}
-diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
-index 80692e06302d..1efccde4bf9a 100644
---- a/fs/nfsd/vfs.h
-+++ b/fs/nfsd/vfs.h
-@@ -39,8 +39,6 @@
- typedef int (*nfsd_filldir_t)(void *, const char *, int, loff_t, u64, unsigned);
- 
- /* nfsd/vfs.c */
--int		nfsd_racache_init(int);
--void		nfsd_racache_shutdown(void);
- int		nfsd_cross_mnt(struct svc_rqst *rqstp, struct dentry **dpp,
- 		                struct svc_export **expp);
- __be32		nfsd_lookup(struct svc_rqst *, struct svc_fh *,
-@@ -74,7 +72,6 @@ __be32		nfsd_open(struct svc_rqst *, struct svc_fh *, umode_t,
- 				int, struct file **);
- __be32		nfsd_open_verified(struct svc_rqst *, struct svc_fh *, umode_t,
- 				int, struct file **);
--struct raparms;
- __be32		nfsd_splice_read(struct svc_rqst *,
- 				struct file *, loff_t, unsigned long *);
- __be32		nfsd_readv(struct file *, loff_t, struct kvec *, int,
-@@ -107,9 +104,6 @@ __be32		nfsd_statfs(struct svc_rqst *, struct svc_fh *,
- __be32		nfsd_permission(struct svc_rqst *, struct svc_export *,
- 				struct dentry *, int);
- 
--struct raparms *nfsd_init_raparms(struct file *file);
--void		nfsd_put_raparams(struct file *file, struct raparms *ra);
--
- static inline int fh_want_write(struct svc_fh *fh)
+ A filehandle fragment consists of an array of 1 or more 4byte words,
+ together with a one byte "type".
+@@ -147,3 +152,25 @@ generated by encode_fh, in which case it will have been padded with
+ nuls.  Rather, the encode_fh routine should choose a "type" which
+ indicates the decode_fh how much of the filehandle is valid, and how
+ it should be interpreted.
++
++Export Operations Flags
++-----------------------
++In addition to the operation vector pointers, struct export_operations also
++contains a "flags" field that allows the filesystem to communicate to nfsd
++that it may want to do things differently when dealing with it. The
++following flags are defined:
++
++  EXPORT_OP_NOWCC
++    RFC 1813 recommends that servers always send weak cache consistency
++    (WCC) data to the client after each operation. The server should
++    atomically collect attributes about the inode, do an operation on it,
++    and then collect the attributes afterward. This allows the client to
++    skip issuing GETATTRs in some situations but means that the server
++    is calling vfs_getattr for almost all RPCs. On some filesystems
++    (particularly those that are clustered or networked) this is expensive
++    and atomicity is difficult to guarantee. This flag indicates to nfsd
++    that it should skip providing WCC attributes to the client in NFSv3
++    replies when doing operations on this filesystem. Consider enabling
++    this on filesystems that have an expensive ->getattr inode operation,
++    or when atomicity between pre and post operation attribute collection
++    is impossible to guarantee.
+diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
+index 00575d776d91..6420e28a4d2f 100644
+--- a/fs/nfsd/nfs3xdr.c
++++ b/fs/nfsd/nfs3xdr.c
+@@ -203,7 +203,7 @@ static __be32 *
+ encode_post_op_attr(struct svc_rqst *rqstp, __be32 *p, struct svc_fh *fhp)
  {
- 	int ret = mnt_want_write(fh->fh_export->ex_path.mnt);
+ 	struct dentry *dentry = fhp->fh_dentry;
+-	if (dentry && d_really_is_positive(dentry)) {
++	if (!fhp->fh_no_wcc && dentry && d_really_is_positive(dentry)) {
+ 	        __be32 err;
+ 		struct kstat stat;
+ 
+@@ -256,6 +256,9 @@ void fill_post_wcc(struct svc_fh *fhp)
+ {
+ 	__be32 err;
+ 
++	if (fhp->fh_no_wcc)
++		return;
++
+ 	if (fhp->fh_post_saved)
+ 		printk("nfsd: inode locked twice during operation.\n");
+ 
+diff --git a/fs/nfsd/nfsfh.c b/fs/nfsd/nfsfh.c
+index c1681ce894c5..f56f938a2e3f 100644
+--- a/fs/nfsd/nfsfh.c
++++ b/fs/nfsd/nfsfh.c
+@@ -267,6 +267,16 @@ static __be32 nfsd_set_fh_dentry(struct svc_rqst *rqstp, struct svc_fh *fhp)
+ 
+ 	fhp->fh_dentry = dentry;
+ 	fhp->fh_export = exp;
++
++	switch (rqstp->rq_vers) {
++	case 3:
++		if (!(dentry->d_sb->s_export_op->flags & EXPORT_OP_NOWCC))
++			break;
++		/* Fallthrough */
++	case 2:
++		fhp->fh_no_wcc = true;
++	}
++
+ 	return 0;
+ out:
+ 	exp_put(exp);
+@@ -535,6 +545,9 @@ fh_compose(struct svc_fh *fhp, struct svc_export *exp, struct dentry *dentry,
+ 	 */
+ 	 set_version_and_fsid_type(fhp, exp, ref_fh);
+ 
++	/* If we have a ref_fh, then copy the fh_no_wcc setting from it. */
++	fhp->fh_no_wcc = ref_fh ? ref_fh->fh_no_wcc : false;
++
+ 	if (ref_fh == fhp)
+ 		fh_put(ref_fh);
+ 
+@@ -638,6 +651,7 @@ fh_put(struct svc_fh *fhp)
+ 		exp_put(exp);
+ 		fhp->fh_export = NULL;
+ 	}
++	fhp->fh_no_wcc = false;
+ 	return;
+ }
+ 
+diff --git a/fs/nfsd/nfsfh.h b/fs/nfsd/nfsfh.h
+index 0770bcb543c8..1cca265ad3e9 100644
+--- a/fs/nfsd/nfsfh.h
++++ b/fs/nfsd/nfsfh.h
+@@ -33,6 +33,7 @@ typedef struct svc_fh {
+ 
+ 	bool			fh_locked;	/* inode locked by us */
+ 	bool			fh_want_write;	/* remount protection taken */
++	bool			fh_no_wcc;	/* no wcc data needed */
+ 
+ #ifdef CONFIG_NFSD_V3
+ 	bool			fh_post_saved;	/* post-op attrs saved */
+@@ -52,7 +53,6 @@ typedef struct svc_fh {
+ 	struct kstat		fh_post_attr;	/* full attrs after operation */
+ 	u64			fh_post_change; /* nfsv4 change; see above */
+ #endif /* CONFIG_NFSD_V3 */
+-
+ } svc_fh;
+ 
+ enum nfsd_fsid {
+@@ -248,6 +248,9 @@ fill_pre_wcc(struct svc_fh *fhp)
+ {
+ 	struct inode    *inode;
+ 
++	if (fhp->fh_no_wcc)
++		return;
++
+ 	inode = d_inode(fhp->fh_dentry);
+ 	if (!fhp->fh_pre_saved) {
+ 		fhp->fh_pre_mtime = inode->i_mtime;
+diff --git a/include/linux/exportfs.h b/include/linux/exportfs.h
+index fa05e04c5531..600c3fccc999 100644
+--- a/include/linux/exportfs.h
++++ b/include/linux/exportfs.h
+@@ -214,6 +214,8 @@ struct export_operations {
+ 			  bool write, u32 *device_generation);
+ 	int (*commit_blocks)(struct inode *inode, struct iomap *iomaps,
+ 			     int nr_iomaps, struct iattr *iattr);
++#define	EXPORT_OP_NOWCC		(0x1)	/* Don't collect wcc data for NFSv3 replies */
++	unsigned long	flags;
+ };
+ 
+ extern int exportfs_encode_inode_fh(struct inode *inode, struct fid *fid,
 -- 
 2.4.3
 
