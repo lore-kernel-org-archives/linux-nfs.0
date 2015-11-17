@@ -1,117 +1,118 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f182.google.com ([209.85.220.182]:34205 "EHLO
-	mail-qk0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753333AbbKQLx2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 Nov 2015 06:53:28 -0500
-Received: by qkfo3 with SMTP id o3so1684713qkf.1
-        for <linux-nfs@vger.kernel.org>; Tue, 17 Nov 2015 03:53:28 -0800 (PST)
+Received: from mail-qk0-f179.google.com ([209.85.220.179]:35632 "EHLO
+	mail-qk0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753512AbbKQLxh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 Nov 2015 06:53:37 -0500
+Received: by qkao63 with SMTP id o63so1676289qka.2
+        for <linux-nfs@vger.kernel.org>; Tue, 17 Nov 2015 03:53:36 -0800 (PST)
 From: Jeff Layton <jlayton@poochiereds.net>
 To: bfields@fieldses.org, trond.myklebust@primarydata.com
 Cc: linux-nfs@vger.kernel.org, Eric Paris <eparis@parisplace.org>,
         Alexander Viro <viro@zeniv.linux.org.uk>,
         linux-fsdevel@vger.kernel.org
-Subject: [PATCH v1 10/38] locks: create a new notifier chain for lease attempts
-Date: Tue, 17 Nov 2015 06:52:32 -0500
-Message-Id: <1447761180-4250-11-git-send-email-jeff.layton@primarydata.com>
+Subject: [PATCH v1 18/38] nfsd: convert nfs4_file->fi_fds array to use nfsd_files
+Date: Tue, 17 Nov 2015 06:52:40 -0500
+Message-Id: <1447761180-4250-19-git-send-email-jeff.layton@primarydata.com>
 In-Reply-To: <1447761180-4250-1-git-send-email-jeff.layton@primarydata.com>
 References: <1447761180-4250-1-git-send-email-jeff.layton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-With the new file caching infrastructure in nfsd, we can end up holding
-files open for an indefinite period of time, even when they are still
-idle. This may prevent the kernel from handing out leases on the file,
-which is something we don't want to block.
-
-Fix this by running a SRCU notifier call chain whenever any lease
-attempt is made. nfsd can then purge the nfsd_file cache of any entries
-associated with that inode, and use the fput_global infrastructure to
-make sure the final __fput is done.
-
-Since SRCU is only conditionally compiled in, we must only define the
-new chain if it's enabled, and users of the chain must ensure that
-SRCU is enabled.
-
 Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
 ---
- fs/locks.c         | 37 +++++++++++++++++++++++++++++++++++++
- include/linux/fs.h |  1 +
- 2 files changed, 38 insertions(+)
+ fs/nfsd/nfs4state.c | 23 ++++++++++++-----------
+ fs/nfsd/state.h     |  2 +-
+ 2 files changed, 13 insertions(+), 12 deletions(-)
 
-diff --git a/fs/locks.c b/fs/locks.c
-index 86c94674ab22..e463d585f77d 100644
---- a/fs/locks.c
-+++ b/fs/locks.c
-@@ -1786,6 +1786,40 @@ int generic_setlease(struct file *filp, long arg, struct file_lock **flp,
- }
- EXPORT_SYMBOL(generic_setlease);
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 6b800b5b8fed..e7adb6b60005 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -49,6 +49,7 @@
  
-+#if IS_ENABLED(CONFIG_SRCU)
-+/*
-+ * Kernel subsystems can register to be notified on any attempt to set
-+ * a new lease with the lease_notifier_chain. This is used by (e.g.) nfsd
-+ * to close files that it may have cached when there is an attempt to set a
-+ * conflicting lease.
-+ */
-+struct srcu_notifier_head lease_notifier_chain;
-+EXPORT_SYMBOL_GPL(lease_notifier_chain);
-+
-+static inline void
-+lease_notifier_chain_init(void)
-+{
-+	srcu_init_notifier_head(&lease_notifier_chain);
-+}
-+
-+static inline void
-+setlease_notifier(long arg, struct file_lock *lease)
-+{
-+	if (arg != F_UNLCK)
-+		srcu_notifier_call_chain(&lease_notifier_chain, arg, lease);
-+}
-+#else /* !IS_ENABLED(CONFIG_SRCU) */
-+static inline void
-+lease_notifier_chain_init(void)
-+{
-+}
-+
-+static inline void
-+setlease_notifier(long arg, struct file_lock *lease)
-+{
-+}
-+#endif /* IS_ENABLED(CONFIG_SRCU) */
-+
- /**
-  * vfs_setlease        -       sets a lease on an open file
-  * @filp:	file pointer
-@@ -1806,6 +1840,8 @@ EXPORT_SYMBOL(generic_setlease);
- int
- vfs_setlease(struct file *filp, long arg, struct file_lock **lease, void **priv)
+ #include "netns.h"
+ #include "pnfs.h"
++#include "filecache.h"
+ 
+ #define NFSDDBG_FACILITY                NFSDDBG_PROC
+ 
+@@ -292,7 +293,7 @@ static struct file *
+ __nfs4_get_fd(struct nfs4_file *f, int oflag)
  {
-+	if (lease)
-+		setlease_notifier(arg, *lease);
- 	if (filp->f_op->setlease)
- 		return filp->f_op->setlease(filp, arg, lease, priv);
- 	else
-@@ -2726,6 +2762,7 @@ static int __init filelock_init(void)
- 	for_each_possible_cpu(i)
- 		INIT_HLIST_HEAD(per_cpu_ptr(&file_lock_list, i));
- 
-+	lease_notifier_chain_init();
- 	return 0;
+ 	if (f->fi_fds[oflag])
+-		return get_file(f->fi_fds[oflag]);
++		return get_file(f->fi_fds[oflag]->nf_file);
+ 	return NULL;
  }
  
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index cbf08d5c246e..0492ff432f01 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1042,6 +1042,7 @@ extern int fcntl_setlease(unsigned int fd, struct file *filp, long arg);
- extern int fcntl_getlease(struct file *filp);
+@@ -449,17 +450,17 @@ static void __nfs4_file_put_access(struct nfs4_file *fp, int oflag)
+ 	might_lock(&fp->fi_lock);
  
- /* fs/locks.c */
-+extern struct srcu_notifier_head	lease_notifier_chain;
- void locks_free_lock_context(struct file_lock_context *ctx);
- void locks_free_lock(struct file_lock *fl);
- extern void locks_init_lock(struct file_lock *);
+ 	if (atomic_dec_and_lock(&fp->fi_access[oflag], &fp->fi_lock)) {
+-		struct file *f1 = NULL;
+-		struct file *f2 = NULL;
++		struct nfsd_file *f1 = NULL;
++		struct nfsd_file *f2 = NULL;
+ 
+ 		swap(f1, fp->fi_fds[oflag]);
+ 		if (atomic_read(&fp->fi_access[1 - oflag]) == 0)
+ 			swap(f2, fp->fi_fds[O_RDWR]);
+ 		spin_unlock(&fp->fi_lock);
+ 		if (f1)
+-			fput(f1);
++			nfsd_file_put(f1);
+ 		if (f2)
+-			fput(f2);
++			nfsd_file_put(f2);
+ 	}
+ }
+ 
+@@ -3915,7 +3916,7 @@ static __be32 nfs4_get_vfs_file(struct svc_rqst *rqstp, struct nfs4_file *fp,
+ 		struct svc_fh *cur_fh, struct nfs4_ol_stateid *stp,
+ 		struct nfsd4_open *open)
+ {
+-	struct file *filp = NULL;
++	struct nfsd_file *nf = NULL;
+ 	__be32 status;
+ 	int oflag = nfs4_access_to_omode(open->op_share_access);
+ 	int access = nfs4_access_to_access(open->op_share_access);
+@@ -3951,18 +3952,18 @@ static __be32 nfs4_get_vfs_file(struct svc_rqst *rqstp, struct nfs4_file *fp,
+ 
+ 	if (!fp->fi_fds[oflag]) {
+ 		spin_unlock(&fp->fi_lock);
+-		status = nfsd_open(rqstp, cur_fh, S_IFREG, access, &filp);
++		status = nfsd_file_acquire(rqstp, cur_fh, access, &nf);
+ 		if (status)
+ 			goto out_put_access;
+ 		spin_lock(&fp->fi_lock);
+ 		if (!fp->fi_fds[oflag]) {
+-			fp->fi_fds[oflag] = filp;
+-			filp = NULL;
++			fp->fi_fds[oflag] = nf;
++			nf = NULL;
+ 		}
+ 	}
+ 	spin_unlock(&fp->fi_lock);
+-	if (filp)
+-		fput(filp);
++	if (nf)
++		nfsd_file_put(nf);
+ 
+ 	status = nfsd4_truncate(rqstp, cur_fh, open);
+ 	if (status)
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 77fdf4de91ba..473faa436e07 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -491,7 +491,7 @@ struct nfs4_file {
+ 	};
+ 	struct list_head	fi_clnt_odstate;
+ 	/* One each for O_RDONLY, O_WRONLY, O_RDWR: */
+-	struct file *		fi_fds[3];
++	struct nfsd_file	*fi_fds[3];
+ 	/*
+ 	 * Each open or lock stateid contributes 0-4 to the counts
+ 	 * below depending on which bits are set in st_access_bitmap:
 -- 
 2.4.3
 
