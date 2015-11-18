@@ -1,59 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pa0-f49.google.com ([209.85.220.49]:33805 "EHLO
-	mail-pa0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750969AbbKRCje (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 Nov 2015 21:39:34 -0500
-Received: by padhx2 with SMTP id hx2so28373056pad.1
-        for <linux-nfs@vger.kernel.org>; Tue, 17 Nov 2015 18:39:33 -0800 (PST)
-Subject: [PATCH v2] NFS4: Cleanup FATTR4_WORD0_FS_LOCATIONS after decoding
- success
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-References: <564AA29F.7060404@gmail.com>
- <1447751549-1946-1-git-send-email-agruenba@redhat.com>
-Cc: Andreas Gruenbacher <agruenba@redhat.com>, linux-nfs@vger.kernel.org,
-        kinglongmee@gmail.com
-From: Kinglong Mee <kinglongmee@gmail.com>
-Message-ID: <564BE4DE.5010405@gmail.com>
-Date: Wed, 18 Nov 2015 10:39:26 +0800
-MIME-Version: 1.0
-In-Reply-To: <1447751549-1946-1-git-send-email-agruenba@redhat.com>
-Content-Type: text/plain; charset=windows-1252
+Received: from mail-qg0-f47.google.com ([209.85.192.47]:35170 "EHLO
+	mail-qg0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751496AbbKRQuh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Nov 2015 11:50:37 -0500
+Received: by qgec40 with SMTP id c40so31854593qge.2
+        for <linux-nfs@vger.kernel.org>; Wed, 18 Nov 2015 08:50:36 -0800 (PST)
+From: Jeff Layton <jlayton@poochiereds.net>
+To: steved@redhat.com
+Cc: neilb@suse.de, linux-nfs@vger.kernel.org, bfields@fieldses.org
+Subject: [RFC PATCH 1/2] exportfs: pass export option flags to the kernel when testing export
+Date: Wed, 18 Nov 2015 11:50:29 -0500
+Message-Id: <1447865430-28434-1-git-send-email-jeff.layton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Commit 1ca843a2d2 "nfs: Fix GETATTR bitmap verification" has check
-the bitmap after decoding success, but decode_attr_fs_locations forgets
-cleanup the FATTR4_WORD0_FS_LOCATIONS bits.
+test_export takes a flag that just says whether to pass in the fsid or
+not. This means that all we can test is the NFSEXP_FSIDi flag.
 
-decode_getfattr_attrs always return -EIO when meeting FS_LOCATIONS now.
+Instead of doing that, pass in the actual export options that we
+intend to use (sometimes or'ed with NFSEXP_FSID to test whether that
+might be the reason for the failure).
 
-ls: cannot access /mnt/referal: Input/output error
-ls: cannot access /mnt/replicas: Input/output error
-total 32
-drwxr-xr-x. 7 root root 8192 Nov 16 20:36 pnfs
-??????????? ? ?    ?       ?            ? referal
-??????????? ? ?    ?       ?            ? replicas
+This allows us to test the actual export options that we plan to use,
+and can allow the kernel to vet them properly before mount time.
 
-v2: clear the bit earlier
+The rationale here is a patch that I have that will add the ability
+for filesystems to opt out of subtree checking when they can't
+properly support it.
 
-Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+Cc: Neil Brown <neilb@suse.de>
+Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
 ---
- fs/nfs/nfs4xdr.c | 1 +
- 1 file changed, 1 insertion(+)
+ utils/exportfs/exportfs.c | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index dfed4f5..4e44412 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -3615,6 +3615,7 @@ static int decode_attr_fs_locations(struct xdr_stream *xdr, uint32_t *bitmap, st
- 	status = 0;
- 	if (unlikely(!(bitmap[0] & FATTR4_WORD0_FS_LOCATIONS)))
- 		goto out;
-+	bitmap[0] &= ~FATTR4_WORD0_FS_LOCATIONS;
- 	status = -EIO;
- 	/* Ignore borken servers that return unrequested attrs */
- 	if (unlikely(res == NULL))
+diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
+index c7a79a69b5d6..cac01fc25f9a 100644
+--- a/utils/exportfs/exportfs.c
++++ b/utils/exportfs/exportfs.c
+@@ -531,7 +531,7 @@ static int can_test(void)
+ 	return 1;
+ }
+ 
+-static int test_export(char *path, int with_fsid)
++static int test_export(char *path, int opts)
+ {
+ 	/* beside max path, buf size should take protocol str into account */
+ 	char buf[NFS_MAXPATHLEN+1+64] = { 0 };
+@@ -545,7 +545,7 @@ static int test_export(char *path, int with_fsid)
+ 	qword_add(&bp, &len, path);
+ 	if (len < 1)
+ 		return 0;
+-	snprintf(bp, len, " 3 %d 65534 65534 0\n", with_fsid ? NFSEXP_FSID : 0);
++	snprintf(bp, len, " 3 %d 65534 65534 0\n", opts);
+ 	fd = open("/proc/net/rpc/nfsd.export/channel", O_WRONLY);
+ 	if (fd < 0)
+ 		return 0;
+@@ -587,12 +587,12 @@ validate_export(nfs_export *exp)
+ 
+ 	if ((exp->m_export.e_flags & NFSEXP_FSID) || exp->m_export.e_uuid ||
+ 	    fs_has_fsid) {
+-		if ( !test_export(path, 1)) {
++		if ( !test_export(path, exp->m_export.e_flags)) {
+ 			xlog(L_ERROR, "%s does not support NFS export", path);
+ 			return;
+ 		}
+-	} else if ( ! test_export(path, 0)) {
+-		if (test_export(path, 1))
++	} else if ( ! test_export(path, exp->m_export.e_flags)) {
++		if (test_export(path, exp->m_export.e_flags & NFSEXP_FSID))
+ 			xlog(L_ERROR, "%s requires fsid= for NFS export", path);
+ 		else
+ 			xlog(L_ERROR, "%s does not support NFS export", path);
 -- 
-2.5.0
+2.4.3
 
