@@ -1,97 +1,66 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:39833 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:57661 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755189AbbKRTTu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 18 Nov 2015 14:19:50 -0500
-Subject: Re: [RFC PATCH 1/2] exportfs: pass export option flags to the kernel
- when testing export
-To: Jeff Layton <jlayton@poochiereds.net>
-References: <1447865430-28434-1-git-send-email-jeff.layton@primarydata.com>
- <20151118141659.5293d648@synchrony.poochiereds.net>
-Cc: neilb@suse.de, linux-nfs@vger.kernel.org, bfields@fieldses.org
+	id S1754512AbbKRUOa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 18 Nov 2015 15:14:30 -0500
+Subject: Re: [PATCH] Delete the unix socket only if we have created it
+To: Laurent Bigonville <bigon@debian.org>, linux-nfs@vger.kernel.org
+References: <1447111517-5448-1-git-send-email-bigon@debian.org>
 From: Steve Dickson <SteveD@redhat.com>
-Message-ID: <564CCF55.3010407@RedHat.com>
-Date: Wed, 18 Nov 2015 14:19:49 -0500
+Message-ID: <564CDC25.9020907@RedHat.com>
+Date: Wed, 18 Nov 2015 15:14:29 -0500
 MIME-Version: 1.0
-In-Reply-To: <20151118141659.5293d648@synchrony.poochiereds.net>
+In-Reply-To: <1447111517-5448-1-git-send-email-bigon@debian.org>
 Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
 
-On 11/18/2015 02:16 PM, Jeff Layton wrote:
-> On Wed, 18 Nov 2015 11:50:29 -0500
-> Jeff Layton <jlayton@poochiereds.net> wrote:
+On 11/09/2015 06:25 PM, Laurent Bigonville wrote:
+> From: Laurent Bigonville <bigon@bigon.be>
 > 
->> test_export takes a flag that just says whether to pass in the fsid or
->> not. This means that all we can test is the NFSEXP_FSIDi flag.
->>
->> Instead of doing that, pass in the actual export options that we
->> intend to use (sometimes or'ed with NFSEXP_FSID to test whether that
->> might be the reason for the failure).
->>
->> This allows us to test the actual export options that we plan to use,
->> and can allow the kernel to vet them properly before mount time.
->>
->> The rationale here is a patch that I have that will add the ability
->> for filesystems to opt out of subtree checking when they can't
->> properly support it.
->>
->> Cc: Neil Brown <neilb@suse.de>
->> Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
->> ---
->>  utils/exportfs/exportfs.c | 10 +++++-----
->>  1 file changed, 5 insertions(+), 5 deletions(-)
->>
->> diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
->> index c7a79a69b5d6..cac01fc25f9a 100644
->> --- a/utils/exportfs/exportfs.c
->> +++ b/utils/exportfs/exportfs.c
->> @@ -531,7 +531,7 @@ static int can_test(void)
->>  	return 1;
->>  }
->>  
->> -static int test_export(char *path, int with_fsid)
->> +static int test_export(char *path, int opts)
->>  {
->>  	/* beside max path, buf size should take protocol str into account */
->>  	char buf[NFS_MAXPATHLEN+1+64] = { 0 };
->> @@ -545,7 +545,7 @@ static int test_export(char *path, int with_fsid)
->>  	qword_add(&bp, &len, path);
->>  	if (len < 1)
->>  		return 0;
->> -	snprintf(bp, len, " 3 %d 65534 65534 0\n", with_fsid ? NFSEXP_FSID : 0);
->> +	snprintf(bp, len, " 3 %d 65534 65534 0\n", opts);
->>  	fd = open("/proc/net/rpc/nfsd.export/channel", O_WRONLY);
->>  	if (fd < 0)
->>  		return 0;
->> @@ -587,12 +587,12 @@ validate_export(nfs_export *exp)
->>  
->>  	if ((exp->m_export.e_flags & NFSEXP_FSID) || exp->m_export.e_uuid ||
->>  	    fs_has_fsid) {
->> -		if ( !test_export(path, 1)) {
->> +		if ( !test_export(path, exp->m_export.e_flags)) {
->>  			xlog(L_ERROR, "%s does not support NFS export", path);
->>  			return;
->>  		}
->> -	} else if ( ! test_export(path, 0)) {
->> -		if (test_export(path, 1))
->> +	} else if ( ! test_export(path, exp->m_export.e_flags)) {
->> +		if (test_export(path, exp->m_export.e_flags & NFSEXP_FSID))
+> If systemd has created the unix socket on our behalf, we shouldn't try
+> to delete it.
 > 
-> Duh, that should of course be "exp->m_export.e_flags | NFSEXP_FSID".
-> I'll plan to resend after I wait a bit for others to comment. Please
-> don't merge this as-is though -- it obviously needs better testing.
+> https://bugzilla.redhat.com/show_bug.cgi?id=1279076
 > 
-> We might be able to simplify the above logic a little too...hmmm...
-That logic did look a bit odd... I'll wait for the next version....
+> Signed-off-by: Laurent Bigonville <bigon@bigon.be>
+Committed... 
 
 steved.
-
+> ---
+>  src/rpcbind.c | 5 ++++-
+>  1 file changed, 4 insertions(+), 1 deletion(-)
 > 
->>  			xlog(L_ERROR, "%s requires fsid= for NFS export", path);
->>  		else
->>  			xlog(L_ERROR, "%s does not support NFS export", path);
-> 
+> diff --git a/src/rpcbind.c b/src/rpcbind.c
+> index 045daa1..c4265cd 100644
+> --- a/src/rpcbind.c
+> +++ b/src/rpcbind.c
+> @@ -87,6 +87,7 @@ static inline void __nss_configure_lookup(const char *db, const char *s) {}
+>  int debugging = 0;	/* Tell me what's going on */
+>  int doabort = 0;	/* When debugging, do an abort on errors */
+>  int dofork = 1;		/* fork? */
+> +int createdsocket = 0;  /* Did I create the socket or systemd did it for me? */
+>  
+>  rpcblist_ptr list_rbl;	/* A list of version 3/4 rpcbind services */
+>  
+> @@ -445,6 +446,7 @@ init_transport(struct netconfig *nconf)
+>  		memset(&sun, 0, sizeof sun);
+>  		sun.sun_family = AF_LOCAL;
+>  		unlink(_PATH_RPCBINDSOCK);
+> +		createdsocket = 1; /* We are now in the process of creating the unix socket */
+>  		strcpy(sun.sun_path, _PATH_RPCBINDSOCK);
+>  		addrlen = SUN_LEN(&sun);
+>  		sa = (struct sockaddr *)&sun;
+> @@ -846,7 +848,8 @@ static void
+>  terminate(int dummy /*__unused*/)
+>  {
+>  	close(rpcbindlockfd);
+> -	unlink(_PATH_RPCBINDSOCK);
+> +	if(createdsocket)
+> +		unlink(_PATH_RPCBINDSOCK);
+>  	unlink(RPCBINDDLOCK);
+>  #ifdef WARMSTART
+>  	write_warmstart();	/* Dump yourself */
 > 
