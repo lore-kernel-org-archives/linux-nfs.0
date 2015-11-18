@@ -1,66 +1,51 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:57661 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([173.255.197.46]:39971 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754512AbbKRUOa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 18 Nov 2015 15:14:30 -0500
-Subject: Re: [PATCH] Delete the unix socket only if we have created it
-To: Laurent Bigonville <bigon@debian.org>, linux-nfs@vger.kernel.org
-References: <1447111517-5448-1-git-send-email-bigon@debian.org>
-From: Steve Dickson <SteveD@redhat.com>
-Message-ID: <564CDC25.9020907@RedHat.com>
-Date: Wed, 18 Nov 2015 15:14:29 -0500
+	id S932216AbbKRUWW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 18 Nov 2015 15:22:22 -0500
+Date: Wed, 18 Nov 2015 15:22:20 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@poochiereds.net>
+Cc: trond.myklebust@primarydata.com, linux-nfs@vger.kernel.org,
+        Eric Paris <eparis@parisplace.org>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel@vger.kernel.org
+Subject: Re: [PATCH v1 38/38] nfs: add a Kconfig option for NFS reexporting
+ and documentation
+Message-ID: <20151118202220.GA992@fieldses.org>
+References: <1447761180-4250-1-git-send-email-jeff.layton@primarydata.com>
+ <1447761180-4250-39-git-send-email-jeff.layton@primarydata.com>
 MIME-Version: 1.0
-In-Reply-To: <1447111517-5448-1-git-send-email-bigon@debian.org>
-Content-Type: text/plain; charset=windows-1252
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1447761180-4250-39-git-send-email-jeff.layton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Tue, Nov 17, 2015 at 06:53:00AM -0500, Jeff Layton wrote:
+> +Filehandle size:
+> +----------------
+> +The maximum filehandle size is governed by the NFS version. Version 2
+> +used fixed 32 byte filehandles. Version 3 moved to variable length
+> +filehandles that can be up to 64 bytes in size. NFSv4 increased that
+> +maximum to 128 bytes.
+> +
+> +When reexporting an NFS filesystem, the underlying filehandle from the
+> +server must be embedded inside the filehandles presented to clients.
+> +Thus if the underlying server presents filehandles that are too big, the
+> +reexporting server can fail to encode them. This can lead to
+> +NFSERR_OPNOTSUPP errors being returned to clients.
+> +
+> +This is not a trivial thing to programatically determine ahead of time
+> +(and it can vary even within the same server), so some foreknowledge of
+> +how the underlying server constructs filehandles, and their maximum
+> +size is a must.
 
+This is the trickiest one, since it depends on an undocumented
+implementation detail of the server.
 
-On 11/09/2015 06:25 PM, Laurent Bigonville wrote:
-> From: Laurent Bigonville <bigon@bigon.be>
-> 
-> If systemd has created the unix socket on our behalf, we shouldn't try
-> to delete it.
-> 
-> https://bugzilla.redhat.com/show_bug.cgi?id=1279076
-> 
-> Signed-off-by: Laurent Bigonville <bigon@bigon.be>
-Committed... 
+Do we even know if this works for all the exportable Linux filesystems?
 
-steved.
-> ---
->  src/rpcbind.c | 5 ++++-
->  1 file changed, 4 insertions(+), 1 deletion(-)
-> 
-> diff --git a/src/rpcbind.c b/src/rpcbind.c
-> index 045daa1..c4265cd 100644
-> --- a/src/rpcbind.c
-> +++ b/src/rpcbind.c
-> @@ -87,6 +87,7 @@ static inline void __nss_configure_lookup(const char *db, const char *s) {}
->  int debugging = 0;	/* Tell me what's going on */
->  int doabort = 0;	/* When debugging, do an abort on errors */
->  int dofork = 1;		/* fork? */
-> +int createdsocket = 0;  /* Did I create the socket or systemd did it for me? */
->  
->  rpcblist_ptr list_rbl;	/* A list of version 3/4 rpcbind services */
->  
-> @@ -445,6 +446,7 @@ init_transport(struct netconfig *nconf)
->  		memset(&sun, 0, sizeof sun);
->  		sun.sun_family = AF_LOCAL;
->  		unlink(_PATH_RPCBINDSOCK);
-> +		createdsocket = 1; /* We are now in the process of creating the unix socket */
->  		strcpy(sun.sun_path, _PATH_RPCBINDSOCK);
->  		addrlen = SUN_LEN(&sun);
->  		sa = (struct sockaddr *)&sun;
-> @@ -846,7 +848,8 @@ static void
->  terminate(int dummy /*__unused*/)
->  {
->  	close(rpcbindlockfd);
-> -	unlink(_PATH_RPCBINDSOCK);
-> +	if(createdsocket)
-> +		unlink(_PATH_RPCBINDSOCK);
->  	unlink(RPCBINDDLOCK);
->  #ifdef WARMSTART
->  	write_warmstart();	/* Dump yourself */
-> 
+If proxying NFSv4.x servers is actually useful, could we add a per-fs
+maximum-filesystem-size attribute to the protocol?
+
+--b.
