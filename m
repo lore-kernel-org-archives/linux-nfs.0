@@ -1,110 +1,137 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from elasmtp-kukur.atl.sa.earthlink.net ([209.86.89.65]:42857 "EHLO
-	elasmtp-kukur.atl.sa.earthlink.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1755879AbbKRWbU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Nov 2015 17:31:20 -0500
-From: "Frank Filz" <ffilzlnx@mindspring.com>
-To: "'Jeff Layton'" <jlayton@poochiereds.net>,
-        "'J. Bruce Fields'" <bfields@fieldses.org>
-Cc: <trond.myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>,
+Received: from mail-qg0-f41.google.com ([209.85.192.41]:33868 "EHLO
+	mail-qg0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758574AbbKSOB4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Nov 2015 09:01:56 -0500
+Received: by qgeb1 with SMTP id b1so51254147qge.1
+        for <linux-nfs@vger.kernel.org>; Thu, 19 Nov 2015 06:01:55 -0800 (PST)
+Date: Thu, 19 Nov 2015 09:01:52 -0500
+From: Jeff Layton <jlayton@poochiereds.net>
+To: "Frank Filz" <ffilzlnx@mindspring.com>
+Cc: "'J. Bruce Fields'" <bfields@fieldses.org>,
+        <trond.myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>,
         "'Eric Paris'" <eparis@parisplace.org>,
         "'Alexander Viro'" <viro@zeniv.linux.org.uk>,
         <linux-fsdevel@vger.kernel.org>
-References: <1447761180-4250-1-git-send-email-jeff.layton@primarydata.com>	<1447761180-4250-39-git-send-email-jeff.layton@primarydata.com>	<20151118202220.GA992@fieldses.org> <20151118161521.67e79050@tlielax.poochiereds.net>
-In-Reply-To: <20151118161521.67e79050@tlielax.poochiereds.net>
-Subject: RE: [PATCH v1 38/38] nfs: add a Kconfig option for NFS reexporting and documentation
-Date: Wed, 18 Nov 2015 14:30:41 -0800
-Message-ID: <019a01d12250$c2b07f90$48117eb0$@mindspring.com>
+Subject: Re: [PATCH v1 38/38] nfs: add a Kconfig option for NFS reexporting
+ and documentation
+Message-ID: <20151119090152.5aa5585d@tlielax.poochiereds.net>
+In-Reply-To: <019a01d12250$c2b07f90$48117eb0$@mindspring.com>
+References: <1447761180-4250-1-git-send-email-jeff.layton@primarydata.com>
+	<1447761180-4250-39-git-send-email-jeff.layton@primarydata.com>
+	<20151118202220.GA992@fieldses.org>
+	<20151118161521.67e79050@tlielax.poochiereds.net>
+	<019a01d12250$c2b07f90$48117eb0$@mindspring.com>
 MIME-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Jeff Layton said:
-> On Wed, 18 Nov 2015 15:22:20 -0500
-> "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> 
-> > On Tue, Nov 17, 2015 at 06:53:00AM -0500, Jeff Layton wrote:
-> > > +Filehandle size:
-> > > +----------------
-> > > +The maximum filehandle size is governed by the NFS version. Version
-> > > +2 used fixed 32 byte filehandles. Version 3 moved to variable
-> > > +length filehandles that can be up to 64 bytes in size. NFSv4
-> > > +increased that maximum to 128 bytes.
-> > > +
-> > > +When reexporting an NFS filesystem, the underlying filehandle from
-> > > +the server must be embedded inside the filehandles presented to
-> clients.
-> > > +Thus if the underlying server presents filehandles that are too
-> > > +big, the reexporting server can fail to encode them. This can lead
-> > > +to NFSERR_OPNOTSUPP errors being returned to clients.
-> > > +
-> > > +This is not a trivial thing to programatically determine ahead of
-> > > +time (and it can vary even within the same server), so some
-> > > +foreknowledge of how the underlying server constructs filehandles,
-> > > +and their maximum size is a must.
-> >
-> > This is the trickiest one, since it depends on an undocumented
-> > implementation detail of the server.
-> >
-> 
-> Yes, indeed...
-> 
-> > Do we even know if this works for all the exportable Linux filesystems?
-> >
-> > If proxying NFSv4.x servers is actually useful, could we add a per-fs
-> > maximum-filesystem-size attribute to the protocol?
-> >
-> 
-> Erm, I think you mean maximum-filehandle-size, but I get your point...
-> 
-> It's tough to do more than a quick survey, but looking at new-style fh:
-> 
-> The max fsid len seems to be 28 bytes (FSID_UUID16_INUM), though you
-> can get that down to 8 bytes if you specify the fsid directly. The fsid
-choice is
-> weird, because it sort of depends on the filehandle sent by the client
-(which
-> is used as a template), so I guess we really do need to assume worst-case.
-> 
-> Once that's done, the encode_fh routines add the fileid part. btrfs has a
-> pretty large maximum one: 40 bytes. That brings the max size up to 68
-bytes,
-> which is already too large for NFSv3, before we ever get to the part where
-> we embed that inside another fh. We require another 12 bytes on top of the
-> "underlying" filehandle for reexporting.
-> 
-> So, no this may very well not work for all exportable Linux filesystems,
-but it
-> sort of depends on the situation (and to some degree, what gets sent by
-the
-> clients). That's what makes this so hard to figure out programmatically.
-> 
-> As far as extending the protocol...that's not a bad idea, though that's
-> obviously a longer-term solution. I don't think we can reasonably rely on
-that
-> anyway. Maybe though...
+On Wed, 18 Nov 2015 14:30:41 -0800
+"Frank Filz" <ffilzlnx@mindspring.com> wrote:
 
-I've been thinking about this kind of thing with Ganesha's proxy server, and
-conveniently, you have also provided a good use case for proxy...
+> Jeff Layton said:
+> > On Wed, 18 Nov 2015 15:22:20 -0500
+> > "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > 
+> > > On Tue, Nov 17, 2015 at 06:53:00AM -0500, Jeff Layton wrote:
+> > > > +Filehandle size:
+> > > > +----------------
+> > > > +The maximum filehandle size is governed by the NFS version. Version
+> > > > +2 used fixed 32 byte filehandles. Version 3 moved to variable
+> > > > +length filehandles that can be up to 64 bytes in size. NFSv4
+> > > > +increased that maximum to 128 bytes.
+> > > > +
+> > > > +When reexporting an NFS filesystem, the underlying filehandle from
+> > > > +the server must be embedded inside the filehandles presented to
+> > clients.
+> > > > +Thus if the underlying server presents filehandles that are too
+> > > > +big, the reexporting server can fail to encode them. This can lead
+> > > > +to NFSERR_OPNOTSUPP errors being returned to clients.
+> > > > +
+> > > > +This is not a trivial thing to programatically determine ahead of
+> > > > +time (and it can vary even within the same server), so some
+> > > > +foreknowledge of how the underlying server constructs filehandles,
+> > > > +and their maximum size is a must.
+> > >
+> > > This is the trickiest one, since it depends on an undocumented
+> > > implementation detail of the server.
+> > >
+> > 
+> > Yes, indeed...
+> > 
+> > > Do we even know if this works for all the exportable Linux filesystems?
+> > >
+> > > If proxying NFSv4.x servers is actually useful, could we add a per-fs
+> > > maximum-filesystem-size attribute to the protocol?
+> > >
+> > 
+> > Erm, I think you mean maximum-filehandle-size, but I get your point...
+> > 
+> > It's tough to do more than a quick survey, but looking at new-style fh:
+> > 
+> > The max fsid len seems to be 28 bytes (FSID_UUID16_INUM), though you
+> > can get that down to 8 bytes if you specify the fsid directly. The fsid
+> choice is
+> > weird, because it sort of depends on the filehandle sent by the client
+> (which
+> > is used as a template), so I guess we really do need to assume worst-case.
+> > 
+> > Once that's done, the encode_fh routines add the fileid part. btrfs has a
+> > pretty large maximum one: 40 bytes. That brings the max size up to 68
+> bytes,
+> > which is already too large for NFSv3, before we ever get to the part where
+> > we embed that inside another fh. We require another 12 bytes on top of the
+> > "underlying" filehandle for reexporting.
+> > 
+> > So, no this may very well not work for all exportable Linux filesystems,
+> but it
+> > sort of depends on the situation (and to some degree, what gets sent by
+> the
+> > clients). That's what makes this so hard to figure out programmatically.
+> > 
+> > As far as extending the protocol...that's not a bad idea, though that's
+> > obviously a longer-term solution. I don't think we can reasonably rely on
+> that
+> > anyway. Maybe though...
+> 
+> I've been thinking about this kind of thing with Ganesha's proxy server, and
+> conveniently, you have also provided a good use case for proxy...
+> 
+> One option I was going to give Ganesha is the ability to in export
+> configuration indicate the upstream server is Ganesha, and expect the export
+> configuration to be mirrored (easy for a config tool to do across the set of
+> servers, primary and proxy) so that Ganesha could just pass handles through.
+> Something similar might be possible for knfsd. With a bit more work, we
+> could be prepared to deal with other servers (like Ganesha providing for
+> knfsd or visa versa) to break apart the upstream handle to an "export"
+> component which can be static, and a "filesystem specific" portion that
+> needs to be passed through. So Ganesha could break out knfsd's fsid encoding
+> and map that to an exportid, and just pass through the payload handle (the
+> portion that comes from the exportfs interface).
+> 
+> Frank
+> 
 
-One option I was going to give Ganesha is the ability to in export
-configuration indicate the upstream server is Ganesha, and expect the export
-configuration to be mirrored (easy for a config tool to do across the set of
-servers, primary and proxy) so that Ganesha could just pass handles through.
-Something similar might be possible for knfsd. With a bit more work, we
-could be prepared to deal with other servers (like Ganesha providing for
-knfsd or visa versa) to break apart the upstream handle to an "export"
-component which can be static, and a "filesystem specific" portion that
-needs to be passed through. So Ganesha could break out knfsd's fsid encoding
-and map that to an exportid, and just pass through the payload handle (the
-portion that comes from the exportfs interface).
+It would be very tough to just pass the filehandles through here. After
+all, we're hooking nfsd up to the nfs client code. You could (in
+principle) have a mix of regular filesystems and reexported nfs mounts.
+What if there are filehandle collisions between the one you passed
+through and one of your local exported filesystems?
 
-Frank
+Breaking up the filehandle is also pretty much impossible to do in a
+general way. The problem of course is that filehandles are really
+opaque blobs to the client. You'd have to know ahead of time what part
+of it refers to the fsid and what part is the fileid part. knfsd can
+compose all sorts of filehandles, and it tries hard to mirror the type
+of fh that the client is using.
 
+Beyond that, what do you do when you get one of these "reconstituted"
+filehandles back from the client where you've stripped off the fsid
+info? At some point you have to reconstruct the original filehandle so
+you can call back to the underlying server. Where do you store the fsid
+info? Note that it has to be persistent across reboots too or you'll
+see stale nfs filehandles on the clients.
 
----
-This email has been checked for viruses by Avast antivirus software.
-https://www.avast.com/antivirus
-
+-- 
+Jeff Layton <jlayton@poochiereds.net>
