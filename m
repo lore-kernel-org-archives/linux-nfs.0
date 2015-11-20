@@ -1,137 +1,144 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:59155 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1162909AbbKTPOq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 20 Nov 2015 10:14:46 -0500
-Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
-	by mx1.redhat.com (Postfix) with ESMTPS id CC6A88F4E4
-	for <linux-nfs@vger.kernel.org>; Fri, 20 Nov 2015 15:14:46 +0000 (UTC)
-Received: from smallhat.boston.devel.redhat.com (vpn-58-101.rdu2.redhat.com [10.10.58.101])
-	by int-mx09.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id tAKFEjLH019255
-	for <linux-nfs@vger.kernel.org>; Fri, 20 Nov 2015 10:14:46 -0500
-Subject: Re: [PATCH] svc_create.c: Make sure errors are logged
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-References: <1447865496-3239-1-git-send-email-steved@redhat.com>
-From: Steve Dickson <SteveD@redhat.com>
-Message-ID: <564F38E5.1080305@RedHat.com>
-Date: Fri, 20 Nov 2015 10:14:45 -0500
-MIME-Version: 1.0
-In-Reply-To: <1447865496-3239-1-git-send-email-steved@redhat.com>
-Content-Type: text/plain; charset=windows-1252
-Sender: linux-nfs-owner@vger.kernel.org
+Return-Path: <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2104\))
+Subject: Re: [PATCH] nfs4: limit callback decoding to received bytes
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <80ed0167773dfee0807c79233555c7d0c1fae11a.1448031054.git.bcodding@redhat.com>
+Date: Fri, 20 Nov 2015 10:18:19 -0500
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <99FC53A8-5A33-4F03-AFEF-A18C5880B493@oracle.com>
+References: <80ed0167773dfee0807c79233555c7d0c1fae11a.1448031054.git.bcodding@redhat.com>
+To: Benjamin Coddington <bcodding@redhat.com>
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-
-On 11/18/2015 11:51 AM, Steve Dickson wrote:
-> To help debug rpcbind failures, make sure all
-> errors are logged and log as much info about
-> the error as possible.
-> 
-> Signed-off-by: Steve Dickson <steved@redhat.com>
+> On Nov 20, 2015, at 9:55 AM, Benjamin Coddington <bcodding@redhat.com> =
+wrote:
+>=20
+> A truncated cb_compound request will cause the client to decode null =
+or
+> data from a previous callback for nfs4.1 backchannel case, or =
+uninitialized
+> data for the nfs4.0 case. This is because the path through
+> svc_process_common() advances the request's iov_base and decrements =
+iov_len
+> without adjusting the overall xdr_buf's len field.  That causes
+> xdr_init_decode() to set up the xdr_stream with an incorrect length in
+> nfs4_callback_compound().
+>=20
+> Fixing this for the nfs4.1 backchannel case first requires setting the
+> correct iov_len and page_len based on the length of received data in =
+the
+> same manner as the nfs4.0 case.
+>=20
+> Then the request's xdr_buf length can be adjusted for both cases based =
+upon
+> the remaining iov_len and page_len.
+>=20
+> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
 > ---
->  support/nfs/svc_create.c | 12 +++++++-----
->  support/nfs/svc_socket.c | 11 ++++++-----
->  2 files changed, 13 insertions(+), 10 deletions(-)
-Committed... 
+> fs/nfs/callback_xdr.c         |    7 +++++--
+> net/sunrpc/backchannel_rqst.c |    8 ++++++++
+> net/sunrpc/svc.c              |    1 +
+> 3 files changed, 14 insertions(+), 2 deletions(-)
+>=20
+> diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
+> index 6b1697a..1c8213e 100644
+> --- a/fs/nfs/callback_xdr.c
+> +++ b/fs/nfs/callback_xdr.c
+> @@ -76,7 +76,8 @@ static __be32 *read_buf(struct xdr_stream *xdr, int =
+nbytes)
+>=20
+> 	p =3D xdr_inline_decode(xdr, nbytes);
+> 	if (unlikely(p =3D=3D NULL))
+> -		printk(KERN_WARNING "NFS: NFSv4 callback reply buffer =
+overflowed!\n");
+> +		printk(KERN_WARNING "NFS: NFSv4 callback reply buffer =
+overflowed "
+> +							"or truncated =
+request.\n");
+> 	return p;
+> }
+>=20
+> @@ -892,6 +893,7 @@ static __be32 nfs4_callback_compound(struct =
+svc_rqst *rqstp, void *argp, void *r
+> 	struct cb_compound_hdr_arg hdr_arg =3D { 0 };
+> 	struct cb_compound_hdr_res hdr_res =3D { NULL };
+> 	struct xdr_stream xdr_in, xdr_out;
+> +	struct xdr_buf *rq_arg =3D &rqstp->rq_arg;
+> 	__be32 *p, status;
+> 	struct cb_process_state cps =3D {
+> 		.drc_status =3D 0,
+> @@ -903,7 +905,8 @@ static __be32 nfs4_callback_compound(struct =
+svc_rqst *rqstp, void *argp, void *r
+>=20
+> 	dprintk("%s: start\n", __func__);
+>=20
+> -	xdr_init_decode(&xdr_in, &rqstp->rq_arg, =
+rqstp->rq_arg.head[0].iov_base);
+> +	rq_arg->len =3D rq_arg->head[0].iov_len + rq_arg->page_len;
+> +	xdr_init_decode(&xdr_in, rq_arg, rq_arg->head[0].iov_base);
+>=20
+> 	p =3D (__be32*)((char *)rqstp->rq_res.head[0].iov_base + =
+rqstp->rq_res.head[0].iov_len);
+> 	xdr_init_encode(&xdr_out, &rqstp->rq_res, p);
+> diff --git a/net/sunrpc/backchannel_rqst.c =
+b/net/sunrpc/backchannel_rqst.c
+> index 6255d14..d92cee1 100644
+> --- a/net/sunrpc/backchannel_rqst.c
+> +++ b/net/sunrpc/backchannel_rqst.c
+> @@ -333,12 +333,20 @@ void xprt_complete_bc_request(struct rpc_rqst =
+*req, uint32_t copied)
+> {
+> 	struct rpc_xprt *xprt =3D req->rq_xprt;
+> 	struct svc_serv *bc_serv =3D xprt->bc_serv;
+> +	struct xdr_buf *rq_rcv_buf =3D &req->rq_rcv_buf;
+>=20
+> 	spin_lock(&xprt->bc_pa_lock);
+> 	list_del(&req->rq_bc_pa_list);
+> 	xprt_dec_alloc_count(xprt, 1);
+> 	spin_unlock(&xprt->bc_pa_lock);
+>=20
+> +	if (copied <=3D rq_rcv_buf->head[0].iov_len) {
+> +		rq_rcv_buf->head[0].iov_len =3D copied;
+> +		rq_rcv_buf->page_len =3D 0;
+> +	} else {
+> +		rq_rcv_buf->page_len =3D copied - =
+rq_rcv_buf->head[0].iov_len;
+> +	}
+> +
 
-steved
-> 
-> diff --git a/support/nfs/svc_create.c b/support/nfs/svc_create.c
-> index 5cb5ff6..ef7ff05 100644
-> --- a/support/nfs/svc_create.c
-> +++ b/support/nfs/svc_create.c
-> @@ -133,7 +133,7 @@ svc_create_bindaddr(struct netconfig *nconf, const uint16_t port)
->  		hint.ai_family = AF_INET6;
->  #endif	/* IPV6_SUPPORTED */
->  	else {
-> -		xlog(D_GENERAL, "Unrecognized bind address family: %s",
-> +		xlog(L_ERROR, "Unrecognized bind address family: %s",
->  			nconf->nc_protofmly);
->  		return NULL;
->  	}
-> @@ -143,7 +143,7 @@ svc_create_bindaddr(struct netconfig *nconf, const uint16_t port)
->  	else if (strcmp(nconf->nc_proto, NC_TCP) == 0)
->  		hint.ai_protocol = (int)IPPROTO_TCP;
->  	else {
-> -		xlog(D_GENERAL, "Unrecognized bind address protocol: %s",
-> +		xlog(L_ERROR, "Unrecognized bind address protocol: %s",
->  			nconf->nc_proto);
->  		return NULL;
->  	}
-> @@ -275,7 +275,7 @@ svc_create_nconf_rand_port(const char *name, const rpcprog_t program,
->  	xprt = svc_tli_create(RPC_ANYFD, nconf, &bindaddr, 0, 0);
->  	freeaddrinfo(ai);
->  	if (xprt == NULL) {
-> -		xlog(D_GENERAL, "Failed to create listener xprt "
-> +		xlog(L_ERROR, "Failed to create listener xprt "
->  			"(%s, %u, %s)", name, version, nconf->nc_netid);
->  		return 0;
->  	}
-> @@ -286,10 +286,12 @@ svc_create_nconf_rand_port(const char *name, const rpcprog_t program,
->  		return 0;
->  	}
->  
-> +	rpc_createerr.cf_stat = rpc_createerr.cf_error.re_errno = 0;
->  	if (!svc_reg(xprt, program, version, dispatch, nconf)) {
->  		/* svc_reg(3) destroys @xprt in this case */
-> -		xlog(D_GENERAL, "Failed to register (%s, %u, %s)",
-> -				name, version, nconf->nc_netid);
-> +		xlog(L_ERROR, "Failed to register (%s, %u, %s): %s",
-> +				name, version, nconf->nc_netid, 
-> +				clnt_spcreateerror("svc_reg() err"));
->  		return 0;
->  	}
->  
-> diff --git a/support/nfs/svc_socket.c b/support/nfs/svc_socket.c
-> index 99321e7..1fa0d15 100644
-> --- a/support/nfs/svc_socket.c
-> +++ b/support/nfs/svc_socket.c
-> @@ -24,6 +24,7 @@
->  #include <sys/socket.h>
->  #include <sys/fcntl.h>
->  #include <errno.h>
-> +#include "xlog.h"
->  
->  #include "config.h"
->  
-> @@ -99,9 +100,9 @@ svcsock_nonblock(int sock)
->  	 * connection.
->  	 */
->  	if ((flags = fcntl(sock, F_GETFL)) < 0)
-> -		perror(_("svc_socket: can't get socket flags"));
-> +		xlog(L_ERROR, "svc_socket: can't get socket flags: %m");
->  	else if (fcntl(sock, F_SETFL, flags|O_NONBLOCK) < 0)
-> -		perror(_("svc_socket: can't set socket flags"));
-> +		xlog(L_ERROR, "svc_socket: can't set socket flags: %m");
->  	else
->  		return sock;
->  
-> @@ -119,7 +120,7 @@ svc_socket (u_long number, int type, int protocol, int reuse)
->  
->    if ((sock = __socket (AF_INET, type, protocol)) < 0)
->      {
-> -      perror (_("svc_socket: socket creation problem"));
-> +      xlog(L_ERROR, "svc_socket: socket creation problem: %m");
->        return sock;
->      }
->  
-> @@ -130,7 +131,7 @@ svc_socket (u_long number, int type, int protocol, int reuse)
->  			sizeof (ret));
->        if (ret < 0)
->  	{
-> -	  perror (_("svc_socket: socket reuse problem"));
-> +	  xlog(L_ERROR, "svc_socket: socket reuse problem: %m");
->  	  return ret;
->  	}
->      }
-> @@ -141,7 +142,7 @@ svc_socket (u_long number, int type, int protocol, int reuse)
->  
->    if (bind(sock, (struct sockaddr *) &addr, len) < 0)
->      {
-> -      perror (_("svc_socket: bind problem"));
-> +      xlog(L_ERROR, "svc_socket: bind problem: %m");
->        (void) __close(sock);
->        sock = -1;
->      }
-> 
+Are similar changes needed in rpcrdma_bc_receive_call ?
+
+
+> 	req->rq_private_buf.len =3D copied;
+> 	set_bit(RPC_BC_PA_IN_USE, &req->rq_bc_pa_state);
+>=20
+> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+> index a8f579d..af9f987 100644
+> --- a/net/sunrpc/svc.c
+> +++ b/net/sunrpc/svc.c
+> @@ -1363,6 +1363,7 @@ bc_svc_process(struct svc_serv *serv, struct =
+rpc_rqst *req,
+> 	memcpy(&rqstp->rq_addr, &req->rq_xprt->addr, rqstp->rq_addrlen);
+> 	memcpy(&rqstp->rq_arg, &req->rq_rcv_buf, sizeof(rqstp->rq_arg));
+> 	memcpy(&rqstp->rq_res, &req->rq_snd_buf, sizeof(rqstp->rq_res));
+> +	rqstp->rq_arg.len =3D req->rq_private_buf.len;
+>=20
+> 	/* reset result send buffer "put" position */
+> 	resv->iov_len =3D 0;
+> --=20
+> 1.7.1
+>=20
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
+in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+--
+Chuck Lever
