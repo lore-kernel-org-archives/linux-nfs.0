@@ -1,157 +1,291 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail3.dit.upm.es ([138.4.2.18]:55824 "EHLO mail3.dit.upm.es"
+Received: from mx1.redhat.com ([209.132.183.28]:53986 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758812AbbKTLLG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 20 Nov 2015 06:11:06 -0500
-To: linux-nfs@vger.kernel.org
-Cc: "=?UTF-8?Q?'Administraci=c3=b3n_del_Centro_de_C=c3=a1lculo_del_DIT'?="
-	<cdc@dit.upm.es>
-From: Omar Walid Llorente <omar@dit.upm.es>
-Subject: possible bug in nfs-kernel-server
-Message-ID: <564EFE51.90105@dit.upm.es>
-Date: Fri, 20 Nov 2015 12:04:49 +0100
+	id S1760338AbbKTOyl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 20 Nov 2015 09:54:41 -0500
+Subject: [PATCH 01/12] Ext4: Fix extended timestamp encoding and decoding
+From: David Howells <dhowells@redhat.com>
+To: arnd@arndb.de
+Cc: linux-afs@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
+        linux-kernel@vger.kernel.org, dhowells@redhat.com,
+        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+Date: Fri, 20 Nov 2015 14:54:35 +0000
+Message-ID: <20151120145434.18930.89755.stgit@warthog.procyon.org.uk>
+In-Reply-To: <20151120145422.18930.72662.stgit@warthog.procyon.org.uk>
+References: <20151120145422.18930.72662.stgit@warthog.procyon.org.uk>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+The handling of extended timestamps in Ext4 is broken as can be seen in the
+output of the test program attached below:
 
-Hi, I'm Omar Walid Llorente and I am a systems administrator at the 
-Politechnical University of Madrid (UPM), Spain. I write you in the hope 
-you can help us manage a problem that have discovered recently about our 
-new datastore architecture in our teaching labs. We have created a 
-gluster distributed volume that we reexport with NFS to our lab clients 
-via intermediate servers.
+time     extra   bad decode        good decode         bad encode  good encode
+======== =====   ================= =================   =========== ===========
+ffffffff     0 >  ffffffffffffffff  ffffffffffffffff > *ffffffff 3  ffffffff 0
+80000000     0 >  ffffffff80000000  ffffffff80000000 > *80000000 3  80000000 0
+00000000     0 >                 0                 0 >  00000000 0  00000000 0
+7fffffff     0 >          7fffffff          7fffffff >  7fffffff 0  7fffffff 0
+80000000     1 > *ffffffff80000000          80000000 > *80000000 0  80000000 1
+ffffffff     1 > *ffffffffffffffff          ffffffff > *ffffffff 0  ffffffff 1
+00000000     1 >         100000000         100000000 >  00000000 1  00000000 1
+7fffffff     1 >         17fffffff         17fffffff >  7fffffff 1  7fffffff 1
+80000000     2 > *ffffffff80000000         180000000 > *80000000 1  80000000 2
+ffffffff     2 > *ffffffffffffffff         1ffffffff > *ffffffff 1  ffffffff 2
+00000000     2 >         200000000         200000000 >  00000000 2  00000000 2
+7fffffff     2 >         27fffffff         27fffffff >  7fffffff 2  7fffffff 2
+80000000     3 > *ffffffff80000000         280000000 > *80000000 2  80000000 3
+ffffffff     3 > *ffffffffffffffff         2ffffffff > *ffffffff 2  ffffffff 3
+00000000     3 >         300000000         300000000 >  00000000 3  00000000 3
+7fffffff     3 >         37fffffff         37fffffff >  7fffffff 3  7fffffff 3
 
-First of all thanks for all your work and sorry if this isn't related 
-with your package, but I think it has a good chance. I'll try explain 
-myself as short as possible.
+The values marked with asterisks are wrong.
 
-As introduced previously, we have a problem exporting with 
-nfs-kernel-server-1.2.8-6 (ubuntu based) a directory previously mounted 
-with gluster-3.7.4 via fuse mount.
+The problem is that with a 64-bit time, in ext4_decode_extra_time() the
+epoch value is just OR'd with the sign-extended time - which, if negative,
+has all of the upper 32 bits set anyway.  We need to add the epoch instead
+of OR'ing it.  In ext4_encode_extra_time(), the reverse operation needs to
+take place as the 32-bit part of the number of seconds needs to be
+subtracted from the 64-bit value before the epoch is shifted down.
 
-The problem is quite simple to reproduce and always repeatable: if a 
-file has read-only permissions for owner and user wants to copy it, 
-permissions problem arises:
-cdc@client:~$ rm -f kk.txt 444.txt; echo "prueba" > 444.txt; chmod 444 
-444.txt; cp -p 444.txt kk.txt; ls -ld 444.txt kk.txt
-cp: failed to close ‘kk.txt’: Permission denied
--r--r--r-- 1 cdc admincdc 7 nov  3  2015 444.txt
--r--r--r-- 1 cdc admincdc 0 nov  3  2015 kk.txt
-cdc@client:~$
+Since the epoch is presumably unsigned, this has the slightly strange
+effect of, for epochs > 0, putting the 0x80000000-0xffffffff range before
+the 0x00000000-0x7fffffff range.
 
-If the file permissions are not read-only, there is no problem:
-cdc@client:~$ rm -f kk.txt 644.txt; echo "prueba" > 644.txt; chmod 644 
-644.txt; cp -p 644.txt kk.txt; ls -ld 644.txt kk.txt
--rw-r--r-- 1 cdc admincdc 7 nov  3  2015 644.txt
--rw-r--r-- 1 cdc admincdc 7 nov  3  2015 kk.txt
-cdc@client:~$
+This affects all kernels from v2.6.23-rc1 onwards.
 
-If we track it down with strace, the problem arises exactly when fsync() 
-is called from cp.
+The test program:
 
-Of course, if we try this combination of commands in other directories 
-not mounted by nfs (local ones) or mounted with samba/cifs or even 
-mounted with nfs-ganesha (both fuse mounted with gluster), this doen't 
-happen. This problem doesn't happen either if the nfs-kernel-server 
-exports a directory not mounted with fuse (any local one).
+	#include <stdio.h>
 
-Please, tell me if this is the right place to post the probem and where 
-is it if this is not. Let me know if we can help you any way to solve or 
-test it (we've developed a small program in c that shows exactly the 
-same behaviour).
+	#define EXT4_FITS_IN_INODE(x, y, z) 1
+	#define EXT4_EPOCH_BITS 2
+	#define EXT4_EPOCH_MASK ((1 << EXT4_EPOCH_BITS) - 1)
+	#define EXT4_NSEC_MASK  (~0UL << EXT4_EPOCH_BITS)
 
-Thanks again.
+	#define le32_to_cpu(x) (x)
+	#define cpu_to_le32(x) (x)
+	typedef unsigned int __le32;
+	typedef unsigned int u32;
+	typedef signed int s32;
+	typedef unsigned long long __u64;
+	typedef signed long long s64;
 
-Omar
+	struct timespec {
+		long long	tv_sec;			/* seconds */
+		long		tv_nsec;		/* nanoseconds */
+	};
 
-PS: Pointer to this email address came from: 
-http://wiki.linux-nfs.org/wiki/index.php/Reporting_bugs
+	struct ext4_inode_info {
+		struct timespec i_crtime;
+	};
 
-ADDITIONAL INFO:
+	struct ext4_inode {
+		__le32  i_crtime;       /* File Creation time */
+		__le32  i_crtime_extra; /* extra FileCreationtime (nsec << 2 | epoch) */
+	};
 
-cdc@client:~$ uname -a
-Linux l056 3.13.0-63-generic #103-Ubuntu SMP Fri Aug 14 21:43:30 UTC 
-2015 i686 i686 i686 GNU/Linux
-cdc@client:~$
-cdc@client:~$ mount | grep home
-cuentas02:/home-3/cdc on /home/cdc type nfs 
-(rw,noatime,intr,fsc,nolock,rsize=262140,wsize=262140,addr=138.4.30.15)
-cdc@client:~$
+	/* Incorrect implementation */
+	static inline void ext4_decode_extra_time_bad(struct timespec *time, __le32 extra)
+	{
+	       if (sizeof(time->tv_sec) > 4)
+		       time->tv_sec |= (__u64)(le32_to_cpu(extra) & EXT4_EPOCH_MASK)
+				       << 32;
+	       time->tv_nsec = (le32_to_cpu(extra) & EXT4_NSEC_MASK) >> EXT4_EPOCH_BITS;
+	}
 
-root@server-lab:~# uname -a
-Linux cuentas02-lab.lab.dit.upm.es 3.13.0-63-generic #103-Ubuntu SMP Fri 
-Aug 14 21:42:59 UTC 2015 x86_64 x86_64 x86_64 GNU/Linux
-root@server-lab:~#
-root@server-lab:~# dpkg -l | grep nfs
-ii  libnfsidmap2:amd64 0.25-5                           amd64        NFS 
-idmapping library
-ii  nfs-common 1:1.2.8-6ubuntu1.1               amd64        NFS support 
-files common to client and server
-ii  nfs-kernel-server 1:1.2.8-6ubuntu1.1               amd64        
-support for NFS kernel server
-root@server-lab:~#
-root@server-lab:~# exportfs -v
-/home-3 
-138.4.30.0/23(rw,async,wdelay,insecure,no_root_squash,no_subtree_check,fsid=3,sec=sys,rw,no_root_squash,no_all_squash)
-root@server-lab:~#
+	static inline __le32 ext4_encode_extra_time_bad(struct timespec *time)
+	{
+	       return cpu_to_le32((sizeof(time->tv_sec) > 4 ?
+				   (time->tv_sec >> 32) & EXT4_EPOCH_MASK : 0) |
+				  ((time->tv_nsec << EXT4_EPOCH_BITS) & EXT4_NSEC_MASK));
+	}
 
-LOGS ON SERVER SIDE (glusterfs mount logs):
-[2015-11-20 10:51:53.872656] I [io-stats.c:1014:io_stats_dump_fd] 
-0-home-lab-3: --- fd stats ---
-[2015-11-20 10:51:53.872692] I [io-stats.c:1019:io_stats_dump_fd] 
-0-home-lab-3:       Filename : /cdc/444.txt
-[2015-11-20 10:51:53.872704] I [io-stats.c:1034:io_stats_dump_fd] 
-0-home-lab-3:   BytesWritten : 7 bytes
-[2015-11-20 10:51:53.872714] I [io-stats.c:1046:io_stats_dump_fd] 
-0-home-lab-3: Write 000004b+ : 1
-[2015-11-20 10:51:53.874917] W [MSGID: 114031] 
-[client-rpc-fops.c:1298:client3_3_removexattr_cbk] 
-0-home-lab-3-client-0: remote operation failed [Permission denied]
-[2015-11-20 10:51:53.874976] W [fuse-bridge.c:1230:fuse_err_cbk] 
-0-glusterfs-fuse: 63459954: REMOVEXATTR() /cdc/444.txt => -1 (Permission 
-denied)
-[2015-11-20 10:51:53.881389] W [MSGID: 114031] 
-[client-rpc-fops.c:1298:client3_3_removexattr_cbk] 
-0-home-lab-3-client-3: remote operation failed [Permission denied]
-[2015-11-20 10:51:53.881434] W [fuse-bridge.c:1230:fuse_err_cbk] 
-0-glusterfs-fuse: 63459961: REMOVEXATTR() /cdc/kk.txt => -1 (Permission 
-denied)
-[2015-11-20 10:51:53.883072] W [fuse-bridge.c:1230:fuse_err_cbk] 
-0-glusterfs-fuse: 63459964: REMOVEXATTR() /cdc/kk.txt => -1 (Permission 
-denied)
-[2015-11-20 10:51:53.883057] W [MSGID: 114031] 
-[client-rpc-fops.c:1298:client3_3_removexattr_cbk] 
-0-home-lab-3-client-3: remote operation failed [Permission denied]
-[2015-11-20 10:51:53.884003] E [MSGID: 114031] 
-[client-rpc-fops.c:466:client3_3_open_cbk] 0-home-lab-3-client-3: remote 
-operation failed. Path: /cdc/kk.txt 
-(3175e0cd-8308-45b8-a4b0-699f6f8cf37f) [Permission denied]
-[2015-11-20 10:51:53.884056] W [fuse-bridge.c:969:fuse_fd_cbk] 
-0-glusterfs-fuse: 63459965: OPEN() /cdc/kk.txt => -1 (Permission denied)
-[2015-11-20 10:51:53.885619] W [MSGID: 114031] 
-[client-rpc-fops.c:1298:client3_3_removexattr_cbk] 
-0-home-lab-3-client-3: remote operation failed [Permission denied]
-[2015-11-20 10:51:53.885664] W [fuse-bridge.c:1230:fuse_err_cbk] 
-0-glusterfs-fuse: 63459967: REMOVEXATTR() /cdc/kk.txt => -1 (Permission 
-denied)
-[2015-11-20 10:51:53.887908] W [fuse-bridge.c:1230:fuse_err_cbk] 
-0-glusterfs-fuse: 63459971: REMOVEXATTR() /cdc/kk.txt => -1 (Permission 
-denied)
-[2015-11-20 10:51:53.887891] W [MSGID: 114031] 
-[client-rpc-fops.c:1298:client3_3_removexattr_cbk] 
-0-home-lab-3-client-3: remote operation failed [Permission denied]
+	/* Fixed implementation */
+	static inline void ext4_decode_extra_time_good(struct timespec *time, __le32 _extra)
+	{
+		u32 extra = le32_to_cpu(_extra);
+		u32 epoch = extra & EXT4_EPOCH_MASK;
 
-(NOTE: We have more gluster brick logs but we don't know if are relevant)
+		time->tv_sec = (s32)time->tv_sec + ((s64)epoch  << 32);
+		time->tv_nsec = (extra & EXT4_NSEC_MASK) >> EXT4_EPOCH_BITS;
+	}
 
--- 
-----------------------------------------------------------------
-Centro de Cálculo         Depto. Ingeniería Sistemas Telemáticos
-E-mail: omar@dit.upm.es        Universidad Politécnica de Madrid
-Fax:(+34) 913367333                 E.T.S. Ing. Telecomunicación
-Tel:(+34) 915495700-Ext.3005                28040 Madrid (Spain)
-Tel:(+34) 915495762-Ext.3005
-Tel:(+34) 913367366-Ext.3005
-----------------------------------------------------------------
+	static inline __le32 ext4_encode_extra_time_good(struct timespec *time)
+	{
+		u32 extra;
+		s64 epoch = time->tv_sec - (s32)time->tv_sec;
+
+		extra = (epoch >> 32) & EXT4_EPOCH_MASK;
+		extra |= (time->tv_nsec << EXT4_EPOCH_BITS) & EXT4_NSEC_MASK;
+		return cpu_to_le32(extra);
+	}
+
+	#define EXT4_INODE_GET_XTIME_BAD(xtime, inode, raw_inode)		\
+	do {									       \
+		(inode)->xtime.tv_sec = (signed)le32_to_cpu((raw_inode)->xtime);       \
+		if (EXT4_FITS_IN_INODE(raw_inode, EXT4_I(inode), xtime ## _extra))     \
+			ext4_decode_extra_time_bad(&(inode)->xtime,		\
+						   raw_inode->xtime ## _extra);	\
+		else								       \
+			(inode)->xtime.tv_nsec = 0;				       \
+	} while (0)
+
+	#define EXT4_INODE_SET_XTIME_BAD(xtime, inode, raw_inode)		\
+	do {									       \
+		(raw_inode)->xtime = cpu_to_le32((inode)->xtime.tv_sec);	       \
+		if (EXT4_FITS_IN_INODE(raw_inode, EXT4_I(inode), xtime ## _extra))     \
+			(raw_inode)->xtime ## _extra =				       \
+				ext4_encode_extra_time_bad(&(inode)->xtime);	\
+	} while (0)
+
+	#define EXT4_INODE_GET_XTIME_GOOD(xtime, inode, raw_inode)		\
+	do {									       \
+		(inode)->xtime.tv_sec = (signed)le32_to_cpu((raw_inode)->xtime);       \
+		if (EXT4_FITS_IN_INODE(raw_inode, EXT4_I(inode), xtime ## _extra))     \
+			ext4_decode_extra_time_good(&(inode)->xtime,			       \
+					       raw_inode->xtime ## _extra);	\
+		else								       \
+			(inode)->xtime.tv_nsec = 0;				       \
+	} while (0)
+
+	#define EXT4_INODE_SET_XTIME_GOOD(xtime, inode, raw_inode)		\
+	do {									       \
+		(raw_inode)->xtime = cpu_to_le32((inode)->xtime.tv_sec);	       \
+		if (EXT4_FITS_IN_INODE(raw_inode, EXT4_I(inode), xtime ## _extra))     \
+			(raw_inode)->xtime ## _extra =				       \
+				ext4_encode_extra_time_good(&(inode)->xtime);	\
+	} while (0)
+
+	static const struct test {
+		unsigned crtime;
+		unsigned extra;
+		long long sec;
+		int nsec;
+	} tests[] = {
+		// crtime	extra		tv_sec			tv_nsec
+		0xffffffff,	0x00000000,	0xffffffffffffffff,	0,
+		0x80000000,	0x00000000,	0xffffffff80000000,	0,
+		0x00000000,	0x00000000,	0x0000000000000000,	0,
+		0x7fffffff,	0x00000000,	0x000000007fffffff,	0,
+		0x80000000,	0x00000001,	0x0000000080000000,	0,
+		0xffffffff,	0x00000001,	0x00000000ffffffff,	0,
+		0x00000000,	0x00000001,	0x0000000100000000,	0,
+		0x7fffffff,	0x00000001,	0x000000017fffffff,	0,
+		0x80000000,	0x00000002,	0x0000000180000000,	0,
+		0xffffffff,	0x00000002,	0x00000001ffffffff,	0,
+		0x00000000,	0x00000002,	0x0000000200000000,	0,
+		0x7fffffff,	0x00000002,	0x000000027fffffff,	0,
+		0x80000000,	0x00000003,	0x0000000280000000,	0,
+		0xffffffff,	0x00000003,	0x00000002ffffffff,	0,
+		0x00000000,	0x00000003,	0x0000000300000000,	0,
+		0x7fffffff,	0x00000003,	0x000000037fffffff,	0,
+	};
+
+	int main()
+	{
+		struct ext4_inode_info ii_bad, ii_good;
+		struct ext4_inode raw, *praw = &raw;
+		struct ext4_inode raw_bad, *praw_bad = &raw_bad;
+		struct ext4_inode raw_good, *praw_good = &raw_good;
+		const struct test *t;
+		int i, ret = 0;
+
+		printf("time     extra   bad decode        good decode         bad encode  good encode\n");
+		printf("======== =====   ================= =================   =========== ===========\n");
+		for (i = 0; i < sizeof(tests) / sizeof(t[0]); i++) {
+			t = &tests[i];
+			raw.i_crtime = t->crtime;
+			raw.i_crtime_extra = t->extra;
+			printf("%08x %5d > ", t->crtime, t->extra);
+
+			EXT4_INODE_GET_XTIME_BAD(i_crtime, &ii_bad, praw);
+			EXT4_INODE_GET_XTIME_GOOD(i_crtime, &ii_good, praw);
+			if (ii_bad.i_crtime.tv_sec != t->sec ||
+			    ii_bad.i_crtime.tv_nsec != t->nsec)
+				printf("*");
+			else
+				printf(" ");
+			printf("%16llx", ii_bad.i_crtime.tv_sec);
+			printf(" ");
+			if (ii_good.i_crtime.tv_sec != t->sec ||
+			    ii_good.i_crtime.tv_nsec != t->nsec) {
+				printf("*");
+				ret = 1;
+			} else {
+				printf(" ");
+			}
+			printf("%16llx", ii_good.i_crtime.tv_sec);
+
+			EXT4_INODE_SET_XTIME_BAD(i_crtime, &ii_good, praw_bad);
+			EXT4_INODE_SET_XTIME_GOOD(i_crtime, &ii_good, praw_good);
+
+			printf(" > ");
+			if (raw_bad.i_crtime != raw.i_crtime ||
+			    raw_bad.i_crtime_extra != raw.i_crtime_extra)
+				printf("*");
+			else
+				printf(" ");
+			printf("%08llx %d", raw_bad.i_crtime, raw_bad.i_crtime_extra);
+			printf(" ");
+
+			if (raw_good.i_crtime != raw.i_crtime ||
+			    raw_good.i_crtime_extra != raw.i_crtime_extra) {
+				printf("*");
+				ret = 1;
+			} else {
+				printf(" ");
+			}
+			printf("%08llx %d", raw_good.i_crtime, raw_good.i_crtime_extra);
+			printf("\n");
+		}
+
+		return ret;
+	}
+
+Signed-off-by: David Howells <dhowells@redhat.com>
+---
+
+ fs/ext4/ext4.h |   22 +++++++++++++---------
+ 1 file changed, 13 insertions(+), 9 deletions(-)
+
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index fd1f28be5296..31efcd78bf51 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -723,19 +723,23 @@ struct move_extent {
+ 	<= (EXT4_GOOD_OLD_INODE_SIZE +			\
+ 	    (einode)->i_extra_isize))			\
+ 
+-static inline __le32 ext4_encode_extra_time(struct timespec *time)
++static inline void ext4_decode_extra_time(struct timespec *time, __le32 _extra)
+ {
+-       return cpu_to_le32((sizeof(time->tv_sec) > 4 ?
+-			   (time->tv_sec >> 32) & EXT4_EPOCH_MASK : 0) |
+-                          ((time->tv_nsec << EXT4_EPOCH_BITS) & EXT4_NSEC_MASK));
++	u32 extra = le32_to_cpu(_extra);
++	u32 epoch = extra & EXT4_EPOCH_MASK;
++
++	time->tv_sec = (s32)time->tv_sec + ((s64)epoch  << 32);
++	time->tv_nsec = (extra & EXT4_NSEC_MASK) >> EXT4_EPOCH_BITS;
+ }
+ 
+-static inline void ext4_decode_extra_time(struct timespec *time, __le32 extra)
++static inline __le32 ext4_encode_extra_time(struct timespec *time)
+ {
+-       if (sizeof(time->tv_sec) > 4)
+-	       time->tv_sec |= (__u64)(le32_to_cpu(extra) & EXT4_EPOCH_MASK)
+-			       << 32;
+-       time->tv_nsec = (le32_to_cpu(extra) & EXT4_NSEC_MASK) >> EXT4_EPOCH_BITS;
++	u32 extra;
++	s64 epoch = time->tv_sec - (s32)time->tv_sec;
++
++	extra = (epoch >> 32) & EXT4_EPOCH_MASK;
++	extra |= (time->tv_nsec << EXT4_EPOCH_BITS) & EXT4_NSEC_MASK;
++	return cpu_to_le32(extra);
+ }
+ 
+ #define EXT4_INODE_SET_XTIME(xtime, inode, raw_inode)			       \
 
