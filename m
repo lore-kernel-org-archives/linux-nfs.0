@@ -1,184 +1,111 @@
-Return-Path: <chuck.lever@oracle.com>
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2104\))
-Subject: Re: [PATCH] nfs4: limit callback decoding to received bytes
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <alpine.OSX.2.19.9992.1511201107060.34561@planck.local>
-Date: Fri, 20 Nov 2015 12:24:44 -0500
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Jeff Layton <jlayton@poochiereds.net>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <8EA46F7A-4C0E-4FF6-96C8-1D84F99BDE7C@oracle.com>
-References: <80ed0167773dfee0807c79233555c7d0c1fae11a.1448031054.git.bcodding@redhat.com> <99FC53A8-5A33-4F03-AFEF-A18C5880B493@oracle.com> <alpine.OSX.2.19.9992.1511201107060.34561@planck.local>
-To: Benjamin Coddington <bcodding@redhat.com>
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:39283 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1759827AbbKTV1G (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 20 Nov 2015 16:27:06 -0500
+Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
+	by mx1.redhat.com (Postfix) with ESMTPS id 5CBF565667
+	for <linux-nfs@vger.kernel.org>; Fri, 20 Nov 2015 21:27:05 +0000 (UTC)
+From: Scott Mayhew <smayhew@redhat.com>
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [nfs-utils PATCH] statd: Update existing record if we receive SM_MON with new cookie
+Date: Fri, 20 Nov 2015 16:27:04 -0500
+Message-Id: <1448054824-36153-1-git-send-email-smayhew@redhat.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+This prevents rpc.statd's in-memory (and on-disk) monitor lists from
+winding up with  multiple records for the same peer with outdated
+cookie values.  This happens in some HA-NFS configurations where
+rpc.statd is always running.
 
-> On Nov 20, 2015, at 11:20 AM, Benjamin Coddington =
-<bcodding@redhat.com> wrote:
->=20
-> On Fri, 20 Nov 2015, Chuck Lever wrote:
->=20
->>=20
->>> On Nov 20, 2015, at 9:55 AM, Benjamin Coddington =
-<bcodding@redhat.com> wrote:
->>>=20
->>> A truncated cb_compound request will cause the client to decode null =
-or
->>> data from a previous callback for nfs4.1 backchannel case, or =
-uninitialized
->>> data for the nfs4.0 case. This is because the path through
->>> svc_process_common() advances the request's iov_base and decrements =
-iov_len
->>> without adjusting the overall xdr_buf's len field.  That causes
->>> xdr_init_decode() to set up the xdr_stream with an incorrect length =
-in
->>> nfs4_callback_compound().
->>>=20
->>> Fixing this for the nfs4.1 backchannel case first requires setting =
-the
->>> correct iov_len and page_len based on the length of received data in =
-the
->>> same manner as the nfs4.0 case.
->>>=20
->>> Then the request's xdr_buf length can be adjusted for both cases =
-based upon
->>> the remaining iov_len and page_len.
->>>=20
->>> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
->>> ---
->>> fs/nfs/callback_xdr.c         |    7 +++++--
->>> net/sunrpc/backchannel_rqst.c |    8 ++++++++
->>> net/sunrpc/svc.c              |    1 +
->>> 3 files changed, 14 insertions(+), 2 deletions(-)
->>>=20
->>> diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
->>> index 6b1697a..1c8213e 100644
->>> --- a/fs/nfs/callback_xdr.c
->>> +++ b/fs/nfs/callback_xdr.c
->>> @@ -76,7 +76,8 @@ static __be32 *read_buf(struct xdr_stream *xdr, =
-int nbytes)
->>>=20
->>> 	p =3D xdr_inline_decode(xdr, nbytes);
->>> 	if (unlikely(p =3D=3D NULL))
->>> -		printk(KERN_WARNING "NFS: NFSv4 callback reply buffer =
-overflowed!\n");
->>> +		printk(KERN_WARNING "NFS: NFSv4 callback reply buffer =
-overflowed "
->>> +							"or truncated =
-request.\n");
->>> 	return p;
->>> }
->>>=20
->>> @@ -892,6 +893,7 @@ static __be32 nfs4_callback_compound(struct =
-svc_rqst *rqstp, void *argp, void *r
->>> 	struct cb_compound_hdr_arg hdr_arg =3D { 0 };
->>> 	struct cb_compound_hdr_res hdr_res =3D { NULL };
->>> 	struct xdr_stream xdr_in, xdr_out;
->>> +	struct xdr_buf *rq_arg =3D &rqstp->rq_arg;
->>> 	__be32 *p, status;
->>> 	struct cb_process_state cps =3D {
->>> 		.drc_status =3D 0,
->>> @@ -903,7 +905,8 @@ static __be32 nfs4_callback_compound(struct =
-svc_rqst *rqstp, void *argp, void *r
->>>=20
->>> 	dprintk("%s: start\n", __func__);
->>>=20
->>> -	xdr_init_decode(&xdr_in, &rqstp->rq_arg, =
-rqstp->rq_arg.head[0].iov_base);
->>> +	rq_arg->len =3D rq_arg->head[0].iov_len + rq_arg->page_len;
->>> +	xdr_init_decode(&xdr_in, rq_arg, rq_arg->head[0].iov_base);
->>>=20
->>> 	p =3D (__be32*)((char *)rqstp->rq_res.head[0].iov_base + =
-rqstp->rq_res.head[0].iov_len);
->>> 	xdr_init_encode(&xdr_out, &rqstp->rq_res, p);
->>> diff --git a/net/sunrpc/backchannel_rqst.c =
-b/net/sunrpc/backchannel_rqst.c
->>> index 6255d14..d92cee1 100644
->>> --- a/net/sunrpc/backchannel_rqst.c
->>> +++ b/net/sunrpc/backchannel_rqst.c
->>> @@ -333,12 +333,20 @@ void xprt_complete_bc_request(struct rpc_rqst =
-*req, uint32_t copied)
->>> {
->>> 	struct rpc_xprt *xprt =3D req->rq_xprt;
->>> 	struct svc_serv *bc_serv =3D xprt->bc_serv;
->>> +	struct xdr_buf *rq_rcv_buf =3D &req->rq_rcv_buf;
->>>=20
->>> 	spin_lock(&xprt->bc_pa_lock);
->>> 	list_del(&req->rq_bc_pa_list);
->>> 	xprt_dec_alloc_count(xprt, 1);
->>> 	spin_unlock(&xprt->bc_pa_lock);
->>>=20
->>> +	if (copied <=3D rq_rcv_buf->head[0].iov_len) {
->>> +		rq_rcv_buf->head[0].iov_len =3D copied;
->>> +		rq_rcv_buf->page_len =3D 0;
->>> +	} else {
->>> +		rq_rcv_buf->page_len =3D copied - =
-rq_rcv_buf->head[0].iov_len;
->>> +	}
->>> +
->>=20
->> Are similar changes needed in rpcrdma_bc_receive_call ?
->=20
-> Good question..  I was working on 4.3+ which was missing the rdma =
-stuff, so
-> I overlooked this.
->=20
-> net/sunrpc/xprtrdma/backchannel.c:
-> 324     size =3D rep->rr_len - RPCRDMA_HDRLEN_MIN;
-> ...
-> 347     memset(buf, 0, sizeof(*buf));
-> 348     buf->head[0].iov_base =3D p;
-> 349     buf->head[0].iov_len =3D size;
->=20
-> ^^ that looks like it is going to set the iov_len to the size of the =
-XDR
-> portion of the data, sans transport headers.. which means that it =
-shouldn't
-> need the fixup just above.
->=20
-> In the case requiring the fixup iov_len was always set to 4096, and
-> decremented from there no matter the size of the request.
+Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+---
+ utils/statd/monitor.c | 40 +++++++++++++++++++++++++++-------------
+ 1 file changed, 27 insertions(+), 13 deletions(-)
 
-Thanks for checking!
+diff --git a/utils/statd/monitor.c b/utils/statd/monitor.c
+index 286a5e2..368bd80 100644
+--- a/utils/statd/monitor.c
++++ b/utils/statd/monitor.c
+@@ -72,6 +72,7 @@ sm_mon_1_svc(struct mon *argp, struct svc_req *rqstp)
+ 		.sin_addr.s_addr	= htonl(INADDR_LOOPBACK),
+ 	};
+ 	char *dnsname = NULL;
++	int existing = 0;
+ 
+ 	xlog(D_CALL, "Received SM_MON for %s from %s", mon_name, my_name);
+ 
+@@ -148,17 +149,26 @@ sm_mon_1_svc(struct mon *argp, struct svc_req *rqstp)
+ 		if (statd_matchhostname(NL_MY_NAME(clnt), my_name) &&
+ 		    NL_MY_PROC(clnt) == id->my_proc &&
+ 		    NL_MY_PROG(clnt) == id->my_prog &&
+-		    NL_MY_VERS(clnt) == id->my_vers &&
+-		    memcmp(NL_PRIV(clnt), argp->priv, SM_PRIV_SIZE) == 0) {
+-			/* Hey!  We already know you guys! */
+-			xlog(D_GENERAL,
+-				"Duplicate SM_MON request for %s "
+-				"from procedure on %s",
+-				mon_name, my_name);
++		    NL_MY_VERS(clnt) == id->my_vers) {
++			if (memcmp(NL_PRIV(clnt), argp->priv, SM_PRIV_SIZE)) {
++				xlog(D_GENERAL,
++					"Received SM_MON request with new "
++					"cookie for %s from procedure on %s",
++					mon_name, my_name);
++
++				existing = 1; 
++				break;
++			} else {
++				/* Hey!  We already know you guys! */
++				xlog(D_GENERAL,
++					"Duplicate SM_MON request for %s "
++					"from procedure on %s",
++					mon_name, my_name);
+ 
+-			/* But we'll let you pass anyway. */
+-			free(dnsname);
+-			goto success;
++				/* But we'll let you pass anyway. */
++				free(dnsname);
++				goto success;
++			}
+ 		}
+ 		clnt = NL_NEXT(clnt);
+ 	}
+@@ -167,7 +177,7 @@ sm_mon_1_svc(struct mon *argp, struct svc_req *rqstp)
+ 	 * We're committed...ignoring errors.  Let's hope that a malloc()
+ 	 * doesn't fail.  (I should probably fix this assumption.)
+ 	 */
+-	if (!(clnt = nlist_new(my_name, mon_name, 0))) {
++	if (!existing && !(clnt = nlist_new(my_name, mon_name, 0))) {
+ 		free(dnsname);
+ 		xlog_warn("out of memory");
+ 		goto failure;
+@@ -180,8 +190,11 @@ sm_mon_1_svc(struct mon *argp, struct svc_req *rqstp)
+ 	clnt->dns_name = dnsname;
+ 
+ 	/*
+-	 * Now, Create file on stable storage for host.
++	 * Now, Create file on stable storage for host, first deleting any
++	 * existing records on file.
+ 	 */
++	nsm_delete_monitored_host(dnsname, mon_name, my_name);
++
+ 	if (!nsm_insert_monitored_host(dnsname,
+ 				(struct sockaddr *)(char *)&my_addr, argp)) {
+ 		nlist_free(NULL, clnt);
+@@ -190,7 +203,8 @@ sm_mon_1_svc(struct mon *argp, struct svc_req *rqstp)
+ 
+ 	/* PRC: do the HA callout: */
+ 	ha_callout("add-client", mon_name, my_name, -1);
+-	nlist_insert(&rtnl, clnt);
++	if (!existing)
++		nlist_insert(&rtnl, clnt);
+ 	xlog(D_GENERAL, "MONITORING %s for %s", mon_name, my_name);
+  success:
+ 	result.res_stat = STAT_SUCC;
+-- 
+2.4.3
 
-
-> Ben
->=20
->>> 	req->rq_private_buf.len =3D copied;
->>> 	set_bit(RPC_BC_PA_IN_USE, &req->rq_bc_pa_state);
->>>=20
->>> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
->>> index a8f579d..af9f987 100644
->>> --- a/net/sunrpc/svc.c
->>> +++ b/net/sunrpc/svc.c
->>> @@ -1363,6 +1363,7 @@ bc_svc_process(struct svc_serv *serv, struct =
-rpc_rqst *req,
->>> 	memcpy(&rqstp->rq_addr, &req->rq_xprt->addr, rqstp->rq_addrlen);
->>> 	memcpy(&rqstp->rq_arg, &req->rq_rcv_buf, sizeof(rqstp->rq_arg));
->>> 	memcpy(&rqstp->rq_res, &req->rq_snd_buf, sizeof(rqstp->rq_res));
->>> +	rqstp->rq_arg.len =3D req->rq_private_buf.len;
->>>=20
->>> 	/* reset result send buffer "put" position */
->>> 	resv->iov_len =3D 0;
->>> --
->>> 1.7.1
->>>=20
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
-in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>=20
->> --
->> Chuck Lever
->>=20
->>=20
->>=20
->>=20
->>=20
-
---
-Chuck Lever
