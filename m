@@ -1,175 +1,137 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:35428 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:59155 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751327AbbKTOy3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 20 Nov 2015 09:54:29 -0500
-Subject: [RFC][PATCH 00/12] Enhanced file stat system call
-From: David Howells <dhowells@redhat.com>
-To: arnd@arndb.de
-Cc: linux-afs@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
-        linux-kernel@vger.kernel.org, dhowells@redhat.com,
-        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-Date: Fri, 20 Nov 2015 14:54:22 +0000
-Message-ID: <20151120145422.18930.72662.stgit@warthog.procyon.org.uk>
+	id S1162909AbbKTPOq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 20 Nov 2015 10:14:46 -0500
+Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+	by mx1.redhat.com (Postfix) with ESMTPS id CC6A88F4E4
+	for <linux-nfs@vger.kernel.org>; Fri, 20 Nov 2015 15:14:46 +0000 (UTC)
+Received: from smallhat.boston.devel.redhat.com (vpn-58-101.rdu2.redhat.com [10.10.58.101])
+	by int-mx09.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id tAKFEjLH019255
+	for <linux-nfs@vger.kernel.org>; Fri, 20 Nov 2015 10:14:46 -0500
+Subject: Re: [PATCH] svc_create.c: Make sure errors are logged
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+References: <1447865496-3239-1-git-send-email-steved@redhat.com>
+From: Steve Dickson <SteveD@redhat.com>
+Message-ID: <564F38E5.1080305@RedHat.com>
+Date: Fri, 20 Nov 2015 10:14:45 -0500
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+In-Reply-To: <1447865496-3239-1-git-send-email-steved@redhat.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-Implement new system calls to provide enhanced file stats and enhanced
-filesystem stats.  The patches can be found here:
 
-	http://git.kernel.org/cgit/linux/kernel/git/dhowells/linux-fs.git/log/?h=xstat
+On 11/18/2015 11:51 AM, Steve Dickson wrote:
+> To help debug rpcbind failures, make sure all
+> errors are logged and log as much info about
+> the error as possible.
+> 
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+> ---
+>  support/nfs/svc_create.c | 12 +++++++-----
+>  support/nfs/svc_socket.c | 11 ++++++-----
+>  2 files changed, 13 insertions(+), 10 deletions(-)
+Committed... 
 
-
-===========
-DESCRIPTION
-===========
-
-The third patch provides this new system call:
-
-	long ret = statx(int dfd,
-			 const char *filename,
-			 unsigned atflag,
-			 unsigned mask,
-			 struct statx *buffer);
-
-This is an enhanced file stat function that provides a number of useful
-features, in summary:
-
- (1) More information: creation time, data version number,
-     flags/attributes.  A subset of these is available through a number of
-     filesystems (such as CIFS, NFS, AFS, Ext4 and BTRFS).
-
- (2) Lightweight stat (AT_NO_ATTR_SYNC): Ask for just those details of
-     interest, and allow a network fs to approximate anything not of
-     interest, without going to the server.
-
- (3) Heavyweight stat (AT_FORCE_ATTR_SYNC): Force a network fs to flush
-     buffers and go to the server, even if it thinks its cached attributes
-     are up to date.
-
- (4) Allow the filesystem to indicate what it can/cannot provide: A
-     filesystem can now say it doesn't support a standard stat feature if
-     that isn't available.
-
- (5) Make the fields a consistent size on all arches, and make them large.
-
- (6) Can be extended by using more request flags and using up the padding
-     space in the statx struct.
-
-Note that no lstat() equivalent is required as that can be implemented
-through statx() with atflag == 0.  There is also no fstat() equivalent as
-that can be implemented through statx() with filename == NULL and the
-relevant fd passed as dfd.
-
-
-The seventh patch provides another new system call:
-
-	long ret = fsinfo(int dfd,
-			  const char *filename,
-			  unsigned atflag,
-			  unsigned request,
-			  void *buffer);
-
-This is an enhanced filesystem stat and information retrieval function that
-provides more information, in summary:
-
- (1) All the information provided by statfs() and more.  The fields are
-     made large.
-
- (2) Provides information about timestamp range and resolution to
-     complement statx().
-
- (3) Provides information about IOC flags supported in statx()'s return.
-
- (4) Provides volume binary IDs and UUIDs.
-
- (5) Provides the filesystem name according to the kernel as a string
-     (eg. "ext4" or "nfs3") in addition to the magic number.
-
- (6) Provides information obtained from network filesystems, such as volume
-     and domain names.
-
- (7) Has lots of spare space that can be used for future extenstions and a
-     bit mask indicating what was provided.
-
-Note that I've added a 'request' identifier.  This is to select the set of
-data to be returned.  The idea is that 'buffer' points to a fixed-size
-struct selected by request.  Currently only 0 is available and this refers
-to 'struct fsinfo'.  However, I could split up the buffer into say 3:
-
- (0) statfs-type information
-
- (1) Timestamp and IOC flags info.
-
- (2) Network fs strings.
-
-However, some of this might be better retrieved through getxattr().
-
-
-=======
-TESTING
-=======
-
-Test programs are added into samples/statx/ by the appropriate patches.
-
-David
----
-David Howells (12):
-      Ext4: Fix extended timestamp encoding and decoding
-      statx: Provide IOC flags for Windows fs attributes
-      statx: Add a system call to make enhanced file info available
-      statx: AFS: Return enhanced file attributes
-      statx: Ext4: Return enhanced file attributes
-      statx: NFS: Return enhanced file attributes
-      statx: CIFS: Return enhanced attributes
-      fsinfo: Add a system call to make enhanced filesystem info available
-      fsinfo: Ext4: Return information through the filesystem info syscall
-      fsinfo: AFS: Return information through the filesystem info syscall
-      fsinfo: NFS: Return information through the filesystem info syscall
-      fsinfo: CIFS: Return information through the filesystem info syscall
-
-
- arch/x86/entry/syscalls/syscall_32.tbl |    2 
- arch/x86/entry/syscalls/syscall_64.tbl |    2 
- fs/afs/inode.c                         |   23 ++
- fs/afs/super.c                         |   39 ++++
- fs/cifs/cifsfs.c                       |   25 +++
- fs/cifs/cifsfs.h                       |    4 
- fs/cifs/cifsglob.h                     |    8 +
- fs/cifs/dir.c                          |    2 
- fs/cifs/inode.c                        |  124 ++++++++++---
- fs/cifs/netmisc.c                      |    4 
- fs/exportfs/expfs.c                    |    4 
- fs/ext4/ext4.h                         |   24 ++-
- fs/ext4/file.c                         |    2 
- fs/ext4/inode.c                        |   31 +++
- fs/ext4/namei.c                        |    2 
- fs/ext4/super.c                        |   39 ++++
- fs/ext4/symlink.c                      |    2 
- fs/nfs/inode.c                         |   45 ++++-
- fs/nfs/internal.h                      |    1 
- fs/nfs/nfs4super.c                     |    1 
- fs/nfs/super.c                         |   58 ++++++
- fs/ntfs/time.h                         |    2 
- fs/stat.c                              |  305 +++++++++++++++++++++++++++++---
- fs/statfs.c                            |  218 +++++++++++++++++++++++
- include/linux/fs.h                     |    7 +
- include/linux/stat.h                   |   14 +
- include/linux/syscalls.h               |    6 +
- include/linux/time64.h                 |    2 
- include/uapi/linux/fcntl.h             |    2 
- include/uapi/linux/fs.h                |    7 +
- include/uapi/linux/stat.h              |  185 +++++++++++++++++++
- samples/Makefile                       |    3 
- samples/statx/Makefile                 |   13 +
- samples/statx/test-fsinfo.c            |  179 +++++++++++++++++++
- samples/statx/test-statx.c             |  273 +++++++++++++++++++++++++++++
- 35 files changed, 1558 insertions(+), 100 deletions(-)
- create mode 100644 samples/statx/Makefile
- create mode 100644 samples/statx/test-fsinfo.c
- create mode 100644 samples/statx/test-statx.c
-
+steved
+> 
+> diff --git a/support/nfs/svc_create.c b/support/nfs/svc_create.c
+> index 5cb5ff6..ef7ff05 100644
+> --- a/support/nfs/svc_create.c
+> +++ b/support/nfs/svc_create.c
+> @@ -133,7 +133,7 @@ svc_create_bindaddr(struct netconfig *nconf, const uint16_t port)
+>  		hint.ai_family = AF_INET6;
+>  #endif	/* IPV6_SUPPORTED */
+>  	else {
+> -		xlog(D_GENERAL, "Unrecognized bind address family: %s",
+> +		xlog(L_ERROR, "Unrecognized bind address family: %s",
+>  			nconf->nc_protofmly);
+>  		return NULL;
+>  	}
+> @@ -143,7 +143,7 @@ svc_create_bindaddr(struct netconfig *nconf, const uint16_t port)
+>  	else if (strcmp(nconf->nc_proto, NC_TCP) == 0)
+>  		hint.ai_protocol = (int)IPPROTO_TCP;
+>  	else {
+> -		xlog(D_GENERAL, "Unrecognized bind address protocol: %s",
+> +		xlog(L_ERROR, "Unrecognized bind address protocol: %s",
+>  			nconf->nc_proto);
+>  		return NULL;
+>  	}
+> @@ -275,7 +275,7 @@ svc_create_nconf_rand_port(const char *name, const rpcprog_t program,
+>  	xprt = svc_tli_create(RPC_ANYFD, nconf, &bindaddr, 0, 0);
+>  	freeaddrinfo(ai);
+>  	if (xprt == NULL) {
+> -		xlog(D_GENERAL, "Failed to create listener xprt "
+> +		xlog(L_ERROR, "Failed to create listener xprt "
+>  			"(%s, %u, %s)", name, version, nconf->nc_netid);
+>  		return 0;
+>  	}
+> @@ -286,10 +286,12 @@ svc_create_nconf_rand_port(const char *name, const rpcprog_t program,
+>  		return 0;
+>  	}
+>  
+> +	rpc_createerr.cf_stat = rpc_createerr.cf_error.re_errno = 0;
+>  	if (!svc_reg(xprt, program, version, dispatch, nconf)) {
+>  		/* svc_reg(3) destroys @xprt in this case */
+> -		xlog(D_GENERAL, "Failed to register (%s, %u, %s)",
+> -				name, version, nconf->nc_netid);
+> +		xlog(L_ERROR, "Failed to register (%s, %u, %s): %s",
+> +				name, version, nconf->nc_netid, 
+> +				clnt_spcreateerror("svc_reg() err"));
+>  		return 0;
+>  	}
+>  
+> diff --git a/support/nfs/svc_socket.c b/support/nfs/svc_socket.c
+> index 99321e7..1fa0d15 100644
+> --- a/support/nfs/svc_socket.c
+> +++ b/support/nfs/svc_socket.c
+> @@ -24,6 +24,7 @@
+>  #include <sys/socket.h>
+>  #include <sys/fcntl.h>
+>  #include <errno.h>
+> +#include "xlog.h"
+>  
+>  #include "config.h"
+>  
+> @@ -99,9 +100,9 @@ svcsock_nonblock(int sock)
+>  	 * connection.
+>  	 */
+>  	if ((flags = fcntl(sock, F_GETFL)) < 0)
+> -		perror(_("svc_socket: can't get socket flags"));
+> +		xlog(L_ERROR, "svc_socket: can't get socket flags: %m");
+>  	else if (fcntl(sock, F_SETFL, flags|O_NONBLOCK) < 0)
+> -		perror(_("svc_socket: can't set socket flags"));
+> +		xlog(L_ERROR, "svc_socket: can't set socket flags: %m");
+>  	else
+>  		return sock;
+>  
+> @@ -119,7 +120,7 @@ svc_socket (u_long number, int type, int protocol, int reuse)
+>  
+>    if ((sock = __socket (AF_INET, type, protocol)) < 0)
+>      {
+> -      perror (_("svc_socket: socket creation problem"));
+> +      xlog(L_ERROR, "svc_socket: socket creation problem: %m");
+>        return sock;
+>      }
+>  
+> @@ -130,7 +131,7 @@ svc_socket (u_long number, int type, int protocol, int reuse)
+>  			sizeof (ret));
+>        if (ret < 0)
+>  	{
+> -	  perror (_("svc_socket: socket reuse problem"));
+> +	  xlog(L_ERROR, "svc_socket: socket reuse problem: %m");
+>  	  return ret;
+>  	}
+>      }
+> @@ -141,7 +142,7 @@ svc_socket (u_long number, int type, int protocol, int reuse)
+>  
+>    if (bind(sock, (struct sockaddr *) &addr, len) < 0)
+>      {
+> -      perror (_("svc_socket: bind problem"));
+> +      xlog(L_ERROR, "svc_socket: bind problem: %m");
+>        (void) __close(sock);
+>        sock = -1;
+>      }
+> 
