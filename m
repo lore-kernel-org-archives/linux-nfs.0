@@ -1,9 +1,9 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:56466 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:40929 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1162997AbbKTO45 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 20 Nov 2015 09:56:57 -0500
-Subject: [PATCH 12/12] fsinfo: CIFS: Return information through the
+	id S1162997AbbKTO4q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 20 Nov 2015 09:56:46 -0500
+Subject: [PATCH 11/12] fsinfo: NFS: Return information through the
  filesystem info syscall
 From: David Howells <dhowells@redhat.com>
 To: arnd@arndb.de
@@ -11,8 +11,8 @@ Cc: linux-afs@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
         linux-kernel@vger.kernel.org, dhowells@redhat.com,
         linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-Date: Fri, 20 Nov 2015 14:56:51 +0000
-Message-ID: <20151120145651.18930.93196.stgit@warthog.procyon.org.uk>
+Date: Fri, 20 Nov 2015 14:56:39 +0000
+Message-ID: <20151120145639.18930.13368.stgit@warthog.procyon.org.uk>
 In-Reply-To: <20151120145422.18930.72662.stgit@warthog.procyon.org.uk>
 References: <20151120145422.18930.72662.stgit@warthog.procyon.org.uk>
 MIME-Version: 1.0
@@ -20,112 +20,153 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Return CIFS filesystem information through the filesystem info retrieval
+Return NFS filesystem information through the filesystem info retrieval
 system call.  This includes the following:
 
  (1) information about the capacity and resolution of the inode timestamps;
 
- (2) information about the supported IOC flags;
+ (2) the client hostname as the domain name, setting FSINFO_DOMAIN_NAME;
+
+ (3) the remote FSID as the volume ID, setting FSINFO_VOLUME_ID;
 
 and unless AT_NO_ATTR_SYNC is specified:
 
- (3) the statfs information retrieved from the server.
+ (4) the statfs information retrieved from the server.
 
-We could also return the server and/or domain name.
+Note that the NFS FSID value is *not* returned as the local FSID since the
+FSID value is a local handle used by NFSD; see the volume ID field instead.
 
-[NOTE: THIS PATCH IS UNTESTED!]
+Example output:
+
+	[root@andromeda ~]# ./test-fsinfo /warthog/
+	fsinfo(/warthog/) = 0
+	mask  : 12f
+	dev   : 00:27
+	fs    : type=6969 name=nfs4
+	ioc   : 0
+	nameln: 255
+	flags : 1020
+	times : range=8000000000000000-7fffffffffffffff
+	atime : gran=1e-09s
+	btime : gran=1e-09s
+	ctime : gran=1e-09s
+	mtime : gran=1e-09s
+	blocks: n=503841 fr=48261 av=22645
+	files : n=32776192 fr=18903243 av=18903243
+	bsize : 1048576
+	frsize: 0
+	volid : 8c494c34 de5688ac 2e61e05d 5f144b8e
+	domain: 'warthog'
+
+Note that NFS4 potentially provides a separate value for f_favail that could
+be provided through this interface.
 
 Signed-off-by: David Howells <dhowells@redhat.com>
 ---
 
- fs/cifs/cifsfs.c       |   25 +++++++++++++++++++++++++
- fs/cifs/netmisc.c      |    4 ----
- fs/ntfs/time.h         |    2 --
- include/linux/time64.h |    2 ++
- 4 files changed, 27 insertions(+), 6 deletions(-)
+ fs/nfs/internal.h  |    1 +
+ fs/nfs/nfs4super.c |    1 +
+ fs/nfs/super.c     |   58 ++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 60 insertions(+)
 
-diff --git a/fs/cifs/cifsfs.c b/fs/cifs/cifsfs.c
-index e739950ca084..213831972164 100644
---- a/fs/cifs/cifsfs.c
-+++ b/fs/cifs/cifsfs.c
-@@ -207,6 +207,30 @@ cifs_statfs(struct dentry *dentry, struct kstatfs *buf)
- 	return 0;
- }
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 56cfde26fb9c..6c7bb9c9e5c6 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -442,6 +442,7 @@ extern void nfs_pageio_reset_read_mds(struct nfs_pageio_descriptor *pgio);
+ void nfs_clone_super(struct super_block *, struct nfs_mount_info *);
+ void nfs_umount_begin(struct super_block *);
+ int  nfs_statfs(struct dentry *, struct kstatfs *);
++int  nfs_get_fsinfo(struct dentry *, struct fsinfo *, unsigned);
+ int  nfs_show_options(struct seq_file *, struct dentry *);
+ int  nfs_show_devname(struct seq_file *, struct dentry *);
+ int  nfs_show_path(struct seq_file *, struct dentry *);
+diff --git a/fs/nfs/nfs4super.c b/fs/nfs/nfs4super.c
+index 6fb7cb6b3f4b..1c15c5884ac4 100644
+--- a/fs/nfs/nfs4super.c
++++ b/fs/nfs/nfs4super.c
+@@ -54,6 +54,7 @@ static const struct super_operations nfs4_sops = {
+ 	.write_inode	= nfs4_write_inode,
+ 	.drop_inode	= nfs_drop_inode,
+ 	.statfs		= nfs_statfs,
++	.get_fsinfo	= nfs_get_fsinfo,
+ 	.evict_inode	= nfs4_evict_inode,
+ 	.umount_begin	= nfs_umount_begin,
+ 	.show_options	= nfs_show_options,
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 383a027de452..bbd33b121b48 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -311,6 +311,7 @@ const struct super_operations nfs_sops = {
+ 	.write_inode	= nfs_write_inode,
+ 	.drop_inode	= nfs_drop_inode,
+ 	.statfs		= nfs_statfs,
++	.get_fsinfo	= nfs_get_fsinfo,
+ 	.evict_inode	= nfs_evict_inode,
+ 	.umount_begin	= nfs_umount_begin,
+ 	.show_options	= nfs_show_options,
+@@ -494,6 +495,63 @@ int nfs_statfs(struct dentry *dentry, struct kstatfs *buf)
+ EXPORT_SYMBOL_GPL(nfs_statfs);
  
-+/*
+ /*
 + * Read filesystem information.
 + */
-+static int cifs_get_fsinfo(struct dentry *dentry, struct fsinfo *f,
-+			   unsigned flags)
++int nfs_get_fsinfo(struct dentry *dentry, struct fsinfo *f, unsigned flags)
 +{
-+	f->f_namelen = PATH_MAX;
++	struct nfs_server *server = NFS_SB(dentry->d_sb);
++	struct nfs_client *client = server->nfs_client;
++	int ret;
 +
-+	/* Times are signed 64-bit values with a granularity of 100ns
-+	 * with a zero point of 1st Jan 1601.
++	f->f_bsize	= dentry->d_sb->s_blocksize;
++	f->f_namelen	= server->namelen;
++
++	if (client->rpc_ops->version < 4) {
++		f->f_min_time = 0;
++		f->f_max_time = U32_MAX;
++	} else {
++		f->f_min_time = S64_MIN;
++		f->f_max_time = S64_MAX;
++	}
++
++	f->f_atime_gran_exponent = -6;
++	f->f_ctime_gran_exponent = -6;
++	f->f_mtime_gran_exponent = -6;
++	if (client->rpc_ops->version >= 3) {
++		f->f_atime_gran_exponent = -9;
++		f->f_ctime_gran_exponent = -9;
++		f->f_mtime_gran_exponent = -9;
++	}
++
++	if (client->cl_hostname) {
++		strncpy(f->f_domain_name, client->cl_hostname,
++			sizeof(f->f_domain_name));
++		f->f_domain_name[sizeof(f->f_domain_name) - 1] = 0;
++		f->f_mask |= FSINFO_DOMAIN_NAME;
++	}
++
++	/* Treat the remote FSID as the volume ID since we don't support
++	 * reexportation through NFSD.
 +	 */
-+	f->f_min_time = S64_MIN / 10000000 - NTFS_TIME_OFFSET;
-+	f->f_max_time = S64_MAX / 10000000 - NTFS_TIME_OFFSET;
-+	f->f_atime_gran_exponent = -7;
-+	f->f_btime_gran_exponent = -7;
-+	f->f_ctime_gran_exponent = -7;
-+	f->f_mtime_gran_exponent = -7;
++	memcpy(f->f_volume_id, &server->fsid,
++	       min(sizeof(f->f_volume_id), sizeof(server->fsid)));
++	f->f_mask |= FSINFO_VOLUME_ID;
++	
++	if (flags & AT_NO_ATTR_SYNC)
++		return 0;
 +
-+	f->f_supported_ioc_flags =
-+		FS_IMMUTABLE_FL | FS_COMPR_FL | FS_HIDDEN_FL |
-+		FS_SYSTEM_FL | FS_ARCHIVE_FL;
++	ret = vfs_get_fsinfo_from_statfs(dentry, f, flags);
++	if (ret < 0)
++		return ret;
++
++	/* Don't pass the FSID to userspace since this isn't exportable */
++	memset(&f->f_fsid, 0, sizeof(f->f_fsid));
++	f->f_mask &= ~FSINFO_FSID;
 +	return 0;
 +}
++EXPORT_SYMBOL_GPL(nfs_get_fsinfo);
 +
- static long cifs_fallocate(struct file *file, int mode, loff_t off, loff_t len)
- {
- 	struct cifs_sb_info *cifs_sb = CIFS_FILE_SB(file);
-@@ -571,6 +595,7 @@ static int cifs_drop_inode(struct inode *inode)
- 
- static const struct super_operations cifs_super_ops = {
- 	.statfs = cifs_statfs,
-+	.get_fsinfo	= cifs_get_fsinfo,
- 	.alloc_inode = cifs_alloc_inode,
- 	.destroy_inode = cifs_destroy_inode,
- 	.drop_inode	= cifs_drop_inode,
-diff --git a/fs/cifs/netmisc.c b/fs/cifs/netmisc.c
-index abae6dd2c6b9..74fdbd8d824d 100644
---- a/fs/cifs/netmisc.c
-+++ b/fs/cifs/netmisc.c
-@@ -910,10 +910,6 @@ smbCalcSize(void *buf)
- 		2 /* size of the bcc field */ + get_bcc(ptr));
- }
- 
--/* The following are taken from fs/ntfs/util.c */
--
--#define NTFS_TIME_OFFSET ((u64)(369*365 + 89) * 24 * 3600 * 10000000)
--
- /*
-  * Convert the NT UTC (based 1601-01-01, in hundred nanosecond units)
-  * into Unix UTC (based 1970-01-01, in seconds).
-diff --git a/fs/ntfs/time.h b/fs/ntfs/time.h
-index 01233989d5d1..7b546d0615ca 100644
---- a/fs/ntfs/time.h
-+++ b/fs/ntfs/time.h
-@@ -27,8 +27,6 @@
- 
- #include "endian.h"
- 
--#define NTFS_TIME_OFFSET ((s64)(369 * 365 + 89) * 24 * 3600 * 10000000)
--
- /**
-  * utc2ntfs - convert Linux UTC time to NTFS time
-  * @ts:		Linux UTC time to convert to NTFS time
-diff --git a/include/linux/time64.h b/include/linux/time64.h
-index 367d5af899e8..a12f6384febf 100644
---- a/include/linux/time64.h
-+++ b/include/linux/time64.h
-@@ -6,6 +6,8 @@
- 
- typedef __s64 time64_t;
- 
-+#define NTFS_TIME_OFFSET ((u64)(369*365 + 89) * 24 * 3600 * 10000000)
-+
- /*
-  * This wants to go into uapi/linux/time.h once we agreed about the
-  * userspace interfaces.
++/*
+  * Map the security flavour number to a name
+  */
+ static const char *nfs_pseudoflavour_to_name(rpc_authflavor_t flavour)
 
