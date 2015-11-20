@@ -1,139 +1,157 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qg0-f52.google.com ([209.85.192.52]:34455 "EHLO
-	mail-qg0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753981AbbKTA2y (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Nov 2015 19:28:54 -0500
-Received: by qgeb1 with SMTP id b1so63361690qge.1
-        for <linux-nfs@vger.kernel.org>; Thu, 19 Nov 2015 16:28:53 -0800 (PST)
-Date: Thu, 19 Nov 2015 19:28:49 -0500
-From: Jeff Layton <jlayton@poochiereds.net>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: trond.myklebust@primarydata.com, linux-nfs@vger.kernel.org,
-        Eric Paris <eparis@parisplace.org>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org
-Subject: Re: [PATCH v1 38/38] nfs: add a Kconfig option for NFS reexporting
- and documentation
-Message-ID: <20151119192849.30cb4549@tlielax.poochiereds.net>
-In-Reply-To: <20151120000415.GA11549@fieldses.org>
-References: <1447761180-4250-1-git-send-email-jeff.layton@primarydata.com>
-	<1447761180-4250-39-git-send-email-jeff.layton@primarydata.com>
-	<20151118202220.GA992@fieldses.org>
-	<20151118161521.67e79050@tlielax.poochiereds.net>
-	<20151120000415.GA11549@fieldses.org>
+Received: from mail3.dit.upm.es ([138.4.2.18]:55824 "EHLO mail3.dit.upm.es"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758812AbbKTLLG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 20 Nov 2015 06:11:06 -0500
+To: linux-nfs@vger.kernel.org
+Cc: "=?UTF-8?Q?'Administraci=c3=b3n_del_Centro_de_C=c3=a1lculo_del_DIT'?="
+	<cdc@dit.upm.es>
+From: Omar Walid Llorente <omar@dit.upm.es>
+Subject: possible bug in nfs-kernel-server
+Message-ID: <564EFE51.90105@dit.upm.es>
+Date: Fri, 20 Nov 2015 12:04:49 +0100
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=utf-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 19 Nov 2015 19:04:15 -0500
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-> On Wed, Nov 18, 2015 at 04:15:21PM -0500, Jeff Layton wrote:
-> > On Wed, 18 Nov 2015 15:22:20 -0500
-> > "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > 
-> > > On Tue, Nov 17, 2015 at 06:53:00AM -0500, Jeff Layton wrote:
-> > > > +Filehandle size:
-> > > > +----------------
-> > > > +The maximum filehandle size is governed by the NFS version. Version 2
-> > > > +used fixed 32 byte filehandles. Version 3 moved to variable length
-> > > > +filehandles that can be up to 64 bytes in size. NFSv4 increased that
-> > > > +maximum to 128 bytes.
-> > > > +
-> > > > +When reexporting an NFS filesystem, the underlying filehandle from the
-> > > > +server must be embedded inside the filehandles presented to clients.
-> > > > +Thus if the underlying server presents filehandles that are too big, the
-> > > > +reexporting server can fail to encode them. This can lead to
-> > > > +NFSERR_OPNOTSUPP errors being returned to clients.
-> > > > +
-> > > > +This is not a trivial thing to programatically determine ahead of time
-> > > > +(and it can vary even within the same server), so some foreknowledge of
-> > > > +how the underlying server constructs filehandles, and their maximum
-> > > > +size is a must.
-> > > 
-> > > This is the trickiest one, since it depends on an undocumented
-> > > implementation detail of the server.
-> > > 
-> > 
-> > Yes, indeed...
-> > 
-> > > Do we even know if this works for all the exportable Linux filesystems?
-> > > 
-> > > If proxying NFSv4.x servers is actually useful, could we add a per-fs
-> > > maximum-filesystem-size attribute to the protocol?
-> > > 
-> > 
-> > Erm, I think you mean maximum-filehandle-size, but I get your point...
-> 
-> Whoops, thanks.
-> 
-> > It's tough to do more than a quick survey, but looking at new-style fh:
-> > 
-> > The max fsid len seems to be 28 bytes (FSID_UUID16_INUM), though you
-> > can get that down to 8 bytes if you specify the fsid directly. The fsid
-> > choice is weird, because it sort of depends on the filehandle sent by
-> > the client (which is used as a template), so I guess we really do need
-> > to assume worst-case.
-> 
-> The client can only ever use filehandles it's been given, so if the
-> backend server's always been configured to use a certain kind (e.g. if
-> the exports have fsid= set), then we're OK, we're not responsible for
-> clients that guess random filehandles.
-> 
-> > Once that's done, the encode_fh routines add the fileid part. btrfs has
-> > a pretty large maximum one: 40 bytes. That brings the max size up to 68
-> > bytes, which is already too large for NFSv3, before we ever get to
-> > the part where we embed that inside another fh. We require another 12
-> > bytes on top of the "underlying" filehandle for reexporting.
-> 
-> So it's not necessarily that bad for nfsd, though of course it makes it
-> more complicated to configure the backend server.  Well, and knfsd has
-> v3 support so this is all a bit academic I guess.
-> 
+Hi, I'm Omar Walid Llorente and I am a systems administrator at the 
+Politechnical University of Madrid (UPM), Spain. I write you in the hope 
+you can help us manage a problem that have discovered recently about our 
+new datastore architecture in our teaching labs. We have created a 
+gluster distributed volume that we reexport with NFS to our lab clients 
+via intermediate servers.
 
-You just have to make sure you vet the filehandle size on the stuff
-you're reexporting. In our use-case, we know that the backend server's
-filehandles are well under 42 bytes, so we're well under the max size.
+First of all thanks for all your work and sorry if this isn't related 
+with your package, but I think it has a good chance. I'll try explain 
+myself as short as possible.
 
-One thing we could consider is promoting the dprintk in nfs_encode_fh
-when this occurs to a pr_err or something. That would at least make
-it very obvious when that occurs...
+As introduced previously, we have a problem exporting with 
+nfs-kernel-server-1.2.8-6 (ubuntu based) a directory previously mounted 
+with gluster-3.7.4 via fuse mount.
 
-> So I'm having trouble weighing the benefits of this patch set against
-> the risks.
-> 
-> It's not even necessarily true that filehandles on a given filesystem
-> need be constant length.  In theory a server could decide to start
-> giving out bigger filehandles some day (as long as it continued to
-> respect the old ones), and the proxy would break.  In practice maybe
-> nobody does that.
-> 
+The problem is quite simple to reproduce and always repeatable: if a 
+file has read-only permissions for owner and user wants to copy it, 
+permissions problem arises:
+cdc@client:~$ rm -f kk.txt 444.txt; echo "prueba" > 444.txt; chmod 444 
+444.txt; cp -p 444.txt kk.txt; ls -ld 444.txt kk.txt
+cp: failed to close ‘kk.txt’: Permission denied
+-r--r--r-- 1 cdc admincdc 7 nov  3  2015 444.txt
+-r--r--r-- 1 cdc admincdc 0 nov  3  2015 kk.txt
+cdc@client:~$
 
-Hard to say. There are a lot of oddball servers out there. There
-certainly are risks involved in reexporting, particularly if you don't
-heed the caveats. It's for good reason this Kconfig option defaults to
-"n". ;)
+If the file permissions are not read-only, there is no problem:
+cdc@client:~$ rm -f kk.txt 644.txt; echo "prueba" > 644.txt; chmod 644 
+644.txt; cp -p 644.txt kk.txt; ls -ld 644.txt kk.txt
+-rw-r--r-- 1 cdc admincdc 7 nov  3  2015 644.txt
+-rw-r--r-- 1 cdc admincdc 7 nov  3  2015 kk.txt
+cdc@client:~$
 
-OTOH, the kernel shouldn't crash or anything if that occurs. If your
-filehandles are too large to be embedded, then you just end up getting
-back FILEID_INVALID on the encode_fh. That sucks if it occurs, but
-it shouldn't happen if you're careful about what gets reexported.
+If we track it down with strace, the problem arises exactly when fsync() 
+is called from cp.
 
+Of course, if we try this combination of commands in other directories 
+not mounted by nfs (local ones) or mounted with samba/cifs or even 
+mounted with nfs-ganesha (both fuse mounted with gluster), this doen't 
+happen. This problem doesn't happen either if the nfs-kernel-server 
+exports a directory not mounted with fuse (any local one).
 
-> 
-> > So, no this may very well not work for all exportable Linux
-> > filesystems, but it sort of depends on the situation (and to some
-> > degree, what gets sent by the clients). That's what makes this so hard
-> > to figure out programmatically.
-> > 
-> > As far as extending the protocol...that's not a bad idea, though that's
-> > obviously a longer-term solution. I don't think we can reasonably rely
-> > on that anyway. Maybe though...
-> > 
-> > -- 
-> > Jeff Layton <jlayton@poochiereds.net>
+Please, tell me if this is the right place to post the probem and where 
+is it if this is not. Let me know if we can help you any way to solve or 
+test it (we've developed a small program in c that shows exactly the 
+same behaviour).
 
+Thanks again.
+
+Omar
+
+PS: Pointer to this email address came from: 
+http://wiki.linux-nfs.org/wiki/index.php/Reporting_bugs
+
+ADDITIONAL INFO:
+
+cdc@client:~$ uname -a
+Linux l056 3.13.0-63-generic #103-Ubuntu SMP Fri Aug 14 21:43:30 UTC 
+2015 i686 i686 i686 GNU/Linux
+cdc@client:~$
+cdc@client:~$ mount | grep home
+cuentas02:/home-3/cdc on /home/cdc type nfs 
+(rw,noatime,intr,fsc,nolock,rsize=262140,wsize=262140,addr=138.4.30.15)
+cdc@client:~$
+
+root@server-lab:~# uname -a
+Linux cuentas02-lab.lab.dit.upm.es 3.13.0-63-generic #103-Ubuntu SMP Fri 
+Aug 14 21:42:59 UTC 2015 x86_64 x86_64 x86_64 GNU/Linux
+root@server-lab:~#
+root@server-lab:~# dpkg -l | grep nfs
+ii  libnfsidmap2:amd64 0.25-5                           amd64        NFS 
+idmapping library
+ii  nfs-common 1:1.2.8-6ubuntu1.1               amd64        NFS support 
+files common to client and server
+ii  nfs-kernel-server 1:1.2.8-6ubuntu1.1               amd64        
+support for NFS kernel server
+root@server-lab:~#
+root@server-lab:~# exportfs -v
+/home-3 
+138.4.30.0/23(rw,async,wdelay,insecure,no_root_squash,no_subtree_check,fsid=3,sec=sys,rw,no_root_squash,no_all_squash)
+root@server-lab:~#
+
+LOGS ON SERVER SIDE (glusterfs mount logs):
+[2015-11-20 10:51:53.872656] I [io-stats.c:1014:io_stats_dump_fd] 
+0-home-lab-3: --- fd stats ---
+[2015-11-20 10:51:53.872692] I [io-stats.c:1019:io_stats_dump_fd] 
+0-home-lab-3:       Filename : /cdc/444.txt
+[2015-11-20 10:51:53.872704] I [io-stats.c:1034:io_stats_dump_fd] 
+0-home-lab-3:   BytesWritten : 7 bytes
+[2015-11-20 10:51:53.872714] I [io-stats.c:1046:io_stats_dump_fd] 
+0-home-lab-3: Write 000004b+ : 1
+[2015-11-20 10:51:53.874917] W [MSGID: 114031] 
+[client-rpc-fops.c:1298:client3_3_removexattr_cbk] 
+0-home-lab-3-client-0: remote operation failed [Permission denied]
+[2015-11-20 10:51:53.874976] W [fuse-bridge.c:1230:fuse_err_cbk] 
+0-glusterfs-fuse: 63459954: REMOVEXATTR() /cdc/444.txt => -1 (Permission 
+denied)
+[2015-11-20 10:51:53.881389] W [MSGID: 114031] 
+[client-rpc-fops.c:1298:client3_3_removexattr_cbk] 
+0-home-lab-3-client-3: remote operation failed [Permission denied]
+[2015-11-20 10:51:53.881434] W [fuse-bridge.c:1230:fuse_err_cbk] 
+0-glusterfs-fuse: 63459961: REMOVEXATTR() /cdc/kk.txt => -1 (Permission 
+denied)
+[2015-11-20 10:51:53.883072] W [fuse-bridge.c:1230:fuse_err_cbk] 
+0-glusterfs-fuse: 63459964: REMOVEXATTR() /cdc/kk.txt => -1 (Permission 
+denied)
+[2015-11-20 10:51:53.883057] W [MSGID: 114031] 
+[client-rpc-fops.c:1298:client3_3_removexattr_cbk] 
+0-home-lab-3-client-3: remote operation failed [Permission denied]
+[2015-11-20 10:51:53.884003] E [MSGID: 114031] 
+[client-rpc-fops.c:466:client3_3_open_cbk] 0-home-lab-3-client-3: remote 
+operation failed. Path: /cdc/kk.txt 
+(3175e0cd-8308-45b8-a4b0-699f6f8cf37f) [Permission denied]
+[2015-11-20 10:51:53.884056] W [fuse-bridge.c:969:fuse_fd_cbk] 
+0-glusterfs-fuse: 63459965: OPEN() /cdc/kk.txt => -1 (Permission denied)
+[2015-11-20 10:51:53.885619] W [MSGID: 114031] 
+[client-rpc-fops.c:1298:client3_3_removexattr_cbk] 
+0-home-lab-3-client-3: remote operation failed [Permission denied]
+[2015-11-20 10:51:53.885664] W [fuse-bridge.c:1230:fuse_err_cbk] 
+0-glusterfs-fuse: 63459967: REMOVEXATTR() /cdc/kk.txt => -1 (Permission 
+denied)
+[2015-11-20 10:51:53.887908] W [fuse-bridge.c:1230:fuse_err_cbk] 
+0-glusterfs-fuse: 63459971: REMOVEXATTR() /cdc/kk.txt => -1 (Permission 
+denied)
+[2015-11-20 10:51:53.887891] W [MSGID: 114031] 
+[client-rpc-fops.c:1298:client3_3_removexattr_cbk] 
+0-home-lab-3-client-3: remote operation failed [Permission denied]
+
+(NOTE: We have more gluster brick logs but we don't know if are relevant)
 
 -- 
-Jeff Layton <jlayton@poochiereds.net>
+----------------------------------------------------------------
+Centro de Cálculo         Depto. Ingeniería Sistemas Telemáticos
+E-mail: omar@dit.upm.es        Universidad Politécnica de Madrid
+Fax:(+34) 913367333                 E.T.S. Ing. Telecomunicación
+Tel:(+34) 915495700-Ext.3005                28040 Madrid (Spain)
+Tel:(+34) 915495762-Ext.3005
+Tel:(+34) 913367366-Ext.3005
+----------------------------------------------------------------
+
