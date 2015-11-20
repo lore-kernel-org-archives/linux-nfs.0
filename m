@@ -1,42 +1,184 @@
-Return-Path: <trond.myklebust@primarydata.com>
-MIME-Version: 1.0
-In-Reply-To: <alpine.OSX.2.19.9992.1511201147450.34561@planck.local>
-References: <da06a514114528e639923b8ef26c0e815e91554f.1448031050.git.bcodding@redhat.com>
-	<CAHQdGtTTqDtg==fK_2t7dOOh_54tDf84Hov2+D6Ciy=YvhzyoQ@mail.gmail.com>
-	<alpine.OSX.2.19.9992.1511201147450.34561@planck.local>
-Date: Fri, 20 Nov 2015 11:57:50 -0500
-Message-ID: <CAHQdGtTZitKGWXszk8W60-DkKAghdU6UrPbJ42MSdn08difj5Q@mail.gmail.com>
-Subject: Re: [PATCH] nfs4: start callback_ident at idr 1
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Benjamin Coddington <bcodding@redhat.com>
-Cc: Anna Schumaker <anna.schumaker@netapp.com>,
+Return-Path: <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2104\))
+Subject: Re: [PATCH] nfs4: limit callback decoding to received bytes
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <alpine.OSX.2.19.9992.1511201107060.34561@planck.local>
+Date: Fri, 20 Nov 2015 12:24:44 -0500
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Jeff Layton <jlayton@poochiereds.net>,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Message-Id: <8EA46F7A-4C0E-4FF6-96C8-1D84F99BDE7C@oracle.com>
+References: <80ed0167773dfee0807c79233555c7d0c1fae11a.1448031054.git.bcodding@redhat.com> <99FC53A8-5A33-4F03-AFEF-A18C5880B493@oracle.com> <alpine.OSX.2.19.9992.1511201107060.34561@planck.local>
+To: Benjamin Coddington <bcodding@redhat.com>
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Nov 20, 2015 at 11:56 AM, Benjamin Coddington
+
+> On Nov 20, 2015, at 11:20 AM, Benjamin Coddington =
 <bcodding@redhat.com> wrote:
-> On Fri, 20 Nov 2015, Trond Myklebust wrote:
->
->> Hi Ben,
->>
->> On Fri, Nov 20, 2015 at 9:56 AM, Benjamin Coddington
->> <bcodding@redhat.com> wrote:
->> >
->> > If clp->cl_cb_ident is zero, then nfs_cb_idr_remove_locked() skips removing
->> > it when the nfs_client is freed.  A decoding or server bug can then find
->> > and try to put that first nfs_client which would lead to a crash.
->>
->> Thanks for fixing!
->> Have you ever seen such a crash in the wild? IOW: is this something we
->> should consider for stable?
->
-> Yes, there's a server that sometimes sends truncated cb_compounds, and this
-> bug is hit if we continue decoding 0's past the end of received data since
-> cb_ident ends up being 0.  Both fixes I sent today are trying to handle that
-> particular behavior.
->
+>=20
+> On Fri, 20 Nov 2015, Chuck Lever wrote:
+>=20
+>>=20
+>>> On Nov 20, 2015, at 9:55 AM, Benjamin Coddington =
+<bcodding@redhat.com> wrote:
+>>>=20
+>>> A truncated cb_compound request will cause the client to decode null =
+or
+>>> data from a previous callback for nfs4.1 backchannel case, or =
+uninitialized
+>>> data for the nfs4.0 case. This is because the path through
+>>> svc_process_common() advances the request's iov_base and decrements =
+iov_len
+>>> without adjusting the overall xdr_buf's len field.  That causes
+>>> xdr_init_decode() to set up the xdr_stream with an incorrect length =
+in
+>>> nfs4_callback_compound().
+>>>=20
+>>> Fixing this for the nfs4.1 backchannel case first requires setting =
+the
+>>> correct iov_len and page_len based on the length of received data in =
+the
+>>> same manner as the nfs4.0 case.
+>>>=20
+>>> Then the request's xdr_buf length can be adjusted for both cases =
+based upon
+>>> the remaining iov_len and page_len.
+>>>=20
+>>> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+>>> ---
+>>> fs/nfs/callback_xdr.c         |    7 +++++--
+>>> net/sunrpc/backchannel_rqst.c |    8 ++++++++
+>>> net/sunrpc/svc.c              |    1 +
+>>> 3 files changed, 14 insertions(+), 2 deletions(-)
+>>>=20
+>>> diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
+>>> index 6b1697a..1c8213e 100644
+>>> --- a/fs/nfs/callback_xdr.c
+>>> +++ b/fs/nfs/callback_xdr.c
+>>> @@ -76,7 +76,8 @@ static __be32 *read_buf(struct xdr_stream *xdr, =
+int nbytes)
+>>>=20
+>>> 	p =3D xdr_inline_decode(xdr, nbytes);
+>>> 	if (unlikely(p =3D=3D NULL))
+>>> -		printk(KERN_WARNING "NFS: NFSv4 callback reply buffer =
+overflowed!\n");
+>>> +		printk(KERN_WARNING "NFS: NFSv4 callback reply buffer =
+overflowed "
+>>> +							"or truncated =
+request.\n");
+>>> 	return p;
+>>> }
+>>>=20
+>>> @@ -892,6 +893,7 @@ static __be32 nfs4_callback_compound(struct =
+svc_rqst *rqstp, void *argp, void *r
+>>> 	struct cb_compound_hdr_arg hdr_arg =3D { 0 };
+>>> 	struct cb_compound_hdr_res hdr_res =3D { NULL };
+>>> 	struct xdr_stream xdr_in, xdr_out;
+>>> +	struct xdr_buf *rq_arg =3D &rqstp->rq_arg;
+>>> 	__be32 *p, status;
+>>> 	struct cb_process_state cps =3D {
+>>> 		.drc_status =3D 0,
+>>> @@ -903,7 +905,8 @@ static __be32 nfs4_callback_compound(struct =
+svc_rqst *rqstp, void *argp, void *r
+>>>=20
+>>> 	dprintk("%s: start\n", __func__);
+>>>=20
+>>> -	xdr_init_decode(&xdr_in, &rqstp->rq_arg, =
+rqstp->rq_arg.head[0].iov_base);
+>>> +	rq_arg->len =3D rq_arg->head[0].iov_len + rq_arg->page_len;
+>>> +	xdr_init_decode(&xdr_in, rq_arg, rq_arg->head[0].iov_base);
+>>>=20
+>>> 	p =3D (__be32*)((char *)rqstp->rq_res.head[0].iov_base + =
+rqstp->rq_res.head[0].iov_len);
+>>> 	xdr_init_encode(&xdr_out, &rqstp->rq_res, p);
+>>> diff --git a/net/sunrpc/backchannel_rqst.c =
+b/net/sunrpc/backchannel_rqst.c
+>>> index 6255d14..d92cee1 100644
+>>> --- a/net/sunrpc/backchannel_rqst.c
+>>> +++ b/net/sunrpc/backchannel_rqst.c
+>>> @@ -333,12 +333,20 @@ void xprt_complete_bc_request(struct rpc_rqst =
+*req, uint32_t copied)
+>>> {
+>>> 	struct rpc_xprt *xprt =3D req->rq_xprt;
+>>> 	struct svc_serv *bc_serv =3D xprt->bc_serv;
+>>> +	struct xdr_buf *rq_rcv_buf =3D &req->rq_rcv_buf;
+>>>=20
+>>> 	spin_lock(&xprt->bc_pa_lock);
+>>> 	list_del(&req->rq_bc_pa_list);
+>>> 	xprt_dec_alloc_count(xprt, 1);
+>>> 	spin_unlock(&xprt->bc_pa_lock);
+>>>=20
+>>> +	if (copied <=3D rq_rcv_buf->head[0].iov_len) {
+>>> +		rq_rcv_buf->head[0].iov_len =3D copied;
+>>> +		rq_rcv_buf->page_len =3D 0;
+>>> +	} else {
+>>> +		rq_rcv_buf->page_len =3D copied - =
+rq_rcv_buf->head[0].iov_len;
+>>> +	}
+>>> +
+>>=20
+>> Are similar changes needed in rpcrdma_bc_receive_call ?
+>=20
+> Good question..  I was working on 4.3+ which was missing the rdma =
+stuff, so
+> I overlooked this.
+>=20
+> net/sunrpc/xprtrdma/backchannel.c:
+> 324     size =3D rep->rr_len - RPCRDMA_HDRLEN_MIN;
+> ...
+> 347     memset(buf, 0, sizeof(*buf));
+> 348     buf->head[0].iov_base =3D p;
+> 349     buf->head[0].iov_len =3D size;
+>=20
+> ^^ that looks like it is going to set the iov_len to the size of the =
+XDR
+> portion of the data, sans transport headers.. which means that it =
+shouldn't
+> need the fixup just above.
+>=20
+> In the case requiring the fixup iov_len was always set to 4096, and
+> decremented from there no matter the size of the request.
 
-OK. I'll mark both for stable inclusion then.
+Thanks for checking!
 
-Thanks!
+
+> Ben
+>=20
+>>> 	req->rq_private_buf.len =3D copied;
+>>> 	set_bit(RPC_BC_PA_IN_USE, &req->rq_bc_pa_state);
+>>>=20
+>>> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+>>> index a8f579d..af9f987 100644
+>>> --- a/net/sunrpc/svc.c
+>>> +++ b/net/sunrpc/svc.c
+>>> @@ -1363,6 +1363,7 @@ bc_svc_process(struct svc_serv *serv, struct =
+rpc_rqst *req,
+>>> 	memcpy(&rqstp->rq_addr, &req->rq_xprt->addr, rqstp->rq_addrlen);
+>>> 	memcpy(&rqstp->rq_arg, &req->rq_rcv_buf, sizeof(rqstp->rq_arg));
+>>> 	memcpy(&rqstp->rq_res, &req->rq_snd_buf, sizeof(rqstp->rq_res));
+>>> +	rqstp->rq_arg.len =3D req->rq_private_buf.len;
+>>>=20
+>>> 	/* reset result send buffer "put" position */
+>>> 	resv->iov_len =3D 0;
+>>> --
+>>> 1.7.1
+>>>=20
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
+in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>=20
+>> --
+>> Chuck Lever
+>>=20
+>>=20
+>>=20
+>>=20
+>>=20
+
+--
+Chuck Lever
