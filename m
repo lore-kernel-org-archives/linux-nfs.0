@@ -1,162 +1,111 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:35771 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:40637 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1162812AbbKTOzm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 20 Nov 2015 09:55:42 -0500
-Subject: [PATCH 06/12] statx: NFS: Return enhanced file attributes
-From: David Howells <dhowells@redhat.com>
-To: arnd@arndb.de
-Cc: linux-afs@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
-        linux-kernel@vger.kernel.org, dhowells@redhat.com,
-        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-Date: Fri, 20 Nov 2015 14:55:35 +0000
-Message-ID: <20151120145535.18930.14054.stgit@warthog.procyon.org.uk>
-In-Reply-To: <20151120145422.18930.72662.stgit@warthog.procyon.org.uk>
-References: <20151120145422.18930.72662.stgit@warthog.procyon.org.uk>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+	id S1760473AbbKTOzc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 20 Nov 2015 09:55:32 -0500
+From: Benjamin Coddington <bcodding@redhat.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Jeff Layton <jlayton@poochiereds.net>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] nfs4: limit callback decoding to received bytes
+Date: Fri, 20 Nov 2015 09:55:30 -0500
+Message-Id: <80ed0167773dfee0807c79233555c7d0c1fae11a.1448031054.git.bcodding@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Return enhanced file atrributes from the NFS filesystem.  This includes the
-following:
+A truncated cb_compound request will cause the client to decode null or
+data from a previous callback for nfs4.1 backchannel case, or uninitialized
+data for the nfs4.0 case. This is because the path through
+svc_process_common() advances the request's iov_base and decrements iov_len
+without adjusting the overall xdr_buf's len field.  That causes
+xdr_init_decode() to set up the xdr_stream with an incorrect length in
+nfs4_callback_compound().
 
- (1) The change attribute as st_version if NFSv4.
+Fixing this for the nfs4.1 backchannel case first requires setting the
+correct iov_len and page_len based on the length of received data in the
+same manner as the nfs4.0 case.
 
- (2) STATX_INFO_AUTOMOUNT and STATX_INFO_FABRICATED are set on referral or
-     submount directories that are automounted upon.  NFS shows one
-     directory with a different FSID, but the local filesystem has two: the
-     mountpoint directory and the root of the filesystem mounted upon it.
+Then the request's xdr_buf length can be adjusted for both cases based upon
+the remaining iov_len and page_len.
 
- (3) STATX_INFO_REMOTE is set on files acquired over NFS.
-
- (4) STATX_IOC_FLAGS is set and if the atime is unavailable on a file,
-     st_ioc_flags will have FL_NOATIME_FL set in it.
-
-Furthermore, what nfs_getattr() does can be controlled as follows:
-
- (1) If AT_NO_ATTR_SYNC is indicated then this will suppress the flushing
-     of outstanding writes and the rereading of the inode's attributes with
-     the server as detailed below.
-
- (2) Otherwise:
-
-     (a) If AT_FORCE_ATTR_SYNC is indicated, or mtime, ctime or
-     	 data_version (NFSv4 only) are requested then the outstanding
-     	 writes will be written to the server first.
-
-     (b) The inode's attributes will be reread from the server:
-
-     	 (i) if AT_FORCE_ATTR_SYNC is indicated;
-
-        (ii) if atime is requested (and atime updating is not suppressed by
-     	     a mount flag); or
-
-       (iii) if the cached attributes have expired;
-
-If the inode isn't synchronised, then the cached attributes will be used -
-even if expired - without reference to the server.
-
-Example output:
-
-	[root@andromeda ~]# ./samples/statx/test-statx /warthog/
-	statx(/warthog/) = 0
-	results=37ef
-	  Size: 4096            Blocks: 8          IO Block: 1048576  directory
-	Device: 00:26           Inode: 2           Links: 122
-	Access: (3777/drwxrwxrwx)  Uid:     0   Gid:  4041
-	Access: 2015-10-30 16:15:41.730925545+0000
-	Modify: 2015-10-07 10:33:19.896108112+0100
-	Change: 2015-10-07 10:33:19.896108112+0100
-	Data version: 5614e6df35698650h
-	Inode flags: 00000000 (-------- -------- -------- --------)
-	Information: 00000010 (-------- -------- -------- ---r----)
-	IO-blocksize: blksize=1048576
-
-Note that the NFS4 protocol potentially provides a creation time that could
-be passed through this interface and system, hidden and archive values that
-could be passed as IOC flags.  There is also a backup time that could be
-added.
-
-Signed-off-by: David Howells <dhowells@redhat.com>
+Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
 ---
+ fs/nfs/callback_xdr.c         |    7 +++++--
+ net/sunrpc/backchannel_rqst.c |    8 ++++++++
+ net/sunrpc/svc.c              |    1 +
+ 3 files changed, 14 insertions(+), 2 deletions(-)
 
- fs/nfs/inode.c |   45 ++++++++++++++++++++++++++++++++++++++-------
- 1 file changed, 38 insertions(+), 7 deletions(-)
-
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 326d9e10d833..4d86663e37b2 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -645,12 +645,23 @@ static bool nfs_need_revalidate_inode(struct inode *inode)
- int nfs_getattr(struct vfsmount *mnt, struct dentry *dentry, struct kstat *stat)
+diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
+index 6b1697a..1c8213e 100644
+--- a/fs/nfs/callback_xdr.c
++++ b/fs/nfs/callback_xdr.c
+@@ -76,7 +76,8 @@ static __be32 *read_buf(struct xdr_stream *xdr, int nbytes)
+ 
+ 	p = xdr_inline_decode(xdr, nbytes);
+ 	if (unlikely(p == NULL))
+-		printk(KERN_WARNING "NFS: NFSv4 callback reply buffer overflowed!\n");
++		printk(KERN_WARNING "NFS: NFSv4 callback reply buffer overflowed "
++							"or truncated request.\n");
+ 	return p;
+ }
+ 
+@@ -892,6 +893,7 @@ static __be32 nfs4_callback_compound(struct svc_rqst *rqstp, void *argp, void *r
+ 	struct cb_compound_hdr_arg hdr_arg = { 0 };
+ 	struct cb_compound_hdr_res hdr_res = { NULL };
+ 	struct xdr_stream xdr_in, xdr_out;
++	struct xdr_buf *rq_arg = &rqstp->rq_arg;
+ 	__be32 *p, status;
+ 	struct cb_process_state cps = {
+ 		.drc_status = 0,
+@@ -903,7 +905,8 @@ static __be32 nfs4_callback_compound(struct svc_rqst *rqstp, void *argp, void *r
+ 
+ 	dprintk("%s: start\n", __func__);
+ 
+-	xdr_init_decode(&xdr_in, &rqstp->rq_arg, rqstp->rq_arg.head[0].iov_base);
++	rq_arg->len = rq_arg->head[0].iov_len + rq_arg->page_len;
++	xdr_init_decode(&xdr_in, rq_arg, rq_arg->head[0].iov_base);
+ 
+ 	p = (__be32*)((char *)rqstp->rq_res.head[0].iov_base + rqstp->rq_res.head[0].iov_len);
+ 	xdr_init_encode(&xdr_out, &rqstp->rq_res, p);
+diff --git a/net/sunrpc/backchannel_rqst.c b/net/sunrpc/backchannel_rqst.c
+index 6255d14..d92cee1 100644
+--- a/net/sunrpc/backchannel_rqst.c
++++ b/net/sunrpc/backchannel_rqst.c
+@@ -333,12 +333,20 @@ void xprt_complete_bc_request(struct rpc_rqst *req, uint32_t copied)
  {
- 	struct inode *inode = d_inode(dentry);
--	int need_atime = NFS_I(inode)->cache_validity & NFS_INO_INVALID_ATIME;
-+	bool force_sync = stat->query_flags & AT_FORCE_ATTR_SYNC;
-+	bool suppress_sync = stat->query_flags & AT_NO_ATTR_SYNC;
-+	bool need_atime = NFS_I(inode)->cache_validity & NFS_INO_INVALID_ATIME;
- 	int err = 0;
+ 	struct rpc_xprt *xprt = req->rq_xprt;
+ 	struct svc_serv *bc_serv = xprt->bc_serv;
++	struct xdr_buf *rq_rcv_buf = &req->rq_rcv_buf;
  
- 	trace_nfs_getattr_enter(inode);
--	/* Flush out writes to the server in order to update c/mtime.  */
--	if (S_ISREG(inode->i_mode)) {
-+
-+	if (NFS_SERVER(inode)->nfs_client->rpc_ops->version < 4)
-+		stat->request_mask &= ~STATX_VERSION;
-+
-+	/* Flush out writes to the server in order to update c/mtime or data
-+	 * version if the user wants them.
-+	 */
-+	if (S_ISREG(inode->i_mode) && !suppress_sync &&
-+	    (force_sync || (stat->request_mask &
-+			    (STATX_MTIME | STATX_CTIME | STATX_VERSION)))
-+	    ) {
- 		mutex_lock(&inode->i_mutex);
- 		err = nfs_sync_inode(inode);
- 		mutex_unlock(&inode->i_mutex);
-@@ -667,11 +678,16 @@ int nfs_getattr(struct vfsmount *mnt, struct dentry *dentry, struct kstat *stat)
- 	 *  - NFS never sets MS_NOATIME or MS_NODIRATIME so there is
- 	 *    no point in checking those.
- 	 */
-- 	if ((mnt->mnt_flags & MNT_NOATIME) ||
-- 	    ((mnt->mnt_flags & MNT_NODIRATIME) && S_ISDIR(inode->i_mode)))
--		need_atime = 0;
-+	if ((mnt->mnt_flags & MNT_NOATIME) ||
-+	    ((mnt->mnt_flags & MNT_NODIRATIME) && S_ISDIR(inode->i_mode))) {
-+		stat->ioc_flags |= FS_NOATIME_FL;
-+		need_atime = false;
-+	} else if (!(stat->request_mask & STATX_ATIME)) {
-+		need_atime = false;
-+	}
+ 	spin_lock(&xprt->bc_pa_lock);
+ 	list_del(&req->rq_bc_pa_list);
+ 	xprt_dec_alloc_count(xprt, 1);
+ 	spin_unlock(&xprt->bc_pa_lock);
  
--	if (need_atime || nfs_need_revalidate_inode(inode)) {
-+	if (!suppress_sync &&
-+	    (force_sync || need_atime || nfs_need_revalidate_inode(inode))) {
- 		struct nfs_server *server = NFS_SERVER(inode);
- 
- 		if (server->caps & NFS_CAP_READDIRPLUS)
-@@ -684,6 +700,21 @@ int nfs_getattr(struct vfsmount *mnt, struct dentry *dentry, struct kstat *stat)
- 		if (S_ISDIR(inode->i_mode))
- 			stat->blksize = NFS_SERVER(inode)->dtsize;
- 	}
-+
-+	generic_fillattr(inode, stat);
-+	stat->ino = nfs_compat_user_ino64(NFS_FILEID(inode));
-+
-+	if (stat->request_mask & STATX_VERSION) {
-+		stat->version = inode->i_version;
-+		stat->result_mask |= STATX_VERSION;
++	if (copied <= rq_rcv_buf->head[0].iov_len) {
++		rq_rcv_buf->head[0].iov_len = copied;
++		rq_rcv_buf->page_len = 0;
++	} else {
++		rq_rcv_buf->page_len = copied - rq_rcv_buf->head[0].iov_len;
 +	}
 +
-+	if (IS_AUTOMOUNT(inode))
-+		stat->information |= STATX_INFO_FABRICATED;
-+
-+	stat->information |= STATX_INFO_REMOTE;
-+	stat->result_mask |= STATX_IOC_FLAGS;
-+
- out:
- 	trace_nfs_getattr_exit(inode, err);
- 	return err;
+ 	req->rq_private_buf.len = copied;
+ 	set_bit(RPC_BC_PA_IN_USE, &req->rq_bc_pa_state);
+ 
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index a8f579d..af9f987 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -1363,6 +1363,7 @@ bc_svc_process(struct svc_serv *serv, struct rpc_rqst *req,
+ 	memcpy(&rqstp->rq_addr, &req->rq_xprt->addr, rqstp->rq_addrlen);
+ 	memcpy(&rqstp->rq_arg, &req->rq_rcv_buf, sizeof(rqstp->rq_arg));
+ 	memcpy(&rqstp->rq_res, &req->rq_snd_buf, sizeof(rqstp->rq_res));
++	rqstp->rq_arg.len = req->rq_private_buf.len;
+ 
+ 	/* reset result send buffer "put" position */
+ 	resv->iov_len = 0;
+-- 
+1.7.1
 
