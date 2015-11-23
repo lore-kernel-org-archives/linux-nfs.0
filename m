@@ -1,75 +1,147 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp-o-1.desy.de ([131.169.56.154]:40564 "EHLO smtp-o-1.desy.de"
+Received: from fieldses.org ([173.255.197.46]:43006 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754772AbbKWVRX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 23 Nov 2015 16:17:23 -0500
-Received: from smtp-map-1.desy.de (smtp-map-1.desy.de [131.169.56.66])
-	by smtp-o-1.desy.de (DESY-O-1) with ESMTP id 264462804D9
-	for <linux-nfs@vger.kernel.org>; Mon, 23 Nov 2015 22:17:22 +0100 (CET)
-Received: from ZITSWEEP2.win.desy.de (zitsweep2.win.desy.de [131.169.97.96])
-	by smtp-map-1.desy.de (DESY_MAP_1) with ESMTP id 1A1C213E85
-	for <linux-nfs@vger.kernel.org>; Mon, 23 Nov 2015 22:17:21 +0100 (MET)
-Date: Mon, 23 Nov 2015 22:17:21 +0100 (CET)
-Subject: Re: [PATCH] nfs4.0 tests: discover max supported file size
-Message-ID: <684d76ce-9307-40f4-9aec-b9829a01051d@email.android.com>
-From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
-To: Bruce Fields <bfields@fieldses.org>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+	id S1755272AbbKWVSR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 23 Nov 2015 16:18:17 -0500
+Date: Mon, 23 Nov 2015 16:18:15 -0500
+To: Omar Walid Llorente <omar@dit.upm.es>
+Cc: linux-nfs@vger.kernel.org,
+        "=?utf-8?Q?'Administraci=C3=B3n_del_Centro_de_C=C3=A1lculo?= del
+	 DIT'" <cdc@dit.upm.es>
+Subject: Re: possible bug in nfs-kernel-server
+Message-ID: <20151123211815.GA13935@fieldses.org>
+References: <564EFE51.90105@dit.upm.es>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=utf-8
+In-Reply-To: <564EFE51.90105@dit.upm.es>
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Ck9uIE5vdiAyMywgMjAxNSAyMDo0OSwgIkouIEJydWNlIEZpZWxkcyIgPGJmaWVsZHNAZmllbGRz
-ZXMub3JnPiB3cm90ZToKPgo+IE9uIE1vbiwgTm92IDIzLCAyMDE1IGF0IDA5OjI3OjAyQU0gKzAx
-MDAsIFRpZ3JhbiBNa3J0Y2h5YW4gd3JvdGU6IAo+ID4gY3VycmVudCBpbXBsZW1lbnRhdGlvbiBh
-bXVzZXMsIHRoYXQgYWxsIHNlcnZlcnMgCj4gPiBzdXBwb3J0IDY0LWJpdCBmaWxlIHNpemVzLiBU
-aGlzIGlzIG5vdCBhbHdheXMgdHJ1ZS4gCj4gPiBVc2UgRkFUVFI0X01BWEZJTEVTSVpFIGF0dHJp
-YnV0ZSB0byBkaXNjb3ZlciBzdXBwb3J0ZWQgCj4gPiBtYXhpbXVtLiBVcGRhdGUgTE9DSzYgdGVz
-dCB0byB1c2UgaXQuIAo+Cj4gVGhlIGxhbmd1YWdlIGF0IGh0dHA6Ly90b29scy5pZXRmLm9yZy9o
-dG1sL3JmYzc1MzAjc2VjdGlvbi0xNi4xMC40IGlzbid0IAo+IGFzIGNsZWFyIGFzIGl0IGNvdWxk
-IGJlLCBidXQgSSB0aGluayBJTlZBTCBhdCBsZWFzdCBpcyB1bmFtYmlndW91c2x5IAo+IHdyb25n
-IGluIHRoZSBjYXNlIHlvdSdyZSB0ZXN0aW5nIChpdCBzaG91bGQgYmUgQkFEX1JBTkdFIG9yIE9L
-KS4gCj4KPiBNeSBpbnRlcnByZXRhdGlvbiBpcyBhY3R1YWxseSB0aGF0IHdlIHNob3VsZCByZXR1
-cm46IAo+Cj4gLSBJTlZBTCBmb3IgNjQtYml0IG92ZXJmbG93LCBvdGhlcndpc2UgCj4gLSBCQURf
-UkFOR0UgZm9yIDMyLWJpdCBvdmVyZmxvdyBvbiAzMi1iaXQgc2VydmVyLCBvdGhlcndpc2UgCgpI
-bS4uLm91ciBzZXJ2ZXIgaXMgYSBiaXQgd2VpcmQuIFRoZSBmaWxlIHNpemUgaXMgNjMgYml0IDop
-CgpUaWdyYW4uCj4gLSBPSyBmb3IgcmFuZ2VzIHRoYXQgZXh0ZW5kIHBhc3QgRkFUVFI0X01BWEZJ
-TEVTSVpFLsKgIChZb3UncmUgCj4gwqAgYWxsb3dlZCB0byBsb2NrIHJhbmdlcyBub3QgaW4gdGhl
-IGZpbGUuKSAKPgo+IFNvIEkgcHJlZmVyIHRoZSB0ZXN0IGFzLWlzLCBidXQgbWlnaHQgYmUgb3Bl
-biB0byBhcmd1bWVudCBhYm91dCB3aGV0aGVyIAo+IHRoaXMgaXMgdGhlIG1vc3QgaW1wb3J0YW50
-IGNhc2UgdG8gYmUgdGVzdGluZy4gCj4KPiAtLWIuIAo+Cj4gPiAKPiA+IFNpZ25lZC1vZmYtYnk6
-IFRpZ3JhbiBNa3J0Y2h5YW4gPHRpZ3Jhbi5ta3J0Y2h5YW5AZGVzeS5kZT4gCj4gPiAtLS0gCj4g
-PsKgIG5mczQuMC9uZnM0bGliLnB5wqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgIHwgNiArKysrKysg
-Cj4gPsKgIG5mczQuMC9zZXJ2ZXJ0ZXN0cy9zdF9sb2NrLnB5IHwgMyArKy0gCj4gPsKgIDIgZmls
-ZXMgY2hhbmdlZCwgOCBpbnNlcnRpb25zKCspLCAxIGRlbGV0aW9uKC0pIAo+ID4gCj4gPiBkaWZm
-IC0tZ2l0IGEvbmZzNC4wL25mczRsaWIucHkgYi9uZnM0LjAvbmZzNGxpYi5weSAKPiA+IGluZGV4
-IDUwMzFmZWIuLjQxODcwZGMgMTAwNjQ0IAo+ID4gLS0tIGEvbmZzNC4wL25mczRsaWIucHkgCj4g
-PiArKysgYi9uZnM0LjAvbmZzNGxpYi5weSAKPiA+IEBAIC01ODcsNiArNTg3LDEyIEBAIGNsYXNz
-IE5GUzRDbGllbnQocnBjLlJQQ0NsaWVudCwgbmZzNF9vcHMuTkZTNE9wZXJhdGlvbnMpOiAKPiA+
-wqDCoMKgwqDCoMKgwqDCoMKgIGQgPSBzZWxmLmRvX2dldGF0dHJkaWN0KFtdLCBbRkFUVFI0X0xF
-QVNFX1RJTUVdKSAKPiA+wqDCoMKgwqDCoMKgwqDCoMKgIHJldHVybiBkW0ZBVFRSNF9MRUFTRV9U
-SU1FXSAKPiA+wqAgCj4gPiArwqDCoMKgIGRlZiBnZXRNYXhGaWxlU2l6ZShzZWxmKTogCj4gPiAr
-wqDCoMKgwqDCoMKgwqAgIiIiR2V0IG1heGltdW0gc3VwcG9ydGVkIGZpbGUgc2l6ZSIiIiAKPiA+
-ICvCoMKgwqDCoMKgwqDCoCBkID0gc2VsZi5kb19nZXRhdHRyZGljdChbXSwgW0ZBVFRSNF9NQVhG
-SUxFU0laRV0pIAo+ID4gK8KgwqDCoMKgwqDCoMKgIHJldHVybiBkW0ZBVFRSNF9NQVhGSUxFU0la
-RV0gCj4gPiArIAo+ID4gKyAKPiA+wqDCoMKgwqDCoCBkZWYgY3JlYXRlX29iaihzZWxmLCBwYXRo
-LCB0eXBlPU5GNERJUiwgYXR0cnM9e0ZBVFRSNF9NT0RFOjA3NTV9LCAKPiA+wqDCoMKgwqDCoMKg
-wqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoCBsaW5rZGF0YT0iL2V0Yy9YMTEiKTogCj4gPsKg
-wqDCoMKgwqDCoMKgwqDCoCBpZiBfX2J1aWx0aW5zX19bJ3R5cGUnXShwYXRoKSBpcyBzdHI6IAo+
-ID4gZGlmZiAtLWdpdCBhL25mczQuMC9zZXJ2ZXJ0ZXN0cy9zdF9sb2NrLnB5IGIvbmZzNC4wL3Nl
-cnZlcnRlc3RzL3N0X2xvY2sucHkgCj4gPiBpbmRleCBkNTQ2MTRkLi44MDUxOGY0IDEwMDY0NCAK
-PiA+IC0tLSBhL25mczQuMC9zZXJ2ZXJ0ZXN0cy9zdF9sb2NrLnB5IAo+ID4gKysrIGIvbmZzNC4w
-L3NlcnZlcnRlc3RzL3N0X2xvY2sucHkgCj4gPiBAQCAtMTg5LDggKzE4OSw5IEBAIGRlZiB0ZXN0
-TGVuVG9vTG9uZyh0LCBlbnYpOiAKPiA+wqDCoMKgwqDCoCAiIiIgCj4gPsKgwqDCoMKgwqAgYyA9
-IGVudi5jMSAKPiA+wqDCoMKgwqDCoCBjLmluaXRfY29ubmVjdGlvbigpIAo+ID4gK8KgwqDCoCBt
-YXhfc2l6ZSA9IGMuZ2V0TWF4RmlsZVNpemUoKTsgCj4gPsKgwqDCoMKgwqAgZmgsIHN0YXRlaWQg
-PSBjLmNyZWF0ZV9jb25maXJtKHQuY29kZSkgCj4gPiAtwqDCoMKgIHJlcyA9IGMubG9ja19maWxl
-KHQuY29kZSwgZmgsIHN0YXRlaWQsIDEwMCwgMHhmZmZmZmZmZmZmZmZmZmZlKSAKPiA+ICvCoMKg
-wqAgcmVzID0gYy5sb2NrX2ZpbGUodC5jb2RlLCBmaCwgc3RhdGVpZCwgMTAwLCBtYXhfc2l6ZSkg
-Cj4gPsKgwqDCoMKgwqAgY2hlY2socmVzLCBORlM0RVJSX0lOVkFMLCAiTE9DSyB3aXRoIG9mZnNl
-dCtsZW4gb3ZlcmZsb3ciKSAKPiA+wqAgCj4gPsKgIGRlZiB0ZXN0Tm9GaCh0LCBlbnYpOiAKPiA+
-IC0tIAo+ID4gMi41LjAgCj4gLS0gCj4gVG8gdW5zdWJzY3JpYmUgZnJvbSB0aGlzIGxpc3Q6IHNl
-bmQgdGhlIGxpbmUgInVuc3Vic2NyaWJlIGxpbnV4LW5mcyIgaW4gCj4gdGhlIGJvZHkgb2YgYSBt
-ZXNzYWdlIHRvIG1ham9yZG9tb0B2Z2VyLmtlcm5lbC5vcmcgCj4gTW9yZSBtYWpvcmRvbW8gaW5m
-byBhdMKgIGh0dHA6Ly92Z2VyLmtlcm5lbC5vcmcvbWFqb3Jkb21vLWluZm8uaHRtbCAK
+On Fri, Nov 20, 2015 at 12:04:49PM +0100, Omar Walid Llorente wrote:
+> 
+> Hi, I'm Omar Walid Llorente and I am a systems administrator at the
+> Politechnical University of Madrid (UPM), Spain. I write you in the
+> hope you can help us manage a problem that have discovered recently
+> about our new datastore architecture in our teaching labs. We have
+> created a gluster distributed volume that we reexport with NFS to
+> our lab clients via intermediate servers.
+> 
+> First of all thanks for all your work and sorry if this isn't
+> related with your package, but I think it has a good chance. I'll
+> try explain myself as short as possible.
+> 
+> As introduced previously, we have a problem exporting with
+> nfs-kernel-server-1.2.8-6 (ubuntu based) a directory previously
+> mounted with gluster-3.7.4 via fuse mount.
+> 
+> The problem is quite simple to reproduce and always repeatable: if a
+> file has read-only permissions for owner and user wants to copy it,
+> permissions problem arises:
+> cdc@client:~$ rm -f kk.txt 444.txt; echo "prueba" > 444.txt; chmod
+> 444 444.txt; cp -p 444.txt kk.txt; ls -ld 444.txt kk.txt
+> cp: failed to close ‘kk.txt’: Permission denied
+> -r--r--r-- 1 cdc admincdc 7 nov  3  2015 444.txt
+> -r--r--r-- 1 cdc admincdc 0 nov  3  2015 kk.txt
+> cdc@client:~$
+> 
+> If the file permissions are not read-only, there is no problem:
+> cdc@client:~$ rm -f kk.txt 644.txt; echo "prueba" > 644.txt; chmod
+> 644 644.txt; cp -p 644.txt kk.txt; ls -ld 644.txt kk.txt
+> -rw-r--r-- 1 cdc admincdc 7 nov  3  2015 644.txt
+> -rw-r--r-- 1 cdc admincdc 7 nov  3  2015 kk.txt
+> cdc@client:~$
+> 
+> If we track it down with strace, the problem arises exactly when
+> fsync() is called from cp.
+
+So, cp is calling fsync on kk.txt before closing it?
+
+> Of course, if we try this combination of commands in other
+> directories not mounted by nfs (local ones) or mounted with
+> samba/cifs or even mounted with nfs-ganesha (both fuse mounted with
+> gluster), this doen't happen. This problem doesn't happen either if
+> the nfs-kernel-server exports a directory not mounted with fuse (any
+> local one).
+> 
+> Please, tell me if this is the right place to post the probem and
+> where is it if this is not. Let me know if we can help you any way
+> to solve or test it (we've developed a small program in c that shows
+> exactly the same behaviour).
+
+It'd be interesting to see exactly which NFS operation is failing.  You
+should be able to do this by running wireshark to sniff the NFS
+client/server traffic while running the reproducer, then reading through
+the traffic to find the failing operation.
+
+I'm also curious:
+
+> LOGS ON SERVER SIDE (glusterfs mount logs):
+> [2015-11-20 10:51:53.872656] I [io-stats.c:1014:io_stats_dump_fd]
+> 0-home-lab-3: --- fd stats ---
+> [2015-11-20 10:51:53.872692] I [io-stats.c:1019:io_stats_dump_fd]
+> 0-home-lab-3:       Filename : /cdc/444.txt
+> [2015-11-20 10:51:53.872704] I [io-stats.c:1034:io_stats_dump_fd]
+> 0-home-lab-3:   BytesWritten : 7 bytes
+> [2015-11-20 10:51:53.872714] I [io-stats.c:1046:io_stats_dump_fd]
+> 0-home-lab-3: Write 000004b+ : 1
+> [2015-11-20 10:51:53.874917] W [MSGID: 114031]
+> [client-rpc-fops.c:1298:client3_3_removexattr_cbk]
+> 0-home-lab-3-client-0: remote operation failed [Permission denied]
+> [2015-11-20 10:51:53.874976] W [fuse-bridge.c:1230:fuse_err_cbk]
+> 0-glusterfs-fuse: 63459954: REMOVEXATTR() /cdc/444.txt => -1
+> (Permission denied)
+> [2015-11-20 10:51:53.881389] W [MSGID: 114031]
+> [client-rpc-fops.c:1298:client3_3_removexattr_cbk]
+> 0-home-lab-3-client-3: remote operation failed [Permission denied]
+> [2015-11-20 10:51:53.881434] W [fuse-bridge.c:1230:fuse_err_cbk]
+> 0-glusterfs-fuse: 63459961: REMOVEXATTR() /cdc/kk.txt => -1
+> (Permission denied)
+
+I wonder what this is about?  Why would an fsync on the NFS client
+result in a REMOVEXATTR on the server side?
+
+--b.
+
+> [2015-11-20 10:51:53.883072] W [fuse-bridge.c:1230:fuse_err_cbk]
+> 0-glusterfs-fuse: 63459964: REMOVEXATTR() /cdc/kk.txt => -1
+> (Permission denied)
+> [2015-11-20 10:51:53.883057] W [MSGID: 114031]
+> [client-rpc-fops.c:1298:client3_3_removexattr_cbk]
+> 0-home-lab-3-client-3: remote operation failed [Permission denied]
+> [2015-11-20 10:51:53.884003] E [MSGID: 114031]
+> [client-rpc-fops.c:466:client3_3_open_cbk] 0-home-lab-3-client-3:
+> remote operation failed. Path: /cdc/kk.txt
+> (3175e0cd-8308-45b8-a4b0-699f6f8cf37f) [Permission denied]
+> [2015-11-20 10:51:53.884056] W [fuse-bridge.c:969:fuse_fd_cbk]
+> 0-glusterfs-fuse: 63459965: OPEN() /cdc/kk.txt => -1 (Permission
+> denied)
+> [2015-11-20 10:51:53.885619] W [MSGID: 114031]
+> [client-rpc-fops.c:1298:client3_3_removexattr_cbk]
+> 0-home-lab-3-client-3: remote operation failed [Permission denied]
+> [2015-11-20 10:51:53.885664] W [fuse-bridge.c:1230:fuse_err_cbk]
+> 0-glusterfs-fuse: 63459967: REMOVEXATTR() /cdc/kk.txt => -1
+> (Permission denied)
+> [2015-11-20 10:51:53.887908] W [fuse-bridge.c:1230:fuse_err_cbk]
+> 0-glusterfs-fuse: 63459971: REMOVEXATTR() /cdc/kk.txt => -1
+> (Permission denied)
+> [2015-11-20 10:51:53.887891] W [MSGID: 114031]
+> [client-rpc-fops.c:1298:client3_3_removexattr_cbk]
+> 0-home-lab-3-client-3: remote operation failed [Permission denied]
+> 
+> (NOTE: We have more gluster brick logs but we don't know if are relevant)
+> 
+> -- 
+> ----------------------------------------------------------------
+> Centro de Cálculo         Depto. Ingeniería Sistemas Telemáticos
+> E-mail: omar@dit.upm.es        Universidad Politécnica de Madrid
+> Fax:(+34) 913367333                 E.T.S. Ing. Telecomunicación
+> Tel:(+34) 915495700-Ext.3005                28040 Madrid (Spain)
+> Tel:(+34) 915495762-Ext.3005
+> Tel:(+34) 913367366-Ext.3005
+> ----------------------------------------------------------------
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
