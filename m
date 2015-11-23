@@ -1,13 +1,13 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f182.google.com ([209.85.223.182]:33266 "EHLO
-	mail-io0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753080AbbKWWN7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Nov 2015 17:13:59 -0500
-Subject: [PATCH v1 1/9] xprtrdma: Add a safety margin for receive buffers
+Received: from mail-ig0-f174.google.com ([209.85.213.174]:35379 "EHLO
+	mail-ig0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754156AbbKWWOH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Nov 2015 17:14:07 -0500
+Subject: [PATCH v1 2/9] xprtrdma: Move struct ib_send_wr off the stack
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 23 Nov 2015 17:13:57 -0500
-Message-ID: <20151123221357.32702.59922.stgit@manet.1015granger.net>
+Date: Mon, 23 Nov 2015 17:14:06 -0500
+Message-ID: <20151123221405.32702.3821.stgit@manet.1015granger.net>
 In-Reply-To: <20151123220627.32702.62667.stgit@manet.1015granger.net>
 References: <20151123220627.32702.62667.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -15,86 +15,113 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Rarely, senders post a Send that is larger than the client's inline
-threshold. That can be due to a bug, or the client and server may
-not have communicated about their inline limits. RPC-over-RDMA
-currently doesn't specify any particular limit on inline size, so
-peers have to guess what it is.
+For FRWR FASTREG and LOCAL_INV, move the ib_*_wr structure off
+the stack. This allows frwr_op_map and frwr_op_unmap to chain
+WRs together without limit to register or invalidate a set of MRs
+with a single ib_post_send().
 
-It is fatal to the connection if the size of a Send is larger than
-the client's receive buffer. The sender is likely to retry with the
-same message size, so the workload is stuck at that point.
-
-Follow Postel's robustness principal: Be conservative in what you
-do, be liberal in what you accept from others. Increase the size of
-client receive buffers by a safety margin, and add a warning when
-the inline threshold is exceeded during receive.
-
-Note the Linux server's receive buffers are already page-sized.
+(This will be for chaining LOCAL_INV requests).
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/rpc_rdma.c  |    7 +++++++
- net/sunrpc/xprtrdma/verbs.c     |    6 +++++-
- net/sunrpc/xprtrdma/xprt_rdma.h |    5 +++++
- 3 files changed, 17 insertions(+), 1 deletion(-)
+ net/sunrpc/xprtrdma/frwr_ops.c  |   38 ++++++++++++++++++++------------------
+ net/sunrpc/xprtrdma/xprt_rdma.h |    2 ++
+ 2 files changed, 22 insertions(+), 18 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index c10d969..a169252 100644
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -776,6 +776,7 @@ rpcrdma_reply_handler(struct rpcrdma_rep *rep)
- 	int rdmalen, status;
- 	unsigned long cwnd;
- 	u32 credits;
-+	RPC_IFDEBUG(struct rpcrdma_create_data_internal *cdata);
+diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
+index 88cf9e7..31a4578 100644
+--- a/net/sunrpc/xprtrdma/frwr_ops.c
++++ b/net/sunrpc/xprtrdma/frwr_ops.c
+@@ -319,7 +319,7 @@ frwr_op_map(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
+ 	struct rpcrdma_mw *mw;
+ 	struct rpcrdma_frmr *frmr;
+ 	struct ib_mr *mr;
+-	struct ib_reg_wr reg_wr;
++	struct ib_reg_wr *reg_wr;
+ 	struct ib_send_wr *bad_wr;
+ 	int rc, i, n, dma_nents;
+ 	u8 key;
+@@ -336,6 +336,7 @@ frwr_op_map(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
+ 	frmr = &mw->r.frmr;
+ 	frmr->fr_state = FRMR_IS_VALID;
+ 	mr = frmr->fr_mr;
++	reg_wr = &frmr->fr_regwr;
  
- 	dprintk("RPC:       %s: incoming rep %p\n", __func__, rep);
+ 	if (nsegs > ia->ri_max_frmr_depth)
+ 		nsegs = ia->ri_max_frmr_depth;
+@@ -381,19 +382,19 @@ frwr_op_map(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
+ 	key = (u8)(mr->rkey & 0x000000FF);
+ 	ib_update_fast_reg_key(mr, ++key);
  
-@@ -783,6 +784,12 @@ rpcrdma_reply_handler(struct rpcrdma_rep *rep)
- 		goto out_badstatus;
- 	if (rep->rr_len < RPCRDMA_HDRLEN_MIN)
- 		goto out_shortreply;
-+#if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
-+	cdata = &r_xprt->rx_data;
-+	if (rep->rr_len > cdata->inline_rsize)
-+		pr_warn("RPC: %u byte reply exceeds inline threshold\n",
-+			rep->rr_len);
-+#endif
+-	reg_wr.wr.next = NULL;
+-	reg_wr.wr.opcode = IB_WR_REG_MR;
+-	reg_wr.wr.wr_id = (uintptr_t)mw;
+-	reg_wr.wr.num_sge = 0;
+-	reg_wr.wr.send_flags = 0;
+-	reg_wr.mr = mr;
+-	reg_wr.key = mr->rkey;
+-	reg_wr.access = writing ?
+-			IB_ACCESS_REMOTE_WRITE | IB_ACCESS_LOCAL_WRITE :
+-			IB_ACCESS_REMOTE_READ;
++	reg_wr->wr.next = NULL;
++	reg_wr->wr.opcode = IB_WR_REG_MR;
++	reg_wr->wr.wr_id = (uintptr_t)mw;
++	reg_wr->wr.num_sge = 0;
++	reg_wr->wr.send_flags = 0;
++	reg_wr->mr = mr;
++	reg_wr->key = mr->rkey;
++	reg_wr->access = writing ?
++			 IB_ACCESS_REMOTE_WRITE | IB_ACCESS_LOCAL_WRITE :
++			 IB_ACCESS_REMOTE_READ;
  
- 	headerp = rdmab_to_msg(rep->rr_rdmabuf);
- 	if (headerp->rm_vers != rpcrdma_version)
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index eadd1655..e3f12e2 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -924,7 +924,11 @@ rpcrdma_create_rep(struct rpcrdma_xprt *r_xprt)
- 	if (rep == NULL)
- 		goto out;
+ 	DECR_CQCOUNT(&r_xprt->rx_ep);
+-	rc = ib_post_send(ia->ri_id->qp, &reg_wr.wr, &bad_wr);
++	rc = ib_post_send(ia->ri_id->qp, &reg_wr->wr, &bad_wr);
+ 	if (rc)
+ 		goto out_senderr;
  
--	rep->rr_rdmabuf = rpcrdma_alloc_regbuf(ia, cdata->inline_rsize,
-+	/* The actual size of our receive buffers is increased slightly
-+	 * to prevent small receive overruns from killing our connection.
-+	 */
-+	rep->rr_rdmabuf = rpcrdma_alloc_regbuf(ia, cdata->inline_rsize +
-+					       RPCRDMA_RECV_MARGIN,
- 					       GFP_KERNEL);
- 	if (IS_ERR(rep->rr_rdmabuf)) {
- 		rc = PTR_ERR(rep->rr_rdmabuf);
+@@ -423,23 +424,24 @@ frwr_op_unmap(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg)
+ 	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
+ 	struct rpcrdma_mw *mw = seg1->rl_mw;
+ 	struct rpcrdma_frmr *frmr = &mw->r.frmr;
+-	struct ib_send_wr invalidate_wr, *bad_wr;
++	struct ib_send_wr *invalidate_wr, *bad_wr;
+ 	int rc, nsegs = seg->mr_nsegs;
+ 
+ 	dprintk("RPC:       %s: FRMR %p\n", __func__, mw);
+ 
+ 	seg1->rl_mw = NULL;
+ 	frmr->fr_state = FRMR_IS_INVALID;
++	invalidate_wr = &mw->r.frmr.fr_invwr;
+ 
+-	memset(&invalidate_wr, 0, sizeof(invalidate_wr));
+-	invalidate_wr.wr_id = (unsigned long)(void *)mw;
+-	invalidate_wr.opcode = IB_WR_LOCAL_INV;
+-	invalidate_wr.ex.invalidate_rkey = frmr->fr_mr->rkey;
++	memset(invalidate_wr, 0, sizeof(*invalidate_wr));
++	invalidate_wr->wr_id = (uintptr_t)mw;
++	invalidate_wr->opcode = IB_WR_LOCAL_INV;
++	invalidate_wr->ex.invalidate_rkey = frmr->fr_mr->rkey;
+ 	DECR_CQCOUNT(&r_xprt->rx_ep);
+ 
+ 	ib_dma_unmap_sg(ia->ri_device, frmr->sg, frmr->sg_nents, seg1->mr_dir);
+ 	read_lock(&ia->ri_qplock);
+-	rc = ib_post_send(ia->ri_id->qp, &invalidate_wr, &bad_wr);
++	rc = ib_post_send(ia->ri_id->qp, invalidate_wr, &bad_wr);
+ 	read_unlock(&ia->ri_qplock);
+ 	if (rc)
+ 		goto out_err;
 diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index ac7f8d4..1b72ab1 100644
+index 1b72ab1..2c34159 100644
 --- a/net/sunrpc/xprtrdma/xprt_rdma.h
 +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -337,6 +337,11 @@ struct rpcrdma_create_data_internal {
- #define RPCRDMA_INLINE_PAD_VALUE(rq)\
- 	rpcx_to_rdmad(rq->rq_xprt).padding
+@@ -207,6 +207,8 @@ struct rpcrdma_frmr {
+ 	enum rpcrdma_frmr_state		fr_state;
+ 	struct work_struct		fr_work;
+ 	struct rpcrdma_xprt		*fr_xprt;
++	struct ib_reg_wr		fr_regwr;
++	struct ib_send_wr		fr_invwr;
+ };
  
-+/* To help prevent spurious connection shutdown, allow senders to
-+ * overrun our receive inline threshold by a small bit.
-+ */
-+#define RPCRDMA_RECV_MARGIN	(128)
-+
- /*
-  * Statistics for RPCRDMA
-  */
+ struct rpcrdma_fmr {
 
