@@ -1,81 +1,75 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:42958 "EHLO fieldses.org"
+Received: from smtp-o-1.desy.de ([131.169.56.154]:40564 "EHLO smtp-o-1.desy.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752361AbbKWTtF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 23 Nov 2015 14:49:05 -0500
-Date: Mon, 23 Nov 2015 14:49:02 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-Cc: linux-nfs@vger.kernel.org
+	id S1754772AbbKWVRX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 23 Nov 2015 16:17:23 -0500
+Received: from smtp-map-1.desy.de (smtp-map-1.desy.de [131.169.56.66])
+	by smtp-o-1.desy.de (DESY-O-1) with ESMTP id 264462804D9
+	for <linux-nfs@vger.kernel.org>; Mon, 23 Nov 2015 22:17:22 +0100 (CET)
+Received: from ZITSWEEP2.win.desy.de (zitsweep2.win.desy.de [131.169.97.96])
+	by smtp-map-1.desy.de (DESY_MAP_1) with ESMTP id 1A1C213E85
+	for <linux-nfs@vger.kernel.org>; Mon, 23 Nov 2015 22:17:21 +0100 (MET)
+Date: Mon, 23 Nov 2015 22:17:21 +0100 (CET)
 Subject: Re: [PATCH] nfs4.0 tests: discover max supported file size
-Message-ID: <20151123194902.GE12032@fieldses.org>
-References: <1448267222-20720-1-git-send-email-tigran.mkrtchyan@desy.de>
+Message-ID: <684d76ce-9307-40f4-9aec-b9829a01051d@email.android.com>
+From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+To: Bruce Fields <bfields@fieldses.org>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1448267222-20720-1-git-send-email-tigran.mkrtchyan@desy.de>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Nov 23, 2015 at 09:27:02AM +0100, Tigran Mkrtchyan wrote:
-> current implementation amuses, that all servers
-> support 64-bit file sizes. This is not always true.
-> Use FATTR4_MAXFILESIZE attribute to discover supported
-> maximum. Update LOCK6 test to use it.
-
-The language at http://tools.ietf.org/html/rfc7530#section-16.10.4 isn't
-as clear as it could be, but I think INVAL at least is unambiguously
-wrong in the case you're testing (it should be BAD_RANGE or OK).
-
-My interpretation is actually that we should return:
-
-	- INVAL for 64-bit overflow, otherwise
-	- BAD_RANGE for 32-bit overflow on 32-bit server, otherwise
-	- OK for ranges that extend past FATTR4_MAXFILESIZE.  (You're
-	  allowed to lock ranges not in the file.)
-
-So I prefer the test as-is, but might be open to argument about whether
-this is the most important case to be testing.
-
---b.
-
-> 
-> Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-> ---
->  nfs4.0/nfs4lib.py             | 6 ++++++
->  nfs4.0/servertests/st_lock.py | 3 ++-
->  2 files changed, 8 insertions(+), 1 deletion(-)
-> 
-> diff --git a/nfs4.0/nfs4lib.py b/nfs4.0/nfs4lib.py
-> index 5031feb..41870dc 100644
-> --- a/nfs4.0/nfs4lib.py
-> +++ b/nfs4.0/nfs4lib.py
-> @@ -587,6 +587,12 @@ class NFS4Client(rpc.RPCClient, nfs4_ops.NFS4Operations):
->          d = self.do_getattrdict([], [FATTR4_LEASE_TIME])
->          return d[FATTR4_LEASE_TIME]
->  
-> +    def getMaxFileSize(self):
-> +        """Get maximum supported file size"""
-> +        d = self.do_getattrdict([], [FATTR4_MAXFILESIZE])
-> +        return d[FATTR4_MAXFILESIZE]
-> +
-> +
->      def create_obj(self, path, type=NF4DIR, attrs={FATTR4_MODE:0755},
->                     linkdata="/etc/X11"):
->          if __builtins__['type'](path) is str:
-> diff --git a/nfs4.0/servertests/st_lock.py b/nfs4.0/servertests/st_lock.py
-> index d54614d..80518f4 100644
-> --- a/nfs4.0/servertests/st_lock.py
-> +++ b/nfs4.0/servertests/st_lock.py
-> @@ -189,8 +189,9 @@ def testLenTooLong(t, env):
->      """
->      c = env.c1
->      c.init_connection()
-> +    max_size = c.getMaxFileSize();
->      fh, stateid = c.create_confirm(t.code)
-> -    res = c.lock_file(t.code, fh, stateid, 100, 0xfffffffffffffffe)
-> +    res = c.lock_file(t.code, fh, stateid, 100, max_size)
->      check(res, NFS4ERR_INVAL, "LOCK with offset+len overflow")
->  
->  def testNoFh(t, env):
-> -- 
-> 2.5.0
+Ck9uIE5vdiAyMywgMjAxNSAyMDo0OSwgIkouIEJydWNlIEZpZWxkcyIgPGJmaWVsZHNAZmllbGRz
+ZXMub3JnPiB3cm90ZToKPgo+IE9uIE1vbiwgTm92IDIzLCAyMDE1IGF0IDA5OjI3OjAyQU0gKzAx
+MDAsIFRpZ3JhbiBNa3J0Y2h5YW4gd3JvdGU6IAo+ID4gY3VycmVudCBpbXBsZW1lbnRhdGlvbiBh
+bXVzZXMsIHRoYXQgYWxsIHNlcnZlcnMgCj4gPiBzdXBwb3J0IDY0LWJpdCBmaWxlIHNpemVzLiBU
+aGlzIGlzIG5vdCBhbHdheXMgdHJ1ZS4gCj4gPiBVc2UgRkFUVFI0X01BWEZJTEVTSVpFIGF0dHJp
+YnV0ZSB0byBkaXNjb3ZlciBzdXBwb3J0ZWQgCj4gPiBtYXhpbXVtLiBVcGRhdGUgTE9DSzYgdGVz
+dCB0byB1c2UgaXQuIAo+Cj4gVGhlIGxhbmd1YWdlIGF0IGh0dHA6Ly90b29scy5pZXRmLm9yZy9o
+dG1sL3JmYzc1MzAjc2VjdGlvbi0xNi4xMC40IGlzbid0IAo+IGFzIGNsZWFyIGFzIGl0IGNvdWxk
+IGJlLCBidXQgSSB0aGluayBJTlZBTCBhdCBsZWFzdCBpcyB1bmFtYmlndW91c2x5IAo+IHdyb25n
+IGluIHRoZSBjYXNlIHlvdSdyZSB0ZXN0aW5nIChpdCBzaG91bGQgYmUgQkFEX1JBTkdFIG9yIE9L
+KS4gCj4KPiBNeSBpbnRlcnByZXRhdGlvbiBpcyBhY3R1YWxseSB0aGF0IHdlIHNob3VsZCByZXR1
+cm46IAo+Cj4gLSBJTlZBTCBmb3IgNjQtYml0IG92ZXJmbG93LCBvdGhlcndpc2UgCj4gLSBCQURf
+UkFOR0UgZm9yIDMyLWJpdCBvdmVyZmxvdyBvbiAzMi1iaXQgc2VydmVyLCBvdGhlcndpc2UgCgpI
+bS4uLm91ciBzZXJ2ZXIgaXMgYSBiaXQgd2VpcmQuIFRoZSBmaWxlIHNpemUgaXMgNjMgYml0IDop
+CgpUaWdyYW4uCj4gLSBPSyBmb3IgcmFuZ2VzIHRoYXQgZXh0ZW5kIHBhc3QgRkFUVFI0X01BWEZJ
+TEVTSVpFLsKgIChZb3UncmUgCj4gwqAgYWxsb3dlZCB0byBsb2NrIHJhbmdlcyBub3QgaW4gdGhl
+IGZpbGUuKSAKPgo+IFNvIEkgcHJlZmVyIHRoZSB0ZXN0IGFzLWlzLCBidXQgbWlnaHQgYmUgb3Bl
+biB0byBhcmd1bWVudCBhYm91dCB3aGV0aGVyIAo+IHRoaXMgaXMgdGhlIG1vc3QgaW1wb3J0YW50
+IGNhc2UgdG8gYmUgdGVzdGluZy4gCj4KPiAtLWIuIAo+Cj4gPiAKPiA+IFNpZ25lZC1vZmYtYnk6
+IFRpZ3JhbiBNa3J0Y2h5YW4gPHRpZ3Jhbi5ta3J0Y2h5YW5AZGVzeS5kZT4gCj4gPiAtLS0gCj4g
+PsKgIG5mczQuMC9uZnM0bGliLnB5wqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgIHwgNiArKysrKysg
+Cj4gPsKgIG5mczQuMC9zZXJ2ZXJ0ZXN0cy9zdF9sb2NrLnB5IHwgMyArKy0gCj4gPsKgIDIgZmls
+ZXMgY2hhbmdlZCwgOCBpbnNlcnRpb25zKCspLCAxIGRlbGV0aW9uKC0pIAo+ID4gCj4gPiBkaWZm
+IC0tZ2l0IGEvbmZzNC4wL25mczRsaWIucHkgYi9uZnM0LjAvbmZzNGxpYi5weSAKPiA+IGluZGV4
+IDUwMzFmZWIuLjQxODcwZGMgMTAwNjQ0IAo+ID4gLS0tIGEvbmZzNC4wL25mczRsaWIucHkgCj4g
+PiArKysgYi9uZnM0LjAvbmZzNGxpYi5weSAKPiA+IEBAIC01ODcsNiArNTg3LDEyIEBAIGNsYXNz
+IE5GUzRDbGllbnQocnBjLlJQQ0NsaWVudCwgbmZzNF9vcHMuTkZTNE9wZXJhdGlvbnMpOiAKPiA+
+wqDCoMKgwqDCoMKgwqDCoMKgIGQgPSBzZWxmLmRvX2dldGF0dHJkaWN0KFtdLCBbRkFUVFI0X0xF
+QVNFX1RJTUVdKSAKPiA+wqDCoMKgwqDCoMKgwqDCoMKgIHJldHVybiBkW0ZBVFRSNF9MRUFTRV9U
+SU1FXSAKPiA+wqAgCj4gPiArwqDCoMKgIGRlZiBnZXRNYXhGaWxlU2l6ZShzZWxmKTogCj4gPiAr
+wqDCoMKgwqDCoMKgwqAgIiIiR2V0IG1heGltdW0gc3VwcG9ydGVkIGZpbGUgc2l6ZSIiIiAKPiA+
+ICvCoMKgwqDCoMKgwqDCoCBkID0gc2VsZi5kb19nZXRhdHRyZGljdChbXSwgW0ZBVFRSNF9NQVhG
+SUxFU0laRV0pIAo+ID4gK8KgwqDCoMKgwqDCoMKgIHJldHVybiBkW0ZBVFRSNF9NQVhGSUxFU0la
+RV0gCj4gPiArIAo+ID4gKyAKPiA+wqDCoMKgwqDCoCBkZWYgY3JlYXRlX29iaihzZWxmLCBwYXRo
+LCB0eXBlPU5GNERJUiwgYXR0cnM9e0ZBVFRSNF9NT0RFOjA3NTV9LCAKPiA+wqDCoMKgwqDCoMKg
+wqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoCBsaW5rZGF0YT0iL2V0Yy9YMTEiKTogCj4gPsKg
+wqDCoMKgwqDCoMKgwqDCoCBpZiBfX2J1aWx0aW5zX19bJ3R5cGUnXShwYXRoKSBpcyBzdHI6IAo+
+ID4gZGlmZiAtLWdpdCBhL25mczQuMC9zZXJ2ZXJ0ZXN0cy9zdF9sb2NrLnB5IGIvbmZzNC4wL3Nl
+cnZlcnRlc3RzL3N0X2xvY2sucHkgCj4gPiBpbmRleCBkNTQ2MTRkLi44MDUxOGY0IDEwMDY0NCAK
+PiA+IC0tLSBhL25mczQuMC9zZXJ2ZXJ0ZXN0cy9zdF9sb2NrLnB5IAo+ID4gKysrIGIvbmZzNC4w
+L3NlcnZlcnRlc3RzL3N0X2xvY2sucHkgCj4gPiBAQCAtMTg5LDggKzE4OSw5IEBAIGRlZiB0ZXN0
+TGVuVG9vTG9uZyh0LCBlbnYpOiAKPiA+wqDCoMKgwqDCoCAiIiIgCj4gPsKgwqDCoMKgwqAgYyA9
+IGVudi5jMSAKPiA+wqDCoMKgwqDCoCBjLmluaXRfY29ubmVjdGlvbigpIAo+ID4gK8KgwqDCoCBt
+YXhfc2l6ZSA9IGMuZ2V0TWF4RmlsZVNpemUoKTsgCj4gPsKgwqDCoMKgwqAgZmgsIHN0YXRlaWQg
+PSBjLmNyZWF0ZV9jb25maXJtKHQuY29kZSkgCj4gPiAtwqDCoMKgIHJlcyA9IGMubG9ja19maWxl
+KHQuY29kZSwgZmgsIHN0YXRlaWQsIDEwMCwgMHhmZmZmZmZmZmZmZmZmZmZlKSAKPiA+ICvCoMKg
+wqAgcmVzID0gYy5sb2NrX2ZpbGUodC5jb2RlLCBmaCwgc3RhdGVpZCwgMTAwLCBtYXhfc2l6ZSkg
+Cj4gPsKgwqDCoMKgwqAgY2hlY2socmVzLCBORlM0RVJSX0lOVkFMLCAiTE9DSyB3aXRoIG9mZnNl
+dCtsZW4gb3ZlcmZsb3ciKSAKPiA+wqAgCj4gPsKgIGRlZiB0ZXN0Tm9GaCh0LCBlbnYpOiAKPiA+
+IC0tIAo+ID4gMi41LjAgCj4gLS0gCj4gVG8gdW5zdWJzY3JpYmUgZnJvbSB0aGlzIGxpc3Q6IHNl
+bmQgdGhlIGxpbmUgInVuc3Vic2NyaWJlIGxpbnV4LW5mcyIgaW4gCj4gdGhlIGJvZHkgb2YgYSBt
+ZXNzYWdlIHRvIG1ham9yZG9tb0B2Z2VyLmtlcm5lbC5vcmcgCj4gTW9yZSBtYWpvcmRvbW8gaW5m
+byBhdMKgIGh0dHA6Ly92Z2VyLmtlcm5lbC5vcmcvbWFqb3Jkb21vLWluZm8uaHRtbCAK
