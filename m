@@ -1,67 +1,53 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f177.google.com ([209.85.223.177]:34793 "EHLO
-	mail-io0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932065AbbKWWPF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Nov 2015 17:15:05 -0500
-Subject: [PATCH v1 9/9] xprtrdma: Revert commit e7104a2a9606 ('xprtrdma: Cap
- req_cqinit').
+Received: from mail-ig0-f176.google.com ([209.85.213.176]:34963 "EHLO
+	mail-ig0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752282AbbKWWUP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Nov 2015 17:20:15 -0500
+Subject: [PATCH v1 0/8] NFS/RDMA server patches for 4.5
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 23 Nov 2015 17:15:03 -0500
-Message-ID: <20151123221503.32702.13068.stgit@manet.1015granger.net>
-In-Reply-To: <20151123220627.32702.62667.stgit@manet.1015granger.net>
-References: <20151123220627.32702.62667.stgit@manet.1015granger.net>
+Date: Mon, 23 Nov 2015 17:20:13 -0500
+Message-ID: <20151123221738.13040.26277.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The root of the problem was that sends (especially unsignalled
-FASTREG and LOCAL_INV Work Requests) were not properly flow-
-controlled, which allowed a send queue overrun.
+Here are patches to support server-side bi-directional RPC/RDMA
+operation (to enable NFSv4.1 on RPC/RDMA transports). These still
+need testing, but they are ready for initial review.
 
-Now that the RPC/RDMA reply handler waits for invalidation to
-complete, the send queue is properly flow-controlled. Thus this
-limit is no longer necessary.
+Also available in the "nfsd-rdma-for-4.5" topic branch of this git repo:
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+git://git.linux-nfs.org/projects/cel/cel-2.6.git
+
+Or for browsing:
+
+http://git.linux-nfs.org/?p=cel/cel-2.6.git;a=log;h=refs/heads/nfsd-rdma-for-4.5
+
 ---
- net/sunrpc/xprtrdma/verbs.c     |    6 ++----
- net/sunrpc/xprtrdma/xprt_rdma.h |    6 ------
- 2 files changed, 2 insertions(+), 10 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index e3f12e2..e3baf05 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -616,10 +616,8 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
- 
- 	/* set trigger for requesting send completion */
- 	ep->rep_cqinit = ep->rep_attr.cap.max_send_wr/2 - 1;
--	if (ep->rep_cqinit > RPCRDMA_MAX_UNSIGNALED_SENDS)
--		ep->rep_cqinit = RPCRDMA_MAX_UNSIGNALED_SENDS;
--	else if (ep->rep_cqinit <= 2)
--		ep->rep_cqinit = 0;
-+	if (ep->rep_cqinit <= 2)
-+		ep->rep_cqinit = 0;	/* always signal? */
- 	INIT_CQCOUNT(ep);
- 	init_waitqueue_head(&ep->rep_connect_wait);
- 	INIT_DELAYED_WORK(&ep->rep_connect_worker, rpcrdma_connect_worker);
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index 45dd0b7..c166aeb 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -88,12 +88,6 @@ struct rpcrdma_ep {
- 	struct delayed_work	rep_connect_worker;
- };
- 
--/*
-- * Force a signaled SEND Work Request every so often,
-- * in case the provider needs to do some housekeeping.
-- */
--#define RPCRDMA_MAX_UNSIGNALED_SENDS	(32)
--
- #define INIT_CQCOUNT(ep) atomic_set(&(ep)->rep_cqcount, (ep)->rep_cqinit)
- #define DECR_CQCOUNT(ep) atomic_sub_return(1, &(ep)->rep_cqcount)
- 
+Chuck Lever (8):
+      svcrdma: Do not send XDR roundup bytes for a write chunk
+      svcrdma: Define maximum number of backchannel requests
+      svcrdma: Add svc_rdma_get_context() API that is allowed to fail
+      svcrdma: Add infrastructure to send backwards direction RPC/RDMA calls
+      svcrdma: Add infrastructure to receive backwards direction RPC/RDMA replies
+      xprtrdma: Add class for RDMA backwards direction transport
+      svcrdma: No need to count WRs in svc_rdma_send()
+      svcrdma: Remove svc_rdma_fastreg_mr::access_flags field
 
+
+ include/linux/sunrpc/svc_rdma.h          |   12 +
+ include/linux/sunrpc/xprt.h              |    1 
+ net/sunrpc/xprt.c                        |    1 
+ net/sunrpc/xprtrdma/rpc_rdma.c           |   76 +++++++++
+ net/sunrpc/xprtrdma/svc_rdma_recvfrom.c  |   72 ++++++++-
+ net/sunrpc/xprtrdma/svc_rdma_sendto.c    |   74 +++++++++
+ net/sunrpc/xprtrdma/svc_rdma_transport.c |   65 ++++++--
+ net/sunrpc/xprtrdma/transport.c          |  243 ++++++++++++++++++++++++++++++
+ net/sunrpc/xprtrdma/xprt_rdma.h          |    6 +
+ 9 files changed, 519 insertions(+), 31 deletions(-)
+
+--
+Chuck Lever
