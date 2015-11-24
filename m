@@ -1,38 +1,69 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from nm36-vm5.bullet.mail.bf1.yahoo.com ([72.30.238.141]:32878 "EHLO
-	nm36-vm5.bullet.mail.bf1.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754548AbbKXOuj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Nov 2015 09:50:39 -0500
-Subject: Re: [RFC][PATCH 00/12] Enhanced file stat system call
-To: Christoph Hellwig <hch@infradead.org>
-References: <20151120145422.18930.72662.stgit@warthog.procyon.org.uk>
- <564F4F4E.8060603@schaufler-ca.com> <20151124081519.GA16147@infradead.org>
-Cc: David Howells <dhowells@redhat.com>, arnd@arndb.de,
-        linux-afs@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
-        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org
-From: Casey Schaufler <casey@schaufler-ca.com>
-Message-ID: <5654779A.9000702@schaufler-ca.com>
-Date: Tue, 24 Nov 2015 06:43:38 -0800
-MIME-Version: 1.0
-In-Reply-To: <20151124081519.GA16147@infradead.org>
-Content-Type: text/plain; charset=windows-1252; format=flowed
+Received: from aserp1040.oracle.com ([141.146.126.69]:47879 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753528AbbKXPUj convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Nov 2015 10:20:39 -0500
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2104\))
+Subject: Re: [PATCH v1 3/9] xprtrdma: Introduce ro_unmap_sync method
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <565477CC.5070309@dev.mellanox.co.il>
+Date: Tue, 24 Nov 2015 10:20:10 -0500
+Cc: Christoph Hellwig <hch@infradead.org>, linux-rdma@vger.kernel.org,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Sagi Grimberg <sagig@mellanox.com>
+Message-Id: <0632A14B-5391-4AAC-8F05-1809A092F04B@oracle.com>
+References: <20151123220627.32702.62667.stgit@manet.1015granger.net> <20151123221414.32702.87638.stgit@manet.1015granger.net> <20151124064556.GA29141@infradead.org> <565442F5.7080400@dev.mellanox.co.il> <4B2D7C66-31AC-44F3-A8CC-22CC7136015C@oracle.com> <565477CC.5070309@dev.mellanox.co.il>
+To: Sagi Grimberg <sagig@dev.mellanox.co.il>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 11/24/2015 12:15 AM, Christoph Hellwig wrote:
-> On Fri, Nov 20, 2015 at 08:50:22AM -0800, Casey Schaufler wrote:
->> How about relevant xattrs? SELinux context, ACL, that sort of thing.
->> The fact that these are optional should be taken care of by (4).
-> Those are not simple, fixed size stat data and would make the system
-> call a giant mess.
->
-I didn't say it would be easy. I do think that adding a system call
-that only deals with simple, fixed size data is going to fall short
-of solving "the problem".
 
-Actually, a Smack label is fixed size (256 bytes). I suspect there
-is a maximum for SELinux contexts as well. ACLs I'll grant you are
-infinite.
+> On Nov 24, 2015, at 9:44 AM, Sagi Grimberg <sagig@dev.mellanox.co.il> wrote:
+> 
+> Hey Chuck,
+> 
+>> 
+>>> It is painful, too painful. The entire value proposition of RDMA is
+>>> low-latency and waiting for the extra HW round-trip for a local
+>>> invalidation to complete is unacceptable, moreover it adds a huge loads
+>>> of extra interrupts and cache-line pollutions.
+>> 
+>> The killer is the extra context switches, I’ve found.
+> 
+> That too...
+> 
+>> I’ve noticed only a marginal loss of performance on modern
+>> hardware.
+> 
+> Would you mind sharing your observations?
+
+I’m testing with CX-3 Pro on FDR.
+
+NFS READ and WRITE round trip latency, which includes the cost
+of registration and now invalidation, is not noticeably longer.
+dbench and fio results are marginally slower (in the neighborhood
+of 5%).
+
+For NFS, the cost of invalidation is probably not significant
+compared to other bottlenecks in our stack (lock contention and
+scheduling overhead are likely the largest contributors).
+
+Notice that xprtrdma chains together all the LOCAL_INV WRs for
+an RPC, and only signals the final one. Before, every LOCAL_INV
+WR was signaled. So this patch actually reduces the send
+completion rate.
+
+The main benefit for NFS of waiting for invalidation to complete
+is better send queue accounting. Even without the data integrity
+issue, we have to ensure the WQEs consumed by invalidation
+requests are released before dispatching another RPC. Otherwise
+the send queue can be overrun.
+
+
+--
+Chuck Lever
+
+
+
 
