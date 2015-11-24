@@ -1,62 +1,69 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wm0-f43.google.com ([74.125.82.43]:34718 "EHLO
-	mail-wm0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753363AbbKXK7I (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Nov 2015 05:59:08 -0500
-Received: by wmvv187 with SMTP id v187so203113612wmv.1
-        for <linux-nfs@vger.kernel.org>; Tue, 24 Nov 2015 02:59:07 -0800 (PST)
-Subject: Re: [PATCH v1 3/9] xprtrdma: Introduce ro_unmap_sync method
-To: Christoph Hellwig <hch@infradead.org>,
-        Chuck Lever <chuck.lever@oracle.com>
+Received: from p3plsmtpa08-08.prod.phx3.secureserver.net ([173.201.193.109]:44422
+	"EHLO p3plsmtpa08-08.prod.phx3.secureserver.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753005AbbKXMgh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Nov 2015 07:36:37 -0500
+Subject: Re: Future of FMR support, was: Re: [PATCH v1 5/9] xprtrdma: Add
+ ro_unmap_sync method for FMR
+To: Christoph Hellwig <hch@infradead.org>
 References: <20151123220627.32702.62667.stgit@manet.1015granger.net>
- <20151123221414.32702.87638.stgit@manet.1015granger.net>
- <20151124064556.GA29141@infradead.org>
-Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org,
-        Sagi Grimberg <sagig@mellanox.com>
-From: Sagi Grimberg <sagig@dev.mellanox.co.il>
-Message-ID: <565442F5.7080400@dev.mellanox.co.il>
-Date: Tue, 24 Nov 2015 12:59:01 +0200
+ <20151123221430.32702.86114.stgit@manet.1015granger.net>
+ <5653B606.3070700@talpey.com> <20151124065225.GB29141@infradead.org>
+Cc: Chuck Lever <chuck.lever@oracle.com>, linux-rdma@vger.kernel.org,
+        linux-nfs@vger.kernel.org, Sagi Grimberg <sagig@mellanox.com>,
+        santosh.shilimkar@oracle.com
+From: Tom Talpey <tom@talpey.com>
+Message-ID: <565459D2.9010600@talpey.com>
+Date: Tue, 24 Nov 2015 07:36:34 -0500
 MIME-Version: 1.0
-In-Reply-To: <20151124064556.GA29141@infradead.org>
+In-Reply-To: <20151124065225.GB29141@infradead.org>
 Content-Type: text/plain; charset=windows-1252; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-On 24/11/2015 08:45, Christoph Hellwig wrote:
-> On Mon, Nov 23, 2015 at 05:14:14PM -0500, Chuck Lever wrote:
->> In the current xprtrdma implementation, some memreg strategies
->> implement ro_unmap synchronously (the MR is knocked down before the
->> method returns) and some asynchonously (the MR will be knocked down
->> and returned to the pool in the background).
+On 11/24/2015 1:52 AM, Christoph Hellwig wrote:
+> On Mon, Nov 23, 2015 at 07:57:42PM -0500, Tom Talpey wrote:
+>> On 11/23/2015 5:14 PM, Chuck Lever wrote:
+>>> FMR's ro_unmap method is already synchronous because ib_unmap_fmr()
+>>> is a synchronous verb. However, some improvements can be made here.
 >>
->> To guarantee the MR is truly invalid before the RPC consumer is
->> allowed to resume execution, we need an unmap method that is
->> always synchronous, invoked from the RPC/RDMA reply handler.
->>
->> The new method unmaps all MRs for an RPC. The existing ro_unmap
->> method unmaps only one MR at a time.
+>> I thought FMR support was about to be removed in the core.
 >
-> Do we really want to go down that road?  It seems like we've decided
-> in general that while the protocol specs say MR must be unmapped before
-> proceeding with the data that is painful enough to ignore this
-> requirement.  E.g. iser for example only does the local invalidate
-> just before reusing the MR.
+> Seems like everyone would love to kill it, but no one dares to do
+> it just yet.  Reasons to keep FMRs:
+>
+>   - mthca doesn't support FRs but haven't been staged out
+>   - RDS only supports FRMs for the IB transports (it does support FRs for
+>     an entirely separate iWarp transports.  I'd love to know why we can't
+>     just use that iWarp transport for IB as well).
+>   - mlx4 hardware might be slower with FRs than FRMs (Or mentioned this
+>     in reply to the iSER remote invalidation series).
 
-It is painful, too painful. The entire value proposition of RDMA is
-low-latency and waiting for the extra HW round-trip for a local
-invalidation to complete is unacceptable, moreover it adds a huge loads
-of extra interrupts and cache-line pollutions.
+Ok, let me add then.
 
-As I see it, if we don't wait for local-invalidate to complete before
-unmap and IO completion (and no one does) then local invalidate before
-re-use is only marginally worse. For iSER, remote invalidate solves this 
-(patches submitted!) and I'd say we should push for all the
-storage standards to include remote invalidate. There is the question
-of multi-rkey transactions, which is why I stated in the past that
-arbitrary sg registration is important (which will be submitted soon
-for ConnectX-4).
+Reasons to kill FMRs:
 
-Waiting for local invalidate to complete would be a really big
-sacrifice for our storage ULPs.
+   - FMRs are UNSAFE. They protect on page boundaries, not byte,
+     therefore a length error on an operation can corrupt data
+     outside the i/o buffer remotely. To say nothing of maliciousness.
+
+   - FMRs are SLOWER. The supposed performance improvement of FMR
+     comes from the "mempool" that is often placed in front of them.
+     These pools cache remotely registered regions, in the hope of
+     reusing them without having to invalidate in between. See the
+     first bullet for the ramifications of that.
+
+   - FMRs are SYNCHRONOUS. The FMR verbs make direct calls into the
+     verbs which block and/or do not return control to the caller
+     promptly as do work queue operations. The processor spends
+     more time servicing the device, typically at raised irq.
+
+   - FMRs are PROPRIETARY. Only one vendor supports them, only one
+     of their NICs has no decent alternative, and that NIC is
+     functionally obsolete.
+
+If storage stacks continue to support them, I personally feel it
+is critical to carefully document the risks to customer data as
+part of shipping the code.
+
+Tom.
