@@ -1,64 +1,61 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from ipmail07.adl2.internode.on.net ([150.101.137.131]:11546 "EHLO
-	ipmail07.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753611AbbKXUV3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Nov 2015 15:21:29 -0500
-Date: Wed, 25 Nov 2015 07:21:13 +1100
-From: Dave Chinner <david@fromorbit.com>
-To: David Howells <dhowells@redhat.com>
-Cc: arnd@arndb.de, linux-afs@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
-        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org
-Subject: Re: [PATCH 03/12] statx: Add a system call to make enhanced file
- info available
-Message-ID: <20151124202113.GJ26718@dastard>
-References: <20151120145422.18930.72662.stgit@warthog.procyon.org.uk>
- <20151120145457.18930.79678.stgit@warthog.procyon.org.uk>
+Received: from userp1040.oracle.com ([156.151.31.81]:26400 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932197AbbKXVyk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Nov 2015 16:54:40 -0500
+Subject: Re: Future of FMR support, was: Re: [PATCH v1 5/9] xprtrdma: Add
+ ro_unmap_sync method for FMR
+To: Christoph Hellwig <hch@infradead.org>, Tom Talpey <tom@talpey.com>
+References: <20151123220627.32702.62667.stgit@manet.1015granger.net>
+ <20151123221430.32702.86114.stgit@manet.1015granger.net>
+ <5653B606.3070700@talpey.com> <20151124065225.GB29141@infradead.org>
+Cc: Chuck Lever <chuck.lever@oracle.com>, linux-rdma@vger.kernel.org,
+        linux-nfs@vger.kernel.org, Sagi Grimberg <sagig@mellanox.com>
+From: santosh shilimkar <santosh.shilimkar@oracle.com>
+Message-ID: <5654DC7A.7080807@oracle.com>
+Date: Tue, 24 Nov 2015 13:54:02 -0800
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20151120145457.18930.79678.stgit@warthog.procyon.org.uk>
+In-Reply-To: <20151124065225.GB29141@infradead.org>
+Content-Type: text/plain; charset=windows-1252; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Nov 20, 2015 at 02:54:57PM +0000, David Howells wrote:
-> The defined bits in st_ioc_flags are the usual FS_xxx_FL, plus some extra
-> flags that might be supplied by the filesystem.  Note that Ext4 returns
-> flags outside of {EXT4,FS}_FL_USER_VISIBLE in response to FS_IOC_GETFLAGS.
-> Should {EXT4,FS}_FL_USER_VISIBLE be extended to cover them?  Or should the
-> extra flags be suppressed?
+Hi Christoph,
 
-Quite frankly, we should not expose flags owned by a filesystem like
-this. Create a new set of flagsi that are exposed by the syscall,
-and every filesystem is responsible for translating their internal
-flag values to the syscall flag values....
+On 11/23/2015 10:52 PM, Christoph Hellwig wrote:
+> On Mon, Nov 23, 2015 at 07:57:42PM -0500, Tom Talpey wrote:
+>> On 11/23/2015 5:14 PM, Chuck Lever wrote:
+>>> FMR's ro_unmap method is already synchronous because ib_unmap_fmr()
+>>> is a synchronous verb. However, some improvements can be made here.
+>>
+>> I thought FMR support was about to be removed in the core.
+>
+> Seems like everyone would love to kill it, but no one dares to do
+> it just yet.  Reasons to keep FMRs:
+>
+>   - mthca doesn't support FRs but haven't been staged out
+>   - RDS only supports FRMs for the IB transports (it does support FRs for
+>     an entirely separate iWarp transports.  I'd love to know why we can't
+>     just use that iWarp transport for IB as well).
+>   - mlx4 hardware might be slower with FRs than FRMs (Or mentioned this
+>     in reply to the iSER remote invalidation series).
+>
+> So at lest for 4.5 we're unlikely to be able to get rid of it alone
+> due to the RDS issue.  We'll then need performance numbers for mlx4,
+> and figure out how much we care about mthca.
+>
+As already indicated to Sagi [1], RDS IB FR support is work in
+progress and I was hoping to get it ready for 4.5. There are few
+issues we found with one of the HCA and hence the progress
+slowed down. Looking at where we are, 4.6 merge window seems
+to be realistic for me to get RDS FR support.
 
-> The defined bits in the st_information field give local system data on a
-> file, how it is accessed, where it is and what it does:
-> 
-> 	STATX_INFO_ENCRYPTED		File is encrypted
-> 	STATX_INFO_TEMPORARY		File is temporary (NTFS/CIFS/deleted)
-> 	STATX_INFO_FABRICATED		File was made up by filesystem
-> 	STATX_INFO_KERNEL_API		File is kernel API (eg: procfs/sysfs)
-> 	STATX_INFO_REMOTE		File is remote
-> 	STATX_INFO_OFFLINE		File is offline (CIFS)
-> 	STATX_INFO_AUTOMOUNT		Dir is automount trigger
-> 	STATX_INFO_AUTODIR		Dir provides unlisted automounts
-> 	STATX_INFO_NONSYSTEM_OWNERSHIP	File has non-system ownership details
-> 	STATX_INFO_REPARSE_POINT	File is reparse point (NTFS/CIFS)
+Now on the iWARP transport itself, it has been bit tough because
+of lack of hardware to tests. I have been requesting test(s) in
+previous RDS patches and haven't seen any interest so far. If
+this continues to be the trend, I might as well get rid of
+RDS iWARP support after couple of merge windows.
 
-	STATX_INFO_XATTR		File/dir has extended attrs
-
-... just like these STATX_INFO flags are filesystem independent...
-
-And, FWIW, I'd like to see more than one local filesystem supported
-in the initial patchset (e.g. btrfs) and also have all their
-inode/fs flags exposed so we don't end up encoding weird
-ext4-specific feature quirks into the API.....
-
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+Regards,
+Santosh
+[1] http://www.spinics.net/lists/linux-nfs/msg53909.html
