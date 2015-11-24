@@ -1,89 +1,116 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from p3plsmtpa11-05.prod.phx3.secureserver.net ([68.178.252.106]:39579
-	"EHLO p3plsmtpa11-05.prod.phx3.secureserver.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752605AbbKXBBF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Nov 2015 20:01:05 -0500
-Subject: Re: [PATCH v1 8/9] xprtrdma: Invalidate in the RPC reply handler
-To: Chuck Lever <chuck.lever@oracle.com>, linux-rdma@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-References: <20151123220627.32702.62667.stgit@manet.1015granger.net>
- <20151123221454.32702.76062.stgit@manet.1015granger.net>
-From: Tom Talpey <tom@talpey.com>
-Message-ID: <5653B6DA.1080201@talpey.com>
-Date: Mon, 23 Nov 2015 20:01:14 -0500
-MIME-Version: 1.0
-In-Reply-To: <20151123221454.32702.76062.stgit@manet.1015granger.net>
-Content-Type: text/plain; charset=utf-8; format=flowed
+Received: from userp1040.oracle.com ([156.151.31.81]:26201 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752321AbbKXBJZ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Nov 2015 20:09:25 -0500
+Content-Type: text/plain; charset=utf-8
+Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2104\))
+Subject: Re: [PATCH v1 2/8] svcrdma: Define maximum number of backchannel requests
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <5653B1A6.3010707@talpey.com>
+Date: Mon, 23 Nov 2015 20:09:22 -0500
+Cc: linux-rdma@vger.kernel.org,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <BABDB763-B4D6-4538-82FB-11F494BAC27C@oracle.com>
+References: <20151123221738.13040.26277.stgit@klimt.1015granger.net> <20151123222030.13040.19373.stgit@klimt.1015granger.net> <5653B1A6.3010707@talpey.com>
+To: Tom Talpey <tom@talpey.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 11/23/2015 5:14 PM, Chuck Lever wrote:
-> There is a window between the time the RPC reply handler wakes the
-> waiting RPC task and when xprt_release() invokes ops->buf_free.
-> During this time, memory regions containing the data payload may
-> still be accessed by a broken or malicious server, but the RPC
-> application has already been allowed access to the memory containing
-> the RPC request's data payloads.
->
-> The server should be fenced from client memory containing RPC data
-> payloads _before_ the RPC application is allowed to continue.
 
-No concern, just Hurray for implementing this fundamental
-integrity requirement. It's even more important when krb5i
-is in play, to avoid truly malicious injection-after-integrity.
+> On Nov 23, 2015, at 7:39 PM, Tom Talpey <tom@talpey.com> wrote:
+> 
+> On 11/23/2015 5:20 PM, Chuck Lever wrote:
+>> Extra resources for handling backchannel requests have to be
+>> pre-allocated when a transport instance is created. Set a limit.
+>> 
+>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>> ---
+>>  include/linux/sunrpc/svc_rdma.h          |    5 +++++
+>>  net/sunrpc/xprtrdma/svc_rdma_transport.c |    6 +++++-
+>>  2 files changed, 10 insertions(+), 1 deletion(-)
+>> 
+>> diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
+>> index f869807..478aa30 100644
+>> --- a/include/linux/sunrpc/svc_rdma.h
+>> +++ b/include/linux/sunrpc/svc_rdma.h
+>> @@ -178,6 +178,11 @@ struct svcxprt_rdma {
+>>  #define RPCRDMA_SQ_DEPTH_MULT   8
+>>  #define RPCRDMA_MAX_REQUESTS    32
+>>  #define RPCRDMA_MAX_REQ_SIZE    4096
+>> +#if defined(CONFIG_SUNRPC_BACKCHANNEL)
+> 
+> Why is this a config option? Why wouldn't you always want
+> this? It's needed for any post-1990 NFS dialect.
 
->
-> This change also more strongly enforces send queue accounting. There
-> is a maximum number of RPC calls allowed to be outstanding. When an
-> RPC/RDMA transport is set up, just enough send queue resources are
-> allocated to handle registration, Send, and invalidation WRs for
-> each those RPCs at the same time.
->
-> Before, additional RPC calls could be dispatched while invalidation
-> WRs were still consuming send WQEs. When invalidation WRs backed
-> up, dispatching additional RPCs resulted in a send queue overrun.
->
-> Now, the reply handler prevents RPC dispatch until invalidation is
-> complete. This prevents RPC call dispatch until there are enough
-> send queue resources to proceed.
->
-> Still to do: If an RPC exits early (say, ^C), the reply handler has
-> no opportunity to perform invalidation. Currently, xprt_rdma_free()
-> still frees remaining RDMA resources, which could deadlock.
-> Additional changes are needed to handle invalidation properly in this
-> case.
->
-> Reported-by: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
->   net/sunrpc/xprtrdma/rpc_rdma.c |   10 ++++++++++
->   1 file changed, 10 insertions(+)
->
-> diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-> index d7b9156..4ad72ca 100644
-> --- a/net/sunrpc/xprtrdma/rpc_rdma.c
-> +++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-> @@ -898,6 +898,16 @@ badheader:
->   		break;
->   	}
->
-> +	/* Invalidate and flush the data payloads before waking the
-> +	 * waiting application. This guarantees the memory region is
-> +	 * properly fenced from the server before the application
-> +	 * accesses the data. It also ensures proper send flow
-> +	 * control: waking the next RPC waits until this RPC has
-> +	 * relinquished all its Send Queue entries.
-> +	 */
-> +	if (req->rl_nchunks)
-> +		r_xprt->rx_ia.ri_ops->ro_unmap_sync(r_xprt, req);
-> +
->   	credits = be32_to_cpu(headerp->rm_credit);
->   	if (credits == 0)
->   		credits = 1;	/* don't deadlock */
->
+I think some distros want to be able to compile out NFSv4.x
+on small systems, and take all the backchannel cruft with it.
+
+
+>> +#define RPCRDMA_MAX_BC_REQUESTS	8
+> 
+> Why a constant 8? The forward channel value is apparently
+> configurable, just a few lines down.
+
+The client side backward direction credit limit, now
+in 4.4, is already a constant.
+
+The client side ULP uses a constant for the slot table
+size: NFS4_MAX_BACK_CHANNEL_OPS. I’m not 100% sure but
+the server seems to just echo that number back to the
+client.
+
+I’d rather not add an admin knob for this. Why would it
+be necessary?
+
+
+>> +#else
+>> +#define RPCRDMA_MAX_BC_REQUESTS	0
+>> +#endif
+>> 
+>>  #define RPCSVC_MAXPAYLOAD_RDMA	RPCSVC_MAXPAYLOAD
+>> 
+>> diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+>> index b348b4a..01c7b36 100644
+>> --- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
+>> +++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+>> @@ -923,8 +923,10 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
+>>  				  (size_t)RPCSVC_MAXPAGES);
+>>  	newxprt->sc_max_sge_rd = min_t(size_t, devattr.max_sge_rd,
+>>  				       RPCSVC_MAXPAGES);
+>> +	/* XXX: what if HCA can't support enough WRs for bc operation? */
+>>  	newxprt->sc_max_requests = min((size_t)devattr.max_qp_wr,
+>> -				   (size_t)svcrdma_max_requests);
+>> +				       (size_t)(svcrdma_max_requests +
+>> +				       RPCRDMA_MAX_BC_REQUESTS));
+>>  	newxprt->sc_sq_depth = RPCRDMA_SQ_DEPTH_MULT * newxprt->sc_max_requests;
+>> 
+>>  	/*
+>> @@ -964,7 +966,9 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
+>>  	qp_attr.event_handler = qp_event_handler;
+>>  	qp_attr.qp_context = &newxprt->sc_xprt;
+>>  	qp_attr.cap.max_send_wr = newxprt->sc_sq_depth;
+>> +	qp_attr.cap.max_send_wr += RPCRDMA_MAX_BC_REQUESTS;
+>>  	qp_attr.cap.max_recv_wr = newxprt->sc_max_requests;
+>> +	qp_attr.cap.max_recv_wr += RPCRDMA_MAX_BC_REQUESTS;
+>>  	qp_attr.cap.max_send_sge = newxprt->sc_max_sge;
+>>  	qp_attr.cap.max_recv_sge = newxprt->sc_max_sge;
+>>  	qp_attr.sq_sig_type = IB_SIGNAL_REQ_WR;
+>> 
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> 
+>> 
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
->
+
+--
+Chuck Lever
+
+
+
+
