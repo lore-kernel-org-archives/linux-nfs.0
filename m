@@ -1,38 +1,42 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from p3plsmtpa11-09.prod.phx3.secureserver.net ([68.178.252.110]:34779
-	"EHLO p3plsmtpa11-09.prod.phx3.secureserver.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752225AbbKXNn3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Nov 2015 08:43:29 -0500
-Subject: Re: [PATCH v1 3/9] xprtrdma: Introduce ro_unmap_sync method
-To: Sagi Grimberg <sagig@dev.mellanox.co.il>,
-        Christoph Hellwig <hch@infradead.org>,
-        Chuck Lever <chuck.lever@oracle.com>
-References: <20151123220627.32702.62667.stgit@manet.1015granger.net>
- <20151123221414.32702.87638.stgit@manet.1015granger.net>
- <20151124064556.GA29141@infradead.org> <565442F5.7080400@dev.mellanox.co.il>
-Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org,
-        Sagi Grimberg <sagig@mellanox.com>
-From: Tom Talpey <tom@talpey.com>
-Message-ID: <5654697E.1030809@talpey.com>
-Date: Tue, 24 Nov 2015 08:43:26 -0500
-MIME-Version: 1.0
-In-Reply-To: <565442F5.7080400@dev.mellanox.co.il>
-Content-Type: text/plain; charset=windows-1252; format=flowed
+Received: from aserp1040.oracle.com ([141.146.126.69]:18804 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753279AbbKXOIw convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Nov 2015 09:08:52 -0500
+Content-Type: text/plain; charset=utf-8
+Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2104\))
+Subject: Re: [PATCH v1 8/8] svcrdma: Remove svc_rdma_fastreg_mr::access_flags field
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20151124063903.GA12300@infradead.org>
+Date: Tue, 24 Nov 2015 09:08:21 -0500
+Cc: Tom Talpey <tom@talpey.com>, linux-rdma@vger.kernel.org,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <7B9388F8-3A88-4F61-AB87-A1E6DB9902FE@oracle.com>
+References: <20151123221738.13040.26277.stgit@klimt.1015granger.net> <20151123222118.13040.24258.stgit@klimt.1015granger.net> <5653B4CA.5050806@talpey.com> <92B143FC-0F2C-48E4-9042-189883D76403@oracle.com> <20151124063903.GA12300@infradead.org>
+To: Christoph Hellwig <hch@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 11/24/2015 5:59 AM, Sagi Grimberg wrote:
-> As I see it, if we don't wait for local-invalidate to complete before
-> unmap and IO completion (and no one does)
 
-For the record, that is false. Windows quite strictly performs these
-steps, and deliver millions of real 4K IOPS over SMB Direct.
+> On Nov 24, 2015, at 1:39 AM, Christoph Hellwig <hch@infradead.org> wrote:
+> 
+> On Mon, Nov 23, 2015 at 07:53:04PM -0500, Chuck Lever wrote:
+>>> Wait, the REMOTE_WRITE is there to support iWARP, but it isn't
+>>> needed for IB or RoCE. Shouldn't this be updated to peek at those
+>>> new attributes to decide, instead of remaining unconditional?
+>> 
+>> That???s coming in another patch from Christoph.
+> 
+> Can you drop this patch so that we have less conflicts with that one,
+> assuming this series goes in through the NFS tree, and the memory
+> registration changes go in through the RDMA tree?
 
-> Waiting for local invalidate to complete would be a really big
-> sacrifice for our storage ULPs.
+Why don’t you fold my change into yours?
 
-Not waiting would also be a sacrifice, by compromising data integrity.
-It's a tough tradeoff, but if you choose to go that way it will be
-critical to be honest about the consequences to the data.
 
-Tom.
+--
+Chuck Lever
+
+
+
+
