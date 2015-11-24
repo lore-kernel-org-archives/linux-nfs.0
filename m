@@ -1,60 +1,107 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:49371 "EHLO imap.thunk.org"
+Received: from mx141.netapp.com ([216.240.21.12]:23428 "EHLO mx141.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752641AbbKXTxI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 24 Nov 2015 14:53:08 -0500
-Date: Tue, 24 Nov 2015 14:52:56 -0500
-From: "Theodore Ts'o" <tytso@mit.edu>
-To: David Howells <dhowells@redhat.com>
-Cc: arnd@arndb.de, linux-afs@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
-        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org
-Subject: Re: [PATCH 02/12] statx: Provide IOC flags for Windows fs attributes
-Message-ID: <20151124195256.GB3482@thunk.org>
-References: <20151120145422.18930.72662.stgit@warthog.procyon.org.uk>
- <20151120145447.18930.5308.stgit@warthog.procyon.org.uk>
+	id S1753168AbbKXTyk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 24 Nov 2015 14:54:40 -0500
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+Subject: Re: [PATCH v1 7/9] SUNRPC: Introduct xprt_commit_rqst()
+To: Chuck Lever <chuck.lever@oracle.com>, <linux-rdma@vger.kernel.org>,
+        <linux-nfs@vger.kernel.org>
+References: <20151123220627.32702.62667.stgit@manet.1015granger.net>
+ <20151123221446.32702.24797.stgit@manet.1015granger.net>
+Message-ID: <5654C079.7060507@Netapp.com>
+Date: Tue, 24 Nov 2015 14:54:33 -0500
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20151120145447.18930.5308.stgit@warthog.procyon.org.uk>
+In-Reply-To: <20151123221446.32702.24797.stgit@manet.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Nov 20, 2015 at 02:54:47PM +0000, David Howells wrote:
-> Provide IOC flags for Windows fs attributes so that they can be retrieved (or
-> even altered) using the FS_IOC_[GS]ETFLAGS ioctl and read using statx().
+Hi Chuck,
 
-We have a real problem with numberspace used by FS_IOC_[GS]ETFLAGS.
-This ioctl was originally defined for use with ext2, but then later on
-other file systems decided they wanted to use the same ioctl for their
-file system, and so now we have the situation where some of the bits
-are used in a way where they are intended to be file system
-independent, and some are file system specific.  And ext[234] use
-these bits as its on-disk encoding --- which given that
-FS_IOC[GS]ETFLAGS was originally ext[234] specific, is understandable,
-but it makes things really messy at this point.
+On 11/23/2015 05:14 PM, Chuck Lever wrote:
+> I'm about to add code in the RPC/RDMA reply handler between the
+> xprt_lookup_rqst() and xprt_complete_rqst() call site that needs
+> to execute outside of spinlock critical sections.
+> 
+> Add a hook to remove an rpc_rqst from the pending list once
+> the transport knows its going to invoke xprt_complete_rqst().
+> 
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+>  include/linux/sunrpc/xprt.h    |    1 +
+>  net/sunrpc/xprt.c              |   14 ++++++++++++++
+>  net/sunrpc/xprtrdma/rpc_rdma.c |    4 ++++
+>  3 files changed, 19 insertions(+)
+> 
+> diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+> index 69ef5b3..ab6c3a5 100644
+> --- a/include/linux/sunrpc/xprt.h
+> +++ b/include/linux/sunrpc/xprt.h
+> @@ -366,6 +366,7 @@ void			xprt_wait_for_buffer_space(struct rpc_task *task, rpc_action action);
+>  void			xprt_write_space(struct rpc_xprt *xprt);
+>  void			xprt_adjust_cwnd(struct rpc_xprt *xprt, struct rpc_task *task, int result);
+>  struct rpc_rqst *	xprt_lookup_rqst(struct rpc_xprt *xprt, __be32 xid);
+> +void			xprt_commit_rqst(struct rpc_task *task);
+>  void			xprt_complete_rqst(struct rpc_task *task, int copied);
+>  void			xprt_release_rqst_cong(struct rpc_task *task);
+>  void			xprt_disconnect_done(struct rpc_xprt *xprt);
+> diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+> index 2e98f4a..a5be4ab 100644
+> --- a/net/sunrpc/xprt.c
+> +++ b/net/sunrpc/xprt.c
+> @@ -837,6 +837,20 @@ static void xprt_update_rtt(struct rpc_task *task)
+>  }
+>  
+>  /**
+> + * xprt_commit_rqst - remove rqst from pending list early
+> + * @task: RPC request to remove
 
-So for example, the bits you have chosen are in conflict with ext4's use:
+Is xprt_commit_rqst() the right name for this function?  Removing a request from a list isn't how I would expect a commit to work.
 
-#define EXT4_INLINE_DATA_FL		0x10000000 /* Inode has inline data. */
-#define EXT4_PROJINHERIT_FL		0x20000000 /* Create with parents projid */
+Anna
 
-> +#define FS_HIDDEN_FL			0x10000000 /* Windows hidden file attribute */
-> +#define FS_SYSTEM_FL			0x20000000 /* Windows system file attribute */
-> +#define FS_ARCHIVE_FL			0x40000000 /* Windows archive file attribute */
+> + *
+> + * Caller holds transport lock.
+> + */
+> +void xprt_commit_rqst(struct rpc_task *task)
+> +{
+> +	struct rpc_rqst *req = task->tk_rqstp;
+> +
+> +	list_del_init(&req->rq_list);
+> +}
+> +EXPORT_SYMBOL_GPL(xprt_commit_rqst);
+> +
+> +/**
+>   * xprt_complete_rqst - called when reply processing is complete
+>   * @task: RPC request that recently completed
+>   * @copied: actual number of bytes received from the transport
+> diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+> index a169252..d7b9156 100644
+> --- a/net/sunrpc/xprtrdma/rpc_rdma.c
+> +++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+> @@ -811,6 +811,9 @@ rpcrdma_reply_handler(struct rpcrdma_rep *rep)
+>  	if (req->rl_reply)
+>  		goto out_duplicate;
+>  
+> +	xprt_commit_rqst(rqst->rq_task);
+> +	spin_unlock_bh(&xprt->transport_lock);
+> +
+>  	dprintk("RPC:       %s: reply 0x%p completes request 0x%p\n"
+>  		"                   RPC request 0x%p xid 0x%08x\n",
+>  			__func__, rep, req, rqst,
+> @@ -901,6 +904,7 @@ badheader:
+>  	else if (credits > r_xprt->rx_buf.rb_max_requests)
+>  		credits = r_xprt->rx_buf.rb_max_requests;
+>  
+> +	spin_lock_bh(&xprt->transport_lock);
+>  	cwnd = xprt->cwnd;
+>  	xprt->cwnd = credits << RPC_CWNDSHIFT;
+>  	if (xprt->cwnd > cwnd)
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
 
-
-As a result, I would suggest that we not try to use the
-FS_IOC_[GS]ETFLAGS number scheme for any new interface, so we're at
-least not making a bad situation worse.
-
-The only reason why some other file systems have chosen to use
-FS_IOC_[GS]ETFLAGS, instead of defining their own ioctl, is so they
-can use lsattr/chattr from e2fsprogs instead of creating their own
-utility.  But for statx, there isn't a good reason use the same flags
-number space.  At the very least, can we use a new flags field for the
-Windows file attributes?  It's not like lsattr/chattr has the ability
-to set those flags today anyway.  So we might as well use a new flags
-field and a new flags numberspace for them.
-
-						- Ted
