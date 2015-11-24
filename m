@@ -1,41 +1,38 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wm0-f45.google.com ([74.125.82.45]:37304 "EHLO
-	mail-wm0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753396AbbKXOoh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Nov 2015 09:44:37 -0500
-Received: by wmww144 with SMTP id w144so29437693wmw.0
-        for <linux-nfs@vger.kernel.org>; Tue, 24 Nov 2015 06:44:35 -0800 (PST)
-Subject: Re: [PATCH v1 3/9] xprtrdma: Introduce ro_unmap_sync method
-To: Chuck Lever <chuck.lever@oracle.com>
-References: <20151123220627.32702.62667.stgit@manet.1015granger.net>
- <20151123221414.32702.87638.stgit@manet.1015granger.net>
- <20151124064556.GA29141@infradead.org> <565442F5.7080400@dev.mellanox.co.il>
- <4B2D7C66-31AC-44F3-A8CC-22CC7136015C@oracle.com>
-Cc: Christoph Hellwig <hch@infradead.org>, linux-rdma@vger.kernel.org,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Sagi Grimberg <sagig@mellanox.com>
-From: Sagi Grimberg <sagig@dev.mellanox.co.il>
-Message-ID: <565477CC.5070309@dev.mellanox.co.il>
-Date: Tue, 24 Nov 2015 16:44:28 +0200
+Received: from nm36-vm5.bullet.mail.bf1.yahoo.com ([72.30.238.141]:32878 "EHLO
+	nm36-vm5.bullet.mail.bf1.yahoo.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754548AbbKXOuj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Nov 2015 09:50:39 -0500
+Subject: Re: [RFC][PATCH 00/12] Enhanced file stat system call
+To: Christoph Hellwig <hch@infradead.org>
+References: <20151120145422.18930.72662.stgit@warthog.procyon.org.uk>
+ <564F4F4E.8060603@schaufler-ca.com> <20151124081519.GA16147@infradead.org>
+Cc: David Howells <dhowells@redhat.com>, arnd@arndb.de,
+        linux-afs@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
+        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-ext4@vger.kernel.org
+From: Casey Schaufler <casey@schaufler-ca.com>
+Message-ID: <5654779A.9000702@schaufler-ca.com>
+Date: Tue, 24 Nov 2015 06:43:38 -0800
 MIME-Version: 1.0
-In-Reply-To: <4B2D7C66-31AC-44F3-A8CC-22CC7136015C@oracle.com>
+In-Reply-To: <20151124081519.GA16147@infradead.org>
 Content-Type: text/plain; charset=windows-1252; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hey Chuck,
-
+On 11/24/2015 12:15 AM, Christoph Hellwig wrote:
+> On Fri, Nov 20, 2015 at 08:50:22AM -0800, Casey Schaufler wrote:
+>> How about relevant xattrs? SELinux context, ACL, that sort of thing.
+>> The fact that these are optional should be taken care of by (4).
+> Those are not simple, fixed size stat data and would make the system
+> call a giant mess.
 >
->> It is painful, too painful. The entire value proposition of RDMA is
->> low-latency and waiting for the extra HW round-trip for a local
->> invalidation to complete is unacceptable, moreover it adds a huge loads
->> of extra interrupts and cache-line pollutions.
->
-> The killer is the extra context switches, I’ve found.
+I didn't say it would be easy. I do think that adding a system call
+that only deals with simple, fixed size data is going to fall short
+of solving "the problem".
 
-That too...
+Actually, a Smack label is fixed size (256 bytes). I suspect there
+is a maximum for SELinux contexts as well. ACLs I'll grant you are
+infinite.
 
-> I’ve noticed only a marginal loss of performance on modern
-> hardware.
-
-Would you mind sharing your observations?
