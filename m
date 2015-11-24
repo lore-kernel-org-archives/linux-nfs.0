@@ -1,31 +1,36 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from nm45-vm1.bullet.mail.bf1.yahoo.com ([216.109.115.60]:34269 "EHLO
-	nm45-vm1.bullet.mail.bf1.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753260AbbKXSGe (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Nov 2015 13:06:34 -0500
-To: "David P. Quigley" <dpquigl@tycho.nsa.gov>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        labeled-nfs@linux-nfs.org
-Cc: Casey Schaufler <casey@schaufler-ca.com>
-From: Casey Schaufler <casey@schaufler-ca.com>
-Subject: Use of i_security in fs/nfs/inode.c
-Message-ID: <5654A5C2.4050008@schaufler-ca.com>
-Date: Tue, 24 Nov 2015 10:00:34 -0800
+Received: from mx142.netapp.com ([216.240.21.19]:50277 "EHLO mx142.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752992AbbKXS3p (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 24 Nov 2015 13:29:45 -0500
+From: Olga Kornievskaia <kolga@netapp.com>
+To: <Trond.Myklebust@primarydata.com>
+CC: <linux-nfs@vger.kernel.org>
+Subject: [PATCH Version 2 0/2] Adding to tracepoints
+Date: Tue, 24 Nov 2015 13:29:40 -0500
+Message-ID: <1448389782-99578-1-git-send-email-kolga@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+First patch adds stateid information to tracepoints (openstateid, delegation 
+stateid, and locking stateid). Version 2 of this patch fixes two things from 
+the previous version: (1) typo in printout missing ":" in one stateid, (2)
+close tracepoint should take stateid from the args instead of the state passed
+in as state's stateid could be delegation stateid.
 
-There is a check for inode->i_security == NULL in nfs_setsecurity
-in fs/nfs/inode.c. What is the intent of this check? Are you looking
-for an uninitialized security blob, are you looking to see if there
-is an active security module or something else?
+Second patch adds a new tracepoint nfs_cached_open() 
 
-Is there any reason that you can see that a call to 
-security_inode_getsecid()
-followed by a check to see if the secid == 0 would not be equivalent?
-I understand that the NULL check is faster, but it may not always be 
-correct.
+Olga Kornievskaia (2):
+  Adding stateid information to tracepoints
+  Adding tracepoint to cached open
+
+ fs/nfs/internal.h  |   9 ++
+ fs/nfs/nfs4proc.c  |  15 +--
+ fs/nfs/nfs4trace.h | 294 ++++++++++++++++++++++++++++++++++++++++++++++++-----
+ 3 files changed, 286 insertions(+), 32 deletions(-)
+
+-- 
+1.8.3.1
 
