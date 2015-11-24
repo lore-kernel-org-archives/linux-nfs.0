@@ -1,83 +1,72 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from p3plsmtpa07-04.prod.phx3.secureserver.net ([173.201.192.233]:48964
-	"EHLO p3plsmtpa07-04.prod.phx3.secureserver.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751843AbbKXAqB (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Nov 2015 19:46:01 -0500
-Subject: Re: [PATCH v1 2/8] svcrdma: Define maximum number of backchannel
- requests
+Received: from p3plsmtpa06-05.prod.phx3.secureserver.net ([173.201.192.106]:57653
+	"EHLO p3plsmtpa06-05.prod.phx3.secureserver.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751843AbbKXAwR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Nov 2015 19:52:17 -0500
+Subject: Re: [PATCH v1 8/8] svcrdma: Remove svc_rdma_fastreg_mr::access_flags
+ field
 To: Chuck Lever <chuck.lever@oracle.com>, linux-rdma@vger.kernel.org,
         linux-nfs@vger.kernel.org
 References: <20151123221738.13040.26277.stgit@klimt.1015granger.net>
- <20151123222030.13040.19373.stgit@klimt.1015granger.net>
+ <20151123222118.13040.24258.stgit@klimt.1015granger.net>
 From: Tom Talpey <tom@talpey.com>
-Message-ID: <5653B1A6.3010707@talpey.com>
-Date: Mon, 23 Nov 2015 19:39:02 -0500
+Message-ID: <5653B4CA.5050806@talpey.com>
+Date: Mon, 23 Nov 2015 19:52:26 -0500
 MIME-Version: 1.0
-In-Reply-To: <20151123222030.13040.19373.stgit@klimt.1015granger.net>
+In-Reply-To: <20151123222118.13040.24258.stgit@klimt.1015granger.net>
 Content-Type: text/plain; charset=utf-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 11/23/2015 5:20 PM, Chuck Lever wrote:
-> Extra resources for handling backchannel requests have to be
-> pre-allocated when a transport instance is created. Set a limit.
+On 11/23/2015 5:21 PM, Chuck Lever wrote:
+> Clean up: The access_flags field is not used outside of
+> rdma_read_chunk_frmr() and is always set to the same value.
 >
 > Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 > ---
->   include/linux/sunrpc/svc_rdma.h          |    5 +++++
->   net/sunrpc/xprtrdma/svc_rdma_transport.c |    6 +++++-
->   2 files changed, 10 insertions(+), 1 deletion(-)
+>   include/linux/sunrpc/svc_rdma.h         |    1 -
+>   net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |    3 +--
+>   2 files changed, 1 insertion(+), 3 deletions(-)
 >
 > diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
-> index f869807..478aa30 100644
+> index 243edf4..eee2a0d 100644
 > --- a/include/linux/sunrpc/svc_rdma.h
 > +++ b/include/linux/sunrpc/svc_rdma.h
-> @@ -178,6 +178,11 @@ struct svcxprt_rdma {
->   #define RPCRDMA_SQ_DEPTH_MULT   8
->   #define RPCRDMA_MAX_REQUESTS    32
->   #define RPCRDMA_MAX_REQ_SIZE    4096
-> +#if defined(CONFIG_SUNRPC_BACKCHANNEL)
-
-Why is this a config option? Why wouldn't you always want
-this? It's needed for any post-1990 NFS dialect.
-
-> +#define RPCRDMA_MAX_BC_REQUESTS	8
-
-Why a constant 8? The forward channel value is apparently
-configurable, just a few lines down.
-
-> +#else
-> +#define RPCRDMA_MAX_BC_REQUESTS	0
-> +#endif
+> @@ -107,7 +107,6 @@ struct svc_rdma_fastreg_mr {
+>   	struct ib_mr *mr;
+>   	struct scatterlist *sg;
+>   	int sg_nents;
+> -	unsigned long access_flags;
+>   	enum dma_data_direction direction;
+>   	struct list_head frmr_list;
+>   };
+> diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+> index 9480043..8ab1ab5 100644
+> --- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+> +++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+> @@ -240,7 +240,6 @@ int rdma_read_chunk_frmr(struct svcxprt_rdma *xprt,
+>   	read = min_t(int, (nents << PAGE_SHIFT) - *page_offset, rs_length);
 >
->   #define RPCSVC_MAXPAYLOAD_RDMA	RPCSVC_MAXPAYLOAD
+>   	frmr->direction = DMA_FROM_DEVICE;
+> -	frmr->access_flags = (IB_ACCESS_LOCAL_WRITE|IB_ACCESS_REMOTE_WRITE);
+>   	frmr->sg_nents = nents;
 >
-> diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-> index b348b4a..01c7b36 100644
-> --- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
-> +++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-> @@ -923,8 +923,10 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
->   				  (size_t)RPCSVC_MAXPAGES);
->   	newxprt->sc_max_sge_rd = min_t(size_t, devattr.max_sge_rd,
->   				       RPCSVC_MAXPAGES);
-> +	/* XXX: what if HCA can't support enough WRs for bc operation? */
->   	newxprt->sc_max_requests = min((size_t)devattr.max_qp_wr,
-> -				   (size_t)svcrdma_max_requests);
-> +				       (size_t)(svcrdma_max_requests +
-> +				       RPCRDMA_MAX_BC_REQUESTS));
->   	newxprt->sc_sq_depth = RPCRDMA_SQ_DEPTH_MULT * newxprt->sc_max_requests;
+>   	for (pno = 0; pno < nents; pno++) {
+> @@ -308,7 +307,7 @@ int rdma_read_chunk_frmr(struct svcxprt_rdma *xprt,
+>   	reg_wr.wr.num_sge = 0;
+>   	reg_wr.mr = frmr->mr;
+>   	reg_wr.key = frmr->mr->lkey;
+> -	reg_wr.access = frmr->access_flags;
+> +	reg_wr.access = (IB_ACCESS_LOCAL_WRITE|IB_ACCESS_REMOTE_WRITE);
+
+Wait, the REMOTE_WRITE is there to support iWARP, but it isn't
+needed for IB or RoCE. Shouldn't this be updated to peek at those
+new attributes to decide, instead of remaining unconditional?
+
+
+>   	reg_wr.wr.next = &read_wr.wr;
 >
->   	/*
-> @@ -964,7 +966,9 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
->   	qp_attr.event_handler = qp_event_handler;
->   	qp_attr.qp_context = &newxprt->sc_xprt;
->   	qp_attr.cap.max_send_wr = newxprt->sc_sq_depth;
-> +	qp_attr.cap.max_send_wr += RPCRDMA_MAX_BC_REQUESTS;
->   	qp_attr.cap.max_recv_wr = newxprt->sc_max_requests;
-> +	qp_attr.cap.max_recv_wr += RPCRDMA_MAX_BC_REQUESTS;
->   	qp_attr.cap.max_send_sge = newxprt->sc_max_sge;
->   	qp_attr.cap.max_recv_sge = newxprt->sc_max_sge;
->   	qp_attr.sq_sig_type = IB_SIGNAL_REQ_WR;
+>   	/* Prepare RDMA_READ */
 >
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
