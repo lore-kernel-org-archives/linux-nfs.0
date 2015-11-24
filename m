@@ -1,89 +1,115 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:30843 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752251AbbKXAxI convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Nov 2015 19:53:08 -0500
-Content-Type: text/plain; charset=utf-8
-Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2104\))
-Subject: Re: [PATCH v1 8/8] svcrdma: Remove svc_rdma_fastreg_mr::access_flags field
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <5653B4CA.5050806@talpey.com>
-Date: Mon, 23 Nov 2015 19:53:04 -0500
-Cc: linux-rdma@vger.kernel.org,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <92B143FC-0F2C-48E4-9042-189883D76403@oracle.com>
-References: <20151123221738.13040.26277.stgit@klimt.1015granger.net> <20151123222118.13040.24258.stgit@klimt.1015granger.net> <5653B4CA.5050806@talpey.com>
-To: Tom Talpey <tom@talpey.com>
+Received: from p3plsmtpa07-08.prod.phx3.secureserver.net ([173.201.192.237]:47528
+	"EHLO p3plsmtpa07-08.prod.phx3.secureserver.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752350AbbKXAzZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Nov 2015 19:55:25 -0500
+Subject: Re: [PATCH v1 1/9] xprtrdma: Add a safety margin for receive buffers
+To: Chuck Lever <chuck.lever@oracle.com>, linux-rdma@vger.kernel.org,
+        linux-nfs@vger.kernel.org
+References: <20151123220627.32702.62667.stgit@manet.1015granger.net>
+ <20151123221357.32702.59922.stgit@manet.1015granger.net>
+From: Tom Talpey <tom@talpey.com>
+Message-ID: <5653B586.705@talpey.com>
+Date: Mon, 23 Nov 2015 19:55:34 -0500
+MIME-Version: 1.0
+In-Reply-To: <20151123221357.32702.59922.stgit@manet.1015granger.net>
+Content-Type: text/plain; charset=utf-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On 11/23/2015 5:13 PM, Chuck Lever wrote:
+> Rarely, senders post a Send that is larger than the client's inline
+> threshold. That can be due to a bug, or the client and server may
+> not have communicated about their inline limits. RPC-over-RDMA
+> currently doesn't specify any particular limit on inline size, so
+> peers have to guess what it is.
+>
+> It is fatal to the connection if the size of a Send is larger than
+> the client's receive buffer. The sender is likely to retry with the
+> same message size, so the workload is stuck at that point.
+>
+> Follow Postel's robustness principal: Be conservative in what you
+> do, be liberal in what you accept from others. Increase the size of
+> client receive buffers by a safety margin, and add a warning when
+> the inline threshold is exceeded during receive.
 
-> On Nov 23, 2015, at 7:52 PM, Tom Talpey <tom@talpey.com> wrote:
-> 
-> On 11/23/2015 5:21 PM, Chuck Lever wrote:
->> Clean up: The access_flags field is not used outside of
->> rdma_read_chunk_frmr() and is always set to the same value.
->> 
->> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->> ---
->>  include/linux/sunrpc/svc_rdma.h         |    1 -
->>  net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |    3 +--
->>  2 files changed, 1 insertion(+), 3 deletions(-)
->> 
->> diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
->> index 243edf4..eee2a0d 100644
->> --- a/include/linux/sunrpc/svc_rdma.h
->> +++ b/include/linux/sunrpc/svc_rdma.h
->> @@ -107,7 +107,6 @@ struct svc_rdma_fastreg_mr {
->>  	struct ib_mr *mr;
->>  	struct scatterlist *sg;
->>  	int sg_nents;
->> -	unsigned long access_flags;
->>  	enum dma_data_direction direction;
->>  	struct list_head frmr_list;
->>  };
->> diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
->> index 9480043..8ab1ab5 100644
->> --- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
->> +++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
->> @@ -240,7 +240,6 @@ int rdma_read_chunk_frmr(struct svcxprt_rdma *xprt,
->>  	read = min_t(int, (nents << PAGE_SHIFT) - *page_offset, rs_length);
->> 
->>  	frmr->direction = DMA_FROM_DEVICE;
->> -	frmr->access_flags = (IB_ACCESS_LOCAL_WRITE|IB_ACCESS_REMOTE_WRITE);
->>  	frmr->sg_nents = nents;
->> 
->>  	for (pno = 0; pno < nents; pno++) {
->> @@ -308,7 +307,7 @@ int rdma_read_chunk_frmr(struct svcxprt_rdma *xprt,
->>  	reg_wr.wr.num_sge = 0;
->>  	reg_wr.mr = frmr->mr;
->>  	reg_wr.key = frmr->mr->lkey;
->> -	reg_wr.access = frmr->access_flags;
->> +	reg_wr.access = (IB_ACCESS_LOCAL_WRITE|IB_ACCESS_REMOTE_WRITE);
-> 
-> Wait, the REMOTE_WRITE is there to support iWARP, but it isn't
-> needed for IB or RoCE. Shouldn't this be updated to peek at those
-> new attributes to decide, instead of remaining unconditional?
+Safety is good, but how do know the chosen value is enough?
+Isn't it better to fail the badly-composed request and be done
+with it? Even if the stupid sender loops, which it will do
+anyway.
 
-That’s coming in another patch from Christoph.
-
-
-> 
-> 
->>  	reg_wr.wr.next = &read_wr.wr;
->> 
->>  	/* Prepare RDMA_READ */
->> 
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->> 
->> 
-
---
-Chuck Lever
-
-
-
-
+>
+> Note the Linux server's receive buffers are already page-sized.
+>
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+>   net/sunrpc/xprtrdma/rpc_rdma.c  |    7 +++++++
+>   net/sunrpc/xprtrdma/verbs.c     |    6 +++++-
+>   net/sunrpc/xprtrdma/xprt_rdma.h |    5 +++++
+>   3 files changed, 17 insertions(+), 1 deletion(-)
+>
+> diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+> index c10d969..a169252 100644
+> --- a/net/sunrpc/xprtrdma/rpc_rdma.c
+> +++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+> @@ -776,6 +776,7 @@ rpcrdma_reply_handler(struct rpcrdma_rep *rep)
+>   	int rdmalen, status;
+>   	unsigned long cwnd;
+>   	u32 credits;
+> +	RPC_IFDEBUG(struct rpcrdma_create_data_internal *cdata);
+>
+>   	dprintk("RPC:       %s: incoming rep %p\n", __func__, rep);
+>
+> @@ -783,6 +784,12 @@ rpcrdma_reply_handler(struct rpcrdma_rep *rep)
+>   		goto out_badstatus;
+>   	if (rep->rr_len < RPCRDMA_HDRLEN_MIN)
+>   		goto out_shortreply;
+> +#if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
+> +	cdata = &r_xprt->rx_data;
+> +	if (rep->rr_len > cdata->inline_rsize)
+> +		pr_warn("RPC: %u byte reply exceeds inline threshold\n",
+> +			rep->rr_len);
+> +#endif
+>
+>   	headerp = rdmab_to_msg(rep->rr_rdmabuf);
+>   	if (headerp->rm_vers != rpcrdma_version)
+> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+> index eadd1655..e3f12e2 100644
+> --- a/net/sunrpc/xprtrdma/verbs.c
+> +++ b/net/sunrpc/xprtrdma/verbs.c
+> @@ -924,7 +924,11 @@ rpcrdma_create_rep(struct rpcrdma_xprt *r_xprt)
+>   	if (rep == NULL)
+>   		goto out;
+>
+> -	rep->rr_rdmabuf = rpcrdma_alloc_regbuf(ia, cdata->inline_rsize,
+> +	/* The actual size of our receive buffers is increased slightly
+> +	 * to prevent small receive overruns from killing our connection.
+> +	 */
+> +	rep->rr_rdmabuf = rpcrdma_alloc_regbuf(ia, cdata->inline_rsize +
+> +					       RPCRDMA_RECV_MARGIN,
+>   					       GFP_KERNEL);
+>   	if (IS_ERR(rep->rr_rdmabuf)) {
+>   		rc = PTR_ERR(rep->rr_rdmabuf);
+> diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+> index ac7f8d4..1b72ab1 100644
+> --- a/net/sunrpc/xprtrdma/xprt_rdma.h
+> +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+> @@ -337,6 +337,11 @@ struct rpcrdma_create_data_internal {
+>   #define RPCRDMA_INLINE_PAD_VALUE(rq)\
+>   	rpcx_to_rdmad(rq->rq_xprt).padding
+>
+> +/* To help prevent spurious connection shutdown, allow senders to
+> + * overrun our receive inline threshold by a small bit.
+> + */
+> +#define RPCRDMA_RECV_MARGIN	(128)
+> +
+>   /*
+>    * Statistics for RPCRDMA
+>    */
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+>
