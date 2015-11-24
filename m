@@ -1,66 +1,166 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-oi0-f44.google.com ([209.85.218.44]:34662 "EHLO
-	mail-oi0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752211AbbKXBgC (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Nov 2015 20:36:02 -0500
-Received: by oies6 with SMTP id s6so1560937oie.1
-        for <linux-nfs@vger.kernel.org>; Mon, 23 Nov 2015 17:36:01 -0800 (PST)
-MIME-Version: 1.0
-In-Reply-To: <5653BB2C.4040209@talpey.com>
-References: <20151123221738.13040.26277.stgit@klimt.1015granger.net>
-	<20151123222030.13040.19373.stgit@klimt.1015granger.net>
-	<5653B1A6.3010707@talpey.com>
-	<BABDB763-B4D6-4538-82FB-11F494BAC27C@oracle.com>
-	<5653BB2C.4040209@talpey.com>
-Date: Mon, 23 Nov 2015 20:36:01 -0500
-Message-ID: <CAHQdGtTWkCoaehHbYwHSOQg0zn96dT7S0W3pERALvVy3d7uyZw@mail.gmail.com>
+Received: from userp1040.oracle.com ([156.151.31.81]:34150 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752211AbbKXBgh convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Nov 2015 20:36:37 -0500
+Content-Type: text/plain; charset=utf-8
+Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2104\))
 Subject: Re: [PATCH v1 2/8] svcrdma: Define maximum number of backchannel requests
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Tom Talpey <tom@talpey.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>,
-        Linux RDMA Mailing List <linux-rdma@vger.kernel.org>,
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <5653BB2C.4040209@talpey.com>
+Date: Mon, 23 Nov 2015 20:36:34 -0500
+Cc: linux-rdma@vger.kernel.org,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Message-Id: <9DE8B6F4-E14A-4F8D-BABC-AAE81E656B59@oracle.com>
+References: <20151123221738.13040.26277.stgit@klimt.1015granger.net> <20151123222030.13040.19373.stgit@klimt.1015granger.net> <5653B1A6.3010707@talpey.com> <BABDB763-B4D6-4538-82FB-11F494BAC27C@oracle.com> <5653BB2C.4040209@talpey.com>
+To: Tom Talpey <tom@talpey.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Nov 23, 2015 at 8:19 PM, Tom Talpey <tom@talpey.com> wrote:
+
+> On Nov 23, 2015, at 8:19 PM, Tom Talpey <tom@talpey.com> wrote:
+> 
 > On 11/23/2015 8:09 PM, Chuck Lever wrote:
->>
->>
+>> 
 >>> On Nov 23, 2015, at 7:39 PM, Tom Talpey <tom@talpey.com> wrote:
->>>
+>>> 
 >>> On 11/23/2015 5:20 PM, Chuck Lever wrote:
->>>>
 >>>> Extra resources for handling backchannel requests have to be
 >>>> pre-allocated when a transport instance is created. Set a limit.
->>>>
+>>>> 
 >>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 >>>> ---
->>>>   include/linux/sunrpc/svc_rdma.h          |    5 +++++
->>>>   net/sunrpc/xprtrdma/svc_rdma_transport.c |    6 +++++-
->>>>   2 files changed, 10 insertions(+), 1 deletion(-)
->>>>
->>>> diff --git a/include/linux/sunrpc/svc_rdma.h
->>>> b/include/linux/sunrpc/svc_rdma.h
+>>>>  include/linux/sunrpc/svc_rdma.h          |    5 +++++
+>>>>  net/sunrpc/xprtrdma/svc_rdma_transport.c |    6 +++++-
+>>>>  2 files changed, 10 insertions(+), 1 deletion(-)
+>>>> 
+>>>> diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
 >>>> index f869807..478aa30 100644
 >>>> --- a/include/linux/sunrpc/svc_rdma.h
 >>>> +++ b/include/linux/sunrpc/svc_rdma.h
 >>>> @@ -178,6 +178,11 @@ struct svcxprt_rdma {
->>>>   #define RPCRDMA_SQ_DEPTH_MULT   8
->>>>   #define RPCRDMA_MAX_REQUESTS    32
->>>>   #define RPCRDMA_MAX_REQ_SIZE    4096
+>>>>  #define RPCRDMA_SQ_DEPTH_MULT   8
+>>>>  #define RPCRDMA_MAX_REQUESTS    32
+>>>>  #define RPCRDMA_MAX_REQ_SIZE    4096
 >>>> +#if defined(CONFIG_SUNRPC_BACKCHANNEL)
->>>
->>>
+>>> 
 >>> Why is this a config option? Why wouldn't you always want
 >>> this? It's needed for any post-1990 NFS dialect.
->>
->>
+>> 
 >> I think some distros want to be able to compile out NFSv4.x
 >> on small systems, and take all the backchannel cruft with it.
->
->
+> 
 > So shouldn't it follow the NFSv4.x config options then?
 
-It does. Why the question?
+Setting CONFIG_NFS_V4_1 sets CONFIG_SUNRPC_BACKCHANNEL.
+Adding #ifdef CONFIG_NFS_V4_1 in net/sunrpc would be
+a layering violation.
+
+I see however that CONFIG_SUNRPC_BACKCHANNEL controls
+only the client backchannel capability. Perhaps it is
+out of place to use it to enable the server’s backchannel
+capability.
+
+
+>>>> +#define RPCRDMA_MAX_BC_REQUESTS	8
+>>> 
+>>> Why a constant 8? The forward channel value is apparently
+>>> configurable, just a few lines down.
+>> 
+>> The client side backward direction credit limit, now
+>> in 4.4, is already a constant.
+>> 
+>> The client side ULP uses a constant for the slot table
+>> size: NFS4_MAX_BACK_CHANNEL_OPS. I’m not 100% sure but
+>> the server seems to just echo that number back to the
+>> client.
+>> 
+>> I’d rather not add an admin knob for this. Why would it
+>> be necessary?
+> 
+> Because no constant is ever correct. Why isn't it "1"? Do
+> you allow multiple credits? Why not that value?
+> 
+> For instance.
+
+There’s no justification for the forward channel credit
+limit either.
+
+The code in Linux assumes one session slot in the NFSv4.1
+backchannel. When we get around to it, this can be made
+more flexible.
+
+It’s much easier to add flexibility and admin control later
+than it is to take it away when the knob becomes useless or
+badly designed. For now, 8 works, and it doesn’t have to be
+permanent.
+
+I could add a comment that says
+
+/* Arbitrary: support up to eight backward credits.
+ */
+
+
+>>>> +#else
+>>>> +#define RPCRDMA_MAX_BC_REQUESTS	0
+>>>> +#endif
+>>>> 
+>>>>  #define RPCSVC_MAXPAYLOAD_RDMA	RPCSVC_MAXPAYLOAD
+>>>> 
+>>>> diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+>>>> index b348b4a..01c7b36 100644
+>>>> --- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
+>>>> +++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+>>>> @@ -923,8 +923,10 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
+>>>>  				  (size_t)RPCSVC_MAXPAGES);
+>>>>  	newxprt->sc_max_sge_rd = min_t(size_t, devattr.max_sge_rd,
+>>>>  				       RPCSVC_MAXPAGES);
+>>>> +	/* XXX: what if HCA can't support enough WRs for bc operation? */
+>>>>  	newxprt->sc_max_requests = min((size_t)devattr.max_qp_wr,
+>>>> -				   (size_t)svcrdma_max_requests);
+>>>> +				       (size_t)(svcrdma_max_requests +
+>>>> +				       RPCRDMA_MAX_BC_REQUESTS));
+>>>>  	newxprt->sc_sq_depth = RPCRDMA_SQ_DEPTH_MULT * newxprt->sc_max_requests;
+>>>> 
+>>>>  	/*
+>>>> @@ -964,7 +966,9 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
+>>>>  	qp_attr.event_handler = qp_event_handler;
+>>>>  	qp_attr.qp_context = &newxprt->sc_xprt;
+>>>>  	qp_attr.cap.max_send_wr = newxprt->sc_sq_depth;
+>>>> +	qp_attr.cap.max_send_wr += RPCRDMA_MAX_BC_REQUESTS;
+>>>>  	qp_attr.cap.max_recv_wr = newxprt->sc_max_requests;
+>>>> +	qp_attr.cap.max_recv_wr += RPCRDMA_MAX_BC_REQUESTS;
+>>>>  	qp_attr.cap.max_send_sge = newxprt->sc_max_sge;
+>>>>  	qp_attr.cap.max_recv_sge = newxprt->sc_max_sge;
+>>>>  	qp_attr.sq_sig_type = IB_SIGNAL_REQ_WR;
+>>>> 
+>>>> --
+>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>>> the body of a message to majordomo@vger.kernel.org
+>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>>> 
+>>>> 
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> 
+>> --
+>> Chuck Lever
+>> 
+>> 
+>> 
+>> 
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> 
+>> 
+
+--
+Chuck Lever
+
+
+
+
