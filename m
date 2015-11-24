@@ -1,124 +1,85 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from p3plsmtpa06-07.prod.phx3.secureserver.net ([173.201.192.108]:46906
-	"EHLO p3plsmtpa06-07.prod.phx3.secureserver.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752211AbbKXA5d (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Nov 2015 19:57:33 -0500
-Subject: Re: [PATCH v1 5/9] xprtrdma: Add ro_unmap_sync method for FMR
+Received: from p3plsmtpa11-05.prod.phx3.secureserver.net ([68.178.252.106]:39579
+	"EHLO p3plsmtpa11-05.prod.phx3.secureserver.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752605AbbKXBBF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Nov 2015 20:01:05 -0500
+Subject: Re: [PATCH v1 8/9] xprtrdma: Invalidate in the RPC reply handler
 To: Chuck Lever <chuck.lever@oracle.com>, linux-rdma@vger.kernel.org,
         linux-nfs@vger.kernel.org
 References: <20151123220627.32702.62667.stgit@manet.1015granger.net>
- <20151123221430.32702.86114.stgit@manet.1015granger.net>
+ <20151123221454.32702.76062.stgit@manet.1015granger.net>
 From: Tom Talpey <tom@talpey.com>
-Message-ID: <5653B606.3070700@talpey.com>
-Date: Mon, 23 Nov 2015 19:57:42 -0500
+Message-ID: <5653B6DA.1080201@talpey.com>
+Date: Mon, 23 Nov 2015 20:01:14 -0500
 MIME-Version: 1.0
-In-Reply-To: <20151123221430.32702.86114.stgit@manet.1015granger.net>
+In-Reply-To: <20151123221454.32702.76062.stgit@manet.1015granger.net>
 Content-Type: text/plain; charset=utf-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 On 11/23/2015 5:14 PM, Chuck Lever wrote:
-> FMR's ro_unmap method is already synchronous because ib_unmap_fmr()
-> is a synchronous verb. However, some improvements can be made here.
+> There is a window between the time the RPC reply handler wakes the
+> waiting RPC task and when xprt_release() invokes ops->buf_free.
+> During this time, memory regions containing the data payload may
+> still be accessed by a broken or malicious server, but the RPC
+> application has already been allowed access to the memory containing
+> the RPC request's data payloads.
+>
+> The server should be fenced from client memory containing RPC data
+> payloads _before_ the RPC application is allowed to continue.
 
-I thought FMR support was about to be removed in the core.
-
+No concern, just Hurray for implementing this fundamental
+integrity requirement. It's even more important when krb5i
+is in play, to avoid truly malicious injection-after-integrity.
 
 >
-> 1. Gather all the MRs for the RPC request onto a list, and invoke
->     ib_unmap_fmr() once with that list. This reduces the number of
->     doorbells when there is more than one MR to invalidate
+> This change also more strongly enforces send queue accounting. There
+> is a maximum number of RPC calls allowed to be outstanding. When an
+> RPC/RDMA transport is set up, just enough send queue resources are
+> allocated to handle registration, Send, and invalidation WRs for
+> each those RPCs at the same time.
 >
-> 2. Perform the DMA unmap _after_ the MRs are unmapped, not before.
->     This is critical after invalidating a Write chunk.
+> Before, additional RPC calls could be dispatched while invalidation
+> WRs were still consuming send WQEs. When invalidation WRs backed
+> up, dispatching additional RPCs resulted in a send queue overrun.
 >
+> Now, the reply handler prevents RPC dispatch until invalidation is
+> complete. This prevents RPC call dispatch until there are enough
+> send queue resources to proceed.
+>
+> Still to do: If an RPC exits early (say, ^C), the reply handler has
+> no opportunity to perform invalidation. Currently, xprt_rdma_free()
+> still frees remaining RDMA resources, which could deadlock.
+> Additional changes are needed to handle invalidation properly in this
+> case.
+>
+> Reported-by: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
 > Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 > ---
->   net/sunrpc/xprtrdma/fmr_ops.c |   64 +++++++++++++++++++++++++++++++++++++++++
->   1 file changed, 64 insertions(+)
+>   net/sunrpc/xprtrdma/rpc_rdma.c |   10 ++++++++++
+>   1 file changed, 10 insertions(+)
 >
-> diff --git a/net/sunrpc/xprtrdma/fmr_ops.c b/net/sunrpc/xprtrdma/fmr_ops.c
-> index f1e8daf..c14f3a4 100644
-> --- a/net/sunrpc/xprtrdma/fmr_ops.c
-> +++ b/net/sunrpc/xprtrdma/fmr_ops.c
-> @@ -179,6 +179,69 @@ out_maperr:
->   	return rc;
->   }
+> diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+> index d7b9156..4ad72ca 100644
+> --- a/net/sunrpc/xprtrdma/rpc_rdma.c
+> +++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+> @@ -898,6 +898,16 @@ badheader:
+>   		break;
+>   	}
 >
-> +static void
-> +__fmr_dma_unmap(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg)
-> +{
-> +	struct ib_device *device = r_xprt->rx_ia.ri_device;
-> +	struct rpcrdma_mw *mw = seg->rl_mw;
-> +	int nsegs = seg->mr_nsegs;
-> +
-> +	seg->rl_mw = NULL;
-> +
-> +	while (nsegs--)
-> +		rpcrdma_unmap_one(device, seg++);
-> +
-> +	rpcrdma_put_mw(r_xprt, mw);
-> +}
-> +
-> +/* Invalidate all memory regions that were registered for "req".
-> + *
-> + * Sleeps until it is safe for the host CPU to access the
-> + * previously mapped memory regions.
-> + */
-> +static void
-> +fmr_op_unmap_sync(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req)
-> +{
-> +	struct rpcrdma_mr_seg *seg;
-> +	unsigned int i, nchunks;
-> +	struct rpcrdma_mw *mw;
-> +	LIST_HEAD(unmap_list);
-> +	int rc;
-> +
-> +	dprintk("RPC:       %s: req %p\n", __func__, req);
-> +
-> +	/* ORDER: Invalidate all of the req's MRs first
-> +	 *
-> +	 * ib_unmap_fmr() is slow, so use a single call instead
-> +	 * of one call per mapped MR.
+> +	/* Invalidate and flush the data payloads before waking the
+> +	 * waiting application. This guarantees the memory region is
+> +	 * properly fenced from the server before the application
+> +	 * accesses the data. It also ensures proper send flow
+> +	 * control: waking the next RPC waits until this RPC has
+> +	 * relinquished all its Send Queue entries.
 > +	 */
-> +	for (i = 0, nchunks = req->rl_nchunks; nchunks; nchunks--) {
-> +		seg = &req->rl_segments[i];
-> +		mw = seg->rl_mw;
+> +	if (req->rl_nchunks)
+> +		r_xprt->rx_ia.ri_ops->ro_unmap_sync(r_xprt, req);
 > +
-> +		list_add(&mw->r.fmr.fmr->list, &unmap_list);
-> +
-> +		i += seg->mr_nsegs;
-> +	}
-> +	rc = ib_unmap_fmr(&unmap_list);
-> +	if (rc)
-> +		pr_warn("%s: ib_unmap_fmr failed (%i)\n", __func__, rc);
-> +
-> +	/* ORDER: Now DMA unmap all of the req's MRs, and return
-> +	 * them to the free MW list.
-> +	 */
-> +	for (i = 0, nchunks = req->rl_nchunks; nchunks; nchunks--) {
-> +		seg = &req->rl_segments[i];
-> +
-> +		__fmr_dma_unmap(r_xprt, seg);
-> +
-> +		i += seg->mr_nsegs;
-> +		seg->mr_nsegs = 0;
-> +	}
-> +
-> +	req->rl_nchunks = 0;
-> +}
-> +
->   /* Use the ib_unmap_fmr() verb to prevent further remote
->    * access via RDMA READ or RDMA WRITE.
->    */
-> @@ -231,6 +294,7 @@ fmr_op_destroy(struct rpcrdma_buffer *buf)
->
->   const struct rpcrdma_memreg_ops rpcrdma_fmr_memreg_ops = {
->   	.ro_map				= fmr_op_map,
-> +	.ro_unmap_sync			= fmr_op_unmap_sync,
->   	.ro_unmap			= fmr_op_unmap,
->   	.ro_open			= fmr_op_open,
->   	.ro_maxpages			= fmr_op_maxpages,
+>   	credits = be32_to_cpu(headerp->rm_credit);
+>   	if (credits == 0)
+>   		credits = 1;	/* don't deadlock */
 >
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
