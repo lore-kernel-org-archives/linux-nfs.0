@@ -1,192 +1,270 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from p3plsmtpa11-10.prod.phx3.secureserver.net ([68.178.252.111]:40401
-	"EHLO p3plsmtpa11-10.prod.phx3.secureserver.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752463AbbKXBr0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Nov 2015 20:47:26 -0500
-Subject: Re: [PATCH v1 2/8] svcrdma: Define maximum number of backchannel
- requests
-To: Chuck Lever <chuck.lever@oracle.com>
-References: <20151123221738.13040.26277.stgit@klimt.1015granger.net>
- <20151123222030.13040.19373.stgit@klimt.1015granger.net>
- <5653B1A6.3010707@talpey.com>
- <BABDB763-B4D6-4538-82FB-11F494BAC27C@oracle.com>
- <5653BB2C.4040209@talpey.com>
- <9DE8B6F4-E14A-4F8D-BABC-AAE81E656B59@oracle.com>
+Received: from userp1040.oracle.com ([156.151.31.81]:37109 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752463AbbKXBrz convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Nov 2015 20:47:55 -0500
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2104\))
+Subject: Re: [PATCH v1 5/8] svcrdma: Add infrastructure to receive backwards direction RPC/RDMA replies
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <5653B2F7.8060906@talpey.com>
+Date: Mon, 23 Nov 2015 20:47:52 -0500
 Cc: linux-rdma@vger.kernel.org,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-From: Tom Talpey <tom@talpey.com>
-Message-ID: <5653C1B6.5010400@talpey.com>
-Date: Mon, 23 Nov 2015 20:47:34 -0500
-MIME-Version: 1.0
-In-Reply-To: <9DE8B6F4-E14A-4F8D-BABC-AAE81E656B59@oracle.com>
-Content-Type: text/plain; charset=utf-8; format=flowed
+Message-Id: <0296249F-C653-4DA1-B40E-070B14BD0C85@oracle.com>
+References: <20151123221738.13040.26277.stgit@klimt.1015granger.net> <20151123222054.13040.13936.stgit@klimt.1015granger.net> <5653B2F7.8060906@talpey.com>
+To: Tom Talpey <tom@talpey.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 11/23/2015 8:36 PM, Chuck Lever wrote:
->
->> On Nov 23, 2015, at 8:19 PM, Tom Talpey <tom@talpey.com> wrote:
->>
->> On 11/23/2015 8:09 PM, Chuck Lever wrote:
->>>
->>>> On Nov 23, 2015, at 7:39 PM, Tom Talpey <tom@talpey.com> wrote:
->>>>
->>>> On 11/23/2015 5:20 PM, Chuck Lever wrote:
->>>>> Extra resources for handling backchannel requests have to be
->>>>> pre-allocated when a transport instance is created. Set a limit.
->>>>>
->>>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->>>>> ---
->>>>>   include/linux/sunrpc/svc_rdma.h          |    5 +++++
->>>>>   net/sunrpc/xprtrdma/svc_rdma_transport.c |    6 +++++-
->>>>>   2 files changed, 10 insertions(+), 1 deletion(-)
->>>>>
->>>>> diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
->>>>> index f869807..478aa30 100644
->>>>> --- a/include/linux/sunrpc/svc_rdma.h
->>>>> +++ b/include/linux/sunrpc/svc_rdma.h
->>>>> @@ -178,6 +178,11 @@ struct svcxprt_rdma {
->>>>>   #define RPCRDMA_SQ_DEPTH_MULT   8
->>>>>   #define RPCRDMA_MAX_REQUESTS    32
->>>>>   #define RPCRDMA_MAX_REQ_SIZE    4096
->>>>> +#if defined(CONFIG_SUNRPC_BACKCHANNEL)
->>>>
->>>> Why is this a config option? Why wouldn't you always want
->>>> this? It's needed for any post-1990 NFS dialect.
->>>
->>> I think some distros want to be able to compile out NFSv4.x
->>> on small systems, and take all the backchannel cruft with it.
->>
->> So shouldn't it follow the NFSv4.x config options then?
->
-> Setting CONFIG_NFS_V4_1 sets CONFIG_SUNRPC_BACKCHANNEL.
-> Adding #ifdef CONFIG_NFS_V4_1 in net/sunrpc would be
-> a layering violation.
 
-Ok, I guess. It seems a fairly small and abstruse detail to
-surface as a config option. But if it's already there, sure,
-use it.
+> On Nov 23, 2015, at 7:44 PM, Tom Talpey <tom@talpey.com> wrote:
+> 
+> On 11/23/2015 5:20 PM, Chuck Lever wrote:
+>> To support the NFSv4.1 backchannel on RDMA connections, add a
+>> capability for receiving an RPC/RDMA reply on a connection
+>> established by a client.
+>> 
+>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>> ---
+>>  net/sunrpc/xprtrdma/rpc_rdma.c          |   76 +++++++++++++++++++++++++++++++
+>>  net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |   60 ++++++++++++++++++++++++
+>>  net/sunrpc/xprtrdma/xprt_rdma.h         |    4 ++
+>>  3 files changed, 140 insertions(+)
+>> 
+>> diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+>> index c10d969..fef0623 100644
+>> --- a/net/sunrpc/xprtrdma/rpc_rdma.c
+>> +++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+>> @@ -946,3 +946,79 @@ repost:
+>>  	if (rpcrdma_ep_post_recv(&r_xprt->rx_ia, &r_xprt->rx_ep, rep))
+>>  		rpcrdma_recv_buffer_put(rep);
+>>  }
+>> +
+>> +#if defined(CONFIG_SUNRPC_BACKCHANNEL)
+>> +
+>> +int
+>> +rpcrdma_handle_bc_reply(struct rpc_xprt *xprt, struct rpcrdma_msg *rmsgp,
+>> +			struct xdr_buf *rcvbuf)
+>> +{
+>> +	struct rpcrdma_xprt *r_xprt = rpcx_to_rdmax(xprt);
+>> +	struct kvec *dst, *src = &rcvbuf->head[0];
+>> +	struct rpc_rqst *req;
+>> +	unsigned long cwnd;
+>> +	u32 credits;
+>> +	size_t len;
+>> +	__be32 xid;
+>> +	__be32 *p;
+>> +	int ret;
+>> +
+>> +	p = (__be32 *)src->iov_base;
+>> +	len = src->iov_len;
+>> +	xid = rmsgp->rm_xid;
+>> +
+>> +	pr_info("%s: xid=%08x, length=%zu\n",
+>> +		__func__, be32_to_cpu(xid), len);
+>> +	pr_info("%s: RPC/RDMA: %*ph\n",
+>> +		__func__, (int)RPCRDMA_HDRLEN_MIN, rmsgp);
+>> +	pr_info("%s:      RPC: %*ph\n",
+>> +		__func__, (int)len, p);
+>> +
+>> +	ret = -EAGAIN;
+>> +	if (src->iov_len < 24)
+>> +		goto out_shortreply;
+>> +
+>> +	spin_lock_bh(&xprt->transport_lock);
+>> +	req = xprt_lookup_rqst(xprt, xid);
+>> +	if (!req)
+>> +		goto out_notfound;
+>> +
+>> +	dst = &req->rq_private_buf.head[0];
+>> +	memcpy(&req->rq_private_buf, &req->rq_rcv_buf, sizeof(struct xdr_buf));
+>> +	if (dst->iov_len < len)
+>> +		goto out_unlock;
+>> +	memcpy(dst->iov_base, p, len);
+>> +
+>> +	credits = be32_to_cpu(rmsgp->rm_credit);
+>> +	if (credits == 0)
+>> +		credits = 1;	/* don't deadlock */
+>> +	else if (credits > r_xprt->rx_buf.rb_bc_max_requests)
+>> +		credits = r_xprt->rx_buf.rb_bc_max_requests;
+>> +
+>> +	cwnd = xprt->cwnd;
+>> +	xprt->cwnd = credits << RPC_CWNDSHIFT;
+>> +	if (xprt->cwnd > cwnd)
+>> +		xprt_release_rqst_cong(req->rq_task);
+>> +
+>> +	ret = 0;
+>> +	xprt_complete_rqst(req->rq_task, rcvbuf->len);
+>> +	rcvbuf->len = 0;
+>> +
+>> +out_unlock:
+>> +	spin_unlock_bh(&xprt->transport_lock);
+>> +out:
+>> +	return ret;
+>> +
+>> +out_shortreply:
+>> +	pr_info("svcrdma: short bc reply: xprt=%p, len=%zu\n",
+>> +		xprt, src->iov_len);
+>> +	goto out;
+>> +
+>> +out_notfound:
+>> +	pr_info("svcrdma: unrecognized bc reply: xprt=%p, xid=%08x\n",
+>> +		xprt, be32_to_cpu(xid));
+>> +
+>> +	goto out_unlock;
+>> +}
+>> +
+>> +#endif	/* CONFIG_SUNRPC_BACKCHANNEL */
+>> diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+>> index ff4f01e..2b762b5 100644
+>> --- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+>> +++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+>> @@ -47,6 +47,7 @@
+>>  #include <rdma/ib_verbs.h>
+>>  #include <rdma/rdma_cm.h>
+>>  #include <linux/sunrpc/svc_rdma.h>
+>> +#include "xprt_rdma.h"
+>> 
+>>  #define RPCDBG_FACILITY	RPCDBG_SVCXPRT
+>> 
+>> @@ -567,6 +568,42 @@ static int rdma_read_complete(struct svc_rqst *rqstp,
+>>  	return ret;
+>>  }
+>> 
+>> +#if defined(CONFIG_SUNRPC_BACKCHANNEL)
+>> +
+>> +/* By convention, backchannel calls arrive via rdma_msg type
+>> + * messages, and never populate the chunk lists. This makes
+>> + * the RPC/RDMA header small and fixed in size, so it is
+>> + * straightforward to check the RPC header's direction field.
+>> + */
+>> +static bool
+>> +svc_rdma_is_backchannel_reply(struct svc_xprt *xprt, struct rpcrdma_msg *rmsgp)
+>> +{
+>> +	__be32 *p = (__be32 *)rmsgp;
+>> +
+>> +	if (!xprt->xpt_bc_xprt)
+>> +		return false;
+>> +
+>> +	if (rmsgp->rm_type != rdma_msg)
+>> +		return false;
+>> +	if (rmsgp->rm_body.rm_chunks[0] != xdr_zero)
+>> +		return false;
+>> +	if (rmsgp->rm_body.rm_chunks[1] != xdr_zero)
+>> +		return false;
+>> +	if (rmsgp->rm_body.rm_chunks[2] != xdr_zero)
+>> +		return false;
+> 
+> The above assertion is only true for the NFS behavior as spec'd
+> today (no chunk-bearing bulk data on existing backchannel NFS
+> protocol messages). That at least deserves a comment.
 
->
-> I see however that CONFIG_SUNRPC_BACKCHANNEL controls
-> only the client backchannel capability. Perhaps it is
-> out of place to use it to enable the server’s backchannel
-> capability.
+Not sure what you mean:
 
-Ok, now it's even smaller and more abstruse. :-) To say
-nothing of multiplying. ;-)
+https://datatracker.ietf.org/doc/draft-ietf-nfsv4-rpcrdma-bidirection/
+
+says a chunk-less message is how a backward RPC reply goes over
+RPC/RDMA. NFS is not in the picture here.
 
 
->
->
->>>>> +#define RPCRDMA_MAX_BC_REQUESTS	8
->>>>
->>>> Why a constant 8? The forward channel value is apparently
->>>> configurable, just a few lines down.
->>>
->>> The client side backward direction credit limit, now
->>> in 4.4, is already a constant.
->>>
->>> The client side ULP uses a constant for the slot table
->>> size: NFS4_MAX_BACK_CHANNEL_OPS. I’m not 100% sure but
->>> the server seems to just echo that number back to the
->>> client.
->>>
->>> I’d rather not add an admin knob for this. Why would it
->>> be necessary?
->>
->> Because no constant is ever correct. Why isn't it "1"? Do
->> you allow multiple credits? Why not that value?
->>
->> For instance.
->
-> There’s no justification for the forward channel credit
-> limit either.
->
-> The code in Linux assumes one session slot in the NFSv4.1
-> backchannel. When we get around to it, this can be made
-> more flexible.
+> Or, why
+> not simply ignore the chunks? They're not the receiver's problem.
 
-Ok so again, why choose "8" here?
+This check is done before the chunks are parsed. The point
+is the receiver has to verify that the RPC-over-RDMA header
+is the small, fix-sized kind _first_ before it can go look
+at the CALLDIR field in the RPC header.
 
->
-> It’s much easier to add flexibility and admin control later
-> than it is to take it away when the knob becomes useless or
-> badly designed. For now, 8 works, and it doesn’t have to be
-> permanent.
->
-> I could add a comment that says
->
-> /* Arbitrary: support up to eight backward credits.
->   */
->
->
->>>>> +#else
->>>>> +#define RPCRDMA_MAX_BC_REQUESTS	0
->>>>> +#endif
->>>>>
->>>>>   #define RPCSVC_MAXPAYLOAD_RDMA	RPCSVC_MAXPAYLOAD
->>>>>
->>>>> diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
->>>>> index b348b4a..01c7b36 100644
->>>>> --- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
->>>>> +++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
->>>>> @@ -923,8 +923,10 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
->>>>>   				  (size_t)RPCSVC_MAXPAGES);
->>>>>   	newxprt->sc_max_sge_rd = min_t(size_t, devattr.max_sge_rd,
->>>>>   				       RPCSVC_MAXPAGES);
->>>>> +	/* XXX: what if HCA can't support enough WRs for bc operation? */
->>>>>   	newxprt->sc_max_requests = min((size_t)devattr.max_qp_wr,
->>>>> -				   (size_t)svcrdma_max_requests);
->>>>> +				       (size_t)(svcrdma_max_requests +
->>>>> +				       RPCRDMA_MAX_BC_REQUESTS));
->>>>>   	newxprt->sc_sq_depth = RPCRDMA_SQ_DEPTH_MULT * newxprt->sc_max_requests;
->>>>>
->>>>>   	/*
->>>>> @@ -964,7 +966,9 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
->>>>>   	qp_attr.event_handler = qp_event_handler;
->>>>>   	qp_attr.qp_context = &newxprt->sc_xprt;
->>>>>   	qp_attr.cap.max_send_wr = newxprt->sc_sq_depth;
->>>>> +	qp_attr.cap.max_send_wr += RPCRDMA_MAX_BC_REQUESTS;
->>>>>   	qp_attr.cap.max_recv_wr = newxprt->sc_max_requests;
->>>>> +	qp_attr.cap.max_recv_wr += RPCRDMA_MAX_BC_REQUESTS;
->>>>>   	qp_attr.cap.max_send_sge = newxprt->sc_max_sge;
->>>>>   	qp_attr.cap.max_recv_sge = newxprt->sc_max_sge;
->>>>>   	qp_attr.sq_sig_type = IB_SIGNAL_REQ_WR;
->>>>>
->>>>> --
->>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>>>> the body of a message to majordomo@vger.kernel.org
->>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>>>
->>>>>
->>>> --
->>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>>> the body of a message to majordomo@vger.kernel.org
->>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>
->>> --
->>> Chuck Lever
->>>
->>>
->>>
->>>
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>
->>>
->
-> --
-> Chuck Lever
->
->
->
->
+
+>> +
+>> +	/* sanity */
+>> +	if (p[7] != rmsgp->rm_xid)
+>> +		return false;
+>> +	/* call direction */
+>> +	if (p[8] == cpu_to_be32(RPC_CALL))
+>> +		return false;
+>> +
+>> +	return true;
+>> +}
+>> +
+>> +#endif	/* CONFIG_SUNRPC_BACKCHANNEL */
+>> +
+>>  /*
+>>   * Set up the rqstp thread context to point to the RQ buffer. If
+>>   * necessary, pull additional data from the client with an RDMA_READ
+>> @@ -632,6 +669,17 @@ int svc_rdma_recvfrom(struct svc_rqst *rqstp)
+>>  		goto close_out;
+>>  	}
+>> 
+>> +#if defined(CONFIG_SUNRPC_BACKCHANNEL)
+>> +	if (svc_rdma_is_backchannel_reply(xprt, rmsgp)) {
+>> +		ret = rpcrdma_handle_bc_reply(xprt->xpt_bc_xprt, rmsgp,
+>> +					      &rqstp->rq_arg);
+>> +		svc_rdma_put_context(ctxt, 0);
+>> +		if (ret)
+>> +			goto repost;
+>> +		return ret;
+>> +	}
+>> +#endif
+>> +
+>>  	/* Read read-list data. */
+>>  	ret = rdma_read_chunks(rdma_xprt, rmsgp, rqstp, ctxt);
+>>  	if (ret > 0) {
+>> @@ -668,4 +716,16 @@ int svc_rdma_recvfrom(struct svc_rqst *rqstp)
+>>  	set_bit(XPT_CLOSE, &xprt->xpt_flags);
+>>  defer:
+>>  	return 0;
+>> +
+>> +#if defined(CONFIG_SUNRPC_BACKCHANNEL)
+>> +repost:
+>> +	ret = svc_rdma_post_recv(rdma_xprt);
+>> +	if (ret) {
+>> +		pr_info("svcrdma: could not post a receive buffer, err=%d."
+>> +		        "Closing transport %p.\n", ret, rdma_xprt);
+>> +		set_bit(XPT_CLOSE, &rdma_xprt->sc_xprt.xpt_flags);
+>> +		ret = -ENOTCONN;
+>> +	}
+>> +	return ret;
+>> +#endif
+>>  }
+>> diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+>> index ac7f8d4..9aeff2b 100644
+>> --- a/net/sunrpc/xprtrdma/xprt_rdma.h
+>> +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+>> @@ -309,6 +309,8 @@ struct rpcrdma_buffer {
+>>  	u32			rb_bc_srv_max_requests;
+>>  	spinlock_t		rb_reqslock;	/* protect rb_allreqs */
+>>  	struct list_head	rb_allreqs;
+>> +
+>> +	u32			rb_bc_max_requests;
+>>  };
+>>  #define rdmab_to_ia(b) (&container_of((b), struct rpcrdma_xprt, rx_buf)->rx_ia)
+>> 
+>> @@ -511,6 +513,8 @@ void rpcrdma_reply_handler(struct rpcrdma_rep *);
+>>   * RPC/RDMA protocol calls - xprtrdma/rpc_rdma.c
+>>   */
+>>  int rpcrdma_marshal_req(struct rpc_rqst *);
+>> +int rpcrdma_handle_bc_reply(struct rpc_xprt *, struct rpcrdma_msg *,
+>> +			    struct xdr_buf *);
+>> 
+>>  /* RPC/RDMA module init - xprtrdma/transport.c
+>>   */
+>> 
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> 
+>> 
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
->
+
+--
+Chuck Lever
+
+
+
+
