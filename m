@@ -1,133 +1,31 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp-o-1.desy.de ([131.169.56.154]:39473 "EHLO smtp-o-1.desy.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753569AbbKXPVo convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Nov 2015 10:21:44 -0500
-Received: from smtp-map-1.desy.de (smtp-map-1.desy.de [131.169.56.66])
-	by smtp-o-1.desy.de (DESY-O-1) with ESMTP id C76582807F8
-	for <linux-nfs@vger.kernel.org>; Tue, 24 Nov 2015 16:21:42 +0100 (CET)
-Received: from ZITSWEEP2.win.desy.de (zitsweep2.win.desy.de [131.169.97.96])
-	by smtp-map-1.desy.de (DESY_MAP_1) with ESMTP id BAAFC13E9E
-	for <linux-nfs@vger.kernel.org>; Tue, 24 Nov 2015 16:21:42 +0100 (MET)
-Date: Tue, 24 Nov 2015 16:21:42 +0100 (CET)
-From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
-To: Bruce Fields <bfields@fieldses.org>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-ID: <1712551759.20241812.1448378502049.JavaMail.zimbra@desy.de>
-In-Reply-To: <20151123213521.GB13935@fieldses.org>
-References: <684d76ce-9307-40f4-9aec-b9829a01051d@email.android.com> <20151123213521.GB13935@fieldses.org>
-Subject: Re: [PATCH] nfs4.0 tests: discover max supported file size
+Received: from bombadil.infradead.org ([198.137.202.9]:33212 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751797AbbKXQD0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Nov 2015 11:03:26 -0500
+Date: Tue, 24 Nov 2015 08:03:23 -0800
+From: Christoph Hellwig <hch@infradead.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Christoph Hellwig <hch@infradead.org>, Tom Talpey <tom@talpey.com>,
+        linux-rdma@vger.kernel.org,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v1 8/8] svcrdma: Remove svc_rdma_fastreg_mr::access_flags
+ field
+Message-ID: <20151124160323.GA16427@infradead.org>
+References: <20151123221738.13040.26277.stgit@klimt.1015granger.net>
+ <20151123222118.13040.24258.stgit@klimt.1015granger.net>
+ <5653B4CA.5050806@talpey.com>
+ <92B143FC-0F2C-48E4-9042-189883D76403@oracle.com>
+ <20151124063903.GA12300@infradead.org>
+ <7B9388F8-3A88-4F61-AB87-A1E6DB9902FE@oracle.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <7B9388F8-3A88-4F61-AB87-A1E6DB9902FE@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Tue, Nov 24, 2015 at 09:08:21AM -0500, Chuck Lever wrote:
+> Why don???t you fold my change into yours?
 
-
------ Original Message -----
-> From: "Bruce Fields" <bfields@fieldses.org>
-> To: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
-> Cc: "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>
-> Sent: Monday, November 23, 2015 10:35:21 PM
-> Subject: Re: [PATCH] nfs4.0 tests: discover max supported file size
-
-> On Mon, Nov 23, 2015 at 10:17:21PM +0100, Mkrtchyan, Tigran wrote:
->> 
->> On Nov 23, 2015 20:49, "J. Bruce Fields" <bfields@fieldses.org> wrote:
->> >
->> > On Mon, Nov 23, 2015 at 09:27:02AM +0100, Tigran Mkrtchyan wrote:
->> > > current implementation amuses, that all servers
->> > > support 64-bit file sizes. This is not always true.
->> > > Use FATTR4_MAXFILESIZE attribute to discover supported
->> > > maximum. Update LOCK6 test to use it.
->> >
->> > The language at http://tools.ietf.org/html/rfc7530#section-16.10.4 isn't
->> > as clear as it could be, but I think INVAL at least is unambiguously
->> > wrong in the case you're testing (it should be BAD_RANGE or OK).
->> >
->> > My interpretation is actually that we should return:
->> >
->> > - INVAL for 64-bit overflow, otherwise
->> > - BAD_RANGE for 32-bit overflow on 32-bit server, otherwise
->> 
->> Hm...our server is a bit weird. The file size is 63 bit :)
-> 
-> Poking around.... I think on Linux locks use signed 64-bit quantities
-> too, and that's probably normal.  If somebody wants to sort this out,
-> they're welcome....
-> 
-> But in any case, I think the existing test is still right--it'll
-> overflow on any server, and should result in EINVAL.
-
-Jup. current test is complied with the spec.
-
-Tigran.
-
-
-> 
-> And I think your revised test is wrong in general--maximum filesize
-> isn't necessarily the same thing as maximum lock range, and EINAL isn't
-> necessarily the correct error in all these cases.
-> 
-> --b.
-> 
->> 
->> Tigran.
->> > - OK for ranges that extend past FATTR4_MAXFILESIZE.  (You're
->> >   allowed to lock ranges not in the file.)
->> >
->> > So I prefer the test as-is, but might be open to argument about whether
->> > this is the most important case to be testing.
->> >
->> > --b.
->> >
->> > > 
->> > > Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
->> > > ---
->> > >  nfs4.0/nfs4lib.py             | 6 ++++++
->> > >  nfs4.0/servertests/st_lock.py | 3 ++-
->> > >  2 files changed, 8 insertions(+), 1 deletion(-)
->> > > 
->> > > diff --git a/nfs4.0/nfs4lib.py b/nfs4.0/nfs4lib.py
->> > > index 5031feb..41870dc 100644
->> > > --- a/nfs4.0/nfs4lib.py
->> > > +++ b/nfs4.0/nfs4lib.py
->> > > @@ -587,6 +587,12 @@ class NFS4Client(rpc.RPCClient, nfs4_ops.NFS4Operations):
->> > >          d = self.do_getattrdict([], [FATTR4_LEASE_TIME])
->> > >          return d[FATTR4_LEASE_TIME]
->> > >  
->> > > +    def getMaxFileSize(self):
->> > > +        """Get maximum supported file size"""
->> > > +        d = self.do_getattrdict([], [FATTR4_MAXFILESIZE])
->> > > +        return d[FATTR4_MAXFILESIZE]
->> > > +
->> > > +
->> > >      def create_obj(self, path, type=NF4DIR, attrs={FATTR4_MODE:0755},
->> > >                     linkdata="/etc/X11"):
->> > >          if __builtins__['type'](path) is str:
->> > > diff --git a/nfs4.0/servertests/st_lock.py b/nfs4.0/servertests/st_lock.py
->> > > index d54614d..80518f4 100644
->> > > --- a/nfs4.0/servertests/st_lock.py
->> > > +++ b/nfs4.0/servertests/st_lock.py
->> > > @@ -189,8 +189,9 @@ def testLenTooLong(t, env):
->> > >      """
->> > >      c = env.c1
->> > >      c.init_connection()
->> > > +    max_size = c.getMaxFileSize();
->> > >      fh, stateid = c.create_confirm(t.code)
->> > > -    res = c.lock_file(t.code, fh, stateid, 100, 0xfffffffffffffffe)
->> > > +    res = c.lock_file(t.code, fh, stateid, 100, max_size)
->> > >      check(res, NFS4ERR_INVAL, "LOCK with offset+len overflow")
->> > >  
->> > >  def testNoFh(t, env):
->> > > --
->> > > 2.5.0
->> > --
->> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> > the body of a message to majordomo@vger.kernel.org
->> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
->> N?????r??y????b?X??ǧv?^?)޺{.n?+????{???"??^n?r???z???h?????&???G???h?(?階?ݢj"???m??????z?ޖ???f???h???~?m
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+It's already included.  Well, sort of - I have removed used of the
+field, but forgot to remove the definition.  I will update it.
