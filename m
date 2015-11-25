@@ -1,55 +1,44 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from youngberry.canonical.com ([91.189.89.112]:35455 "EHLO
-	youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754143AbbKXXLz (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Nov 2015 18:11:55 -0500
-From: Colin King <colin.king@canonical.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        "J . Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@poochiereds.net>,
-        "David S . Miller" <davem@davemloft.net>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        Sagi Grimberg <sagig@mellanox.com>,
-        Steve Wise <swise@opengridcomputing.com>,
-        Doug Ledford <dledford@redhat.com>, linux-nfs@vger.kernel.org,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH] xprtrdma: add missing curly braces, set rc to zero on non-zero
-Date: Tue, 24 Nov 2015 23:11:41 +0000
-Message-Id: <1448406701-12474-1-git-send-email-colin.king@canonical.com>
+Received: from bombadil.infradead.org ([198.137.202.9]:52390 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754366AbbKYJAM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Nov 2015 04:00:12 -0500
+Date: Wed, 25 Nov 2015 01:00:09 -0800
+From: Christoph Hellwig <hch@infradead.org>
+To: santosh shilimkar <santosh.shilimkar@oracle.com>
+Cc: Tom Talpey <tom@talpey.com>, Chuck Lever <chuck.lever@oracle.com>,
+        linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org,
+        Sagi Grimberg <sagig@mellanox.com>
+Subject: Re: Future of FMR support, was: Re: [PATCH v1 5/9] xprtrdma: Add
+ ro_unmap_sync method for FMR
+Message-ID: <20151125090009.GA11255@infradead.org>
+References: <20151123220627.32702.62667.stgit@manet.1015granger.net>
+ <20151123221430.32702.86114.stgit@manet.1015granger.net>
+ <5653B606.3070700@talpey.com>
+ <20151124065225.GB29141@infradead.org>
+ <5654DC7A.7080807@oracle.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <5654DC7A.7080807@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Colin Ian King <colin.king@canonical.com>
+On Tue, Nov 24, 2015 at 01:54:02PM -0800, santosh shilimkar wrote:
+> As already indicated to Sagi [1], RDS IB FR support is work in
+> progress and I was hoping to get it ready for 4.5. There are few
+> issues we found with one of the HCA and hence the progress
+> slowed down. Looking at where we are, 4.6 merge window seems
+> to be realistic for me to get RDS FR support.
 
-Add the missing curly braces so that rc is only set to zero when
-it is non-zero.  Without this minor fix, rc is set to zero even
-when it is zero, which is slightly redundant.
+Ok.
 
-Detected with smatch static analysis.
+> Now on the iWARP transport itself, it has been bit tough because
+> of lack of hardware to tests. I have been requesting test(s) in
+> previous RDS patches and haven't seen any interest so far. If
+> this continues to be the trend, I might as well get rid of
+> RDS iWARP support after couple of merge windows.
 
-Signed-off-by: Colin Ian King <colin.king@canonical.com>
----
- net/sunrpc/xprtrdma/verbs.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
-
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index eadd1655..2cc1014 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -852,10 +852,11 @@ retry:
- 
- 		if (extras) {
- 			rc = rpcrdma_ep_post_extra_recv(r_xprt, extras);
--			if (rc)
-+			if (rc) {
- 				pr_warn("%s: rpcrdma_ep_post_extra_recv: %i\n",
- 					__func__, rc);
- 				rc = 0;
-+			}
- 		}
- 	}
- 
--- 
-2.6.2
-
+I'd say drop the current iWarp transport if it's not testable.  The
+only real difference between IB and iWarp is the needed to create
+a MR for the RDMA READ sink, and we're much better of adding that into
+the current IB transport if new iWarp users show up.
