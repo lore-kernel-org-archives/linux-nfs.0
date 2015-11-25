@@ -1,48 +1,36 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:44096 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752183AbbKYRvz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 25 Nov 2015 12:51:55 -0500
-Date: Wed, 25 Nov 2015 12:51:53 -0500
-To: David Howells <dhowells@redhat.com>
-Cc: Martin Steigerwald <martin@lichtvoll.de>, arnd@arndb.de,
-        linux-afs@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
-        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org
-Subject: Re: [RFC][PATCH 00/12] Enhanced file stat system call
-Message-ID: <20151125175153.GA30335@fieldses.org>
-References: <1502878.QisWlqATFu@merkaba>
- <20151120145422.18930.72662.stgit@warthog.procyon.org.uk>
- <4495.1448036915@warthog.procyon.org.uk>
+Received: from mail-io0-f177.google.com ([209.85.223.177]:34086 "EHLO
+	mail-io0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752146AbbKYSWI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Nov 2015 13:22:08 -0500
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4495.1448036915@warthog.procyon.org.uk>
-From: bfields@fieldses.org (J. Bruce Fields)
+In-Reply-To: <5655EB40.8070508@oracle.com>
+References: <20151123220627.32702.62667.stgit@manet.1015granger.net>
+	<20151123221430.32702.86114.stgit@manet.1015granger.net>
+	<5653B606.3070700@talpey.com>
+	<20151124065225.GB29141@infradead.org>
+	<5654DC7A.7080807@oracle.com>
+	<20151125090009.GA11255@infradead.org>
+	<5655EB40.8070508@oracle.com>
+Date: Wed, 25 Nov 2015 20:22:07 +0200
+Message-ID: <CAJ3xEMgC5aa8pvvvs0y8O+h_WBk-em07gHvOgP=DFDrv4ydGAg@mail.gmail.com>
+Subject: Re: Future of FMR support, was: Re: [PATCH v1 5/9] xprtrdma: Add
+ ro_unmap_sync method for FMR
+From: Or Gerlitz <gerlitz.or@gmail.com>
+To: santosh shilimkar <santosh.shilimkar@oracle.com>
+Cc: Christoph Hellwig <hch@infradead.org>, Tom Talpey <tom@talpey.com>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Sagi Grimberg <sagig@mellanox.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Nov 20, 2015 at 04:28:35PM +0000, David Howells wrote:
-> Martin Steigerwald <martin@lichtvoll.de> wrote:
-> 
-> > Any plans to add limitations of filesystem to the call like maximum file
-> > size?  I know its mostly relevant for just for FAT32, but on any account
-> > rather than trying to write 4 GiB and then file, it would be good to at some
-> > time get a dialog at the beginning of the copy.
-> 
-> Adding filesystem limits can be done.  I got a shopping list of things people
-> wanted a while back and I've worked off of that list.  I can add other things
-> - that's on of the reasons I left room for expansion.
+On Wed, Nov 25, 2015 at 7:09 PM, santosh shilimkar
+<santosh.shilimkar@oracle.com> wrote:
+>>> As already indicated to Sagi [1], RDS IB FR support is work in
+>>> progress and I was hoping to get it ready for 4.5.
 
-I ran across systemd/src/basic/path-util.c:fd_is_mount_point() the other
-day, and the contortions it goes through made me wonder if we should
-also add mnt_id and/or an is_mountpoint boolean--it's annoying to have
-to do name_to_handle_at() (not supported on all filesystems) just to get
-mnt_id.
-
-(Looking at it now I see it falls back on reading mount id from
-/proc/self/fdinfo/<fd>.  Maybe that's good enough.  May depend on
-whether there's a potential user that doesn't want to assume access to
-/proc?)
-
---b.
+These are really good news! can you please elaborate a bit on the
+design changes this move introduced in RDS?
