@@ -1,50 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qg0-f43.google.com ([209.85.192.43]:34711 "EHLO
-	mail-qg0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751127AbbKYSuu (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Nov 2015 13:50:50 -0500
-Received: by qgeb1 with SMTP id b1so39088206qge.1
-        for <linux-nfs@vger.kernel.org>; Wed, 25 Nov 2015 10:50:49 -0800 (PST)
-From: Jeff Layton <jlayton@poochiereds.net>
-To: trond.myklebust@Primarydata.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] nfs: ensure that attrcache is revalidated after a SETATTR
-Date: Wed, 25 Nov 2015 13:50:45 -0500
-Message-Id: <1448477445-17853-1-git-send-email-jeff.layton@primarydata.com>
+Received: from aserp1040.oracle.com ([141.146.126.69]:44364 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751198AbbKYTSQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Nov 2015 14:18:16 -0500
+Subject: Re: Future of FMR support, was: Re: [PATCH v1 5/9] xprtrdma: Add
+ ro_unmap_sync method for FMR
+To: Or Gerlitz <gerlitz.or@gmail.com>
+References: <20151123220627.32702.62667.stgit@manet.1015granger.net>
+ <20151123221430.32702.86114.stgit@manet.1015granger.net>
+ <5653B606.3070700@talpey.com> <20151124065225.GB29141@infradead.org>
+ <5654DC7A.7080807@oracle.com> <20151125090009.GA11255@infradead.org>
+ <5655EB40.8070508@oracle.com>
+ <CAJ3xEMgC5aa8pvvvs0y8O+h_WBk-em07gHvOgP=DFDrv4ydGAg@mail.gmail.com>
+Cc: Christoph Hellwig <hch@infradead.org>, Tom Talpey <tom@talpey.com>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Sagi Grimberg <sagig@mellanox.com>
+From: santosh shilimkar <santosh.shilimkar@oracle.com>
+Message-ID: <56560955.2080705@oracle.com>
+Date: Wed, 25 Nov 2015 11:17:41 -0800
+MIME-Version: 1.0
+In-Reply-To: <CAJ3xEMgC5aa8pvvvs0y8O+h_WBk-em07gHvOgP=DFDrv4ydGAg@mail.gmail.com>
+Content-Type: text/plain; charset=utf-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If we get no post-op attributes back from a SETATTR operation, then no
-attributes will of course be updated during the call to
-nfs_update_inode.
+On 11/25/2015 10:22 AM, Or Gerlitz wrote:
+> On Wed, Nov 25, 2015 at 7:09 PM, santosh shilimkar
+> <santosh.shilimkar@oracle.com> wrote:
+>>>> As already indicated to Sagi [1], RDS IB FR support is work in
+>>>> progress and I was hoping to get it ready for 4.5.
+>
+> These are really good news! can you please elaborate a bit on the
+> design changes this move introduced in RDS?
+>
+Yeah. It has been a bit of pain point since the need
+was to keep the RDS design same and retrofit the FR
+support so that it can co-exist with existing deployed
+FMR code.
 
-We know however that the attributes are invalid at that point, since we
-just changed some of them. At the very least, the ctime will be bogus.
-If we get no post-op attributes back on the call, mark the attrcache
-invalid to reflect that fact.
+Leaving the details for the code review but at very high
+level,
 
-Reviewed-by: Steve French <steve.french@primarydata.com>
-Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
----
- fs/nfs/inode.c | 5 ++++-
- 1 file changed, 4 insertions(+), 1 deletion(-)
+- Have to split the poll CQ handling so that
+send + FR WR completion can be handled together.
+FR CQ handler and reg/inv WR prep marks the MR state
+like INVALID, VALID & STALE appropriately.
+- Allocate 2X space on WR and WC queues during queue setup.
+- Manage the MR reg/inv based on the space available
+in FR WR ring(actually it is just a counter). This is
+bit tricky because RDS does MR operation via sendmsg()
+as well as directly through socket APIs so needs
+co-ordination.
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index ffdf9b9e88ab..31b0a52223a7 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -618,7 +618,10 @@ void nfs_setattr_update_inode(struct inode *inode, struct iattr *attr,
- 		nfs_inc_stats(inode, NFSIOS_SETATTRTRUNC);
- 		nfs_vmtruncate(inode, attr->ia_size);
- 	}
--	nfs_update_inode(inode, fattr);
-+	if (fattr->valid)
-+		nfs_update_inode(inode, fattr);
-+	else
-+		NFS_I(inode)->cache_validity |= NFS_INO_INVALID_ATTR;
- 	spin_unlock(&inode->i_lock);
- }
- EXPORT_SYMBOL_GPL(nfs_setattr_update_inode);
--- 
-2.4.3
+Am hoping that above remains true when code actually
+makes to the list but that is how things stand as
+of now.
+
+Regards,
+Santosh
 
