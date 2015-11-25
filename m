@@ -1,67 +1,224 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail4.gandi.net ([217.70.183.210]:49804 "EHLO gandi.net"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1752031AbbKYM51 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 25 Nov 2015 07:57:27 -0500
-Date: Wed, 25 Nov 2015 13:57:23 +0100
-From: William Dauchy <william@gandi.net>
-To: Linux NFS mailing list <linux-nfs@vger.kernel.org>, netdev@vger.kernel.org
-Subject: kmemleak report with nfs3/4 activity on v4.1.x
-Message-ID: <20151125125723.GY21147@gandi.net>
+Received: from mail3.dit.upm.es ([138.4.2.18]:34243 "EHLO mail3.dit.upm.es"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753404AbbKYNuz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 25 Nov 2015 08:50:55 -0500
 MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="OEa2bCMk+rg6xBXy"
+Content-Type: text/plain;
+ charset=UTF-8;
+ format=flowed
+Date: Wed, 25 Nov 2015 13:50:52 +0000
+From: omar <omar@dit.upm.es>
+To: Jeff Layton <jlayton@poochiereds.net>
+Cc: <linux-nfs@vger.kernel.org>,
+        =?UTF-8?Q?administraci=C3=B3n_del_centro?=
+	 =?UTF-8?Q?_de_c=C3=A1lculo_del_dit?= <cdc@dit.upm.es>
+Subject: Re: possible bug in nfs-kernel-server
+In-Reply-To: <20151121091824.71ab1f6b@tlielax.poochiereds.net>
+References: <564EFE51.90105@dit.upm.es>
+ <20151121091824.71ab1f6b@tlielax.poochiereds.net>
+Message-ID: <b259acd35a93bd2293630c35b8761e6b@dit.upm.es>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
---OEa2bCMk+rg6xBXy
-Content-Type: text/plain; charset=iso-8859-1
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
 
-Hello,
+Hi, Jeff, thanks for the answer. I'm out of the office until next week, 
+but when I come back, I'll try to do the tests and send you the info.
 
-I'm seeing some kmemleak reports while I'm using nfsv3/4=A0as a client on
-linux v4.1.13;
+Thank you very much,
 
-unreferenced object 0xffff880c22a97ad0 (size 16):
-=A0 comm "softirq", pid 0, jiffies 4294896089 (age 43927.436s)
-=A0 hex dump (first 16 bytes):
-=A0 =A0 00 00 00 00 00 00 00 00 00 45 1e 24 06 88 ff ff =A0.........E.$....
-=A0 backtrace:
-=A0 =A0 [<ffffffff811255fd>] create_object+0x152/0x280
-=A0 =A0 [<ffffffff81529c04>] kmemleak_alloc+0x20/0x42
-=A0 =A0 [<ffffffff811136dd>] slab_post_alloc_hook+0x2a/0x45
-=A0 =A0 [<ffffffff81115c48>] kmem_cache_alloc+0xbc/0xd1
-=A0 =A0 [<ffffffff81254cef>] gr_update_task_in_ip_table+0x2e/0xc3
-=A0 =A0 [<ffffffff814701bc>] __inet_hash_connect+0x241/0x30e
-=A0 =A0 [<ffffffff814702b8>] inet_hash_connect+0x2f/0x3a
-=A0 =A0 [<ffffffff81484c41>] tcp_v4_connect+0x31f/0x470
-=A0 =A0 [<ffffffff81499a2b>] __inet_stream_connect+0x9f/0x2c3
-=A0 =A0 [<ffffffff81499c80>] inet_stream_connect+0x31/0x4d
-=A0 =A0 [<ffffffff8140d870>] kernel_connect+0x18/0x20
-=A0 =A0 [<ffffffff81503cb6>] xs_tcp_setup_socket+0x25c/0x37f
-=A0 =A0 [<ffffffff810724c3>] process_one_work+0x1d0/0x30f
-=A0 =A0 [<ffffffff81072822>] worker_thread+0x1f0/0x2aa
-=A0 =A0 [<ffffffff81077cdc>] kthread+0xcd/0xd5
-=A0 =A0 [<ffffffff8153443e>] ret_from_fork+0x3e/0x70
+Omar
 
-What can I do to help resolve this issue?
+El 2015-11-21 14:18, Jeff Layton escribió:
+> On Fri, 20 Nov 2015 12:04:49 +0100
+> Omar Walid Llorente <omar@dit.upm.es> wrote:
+>
+>>
+>> Hi, I'm Omar Walid Llorente and I am a systems administrator at the
+>> Politechnical University of Madrid (UPM), Spain. I write you in the 
+>> hope
+>> you can help us manage a problem that have discovered recently about 
+>> our
+>> new datastore architecture in our teaching labs. We have created a
+>> gluster distributed volume that we reexport with NFS to our lab 
+>> clients
+>> via intermediate servers.
+>>
+>> First of all thanks for all your work and sorry if this isn't 
+>> related
+>> with your package, but I think it has a good chance. I'll try 
+>> explain
+>> myself as short as possible.
+>>
+>> As introduced previously, we have a problem exporting with
+>> nfs-kernel-server-1.2.8-6 (ubuntu based) a directory previously 
+>> mounted
+>> with gluster-3.7.4 via fuse mount.
+>>
+>
+> What's important here (for the nfs server) is the kernel version. 
+> What
+> kernel version are you running on the server? Also, what NFS version 
+> is
+> the client using? If you grab the mount's line out of /proc/mounts on
+> the client then that would be helpful.
+>
+> Also, does the NFS version matter here? If you're using NFSv4 then
+> maybe try with NFSv3, or with v4 or so if you're already using v3?
+>
+>> The problem is quite simple to reproduce and always repeatable: if a
+>> file has read-only permissions for owner and user wants to copy it,
+>> permissions problem arises:
+>> cdc@client:~$ rm -f kk.txt 444.txt; echo "prueba" > 444.txt; chmod 
+>> 444
+>> 444.txt; cp -p 444.txt kk.txt; ls -ld 444.txt kk.txt
+>> cp: failed to close ‘kk.txt’: Permission denied
+>> -r--r--r-- 1 cdc admincdc 7 nov  3  2015 444.txt
+>> -r--r--r-- 1 cdc admincdc 0 nov  3  2015 kk.txt
+>> cdc@client:~$
+>>
+>> If the file permissions are not read-only, there is no problem:
+>> cdc@client:~$ rm -f kk.txt 644.txt; echo "prueba" > 644.txt; chmod 
+>> 644
+>> 644.txt; cp -p 644.txt kk.txt; ls -ld 644.txt kk.txt
+>> -rw-r--r-- 1 cdc admincdc 7 nov  3  2015 644.txt
+>> -rw-r--r-- 1 cdc admincdc 7 nov  3  2015 kk.txt
+>> cdc@client:~$
+>>
+>> If we track it down with strace, the problem arises exactly when 
+>> fsync()
+>> is called from cp.
+>>
+>> Of course, if we try this combination of commands in other 
+>> directories
+>> not mounted by nfs (local ones) or mounted with samba/cifs or even
+>> mounted with nfs-ganesha (both fuse mounted with gluster), this 
+>> doen't
+>> happen. This problem doesn't happen either if the nfs-kernel-server
+>> exports a directory not mounted with fuse (any local one).
+>>
+>
+> Ok, that's good info, but when dealing with a problem like this, it'd
+> be best to get a capture of the network traffic between client and
+> server while you're reproducing this. We can then look at it to 
+> figure
+> out which RPC call is getting the actual error. That will help narrow
+> down the problem a bit more.
+>
+> You can do that with tcpdump. Something like this should do it:
+>
+>     # tcpdump -i eth0 -w /tmp/nfs.pcap -s 512 port 2049
+>
+> ...reproduce the problem and then stop the capture. Then you can
+> open /tmp/nfs.pcap with wireshark to analyze it (or send it to me and
+> I'll take a look).
+>
+>> Please, tell me if this is the right place to post the probem and
+>> where is it if this is not. Let me know if we can help you any way 
+>> to
+>> solve or test it (we've developed a small program in c that shows
+>> exactly the same behaviour).
+>>
+>> Thanks again.
+>>
+>> Omar
+>>
+>> PS: Pointer to this email address came from:
+>> http://wiki.linux-nfs.org/wiki/index.php/Reporting_bugs
+>>
+>> ADDITIONAL INFO:
+>>
+>> cdc@client:~$ uname -a
+>> Linux l056 3.13.0-63-generic #103-Ubuntu SMP Fri Aug 14 21:43:30 UTC
+>> 2015 i686 i686 i686 GNU/Linux
+>> cdc@client:~$
+>> cdc@client:~$ mount | grep home
+>> cuentas02:/home-3/cdc on /home/cdc type nfs
+>> 
+>> (rw,noatime,intr,fsc,nolock,rsize=262140,wsize=262140,addr=138.4.30.15)
+>> cdc@client:~$
+>>
+>> root@server-lab:~# uname -a
+>> Linux cuentas02-lab.lab.dit.upm.es 3.13.0-63-generic #103-Ubuntu SMP
+>> Fri Aug 14 21:42:59 UTC 2015 x86_64 x86_64 x86_64 GNU/Linux
+>> root@server-lab:~#
+>> root@server-lab:~# dpkg -l | grep nfs
+>> ii  libnfsidmap2:amd64 0.25-5                           amd64
+>> NFS idmapping library
+>> ii  nfs-common 1:1.2.8-6ubuntu1.1               amd64        NFS
+>> support files common to client and server
+>> ii  nfs-kernel-server 1:1.2.8-6ubuntu1.1               amd64
+>> support for NFS kernel server
+>> root@server-lab:~#
+>> root@server-lab:~# exportfs -v
+>> /home-3
+>> 
+>> 138.4.30.0/23(rw,async,wdelay,insecure,no_root_squash,no_subtree_check,fsid=3,sec=sys,rw,no_root_squash,no_all_squash)
+>> root@server-lab:~#
+>>
+>> LOGS ON SERVER SIDE (glusterfs mount logs):
+>> [2015-11-20 10:51:53.872656] I [io-stats.c:1014:io_stats_dump_fd]
+>> 0-home-lab-3: --- fd stats ---
+>> [2015-11-20 10:51:53.872692] I [io-stats.c:1019:io_stats_dump_fd]
+>> 0-home-lab-3:       Filename : /cdc/444.txt
+>> [2015-11-20 10:51:53.872704] I [io-stats.c:1034:io_stats_dump_fd]
+>> 0-home-lab-3:   BytesWritten : 7 bytes
+>> [2015-11-20 10:51:53.872714] I [io-stats.c:1046:io_stats_dump_fd]
+>> 0-home-lab-3: Write 000004b+ : 1
+>> [2015-11-20 10:51:53.874917] W [MSGID: 114031]
+>> [client-rpc-fops.c:1298:client3_3_removexattr_cbk]
+>> 0-home-lab-3-client-0: remote operation failed [Permission denied]
+>> [2015-11-20 10:51:53.874976] W [fuse-bridge.c:1230:fuse_err_cbk]
+>> 0-glusterfs-fuse: 63459954: REMOVEXATTR() /cdc/444.txt => -1
+>> (Permission denied)
+>> [2015-11-20 10:51:53.881389] W [MSGID: 114031]
+>> [client-rpc-fops.c:1298:client3_3_removexattr_cbk]
+>> 0-home-lab-3-client-3: remote operation failed [Permission denied]
+>> [2015-11-20 10:51:53.881434] W [fuse-bridge.c:1230:fuse_err_cbk]
+>> 0-glusterfs-fuse: 63459961: REMOVEXATTR() /cdc/kk.txt => -1
+>> (Permission denied)
+>> [2015-11-20 10:51:53.883072] W [fuse-bridge.c:1230:fuse_err_cbk]
+>> 0-glusterfs-fuse: 63459964: REMOVEXATTR() /cdc/kk.txt => -1
+>> (Permission denied)
+>> [2015-11-20 10:51:53.883057] W [MSGID: 114031]
+>> [client-rpc-fops.c:1298:client3_3_removexattr_cbk]
+>> 0-home-lab-3-client-3: remote operation failed [Permission denied]
+>> [2015-11-20 10:51:53.884003] E [MSGID: 114031]
+>> [client-rpc-fops.c:466:client3_3_open_cbk] 0-home-lab-3-client-3:
+>> remote operation failed. Path: /cdc/kk.txt
+>> (3175e0cd-8308-45b8-a4b0-699f6f8cf37f) [Permission denied]
+>> [2015-11-20 10:51:53.884056] W [fuse-bridge.c:969:fuse_fd_cbk]
+>> 0-glusterfs-fuse: 63459965: OPEN() /cdc/kk.txt => -1 (Permission
+>> denied)
+>
+> The above message is interesting and might be related to the problem.
+> That said, we generally set the NFSD_MAY_OWNER_OVERRIDE bit on opens 
+> of
+> regular files, which allows the nfsd_permission check to pass
+> regardless when the owner matches.
+>
+> My guess would be that the dentry_open call in nfsd_open is failing
+> here as the concept of "owner override" doesn't really get passed 
+> down
+> to it. Still, it'd be good to confirm that...
+>
+>> [2015-11-20 10:51:53.885619] W [MSGID: 114031]
+>> [client-rpc-fops.c:1298:client3_3_removexattr_cbk]
+>> 0-home-lab-3-client-3: remote operation failed [Permission denied]
+>> [2015-11-20 10:51:53.885664] W [fuse-bridge.c:1230:fuse_err_cbk]
+>> 0-glusterfs-fuse: 63459967: REMOVEXATTR() /cdc/kk.txt => -1 
+>> (Permission
+>> denied)
+>> [2015-11-20 10:51:53.887908] W [fuse-bridge.c:1230:fuse_err_cbk]
+>> 0-glusterfs-fuse: 63459971: REMOVEXATTR() /cdc/kk.txt => -1 
+>> (Permission
+>> denied)
+>> [2015-11-20 10:51:53.887891] W [MSGID: 114031]
+>> [client-rpc-fops.c:1298:client3_3_removexattr_cbk]
+>> 0-home-lab-3-client-3: remote operation failed [Permission denied]
+>>
+>> (NOTE: We have more gluster brick logs but we don't know if are 
+>> relevant)
+>>
 
-Thanks,
---=20
-William
-
---OEa2bCMk+rg6xBXy
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1
-
-iEYEARECAAYFAlZVsDMACgkQ1I6eqOUidQGd8QCgr+awRjs9iCJjTdAj8IRyLPyF
-rKEAoKzDTJcALHzwEDVzWrSE9Q4kh8Du
-=YZSP
------END PGP SIGNATURE-----
-
---OEa2bCMk+rg6xBXy--
