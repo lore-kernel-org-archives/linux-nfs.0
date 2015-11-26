@@ -1,51 +1,34 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:49861 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:52181 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752565AbbKZPTu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 26 Nov 2015 10:19:50 -0500
+	id S1751060AbbKZP2m (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 26 Nov 2015 10:28:42 -0500
 From: David Howells <dhowells@redhat.com>
-In-Reply-To: <20151124081149.GA8840@infradead.org>
-References: <20151124081149.GA8840@infradead.org> <20151120145422.18930.72662.stgit@warthog.procyon.org.uk>
-To: Christoph Hellwig <hch@infradead.org>
+In-Reply-To: <20151124193646.GA3482@thunk.org>
+References: <20151124193646.GA3482@thunk.org> <20151120145422.18930.72662.stgit@warthog.procyon.org.uk> <20151120145434.18930.89755.stgit@warthog.procyon.org.uk>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Cc: dhowells@redhat.com, arnd@arndb.de, linux-afs@vger.kernel.org,
         linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
         samba-technical@lists.samba.org, linux-kernel@vger.kernel.org,
         linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-Subject: Re: [RFC][PATCH 00/12] Enhanced file stat system call
+Subject: Re: [PATCH 01/12] Ext4: Fix extended timestamp encoding and decoding
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Date: Thu, 26 Nov 2015 15:19:43 +0000
-Message-ID: <7342.1448551183@warthog.procyon.org.uk>
+Date: Thu, 26 Nov 2015 15:28:36 +0000
+Message-ID: <7814.1448551716@warthog.procyon.org.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Christoph Hellwig <hch@infradead.org> wrote:
+Theodore Ts'o <tytso@mit.edu> wrote:
 
-> from a quick look the statx bits looks fine in general.  I think Ted
-> last time had a problem with the IOC flag allocation, so you might
-> want to ping him.
+> This is the patch I would prefer to use (and in fact which I have
+> added to the ext4 tree):
+> 
+> There are issues with 32-bit vs 64-bit encoding of times before
+> January 1, 1970, which are handled with this patch which is not
+> handled with what you have in your patch series.  So I'd prefer if you
+> drop this patch, and I'll get this sent to Linus as a bug fix for 4.4.
 
-Yeah - he commented on that.
+Fine by me.
 
-> But fsinfo with the multiplexer and the void pointer is just horrible.
-> What were you thinking there?
-
-I think the fsinfo data struct probably wants splitting up.  Now this could be
-done in a number of ways, including:
-
- (1) By adding multiple syscalls (statfsx, fsinfo, netfsinfo, ...) but each
-     one needs a bit in the kernel to handle the basics (path/fd lookup,
-     security check, buffer allocation and freeing, ...) which could all be in
-     common - hence the mux method.
-
- (2) Adding an argument to the fsinfo syscall since it has at least one
-     syscall argument spare.
-
- (3) Offloading some of the bits to standardised xattr calls.  The large
-     string fields (domain name, volume name, ...) would seem to be obvious
-     candidates for this.
-
-Given that the core VFS gets to manage the contents of the buffer, it
-shouldn't be as controversial as pioctl().
-
-David
+Acked-by: David Howells <dhowells@redhat.com>
