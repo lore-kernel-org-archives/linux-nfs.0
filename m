@@ -1,44 +1,51 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wm0-f47.google.com ([74.125.82.47]:33884 "EHLO
-	mail-wm0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751127AbbKZKB3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Nov 2015 05:01:29 -0500
-Received: by wmvv187 with SMTP id v187so23389188wmv.1
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Nov 2015 02:01:28 -0800 (PST)
-Subject: Re: Future of FMR support, was: Re: [PATCH v1 5/9] xprtrdma: Add
- ro_unmap_sync method for FMR
-To: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>,
-        santosh shilimkar <santosh.shilimkar@oracle.com>
-References: <20151123220627.32702.62667.stgit@manet.1015granger.net>
- <20151123221430.32702.86114.stgit@manet.1015granger.net>
- <5653B606.3070700@talpey.com> <20151124065225.GB29141@infradead.org>
- <5654DC7A.7080807@oracle.com> <20151125090009.GA11255@infradead.org>
- <5655EB40.8070508@oracle.com> <20151125192824.GD3223@obsidianresearch.com>
-Cc: Christoph Hellwig <hch@infradead.org>, Tom Talpey <tom@talpey.com>,
-        Chuck Lever <chuck.lever@oracle.com>, linux-rdma@vger.kernel.org,
-        linux-nfs@vger.kernel.org, Sagi Grimberg <sagig@mellanox.com>
-From: Sagi Grimberg <sagig@dev.mellanox.co.il>
-Message-ID: <5656D874.8060500@dev.mellanox.co.il>
-Date: Thu, 26 Nov 2015 12:01:24 +0200
+Received: from mx1.redhat.com ([209.132.183.28]:49861 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752565AbbKZPTu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 26 Nov 2015 10:19:50 -0500
+From: David Howells <dhowells@redhat.com>
+In-Reply-To: <20151124081149.GA8840@infradead.org>
+References: <20151124081149.GA8840@infradead.org> <20151120145422.18930.72662.stgit@warthog.procyon.org.uk>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: dhowells@redhat.com, arnd@arndb.de, linux-afs@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
+        samba-technical@lists.samba.org, linux-kernel@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+Subject: Re: [RFC][PATCH 00/12] Enhanced file stat system call
 MIME-Version: 1.0
-In-Reply-To: <20151125192824.GD3223@obsidianresearch.com>
-Content-Type: text/plain; charset=windows-1252; format=flowed
+Content-Type: text/plain; charset="us-ascii"
+Date: Thu, 26 Nov 2015 15:19:43 +0000
+Message-ID: <7342.1448551183@warthog.procyon.org.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Christoph Hellwig <hch@infradead.org> wrote:
 
+> from a quick look the statx bits looks fine in general.  I think Ted
+> last time had a problem with the IOC flag allocation, so you might
+> want to ping him.
 
-On 25/11/2015 21:28, Jason Gunthorpe wrote:
-> On Wed, Nov 25, 2015 at 09:09:20AM -0800, santosh shilimkar wrote:
->>> I'd say drop the current iWarp transport if it's not testable.  The
->>> only real difference between IB and iWarp is the needed to create
->>> a MR for the RDMA READ sink, and we're much better of adding that into
->>> the current IB transport if new iWarp users show up.
->>
->> Agree. I will probably do it along with RDS IB FR support in 4.6
->
-> Great news!
+Yeah - he commented on that.
 
-Great news indeed!
+> But fsinfo with the multiplexer and the void pointer is just horrible.
+> What were you thinking there?
 
-Looking forward to seeing this.
+I think the fsinfo data struct probably wants splitting up.  Now this could be
+done in a number of ways, including:
+
+ (1) By adding multiple syscalls (statfsx, fsinfo, netfsinfo, ...) but each
+     one needs a bit in the kernel to handle the basics (path/fd lookup,
+     security check, buffer allocation and freeing, ...) which could all be in
+     common - hence the mux method.
+
+ (2) Adding an argument to the fsinfo syscall since it has at least one
+     syscall argument spare.
+
+ (3) Offloading some of the bits to standardised xattr calls.  The large
+     string fields (domain name, volume name, ...) would seem to be obvious
+     candidates for this.
+
+Given that the core VFS gets to manage the contents of the buffer, it
+shouldn't be as controversial as pioctl().
+
+David
