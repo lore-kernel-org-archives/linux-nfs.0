@@ -1,211 +1,66 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qg0-f41.google.com ([209.85.192.41]:36215 "EHLO
-	mail-qg0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750893AbbK2NqS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 29 Nov 2015 08:46:18 -0500
-Received: by qgcc31 with SMTP id c31so100469801qgc.3
-        for <linux-nfs@vger.kernel.org>; Sun, 29 Nov 2015 05:46:17 -0800 (PST)
-Date: Sun, 29 Nov 2015 08:46:14 -0500
-From: Jeff Layton <jlayton@poochiereds.net>
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: bfields@fieldses.org, Christoph Hellwig <hch@lst.de>,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH RFC] nfsd: serialize layout stateid morphing operations
-Message-ID: <20151129084614.42fb1272@tlielax.poochiereds.net>
-In-Reply-To: <565A7A14.4010902@gmail.com>
-References: <1442491104-30080-1-git-send-email-jeff.layton@primarydata.com>
-	<565A7A14.4010902@gmail.com>
+Received: from mout.kundenserver.de ([212.227.17.24]:52786 "EHLO
+	mout.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752562AbbK2Va5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 29 Nov 2015 16:30:57 -0500
+From: Arnd Bergmann <arnd@arndb.de>
+To: "Theodore Ts'o" <tytso@mit.edu>
+Cc: David Howells <dhowells@redhat.com>, linux-afs@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
+        samba-technical@lists.samba.org, linux-kernel@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        Deepa Dinamani <deepa.kernel@gmail.com>
+Subject: Re: [PATCH 01/12] Ext4: Fix extended timestamp encoding and decoding
+Date: Sun, 29 Nov 2015 22:30:39 +0100
+Message-ID: <2872067.shHdUXoF07@wuerfel>
+In-Reply-To: <20151129024555.GA31968@thunk.org>
+References: <20151120145422.18930.72662.stgit@warthog.procyon.org.uk> <3495329.crWmoA5ACn@wuerfel> <20151129024555.GA31968@thunk.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset="us-ascii"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, 29 Nov 2015 12:07:48 +0800
-Kinglong Mee <kinglongmee@gmail.com> wrote:
-
-> I meet two problems with this patch,
+On Saturday 28 November 2015 21:45:55 Theodore Ts'o wrote:
+> On Tue, Nov 24, 2015 at 09:10:53PM +0100, Arnd Bergmann wrote:
+> > On Tuesday 24 November 2015 14:36:46 Theodore Ts'o wrote:
+> > > This is the patch I would prefer to use (and in fact which I have
+> > > added to the ext4 tree):
+> > > 
+> > > There are issues with 32-bit vs 64-bit encoding of times before
+> > > January 1, 1970, which are handled with this patch which is not
+> > > handled with what you have in your patch series.  So I'd prefer if you
+> > > drop this patch, and I'll get this sent to Linus as a bug fix for 4.4.
+> > 
+> > I'm happy with either one. Apparently both Davids have arrived with
+> > almost the same algorithm and implementation, with the exception of
+> > the pre-1970 handling you mention there.
 > 
+> I was doing some testing on x86, which leads me to ask --- what's the
+> current thinking about post y2038 on 32-bit platforms such as x86?  I
+> see that there was some talk about using struct timespec64, but we
+> haven't made the transition in the VFS interfaces yet, despite a
+> comment in an LWN article from 2014 stating that "the first steps have
+> been taken; hopefully the rest will follow before too long".
 
-Ok, I was less sure of this patch than the other one. I think we will
-need to serialize these operations, but this may not be the best way to
-do it.
+The approach in my initial VFS series was to introduce 'struct inode_time',
+but I have basically abandoned that idea now, after we decided to introduce
+'timespec64' inside of the kernel and use that for other subsystems.
+The rought plan is now to have separate time64_t and u32 seconds/nanoseconds
+values in 'struct inode', 'struct iattr' and 'struct kstat' and use
+inline functions or macros to extract or set them as time64_t or timespec64
+in file system code, but that code is not written yet.
 
-Bruce if you want to back this one for now, then I'm fine with that. It
-may be a bit before I can get to it.
+I'm mostly coordinating the y2038 work at the moment, but that means that
+a lot of the work is going into individual drivers that a single person
+can easily handle. We've had a couple of people who tried looking at VFS,
+but none of them followed through, so it got delayed a bit. However,
+Deepa Dinamani is now looking y2038 for VFS and individual file systems
+as part of her Outreachy internship and I'm optimistic that we'll soon
+be making progress again here with her work.
 
+The other large missing piece is the system call implementation. I have
+posted a series earlier this year before my parental leave, and it's
+currently lacking review from libc folks, and blocked on me to update
+the series and post it again.
 
-> 1. a dump_stack messages printed in process_one_work() at kernel/workqueue.c.
-> 
-> BUG: workqueue leaked lock or atomic: kworker/u2:4/0x00000000/98#012     last function: nfsd4_run_cb_work [nfsd]
-> 1 lock held by kworker/u2:4/98:
-> #0:  (&ls->ls_mutex){......}, at: [<ffffffffa0250d34>] nfsd4_cb_layout_prepare+0x24/0x40 [nfsd]
-> CPU: 0 PID: 98 Comm: kworker/u2:4 Not tainted 4.4.0-rc2+ #333
-> Hardware name: VMware, Inc. VMware Virtual Platform/440BX Desktop Reference Platform, BIOS 6.00 07/02/2015
-> Workqueue: nfsd4_callbacks nfsd4_run_cb_work [nfsd]
-> ffff8800362b9e40 000000007fe9394f ffff880036353d58 ffffffff8136dc64
-> ffff880036353dd8 ffffffff810a3f12 ffffffff810a3cbd 000000000000000a
-> ffffffffa0261d78 ffffffff82902e20 0000000000000000 ffffffffa0259241
-> Call Trace:
-> [<ffffffff8136dc64>] dump_stack+0x19/0x25
-> [<ffffffff810a3f12>] process_one_work+0x3c2/0x4c0
-> [<ffffffff810a3cbd>] ? process_one_work+0x16d/0x4c0
-> [<ffffffff810a405a>] worker_thread+0x4a/0x440
-> [<ffffffff810a4010>] ? process_one_work+0x4c0/0x4c0
-> [<ffffffff810a4010>] ? process_one_work+0x4c0/0x4c0
-> [<ffffffff810a91e5>] kthread+0xf5/0x110
-> [<ffffffff810a90f0>] ? kthread_create_on_node+0x240/0x240
-> [<ffffffff81738d0f>] ret_from_fork+0x3f/0x70
-> [<ffffffff810a90f0>] ? kthread_create_on_node+0x240/0x240
-> 
-
-
-I guess this is just a general "hey you left a mutex locked" warning
-when finishing a workqueue job? This patch actually does want to do
-that, but I trying to tell that to lockdep may be tricky...
-
-
-> 2. a mutex race between layoutrecall and layoutcommit, 
-> 
-> callback thread,
-> nfsd4_cb_layout_prepare 
->   --->mutex_lock(&ls->ls_mutex);
-> 
-> layoutcommit thread,
-> nfsd4_layoutcommit
->   ---> nfsd4_preprocess_layout_stateid
->      --> mutex_lock(&ls->ls_mutex);   <----------------  hang 
-> 
-> [  600.645142] INFO: task nfsd:11623 blocked for more than 120 seconds.
-> [  600.646337]       Not tainted 4.4.0-rc2+ #332
-> [  600.647404] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
-> [  600.648546] nfsd            D ffff880064277b80     0 11623      2 0x00000000
-> [  600.649803]  ffff880064277b80 ffff880064278000 00000000ffffffff ffff88005dd241a8
-> [  600.651021]  ffffffffa025e77c 0000000000000246 ffff880064277b98 ffffffff81733103
-> [  600.652255]  ffff880063d7e100 ffff880064277ba8 ffffffff8173330e ffff880064277c28
-> [  600.653512] Call Trace:
-> [  600.654765]  [<ffffffffa025e77c>] ? nfsd4_preprocess_layout_stateid+0x37c/0x400 [nfsd]
-> [  600.656084]  [<ffffffff81733103>] schedule+0x33/0x80
-> [  600.657405]  [<ffffffff8173330e>] schedule_preempt_disabled+0xe/0x10
-> [  600.658741]  [<ffffffff817357f5>] mutex_lock_nested+0x145/0x330
-> [  600.660094]  [<ffffffffa025e77c>] ? nfsd4_preprocess_layout_stateid+0x37c/0x400 [nfsd]
-> [  600.661696]  [<ffffffffa025e77c>] nfsd4_preprocess_layout_stateid+0x37c/0x400 [nfsd]
-> [  600.663129]  [<ffffffffa025e405>] ? nfsd4_preprocess_layout_stateid+0x5/0x400 [nfsd]
-> [  600.664558]  [<ffffffff81173b8f>] ? printk+0x56/0x72
-> [  600.665990]  [<ffffffffa023e3ec>] nfsd4_layoutcommit+0x13c/0x200 [nfsd]
-> [  600.667365]  [<ffffffffa023fb98>] nfsd4_proc_compound+0x388/0x660 [nfsd]
-> [  600.668835]  [<ffffffffa022c148>] nfsd_dispatch+0xb8/0x200 [nfsd]
-> [  600.670323]  [<ffffffffa0093d89>] svc_process_common+0x409/0x650 [sunrpc]
-> [  600.671836]  [<ffffffffa0094e04>] svc_process+0xf4/0x190 [sunrpc]
-> [  600.673328]  [<ffffffffa022bb05>] nfsd+0x135/0x1a0 [nfsd]
-> [  600.674825]  [<ffffffffa022b9d5>] ? nfsd+0x5/0x1a0 [nfsd]
-> [  600.676388]  [<ffffffffa022b9d0>] ? nfsd_destroy+0xb0/0xb0 [nfsd]
-> [  600.677884]  [<ffffffff810a9175>] kthread+0xf5/0x110
-> [  600.679373]  [<ffffffff810a9080>] ? kthread_create_on_node+0x240/0x240
-> [  600.680874]  [<ffffffff81738ccf>] ret_from_fork+0x3f/0x70
-> [  600.682398]  [<ffffffff810a9080>] ? kthread_create_on_node+0x240/0x240
-> [  600.683893] 1 lock held by nfsd/11623:
-> [  600.685449]  #0:  (&ls->ls_mutex){......}, at: [<ffffffffa025e77c>] nfsd4_preprocess_layout_stateid+0x37c/0x400 [nfsd]
-> [  600.688778] Sending NMI to all CPUs:
-> [  600.690854] NMI backtrace for cpu 0
-> [  600.691909] CPU: 0 PID: 11 Comm: khungtaskd Not tainted 4.4.0-rc2+ #332
-> [  600.692523] Hardware name: VMware, Inc. VMware Virtual Platform/440BX Desktop Reference Platform, BIOS 6.00 07/02/2015
-> [  600.693821] task: ffff88007b900000 ti: ffff88007b8fc000 task.ti: ffff88007b8fc000
-> [  600.694496] RIP: 0010:[<ffffffff81053aca>]  [<ffffffff81053aca>] native_write_msr_safe+0xa/0x10
-> [  600.695185] RSP: 0018:ffff88007b8ffd70  EFLAGS: 00000046
-> [  600.695861] RAX: 0000000000000400 RBX: 0000000000000286 RCX: 0000000000000830
-> [  600.696539] RDX: 0000000000000000 RSI: 0000000000000400 RDI: 0000000000000830
-> [  600.697204] RBP: ffff88007b8ffd70 R08: 0000000000000400 R09: 0000000000000000
-> [  600.697862] R10: 00000000000000e4 R11: 0000000000000001 R12: ffff880063d7e100
-> [  600.698513] R13: 00000000003fff3c R14: ffff880063d7e308 R15: 0000000000000004
-> [  600.699156] FS:  0000000000000000(0000) GS:ffffffff81c27000(0000) knlGS:0000000000000000
-> [  600.699823] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-> [  600.700459] CR2: 00007f366afd4000 CR3: 000000005dd56000 CR4: 00000000001406f0
-> [  600.701106] Stack:
-> [  600.701745]  ffff88007b8ffd88 ffffffff8104a860 ffffffff81047340 ffff88007b8ffd98
-> [  600.702404]  ffffffff8104a885 ffff88007b8ffda8 ffffffff8104735b ffff88007b8ffdd8
-> [  600.703058]  ffffffff813723ad 0000000000000078 ffff880063d7e100 00000000003fff3c
-> [  600.703712] Call Trace:
-> [  600.704355]  [<ffffffff8104a860>] __x2apic_send_IPI_mask.isra.2+0x60/0x70
-> [  600.705017]  [<ffffffff81047340>] ? setup_vector_irq+0x130/0x130
-> [  600.705676]  [<ffffffff8104a885>] x2apic_send_IPI_mask+0x15/0x20
-> [  600.706335]  [<ffffffff8104735b>] nmi_raise_cpu_backtrace+0x1b/0x20
-> [  600.706989]  [<ffffffff813723ad>] nmi_trigger_all_cpu_backtrace+0x14d/0x1c0
-> [  600.707693]  [<ffffffff810473b9>] arch_trigger_all_cpu_backtrace+0x19/0x20
-> [  600.708362]  [<ffffffff8112c4cf>] watchdog+0x32f/0x370
-> [  600.709031]  [<ffffffff8112c221>] ? watchdog+0x81/0x370
-> [  600.709725]  [<ffffffff8112c1a0>] ? reset_hung_task_detector+0x20/0x20
-> [  600.710398]  [<ffffffff810a9175>] kthread+0xf5/0x110
-> [  600.711067]  [<ffffffff810a9080>] ? kthread_create_on_node+0x240/0x240
-> [  600.711739]  [<ffffffff81738ccf>] ret_from_fork+0x3f/0x70
-> [  600.712405]  [<ffffffff810a9080>] ? kthread_create_on_node+0x240/0x240
-> [  600.713073] Code: 00 55 89 f9 48 89 e5 0f 32 45 31 c0 48 c1 e2 20 44 89 06 48 09 d0 5d c3 66 0f 1f 84 00 00 00 00 00 55 89 f0 89 f9 48 89 e5 0f 30 <31> c0 5d c3 66 90 55 89 f9 48 89 e5 0f 33 48 c1 e2 20 48 09 d0
-> [  600.715196] Kernel panic - not syncing: hung_task: blocked tasks
-> [  600.715889] CPU: 0 PID: 11 Comm: khungtaskd Not tainted 4.4.0-rc2+ #332
-> [  600.716540] Hardware name: VMware, Inc. VMware Virtual Platform/440BX Desktop Reference Platform, BIOS 6.00 07/02/2015
-> [  600.717910]  ffffffff81a4d19c 00000000480750be ffff88007b8ffd60 ffffffff8136dbf4
-> [  600.718610]  ffff88007b8ffde8 ffffffff81173559 ffff880000000008 ffff88007b8ffdf8
-> [  600.719302]  ffff88007b8ffd90 00000000480750be 0000000000000001 0000000000000001
-> [  600.719984] Call Trace:
-> [  600.720646]  [<ffffffff8136dbf4>] dump_stack+0x19/0x25
-> [  600.721330]  [<ffffffff81173559>] panic+0xd3/0x212
-> [  600.722009]  [<ffffffff8112c4db>] watchdog+0x33b/0x370
-> [  600.722686]  [<ffffffff8112c221>] ? watchdog+0x81/0x370
-> [  600.723213]  [<ffffffff8112c1a0>] ? reset_hung_task_detector+0x20/0x20
-> [  600.723674]  [<ffffffff810a9175>] kthread+0xf5/0x110
-> [  600.724107]  [<ffffffff810a9080>] ? kthread_create_on_node+0x240/0x240
-> [  600.724509]  [<ffffffff81738ccf>] ret_from_fork+0x3f/0x70
-> [  600.724903]  [<ffffffff810a9080>] ? kthread_create_on_node+0x240/0x240
-> 
-> thanks,
-> Kinglong Mee
-> 
-
-This is the bigger problem, I think. The question of course is why the
-client didn't respond to the cb request? Still, holding a mutex across
-the callback RPC is pretty ugly and now that I think about it, I don't
-think it's really necessary anyway. Once we've copied the stateid, we
-aren't really changing anything else so we can let other layout ops
-proceed.
-
-Would a patch like this fix it?
-
------------------------8<--------------------------
-
-[PATCH] nfsd: don't hold ls_mutex across a layout recall
-
-We do need to serialize layout stateid morphing operations, but we
-currently hold the ls_mutex across a layout recall which is pretty
-ugly. It's also unnecessary -- once we've bumped the seqid and
-copied it, we don't need to serialize the rest of the CB_LAYOUTRECALL
-vs. anything else. Just drop the mutex once the copy is done.
-
-Fixes: cc8a55320b5f "nfsd: serialize layout stateid morphing operations"
-Cc: stable@vger.kernel.org
-Reported-by: Kinglong Mee <kinglongmee@gmail.com>
-Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
----
- fs/nfsd/nfs4layouts.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/fs/nfsd/nfs4layouts.c b/fs/nfsd/nfs4layouts.c
-index 9ffef06b30d5..c9d6c715c0fb 100644
---- a/fs/nfsd/nfs4layouts.c
-+++ b/fs/nfsd/nfs4layouts.c
-@@ -616,6 +616,7 @@ nfsd4_cb_layout_prepare(struct nfsd4_callback *cb)
- 
- 	mutex_lock(&ls->ls_mutex);
- 	nfs4_inc_and_copy_stateid(&ls->ls_recall_sid, &ls->ls_stid);
-+	mutex_unlock(&ls->ls_mutex);
- }
- 
- static int
-@@ -659,7 +660,6 @@ nfsd4_cb_layout_release(struct nfsd4_callback *cb)
- 
- 	trace_layout_recall_release(&ls->ls_stid.sc_stateid);
- 
--	mutex_unlock(&ls->ls_mutex);
- 	nfsd4_return_all_layouts(ls, &reaplist);
- 	nfsd4_free_layouts(&reaplist);
- 	nfs4_put_stid(&ls->ls_stid);
--- 
-2.4.3
+	Arnd
