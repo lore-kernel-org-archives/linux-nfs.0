@@ -1,247 +1,152 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:46846 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:47813 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752561AbbK3VeV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 30 Nov 2015 16:34:21 -0500
-Date: Mon, 30 Nov 2015 16:34:20 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: Jeff Layton <jlayton@poochiereds.net>, Christoph Hellwig <hch@lst.de>,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH RFC] nfsd: serialize layout stateid morphing operations
-Message-ID: <20151130213420.GA31564@fieldses.org>
-References: <1442491104-30080-1-git-send-email-jeff.layton@primarydata.com>
- <565A7A14.4010902@gmail.com>
- <20151129084614.42fb1272@tlielax.poochiereds.net>
- <565BBB03.7020206@gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <565BBB03.7020206@gmail.com>
+	id S1755141AbbK3Vo1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 30 Nov 2015 16:44:27 -0500
+From: Andreas Gruenbacher <agruenba@redhat.com>
+To: Alexander Viro <viro@zeniv.linux.org.uk>,
+        Christoph Hellwig <hch@infradead.org>, linux-kernel@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org
+Cc: Andreas Gruenbacher <agruenba@redhat.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>, linux-nfs@vger.kernel.org
+Subject: [PATCH 09/10] nfs: Move call to security_inode_listsecurity into nfs_listxattr
+Date: Mon, 30 Nov 2015 22:43:42 +0100
+Message-Id: <1448919823-27103-10-git-send-email-agruenba@redhat.com>
+In-Reply-To: <1448919823-27103-1-git-send-email-agruenba@redhat.com>
+References: <1448919823-27103-1-git-send-email-agruenba@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Nov 30, 2015 at 10:57:07AM +0800, Kinglong Mee wrote:
-> On 11/29/2015 21:46, Jeff Layton wrote:
-> > On Sun, 29 Nov 2015 12:07:48 +0800
-> > Kinglong Mee <kinglongmee@gmail.com> wrote:
-> > 
-> >> I meet two problems with this patch,
-> >>
-> > 
-> > Ok, I was less sure of this patch than the other one. I think we will
-> > need to serialize these operations, but this may not be the best way to
-> > do it.
-> > 
-> > Bruce if you want to back this one for now, then I'm fine with that. It
-> > may be a bit before I can get to it.
-> > 
-> > 
-> >> 1. a dump_stack messages printed in process_one_work() at kernel/workqueue.c.
-> >>
-> >> BUG: workqueue leaked lock or atomic: kworker/u2:4/0x00000000/98#012     last function: nfsd4_run_cb_work [nfsd]
-> >> 1 lock held by kworker/u2:4/98:
-> >> #0:  (&ls->ls_mutex){......}, at: [<ffffffffa0250d34>] nfsd4_cb_layout_prepare+0x24/0x40 [nfsd]
-> >> CPU: 0 PID: 98 Comm: kworker/u2:4 Not tainted 4.4.0-rc2+ #333
-> >> Hardware name: VMware, Inc. VMware Virtual Platform/440BX Desktop Reference Platform, BIOS 6.00 07/02/2015
-> >> Workqueue: nfsd4_callbacks nfsd4_run_cb_work [nfsd]
-> >> ffff8800362b9e40 000000007fe9394f ffff880036353d58 ffffffff8136dc64
-> >> ffff880036353dd8 ffffffff810a3f12 ffffffff810a3cbd 000000000000000a
-> >> ffffffffa0261d78 ffffffff82902e20 0000000000000000 ffffffffa0259241
-> >> Call Trace:
-> >> [<ffffffff8136dc64>] dump_stack+0x19/0x25
-> >> [<ffffffff810a3f12>] process_one_work+0x3c2/0x4c0
-> >> [<ffffffff810a3cbd>] ? process_one_work+0x16d/0x4c0
-> >> [<ffffffff810a405a>] worker_thread+0x4a/0x440
-> >> [<ffffffff810a4010>] ? process_one_work+0x4c0/0x4c0
-> >> [<ffffffff810a4010>] ? process_one_work+0x4c0/0x4c0
-> >> [<ffffffff810a91e5>] kthread+0xf5/0x110
-> >> [<ffffffff810a90f0>] ? kthread_create_on_node+0x240/0x240
-> >> [<ffffffff81738d0f>] ret_from_fork+0x3f/0x70
-> >> [<ffffffff810a90f0>] ? kthread_create_on_node+0x240/0x240
-> >>
-> > 
-> > 
-> > I guess this is just a general "hey you left a mutex locked" warning
-> > when finishing a workqueue job? This patch actually does want to do
-> > that, but I trying to tell that to lockdep may be tricky...
-> 
-> Yes, it's just a warning.
-> But, it's terrible that kernel prints it every time
-> when calling nfsd4_cb_layout_prepare.
-> 
-> > 
-> > 
-> >> 2. a mutex race between layoutrecall and layoutcommit, 
-> >>
-> >> callback thread,
-> >> nfsd4_cb_layout_prepare 
-> >>   --->mutex_lock(&ls->ls_mutex);
-> >>
-> >> layoutcommit thread,
-> >> nfsd4_layoutcommit
-> >>   ---> nfsd4_preprocess_layout_stateid
-> >>      --> mutex_lock(&ls->ls_mutex);   <----------------  hang 
-> >>
-> >> [  600.645142] INFO: task nfsd:11623 blocked for more than 120 seconds.
-> >> [  600.646337]       Not tainted 4.4.0-rc2+ #332
-> >> [  600.647404] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
-> >> [  600.648546] nfsd            D ffff880064277b80     0 11623      2 0x00000000
-> >> [  600.649803]  ffff880064277b80 ffff880064278000 00000000ffffffff ffff88005dd241a8
-> >> [  600.651021]  ffffffffa025e77c 0000000000000246 ffff880064277b98 ffffffff81733103
-> >> [  600.652255]  ffff880063d7e100 ffff880064277ba8 ffffffff8173330e ffff880064277c28
-> >> [  600.653512] Call Trace:
-> >> [  600.654765]  [<ffffffffa025e77c>] ? nfsd4_preprocess_layout_stateid+0x37c/0x400 [nfsd]
-> >> [  600.656084]  [<ffffffff81733103>] schedule+0x33/0x80
-> >> [  600.657405]  [<ffffffff8173330e>] schedule_preempt_disabled+0xe/0x10
-> >> [  600.658741]  [<ffffffff817357f5>] mutex_lock_nested+0x145/0x330
-> >> [  600.660094]  [<ffffffffa025e77c>] ? nfsd4_preprocess_layout_stateid+0x37c/0x400 [nfsd]
-> >> [  600.661696]  [<ffffffffa025e77c>] nfsd4_preprocess_layout_stateid+0x37c/0x400 [nfsd]
-> >> [  600.663129]  [<ffffffffa025e405>] ? nfsd4_preprocess_layout_stateid+0x5/0x400 [nfsd]
-> >> [  600.664558]  [<ffffffff81173b8f>] ? printk+0x56/0x72
-> >> [  600.665990]  [<ffffffffa023e3ec>] nfsd4_layoutcommit+0x13c/0x200 [nfsd]
-> >> [  600.667365]  [<ffffffffa023fb98>] nfsd4_proc_compound+0x388/0x660 [nfsd]
-> >> [  600.668835]  [<ffffffffa022c148>] nfsd_dispatch+0xb8/0x200 [nfsd]
-> >> [  600.670323]  [<ffffffffa0093d89>] svc_process_common+0x409/0x650 [sunrpc]
-> >> [  600.671836]  [<ffffffffa0094e04>] svc_process+0xf4/0x190 [sunrpc]
-> >> [  600.673328]  [<ffffffffa022bb05>] nfsd+0x135/0x1a0 [nfsd]
-> >> [  600.674825]  [<ffffffffa022b9d5>] ? nfsd+0x5/0x1a0 [nfsd]
-> >> [  600.676388]  [<ffffffffa022b9d0>] ? nfsd_destroy+0xb0/0xb0 [nfsd]
-> >> [  600.677884]  [<ffffffff810a9175>] kthread+0xf5/0x110
-> >> [  600.679373]  [<ffffffff810a9080>] ? kthread_create_on_node+0x240/0x240
-> >> [  600.680874]  [<ffffffff81738ccf>] ret_from_fork+0x3f/0x70
-> >> [  600.682398]  [<ffffffff810a9080>] ? kthread_create_on_node+0x240/0x240
-> >> [  600.683893] 1 lock held by nfsd/11623:
-> >> [  600.685449]  #0:  (&ls->ls_mutex){......}, at: [<ffffffffa025e77c>] nfsd4_preprocess_layout_stateid+0x37c/0x400 [nfsd]
-> >> [  600.688778] Sending NMI to all CPUs:
-> >> [  600.690854] NMI backtrace for cpu 0
-> >> [  600.691909] CPU: 0 PID: 11 Comm: khungtaskd Not tainted 4.4.0-rc2+ #332
-> >> [  600.692523] Hardware name: VMware, Inc. VMware Virtual Platform/440BX Desktop Reference Platform, BIOS 6.00 07/02/2015
-> >> [  600.693821] task: ffff88007b900000 ti: ffff88007b8fc000 task.ti: ffff88007b8fc000
-> >> [  600.694496] RIP: 0010:[<ffffffff81053aca>]  [<ffffffff81053aca>] native_write_msr_safe+0xa/0x10
-> >> [  600.695185] RSP: 0018:ffff88007b8ffd70  EFLAGS: 00000046
-> >> [  600.695861] RAX: 0000000000000400 RBX: 0000000000000286 RCX: 0000000000000830
-> >> [  600.696539] RDX: 0000000000000000 RSI: 0000000000000400 RDI: 0000000000000830
-> >> [  600.697204] RBP: ffff88007b8ffd70 R08: 0000000000000400 R09: 0000000000000000
-> >> [  600.697862] R10: 00000000000000e4 R11: 0000000000000001 R12: ffff880063d7e100
-> >> [  600.698513] R13: 00000000003fff3c R14: ffff880063d7e308 R15: 0000000000000004
-> >> [  600.699156] FS:  0000000000000000(0000) GS:ffffffff81c27000(0000) knlGS:0000000000000000
-> >> [  600.699823] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-> >> [  600.700459] CR2: 00007f366afd4000 CR3: 000000005dd56000 CR4: 00000000001406f0
-> >> [  600.701106] Stack:
-> >> [  600.701745]  ffff88007b8ffd88 ffffffff8104a860 ffffffff81047340 ffff88007b8ffd98
-> >> [  600.702404]  ffffffff8104a885 ffff88007b8ffda8 ffffffff8104735b ffff88007b8ffdd8
-> >> [  600.703058]  ffffffff813723ad 0000000000000078 ffff880063d7e100 00000000003fff3c
-> >> [  600.703712] Call Trace:
-> >> [  600.704355]  [<ffffffff8104a860>] __x2apic_send_IPI_mask.isra.2+0x60/0x70
-> >> [  600.705017]  [<ffffffff81047340>] ? setup_vector_irq+0x130/0x130
-> >> [  600.705676]  [<ffffffff8104a885>] x2apic_send_IPI_mask+0x15/0x20
-> >> [  600.706335]  [<ffffffff8104735b>] nmi_raise_cpu_backtrace+0x1b/0x20
-> >> [  600.706989]  [<ffffffff813723ad>] nmi_trigger_all_cpu_backtrace+0x14d/0x1c0
-> >> [  600.707693]  [<ffffffff810473b9>] arch_trigger_all_cpu_backtrace+0x19/0x20
-> >> [  600.708362]  [<ffffffff8112c4cf>] watchdog+0x32f/0x370
-> >> [  600.709031]  [<ffffffff8112c221>] ? watchdog+0x81/0x370
-> >> [  600.709725]  [<ffffffff8112c1a0>] ? reset_hung_task_detector+0x20/0x20
-> >> [  600.710398]  [<ffffffff810a9175>] kthread+0xf5/0x110
-> >> [  600.711067]  [<ffffffff810a9080>] ? kthread_create_on_node+0x240/0x240
-> >> [  600.711739]  [<ffffffff81738ccf>] ret_from_fork+0x3f/0x70
-> >> [  600.712405]  [<ffffffff810a9080>] ? kthread_create_on_node+0x240/0x240
-> >> [  600.713073] Code: 00 55 89 f9 48 89 e5 0f 32 45 31 c0 48 c1 e2 20 44 89 06 48 09 d0 5d c3 66 0f 1f 84 00 00 00 00 00 55 89 f0 89 f9 48 89 e5 0f 30 <31> c0 5d c3 66 90 55 89 f9 48 89 e5 0f 33 48 c1 e2 20 48 09 d0
-> >> [  600.715196] Kernel panic - not syncing: hung_task: blocked tasks
-> >> [  600.715889] CPU: 0 PID: 11 Comm: khungtaskd Not tainted 4.4.0-rc2+ #332
-> >> [  600.716540] Hardware name: VMware, Inc. VMware Virtual Platform/440BX Desktop Reference Platform, BIOS 6.00 07/02/2015
-> >> [  600.717910]  ffffffff81a4d19c 00000000480750be ffff88007b8ffd60 ffffffff8136dbf4
-> >> [  600.718610]  ffff88007b8ffde8 ffffffff81173559 ffff880000000008 ffff88007b8ffdf8
-> >> [  600.719302]  ffff88007b8ffd90 00000000480750be 0000000000000001 0000000000000001
-> >> [  600.719984] Call Trace:
-> >> [  600.720646]  [<ffffffff8136dbf4>] dump_stack+0x19/0x25
-> >> [  600.721330]  [<ffffffff81173559>] panic+0xd3/0x212
-> >> [  600.722009]  [<ffffffff8112c4db>] watchdog+0x33b/0x370
-> >> [  600.722686]  [<ffffffff8112c221>] ? watchdog+0x81/0x370
-> >> [  600.723213]  [<ffffffff8112c1a0>] ? reset_hung_task_detector+0x20/0x20
-> >> [  600.723674]  [<ffffffff810a9175>] kthread+0xf5/0x110
-> >> [  600.724107]  [<ffffffff810a9080>] ? kthread_create_on_node+0x240/0x240
-> >> [  600.724509]  [<ffffffff81738ccf>] ret_from_fork+0x3f/0x70
-> >> [  600.724903]  [<ffffffff810a9080>] ? kthread_create_on_node+0x240/0x240
-> >>
-> >> thanks,
-> >> Kinglong Mee
-> >>
-> > 
-> > This is the bigger problem, I think. The question of course is why the
-> > client didn't respond to the cb request? Still, holding a mutex across
-> > the callback RPC is pretty ugly and now that I think about it, I don't
-> > think it's really necessary anyway. Once we've copied the stateid, we
-> > aren't really changing anything else so we can let other layout ops
-> > proceed.
-> > 
-> > Would a patch like this fix it?
-> 
-> Yes, it's great.
-> With this patch, every thing is okay.
-> 
-> > 
-> > -----------------------8<--------------------------
-> > 
-> > [PATCH] nfsd: don't hold ls_mutex across a layout recall
-> > 
-> > We do need to serialize layout stateid morphing operations, but we
-> > currently hold the ls_mutex across a layout recall which is pretty
-> > ugly. It's also unnecessary -- once we've bumped the seqid and
-> > copied it, we don't need to serialize the rest of the CB_LAYOUTRECALL
-> > vs. anything else. Just drop the mutex once the copy is done.
-> > 
-> > Fixes: cc8a55320b5f "nfsd: serialize layout stateid morphing operations"
-> > Cc: stable@vger.kernel.org
-> > Reported-by: Kinglong Mee <kinglongmee@gmail.com>
-> > Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
-> 
-> Tested-by: Kinglong Mee <kinglongmee@gmail.com>
+Add a nfs_listxattr operation.  Move the call to security_inode_listsecurity
+from list operation of the "security.*" xattr handler to nfs_listxattr.
 
-Thanks for the report and the testing.
+Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Anna Schumaker <anna.schumaker@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+---
+ fs/nfs/nfs4proc.c          | 53 +++++++++++++++++++++++++++++++---------------
+ security/smack/smack_lsm.c |  2 --
+ 2 files changed, 36 insertions(+), 19 deletions(-)
 
-It may be worth applying just as a stopgap, but I'm not convinced this
-is right yet....
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index f6f40aa..914cb3d 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -6279,10 +6279,6 @@ static size_t nfs4_xattr_list_nfs4_acl(const struct xattr_handler *handler,
+ }
+ 
+ #ifdef CONFIG_NFS_V4_SECURITY_LABEL
+-static inline int nfs4_server_supports_labels(struct nfs_server *server)
+-{
+-	return server->caps & NFS_CAP_SECURITY_LABEL;
+-}
+ 
+ static int nfs4_xattr_set_nfs4_label(const struct xattr_handler *handler,
+ 				     struct dentry *dentry, const char *key,
+@@ -6304,29 +6300,34 @@ static int nfs4_xattr_get_nfs4_label(const struct xattr_handler *handler,
+ 	return -EOPNOTSUPP;
+ }
+ 
+-static size_t nfs4_xattr_list_nfs4_label(const struct xattr_handler *handler,
+-					 struct dentry *dentry, char *list,
+-					 size_t list_len, const char *name,
+-					 size_t name_len)
++static ssize_t
++nfs4_listxattr_nfs4_label(struct inode *inode, char *list, size_t list_len)
+ {
+-	size_t len = 0;
++	int len = 0;
+ 
+-	if (nfs_server_capable(d_inode(dentry), NFS_CAP_SECURITY_LABEL)) {
+-		len = security_inode_listsecurity(d_inode(dentry), NULL, 0);
+-		if (list && len <= list_len)
+-			security_inode_listsecurity(d_inode(dentry), list, len);
++	if (nfs_server_capable(inode, NFS_CAP_SECURITY_LABEL)) {
++		len = security_inode_listsecurity(inode, list, len);
++		if (len > list_len)
++			return -ERANGE;
+ 	}
+ 	return len;
+ }
+ 
+ static const struct xattr_handler nfs4_xattr_nfs4_label_handler = {
+ 	.prefix = XATTR_SECURITY_PREFIX,
+-	.list	= nfs4_xattr_list_nfs4_label,
+ 	.get	= nfs4_xattr_get_nfs4_label,
+ 	.set	= nfs4_xattr_set_nfs4_label,
+ };
+-#endif
+ 
++#else
++
++static ssize_t
++nfs4_listxattr_nfs4_label(struct inode *inode, char *list, size_t list_len)
++{
++	return 0;
++}
++
++#endif
+ 
+ /*
+  * nfs_fhget will use either the mounted_on_fileid or the fileid
+@@ -8743,6 +8744,24 @@ const struct nfs4_minor_version_ops *nfs_v4_minor_ops[] = {
+ #endif
+ };
+ 
++ssize_t nfs4_listxattr(struct dentry *dentry, char *list, size_t size)
++{
++	ssize_t error, error2;
++
++	error = generic_listxattr(dentry, list, size);
++	if (error < 0)
++		return error;
++	if (list) {
++		list += error;
++		size -= error;
++	}
++
++	error2 = nfs4_listxattr_nfs4_label(d_inode(dentry), list, size);
++	if (error2 < 0)
++		return error2;
++	return error + error2;
++}
++
+ static const struct inode_operations nfs4_dir_inode_operations = {
+ 	.create		= nfs_create,
+ 	.lookup		= nfs_lookup,
+@@ -8759,7 +8778,7 @@ static const struct inode_operations nfs4_dir_inode_operations = {
+ 	.setattr	= nfs_setattr,
+ 	.getxattr	= generic_getxattr,
+ 	.setxattr	= generic_setxattr,
+-	.listxattr	= generic_listxattr,
++	.listxattr	= nfs4_listxattr,
+ 	.removexattr	= generic_removexattr,
+ };
+ 
+@@ -8769,7 +8788,7 @@ static const struct inode_operations nfs4_file_inode_operations = {
+ 	.setattr	= nfs_setattr,
+ 	.getxattr	= generic_getxattr,
+ 	.setxattr	= generic_setxattr,
+-	.listxattr	= generic_listxattr,
++	.listxattr	= nfs4_listxattr,
+ 	.removexattr	= generic_removexattr,
+ };
+ 
+diff --git a/security/smack/smack_lsm.c b/security/smack/smack_lsm.c
+index ff81026..37fdd54 100644
+--- a/security/smack/smack_lsm.c
++++ b/security/smack/smack_lsm.c
+@@ -1519,8 +1519,6 @@ static int smack_inode_getsecurity(const struct inode *inode,
+  * @inode: the object
+  * @buffer: where they go
+  * @buffer_size: size of buffer
+- *
+- * Returns 0 on success, -EINVAL otherwise
+  */
+ static int smack_inode_listsecurity(struct inode *inode, char *buffer,
+ 				    size_t buffer_size)
+-- 
+2.5.0
 
-I guess I'd expect the stateid bump to be atomic with the actual change
-to the layout state.  We're bumping the layout stateid on sending the
-callback, and modifying the actual layout state on receive.  So after
-the below patch we've left a window during which nfsd threads see the
-new layout stateid but the old layout state.  I wonder what the
-practical consequences of that are?
-
-My temptation is to argue that the layout processing currently done in
-the release method should be done on sending (doesn't look like it's
-conditional on the result of the callback, so what are we waiting for?).
-But I'm not sure that's right.  I'll go read the spec....
-
---b.
-
-> 
-> thanks,
-> Kinglong Mee
-> 
-> > ---
-> >  fs/nfsd/nfs4layouts.c | 2 +-
-> >  1 file changed, 1 insertion(+), 1 deletion(-)
-> > 
-> > diff --git a/fs/nfsd/nfs4layouts.c b/fs/nfsd/nfs4layouts.c
-> > index 9ffef06b30d5..c9d6c715c0fb 100644
-> > --- a/fs/nfsd/nfs4layouts.c
-> > +++ b/fs/nfsd/nfs4layouts.c
-> > @@ -616,6 +616,7 @@ nfsd4_cb_layout_prepare(struct nfsd4_callback *cb)
-> >  
-> >  	mutex_lock(&ls->ls_mutex);
-> >  	nfs4_inc_and_copy_stateid(&ls->ls_recall_sid, &ls->ls_stid);
-> > +	mutex_unlock(&ls->ls_mutex);
-> >  }
-> >  
-> >  static int
-> > @@ -659,7 +660,6 @@ nfsd4_cb_layout_release(struct nfsd4_callback *cb)
-> >  
-> >  	trace_layout_recall_release(&ls->ls_stid.sc_stateid);
-> >  
-> > -	mutex_unlock(&ls->ls_mutex);
-> >  	nfsd4_return_all_layouts(ls, &reaplist);
-> >  	nfsd4_free_layouts(&reaplist);
-> >  	nfs4_put_stid(&ls->ls_stid);
-> > 
