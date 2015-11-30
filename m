@@ -1,13 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f172.google.com ([209.85.223.172]:34090 "EHLO
-	mail-io0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752550AbbK3WPU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Nov 2015 17:15:20 -0500
-Subject: [PATCH v2 10/11] xprtrdma: Invalidate in the RPC reply handler
+Received: from mail-io0-f169.google.com ([209.85.223.169]:33310 "EHLO
+	mail-io0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752550AbbK3WP2 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Nov 2015 17:15:28 -0500
+Subject: [PATCH v2 11/11] xprtrdma: Revert commit e7104a2a9606 ('xprtrdma:
+ Cap req_cqinit').
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 30 Nov 2015 17:15:18 -0500
-Message-ID: <20151130221518.12235.50333.stgit@manet.1015granger.net>
+Date: Mon, 30 Nov 2015 17:15:26 -0500
+Message-ID: <20151130221526.12235.35195.stgit@manet.1015granger.net>
 In-Reply-To: <20151130221349.12235.29565.stgit@manet.1015granger.net>
 References: <20151130221349.12235.29565.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -15,61 +16,52 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-There is a window between the time the RPC reply handler wakes the
-waiting RPC task and when xprt_release() invokes ops->buf_free.
-During this time, memory regions containing the data payload may
-still be accessed by a broken or malicious server, but the RPC
-application has already been allowed access to the memory containing
-the RPC request's data payloads.
+The root of the problem was that sends (especially unsignalled
+FASTREG and LOCAL_INV Work Requests) were not properly flow-
+controlled, which allowed a send queue overrun.
 
-The server should be fenced from client memory containing RPC data
-payloads _before_ the RPC application is allowed to continue.
+Now that the RPC/RDMA reply handler waits for invalidation to
+complete, the send queue is properly flow-controlled. Thus this
+limit is no longer necessary.
 
-This change also more strongly enforces send queue accounting. There
-is a maximum number of RPC calls allowed to be outstanding. When an
-RPC/RDMA transport is set up, just enough send queue resources are
-allocated to handle registration, Send, and invalidation WRs for
-each those RPCs at the same time.
-
-Before, additional RPC calls could be dispatched while invalidation
-WRs were still consuming send WQEs. When invalidation WRs backed
-up, dispatching additional RPCs resulted in a send queue overrun.
-
-Now, the reply handler prevents RPC dispatch until invalidation is
-complete. This prevents RPC call dispatch until there are enough
-send queue resources to proceed.
-
-Still to do: If an RPC exits early (say, ^C), the reply handler has
-no opportunity to perform invalidation. Currently, xprt_rdma_free()
-still frees remaining RDMA resources, which could deadlock.
-Additional changes are needed to handle invalidation properly in this
-case.
-
-Reported-by: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/rpc_rdma.c |   10 ++++++++++
- 1 file changed, 10 insertions(+)
+ net/sunrpc/xprtrdma/verbs.c     |    6 ++----
+ net/sunrpc/xprtrdma/xprt_rdma.h |    6 ------
+ 2 files changed, 2 insertions(+), 10 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index 0bc8c39..3d00c5d 100644
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -891,6 +891,16 @@ badheader:
- 		break;
- 	}
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index d9c2097..daff5e7 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -616,10 +616,8 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
  
-+	/* Invalidate and flush the data payloads before waking the
-+	 * waiting application. This guarantees the memory region is
-+	 * properly fenced from the server before the application
-+	 * accesses the data. It also ensures proper send flow
-+	 * control: waking the next RPC waits until this RPC has
-+	 * relinquished all its Send Queue entries.
-+	 */
-+	if (req->rl_nchunks)
-+		r_xprt->rx_ia.ri_ops->ro_unmap_sync(r_xprt, req);
-+
- 	credits = be32_to_cpu(headerp->rm_credit);
- 	if (credits == 0)
- 		credits = 1;	/* don't deadlock */
+ 	/* set trigger for requesting send completion */
+ 	ep->rep_cqinit = ep->rep_attr.cap.max_send_wr/2 - 1;
+-	if (ep->rep_cqinit > RPCRDMA_MAX_UNSIGNALED_SENDS)
+-		ep->rep_cqinit = RPCRDMA_MAX_UNSIGNALED_SENDS;
+-	else if (ep->rep_cqinit <= 2)
+-		ep->rep_cqinit = 0;
++	if (ep->rep_cqinit <= 2)
++		ep->rep_cqinit = 0;	/* always signal? */
+ 	INIT_CQCOUNT(ep);
+ 	init_waitqueue_head(&ep->rep_connect_wait);
+ 	INIT_DELAYED_WORK(&ep->rep_connect_worker, rpcrdma_connect_worker);
+diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+index 6726cb3..6a9e627 100644
+--- a/net/sunrpc/xprtrdma/xprt_rdma.h
++++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+@@ -88,12 +88,6 @@ struct rpcrdma_ep {
+ 	struct delayed_work	rep_connect_worker;
+ };
+ 
+-/*
+- * Force a signaled SEND Work Request every so often,
+- * in case the provider needs to do some housekeeping.
+- */
+-#define RPCRDMA_MAX_UNSIGNALED_SENDS	(32)
+-
+ #define INIT_CQCOUNT(ep) atomic_set(&(ep)->rep_cqcount, (ep)->rep_cqinit)
+ #define DECR_CQCOUNT(ep) atomic_sub_return(1, &(ep)->rep_cqcount)
+ 
 
