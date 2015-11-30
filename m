@@ -1,13 +1,13 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f180.google.com ([209.85.213.180]:37175 "EHLO
+Received: from mail-ig0-f180.google.com ([209.85.213.180]:33984 "EHLO
 	mail-ig0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754225AbbK3WOc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Nov 2015 17:14:32 -0500
-Subject: [PATCH v2 04/11] xprtrdma: Move struct ib_send_wr off the stack
+	with ESMTP id S1754225AbbK3WOk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Nov 2015 17:14:40 -0500
+Subject: [PATCH v2 05/11] xprtrdma: Introduce ro_unmap_sync method
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 30 Nov 2015 17:14:30 -0500
-Message-ID: <20151130221430.12235.67037.stgit@manet.1015granger.net>
+Date: Mon, 30 Nov 2015 17:14:38 -0500
+Message-ID: <20151130221438.12235.51061.stgit@manet.1015granger.net>
 In-Reply-To: <20151130221349.12235.29565.stgit@manet.1015granger.net>
 References: <20151130221349.12235.29565.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -15,113 +15,34 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-For FRWR FASTREG and LOCAL_INV, move the ib_*_wr structure off
-the stack. This allows frwr_op_map and frwr_op_unmap to chain
-WRs together without limit to register or invalidate a set of MRs
-with a single ib_post_send().
+In the current xprtrdma implementation, some memreg strategies
+implement ro_unmap synchronously (the MR is knocked down before the
+method returns) and some asynchonously (the MR will be knocked down
+and returned to the pool in the background).
 
-(This will be for chaining LOCAL_INV requests).
+To guarantee the MR is truly invalid before the RPC consumer is
+allowed to resume execution, we need an unmap method that is
+always synchronous, invoked from the RPC/RDMA reply handler.
+
+The new method unmaps all MRs for an RPC. The existing ro_unmap
+method unmaps only one MR at a time.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/frwr_ops.c  |   38 ++++++++++++++++++++------------------
  net/sunrpc/xprtrdma/xprt_rdma.h |    2 ++
- 2 files changed, 22 insertions(+), 18 deletions(-)
+ 1 file changed, 2 insertions(+)
 
-diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
-index 88cf9e7..31a4578 100644
---- a/net/sunrpc/xprtrdma/frwr_ops.c
-+++ b/net/sunrpc/xprtrdma/frwr_ops.c
-@@ -319,7 +319,7 @@ frwr_op_map(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
- 	struct rpcrdma_mw *mw;
- 	struct rpcrdma_frmr *frmr;
- 	struct ib_mr *mr;
--	struct ib_reg_wr reg_wr;
-+	struct ib_reg_wr *reg_wr;
- 	struct ib_send_wr *bad_wr;
- 	int rc, i, n, dma_nents;
- 	u8 key;
-@@ -336,6 +336,7 @@ frwr_op_map(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
- 	frmr = &mw->r.frmr;
- 	frmr->fr_state = FRMR_IS_VALID;
- 	mr = frmr->fr_mr;
-+	reg_wr = &frmr->fr_regwr;
- 
- 	if (nsegs > ia->ri_max_frmr_depth)
- 		nsegs = ia->ri_max_frmr_depth;
-@@ -381,19 +382,19 @@ frwr_op_map(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
- 	key = (u8)(mr->rkey & 0x000000FF);
- 	ib_update_fast_reg_key(mr, ++key);
- 
--	reg_wr.wr.next = NULL;
--	reg_wr.wr.opcode = IB_WR_REG_MR;
--	reg_wr.wr.wr_id = (uintptr_t)mw;
--	reg_wr.wr.num_sge = 0;
--	reg_wr.wr.send_flags = 0;
--	reg_wr.mr = mr;
--	reg_wr.key = mr->rkey;
--	reg_wr.access = writing ?
--			IB_ACCESS_REMOTE_WRITE | IB_ACCESS_LOCAL_WRITE :
--			IB_ACCESS_REMOTE_READ;
-+	reg_wr->wr.next = NULL;
-+	reg_wr->wr.opcode = IB_WR_REG_MR;
-+	reg_wr->wr.wr_id = (uintptr_t)mw;
-+	reg_wr->wr.num_sge = 0;
-+	reg_wr->wr.send_flags = 0;
-+	reg_wr->mr = mr;
-+	reg_wr->key = mr->rkey;
-+	reg_wr->access = writing ?
-+			 IB_ACCESS_REMOTE_WRITE | IB_ACCESS_LOCAL_WRITE :
-+			 IB_ACCESS_REMOTE_READ;
- 
- 	DECR_CQCOUNT(&r_xprt->rx_ep);
--	rc = ib_post_send(ia->ri_id->qp, &reg_wr.wr, &bad_wr);
-+	rc = ib_post_send(ia->ri_id->qp, &reg_wr->wr, &bad_wr);
- 	if (rc)
- 		goto out_senderr;
- 
-@@ -423,23 +424,24 @@ frwr_op_unmap(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg)
- 	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
- 	struct rpcrdma_mw *mw = seg1->rl_mw;
- 	struct rpcrdma_frmr *frmr = &mw->r.frmr;
--	struct ib_send_wr invalidate_wr, *bad_wr;
-+	struct ib_send_wr *invalidate_wr, *bad_wr;
- 	int rc, nsegs = seg->mr_nsegs;
- 
- 	dprintk("RPC:       %s: FRMR %p\n", __func__, mw);
- 
- 	seg1->rl_mw = NULL;
- 	frmr->fr_state = FRMR_IS_INVALID;
-+	invalidate_wr = &mw->r.frmr.fr_invwr;
- 
--	memset(&invalidate_wr, 0, sizeof(invalidate_wr));
--	invalidate_wr.wr_id = (unsigned long)(void *)mw;
--	invalidate_wr.opcode = IB_WR_LOCAL_INV;
--	invalidate_wr.ex.invalidate_rkey = frmr->fr_mr->rkey;
-+	memset(invalidate_wr, 0, sizeof(*invalidate_wr));
-+	invalidate_wr->wr_id = (uintptr_t)mw;
-+	invalidate_wr->opcode = IB_WR_LOCAL_INV;
-+	invalidate_wr->ex.invalidate_rkey = frmr->fr_mr->rkey;
- 	DECR_CQCOUNT(&r_xprt->rx_ep);
- 
- 	ib_dma_unmap_sg(ia->ri_device, frmr->sg, frmr->sg_nents, seg1->mr_dir);
- 	read_lock(&ia->ri_qplock);
--	rc = ib_post_send(ia->ri_id->qp, &invalidate_wr, &bad_wr);
-+	rc = ib_post_send(ia->ri_id->qp, invalidate_wr, &bad_wr);
- 	read_unlock(&ia->ri_qplock);
- 	if (rc)
- 		goto out_err;
 diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index ac7f8d4..ca481b2 100644
+index ca481b2..d2384b5 100644
 --- a/net/sunrpc/xprtrdma/xprt_rdma.h
 +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -207,6 +207,8 @@ struct rpcrdma_frmr {
- 	enum rpcrdma_frmr_state		fr_state;
- 	struct work_struct		fr_work;
- 	struct rpcrdma_xprt		*fr_xprt;
-+	struct ib_reg_wr		fr_regwr;
-+	struct ib_send_wr		fr_invwr;
- };
- 
- struct rpcrdma_fmr {
+@@ -366,6 +366,8 @@ struct rpcrdma_xprt;
+ struct rpcrdma_memreg_ops {
+ 	int		(*ro_map)(struct rpcrdma_xprt *,
+ 				  struct rpcrdma_mr_seg *, int, bool);
++	void		(*ro_unmap_sync)(struct rpcrdma_xprt *,
++					 struct rpcrdma_req *);
+ 	int		(*ro_unmap)(struct rpcrdma_xprt *,
+ 				    struct rpcrdma_mr_seg *);
+ 	int		(*ro_open)(struct rpcrdma_ia *,
 
