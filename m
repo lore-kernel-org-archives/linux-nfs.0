@@ -1,91 +1,64 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f182.google.com ([209.85.223.182]:33987 "EHLO
-	mail-io0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755095AbbK3WPM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Nov 2015 17:15:12 -0500
-Subject: [PATCH v2 09/11] SUNRPC: Introduce xprt_commit_rqst()
+Received: from mail-io0-f174.google.com ([209.85.223.174]:34643 "EHLO
+	mail-io0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753854AbbK3WY1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Nov 2015 17:24:27 -0500
+Subject: [PATCH v2 0/8] NFS/RDMA server patches for 4.5
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 30 Nov 2015 17:15:10 -0500
-Message-ID: <20151130221510.12235.65241.stgit@manet.1015granger.net>
-In-Reply-To: <20151130221349.12235.29565.stgit@manet.1015granger.net>
-References: <20151130221349.12235.29565.stgit@manet.1015granger.net>
+Date: Mon, 30 Nov 2015 17:24:25 -0500
+Message-ID: <20151130222141.13029.98664.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I'm about to add code in the RPC/RDMA reply handler between the
-xprt_lookup_rqst() and xprt_complete_rqst() call site that needs
-to execute outside of spinlock critical sections.
+Here are patches to support server-side bi-directional RPC/RDMA
+operation (to enable NFSv4.1 on RPC/RDMA transports). Thanks to
+all who reviewed v1.
 
-Add a hook to remove an rpc_rqst from the pending list once
-the transport knows its going to invoke xprt_complete_rqst().
+Also available in the "nfsd-rdma-for-4.5" topic branch of this git repo:
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+git://git.linux-nfs.org/projects/cel/cel-2.6.git
+
+Or for browsing:
+
+http://git.linux-nfs.org/?p=cel/cel-2.6.git;a=log;h=refs/heads/nfsd-rdma-for-4.5
+
+Changes since v1:
+
+- Rebased on v4.4-rc3
+- Removed the use of CONFIG_SUNRPC_BACKCHANNEL
+- Fixed computation of forward and backward max_requests
+- Updated some comments and patch descriptions
+- pr_err and pr_info converted to dprintk
+- Simplified svc_rdma_get_context()
+- Dropped patch removing access_flags field
+- NFSv4.1 callbacks tested with for-4.5 client
+
 ---
- include/linux/sunrpc/xprt.h    |    1 +
- net/sunrpc/xprt.c              |   14 ++++++++++++++
- net/sunrpc/xprtrdma/rpc_rdma.c |    4 ++++
- 3 files changed, 19 insertions(+)
 
-diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
-index 69ef5b3..ab6c3a5 100644
---- a/include/linux/sunrpc/xprt.h
-+++ b/include/linux/sunrpc/xprt.h
-@@ -366,6 +366,7 @@ void			xprt_wait_for_buffer_space(struct rpc_task *task, rpc_action action);
- void			xprt_write_space(struct rpc_xprt *xprt);
- void			xprt_adjust_cwnd(struct rpc_xprt *xprt, struct rpc_task *task, int result);
- struct rpc_rqst *	xprt_lookup_rqst(struct rpc_xprt *xprt, __be32 xid);
-+void			xprt_commit_rqst(struct rpc_task *task);
- void			xprt_complete_rqst(struct rpc_task *task, int copied);
- void			xprt_release_rqst_cong(struct rpc_task *task);
- void			xprt_disconnect_done(struct rpc_xprt *xprt);
-diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-index 2e98f4a..a5be4ab 100644
---- a/net/sunrpc/xprt.c
-+++ b/net/sunrpc/xprt.c
-@@ -837,6 +837,20 @@ static void xprt_update_rtt(struct rpc_task *task)
- }
- 
- /**
-+ * xprt_commit_rqst - remove rqst from pending list early
-+ * @task: RPC request to remove
-+ *
-+ * Caller holds transport lock.
-+ */
-+void xprt_commit_rqst(struct rpc_task *task)
-+{
-+	struct rpc_rqst *req = task->tk_rqstp;
-+
-+	list_del_init(&req->rq_list);
-+}
-+EXPORT_SYMBOL_GPL(xprt_commit_rqst);
-+
-+/**
-  * xprt_complete_rqst - called when reply processing is complete
-  * @task: RPC request that recently completed
-  * @copied: actual number of bytes received from the transport
-diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index c10d969..0bc8c39 100644
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -804,6 +804,9 @@ rpcrdma_reply_handler(struct rpcrdma_rep *rep)
- 	if (req->rl_reply)
- 		goto out_duplicate;
- 
-+	xprt_commit_rqst(rqst->rq_task);
-+	spin_unlock_bh(&xprt->transport_lock);
-+
- 	dprintk("RPC:       %s: reply 0x%p completes request 0x%p\n"
- 		"                   RPC request 0x%p xid 0x%08x\n",
- 			__func__, rep, req, rqst,
-@@ -894,6 +897,7 @@ badheader:
- 	else if (credits > r_xprt->rx_buf.rb_max_requests)
- 		credits = r_xprt->rx_buf.rb_max_requests;
- 
-+	spin_lock_bh(&xprt->transport_lock);
- 	cwnd = xprt->cwnd;
- 	xprt->cwnd = credits << RPC_CWNDSHIFT;
- 	if (xprt->cwnd > cwnd)
+Chuck Lever (8):
+      svcrdma: Do not send XDR roundup bytes for a write chunk
+      svcrdma: Add svc_rdma_get_context() API that is allowed to fail
+      svcrdma: Define maximum number of backchannel requests
+      svcrdma: Add infrastructure to send backwards direction RPC/RDMA calls
+      svcrdma: Add infrastructure to receive backwards direction RPC/RDMA replies
+      xprtrdma: Add class for RDMA backwards direction transport
+      svcrdma: Display failed completions
+      svcrdma: No need to count WRs in svc_rdma_send()
 
+
+ include/linux/sunrpc/svc_rdma.h          |    8 +
+ include/linux/sunrpc/xprt.h              |    1 
+ net/sunrpc/xprt.c                        |    1 
+ net/sunrpc/xprtrdma/rpc_rdma.c           |   72 +++++++++
+ net/sunrpc/xprtrdma/svc_rdma_recvfrom.c  |   61 ++++++++
+ net/sunrpc/xprtrdma/svc_rdma_sendto.c    |   72 +++++++++
+ net/sunrpc/xprtrdma/svc_rdma_transport.c |   88 +++++++----
+ net/sunrpc/xprtrdma/transport.c          |  230 ++++++++++++++++++++++++++++++
+ net/sunrpc/xprtrdma/xprt_rdma.h          |    6 +
+ 9 files changed, 500 insertions(+), 39 deletions(-)
+
+--
+Chuck Lever
