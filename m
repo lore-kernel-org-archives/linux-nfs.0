@@ -1,80 +1,49 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:23425 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755288AbbLAOgv convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Dec 2015 09:36:51 -0500
+Received: from userp1040.oracle.com ([156.151.31.81]:28747 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753669AbbLAPeD convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Dec 2015 10:34:03 -0500
 Content-Type: text/plain; charset=utf-8
 Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2104\))
-Subject: Re: [PATCH v2 6/7] xprtrdma: Add class for RDMA backwards direction transport
+Subject: Re: Future of FMR support, was: Re: [PATCH v1 5/9] xprtrdma: Add ro_unmap_sync method for FMR
 From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <565DA2CA.5090507@talpey.com>
-Date: Tue, 1 Dec 2015 09:36:47 -0500
-Cc: Linux RDMA Mailing List <linux-rdma@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <170ADDEE-DBC2-4481-BD98-8DB0ADF94877@oracle.com>
-References: <20151130222141.13029.98664.stgit@klimt.1015granger.net> <20151130222513.13029.52447.stgit@klimt.1015granger.net> <565DA2CA.5090507@talpey.com>
-To: Tom Talpey <tom@talpey.com>
+In-Reply-To: <20151124071215.GC23597@obsidianresearch.com>
+Date: Tue, 1 Dec 2015 10:33:18 -0500
+Cc: Christoph Hellwig <hch@infradead.org>,
+        Jason Gunthorpe <jgunthorpe@obsidianresearch.com>,
+        Tom Talpey <tom@talpey.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Sagi Grimberg <sagig@mellanox.com>,
+        santosh shilimkar <santosh.shilimkar@oracle.com>
+Message-Id: <AE86B182-6000-4437-8502-9D2C5EC3B09D@oracle.com>
+References: <20151123220627.32702.62667.stgit@manet.1015granger.net> <20151123221430.32702.86114.stgit@manet.1015granger.net> <5653B606.3070700@talpey.com> <20151124065225.GB29141@infradead.org> <20151124071215.GC23597@obsidianresearch.com>
+To: Linux RDMA Mailing List <linux-rdma@vger.kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-> On Dec 1, 2015, at 8:38 AM, Tom Talpey <tom@talpey.com> wrote:
+> On Nov 24, 2015, at 2:12 AM, Jason Gunthorpe <jgunthorpe@obsidianresearch.com> wrote:
 > 
-> On 11/30/2015 5:25 PM, Chuck Lever wrote:
->> To support the server-side of an NFSv4.1 backchannel on RDMA
->> connections, add a transport class that enables backward
->> direction messages on an existing forward channel connection.
+> On Mon, Nov 23, 2015 at 10:52:26PM -0800, Christoph Hellwig wrote:
 >> 
+>> So at lest for 4.5 we're unlikely to be able to get rid of it alone
+>> due to the RDS issue.  We'll then need performance numbers for mlx4,
+>> and figure out how much we care about mthca.
 > 
->> +static void *
->> +xprt_rdma_bc_allocate(struct rpc_task *task, size_t size)
->> +{
->> +	struct rpc_rqst *rqst = task->tk_rqstp;
->> +	struct svc_rdma_op_ctxt *ctxt;
->> +	struct svcxprt_rdma *rdma;
->> +	struct svc_xprt *sxprt;
->> +	struct page *page;
->> +
->> +	if (size > PAGE_SIZE) {
->> +		WARN_ONCE(1, "failed to handle buffer allocation (size %zu)\n",
->> +			  size);
-> 
-> You may want to add more context to that rather cryptic string, at
-> least the function name.
-> 
-> Also, it's not exactly "failed to handle", it's an invalid size. Why
-> would this ever happen? Why even log it?
-> 
-> 
-> 
->> +static int
->> +rpcrdma_bc_send_request(struct svcxprt_rdma *rdma, struct rpc_rqst *rqst)
->> +{
-> ...
->> +
->> +drop_connection:
->> +	dprintk("Failed to send backchannel call\n");
-> 
-> Ditto on the prefix / function context.
-> 
-> And also...
-> 
->> +	dprintk("%s: sending request with xid: %08x\n",
->> +		__func__, be32_to_cpu(rqst->rq_xid));
-> ...
->> +	dprintk("RPC:       %s: xprt %p\n", __func__, xprt);
-> 
-> The format strings for many of the dprintk's are somewhat inconsistent.
-> Some start with "RPC", some with the function name, and some (in other
-> patches of this series) with "svcrdma". Confusing, and perhaps hard to
-> pick out of the log.
+> mthca is unfortunately very popular in the used market, it is very
+> easy to get cards, build a cheap test cluster, etc. :(
 
-They do follow a convention: “RPC:      “ is used on the client
-side when there is no rpc_task::tk_pid available. “svcrdma” is
-used on the server everywhere.
+Oracle recently announced Sonoma, which is a SPARC CPU with
+an on-chip IB HCA. Oracle plans to publish an open-source
+GPL device driver that enables this HCA in Linux for SPARC.
+We’d eventually like to contribute it to the upstream
+Linux kernel.
 
-The dprintk changes here were a bit cursory, so I will go back and
-review them more carefully.
+At the moment, the device and driver support only FMR. As
+you might expect, Oracle needs it to work at least with
+in-kernel RDS. Thus we hope to see the life of in-kernel
+FMR extended for a bit to accommodate this new device.
+
 
 --
 Chuck Lever
