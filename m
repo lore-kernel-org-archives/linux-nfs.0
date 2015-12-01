@@ -1,53 +1,38 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:28747 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753669AbbLAPeD convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Dec 2015 10:34:03 -0500
-Content-Type: text/plain; charset=utf-8
-Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2104\))
-Subject: Re: Future of FMR support, was: Re: [PATCH v1 5/9] xprtrdma: Add ro_unmap_sync method for FMR
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20151124071215.GC23597@obsidianresearch.com>
-Date: Tue, 1 Dec 2015 10:33:18 -0500
-Cc: Christoph Hellwig <hch@infradead.org>,
-        Jason Gunthorpe <jgunthorpe@obsidianresearch.com>,
-        Tom Talpey <tom@talpey.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Sagi Grimberg <sagig@mellanox.com>,
-        santosh shilimkar <santosh.shilimkar@oracle.com>
-Message-Id: <AE86B182-6000-4437-8502-9D2C5EC3B09D@oracle.com>
-References: <20151123220627.32702.62667.stgit@manet.1015granger.net> <20151123221430.32702.86114.stgit@manet.1015granger.net> <5653B606.3070700@talpey.com> <20151124065225.GB29141@infradead.org> <20151124071215.GC23597@obsidianresearch.com>
-To: Linux RDMA Mailing List <linux-rdma@vger.kernel.org>
+Received: from mx0a-00082601.pphosted.com ([67.231.145.42]:56623 "EHLO
+	mx0a-00082601.pphosted.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754713AbbLARJ2 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Dec 2015 12:09:28 -0500
+Date: Tue, 1 Dec 2015 12:09:20 -0500
+From: Chris Mason <clm@fb.com>
+To: Christoph Hellwig <hch@lst.de>
+CC: <viro@zeniv.linux.org.uk>, <tao.peng@primarydata.com>,
+        <jeff.layton@primarydata.com>, <linux-fsdevel@vger.kernel.org>,
+        <linux-btrfs@vger.kernel.org>, <linux-nfs@vger.kernel.org>,
+        <linux-cifs@vger.kernel.org>
+Subject: Re: vfs: move btrfs clone ioctls to common code
+Message-ID: <20151201170920.GB8918@ret.masoncoding.com>
+References: <1448563859-21922-1-git-send-email-hch@lst.de>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+In-Reply-To: <1448563859-21922-1-git-send-email-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-> On Nov 24, 2015, at 2:12 AM, Jason Gunthorpe <jgunthorpe@obsidianresearch.com> wrote:
+On Thu, Nov 26, 2015 at 07:50:54PM +0100, Christoph Hellwig wrote:
+> This patch set moves the existing btrfs clone ioctls that other file
+> system have started to implement to common code, and allows the NFS
+> server to export this functionality to remote systems.
 > 
-> On Mon, Nov 23, 2015 at 10:52:26PM -0800, Christoph Hellwig wrote:
->> 
->> So at lest for 4.5 we're unlikely to be able to get rid of it alone
->> due to the RDS issue.  We'll then need performance numbers for mlx4,
->> and figure out how much we care about mthca.
+> This work is based originally on my NFS CLONE prototype, which reused
+> code from Anna Schumaker's NFS COPY prototype, as well as various
+> updates from Peng Tao to this code.
 > 
-> mthca is unfortunately very popular in the used market, it is very
-> easy to get cards, build a cheap test cluster, etc. :(
+> The patches are also available as a git branch and on gitweb:
+> 
+> 	git://git.infradead.org/users/hch/pnfs.git clone-for-viro
 
-Oracle recently announced Sonoma, which is a SPARC CPU with
-an on-chip IB HCA. Oracle plans to publish an open-source
-GPL device driver that enables this HCA in Linux for SPARC.
-We’d eventually like to contribute it to the upstream
-Linux kernel.
+Thanks Christoph, this looks fine to me.
 
-At the moment, the device and driver support only FMR. As
-you might expect, Oracle needs it to work at least with
-in-kernel RDS. Thus we hope to see the life of in-kernel
-FMR extended for a bit to accommodate this new device.
-
-
---
-Chuck Lever
-
-
-
+-chris
 
