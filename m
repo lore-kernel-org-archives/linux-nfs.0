@@ -1,49 +1,43 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailout4.samsung.com ([203.254.224.34]:55008 "EHLO
-	mailout4.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756868AbbLBLSd (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 2 Dec 2015 06:18:33 -0500
-Received: from epcpsbgr3.samsung.com
- (u143.gpu120.samsung.co.kr [203.254.230.143])
- by mailout4.samsung.com (Oracle Communications Messaging Server 7.0.5.31.0
- 64bit (built May  5 2014))
- with ESMTP id <0NYQ02QG5A2WSMC0@mailout4.samsung.com> for
- linux-nfs@vger.kernel.org; Wed, 02 Dec 2015 20:18:32 +0900 (KST)
-From: Vivek Trivedi <t.vivek@samsung.com>
-To: linux-nfs@vger.kernel.org
-Cc: a.sahrawat@samsung.com, pankaj.m@samsung.com,
-        Vivek Trivedi <t.vivek@samsung.com>
-Subject: [PATCH 2/2] nfs-utils: mount.nfs: fix null pointer derefernce in
- nfs_parse_simple_hostname
-Date: Wed, 02 Dec 2015 16:46:38 +0530
-Message-id: <1449054998-19308-2-git-send-email-t.vivek@samsung.com>
-In-reply-to: <1449054998-19308-1-git-send-email-t.vivek@samsung.com>
-References: <1449054998-19308-1-git-send-email-t.vivek@samsung.com>
+Received: from bombadil.infradead.org ([198.137.202.9]:35771 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754717AbbLBM1q (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 2 Dec 2015 07:27:46 -0500
+Date: Wed, 2 Dec 2015 04:27:45 -0800
+From: Christoph Hellwig <hch@infradead.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Linux RDMA Mailing List <linux-rdma@vger.kernel.org>,
+        Christoph Hellwig <hch@infradead.org>,
+        Jason Gunthorpe <jgunthorpe@obsidianresearch.com>,
+        Tom Talpey <tom@talpey.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Sagi Grimberg <sagig@mellanox.com>,
+        santosh shilimkar <santosh.shilimkar@oracle.com>
+Subject: Re: Future of FMR support, was: Re: [PATCH v1 5/9] xprtrdma: Add
+ ro_unmap_sync method for FMR
+Message-ID: <20151202122745.GB28278@infradead.org>
+References: <20151123220627.32702.62667.stgit@manet.1015granger.net>
+ <20151123221430.32702.86114.stgit@manet.1015granger.net>
+ <5653B606.3070700@talpey.com>
+ <20151124065225.GB29141@infradead.org>
+ <20151124071215.GC23597@obsidianresearch.com>
+ <AE86B182-6000-4437-8502-9D2C5EC3B09D@oracle.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <AE86B182-6000-4437-8502-9D2C5EC3B09D@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In function nfs_parse_simple_hostname, hostname can be NULL,
-dereferncing it while passing it to free(*hostname) may result in segfault.
+On Tue, Dec 01, 2015 at 10:33:18AM -0500, Chuck Lever wrote:
+> Oracle recently announced Sonoma, which is a SPARC CPU with
+> an on-chip IB HCA. Oracle plans to publish an open-source
+> GPL device driver that enables this HCA in Linux for SPARC.
+> We???d eventually like to contribute it to the upstream
+> Linux kernel.
+> 
+> At the moment, the device and driver support only FMR. As
+> you might expect, Oracle needs it to work at least with
+> in-kernel RDS. Thus we hope to see the life of in-kernel
+> FMR extended for a bit to accommodate this new device.
 
-Signed-off-by: Vivek Trivedi <t.vivek@samsung.com>
----
- utils/mount/parse_dev.c |    3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
-
-diff --git a/utils/mount/parse_dev.c b/utils/mount/parse_dev.c
-index d64b83d..0d3bcb9 100644
---- a/utils/mount/parse_dev.c
-+++ b/utils/mount/parse_dev.c
-@@ -118,7 +118,8 @@ static int nfs_parse_simple_hostname(const char *dev,
- 	if (pathname) {
- 		*pathname = strndup(colon, path_len);
- 		if (*pathname == NULL) {
--			free(*hostname);
-+			if (hostname)
-+				free(*hostname);
- 			return nfs_pdn_nomem_err();
- 		}
- 	}
--- 
-1.7.9.5
-
+Oh, that's pretty sad news.  I wonder what the engineers where smoking..
