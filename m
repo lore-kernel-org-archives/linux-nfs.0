@@ -1,65 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx142.netapp.com ([216.240.21.19]:2861 "EHLO mx142.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:46906 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932226AbbLBP2x (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 2 Dec 2015 10:28:53 -0500
-Subject: Re: [PATCH] xprtrdma: add missing curly braces, set rc to zero on
- non-zero
-To: Colin King <colin.king@canonical.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        "J . Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@poochiereds.net>,
-        "David S . Miller" <davem@davemloft.net>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        Sagi Grimberg <sagig@mellanox.com>,
-        Steve Wise <swise@opengridcomputing.com>,
-        Doug Ledford <dledford@redhat.com>, <linux-nfs@vger.kernel.org>,
-        <netdev@vger.kernel.org>, <linux-kernel@vger.kernel.org>
-References: <1448406701-12474-1-git-send-email-colin.king@canonical.com>
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-Message-ID: <565F0E2F.7070301@Netapp.com>
-Date: Wed, 2 Dec 2015 10:28:47 -0500
+	id S1750826AbbLBQLL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 2 Dec 2015 11:11:11 -0500
+Subject: Re: [PATCH 1/2] nfs-utils: libnsm.a: do not close file if open failed
+To: Vivek Trivedi <t.vivek@samsung.com>, linux-nfs@vger.kernel.org
+References: <1449054998-19308-1-git-send-email-t.vivek@samsung.com>
+Cc: a.sahrawat@samsung.com, pankaj.m@samsung.com
+From: Steve Dickson <SteveD@redhat.com>
+Message-ID: <565F181C.201@RedHat.com>
+Date: Wed, 2 Dec 2015 11:11:08 -0500
 MIME-Version: 1.0
-In-Reply-To: <1448406701-12474-1-git-send-email-colin.king@canonical.com>
-Content-Type: text/plain; charset="utf-8"
+In-Reply-To: <1449054998-19308-1-git-send-email-t.vivek@samsung.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 11/24/2015 06:11 PM, Colin King wrote:
-> From: Colin Ian King <colin.king@canonical.com>
-> 
-> Add the missing curly braces so that rc is only set to zero when
-> it is non-zero.  Without this minor fix, rc is set to zero even
-> when it is zero, which is slightly redundant.
-> 
-> Detected with smatch static analysis.
 
-Thanks for the patch, but I've already have a patch from Dan Carpenter queued up to fix this.
 
-Anna
+On 12/02/2015 06:16 AM, Vivek Trivedi wrote:
+> If file open failed, no need to issue close system call in
+> nsm_get_state and closeall.
+I guess this makes sense... but what problem is this patch fixing?
+
+steved.
 
 > 
-> Signed-off-by: Colin Ian King <colin.king@canonical.com>
+> Signed-off-by: Vivek Trivedi <t.vivek@samsung.com>
 > ---
->  net/sunrpc/xprtrdma/verbs.c | 3 ++-
->  1 file changed, 2 insertions(+), 1 deletion(-)
+>  support/nfs/closeall.c |    3 ++-
+>  support/nsm/file.c     |    3 ++-
+>  2 files changed, 4 insertions(+), 2 deletions(-)
 > 
-> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-> index eadd1655..2cc1014 100644
-> --- a/net/sunrpc/xprtrdma/verbs.c
-> +++ b/net/sunrpc/xprtrdma/verbs.c
-> @@ -852,10 +852,11 @@ retry:
->  
->  		if (extras) {
->  			rc = rpcrdma_ep_post_extra_recv(r_xprt, extras);
-> -			if (rc)
-> +			if (rc) {
->  				pr_warn("%s: rpcrdma_ep_post_extra_recv: %i\n",
->  					__func__, rc);
->  				rc = 0;
-> +			}
->  		}
+> diff --git a/support/nfs/closeall.c b/support/nfs/closeall.c
+> index 38fb162..a69bf35 100644
+> --- a/support/nfs/closeall.c
+> +++ b/support/nfs/closeall.c
+> @@ -31,6 +31,7 @@ closeall(int min)
+>  	} else {
+>  		int fd = sysconf(_SC_OPEN_MAX);
+>  		while (--fd >= min)
+> -			(void) close(fd);
+> +			if(fd >= 0)
+> +				(void) close(fd);
 >  	}
+>  }
+> diff --git a/support/nsm/file.c b/support/nsm/file.c
+> index 4711c2c..7a8b504 100644
+> --- a/support/nsm/file.c
+> +++ b/support/nsm/file.c
+> @@ -536,7 +536,8 @@ nsm_get_state(_Bool update)
+>  		state++;
 >  
+>  update:
+> -	(void)close(fd);
+> +	if(fd >= 0)
+> +		(void)close(fd);
+>  
+>  	if (update) {
+>  		state += 2;
 > 
-
