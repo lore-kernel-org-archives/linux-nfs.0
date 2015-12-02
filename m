@@ -1,43 +1,152 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([198.137.202.9]:35771 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754717AbbLBM1q (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 2 Dec 2015 07:27:46 -0500
-Date: Wed, 2 Dec 2015 04:27:45 -0800
-From: Christoph Hellwig <hch@infradead.org>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Linux RDMA Mailing List <linux-rdma@vger.kernel.org>,
-        Christoph Hellwig <hch@infradead.org>,
-        Jason Gunthorpe <jgunthorpe@obsidianresearch.com>,
-        Tom Talpey <tom@talpey.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Sagi Grimberg <sagig@mellanox.com>,
-        santosh shilimkar <santosh.shilimkar@oracle.com>
-Subject: Re: Future of FMR support, was: Re: [PATCH v1 5/9] xprtrdma: Add
- ro_unmap_sync method for FMR
-Message-ID: <20151202122745.GB28278@infradead.org>
-References: <20151123220627.32702.62667.stgit@manet.1015granger.net>
- <20151123221430.32702.86114.stgit@manet.1015granger.net>
- <5653B606.3070700@talpey.com>
- <20151124065225.GB29141@infradead.org>
- <20151124071215.GC23597@obsidianresearch.com>
- <AE86B182-6000-4437-8502-9D2C5EC3B09D@oracle.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <AE86B182-6000-4437-8502-9D2C5EC3B09D@oracle.com>
+Received: from mx1.redhat.com ([209.132.183.28]:57900 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758310AbbLBNpS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 2 Dec 2015 08:45:18 -0500
+From: Andreas Gruenbacher <agruenba@redhat.com>
+To: Alexander Viro <viro@zeniv.linux.org.uk>,
+        Christoph Hellwig <hch@infradead.org>, linux-kernel@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org
+Cc: Andreas Gruenbacher <agruenba@redhat.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>, linux-nfs@vger.kernel.org
+Subject: [PATCH v2 09/11] nfs: Move call to security_inode_listsecurity into nfs_listxattr
+Date: Wed,  2 Dec 2015 14:44:41 +0100
+Message-Id: <1449063883-22097-10-git-send-email-agruenba@redhat.com>
+In-Reply-To: <1449063883-22097-1-git-send-email-agruenba@redhat.com>
+References: <1449063883-22097-1-git-send-email-agruenba@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Dec 01, 2015 at 10:33:18AM -0500, Chuck Lever wrote:
-> Oracle recently announced Sonoma, which is a SPARC CPU with
-> an on-chip IB HCA. Oracle plans to publish an open-source
-> GPL device driver that enables this HCA in Linux for SPARC.
-> We???d eventually like to contribute it to the upstream
-> Linux kernel.
-> 
-> At the moment, the device and driver support only FMR. As
-> you might expect, Oracle needs it to work at least with
-> in-kernel RDS. Thus we hope to see the life of in-kernel
-> FMR extended for a bit to accommodate this new device.
+Add a nfs_listxattr operation.  Move the call to security_inode_listsecurity
+from list operation of the "security.*" xattr handler to nfs_listxattr.
 
-Oh, that's pretty sad news.  I wonder what the engineers where smoking..
+Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Anna Schumaker <anna.schumaker@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+---
+ fs/nfs/nfs4proc.c          | 53 +++++++++++++++++++++++++++++++---------------
+ security/smack/smack_lsm.c |  2 --
+ 2 files changed, 36 insertions(+), 19 deletions(-)
+
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index f6f40aa..914cb3d 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -6279,10 +6279,6 @@ static size_t nfs4_xattr_list_nfs4_acl(const struct xattr_handler *handler,
+ }
+ 
+ #ifdef CONFIG_NFS_V4_SECURITY_LABEL
+-static inline int nfs4_server_supports_labels(struct nfs_server *server)
+-{
+-	return server->caps & NFS_CAP_SECURITY_LABEL;
+-}
+ 
+ static int nfs4_xattr_set_nfs4_label(const struct xattr_handler *handler,
+ 				     struct dentry *dentry, const char *key,
+@@ -6304,29 +6300,34 @@ static int nfs4_xattr_get_nfs4_label(const struct xattr_handler *handler,
+ 	return -EOPNOTSUPP;
+ }
+ 
+-static size_t nfs4_xattr_list_nfs4_label(const struct xattr_handler *handler,
+-					 struct dentry *dentry, char *list,
+-					 size_t list_len, const char *name,
+-					 size_t name_len)
++static ssize_t
++nfs4_listxattr_nfs4_label(struct inode *inode, char *list, size_t list_len)
+ {
+-	size_t len = 0;
++	int len = 0;
+ 
+-	if (nfs_server_capable(d_inode(dentry), NFS_CAP_SECURITY_LABEL)) {
+-		len = security_inode_listsecurity(d_inode(dentry), NULL, 0);
+-		if (list && len <= list_len)
+-			security_inode_listsecurity(d_inode(dentry), list, len);
++	if (nfs_server_capable(inode, NFS_CAP_SECURITY_LABEL)) {
++		len = security_inode_listsecurity(inode, list, len);
++		if (len > list_len)
++			return -ERANGE;
+ 	}
+ 	return len;
+ }
+ 
+ static const struct xattr_handler nfs4_xattr_nfs4_label_handler = {
+ 	.prefix = XATTR_SECURITY_PREFIX,
+-	.list	= nfs4_xattr_list_nfs4_label,
+ 	.get	= nfs4_xattr_get_nfs4_label,
+ 	.set	= nfs4_xattr_set_nfs4_label,
+ };
+-#endif
+ 
++#else
++
++static ssize_t
++nfs4_listxattr_nfs4_label(struct inode *inode, char *list, size_t list_len)
++{
++	return 0;
++}
++
++#endif
+ 
+ /*
+  * nfs_fhget will use either the mounted_on_fileid or the fileid
+@@ -8743,6 +8744,24 @@ const struct nfs4_minor_version_ops *nfs_v4_minor_ops[] = {
+ #endif
+ };
+ 
++ssize_t nfs4_listxattr(struct dentry *dentry, char *list, size_t size)
++{
++	ssize_t error, error2;
++
++	error = generic_listxattr(dentry, list, size);
++	if (error < 0)
++		return error;
++	if (list) {
++		list += error;
++		size -= error;
++	}
++
++	error2 = nfs4_listxattr_nfs4_label(d_inode(dentry), list, size);
++	if (error2 < 0)
++		return error2;
++	return error + error2;
++}
++
+ static const struct inode_operations nfs4_dir_inode_operations = {
+ 	.create		= nfs_create,
+ 	.lookup		= nfs_lookup,
+@@ -8759,7 +8778,7 @@ static const struct inode_operations nfs4_dir_inode_operations = {
+ 	.setattr	= nfs_setattr,
+ 	.getxattr	= generic_getxattr,
+ 	.setxattr	= generic_setxattr,
+-	.listxattr	= generic_listxattr,
++	.listxattr	= nfs4_listxattr,
+ 	.removexattr	= generic_removexattr,
+ };
+ 
+@@ -8769,7 +8788,7 @@ static const struct inode_operations nfs4_file_inode_operations = {
+ 	.setattr	= nfs_setattr,
+ 	.getxattr	= generic_getxattr,
+ 	.setxattr	= generic_setxattr,
+-	.listxattr	= generic_listxattr,
++	.listxattr	= nfs4_listxattr,
+ 	.removexattr	= generic_removexattr,
+ };
+ 
+diff --git a/security/smack/smack_lsm.c b/security/smack/smack_lsm.c
+index ff81026..37fdd54 100644
+--- a/security/smack/smack_lsm.c
++++ b/security/smack/smack_lsm.c
+@@ -1519,8 +1519,6 @@ static int smack_inode_getsecurity(const struct inode *inode,
+  * @inode: the object
+  * @buffer: where they go
+  * @buffer_size: size of buffer
+- *
+- * Returns 0 on success, -EINVAL otherwise
+  */
+ static int smack_inode_listsecurity(struct inode *inode, char *buffer,
+ 				    size_t buffer_size)
+-- 
+2.5.0
+
