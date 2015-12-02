@@ -1,66 +1,79 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:44983 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757009AbbLBVCV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 2 Dec 2015 16:02:21 -0500
-From: Andreas Gruenbacher <agruenba@redhat.com>
-To: Alexander Viro <viro@zeniv.linux.org.uk>, "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@poochiereds.net>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Dave Chinner <david@fromorbit.com>, linux-ext4@vger.kernel.org,
-        xfs@oss.sgi.com, linux-kernel@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-api@vger.kernel.org
-Cc: Andreas Gruenbacher <agruenba@redhat.com>
-Subject: [PATCH v16 04/22] vfs: Make the inode passed to inode_change_ok non-const
-Date: Wed,  2 Dec 2015 22:01:10 +0100
-Message-Id: <1449090088-9281-5-git-send-email-agruenba@redhat.com>
-In-Reply-To: <1449090088-9281-1-git-send-email-agruenba@redhat.com>
-References: <1449090088-9281-1-git-send-email-agruenba@redhat.com>
+Received: from mail-io0-f174.google.com ([209.85.223.174]:32870 "EHLO
+	mail-io0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752698AbbLBVXH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 2 Dec 2015 16:23:07 -0500
+Received: by iouu10 with SMTP id u10so61599920iou.0
+        for <linux-nfs@vger.kernel.org>; Wed, 02 Dec 2015 13:23:05 -0800 (PST)
+Subject: [PATCH] nfsidmap: keyring_clear() should succeed if id_resolver
+ keyring not found
+From: Chuck Lever <chuck.lever@oracle.com>
+To: SteveD@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Date: Wed, 02 Dec 2015 16:23:04 -0500
+Message-ID: <20151202212304.5640.52063.stgit@manet.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We will need to call iop->permission and iop->get_acl from
-inode_change_ok() for additional permission checks, and both take a
-non-const inode.
+root#nfsvmb10:~# nfsidmap -c
+nfsidmap: 'id_resolver' keyring was not found.
+root#nfsvmb10:~# echo $?
+1
 
-Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
-Reviewed-by: J. Bruce Fields <bfields@redhat.com>
-Reviewed-by: Andreas Dilger <adilger@dilger.ca>
+If the id_resolver keyring doesn't exist, the kernel has no cached
+idmap information to expunge. AFAIK it's not an error.
+
+If nfsidmap is run by a non-privileged user, the id_resolver keyring
+is never visible. IMO that should be reported, but the error message
+should report the privilege problem, not the missing keyring.
+
+Reported-by: Amy Shi <amy.shi@oracle.com>
+Fixes: 69aa69e7de80 ('nfsidmap: Allow keys to be cleared from the ')
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/attr.c          | 2 +-
- include/linux/fs.h | 2 +-
- 2 files changed, 2 insertions(+), 2 deletions(-)
+ utils/nfsidmap/nfsidmap.c |   13 +++++++++----
+ 1 file changed, 9 insertions(+), 4 deletions(-)
 
-diff --git a/fs/attr.c b/fs/attr.c
-index 6530ced..328be71 100644
---- a/fs/attr.c
-+++ b/fs/attr.c
-@@ -28,7 +28,7 @@
-  * Should be called as the first thing in ->setattr implementations,
-  * possibly after taking additional locks.
-  */
--int inode_change_ok(const struct inode *inode, struct iattr *attr)
-+int inode_change_ok(struct inode *inode, struct iattr *attr)
- {
- 	unsigned int ia_valid = attr->ia_valid;
+diff --git a/utils/nfsidmap/nfsidmap.c b/utils/nfsidmap/nfsidmap.c
+index 507193b..15b4a51 100644
+--- a/utils/nfsidmap/nfsidmap.c
++++ b/utils/nfsidmap/nfsidmap.c
+@@ -80,8 +80,9 @@ static int keyring_clear(const char *keyring)
  
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 7a45120..65cebcb 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -2857,7 +2857,7 @@ extern int buffer_migrate_page(struct address_space *,
- #define buffer_migrate_page NULL
- #endif
+ 	key = find_key_by_type_and_desc("keyring", keyring, 0);
+ 	if (key == -1) {
+-		xlog_err("'%s' keyring was not found.", keyring);
+-		return EXIT_FAILURE;
++		if (verbose)
++			xlog_warn("'%s' keyring was not found.", keyring);
++		return EXIT_SUCCESS;
+ 	}
  
--extern int inode_change_ok(const struct inode *, struct iattr *);
-+extern int inode_change_ok(struct inode *, struct iattr *);
- extern int inode_newsize_ok(const struct inode *, loff_t offset);
- extern void setattr_copy(struct inode *inode, const struct iattr *attr);
+ 	if (keyctl_clear(key) < 0) {
+@@ -89,10 +90,9 @@ static int keyring_clear(const char *keyring)
+ 				(unsigned int)key);
+ 		return EXIT_FAILURE;
+ 	}
+-	
++
+ 	if (verbose)
+ 		xlog_warn("'%s' cleared", keyring);
+-
+ 	return EXIT_SUCCESS;
+ }
  
--- 
-2.5.0
+@@ -404,6 +404,11 @@ int main(int argc, char **argv)
+ 		}
+ 	}
+ 
++	if (geteuid() != 0) {
++		xlog_err("Must be run as root.");
++		return EXIT_FAILURE;
++	}
++
+ 	if ((rc = nfs4_init_name_mapping(PATH_IDMAPDCONF)))  {
+ 		xlog_errno(rc, "Unable to create name to user id mappings.");
+ 		return EXIT_FAILURE;
 
