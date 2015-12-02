@@ -1,79 +1,107 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f174.google.com ([209.85.223.174]:32870 "EHLO
-	mail-io0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752698AbbLBVXH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 2 Dec 2015 16:23:07 -0500
-Received: by iouu10 with SMTP id u10so61599920iou.0
-        for <linux-nfs@vger.kernel.org>; Wed, 02 Dec 2015 13:23:05 -0800 (PST)
-Subject: [PATCH] nfsidmap: keyring_clear() should succeed if id_resolver
- keyring not found
-From: Chuck Lever <chuck.lever@oracle.com>
-To: SteveD@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Date: Wed, 02 Dec 2015 16:23:04 -0500
-Message-ID: <20151202212304.5640.52063.stgit@manet.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mx1.redhat.com ([209.132.183.28]:45270 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756934AbbLBVCL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 2 Dec 2015 16:02:11 -0500
+From: Andreas Gruenbacher <agruenba@redhat.com>
+To: Alexander Viro <viro@zeniv.linux.org.uk>, "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Dave Chinner <david@fromorbit.com>, linux-ext4@vger.kernel.org,
+        xfs@oss.sgi.com, linux-kernel@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-api@vger.kernel.org
+Cc: Andreas Gruenbacher <agruenba@redhat.com>
+Subject: [PATCH v16 03/22] vfs: Add MAY_DELETE_SELF and MAY_DELETE_CHILD permission flags
+Date: Wed,  2 Dec 2015 22:01:09 +0100
+Message-Id: <1449090088-9281-4-git-send-email-agruenba@redhat.com>
+In-Reply-To: <1449090088-9281-1-git-send-email-agruenba@redhat.com>
+References: <1449090088-9281-1-git-send-email-agruenba@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-root#nfsvmb10:~# nfsidmap -c
-nfsidmap: 'id_resolver' keyring was not found.
-root#nfsvmb10:~# echo $?
-1
+Normally, deleting a file requires MAY_WRITE access to the parent
+directory.  With richacls, a file may be deleted with MAY_DELETE_CHILD access
+to the parent directory or with MAY_DELETE_SELF access to the file.
 
-If the id_resolver keyring doesn't exist, the kernel has no cached
-idmap information to expunge. AFAIK it's not an error.
+To support that, pass the MAY_DELETE_CHILD mask flag to inode_permission()
+when checking for delete access inside a directory, and MAY_DELETE_SELF
+when checking for delete access to a file itelf.
 
-If nfsidmap is run by a non-privileged user, the id_resolver keyring
-is never visible. IMO that should be reported, but the error message
-should report the privilege problem, not the missing keyring.
+The MAY_DELETE_SELF permission overrides the sticky directory check.
 
-Reported-by: Amy Shi <amy.shi@oracle.com>
-Fixes: 69aa69e7de80 ('nfsidmap: Allow keys to be cleared from the ')
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
+Reviewed-by: J. Bruce Fields <bfields@redhat.com>
 ---
- utils/nfsidmap/nfsidmap.c |   13 +++++++++----
- 1 file changed, 9 insertions(+), 4 deletions(-)
+ fs/namei.c         | 20 ++++++++++++--------
+ include/linux/fs.h |  2 ++
+ 2 files changed, 14 insertions(+), 8 deletions(-)
 
-diff --git a/utils/nfsidmap/nfsidmap.c b/utils/nfsidmap/nfsidmap.c
-index 507193b..15b4a51 100644
---- a/utils/nfsidmap/nfsidmap.c
-+++ b/utils/nfsidmap/nfsidmap.c
-@@ -80,8 +80,9 @@ static int keyring_clear(const char *keyring)
+diff --git a/fs/namei.c b/fs/namei.c
+index 3216e73..1284157 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -453,9 +453,9 @@ static int sb_permission(struct super_block *sb, struct inode *inode, int mask)
+  * this, letting us set arbitrary permissions for filesystem access without
+  * changing the "normal" UIDs which are used for other things.
+  *
+- * MAY_WRITE must be set in @mask whenever MAY_APPEND, MAY_CREATE_FILE, or
+- * MAY_CREATE_DIR are set.  That way, file systems that don't support these
+- * permissions will check for MAY_WRITE instead.
++ * MAY_WRITE must be set in @mask whenever MAY_APPEND, MAY_CREATE_FILE,
++ * MAY_CREATE_DIR, or MAY_DELETE_CHILD are set.  That way, file systems that
++ * don't support these permissions will check for MAY_WRITE instead.
+  */
+ int inode_permission(struct inode *inode, int mask)
+ {
+@@ -2561,14 +2561,18 @@ static int may_delete_or_replace(struct inode *dir, struct dentry *victim,
+ 	BUG_ON(victim->d_parent->d_inode != dir);
+ 	audit_inode_child(dir, victim, AUDIT_TYPE_CHILD_DELETE);
  
- 	key = find_key_by_type_and_desc("keyring", keyring, 0);
- 	if (key == -1) {
--		xlog_err("'%s' keyring was not found.", keyring);
--		return EXIT_FAILURE;
-+		if (verbose)
-+			xlog_warn("'%s' keyring was not found.", keyring);
-+		return EXIT_SUCCESS;
- 	}
- 
- 	if (keyctl_clear(key) < 0) {
-@@ -89,10 +90,9 @@ static int keyring_clear(const char *keyring)
- 				(unsigned int)key);
- 		return EXIT_FAILURE;
- 	}
--	
-+
- 	if (verbose)
- 		xlog_warn("'%s' cleared", keyring);
+-	error = inode_permission(dir, mask);
++	error = inode_permission(dir, mask | MAY_WRITE | MAY_DELETE_CHILD);
++	if (!error && check_sticky(dir, inode))
++		error = -EPERM;
++	if (error && IS_RICHACL(inode) &&
++	    inode_permission(inode, MAY_DELETE_SELF) == 0 &&
++	    inode_permission(dir, mask) == 0)
++		error = 0;
+ 	if (error)
+ 		return error;
+ 	if (IS_APPEND(dir))
+ 		return -EPERM;
 -
- 	return EXIT_SUCCESS;
+-	if (check_sticky(dir, inode) || IS_APPEND(inode) ||
+-	    IS_IMMUTABLE(inode) || IS_SWAPFILE(inode))
++	if (IS_APPEND(inode) || IS_IMMUTABLE(inode) || IS_SWAPFILE(inode))
+ 		return -EPERM;
+ 	if (isdir) {
+ 		if (!d_is_dir(victim))
+@@ -2586,7 +2590,7 @@ static int may_delete_or_replace(struct inode *dir, struct dentry *victim,
+ 
+ static int may_delete(struct inode *dir, struct dentry *victim, bool isdir)
+ {
+-	return may_delete_or_replace(dir, victim, isdir, MAY_WRITE | MAY_EXEC);
++	return may_delete_or_replace(dir, victim, isdir, MAY_EXEC);
  }
  
-@@ -404,6 +404,11 @@ int main(int argc, char **argv)
- 		}
- 	}
+ static int may_replace(struct inode *dir, struct dentry *victim, bool isdir)
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index c0d5760..7a45120 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -84,6 +84,8 @@ typedef void (dax_iodone_t)(struct buffer_head *bh_map, int uptodate);
+ #define MAY_NOT_BLOCK		0x00000080
+ #define MAY_CREATE_FILE		0x00000100
+ #define MAY_CREATE_DIR		0x00000200
++#define MAY_DELETE_CHILD	0x00000400
++#define MAY_DELETE_SELF		0x00000800
  
-+	if (geteuid() != 0) {
-+		xlog_err("Must be run as root.");
-+		return EXIT_FAILURE;
-+	}
-+
- 	if ((rc = nfs4_init_name_mapping(PATH_IDMAPDCONF)))  {
- 		xlog_errno(rc, "Unable to create name to user id mappings.");
- 		return EXIT_FAILURE;
+ /*
+  * flags in file.f_mode.  Note that FMODE_READ and FMODE_WRITE must correspond
+-- 
+2.5.0
 
