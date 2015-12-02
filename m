@@ -1,129 +1,139 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:33672 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:35499 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756858AbbLBWEz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	id S1756860AbbLBWEz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
 	Wed, 2 Dec 2015 17:04:55 -0500
-Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
-	by mx1.redhat.com (Postfix) with ESMTPS id 7ED06A853
+Received: from int-mx13.intmail.prod.int.phx2.redhat.com (int-mx13.intmail.prod.int.phx2.redhat.com [10.5.11.26])
+	by mx1.redhat.com (Postfix) with ESMTPS id B76AF33E616
 	for <linux-nfs@vger.kernel.org>; Wed,  2 Dec 2015 22:04:55 +0000 (UTC)
 Received: from tonberry.usersys.redhat.com (dhcp145-110.rdu.redhat.com [10.13.145.110])
-	by int-mx11.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id tB2M4sgr003669
+	by int-mx13.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id tB2M4tpj001413
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NO)
 	for <linux-nfs@vger.kernel.org>; Wed, 2 Dec 2015 17:04:55 -0500
 Received: from tonberry.usersys.redhat.com (localhost [127.0.0.1])
-	by tonberry.usersys.redhat.com (8.15.2/8.14.5) with ESMTP id tB2M4s9K041639
+	by tonberry.usersys.redhat.com (8.15.2/8.14.5) with ESMTP id tB2M4sIO041656
 	for <linux-nfs@vger.kernel.org>; Wed, 2 Dec 2015 17:04:54 -0500
 Received: (from smayhew@localhost)
-	by tonberry.usersys.redhat.com (8.15.2/8.15.2/Submit) id tB2M4sl8041638
+	by tonberry.usersys.redhat.com (8.15.2/8.15.2/Submit) id tB2M4sYi041642
 	for linux-nfs@vger.kernel.org; Wed, 2 Dec 2015 17:04:54 -0500
 From: Scott Mayhew <smayhew@redhat.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH RFC 1/3] sunrpc: Add a function to close temporary transports immediately
-Date: Wed,  2 Dec 2015 17:04:52 -0500
-Message-Id: <1449093894-41591-2-git-send-email-smayhew@redhat.com>
+Subject: [PATCH RFC 2/3] nfsd: Register callbacks on the inetaddr_chain and inet6addr_chain
+Date: Wed,  2 Dec 2015 17:04:53 -0500
+Message-Id: <1449093894-41591-3-git-send-email-smayhew@redhat.com>
 In-Reply-To: <1449093894-41591-1-git-send-email-smayhew@redhat.com>
 References: <1449093894-41591-1-git-send-email-smayhew@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Add a function svc_age_temp_xprts_now() to close temporary transports
-whose xpt_local matches the address passed in server_addr immediately
-instead of waiting for them to be closed by the timer function.
-
-The function is intended to be used by notifier_blocks that will be
-added to nfsd and lockd that will run when an ip address is deleted.
-
-This will eliminate the ACK storms and client hangs that occur in
-HA-NFS configurations where nfsd & lockd is left running on the cluster
-nodes all the time and the NFS 'service' is migrated back and forth
-within a short timeframe.
+Register callbacks on inetaddr_chain and inet6addr_chain to trigger
+cleanup of nfsd transport sockets when an ip address is deleted.
 
 Signed-off-by: Scott Mayhew <smayhew@redhat.com>
 ---
- include/linux/sunrpc/svc_xprt.h |  1 +
- net/sunrpc/svc_xprt.c           | 45 +++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 46 insertions(+)
+ fs/nfsd/nfssvc.c | 68 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 68 insertions(+)
 
-diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
-index 78512cf..b7dabc4 100644
---- a/include/linux/sunrpc/svc_xprt.h
-+++ b/include/linux/sunrpc/svc_xprt.h
-@@ -128,6 +128,7 @@ struct	svc_xprt *svc_find_xprt(struct svc_serv *serv, const char *xcl_name,
- 			const unsigned short port);
- int	svc_xprt_names(struct svc_serv *serv, char *buf, const int buflen);
- void	svc_add_new_perm_xprt(struct svc_serv *serv, struct svc_xprt *xprt);
-+void	svc_age_temp_xprts_now(struct svc_serv *, struct sockaddr *);
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index ad4e237..3779a5f 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -14,9 +14,13 @@
  
- static inline void svc_xprt_get(struct svc_xprt *xprt)
- {
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index a6cbb21..7422f28 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -10,11 +10,13 @@
- #include <linux/kthread.h>
- #include <linux/slab.h>
- #include <net/sock.h>
-+#include <linux/sunrpc/addr.h>
  #include <linux/sunrpc/stats.h>
- #include <linux/sunrpc/svc_xprt.h>
  #include <linux/sunrpc/svcsock.h>
- #include <linux/sunrpc/xprt.h>
- #include <linux/module.h>
-+#include <linux/netdevice.h>
- #include <trace/events/sunrpc.h>
- 
- #define RPCDBG_FACILITY	RPCDBG_SVCXPRT
-@@ -938,6 +940,49 @@ static void svc_age_temp_xprts(unsigned long closure)
- 	mod_timer(&serv->sv_temptimer, jiffies + svc_conn_age_period * HZ);
++#include <linux/sunrpc/svc_xprt.h>
+ #include <linux/lockd/bind.h>
+ #include <linux/nfsacl.h>
+ #include <linux/seq_file.h>
++#include <linux/inetdevice.h>
++#include <net/addrconf.h>
++#include <net/ipv6.h>
+ #include <net/net_namespace.h>
+ #include "nfsd.h"
+ #include "cache.h"
+@@ -306,10 +310,70 @@ static void nfsd_shutdown_net(struct net *net)
+ 	nfsd_shutdown_generic();
  }
  
-+/* Close temporary transports whose xpt_local matches server_addr immediately
-+ * instead of waiting for them to be picked up by the timer.
-+ *
-+ * This is meant to be called from a notifier_block that runs when an ip
-+ * address is deleted.
-+ */
-+void svc_age_temp_xprts_now(struct svc_serv *serv, struct sockaddr *server_addr)
++static int nfsd_inetaddr_event(struct notifier_block *this, unsigned long event,
++	void *ptr)
 +{
-+	struct svc_xprt *xprt;
-+	struct svc_sock *svsk;
-+	struct socket *sock;
-+	struct list_head *le, *next;
-+	LIST_HEAD(to_be_closed);
-+	struct linger no_linger = {
-+		.l_onoff = 1,
-+		.l_linger = 0,
-+	};
++	struct in_ifaddr *ifa = (struct in_ifaddr *)ptr;
++	struct net_device *dev = ifa->ifa_dev->dev;
++	struct net *net = dev_net(dev);
++	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
++	struct sockaddr_in sin;
 +
-+	spin_lock_bh(&serv->sv_lock);
-+	list_for_each_safe(le, next, &serv->sv_tempsocks) {
-+		xprt = list_entry(le, struct svc_xprt, xpt_list);
-+		if (rpc_cmp_addr(server_addr, (struct sockaddr *)
-+				&xprt->xpt_local)) {
-+			dprintk("svc_age_temp_xprts_now: found %p\n", xprt);
-+			list_move(le, &to_be_closed);
-+		}
-+	}
-+	spin_unlock_bh(&serv->sv_lock);
++	if (event != NETDEV_DOWN)
++		goto out;
 +
-+	while (!list_empty(&to_be_closed)) {
-+		le = to_be_closed.next;
-+		list_del_init(le);
-+		xprt = list_entry(le, struct svc_xprt, xpt_list);
-+		dprintk("svc_age_temp_xprts_now: closing %p\n", xprt);
-+		svsk = container_of(xprt, struct svc_sock, sk_xprt);
-+		sock = svsk->sk_sock;
-+		kernel_setsockopt(sock, SOL_SOCKET, SO_LINGER,
-+				  (char *)&no_linger, sizeof(no_linger));
-+		svc_close_xprt(xprt);
++	if (nn->nfsd_serv) {
++		dprintk("nfsd_inetaddr_event: removed %pI4\n", &ifa->ifa_local);
++		sin.sin_family = AF_INET;
++		sin.sin_addr.s_addr = ifa->ifa_local;
++		svc_age_temp_xprts_now(nn->nfsd_serv, (struct sockaddr *)&sin);
 +	}
++
++out:
++	return NOTIFY_DONE;
 +}
-+EXPORT_SYMBOL_GPL(svc_age_temp_xprts_now);
 +
- static void call_xpt_users(struct svc_xprt *xprt)
++static struct notifier_block nfsd_inetaddr_notifier = {
++	.notifier_call = nfsd_inetaddr_event,
++};
++
++#if IS_ENABLED(CONFIG_IPV6)
++static int nfsd_inet6addr_event(struct notifier_block *this,
++	unsigned long event, void *ptr)
++{
++	struct inet6_ifaddr *ifa = (struct inet6_ifaddr *)ptr;
++	struct net_device *dev = ifa->idev->dev;
++	struct net *net = dev_net(dev);
++	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
++	struct sockaddr_in6 sin6;
++
++	if (event != NETDEV_DOWN)
++		goto out;
++
++	if (nn->nfsd_serv) {
++		dprintk("nfsd_inet6addr_event: removed %pI6\n", &ifa->addr);
++		sin6.sin6_family = AF_INET6;
++		sin6.sin6_addr = ifa->addr;
++		svc_age_temp_xprts_now(nn->nfsd_serv, (struct sockaddr *)&sin6);
++	}
++
++out:
++	return NOTIFY_DONE;
++}
++
++static struct notifier_block nfsd_inet6addr_notifier = {
++	.notifier_call = nfsd_inet6addr_event,
++};
++#endif
++
+ static void nfsd_last_thread(struct svc_serv *serv, struct net *net)
  {
- 	struct svc_xpt_user *u;
+ 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+ 
++	unregister_inetaddr_notifier(&nfsd_inetaddr_notifier);
++#if IS_ENABLED(CONFIG_IPV6)
++	unregister_inet6addr_notifier(&nfsd_inet6addr_notifier);
++#endif
+ 	/*
+ 	 * write_ports can create the server without actually starting
+ 	 * any threads--if we get shut down before any threads are
+@@ -425,6 +489,10 @@ int nfsd_create_serv(struct net *net)
+ 	}
+ 
+ 	set_max_drc();
++	register_inetaddr_notifier(&nfsd_inetaddr_notifier);
++#if IS_ENABLED(CONFIG_IPV6)
++	register_inet6addr_notifier(&nfsd_inet6addr_notifier);
++#endif
+ 	do_gettimeofday(&nn->nfssvc_boot);		/* record boot time */
+ 	return 0;
+ }
 -- 
 2.4.3
 
