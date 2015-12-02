@@ -1,102 +1,107 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from discipline.rit.edu ([129.21.6.207]:46996 "HELO
+Received: from discipline.rit.edu ([129.21.6.207]:51576 "HELO
 	discipline.rit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S932290AbbLBOkE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 2 Dec 2015 09:40:04 -0500
+	with SMTP id S932329AbbLBOkF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 2 Dec 2015 09:40:05 -0500
 From: Andrew Elble <aweits@rit.edu>
 To: linux-nfs@vger.kernel.org
 Cc: Andrew Elble <aweits@rit.edu>
-Subject: [PATCH RFC 2/4] nfs: machine credential support for additional operations
-Date: Wed,  2 Dec 2015 09:39:51 -0500
-Message-Id: <1449067193-53310-3-git-send-email-aweits@rit.edu>
+Subject: [PATCH RFC 3/4] nfsd: allow mach_creds_match to be used more broadly
+Date: Wed,  2 Dec 2015 09:39:52 -0500
+Message-Id: <1449067193-53310-4-git-send-email-aweits@rit.edu>
 In-Reply-To: <1449067193-53310-1-git-send-email-aweits@rit.edu>
 References: <1449067193-53310-1-git-send-email-aweits@rit.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Allow LAYOUTRETURN and DELEGRETURN to use machine credentials if the
-server supports it. Add request for OPEN_DOWNGRADE as the close path
-also uses that.
+Rename mach_creds_match() to nfsd4_mach_creds_match() and un-staticify
 
 Signed-off-by: Andrew Elble <aweits@rit.edu>
 ---
- fs/nfs/nfs4proc.c         | 20 ++++++++++++++++++++
- include/linux/nfs_fs_sb.h |  1 +
- 2 files changed, 21 insertions(+)
+ fs/nfsd/nfs4state.c | 14 +++++++-------
+ fs/nfsd/xdr4.h      |  2 ++
+ 2 files changed, 9 insertions(+), 7 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 765a03559363..f7f45792676d 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5384,6 +5384,11 @@ static int _nfs4_proc_delegreturn(struct inode *inode, struct rpc_cred *cred, co
- 	if (data == NULL)
- 		return -ENOMEM;
- 	nfs4_init_sequence(&data->args.seq_args, &data->res.seq_res, 1);
-+
-+	nfs4_state_protect(server->nfs_client,
-+			NFS_SP4_MACH_CRED_CLEANUP,
-+			&task_setup_data.rpc_client, &msg);
-+
- 	data->args.fhandle = &data->fh;
- 	data->args.stateid = &data->stateid;
- 	data->args.bitmask = server->cache_consistency_bitmask;
-@@ -6862,10 +6867,13 @@ static const struct nfs41_state_protection nfs4_sp4_mach_cred_request = {
- 	},
- 	.allow.u.words = {
- 		[0] = 1 << (OP_CLOSE) |
-+		      1 << (OP_OPEN_DOWNGRADE) |
- 		      1 << (OP_LOCKU) |
-+		      1 << (OP_DELEGRETURN) |
- 		      1 << (OP_COMMIT),
- 		[1] = 1 << (OP_SECINFO - 32) |
- 		      1 << (OP_SECINFO_NO_NAME - 32) |
-+		      1 << (OP_LAYOUTRETURN - 32) |
- 		      1 << (OP_TEST_STATEID - 32) |
- 		      1 << (OP_FREE_STATEID - 32) |
- 		      1 << (OP_WRITE - 32)
-@@ -6930,11 +6938,19 @@ static int nfs4_sp4_select_mode(struct nfs_client *clp,
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 6b800b5b8fed..65efc900e97e 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -1959,7 +1959,7 @@ static bool svc_rqst_integrity_protected(struct svc_rqst *rqstp)
+ 	       service == RPC_GSS_SVC_PRIVACY;
+ }
+ 
+-static bool mach_creds_match(struct nfs4_client *cl, struct svc_rqst *rqstp)
++bool nfsd4_mach_creds_match(struct nfs4_client *cl, struct svc_rqst *rqstp)
+ {
+ 	struct svc_cred *cr = &rqstp->rq_cred;
+ 
+@@ -2393,7 +2393,7 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
+ 				status = nfserr_inval;
+ 				goto out;
+ 			}
+-			if (!mach_creds_match(conf, rqstp)) {
++			if (!nfsd4_mach_creds_match(conf, rqstp)) {
+ 				status = nfserr_wrong_cred;
+ 				goto out;
+ 			}
+@@ -2640,7 +2640,7 @@ nfsd4_create_session(struct svc_rqst *rqstp,
+ 
+ 	if (conf) {
+ 		status = nfserr_wrong_cred;
+-		if (!mach_creds_match(conf, rqstp))
++		if (!nfsd4_mach_creds_match(conf, rqstp))
+ 			goto out_free_conn;
+ 		cs_slot = &conf->cl_cs_slot;
+ 		status = check_slot_seqid(cr_ses->seqid, cs_slot->sl_seqid, 0);
+@@ -2656,7 +2656,7 @@ nfsd4_create_session(struct svc_rqst *rqstp,
+ 			goto out_free_conn;
  		}
+ 		status = nfserr_wrong_cred;
+-		if (!mach_creds_match(unconf, rqstp))
++		if (!nfsd4_mach_creds_match(unconf, rqstp))
+ 			goto out_free_conn;
+ 		cs_slot = &unconf->cl_cs_slot;
+ 		status = check_slot_seqid(cr_ses->seqid, cs_slot->sl_seqid, 0);
+@@ -2766,7 +2766,7 @@ __be32 nfsd4_bind_conn_to_session(struct svc_rqst *rqstp,
+ 	if (!session)
+ 		goto out_no_session;
+ 	status = nfserr_wrong_cred;
+-	if (!mach_creds_match(session->se_client, rqstp))
++	if (!nfsd4_mach_creds_match(session->se_client, rqstp))
+ 		goto out;
+ 	status = nfsd4_map_bcts_dir(&bcts->dir);
+ 	if (status)
+@@ -2813,7 +2813,7 @@ nfsd4_destroy_session(struct svc_rqst *r,
+ 	if (!ses)
+ 		goto out_client_lock;
+ 	status = nfserr_wrong_cred;
+-	if (!mach_creds_match(ses->se_client, r))
++	if (!nfsd4_mach_creds_match(ses->se_client, r))
+ 		goto out_put_session;
+ 	status = mark_session_dead_locked(ses, 1 + ref_held_by_me);
+ 	if (status)
+@@ -3052,7 +3052,7 @@ nfsd4_destroy_clientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *csta
+ 		status = nfserr_stale_clientid;
+ 		goto out;
+ 	}
+-	if (!mach_creds_match(clp, rqstp)) {
++	if (!nfsd4_mach_creds_match(clp, rqstp)) {
+ 		clp = NULL;
+ 		status = nfserr_wrong_cred;
+ 		goto out;
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index ce7362c88b48..25c9c79460f9 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -644,6 +644,8 @@ set_change_info(struct nfsd4_change_info *cinfo, struct svc_fh *fhp)
  
- 		if (test_bit(OP_CLOSE, sp->allow.u.longs) &&
-+		    test_bit(OP_OPEN_DOWNGRADE, sp->allow.u.longs) &&
-+		    test_bit(OP_DELEGRETURN, sp->allow.u.longs) &&
- 		    test_bit(OP_LOCKU, sp->allow.u.longs)) {
- 			dfprintk(MOUNT, "  cleanup mode enabled\n");
- 			set_bit(NFS_SP4_MACH_CRED_CLEANUP, &clp->cl_sp4_flags);
- 		}
+ }
  
-+		if (test_bit(OP_LAYOUTRETURN, sp->allow.u.longs)) {
-+			dfprintk(MOUNT, "  pnfs cleanup mode enabled\n");
-+			set_bit(NFS_SP4_MACH_CRED_PNFS_CLEANUP,
-+				&clp->cl_sp4_flags);
-+		}
 +
- 		if (test_bit(OP_SECINFO, sp->allow.u.longs) &&
- 		    test_bit(OP_SECINFO_NO_NAME, sp->allow.u.longs)) {
- 			dfprintk(MOUNT, "  secinfo mode enabled\n");
-@@ -8086,6 +8102,10 @@ int nfs4_proc_layoutreturn(struct nfs4_layoutreturn *lrp, bool sync)
- 	};
- 	int status = 0;
- 
-+	nfs4_state_protect(NFS_SERVER(lrp->args.inode)->nfs_client,
-+			NFS_SP4_MACH_CRED_PNFS_CLEANUP,
-+			&task_setup_data.rpc_client, &msg);
-+
- 	dprintk("--> %s\n", __func__);
- 	if (!sync) {
- 		lrp->inode = nfs_igrab_and_active(lrp->args.inode);
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 2469ab0bb3a1..7fcc13c8cf1f 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -102,6 +102,7 @@ struct nfs_client {
- #define NFS_SP4_MACH_CRED_STATEID  4	/* TEST_STATEID and FREE_STATEID */
- #define NFS_SP4_MACH_CRED_WRITE    5	/* WRITE */
- #define NFS_SP4_MACH_CRED_COMMIT   6	/* COMMIT */
-+#define NFS_SP4_MACH_CRED_PNFS_CLEANUP  7 /* LAYOUTRETURN */
- #endif /* CONFIG_NFS_V4 */
- 
- 	/* Our own IP address, as a null-terminated string.
++bool nfsd4_mach_creds_match(struct nfs4_client *cl, struct svc_rqst *rqstp);
+ int nfs4svc_encode_voidres(struct svc_rqst *, __be32 *, void *);
+ int nfs4svc_decode_compoundargs(struct svc_rqst *, __be32 *,
+ 		struct nfsd4_compoundargs *);
 -- 
 2.6.3
 
