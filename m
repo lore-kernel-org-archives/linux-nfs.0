@@ -1,82 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f169.google.com ([209.85.213.169]:36378 "EHLO
-	mail-ig0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757229AbbLAWsd (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Dec 2015 17:48:33 -0500
-MIME-Version: 1.0
-In-Reply-To: <1448563859-21922-1-git-send-email-hch@lst.de>
-References: <1448563859-21922-1-git-send-email-hch@lst.de>
-From: Steve French <smfrench@gmail.com>
-Date: Tue, 1 Dec 2015 16:48:12 -0600
-Message-ID: <CAH2r5muW6=v6tx3BwXSYMgn7EZgzVANniebsxfwpdq9Y=0VcuA@mail.gmail.com>
-Subject: Re: vfs: move btrfs clone ioctls to common code
-To: Christoph Hellwig <hch@lst.de>
-Cc: Al Viro <viro@zeniv.linux.org.uk>, Peng Tao <tao.peng@primarydata.com>,
-        Jeffrey Layton <jeff.layton@primarydata.com>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-btrfs@vger.kernel.org,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-cifs@vger.kernel.org" <linux-cifs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from mx1.redhat.com ([209.132.183.28]:45492 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751177AbbLBGR7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 2 Dec 2015 01:17:59 -0500
+From: Stefan Hajnoczi <stefanha@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: Anna Schumaker <anna.schumaker@netapp.com>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Stefan Hajnoczi <stefanha@redhat.com>
+Subject: [PATCH] SUNRPC: drop unused xs_reclassify_socketX() helpers
+Date: Wed,  2 Dec 2015 14:17:52 +0800
+Message-Id: <1449037072-21642-1-git-send-email-stefanha@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In the new API is there a way to distinguish between the two copy
-offload behaviors:
+xs_reclassify_socket4() and friends used to be called directly.
+xs_reclassify_socket() is called instead nowadays.
 
-1) FSCTL_DUPLICATE_EXTENTS (where the server file system increments a
-refcount on blocks in the range)
-and
-2) FSCTL_COPYCHUNK (where the server does a server side copy of the
-requested range, but does not necessarily use reflink, although in the
-case of Samba on btrfs it implements it this way).  In this case NTFS
-will usually make a copy of the range requested rather than linking
-the ranges.
+The xs_reclassify_socketX() helper functions are empty when
+CONFIG_DEBUG_LOCK_ALLOC is not defined.  Drop them since they have no
+callers.
 
-For the former cifs uses (used prior to this patc) the btrfs ioctl,
-for the latter it has a private ioctl (CIFS_IOC_COPYCHUNK_FILE).  For
-the former the files have to be on the same share (export) for the
-latter it just requires that the files be on the same server, and in
-common cases (drag an drop in the file explorer on the desktop) the
-source and target files would be on different mounts to the same
-server.
+Note that AF_LOCAL still calls xs_reclassify_socketu() directly but is
+easily converted to generic xs_reclassify_socket().
 
-There is an unimplemented (in cifs.ko) whole file clone operation
-(copy-on-write file with a network API similar to the hardlink) but it
-looks like it is no longer supported by newer servers, perhaps because
-there is more interest in the ODX mechanism for duplicating files ala
-https://msdn.microsoft.com/en-us/library/windows/desktop/hh848056(v=vs.85).aspx
-across server farms for managing virtualization images.   I need to
-add the ODX copy offload mechanism to cifs.ko but presumably it would
-behave more like FSCTL_COPYCHUNK (ie not do a reflink of the blocks)
+Signed-off-by: Stefan Hajnoczi <stefanha@redhat.com>
+---
+ net/sunrpc/xprtsock.c | 14 +-------------
+ 1 file changed, 1 insertion(+), 13 deletions(-)
 
-The performance improvements from server side copy offload is huge
-whether or not reflink is done - so allowing the cp command (or common
-user space commands ala robocopy which already does this in Windows)
-to do fast copy is particularly important for network file systems.
-
-On Thu, Nov 26, 2015 at 12:50 PM, Christoph Hellwig <hch@lst.de> wrote:
-> This patch set moves the existing btrfs clone ioctls that other file
-> system have started to implement to common code, and allows the NFS
-> server to export this functionality to remote systems.
->
-> This work is based originally on my NFS CLONE prototype, which reused
-> code from Anna Schumaker's NFS COPY prototype, as well as various
-> updates from Peng Tao to this code.
->
-> The patches are also available as a git branch and on gitweb:
->
->         git://git.infradead.org/users/hch/pnfs.git clone-for-viro
->         http://git.infradead.org/users/hch/pnfs.git/shortlog/refs/heads/clone-for-viro
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-cifs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
-
-
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 1d1a704..dd367d4 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -1907,18 +1907,6 @@ static inline void xs_reclassify_socket(int family, struct socket *sock)
+ 	}
+ }
+ #else
+-static inline void xs_reclassify_socketu(struct socket *sock)
+-{
+-}
+-
+-static inline void xs_reclassify_socket4(struct socket *sock)
+-{
+-}
+-
+-static inline void xs_reclassify_socket6(struct socket *sock)
+-{
+-}
+-
+ static inline void xs_reclassify_socket(int family, struct socket *sock)
+ {
+ }
+@@ -2008,7 +1996,7 @@ static int xs_local_setup_socket(struct sock_xprt *transport)
+ 			"transport socket (%d).\n", -status);
+ 		goto out;
+ 	}
+-	xs_reclassify_socketu(sock);
++	xs_reclassify_socket(AF_LOCAL, sock);
+ 
+ 	dprintk("RPC:       worker connecting xprt %p via AF_LOCAL to %s\n",
+ 			xprt, xprt->address_strings[RPC_DISPLAY_ADDR]);
 -- 
-Thanks,
+2.5.0
 
-Steve
