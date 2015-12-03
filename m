@@ -1,66 +1,65 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wm0-f45.google.com ([74.125.82.45]:37832 "EHLO
-	mail-wm0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752004AbbLCPWa (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Dec 2015 10:22:30 -0500
-Received: by wmww144 with SMTP id w144so26709988wmw.0
-        for <linux-nfs@vger.kernel.org>; Thu, 03 Dec 2015 07:22:29 -0800 (PST)
+Received: from mx1.redhat.com ([209.132.183.28]:44463 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751867AbbLCRzI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 3 Dec 2015 12:55:08 -0500
+Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+	by mx1.redhat.com (Postfix) with ESMTPS id E088DA3812
+	for <linux-nfs@vger.kernel.org>; Thu,  3 Dec 2015 17:55:08 +0000 (UTC)
+Received: from smallhat.boston.devel.redhat.com (smallhat.boston.devel.redhat.com [10.19.60.65])
+	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id tB3Ht85O028972
+	for <linux-nfs@vger.kernel.org>; Thu, 3 Dec 2015 12:55:08 -0500
+Subject: Re: Monthly Linux NFS Town Hall meeting: *Today* - Thur Dec 3
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+References: <56602BCD.2030801@RedHat.com>
+From: Steve Dickson <SteveD@redhat.com>
+Message-ID: <566081FC.5010607@RedHat.com>
+Date: Thu, 3 Dec 2015 12:55:08 -0500
 MIME-Version: 1.0
-In-Reply-To: <565F1953.1060103@RedHat.com>
-References: <1449054998-19308-1-git-send-email-t.vivek@samsung.com>
-	<1449054998-19308-2-git-send-email-t.vivek@samsung.com>
-	<565F1953.1060103@RedHat.com>
-Date: Thu, 3 Dec 2015 20:52:29 +0530
-Message-ID: <CAKX=r8AqB=wcO9WjZ4t65=EmSaeng5hLu2NteLykYn6nV7vh1w@mail.gmail.com>
-Subject: Re: [PATCH 2/2] nfs-utils: mount.nfs: fix null pointer derefernce in nfs_parse_simple_hostname
-From: Vivek Trivedi <vtrivedi018@gmail.com>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: Vivek Trivedi <t.vivek@samsung.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+In-Reply-To: <56602BCD.2030801@RedHat.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-thanks for review!
-actually, it fixed a coverity issue a while back, so I thought of
-sharing this minor change.
+This will be starting in a few.... If interested... 
 
-thanks!
+steved.
 
-On Wed, Dec 2, 2015 at 9:46 PM, Steve Dickson <SteveD@redhat.com> wrote:
-> hello,
->
-> On 12/02/2015 06:16 AM, Vivek Trivedi wrote:
->> In function nfs_parse_simple_hostname, hostname can be NULL,
->> dereferncing it while passing it to free(*hostname) may result in segfault.
-> Again I can see the logic but I wondering why/how a NULL hostname
-> is being passed. I don't see how a NULL hostname can be passed
-> in esp during a mount....
->
+On 12/03/2015 06:47 AM, Steve Dickson wrote:
+> Hello,
+> 
+> Its that time again... the NFS town hall meeting will be *Today*!
+> 
+>    *Thur Dec 4 at 01:00 pm EST (10:00am PST)*
+> 
+> The usual agenda will apply. The maintainers will give
+> a quick status of what is happening in their worlds.
+> 
+> Next we'll get updates from major contributors on what
+> they have been doing and are planing on doing.
+>   
+> Finally, we'll open the floor to questions, comments, 
+> concerns from the community.  
+> 
+> Generally the meeting lasts between 30 to 45 mins, with 
+> a very hard stop at 60mins. 
+> 
+> Please feel to attend and participate!
+> 
+> Again the Time: 10:00 am PST (01:00 pm EST)
+> 
+> The call in numbers are:
+> 
+> U.S. and Canada: (800) 451-8679
+> World wide toll free numbers
+>    https://www.intercallonline.com/listNumbersByCode.action?confCode=5642721552
+> 
+> Conference code: 564.272.1552
+> 
 > steved.
->
->>
->> Signed-off-by: Vivek Trivedi <t.vivek@samsung.com>
->> ---
->>  utils/mount/parse_dev.c |    3 ++-
->>  1 file changed, 2 insertions(+), 1 deletion(-)
->>
->> diff --git a/utils/mount/parse_dev.c b/utils/mount/parse_dev.c
->> index d64b83d..0d3bcb9 100644
->> --- a/utils/mount/parse_dev.c
->> +++ b/utils/mount/parse_dev.c
->> @@ -118,7 +118,8 @@ static int nfs_parse_simple_hostname(const char *dev,
->>       if (pathname) {
->>               *pathname = strndup(colon, path_len);
->>               if (*pathname == NULL) {
->> -                     free(*hostname);
->> +                     if (hostname)
->> +                             free(*hostname);
->>                       return nfs_pdn_nomem_err();
->>               }
->>       }
->>
+> 
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
