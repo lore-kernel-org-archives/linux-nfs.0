@@ -1,73 +1,41 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:48760 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751118AbbLCWIw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 3 Dec 2015 17:08:52 -0500
-Date: Thu, 3 Dec 2015 17:08:50 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Christoph Hellwig <hch@lst.de>
-Cc: Jeff Layton <jlayton@poochiereds.net>,
-        Kinglong Mee <kinglongmee@gmail.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH RFC] nfsd: serialize layout stateid morphing operations
-Message-ID: <20151203220850.GC19518@fieldses.org>
-References: <1442491104-30080-1-git-send-email-jeff.layton@primarydata.com>
- <565A7A14.4010902@gmail.com>
- <20151129084614.42fb1272@tlielax.poochiereds.net>
- <565BBB03.7020206@gmail.com>
- <20151130213420.GA31564@fieldses.org>
- <20151130193313.5bb10791@synchrony.poochiereds.net>
- <20151201115600.GA1557@lst.de>
- <20151201174800.407e2c40@synchrony.poochiereds.net>
- <20151202072504.GA15839@lst.de>
+Received: from mail-lb0-f177.google.com ([209.85.217.177]:35559 "EHLO
+	mail-lb0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751100AbbLCWRP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Dec 2015 17:17:15 -0500
+Received: by lbcdv4 with SMTP id dv4so10199955lbc.2
+        for <linux-nfs@vger.kernel.org>; Thu, 03 Dec 2015 14:17:13 -0800 (PST)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20151202072504.GA15839@lst.de>
+In-Reply-To: <1449090088-9281-1-git-send-email-agruenba@redhat.com>
+References: <1449090088-9281-1-git-send-email-agruenba@redhat.com>
+Date: Thu, 3 Dec 2015 23:17:13 +0100
+Message-ID: <CAHc6FU6U3TXfacHWNeY=ihw_EwEVRWU-hAmR7rYNN+duqfa_Ww@mail.gmail.com>
+Subject: Re: [PATCH v16 00/22] Richacls (Core and Ext4)
+From: Andreas Gruenbacher <agruenba@redhat.com>
+To: Alexander Viro <viro@zeniv.linux.org.uk>, "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Dave Chinner <david@fromorbit.com>,
+        linux-ext4 <linux-ext4@vger.kernel.org>,
+        XFS Developers <xfs@oss.sgi.com>, LKML <linux-kernel@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        linux-cifs@vger.kernel.org, Linux API <linux-api@vger.kernel.org>
+Cc: Andreas Gruenbacher <agruenba@redhat.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Dec 02, 2015 at 08:25:04AM +0100, Christoph Hellwig wrote:
-> On Tue, Dec 01, 2015 at 05:48:00PM -0500, Jeff Layton wrote:
-> > > But for non-forgetful clients I wonder if returning 0 should be
-> > > interpreted the same as NFS4ERR_DELAY?  Note that we still need to
-> > > time out the client if it doesn't respond in time, so NFS4ERR_DELAY
-> > > seems better than 0, but the standard doesn't really talk about
-> > > return values other than NFS4ERR_NOMATCHING_LAYOUT.
-> > 
-> > My interpretation is somewhat different. To me, this is how we'd
-> > interpret the response from the client (pseudocode):
-> > 
-> > NFS_OK:
-> > 	/* Message received. I'll start returning these layouts soon. */
-> > NFS4ERR_DELAY:
-> > 	/* I'm too resource constrained to even process this simple
-> >            request right now. Please ask me again in a bit. */
-> > NFS4ERR_NOMATCHING_LAYOUT:
-> > 	/* Huh? What layout? */
-> > 
-> > ...IMO, the spec is pretty clear that a successful response from the
-> > client just means that it got the message that it should start
-> > returning layouts. If it happens to return anything before the cb
-> > response, then that's just luck/coincidence. The server shouldn't count
-> > on that.
-> 
-> Ok, so for 0 we should re check if the layouts are still outstanding
-> before sending the next recall.  But given that we have no client
-> returning that or test cases I'd be tempted to treat OK like DELAY
-> for now - if the client is properly implemented it will eventually
-> return NFS4ERR_NOMATCHING_LAYOUT.  We can add a big comment on why
-> we're doing that so that it's obvious.
+On Wed, Dec 2, 2015 at 10:01 PM, Andreas Gruenbacher
+<agruenba@redhat.com> wrote:
+> The complete patch queue is available in git form here:
+>
+>   git://git.kernel.org/pub/scm/linux/kernel/git/agruen/linux-richacl.git \
+>         richacl-2015-11-09
 
-OK, so if I understand right, the current code is letting the rpc state
-machine drive the whole thing, and your proposal is that the rpc task
-lasts until the client either responds NFS4ERR_NOMATCHING_LAYOUT or we
-just run out of time.  (NOMATCHING_LAYOUT being the one response that
-isn't either "try again" or "OK I'll get to it soon").
+This should have been richacl-2015-12-02, sorry.
 
-I understand why that would work, and that handling anything other than
-the NOMATCHING_LAYOUT case is a lower priority for now, but this
-approach worries me.
-
-Is there a reason we can't do as in the delegation case, and track the
-revocation timeout separately from the callback rpc?
-
---b.
+Andreas
