@@ -1,83 +1,55 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:34842 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754185AbbLDPaQ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Dec 2015 10:30:16 -0500
-Content-Type: text/plain; charset=utf-8
-Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2104\))
-Subject: Re: [PATCH v1 3/8] svcrdma: Add svc_rdma_get_context() API that is allowed to fail
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20151124065522.GC29141@infradead.org>
-Date: Fri, 4 Dec 2015 10:29:45 -0500
-Cc: linux-rdma@vger.kernel.org,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <E41A0933-FDF0-4995-B676-83B648D35F46@oracle.com>
-References: <20151123221738.13040.26277.stgit@klimt.1015granger.net> <20151123222038.13040.61285.stgit@klimt.1015granger.net> <20151124065522.GC29141@infradead.org>
-To: Christoph Hellwig <hch@infradead.org>
+Received: from fieldses.org ([173.255.197.46]:49273 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753165AbbLDPpu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 4 Dec 2015 10:45:50 -0500
+Date: Fri, 4 Dec 2015 10:45:49 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Anna Schumaker <Anna.Schumaker@netapp.com>
+Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@primarydata.com,
+        hch@infradead.org
+Subject: Re: [PATCH v1 2/3] NFSD: Implement the COPY call
+Message-ID: <20151204154549.GD26898@fieldses.org>
+References: <1449176137-4940-1-git-send-email-Anna.Schumaker@Netapp.com>
+ <1449176137-4940-3-git-send-email-Anna.Schumaker@Netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1449176137-4940-3-git-send-email-Anna.Schumaker@Netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Thu, Dec 03, 2015 at 03:55:35PM -0500, Anna Schumaker wrote:
+> @@ -498,6 +499,22 @@ __be32 nfsd4_set_nfs4_label(struct svc_rqst *rqstp, struct svc_fh *fhp,
+>  }
+>  #endif
+>  
+> +ssize_t nfsd_copy_range(struct file *src, u64 src_pos,
+> +		       struct file *dst, u64 dst_pos,
+> +		       u64 count)
+> +{
+> +	ssize_t bytes;
+> +	u64 limit = 0x10000000;
 
-> On Nov 24, 2015, at 1:55 AM, Christoph Hellwig <hch@infradead.org> wrote:
-> 
->> +struct svc_rdma_op_ctxt *svc_rdma_get_context_gfp(struct svcxprt_rdma *xprt,
->> +						  gfp_t flags)
->> +{
->> +	struct svc_rdma_op_ctxt *ctxt;
->> +
->> +	ctxt = kmem_cache_alloc(svc_rdma_ctxt_cachep, flags);
->> +	if (!ctxt)
->> +		return NULL;
->> +	svc_rdma_init_context(xprt, ctxt);
->> +	return ctxt;
->> +}
->> +
->> +struct svc_rdma_op_ctxt *svc_rdma_get_context(struct svcxprt_rdma *xprt)
->> +{
->> +	struct svc_rdma_op_ctxt *ctxt;
->> +
->> +	ctxt = kmem_cache_alloc(svc_rdma_ctxt_cachep,
->> +				GFP_KERNEL | __GFP_NOFAIL);
->> +	svc_rdma_init_context(xprt, ctxt);
->> 	return ctxt;
-> 
-> Sounds like you should have just added a gfp_t argument to
-> svc_rdma_get_context.  And if we have any way to avoid the __GFP_NOFAIL
-> I'd really appreciate if we could give that a try.
+Why that value?  Could I get a comment here?
 
-Changed my mind on this.
+> +
+> +	if (count > limit)
+> +		count = limit;
+> +
+> +	bytes = vfs_copy_file_range(src, src_pos, dst, dst_pos, count, 0);
 
-struct svc_rdma_op_ctxt used to be smaller than a page, so these
-allocations were not likely to fail. But since the maximum NFS
-READ and WRITE payload for NFS/RDMA has been increased to 1MB,
-struct svc_rdma_op_ctxt has grown to more than 6KB, thus it is
-no longer an order 0 memory allocation.
+Sorry, I lost track of the copy discussions: does this only work on
+filesystems with special support, or does it fall back on doing the copy
+by hand?  Which filesystems (of the exportable filesystems) support
+this?
 
-Some ideas:
+--b.
 
-1. Pre-allocate these per connection in svc_rdma_accept().
-There will never be more than sc_sq_depth of these. But that
-could be a large number to allocate during connection
-establishment.
-
-2. Once allocated, cache them. If traffic doesn’t manage to
-allocate sc_sq_depth of these over time, allocation can still
-fail during a traffic burst in very low memory scenarios.
-
-3. Use a mempool. This reserves a few of these which may never
-be used. But allocation can still fail once the reserve is
-consumed (same as 2).
-
-4. Break out the sge and pages arrays into separate allocations
-so the allocation requests are order 0.
-
-1 seems like the most robust solution, and it would be fast.
-svc_rdma_get_context is a very common operation.
-
-
---
-Chuck Lever
-
-
-
-
+> +	if (bytes > 0)
+> +		vfs_fsync_range(dst, dst_pos, dst_pos + bytes, 0);
+> +	return bytes;
+> +}
+> +
+>  __be32 nfsd4_vfs_fallocate(struct svc_rqst *rqstp, struct svc_fh *fhp,
+>  			   struct file *file, loff_t offset, loff_t len,
+>  			   int flags)
