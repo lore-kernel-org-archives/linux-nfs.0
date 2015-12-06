@@ -1,16 +1,17 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-oi0-f41.google.com ([209.85.218.41]:33673 "EHLO
-	mail-oi0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753014AbbLFVoL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 6 Dec 2015 16:44:11 -0500
-Received: by oixx65 with SMTP id x65so90352469oix.0
-        for <linux-nfs@vger.kernel.org>; Sun, 06 Dec 2015 13:44:10 -0800 (PST)
+Received: from mail-oi0-f54.google.com ([209.85.218.54]:33338 "EHLO
+	mail-oi0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753628AbbLFVra (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 6 Dec 2015 16:47:30 -0500
+Received: by oixx65 with SMTP id x65so90371445oix.0
+        for <linux-nfs@vger.kernel.org>; Sun, 06 Dec 2015 13:47:29 -0800 (PST)
 MIME-Version: 1.0
-In-Reply-To: <1449066057-26807-1-git-send-email-aweits@rit.edu>
-References: <1449066057-26807-1-git-send-email-aweits@rit.edu>
-Date: Sun, 6 Dec 2015 13:44:10 -0800
-Message-ID: <CAHQdGtT6DM0DXmU9PdvbRjnx4unW_auQib=9efHGKD9YD4zQ=Q@mail.gmail.com>
-Subject: Re: [PATCH RFC] nfs: Fix race in __update_open_stateid()
+In-Reply-To: <1449067193-53310-3-git-send-email-aweits@rit.edu>
+References: <1449067193-53310-1-git-send-email-aweits@rit.edu>
+	<1449067193-53310-3-git-send-email-aweits@rit.edu>
+Date: Sun, 6 Dec 2015 13:47:29 -0800
+Message-ID: <CAHQdGtRfeNu5HUCOXi1sUDUnm1PtrzQm55RmN+4Et1vCJhxuYA@mail.gmail.com>
+Subject: Re: [PATCH RFC 2/4] nfs: machine credential support for additional operations
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: Andrew Elble <aweits@rit.edu>
 Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
@@ -18,82 +19,91 @@ Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Dec 2, 2015 at 6:20 AM, Andrew Elble <aweits@rit.edu> wrote:
-> We've seen this in a packet capture - I've intermixed what I
-> think was going on. The fix here is to grab the so_lock sooner.
->
-> 1964379 -> #1 open (for write) reply seqid=1
-> 1964393 -> #2 open (for read) reply seqid=2
->
->   __nfs4_close(), state->n_wronly--
->   nfs4_state_set_mode_locked(), changes state->state = [R]
->   state->flags is [RW]
->   state->state is [R], state->n_wronly == 0, state->n_rdonly == 1
->
-> 1964398 -> #3 open (for write) call -> because close is already running
-> 1964399 -> downgrade (to read) call seqid=2 (close of #1)
-> 1964402 -> #3 open (for write) reply seqid=3
->
->  __update_open_stateid()
->    nfs_set_open_stateid_locked(), changes state->flags
->    state->flags is [RW]
->    state->state is [R], state->n_wronly == 0, state->n_rdonly == 1
->    new sequence number is exposed now via nfs4_stateid_copy()
->
->    next step would be update_open_stateflags(), pending so_lock
->
-> 1964403 -> downgrade reply seqid=2, fails with OLD_STATEID (close of #1)
->
->    nfs4_close_prepare() gets so_lock and recalcs flags -> send close
->
-> 1964405 -> downgrade (to read) call seqid=3 (close of #1 retry)
->
->    __update_open_stateid() gets so_lock
->  * update_open_stateflags() updates state->n_wronly.
->    nfs4_state_set_mode_locked() updates state->state
->
->    state->flags is [RW]
->    state->state is [RW], state->n_wronly == 1, state->n_rdonly == 1
->
->  * should have suppressed the preceding nfs4_close_prepare() from
->    sending open_downgrade
->
-> 1964406 -> write call
-> 1964408 -> downgrade (to read) reply seqid=4 (close of #1 retry)
->
->    nfs_clear_open_stateid_locked()
->    state->flags is [R]
->    state->state is [RW], state->n_wronly == 1, state->n_rdonly == 1
->
-> 1964409 -> write reply (fails, openmode)
+On Wed, Dec 2, 2015 at 6:39 AM, Andrew Elble <aweits@rit.edu> wrote:
+> Allow LAYOUTRETURN and DELEGRETURN to use machine credentials if the
+> server supports it. Add request for OPEN_DOWNGRADE as the close path
+> also uses that.
 >
 > Signed-off-by: Andrew Elble <aweits@rit.edu>
 > ---
->  fs/nfs/nfs4proc.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
+>  fs/nfs/nfs4proc.c         | 20 ++++++++++++++++++++
+>  include/linux/nfs_fs_sb.h |  1 +
+>  2 files changed, 21 insertions(+)
 >
 > diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index f7f45792676d..b05215691156 100644
+> index 765a03559363..f7f45792676d 100644
 > --- a/fs/nfs/nfs4proc.c
 > +++ b/fs/nfs/nfs4proc.c
-> @@ -1385,6 +1385,7 @@ static void __update_open_stateid(struct nfs4_state *state, nfs4_stateid *open_s
->          * Protect the call to nfs4_state_set_mode_locked and
->          * serialise the stateid update
->          */
-> +       spin_lock(&state->owner->so_lock);
->         write_seqlock(&state->seqlock);
->         if (deleg_stateid != NULL) {
->                 nfs4_stateid_copy(&state->stateid, deleg_stateid);
-> @@ -1393,7 +1394,6 @@ static void __update_open_stateid(struct nfs4_state *state, nfs4_stateid *open_s
->         if (open_stateid != NULL)
->                 nfs_set_open_stateid_locked(state, open_stateid, fmode);
->         write_sequnlock(&state->seqlock);
-> -       spin_lock(&state->owner->so_lock);
->         update_open_stateflags(state, fmode);
->         spin_unlock(&state->owner->so_lock);
->  }
+> @@ -5384,6 +5384,11 @@ static int _nfs4_proc_delegreturn(struct inode *inode, struct rpc_cred *cred, co
+>         if (data == NULL)
+>                 return -ENOMEM;
+>         nfs4_init_sequence(&data->args.seq_args, &data->res.seq_res, 1);
+> +
+> +       nfs4_state_protect(server->nfs_client,
+> +                       NFS_SP4_MACH_CRED_CLEANUP,
+> +                       &task_setup_data.rpc_client, &msg);
+> +
+>         data->args.fhandle = &data->fh;
+>         data->args.stateid = &data->stateid;
+>         data->args.bitmask = server->cache_consistency_bitmask;
+> @@ -6862,10 +6867,13 @@ static const struct nfs41_state_protection nfs4_sp4_mach_cred_request = {
+>         },
+>         .allow.u.words = {
+>                 [0] = 1 << (OP_CLOSE) |
+> +                     1 << (OP_OPEN_DOWNGRADE) |
+>                       1 << (OP_LOCKU) |
+> +                     1 << (OP_DELEGRETURN) |
+>                       1 << (OP_COMMIT),
+>                 [1] = 1 << (OP_SECINFO - 32) |
+>                       1 << (OP_SECINFO_NO_NAME - 32) |
+> +                     1 << (OP_LAYOUTRETURN - 32) |
+>                       1 << (OP_TEST_STATEID - 32) |
+>                       1 << (OP_FREE_STATEID - 32) |
+>                       1 << (OP_WRITE - 32)
+> @@ -6930,11 +6938,19 @@ static int nfs4_sp4_select_mode(struct nfs_client *clp,
+>                 }
+>
+>                 if (test_bit(OP_CLOSE, sp->allow.u.longs) &&
+> +                   test_bit(OP_OPEN_DOWNGRADE, sp->allow.u.longs) &&
+> +                   test_bit(OP_DELEGRETURN, sp->allow.u.longs) &&
+>                     test_bit(OP_LOCKU, sp->allow.u.longs)) {
+>                         dfprintk(MOUNT, "  cleanup mode enabled\n");
+>                         set_bit(NFS_SP4_MACH_CRED_CLEANUP, &clp->cl_sp4_flags);
+>                 }
+>
+> +               if (test_bit(OP_LAYOUTRETURN, sp->allow.u.longs)) {
+> +                       dfprintk(MOUNT, "  pnfs cleanup mode enabled\n");
+> +                       set_bit(NFS_SP4_MACH_CRED_PNFS_CLEANUP,
+> +                               &clp->cl_sp4_flags);
+> +               }
+> +
+>                 if (test_bit(OP_SECINFO, sp->allow.u.longs) &&
+>                     test_bit(OP_SECINFO_NO_NAME, sp->allow.u.longs)) {
+>                         dfprintk(MOUNT, "  secinfo mode enabled\n");
+> @@ -8086,6 +8102,10 @@ int nfs4_proc_layoutreturn(struct nfs4_layoutreturn *lrp, bool sync)
+>         };
+>         int status = 0;
+>
+> +       nfs4_state_protect(NFS_SERVER(lrp->args.inode)->nfs_client,
+> +                       NFS_SP4_MACH_CRED_PNFS_CLEANUP,
+> +                       &task_setup_data.rpc_client, &msg);
+> +
+>         dprintk("--> %s\n", __func__);
+>         if (!sync) {
+>                 lrp->inode = nfs_igrab_and_active(lrp->args.inode);
+> diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+> index 2469ab0bb3a1..7fcc13c8cf1f 100644
+> --- a/include/linux/nfs_fs_sb.h
+> +++ b/include/linux/nfs_fs_sb.h
+> @@ -102,6 +102,7 @@ struct nfs_client {
+>  #define NFS_SP4_MACH_CRED_STATEID  4   /* TEST_STATEID and FREE_STATEID */
+>  #define NFS_SP4_MACH_CRED_WRITE    5   /* WRITE */
+>  #define NFS_SP4_MACH_CRED_COMMIT   6   /* COMMIT */
+> +#define NFS_SP4_MACH_CRED_PNFS_CLEANUP  7 /* LAYOUTRETURN */
+>  #endif /* CONFIG_NFS_V4 */
+>
+>         /* Our own IP address, as a null-terminated string.
 
-Yep. This explanation makes sense.
-
-Thanks!
-  Trond
+This patch looks fine, but can we please break it out of the series?
+There doesn't appear to be any dependency between this and the other
+patches, so it would be easier if I could just take it directly.
