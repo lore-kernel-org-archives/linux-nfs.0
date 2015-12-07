@@ -1,28 +1,21 @@
-Return-Path: <BATV+7d580da61648ed217d10+4488+infradead.org+hch@bombadil.srs.infradead.org>
-Date: Mon, 7 Dec 2015 11:22:22 -0800
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from bombadil.infradead.org ([198.137.202.9]:36706 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754120AbbLGTXT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Dec 2015 14:23:19 -0500
+Date: Mon, 7 Dec 2015 11:23:19 -0800
 From: Christoph Hellwig <hch@infradead.org>
-To: Benjamin Coddington <bcodding@redhat.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@poochiereds.net>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2 02/10] NFS: Move the flock open mode check into
- nfs_flock()
-Message-ID: <20151207192222.GA7938@infradead.org>
-References: <cover.1449503713.git.bcodding@redhat.com>
- <cc80e246ee323a21f3f318248bf38eda668e8eb9.1449503713.git.bcodding@redhat.com>
- <20151207184036.GA28959@infradead.org>
- <alpine.OSX.2.19.9992.1512071359370.60717@planck.local>
+To: Anna Schumaker <Anna.Schumaker@netapp.com>
+Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@primarydata.com,
+        bfields@fieldses.org, hch@infradead.org
+Subject: Re: [PATCH v1 0/4] NFSv4.2: Add support for the COPY operation
+Message-ID: <20151207192319.GA8318@infradead.org>
+References: <1449176137-4940-1-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <alpine.OSX.2.19.9992.1512071359370.60717@planck.local>
+In-Reply-To: <1449176137-4940-1-git-send-email-Anna.Schumaker@Netapp.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Dec 07, 2015 at 02:13:47PM -0500, Benjamin Coddington wrote:
-> I can fixup the comment for clarity as I just moved this chunk over.
-> 
-> I'm not aware that flock() has ever had this check, but posix locks requires
-> it.  My understanding is that since NFS may simulate flock() with posix
-> locking, the check is necessary for NFS.
-
-Ah, right.  Maybe that's what should be in the comment here..
+FYI, Al has merged the clone work in for-next, so this might need
+a rebase on top of that.
