@@ -1,84 +1,58 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:23208 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:60485 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932737AbbLGQ0L (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 7 Dec 2015 11:26:11 -0500
-From: Benjamin Coddington <bcodding@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@poochiereds.net>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>, hch@infradead.org
+	id S932184AbbLGQmF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 7 Dec 2015 11:42:05 -0500
+Received: from int-mx13.intmail.prod.int.phx2.redhat.com (int-mx13.intmail.prod.int.phx2.redhat.com [10.5.11.26])
+	by mx1.redhat.com (Postfix) with ESMTPS id 40D8767C20
+	for <linux-nfs@vger.kernel.org>; Mon,  7 Dec 2015 16:42:05 +0000 (UTC)
+From: Scott Mayhew <smayhew@redhat.com>
+To: steved@redhat.com
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 02/10] NFS: Move the flock open mode check into nfs_flock()
-Date: Mon,  7 Dec 2015 11:26:01 -0500
-Message-Id: <cc80e246ee323a21f3f318248bf38eda668e8eb9.1449503713.git.bcodding@redhat.com>
-In-Reply-To: <cover.1449503713.git.bcodding@redhat.com>
-References: <cover.1449503713.git.bcodding@redhat.com>
-In-Reply-To: <cover.1449503713.git.bcodding@redhat.com>
-References: <cover.1449503713.git.bcodding@redhat.com>
+Subject: [nfs-utils PATCH] statd: make statd_canonical_name emit a warning if the presentation address maps to an empty hostname
+Date: Mon,  7 Dec 2015 11:42:03 -0500
+Message-Id: <1449506523-21897-1-git-send-email-smayhew@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We only need to check lock exclusive/shared types against open mode when
-flock() is used on NFS, so move it into the flock-specific path instead of
-checking it for all locks.
+Certain name resolution misconfigurations (for example, a hosts file
+entry with an ip address but no hostnames) can cause get_nameinfo() to
+return an empty string in buf, which will lead to this cryptic failure:
 
-Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+Dec  7 09:37:44 hostname rpc.statd[8024]: Failed to insert: creating
+/var/lib/nfs/statd/sm/: Is a directory
+Dec  7 09:37:44 hostname rpc.statd[8024]: STAT_FAIL to
+hostname.example.com for SM_MON of 192.168.1.2
+Dec  7 09:37:44 hostname kernel: lockd: cannot monitor 192.168.1.2
+
+It's better in that case to just go ahead and use the presentation
+address and log a more helpful warning:
+
+Dec  7 10:24:52 hostname rpc.statd[14224]: get_nameinfo returned empty
+hostname for 10.10.183.219.  Fix your name resolution!
+
+Signed-off-by: Scott Mayhew <smayhew@redhat.com>
 ---
- fs/nfs/file.c     |   15 +++++++++++++++
- fs/nfs/nfs4proc.c |   13 -------------
- 2 files changed, 15 insertions(+), 13 deletions(-)
+ utils/statd/hostname.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
 
-diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index 93e2364..ec16abc 100644
---- a/fs/nfs/file.c
-+++ b/fs/nfs/file.c
-@@ -893,6 +893,21 @@ int nfs_flock(struct file *filp, int cmd, struct file_lock *fl)
- 	/* We're simulating flock() locks using posix locks on the server */
- 	if (fl->fl_type == F_UNLCK)
- 		return do_unlk(filp, cmd, fl, is_local);
-+
-+	/*
-+	 * Don't rely on the VFS having checked the file open mode,
-+	 * since it won't do this for flock() locks.
-+	 */
-+	switch (fl->fl_type) {
-+	case F_RDLCK:
-+		if (!(filp->f_mode & FMODE_READ))
-+			return -EBADF;
-+		break;
-+	case F_WRLCK:
-+		if (!(filp->f_mode & FMODE_WRITE))
-+			return -EBADF;
-+	}
-+
- 	return do_setlk(filp, cmd, fl, is_local);
- }
- EXPORT_SYMBOL_GPL(nfs_flock);
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 2231d7d..05ea1e1 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -6125,19 +6125,6 @@ nfs4_proc_lock(struct file *filp, int cmd, struct file_lock *request)
+diff --git a/utils/statd/hostname.c b/utils/statd/hostname.c
+index c61087c..86d11ca 100644
+--- a/utils/statd/hostname.c
++++ b/utils/statd/hostname.c
+@@ -211,6 +211,12 @@ statd_canonical_name(const char *hostname)
+ 			/* OK to use presentation address,
+ 			 * if no reverse map exists */
+ 			return strdup(hostname);
++		else if (buf[0] == '\0') {
++			xlog_warn("get_nameinfo returned empty hostname for "
++					"%s. Fix your name resolution!",
++					hostname);
++			return strdup(hostname);
++		}
+ 		return strdup(buf);
+ 	}
  
- 	if (state == NULL)
- 		return -ENOLCK;
--	/*
--	 * Don't rely on the VFS having checked the file open mode,
--	 * since it won't do this for flock() locks.
--	 */
--	switch (request->fl_type) {
--	case F_RDLCK:
--		if (!(filp->f_mode & FMODE_READ))
--			return -EBADF;
--		break;
--	case F_WRLCK:
--		if (!(filp->f_mode & FMODE_WRITE))
--			return -EBADF;
--	}
- 
- 	do {
- 		status = nfs4_proc_setlk(state, cmd, request);
 -- 
-1.7.1
+2.4.3
 
