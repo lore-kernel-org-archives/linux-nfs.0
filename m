@@ -1,98 +1,108 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx142.netapp.com ([216.240.21.19]:31850 "EHLO mx142.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753450AbbLGVD5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 7 Dec 2015 16:03:57 -0500
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-Subject: Re: [PATCH v1 2/3] NFSD: Implement the COPY call
-To: Christoph Hellwig <hch@infradead.org>,
-        Anna Schumaker <Anna.Schumaker@netapp.com>
-References: <1449176137-4940-1-git-send-email-Anna.Schumaker@Netapp.com>
- <1449176137-4940-3-git-send-email-Anna.Schumaker@Netapp.com>
- <20151207192646.GB8318@infradead.org>
-CC: <linux-nfs@vger.kernel.org>, <Trond.Myklebust@primarydata.com>,
-        <bfields@fieldses.org>
-Message-ID: <5665F42F.1090000@Netapp.com>
-Date: Mon, 7 Dec 2015 16:03:43 -0500
-MIME-Version: 1.0
-In-Reply-To: <20151207192646.GB8318@infradead.org>
-Content-Type: text/plain; charset="utf-8"
-Sender: linux-nfs-owner@vger.kernel.org
+Return-Path: <trond.myklebust@primarydata.com>
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Benjamin Coddington <bcodding@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] SUNRPC: Fix callback channel
+Date: Mon,  7 Dec 2015 13:05:53 -0800
+Message-Id: <1449522353-3719-1-git-send-email-trond.myklebust@primarydata.com>
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 12/07/2015 02:26 PM, Christoph Hellwig wrote:
->>  static __be32
->> +nfsd4_verify_copy(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->> +		  struct nfsd4_copy *copy, struct file **src, struct file **dst)
->> +{
->> +	__be32 status;
->> +
->> +	status = nfs4_preprocess_stateid_op(rqstp, cstate, &cstate->save_fh,
->> +						&copy->cp_src_stateid, RD_STATE,
->> +						src, NULL);
->> +	if (status) {
->> +		dprintk("NFSD: nfsd4_copy: couldn't process src stateid!\n");
->> +		return status;
->> +	}
->> +
->> +	status = nfs4_preprocess_stateid_op(rqstp, cstate, &cstate->current_fh,
->> +						&copy->cp_dst_stateid, WR_STATE,
->> +						dst, NULL);
->> +	if (status) {
->> +		dprintk("NFSD: nfsd4_copy: couldn't process dst stateid!\n");
->> +		fput(*src);
->> +	}
-> 
-> This is missing a return status.  On the clone side that caused really
-> hard to debug crashes when xfstests hit this case.  While you're at it
-> I'd suggest to also kill the nfsd4_verify_copy heper.  You might also
-> need a check for invalid file types that maps to the correct NFS error
-> code, similar to clone.
+The NFSv4.1 callback channel is currently broken because the receive
+message will keep shrinking because the backchannel receive buffer size
+never gets reset.
+The easiest solution to this problem is instead of changing the receive
+buffer, to rather adjust the copied request.
 
-I just updated against the clone code, and I made some of these changes earlier this afternoon.  I kept the verify_copy() helper around and changed clone to call it, since all of the stateid verification code would be almost identical.
+Fixes: 38b7631fbe42 ("nfs4: limit callback decoding to received bytes")
+Cc: Benjamin Coddington <bcodding@redhat.com>
+Cc: stable@vger.kernel.org
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfs/callback_xdr.c         |  7 ++-----
+ net/sunrpc/backchannel_rqst.c |  8 --------
+ net/sunrpc/svc.c              | 12 ++++++++++++
+ 3 files changed, 14 insertions(+), 13 deletions(-)
 
-> 
->> +	if (bytes < 0)
->> +		status = nfserrno(bytes);
-> 
-> maybe use a goto here?
-
-Maybe.  I'll see how the code looks!
-
-> 
->> +	else {
->> +		copy->cp_res.wr_bytes_written = bytes;
->> +		copy->cp_res.wr_stable_how = NFS_FILE_SYNC;
->> +		copy->cp_consecutive = 1;
-> 
-> is there anything in the linux semantics that guarantees consecutive
-> operation?
-
-I think so.  The splice fallback iterates starting at the beginning of the file, so if something goes wrong later on then the earlier pages should at least be copied.
-
-> 
->> +		       u64 count)
->> +{
->> +	ssize_t bytes;
->> +	u64 limit = 0x10000000;
->> +
->> +	if (count > limit)
->> +		count = limit;
->> +
->> +	bytes = vfs_copy_file_range(src, src_pos, dst, dst_pos, count, 0);
->> +	if (bytes > 0)
->> +		vfs_fsync_range(dst, dst_pos, dst_pos + bytes, 0);
->> +	return bytes;
-> 
-> How about returning NFS_UNSTABLE above and avoiding the fsync here?
-
-I was just looking into this, too.  I'm trying to figure out the right way to handle this on the client side, since right now we ignore this value.  I have gotten as far as "if the file is open with O_SYNC, then we should commit after copying."
-
-Anna
-
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-
+diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
+index beac58b0e09c..646cdac73488 100644
+--- a/fs/nfs/callback_xdr.c
++++ b/fs/nfs/callback_xdr.c
+@@ -78,8 +78,7 @@ static __be32 *read_buf(struct xdr_stream *xdr, int nbytes)
+ 
+ 	p = xdr_inline_decode(xdr, nbytes);
+ 	if (unlikely(p == NULL))
+-		printk(KERN_WARNING "NFS: NFSv4 callback reply buffer overflowed "
+-							"or truncated request.\n");
++		printk(KERN_WARNING "NFS: NFSv4 callback reply buffer overflowed!\n");
+ 	return p;
+ }
+ 
+@@ -890,7 +889,6 @@ static __be32 nfs4_callback_compound(struct svc_rqst *rqstp, void *argp, void *r
+ 	struct cb_compound_hdr_arg hdr_arg = { 0 };
+ 	struct cb_compound_hdr_res hdr_res = { NULL };
+ 	struct xdr_stream xdr_in, xdr_out;
+-	struct xdr_buf *rq_arg = &rqstp->rq_arg;
+ 	__be32 *p, status;
+ 	struct cb_process_state cps = {
+ 		.drc_status = 0,
+@@ -902,8 +900,7 @@ static __be32 nfs4_callback_compound(struct svc_rqst *rqstp, void *argp, void *r
+ 
+ 	dprintk("%s: start\n", __func__);
+ 
+-	rq_arg->len = rq_arg->head[0].iov_len + rq_arg->page_len;
+-	xdr_init_decode(&xdr_in, rq_arg, rq_arg->head[0].iov_base);
++	xdr_init_decode(&xdr_in, &rqstp->rq_arg, rqstp->rq_arg.head[0].iov_base);
+ 
+ 	p = (__be32*)((char *)rqstp->rq_res.head[0].iov_base + rqstp->rq_res.head[0].iov_len);
+ 	xdr_init_encode(&xdr_out, &rqstp->rq_res, p);
+diff --git a/net/sunrpc/backchannel_rqst.c b/net/sunrpc/backchannel_rqst.c
+index 95f82d8d4888..229956bf8457 100644
+--- a/net/sunrpc/backchannel_rqst.c
++++ b/net/sunrpc/backchannel_rqst.c
+@@ -353,20 +353,12 @@ void xprt_complete_bc_request(struct rpc_rqst *req, uint32_t copied)
+ {
+ 	struct rpc_xprt *xprt = req->rq_xprt;
+ 	struct svc_serv *bc_serv = xprt->bc_serv;
+-	struct xdr_buf *rq_rcv_buf = &req->rq_rcv_buf;
+ 
+ 	spin_lock(&xprt->bc_pa_lock);
+ 	list_del(&req->rq_bc_pa_list);
+ 	xprt_dec_alloc_count(xprt, 1);
+ 	spin_unlock(&xprt->bc_pa_lock);
+ 
+-	if (copied <= rq_rcv_buf->head[0].iov_len) {
+-		rq_rcv_buf->head[0].iov_len = copied;
+-		rq_rcv_buf->page_len = 0;
+-	} else {
+-		rq_rcv_buf->page_len = copied - rq_rcv_buf->head[0].iov_len;
+-	}
+-
+ 	req->rq_private_buf.len = copied;
+ 	set_bit(RPC_BC_PA_IN_USE, &req->rq_bc_pa_state);
+ 
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index 7fccf9675df8..cc9852897395 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -1363,7 +1363,19 @@ bc_svc_process(struct svc_serv *serv, struct rpc_rqst *req,
+ 	memcpy(&rqstp->rq_addr, &req->rq_xprt->addr, rqstp->rq_addrlen);
+ 	memcpy(&rqstp->rq_arg, &req->rq_rcv_buf, sizeof(rqstp->rq_arg));
+ 	memcpy(&rqstp->rq_res, &req->rq_snd_buf, sizeof(rqstp->rq_res));
++
++	/* Adjust the argument buffer length */
+ 	rqstp->rq_arg.len = req->rq_private_buf.len;
++	if (rqstp->rq_arg.len <= rqstp->rq_arg.head[0].iov_len) {
++		rqstp->rq_arg.head[0].iov_len = rqstp->rq_arg.len;
++		rqstp->rq_arg.page_len = 0;
++	} else if (rqstp->rq_arg.len <= rqstp->rq_arg.head[0].iov_len +
++			rqstp->rq_arg.page_len)
++		rqstp->rq_arg.page_len = rqstp->rq_arg.len -
++			rqstp->rq_arg.head[0].iov_len;
++	else
++		rqstp->rq_arg.len = rqstp->rq_arg.head[0].iov_len +
++			rqstp->rq_arg.page_len;
+ 
+ 	/* reset result send buffer "put" position */
+ 	resv->iov_len = 0;
+-- 
+2.5.0
