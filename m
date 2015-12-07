@@ -1,7 +1,7 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:55570 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:40838 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932923AbbLGQ0L (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	id S932911AbbLGQ0L (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
 	Mon, 7 Dec 2015 11:26:11 -0500
 From: Benjamin Coddington <bcodding@redhat.com>
 To: "J. Bruce Fields" <bfields@fieldses.org>,
@@ -9,9 +9,9 @@ To: "J. Bruce Fields" <bfields@fieldses.org>,
         Trond Myklebust <trond.myklebust@primarydata.com>,
         Anna Schumaker <anna.schumaker@netapp.com>, hch@infradead.org
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 06/10] lockd: Send the inode to nlmclnt_setlockargs()
-Date: Mon,  7 Dec 2015 11:26:05 -0500
-Message-Id: <f6d53e7e8791209c0de0668405f35524a7db114c.1449503713.git.bcodding@redhat.com>
+Subject: [PATCH v2 07/10] lockd: do_vfs_lock() only needs the inode
+Date: Mon,  7 Dec 2015 11:26:06 -0500
+Message-Id: <565d24deaab6b9e931076eac2236097d1f42cc65.1449503713.git.bcodding@redhat.com>
 In-Reply-To: <cover.1449503713.git.bcodding@redhat.com>
 References: <cover.1449503713.git.bcodding@redhat.com>
 In-Reply-To: <cover.1449503713.git.bcodding@redhat.com>
@@ -19,65 +19,75 @@ References: <cover.1449503713.git.bcodding@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Instead of using fl_file to reference the inode in nlmclnt_setlockargs() to
-set the filehandle, send the inode as an argument.  That way, we can use
-nlmclnt_proc without having a valid fl_file, which can happen if we are
-releasing locks after a close.
+Send the inode instead of the file to do_vfs_lock() by using
+locks_lock_inode_wait().  This allows an unlock operation to complete
+after a close when there may not be an fl_file.
 
 Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
 ---
- fs/lockd/clntproc.c |   11 ++++++-----
- 1 files changed, 6 insertions(+), 5 deletions(-)
+ fs/lockd/clntproc.c |   13 +++++++------
+ 1 files changed, 7 insertions(+), 6 deletions(-)
 
 diff --git a/fs/lockd/clntproc.c b/fs/lockd/clntproc.c
-index 72b65c4..91aa483 100644
+index 91aa483..fa1d83b 100644
 --- a/fs/lockd/clntproc.c
 +++ b/fs/lockd/clntproc.c
-@@ -122,14 +122,15 @@ static struct nlm_lockowner *nlm_find_lockowner(struct nlm_host *host, fl_owner_
- /*
-  * Initialize arguments for TEST/LOCK/UNLOCK/CANCEL calls
-  */
--static void nlmclnt_setlockargs(struct nlm_rqst *req, struct file_lock *fl)
-+static void nlmclnt_setlockargs(struct nlm_rqst *req, struct file_lock *fl,
-+		struct inode *inode)
+@@ -476,9 +476,9 @@ static void nlmclnt_locks_init_private(struct file_lock *fl, struct nlm_host *ho
+ 	fl->fl_ops = &nlmclnt_lock_ops;
+ }
+ 
+-static int do_vfs_lock(struct file_lock *fl)
++static int do_vfs_lock(struct inode *inode, struct file_lock *fl)
  {
- 	struct nlm_args	*argp = &req->a_args;
- 	struct nlm_lock	*lock = &argp->lock;
- 	char *nodename = req->a_host->h_rpcclnt->cl_nodename;
+-	return locks_lock_file_wait(fl->fl_file, fl);
++	return locks_lock_inode_wait(inode, fl);
+ }
  
- 	nlmclnt_next_cookie(&argp->cookie);
--	memcpy(&lock->fh, NFS_FH(file_inode(fl->fl_file)), sizeof(struct nfs_fh));
-+	memcpy(&lock->fh, NFS_FH(inode), sizeof(struct nfs_fh));
- 	lock->caller  = nodename;
- 	lock->oh.data = req->a_owner;
- 	lock->oh.len  = snprintf(req->a_owner, sizeof(req->a_owner), "%u@%s",
-@@ -171,7 +172,7 @@ int nlmclnt_proc(struct nfs_open_context *ctx, int cmd, struct file_lock *fl)
- 		return -ENOMEM;
- 	}
- 	/* Set up the argument struct */
--	nlmclnt_setlockargs(call, fl);
-+	nlmclnt_setlockargs(call, fl, inode);
+ /*
+@@ -508,6 +508,7 @@ nlmclnt_lock(struct nlm_rqst *req, struct file_lock *fl)
+ 	struct nlm_host	*host = req->a_host;
+ 	struct nlm_res	*resp = &req->a_res;
+ 	struct nlm_wait *block = NULL;
++	struct inode *inode = file_inode(fl->fl_file);
+ 	unsigned char fl_flags = fl->fl_flags;
+ 	unsigned char fl_type;
+ 	int status = -ENOLCK;
+@@ -517,7 +518,7 @@ nlmclnt_lock(struct nlm_rqst *req, struct file_lock *fl)
+ 	req->a_args.state = nsm_local_state;
  
- 	if (IS_SETLK(cmd) || IS_SETLKW(cmd)) {
- 		if (fl->fl_type != F_UNLCK) {
-@@ -619,7 +620,7 @@ nlmclnt_reclaim(struct nlm_host *host, struct file_lock *fl,
- 	req->a_host  = host;
- 
- 	/* Set up the argument struct */
--	nlmclnt_setlockargs(req, fl);
-+	nlmclnt_setlockargs(req, fl, file_inode(fl->fl_file));
- 	req->a_args.reclaim = 1;
- 
- 	status = nlmclnt_call(nfs_file_cred(fl->fl_file), req, NLMPROC_LOCK);
-@@ -746,7 +747,7 @@ static int nlmclnt_cancel(struct nlm_host *host, int block, struct file_lock *fl
- 		return -ENOMEM;
- 	req->a_flags = RPC_TASK_ASYNC;
- 
--	nlmclnt_setlockargs(req, fl);
-+	nlmclnt_setlockargs(req, fl, file_inode(fl->fl_file));
- 	req->a_args.block = block;
- 
- 	atomic_inc(&req->a_count);
+ 	fl->fl_flags |= FL_ACCESS;
+-	status = do_vfs_lock(fl);
++	status = do_vfs_lock(inode, fl);
+ 	fl->fl_flags = fl_flags;
+ 	if (status < 0)
+ 		goto out;
+@@ -567,7 +568,7 @@ again:
+ 		}
+ 		/* Ensure the resulting lock will get added to granted list */
+ 		fl->fl_flags |= FL_SLEEP;
+-		if (do_vfs_lock(fl) < 0)
++		if (do_vfs_lock(inode, fl) < 0)
+ 			printk(KERN_WARNING "%s: VFS is out of sync with lock manager!\n", __func__);
+ 		up_read(&host->h_rwsem);
+ 		fl->fl_flags = fl_flags;
+@@ -597,7 +598,7 @@ out_unlock:
+ 	fl_type = fl->fl_type;
+ 	fl->fl_type = F_UNLCK;
+ 	down_read(&host->h_rwsem);
+-	do_vfs_lock(fl);
++	do_vfs_lock(inode, fl);
+ 	up_read(&host->h_rwsem);
+ 	fl->fl_type = fl_type;
+ 	fl->fl_flags = fl_flags;
+@@ -665,7 +666,7 @@ nlmclnt_unlock(struct nfs_open_context *ctx,
+ 	 */
+ 	fl->fl_flags |= FL_EXISTS;
+ 	down_read(&host->h_rwsem);
+-	status = do_vfs_lock(fl);
++	status = do_vfs_lock(d_inode(ctx->dentry), fl);
+ 	up_read(&host->h_rwsem);
+ 	fl->fl_flags = fl_flags;
+ 	if (status == -ENOENT) {
 -- 
 1.7.1
 
