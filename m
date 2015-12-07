@@ -1,80 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pa0-f51.google.com ([209.85.220.51]:33104 "EHLO
-	mail-pa0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754263AbbLGBzS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 6 Dec 2015 20:55:18 -0500
-Received: by pabfh17 with SMTP id fh17so119519957pab.0
-        for <linux-nfs@vger.kernel.org>; Sun, 06 Dec 2015 17:55:18 -0800 (PST)
-From: Peng Tao <tao.peng@primarydata.com>
+Received: from mx1.redhat.com ([209.132.183.28]:56637 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754994AbbLGJqY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 7 Dec 2015 04:46:24 -0500
+From: Yongcheng Yang <yoyang@redhat.com>
 To: linux-nfs@vger.kernel.org
-Cc: Anna Schumaker <Anna.Schumaker@netapp.com>,
-        Trond.Myklebust@primarydata.com, Peng Tao <tao.peng@primarydata.com>
-Subject: [PATCH] NFS42: handle layoutstats stateid error
-Date: Sun,  6 Dec 2015 20:55:09 -0500
-Message-Id: <1449453309-7192-1-git-send-email-tao.peng@primarydata.com>
+Cc: Yongcheng Yang <yongcheng.yang@gmail.com>
+Subject: [PATCH] exportfs: Deal with path's trailing "/" in unexportfs_parsed()
+Date: Mon,  7 Dec 2015 17:46:17 +0800
+Message-Id: <1449481577-19927-1-git-send-email-yoyang@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When server returns layoutstats stateid error, we should
-invalidate client's layout so that next IO can trigger new
-layoutget.
+From: Yongcheng Yang <yongcheng.yang@gmail.com>
 
-Signed-off-by: Peng Tao <tao.peng@primarydata.com>
+When unexport directory, it's possible that the specified path ends with
+a '/'. So we need to deal with it to find the matched entry.
+
+If not, there will be error like "Could not find '*:/some_path/' to unexport."
+
+Signed-off-by: Yongcheng Yang <yongcheng.yang@gmail.com>
 ---
- fs/nfs/nfs42proc.c | 29 +++++++++++++++++++++++++++--
- 1 file changed, 27 insertions(+), 2 deletions(-)
+ utils/exportfs/exportfs.c | 11 ++++++++++-
+ 1 file changed, 10 insertions(+), 1 deletion(-)
 
-diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
-index 6b1ce98..6e81749 100644
---- a/fs/nfs/nfs42proc.c
-+++ b/fs/nfs/nfs42proc.c
-@@ -204,6 +204,8 @@ static void
- nfs42_layoutstat_done(struct rpc_task *task, void *calldata)
- {
- 	struct nfs42_layoutstat_data *data = calldata;
-+	struct inode *inode = data->inode;
-+	struct pnfs_layout_hdr *lo;
- 
- 	if (!nfs4_sequence_done(task, &data->res.seq_res))
- 		return;
-@@ -211,12 +213,35 @@ nfs42_layoutstat_done(struct rpc_task *task, void *calldata)
- 	switch (task->tk_status) {
- 	case 0:
- 		break;
-+	case -NFS4ERR_EXPIRED:
-+	case -NFS4ERR_STALE_STATEID:
-+	case -NFS4ERR_OLD_STATEID:
-+	case -NFS4ERR_BAD_STATEID:
-+		spin_lock(&inode->i_lock);
-+		lo = NFS_I(inode)->layout;
-+		if (lo && nfs4_stateid_match(&data->args.stateid,
-+					     &lo->plh_stateid)) {
-+			LIST_HEAD(head);
-+
-+			/*
-+			 * Mark the bad layout state as invalid, then retry
-+			 * with the current stateid.
-+			 */
-+			set_bit(NFS_LAYOUT_INVALID_STID, &lo->plh_flags);
-+			pnfs_mark_matching_lsegs_invalid(lo, &head, NULL);
-+			spin_unlock(&inode->i_lock);
-+			pnfs_free_lseg_list(&head);
-+		} else
-+			spin_unlock(&inode->i_lock);
-+		break;
- 	case -ENOTSUPP:
- 	case -EOPNOTSUPP:
--		NFS_SERVER(data->inode)->caps &= ~NFS_CAP_LAYOUTSTATS;
-+		NFS_SERVER(inode)->caps &= ~NFS_CAP_LAYOUTSTATS;
- 	default:
--		dprintk("%s server returns %d\n", __func__, task->tk_status);
-+		break;
+diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
+index c7a79a6..a9151ff 100644
+--- a/utils/exportfs/exportfs.c
++++ b/utils/exportfs/exportfs.c
+@@ -405,8 +405,17 @@ unexportfs_parsed(char *hname, char *path, int verbose)
+ 			hname = ai->ai_canonname;
  	}
-+
-+	dprintk("%s server returns %d\n", __func__, task->tk_status);
- }
  
- static void
++	/*
++	 * It's possible the specified path ends with a '/'. But
++	 * the entry from exportlist won't has the trailing '/',
++	 * so need to deal with it.
++	*/
++	size_t nlen = strlen(path);
++	while (path[nlen - 1] == '/')
++		nlen--;
++
+ 	for (exp = exportlist[htype].p_head; exp; exp = exp->m_next) {
+-		if (path && strcmp(path, exp->m_export.e_path))
++		if (path && strncmp(path, exp->m_export.e_path, nlen))
+ 			continue;
+ 		if (htype != exp->m_client->m_type)
+ 			continue;
 -- 
-1.8.3.1
+2.1.0
 
