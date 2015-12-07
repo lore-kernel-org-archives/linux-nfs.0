@@ -1,108 +1,50 @@
-Return-Path: <trond.myklebust@primarydata.com>
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Benjamin Coddington <bcodding@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] SUNRPC: Fix callback channel
-Date: Mon,  7 Dec 2015 13:05:53 -0800
-Message-Id: <1449522353-3719-1-git-send-email-trond.myklebust@primarydata.com>
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from userp1040.oracle.com ([156.151.31.81]:40840 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754745AbbLGVJ5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Dec 2015 16:09:57 -0500
+Date: Mon, 7 Dec 2015 13:09:46 -0800
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+To: Christoph Hellwig <hch@lst.de>
+Cc: viro@zeniv.linux.org.uk, tao.peng@primarydata.com,
+        jeff.layton@primarydata.com, bfields@fieldses.org,
+        linux-fsdevel@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org
+Subject: Re: [PATCH 2/4] vfs: pull btrfs clone API to vfs layer
+Message-ID: <20151207210946.GB28038@birch.djwong.org>
+References: <1449143992-7415-1-git-send-email-hch@lst.de>
+ <1449143992-7415-3-git-send-email-hch@lst.de>
+ <20151207005331.GA10582@birch.djwong.org>
+ <20151207151319.GA2472@lst.de>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20151207151319.GA2472@lst.de>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The NFSv4.1 callback channel is currently broken because the receive
-message will keep shrinking because the backchannel receive buffer size
-never gets reset.
-The easiest solution to this problem is instead of changing the receive
-buffer, to rather adjust the copied request.
+On Mon, Dec 07, 2015 at 04:13:19PM +0100, Christoph Hellwig wrote:
+> On Sun, Dec 06, 2015 at 04:53:31PM -0800, Darrick J. Wong wrote:
+> > > +	if (S_ISDIR(inode_in->i_mode) || S_ISDIR(inode_out->i_mode))
+> > > +		return -EISDIR;
+> > > +	if (!S_ISREG(inode_in->i_mode) || !S_ISREG(inode_out->i_mode))
+> > > +		return -EOPNOTSUPP;
+> > 
+> > I thought we were moving to -EINVAL for wrong file types?
+> > 
+> > Though, perhaps "I've also prepared a btrfs patch for this and clone" from the
+> > earlier thread about generic/157 wasn't referring to /this/ patch. :)
+> > 
+> > In any case, I'm ok with EINVAL, and I haven't heard any objections to
+> > changing -EOPNOTSUPP -> -EINVAL when trying to reflink/dedupe/whatever
+> > non-file non-dir fds.
+> 
+> I'm fine with with EINVAL - not sure why I ended up with EOPNOTSUP,
+> probably because 157 is already failing as in general the errors for
+> something in the VFS vs a specific ioctl handler are just too different.
 
-Fixes: 38b7631fbe42 ("nfs4: limit callback decoding to received bytes")
-Cc: Benjamin Coddington <bcodding@redhat.com>
-Cc: stable@vger.kernel.org
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/callback_xdr.c         |  7 ++-----
- net/sunrpc/backchannel_rqst.c |  8 --------
- net/sunrpc/svc.c              | 12 ++++++++++++
- 3 files changed, 14 insertions(+), 13 deletions(-)
+Ok, I'm going to ensure that generic/1[57-60] all look for EINVAL when
+the file type is wrong, and resend the xfstests patches.  I'll also
+patch them up to accept the error codes that btrfs spit out before the
+ioctl hoist.
 
-diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
-index beac58b0e09c..646cdac73488 100644
---- a/fs/nfs/callback_xdr.c
-+++ b/fs/nfs/callback_xdr.c
-@@ -78,8 +78,7 @@ static __be32 *read_buf(struct xdr_stream *xdr, int nbytes)
- 
- 	p = xdr_inline_decode(xdr, nbytes);
- 	if (unlikely(p == NULL))
--		printk(KERN_WARNING "NFS: NFSv4 callback reply buffer overflowed "
--							"or truncated request.\n");
-+		printk(KERN_WARNING "NFS: NFSv4 callback reply buffer overflowed!\n");
- 	return p;
- }
- 
-@@ -890,7 +889,6 @@ static __be32 nfs4_callback_compound(struct svc_rqst *rqstp, void *argp, void *r
- 	struct cb_compound_hdr_arg hdr_arg = { 0 };
- 	struct cb_compound_hdr_res hdr_res = { NULL };
- 	struct xdr_stream xdr_in, xdr_out;
--	struct xdr_buf *rq_arg = &rqstp->rq_arg;
- 	__be32 *p, status;
- 	struct cb_process_state cps = {
- 		.drc_status = 0,
-@@ -902,8 +900,7 @@ static __be32 nfs4_callback_compound(struct svc_rqst *rqstp, void *argp, void *r
- 
- 	dprintk("%s: start\n", __func__);
- 
--	rq_arg->len = rq_arg->head[0].iov_len + rq_arg->page_len;
--	xdr_init_decode(&xdr_in, rq_arg, rq_arg->head[0].iov_base);
-+	xdr_init_decode(&xdr_in, &rqstp->rq_arg, rqstp->rq_arg.head[0].iov_base);
- 
- 	p = (__be32*)((char *)rqstp->rq_res.head[0].iov_base + rqstp->rq_res.head[0].iov_len);
- 	xdr_init_encode(&xdr_out, &rqstp->rq_res, p);
-diff --git a/net/sunrpc/backchannel_rqst.c b/net/sunrpc/backchannel_rqst.c
-index 95f82d8d4888..229956bf8457 100644
---- a/net/sunrpc/backchannel_rqst.c
-+++ b/net/sunrpc/backchannel_rqst.c
-@@ -353,20 +353,12 @@ void xprt_complete_bc_request(struct rpc_rqst *req, uint32_t copied)
- {
- 	struct rpc_xprt *xprt = req->rq_xprt;
- 	struct svc_serv *bc_serv = xprt->bc_serv;
--	struct xdr_buf *rq_rcv_buf = &req->rq_rcv_buf;
- 
- 	spin_lock(&xprt->bc_pa_lock);
- 	list_del(&req->rq_bc_pa_list);
- 	xprt_dec_alloc_count(xprt, 1);
- 	spin_unlock(&xprt->bc_pa_lock);
- 
--	if (copied <= rq_rcv_buf->head[0].iov_len) {
--		rq_rcv_buf->head[0].iov_len = copied;
--		rq_rcv_buf->page_len = 0;
--	} else {
--		rq_rcv_buf->page_len = copied - rq_rcv_buf->head[0].iov_len;
--	}
--
- 	req->rq_private_buf.len = copied;
- 	set_bit(RPC_BC_PA_IN_USE, &req->rq_bc_pa_state);
- 
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index 7fccf9675df8..cc9852897395 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -1363,7 +1363,19 @@ bc_svc_process(struct svc_serv *serv, struct rpc_rqst *req,
- 	memcpy(&rqstp->rq_addr, &req->rq_xprt->addr, rqstp->rq_addrlen);
- 	memcpy(&rqstp->rq_arg, &req->rq_rcv_buf, sizeof(rqstp->rq_arg));
- 	memcpy(&rqstp->rq_res, &req->rq_snd_buf, sizeof(rqstp->rq_res));
-+
-+	/* Adjust the argument buffer length */
- 	rqstp->rq_arg.len = req->rq_private_buf.len;
-+	if (rqstp->rq_arg.len <= rqstp->rq_arg.head[0].iov_len) {
-+		rqstp->rq_arg.head[0].iov_len = rqstp->rq_arg.len;
-+		rqstp->rq_arg.page_len = 0;
-+	} else if (rqstp->rq_arg.len <= rqstp->rq_arg.head[0].iov_len +
-+			rqstp->rq_arg.page_len)
-+		rqstp->rq_arg.page_len = rqstp->rq_arg.len -
-+			rqstp->rq_arg.head[0].iov_len;
-+	else
-+		rqstp->rq_arg.len = rqstp->rq_arg.head[0].iov_len +
-+			rqstp->rq_arg.page_len;
- 
- 	/* reset result send buffer "put" position */
- 	resv->iov_len = 0;
--- 
-2.5.0
+--D
