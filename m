@@ -1,91 +1,69 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:50815 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932419AbbLGQFq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 7 Dec 2015 11:05:46 -0500
-Date: Mon, 7 Dec 2015 11:05:44 -0500 (EST)
-From: Benjamin Coddington <bcodding@redhat.com>
-To: Jeff Layton <jlayton@poochiereds.net>
-cc: linux-nfs@vger.kernel.org, trond.myklebust@primarydata.com,
-        anna.schumaker@netapp.com
-Subject: Re: [PATCH 10/10] NFS: Deferred unlocks - always unlock on
- FL_CLOSE
-In-Reply-To: <20151014163018.1d2de645@synchrony.poochiereds.net>
-Message-ID: <alpine.OSX.2.19.9992.1512071102150.61227@planck.local>
-References: <cover.1444846590.git.bcodding@redhat.com> <93c4aa68a777b232075b9b8252d671635bb1c320.1444846590.git.bcodding@redhat.com> <20151014163018.1d2de645@synchrony.poochiereds.net>
+Received: from mail-qg0-f51.google.com ([209.85.192.51]:36657 "EHLO
+	mail-qg0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753728AbbLGQMa (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Dec 2015 11:12:30 -0500
+Received: by qgcc31 with SMTP id c31so146683911qgc.3
+        for <linux-nfs@vger.kernel.org>; Mon, 07 Dec 2015 08:12:29 -0800 (PST)
+Date: Mon, 7 Dec 2015 11:12:26 -0500
+From: Jeff Layton <jlayton@poochiereds.net>
+To: Christoph Hellwig <hch@lst.de>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Kinglong Mee <kinglongmee@gmail.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH RFC] nfsd: serialize layout stateid morphing operations
+Message-ID: <20151207111226.6e56f7ab@tlielax.poochiereds.net>
+In-Reply-To: <20151207141701.GA1376@lst.de>
+References: <20151201174800.407e2c40@synchrony.poochiereds.net>
+	<20151202072504.GA15839@lst.de>
+	<20151203220850.GC19518@fieldses.org>
+	<20151204083803.GA2440@lst.de>
+	<20151204155110.64a352dd@tlielax.poochiereds.net>
+	<20151205120222.GA27009@lst.de>
+	<20151205072409.46d66109@tlielax.poochiereds.net>
+	<20151206080954.1fe7e5c9@tlielax.poochiereds.net>
+	<20151207130932.GB30843@lst.de>
+	<20151207082803.0b160bb6@tlielax.poochiereds.net>
+	<20151207141701.GA1376@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 14 Oct 2015, Jeff Layton wrote:
+On Mon, 7 Dec 2015 15:17:01 +0100
+Christoph Hellwig <hch@lst.de> wrote:
 
-> On Wed, 14 Oct 2015 14:23:37 -0400
-> Benjamin Coddington <bcodding@redhat.com> wrote:
->
-> > NFS unlock procedures will wait for IO to complete before sending an unlock.
-> > In the case that this wait is interrupted, an unlock may never be sent if
-> > the unlock is part of cleaning up locks during a close.  This lost lock can
-> > then prevent other clients from locking the file.
-> >
-> > Fix this by deferring an unlock that should wait for IO during FL_CLOSE by
-> > copying it to a list on the nfs_lock_context, which can then be used to
-> > release the lock when the IO has completed.
-> >
-> > Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
-> > ---
-> >  fs/nfs/file.c          |   36 +++++++++++++++++++++++++++++++++++-
-> >  fs/nfs/inode.c         |    1 +
-> >  fs/nfs/pagelist.c      |   23 ++++++++++++++++++++---
-> >  include/linux/nfs_fs.h |    7 +++++++
-> >  4 files changed, 63 insertions(+), 4 deletions(-)
-> >
-> > diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-> > index d16c50f..460311a 100644
-> > --- a/fs/nfs/file.c
-> > +++ b/fs/nfs/file.c
-> > @@ -738,6 +738,36 @@ out_noconflict:
-> >  }
-> >
-> >  static int
-> > +defer_unlk(struct nfs_lock_context *l_ctx, int cmd, struct file_lock *fl)
-> > +{
-> > +	struct inode *inode = d_inode(l_ctx->open_context->dentry);
-> > +	struct nfs_io_counter *c = &l_ctx->io_count;
-> > +	struct nfs_deferred_unlock *dunlk;
-> > +	int status = 0;
-> > +
-> > +	if (atomic_read(&c->io_count) == 0)
-> > +		return 0;
-> > +
-> > +	/* free in nfs_iocounter_dec */
-> > +	dunlk = kmalloc(sizeof(*dunlk), GFP_NOFS);
-> > +	if (dunlk == NULL)
-> > +		return -ENOMEM;
-> > +
->
-> This is a little ugly...
+> On Mon, Dec 07, 2015 at 08:28:03AM -0500, Jeff Layton wrote:
+> > My understanding is that you need to increment the seqid when prior to
+> > sending the callback. The basic idea there is that you want to ensure
+> > that any LAYOUTGETs that were sent before the CB_LAYOUTRECALL get back
+> > an OLD_STATEID error. RFC5661, Section 12.5.3:
+> > 
+> >     After the layout stateid is established, the server increments by
+> >     one the value of the "seqid" in each subsequent LAYOUTGET and
+> >     LAYOUTRETURN response, and in each CB_LAYOUTRECALL request.
+> 
+> True.  Although I really don't see any way to make layoutrecall processing
+> race free that way.  I guess your patch to just drop the mutex is the
+> best we could do.
+> 
+> Note that it doesn't really matter for the current server, as we will
+> always recall the whole file, and thus leave no layout state for it on
+> the client.  But for finger grained recalls this could become a
+> problem.
 
-> You're probably going to calling this from something like
-> locks_remove_posix, and if this allocation fails then the unlock will
-> just never happen.
->
-> Is there any way to avoid this allocation?
 
-Yes!  As you go on to suggest..
+Just thinking out loud...
 
-> The "cmd" field in nfs_deferred_unlock is more or less redundant. We're
-> always calling this with that set to F_UNLCK. We also know that this
-> will be called on the whole file range. Maybe we can simply add a flag
-> to the lock context to indicate whether we should send a whole-file
-> unlock on it when the io_count goes to zero.
+So we inc the seqid when sending the recall, and then the
+layoutreturn(s) will inc it again, so that should cover those cases.
 
-That simplifies things quite a bit..  I'm going to resubmit this with that
-approach.  Thanks!
+Let's suppose that the client returns 0 for the CB though, but never
+actually returns the layouts. At that point I guess we need to revoke
+the whole stateid, similarly to how we revoke delegations that aren't
+returned.
 
-> Also, on a somewhat related note...we aren't currently setting FL_CLOSE
-> in locks_remove_flock and we probably should be.
-
-I'll add that as well.
-
-Ben
+The catch here is that the revocation timer is the same as the RPC
+timeout period. It doesn't seem like there ought to be any relationship
+there. It ought to be 1-2 lease periods, IIRC?
+-- 
+Jeff Layton <jlayton@poochiereds.net>
