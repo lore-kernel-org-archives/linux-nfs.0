@@ -1,9 +1,9 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:40840 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754745AbbLGVJ5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Dec 2015 16:09:57 -0500
-Date: Mon, 7 Dec 2015 13:09:46 -0800
+Received: from aserp1040.oracle.com ([141.146.126.69]:20775 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932193AbbLHBzB (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Dec 2015 20:55:01 -0500
+Date: Mon, 7 Dec 2015 17:54:53 -0800
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
 To: Christoph Hellwig <hch@lst.de>
 Cc: viro@zeniv.linux.org.uk, tao.peng@primarydata.com,
@@ -11,7 +11,7 @@ Cc: viro@zeniv.linux.org.uk, tao.peng@primarydata.com,
         linux-fsdevel@vger.kernel.org, linux-btrfs@vger.kernel.org,
         linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org
 Subject: Re: [PATCH 2/4] vfs: pull btrfs clone API to vfs layer
-Message-ID: <20151207210946.GB28038@birch.djwong.org>
+Message-ID: <20151208015453.GD28038@birch.djwong.org>
 References: <1449143992-7415-1-git-send-email-hch@lst.de>
  <1449143992-7415-3-git-send-email-hch@lst.de>
  <20151207005331.GA10582@birch.djwong.org>
@@ -42,9 +42,6 @@ On Mon, Dec 07, 2015 at 04:13:19PM +0100, Christoph Hellwig wrote:
 > probably because 157 is already failing as in general the errors for
 > something in the VFS vs a specific ioctl handler are just too different.
 
-Ok, I'm going to ensure that generic/1[57-60] all look for EINVAL when
-the file type is wrong, and resend the xfstests patches.  I'll also
-patch them up to accept the error codes that btrfs spit out before the
-ioctl hoist.
+Ok, will have respun fixes for 157/158 soon.
 
 --D
