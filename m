@@ -1,125 +1,165 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.opengridcomputing.com ([72.48.136.20]:36154 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1756213AbbLHNbo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Dec 2015 08:31:44 -0500
-From: "Steve Wise" <swise@opengridcomputing.com>
-To: "'Chuck Lever'" <chuck.lever@oracle.com>
-Cc: <linux-rdma@vger.kernel.org>,
-        "'Veeresh U. Kokatnur'" <veereshuk@chelsio.com>,
-        "'Linux NFS Mailing List'" <linux-nfs@vger.kernel.org>
-References: <005001d13105$58a486f0$09ed94d0$@opengridcomputing.com> <88B98264-A00A-4957-963E-F672E7F6DBBC@oracle.com>
-In-Reply-To: <88B98264-A00A-4957-963E-F672E7F6DBBC@oracle.com>
-Subject: RE: warning in ext4 with nfs/rdma server
-Date: Tue, 8 Dec 2015 07:31:56 -0600
-Message-ID: <004001d131bc$ce9fd910$6bdf8b30$@opengridcomputing.com>
+Received: from mx1.redhat.com ([209.132.183.28]:37397 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756129AbbLHOUP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 8 Dec 2015 09:20:15 -0500
+Date: Tue, 8 Dec 2015 09:20:12 -0500 (EST)
+From: Benjamin Coddington <bcodding@redhat.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] nfs4: limit callback decoding to received bytes
+In-Reply-To: <CAHQdGtQfpNT0nNQ4R=vEcnzi=xtW3291i99nTCNJw3D5Gqq+Fg@mail.gmail.com>
+Message-ID: <alpine.OSX.2.19.9992.1512080553340.60717@planck.local>
+References: <80ed0167773dfee0807c79233555c7d0c1fae11a.1448031054.git.bcodding@redhat.com> <CAHQdGtQfpNT0nNQ4R=vEcnzi=xtW3291i99nTCNJw3D5Gqq+Fg@mail.gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Mon, 7 Dec 2015, Trond Myklebust wrote:
 
-
-> -----Original Message-----
-> From: Chuck Lever [mailto:chuck.lever@oracle.com]
-> Sent: Monday, December 07, 2015 9:45 AM
-> To: Steve Wise
-> Cc: linux-rdma@vger.kernel.org; Veeresh U. Kokatnur; Linux NFS Mailing List
-> Subject: Re: warning in ext4 with nfs/rdma server
-> 
-> Hi Steve-
-> 
-> > On Dec 7, 2015, at 10:38 AM, Steve Wise <swise@opengridcomputing.com> wrote:
-> >
-> > Hey Chuck/NFS developers,
-> >
-> > We're hitting this warning in ext4 on the linux-4.3 nfs server running over RDMA/cxgb4.  We're still gathering data, like if it
-> > happens with NFS/TCP.  But has anyone seen this warning on 4.3?  Is it likely to indicate some bug in the xprtrdma transport or
-> > above it in NFS?
-> 
-> Yes, please confirm with NFS/TCP. Thanks!
+> Hi Ben,
 >
+> I've hit a few problems with this patch after it went upstream.
+>
+> On Fri, Nov 20, 2015 at 6:55 AM, Benjamin Coddington
+> <bcodding@redhat.com> wrote:
+> > A truncated cb_compound request will cause the client to decode null or
+> > data from a previous callback for nfs4.1 backchannel case, or uninitialized
+> > data for the nfs4.0 case. This is because the path through
+> > svc_process_common() advances the request's iov_base and decrements iov_len
+> > without adjusting the overall xdr_buf's len field.  That causes
+> > xdr_init_decode() to set up the xdr_stream with an incorrect length in
+> > nfs4_callback_compound().
+> >
+> > Fixing this for the nfs4.1 backchannel case first requires setting the
+> > correct iov_len and page_len based on the length of received data in the
+> > same manner as the nfs4.0 case.
+> >
+> > Then the request's xdr_buf length can be adjusted for both cases based upon
+> > the remaining iov_len and page_len.
+> >
+> > Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+> > ---
+> >  fs/nfs/callback_xdr.c         |    7 +++++--
+> >  net/sunrpc/backchannel_rqst.c |    8 ++++++++
+> >  net/sunrpc/svc.c              |    1 +
+> >  3 files changed, 14 insertions(+), 2 deletions(-)
+> >
+> > diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
+> > index 6b1697a..1c8213e 100644
+> > --- a/fs/nfs/callback_xdr.c
+> > +++ b/fs/nfs/callback_xdr.c
+> > @@ -76,7 +76,8 @@ static __be32 *read_buf(struct xdr_stream *xdr, int nbytes)
+> >
+> >         p = xdr_inline_decode(xdr, nbytes);
+> >         if (unlikely(p == NULL))
+> > -               printk(KERN_WARNING "NFS: NFSv4 callback reply buffer overflowed!\n");
+> > +               printk(KERN_WARNING "NFS: NFSv4 callback reply buffer overflowed "
+> > +                                                       "or truncated request.\n");
+> >         return p;
+> >  }
+> >
+> > @@ -892,6 +893,7 @@ static __be32 nfs4_callback_compound(struct svc_rqst *rqstp, void *argp, void *r
+> >         struct cb_compound_hdr_arg hdr_arg = { 0 };
+> >         struct cb_compound_hdr_res hdr_res = { NULL };
+> >         struct xdr_stream xdr_in, xdr_out;
+> > +       struct xdr_buf *rq_arg = &rqstp->rq_arg;
+> >         __be32 *p, status;
+> >         struct cb_process_state cps = {
+> >                 .drc_status = 0,
+> > @@ -903,7 +905,8 @@ static __be32 nfs4_callback_compound(struct svc_rqst *rqstp, void *argp, void *r
+> >
+> >         dprintk("%s: start\n", __func__);
+> >
+> > -       xdr_init_decode(&xdr_in, &rqstp->rq_arg, rqstp->rq_arg.head[0].iov_base);
+> > +       rq_arg->len = rq_arg->head[0].iov_len + rq_arg->page_len;
+>
+> This is redundant.
 
-The same thing happens with NFS/TCP, so this isn't related to xprtrdma.
- 
-> 
-> > We can hit this running cthon tests over 2 mount points:
-> >
-> > -------------
-> > #!/bin/bash
-> > rm -rf /root/cthon04/loop_iter.txt
-> > while [ 1 ]
-> > do
-> > {
-> >
-> > ./server -s -m /mnt/share1 -o rdma,port=20049,vers=4 -p /mnt/share1 -N 100
-> > 102.1.1.162 &
-> > ./server -s -m /mnt/share2 -o rdma,port=20049,vers=3,rsize=65535,wsize=65535 -p
-> > /mnt/share2 -N 100 102.2.2.162 &
-> > wait
-> > echo "iteration $i" >>/root/cthon04/loop_iter.txt
-> > date >>/root/cthon04/loop_iter.txt
-> > }
-> > done
-> > --------------
-> >
-> > Thanks,
-> >
-> > Steve.
-> >
-> > ------------[ cut here ]------------
-> > WARNING: CPU: 14 PID: 6689 at fs/ext4/inode.c:231 ext4_evict_inode+0x41e/0x490
-> > [ext4]()
-> > Modules linked in: nfsd(E) lockd(E) grace(E) nfs_acl(E) exportfs(E)
-> > auth_rpcgss(E) rpcrdma(E) sunrpc(E) rdma_ucm(E) ib_uverbs(E) rdma_cm(E)
-> > ib_cm(E) ib_sa(E) ib_mad(E) iw_cxgb4(E) iw_cm(E) ib_core(E) ib_addr(E) cxgb4(E)
-> > autofs4(E) target_core_iblock(E) target_core_file(E) target_core_pscsi(E)
-> > target_core_mod(E) configfs(E) bnx2fc(E) cnic(E) uio(E) fcoe(E) libfcoe(E)
-> > 8021q(E) libfc(E) garp(E) stp(E) llc(E) cpufreq_ondemand(E) cachefiles(E)
-> > fscache(E) ipv6(E) dm_mirror(E) dm_region_hash(E) dm_log(E) vhost_net(E)
-> > macvtap(E) macvlan(E) vhost(E) tun(E) kvm(E) uinput(E) microcode(E) sg(E)
-> > pcspkr(E) serio_raw(E) fam15h_power(E) k10temp(E) amd64_edac_mod(E)
-> > edac_core(E) edac_mce_amd(E) i2c_piix4(E) igb(E) dca(E) i2c_algo_bit(E)
-> > i2c_core(E) ptp(E) pps_core(E) scsi_transport_fc(E) acpi_cpufreq(E) dm_mod(E)
-> > ext4(E) jbd2(E) mbcache(E) sr_mod(E) cdrom(E) sd_mod(E) ahci(E) libahci(E)
-> > [last unloaded: cxgb4]
-> > CPU: 14 PID: 6689 Comm: nfsd Tainted: G            E   4.3.0 #1
-> > Hardware name: Supermicro H8QGL/H8QGL, BIOS 3.5        12/19/2013
-> > 00000000000000e7 ffff88400634fad8 ffffffff812a4084 ffffffffa00c96eb
-> > 0000000000000000 ffff88400634fb18 ffffffff81059fd5 ffff88400634fbd8
-> > ffff880fd1a460c8 ffff880fd1a461d8 ffff880fd1a46008 ffff88400634fbd8
-> > Call Trace:
-> > [<ffffffff812a4084>] dump_stack+0x48/0x64
-> > [<ffffffff81059fd5>] warn_slowpath_common+0x95/0xe0
-> > [<ffffffff8105a03a>] warn_slowpath_null+0x1a/0x20
-> > [<ffffffffa007dd6e>] ext4_evict_inode+0x41e/0x490 [ext4]
-> > [<ffffffff811bcaae>] evict+0xae/0x1a0
-> > [<ffffffff811bcd45>] iput_final+0xe5/0x170
-> > [<ffffffff811bce73>] iput+0xa3/0xf0
-> > [<ffffffff811e14a4>] ? fsnotify_destroy_marks+0x64/0x80
-> > [<ffffffff811bafc9>] dentry_unlink_inode+0xa9/0xe0
-> > [<ffffffff811bb0a6>] d_delete+0xa6/0xb0
-> > [<ffffffff811b3308>] vfs_unlink+0x138/0x140
-> > [<ffffffffa0717835>] nfsd_unlink+0x165/0x200 [nfsd]
-> > [<ffffffffa071aa7c>] ? lru_put_end+0x5c/0x70 [nfsd]
-> > [<ffffffffa071e323>] nfsd3_proc_remove+0x83/0x120 [nfsd]
-> > [<ffffffffa07105ec>] nfsd_dispatch+0xdc/0x210 [nfsd]
-> > [<ffffffffa021c931>] svc_process_common+0x311/0x620 [sunrpc]
-> > [<ffffffffa0710bf0>] ? nfsd_set_nrthreads+0x1b0/0x1b0 [nfsd]
-> > [<ffffffffa021d078>] svc_process+0x128/0x1b0 [sunrpc]
-> > [<ffffffffa0710ce3>] nfsd+0xf3/0x160 [nfsd]
-> > [<ffffffff8107770c>] kthread+0xcc/0xf0
-> > [<ffffffff8108282e>] ? schedule_tail+0x1e/0xc0
-> > [<ffffffff81077640>] ? kthread_freezable_should_stop+0x70/0x70
-> > [<ffffffff815d44ef>] ret_from_fork+0x3f/0x70
-> > [<ffffffff81077640>] ? kthread_freezable_should_stop+0x70/0x70
-> > ---[ end trace 39afe9aeef2cfb34 ]---
-> > ------------[ cut here ]------------
-> 
-> --
-> Chuck Lever
-> 
-> 
+The decoding routines in svc_process_common() and svc_authenticate() are
+advancing the xdr_buf's iov_base and decremening iov_len without adjusting
+the overall xdr_buf.len field, so I believed this adjustment was necessary
+after they had moved things around.
 
+I'm simulating this problem by sending CB_COMPOUND instead of CB_NULL when
+setting up the callback channel (since that is easy to do in pynfs).  In
+that scenario, just before xdr_init_decode() my xdr_buf.len is 80 (the size
+of the RPC headers), but the xdr_buf.kvec iov_len is 0 (all the headers have
+been decoded).  Then xdr_init_decode() then skips xdr_set_iov() so xdr->end
+is never initialized, and xdr->nwords ends up at 20.
 
+Then, as we start decoding, we end up in __xdr_inline_decode(), which
+expects xdr->end to have a valid value if we haven't run out of nwords, or
+we start decoding a previous request or uninitialized data.  Usually, this
+is harmless, as the string decode overflows those 20 words, and NULL is
+returned in my test; however I believe it is possible to decode part of a
+previous request here..
+
+With this adjustment, nwords ends up at 0, so __xdr_inline_decode() returns
+before using xdr->end.
+
+Maybe the right fix is to adjust xdr_init_decode() to make sure xdr->end is
+always initialized based on iov_len.
+
+Let me know if it would be helpful for me to provide exactly the steps to
+reproduce my test.
+
+> > +       xdr_init_decode(&xdr_in, rq_arg, rq_arg->head[0].iov_base);
+> >
+> >         p = (__be32*)((char *)rqstp->rq_res.head[0].iov_base + rqstp->rq_res.head[0].iov_len);
+> >         xdr_init_encode(&xdr_out, &rqstp->rq_res, p);
+> > diff --git a/net/sunrpc/backchannel_rqst.c b/net/sunrpc/backchannel_rqst.c
+> > index 6255d14..d92cee1 100644
+> > --- a/net/sunrpc/backchannel_rqst.c
+> > +++ b/net/sunrpc/backchannel_rqst.c
+> > @@ -333,12 +333,20 @@ void xprt_complete_bc_request(struct rpc_rqst *req, uint32_t copied)
+> >  {
+> >         struct rpc_xprt *xprt = req->rq_xprt;
+> >         struct svc_serv *bc_serv = xprt->bc_serv;
+> > +       struct xdr_buf *rq_rcv_buf = &req->rq_rcv_buf;
+> >
+> >         spin_lock(&xprt->bc_pa_lock);
+> >         list_del(&req->rq_bc_pa_list);
+> >         xprt_dec_alloc_count(xprt, 1);
+> >         spin_unlock(&xprt->bc_pa_lock);
+> >
+> > +       if (copied <= rq_rcv_buf->head[0].iov_len) {
+> > +               rq_rcv_buf->head[0].iov_len = copied;
+> > +               rq_rcv_buf->page_len = 0;
+> > +       } else {
+> > +               rq_rcv_buf->page_len = copied - rq_rcv_buf->head[0].iov_len;
+> > +       }
+> > +
+>
+> There is a problem with this approach: req->rq_rcv_buf is never reset,
+> and so NFSv4 callbacks are now broken.
+> The correct fix for this issue is to do the above adjustment in
+> bc_svc_process(), so that it only applies to the resulting
+> rqstp->rq_arg.
+
+I assumed it was being reset, and my test didn't catch it.  Very sorry for
+the trouble, Trond.  It makes much more sense to adjust the service's rqstp
+after the copy.
+
+Ben
+
+> >         req->rq_private_buf.len = copied;
+> >         set_bit(RPC_BC_PA_IN_USE, &req->rq_bc_pa_state);
+> >
+> > diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+> > index a8f579d..af9f987 100644
+> > --- a/net/sunrpc/svc.c
+> > +++ b/net/sunrpc/svc.c
+> > @@ -1363,6 +1363,7 @@ bc_svc_process(struct svc_serv *serv, struct rpc_rqst *req,
+> >         memcpy(&rqstp->rq_addr, &req->rq_xprt->addr, rqstp->rq_addrlen);
+> >         memcpy(&rqstp->rq_arg, &req->rq_rcv_buf, sizeof(rqstp->rq_arg));
+> >         memcpy(&rqstp->rq_res, &req->rq_snd_buf, sizeof(rqstp->rq_res));
+> > +       rqstp->rq_arg.len = req->rq_private_buf.len;
+>
+> Cheers
+>   Trond
+>
