@@ -1,39 +1,26 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from zeniv.linux.org.uk ([195.92.253.2]:38514 "EHLO
-	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755811AbbLHEFI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Dec 2015 23:05:08 -0500
-Date: Tue, 8 Dec 2015 04:05:04 +0000
-From: Al Viro <viro@ZenIV.linux.org.uk>
-To: Christoph Hellwig <hch@lst.de>
-Cc: tao.peng@primarydata.com, jeff.layton@primarydata.com,
-        bfields@fieldses.org, linux-fsdevel@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-cifs@vger.kernel.org
-Subject: Re: [PATCH 1/4] locks: new locks_mandatory_area calling convention
-Message-ID: <20151208040504.GA2791@ZenIV.linux.org.uk>
-References: <1449143992-7415-1-git-send-email-hch@lst.de>
- <1449143992-7415-2-git-send-email-hch@lst.de>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1449143992-7415-2-git-send-email-hch@lst.de>
+Received: from smtp-o-3.desy.de ([131.169.56.156]:40598 "EHLO smtp-o-3.desy.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932815AbbLHH1o (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 8 Dec 2015 02:27:44 -0500
+Received: from smtp-map-3.desy.de (smtp-map-3.desy.de [131.169.56.68])
+	by smtp-o-3.desy.de (DESY-O-3) with ESMTP id DEC3D280345
+	for <linux-nfs@vger.kernel.org>; Tue,  8 Dec 2015 08:27:38 +0100 (CET)
+Received: from ZITSWEEP4.win.desy.de (zitsweep4.win.desy.de [131.169.97.98])
+	by smtp-map-3.desy.de (DESY_MAP_3) with ESMTP id BBD821632
+	for <linux-nfs@vger.kernel.org>; Tue,  8 Dec 2015 08:27:37 +0100 (MET)
+From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: pynfs patch  
+Date: Tue,  8 Dec 2015 08:27:33 +0100
+Message-Id: <1449559654-14766-1-git-send-email-tigran.mkrtchyan@desy.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Dec 03, 2015 at 12:59:49PM +0100, Christoph Hellwig wrote:
-> Pass a loff_t end for the last byte instead of the 32-bit count
-> parameter to allow full file clones even on 32-bit architectures.
-> While we're at it also drop the pointless inode argument and simplify
-> the read/write selection.
+Hi Bruce, 
 
-locks_mandatory_area() contains this:
-        if (filp && !(filp->f_flags & O_NONBLOCK))
-                sleep = true;
-which is a strong hint that filp might be NULL.  And indeed it might -
-        error = locks_verify_truncate(inode, NULL, length);
-in vfs_truncate() and
-        host_err = locks_verify_truncate(inode, NULL, iap->ia_size);
-in nfsd_get_write_access().  Both are broken by that commit.
+this patch for pynfs I have received as github pull request
 
-Where the hell would truncate(2) get struct file, anyway?  IOW, the inode
-argument is _not_ pointless; re-added.
+Tigran.
+
