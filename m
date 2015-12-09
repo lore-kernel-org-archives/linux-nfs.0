@@ -1,54 +1,66 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from forward15j.cmail.yandex.net ([5.255.227.179]:54054 "EHLO
-	forward15j.cmail.yandex.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750894AbbLIMlf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Dec 2015 07:41:35 -0500
-Received: from web10j.yandex.ru (web10j.yandex.ru [5.45.198.51])
-	by forward15j.cmail.yandex.net (Yandex) with ESMTP id C40CB21194
-	for <linux-nfs@vger.kernel.org>; Wed,  9 Dec 2015 15:33:31 +0300 (MSK)
-From: Nazarov Sergey <s-nazarov@yandex.ru>
-To: linux-nfs@vger.kernel.org
-Subject: NFSv4: Possible buffer overflow in security label decode.
+Received: from discipline.rit.edu ([129.21.6.207]:30221 "HELO
+	discipline.rit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1752291AbbLIORj convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Dec 2015 09:17:39 -0500
+From: Andrew W Elble <aweits@rit.edu>
+To: Weston Andros Adamson <dros@primarydata.com>
+Cc: linux-nfs list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH RFC 0/4] Deal with lost delegations and EKEYEXPIRED
+References: <1449067193-53310-1-git-send-email-aweits@rit.edu>
+	<38076235-99FC-4CC7-8F16-3518A58CABA2@primarydata.com>
+Date: Wed, 09 Dec 2015 09:17:38 -0500
+In-Reply-To: <38076235-99FC-4CC7-8F16-3518A58CABA2@primarydata.com> (Weston
+	Andros Adamson's message of "Tue, 08 Dec 2015 16:38:22 -0500")
+Message-ID: <m2bn9zwvst.fsf@discipline.rit.edu>
 MIME-Version: 1.0
-Message-Id: <402981449664410@web10j.yandex.ru>
-Date: Wed, 09 Dec 2015 15:33:30 +0300
-Content-Type: text/plain
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi!
-Buffer overflow possible in decode_attr_security_label, if given label buffer size is not enough to
-store data received from server. This adds additional check for buffer capacity:
----
- fs/nfs/nfs4xdr.c | 8 ++++++--
- 1 file changed, 6 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 4e44412..6a6302b 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -4157,7 +4157,9 @@ static int decode_attr_security_label(struct xdr_stream *xdr, uint32_t *bitmap,
- 		if (unlikely(!p))
- 			goto out_overflow;
- 		if (len < NFS4_MAXLABELLEN) {
--			if (label) {
-+			if (label && label->label) {
-+				if (len > label->len)
-+					return -ERANGE;
- 				memcpy(label->label, p, len);
- 				label->len = len;
- 				label->pi = pi;
-@@ -4165,9 +4167,11 @@ static int decode_attr_security_label(struct xdr_stream *xdr, uint32_t *bitmap,
- 				status = NFS_ATTR_FATTR_V4_SECURITY_LABEL;
- 			}
- 			bitmap[2] &= ~FATTR4_WORD2_SECURITY_LABEL;
--		} else
-+		} else {
- 			printk(KERN_WARNING "%s: label too long (%u)!\n",
- 					__func__, len);
-+			return -EIO;
-+		}
- 	}
- 	if (label && label->label)
- 		dprintk("%s: label=%s, len=%d, PI=%d, LFS=%d\n", __func__,
---  
+> One part I’m not sure about is in nfsd4_spo_must_allow dealing with putfh like
+> ops vs not putfh-like ops. I’ll have to check the spec and take a deeper look at
+> that when I get some time, but maybe a brief explanation in a comment would
+> help?
+
+Will put on the list for v2.
+
+RFC5561 2.6.3.1.1.7:
+   The NFSv4.1 server MUST NOT return NFS4ERR_WRONGSEC to any operation
+   other than a put filehandle operation, LOOKUP, LOOKUPP, and OPEN (by
+   component name).
+
+RFC5561 15.4:
+   | NFS4ERR_WRONGSEC                  | LINK, LOOKUP, LOOKUPP, OPEN,  |
+   |                                   | PUTFH, PUTPUBFH, PUTROOTFH,   |
+   |                                   | RENAME, RESTOREFH
+
+See need_wrongsec_check() (called from nfsd4_proc_compound()).
+
+The implementation problem is that fh_verify() also calls check_nfsd_access(),
+so these contortions are to avoid sending NFS4ERR_WRONGSEC on things we
+shouldn't be, while still granting the spo_must_allow operation to succeed.
+(based on [somthing-putfh-like]->...->[something-spo_must_allow-like]...->[end-or-putfh])
+
+> To be honest, I've always been hazy on where in the spec the ramifications of
+> SP4_MACH_CRED only covering part of a compound is discussed… I’ll take a
+> look soon.
+
+I think you mean 2.6.3.1? But it doesn't reference SP4_MACH_CRED
+specifically, only 'acceptable security tuple'.
+
+This may also be a little bit heavyweight for how the server is set up
+currently. (i.e. simply changing the export (sec=krb5) to
+(sec=krb5,krb5i) will eliminate the need for nfsd4_spo_must_allow()).
+
+Thanks,
+
+Andy
+
+-- 
+Andrew W. Elble
+aweits@discipline.rit.edu
+Infrastructure Engineer, Communications Technical Lead
+Rochester Institute of Technology
+PGP: BFAD 8461 4CCF DC95 DA2C B0EB 965B 082E 863E C912
