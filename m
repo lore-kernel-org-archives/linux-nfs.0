@@ -1,70 +1,137 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f173.google.com ([209.85.223.173]:32804 "EHLO
-	mail-io0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750737AbbLHViY convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Dec 2015 16:38:24 -0500
-Received: by iouu10 with SMTP id u10so39510406iou.0
-        for <linux-nfs@vger.kernel.org>; Tue, 08 Dec 2015 13:38:23 -0800 (PST)
-Content-Type: text/plain; charset=utf-8
-Mime-Version: 1.0 (Mac OS X Mail 9.1 \(3096.5\))
-Subject: Re: [PATCH RFC 0/4] Deal with lost delegations and EKEYEXPIRED
-From: Weston Andros Adamson <dros@primarydata.com>
-In-Reply-To: <1449067193-53310-1-git-send-email-aweits@rit.edu>
-Date: Tue, 8 Dec 2015 16:38:22 -0500
-Cc: linux-nfs list <linux-nfs@vger.kernel.org>
-Message-Id: <38076235-99FC-4CC7-8F16-3518A58CABA2@primarydata.com>
-References: <1449067193-53310-1-git-send-email-aweits@rit.edu>
-To: Andrew Elble <aweits@rit.edu>
+Received: from mx1.redhat.com ([209.132.183.28]:37355 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751444AbbLIE35 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 8 Dec 2015 23:29:57 -0500
+Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
+	by mx1.redhat.com (Postfix) with ESMTPS id A27FE8EFE1
+	for <linux-nfs@vger.kernel.org>; Wed,  9 Dec 2015 04:29:57 +0000 (UTC)
+Message-ID: <5667AE42.4090802@redhat.com>
+Date: Wed, 09 Dec 2015 09:59:54 +0530
+From: Rinku Kothiya <rkothiya@redhat.com>
+MIME-Version: 1.0
+To: steved@redhat.com
+CC: Mohit Agrawal <moagrawa@redhat.com>, linux-nfs@vger.kernel.org
+Subject: [nfs-utils PATCH] Set right error after getaddrinfo fails bz 1287468
+References: <1449635027-10764-1-git-send-email-rkothiya@redhat.com>
+In-Reply-To: <1449635027-10764-1-git-send-email-rkothiya@redhat.com>
+Content-Type: text/plain; charset=windows-1252; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-These patches look reasonable to me. I agree with Trond that you should
-separate the client and server patches.
-
-One part I’m not sure about is in nfsd4_spo_must_allow dealing with putfh like
-ops vs not putfh-like ops. I’ll have to check the spec and take a deeper look at
-that when I get some time, but maybe a brief explanation in a comment would
-help?
-
-To be honest, I've always been hazy on where in the spec the ramifications of
-SP4_MACH_CRED only covering part of a compound is discussed… I’ll take a
-look soon.
-
--dros
 
 
+From: Rinku Kothiya <rkothiya@redhat.com>
 
-> On Dec 2, 2015, at 9:39 AM, Andrew Elble <aweits@rit.edu> wrote:
-> 
-> I've finally discovered that the majority of our lost delegation problems
-> come from EKEYEXPIRED. This seems to work fine in our environment, but
-> I am unsure of the ramifications of this in a broader context, so it's
-> time to get other folks to look at it.
-> 
-> Andrew Elble (4):
->  nfs/nfsd: Move useful bitfield ops to a commonly accessible place
->  nfs: machine credential support for additional operations
->  nfsd: allow mach_creds_match to be used more broadly
->  nfsd: implement machine credential support for some operations
-> 
-> fs/nfs/nfs4proc.c         | 20 +++++++++++++++++
-> fs/nfsd/export.c          |  4 ++++
-> fs/nfsd/nfs4proc.c        | 55 +++++++++++++++++++++++++++++++++++++++++++++++
-> fs/nfsd/nfs4state.c       | 35 ++++++++++++++++++++++++------
-> fs/nfsd/nfs4xdr.c         | 51 ++++++++++++++++++++-----------------------
-> fs/nfsd/nfsd.h            |  1 +
-> fs/nfsd/state.h           |  1 +
-> fs/nfsd/xdr4.h            |  5 +++++
-> include/linux/nfs4.h      | 11 ++++++++++
-> include/linux/nfs_fs_sb.h |  1 +
-> include/linux/nfs_xdr.h   | 11 ----------
-> 11 files changed, 149 insertions(+), 46 deletions(-)
-> 
-> -- 
-> 2.6.3
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Signed-off-by: Rinku Kothiya <rkothiya@redhat.com>
+Signed-off-by: Mohit Agrawal <moagrawa@redhat.com>
+---
+  nfs-utils-1.3.0-set-errno.patch | 29 +++++++++++++++++++++++++++++
+  nfs-utils.spec                  | 23 ++++++++++++-----------
+  2 files changed, 41 insertions(+), 11 deletions(-)
+  create mode 100644 nfs-utils-1.3.0-set-errno.patch
+
+diff --git a/nfs-utils-1.3.0-set-errno.patch b/nfs-utils-1.3.0-set-errno.patch
+new file mode 100644
+index 0000000..7c9d381
+--- /dev/null
++++ b/nfs-utils-1.3.0-set-errno.patch
+@@ -0,0 +1,29 @@
++diff -up nfs-utils-1.3.0/support/export/hostname.c.orig nfs-utils-1.3.0/support/export/hostname.c
++--- nfs-utils-1.3.0/support/export/hostname.c.orig	2015-12-08 15:24:36.705047453 +0530
+++++ nfs-utils-1.3.0/support/export/hostname.c	2015-12-08 15:25:46.614047453 +0530
++@@ -179,11 +179,11 @@
++ 	case 0:
++ 		return ai;
++ 	case EAI_SYSTEM:
++-		xlog(D_GENERAL, "%s: failed to resolve %s: (%d) %m",
+++		xlog(L_WARNING, "%s: failed to resolve %s: (%d) %m",
++ 				__func__, hostname, errno);
++ 		break;
++ 	default:
++-		xlog(D_GENERAL, "%s: failed to resolve %s: %s",
+++		xlog(L_WARNING, "%s: failed to resolve %s: %s",
++ 				__func__, hostname, gai_strerror(error));
++ 		break;
++ 	}
++diff -up nfs-utils-1.3.0/support/nfs/client.c.orig nfs-utils-1.3.0/support/nfs/client.c
++--- nfs-utils-1.3.0/support/export/client.c.orig	2015-12-08 17:08:45.469047453 +0530
+++++ nfs-utils-1.3.0/support/export/client.c	2015-12-08 17:09:01.159047453 +0530
++@@ -277,7 +277,7 @@
++ 	if (htype == MCL_FQDN && !canonical) {
++ 		ai = host_addrinfo(hname);
++ 		if (!ai) {
++-			xlog(L_ERROR, "Failed to resolve %s", hname);
+++			xlog(L_WARNING, "Failed to resolve %s", hname);
++ 			goto out;
++ 		}
++ 		hname = ai->ai_canonname;
+diff --git a/nfs-utils.spec b/nfs-utils.spec
+index 2fe1cc5..e881914 100644
+--- a/nfs-utils.spec
++++ b/nfs-utils.spec
+@@ -2,7 +2,7 @@ Summary: NFS utilities and supporting clients and daemons for the kernel NFS ser
+  Name: nfs-utils
+  URL: http://sourceforge.net/projects/nfs
+  Version: 1.3.0
+-Release: 0.22%{?dist}
++Release: 0.22%{?dist}_sfdc_01536441
+  Epoch: 1
+  
+  # group all 32bit related archs
+@@ -61,6 +61,7 @@ Patch100: nfs-utils-1.2.1-statdpath-man.patch
+  Patch101: nfs-utils-1.2.1-exp-subtree-warn-off.patch
+  Patch102: nfs-utils-1.2.3-sm-notify-res_init.patch
+  Patch103: nfs-utils-1.2.5-idmap-errmsg.patch
++Patch104: nfs-utils-1.3.0-set-errno.patch
+  
+  Group: System Environment/Daemons
+  Provides: exportfs    = %{epoch}:%{version}-%{release}
+@@ -101,16 +102,12 @@ Requires: gssproxy >= 0.3.0-0
+  Conflicts: gssproxy < 0.3.0-10
+  
+  %description
+-The nfs-utils package provides a daemon for the kernel NFS server and
+-related tools, which provides a much higher level of performance than the
+-traditional Linux NFS server used by most users.
+-
+-This package also contains the showmount program.  Showmount queries the
+-mount daemon on a remote host for information about the NFS (Network File
+-System) server on the remote host.  For example, showmount can display the
+-clients which are mounted on that host.
+-
+-This package also contains the mount.nfs and umount.nfs program.
++This RPM has been provided by Red Hat for testing purposes only and is
++NOT supported for any other use. This RPM may contain changes that are
++necessary for debugging but that are not appropriate for other uses,
++or that are not compatible with third-party hardware or software. This
++RPM should NOT be deployed for purposes other than testing and
++debugging.
+  
+  %prep
+  %setup -q
+@@ -185,6 +182,7 @@ This package also contains the mount.nfs and umount.nfs program.
+  %patch101 -p1
+  %patch102 -p1
+  %patch103 -p1
++%patch104 -p1
+  
+  # Remove .orig files
+  find . -name "*.orig" | xargs rm -f
+@@ -418,6 +416,9 @@ fi
+  /sbin/umount.nfs4
+  
+  %changelog
++* Tue Dec  8 2015 Rinku Kothiya <rkothiya@redhat.com> 1.3.0-0.22_sfdc_01536441
++- exportfs: Set the correct error type after getaddrinfo fails in host_addrinfo (bz 1287468)
++
+  * Thu Dec  3 2015 Steve Dickson <steved@redhat.com> 1.3.0-0.22
+  - nfsidmap: Correct a failure to set key timeout values (bz 1161222)
+  - exportfs: Restore the EAI_NONAME check in host_pton() (bz 1276099)
+-- 
+1.9.3
+
+
+
+
 
