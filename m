@@ -1,95 +1,42 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:45340 "EHLO mx1.redhat.com"
+Received: from verein.lst.de ([213.95.11.211]:35106 "EHLO newverein.lst.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753166AbbLJQMb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 10 Dec 2015 11:12:31 -0500
-From: Benjamin Coddington <bcodding@redhat.com>
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org, jlayton@poochiereds.net
-Subject: [PATCH 1/2] nfsstat: update nfs client operations
-Date: Thu, 10 Dec 2015 11:12:28 -0500
-Message-Id: <745dd74bb752e97b40c79d27c29427c0942f952c.1449763231.git.bcodding@redhat.com>
+	id S1751084AbbLJQbF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 10 Dec 2015 11:31:05 -0500
+Date: Thu, 10 Dec 2015 17:31:02 +0100
+From: Christoph Hellwig <hch@lst.de>
+To: Jeff Layton <jlayton@poochiereds.net>
+Cc: Christoph Hellwig <hch@lst.de>, bfields@fieldses.org,
+        linux-nfs@vger.kernel.org, Kinglong Mee <kinglongmee@gmail.com>
+Subject: Re: [RFC PATCH 2/2] nfsd: give up on CB_LAYOUTRECALLs after two
+	lease periods
+Message-ID: <20151210163102.GA29300@lst.de>
+References: <1449577428-13181-1-git-send-email-jeff.layton@primarydata.com> <1449577428-13181-3-git-send-email-jeff.layton@primarydata.com> <20151208152123.GB4035@lst.de> <20151208104610.6e3eae3f@tlielax.poochiereds.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20151208104610.6e3eae3f@tlielax.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-FSID_PRESENT was missing, and LAYOUTGET and GETDEVICEINFO were switched.
-Update all the client operations.  Also, increase the output width a bit
-and pull out a column for these longer new operation names.
+On Tue, Dec 08, 2015 at 10:46:10AM -0500, Jeff Layton wrote:
+> > This looks reasonable to me, but I'll need to actually test it
+> > before giving an ACK.
+> > 
+> 
+> Please do, I don't have a good way to test this at the moment...
 
-Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
----
- utils/nfsstat/nfsstat.c |   34 +++++++++++++++++++++++-----------
- 1 files changed, 23 insertions(+), 11 deletions(-)
+Looks like the baseline got broken once again, so I'll need some time
+to track that down first.
 
-diff --git a/utils/nfsstat/nfsstat.c b/utils/nfsstat/nfsstat.c
-index 9f481db..b882c41 100644
---- a/utils/nfsstat/nfsstat.c
-+++ b/utils/nfsstat/nfsstat.c
-@@ -31,7 +31,7 @@ enum {
- 	SRVPROC3_SZ = 22,
- 	CLTPROC3_SZ = 22,
- 	SRVPROC4_SZ = 2,
--	CLTPROC4_SZ = 49,
-+	CLTPROC4_SZ = 60,
- 	SRVPROC4OPS_SZ = 59,
- };
- 
-@@ -127,19 +127,31 @@ static const char *	nfscltproc4name[CLTPROC4_SZ] = {
- 	"remove",    "rename",    "link",    "symlink",     "create",      "pathconf",
- 	"statfs",    "readlink",  "readdir", "server_caps", "delegreturn", "getacl",
- 	"setacl",    "fs_locations",
--	"rel_lkowner", "secinfo",
-+	"rel_lkowner", "secinfo", "fsid_present",
- 	/* nfsv4.1 client ops */
- 	"exchange_id",
--	"create_ses",
--	"destroy_ses",
-+	"create_session",
-+	"destroy_session",
- 	"sequence",
--	"get_lease_t",
-+	"get_lease_time",
- 	"reclaim_comp",
--	"layoutget",
- 	"getdevinfo",
-+	"layoutget",
- 	"layoutcommit",
- 	"layoutreturn",
- 	"getdevlist",
-+	"secinfo_no",
-+	"test_stateid",
-+	"free_stateid",
-+	"getdevicelist",
-+	"bind_conn_to_ses",
-+	"destroy_clientid",
-+	/* nfsv4.2 client ops */
-+	"seek",
-+	"allocate",
-+	"deallocate",
-+	"layoutstats",
-+	"clone",
- };
- 
- static const char *     nfssrvproc4opname[SRVPROC4OPS_SZ] = {
-@@ -823,13 +835,13 @@ print_callstats(const char *hdr, const char **names,
- 		total += info[i];
- 	if (!total)
- 		total = 1;
--	for (i = 0; i < nr; i += 6) {
--		for (j = 0; j < 6 && i + j < nr; j++)
--			printf("%-13s", names[i+j]);
-+	for (i = 0; i < nr; i += 5) {
-+		for (j = 0; j < 5 && i + j < nr; j++)
-+			printf("%-17s", names[i+j]);
- 		printf("\n");
--		for (j = 0; j < 6 && i + j < nr; j++) {
-+		for (j = 0; j < 5 && i + j < nr; j++) {
- 			pct = ((unsigned long long) info[i+j]*100)/total;
--			printf("%-8u%3llu%% ", info[i+j], pct);
-+			printf("%-8u%3llu%%     ", info[i+j], pct);
- 		}
- 		printf("\n");
- 	}
--- 
-1.7.1
+> > Btw, it seems like the delegation and layoutrecall code would benefit
+> > from some more code sharing for timeouts.  For example delegation
+> > returns currently don't support NFS4ERR_DELAY at all.
+> 
+> Yes...
+> 
+> I also wonder -- are we handling revoked layouts correctly? Shouldn't
+> we be handling revoked layouts like we would a revoked delegation? Stop
+> allowing the stateid to be used and morph it appropriately so that a
+> TEST_STATEID against it gives you an error?
 
+Probably, but I'd need to take a deeper look at this.
