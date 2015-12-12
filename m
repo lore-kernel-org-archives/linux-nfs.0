@@ -1,91 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:43322 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:35306 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752181AbbLLMLc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 12 Dec 2015 07:11:32 -0500
-Subject: Re: [PATCH] nfsidmap: keyring_clear() should succeed if id_resolver
- keyring not found
-To: Chuck Lever <chuck.lever@oracle.com>
-References: <20151202212010.5614.82182.stgit@manet.1015granger.net>
-Cc: linux-nfs@vger.kernel.org
+	id S1752210AbbLLML5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 12 Dec 2015 07:11:57 -0500
+Subject: Re: [PATCH 1/2] nfs-utils: libnsm.a: do not close file if open failed
+To: Vivek Trivedi <t.vivek@samsung.com>, linux-nfs@vger.kernel.org
+References: <1449054998-19308-1-git-send-email-t.vivek@samsung.com>
+Cc: a.sahrawat@samsung.com, pankaj.m@samsung.com
 From: Steve Dickson <SteveD@redhat.com>
-Message-ID: <566C0EF3.2030606@RedHat.com>
-Date: Sat, 12 Dec 2015 07:11:31 -0500
+Message-ID: <566C0F0B.9030703@RedHat.com>
+Date: Sat, 12 Dec 2015 07:11:55 -0500
 MIME-Version: 1.0
-In-Reply-To: <20151202212010.5614.82182.stgit@manet.1015granger.net>
-Content-Type: text/plain; charset=utf-8
+In-Reply-To: <1449054998-19308-1-git-send-email-t.vivek@samsung.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
 
-On 12/02/2015 04:20 PM, Chuck Lever wrote:
-> root#nfsvmb10:~# nfsidmap -c
-> nfsidmap: 'id_resolver' keyring was not found.
-> root#nfsvmb10:~# echo $?
-> 1
+On 12/02/2015 06:16 AM, Vivek Trivedi wrote:
+> If file open failed, no need to issue close system call in
+> nsm_get_state and closeall.
 > 
-> If the id_resolver keyring doesn't exist, the kernel has no cached
-> idmap information to expunge. AFAIK it's not an error.
-> 
-> If nfsidmap is run by a non-privileged user, the id_resolver keyring
-> is never visible. IMO that should be reported, but the error message
-> should report the privilege problem, not the missing keyring.
-> 
-> Reported-by: Amy Shi <amy.shi@oracle.com>
-> Fixes: 69aa69e7de80 ('nfsidmap: Allow keys to be cleared from the ')
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> Signed-off-by: Vivek Trivedi <t.vivek@samsung.com>
 Committed... 
 
 steved.
 
 > ---
->  utils/nfsidmap/nfsidmap.c |   13 +++++++++----
->  1 file changed, 9 insertions(+), 4 deletions(-)
+>  support/nfs/closeall.c |    3 ++-
+>  support/nsm/file.c     |    3 ++-
+>  2 files changed, 4 insertions(+), 2 deletions(-)
 > 
-> diff --git a/utils/nfsidmap/nfsidmap.c b/utils/nfsidmap/nfsidmap.c
-> index 507193b..15b4a51 100644
-> --- a/utils/nfsidmap/nfsidmap.c
-> +++ b/utils/nfsidmap/nfsidmap.c
-> @@ -80,8 +80,9 @@ static int keyring_clear(const char *keyring)
->  
->  	key = find_key_by_type_and_desc("keyring", keyring, 0);
->  	if (key == -1) {
-> -		xlog_err("'%s' keyring was not found.", keyring);
-> -		return EXIT_FAILURE;
-> +		if (verbose)
-> +			xlog_warn("'%s' keyring was not found.", keyring);
-> +		return EXIT_SUCCESS;
+> diff --git a/support/nfs/closeall.c b/support/nfs/closeall.c
+> index 38fb162..a69bf35 100644
+> --- a/support/nfs/closeall.c
+> +++ b/support/nfs/closeall.c
+> @@ -31,6 +31,7 @@ closeall(int min)
+>  	} else {
+>  		int fd = sysconf(_SC_OPEN_MAX);
+>  		while (--fd >= min)
+> -			(void) close(fd);
+> +			if(fd >= 0)
+> +				(void) close(fd);
 >  	}
->  
->  	if (keyctl_clear(key) < 0) {
-> @@ -89,10 +90,9 @@ static int keyring_clear(const char *keyring)
->  				(unsigned int)key);
->  		return EXIT_FAILURE;
->  	}
-> -	
-> +
->  	if (verbose)
->  		xlog_warn("'%s' cleared", keyring);
-> -
->  	return EXIT_SUCCESS;
 >  }
+> diff --git a/support/nsm/file.c b/support/nsm/file.c
+> index 4711c2c..7a8b504 100644
+> --- a/support/nsm/file.c
+> +++ b/support/nsm/file.c
+> @@ -536,7 +536,8 @@ nsm_get_state(_Bool update)
+>  		state++;
 >  
-> @@ -404,6 +404,11 @@ int main(int argc, char **argv)
->  		}
->  	}
+>  update:
+> -	(void)close(fd);
+> +	if(fd >= 0)
+> +		(void)close(fd);
 >  
-> +	if (geteuid() != 0) {
-> +		xlog_err("Must be run as root.");
-> +		return EXIT_FAILURE;
-> +	}
-> +
->  	if ((rc = nfs4_init_name_mapping(PATH_IDMAPDCONF)))  {
->  		xlog_errno(rc, "Unable to create name to user id mappings.");
->  		return EXIT_FAILURE;
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>  	if (update) {
+>  		state += 2;
 > 
