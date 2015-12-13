@@ -1,56 +1,103 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f179.google.com ([209.85.213.179]:35183 "EHLO
-	mail-ig0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751145AbbLMRoi (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 13 Dec 2015 12:44:38 -0500
-Received: by mail-ig0-f179.google.com with SMTP id su19so69727658igc.0
-        for <linux-nfs@vger.kernel.org>; Sun, 13 Dec 2015 09:44:37 -0800 (PST)
-Message-ID: <1450028669.4152.1.camel@primarydata.com>
-Subject: [GIT PULL] Please pull one bugfix for 4.4
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+Received: from userp1040.oracle.com ([156.151.31.81]:20223 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752451AbbLMToY convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 13 Dec 2015 14:44:24 -0500
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2104\))
+Subject: Re: [PATCH v3 1/6] svcrdma: Do not send XDR roundup bytes for a write chunk
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <566CE288.6000808@talpey.com>
+Date: Sun, 13 Dec 2015 14:44:21 -0500
+Cc: linux-rdma@vger.kernel.org,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Date: Sun, 13 Dec 2015 12:44:29 -0500
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Message-Id: <BBFA1517-1965-4486-B027-E6CE485E999C@oracle.com>
+References: <20151207203851.12988.97804.stgit@klimt.1015granger.net> <20151207204231.12988.59287.stgit@klimt.1015granger.net> <566CE288.6000808@talpey.com>
+To: Tom Talpey <tom@talpey.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Linus,
+Hi Tom-
 
-The following changes since commit 527e9316f8ec44bd53d90fb9f611fa7ffff52bb9:
 
-  Linux 4.4-rc4 (2015-12-06 15:43:12 -0800)
+> On Dec 12, 2015, at 10:14 PM, Tom Talpey <tom@talpey.com> wrote:
+> 
+> Two small comments.
+> 
+> On 12/7/2015 12:42 PM, Chuck Lever wrote:
+>> Minor optimization: when dealing with write chunk XDR roundup, do
+>> not post a Write WR for the zero bytes in the pad. Simply update
+>> the write segment in the RPC-over-RDMA header to reflect the extra
+>> pad bytes.
+>> 
+>> The Reply chunk is also a write chunk, but the server does not use
+>> send_write_chunks() to send the Reply chunk. That's OK in this case:
+>> the server Upper Layer typically marshals the Reply chunk contents
+>> in a single contiguous buffer, without a separate tail for the XDR
+>> pad.
+>> 
+>> The comments and the variable naming refer to "chunks" but what is
+>> really meant is "segments." The existing code sends only one
+>> xdr_write_chunk per RPC reply.
+>> 
+>> The fix assumes this as well. When the XDR pad in the first write
+>> chunk is reached, the assumption is the Write list is complete and
+>> send_write_chunks() returns.
+>> 
+>> That will remain a valid assumption until the server Upper Layer can
+>> support multiple bulk payload results per RPC.
+>> 
+>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>> ---
+>>  net/sunrpc/xprtrdma/svc_rdma_sendto.c |    7 +++++++
+>>  1 file changed, 7 insertions(+)
+>> 
+>> diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+>> index 969a1ab..bad5eaa 100644
+>> --- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+>> +++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+>> @@ -342,6 +342,13 @@ static int send_write_chunks(struct svcxprt_rdma *xprt,
+>>  						arg_ch->rs_handle,
+>>  						arg_ch->rs_offset,
+>>  						write_len);
+>> +
+>> +		/* Do not send XDR pad bytes */
+> 
+> It might be clearer to say "marshal" instead of "send".
 
-are available in the git repository at:
+Marshaling each segment happens unconditionally in the
+svc_rdma_xdr_encode_array_chunk() call just before this
+comment. I really do mean "Do not send" here: the patch
+is intended to squelch the RDMA Write of the XDR pad for
+this chunk.
 
-  git://git.linux-nfs.org/projects/trondmy/linux-nfs.git tags/nfs-for-4.4-3
+Perhaps "Do not write" would be more precise, but Bruce
+has already committed this patch, IIRC.
 
-for you to fetch changes up to 756b9b37cfb2e3dc76b2e43a8c097402ac736e07:
 
-  SUNRPC: Fix callback channel (2015-12-07 13:04:59 -0800)
+>> +		if (chunk_no && write_len < 4) {
+> 
+> Why is it necessary to check for chunk_no == 0? It is not
+> possible for leading data to ever be padding, nor is a leading
+> data element ever less than 4 bytes long. Right?
 
-----------------------------------------------------------------
-NFS client bugfix for Linux 4.4
+I'm checking for chunk_no != 0, for exactly the reasons
+you mentioned.
 
-Bugfixes:
-- SUNRPC: Fix a NFSv4.1 callback channel regression
 
-----------------------------------------------------------------
-Trond Myklebust (1):
-      SUNRPC: Fix callback channel
+> Tom.
+> 
+>> +			chunk_no++;
+>> +			break;
+>> +		}
+>> +
+>>  		chunk_off = 0;
+>>  		while (write_len) {
+>>  			ret = send_write(xprt, rqstp,
 
- fs/nfs/callback_xdr.c         |  7 ++-----
- net/sunrpc/backchannel_rqst.c |  8 --------
- net/sunrpc/svc.c              | 12 ++++++++++++
- 3 files changed, 14 insertions(+), 13 deletions(-)
--- 
-Trond Myklebust
-Principal System Architect
-4300 El Camino Real | Suite 100
-Los Altos, CA  94022
-W: 650-422-3800
-C: 801-921-4583 
-www.primarydata.com
+--
+Chuck Lever
+
+
+
 
