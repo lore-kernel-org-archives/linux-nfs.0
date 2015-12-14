@@ -1,15 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f173.google.com ([209.85.223.173]:36229 "EHLO
-	mail-io0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932207AbbLNVaL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Dec 2015 16:30:11 -0500
-Subject: [PATCH v4 01/11] svcrdma: Do not send XDR roundup bytes for a write
- chunk
+Received: from mail-io0-f174.google.com ([209.85.223.174]:33024 "EHLO
+	mail-io0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932286AbbLNVaT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Dec 2015 16:30:19 -0500
+Subject: [PATCH v4 02/11] svcrdma: Clean up rdma_create_xprt()
 From: Chuck Lever <chuck.lever@oracle.com>
 To: bfields@fieldses.org
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 14 Dec 2015 16:30:09 -0500
-Message-ID: <20151214213009.12932.60521.stgit@klimt.1015granger.net>
+Date: Mon, 14 Dec 2015 16:30:18 -0500
+Message-ID: <20151214213018.12932.86138.stgit@klimt.1015granger.net>
 In-Reply-To: <20151214211951.12932.99017.stgit@klimt.1015granger.net>
 References: <20151214211951.12932.99017.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
@@ -17,49 +16,40 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Minor optimization: when dealing with write chunk XDR roundup, do
-not post a Write WR for the zero bytes in the pad. Simply update
-the write segment in the RPC-over-RDMA header to reflect the extra
-pad bytes.
-
-The Reply chunk is also a write chunk, but the server does not use
-send_write_chunks() to send the Reply chunk. That's OK in this case:
-the server Upper Layer typically marshals the Reply chunk contents
-in a single contiguous buffer, without a separate tail for the XDR
-pad.
-
-The comments and the variable naming refer to "chunks" but what is
-really meant is "segments." The existing code sends only one
-xdr_write_chunk per RPC reply.
-
-The fix assumes this as well. When the XDR pad in the first write
-chunk is reached, the assumption is the Write list is complete and
-send_write_chunks() returns.
-
-That will remain a valid assumption until the server Upper Layer can
-support multiple bulk payload results per RPC.
+kzalloc is used here, so setting the atomic fields to zero is
+unnecessary. sc_ord is set again in handle_connect_req. The other
+fields are re-initialized in svc_rdma_accept().
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/svc_rdma_sendto.c |    7 +++++++
- 1 file changed, 7 insertions(+)
+ net/sunrpc/xprtrdma/svc_rdma_transport.c |    9 +--------
+ 1 file changed, 1 insertion(+), 8 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-index 969a1ab..bad5eaa 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-@@ -342,6 +342,13 @@ static int send_write_chunks(struct svcxprt_rdma *xprt,
- 						arg_ch->rs_handle,
- 						arg_ch->rs_offset,
- 						write_len);
-+
-+		/* Do not send XDR pad bytes */
-+		if (chunk_no && write_len < 4) {
-+			chunk_no++;
-+			break;
-+		}
-+
- 		chunk_off = 0;
- 		while (write_len) {
- 			ret = send_write(xprt, rqstp,
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+index 9f3eb89..27f338a 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+@@ -529,14 +529,6 @@ static struct svcxprt_rdma *rdma_create_xprt(struct svc_serv *serv,
+ 	spin_lock_init(&cma_xprt->sc_rq_dto_lock);
+ 	spin_lock_init(&cma_xprt->sc_frmr_q_lock);
+ 
+-	cma_xprt->sc_ord = svcrdma_ord;
+-
+-	cma_xprt->sc_max_req_size = svcrdma_max_req_size;
+-	cma_xprt->sc_max_requests = svcrdma_max_requests;
+-	cma_xprt->sc_sq_depth = svcrdma_max_requests * RPCRDMA_SQ_DEPTH_MULT;
+-	atomic_set(&cma_xprt->sc_sq_count, 0);
+-	atomic_set(&cma_xprt->sc_ctxt_used, 0);
+-
+ 	if (listener)
+ 		set_bit(XPT_LISTENER, &cma_xprt->sc_xprt.xpt_flags);
+ 
+@@ -918,6 +910,7 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
+ 				  (size_t)RPCSVC_MAXPAGES);
+ 	newxprt->sc_max_sge_rd = min_t(size_t, dev->max_sge_rd,
+ 				       RPCSVC_MAXPAGES);
++	newxprt->sc_max_req_size = svcrdma_max_req_size;
+ 	newxprt->sc_max_requests = min((size_t)dev->max_qp_wr,
+ 				   (size_t)svcrdma_max_requests);
+ 	newxprt->sc_sq_depth = RPCRDMA_SQ_DEPTH_MULT * newxprt->sc_max_requests;
 
