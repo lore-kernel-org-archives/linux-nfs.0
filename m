@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f175.google.com ([209.85.223.175]:35448 "EHLO
-	mail-io0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753544AbbLNVSw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Dec 2015 16:18:52 -0500
-Subject: [PATCH v3 06/11] xprtrdma: Add ro_unmap_sync method for FRWR
+Received: from mail-ig0-f181.google.com ([209.85.213.181]:34706 "EHLO
+	mail-ig0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932377AbbLNVTB (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Dec 2015 16:19:01 -0500
+Subject: [PATCH v3 07/11] xprtrdma: Add ro_unmap_sync method for FMR
 From: Chuck Lever <chuck.lever@oracle.com>
 To: anna.schumaker@netapp.com
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 14 Dec 2015 16:18:27 -0500
-Message-ID: <20151214211827.16295.76338.stgit@manet.1015granger.net>
+Date: Mon, 14 Dec 2015 16:18:59 -0500
+Message-ID: <20151214211859.16295.76938.stgit@manet.1015granger.net>
 In-Reply-To: <20151214211317.16295.70115.stgit@manet.1015granger.net>
 References: <20151214211317.16295.70115.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -16,99 +16,31 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-FRWR's ro_unmap is asynchronous. The new ro_unmap_sync posts
-LOCAL_INV Work Requests and waits for them to complete before
-returning.
+FMR's ro_unmap method is already synchronous because ib_unmap_fmr()
+is a synchronous verb. However, some improvements can be made here.
 
-Note also, DMA unmapping is now done _after_ invalidation.
+1. Gather all the MRs for the RPC request onto a list, and invoke
+   ib_unmap_fmr() once with that list. This reduces the number of
+   doorbells when there is more than one MR to invalidate
+
+2. Perform the DMA unmap _after_ the MRs are unmapped, not before.
+   This is critical after invalidating a Write chunk.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/frwr_ops.c  |  137 ++++++++++++++++++++++++++++++++++++++-
- net/sunrpc/xprtrdma/xprt_rdma.h |    2 +
- 2 files changed, 135 insertions(+), 4 deletions(-)
+ net/sunrpc/xprtrdma/fmr_ops.c |   64 +++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 64 insertions(+)
 
-diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
-index 660d0b6..5b9e41d 100644
---- a/net/sunrpc/xprtrdma/frwr_ops.c
-+++ b/net/sunrpc/xprtrdma/frwr_ops.c
-@@ -244,12 +244,14 @@ frwr_op_maxpages(struct rpcrdma_xprt *r_xprt)
- 		     rpcrdma_max_segments(r_xprt) * ia->ri_max_frmr_depth);
- }
- 
--/* If FAST_REG or LOCAL_INV failed, indicate the frmr needs to be reset. */
-+/* If FAST_REG or LOCAL_INV failed, indicate the frmr needs
-+ * to be reset.
-+ *
-+ * WARNING: Only wr_id and status are reliable at this point
-+ */
- static void
--frwr_sendcompletion(struct ib_wc *wc)
-+__frwr_sendcompletion_flush(struct ib_wc *wc, struct rpcrdma_mw *r)
- {
--	struct rpcrdma_mw *r;
--
- 	if (likely(wc->status == IB_WC_SUCCESS))
- 		return;
- 
-@@ -260,9 +262,23 @@ frwr_sendcompletion(struct ib_wc *wc)
- 	else
- 		pr_warn("RPC:       %s: frmr %p error, status %s (%d)\n",
- 			__func__, r, ib_wc_status_msg(wc->status), wc->status);
-+
- 	r->r.frmr.fr_state = FRMR_IS_STALE;
- }
- 
-+static void
-+frwr_sendcompletion(struct ib_wc *wc)
-+{
-+	struct rpcrdma_mw *r = (struct rpcrdma_mw *)(unsigned long)wc->wr_id;
-+	struct rpcrdma_frmr *f = &r->r.frmr;
-+
-+	if (unlikely(wc->status != IB_WC_SUCCESS))
-+		__frwr_sendcompletion_flush(wc, r);
-+
-+	if (f->fr_waiter)
-+		complete(&f->fr_linv_done);
-+}
-+
- static int
- frwr_op_init(struct rpcrdma_xprt *r_xprt)
- {
-@@ -334,6 +350,7 @@ frwr_op_map(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
- 	} while (mw->r.frmr.fr_state != FRMR_IS_INVALID);
- 	frmr = &mw->r.frmr;
- 	frmr->fr_state = FRMR_IS_VALID;
-+	frmr->fr_waiter = false;
- 	mr = frmr->fr_mr;
- 	reg_wr = &frmr->fr_regwr;
- 
-@@ -413,6 +430,117 @@ out_senderr:
+diff --git a/net/sunrpc/xprtrdma/fmr_ops.c b/net/sunrpc/xprtrdma/fmr_ops.c
+index f1e8daf..c14f3a4 100644
+--- a/net/sunrpc/xprtrdma/fmr_ops.c
++++ b/net/sunrpc/xprtrdma/fmr_ops.c
+@@ -179,6 +179,69 @@ out_maperr:
  	return rc;
  }
  
-+static struct ib_send_wr *
-+__frwr_prepare_linv_wr(struct rpcrdma_mr_seg *seg)
-+{
-+	struct rpcrdma_mw *mw = seg->rl_mw;
-+	struct rpcrdma_frmr *f = &mw->r.frmr;
-+	struct ib_send_wr *invalidate_wr;
-+
-+	f->fr_waiter = false;
-+	f->fr_state = FRMR_IS_INVALID;
-+	invalidate_wr = &f->fr_invwr;
-+
-+	memset(invalidate_wr, 0, sizeof(*invalidate_wr));
-+	invalidate_wr->wr_id = (unsigned long)(void *)mw;
-+	invalidate_wr->opcode = IB_WR_LOCAL_INV;
-+	invalidate_wr->ex.invalidate_rkey = f->fr_mr->rkey;
-+
-+	return invalidate_wr;
-+}
-+
 +static void
-+__frwr_dma_unmap(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
-+		 int rc)
++__fmr_dma_unmap(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg)
 +{
 +	struct ib_device *device = r_xprt->rx_ia.ri_device;
 +	struct rpcrdma_mw *mw = seg->rl_mw;
@@ -119,10 +51,7 @@ index 660d0b6..5b9e41d 100644
 +	while (nsegs--)
 +		rpcrdma_unmap_one(device, seg++);
 +
-+	if (!rc)
-+		rpcrdma_put_mw(r_xprt, mw);
-+	else
-+		__frwr_queue_recovery(mw);
++	rpcrdma_put_mw(r_xprt, mw);
 +}
 +
 +/* Invalidate all memory regions that were registered for "req".
@@ -131,57 +60,32 @@ index 660d0b6..5b9e41d 100644
 + * previously mapped memory regions.
 + */
 +static void
-+frwr_op_unmap_sync(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req)
++fmr_op_unmap_sync(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req)
 +{
-+	struct ib_send_wr *invalidate_wrs, *pos, *prev, *bad_wr;
-+	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
 +	struct rpcrdma_mr_seg *seg;
 +	unsigned int i, nchunks;
-+	struct rpcrdma_frmr *f;
++	struct rpcrdma_mw *mw;
++	LIST_HEAD(unmap_list);
 +	int rc;
 +
 +	dprintk("RPC:       %s: req %p\n", __func__, req);
 +
 +	/* ORDER: Invalidate all of the req's MRs first
 +	 *
-+	 * Chain the LOCAL_INV Work Requests and post them with
-+	 * a single ib_post_send() call.
++	 * ib_unmap_fmr() is slow, so use a single call instead
++	 * of one call per mapped MR.
 +	 */
-+	invalidate_wrs = pos = prev = NULL;
-+	seg = NULL;
 +	for (i = 0, nchunks = req->rl_nchunks; nchunks; nchunks--) {
 +		seg = &req->rl_segments[i];
++		mw = seg->rl_mw;
 +
-+		pos = __frwr_prepare_linv_wr(seg);
-+
-+		if (!invalidate_wrs)
-+			invalidate_wrs = pos;
-+		else
-+			prev->next = pos;
-+		prev = pos;
++		list_add(&mw->r.fmr.fmr->list, &unmap_list);
 +
 +		i += seg->mr_nsegs;
 +	}
-+	f = &seg->rl_mw->r.frmr;
-+
-+	/* Strong send queue ordering guarantees that when the
-+	 * last WR in the chain completes, all WRs in the chain
-+	 * are complete.
-+	 */
-+	f->fr_invwr.send_flags = IB_SEND_SIGNALED;
-+	f->fr_waiter = true;
-+	init_completion(&f->fr_linv_done);
-+	INIT_CQCOUNT(&r_xprt->rx_ep);
-+
-+	/* Transport disconnect drains the receive CQ before it
-+	 * replaces the QP. The RPC reply handler won't call us
-+	 * unless ri_id->qp is a valid pointer.
-+	 */
-+	rc = ib_post_send(ia->ri_id->qp, invalidate_wrs, &bad_wr);
++	rc = ib_unmap_fmr(&unmap_list);
 +	if (rc)
-+		pr_warn("%s: ib_post_send failed %i\n", __func__, rc);
-+
-+	wait_for_completion(&f->fr_linv_done);
++		pr_warn("%s: ib_unmap_fmr failed (%i)\n", __func__, rc);
 +
 +	/* ORDER: Now DMA unmap all of the req's MRs, and return
 +	 * them to the free MW list.
@@ -189,7 +93,7 @@ index 660d0b6..5b9e41d 100644
 +	for (i = 0, nchunks = req->rl_nchunks; nchunks; nchunks--) {
 +		seg = &req->rl_segments[i];
 +
-+		__frwr_dma_unmap(r_xprt, seg, rc);
++		__fmr_dma_unmap(r_xprt, seg);
 +
 +		i += seg->mr_nsegs;
 +		seg->mr_nsegs = 0;
@@ -198,28 +102,15 @@ index 660d0b6..5b9e41d 100644
 +	req->rl_nchunks = 0;
 +}
 +
- /* Post a LOCAL_INV Work Request to prevent further remote access
-  * via RDMA READ or RDMA WRITE.
+ /* Use the ib_unmap_fmr() verb to prevent further remote
+  * access via RDMA READ or RDMA WRITE.
   */
-@@ -472,6 +600,7 @@ frwr_op_destroy(struct rpcrdma_buffer *buf)
+@@ -231,6 +294,7 @@ fmr_op_destroy(struct rpcrdma_buffer *buf)
  
- const struct rpcrdma_memreg_ops rpcrdma_frwr_memreg_ops = {
- 	.ro_map				= frwr_op_map,
-+	.ro_unmap_sync			= frwr_op_unmap_sync,
- 	.ro_unmap			= frwr_op_unmap,
- 	.ro_open			= frwr_op_open,
- 	.ro_maxpages			= frwr_op_maxpages,
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index d9f2f65..089a7db 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -206,6 +206,8 @@ struct rpcrdma_frmr {
- 	enum rpcrdma_frmr_state		fr_state;
- 	struct work_struct		fr_work;
- 	struct rpcrdma_xprt		*fr_xprt;
-+	bool				fr_waiter;
-+	struct completion		fr_linv_done;;
- 	struct ib_reg_wr		fr_regwr;
- 	struct ib_send_wr		fr_invwr;
- };
+ const struct rpcrdma_memreg_ops rpcrdma_fmr_memreg_ops = {
+ 	.ro_map				= fmr_op_map,
++	.ro_unmap_sync			= fmr_op_unmap_sync,
+ 	.ro_unmap			= fmr_op_unmap,
+ 	.ro_open			= fmr_op_open,
+ 	.ro_maxpages			= fmr_op_maxpages,
 
