@@ -1,15 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f172.google.com ([209.85.223.172]:33737 "EHLO
-	mail-io0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753623AbbLNVTI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Dec 2015 16:19:08 -0500
-Subject: [PATCH v3 08/11] xprtrdma: Add ro_unmap_sync method for
- all-physical registration
+Received: from mail-ig0-f176.google.com ([209.85.213.176]:38781 "EHLO
+	mail-ig0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753624AbbLNVTR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Dec 2015 16:19:17 -0500
+Subject: [PATCH v3 09/11] SUNRPC: Introduce xprt_commit_rqst()
 From: Chuck Lever <chuck.lever@oracle.com>
 To: anna.schumaker@netapp.com
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 14 Dec 2015 16:19:07 -0500
-Message-ID: <20151214211907.16295.8183.stgit@manet.1015granger.net>
+Date: Mon, 14 Dec 2015 16:19:15 -0500
+Message-ID: <20151214211915.16295.30339.stgit@manet.1015granger.net>
 In-Reply-To: <20151214211317.16295.70115.stgit@manet.1015granger.net>
 References: <20151214211317.16295.70115.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -17,44 +16,77 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-physical's ro_unmap is synchronous already. The new ro_unmap_sync
-method just has to DMA unmap all MRs associated with the RPC
-request.
+I'm about to add code in the RPC/RDMA reply handler between the
+xprt_lookup_rqst() and xprt_complete_rqst() call site that needs
+to execute outside of spinlock critical sections.
+
+Add a hook to remove an rpc_rqst from the pending list once
+the transport knows its going to invoke xprt_complete_rqst().
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/physical_ops.c |   13 +++++++++++++
- 1 file changed, 13 insertions(+)
+ include/linux/sunrpc/xprt.h    |    1 +
+ net/sunrpc/xprt.c              |   14 ++++++++++++++
+ net/sunrpc/xprtrdma/rpc_rdma.c |    4 ++++
+ 3 files changed, 19 insertions(+)
 
-diff --git a/net/sunrpc/xprtrdma/physical_ops.c b/net/sunrpc/xprtrdma/physical_ops.c
-index 617b76f..dbb302e 100644
---- a/net/sunrpc/xprtrdma/physical_ops.c
-+++ b/net/sunrpc/xprtrdma/physical_ops.c
-@@ -83,6 +83,18 @@ physical_op_unmap(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg)
- 	return 1;
+diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+index 69ef5b3..ab6c3a5 100644
+--- a/include/linux/sunrpc/xprt.h
++++ b/include/linux/sunrpc/xprt.h
+@@ -366,6 +366,7 @@ void			xprt_wait_for_buffer_space(struct rpc_task *task, rpc_action action);
+ void			xprt_write_space(struct rpc_xprt *xprt);
+ void			xprt_adjust_cwnd(struct rpc_xprt *xprt, struct rpc_task *task, int result);
+ struct rpc_rqst *	xprt_lookup_rqst(struct rpc_xprt *xprt, __be32 xid);
++void			xprt_commit_rqst(struct rpc_task *task);
+ void			xprt_complete_rqst(struct rpc_task *task, int copied);
+ void			xprt_release_rqst_cong(struct rpc_task *task);
+ void			xprt_disconnect_done(struct rpc_xprt *xprt);
+diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+index 2e98f4a..a5be4ab 100644
+--- a/net/sunrpc/xprt.c
++++ b/net/sunrpc/xprt.c
+@@ -837,6 +837,20 @@ static void xprt_update_rtt(struct rpc_task *task)
  }
  
-+/* DMA unmap all memory regions that were mapped for "req".
+ /**
++ * xprt_commit_rqst - remove rqst from pending list early
++ * @task: RPC request to remove
++ *
++ * Caller holds transport lock.
 + */
-+static void
-+physical_op_unmap_sync(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req)
++void xprt_commit_rqst(struct rpc_task *task)
 +{
-+	struct ib_device *device = r_xprt->rx_ia.ri_device;
-+	unsigned int i;
++	struct rpc_rqst *req = task->tk_rqstp;
 +
-+	for (i = 0; req->rl_nchunks; --req->rl_nchunks)
-+		rpcrdma_unmap_one(device, &req->rl_segments[i++]);
++	list_del_init(&req->rq_list);
 +}
++EXPORT_SYMBOL_GPL(xprt_commit_rqst);
 +
- static void
- physical_op_destroy(struct rpcrdma_buffer *buf)
- {
-@@ -90,6 +102,7 @@ physical_op_destroy(struct rpcrdma_buffer *buf)
++/**
+  * xprt_complete_rqst - called when reply processing is complete
+  * @task: RPC request that recently completed
+  * @copied: actual number of bytes received from the transport
+diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+index c10d969..0bc8c39 100644
+--- a/net/sunrpc/xprtrdma/rpc_rdma.c
++++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+@@ -804,6 +804,9 @@ rpcrdma_reply_handler(struct rpcrdma_rep *rep)
+ 	if (req->rl_reply)
+ 		goto out_duplicate;
  
- const struct rpcrdma_memreg_ops rpcrdma_physical_memreg_ops = {
- 	.ro_map				= physical_op_map,
-+	.ro_unmap_sync			= physical_op_unmap_sync,
- 	.ro_unmap			= physical_op_unmap,
- 	.ro_open			= physical_op_open,
- 	.ro_maxpages			= physical_op_maxpages,
++	xprt_commit_rqst(rqst->rq_task);
++	spin_unlock_bh(&xprt->transport_lock);
++
+ 	dprintk("RPC:       %s: reply 0x%p completes request 0x%p\n"
+ 		"                   RPC request 0x%p xid 0x%08x\n",
+ 			__func__, rep, req, rqst,
+@@ -894,6 +897,7 @@ badheader:
+ 	else if (credits > r_xprt->rx_buf.rb_max_requests)
+ 		credits = r_xprt->rx_buf.rb_max_requests;
+ 
++	spin_lock_bh(&xprt->transport_lock);
+ 	cwnd = xprt->cwnd;
+ 	xprt->cwnd = credits << RPC_CWNDSHIFT;
+ 	if (xprt->cwnd > cwnd)
 
