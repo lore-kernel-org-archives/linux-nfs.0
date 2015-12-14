@@ -1,200 +1,832 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail3.dit.upm.es ([138.4.2.18]:46069 "EHLO mail3.dit.upm.es"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751356AbbLNQ5W (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 14 Dec 2015 11:57:22 -0500
-Subject: Re: possible bug in nfs-kernel-server
-To: "J. Bruce Fields" <bfields@fieldses.org>,
-        Soumya Koduri <skoduri@redhat.com>
-References: <564EFE51.90105@dit.upm.es>
- <20151121091824.71ab1f6b@tlielax.poochiereds.net>
- <b259acd35a93bd2293630c35b8761e6b@dit.upm.es> <566954D6.7090508@dit.upm.es>
- <5669702D.50402@redhat.com> <20151210144434.GB12544@fieldses.org>
-Cc: Jeff Layton <jlayton@poochiereds.net>, linux-nfs@vger.kernel.org,
-        =?UTF-8?Q?administraci=c3=b3n_del_centro_de_c=c3=a1lculo_del_dit?=
-	<cdc@dit.upm.es>
-From: Omar Walid Llorente <omar@dit.upm.es>
-Message-ID: <566EF4E4.60809@dit.upm.es>
-Date: Mon, 14 Dec 2015 17:57:08 +0100
+Received: from aserp1040.oracle.com ([141.146.126.69]:51419 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751351AbbLNRIl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Dec 2015 12:08:41 -0500
+Date: Mon, 14 Dec 2015 09:08:27 -0800
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+To: Christoph Hellwig <hch@lst.de>
+Cc: viro@zeniv.linux.org.uk, tao.peng@primarydata.com,
+        jeff.layton@primarydata.com, bfields@fieldses.org,
+        linux-fsdevel@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org
+Subject: Re: [PATCH 2/4] vfs: pull btrfs clone API to vfs layer
+Message-ID: <20151214170826.GC10582@birch.djwong.org>
+References: <1449143992-7415-1-git-send-email-hch@lst.de>
+ <1449143992-7415-3-git-send-email-hch@lst.de>
+ <20151209204033.GB10582@birch.djwong.org>
 MIME-Version: 1.0
-In-Reply-To: <20151210144434.GB12544@fieldses.org>
-Content-Type: multipart/mixed;
- boundary="------------090706020302080707010702"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20151209204033.GB10582@birch.djwong.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is a multi-part message in MIME format.
---------------090706020302080707010702
-Content-Type: text/plain; charset=windows-1252; format=flowed
-Content-Transfer-Encoding: 8bit
+On Wed, Dec 09, 2015 at 12:40:33PM -0800, Darrick J. Wong wrote:
+> On Thu, Dec 03, 2015 at 12:59:50PM +0100, Christoph Hellwig wrote:
+> > The btrfs clone ioctls are now adopted by other file systems, with NFS
+> > and CIFS already having support for them, and XFS being under active
+> > development.  To avoid growth of various slightly incompatible
+> > implementations, add one to the VFS.  Note that clones are different from
+> > file copies in several ways:
+> > 
+> >  - they are atomic vs other writers
+> >  - they support whole file clones
+> >  - they support 64-bit legth clones
+> >  - they do not allow partial success (aka short writes)
+> >  - clones are expected to be a fast metadata operation
+> > 
+> > Because of that it would be rather cumbersome to try to piggyback them on
+> > top of the recent clone_file_range infrastructure.  The converse isn't
+> > true and the clone_file_range system call could try clone file range as
+> > a first attempt to copy, something that further patches will enable.
+> > 
+> > Based on earlier work from Peng Tao.
+> > 
+> > Signed-off-by: Christoph Hellwig <hch@lst.de>
+> > ---
+> >  fs/btrfs/ctree.h        |   3 +-
+> >  fs/btrfs/file.c         |   1 +
+> >  fs/btrfs/ioctl.c        |  49 ++-----------------
+> >  fs/cifs/cifsfs.c        |  63 ++++++++++++++++++++++++
+> >  fs/cifs/cifsfs.h        |   1 -
+> >  fs/cifs/ioctl.c         | 126 +++++++++++++++++++++++-------------------------
+> >  fs/ioctl.c              |  29 +++++++++++
+> 
+> I tried this patch series on ppc64 (w/ 32-bit powerpc userland) and I think
+> it needs to fix up the compat ioctl to make the vfs call...
 
+Bah, forgot to add:
+Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 
-Thank you Bruce, others, for the responses. I send attached a complete 
-capture of the issue, including the glusterfs transactions.
+(Feel free to fold this three line chunk into the original patch...)
 
-Hope this helps to clear where may it be...
+--D
 
-Omar
-
-El 10/12/15 a las 15:44, J. Bruce Fields escribió:
-> On Thu, Dec 10, 2015 at 05:59:33PM +0530, Soumya Koduri wrote:
->>
->> On 12/10/2015 04:02 PM, Omar Walid Llorente wrote:
->>> Hi, Jeff, Bruce, finally I got some time to get the capture of the nfs
->>> packets (you can find them in attached file nfs-problem-nks.pcap.zip).
->>> Sorry for being so late.
->>>
->>> What I did was the following:
->>>
->>> 1st) Create the RO file:
->>> cdc@l056:~/prueba-git$ rm -f kk.txt 444.txt; echo "prueba" > 444.txt;
->>> chmod 444 444.txt;
->>>
->>> 2nd) Init the capture:
->>> root@l056:~# tcpdump -i eth2 -w /tmp/nfs.pcap -s 512 port 2049
->>> tcpdump: listening on eth2, link-type EN10MB (Ethernet), capture size
->>> 512 bytes
->>>
->> GlusterFS protocol is added to wireshark from version 1.8.0 [1]. It
->> may be helpful to see what GlusterFS operations are being processed
->> as part of NFS WRITE call (which has failed in this case).
->>
->> Could you please try taking the packet trace on the machine where
->> NFS server is running (without filtering out based on the port
->> number).
->>
->> Also I tried out the same test on Fedora22 machine, but haven't run
->> into any issue. What are the fuse mount options you have used to
->> mount gluster volume?
-> Oh, I think this is a simple problem (but maybe hard to fix).  The
-> capture shows NFSv3 traffic like:
->
-> 	CREATE -> OK
-> 	SETATTR (mode set to 0400) -> OK
-> 	WRITE -> NFS3ERR_ACCES
->
-> That write would succeed locally (because the mode doesn't matter to a
-> local application that already holds the file open).  It would fail over
-> NFSv3, which doesn't know about the open--except that there's a hack for
-> this case: NFSv3 servers allow IO operations to ignore the mode, if the
-> operation comes from the owner of the file.  NFSv3 clients are then
-> careful to perform necessary access checks on open to ensure that this
-> owner-override rule doesn't grant too many permissions.
->
-> That allows NFSv3 applications to see behavior that's mostly like a
-> local filesystem, without opening much of a security hole (since the
-> owner could always chmod anyway).
->
-> So, knfsd is making this special exception--but gluster (which I believe
-> it's exporting in this case, via fuse?)--probably doesn't....  I'm not
-> sure what you can do about that.
->
-> --b.
-
--- 
-----------------------------------------------------------------
-Centro de Cálculo         Depto. Ingeniería Sistemas Telemáticos
-E-mail: omar@dit.upm.es        Universidad Politécnica de Madrid
-Fax:(+34) 913367333                 E.T.S. Ing. Telecomunicación
-Tel:(+34) 915495700-Ext.3005                28040 Madrid (Spain)
-Tel:(+34) 915495762-Ext.3005
-Tel:(+34) 913367366-Ext.3005
-----------------------------------------------------------------
-
-
---------------090706020302080707010702
-Content-Type: application/zip;
- name="nfs-problem-nks+glusterfs.pcap.zip"
-Content-Transfer-Encoding: base64
-Content-Disposition: attachment;
- filename="nfs-problem-nks+glusterfs.pcap.zip"
-
-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
-AAToAwAAUEsFBgAAAAABAAEAZAAAAPwRAAAAAA==
---------------090706020302080707010702--
+> diff --git a/fs/compat_ioctl.c b/fs/compat_ioctl.c
+> index dcf2653..70d4b10 100644
+> --- a/fs/compat_ioctl.c
+> +++ b/fs/compat_ioctl.c
+> @@ -1580,6 +1580,10 @@ COMPAT_SYSCALL_DEFINE3(ioctl, unsigned int, fd, unsigned int, cmd,
+>                 goto out_fput;
+>  #endif
+>  
+> +       case FICLONE:
+> +       case FICLONERANGE:
+> +               goto do_ioctl;
+> +
+>         case FIBMAP:
+>         case FIGETBSZ:
+>         case FIONREAD:
+> 
+> --D
+> 
+> >  fs/nfs/nfs4file.c       |  87 ++++-----------------------------
+> >  fs/read_write.c         |  72 +++++++++++++++++++++++++++
+> >  include/linux/fs.h      |   7 ++-
+> >  include/uapi/linux/fs.h |   9 ++++
+> >  11 files changed, 254 insertions(+), 193 deletions(-)
+> > 
+> > diff --git a/fs/btrfs/ctree.h b/fs/btrfs/ctree.h
+> > index ede7277..dd4733f 100644
+> > --- a/fs/btrfs/ctree.h
+> > +++ b/fs/btrfs/ctree.h
+> > @@ -4025,7 +4025,6 @@ void btrfs_get_block_group_info(struct list_head *groups_list,
+> >  void update_ioctl_balance_args(struct btrfs_fs_info *fs_info, int lock,
+> >  			       struct btrfs_ioctl_balance_args *bargs);
+> >  
+> > -
+> >  /* file.c */
+> >  int btrfs_auto_defrag_init(void);
+> >  void btrfs_auto_defrag_exit(void);
+> > @@ -4058,6 +4057,8 @@ int btrfs_fdatawrite_range(struct inode *inode, loff_t start, loff_t end);
+> >  ssize_t btrfs_copy_file_range(struct file *file_in, loff_t pos_in,
+> >  			      struct file *file_out, loff_t pos_out,
+> >  			      size_t len, unsigned int flags);
+> > +int btrfs_clone_file_range(struct file *file_in, loff_t pos_in,
+> > +			   struct file *file_out, loff_t pos_out, u64 len);
+> >  
+> >  /* tree-defrag.c */
+> >  int btrfs_defrag_leaves(struct btrfs_trans_handle *trans,
+> > diff --git a/fs/btrfs/file.c b/fs/btrfs/file.c
+> > index e67fe6a..232e300 100644
+> > --- a/fs/btrfs/file.c
+> > +++ b/fs/btrfs/file.c
+> > @@ -2925,6 +2925,7 @@ const struct file_operations btrfs_file_operations = {
+> >  	.compat_ioctl	= btrfs_ioctl,
+> >  #endif
+> >  	.copy_file_range = btrfs_copy_file_range,
+> > +	.clone_file_range = btrfs_clone_file_range,
+> >  };
+> >  
+> >  void btrfs_auto_defrag_exit(void)
+> > diff --git a/fs/btrfs/ioctl.c b/fs/btrfs/ioctl.c
+> > index 0f92735..85b1cae 100644
+> > --- a/fs/btrfs/ioctl.c
+> > +++ b/fs/btrfs/ioctl.c
+> > @@ -3906,49 +3906,10 @@ ssize_t btrfs_copy_file_range(struct file *file_in, loff_t pos_in,
+> >  	return ret;
+> >  }
+> >  
+> > -static noinline long btrfs_ioctl_clone(struct file *file, unsigned long srcfd,
+> > -				       u64 off, u64 olen, u64 destoff)
+> > +int btrfs_clone_file_range(struct file *src_file, loff_t off,
+> > +		struct file *dst_file, loff_t destoff, u64 len)
+> >  {
+> > -	struct fd src_file;
+> > -	int ret;
+> > -
+> > -	/* the destination must be opened for writing */
+> > -	if (!(file->f_mode & FMODE_WRITE) || (file->f_flags & O_APPEND))
+> > -		return -EINVAL;
+> > -
+> > -	ret = mnt_want_write_file(file);
+> > -	if (ret)
+> > -		return ret;
+> > -
+> > -	src_file = fdget(srcfd);
+> > -	if (!src_file.file) {
+> > -		ret = -EBADF;
+> > -		goto out_drop_write;
+> > -	}
+> > -
+> > -	/* the src must be open for reading */
+> > -	if (!(src_file.file->f_mode & FMODE_READ)) {
+> > -		ret = -EINVAL;
+> > -		goto out_fput;
+> > -	}
+> > -
+> > -	ret = btrfs_clone_files(file, src_file.file, off, olen, destoff);
+> > -
+> > -out_fput:
+> > -	fdput(src_file);
+> > -out_drop_write:
+> > -	mnt_drop_write_file(file);
+> > -	return ret;
+> > -}
+> > -
+> > -static long btrfs_ioctl_clone_range(struct file *file, void __user *argp)
+> > -{
+> > -	struct btrfs_ioctl_clone_range_args args;
+> > -
+> > -	if (copy_from_user(&args, argp, sizeof(args)))
+> > -		return -EFAULT;
+> > -	return btrfs_ioctl_clone(file, args.src_fd, args.src_offset,
+> > -				 args.src_length, args.dest_offset);
+> > +	return btrfs_clone_files(dst_file, src_file, off, len, destoff);
+> >  }
+> >  
+> >  /*
+> > @@ -5498,10 +5459,6 @@ long btrfs_ioctl(struct file *file, unsigned int
+> >  		return btrfs_ioctl_dev_info(root, argp);
+> >  	case BTRFS_IOC_BALANCE:
+> >  		return btrfs_ioctl_balance(file, NULL);
+> > -	case BTRFS_IOC_CLONE:
+> > -		return btrfs_ioctl_clone(file, arg, 0, 0, 0);
+> > -	case BTRFS_IOC_CLONE_RANGE:
+> > -		return btrfs_ioctl_clone_range(file, argp);
+> >  	case BTRFS_IOC_TRANS_START:
+> >  		return btrfs_ioctl_trans_start(file);
+> >  	case BTRFS_IOC_TRANS_END:
+> > diff --git a/fs/cifs/cifsfs.c b/fs/cifs/cifsfs.c
+> > index cbc0f4b..e9b978f 100644
+> > --- a/fs/cifs/cifsfs.c
+> > +++ b/fs/cifs/cifsfs.c
+> > @@ -914,6 +914,61 @@ const struct inode_operations cifs_symlink_inode_ops = {
+> >  #endif
+> >  };
+> >  
+> > +static int cifs_clone_file_range(struct file *src_file, loff_t off,
+> > +		struct file *dst_file, loff_t destoff, u64 len)
+> > +{
+> > +	struct inode *src_inode = file_inode(src_file);
+> > +	struct inode *target_inode = file_inode(dst_file);
+> > +	struct cifsFileInfo *smb_file_src = src_file->private_data;
+> > +	struct cifsFileInfo *smb_file_target = dst_file->private_data;
+> > +	struct cifs_tcon *src_tcon = tlink_tcon(smb_file_src->tlink);
+> > +	struct cifs_tcon *target_tcon = tlink_tcon(smb_file_target->tlink);
+> > +	unsigned int xid;
+> > +	int rc;
+> > +
+> > +	cifs_dbg(FYI, "clone range\n");
+> > +
+> > +	xid = get_xid();
+> > +
+> > +	if (!src_file->private_data || !dst_file->private_data) {
+> > +		rc = -EBADF;
+> > +		cifs_dbg(VFS, "missing cifsFileInfo on copy range src file\n");
+> > +		goto out;
+> > +	}
+> > +
+> > +	/*
+> > +	 * Note: cifs case is easier than btrfs since server responsible for
+> > +	 * checks for proper open modes and file type and if it wants
+> > +	 * server could even support copy of range where source = target
+> > +	 */
+> > +	lock_two_nondirectories(target_inode, src_inode);
+> > +
+> > +	if (len == 0)
+> > +		len = src_inode->i_size - off;
+> > +
+> > +	cifs_dbg(FYI, "about to flush pages\n");
+> > +	/* should we flush first and last page first */
+> > +	truncate_inode_pages_range(&target_inode->i_data, destoff,
+> > +				   PAGE_CACHE_ALIGN(destoff + len)-1);
+> > +
+> > +	if (target_tcon->ses->server->ops->duplicate_extents)
+> > +		rc = target_tcon->ses->server->ops->duplicate_extents(xid,
+> > +			smb_file_src, smb_file_target, off, len, destoff);
+> > +	else
+> > +		rc = -EOPNOTSUPP;
+> > +
+> > +	/* force revalidate of size and timestamps of target file now
+> > +	   that target is updated on the server */
+> > +	CIFS_I(target_inode)->time = 0;
+> > +out_unlock:
+> > +	/* although unlocking in the reverse order from locking is not
+> > +	   strictly necessary here it is a little cleaner to be consistent */
+> > +	unlock_two_nondirectories(src_inode, target_inode);
+> > +out:
+> > +	free_xid(xid);
+> > +	return rc;
+> > +}
+> > +
+> >  const struct file_operations cifs_file_ops = {
+> >  	.read_iter = cifs_loose_read_iter,
+> >  	.write_iter = cifs_file_write_iter,
+> > @@ -926,6 +981,7 @@ const struct file_operations cifs_file_ops = {
+> >  	.splice_read = generic_file_splice_read,
+> >  	.llseek = cifs_llseek,
+> >  	.unlocked_ioctl	= cifs_ioctl,
+> > +	.clone_file_range = cifs_clone_file_range,
+> >  	.setlease = cifs_setlease,
+> >  	.fallocate = cifs_fallocate,
+> >  };
+> > @@ -942,6 +998,8 @@ const struct file_operations cifs_file_strict_ops = {
+> >  	.splice_read = generic_file_splice_read,
+> >  	.llseek = cifs_llseek,
+> >  	.unlocked_ioctl	= cifs_ioctl,
+> > +	.clone_file_range = cifs_clone_file_range,
+> > +	.clone_file_range = cifs_clone_file_range,
+> >  	.setlease = cifs_setlease,
+> >  	.fallocate = cifs_fallocate,
+> >  };
+> > @@ -958,6 +1016,7 @@ const struct file_operations cifs_file_direct_ops = {
+> >  	.mmap = cifs_file_mmap,
+> >  	.splice_read = generic_file_splice_read,
+> >  	.unlocked_ioctl  = cifs_ioctl,
+> > +	.clone_file_range = cifs_clone_file_range,
+> >  	.llseek = cifs_llseek,
+> >  	.setlease = cifs_setlease,
+> >  	.fallocate = cifs_fallocate,
+> > @@ -974,6 +1033,7 @@ const struct file_operations cifs_file_nobrl_ops = {
+> >  	.splice_read = generic_file_splice_read,
+> >  	.llseek = cifs_llseek,
+> >  	.unlocked_ioctl	= cifs_ioctl,
+> > +	.clone_file_range = cifs_clone_file_range,
+> >  	.setlease = cifs_setlease,
+> >  	.fallocate = cifs_fallocate,
+> >  };
+> > @@ -989,6 +1049,7 @@ const struct file_operations cifs_file_strict_nobrl_ops = {
+> >  	.splice_read = generic_file_splice_read,
+> >  	.llseek = cifs_llseek,
+> >  	.unlocked_ioctl	= cifs_ioctl,
+> > +	.clone_file_range = cifs_clone_file_range,
+> >  	.setlease = cifs_setlease,
+> >  	.fallocate = cifs_fallocate,
+> >  };
+> > @@ -1004,6 +1065,7 @@ const struct file_operations cifs_file_direct_nobrl_ops = {
+> >  	.mmap = cifs_file_mmap,
+> >  	.splice_read = generic_file_splice_read,
+> >  	.unlocked_ioctl  = cifs_ioctl,
+> > +	.clone_file_range = cifs_clone_file_range,
+> >  	.llseek = cifs_llseek,
+> >  	.setlease = cifs_setlease,
+> >  	.fallocate = cifs_fallocate,
+> > @@ -1014,6 +1076,7 @@ const struct file_operations cifs_dir_ops = {
+> >  	.release = cifs_closedir,
+> >  	.read    = generic_read_dir,
+> >  	.unlocked_ioctl  = cifs_ioctl,
+> > +	.clone_file_range = cifs_clone_file_range,
+> >  	.llseek = generic_file_llseek,
+> >  };
+> >  
+> > diff --git a/fs/cifs/cifsfs.h b/fs/cifs/cifsfs.h
+> > index c3cc160..c399513 100644
+> > --- a/fs/cifs/cifsfs.h
+> > +++ b/fs/cifs/cifsfs.h
+> > @@ -131,7 +131,6 @@ extern int	cifs_setxattr(struct dentry *, const char *, const void *,
+> >  extern ssize_t	cifs_getxattr(struct dentry *, const char *, void *, size_t);
+> >  extern ssize_t	cifs_listxattr(struct dentry *, char *, size_t);
+> >  extern long cifs_ioctl(struct file *filep, unsigned int cmd, unsigned long arg);
+> > -
+> >  #ifdef CONFIG_CIFS_NFSD_EXPORT
+> >  extern const struct export_operations cifs_export_ops;
+> >  #endif /* CONFIG_CIFS_NFSD_EXPORT */
+> > diff --git a/fs/cifs/ioctl.c b/fs/cifs/ioctl.c
+> > index 35cf990..7a3b84e 100644
+> > --- a/fs/cifs/ioctl.c
+> > +++ b/fs/cifs/ioctl.c
+> > @@ -34,73 +34,36 @@
+> >  #include "cifs_ioctl.h"
+> >  #include <linux/btrfs.h>
+> >  
+> > -static long cifs_ioctl_clone(unsigned int xid, struct file *dst_file,
+> > -			unsigned long srcfd, u64 off, u64 len, u64 destoff,
+> > -			bool dup_extents)
+> > +static int cifs_file_clone_range(unsigned int xid, struct file *src_file,
+> > +			  struct file *dst_file)
+> >  {
+> > -	int rc;
+> > -	struct cifsFileInfo *smb_file_target = dst_file->private_data;
+> > +	struct inode *src_inode = file_inode(src_file);
+> >  	struct inode *target_inode = file_inode(dst_file);
+> > -	struct cifs_tcon *target_tcon;
+> > -	struct fd src_file;
+> >  	struct cifsFileInfo *smb_file_src;
+> > -	struct inode *src_inode;
+> > +	struct cifsFileInfo *smb_file_target;
+> >  	struct cifs_tcon *src_tcon;
+> > +	struct cifs_tcon *target_tcon;
+> > +	int rc;
+> >  
+> >  	cifs_dbg(FYI, "ioctl clone range\n");
+> > -	/* the destination must be opened for writing */
+> > -	if (!(dst_file->f_mode & FMODE_WRITE)) {
+> > -		cifs_dbg(FYI, "file target not open for write\n");
+> > -		return -EINVAL;
+> > -	}
+> >  
+> > -	/* check if target volume is readonly and take reference */
+> > -	rc = mnt_want_write_file(dst_file);
+> > -	if (rc) {
+> > -		cifs_dbg(FYI, "mnt_want_write failed with rc %d\n", rc);
+> > -		return rc;
+> > -	}
+> > -
+> > -	src_file = fdget(srcfd);
+> > -	if (!src_file.file) {
+> > -		rc = -EBADF;
+> > -		goto out_drop_write;
+> > -	}
+> > -
+> > -	if (src_file.file->f_op->unlocked_ioctl != cifs_ioctl) {
+> > -		rc = -EBADF;
+> > -		cifs_dbg(VFS, "src file seems to be from a different filesystem type\n");
+> > -		goto out_fput;
+> > -	}
+> > -
+> > -	if ((!src_file.file->private_data) || (!dst_file->private_data)) {
+> > +	if (!src_file->private_data || !dst_file->private_data) {
+> >  		rc = -EBADF;
+> >  		cifs_dbg(VFS, "missing cifsFileInfo on copy range src file\n");
+> > -		goto out_fput;
+> > +		goto out;
+> >  	}
+> >  
+> >  	rc = -EXDEV;
+> >  	smb_file_target = dst_file->private_data;
+> > -	smb_file_src = src_file.file->private_data;
+> > +	smb_file_src = src_file->private_data;
+> >  	src_tcon = tlink_tcon(smb_file_src->tlink);
+> >  	target_tcon = tlink_tcon(smb_file_target->tlink);
+> >  
+> > -	/* check source and target on same server (or volume if dup_extents) */
+> > -	if (dup_extents && (src_tcon != target_tcon)) {
+> > -		cifs_dbg(VFS, "source and target of copy not on same share\n");
+> > -		goto out_fput;
+> > -	}
+> > -
+> > -	if (!dup_extents && (src_tcon->ses != target_tcon->ses)) {
+> > +	if (src_tcon->ses != target_tcon->ses) {
+> >  		cifs_dbg(VFS, "source and target of copy not on same server\n");
+> > -		goto out_fput;
+> > +		goto out;
+> >  	}
+> >  
+> > -	src_inode = file_inode(src_file.file);
+> > -	rc = -EINVAL;
+> > -	if (S_ISDIR(src_inode->i_mode))
+> > -		goto out_fput;
+> > -
+> >  	/*
+> >  	 * Note: cifs case is easier than btrfs since server responsible for
+> >  	 * checks for proper open modes and file type and if it wants
+> > @@ -108,34 +71,66 @@ static long cifs_ioctl_clone(unsigned int xid, struct file *dst_file,
+> >  	 */
+> >  	lock_two_nondirectories(target_inode, src_inode);
+> >  
+> > -	/* determine range to clone */
+> > -	rc = -EINVAL;
+> > -	if (off + len > src_inode->i_size || off + len < off)
+> > -		goto out_unlock;
+> > -	if (len == 0)
+> > -		len = src_inode->i_size - off;
+> > -
+> >  	cifs_dbg(FYI, "about to flush pages\n");
+> >  	/* should we flush first and last page first */
+> > -	truncate_inode_pages_range(&target_inode->i_data, destoff,
+> > -				   PAGE_CACHE_ALIGN(destoff + len)-1);
+> > +	truncate_inode_pages(&target_inode->i_data, 0);
+> >  
+> > -	if (dup_extents && target_tcon->ses->server->ops->duplicate_extents)
+> > -		rc = target_tcon->ses->server->ops->duplicate_extents(xid,
+> > -			smb_file_src, smb_file_target, off, len, destoff);
+> > -	else if (!dup_extents && target_tcon->ses->server->ops->clone_range)
+> > +	if (target_tcon->ses->server->ops->clone_range)
+> >  		rc = target_tcon->ses->server->ops->clone_range(xid,
+> > -			smb_file_src, smb_file_target, off, len, destoff);
+> > +			smb_file_src, smb_file_target, 0, src_inode->i_size, 0);
+> >  	else
+> >  		rc = -EOPNOTSUPP;
+> >  
+> >  	/* force revalidate of size and timestamps of target file now
+> >  	   that target is updated on the server */
+> >  	CIFS_I(target_inode)->time = 0;
+> > -out_unlock:
+> >  	/* although unlocking in the reverse order from locking is not
+> >  	   strictly necessary here it is a little cleaner to be consistent */
+> >  	unlock_two_nondirectories(src_inode, target_inode);
+> > +out:
+> > +	return rc;
+> > +}
+> > +
+> > +static long cifs_ioctl_clone(unsigned int xid, struct file *dst_file,
+> > +			unsigned long srcfd)
+> > +{
+> > +	int rc;
+> > +	struct fd src_file;
+> > +	struct inode *src_inode;
+> > +
+> > +	cifs_dbg(FYI, "ioctl clone range\n");
+> > +	/* the destination must be opened for writing */
+> > +	if (!(dst_file->f_mode & FMODE_WRITE)) {
+> > +		cifs_dbg(FYI, "file target not open for write\n");
+> > +		return -EINVAL;
+> > +	}
+> > +
+> > +	/* check if target volume is readonly and take reference */
+> > +	rc = mnt_want_write_file(dst_file);
+> > +	if (rc) {
+> > +		cifs_dbg(FYI, "mnt_want_write failed with rc %d\n", rc);
+> > +		return rc;
+> > +	}
+> > +
+> > +	src_file = fdget(srcfd);
+> > +	if (!src_file.file) {
+> > +		rc = -EBADF;
+> > +		goto out_drop_write;
+> > +	}
+> > +
+> > +	if (src_file.file->f_op->unlocked_ioctl != cifs_ioctl) {
+> > +		rc = -EBADF;
+> > +		cifs_dbg(VFS, "src file seems to be from a different filesystem type\n");
+> > +		goto out_fput;
+> > +	}
+> > +
+> > +	src_inode = file_inode(src_file.file);
+> > +	rc = -EINVAL;
+> > +	if (S_ISDIR(src_inode->i_mode))
+> > +		goto out_fput;
+> > +
+> > +	rc = cifs_file_clone_range(xid, src_file.file, dst_file);
+> > +
+> >  out_fput:
+> >  	fdput(src_file);
+> >  out_drop_write:
+> > @@ -256,10 +251,7 @@ long cifs_ioctl(struct file *filep, unsigned int command, unsigned long arg)
+> >  			}
+> >  			break;
+> >  		case CIFS_IOC_COPYCHUNK_FILE:
+> > -			rc = cifs_ioctl_clone(xid, filep, arg, 0, 0, 0, false);
+> > -			break;
+> > -		case BTRFS_IOC_CLONE:
+> > -			rc = cifs_ioctl_clone(xid, filep, arg, 0, 0, 0, true);
+> > +			rc = cifs_ioctl_clone(xid, filep, arg);
+> >  			break;
+> >  		case CIFS_IOC_SET_INTEGRITY:
+> >  			if (pSMBFile == NULL)
+> > diff --git a/fs/ioctl.c b/fs/ioctl.c
+> > index 5d01d26..84c6e79 100644
+> > --- a/fs/ioctl.c
+> > +++ b/fs/ioctl.c
+> > @@ -215,6 +215,29 @@ static int ioctl_fiemap(struct file *filp, unsigned long arg)
+> >  	return error;
+> >  }
+> >  
+> > +static long ioctl_file_clone(struct file *dst_file, unsigned long srcfd,
+> > +			     u64 off, u64 olen, u64 destoff)
+> > +{
+> > +	struct fd src_file = fdget(srcfd);
+> > +	int ret;
+> > +
+> > +	if (!src_file.file)
+> > +		return -EBADF;
+> > +	ret = vfs_clone_file_range(src_file.file, off, dst_file, destoff, olen);
+> > +	fdput(src_file);
+> > +	return ret;
+> > +}
+> > +
+> > +static long ioctl_file_clone_range(struct file *file, void __user *argp)
+> > +{
+> > +	struct file_clone_range args;
+> > +
+> > +	if (copy_from_user(&args, argp, sizeof(args)))
+> > +		return -EFAULT;
+> > +	return ioctl_file_clone(file, args.src_fd, args.src_offset,
+> > +				args.src_length, args.dest_offset);
+> > +}
+> > +
+> >  #ifdef CONFIG_BLOCK
+> >  
+> >  static inline sector_t logical_to_blk(struct inode *inode, loff_t offset)
+> > @@ -600,6 +623,12 @@ int do_vfs_ioctl(struct file *filp, unsigned int fd, unsigned int cmd,
+> >  	case FIGETBSZ:
+> >  		return put_user(inode->i_sb->s_blocksize, argp);
+> >  
+> > +	case FICLONE:
+> > +		return ioctl_file_clone(filp, arg, 0, 0, 0);
+> > +
+> > +	case FICLONERANGE:
+> > +		return ioctl_file_clone_range(filp, argp);
+> > +
+> >  	default:
+> >  		if (S_ISREG(inode->i_mode))
+> >  			error = file_ioctl(filp, cmd, arg);
+> > diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
+> > index db9b5fe..26f9a23 100644
+> > --- a/fs/nfs/nfs4file.c
+> > +++ b/fs/nfs/nfs4file.c
+> > @@ -195,65 +195,27 @@ static long nfs42_fallocate(struct file *filep, int mode, loff_t offset, loff_t
+> >  	return nfs42_proc_allocate(filep, offset, len);
+> >  }
+> >  
+> > -static noinline long
+> > -nfs42_ioctl_clone(struct file *dst_file, unsigned long srcfd,
+> > -		  u64 src_off, u64 dst_off, u64 count)
+> > +static int nfs42_clone_file_range(struct file *src_file, loff_t src_off,
+> > +		struct file *dst_file, loff_t dst_off, u64 count)
+> >  {
+> >  	struct inode *dst_inode = file_inode(dst_file);
+> >  	struct nfs_server *server = NFS_SERVER(dst_inode);
+> > -	struct fd src_file;
+> > -	struct inode *src_inode;
+> > +	struct inode *src_inode = file_inode(src_file);
+> >  	unsigned int bs = server->clone_blksize;
+> >  	bool same_inode = false;
+> >  	int ret;
+> >  
+> > -	/* dst file must be opened for writing */
+> > -	if (!(dst_file->f_mode & FMODE_WRITE))
+> > -		return -EINVAL;
+> > -
+> > -	ret = mnt_want_write_file(dst_file);
+> > -	if (ret)
+> > -		return ret;
+> > -
+> > -	src_file = fdget(srcfd);
+> > -	if (!src_file.file) {
+> > -		ret = -EBADF;
+> > -		goto out_drop_write;
+> > -	}
+> > -
+> > -	src_inode = file_inode(src_file.file);
+> > -
+> > -	if (src_inode == dst_inode)
+> > -		same_inode = true;
+> > -
+> > -	/* src file must be opened for reading */
+> > -	if (!(src_file.file->f_mode & FMODE_READ))
+> > -		goto out_fput;
+> > -
+> > -	/* src and dst must be regular files */
+> > -	ret = -EISDIR;
+> > -	if (!S_ISREG(src_inode->i_mode) || !S_ISREG(dst_inode->i_mode))
+> > -		goto out_fput;
+> > -
+> > -	ret = -EXDEV;
+> > -	if (src_file.file->f_path.mnt != dst_file->f_path.mnt ||
+> > -	    src_inode->i_sb != dst_inode->i_sb)
+> > -		goto out_fput;
+> > -
+> >  	/* check alignment w.r.t. clone_blksize */
+> >  	ret = -EINVAL;
+> >  	if (bs) {
+> >  		if (!IS_ALIGNED(src_off, bs) || !IS_ALIGNED(dst_off, bs))
+> > -			goto out_fput;
+> > +			goto out;
+> >  		if (!IS_ALIGNED(count, bs) && i_size_read(src_inode) != (src_off + count))
+> > -			goto out_fput;
+> > +			goto out;
+> >  	}
+> >  
+> > -	/* verify if ranges are overlapped within the same file */
+> > -	if (same_inode) {
+> > -		if (dst_off + count > src_off && dst_off < src_off + count)
+> > -			goto out_fput;
+> > -	}
+> > +	if (src_inode == dst_inode)
+> > +		same_inode = true;
+> >  
+> >  	/* XXX: do we lock at all? what if server needs CB_RECALL_LAYOUT? */
+> >  	if (same_inode) {
+> > @@ -275,7 +237,7 @@ nfs42_ioctl_clone(struct file *dst_file, unsigned long srcfd,
+> >  	if (ret)
+> >  		goto out_unlock;
+> >  
+> > -	ret = nfs42_proc_clone(src_file.file, dst_file, src_off, dst_off, count);
+> > +	ret = nfs42_proc_clone(src_file, dst_file, src_off, dst_off, count);
+> >  
+> >  	/* truncate inode page cache of the dst range so that future reads can fetch
+> >  	 * new data from server */
+> > @@ -292,37 +254,9 @@ out_unlock:
+> >  		mutex_unlock(&dst_inode->i_mutex);
+> >  		mutex_unlock(&src_inode->i_mutex);
+> >  	}
+> > -out_fput:
+> > -	fdput(src_file);
+> > -out_drop_write:
+> > -	mnt_drop_write_file(dst_file);
+> > +out:
+> >  	return ret;
+> >  }
+> > -
+> > -static long nfs42_ioctl_clone_range(struct file *dst_file, void __user *argp)
+> > -{
+> > -	struct btrfs_ioctl_clone_range_args args;
+> > -
+> > -	if (copy_from_user(&args, argp, sizeof(args)))
+> > -		return -EFAULT;
+> > -
+> > -	return nfs42_ioctl_clone(dst_file, args.src_fd, args.src_offset,
+> > -				 args.dest_offset, args.src_length);
+> > -}
+> > -
+> > -long nfs4_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+> > -{
+> > -	void __user *argp = (void __user *)arg;
+> > -
+> > -	switch (cmd) {
+> > -	case BTRFS_IOC_CLONE:
+> > -		return nfs42_ioctl_clone(file, arg, 0, 0, 0);
+> > -	case BTRFS_IOC_CLONE_RANGE:
+> > -		return nfs42_ioctl_clone_range(file, argp);
+> > -	}
+> > -
+> > -	return -ENOTTY;
+> > -}
+> >  #endif /* CONFIG_NFS_V4_2 */
+> >  
+> >  const struct file_operations nfs4_file_operations = {
+> > @@ -342,8 +276,7 @@ const struct file_operations nfs4_file_operations = {
+> >  #ifdef CONFIG_NFS_V4_2
+> >  	.llseek		= nfs4_file_llseek,
+> >  	.fallocate	= nfs42_fallocate,
+> > -	.unlocked_ioctl = nfs4_ioctl,
+> > -	.compat_ioctl	= nfs4_ioctl,
+> > +	.clone_file_range = nfs42_clone_file_range,
+> >  #else
+> >  	.llseek		= nfs_file_llseek,
+> >  #endif
+> > diff --git a/fs/read_write.c b/fs/read_write.c
+> > index 6c1aa73..9e3dd8f 100644
+> > --- a/fs/read_write.c
+> > +++ b/fs/read_write.c
+> > @@ -1451,3 +1451,75 @@ out1:
+> >  out2:
+> >  	return ret;
+> >  }
+> > +
+> > +static int clone_verify_area(struct file *file, loff_t pos, u64 len, bool write)
+> > +{
+> > +	struct inode *inode = file_inode(file);
+> > +
+> > +	if (unlikely(pos < 0))
+> > +		return -EINVAL;
+> > +
+> > +	 if (unlikely((loff_t) (pos + len) < 0))
+> > +		return -EINVAL;
+> > +
+> > +	if (unlikely(inode->i_flctx && mandatory_lock(inode))) {
+> > +		loff_t end = len ? pos + len - 1 : OFFSET_MAX;
+> > +		int retval;
+> > +
+> > +		retval = locks_mandatory_area(file, pos, end,
+> > +				write ? F_WRLCK : F_RDLCK);
+> > +		if (retval < 0)
+> > +			return retval;
+> > +	}
+> > +
+> > +	return security_file_permission(file, write ? MAY_WRITE : MAY_READ);
+> > +}
+> > +
+> > +int vfs_clone_file_range(struct file *file_in, loff_t pos_in,
+> > +		struct file *file_out, loff_t pos_out, u64 len)
+> > +{
+> > +	struct inode *inode_in = file_inode(file_in);
+> > +	struct inode *inode_out = file_inode(file_out);
+> > +	int ret;
+> > +
+> > +	if (inode_in->i_sb != inode_out->i_sb ||
+> > +	    file_in->f_path.mnt != file_out->f_path.mnt)
+> > +		return -EXDEV;
+> > +
+> > +	if (S_ISDIR(inode_in->i_mode) || S_ISDIR(inode_out->i_mode))
+> > +		return -EISDIR;
+> > +	if (!S_ISREG(inode_in->i_mode) || !S_ISREG(inode_out->i_mode))
+> > +		return -EOPNOTSUPP;
+> > +
+> > +	if (!(file_in->f_mode & FMODE_READ) ||
+> > +	    !(file_out->f_mode & FMODE_WRITE) ||
+> > +	    (file_out->f_flags & O_APPEND) ||
+> > +	    !file_in->f_op->clone_file_range)
+> > +		return -EBADF;
+> > +
+> > +	ret = clone_verify_area(file_in, pos_in, len, false);
+> > +	if (ret)
+> > +		return ret;
+> > +
+> > +	ret = clone_verify_area(file_out, pos_out, len, true);
+> > +	if (ret)
+> > +		return ret;
+> > +
+> > +	if (pos_in + len > i_size_read(inode_in))
+> > +		return -EINVAL;
+> > +
+> > +	ret = mnt_want_write_file(file_out);
+> > +	if (ret)
+> > +		return ret;
+> > +
+> > +	ret = file_in->f_op->clone_file_range(file_in, pos_in,
+> > +			file_out, pos_out, len);
+> > +	if (!ret) {
+> > +		fsnotify_access(file_in);
+> > +		fsnotify_modify(file_out);
+> > +	}
+> > +
+> > +	mnt_drop_write_file(file_out);
+> > +	return ret;
+> > +}
+> > +EXPORT_SYMBOL(vfs_clone_file_range);
+> > diff --git a/include/linux/fs.h b/include/linux/fs.h
+> > index af559ac..59bf96d 100644
+> > --- a/include/linux/fs.h
+> > +++ b/include/linux/fs.h
+> > @@ -1629,7 +1629,10 @@ struct file_operations {
+> >  #ifndef CONFIG_MMU
+> >  	unsigned (*mmap_capabilities)(struct file *);
+> >  #endif
+> > -	ssize_t (*copy_file_range)(struct file *, loff_t, struct file *, loff_t, size_t, unsigned int);
+> > +	ssize_t (*copy_file_range)(struct file *, loff_t, struct file *,
+> > +			loff_t, size_t, unsigned int);
+> > +	int (*clone_file_range)(struct file *, loff_t, struct file *, loff_t,
+> > +			u64);
+> >  };
+> >  
+> >  struct inode_operations {
+> > @@ -1683,6 +1686,8 @@ extern ssize_t vfs_writev(struct file *, const struct iovec __user *,
+> >  		unsigned long, loff_t *);
+> >  extern ssize_t vfs_copy_file_range(struct file *, loff_t , struct file *,
+> >  				   loff_t, size_t, unsigned int);
+> > +extern int vfs_clone_file_range(struct file *file_in, loff_t pos_in,
+> > +		struct file *file_out, loff_t pos_out, u64 len);
+> >  
+> >  struct super_operations {
+> >     	struct inode *(*alloc_inode)(struct super_block *sb);
+> > diff --git a/include/uapi/linux/fs.h b/include/uapi/linux/fs.h
+> > index f15d980..cd5db7f 100644
+> > --- a/include/uapi/linux/fs.h
+> > +++ b/include/uapi/linux/fs.h
+> > @@ -39,6 +39,13 @@
+> >  #define RENAME_EXCHANGE		(1 << 1)	/* Exchange source and dest */
+> >  #define RENAME_WHITEOUT		(1 << 2)	/* Whiteout source */
+> >  
+> > +struct file_clone_range {
+> > +	__s64 src_fd;
+> > +	__u64 src_offset;
+> > +	__u64 src_length;
+> > +	__u64 dest_offset;
+> > +};
+> > +
+> >  struct fstrim_range {
+> >  	__u64 start;
+> >  	__u64 len;
+> > @@ -159,6 +166,8 @@ struct inodes_stat_t {
+> >  #define FIFREEZE	_IOWR('X', 119, int)	/* Freeze */
+> >  #define FITHAW		_IOWR('X', 120, int)	/* Thaw */
+> >  #define FITRIM		_IOWR('X', 121, struct fstrim_range)	/* Trim */
+> > +#define FICLONE		_IOW(0x94, 9, int)
+> > +#define FICLONERANGE	_IOW(0x94, 13, struct file_clone_range)
+> >  
+> >  #define	FS_IOC_GETFLAGS			_IOR('f', 1, long)
+> >  #define	FS_IOC_SETFLAGS			_IOW('f', 2, long)
+> > -- 
+> > 1.9.1
+> > 
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
