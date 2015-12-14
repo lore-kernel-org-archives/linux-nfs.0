@@ -1,91 +1,65 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f179.google.com ([209.85.213.179]:36405 "EHLO
-	mail-ig0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753527AbbLNVaD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Dec 2015 16:30:03 -0500
-Subject: [PATCH v4 00/11] NFS/RDMA server patches for v4.5
+Received: from mail-io0-f173.google.com ([209.85.223.173]:36229 "EHLO
+	mail-io0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932207AbbLNVaL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Dec 2015 16:30:11 -0500
+Subject: [PATCH v4 01/11] svcrdma: Do not send XDR roundup bytes for a write
+ chunk
 From: Chuck Lever <chuck.lever@oracle.com>
 To: bfields@fieldses.org
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 14 Dec 2015 16:30:01 -0500
-Message-ID: <20151214211951.12932.99017.stgit@klimt.1015granger.net>
+Date: Mon, 14 Dec 2015 16:30:09 -0500
+Message-ID: <20151214213009.12932.60521.stgit@klimt.1015granger.net>
+In-Reply-To: <20151214211951.12932.99017.stgit@klimt.1015granger.net>
+References: <20151214211951.12932.99017.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Here are patches to support server-side bi-directional RPC/RDMA
-operation (to enable NFSv4.1 on RPC/RDMA transports). Thanks to
-all who reviewed v1, v2, and v3. This version has some significant
-changes since the previous one.
+Minor optimization: when dealing with write chunk XDR roundup, do
+not post a Write WR for the zero bytes in the pad. Simply update
+the write segment in the RPC-over-RDMA header to reflect the extra
+pad bytes.
 
-In preparation for Doug's final topic branch, Bruce, I've rebased
-these on Christoph's ib_device_attr branch. There were some merge
-conflicts which I've fixed and tested. These are ready for your
-review.
+The Reply chunk is also a write chunk, but the server does not use
+send_write_chunks() to send the Reply chunk. That's OK in this case:
+the server Upper Layer typically marshals the Reply chunk contents
+in a single contiguous buffer, without a separate tail for the XDR
+pad.
 
-Also available in the "nfsd-rdma-for-4.5" topic branch of this git repo:
+The comments and the variable naming refer to "chunks" but what is
+really meant is "segments." The existing code sends only one
+xdr_write_chunk per RPC reply.
 
-git://git.linux-nfs.org/projects/cel/cel-2.6.git
+The fix assumes this as well. When the XDR pad in the first write
+chunk is reached, the assumption is the Write list is complete and
+send_write_chunks() returns.
 
-Or for browsing:
+That will remain a valid assumption until the server Upper Layer can
+support multiple bulk payload results per RPC.
 
-http://git.linux-nfs.org/?p=cel/cel-2.6.git;a=log;h=refs/heads/nfsd-rdma-for-4.5
-
-
-Changes since v3:
-- Rebased on Christoph's ib_device_attr branch
-- Backchannel patches have been squashed together
-- Memory allocation overhaul to prevent blocking allocation
-  when sending backchannel calls
-
-
-Changes since v2:
-- Rebased on v4.4-rc4
-- Backchannel code in new source file to address dprintk issues
-- svc_rdma_get_context() now uses a pre-allocated cache
-- Dropped svc_rdma_send clean up
-
-
-Changes since v1:
-
-- Rebased on v4.4-rc3
-- Removed the use of CONFIG_SUNRPC_BACKCHANNEL
-- Fixed computation of forward and backward max_requests
-- Updated some comments and patch descriptions
-- pr_err and pr_info converted to dprintk
-- Simplified svc_rdma_get_context()
-- Dropped patch removing access_flags field
-- NFSv4.1 callbacks tested with for-4.5 client
-
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
+ net/sunrpc/xprtrdma/svc_rdma_sendto.c |    7 +++++++
+ 1 file changed, 7 insertions(+)
 
-Chuck Lever (11):
-      svcrdma: Do not send XDR roundup bytes for a write chunk
-      svcrdma: Clean up rdma_create_xprt()
-      svcrdma: Clean up process_context()
-      svcrdma: Improve allocation of struct svc_rdma_op_ctxt
-      svcrdma: Improve allocation of struct svc_rdma_req_map
-      svcrdma: Remove unused req_map and ctxt kmem_caches
-      svcrdma: Add gfp flags to svc_rdma_post_recv()
-      svcrdma: Remove last two __GFP_NOFAIL call sites
-      svcrdma: Make map_xdr non-static
-      svcrdma: Define maximum number of backchannel requests
-      svcrdma: Add class for RDMA backwards direction transport
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+index 969a1ab..bad5eaa 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+@@ -342,6 +342,13 @@ static int send_write_chunks(struct svcxprt_rdma *xprt,
+ 						arg_ch->rs_handle,
+ 						arg_ch->rs_offset,
+ 						write_len);
++
++		/* Do not send XDR pad bytes */
++		if (chunk_no && write_len < 4) {
++			chunk_no++;
++			break;
++		}
++
+ 		chunk_off = 0;
+ 		while (write_len) {
+ 			ret = send_write(xprt, rqstp,
 
-
- include/linux/sunrpc/svc_rdma.h            |   37 ++-
- net/sunrpc/xprt.c                          |    1 
- net/sunrpc/xprtrdma/Makefile               |    2 
- net/sunrpc/xprtrdma/svc_rdma.c             |   41 ---
- net/sunrpc/xprtrdma/svc_rdma_backchannel.c |  371 ++++++++++++++++++++++++++++
- net/sunrpc/xprtrdma/svc_rdma_recvfrom.c    |   52 ++++
- net/sunrpc/xprtrdma/svc_rdma_sendto.c      |   34 ++-
- net/sunrpc/xprtrdma/svc_rdma_transport.c   |  284 ++++++++++++++++-----
- net/sunrpc/xprtrdma/transport.c            |   30 +-
- net/sunrpc/xprtrdma/xprt_rdma.h            |   20 +-
- 10 files changed, 730 insertions(+), 142 deletions(-)
- create mode 100644 net/sunrpc/xprtrdma/svc_rdma_backchannel.c
-
---
-Signature
