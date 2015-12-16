@@ -1,124 +1,43 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:30827 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932300AbbLPPMH convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Dec 2015 10:12:07 -0500
+Received: from aserp1040.oracle.com ([141.146.126.69]:44665 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754544AbbLPPOD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Dec 2015 10:14:03 -0500
 Content-Type: text/plain; charset=us-ascii
 Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2104\))
-Subject: Re: [PATCH v3 09/11] SUNRPC: Introduce xprt_commit_rqst()
+Subject: Re: [PATCH v3 04/11] xprtrdma: Move struct ib_send_wr off the stack
 From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <56716BB4.8080500@Netapp.com>
-Date: Wed, 16 Dec 2015 10:12:01 -0500
-Cc: linux-rdma@vger.kernel.org,
+In-Reply-To: <20151216151115.GA16905@infradead.org>
+Date: Wed, 16 Dec 2015 10:13:31 -0500
+Cc: Sagi Grimberg <sagig@dev.mellanox.co.il>, anna.schumaker@netapp.com,
+        linux-rdma@vger.kernel.org,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <8DD5A4EB-ADBC-418B-9E9C-4D7F4FCB5B69@oracle.com>
-References: <20151214211317.16295.70115.stgit@manet.1015granger.net> <20151214211915.16295.30339.stgit@manet.1015granger.net> <56716BB4.8080500@Netapp.com>
-To: Anna Schumaker <Anna.Schumaker@netapp.com>
+Message-Id: <D5B6F9FD-FF8F-4F37-A3E5-B287B91B1EA4@oracle.com>
+References: <20151214211317.16295.70115.stgit@manet.1015granger.net> <20151214211811.16295.47695.stgit@manet.1015granger.net> <56716E6C.4020604@dev.mellanox.co.il> <F2E992ED-2698-43DE-B7C5-4F02DA75AE42@oracle.com> <20151216151115.GA16905@infradead.org>
+To: Christoph Hellwig <hch@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Anna-
 
+> On Dec 16, 2015, at 10:11 AM, Christoph Hellwig <hch@infradead.org> wrote:
+> 
+> On Wed, Dec 16, 2015 at 10:06:33AM -0500, Chuck Lever wrote:
+>>> Would it make sense to unionize these as they are guaranteed not to
+>>> execute together? Some people don't like this sort of savings.
+>> 
+>> I dislike unions because they make the code that uses
+>> them less readable. I can define macros to help that,
+>> but sigh! OK.
+> 
+> Shouldn't be an issue with transparent unions these days:
+> 
+> 	union {
+> 		struct ib_reg_wr                fr_regwr;
+> 		struct ib_send_wr               fr_invwr;
+> 	};
 
-> On Dec 16, 2015, at 8:48 AM, Anna Schumaker <Anna.Schumaker@netapp.com> wrote:
-> 
-> Hi Chuck,
-> 
-> Sorry for the last minute comment.
-> 
-> On 12/14/2015 04:19 PM, Chuck Lever wrote:
->> I'm about to add code in the RPC/RDMA reply handler between the
->> xprt_lookup_rqst() and xprt_complete_rqst() call site that needs
->> to execute outside of spinlock critical sections.
->> 
->> Add a hook to remove an rpc_rqst from the pending list once
->> the transport knows its going to invoke xprt_complete_rqst().
->> 
->> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->> ---
->> include/linux/sunrpc/xprt.h    |    1 +
->> net/sunrpc/xprt.c              |   14 ++++++++++++++
->> net/sunrpc/xprtrdma/rpc_rdma.c |    4 ++++
->> 3 files changed, 19 insertions(+)
->> 
->> diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
->> index 69ef5b3..ab6c3a5 100644
->> --- a/include/linux/sunrpc/xprt.h
->> +++ b/include/linux/sunrpc/xprt.h
->> @@ -366,6 +366,7 @@ void			xprt_wait_for_buffer_space(struct rpc_task *task, rpc_action action);
->> void			xprt_write_space(struct rpc_xprt *xprt);
->> void			xprt_adjust_cwnd(struct rpc_xprt *xprt, struct rpc_task *task, int result);
->> struct rpc_rqst *	xprt_lookup_rqst(struct rpc_xprt *xprt, __be32 xid);
->> +void			xprt_commit_rqst(struct rpc_task *task);
->> void			xprt_complete_rqst(struct rpc_task *task, int copied);
->> void			xprt_release_rqst_cong(struct rpc_task *task);
->> void			xprt_disconnect_done(struct rpc_xprt *xprt);
->> diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
->> index 2e98f4a..a5be4ab 100644
->> --- a/net/sunrpc/xprt.c
->> +++ b/net/sunrpc/xprt.c
->> @@ -837,6 +837,20 @@ static void xprt_update_rtt(struct rpc_task *task)
->> }
->> 
->> /**
->> + * xprt_commit_rqst - remove rqst from pending list early
->> + * @task: RPC request to remove
->> + *
->> + * Caller holds transport lock.
->> + */
->> +void xprt_commit_rqst(struct rpc_task *task)
->> +{
->> +	struct rpc_rqst *req = task->tk_rqstp;
->> +
->> +	list_del_init(&req->rq_list);
->> +}
->> +EXPORT_SYMBOL_GPL(xprt_commit_rqst);
-> 
-> Can you move this function into the xprtrdma code, since it's not called outside of there?
-
-I think that's a layering violation, and the idea is
-to allow other transports to use this API eventually.
-
-But I'll include this change in the next version of
-the series.
-
-
-> Thanks,
-> Anna
-> 
->> +
->> +/**
->>  * xprt_complete_rqst - called when reply processing is complete
->>  * @task: RPC request that recently completed
->>  * @copied: actual number of bytes received from the transport
->> diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
->> index c10d969..0bc8c39 100644
->> --- a/net/sunrpc/xprtrdma/rpc_rdma.c
->> +++ b/net/sunrpc/xprtrdma/rpc_rdma.c
->> @@ -804,6 +804,9 @@ rpcrdma_reply_handler(struct rpcrdma_rep *rep)
->> 	if (req->rl_reply)
->> 		goto out_duplicate;
->> 
->> +	xprt_commit_rqst(rqst->rq_task);
->> +	spin_unlock_bh(&xprt->transport_lock);
->> +
->> 	dprintk("RPC:       %s: reply 0x%p completes request 0x%p\n"
->> 		"                   RPC request 0x%p xid 0x%08x\n",
->> 			__func__, rep, req, rqst,
->> @@ -894,6 +897,7 @@ badheader:
->> 	else if (credits > r_xprt->rx_buf.rb_max_requests)
->> 		credits = r_xprt->rx_buf.rb_max_requests;
->> 
->> +	spin_lock_bh(&xprt->transport_lock);
->> 	cwnd = xprt->cwnd;
->> 	xprt->cwnd = credits << RPC_CWNDSHIFT;
->> 	if (xprt->cwnd > cwnd)
->> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Right, but isn't that a gcc-ism that Al hates? If
+everyone is OK with that construction, I will use it.
 
 --
 Chuck Lever
