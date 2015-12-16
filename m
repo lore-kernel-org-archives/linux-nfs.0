@@ -1,75 +1,95 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f174.google.com ([209.85.213.174]:38287 "EHLO
-	mail-ig0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755517AbbLPWWA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Dec 2015 17:22:00 -0500
-Subject: [PATCH v4 00/10] NFS/RDMA client patches for 4.5
+Received: from mail-ig0-f169.google.com ([209.85.213.169]:35605 "EHLO
+	mail-ig0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755535AbbLPWWI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Dec 2015 17:22:08 -0500
+Subject: [PATCH v4 01/10] xprtrdma: Fix additional uses of
+ spin_lock_irqsave(rb_lock)
 From: Chuck Lever <chuck.lever@oracle.com>
 To: anna.schumaker@netapp.com
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Wed, 16 Dec 2015 17:21:57 -0500
-Message-ID: <20151216221444.13110.43538.stgit@manet.1015granger.net>
+Date: Wed, 16 Dec 2015 17:22:06 -0500
+Message-ID: <20151216222206.13110.27535.stgit@manet.1015granger.net>
+In-Reply-To: <20151216221444.13110.43538.stgit@manet.1015granger.net>
+References: <20151216221444.13110.43538.stgit@manet.1015granger.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-For 4.5, I'd like to address the send queue accounting and
-invalidation/unmap ordering issues Jason brought up a couple of
-months ago.
+Clean up.
 
-Also available in the "nfs-rdma-for-4.5" topic branch of this git repo:
+rb_lock critical sections added in rpcrdma_ep_post_extra_recv()
+should have first been converted to use normal spin_lock now that
+the reply handler is a work queue.
 
-git://git.linux-nfs.org/projects/cel/cel-2.6.git
+The backchannel set up code should use the appropriate helper
+instead of open-coding a rb_recv_bufs list add.
 
-Or for browsing:
+Problem introduced by glib patch re-ordering on my part.
 
-http://git.linux-nfs.org/?p=cel/cel-2.6.git;a=log;h=refs/heads/nfs-rdma-for-4.5
-
-
-Changes since v3:
-- Dropped xprt_commit_rqst()
-- __frmr_dma_unmap now uses ib_dma_unmap_sg()
-- Use transparent union in struct rpcrdma_frmr
-
-
-Changes since v2:
-- Rebased on Christoph's ib_device_attr branch
-
-
-Changes since v1:
-
-- Rebased on v4.4-rc3
-- Receive buffer safety margin patch dropped
-- Backchannel pr_err and pr_info converted to dprintk
-- Backchannel spin locks converted to work queue-safe locks
-- Fixed premature release of backchannel request buffer
-- NFSv4.1 callbacks tested with for-4.5 server
-
+Fixes: f531a5dbc451 ('xprtrdma: Pre-allocate backward rpc_rqst')
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Tested-by: Devesh Sharma <devesh.sharma@avagotech.com>
 ---
+ net/sunrpc/xprtrdma/backchannel.c |    6 +-----
+ net/sunrpc/xprtrdma/verbs.c       |    7 +++----
+ 2 files changed, 4 insertions(+), 9 deletions(-)
 
-Chuck Lever (10):
-      xprtrdma: Fix additional uses of spin_lock_irqsave(rb_lock)
-      xprtrdma: xprt_rdma_free() must not release backchannel reqs
-      xprtrdma: Disable RPC/RDMA backchannel debugging messages
-      xprtrdma: Move struct ib_send_wr off the stack
-      xprtrdma: Introduce ro_unmap_sync method
-      xprtrdma: Add ro_unmap_sync method for FRWR
-      xprtrdma: Add ro_unmap_sync method for FMR
-      xprtrdma: Add ro_unmap_sync method for all-physical registration
-      xprtrdma: Invalidate in the RPC reply handler
-      xprtrdma: Revert commit e7104a2a9606 ('xprtrdma: Cap req_cqinit').
+diff --git a/net/sunrpc/xprtrdma/backchannel.c b/net/sunrpc/xprtrdma/backchannel.c
+index 2dcb44f..11d2cfb 100644
+--- a/net/sunrpc/xprtrdma/backchannel.c
++++ b/net/sunrpc/xprtrdma/backchannel.c
+@@ -84,9 +84,7 @@ out_fail:
+ static int rpcrdma_bc_setup_reps(struct rpcrdma_xprt *r_xprt,
+ 				 unsigned int count)
+ {
+-	struct rpcrdma_buffer *buffers = &r_xprt->rx_buf;
+ 	struct rpcrdma_rep *rep;
+-	unsigned long flags;
+ 	int rc = 0;
+ 
+ 	while (count--) {
+@@ -98,9 +96,7 @@ static int rpcrdma_bc_setup_reps(struct rpcrdma_xprt *r_xprt,
+ 			break;
+ 		}
+ 
+-		spin_lock_irqsave(&buffers->rb_lock, flags);
+-		list_add(&rep->rr_list, &buffers->rb_recv_bufs);
+-		spin_unlock_irqrestore(&buffers->rb_lock, flags);
++		rpcrdma_recv_buffer_put(rep);
+ 	}
+ 
+ 	return rc;
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 650034b..f23f3d6 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -1329,15 +1329,14 @@ rpcrdma_ep_post_extra_recv(struct rpcrdma_xprt *r_xprt, unsigned int count)
+ 	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
+ 	struct rpcrdma_ep *ep = &r_xprt->rx_ep;
+ 	struct rpcrdma_rep *rep;
+-	unsigned long flags;
+ 	int rc;
+ 
+ 	while (count--) {
+-		spin_lock_irqsave(&buffers->rb_lock, flags);
++		spin_lock(&buffers->rb_lock);
+ 		if (list_empty(&buffers->rb_recv_bufs))
+ 			goto out_reqbuf;
+ 		rep = rpcrdma_buffer_get_rep_locked(buffers);
+-		spin_unlock_irqrestore(&buffers->rb_lock, flags);
++		spin_unlock(&buffers->rb_lock);
+ 
+ 		rc = rpcrdma_ep_post_recv(ia, ep, rep);
+ 		if (rc)
+@@ -1347,7 +1346,7 @@ rpcrdma_ep_post_extra_recv(struct rpcrdma_xprt *r_xprt, unsigned int count)
+ 	return 0;
+ 
+ out_reqbuf:
+-	spin_unlock_irqrestore(&buffers->rb_lock, flags);
++	spin_unlock(&buffers->rb_lock);
+ 	pr_warn("%s: no extra receive buffers\n", __func__);
+ 	return -ENOMEM;
+ 
 
-
- net/sunrpc/xprtrdma/backchannel.c  |   22 ++---
- net/sunrpc/xprtrdma/fmr_ops.c      |   64 +++++++++++++
- net/sunrpc/xprtrdma/frwr_ops.c     |  174 +++++++++++++++++++++++++++++++-----
- net/sunrpc/xprtrdma/physical_ops.c |   13 +++
- net/sunrpc/xprtrdma/rpc_rdma.c     |   16 +++
- net/sunrpc/xprtrdma/transport.c    |    3 +
- net/sunrpc/xprtrdma/verbs.c        |   13 +--
- net/sunrpc/xprtrdma/xprt_rdma.h    |   14 ++-
- 8 files changed, 271 insertions(+), 48 deletions(-)
-
---
-Chuck Lever
