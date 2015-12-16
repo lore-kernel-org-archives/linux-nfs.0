@@ -1,50 +1,37 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:40815 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751947AbbLPPJs convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Dec 2015 10:09:48 -0500
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2104\))
-Subject: Re: [PATCH v3 06/11] xprtrdma: Add ro_unmap_sync method for FRWR
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <56716DE4.8080403@dev.mellanox.co.il>
-Date: Wed, 16 Dec 2015 10:09:44 -0500
-Cc: anna.schumaker@netapp.com, linux-rdma@vger.kernel.org,
+Received: from bombadil.infradead.org ([198.137.202.9]:33095 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752816AbbLPPLS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Dec 2015 10:11:18 -0500
+Date: Wed, 16 Dec 2015 07:11:15 -0800
+From: Christoph Hellwig <hch@infradead.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Sagi Grimberg <sagig@dev.mellanox.co.il>, anna.schumaker@netapp.com,
+        linux-rdma@vger.kernel.org,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <1ED402CD-72B6-4F44-A8FD-88FD379551BA@oracle.com>
-References: <20151214211317.16295.70115.stgit@manet.1015granger.net> <20151214211827.16295.76338.stgit@manet.1015granger.net> <56716DE4.8080403@dev.mellanox.co.il>
-To: Sagi Grimberg <sagig@dev.mellanox.co.il>
+Subject: Re: [PATCH v3 04/11] xprtrdma: Move struct ib_send_wr off the stack
+Message-ID: <20151216151115.GA16905@infradead.org>
+References: <20151214211317.16295.70115.stgit@manet.1015granger.net>
+ <20151214211811.16295.47695.stgit@manet.1015granger.net>
+ <56716E6C.4020604@dev.mellanox.co.il>
+ <F2E992ED-2698-43DE-B7C5-4F02DA75AE42@oracle.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <F2E992ED-2698-43DE-B7C5-4F02DA75AE42@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-> On Dec 16, 2015, at 8:57 AM, Sagi Grimberg <sagig@dev.mellanox.co.il> wrote:
+On Wed, Dec 16, 2015 at 10:06:33AM -0500, Chuck Lever wrote:
+> > Would it make sense to unionize these as they are guaranteed not to
+> > execute together? Some people don't like this sort of savings.
 > 
-> 
->> +static void
->> +__frwr_dma_unmap(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
->> +		 int rc)
->> +{
->> +	struct ib_device *device = r_xprt->rx_ia.ri_device;
->> +	struct rpcrdma_mw *mw = seg->rl_mw;
->> +	int nsegs = seg->mr_nsegs;
->> +
->> +	seg->rl_mw = NULL;
->> +
->> +	while (nsegs--)
->> +		rpcrdma_unmap_one(device, seg++);
-> 
-> Chuck, shouldn't this be replaced with ib_dma_unmap_sg?
+> I dislike unions because they make the code that uses
+> them less readable. I can define macros to help that,
+> but sigh! OK.
 
-Looks like this was left over from before the conversion
-to use ib_dma_unmap_sg. I'll have a look.
+Shouldn't be an issue with transparent unions these days:
 
-> Sorry for the late comment (Didn't find enough time to properly
-> review this...)
-
---
-Chuck Lever
-
-
-
-
+	union {
+		struct ib_reg_wr                fr_regwr;
+		struct ib_send_wr               fr_invwr;
+	};
