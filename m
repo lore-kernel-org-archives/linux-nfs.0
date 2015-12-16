@@ -1,23 +1,25 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f173.google.com ([209.85.220.173]:35101 "EHLO
+Received: from mail-qk0-f173.google.com ([209.85.220.173]:36212 "EHLO
 	mail-qk0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753582AbbLPMKt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Dec 2015 07:10:49 -0500
-Received: by mail-qk0-f173.google.com with SMTP id u65so40525770qkh.2
-        for <linux-nfs@vger.kernel.org>; Wed, 16 Dec 2015 04:10:49 -0800 (PST)
+	with ESMTP id S1752952AbbLPMLl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Dec 2015 07:11:41 -0500
+Received: by mail-qk0-f173.google.com with SMTP id t125so59719194qkh.3
+        for <linux-nfs@vger.kernel.org>; Wed, 16 Dec 2015 04:11:41 -0800 (PST)
 MIME-Version: 1.0
-In-Reply-To: <20151214211951.12932.99017.stgit@klimt.1015granger.net>
-References: <20151214211951.12932.99017.stgit@klimt.1015granger.net>
+In-Reply-To: <56706BE0.7010609@Netapp.com>
+References: <20151214211317.16295.70115.stgit@manet.1015granger.net> <56706BE0.7010609@Netapp.com>
 From: Devesh Sharma <devesh.sharma@avagotech.com>
-Date: Wed, 16 Dec 2015 17:40:09 +0530
-Message-ID: <CANjDDBjypu0jX22fZ-Nf-bNNeam2MM0MADaZY9C-o9ihJPiseg@mail.gmail.com>
-Subject: Re: [PATCH v4 00/11] NFS/RDMA server patches for v4.5
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: bfields@fieldses.org, linux-rdma@vger.kernel.org,
+Date: Wed, 16 Dec 2015 17:41:01 +0530
+Message-ID: <CANjDDBie2igLpqSXiEbswtiO41BmvruVOfu9wXhLa8B6XVbWQg@mail.gmail.com>
+Subject: Re: [PATCH v3 00/11] NFS/RDMA client patches for 4.5
+To: Anna Schumaker <Anna.Schumaker@netapp.com>
+Cc: Chuck Lever <chuck.lever@oracle.com>, linux-rdma@vger.kernel.org,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+
+Hi Chuck,
 
 iozone passed on ocrdma device. Link bounce fails to recover iozone
 traffic, however failure is not related to this patch series. I am in
@@ -25,82 +27,82 @@ processes of finding out the patch which broke it.
 
 Tested-By: Devesh Sharma <devesh.sharma@avagotech.com>
 
-On Tue, Dec 15, 2015 at 3:00 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
-> Here are patches to support server-side bi-directional RPC/RDMA
-> operation (to enable NFSv4.1 on RPC/RDMA transports). Thanks to
-> all who reviewed v1, v2, and v3. This version has some significant
-> changes since the previous one.
+On Wed, Dec 16, 2015 at 1:07 AM, Anna Schumaker
+<Anna.Schumaker@netapp.com> wrote:
+> Thanks, Chuck!
 >
-> In preparation for Doug's final topic branch, Bruce, I've rebased
-> these on Christoph's ib_device_attr branch. There were some merge
-> conflicts which I've fixed and tested. These are ready for your
-> review.
+> Everything looks okay to me, so I'll apply these patches and send them to Trond before the holiday.
 >
-> Also available in the "nfsd-rdma-for-4.5" topic branch of this git repo:
+> On 12/14/2015 04:17 PM, Chuck Lever wrote:
+>> For 4.5, I'd like to address the send queue accounting and
+>> invalidation/unmap ordering issues Jason brought up a couple of
+>> months ago.
+>>
+>> In preparation for Doug's final topic branch, Anna, I've rebased
+>> these on Christoph's ib_device_attr branch, but there were no merge
+>> conflicts or other changes needed. Could you begin preparing these
+>> for linux-next and other final testing and review?
 >
-> git://git.linux-nfs.org/projects/cel/cel-2.6.git
+> No merge conflicts is nice, and we might not need to worry about ordering the pull request.
 >
-> Or for browsing:
+> Thanks,
+> Anna
 >
-> http://git.linux-nfs.org/?p=cel/cel-2.6.git;a=log;h=refs/heads/nfsd-rdma-for-4.5
+>>
+>> Also available in the "nfs-rdma-for-4.5" topic branch of this git repo:
+>>
+>> git://git.linux-nfs.org/projects/cel/cel-2.6.git
+>>
+>> Or for browsing:
+>>
+>> http://git.linux-nfs.org/?p=cel/cel-2.6.git;a=log;h=refs/heads/nfs-rdma-for-4.5
+>>
+>>
+>> Changes since v2:
+>> - Rebased on Christoph's ib_device_attr branch
+>>
+>>
+>> Changes since v1:
+>>
+>> - Rebased on v4.4-rc3
+>> - Receive buffer safety margin patch dropped
+>> - Backchannel pr_err and pr_info converted to dprintk
+>> - Backchannel spin locks converted to work queue-safe locks
+>> - Fixed premature release of backchannel request buffer
+>> - NFSv4.1 callbacks tested with for-4.5 server
+>>
+>> ---
+>>
+>> Chuck Lever (11):
+>>       xprtrdma: Fix additional uses of spin_lock_irqsave(rb_lock)
+>>       xprtrdma: xprt_rdma_free() must not release backchannel reqs
+>>       xprtrdma: Disable RPC/RDMA backchannel debugging messages
+>>       xprtrdma: Move struct ib_send_wr off the stack
+>>       xprtrdma: Introduce ro_unmap_sync method
+>>       xprtrdma: Add ro_unmap_sync method for FRWR
+>>       xprtrdma: Add ro_unmap_sync method for FMR
+>>       xprtrdma: Add ro_unmap_sync method for all-physical registration
+>>       SUNRPC: Introduce xprt_commit_rqst()
+>>       xprtrdma: Invalidate in the RPC reply handler
+>>       xprtrdma: Revert commit e7104a2a9606 ('xprtrdma: Cap req_cqinit').
+>>
+>>
+>>  include/linux/sunrpc/xprt.h        |    1
+>>  net/sunrpc/xprt.c                  |   14 +++
+>>  net/sunrpc/xprtrdma/backchannel.c  |   22 ++---
+>>  net/sunrpc/xprtrdma/fmr_ops.c      |   64 +++++++++++++
+>>  net/sunrpc/xprtrdma/frwr_ops.c     |  175 +++++++++++++++++++++++++++++++-----
+>>  net/sunrpc/xprtrdma/physical_ops.c |   13 +++
+>>  net/sunrpc/xprtrdma/rpc_rdma.c     |   14 +++
+>>  net/sunrpc/xprtrdma/transport.c    |    3 +
+>>  net/sunrpc/xprtrdma/verbs.c        |   13 +--
+>>  net/sunrpc/xprtrdma/xprt_rdma.h    |   12 +-
+>>  10 files changed, 283 insertions(+), 48 deletions(-)
+>>
+>> --
+>> Chuck Lever
+>>
 >
->
-> Changes since v3:
-> - Rebased on Christoph's ib_device_attr branch
-> - Backchannel patches have been squashed together
-> - Memory allocation overhaul to prevent blocking allocation
->   when sending backchannel calls
->
->
-> Changes since v2:
-> - Rebased on v4.4-rc4
-> - Backchannel code in new source file to address dprintk issues
-> - svc_rdma_get_context() now uses a pre-allocated cache
-> - Dropped svc_rdma_send clean up
->
->
-> Changes since v1:
->
-> - Rebased on v4.4-rc3
-> - Removed the use of CONFIG_SUNRPC_BACKCHANNEL
-> - Fixed computation of forward and backward max_requests
-> - Updated some comments and patch descriptions
-> - pr_err and pr_info converted to dprintk
-> - Simplified svc_rdma_get_context()
-> - Dropped patch removing access_flags field
-> - NFSv4.1 callbacks tested with for-4.5 client
->
-> ---
->
-> Chuck Lever (11):
->       svcrdma: Do not send XDR roundup bytes for a write chunk
->       svcrdma: Clean up rdma_create_xprt()
->       svcrdma: Clean up process_context()
->       svcrdma: Improve allocation of struct svc_rdma_op_ctxt
->       svcrdma: Improve allocation of struct svc_rdma_req_map
->       svcrdma: Remove unused req_map and ctxt kmem_caches
->       svcrdma: Add gfp flags to svc_rdma_post_recv()
->       svcrdma: Remove last two __GFP_NOFAIL call sites
->       svcrdma: Make map_xdr non-static
->       svcrdma: Define maximum number of backchannel requests
->       svcrdma: Add class for RDMA backwards direction transport
->
->
->  include/linux/sunrpc/svc_rdma.h            |   37 ++-
->  net/sunrpc/xprt.c                          |    1
->  net/sunrpc/xprtrdma/Makefile               |    2
->  net/sunrpc/xprtrdma/svc_rdma.c             |   41 ---
->  net/sunrpc/xprtrdma/svc_rdma_backchannel.c |  371 ++++++++++++++++++++++++++++
->  net/sunrpc/xprtrdma/svc_rdma_recvfrom.c    |   52 ++++
->  net/sunrpc/xprtrdma/svc_rdma_sendto.c      |   34 ++-
->  net/sunrpc/xprtrdma/svc_rdma_transport.c   |  284 ++++++++++++++++-----
->  net/sunrpc/xprtrdma/transport.c            |   30 +-
->  net/sunrpc/xprtrdma/xprt_rdma.h            |   20 +-
->  10 files changed, 730 insertions(+), 142 deletions(-)
->  create mode 100644 net/sunrpc/xprtrdma/svc_rdma_backchannel.c
->
-> --
-> Signature
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
 > the body of a message to majordomo@vger.kernel.org
