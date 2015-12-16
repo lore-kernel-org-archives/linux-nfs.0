@@ -1,105 +1,39 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx142.netapp.com ([216.240.21.19]:35352 "EHLO mx142.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753173AbbLPNsj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Dec 2015 08:48:39 -0500
-Subject: Re: [PATCH v3 09/11] SUNRPC: Introduce xprt_commit_rqst()
-To: Chuck Lever <chuck.lever@oracle.com>
+Received: from mail-lf0-f47.google.com ([209.85.215.47]:32858 "EHLO
+	mail-lf0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754166AbbLPN6D (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Dec 2015 08:58:03 -0500
+Received: by mail-lf0-f47.google.com with SMTP id p203so30013343lfa.0
+        for <linux-nfs@vger.kernel.org>; Wed, 16 Dec 2015 05:58:01 -0800 (PST)
+Subject: Re: [PATCH v3 06/11] xprtrdma: Add ro_unmap_sync method for FRWR
+To: Chuck Lever <chuck.lever@oracle.com>, anna.schumaker@netapp.com
 References: <20151214211317.16295.70115.stgit@manet.1015granger.net>
- <20151214211915.16295.30339.stgit@manet.1015granger.net>
-CC: <linux-rdma@vger.kernel.org>, <linux-nfs@vger.kernel.org>
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-Message-ID: <56716BB4.8080500@Netapp.com>
-Date: Wed, 16 Dec 2015 08:48:36 -0500
+ <20151214211827.16295.76338.stgit@manet.1015granger.net>
+Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+From: Sagi Grimberg <sagig@dev.mellanox.co.il>
+Message-ID: <56716DE4.8080403@dev.mellanox.co.il>
+Date: Wed, 16 Dec 2015 15:57:56 +0200
 MIME-Version: 1.0
-In-Reply-To: <20151214211915.16295.30339.stgit@manet.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+In-Reply-To: <20151214211827.16295.76338.stgit@manet.1015granger.net>
+Content-Type: text/plain; charset=utf-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Chuck,
 
-Sorry for the last minute comment.
-
-On 12/14/2015 04:19 PM, Chuck Lever wrote:
-> I'm about to add code in the RPC/RDMA reply handler between the
-> xprt_lookup_rqst() and xprt_complete_rqst() call site that needs
-> to execute outside of spinlock critical sections.
-> 
-> Add a hook to remove an rpc_rqst from the pending list once
-> the transport knows its going to invoke xprt_complete_rqst().
-> 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
->  include/linux/sunrpc/xprt.h    |    1 +
->  net/sunrpc/xprt.c              |   14 ++++++++++++++
->  net/sunrpc/xprtrdma/rpc_rdma.c |    4 ++++
->  3 files changed, 19 insertions(+)
-> 
-> diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
-> index 69ef5b3..ab6c3a5 100644
-> --- a/include/linux/sunrpc/xprt.h
-> +++ b/include/linux/sunrpc/xprt.h
-> @@ -366,6 +366,7 @@ void			xprt_wait_for_buffer_space(struct rpc_task *task, rpc_action action);
->  void			xprt_write_space(struct rpc_xprt *xprt);
->  void			xprt_adjust_cwnd(struct rpc_xprt *xprt, struct rpc_task *task, int result);
->  struct rpc_rqst *	xprt_lookup_rqst(struct rpc_xprt *xprt, __be32 xid);
-> +void			xprt_commit_rqst(struct rpc_task *task);
->  void			xprt_complete_rqst(struct rpc_task *task, int copied);
->  void			xprt_release_rqst_cong(struct rpc_task *task);
->  void			xprt_disconnect_done(struct rpc_xprt *xprt);
-> diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-> index 2e98f4a..a5be4ab 100644
-> --- a/net/sunrpc/xprt.c
-> +++ b/net/sunrpc/xprt.c
-> @@ -837,6 +837,20 @@ static void xprt_update_rtt(struct rpc_task *task)
->  }
->  
->  /**
-> + * xprt_commit_rqst - remove rqst from pending list early
-> + * @task: RPC request to remove
-> + *
-> + * Caller holds transport lock.
-> + */
-> +void xprt_commit_rqst(struct rpc_task *task)
+> +static void
+> +__frwr_dma_unmap(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
+> +		 int rc)
 > +{
-> +	struct rpc_rqst *req = task->tk_rqstp;
+> +	struct ib_device *device = r_xprt->rx_ia.ri_device;
+> +	struct rpcrdma_mw *mw = seg->rl_mw;
+> +	int nsegs = seg->mr_nsegs;
 > +
-> +	list_del_init(&req->rq_list);
-> +}
-> +EXPORT_SYMBOL_GPL(xprt_commit_rqst);
-
-Can you move this function into the xprtrdma code, since it's not called outside of there?
-
-Thanks,
-Anna
-
+> +	seg->rl_mw = NULL;
 > +
-> +/**
->   * xprt_complete_rqst - called when reply processing is complete
->   * @task: RPC request that recently completed
->   * @copied: actual number of bytes received from the transport
-> diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-> index c10d969..0bc8c39 100644
-> --- a/net/sunrpc/xprtrdma/rpc_rdma.c
-> +++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-> @@ -804,6 +804,9 @@ rpcrdma_reply_handler(struct rpcrdma_rep *rep)
->  	if (req->rl_reply)
->  		goto out_duplicate;
->  
-> +	xprt_commit_rqst(rqst->rq_task);
-> +	spin_unlock_bh(&xprt->transport_lock);
-> +
->  	dprintk("RPC:       %s: reply 0x%p completes request 0x%p\n"
->  		"                   RPC request 0x%p xid 0x%08x\n",
->  			__func__, rep, req, rqst,
-> @@ -894,6 +897,7 @@ badheader:
->  	else if (credits > r_xprt->rx_buf.rb_max_requests)
->  		credits = r_xprt->rx_buf.rb_max_requests;
->  
-> +	spin_lock_bh(&xprt->transport_lock);
->  	cwnd = xprt->cwnd;
->  	xprt->cwnd = credits << RPC_CWNDSHIFT;
->  	if (xprt->cwnd > cwnd)
-> 
+> +	while (nsegs--)
+> +		rpcrdma_unmap_one(device, seg++);
 
+Chuck, shouldn't this be replaced with ib_dma_unmap_sg?
+
+Sorry for the late comment (Didn't find enough time to properly
+review this...)
