@@ -1,57 +1,93 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:56818 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:35784 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754562AbbLQB6a (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Dec 2015 20:58:30 -0500
+	id S933239AbbLQDsR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Dec 2015 22:48:17 -0500
 From: NeilBrown <neilb@suse.com>
-To: Steve Dickson <SteveD@redhat.com>
-Date: Thu, 17 Dec 2015 12:56:34 +1100
-Subject: [PATCH 2/2] Fix protocol minor version fall-back
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Date: Thu, 17 Dec 2015 14:48:09 +1100
 Cc: linux-nfs@vger.kernel.org, Takashi Iwai <tiwai@suse.com>
-Message-ID: <20151217015634.19978.65001.stgit@noble>
-In-Reply-To: <20151217015524.19978.63114.stgit@noble>
-References: <20151217015524.19978.63114.stgit@noble>
+Subject: Concerns about SO_REUSEPORT usage in NFS client
+Message-ID: <87y4ct91mu.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: multipart/signed; boundary="=-=-=";
+	micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-mount.nfs currently expects mount(2) to fail with EPROTONOSUPPORT if
-the kernel doesn't understand the requested NFS version.
-
-Unfortunately if the requested minor is not known to the kernel
-it returns -EINVAL.
-In kernels since 3.11 this can happen in nfs4_alloc_client(), if
-compiled without NFS_V4_2.
-
-More generally it can happen in in nfs_validate_text_mount_data()
-when nfs_parse_mount_options() returns 0 because nfs_parse_version_string()
-didn't recognise the version.
-
-EPROTONOSUPPORT is only returned if NFSv4 support is completely compiled out.
-
-So nfs_autonegotiate needs to check for EINVAL as well as EPROTONOSUPPORT.
-
-URL: https://bugzilla.opensuse.org/show_bug.cgi?id=959211
-Reported-by: Takashi Iwai <tiwai@suse.com>
-Signed-off-by: NeilBrown <neilb@suse.com>
----
- utils/mount/stropts.c |    3 +++
- 1 file changed, 3 insertions(+)
-
-diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-index c8f5a6d223e7..86829a902bfd 100644
---- a/utils/mount/stropts.c
-+++ b/utils/mount/stropts.c
-@@ -841,6 +841,9 @@ check_result:
- 	case EPROTONOSUPPORT:
- 		/* A clear indication that the server or our
- 		 * client does not support NFS version 4 and minor */
-+	case EINVAL:
-+		/* A less clear indication that our client
-+		 * does not support NFSv4 minor version. */
- 		if (mi->version.v_mode == V_GENERAL &&
- 			mi->version.minor == 0)
- 				return result;
+--=-=-=
+Content-Type: text/plain
 
 
+Hi Trond et al.
+
+I have concerns about the new use of SO_REUSEPORT in the NFS client.
+Partly this is a theoretical concern.  The documentation in socket(7)
+talks about using this flag on UDP sockets and on TCP sockets in LISTEN
+mode, but not about using it with connected TCP sockets.  So the NFS
+usage isn't covered by the documentation ... maybe fixing the
+documentation would relieve that concern.
+
+But there is also a practical concern: it seems to sometime cause
+failures.
+This is reported here:
+    https://bugzilla.suse.com/show_bug.cgi?id=959216
+
+I cannot reproduce exactly the same symptoms as described there but I
+can get close. I:
+  - establish an NFSv3 mount to a server
+  - determine the port number used on the client side
+  - write numbers to /proc/sys/sunrpc/{min,max}_resvport which bracket
+    that port number in a range of 10 or so
+  - try to establish NFSv4 mounts in a loop (unmounting each time)
+
+Then the mount will sometimes hang.
+While it is hanging mount.nfs might be in permanently runnable and
+"cat /proc/`pidof mount.nfs`/stack" can show:
+
+[<ffffffff81001012>] ___preempt_schedule+0x12/0x14
+[<ffffffffffffffff>] 0xffffffffffffffff
+
+
+I've also sometime seen the stack trace mentioned in the bugzilla
+
+[<ffffffffa030b469>] xprt_connect+0x119/0x170 [sunrpc]
+[<ffffffffa0308c06>] call_connect+0x56/0xb0 [sunrpc]
+[<ffffffffa0312212>] __rpc_execute+0x82/0x450 [sunrpc]
+[<ffffffffa0314fda>] rpc_execute+0x5a/0xb0 [sunrpc]
+....
+
+I typically see a 3 minute timeout before the mount fails with
+  mount.nfs: Connection timed out
+
+My guess is that SO_REUSEPORT can allow the NFSv4 mount to use the same
+connection that the NFSv3 mount is using, though over a different socket.
+NFSv4 sends a request, the reply is received by the NFSv3 client's socket
+which rejects it and the NFSv4 client keeps waiting.
+
+I think that we can only continue to use SO_REUSEPORT if we find a way
+to ensure that we don't re-use a currently active connection.
+
+NeilBrown
+
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2
+
+iQIcBAEBCAAGBQJWcjB5AAoJEDnsnt1WYoG59IUP/2uy5nO61M8NRTs2g2ixyXkr
+nU81MXmn4eBbR8HER1aN7YIcFqclPg/5BrCezt45cLvDogh11irT00CSEqauRIim
+jVbxecSERVvfkXk1021UZ6xWJ/ULfCfW4jmQwDDJMQ5+KU39uWhAizsjmzCvMdIB
+t83JERp5Z+POtjegKDIwPltmUL6njgKCVIfD3B2hjTMr+EyfYeh9tnkgJHYhgYT6
+HgQANM0gU2pMznnkTvevaTn/EJgbDELlShfZ96gSuQxRpS3207NIkf9nb+QegXcM
+nZw7TrNi4MHRfzKLxi5cI6vHoACRhY/17nMDNIIhqWQb54saYZbWWZpaNL4jmyUc
+xSR7WaBIv67uubV5rX1eI5jLS1+/PBnoHK7U5eWtSX2SUrTzqHp34BG0djVTd8Bh
+OO7UpFNtDn5mpCx/pGKigMe6GQ/lD0kmqFBXwYSMIz/JueTQvJHbATfAWCcFzF0v
+aUqQJeEzJQ0Ed3OSSl9+SiNl5yqyy4j24ZKjFchyVM9ruNhvmkKqPNMVoXf7V8UD
+nZanNTOrKrd4Ffma4y+K1YcskpVfyDwBu3kHf20eCCEoAqsPT29YV1KbR5ccrtpL
+GRSpMhiIWun8d10zP23WqvGkCq7Pn0orXPCfCwAmqrsZ97a13AZm0cvcI8pOWU5u
+1g4qSGeek66ETFXMXZtu
+=ZPpe
+-----END PGP SIGNATURE-----
+--=-=-=--
