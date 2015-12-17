@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:56809 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:56818 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755726AbbLQB6Y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Dec 2015 20:58:24 -0500
+	id S1754562AbbLQB6a (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Dec 2015 20:58:30 -0500
 From: NeilBrown <neilb@suse.com>
 To: Steve Dickson <SteveD@redhat.com>
 Date: Thu, 17 Dec 2015 12:56:34 +1100
-Subject: [PATCH 1/2] Fix uninitialised variable usage in nfs_options2pmap
-Cc: linux-nfs@vger.kernel.org, Andreas Schwab <schwab@suse.com>
-Message-ID: <20151217015634.19978.77514.stgit@noble>
+Subject: [PATCH 2/2] Fix protocol minor version fall-back
+Cc: linux-nfs@vger.kernel.org, Takashi Iwai <tiwai@suse.com>
+Message-ID: <20151217015634.19978.65001.stgit@noble>
 In-Reply-To: <20151217015524.19978.63114.stgit@noble>
 References: <20151217015524.19978.63114.stgit@noble>
 MIME-Version: 1.0
@@ -16,39 +16,42 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andreas Schwab <schwab@suse.com>
+mount.nfs currently expects mount(2) to fail with EPROTONOSUPPORT if
+the kernel doesn't understand the requested NFS version.
 
-Commit 5bea22e33b7a introduced a regression.  Prior to that commit
-nfs_nfs_version would set *version to 0 if NFS version wasn't specified.
-Since that commit, version.v_mode is set to V_DEFAULT if the NFS version
-isn't specified, but nfs_options2pmap uses version.major without checking
-v_mode.  This can lead to incorrect behaviour.
-In particular fall-ack to v3 if server doesn't support v4 can fail.
+Unfortunately if the requested minor is not known to the kernel
+it returns -EINVAL.
+In kernels since 3.11 this can happen in nfs4_alloc_client(), if
+compiled without NFS_V4_2.
 
-So test v_mode before using version.major.
+More generally it can happen in in nfs_validate_text_mount_data()
+when nfs_parse_mount_options() returns 0 because nfs_parse_version_string()
+didn't recognise the version.
 
-URL: https://bugzilla.opensuse.org/show_bug.cgi?id=956743
-Fixes: 5bea22e33b7a ("mount.nfs: Add struct nfs_version and generalize version parsing")
+EPROTONOSUPPORT is only returned if NFSv4 support is completely compiled out.
+
+So nfs_autonegotiate needs to check for EINVAL as well as EPROTONOSUPPORT.
+
+URL: https://bugzilla.opensuse.org/show_bug.cgi?id=959211
+Reported-by: Takashi Iwai <tiwai@suse.com>
 Signed-off-by: NeilBrown <neilb@suse.com>
 ---
- utils/mount/network.c |    5 ++++-
- 1 file changed, 4 insertions(+), 1 deletion(-)
+ utils/mount/stropts.c |    3 +++
+ 1 file changed, 3 insertions(+)
 
-diff --git a/utils/mount/network.c b/utils/mount/network.c
-index ebc39d361e2c..8a9bf1476d51 100644
---- a/utils/mount/network.c
-+++ b/utils/mount/network.c
-@@ -1631,7 +1631,10 @@ int nfs_options2pmap(struct mount_options *options,
- 		return 0;
- 	if (!nfs_nfs_version(options, &version))
- 		return 0;
--	nfs_pmap->pm_vers = version.major;
-+	if (version.v_mode == V_DEFAULT)
-+		nfs_pmap->pm_vers = 0;
-+	else
-+		nfs_pmap->pm_vers = version.major;
- 	if (!nfs_nfs_protocol(options, &nfs_pmap->pm_prot))
- 		return 0;
- 	if (!nfs_nfs_port(options, &nfs_pmap->pm_port))
+diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+index c8f5a6d223e7..86829a902bfd 100644
+--- a/utils/mount/stropts.c
++++ b/utils/mount/stropts.c
+@@ -841,6 +841,9 @@ check_result:
+ 	case EPROTONOSUPPORT:
+ 		/* A clear indication that the server or our
+ 		 * client does not support NFS version 4 and minor */
++	case EINVAL:
++		/* A less clear indication that our client
++		 * does not support NFSv4 minor version. */
+ 		if (mi->version.v_mode == V_GENERAL &&
+ 			mi->version.minor == 0)
+ 				return result;
 
 
