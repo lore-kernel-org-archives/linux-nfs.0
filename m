@@ -1,59 +1,170 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx141.netapp.com ([216.240.21.12]:53278 "EHLO mx141.netapp.com"
+Received: from mx144.netapp.com ([216.240.21.25]:30829 "EHLO mx144.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932736AbbLRUot (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 18 Dec 2015 15:44:49 -0500
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+	id S965459AbbLRVFd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 18 Dec 2015 16:05:33 -0500
 From: Anna Schumaker <Anna.Schumaker@netapp.com>
-Subject: [GIT PULL] Please Pull NFSoRDMA Client Side Changes for 4.5
-Message-ID: <5674703D.4050001@Netapp.com>
-Date: Fri, 18 Dec 2015 15:44:45 -0500
+To: <linux-nfs@vger.kernel.org>, <Trond.Myklebust@primarydata.com>,
+        <bfields@fieldses.org>, <hch@infradead.org>
+Subject: [PATCH v2 1/3] NFSD: Don't pass filehandle to nfs4_preprocess_stateid_op()
+Date: Fri, 18 Dec 2015 16:05:24 -0500
+Message-ID: <1450472727-19893-2-git-send-email-Anna.Schumaker@Netapp.com>
+In-Reply-To: <1450472727-19893-1-git-send-email-Anna.Schumaker@Netapp.com>
+References: <1450472727-19893-1-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Trond,
+This reverts commit 3679e4c1ef1c00ea30d15b9ae59089b44dfe4137.
 
-The following changes since commit 9f9499ae8e6415cefc4fe0a96ad0e27864353c89:
+We either pass the current_fh or save_fh from the cstate structure, and
+not some generic filehandle.  Let's just add a flag to pick between these
+two filehandles instead.
 
-  Linux 4.4-rc5 (2015-12-13 17:42:58 -0800)
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+---
+ fs/nfs/objlayout/Makefile |  0
+ fs/nfsd/nfs4proc.c        | 24 +++++++++++-------------
+ fs/nfsd/nfs4state.c       | 10 +++++++---
+ fs/nfsd/state.h           |  7 ++++---
+ 4 files changed, 22 insertions(+), 19 deletions(-)
+ create mode 100644 fs/nfs/objlayout/Makefile
 
-are available in the git repository at:
+diff --git a/fs/nfs/objlayout/Makefile b/fs/nfs/objlayout/Makefile
+new file mode 100644
+index 0000000..e69de29
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 819ad81..4fbc86b 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -774,9 +774,8 @@ nfsd4_read(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		clear_bit(RQ_SPLICE_OK, &rqstp->rq_flags);
+ 
+ 	/* check stateid */
+-	status = nfs4_preprocess_stateid_op(rqstp, cstate, &cstate->current_fh,
+-					&read->rd_stateid, RD_STATE,
+-					&read->rd_filp, &read->rd_tmp_file);
++	status = nfs4_preprocess_stateid_op(rqstp, cstate, &read->rd_stateid,
++			RD_STATE, &read->rd_filp, &read->rd_tmp_file);
+ 	if (status) {
+ 		dprintk("NFSD: nfsd4_read: couldn't process stateid!\n");
+ 		goto out;
+@@ -922,8 +921,7 @@ nfsd4_setattr(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 
+ 	if (setattr->sa_iattr.ia_valid & ATTR_SIZE) {
+ 		status = nfs4_preprocess_stateid_op(rqstp, cstate,
+-				&cstate->current_fh, &setattr->sa_stateid,
+-				WR_STATE, NULL, NULL);
++			&setattr->sa_stateid, WR_STATE, NULL, NULL);
+ 		if (status) {
+ 			dprintk("NFSD: nfsd4_setattr: couldn't process stateid!\n");
+ 			return status;
+@@ -987,8 +985,8 @@ nfsd4_write(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	if (write->wr_offset >= OFFSET_MAX)
+ 		return nfserr_inval;
+ 
+-	status = nfs4_preprocess_stateid_op(rqstp, cstate, &cstate->current_fh,
+-						stateid, WR_STATE, &filp, NULL);
++	status = nfs4_preprocess_stateid_op(rqstp, cstate, stateid, WR_STATE,
++			&filp, NULL);
+ 	if (status) {
+ 		dprintk("NFSD: nfsd4_write: couldn't process stateid!\n");
+ 		return status;
+@@ -1018,15 +1016,15 @@ nfsd4_clone(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	struct file *src, *dst;
+ 	__be32 status;
+ 
+-	status = nfs4_preprocess_stateid_op(rqstp, cstate, &cstate->save_fh,
+-					    &clone->cl_src_stateid, RD_STATE,
+-					    &src, NULL);
++	status = nfs4_preprocess_stateid_op(rqstp, cstate,
++					    &clone->cl_src_stateid,
++					    RD_STATE | SAVED_STATE, &src, NULL);
+ 	if (status) {
+ 		dprintk("NFSD: %s: couldn't process src stateid!\n", __func__);
+ 		goto out;
+ 	}
+ 
+-	status = nfs4_preprocess_stateid_op(rqstp, cstate, &cstate->current_fh,
++	status = nfs4_preprocess_stateid_op(rqstp, cstate,
+ 					    &clone->cl_dst_stateid, WR_STATE,
+ 					    &dst, NULL);
+ 	if (status) {
+@@ -1059,7 +1057,7 @@ nfsd4_fallocate(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	__be32 status = nfserr_notsupp;
+ 	struct file *file;
+ 
+-	status = nfs4_preprocess_stateid_op(rqstp, cstate, &cstate->current_fh,
++	status = nfs4_preprocess_stateid_op(rqstp, cstate,
+ 					    &fallocate->falloc_stateid,
+ 					    WR_STATE, &file, NULL);
+ 	if (status != nfs_ok) {
+@@ -1098,7 +1096,7 @@ nfsd4_seek(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	__be32 status;
+ 	struct file *file;
+ 
+-	status = nfs4_preprocess_stateid_op(rqstp, cstate, &cstate->current_fh,
++	status = nfs4_preprocess_stateid_op(rqstp, cstate,
+ 					    &seek->seek_stateid,
+ 					    RD_STATE, &file, NULL);
+ 	if (status) {
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index df5dba6..aea9504 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4797,10 +4797,11 @@ nfs4_check_file(struct svc_rqst *rqstp, struct svc_fh *fhp, struct nfs4_stid *s,
+  */
+ __be32
+ nfs4_preprocess_stateid_op(struct svc_rqst *rqstp,
+-		struct nfsd4_compound_state *cstate, struct svc_fh *fhp,
+-		stateid_t *stateid, int flags, struct file **filpp, bool *tmp_file)
++		struct nfsd4_compound_state *cstate, stateid_t *stateid,
++		int flags, struct file **filpp, bool *tmp_file)
+ {
+-	struct inode *ino = d_inode(fhp->fh_dentry);
++	struct svc_fh *fhp = &cstate->current_fh;
++	struct inode *ino;
+ 	struct net *net = SVC_NET(rqstp);
+ 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+ 	struct nfs4_stid *s = NULL;
+@@ -4810,6 +4811,9 @@ nfs4_preprocess_stateid_op(struct svc_rqst *rqstp,
+ 		*filpp = NULL;
+ 	if (tmp_file)
+ 		*tmp_file = false;
++	if (flags & SAVED_STATE)
++		fhp = &cstate->save_fh;
++	ino = d_inode(fhp->fh_dentry);
+ 
+ 	if (grace_disallows_io(net, ino))
+ 		return nfserr_grace;
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 99432b7..c6c92bc 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -562,9 +562,10 @@ static inline struct nfs4_layout_stateid *layoutstateid(struct nfs4_stid *s)
+ 	return container_of(s, struct nfs4_layout_stateid, ls_stid);
+ }
+ 
+-/* flags for preprocess_seqid_op() */
++/* flags for preprocess_seqid_op() and preprocess_stateid_op() */
+ #define RD_STATE	        0x00000010
+ #define WR_STATE	        0x00000020
++#define SAVED_STATE	        0x00000040
+ 
+ enum nfsd4_cb_op {
+ 	NFSPROC4_CLNT_CB_NULL = 0,
+@@ -578,8 +579,8 @@ struct nfsd4_compound_state;
+ struct nfsd_net;
+ 
+ extern __be32 nfs4_preprocess_stateid_op(struct svc_rqst *rqstp,
+-		struct nfsd4_compound_state *cstate, struct svc_fh *fhp,
+-		stateid_t *stateid, int flags, struct file **filp, bool *tmp_file);
++		struct nfsd4_compound_state *cstate, stateid_t *stateid,
++		int flags, struct file **filp, bool *tmp_file);
+ __be32 nfsd4_lookup_stateid(struct nfsd4_compound_state *cstate,
+ 		     stateid_t *stateid, unsigned char typemask,
+ 		     struct nfs4_stid **s, struct nfsd_net *nn);
+-- 
+2.6.4
 
-  git://git.linux-nfs.org/projects/anna/nfs-rdma.git tags/nfs-rdma-4.5
-
-for you to fetch changes up to 26ae9d1c5af1b1d669ca1c28fc02bbca3d778d45:
-
-  xprtrdma: Revert commit e7104a2a9606 ('xprtrdma: Cap req_cqinit'). (2015-12-18 15:34:33 -0500)
-
-Thanks,
-Anna
-
-----------------------------------------------------------------
-Chuck Lever (10):
-      xprtrdma: Fix additional uses of spin_lock_irqsave(rb_lock)
-      xprtrdma: xprt_rdma_free() must not release backchannel reqs
-      xprtrdma: Disable RPC/RDMA backchannel debugging messages
-      xprtrdma: Move struct ib_send_wr off the stack
-      xprtrdma: Introduce ro_unmap_sync method
-      xprtrdma: Add ro_unmap_sync method for FRWR
-      xprtrdma: Add ro_unmap_sync method for FMR
-      xprtrdma: Add ro_unmap_sync method for all-physical registration
-      xprtrdma: Invalidate in the RPC reply handler
-      xprtrdma: Revert commit e7104a2a9606 ('xprtrdma: Cap req_cqinit').
-
-Dan Carpenter (2):
-      xprtrdma: clean up some curly braces
-      xprtrdma: checking for NULL instead of IS_ERR()
-
- net/sunrpc/xprtrdma/backchannel.c  |  26 ++++++-------
- net/sunrpc/xprtrdma/fmr_ops.c      |  64 +++++++++++++++++++++++++++++++
- net/sunrpc/xprtrdma/frwr_ops.c     | 174 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------
- net/sunrpc/xprtrdma/physical_ops.c |  13 +++++++
- net/sunrpc/xprtrdma/rpc_rdma.c     |  16 ++++++++
- net/sunrpc/xprtrdma/transport.c    |   3 ++
- net/sunrpc/xprtrdma/verbs.c        |  16 ++++----
- net/sunrpc/xprtrdma/xprt_rdma.h    |  14 ++++---
- 8 files changed, 275 insertions(+), 51 deletions(-)
