@@ -1,23 +1,35 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.playtime.bg ([91.212.233.10]:49269 "EHLO smtp.playtime.bg"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753708AbbLTKSU convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 20 Dec 2015 05:18:20 -0500
-Content-Type: text/plain; charset=US-ASCII
+Received: from bombadil.infradead.org ([198.137.202.9]:47800 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751709AbbLTPpJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 20 Dec 2015 10:45:09 -0500
+Date: Sun, 20 Dec 2015 07:45:07 -0800
+From: Christoph Hellwig <hch@infradead.org>
+To: Anna Schumaker <Anna.Schumaker@netapp.com>
+Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@primarydata.com,
+        bfields@fieldses.org, hch@infradead.org
+Subject: Re: [PATCH v2 1/3] NFSD: Don't pass filehandle to
+ nfs4_preprocess_stateid_op()
+Message-ID: <20151220154507.GA18236@infradead.org>
+References: <1450472727-19893-1-git-send-email-Anna.Schumaker@Netapp.com>
+ <1450472727-19893-2-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
-Subject: JUST REPLY YES ONLY
-To: My-mail-box <my-private-mail@mail-service.com>
-From: "Richard" <nushev@playtime.bg>
-Date: Sun, 20 Dec 2015 04:51:26 -0500
-Reply-To: rchmat1@gmail.com
-Message-Id: <20151220100550.F37334F729@smtp.playtime.bg>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1450472727-19893-2-git-send-email-Anna.Schumaker@Netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello
+On Fri, Dec 18, 2015 at 04:05:24PM -0500, Anna Schumaker wrote:
+> This reverts commit 3679e4c1ef1c00ea30d15b9ae59089b44dfe4137.
+> 
+> We either pass the current_fh or save_fh from the cstate structure, and
+> not some generic filehandle.  Let's just add a flag to pick between these
+> two filehandles instead.
+> 
+> Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-My proposal will give us 2 million in seven days reply "YES" for details.
+I don't really find this much cleaner to be honest.
 
-Regards,
+>  fs/nfs/objlayout/Makefile |  0
 
-Richard.
+how did this end up in the diffstat, btw?
