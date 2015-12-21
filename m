@@ -1,639 +1,228 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:55380 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([173.255.197.46]:44551 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751074AbbLUIs0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 21 Dec 2015 03:48:26 -0500
-Subject: Re: possible bug in nfs-kernel-server
-To: "J. Bruce Fields" <bfields@fieldses.org>
-References: <b259acd35a93bd2293630c35b8761e6b@dit.upm.es>
- <566954D6.7090508@dit.upm.es> <5669702D.50402@redhat.com>
- <20151210144434.GB12544@fieldses.org> <566EF4E4.60809@dit.upm.es>
- <5672A78D.4090303@redhat.com> <20151218003722.GA1452@us.ibm.com>
- <5673C73C.2030109@redhat.com> <20151218152039.GC25074@fieldses.org>
- <56743FB6.80903@redhat.com> <20151218200840.GA28692@fieldses.org>
+	id S1751208AbbLUQry (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 21 Dec 2015 11:47:54 -0500
+Date: Mon, 21 Dec 2015 11:47:52 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Soumya Koduri <skoduri@redhat.com>
 Cc: Omar Walid Llorente <omar@dit.upm.es>,
         Jeff Layton <jlayton@poochiereds.net>, linux-nfs@vger.kernel.org,
-        =?UTF-8?Q?administraci=c3=b3n_del_centro_de_c=c3=a1lculo_del_dit?=
-	<cdc@dit.upm.es>
-From: Soumya Koduri <skoduri@redhat.com>
-Message-ID: <5677BCD4.4060009@redhat.com>
-Date: Mon, 21 Dec 2015 14:18:20 +0530
+        =?utf-8?Q?administraci=C3=B3n_del_centro_de_c=C3=A1lculo?= del
+	 dit <cdc@dit.upm.es>
+Subject: Re: possible bug in nfs-kernel-server
+Message-ID: <20151221164752.GA7869@fieldses.org>
+References: <5669702D.50402@redhat.com>
+ <20151210144434.GB12544@fieldses.org>
+ <566EF4E4.60809@dit.upm.es>
+ <5672A78D.4090303@redhat.com>
+ <20151218003722.GA1452@us.ibm.com>
+ <5673C73C.2030109@redhat.com>
+ <20151218152039.GC25074@fieldses.org>
+ <56743FB6.80903@redhat.com>
+ <20151218200840.GA28692@fieldses.org>
+ <5677BCD4.4060009@redhat.com>
 MIME-Version: 1.0
-In-Reply-To: <20151218200840.GA28692@fieldses.org>
-Content-Type: multipart/mixed;
- boundary="------------080506040106050506080801"
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <5677BCD4.4060009@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is a multi-part message in MIME format.
---------------080506040106050506080801
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Transfer-Encoding: 8bit
+On Mon, Dec 21, 2015 at 02:18:20PM +0530, Soumya Koduri wrote:
+> 
+> 
+> On 12/19/2015 01:38 AM, J. Bruce Fields wrote:
+> >On Fri, Dec 18, 2015 at 10:47:42PM +0530, Soumya Koduri wrote:
+> >>
+> >>
+> >>On 12/18/2015 08:50 PM, J. Bruce Fields wrote:
+> >>>On Fri, Dec 18, 2015 at 02:13:40PM +0530, Soumya Koduri wrote:
+> >>>>
+> >>>>
+> >>>>On 12/18/2015 06:07 AM, Malahal Naineni wrote:
+> >>>>>IIRC, permission checks are done in open(). write/read syscalls should
+> >>>>>NOT do much access checks (at least based on POSIX). This is why once an
+> >>>>>open is done, you remove permissions for that process, but it should
+> >>>>>still be able to read/write based on the open flags it did when it
+> >>>>>opened the file.
+> >>>>>
+> >>>>>I don't know all the details of this defect, but gluster seems to be
+> >>>>>doing what it is supposed to do.
+> >>>>>
+> >>>>Right. Thanks for the correction. I assumed the behavior should be
+> >>>>same for both OPEN+WRITE vs CREATE+WRITE in the below scenario. But
+> >>>>looks like (from 'man creat')  the open() call that creates a
+> >>>>read-only file may well return a read/write file descriptor, which
+> >>>>is the reason the following WRITE can succeed.
+> >>>
+> >>>I forgot another complication, which is that knsfd actually does a
+> >>>temporary open before each read or write--I assume that's getting
+> >>>translated into fuse and gluster open operations?
+> >>>
+> >>yes. It is the OPEN done as part of NFS WRITE which fails with
+> >>EACCESS error (with both NFSv3 and NFSv4 mounts).
+> >
+> >Makes sense for v3, but I wouldn't normally expect the extra temporary
+> >open on v4 WRITEs.  Could you share any details?
+> >
+> I re-tried the test on v4 mount using Fedora23 machine, acting as
+> both NFS server and client (Linux#4.2.3-300.fc23.x86_64). Please
+> find the pkt trace attached.
+> 
+>  56 07:23:25.567134          ::1 -> ::1          NFS 288 V4 Call
+> WRITE StateID: 0xf934 Offset: 0 Len: 7
+>  57 07:23:25.567233 192.168.122.17 -> 192.168.122.202 GlusterFS 188
+> V330 GETXATTR Call
+>  58 07:23:25.567732 192.168.122.202 -> 192.168.122.17 GlusterFS 112
+> V330 GETXATTR Reply (Call In 57)
+>  59 07:23:25.567881 192.168.122.17 -> 192.168.122.202 GlusterFS 164
+> V330 OPEN Call
+
+Remind me what kernel version your server is on?
+
+--b.
 
 
+>  60 07:23:25.568354 192.168.122.202 -> 192.168.122.17 GlusterFS 116
+> V330 OPEN Reply (Call In 59)
+>  61 07:23:25.568570          ::1 -> ::1          NFS 144 V4 Reply
+> (Call In 56) WRITE Status: NFS4ERR_ACCESS
+> 
+> Thanks,
+> Soumya
+> 
+> >--b.
+> >
+> >>
+> >>  63 16:59:09.278651000          ::1 -> ::1          NFS 232 V3 WRITE
+> >>Call, FH: 0x49a35e54 Offset: 0 Len: 7 FILE_SYNC
+> >>  64 16:59:09.278926000 192.168.122.1 -> 192.168.122.202 GlusterFS
+> >>164 V330 OPEN Call
+> >>  65 16:59:09.278937000 192.168.122.1 -> 192.168.122.202 GlusterFS
+> >>164 [RPC retransmission of #64][TCP Retransmission] V330 OPEN Call
+> >>  66 16:59:09.279459000 192.168.122.202 -> 192.168.122.1 GlusterFS
+> >>116 V330 OPEN Reply (Call In 64)
+> >>  67 16:59:09.279459000 192.168.122.202 -> 192.168.122.1 GlusterFS
+> >>116 [RPC duplicate of #66][TCP Retransmission] V330 OPEN Reply (Call
+> >>In 64)
+> >>  68 16:59:09.279733000          ::1 -> ::1          NFS 212 V3 WRITE
+> >>Reply (Call In 63) Error: NFS3ERR_ACCES
+> >>
+> >>
+> >>Thanks,
+> >>Soumya
+> >>
+> >>>In which case it might be worth experimenting with NFSv4 or with Jeff
+> >>>Layton's filehandle-caching patches.  Neither's a real fix, but that
+> >>>could help confirm whether it's the temporary opens that are a problem.
+> >>>
+> >>>--b.
+> >>>
+> >>>>
+> >>>>Thanks,
+> >>>>Soumya
+> >>>>
+> >>>>
+> >>>>>Regards, Malahal.
+> >>>>>
+> >>>>>Soumya Koduri [skoduri@redhat.com] wrote:
+> >>>>>>As mentioned by Bruce, GlusterFS doesn't have owner-override rule
+> >>>>>>except for setattr.
+> >>>>>>
+> >>>>>>I did few experiments to check why this test case passes on plain
+> >>>>>>glusterfs fuse mount & NFS-Ganesha but fails with kernel-NFS.
+> >>>>>>
+> >>>>>>NFS-Ganesha (for most of the FSALs) seem to be passing the actual
+> >>>>>>request credentials to the back-end filesystem only for
+> >>>>>>CREATE(-like) and UNLINK fops. For all the remaining fops, it does
+> >>>>>>the access check at its end and then perform the operation with root
+> >>>>>>credentials. That's the reason WRITE succeeded in your case as
+> >>>>>>NFS-Ganesha (like kernel-NFS) skipped the access check if the
+> >>>>>>request caller_uid proved to be the file's owner.
+> >>>>>>
+> >>>>>>In case of native GlusterFS FUSE mount, there is no OPEN fop
+> >>>>>>involved. WRITE is performed on the fd returned by CREATE. And
+> >>>>>>strangely GlusterFS seem to be doing certain access checks only
+> >>>>>>during OPEN but not for WRITE (this seems like a bug and probably
+> >>>>>>needs to be fixed in Gluster).
+> >>>>>>
+> >>>>>>Thanks,
+> >>>>>>Soumya
+> >>>>>>
+> >>>>>>On 12/14/2015 10:27 PM, Omar Walid Llorente wrote:
+> >>>>>>>
+> >>>>>>>Thank you Bruce, others, for the responses. I send attached a complete
+> >>>>>>>capture of the issue, including the glusterfs transactions.
+> >>>>>>>
+> >>>>>>>Hope this helps to clear where may it be...
+> >>>>>>>
+> >>>>>>>Omar
+> >>>>>>>
+> >>>>>>>El 10/12/15 a las 15:44, J. Bruce Fields escribió:
+> >>>>>>>>On Thu, Dec 10, 2015 at 05:59:33PM +0530, Soumya Koduri wrote:
+> >>>>>>>>>
+> >>>>>>>>>On 12/10/2015 04:02 PM, Omar Walid Llorente wrote:
+> >>>>>>>>>>Hi, Jeff, Bruce, finally I got some time to get the capture of the nfs
+> >>>>>>>>>>packets (you can find them in attached file nfs-problem-nks.pcap.zip).
+> >>>>>>>>>>Sorry for being so late.
+> >>>>>>>>>>
+> >>>>>>>>>>What I did was the following:
+> >>>>>>>>>>
+> >>>>>>>>>>1st) Create the RO file:
+> >>>>>>>>>>cdc@l056:~/prueba-git$ rm -f kk.txt 444.txt; echo "prueba" > 444.txt;
+> >>>>>>>>>>chmod 444 444.txt;
+> >>>>>>>>>>
+> >>>>>>>>>>2nd) Init the capture:
+> >>>>>>>>>>root@l056:~# tcpdump -i eth2 -w /tmp/nfs.pcap -s 512 port 2049
+> >>>>>>>>>>tcpdump: listening on eth2, link-type EN10MB (Ethernet), capture size
+> >>>>>>>>>>512 bytes
+> >>>>>>>>>>
+> >>>>>>>>>GlusterFS protocol is added to wireshark from version 1.8.0 [1]. It
+> >>>>>>>>>may be helpful to see what GlusterFS operations are being processed
+> >>>>>>>>>as part of NFS WRITE call (which has failed in this case).
+> >>>>>>>>>
+> >>>>>>>>>Could you please try taking the packet trace on the machine where
+> >>>>>>>>>NFS server is running (without filtering out based on the port
+> >>>>>>>>>number).
+> >>>>>>>>>
+> >>>>>>>>>Also I tried out the same test on Fedora22 machine, but haven't run
+> >>>>>>>>>into any issue. What are the fuse mount options you have used to
+> >>>>>>>>>mount gluster volume?
+> >>>>>>>>Oh, I think this is a simple problem (but maybe hard to fix).  The
+> >>>>>>>>capture shows NFSv3 traffic like:
+> >>>>>>>>
+> >>>>>>>>    CREATE -> OK
+> >>>>>>>>    SETATTR (mode set to 0400) -> OK
+> >>>>>>>>    WRITE -> NFS3ERR_ACCES
+> >>>>>>>>
+> >>>>>>>>That write would succeed locally (because the mode doesn't matter to a
+> >>>>>>>>local application that already holds the file open).  It would fail over
+> >>>>>>>>NFSv3, which doesn't know about the open--except that there's a hack for
+> >>>>>>>>this case: NFSv3 servers allow IO operations to ignore the mode, if the
+> >>>>>>>>operation comes from the owner of the file.  NFSv3 clients are then
+> >>>>>>>>careful to perform necessary access checks on open to ensure that this
+> >>>>>>>>owner-override rule doesn't grant too many permissions.
+> >>>>>>>>
+> >>>>>>>>That allows NFSv3 applications to see behavior that's mostly like a
+> >>>>>>>>local filesystem, without opening much of a security hole (since the
+> >>>>>>>>owner could always chmod anyway).
+> >>>>>>>>
+> >>>>>>>>So, knfsd is making this special exception--but gluster (which I believe
+> >>>>>>>>it's exporting in this case, via fuse?)--probably doesn't....  I'm not
+> >>>>>>>>sure what you can do about that.
+> >>>>>>>>
+> >>>>>>>>--b.
+> >>>>>>>
+> >>>>>>--
+> >>>>>>To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> >>>>>>the body of a message to majordomo@vger.kernel.org
+> >>>>>>More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> >>>>>>
+> >>>>>
+> >--
+> >To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> >the body of a message to majordomo@vger.kernel.org
+> >More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> >
 
-On 12/19/2015 01:38 AM, J. Bruce Fields wrote:
-> On Fri, Dec 18, 2015 at 10:47:42PM +0530, Soumya Koduri wrote:
->>
->>
->> On 12/18/2015 08:50 PM, J. Bruce Fields wrote:
->>> On Fri, Dec 18, 2015 at 02:13:40PM +0530, Soumya Koduri wrote:
->>>>
->>>>
->>>> On 12/18/2015 06:07 AM, Malahal Naineni wrote:
->>>>> IIRC, permission checks are done in open(). write/read syscalls should
->>>>> NOT do much access checks (at least based on POSIX). This is why once an
->>>>> open is done, you remove permissions for that process, but it should
->>>>> still be able to read/write based on the open flags it did when it
->>>>> opened the file.
->>>>>
->>>>> I don't know all the details of this defect, but gluster seems to be
->>>>> doing what it is supposed to do.
->>>>>
->>>> Right. Thanks for the correction. I assumed the behavior should be
->>>> same for both OPEN+WRITE vs CREATE+WRITE in the below scenario. But
->>>> looks like (from 'man creat')  the open() call that creates a
->>>> read-only file may well return a read/write file descriptor, which
->>>> is the reason the following WRITE can succeed.
->>>
->>> I forgot another complication, which is that knsfd actually does a
->>> temporary open before each read or write--I assume that's getting
->>> translated into fuse and gluster open operations?
->>>
->> yes. It is the OPEN done as part of NFS WRITE which fails with
->> EACCESS error (with both NFSv3 and NFSv4 mounts).
->
-> Makes sense for v3, but I wouldn't normally expect the extra temporary
-> open on v4 WRITEs.  Could you share any details?
->
-I re-tried the test on v4 mount using Fedora23 machine, acting as both 
-NFS server and client (Linux#4.2.3-300.fc23.x86_64). Please find the pkt 
-trace attached.
 
-  56 07:23:25.567134          ::1 -> ::1          NFS 288 V4 Call WRITE 
-StateID: 0xf934 Offset: 0 Len: 7
-  57 07:23:25.567233 192.168.122.17 -> 192.168.122.202 GlusterFS 188 
-V330 GETXATTR Call
-  58 07:23:25.567732 192.168.122.202 -> 192.168.122.17 GlusterFS 112 
-V330 GETXATTR Reply (Call In 57)
-  59 07:23:25.567881 192.168.122.17 -> 192.168.122.202 GlusterFS 164 
-V330 OPEN Call
-  60 07:23:25.568354 192.168.122.202 -> 192.168.122.17 GlusterFS 116 
-V330 OPEN Reply (Call In 59)
-  61 07:23:25.568570          ::1 -> ::1          NFS 144 V4 Reply (Call 
-In 56) WRITE Status: NFS4ERR_ACCESS
-
-Thanks,
-Soumya
-
-> --b.
->
->>
->>   63 16:59:09.278651000          ::1 -> ::1          NFS 232 V3 WRITE
->> Call, FH: 0x49a35e54 Offset: 0 Len: 7 FILE_SYNC
->>   64 16:59:09.278926000 192.168.122.1 -> 192.168.122.202 GlusterFS
->> 164 V330 OPEN Call
->>   65 16:59:09.278937000 192.168.122.1 -> 192.168.122.202 GlusterFS
->> 164 [RPC retransmission of #64][TCP Retransmission] V330 OPEN Call
->>   66 16:59:09.279459000 192.168.122.202 -> 192.168.122.1 GlusterFS
->> 116 V330 OPEN Reply (Call In 64)
->>   67 16:59:09.279459000 192.168.122.202 -> 192.168.122.1 GlusterFS
->> 116 [RPC duplicate of #66][TCP Retransmission] V330 OPEN Reply (Call
->> In 64)
->>   68 16:59:09.279733000          ::1 -> ::1          NFS 212 V3 WRITE
->> Reply (Call In 63) Error: NFS3ERR_ACCES
->>
->>
->> Thanks,
->> Soumya
->>
->>> In which case it might be worth experimenting with NFSv4 or with Jeff
->>> Layton's filehandle-caching patches.  Neither's a real fix, but that
->>> could help confirm whether it's the temporary opens that are a problem.
->>>
->>> --b.
->>>
->>>>
->>>> Thanks,
->>>> Soumya
->>>>
->>>>
->>>>> Regards, Malahal.
->>>>>
->>>>> Soumya Koduri [skoduri@redhat.com] wrote:
->>>>>> As mentioned by Bruce, GlusterFS doesn't have owner-override rule
->>>>>> except for setattr.
->>>>>>
->>>>>> I did few experiments to check why this test case passes on plain
->>>>>> glusterfs fuse mount & NFS-Ganesha but fails with kernel-NFS.
->>>>>>
->>>>>> NFS-Ganesha (for most of the FSALs) seem to be passing the actual
->>>>>> request credentials to the back-end filesystem only for
->>>>>> CREATE(-like) and UNLINK fops. For all the remaining fops, it does
->>>>>> the access check at its end and then perform the operation with root
->>>>>> credentials. That's the reason WRITE succeeded in your case as
->>>>>> NFS-Ganesha (like kernel-NFS) skipped the access check if the
->>>>>> request caller_uid proved to be the file's owner.
->>>>>>
->>>>>> In case of native GlusterFS FUSE mount, there is no OPEN fop
->>>>>> involved. WRITE is performed on the fd returned by CREATE. And
->>>>>> strangely GlusterFS seem to be doing certain access checks only
->>>>>> during OPEN but not for WRITE (this seems like a bug and probably
->>>>>> needs to be fixed in Gluster).
->>>>>>
->>>>>> Thanks,
->>>>>> Soumya
->>>>>>
->>>>>> On 12/14/2015 10:27 PM, Omar Walid Llorente wrote:
->>>>>>>
->>>>>>> Thank you Bruce, others, for the responses. I send attached a complete
->>>>>>> capture of the issue, including the glusterfs transactions.
->>>>>>>
->>>>>>> Hope this helps to clear where may it be...
->>>>>>>
->>>>>>> Omar
->>>>>>>
->>>>>>> El 10/12/15 a las 15:44, J. Bruce Fields escribió:
->>>>>>>> On Thu, Dec 10, 2015 at 05:59:33PM +0530, Soumya Koduri wrote:
->>>>>>>>>
->>>>>>>>> On 12/10/2015 04:02 PM, Omar Walid Llorente wrote:
->>>>>>>>>> Hi, Jeff, Bruce, finally I got some time to get the capture of the nfs
->>>>>>>>>> packets (you can find them in attached file nfs-problem-nks.pcap.zip).
->>>>>>>>>> Sorry for being so late.
->>>>>>>>>>
->>>>>>>>>> What I did was the following:
->>>>>>>>>>
->>>>>>>>>> 1st) Create the RO file:
->>>>>>>>>> cdc@l056:~/prueba-git$ rm -f kk.txt 444.txt; echo "prueba" > 444.txt;
->>>>>>>>>> chmod 444 444.txt;
->>>>>>>>>>
->>>>>>>>>> 2nd) Init the capture:
->>>>>>>>>> root@l056:~# tcpdump -i eth2 -w /tmp/nfs.pcap -s 512 port 2049
->>>>>>>>>> tcpdump: listening on eth2, link-type EN10MB (Ethernet), capture size
->>>>>>>>>> 512 bytes
->>>>>>>>>>
->>>>>>>>> GlusterFS protocol is added to wireshark from version 1.8.0 [1]. It
->>>>>>>>> may be helpful to see what GlusterFS operations are being processed
->>>>>>>>> as part of NFS WRITE call (which has failed in this case).
->>>>>>>>>
->>>>>>>>> Could you please try taking the packet trace on the machine where
->>>>>>>>> NFS server is running (without filtering out based on the port
->>>>>>>>> number).
->>>>>>>>>
->>>>>>>>> Also I tried out the same test on Fedora22 machine, but haven't run
->>>>>>>>> into any issue. What are the fuse mount options you have used to
->>>>>>>>> mount gluster volume?
->>>>>>>> Oh, I think this is a simple problem (but maybe hard to fix).  The
->>>>>>>> capture shows NFSv3 traffic like:
->>>>>>>>
->>>>>>>>     CREATE -> OK
->>>>>>>>     SETATTR (mode set to 0400) -> OK
->>>>>>>>     WRITE -> NFS3ERR_ACCES
->>>>>>>>
->>>>>>>> That write would succeed locally (because the mode doesn't matter to a
->>>>>>>> local application that already holds the file open).  It would fail over
->>>>>>>> NFSv3, which doesn't know about the open--except that there's a hack for
->>>>>>>> this case: NFSv3 servers allow IO operations to ignore the mode, if the
->>>>>>>> operation comes from the owner of the file.  NFSv3 clients are then
->>>>>>>> careful to perform necessary access checks on open to ensure that this
->>>>>>>> owner-override rule doesn't grant too many permissions.
->>>>>>>>
->>>>>>>> That allows NFSv3 applications to see behavior that's mostly like a
->>>>>>>> local filesystem, without opening much of a security hole (since the
->>>>>>>> owner could always chmod anyway).
->>>>>>>>
->>>>>>>> So, knfsd is making this special exception--but gluster (which I believe
->>>>>>>> it's exporting in this case, via fuse?)--probably doesn't....  I'm not
->>>>>>>> sure what you can do about that.
->>>>>>>>
->>>>>>>> --b.
->>>>>>>
->>>>>> --
->>>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>>>>> the body of a message to majordomo@vger.kernel.org
->>>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>>>>
->>>>>
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
-
---------------080506040106050506080801
-Content-Type: application/vnd.tcpdump.pcap;
- name="nfs_v4_mount_+_glusterfs.pcap"
-Content-Transfer-Encoding: base64
-Content-Disposition: attachment;
- filename="nfs_v4_mount_+_glusterfs.pcap"
-
-1MOyoQIABAAAAAAAAAAAAAAABABxAAAA26h3Vj5SBADUAAAA1AAAAAAAAwQABgAAAAAAAAAA
-ht1gAAAAAJwGQAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABArsIAQmJKjYkn51i
-gBgC1wCkAAABAQgKAC1/AAAtfwCAAAB4K45ZVAAAAAAAAAACAAGGowAAAAQAAAABAAAAAQAA
-ADgAQZTcAAAAIWRoY3AzNS0xOTcubGFiLmVuZy5ibHIucmVkaGF0LmNvAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAHoumd1YAAAAA7ah3VsliCADwAAAA8AAAAAAA
-AwQABgAAAAAAAAAAht1gAAAAALgGQAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAB
-ArsIAQmJKrIkn52SgBgC1wDAAAABAQgKAC3GWgAtfwCAAACULI5ZVAAAAAAAAAACAAGGowAA
-AAQAAAABAAAAAQAAADgAQZTvAAAAIGRoY3AzNS0xOTcubGFiLmVuZy5ibHIucmVkaGF0LmNv
-AAAD6AAAA+gAAAABAAAD6AAAAAAAAAAAAAAAAAAAAAAAAAADAAAAFgAAAAgBAAEAAAAAAAAA
-AAMAAAAfAAAACQAAAAIAAAAYADAAAO2od1YsZggAdAEAAHQBAAAABAABAAZSVAC30L4AAAgA
-RQABZKZ8QABABhzrwKh6EcCoesr//MAA24uLmVUVTMqAGAVo0dQAAAEBCAoALcZbAC2DPIAA
-ASwAAACeAAAAAAAAAAIAE9AFAAABSgAAABsABfOXAAAAHAAACI0AAAPoAAAD6AAAAAAAAAAI
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAC6AAAABQAAABwAAAAEdHJ1c3RlZC5nbHVzdGVyZnMuZGh0Lmxpbmt0bwAyNTYAAAAA
-FQAAAAN0cnVzdGVkLmdsdXN0ZXJmcy5kaHQAMTYAAAAAIAAAAAJ0cnVzdGVkLmdsdXN0ZXJm
-cy5kaHQuY29tbWl0aGFzaAA0AAAAABEAAAAGZ2x1c3RlcmZzLmNvbnRlbnQANjU1MzYAAAAA
-CAAAABBnZmlkLXJlcQAAAAAAAAAAAAAAAAAAAAABAADtqHdWg2sIAGgBAABoAQAAAAAAAQAG
-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
-AAAAAAAAAAKLpndWAAAAAAYAAADtqHdW/oMIAEABAABAAQAAAAADBAAGAAAAAAAAAACG3WAA
-AAABCAZAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAECuwgBCYkutiSfoRKAGAL5
-ARAAAAEBCAoALcZjAC3GYoAAAOQyjllUAAAAAAAAAAIAAYajAAAABAAAAAEAAAABAAAAOABB
-lO8AAAAgZGhjcDM1LTE5Ny5sYWIuZW5nLmJsci5yZWRoYXQuY28AAAPoAAAD6AAAAAEAAAPo
-AAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAWAAAACAEAAQAAAAAAAAAAEgAAAA4AAAACAAAAAIum
-d1YAAAAAAAAAGG9wZW4gaWQ6AAAALAAAAAAAAAKjWXcKAgAAAAEAAAACY8YtANEJAAAAAAAA
-AAAABmtrLnR4dAAAAAAACgAAAAkAAAACABABGgCwojrtqHdWX4QIAFABAABQAQAAAAQAAQAG
-UlQAt9C+AAAIAEUAAUCmhUAAQAYdBsCoehHAqHrK//zAANuLkeFVFVJigBgFmyY9AAABAQgK
-AC3GYwAtyh6AAAEIAAAApQAAAAAAAAACABPQBQAAAUoAAAAbAAXzlwAAABwAAAiNAAAD6AAA
-A+gAAAAAAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAQAAAAAAAAAGa2sudHh0AAAAAACQAAAABAAAABcAAAACZ2x1c3RlcmZzLm9wZW4tZmQt
-Y291bnQANAAAAAAcAAAABHRydXN0ZWQuZ2x1c3RlcmZzLmRodC5saW5rdG8AMjU2AAAAABUA
-AAADdHJ1c3RlZC5nbHVzdGVyZnMuZGh0ADE2AAAAABEAAAAGZ2x1c3RlcmZzLmNvbnRlbnQA
-NjU1MzYA7ah3VgmHCAA0AQAANAEAAAAAAAEABlJUANx2KAAACABFAAEkchhAAEAGUY/AqHrK
-wKh6EcAA//xVFVJi24uS7YAYA+qYCgAAAQEICgAtyiAALcZjgAAA7AAAAKUAAAABAAAAAAAA
-AAAAAAAAAAAAAP////8AAAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAQAAAAAAAP0AAABB/wAAAAYAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAEAAAABAAAAAAAAAAAAhWd6WUDu+BM1Z3qGEjOqXuVneoYSM6
-pe4AAAAA7ah3VoqHCABQAQAAUAEAAAAEAAEABlJUALfQvgAACABFAAFApoZAAEAGHQXAqHoR
-wKh6yv/8wADbi5LtVRVTUoAYBaMkNQAAAQEICgAtxmQALcoggAABCAAAAKYAAAAAAAAAAgAT
-0AUAAAFKAAAAGwAF85cAAAAcAAAIjQAAA+gAAAPoAAAAAAAAAAgAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAABmtrLnR4dAAAAAAAkAAA
-AAQAAAAXAAAAAmdsdXN0ZXJmcy5vcGVuLWZkLWNvdW50ADQAAAAAHAAAAAR0cnVzdGVkLmds
-dXN0ZXJmcy5kaHQubGlua3RvADI1NgAAAAAVAAAAA3RydXN0ZWQuZ2x1c3RlcmZzLmRodAAx
-NgAAAAARAAAABmdsdXN0ZXJmcy5jb250ZW50ADY1NTM2AO2od1bGiQgANAEAADQBAAAAAAAB
-AAZSVADcdigAAAgARQABJHIZQABABlGOwKh6ysCoehHAAP/8VRVTUtuLk/mAGAPqlgwAAAEB
-CAoALcogAC3GZIAAAOwAAACmAAAAAQAAAAAAAAAAAAAAAAAAAAD/////AAAAAgAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB
-AAAAAAAAAAEAAAAAAAD9AAAAQf8AAAAGAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAQAAAA
-AAAAAAAIVnellA7vgTNWd6hhIzql7lZ3qGEjOqXuAAAAAO2od1ZtiggAdAEAAHQBAAAABAAB
-AAZSVAC30L4AAAgARQABZKaHQABABhzgwKh6EcCoesr//MAA24uT+VUVVEKAGAWkZvYAAAEB
-CAoALcZkAC3KIIAAASwAAACnAAAAAAAAAAIAE9AFAAABSgAAABsABfOXAAAAHAAACI0AAAPo
-AAAD6AAAAAAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAABAAAAAAAAAAZray50eHQAAAAAALEAAAAFAAAAFwAAAAJnbHVzdGVyZnMub3Blbi1m
-ZC1jb3VudAA0AAAAABwAAAAEdHJ1c3RlZC5nbHVzdGVyZnMuZGh0Lmxpbmt0bwAyNTYAAAAA
-FQAAAAN0cnVzdGVkLmdsdXN0ZXJmcy5kaHQAMTYAAAAAEQAAAAZnbHVzdGVyZnMuY29udGVu
-dAA2NTUzNgAAAAAIAAAAEGdmaWQtcmVxAHZF41uz9k+qvPtM6LNE9esAAADtqHdWlowIADQB
-AAA0AQAAAAAAAQAGUlQA3HYoAAAIAEUAASRyGkAAQAZRjcCoesrAqHoRwAD//FUVVELbi5Up
-gBgD6pPqAAABAQgKAC3KIQAtxmSAAADsAAAApwAAAAEAAAAAAAAAAAAAAAAAAAAA/////wAA
-AAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAQAAAAAAAAABAAAAAAAA/QAAAEH/AAAABgAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAQAAAAEAAAAAAAAAAACFZ3pZQO74EzVneoYSM6pe5Wd6hhIzql7gAAAADtqHdW+IwIAHQB
-AAB0AQAAAAQAAQAGUlQAt9C+AAAIAEUAAWSmiEAAQAYc38CoehHAqHrK//zAANuLlSlVFVUy
-gBgFpGTTAAABAQgKAC3GZQAtyiGAAAEsAAAAqAAAAAAAAAACABPQBQAAAUoAAAAbAAXzlwAA
-ABwAAAiNAAAD6AAAA+gAAAAAAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAGa2sudHh0AAAAAACxAAAABQAAABcAAAACZ2x1c3Rl
-cmZzLm9wZW4tZmQtY291bnQANAAAAAAcAAAABHRydXN0ZWQuZ2x1c3RlcmZzLmRodC5saW5r
-dG8AMjU2AAAAABUAAAADdHJ1c3RlZC5nbHVzdGVyZnMuZGh0ADE2AAAAABEAAAAGZ2x1c3Rl
-cmZzLmNvbnRlbnQANjU1MzYAAAAACAAAABBnZmlkLXJlcQB2ReNbs/ZPqrz7TOizRPXrAAAA
-7ah3VueOCAA0AQAANAEAAAAAAAEABlJUANx2KAAACABFAAEkchtAAEAGUYzAqHrKwKh6EcAA
-//xVFVUy24uWWYAYA+qRxwAAAQEICgAtyiIALcZlgAAA7AAAAKgAAAABAAAAAAAAAAAAAAAA
-AAAAAP////8AAAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAQAAAAAAAP0AAABB/wAAAAYAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAEAAAABAAAAAAAAAAAAhWd6WUDu+BM1Z3qGEjOqXuVneoYSM6pe4AAAAA
-7ah3VimQCABQAQAAUAEAAAAEAAEABlJUALfQvgAACABFAAFApolAAEAGHQLAqHoRwKh6yv/8
-wADbi5ZZVRVWIoAYBaQd8QAAAQEICgAtxmYALcoigAABCAAAAKkAAAAAAAAAAgAT0AUAAAFK
-AAAAGwAF85cAAAAcAAAIjQAAA+gAAAPoAAAAAAAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAABmtrLnR4dAAAAAAAkAAAAAQAAAAX
-AAAAAmdsdXN0ZXJmcy5vcGVuLWZkLWNvdW50ADQAAAAAHAAAAAR0cnVzdGVkLmdsdXN0ZXJm
-cy5kaHQubGlua3RvADI1NgAAAAAVAAAAA3RydXN0ZWQuZ2x1c3RlcmZzLmRodAAxNgAAAAAR
-AAAABmdsdXN0ZXJmcy5jb250ZW50ADY1NTM2AO2od1ZFkggANAEAADQBAAAAAAABAAZSVADc
-digAAAgARQABJHIcQABABlGLwKh6ysCoehHAAP/8VRVWItuLl2WAGAPqj8kAAAEBCAoALcoi
-AC3GZoAAAOwAAACpAAAAAQAAAAAAAAAAAAAAAAAAAAD/////AAAAAgAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAA
-AAEAAAAAAAD9AAAAQf8AAAAGAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAQAAAAAAAAAAAI
-VnellA7vgTNWd6hhIzql7lZ3qGEjOqXuAAAAAO2od1alkggAUAEAAFABAAAABAABAAZSVAC3
-0L4AAAgARQABQKaKQABABh0BwKh6EcCoesr//MAA24uXZVUVVxKAGAWkG/QAAAEBCAoALcZm
-AC3KIoAAAQgAAACqAAAAAAAAAAIAE9AFAAABSgAAABsABfOXAAAAHAAACI0AAAPoAAAD6AAA
-AAAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB
-AAAAAAAAAAZray50eHQAAAAAAJAAAAAEAAAAFwAAAAJnbHVzdGVyZnMub3Blbi1mZC1jb3Vu
-dAA0AAAAABwAAAAEdHJ1c3RlZC5nbHVzdGVyZnMuZGh0Lmxpbmt0bwAyNTYAAAAAFQAAAAN0
-cnVzdGVkLmdsdXN0ZXJmcy5kaHQAMTYAAAAAEQAAAAZnbHVzdGVyZnMuY29udGVudAA2NTUz
-NgDtqHdWlpQIADQBAAA0AQAAAAAAAQAGUlQA3HYoAAAIAEUAASRyHUAAQAZRisCoesrAqHoR
-wAD//FUVVxLbi5hxgBgD6o3LAAABAQgKAC3KIwAtxmaAAADsAAAAqgAAAAEAAAAAAAAAAAAA
-AAAAAAAA/////wAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAABAAAAAAAA/QAAAEH/AAAABgAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAQAAAAEAAAAAAAAAAACFZ3pZQO74EzVneoYSM6pe5Wd6hhIzql7gAA
-AADtqHdWCZUIAMQAAADEAAAAAAQAAQAGUlQAt9C+AAAIAEUAALSmi0AAQAYdjMCoehHAqHrK
-//zAANuLmHFVFVgCgBgFpKu8AAABAQgKAC3GZwAtyiOAAAB8AAAAqwAAAAAAAAACABPQBQAA
-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
---------------080506040106050506080801--
