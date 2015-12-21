@@ -1,28 +1,70 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:44672 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:44696 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751737AbbLUUWc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 21 Dec 2015 15:22:32 -0500
-Date: Mon, 21 Dec 2015 15:22:30 -0500
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [GIT PULL] nfsd fix for 4.4
-Message-ID: <20151221202230.GC7869@fieldses.org>
+	id S1751563AbbLUVHI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 21 Dec 2015 16:07:08 -0500
+Date: Mon, 21 Dec 2015 16:07:08 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v4 01/11] svcrdma: Do not send XDR roundup bytes for a
+ write chunk
+Message-ID: <20151221210708.GD7869@fieldses.org>
+References: <20151214211951.12932.99017.stgit@klimt.1015granger.net>
+ <20151214213009.12932.60521.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-From: bfields@fieldses.org (J. Bruce Fields)
+In-Reply-To: <20151214213009.12932.60521.stgit@klimt.1015granger.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Please pull an nfsd change for 4.4:
+On Mon, Dec 14, 2015 at 04:30:09PM -0500, Chuck Lever wrote:
+> Minor optimization: when dealing with write chunk XDR roundup, do
+> not post a Write WR for the zero bytes in the pad. Simply update
+> the write segment in the RPC-over-RDMA header to reflect the extra
+> pad bytes.
+> 
+> The Reply chunk is also a write chunk, but the server does not use
+> send_write_chunks() to send the Reply chunk. That's OK in this case:
+> the server Upper Layer typically marshals the Reply chunk contents
+> in a single contiguous buffer, without a separate tail for the XDR
+> pad.
+> 
+> The comments and the variable naming refer to "chunks" but what is
+> really meant is "segments." The existing code sends only one
+> xdr_write_chunk per RPC reply.
+> 
+> The fix assumes this as well. When the XDR pad in the first write
+> chunk is reached, the assumption is the Write list is complete and
+> send_write_chunks() returns.
+> 
+> That will remain a valid assumption until the server Upper Layer can
+> support multiple bulk payload results per RPC.
+> 
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+>  net/sunrpc/xprtrdma/svc_rdma_sendto.c |    7 +++++++
+>  1 file changed, 7 insertions(+)
+> 
+> diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+> index 969a1ab..bad5eaa 100644
+> --- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+> +++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+> @@ -342,6 +342,13 @@ static int send_write_chunks(struct svcxprt_rdma *xprt,
+>  						arg_ch->rs_handle,
+>  						arg_ch->rs_offset,
+>  						write_len);
+> +
+> +		/* Do not send XDR pad bytes */
+> +		if (chunk_no && write_len < 4) {
+> +			chunk_no++;
+> +			break;
 
-  git://linux-nfs.org/~bfields/linux.git tags/nfsd-4.4-1
+I'm pretty lost in this code.  Why does (chunk_no && write_len < 4) mean
+this is xdr padding?
 
-Just one fix for a NFSv4 callback bug introduced in 4.4.
-
-----------------------------------------------------------------
-Jeff Layton (1):
-      nfsd: don't hold ls_mutex across a layout recall
-
- fs/nfsd/nfs4layouts.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+> +		}
+> +
+>  		chunk_off = 0;
+>  		while (write_len) {
+>  			ret = send_write(xprt, rqstp,
