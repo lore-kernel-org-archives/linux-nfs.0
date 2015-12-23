@@ -1,56 +1,71 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:45955 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752274AbbLWQ6u (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 23 Dec 2015 11:58:50 -0500
-Date: Wed, 23 Dec 2015 11:58:49 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Weston Andros Adamson <dros@netapp.com>, Trond.Myklebust@netapp.com,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFSv4: fix getacl ERANGE for some ACL buffer sizes
-Message-ID: <20151223165849.GA27432@fieldses.org>
-References: <1385068813-5491-1-git-send-email-dros@netapp.com>
- <20151214221816.GA7342@fieldses.org>
- <20151214222154.GB7342@fieldses.org>
- <CAHQdGtQZwpa7kLypWjXrqDXWLvozErcCvEwbro_h1Kk7sGTYRw@mail.gmail.com>
+Received: from mail-pf0-f173.google.com ([209.85.192.173]:33968 "EHLO
+	mail-pf0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933346AbbLWR7m (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Dec 2015 12:59:42 -0500
+Received: by mail-pf0-f173.google.com with SMTP id e65so3318958pfe.1
+        for <linux-nfs@vger.kernel.org>; Wed, 23 Dec 2015 09:59:42 -0800 (PST)
+Date: Wed, 23 Dec 2015 09:59:49 -0800
+From: Stephen Hemminger <stephen@networkplumber.org>
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Fw: [Bug 109781] New: NFS fails mount from fstab
+Message-ID: <20151223095949.6ad594a9@xeon-e3>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAHQdGtQZwpa7kLypWjXrqDXWLvozErcCvEwbro_h1Kk7sGTYRw@mail.gmail.com>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Dec 14, 2015 at 06:27:20PM -0500, Trond Myklebust wrote:
-> On Mon, Dec 14, 2015 at 5:21 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> > From: Weston Andros Adamson <dros@netapp.com>
-> >
-> > Fix a bug where getxattr returns ERANGE when the attr buffer
-> > length is close enough to the nearest PAGE_SIZE multiple that adding
-> > the extra bytes leaves too little room for the ACL buffer.
-> >
-> > Besides storing the ACL buffer, the getacl decoder uses the inline
-> > pages for the attr bitmap and buffer length. __nfs4_get_acl_uncached
-> > must allocate enough page space for all of the data to be decoded.
-> >
-> > This patch uses xdr_partial_copy_from_skb to allocate any needed
-> > pages past the first one. This allows the client to always cache the acl
-> > on the first getacl call and not just if it fits in one page.
-> >
-> > Signed-off-by: Weston Andros Adamson <dros@netapp.com>
-> > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> 
-> The thread ends with:
-> 
-> "Indeed, buf->page_len is still set to the maximum number of bytes in
-> the pages array (set by xdr_inline_pages to tell xdr layer the max
-> allocation size), and not the number of bytes that are actually
-> present.
-> 
-> Working on a fix.
-> 
-> -dros"
+All network related bugs get assigned first to me, but this looks like NFS issue
 
-Dros, do you have a reliable reproducer for the BUG you were seeing?
-I'm not having any luck.
+Begin forwarded message:
 
---b.
+Date: Tue, 22 Dec 2015 15:46:25 +0000
+From: "bugzilla-daemon@bugzilla.kernel.org" <bugzilla-daemon@bugzilla.kernel.org>
+To: "shemminger@linux-foundation.org" <shemminger@linux-foundation.org>
+Subject: [Bug 109781] New: NFS fails mount from fstab
+
+
+https://bugzilla.kernel.org/show_bug.cgi?id=109781
+
+            Bug ID: 109781
+           Summary: NFS fails mount from fstab
+           Product: Networking
+           Version: 2.5
+    Kernel Version: 4.2.7
+          Hardware: All
+                OS: Linux
+              Tree: Fedora
+            Status: NEW
+          Severity: normal
+          Priority: P1
+         Component: Other
+          Assignee: shemminger@linux-foundation.org
+          Reporter: mkb@cydyreal.com
+        Regression: No
+
+Created attachment 198001
+  --> https://bugzilla.kernel.org/attachment.cgi?id=198001&action=edit
+grep -i nfs /var/log/messages*; [ and deleted extraneous stuff. ]
+
+I can manual mount an NFS export from another identical machine, and mounting
+at boot time from fstab worked under FC22.  Under FC23 I can still mount NFS by
+hand but it fails to mount at boot time from fstab.  The fstab's are identical.
+ I used dnf-system-upgrade on the NFS server to upgrade from FC21.  This worked
+properly and I was able to boot my (old) FC22 client with NFS mount at boot.  I
+installed a new SSD and installed FC23 from the live DVD image on the client,
+and restored all the user and system config files from a backup tar (on the
+client).  Now boot-time NFS mount fails.
+
+I still habe the old hard drive with the FC22 image that can be booted and will
+do the NFS boot-time mount (it is on an external USB3 drive) so we can
+experiment with that if necessary, but I run processes 24/7 during the week, so
+any experimentation would need to be done on weekends when I have down time.
+
+dmesg produced no NFS messages.  Attached is a grep -i of NFS from
+/var/log/messages*;.
+
+-- 
+You are receiving this mail because:
+You are the assignee for the bug.
