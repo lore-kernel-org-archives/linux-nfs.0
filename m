@@ -1,76 +1,85 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f169.google.com ([209.85.223.169]:35140 "EHLO
-	mail-io0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751578AbbLZXVj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 26 Dec 2015 18:21:39 -0500
-Received: by mail-io0-f169.google.com with SMTP id q126so279965641iof.2
-        for <linux-nfs@vger.kernel.org>; Sat, 26 Dec 2015 15:21:39 -0800 (PST)
+Received: from mail-io0-f179.google.com ([209.85.223.179]:35148 "EHLO
+	mail-io0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751578AbbLZXVl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 26 Dec 2015 18:21:41 -0500
+Received: by mail-io0-f179.google.com with SMTP id q126so279965857iof.2
+        for <linux-nfs@vger.kernel.org>; Sat, 26 Dec 2015 15:21:40 -0800 (PST)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH 01/14] pNFS/flexfiles: Support server-supplied layoutstats sampling period
-Date: Sat, 26 Dec 2015 18:20:47 -0500
-Message-Id: <1451172060-28238-1-git-send-email-trond.myklebust@primarydata.com>
+Subject: [PATCH 03/14] nfs: clean up rest of reqs when failing to add one
+Date: Sat, 26 Dec 2015 18:20:49 -0500
+Message-Id: <1451172060-28238-3-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1451172060-28238-2-git-send-email-trond.myklebust@primarydata.com>
+References: <1451172060-28238-1-git-send-email-trond.myklebust@primarydata.com>
+ <1451172060-28238-2-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Some servers want to be able to control the frequency with which clients
-report layoutstats, for instance, in order to monitor QoS for a particular
-file or set of file. In order to support this, the flexfiles layout allows
-the server to pass this info as a hint in the layout payload.
+From: Peng Tao <tao.peng@primarydata.com>
 
+If we fail to set up things before sending anything over wire,
+we need to clean up the reqs that are still attached to the
+IO descriptor.
+
+Signed-off-by: Peng Tao <tao.peng@primarydata.com>
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/flexfilelayout/flexfilelayout.c | 16 +++++++++++++---
- fs/nfs/flexfilelayout/flexfilelayout.h |  1 +
- 2 files changed, 14 insertions(+), 3 deletions(-)
+ fs/nfs/pagelist.c | 17 ++++++++++++++---
+ 1 file changed, 14 insertions(+), 3 deletions(-)
 
-diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
-index 03516c80855a..616817a46410 100644
---- a/fs/nfs/flexfilelayout/flexfilelayout.c
-+++ b/fs/nfs/flexfilelayout/flexfilelayout.c
-@@ -505,9 +505,17 @@ ff_layout_alloc_lseg(struct pnfs_layout_hdr *lh,
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index 871ba5df5ca9..f66021663645 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -1120,6 +1120,7 @@ static int nfs_do_recoalesce(struct nfs_pageio_descriptor *desc)
+ static int nfs_pageio_add_request_mirror(struct nfs_pageio_descriptor *desc,
+ 		struct nfs_page *req)
+ {
++	struct nfs_pgio_mirror *mirror = nfs_pgio_current_mirror(desc);
+ 	int ret;
+ 
+ 	do {
+@@ -1147,7 +1148,7 @@ int nfs_pageio_add_request(struct nfs_pageio_descriptor *desc,
+ 
+ 	nfs_pageio_setup_mirroring(desc, req);
+ 	if (desc->pg_error < 0)
+-		return 0;
++		goto out_failed;
+ 
+ 	for (midx = 0; midx < desc->pg_mirror_count; midx++) {
+ 		if (midx) {
+@@ -1164,7 +1165,8 @@ int nfs_pageio_add_request(struct nfs_pageio_descriptor *desc,
+ 
+ 			if (IS_ERR(dupreq)) {
+ 				nfs_page_group_unlock(req);
+-				return 0;
++				desc->pg_error = PTR_ERR(dupreq);
++				goto out_failed;
+ 			}
+ 
+ 			nfs_lock_request(dupreq);
+@@ -1177,10 +1179,19 @@ int nfs_pageio_add_request(struct nfs_pageio_descriptor *desc,
+ 		if (nfs_pgio_has_mirroring(desc))
+ 			desc->pg_mirror_idx = midx;
+ 		if (!nfs_pageio_add_request_mirror(desc, dupreq))
+-			return 0;
++			goto out_failed;
  	}
  
- 	p = xdr_inline_decode(&stream, 4);
--	if (p)
--		fls->flags = be32_to_cpup(p);
-+	if (!p)
-+		goto out_sort_mirrors;
-+	fls->flags = be32_to_cpup(p);
+ 	return 1;
 +
-+	p = xdr_inline_decode(&stream, 4);
-+	if (!p)
-+		goto out_sort_mirrors;
-+	for (i=0; i < fls->mirror_array_cnt; i++)
-+		fls->mirror_array[i]->report_interval = be32_to_cpup(p);
++out_failed:
++	/*
++	 * We might have failed before sending any reqs over wire.
++	 * clean up rest of the reqs in mirror pg_list
++	 */
++	if (desc->pg_error)
++		desc->pg_completion_ops->error_cleanup(&mirror->pg_list);
++	return 0;
+ }
  
-+out_sort_mirrors:
- 	ff_layout_sort_mirrors(fls);
- 	rc = ff_layout_check_layout(lgr);
- 	if (rc)
-@@ -603,7 +611,9 @@ nfs4_ff_layoutstat_start_io(struct nfs4_ff_layout_mirror *mirror,
- 		mirror->start_time = now;
- 	if (ktime_equal(mirror->last_report_time, notime))
- 		mirror->last_report_time = now;
--	if (layoutstats_timer != 0)
-+	if (mirror->report_interval != 0)
-+		report_interval = (s64)mirror->report_interval * 1000LL;
-+	else if (layoutstats_timer != 0)
- 		report_interval = (s64)layoutstats_timer * 1000LL;
- 	if (ktime_to_ms(ktime_sub(now, mirror->last_report_time)) >=
- 			report_interval) {
-diff --git a/fs/nfs/flexfilelayout/flexfilelayout.h b/fs/nfs/flexfilelayout/flexfilelayout.h
-index 2bb08bc6aaf0..dd353bb7dc0a 100644
---- a/fs/nfs/flexfilelayout/flexfilelayout.h
-+++ b/fs/nfs/flexfilelayout/flexfilelayout.h
-@@ -85,6 +85,7 @@ struct nfs4_ff_layout_mirror {
- 	struct nfs4_ff_layoutstat	write_stat;
- 	ktime_t				start_time;
- 	ktime_t				last_report_time;
-+	u32				report_interval;
- };
- 
- struct nfs4_ff_layout_segment {
+ /*
 -- 
 2.5.0
 
