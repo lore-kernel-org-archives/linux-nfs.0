@@ -1,16 +1,16 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f177.google.com ([209.85.213.177]:38821 "EHLO
-	mail-ig0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753897AbbLZXVt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 26 Dec 2015 18:21:49 -0500
-Received: by mail-ig0-f177.google.com with SMTP id mw1so5208569igb.1
-        for <linux-nfs@vger.kernel.org>; Sat, 26 Dec 2015 15:21:49 -0800 (PST)
+Received: from mail-io0-f182.google.com ([209.85.223.182]:34625 "EHLO
+	mail-io0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753697AbbLZXVr (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 26 Dec 2015 18:21:47 -0500
+Received: by mail-io0-f182.google.com with SMTP id e126so280362415ioa.1
+        for <linux-nfs@vger.kernel.org>; Sat, 26 Dec 2015 15:21:47 -0800 (PST)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH 14/14] pNFS/flexfiles: Ensure we record layoutstats even if RPC is terminated early
-Date: Sat, 26 Dec 2015 18:21:00 -0500
-Message-Id: <1451172060-28238-14-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1451172060-28238-13-git-send-email-trond.myklebust@primarydata.com>
+Subject: [PATCH 11/14] pNFS/flexfiles: Don't mark the entire layout as failed, when returning it
+Date: Sat, 26 Dec 2015 18:20:57 -0500
+Message-Id: <1451172060-28238-11-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1451172060-28238-10-git-send-email-trond.myklebust@primarydata.com>
 References: <1451172060-28238-1-git-send-email-trond.myklebust@primarydata.com>
  <1451172060-28238-2-git-send-email-trond.myklebust@primarydata.com>
  <1451172060-28238-3-git-send-email-trond.myklebust@primarydata.com>
@@ -21,123 +21,53 @@ References: <1451172060-28238-1-git-send-email-trond.myklebust@primarydata.com>
  <1451172060-28238-8-git-send-email-trond.myklebust@primarydata.com>
  <1451172060-28238-9-git-send-email-trond.myklebust@primarydata.com>
  <1451172060-28238-10-git-send-email-trond.myklebust@primarydata.com>
- <1451172060-28238-11-git-send-email-trond.myklebust@primarydata.com>
- <1451172060-28238-12-git-send-email-trond.myklebust@primarydata.com>
- <1451172060-28238-13-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Currently, we will only record the layoutstats correctly if the
-RPC call successfully obtains a slot. If we exit before that
-happens, then we may find ourselves starting the busy timer through
-the call in ff_layout_(read|write)_prepare_layoutstats, but never stopping it.
-
-The same thing happens if we're doing DA-DS.
-
-The fix is to ensure that we catch these cases in the rpc_release()
-callback.
+In pNFS/flexfiles, we want to return the layout without necessarily marking
+it as having completely failed. We therefore move the call to
+pnfs_layout_io_set_failed() out of pnfs_error_mark_layout_for_return(),
+and then ensura that pNFS/files layout calls it separately.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/flexfilelayout/flexfilelayout.c | 37 ++++++++++++++++++++++++++++------
- 1 file changed, 31 insertions(+), 6 deletions(-)
+ fs/nfs/filelayout/filelayout.c | 1 +
+ fs/nfs/pnfs.c                  | 3 ---
+ 2 files changed, 1 insertion(+), 3 deletions(-)
 
-diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
-index 9257679a15ba..2981cd190bfd 100644
---- a/fs/nfs/flexfilelayout/flexfilelayout.c
-+++ b/fs/nfs/flexfilelayout/flexfilelayout.c
-@@ -1397,6 +1397,15 @@ static void ff_layout_read_count_stats(struct rpc_task *task, void *data)
- 	    &NFS_CLIENT(hdr->inode)->cl_metrics[NFSPROC4_CLNT_READ]);
- }
- 
-+static void ff_layout_read_release(void *data)
-+{
-+	struct nfs_pgio_header *hdr = data;
-+
-+	ff_layout_read_record_layoutstats_done(&hdr->task, hdr);
-+	pnfs_generic_rw_release(data);
-+}
-+
-+
- static int ff_layout_write_done_cb(struct rpc_task *task,
- 				struct nfs_pgio_header *hdr)
+diff --git a/fs/nfs/filelayout/filelayout.c b/fs/nfs/filelayout/filelayout.c
+index ae07b0f56659..bb1f4e7a3270 100644
+--- a/fs/nfs/filelayout/filelayout.c
++++ b/fs/nfs/filelayout/filelayout.c
+@@ -202,6 +202,7 @@ static int filelayout_async_handle_error(struct rpc_task *task,
+ 			task->tk_status);
+ 		nfs4_mark_deviceid_unavailable(devid);
+ 		pnfs_error_mark_layout_for_return(inode, lseg);
++		pnfs_set_lo_fail(lseg);
+ 		rpc_wake_up(&tbl->slot_tbl_waitq);
+ 		/* fall through */
+ 	default:
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 6b42362cdbb0..113c3b327e24 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1763,7 +1763,6 @@ void pnfs_error_mark_layout_for_return(struct inode *inode,
+ 				       struct pnfs_layout_segment *lseg)
  {
-@@ -1564,6 +1573,14 @@ static void ff_layout_write_count_stats(struct rpc_task *task, void *data)
- 	    &NFS_CLIENT(hdr->inode)->cl_metrics[NFSPROC4_CLNT_WRITE]);
- }
+ 	struct pnfs_layout_hdr *lo = NFS_I(inode)->layout;
+-	int iomode = pnfs_iomode_to_fail_bit(lseg->pls_range.iomode);
+ 	struct pnfs_layout_range range = {
+ 		.iomode = lseg->pls_range.iomode,
+ 		.offset = 0,
+@@ -1772,8 +1771,6 @@ void pnfs_error_mark_layout_for_return(struct inode *inode,
+ 	LIST_HEAD(free_me);
  
-+static void ff_layout_write_release(void *data)
-+{
-+	struct nfs_pgio_header *hdr = data;
-+
-+	ff_layout_write_record_layoutstats_done(&hdr->task, hdr);
-+	pnfs_generic_rw_release(data);
-+}
-+
- static void ff_layout_commit_record_layoutstats_start(struct rpc_task *task,
- 		struct nfs_commit_data *cdata)
- {
-@@ -1630,46 +1647,54 @@ static void ff_layout_commit_count_stats(struct rpc_task *task, void *data)
- 	    &NFS_CLIENT(cdata->inode)->cl_metrics[NFSPROC4_CLNT_COMMIT]);
- }
- 
-+static void ff_layout_commit_release(void *data)
-+{
-+	struct nfs_commit_data *cdata = data;
-+
-+	ff_layout_commit_record_layoutstats_done(&cdata->task, cdata);
-+	pnfs_generic_commit_release(data);
-+}
-+
- static const struct rpc_call_ops ff_layout_read_call_ops_v3 = {
- 	.rpc_call_prepare = ff_layout_read_prepare_v3,
- 	.rpc_call_done = ff_layout_read_call_done,
- 	.rpc_count_stats = ff_layout_read_count_stats,
--	.rpc_release = pnfs_generic_rw_release,
-+	.rpc_release = ff_layout_read_release,
- };
- 
- static const struct rpc_call_ops ff_layout_read_call_ops_v4 = {
- 	.rpc_call_prepare = ff_layout_read_prepare_v4,
- 	.rpc_call_done = ff_layout_read_call_done,
- 	.rpc_count_stats = ff_layout_read_count_stats,
--	.rpc_release = pnfs_generic_rw_release,
-+	.rpc_release = ff_layout_read_release,
- };
- 
- static const struct rpc_call_ops ff_layout_write_call_ops_v3 = {
- 	.rpc_call_prepare = ff_layout_write_prepare_v3,
- 	.rpc_call_done = ff_layout_write_call_done,
- 	.rpc_count_stats = ff_layout_write_count_stats,
--	.rpc_release = pnfs_generic_rw_release,
-+	.rpc_release = ff_layout_write_release,
- };
- 
- static const struct rpc_call_ops ff_layout_write_call_ops_v4 = {
- 	.rpc_call_prepare = ff_layout_write_prepare_v4,
- 	.rpc_call_done = ff_layout_write_call_done,
- 	.rpc_count_stats = ff_layout_write_count_stats,
--	.rpc_release = pnfs_generic_rw_release,
-+	.rpc_release = ff_layout_write_release,
- };
- 
- static const struct rpc_call_ops ff_layout_commit_call_ops_v3 = {
- 	.rpc_call_prepare = ff_layout_commit_prepare_v3,
- 	.rpc_call_done = ff_layout_commit_done,
- 	.rpc_count_stats = ff_layout_commit_count_stats,
--	.rpc_release = pnfs_generic_commit_release,
-+	.rpc_release = ff_layout_commit_release,
- };
- 
- static const struct rpc_call_ops ff_layout_commit_call_ops_v4 = {
- 	.rpc_call_prepare = ff_layout_commit_prepare_v4,
- 	.rpc_call_done = ff_layout_commit_done,
- 	.rpc_count_stats = ff_layout_commit_count_stats,
--	.rpc_release = pnfs_generic_commit_release,
-+	.rpc_release = ff_layout_commit_release,
- };
- 
- static enum pnfs_try_status
+ 	spin_lock(&inode->i_lock);
+-	/* set failure bit so that pnfs path will be retried later */
+-	pnfs_layout_set_fail_bit(lo, iomode);
+ 	if (lo->plh_return_iomode == 0)
+ 		lo->plh_return_iomode = range.iomode;
+ 	else if (lo->plh_return_iomode != range.iomode)
 -- 
 2.5.0
 
