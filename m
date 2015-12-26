@@ -1,85 +1,325 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f179.google.com ([209.85.223.179]:35148 "EHLO
-	mail-io0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751578AbbLZXVl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 26 Dec 2015 18:21:41 -0500
-Received: by mail-io0-f179.google.com with SMTP id q126so279965857iof.2
-        for <linux-nfs@vger.kernel.org>; Sat, 26 Dec 2015 15:21:40 -0800 (PST)
+Received: from mail-io0-f176.google.com ([209.85.223.176]:34589 "EHLO
+	mail-io0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752652AbbLZXVk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 26 Dec 2015 18:21:40 -0500
+Received: by mail-io0-f176.google.com with SMTP id e126so280361405ioa.1
+        for <linux-nfs@vger.kernel.org>; Sat, 26 Dec 2015 15:21:39 -0800 (PST)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH 03/14] nfs: clean up rest of reqs when failing to add one
-Date: Sat, 26 Dec 2015 18:20:49 -0500
-Message-Id: <1451172060-28238-3-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1451172060-28238-2-git-send-email-trond.myklebust@primarydata.com>
+Subject: [PATCH 02/14] NFS41: pop some layoutget errors to application
+Date: Sat, 26 Dec 2015 18:20:48 -0500
+Message-Id: <1451172060-28238-2-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1451172060-28238-1-git-send-email-trond.myklebust@primarydata.com>
 References: <1451172060-28238-1-git-send-email-trond.myklebust@primarydata.com>
- <1451172060-28238-2-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Peng Tao <tao.peng@primarydata.com>
 
-If we fail to set up things before sending anything over wire,
-we need to clean up the reqs that are still attached to the
-IO descriptor.
+For ERESTARTSYS/EIO/EROFS/ENOSPC/E2BIG in layoutget, we
+should just bail out instead of hiding the error and
+retrying inband IO.
+
+Change all the call sites to pop the error all the way up.
 
 Signed-off-by: Peng Tao <tao.peng@primarydata.com>
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/pagelist.c | 17 ++++++++++++++---
- 1 file changed, 14 insertions(+), 3 deletions(-)
+ fs/nfs/direct.c                        | 15 ++++++++++++++-
+ fs/nfs/filelayout/filelayout.c         | 17 +++++++++++++++--
+ fs/nfs/flexfilelayout/flexfilelayout.c | 25 ++++++++++++++++++++++---
+ fs/nfs/pagelist.c                      |  9 ++++++++-
+ fs/nfs/pnfs.c                          | 24 ++++++++++++++++++------
+ fs/nfs/read.c                          |  2 +-
+ 6 files changed, 78 insertions(+), 14 deletions(-)
 
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index da44aa17b77f..408345f7b558 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -670,6 +670,10 @@ static void nfs_direct_write_reschedule(struct nfs_direct_req *dreq)
+ 
+ 	req = nfs_list_entry(reqs.next);
+ 	nfs_direct_setup_mirroring(dreq, &desc, req);
++	if (desc.pg_error < 0) {
++		list_splice_init(&reqs, &failed);
++		goto out_failed;
++	}
+ 
+ 	list_for_each_entry_safe(req, tmp, &reqs, wb_list) {
+ 		if (!nfs_pageio_add_request(&desc, req)) {
+@@ -677,13 +681,17 @@ static void nfs_direct_write_reschedule(struct nfs_direct_req *dreq)
+ 			nfs_list_add_request(req, &failed);
+ 			spin_lock(cinfo.lock);
+ 			dreq->flags = 0;
+-			dreq->error = -EIO;
++			if (desc.pg_error < 0)
++				dreq->error = desc.pg_error;
++			else
++				dreq->error = -EIO;
+ 			spin_unlock(cinfo.lock);
+ 		}
+ 		nfs_release_request(req);
+ 	}
+ 	nfs_pageio_complete(&desc);
+ 
++out_failed:
+ 	while (!list_empty(&failed)) {
+ 		req = nfs_list_entry(failed.next);
+ 		nfs_list_remove_request(req);
+@@ -894,6 +902,11 @@ static ssize_t nfs_direct_write_schedule_iovec(struct nfs_direct_req *dreq,
+ 			}
+ 
+ 			nfs_direct_setup_mirroring(dreq, &desc, req);
++			if (desc.pg_error < 0) {
++				nfs_free_request(req);
++				result = desc.pg_error;
++				break;
++			}
+ 
+ 			nfs_lock_request(req);
+ 			req->wb_index = pos >> PAGE_SHIFT;
+diff --git a/fs/nfs/filelayout/filelayout.c b/fs/nfs/filelayout/filelayout.c
+index 02ec07973bc4..ae07b0f56659 100644
+--- a/fs/nfs/filelayout/filelayout.c
++++ b/fs/nfs/filelayout/filelayout.c
+@@ -883,13 +883,19 @@ static void
+ filelayout_pg_init_read(struct nfs_pageio_descriptor *pgio,
+ 			struct nfs_page *req)
+ {
+-	if (!pgio->pg_lseg)
++	if (!pgio->pg_lseg) {
+ 		pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
+ 					   req->wb_context,
+ 					   0,
+ 					   NFS4_MAX_UINT64,
+ 					   IOMODE_READ,
+ 					   GFP_KERNEL);
++		if (IS_ERR(pgio->pg_lseg)) {
++			pgio->pg_error = PTR_ERR(pgio->pg_lseg);
++			pgio->pg_lseg = NULL;
++			return;
++		}
++	}
+ 	/* If no lseg, fall back to read through mds */
+ 	if (pgio->pg_lseg == NULL)
+ 		nfs_pageio_reset_read_mds(pgio);
+@@ -902,13 +908,20 @@ filelayout_pg_init_write(struct nfs_pageio_descriptor *pgio,
+ 	struct nfs_commit_info cinfo;
+ 	int status;
+ 
+-	if (!pgio->pg_lseg)
++	if (!pgio->pg_lseg) {
+ 		pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
+ 					   req->wb_context,
+ 					   0,
+ 					   NFS4_MAX_UINT64,
+ 					   IOMODE_RW,
+ 					   GFP_NOFS);
++		if (IS_ERR(pgio->pg_lseg)) {
++			pgio->pg_error = PTR_ERR(pgio->pg_lseg);
++			pgio->pg_lseg = NULL;
++			return;
++		}
++	}
++
+ 	/* If no lseg, fall back to write through mds */
+ 	if (pgio->pg_lseg == NULL)
+ 		goto out_mds;
+diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
+index 616817a46410..57e4010e3cde 100644
+--- a/fs/nfs/flexfilelayout/flexfilelayout.c
++++ b/fs/nfs/flexfilelayout/flexfilelayout.c
+@@ -795,13 +795,19 @@ ff_layout_pg_init_read(struct nfs_pageio_descriptor *pgio,
+ 	int ds_idx;
+ 
+ 	/* Use full layout for now */
+-	if (!pgio->pg_lseg)
++	if (!pgio->pg_lseg) {
+ 		pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
+ 						   req->wb_context,
+ 						   0,
+ 						   NFS4_MAX_UINT64,
+ 						   IOMODE_READ,
+ 						   GFP_KERNEL);
++		if (IS_ERR(pgio->pg_lseg)) {
++			pgio->pg_error = PTR_ERR(pgio->pg_lseg);
++			pgio->pg_lseg = NULL;
++			return;
++		}
++	}
+ 	/* If no lseg, fall back to read through mds */
+ 	if (pgio->pg_lseg == NULL)
+ 		goto out_mds;
+@@ -835,13 +841,19 @@ ff_layout_pg_init_write(struct nfs_pageio_descriptor *pgio,
+ 	int i;
+ 	int status;
+ 
+-	if (!pgio->pg_lseg)
++	if (!pgio->pg_lseg) {
+ 		pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
+ 						   req->wb_context,
+ 						   0,
+ 						   NFS4_MAX_UINT64,
+ 						   IOMODE_RW,
+ 						   GFP_NOFS);
++		if (IS_ERR(pgio->pg_lseg)) {
++			pgio->pg_error = PTR_ERR(pgio->pg_lseg);
++			pgio->pg_lseg = NULL;
++			return;
++		}
++	}
+ 	/* If no lseg, fall back to write through mds */
+ 	if (pgio->pg_lseg == NULL)
+ 		goto out_mds;
+@@ -877,18 +889,25 @@ static unsigned int
+ ff_layout_pg_get_mirror_count_write(struct nfs_pageio_descriptor *pgio,
+ 				    struct nfs_page *req)
+ {
+-	if (!pgio->pg_lseg)
++	if (!pgio->pg_lseg) {
+ 		pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
+ 						   req->wb_context,
+ 						   0,
+ 						   NFS4_MAX_UINT64,
+ 						   IOMODE_RW,
+ 						   GFP_NOFS);
++		if (IS_ERR(pgio->pg_lseg)) {
++			pgio->pg_error = PTR_ERR(pgio->pg_lseg);
++			pgio->pg_lseg = NULL;
++			goto out;
++		}
++	}
+ 	if (pgio->pg_lseg)
+ 		return FF_LAYOUT_MIRROR_COUNT(pgio->pg_lseg);
+ 
+ 	/* no lseg means that pnfs is not in use, so no mirroring here */
+ 	nfs_pageio_reset_write_mds(pgio);
++out:
+ 	return 1;
+ }
+ 
 diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index 871ba5df5ca9..f66021663645 100644
+index c3a78450a239..871ba5df5ca9 100644
 --- a/fs/nfs/pagelist.c
 +++ b/fs/nfs/pagelist.c
-@@ -1120,6 +1120,7 @@ static int nfs_do_recoalesce(struct nfs_pageio_descriptor *desc)
- static int nfs_pageio_add_request_mirror(struct nfs_pageio_descriptor *desc,
- 		struct nfs_page *req)
- {
-+	struct nfs_pgio_mirror *mirror = nfs_pgio_current_mirror(desc);
- 	int ret;
+@@ -874,6 +874,9 @@ static int nfs_pageio_setup_mirroring(struct nfs_pageio_descriptor *pgio,
  
- 	do {
-@@ -1147,7 +1148,7 @@ int nfs_pageio_add_request(struct nfs_pageio_descriptor *desc,
+ 	mirror_count = pgio->pg_ops->pg_get_mirror_count(pgio, req);
+ 
++	if (pgio->pg_error < 0)
++		return pgio->pg_error;
++
+ 	if (!mirror_count || mirror_count > NFS_PAGEIO_DESCRIPTOR_MIRROR_MAX)
+ 		return -EINVAL;
+ 
+@@ -976,6 +979,8 @@ static int nfs_pageio_do_add_request(struct nfs_pageio_descriptor *desc,
+ 	} else {
+ 		if (desc->pg_ops->pg_init)
+ 			desc->pg_ops->pg_init(desc, req);
++		if (desc->pg_error < 0)
++			return 0;
+ 		mirror->pg_base = req->wb_pgbase;
+ 	}
+ 	if (!nfs_can_coalesce_requests(prev, req, desc))
+@@ -1141,6 +1146,8 @@ int nfs_pageio_add_request(struct nfs_pageio_descriptor *desc,
+ 	bytes = req->wb_bytes;
  
  	nfs_pageio_setup_mirroring(desc, req);
- 	if (desc->pg_error < 0)
--		return 0;
-+		goto out_failed;
++	if (desc->pg_error < 0)
++		return 0;
  
  	for (midx = 0; midx < desc->pg_mirror_count; midx++) {
  		if (midx) {
-@@ -1164,7 +1165,8 @@ int nfs_pageio_add_request(struct nfs_pageio_descriptor *desc,
- 
- 			if (IS_ERR(dupreq)) {
- 				nfs_page_group_unlock(req);
--				return 0;
-+				desc->pg_error = PTR_ERR(dupreq);
-+				goto out_failed;
- 			}
- 
- 			nfs_lock_request(dupreq);
-@@ -1177,10 +1179,19 @@ int nfs_pageio_add_request(struct nfs_pageio_descriptor *desc,
- 		if (nfs_pgio_has_mirroring(desc))
- 			desc->pg_mirror_idx = midx;
- 		if (!nfs_pageio_add_request_mirror(desc, dupreq))
--			return 0;
-+			goto out_failed;
+@@ -1226,7 +1233,7 @@ int nfs_pageio_resend(struct nfs_pageio_descriptor *desc,
+ 	nfs_pageio_complete(desc);
+ 	if (!list_empty(&failed)) {
+ 		list_move(&failed, &hdr->pages);
+-		return -EIO;
++		return desc->pg_error < 0 ? desc->pg_error : -EIO;
  	}
+ 	return 0;
+ }
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 6095a8d42766..b1acc4135c3c 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -906,14 +906,15 @@ send_layoutget(struct pnfs_layout_hdr *lo,
  
- 	return 1;
-+
-+out_failed:
-+	/*
-+	 * We might have failed before sending any reqs over wire.
-+	 * clean up rest of the reqs in mirror pg_list
-+	 */
-+	if (desc->pg_error)
-+		desc->pg_completion_ops->error_cleanup(&mirror->pg_list);
-+	return 0;
+ 	if (IS_ERR(lseg)) {
+ 		switch (PTR_ERR(lseg)) {
+-		case -ENOMEM:
+ 		case -ERESTARTSYS:
++		case -EIO:
++		case -ENOSPC:
++		case -EROFS:
++		case -E2BIG:
+ 			break;
+ 		default:
+-			/* remember that LAYOUTGET failed and suspend trying */
+-			pnfs_layout_io_set_failed(lo, range->iomode);
++			return NULL;
+ 		}
+-		return NULL;
+ 	} else
+ 		pnfs_layout_clear_fail_bit(lo,
+ 				pnfs_iomode_to_fail_bit(range->iomode));
+@@ -1649,7 +1650,7 @@ out:
+ 			"(%s, offset: %llu, length: %llu)\n",
+ 			__func__, ino->i_sb->s_id,
+ 			(unsigned long long)NFS_FILEID(ino),
+-			lseg == NULL ? "not found" : "found",
++			IS_ERR_OR_NULL(lseg) ? "not found" : "found",
+ 			iomode==IOMODE_RW ?  "read/write" : "read-only",
+ 			(unsigned long long)pos,
+ 			(unsigned long long)count);
+@@ -1828,6 +1829,11 @@ pnfs_generic_pg_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *r
+ 						   rd_size,
+ 						   IOMODE_READ,
+ 						   GFP_KERNEL);
++		if (IS_ERR(pgio->pg_lseg)) {
++			pgio->pg_error = PTR_ERR(pgio->pg_lseg);
++			pgio->pg_lseg = NULL;
++			return;
++		}
+ 	}
+ 	/* If no lseg, fall back to read through mds */
+ 	if (pgio->pg_lseg == NULL)
+@@ -1840,13 +1846,19 @@ void
+ pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *pgio,
+ 			   struct nfs_page *req, u64 wb_size)
+ {
+-	if (pgio->pg_lseg == NULL)
++	if (pgio->pg_lseg == NULL) {
+ 		pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
+ 						   req->wb_context,
+ 						   req_offset(req),
+ 						   wb_size,
+ 						   IOMODE_RW,
+ 						   GFP_NOFS);
++		if (IS_ERR(pgio->pg_lseg)) {
++			pgio->pg_error = PTR_ERR(pgio->pg_lseg);
++			pgio->pg_lseg = NULL;
++			return;
++		}
++	}
+ 	/* If no lseg, fall back to write through mds */
+ 	if (pgio->pg_lseg == NULL)
+ 		nfs_pageio_reset_write_mds(pgio);
+diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+index 0a5e33f33b5c..0bb580174cb3 100644
+--- a/fs/nfs/read.c
++++ b/fs/nfs/read.c
+@@ -115,7 +115,7 @@ int nfs_readpage_async(struct nfs_open_context *ctx, struct inode *inode,
+ 	pgm = &pgio.pg_mirrors[0];
+ 	NFS_I(inode)->read_io += pgm->pg_bytes_written;
+ 
+-	return 0;
++	return pgio.pg_error < 0 ? pgio.pg_error : 0;
  }
  
- /*
+ static void nfs_readpage_release(struct nfs_page *req)
 -- 
 2.5.0
 
