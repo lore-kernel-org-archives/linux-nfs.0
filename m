@@ -1,37 +1,70 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pf0-f173.google.com ([209.85.192.173]:36790 "EHLO
-	mail-pf0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751225AbbLZL7f (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 26 Dec 2015 06:59:35 -0500
-Received: by mail-pf0-f173.google.com with SMTP id 65so45798471pff.3
-        for <linux-nfs@vger.kernel.org>; Sat, 26 Dec 2015 03:59:35 -0800 (PST)
-Received: from [10.1.5.97] ([164.100.31.82])
-        by smtp.googlemail.com with ESMTPSA id ry1sm70024284pab.30.2015.12.26.03.59.33
-        for <linux-nfs@vger.kernel.org>
-        (version=TLSv1/SSLv3 cipher=OTHER);
-        Sat, 26 Dec 2015 03:59:33 -0800 (PST)
-To: linux-nfs@vger.kernel.org
-From: dE <de.techno@gmail.com>
-Subject: How do you get /proc/fs/nfs/exports to populate?
-Message-ID: <567E812E.2040204@gmail.com>
-Date: Sat, 26 Dec 2015 17:29:42 +0530
+Received: from mail-oi0-f53.google.com ([209.85.218.53]:32868 "EHLO
+	mail-oi0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751240AbbLZRaZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 26 Dec 2015 12:30:25 -0500
+Received: by mail-oi0-f53.google.com with SMTP id y66so157904201oig.0
+        for <linux-nfs@vger.kernel.org>; Sat, 26 Dec 2015 09:30:25 -0800 (PST)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8; format=flowed
+In-Reply-To: <402981449664410@web10j.yandex.ru>
+References: <402981449664410@web10j.yandex.ru>
+Date: Sat, 26 Dec 2015 12:30:24 -0500
+Message-ID: <CAHQdGtTLu7Hz3Cgw5qT3UX2yXBM+4=mDfpLG+7K6KBvCq5Jgxg@mail.gmail.com>
+Subject: Re: NFSv4: Possible buffer overflow in security label decode.
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Nazarov Sergey <s-nazarov@yandex.ru>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi!
-     I'm running nfs-utils without init script or systemd unit assistance.
+Hi Sergey,
 
-Since I'm using nfsv4, I'm eliminating the need to start mountd.
+On Wed, Dec 9, 2015 at 7:33 AM, Nazarov Sergey <s-nazarov@yandex.ru> wrote:
+> Hi!
+> Buffer overflow possible in decode_attr_security_label, if given label buffer size is not enough to
+> store data received from server. This adds additional check for buffer capacity:
+> ---
+>  fs/nfs/nfs4xdr.c | 8 ++++++--
+>  1 file changed, 6 insertions(+), 2 deletions(-)
+>
+> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+> index 4e44412..6a6302b 100644
+> --- a/fs/nfs/nfs4xdr.c
+> +++ b/fs/nfs/nfs4xdr.c
+> @@ -4157,7 +4157,9 @@ static int decode_attr_security_label(struct xdr_stream *xdr, uint32_t *bitmap,
+>                 if (unlikely(!p))
+>                         goto out_overflow;
+>                 if (len < NFS4_MAXLABELLEN) {
+> -                       if (label) {
+> +                       if (label && label->label) {
+> +                               if (len > label->len)
+> +                                       return -ERANGE;
+>                                 memcpy(label->label, p, len);
+>                                 label->len = len;
+>                                 label->pi = pi;
+> @@ -4165,9 +4167,11 @@ static int decode_attr_security_label(struct xdr_stream *xdr, uint32_t *bitmap,
+>                                 status = NFS_ATTR_FATTR_V4_SECURITY_LABEL;
+>                         }
+>                         bitmap[2] &= ~FATTR4_WORD2_SECURITY_LABEL;
+> -               } else
+> +               } else {
+>                         printk(KERN_WARNING "%s: label too long (%u)!\n",
+>                                         __func__, len);
+> +                       return -EIO;
+> +               }
+>         }
+>         if (label && label->label)
+>                 dprintk("%s: label=%s, len=%d, PI=%d, LFS=%d\n", __func__,
+> --
 
-Now if mountd is gone, who populates /proc/fs/nfs/exports?
+Looks good, but could you please add a Signed-off-by: line as per the
+instructions in Documentation/SubmittingPatches?
 
-But even after running mountd (after an exportfs -a), this file still 
-does not have any entries.
+Thanks!
+  Trond
 
-Running rpc.nfsd with --
-
-rpc.nfsd -d --syslog --port 10000
-
-rpc.mountd runs without any arguments.
+-- 
+Trond Myklebust
+Linux NFS client maintainer, PrimaryData
+trond.myklebust@primarydata.com
