@@ -1,70 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-oi0-f53.google.com ([209.85.218.53]:32868 "EHLO
-	mail-oi0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751240AbbLZRaZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 26 Dec 2015 12:30:25 -0500
-Received: by mail-oi0-f53.google.com with SMTP id y66so157904201oig.0
-        for <linux-nfs@vger.kernel.org>; Sat, 26 Dec 2015 09:30:25 -0800 (PST)
+Received: from mail-oi0-f46.google.com ([209.85.218.46]:36544 "EHLO
+	mail-oi0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751962AbbLZSgV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 26 Dec 2015 13:36:21 -0500
+Received: by mail-oi0-f46.google.com with SMTP id o62so153049257oif.3
+        for <linux-nfs@vger.kernel.org>; Sat, 26 Dec 2015 10:36:21 -0800 (PST)
 MIME-Version: 1.0
-In-Reply-To: <402981449664410@web10j.yandex.ru>
-References: <402981449664410@web10j.yandex.ru>
-Date: Sat, 26 Dec 2015 12:30:24 -0500
-Message-ID: <CAHQdGtTLu7Hz3Cgw5qT3UX2yXBM+4=mDfpLG+7K6KBvCq5Jgxg@mail.gmail.com>
-Subject: Re: NFSv4: Possible buffer overflow in security label decode.
+In-Reply-To: <1451046656-26319-1-git-send-email-buczek@molgen.mpg.de>
+References: <1451046656-26319-1-git-send-email-buczek@molgen.mpg.de>
+Date: Sat, 26 Dec 2015 13:36:20 -0500
+Message-ID: <CAHQdGtSCn4bbx4xiyE7FXmWk3SCY81mvWLJz_1VDow9YtB5VgA@mail.gmail.com>
+Subject: Re: [PATCH] nfs: do not deny execute access based on outdated mode in inode
 From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Nazarov Sergey <s-nazarov@yandex.ru>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+To: Donald Buczek <buczek@molgen.mpg.de>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Anna Schumaker <anna.schumaker@netapp.com>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Sergey,
-
-On Wed, Dec 9, 2015 at 7:33 AM, Nazarov Sergey <s-nazarov@yandex.ru> wrote:
-> Hi!
-> Buffer overflow possible in decode_attr_security_label, if given label buffer size is not enough to
-> store data received from server. This adds additional check for buffer capacity:
-> ---
->  fs/nfs/nfs4xdr.c | 8 ++++++--
->  1 file changed, 6 insertions(+), 2 deletions(-)
+On Fri, Dec 25, 2015 at 7:30 AM, Donald Buczek <buczek@molgen.mpg.de> wrote:
+> This patch fixes a problem, that a nfs4 client incorrectly denies
+> execute access based on outdated file mode (missing 'x' bit).
+> After the mode on the server is 'fixed' (chmod +x) further execution
+> attempts continue to fail, because the nfs ACCESS call updates
+> the access parameter but not the mode parameter or the mode in
+> the inode.
 >
-> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-> index 4e44412..6a6302b 100644
-> --- a/fs/nfs/nfs4xdr.c
-> +++ b/fs/nfs/nfs4xdr.c
-> @@ -4157,7 +4157,9 @@ static int decode_attr_security_label(struct xdr_stream *xdr, uint32_t *bitmap,
->                 if (unlikely(!p))
->                         goto out_overflow;
->                 if (len < NFS4_MAXLABELLEN) {
-> -                       if (label) {
-> +                       if (label && label->label) {
-> +                               if (len > label->len)
-> +                                       return -ERANGE;
->                                 memcpy(label->label, p, len);
->                                 label->len = len;
->                                 label->pi = pi;
-> @@ -4165,9 +4167,11 @@ static int decode_attr_security_label(struct xdr_stream *xdr, uint32_t *bitmap,
->                                 status = NFS_ATTR_FATTR_V4_SECURITY_LABEL;
->                         }
->                         bitmap[2] &= ~FATTR4_WORD2_SECURITY_LABEL;
-> -               } else
-> +               } else {
->                         printk(KERN_WARNING "%s: label too long (%u)!\n",
->                                         __func__, len);
-> +                       return -EIO;
-> +               }
+> The access check based on the file mode is not required, because
+> the server already verified the clients rights.
+>
+> Remove the test.
+>
+> Bugzilla: https://bugzilla.kernel.org/show_bug.cgi?id=109771
+> Signed-off-by: Donald Buczek <buczek@molgen.mpg.de>
+> ---
+>  fs/nfs/dir.c | 3 ---
+>  1 file changed, 3 deletions(-)
+>
+> diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+> index ce5a218..ffc25b0 100644
+> --- a/fs/nfs/dir.c
+> +++ b/fs/nfs/dir.c
+> @@ -2481,9 +2481,6 @@ force_lookup:
+>                         res = PTR_ERR(cred);
 >         }
->         if (label && label->label)
->                 dprintk("%s: label=%s, len=%d, PI=%d, LFS=%d\n", __func__,
-> --
+>  out:
+> -       if (!res && (mask & MAY_EXEC) && !execute_ok(inode))
+> -               res = -EACCES;
+> -
+>         dfprintk(VFS, "NFS: permission(%s/%lu), mask=0x%x, res=%d\n",
+>                 inode->i_sb->s_id, inode->i_ino, mask, res);
+>         return res;
+>
 
-Looks good, but could you please add a Signed-off-by: line as per the
-instructions in Documentation/SubmittingPatches?
+My main question here is why the client isn't picking up the changed
+mode bits here? All open() calls should be asking for the full set of
+attributes as part of the OPEN COMPOUND rpc call.
 
-Thanks!
+Cheers
   Trond
-
--- 
-Trond Myklebust
-Linux NFS client maintainer, PrimaryData
-trond.myklebust@primarydata.com
