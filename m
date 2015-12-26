@@ -1,50 +1,37 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.molgen.mpg.de ([141.14.17.9]:51558 "EHLO mx1.molgen.mpg.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752330AbbLYMlb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Dec 2015 07:41:31 -0500
-From: Donald Buczek <buczek@molgen.mpg.de>
-To: linux-nfs@vger.kernel.org, anna.schumaker@netapp.com,
-        trond.myklebust@primarydata.com
-Cc: Donald Buczek <buczek@molgen.mpg.de>
-Subject: [PATCH] nfs: do not deny execute access based on outdated mode in inode
-Date: Fri, 25 Dec 2015 13:30:56 +0100
-Message-Id: <1451046656-26319-1-git-send-email-buczek@molgen.mpg.de>
+Received: from mail-pf0-f173.google.com ([209.85.192.173]:36790 "EHLO
+	mail-pf0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751225AbbLZL7f (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 26 Dec 2015 06:59:35 -0500
+Received: by mail-pf0-f173.google.com with SMTP id 65so45798471pff.3
+        for <linux-nfs@vger.kernel.org>; Sat, 26 Dec 2015 03:59:35 -0800 (PST)
+Received: from [10.1.5.97] ([164.100.31.82])
+        by smtp.googlemail.com with ESMTPSA id ry1sm70024284pab.30.2015.12.26.03.59.33
+        for <linux-nfs@vger.kernel.org>
+        (version=TLSv1/SSLv3 cipher=OTHER);
+        Sat, 26 Dec 2015 03:59:33 -0800 (PST)
+To: linux-nfs@vger.kernel.org
+From: dE <de.techno@gmail.com>
+Subject: How do you get /proc/fs/nfs/exports to populate?
+Message-ID: <567E812E.2040204@gmail.com>
+Date: Sat, 26 Dec 2015 17:29:42 +0530
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch fixes a problem, that a nfs4 client incorrectly denies
-execute access based on outdated file mode (missing 'x' bit).
-After the mode on the server is 'fixed' (chmod +x) further execution
-attempts continue to fail, because the nfs ACCESS call updates
-the access parameter but not the mode parameter or the mode in
-the inode.
+Hi!
+     I'm running nfs-utils without init script or systemd unit assistance.
 
-The access check based on the file mode is not required, because
-the server already verified the clients rights.
+Since I'm using nfsv4, I'm eliminating the need to start mountd.
 
-Remove the test.
+Now if mountd is gone, who populates /proc/fs/nfs/exports?
 
-Bugzilla: https://bugzilla.kernel.org/show_bug.cgi?id=109771
-Signed-off-by: Donald Buczek <buczek@molgen.mpg.de>
----
- fs/nfs/dir.c | 3 ---
- 1 file changed, 3 deletions(-)
+But even after running mountd (after an exportfs -a), this file still 
+does not have any entries.
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index ce5a218..ffc25b0 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -2481,9 +2481,6 @@ force_lookup:
- 			res = PTR_ERR(cred);
- 	}
- out:
--	if (!res && (mask & MAY_EXEC) && !execute_ok(inode))
--		res = -EACCES;
--
- 	dfprintk(VFS, "NFS: permission(%s/%lu), mask=0x%x, res=%d\n",
- 		inode->i_sb->s_id, inode->i_ino, mask, res);
- 	return res;
--- 
-2.4.1
+Running rpc.nfsd with --
 
+rpc.nfsd -d --syslog --port 10000
+
+rpc.mountd runs without any arguments.
