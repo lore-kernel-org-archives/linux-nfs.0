@@ -1,42 +1,100 @@
-Return-Path: <trond.myklebust@primarydata.com>
-MIME-Version: 1.0
-In-Reply-To: <alpine.OSX.2.19.9992.1512071423180.60717@planck.local>
-References: <cover.1449503713.git.bcodding@redhat.com>
-	<cc80e246ee323a21f3f318248bf38eda668e8eb9.1449503713.git.bcodding@redhat.com>
-	<20151207184036.GA28959@infradead.org>
-	<alpine.OSX.2.19.9992.1512071359370.60717@planck.local>
-	<20151207192222.GA7938@infradead.org>
-	<alpine.OSX.2.19.9992.1512071423180.60717@planck.local>
-Date: Sat, 26 Dec 2015 22:13:56 -0500
-Message-ID: <CAHQdGtT9Xw9kCA-9xw8tbwx8_4pucAzhMP_1N66xF=0gRCDUPQ@mail.gmail.com>
-Subject: Re: [PATCH v2 02/10] NFS: Move the flock open mode check into nfs_flock()
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Benjamin Coddington <bcodding@redhat.com>
-Cc: Christoph Hellwig <hch@infradead.org>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@poochiereds.net>,
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx1.molgen.mpg.de ([141.14.17.9]:43999 "EHLO mx1.molgen.mpg.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751421AbbL0MSx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 27 Dec 2015 07:18:53 -0500
+Subject: Re: [PATCH] NFSv4: Don't perform cached access checks before we've
+ OPENed the file
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+References: <CAHQdGtR1xE1dxjrBSGNY4hn6qKpmAhd+DAX=z=53mN0V84FiyQ@mail.gmail.com>
+ <1451185588-69667-1-git-send-email-trond.myklebust@primarydata.com>
+Cc: Al Viro <viro@zeniv.linux.org.uk>,
         Anna Schumaker <anna.schumaker@netapp.com>,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+From: Donald Buczek <buczek@molgen.mpg.de>
+Message-ID: <567FD72A.7090903@molgen.mpg.de>
+Date: Sun, 27 Dec 2015 13:18:50 +0100
+MIME-Version: 1.0
+In-Reply-To: <1451185588-69667-1-git-send-email-trond.myklebust@primarydata.com>
+Content-Type: text/plain; charset=windows-1252; format=flowed
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Dec 7, 2015 at 2:24 PM, Benjamin Coddington <bcodding@redhat.com> wrote:
-> On Mon, 7 Dec 2015, Christoph Hellwig wrote:
+
+
+On 27.12.2015 04:06, Trond Myklebust wrote:
+> Donald Buczek reports that a nfs4 client incorrectly denies
+> execute access based on outdated file mode (missing 'x' bit).
+> After the mode on the server is 'fixed' (chmod +x) further execution
+> attempts continue to fail, because the nfs ACCESS call updates
+> the access parameter but not the mode parameter or the mode in
+> the inode.
 >
->> On Mon, Dec 07, 2015 at 02:13:47PM -0500, Benjamin Coddington wrote:
->> > I can fixup the comment for clarity as I just moved this chunk over.
->> >
->> > I'm not aware that flock() has ever had this check, but posix locks requires
->> > it.  My understanding is that since NFS may simulate flock() with posix
->> > locking, the check is necessary for NFS.
+> The root cause is ultimately that the VFS is calling may_open()
+> before the NFS client has a chance to OPEN the file and hence revalidate
+> the access and attribute caches.
+>
+> Al Viro suggests:
+>>>> Make nfs_permission() relax the checks when it sees MAY_OPEN, if you know
+>>>> that things will be caught by server anyway?
+>>> That can work as long as we're guaranteed that everything that calls
+>>> inode_permission() with MAY_OPEN on a regular file will also follow up
+>>> with a vfs_open() or dentry_open() on success. Is this always the
+>>> case?
+>> 1) in do_tmpfile(), followed by do_dentry_open() (not reachable by NFS since
+>> it doesn't have ->tmpfile() instance anyway)
 >>
->> Ah, right.  Maybe that's what should be in the comment here..
+>> 2) in atomic_open(), after the call of ->atomic_open() has succeeded.
+>>
+>> 3) in do_last(), followed on success by vfs_open()
+>>
+>> That's all.  All calls of inode_permission() that get MAY_OPEN come from
+>> may_open(), and there's no other callers of that puppy.
+> Reported-by: Donald Buczek <buczek@molgen.mpg.de>
+> Link: https://bugzilla.kernel.org/show_bug.cgi?id=109771
+> Link: http://lkml.kernel.org/r/1451046656-26319-1-git-send-email-buczek@molgen.mpg.de
+> Cc: Al Viro <viro@zeniv.linux.org.uk>
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> ---
+> Hi Donald,
+> Can you check if this fixes the issue for you?
 >
-> Yes, good idea.  That's where someone is going to look when they investigate
-> why their application breaks on NFS.
+>   fs/nfs/dir.c | 3 +++
+>   1 file changed, 3 insertions(+)
 >
+> diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+> index ce5a21861074..44e519c21e18 100644
+> --- a/fs/nfs/dir.c
+> +++ b/fs/nfs/dir.c
+> @@ -2449,6 +2449,9 @@ int nfs_permission(struct inode *inode, int mask)
+>   		case S_IFLNK:
+>   			goto out;
+>   		case S_IFREG:
+> +			if ((mask & MAY_OPEN) &&
+> +			   nfs_server_capable(inode, NFS_CAP_ATOMIC_OPEN))
+> +				return 0;
+>   			break;
+>   		case S_IFDIR:
+>   			/*
 
-Should I expect a resend?
 
-Cheers
-  Trond
+I can confirm that this fixes the original issue. However, even with 
+this patch, calls to the access syscall would continue to deliver 
+failure based on obsolete modes forever. This can be seen as a bug, too.
+
+PS:
+
+I don't yet understand the point of execute_ok. It doesn't even consider 
+the uid.
+
+Apart from that two suggestions to consider:
+
+   * If we go over the server for ACCESS anyway, we could combine it 
+with a GETATTR compound operation. Then we would be ready for additional 
+client-side checks against the inode.
+   * If we look at the mode, we should validate it first ( 
+nfs_revalidate_inode ? )
+
+Regards
+   Donald
+
