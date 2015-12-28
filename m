@@ -1,73 +1,41 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:33731 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752432AbbL1SfP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 28 Dec 2015 13:35:15 -0500
-Date: Mon, 28 Dec 2015 13:35:13 -0500 (EST)
-From: Benjamin Coddington <bcodding@redhat.com>
-To: Kinglong Mee <kinglongmee@gmail.com>
-cc: Steve Dickson <SteveD@redhat.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfsstat: show client rpc information correctly
-In-Reply-To: <567BE110.3070406@gmail.com>
-Message-ID: <alpine.OSX.2.19.9992.1512281200080.87866@planck.local>
-References: <567BE110.3070406@gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail-io0-f171.google.com ([209.85.223.171]:34717 "EHLO
+	mail-io0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752468AbbL1SiD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Dec 2015 13:38:03 -0500
+Received: by mail-io0-f171.google.com with SMTP id e126so311204235ioa.1
+        for <linux-nfs@vger.kernel.org>; Mon, 28 Dec 2015 10:38:02 -0800 (PST)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 2/2] NFS: Flush reclaim writes using FLUSH_COND_STABLE
+Date: Mon, 28 Dec 2015 13:37:29 -0500
+Message-Id: <1451327849-40281-2-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1451327849-40281-1-git-send-email-trond.myklebust@primarydata.com>
+References: <1451327849-40281-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> There are 59 client rpc procedures, not 60.
->
-> The order of rpc name must be the same as define of
-> NFSPROC4_CLNT_xx in include/linux/nfs4.h,
-> not nfs4_procedures in nfs4xdr.c.
+If there are already writes queued up for commit, then don't flush
+just this page even if it is a reclaim issue.
 
-Thanks for fixing this -- I did not look very closely at the
-#define PROC(proc, argtype, restype) and missed the designated initializer.
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfs/write.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-It looks like we don't keep track of stats for NULL, then.  That seems like
-a minor problem -- but maybe we shouldn't be pretending we are keeping track
-of it.
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 7a4fe7d82e65..1ea35f88eadb 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -244,7 +244,7 @@ static int wb_priority(struct writeback_control *wbc)
+ {
+ 	int ret = 0;
+ 	if (wbc->for_reclaim)
+-		return FLUSH_HIGHPRI | FLUSH_STABLE;
++		return FLUSH_HIGHPRI | FLUSH_COND_STABLE;
+ 	if (wbc->sync_mode == WB_SYNC_ALL)
+ 		ret = FLUSH_COND_STABLE;
+ 	return ret;
+-- 
+2.5.0
 
-> Drop duplicate rpc name "getdevlist".
->
-> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
-
-Reviewed-by: Benjamin Coddington <bcodding@redhat.com>
-
-> ---
->  utils/nfsstat/nfsstat.c | 5 ++---
->  1 file changed, 2 insertions(+), 3 deletions(-)
->
-> diff --git a/utils/nfsstat/nfsstat.c b/utils/nfsstat/nfsstat.c
-> index b67f0aa..8376347 100644
-> --- a/utils/nfsstat/nfsstat.c
-> +++ b/utils/nfsstat/nfsstat.c
-> @@ -31,7 +31,7 @@ enum {
->  	SRVPROC3_SZ = 22,
->  	CLTPROC3_SZ = 22,
->  	SRVPROC4_SZ = 2,
-> -	CLTPROC4_SZ = 60,
-> +	CLTPROC4_SZ = 59,
->  	SRVPROC4OPS_SZ = 71,
->  };
->
-> @@ -135,11 +135,10 @@ static const char *	nfscltproc4name[CLTPROC4_SZ] = {
->  	"sequence",
->  	"get_lease_time",
->  	"reclaim_comp",
-> -	"getdevinfo",
->  	"layoutget",
-> +	"getdevinfo",
->  	"layoutcommit",
->  	"layoutreturn",
-> -	"getdevlist",
->  	"secinfo_no",
->  	"test_stateid",
->  	"free_stateid",
-> --
-> 2.5.0
->
->
