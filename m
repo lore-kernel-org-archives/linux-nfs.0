@@ -1,160 +1,41 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:33188 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752162AbbL1Q2I (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 28 Dec 2015 11:28:08 -0500
-From: Benjamin Coddington <bcodding@redhat.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Jeff Layton <jlayton@poochiereds.net>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Christoph Hellwig <hch@infradead.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 03/10] NFS: Pass nfs_open_context instead of file to the lock procs
-Date: Mon, 28 Dec 2015 11:27:59 -0500
-Message-Id: <bb069293c68a1685193ea85d0140356bf8234193.1451319354.git.bcodding@redhat.com>
-In-Reply-To: <cover.1451319354.git.bcodding@redhat.com>
-References: <cover.1451319354.git.bcodding@redhat.com>
-In-Reply-To: <cover.1451319354.git.bcodding@redhat.com>
-References: <cover.1451319354.git.bcodding@redhat.com>
+Received: from mail-ig0-f171.google.com ([209.85.213.171]:36342 "EHLO
+	mail-ig0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751126AbbL1SF4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Dec 2015 13:05:56 -0500
+Received: by mail-ig0-f171.google.com with SMTP id ph11so149680560igc.1
+        for <linux-nfs@vger.kernel.org>; Mon, 28 Dec 2015 10:05:56 -0800 (PST)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 1/6] NFSv4.1/pnfs: Fixup an lo->plh_block_lgets imbalance in layoutreturn
+Date: Mon, 28 Dec 2015 13:05:13 -0500
+Message-Id: <1451325918-33544-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We only use the file struct pointer to obtain the nfs_open_context (or the
-inode for v2/v3), so just pass that instead.  This allows us to use the
-lock procedure without a reference to a struct file which may not be
-available while releasing locks after a file close.
+Since commit 2d8ae84fbc32, nothing is bumping lo->plh_block_lgets in the
+layoutreturn path, so it should not be touched in nfs4_layoutreturn_release
+either.
 
-Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+Fixes: 2d8ae84fbc32 ("NFSv4.1/pnfs: Remove redundant lo->plh_block_lgets...")
+Cc: stable@vger.kernel.org # 4.3+
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/file.c           |    9 ++++++---
- fs/nfs/nfs3proc.c       |    4 ++--
- fs/nfs/nfs4proc.c       |    4 +---
- fs/nfs/proc.c           |    4 ++--
- include/linux/nfs_xdr.h |    2 +-
- 5 files changed, 12 insertions(+), 11 deletions(-)
+ fs/nfs/nfs4proc.c | 1 -
+ 1 file changed, 1 deletion(-)
 
-diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index 1e4804b..5dec0fb 100644
---- a/fs/nfs/file.c
-+++ b/fs/nfs/file.c
-@@ -711,6 +711,7 @@ static int
- do_getlk(struct file *filp, int cmd, struct file_lock *fl, int is_local)
- {
- 	struct inode *inode = filp->f_mapping->host;
-+	struct nfs_open_context *ctx = nfs_file_open_context(filp);
- 	int status = 0;
- 	unsigned int saved_type = fl->fl_type;
- 
-@@ -728,7 +729,7 @@ do_getlk(struct file *filp, int cmd, struct file_lock *fl, int is_local)
- 	if (is_local)
- 		goto out_noconflict;
- 
--	status = NFS_PROTO(inode)->lock(filp, cmd, fl);
-+	status = NFS_PROTO(inode)->lock(ctx, cmd, fl);
- out:
- 	return status;
- out_noconflict:
-@@ -745,6 +746,7 @@ static int
- do_unlk(struct file *filp, int cmd, struct file_lock *fl, int is_local)
- {
- 	struct inode *inode = filp->f_mapping->host;
-+	struct nfs_open_context *ctx = nfs_file_open_context(filp);
- 	struct nfs_lock_context *l_ctx;
- 	int status;
- 
-@@ -771,7 +773,7 @@ do_unlk(struct file *filp, int cmd, struct file_lock *fl, int is_local)
- 	 * "-olocal_lock="
- 	 */
- 	if (!is_local)
--		status = NFS_PROTO(inode)->lock(filp, cmd, fl);
-+		status = NFS_PROTO(inode)->lock(ctx, cmd, fl);
- 	else
- 		status = do_vfs_lock(filp, fl);
- 	return status;
-@@ -786,6 +788,7 @@ static int
- do_setlk(struct file *filp, int cmd, struct file_lock *fl, int is_local)
- {
- 	struct inode *inode = filp->f_mapping->host;
-+	struct nfs_open_context *ctx = nfs_file_open_context(filp);
- 	int status;
- 
- 	/*
-@@ -801,7 +804,7 @@ do_setlk(struct file *filp, int cmd, struct file_lock *fl, int is_local)
- 	 * "-olocal_lock="
- 	 */
- 	if (!is_local)
--		status = NFS_PROTO(inode)->lock(filp, cmd, fl);
-+		status = NFS_PROTO(inode)->lock(ctx, cmd, fl);
- 	else
- 		status = do_vfs_lock(filp, fl);
- 	if (status < 0)
-diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
-index cb28cce..a10e147 100644
---- a/fs/nfs/nfs3proc.c
-+++ b/fs/nfs/nfs3proc.c
-@@ -866,9 +866,9 @@ static void nfs3_proc_commit_setup(struct nfs_commit_data *data, struct rpc_mess
- }
- 
- static int
--nfs3_proc_lock(struct file *filp, int cmd, struct file_lock *fl)
-+nfs3_proc_lock(struct nfs_open_context *ctx, int cmd, struct file_lock *fl)
- {
--	struct inode *inode = file_inode(filp);
-+	struct inode *inode = d_inode(ctx->dentry);
- 
- 	return nlmclnt_proc(NFS_SERVER(inode)->nlm_host, cmd, fl);
- }
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 05ea1e1..784ba4e 100644
+index adae525edec4..306a8a0cf5bd 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -6097,15 +6097,13 @@ static int nfs4_proc_setlk(struct nfs4_state *state, int cmd, struct file_lock *
- }
- 
- static int
--nfs4_proc_lock(struct file *filp, int cmd, struct file_lock *request)
-+nfs4_proc_lock(struct nfs_open_context *ctx, int cmd, struct file_lock *request)
- {
--	struct nfs_open_context *ctx;
- 	struct nfs4_state *state;
- 	unsigned long timeout = NFS4_LOCK_MINTIMEOUT;
- 	int status;
- 
- 	/* verify open state */
--	ctx = nfs_file_open_context(filp);
- 	state = ctx->state;
- 
- 	if (IS_GETLK(cmd)) {
-diff --git a/fs/nfs/proc.c b/fs/nfs/proc.c
-index b417bbc..185deb9 100644
---- a/fs/nfs/proc.c
-+++ b/fs/nfs/proc.c
-@@ -634,9 +634,9 @@ nfs_proc_commit_setup(struct nfs_commit_data *data, struct rpc_message *msg)
- }
- 
- static int
--nfs_proc_lock(struct file *filp, int cmd, struct file_lock *fl)
-+nfs_proc_lock(struct nfs_open_context *ctx, int cmd, struct file_lock *fl)
- {
--	struct inode *inode = file_inode(filp);
-+	struct inode *inode = d_inode(ctx->dentry);
- 
- 	return nlmclnt_proc(NFS_SERVER(inode)->nlm_host, cmd, fl);
- }
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 11bbae4..58c4682 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1555,7 +1555,7 @@ struct nfs_rpc_ops {
- 	void	(*commit_setup) (struct nfs_commit_data *, struct rpc_message *);
- 	void	(*commit_rpc_prepare)(struct rpc_task *, struct nfs_commit_data *);
- 	int	(*commit_done) (struct rpc_task *, struct nfs_commit_data *);
--	int	(*lock)(struct file *, int, struct file_lock *);
-+	int	(*lock)(struct nfs_open_context *, int, struct file_lock *);
- 	int	(*lock_check_bounds)(const struct file_lock *);
- 	void	(*clear_acl_cache)(struct inode *);
- 	void	(*close_context)(struct nfs_open_context *ctx, int);
+@@ -8077,7 +8077,6 @@ static void nfs4_layoutreturn_release(void *calldata)
+ 		pnfs_set_layout_stateid(lo, &lrp->res.stateid, true);
+ 	pnfs_mark_matching_lsegs_invalid(lo, &freeme, &lrp->args.range);
+ 	pnfs_clear_layoutreturn_waitbit(lo);
+-	lo->plh_block_lgets--;
+ 	spin_unlock(&lo->plh_inode->i_lock);
+ 	pnfs_free_lseg_list(&freeme);
+ 	pnfs_put_layout_hdr(lrp->args.layout);
 -- 
-1.7.1
+2.5.0
 
