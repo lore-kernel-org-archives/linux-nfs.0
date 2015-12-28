@@ -1,45 +1,84 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:57084 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:60235 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752081AbbL1PxZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 28 Dec 2015 10:53:25 -0500
-Date: Mon, 28 Dec 2015 10:53:21 -0500 (EST)
+	id S1751250AbbL1Q2I (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 28 Dec 2015 11:28:08 -0500
 From: Benjamin Coddington <bcodding@redhat.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-cc: Christoph Hellwig <hch@infradead.org>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@poochiereds.net>,
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
         Anna Schumaker <anna.schumaker@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v2 02/10] NFS: Move the flock open mode check into
- nfs_flock()
-In-Reply-To: <CAHQdGtT9Xw9kCA-9xw8tbwx8_4pucAzhMP_1N66xF=0gRCDUPQ@mail.gmail.com>
-Message-ID: <alpine.OSX.2.19.9992.1512281049540.87866@planck.local>
-References: <cover.1449503713.git.bcodding@redhat.com> <cc80e246ee323a21f3f318248bf38eda668e8eb9.1449503713.git.bcodding@redhat.com> <20151207184036.GA28959@infradead.org> <alpine.OSX.2.19.9992.1512071359370.60717@planck.local> <20151207192222.GA7938@infradead.org>
- <alpine.OSX.2.19.9992.1512071423180.60717@planck.local> <CAHQdGtT9Xw9kCA-9xw8tbwx8_4pucAzhMP_1N66xF=0gRCDUPQ@mail.gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+        Jeff Layton <jlayton@poochiereds.net>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Christoph Hellwig <hch@infradead.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v3 06/10] lockd: Send the inode to nlmclnt_setlockargs()
+Date: Mon, 28 Dec 2015 11:28:02 -0500
+Message-Id: <098eb736aee2aeb55e76ff076d648acdbdd6f619.1451319354.git.bcodding@redhat.com>
+In-Reply-To: <cover.1451319354.git.bcodding@redhat.com>
+References: <cover.1451319354.git.bcodding@redhat.com>
+In-Reply-To: <cover.1451319354.git.bcodding@redhat.com>
+References: <cover.1451319354.git.bcodding@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> On Mon, Dec 7, 2015 at 2:24 PM, Benjamin Coddington <bcodding@redhat.com> wrote:
-> > On Mon, 7 Dec 2015, Christoph Hellwig wrote:
-> >
-> >> On Mon, Dec 07, 2015 at 02:13:47PM -0500, Benjamin Coddington wrote:
-> >> > I can fixup the comment for clarity as I just moved this chunk over.
-> >> >
-> >> > I'm not aware that flock() has ever had this check, but posix locks requires
-> >> > it.  My understanding is that since NFS may simulate flock() with posix
-> >> > locking, the check is necessary for NFS.
-> >>
-> >> Ah, right.  Maybe that's what should be in the comment here..
-> >
-> > Yes, good idea.  That's where someone is going to look when they investigate
-> > why their application breaks on NFS.
-> >
->
-> Should I expect a resend?
+Instead of using fl_file to reference the inode in nlmclnt_setlockargs() to
+set the filehandle, send the inode as an argument.  That way, we can use
+nlmclnt_proc without having a valid fl_file, which can happen if we are
+releasing locks after a close.
 
-I'll do this in a v3 of this shortly.
+Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+---
+ fs/lockd/clntproc.c |   11 ++++++-----
+ 1 files changed, 6 insertions(+), 5 deletions(-)
 
-Ben
+diff --git a/fs/lockd/clntproc.c b/fs/lockd/clntproc.c
+index 72b65c4..91aa483 100644
+--- a/fs/lockd/clntproc.c
++++ b/fs/lockd/clntproc.c
+@@ -122,14 +122,15 @@ static struct nlm_lockowner *nlm_find_lockowner(struct nlm_host *host, fl_owner_
+ /*
+  * Initialize arguments for TEST/LOCK/UNLOCK/CANCEL calls
+  */
+-static void nlmclnt_setlockargs(struct nlm_rqst *req, struct file_lock *fl)
++static void nlmclnt_setlockargs(struct nlm_rqst *req, struct file_lock *fl,
++		struct inode *inode)
+ {
+ 	struct nlm_args	*argp = &req->a_args;
+ 	struct nlm_lock	*lock = &argp->lock;
+ 	char *nodename = req->a_host->h_rpcclnt->cl_nodename;
+ 
+ 	nlmclnt_next_cookie(&argp->cookie);
+-	memcpy(&lock->fh, NFS_FH(file_inode(fl->fl_file)), sizeof(struct nfs_fh));
++	memcpy(&lock->fh, NFS_FH(inode), sizeof(struct nfs_fh));
+ 	lock->caller  = nodename;
+ 	lock->oh.data = req->a_owner;
+ 	lock->oh.len  = snprintf(req->a_owner, sizeof(req->a_owner), "%u@%s",
+@@ -171,7 +172,7 @@ int nlmclnt_proc(struct nfs_open_context *ctx, int cmd, struct file_lock *fl)
+ 		return -ENOMEM;
+ 	}
+ 	/* Set up the argument struct */
+-	nlmclnt_setlockargs(call, fl);
++	nlmclnt_setlockargs(call, fl, inode);
+ 
+ 	if (IS_SETLK(cmd) || IS_SETLKW(cmd)) {
+ 		if (fl->fl_type != F_UNLCK) {
+@@ -619,7 +620,7 @@ nlmclnt_reclaim(struct nlm_host *host, struct file_lock *fl,
+ 	req->a_host  = host;
+ 
+ 	/* Set up the argument struct */
+-	nlmclnt_setlockargs(req, fl);
++	nlmclnt_setlockargs(req, fl, file_inode(fl->fl_file));
+ 	req->a_args.reclaim = 1;
+ 
+ 	status = nlmclnt_call(nfs_file_cred(fl->fl_file), req, NLMPROC_LOCK);
+@@ -746,7 +747,7 @@ static int nlmclnt_cancel(struct nlm_host *host, int block, struct file_lock *fl
+ 		return -ENOMEM;
+ 	req->a_flags = RPC_TASK_ASYNC;
+ 
+-	nlmclnt_setlockargs(req, fl);
++	nlmclnt_setlockargs(req, fl, file_inode(fl->fl_file));
+ 	req->a_args.block = block;
+ 
+ 	atomic_inc(&req->a_count);
+-- 
+1.7.1
+
