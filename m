@@ -1,41 +1,44 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f173.google.com ([209.85.223.173]:35227 "EHLO
-	mail-io0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751483AbbL1SiB (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Dec 2015 13:38:01 -0500
-Received: by mail-io0-f173.google.com with SMTP id 77so1142141ioc.2
-        for <linux-nfs@vger.kernel.org>; Mon, 28 Dec 2015 10:38:00 -0800 (PST)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 1/2] NFS: Background flush should not be low priority
-Date: Mon, 28 Dec 2015 13:37:28 -0500
-Message-Id: <1451327849-40281-1-git-send-email-trond.myklebust@primarydata.com>
-Sender: linux-nfs-owner@vger.kernel.org
+Return-Path: <jeff.layton@primarydata.com>
+Date: Mon, 28 Dec 2015 14:35:37 -0500
+From: Jeff Layton <jeff.layton@primarydata.com>
+To: Benjamin Coddington <bcodding@redhat.com>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker
+ <anna.schumaker@netapp.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v3 01/10] NFS4: remove a redundant lock range check
+Message-ID: <20151228143537.62b16eae@tlielax.poochiereds.net>
+In-Reply-To: <09543a9efd73eb12bf7c8421b5fe5377f139e3db.1451319354.git.bcodding@redhat.com>
+References: <cover.1451319354.git.bcodding@redhat.com>
+	<09543a9efd73eb12bf7c8421b5fe5377f139e3db.1451319354.git.bcodding@redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 List-ID: <linux-nfs.vger.kernel.org>
 
-Background flush is needed in order to satisfy the global page limits.
-Don't subvert by reducing the priority.
-This should also address a write starvation issue that was reported by
-Neil Brown.
+On Mon, 28 Dec 2015 11:27:57 -0500
+Benjamin Coddington <bcodding@redhat.com> wrote:
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/write.c | 2 --
- 1 file changed, 2 deletions(-)
+> flock64_to_posix_lock() is already doing this check
+> 
+> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+> ---
+>  fs/nfs/nfs4proc.c |    3 ---
+>  1 files changed, 0 insertions(+), 3 deletions(-)
+> 
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index 8981803..2231d7d 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -6108,9 +6108,6 @@ nfs4_proc_lock(struct file *filp, int cmd, struct file_lock *request)
+>  	ctx = nfs_file_open_context(filp);
+>  	state = ctx->state;
+>  
+> -	if (request->fl_start < 0 || request->fl_end < 0)
+> -		return -EINVAL;
+> -
+>  	if (IS_GETLK(cmd)) {
+>  		if (state != NULL)
+>  			return nfs4_proc_getlk(state, F_GETLK, request);
 
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 7b9316406930..7a4fe7d82e65 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -247,8 +247,6 @@ static int wb_priority(struct writeback_control *wbc)
- 		return FLUSH_HIGHPRI | FLUSH_STABLE;
- 	if (wbc->sync_mode == WB_SYNC_ALL)
- 		ret = FLUSH_COND_STABLE;
--	if (wbc->for_kupdate || wbc->for_background)
--		ret |= FLUSH_LOWPRI;
- 	return ret;
- }
- 
--- 
-2.5.0
-
+Reviewed-by: Jeff Layton <jeff.layton@primarydata.com>
