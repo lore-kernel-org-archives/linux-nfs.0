@@ -1,46 +1,95 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f180.google.com ([209.85.223.180]:36396 "EHLO
-	mail-io0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751491AbbL1SGA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Dec 2015 13:06:00 -0500
-Received: by mail-io0-f180.google.com with SMTP id o67so310097824iof.3
-        for <linux-nfs@vger.kernel.org>; Mon, 28 Dec 2015 10:06:00 -0800 (PST)
+Received: from mail-ig0-f172.google.com ([209.85.213.172]:36360 "EHLO
+	mail-ig0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752040AbbL1SF6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Dec 2015 13:05:58 -0500
+Received: by mail-ig0-f172.google.com with SMTP id ph11so149681208igc.1
+        for <linux-nfs@vger.kernel.org>; Mon, 28 Dec 2015 10:05:58 -0800 (PST)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 6/6] NFSv4.1/pNFS: Don't return NFS4ERR_DELAY unnecessarily in CB_LAYOUTRECALL
-Date: Mon, 28 Dec 2015 13:05:18 -0500
-Message-Id: <1451325918-33544-6-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1451325918-33544-5-git-send-email-trond.myklebust@primarydata.com>
+Subject: [PATCH v2 4/6] pNFS: If we have to delay the layout callback, mark the layout for return
+Date: Mon, 28 Dec 2015 13:05:16 -0500
+Message-Id: <1451325918-33544-4-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1451325918-33544-3-git-send-email-trond.myklebust@primarydata.com>
 References: <1451325918-33544-1-git-send-email-trond.myklebust@primarydata.com>
  <1451325918-33544-2-git-send-email-trond.myklebust@primarydata.com>
  <1451325918-33544-3-git-send-email-trond.myklebust@primarydata.com>
- <1451325918-33544-4-git-send-email-trond.myklebust@primarydata.com>
- <1451325918-33544-5-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If the client is promising to return the layout ASAP, then there is no
-need to return DELAY and have the server retry. Instead default to the
-normal procedure described in RFC5661.
+If the client needs to delay the layout callback, then speed up the recall
+process by marking the remaining layout segments to be actively returned
+by the client.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/callback_proc.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/nfs/callback_proc.c | 14 ++++++++++++--
+ fs/nfs/pnfs.c          |  4 +++-
+ fs/nfs/pnfs.h          |  3 +++
+ 3 files changed, 18 insertions(+), 3 deletions(-)
 
 diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index 1b24ad07d4f5..724a9b756ab0 100644
+index 716cbff24450..34852ece4057 100644
 --- a/fs/nfs/callback_proc.c
 +++ b/fs/nfs/callback_proc.c
-@@ -214,7 +214,7 @@ static u32 initiate_file_draining(struct nfs_client *clp,
- 		pnfs_mark_matching_lsegs_return(lo,
- 				&free_me_list,
- 				&args->cbl_range);
--		rv = NFS4ERR_DELAY;
-+		rv = NFS4_OK;
+@@ -181,9 +181,19 @@ static u32 initiate_file_draining(struct nfs_client *clp,
+ 	pnfs_layoutcommit_inode(ino, false);
+ 
+ 	spin_lock(&ino->i_lock);
+-	if (test_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags) ||
+-	    pnfs_mark_matching_lsegs_invalid(lo, &free_me_list,
++	/*
++	 * Enforce RFC5661 Section 12.5.5.2.1.5 (Bulk Recall and Return)
++	 */
++	if (test_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags)) {
++		rv = NFS4ERR_DELAY;
++		goto unlock;
++	}
++
++	if (pnfs_mark_matching_lsegs_invalid(lo, &free_me_list,
+ 					&args->cbl_range)) {
++		pnfs_mark_matching_lsegs_return(lo,
++				&free_me_list,
++				&args->cbl_range);
+ 		rv = NFS4ERR_DELAY;
  		goto unlock;
  	}
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 11bdc59b7c5a..667d986ac020 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1734,7 +1734,7 @@ out_forget_reply:
+ 	goto out;
+ }
  
+-static void
++void
+ pnfs_mark_matching_lsegs_return(struct pnfs_layout_hdr *lo,
+ 				struct list_head *tmp_list,
+ 				struct pnfs_layout_range *return_range)
+@@ -1746,6 +1746,8 @@ pnfs_mark_matching_lsegs_return(struct pnfs_layout_hdr *lo,
+ 	if (list_empty(&lo->plh_segs))
+ 		return;
+ 
++	assert_spin_locked(&lo->plh_inode->i_lock);
++
+ 	list_for_each_entry_safe(lseg, next, &lo->plh_segs, pls_list)
+ 		if (should_free_lseg(&lseg->pls_range, return_range)) {
+ 			dprintk("%s: marking lseg %p iomode %d "
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 4e4ac660adbd..6f751a960336 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -265,6 +265,9 @@ int pnfs_choose_layoutget_stateid(nfs4_stateid *dst,
+ int pnfs_mark_matching_lsegs_invalid(struct pnfs_layout_hdr *lo,
+ 				struct list_head *tmp_list,
+ 				struct pnfs_layout_range *recall_range);
++void pnfs_mark_matching_lsegs_return(struct pnfs_layout_hdr *lo,
++				struct list_head *tmp_list,
++				struct pnfs_layout_range *recall_range);
+ bool pnfs_roc(struct inode *ino);
+ void pnfs_roc_release(struct inode *ino);
+ void pnfs_roc_set_barrier(struct inode *ino, u32 barrier);
 -- 
 2.5.0
 
