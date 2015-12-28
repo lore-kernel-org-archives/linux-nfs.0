@@ -1,7 +1,7 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:45845 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:45840 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752380AbbL1Q2I (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	id S1752271AbbL1Q2I (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
 	Mon, 28 Dec 2015 11:28:08 -0500
 From: Benjamin Coddington <bcodding@redhat.com>
 To: Trond Myklebust <trond.myklebust@primarydata.com>,
@@ -10,9 +10,9 @@ To: Trond Myklebust <trond.myklebust@primarydata.com>,
         "J. Bruce Fields" <bfields@fieldses.org>,
         Christoph Hellwig <hch@infradead.org>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 07/10] lockd: do_vfs_lock() only needs the inode
-Date: Mon, 28 Dec 2015 11:28:03 -0500
-Message-Id: <b8307ad58bc70c417e12f1309873942668268d65.1451319354.git.bcodding@redhat.com>
+Subject: [PATCH v3 02/10] NFS: Move the flock open mode check into nfs_flock()
+Date: Mon, 28 Dec 2015 11:27:58 -0500
+Message-Id: <7d9792cc96113c508fb45e5aa88f8afc40c9f00b.1451319354.git.bcodding@redhat.com>
 In-Reply-To: <cover.1451319354.git.bcodding@redhat.com>
 References: <cover.1451319354.git.bcodding@redhat.com>
 In-Reply-To: <cover.1451319354.git.bcodding@redhat.com>
@@ -20,75 +20,67 @@ References: <cover.1451319354.git.bcodding@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Send the inode instead of the file to do_vfs_lock() by using
-locks_lock_inode_wait().  This allows an unlock operation to complete
-after a close when there may not be an fl_file.
+We only need to check lock exclusive/shared types against open mode when
+flock() is used on NFS, so move it into the flock-specific path instead of
+checking it for all locks.
 
 Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
 ---
- fs/lockd/clntproc.c |   13 +++++++------
- 1 files changed, 7 insertions(+), 6 deletions(-)
+ fs/nfs/file.c     |   16 ++++++++++++++++
+ fs/nfs/nfs4proc.c |   13 -------------
+ 2 files changed, 16 insertions(+), 13 deletions(-)
 
-diff --git a/fs/lockd/clntproc.c b/fs/lockd/clntproc.c
-index 91aa483..fa1d83b 100644
---- a/fs/lockd/clntproc.c
-+++ b/fs/lockd/clntproc.c
-@@ -476,9 +476,9 @@ static void nlmclnt_locks_init_private(struct file_lock *fl, struct nlm_host *ho
- 	fl->fl_ops = &nlmclnt_lock_ops;
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index 93e2364..1e4804b 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -893,6 +893,22 @@ int nfs_flock(struct file *filp, int cmd, struct file_lock *fl)
+ 	/* We're simulating flock() locks using posix locks on the server */
+ 	if (fl->fl_type == F_UNLCK)
+ 		return do_unlk(filp, cmd, fl, is_local);
++
++	/*
++	 * VFS doesn't require the open mode to match a flock() lock's type.
++	 * NFS, however, may simulate flock() locking with posix locking which
++	 * requires the open mode to match the lock type.
++	 */
++	switch (fl->fl_type) {
++	case F_RDLCK:
++		if (!(filp->f_mode & FMODE_READ))
++			return -EBADF;
++		break;
++	case F_WRLCK:
++		if (!(filp->f_mode & FMODE_WRITE))
++			return -EBADF;
++	}
++
+ 	return do_setlk(filp, cmd, fl, is_local);
  }
+ EXPORT_SYMBOL_GPL(nfs_flock);
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 2231d7d..05ea1e1 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -6125,19 +6125,6 @@ nfs4_proc_lock(struct file *filp, int cmd, struct file_lock *request)
  
--static int do_vfs_lock(struct file_lock *fl)
-+static int do_vfs_lock(struct inode *inode, struct file_lock *fl)
- {
--	return locks_lock_file_wait(fl->fl_file, fl);
-+	return locks_lock_inode_wait(inode, fl);
- }
+ 	if (state == NULL)
+ 		return -ENOLCK;
+-	/*
+-	 * Don't rely on the VFS having checked the file open mode,
+-	 * since it won't do this for flock() locks.
+-	 */
+-	switch (request->fl_type) {
+-	case F_RDLCK:
+-		if (!(filp->f_mode & FMODE_READ))
+-			return -EBADF;
+-		break;
+-	case F_WRLCK:
+-		if (!(filp->f_mode & FMODE_WRITE))
+-			return -EBADF;
+-	}
  
- /*
-@@ -508,6 +508,7 @@ nlmclnt_lock(struct nlm_rqst *req, struct file_lock *fl)
- 	struct nlm_host	*host = req->a_host;
- 	struct nlm_res	*resp = &req->a_res;
- 	struct nlm_wait *block = NULL;
-+	struct inode *inode = file_inode(fl->fl_file);
- 	unsigned char fl_flags = fl->fl_flags;
- 	unsigned char fl_type;
- 	int status = -ENOLCK;
-@@ -517,7 +518,7 @@ nlmclnt_lock(struct nlm_rqst *req, struct file_lock *fl)
- 	req->a_args.state = nsm_local_state;
- 
- 	fl->fl_flags |= FL_ACCESS;
--	status = do_vfs_lock(fl);
-+	status = do_vfs_lock(inode, fl);
- 	fl->fl_flags = fl_flags;
- 	if (status < 0)
- 		goto out;
-@@ -567,7 +568,7 @@ again:
- 		}
- 		/* Ensure the resulting lock will get added to granted list */
- 		fl->fl_flags |= FL_SLEEP;
--		if (do_vfs_lock(fl) < 0)
-+		if (do_vfs_lock(inode, fl) < 0)
- 			printk(KERN_WARNING "%s: VFS is out of sync with lock manager!\n", __func__);
- 		up_read(&host->h_rwsem);
- 		fl->fl_flags = fl_flags;
-@@ -597,7 +598,7 @@ out_unlock:
- 	fl_type = fl->fl_type;
- 	fl->fl_type = F_UNLCK;
- 	down_read(&host->h_rwsem);
--	do_vfs_lock(fl);
-+	do_vfs_lock(inode, fl);
- 	up_read(&host->h_rwsem);
- 	fl->fl_type = fl_type;
- 	fl->fl_flags = fl_flags;
-@@ -665,7 +666,7 @@ nlmclnt_unlock(struct nfs_open_context *ctx,
- 	 */
- 	fl->fl_flags |= FL_EXISTS;
- 	down_read(&host->h_rwsem);
--	status = do_vfs_lock(fl);
-+	status = do_vfs_lock(d_inode(ctx->dentry), fl);
- 	up_read(&host->h_rwsem);
- 	fl->fl_flags = fl_flags;
- 	if (status == -ENOENT) {
+ 	do {
+ 		status = nfs4_proc_setlk(state, cmd, request);
 -- 
 1.7.1
 
