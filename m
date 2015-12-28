@@ -1,90 +1,122 @@
-Return-Path: <jeff.layton@primarydata.com>
-Date: Mon, 28 Dec 2015 14:37:21 -0500
-From: Jeff Layton <jeff.layton@primarydata.com>
-To: Benjamin Coddington <bcodding@redhat.com>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker
- <anna.schumaker@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v3 02/10] NFS: Move the flock open mode check into
- nfs_flock()
-Message-ID: <20151228143721.7fca2516@tlielax.poochiereds.net>
-In-Reply-To: <7d9792cc96113c508fb45e5aa88f8afc40c9f00b.1451319354.git.bcodding@redhat.com>
-References: <cover.1451319354.git.bcodding@redhat.com>
-	<7d9792cc96113c508fb45e5aa88f8afc40c9f00b.1451319354.git.bcodding@redhat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx1.molgen.mpg.de ([141.14.17.9]:58183 "EHLO mx1.molgen.mpg.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752134AbbL1TjN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 28 Dec 2015 14:39:13 -0500
+From: Donald Buczek <buczek@molgen.mpg.de>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Donald Buczek <buczek@molgen.mpg.de>, Al Viro <viro@zeniv.linux.org.uk>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: [PATCH] nfs: revalidate inode before access checks
+Date: Mon, 28 Dec 2015 20:38:50 +0100
+Message-Id: <1451331530-3748-1-git-send-email-buczek@molgen.mpg.de>
+In-Reply-To: <CAHQdGtRSPrV=eV_VEGbpp47qfpW93GSouoEzaseHDq5enMtCDg@mail.gmail.com>
+References: <CAHQdGtRSPrV=eV_VEGbpp47qfpW93GSouoEzaseHDq5enMtCDg@mail.gmail.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 28 Dec 2015 11:27:58 -0500
-Benjamin Coddington <bcodding@redhat.com> wrote:
+On 27.12.2015 17:23, Trond Myklebust wrote:
+> On Sun, Dec 27, 2015 at 7:18 AM, Donald Buczek <buczek@molgen.mpg.de> wrote:
+>>
+>> On 27.12.2015 04:06, Trond Myklebust wrote:
+>>> Donald Buczek reports that a nfs4 client incorrectly denies
+>>> execute access based on outdated file mode (missing 'x' bit).
+>>> After the mode on the server is 'fixed' (chmod +x) further execution
+>>> attempts continue to fail, because the nfs ACCESS call updates
+>>> the access parameter but not the mode parameter or the mode in
+>>> the inode.
+>>>
+>>> The root cause is ultimately that the VFS is calling may_open()
+>>> before the NFS client has a chance to OPEN the file and hence revalidate
+>>> the access and attribute caches.
+>>>
+>>> Al Viro suggests:
+>>>>>> Make nfs_permission() relax the checks when it sees MAY_OPEN, if you
+>>>>>> know
+>>>>>> that things will be caught by server anyway?
+>>>>> That can work as long as we're guaranteed that everything that calls
+>>>>> inode_permission() with MAY_OPEN on a regular file will also follow up
+>>>>> with a vfs_open() or dentry_open() on success. Is this always the
+>>>>> case?
+>>>> 1) in do_tmpfile(), followed by do_dentry_open() (not reachable by NFS
+>>>> since
+>>>> it doesn't have ->tmpfile() instance anyway)
+>>>>
+>>>> 2) in atomic_open(), after the call of ->atomic_open() has succeeded.
+>>>>
+>>>> 3) in do_last(), followed on success by vfs_open()
+>>>>
+>>>> That's all.  All calls of inode_permission() that get MAY_OPEN come from
+>>>> may_open(), and there's no other callers of that puppy.
+>>> Reported-by: Donald Buczek <buczek@molgen.mpg.de>
+>>> Link: https://bugzilla.kernel.org/show_bug.cgi?id=109771
+>>> Link:
+>>> http://lkml.kernel.org/r/1451046656-26319-1-git-send-email-buczek@molgen.mpg.de
+>>> Cc: Al Viro <viro@zeniv.linux.org.uk>
+>>> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+>>> ---
+>>> Hi Donald,
+>>> Can you check if this fixes the issue for you?
+>>>
+>>>   fs/nfs/dir.c | 3 +++
+>>>   1 file changed, 3 insertions(+)
+>>>
+>>> diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+>>> index ce5a21861074..44e519c21e18 100644
+>>> --- a/fs/nfs/dir.c
+>>> +++ b/fs/nfs/dir.c
+>>> @@ -2449,6 +2449,9 @@ int nfs_permission(struct inode *inode, int mask)
+>>>                 case S_IFLNK:
+>>>                         goto out;
+>>>                 case S_IFREG:
+>>> +                       if ((mask & MAY_OPEN) &&
+>>> +                          nfs_server_capable(inode, NFS_CAP_ATOMIC_OPEN))
+>>> +                               return 0;
+>>>                         break;
+>>>                 case S_IFDIR:
+>>>                         /*
+>>
+>>
+>> I can confirm that this fixes the original issue. However, even with this
+>> patch, calls to the access syscall would continue to deliver failure based
+>> on obsolete modes forever. This can be seen as a bug, too.
+> No. What happens now is that the OPEN compound executes before any
+> ACCESS calls, and so it refreshes the inode attributes and the access
+> cache.
 
-> We only need to check lock exclusive/shared types against open mode when
-> flock() is used on NFS, so move it into the flock-specific path instead of
-> checking it for all locks.
-> 
-> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
-> ---
->  fs/nfs/file.c     |   16 ++++++++++++++++
->  fs/nfs/nfs4proc.c |   13 -------------
->  2 files changed, 16 insertions(+), 13 deletions(-)
-> 
-> diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-> index 93e2364..1e4804b 100644
-> --- a/fs/nfs/file.c
-> +++ b/fs/nfs/file.c
-> @@ -893,6 +893,22 @@ int nfs_flock(struct file *filp, int cmd, struct file_lock *fl)
->  	/* We're simulating flock() locks using posix locks on the server */
->  	if (fl->fl_type == F_UNLCK)
->  		return do_unlk(filp, cmd, fl, is_local);
-> +
+No? If we come here by access() instead of execve(), we don't have MAY_OPEN but MAY_ACCESS. So we are going the old route, and permission is denied. An open will never be attempted. Of course, I've tested that before making the claim, that the problem continues to exist with access() instead of execve().  But perhaps you are referring to something else?
 
-nit: maybe make the above and below part of the same switch?
+I think, it has to be decided, whether the ancient rule "Not even root gets to execute a binary that doesn't have a single exec bit
+on it" should be enforced nowadays or not. How to decide that?
 
-> +	/*
-> +	 * VFS doesn't require the open mode to match a flock() lock's type.
-> +	 * NFS, however, may simulate flock() locking with posix locking which
-> +	 * requires the open mode to match the lock type.
-> +	 */
-> +	switch (fl->fl_type) {
-> +	case F_RDLCK:
-> +		if (!(filp->f_mode & FMODE_READ))
-> +			return -EBADF;
-> +		break;
-> +	case F_WRLCK:
-> +		if (!(filp->f_mode & FMODE_WRITE))
-> +			return -EBADF;
-> +	}
-> +
->  	return do_setlk(filp, cmd, fl, is_local);
->  }
->  EXPORT_SYMBOL_GPL(nfs_flock);
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index 2231d7d..05ea1e1 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -6125,19 +6125,6 @@ nfs4_proc_lock(struct file *filp, int cmd, struct file_lock *request)
->  
->  	if (state == NULL)
->  		return -ENOLCK;
-> -	/*
-> -	 * Don't rely on the VFS having checked the file open mode,
-> -	 * since it won't do this for flock() locks.
-> -	 */
-> -	switch (request->fl_type) {
-> -	case F_RDLCK:
-> -		if (!(filp->f_mode & FMODE_READ))
-> -			return -EBADF;
-> -		break;
-> -	case F_WRLCK:
-> -		if (!(filp->f_mode & FMODE_WRITE))
-> -			return -EBADF;
-> -	}
->  
->  	do {
->  		status = nfs4_proc_setlk(state, cmd, request);
+If no, the check can just be removed (from other filesystems, too)
+If yes, then we want to deny execute access based on the client visible mode. In that case we'd have to ensure that the cache is properly aged out. I append the trivial patch here which worked for me.
 
-Looks correct other than the nit above:
+Cheers
+  Donald
 
-Reviewed-by: Jeff Layton <jeff.layton@primarydata.com>
+Bugzilla: https://bugzilla.kernel.org/show_bug.cgi?id=109771
+Signed-off-by: Donald Buczek <buczek@molgen.mpg.de>
+
+
+---
+ fs/nfs/dir.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index ce5a218..60d42b4 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -2439,6 +2439,8 @@ int nfs_permission(struct inode *inode, int mask)
+ 
+ 	nfs_inc_stats(inode, NFSIOS_VFSACCESS);
+ 
++	nfs_revalidate_inode(NFS_SERVER(inode),inode);
++
+ 	if ((mask & (MAY_READ | MAY_WRITE | MAY_EXEC)) == 0)
+ 		goto out;
+ 	/* Is this sys_access() ? */
+-- 
+2.4.1
+
