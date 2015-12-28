@@ -1,56 +1,45 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from zeniv.linux.org.uk ([195.92.253.2]:58558 "EHLO
-	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751463AbbL0R5U (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Dec 2015 12:57:20 -0500
-Date: Sun, 27 Dec 2015 17:57:09 +0000
-From: Al Viro <viro@ZenIV.linux.org.uk>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Donald Buczek <buczek@molgen.mpg.de>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFSv4: Don't perform cached access checks before we've
- OPENed the file
-Message-ID: <20151227175709.GH20997@ZenIV.linux.org.uk>
-References: <CAHQdGtR1xE1dxjrBSGNY4hn6qKpmAhd+DAX=z=53mN0V84FiyQ@mail.gmail.com>
- <1451185588-69667-1-git-send-email-trond.myklebust@primarydata.com>
- <567FD72A.7090903@molgen.mpg.de>
- <CAHQdGtRSPrV=eV_VEGbpp47qfpW93GSouoEzaseHDq5enMtCDg@mail.gmail.com>
+Received: from mail-pf0-f176.google.com ([209.85.192.176]:34611 "EHLO
+	mail-pf0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751834AbbL1Jk5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Dec 2015 04:40:57 -0500
+Received: by mail-pf0-f176.google.com with SMTP id e65so58256530pfe.1
+        for <linux-nfs@vger.kernel.org>; Mon, 28 Dec 2015 01:40:56 -0800 (PST)
+Received: from [10.1.5.97] ([164.100.31.82])
+        by smtp.googlemail.com with ESMTPSA id sg4sm80035068pac.48.2015.12.28.01.40.54
+        for <linux-nfs@vger.kernel.org>
+        (version=TLSv1/SSLv3 cipher=OTHER);
+        Mon, 28 Dec 2015 01:40:55 -0800 (PST)
+Subject: Re: How do you get /proc/fs/nfs/exports to populate?
+To: linux-nfs@vger.kernel.org
+References: <567E812E.2040204@gmail.com>
+From: dE <de.techno@gmail.com>
+Message-ID: <568103AF.2010500@gmail.com>
+Date: Mon, 28 Dec 2015 15:11:03 +0530
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAHQdGtRSPrV=eV_VEGbpp47qfpW93GSouoEzaseHDq5enMtCDg@mail.gmail.com>
+In-Reply-To: <567E812E.2040204@gmail.com>
+Content-Type: text/plain; charset=utf-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Dec 27, 2015 at 11:23:55AM -0500, Trond Myklebust wrote:
-> > PS:
-> >
-> > I don't yet understand the point of execute_ok. It doesn't even consider the
-> > uid.
-> 
-> ...or the group ownership or anything other than whether or not at
-> least one execute bit is set. That's a convention that was set in the
-> VFS a long time ago,
+Ok, got it.
 
-... by yourself, if you recall the patch that moved that check from
-open_exec() to permission(), to get consistency between access() and
-execve().
+It happens that those are made after a mount request.
 
-> and that Miklos' patches later pushed down into
-> the filesystems.
-> I'm OK with removing it, if someone can explain to me what it was
-> intended to enforce in the first place, so that we can have a
-> discussion about why it may be obsolete.
+On 12/26/15 17:29, dE wrote:
+> Hi!
+>     I'm running nfs-utils without init script or systemd unit assistance.
+>
+> Since I'm using nfsv4, I'm eliminating the need to start mountd.
+>
+> Now if mountd is gone, who populates /proc/fs/nfs/exports?
+>
+> But even after running mountd (after an exportfs -a), this file still 
+> does not have any entries.
+>
+> Running rpc.nfsd with --
+>
+> rpc.nfsd -d --syslog --port 10000
+>
+> rpc.mountd runs without any arguments.
 
-"Not even root gets to execute a binary that doesn't have a single exec bit
-on it" goes _way_ back.  And not just in terms of Linux -
-v5 /usr/sys/ken/fio.c:access() has
-        if(u.u_uid == 0) {
-                if(m == IEXEC && (ip->i_mode & 
-                        (IEXEC | (IEXEC>>3) | (IEXEC>>6))) == 0)
-                                return(1);
-                return(0);
-        }
-so this had been introduced somewhere between v3 and v5 (AFAIK, v4 source
-is gone and I hadn't crawled through the v4 manpages to see if that has
-got a mention).  At the very least it's been there since Nov 26 1974...
