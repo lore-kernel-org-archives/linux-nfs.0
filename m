@@ -1,16 +1,16 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx3.its.uni-kassel.de ([141.51.12.64]:58890 "EHLO
+Received: from mx3.its.uni-kassel.de ([141.51.12.64]:33329 "EHLO
 	mx3.its.uni-kassel.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752133AbbL2FmA convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Dec 2015 00:42:00 -0500
+	with ESMTP id S1750966AbbL2G06 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Dec 2015 01:26:58 -0500
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Subject: Donation/Charity
 To: Me <verna.viajar@icdd.uni-kassel.de>
 From: "Jeff Skoll" <verna.viajar@icdd.uni-kassel.de>
-Date: Mon, 28 Dec 2015 23:33:48 -0500
+Date: Tue, 29 Dec 2015 00:06:15 -0500
 Reply-To: jeff.skoll@skollcharity.org
-Message-ID: <auto-000005736391@mailadmin.uni-kassel.de>
+Message-ID: <auto-000005784705@mailadmin.uni-kassel.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
