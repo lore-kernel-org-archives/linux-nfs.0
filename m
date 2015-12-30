@@ -1,46 +1,41 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ob0-f171.google.com ([209.85.214.171]:35570 "EHLO
-	mail-ob0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752026AbbL3OEv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Dec 2015 09:04:51 -0500
-Received: by mail-ob0-f171.google.com with SMTP id 18so271445449obc.2
-        for <linux-nfs@vger.kernel.org>; Wed, 30 Dec 2015 06:04:51 -0800 (PST)
-MIME-Version: 1.0
-In-Reply-To: <5683BE9B.3000006@molgen.mpg.de>
-References: <CAHQdGtR94XfHs0irDxx4PXjSmLEPBJY=GNjM63Xzx4S6_2Lhkg@mail.gmail.com>
-	<1451433763-27093-1-git-send-email-trond.myklebust@primarydata.com>
-	<5683BE9B.3000006@molgen.mpg.de>
-Date: Wed, 30 Dec 2015 09:04:50 -0500
-Message-ID: <CAHQdGtQ1NpvPh1L+CSqgY__q6ZkZbZ+8YcAgm49+Qw3KK=ORdw@mail.gmail.com>
-Subject: Re: [PATCH] NFS: Fix attribute cache revalidation
+Received: from mail-io0-f175.google.com ([209.85.223.175]:35759 "EHLO
+	mail-io0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752519AbbL3QGO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Dec 2015 11:06:14 -0500
+Received: by mail-io0-f175.google.com with SMTP id 77so44666563ioc.2
+        for <linux-nfs@vger.kernel.org>; Wed, 30 Dec 2015 08:06:13 -0800 (PST)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Donald Buczek <buczek@molgen.mpg.de>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] pNFS/flexfiles: Fix an Oopsable typo in ff_mirror_match_fh()
+Date: Wed, 30 Dec 2015 11:05:45 -0500
+Message-Id: <1451491545-10885-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Dec 30, 2015 at 6:23 AM, Donald Buczek <buczek@molgen.mpg.de> wrote:
-> Hi, Trond,
->
-> your three patches
->
-> [PATCH] NFSv4: Don't perform cached access checks before we've OPENed the
-> file
-> [PATCH] NFS: Ensure we revalidate attributes before using execute_ok()
-> [PATCH] NFS: Fix attribute cache revalidation
->
-> applied to your github master fix the user-visible problems (exec and access
-> case). I currently don't have time to analyze the code or do more testing
-> than running my test script, though. I hope I can apply these on our cluster
-> nodes during the holiday and we'd have it on production systems in January.
->
-> Btw: There is a little whitespace error in the last patch (space before tab
-> at the "} else if (fattr->valid & NFS_ATTR_FATTR_BLOCKS_USED)" line).
->
-> Thank you very much & Happy New Year
+Jeff reports seeing an Oops in ff_layout_alloc_lseg. Turns out
+copy+paste has played cruel tricks on a nested loop.
 
-Thanks very much for the testing and analysis! Happy New Year to you too.
+Reported-by: Jeff Layton <jeff.layton@primarydata.com>
+Cc: stable@vger.kernel.org # 4.3+
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfs/flexfilelayout/flexfilelayout.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-Cheers
-  Trond
+diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
+index 03516c80855a..405f46ba490e 100644
+--- a/fs/nfs/flexfilelayout/flexfilelayout.c
++++ b/fs/nfs/flexfilelayout/flexfilelayout.c
+@@ -145,7 +145,7 @@ static bool ff_mirror_match_fh(const struct nfs4_ff_layout_mirror *m1,
+ 		return false;
+ 	for (i = 0; i < m1->fh_versions_cnt; i++) {
+ 		bool found_fh = false;
+-		for (j = 0; j < m2->fh_versions_cnt; i++) {
++		for (j = 0; j < m2->fh_versions_cnt; j++) {
+ 			if (nfs_compare_fh(&m1->fh_versions[i],
+ 					&m2->fh_versions[j]) == 0) {
+ 				found_fh = true;
+-- 
+2.5.0
+
