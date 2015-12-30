@@ -1,7 +1,7 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:40596 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:44236 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754749AbbL3NOI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	id S1754751AbbL3NOI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
 	Wed, 30 Dec 2015 08:14:08 -0500
 From: Benjamin Coddington <bcodding@redhat.com>
 To: Trond Myklebust <trond.myklebust@primarydata.com>,
@@ -10,9 +10,9 @@ To: Trond Myklebust <trond.myklebust@primarydata.com>,
         "J. Bruce Fields" <bfields@fieldses.org>,
         Christoph Hellwig <hch@infradead.org>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v4 02/10] NFS: Move the flock open mode check into nfs_flock()
-Date: Wed, 30 Dec 2015 08:13:58 -0500
-Message-Id: <7c9912459f09f3393a768870ad4d5f21215549f9.1451480826.git.bcodding@redhat.com>
+Subject: [PATCH v4 03/10] NFS: Pass nfs_open_context instead of file to the lock procs
+Date: Wed, 30 Dec 2015 08:13:59 -0500
+Message-Id: <9492581f59a84b87ae5d68c2cc08542261946acc.1451480826.git.bcodding@redhat.com>
 In-Reply-To: <cover.1451480826.git.bcodding@redhat.com>
 References: <cover.1451480826.git.bcodding@redhat.com>
 In-Reply-To: <cover.1451480826.git.bcodding@redhat.com>
@@ -20,71 +20,142 @@ References: <cover.1451480826.git.bcodding@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We only need to check lock exclusive/shared types against open mode when
-flock() is used on NFS, so move it into the flock-specific path instead of
-checking it for all locks.
+We only use the file struct pointer to obtain the nfs_open_context (or the
+inode for v2/v3), so just pass that instead.  This allows us to use the
+lock procedure without a reference to a struct file which may not be
+available while releasing locks after a file close.
 
 Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+Reviewed-by: Jeff Layton <jeff.layton@primarydata.com>
 ---
- fs/nfs/file.c     |   20 +++++++++++++++++---
- fs/nfs/nfs4proc.c |   13 -------------
- 2 files changed, 17 insertions(+), 16 deletions(-)
+ fs/nfs/file.c           |    9 ++++++---
+ fs/nfs/nfs3proc.c       |    4 ++--
+ fs/nfs/nfs4proc.c       |    4 +---
+ fs/nfs/proc.c           |    4 ++--
+ include/linux/nfs_xdr.h |    2 +-
+ 5 files changed, 12 insertions(+), 11 deletions(-)
 
 diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index 93e2364..8b16a08 100644
+index 8b16a08..20a0541 100644
 --- a/fs/nfs/file.c
 +++ b/fs/nfs/file.c
-@@ -890,9 +890,23 @@ int nfs_flock(struct file *filp, int cmd, struct file_lock *fl)
- 	if (NFS_SERVER(inode)->flags & NFS_MOUNT_LOCAL_FLOCK)
- 		is_local = 1;
+@@ -711,6 +711,7 @@ static int
+ do_getlk(struct file *filp, int cmd, struct file_lock *fl, int is_local)
+ {
+ 	struct inode *inode = filp->f_mapping->host;
++	struct nfs_open_context *ctx = nfs_file_open_context(filp);
+ 	int status = 0;
+ 	unsigned int saved_type = fl->fl_type;
  
--	/* We're simulating flock() locks using posix locks on the server */
--	if (fl->fl_type == F_UNLCK)
--		return do_unlk(filp, cmd, fl, is_local);
-+	/*
-+	 * VFS doesn't require the open mode to match a flock() lock's type.
-+	 * NFS, however, may simulate flock() locking with posix locking which
-+	 * requires the open mode to match the lock type.
-+	 */
-+	switch (fl->fl_type) {
-+		case F_UNLCK:
-+			return do_unlk(filp, cmd, fl, is_local);
-+		case F_RDLCK:
-+			if (!(filp->f_mode & FMODE_READ))
-+				return -EBADF;
-+			break;
-+		case F_WRLCK:
-+			if (!(filp->f_mode & FMODE_WRITE))
-+				return -EBADF;
-+	}
-+
- 	return do_setlk(filp, cmd, fl, is_local);
+@@ -728,7 +729,7 @@ do_getlk(struct file *filp, int cmd, struct file_lock *fl, int is_local)
+ 	if (is_local)
+ 		goto out_noconflict;
+ 
+-	status = NFS_PROTO(inode)->lock(filp, cmd, fl);
++	status = NFS_PROTO(inode)->lock(ctx, cmd, fl);
+ out:
+ 	return status;
+ out_noconflict:
+@@ -745,6 +746,7 @@ static int
+ do_unlk(struct file *filp, int cmd, struct file_lock *fl, int is_local)
+ {
+ 	struct inode *inode = filp->f_mapping->host;
++	struct nfs_open_context *ctx = nfs_file_open_context(filp);
+ 	struct nfs_lock_context *l_ctx;
+ 	int status;
+ 
+@@ -771,7 +773,7 @@ do_unlk(struct file *filp, int cmd, struct file_lock *fl, int is_local)
+ 	 * "-olocal_lock="
+ 	 */
+ 	if (!is_local)
+-		status = NFS_PROTO(inode)->lock(filp, cmd, fl);
++		status = NFS_PROTO(inode)->lock(ctx, cmd, fl);
+ 	else
+ 		status = do_vfs_lock(filp, fl);
+ 	return status;
+@@ -786,6 +788,7 @@ static int
+ do_setlk(struct file *filp, int cmd, struct file_lock *fl, int is_local)
+ {
+ 	struct inode *inode = filp->f_mapping->host;
++	struct nfs_open_context *ctx = nfs_file_open_context(filp);
+ 	int status;
+ 
+ 	/*
+@@ -801,7 +804,7 @@ do_setlk(struct file *filp, int cmd, struct file_lock *fl, int is_local)
+ 	 * "-olocal_lock="
+ 	 */
+ 	if (!is_local)
+-		status = NFS_PROTO(inode)->lock(filp, cmd, fl);
++		status = NFS_PROTO(inode)->lock(ctx, cmd, fl);
+ 	else
+ 		status = do_vfs_lock(filp, fl);
+ 	if (status < 0)
+diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
+index cb28cce..a10e147 100644
+--- a/fs/nfs/nfs3proc.c
++++ b/fs/nfs/nfs3proc.c
+@@ -866,9 +866,9 @@ static void nfs3_proc_commit_setup(struct nfs_commit_data *data, struct rpc_mess
  }
- EXPORT_SYMBOL_GPL(nfs_flock);
+ 
+ static int
+-nfs3_proc_lock(struct file *filp, int cmd, struct file_lock *fl)
++nfs3_proc_lock(struct nfs_open_context *ctx, int cmd, struct file_lock *fl)
+ {
+-	struct inode *inode = file_inode(filp);
++	struct inode *inode = d_inode(ctx->dentry);
+ 
+ 	return nlmclnt_proc(NFS_SERVER(inode)->nlm_host, cmd, fl);
+ }
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 2231d7d..05ea1e1 100644
+index 05ea1e1..784ba4e 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -6125,19 +6125,6 @@ nfs4_proc_lock(struct file *filp, int cmd, struct file_lock *request)
+@@ -6097,15 +6097,13 @@ static int nfs4_proc_setlk(struct nfs4_state *state, int cmd, struct file_lock *
+ }
  
- 	if (state == NULL)
- 		return -ENOLCK;
--	/*
--	 * Don't rely on the VFS having checked the file open mode,
--	 * since it won't do this for flock() locks.
--	 */
--	switch (request->fl_type) {
--	case F_RDLCK:
--		if (!(filp->f_mode & FMODE_READ))
--			return -EBADF;
--		break;
--	case F_WRLCK:
--		if (!(filp->f_mode & FMODE_WRITE))
--			return -EBADF;
--	}
+ static int
+-nfs4_proc_lock(struct file *filp, int cmd, struct file_lock *request)
++nfs4_proc_lock(struct nfs_open_context *ctx, int cmd, struct file_lock *request)
+ {
+-	struct nfs_open_context *ctx;
+ 	struct nfs4_state *state;
+ 	unsigned long timeout = NFS4_LOCK_MINTIMEOUT;
+ 	int status;
  
- 	do {
- 		status = nfs4_proc_setlk(state, cmd, request);
+ 	/* verify open state */
+-	ctx = nfs_file_open_context(filp);
+ 	state = ctx->state;
+ 
+ 	if (IS_GETLK(cmd)) {
+diff --git a/fs/nfs/proc.c b/fs/nfs/proc.c
+index b417bbc..185deb9 100644
+--- a/fs/nfs/proc.c
++++ b/fs/nfs/proc.c
+@@ -634,9 +634,9 @@ nfs_proc_commit_setup(struct nfs_commit_data *data, struct rpc_message *msg)
+ }
+ 
+ static int
+-nfs_proc_lock(struct file *filp, int cmd, struct file_lock *fl)
++nfs_proc_lock(struct nfs_open_context *ctx, int cmd, struct file_lock *fl)
+ {
+-	struct inode *inode = file_inode(filp);
++	struct inode *inode = d_inode(ctx->dentry);
+ 
+ 	return nlmclnt_proc(NFS_SERVER(inode)->nlm_host, cmd, fl);
+ }
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 11bbae4..58c4682 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1555,7 +1555,7 @@ struct nfs_rpc_ops {
+ 	void	(*commit_setup) (struct nfs_commit_data *, struct rpc_message *);
+ 	void	(*commit_rpc_prepare)(struct rpc_task *, struct nfs_commit_data *);
+ 	int	(*commit_done) (struct rpc_task *, struct nfs_commit_data *);
+-	int	(*lock)(struct file *, int, struct file_lock *);
++	int	(*lock)(struct nfs_open_context *, int, struct file_lock *);
+ 	int	(*lock_check_bounds)(const struct file_lock *);
+ 	void	(*clear_acl_cache)(struct inode *);
+ 	void	(*close_context)(struct nfs_open_context *ctx, int);
 -- 
 1.7.1
 
