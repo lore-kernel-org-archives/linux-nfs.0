@@ -1,7 +1,7 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:54075 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:51763 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754754AbbL3NOI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	id S1754758AbbL3NOI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
 	Wed, 30 Dec 2015 08:14:08 -0500
 From: Benjamin Coddington <bcodding@redhat.com>
 To: Trond Myklebust <trond.myklebust@primarydata.com>,
@@ -10,9 +10,9 @@ To: Trond Myklebust <trond.myklebust@primarydata.com>,
         "J. Bruce Fields" <bfields@fieldses.org>,
         Christoph Hellwig <hch@infradead.org>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v4 07/10] lockd: do_vfs_lock() only needs the inode
-Date: Wed, 30 Dec 2015 08:14:03 -0500
-Message-Id: <c4dd22196648baffb116b90937119bee5236565b.1451480826.git.bcodding@redhat.com>
+Subject: [PATCH v4 09/10] NFS: Deferred unlocks - always unlock on FL_CLOSE
+Date: Wed, 30 Dec 2015 08:14:05 -0500
+Message-Id: <07314b592396fea8c037347933d9edb8c1e34b07.1451480826.git.bcodding@redhat.com>
 In-Reply-To: <cover.1451480826.git.bcodding@redhat.com>
 References: <cover.1451480826.git.bcodding@redhat.com>
 In-Reply-To: <cover.1451480826.git.bcodding@redhat.com>
@@ -20,75 +20,167 @@ References: <cover.1451480826.git.bcodding@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Send the inode instead of the file to do_vfs_lock() by using
-locks_lock_inode_wait().  This allows an unlock operation to complete
-after a close when there may not be an fl_file.
+NFS unlock procedures will wait for IO to complete before sending an
+unlock.  In the case that this wait is interrupted, an unlock may never be
+sent if the unlock is in the close path.
+
+On NFSv3, this lost lock will then cause other clients to be blocked from
+acquiring a conflicting lock indefinitely.  On NFSv4, the nfs4_lock_state
+may never be released resulting in the use of invalid stateids for lock
+operations after a subsequent open by the same process.
+
+Fix this by setting a flag on the lock context to send an unlock for the
+entire file as soon as outstanding IO for that lock context has completed.
+A call into NFS_PROTO(inode)->lock() for both posix and flock style locks
+is made no matter which original lock type was held, since the FL_EXISTS
+check will return the operation early for a non-existent lock.
 
 Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
 ---
- fs/lockd/clntproc.c |   13 +++++++------
- 1 files changed, 7 insertions(+), 6 deletions(-)
+ fs/nfs/file.c          |   26 +++++++++++++++++++++-----
+ fs/nfs/inode.c         |   22 ++++++++++++++++++++++
+ fs/nfs/pagelist.c      |    8 ++++++--
+ include/linux/nfs_fs.h |    3 +++
+ 4 files changed, 52 insertions(+), 7 deletions(-)
 
-diff --git a/fs/lockd/clntproc.c b/fs/lockd/clntproc.c
-index 91aa483..fa1d83b 100644
---- a/fs/lockd/clntproc.c
-+++ b/fs/lockd/clntproc.c
-@@ -476,9 +476,9 @@ static void nlmclnt_locks_init_private(struct file_lock *fl, struct nlm_host *ho
- 	fl->fl_ops = &nlmclnt_lock_ops;
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index 20a0541..3644fed 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -743,6 +743,22 @@ static int do_vfs_lock(struct file *file, struct file_lock *fl)
  }
  
--static int do_vfs_lock(struct file_lock *fl)
-+static int do_vfs_lock(struct inode *inode, struct file_lock *fl)
+ static int
++defer_close_unlk(struct inode *inode, struct nfs_lock_context *l_ctx)
++{
++	struct nfs_io_counter *c = &l_ctx->io_count;
++	int status = 0;
++
++	if (test_bit(NFS_LOCK_CLOSE_UNLOCK, &l_ctx->flags))
++		return -EINPROGRESS;
++
++	if (atomic_read(&c->io_count) != 0) {
++		set_bit(NFS_LOCK_CLOSE_UNLOCK, &l_ctx->flags);
++		status = -EINPROGRESS;
++	}
++	return status;
++}
++
++static int
+ do_unlk(struct file *filp, int cmd, struct file_lock *fl, int is_local)
  {
--	return locks_lock_file_wait(fl->fl_file, fl);
-+	return locks_lock_inode_wait(inode, fl);
+ 	struct inode *inode = filp->f_mapping->host;
+@@ -758,16 +774,16 @@ do_unlk(struct file *filp, int cmd, struct file_lock *fl, int is_local)
+ 
+ 	l_ctx = nfs_get_lock_context(nfs_file_open_context(filp));
+ 	if (!IS_ERR(l_ctx)) {
+-		status = nfs_iocounter_wait(&l_ctx->io_count);
++		if (fl->fl_flags & FL_CLOSE)
++			status = defer_close_unlk(inode, l_ctx);
++		else
++			status = nfs_iocounter_wait(&l_ctx->io_count);
++
+ 		nfs_put_lock_context(l_ctx);
+ 		if (status < 0)
+ 			return status;
+ 	}
+ 
+-	/* NOTE: special case
+-	 * 	If we're signalled while cleaning up locks on process exit, we
+-	 * 	still need to complete the unlock.
+-	 */
+ 	/*
+ 	 * Use local locking if mounted with "-onolock" or with appropriate
+ 	 * "-olocal_lock="
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 31b0a52..065c8a9 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -699,6 +699,7 @@ static void nfs_init_lock_context(struct nfs_lock_context *l_ctx)
+ 	l_ctx->lockowner.l_owner = current->files;
+ 	l_ctx->lockowner.l_pid = current->tgid;
+ 	INIT_LIST_HEAD(&l_ctx->list);
++	l_ctx->flags = 0;
+ 	nfs_iocounter_init(&l_ctx->io_count);
  }
  
- /*
-@@ -508,6 +508,7 @@ nlmclnt_lock(struct nlm_rqst *req, struct file_lock *fl)
- 	struct nlm_host	*host = req->a_host;
- 	struct nlm_res	*resp = &req->a_res;
- 	struct nlm_wait *block = NULL;
-+	struct inode *inode = file_inode(fl->fl_file);
- 	unsigned char fl_flags = fl->fl_flags;
- 	unsigned char fl_type;
- 	int status = -ENOLCK;
-@@ -517,7 +518,7 @@ nlmclnt_lock(struct nlm_rqst *req, struct file_lock *fl)
- 	req->a_args.state = nsm_local_state;
+@@ -759,6 +760,27 @@ void nfs_put_lock_context(struct nfs_lock_context *l_ctx)
+ }
+ EXPORT_SYMBOL_GPL(nfs_put_lock_context);
  
- 	fl->fl_flags |= FL_ACCESS;
--	status = do_vfs_lock(fl);
-+	status = do_vfs_lock(inode, fl);
- 	fl->fl_flags = fl_flags;
- 	if (status < 0)
- 		goto out;
-@@ -567,7 +568,7 @@ again:
- 		}
- 		/* Ensure the resulting lock will get added to granted list */
- 		fl->fl_flags |= FL_SLEEP;
--		if (do_vfs_lock(fl) < 0)
-+		if (do_vfs_lock(inode, fl) < 0)
- 			printk(KERN_WARNING "%s: VFS is out of sync with lock manager!\n", __func__);
- 		up_read(&host->h_rwsem);
- 		fl->fl_flags = fl_flags;
-@@ -597,7 +598,7 @@ out_unlock:
- 	fl_type = fl->fl_type;
- 	fl->fl_type = F_UNLCK;
- 	down_read(&host->h_rwsem);
--	do_vfs_lock(fl);
-+	do_vfs_lock(inode, fl);
- 	up_read(&host->h_rwsem);
- 	fl->fl_type = fl_type;
- 	fl->fl_flags = fl_flags;
-@@ -665,7 +666,7 @@ nlmclnt_unlock(struct nfs_open_context *ctx,
- 	 */
- 	fl->fl_flags |= FL_EXISTS;
- 	down_read(&host->h_rwsem);
--	status = do_vfs_lock(fl);
-+	status = do_vfs_lock(d_inode(ctx->dentry), fl);
- 	up_read(&host->h_rwsem);
- 	fl->fl_flags = fl_flags;
- 	if (status == -ENOENT) {
++void nfs_unlock_lock_context(struct nfs_lock_context *l_ctx)
++{
++	struct inode *inode = d_inode(l_ctx->open_context->dentry);
++	struct file_lock fl = {
++		.fl_type = F_UNLCK,
++		.fl_start = 0,
++		.fl_end = OFFSET_MAX,
++		.fl_owner = l_ctx->lockowner.l_owner,
++		.fl_pid = l_ctx->lockowner.l_pid,
++	};
++
++	fl.fl_flags = FL_POSIX | FL_CLOSE;
++	NFS_PROTO(inode)->lock(l_ctx->open_context, F_SETLK, &fl);
++	if (fl.fl_ops)
++		fl.fl_ops->fl_release_private(&fl);
++	fl.fl_flags = FL_FLOCK | FL_CLOSE;
++	NFS_PROTO(inode)->lock(l_ctx->open_context, F_SETLK, &fl);
++	if (fl.fl_ops)
++		fl.fl_ops->fl_release_private(&fl);
++}
++
+ /**
+  * nfs_close_context - Common close_context() routine NFSv2/v3
+  * @ctx: pointer to context
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index fe3ddd2..f914fbe 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -108,9 +108,13 @@ nfs_iocounter_inc(struct nfs_io_counter *c)
+ }
+ 
+ static void
+-nfs_iocounter_dec(struct nfs_io_counter *c)
++nfs_iocounter_dec(struct nfs_lock_context *l_ctx)
+ {
++	struct nfs_io_counter *c = &l_ctx->io_count;
++
+ 	if (atomic_dec_and_test(&c->io_count)) {
++		if (test_and_clear_bit(NFS_LOCK_CLOSE_UNLOCK, &l_ctx->flags))
++			nfs_unlock_lock_context(l_ctx);
+ 		clear_bit(NFS_IO_INPROGRESS, &c->flags);
+ 		smp_mb__after_atomic();
+ 		wake_up_bit(&c->flags, NFS_IO_INPROGRESS);
+@@ -431,7 +435,7 @@ static void nfs_clear_request(struct nfs_page *req)
+ 		req->wb_page = NULL;
+ 	}
+ 	if (l_ctx != NULL) {
+-		nfs_iocounter_dec(&l_ctx->io_count);
++		nfs_iocounter_dec(l_ctx);
+ 		nfs_put_lock_context(l_ctx);
+ 		req->wb_lock_context = NULL;
+ 	}
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index c0e9614..b105144 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -72,6 +72,8 @@ struct nfs_lock_context {
+ 	struct nfs_open_context *open_context;
+ 	struct nfs_lockowner lockowner;
+ 	struct nfs_io_counter io_count;
++#define NFS_LOCK_CLOSE_UNLOCK 0
++	unsigned long flags;
+ };
+ 
+ struct nfs4_state;
+@@ -373,6 +375,7 @@ extern void nfs_file_set_open_context(struct file *filp, struct nfs_open_context
+ extern void nfs_file_clear_open_context(struct file *flip);
+ extern struct nfs_lock_context *nfs_get_lock_context(struct nfs_open_context *ctx);
+ extern void nfs_put_lock_context(struct nfs_lock_context *l_ctx);
++extern void nfs_unlock_lock_context(struct nfs_lock_context *l_ctx);
+ extern u64 nfs_compat_user_ino64(u64 fileid);
+ extern void nfs_fattr_init(struct nfs_fattr *fattr);
+ extern void nfs_fattr_set_barrier(struct nfs_fattr *fattr);
 -- 
 1.7.1
 
