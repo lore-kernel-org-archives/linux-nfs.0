@@ -1,81 +1,144 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f175.google.com ([209.85.223.175]:34360 "EHLO
-	mail-io0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754190AbbLaTLD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 31 Dec 2015 14:11:03 -0500
-Received: by mail-io0-f175.google.com with SMTP id 1so53059158ion.1
-        for <linux-nfs@vger.kernel.org>; Thu, 31 Dec 2015 11:11:02 -0800 (PST)
+Received: from mail-ig0-f175.google.com ([209.85.213.175]:33130 "EHLO
+	mail-ig0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751808AbbLaTLA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 31 Dec 2015 14:11:00 -0500
+Received: by mail-ig0-f175.google.com with SMTP id mv3so163313576igc.0
+        for <linux-nfs@vger.kernel.org>; Thu, 31 Dec 2015 11:11:00 -0800 (PST)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH 4/4] NFS: Relax requirements in nfs_flush_incompatible
-Date: Thu, 31 Dec 2015 14:10:26 -0500
-Message-Id: <1451589026-50874-4-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1451589026-50874-3-git-send-email-trond.myklebust@primarydata.com>
-References: <1451589026-50874-1-git-send-email-trond.myklebust@primarydata.com>
- <1451589026-50874-2-git-send-email-trond.myklebust@primarydata.com>
- <1451589026-50874-3-git-send-email-trond.myklebust@primarydata.com>
+Subject: [PATCH 1/4] NFS/pNFS: Fix up pNFS write reschedule layering violations and bugs
+Date: Thu, 31 Dec 2015 14:10:23 -0500
+Message-Id: <1451589026-50874-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If two processes share the same credentials and NFSv4 open stateid, then
-allow them both to dirty the same page, even if their nfs_open_context
-differs.
+The flexfiles layout in particular, seems to want to poke around in the
+O_DIRECT flags when retransmitting.
+This patch sets up an interface to allow it to call back into O_DIRECT
+to handle retransmission correctly. It also fixes a potential bug whereby
+we could change the behaviour of O_DIRECT if an error is already pending.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/internal.h | 6 ++++++
- fs/nfs/pagelist.c | 6 ------
- fs/nfs/write.c    | 3 ++-
- 3 files changed, 8 insertions(+), 7 deletions(-)
+ fs/nfs/direct.c                        | 21 +++++++++++++++------
+ fs/nfs/flexfilelayout/flexfilelayout.c | 13 +------------
+ fs/nfs/internal.h                      |  1 -
+ fs/nfs/write.c                         |  6 ++++++
+ include/linux/nfs_xdr.h                |  1 +
+ 5 files changed, 23 insertions(+), 19 deletions(-)
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 99a2919047e9..870e2ba7ba49 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -264,6 +264,12 @@ static inline bool nfs_pgio_has_mirroring(struct nfs_pageio_descriptor *desc)
- 	return desc->pg_mirror_count > 1;
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index 4b1d08f56aba..e73693f75dee 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -117,12 +117,6 @@ static inline int put_dreq(struct nfs_direct_req *dreq)
+ 	return atomic_dec_and_test(&dreq->io_count);
  }
  
-+static inline bool nfs_match_open_context(const struct nfs_open_context *ctx1,
-+		const struct nfs_open_context *ctx2)
+-void nfs_direct_set_resched_writes(struct nfs_direct_req *dreq)
+-{
+-	dreq->flags = NFS_ODIRECT_RESCHED_WRITES;
+-}
+-EXPORT_SYMBOL_GPL(nfs_direct_set_resched_writes);
+-
+ static void
+ nfs_direct_good_bytes(struct nfs_direct_req *dreq, struct nfs_pgio_header *hdr)
+ {
+@@ -839,10 +833,25 @@ static void nfs_write_sync_pgio_error(struct list_head *head)
+ 	}
+ }
+ 
++static void nfs_direct_write_reschedule_io(struct nfs_pgio_header *hdr)
 +{
-+	return ctx1->cred == ctx2->cred && ctx1->state == ctx2->state;
++	struct nfs_direct_req *dreq = hdr->dreq;
++
++	spin_lock(&dreq->lock);
++	if (dreq->error == 0) {
++		dreq->flags = NFS_ODIRECT_RESCHED_WRITES;
++		/* fake unstable write to let common nfs resend pages */
++		hdr->verf.committed = NFS_UNSTABLE;
++		hdr->good_bytes = hdr->args.count;
++	}
++	spin_unlock(&dreq->lock);
 +}
 +
- /* nfs2xdr.c */
- extern struct rpc_procinfo nfs_procedures[];
- extern int nfs2_decode_dirent(struct xdr_stream *,
-diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index 452a011ba0d8..c3a78450a239 100644
---- a/fs/nfs/pagelist.c
-+++ b/fs/nfs/pagelist.c
-@@ -903,12 +903,6 @@ static void nfs_pageio_cleanup_mirroring(struct nfs_pageio_descriptor *pgio)
- 	pgio->pg_mirrors_dynamic = NULL;
- }
+ static const struct nfs_pgio_completion_ops nfs_direct_write_completion_ops = {
+ 	.error_cleanup = nfs_write_sync_pgio_error,
+ 	.init_hdr = nfs_direct_pgio_init,
+ 	.completion = nfs_direct_write_completion,
++	.reschedule_io = nfs_direct_write_reschedule_io,
+ };
  
--static bool nfs_match_open_context(const struct nfs_open_context *ctx1,
--		const struct nfs_open_context *ctx2)
--{
--	return ctx1->cred == ctx2->cred && ctx1->state == ctx2->state;
--}
+ 
+diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
+index 03516c80855a..df475d42df77 100644
+--- a/fs/nfs/flexfilelayout/flexfilelayout.c
++++ b/fs/nfs/flexfilelayout/flexfilelayout.c
+@@ -912,18 +912,7 @@ static void ff_layout_reset_write(struct nfs_pgio_header *hdr, bool retry_pnfs)
+ 			hdr->args.count,
+ 			(unsigned long long)hdr->args.offset);
+ 
+-		if (!hdr->dreq) {
+-			struct nfs_open_context *ctx;
 -
- static bool nfs_match_lock_context(const struct nfs_lock_context *l1,
- 		const struct nfs_lock_context *l2)
- {
+-			ctx = nfs_list_entry(hdr->pages.next)->wb_context;
+-			set_bit(NFS_CONTEXT_RESEND_WRITES, &ctx->flags);
+-			hdr->completion_ops->error_cleanup(&hdr->pages);
+-		} else {
+-			nfs_direct_set_resched_writes(hdr->dreq);
+-			/* fake unstable write to let common nfs resend pages */
+-			hdr->verf.committed = NFS_UNSTABLE;
+-			hdr->good_bytes = hdr->args.count;
+-		}
++		hdr->completion_ops->reschedule_io(hdr);
+ 		return;
+ 	}
+ 
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 313d55402238..99a2919047e9 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -519,7 +519,6 @@ static inline void nfs_inode_dio_wait(struct inode *inode)
+ 	inode_dio_wait(inode);
+ }
+ extern ssize_t nfs_dreq_bytes_left(struct nfs_direct_req *dreq);
+-extern void nfs_direct_set_resched_writes(struct nfs_direct_req *dreq);
+ 
+ /* nfs4proc.c */
+ extern void __nfs4_read_done_cb(struct nfs_pgio_header *);
 diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 9c9d3e7a2452..83348db2fac7 100644
+index 7b9316406930..0aa3e6b3db70 100644
 --- a/fs/nfs/write.c
 +++ b/fs/nfs/write.c
-@@ -1130,7 +1130,8 @@ int nfs_flush_incompatible(struct file *file, struct page *page)
- 		if (req == NULL)
- 			return 0;
- 		l_ctx = req->wb_lock_context;
--		do_flush = req->wb_page != page || req->wb_context != ctx;
-+		do_flush = req->wb_page != page ||
-+			!nfs_match_open_context(req->wb_context, ctx);
- 		/* for now, flush if more than 1 request in page_group */
- 		do_flush |= req->wb_this_page != req;
- 		if (l_ctx && flctx &&
+@@ -1326,9 +1326,15 @@ static void nfs_async_write_error(struct list_head *head)
+ 	}
+ }
+ 
++static void nfs_async_write_reschedule_io(struct nfs_pgio_header *hdr)
++{
++	nfs_async_write_error(&hdr->pages);
++}
++
+ static const struct nfs_pgio_completion_ops nfs_async_write_completion_ops = {
+ 	.error_cleanup = nfs_async_write_error,
+ 	.completion = nfs_write_completion,
++	.reschedule_io = nfs_async_write_reschedule_io,
+ };
+ 
+ void nfs_pageio_init_write(struct nfs_pageio_descriptor *pgio,
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 11bbae44f4cb..e89dbb14138c 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1460,6 +1460,7 @@ struct nfs_pgio_completion_ops {
+ 	void	(*error_cleanup)(struct list_head *head);
+ 	void	(*init_hdr)(struct nfs_pgio_header *hdr);
+ 	void	(*completion)(struct nfs_pgio_header *hdr);
++	void	(*reschedule_io)(struct nfs_pgio_header *hdr);
+ };
+ 
+ struct nfs_unlinkdata {
 -- 
 2.5.0
 
