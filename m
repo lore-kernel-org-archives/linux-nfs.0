@@ -1,47 +1,35 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from m50-135.163.com ([123.125.50.135]:55194 "EHLO m50-135.163.com"
+Received: from mx1.molgen.mpg.de ([141.14.17.9]:33966 "EHLO mx1.molgen.mpg.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751842AbcAAOIT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 1 Jan 2016 09:08:19 -0500
-From: Geliang Tang <geliangtang@163.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@poochiereds.net>
-Cc: Geliang Tang <geliangtang@163.com>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: [PATCH 3/3] lockd: use to_delayed_work
-Date: Fri,  1 Jan 2016 22:06:29 +0800
-Message-Id: <741bd37af1f46a3713423e16138910f12a5c12b5.1451656900.git.geliangtang@163.com>
-In-Reply-To: <87ea17d237ec636e674f8be097a7e65cbce4d252.1451656900.git.geliangtang@163.com>
-References: <87ea17d237ec636e674f8be097a7e65cbce4d252.1451656900.git.geliangtang@163.com>
-In-Reply-To: <87ea17d237ec636e674f8be097a7e65cbce4d252.1451656900.git.geliangtang@163.com>
-References: <87ea17d237ec636e674f8be097a7e65cbce4d252.1451656900.git.geliangtang@163.com>
+	id S1751702AbcABQTm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 2 Jan 2016 11:19:42 -0500
+Subject: Re: [PATCH v2] NFS: Fix attribute cache revalidation
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+References: <1451491892-11125-1-git-send-email-trond.myklebust@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+From: Donald Buczek <buczek@molgen.mpg.de>
+Message-ID: <5687F89B.9040406@molgen.mpg.de>
+Date: Sat, 2 Jan 2016 17:19:39 +0100
+MIME-Version: 1.0
+In-Reply-To: <1451491892-11125-1-git-send-email-trond.myklebust@primarydata.com>
+Content-Type: text/plain; charset=windows-1252; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Use to_delayed_work() instead of open-coding it.
+Though I don't understand the caching code, this one works for me, too.
 
-Signed-off-by: Geliang Tang <geliangtang@163.com>
----
- fs/lockd/svc.c | 3 +--
- 1 file changed, 1 insertion(+), 2 deletions(-)
+Together with "NFS: Ensure we revalidate attributes before using 
+execute_ok()" and "NFSv4: Don't perform cached access checks before 
+we've OPENed the file" it fixes 
+https://bugzilla.kernel.org/show_bug.cgi?id=109771
 
-diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-index 44d18ad..b4006c72 100644
---- a/fs/lockd/svc.c
-+++ b/fs/lockd/svc.c
-@@ -94,8 +94,7 @@ static unsigned long get_lockd_grace_period(void)
- 
- static void grace_ender(struct work_struct *grace)
- {
--	struct delayed_work *dwork = container_of(grace, struct delayed_work,
--						  work);
-+	struct delayed_work *dwork = to_delayed_work(grace);
- 	struct lockd_net *ln = container_of(dwork, struct lockd_net,
- 					    grace_period_end);
- 
+Correctly succeeds or fails after change of x-bit on server.
+
+Regards
+   Donald
+
 -- 
-2.5.0
-
+Donald Buczek
+buczek@molgen.mpg.de
+Tel: +49 30 8413 1433
 
