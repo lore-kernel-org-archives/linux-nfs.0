@@ -1,23 +1,20 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx4.its.uni-kassel.de ([141.51.12.63]:55233 "EHLO
-	mx4.its.uni-kassel.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751685AbcACLi1 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 3 Jan 2016 06:38:27 -0500
-Content-Type: text/plain; charset="utf-8"
+Return-Path: <BATV+79bc6ce57c55c66c7247+4515+infradead.org+hch@bombadil.srs.infradead.org>
+Date: Sun, 3 Jan 2016 04:00:41 -0800
+From: Christoph Hellwig <hch@infradead.org>
+To: Benjamin Coddington <bcodding@redhat.com>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v4 01/10] NFS4: remove a redundant lock range check
+Message-ID: <20160103120041.GA18066@infradead.org>
+References: <cover.1451480826.git.bcodding@redhat.com>
+ <4b51943c8d3802ece5b99125a971759f77a57270.1451480826.git.bcodding@redhat.com>
 MIME-Version: 1.0
-Subject: Charity Donation
-To: Me <s_w9gc9x@uni-kassel.de>
-From: "Jeff Skoll" <s_w9gc9x@uni-kassel.de>
-Date: Sun, 03 Jan 2016 06:31:21 -0500
-Reply-To: jeff.skoll@skollcharity.org
-Message-ID: <auto-000000773314@mailadmin.uni-kassel.de>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4b51943c8d3802ece5b99125a971759f77a57270.1451480826.git.bcodding@redhat.com>
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
-My name is Jeffrey Skoll, a philanthropist and the founder of one of the largest private foundations in the world. I believe strongly in ‘giving while living.’ I had one idea that never changed in my mind — that you should use your wealth to help people and I have decided to secretly give USD2.498 Million to a randomly selected individual. On receipt of this email, you should count yourself as the individual. Kindly get back to me at your earliest convenience, so I know your email address is valid.
+Looks good,
 
-Visit the web page to know more about me: http://www.theglobeandmail.com/news/national/meet-the-canadian-billionaire-whos-giving-it-all-away/article4209888/ or you can read an article of me on Wikipedia.
-
-Regards,
-Jeffrey Skoll.
+Reviewed-by: Christoph Hellwig <hch@lst.de>
