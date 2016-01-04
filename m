@@ -1,192 +1,61 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:58019 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751374AbcADQ3u (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 4 Jan 2016 11:29:50 -0500
-Date: Mon, 4 Jan 2016 11:29:48 -0500 (EST)
-From: Benjamin Coddington <bcodding@redhat.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 04/14] nfs: centralize pgio error cleanup
-In-Reply-To: <1451172060-28238-4-git-send-email-trond.myklebust@primarydata.com>
-Message-ID: <alpine.OSX.2.19.9992.1601041058370.87866@planck.local>
-References: <1451172060-28238-1-git-send-email-trond.myklebust@primarydata.com> <1451172060-28238-2-git-send-email-trond.myklebust@primarydata.com> <1451172060-28238-3-git-send-email-trond.myklebust@primarydata.com>
- <1451172060-28238-4-git-send-email-trond.myklebust@primarydata.com>
+Received: from mail-oi0-f41.google.com ([209.85.218.41]:33746 "EHLO
+	mail-oi0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751768AbcADQhP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Jan 2016 11:37:15 -0500
+Received: by mail-oi0-f41.google.com with SMTP id y66so258332982oig.0
+        for <linux-nfs@vger.kernel.org>; Mon, 04 Jan 2016 08:37:15 -0800 (PST)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+In-Reply-To: <CAKVebiUoY1a9_fkyC1TTZegYXMEbigYL-Ww0HWJBowC1w78LXQ@mail.gmail.com>
+References: <1451325918-33544-1-git-send-email-trond.myklebust@primarydata.com>
+	<1451325918-33544-2-git-send-email-trond.myklebust@primarydata.com>
+	<1451325918-33544-3-git-send-email-trond.myklebust@primarydata.com>
+	<1451325918-33544-4-git-send-email-trond.myklebust@primarydata.com>
+	<1451325918-33544-5-git-send-email-trond.myklebust@primarydata.com>
+	<1451325918-33544-6-git-send-email-trond.myklebust@primarydata.com>
+	<CAKVebiUoY1a9_fkyC1TTZegYXMEbigYL-Ww0HWJBowC1w78LXQ@mail.gmail.com>
+Date: Mon, 4 Jan 2016 11:37:14 -0500
+Message-ID: <CAHQdGtRbK5ZhQOhXRCmzOVyJQu-UhzaKQthvs9csUY-tU=0TyQ@mail.gmail.com>
+Subject: Re: [PATCH v2 6/6] NFSv4.1/pNFS: Don't return NFS4ERR_DELAY
+ unnecessarily in CB_LAYOUTRECALL
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Peng Tao <bergwolf@primarydata.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, 26 Dec 2015, Trond Myklebust wrote:
+Hi Tao,
 
-> From: Peng Tao <tao.peng@primarydata.com>
+On Mon, Jan 4, 2016 at 10:13 AM, Peng Tao <bergwolf@primarydata.com> wrote:
+> On Tue, Dec 29, 2015 at 2:05 AM, Trond Myklebust
+> <trond.myklebust@primarydata.com> wrote:
+>> If the client is promising to return the layout ASAP, then there is no
+>> need to return DELAY and have the server retry. Instead default to the
+>> normal procedure described in RFC5661.
+>>
+>> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+>> ---
+>>  fs/nfs/callback_proc.c | 2 +-
+>>  1 file changed, 1 insertion(+), 1 deletion(-)
+>>
+>> diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+>> index 1b24ad07d4f5..724a9b756ab0 100644
+>> --- a/fs/nfs/callback_proc.c
+>> +++ b/fs/nfs/callback_proc.c
+>> @@ -214,7 +214,7 @@ static u32 initiate_file_draining(struct nfs_client *clp,
+>>                 pnfs_mark_matching_lsegs_return(lo,
+>>                                 &free_me_list,
+>>                                 &args->cbl_range);
+>> -               rv = NFS4ERR_DELAY;
+>> +               rv = NFS4_OK;
+> It is possible that we've cleared all outstanding layout segments of
+> the file and returns NFS4_OK to CB_LAYOUTRECALL. Then server would be
+> expecting LAYOUTRETURN while client will not send one. IMO we'd better
+> re-check list_empty(&lo->plh_segs) to decide what to return here.
 >
-> In case we fail during setting things up for read/write IO, set
-> pg_error in IO descriptor and do the cleanup in nfs_pageio_add_request,
-> where we clean up all pages that are still hanging around on the IO
-> descriptor.
->
-> Signed-off-by: Peng Tao <tao.peng@primarydata.com>
-> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-> ---
->  fs/nfs/pagelist.c | 53 +++++++++++++++++++++++++++++------------------------
->  fs/nfs/pnfs.c     | 12 ++++--------
->  2 files changed, 33 insertions(+), 32 deletions(-)
->
-> diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-> index f66021663645..eeddbf0bf4c4 100644
-> --- a/fs/nfs/pagelist.c
-> +++ b/fs/nfs/pagelist.c
-> @@ -664,22 +664,11 @@ EXPORT_SYMBOL_GPL(nfs_initiate_pgio);
->   * @desc: IO descriptor
->   * @hdr: pageio header
->   */
-> -static int nfs_pgio_error(struct nfs_pageio_descriptor *desc,
-> -			  struct nfs_pgio_header *hdr)
-> +static void nfs_pgio_error(struct nfs_pgio_header *hdr)
->  {
-> -	struct nfs_pgio_mirror *mirror;
-> -	u32 midx;
-> -
->  	set_bit(NFS_IOHDR_REDO, &hdr->flags);
->  	nfs_pgio_data_destroy(hdr);
->  	hdr->completion_ops->completion(hdr);
-> -	/* TODO: Make sure it's right to clean up all mirrors here
-> -	 *       and not just hdr->pgio_mirror_idx */
-> -	for (midx = 0; midx < desc->pg_mirror_count; midx++) {
-> -		mirror = &desc->pg_mirrors[midx];
-> -		desc->pg_completion_ops->error_cleanup(&mirror->pg_list);
-> -	}
-> -	return -ENOMEM;
->  }
->
->  /**
-> @@ -800,8 +789,11 @@ int nfs_generic_pgio(struct nfs_pageio_descriptor *desc,
->  	unsigned int pagecount, pageused;
->
->  	pagecount = nfs_page_array_len(mirror->pg_base, mirror->pg_count);
-> -	if (!nfs_pgarray_set(&hdr->page_array, pagecount))
-> -		return nfs_pgio_error(desc, hdr);
-> +	if (!nfs_pgarray_set(&hdr->page_array, pagecount)) {
-> +		nfs_pgio_error(hdr);
-> +		desc->pg_error = -ENOMEM;
-> +		return desc->pg_error;
-> +	}
->
->  	nfs_init_cinfo(&cinfo, desc->pg_inode, desc->pg_dreq);
->  	pages = hdr->page_array.pagevec;
-> @@ -819,8 +811,11 @@ int nfs_generic_pgio(struct nfs_pageio_descriptor *desc,
->  			*pages++ = last_page = req->wb_page;
->  		}
->  	}
-> -	if (WARN_ON_ONCE(pageused != pagecount))
-> -		return nfs_pgio_error(desc, hdr);
-> +	if (WARN_ON_ONCE(pageused != pagecount)) {
-> +		nfs_pgio_error(hdr);
-> +		desc->pg_error = -EINVAL;
-> +		return desc->pg_error;
-> +	}
->
->  	if ((desc->pg_ioflags & FLUSH_COND_STABLE) &&
->  	    (desc->pg_moreio || nfs_reqs_to_commit(&cinfo)))
-> @@ -843,10 +838,8 @@ static int nfs_generic_pg_pgios(struct nfs_pageio_descriptor *desc)
->
->  	hdr = nfs_pgio_header_alloc(desc->pg_rw_ops);
->  	if (!hdr) {
-> -		/* TODO: make sure this is right with mirroring - or
-> -		 *       should it back out all mirrors? */
-> -		desc->pg_completion_ops->error_cleanup(&mirror->pg_list);
-> -		return -ENOMEM;
-> +		desc->pg_error = -ENOMEM;
-> +		return desc->pg_error;
->  	}
->  	nfs_pgheader_init(desc, hdr, nfs_pgio_header_free);
->  	ret = nfs_generic_pgio(desc, hdr);
-> @@ -1120,7 +1113,6 @@ static int nfs_do_recoalesce(struct nfs_pageio_descriptor *desc)
->  static int nfs_pageio_add_request_mirror(struct nfs_pageio_descriptor *desc,
->  		struct nfs_page *req)
->  {
-> -	struct nfs_pgio_mirror *mirror = nfs_pgio_current_mirror(desc);
->  	int ret;
->
->  	do {
-> @@ -1187,10 +1179,23 @@ int nfs_pageio_add_request(struct nfs_pageio_descriptor *desc,
->  out_failed:
->  	/*
->  	 * We might have failed before sending any reqs over wire.
-> -	 * clean up rest of the reqs in mirror pg_list
-> +	 * Clean up rest of the reqs in mirror pg_list.
->  	 */
-> -	if (desc->pg_error)
-> -		desc->pg_completion_ops->error_cleanup(&mirror->pg_list);
-> +	if (desc->pg_error) {
-> +		struct nfs_pgio_mirror *mirror;
-> +		void (*func)(struct list_head *);
-> +
-> +		/* remember fatal errors */
-> +		if (nfs_error_is_fatal(desc->pg_error))
 
-nfs_error_is_fatal isn't defined until PATCH 05/14..
+Thanks! I'll fix this up in v3...
 
-Ben
-
-> +			mapping_set_error(desc->pg_inode->i_mapping,
-> +					  desc->pg_error);
-> +
-> +		func = desc->pg_completion_ops->error_cleanup;
-> +		for (midx = 0; midx < desc->pg_mirror_count; midx++) {
-> +			mirror = &desc->pg_mirrors[midx];
-> +			func(&mirror->pg_list);
-> +		}
-> +	}
->  	return 0;
->  }
->
-> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-> index b1acc4135c3c..0fb3552ccfbe 100644
-> --- a/fs/nfs/pnfs.c
-> +++ b/fs/nfs/pnfs.c
-> @@ -2026,15 +2026,13 @@ static void pnfs_writehdr_free(struct nfs_pgio_header *hdr)
->  int
->  pnfs_generic_pg_writepages(struct nfs_pageio_descriptor *desc)
->  {
-> -	struct nfs_pgio_mirror *mirror = nfs_pgio_current_mirror(desc);
-> -
->  	struct nfs_pgio_header *hdr;
->  	int ret;
->
->  	hdr = nfs_pgio_header_alloc(desc->pg_rw_ops);
->  	if (!hdr) {
-> -		desc->pg_completion_ops->error_cleanup(&mirror->pg_list);
-> -		return -ENOMEM;
-> +		desc->pg_error = -ENOMEM;
-> +		return desc->pg_error;
->  	}
->  	nfs_pgheader_init(desc, hdr, pnfs_writehdr_free);
->
-> @@ -2157,15 +2155,13 @@ static void pnfs_readhdr_free(struct nfs_pgio_header *hdr)
->  int
->  pnfs_generic_pg_readpages(struct nfs_pageio_descriptor *desc)
->  {
-> -	struct nfs_pgio_mirror *mirror = nfs_pgio_current_mirror(desc);
-> -
->  	struct nfs_pgio_header *hdr;
->  	int ret;
->
->  	hdr = nfs_pgio_header_alloc(desc->pg_rw_ops);
->  	if (!hdr) {
-> -		desc->pg_completion_ops->error_cleanup(&mirror->pg_list);
-> -		return -ENOMEM;
-> +		desc->pg_error = -ENOMEM;
-> +		return desc->pg_error;
->  	}
->  	nfs_pgheader_init(desc, hdr, pnfs_readhdr_free);
->  	hdr->lseg = pnfs_get_lseg(desc->pg_lseg);
-> --
-> 2.5.0
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
+Cheers
+  Trond
