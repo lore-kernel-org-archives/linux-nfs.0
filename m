@@ -1,170 +1,151 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f182.google.com ([209.85.213.182]:36029 "EHLO
-	mail-ig0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751415AbcADSVt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Jan 2016 13:21:49 -0500
-Received: by mail-ig0-f182.google.com with SMTP id ph11so250739703igc.1
-        for <linux-nfs@vger.kernel.org>; Mon, 04 Jan 2016 10:21:49 -0800 (PST)
+Received: from mail-ig0-f174.google.com ([209.85.213.174]:35124 "EHLO
+	mail-ig0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751989AbcADSVu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Jan 2016 13:21:50 -0500
+Received: by mail-ig0-f174.google.com with SMTP id to4so249279977igc.0
+        for <linux-nfs@vger.kernel.org>; Mon, 04 Jan 2016 10:21:50 -0800 (PST)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 06/18] NFSv4: List stateid information in the callback tracepoints
-Date: Mon,  4 Jan 2016 13:21:04 -0500
-Message-Id: <1451931676-68481-6-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1451931676-68481-5-git-send-email-trond.myklebust@primarydata.com>
+Subject: [PATCH v3 07/18] NFS/pNFS: Fix up pNFS write reschedule layering violations and bugs
+Date: Mon,  4 Jan 2016 13:21:05 -0500
+Message-Id: <1451931676-68481-7-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1451931676-68481-6-git-send-email-trond.myklebust@primarydata.com>
 References: <1451931676-68481-1-git-send-email-trond.myklebust@primarydata.com>
  <1451931676-68481-2-git-send-email-trond.myklebust@primarydata.com>
  <1451931676-68481-3-git-send-email-trond.myklebust@primarydata.com>
  <1451931676-68481-4-git-send-email-trond.myklebust@primarydata.com>
  <1451931676-68481-5-git-send-email-trond.myklebust@primarydata.com>
+ <1451931676-68481-6-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The stateid is extremely valuable when debugging.
+The flexfiles layout in particular, seems to want to poke around in the
+O_DIRECT flags when retransmitting.
+This patch sets up an interface to allow it to call back into O_DIRECT
+to handle retransmission correctly. It also fixes a potential bug whereby
+we could change the behaviour of O_DIRECT if an error is already pending.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/callback_proc.c | 16 +++++++++---
- fs/nfs/nfs4trace.h     | 69 ++++++++++++++++++++++++++++++++++++++++++++++++--
- 2 files changed, 79 insertions(+), 6 deletions(-)
+ fs/nfs/direct.c                        | 21 +++++++++++++++------
+ fs/nfs/flexfilelayout/flexfilelayout.c | 13 +------------
+ fs/nfs/internal.h                      |  1 -
+ fs/nfs/write.c                         |  6 ++++++
+ include/linux/nfs_xdr.h                |  1 +
+ 5 files changed, 23 insertions(+), 19 deletions(-)
 
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index 724a9b756ab0..e4dbab5dce6e 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -83,8 +83,11 @@ __be32 nfs4_callback_recall(struct cb_recallargs *args, void *dummy,
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index 4b1d08f56aba..e73693f75dee 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -117,12 +117,6 @@ static inline int put_dreq(struct nfs_direct_req *dreq)
+ 	return atomic_dec_and_test(&dreq->io_count);
+ }
  
- 	res = htonl(NFS4ERR_BADHANDLE);
- 	inode = nfs_delegation_find_inode(cps->clp, &args->fh);
--	if (inode == NULL)
-+	if (inode == NULL) {
-+		trace_nfs4_cb_recall(cps->clp, &args->fh, NULL,
-+				&args->stateid, -ntohl(res));
- 		goto out;
-+	}
- 	/* Set up a helper thread to actually return the delegation */
- 	switch (nfs_async_inode_return_delegation(inode, &args->stateid)) {
- 	case 0:
-@@ -96,7 +99,8 @@ __be32 nfs4_callback_recall(struct cb_recallargs *args, void *dummy,
- 	default:
- 		res = htonl(NFS4ERR_RESOURCE);
+-void nfs_direct_set_resched_writes(struct nfs_direct_req *dreq)
+-{
+-	dreq->flags = NFS_ODIRECT_RESCHED_WRITES;
+-}
+-EXPORT_SYMBOL_GPL(nfs_direct_set_resched_writes);
+-
+ static void
+ nfs_direct_good_bytes(struct nfs_direct_req *dreq, struct nfs_pgio_header *hdr)
+ {
+@@ -839,10 +833,25 @@ static void nfs_write_sync_pgio_error(struct list_head *head)
  	}
--	trace_nfs4_recall_delegation(inode, -ntohl(res));
-+	trace_nfs4_cb_recall(cps->clp, &args->fh, inode,
-+			&args->stateid, -ntohl(res));
- 	iput(inode);
- out:
- 	dprintk("%s: exit with status = %d\n", __func__, ntohl(res));
-@@ -185,8 +189,11 @@ static u32 initiate_file_draining(struct nfs_client *clp,
- 	LIST_HEAD(free_me_list);
+ }
  
- 	lo = get_layout_by_fh(clp, &args->cbl_fh, &args->cbl_stateid);
--	if (!lo)
-+	if (!lo) {
-+		trace_nfs4_cb_layoutrecall_file(clp, &args->cbl_fh, NULL,
-+				&args->cbl_stateid, -rv);
- 		goto out;
++static void nfs_direct_write_reschedule_io(struct nfs_pgio_header *hdr)
++{
++	struct nfs_direct_req *dreq = hdr->dreq;
++
++	spin_lock(&dreq->lock);
++	if (dreq->error == 0) {
++		dreq->flags = NFS_ODIRECT_RESCHED_WRITES;
++		/* fake unstable write to let common nfs resend pages */
++		hdr->verf.committed = NFS_UNSTABLE;
++		hdr->good_bytes = hdr->args.count;
 +	}
- 
- 	ino = lo->plh_inode;
- 
-@@ -227,7 +234,8 @@ unlock:
- 	spin_unlock(&ino->i_lock);
- 	pnfs_free_lseg_list(&free_me_list);
- 	pnfs_put_layout_hdr(lo);
--	trace_nfs4_cb_layoutrecall_inode(clp, &args->cbl_fh, ino, -rv);
-+	trace_nfs4_cb_layoutrecall_file(clp, &args->cbl_fh, ino,
-+			&args->cbl_stateid, -rv);
- 	iput(ino);
- out:
- 	return rv;
-diff --git a/fs/nfs/nfs4trace.h b/fs/nfs/nfs4trace.h
-index d08d0c84b778..88b6b14ce71b 100644
---- a/fs/nfs/nfs4trace.h
-+++ b/fs/nfs/nfs4trace.h
-@@ -982,7 +982,6 @@ DEFINE_NFS4_INODE_EVENT(nfs4_set_acl);
- DEFINE_NFS4_INODE_EVENT(nfs4_get_security_label);
- DEFINE_NFS4_INODE_EVENT(nfs4_set_security_label);
- #endif /* CONFIG_NFS_V4_SECURITY_LABEL */
--DEFINE_NFS4_INODE_EVENT(nfs4_recall_delegation);
- 
- DECLARE_EVENT_CLASS(nfs4_inode_stateid_event,
- 		TP_PROTO(
-@@ -1145,8 +1144,74 @@ DECLARE_EVENT_CLASS(nfs4_inode_callback_event,
- 			), \
- 			TP_ARGS(clp, fhandle, inode, error))
- DEFINE_NFS4_INODE_CALLBACK_EVENT(nfs4_cb_getattr);
--DEFINE_NFS4_INODE_CALLBACK_EVENT(nfs4_cb_layoutrecall_inode);
- 
-+DECLARE_EVENT_CLASS(nfs4_inode_stateid_callback_event,
-+		TP_PROTO(
-+			const struct nfs_client *clp,
-+			const struct nfs_fh *fhandle,
-+			const struct inode *inode,
-+			const nfs4_stateid *stateid,
-+			int error
-+		),
++	spin_unlock(&dreq->lock);
++}
 +
-+		TP_ARGS(clp, fhandle, inode, stateid, error),
-+
-+		TP_STRUCT__entry(
-+			__field(int, error)
-+			__field(dev_t, dev)
-+			__field(u32, fhandle)
-+			__field(u64, fileid)
-+			__string(dstaddr, clp ?
-+				rpc_peeraddr2str(clp->cl_rpcclient,
-+					RPC_DISPLAY_ADDR) : "unknown")
-+			__field(int, stateid_seq)
-+			__field(u32, stateid_hash)
-+		),
-+
-+		TP_fast_assign(
-+			__entry->error = error;
-+			__entry->fhandle = nfs_fhandle_hash(fhandle);
-+			if (inode != NULL) {
-+				__entry->fileid = NFS_FILEID(inode);
-+				__entry->dev = inode->i_sb->s_dev;
-+			} else {
-+				__entry->fileid = 0;
-+				__entry->dev = 0;
-+			}
-+			__assign_str(dstaddr, clp ?
-+				rpc_peeraddr2str(clp->cl_rpcclient,
-+					RPC_DISPLAY_ADDR) : "unknown")
-+			__entry->stateid_seq =
-+				be32_to_cpu(stateid->seqid);
-+			__entry->stateid_hash =
-+				nfs_stateid_hash(stateid);
-+		),
-+
-+		TP_printk(
-+			"error=%d (%s) fileid=%02x:%02x:%llu fhandle=0x%08x "
-+			"stateid=%d:0x%08x dstaddr=%s",
-+			__entry->error,
-+			show_nfsv4_errors(__entry->error),
-+			MAJOR(__entry->dev), MINOR(__entry->dev),
-+			(unsigned long long)__entry->fileid,
-+			__entry->fhandle,
-+			__entry->stateid_seq, __entry->stateid_hash,
-+			__get_str(dstaddr)
-+		)
-+);
-+
-+#define DEFINE_NFS4_INODE_STATEID_CALLBACK_EVENT(name) \
-+	DEFINE_EVENT(nfs4_inode_stateid_callback_event, name, \
-+			TP_PROTO( \
-+				const struct nfs_client *clp, \
-+				const struct nfs_fh *fhandle, \
-+				const struct inode *inode, \
-+				const nfs4_stateid *stateid, \
-+				int error \
-+			), \
-+			TP_ARGS(clp, fhandle, inode, stateid, error))
-+DEFINE_NFS4_INODE_STATEID_CALLBACK_EVENT(nfs4_cb_recall);
-+DEFINE_NFS4_INODE_STATEID_CALLBACK_EVENT(nfs4_cb_layoutrecall_file);
+ static const struct nfs_pgio_completion_ops nfs_direct_write_completion_ops = {
+ 	.error_cleanup = nfs_write_sync_pgio_error,
+ 	.init_hdr = nfs_direct_pgio_init,
+ 	.completion = nfs_direct_write_completion,
++	.reschedule_io = nfs_direct_write_reschedule_io,
+ };
  
- DECLARE_EVENT_CLASS(nfs4_idmap_event,
- 		TP_PROTO(
+ 
+diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
+index 03516c80855a..df475d42df77 100644
+--- a/fs/nfs/flexfilelayout/flexfilelayout.c
++++ b/fs/nfs/flexfilelayout/flexfilelayout.c
+@@ -912,18 +912,7 @@ static void ff_layout_reset_write(struct nfs_pgio_header *hdr, bool retry_pnfs)
+ 			hdr->args.count,
+ 			(unsigned long long)hdr->args.offset);
+ 
+-		if (!hdr->dreq) {
+-			struct nfs_open_context *ctx;
+-
+-			ctx = nfs_list_entry(hdr->pages.next)->wb_context;
+-			set_bit(NFS_CONTEXT_RESEND_WRITES, &ctx->flags);
+-			hdr->completion_ops->error_cleanup(&hdr->pages);
+-		} else {
+-			nfs_direct_set_resched_writes(hdr->dreq);
+-			/* fake unstable write to let common nfs resend pages */
+-			hdr->verf.committed = NFS_UNSTABLE;
+-			hdr->good_bytes = hdr->args.count;
+-		}
++		hdr->completion_ops->reschedule_io(hdr);
+ 		return;
+ 	}
+ 
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 313d55402238..99a2919047e9 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -519,7 +519,6 @@ static inline void nfs_inode_dio_wait(struct inode *inode)
+ 	inode_dio_wait(inode);
+ }
+ extern ssize_t nfs_dreq_bytes_left(struct nfs_direct_req *dreq);
+-extern void nfs_direct_set_resched_writes(struct nfs_direct_req *dreq);
+ 
+ /* nfs4proc.c */
+ extern void __nfs4_read_done_cb(struct nfs_pgio_header *);
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 7b9316406930..0aa3e6b3db70 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -1326,9 +1326,15 @@ static void nfs_async_write_error(struct list_head *head)
+ 	}
+ }
+ 
++static void nfs_async_write_reschedule_io(struct nfs_pgio_header *hdr)
++{
++	nfs_async_write_error(&hdr->pages);
++}
++
+ static const struct nfs_pgio_completion_ops nfs_async_write_completion_ops = {
+ 	.error_cleanup = nfs_async_write_error,
+ 	.completion = nfs_write_completion,
++	.reschedule_io = nfs_async_write_reschedule_io,
+ };
+ 
+ void nfs_pageio_init_write(struct nfs_pageio_descriptor *pgio,
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 11bbae44f4cb..e89dbb14138c 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1460,6 +1460,7 @@ struct nfs_pgio_completion_ops {
+ 	void	(*error_cleanup)(struct list_head *head);
+ 	void	(*init_hdr)(struct nfs_pgio_header *hdr);
+ 	void	(*completion)(struct nfs_pgio_header *hdr);
++	void	(*reschedule_io)(struct nfs_pgio_header *hdr);
+ };
+ 
+ struct nfs_unlinkdata {
 -- 
 2.5.0
 
