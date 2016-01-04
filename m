@@ -1,53 +1,100 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qg0-f51.google.com ([209.85.192.51]:34712 "EHLO
-	mail-qg0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751308AbcADPOT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Jan 2016 10:14:19 -0500
-Received: by mail-qg0-f51.google.com with SMTP id 6so177616796qgy.1
-        for <linux-nfs@vger.kernel.org>; Mon, 04 Jan 2016 07:14:19 -0800 (PST)
-MIME-Version: 1.0
-In-Reply-To: <1451325918-33544-6-git-send-email-trond.myklebust@primarydata.com>
-References: <1451325918-33544-1-git-send-email-trond.myklebust@primarydata.com>
- <1451325918-33544-2-git-send-email-trond.myklebust@primarydata.com>
- <1451325918-33544-3-git-send-email-trond.myklebust@primarydata.com>
- <1451325918-33544-4-git-send-email-trond.myklebust@primarydata.com>
- <1451325918-33544-5-git-send-email-trond.myklebust@primarydata.com> <1451325918-33544-6-git-send-email-trond.myklebust@primarydata.com>
-From: Peng Tao <bergwolf@primarydata.com>
-Date: Mon, 4 Jan 2016 23:13:59 +0800
-Message-ID: <CAKVebiUoY1a9_fkyC1TTZegYXMEbigYL-Ww0HWJBowC1w78LXQ@mail.gmail.com>
-Subject: Re: [PATCH v2 6/6] NFSv4.1/pNFS: Don't return NFS4ERR_DELAY
- unnecessarily in CB_LAYOUTRECALL
+Received: from mx1.redhat.com ([209.132.183.28]:46494 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751390AbcADPss (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 4 Jan 2016 10:48:48 -0500
+Date: Mon, 4 Jan 2016 10:48:46 -0500 (EST)
+From: Benjamin Coddington <bcodding@redhat.com>
 To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 03/14] nfs: clean up rest of reqs when failing to add
+ one
+In-Reply-To: <1451172060-28238-3-git-send-email-trond.myklebust@primarydata.com>
+Message-ID: <alpine.OSX.2.19.9992.1601041045280.87866@planck.local>
+References: <1451172060-28238-1-git-send-email-trond.myklebust@primarydata.com> <1451172060-28238-2-git-send-email-trond.myklebust@primarydata.com> <1451172060-28238-3-git-send-email-trond.myklebust@primarydata.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Dec 29, 2015 at 2:05 AM, Trond Myklebust
-<trond.myklebust@primarydata.com> wrote:
-> If the client is promising to return the layout ASAP, then there is no
-> need to return DELAY and have the server retry. Instead default to the
-> normal procedure described in RFC5661.
+On Sat, 26 Dec 2015, Trond Myklebust wrote:
+
+> From: Peng Tao <tao.peng@primarydata.com>
 >
+> If we fail to set up things before sending anything over wire,
+> we need to clean up the reqs that are still attached to the
+> IO descriptor.
+>
+> Signed-off-by: Peng Tao <tao.peng@primarydata.com>
 > Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 > ---
->  fs/nfs/callback_proc.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
+>  fs/nfs/pagelist.c | 17 ++++++++++++++---
+>  1 file changed, 14 insertions(+), 3 deletions(-)
 >
-> diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-> index 1b24ad07d4f5..724a9b756ab0 100644
-> --- a/fs/nfs/callback_proc.c
-> +++ b/fs/nfs/callback_proc.c
-> @@ -214,7 +214,7 @@ static u32 initiate_file_draining(struct nfs_client *clp,
->                 pnfs_mark_matching_lsegs_return(lo,
->                                 &free_me_list,
->                                 &args->cbl_range);
-> -               rv = NFS4ERR_DELAY;
-> +               rv = NFS4_OK;
-It is possible that we've cleared all outstanding layout segments of
-the file and returns NFS4_OK to CB_LAYOUTRECALL. Then server would be
-expecting LAYOUTRETURN while client will not send one. IMO we'd better
-re-check list_empty(&lo->plh_segs) to decide what to return here.
+> diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+> index 871ba5df5ca9..f66021663645 100644
+> --- a/fs/nfs/pagelist.c
+> +++ b/fs/nfs/pagelist.c
+> @@ -1120,6 +1120,7 @@ static int nfs_do_recoalesce(struct nfs_pageio_descriptor *desc)
+>  static int nfs_pageio_add_request_mirror(struct nfs_pageio_descriptor *desc,
+>  		struct nfs_page *req)
+>  {
+> +	struct nfs_pgio_mirror *mirror = nfs_pgio_current_mirror(desc);
+>  	int ret;
+>
+>  	do {
+> @@ -1147,7 +1148,7 @@ int nfs_pageio_add_request(struct nfs_pageio_descriptor *desc,
+>
+>  	nfs_pageio_setup_mirroring(desc, req);
+>  	if (desc->pg_error < 0)
+> -		return 0;
+> +		goto out_failed;
+>
+>  	for (midx = 0; midx < desc->pg_mirror_count; midx++) {
+>  		if (midx) {
+> @@ -1164,7 +1165,8 @@ int nfs_pageio_add_request(struct nfs_pageio_descriptor *desc,
+>
+>  			if (IS_ERR(dupreq)) {
+>  				nfs_page_group_unlock(req);
+> -				return 0;
+> +				desc->pg_error = PTR_ERR(dupreq);
+> +				goto out_failed;
+>  			}
+>
+>  			nfs_lock_request(dupreq);
+> @@ -1177,10 +1179,19 @@ int nfs_pageio_add_request(struct nfs_pageio_descriptor *desc,
+>  		if (nfs_pgio_has_mirroring(desc))
+>  			desc->pg_mirror_idx = midx;
+>  		if (!nfs_pageio_add_request_mirror(desc, dupreq))
+> -			return 0;
+> +			goto out_failed;
+>  	}
+>
+>  	return 1;
+> +
+> +out_failed:
+> +	/*
+> +	 * We might have failed before sending any reqs over wire.
+> +	 * clean up rest of the reqs in mirror pg_list
+> +	 */
+> +	if (desc->pg_error)
+> +		desc->pg_completion_ops->error_cleanup(&mirror->pg_list);
 
-Cheers,
-Tao
+I don't have the "mirror" variable here.  I think the section adding it in
+nfs_pageio_add_request_mirror() should actually be adding it in
+nfs_pageio_add_request()..
+
+Ben
+
+> +	return 0;
+>  }
+>
+>  /*
+> --
+> 2.5.0
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
