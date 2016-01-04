@@ -1,16 +1,16 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f172.google.com ([209.85.223.172]:32930 "EHLO
-	mail-io0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752313AbcADSV7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Jan 2016 13:21:59 -0500
-Received: by mail-io0-f172.google.com with SMTP id q21so162464376iod.0
-        for <linux-nfs@vger.kernel.org>; Mon, 04 Jan 2016 10:21:59 -0800 (PST)
+Received: from mail-ig0-f180.google.com ([209.85.213.180]:38868 "EHLO
+	mail-ig0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752346AbcADSWA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Jan 2016 13:22:00 -0500
+Received: by mail-ig0-f180.google.com with SMTP id mw1so109439020igb.1
+        for <linux-nfs@vger.kernel.org>; Mon, 04 Jan 2016 10:22:00 -0800 (PST)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 17/18] NFSv4.1/pnfs: Cleanup copying of pnfs_layout_range structures
-Date: Mon,  4 Jan 2016 13:21:15 -0500
-Message-Id: <1451931676-68481-17-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1451931676-68481-16-git-send-email-trond.myklebust@primarydata.com>
+Subject: [PATCH v3 18/18] NFSv4.1/pNFS: Cleanup constify struct pnfs_layout_range arguments
+Date: Mon,  4 Jan 2016 13:21:16 -0500
+Message-Id: <1451931676-68481-18-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1451931676-68481-17-git-send-email-trond.myklebust@primarydata.com>
 References: <1451931676-68481-1-git-send-email-trond.myklebust@primarydata.com>
  <1451931676-68481-2-git-send-email-trond.myklebust@primarydata.com>
  <1451931676-68481-3-git-send-email-trond.myklebust@primarydata.com>
@@ -27,55 +27,69 @@ References: <1451931676-68481-1-git-send-email-trond.myklebust@primarydata.com>
  <1451931676-68481-14-git-send-email-trond.myklebust@primarydata.com>
  <1451931676-68481-15-git-send-email-trond.myklebust@primarydata.com>
  <1451931676-68481-16-git-send-email-trond.myklebust@primarydata.com>
+ <1451931676-68481-17-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/pnfs.c | 4 ++--
- fs/nfs/pnfs.h | 7 +++++++
- 2 files changed, 9 insertions(+), 2 deletions(-)
+ fs/nfs/pnfs.c | 6 +++---
+ fs/nfs/pnfs.h | 6 +++---
+ 2 files changed, 6 insertions(+), 6 deletions(-)
 
 diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index f86f060f853d..ebf896b54d9d 100644
+index ebf896b54d9d..04db6d951b99 100644
 --- a/fs/nfs/pnfs.c
 +++ b/fs/nfs/pnfs.c
-@@ -863,7 +863,7 @@ pnfs_choose_layoutget_stateid(nfs4_stateid *dst, struct pnfs_layout_hdr *lo,
- static struct pnfs_layout_segment *
- send_layoutget(struct pnfs_layout_hdr *lo,
- 	   struct nfs_open_context *ctx,
--	   struct pnfs_layout_range *range,
-+	   const struct pnfs_layout_range *range,
- 	   gfp_t gfp_flags)
+@@ -566,7 +566,7 @@ static int mark_lseg_invalid(struct pnfs_layout_segment *lseg,
+ int
+ pnfs_mark_matching_lsegs_invalid(struct pnfs_layout_hdr *lo,
+ 			    struct list_head *tmp_list,
+-			    struct pnfs_layout_range *recall_range)
++			    const struct pnfs_layout_range *recall_range)
  {
- 	struct inode *ino = lo->plh_inode;
-@@ -896,7 +896,7 @@ send_layoutget(struct pnfs_layout_hdr *lo,
- 				lgp->args.minlength = i_size - range->offset;
- 		}
- 		lgp->args.maxcount = PNFS_LAYOUT_MAXSIZE;
--		lgp->args.range = *range;
-+		pnfs_copy_range(&lgp->args.range, range);
- 		lgp->args.type = server->pnfs_curr_ld->id;
- 		lgp->args.inode = ino;
- 		lgp->args.ctx = get_nfs_open_context(ctx);
+ 	struct pnfs_layout_segment *lseg, *next;
+ 	int remaining = 0;
+@@ -828,7 +828,7 @@ pnfs_layoutgets_blocked(const struct pnfs_layout_hdr *lo)
+ 
+ int
+ pnfs_choose_layoutget_stateid(nfs4_stateid *dst, struct pnfs_layout_hdr *lo,
+-			      struct pnfs_layout_range *range,
++			      const struct pnfs_layout_range *range,
+ 			      struct nfs4_state *open_state)
+ {
+ 	int status = 0;
+@@ -1771,7 +1771,7 @@ pnfs_set_plh_return_iomode(struct pnfs_layout_hdr *lo, enum pnfs_iomode iomode)
+ int
+ pnfs_mark_matching_lsegs_return(struct pnfs_layout_hdr *lo,
+ 				struct list_head *tmp_list,
+-				struct pnfs_layout_range *return_range)
++				const struct pnfs_layout_range *return_range)
+ {
+ 	struct pnfs_layout_segment *lseg, *next;
+ 	int remaining = 0;
 diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 3d0f513a4a77..dcc76335fd4b 100644
+index dcc76335fd4b..78df618a1596 100644
 --- a/fs/nfs/pnfs.h
 +++ b/fs/nfs/pnfs.h
-@@ -578,6 +578,13 @@ pnfs_mark_layout_returned_if_empty(struct pnfs_layout_hdr *lo)
- 		set_bit(NFS_LAYOUT_INVALID_STID, &lo->plh_flags);
- }
- 
-+static inline void
-+pnfs_copy_range(struct pnfs_layout_range *dst,
-+		const struct pnfs_layout_range *src)
-+{
-+	memcpy(dst, src, sizeof(*dst));
-+}
-+
- extern unsigned int layoutstats_timer;
- 
- #ifdef NFS_DEBUG
+@@ -261,14 +261,14 @@ void pnfs_set_layout_stateid(struct pnfs_layout_hdr *lo,
+ 			     bool update_barrier);
+ int pnfs_choose_layoutget_stateid(nfs4_stateid *dst,
+ 				  struct pnfs_layout_hdr *lo,
+-				  struct pnfs_layout_range *range,
++				  const struct pnfs_layout_range *range,
+ 				  struct nfs4_state *open_state);
+ int pnfs_mark_matching_lsegs_invalid(struct pnfs_layout_hdr *lo,
+ 				struct list_head *tmp_list,
+-				struct pnfs_layout_range *recall_range);
++				const struct pnfs_layout_range *recall_range);
+ int pnfs_mark_matching_lsegs_return(struct pnfs_layout_hdr *lo,
+ 				struct list_head *tmp_list,
+-				struct pnfs_layout_range *recall_range);
++				const struct pnfs_layout_range *recall_range);
+ bool pnfs_roc(struct inode *ino);
+ void pnfs_roc_release(struct inode *ino);
+ void pnfs_roc_set_barrier(struct inode *ino, u32 barrier);
 -- 
 2.5.0
 
