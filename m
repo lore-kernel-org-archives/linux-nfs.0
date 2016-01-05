@@ -1,80 +1,101 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:53009 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752012AbcADWtI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 4 Jan 2016 17:49:08 -0500
-Date: Mon, 4 Jan 2016 17:49:07 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Julia Lawall <Julia.Lawall@lip6.fr>
-Cc: kernel-janitors@vger.kernel.org, Jeff Layton <jlayton@poochiereds.net>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] lockd: constify nlmsvc_binding structure
-Message-ID: <20160104224907.GG30315@fieldses.org>
-References: <1450905913-657-1-git-send-email-Julia.Lawall@lip6.fr>
+Received: from mail-pf0-f177.google.com ([209.85.192.177]:35143 "EHLO
+	mail-pf0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753472AbcAEAtU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Jan 2016 19:49:20 -0500
+Received: by mail-pf0-f177.google.com with SMTP id 78so212518811pfw.2
+        for <linux-nfs@vger.kernel.org>; Mon, 04 Jan 2016 16:49:20 -0800 (PST)
+Subject: Re: [PATCH] nfsd: Fix nfsd leaks sunrpc module references
+To: "J. Bruce Fields" <bfields@fieldses.org>
+References: <20150911104517.GA4947@stefanha-thinkpad.home>
+ <5689E3C9.1010708@gmail.com> <20160104223930.GE30315@fieldses.org>
+Cc: linux-nfs@vger.kernel.org, Stefan Hajnoczi <stefanha@redhat.com>,
+        skinsbursky@parallels.com,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+From: Kinglong Mee <kinglongmee@gmail.com>
+Message-ID: <568B1302.2080803@gmail.com>
+Date: Tue, 5 Jan 2016 08:49:06 +0800
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1450905913-657-1-git-send-email-Julia.Lawall@lip6.fr>
+In-Reply-To: <20160104223930.GE30315@fieldses.org>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Dec 23, 2015 at 10:25:13PM +0100, Julia Lawall wrote:
-> The nlmsvc_binding structure is never modified, so declare it as const.
+On 1/5/2016 06:39, J. Bruce Fields wrote:
+> On Mon, Jan 04, 2016 at 11:15:21AM +0800, Kinglong Mee wrote:
+>> Stefan Hajnoczi reports,
+>> nfsd leaks 3 references to the sunrpc module here:
+>>
+>>   # echo -n "asdf 1234" >/proc/fs/nfsd/portlist
+>>   bash: echo: write error: Protocol not supported
+>>
+>> Now stop nfsd and try unloading the kernel modules:
+>>
+>>   # systemctl stop nfs-server
+>>   # systemctl stop nfs
+>>   # systemctl stop proc-fs-nfsd.mount
+>>   # systemctl stop var-lib-nfs-rpc_pipefs.mount
+>>   # rmmod nfsd
+>>   # rmmod nfs_acl
+>>   # rmmod lockd
+>>   # rmmod auth_rpcgss
+>>   # rmmod sunrpc
+>>   rmmod: ERROR: Module sunrpc is in use
+>>   # lsmod | grep rpc
+>>   sunrpc                315392  3
+>>
+>> It is caused by nfsd don't cleanup rpcb program for nfsd
+>> when destroying svc service after creating xprt fail.
+>>
+>> Reported-by: Stefan Hajnoczi <stefanha@redhat.com>
+>> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+>> ---
+>>  fs/nfsd/nfssvc.c | 7 +++----
+>>  1 file changed, 3 insertions(+), 4 deletions(-)
+>>
+>> diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+>> index ad4e237..543de5f 100644
+>> --- a/fs/nfsd/nfssvc.c
+>> +++ b/fs/nfsd/nfssvc.c
+>> @@ -314,14 +314,13 @@ static void nfsd_last_thread(struct svc_serv *serv, struct net *net)
+>>  	 * write_ports can create the server without actually starting
+>>  	 * any threads--if we get shut down before any threads are
+>>  	 * started, then nfsd_last_thread will be run before any of this
+>> -	 * other initialization has been done.
+>> +	 * other initialization has been done except the rpcb information.
+>>  	 */
+>> +	svc_rpcb_cleanup(serv, net);
 > 
-> Done with the help of Coccinelle.
+> Are you sure this is right?
 > 
-> Signed-off-by: Julia Lawall <Julia.Lawall@lip6.fr>
-> 
-> ---
-> 
-> This assumes that whoever takes advantage of the EXPORT_SYMBOL will also
-> not want to write in the fields.  Is that reasonable?
+> For example, nfsd_create_serv calls svc_destroy on svc_bind failure, is
+> it OK to call svc_rpcb_cleanup in that case?
 
-Looks right to me, thanks, applying.--b.
+The svc_rpcb_cleanup in nfsd_last_thread is called in svc_shutdown_net,
+svc_destroy never call it.
+
+svc_shutdown_net is called in nfsd_destroy only nfsd_serv->sv_nrthreads == 1.
+
+So that, it's ok calling svc_rpcb_cleanup in nfsd_last_thread always.
+
+Is there anything I missing?
+
+thanks,
+Kinglong Mee
 
 > 
->  fs/lockd/svc.c             |    2 +-
->  fs/nfsd/lockd.c            |    2 +-
->  include/linux/lockd/bind.h |    2 +-
->  3 files changed, 3 insertions(+), 3 deletions(-)
+> --b.
 > 
-> diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-> index 44d18ad..0c1a699 100644
-> --- a/fs/lockd/svc.c
-> +++ b/fs/lockd/svc.c
-> @@ -48,7 +48,7 @@
->  
->  static struct svc_program	nlmsvc_program;
->  
-> -struct nlmsvc_binding *		nlmsvc_ops;
-> +const struct nlmsvc_binding	*nlmsvc_ops;
->  EXPORT_SYMBOL_GPL(nlmsvc_ops);
->  
->  static DEFINE_MUTEX(nlmsvc_mutex);
-> diff --git a/include/linux/lockd/bind.h b/include/linux/lockd/bind.h
-> index 4d24d64..140edab6 100644
-> --- a/include/linux/lockd/bind.h
-> +++ b/include/linux/lockd/bind.h
-> @@ -29,7 +29,7 @@ struct nlmsvc_binding {
->  	void			(*fclose)(struct file *);
->  };
->  
-> -extern struct nlmsvc_binding *	nlmsvc_ops;
-> +extern const struct nlmsvc_binding *nlmsvc_ops;
->  
->  /*
->   * Similar to nfs_client_initdata, but without the NFS-specific
-> diff --git a/fs/nfsd/lockd.c b/fs/nfsd/lockd.c
-> index 77e7a5c..1a03bc3 100644
-> --- a/fs/nfsd/lockd.c
-> +++ b/fs/nfsd/lockd.c
-> @@ -58,7 +58,7 @@ nlm_fclose(struct file *filp)
->  	fput(filp);
->  }
->  
-> -static struct nlmsvc_binding	nfsd_nlm_ops = {
-> +static const struct nlmsvc_binding nfsd_nlm_ops = {
->  	.fopen		= nlm_fopen,		/* open file for locking */
->  	.fclose		= nlm_fclose,		/* close file */
->  };
+>>  	if (!nn->nfsd_net_up)
+>>  		return;
+>> -	nfsd_shutdown_net(net);
+>> -
+>> -	svc_rpcb_cleanup(serv, net);
+>>  
+>> +	nfsd_shutdown_net(net);
+>>  	printk(KERN_WARNING "nfsd: last server has exited, flushing export "
+>>  			    "cache\n");
+>>  	nfsd_export_flush(net);
+>> -- 
+>> 2.5.0
+> 
