@@ -1,75 +1,231 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ob0-f169.google.com ([209.85.214.169]:35408 "EHLO
-	mail-ob0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751595AbcAFRbg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Jan 2016 12:31:36 -0500
-Received: by mail-ob0-f169.google.com with SMTP id xn1so31162036obc.2
-        for <linux-nfs@vger.kernel.org>; Wed, 06 Jan 2016 09:31:36 -0800 (PST)
+Return-Path: <trond.myklebust@primarydata.com>
 MIME-Version: 1.0
-In-Reply-To: <1452099090-31729-2-git-send-email-tigran.mkrtchyan@desy.de>
-References: <1452099090-31729-1-git-send-email-tigran.mkrtchyan@desy.de>
-	<1452099090-31729-2-git-send-email-tigran.mkrtchyan@desy.de>
-Date: Wed, 6 Jan 2016 12:31:36 -0500
-Message-ID: <CAHQdGtRpXLgAJ2xWUiCaz6XeWoWhN-TXY2Yc6dDFoPSe47Ok4w@mail.gmail.com>
-Subject: Re: [PATCH] nfs: set RPC_TASK_TIMEOUT on rpc task to separate TIMEOUT
- from IO errors
+In-Reply-To: <2eb3d218075ac12cf0a9b18c75df03b15ed52491.1452094588.git.bcodding@redhat.com>
+References: <2eb3d218075ac12cf0a9b18c75df03b15ed52491.1452094588.git.bcodding@redhat.com>
+Date: Wed, 6 Jan 2016 14:13:12 -0500
+Message-ID: <CAHQdGtTQACaJQS9JXXJgoPyinKzDCCOtrV_rRX4mvVGPkZNvng@mail.gmail.com>
+Subject: Re: [PATCH] NFS: Use wait_on_atomic_t() for unlock after readahead
 From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+To: Benjamin Coddington <bcodding@redhat.com>
+Cc: Anna Schumaker <anna.schumaker@netapp.com>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        David Howells <dhowells@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
 Content-Type: text/plain; charset=UTF-8
-Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jan 6, 2016 at 11:51 AM, Tigran Mkrtchyan
-<tigran.mkrtchyan@desy.de> wrote:
-> to help debug nfs problems
+On Wed, Jan 6, 2016 at 10:40 AM, Benjamin Coddington
+<bcodding@redhat.com> wrote:
+> The use of wait_on_atomic_t() for waiting on I/O to complete before
+> unlocking allows us to git rid of the NFS_IO_INPROGRESS flag, and thus the
+> nfs_iocounter's flags member, and finally the nfs_iocounter altogether.
+> The count of I/O is moved to the lock context, and the counter
+> increment/decrement functions become simple enough to open-code.
 >
-> Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
 > ---
->  fs/nfs/read.c  | 2 +-
->  fs/nfs/write.c | 3 ++-
->  2 files changed, 3 insertions(+), 2 deletions(-)
+>  fs/nfs/file.c          |    2 +-
+>  fs/nfs/inode.c         |   18 ++++++++++++------
+>  fs/nfs/internal.h      |    9 ++-------
+>  fs/nfs/pagelist.c      |   48 +++++++-----------------------------------------
+>  include/linux/nfs_fs.h |    8 +-------
+>  5 files changed, 23 insertions(+), 62 deletions(-)
 >
-> diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-> index 0a5e33f..0fae3f3 100644
-> --- a/fs/nfs/read.c
-> +++ b/fs/nfs/read.c
-> @@ -191,7 +191,7 @@ static void nfs_initiate_read(struct nfs_pgio_header *hdr,
->         struct inode *inode = hdr->inode;
->         int swap_flags = IS_SWAPFILE(inode) ? NFS_RPC_SWAPFLAGS : 0;
+> diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+> index 93e2364..37ded36 100644
+> --- a/fs/nfs/file.c
+> +++ b/fs/nfs/file.c
+> @@ -756,7 +756,7 @@ do_unlk(struct file *filp, int cmd, struct file_lock *fl, int is_local)
 >
-> -       task_setup_data->flags |= swap_flags;
-> +       task_setup_data->flags |= swap_flags | RPC_TASK_TIMEOUT;
->         rpc_ops->read_setup(hdr, msg);
+>         l_ctx = nfs_get_lock_context(nfs_file_open_context(filp));
+>         if (!IS_ERR(l_ctx)) {
+> -               status = nfs_iocounter_wait(&l_ctx->io_count);
+> +               status = nfs_iocounter_wait(l_ctx);
+>                 nfs_put_lock_context(l_ctx);
+>                 if (status < 0)
+>                         return status;
+> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+> index c7e8b87..c1bfee4 100644
+> --- a/fs/nfs/inode.c
+> +++ b/fs/nfs/inode.c
+> @@ -71,19 +71,25 @@ nfs_fattr_to_ino_t(struct nfs_fattr *fattr)
+>         return nfs_fileid_to_ino_t(fattr->fileid);
 >  }
 >
-> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-> index 7b93164..05c9963 100644
-> --- a/fs/nfs/write.c
-> +++ b/fs/nfs/write.c
-> @@ -1296,6 +1296,7 @@ static void nfs_initiate_write(struct nfs_pgio_header *hdr,
->         int priority = flush_task_priority(how);
+> -/**
+> - * nfs_wait_bit_killable - helper for functions that are sleeping on bit locks
+> - * @word: long word containing the bit lock
+> - */
+> -int nfs_wait_bit_killable(struct wait_bit_key *key, int mode)
+> +static int nfs_wait_killable(int mode)
+>  {
+>         freezable_schedule_unsafe();
+>         if (signal_pending_state(mode, current))
+>                 return -ERESTARTSYS;
+>         return 0;
+>  }
+> +
+> +int nfs_wait_bit_killable(struct wait_bit_key *key, int mode)
+> +{
+> +       return nfs_wait_killable(mode);
+> +}
+>  EXPORT_SYMBOL_GPL(nfs_wait_bit_killable);
 >
->         task_setup_data->priority = priority;
-> +       task_setup_data->flags |= RPC_TASK_TIMEOUT;
->         rpc_ops->write_setup(hdr, msg);
+> +int nfs_wait_atomic_killable(atomic_t *p)
+> +{
+> +       return nfs_wait_killable(TASK_KILLABLE);
+> +}
+> +
+>  /**
+>   * nfs_compat_user_ino64 - returns the user-visible inode number
+>   * @fileid: 64-bit fileid
+> @@ -699,7 +705,7 @@ static void nfs_init_lock_context(struct nfs_lock_context *l_ctx)
+>         l_ctx->lockowner.l_owner = current->files;
+>         l_ctx->lockowner.l_pid = current->tgid;
+>         INIT_LIST_HEAD(&l_ctx->list);
+> -       nfs_iocounter_init(&l_ctx->io_count);
+> +       atomic_set(&l_ctx->io_count, 0);
+>  }
 >
->         nfs4_state_protect_write(NFS_SERVER(hdr->inode)->nfs_client,
-> @@ -1578,7 +1579,7 @@ int nfs_initiate_commit(struct rpc_clnt *clnt, struct nfs_commit_data *data,
->                 .callback_ops = call_ops,
->                 .callback_data = data,
->                 .workqueue = nfsiod_workqueue,
-> -               .flags = RPC_TASK_ASYNC | flags,
-> +               .flags = RPC_TASK_ASYNC | RPC_TASK_TIMEOUT | flags,
->                 .priority = priority,
->         };
->         /* Set up the initial task struct.  */
-> --
-> 2.5.0
+>  static struct nfs_lock_context *__nfs_find_lock_context(struct nfs_open_context *ctx)
+> diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+> index 9dea85f..6c9b72f 100644
+> --- a/fs/nfs/internal.h
+> +++ b/fs/nfs/internal.h
+> @@ -238,7 +238,7 @@ extern void nfs_pgheader_init(struct nfs_pageio_descriptor *desc,
+>                               struct nfs_pgio_header *hdr,
+>                               void (*release)(struct nfs_pgio_header *hdr));
+>  void nfs_set_pgio_error(struct nfs_pgio_header *hdr, int error, loff_t pos);
+> -int nfs_iocounter_wait(struct nfs_io_counter *c);
+> +int nfs_iocounter_wait(struct nfs_lock_context *l_ctx);
 >
+>  extern const struct nfs_pageio_ops nfs_pgio_rw_ops;
+>  struct nfs_pgio_header *nfs_pgio_header_alloc(const struct nfs_rw_ops *);
+> @@ -252,12 +252,6 @@ void nfs_free_request(struct nfs_page *req);
+>  struct nfs_pgio_mirror *
+>  nfs_pgio_current_mirror(struct nfs_pageio_descriptor *desc);
+>
+> -static inline void nfs_iocounter_init(struct nfs_io_counter *c)
+> -{
+> -       c->flags = 0;
+> -       atomic_set(&c->io_count, 0);
+> -}
+> -
+>  static inline bool nfs_pgio_has_mirroring(struct nfs_pageio_descriptor *desc)
+>  {
+>         WARN_ON_ONCE(desc->pg_mirror_count < 1);
+> @@ -380,6 +374,7 @@ extern void nfs_clear_inode(struct inode *);
+>  extern void nfs_evict_inode(struct inode *);
+>  void nfs_zap_acl_cache(struct inode *inode);
+>  extern int nfs_wait_bit_killable(struct wait_bit_key *key, int mode);
+> +extern int nfs_wait_atomic_killable(atomic_t *p);
+>
+>  /* super.c */
+>  extern const struct super_operations nfs_sops;
+> diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+> index 452a011..abf1dad 100644
+> --- a/fs/nfs/pagelist.c
+> +++ b/fs/nfs/pagelist.c
+> @@ -101,53 +101,18 @@ nfs_page_free(struct nfs_page *p)
+>         kmem_cache_free(nfs_page_cachep, p);
+>  }
+>
+> -static void
+> -nfs_iocounter_inc(struct nfs_io_counter *c)
+> -{
+> -       atomic_inc(&c->io_count);
+> -}
+> -
+> -static void
+> -nfs_iocounter_dec(struct nfs_io_counter *c)
+> -{
+> -       if (atomic_dec_and_test(&c->io_count)) {
+> -               clear_bit(NFS_IO_INPROGRESS, &c->flags);
+> -               smp_mb__after_atomic();
+> -               wake_up_bit(&c->flags, NFS_IO_INPROGRESS);
+> -       }
+> -}
+> -
+> -static int
+> -__nfs_iocounter_wait(struct nfs_io_counter *c)
+> -{
+> -       wait_queue_head_t *wq = bit_waitqueue(&c->flags, NFS_IO_INPROGRESS);
+> -       DEFINE_WAIT_BIT(q, &c->flags, NFS_IO_INPROGRESS);
+> -       int ret = 0;
+> -
+> -       do {
+> -               prepare_to_wait(wq, &q.wait, TASK_KILLABLE);
+> -               set_bit(NFS_IO_INPROGRESS, &c->flags);
+> -               if (atomic_read(&c->io_count) == 0)
+> -                       break;
+> -               ret = nfs_wait_bit_killable(&q.key, TASK_KILLABLE);
+> -       } while (atomic_read(&c->io_count) != 0 && !ret);
+> -       finish_wait(wq, &q.wait);
+> -       return ret;
+> -}
+> -
+>  /**
+>   * nfs_iocounter_wait - wait for i/o to complete
+> - * @c: nfs_io_counter to use
+> + * @l_ctx: nfs_lock_context with io_counter to use
+>   *
+>   * returns -ERESTARTSYS if interrupted by a fatal signal.
+>   * Otherwise returns 0 once the io_count hits 0.
+>   */
+>  int
+> -nfs_iocounter_wait(struct nfs_io_counter *c)
+> +nfs_iocounter_wait(struct nfs_lock_context *l_ctx)
+>  {
+> -       if (atomic_read(&c->io_count) == 0)
+> -               return 0;
+> -       return __nfs_iocounter_wait(c);
+> +       return wait_on_atomic_t(&l_ctx->io_count, nfs_wait_atomic_killable,
+> +                       TASK_KILLABLE);
+>  }
+>
+>  /*
+> @@ -370,7 +335,7 @@ nfs_create_request(struct nfs_open_context *ctx, struct page *page,
+>                 return ERR_CAST(l_ctx);
+>         }
+>         req->wb_lock_context = l_ctx;
+> -       nfs_iocounter_inc(&l_ctx->io_count);
+> +       atomic_inc(&l_ctx->io_count);
+>
+>         /* Initialize the request struct. Initially, we assume a
+>          * long write-back delay. This will be adjusted in
+> @@ -431,7 +396,8 @@ static void nfs_clear_request(struct nfs_page *req)
+>                 req->wb_page = NULL;
+>         }
+>         if (l_ctx != NULL) {
+> -               nfs_iocounter_dec(&l_ctx->io_count);
+> +               if (atomic_dec_and_test(&l_ctx->io_count))
+> +                       wake_up_atomic_t(&l_ctx->io_count);
+>                 nfs_put_lock_context(l_ctx);
+>                 req->wb_lock_context = NULL;
+>         }
+> diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+> index c0e9614..de6ba5a 100644
+> --- a/include/linux/nfs_fs.h
+> +++ b/include/linux/nfs_fs.h
+> @@ -60,18 +60,12 @@ struct nfs_lockowner {
+>         pid_t l_pid;
+>  };
+>
+> -#define NFS_IO_INPROGRESS 0
+> -struct nfs_io_counter {
+> -       unsigned long flags;
+> -       atomic_t io_count;
+> -};
+> -
+>  struct nfs_lock_context {
+>         atomic_t count;
+>         struct list_head list;
+>         struct nfs_open_context *open_context;
+>         struct nfs_lockowner lockowner;
+> -       struct nfs_io_counter io_count;
+> +       atomic_t io_count;
+>  };
+>
+>  struct nfs4_state;
 
-This can cause read() write() and fsync() to fail with an ETIMEDOUT
-error, which is not allowed by POSIX.
-
-Cheers,
-  Trond
+Thanks Ben! This looks good.
