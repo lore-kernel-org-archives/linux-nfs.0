@@ -1,109 +1,23 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:53717 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751985AbcAEWol (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 5 Jan 2016 17:44:41 -0500
-Date: Tue, 5 Jan 2016 17:44:38 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: linux-nfs@vger.kernel.org, Stefan Hajnoczi <stefanha@redhat.com>,
-        skinsbursky@parallels.com,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: Re: [PATCH] nfsd: Fix nfsd leaks sunrpc module references
-Message-ID: <20160105224438.GA6873@fieldses.org>
-References: <20150911104517.GA4947@stefanha-thinkpad.home>
- <5689E3C9.1010708@gmail.com>
- <20160104223930.GE30315@fieldses.org>
- <568B1302.2080803@gmail.com>
+Received: from mx4.rus.uni-stuttgart.de ([129.69.192.4]:36594 "EHLO
+	mx4.rus.uni-stuttgart.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751842AbcAFBy5 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Jan 2016 20:54:57 -0500
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <568B1302.2080803@gmail.com>
+Subject: Charity/Donation
+To: Me <simon.peter@inm.uni-stuttgart.de>
+From: "Skoll, Jeff" <simon.peter@inm.uni-stuttgart.de>
+Date: Tue, 05 Jan 2016 19:46:13 -0500
+Reply-To: jeff.skoll@skollcharity.org
+Message-ID: <auto-000204360320@uni-stuttgart.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jan 05, 2016 at 08:49:06AM +0800, Kinglong Mee wrote:
-> On 1/5/2016 06:39, J. Bruce Fields wrote:
-> > On Mon, Jan 04, 2016 at 11:15:21AM +0800, Kinglong Mee wrote:
-> >> Stefan Hajnoczi reports,
-> >> nfsd leaks 3 references to the sunrpc module here:
-> >>
-> >>   # echo -n "asdf 1234" >/proc/fs/nfsd/portlist
-> >>   bash: echo: write error: Protocol not supported
-> >>
-> >> Now stop nfsd and try unloading the kernel modules:
-> >>
-> >>   # systemctl stop nfs-server
-> >>   # systemctl stop nfs
-> >>   # systemctl stop proc-fs-nfsd.mount
-> >>   # systemctl stop var-lib-nfs-rpc_pipefs.mount
-> >>   # rmmod nfsd
-> >>   # rmmod nfs_acl
-> >>   # rmmod lockd
-> >>   # rmmod auth_rpcgss
-> >>   # rmmod sunrpc
-> >>   rmmod: ERROR: Module sunrpc is in use
-> >>   # lsmod | grep rpc
-> >>   sunrpc                315392  3
-> >>
-> >> It is caused by nfsd don't cleanup rpcb program for nfsd
-> >> when destroying svc service after creating xprt fail.
-> >>
-> >> Reported-by: Stefan Hajnoczi <stefanha@redhat.com>
-> >> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
-> >> ---
-> >>  fs/nfsd/nfssvc.c | 7 +++----
-> >>  1 file changed, 3 insertions(+), 4 deletions(-)
-> >>
-> >> diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-> >> index ad4e237..543de5f 100644
-> >> --- a/fs/nfsd/nfssvc.c
-> >> +++ b/fs/nfsd/nfssvc.c
-> >> @@ -314,14 +314,13 @@ static void nfsd_last_thread(struct svc_serv *serv, struct net *net)
-> >>  	 * write_ports can create the server without actually starting
-> >>  	 * any threads--if we get shut down before any threads are
-> >>  	 * started, then nfsd_last_thread will be run before any of this
-> >> -	 * other initialization has been done.
-> >> +	 * other initialization has been done except the rpcb information.
-> >>  	 */
-> >> +	svc_rpcb_cleanup(serv, net);
-> > 
-> > Are you sure this is right?
-> > 
-> > For example, nfsd_create_serv calls svc_destroy on svc_bind failure, is
-> > it OK to call svc_rpcb_cleanup in that case?
-> 
-> The svc_rpcb_cleanup in nfsd_last_thread is called in svc_shutdown_net,
-> svc_destroy never call it.
-> 
-> svc_shutdown_net is called in nfsd_destroy only nfsd_serv->sv_nrthreads == 1.
-> 
-> So that, it's ok calling svc_rpcb_cleanup in nfsd_last_thread always.
-> 
-> Is there anything I missing?
+Hi,
+My name is Jeffrey Skoll, a philanthropist and the founder of one of the largest private foundations in the world. I believe strongly in ‘giving while living.’ I had one idea that never changed in my mind — that you should use your wealth to help people and I have decided to secretly give USD2.498 Million to a randomly selected individual. On receipt of this email, you should count yourself as the individual. Kindly get back to me at your earliest convenience, so I know your email address is valid.
 
-Oops, somehow I got nfsd_destroy and svc_destroy confused.
+Visit the web page to know more about me: http://www.theglobeandmail.com/news/national/meet-the-canadian-billionaire-whos-giving-it-all-away/article4209888/ or you can read an article of me on Wikipedia.
 
-Applying.  Thanks for your patience!
-
---b.
-
-> 
-> thanks,
-> Kinglong Mee
-> 
-> > 
-> > --b.
-> > 
-> >>  	if (!nn->nfsd_net_up)
-> >>  		return;
-> >> -	nfsd_shutdown_net(net);
-> >> -
-> >> -	svc_rpcb_cleanup(serv, net);
-> >>  
-> >> +	nfsd_shutdown_net(net);
-> >>  	printk(KERN_WARNING "nfsd: last server has exited, flushing export "
-> >>  			    "cache\n");
-> >>  	nfsd_export_flush(net);
-> >> -- 
-> >> 2.5.0
-> > 
+Regards,
+Jeffrey Skoll.
