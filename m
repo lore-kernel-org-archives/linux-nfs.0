@@ -1,163 +1,61 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f173.google.com ([209.85.223.173]:34235 "EHLO
-	mail-io0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751582AbcAFQjg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Jan 2016 11:39:36 -0500
-Received: by mail-io0-f173.google.com with SMTP id 1so176736648ion.1
-        for <linux-nfs@vger.kernel.org>; Wed, 06 Jan 2016 08:39:35 -0800 (PST)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Cc: Eric Dumazet <edumazet@google.com>
-Subject: [PATCH] SUNRPC: Fixup socket wait for memory
-Date: Wed,  6 Jan 2016 11:38:59 -0500
-Message-Id: <1452098339-3161-1-git-send-email-trond.myklebust@primarydata.com>
+Received: from mail-wm0-f53.google.com ([74.125.82.53]:38824 "EHLO
+	mail-wm0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751341AbcAFQtZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Jan 2016 11:49:25 -0500
+Received: by mail-wm0-f53.google.com with SMTP id b14so84126179wmb.1
+        for <linux-nfs@vger.kernel.org>; Wed, 06 Jan 2016 08:49:24 -0800 (PST)
+MIME-Version: 1.0
+In-Reply-To: <1452098339-3161-1-git-send-email-trond.myklebust@primarydata.com>
+References: <1452098339-3161-1-git-send-email-trond.myklebust@primarydata.com>
+Date: Wed, 6 Jan 2016 11:49:24 -0500
+Message-ID: <CANn89iJOo+L5GO87Qrt2imWNFr-A0Q4QnPksBaC0x58=sfZUqg@mail.gmail.com>
+Subject: Re: [PATCH] SUNRPC: Fixup socket wait for memory
+From: Eric Dumazet <edumazet@google.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We're seeing hangs in the NFS client code, with loops of the form:
+Hi Trond, sorry for the mess :(
 
- RPC: 30317 xmit incomplete (267368 left of 524448)
- RPC: 30317 call_status (status -11)
- RPC: 30317 call_transmit (status 0)
- RPC: 30317 xprt_prepare_transmit
- RPC: 30317 xprt_transmit(524448)
- RPC:       xs_tcp_send_request(267368) = -11
- RPC: 30317 xmit incomplete (267368 left of 524448)
- RPC: 30317 call_status (status -11)
- RPC: 30317 call_transmit (status 0)
- RPC: 30317 xprt_prepare_transmit
- RPC: 30317 xprt_transmit(524448)
+On Wed, Jan 6, 2016 at 11:38 AM, Trond Myklebust
+<trond.myklebust@primarydata.com> wrote:
+> We're seeing hangs in the NFS client code, with loops of the form:
+>
+>
+...
 
-Turns out commit ceb5d58b2170 ("net: fix sock_wake_async() rcu protection")
-moved SOCKWQ_ASYNC_NOSPACE out of sock->flags and into sk->sk_wq->flags,
-however it never tried to fix up the code in net/sunrpc.
+>  static void xs_write_space(struct sock *sk)
+>  {
+>         struct socket *sock;
 
-The new idiom is to use the flags in the RCU protected struct socket_wq.
-While we're at it, clear out the now redundant places where we set/clear
-SOCKWQ_ASYNC_NOSPACE and SOCK_NOSPACE. In principle, sk_stream_wait_memory()
-is supposed to set these for us, so we only need to clear them in the
-particular case of our ->write_space() callback.
+It seems you no longer need this @sock variable
 
-Fixes: ceb5d58b2170 ("net: fix sock_wake_async() rcu protection")
-Cc: Eric Dumazet <edumazet@google.com>
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- net/sunrpc/xprtsock.c | 44 +++++++++++++++++++-------------------------
- 1 file changed, 19 insertions(+), 25 deletions(-)
+> +       struct socket_wq *wq;
+>         struct rpc_xprt *xprt;
+>
+>         if (unlikely(!(sock = sk->sk_socket)))
 
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 2ffaf6a79499..bf4193d741b1 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -398,7 +398,6 @@ static int xs_sendpages(struct socket *sock, struct sockaddr *addr, int addrlen,
- 	if (unlikely(!sock))
- 		return -ENOTSOCK;
- 
--	clear_bit(SOCKWQ_ASYNC_NOSPACE, &sock->flags);
- 	if (base != 0) {
- 		addr = NULL;
- 		addrlen = 0;
-@@ -442,7 +441,6 @@ static void xs_nospace_callback(struct rpc_task *task)
- 	struct sock_xprt *transport = container_of(task->tk_rqstp->rq_xprt, struct sock_xprt, xprt);
- 
- 	transport->inet->sk_write_pending--;
--	clear_bit(SOCKWQ_ASYNC_NOSPACE, &transport->sock->flags);
- }
- 
- /**
-@@ -467,20 +465,11 @@ static int xs_nospace(struct rpc_task *task)
- 
- 	/* Don't race with disconnect */
- 	if (xprt_connected(xprt)) {
--		if (test_bit(SOCKWQ_ASYNC_NOSPACE, &transport->sock->flags)) {
--			/*
--			 * Notify TCP that we're limited by the application
--			 * window size
--			 */
--			set_bit(SOCK_NOSPACE, &transport->sock->flags);
--			sk->sk_write_pending++;
--			/* ...and wait for more buffer space */
--			xprt_wait_for_buffer_space(task, xs_nospace_callback);
--		}
--	} else {
--		clear_bit(SOCKWQ_ASYNC_NOSPACE, &transport->sock->flags);
-+		/* wait for more buffer space */
-+		sk->sk_write_pending++;
-+		xprt_wait_for_buffer_space(task, xs_nospace_callback);
-+	} else
- 		ret = -ENOTCONN;
--	}
- 
- 	spin_unlock_bh(&xprt->transport_lock);
- 
-@@ -616,9 +605,6 @@ process_status:
- 	case -EAGAIN:
- 		status = xs_nospace(task);
- 		break;
--	default:
--		dprintk("RPC:       sendmsg returned unrecognized error %d\n",
--			-status);
- 	case -ENETUNREACH:
- 	case -ENOBUFS:
- 	case -EPIPE:
-@@ -626,7 +612,10 @@ process_status:
- 	case -EPERM:
- 		/* When the server has died, an ICMP port unreachable message
- 		 * prompts ECONNREFUSED. */
--		clear_bit(SOCKWQ_ASYNC_NOSPACE, &transport->sock->flags);
-+		break;
-+	default:
-+		dprintk("RPC:       sendmsg returned unrecognized error %d\n",
-+			-status);
- 	}
- 
- 	return status;
-@@ -706,16 +695,16 @@ static int xs_tcp_send_request(struct rpc_task *task)
- 	case -EAGAIN:
- 		status = xs_nospace(task);
- 		break;
--	default:
--		dprintk("RPC:       sendmsg returned unrecognized error %d\n",
--			-status);
- 	case -ECONNRESET:
- 	case -ECONNREFUSED:
- 	case -ENOTCONN:
- 	case -EADDRINUSE:
- 	case -ENOBUFS:
- 	case -EPIPE:
--		clear_bit(SOCKWQ_ASYNC_NOSPACE, &transport->sock->flags);
-+		break;
-+	default:
-+		dprintk("RPC:       sendmsg returned unrecognized error %d\n",
-+			-status);
- 	}
- 
- 	return status;
-@@ -1610,6 +1599,7 @@ static void xs_tcp_state_change(struct sock *sk)
- static void xs_write_space(struct sock *sk)
- {
- 	struct socket *sock;
-+	struct socket_wq *wq;
- 	struct rpc_xprt *xprt;
- 
- 	if (unlikely(!(sock = sk->sk_socket)))
-@@ -1618,10 +1608,14 @@ static void xs_write_space(struct sock *sk)
- 
- 	if (unlikely(!(xprt = xprt_from_sock(sk))))
- 		return;
--	if (test_and_clear_bit(SOCKWQ_ASYNC_NOSPACE, &sock->flags) == 0)
--		return;
-+	rcu_read_lock();
-+	wq = rcu_dereference(sk->sk_wq);
-+	if (!wq || test_and_clear_bit(SOCKWQ_ASYNC_NOSPACE, &wq->flags) == 0)
-+		goto out;
- 
- 	xprt_write_space(xprt);
-+out:
-+	rcu_read_unlock();
- }
- 
- /**
--- 
-2.5.0
+if (!sk->sk_socket)
+        return;
 
+Maybe you don't even need to test sk_socket, but probably better not
+leave it for this fix.
+
+> @@ -1618,10 +1608,14 @@ static void xs_write_space(struct sock *sk)
+>
+>         if (unlikely(!(xprt = xprt_from_sock(sk))))
+>                 return;
+> -       if (test_and_clear_bit(SOCKWQ_ASYNC_NOSPACE, &sock->flags) == 0)
+> -               return;
+> +       rcu_read_lock();
+> +       wq = rcu_dereference(sk->sk_wq);
+> +       if (!wq || test_and_clear_bit(SOCKWQ_ASYNC_NOSPACE, &wq->flags) == 0)
+> +               goto out;
+>
+>         xprt_write_space(xprt);
+> +out:
+> +       rcu_read_unlock();
+>
