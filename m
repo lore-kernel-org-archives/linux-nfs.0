@@ -1,230 +1,163 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:35855 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751341AbcAFPkT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 6 Jan 2016 10:40:19 -0500
-From: Benjamin Coddington <bcodding@redhat.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>
-Cc: Jeff Layton <jlayton@poochiereds.net>, David Howells <dhowells@redhat.com>,
-        linux-nfs@vger.kernel.org
-Subject: [PATCH] NFS: Use wait_on_atomic_t() for unlock after readahead
-Date: Wed,  6 Jan 2016 10:40:18 -0500
-Message-Id: <2eb3d218075ac12cf0a9b18c75df03b15ed52491.1452094588.git.bcodding@redhat.com>
+Received: from mail-io0-f173.google.com ([209.85.223.173]:34235 "EHLO
+	mail-io0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751582AbcAFQjg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Jan 2016 11:39:36 -0500
+Received: by mail-io0-f173.google.com with SMTP id 1so176736648ion.1
+        for <linux-nfs@vger.kernel.org>; Wed, 06 Jan 2016 08:39:35 -0800 (PST)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Cc: Eric Dumazet <edumazet@google.com>
+Subject: [PATCH] SUNRPC: Fixup socket wait for memory
+Date: Wed,  6 Jan 2016 11:38:59 -0500
+Message-Id: <1452098339-3161-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The use of wait_on_atomic_t() for waiting on I/O to complete before
-unlocking allows us to git rid of the NFS_IO_INPROGRESS flag, and thus the
-nfs_iocounter's flags member, and finally the nfs_iocounter altogether.
-The count of I/O is moved to the lock context, and the counter
-increment/decrement functions become simple enough to open-code.
+We're seeing hangs in the NFS client code, with loops of the form:
 
-Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+ RPC: 30317 xmit incomplete (267368 left of 524448)
+ RPC: 30317 call_status (status -11)
+ RPC: 30317 call_transmit (status 0)
+ RPC: 30317 xprt_prepare_transmit
+ RPC: 30317 xprt_transmit(524448)
+ RPC:       xs_tcp_send_request(267368) = -11
+ RPC: 30317 xmit incomplete (267368 left of 524448)
+ RPC: 30317 call_status (status -11)
+ RPC: 30317 call_transmit (status 0)
+ RPC: 30317 xprt_prepare_transmit
+ RPC: 30317 xprt_transmit(524448)
+
+Turns out commit ceb5d58b2170 ("net: fix sock_wake_async() rcu protection")
+moved SOCKWQ_ASYNC_NOSPACE out of sock->flags and into sk->sk_wq->flags,
+however it never tried to fix up the code in net/sunrpc.
+
+The new idiom is to use the flags in the RCU protected struct socket_wq.
+While we're at it, clear out the now redundant places where we set/clear
+SOCKWQ_ASYNC_NOSPACE and SOCK_NOSPACE. In principle, sk_stream_wait_memory()
+is supposed to set these for us, so we only need to clear them in the
+particular case of our ->write_space() callback.
+
+Fixes: ceb5d58b2170 ("net: fix sock_wake_async() rcu protection")
+Cc: Eric Dumazet <edumazet@google.com>
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/file.c          |    2 +-
- fs/nfs/inode.c         |   18 ++++++++++++------
- fs/nfs/internal.h      |    9 ++-------
- fs/nfs/pagelist.c      |   48 +++++++-----------------------------------------
- include/linux/nfs_fs.h |    8 +-------
- 5 files changed, 23 insertions(+), 62 deletions(-)
+ net/sunrpc/xprtsock.c | 44 +++++++++++++++++++-------------------------
+ 1 file changed, 19 insertions(+), 25 deletions(-)
 
-diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index 93e2364..37ded36 100644
---- a/fs/nfs/file.c
-+++ b/fs/nfs/file.c
-@@ -756,7 +756,7 @@ do_unlk(struct file *filp, int cmd, struct file_lock *fl, int is_local)
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 2ffaf6a79499..bf4193d741b1 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -398,7 +398,6 @@ static int xs_sendpages(struct socket *sock, struct sockaddr *addr, int addrlen,
+ 	if (unlikely(!sock))
+ 		return -ENOTSOCK;
  
- 	l_ctx = nfs_get_lock_context(nfs_file_open_context(filp));
- 	if (!IS_ERR(l_ctx)) {
--		status = nfs_iocounter_wait(&l_ctx->io_count);
-+		status = nfs_iocounter_wait(l_ctx);
- 		nfs_put_lock_context(l_ctx);
- 		if (status < 0)
- 			return status;
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index c7e8b87..c1bfee4 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -71,19 +71,25 @@ nfs_fattr_to_ino_t(struct nfs_fattr *fattr)
- 	return nfs_fileid_to_ino_t(fattr->fileid);
+-	clear_bit(SOCKWQ_ASYNC_NOSPACE, &sock->flags);
+ 	if (base != 0) {
+ 		addr = NULL;
+ 		addrlen = 0;
+@@ -442,7 +441,6 @@ static void xs_nospace_callback(struct rpc_task *task)
+ 	struct sock_xprt *transport = container_of(task->tk_rqstp->rq_xprt, struct sock_xprt, xprt);
+ 
+ 	transport->inet->sk_write_pending--;
+-	clear_bit(SOCKWQ_ASYNC_NOSPACE, &transport->sock->flags);
  }
  
--/**
-- * nfs_wait_bit_killable - helper for functions that are sleeping on bit locks
-- * @word: long word containing the bit lock
-- */
--int nfs_wait_bit_killable(struct wait_bit_key *key, int mode)
-+static int nfs_wait_killable(int mode)
- {
- 	freezable_schedule_unsafe();
- 	if (signal_pending_state(mode, current))
- 		return -ERESTARTSYS;
- 	return 0;
- }
-+
-+int nfs_wait_bit_killable(struct wait_bit_key *key, int mode)
-+{
-+	return nfs_wait_killable(mode);
-+}
- EXPORT_SYMBOL_GPL(nfs_wait_bit_killable);
- 
-+int nfs_wait_atomic_killable(atomic_t *p)
-+{
-+	return nfs_wait_killable(TASK_KILLABLE);
-+}
-+
  /**
-  * nfs_compat_user_ino64 - returns the user-visible inode number
-  * @fileid: 64-bit fileid
-@@ -699,7 +705,7 @@ static void nfs_init_lock_context(struct nfs_lock_context *l_ctx)
- 	l_ctx->lockowner.l_owner = current->files;
- 	l_ctx->lockowner.l_pid = current->tgid;
- 	INIT_LIST_HEAD(&l_ctx->list);
--	nfs_iocounter_init(&l_ctx->io_count);
-+	atomic_set(&l_ctx->io_count, 0);
- }
+@@ -467,20 +465,11 @@ static int xs_nospace(struct rpc_task *task)
  
- static struct nfs_lock_context *__nfs_find_lock_context(struct nfs_open_context *ctx)
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 9dea85f..6c9b72f 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -238,7 +238,7 @@ extern void nfs_pgheader_init(struct nfs_pageio_descriptor *desc,
- 			      struct nfs_pgio_header *hdr,
- 			      void (*release)(struct nfs_pgio_header *hdr));
- void nfs_set_pgio_error(struct nfs_pgio_header *hdr, int error, loff_t pos);
--int nfs_iocounter_wait(struct nfs_io_counter *c);
-+int nfs_iocounter_wait(struct nfs_lock_context *l_ctx);
- 
- extern const struct nfs_pageio_ops nfs_pgio_rw_ops;
- struct nfs_pgio_header *nfs_pgio_header_alloc(const struct nfs_rw_ops *);
-@@ -252,12 +252,6 @@ void nfs_free_request(struct nfs_page *req);
- struct nfs_pgio_mirror *
- nfs_pgio_current_mirror(struct nfs_pageio_descriptor *desc);
- 
--static inline void nfs_iocounter_init(struct nfs_io_counter *c)
--{
--	c->flags = 0;
--	atomic_set(&c->io_count, 0);
--}
--
- static inline bool nfs_pgio_has_mirroring(struct nfs_pageio_descriptor *desc)
- {
- 	WARN_ON_ONCE(desc->pg_mirror_count < 1);
-@@ -380,6 +374,7 @@ extern void nfs_clear_inode(struct inode *);
- extern void nfs_evict_inode(struct inode *);
- void nfs_zap_acl_cache(struct inode *inode);
- extern int nfs_wait_bit_killable(struct wait_bit_key *key, int mode);
-+extern int nfs_wait_atomic_killable(atomic_t *p);
- 
- /* super.c */
- extern const struct super_operations nfs_sops;
-diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index 452a011..abf1dad 100644
---- a/fs/nfs/pagelist.c
-+++ b/fs/nfs/pagelist.c
-@@ -101,53 +101,18 @@ nfs_page_free(struct nfs_page *p)
- 	kmem_cache_free(nfs_page_cachep, p);
- }
- 
--static void
--nfs_iocounter_inc(struct nfs_io_counter *c)
--{
--	atomic_inc(&c->io_count);
--}
--
--static void
--nfs_iocounter_dec(struct nfs_io_counter *c)
--{
--	if (atomic_dec_and_test(&c->io_count)) {
--		clear_bit(NFS_IO_INPROGRESS, &c->flags);
--		smp_mb__after_atomic();
--		wake_up_bit(&c->flags, NFS_IO_INPROGRESS);
+ 	/* Don't race with disconnect */
+ 	if (xprt_connected(xprt)) {
+-		if (test_bit(SOCKWQ_ASYNC_NOSPACE, &transport->sock->flags)) {
+-			/*
+-			 * Notify TCP that we're limited by the application
+-			 * window size
+-			 */
+-			set_bit(SOCK_NOSPACE, &transport->sock->flags);
+-			sk->sk_write_pending++;
+-			/* ...and wait for more buffer space */
+-			xprt_wait_for_buffer_space(task, xs_nospace_callback);
+-		}
+-	} else {
+-		clear_bit(SOCKWQ_ASYNC_NOSPACE, &transport->sock->flags);
++		/* wait for more buffer space */
++		sk->sk_write_pending++;
++		xprt_wait_for_buffer_space(task, xs_nospace_callback);
++	} else
+ 		ret = -ENOTCONN;
 -	}
--}
--
--static int
--__nfs_iocounter_wait(struct nfs_io_counter *c)
--{
--	wait_queue_head_t *wq = bit_waitqueue(&c->flags, NFS_IO_INPROGRESS);
--	DEFINE_WAIT_BIT(q, &c->flags, NFS_IO_INPROGRESS);
--	int ret = 0;
--
--	do {
--		prepare_to_wait(wq, &q.wait, TASK_KILLABLE);
--		set_bit(NFS_IO_INPROGRESS, &c->flags);
--		if (atomic_read(&c->io_count) == 0)
--			break;
--		ret = nfs_wait_bit_killable(&q.key, TASK_KILLABLE);
--	} while (atomic_read(&c->io_count) != 0 && !ret);
--	finish_wait(wq, &q.wait);
--	return ret;
--}
--
- /**
-  * nfs_iocounter_wait - wait for i/o to complete
-- * @c: nfs_io_counter to use
-+ * @l_ctx: nfs_lock_context with io_counter to use
-  *
-  * returns -ERESTARTSYS if interrupted by a fatal signal.
-  * Otherwise returns 0 once the io_count hits 0.
-  */
- int
--nfs_iocounter_wait(struct nfs_io_counter *c)
-+nfs_iocounter_wait(struct nfs_lock_context *l_ctx)
+ 
+ 	spin_unlock_bh(&xprt->transport_lock);
+ 
+@@ -616,9 +605,6 @@ process_status:
+ 	case -EAGAIN:
+ 		status = xs_nospace(task);
+ 		break;
+-	default:
+-		dprintk("RPC:       sendmsg returned unrecognized error %d\n",
+-			-status);
+ 	case -ENETUNREACH:
+ 	case -ENOBUFS:
+ 	case -EPIPE:
+@@ -626,7 +612,10 @@ process_status:
+ 	case -EPERM:
+ 		/* When the server has died, an ICMP port unreachable message
+ 		 * prompts ECONNREFUSED. */
+-		clear_bit(SOCKWQ_ASYNC_NOSPACE, &transport->sock->flags);
++		break;
++	default:
++		dprintk("RPC:       sendmsg returned unrecognized error %d\n",
++			-status);
+ 	}
+ 
+ 	return status;
+@@ -706,16 +695,16 @@ static int xs_tcp_send_request(struct rpc_task *task)
+ 	case -EAGAIN:
+ 		status = xs_nospace(task);
+ 		break;
+-	default:
+-		dprintk("RPC:       sendmsg returned unrecognized error %d\n",
+-			-status);
+ 	case -ECONNRESET:
+ 	case -ECONNREFUSED:
+ 	case -ENOTCONN:
+ 	case -EADDRINUSE:
+ 	case -ENOBUFS:
+ 	case -EPIPE:
+-		clear_bit(SOCKWQ_ASYNC_NOSPACE, &transport->sock->flags);
++		break;
++	default:
++		dprintk("RPC:       sendmsg returned unrecognized error %d\n",
++			-status);
+ 	}
+ 
+ 	return status;
+@@ -1610,6 +1599,7 @@ static void xs_tcp_state_change(struct sock *sk)
+ static void xs_write_space(struct sock *sk)
  {
--	if (atomic_read(&c->io_count) == 0)
--		return 0;
--	return __nfs_iocounter_wait(c);
-+	return wait_on_atomic_t(&l_ctx->io_count, nfs_wait_atomic_killable,
-+			TASK_KILLABLE);
+ 	struct socket *sock;
++	struct socket_wq *wq;
+ 	struct rpc_xprt *xprt;
+ 
+ 	if (unlikely(!(sock = sk->sk_socket)))
+@@ -1618,10 +1608,14 @@ static void xs_write_space(struct sock *sk)
+ 
+ 	if (unlikely(!(xprt = xprt_from_sock(sk))))
+ 		return;
+-	if (test_and_clear_bit(SOCKWQ_ASYNC_NOSPACE, &sock->flags) == 0)
+-		return;
++	rcu_read_lock();
++	wq = rcu_dereference(sk->sk_wq);
++	if (!wq || test_and_clear_bit(SOCKWQ_ASYNC_NOSPACE, &wq->flags) == 0)
++		goto out;
+ 
+ 	xprt_write_space(xprt);
++out:
++	rcu_read_unlock();
  }
  
- /*
-@@ -370,7 +335,7 @@ nfs_create_request(struct nfs_open_context *ctx, struct page *page,
- 		return ERR_CAST(l_ctx);
- 	}
- 	req->wb_lock_context = l_ctx;
--	nfs_iocounter_inc(&l_ctx->io_count);
-+	atomic_inc(&l_ctx->io_count);
- 
- 	/* Initialize the request struct. Initially, we assume a
- 	 * long write-back delay. This will be adjusted in
-@@ -431,7 +396,8 @@ static void nfs_clear_request(struct nfs_page *req)
- 		req->wb_page = NULL;
- 	}
- 	if (l_ctx != NULL) {
--		nfs_iocounter_dec(&l_ctx->io_count);
-+		if (atomic_dec_and_test(&l_ctx->io_count))
-+			wake_up_atomic_t(&l_ctx->io_count);
- 		nfs_put_lock_context(l_ctx);
- 		req->wb_lock_context = NULL;
- 	}
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index c0e9614..de6ba5a 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -60,18 +60,12 @@ struct nfs_lockowner {
- 	pid_t l_pid;
- };
- 
--#define NFS_IO_INPROGRESS 0
--struct nfs_io_counter {
--	unsigned long flags;
--	atomic_t io_count;
--};
--
- struct nfs_lock_context {
- 	atomic_t count;
- 	struct list_head list;
- 	struct nfs_open_context *open_context;
- 	struct nfs_lockowner lockowner;
--	struct nfs_io_counter io_count;
-+	atomic_t io_count;
- };
- 
- struct nfs4_state;
+ /**
 -- 
-1.7.1
+2.5.0
 
