@@ -1,75 +1,75 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-oi0-f50.google.com ([209.85.218.50]:34847 "EHLO
-	mail-oi0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751582AbcAFRU2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Jan 2016 12:20:28 -0500
-Received: by mail-oi0-f50.google.com with SMTP id l9so269518800oia.2
-        for <linux-nfs@vger.kernel.org>; Wed, 06 Jan 2016 09:20:27 -0800 (PST)
+Received: from mail-ob0-f169.google.com ([209.85.214.169]:35408 "EHLO
+	mail-ob0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751595AbcAFRbg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Jan 2016 12:31:36 -0500
+Received: by mail-ob0-f169.google.com with SMTP id xn1so31162036obc.2
+        for <linux-nfs@vger.kernel.org>; Wed, 06 Jan 2016 09:31:36 -0800 (PST)
 MIME-Version: 1.0
-In-Reply-To: <CANn89iJOo+L5GO87Qrt2imWNFr-A0Q4QnPksBaC0x58=sfZUqg@mail.gmail.com>
-References: <1452098339-3161-1-git-send-email-trond.myklebust@primarydata.com>
-	<CANn89iJOo+L5GO87Qrt2imWNFr-A0Q4QnPksBaC0x58=sfZUqg@mail.gmail.com>
-Date: Wed, 6 Jan 2016 12:20:27 -0500
-Message-ID: <CAHQdGtSUvan-7R0zS99kD7Xi8ogDsZQNNz-EQs5t1QcGq7finw@mail.gmail.com>
-Subject: Re: [PATCH] SUNRPC: Fixup socket wait for memory
+In-Reply-To: <1452099090-31729-2-git-send-email-tigran.mkrtchyan@desy.de>
+References: <1452099090-31729-1-git-send-email-tigran.mkrtchyan@desy.de>
+	<1452099090-31729-2-git-send-email-tigran.mkrtchyan@desy.de>
+Date: Wed, 6 Jan 2016 12:31:36 -0500
+Message-ID: <CAHQdGtRpXLgAJ2xWUiCaz6XeWoWhN-TXY2Yc6dDFoPSe47Ok4w@mail.gmail.com>
+Subject: Re: [PATCH] nfs: set RPC_TASK_TIMEOUT on rpc task to separate TIMEOUT
+ from IO errors
 From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Eric Dumazet <edumazet@google.com>
+To: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
 Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jan 6, 2016 at 11:49 AM, Eric Dumazet <edumazet@google.com> wrote:
-> Hi Trond, sorry for the mess :(
-
-No problem. It did force me to look again at that part of the code; it
-turns out most of the stuff we were open coding is now handled in the
-socket code itself.
-
-> On Wed, Jan 6, 2016 at 11:38 AM, Trond Myklebust
-> <trond.myklebust@primarydata.com> wrote:
->> We're seeing hangs in the NFS client code, with loops of the form:
->>
->>
-> ...
+On Wed, Jan 6, 2016 at 11:51 AM, Tigran Mkrtchyan
+<tigran.mkrtchyan@desy.de> wrote:
+> to help debug nfs problems
 >
->>  static void xs_write_space(struct sock *sk)
->>  {
->>         struct socket *sock;
+> Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+> ---
+>  fs/nfs/read.c  | 2 +-
+>  fs/nfs/write.c | 3 ++-
+>  2 files changed, 3 insertions(+), 2 deletions(-)
 >
-> It seems you no longer need this @sock variable
+> diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+> index 0a5e33f..0fae3f3 100644
+> --- a/fs/nfs/read.c
+> +++ b/fs/nfs/read.c
+> @@ -191,7 +191,7 @@ static void nfs_initiate_read(struct nfs_pgio_header *hdr,
+>         struct inode *inode = hdr->inode;
+>         int swap_flags = IS_SWAPFILE(inode) ? NFS_RPC_SWAPFLAGS : 0;
 >
->> +       struct socket_wq *wq;
->>         struct rpc_xprt *xprt;
->>
->>         if (unlikely(!(sock = sk->sk_socket)))
+> -       task_setup_data->flags |= swap_flags;
+> +       task_setup_data->flags |= swap_flags | RPC_TASK_TIMEOUT;
+>         rpc_ops->read_setup(hdr, msg);
+>  }
 >
-> if (!sk->sk_socket)
->         return;
-
-Fixed... Thanks!
-
+> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+> index 7b93164..05c9963 100644
+> --- a/fs/nfs/write.c
+> +++ b/fs/nfs/write.c
+> @@ -1296,6 +1296,7 @@ static void nfs_initiate_write(struct nfs_pgio_header *hdr,
+>         int priority = flush_task_priority(how);
 >
-> Maybe you don't even need to test sk_socket, but probably better not
-> leave it for this fix.
+>         task_setup_data->priority = priority;
+> +       task_setup_data->flags |= RPC_TASK_TIMEOUT;
+>         rpc_ops->write_setup(hdr, msg);
+>
+>         nfs4_state_protect_write(NFS_SERVER(hdr->inode)->nfs_client,
+> @@ -1578,7 +1579,7 @@ int nfs_initiate_commit(struct rpc_clnt *clnt, struct nfs_commit_data *data,
+>                 .callback_ops = call_ops,
+>                 .callback_data = data,
+>                 .workqueue = nfsiod_workqueue,
+> -               .flags = RPC_TASK_ASYNC | flags,
+> +               .flags = RPC_TASK_ASYNC | RPC_TASK_TIMEOUT | flags,
+>                 .priority = priority,
+>         };
+>         /* Set up the initial task struct.  */
+> --
+> 2.5.0
+>
 
-Yes. I'll look again at future cleanups. For now, I just want to get
-4.4 working again.
+This can cause read() write() and fsync() to fail with an ETIMEDOUT
+error, which is not allowed by POSIX.
 
->> @@ -1618,10 +1608,14 @@ static void xs_write_space(struct sock *sk)
->>
->>         if (unlikely(!(xprt = xprt_from_sock(sk))))
->>                 return;
->> -       if (test_and_clear_bit(SOCKWQ_ASYNC_NOSPACE, &sock->flags) == 0)
->> -               return;
->> +       rcu_read_lock();
->> +       wq = rcu_dereference(sk->sk_wq);
->> +       if (!wq || test_and_clear_bit(SOCKWQ_ASYNC_NOSPACE, &wq->flags) == 0)
->> +               goto out;
->>
->>         xprt_write_space(xprt);
->> +out:
->> +       rcu_read_unlock();
->>
-
-Thanks for the review!
+Cheers,
+  Trond
