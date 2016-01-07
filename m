@@ -1,255 +1,94 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:54631 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753355AbcAGVIW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 7 Jan 2016 16:08:22 -0500
-Date: Thu, 7 Jan 2016 16:08:20 -0500
-To: Alexander Viro <viro@zeniv.linux.org.uk>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: [PATCH] nfsd: don't hold i_mutex over userspace upcalls
-Message-ID: <20160107210820.GC19011@fieldses.org>
+Received: from mail-wm0-f50.google.com ([74.125.82.50]:35394 "EHLO
+	mail-wm0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752593AbcAGXCj convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Jan 2016 18:02:39 -0500
+Received: by mail-wm0-f50.google.com with SMTP id f206so115663025wmf.0
+        for <linux-nfs@vger.kernel.org>; Thu, 07 Jan 2016 15:02:39 -0800 (PST)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-From: bfields@fieldses.org (J. Bruce Fields)
+From: Robb <rbarr138@gmail.com>
+Date: Thu, 7 Jan 2016 17:02:19 -0600
+Message-ID: <CAOHJ0jQyGD=RHCNSTSsOYWCy=o4ryw2X2NCcqs2DmMrXRSFdGg@mail.gmail.com>
+Subject: NFS v4, are special steps required for uid/gid to work, even if they
+ are the same on server and client?
+To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: NeilBrown <neilb@suse.de>
+I have a NFS server running on CentOS7 nfs-utils-1.3.0-0.21.el7.x86_64
 
-We need information about exports when crossing mountpoints during
-lookup or NFSv4 readdir.  If we don't already have that information
-cached, we may have to ask (and wait for) rpc.mountd.
+Basically the oddity I am finding is as follows:
+server and client have same user and group with same uid's and gid's
 
-In both cases we currently hold the i_mutex on the parent of the
-directory we're asking rpc.mountd about.  We've seen situations where
-rpc.mountd performs some operation on that directory that tries to take
-the i_mutex again, resulting in deadlock.
+Client can only write to an exported folder if it "other/all" permission
+is set to write.  I can get around this by using all_squash and setting
+the anon id's but this isn't really what I want.
 
-With some care, we may be able to avoid that in rpc.mountd.  But it
-seems better just to avoid holding a mutex while waiting on userspace.
+Am I missing a step that would allow this to work without all_squash.
 
-It appears that lookup_one_len is pretty much the only operation that
-needs the i_mutex.  So we could just drop the i_mutex elsewhere and do
-something like
+This is my setup:
+server0: where nfs-server is running
+client:  where export is mounted
 
-	mutex_lock()
-	lookup_one_len()
-	mutex_unlock()
 
-In many cases though the lookup would have been cached and not required
-the i_mutex, so it's more efficient to create a lookup_one_len() variant
-that only takes the i_mutex when necessary.
+Groups and uids all match on both machines
+[root@server0 ~]# groups user
+user : user common
+[root@server0 ~]# cat /etc/passwd | grep 'common\|^user'
+common:x:20000:20000:common:/home/common:/bin/bash
+user:x:1000:1000::/:/sbin/nologin
 
-Signed-off-by: NeilBrown <neilb@suse.de>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/namei.c            | 74 +++++++++++++++++++++++++++++++++++++++++++++++++++
- fs/nfsd/nfs3xdr.c     |  2 +-
- fs/nfsd/nfs4xdr.c     |  8 +++---
- fs/nfsd/vfs.c         | 23 +++++++---------
- include/linux/namei.h |  1 +
- 5 files changed, 89 insertions(+), 19 deletions(-)
+[user@client ~] $ groups user
+user : user lp common
+[user@client ~] $ cat /etc/passwd | grep 'common\|^user'
+user:x:1000:1000:user:/home/user:/bin/bash
+common:x:20000:20000::/:/sbin/nologin
 
-Could we get this reviewed for 4.5?
 
---b.
+server0 setup:
 
-diff --git a/fs/namei.c b/fs/namei.c
-index d84d7c7515fc..174ef4f106cd 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -2279,6 +2279,8 @@ EXPORT_SYMBOL(vfs_path_lookup);
-  *
-  * Note that this routine is purely a helper for filesystem usage and should
-  * not be called by generic code.
-+ *
-+ * The caller must hold base->i_mutex.
-  */
- struct dentry *lookup_one_len(const char *name, struct dentry *base, int len)
- {
-@@ -2322,6 +2324,78 @@ struct dentry *lookup_one_len(const char *name, struct dentry *base, int len)
- }
- EXPORT_SYMBOL(lookup_one_len);
- 
-+/**
-+ * lookup_one_len_unlocked - filesystem helper to lookup single pathname component
-+ * @name:	pathname component to lookup
-+ * @base:	base directory to lookup from
-+ * @len:	maximum length @len should be interpreted to
-+ *
-+ * Note that this routine is purely a helper for filesystem usage and should
-+ * not be called by generic code.
-+ *
-+ * Unlike lookup_one_len, it should be called without the parent
-+ * i_mutex held, and will take the i_mutex itself if necessary.
-+ */
-+struct dentry *lookup_one_len_unlocked(const char *name,
-+				       struct dentry *base, int len)
-+{
-+	struct qstr this;
-+	unsigned int c;
-+	int err;
-+	struct dentry *ret;
-+
-+	this.name = name;
-+	this.len = len;
-+	this.hash = full_name_hash(name, len);
-+	if (!len)
-+		return ERR_PTR(-EACCES);
-+
-+	if (unlikely(name[0] == '.')) {
-+		if (len < 2 || (len == 2 && name[1] == '.'))
-+			return ERR_PTR(-EACCES);
-+	}
-+
-+	while (len--) {
-+		c = *(const unsigned char *)name++;
-+		if (c == '/' || c == '\0')
-+			return ERR_PTR(-EACCES);
-+	}
-+	/*
-+	 * See if the low-level filesystem might want
-+	 * to use its own hash..
-+	 */
-+	if (base->d_flags & DCACHE_OP_HASH) {
-+		int err = base->d_op->d_hash(base, &this);
-+		if (err < 0)
-+			return ERR_PTR(err);
-+	}
-+
-+	err = inode_permission(base->d_inode, MAY_EXEC);
-+	if (err)
-+		return ERR_PTR(err);
-+
-+	ret = __d_lookup(base, &this);
-+	if (ret)
-+		return ret;
-+	/*
-+	 * __d_lookup() is used to try to get a quick answer and avoid the
-+	 * mutex.  A false-negative does no harm.
-+	 */
-+	ret = __d_lookup(base, &this);
-+	if (ret && ret->d_flags & DCACHE_OP_REVALIDATE) {
-+		dput(ret);
-+		ret = NULL;
-+	}
-+	if (ret)
-+		return ret;
-+
-+	mutex_lock(&base->d_inode->i_mutex);
-+	ret =  __lookup_hash(&this, base, 0);
-+	mutex_unlock(&base->d_inode->i_mutex);
-+	return ret;
-+}
-+EXPORT_SYMBOL(lookup_one_len_unlocked);
-+
- int user_path_at_empty(int dfd, const char __user *name, unsigned flags,
- 		 struct path *path, int *empty)
- {
-diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
-index 00575d776d91..2246454dec76 100644
---- a/fs/nfsd/nfs3xdr.c
-+++ b/fs/nfsd/nfs3xdr.c
-@@ -823,7 +823,7 @@ compose_entry_fh(struct nfsd3_readdirres *cd, struct svc_fh *fhp,
- 		} else
- 			dchild = dget(dparent);
- 	} else
--		dchild = lookup_one_len(name, dparent, namlen);
-+		dchild = lookup_one_len_unlocked(name, dparent, namlen);
- 	if (IS_ERR(dchild))
- 		return rv;
- 	if (d_mountpoint(dchild))
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 51c9e9ca39a4..325521ce389a 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -2838,14 +2838,14 @@ nfsd4_encode_dirent_fattr(struct xdr_stream *xdr, struct nfsd4_readdir *cd,
- 	__be32 nfserr;
- 	int ignore_crossmnt = 0;
- 
--	dentry = lookup_one_len(name, cd->rd_fhp->fh_dentry, namlen);
-+	dentry = lookup_one_len_unlocked(name, cd->rd_fhp->fh_dentry, namlen);
- 	if (IS_ERR(dentry))
- 		return nfserrno(PTR_ERR(dentry));
- 	if (d_really_is_negative(dentry)) {
- 		/*
--		 * nfsd_buffered_readdir drops the i_mutex between
--		 * readdir and calling this callback, leaving a window
--		 * where this directory entry could have gone away.
-+		 * we're not holding the i_mutex here, so there's
-+		 * a window where this directory entry could have gone
-+		 * away.
- 		 */
- 		dput(dentry);
- 		return nfserr_noent;
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 994d66fbb446..4212aaacbb55 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -217,10 +217,16 @@ nfsd_lookup_dentry(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 		host_err = PTR_ERR(dentry);
- 		if (IS_ERR(dentry))
- 			goto out_nfserr;
--		/*
--		 * check if we have crossed a mount point ...
--		 */
- 		if (nfsd_mountpoint(dentry, exp)) {
-+			/*
-+			 * We don't need the i_mutex after all.  It's
-+			 * still possible we could open this (regular
-+			 * files can be mountpoints too), but the
-+			 * i_mutex is just there to prevent renames of
-+			 * something that we might be about to delegate,
-+			 * and a mountpoint won't be renamed:
-+			 */
-+			fh_unlock(fhp);
- 			if ((host_err = nfsd_cross_mnt(rqstp, &dentry, &exp))) {
- 				dput(dentry);
- 				goto out_nfserr;
-@@ -1809,7 +1815,6 @@ static __be32 nfsd_buffered_readdir(struct file *file, nfsd_filldir_t func,
- 	offset = *offsetp;
- 
- 	while (1) {
--		struct inode *dir_inode = file_inode(file);
- 		unsigned int reclen;
- 
- 		cdp->err = nfserr_eof; /* will be cleared on successful read */
-@@ -1828,15 +1833,6 @@ static __be32 nfsd_buffered_readdir(struct file *file, nfsd_filldir_t func,
- 		if (!size)
- 			break;
- 
--		/*
--		 * Various filldir functions may end up calling back into
--		 * lookup_one_len() and the file system's ->lookup() method.
--		 * These expect i_mutex to be held, as it would within readdir.
--		 */
--		host_err = mutex_lock_killable(&dir_inode->i_mutex);
--		if (host_err)
--			break;
--
- 		de = (struct buffered_dirent *)buf.dirent;
- 		while (size > 0) {
- 			offset = de->offset;
-@@ -1853,7 +1849,6 @@ static __be32 nfsd_buffered_readdir(struct file *file, nfsd_filldir_t func,
- 			size -= reclen;
- 			de = (struct buffered_dirent *)((char *)de + reclen);
- 		}
--		mutex_unlock(&dir_inode->i_mutex);
- 		if (size > 0) /* We bailed out early */
- 			break;
- 
-diff --git a/include/linux/namei.h b/include/linux/namei.h
-index d8c6334cd150..d0f25d81b46a 100644
---- a/include/linux/namei.h
-+++ b/include/linux/namei.h
-@@ -77,6 +77,7 @@ extern struct dentry *kern_path_locked(const char *, struct path *);
- extern int kern_path_mountpoint(int, const char *, struct path *, unsigned int);
- 
- extern struct dentry *lookup_one_len(const char *, struct dentry *, int);
-+extern struct dentry *lookup_one_len_unlocked(const char *, struct dentry *, int);
- 
- extern int follow_down_one(struct path *);
- extern int follow_down(struct path *);
--- 
-2.5.0
+[root@server0 ~]# ls -lr /test*
+drwxrwxrwx. 2 common common 6 Jan  7 16:05 /test_squash/chmod777
+drwxrwxr-x. 2 common common 6 Jan  7 16:06 /test_squash/chmod775
+drwxrwxrwx. 2 common common 6 Jan  7 16:05 /test/chmod777
+drwxrwxr-x. 2 common common 6 Jan  7 16:05 /test/chmod775
 
+
+[root@server0 ~]# cat /etc/exports
+/test        192.168.1.0/24(rw,async)
+/test_squash 192.168.1.0/24(rw,async,all_squash,anonuid=20000,anongid=20000)
+
+[root@server0 ~]# systemctl restart nfs-server
+
+
+client setup:
+[user@client ~] $ cat /etc/fstab | grep '^server'
+server0:/test        /test            nfs     defaults        0 0
+server0:/test_squash /test_squash     nfs     defaults        0 0
+
+[user@client ~] $ sudo mount /test
+[user@client ~] $ sudo mount /test_squash
+
+[user@client ~] 1 $ touch /test_squash/chmod777/file
+[user@client ~] $ touch /test_squash/chmod775/file
+[user@client ~] $ touch /test/chmod777/file
+[user@client ~] $ touch /test/chmod775/file
+touch: cannot touch ‘/test/chmod775/file’: Permission denied
+
+[user@client ~] $ ls -lR /test*
+drwxrwxr-x. 2 common common  6 Jan  7 16:05 /test/chmod775
+drwxrwxrwx. 2 common common 17 Jan  7 16:27 /test/chmod777
+-rw-rw-r--. 1 user   user    0 Jan  7 16:27 /test/chmod777/file
+drwxrwxr-x. 2 common common 17 Jan  7 16:28 /test_squash/chmod775
+drwxrwxrwx. 2 common common 17 Jan  7 16:28 /test_squash/chmod777
+-rw-rw-r--. 1 common common  0 Jan  7 16:28 /test_squash/chmod775/file
+-rw-rw-r--. 1 common common  0 Jan  7 16:28 /test_squash/chmod777/file
+
+
+
+So my real question is why cant user:user create a file in /test/chmod775 ?
+
+Thanks for any help.
+
+-Robb
