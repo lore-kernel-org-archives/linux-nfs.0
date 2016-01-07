@@ -1,15 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f170.google.com ([209.85.223.170]:34367 "EHLO
-	mail-io0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752052AbcAGTtO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Jan 2016 14:49:14 -0500
-Subject: [PATCH v5 03/10] svcrdma: Improve allocation of struct
- svc_rdma_op_ctxt
+Received: from mail-io0-f175.google.com ([209.85.223.175]:32829 "EHLO
+	mail-io0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752052AbcAGTtW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Jan 2016 14:49:22 -0500
+Subject: [PATCH v5 04/10] svcrdma: Improve allocation of struct
+ svc_rdma_req_map
 From: Chuck Lever <chuck.lever@oracle.com>
 To: bfields@fieldses.org, dledford@redhat.com
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Thu, 07 Jan 2016 14:49:12 -0500
-Message-ID: <20160107194912.2662.96159.stgit@klimt.1015granger.net>
+Date: Thu, 07 Jan 2016 14:49:20 -0500
+Message-ID: <20160107194920.2662.11755.stgit@klimt.1015granger.net>
 In-Reply-To: <20160107194251.2662.88158.stgit@klimt.1015granger.net>
 References: <20160107194251.2662.88158.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
@@ -17,212 +17,207 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When the maximum payload size of NFS READ and WRITE was increased
-by commit cc9a903d915c ("svcrdma: Change maximum server payload back
-to RPCSVC_MAXPAYLOAD"), the size of struct svc_rdma_op_ctxt
-increased to over 6KB (on x86_64). That makes allocating one of
-these from a kmem_cache more likely to fail in situations when
-system memory is exhausted.
-
-Since I'm about to add a caller where this allocation must always
-work _and_ it cannot sleep, pre-allocate ctxts for each connection.
-
-Another motivation for this change is that NFSv4.x servers are
-required by specification not to drop NFS requests. Pre-allocating
-memory resources reduces the likelihood of a drop.
+To ensure this allocation cannot fail and will not sleep,
+pre-allocate the req_map structures per-connection.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 Acked-by: Bruce Fields <bfields@fieldses.org>
 ---
- include/linux/sunrpc/svc_rdma.h          |    6 +-
- net/sunrpc/xprtrdma/svc_rdma_transport.c |  102 ++++++++++++++++++++++++++----
- 2 files changed, 94 insertions(+), 14 deletions(-)
+ include/linux/sunrpc/svc_rdma.h          |    8 ++-
+ net/sunrpc/xprtrdma/svc_rdma_sendto.c    |    6 +-
+ net/sunrpc/xprtrdma/svc_rdma_transport.c |   85 ++++++++++++++++++++++++++----
+ 3 files changed, 84 insertions(+), 15 deletions(-)
 
 diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
-index f869807..be2804b 100644
+index be2804b..05bf4fe 100644
 --- a/include/linux/sunrpc/svc_rdma.h
 +++ b/include/linux/sunrpc/svc_rdma.h
-@@ -69,6 +69,7 @@ extern atomic_t rdma_stat_sq_prod;
-  * completes.
-  */
- struct svc_rdma_op_ctxt {
+@@ -113,6 +113,7 @@ struct svc_rdma_fastreg_mr {
+ 	struct list_head frmr_list;
+ };
+ struct svc_rdma_req_map {
 +	struct list_head free;
- 	struct svc_rdma_op_ctxt *read_hdr;
- 	struct svc_rdma_fastreg_mr *frmr;
- 	int hdr_count;
-@@ -141,7 +142,10 @@ struct svcxprt_rdma {
- 	struct ib_pd         *sc_pd;
+ 	unsigned long count;
+ 	union {
+ 		struct kvec sge[RPCSVC_MAXPAGES];
+@@ -145,6 +146,8 @@ struct svcxprt_rdma {
+ 	spinlock_t	     sc_ctxt_lock;
+ 	struct list_head     sc_ctxts;
+ 	int		     sc_ctxt_used;
++	spinlock_t	     sc_map_lock;
++	struct list_head     sc_maps;
  
- 	atomic_t	     sc_dma_used;
--	atomic_t	     sc_ctxt_used;
-+	spinlock_t	     sc_ctxt_lock;
-+	struct list_head     sc_ctxts;
-+	int		     sc_ctxt_used;
-+
  	struct list_head     sc_rq_dto_q;
  	spinlock_t	     sc_rq_dto_lock;
- 	struct ib_qp         *sc_qp;
+@@ -223,8 +226,9 @@ extern int svc_rdma_create_listen(struct svc_serv *, int, struct sockaddr *);
+ extern struct svc_rdma_op_ctxt *svc_rdma_get_context(struct svcxprt_rdma *);
+ extern void svc_rdma_put_context(struct svc_rdma_op_ctxt *, int);
+ extern void svc_rdma_unmap_dma(struct svc_rdma_op_ctxt *ctxt);
+-extern struct svc_rdma_req_map *svc_rdma_get_req_map(void);
+-extern void svc_rdma_put_req_map(struct svc_rdma_req_map *);
++extern struct svc_rdma_req_map *svc_rdma_get_req_map(struct svcxprt_rdma *);
++extern void svc_rdma_put_req_map(struct svcxprt_rdma *,
++				 struct svc_rdma_req_map *);
+ extern struct svc_rdma_fastreg_mr *svc_rdma_get_frmr(struct svcxprt_rdma *);
+ extern void svc_rdma_put_frmr(struct svcxprt_rdma *,
+ 			      struct svc_rdma_fastreg_mr *);
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+index 969a1ab..9a097f9 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+@@ -591,7 +591,7 @@ int svc_rdma_sendto(struct svc_rqst *rqstp)
+ 	/* Build an req vec for the XDR */
+ 	ctxt = svc_rdma_get_context(rdma);
+ 	ctxt->direction = DMA_TO_DEVICE;
+-	vec = svc_rdma_get_req_map();
++	vec = svc_rdma_get_req_map(rdma);
+ 	ret = map_xdr(rdma, &rqstp->rq_res, vec);
+ 	if (ret)
+ 		goto err0;
+@@ -630,14 +630,14 @@ int svc_rdma_sendto(struct svc_rqst *rqstp)
+ 
+ 	ret = send_reply(rdma, rqstp, res_page, rdma_resp, ctxt, vec,
+ 			 inline_bytes);
+-	svc_rdma_put_req_map(vec);
++	svc_rdma_put_req_map(rdma, vec);
+ 	dprintk("svcrdma: send_reply returns %d\n", ret);
+ 	return ret;
+ 
+  err1:
+ 	put_page(res_page);
+  err0:
+-	svc_rdma_put_req_map(vec);
++	svc_rdma_put_req_map(rdma, vec);
+ 	svc_rdma_put_context(ctxt, 0);
+ 	return ret;
+ }
 diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-index a100d56..9801115 100644
+index 9801115..0b9e17e 100644
 --- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
 +++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-@@ -153,18 +153,76 @@ static void svc_rdma_bc_free(struct svc_xprt *xprt)
+@@ -273,23 +273,83 @@ static void svc_rdma_destroy_ctxts(struct svcxprt_rdma *xprt)
+ 	}
  }
- #endif	/* CONFIG_SUNRPC_BACKCHANNEL */
  
--struct svc_rdma_op_ctxt *svc_rdma_get_context(struct svcxprt_rdma *xprt)
-+static struct svc_rdma_op_ctxt *alloc_ctxt(struct svcxprt_rdma *xprt,
-+					   gfp_t flags)
+-/*
+- * Temporary NFS req mappings are shared across all transport
+- * instances. These are short lived and should be bounded by the number
+- * of concurrent server threads * depth of the SQ.
+- */
+-struct svc_rdma_req_map *svc_rdma_get_req_map(void)
++static struct svc_rdma_req_map *alloc_req_map(gfp_t flags)
  {
- 	struct svc_rdma_op_ctxt *ctxt;
- 
--	ctxt = kmem_cache_alloc(svc_rdma_ctxt_cachep,
--				GFP_KERNEL | __GFP_NOFAIL);
--	ctxt->xprt = xprt;
--	INIT_LIST_HEAD(&ctxt->dto_q);
-+	ctxt = kmalloc(sizeof(*ctxt), flags);
-+	if (ctxt) {
-+		ctxt->xprt = xprt;
-+		INIT_LIST_HEAD(&ctxt->free);
-+		INIT_LIST_HEAD(&ctxt->dto_q);
-+	}
-+	return ctxt;
+ 	struct svc_rdma_req_map *map;
+-	map = kmem_cache_alloc(svc_rdma_map_cachep,
+-			       GFP_KERNEL | __GFP_NOFAIL);
++
++	map = kmalloc(sizeof(*map), flags);
++	if (map)
++		INIT_LIST_HEAD(&map->free);
++	return map;
 +}
 +
-+static bool svc_rdma_prealloc_ctxts(struct svcxprt_rdma *xprt)
++static bool svc_rdma_prealloc_maps(struct svcxprt_rdma *xprt)
 +{
 +	int i;
 +
-+	/* Each RPC/RDMA credit can consume a number of send
-+	 * and receive WQEs. One ctxt is allocated for each.
-+	 */
-+	i = xprt->sc_sq_depth + xprt->sc_max_requests;
++	/* One for each receive buffer on this connection. */
++	i = xprt->sc_max_requests;
 +
 +	while (i--) {
-+		struct svc_rdma_op_ctxt *ctxt;
++		struct svc_rdma_req_map *map;
 +
-+		ctxt = alloc_ctxt(xprt, GFP_KERNEL);
-+		if (!ctxt) {
-+			dprintk("svcrdma: No memory for RDMA ctxt\n");
++		map = alloc_req_map(GFP_KERNEL);
++		if (!map) {
++			dprintk("svcrdma: No memory for request map\n");
 +			return false;
 +		}
-+		list_add(&ctxt->free, &xprt->sc_ctxts);
++		list_add(&map->free, &xprt->sc_maps);
 +	}
 +	return true;
 +}
 +
-+struct svc_rdma_op_ctxt *svc_rdma_get_context(struct svcxprt_rdma *xprt)
++struct svc_rdma_req_map *svc_rdma_get_req_map(struct svcxprt_rdma *xprt)
 +{
-+	struct svc_rdma_op_ctxt *ctxt = NULL;
++	struct svc_rdma_req_map *map = NULL;
 +
-+	spin_lock_bh(&xprt->sc_ctxt_lock);
-+	xprt->sc_ctxt_used++;
-+	if (list_empty(&xprt->sc_ctxts))
++	spin_lock(&xprt->sc_map_lock);
++	if (list_empty(&xprt->sc_maps))
 +		goto out_empty;
 +
-+	ctxt = list_first_entry(&xprt->sc_ctxts,
-+				struct svc_rdma_op_ctxt, free);
-+	list_del_init(&ctxt->free);
-+	spin_unlock_bh(&xprt->sc_ctxt_lock);
++	map = list_first_entry(&xprt->sc_maps,
++			       struct svc_rdma_req_map, free);
++	list_del_init(&map->free);
++	spin_unlock(&xprt->sc_map_lock);
 +
 +out:
- 	ctxt->count = 0;
- 	ctxt->frmr = NULL;
--	atomic_inc(&xprt->sc_ctxt_used);
- 	return ctxt;
+ 	map->count = 0;
+ 	return map;
 +
 +out_empty:
-+	/* Either pre-allocation missed the mark, or send
-+	 * queue accounting is broken.
-+	 */
-+	spin_unlock_bh(&xprt->sc_ctxt_lock);
++	spin_unlock(&xprt->sc_map_lock);
 +
-+	ctxt = alloc_ctxt(xprt, GFP_NOIO);
-+	if (ctxt)
++	/* Pre-allocation amount was incorrect */
++	map = alloc_req_map(GFP_NOIO);
++	if (map)
 +		goto out;
 +
-+	spin_lock_bh(&xprt->sc_ctxt_lock);
-+	xprt->sc_ctxt_used--;
-+	spin_unlock_bh(&xprt->sc_ctxt_lock);
-+	WARN_ONCE(1, "svcrdma: empty RDMA ctxt list?\n");
++	WARN_ONCE(1, "svcrdma: empty request map list?\n");
 +	return NULL;
  }
  
- void svc_rdma_unmap_dma(struct svc_rdma_op_ctxt *ctxt)
-@@ -190,16 +248,29 @@ void svc_rdma_unmap_dma(struct svc_rdma_op_ctxt *ctxt)
- 
- void svc_rdma_put_context(struct svc_rdma_op_ctxt *ctxt, int free_pages)
+-void svc_rdma_put_req_map(struct svc_rdma_req_map *map)
++void svc_rdma_put_req_map(struct svcxprt_rdma *xprt,
++			  struct svc_rdma_req_map *map)
  {
--	struct svcxprt_rdma *xprt;
-+	struct svcxprt_rdma *xprt = ctxt->xprt;
- 	int i;
- 
--	xprt = ctxt->xprt;
- 	if (free_pages)
- 		for (i = 0; i < ctxt->count; i++)
- 			put_page(ctxt->pages[i]);
- 
--	kmem_cache_free(svc_rdma_ctxt_cachep, ctxt);
--	atomic_dec(&xprt->sc_ctxt_used);
-+	spin_lock_bh(&xprt->sc_ctxt_lock);
-+	xprt->sc_ctxt_used--;
-+	list_add(&ctxt->free, &xprt->sc_ctxts);
-+	spin_unlock_bh(&xprt->sc_ctxt_lock);
+-	kmem_cache_free(svc_rdma_map_cachep, map);
++	spin_lock(&xprt->sc_map_lock);
++	list_add(&map->free, &xprt->sc_maps);
++	spin_unlock(&xprt->sc_map_lock);
 +}
 +
-+static void svc_rdma_destroy_ctxts(struct svcxprt_rdma *xprt)
++static void svc_rdma_destroy_maps(struct svcxprt_rdma *xprt)
 +{
-+	while (!list_empty(&xprt->sc_ctxts)) {
-+		struct svc_rdma_op_ctxt *ctxt;
++	while (!list_empty(&xprt->sc_maps)) {
++		struct svc_rdma_req_map *map;
 +
-+		ctxt = list_first_entry(&xprt->sc_ctxts,
-+					struct svc_rdma_op_ctxt, free);
-+		list_del(&ctxt->free);
-+		kfree(ctxt);
++		map = list_first_entry(&xprt->sc_maps,
++				       struct svc_rdma_req_map, free);
++		list_del(&map->free);
++		kfree(map);
 +	}
  }
  
- /*
-@@ -521,11 +592,13 @@ static struct svcxprt_rdma *rdma_create_xprt(struct svc_serv *serv,
- 	INIT_LIST_HEAD(&cma_xprt->sc_rq_dto_q);
+ /* ib_cq event handler */
+@@ -593,12 +653,14 @@ static struct svcxprt_rdma *rdma_create_xprt(struct svc_serv *serv,
  	INIT_LIST_HEAD(&cma_xprt->sc_read_complete_q);
  	INIT_LIST_HEAD(&cma_xprt->sc_frmr_q);
-+	INIT_LIST_HEAD(&cma_xprt->sc_ctxts);
+ 	INIT_LIST_HEAD(&cma_xprt->sc_ctxts);
++	INIT_LIST_HEAD(&cma_xprt->sc_maps);
  	init_waitqueue_head(&cma_xprt->sc_send_wait);
  
  	spin_lock_init(&cma_xprt->sc_lock);
  	spin_lock_init(&cma_xprt->sc_rq_dto_lock);
  	spin_lock_init(&cma_xprt->sc_frmr_q_lock);
-+	spin_lock_init(&cma_xprt->sc_ctxt_lock);
+ 	spin_lock_init(&cma_xprt->sc_ctxt_lock);
++	spin_lock_init(&cma_xprt->sc_map_lock);
  
  	if (listener)
  		set_bit(XPT_LISTENER, &cma_xprt->sc_xprt.xpt_flags);
-@@ -913,6 +986,9 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
- 				   (size_t)svcrdma_max_requests);
- 	newxprt->sc_sq_depth = RPCRDMA_SQ_DEPTH_MULT * newxprt->sc_max_requests;
+@@ -988,6 +1050,8 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
  
-+	if (!svc_rdma_prealloc_ctxts(newxprt))
+ 	if (!svc_rdma_prealloc_ctxts(newxprt))
+ 		goto errout;
++	if (!svc_rdma_prealloc_maps(newxprt))
 +		goto errout;
-+
+ 
  	/*
  	 * Limit ORD based on client limit, local device limit, and
- 	 * configured svcrdma limit.
-@@ -1174,15 +1250,15 @@ static void __svc_rdma_free(struct work_struct *work)
- 	}
+@@ -1259,6 +1323,7 @@ static void __svc_rdma_free(struct work_struct *work)
  
- 	/* Warn if we leaked a resource or under-referenced */
--	if (atomic_read(&rdma->sc_ctxt_used) != 0)
-+	if (rdma->sc_ctxt_used != 0)
- 		pr_err("svcrdma: ctxt still in use? (%d)\n",
--		       atomic_read(&rdma->sc_ctxt_used));
-+		       rdma->sc_ctxt_used);
- 	if (atomic_read(&rdma->sc_dma_used) != 0)
- 		pr_err("svcrdma: dma still in use? (%d)\n",
- 		       atomic_read(&rdma->sc_dma_used));
- 
--	/* De-allocate fastreg mr */
  	rdma_dealloc_frmr_q(rdma);
-+	svc_rdma_destroy_ctxts(rdma);
+ 	svc_rdma_destroy_ctxts(rdma);
++	svc_rdma_destroy_maps(rdma);
  
  	/* Destroy the QP if present (not a listener) */
  	if (rdma->sc_qp && !IS_ERR(rdma->sc_qp))
