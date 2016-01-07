@@ -1,705 +1,255 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f174.google.com ([209.85.213.174]:35482 "EHLO
-	mail-ig0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752634AbcAGTuM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Jan 2016 14:50:12 -0500
-Subject: [PATCH v5 10/10] svcrdma: Add class for RDMA backwards direction
- transport
-From: Chuck Lever <chuck.lever@oracle.com>
-To: bfields@fieldses.org, dledford@redhat.com
-Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Thu, 07 Jan 2016 14:50:10 -0500
-Message-ID: <20160107195010.2662.62075.stgit@klimt.1015granger.net>
-In-Reply-To: <20160107194251.2662.88158.stgit@klimt.1015granger.net>
-References: <20160107194251.2662.88158.stgit@klimt.1015granger.net>
+Received: from fieldses.org ([173.255.197.46]:54631 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753355AbcAGVIW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 7 Jan 2016 16:08:22 -0500
+Date: Thu, 7 Jan 2016 16:08:20 -0500
+To: Alexander Viro <viro@zeniv.linux.org.uk>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Subject: [PATCH] nfsd: don't hold i_mutex over userspace upcalls
+Message-ID: <20160107210820.GC19011@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-To support the server-side of an NFSv4.1 backchannel on RDMA
-connections, add a transport class that enables backward
-direction messages on an existing forward channel connection.
+From: NeilBrown <neilb@suse.de>
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Acked-by: Bruce Fields <bfields@fieldses.org>
+We need information about exports when crossing mountpoints during
+lookup or NFSv4 readdir.  If we don't already have that information
+cached, we may have to ask (and wait for) rpc.mountd.
+
+In both cases we currently hold the i_mutex on the parent of the
+directory we're asking rpc.mountd about.  We've seen situations where
+rpc.mountd performs some operation on that directory that tries to take
+the i_mutex again, resulting in deadlock.
+
+With some care, we may be able to avoid that in rpc.mountd.  But it
+seems better just to avoid holding a mutex while waiting on userspace.
+
+It appears that lookup_one_len is pretty much the only operation that
+needs the i_mutex.  So we could just drop the i_mutex elsewhere and do
+something like
+
+	mutex_lock()
+	lookup_one_len()
+	mutex_unlock()
+
+In many cases though the lookup would have been cached and not required
+the i_mutex, so it's more efficient to create a lookup_one_len() variant
+that only takes the i_mutex when necessary.
+
+Signed-off-by: NeilBrown <neilb@suse.de>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- include/linux/sunrpc/svc_rdma.h            |    5 
- net/sunrpc/xprt.c                          |    1 
- net/sunrpc/xprtrdma/Makefile               |    2 
- net/sunrpc/xprtrdma/svc_rdma_backchannel.c |  371 ++++++++++++++++++++++++++++
- net/sunrpc/xprtrdma/svc_rdma_recvfrom.c    |   52 ++++
- net/sunrpc/xprtrdma/svc_rdma_transport.c   |   14 +
- net/sunrpc/xprtrdma/transport.c            |   30 +-
- net/sunrpc/xprtrdma/xprt_rdma.h            |   15 +
- 8 files changed, 475 insertions(+), 15 deletions(-)
- create mode 100644 net/sunrpc/xprtrdma/svc_rdma_backchannel.c
+ fs/namei.c            | 74 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/nfsd/nfs3xdr.c     |  2 +-
+ fs/nfsd/nfs4xdr.c     |  8 +++---
+ fs/nfsd/vfs.c         | 23 +++++++---------
+ include/linux/namei.h |  1 +
+ 5 files changed, 89 insertions(+), 19 deletions(-)
 
-diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
-index 9a2c418..b13513a 100644
---- a/include/linux/sunrpc/svc_rdma.h
-+++ b/include/linux/sunrpc/svc_rdma.h
-@@ -195,6 +195,11 @@ struct svcxprt_rdma {
- 
- #define RPCSVC_MAXPAYLOAD_RDMA	RPCSVC_MAXPAYLOAD
- 
-+/* svc_rdma_backchannel.c */
-+extern int svc_rdma_handle_bc_reply(struct rpc_xprt *xprt,
-+				    struct rpcrdma_msg *rmsgp,
-+				    struct xdr_buf *rcvbuf);
-+
- /* svc_rdma_marshal.c */
- extern int svc_rdma_xdr_decode_req(struct rpcrdma_msg **, struct svc_rqst *);
- extern int svc_rdma_xdr_encode_error(struct svcxprt_rdma *,
-diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-index 2e98f4a..37edea6 100644
---- a/net/sunrpc/xprt.c
-+++ b/net/sunrpc/xprt.c
-@@ -1425,3 +1425,4 @@ void xprt_put(struct rpc_xprt *xprt)
- 	if (atomic_dec_and_test(&xprt->count))
- 		xprt_destroy(xprt);
+Could we get this reviewed for 4.5?
+
+--b.
+
+diff --git a/fs/namei.c b/fs/namei.c
+index d84d7c7515fc..174ef4f106cd 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -2279,6 +2279,8 @@ EXPORT_SYMBOL(vfs_path_lookup);
+  *
+  * Note that this routine is purely a helper for filesystem usage and should
+  * not be called by generic code.
++ *
++ * The caller must hold base->i_mutex.
+  */
+ struct dentry *lookup_one_len(const char *name, struct dentry *base, int len)
+ {
+@@ -2322,6 +2324,78 @@ struct dentry *lookup_one_len(const char *name, struct dentry *base, int len)
  }
-+EXPORT_SYMBOL_GPL(xprt_put);
-diff --git a/net/sunrpc/xprtrdma/Makefile b/net/sunrpc/xprtrdma/Makefile
-index 33f99d3..dc9f3b5 100644
---- a/net/sunrpc/xprtrdma/Makefile
-+++ b/net/sunrpc/xprtrdma/Makefile
-@@ -2,7 +2,7 @@ obj-$(CONFIG_SUNRPC_XPRT_RDMA) += rpcrdma.o
+ EXPORT_SYMBOL(lookup_one_len);
  
- rpcrdma-y := transport.o rpc_rdma.o verbs.o \
- 	fmr_ops.o frwr_ops.o physical_ops.o \
--	svc_rdma.o svc_rdma_transport.o \
-+	svc_rdma.o svc_rdma_backchannel.o svc_rdma_transport.o \
- 	svc_rdma_marshal.o svc_rdma_sendto.o svc_rdma_recvfrom.o \
- 	module.o
- rpcrdma-$(CONFIG_SUNRPC_BACKCHANNEL) += backchannel.o
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_backchannel.c b/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
-new file mode 100644
-index 0000000..deff06a
---- /dev/null
-+++ b/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
-@@ -0,0 +1,371 @@
-+/*
-+ * Copyright (c) 2015 Oracle.  All rights reserved.
++/**
++ * lookup_one_len_unlocked - filesystem helper to lookup single pathname component
++ * @name:	pathname component to lookup
++ * @base:	base directory to lookup from
++ * @len:	maximum length @len should be interpreted to
 + *
-+ * Support for backward direction RPCs on RPC/RDMA (server-side).
++ * Note that this routine is purely a helper for filesystem usage and should
++ * not be called by generic code.
++ *
++ * Unlike lookup_one_len, it should be called without the parent
++ * i_mutex held, and will take the i_mutex itself if necessary.
 + */
-+
-+#include <linux/sunrpc/svc_rdma.h>
-+#include "xprt_rdma.h"
-+
-+#define RPCDBG_FACILITY	RPCDBG_SVCXPRT
-+
-+#undef SVCRDMA_BACKCHANNEL_DEBUG
-+
-+int svc_rdma_handle_bc_reply(struct rpc_xprt *xprt, struct rpcrdma_msg *rmsgp,
-+			     struct xdr_buf *rcvbuf)
++struct dentry *lookup_one_len_unlocked(const char *name,
++				       struct dentry *base, int len)
 +{
-+	struct rpcrdma_xprt *r_xprt = rpcx_to_rdmax(xprt);
-+	struct kvec *dst, *src = &rcvbuf->head[0];
-+	struct rpc_rqst *req;
-+	unsigned long cwnd;
-+	u32 credits;
-+	size_t len;
-+	__be32 xid;
-+	__be32 *p;
-+	int ret;
++	struct qstr this;
++	unsigned int c;
++	int err;
++	struct dentry *ret;
 +
-+	p = (__be32 *)src->iov_base;
-+	len = src->iov_len;
-+	xid = rmsgp->rm_xid;
++	this.name = name;
++	this.len = len;
++	this.hash = full_name_hash(name, len);
++	if (!len)
++		return ERR_PTR(-EACCES);
 +
-+#ifdef SVCRDMA_BACKCHANNEL_DEBUG
-+	pr_info("%s: xid=%08x, length=%zu\n",
-+		__func__, be32_to_cpu(xid), len);
-+	pr_info("%s: RPC/RDMA: %*ph\n",
-+		__func__, (int)RPCRDMA_HDRLEN_MIN, rmsgp);
-+	pr_info("%s:      RPC: %*ph\n",
-+		__func__, (int)len, p);
-+#endif
-+
-+	ret = -EAGAIN;
-+	if (src->iov_len < 24)
-+		goto out_shortreply;
-+
-+	spin_lock_bh(&xprt->transport_lock);
-+	req = xprt_lookup_rqst(xprt, xid);
-+	if (!req)
-+		goto out_notfound;
-+
-+	dst = &req->rq_private_buf.head[0];
-+	memcpy(&req->rq_private_buf, &req->rq_rcv_buf, sizeof(struct xdr_buf));
-+	if (dst->iov_len < len)
-+		goto out_unlock;
-+	memcpy(dst->iov_base, p, len);
-+
-+	credits = be32_to_cpu(rmsgp->rm_credit);
-+	if (credits == 0)
-+		credits = 1;	/* don't deadlock */
-+	else if (credits > r_xprt->rx_buf.rb_bc_max_requests)
-+		credits = r_xprt->rx_buf.rb_bc_max_requests;
-+
-+	cwnd = xprt->cwnd;
-+	xprt->cwnd = credits << RPC_CWNDSHIFT;
-+	if (xprt->cwnd > cwnd)
-+		xprt_release_rqst_cong(req->rq_task);
-+
-+	ret = 0;
-+	xprt_complete_rqst(req->rq_task, rcvbuf->len);
-+	rcvbuf->len = 0;
-+
-+out_unlock:
-+	spin_unlock_bh(&xprt->transport_lock);
-+out:
-+	return ret;
-+
-+out_shortreply:
-+	dprintk("svcrdma: short bc reply: xprt=%p, len=%zu\n",
-+		xprt, src->iov_len);
-+	goto out;
-+
-+out_notfound:
-+	dprintk("svcrdma: unrecognized bc reply: xprt=%p, xid=%08x\n",
-+		xprt, be32_to_cpu(xid));
-+
-+	goto out_unlock;
-+}
-+
-+/* Send a backwards direction RPC call.
-+ *
-+ * Caller holds the connection's mutex and has already marshaled
-+ * the RPC/RDMA request.
-+ *
-+ * This is similar to svc_rdma_reply, but takes an rpc_rqst
-+ * instead, does not support chunks, and avoids blocking memory
-+ * allocation.
-+ *
-+ * XXX: There is still an opportunity to block in svc_rdma_send()
-+ * if there are no SQ entries to post the Send. This may occur if
-+ * the adapter has a small maximum SQ depth.
-+ */
-+static int svc_rdma_bc_sendto(struct svcxprt_rdma *rdma,
-+			      struct rpc_rqst *rqst)
-+{
-+	struct xdr_buf *sndbuf = &rqst->rq_snd_buf;
-+	struct svc_rdma_op_ctxt *ctxt;
-+	struct svc_rdma_req_map *vec;
-+	struct ib_send_wr send_wr;
-+	int ret;
-+
-+	vec = svc_rdma_get_req_map(rdma);
-+	ret = svc_rdma_map_xdr(rdma, sndbuf, vec);
-+	if (ret)
-+		goto out_err;
-+
-+	/* Post a recv buffer to handle the reply for this request. */
-+	ret = svc_rdma_post_recv(rdma, GFP_NOIO);
-+	if (ret) {
-+		pr_err("svcrdma: Failed to post bc receive buffer, err=%d.\n",
-+		       ret);
-+		pr_err("svcrdma: closing transport %p.\n", rdma);
-+		set_bit(XPT_CLOSE, &rdma->sc_xprt.xpt_flags);
-+		ret = -ENOTCONN;
-+		goto out_err;
++	if (unlikely(name[0] == '.')) {
++		if (len < 2 || (len == 2 && name[1] == '.'))
++			return ERR_PTR(-EACCES);
 +	}
 +
-+	ctxt = svc_rdma_get_context(rdma);
-+	ctxt->pages[0] = virt_to_page(rqst->rq_buffer);
-+	ctxt->count = 1;
-+
-+	ctxt->wr_op = IB_WR_SEND;
-+	ctxt->direction = DMA_TO_DEVICE;
-+	ctxt->sge[0].lkey = rdma->sc_dma_lkey;
-+	ctxt->sge[0].length = sndbuf->len;
-+	ctxt->sge[0].addr =
-+	    ib_dma_map_page(rdma->sc_cm_id->device, ctxt->pages[0], 0,
-+			    sndbuf->len, DMA_TO_DEVICE);
-+	if (ib_dma_mapping_error(rdma->sc_cm_id->device, ctxt->sge[0].addr)) {
-+		ret = -EIO;
-+		goto out_unmap;
++	while (len--) {
++		c = *(const unsigned char *)name++;
++		if (c == '/' || c == '\0')
++			return ERR_PTR(-EACCES);
 +	}
-+	atomic_inc(&rdma->sc_dma_used);
-+
-+	memset(&send_wr, 0, sizeof(send_wr));
-+	send_wr.wr_id = (unsigned long)ctxt;
-+	send_wr.sg_list = ctxt->sge;
-+	send_wr.num_sge = 1;
-+	send_wr.opcode = IB_WR_SEND;
-+	send_wr.send_flags = IB_SEND_SIGNALED;
-+
-+	ret = svc_rdma_send(rdma, &send_wr);
-+	if (ret) {
-+		ret = -EIO;
-+		goto out_unmap;
-+	}
-+
-+out_err:
-+	svc_rdma_put_req_map(rdma, vec);
-+	dprintk("svcrdma: %s returns %d\n", __func__, ret);
-+	return ret;
-+
-+out_unmap:
-+	svc_rdma_unmap_dma(ctxt);
-+	svc_rdma_put_context(ctxt, 1);
-+	goto out_err;
-+}
-+
-+/* Server-side transport endpoint wants a whole page for its send
-+ * buffer. The client RPC code constructs the RPC header in this
-+ * buffer before it invokes ->send_request.
-+ *
-+ * Returns NULL if there was a temporary allocation failure.
-+ */
-+static void *
-+xprt_rdma_bc_allocate(struct rpc_task *task, size_t size)
-+{
-+	struct rpc_rqst *rqst = task->tk_rqstp;
-+	struct svc_xprt *sxprt = rqst->rq_xprt->bc_xprt;
-+	struct svcxprt_rdma *rdma;
-+	struct page *page;
-+
-+	rdma = container_of(sxprt, struct svcxprt_rdma, sc_xprt);
-+
-+	/* Prevent an infinite loop: try to make this case work */
-+	if (size > PAGE_SIZE)
-+		WARN_ONCE(1, "svcrdma: large bc buffer request (size %zu)\n",
-+			  size);
-+
-+	page = alloc_page(RPCRDMA_DEF_GFP);
-+	if (!page)
-+		return NULL;
-+
-+	return page_address(page);
-+}
-+
-+static void
-+xprt_rdma_bc_free(void *buffer)
-+{
-+	/* No-op: ctxt and page have already been freed. */
-+}
-+
-+static int
-+rpcrdma_bc_send_request(struct svcxprt_rdma *rdma, struct rpc_rqst *rqst)
-+{
-+	struct rpc_xprt *xprt = rqst->rq_xprt;
-+	struct rpcrdma_xprt *r_xprt = rpcx_to_rdmax(xprt);
-+	struct rpcrdma_msg *headerp = (struct rpcrdma_msg *)rqst->rq_buffer;
-+	int rc;
-+
-+	/* Space in the send buffer for an RPC/RDMA header is reserved
-+	 * via xprt->tsh_size.
++	/*
++	 * See if the low-level filesystem might want
++	 * to use its own hash..
 +	 */
-+	headerp->rm_xid = rqst->rq_xid;
-+	headerp->rm_vers = rpcrdma_version;
-+	headerp->rm_credit = cpu_to_be32(r_xprt->rx_buf.rb_bc_max_requests);
-+	headerp->rm_type = rdma_msg;
-+	headerp->rm_body.rm_chunks[0] = xdr_zero;
-+	headerp->rm_body.rm_chunks[1] = xdr_zero;
-+	headerp->rm_body.rm_chunks[2] = xdr_zero;
-+
-+#ifdef SVCRDMA_BACKCHANNEL_DEBUG
-+	pr_info("%s: %*ph\n", __func__, 64, rqst->rq_buffer);
-+#endif
-+
-+	rc = svc_rdma_bc_sendto(rdma, rqst);
-+	if (rc)
-+		goto drop_connection;
-+	return rc;
-+
-+drop_connection:
-+	dprintk("svcrdma: failed to send bc call\n");
-+	xprt_disconnect_done(xprt);
-+	return -ENOTCONN;
-+}
-+
-+/* Send an RPC call on the passive end of a transport
-+ * connection.
-+ */
-+static int
-+xprt_rdma_bc_send_request(struct rpc_task *task)
-+{
-+	struct rpc_rqst *rqst = task->tk_rqstp;
-+	struct svc_xprt *sxprt = rqst->rq_xprt->bc_xprt;
-+	struct svcxprt_rdma *rdma;
-+	int ret;
-+
-+	dprintk("svcrdma: sending bc call with xid: %08x\n",
-+		be32_to_cpu(rqst->rq_xid));
-+
-+	if (!mutex_trylock(&sxprt->xpt_mutex)) {
-+		rpc_sleep_on(&sxprt->xpt_bc_pending, task, NULL);
-+		if (!mutex_trylock(&sxprt->xpt_mutex))
-+			return -EAGAIN;
-+		rpc_wake_up_queued_task(&sxprt->xpt_bc_pending, task);
++	if (base->d_flags & DCACHE_OP_HASH) {
++		int err = base->d_op->d_hash(base, &this);
++		if (err < 0)
++			return ERR_PTR(err);
 +	}
 +
-+	ret = -ENOTCONN;
-+	rdma = container_of(sxprt, struct svcxprt_rdma, sc_xprt);
-+	if (!test_bit(XPT_DEAD, &sxprt->xpt_flags))
-+		ret = rpcrdma_bc_send_request(rdma, rqst);
++	err = inode_permission(base->d_inode, MAY_EXEC);
++	if (err)
++		return ERR_PTR(err);
 +
-+	mutex_unlock(&sxprt->xpt_mutex);
-+
-+	if (ret < 0)
++	ret = __d_lookup(base, &this);
++	if (ret)
 +		return ret;
-+	return 0;
-+}
-+
-+static void
-+xprt_rdma_bc_close(struct rpc_xprt *xprt)
-+{
-+	dprintk("svcrdma: %s: xprt %p\n", __func__, xprt);
-+}
-+
-+static void
-+xprt_rdma_bc_put(struct rpc_xprt *xprt)
-+{
-+	dprintk("svcrdma: %s: xprt %p\n", __func__, xprt);
-+
-+	xprt_free(xprt);
-+	module_put(THIS_MODULE);
-+}
-+
-+static struct rpc_xprt_ops xprt_rdma_bc_procs = {
-+	.reserve_xprt		= xprt_reserve_xprt_cong,
-+	.release_xprt		= xprt_release_xprt_cong,
-+	.alloc_slot		= xprt_alloc_slot,
-+	.release_request	= xprt_release_rqst_cong,
-+	.buf_alloc		= xprt_rdma_bc_allocate,
-+	.buf_free		= xprt_rdma_bc_free,
-+	.send_request		= xprt_rdma_bc_send_request,
-+	.set_retrans_timeout	= xprt_set_retrans_timeout_def,
-+	.close			= xprt_rdma_bc_close,
-+	.destroy		= xprt_rdma_bc_put,
-+	.print_stats		= xprt_rdma_print_stats
-+};
-+
-+static const struct rpc_timeout xprt_rdma_bc_timeout = {
-+	.to_initval = 60 * HZ,
-+	.to_maxval = 60 * HZ,
-+};
-+
-+/* It shouldn't matter if the number of backchannel session slots
-+ * doesn't match the number of RPC/RDMA credits. That just means
-+ * one or the other will have extra slots that aren't used.
-+ */
-+static struct rpc_xprt *
-+xprt_setup_rdma_bc(struct xprt_create *args)
-+{
-+	struct rpc_xprt *xprt;
-+	struct rpcrdma_xprt *new_xprt;
-+
-+	if (args->addrlen > sizeof(xprt->addr)) {
-+		dprintk("RPC:       %s: address too large\n", __func__);
-+		return ERR_PTR(-EBADF);
++	/*
++	 * __d_lookup() is used to try to get a quick answer and avoid the
++	 * mutex.  A false-negative does no harm.
++	 */
++	ret = __d_lookup(base, &this);
++	if (ret && ret->d_flags & DCACHE_OP_REVALIDATE) {
++		dput(ret);
++		ret = NULL;
 +	}
-+
-+	xprt = xprt_alloc(args->net, sizeof(*new_xprt),
-+			  RPCRDMA_MAX_BC_REQUESTS,
-+			  RPCRDMA_MAX_BC_REQUESTS);
-+	if (!xprt) {
-+		dprintk("RPC:       %s: couldn't allocate rpc_xprt\n",
-+			__func__);
-+		return ERR_PTR(-ENOMEM);
-+	}
-+
-+	xprt->timeout = &xprt_rdma_bc_timeout;
-+	xprt_set_bound(xprt);
-+	xprt_set_connected(xprt);
-+	xprt->bind_timeout = RPCRDMA_BIND_TO;
-+	xprt->reestablish_timeout = RPCRDMA_INIT_REEST_TO;
-+	xprt->idle_timeout = RPCRDMA_IDLE_DISC_TO;
-+
-+	xprt->prot = XPRT_TRANSPORT_BC_RDMA;
-+	xprt->tsh_size = RPCRDMA_HDRLEN_MIN / sizeof(__be32);
-+	xprt->ops = &xprt_rdma_bc_procs;
-+
-+	memcpy(&xprt->addr, args->dstaddr, args->addrlen);
-+	xprt->addrlen = args->addrlen;
-+	xprt_rdma_format_addresses(xprt, (struct sockaddr *)&xprt->addr);
-+	xprt->resvport = 0;
-+
-+	xprt->max_payload = xprt_rdma_max_inline_read;
-+
-+	new_xprt = rpcx_to_rdmax(xprt);
-+	new_xprt->rx_buf.rb_bc_max_requests = xprt->max_reqs;
-+
-+	xprt_get(xprt);
-+	args->bc_xprt->xpt_bc_xprt = xprt;
-+	xprt->bc_xprt = args->bc_xprt;
-+
-+	if (!try_module_get(THIS_MODULE))
-+		goto out_fail;
-+
-+	/* Final put for backchannel xprt is in __svc_rdma_free */
-+	xprt_get(xprt);
-+	return xprt;
-+
-+out_fail:
-+	xprt_rdma_free_addresses(xprt);
-+	args->bc_xprt->xpt_bc_xprt = NULL;
-+	xprt_put(xprt);
-+	xprt_free(xprt);
-+	return ERR_PTR(-EINVAL);
-+}
-+
-+struct xprt_class xprt_rdma_bc = {
-+	.list			= LIST_HEAD_INIT(xprt_rdma_bc.list),
-+	.name			= "rdma backchannel",
-+	.owner			= THIS_MODULE,
-+	.ident			= XPRT_TRANSPORT_BC_RDMA,
-+	.setup			= xprt_setup_rdma_bc,
-+};
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-index ff4f01e..3dfe464 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-@@ -567,6 +567,38 @@ static int rdma_read_complete(struct svc_rqst *rqstp,
- 	return ret;
- }
- 
-+/* By convention, backchannel calls arrive via rdma_msg type
-+ * messages, and never populate the chunk lists. This makes
-+ * the RPC/RDMA header small and fixed in size, so it is
-+ * straightforward to check the RPC header's direction field.
-+ */
-+static bool
-+svc_rdma_is_backchannel_reply(struct svc_xprt *xprt, struct rpcrdma_msg *rmsgp)
-+{
-+	__be32 *p = (__be32 *)rmsgp;
-+
-+	if (!xprt->xpt_bc_xprt)
-+		return false;
-+
-+	if (rmsgp->rm_type != rdma_msg)
-+		return false;
-+	if (rmsgp->rm_body.rm_chunks[0] != xdr_zero)
-+		return false;
-+	if (rmsgp->rm_body.rm_chunks[1] != xdr_zero)
-+		return false;
-+	if (rmsgp->rm_body.rm_chunks[2] != xdr_zero)
-+		return false;
-+
-+	/* sanity */
-+	if (p[7] != rmsgp->rm_xid)
-+		return false;
-+	/* call direction */
-+	if (p[8] == cpu_to_be32(RPC_CALL))
-+		return false;
-+
-+	return true;
-+}
-+
- /*
-  * Set up the rqstp thread context to point to the RQ buffer. If
-  * necessary, pull additional data from the client with an RDMA_READ
-@@ -632,6 +664,15 @@ int svc_rdma_recvfrom(struct svc_rqst *rqstp)
- 		goto close_out;
- 	}
- 
-+	if (svc_rdma_is_backchannel_reply(xprt, rmsgp)) {
-+		ret = svc_rdma_handle_bc_reply(xprt->xpt_bc_xprt, rmsgp,
-+					       &rqstp->rq_arg);
-+		svc_rdma_put_context(ctxt, 0);
-+		if (ret)
-+			goto repost;
++	if (ret)
 +		return ret;
-+	}
 +
- 	/* Read read-list data. */
- 	ret = rdma_read_chunks(rdma_xprt, rmsgp, rqstp, ctxt);
- 	if (ret > 0) {
-@@ -668,4 +709,15 @@ int svc_rdma_recvfrom(struct svc_rqst *rqstp)
- 	set_bit(XPT_CLOSE, &xprt->xpt_flags);
- defer:
- 	return 0;
-+
-+repost:
-+	ret = svc_rdma_post_recv(rdma_xprt, GFP_KERNEL);
-+	if (ret) {
-+		pr_err("svcrdma: could not post a receive buffer, err=%d.\n",
-+		       ret);
-+		pr_err("svcrdma: closing transport %p.\n", rdma_xprt);
-+		set_bit(XPT_CLOSE, &rdma_xprt->sc_xprt.xpt_flags);
-+		ret = -ENOTCONN;
-+	}
++	mutex_lock(&base->d_inode->i_mutex);
++	ret =  __lookup_hash(&this, base, 0);
++	mutex_unlock(&base->d_inode->i_mutex);
 +	return ret;
- }
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-index af86dfe..7fd2395 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-@@ -1287,12 +1287,14 @@ static void __svc_rdma_free(struct work_struct *work)
++}
++EXPORT_SYMBOL(lookup_one_len_unlocked);
++
+ int user_path_at_empty(int dfd, const char __user *name, unsigned flags,
+ 		 struct path *path, int *empty)
  {
- 	struct svcxprt_rdma *rdma =
- 		container_of(work, struct svcxprt_rdma, sc_work);
--	dprintk("svcrdma: svc_rdma_free(%p)\n", rdma);
-+	struct svc_xprt *xprt = &rdma->sc_xprt;
-+
-+	dprintk("svcrdma: %s(%p)\n", __func__, rdma);
+diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
+index 00575d776d91..2246454dec76 100644
+--- a/fs/nfsd/nfs3xdr.c
++++ b/fs/nfsd/nfs3xdr.c
+@@ -823,7 +823,7 @@ compose_entry_fh(struct nfsd3_readdirres *cd, struct svc_fh *fhp,
+ 		} else
+ 			dchild = dget(dparent);
+ 	} else
+-		dchild = lookup_one_len(name, dparent, namlen);
++		dchild = lookup_one_len_unlocked(name, dparent, namlen);
+ 	if (IS_ERR(dchild))
+ 		return rv;
+ 	if (d_mountpoint(dchild))
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 51c9e9ca39a4..325521ce389a 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -2838,14 +2838,14 @@ nfsd4_encode_dirent_fattr(struct xdr_stream *xdr, struct nfsd4_readdir *cd,
+ 	__be32 nfserr;
+ 	int ignore_crossmnt = 0;
  
- 	/* We should only be called from kref_put */
--	if (atomic_read(&rdma->sc_xprt.xpt_ref.refcount) != 0)
-+	if (atomic_read(&xprt->xpt_ref.refcount) != 0)
- 		pr_err("svcrdma: sc_xprt still in use? (%d)\n",
--		       atomic_read(&rdma->sc_xprt.xpt_ref.refcount));
-+		       atomic_read(&xprt->xpt_ref.refcount));
+-	dentry = lookup_one_len(name, cd->rd_fhp->fh_dentry, namlen);
++	dentry = lookup_one_len_unlocked(name, cd->rd_fhp->fh_dentry, namlen);
+ 	if (IS_ERR(dentry))
+ 		return nfserrno(PTR_ERR(dentry));
+ 	if (d_really_is_negative(dentry)) {
+ 		/*
+-		 * nfsd_buffered_readdir drops the i_mutex between
+-		 * readdir and calling this callback, leaving a window
+-		 * where this directory entry could have gone away.
++		 * we're not holding the i_mutex here, so there's
++		 * a window where this directory entry could have gone
++		 * away.
+ 		 */
+ 		dput(dentry);
+ 		return nfserr_noent;
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index 994d66fbb446..4212aaacbb55 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -217,10 +217,16 @@ nfsd_lookup_dentry(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 		host_err = PTR_ERR(dentry);
+ 		if (IS_ERR(dentry))
+ 			goto out_nfserr;
+-		/*
+-		 * check if we have crossed a mount point ...
+-		 */
+ 		if (nfsd_mountpoint(dentry, exp)) {
++			/*
++			 * We don't need the i_mutex after all.  It's
++			 * still possible we could open this (regular
++			 * files can be mountpoints too), but the
++			 * i_mutex is just there to prevent renames of
++			 * something that we might be about to delegate,
++			 * and a mountpoint won't be renamed:
++			 */
++			fh_unlock(fhp);
+ 			if ((host_err = nfsd_cross_mnt(rqstp, &dentry, &exp))) {
+ 				dput(dentry);
+ 				goto out_nfserr;
+@@ -1809,7 +1815,6 @@ static __be32 nfsd_buffered_readdir(struct file *file, nfsd_filldir_t func,
+ 	offset = *offsetp;
  
- 	/*
- 	 * Destroy queued, but not processed read completions. Note
-@@ -1327,6 +1329,12 @@ static void __svc_rdma_free(struct work_struct *work)
- 		pr_err("svcrdma: dma still in use? (%d)\n",
- 		       atomic_read(&rdma->sc_dma_used));
+ 	while (1) {
+-		struct inode *dir_inode = file_inode(file);
+ 		unsigned int reclen;
  
-+	/* Final put of backchannel client transport */
-+	if (xprt->xpt_bc_xprt) {
-+		xprt_put(xprt->xpt_bc_xprt);
-+		xprt->xpt_bc_xprt = NULL;
-+	}
-+
- 	rdma_dealloc_frmr_q(rdma);
- 	svc_rdma_destroy_ctxts(rdma);
- 	svc_rdma_destroy_maps(rdma);
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index 8c545f7..5c7d235 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -63,7 +63,7 @@
-  */
+ 		cdp->err = nfserr_eof; /* will be cleared on successful read */
+@@ -1828,15 +1833,6 @@ static __be32 nfsd_buffered_readdir(struct file *file, nfsd_filldir_t func,
+ 		if (!size)
+ 			break;
  
- static unsigned int xprt_rdma_slot_table_entries = RPCRDMA_DEF_SLOT_TABLE;
--static unsigned int xprt_rdma_max_inline_read = RPCRDMA_DEF_INLINE;
-+unsigned int xprt_rdma_max_inline_read = RPCRDMA_DEF_INLINE;
- static unsigned int xprt_rdma_max_inline_write = RPCRDMA_DEF_INLINE;
- static unsigned int xprt_rdma_inline_write_padding;
- static unsigned int xprt_rdma_memreg_strategy = RPCRDMA_FRMR;
-@@ -143,12 +143,7 @@ static struct ctl_table sunrpc_table[] = {
- 
- #endif
- 
--#define RPCRDMA_BIND_TO		(60U * HZ)
--#define RPCRDMA_INIT_REEST_TO	(5U * HZ)
--#define RPCRDMA_MAX_REEST_TO	(30U * HZ)
--#define RPCRDMA_IDLE_DISC_TO	(5U * 60 * HZ)
+-		/*
+-		 * Various filldir functions may end up calling back into
+-		 * lookup_one_len() and the file system's ->lookup() method.
+-		 * These expect i_mutex to be held, as it would within readdir.
+-		 */
+-		host_err = mutex_lock_killable(&dir_inode->i_mutex);
+-		if (host_err)
+-			break;
 -
--static struct rpc_xprt_ops xprt_rdma_procs;	/* forward reference */
-+static struct rpc_xprt_ops xprt_rdma_procs;	/*forward reference */
+ 		de = (struct buffered_dirent *)buf.dirent;
+ 		while (size > 0) {
+ 			offset = de->offset;
+@@ -1853,7 +1849,6 @@ static __be32 nfsd_buffered_readdir(struct file *file, nfsd_filldir_t func,
+ 			size -= reclen;
+ 			de = (struct buffered_dirent *)((char *)de + reclen);
+ 		}
+-		mutex_unlock(&dir_inode->i_mutex);
+ 		if (size > 0) /* We bailed out early */
+ 			break;
  
- static void
- xprt_rdma_format_addresses4(struct rpc_xprt *xprt, struct sockaddr *sap)
-@@ -174,7 +169,7 @@ xprt_rdma_format_addresses6(struct rpc_xprt *xprt, struct sockaddr *sap)
- 	xprt->address_strings[RPC_DISPLAY_NETID] = RPCBIND_NETID_RDMA6;
- }
+diff --git a/include/linux/namei.h b/include/linux/namei.h
+index d8c6334cd150..d0f25d81b46a 100644
+--- a/include/linux/namei.h
++++ b/include/linux/namei.h
+@@ -77,6 +77,7 @@ extern struct dentry *kern_path_locked(const char *, struct path *);
+ extern int kern_path_mountpoint(int, const char *, struct path *, unsigned int);
  
--static void
-+void
- xprt_rdma_format_addresses(struct rpc_xprt *xprt, struct sockaddr *sap)
- {
- 	char buf[128];
-@@ -203,7 +198,7 @@ xprt_rdma_format_addresses(struct rpc_xprt *xprt, struct sockaddr *sap)
- 	xprt->address_strings[RPC_DISPLAY_PROTO] = "rdma";
- }
+ extern struct dentry *lookup_one_len(const char *, struct dentry *, int);
++extern struct dentry *lookup_one_len_unlocked(const char *, struct dentry *, int);
  
--static void
-+void
- xprt_rdma_free_addresses(struct rpc_xprt *xprt)
- {
- 	unsigned int i;
-@@ -499,7 +494,7 @@ xprt_rdma_allocate(struct rpc_task *task, size_t size)
- 	if (req == NULL)
- 		return NULL;
- 
--	flags = GFP_NOIO | __GFP_NOWARN;
-+	flags = RPCRDMA_DEF_GFP;
- 	if (RPC_IS_SWAPPER(task))
- 		flags = __GFP_MEMALLOC | GFP_NOWAIT | __GFP_NOWARN;
- 
-@@ -639,7 +634,7 @@ drop_connection:
- 	return -ENOTCONN;	/* implies disconnect */
- }
- 
--static void xprt_rdma_print_stats(struct rpc_xprt *xprt, struct seq_file *seq)
-+void xprt_rdma_print_stats(struct rpc_xprt *xprt, struct seq_file *seq)
- {
- 	struct rpcrdma_xprt *r_xprt = rpcx_to_rdmax(xprt);
- 	long idle_time = 0;
-@@ -740,6 +735,11 @@ void xprt_rdma_cleanup(void)
- 
- 	rpcrdma_destroy_wq();
- 	frwr_destroy_recovery_wq();
-+
-+	rc = xprt_unregister_transport(&xprt_rdma_bc);
-+	if (rc)
-+		dprintk("RPC:       %s: xprt_unregister(bc) returned %i\n",
-+			__func__, rc);
- }
- 
- int xprt_rdma_init(void)
-@@ -763,6 +763,14 @@ int xprt_rdma_init(void)
- 		return rc;
- 	}
- 
-+	rc = xprt_register_transport(&xprt_rdma_bc);
-+	if (rc) {
-+		xprt_unregister_transport(&xprt_rdma);
-+		rpcrdma_destroy_wq();
-+		frwr_destroy_recovery_wq();
-+		return rc;
-+	}
-+
- 	dprintk("RPCRDMA Module Init, register RPC RDMA transport\n");
- 
- 	dprintk("Defaults:\n");
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index 72276c7..5a38236 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -55,6 +55,11 @@
- #define RDMA_RESOLVE_TIMEOUT	(5000)	/* 5 seconds */
- #define RDMA_CONNECT_RETRY_MAX	(2)	/* retries if no listener backlog */
- 
-+#define RPCRDMA_BIND_TO		(60U * HZ)
-+#define RPCRDMA_INIT_REEST_TO	(5U * HZ)
-+#define RPCRDMA_MAX_REEST_TO	(30U * HZ)
-+#define RPCRDMA_IDLE_DISC_TO	(5U * 60 * HZ)
-+
- /*
-  * Interface Adapter -- one per transport instance
-  */
-@@ -147,6 +152,8 @@ rdmab_to_msg(struct rpcrdma_regbuf *rb)
- 	return (struct rpcrdma_msg *)rb->rg_base;
- }
- 
-+#define RPCRDMA_DEF_GFP		(GFP_NOIO | __GFP_NOWARN)
-+
- /*
-  * struct rpcrdma_rep -- this structure encapsulates state required to recv
-  * and complete a reply, asychronously. It needs several pieces of
-@@ -308,6 +315,8 @@ struct rpcrdma_buffer {
- 	u32			rb_bc_srv_max_requests;
- 	spinlock_t		rb_reqslock;	/* protect rb_allreqs */
- 	struct list_head	rb_allreqs;
-+
-+	u32			rb_bc_max_requests;
- };
- #define rdmab_to_ia(b) (&container_of((b), struct rpcrdma_xprt, rx_buf)->rx_ia)
- 
-@@ -513,6 +522,10 @@ int rpcrdma_marshal_req(struct rpc_rqst *);
- 
- /* RPC/RDMA module init - xprtrdma/transport.c
-  */
-+extern unsigned int xprt_rdma_max_inline_read;
-+void xprt_rdma_format_addresses(struct rpc_xprt *xprt, struct sockaddr *sap);
-+void xprt_rdma_free_addresses(struct rpc_xprt *xprt);
-+void xprt_rdma_print_stats(struct rpc_xprt *xprt, struct seq_file *seq);
- int xprt_rdma_init(void);
- void xprt_rdma_cleanup(void);
- 
-@@ -528,4 +541,6 @@ void xprt_rdma_bc_free_rqst(struct rpc_rqst *);
- void xprt_rdma_bc_destroy(struct rpc_xprt *, unsigned int);
- #endif	/* CONFIG_SUNRPC_BACKCHANNEL */
- 
-+extern struct xprt_class xprt_rdma_bc;
-+
- #endif				/* _LINUX_SUNRPC_XPRT_RDMA_H */
+ extern int follow_down_one(struct path *);
+ extern int follow_down(struct path *);
+-- 
+2.5.0
 
