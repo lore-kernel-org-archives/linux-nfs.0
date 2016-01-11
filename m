@@ -1,73 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from plane.gmane.org ([80.91.229.3]:46526 "EHLO plane.gmane.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750835AbcAIEzK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 8 Jan 2016 23:55:10 -0500
-Received: from list by plane.gmane.org with local (Exim 4.69)
-	(envelope-from <glN-linux-nfs@m.gmane.org>)
-	id 1aHlYR-0004WU-1H
-	for linux-nfs@vger.kernel.org; Sat, 09 Jan 2016 05:55:07 +0100
-Received: from cpe-72-128-83-163.wi.res.rr.com ([72.128.83.163])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Sat, 09 Jan 2016 05:55:07 +0100
-Received: from rbarr138 by cpe-72-128-83-163.wi.res.rr.com with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Sat, 09 Jan 2016 05:55:07 +0100
-To: linux-nfs@vger.kernel.org
-From: Robb Barrows <rbarr138@gmail.com>
-Subject: Re: NFS v4, are special steps required for uid/gid to work, even if they are the same on server and client?
-Date: Fri, 8 Jan 2016 22:52:12 +0000 (UTC)
-Message-ID: <loom.20160108T220444-687@post.gmane.org>
-References: <CAOHJ0jQyGD=RHCNSTSsOYWCy=o4ryw2X2NCcqs2DmMrXRSFdGg@mail.gmail.com> <20160108202357.GE5031@fieldses.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Received: from krichy.tvnetwork.hu ([109.61.101.194]:47180 "EHLO
+	krichy.tvnetwork.hu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933474AbcAKORW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Jan 2016 09:17:22 -0500
+Date: Mon, 11 Jan 2016 15:08:24 +0100 (CET)
+From: =?ISO-8859-15?Q?Kojedzinszky_Rich=E1rd?=
+	<kojedzinszky.richard@euronetrt.hu>
+To: xen-users@lists.xen.org, linux-nfs@vger.kernel.org
+Subject: xen domU disk on nfs shared file
+Message-ID: <alpine.DEB.2.20.1601111458420.24727@krichy.tvnetwork.hu>
+MIME-Version: 1.0
+Content-Type: multipart/mixed; BOUNDARY="1030603365-419232731-1452520724=:24727"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-J. Bruce Fields <bfields@...> writes:
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
 
-> > So my real question is why cant user:user create a file in 
-/test/chmod775 ?
-> 
-> Hm, and chmod775 should permit write to members of common, and user is a
-> member of common on both client and server (and names and uids are the
-> same on both).
-> 
-> I'm not seeing the explanation....
-> 
-> I think the next thing I'd do would be get a network trace:
-> 
-> 	1. run "tcpdump -s0 -wtmp.pcap"
-> 	2. try the failed "touch /test/chmod755/file"
-> 	3. kill the tcpdump
-> 
-> Then run "wireshark tmp.pcap" and look at the result.  If this is v4
-> thee should be an OPEN call in there that tries to create "file", with
-> the server replying with an error.
-> 
-> It'd be especially interesting to look at the rpc header on that call,
-> specifically the credential, which should include a list of gid's (with
-> 20000 being one of those gid's).
-> 
+--1030603365-419232731-1452520724=:24727
+Content-Type: text/plain; FORMAT=flowed; CHARSET=ISO-8859-15
+Content-Transfer-Encoding: 8BIT
+Content-ID: <alpine.DEB.2.20.1601111458551.24727@krichy.tvnetwork.hu>
 
-I did this and indeed 20000 was not in the list of "Auxiliary GIDs" of the 
-rpc header credentials as it should of been.  A reboot fixed this, so now it 
-works. 
+Dear all,
 
-I had restarted the terminal but it looks since I had other sessions logged 
-in that wasn't enough to get the new gid to propogate, I should know better. 
+We are facing a regular lockup with our xen setup. We have an nfs share 
+mounted on the xen dom0, where the vm images are served, and those files 
+are given to xen domUs.
 
-Running
-# sudo newgrp common
-Probably would of fixed it for me, as it adds you to the group without 
-requiring logging out, I'll never trust the "groups" command again :)
+I was just preparing an experiment, where I created a 100G file on the 
+host:
+# truncate -s 100G /srv/nfs/domU/disk2
+And after added this disk to the instance's configuration.
 
-Thank you helping me find the issue.
+On the host this is the mountpoint:
+# mount|grep srv/xen
+10.1.1.1:/mnt/main/vps on /srv/xen type nfs 
+(rw,relatime,vers=3,rsize=16384,wsize=16384,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=10.1.1.1,mountvers=3,mountport=4045,mountproto=udp,local_lock=none,addr=10.1.1.1)
 
--Robb
+After starting the instance I partitioned the disk with gdisk, and created 
+an xfs fs on it. While the fs has been created well, strange messages 
+appeared on the console:
 
+[   23.787504] blk_update_request: I/O error, dev xvdc, sector 2048
+[   23.788904] blk_update_request: I/O error, dev xvdc, sector 8390655
+[   23.789611] blk_update_request: I/O error, dev xvdc, sector 16779262
+[   23.790359] blk_update_request: I/O error, dev xvdc, sector 25167869
+[   23.791148] blk_update_request: I/O error, dev xvdc, sector 33556476
+[   23.791498] blk_update_request: I/O error, dev xvdc, sector 41945083
+[   23.791498] blk_update_request: I/O error, dev xvdc, sector 50333690
+[   23.791498] blk_update_request: I/O error, dev xvdc, sector 58722297
+[   23.791498] blk_update_request: I/O error, dev xvdc, sector 67110904
+[   23.791498] blk_update_request: I/O error, dev xvdc, sector 75499511
 
+I dont think that this is normal. If I chose a local block device 
+(probably lvm) for the domU, this does not appear.
 
+The host is running xen-4.4 with 3.16.0-4-amd64 kernel (debian jessie 
+stock), the domU is running 4.3.0-0.bpo.1-amd64 (jessie backport, 4.4.4).
 
+I suspect those messages should not be there.
 
+Regards,
+
+Kojedzinszky Richárd
+Euronet Magyarorszag Informatika Zrt.
+--1030603365-419232731-1452520724=:24727--
