@@ -1,41 +1,74 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx143.netapp.com ([216.240.21.24]:22492 "EHLO mx143.netapp.com"
+Received: from fieldses.org ([173.255.197.46]:59603 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752873AbcALViW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 12 Jan 2016 16:38:22 -0500
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
-CC: <Anna.Schumaker@netapp.com>
-Subject: [PATCH] NFS: Close a race in nfs42_proc_deallocate()
-Date: Tue, 12 Jan 2016 16:38:18 -0500
-Message-ID: <1452634698-16619-1-git-send-email-Anna.Schumaker@Netapp.com>
+	id S1750881AbcALWGx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 12 Jan 2016 17:06:53 -0500
+Date: Tue, 12 Jan 2016 17:06:52 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+Cc: linux-nfs@vger.kernel.org, Gil Amsalem <gil.amsalem@primarydata.com>
+Subject: Re: [PATCH] Reduce the probability to get port collision when asking
+ for secure port. port collision = same port allocated to 2 different clients
+ trying to connect to the same address.
+Message-ID: <20160112220652.GB8256@fieldses.org>
+References: <1449559654-14766-1-git-send-email-tigran.mkrtchyan@desy.de>
+ <1449559654-14766-2-git-send-email-tigran.mkrtchyan@desy.de>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1449559654-14766-2-git-send-email-tigran.mkrtchyan@desy.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We need to take the i_mutex before writing back the inode to ensure that
-the file doesn't change before calling DEALLOCATE.
+Sorry for a slow response.
 
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
----
- fs/nfs/nfs42proc.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+I'm confused.  You're worried about two pynfs instances binding to the
+same local port at the same time?  The kernel should prevent that,
+shouldn't it?
 
-diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
-index 6e81749..10d8eb4 100644
---- a/fs/nfs/nfs42proc.c
-+++ b/fs/nfs/nfs42proc.c
-@@ -122,8 +122,8 @@ int nfs42_proc_deallocate(struct file *filep, loff_t offset, loff_t len)
- 	if (!nfs_server_capable(inode, NFS_CAP_DEALLOCATE))
- 		return -EOPNOTSUPP;
- 
--	nfs_wb_all(inode);
- 	mutex_lock(&inode->i_mutex);
-+	nfs_wb_all(inode);
- 
- 	err = nfs42_proc_fallocate(&msg, filep, offset, len);
- 	if (err == 0)
--- 
-2.7.0
+--b.
 
+On Tue, Dec 08, 2015 at 08:27:34AM +0100, Tigran Mkrtchyan wrote:
+> From: Gil Amsalem <gil.amsalem@primarydata.com>
+> 
+> Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+> ---
+>  rpc/rpc.py | 18 +++++++-----------
+>  1 file changed, 7 insertions(+), 11 deletions(-)
+> 
+> diff --git a/rpc/rpc.py b/rpc/rpc.py
+> index 1a3ca38..8d88c62 100644
+> --- a/rpc/rpc.py
+> +++ b/rpc/rpc.py
+> @@ -824,23 +824,19 @@ class ConnectionHandler(object):
+>          defer.wait()
+>          return pipe
+>  
+> -    def bindsocket(self, s, port=1):
+> +    def bindsocket(self, s, start_port=1):
+>          """Scan up through ports, looking for one we can bind to"""
+>          # This is necessary when we need to use a 'secure' port
+> -        using = port
+> -        while 1:
+> +        valid_ports = range(start_port, 1024)
+> +        random.shuffle(valid_ports)
+> +        for port in valid_ports:
+>              try:
+> -                s.bind(('', using))
+> +                s.bind(('', port))
+>                  return
+>              except socket.error, why:
+> -                if why[0] == errno.EADDRINUSE:
+> -                    using += 1
+> -                    if port < 1024 <= using:
+> -                        # If we ask for a secure port, make sure we don't
+> -                        # silently bind to a non-secure one
+> -                        raise
+> -                else:
+> +                if why[0] != errno.EADDRINUSE:
+>                      raise
+> +        raise Exception('failed to find available secure port')
+>  
+>  
+>      def expose(self, address, af, safe=True):
+> -- 
+> 2.5.0
