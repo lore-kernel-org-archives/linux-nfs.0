@@ -1,72 +1,119 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp02.citrix.com ([66.165.176.63]:37578 "EHLO
-	SMTP02.CITRIX.COM" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751683AbcALM6F (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Jan 2016 07:58:05 -0500
-Subject: Re: blk_update_request: I/O error on NFS
-To: Wei Liu <wei.liu2@citrix.com>,
-        =?UTF-8?Q?Kojedzinszky_Rich=c3=a1rd?=
-	<kojedzinszky.richard@euronetrt.hu>,
-        Xen-devel <xen-devel@lists.xenproject.org>
-References: <alpine.DEB.2.20.1601111458420.24727@krichy.tvnetwork.hu>
- <20160112120548.GB27051@citrix.com>
-CC: <linux-nfs@vger.kernel.org>,
-        Konrad Rzeszutek Wilk <konrad.wilk@oracle.com>
-From: =?UTF-8?Q?Roger_Pau_Monn=c3=a9?= <roger.pau@citrix.com>
-Message-ID: <5694F858.1040007@citrix.com>
-Date: Tue, 12 Jan 2016 13:58:00 +0100
+Received: from aserp1040.oracle.com ([141.146.126.69]:49603 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1762209AbcALQGE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Jan 2016 11:06:04 -0500
+To: linux-block@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-ide@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        linux-nfs@vger.kernel.org, linux-scsi@vger.kernel.org, xfs@oss.sgi.com
+Cc: lsf-pc@lists.linux-foundation.org
+Subject: LSF/MM 2016: Call for Proposals
+From: "Martin K. Petersen" <martin.petersen@oracle.com>
+Date: Tue, 12 Jan 2016 11:05:45 -0500
+Message-ID: <yq14meiye92.fsf@sermon.lab.mkp.net>
 MIME-Version: 1.0
-In-Reply-To: <20160112120548.GB27051@citrix.com>
-Content-Type: text/plain; charset="windows-1252"
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
 
-El 12/01/16 a les 13.05, Wei Liu ha escrit:
-> Drop xen-users@, CC xen-devel@ and blk maintainers, change title.
-> 
-> On Mon, Jan 11, 2016 at 03:08:24PM +0100, Kojedzinszky Richárd wrote:
->> Dear all,
->>
->> We are facing a regular lockup with our xen setup. We have an nfs share
->> mounted on the xen dom0, where the vm images are served, and those files are
->> given to xen domUs.
->>
->> I was just preparing an experiment, where I created a 100G file on the host:
->> # truncate -s 100G /srv/nfs/domU/disk2
->> And after added this disk to the instance's configuration.
+The annual Linux Storage, Filesystem and Memory Management Summit for
+2016 will be held on April 18th and 19th at the Raleigh Marriott City
+center, Raleigh, NC.
 
-Have you tried creating the file with dd instead of truncate? (so it's
-not sparse)
+Like last year, LSF/MM will be colocated with the Linux Foundation Vault
+conference which takes place on April 20th and 21st in the same
+venue. For those that do not know, Vault is designed to be an event
+where open source storage and filesystem practitioners meet storage
+implementors and, as such, it would be of benefit for LSF/MM attendees
+to attend.
 
->> On the host this is the mountpoint:
->> # mount|grep srv/xen
->> 10.1.1.1:/mnt/main/vps on /srv/xen type nfs (rw,relatime,vers=3,rsize=16384,wsize=16384,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=10.1.1.1,mountvers=3,mountport=4045,mountproto=udp,local_lock=none,addr=10.1.1.1)
->>
->> After starting the instance I partitioned the disk with gdisk, and created
->> an xfs fs on it. While the fs has been created well, strange messages
->> appeared on the console:
+	http://events.linuxfoundation.org/events/linux-storage-filesystem-and-mm-summit
+	http://events.linuxfoundation.org/events/vault
 
-AFAICT this is the guest console. Is there any corresponding error on
-the host console?
+On behalf of the committee I am issuing a call for agenda proposals that
+are suitable for cross-track discussion as well as technical subjects
+for the breakout sessions.
 
->> [   23.787504] blk_update_request: I/O error, dev xvdc, sector 2048
->> [   23.788904] blk_update_request: I/O error, dev xvdc, sector 8390655
->> [   23.789611] blk_update_request: I/O error, dev xvdc, sector 16779262
->> [   23.790359] blk_update_request: I/O error, dev xvdc, sector 25167869
->> [   23.791148] blk_update_request: I/O error, dev xvdc, sector 33556476
->> [   23.791498] blk_update_request: I/O error, dev xvdc, sector 41945083
->> [   23.791498] blk_update_request: I/O error, dev xvdc, sector 50333690
->> [   23.791498] blk_update_request: I/O error, dev xvdc, sector 58722297
->> [   23.791498] blk_update_request: I/O error, dev xvdc, sector 67110904
->> [   23.791498] blk_update_request: I/O error, dev xvdc, sector 75499511
->>
->> I dont think that this is normal. If I chose a local block device (probably
->> lvm) for the domU, this does not appear.
+1) Proposals for agenda topics should be sent before February 29th, 2016
+to:
 
-IIRC Xen 4.4 still uses Qemu (Qdisk) for raw disks, do you have any kind
-of errors/warnings in /var/log/xen/qemu-dm-<domain_name>.log?
+	lsf-pc@lists.linux-foundation.org
 
-Roger.
+and cc the Linux list or lists that are relevant for the topic in
+question:
 
+	ATA:	linux-ide@vger.kernel.org
+	Block:	linux-block@vger.kernel.org
+	FS:	linux-fsdevel@vger.kernel.org
+	MM:	linux-mm@kvack.org
+	SCSI:	linux-scsi@vger.kernel.org
+
+If advance notice is required for visa applications then please send
+proposals before February 11th. The committee will complete the first
+round of selections near that date to accommodate applications.
+
+Please tag your proposal with [LSF/MM TOPIC] to make it easier to
+track. In addition, please make sure to start a new thread for each
+topic rather than following up to an existing one.
+
+Agenda topics and attendees will be selected by the program committee,
+but the final agenda will be formed by consensus of the attendees at the
+summit.
+
+We will try to cap attendance at around 25-30 per track to facilitate
+discussions, although the final numbers will depend on the room sizes at
+the venue.
+
+2) Requests to attend the summit should be sent to:
+
+	lsf-pc@lists.linux-foundation.org
+
+Please summarise what expertise you will bring to the meeting, and what
+you would like to discuss. Please also tag your email with [LSF/MM
+ATTEND] so there is less chance of it getting lost.
+
+Presentations are allowed to guide discussion, but are strongly
+discouraged. There will be no recording or audio bridge. However, we
+expect that written minutes will be published as we did in previous
+years
+
+2015:
+	https://lwn.net/Articles/lsfmm2015/
+
+2014:
+	http://lwn.net/Articles/LSFMM2014/
+
+2013:
+	http://lwn.net/Articles/548089/
+
+3) If you have feedback on last year's meeting that we can use to
+improve this year's, please also send that to:
+
+	lsf-pc@lists.linux-foundation.org
+
+Thank you on behalf of the program committee:
+
+Storage:
+	Jens Axboe (track chair)
+	James Bottomley
+	Christoph Hellwig
+	Martin K. Petersen (program chair)
+
+Filesystems:
+	Josef Bacik
+	Jan Kara
+	Jeff Layton (track chair)
+	Anna Schumaker
+	Theodore Ts'o
+	Ric Wheeler
+
+MM:
+	Mel Gorman
+	Johannes Weiner
+	Rik van Riel (track chair)
+
+-- 
+Martin K. Petersen	Oracle Linux Engineering
