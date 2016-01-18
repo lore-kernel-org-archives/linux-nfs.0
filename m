@@ -1,72 +1,69 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from vm-mx1.buf.com ([83.167.48.100]:47409 "EHLO vm-mx1.buf.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755474AbcARPqP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 18 Jan 2016 10:46:15 -0500
-Subject: Re: Debian kernel:
-To: Harald Dunkel <harald.dunkel@aixigo.de>, linux-nfs@vger.kernel.org
-References: <55C3016A.9000509@aixigo.de>
- <20150811090949.5f1a2594@dpcl082.ac.aixigo.de>
- <loom.20160107T193055-318@post.gmane.org> <5694F0E8.1060400@aixigo.de>
-From: Pierre FAUQUEMBERGUE <pierref@buf.com>
-Message-ID: <569D0677.8070908@buf.com>
-Date: Mon, 18 Jan 2016 16:36:23 +0100
-MIME-Version: 1.0
-In-Reply-To: <5694F0E8.1060400@aixigo.de>
-Content-Type: text/plain; charset=windows-1252; format=flowed
+Received: from discipline.rit.edu ([129.21.6.207]:55194 "HELO
+	discipline.rit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S932164AbcARUIe (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Jan 2016 15:08:34 -0500
+From: Andrew Elble <aweits@rit.edu>
+To: linux-nfs@vger.kernel.org
+Cc: bfields@fieldses.org, dros@primarydata.com, Andrew Elble <aweits@rit.edu>
+Subject: [PATCH v2 1/3] nfs/nfsd: Move useful bitfield ops to a commonly accessible place
+Date: Mon, 18 Jan 2016 15:08:20 -0500
+Message-Id: <1453147702-42961-2-git-send-email-aweits@rit.edu>
+In-Reply-To: <1453147702-42961-1-git-send-email-aweits@rit.edu>
+References: <1453147702-42961-1-git-send-email-aweits@rit.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Harri,
+So these may be used in nfsd as well
 
-thank you for your time and the tips.
+Signed-off-by: Andrew Elble <aweits@rit.edu>
+---
+ include/linux/nfs4.h    | 11 +++++++++++
+ include/linux/nfs_xdr.h | 11 -----------
+ 2 files changed, 11 insertions(+), 11 deletions(-)
 
-so, I will do that :
-
-1. modify /etc/default/grub with :
-
-GRUB_CMDLINE_LINUX="nfs.nfs4_unique_id=${GRUB_DEVICE_UUID}"
-
-2. See the result :
-
-grub-mkconfig | less -Sr
-
-3. rebuild grub.cfg :
-
-sudo update-grub
-
-4. Reboot
-
-I will let you know, if the error keep going to appear.
-
-thanks.
-
-
-Pierre
-
-
-
-On 01/12/2016 01:26 PM, Harald Dunkel wrote:
-> Hi Pierre,
->
-> On 01/07/2016 07:34 PM, PIERRRE wrote:
->> Hi,
->>
->> I have the same issue with several NFS servers. Cannot find any help.
->>
->> How did you fixed it with grub ?
-> I set
-> 	GRUB_CMDLINE_LINUX="nfs.nfs4_unique_id=e2177c92-1fe6-48db-918b-ddefba900379"
->
-> in /etc/default/grub and rebuild the grub.cfg file.
->
-> The important point is that every NFS client and every root
-> partition get its own unique id. Be careful, especially if
-> you clone your hosts.
->
-> You can generate a new ID using uuidgen on the command line.
->
->
-> Hope this helps
-> Harri
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index e7e78537aea2..95ead47154ec 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -592,4 +592,15 @@ enum data_content4 {
+ 	NFS4_CONTENT_HOLE		= 1,
+ };
+ 
++#define NFS4_OP_MAP_NUM_LONGS					\
++	DIV_ROUND_UP(LAST_NFS4_OP, 8 * sizeof(unsigned long))
++#define NFS4_OP_MAP_NUM_WORDS \
++	(NFS4_OP_MAP_NUM_LONGS * sizeof(unsigned long) / sizeof(u32))
++struct nfs4_op_map {
++	union {
++		unsigned long longs[NFS4_OP_MAP_NUM_LONGS];
++		u32 words[NFS4_OP_MAP_NUM_WORDS];
++	} u;
++};
++
+ #endif
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 11bbae44f4cb..f24f3d3164a2 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1186,17 +1186,6 @@ struct pnfs_ds_commit_info {
+ 	struct pnfs_commit_bucket *buckets;
+ };
+ 
+-#define NFS4_OP_MAP_NUM_LONGS \
+-	DIV_ROUND_UP(LAST_NFS4_OP, 8 * sizeof(unsigned long))
+-#define NFS4_OP_MAP_NUM_WORDS \
+-	(NFS4_OP_MAP_NUM_LONGS * sizeof(unsigned long) / sizeof(u32))
+-struct nfs4_op_map {
+-	union {
+-		unsigned long longs[NFS4_OP_MAP_NUM_LONGS];
+-		u32 words[NFS4_OP_MAP_NUM_WORDS];
+-	} u;
+-};
+-
+ struct nfs41_state_protection {
+ 	u32 how;
+ 	struct nfs4_op_map enforce;
+-- 
+2.6.3
 
