@@ -1,64 +1,54 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:46984 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S934015AbcATRCY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Jan 2016 12:02:24 -0500
-Subject: Talks at Connectathon 2016
-To: Bill Baker <bill.baker@oracle.com>, nfsv4@ietf.org
-References: <5665C502.8040508@oracle.com>
-Cc: linux-nfs@vger.kernel.org, tina.hartshorn@oracle.com
-From: Rob Thurlow <robert.thurlow@oracle.com>
-Message-ID: <569FBD77.3070407@oracle.com>
-Date: Wed, 20 Jan 2016 10:01:43 -0700
+Received: from fieldses.org ([173.255.197.46]:48137 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755285AbcATWea (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 20 Jan 2016 17:34:30 -0500
+Date: Wed, 20 Jan 2016 17:34:29 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Andrew Elble <aweits@rit.edu>
+Cc: linux-nfs@vger.kernel.org, dros@primarydata.com
+Subject: Re: [PATCH v2 0/3] Deal with lost delegations and EKEYEXPIRED
+Message-ID: <20160120223429.GA26860@fieldses.org>
+References: <1453147702-42961-1-git-send-email-aweits@rit.edu>
 MIME-Version: 1.0
-In-Reply-To: <5665C502.8040508@oracle.com>
-Content-Type: text/plain; charset=windows-1252; format=flowed
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1453147702-42961-1-git-send-email-aweits@rit.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 12/7/15 10:42 AM, Bill Baker wrote:
+On Mon, Jan 18, 2016 at 03:08:19PM -0500, Andrew Elble wrote:
+> I've finally discovered that the majority of our lost delegation problems
+> come from EKEYEXPIRED.
 
-> Oracle will be hosting Connectathon 2016, running
-> from 2/29/2016 thru 3/4/2016.
->
-> I've updated the website, http://www.connectathon.info
+These patches only seem to change behavior in WRONGSEC cases.  Could you
+explain what these patches have to do with the lost delegation and
+EKEYEXPIRED problems?
 
-Greetings, presenters!  I’m organizing the Connectathon talks again
-for Connectathon 2016.
+--b.
 
-Unlike the testing floor, these talks are open to the public, and will
-be held in the upstairs conference room in the Mellon Auditorium, as in
-years past.  The talks will be held on Tuesday and Thursday afternoons
-during Connectathon.  Appropriate topics are technical talks on areas
-that are of broad interest to the NFS community.
-
-If you are interested in presenting a talk, please send me:
-
-   o  A presentation title
-   o  A 2-4 sentence abstract of the presentation
-   o  The name and e-mail addresses of all presenters.  I will not share 
-these with anyone
-   o  How long you need: typically 30 or 60 minutes
-   o  Expected audience (Small/Medium/Large)
-
-A VGA overhead projector is available.
-
-In addition to presentations by individuals, we have space for “birds of 
-a feather” sessions where we can hold group discussion on topics 
-relevant to our community.  These sessions could be held during one or
-more of the normal talk slots, or could possibly be scheduled for
-Wednesday afternoon in a smaller location.  They would also be open
-to the public.  Some initial ideas for BOF sessions include:
-
-   o  NFS Testing (a perennial favorite)
-   o  NFS/Kerberos (especially ease of use)
-   o  NFS/RDMA
-   o  RPCSEC_GSSv3
-
-Please give these a +1 and/or send other suggestions.
-
-A schedule of talks and BOF sessions will be posted on the 
-www.connectathon.info web site as we get closer to the event.
-
-Thanks,
-Rob Thurlow
+> This seems to work fine in our environment, but
+> I am unsure of the ramifications of this in a broader context, so it's
+> time to get other folks to look at it.
+> 
+> v2: fix kbuild robot err on CONFIG_NFSD_V4 unset
+>     kerneldoc header on nfsd4_spo_must_allow
+>     removed LAYOUTRETURN as I currently can't test it
+> 
+> Andrew Elble (3):
+>   nfs/nfsd: Move useful bitfield ops to a commonly accessible place
+>   nfsd: allow mach_creds_match to be used more broadly
+>   nfsd: implement machine credential support for some operations
+> 
+>  fs/nfsd/export.c        |  4 +++
+>  fs/nfsd/nfs4proc.c      | 69 +++++++++++++++++++++++++++++++++++++++++++++++++
+>  fs/nfsd/nfs4state.c     | 32 ++++++++++++++++++-----
+>  fs/nfsd/nfs4xdr.c       | 51 +++++++++++++++++-------------------
+>  fs/nfsd/nfsd.h          |  5 ++++
+>  fs/nfsd/state.h         |  1 +
+>  fs/nfsd/xdr4.h          |  5 ++++
+>  include/linux/nfs4.h    | 11 ++++++++
+>  include/linux/nfs_xdr.h | 11 --------
+>  9 files changed, 143 insertions(+), 46 deletions(-)
+> 
+> -- 
+> 2.6.3
