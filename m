@@ -1,57 +1,57 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-oi0-f42.google.com ([209.85.218.42]:34723 "EHLO
-	mail-oi0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753124AbcAVQFD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Jan 2016 11:05:03 -0500
-Received: by mail-oi0-f42.google.com with SMTP id k206so50553592oia.1
-        for <linux-nfs@vger.kernel.org>; Fri, 22 Jan 2016 08:05:02 -0800 (PST)
+Received: from mail-oi0-f50.google.com ([209.85.218.50]:35418 "EHLO
+	mail-oi0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753117AbcAVQGM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Jan 2016 11:06:12 -0500
+Received: by mail-oi0-f50.google.com with SMTP id p187so49907330oia.2
+        for <linux-nfs@vger.kernel.org>; Fri, 22 Jan 2016 08:06:12 -0800 (PST)
 MIME-Version: 1.0
-In-Reply-To: <56A23EF7.6000107@Netapp.com>
-References: <1453409713-15878-1-git-send-email-trond.myklebust@primarydata.com>
-	<1453409713-15878-2-git-send-email-trond.myklebust@primarydata.com>
-	<56A23EF7.6000107@Netapp.com>
-Date: Fri, 22 Jan 2016 11:05:02 -0500
-Message-ID: <CAHQdGtQYicNb_QUOWZaHPbCaxOV8ds8Lu06_W59dJKaoJo7rGQ@mail.gmail.com>
-Subject: Re: [PATCH 2/2] pNFS/flexfiles: Fix an XDR encoding bug in layoutreturn
+In-Reply-To: <20160122152429.GA9082@fieldses.org>
+References: <1453147702-42961-1-git-send-email-aweits@rit.edu>
+	<1453147702-42961-4-git-send-email-aweits@rit.edu>
+	<20160121190134.GB1793@fieldses.org>
+	<m237tqpw65.fsf@discipline.rit.edu>
+	<20160121195003.GD1793@fieldses.org>
+	<m2si1qmqhw.fsf@discipline.rit.edu>
+	<20160122152429.GA9082@fieldses.org>
+Date: Fri, 22 Jan 2016 11:06:11 -0500
+Message-ID: <CAHQdGtRXTJX0uL7PPTtSZyhwvKdPAEJ3jXv4Cb-6GC_FXKzU=w@mail.gmail.com>
+Subject: Re: [PATCH v2 3/3] nfsd: implement machine credential support for
+ some operations
 From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Anna Schumaker <Anna.Schumaker@netapp.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Andrew W Elble <aweits@rit.edu>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Weston Andros Adamson <dros@primarydata.com>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jan 22, 2016 at 9:38 AM, Anna Schumaker
-<Anna.Schumaker@netapp.com> wrote:
+On Fri, Jan 22, 2016 at 10:24 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> On Thu, Jan 21, 2016 at 07:01:31PM -0500, Andrew W Elble wrote:
+>>
+>> > Ugh.  So the client actually needs to allow random other ops in any
+>> > compound containing an spo_must_allow'd operation?  That doesn't seem
+>> > right to me.
+>>
+>> Well, that's most certainly my fault. Seems like I should
+>> submit a patch to have the client ask for GETATTR if it's going to send
+>> it as a tag-along to DELEGRETURN. Is WRONGSEC really the correct way
+>> to enforce appropriate use of spo_must_allow here?
+>>
+>> For instance, the client could ask for just DELEGRETURN:
+>>
+>> PUTFH
+>> GETATTR
+>> DELEGRETURN
+>>
+>> ...would be successful as long as the export was done with krb5i/krb5p.
 >
-> Hi Trond,
+> I don't know what the right thing to do is here.
 >
-> On 01/21/2016 03:55 PM, Trond Myklebust wrote:
-> > We must not skip encoding the statistics, or the server will see an
-> > XDR encoding error.
-> >
-> > Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-> > Cc: stable@vger.kernel.org # 4.0+
-> > ---
-> >  fs/nfs/flexfilelayout/flexfilelayout.c | 4 +---
-> >  1 file changed, 1 insertion(+), 3 deletions(-)
-> >
-> > diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
-> > index 405f46ba490e..82959409b9a6 100644
-> > --- a/fs/nfs/flexfilelayout/flexfilelayout.c
-> > +++ b/fs/nfs/flexfilelayout/flexfilelayout.c
-> > @@ -1859,9 +1859,7 @@ ff_layout_encode_layoutreturn(struct pnfs_layout_hdr *lo,
-> >       start = xdr_reserve_space(xdr, 4);
-> >       BUG_ON(!start);
-> >
-> > -     if (ff_layout_encode_ioerr(flo, xdr, args))
-> > -             goto out;
->
-> Can you remove the label "out", too?  GCC tells me:
->
-> fs/nfs/flexfilelayout/flexfilelayout.c:1953:1: error: label 'out' defined but not used [-Werror=unused-label]
->
+> I wonder what the GETATTR's for?
 
-I intended to do this, but it slipped my mind. Done now...
+Close to open cache consistency.
 
-Apologies
+Cheers
   Trond
