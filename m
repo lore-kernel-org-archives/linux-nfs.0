@@ -1,44 +1,51 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f176.google.com ([209.85.213.176]:38551 "EHLO
-	mail-ig0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751299AbcAUUzj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Jan 2016 15:55:39 -0500
-Received: by mail-ig0-f176.google.com with SMTP id mw1so41896268igb.1
-        for <linux-nfs@vger.kernel.org>; Thu, 21 Jan 2016 12:55:39 -0800 (PST)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 2/2] pNFS/flexfiles: Fix an XDR encoding bug in layoutreturn
-Date: Thu, 21 Jan 2016 15:55:13 -0500
-Message-Id: <1453409713-15878-2-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1453409713-15878-1-git-send-email-trond.myklebust@primarydata.com>
-References: <1453409713-15878-1-git-send-email-trond.myklebust@primarydata.com>
+Received: from discipline.rit.edu ([129.21.6.207]:11667 "HELO
+	discipline.rit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1750925AbcAVABd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Jan 2016 19:01:33 -0500
+From: Andrew W Elble <aweits@rit.edu>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: <linux-nfs@vger.kernel.org>, <dros@primarydata.com>
+Subject: Re: [PATCH v2 3/3] nfsd: implement machine credential support for some operations
+References: <1453147702-42961-1-git-send-email-aweits@rit.edu>
+	<1453147702-42961-4-git-send-email-aweits@rit.edu>
+	<20160121190134.GB1793@fieldses.org>
+	<m237tqpw65.fsf@discipline.rit.edu>
+	<20160121195003.GD1793@fieldses.org>
+Date: Thu, 21 Jan 2016 19:01:31 -0500
+In-Reply-To: <20160121195003.GD1793@fieldses.org> (J. Bruce Fields's message
+	of "Thu, 21 Jan 2016 14:50:03 -0500")
+Message-ID: <m2si1qmqhw.fsf@discipline.rit.edu>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We must not skip encoding the statistics, or the server will see an
-XDR encoding error.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: stable@vger.kernel.org # 4.0+
----
- fs/nfs/flexfilelayout/flexfilelayout.c | 4 +---
- 1 file changed, 1 insertion(+), 3 deletions(-)
+> Ugh.  So the client actually needs to allow random other ops in any
+> compound containing an spo_must_allow'd operation?  That doesn't seem
+> right to me.
 
-diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
-index 405f46ba490e..82959409b9a6 100644
---- a/fs/nfs/flexfilelayout/flexfilelayout.c
-+++ b/fs/nfs/flexfilelayout/flexfilelayout.c
-@@ -1859,9 +1859,7 @@ ff_layout_encode_layoutreturn(struct pnfs_layout_hdr *lo,
- 	start = xdr_reserve_space(xdr, 4);
- 	BUG_ON(!start);
- 
--	if (ff_layout_encode_ioerr(flo, xdr, args))
--		goto out;
--
-+	ff_layout_encode_ioerr(flo, xdr, args);
- 	ff_layout_encode_iostats(flo, xdr, args);
- out:
- 	*start = cpu_to_be32((xdr->p - start - 1) * 4);
+Well, that's most certainly my fault. Seems like I should
+submit a patch to have the client ask for GETATTR if it's going to send
+it as a tag-along to DELEGRETURN. Is WRONGSEC really the correct way
+to enforce appropriate use of spo_must_allow here?
+
+For instance, the client could ask for just DELEGRETURN:
+
+PUTFH
+GETATTR
+DELEGRETURN
+
+...would be successful as long as the export was done with krb5i/krb5p.
+
+Thanks,
+
+Andy
+
 -- 
-2.5.0
-
+Andrew W. Elble
+aweits@discipline.rit.edu
+Infrastructure Engineer, Communications Technical Lead
+Rochester Institute of Technology
+PGP: BFAD 8461 4CCF DC95 DA2C B0EB 965B 082E 863E C912
