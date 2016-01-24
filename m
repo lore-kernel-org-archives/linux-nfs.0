@@ -1,9 +1,9 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from helcar.hengli.com.au ([209.40.204.226]:58226 "EHLO
+Received: from helcar.hengli.com.au ([209.40.204.226]:34112 "EHLO
 	helcar.hengli.com.au" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932186AbcAXNVB (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 24 Jan 2016 08:21:01 -0500
-Subject: [PATCH 26/26] tcp: Use ahash
+	with ESMTP id S932230AbcAXNUv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 24 Jan 2016 08:20:51 -0500
+Subject: [PATCH 25/26] sctp: Use shash
 References: <20160124131021.GA31153@gondor.apana.org.au>
 To: Linux Crypto Mailing List <linux-crypto@vger.kernel.org>,
         Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
@@ -15,337 +15,344 @@ To: Linux Crypto Mailing List <linux-crypto@vger.kernel.org>,
         linux-bluetooth@vger.kernel.org, ceph-devel@vger.kernel.org,
         linux-wpan@vger.kernel.org, linux-afs@lists.infradead.org,
         drbd-dev@lists.linbit.com, open-iscsi@googlegroups.com
-Message-Id: <E1aNKad-0008H5-Ax@gondolin.me.apana.org.au>
+Message-Id: <E1aNKaS-0008Gn-Rz@gondolin.me.apana.org.au>
 From: Herbert Xu <herbert@gondor.apana.org.au>
-Date: Sun, 24 Jan 2016 21:20:23 +0800
+Date: Sun, 24 Jan 2016 21:20:12 +0800
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 This patch replaces uses of the long obsolete hash interface with
-ahash.
+shash.
 
 Signed-off-by: Herbert Xu <herbert@gondor.apana.org.au>
 ---
 
- include/net/tcp.h       |    6 +-----
- net/ipv4/tcp.c          |   41 ++++++++++++++++++++++++++---------------
- net/ipv4/tcp_fastopen.c |    1 +
- net/ipv4/tcp_ipv4.c     |   23 +++++++++++++----------
- net/ipv6/tcp_ipv6.c     |   23 +++++++++++++----------
- 5 files changed, 54 insertions(+), 40 deletions(-)
+ include/net/sctp/auth.h    |    4 +--
+ include/net/sctp/structs.h |    6 ++---
+ net/sctp/auth.c            |   36 ++++++++++++++++---------------
+ net/sctp/endpointola.c     |    1 
+ net/sctp/sm_make_chunk.c   |   51 +++++++++++++++++++++++++--------------------
+ net/sctp/socket.c          |    8 +++----
+ 6 files changed, 57 insertions(+), 49 deletions(-)
 
-diff --git a/include/net/tcp.h b/include/net/tcp.h
-index 8ea1997..2a5b3b8 100644
---- a/include/net/tcp.h
-+++ b/include/net/tcp.h
-@@ -27,7 +27,6 @@
- #include <linux/cache.h>
- #include <linux/percpu.h>
- #include <linux/skbuff.h>
--#include <linux/crypto.h>
- #include <linux/cryptohash.h>
- #include <linux/kref.h>
- #include <linux/ktime.h>
-@@ -1325,9 +1324,6 @@ static inline void tcp_clear_all_retrans_hints(struct tcp_sock *tp)
- 	tp->retransmit_skb_hint = NULL;
- }
+diff --git a/include/net/sctp/auth.h b/include/net/sctp/auth.h
+index f2d58aa..9b9fb12 100644
+--- a/include/net/sctp/auth.h
++++ b/include/net/sctp/auth.h
+@@ -31,12 +31,12 @@
+ #define __sctp_auth_h__
  
--/* MD5 Signature */
+ #include <linux/list.h>
+-#include <linux/crypto.h>
+ 
+ struct sctp_endpoint;
+ struct sctp_association;
+ struct sctp_authkey;
+ struct sctp_hmacalgo;
++struct crypto_shash;
+ 
+ /*
+  * Define a generic struct that will hold all the info
+@@ -90,7 +90,7 @@ int sctp_auth_asoc_copy_shkeys(const struct sctp_endpoint *ep,
+ 				struct sctp_association *asoc,
+ 				gfp_t gfp);
+ int sctp_auth_init_hmacs(struct sctp_endpoint *ep, gfp_t gfp);
+-void sctp_auth_destroy_hmacs(struct crypto_hash *auth_hmacs[]);
++void sctp_auth_destroy_hmacs(struct crypto_shash *auth_hmacs[]);
+ struct sctp_hmac *sctp_auth_get_hmac(__u16 hmac_id);
+ struct sctp_hmac *sctp_auth_asoc_get_hmac(const struct sctp_association *asoc);
+ void sctp_auth_asoc_set_default_hmac(struct sctp_association *asoc,
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index 20e7212..6b1e383 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -82,7 +82,7 @@ struct sctp_bind_addr;
+ struct sctp_ulpq;
+ struct sctp_ep_common;
+ struct sctp_ssnmap;
 -struct crypto_hash;
--
- union tcp_md5_addr {
- 	struct in_addr  a4;
- #if IS_ENABLED(CONFIG_IPV6)
-@@ -1376,7 +1372,7 @@ union tcp_md5sum_block {
++struct crypto_shash;
  
- /* - pool: digest algorithm, hash description and scratch buffer */
- struct tcp_md5sig_pool {
--	struct hash_desc	md5_desc;
-+	struct ahash_request	*md5_req;
- 	union tcp_md5sum_block	md5_blk;
- };
  
-diff --git a/net/ipv4/tcp.c b/net/ipv4/tcp.c
-index fd17eec..91ffef3 100644
---- a/net/ipv4/tcp.c
-+++ b/net/ipv4/tcp.c
-@@ -247,6 +247,7 @@
+ #include <net/sctp/tsnmap.h>
+@@ -166,7 +166,7 @@ struct sctp_sock {
+ 	struct sctp_pf *pf;
  
- #define pr_fmt(fmt) "TCP: " fmt
+ 	/* Access to HMAC transform. */
+-	struct crypto_hash *hmac;
++	struct crypto_shash *hmac;
+ 	char *sctp_hmac_alg;
+ 
+ 	/* What is our base endpointer? */
+@@ -1235,7 +1235,7 @@ struct sctp_endpoint {
+ 	/* SCTP AUTH: array of the HMACs that will be allocated
+ 	 * we need this per association so that we don't serialize
+ 	 */
+-	struct crypto_hash **auth_hmacs;
++	struct crypto_shash **auth_hmacs;
+ 
+ 	/* SCTP-AUTH: hmacs for the endpoint encoded into parameter */
+ 	 struct sctp_hmac_algo_param *auth_hmacs_list;
+diff --git a/net/sctp/auth.c b/net/sctp/auth.c
+index 1543e39..912eb16 100644
+--- a/net/sctp/auth.c
++++ b/net/sctp/auth.c
+@@ -27,9 +27,9 @@
+  *   Vlad Yasevich     <vladislav.yasevich@hp.com>
+  */
  
 +#include <crypto/hash.h>
- #include <linux/kernel.h>
- #include <linux/module.h>
- #include <linux/types.h>
-@@ -266,7 +267,6 @@
- #include <linux/swap.h>
- #include <linux/cache.h>
- #include <linux/err.h>
--#include <linux/crypto.h>
- #include <linux/time.h>
  #include <linux/slab.h>
- 
-@@ -2939,17 +2939,26 @@ static bool tcp_md5sig_pool_populated = false;
- 
- static void __tcp_alloc_md5sig_pool(void)
+ #include <linux/types.h>
+-#include <linux/crypto.h>
+ #include <linux/scatterlist.h>
+ #include <net/sctp/sctp.h>
+ #include <net/sctp/auth.h>
+@@ -448,7 +448,7 @@ struct sctp_shared_key *sctp_auth_get_shkey(
+  */
+ int sctp_auth_init_hmacs(struct sctp_endpoint *ep, gfp_t gfp)
  {
-+	struct crypto_ahash *hash;
- 	int cpu;
+-	struct crypto_hash *tfm = NULL;
++	struct crypto_shash *tfm = NULL;
+ 	__u16   id;
  
-+	hash = crypto_alloc_ahash("md5", 0, CRYPTO_ALG_ASYNC);
-+	if (IS_ERR_OR_NULL(hash))
-+		return;
-+
- 	for_each_possible_cpu(cpu) {
--		if (!per_cpu(tcp_md5sig_pool, cpu).md5_desc.tfm) {
--			struct crypto_hash *hash;
-+		struct ahash_request *req;
+ 	/* If AUTH extension is disabled, we are done */
+@@ -462,9 +462,8 @@ int sctp_auth_init_hmacs(struct sctp_endpoint *ep, gfp_t gfp)
+ 		return 0;
  
--			hash = crypto_alloc_hash("md5", 0, CRYPTO_ALG_ASYNC);
--			if (IS_ERR_OR_NULL(hash))
--				return;
--			per_cpu(tcp_md5sig_pool, cpu).md5_desc.tfm = hash;
--		}
-+		if (per_cpu(tcp_md5sig_pool, cpu).md5_req)
-+			continue;
-+
-+		req = ahash_request_alloc(hash, GFP_KERNEL);
-+		if (!req)
-+			return;
-+
-+		ahash_request_set_callback(req, 0, NULL, NULL);
-+
-+		per_cpu(tcp_md5sig_pool, cpu).md5_req = req;
- 	}
- 	/* before setting tcp_md5sig_pool_populated, we must commit all writes
- 	 * to memory. See smp_rmb() in tcp_get_md5sig_pool()
-@@ -2999,7 +3008,6 @@ int tcp_md5_hash_header(struct tcp_md5sig_pool *hp,
- {
- 	struct scatterlist sg;
- 	struct tcphdr hdr;
--	int err;
+ 	/* Allocated the array of pointers to transorms */
+-	ep->auth_hmacs = kzalloc(
+-			    sizeof(struct crypto_hash *) * SCTP_AUTH_NUM_HMACS,
+-			    gfp);
++	ep->auth_hmacs = kzalloc(sizeof(struct crypto_shash *) *
++				 SCTP_AUTH_NUM_HMACS, gfp);
+ 	if (!ep->auth_hmacs)
+ 		return -ENOMEM;
  
- 	/* We are not allowed to change tcphdr, make a local copy */
- 	memcpy(&hdr, th, sizeof(hdr));
-@@ -3007,8 +3015,8 @@ int tcp_md5_hash_header(struct tcp_md5sig_pool *hp,
+@@ -483,8 +482,7 @@ int sctp_auth_init_hmacs(struct sctp_endpoint *ep, gfp_t gfp)
+ 			continue;
  
- 	/* options aren't included in the hash */
- 	sg_init_one(&sg, &hdr, sizeof(hdr));
--	err = crypto_hash_update(&hp->md5_desc, &sg, sizeof(hdr));
--	return err;
-+	ahash_request_set_crypt(hp->md5_req, &sg, NULL, sizeof(hdr));
-+	return crypto_ahash_update(hp->md5_req);
+ 		/* Allocate the ID */
+-		tfm = crypto_alloc_hash(sctp_hmac_list[id].hmac_name, 0,
+-					CRYPTO_ALG_ASYNC);
++		tfm = crypto_alloc_shash(sctp_hmac_list[id].hmac_name, 0, 0);
+ 		if (IS_ERR(tfm))
+ 			goto out_err;
+ 
+@@ -500,7 +498,7 @@ out_err:
  }
- EXPORT_SYMBOL(tcp_md5_hash_header);
  
-@@ -3017,7 +3025,7 @@ int tcp_md5_hash_skb_data(struct tcp_md5sig_pool *hp,
+ /* Destroy the hmac tfm array */
+-void sctp_auth_destroy_hmacs(struct crypto_hash *auth_hmacs[])
++void sctp_auth_destroy_hmacs(struct crypto_shash *auth_hmacs[])
  {
- 	struct scatterlist sg;
- 	const struct tcphdr *tp = tcp_hdr(skb);
--	struct hash_desc *desc = &hp->md5_desc;
-+	struct ahash_request *req = hp->md5_req;
- 	unsigned int i;
- 	const unsigned int head_data_len = skb_headlen(skb) > header_len ?
- 					   skb_headlen(skb) - header_len : 0;
-@@ -3027,7 +3035,8 @@ int tcp_md5_hash_skb_data(struct tcp_md5sig_pool *hp,
- 	sg_init_table(&sg, 1);
+ 	int i;
  
- 	sg_set_buf(&sg, ((u8 *) tp) + header_len, head_data_len);
--	if (crypto_hash_update(desc, &sg, head_data_len))
-+	ahash_request_set_crypt(req, &sg, NULL, head_data_len);
-+	if (crypto_ahash_update(req))
- 		return 1;
+@@ -508,8 +506,7 @@ void sctp_auth_destroy_hmacs(struct crypto_hash *auth_hmacs[])
+ 		return;
  
- 	for (i = 0; i < shi->nr_frags; ++i) {
-@@ -3037,7 +3046,8 @@ int tcp_md5_hash_skb_data(struct tcp_md5sig_pool *hp,
- 
- 		sg_set_page(&sg, page, skb_frag_size(f),
- 			    offset_in_page(offset));
--		if (crypto_hash_update(desc, &sg, skb_frag_size(f)))
-+		ahash_request_set_crypt(req, &sg, NULL, skb_frag_size(f));
-+		if (crypto_ahash_update(req))
- 			return 1;
+ 	for (i = 0; i < SCTP_AUTH_NUM_HMACS; i++) {
+-		if (auth_hmacs[i])
+-			crypto_free_hash(auth_hmacs[i]);
++		crypto_free_shash(auth_hmacs[i]);
  	}
- 
-@@ -3054,7 +3064,8 @@ int tcp_md5_hash_key(struct tcp_md5sig_pool *hp, const struct tcp_md5sig_key *ke
- 	struct scatterlist sg;
- 
- 	sg_init_one(&sg, key->key, key->keylen);
--	return crypto_hash_update(&hp->md5_desc, &sg, key->keylen);
-+	ahash_request_set_crypt(hp->md5_req, &sg, NULL, key->keylen);
-+	return crypto_ahash_update(hp->md5_req);
+ 	kfree(auth_hmacs);
  }
- EXPORT_SYMBOL(tcp_md5_hash_key);
+@@ -709,8 +706,7 @@ void sctp_auth_calculate_hmac(const struct sctp_association *asoc,
+ 			      struct sctp_auth_chunk *auth,
+ 			      gfp_t gfp)
+ {
+-	struct scatterlist sg;
+-	struct hash_desc desc;
++	struct crypto_shash *tfm;
+ 	struct sctp_auth_bytes *asoc_key;
+ 	__u16 key_id, hmac_id;
+ 	__u8 *digest;
+@@ -742,16 +738,22 @@ void sctp_auth_calculate_hmac(const struct sctp_association *asoc,
  
-diff --git a/net/ipv4/tcp_fastopen.c b/net/ipv4/tcp_fastopen.c
-index 55be6ac..4c65ca1 100644
---- a/net/ipv4/tcp_fastopen.c
-+++ b/net/ipv4/tcp_fastopen.c
-@@ -1,3 +1,4 @@
-+#include <linux/crypto.h>
- #include <linux/err.h>
- #include <linux/init.h>
+ 	/* set up scatter list */
+ 	end = skb_tail_pointer(skb);
+-	sg_init_one(&sg, auth, end - (unsigned char *)auth);
+ 
+-	desc.tfm = asoc->ep->auth_hmacs[hmac_id];
+-	desc.flags = 0;
++	tfm = asoc->ep->auth_hmacs[hmac_id];
+ 
+ 	digest = auth->auth_hdr.hmac;
+-	if (crypto_hash_setkey(desc.tfm, &asoc_key->data[0], asoc_key->len))
++	if (crypto_shash_setkey(tfm, &asoc_key->data[0], asoc_key->len))
+ 		goto free;
+ 
+-	crypto_hash_digest(&desc, &sg, sg.length, digest);
++	{
++		SHASH_DESC_ON_STACK(desc, tfm);
++
++		desc->tfm = tfm;
++		desc->flags = 0;
++		crypto_shash_digest(desc, (u8 *)auth,
++				    end - (unsigned char *)auth, digest);
++		shash_desc_zero(desc);
++	}
+ 
+ free:
+ 	if (free_key)
+diff --git a/net/sctp/endpointola.c b/net/sctp/endpointola.c
+index 2522a61..9d494e3 100644
+--- a/net/sctp/endpointola.c
++++ b/net/sctp/endpointola.c
+@@ -42,7 +42,6 @@
+ #include <linux/slab.h>
+ #include <linux/in.h>
+ #include <linux/random.h>	/* get_random_bytes() */
+-#include <linux/crypto.h>
+ #include <net/sock.h>
+ #include <net/ipv6.h>
+ #include <net/sctp/sctp.h>
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index 5d6a03f..1296e55 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -45,6 +45,7 @@
+ 
+ #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
+ 
++#include <crypto/hash.h>
+ #include <linux/types.h>
  #include <linux/kernel.h>
-diff --git a/net/ipv4/tcp_ipv4.c b/net/ipv4/tcp_ipv4.c
-index c7d1fb5..989bfd1 100644
---- a/net/ipv4/tcp_ipv4.c
-+++ b/net/ipv4/tcp_ipv4.c
-@@ -82,7 +82,7 @@
- #include <linux/proc_fs.h>
- #include <linux/seq_file.h>
- 
--#include <linux/crypto.h>
-+#include <crypto/hash.h>
+ #include <linux/ip.h>
+@@ -52,7 +53,6 @@
+ #include <linux/net.h>
+ #include <linux/inet.h>
  #include <linux/scatterlist.h>
- 
- int sysctl_tcp_tw_reuse __read_mostly;
-@@ -1032,21 +1032,22 @@ static int tcp_v4_md5_hash_pseudoheader(struct tcp_md5sig_pool *hp,
- 	bp->len = cpu_to_be16(nbytes);
- 
- 	sg_init_one(&sg, bp, sizeof(*bp));
--	return crypto_hash_update(&hp->md5_desc, &sg, sizeof(*bp));
-+	ahash_request_set_crypt(hp->md5_req, &sg, NULL, sizeof(*bp));
-+	return crypto_ahash_update(hp->md5_req);
- }
- 
- static int tcp_v4_md5_hash_hdr(char *md5_hash, const struct tcp_md5sig_key *key,
- 			       __be32 daddr, __be32 saddr, const struct tcphdr *th)
- {
- 	struct tcp_md5sig_pool *hp;
--	struct hash_desc *desc;
-+	struct ahash_request *req;
- 
- 	hp = tcp_get_md5sig_pool();
- 	if (!hp)
- 		goto clear_hash_noput;
--	desc = &hp->md5_desc;
-+	req = hp->md5_req;
- 
--	if (crypto_hash_init(desc))
-+	if (crypto_ahash_init(req))
- 		goto clear_hash;
- 	if (tcp_v4_md5_hash_pseudoheader(hp, daddr, saddr, th->doff << 2))
- 		goto clear_hash;
-@@ -1054,7 +1055,8 @@ static int tcp_v4_md5_hash_hdr(char *md5_hash, const struct tcp_md5sig_key *key,
- 		goto clear_hash;
- 	if (tcp_md5_hash_key(hp, key))
- 		goto clear_hash;
--	if (crypto_hash_final(desc, md5_hash))
-+	ahash_request_set_crypt(req, NULL, md5_hash, 0);
-+	if (crypto_ahash_final(req))
- 		goto clear_hash;
- 
- 	tcp_put_md5sig_pool();
-@@ -1072,7 +1074,7 @@ int tcp_v4_md5_hash_skb(char *md5_hash, const struct tcp_md5sig_key *key,
- 			const struct sk_buff *skb)
- {
- 	struct tcp_md5sig_pool *hp;
--	struct hash_desc *desc;
-+	struct ahash_request *req;
- 	const struct tcphdr *th = tcp_hdr(skb);
- 	__be32 saddr, daddr;
- 
-@@ -1088,9 +1090,9 @@ int tcp_v4_md5_hash_skb(char *md5_hash, const struct tcp_md5sig_key *key,
- 	hp = tcp_get_md5sig_pool();
- 	if (!hp)
- 		goto clear_hash_noput;
--	desc = &hp->md5_desc;
-+	req = hp->md5_req;
- 
--	if (crypto_hash_init(desc))
-+	if (crypto_ahash_init(req))
- 		goto clear_hash;
- 
- 	if (tcp_v4_md5_hash_pseudoheader(hp, daddr, saddr, skb->len))
-@@ -1101,7 +1103,8 @@ int tcp_v4_md5_hash_skb(char *md5_hash, const struct tcp_md5sig_key *key,
- 		goto clear_hash;
- 	if (tcp_md5_hash_key(hp, key))
- 		goto clear_hash;
--	if (crypto_hash_final(desc, md5_hash))
-+	ahash_request_set_crypt(req, NULL, md5_hash, 0);
-+	if (crypto_ahash_final(req))
- 		goto clear_hash;
- 
- 	tcp_put_md5sig_pool();
-diff --git a/net/ipv6/tcp_ipv6.c b/net/ipv6/tcp_ipv6.c
-index 4ad8edb..ad20d50 100644
---- a/net/ipv6/tcp_ipv6.c
-+++ b/net/ipv6/tcp_ipv6.c
-@@ -67,7 +67,7 @@
- #include <linux/proc_fs.h>
- #include <linux/seq_file.h>
- 
 -#include <linux/crypto.h>
+ #include <linux/slab.h>
+ #include <net/sock.h>
+ 
+@@ -1606,7 +1606,6 @@ static sctp_cookie_param_t *sctp_pack_cookie(const struct sctp_endpoint *ep,
+ {
+ 	sctp_cookie_param_t *retval;
+ 	struct sctp_signed_cookie *cookie;
+-	struct scatterlist sg;
+ 	int headersize, bodysize;
+ 
+ 	/* Header size is static data prior to the actual cookie, including
+@@ -1663,16 +1662,19 @@ static sctp_cookie_param_t *sctp_pack_cookie(const struct sctp_endpoint *ep,
+ 	       ntohs(init_chunk->chunk_hdr->length), raw_addrs, addrs_len);
+ 
+ 	if (sctp_sk(ep->base.sk)->hmac) {
+-		struct hash_desc desc;
++		SHASH_DESC_ON_STACK(desc, sctp_sk(ep->base.sk)->hmac);
++		int err;
+ 
+ 		/* Sign the message.  */
+-		sg_init_one(&sg, &cookie->c, bodysize);
+-		desc.tfm = sctp_sk(ep->base.sk)->hmac;
+-		desc.flags = 0;
+-
+-		if (crypto_hash_setkey(desc.tfm, ep->secret_key,
+-				       sizeof(ep->secret_key)) ||
+-		    crypto_hash_digest(&desc, &sg, bodysize, cookie->signature))
++		desc->tfm = sctp_sk(ep->base.sk)->hmac;
++		desc->flags = 0;
++
++		err = crypto_shash_setkey(desc->tfm, ep->secret_key,
++					  sizeof(ep->secret_key)) ?:
++		      crypto_shash_digest(desc, (u8 *)&cookie->c, bodysize,
++					  cookie->signature);
++		shash_desc_zero(desc);
++		if (err)
+ 			goto free_cookie;
+ 	}
+ 
+@@ -1697,12 +1699,10 @@ struct sctp_association *sctp_unpack_cookie(
+ 	struct sctp_cookie *bear_cookie;
+ 	int headersize, bodysize, fixed_size;
+ 	__u8 *digest = ep->digest;
+-	struct scatterlist sg;
+ 	unsigned int len;
+ 	sctp_scope_t scope;
+ 	struct sk_buff *skb = chunk->skb;
+ 	ktime_t kt;
+-	struct hash_desc desc;
+ 
+ 	/* Header size is static data prior to the actual cookie, including
+ 	 * any padding.
+@@ -1733,16 +1733,23 @@ struct sctp_association *sctp_unpack_cookie(
+ 		goto no_hmac;
+ 
+ 	/* Check the signature.  */
+-	sg_init_one(&sg, bear_cookie, bodysize);
+-	desc.tfm = sctp_sk(ep->base.sk)->hmac;
+-	desc.flags = 0;
+-
+-	memset(digest, 0x00, SCTP_SIGNATURE_SIZE);
+-	if (crypto_hash_setkey(desc.tfm, ep->secret_key,
+-			       sizeof(ep->secret_key)) ||
+-	    crypto_hash_digest(&desc, &sg, bodysize, digest)) {
+-		*error = -SCTP_IERROR_NOMEM;
+-		goto fail;
++	{
++		SHASH_DESC_ON_STACK(desc, sctp_sk(ep->base.sk)->hmac);
++		int err;
++
++		desc->tfm = sctp_sk(ep->base.sk)->hmac;
++		desc->flags = 0;
++
++		err = crypto_shash_setkey(desc->tfm, ep->secret_key,
++					  sizeof(ep->secret_key)) ?:
++		      crypto_shash_digest(desc, (u8 *)bear_cookie, bodysize,
++					  digest);
++		shash_desc_zero(desc);
++
++		if (err) {
++			*error = -SCTP_IERROR_NOMEM;
++			goto fail;
++		}
+ 	}
+ 
+ 	if (memcmp(digest, cookie->signature, SCTP_SIGNATURE_SIZE)) {
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 9bb80ec..4101c5b 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -52,6 +52,7 @@
+ 
+ #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
+ 
 +#include <crypto/hash.h>
- #include <linux/scatterlist.h>
+ #include <linux/types.h>
+ #include <linux/kernel.h>
+ #include <linux/wait.h>
+@@ -61,7 +62,6 @@
+ #include <linux/fcntl.h>
+ #include <linux/poll.h>
+ #include <linux/init.h>
+-#include <linux/crypto.h>
+ #include <linux/slab.h>
+ #include <linux/file.h>
+ #include <linux/compat.h>
+@@ -4160,7 +4160,7 @@ static void sctp_destruct_sock(struct sock *sk)
+ 	struct sctp_sock *sp = sctp_sk(sk);
  
- static void	tcp_v6_send_reset(const struct sock *sk, struct sk_buff *skb);
-@@ -541,7 +541,8 @@ static int tcp_v6_md5_hash_pseudoheader(struct tcp_md5sig_pool *hp,
- 	bp->len = cpu_to_be32(nbytes);
+ 	/* Free up the HMAC transform. */
+-	crypto_free_hash(sp->hmac);
++	crypto_free_shash(sp->hmac);
  
- 	sg_init_one(&sg, bp, sizeof(*bp));
--	return crypto_hash_update(&hp->md5_desc, &sg, sizeof(*bp));
-+	ahash_request_set_crypt(hp->md5_req, &sg, NULL, sizeof(*bp));
-+	return crypto_ahash_update(hp->md5_req);
+ 	inet_sock_destruct(sk);
  }
- 
- static int tcp_v6_md5_hash_hdr(char *md5_hash, struct tcp_md5sig_key *key,
-@@ -549,14 +550,14 @@ static int tcp_v6_md5_hash_hdr(char *md5_hash, struct tcp_md5sig_key *key,
- 			       const struct tcphdr *th)
+@@ -6299,13 +6299,13 @@ static int sctp_listen_start(struct sock *sk, int backlog)
  {
- 	struct tcp_md5sig_pool *hp;
--	struct hash_desc *desc;
-+	struct ahash_request *req;
+ 	struct sctp_sock *sp = sctp_sk(sk);
+ 	struct sctp_endpoint *ep = sp->ep;
+-	struct crypto_hash *tfm = NULL;
++	struct crypto_shash *tfm = NULL;
+ 	char alg[32];
  
- 	hp = tcp_get_md5sig_pool();
- 	if (!hp)
- 		goto clear_hash_noput;
--	desc = &hp->md5_desc;
-+	req = hp->md5_req;
- 
--	if (crypto_hash_init(desc))
-+	if (crypto_ahash_init(req))
- 		goto clear_hash;
- 	if (tcp_v6_md5_hash_pseudoheader(hp, daddr, saddr, th->doff << 2))
- 		goto clear_hash;
-@@ -564,7 +565,8 @@ static int tcp_v6_md5_hash_hdr(char *md5_hash, struct tcp_md5sig_key *key,
- 		goto clear_hash;
- 	if (tcp_md5_hash_key(hp, key))
- 		goto clear_hash;
--	if (crypto_hash_final(desc, md5_hash))
-+	ahash_request_set_crypt(req, NULL, md5_hash, 0);
-+	if (crypto_ahash_final(req))
- 		goto clear_hash;
- 
- 	tcp_put_md5sig_pool();
-@@ -584,7 +586,7 @@ static int tcp_v6_md5_hash_skb(char *md5_hash,
- {
- 	const struct in6_addr *saddr, *daddr;
- 	struct tcp_md5sig_pool *hp;
--	struct hash_desc *desc;
-+	struct ahash_request *req;
- 	const struct tcphdr *th = tcp_hdr(skb);
- 
- 	if (sk) { /* valid for establish/request sockets */
-@@ -599,9 +601,9 @@ static int tcp_v6_md5_hash_skb(char *md5_hash,
- 	hp = tcp_get_md5sig_pool();
- 	if (!hp)
- 		goto clear_hash_noput;
--	desc = &hp->md5_desc;
-+	req = hp->md5_req;
- 
--	if (crypto_hash_init(desc))
-+	if (crypto_ahash_init(req))
- 		goto clear_hash;
- 
- 	if (tcp_v6_md5_hash_pseudoheader(hp, daddr, saddr, skb->len))
-@@ -612,7 +614,8 @@ static int tcp_v6_md5_hash_skb(char *md5_hash,
- 		goto clear_hash;
- 	if (tcp_md5_hash_key(hp, key))
- 		goto clear_hash;
--	if (crypto_hash_final(desc, md5_hash))
-+	ahash_request_set_crypt(req, NULL, md5_hash, 0);
-+	if (crypto_ahash_final(req))
- 		goto clear_hash;
- 
- 	tcp_put_md5sig_pool();
+ 	/* Allocate HMAC for generating cookie. */
+ 	if (!sp->hmac && sp->sctp_hmac_alg) {
+ 		sprintf(alg, "hmac(%s)", sp->sctp_hmac_alg);
+-		tfm = crypto_alloc_hash(alg, 0, CRYPTO_ALG_ASYNC);
++		tfm = crypto_alloc_shash(alg, 0, 0);
+ 		if (IS_ERR(tfm)) {
+ 			net_info_ratelimited("failed to load transform for %s: %ld\n",
+ 					     sp->sctp_hmac_alg, PTR_ERR(tfm));
