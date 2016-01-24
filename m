@@ -1,9 +1,9 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga02.intel.com ([134.134.136.20]:31044 "EHLO mga02.intel.com"
+Received: from mga04.intel.com ([192.55.52.120]:52892 "EHLO mga04.intel.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751948AbcAXNfY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 24 Jan 2016 08:35:24 -0500
-Date: Sun, 24 Jan 2016 21:37:33 +0800
+	id S1751948AbcAXNgd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 24 Jan 2016 08:36:33 -0500
+Date: Sun, 24 Jan 2016 21:35:15 +0800
 From: kbuild test robot <lkp@intel.com>
 To: Herbert Xu <herbert@gondor.apana.org.au>
 Cc: kbuild-all@01.org,
@@ -17,16 +17,16 @@ Cc: kbuild-all@01.org,
         linux-bluetooth@vger.kernel.org, ceph-devel@vger.kernel.org,
         linux-wpan@vger.kernel.org, linux-afs@lists.infradead.org,
         drbd-dev@lists.linbit.com, open-iscsi@googlegroups.com
-Subject: Re: [PATCH 1/26] block: cryptoloop - Use new skcipher interface
-Message-ID: <201601242148.Yk7531Nh%fengguang.wu@intel.com>
+Subject: Re: [PATCH 15/26] Bluetooth: Use skcipher and hash
+Message-ID: <201601242141.fCWTo3hm%fengguang.wu@intel.com>
 MIME-Version: 1.0
-Content-Type: multipart/mixed; boundary="azLHFNyN32YCQGCU"
-In-Reply-To: <E1aNKWU-0008A9-Dx@gondolin.me.apana.org.au>
+Content-Type: multipart/mixed; boundary="Dxnq1zWXvFF0Q93v"
+In-Reply-To: <E1aNKYo-0008Dp-5h@gondolin.me.apana.org.au>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
---azLHFNyN32YCQGCU
+--Dxnq1zWXvFF0Q93v
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
 
@@ -44,35 +44,235 @@ reproduce:
 
 All errors (new ones prefixed by >>):
 
-   drivers/block/cryptoloop.c: In function 'cryptoloop_transfer':
->> drivers/block/cryptoloop.c:167:2: error: implicit declaration of function 'skcipher_request_zero' [-Werror=implicit-function-declaration]
+   net/bluetooth/smp.c: In function 'aes_cmac':
+>> net/bluetooth/smp.c:201:2: error: implicit declaration of function 'shash_desc_zero' [-Werror=implicit-function-declaration]
+     shash_desc_zero(desc);
+     ^
+   net/bluetooth/smp.c: In function 'smp_e':
+>> net/bluetooth/smp.c:397:2: error: implicit declaration of function 'skcipher_request_zero' [-Werror=implicit-function-declaration]
      skcipher_request_zero(req);
      ^
    cc1: some warnings being treated as errors
 
-vim +/skcipher_request_zero +167 drivers/block/cryptoloop.c
+vim +/shash_desc_zero +201 net/bluetooth/smp.c
 
-   161			out_offs += sz;
-   162		}
-   163	
-   164		err = 0;
-   165	
-   166	out:
- > 167		skcipher_request_zero(req);
-   168		return err;
-   169	}
-   170	
+   195		if (err) {
+   196			BT_ERR("cipher setkey failed: %d", err);
+   197			return err;
+   198		}
+   199	
+   200		err = crypto_shash_digest(desc, msg_msb, len, mac_msb);
+ > 201		shash_desc_zero(desc);
+   202		if (err) {
+   203			BT_ERR("Hash computation error %d", err);
+   204			return err;
+   205		}
+   206	
+   207		swap_buf(mac_msb, mac, 16);
+   208	
+   209		SMP_DBG("mac %16phN", mac);
+   210	
+   211		return 0;
+   212	}
+   213	
+   214	static int smp_f4(struct crypto_shash *tfm_cmac, const u8 u[32],
+   215			  const u8 v[32], const u8 x[16], u8 z, u8 res[16])
+   216	{
+   217		u8 m[65];
+   218		int err;
+   219	
+   220		SMP_DBG("u %32phN", u);
+   221		SMP_DBG("v %32phN", v);
+   222		SMP_DBG("x %16phN z %02x", x, z);
+   223	
+   224		m[0] = z;
+   225		memcpy(m + 1, v, 32);
+   226		memcpy(m + 33, u, 32);
+   227	
+   228		err = aes_cmac(tfm_cmac, x, m, sizeof(m), res);
+   229		if (err)
+   230			return err;
+   231	
+   232		SMP_DBG("res %16phN", res);
+   233	
+   234		return err;
+   235	}
+   236	
+   237	static int smp_f5(struct crypto_shash *tfm_cmac, const u8 w[32],
+   238			  const u8 n1[16], const u8 n2[16], const u8 a1[7],
+   239			  const u8 a2[7], u8 mackey[16], u8 ltk[16])
+   240	{
+   241		/* The btle, salt and length "magic" values are as defined in
+   242		 * the SMP section of the Bluetooth core specification. In ASCII
+   243		 * the btle value ends up being 'btle'. The salt is just a
+   244		 * random number whereas length is the value 256 in little
+   245		 * endian format.
+   246		 */
+   247		const u8 btle[4] = { 0x65, 0x6c, 0x74, 0x62 };
+   248		const u8 salt[16] = { 0xbe, 0x83, 0x60, 0x5a, 0xdb, 0x0b, 0x37, 0x60,
+   249				      0x38, 0xa5, 0xf5, 0xaa, 0x91, 0x83, 0x88, 0x6c };
+   250		const u8 length[2] = { 0x00, 0x01 };
+   251		u8 m[53], t[16];
+   252		int err;
+   253	
+   254		SMP_DBG("w %32phN", w);
+   255		SMP_DBG("n1 %16phN n2 %16phN", n1, n2);
+   256		SMP_DBG("a1 %7phN a2 %7phN", a1, a2);
+   257	
+   258		err = aes_cmac(tfm_cmac, salt, w, 32, t);
+   259		if (err)
+   260			return err;
+   261	
+   262		SMP_DBG("t %16phN", t);
+   263	
+   264		memcpy(m, length, 2);
+   265		memcpy(m + 2, a2, 7);
+   266		memcpy(m + 9, a1, 7);
+   267		memcpy(m + 16, n2, 16);
+   268		memcpy(m + 32, n1, 16);
+   269		memcpy(m + 48, btle, 4);
+   270	
+   271		m[52] = 0; /* Counter */
+   272	
+   273		err = aes_cmac(tfm_cmac, t, m, sizeof(m), mackey);
+   274		if (err)
+   275			return err;
+   276	
+   277		SMP_DBG("mackey %16phN", mackey);
+   278	
+   279		m[52] = 1; /* Counter */
+   280	
+   281		err = aes_cmac(tfm_cmac, t, m, sizeof(m), ltk);
+   282		if (err)
+   283			return err;
+   284	
+   285		SMP_DBG("ltk %16phN", ltk);
+   286	
+   287		return 0;
+   288	}
+   289	
+   290	static int smp_f6(struct crypto_shash *tfm_cmac, const u8 w[16],
+   291			  const u8 n1[16], const u8 n2[16], const u8 r[16],
+   292			  const u8 io_cap[3], const u8 a1[7], const u8 a2[7],
+   293			  u8 res[16])
+   294	{
+   295		u8 m[65];
+   296		int err;
+   297	
+   298		SMP_DBG("w %16phN", w);
+   299		SMP_DBG("n1 %16phN n2 %16phN", n1, n2);
+   300		SMP_DBG("r %16phN io_cap %3phN a1 %7phN a2 %7phN", r, io_cap, a1, a2);
+   301	
+   302		memcpy(m, a2, 7);
+   303		memcpy(m + 7, a1, 7);
+   304		memcpy(m + 14, io_cap, 3);
+   305		memcpy(m + 17, r, 16);
+   306		memcpy(m + 33, n2, 16);
+   307		memcpy(m + 49, n1, 16);
+   308	
+   309		err = aes_cmac(tfm_cmac, w, m, sizeof(m), res);
+   310		if (err)
+   311			return err;
+   312	
+   313		SMP_DBG("res %16phN", res);
+   314	
+   315		return err;
+   316	}
+   317	
+   318	static int smp_g2(struct crypto_shash *tfm_cmac, const u8 u[32], const u8 v[32],
+   319			  const u8 x[16], const u8 y[16], u32 *val)
+   320	{
+   321		u8 m[80], tmp[16];
+   322		int err;
+   323	
+   324		SMP_DBG("u %32phN", u);
+   325		SMP_DBG("v %32phN", v);
+   326		SMP_DBG("x %16phN y %16phN", x, y);
+   327	
+   328		memcpy(m, y, 16);
+   329		memcpy(m + 16, v, 32);
+   330		memcpy(m + 48, u, 32);
+   331	
+   332		err = aes_cmac(tfm_cmac, x, m, sizeof(m), tmp);
+   333		if (err)
+   334			return err;
+   335	
+   336		*val = get_unaligned_le32(tmp);
+   337		*val %= 1000000;
+   338	
+   339		SMP_DBG("val %06u", *val);
+   340	
+   341		return 0;
+   342	}
+   343	
+   344	static int smp_h6(struct crypto_shash *tfm_cmac, const u8 w[16],
+   345			  const u8 key_id[4], u8 res[16])
+   346	{
+   347		int err;
+   348	
+   349		SMP_DBG("w %16phN key_id %4phN", w, key_id);
+   350	
+   351		err = aes_cmac(tfm_cmac, w, key_id, 4, res);
+   352		if (err)
+   353			return err;
+   354	
+   355		SMP_DBG("res %16phN", res);
+   356	
+   357		return err;
+   358	}
+   359	
+   360	/* The following functions map to the legacy SMP crypto functions e, c1,
+   361	 * s1 and ah.
+   362	 */
+   363	
+   364	static int smp_e(struct crypto_skcipher *tfm, const u8 *k, u8 *r)
+   365	{
+   366		SKCIPHER_REQUEST_ON_STACK(req, tfm);
+   367		struct scatterlist sg;
+   368		uint8_t tmp[16], data[16];
+   369		int err;
+   370	
+   371		SMP_DBG("k %16phN r %16phN", k, r);
+   372	
+   373		if (!tfm) {
+   374			BT_ERR("tfm %p", tfm);
+   375			return -EINVAL;
+   376		}
+   377	
+   378		/* The most significant octet of key corresponds to k[0] */
+   379		swap_buf(k, tmp, 16);
+   380	
+   381		err = crypto_skcipher_setkey(tfm, tmp, 16);
+   382		if (err) {
+   383			BT_ERR("cipher setkey failed: %d", err);
+   384			return err;
+   385		}
+   386	
+   387		/* Most significant octet of plaintextData corresponds to data[0] */
+   388		swap_buf(r, data, 16);
+   389	
+   390		sg_init_one(&sg, data, 16);
+   391	
+   392		skcipher_request_set_tfm(req, tfm);
+   393		skcipher_request_set_callback(req, 0, NULL, NULL);
+   394		skcipher_request_set_crypt(req, &sg, &sg, 16, NULL);
+   395	
+   396		err = crypto_skcipher_encrypt(req);
+ > 397		skcipher_request_zero(req);
+   398		if (err)
+   399			BT_ERR("Encrypt data error %d", err);
+   400	
 
 ---
 0-DAY kernel test infrastructure                Open Source Technology Center
 https://lists.01.org/pipermail/kbuild-all                   Intel Corporation
 
---azLHFNyN32YCQGCU
+--Dxnq1zWXvFF0Q93v
 Content-Type: application/octet-stream
 Content-Disposition: attachment; filename=".config.gz"
 Content-Transfer-Encoding: base64
 
-H4sICFnSpFYAAy5jb25maWcAjDxNd9u2svv+Cp30Le5dJLEdx3XPO15AICihIggaAGXJGx7V
+H4sICAjSpFYAAy5jb25maWcAjDxNd9u2svv+Cp30Le5dJLEdx3XPO15AICihIggaAGXJGx7V
 VlqfOnauJfc2//7NAPwAQNB5WSThzADEx3zPUD//9POMvB6fv+6OD3e7x8fvsz/2T/uX3XF/
 P/vy8Lj/31kmZ6U0M5Zx8wGIi4en138+/nN50Vycz84/nH84ma32L0/7xxl9fvry8McrjH14
 fvrp55+oLHO+ALI5N1ffu8eNHRk8Dw+81EbV1HBZNhmjMmNqQFZM5Q1bs9JoIDSsaOqSSsUG
@@ -574,4 +774,4 @@ DBBrFlPd1oJF7G8T9G0CfhovSQowE/oWpeUGibF6bdV6xo8LRSftRQIFHToo79jS1SR9m5cg
 oBJLbejCI47DeYvqFotMOIBWFW7KnaJwGq67Ut/NW5b2pnBjSVq0lOPTHIRz/muiv/hxEbRw
 8YPE4qIuMZisKrltxjzUHmdUlA0zC5jxZvK8zTMKz6AmOrsC5D8sflHZupcBAA==
 
---azLHFNyN32YCQGCU--
+--Dxnq1zWXvFF0Q93v--
