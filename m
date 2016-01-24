@@ -1,31 +1,47 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f182.google.com ([209.85.213.182]:33796 "EHLO
-	mail-ig0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753266AbcAWTtP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 23 Jan 2016 14:49:15 -0500
+Received: from helcar.hengli.com.au ([209.40.204.226]:37648 "EHLO
+	helcar.hengli.com.au" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751948AbcAXNLZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 24 Jan 2016 08:11:25 -0500
+Date: Sun, 24 Jan 2016 21:10:21 +0800
+From: Herbert Xu <herbert@gondor.apana.org.au>
+To: Linux Crypto Mailing List <linux-crypto@vger.kernel.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        netdev@vger.kernel.org, devel@driverdev.osuosl.org,
+        dm-devel@redhat.com, linux-wireless@vger.kernel.org,
+        linux-cifs@vger.kernel.org, ecryptfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        linux-nfs@vger.kernel.org, keyrings@vger.kernel.org,
+        linux-bluetooth@vger.kernel.org, ceph-devel@vger.kernel.org,
+        linux-wpan@vger.kernel.org, linux-afs@lists.infradead.org,
+        drbd-dev@lists.linbit.com, linux-nfc@ml01.01.org,
+        open-iscsi@googlegroups.com
+Subject: [PATCH 0/26] crypto: Use skcipher and ahash/shash where possible
+Message-ID: <20160124131021.GA31153@gondor.apana.org.au>
 MIME-Version: 1.0
-In-Reply-To: <CAHQdGtTXhsmcE-2+R_XbCpqw7dWc+C=aT0K=X_OOnLCXYvd87g@mail.gmail.com>
-References: <CAHQdGtTXhsmcE-2+R_XbCpqw7dWc+C=aT0K=X_OOnLCXYvd87g@mail.gmail.com>
-Date: Sat, 23 Jan 2016 11:49:14 -0800
-Message-ID: <CA+55aFzCsAunU2q8qD6yV0FJuZjieCCj4Uj5CWi0FrSOKqXjDw@mail.gmail.com>
-Subject: Re: [GIT PULL] Please pull bugfixes+cleanup for Linux 4.5
-From: Linus Torvalds <torvalds@linux-foundation.org>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Jan 23, 2016 at 9:32 AM, Trond Myklebust
-<trond.myklebust@primarydata.com> wrote:
->
-> are available in the git repository at:
->
->   git://git.linux-nfs.org/projects/trondmy/linux-nfs.git tags/nfs-for-4.5-2
+Hi:
 
-You have some odd double-spacing issue in this pull request. It's
-fine, and I pulled, but I thought I'd mention the oddity in case you
-started doing something new and broken and hadn't noticed.
+The crypto hash interface has been obsolete for many years and
+this series converts all remaining users to shash and ahash as
+appropriate.  Despite the name ahash can be used synchronously
+and is the preferred interface for those dealing with SGs.
 
-                Linus
+The blkcipher and ablkcipher interfaces are also being phased out
+and is being replaced with the merged skcipher interface which
+is essentially the same as ablkcipher but without the implicit
+IV generators.  This series converts all users of blkcipher and
+ablkcipher over to skcipher.
+
+If you have any objections please shout.  Otherwise I would like
+to take these patches through the cryptodev tree so we can proceed
+with phasing out the obsolete interfaces.
+
+Thanks,
+-- 
+Email: Herbert Xu <herbert@gondor.apana.org.au>
+Home Page: http://gondor.apana.org.au/~herbert/
+PGP Key: http://gondor.apana.org.au/~herbert/pubkey.txt
