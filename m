@@ -1,9 +1,9 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga04.intel.com ([192.55.52.120]:62774 "EHLO mga04.intel.com"
+Received: from mga04.intel.com ([192.55.52.120]:63104 "EHLO mga04.intel.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751850AbcAXNmV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 24 Jan 2016 08:42:21 -0500
-Date: Sun, 24 Jan 2016 21:43:44 +0800
+	id S1751850AbcAXNno (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 24 Jan 2016 08:43:44 -0500
+Date: Sun, 24 Jan 2016 21:42:08 +0800
 From: kbuild test robot <lkp@intel.com>
 To: Herbert Xu <herbert@gondor.apana.org.au>
 Cc: kbuild-all@01.org,
@@ -17,16 +17,17 @@ Cc: kbuild-all@01.org,
         linux-bluetooth@vger.kernel.org, ceph-devel@vger.kernel.org,
         linux-wpan@vger.kernel.org, linux-afs@lists.infradead.org,
         drbd-dev@lists.linbit.com, open-iscsi@googlegroups.com
-Subject: Re: [PATCH 4/26] dm crypt: Use skcipher and ahash
-Message-ID: <201601242155.wffwoOEe%fengguang.wu@intel.com>
+Subject: Re: [PATCH 19/26] ipsec: Use skcipher and ahash when probing
+ algorithms
+Message-ID: <201601242115.NdmUTST6%fengguang.wu@intel.com>
 MIME-Version: 1.0
-Content-Type: multipart/mixed; boundary="WIyZ46R2i8wDzkSu"
-In-Reply-To: <E1aNKWy-0008Ah-UM@gondolin.me.apana.org.au>
+Content-Type: multipart/mixed; boundary="vkogqOf2sHV7VnPd"
+In-Reply-To: <E1aNKZT-0008Ew-7q@gondolin.me.apana.org.au>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
---WIyZ46R2i8wDzkSu
+--vkogqOf2sHV7VnPd
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
 
@@ -44,35 +45,35 @@ reproduce:
 
 All errors (new ones prefixed by >>):
 
-   drivers/md/dm-crypt.c: In function 'crypt_iv_essiv_init':
->> drivers/md/dm-crypt.c:278:2: error: implicit declaration of function 'ahash_request_zero' [-Werror=implicit-function-declaration]
-     ahash_request_zero(req);
-     ^
+   net/xfrm/xfrm_algo.c: In function 'xfrm_probe_algs':
+>> net/xfrm/xfrm_algo.c:787:12: error: implicit declaration of function 'crypto_has_ahash' [-Werror=implicit-function-declaration]
+      status = crypto_has_ahash(aalg_list[i].name, 0, 0);
+               ^
    cc1: some warnings being treated as errors
 
-vim +/ahash_request_zero +278 drivers/md/dm-crypt.c
+vim +/crypto_has_ahash +787 net/xfrm/xfrm_algo.c
 
-   272		sg_init_one(&sg, cc->key, cc->key_size);
-   273		ahash_request_set_tfm(req, essiv->hash_tfm);
-   274		ahash_request_set_callback(req, CRYPTO_TFM_REQ_MAY_SLEEP, NULL, NULL);
-   275		ahash_request_set_crypt(req, &sg, essiv->salt, cc->key_size);
-   276	
-   277		err = crypto_ahash_digest(req);
- > 278		ahash_request_zero(req);
-   279		if (err)
-   280			return err;
-   281	
+   781	{
+   782		int i, status;
+   783	
+   784		BUG_ON(in_softirq());
+   785	
+   786		for (i = 0; i < aalg_entries(); i++) {
+ > 787			status = crypto_has_ahash(aalg_list[i].name, 0, 0);
+   788			if (aalg_list[i].available != status)
+   789				aalg_list[i].available = status;
+   790		}
 
 ---
 0-DAY kernel test infrastructure                Open Source Technology Center
 https://lists.01.org/pipermail/kbuild-all                   Intel Corporation
 
---WIyZ46R2i8wDzkSu
+--vkogqOf2sHV7VnPd
 Content-Type: application/octet-stream
 Content-Disposition: attachment; filename=".config.gz"
 Content-Transfer-Encoding: base64
 
-H4sICFrUpFYAAy5jb25maWcAjDxNd9u2svv+Cp30Le5dJLEdx3XPO15AICihIggaAGXJGx7V
+H4sICOXTpFYAAy5jb25maWcAjDxNd9u2svv+Cp30Le5dJLEdx3XPO15AICihIggaAGXJGx7V
 VlqfOnauJfc2//7NAPwAQNB5WSThzADEx3zPUD//9POMvB6fv+6OD3e7x8fvsz/2T/uX3XF/
 P/vy8Lj/31kmZ6U0M5Zx8wGIi4en138+/nN50Vycz84/nH84ma32L0/7xxl9fvry8McrjH14
 fvrp55+oLHO+ALI5N1ffu8eNHRk8Dw+81EbV1HBZNhmjMmNqQFZM5Q1bs9JoIDSsaOqSSsUG
@@ -574,4 +575,4 @@ DBBrFlPd1oJF7G8T9G0CfhovSQowE/oWpeUGibF6bdV6xo8LRSftRQIFHToo79jS1SR9m5cg
 oBJLbejCI47DeYvqFotMOIBWFW7KnaJwGq67Ut/NW5b2pnBjSVq0lOPTHIRz/muiv/hxEbRw
 8YPE4qIuMZisKrltxjzUHmdUlA0zC5jxZvK8zTMKz6AmOrsC5D8sflHZupcBAA==
 
---WIyZ46R2i8wDzkSu--
+--vkogqOf2sHV7VnPd--
