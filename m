@@ -1,9 +1,9 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from helcar.hengli.com.au ([209.40.204.226]:57424 "EHLO
+Received: from helcar.hengli.com.au ([209.40.204.226]:53366 "EHLO
 	helcar.hengli.com.au" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752243AbcAXNSr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 24 Jan 2016 08:18:47 -0500
-Subject: [PATCH 13/26] lib80211: Use skcipher and ahash
+	with ESMTP id S1754432AbcAXNSR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 24 Jan 2016 08:18:17 -0500
+Subject: [PATCH 10/26] ext4: Use skcipher
 References: <20160124131021.GA31153@gondor.apana.org.au>
 To: Linux Crypto Mailing List <linux-crypto@vger.kernel.org>,
         Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
@@ -15,367 +15,329 @@ To: Linux Crypto Mailing List <linux-crypto@vger.kernel.org>,
         linux-bluetooth@vger.kernel.org, ceph-devel@vger.kernel.org,
         linux-wpan@vger.kernel.org, linux-afs@lists.infradead.org,
         drbd-dev@lists.linbit.com, open-iscsi@googlegroups.com
-Message-Id: <E1aNKYT-0008DG-My@gondolin.me.apana.org.au>
+Message-Id: <E1aNKXy-0008CQ-Ne@gondolin.me.apana.org.au>
 From: Herbert Xu <herbert@gondor.apana.org.au>
-Date: Sun, 24 Jan 2016 21:18:09 +0800
+Date: Sun, 24 Jan 2016 21:17:38 +0800
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch replaces uses of blkcipher with skcipher and the long
-obsolete hash interface with ahash.
+This patch replaces uses of ablkcipher with skcipher.
    
 Signed-off-by: Herbert Xu <herbert@gondor.apana.org.au>
 ---
 
- net/wireless/lib80211_crypt_tkip.c |   99 ++++++++++++++++++++-----------------
- net/wireless/lib80211_crypt_wep.c  |   46 ++++++++++-------
- 2 files changed, 81 insertions(+), 64 deletions(-)
+ fs/ext4/crypto.c       |   24 +++++++++++-------------
+ fs/ext4/crypto_fname.c |   32 +++++++++++++++-----------------
+ fs/ext4/crypto_key.c   |   42 ++++++++++++++++++++----------------------
+ fs/ext4/ext4_crypto.h  |    2 +-
+ 4 files changed, 47 insertions(+), 53 deletions(-)
 
-diff --git a/net/wireless/lib80211_crypt_tkip.c b/net/wireless/lib80211_crypt_tkip.c
-index 3cd8195..71447cf 100644
---- a/net/wireless/lib80211_crypt_tkip.c
-+++ b/net/wireless/lib80211_crypt_tkip.c
-@@ -29,7 +29,8 @@
- #include <linux/ieee80211.h>
- #include <net/iw_handler.h>
+diff --git a/fs/ext4/crypto.c b/fs/ext4/crypto.c
+index 1a08350..a052c2a 100644
+--- a/fs/ext4/crypto.c
++++ b/fs/ext4/crypto.c
+@@ -18,11 +18,9 @@
+  * Special Publication 800-38E and IEEE P1619/D16.
+  */
  
--#include <linux/crypto.h>
-+#include <crypto/hash.h>
+-#include <crypto/hash.h>
+-#include <crypto/sha.h>
 +#include <crypto/skcipher.h>
- #include <linux/crc32.h>
- 
- #include <net/lib80211.h>
-@@ -63,10 +64,10 @@ struct lib80211_tkip_data {
- 
- 	int key_idx;
- 
--	struct crypto_blkcipher *rx_tfm_arc4;
--	struct crypto_hash *rx_tfm_michael;
--	struct crypto_blkcipher *tx_tfm_arc4;
--	struct crypto_hash *tx_tfm_michael;
-+	struct crypto_skcipher *rx_tfm_arc4;
-+	struct crypto_ahash *rx_tfm_michael;
-+	struct crypto_skcipher *tx_tfm_arc4;
-+	struct crypto_ahash *tx_tfm_michael;
- 
- 	/* scratch buffers for virt_to_page() (crypto API) */
- 	u8 rx_hdr[16], tx_hdr[16];
-@@ -98,29 +99,29 @@ static void *lib80211_tkip_init(int key_idx)
- 
- 	priv->key_idx = key_idx;
- 
--	priv->tx_tfm_arc4 = crypto_alloc_blkcipher("ecb(arc4)", 0,
--						CRYPTO_ALG_ASYNC);
-+	priv->tx_tfm_arc4 = crypto_alloc_skcipher("ecb(arc4)", 0,
-+						  CRYPTO_ALG_ASYNC);
- 	if (IS_ERR(priv->tx_tfm_arc4)) {
- 		priv->tx_tfm_arc4 = NULL;
- 		goto fail;
- 	}
- 
--	priv->tx_tfm_michael = crypto_alloc_hash("michael_mic", 0,
--						 CRYPTO_ALG_ASYNC);
-+	priv->tx_tfm_michael = crypto_alloc_ahash("michael_mic", 0,
-+						  CRYPTO_ALG_ASYNC);
- 	if (IS_ERR(priv->tx_tfm_michael)) {
- 		priv->tx_tfm_michael = NULL;
- 		goto fail;
- 	}
- 
--	priv->rx_tfm_arc4 = crypto_alloc_blkcipher("ecb(arc4)", 0,
--						CRYPTO_ALG_ASYNC);
-+	priv->rx_tfm_arc4 = crypto_alloc_skcipher("ecb(arc4)", 0,
-+						  CRYPTO_ALG_ASYNC);
- 	if (IS_ERR(priv->rx_tfm_arc4)) {
- 		priv->rx_tfm_arc4 = NULL;
- 		goto fail;
- 	}
- 
--	priv->rx_tfm_michael = crypto_alloc_hash("michael_mic", 0,
--						 CRYPTO_ALG_ASYNC);
-+	priv->rx_tfm_michael = crypto_alloc_ahash("michael_mic", 0,
-+						  CRYPTO_ALG_ASYNC);
- 	if (IS_ERR(priv->rx_tfm_michael)) {
- 		priv->rx_tfm_michael = NULL;
- 		goto fail;
-@@ -130,14 +131,10 @@ static void *lib80211_tkip_init(int key_idx)
- 
-       fail:
- 	if (priv) {
--		if (priv->tx_tfm_michael)
--			crypto_free_hash(priv->tx_tfm_michael);
--		if (priv->tx_tfm_arc4)
--			crypto_free_blkcipher(priv->tx_tfm_arc4);
--		if (priv->rx_tfm_michael)
--			crypto_free_hash(priv->rx_tfm_michael);
--		if (priv->rx_tfm_arc4)
--			crypto_free_blkcipher(priv->rx_tfm_arc4);
-+		crypto_free_ahash(priv->tx_tfm_michael);
-+		crypto_free_skcipher(priv->tx_tfm_arc4);
-+		crypto_free_ahash(priv->rx_tfm_michael);
-+		crypto_free_skcipher(priv->rx_tfm_arc4);
- 		kfree(priv);
- 	}
- 
-@@ -148,14 +145,10 @@ static void lib80211_tkip_deinit(void *priv)
- {
- 	struct lib80211_tkip_data *_priv = priv;
- 	if (_priv) {
--		if (_priv->tx_tfm_michael)
--			crypto_free_hash(_priv->tx_tfm_michael);
--		if (_priv->tx_tfm_arc4)
--			crypto_free_blkcipher(_priv->tx_tfm_arc4);
--		if (_priv->rx_tfm_michael)
--			crypto_free_hash(_priv->rx_tfm_michael);
--		if (_priv->rx_tfm_arc4)
--			crypto_free_blkcipher(_priv->rx_tfm_arc4);
-+		crypto_free_ahash(_priv->tx_tfm_michael);
-+		crypto_free_skcipher(_priv->tx_tfm_arc4);
-+		crypto_free_ahash(_priv->rx_tfm_michael);
-+		crypto_free_skcipher(_priv->rx_tfm_arc4);
- 	}
- 	kfree(priv);
- }
-@@ -353,11 +346,12 @@ static int lib80211_tkip_hdr(struct sk_buff *skb, int hdr_len,
- static int lib80211_tkip_encrypt(struct sk_buff *skb, int hdr_len, void *priv)
- {
- 	struct lib80211_tkip_data *tkey = priv;
--	struct blkcipher_desc desc = { .tfm = tkey->tx_tfm_arc4 };
-+	SKCIPHER_REQUEST_ON_STACK(req, tkey->tx_tfm_arc4);
- 	int len;
- 	u8 rc4key[16], *pos, *icv;
- 	u32 crc;
- 	struct scatterlist sg;
-+	int err;
- 
- 	if (tkey->flags & IEEE80211_CRYPTO_TKIP_COUNTERMEASURES) {
- 		struct ieee80211_hdr *hdr = (struct ieee80211_hdr *)skb->data;
-@@ -382,9 +376,14 @@ static int lib80211_tkip_encrypt(struct sk_buff *skb, int hdr_len, void *priv)
- 	icv[2] = crc >> 16;
- 	icv[3] = crc >> 24;
- 
--	crypto_blkcipher_setkey(tkey->tx_tfm_arc4, rc4key, 16);
-+	crypto_skcipher_setkey(tkey->tx_tfm_arc4, rc4key, 16);
- 	sg_init_one(&sg, pos, len + 4);
--	return crypto_blkcipher_encrypt(&desc, &sg, &sg, len + 4);
-+	skcipher_request_set_tfm(req, tkey->tx_tfm_arc4);
-+	skcipher_request_set_callback(req, 0, NULL, NULL);
-+	skcipher_request_set_crypt(req, &sg, &sg, len + 4, NULL);
-+	err = crypto_skcipher_encrypt(req);
-+	skcipher_request_zero(req);
-+	return err;
- }
- 
- /*
-@@ -403,7 +402,7 @@ static inline int tkip_replay_check(u32 iv32_n, u16 iv16_n,
- static int lib80211_tkip_decrypt(struct sk_buff *skb, int hdr_len, void *priv)
- {
- 	struct lib80211_tkip_data *tkey = priv;
--	struct blkcipher_desc desc = { .tfm = tkey->rx_tfm_arc4 };
-+	SKCIPHER_REQUEST_ON_STACK(req, tkey->rx_tfm_arc4);
- 	u8 rc4key[16];
- 	u8 keyidx, *pos;
- 	u32 iv32;
-@@ -413,6 +412,7 @@ static int lib80211_tkip_decrypt(struct sk_buff *skb, int hdr_len, void *priv)
- 	u32 crc;
- 	struct scatterlist sg;
- 	int plen;
-+	int err;
- 
- 	hdr = (struct ieee80211_hdr *)skb->data;
- 
-@@ -465,9 +465,14 @@ static int lib80211_tkip_decrypt(struct sk_buff *skb, int hdr_len, void *priv)
- 
- 	plen = skb->len - hdr_len - 12;
- 
--	crypto_blkcipher_setkey(tkey->rx_tfm_arc4, rc4key, 16);
-+	crypto_skcipher_setkey(tkey->rx_tfm_arc4, rc4key, 16);
- 	sg_init_one(&sg, pos, plen + 4);
--	if (crypto_blkcipher_decrypt(&desc, &sg, &sg, plen + 4)) {
-+	skcipher_request_set_tfm(req, tkey->rx_tfm_arc4);
-+	skcipher_request_set_callback(req, 0, NULL, NULL);
-+	skcipher_request_set_crypt(req, &sg, &sg, plen + 4, NULL);
-+	err = crypto_skcipher_decrypt(req);
-+	skcipher_request_zero(req);
-+	if (err) {
- 		net_dbg_ratelimited("TKIP: failed to decrypt received packet from %pM\n",
- 				    hdr->addr2);
- 		return -7;
-@@ -505,11 +510,12 @@ static int lib80211_tkip_decrypt(struct sk_buff *skb, int hdr_len, void *priv)
- 	return keyidx;
- }
- 
--static int michael_mic(struct crypto_hash *tfm_michael, u8 * key, u8 * hdr,
-+static int michael_mic(struct crypto_ahash *tfm_michael, u8 * key, u8 * hdr,
- 		       u8 * data, size_t data_len, u8 * mic)
- {
--	struct hash_desc desc;
-+	AHASH_REQUEST_ON_STACK(req, tfm_michael);
- 	struct scatterlist sg[2];
-+	int err;
- 
- 	if (tfm_michael == NULL) {
- 		pr_warn("%s(): tfm_michael == NULL\n", __func__);
-@@ -519,12 +525,15 @@ static int michael_mic(struct crypto_hash *tfm_michael, u8 * key, u8 * hdr,
- 	sg_set_buf(&sg[0], hdr, 16);
- 	sg_set_buf(&sg[1], data, data_len);
- 
--	if (crypto_hash_setkey(tfm_michael, key, 8))
-+	if (crypto_ahash_setkey(tfm_michael, key, 8))
- 		return -1;
- 
--	desc.tfm = tfm_michael;
--	desc.flags = 0;
--	return crypto_hash_digest(&desc, sg, data_len + 16, mic);
-+	ahash_request_set_tfm(req, tfm_michael);
-+	ahash_request_set_callback(req, 0, NULL, NULL);
-+	ahash_request_set_crypt(req, sg, mic, data_len + 16);
-+	err = crypto_ahash_digest(req);
-+	ahash_request_zero(req);
-+	return err;
- }
- 
- static void michael_mic_hdr(struct sk_buff *skb, u8 * hdr)
-@@ -645,10 +654,10 @@ static int lib80211_tkip_set_key(void *key, int len, u8 * seq, void *priv)
- {
- 	struct lib80211_tkip_data *tkey = priv;
- 	int keyidx;
--	struct crypto_hash *tfm = tkey->tx_tfm_michael;
--	struct crypto_blkcipher *tfm2 = tkey->tx_tfm_arc4;
--	struct crypto_hash *tfm3 = tkey->rx_tfm_michael;
--	struct crypto_blkcipher *tfm4 = tkey->rx_tfm_arc4;
-+	struct crypto_ahash *tfm = tkey->tx_tfm_michael;
-+	struct crypto_skcipher *tfm2 = tkey->tx_tfm_arc4;
-+	struct crypto_ahash *tfm3 = tkey->rx_tfm_michael;
-+	struct crypto_skcipher *tfm4 = tkey->rx_tfm_arc4;
- 
- 	keyidx = tkey->key_idx;
- 	memset(tkey, 0, sizeof(*tkey));
-diff --git a/net/wireless/lib80211_crypt_wep.c b/net/wireless/lib80211_crypt_wep.c
-index 1c292e4..d05f58b 100644
---- a/net/wireless/lib80211_crypt_wep.c
-+++ b/net/wireless/lib80211_crypt_wep.c
-@@ -22,7 +22,7 @@
- 
- #include <net/lib80211.h>
- 
+ #include <keys/user-type.h>
+ #include <keys/encrypted-type.h>
 -#include <linux/crypto.h>
-+#include <crypto/skcipher.h>
- #include <linux/crc32.h>
+ #include <linux/ecryptfs.h>
+ #include <linux/gfp.h>
+ #include <linux/kernel.h>
+@@ -261,21 +259,21 @@ static int ext4_page_crypto(struct inode *inode,
  
- MODULE_AUTHOR("Jouni Malinen");
-@@ -35,8 +35,8 @@ struct lib80211_wep_data {
- 	u8 key[WEP_KEY_LEN + 1];
- 	u8 key_len;
- 	u8 key_idx;
--	struct crypto_blkcipher *tx_tfm;
--	struct crypto_blkcipher *rx_tfm;
-+	struct crypto_skcipher *tx_tfm;
-+	struct crypto_skcipher *rx_tfm;
+ {
+ 	u8 xts_tweak[EXT4_XTS_TWEAK_SIZE];
+-	struct ablkcipher_request *req = NULL;
++	struct skcipher_request *req = NULL;
+ 	DECLARE_EXT4_COMPLETION_RESULT(ecr);
+ 	struct scatterlist dst, src;
+ 	struct ext4_crypt_info *ci = EXT4_I(inode)->i_crypt_info;
+-	struct crypto_ablkcipher *tfm = ci->ci_ctfm;
++	struct crypto_skcipher *tfm = ci->ci_ctfm;
+ 	int res = 0;
+ 
+-	req = ablkcipher_request_alloc(tfm, GFP_NOFS);
++	req = skcipher_request_alloc(tfm, GFP_NOFS);
+ 	if (!req) {
+ 		printk_ratelimited(KERN_ERR
+ 				   "%s: crypto_request_alloc() failed\n",
+ 				   __func__);
+ 		return -ENOMEM;
+ 	}
+-	ablkcipher_request_set_callback(
++	skcipher_request_set_callback(
+ 		req, CRYPTO_TFM_REQ_MAY_BACKLOG | CRYPTO_TFM_REQ_MAY_SLEEP,
+ 		ext4_crypt_complete, &ecr);
+ 
+@@ -288,21 +286,21 @@ static int ext4_page_crypto(struct inode *inode,
+ 	sg_set_page(&dst, dest_page, PAGE_CACHE_SIZE, 0);
+ 	sg_init_table(&src, 1);
+ 	sg_set_page(&src, src_page, PAGE_CACHE_SIZE, 0);
+-	ablkcipher_request_set_crypt(req, &src, &dst, PAGE_CACHE_SIZE,
+-				     xts_tweak);
++	skcipher_request_set_crypt(req, &src, &dst, PAGE_CACHE_SIZE,
++				   xts_tweak);
+ 	if (rw == EXT4_DECRYPT)
+-		res = crypto_ablkcipher_decrypt(req);
++		res = crypto_skcipher_decrypt(req);
+ 	else
+-		res = crypto_ablkcipher_encrypt(req);
++		res = crypto_skcipher_encrypt(req);
+ 	if (res == -EINPROGRESS || res == -EBUSY) {
+ 		wait_for_completion(&ecr.completion);
+ 		res = ecr.res;
+ 	}
+-	ablkcipher_request_free(req);
++	skcipher_request_free(req);
+ 	if (res) {
+ 		printk_ratelimited(
+ 			KERN_ERR
+-			"%s: crypto_ablkcipher_encrypt() returned %d\n",
++			"%s: crypto_skcipher_encrypt() returned %d\n",
+ 			__func__, res);
+ 		return res;
+ 	}
+diff --git a/fs/ext4/crypto_fname.c b/fs/ext4/crypto_fname.c
+index 2fbef8a..1a2f360 100644
+--- a/fs/ext4/crypto_fname.c
++++ b/fs/ext4/crypto_fname.c
+@@ -11,11 +11,9 @@
+  *
+  */
+ 
+-#include <crypto/hash.h>
+-#include <crypto/sha.h>
++#include <crypto/skcipher.h>
+ #include <keys/encrypted-type.h>
+ #include <keys/user-type.h>
+-#include <linux/crypto.h>
+ #include <linux/gfp.h>
+ #include <linux/kernel.h>
+ #include <linux/key.h>
+@@ -65,10 +63,10 @@ static int ext4_fname_encrypt(struct inode *inode,
+ 			      struct ext4_str *oname)
+ {
+ 	u32 ciphertext_len;
+-	struct ablkcipher_request *req = NULL;
++	struct skcipher_request *req = NULL;
+ 	DECLARE_EXT4_COMPLETION_RESULT(ecr);
+ 	struct ext4_crypt_info *ci = EXT4_I(inode)->i_crypt_info;
+-	struct crypto_ablkcipher *tfm = ci->ci_ctfm;
++	struct crypto_skcipher *tfm = ci->ci_ctfm;
+ 	int res = 0;
+ 	char iv[EXT4_CRYPTO_BLOCK_SIZE];
+ 	struct scatterlist src_sg, dst_sg;
+@@ -95,14 +93,14 @@ static int ext4_fname_encrypt(struct inode *inode,
+ 	}
+ 
+ 	/* Allocate request */
+-	req = ablkcipher_request_alloc(tfm, GFP_NOFS);
++	req = skcipher_request_alloc(tfm, GFP_NOFS);
+ 	if (!req) {
+ 		printk_ratelimited(
+ 		    KERN_ERR "%s: crypto_request_alloc() failed\n", __func__);
+ 		kfree(alloc_buf);
+ 		return -ENOMEM;
+ 	}
+-	ablkcipher_request_set_callback(req,
++	skcipher_request_set_callback(req,
+ 		CRYPTO_TFM_REQ_MAY_BACKLOG | CRYPTO_TFM_REQ_MAY_SLEEP,
+ 		ext4_dir_crypt_complete, &ecr);
+ 
+@@ -117,14 +115,14 @@ static int ext4_fname_encrypt(struct inode *inode,
+ 	/* Create encryption request */
+ 	sg_init_one(&src_sg, workbuf, ciphertext_len);
+ 	sg_init_one(&dst_sg, oname->name, ciphertext_len);
+-	ablkcipher_request_set_crypt(req, &src_sg, &dst_sg, ciphertext_len, iv);
+-	res = crypto_ablkcipher_encrypt(req);
++	skcipher_request_set_crypt(req, &src_sg, &dst_sg, ciphertext_len, iv);
++	res = crypto_skcipher_encrypt(req);
+ 	if (res == -EINPROGRESS || res == -EBUSY) {
+ 		wait_for_completion(&ecr.completion);
+ 		res = ecr.res;
+ 	}
+ 	kfree(alloc_buf);
+-	ablkcipher_request_free(req);
++	skcipher_request_free(req);
+ 	if (res < 0) {
+ 		printk_ratelimited(
+ 		    KERN_ERR "%s: Error (error code %d)\n", __func__, res);
+@@ -145,11 +143,11 @@ static int ext4_fname_decrypt(struct inode *inode,
+ 			      struct ext4_str *oname)
+ {
+ 	struct ext4_str tmp_in[2], tmp_out[1];
+-	struct ablkcipher_request *req = NULL;
++	struct skcipher_request *req = NULL;
+ 	DECLARE_EXT4_COMPLETION_RESULT(ecr);
+ 	struct scatterlist src_sg, dst_sg;
+ 	struct ext4_crypt_info *ci = EXT4_I(inode)->i_crypt_info;
+-	struct crypto_ablkcipher *tfm = ci->ci_ctfm;
++	struct crypto_skcipher *tfm = ci->ci_ctfm;
+ 	int res = 0;
+ 	char iv[EXT4_CRYPTO_BLOCK_SIZE];
+ 	unsigned lim = max_name_len(inode);
+@@ -162,13 +160,13 @@ static int ext4_fname_decrypt(struct inode *inode,
+ 	tmp_out[0].name = oname->name;
+ 
+ 	/* Allocate request */
+-	req = ablkcipher_request_alloc(tfm, GFP_NOFS);
++	req = skcipher_request_alloc(tfm, GFP_NOFS);
+ 	if (!req) {
+ 		printk_ratelimited(
+ 		    KERN_ERR "%s: crypto_request_alloc() failed\n",  __func__);
+ 		return -ENOMEM;
+ 	}
+-	ablkcipher_request_set_callback(req,
++	skcipher_request_set_callback(req,
+ 		CRYPTO_TFM_REQ_MAY_BACKLOG | CRYPTO_TFM_REQ_MAY_SLEEP,
+ 		ext4_dir_crypt_complete, &ecr);
+ 
+@@ -178,13 +176,13 @@ static int ext4_fname_decrypt(struct inode *inode,
+ 	/* Create encryption request */
+ 	sg_init_one(&src_sg, iname->name, iname->len);
+ 	sg_init_one(&dst_sg, oname->name, oname->len);
+-	ablkcipher_request_set_crypt(req, &src_sg, &dst_sg, iname->len, iv);
+-	res = crypto_ablkcipher_decrypt(req);
++	skcipher_request_set_crypt(req, &src_sg, &dst_sg, iname->len, iv);
++	res = crypto_skcipher_decrypt(req);
+ 	if (res == -EINPROGRESS || res == -EBUSY) {
+ 		wait_for_completion(&ecr.completion);
+ 		res = ecr.res;
+ 	}
+-	ablkcipher_request_free(req);
++	skcipher_request_free(req);
+ 	if (res < 0) {
+ 		printk_ratelimited(
+ 		    KERN_ERR "%s: Error in ext4_fname_encrypt (error code %d)\n",
+diff --git a/fs/ext4/crypto_key.c b/fs/ext4/crypto_key.c
+index c5882b3..1b8bdbb 100644
+--- a/fs/ext4/crypto_key.c
++++ b/fs/ext4/crypto_key.c
+@@ -8,6 +8,7 @@
+  * Written by Michael Halcrow, Ildar Muslukhov, and Uday Savagaonkar, 2015.
+  */
+ 
++#include <crypto/skcipher.h>
+ #include <keys/encrypted-type.h>
+ #include <keys/user-type.h>
+ #include <linux/random.h>
+@@ -41,45 +42,42 @@ static int ext4_derive_key_aes(char deriving_key[EXT4_AES_128_ECB_KEY_SIZE],
+ 			       char derived_key[EXT4_AES_256_XTS_KEY_SIZE])
+ {
+ 	int res = 0;
+-	struct ablkcipher_request *req = NULL;
++	struct skcipher_request *req = NULL;
+ 	DECLARE_EXT4_COMPLETION_RESULT(ecr);
+ 	struct scatterlist src_sg, dst_sg;
+-	struct crypto_ablkcipher *tfm = crypto_alloc_ablkcipher("ecb(aes)", 0,
+-								0);
++	struct crypto_skcipher *tfm = crypto_alloc_skcipher("ecb(aes)", 0, 0);
+ 
+ 	if (IS_ERR(tfm)) {
+ 		res = PTR_ERR(tfm);
+ 		tfm = NULL;
+ 		goto out;
+ 	}
+-	crypto_ablkcipher_set_flags(tfm, CRYPTO_TFM_REQ_WEAK_KEY);
+-	req = ablkcipher_request_alloc(tfm, GFP_NOFS);
++	crypto_skcipher_set_flags(tfm, CRYPTO_TFM_REQ_WEAK_KEY);
++	req = skcipher_request_alloc(tfm, GFP_NOFS);
+ 	if (!req) {
+ 		res = -ENOMEM;
+ 		goto out;
+ 	}
+-	ablkcipher_request_set_callback(req,
++	skcipher_request_set_callback(req,
+ 			CRYPTO_TFM_REQ_MAY_BACKLOG | CRYPTO_TFM_REQ_MAY_SLEEP,
+ 			derive_crypt_complete, &ecr);
+-	res = crypto_ablkcipher_setkey(tfm, deriving_key,
+-				       EXT4_AES_128_ECB_KEY_SIZE);
++	res = crypto_skcipher_setkey(tfm, deriving_key,
++				     EXT4_AES_128_ECB_KEY_SIZE);
+ 	if (res < 0)
+ 		goto out;
+ 	sg_init_one(&src_sg, source_key, EXT4_AES_256_XTS_KEY_SIZE);
+ 	sg_init_one(&dst_sg, derived_key, EXT4_AES_256_XTS_KEY_SIZE);
+-	ablkcipher_request_set_crypt(req, &src_sg, &dst_sg,
+-				     EXT4_AES_256_XTS_KEY_SIZE, NULL);
+-	res = crypto_ablkcipher_encrypt(req);
++	skcipher_request_set_crypt(req, &src_sg, &dst_sg,
++				   EXT4_AES_256_XTS_KEY_SIZE, NULL);
++	res = crypto_skcipher_encrypt(req);
+ 	if (res == -EINPROGRESS || res == -EBUSY) {
+ 		wait_for_completion(&ecr.completion);
+ 		res = ecr.res;
+ 	}
+ 
+ out:
+-	if (req)
+-		ablkcipher_request_free(req);
+-	if (tfm)
+-		crypto_free_ablkcipher(tfm);
++	skcipher_request_free(req);
++	crypto_free_skcipher(tfm);
+ 	return res;
+ }
+ 
+@@ -90,7 +88,7 @@ void ext4_free_crypt_info(struct ext4_crypt_info *ci)
+ 
+ 	if (ci->ci_keyring_key)
+ 		key_put(ci->ci_keyring_key);
+-	crypto_free_ablkcipher(ci->ci_ctfm);
++	crypto_free_skcipher(ci->ci_ctfm);
+ 	kmem_cache_free(ext4_crypt_info_cachep, ci);
+ }
+ 
+@@ -122,7 +120,7 @@ int _ext4_get_encryption_info(struct inode *inode)
+ 	struct ext4_encryption_context ctx;
+ 	const struct user_key_payload *ukp;
+ 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
+-	struct crypto_ablkcipher *ctfm;
++	struct crypto_skcipher *ctfm;
+ 	const char *cipher_str;
+ 	char raw_key[EXT4_MAX_KEY_SIZE];
+ 	char mode;
+@@ -233,7 +231,7 @@ retry:
+ 	if (res)
+ 		goto out;
+ got_key:
+-	ctfm = crypto_alloc_ablkcipher(cipher_str, 0, 0);
++	ctfm = crypto_alloc_skcipher(cipher_str, 0, 0);
+ 	if (!ctfm || IS_ERR(ctfm)) {
+ 		res = ctfm ? PTR_ERR(ctfm) : -ENOMEM;
+ 		printk(KERN_DEBUG
+@@ -242,11 +240,11 @@ got_key:
+ 		goto out;
+ 	}
+ 	crypt_info->ci_ctfm = ctfm;
+-	crypto_ablkcipher_clear_flags(ctfm, ~0);
+-	crypto_tfm_set_flags(crypto_ablkcipher_tfm(ctfm),
++	crypto_skcipher_clear_flags(ctfm, ~0);
++	crypto_tfm_set_flags(crypto_skcipher_tfm(ctfm),
+ 			     CRYPTO_TFM_REQ_WEAK_KEY);
+-	res = crypto_ablkcipher_setkey(ctfm, raw_key,
+-				       ext4_encryption_key_size(mode));
++	res = crypto_skcipher_setkey(ctfm, raw_key,
++				     ext4_encryption_key_size(mode));
+ 	if (res)
+ 		goto out;
+ 	memzero_explicit(raw_key, sizeof(raw_key));
+diff --git a/fs/ext4/ext4_crypto.h b/fs/ext4/ext4_crypto.h
+index ac7d4e8..1f73c29 100644
+--- a/fs/ext4/ext4_crypto.h
++++ b/fs/ext4/ext4_crypto.h
+@@ -77,7 +77,7 @@ struct ext4_crypt_info {
+ 	char		ci_data_mode;
+ 	char		ci_filename_mode;
+ 	char		ci_flags;
+-	struct crypto_ablkcipher *ci_ctfm;
++	struct crypto_skcipher *ci_ctfm;
+ 	struct key	*ci_keyring_key;
+ 	char		ci_master_key[EXT4_KEY_DESCRIPTOR_SIZE];
  };
- 
- static void *lib80211_wep_init(int keyidx)
-@@ -48,13 +48,13 @@ static void *lib80211_wep_init(int keyidx)
- 		goto fail;
- 	priv->key_idx = keyidx;
- 
--	priv->tx_tfm = crypto_alloc_blkcipher("ecb(arc4)", 0, CRYPTO_ALG_ASYNC);
-+	priv->tx_tfm = crypto_alloc_skcipher("ecb(arc4)", 0, CRYPTO_ALG_ASYNC);
- 	if (IS_ERR(priv->tx_tfm)) {
- 		priv->tx_tfm = NULL;
- 		goto fail;
- 	}
- 
--	priv->rx_tfm = crypto_alloc_blkcipher("ecb(arc4)", 0, CRYPTO_ALG_ASYNC);
-+	priv->rx_tfm = crypto_alloc_skcipher("ecb(arc4)", 0, CRYPTO_ALG_ASYNC);
- 	if (IS_ERR(priv->rx_tfm)) {
- 		priv->rx_tfm = NULL;
- 		goto fail;
-@@ -66,10 +66,8 @@ static void *lib80211_wep_init(int keyidx)
- 
-       fail:
- 	if (priv) {
--		if (priv->tx_tfm)
--			crypto_free_blkcipher(priv->tx_tfm);
--		if (priv->rx_tfm)
--			crypto_free_blkcipher(priv->rx_tfm);
-+		crypto_free_skcipher(priv->tx_tfm);
-+		crypto_free_skcipher(priv->rx_tfm);
- 		kfree(priv);
- 	}
- 	return NULL;
-@@ -79,10 +77,8 @@ static void lib80211_wep_deinit(void *priv)
- {
- 	struct lib80211_wep_data *_priv = priv;
- 	if (_priv) {
--		if (_priv->tx_tfm)
--			crypto_free_blkcipher(_priv->tx_tfm);
--		if (_priv->rx_tfm)
--			crypto_free_blkcipher(_priv->rx_tfm);
-+		crypto_free_skcipher(_priv->tx_tfm);
-+		crypto_free_skcipher(_priv->rx_tfm);
- 	}
- 	kfree(priv);
- }
-@@ -133,11 +129,12 @@ static int lib80211_wep_build_iv(struct sk_buff *skb, int hdr_len,
- static int lib80211_wep_encrypt(struct sk_buff *skb, int hdr_len, void *priv)
- {
- 	struct lib80211_wep_data *wep = priv;
--	struct blkcipher_desc desc = { .tfm = wep->tx_tfm };
-+	SKCIPHER_REQUEST_ON_STACK(req, wep->tx_tfm);
- 	u32 crc, klen, len;
- 	u8 *pos, *icv;
- 	struct scatterlist sg;
- 	u8 key[WEP_KEY_LEN + 3];
-+	int err;
- 
- 	/* other checks are in lib80211_wep_build_iv */
- 	if (skb_tailroom(skb) < 4)
-@@ -165,9 +162,14 @@ static int lib80211_wep_encrypt(struct sk_buff *skb, int hdr_len, void *priv)
- 	icv[2] = crc >> 16;
- 	icv[3] = crc >> 24;
- 
--	crypto_blkcipher_setkey(wep->tx_tfm, key, klen);
-+	crypto_skcipher_setkey(wep->tx_tfm, key, klen);
- 	sg_init_one(&sg, pos, len + 4);
--	return crypto_blkcipher_encrypt(&desc, &sg, &sg, len + 4);
-+	skcipher_request_set_tfm(req, wep->tx_tfm);
-+	skcipher_request_set_callback(req, 0, NULL, NULL);
-+	skcipher_request_set_crypt(req, &sg, &sg, len + 4, NULL);
-+	err = crypto_skcipher_encrypt(req);
-+	skcipher_request_zero(req);
-+	return err;
- }
- 
- /* Perform WEP decryption on given buffer. Buffer includes whole WEP part of
-@@ -180,11 +182,12 @@ static int lib80211_wep_encrypt(struct sk_buff *skb, int hdr_len, void *priv)
- static int lib80211_wep_decrypt(struct sk_buff *skb, int hdr_len, void *priv)
- {
- 	struct lib80211_wep_data *wep = priv;
--	struct blkcipher_desc desc = { .tfm = wep->rx_tfm };
-+	SKCIPHER_REQUEST_ON_STACK(req, wep->rx_tfm);
- 	u32 crc, klen, plen;
- 	u8 key[WEP_KEY_LEN + 3];
- 	u8 keyidx, *pos, icv[4];
- 	struct scatterlist sg;
-+	int err;
- 
- 	if (skb->len < hdr_len + 8)
- 		return -1;
-@@ -205,9 +208,14 @@ static int lib80211_wep_decrypt(struct sk_buff *skb, int hdr_len, void *priv)
- 	/* Apply RC4 to data and compute CRC32 over decrypted data */
- 	plen = skb->len - hdr_len - 8;
- 
--	crypto_blkcipher_setkey(wep->rx_tfm, key, klen);
-+	crypto_skcipher_setkey(wep->rx_tfm, key, klen);
- 	sg_init_one(&sg, pos, plen + 4);
--	if (crypto_blkcipher_decrypt(&desc, &sg, &sg, plen + 4))
-+	skcipher_request_set_tfm(req, wep->rx_tfm);
-+	skcipher_request_set_callback(req, 0, NULL, NULL);
-+	skcipher_request_set_crypt(req, &sg, &sg, plen + 4, NULL);
-+	err = crypto_skcipher_decrypt(req);
-+	skcipher_request_zero(req);
-+	if (err)
- 		return -7;
- 
- 	crc = ~crc32_le(~0, pos, plen);
