@@ -1,9 +1,9 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from helcar.hengli.com.au ([209.40.204.226]:34112 "EHLO
+Received: from helcar.hengli.com.au ([209.40.204.226]:37884 "EHLO
 	helcar.hengli.com.au" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932230AbcAXNUv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 24 Jan 2016 08:20:51 -0500
-Subject: [PATCH 25/26] sctp: Use shash
+	with ESMTP id S1754266AbcAXNUb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 24 Jan 2016 08:20:31 -0500
+Subject: [PATCH 23/26] iscsi-target: Use shash and ahash
 References: <20160124131021.GA31153@gondor.apana.org.au>
 To: Linux Crypto Mailing List <linux-crypto@vger.kernel.org>,
         Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
@@ -15,344 +15,596 @@ To: Linux Crypto Mailing List <linux-crypto@vger.kernel.org>,
         linux-bluetooth@vger.kernel.org, ceph-devel@vger.kernel.org,
         linux-wpan@vger.kernel.org, linux-afs@lists.infradead.org,
         drbd-dev@lists.linbit.com, open-iscsi@googlegroups.com
-Message-Id: <E1aNKaS-0008Gn-Rz@gondolin.me.apana.org.au>
+Message-Id: <E1aNKa8-0008G2-88@gondolin.me.apana.org.au>
 From: Herbert Xu <herbert@gondor.apana.org.au>
-Date: Sun, 24 Jan 2016 21:20:12 +0800
+Date: Sun, 24 Jan 2016 21:19:52 +0800
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 This patch replaces uses of the long obsolete hash interface with
-shash.
+either shash (for non-SG users) or ahash.
 
 Signed-off-by: Herbert Xu <herbert@gondor.apana.org.au>
 ---
 
- include/net/sctp/auth.h    |    4 +--
- include/net/sctp/structs.h |    6 ++---
- net/sctp/auth.c            |   36 ++++++++++++++++---------------
- net/sctp/endpointola.c     |    1 
- net/sctp/sm_make_chunk.c   |   51 +++++++++++++++++++++++++--------------------
- net/sctp/socket.c          |    8 +++----
- 6 files changed, 57 insertions(+), 49 deletions(-)
+ drivers/target/iscsi/iscsi_target.c       |   86 ++++++++++++++------------
+ drivers/target/iscsi/iscsi_target_auth.c  |   98 +++++++++++-------------------
+ drivers/target/iscsi/iscsi_target_login.c |   45 ++++++++-----
+ include/target/iscsi/iscsi_target_core.h  |    4 -
+ 4 files changed, 113 insertions(+), 120 deletions(-)
 
-diff --git a/include/net/sctp/auth.h b/include/net/sctp/auth.h
-index f2d58aa..9b9fb12 100644
---- a/include/net/sctp/auth.h
-+++ b/include/net/sctp/auth.h
-@@ -31,12 +31,12 @@
- #define __sctp_auth_h__
- 
- #include <linux/list.h>
--#include <linux/crypto.h>
- 
- struct sctp_endpoint;
- struct sctp_association;
- struct sctp_authkey;
- struct sctp_hmacalgo;
-+struct crypto_shash;
- 
- /*
-  * Define a generic struct that will hold all the info
-@@ -90,7 +90,7 @@ int sctp_auth_asoc_copy_shkeys(const struct sctp_endpoint *ep,
- 				struct sctp_association *asoc,
- 				gfp_t gfp);
- int sctp_auth_init_hmacs(struct sctp_endpoint *ep, gfp_t gfp);
--void sctp_auth_destroy_hmacs(struct crypto_hash *auth_hmacs[]);
-+void sctp_auth_destroy_hmacs(struct crypto_shash *auth_hmacs[]);
- struct sctp_hmac *sctp_auth_get_hmac(__u16 hmac_id);
- struct sctp_hmac *sctp_auth_asoc_get_hmac(const struct sctp_association *asoc);
- void sctp_auth_asoc_set_default_hmac(struct sctp_association *asoc,
-diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-index 20e7212..6b1e383 100644
---- a/include/net/sctp/structs.h
-+++ b/include/net/sctp/structs.h
-@@ -82,7 +82,7 @@ struct sctp_bind_addr;
- struct sctp_ulpq;
- struct sctp_ep_common;
- struct sctp_ssnmap;
--struct crypto_hash;
-+struct crypto_shash;
- 
- 
- #include <net/sctp/tsnmap.h>
-@@ -166,7 +166,7 @@ struct sctp_sock {
- 	struct sctp_pf *pf;
- 
- 	/* Access to HMAC transform. */
--	struct crypto_hash *hmac;
-+	struct crypto_shash *hmac;
- 	char *sctp_hmac_alg;
- 
- 	/* What is our base endpointer? */
-@@ -1235,7 +1235,7 @@ struct sctp_endpoint {
- 	/* SCTP AUTH: array of the HMACs that will be allocated
- 	 * we need this per association so that we don't serialize
- 	 */
--	struct crypto_hash **auth_hmacs;
-+	struct crypto_shash **auth_hmacs;
- 
- 	/* SCTP-AUTH: hmacs for the endpoint encoded into parameter */
- 	 struct sctp_hmac_algo_param *auth_hmacs_list;
-diff --git a/net/sctp/auth.c b/net/sctp/auth.c
-index 1543e39..912eb16 100644
---- a/net/sctp/auth.c
-+++ b/net/sctp/auth.c
-@@ -27,9 +27,9 @@
-  *   Vlad Yasevich     <vladislav.yasevich@hp.com>
-  */
+diff --git a/drivers/target/iscsi/iscsi_target.c b/drivers/target/iscsi/iscsi_target.c
+index 72204fb..866f3ad 100644
+--- a/drivers/target/iscsi/iscsi_target.c
++++ b/drivers/target/iscsi/iscsi_target.c
+@@ -16,9 +16,9 @@
+  * GNU General Public License for more details.
+  ******************************************************************************/
  
 +#include <crypto/hash.h>
- #include <linux/slab.h>
- #include <linux/types.h>
+ #include <linux/string.h>
+ #include <linux/kthread.h>
 -#include <linux/crypto.h>
- #include <linux/scatterlist.h>
- #include <net/sctp/sctp.h>
- #include <net/sctp/auth.h>
-@@ -448,7 +448,7 @@ struct sctp_shared_key *sctp_auth_get_shkey(
-  */
- int sctp_auth_init_hmacs(struct sctp_endpoint *ep, gfp_t gfp)
- {
--	struct crypto_hash *tfm = NULL;
-+	struct crypto_shash *tfm = NULL;
- 	__u16   id;
- 
- 	/* If AUTH extension is disabled, we are done */
-@@ -462,9 +462,8 @@ int sctp_auth_init_hmacs(struct sctp_endpoint *ep, gfp_t gfp)
- 		return 0;
- 
- 	/* Allocated the array of pointers to transorms */
--	ep->auth_hmacs = kzalloc(
--			    sizeof(struct crypto_hash *) * SCTP_AUTH_NUM_HMACS,
--			    gfp);
-+	ep->auth_hmacs = kzalloc(sizeof(struct crypto_shash *) *
-+				 SCTP_AUTH_NUM_HMACS, gfp);
- 	if (!ep->auth_hmacs)
- 		return -ENOMEM;
- 
-@@ -483,8 +482,7 @@ int sctp_auth_init_hmacs(struct sctp_endpoint *ep, gfp_t gfp)
- 			continue;
- 
- 		/* Allocate the ID */
--		tfm = crypto_alloc_hash(sctp_hmac_list[id].hmac_name, 0,
--					CRYPTO_ALG_ASYNC);
-+		tfm = crypto_alloc_shash(sctp_hmac_list[id].hmac_name, 0, 0);
- 		if (IS_ERR(tfm))
- 			goto out_err;
- 
-@@ -500,7 +498,7 @@ out_err:
+ #include <linux/completion.h>
+ #include <linux/module.h>
+ #include <linux/vmalloc.h>
+@@ -1190,7 +1190,7 @@ iscsit_handle_scsi_cmd(struct iscsi_conn *conn, struct iscsi_cmd *cmd,
  }
  
- /* Destroy the hmac tfm array */
--void sctp_auth_destroy_hmacs(struct crypto_hash *auth_hmacs[])
-+void sctp_auth_destroy_hmacs(struct crypto_shash *auth_hmacs[])
- {
- 	int i;
+ static u32 iscsit_do_crypto_hash_sg(
+-	struct hash_desc *hash,
++	struct ahash_request *hash,
+ 	struct iscsi_cmd *cmd,
+ 	u32 data_offset,
+ 	u32 data_length,
+@@ -1201,7 +1201,7 @@ static u32 iscsit_do_crypto_hash_sg(
+ 	struct scatterlist *sg;
+ 	unsigned int page_off;
  
-@@ -508,8 +506,7 @@ void sctp_auth_destroy_hmacs(struct crypto_hash *auth_hmacs[])
- 		return;
+-	crypto_hash_init(hash);
++	crypto_ahash_init(hash);
  
- 	for (i = 0; i < SCTP_AUTH_NUM_HMACS; i++) {
--		if (auth_hmacs[i])
--			crypto_free_hash(auth_hmacs[i]);
-+		crypto_free_shash(auth_hmacs[i]);
+ 	sg = cmd->first_data_sg;
+ 	page_off = cmd->first_data_sg_off;
+@@ -1209,7 +1209,8 @@ static u32 iscsit_do_crypto_hash_sg(
+ 	while (data_length) {
+ 		u32 cur_len = min_t(u32, data_length, (sg->length - page_off));
+ 
+-		crypto_hash_update(hash, sg, cur_len);
++		ahash_request_set_crypt(hash, sg, NULL, cur_len);
++		crypto_ahash_update(hash);
+ 
+ 		data_length -= cur_len;
+ 		page_off = 0;
+@@ -1221,33 +1222,34 @@ static u32 iscsit_do_crypto_hash_sg(
+ 		struct scatterlist pad_sg;
+ 
+ 		sg_init_one(&pad_sg, pad_bytes, padding);
+-		crypto_hash_update(hash, &pad_sg, padding);
++		ahash_request_set_crypt(hash, &pad_sg, (u8 *)&data_crc,
++					padding);
++		crypto_ahash_finup(hash);
++	} else {
++		ahash_request_set_crypt(hash, NULL, (u8 *)&data_crc, 0);
++		crypto_ahash_final(hash);
  	}
- 	kfree(auth_hmacs);
+-	crypto_hash_final(hash, (u8 *) &data_crc);
+ 
+ 	return data_crc;
  }
-@@ -709,8 +706,7 @@ void sctp_auth_calculate_hmac(const struct sctp_association *asoc,
- 			      struct sctp_auth_chunk *auth,
- 			      gfp_t gfp)
+ 
+ static void iscsit_do_crypto_hash_buf(
+-	struct hash_desc *hash,
++	struct ahash_request *hash,
+ 	const void *buf,
+ 	u32 payload_length,
+ 	u32 padding,
+ 	u8 *pad_bytes,
+ 	u8 *data_crc)
  {
 -	struct scatterlist sg;
--	struct hash_desc desc;
-+	struct crypto_shash *tfm;
- 	struct sctp_auth_bytes *asoc_key;
- 	__u16 key_id, hmac_id;
- 	__u8 *digest;
-@@ -742,16 +738,22 @@ void sctp_auth_calculate_hmac(const struct sctp_association *asoc,
++	struct scatterlist sg[2];
  
- 	/* set up scatter list */
- 	end = skb_tail_pointer(skb);
--	sg_init_one(&sg, auth, end - (unsigned char *)auth);
+-	crypto_hash_init(hash);
++	sg_init_table(sg, ARRAY_SIZE(sg));
++	sg_set_buf(sg, buf, payload_length);
++	sg_set_buf(sg + 1, pad_bytes, padding);
  
--	desc.tfm = asoc->ep->auth_hmacs[hmac_id];
--	desc.flags = 0;
-+	tfm = asoc->ep->auth_hmacs[hmac_id];
+-	sg_init_one(&sg, buf, payload_length);
+-	crypto_hash_update(hash, &sg, payload_length);
++	ahash_request_set_crypt(hash, sg, data_crc, payload_length + padding);
  
- 	digest = auth->auth_hdr.hmac;
--	if (crypto_hash_setkey(desc.tfm, &asoc_key->data[0], asoc_key->len))
-+	if (crypto_shash_setkey(tfm, &asoc_key->data[0], asoc_key->len))
- 		goto free;
+-	if (padding) {
+-		sg_init_one(&sg, pad_bytes, padding);
+-		crypto_hash_update(hash, &sg, padding);
+-	}
+-	crypto_hash_final(hash, data_crc);
++	crypto_ahash_digest(hash);
+ }
  
--	crypto_hash_digest(&desc, &sg, sg.length, digest);
-+	{
-+		SHASH_DESC_ON_STACK(desc, tfm);
+ int
+@@ -1422,7 +1424,7 @@ iscsit_get_dataout(struct iscsi_conn *conn, struct iscsi_cmd *cmd,
+ 	if (conn->conn_ops->DataDigest) {
+ 		u32 data_crc;
+ 
+-		data_crc = iscsit_do_crypto_hash_sg(&conn->conn_rx_hash, cmd,
++		data_crc = iscsit_do_crypto_hash_sg(conn->conn_rx_hash, cmd,
+ 						    be32_to_cpu(hdr->offset),
+ 						    payload_length, padding,
+ 						    cmd->pad_bytes);
+@@ -1682,7 +1684,7 @@ static int iscsit_handle_nop_out(struct iscsi_conn *conn, struct iscsi_cmd *cmd,
+ 		}
+ 
+ 		if (conn->conn_ops->DataDigest) {
+-			iscsit_do_crypto_hash_buf(&conn->conn_rx_hash,
++			iscsit_do_crypto_hash_buf(conn->conn_rx_hash,
+ 					ping_data, payload_length,
+ 					padding, cmd->pad_bytes,
+ 					(u8 *)&data_crc);
+@@ -2101,7 +2103,7 @@ iscsit_handle_text_cmd(struct iscsi_conn *conn, struct iscsi_cmd *cmd,
+ 			goto reject;
+ 
+ 		if (conn->conn_ops->DataDigest) {
+-			iscsit_do_crypto_hash_buf(&conn->conn_rx_hash,
++			iscsit_do_crypto_hash_buf(conn->conn_rx_hash,
+ 					text_in, payload_length,
+ 					padding, (u8 *)&pad_bytes,
+ 					(u8 *)&data_crc);
+@@ -2440,7 +2442,7 @@ static int iscsit_handle_immediate_data(
+ 	if (conn->conn_ops->DataDigest) {
+ 		u32 data_crc;
+ 
+-		data_crc = iscsit_do_crypto_hash_sg(&conn->conn_rx_hash, cmd,
++		data_crc = iscsit_do_crypto_hash_sg(conn->conn_rx_hash, cmd,
+ 						    cmd->write_data_done, length, padding,
+ 						    cmd->pad_bytes);
+ 
+@@ -2553,7 +2555,7 @@ static int iscsit_send_conn_drop_async_message(
+ 	if (conn->conn_ops->HeaderDigest) {
+ 		u32 *header_digest = (u32 *)&cmd->pdu[ISCSI_HDR_LEN];
+ 
+-		iscsit_do_crypto_hash_buf(&conn->conn_tx_hash, hdr,
++		iscsit_do_crypto_hash_buf(conn->conn_tx_hash, hdr,
+ 				ISCSI_HDR_LEN, 0, NULL, (u8 *)header_digest);
+ 
+ 		cmd->tx_size += ISCSI_CRC_LEN;
+@@ -2683,7 +2685,7 @@ static int iscsit_send_datain(struct iscsi_cmd *cmd, struct iscsi_conn *conn)
+ 	if (conn->conn_ops->HeaderDigest) {
+ 		u32 *header_digest = (u32 *)&cmd->pdu[ISCSI_HDR_LEN];
+ 
+-		iscsit_do_crypto_hash_buf(&conn->conn_tx_hash, cmd->pdu,
++		iscsit_do_crypto_hash_buf(conn->conn_tx_hash, cmd->pdu,
+ 				ISCSI_HDR_LEN, 0, NULL, (u8 *)header_digest);
+ 
+ 		iov[0].iov_len += ISCSI_CRC_LEN;
+@@ -2711,7 +2713,7 @@ static int iscsit_send_datain(struct iscsi_cmd *cmd, struct iscsi_conn *conn)
+ 				cmd->padding);
+ 	}
+ 	if (conn->conn_ops->DataDigest) {
+-		cmd->data_crc = iscsit_do_crypto_hash_sg(&conn->conn_tx_hash, cmd,
++		cmd->data_crc = iscsit_do_crypto_hash_sg(conn->conn_tx_hash, cmd,
+ 			 datain.offset, datain.length, cmd->padding, cmd->pad_bytes);
+ 
+ 		iov[iov_count].iov_base	= &cmd->data_crc;
+@@ -2857,7 +2859,7 @@ iscsit_send_logout(struct iscsi_cmd *cmd, struct iscsi_conn *conn)
+ 	if (conn->conn_ops->HeaderDigest) {
+ 		u32 *header_digest = (u32 *)&cmd->pdu[ISCSI_HDR_LEN];
+ 
+-		iscsit_do_crypto_hash_buf(&conn->conn_tx_hash, &cmd->pdu[0],
++		iscsit_do_crypto_hash_buf(conn->conn_tx_hash, &cmd->pdu[0],
+ 				ISCSI_HDR_LEN, 0, NULL, (u8 *)header_digest);
+ 
+ 		iov[0].iov_len += ISCSI_CRC_LEN;
+@@ -2915,7 +2917,7 @@ static int iscsit_send_unsolicited_nopin(
+ 	if (conn->conn_ops->HeaderDigest) {
+ 		u32 *header_digest = (u32 *)&cmd->pdu[ISCSI_HDR_LEN];
+ 
+-		iscsit_do_crypto_hash_buf(&conn->conn_tx_hash, hdr,
++		iscsit_do_crypto_hash_buf(conn->conn_tx_hash, hdr,
+ 				ISCSI_HDR_LEN, 0, NULL, (u8 *)header_digest);
+ 
+ 		tx_size += ISCSI_CRC_LEN;
+@@ -2963,7 +2965,7 @@ iscsit_send_nopin(struct iscsi_cmd *cmd, struct iscsi_conn *conn)
+ 	if (conn->conn_ops->HeaderDigest) {
+ 		u32 *header_digest = (u32 *)&cmd->pdu[ISCSI_HDR_LEN];
+ 
+-		iscsit_do_crypto_hash_buf(&conn->conn_tx_hash, hdr,
++		iscsit_do_crypto_hash_buf(conn->conn_tx_hash, hdr,
+ 				ISCSI_HDR_LEN, 0, NULL, (u8 *)header_digest);
+ 
+ 		iov[0].iov_len += ISCSI_CRC_LEN;
+@@ -2993,7 +2995,7 @@ iscsit_send_nopin(struct iscsi_cmd *cmd, struct iscsi_conn *conn)
+ 				" padding bytes.\n", padding);
+ 		}
+ 		if (conn->conn_ops->DataDigest) {
+-			iscsit_do_crypto_hash_buf(&conn->conn_tx_hash,
++			iscsit_do_crypto_hash_buf(conn->conn_tx_hash,
+ 				cmd->buf_ptr, cmd->buf_ptr_size,
+ 				padding, (u8 *)&cmd->pad_bytes,
+ 				(u8 *)&cmd->data_crc);
+@@ -3049,7 +3051,7 @@ static int iscsit_send_r2t(
+ 	if (conn->conn_ops->HeaderDigest) {
+ 		u32 *header_digest = (u32 *)&cmd->pdu[ISCSI_HDR_LEN];
+ 
+-		iscsit_do_crypto_hash_buf(&conn->conn_tx_hash, hdr,
++		iscsit_do_crypto_hash_buf(conn->conn_tx_hash, hdr,
+ 				ISCSI_HDR_LEN, 0, NULL, (u8 *)header_digest);
+ 
+ 		cmd->iov_misc[0].iov_len += ISCSI_CRC_LEN;
+@@ -3239,7 +3241,7 @@ static int iscsit_send_response(struct iscsi_cmd *cmd, struct iscsi_conn *conn)
+ 		}
+ 
+ 		if (conn->conn_ops->DataDigest) {
+-			iscsit_do_crypto_hash_buf(&conn->conn_tx_hash,
++			iscsit_do_crypto_hash_buf(conn->conn_tx_hash,
+ 				cmd->sense_buffer,
+ 				(cmd->se_cmd.scsi_sense_length + padding),
+ 				0, NULL, (u8 *)&cmd->data_crc);
+@@ -3262,7 +3264,7 @@ static int iscsit_send_response(struct iscsi_cmd *cmd, struct iscsi_conn *conn)
+ 	if (conn->conn_ops->HeaderDigest) {
+ 		u32 *header_digest = (u32 *)&cmd->pdu[ISCSI_HDR_LEN];
+ 
+-		iscsit_do_crypto_hash_buf(&conn->conn_tx_hash, cmd->pdu,
++		iscsit_do_crypto_hash_buf(conn->conn_tx_hash, cmd->pdu,
+ 				ISCSI_HDR_LEN, 0, NULL, (u8 *)header_digest);
+ 
+ 		iov[0].iov_len += ISCSI_CRC_LEN;
+@@ -3332,7 +3334,7 @@ iscsit_send_task_mgt_rsp(struct iscsi_cmd *cmd, struct iscsi_conn *conn)
+ 	if (conn->conn_ops->HeaderDigest) {
+ 		u32 *header_digest = (u32 *)&cmd->pdu[ISCSI_HDR_LEN];
+ 
+-		iscsit_do_crypto_hash_buf(&conn->conn_tx_hash, hdr,
++		iscsit_do_crypto_hash_buf(conn->conn_tx_hash, hdr,
+ 				ISCSI_HDR_LEN, 0, NULL, (u8 *)header_digest);
+ 
+ 		cmd->iov_misc[0].iov_len += ISCSI_CRC_LEN;
+@@ -3601,7 +3603,7 @@ static int iscsit_send_text_rsp(
+ 	if (conn->conn_ops->HeaderDigest) {
+ 		u32 *header_digest = (u32 *)&cmd->pdu[ISCSI_HDR_LEN];
+ 
+-		iscsit_do_crypto_hash_buf(&conn->conn_tx_hash, hdr,
++		iscsit_do_crypto_hash_buf(conn->conn_tx_hash, hdr,
+ 				ISCSI_HDR_LEN, 0, NULL, (u8 *)header_digest);
+ 
+ 		iov[0].iov_len += ISCSI_CRC_LEN;
+@@ -3611,7 +3613,7 @@ static int iscsit_send_text_rsp(
+ 	}
+ 
+ 	if (conn->conn_ops->DataDigest) {
+-		iscsit_do_crypto_hash_buf(&conn->conn_tx_hash,
++		iscsit_do_crypto_hash_buf(conn->conn_tx_hash,
+ 				cmd->buf_ptr, text_length,
+ 				0, NULL, (u8 *)&cmd->data_crc);
+ 
+@@ -3668,7 +3670,7 @@ static int iscsit_send_reject(
+ 	if (conn->conn_ops->HeaderDigest) {
+ 		u32 *header_digest = (u32 *)&cmd->pdu[ISCSI_HDR_LEN];
+ 
+-		iscsit_do_crypto_hash_buf(&conn->conn_tx_hash, hdr,
++		iscsit_do_crypto_hash_buf(conn->conn_tx_hash, hdr,
+ 				ISCSI_HDR_LEN, 0, NULL, (u8 *)header_digest);
+ 
+ 		iov[0].iov_len += ISCSI_CRC_LEN;
+@@ -3678,7 +3680,7 @@ static int iscsit_send_reject(
+ 	}
+ 
+ 	if (conn->conn_ops->DataDigest) {
+-		iscsit_do_crypto_hash_buf(&conn->conn_tx_hash, cmd->buf_ptr,
++		iscsit_do_crypto_hash_buf(conn->conn_tx_hash, cmd->buf_ptr,
+ 				ISCSI_HDR_LEN, 0, NULL, (u8 *)&cmd->data_crc);
+ 
+ 		iov[iov_count].iov_base = &cmd->data_crc;
+@@ -4145,7 +4147,7 @@ int iscsi_target_rx_thread(void *arg)
+ 				goto transport_err;
+ 			}
+ 
+-			iscsit_do_crypto_hash_buf(&conn->conn_rx_hash,
++			iscsit_do_crypto_hash_buf(conn->conn_rx_hash,
+ 					buffer, ISCSI_HDR_LEN,
+ 					0, NULL, (u8 *)&checksum);
+ 
+@@ -4359,10 +4361,14 @@ int iscsit_close_connection(
+ 	 */
+ 	iscsit_check_conn_usage_count(conn);
+ 
+-	if (conn->conn_rx_hash.tfm)
+-		crypto_free_hash(conn->conn_rx_hash.tfm);
+-	if (conn->conn_tx_hash.tfm)
+-		crypto_free_hash(conn->conn_tx_hash.tfm);
++	ahash_request_free(conn->conn_tx_hash);
++	if (conn->conn_rx_hash) {
++		struct crypto_ahash *tfm;
 +
-+		desc->tfm = tfm;
-+		desc->flags = 0;
-+		crypto_shash_digest(desc, (u8 *)auth,
-+				    end - (unsigned char *)auth, digest);
-+		shash_desc_zero(desc);
++		tfm = crypto_ahash_reqtfm(conn->conn_rx_hash);
++		ahash_request_free(conn->conn_rx_hash);
++		crypto_free_ahash(tfm);
 +	}
  
- free:
- 	if (free_key)
-diff --git a/net/sctp/endpointola.c b/net/sctp/endpointola.c
-index 2522a61..9d494e3 100644
---- a/net/sctp/endpointola.c
-+++ b/net/sctp/endpointola.c
-@@ -42,7 +42,6 @@
- #include <linux/slab.h>
- #include <linux/in.h>
- #include <linux/random.h>	/* get_random_bytes() */
--#include <linux/crypto.h>
- #include <net/sock.h>
- #include <net/ipv6.h>
- #include <net/sctp/sctp.h>
-diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
-index 5d6a03f..1296e55 100644
---- a/net/sctp/sm_make_chunk.c
-+++ b/net/sctp/sm_make_chunk.c
-@@ -45,6 +45,7 @@
+ 	free_cpumask_var(conn->conn_cpumask);
  
- #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
+diff --git a/drivers/target/iscsi/iscsi_target_auth.c b/drivers/target/iscsi/iscsi_target_auth.c
+index 47e249d..667406f 100644
+--- a/drivers/target/iscsi/iscsi_target_auth.c
++++ b/drivers/target/iscsi/iscsi_target_auth.c
+@@ -16,9 +16,9 @@
+  * GNU General Public License for more details.
+  ******************************************************************************/
  
 +#include <crypto/hash.h>
- #include <linux/types.h>
  #include <linux/kernel.h>
- #include <linux/ip.h>
-@@ -52,7 +53,6 @@
- #include <linux/net.h>
- #include <linux/inet.h>
- #include <linux/scatterlist.h>
+ #include <linux/string.h>
 -#include <linux/crypto.h>
- #include <linux/slab.h>
- #include <net/sock.h>
+ #include <linux/err.h>
+ #include <linux/scatterlist.h>
  
-@@ -1606,7 +1606,6 @@ static sctp_cookie_param_t *sctp_pack_cookie(const struct sctp_endpoint *ep,
- {
- 	sctp_cookie_param_t *retval;
- 	struct sctp_signed_cookie *cookie;
+@@ -185,9 +185,8 @@ static int chap_server_compute_md5(
+ 	unsigned char chap_n[MAX_CHAP_N_SIZE], chap_r[MAX_RESPONSE_LENGTH];
+ 	size_t compare_len;
+ 	struct iscsi_chap *chap = conn->auth_protocol;
+-	struct crypto_hash *tfm;
+-	struct hash_desc desc;
 -	struct scatterlist sg;
- 	int headersize, bodysize;
++	struct crypto_shash *tfm = NULL;
++	struct shash_desc *desc = NULL;
+ 	int auth_ret = -1, ret, challenge_len;
  
- 	/* Header size is static data prior to the actual cookie, including
-@@ -1663,16 +1662,19 @@ static sctp_cookie_param_t *sctp_pack_cookie(const struct sctp_endpoint *ep,
- 	       ntohs(init_chunk->chunk_hdr->length), raw_addrs, addrs_len);
+ 	memset(identifier, 0, 10);
+@@ -245,52 +244,47 @@ static int chap_server_compute_md5(
+ 	pr_debug("[server] Got CHAP_R=%s\n", chap_r);
+ 	chap_string_to_hex(client_digest, chap_r, strlen(chap_r));
  
- 	if (sctp_sk(ep->base.sk)->hmac) {
--		struct hash_desc desc;
-+		SHASH_DESC_ON_STACK(desc, sctp_sk(ep->base.sk)->hmac);
-+		int err;
+-	tfm = crypto_alloc_hash("md5", 0, CRYPTO_ALG_ASYNC);
++	tfm = crypto_alloc_shash("md5", 0, 0);
+ 	if (IS_ERR(tfm)) {
+-		pr_err("Unable to allocate struct crypto_hash\n");
++		tfm = NULL;
++		pr_err("Unable to allocate struct crypto_shash\n");
+ 		goto out;
+ 	}
+-	desc.tfm = tfm;
+-	desc.flags = 0;
  
- 		/* Sign the message.  */
--		sg_init_one(&sg, &cookie->c, bodysize);
--		desc.tfm = sctp_sk(ep->base.sk)->hmac;
--		desc.flags = 0;
--
--		if (crypto_hash_setkey(desc.tfm, ep->secret_key,
--				       sizeof(ep->secret_key)) ||
--		    crypto_hash_digest(&desc, &sg, bodysize, cookie->signature))
-+		desc->tfm = sctp_sk(ep->base.sk)->hmac;
-+		desc->flags = 0;
-+
-+		err = crypto_shash_setkey(desc->tfm, ep->secret_key,
-+					  sizeof(ep->secret_key)) ?:
-+		      crypto_shash_digest(desc, (u8 *)&cookie->c, bodysize,
-+					  cookie->signature);
-+		shash_desc_zero(desc);
-+		if (err)
- 			goto free_cookie;
+-	ret = crypto_hash_init(&desc);
+-	if (ret < 0) {
+-		pr_err("crypto_hash_init() failed\n");
+-		crypto_free_hash(tfm);
++	desc = kmalloc(sizeof(*desc) + crypto_shash_descsize(tfm), GFP_KERNEL);
++	if (!desc) {
++		pr_err("Unable to allocate struct shash_desc\n");
+ 		goto out;
  	}
  
-@@ -1697,12 +1699,10 @@ struct sctp_association *sctp_unpack_cookie(
- 	struct sctp_cookie *bear_cookie;
- 	int headersize, bodysize, fixed_size;
- 	__u8 *digest = ep->digest;
--	struct scatterlist sg;
- 	unsigned int len;
- 	sctp_scope_t scope;
- 	struct sk_buff *skb = chunk->skb;
- 	ktime_t kt;
--	struct hash_desc desc;
+-	sg_init_one(&sg, &chap->id, 1);
+-	ret = crypto_hash_update(&desc, &sg, 1);
++	desc->tfm = tfm;
++	desc->flags = 0;
++
++	ret = crypto_shash_init(desc);
+ 	if (ret < 0) {
+-		pr_err("crypto_hash_update() failed for id\n");
+-		crypto_free_hash(tfm);
++		pr_err("crypto_shash_init() failed\n");
+ 		goto out;
+ 	}
  
- 	/* Header size is static data prior to the actual cookie, including
- 	 * any padding.
-@@ -1733,16 +1733,23 @@ struct sctp_association *sctp_unpack_cookie(
- 		goto no_hmac;
+-	sg_init_one(&sg, &auth->password, strlen(auth->password));
+-	ret = crypto_hash_update(&desc, &sg, strlen(auth->password));
++	ret = crypto_shash_update(desc, &chap->id, 1);
+ 	if (ret < 0) {
+-		pr_err("crypto_hash_update() failed for password\n");
+-		crypto_free_hash(tfm);
++		pr_err("crypto_shash_update() failed for id\n");
+ 		goto out;
+ 	}
  
- 	/* Check the signature.  */
--	sg_init_one(&sg, bear_cookie, bodysize);
--	desc.tfm = sctp_sk(ep->base.sk)->hmac;
+-	sg_init_one(&sg, chap->challenge, CHAP_CHALLENGE_LENGTH);
+-	ret = crypto_hash_update(&desc, &sg, CHAP_CHALLENGE_LENGTH);
++	ret = crypto_shash_update(desc, (char *)&auth->password,
++				  strlen(auth->password));
+ 	if (ret < 0) {
+-		pr_err("crypto_hash_update() failed for challenge\n");
+-		crypto_free_hash(tfm);
++		pr_err("crypto_shash_update() failed for password\n");
+ 		goto out;
+ 	}
+ 
+-	ret = crypto_hash_final(&desc, server_digest);
++	ret = crypto_shash_finup(desc, chap->challenge,
++				 CHAP_CHALLENGE_LENGTH, server_digest);
+ 	if (ret < 0) {
+-		pr_err("crypto_hash_final() failed for server digest\n");
+-		crypto_free_hash(tfm);
++		pr_err("crypto_shash_finup() failed for challenge\n");
+ 		goto out;
+ 	}
+-	crypto_free_hash(tfm);
+ 
+ 	chap_binaryhex_to_asciihex(response, server_digest, MD5_SIGNATURE_SIZE);
+ 	pr_debug("[server] MD5 Server Digest: %s\n", response);
+@@ -306,9 +300,8 @@ static int chap_server_compute_md5(
+ 	 * authentication is not enabled.
+ 	 */
+ 	if (!auth->authenticate_target) {
+-		kfree(challenge);
+-		kfree(challenge_binhex);
+-		return 0;
++		auth_ret = 0;
++		goto out;
+ 	}
+ 	/*
+ 	 * Get CHAP_I.
+@@ -372,58 +365,37 @@ static int chap_server_compute_md5(
+ 	/*
+ 	 * Generate CHAP_N and CHAP_R for mutual authentication.
+ 	 */
+-	tfm = crypto_alloc_hash("md5", 0, CRYPTO_ALG_ASYNC);
+-	if (IS_ERR(tfm)) {
+-		pr_err("Unable to allocate struct crypto_hash\n");
+-		goto out;
+-	}
+-	desc.tfm = tfm;
 -	desc.flags = 0;
 -
--	memset(digest, 0x00, SCTP_SIGNATURE_SIZE);
--	if (crypto_hash_setkey(desc.tfm, ep->secret_key,
--			       sizeof(ep->secret_key)) ||
--	    crypto_hash_digest(&desc, &sg, bodysize, digest)) {
--		*error = -SCTP_IERROR_NOMEM;
--		goto fail;
-+	{
-+		SHASH_DESC_ON_STACK(desc, sctp_sk(ep->base.sk)->hmac);
-+		int err;
-+
-+		desc->tfm = sctp_sk(ep->base.sk)->hmac;
-+		desc->flags = 0;
-+
-+		err = crypto_shash_setkey(desc->tfm, ep->secret_key,
-+					  sizeof(ep->secret_key)) ?:
-+		      crypto_shash_digest(desc, (u8 *)bear_cookie, bodysize,
-+					  digest);
-+		shash_desc_zero(desc);
-+
-+		if (err) {
-+			*error = -SCTP_IERROR_NOMEM;
-+			goto fail;
-+		}
+-	ret = crypto_hash_init(&desc);
++	ret = crypto_shash_init(desc);
+ 	if (ret < 0) {
+-		pr_err("crypto_hash_init() failed\n");
+-		crypto_free_hash(tfm);
++		pr_err("crypto_shash_init() failed\n");
+ 		goto out;
  	}
  
- 	if (memcmp(digest, cookie->signature, SCTP_SIGNATURE_SIZE)) {
-diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index 9bb80ec..4101c5b 100644
---- a/net/sctp/socket.c
-+++ b/net/sctp/socket.c
-@@ -52,6 +52,7 @@
+ 	/* To handle both endiannesses */
+ 	id_as_uchar = id;
+-	sg_init_one(&sg, &id_as_uchar, 1);
+-	ret = crypto_hash_update(&desc, &sg, 1);
++	ret = crypto_shash_update(desc, &id_as_uchar, 1);
+ 	if (ret < 0) {
+-		pr_err("crypto_hash_update() failed for id\n");
+-		crypto_free_hash(tfm);
++		pr_err("crypto_shash_update() failed for id\n");
+ 		goto out;
+ 	}
  
- #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
+-	sg_init_one(&sg, auth->password_mutual,
+-				strlen(auth->password_mutual));
+-	ret = crypto_hash_update(&desc, &sg, strlen(auth->password_mutual));
++	ret = crypto_shash_update(desc, auth->password_mutual,
++				  strlen(auth->password_mutual));
+ 	if (ret < 0) {
+-		pr_err("crypto_hash_update() failed for"
++		pr_err("crypto_shash_update() failed for"
+ 				" password_mutual\n");
+-		crypto_free_hash(tfm);
+ 		goto out;
+ 	}
+ 	/*
+ 	 * Convert received challenge to binary hex.
+ 	 */
+-	sg_init_one(&sg, challenge_binhex, challenge_len);
+-	ret = crypto_hash_update(&desc, &sg, challenge_len);
++	ret = crypto_shash_finup(desc, challenge_binhex, challenge_len,
++				 digest);
+ 	if (ret < 0) {
+-		pr_err("crypto_hash_update() failed for ma challenge\n");
+-		crypto_free_hash(tfm);
++		pr_err("crypto_shash_finup() failed for ma challenge\n");
+ 		goto out;
+ 	}
+ 
+-	ret = crypto_hash_final(&desc, digest);
+-	if (ret < 0) {
+-		pr_err("crypto_hash_final() failed for ma digest\n");
+-		crypto_free_hash(tfm);
+-		goto out;
+-	}
+-	crypto_free_hash(tfm);
+ 	/*
+ 	 * Generate CHAP_N and CHAP_R.
+ 	 */
+@@ -440,6 +412,8 @@ static int chap_server_compute_md5(
+ 	pr_debug("[server] Sending CHAP_R=0x%s\n", response);
+ 	auth_ret = 0;
+ out:
++	kzfree(desc);
++	crypto_free_shash(tfm);
+ 	kfree(challenge);
+ 	kfree(challenge_binhex);
+ 	return auth_ret;
+diff --git a/drivers/target/iscsi/iscsi_target_login.c b/drivers/target/iscsi/iscsi_target_login.c
+index 96e78c8..8436d56 100644
+--- a/drivers/target/iscsi/iscsi_target_login.c
++++ b/drivers/target/iscsi/iscsi_target_login.c
+@@ -16,9 +16,9 @@
+  * GNU General Public License for more details.
+  ******************************************************************************/
  
 +#include <crypto/hash.h>
- #include <linux/types.h>
- #include <linux/kernel.h>
- #include <linux/wait.h>
-@@ -61,7 +62,6 @@
- #include <linux/fcntl.h>
- #include <linux/poll.h>
- #include <linux/init.h>
+ #include <linux/string.h>
+ #include <linux/kthread.h>
 -#include <linux/crypto.h>
- #include <linux/slab.h>
- #include <linux/file.h>
- #include <linux/compat.h>
-@@ -4160,7 +4160,7 @@ static void sctp_destruct_sock(struct sock *sk)
- 	struct sctp_sock *sp = sctp_sk(sk);
- 
- 	/* Free up the HMAC transform. */
--	crypto_free_hash(sp->hmac);
-+	crypto_free_shash(sp->hmac);
- 
- 	inet_sock_destruct(sk);
- }
-@@ -6299,13 +6299,13 @@ static int sctp_listen_start(struct sock *sk, int backlog)
+ #include <linux/idr.h>
+ #include <scsi/iscsi_proto.h>
+ #include <target/target_core_base.h>
+@@ -115,27 +115,36 @@ out_login:
+  */
+ int iscsi_login_setup_crypto(struct iscsi_conn *conn)
  {
- 	struct sctp_sock *sp = sctp_sk(sk);
- 	struct sctp_endpoint *ep = sp->ep;
--	struct crypto_hash *tfm = NULL;
-+	struct crypto_shash *tfm = NULL;
- 	char alg[32];
++	struct crypto_ahash *tfm;
++
+ 	/*
+ 	 * Setup slicing by CRC32C algorithm for RX and TX libcrypto contexts
+ 	 * which will default to crc32c_intel.ko for cpu_has_xmm4_2, or fallback
+ 	 * to software 1x8 byte slicing from crc32c.ko
+ 	 */
+-	conn->conn_rx_hash.flags = 0;
+-	conn->conn_rx_hash.tfm = crypto_alloc_hash("crc32c", 0,
+-						CRYPTO_ALG_ASYNC);
+-	if (IS_ERR(conn->conn_rx_hash.tfm)) {
+-		pr_err("crypto_alloc_hash() failed for conn_rx_tfm\n");
++	tfm = crypto_alloc_ahash("crc32c", 0, CRYPTO_ALG_ASYNC);
++	if (IS_ERR(tfm)) {
++		pr_err("crypto_alloc_ahash() failed\n");
+ 		return -ENOMEM;
+ 	}
  
- 	/* Allocate HMAC for generating cookie. */
- 	if (!sp->hmac && sp->sctp_hmac_alg) {
- 		sprintf(alg, "hmac(%s)", sp->sctp_hmac_alg);
--		tfm = crypto_alloc_hash(alg, 0, CRYPTO_ALG_ASYNC);
-+		tfm = crypto_alloc_shash(alg, 0, 0);
- 		if (IS_ERR(tfm)) {
- 			net_info_ratelimited("failed to load transform for %s: %ld\n",
- 					     sp->sctp_hmac_alg, PTR_ERR(tfm));
+-	conn->conn_tx_hash.flags = 0;
+-	conn->conn_tx_hash.tfm = crypto_alloc_hash("crc32c", 0,
+-						CRYPTO_ALG_ASYNC);
+-	if (IS_ERR(conn->conn_tx_hash.tfm)) {
+-		pr_err("crypto_alloc_hash() failed for conn_tx_tfm\n");
+-		crypto_free_hash(conn->conn_rx_hash.tfm);
++	conn->conn_rx_hash = ahash_request_alloc(tfm, GFP_KERNEL);
++	if (!conn->conn_rx_hash) {
++		pr_err("ahash_request_alloc() failed for conn_rx_hash\n");
++		crypto_free_ahash(tfm);
++		return -ENOMEM;
++	}
++	ahash_request_set_callback(conn->conn_rx_hash, 0, NULL, NULL);
++
++	conn->conn_tx_hash = ahash_request_alloc(tfm, GFP_KERNEL);
++	if (!conn->conn_tx_hash) {
++		pr_err("ahash_request_alloc() failed for conn_tx_hash\n");
++		ahash_request_free(conn->conn_rx_hash);
++		conn->conn_rx_hash = NULL;
++		crypto_free_ahash(tfm);
+ 		return -ENOMEM;
+ 	}
++	ahash_request_set_callback(conn->conn_tx_hash, 0, NULL, NULL);
+ 
+ 	return 0;
+ }
+@@ -1174,10 +1183,14 @@ old_sess_out:
+ 		iscsit_dec_session_usage_count(conn->sess);
+ 	}
+ 
+-	if (!IS_ERR(conn->conn_rx_hash.tfm))
+-		crypto_free_hash(conn->conn_rx_hash.tfm);
+-	if (!IS_ERR(conn->conn_tx_hash.tfm))
+-		crypto_free_hash(conn->conn_tx_hash.tfm);
++	ahash_request_free(conn->conn_tx_hash);
++	if (conn->conn_rx_hash) {
++		struct crypto_ahash *tfm;
++
++		tfm = crypto_ahash_reqtfm(conn->conn_rx_hash);
++		ahash_request_free(conn->conn_rx_hash);
++		crypto_free_ahash(tfm);
++	}
+ 
+ 	free_cpumask_var(conn->conn_cpumask);
+ 
+diff --git a/include/target/iscsi/iscsi_target_core.h b/include/target/iscsi/iscsi_target_core.h
+index 373d334..c3371fa 100644
+--- a/include/target/iscsi/iscsi_target_core.h
++++ b/include/target/iscsi/iscsi_target_core.h
+@@ -570,8 +570,8 @@ struct iscsi_conn {
+ 	spinlock_t		response_queue_lock;
+ 	spinlock_t		state_lock;
+ 	/* libcrypto RX and TX contexts for crc32c */
+-	struct hash_desc	conn_rx_hash;
+-	struct hash_desc	conn_tx_hash;
++	struct ahash_request	*conn_rx_hash;
++	struct ahash_request	*conn_tx_hash;
+ 	/* Used for scheduling TX and RX connection kthreads */
+ 	cpumask_var_t		conn_cpumask;
+ 	unsigned int		conn_rx_reset_cpumask:1;
