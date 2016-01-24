@@ -1,9 +1,9 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from helcar.hengli.com.au ([209.40.204.226]:50870 "EHLO
+Received: from helcar.hengli.com.au ([209.40.204.226]:38728 "EHLO
 	helcar.hengli.com.au" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932100AbcAXNUC (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 24 Jan 2016 08:20:02 -0500
-Subject: [PATCH 20/26] drbd: Use shash and ahash
+	with ESMTP id S1755281AbcAXNTh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 24 Jan 2016 08:19:37 -0500
+Subject: [PATCH 18/26] rxrpc: Use skcipher
 References: <20160124131021.GA31153@gondor.apana.org.au>
 To: Linux Crypto Mailing List <linux-crypto@vger.kernel.org>,
         Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
@@ -15,549 +15,521 @@ To: Linux Crypto Mailing List <linux-crypto@vger.kernel.org>,
         linux-bluetooth@vger.kernel.org, ceph-devel@vger.kernel.org,
         linux-wpan@vger.kernel.org, linux-afs@lists.infradead.org,
         drbd-dev@lists.linbit.com, open-iscsi@googlegroups.com
-Message-Id: <E1aNKZd-0008FD-HQ@gondolin.me.apana.org.au>
+Message-Id: <E1aNKZJ-0008Ee-0B@gondolin.me.apana.org.au>
 From: Herbert Xu <herbert@gondor.apana.org.au>
-Date: Sun, 24 Jan 2016 21:19:21 +0800
+Date: Sun, 24 Jan 2016 21:19:01 +0800
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch replaces uses of the long obsolete hash interface with
-either shash (for non-SG users) or ahash.
-
+This patch replaces uses of blkcipher with skcipher.
+   
 Signed-off-by: Herbert Xu <herbert@gondor.apana.org.au>
 ---
 
- drivers/block/drbd/drbd_int.h      |   16 +++++-----
- drivers/block/drbd/drbd_main.c     |   16 +++++-----
- drivers/block/drbd/drbd_nl.c       |   59 +++++++++++++++++++++++--------------
- drivers/block/drbd/drbd_receiver.c |   56 ++++++++++++++++-------------------
- drivers/block/drbd/drbd_worker.c   |   43 +++++++++++++++-----------
- 5 files changed, 103 insertions(+), 87 deletions(-)
+ net/rxrpc/ar-internal.h |    2 
+ net/rxrpc/ar-key.c      |   12 +--
+ net/rxrpc/rxkad.c       |  172 +++++++++++++++++++++++++++++-------------------
+ 3 files changed, 114 insertions(+), 72 deletions(-)
 
-diff --git a/drivers/block/drbd/drbd_int.h b/drivers/block/drbd/drbd_int.h
-index e66d453..686d955 100644
---- a/drivers/block/drbd/drbd_int.h
-+++ b/drivers/block/drbd/drbd_int.h
-@@ -26,13 +26,13 @@
- #ifndef _DRBD_INT_H
- #define _DRBD_INT_H
+diff --git a/net/rxrpc/ar-internal.h b/net/rxrpc/ar-internal.h
+index 2934a73..71598f5 100644
+--- a/net/rxrpc/ar-internal.h
++++ b/net/rxrpc/ar-internal.h
+@@ -252,7 +252,7 @@ struct rxrpc_connection {
+ 	struct rxrpc_security	*security;	/* applied security module */
+ 	struct key		*key;		/* security for this connection (client) */
+ 	struct key		*server_key;	/* security for this service */
+-	struct crypto_blkcipher	*cipher;	/* encryption handle */
++	struct crypto_skcipher	*cipher;	/* encryption handle */
+ 	struct rxrpc_crypt	csum_iv;	/* packet checksum base */
+ 	unsigned long		events;
+ #define RXRPC_CONN_CHALLENGE	0		/* send challenge packet */
+diff --git a/net/rxrpc/ar-key.c b/net/rxrpc/ar-key.c
+index 3f65716..3fb492e 100644
+--- a/net/rxrpc/ar-key.c
++++ b/net/rxrpc/ar-key.c
+@@ -12,11 +12,11 @@
+  *	"afs@CAMBRIDGE.REDHAT.COM>
+  */
  
-+#include <crypto/hash.h>
- #include <linux/compiler.h>
- #include <linux/types.h>
- #include <linux/list.h>
- #include <linux/sched.h>
- #include <linux/bitops.h>
- #include <linux/slab.h>
++#include <crypto/skcipher.h>
+ #include <linux/module.h>
+ #include <linux/net.h>
+ #include <linux/skbuff.h>
+ #include <linux/key-type.h>
 -#include <linux/crypto.h>
- #include <linux/ratelimit.h>
- #include <linux/tcp.h>
- #include <linux/mutex.h>
-@@ -737,11 +737,11 @@ struct drbd_connection {
+ #include <linux/ctype.h>
+ #include <linux/slab.h>
+ #include <net/sock.h>
+@@ -824,7 +824,7 @@ static void rxrpc_free_preparse(struct key_preparsed_payload *prep)
+  */
+ static int rxrpc_preparse_s(struct key_preparsed_payload *prep)
+ {
+-	struct crypto_blkcipher *ci;
++	struct crypto_skcipher *ci;
  
- 	struct list_head transfer_log;	/* all requests not yet fully processed */
+ 	_enter("%zu", prep->datalen);
  
--	struct crypto_hash *cram_hmac_tfm;
--	struct crypto_hash *integrity_tfm;  /* checksums we compute, updates protected by connection->data->mutex */
--	struct crypto_hash *peer_integrity_tfm;  /* checksums we verify, only accessed from receiver thread  */
--	struct crypto_hash *csums_tfm;
--	struct crypto_hash *verify_tfm;
-+	struct crypto_shash *cram_hmac_tfm;
-+	struct crypto_ahash *integrity_tfm;  /* checksums we compute, updates protected by connection->data->mutex */
-+	struct crypto_ahash *peer_integrity_tfm;  /* checksums we verify, only accessed from receiver thread  */
-+	struct crypto_ahash *csums_tfm;
-+	struct crypto_ahash *verify_tfm;
- 	void *int_dig_in;
- 	void *int_dig_vv;
+@@ -833,13 +833,13 @@ static int rxrpc_preparse_s(struct key_preparsed_payload *prep)
  
-@@ -1511,8 +1511,8 @@ static inline void ov_out_of_sync_print(struct drbd_device *device)
+ 	memcpy(&prep->payload.data[2], prep->data, 8);
+ 
+-	ci = crypto_alloc_blkcipher("pcbc(des)", 0, CRYPTO_ALG_ASYNC);
++	ci = crypto_alloc_skcipher("pcbc(des)", 0, CRYPTO_ALG_ASYNC);
+ 	if (IS_ERR(ci)) {
+ 		_leave(" = %ld", PTR_ERR(ci));
+ 		return PTR_ERR(ci);
+ 	}
+ 
+-	if (crypto_blkcipher_setkey(ci, prep->data, 8) < 0)
++	if (crypto_skcipher_setkey(ci, prep->data, 8) < 0)
+ 		BUG();
+ 
+ 	prep->payload.data[0] = ci;
+@@ -853,7 +853,7 @@ static int rxrpc_preparse_s(struct key_preparsed_payload *prep)
+ static void rxrpc_free_preparse_s(struct key_preparsed_payload *prep)
+ {
+ 	if (prep->payload.data[0])
+-		crypto_free_blkcipher(prep->payload.data[0]);
++		crypto_free_skcipher(prep->payload.data[0]);
  }
  
- 
--extern void drbd_csum_bio(struct crypto_hash *, struct bio *, void *);
--extern void drbd_csum_ee(struct crypto_hash *, struct drbd_peer_request *, void *);
-+extern void drbd_csum_bio(struct crypto_ahash *, struct bio *, void *);
-+extern void drbd_csum_ee(struct crypto_ahash *, struct drbd_peer_request *, void *);
- /* worker callbacks */
- extern int w_e_end_data_req(struct drbd_work *, int);
- extern int w_e_end_rsdata_req(struct drbd_work *, int);
-diff --git a/drivers/block/drbd/drbd_main.c b/drivers/block/drbd/drbd_main.c
-index 74d97f4..69ee808 100644
---- a/drivers/block/drbd/drbd_main.c
-+++ b/drivers/block/drbd/drbd_main.c
-@@ -1339,7 +1339,7 @@ void drbd_send_ack_dp(struct drbd_peer_device *peer_device, enum drbd_packet cmd
- 		      struct p_data *dp, int data_size)
+ /*
+@@ -870,7 +870,7 @@ static void rxrpc_destroy(struct key *key)
+ static void rxrpc_destroy_s(struct key *key)
  {
- 	if (peer_device->connection->peer_integrity_tfm)
--		data_size -= crypto_hash_digestsize(peer_device->connection->peer_integrity_tfm);
-+		data_size -= crypto_ahash_digestsize(peer_device->connection->peer_integrity_tfm);
- 	_drbd_send_ack(peer_device, cmd, dp->sector, cpu_to_be32(data_size),
- 		       dp->block_id);
+ 	if (key->payload.data[0]) {
+-		crypto_free_blkcipher(key->payload.data[0]);
++		crypto_free_skcipher(key->payload.data[0]);
+ 		key->payload.data[0] = NULL;
+ 	}
  }
-@@ -1628,7 +1628,7 @@ int drbd_send_dblock(struct drbd_peer_device *peer_device, struct drbd_request *
- 	sock = &peer_device->connection->data;
- 	p = drbd_prepare_command(peer_device, sock);
- 	digest_size = peer_device->connection->integrity_tfm ?
--		      crypto_hash_digestsize(peer_device->connection->integrity_tfm) : 0;
-+		      crypto_ahash_digestsize(peer_device->connection->integrity_tfm) : 0;
+diff --git a/net/rxrpc/rxkad.c b/net/rxrpc/rxkad.c
+index d7a9ab5..0d96b48 100644
+--- a/net/rxrpc/rxkad.c
++++ b/net/rxrpc/rxkad.c
+@@ -9,11 +9,11 @@
+  * 2 of the License, or (at your option) any later version.
+  */
  
- 	if (!p)
- 		return -EIO;
-@@ -1717,7 +1717,7 @@ int drbd_send_block(struct drbd_peer_device *peer_device, enum drbd_packet cmd,
- 	p = drbd_prepare_command(peer_device, sock);
++#include <crypto/skcipher.h>
+ #include <linux/module.h>
+ #include <linux/net.h>
+ #include <linux/skbuff.h>
+ #include <linux/udp.h>
+-#include <linux/crypto.h>
+ #include <linux/scatterlist.h>
+ #include <linux/ctype.h>
+ #include <linux/slab.h>
+@@ -53,7 +53,7 @@ MODULE_LICENSE("GPL");
+  * alloc routine, but since we have it to hand, we use it to decrypt RESPONSE
+  * packets
+  */
+-static struct crypto_blkcipher *rxkad_ci;
++static struct crypto_skcipher *rxkad_ci;
+ static DEFINE_MUTEX(rxkad_ci_mutex);
  
- 	digest_size = peer_device->connection->integrity_tfm ?
--		      crypto_hash_digestsize(peer_device->connection->integrity_tfm) : 0;
-+		      crypto_ahash_digestsize(peer_device->connection->integrity_tfm) : 0;
- 
- 	if (!p)
- 		return -EIO;
-@@ -2506,11 +2506,11 @@ void conn_free_crypto(struct drbd_connection *connection)
+ /*
+@@ -61,7 +61,7 @@ static DEFINE_MUTEX(rxkad_ci_mutex);
+  */
+ static int rxkad_init_connection_security(struct rxrpc_connection *conn)
  {
- 	drbd_free_sock(connection);
+-	struct crypto_blkcipher *ci;
++	struct crypto_skcipher *ci;
+ 	struct rxrpc_key_token *token;
+ 	int ret;
  
--	crypto_free_hash(connection->csums_tfm);
--	crypto_free_hash(connection->verify_tfm);
--	crypto_free_hash(connection->cram_hmac_tfm);
--	crypto_free_hash(connection->integrity_tfm);
--	crypto_free_hash(connection->peer_integrity_tfm);
-+	crypto_free_ahash(connection->csums_tfm);
-+	crypto_free_ahash(connection->verify_tfm);
-+	crypto_free_shash(connection->cram_hmac_tfm);
-+	crypto_free_ahash(connection->integrity_tfm);
-+	crypto_free_ahash(connection->peer_integrity_tfm);
- 	kfree(connection->int_dig_in);
- 	kfree(connection->int_dig_vv);
+@@ -70,15 +70,15 @@ static int rxkad_init_connection_security(struct rxrpc_connection *conn)
+ 	token = conn->key->payload.data[0];
+ 	conn->security_ix = token->security_index;
  
-diff --git a/drivers/block/drbd/drbd_nl.c b/drivers/block/drbd/drbd_nl.c
-index e80cbef..578f635 100644
---- a/drivers/block/drbd/drbd_nl.c
-+++ b/drivers/block/drbd/drbd_nl.c
-@@ -2065,19 +2065,34 @@ check_net_options(struct drbd_connection *connection, struct net_conf *new_net_c
+-	ci = crypto_alloc_blkcipher("pcbc(fcrypt)", 0, CRYPTO_ALG_ASYNC);
++	ci = crypto_alloc_skcipher("pcbc(fcrypt)", 0, CRYPTO_ALG_ASYNC);
+ 	if (IS_ERR(ci)) {
+ 		_debug("no cipher");
+ 		ret = PTR_ERR(ci);
+ 		goto error;
+ 	}
+ 
+-	if (crypto_blkcipher_setkey(ci, token->kad->session_key,
+-				    sizeof(token->kad->session_key)) < 0)
++	if (crypto_skcipher_setkey(ci, token->kad->session_key,
++				   sizeof(token->kad->session_key)) < 0)
+ 		BUG();
+ 
+ 	switch (conn->security_level) {
+@@ -113,7 +113,7 @@ error:
+ static void rxkad_prime_packet_security(struct rxrpc_connection *conn)
+ {
+ 	struct rxrpc_key_token *token;
+-	struct blkcipher_desc desc;
++	SKCIPHER_REQUEST_ON_STACK(req, conn->cipher);
+ 	struct scatterlist sg[2];
+ 	struct rxrpc_crypt iv;
+ 	struct {
+@@ -128,10 +128,6 @@ static void rxkad_prime_packet_security(struct rxrpc_connection *conn)
+ 	token = conn->key->payload.data[0];
+ 	memcpy(&iv, token->kad->session_key, sizeof(iv));
+ 
+-	desc.tfm = conn->cipher;
+-	desc.info = iv.x;
+-	desc.flags = 0;
+-
+ 	tmpbuf.x[0] = conn->epoch;
+ 	tmpbuf.x[1] = conn->cid;
+ 	tmpbuf.x[2] = 0;
+@@ -139,7 +135,13 @@ static void rxkad_prime_packet_security(struct rxrpc_connection *conn)
+ 
+ 	sg_init_one(&sg[0], &tmpbuf, sizeof(tmpbuf));
+ 	sg_init_one(&sg[1], &tmpbuf, sizeof(tmpbuf));
+-	crypto_blkcipher_encrypt_iv(&desc, &sg[0], &sg[1], sizeof(tmpbuf));
++
++	skcipher_request_set_tfm(req, conn->cipher);
++	skcipher_request_set_callback(req, 0, NULL, NULL);
++	skcipher_request_set_crypt(req, &sg[1], &sg[0], sizeof(tmpbuf), iv.x);
++
++	crypto_skcipher_encrypt(req);
++	skcipher_request_zero(req);
+ 
+ 	memcpy(&conn->csum_iv, &tmpbuf.x[2], sizeof(conn->csum_iv));
+ 	ASSERTCMP(conn->csum_iv.n[0], ==, tmpbuf.x[2]);
+@@ -156,7 +158,7 @@ static int rxkad_secure_packet_auth(const struct rxrpc_call *call,
+ 				    void *sechdr)
+ {
+ 	struct rxrpc_skb_priv *sp;
+-	struct blkcipher_desc desc;
++	SKCIPHER_REQUEST_ON_STACK(req, call->conn->cipher);
+ 	struct rxrpc_crypt iv;
+ 	struct scatterlist sg[2];
+ 	struct {
+@@ -177,13 +179,16 @@ static int rxkad_secure_packet_auth(const struct rxrpc_call *call,
+ 
+ 	/* start the encryption afresh */
+ 	memset(&iv, 0, sizeof(iv));
+-	desc.tfm = call->conn->cipher;
+-	desc.info = iv.x;
+-	desc.flags = 0;
+ 
+ 	sg_init_one(&sg[0], &tmpbuf, sizeof(tmpbuf));
+ 	sg_init_one(&sg[1], &tmpbuf, sizeof(tmpbuf));
+-	crypto_blkcipher_encrypt_iv(&desc, &sg[0], &sg[1], sizeof(tmpbuf));
++
++	skcipher_request_set_tfm(req, call->conn->cipher);
++	skcipher_request_set_callback(req, 0, NULL, NULL);
++	skcipher_request_set_crypt(req, &sg[1], &sg[0], sizeof(tmpbuf), iv.x);
++
++	crypto_skcipher_encrypt(req);
++	skcipher_request_zero(req);
+ 
+ 	memcpy(sechdr, &tmpbuf, sizeof(tmpbuf));
+ 
+@@ -203,13 +208,14 @@ static int rxkad_secure_packet_encrypt(const struct rxrpc_call *call,
+ 	struct rxkad_level2_hdr rxkhdr
+ 		__attribute__((aligned(8))); /* must be all on one page */
+ 	struct rxrpc_skb_priv *sp;
+-	struct blkcipher_desc desc;
++	SKCIPHER_REQUEST_ON_STACK(req, call->conn->cipher);
+ 	struct rxrpc_crypt iv;
+ 	struct scatterlist sg[16];
+ 	struct sk_buff *trailer;
+ 	unsigned int len;
+ 	u16 check;
+ 	int nsg;
++	int err;
+ 
+ 	sp = rxrpc_skb(skb);
+ 
+@@ -223,28 +229,38 @@ static int rxkad_secure_packet_encrypt(const struct rxrpc_call *call,
+ 	/* encrypt from the session key */
+ 	token = call->conn->key->payload.data[0];
+ 	memcpy(&iv, token->kad->session_key, sizeof(iv));
+-	desc.tfm = call->conn->cipher;
+-	desc.info = iv.x;
+-	desc.flags = 0;
+ 
+ 	sg_init_one(&sg[0], sechdr, sizeof(rxkhdr));
+ 	sg_init_one(&sg[1], &rxkhdr, sizeof(rxkhdr));
+-	crypto_blkcipher_encrypt_iv(&desc, &sg[0], &sg[1], sizeof(rxkhdr));
++
++	skcipher_request_set_tfm(req, call->conn->cipher);
++	skcipher_request_set_callback(req, 0, NULL, NULL);
++	skcipher_request_set_crypt(req, &sg[1], &sg[0], sizeof(rxkhdr), iv.x);
++
++	crypto_skcipher_encrypt(req);
+ 
+ 	/* we want to encrypt the skbuff in-place */
+ 	nsg = skb_cow_data(skb, 0, &trailer);
++	err = -ENOMEM;
+ 	if (nsg < 0 || nsg > 16)
+-		return -ENOMEM;
++		goto out;
+ 
+ 	len = data_size + call->conn->size_align - 1;
+ 	len &= ~(call->conn->size_align - 1);
+ 
+ 	sg_init_table(sg, nsg);
+ 	skb_to_sgvec(skb, sg, 0, len);
+-	crypto_blkcipher_encrypt_iv(&desc, sg, sg, len);
++
++	skcipher_request_set_crypt(req, sg, sg, len, iv.x);
++
++	crypto_skcipher_encrypt(req);
+ 
+ 	_leave(" = 0");
+-	return 0;
++	err = 0;
++
++out:
++	skcipher_request_zero(req);
++	return err;
  }
  
- struct crypto {
--	struct crypto_hash *verify_tfm;
--	struct crypto_hash *csums_tfm;
--	struct crypto_hash *cram_hmac_tfm;
--	struct crypto_hash *integrity_tfm;
-+	struct crypto_ahash *verify_tfm;
-+	struct crypto_ahash *csums_tfm;
-+	struct crypto_shash *cram_hmac_tfm;
-+	struct crypto_ahash *integrity_tfm;
- };
- 
- static int
--alloc_hash(struct crypto_hash **tfm, char *tfm_name, int err_alg)
-+alloc_shash(struct crypto_shash **tfm, char *tfm_name, int err_alg)
+ /*
+@@ -256,7 +272,7 @@ static int rxkad_secure_packet(const struct rxrpc_call *call,
+ 				void *sechdr)
  {
- 	if (!tfm_name[0])
- 		return NO_ERROR;
+ 	struct rxrpc_skb_priv *sp;
+-	struct blkcipher_desc desc;
++	SKCIPHER_REQUEST_ON_STACK(req, call->conn->cipher);
+ 	struct rxrpc_crypt iv;
+ 	struct scatterlist sg[2];
+ 	struct {
+@@ -281,9 +297,6 @@ static int rxkad_secure_packet(const struct rxrpc_call *call,
  
--	*tfm = crypto_alloc_hash(tfm_name, 0, CRYPTO_ALG_ASYNC);
-+	*tfm = crypto_alloc_shash(tfm_name, 0, 0);
-+	if (IS_ERR(*tfm)) {
-+		*tfm = NULL;
-+		return err_alg;
+ 	/* continue encrypting from where we left off */
+ 	memcpy(&iv, call->conn->csum_iv.x, sizeof(iv));
+-	desc.tfm = call->conn->cipher;
+-	desc.info = iv.x;
+-	desc.flags = 0;
+ 
+ 	/* calculate the security checksum */
+ 	x = htonl(call->channel << (32 - RXRPC_CIDSHIFT));
+@@ -293,7 +306,13 @@ static int rxkad_secure_packet(const struct rxrpc_call *call,
+ 
+ 	sg_init_one(&sg[0], &tmpbuf, sizeof(tmpbuf));
+ 	sg_init_one(&sg[1], &tmpbuf, sizeof(tmpbuf));
+-	crypto_blkcipher_encrypt_iv(&desc, &sg[0], &sg[1], sizeof(tmpbuf));
++
++	skcipher_request_set_tfm(req, call->conn->cipher);
++	skcipher_request_set_callback(req, 0, NULL, NULL);
++	skcipher_request_set_crypt(req, &sg[1], &sg[0], sizeof(tmpbuf), iv.x);
++
++	crypto_skcipher_encrypt(req);
++	skcipher_request_zero(req);
+ 
+ 	y = ntohl(tmpbuf.x[1]);
+ 	y = (y >> 16) & 0xffff;
+@@ -330,7 +349,7 @@ static int rxkad_verify_packet_auth(const struct rxrpc_call *call,
+ {
+ 	struct rxkad_level1_hdr sechdr;
+ 	struct rxrpc_skb_priv *sp;
+-	struct blkcipher_desc desc;
++	SKCIPHER_REQUEST_ON_STACK(req, call->conn->cipher);
+ 	struct rxrpc_crypt iv;
+ 	struct scatterlist sg[16];
+ 	struct sk_buff *trailer;
+@@ -352,11 +371,13 @@ static int rxkad_verify_packet_auth(const struct rxrpc_call *call,
+ 
+ 	/* start the decryption afresh */
+ 	memset(&iv, 0, sizeof(iv));
+-	desc.tfm = call->conn->cipher;
+-	desc.info = iv.x;
+-	desc.flags = 0;
+ 
+-	crypto_blkcipher_decrypt_iv(&desc, sg, sg, 8);
++	skcipher_request_set_tfm(req, call->conn->cipher);
++	skcipher_request_set_callback(req, 0, NULL, NULL);
++	skcipher_request_set_crypt(req, sg, sg, 8, iv.x);
++
++	crypto_skcipher_decrypt(req);
++	skcipher_request_zero(req);
+ 
+ 	/* remove the decrypted packet length */
+ 	if (skb_copy_bits(skb, 0, &sechdr, sizeof(sechdr)) < 0)
+@@ -405,7 +426,7 @@ static int rxkad_verify_packet_encrypt(const struct rxrpc_call *call,
+ 	const struct rxrpc_key_token *token;
+ 	struct rxkad_level2_hdr sechdr;
+ 	struct rxrpc_skb_priv *sp;
+-	struct blkcipher_desc desc;
++	SKCIPHER_REQUEST_ON_STACK(req, call->conn->cipher);
+ 	struct rxrpc_crypt iv;
+ 	struct scatterlist _sg[4], *sg;
+ 	struct sk_buff *trailer;
+@@ -435,11 +456,13 @@ static int rxkad_verify_packet_encrypt(const struct rxrpc_call *call,
+ 	/* decrypt from the session key */
+ 	token = call->conn->key->payload.data[0];
+ 	memcpy(&iv, token->kad->session_key, sizeof(iv));
+-	desc.tfm = call->conn->cipher;
+-	desc.info = iv.x;
+-	desc.flags = 0;
+ 
+-	crypto_blkcipher_decrypt_iv(&desc, sg, sg, skb->len);
++	skcipher_request_set_tfm(req, call->conn->cipher);
++	skcipher_request_set_callback(req, 0, NULL, NULL);
++	skcipher_request_set_crypt(req, sg, sg, skb->len, iv.x);
++
++	crypto_skcipher_decrypt(req);
++	skcipher_request_zero(req);
+ 	if (sg != _sg)
+ 		kfree(sg);
+ 
+@@ -487,7 +510,7 @@ static int rxkad_verify_packet(const struct rxrpc_call *call,
+ 			       struct sk_buff *skb,
+ 			       u32 *_abort_code)
+ {
+-	struct blkcipher_desc desc;
++	SKCIPHER_REQUEST_ON_STACK(req, call->conn->cipher);
+ 	struct rxrpc_skb_priv *sp;
+ 	struct rxrpc_crypt iv;
+ 	struct scatterlist sg[2];
+@@ -516,9 +539,6 @@ static int rxkad_verify_packet(const struct rxrpc_call *call,
+ 
+ 	/* continue encrypting from where we left off */
+ 	memcpy(&iv, call->conn->csum_iv.x, sizeof(iv));
+-	desc.tfm = call->conn->cipher;
+-	desc.info = iv.x;
+-	desc.flags = 0;
+ 
+ 	/* validate the security checksum */
+ 	x = htonl(call->channel << (32 - RXRPC_CIDSHIFT));
+@@ -528,7 +548,13 @@ static int rxkad_verify_packet(const struct rxrpc_call *call,
+ 
+ 	sg_init_one(&sg[0], &tmpbuf, sizeof(tmpbuf));
+ 	sg_init_one(&sg[1], &tmpbuf, sizeof(tmpbuf));
+-	crypto_blkcipher_encrypt_iv(&desc, &sg[0], &sg[1], sizeof(tmpbuf));
++
++	skcipher_request_set_tfm(req, call->conn->cipher);
++	skcipher_request_set_callback(req, 0, NULL, NULL);
++	skcipher_request_set_crypt(req, &sg[1], &sg[0], sizeof(tmpbuf), iv.x);
++
++	crypto_skcipher_encrypt(req);
++	skcipher_request_zero(req);
+ 
+ 	y = ntohl(tmpbuf.x[1]);
+ 	y = (y >> 16) & 0xffff;
+@@ -718,18 +744,21 @@ static void rxkad_encrypt_response(struct rxrpc_connection *conn,
+ 				   struct rxkad_response *resp,
+ 				   const struct rxkad_key *s2)
+ {
+-	struct blkcipher_desc desc;
++	SKCIPHER_REQUEST_ON_STACK(req, conn->cipher);
+ 	struct rxrpc_crypt iv;
+ 	struct scatterlist sg[2];
+ 
+ 	/* continue encrypting from where we left off */
+ 	memcpy(&iv, s2->session_key, sizeof(iv));
+-	desc.tfm = conn->cipher;
+-	desc.info = iv.x;
+-	desc.flags = 0;
+ 
+ 	rxkad_sg_set_buf2(sg, &resp->encrypted, sizeof(resp->encrypted));
+-	crypto_blkcipher_encrypt_iv(&desc, sg, sg, sizeof(resp->encrypted));
++
++	skcipher_request_set_tfm(req, conn->cipher);
++	skcipher_request_set_callback(req, 0, NULL, NULL);
++	skcipher_request_set_crypt(req, sg, sg, sizeof(resp->encrypted), iv.x);
++
++	crypto_skcipher_encrypt(req);
++	skcipher_request_zero(req);
+ }
+ 
+ /*
+@@ -822,7 +851,7 @@ static int rxkad_decrypt_ticket(struct rxrpc_connection *conn,
+ 				time_t *_expiry,
+ 				u32 *_abort_code)
+ {
+-	struct blkcipher_desc desc;
++	struct skcipher_request *req;
+ 	struct rxrpc_crypt iv, key;
+ 	struct scatterlist sg[1];
+ 	struct in_addr addr;
+@@ -853,12 +882,21 @@ static int rxkad_decrypt_ticket(struct rxrpc_connection *conn,
+ 
+ 	memcpy(&iv, &conn->server_key->payload.data[2], sizeof(iv));
+ 
+-	desc.tfm = conn->server_key->payload.data[0];
+-	desc.info = iv.x;
+-	desc.flags = 0;
++	req = skcipher_request_alloc(conn->server_key->payload.data[0],
++				     GFP_NOFS);
++	if (!req) {
++		*_abort_code = RXKADNOAUTH;
++		ret = -ENOMEM;
++		goto error;
 +	}
+ 
+ 	sg_init_one(&sg[0], ticket, ticket_len);
+-	crypto_blkcipher_decrypt_iv(&desc, sg, sg, ticket_len);
 +
-+	return NO_ERROR;
-+}
++	skcipher_request_set_callback(req, 0, NULL, NULL);
++	skcipher_request_set_crypt(req, sg, sg, ticket_len, iv.x);
 +
-+static int
-+alloc_ahash(struct crypto_ahash **tfm, char *tfm_name, int err_alg)
-+{
-+	if (!tfm_name[0])
-+		return NO_ERROR;
++	crypto_skcipher_decrypt(req);
++	skcipher_request_free(req);
+ 
+ 	p = ticket;
+ 	end = p + ticket_len;
+@@ -966,7 +1004,7 @@ static void rxkad_decrypt_response(struct rxrpc_connection *conn,
+ 				   struct rxkad_response *resp,
+ 				   const struct rxrpc_crypt *session_key)
+ {
+-	struct blkcipher_desc desc;
++	SKCIPHER_REQUEST_ON_STACK(req, rxkad_ci);
+ 	struct scatterlist sg[2];
+ 	struct rxrpc_crypt iv;
+ 
+@@ -976,17 +1014,21 @@ static void rxkad_decrypt_response(struct rxrpc_connection *conn,
+ 	ASSERT(rxkad_ci != NULL);
+ 
+ 	mutex_lock(&rxkad_ci_mutex);
+-	if (crypto_blkcipher_setkey(rxkad_ci, session_key->x,
+-				    sizeof(*session_key)) < 0)
++	if (crypto_skcipher_setkey(rxkad_ci, session_key->x,
++				   sizeof(*session_key)) < 0)
+ 		BUG();
+ 
+ 	memcpy(&iv, session_key, sizeof(iv));
+-	desc.tfm = rxkad_ci;
+-	desc.info = iv.x;
+-	desc.flags = 0;
+ 
+ 	rxkad_sg_set_buf2(sg, &resp->encrypted, sizeof(resp->encrypted));
+-	crypto_blkcipher_decrypt_iv(&desc, sg, sg, sizeof(resp->encrypted));
 +
-+	*tfm = crypto_alloc_ahash(tfm_name, 0, CRYPTO_ALG_ASYNC);
- 	if (IS_ERR(*tfm)) {
- 		*tfm = NULL;
- 		return err_alg;
-@@ -2092,24 +2107,24 @@ alloc_crypto(struct crypto *crypto, struct net_conf *new_net_conf)
- 	char hmac_name[CRYPTO_MAX_ALG_NAME];
- 	enum drbd_ret_code rv;
++	skcipher_request_set_tfm(req, rxkad_ci);
++	skcipher_request_set_callback(req, 0, NULL, NULL);
++	skcipher_request_set_crypt(req, sg, sg, sizeof(resp->encrypted), iv.x);
++
++	crypto_skcipher_decrypt(req);
++	skcipher_request_zero(req);
++
+ 	mutex_unlock(&rxkad_ci_mutex);
  
--	rv = alloc_hash(&crypto->csums_tfm, new_net_conf->csums_alg,
--		       ERR_CSUMS_ALG);
-+	rv = alloc_ahash(&crypto->csums_tfm, new_net_conf->csums_alg,
-+			 ERR_CSUMS_ALG);
- 	if (rv != NO_ERROR)
- 		return rv;
--	rv = alloc_hash(&crypto->verify_tfm, new_net_conf->verify_alg,
--		       ERR_VERIFY_ALG);
-+	rv = alloc_ahash(&crypto->verify_tfm, new_net_conf->verify_alg,
-+			 ERR_VERIFY_ALG);
- 	if (rv != NO_ERROR)
- 		return rv;
--	rv = alloc_hash(&crypto->integrity_tfm, new_net_conf->integrity_alg,
--		       ERR_INTEGRITY_ALG);
-+	rv = alloc_ahash(&crypto->integrity_tfm, new_net_conf->integrity_alg,
-+			 ERR_INTEGRITY_ALG);
- 	if (rv != NO_ERROR)
- 		return rv;
- 	if (new_net_conf->cram_hmac_alg[0] != 0) {
- 		snprintf(hmac_name, CRYPTO_MAX_ALG_NAME, "hmac(%s)",
- 			 new_net_conf->cram_hmac_alg);
+ 	_leave("");
+@@ -1115,7 +1157,7 @@ static void rxkad_clear(struct rxrpc_connection *conn)
+ 	_enter("");
  
--		rv = alloc_hash(&crypto->cram_hmac_tfm, hmac_name,
--			       ERR_AUTH_ALG);
-+		rv = alloc_shash(&crypto->cram_hmac_tfm, hmac_name,
-+				 ERR_AUTH_ALG);
- 	}
- 
- 	return rv;
-@@ -2117,10 +2132,10 @@ alloc_crypto(struct crypto *crypto, struct net_conf *new_net_conf)
- 
- static void free_crypto(struct crypto *crypto)
- {
--	crypto_free_hash(crypto->cram_hmac_tfm);
--	crypto_free_hash(crypto->integrity_tfm);
--	crypto_free_hash(crypto->csums_tfm);
--	crypto_free_hash(crypto->verify_tfm);
-+	crypto_free_shash(crypto->cram_hmac_tfm);
-+	crypto_free_ahash(crypto->integrity_tfm);
-+	crypto_free_ahash(crypto->csums_tfm);
-+	crypto_free_ahash(crypto->verify_tfm);
+ 	if (conn->cipher)
+-		crypto_free_blkcipher(conn->cipher);
++		crypto_free_skcipher(conn->cipher);
  }
  
- int drbd_adm_net_opts(struct sk_buff *skb, struct genl_info *info)
-@@ -2197,23 +2212,23 @@ int drbd_adm_net_opts(struct sk_buff *skb, struct genl_info *info)
- 	rcu_assign_pointer(connection->net_conf, new_net_conf);
+ /*
+@@ -1141,7 +1183,7 @@ static __init int rxkad_init(void)
  
- 	if (!rsr) {
--		crypto_free_hash(connection->csums_tfm);
-+		crypto_free_ahash(connection->csums_tfm);
- 		connection->csums_tfm = crypto.csums_tfm;
- 		crypto.csums_tfm = NULL;
- 	}
- 	if (!ovr) {
--		crypto_free_hash(connection->verify_tfm);
-+		crypto_free_ahash(connection->verify_tfm);
- 		connection->verify_tfm = crypto.verify_tfm;
- 		crypto.verify_tfm = NULL;
- 	}
+ 	/* pin the cipher we need so that the crypto layer doesn't invoke
+ 	 * keventd to go get it */
+-	rxkad_ci = crypto_alloc_blkcipher("pcbc(fcrypt)", 0, CRYPTO_ALG_ASYNC);
++	rxkad_ci = crypto_alloc_skcipher("pcbc(fcrypt)", 0, CRYPTO_ALG_ASYNC);
+ 	if (IS_ERR(rxkad_ci))
+ 		return PTR_ERR(rxkad_ci);
  
--	crypto_free_hash(connection->integrity_tfm);
-+	crypto_free_ahash(connection->integrity_tfm);
- 	connection->integrity_tfm = crypto.integrity_tfm;
- 	if (connection->cstate >= C_WF_REPORT_PARAMS && connection->agreed_pro_version >= 100)
- 		/* Do this without trying to take connection->data.mutex again.  */
- 		__drbd_send_protocol(connection, P_PROTOCOL_UPDATE);
+@@ -1155,7 +1197,7 @@ static __exit void rxkad_exit(void)
+ 	_enter("");
  
--	crypto_free_hash(connection->cram_hmac_tfm);
-+	crypto_free_shash(connection->cram_hmac_tfm);
- 	connection->cram_hmac_tfm = crypto.cram_hmac_tfm;
- 
- 	mutex_unlock(&connection->resource->conf_update);
-diff --git a/drivers/block/drbd/drbd_receiver.c b/drivers/block/drbd/drbd_receiver.c
-index b4b5680..d1f8559 100644
---- a/drivers/block/drbd/drbd_receiver.c
-+++ b/drivers/block/drbd/drbd_receiver.c
-@@ -1601,7 +1601,7 @@ read_in_block(struct drbd_peer_device *peer_device, u64 id, sector_t sector,
- 
- 	digest_size = 0;
- 	if (!trim && peer_device->connection->peer_integrity_tfm) {
--		digest_size = crypto_hash_digestsize(peer_device->connection->peer_integrity_tfm);
-+		digest_size = crypto_ahash_digestsize(peer_device->connection->peer_integrity_tfm);
- 		/*
- 		 * FIXME: Receive the incoming digest into the receive buffer
- 		 *	  here, together with its struct p_data?
-@@ -1715,7 +1715,7 @@ static int recv_dless_read(struct drbd_peer_device *peer_device, struct drbd_req
- 
- 	digest_size = 0;
- 	if (peer_device->connection->peer_integrity_tfm) {
--		digest_size = crypto_hash_digestsize(peer_device->connection->peer_integrity_tfm);
-+		digest_size = crypto_ahash_digestsize(peer_device->connection->peer_integrity_tfm);
- 		err = drbd_recv_all_warn(peer_device->connection, dig_in, digest_size);
- 		if (err)
- 			return err;
-@@ -3295,7 +3295,7 @@ static int receive_protocol(struct drbd_connection *connection, struct packet_in
- 	int p_proto, p_discard_my_data, p_two_primaries, cf;
- 	struct net_conf *nc, *old_net_conf, *new_net_conf = NULL;
- 	char integrity_alg[SHARED_SECRET_MAX] = "";
--	struct crypto_hash *peer_integrity_tfm = NULL;
-+	struct crypto_ahash *peer_integrity_tfm = NULL;
- 	void *int_dig_in = NULL, *int_dig_vv = NULL;
- 
- 	p_proto		= be32_to_cpu(p->protocol);
-@@ -3376,14 +3376,14 @@ static int receive_protocol(struct drbd_connection *connection, struct packet_in
- 		 * change.
- 		 */
- 
--		peer_integrity_tfm = crypto_alloc_hash(integrity_alg, 0, CRYPTO_ALG_ASYNC);
-+		peer_integrity_tfm = crypto_alloc_ahash(integrity_alg, 0, CRYPTO_ALG_ASYNC);
- 		if (!peer_integrity_tfm) {
- 			drbd_err(connection, "peer data-integrity-alg %s not supported\n",
- 				 integrity_alg);
- 			goto disconnect;
- 		}
- 
--		hash_size = crypto_hash_digestsize(peer_integrity_tfm);
-+		hash_size = crypto_ahash_digestsize(peer_integrity_tfm);
- 		int_dig_in = kmalloc(hash_size, GFP_KERNEL);
- 		int_dig_vv = kmalloc(hash_size, GFP_KERNEL);
- 		if (!(int_dig_in && int_dig_vv)) {
-@@ -3413,7 +3413,7 @@ static int receive_protocol(struct drbd_connection *connection, struct packet_in
- 	mutex_unlock(&connection->resource->conf_update);
- 	mutex_unlock(&connection->data.mutex);
- 
--	crypto_free_hash(connection->peer_integrity_tfm);
-+	crypto_free_ahash(connection->peer_integrity_tfm);
- 	kfree(connection->int_dig_in);
- 	kfree(connection->int_dig_vv);
- 	connection->peer_integrity_tfm = peer_integrity_tfm;
-@@ -3431,7 +3431,7 @@ static int receive_protocol(struct drbd_connection *connection, struct packet_in
- disconnect_rcu_unlock:
- 	rcu_read_unlock();
- disconnect:
--	crypto_free_hash(peer_integrity_tfm);
-+	crypto_free_ahash(peer_integrity_tfm);
- 	kfree(int_dig_in);
- 	kfree(int_dig_vv);
- 	conn_request_state(connection, NS(conn, C_DISCONNECTING), CS_HARD);
-@@ -3443,15 +3443,15 @@ disconnect:
-  * return: NULL (alg name was "")
-  *         ERR_PTR(error) if something goes wrong
-  *         or the crypto hash ptr, if it worked out ok. */
--static struct crypto_hash *drbd_crypto_alloc_digest_safe(const struct drbd_device *device,
-+static struct crypto_ahash *drbd_crypto_alloc_digest_safe(const struct drbd_device *device,
- 		const char *alg, const char *name)
- {
--	struct crypto_hash *tfm;
-+	struct crypto_ahash *tfm;
- 
- 	if (!alg[0])
- 		return NULL;
- 
--	tfm = crypto_alloc_hash(alg, 0, CRYPTO_ALG_ASYNC);
-+	tfm = crypto_alloc_ahash(alg, 0, CRYPTO_ALG_ASYNC);
- 	if (IS_ERR(tfm)) {
- 		drbd_err(device, "Can not allocate \"%s\" as %s (reason: %ld)\n",
- 			alg, name, PTR_ERR(tfm));
-@@ -3504,8 +3504,8 @@ static int receive_SyncParam(struct drbd_connection *connection, struct packet_i
- 	struct drbd_device *device;
- 	struct p_rs_param_95 *p;
- 	unsigned int header_size, data_size, exp_max_sz;
--	struct crypto_hash *verify_tfm = NULL;
--	struct crypto_hash *csums_tfm = NULL;
-+	struct crypto_ahash *verify_tfm = NULL;
-+	struct crypto_ahash *csums_tfm = NULL;
- 	struct net_conf *old_net_conf, *new_net_conf = NULL;
- 	struct disk_conf *old_disk_conf = NULL, *new_disk_conf = NULL;
- 	const int apv = connection->agreed_pro_version;
-@@ -3652,14 +3652,14 @@ static int receive_SyncParam(struct drbd_connection *connection, struct packet_i
- 			if (verify_tfm) {
- 				strcpy(new_net_conf->verify_alg, p->verify_alg);
- 				new_net_conf->verify_alg_len = strlen(p->verify_alg) + 1;
--				crypto_free_hash(peer_device->connection->verify_tfm);
-+				crypto_free_ahash(peer_device->connection->verify_tfm);
- 				peer_device->connection->verify_tfm = verify_tfm;
- 				drbd_info(device, "using verify-alg: \"%s\"\n", p->verify_alg);
- 			}
- 			if (csums_tfm) {
- 				strcpy(new_net_conf->csums_alg, p->csums_alg);
- 				new_net_conf->csums_alg_len = strlen(p->csums_alg) + 1;
--				crypto_free_hash(peer_device->connection->csums_tfm);
-+				crypto_free_ahash(peer_device->connection->csums_tfm);
- 				peer_device->connection->csums_tfm = csums_tfm;
- 				drbd_info(device, "using csums-alg: \"%s\"\n", p->csums_alg);
- 			}
-@@ -3703,9 +3703,9 @@ disconnect:
- 	mutex_unlock(&connection->resource->conf_update);
- 	/* just for completeness: actually not needed,
- 	 * as this is not reached if csums_tfm was ok. */
--	crypto_free_hash(csums_tfm);
-+	crypto_free_ahash(csums_tfm);
- 	/* but free the verify_tfm again, if csums_tfm did not work out */
--	crypto_free_hash(verify_tfm);
-+	crypto_free_ahash(verify_tfm);
- 	conn_request_state(peer_device->connection, NS(conn, C_DISCONNECTING), CS_HARD);
- 	return -EIO;
- }
-@@ -4895,14 +4895,13 @@ static int drbd_do_auth(struct drbd_connection *connection)
- {
- 	struct drbd_socket *sock;
- 	char my_challenge[CHALLENGE_LEN];  /* 64 Bytes... */
--	struct scatterlist sg;
- 	char *response = NULL;
- 	char *right_response = NULL;
- 	char *peers_ch = NULL;
- 	unsigned int key_len;
- 	char secret[SHARED_SECRET_MAX]; /* 64 byte */
- 	unsigned int resp_size;
--	struct hash_desc desc;
-+	SHASH_DESC_ON_STACK(desc, connection->cram_hmac_tfm);
- 	struct packet_info pi;
- 	struct net_conf *nc;
- 	int err, rv;
-@@ -4915,12 +4914,12 @@ static int drbd_do_auth(struct drbd_connection *connection)
- 	memcpy(secret, nc->shared_secret, key_len);
- 	rcu_read_unlock();
- 
--	desc.tfm = connection->cram_hmac_tfm;
--	desc.flags = 0;
-+	desc->tfm = connection->cram_hmac_tfm;
-+	desc->flags = 0;
- 
--	rv = crypto_hash_setkey(connection->cram_hmac_tfm, (u8 *)secret, key_len);
-+	rv = crypto_shash_setkey(connection->cram_hmac_tfm, (u8 *)secret, key_len);
- 	if (rv) {
--		drbd_err(connection, "crypto_hash_setkey() failed with %d\n", rv);
-+		drbd_err(connection, "crypto_shash_setkey() failed with %d\n", rv);
- 		rv = -1;
- 		goto fail;
- 	}
-@@ -4981,7 +4980,7 @@ static int drbd_do_auth(struct drbd_connection *connection)
- 		goto fail;
- 	}
- 
--	resp_size = crypto_hash_digestsize(connection->cram_hmac_tfm);
-+	resp_size = crypto_shash_digestsize(connection->cram_hmac_tfm);
- 	response = kmalloc(resp_size, GFP_NOIO);
- 	if (response == NULL) {
- 		drbd_err(connection, "kmalloc of response failed\n");
-@@ -4989,10 +4988,7 @@ static int drbd_do_auth(struct drbd_connection *connection)
- 		goto fail;
- 	}
- 
--	sg_init_table(&sg, 1);
--	sg_set_buf(&sg, peers_ch, pi.size);
--
--	rv = crypto_hash_digest(&desc, &sg, sg.length, response);
-+	rv = crypto_shash_digest(desc, peers_ch, pi.size, response);
- 	if (rv) {
- 		drbd_err(connection, "crypto_hash_digest() failed with %d\n", rv);
- 		rv = -1;
-@@ -5040,9 +5036,8 @@ static int drbd_do_auth(struct drbd_connection *connection)
- 		goto fail;
- 	}
- 
--	sg_set_buf(&sg, my_challenge, CHALLENGE_LEN);
--
--	rv = crypto_hash_digest(&desc, &sg, sg.length, right_response);
-+	rv = crypto_shash_digest(desc, my_challenge, CHALLENGE_LEN,
-+				 right_response);
- 	if (rv) {
- 		drbd_err(connection, "crypto_hash_digest() failed with %d\n", rv);
- 		rv = -1;
-@@ -5061,6 +5056,7 @@ static int drbd_do_auth(struct drbd_connection *connection)
- 	kfree(peers_ch);
- 	kfree(response);
- 	kfree(right_response);
-+	shash_desc_zero(desc);
- 
- 	return rv;
- }
-diff --git a/drivers/block/drbd/drbd_worker.c b/drivers/block/drbd/drbd_worker.c
-index 5578c14..426d4fc 100644
---- a/drivers/block/drbd/drbd_worker.c
-+++ b/drivers/block/drbd/drbd_worker.c
-@@ -269,51 +269,56 @@ void drbd_request_endio(struct bio *bio)
- 		complete_master_bio(device, &m);
+ 	rxrpc_unregister_security(&rxkad);
+-	crypto_free_blkcipher(rxkad_ci);
++	crypto_free_skcipher(rxkad_ci);
  }
  
--void drbd_csum_ee(struct crypto_hash *tfm, struct drbd_peer_request *peer_req, void *digest)
-+void drbd_csum_ee(struct crypto_ahash *tfm, struct drbd_peer_request *peer_req, void *digest)
- {
--	struct hash_desc desc;
-+	AHASH_REQUEST_ON_STACK(req, tfm);
- 	struct scatterlist sg;
- 	struct page *page = peer_req->pages;
- 	struct page *tmp;
- 	unsigned len;
- 
--	desc.tfm = tfm;
--	desc.flags = 0;
-+	ahash_request_set_tfm(req, tfm);
-+	ahash_request_set_callback(req, 0, NULL, NULL);
- 
- 	sg_init_table(&sg, 1);
--	crypto_hash_init(&desc);
-+	crypto_ahash_init(req);
- 
- 	while ((tmp = page_chain_next(page))) {
- 		/* all but the last page will be fully used */
- 		sg_set_page(&sg, page, PAGE_SIZE, 0);
--		crypto_hash_update(&desc, &sg, sg.length);
-+		ahash_request_set_crypt(req, &sg, NULL, sg.length);
-+		crypto_ahash_update(req);
- 		page = tmp;
- 	}
- 	/* and now the last, possibly only partially used page */
- 	len = peer_req->i.size & (PAGE_SIZE - 1);
- 	sg_set_page(&sg, page, len ?: PAGE_SIZE, 0);
--	crypto_hash_update(&desc, &sg, sg.length);
--	crypto_hash_final(&desc, digest);
-+	ahash_request_set_crypt(req, &sg, digest, sg.length);
-+	crypto_ahash_finup(req);
-+	ahash_request_zero(req);
- }
- 
--void drbd_csum_bio(struct crypto_hash *tfm, struct bio *bio, void *digest)
-+void drbd_csum_bio(struct crypto_ahash *tfm, struct bio *bio, void *digest)
- {
--	struct hash_desc desc;
-+	AHASH_REQUEST_ON_STACK(req, tfm);
- 	struct scatterlist sg;
- 	struct bio_vec bvec;
- 	struct bvec_iter iter;
- 
--	desc.tfm = tfm;
--	desc.flags = 0;
-+	ahash_request_set_tfm(req, tfm);
-+	ahash_request_set_callback(req, 0, NULL, NULL);
- 
- 	sg_init_table(&sg, 1);
--	crypto_hash_init(&desc);
-+	crypto_ahash_init(req);
- 
- 	bio_for_each_segment(bvec, bio, iter) {
- 		sg_set_page(&sg, bvec.bv_page, bvec.bv_len, bvec.bv_offset);
--		crypto_hash_update(&desc, &sg, sg.length);
-+		ahash_request_set_crypt(req, &sg, NULL, sg.length);
-+		crypto_ahash_update(req);
- 	}
--	crypto_hash_final(&desc, digest);
-+	ahash_request_set_crypt(req, NULL, digest, 0);
-+	crypto_ahash_final(req);
-+	ahash_request_zero(req);
- }
- 
- /* MAYBE merge common code with w_e_end_ov_req */
-@@ -332,7 +337,7 @@ static int w_e_send_csum(struct drbd_work *w, int cancel)
- 	if (unlikely((peer_req->flags & EE_WAS_ERROR) != 0))
- 		goto out;
- 
--	digest_size = crypto_hash_digestsize(peer_device->connection->csums_tfm);
-+	digest_size = crypto_ahash_digestsize(peer_device->connection->csums_tfm);
- 	digest = kmalloc(digest_size, GFP_NOIO);
- 	if (digest) {
- 		sector_t sector = peer_req->i.sector;
-@@ -1108,7 +1113,7 @@ int w_e_end_csum_rs_req(struct drbd_work *w, int cancel)
- 		 * a real fix would be much more involved,
- 		 * introducing more locking mechanisms */
- 		if (peer_device->connection->csums_tfm) {
--			digest_size = crypto_hash_digestsize(peer_device->connection->csums_tfm);
-+			digest_size = crypto_ahash_digestsize(peer_device->connection->csums_tfm);
- 			D_ASSERT(device, digest_size == di->digest_size);
- 			digest = kmalloc(digest_size, GFP_NOIO);
- 		}
-@@ -1158,7 +1163,7 @@ int w_e_end_ov_req(struct drbd_work *w, int cancel)
- 	if (unlikely(cancel))
- 		goto out;
- 
--	digest_size = crypto_hash_digestsize(peer_device->connection->verify_tfm);
-+	digest_size = crypto_ahash_digestsize(peer_device->connection->verify_tfm);
- 	digest = kmalloc(digest_size, GFP_NOIO);
- 	if (!digest) {
- 		err = 1;	/* terminate the connection in case the allocation failed */
-@@ -1230,7 +1235,7 @@ int w_e_end_ov_reply(struct drbd_work *w, int cancel)
- 	di = peer_req->digest;
- 
- 	if (likely((peer_req->flags & EE_WAS_ERROR) == 0)) {
--		digest_size = crypto_hash_digestsize(peer_device->connection->verify_tfm);
-+		digest_size = crypto_ahash_digestsize(peer_device->connection->verify_tfm);
- 		digest = kmalloc(digest_size, GFP_NOIO);
- 		if (digest) {
- 			drbd_csum_ee(peer_device->connection->verify_tfm, peer_req, digest);
+ module_exit(rxkad_exit);
