@@ -1,9 +1,9 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from helcar.hengli.com.au ([209.40.204.226]:40861 "EHLO
+Received: from helcar.hengli.com.au ([209.40.204.226]:59759 "EHLO
 	helcar.hengli.com.au" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754266AbcAXNUL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 24 Jan 2016 08:20:11 -0500
-Subject: [PATCH 21/26] nfc: s3fwrn5: Use shash
+	with ESMTP id S932186AbcAXNUl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 24 Jan 2016 08:20:41 -0500
+Subject: [PATCH 24/26] nfsd: Use shash
 References: <20160124131021.GA31153@gondor.apana.org.au>
 To: Linux Crypto Mailing List <linux-crypto@vger.kernel.org>,
         Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
@@ -15,9 +15,9 @@ To: Linux Crypto Mailing List <linux-crypto@vger.kernel.org>,
         linux-bluetooth@vger.kernel.org, ceph-devel@vger.kernel.org,
         linux-wpan@vger.kernel.org, linux-afs@lists.infradead.org,
         drbd-dev@lists.linbit.com, open-iscsi@googlegroups.com
-Message-Id: <E1aNKZn-0008FU-OU@gondolin.me.apana.org.au>
+Message-Id: <E1aNKaI-0008GJ-Fn@gondolin.me.apana.org.au>
 From: Herbert Xu <herbert@gondor.apana.org.au>
-Date: Sun, 24 Jan 2016 21:19:31 +0800
+Date: Sun, 24 Jan 2016 21:20:02 +0800
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
@@ -27,67 +27,76 @@ shash.
 Signed-off-by: Herbert Xu <herbert@gondor.apana.org.au>
 ---
 
- drivers/nfc/s3fwrn5/firmware.c |   36 +++++++++++++++++++++++++++---------
- 1 file changed, 27 insertions(+), 9 deletions(-)
+ fs/nfsd/nfs4recover.c |   28 +++++++++++++++++-----------
+ 1 file changed, 17 insertions(+), 11 deletions(-)
 
-diff --git a/drivers/nfc/s3fwrn5/firmware.c b/drivers/nfc/s3fwrn5/firmware.c
-index 64a9025..5f97da1 100644
---- a/drivers/nfc/s3fwrn5/firmware.c
-+++ b/drivers/nfc/s3fwrn5/firmware.c
-@@ -19,7 +19,7 @@
+diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
+index 79f0307..a79c150 100644
+--- a/fs/nfsd/nfs4recover.c
++++ b/fs/nfsd/nfs4recover.c
+@@ -32,10 +32,10 @@
+ *
+ */
  
- #include <linux/completion.h>
- #include <linux/firmware.h>
--#include <linux/crypto.h>
 +#include <crypto/hash.h>
- #include <crypto/sha.h>
- 
- #include "s3fwrn5.h"
-@@ -429,8 +429,7 @@ int s3fwrn5_fw_download(struct s3fwrn5_fw_info *fw_info)
+ #include <linux/file.h>
+ #include <linux/slab.h>
+ #include <linux/namei.h>
+-#include <linux/crypto.h>
+ #include <linux/sched.h>
+ #include <linux/fs.h>
+ #include <linux/module.h>
+@@ -104,29 +104,35 @@ static int
+ nfs4_make_rec_clidname(char *dname, const struct xdr_netobj *clname)
  {
- 	struct s3fwrn5_fw_image *fw = &fw_info->fw;
- 	u8 hash_data[SHA1_DIGEST_SIZE];
--	struct scatterlist sg;
+ 	struct xdr_netobj cksum;
 -	struct hash_desc desc;
+-	struct scatterlist sg;
 +	struct crypto_shash *tfm;
- 	u32 image_size, off;
- 	int ret;
+ 	int status;
  
-@@ -438,12 +437,31 @@ int s3fwrn5_fw_download(struct s3fwrn5_fw_info *fw_info)
- 
- 	/* Compute SHA of firmware data */
- 
--	sg_init_one(&sg, fw->image, image_size);
--	desc.tfm = crypto_alloc_hash("sha1", 0, CRYPTO_ALG_ASYNC);
--	crypto_hash_init(&desc);
--	crypto_hash_update(&desc, &sg, image_size);
--	crypto_hash_final(&desc, hash_data);
--	crypto_free_hash(desc.tfm);
-+	tfm = crypto_alloc_shash("sha1", 0, 0);
+ 	dprintk("NFSD: nfs4_make_rec_clidname for %.*s\n",
+ 			clname->len, clname->data);
+-	desc.flags = CRYPTO_TFM_REQ_MAY_SLEEP;
+-	desc.tfm = crypto_alloc_hash("md5", 0, CRYPTO_ALG_ASYNC);
+-	if (IS_ERR(desc.tfm)) {
+-		status = PTR_ERR(desc.tfm);
++	tfm = crypto_alloc_shash("md5", 0, 0);
 +	if (IS_ERR(tfm)) {
-+		ret = PTR_ERR(tfm);
-+		dev_err(&fw_info->ndev->nfc_dev->dev,
-+			"Cannot allocate shash (code=%d)\n", ret);
-+		goto out;
-+	}
-+
++		status = PTR_ERR(tfm);
+ 		goto out_no_tfm;
+ 	}
+ 
+-	cksum.len = crypto_hash_digestsize(desc.tfm);
++	cksum.len = crypto_shash_digestsize(tfm);
+ 	cksum.data = kmalloc(cksum.len, GFP_KERNEL);
+ 	if (cksum.data == NULL) {
+ 		status = -ENOMEM;
+  		goto out;
+ 	}
+ 
+-	sg_init_one(&sg, clname->data, clname->len);
 +	{
 +		SHASH_DESC_ON_STACK(desc, tfm);
 +
 +		desc->tfm = tfm;
 +		desc->flags = CRYPTO_TFM_REQ_MAY_SLEEP;
 +
-+		ret = crypto_shash_digest(desc, fw->image, image_size,
-+					  hash_data);
++		status = crypto_shash_digest(desc, clname->data, clname->len,
++					     cksum.data);
 +		shash_desc_zero(desc);
 +	}
-+
+ 
+-	status = crypto_hash_digest(&desc, &sg, sg.length, cksum.data);
+ 	if (status)
+ 		goto out;
+ 
+@@ -135,7 +141,7 @@ nfs4_make_rec_clidname(char *dname, const struct xdr_netobj *clname)
+ 	status = 0;
+ out:
+ 	kfree(cksum.data);
+-	crypto_free_hash(desc.tfm);
 +	crypto_free_shash(tfm);
-+	if (ret) {
-+		dev_err(&fw_info->ndev->nfc_dev->dev,
-+			"Cannot compute hash (code=%d)\n", ret);
-+		goto out;
-+	}
- 
- 	/* Firmware update process */
- 
+ out_no_tfm:
+ 	return status;
+ }
