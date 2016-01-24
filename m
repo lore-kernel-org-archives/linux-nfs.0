@@ -1,9 +1,9 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from helcar.hengli.com.au ([209.40.204.226]:44010 "EHLO
+Received: from helcar.hengli.com.au ([209.40.204.226]:54873 "EHLO
 	helcar.hengli.com.au" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751948AbcAXNQq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 24 Jan 2016 08:16:46 -0500
-Subject: [PATCH 1/26] block: cryptoloop - Use new skcipher interface
+	with ESMTP id S1753889AbcAXNRq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 24 Jan 2016 08:17:46 -0500
+Subject: [PATCH 7/26] wusb: Use skcipher
 References: <20160124131021.GA31153@gondor.apana.org.au>
 To: Linux Crypto Mailing List <linux-crypto@vger.kernel.org>,
         Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
@@ -15,158 +15,113 @@ To: Linux Crypto Mailing List <linux-crypto@vger.kernel.org>,
         linux-bluetooth@vger.kernel.org, ceph-devel@vger.kernel.org,
         linux-wpan@vger.kernel.org, linux-afs@lists.infradead.org,
         drbd-dev@lists.linbit.com, open-iscsi@googlegroups.com
-Message-Id: <E1aNKWU-0008A9-Dx@gondolin.me.apana.org.au>
+Message-Id: <E1aNKXT-0008BX-N7@gondolin.me.apana.org.au>
 From: Herbert Xu <herbert@gondor.apana.org.au>
-Date: Sun, 24 Jan 2016 21:16:06 +0800
+Date: Sun, 24 Jan 2016 21:17:07 +0800
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch replaces uses of blkcipher with the new skcipher
-interface.
-
+This patch replaces uses of blkcipher with skcipher.
+    
 Signed-off-by: Herbert Xu <herbert@gondor.apana.org.au>
 ---
 
- drivers/block/cryptoloop.c |   48 +++++++++++++++++++++++----------------------
- 1 file changed, 25 insertions(+), 23 deletions(-)
+ drivers/usb/wusbcore/crypto.c |   30 ++++++++++++++++--------------
+ 1 file changed, 16 insertions(+), 14 deletions(-)
 
-diff --git a/drivers/block/cryptoloop.c b/drivers/block/cryptoloop.c
-index 99e773c..3d31761 100644
---- a/drivers/block/cryptoloop.c
-+++ b/drivers/block/cryptoloop.c
-@@ -21,9 +21,9 @@
- 
- #include <linux/module.h>
+diff --git a/drivers/usb/wusbcore/crypto.c b/drivers/usb/wusbcore/crypto.c
+index 50ce80d..8ed8e34 100644
+--- a/drivers/usb/wusbcore/crypto.c
++++ b/drivers/usb/wusbcore/crypto.c
+@@ -45,6 +45,7 @@
+  *             funneled through AES are...16 bytes in size!
+  */
  
 +#include <crypto/skcipher.h>
- #include <linux/init.h>
- #include <linux/string.h>
--#include <linux/crypto.h>
- #include <linux/blkdev.h>
- #include <linux/scatterlist.h>
- #include <asm/uaccess.h>
-@@ -46,7 +46,7 @@ cryptoloop_init(struct loop_device *lo, const struct loop_info64 *info)
- 	char *cipher;
- 	char *mode;
- 	char *cmsp = cms;			/* c-m string pointer */
--	struct crypto_blkcipher *tfm;
-+	struct crypto_skcipher *tfm;
- 
- 	/* encryption breaks for non sector aligned offsets */
- 
-@@ -82,12 +82,12 @@ cryptoloop_init(struct loop_device *lo, const struct loop_info64 *info)
- 	*cmsp++ = ')';
- 	*cmsp = 0;
- 
--	tfm = crypto_alloc_blkcipher(cms, 0, CRYPTO_ALG_ASYNC);
-+	tfm = crypto_alloc_skcipher(cms, 0, CRYPTO_ALG_ASYNC);
- 	if (IS_ERR(tfm))
- 		return PTR_ERR(tfm);
- 
--	err = crypto_blkcipher_setkey(tfm, info->lo_encrypt_key,
--				      info->lo_encrypt_key_size);
-+	err = crypto_skcipher_setkey(tfm, info->lo_encrypt_key,
-+				     info->lo_encrypt_key_size);
- 	
- 	if (err != 0)
- 		goto out_free_tfm;
-@@ -96,17 +96,14 @@ cryptoloop_init(struct loop_device *lo, const struct loop_info64 *info)
- 	return 0;
- 
-  out_free_tfm:
--	crypto_free_blkcipher(tfm);
-+	crypto_free_skcipher(tfm);
- 
-  out:
- 	return err;
- }
- 
- 
--typedef int (*encdec_cbc_t)(struct blkcipher_desc *desc,
--			struct scatterlist *sg_out,
--			struct scatterlist *sg_in,
--			unsigned int nsg);
-+typedef int (*encdec_cbc_t)(struct skcipher_request *req);
- 
- static int
- cryptoloop_transfer(struct loop_device *lo, int cmd,
-@@ -114,11 +111,8 @@ cryptoloop_transfer(struct loop_device *lo, int cmd,
- 		    struct page *loop_page, unsigned loop_off,
- 		    int size, sector_t IV)
+ #include <linux/crypto.h>
+ #include <linux/module.h>
+ #include <linux/err.h>
+@@ -195,21 +196,22 @@ static void bytewise_xor(void *_bo, const void *_bi1, const void *_bi2,
+  * NOTE: blen is not aligned to a block size, we'll pad zeros, that's
+  *       what sg[4] is for. Maybe there is a smarter way to do this.
+  */
+-static int wusb_ccm_mac(struct crypto_blkcipher *tfm_cbc,
++static int wusb_ccm_mac(struct crypto_skcipher *tfm_cbc,
+ 			struct crypto_cipher *tfm_aes, void *mic,
+ 			const struct aes_ccm_nonce *n,
+ 			const struct aes_ccm_label *a, const void *b,
+ 			size_t blen)
  {
--	struct crypto_blkcipher *tfm = lo->key_data;
--	struct blkcipher_desc desc = {
--		.tfm = tfm,
--		.flags = CRYPTO_TFM_REQ_MAY_SLEEP,
--	};
-+	struct crypto_skcipher *tfm = lo->key_data;
-+	SKCIPHER_REQUEST_ON_STACK(req, tfm);
- 	struct scatterlist sg_out;
- 	struct scatterlist sg_in;
+ 	int result = 0;
+-	struct blkcipher_desc desc;
++	SKCIPHER_REQUEST_ON_STACK(req, tfm_cbc);
+ 	struct aes_ccm_b0 b0;
+ 	struct aes_ccm_b1 b1;
+ 	struct aes_ccm_a ax;
+ 	struct scatterlist sg[4], sg_dst;
+-	void *iv, *dst_buf;
+-	size_t ivsize, dst_size;
++	void *dst_buf;
++	size_t dst_size;
+ 	const u8 bzero[16] = { 0 };
++	u8 iv[crypto_skcipher_ivsize(tfm_cbc)];
+ 	size_t zero_padding;
  
-@@ -127,6 +121,10 @@ cryptoloop_transfer(struct loop_device *lo, int cmd,
- 	unsigned in_offs, out_offs;
- 	int err;
- 
-+	skcipher_request_set_tfm(req, tfm);
-+	skcipher_request_set_callback(req, CRYPTO_TFM_REQ_MAY_SLEEP,
-+				      NULL, NULL);
-+
- 	sg_init_table(&sg_out, 1);
- 	sg_init_table(&sg_in, 1);
- 
-@@ -135,13 +133,13 @@ cryptoloop_transfer(struct loop_device *lo, int cmd,
- 		in_offs = raw_off;
- 		out_page = loop_page;
- 		out_offs = loop_off;
--		encdecfunc = crypto_blkcipher_crt(tfm)->decrypt;
-+		encdecfunc = crypto_skcipher_decrypt;
- 	} else {
- 		in_page = loop_page;
- 		in_offs = loop_off;
- 		out_page = raw_page;
- 		out_offs = raw_off;
--		encdecfunc = crypto_blkcipher_crt(tfm)->encrypt;
-+		encdecfunc = crypto_skcipher_encrypt;
+ 	/*
+@@ -232,9 +234,7 @@ static int wusb_ccm_mac(struct crypto_blkcipher *tfm_cbc,
+ 		goto error_dst_buf;
  	}
  
- 	while (size > 0) {
-@@ -152,10 +150,10 @@ cryptoloop_transfer(struct loop_device *lo, int cmd,
- 		sg_set_page(&sg_in, in_page, sz, in_offs);
- 		sg_set_page(&sg_out, out_page, sz, out_offs);
+-	iv = crypto_blkcipher_crt(tfm_cbc)->iv;
+-	ivsize = crypto_blkcipher_ivsize(tfm_cbc);
+-	memset(iv, 0, ivsize);
++	memset(iv, 0, sizeof(iv));
  
--		desc.info = iv;
--		err = encdecfunc(&desc, &sg_out, &sg_in, sz);
-+		skcipher_request_set_crypt(req, &sg_in, &sg_out, sz, iv);
-+		err = encdecfunc(req);
- 		if (err)
--			return err;
-+			goto out;
+ 	/* Setup B0 */
+ 	b0.flags = 0x59;	/* Format B0 */
+@@ -259,9 +259,11 @@ static int wusb_ccm_mac(struct crypto_blkcipher *tfm_cbc,
+ 	sg_set_buf(&sg[3], bzero, zero_padding);
+ 	sg_init_one(&sg_dst, dst_buf, dst_size);
  
- 		IV++;
- 		size -= sz;
-@@ -163,7 +161,11 @@ cryptoloop_transfer(struct loop_device *lo, int cmd,
- 		out_offs += sz;
- 	}
- 
--	return 0;
-+	err = 0;
-+
-+out:
+-	desc.tfm = tfm_cbc;
+-	desc.flags = 0;
+-	result = crypto_blkcipher_encrypt(&desc, &sg_dst, sg, dst_size);
++	skcipher_request_set_tfm(req, tfm_cbc);
++	skcipher_request_set_callback(req, 0, NULL, NULL);
++	skcipher_request_set_crypt(req, sg, &sg_dst, dst_size, iv);
++	result = crypto_skcipher_encrypt(req);
 +	skcipher_request_zero(req);
-+	return err;
- }
- 
- static int
-@@ -175,9 +177,9 @@ cryptoloop_ioctl(struct loop_device *lo, int cmd, unsigned long arg)
- static int
- cryptoloop_release(struct loop_device *lo)
+ 	if (result < 0) {
+ 		printk(KERN_ERR "E: can't compute CBC-MAC tag (MIC): %d\n",
+ 		       result);
+@@ -301,18 +303,18 @@ ssize_t wusb_prf(void *out, size_t out_size,
  {
--	struct crypto_blkcipher *tfm = lo->key_data;
-+	struct crypto_skcipher *tfm = lo->key_data;
- 	if (tfm != NULL) {
--		crypto_free_blkcipher(tfm);
-+		crypto_free_skcipher(tfm);
- 		lo->key_data = NULL;
- 		return 0;
+ 	ssize_t result, bytes = 0, bitr;
+ 	struct aes_ccm_nonce n = *_n;
+-	struct crypto_blkcipher *tfm_cbc;
++	struct crypto_skcipher *tfm_cbc;
+ 	struct crypto_cipher *tfm_aes;
+ 	u64 sfn = 0;
+ 	__le64 sfn_le;
+ 
+-	tfm_cbc = crypto_alloc_blkcipher("cbc(aes)", 0, CRYPTO_ALG_ASYNC);
++	tfm_cbc = crypto_alloc_skcipher("cbc(aes)", 0, CRYPTO_ALG_ASYNC);
+ 	if (IS_ERR(tfm_cbc)) {
+ 		result = PTR_ERR(tfm_cbc);
+ 		printk(KERN_ERR "E: can't load CBC(AES): %d\n", (int)result);
+ 		goto error_alloc_cbc;
  	}
+-	result = crypto_blkcipher_setkey(tfm_cbc, key, 16);
++	result = crypto_skcipher_setkey(tfm_cbc, key, 16);
+ 	if (result < 0) {
+ 		printk(KERN_ERR "E: can't set CBC key: %d\n", (int)result);
+ 		goto error_setkey_cbc;
+@@ -345,7 +347,7 @@ error_setkey_aes:
+ 	crypto_free_cipher(tfm_aes);
+ error_alloc_aes:
+ error_setkey_cbc:
+-	crypto_free_blkcipher(tfm_cbc);
++	crypto_free_skcipher(tfm_cbc);
+ error_alloc_cbc:
+ 	return result;
+ }
