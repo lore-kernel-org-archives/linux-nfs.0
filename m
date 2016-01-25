@@ -1,189 +1,94 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:34588 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:59660 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933024AbcAYQlO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 25 Jan 2016 11:41:14 -0500
-Subject: [PATCH] CacheFiles: Provide read-and-reset release counters for
- cachefilesd
+	id S1757095AbcAYQtc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 25 Jan 2016 11:49:32 -0500
+Subject: [PATCH 1/2] cachefilesd can spin when disk space is short.
 From: David Howells <dhowells@redhat.com>
 To: linux-cachefs@redhat.com
-Cc: linux-nfs@vger.kernel.org, fsdevel@vger.kernel.org, neilb@suse.de,
-        steved@redhat.com, dhowells@redhat.com, jlayton@poochiereds.net,
-        jsnow@redhat.com
-Date: Mon, 25 Jan 2016 16:41:11 +0000
-Message-ID: <20160125164111.9466.79976.stgit@warthog.procyon.org.uk>
+Cc: linux-nfs@vger.kernel.org, neilb@suse.de, steved@redhat.com,
+        dhowells@redhat.com, linux-fsdevel@vger.kernel.org,
+        jlayton@poochiereds.net, jsnow@redhat.com
+Date: Mon, 25 Jan 2016 16:49:30 +0000
+Message-ID: <20160125164930.9670.46763.stgit@warthog.procyon.org.uk>
+In-Reply-To: <20160125164111.9466.79976.stgit@warthog.procyon.org.uk>
+References: <20160125164111.9466.79976.stgit@warthog.procyon.org.uk>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Provide read-and-reset objects- and blocks-released counters for cachefilesd
-to use to work out whether there's anything new that can be culled.
+From: NeilBrown <neilb@suse.de>
 
-One of the problems cachefilesd has is that if all the objects in the cache
-are pinned by inodes lying dormant in the kernel inode cache, there isn't
-anything for it to cull.  In such a case, it just spins around walking the
-filesystem tree and scanning for something to cull.  This eats up a lot of
-CPU time.
+When cachefilesd finds that it needs to cull, but that culling doesn't
+achieve anything, it sets an alarm to wake it in 30 seconds to try again.
+But as read_cache_state() will detect that culling is still needed, it will
+immediately try again anyway.
 
-By telling cachefilesd if there have been any releases, the daemon can
-sleep until there is the possibility of something to do.
+This results in 100% cpu usage of no value.
 
-cachefilesd finds this information by the following means:
+This patch causes culling to be blocked until the 30 second alarm goes off.
 
- (1) When the control fd is read, the kernel presents a list of values of
-     interest.  "freleased=N" and "breleased=N" are added to this list to
-     indicate the number of files released and number of blocks released
-     since the last read call.  At this point the counters are reset.
+It also changes the test to decide whether to enter poll() after blocking
+signals to test exactly those values that might be changed by a signal.
+Testing these is important, testing anything else is pointless.
 
- (2) POLLIN is signalled if the number of files released becomes greater
-     than 0.
-
-Note that by 'released' it just means that the kernel has released its
-interest in those files for the moment, not necessarily that the files
-should be deleted from the cache.
-
+Signed-off-by: NeilBrown <neilb@suse.de>
 Signed-off-by: David Howells <dhowells@redhat.com>
 ---
 
- fs/cachefiles/daemon.c    |   13 ++++++++++---
- fs/cachefiles/interface.c |   11 ++---------
- fs/cachefiles/internal.h  |    4 ++++
- fs/cachefiles/namei.c     |   28 +++++++++++++++++++++++-----
- 4 files changed, 39 insertions(+), 17 deletions(-)
+ cachefilesd.c |    9 ++++++---
+ 1 file changed, 6 insertions(+), 3 deletions(-)
 
-diff --git a/fs/cachefiles/daemon.c b/fs/cachefiles/daemon.c
-index 452e98dd7560..1ee54ffd3a24 100644
---- a/fs/cachefiles/daemon.c
-+++ b/fs/cachefiles/daemon.c
-@@ -162,6 +162,8 @@ static ssize_t cachefiles_daemon_read(struct file *file, char __user *_buffer,
- 				      size_t buflen, loff_t *pos)
+diff --git a/cachefilesd.c b/cachefilesd.c
+index 6658ba5..eaa1bb0 100644
+--- a/cachefilesd.c
++++ b/cachefilesd.c
+@@ -99,6 +99,7 @@ static struct object **cullready;
+ static unsigned nr_in_build_table;
+ static unsigned nr_in_ready_table;
+ static int ncullable;
++static bool cull_delayed;
+ 
+ 
+ static const char *configfile = "/etc/cachefilesd.conf";
+@@ -246,6 +247,7 @@ static void sigio(int sig)
+ static void sigalrm(int sig)
  {
- 	struct cachefiles_cache *cache = file->private_data;
-+	unsigned long long b_released;
-+	unsigned f_released;
- 	char buffer[256];
- 	int n;
- 
-@@ -174,6 +176,8 @@ static ssize_t cachefiles_daemon_read(struct file *file, char __user *_buffer,
- 	cachefiles_has_space(cache, 0, 0);
- 
- 	/* summarise */
-+	f_released = atomic_xchg(&cache->f_released, 0);
-+	b_released = atomic_long_xchg(&cache->b_released, 0);
- 	clear_bit(CACHEFILES_STATE_CHANGED, &cache->flags);
- 
- 	n = snprintf(buffer, sizeof(buffer),
-@@ -183,15 +187,18 @@ static ssize_t cachefiles_daemon_read(struct file *file, char __user *_buffer,
- 		     " fstop=%llx"
- 		     " brun=%llx"
- 		     " bcull=%llx"
--		     " bstop=%llx",
-+		     " bstop=%llx"
-+		     " freleased=%x"
-+		     " breleased=%llx",
- 		     test_bit(CACHEFILES_CULLING, &cache->flags) ? '1' : '0',
- 		     (unsigned long long) cache->frun,
- 		     (unsigned long long) cache->fcull,
- 		     (unsigned long long) cache->fstop,
- 		     (unsigned long long) cache->brun,
- 		     (unsigned long long) cache->bcull,
--		     (unsigned long long) cache->bstop
--		     );
-+		     (unsigned long long) cache->bstop,
-+		     f_released,
-+		     b_released);
- 
- 	if (n > buflen)
- 		return -EMSGSIZE;
-diff --git a/fs/cachefiles/interface.c b/fs/cachefiles/interface.c
-index afa023dded5b..ee0cb116ff40 100644
---- a/fs/cachefiles/interface.c
-+++ b/fs/cachefiles/interface.c
-@@ -291,15 +291,8 @@ static void cachefiles_drop_object(struct fscache_object *_object)
- 	}
- 
- 	/* note that the object is now inactive */
--	if (test_bit(CACHEFILES_OBJECT_ACTIVE, &object->flags)) {
--		write_lock(&cache->active_lock);
--		if (!test_and_clear_bit(CACHEFILES_OBJECT_ACTIVE,
--					&object->flags))
--			BUG();
--		rb_erase(&object->active_node, &cache->active_nodes);
--		wake_up_bit(&object->flags, CACHEFILES_OBJECT_ACTIVE);
--		write_unlock(&cache->active_lock);
--	}
-+	if (test_bit(CACHEFILES_OBJECT_ACTIVE, &object->flags))
-+		cachefiles_mark_object_inactive(cache, object);
- 
- 	dput(object->dentry);
- 	object->dentry = NULL;
-diff --git a/fs/cachefiles/internal.h b/fs/cachefiles/internal.h
-index 9c4b737a54df..2fcde1a34b7c 100644
---- a/fs/cachefiles/internal.h
-+++ b/fs/cachefiles/internal.h
-@@ -66,6 +66,8 @@ struct cachefiles_cache {
- 	struct rb_root			active_nodes;	/* active nodes (can't be culled) */
- 	rwlock_t			active_lock;	/* lock for active_nodes */
- 	atomic_t			gravecounter;	/* graveyard uniquifier */
-+	atomic_t			f_released;	/* number of objects released lately */
-+	atomic_long_t			b_released;	/* number of blocks released lately */
- 	unsigned			frun_percent;	/* when to stop culling (% files) */
- 	unsigned			fcull_percent;	/* when to start culling (% files) */
- 	unsigned			fstop_percent;	/* when to stop allocating (% files) */
-@@ -157,6 +159,8 @@ extern char *cachefiles_cook_key(const u8 *raw, int keylen, uint8_t type);
- /*
-  * namei.c
-  */
-+extern void cachefiles_mark_object_inactive(struct cachefiles_cache *cache,
-+					    struct cachefiles_object *object);
- extern int cachefiles_delete_object(struct cachefiles_cache *cache,
- 				    struct cachefiles_object *object);
- extern int cachefiles_walk_to_object(struct cachefiles_object *parent,
-diff --git a/fs/cachefiles/namei.c b/fs/cachefiles/namei.c
-index c4b893453e0e..1ad16ae7ab96 100644
---- a/fs/cachefiles/namei.c
-+++ b/fs/cachefiles/namei.c
-@@ -258,6 +258,28 @@ requeue:
+ 	jumpstart_scan = true;
++	cull_delayed = false;
  }
  
- /*
-+ * Mark an object as being inactive.
-+ */
-+void cachefiles_mark_object_inactive(struct cachefiles_cache *cache,
-+				     struct cachefiles_object *object)
-+{
-+	write_lock(&cache->active_lock);
-+	rb_erase(&object->active_node, &cache->active_nodes);
-+	clear_bit(CACHEFILES_OBJECT_ACTIVE, &object->flags);
-+	write_unlock(&cache->active_lock);
-+
-+	wake_up_bit(&object->flags, CACHEFILES_OBJECT_ACTIVE);
-+
-+	/* This object can now be culled, so we need to let the daemon know
-+	 * that there is something it can remove if it needs to.
-+	 */
-+	atomic_long_add(d_backing_inode(object->dentry)->i_blocks,
-+			&cache->b_released);
-+	if (atomic_inc_return(&cache->f_released))
-+		cachefiles_state_changed(cache);
-+}
-+
-+/*
-  * delete an object representation from the cache
-  * - file backed objects are unlinked
-  * - directory backed objects are stuffed into the graveyard for userspace to
-@@ -684,11 +706,7 @@ mark_active_timed_out:
+ /*****************************************************************************/
+@@ -613,11 +615,11 @@ static void cachefilesd(void)
  
- check_error:
- 	_debug("check error %d", ret);
--	write_lock(&cache->active_lock);
--	rb_erase(&object->active_node, &cache->active_nodes);
--	clear_bit(CACHEFILES_OBJECT_ACTIVE, &object->flags);
--	wake_up_bit(&object->flags, CACHEFILES_OBJECT_ACTIVE);
--	write_unlock(&cache->active_lock);
-+	cachefiles_mark_object_inactive(cache, object);
- release_dentry:
- 	dput(object->dentry);
- 	object->dentry = NULL;
+ 		/* sleep without racing on reap and cull with the signal
+ 		 * handlers */
+-		if (!scan && !reap && !cull) {
++		if (!scan && !reap && !(cull && !cull_delayed)) {
+ 			if (sigprocmask(SIG_BLOCK, &sigs, &osigs) < 0)
+ 				oserror("Unable to block signals");
+ 
+-			if (!reap && !cull) {
++			if (!reap && !stop && !jumpstart_scan) {
+ 				if (ppoll(pollfds, 1, NULL, &osigs) < 0 &&
+ 				    errno != EINTR)
+ 					oserror("Unable to suspend process");
+@@ -644,7 +646,7 @@ static void cachefilesd(void)
+ 			if (cull) {
+ 				if (nr_in_ready_table > 0)
+ 					cull_objects();
+-				else if (nr_in_build_table == 0)
++				else if (nr_in_build_table == 0 && !cull_delayed)
+ 					jumpstart_scan = true;
+ 			}
+ 
+@@ -1364,6 +1366,7 @@ static void decant_cull_table(void)
+ 
+ 	/* if nothing there, scan again in a short while */
+ 	if (nr_in_build_table == 0) {
++		cull_delayed = true;
+ 		signal(SIGALRM, sigalrm);
+ 		alarm(30);
+ 		return;
 
