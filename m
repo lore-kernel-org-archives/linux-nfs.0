@@ -1,36 +1,47 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from shards.monkeyblade.net ([149.20.54.216]:43120 "EHLO
-	shards.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750818AbcAYGBv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Jan 2016 01:01:51 -0500
-Date: Sun, 24 Jan 2016 22:01:47 -0800 (PST)
-Message-Id: <20160124.220147.1840338377819463012.davem@davemloft.net>
-To: herbert@gondor.apana.org.au
-Cc: linux-crypto@vger.kernel.org, linux-kernel@vger.kernel.org,
-        netdev@vger.kernel.org, devel@driverdev.osuosl.org,
-        dm-devel@redhat.com, linux-wireless@vger.kernel.org,
+Received: from [82.165.8.211] ([82.165.8.211]:55480 "EHLO mail.holtmann.org"
+	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1751092AbcAYGtI convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Jan 2016 01:49:08 -0500
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 9.2 \(3112\))
+Subject: Re: [PATCH 15/26] Bluetooth: Use skcipher and hash
+From: Marcel Holtmann <marcel@holtmann.org>
+In-Reply-To: <E1aNKYo-0008Dp-5h@gondolin.me.apana.org.au>
+Date: Mon, 25 Jan 2016 07:48:46 +0100
+Cc: Linux Crypto Mailing List <linux-crypto@vger.kernel.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        Network Development <netdev@vger.kernel.org>,
+        devel@driverdev.osuosl.org, dm-devel@redhat.com,
+        linux-wireless <linux-wireless@vger.kernel.org>,
         linux-cifs@vger.kernel.org, ecryptfs@vger.kernel.org,
         linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
         linux-nfs@vger.kernel.org, keyrings@vger.kernel.org,
-        linux-bluetooth@vger.kernel.org, ceph-devel@vger.kernel.org,
-        linux-wpan@vger.kernel.org, linux-afs@lists.infradead.org,
-        drbd-dev@lists.linbit.com, open-iscsi@googlegroups.com
-Subject: Re: [PATCH 26/26] tcp: Use ahash
-From: David Miller <davem@davemloft.net>
-In-Reply-To: <E1aNKad-0008H5-Ax@gondolin.me.apana.org.au>
-References: <20160124131021.GA31153@gondor.apana.org.au>
-	<E1aNKad-0008H5-Ax@gondolin.me.apana.org.au>
-Mime-Version: 1.0
-Content-Type: Text/Plain; charset=us-ascii
+        BlueZ development <linux-bluetooth@vger.kernel.org>,
+        ceph-devel@vger.kernel.org, linux-wpan@vger.kernel.org,
+        linux-afs@lists.infradead.org, drbd-dev@lists.linbit.com,
+        open-iscsi@googlegroups.com
+Message-Id: <B35B9E9E-DA6B-4AAD-B1EF-2DE778645CAC@holtmann.org>
+References: <20160124131021.GA31153@gondor.apana.org.au> <E1aNKYo-0008Dp-5h@gondolin.me.apana.org.au>
+To: Herbert Xu <herbert@gondor.apana.org.au>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Herbert Xu <herbert@gondor.apana.org.au>
-Date: Sun, 24 Jan 2016 21:20:23 +0800
+Hi Herbert,
 
-> This patch replaces uses of the long obsolete hash interface with
-> ahash.
+> This patch replaces uses of blkcipher with skcipher and the long
+> obsolete hash interface with shash.
 > 
 > Signed-off-by: Herbert Xu <herbert@gondor.apana.org.au>
 
-Acked-by: David S. Miller <davem@davemloft.net>
+Acked-by: Marcel Holtmann <marcel@holtmann.org>
+
+> ---
+> 
+> net/bluetooth/smp.c |  135 ++++++++++++++++++++++++----------------------------
+> 1 file changed, 63 insertions(+), 72 deletions(-)
+
+Regards
+
+Marcel
+
