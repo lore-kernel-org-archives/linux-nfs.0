@@ -1,52 +1,292 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mta02.ornl.gov ([128.219.177.12]:12134 "EHLO mta02.ornl.gov"
+Received: from mx142.netapp.com ([216.240.21.19]:27226 "EHLO mx142.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933013AbcAZPe6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 26 Jan 2016 10:34:58 -0500
-From: "Atchley, Scott" <atchleyes@ornl.gov>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: "lsf-pc@lists.linux-foundation.org"
-	<lsf-pc@lists.linux-foundation.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Linux RDMA Mailing List <linux-rdma@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>
-Subject: Re: [LSF/MM TOPIC] Remote access to pmem on storage targets
-Date: Tue, 26 Jan 2016 15:25:14 +0000
-Message-ID: <5FD20017-B588-42E6-BBDA-2AA8ABDBA42B@ornl.gov>
-References: <06414D5A-0632-4C74-B76C-038093E8AED3@oracle.com>
-In-Reply-To: <06414D5A-0632-4C74-B76C-038093E8AED3@oracle.com>
-Content-Type: text/plain; charset="utf-8"
+	id S1756344AbcAZPfZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 26 Jan 2016 10:35:25 -0500
+Subject: Re: [PATCH v8 5/4] copy_file_range.2: New page documenting
+ copy_file_range()
+To: "Michael Kerrisk (man-pages)" <mtk.manpages@gmail.com>,
+        <linux-nfs@vger.kernel.org>, <linux-btrfs@vger.kernel.org>,
+        <linux-fsdevel@vger.kernel.org>, <linux-api@vger.kernel.org>,
+        <zab@zabbo.net>, <viro@zeniv.linux.org.uk>, <clm@fb.com>,
+        <darrick.wong@oracle.com>, <andros@netapp.com>, <hch@infradead.org>
+References: <1446844701-848-1-git-send-email-Anna.Schumaker@Netapp.com>
+ <1446844701-848-6-git-send-email-Anna.Schumaker@Netapp.com>
+ <56A74147.8060807@gmail.com>
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+Message-ID: <56A79238.1090605@Netapp.com>
+Date: Tue, 26 Jan 2016 10:35:20 -0500
 MIME-Version: 1.0
+In-Reply-To: <56A74147.8060807@gmail.com>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-PiBPbiBKYW4gMjUsIDIwMTYsIGF0IDQ6MTkgUE0sIENodWNrIExldmVyIDxjaHVjay5sZXZlckBv
-cmFjbGUuY29tPiB3cm90ZToNCj4gDQo+IEknZCBsaWtlIHRvIHByb3Bvc2UgYSBkaXNjdXNzaW9u
-IG9mIGhvdyB0byB0YWtlIGFkdmFudGFnZSBvZg0KPiBwZXJzaXN0ZW50IG1lbW9yeSBpbiBuZXR3
-b3JrLWF0dGFjaGVkIHN0b3JhZ2Ugc2NlbmFyaW9zLg0KPiANCj4gUkRNQSBydW5zIG9uIGhpZ2gg
-c3BlZWQgbmV0d29yayBmYWJyaWNzIGFuZCBvZmZsb2FkcyBkYXRhDQo+IHRyYW5zZmVyIGZyb20g
-aG9zdCBDUFVzLiBUaHVzIGl0IGlzIGEgZ29vZCBtYXRjaCB0byB0aGUNCj4gcGVyZm9ybWFuY2Ug
-Y2hhcmFjdGVyaXN0aWNzIG9mIHBlcnNpc3RlbnQgbWVtb3J5Lg0KPiANCj4gVG9kYXkgTGludXgg
-c3VwcG9ydHMgaVNFUiwgU1JQLCBhbmQgTkZTL1JETUEgb24gUkRNQQ0KPiBmYWJyaWNzLiBXaGF0
-IGtpbmQgb2YgY2hhbmdlcyBhcmUgbmVlZGVkIGluIHRoZSBMaW51eCBJL08NCj4gc3RhY2sgKGlu
-IHBhcnRpY3VsYXIsIHN0b3JhZ2UgdGFyZ2V0cykgYW5kIGluIHRoZXNlIHN0b3JhZ2UNCj4gcHJv
-dG9jb2xzIHRvIGdldCB0aGUgbW9zdCBiZW5lZml0IGZyb20gdWx0cmEtbG93IGxhdGVuY3kNCj4g
-c3RvcmFnZT8NCj4gDQo+IFRoZXJlIGhhdmUgYmVlbiByZWNlbnQgcHJvcG9zYWxzIGFib3V0IGhv
-dyBzdG9yYWdlIHByb3RvY29scw0KPiBhbmQgaW1wbGVtZW50YXRpb25zIG1pZ2h0IG5lZWQgdG8g
-Y2hhbmdlIChlZy4gVG9tIFRhbHBleSdzDQo+IFNOSUEgcHJvcG9zYWxzIGZvciBjaGFuZ2luZyB0
-byBhIHB1c2ggZGF0YSB0cmFuc2ZlciBtb2RlbCwNCj4gU2FnaSdzIHByb3Bvc2FsIHRvIHV0aWxp
-emUgREFYIHVuZGVyIHRoZSBORlMvUkRNQSBzZXJ2ZXIsDQo+IGFuZCBteSBwcm9wb3NhbCBmb3Ig
-YSBuZXcgcE5GUyBsYXlvdXQgdG8gZHJpdmUgUkRNQSBkYXRhDQo+IHRyYW5zZmVyIGRpcmVjdGx5
-KS4NCj4gDQo+IFRoZSBvdXRjb21lIG9mIHRoZSBkaXNjdXNzaW9uIHdvdWxkIGJlIHRvIHVuZGVy
-c3RhbmQgd2hhdA0KPiBwZW9wbGUgYXJlIHdvcmtpbmcgb24gbm93IGFuZCB3aGF0IGlzIHRoZSBk
-ZXNpcmVkDQo+IGFyY2hpdGVjdHVyYWwgYXBwcm9hY2ggaW4gb3JkZXIgdG8gZGV0ZXJtaW5lIHdo
-ZXJlIHN0b3JhZ2UNCj4gZGV2ZWxvcGVycyBzaG91bGQgYmUgZm9jdXNlZC4NCj4gDQo+IFRoaXMg
-Y291bGQgYmUgZWl0aGVyIGEgQm9GIG9yIGEgc2Vzc2lvbiBkdXJpbmcgdGhlIG1haW4NCj4gdHJh
-Y2tzLiBUaGVyZSBpcyBzdXJlIHRvIGJlIGEgbmFycm93IHNlZ21lbnQgb2YgZWFjaA0KPiB0cmFj
-aydzIGF0dGVuZGVlcyB0aGF0IHdvdWxkIGhhdmUgaW50ZXJlc3QgaW4gdGhpcyB0b3BpYy4NCj4g
-DQo+IC0tDQo+IENodWNrIExldmVyDQoNCkNodWNrLA0KDQpPbmUgZGlmZmVyZW5jZSBvbiB0YXJn
-ZXRzIGlzIHRoYXQgc29tZSBOVk0vcGVyc2lzdGVudCBtZW1vcnkgbWF5IGJlIGJ5dGUtYWRkcmVz
-c2FibGUgd2hpbGUgb3RoZXIgTlZNIGlzIG9ubHkgYmxvY2sgYWRkcmVzc2FibGUuDQoNCkFub3Ro
-ZXIgZGlmZmVyZW5jZSBpcyB0aGF0IE5WTWUtb3Zlci1GYWJyaWNzIHdpbGwgYWxsb3cgcmVtb3Rl
-IGFjY2VzcyBvZiB0aGUgdGFyZ2V04oCZcyBOVk1lIGRldmljZXMgdXNpbmcgdGhlIE5WTWUgQVBJ
-Lg0KDQpTY290dA==
+On 01/26/2016 04:49 AM, Michael Kerrisk (man-pages) wrote:
+> Hi Anna,
+> 
+> Thanks for writing this page! I've merged it, and pushed to Git.
+> I made a few tweaks, which I think are all straightforward, 
+> but you might like to review my comments below.
+> 
+> On 11/06/2015 10:18 PM, Anna Schumaker wrote:
+>> copy_file_range() is a new system call for copying ranges of data
+>> completely in the kernel.  This gives filesystems an opportunity to
+>> implement some kind of "copy acceleration", such as reflinks or
+>> server-side-copy (in the case of NFS).
+>>
+>> Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+>> Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
+>> Reviewed-by: Christoph Hellwig <hch@lst.de>
+>> ---
+>> v8:
+>> - Document that files can not be open with O_APPEND.
+>> ---
+>>  man2/copy_file_range.2 | 201 +++++++++++++++++++++++++++++++++++++++++++++++++
+>>  man2/splice.2          |   1 +
+>>  2 files changed, 202 insertions(+)
+>>  create mode 100644 man2/copy_file_range.2
+>>
+>> diff --git a/man2/copy_file_range.2 b/man2/copy_file_range.2
+>> new file mode 100644
+>> index 0000000..d9f76d1
+>> --- /dev/null
+>> +++ b/man2/copy_file_range.2
+>> @@ -0,0 +1,201 @@
+>> +.\"This manpage is Copyright (C) 2015 Anna Schumaker <Anna.Schumaker@Netapp.com>
+>> +.\"
+>> +.\" %%%LICENSE_START(VERBATIM)
+>> +.\" Permission is granted to make and distribute verbatim copies of this
+>> +.\" manual provided the copyright notice and this permission notice are
+>> +.\" preserved on all copies.
+>> +.\"
+>> +.\" Permission is granted to copy and distribute modified versions of
+>> +.\" this manual under the conditions for verbatim copying, provided that
+>> +.\" the entire resulting derived work is distributed under the terms of
+>> +.\" a permission notice identical to this one.
+>> +.\"
+>> +.\" Since the Linux kernel and libraries are constantly changing, this
+>> +.\" manual page may be incorrect or out-of-date.  The author(s) assume
+>> +.\" no responsibility for errors or omissions, or for damages resulting
+>> +.\" from the use of the information contained herein.  The author(s) may
+>> +.\" not have taken the same level of care in the production of this
+>> +.\" manual, which is licensed free of charge, as they might when working
+>> +.\" professionally.
+>> +.\"
+>> +.\" Formatted or processed versions of this manual, if unaccompanied by
+>> +.\" the source, must acknowledge the copyright and authors of this work.
+>> +.\" %%%LICENSE_END
+>> +.\"
+>> +.TH COPY 2 2015-11-06 "Linux" "Linux Programmer's Manual"
+>> +.SH NAME
+>> +copy_file_range \- Copy a range of data from one file to another
+>> +.SH SYNOPSIS
+>> +.nf
+>> +.B #include <sys/syscall.h>
+>> +.B #include <unistd.h>
+>> +
+>> +.BI "ssize_t copy_file_range(int " fd_in ", loff_t *" off_in ", int " fd_out ",
+>> +.BI "                        loff_t *" off_out ", size_t " len \
+>> +", unsigned int " flags );
+>> +.fi
+>> +.SH DESCRIPTION
+>> +The
+>> +.BR copy_file_range ()
+>> +system call performs an in-kernel copy between two file descriptors
+>> +without the additional cost of transferring data from the kernel to userspace
+>> +and then back into the kernel.
+>> +It copies up to
+>> +.I len
+>> +bytes of data from file descriptor
+>> +.I fd_in
+>> +to file descriptor
+>> +.IR fd_out ,
+>> +overwriting any data that exists within the requested range of the target file.
+>> +
+>> +The following semantics apply for
+>> +.IR off_in ,
+>> +and similar statements apply to
+>> +.IR off_out :
+>> +.IP * 3
+>> +If
+>> +.I off_in
+>> +is NULL, then bytes are read from
+>> +.I fd_in
+>> +starting from the current file offset, and the offset is
+>> +adjusted by the number of bytes copied.
+>> +.IP *
+>> +If
+>> +.I off_in
+>> +is not NULL, then
+>> +.I off_in
+>> +must point to a buffer that specifies the starting
+>> +offset where bytes from
+>> +.I fd_in
+>> +will be read.  The current file offset of
+>> +.I fd_in
+>> +is not changed, but
+>> +.I off_in
+>> +is adjusted appropriately.
+>> +.PP
+>> +
+>> +The
+>> +.I flags
+>> +argument must be set to 0.
+>> +.SH RETURN VALUE
+>> +Upon successful completion,
+>> +.BR copy_file_range ()
+>> +will return the number of bytes copied between files.
+>> +This could be less than the length originally requested.
+>> +
+>> +On error,
+>> +.BR copy_file_range ()
+>> +returns \-1 and
+>> +.I errno
+>> +is set to indicate the error.
+>> +.SH ERRORS
+>> +.TP
+>> +.B EBADF
+>> +One or more file descriptors are not valid; or
+>> +.I fd_in
+>> +is not open for reading; or
+>> +.I fd_out
+>> +is not open for writing; or
+>> +.I fd_out
+>> +is open for appending.
+>> +.TP
+>> +.B EINVAL
+>> +Requested range extends beyond the end of the source file; or the
+>> +.I flags
+>> +argument is not 0.
+>> +.TP
+>> +.B EIO
+>> +A low level I/O error occurred while copying.
+>> +.TP
+>> +.B ENOMEM
+>> +Out of memory.
+>> +.TP
+>> +.B ENOSPC
+>> +There is not enough space on the target filesystem to complete the copy.
+>> +.TP
+>> +.B EXDEV
+>> +.IR file_in " and " file_out
+>> +are not on the same mounted filesystem.
+>> +.SH VERSIONS
+>> +The
+>> +.BR copy_file_range ()
+>> +system call first appeared in Linux 4.4.
+>> +.SH CONFORMING TO
+>> +The
+>> +.BR copy_file_range ()
+>> +system call is a nonstandard Linux extension.
+>> +.SH NOTES
+>> +If
+>> +.I file_in
+>> +is a sparse file, then
+>> +.BR copy_file_range ()
+>> +may expand any holes existing in the requested range.
+>> +Users may benefit from calling
+>> +.BR copy_file_range ()
+>> +in a loop, and using
+>> +.BR lseek (2)
+>> +to find the locations of data segments.
+> 
+> Here, I explicitly added mention of SEEK_HOLE and SEEK_DATA. okay?
+
+Yeah, that makes sense.
+
+> 
+>> +.SH EXAMPLE
+>> +.nf
+>> +#define _GNU_SOURCE
+>> +#include <fcntl.h>
+>> +#include <stdio.h>
+>> +#include <stdlib.h>
+>> +#include <sys/stat.h>
+>> +#include <sys/syscall.h>
+>> +#include <unistd.h>
+>> +
+>> +loff_t copy_file_range(int fd_in, loff_t *off_in, int fd_out,
+>> +                       loff_t *off_out, size_t len, unsigned int flags)
+>> +{
+>> +    return syscall(__NR_copy_file_range, fd_in, off_in, fd_out,
+>> +                   off_out, len, flags);
+>> +}
+>> +
+>> +int main(int argc, char **argv)
+>> +{
+>> +    int fd_in, fd_out;
+>> +    struct stat stat;
+>> +    loff_t len, ret;
+>> +    char buf[2];
+> 
+> 'buf' is unused, so I removed it. I assume it was accidental cruft; this
+> is just a heads-up, in case some you meant have some code in the program
+> that would use that variable.
+
+I don't even remember what I used 'buf' for, so that makes sense too.
+
+Thanks for committing it!
+Anna
+
+> 
+>> +
+>> +    if (argc != 3) {
+>> +        fprintf(stderr, "Usage: %s <source> <destination>\\n", argv[0]);
+>> +        exit(EXIT_FAILURE);
+>> +    }
+>> +
+>> +    fd_in = open(argv[1], O_RDONLY);
+>> +    if (fd_in == \-1) {
+>> +        perror("open (argv[1])");
+>> +        exit(EXIT_FAILURE);
+>> +    }
+>> +
+>> +    if (fstat(fd_in, &stat) == \-1) {
+>> +        perror("fstat");
+>> +        exit(EXIT_FAILURE);
+>> +    }
+>> +    len = stat.st_size;
+>> +
+>> +    fd_out = open(argv[2], O_CREAT|O_WRONLY|O_TRUNC, 0644);
+>> +    if (fd_out == \-1) {
+>> +        perror("open (argv[2])");
+>> +        exit(EXIT_FAILURE);
+>> +    }
+>> +
+>> +    do {
+>> +        ret = copy_file_range(fd_in, NULL, fd_out, NULL, len, 0);
+>> +        if (ret == \-1) {
+>> +            perror("copy_file_range");
+>> +            exit(EXIT_FAILURE);
+>> +        }
+>> +
+>> +        len \-= ret;
+>> +    } while (len > 0);
+>> +
+>> +    close(fd_in);
+>> +    close(fd_out);
+>> +    exit(EXIT_SUCCESS);
+>> +}
+>> +.fi
+>> +.SH SEE ALSO
+>> +.BR splice (2)
+>> diff --git a/man2/splice.2 b/man2/splice.2
+>> index b9b4f42..5c162e0 100644
+>> --- a/man2/splice.2
+>> +++ b/man2/splice.2
+>> @@ -238,6 +238,7 @@ only pointers are copied, not the pages of the buffer.
+>>  See
+>>  .BR tee (2).
+>>  .SH SEE ALSO
+>> +.BR copy_file_range (2),
+>>  .BR sendfile (2),
+>>  .BR tee (2),
+>>  .BR vmsplice (2)
+> 
+> Thanks, 
+> 
+> Michael
+> 
+> 
+
