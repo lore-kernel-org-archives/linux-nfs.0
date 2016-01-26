@@ -1,75 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:46477 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S965321AbcAZP3n convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Jan 2016 10:29:43 -0500
-Content-Type: text/plain; charset=utf-8
-Mime-Version: 1.0 (Mac OS X Mail 9.2 \(3112\))
-Subject: Re: [LSF/MM TOPIC] Remote access to pmem on storage targets
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <5FD20017-B588-42E6-BBDA-2AA8ABDBA42B@ornl.gov>
-Date: Tue, 26 Jan 2016 10:29:35 -0500
-Cc: "lsf-pc@lists.linux-foundation.org"
+Received: from mta02.ornl.gov ([128.219.177.12]:12134 "EHLO mta02.ornl.gov"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933013AbcAZPe6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 26 Jan 2016 10:34:58 -0500
+From: "Atchley, Scott" <atchleyes@ornl.gov>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: "lsf-pc@lists.linux-foundation.org"
 	<lsf-pc@lists.linux-foundation.org>,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
         Linux RDMA Mailing List <linux-rdma@vger.kernel.org>,
         linux-fsdevel <linux-fsdevel@vger.kernel.org>
-Message-Id: <D0C5C0B9-A1A2-4428-B3CA-7BBCC5BEF10D@oracle.com>
-References: <06414D5A-0632-4C74-B76C-038093E8AED3@oracle.com> <5FD20017-B588-42E6-BBDA-2AA8ABDBA42B@ornl.gov>
-To: "Atchley, Scott" <atchleyes@ornl.gov>
+Subject: Re: [LSF/MM TOPIC] Remote access to pmem on storage targets
+Date: Tue, 26 Jan 2016 15:25:14 +0000
+Message-ID: <5FD20017-B588-42E6-BBDA-2AA8ABDBA42B@ornl.gov>
+References: <06414D5A-0632-4C74-B76C-038093E8AED3@oracle.com>
+In-Reply-To: <06414D5A-0632-4C74-B76C-038093E8AED3@oracle.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-> On Jan 26, 2016, at 10:25 AM, Atchley, Scott <atchleyes@ornl.gov> wrote:
-> 
->> On Jan 25, 2016, at 4:19 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
->> 
->> I'd like to propose a discussion of how to take advantage of
->> persistent memory in network-attached storage scenarios.
->> 
->> RDMA runs on high speed network fabrics and offloads data
->> transfer from host CPUs. Thus it is a good match to the
->> performance characteristics of persistent memory.
->> 
->> Today Linux supports iSER, SRP, and NFS/RDMA on RDMA
->> fabrics. What kind of changes are needed in the Linux I/O
->> stack (in particular, storage targets) and in these storage
->> protocols to get the most benefit from ultra-low latency
->> storage?
->> 
->> There have been recent proposals about how storage protocols
->> and implementations might need to change (eg. Tom Talpey's
->> SNIA proposals for changing to a push data transfer model,
->> Sagi's proposal to utilize DAX under the NFS/RDMA server,
->> and my proposal for a new pNFS layout to drive RDMA data
->> transfer directly).
->> 
->> The outcome of the discussion would be to understand what
->> people are working on now and what is the desired
->> architectural approach in order to determine where storage
->> developers should be focused.
->> 
->> This could be either a BoF or a session during the main
->> tracks. There is sure to be a narrow segment of each
->> track's attendees that would have interest in this topic.
->> 
->> --
->> Chuck Lever
-> 
-> Chuck,
-> 
-> One difference on targets is that some NVM/persistent memory may be byte-addressable while other NVM is only block addressable.
-> 
-> Another difference is that NVMe-over-Fabrics will allow remote access of the target’s NVMe devices using the NVMe API.
-
-As I understand it, NVMf devices look like local devices.
-NVMf devices need globally unique naming to enable safe use
-with pNFS and other remote storage access protocols.
-
---
-Chuck Lever
-
-
-
-
+PiBPbiBKYW4gMjUsIDIwMTYsIGF0IDQ6MTkgUE0sIENodWNrIExldmVyIDxjaHVjay5sZXZlckBv
+cmFjbGUuY29tPiB3cm90ZToNCj4gDQo+IEknZCBsaWtlIHRvIHByb3Bvc2UgYSBkaXNjdXNzaW9u
+IG9mIGhvdyB0byB0YWtlIGFkdmFudGFnZSBvZg0KPiBwZXJzaXN0ZW50IG1lbW9yeSBpbiBuZXR3
+b3JrLWF0dGFjaGVkIHN0b3JhZ2Ugc2NlbmFyaW9zLg0KPiANCj4gUkRNQSBydW5zIG9uIGhpZ2gg
+c3BlZWQgbmV0d29yayBmYWJyaWNzIGFuZCBvZmZsb2FkcyBkYXRhDQo+IHRyYW5zZmVyIGZyb20g
+aG9zdCBDUFVzLiBUaHVzIGl0IGlzIGEgZ29vZCBtYXRjaCB0byB0aGUNCj4gcGVyZm9ybWFuY2Ug
+Y2hhcmFjdGVyaXN0aWNzIG9mIHBlcnNpc3RlbnQgbWVtb3J5Lg0KPiANCj4gVG9kYXkgTGludXgg
+c3VwcG9ydHMgaVNFUiwgU1JQLCBhbmQgTkZTL1JETUEgb24gUkRNQQ0KPiBmYWJyaWNzLiBXaGF0
+IGtpbmQgb2YgY2hhbmdlcyBhcmUgbmVlZGVkIGluIHRoZSBMaW51eCBJL08NCj4gc3RhY2sgKGlu
+IHBhcnRpY3VsYXIsIHN0b3JhZ2UgdGFyZ2V0cykgYW5kIGluIHRoZXNlIHN0b3JhZ2UNCj4gcHJv
+dG9jb2xzIHRvIGdldCB0aGUgbW9zdCBiZW5lZml0IGZyb20gdWx0cmEtbG93IGxhdGVuY3kNCj4g
+c3RvcmFnZT8NCj4gDQo+IFRoZXJlIGhhdmUgYmVlbiByZWNlbnQgcHJvcG9zYWxzIGFib3V0IGhv
+dyBzdG9yYWdlIHByb3RvY29scw0KPiBhbmQgaW1wbGVtZW50YXRpb25zIG1pZ2h0IG5lZWQgdG8g
+Y2hhbmdlIChlZy4gVG9tIFRhbHBleSdzDQo+IFNOSUEgcHJvcG9zYWxzIGZvciBjaGFuZ2luZyB0
+byBhIHB1c2ggZGF0YSB0cmFuc2ZlciBtb2RlbCwNCj4gU2FnaSdzIHByb3Bvc2FsIHRvIHV0aWxp
+emUgREFYIHVuZGVyIHRoZSBORlMvUkRNQSBzZXJ2ZXIsDQo+IGFuZCBteSBwcm9wb3NhbCBmb3Ig
+YSBuZXcgcE5GUyBsYXlvdXQgdG8gZHJpdmUgUkRNQSBkYXRhDQo+IHRyYW5zZmVyIGRpcmVjdGx5
+KS4NCj4gDQo+IFRoZSBvdXRjb21lIG9mIHRoZSBkaXNjdXNzaW9uIHdvdWxkIGJlIHRvIHVuZGVy
+c3RhbmQgd2hhdA0KPiBwZW9wbGUgYXJlIHdvcmtpbmcgb24gbm93IGFuZCB3aGF0IGlzIHRoZSBk
+ZXNpcmVkDQo+IGFyY2hpdGVjdHVyYWwgYXBwcm9hY2ggaW4gb3JkZXIgdG8gZGV0ZXJtaW5lIHdo
+ZXJlIHN0b3JhZ2UNCj4gZGV2ZWxvcGVycyBzaG91bGQgYmUgZm9jdXNlZC4NCj4gDQo+IFRoaXMg
+Y291bGQgYmUgZWl0aGVyIGEgQm9GIG9yIGEgc2Vzc2lvbiBkdXJpbmcgdGhlIG1haW4NCj4gdHJh
+Y2tzLiBUaGVyZSBpcyBzdXJlIHRvIGJlIGEgbmFycm93IHNlZ21lbnQgb2YgZWFjaA0KPiB0cmFj
+aydzIGF0dGVuZGVlcyB0aGF0IHdvdWxkIGhhdmUgaW50ZXJlc3QgaW4gdGhpcyB0b3BpYy4NCj4g
+DQo+IC0tDQo+IENodWNrIExldmVyDQoNCkNodWNrLA0KDQpPbmUgZGlmZmVyZW5jZSBvbiB0YXJn
+ZXRzIGlzIHRoYXQgc29tZSBOVk0vcGVyc2lzdGVudCBtZW1vcnkgbWF5IGJlIGJ5dGUtYWRkcmVz
+c2FibGUgd2hpbGUgb3RoZXIgTlZNIGlzIG9ubHkgYmxvY2sgYWRkcmVzc2FibGUuDQoNCkFub3Ro
+ZXIgZGlmZmVyZW5jZSBpcyB0aGF0IE5WTWUtb3Zlci1GYWJyaWNzIHdpbGwgYWxsb3cgcmVtb3Rl
+IGFjY2VzcyBvZiB0aGUgdGFyZ2V04oCZcyBOVk1lIGRldmljZXMgdXNpbmcgdGhlIE5WTWUgQVBJ
+Lg0KDQpTY290dA==
