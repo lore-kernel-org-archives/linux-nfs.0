@@ -1,45 +1,75 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from helcar.hengli.com.au ([209.40.204.226]:59731 "EHLO
-	helcar.hengli.com.au" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753388AbcAZLeJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Jan 2016 06:34:09 -0500
-Date: Tue, 26 Jan 2016 19:33:52 +0800
-From: Herbert Xu <herbert@gondor.apana.org.au>
-To: Ilya Dryomov <idryomov@gmail.com>
-Cc: Linux Crypto Mailing List <linux-crypto@vger.kernel.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        netdev <netdev@vger.kernel.org>, devel@driverdev.osuosl.org,
-        dm-devel@redhat.com, linux-wireless@vger.kernel.org,
-        linux-cifs@vger.kernel.org, ecryptfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        linux-nfs@vger.kernel.org, keyrings@vger.kernel.org,
-        linux-bluetooth@vger.kernel.org,
-        Ceph Development <ceph-devel@vger.kernel.org>,
-        linux-wpan@vger.kernel.org, linux-afs@lists.infradead.org,
-        Lars Ellenberg <drbd-dev@lists.linbit.com>,
-        open-iscsi@googlegroups.com
-Subject: Re: [PATCH 16/26] libceph: Use skcipher
-Message-ID: <20160126113352.GA21159@gondor.apana.org.au>
-References: <20160124131021.GA31153@gondor.apana.org.au>
- <E1aNKYy-0008E6-GI@gondolin.me.apana.org.au>
- <CAOi1vP9jmMYHR21UeAO175susZ5V74vcXyoxwayBVSTFHxjhBQ@mail.gmail.com>
- <20160126105455.GA19674@gondor.apana.org.au>
- <CAOi1vP9kB5a-JeZ1PriwyQO0XH4Qh3UKidp==NPvVw-AsL=uqw@mail.gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAOi1vP9kB5a-JeZ1PriwyQO0XH4Qh3UKidp==NPvVw-AsL=uqw@mail.gmail.com>
+Received: from aserp1040.oracle.com ([141.146.126.69]:46477 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S965321AbcAZP3n convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Jan 2016 10:29:43 -0500
+Content-Type: text/plain; charset=utf-8
+Mime-Version: 1.0 (Mac OS X Mail 9.2 \(3112\))
+Subject: Re: [LSF/MM TOPIC] Remote access to pmem on storage targets
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <5FD20017-B588-42E6-BBDA-2AA8ABDBA42B@ornl.gov>
+Date: Tue, 26 Jan 2016 10:29:35 -0500
+Cc: "lsf-pc@lists.linux-foundation.org"
+	<lsf-pc@lists.linux-foundation.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Linux RDMA Mailing List <linux-rdma@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>
+Message-Id: <D0C5C0B9-A1A2-4428-B3CA-7BBCC5BEF10D@oracle.com>
+References: <06414D5A-0632-4C74-B76C-038093E8AED3@oracle.com> <5FD20017-B588-42E6-BBDA-2AA8ABDBA42B@ornl.gov>
+To: "Atchley, Scott" <atchleyes@ornl.gov>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jan 26, 2016 at 12:29:57PM +0100, Ilya Dryomov wrote:
->
-> LGTM.  You want to take it through crypto?
 
-That's probably the easiest route since I'd like to take the first
-patch through cryptodev.
+> On Jan 26, 2016, at 10:25 AM, Atchley, Scott <atchleyes@ornl.gov> wrote:
+> 
+>> On Jan 25, 2016, at 4:19 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>> 
+>> I'd like to propose a discussion of how to take advantage of
+>> persistent memory in network-attached storage scenarios.
+>> 
+>> RDMA runs on high speed network fabrics and offloads data
+>> transfer from host CPUs. Thus it is a good match to the
+>> performance characteristics of persistent memory.
+>> 
+>> Today Linux supports iSER, SRP, and NFS/RDMA on RDMA
+>> fabrics. What kind of changes are needed in the Linux I/O
+>> stack (in particular, storage targets) and in these storage
+>> protocols to get the most benefit from ultra-low latency
+>> storage?
+>> 
+>> There have been recent proposals about how storage protocols
+>> and implementations might need to change (eg. Tom Talpey's
+>> SNIA proposals for changing to a push data transfer model,
+>> Sagi's proposal to utilize DAX under the NFS/RDMA server,
+>> and my proposal for a new pNFS layout to drive RDMA data
+>> transfer directly).
+>> 
+>> The outcome of the discussion would be to understand what
+>> people are working on now and what is the desired
+>> architectural approach in order to determine where storage
+>> developers should be focused.
+>> 
+>> This could be either a BoF or a session during the main
+>> tracks. There is sure to be a narrow segment of each
+>> track's attendees that would have interest in this topic.
+>> 
+>> --
+>> Chuck Lever
+> 
+> Chuck,
+> 
+> One difference on targets is that some NVM/persistent memory may be byte-addressable while other NVM is only block addressable.
+> 
+> Another difference is that NVMe-over-Fabrics will allow remote access of the target’s NVMe devices using the NVMe API.
 
-Thanks,
--- 
-Email: Herbert Xu <herbert@gondor.apana.org.au>
-Home Page: http://gondor.apana.org.au/~herbert/
-PGP Key: http://gondor.apana.org.au/~herbert/pubkey.txt
+As I understand it, NVMf devices look like local devices.
+NVMf devices need globally unique naming to enable safe use
+with pNFS and other remote storage access protocols.
+
+--
+Chuck Lever
+
+
+
+
