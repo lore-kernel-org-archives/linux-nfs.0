@@ -1,56 +1,55 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:20785 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752881AbcAZTWS convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Jan 2016 14:22:18 -0500
+Received: from ipmail07.adl2.internode.on.net ([150.101.137.131]:31919 "EHLO
+	ipmail07.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1750826AbcA0AJY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Jan 2016 19:09:24 -0500
+Date: Wed, 27 Jan 2016 11:04:04 +1100
+From: Dave Chinner <david@fromorbit.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Jan Kara <jack@suse.cz>, lsf-pc@lists.linux-foundation.org,
+        Linux RDMA Mailing List <linux-rdma@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [Lsf-pc] [LSF/MM TOPIC] Remote access to pmem on storage targets
+Message-ID: <20160127000404.GN6033@dastard>
+References: <06414D5A-0632-4C74-B76C-038093E8AED3@oracle.com>
+ <20160126082533.GR24938@quack.suse.cz>
+ <F0E2108B-891C-4570-B486-7DC7C4FB59C4@oracle.com>
+MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.2 \(3112\))
-Subject: Re: [PATCH 0/5] Convert client back-channel to use session slot table
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1453730956-5325-1-git-send-email-trond.myklebust@primarydata.com>
-Date: Tue, 26 Jan 2016 14:22:11 -0500
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <DC9FDB91-FE65-46B1-9287-E12BC6938048@oracle.com>
-References: <1453730956-5325-1-git-send-email-trond.myklebust@primarydata.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
+In-Reply-To: <F0E2108B-891C-4570-B486-7DC7C4FB59C4@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-> On Jan 25, 2016, at 9:09 AM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+On Tue, Jan 26, 2016 at 10:58:44AM -0500, Chuck Lever wrote:
+> It is not going to be like the well-worn paradigm that
+> involves a page cache on the storage target backed by
+> slow I/O operations. The protocol layers on storage
+> targets need a way to discover memory addresses of
+> persistent memory that will be used as source/sink
+> buffers for RDMA operations.
 > 
-> The following patchset is intended to convert the current ad-hoc backchannel
-> session semantics to use the generic slot table in fs/nfs/nfs4session.c
-> This should suffice to allow us to grow the size of the slot table at will.
+> And making data durable after a write is going to need
+> some thought. So I believe some new plumbing will be
+> necessary.
 
-We may be able to exercise this series at Connectathon with
-some RDMA servers that advertise quite a few backchannel
-session slots.
+Haven't we already solve this for the pNFS file driver that XFS
+implements? i.e. these export operations:
 
-Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
+        int (*get_uuid)(struct super_block *sb, u8 *buf, u32 *len, u64 *offset);
+        int (*map_blocks)(struct inode *inode, loff_t offset,
+                          u64 len, struct iomap *iomap,
+                          bool write, u32 *device_generation);
+        int (*commit_blocks)(struct inode *inode, struct iomap *iomaps,
+                             int nr_iomaps, struct iattr *iattr);
 
+so mapping/allocation of file offset to sector mappings, which can
+then trivially be used to grab the memory address through the bdev
+->direct_access method, yes?
 
-> Trond Myklebust (5):
->  NFSv4.x: Remove hard coded slotids in callback channel
->  NFSv4.x: CB_SEQUENCE should return NFS4ERR_DELAY if still executing
->  NFSv4.x: Enforce the ca_maxresponsesize_cached on the back channel
->  NFSv4.x: Fix wraparound issues when validing the callback sequence id
->  NFSv4.x: Allow multiple callbacks in flight
-> 
-> fs/nfs/callback.h      |  3 ++-
-> fs/nfs/callback_proc.c | 64 ++++++++++++++++++++++++++------------------------
-> fs/nfs/callback_xdr.c  | 12 ++++++----
-> fs/nfs/nfs4proc.c      |  2 +-
-> fs/nfs/nfs4session.c   | 54 ++++++++++++++++++++++++++++++++----------
-> fs/nfs/nfs4session.h   |  8 +++++++
-> 6 files changed, 93 insertions(+), 50 deletions(-)
-> 
-> -- 
-> 2.5.0
+Cheers,
 
---
-Chuck Lever
-
-
-
-
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
