@@ -1,73 +1,79 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wm0-f46.google.com ([74.125.82.46]:34729 "EHLO
-	mail-wm0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752806AbcA0Kw4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Jan 2016 05:52:56 -0500
-Received: by mail-wm0-f46.google.com with SMTP id n5so21880236wmn.1
-        for <linux-nfs@vger.kernel.org>; Wed, 27 Jan 2016 02:52:55 -0800 (PST)
-Subject: Re: [Lsf-pc] [LSF/MM TOPIC] Remote access to pmem on storage targets
-To: Chuck Lever <chuck.lever@oracle.com>, Jan Kara <jack@suse.cz>
-References: <06414D5A-0632-4C74-B76C-038093E8AED3@oracle.com>
- <20160126082533.GR24938@quack.suse.cz>
- <F0E2108B-891C-4570-B486-7DC7C4FB59C4@oracle.com>
-Cc: lsf-pc@lists.linux-foundation.org,
-        Linux RDMA Mailing List <linux-rdma@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-From: Sagi Grimberg <sagig@dev.mellanox.co.il>
-Message-ID: <56A8A183.30805@dev.mellanox.co.il>
-Date: Wed, 27 Jan 2016 12:52:51 +0200
+Received: from smtp-o-1.desy.de ([131.169.56.154]:41632 "EHLO smtp-o-1.desy.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754387AbcA0Kz4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 27 Jan 2016 05:55:56 -0500
+Received: from smtp-map-1.desy.de (smtp-map-1.desy.de [131.169.56.66])
+	by smtp-o-1.desy.de (DESY-O-1) with ESMTP id 96E7F2800E4
+	for <linux-nfs@vger.kernel.org>; Wed, 27 Jan 2016 11:55:54 +0100 (CET)
+Received: from ZITSWEEP2.win.desy.de (zitsweep2.win.desy.de [131.169.97.96])
+	by smtp-map-1.desy.de (DESY_MAP_1) with ESMTP id 6F58114060
+	for <linux-nfs@vger.kernel.org>; Wed, 27 Jan 2016 11:55:54 +0100 (MET)
+Date: Wed, 27 Jan 2016 11:55:53 +0100 (CET)
+From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+To: Bill Baker <bill.baker@oracle.com>
+Cc: linux-nfs@vger.kernel.org, tina hartshorn <tina.hartshorn@oracle.com>
+Message-ID: <500740084.2839770.1453892153686.JavaMail.zimbra@desy.de>
+In-Reply-To: <56A26BFD.30800@oracle.com>
+References: <5665C502.8040508@oracle.com> <56A26BFD.30800@oracle.com>
+Subject: Re: Announcing Connectathon 2016
 MIME-Version: 1.0
-In-Reply-To: <F0E2108B-891C-4570-B486-7DC7C4FB59C4@oracle.com>
-Content-Type: text/plain; charset=windows-1252; format=flowed
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
->> So hashing out details of pNFS layout isn't interesting to many people.
->> But if you want a broader architectural discussion about how to overcome
->> issues (and what those issues actually are) with the use of persistent
->> memory for NAS, then that may be interesting. So what do you actually want?
->
-> I mentioned pNFS briefly only as an example. There have
-> been a variety of proposals and approaches so far, and
-> it's time, I believe, to start focusing our efforts.
->
-> Thus I'm requesting a "broader architectural discussion
-> about how to overcome issues with the use of persistent
-> memory for NAS," in particular how we'd like to do this
-> with the Linux implementations of the iSER, SRP, and
-> NFS/RDMA protocols using DAX/pmem or NVM[ef].
 
-I agree,
+Hi Bill, 
 
-I anticipate that we'll gradually see more and more implementations
-optimizing remote storage access in the presence of pmem devices (maybe
-even not only RDMA?). The straight forward approach would be for each
-implementation to have it's own logic for accessing remote pmem
-devices but I think we have a chance to consolidate that in a single
-API for everyone.
 
-I think the most natural way to start is NFS/RDMA (SCSI would be a bit
-more challenging...)
+I can't make it this time and, what is most important part of Connectatons,
+will miss the diner at New Krung Thai. Have a nice time!
 
-> It is not going to be like the well-worn paradigm that
-> involves a page cache on the storage target backed by
-> slow I/O operations. The protocol layers on storage
-> targets need a way to discover memory addresses of
-> persistent memory that will be used as source/sink
-> buffers for RDMA operations.
-> And making data durable after a write is going to need
-> some thought. So I believe some new plumbing will be
-> necessary.
+Tigran.
 
-The challenge here is persistence semantics that are missing in
-today's HCAs, so I think we should aim to have a SW solution for
-remote persistence semantics with sufficient hooks for possible
-HW that might be able to have it in the future...
 
-> I know this is not everyone's cup of tea. A BoF would
-> be fine, if the PC believes that is a better venue (and
-> I'm kind of leaning that way myself).
 
-I'd be happy to join such a discussion.
+----- Original Message -----
+> From: "Bill Baker" <bill.baker@oracle.com>
+> To: nfsv4@ietf.org
+> Cc: linux-nfs@vger.kernel.org, "tina hartshorn" <tina.hartshorn@oracle.com>
+> Sent: Friday, January 22, 2016 6:50:53 PM
+> Subject: Re: Announcing Connectathon 2016
+
+> Registration for Connecathon 2016 is open!  Please
+> register early to help us do space & catering planning.
+> 
+> On 12/07/15 11:42, Bill Baker wrote:
+>>
+>> Greetings,
+>>
+>> Oracle will be hosting Connectathon 2016, running
+>> from 2/29/2016 thru 3/4/2016.
+>>
+>> I've updated the website, http://www.connectathon.info
+>> to reflect the dates, and will be adding the registration
+>> form and CDA soon. We'll be keeping our "no registration
+>> fee" policy from last year, for organizations with 5 or
+>> fewer attendees.
+>>
+>> Please contact our event coordinator,
+>> Tina.Hartshorn@oracle.com, if you need
+>> additional information or have special requirements.
+>>
+>> Even if you aren't ready to register, it is still useful
+>> to us to provide an approximation of the number of
+>> attendees, for catering and space planning.
+>>
+>> Feel free to forward this on to other interested
+>> parties.
+>>
+>> Regards,
+> 
+> 
+> --
+> Bill Baker, Oracle ZFSSA/NFS development
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
