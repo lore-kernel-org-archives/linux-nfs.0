@@ -1,197 +1,129 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:48780 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932256AbcA0Qjg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 27 Jan 2016 11:39:36 -0500
-Subject: Re: [Linux-cachefs] [PATCH] CacheFiles: Provide read-and-reset
- release counters for cachefilesd
-To: David Howells <dhowells@redhat.com>, linux-cachefs@redhat.com
-References: <20160125164111.9466.79976.stgit@warthog.procyon.org.uk>
-Cc: linux-nfs@vger.kernel.org, fsdevel@vger.kernel.org, neilb@suse.de,
-        jlayton@poochiereds.net, jsnow@redhat.com
-From: Steve Dickson <SteveD@redhat.com>
-Message-ID: <56A8F2C6.6030703@RedHat.com>
-Date: Wed, 27 Jan 2016 11:39:34 -0500
+Received: from mail-wm0-f51.google.com ([74.125.82.51]:37233 "EHLO
+	mail-wm0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932263AbcA0Qye (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Jan 2016 11:54:34 -0500
+Received: by mail-wm0-f51.google.com with SMTP id n5so35974288wmn.0
+        for <linux-nfs@vger.kernel.org>; Wed, 27 Jan 2016 08:54:34 -0800 (PST)
+Message-ID: <56A8F646.5020003@plexistor.com>
+Date: Wed, 27 Jan 2016 18:54:30 +0200
+From: Boaz Harrosh <boaz@plexistor.com>
 MIME-Version: 1.0
-In-Reply-To: <20160125164111.9466.79976.stgit@warthog.procyon.org.uk>
+To: Chuck Lever <chuck.lever@oracle.com>, lsf-pc@lists.linux-foundation.org,
+        Dan Williams <dan.j.williams@intel.com>,
+        Yigal Korman <yigal@plexistor.com>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Linux RDMA Mailing List <linux-rdma@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>, Jan Kara <jack@suse.cz>,
+        Ric Wheeler <rwheeler@redhat.com>
+Subject: [LSF/MM TOPIC/ATTEND] RDMA passive target
+References: <06414D5A-0632-4C74-B76C-038093E8AED3@oracle.com>
+In-Reply-To: <06414D5A-0632-4C74-B76C-038093E8AED3@oracle.com>
 Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On 01/25/2016 11:19 PM, Chuck Lever wrote:
+> I'd like to propose a discussion of how to take advantage of
+> persistent memory in network-attached storage scenarios.
+> 
+> RDMA runs on high speed network fabrics and offloads data
+> transfer from host CPUs. Thus it is a good match to the
+> performance characteristics of persistent memory.
+> 
+> Today Linux supports iSER, SRP, and NFS/RDMA on RDMA
+> fabrics. What kind of changes are needed in the Linux I/O
+> stack (in particular, storage targets) and in these storage
+> protocols to get the most benefit from ultra-low latency
+> storage?
+> 
+> There have been recent proposals about how storage protocols
+> and implementations might need to change (eg. Tom Talpey's
+> SNIA proposals for changing to a push data transfer model,
+> Sagi's proposal to utilize DAX under the NFS/RDMA server,
+> and my proposal for a new pNFS layout to drive RDMA data
+> transfer directly).
+> 
+> The outcome of the discussion would be to understand what
+> people are working on now and what is the desired
+> architectural approach in order to determine where storage
+> developers should be focused.
+> 
+> This could be either a BoF or a session during the main
+> tracks. There is sure to be a narrow segment of each
+> track's attendees that would have interest in this topic.
+> 
+
+I would like to attend this talk, and also talk about
+a target we have been developing / utilizing that we would like
+to propose as a Linux standard driver.
+(It would be very important for me to also attend the other
+ pmem talks in LSF, as well as some of the MM and FS talks
+ proposed so far)
+
+RDMA passive target
+~~~~~~~~~~~~~~~~~~~
+
+The idea is to have a storage brick that exports a very
+low level pure RDMA API to access its memory based storage.
+The brick might be battery backed volatile based memory, or
+pmem based. In any case the brick might utilize a much higher
+capacity then memory by utilizing a "tiering" to slower media,
+which is enabled by the API.
+
+The API is simple:
+
+1. Alloc_2M_block_at_virtual_address (ADDR_64_BIT)
+   ADDR_64_BIT is any virtual address and defines the logical ID of the block.
+   If the ID is already allocated an error is returned.
+   If storage is exhausted return => ENOSPC
+2. Free_2M_block_at_virtual_address (ADDR_64_BIT)
+   Space for logical ID is returned to free store and the ID becomes free for
+   a new allocation.
+3. map_virtual_address(ADDR_64_BIT, flags) => RDMA handle
+   previously allocated virtual address is locked in memory and an RDMA handle
+   is returned.
+   Flags: read-only, read-write, shared and so on...
+4. unmap__virtual_address(ADDR_64_BIT)
+   At this point the brick can write data to slower storage if memory space
+   is needed. The RDMA handle from [3] is revoked.
+5. List_mapped_IDs
+   An extent based list of all allocated ranges. (This is usually used on
+   mount or after a crash)
+
+The dumb brick is not the Network allocator / storage manager at all. and it
+is not a smart target / server. like an iser-target or pnfs-DS. A SW defined
+application can do that, on top of the Dumb-brick. The motivation is a low level
+very low latency API+library, which can be built upon for higher protocols or
+used directly for very low latency cluster.
+It does however mange a virtual allocation map of logical to physical mapping
+of the 2M blocks.
+
+Currently both drivers initiator and target are in Kernel, but with
+latest advancement by Dan Williams it can be implemented in user-mode as well,
+Almost.
+
+The almost is because:
+1. If the target is over a /dev/pmemX then all is fine we have 2M contiguous
+   memory blocks.
+2. If the target is over an FS, we have a proposal pending for an falloc_2M_flag
+   to ask the FS for a contiguous 2M allocations only. If any of the 2M allocations
+   fail then return ENOSPC from falloc. This way we guaranty that each 2M block can be
+   mapped by a single RDAM handle.
+   An FS for this purpose is nice for an over-allocated / dynamic space usage by
+   a target and other resources in the server.
 
 
-On 01/25/2016 11:41 AM, David Howells wrote:
-> Provide read-and-reset objects- and blocks-released counters for cachefilesd
-> to use to work out whether there's anything new that can be culled.
-> 
-> One of the problems cachefilesd has is that if all the objects in the cache
-> are pinned by inodes lying dormant in the kernel inode cache, there isn't
-> anything for it to cull.  In such a case, it just spins around walking the
-> filesystem tree and scanning for something to cull.  This eats up a lot of
-> CPU time.
-> 
-> By telling cachefilesd if there have been any releases, the daemon can
-> sleep until there is the possibility of something to do.
-> 
-> cachefilesd finds this information by the following means:
-> 
->  (1) When the control fd is read, the kernel presents a list of values of
->      interest.  "freleased=N" and "breleased=N" are added to this list to
->      indicate the number of files released and number of blocks released
->      since the last read call.  At this point the counters are reset.
-> 
->  (2) POLLIN is signalled if the number of files released becomes greater
->      than 0.
-> 
-> Note that by 'released' it just means that the kernel has released its
-> interest in those files for the moment, not necessarily that the files
-> should be deleted from the cache.
-> 
-> Signed-off-by: David Howells <dhowells@redhat.com>
-Reviewed-by: Steve Dickson <steved@redhat.com>
+RDMA Initiator
+~~~~~~~~~~~~~~~~~~~
 
-steved.
+The initiator is just a simple library. Both usermode and Kernel side should
+be available, for direct access to the RDMA-passive-brick.
 
-> ---
+Thanks.
+Boaz
+
+> --
+> Chuck Lever
 > 
->  fs/cachefiles/daemon.c    |   13 ++++++++++---
->  fs/cachefiles/interface.c |   11 ++---------
->  fs/cachefiles/internal.h  |    4 ++++
->  fs/cachefiles/namei.c     |   28 +++++++++++++++++++++++-----
->  4 files changed, 39 insertions(+), 17 deletions(-)
-> 
-> diff --git a/fs/cachefiles/daemon.c b/fs/cachefiles/daemon.c
-> index 452e98dd7560..1ee54ffd3a24 100644
-> --- a/fs/cachefiles/daemon.c
-> +++ b/fs/cachefiles/daemon.c
-> @@ -162,6 +162,8 @@ static ssize_t cachefiles_daemon_read(struct file *file, char __user *_buffer,
->  				      size_t buflen, loff_t *pos)
->  {
->  	struct cachefiles_cache *cache = file->private_data;
-> +	unsigned long long b_released;
-> +	unsigned f_released;
->  	char buffer[256];
->  	int n;
->  
-> @@ -174,6 +176,8 @@ static ssize_t cachefiles_daemon_read(struct file *file, char __user *_buffer,
->  	cachefiles_has_space(cache, 0, 0);
->  
->  	/* summarise */
-> +	f_released = atomic_xchg(&cache->f_released, 0);
-> +	b_released = atomic_long_xchg(&cache->b_released, 0);
->  	clear_bit(CACHEFILES_STATE_CHANGED, &cache->flags);
->  
->  	n = snprintf(buffer, sizeof(buffer),
-> @@ -183,15 +187,18 @@ static ssize_t cachefiles_daemon_read(struct file *file, char __user *_buffer,
->  		     " fstop=%llx"
->  		     " brun=%llx"
->  		     " bcull=%llx"
-> -		     " bstop=%llx",
-> +		     " bstop=%llx"
-> +		     " freleased=%x"
-> +		     " breleased=%llx",
->  		     test_bit(CACHEFILES_CULLING, &cache->flags) ? '1' : '0',
->  		     (unsigned long long) cache->frun,
->  		     (unsigned long long) cache->fcull,
->  		     (unsigned long long) cache->fstop,
->  		     (unsigned long long) cache->brun,
->  		     (unsigned long long) cache->bcull,
-> -		     (unsigned long long) cache->bstop
-> -		     );
-> +		     (unsigned long long) cache->bstop,
-> +		     f_released,
-> +		     b_released);
->  
->  	if (n > buflen)
->  		return -EMSGSIZE;
-> diff --git a/fs/cachefiles/interface.c b/fs/cachefiles/interface.c
-> index afa023dded5b..ee0cb116ff40 100644
-> --- a/fs/cachefiles/interface.c
-> +++ b/fs/cachefiles/interface.c
-> @@ -291,15 +291,8 @@ static void cachefiles_drop_object(struct fscache_object *_object)
->  	}
->  
->  	/* note that the object is now inactive */
-> -	if (test_bit(CACHEFILES_OBJECT_ACTIVE, &object->flags)) {
-> -		write_lock(&cache->active_lock);
-> -		if (!test_and_clear_bit(CACHEFILES_OBJECT_ACTIVE,
-> -					&object->flags))
-> -			BUG();
-> -		rb_erase(&object->active_node, &cache->active_nodes);
-> -		wake_up_bit(&object->flags, CACHEFILES_OBJECT_ACTIVE);
-> -		write_unlock(&cache->active_lock);
-> -	}
-> +	if (test_bit(CACHEFILES_OBJECT_ACTIVE, &object->flags))
-> +		cachefiles_mark_object_inactive(cache, object);
->  
->  	dput(object->dentry);
->  	object->dentry = NULL;
-> diff --git a/fs/cachefiles/internal.h b/fs/cachefiles/internal.h
-> index 9c4b737a54df..2fcde1a34b7c 100644
-> --- a/fs/cachefiles/internal.h
-> +++ b/fs/cachefiles/internal.h
-> @@ -66,6 +66,8 @@ struct cachefiles_cache {
->  	struct rb_root			active_nodes;	/* active nodes (can't be culled) */
->  	rwlock_t			active_lock;	/* lock for active_nodes */
->  	atomic_t			gravecounter;	/* graveyard uniquifier */
-> +	atomic_t			f_released;	/* number of objects released lately */
-> +	atomic_long_t			b_released;	/* number of blocks released lately */
->  	unsigned			frun_percent;	/* when to stop culling (% files) */
->  	unsigned			fcull_percent;	/* when to start culling (% files) */
->  	unsigned			fstop_percent;	/* when to stop allocating (% files) */
-> @@ -157,6 +159,8 @@ extern char *cachefiles_cook_key(const u8 *raw, int keylen, uint8_t type);
->  /*
->   * namei.c
->   */
-> +extern void cachefiles_mark_object_inactive(struct cachefiles_cache *cache,
-> +					    struct cachefiles_object *object);
->  extern int cachefiles_delete_object(struct cachefiles_cache *cache,
->  				    struct cachefiles_object *object);
->  extern int cachefiles_walk_to_object(struct cachefiles_object *parent,
-> diff --git a/fs/cachefiles/namei.c b/fs/cachefiles/namei.c
-> index c4b893453e0e..1ad16ae7ab96 100644
-> --- a/fs/cachefiles/namei.c
-> +++ b/fs/cachefiles/namei.c
-> @@ -258,6 +258,28 @@ requeue:
->  }
->  
->  /*
-> + * Mark an object as being inactive.
-> + */
-> +void cachefiles_mark_object_inactive(struct cachefiles_cache *cache,
-> +				     struct cachefiles_object *object)
-> +{
-> +	write_lock(&cache->active_lock);
-> +	rb_erase(&object->active_node, &cache->active_nodes);
-> +	clear_bit(CACHEFILES_OBJECT_ACTIVE, &object->flags);
-> +	write_unlock(&cache->active_lock);
-> +
-> +	wake_up_bit(&object->flags, CACHEFILES_OBJECT_ACTIVE);
-> +
-> +	/* This object can now be culled, so we need to let the daemon know
-> +	 * that there is something it can remove if it needs to.
-> +	 */
-> +	atomic_long_add(d_backing_inode(object->dentry)->i_blocks,
-> +			&cache->b_released);
-> +	if (atomic_inc_return(&cache->f_released))
-> +		cachefiles_state_changed(cache);
-> +}
-> +
-> +/*
->   * delete an object representation from the cache
->   * - file backed objects are unlinked
->   * - directory backed objects are stuffed into the graveyard for userspace to
-> @@ -684,11 +706,7 @@ mark_active_timed_out:
->  
->  check_error:
->  	_debug("check error %d", ret);
-> -	write_lock(&cache->active_lock);
-> -	rb_erase(&object->active_node, &cache->active_nodes);
-> -	clear_bit(CACHEFILES_OBJECT_ACTIVE, &object->flags);
-> -	wake_up_bit(&object->flags, CACHEFILES_OBJECT_ACTIVE);
-> -	write_unlock(&cache->active_lock);
-> +	cachefiles_mark_object_inactive(cache, object);
->  release_dentry:
->  	dput(object->dentry);
->  	object->dentry = NULL;
-> 
+
