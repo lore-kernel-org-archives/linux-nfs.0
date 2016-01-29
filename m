@@ -1,116 +1,197 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:43991 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751193AbcA2ARx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 28 Jan 2016 19:17:53 -0500
-From: NeilBrown <neilb@suse.com>
-To: Al Viro <viro@ZenIV.linux.org.uk>, Dave Chinner <dchinner@redhat.com>
-Date: Fri, 29 Jan 2016 11:17:43 +1100
-Cc: LKML <linux-kernel@vger.kernel.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH/RFC] VFS: Improve fairness when locking the per-superblock s_anon list
-Message-ID: <87fuxh1bo8.fsf@notabene.neil.brown.name>
-MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-	micalg=pgp-sha256; protocol="application/pgp-signature"
+Received: from mail-ig0-f179.google.com ([209.85.213.179]:37805 "EHLO
+	mail-ig0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751668AbcA2Edw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Jan 2016 23:33:52 -0500
+Received: by mail-ig0-f179.google.com with SMTP id h5so26615567igh.0
+        for <linux-nfs@vger.kernel.org>; Thu, 28 Jan 2016 20:33:52 -0800 (PST)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 1/2] pNFS: Fix missing layoutreturn calls
+Date: Thu, 28 Jan 2016 23:33:13 -0500
+Message-Id: <1454041994-58090-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+The layoutreturn code currently relies on pnfs_put_lseg() to initiate the
+RPC call when conditions are right. A problem arises when we want to
+free the layout segment from inside an inode->i_lock section (e.g. in
+pnfs_clear_request_commit()), since we cannot sleep.
 
+The workaround is to move the actual call to pnfs_send_layoutreturn()
+to pnfs_put_layout_hdr(), which doesn't have this restriction.
 
-bit-spin-locks, as used for dcache hash chains, are not fair.
-This is not a problem for the dcache hash table as different CPUs are
-likely to access different entries in the hash table so high contention
-is not expected.
-However anonymous dentryies (created by NFSD) all live on a single hash
-chain "s_anon" and the bitlock on this can be highly contended, resulting
-in soft-lockup warnings.
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfs/pnfs.c | 118 ++++++++++++++++++++++++++++------------------------------
+ 1 file changed, 56 insertions(+), 62 deletions(-)
 
-So introduce a global (fair) spinlock and take it before grabing the
-bitlock on s_anon.  This provides fairness and makes the warnings go away.
-
-We could alternately use s_inode_list_lock, or add another spinlock
-to struct super_block.  Suggestions?
-
-Signed-off-by: NeilBrown <neilb@suse.com>
-=2D--
-
-Dave: I'd guess you would be against using the new s_inode_list_lock
-for this because it is already highly contended - yes?
-Is it worth adding another spinlock to 'struct super_block' ?
-
-Thanks,
-NeilBrown
-
-
- fs/dcache.c | 8 ++++++++
- 1 file changed, 8 insertions(+)
-
-diff --git a/fs/dcache.c b/fs/dcache.c
-index 92d5140de851..e83f1ac1540c 100644
-=2D-- a/fs/dcache.c
-+++ b/fs/dcache.c
-@@ -104,6 +104,8 @@ static unsigned int d_hash_shift __read_mostly;
-=20
- static struct hlist_bl_head *dentry_hashtable __read_mostly;
-=20
-+static DEFINE_SPINLOCK(s_anon_lock);
-+
- static inline struct hlist_bl_head *d_hash(const struct dentry *parent,
- 					unsigned int hash)
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index a3592cc34a20..9c20685d4961 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -52,9 +52,7 @@ static DEFINE_SPINLOCK(pnfs_spinlock);
+  */
+ static LIST_HEAD(pnfs_modules_tbl);
+ 
+-static int
+-pnfs_send_layoutreturn(struct pnfs_layout_hdr *lo, const nfs4_stateid *stateid,
+-		       enum pnfs_iomode iomode, bool sync);
++static void pnfs_layoutreturn_before_put_layout_hdr(struct pnfs_layout_hdr *lo);
+ 
+ /* Return the registered pnfs layout driver module matching given id */
+ static struct pnfs_layoutdriver_type *
+@@ -243,6 +241,8 @@ pnfs_put_layout_hdr(struct pnfs_layout_hdr *lo)
  {
-@@ -490,10 +492,14 @@ void __d_drop(struct dentry *dentry)
- 		else
- 			b =3D d_hash(dentry->d_parent, dentry->d_name.hash);
-=20
-+		if (b =3D=3D &dentry->d_sb->s_anon)
-+			spin_lock(&s_anon_lock);
- 		hlist_bl_lock(b);
- 		__hlist_bl_del(&dentry->d_hash);
- 		dentry->d_hash.pprev =3D NULL;
- 		hlist_bl_unlock(b);
-+		if (b =3D=3D &dentry->d_sb->s_anon)
-+			spin_unlock(&s_anon_lock);
- 		dentry_rcuwalk_invalidate(dentry);
- 	}
+ 	struct inode *inode = lo->plh_inode;
+ 
++	pnfs_layoutreturn_before_put_layout_hdr(lo);
++
+ 	if (atomic_dec_and_lock(&lo->plh_refcount, &inode->i_lock)) {
+ 		if (!list_empty(&lo->plh_segs))
+ 			WARN_ONCE(1, "NFS: BUG unfreed layout segments.\n");
+@@ -345,58 +345,6 @@ pnfs_layout_remove_lseg(struct pnfs_layout_hdr *lo,
+ 	rpc_wake_up(&NFS_SERVER(inode)->roc_rpcwaitq);
  }
-@@ -1978,9 +1984,11 @@ static struct dentry *__d_obtain_alias(struct inode =
-*inode, int disconnected)
- 	spin_lock(&tmp->d_lock);
- 	__d_set_inode_and_type(tmp, inode, add_flags);
- 	hlist_add_head(&tmp->d_u.d_alias, &inode->i_dentry);
-+	spin_lock(&s_anon_lock);
- 	hlist_bl_lock(&tmp->d_sb->s_anon);
- 	hlist_bl_add_head(&tmp->d_hash, &tmp->d_sb->s_anon);
- 	hlist_bl_unlock(&tmp->d_sb->s_anon);
-+	spin_unlock(&s_anon_lock);
- 	spin_unlock(&tmp->d_lock);
- 	spin_unlock(&inode->i_lock);
- 	security_d_instantiate(tmp, inode);
-=2D-=20
-2.7.0
+ 
+-/* Return true if layoutreturn is needed */
+-static bool
+-pnfs_layout_need_return(struct pnfs_layout_hdr *lo,
+-			struct pnfs_layout_segment *lseg)
+-{
+-	struct pnfs_layout_segment *s;
+-
+-	if (!test_and_clear_bit(NFS_LSEG_LAYOUTRETURN, &lseg->pls_flags))
+-		return false;
+-
+-	list_for_each_entry(s, &lo->plh_segs, pls_list)
+-		if (s != lseg && test_bit(NFS_LSEG_LAYOUTRETURN, &s->pls_flags))
+-			return false;
+-
+-	return true;
+-}
+-
+-static bool
+-pnfs_prepare_layoutreturn(struct pnfs_layout_hdr *lo)
+-{
+-	if (test_and_set_bit(NFS_LAYOUT_RETURN, &lo->plh_flags))
+-		return false;
+-	lo->plh_return_iomode = 0;
+-	pnfs_get_layout_hdr(lo);
+-	clear_bit(NFS_LAYOUT_RETURN_BEFORE_CLOSE, &lo->plh_flags);
+-	return true;
+-}
+-
+-static void pnfs_layoutreturn_before_put_lseg(struct pnfs_layout_segment *lseg,
+-		struct pnfs_layout_hdr *lo, struct inode *inode)
+-{
+-	lo = lseg->pls_layout;
+-	inode = lo->plh_inode;
+-
+-	spin_lock(&inode->i_lock);
+-	if (pnfs_layout_need_return(lo, lseg)) {
+-		nfs4_stateid stateid;
+-		enum pnfs_iomode iomode;
+-		bool send;
+-
+-		nfs4_stateid_copy(&stateid, &lo->plh_stateid);
+-		iomode = lo->plh_return_iomode;
+-		send = pnfs_prepare_layoutreturn(lo);
+-		spin_unlock(&inode->i_lock);
+-		if (send) {
+-			/* Send an async layoutreturn so we dont deadlock */
+-			pnfs_send_layoutreturn(lo, &stateid, iomode, false);
+-		}
+-	} else
+-		spin_unlock(&inode->i_lock);
+-}
+-
+ void
+ pnfs_put_lseg(struct pnfs_layout_segment *lseg)
+ {
+@@ -410,15 +358,8 @@ pnfs_put_lseg(struct pnfs_layout_segment *lseg)
+ 		atomic_read(&lseg->pls_refcount),
+ 		test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
+ 
+-	/* Handle the case where refcount != 1 */
+-	if (atomic_add_unless(&lseg->pls_refcount, -1, 1))
+-		return;
+-
+ 	lo = lseg->pls_layout;
+ 	inode = lo->plh_inode;
+-	/* Do we need a layoutreturn? */
+-	if (test_bit(NFS_LSEG_LAYOUTRETURN, &lseg->pls_flags))
+-		pnfs_layoutreturn_before_put_lseg(lseg, lo, inode);
+ 
+ 	if (atomic_dec_and_lock(&lseg->pls_refcount, &inode->i_lock)) {
+ 		if (test_bit(NFS_LSEG_VALID, &lseg->pls_flags)) {
+@@ -937,6 +878,17 @@ void pnfs_clear_layoutreturn_waitbit(struct pnfs_layout_hdr *lo)
+ 	rpc_wake_up(&NFS_SERVER(lo->plh_inode)->roc_rpcwaitq);
+ }
+ 
++static bool
++pnfs_prepare_layoutreturn(struct pnfs_layout_hdr *lo)
++{
++	if (test_and_set_bit(NFS_LAYOUT_RETURN, &lo->plh_flags))
++		return false;
++	lo->plh_return_iomode = 0;
++	pnfs_get_layout_hdr(lo);
++	clear_bit(NFS_LAYOUT_RETURN_BEFORE_CLOSE, &lo->plh_flags);
++	return true;
++}
++
+ static int
+ pnfs_send_layoutreturn(struct pnfs_layout_hdr *lo, const nfs4_stateid *stateid,
+ 		       enum pnfs_iomode iomode, bool sync)
+@@ -971,6 +923,48 @@ out:
+ 	return status;
+ }
+ 
++/* Return true if layoutreturn is needed */
++static bool
++pnfs_layout_need_return(struct pnfs_layout_hdr *lo)
++{
++	struct pnfs_layout_segment *s;
++
++	if (!test_bit(NFS_LAYOUT_RETURN_BEFORE_CLOSE, &lo->plh_flags))
++		return false;
++
++	/* Defer layoutreturn until all lsegs are done */
++	list_for_each_entry(s, &lo->plh_segs, pls_list) {
++		if (test_bit(NFS_LSEG_LAYOUTRETURN, &s->pls_flags))
++			return false;
++	}
++
++	return true;
++}
++
++static void pnfs_layoutreturn_before_put_layout_hdr(struct pnfs_layout_hdr *lo)
++{
++	struct inode *inode= lo->plh_inode;
++
++	if (!test_bit(NFS_LAYOUT_RETURN_BEFORE_CLOSE, &lo->plh_flags))
++		return;
++	spin_lock(&inode->i_lock);
++	if (pnfs_layout_need_return(lo)) {
++		nfs4_stateid stateid;
++		enum pnfs_iomode iomode;
++		bool send;
++
++		nfs4_stateid_copy(&stateid, &lo->plh_stateid);
++		iomode = lo->plh_return_iomode;
++		send = pnfs_prepare_layoutreturn(lo);
++		spin_unlock(&inode->i_lock);
++		if (send) {
++			/* Send an async layoutreturn so we dont deadlock */
++			pnfs_send_layoutreturn(lo, &stateid, iomode, false);
++		}
++	} else
++		spin_unlock(&inode->i_lock);
++}
++
+ /*
+  * Initiates a LAYOUTRETURN(FILE), and removes the pnfs_layout_hdr
+  * when the layout segment list is empty.
+-- 
+2.5.0
 
-
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2
-
-iQIcBAEBCAAGBQJWqq+nAAoJEDnsnt1WYoG5ZbQP/izIjB3WxO+OPSZIRu/Q0hui
-UbFQGfCwfXPpsdqPa7lMxGWB0gOaPy5pK3/rIY0gdCT0Z8sszbmPleEsTgG07MJA
-si0f3NEqpudvO/6e7ywulvBR/M2NGqjDcR6dqc6/e8YihwWf9OXQPn0qZu1lLwm0
-eyHd9svWRqPcGF3WCWD5msYLstN5QvtRaGI4zUloUQoNxLDhubnCzgWtcOZbjjI0
-fonpiIeHm6T5Dywt0OhJ6tuZQToHlCJ7XjF08HSqWNTLatb4PRmaMlxt5qzfiQzv
-lJy4UFQw9ve1YukeAfRYuYJFfTfPNpbbujfpY4yFaSyaDkFNBlFX2ZnfMebBUd0e
-ZZmWOCJ4rVmB1lSy8RRe7LNx1Y64dvSVpr6nN/B1QU5IavIdgf6KSJkbSoH0vG2U
-KCASWQzhPWNNFCI0UIfzzvMPevxP9KkcPH2VYXt5ccYSCJVpVCfMYQf9rvCmkn6n
-o+g9Zh0Iwsq0Nyk2XworQgYpYtC8R23WzhgNq5VgISfyhjCgopk7rR6xqkU1PRo1
-OXjHJpEiHSmraS/bnht5HjPoEKKlPLhS0wQId/9UgKAaBYJTbDg/BPAjFViKhU6T
-F1Kcyv+xNwHfUA+TWQJFq3CGtgU9adLqdaagCvX5+Zrk3txQ6wcbDlfPLA8V/U3H
-dQLIMs+y8STUNhpDltBF
-=Dmvx
------END PGP SIGNATURE-----
---=-=-=--
