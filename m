@@ -1,68 +1,116 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from e36.co.us.ibm.com ([32.97.110.154]:37061 "EHLO
-	e36.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751868AbcA1Wjk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Jan 2016 17:39:40 -0500
-Received: from localhost
-	by e36.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <malahal@us.ibm.com>;
-	Thu, 28 Jan 2016 15:39:40 -0700
-Received: from b01cxnp22036.gho.pok.ibm.com (b01cxnp22036.gho.pok.ibm.com [9.57.198.26])
-	by d03dlp02.boulder.ibm.com (Postfix) with ESMTP id C79EB3E4003F
-	for <linux-nfs@vger.kernel.org>; Thu, 28 Jan 2016 15:39:36 -0700 (MST)
-Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
-	by b01cxnp22036.gho.pok.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id u0SMdadg34209806
-	for <linux-nfs@vger.kernel.org>; Thu, 28 Jan 2016 22:39:36 GMT
-Received: from d01av01.pok.ibm.com (localhost [127.0.0.1])
-	by d01av01.pok.ibm.com (8.14.4/8.14.4/NCO v10.0 AVout) with ESMTP id u0SMdZPx005678
-	for <linux-nfs@vger.kernel.org>; Thu, 28 Jan 2016 17:39:35 -0500
-From: Malahal Naineni <malahal@us.ibm.com>
-To: linux-nfs@vger.kernel.org
-Cc: SteveD@redhat.com, Malahal Naineni <malahal@us.ibm.com>
-Subject: [PATCH] Ignore whitespace at the beginning of option tags
-Date: Thu, 28 Jan 2016 16:38:47 -0600
-Message-Id: <1454020727-1814-1-git-send-email-malahal@us.ibm.com>
+Received: from mx2.suse.de ([195.135.220.15]:43991 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751193AbcA2ARx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 28 Jan 2016 19:17:53 -0500
+From: NeilBrown <neilb@suse.com>
+To: Al Viro <viro@ZenIV.linux.org.uk>, Dave Chinner <dchinner@redhat.com>
+Date: Fri, 29 Jan 2016 11:17:43 +1100
+Cc: LKML <linux-kernel@vger.kernel.org>, linux-nfs@vger.kernel.org
+Subject: [PATCH/RFC] VFS: Improve fairness when locking the per-superblock s_anon list
+Message-ID: <87fuxh1bo8.fsf@notabene.neil.brown.name>
+MIME-Version: 1.0
+Content-Type: multipart/signed; boundary="=-=-=";
+	micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The following should work now:
+--=-=-=
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-[General]
-	Domain = local.domain.edu
 
-Signed-off-by: Malahal Naineni <malahal@us.ibm.com>
----
- cfg.c | 9 ++++++++-
- 1 file changed, 8 insertions(+), 1 deletion(-)
+bit-spin-locks, as used for dcache hash chains, are not fair.
+This is not a problem for the dcache hash table as different CPUs are
+likely to access different entries in the hash table so high contention
+is not expected.
+However anonymous dentryies (created by NFSD) all live on a single hash
+chain "s_anon" and the bitlock on this can be highly contended, resulting
+in soft-lockup warnings.
 
-diff --git a/cfg.c b/cfg.c
-index c615d24..e0ab839 100644
---- a/cfg.c
-+++ b/cfg.c
-@@ -210,6 +210,7 @@ static void
- conf_parse_line (int trans, char *line, size_t sz)
+So introduce a global (fair) spinlock and take it before grabing the
+bitlock on s_anon.  This provides fairness and makes the warnings go away.
+
+We could alternately use s_inode_list_lock, or add another spinlock
+to struct super_block.  Suggestions?
+
+Signed-off-by: NeilBrown <neilb@suse.com>
+=2D--
+
+Dave: I'd guess you would be against using the new s_inode_list_lock
+for this because it is already highly contended - yes?
+Is it worth adding another spinlock to 'struct super_block' ?
+
+Thanks,
+NeilBrown
+
+
+ fs/dcache.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/fs/dcache.c b/fs/dcache.c
+index 92d5140de851..e83f1ac1540c 100644
+=2D-- a/fs/dcache.c
++++ b/fs/dcache.c
+@@ -104,6 +104,8 @@ static unsigned int d_hash_shift __read_mostly;
+=20
+ static struct hlist_bl_head *dentry_hashtable __read_mostly;
+=20
++static DEFINE_SPINLOCK(s_anon_lock);
++
+ static inline struct hlist_bl_head *d_hash(const struct dentry *parent,
+ 					unsigned int hash)
  {
-   char *val;
-+  char *tag;
-   size_t i;
-   int j;
-   static char *section = 0;
-@@ -262,8 +263,14 @@ conf_parse_line (int trans, char *line, size_t sz)
- 	/* Skip trailing whitespace, if any */
- 	for (j = sz - (val - line) - 1; j > 0 && isspace (val[j]); j--)
- 	  val[j] = '\0';
-+
-+	/* Skip beginning white space */
-+	tag = line;
-+	while (isspace(*tag))
-+		tag++;
-+
- 	/* XXX Perhaps should we not ignore errors?  */
--	conf_set (trans, section, line, val, 0, 0);
-+	conf_set (trans, section, tag, val, 0, 0);
- 	return;
-       }
- 
--- 
-1.8.3.1
+@@ -490,10 +492,14 @@ void __d_drop(struct dentry *dentry)
+ 		else
+ 			b =3D d_hash(dentry->d_parent, dentry->d_name.hash);
+=20
++		if (b =3D=3D &dentry->d_sb->s_anon)
++			spin_lock(&s_anon_lock);
+ 		hlist_bl_lock(b);
+ 		__hlist_bl_del(&dentry->d_hash);
+ 		dentry->d_hash.pprev =3D NULL;
+ 		hlist_bl_unlock(b);
++		if (b =3D=3D &dentry->d_sb->s_anon)
++			spin_unlock(&s_anon_lock);
+ 		dentry_rcuwalk_invalidate(dentry);
+ 	}
+ }
+@@ -1978,9 +1984,11 @@ static struct dentry *__d_obtain_alias(struct inode =
+*inode, int disconnected)
+ 	spin_lock(&tmp->d_lock);
+ 	__d_set_inode_and_type(tmp, inode, add_flags);
+ 	hlist_add_head(&tmp->d_u.d_alias, &inode->i_dentry);
++	spin_lock(&s_anon_lock);
+ 	hlist_bl_lock(&tmp->d_sb->s_anon);
+ 	hlist_bl_add_head(&tmp->d_hash, &tmp->d_sb->s_anon);
+ 	hlist_bl_unlock(&tmp->d_sb->s_anon);
++	spin_unlock(&s_anon_lock);
+ 	spin_unlock(&tmp->d_lock);
+ 	spin_unlock(&inode->i_lock);
+ 	security_d_instantiate(tmp, inode);
+=2D-=20
+2.7.0
 
+
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2
+
+iQIcBAEBCAAGBQJWqq+nAAoJEDnsnt1WYoG5ZbQP/izIjB3WxO+OPSZIRu/Q0hui
+UbFQGfCwfXPpsdqPa7lMxGWB0gOaPy5pK3/rIY0gdCT0Z8sszbmPleEsTgG07MJA
+si0f3NEqpudvO/6e7ywulvBR/M2NGqjDcR6dqc6/e8YihwWf9OXQPn0qZu1lLwm0
+eyHd9svWRqPcGF3WCWD5msYLstN5QvtRaGI4zUloUQoNxLDhubnCzgWtcOZbjjI0
+fonpiIeHm6T5Dywt0OhJ6tuZQToHlCJ7XjF08HSqWNTLatb4PRmaMlxt5qzfiQzv
+lJy4UFQw9ve1YukeAfRYuYJFfTfPNpbbujfpY4yFaSyaDkFNBlFX2ZnfMebBUd0e
+ZZmWOCJ4rVmB1lSy8RRe7LNx1Y64dvSVpr6nN/B1QU5IavIdgf6KSJkbSoH0vG2U
+KCASWQzhPWNNFCI0UIfzzvMPevxP9KkcPH2VYXt5ccYSCJVpVCfMYQf9rvCmkn6n
+o+g9Zh0Iwsq0Nyk2XworQgYpYtC8R23WzhgNq5VgISfyhjCgopk7rR6xqkU1PRo1
+OXjHJpEiHSmraS/bnht5HjPoEKKlPLhS0wQId/9UgKAaBYJTbDg/BPAjFViKhU6T
+F1Kcyv+xNwHfUA+TWQJFq3CGtgU9adLqdaagCvX5+Zrk3txQ6wcbDlfPLA8V/U3H
+dQLIMs+y8STUNhpDltBF
+=Dmvx
+-----END PGP SIGNATURE-----
+--=-=-=--
