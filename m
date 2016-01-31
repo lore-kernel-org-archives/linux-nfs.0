@@ -1,73 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pa0-f41.google.com ([209.85.220.41]:34732 "EHLO
-	mail-pa0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757401AbcAaMuW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 31 Jan 2016 07:50:22 -0500
-Received: by mail-pa0-f41.google.com with SMTP id uo6so67700290pac.1
-        for <linux-nfs@vger.kernel.org>; Sun, 31 Jan 2016 04:50:22 -0800 (PST)
-To: "J. Bruce Fields" <bfields@redhat.com>
+Received: from mail-pf0-f182.google.com ([209.85.192.182]:33558 "EHLO
+	mail-pf0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757401AbcAaMud (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 31 Jan 2016 07:50:33 -0500
+Received: by mail-pf0-f182.google.com with SMTP id x125so68304583pfb.0
+        for <linux-nfs@vger.kernel.org>; Sun, 31 Jan 2016 04:50:33 -0800 (PST)
+To: Trond Myklebust <trond.myklebust@primarydata.com>
 Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
         kinglongmee@gmail.com
 From: Kinglong Mee <kinglongmee@gmail.com>
-Subject: nfsd: supports read buffer from multiples pages
-Message-ID: <56AE0302.6050101@gmail.com>
-Date: Sun, 31 Jan 2016 20:50:10 +0800
+Subject: pnfs/blocklayout: fix a memory leak after using vmalloc_to_page
+Message-ID: <56AE030D.3050709@gmail.com>
+Date: Sun, 31 Jan 2016 20:50:21 +0800
 MIME-Version: 1.0
 Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-ltp fsync02 will cause nfs sending LAYOUTCOMMIT with length
-larger than two pages. nfsd returns NFSERR_BAD_XDR right now.
-
-This patch lets nfsd supports read buffer from multiples pages.
+unreferenced object 0xffffc90000abf000 (size 16900):
+  comm "fsync02", pid 15765, jiffies 4297431627 (age 423.772s)
+  hex dump (first 32 bytes):
+    00 00 00 00 00 00 00 00 00 a0 c2 19 00 88 ff ff  ................
+    00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
+  backtrace:
+    [<ffffffff8174d54e>] kmemleak_alloc+0x4e/0xb0
+    [<ffffffff811b9b91>] __vmalloc_node_range+0x231/0x280
+    [<ffffffff811b9c2a>] __vmalloc+0x4a/0x50
+    [<ffffffffa02c9ec1>] ext_tree_prepare_commit+0x231/0x2e0 [blocklayoutdriver]
+    [<ffffffffa02c700e>] bl_prepare_layoutcommit+0xe/0x10 [blocklayoutdriver]
+    [<ffffffffa0596a6c>] pnfs_layoutcommit_inode+0x29c/0x330 [nfsv4]
+    [<ffffffffa0596b13>] pnfs_generic_sync+0x13/0x20 [nfsv4]
+    [<ffffffffa0585188>] nfs4_file_fsync+0x58/0x150 [nfsv4]
+    [<ffffffff81228e5b>] vfs_fsync_range+0x4b/0xb0
+    [<ffffffff81228f1d>] do_fsync+0x3d/0x70
+    [<ffffffff812291d0>] SyS_fsync+0x10/0x20
+    [<ffffffff81757def>] entry_SYSCALL_64_fastpath+0x12/0x76
+    [<ffffffffffffffff>] 0xffffffffffffffff
 
 Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
 ---
- fs/nfsd/nfs4xdr.c | 18 ++++++++++++++----
- 1 file changed, 14 insertions(+), 4 deletions(-)
+ fs/nfs/blocklayout/extent_tree.c | 10 ++++++++--
+ 1 file changed, 8 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index d6ef095..fcf399f 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -143,11 +143,11 @@ static __be32 *read_buf(struct nfsd4_compoundargs *argp, u32 nbytes)
- 	 * Maybe we need a new page, maybe we have just run out
- 	 */
- 	unsigned int avail = (char *)argp->end - (char *)argp->p;
-+	unsigned int copied = 0;
- 	__be32 *p;
-+
- 	if (avail + argp->pagelen < nbytes)
- 		return NULL;
--	if (avail + PAGE_SIZE < nbytes) /* need more than a page !! */
--		return NULL;
- 	/* ok, we can do it with the current plus the next page */
- 	if (nbytes <= sizeof(argp->tmp))
- 		p = argp->tmp;
-@@ -164,9 +164,19 @@ static __be32 *read_buf(struct nfsd4_compoundargs *argp, u32 nbytes)
- 	 * guarantee p points to at least nbytes bytes.
- 	 */
- 	memcpy(p, argp->p, avail);
-+	copied += avail;
-+	nbytes -= avail;
-+
-+	while (nbytes > PAGE_SIZE) {
-+		next_decode_page(argp);
-+		memcpy(((char*)p) + copied, argp->p, PAGE_SIZE);
-+		copied += PAGE_SIZE;
-+		nbytes -= PAGE_SIZE;
-+	}
-+
- 	next_decode_page(argp);
--	memcpy(((char*)p)+avail, argp->p, (nbytes - avail));
--	argp->p += XDR_QUADLEN(nbytes - avail);
-+	memcpy(((char*)p) + copied, argp->p, nbytes);
-+	argp->p += XDR_QUADLEN(nbytes);
- 	return p;
- }
+diff --git a/fs/nfs/blocklayout/extent_tree.c b/fs/nfs/blocklayout/extent_tree.c
+index c59a59c..35ab51c 100644
+--- a/fs/nfs/blocklayout/extent_tree.c
++++ b/fs/nfs/blocklayout/extent_tree.c
+@@ -476,6 +476,7 @@ static void ext_tree_free_commitdata(struct nfs4_layoutcommit_args *arg,
  
+ 		for (i = 0; i < nr_pages; i++)
+ 			put_page(arg->layoutupdate_pages[i]);
++		vfree(arg->start_p);
+ 		kfree(arg->layoutupdate_pages);
+ 	} else {
+ 		put_page(arg->layoutupdate_page);
+@@ -559,10 +560,15 @@ retry:
+ 
+ 	if (unlikely(arg->layoutupdate_pages != &arg->layoutupdate_page)) {
+ 		void *p = start_p, *end = p + arg->layoutupdate_len;
++		struct page *page = NULL;
+ 		int i = 0;
+ 
+-		for ( ; p < end; p += PAGE_SIZE)
+-			arg->layoutupdate_pages[i++] = vmalloc_to_page(p);
++		arg->start_p = start_p;
++		for ( ; p < end; p += PAGE_SIZE) {
++			page = vmalloc_to_page(p);
++			arg->layoutupdate_pages[i++] = page;
++			get_page(page);
++		}
+ 	}
+ 
+ 	dprintk("%s found %zu ranges\n", __func__, count);
 -- 
 2.5.0
 
